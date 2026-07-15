@@ -40,6 +40,9 @@ type IssueOpsHandoffPrepareRequest = issueops.IssueOpsHandoffPrepareRequest
 type IssueOpsHandoffPrepareResult = issueops.IssueOpsHandoffPrepareResult
 type IssueOpsHandoffPrepareClock = issueops.IssueOpsHandoffPrepareClock
 type IssueOpsOrcaWorktreeClient = issueops.IssueOpsOrcaWorktreeClient
+type IssueOpsLegacyWorktreeMigration = issueops.IssueOpsLegacyWorktreeMigration
+type IssueOpsLegacyWorktreeMigrationRequest = issueops.IssueOpsLegacyWorktreeMigrationRequest
+type IssueOpsLegacyWorktreeMigrationResult = issueops.IssueOpsLegacyWorktreeMigrationResult
 type IssueOpsHandoffStartRequest = issueops.IssueOpsHandoffStartRequest
 type IssueOpsHandoffStartResult = issueops.IssueOpsHandoffStartResult
 type IssueOpsHandoffStartClock = issueops.IssueOpsHandoffStartClock
@@ -264,6 +267,10 @@ func RecordIssueOpsWorktreeTools(stateRoot, id string, prep IssueOpsWorktreeTool
 
 func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req IssueOpsHandoffPrepareRequest, client IssueOpsOrcaWorktreeClient, clock IssueOpsHandoffPrepareClock) (IssueOpsHandoffPrepareResult, error) {
 	return issueops.PrepareIssueOpsHandoffWorktree(ctx, stateRoot, req, client, clock)
+}
+
+func MigrateIssueOpsLegacyWorktree(ctx context.Context, stateRoot string, req IssueOpsLegacyWorktreeMigrationRequest, client IssueOpsOrcaWorktreeClient, clock IssueOpsHandoffPrepareClock) (IssueOpsLegacyWorktreeMigrationResult, error) {
+	return issueops.MigrateIssueOpsLegacyWorktree(ctx, stateRoot, req, client, clock)
 }
 
 func StartIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHandoffStartRequest, client IssueOpsOrcaDispatchClient, clock IssueOpsHandoffStartClock) (IssueOpsHandoffStartResult, error) {

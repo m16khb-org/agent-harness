@@ -20,6 +20,18 @@ description: Structural decisions, rationale, and rejected alternatives.
 
 **거절:** 전역 coordinator registry/lock은 독립 worktree의 throughput을 직렬화하고 unrelated handoff까지 deadlock 범위를 넓히므로 도입하지 않는다.
 
+## 2026-07-15 — Raw legacy worktree is migrated, never metadata-adopted
+
+**결정:** `orca worktree list` runtime inventory에 존재하는 exact path/branch/HEAD checkout만 supervised worker worktree로 reuse한다. Git에만 존재하는 raw legacy checkout은 `orca worktree show` 결과나 `worktree set` metadata만으로 adopt하지 않는다. 대신 명시적 `issueops worktree migrate-legacy --confirm`이 clean·provider-tracking-ref-equal snapshot을 schema-v7 record에 journal하고, Git worktree와 local branch를 제거한 뒤 Orca가 같은 canonical path/branch를 재생성하게 한다.
+
+- migration은 `prepared` → `git_removed` → `orca_managed` durable state를 유지한다. timeout/host interruption 뒤에는 같은 command가 identity snapshot을 재검증해 recreate를 재개한다.
+- dirty, local/remote head drift, symlink, path/branch ambiguity, active handoff는 Git removal 전에 fail-closed한다. raw checkout의 uncommitted WIP를 stash·copy·force-remove하지 않는다.
+- schema v7은 destructive recovery snapshot의 ownership authority를 보호한다. v6 reader는 v7을 future schema로 거부한다.
+
+**근거:** disposable live Orca probe에서 raw Git checkout은 `show`에는 보였지만 runtime `list`에 없었고 terminal create는 timeout이었다. raw checkout을 clean·remote-equal 상태로 제거한 뒤 Orca create는 같은 path/branch와 live terminal handle을 반환했다.
+
+**거절:** raw checkout을 metadata-only로 adopt하는 방식은 terminal/task/dispatch가 없는 fictitious worktree identity를 durable state에 기록한다. unconfirmed automatic replacement와 dirty checkout backup/restore는 data loss 및 scope ambiguity를 만든다.
+
 ---
 
 ## 1. 최종 결정

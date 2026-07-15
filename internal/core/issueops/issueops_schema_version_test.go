@@ -104,7 +104,7 @@ func TestIssueOpsReadRejectsFutureSchemaVersion(t *testing.T) {
 	id := "io-future-schema"
 	writeRawIssueOpsRecord(t, stateRoot, id, `{
   "ok": true,
-  "schema_version": 7,
+  "schema_version": 8,
   "id": "io-future-schema",
   "repo": "/repo/example",
   "branch": "1-demo",
@@ -115,7 +115,7 @@ func TestIssueOpsReadRejectsFutureSchemaVersion(t *testing.T) {
 `)
 
 	_, err := ReadIssueOps(stateRoot, id)
-	if err == nil || !strings.Contains(err.Error(), "unsupported issueops schema_version 7") {
+	if err == nil || !strings.Contains(err.Error(), "unsupported issueops schema_version 8") {
 		t.Fatalf("expected future schema rejection, got %v", err)
 	}
 }
@@ -184,6 +184,59 @@ func TestFrozenSchemaV5ReaderRejectsRawSchemaV6WithoutRewriting(t *testing.T) {
 	})
 }
 
+func TestFrozenSchemaV6ReaderRejectsRawSchemaV7WithoutRewriting(t *testing.T) {
+	setup := func(t *testing.T) (string, string, []byte) {
+		t.Helper()
+		stateRoot, record := handoffDispatchRecord(t)
+		record.SchemaVersion = 7
+		raw, err := json.Marshal(record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeRawIssueOpsRecord(t, stateRoot, record.ID, string(raw))
+		return stateRoot, record.ID, rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+	}
+	t.Run("rejects raw schema-v7", func(t *testing.T) {
+		stateRoot, id, _ := setup(t)
+		if err := legacyV6ReadModifyWriteFixture(stateRoot, id); err == nil || !strings.Contains(err.Error(), "schema_version 7") {
+			t.Fatalf("frozen schema-v6 reader did not reject raw schema-v7 bytes: %v", err)
+		}
+	})
+	t.Run("preserves raw bytes", func(t *testing.T) {
+		stateRoot, id, before := setup(t)
+		_ = legacyV6ReadModifyWriteFixture(stateRoot, id)
+		if after := rawIssueOpsBytesForTest(t, stateRoot, id); !bytes.Equal(after, before) {
+			t.Fatal("frozen schema-v6 reader rewrote raw schema-v7 bytes")
+		}
+	})
+}
+
+func TestReadIssueOpsRejectsInvalidLegacyWorktreeMigrationSnapshot(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	record.LegacyWorktreeMigration = &IssueOpsLegacyWorktreeMigration{
+		State:        IssueOpsLegacyWorktreeMigrationStateGitRemoved,
+		WorktreePath: handoffPrepareWorktreePath(record),
+		Branch:       record.Branch,
+		Head:         record.BranchPrepare.BaseSHA,
+		BaseRef:      "refs/remotes/origin/" + record.Branch,
+		PreparedAt:   "2026-07-11T01:02:03Z",
+		GitRemovedAt: "not-a-timestamp",
+	}
+	raw, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeRawIssueOpsRecord(t, stateRoot, record.ID, string(raw))
+	before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+	got, err := ReadIssueOps(stateRoot, record.ID)
+	if err == nil || !strings.Contains(err.Error(), "git removal timestamp") || !got.Invalid {
+		t.Fatalf("invalid migration snapshot must fail closed: record=%#v err=%v", got, err)
+	}
+	if after := rawIssueOpsBytesForTest(t, stateRoot, record.ID); !bytes.Equal(after, before) {
+		t.Fatal("invalid migration snapshot was rewritten during read")
+	}
+}
+
 func TestSchemaV5OldPublishReceiptRequiresReattestOrReconcileWithoutRewriting(t *testing.T) {
 	stateRoot, id := t.TempDir(), "io-v5-receipt"
 	raw := `{"ok":true,"schema_version":5,"id":"io-v5-receipt","repo":"/repo/example","branch":"16-demo","phase":"pr","execution_handoff":{"protocol_version":1,"state":"closed","closed_disposition":"accepted","coordinator_root":"/repo/example","coordinator_mailbox_handle":"term_coordinator","worker_root":"/repo/example.worktrees/16-demo","publish_receipt":{"provider":"github","remote":"origin","branch":"16-demo","remote_ref":"refs/heads/16-demo","final_head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","verified_at":"2026-07-12T00:00:00Z"}}}`
@@ -201,15 +254,15 @@ func TestSchemaV5OldPublishReceiptRequiresReattestOrReconcileWithoutRewriting(t 
 	}
 }
 
-func TestSchemaV5WithoutV6AuthorityMigratesInMemoryAndSchemaV6IsAccepted(t *testing.T) {
-	for _, version := range []int{5, 6} {
+func TestSchemaV5AndV6WithoutV7AuthorityMigrateInMemoryAndSchemaV7IsAccepted(t *testing.T) {
+	for _, version := range []int{5, 6, 7} {
 		stateRoot := t.TempDir()
 		id := fmt.Sprintf("io-schema-v%d", version)
 		raw := fmt.Sprintf(`{"ok":true,"schema_version":%d,"id":%q,"repo":"/repo/example","branch":"16-demo","phase":"problem"}`, version, id)
 		writeRawIssueOpsRecord(t, stateRoot, id, raw)
 		before := rawIssueOpsBytesForTest(t, stateRoot, id)
 		got, err := ReadIssueOps(stateRoot, id)
-		if err != nil || got.SchemaVersion != 6 {
+		if err != nil || got.SchemaVersion != IssueOpsCurrentSchemaVersion {
 			t.Fatalf("schema v%d read = %#v, %v", version, got, err)
 		}
 		if after := rawIssueOpsBytesForTest(t, stateRoot, id); !bytes.Equal(after, before) {
@@ -249,7 +302,7 @@ func TestIssueOpsSchemaV4PreservesSealedOrcaMailboxAuthorities(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`"schema_version":6`, `"coordinator_mailbox_handle":"term_coordinator"`, `"worker_terminal_handle":"term_live"`, `"worker_mailbox_handle":"term_dispatched"`} {
+	for _, want := range []string{`"schema_version":7`, `"coordinator_mailbox_handle":"term_coordinator"`, `"worker_terminal_handle":"term_live"`, `"worker_mailbox_handle":"term_dispatched"`} {
 		if !bytes.Contains(reencoded, []byte(want)) {
 			t.Fatalf("schema-v4 authority %s was not preserved: %s", want, reencoded)
 		}
@@ -793,6 +846,34 @@ func legacyV5ReadModifyWriteFixture(stateRoot, id string) error {
 		return fmt.Errorf("unsupported issueops schema_version %d; current is 5", legacy.SchemaVersion)
 	}
 	legacy.UpdatedAt = "legacy-v5-touch"
+	rewritten, err := json.MarshalIndent(legacy, "", "  ")
+	if err != nil {
+		return err
+	}
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		return err
+	}
+	return db.Put(issueOpsBucket, id, rewritten)
+}
+
+func legacyV6ReadModifyWriteFixture(stateRoot, id string) error {
+	raw, err := rawIssueOpsRecordBytes(stateRoot, id)
+	if err != nil {
+		return err
+	}
+	var legacy struct {
+		SchemaVersion int    `json:"schema_version"`
+		ID            string `json:"id"`
+		UpdatedAt     string `json:"updated_at"`
+	}
+	if err := json.Unmarshal(raw, &legacy); err != nil {
+		return err
+	}
+	if legacy.SchemaVersion > 6 {
+		return fmt.Errorf("unsupported issueops schema_version %d; current is 6", legacy.SchemaVersion)
+	}
+	legacy.UpdatedAt = "legacy-v6-touch"
 	rewritten, err := json.MarshalIndent(legacy, "", "  ")
 	if err != nil {
 		return err

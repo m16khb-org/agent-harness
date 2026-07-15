@@ -3,6 +3,8 @@ package issueops
 import (
 	"strings"
 	"testing"
+
+	"agent-harness/internal/core"
 )
 
 func TestMCPIssueOpsStartAndStatus(t *testing.T) {
@@ -16,6 +18,28 @@ func TestMCPIssueOpsStartAndStatus(t *testing.T) {
 	status := callMCPToolForIssueOpsTest(t, "issueops_status", map[string]any{"id": id})
 	if status["id"] != id || status["repo"] != "/repo/example" {
 		t.Fatalf("unexpected MCP status payload: %#v", status)
+	}
+}
+
+func TestMCPIssueOpsMigrateLegacyWorktreeProvidesNonMutatingPreview(t *testing.T) {
+	configureIssueOpsMCPForTest(t)
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := makeIssueOpsCLIRepoForTest(t, "legacy-preview")
+	record := core.IssueOpsRecord{
+		ID:            core.NewIssueOpsID(repo, "91-legacy"),
+		Repo:          repo,
+		Branch:        "91-legacy",
+		Phase:         core.IssueOpsPhasePlan,
+		DesignReview:  &core.IssueOpsDesignReview{Approved: true, ReviewedAt: "2026-07-15T00:00:00Z"},
+		BranchPrepare: &core.IssueOpsBranchPrepare{Provider: "github", Branch: "91-legacy", BaseBranch: "main", BaseSHA: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", LinkVerified: true, CreatedAt: "2026-07-15T00:00:00Z"},
+		CreatedAt:     "2026-07-15T00:00:00Z", UpdatedAt: "2026-07-15T00:00:00Z",
+	}
+	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	got := callMCPToolForIssueOpsTest(t, "issueops_migrate_legacy_worktree", map[string]any{"id": record.ID})
+	if got["ok"] != true || got["preview"] != true || got["state"] != "confirmation_required" {
+		t.Fatalf("legacy migration preview = %#v", got)
 	}
 }
 

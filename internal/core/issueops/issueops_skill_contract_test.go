@@ -1229,9 +1229,9 @@ func TestRemoteCreateClaimReconcileAndInterruptOperationalContracts(t *testing.T
 	architecture := readProjectContractFileForTest(t, ".agent-harness", "ARCHITECTURE.md")
 	operations := readProjectContractFileForTest(t, ".agent-harness", "OPERATIONS.md")
 	for name, document := range map[string]string{"architecture": architecture, "operations": operations} {
-		for _, want := range []string{"schema_version=6", "v5", "remote_create_claim"} {
+		for _, want := range []string{"schema_version=7", "v6", "git_removed"} {
 			if !strings.Contains(document, want) {
-				t.Fatalf("%s schema v5-to-v6 contract missing %q", name, want)
+				t.Fatalf("%s schema v6-to-v7 contract missing %q", name, want)
 			}
 		}
 	}

@@ -192,6 +192,9 @@ func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req I
 		if requested == IssueOpsOrchestratorAuto {
 			return inlineHandoffPrepareFallback(result, collisionCode), nil
 		}
+		if collisionCode == "orca_existing_legacy_worktree" {
+			return result, fmt.Errorf("Orca worktree create collision: %s; migrate the clean remote-equal checkout with issueops worktree migrate-legacy --id %s --confirm", collisionCode, record.ID)
+		}
 		return result, fmt.Errorf("Orca worktree create collision: %s", collisionCode)
 	}
 	epoch, err := issueOpsHandoffEpoch(clock)

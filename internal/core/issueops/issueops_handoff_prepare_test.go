@@ -1185,6 +1185,163 @@ func TestWorktreePrepareRejectsRawLegacyWorktreeMissingFromOrcaInventory(t *test
 	}
 }
 
+func TestMigrateLegacyWorktreeReplacesCleanRemoteEqualCheckoutWithOrcaManagedIdentity(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	worktree := handoffPrepareWorktreePath(record)
+	makeGitWorktreeMarker(t, worktree)
+	migrationMarker := issueOpsLegacyWorktreeMigrationMarker(record.ID)
+	client := &prepareOrcaFake{
+		probe: port.OrcaProbeResult{Available: true, Ready: true, RuntimeID: "runtime-1", RepoID: "repo-1", RepoRemoteName: "origin"},
+		create: port.OrcaWorktree{
+			ID: "wt-migrated", InstanceID: "inst-migrated", RepoID: "repo-1", Path: worktree,
+			Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA,
+			BaseRef: "refs/remotes/origin/" + record.Branch, Issue: 16, Comment: migrationMarker,
+		},
+	}
+	materializePrepareWorktreeOnCreate(t, client, worktree)
+	previous := client.beforeCreate
+	client.beforeCreate = func() {
+		previous()
+		client.worktrees = append(client.worktrees, client.create)
+	}
+
+	got, err := MigrateIssueOpsLegacyWorktree(context.Background(), stateRoot, IssueOpsLegacyWorktreeMigrationRequest{
+		ID: record.ID, Confirm: true,
+	}, client, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.OK || got.State != IssueOpsLegacyWorktreeMigrationStateOrcaManaged || got.Orca == nil || got.Orca.WorktreeID != "wt-migrated" || client.createCalls != 1 {
+		t.Fatalf("legacy migration result = %#v, creates=%d", got, client.createCalls)
+	}
+	persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+	if readErr != nil || persisted.LegacyWorktreeMigration == nil || persisted.LegacyWorktreeMigration.State != IssueOpsLegacyWorktreeMigrationStateOrcaManaged || persisted.ExecutionHandoff != nil {
+		t.Fatalf("legacy migration persistence = %#v err=%v", persisted, readErr)
+	}
+	if !existingLegacyWorktreeMatches(persisted, worktree) {
+		t.Fatal("migrated checkout no longer matches the exact legacy path/branch/head contract")
+	}
+}
+
+func TestMigrateLegacyWorktreeCanBeAdoptedByTheFollowingSupervisedHandoff(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	worktree := handoffPrepareWorktreePath(record)
+	makeGitWorktreeMarker(t, worktree)
+	migrationMarker := issueOpsLegacyWorktreeMigrationMarker(record.ID)
+	client := &prepareOrcaFake{
+		probe: port.OrcaProbeResult{Available: true, Ready: true, RuntimeID: "runtime-1", RepoID: "repo-1", RepoRemoteName: "origin"},
+		create: port.OrcaWorktree{
+			ID: "wt-migrated", InstanceID: "inst-migrated", RepoID: "repo-1", Path: worktree,
+			Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA,
+			BaseRef: "refs/remotes/origin/" + record.Branch, Issue: 16, Comment: migrationMarker,
+		},
+	}
+	materializePrepareWorktreeOnCreate(t, client, worktree)
+	previous := client.beforeCreate
+	client.beforeCreate = func() {
+		previous()
+		client.worktrees = append(client.worktrees, client.create)
+	}
+	if _, err := MigrateIssueOpsLegacyWorktree(context.Background(), stateRoot, IssueOpsLegacyWorktreeMigrationRequest{
+		ID: record.ID, Confirm: true,
+	}, client, handoffPrepareTestClock()); err != nil {
+		t.Fatal(err)
+	}
+
+	client.adopt = client.create
+	client.adopt.Comment = issueOpsHandoffMarker(record.ID, "epoch-1", 1)
+	got, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+		ID: record.ID, Orchestrator: IssueOpsOrchestratorOrca, Agent: "codex", Confirm: true,
+	}, client, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateCoordinatorPreparing || got.Orca == nil || !got.Orca.WorktreeAdopted || client.createCalls != 1 || client.adoptCalls != 1 {
+		t.Fatalf("migrated worktree was not adopted by the supervised handoff: result=%#v creates=%d adopts=%d", got, client.createCalls, client.adoptCalls)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.LegacyWorktreeMigration == nil || persisted.LegacyWorktreeMigration.State != IssueOpsLegacyWorktreeMigrationStateOrcaManaged || persisted.ExecutionHandoff == nil || persisted.ExecutionHandoff.Orca == nil || !persisted.ExecutionHandoff.Orca.WorktreeAdopted {
+		t.Fatalf("migration audit or supervised handoff was not persisted: %#v", persisted)
+	}
+}
+
+func TestPersistedMigratedWorktreeRejectsDifferentExecutionHandoffIdentity(t *testing.T) {
+	_, record := handoffPrepareRecord(t)
+	worktree := handoffPrepareWorktreePath(record)
+	record.LegacyWorktreeMigration = &IssueOpsLegacyWorktreeMigration{
+		State: IssueOpsLegacyWorktreeMigrationStateOrcaManaged, WorktreePath: worktree, Branch: record.Branch,
+		Head: record.BranchPrepare.BaseSHA, BaseRef: "refs/remotes/origin/" + record.Branch,
+		PreparedAt: "2026-07-11T01:02:03Z", GitRemovedAt: "2026-07-11T01:02:04Z", CompletedAt: "2026-07-11T01:02:05Z",
+		Orca: &IssueOpsOrcaIdentity{RuntimeID: "runtime-1", RepoID: "repo-1", WorktreeID: "wt-migrated", WorktreeInstanceID: "inst-migrated", WorktreePath: worktree},
+	}
+	record.ExecutionHandoff = &IssueOpsExecutionHandoff{Orca: &IssueOpsOrcaIdentity{RuntimeID: "runtime-1", RepoID: "repo-1", WorktreeID: "wt-other", WorktreeInstanceID: "inst-other", WorktreePath: worktree}}
+	if err := validatePersistedLegacyWorktreeMigration(record); err == nil || !strings.Contains(err.Error(), "same Orca worktree") {
+		t.Fatalf("mismatched migration and handoff identity must fail closed: %v", err)
+	}
+}
+
+func TestMigrateLegacyWorktreeRejectsDirtyCheckoutBeforeAnyMutation(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	worktree := handoffPrepareWorktreePath(record)
+	makeGitWorktreeMarker(t, worktree)
+	if err := os.WriteFile(filepath.Join(worktree, "DIRTY.md"), []byte("dirty\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	client := &prepareOrcaFake{probe: port.OrcaProbeResult{Available: true, Ready: true, RuntimeID: "runtime-1", RepoID: "repo-1", RepoRemoteName: "origin"}}
+	_, err := MigrateIssueOpsLegacyWorktree(context.Background(), stateRoot, IssueOpsLegacyWorktreeMigrationRequest{
+		ID: record.ID, Confirm: true,
+	}, client, handoffPrepareTestClock())
+	if err == nil || !strings.Contains(err.Error(), "must be clean") || client.createCalls != 0 {
+		t.Fatalf("dirty legacy checkout crossed mutation boundary: err=%v creates=%d", err, client.createCalls)
+	}
+	persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+	if readErr != nil || persisted.LegacyWorktreeMigration != nil {
+		t.Fatalf("dirty migration changed durable state: %#v err=%v", persisted.LegacyWorktreeMigration, readErr)
+	}
+}
+
+func TestMigrateLegacyWorktreeRetriesFromDurableGitRemovedState(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	worktree := handoffPrepareWorktreePath(record)
+	makeGitWorktreeMarker(t, worktree)
+	client := &prepareOrcaFake{
+		probe:     port.OrcaProbeResult{Available: true, Ready: true, RuntimeID: "runtime-1", RepoID: "repo-1", RepoRemoteName: "origin"},
+		createErr: &port.OrcaError{Code: "timeout", Invoked: true, Timeout: true},
+	}
+	req := IssueOpsLegacyWorktreeMigrationRequest{ID: record.ID, Confirm: true}
+	if _, err := MigrateIssueOpsLegacyWorktree(context.Background(), stateRoot, req, client, handoffPrepareTestClock()); err == nil {
+		t.Fatal("expected ambiguous Orca create failure")
+	}
+	pending, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil || pending.LegacyWorktreeMigration == nil || pending.LegacyWorktreeMigration.State != IssueOpsLegacyWorktreeMigrationStateGitRemoved {
+		t.Fatalf("git removal was not durably resumable: %#v err=%v", pending.LegacyWorktreeMigration, err)
+	}
+	if _, err := os.Stat(worktree); !os.IsNotExist(err) {
+		t.Fatalf("raw worktree was not removed before retry: %v", err)
+	}
+	migrationMarker := issueOpsLegacyWorktreeMigrationMarker(record.ID)
+	client.createErr = nil
+	client.create = port.OrcaWorktree{
+		ID: "wt-retried", InstanceID: "inst-retried", RepoID: "repo-1", Path: worktree,
+		Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA,
+		BaseRef: "refs/remotes/origin/" + record.Branch, Issue: 16, Comment: migrationMarker,
+	}
+	client.beforeCreate = func() {
+		makeGitWorktreeMarker(t, worktree)
+		client.worktrees = append(client.worktrees, client.create)
+	}
+	got, err := MigrateIssueOpsLegacyWorktree(context.Background(), stateRoot, req, client, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != IssueOpsLegacyWorktreeMigrationStateOrcaManaged || client.createCalls != 2 {
+		t.Fatalf("migration retry = %#v creates=%d", got, client.createCalls)
+	}
+}
+
 func TestWorktreePrepareRejectsSymlinkedCanonicalWorktreeBaseBeforeCreate(t *testing.T) {
 	for _, mode := range []string{IssueOpsOrchestratorAuto, IssueOpsOrchestratorOrca} {
 		t.Run(mode, func(t *testing.T) {
