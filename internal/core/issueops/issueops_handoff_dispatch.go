@@ -45,6 +45,8 @@ type IssueOpsHandoffStartResult struct {
 	CodexHookTrustBypassAttested bool                  `json:"codex_hook_trust_bypass_attested"`
 	Orca                         *IssueOpsOrcaIdentity `json:"orca,omitempty"`
 	CoordinatorRecipient         string                `json:"coordinator_recipient,omitempty"`
+	ConfirmedCommand             string                `json:"confirmed_command,omitempty"`
+	NextCommand                  string                `json:"next_command,omitempty"`
 }
 
 var concreteOrcaTerminalHandlePattern = regexp.MustCompile(`^term_[A-Za-z0-9_-]+$`)
@@ -152,6 +154,12 @@ func startIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 		result.ContextSHA256 = packet.SHA256
 		result.CoordinatorRecipient = coordinatorRecipient
 		result.CodexHookTrustBypassAttested = contextOptions.AllowCodexHookTrustBypass
+		if codexHookTrustBypassRequired(record) && !contextOptions.AllowCodexHookTrustBypass {
+			result.NextCommand = attestedHandoffPreviewCommand(record, coordinatorRecipient, coordinatorSession)
+		} else {
+			result.ConfirmedCommand = confirmedHandoffStartCommand(record, coordinatorRecipient, coordinatorSession, contextOptions, packet.SHA256)
+			result.NextCommand = result.ConfirmedCommand
+		}
 		return result, nil
 	}
 	if codexHookTrustBypassRequired(record) && !contextOptions.AllowCodexHookTrustBypass {
@@ -204,6 +212,44 @@ func startIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 		return IssueOpsHandoffStartResult{}, err
 	}
 	return projectHandoffStart(record, false, packet.PlanSHA256), nil
+}
+
+func confirmedHandoffStartCommand(record IssueOpsRecord, recipient string, coordinator model.IssueOpsHostSessionIdentity, options handoff.ContextOptions, contextSHA string) string {
+	parts := []string{
+		"agent-harness issueops handoff start",
+		"--id " + quoteHandoffCLIToken(record.ID),
+		"--coordinator-recipient " + quoteHandoffCLIToken(recipient),
+		"--coordinator-host " + quoteHandoffCLIToken(coordinator.Host),
+		"--coordinator-session-id " + quoteHandoffCLIToken(coordinator.SessionID),
+	}
+	if coordinator.AgentID != "" {
+		parts = append(parts, "--coordinator-agent-id "+quoteHandoffCLIToken(coordinator.AgentID))
+	}
+	parts = append(parts, "--source-cwd "+quoteHandoffCLIToken(record.Repo))
+	if options.AllowCodexHookTrustBypass {
+		parts = append(parts, "--allow-codex-hook-trust-bypass")
+	}
+	parts = append(parts, "--expected-context-sha256 "+quoteHandoffCLIToken(contextSHA), "--confirm", "--json")
+	return strings.Join(parts, " ")
+}
+
+func attestedHandoffPreviewCommand(record IssueOpsRecord, recipient string, coordinator model.IssueOpsHostSessionIdentity) string {
+	parts := []string{
+		"agent-harness issueops handoff start",
+		"--id " + quoteHandoffCLIToken(record.ID),
+		"--coordinator-recipient " + quoteHandoffCLIToken(recipient),
+		"--coordinator-host " + quoteHandoffCLIToken(coordinator.Host),
+		"--coordinator-session-id " + quoteHandoffCLIToken(coordinator.SessionID),
+	}
+	if coordinator.AgentID != "" {
+		parts = append(parts, "--coordinator-agent-id "+quoteHandoffCLIToken(coordinator.AgentID))
+	}
+	parts = append(parts, "--source-cwd "+quoteHandoffCLIToken(record.Repo), "--allow-codex-hook-trust-bypass", "--json")
+	return strings.Join(parts, " ")
+}
+
+func quoteHandoffCLIToken(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
 }
 
 func ensureHandoffTerminal(ctx context.Context, stateRoot string, record IssueOpsRecord, fence handoff.Fence, client IssueOpsOrcaDispatchClient, now func() string, beforeJournal func()) (IssueOpsRecord, string, error) {
