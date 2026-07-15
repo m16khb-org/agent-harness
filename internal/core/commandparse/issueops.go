@@ -143,7 +143,7 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		for _, name := range []string{"--changed-file", "--verification", "--cleanup-receipt"} {
 			r[name] = true
 		}
-		return values, b("--json"), r, true
+		return values, b("--no-change", "--json"), r, true
 	case "heartbeat":
 		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id"), b("--json"), r, true
 	default:

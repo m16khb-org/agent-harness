@@ -121,11 +121,35 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 		cwd, cwdOK := oneFlag(flags, "--cwd")
 		worktreeID, wtOK := oneFlag(flags, "--orca-worktree-id")
 		return worker && currentWorkerBranchMatches(record) && h.State == handoff.StateDispatched && exactFenceFlags(flags, record) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && wtOK && h.Orca != nil && worktreeID == h.Orca.WorktreeID
-	case "heartbeat", "handoff finish":
+	case "heartbeat":
 		return worker && currentWorkerBranchMatches(record) && exactFenceFlags(flags, record) && nativeSessionMatches(req, h.WorkerSession) && eventIdentityFlagsMatch(req, flags)
+	case "handoff finish":
+		return worker && currentWorkerBranchMatches(record) && exactFenceFlags(flags, record) && nativeSessionMatches(req, h.WorkerSession) && eventIdentityFlagsMatch(req, flags) && exactNoChangeFinishFlags(flags)
 	default:
 		return false
 	}
+}
+
+// exactNoChangeFinishFlags keeps the hook's worker authority in lockstep with
+// the CLI's self-healing no-change finish path. The CLI derives these values
+// from the sealed record and worker filesystem; accepting caller-provided
+// equivalents here would let the hook authorize a materially different result.
+func exactNoChangeFinishFlags(flags map[string][]string) bool {
+	if _, noChange := flags["--no-change"]; !noChange {
+		return true
+	}
+	if outcome, specified := oneFlag(flags, "--outcome"); specified && outcome != string(handoff.OutcomeCompleted) {
+		return false
+	}
+	if len(flags["--verification"]) == 0 {
+		return false
+	}
+	for _, prohibited := range []string{"--changed-file", "--turing-report", "--cleanup-receipt", "--final-head", "--task-id", "--dispatch-id"} {
+		if _, present := flags[prohibited]; present {
+			return false
+		}
+	}
+	return true
 }
 
 func exactCoordinatorPreparingCancel(req HookToolUseLifecycleRequest, flags map[string][]string, record IssueOpsRecord) bool {
