@@ -156,6 +156,7 @@ func TestWorktreeGuardBlocksSourceCheckoutWhenLinkedCycleExists(t *testing.T) {
 	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), rec.ID, expected); err != nil {
 		t.Fatal(err)
 	}
+	writeIssueOpsGuardFileForTest(t, expected, "internal/x.go", "package internal\n")
 
 	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{filepath.Join(repo, "internal", "x.go")}, EnforceWorktree: true,
@@ -208,6 +209,8 @@ func TestWorktreeGuardBlockNamesAllParallelWorktreeCyclesDeterministically(t *te
 	repo := guardRepoWithCycle(t, "1-current", IssueOpsPhaseProblem)
 	cycleB := linkIssueOpsWorktreeForGuardTest(t, repo, "2-bravo")
 	cycleC := linkIssueOpsWorktreeForGuardTest(t, repo, "3-charlie")
+	writeIssueOpsGuardFileForTest(t, cycleB.path, "internal/x.go", "package internal\n")
+	writeIssueOpsGuardFileForTest(t, cycleC.path, "internal/x.go", "package internal\n")
 
 	first := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{filepath.Join(repo, "internal", "x.go")}, EnforceWorktree: true,

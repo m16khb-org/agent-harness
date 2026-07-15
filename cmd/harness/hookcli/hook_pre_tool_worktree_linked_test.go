@@ -51,6 +51,7 @@ func TestRunHookPreToolUseEnforcesLinkedIssueOpsWorktree(t *testing.T) {
 	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), record.ID, filepath.Join(worktree, "plans", "issue-worktree.md")); err != nil {
 		t.Fatal(err)
 	}
+	writeHookFixtureFile(t, worktree, "internal/core/issueops.go", "package core\n")
 	payload, err := json.Marshal(map[string]any{
 		"cwd":       source,
 		"tool_name": "apply_patch",

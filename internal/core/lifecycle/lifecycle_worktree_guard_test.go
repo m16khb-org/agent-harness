@@ -186,6 +186,33 @@ func TestWorktreeGuardIgnoresOtherBranchCycle(t *testing.T) {
 	}
 }
 
+func TestWorktreeGuardAllowsSourceEditWithoutParallelWorktreePathCollision(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := guardRepoWithCycle(t, "2518-main-maintenance", IssueOpsPhasePlan)
+	linkIssueOpsWorktreeForGuardTest(t, repo, "2519-vertex-cache")
+
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Edit", Paths: []string{filepath.Join(repo, ".gitkeep")}, EnforceWorktree: true,
+	})
+	if res.Decision != "allow" {
+		t.Fatalf("source-only edit should remain allow when a parallel worktree lacks the path, got %+v", res)
+	}
+}
+
+func TestWorktreeGuardBlocksSourceEditWithParallelWorktreePathCollision(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := guardRepoWithCycle(t, "2518-main-maintenance", IssueOpsPhasePlan)
+	cycle := linkIssueOpsWorktreeForGuardTest(t, repo, "2519-vertex-cache")
+	writeIssueOpsGuardFileForTest(t, cycle.path, ".gitkeep", "\n")
+
+	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		Repo: repo, Tool: "Edit", Paths: []string{filepath.Join(repo, ".gitkeep")}, EnforceWorktree: true,
+	})
+	if res.Decision != "block" || !strings.Contains(res.Reason, "same relative path") || !strings.Contains(res.Reason, cycle.id) {
+		t.Fatalf("parallel worktree path collision should name its cycle, got %+v", res)
+	}
+}
+
 func TestWorktreeGuardBlocksMismatchedWorktreeBranchAtLink(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "1-development", IssueOpsPhasePlan)

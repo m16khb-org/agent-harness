@@ -136,18 +136,29 @@ func localIssueOpsBranchCreationBlockReason(req HookToolUseLifecycleRequest) str
 }
 
 func sourceCheckoutLinkedCycleBlockReason(repo string, targets []string) string {
+	sourceCheckout := cleanAbsPath(repo)
+	if sourceCheckout == "" {
+		return ""
+	}
 	linkedRecs := ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo)
 	if len(linkedRecs) == 0 {
 		return ""
 	}
 	for _, target := range targets {
-		if !sourceCheckoutTargetNeedsLinkedWorktree(target, repo) {
+		rel, err := filepath.Rel(sourceCheckout, cleanAbsPath(target))
+		if err != nil || rel == "." || strings.HasPrefix(rel, "..") {
 			continue
 		}
-		if targetInsideAnyLinkedIssueOpsWorktree(target, linkedRecs) {
-			continue
+		collisions := []IssueOpsRecord{}
+		for _, record := range linkedRecs {
+			worktree := cleanAbsPath(record.WorktreePath)
+			if _, err := os.Lstat(filepath.Join(worktree, rel)); err == nil {
+				collisions = append(collisions, record)
+			}
 		}
-		return linkedWorktreeCyclesBlockReason(linkedRecs)
+		if len(collisions) > 0 {
+			return linkedWorktreeCyclesBlockReason(collisions)
+		}
 	}
 	return ""
 }
@@ -179,12 +190,12 @@ func expectedWorktreeGuardBlockReason(req HookToolUseLifecycleRequest, expected 
 func linkedWorktreeCyclesBlockReason(records []IssueOpsRecord) string {
 	if len(records) == 1 {
 		r := records[0]
-		return "mutating tool target is outside the linked IssueOps worktree for " + r.ID +
+		return "mutating source checkout target has the same relative path in linked IssueOps worktree for " + r.ID +
 			"; run issue-based work from " + cleanAbsPath(r.WorktreePath) +
 			" or release the stale cycle with `issueops force-release --id " + r.ID + " --reason <why>`"
 	}
 	var b strings.Builder
-	b.WriteString("mutating tool target is outside the linked IssueOps worktree of an active parallel cycle; ")
+	b.WriteString("mutating source checkout target has the same relative path in linked IssueOps worktrees of active parallel cycles; ")
 	b.WriteString(strconv.Itoa(len(records)))
 	b.WriteString(" cycles currently hold worktrees [")
 	for i, r := range records {
