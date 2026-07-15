@@ -799,7 +799,7 @@ func validCompletedResult(h *model.IssueOpsExecutionHandoff) bool {
 	if h == nil || h.Result == nil || h.Result.Outcome != OutcomeCompleted || !fullCommitPattern.MatchString(h.Result.FinalHead) || !safeRelativeHandoffPath(h.Result.TuringReportPath) {
 		return false
 	}
-	if len(h.Result.ChangedFiles) == 0 || !validChangedFiles(h.Result.ChangedFiles) || len(h.Result.Verification) == 0 || len(h.Result.CleanupReceipts) == 0 {
+	if !validChangedFiles(h.Result.ChangedFiles) || len(h.Result.Verification) == 0 || len(h.Result.CleanupReceipts) == 0 {
 		return false
 	}
 	return validResultIdentityAndEvidence(h)
