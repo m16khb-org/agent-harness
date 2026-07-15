@@ -121,6 +121,46 @@ func TestHandoffStartRejectsRecipientSealedByAnotherActiveRecord(t *testing.T) {
 	}
 }
 
+func TestHandoffStartIgnoresClosedLegacyRecordDuringCoordinatorClaimScan(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	legacy := record
+	legacy.ID = "io-abcdef123456"
+	legacy.SchemaVersion = 1
+	legacyHandoff := *record.ExecutionHandoff
+	legacyHandoff.State = handoff.StateClosed
+	legacyHandoff.ClosedDisposition = handoff.DispositionAccepted
+	legacyHandoff.AttemptBaseHead = ""
+	legacy.ExecutionHandoff = &legacyHandoff
+	putRawIssueOpsRecordForTest(t, stateRoot, legacy)
+
+	client := handoffDispatchFake(record)
+	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock()); err != nil {
+		t.Fatalf("closed legacy record blocked coordinator claim scan: %v", err)
+	}
+	if client.dispatchCalls != 1 {
+		t.Fatalf("dispatch calls = %d, want 1", client.dispatchCalls)
+	}
+}
+
+func TestHandoffStartFailsClosedForInvalidActiveRecordDuringCoordinatorClaimScan(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	invalid := record
+	invalid.ID = "io-fedcba654321"
+	invalidHandoff := *record.ExecutionHandoff
+	invalidHandoff.AttemptBaseHead = ""
+	invalid.ExecutionHandoff = &invalidHandoff
+	putRawIssueOpsRecordForTest(t, stateRoot, invalid)
+
+	client := handoffDispatchFake(record)
+	_, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock())
+	if err == nil || !strings.Contains(err.Error(), "attempt base head") {
+		t.Fatalf("invalid active record error = %v", err)
+	}
+	if client.dispatchCalls != 0 {
+		t.Fatalf("invalid active record reached dispatch: %d", client.dispatchCalls)
+	}
+}
+
 func TestHandoffStartSealsCoordinatorAndDispatchesFromExactRecipient(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	client := handoffDispatchFake(record)

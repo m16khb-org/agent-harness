@@ -987,12 +987,15 @@ func handoffCoordinatorRecipientClaimed(stateRoot, currentID, repo, handle strin
 		if id == currentID {
 			continue
 		}
-		record, err := ReadIssueOps(stateRoot, id)
+		record, err := readIssueOpsUnchecked(stateRoot, id)
 		if err != nil {
 			return false, err
 		}
 		if filepath.Clean(record.Repo) != filepath.Clean(repo) || record.ExecutionHandoff == nil || record.ExecutionHandoff.State == handoff.StateClosed {
 			continue
+		}
+		if err := handoff.ValidateEnvelope(record); err != nil {
+			return false, err
 		}
 		if strings.TrimSpace(record.ExecutionHandoff.CoordinatorMailboxHandle) == handle {
 			return true, nil
