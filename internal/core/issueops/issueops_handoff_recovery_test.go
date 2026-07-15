@@ -1361,6 +1361,43 @@ func TestHandoffRecoverDispatchRequiresDurableDeliveryIdentityAndDispatchedStatu
 	}
 }
 
+func TestHandoffRecoverDispatchNotFoundReturnsToCoordinatorPreparing(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.CoordinatorMailboxHandle = testCoordinatorRecipient
+	record.ExecutionHandoff.Orca.WorkerPTYID = "pty-1"
+	record.ExecutionHandoff.Orca.WorkerTerminalHandle = "term-1"
+	record.ExecutionHandoff.Orca.TaskID = "task-1"
+	setRecoveryRequiredForTest(&record, IssueOpsExecutionHandoffPendingOperation{
+		Kind: handoff.OperationDispatch, ExpectedAssigneeHandle: "term-1", DeliveryMode: "inject",
+	})
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	client.dispatchShowErr = &port.OrcaError{Code: "not_found", Invoked: true}
+
+	got, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "reconcile",
+	}, client, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateCoordinatorPreparing || got.NextCommand == "" {
+		t.Fatalf("absent dispatch recovery = %#v, want coordinator preparation retry", got)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := persisted.ExecutionHandoff
+	if h.PendingOperation != nil || h.Failure != nil || h.DeliveryMode != "" || h.DispatchedAt != "" {
+		t.Fatalf("absent dispatch recovery retained terminal state: %#v", h)
+	}
+	if h.Orca.TaskID != "task-1" || h.Orca.WorkerTerminalHandle != "term-1" || h.Orca.DispatchID != "" || h.Orca.WorkerMailboxHandle != "" {
+		t.Fatalf("absent dispatch recovery changed retained identity: %#v", h.Orca)
+	}
+}
+
 func TestHandoffRecoverDispatchRejectsInconsistentV4MailboxAuthority(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	h := record.ExecutionHandoff

@@ -972,6 +972,7 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 	desiredWorktreePath := record.WorktreePath
 	next := "agent-harness issueops handoff start --id " + id + " --confirm"
 	newState := handoff.StateCoordinatorPreparing
+	dispatchAbsent := false
 	switch pending.Kind {
 	case handoff.OperationWorktreeCreate:
 		reader, ok := client.(interface {
@@ -1051,7 +1052,14 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		}
 		candidate, matchErr := ReconcileIssueOpsHandoffDispatch(ctx, identity.TaskID, pending.ExpectedAssigneeHandle, pending.DeliveryMode, reader, record.ExecutionHandoff.CoordinatorMailboxHandle)
 		if matchErr != nil {
-			return IssueOpsHandoffRecoverResult{}, matchErr
+			var orcaErr *port.OrcaError
+			if !errors.As(matchErr, &orcaErr) || strings.TrimSpace(orcaErr.Code) != "not_found" {
+				return IssueOpsHandoffRecoverResult{}, matchErr
+			}
+			dispatchAbsent = true
+			identity.DispatchID = ""
+			identity.WorkerMailboxHandle = ""
+			break
 		}
 		identity.DispatchID, identity.WorkerMailboxHandle = candidate.ID, candidate.AssigneeHandle
 		identity.WorkerTerminalHandle = candidate.AssigneeHandle
@@ -1110,7 +1118,7 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		current.ExecutionHandoff.PendingOperation = nil
 		current.ExecutionHandoff.State = newState
 		current.ExecutionHandoff.Failure = nil
-		if pending.Kind == handoff.OperationDispatch {
+		if pending.Kind == handoff.OperationDispatch && !dispatchAbsent {
 			current.ExecutionHandoff.DeliveryMode = pending.DeliveryMode
 			current.ExecutionHandoff.DispatchedAt = now
 		}
