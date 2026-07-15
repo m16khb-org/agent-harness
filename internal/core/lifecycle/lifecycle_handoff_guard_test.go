@@ -2120,6 +2120,41 @@ func TestHandoffGuardAllowsQuotedFinishEvidenceAndBlocksUnquotedControlOperators
 	}
 }
 
+func TestHandoffGuardAllowsExactNoChangeFinishAndRejectsUnsafeFlags(t *testing.T) {
+	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateClaimed)
+	base := handoffEditRequest(record, worktree, "codex", "session-1", "")
+	base.Tool = "Bash"
+	base.Command = "agent-harness issueops handoff finish --id " + record.ID +
+		" --attempt 1 --ownership-epoch epoch-1 --context-sha256 " + strings.Repeat("a", 64) +
+		" --host codex --session-id session-1 --agent-id worker-1" +
+		" --no-change --verification 'focused handoff regression test passed' --json"
+	if got := BuildLifecyclePreToolUseDecision(base); got.Decision != "allow" {
+		t.Fatalf("exact no-change finish should pass: %#v", got)
+	}
+
+	for _, suffix := range []string{
+		" --changed-file internal/unsafe.go",
+		" --turing-report forged.md",
+		" --cleanup-receipt forged",
+		" --task-id task-other",
+		" --unknown value",
+	} {
+		t.Run(strconv.Quote(suffix), func(t *testing.T) {
+			req := base
+			req.Command += suffix
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+				t.Fatalf("unsafe no-change finish flags must block: %#v", got)
+			}
+		})
+	}
+
+	identityMismatch := base
+	identityMismatch.SessionID = "other-session"
+	if got := BuildLifecyclePreToolUseDecision(identityMismatch); got.Decision != "block" {
+		t.Fatalf("native identity mismatch must block: %#v", got)
+	}
+}
+
 func TestHandoffGuardAuthenticatesClaimFlagsAgainstNativeIdentity(t *testing.T) {
 	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateDispatched)
 	tests := []struct {
