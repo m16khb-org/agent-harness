@@ -71,6 +71,31 @@ func TestHandoffFinishProjectsWorkerDoneOnceFromPersistedEvidence(t *testing.T) 
 	}
 }
 
+func TestHandoffFinishProjectsCleanVerificationWithEmptyChangedFiles(t *testing.T) {
+	stateRoot, record := gitBackedDispatchedHandoff(t)
+	claim := handoffClaimRequest(record)
+	claimed, err := ClaimIssueOpsHandoff(stateRoot, claim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	finish := handoffFinishRequest(claim, claimed)
+	finish.FinalHead = strings.TrimSpace(preflight.GitOut(record.WorktreePath, "rev-parse", "HEAD"))
+	finish.ChangedFiles = nil
+	finish.TuringReportPath = "plans/plan.md"
+	client := &workerDoneProjectionFake{result: port.OrcaWorkerDoneResult{MessageID: "msg-clean", Sequence: 98}}
+
+	submitted, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if submitted.ExecutionHandoff.WorkerDoneProjection == nil || submitted.ExecutionHandoff.WorkerDoneProjection.State != workerDoneProjectionSent {
+		t.Fatalf("clean verification projection = %#v", submitted.ExecutionHandoff.WorkerDoneProjection)
+	}
+	if calls, requests := client.snapshot(); calls != 1 || len(requests) != 1 || len(requests[0].ChangedFiles) != 0 {
+		t.Fatalf("clean verification worker_done = calls=%d requests=%#v", calls, requests)
+	}
+}
+
 func TestHandoffFinishProjectionFailureIsTerminalAndNeverRetries(t *testing.T) {
 	stateRoot, _, _, finish, _ := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
 	client := &workerDoneProjectionFake{err: &port.OrcaError{Code: "command_timeout", Invoked: true, Timeout: true}}

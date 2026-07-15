@@ -4,16 +4,20 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"agent-harness/internal/adapter/orca"
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/issueops/handoff"
+	"agent-harness/internal/core/preflight"
 )
 
 const issueOpsHandoffUsage = `Usage:
   agent-harness issueops handoff start --id ID --coordinator-recipient TERM --coordinator-host HOST --coordinator-session-id SESSION --source-cwd PATH [--coordinator-agent-id ID] [--allow-codex-hook-trust-bypass] [--expected-context-sha256 SHA] [--confirm] [--json]
   agent-harness issueops handoff claim --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd PATH --orca-worktree-id ID [--agent-id ID] [--json]
-  agent-harness issueops handoff finish --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --outcome completed|failed [evidence flags] [--json]
+  agent-harness issueops handoff finish --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --outcome completed|failed [evidence flags] [--no-change --verification RESULT] [--json]
   agent-harness issueops handoff accept --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --final-head SHA --host HOST --session-id SESSION --source-cwd PATH [--agent-id ID] [--json]
   agent-harness issueops handoff publish --id ID --host HOST --session-id SESSION --source-cwd PATH [--agent-id ID] [--approve-legacy-coordinator-seal] --confirm [--json]
   agent-harness issueops handoff recover --id ID --action reconcile|abandon|cancel|finalize-cancel|retry|approve-cleanup|record-cleanup [--cleanup-disposition retry|remove] [--cleanup-step STEP] [--confirm] [--force --reason TEXT] [--json]`
@@ -128,6 +132,7 @@ func runIssueOpsHandoffFinish(args []string) error {
 	evidenceDigest := fs.String("evidence-digest", "", "optional evidence digest")
 	taskID := fs.String("task-id", "", "Orca task id")
 	dispatchID := fs.String("dispatch-id", "", "Orca dispatch id")
+	noChange := fs.Bool("no-change", false, "derive sealed completion evidence for a clean verification-only worker")
 	var changedFiles, verification, cleanup repeatedFlag
 	fs.Var(&changedFiles, "changed-file", "changed file path")
 	fs.Var(&verification, "verification", "verification command/result")
@@ -136,13 +141,82 @@ func runIssueOpsHandoffFinish(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := core.FinishIssueOpsHandoffWithProjection(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffFinishRequest{
+	req := core.IssueOpsHandoffFinishRequest{
 		ID: *common.id, Attempt: *common.attempt, OwnershipEpoch: *common.epoch, ContextSHA256: *common.context,
 		Host: *host, SessionID: *sessionID, AgentID: *agentID, Outcome: *outcome, FinalHead: *finalHead,
 		ChangedFiles: changedFiles, TuringReportPath: *turingReport, Verification: verification, CleanupReceipts: cleanup,
 		EvidenceDigest: *evidenceDigest, TaskID: *taskID, DispatchID: *dispatchID,
-	}, issueOpsWorkerDoneProjectionClient())
+	}
+	if *noChange {
+		current, err := core.ReadIssueOps(core.IssueOpsStateRoot(), req.ID)
+		if err != nil {
+			return err
+		}
+		req, err = prepareNoChangeHandoffFinish(current, req)
+		if err != nil {
+			return err
+		}
+	}
+	record, err := core.FinishIssueOpsHandoffWithProjection(context.Background(), core.IssueOpsStateRoot(), req, issueOpsWorkerDoneProjectionClient())
 	return printIssueOpsResult(record, *jsonOut, err)
+}
+
+func prepareNoChangeHandoffFinish(record core.IssueOpsRecord, req core.IssueOpsHandoffFinishRequest) (core.IssueOpsHandoffFinishRequest, error) {
+	if record.ExecutionHandoff == nil || record.ExecutionHandoff.Orca == nil {
+		return req, fmt.Errorf("no-change finish requires a dispatched handoff")
+	}
+	if req.Outcome != "" && req.Outcome != handoff.OutcomeCompleted {
+		return req, fmt.Errorf("no-change finish requires completed outcome")
+	}
+	if len(req.ChangedFiles) != 0 {
+		return req, fmt.Errorf("no-change finish must not include changed files")
+	}
+	if strings.TrimSpace(req.TuringReportPath) != "" {
+		return req, fmt.Errorf("no-change finish derives the sealed plan evidence path")
+	}
+	if len(req.CleanupReceipts) != 0 {
+		return req, fmt.Errorf("no-change finish derives the no-temp cleanup receipt")
+	}
+	if len(req.Verification) == 0 || strings.TrimSpace(req.Verification[0]) == "" {
+		return req, fmt.Errorf("no-change finish requires verification evidence")
+	}
+	workerRoot := strings.TrimSpace(record.WorktreePath)
+	planPath := strings.TrimSpace(record.PlanPath)
+	if workerRoot == "" || planPath == "" {
+		return req, fmt.Errorf("no-change finish requires sealed worker root and plan path")
+	}
+	relativePlan, err := filepath.Rel(workerRoot, planPath)
+	if err != nil || filepath.IsAbs(relativePlan) || relativePlan == "." || relativePlan == ".." || strings.HasPrefix(filepath.ToSlash(relativePlan), "../") {
+		return req, fmt.Errorf("no-change finish requires the sealed plan inside the worker root")
+	}
+	info, err := os.Lstat(planPath)
+	if err != nil || info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return req, fmt.Errorf("no-change finish requires a regular sealed plan evidence file")
+	}
+	code, head, stderr := preflight.GitCmd(workerRoot, "rev-parse", "--verify", "HEAD^{commit}")
+	if code != 0 {
+		return req, fmt.Errorf("no-change finish cannot read worker HEAD: %s", strings.TrimSpace(stderr))
+	}
+	head = strings.TrimSpace(head)
+	if head == "" || head != strings.TrimSpace(record.ExecutionHandoff.AttemptBaseHead) {
+		return req, fmt.Errorf("no-change finish requires worker HEAD to match the attempt base head")
+	}
+	if strings.TrimSpace(req.FinalHead) != "" && strings.TrimSpace(req.FinalHead) != head {
+		return req, fmt.Errorf("no-change finish final head differs from the worker HEAD")
+	}
+	if strings.TrimSpace(req.TaskID) != "" && strings.TrimSpace(req.TaskID) != record.ExecutionHandoff.Orca.TaskID {
+		return req, fmt.Errorf("no-change finish task id differs from the sealed handoff")
+	}
+	if strings.TrimSpace(req.DispatchID) != "" && strings.TrimSpace(req.DispatchID) != record.ExecutionHandoff.Orca.DispatchID {
+		return req, fmt.Errorf("no-change finish dispatch id differs from the sealed handoff")
+	}
+	req.Outcome = handoff.OutcomeCompleted
+	req.FinalHead = head
+	req.TuringReportPath = filepath.ToSlash(filepath.Clean(relativePlan))
+	req.CleanupReceipts = []string{"no worker-created temporary resources"}
+	req.TaskID = record.ExecutionHandoff.Orca.TaskID
+	req.DispatchID = record.ExecutionHandoff.Orca.DispatchID
+	return req, nil
 }
 
 func runIssueOpsHandoffAccept(args []string) error {
