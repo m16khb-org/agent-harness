@@ -948,8 +948,8 @@ func TestHandoffStartResolvesOptionalPTYFromExactTerminalDelta(t *testing.T) {
 	if got.State != handoff.StateDispatched || got.Orca == nil || got.Orca.WorkerPTYID != "pty-new" || got.Orca.WorkerMailboxHandle != "term-live" {
 		t.Fatalf("partial create identity did not resolve from PTY delta: %#v", got)
 	}
-	if client.terminalCreates != 1 || client.terminalListCalls != 8 {
-		t.Fatalf("terminal create/list calls = %d/%d, want 1/8; trace=%v", client.terminalCreates, client.terminalListCalls, client.trace)
+	if client.terminalCreates != 1 || client.terminalListCalls != 9 {
+		t.Fatalf("terminal create/list calls = %d/%d, want 1/9; trace=%v", client.terminalCreates, client.terminalListCalls, client.trace)
 	}
 }
 

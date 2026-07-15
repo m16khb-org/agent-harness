@@ -388,7 +388,10 @@ func publicationGitConfigPaths(ctx context.Context, repo string, rules []publica
 	if xdg == "" {
 		xdg = filepath.Join(home, ".config")
 	}
-	paths[filepath.Join(xdg, "git", "config")] = true
+	xdgConfig := filepath.Join(xdg, "git", "config")
+	if info, err := os.Stat(filepath.Dir(xdgConfig)); err == nil && info.IsDir() {
+		paths[xdgConfig] = true
+	}
 	for _, name := range []string{"GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM"} {
 		configured := strings.TrimSpace(os.Getenv(name))
 		if configured == "" || configured == os.DevNull || name == "GIT_CONFIG_SYSTEM" && strings.TrimSpace(os.Getenv("GIT_CONFIG_NOSYSTEM")) != "" {

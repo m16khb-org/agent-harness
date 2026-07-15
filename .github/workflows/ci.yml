@@ -30,6 +30,8 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - uses: oven-sh/setup-bun@v2
+
       - name: Format check (gofmt)
         # gofmt does not understand the `./...` package pattern, so check the
         # tracked Go files explicitly (this also skips vendored / worktree copies).
