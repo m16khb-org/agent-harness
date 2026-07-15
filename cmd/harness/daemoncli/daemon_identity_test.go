@@ -49,6 +49,38 @@ func TestCheckDaemonStatusVerifiesInstanceFileSocketAndProcess(t *testing.T) {
 	}
 }
 
+func TestCheckDaemonStatusRechecksInstanceRecordAfterStartupSocketProbe(t *testing.T) {
+	instance := daemonInstance{
+		PID:              4242,
+		ProcessStartTime: "start-a",
+		Executable:       "/tmp/agent-harness",
+		InstanceNonce:    "nonce-a",
+		BuildSHA:         "build-a",
+		ProtocolVersion:  daemonProtocolVersion,
+		Generation:       "generation-a",
+	}
+	reads := 0
+	status := checkDaemonStatusWithDeps(daemonStatusDeps{
+		paths: func() (daemonPaths, error) { return daemonPaths{Socket: "daemon.sock", PID: "daemon.pid"}, nil },
+		readInstance: func(string) (daemonInstance, bool, error) {
+			reads++
+			if reads == 1 {
+				return daemonInstance{}, false, os.ErrNotExist
+			}
+			return instance, false, nil
+		},
+		probeIdentity: func(string) (daemonInstance, error) { return instance, nil },
+		processAlive:  func(int) bool { return true },
+		inspectProcess: func(int) (daemonProcessIdentity, error) {
+			return daemonProcessIdentity{StartTime: instance.ProcessStartTime, Executable: instance.Executable}, nil
+		},
+	})
+
+	if !status.OK || !status.Running || !status.Reachable || !status.IdentityVerified || status.Code != daemonStatusReady || reads != 2 {
+		t.Fatalf("startup socket probe should recheck its instance record, got status=%#v reads=%d", status, reads)
+	}
+}
+
 func TestCheckDaemonStatusReportsLiveAdmissionHealth(t *testing.T) {
 	instance := daemonInstance{
 		PID:              4242,

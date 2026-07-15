@@ -44,9 +44,16 @@ func checkDaemonStatusWithDeps(deps daemonStatusDeps) daemonStatus {
 	}
 	status := daemonStatus{OK: true, Code: daemonStatusStopped, Paths: paths, MaxConnections: maxConnections, Message: "daemon is not running"}
 	record, legacy, readErr := deps.readInstance(paths.PID)
+	var probe daemonIdentityResponse
+	probed := false
 	if readErr != nil {
-		probe, probeErr := probeDaemonStatusWithDeps(deps, paths.Socket)
+		var probeErr error
+		probe, probeErr = probeDaemonStatusWithDeps(deps, paths.Socket)
 		if probeErr == nil {
+			probed = true
+			record, legacy, readErr = deps.readInstance(paths.PID)
+		}
+		if readErr != nil && probeErr == nil {
 			observed := probe.Instance
 			status.Running = true
 			status.Reachable = true
@@ -55,12 +62,14 @@ func checkDaemonStatusWithDeps(deps daemonStatusDeps) daemonStatus {
 			applyDaemonAdmissionStatus(&status, probe)
 			return daemonIdentityMismatchStatus(status, "daemon socket is reachable without a matching instance record")
 		}
-		if !os.IsNotExist(readErr) {
+		if readErr != nil && !os.IsNotExist(readErr) {
 			status.OK = false
 			status.Code = daemonStatusInstanceUnreadable
 			status.Message = readErr.Error()
 		}
-		return status
+		if readErr != nil {
+			return status
+		}
 	}
 	status.PID = record.PID
 	status.LegacyPID = legacy
@@ -68,21 +77,24 @@ func checkDaemonStatusWithDeps(deps daemonStatusDeps) daemonStatus {
 		status.Instance = &record
 	}
 
-	probe, probeErr := probeDaemonStatusWithDeps(deps, paths.Socket)
-	if probeErr != nil {
-		alive := record.PID > 0 && deps.processAlive(record.PID)
-		status.Running = alive
-		if alive {
-			status.OK = false
-			status.Code = daemonStatusSocketUnreachable
-			status.Message = "daemon pid exists but socket is not reachable"
+	if !probed {
+		var probeErr error
+		probe, probeErr = probeDaemonStatusWithDeps(deps, paths.Socket)
+		if probeErr != nil {
+			alive := record.PID > 0 && deps.processAlive(record.PID)
+			status.Running = alive
+			if alive {
+				status.OK = false
+				status.Code = daemonStatusSocketUnreachable
+				status.Message = "daemon pid exists but socket is not reachable"
+			}
+			if legacy {
+				status.OK = false
+				status.Code = daemonStatusLegacyPID
+				status.Message = "legacy daemon pid is status-only and cannot be verified"
+			}
+			return status
 		}
-		if legacy {
-			status.OK = false
-			status.Code = daemonStatusLegacyPID
-			status.Message = "legacy daemon pid is status-only and cannot be verified"
-		}
-		return status
 	}
 	observed := probe.Instance
 	status.Running = true
