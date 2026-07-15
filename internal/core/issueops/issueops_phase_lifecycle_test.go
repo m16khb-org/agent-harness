@@ -144,6 +144,26 @@ func TestIssueOpsAdvancePhaseCoversFullLifecycle(t *testing.T) {
 	if err != nil || record.Phase != IssueOpsPhasePR {
 		t.Fatalf("pr phase with strict readiness should succeed, got %+v err=%v", record, err)
 	}
+	writeIssueOpsFile(t, worktree, "internal/demo.go", "package demo\nconst Value = 3\n")
+	if code, _, stderr := preflight.GitCmd(worktree, "add", "internal/demo.go"); code != 0 {
+		t.Fatalf("git add post-pr cleanup change failed: %s", stderr)
+	}
+	if code, _, stderr := preflight.GitCmd(worktree, "commit", "-q", "-m", "fix: post-pr readiness metadata"); code != 0 {
+		t.Fatalf("git commit post-pr cleanup change failed: %s", stderr)
+	}
+	if code, _, stderr := preflight.GitCmd(worktree, "push", "-q"); code != 0 {
+		t.Fatalf("git push post-pr cleanup change failed: %s", stderr)
+	}
+	if ready := IssueOpsStrictPRReadiness(record); ready.Ready || !containsString(ready.Missing, "ai_slop_clean_stale") {
+		t.Fatalf("post-pr implementation change should stale cleanup evidence, got %+v", ready)
+	}
+	record, err = RecordIssueOpsAISlopCleanEvidence(stateRoot, record.ID, []string{"minimal-diff"}, []string{"go test ./..."})
+	if err != nil || record.Phase != IssueOpsPhasePR {
+		t.Fatalf("post-pr cleanup record should preserve pr phase, got %+v err=%v", record, err)
+	}
+	if ready := IssueOpsStrictPRReadiness(record); !ready.Ready || len(ready.Missing) != 0 {
+		t.Fatalf("post-pr cleanup record should refresh strict readiness, got %+v", ready)
+	}
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseImplement)); err == nil || !strings.Contains(err.Error(), "cannot move issueops phase backward") {
 		t.Fatalf("pr phase should not move backward to implement, got %v", err)
 	}

@@ -81,6 +81,9 @@ func recordIssueOpsAISlopCleanEvidenceLocked(stateRoot, id string, categories, v
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	record.AISlopCleanCategories = cats
 	record.AISlopCleanVerification = ver
+	if strings.TrimSpace(record.AISlopCleanAt) != "" && issueOpsPhaseRank(record.Phase) >= issueOpsPhaseRank(IssueOpsPhaseAISlopClean) {
+		return refreshIssueOpsAISlopClean(stateRoot, record)
+	}
 	record.UpdatedAt = now
 	return writeIssueOps(stateRoot, record)
 }
