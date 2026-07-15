@@ -209,6 +209,30 @@ func ensureHandoffTerminal(ctx context.Context, stateRoot string, record IssueOp
 		return record, "", fmt.Errorf("persisted Orca terminal checkpoint is incomplete")
 	}
 	if workerPTYID == "" {
+		terminals, err := client.ListTerminals(ctx, record.ExecutionHandoff.Orca.WorktreeID)
+		if err != nil {
+			return record, "", persistHandoffSoleWriterInventoryFailure(stateRoot, record, fence, fmt.Errorf("list terminals before baseline adoption requires recovery: %w", err), now)
+		}
+		var baseline *port.OrcaTerminal
+		for i := range terminals {
+			terminal := &terminals[i]
+			if terminal.WorktreeID == record.ExecutionHandoff.Orca.WorktreeID && terminalWorktreePathMatches(*terminal, record.ExecutionHandoff.WorkerRoot) && terminal.Connected && terminal.Writable {
+				if baseline != nil {
+					return createHandoffTerminal(ctx, stateRoot, record, fence, client, now, beforeJournal)
+				}
+				baseline = terminal
+			}
+		}
+		if baseline != nil {
+			if err := attestHandoffSoleWriterWithRecovery(ctx, stateRoot, record, fence, client, baseline.Handle, now); err != nil {
+				return record, "", err
+			}
+			record, err = persistHandoffAdoptedTerminal(stateRoot, record, *baseline, now())
+			if err != nil {
+				return record, "", err
+			}
+			return record, baseline.Handle, nil
+		}
 		return createHandoffTerminal(ctx, stateRoot, record, fence, client, now, beforeJournal)
 	}
 	terminal, err := client.RefreshTerminal(ctx, record.ExecutionHandoff.Orca.WorktreeID, workerPTYID)
@@ -231,6 +255,33 @@ func ensureHandoffTerminal(ctx context.Context, stateRoot string, record IssueOp
 		}
 	}
 	return record, strings.TrimSpace(terminal.Handle), nil
+}
+
+func persistHandoffAdoptedTerminal(stateRoot string, expected IssueOpsRecord, terminal port.OrcaTerminal, now string) (IssueOpsRecord, error) {
+	var persisted IssueOpsRecord
+	err := withIssueOpsLock(context.Background(), stateRoot, expected.ID, func(context.Context) error {
+		current, err := ReadIssueOps(stateRoot, expected.ID)
+		if err != nil {
+			return err
+		}
+		if !reflect.DeepEqual(current, expected) || current.ExecutionHandoff == nil || current.ExecutionHandoff.Orca == nil {
+			return fmt.Errorf("handoff changed before baseline terminal adoption")
+		}
+		if terminal.WorktreeID != current.ExecutionHandoff.Orca.WorktreeID || strings.TrimSpace(terminal.PTYID) == "" || strings.TrimSpace(terminal.Handle) == "" || !terminal.Connected || !terminal.Writable || !terminalWorktreePathMatches(terminal, current.ExecutionHandoff.WorkerRoot) {
+			return fmt.Errorf("baseline terminal does not match prepared worktree authority")
+		}
+		identity := *current.ExecutionHandoff.Orca
+		identity.WorkerPTYID = terminal.PTYID
+		identity.WorkerTerminalHandle = terminal.Handle
+		identity.WorkerTabID = terminal.TabID
+		identity.WorkerLeafID = terminal.LeafID
+		current.ExecutionHandoff.Orca = &identity
+		current.ExecutionHandoff.UpdatedAt = now
+		current.UpdatedAt = now
+		persisted, err = writeIssueOps(stateRoot, current)
+		return err
+	})
+	return persisted, err
 }
 
 func persistHandoffLiveTerminalIdentity(stateRoot string, expected IssueOpsRecord, terminal port.OrcaTerminal, now string) (IssueOpsRecord, error) {

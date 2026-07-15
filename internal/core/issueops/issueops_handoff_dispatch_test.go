@@ -756,6 +756,24 @@ func TestHandoffStartCreatesTerminalTaskDispatchExactlyOnce(t *testing.T) {
 	}
 }
 
+func TestHandoffStartAdoptsExactlyOneCleanWorkerBaseline(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := handoffDispatchFake(record)
+	client.terminals = []port.OrcaTerminal{{
+		Handle: "term-baseline", PTYID: "pty-baseline", WorktreeID: record.ExecutionHandoff.Orca.WorktreeID,
+		WorktreePath: record.ExecutionHandoff.WorkerRoot, Connected: true, Writable: true,
+	}}
+	client.dispatch.AssigneeHandle = "term-baseline"
+
+	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateDispatched || client.terminalCreates != 0 || len(client.dispatchRequests) != 1 || client.dispatchRequests[0].ToHandle != "term-baseline" {
+		t.Fatalf("worker baseline was not adopted: result=%#v creates=%d dispatch=%#v", got, client.terminalCreates, client.dispatchRequests)
+	}
+}
+
 func TestHandoffStartRejectsNonDispatchedInitialStatus(t *testing.T) {
 	for _, tt := range []struct{ name, status string }{
 		{name: "missing"}, {name: "failed", status: "failed"}, {name: "cancelled", status: "cancelled"},
