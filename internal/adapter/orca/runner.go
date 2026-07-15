@@ -86,7 +86,20 @@ func (ExecRunner) Run(ctx context.Context, cwd string, timeout time.Duration, ar
 	if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
 		return output, &port.OrcaError{Code: "command_timeout", Detail: boundedDiagnostic(string(output.Stderr)), Invoked: true, Timeout: true}
 	}
-	return output, &port.OrcaError{Code: "command_failed", Detail: boundedDiagnostic(string(output.Stderr)), Invoked: true}
+	return output, &port.OrcaError{Code: "command_failed", Detail: commandFailureDiagnostic(output), Invoked: true}
+}
+
+func commandFailureDiagnostic(output CommandOutput) string {
+	stdout := boundedDiagnostic(string(output.Stdout))
+	stderr := boundedDiagnostic(string(output.Stderr))
+	switch {
+	case stdout != "" && stderr != "":
+		return "stdout: " + stdout + "; stderr: " + stderr
+	case stdout != "":
+		return "stdout: " + stdout
+	default:
+		return stderr
+	}
 }
 
 func boundedDiagnostic(value string) string {

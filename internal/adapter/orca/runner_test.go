@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,10 +27,24 @@ func TestExecRunnerBoundsStreamsWhileCommandRuns(t *testing.T) {
 	}
 }
 
+func TestExecRunnerIncludesBoundedStdoutInCommandFailureDiagnostic(t *testing.T) {
+	t.Setenv("AGENT_HARNESS_ORCA_STREAM_HELPER", "failure-json")
+	_, err := (ExecRunner{}).Run(context.Background(), "", 5*time.Second, []string{os.Args[0], "-test.run=^TestExecRunnerStreamHelper$"})
+	var orcaErr *port.OrcaError
+	if !errors.As(err, &orcaErr) || orcaErr.Code != "command_failed" || !orcaErr.Invoked || !strings.Contains(orcaErr.Detail, "stdout: {\"error\":\"launch_failed\"}") || !strings.Contains(orcaErr.Detail, "stderr: relay handshake") {
+		t.Fatalf("failure diagnostic = %#v", err)
+	}
+}
+
 func TestExecRunnerStreamHelper(t *testing.T) {
 	stream := os.Getenv("AGENT_HARNESS_ORCA_STREAM_HELPER")
 	if stream == "" {
 		return
+	}
+	if stream == "failure-json" {
+		_, _ = os.Stdout.WriteString(`{"error":"launch_failed"}`)
+		_, _ = os.Stderr.WriteString("relay handshake")
+		os.Exit(1)
 	}
 	w := os.Stdout
 	if stream == "stderr" {
