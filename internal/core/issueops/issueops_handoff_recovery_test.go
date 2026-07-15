@@ -1307,6 +1307,38 @@ func TestHandoffRecoverExactOneOnlyAndNeverAdvances(t *testing.T) {
 	}
 }
 
+func TestHandoffReconcileLeaseAttestationAllowsSingletonLegacyTerminal(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.CoordinatorMailboxHandle = testCoordinatorRecipient
+	record.ExecutionHandoff.CoordinatorSession = &model.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "coordinator-session", AgentID: "coordinator-agent"}
+	options := handoff.ContextOptions{AllowCodexHookTrustBypass: true}
+	packet, err := handoff.BuildContext(record, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.ExecutionHandoff.ContextVersion = packet.Version
+	record.ExecutionHandoff.ContextSHA256 = packet.SHA256
+	record.ExecutionHandoff.ContextSourceSHA256 = packet.SourceSHA256
+	record.ExecutionHandoff.ContextOptions = &model.IssueOpsExecutionHandoffContextOptions{AllowCodexHookTrustBypass: true}
+	setRecoveryRequiredForTest(&record, IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationLeaseAttestation})
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	client.terminals = []port.OrcaTerminal{{
+		Handle: "term-legacy", PTYID: "pty-legacy", WorktreeID: record.ExecutionHandoff.Orca.WorktreeID,
+		WorktreePath: record.ExecutionHandoff.WorkerRoot, Connected: true, Writable: true,
+	}}
+
+	got, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{ID: record.ID, Action: "reconcile"}, client, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateCoordinatorPreparing || got.Orca == nil || got.Orca.WorkerTerminalHandle != "" || client.terminalCreates != 0 || client.taskCreates != 0 || client.dispatchCalls != 0 {
+		t.Fatalf("lease reconcile did not clear only the ambiguous attestation: result=%#v trace=%v", got, client.trace)
+	}
+}
+
 func TestHandoffRecoverDispatchRequiresDurableDeliveryIdentityAndDispatchedStatus(t *testing.T) {
 	tests := []struct {
 		name, expectedAssignee, deliveryMode, returnedAssignee, status, dispatchID string
