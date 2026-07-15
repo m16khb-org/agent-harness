@@ -1035,8 +1035,9 @@ func validateHandoffDispatchPreamble(preamble, coordinatorRecipient, taskID, dis
 	const taskLabel = "Your task ID is: "
 	coordinatorLine := coordinatorLabel + coordinatorRecipient
 	taskLine := taskLabel + taskID
-	coordinatorCount, taskCount, dispatchCount := 0, 0, 0
+	coordinatorCount, taskCount := 0, 0
 	foundCoordinator, foundTask, foundDispatch := false, false, false
+	conflictingDispatch := false
 	for _, line := range strings.Split(preamble, "\n") {
 		line = strings.TrimSuffix(line, "\r")
 		if strings.HasPrefix(line, coordinatorLabel) {
@@ -1051,12 +1052,13 @@ func validateHandoffDispatchPreamble(preamble, coordinatorRecipient, taskID, dis
 		for index, field := range fields {
 			switch {
 			case field == "--dispatch-id":
-				dispatchCount++
 				if index+1 < len(fields) && fields[index+1] == dispatchID {
 					foundDispatch = true
+				} else {
+					conflictingDispatch = true
 				}
 			case strings.HasPrefix(field, "--dispatch-id="):
-				dispatchCount++
+				conflictingDispatch = true
 			}
 		}
 	}
@@ -1066,8 +1068,8 @@ func validateHandoffDispatchPreamble(preamble, coordinatorRecipient, taskID, dis
 	if taskID == "" || taskCount != 1 || !foundTask {
 		return fmt.Errorf("Orca dispatch preamble must contain exactly one official task id line")
 	}
-	if dispatchID == "" || dispatchCount != 1 || !foundDispatch {
-		return fmt.Errorf("Orca dispatch preamble must contain exactly one exact --dispatch-id token")
+	if dispatchID == "" || !foundDispatch || conflictingDispatch {
+		return fmt.Errorf("Orca dispatch preamble must contain only exact --dispatch-id tokens")
 	}
 	return nil
 }
