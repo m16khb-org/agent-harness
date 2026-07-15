@@ -1086,9 +1086,9 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		if !ok {
 			return IssueOpsHandoffRecoverResult{}, fmt.Errorf("Orca sole writer recovery dependency is unavailable")
 		}
-		allowedHandle := ""
-		if identity.WorkerTerminalHandle != "" {
-			allowedHandle = identity.WorkerTerminalHandle
+		allowedHandle, matchErr := reconcileLeaseAttestationAllowedHandle(ctx, record, reader)
+		if matchErr != nil {
+			return IssueOpsHandoffRecoverResult{}, matchErr
 		}
 		if matchErr := attestHandoffSoleWriter(ctx, record, reader, allowedHandle); matchErr != nil {
 			return IssueOpsHandoffRecoverResult{}, matchErr
@@ -1129,6 +1129,31 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		return readErr
 	})
 	return projectHandoffRecovery(persisted, "reconcile", next), err
+}
+
+func reconcileLeaseAttestationAllowedHandle(ctx context.Context, record IssueOpsRecord, client IssueOpsOrcaDispatchClient) (string, error) {
+	h := record.ExecutionHandoff
+	if h == nil || h.Orca == nil || strings.TrimSpace(h.Orca.WorktreeID) == "" {
+		return "", fmt.Errorf("lease attestation reconciliation requires exact Orca worktree authority")
+	}
+	if handle := strings.TrimSpace(h.Orca.WorkerTerminalHandle); handle != "" {
+		return handle, nil
+	}
+	terminals, err := client.ListTerminals(ctx, h.Orca.WorktreeID)
+	if err != nil {
+		return "", err
+	}
+	var candidate string
+	for _, terminal := range terminals {
+		if terminal.WorktreeID != h.Orca.WorktreeID || !terminalWorktreePathMatches(terminal, h.WorkerRoot) || !terminal.Connected && !terminal.Writable {
+			continue
+		}
+		if candidate != "" {
+			return "", nil
+		}
+		candidate = terminal.Handle
+	}
+	return candidate, nil
 }
 
 func cloneHandoffReconcileSnapshot(record IssueOpsRecord) IssueOpsRecord {
