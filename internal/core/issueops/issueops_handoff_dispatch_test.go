@@ -63,6 +63,44 @@ func TestHandoffStartRequiresSealedCoordinatorRecipientBeforeAnyOrcaCall(t *test
 	}
 }
 
+func TestHandoffStartPreviewAutoSealsUniqueSourceRecipient(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := handoffDispatchFake(record)
+	client.worktrees = []port.OrcaWorktree{{ID: "source-wt", Path: record.Repo}}
+	client.terminals = []port.OrcaTerminal{{
+		Handle: "term_source", PTYID: "pty-source", WorktreeID: "source-wt", WorktreePath: record.Repo, Connected: true, Writable: true,
+	}}
+
+	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{ID: record.ID}), client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !preview.Preview || preview.CoordinatorRecipient != "term_source" || len(client.trace) != 2 {
+		t.Fatalf("unique source recipient was not resolved in preview: result=%#v trace=%v", preview, client.trace)
+	}
+}
+
+func TestHandoffStartRejectsRecipientSealedByAnotherActiveRecord(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	other := record
+	other.ID = "io-abcdef123456"
+	otherHandoff := *record.ExecutionHandoff
+	otherHandoff.CoordinatorMailboxHandle = testCoordinatorRecipient
+	other.ExecutionHandoff = &otherHandoff
+	if _, err := WriteIssueOps(stateRoot, other); err != nil {
+		t.Fatal(err)
+	}
+
+	client := handoffDispatchFake(record)
+	_, err := StartIssueOpsHandoff(context.Background(), stateRoot, coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient}), client, handoffStartTestClock())
+	if err == nil || !strings.Contains(err.Error(), "another active handoff") {
+		t.Fatalf("recipient collision error = %v", err)
+	}
+	if len(client.trace) != 0 {
+		t.Fatalf("recipient collision invoked Orca: %v", client.trace)
+	}
+}
+
 func TestHandoffStartSealsCoordinatorAndDispatchesFromExactRecipient(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	client := handoffDispatchFake(record)
