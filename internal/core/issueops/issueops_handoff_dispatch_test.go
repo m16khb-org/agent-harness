@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -828,6 +829,79 @@ func TestHandoffStartAdoptsExactlyOneCleanWorkerBaseline(t *testing.T) {
 	}
 	if got.State != handoff.StateDispatched || client.terminalCreates != 0 || len(client.dispatchRequests) != 1 || client.dispatchRequests[0].ToHandle != "term-baseline" {
 		t.Fatalf("worker baseline was not adopted: result=%#v creates=%d dispatch=%#v", got, client.terminalCreates, client.dispatchRequests)
+	}
+}
+
+func TestHandoffStartFailsClosedForMultipleWorkerBaselines(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := handoffDispatchFake(record)
+	client.terminals = []port.OrcaTerminal{
+		{Handle: "term_worker_a", PTYID: "pty-worker-a", WorktreeID: record.ExecutionHandoff.Orca.WorktreeID, WorktreePath: record.ExecutionHandoff.WorkerRoot, Connected: true, Writable: true},
+		{Handle: "term_worker_b", PTYID: "pty-worker-b", WorktreeID: record.ExecutionHandoff.Orca.WorktreeID, WorktreePath: record.ExecutionHandoff.WorkerRoot, Connected: true, Writable: true},
+	}
+
+	_, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock())
+	if err == nil || !strings.Contains(err.Error(), "sole writer") {
+		t.Fatalf("multiple baseline error = %v", err)
+	}
+	persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if client.terminalCreates != 0 || client.taskCreates != 0 || client.dispatchCalls != 0 || persisted.ExecutionHandoff.State != handoff.StateRecoveryRequired {
+		t.Fatalf("multiple baseline was not fail-closed: creates=%d tasks=%d dispatch=%d handoff=%#v", client.terminalCreates, client.taskCreates, client.dispatchCalls, persisted.ExecutionHandoff)
+	}
+}
+
+func TestHandoffStartConcurrentSameRecordDispatchesOnce(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := &lockedDispatchOrcaFake{fake: handoffDispatchFake(record)}
+	arrived := make(chan struct{}, 2)
+	release := make(chan struct{})
+	hooks := issueOpsHandoffStartHooks{BeforeJournal: func(stage string) {
+		if stage == handoff.OperationTerminalCreate {
+			arrived <- struct{}{}
+			<-release
+		}
+	}}
+	req := attestedCodexStart(t, stateRoot, record.ID)
+	errs := make(chan error, 2)
+	for range 2 {
+		go func() {
+			_, err := startIssueOpsHandoff(context.Background(), stateRoot, req, client, handoffStartTestClock(), hooks)
+			errs <- err
+		}()
+	}
+	for range 2 {
+		select {
+		case <-arrived:
+		case <-time.After(2 * time.Second):
+			t.Fatal("same-record starts did not race before the terminal journal")
+		}
+	}
+	close(release)
+
+	var succeeded int
+	for range 2 {
+		if err := <-errs; err == nil {
+			succeeded++
+		}
+	}
+	if succeeded != 1 {
+		t.Fatalf("same-record starts succeeded %d times", succeeded)
+	}
+	client.mu.Lock()
+	terminalCreates, taskCreates, dispatchCalls := client.fake.terminalCreates, client.fake.taskCreates, client.fake.dispatchCalls
+	client.mu.Unlock()
+	if terminalCreates != 1 || taskCreates != 1 || dispatchCalls != 1 {
+		t.Fatalf("same-record start duplicated Orca work: terminal=%d task=%d dispatch=%d", terminalCreates, taskCreates, dispatchCalls)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.ExecutionHandoff.State != handoff.StateDispatched {
+		t.Fatalf("same-record winner did not reach dispatched: %#v", persisted.ExecutionHandoff)
 	}
 }
 
@@ -1700,6 +1774,71 @@ type dispatchOrcaFake struct {
 	dispatchRequests        []port.OrcaDispatchRequest
 	terminalRequests        []port.OrcaCreateTerminalRequest
 	trace                   []string
+}
+
+type lockedDispatchOrcaFake struct {
+	mu   sync.Mutex
+	fake *dispatchOrcaFake
+}
+
+func (f *lockedDispatchOrcaFake) ListWorktrees(ctx context.Context, repo string) ([]port.OrcaWorktree, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.ListWorktrees(ctx, repo)
+}
+
+func (f *lockedDispatchOrcaFake) ListTerminals(ctx context.Context, worktreeID string) ([]port.OrcaTerminal, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.ListTerminals(ctx, worktreeID)
+}
+
+func (f *lockedDispatchOrcaFake) CreateTerminal(ctx context.Context, req port.OrcaCreateTerminalRequest) (port.OrcaTerminal, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.CreateTerminal(ctx, req)
+}
+
+func (f *lockedDispatchOrcaFake) RefreshTerminal(ctx context.Context, worktreeID, ptyID string) (port.OrcaTerminal, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.RefreshTerminal(ctx, worktreeID, ptyID)
+}
+
+func (f *lockedDispatchOrcaFake) ListTasks(ctx context.Context) ([]port.OrcaTask, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.ListTasks(ctx)
+}
+
+func (f *lockedDispatchOrcaFake) ListDispatchedTasks(ctx context.Context) ([]port.OrcaTask, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.ListDispatchedTasks(ctx)
+}
+
+func (f *lockedDispatchOrcaFake) CreateTask(ctx context.Context, req port.OrcaCreateTaskRequest) (port.OrcaTask, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.CreateTask(ctx, req)
+}
+
+func (f *lockedDispatchOrcaFake) Dispatch(ctx context.Context, req port.OrcaDispatchRequest) (port.OrcaDispatch, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.Dispatch(ctx, req)
+}
+
+func (f *lockedDispatchOrcaFake) ShowDispatch(ctx context.Context, taskID string) (port.OrcaDispatch, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.ShowDispatch(ctx, taskID)
+}
+
+func (f *lockedDispatchOrcaFake) ShowDispatchFrom(ctx context.Context, taskID, fromHandle string) (port.OrcaDispatch, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.ShowDispatchFrom(ctx, taskID, fromHandle)
 }
 
 func (f *dispatchOrcaFake) ListWorktrees(context.Context, string) ([]port.OrcaWorktree, error) {
