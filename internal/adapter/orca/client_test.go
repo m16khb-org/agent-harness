@@ -737,6 +737,16 @@ func TestClientShowDispatchDecodesInstalledShapeWithoutInjectedField(t *testing.
 	}
 }
 
+func TestClientShowDispatchNullReturnsNotFound(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca orchestration dispatch-show --task task-absent --json"] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{"dispatch":null}}`)}
+	_, err := NewClient(runner).ShowDispatch(context.Background(), "task-absent")
+	var orcaErr *port.OrcaError
+	if !errors.As(err, &orcaErr) || orcaErr.Code != "not_found" {
+		t.Fatalf("dispatch=null error = %v, want Orca not_found", err)
+	}
+}
+
 func TestClientShowDispatchFromRequestsOfficialPreambleForSealedCoordinator(t *testing.T) {
 	runner := newFakeRunner(t)
 	command := "orca orchestration dispatch-show --task task-1 --preamble --from term_coordinator --json"

@@ -559,7 +559,7 @@ func validateWorkerDoneRequest(req port.OrcaWorkerDoneRequest) error {
 
 func (c *Client) dispatchResult(ctx context.Context, argv []string) (port.OrcaDispatch, error) {
 	var payload struct {
-		Dispatch struct {
+		Dispatch *struct {
 			ID             string `json:"id"`
 			TaskID         string `json:"task_id"`
 			AssigneeHandle string `json:"assignee_handle"`
@@ -569,7 +569,13 @@ func (c *Client) dispatchResult(ctx context.Context, argv []string) (port.OrcaDi
 		Preamble string `json:"preamble"`
 	}
 	_, err := c.runJSON(ctx, "", createTimeout, argv, &payload)
-	return port.OrcaDispatch{ID: payload.Dispatch.ID, TaskID: payload.Dispatch.TaskID, AssigneeHandle: payload.Dispatch.AssigneeHandle, Status: payload.Dispatch.Status, Injected: payload.Injected, Preamble: payload.Preamble}, err
+	if err != nil {
+		return port.OrcaDispatch{}, err
+	}
+	if payload.Dispatch == nil {
+		return port.OrcaDispatch{}, &port.OrcaError{Code: "not_found"}
+	}
+	return port.OrcaDispatch{ID: payload.Dispatch.ID, TaskID: payload.Dispatch.TaskID, AssigneeHandle: payload.Dispatch.AssigneeHandle, Status: payload.Dispatch.Status, Injected: payload.Injected, Preamble: payload.Preamble}, nil
 }
 
 func (c *Client) runJSON(ctx context.Context, cwd string, timeout time.Duration, argv []string, target any) (string, error) {
