@@ -127,24 +127,14 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 }
 
 func coordinatorLifecycleStateAllows(path string, record IssueOpsRecord) bool {
+	// Default-deny wrapper over the shared declarative authority table (Task A):
+	// the state dimension lives in handoff.CoordinatorCommandStateAllows; the
+	// fence/identity/cwd predicates are applied by the caller.
 	h := record.ExecutionHandoff
 	if h == nil {
 		return false
 	}
-	switch path {
-	case "phase":
-		return h.State == handoff.StateCoordinatorPreparing
-	case "handoff accept":
-		return h.State == handoff.StateSubmitted || h.State == handoff.StateClosed
-	case "handoff recover":
-		return h.State == handoff.StateRecoveryRequired || h.State == handoff.StateSubmitted || h.State == handoff.StateClosed || h.State == handoff.StateClaimed
-	case "handoff publish":
-		return h.State == handoff.StateClosed && h.ClosedDisposition == handoff.DispositionAccepted
-	case "handoff start":
-		return true // active-attempt repeats are read-only projections
-	default:
-		return h.State == handoff.StateCoordinatorPreparing
-	}
+	return handoff.CoordinatorCommandStateAllows(path, h.State, h.ClosedDisposition)
 }
 
 func exactReadOnlyShellCommand(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
