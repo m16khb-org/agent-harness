@@ -974,6 +974,31 @@ func buildExactClaimCommand(record IssueOpsRecord, req HookToolUseLifecycleReque
 	return strings.Join(parts, " ")
 }
 
+// buildCoordinatorDispatchCommand renders the harness-authored identity-filled
+// `handoff start` preview command for a coordinator_preparing handoff. The
+// coordinator-identity flags are copied verbatim from the authenticated native
+// event so identity is never agent-guessed; the emitted command satisfies the
+// unchanged allowedExactHandoffLifecycleCommand fence (source checkout, exact
+// coordinator host/session/agent, --source-cwd == record.Repo). Preview form
+// omits --confirm; the guidance names the --expected-context-sha256/--confirm
+// finalize step separately.
+func buildCoordinatorDispatchCommand(record IssueOpsRecord, host, sessionID, agentID string) string {
+	h := record.ExecutionHandoff
+	if h == nil {
+		return ""
+	}
+	parts := []string{"agent-harness issueops handoff start", "--id " + shellGuidanceQuote(record.ID)}
+	if handle := strings.TrimSpace(h.CoordinatorMailboxHandle); handle != "" {
+		parts = append(parts, "--coordinator-recipient "+shellGuidanceQuote(handle))
+	}
+	parts = append(parts, "--coordinator-host "+shellGuidanceQuote(host), "--coordinator-session-id "+shellGuidanceQuote(sessionID))
+	if strings.TrimSpace(agentID) != "" {
+		parts = append(parts, "--coordinator-agent-id "+shellGuidanceQuote(agentID))
+	}
+	parts = append(parts, "--source-cwd "+shellGuidanceQuote(record.Repo))
+	return strings.Join(parts, " ")
+}
+
 func lifecycleRecordID(req HookToolUseLifecycleRequest) (string, bool) {
 	if id, ok := exactLifecycleID(req.Command); ok {
 		return id, true

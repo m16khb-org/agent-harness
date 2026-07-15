@@ -70,7 +70,17 @@ func renderHandoffSessionGuidance(record IssueOpsRecord, worker bool, host, sess
 		return "IssueOps supervised handoff envelope is invalid; remain read-only and require coordinator recovery before claim, heartbeat, finish, or implementation mutation."
 	}
 	if !worker {
-		return fmt.Sprintf("IssueOps supervised handoff role=coordinator state=%s attempt=%d context=%s. Inspect without mutation: agent-harness issueops resume --repo %s --id %s", h.State, h.Attempt, h.ContextSHA256, shellGuidanceQuote(record.Repo), shellGuidanceQuote(record.ID))
+		resume := "agent-harness issueops resume --repo " + shellGuidanceQuote(record.Repo) + " --id " + shellGuidanceQuote(record.ID)
+		if h.State == handoff.StateCoordinatorPreparing {
+			// Coordinator-dispatch reachability (Task G1): the hook holds the
+			// authenticated native identity, so it authors the identity-filled
+			// `handoff start` preview command. The coordinator runs it verbatim
+			// after appending its sealed cycle packet; identity is never guessed
+			// and the unchanged fence still gates the emitted command.
+			start := buildCoordinatorDispatchCommand(record, host, sessionID, agentID)
+			return fmt.Sprintf("IssueOps supervised handoff role=coordinator state=%s attempt=%d context=%s. Dispatch the worker with this harness-authored identity-filled preview, then append your sealed --criteria-id/--required-doc/--required-skill/--worker-scope/--verification packet, review the returned context_sha256, and finalize with --expected-context-sha256 <preview context_sha256> --confirm: %s. Inspect without mutation: %s", h.State, h.Attempt, h.ContextSHA256, start, resume)
+		}
+		return fmt.Sprintf("IssueOps supervised handoff role=coordinator state=%s attempt=%d context=%s. Inspect without mutation: %s", h.State, h.Attempt, h.ContextSHA256, resume)
 	}
 	modelBoundary := " Host usage-limit, rate-limit, reset, and model-selection prompts are user-decision boundaries: dismiss or stop and relay; never auto switch models or reset usage."
 	resume := "agent-harness issueops resume --repo " + shellGuidanceQuote(record.Repo) + " --id " + shellGuidanceQuote(record.ID)
