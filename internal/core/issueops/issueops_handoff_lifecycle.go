@@ -518,8 +518,10 @@ func validateHandoffAcceptEvidence(record IssueOpsRecord, req IssueOpsHandoffAcc
 	if err != nil || filepath.IsAbs(reportRelative) || reportRelative == ".." || strings.HasPrefix(filepath.ToSlash(reportRelative), "../") {
 		return fmt.Errorf("Turing report must resolve to a safe relative worker path")
 	}
-	if _, ok := expected[filepath.ToSlash(filepath.Clean(reportRelative))]; !ok {
-		return fmt.Errorf("committed Turing report must be included in changed_files")
+	if len(actual) > 0 {
+		if _, ok := expected[filepath.ToSlash(filepath.Clean(reportRelative))]; !ok {
+			return fmt.Errorf("committed Turing report must be included in changed_files")
+		}
 	}
 	return nil
 }

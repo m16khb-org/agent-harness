@@ -699,6 +699,33 @@ func TestHandoffAcceptRevalidatesFilesystemEvidenceInsideLock(t *testing.T) {
 	}
 }
 
+func TestHandoffAcceptAllowsCleanVerificationWithPreexistingTuringReport(t *testing.T) {
+	stateRoot, record := gitBackedDispatchedHandoff(t)
+	claim := handoffClaimRequest(record)
+	claimed, err := ClaimIssueOpsHandoff(stateRoot, claim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	finish := handoffFinishRequest(claim, claimed)
+	finish.FinalHead = strings.TrimSpace(preflight.GitOut(record.WorktreePath, "rev-parse", "HEAD"))
+	finish.ChangedFiles = nil
+	finish.TuringReportPath = "plans/plan.md"
+	submitted, err := finishIssueOpsHandoffWithoutProjection(stateRoot, finish)
+	if err != nil {
+		t.Fatal(err)
+	}
+	accepted, err := AcceptIssueOpsHandoff(stateRoot, coordinatorAcceptRequest(record, IssueOpsHandoffAcceptRequest{
+		ID: record.ID, Attempt: submitted.ExecutionHandoff.Attempt, OwnershipEpoch: submitted.ExecutionHandoff.OwnershipEpoch,
+		ContextSHA256: submitted.ExecutionHandoff.ContextSHA256, FinalHead: finish.FinalHead,
+	}))
+	if err != nil {
+		t.Fatalf("clean verification accept = %v", err)
+	}
+	if accepted.ExecutionHandoff.State != handoff.StateClosed || accepted.ExecutionHandoff.ClosedDisposition != handoff.DispositionAccepted {
+		t.Fatalf("clean verification accept state = %#v", accepted.ExecutionHandoff)
+	}
+}
+
 func TestHandoffAcceptRequiresCleanWorkerAndCanonicalReport(t *testing.T) {
 	t.Run("dirty worktree", func(t *testing.T) {
 		stateRoot, record, claim, finish, _ := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
