@@ -921,6 +921,37 @@ func attestHandoffSoleWriter(ctx context.Context, record IssueOpsRecord, client 
 		if _, assignedHere := exactHandles[dispatch.AssigneeHandle]; assignedHere {
 			return soleWriterConflictError("sole writer attestation found a dispatched task assigned to the exact worktree")
 		}
+		allTerminals, listErr := client.ListTerminals(ctx, "")
+		if listErr != nil {
+			return soleWriterRecoveryError("sole writer global terminal inventory requires recovery: %v", listErr)
+		}
+		if len(allTerminals) > handoff.MaxBaselineIDs {
+			return soleWriterRecoveryError("sole writer global terminal inventory requires recovery: exceeds %d entries", handoff.MaxBaselineIDs)
+		}
+		allHandles := make([]string, len(allTerminals))
+		for i, terminal := range allTerminals {
+			allHandles[i] = terminal.Handle
+		}
+		if err := requireStableInventoryIdentities("terminal", allHandles); err != nil {
+			return soleWriterRecoveryError("sole writer global terminal inventory requires recovery: %v", err)
+		}
+		foreign := false
+		for _, terminal := range allTerminals {
+			if terminal.Handle != dispatch.AssigneeHandle {
+				continue
+			}
+			if strings.TrimSpace(terminal.WorktreeID) == "" {
+				return soleWriterRecoveryError("sole writer global terminal inventory requires recovery: dispatched assignee has no worktree identity")
+			}
+			if terminal.WorktreeID == h.Orca.WorktreeID || terminalWorktreePathMatches(terminal, h.WorkerRoot) {
+				return soleWriterConflictError("sole writer attestation found a dispatched task assigned to the exact worktree")
+			}
+			foreign = true
+			break
+		}
+		if foreign {
+			continue
+		}
 		return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: assignee terminal is absent from the exact worktree inventory")
 	}
 	return nil

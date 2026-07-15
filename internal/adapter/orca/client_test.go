@@ -496,6 +496,21 @@ func TestClientRefreshesTerminalHandleByWorktreeAndPTY(t *testing.T) {
 	}
 }
 
+func TestClientListsCompleteGlobalTerminalInventoryWithoutWorktreeSelector(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca terminal list --limit 512 --json"] = fixtureOutput(t, "terminal_list.json")
+	terminals, err := NewClient(runner).ListTerminals(context.Background(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(terminals) != 1 || terminals[0].Handle != "term-live" {
+		t.Fatalf("global terminal inventory = %#v", terminals)
+	}
+	if len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != "orca terminal list --limit 512 --json" {
+		t.Fatalf("global terminal inventory argv = %#v", runner.calls)
+	}
+}
+
 func TestClientDecodesRuntimeRolloverStableTerminalAndWorktreeIdentity(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca terminal list --worktree id:worktree-1 --limit 512 --json"] = fixtureOutput(t, "terminal_list_runtime_rollover.json")

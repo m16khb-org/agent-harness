@@ -290,7 +290,12 @@ func (c *Client) ListTerminals(ctx context.Context, worktreeID string) ([]port.O
 		TotalCount    *int                  `json:"totalCount"`
 		Truncated     bool                  `json:"truncated"`
 	}
-	runtimeID, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "terminal", "list", "--worktree", idSelector(worktreeID), "--limit", strconv.Itoa(port.OrcaMaxBaselineIDs), "--json"}, &payload)
+	argv := []string{"orca", "terminal", "list"}
+	if strings.TrimSpace(worktreeID) != "" {
+		argv = append(argv, "--worktree", idSelector(worktreeID))
+	}
+	argv = append(argv, "--limit", strconv.Itoa(port.OrcaMaxBaselineIDs), "--json")
+	runtimeID, err := c.runJSON(ctx, "", readTimeout, argv, &payload)
 	if err != nil {
 		return nil, err
 	}
