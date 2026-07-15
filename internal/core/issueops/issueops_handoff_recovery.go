@@ -209,82 +209,89 @@ func requireAbsentPendingOperation(ctx context.Context, record IssueOpsRecord, c
 	}
 }
 
-func requireNoExactWorktreeCandidates(record IssueOpsRecord, baseline []string, rows []port.OrcaWorktree) error {
-	if len(rows) > handoff.MaxBaselineIDs {
-		return fmt.Errorf("worktree inventory exceeds %d entries", handoff.MaxBaselineIDs)
+// countExactPostBaselineCandidates is the generic exact-candidate reconcile
+// matcher (Task B): bound the inventory, require stable identities (so an
+// unidentifiable row is never absence evidence), skip rows already in the
+// baseline, require each remaining row's classification fields to be complete,
+// and count the rows that exactly match the fence marker. The per-artifact
+// stable identity, classification-completeness predicate, and exact marker match
+// are supplied by the caller. This replaces the per-artifact worktree/terminal/
+// task re-implementations of the same rule (recurring-bug Cluster A/B). Error
+// messages are byte-identical to the prior per-artifact code.
+func countExactPostBaselineCandidates(kind string, ids, baseline []string, rowCount int, classified, matches func(i int) bool) (int, error) {
+	if rowCount > handoff.MaxBaselineIDs {
+		return 0, fmt.Errorf("%s inventory exceeds %d entries", kind, handoff.MaxBaselineIDs)
 	}
-	ids := make([]string, len(rows))
-	for i := range rows {
-		ids[i] = rows[i].ID
-	}
-	if err := requireStableInventoryIdentities("worktree", ids); err != nil {
-		return err
+	if err := requireStableInventoryIdentities(kind, ids); err != nil {
+		return 0, err
 	}
 	before := baselineIdentitySet(baseline)
+	candidates := 0
+	for i := range rowCount {
+		if _, existed := before[strings.TrimSpace(ids[i])]; existed {
+			continue
+		}
+		if !classified(i) {
+			return 0, fmt.Errorf("%s inventory row is missing classification fields", kind)
+		}
+		if matches(i) {
+			candidates++
+		}
+	}
+	return candidates, nil
+}
+
+func requireNoExactWorktreeCandidates(record IssueOpsRecord, baseline []string, rows []port.OrcaWorktree) error {
 	h := record.ExecutionHandoff
 	if h == nil || h.Orca == nil {
 		return fmt.Errorf("worktree recovery identity is unavailable")
 	}
 	marker := issueOpsHandoffMarker(record.ID, h.OwnershipEpoch, h.Attempt)
-	candidates := 0
-	for _, row := range rows {
-		if _, existed := before[strings.TrimSpace(row.ID)]; existed {
-			continue
-		}
-		if strings.TrimSpace(row.RepoID) == "" || strings.TrimSpace(row.BaseRef) == "" || strings.TrimSpace(row.Path) == "" || strings.TrimSpace(row.Comment) == "" {
-			return fmt.Errorf("worktree inventory row is missing classification fields")
-		}
-		if row.RepoID == h.Orca.RepoID && row.BaseRef == h.Orca.BaseRef && filepath.Clean(strings.TrimSpace(row.Path)) == filepath.Clean(h.WorkerRoot) && row.Comment == marker {
-			candidates++
-		}
+	ids := make([]string, len(rows))
+	for i := range rows {
+		ids[i] = rows[i].ID
+	}
+	candidates, err := countExactPostBaselineCandidates("worktree", ids, baseline, len(rows),
+		func(i int) bool {
+			r := rows[i]
+			return strings.TrimSpace(r.RepoID) != "" && strings.TrimSpace(r.BaseRef) != "" && strings.TrimSpace(r.Path) != "" && strings.TrimSpace(r.Comment) != ""
+		},
+		func(i int) bool {
+			r := rows[i]
+			return r.RepoID == h.Orca.RepoID && r.BaseRef == h.Orca.BaseRef && filepath.Clean(strings.TrimSpace(r.Path)) == filepath.Clean(h.WorkerRoot) && r.Comment == marker
+		})
+	if err != nil {
+		return err
 	}
 	return requireZeroExactCandidates("worktree", candidates)
 }
 
 func requireNoExactTerminalCandidates(record IssueOpsRecord, baseline []string, rows []port.OrcaTerminal) error {
-	if len(rows) > handoff.MaxBaselineIDs {
-		return fmt.Errorf("terminal inventory exceeds %d entries", handoff.MaxBaselineIDs)
-	}
-	ids := make([]string, len(rows))
-	for i := range rows {
-		ids[i] = rows[i].PTYID
-	}
-	if err := requireStableInventoryIdentities("terminal", ids); err != nil {
-		return err
-	}
-	before := baselineIdentitySet(baseline)
 	h := record.ExecutionHandoff
 	if h == nil || h.Orca == nil {
 		return fmt.Errorf("terminal recovery identity is unavailable")
 	}
 	marker := issueOpsHandoffMarker(record.ID, h.OwnershipEpoch, h.Attempt)
-	candidates := 0
-	for _, row := range rows {
-		if _, existed := before[strings.TrimSpace(row.PTYID)]; existed {
-			continue
-		}
-		if strings.TrimSpace(row.WorktreeID) == "" || strings.TrimSpace(row.Title) == "" {
-			return fmt.Errorf("terminal inventory row is missing classification fields")
-		}
-		if row.WorktreeID == h.Orca.WorktreeID && row.Title == marker {
-			candidates++
-		}
+	ids := make([]string, len(rows))
+	for i := range rows {
+		ids[i] = rows[i].PTYID
+	}
+	candidates, err := countExactPostBaselineCandidates("terminal", ids, baseline, len(rows),
+		func(i int) bool {
+			r := rows[i]
+			return strings.TrimSpace(r.WorktreeID) != "" && strings.TrimSpace(r.Title) != ""
+		},
+		func(i int) bool {
+			r := rows[i]
+			return r.WorktreeID == h.Orca.WorktreeID && r.Title == marker
+		})
+	if err != nil {
+		return err
 	}
 	return requireZeroExactCandidates("terminal", candidates)
 }
 
 func requireNoExactTaskCandidates(record IssueOpsRecord, baseline []string, rows []port.OrcaTask) error {
-	if len(rows) > handoff.MaxBaselineIDs {
-		return fmt.Errorf("task inventory exceeds %d entries", handoff.MaxBaselineIDs)
-	}
-	ids := make([]string, len(rows))
-	for i := range rows {
-		ids[i] = rows[i].ID
-	}
-	if err := requireStableInventoryIdentities("task", ids); err != nil {
-		return err
-	}
-	before := baselineIdentitySet(baseline)
 	if record.ExecutionHandoff == nil {
 		return fmt.Errorf("task recovery identity is unavailable")
 	}
@@ -292,17 +299,21 @@ func requireNoExactTaskCandidates(record IssueOpsRecord, baseline []string, rows
 	if err != nil {
 		return err
 	}
-	candidates := 0
-	for _, row := range rows {
-		if _, existed := before[strings.TrimSpace(row.ID)]; existed {
-			continue
-		}
-		if strings.TrimSpace(row.Title) == "" || strings.TrimSpace(row.DisplayName) == "" || strings.TrimSpace(row.Status) == "" {
-			return fmt.Errorf("task inventory row is missing classification fields")
-		}
-		if row.Title == title && row.DisplayName == display {
-			candidates++
-		}
+	ids := make([]string, len(rows))
+	for i := range rows {
+		ids[i] = rows[i].ID
+	}
+	candidates, err := countExactPostBaselineCandidates("task", ids, baseline, len(rows),
+		func(i int) bool {
+			r := rows[i]
+			return strings.TrimSpace(r.Title) != "" && strings.TrimSpace(r.DisplayName) != "" && strings.TrimSpace(r.Status) != ""
+		},
+		func(i int) bool {
+			r := rows[i]
+			return r.Title == title && r.DisplayName == display
+		})
+	if err != nil {
+		return err
 	}
 	return requireZeroExactCandidates("task", candidates)
 }
