@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/issueops/model"
 )
 
@@ -23,6 +24,11 @@ const (
 	// CategoryNeedsReview: only the age threshold matched; report only, never
 	// auto-released, because a paused cycle can be legitimately idle.
 	CategoryNeedsReview Category = "needs-review"
+	// CategoryHandoffInconsistent: a terminal-phase (done) cycle whose supervised
+	// handoff is still non-terminal — the #2581 inconsistency. Report only; never
+	// releasable, because the handoff may still own un-reconciled Orca artifacts
+	// (cleanup_only) that an auto-release would abandon. The operator recovers it.
+	CategoryHandoffInconsistent Category = "handoff-nonterminal-on-terminal-phase"
 )
 
 // Probe supplies the external signals used for classification. Any nil probe is
@@ -59,6 +65,21 @@ type Finding struct {
 // age-only needs-review fallback.
 func Classify(record model.IssueOpsRecord, probe Probe, maxAge time.Duration) (Finding, bool) {
 	if record.Phase == model.IssueOpsPhaseDone {
+		// A done cycle is normally never flagged — except the #2581 blind spot:
+		// a terminal phase whose supervised handoff is still non-terminal. This
+		// combination keeps fencing the source checkout, so report it (never
+		// releasable) with the recover command rather than silently ignoring it.
+		if h := record.ExecutionHandoff; h != nil && h.State != handoff.StateClosed {
+			return Finding{
+				ID:           record.ID,
+				Branch:       strings.TrimSpace(record.Branch),
+				Phase:        string(record.Phase),
+				Category:     CategoryHandoffInconsistent,
+				Reasons:      []string{"handoff_nonterminal_on_terminal_phase", "handoff_state=" + h.State},
+				WorktreePath: strings.TrimSpace(record.WorktreePath),
+				Releasable:   false,
+			}, true
+		}
 		return Finding{}, false
 	}
 	f := Finding{

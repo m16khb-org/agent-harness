@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/issueops/implementation"
 	"agent-harness/internal/core/issueops/model"
 	"context"
@@ -119,7 +120,28 @@ func validateIssueOpsPhaseTransition(stateRoot string, record IssueOpsRecord, ph
 			return fmt.Errorf("cannot enter done phase before remote artifact verification: missing %s", strings.Join(missing, ", "))
 		}
 	}
+	if err := issueOpsTerminalPhaseHandoffGuard(record, phase); err != nil {
+		return err
+	}
 	return nil
+}
+
+// issueOpsTerminalPhaseHandoffGuard rejects advancing a cycle to a terminal
+// phase (done) while its supervised execution handoff is still non-terminal
+// (state != closed) — the #2581 inconsistency (Task F3). A done-phase record
+// with a recovery_required handoff still owns un-reconciled Orca artifacts and
+// keeps fencing the source checkout, so write-time prevention closes the source
+// of that surprise. The caller is pointed at the exact recover escape; this
+// never auto-releases the handoff.
+func issueOpsTerminalPhaseHandoffGuard(record IssueOpsRecord, phase IssueOpsPhase) error {
+	if phase != IssueOpsPhaseDone {
+		return nil
+	}
+	h := record.ExecutionHandoff
+	if h == nil || h.State == handoff.StateClosed {
+		return nil
+	}
+	return fmt.Errorf("cannot advance to done while the supervised handoff is non-terminal (handoff state=%s); recover it first from the source checkout: agent-harness issueops handoff recover --id %s --action <cancel|finalize-cancel|approve-cleanup> --confirm", h.State, record.ID)
 }
 
 func applyIssueOpsPhaseTransition(record IssueOpsRecord, phase IssueOpsPhase) IssueOpsRecord {

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"agent-harness/internal/core/issueops/active"
+	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/pathutil"
 	"agent-harness/internal/core/issueops/readinesspaths"
@@ -81,6 +82,21 @@ func ScanStaleIssueOpsCycles(req IssueOpsStaleScanRequest) IssueOpsStaleScanResu
 				continue
 			}
 			result.Released = append(result.Released, finding.ID)
+		}
+	}
+	// #2581 (Task F3): NonDoneCyclesForRepo excludes done cycles, so a done-phase
+	// record whose supervised handoff is still non-terminal (recovery_required,
+	// dispatched, etc.) is invisible to the loop above yet keeps fencing the
+	// source checkout. SupervisedHandoffCyclesForRepo retains such records while
+	// their handoff is non-closed; report the done ones as the report-only
+	// handoff_nonterminal_on_terminal_phase signal. Never Releasable — --apply
+	// must not release or prune it (pruneDoneCycles also skips it).
+	for _, record := range active.SupervisedHandoffCyclesForRepo(issueOpsActiveStore(), repo) {
+		if record.Phase != IssueOpsPhaseDone {
+			continue
+		}
+		if finding, ok := stalescan.Classify(record, probe, req.MaxAge); ok {
+			result.Findings = append(result.Findings, finding)
 		}
 	}
 	// Whenever --apply is set, run git worktree prune on the repo to clean up
@@ -175,6 +191,14 @@ func pruneDoneCycles(repo string, maxAge time.Duration, result *IssueOpsStaleSca
 	for _, id := range ids {
 		record, err := ReadIssueOps(stateRoot, id)
 		if err != nil || record.Repo != repo || record.Phase != IssueOpsPhaseDone {
+			continue
+		}
+		if record.ExecutionHandoff != nil && record.ExecutionHandoff.State != handoff.StateClosed {
+			// #2581 (Task F3): a done cycle whose supervised handoff is
+			// non-terminal may still own un-reconciled Orca artifacts (a
+			// cleanup_only worktree/task). Age-based prune here would be a TTL
+			// auto-release that abandons them ("timeout != absence"). Skip it;
+			// the stalescan classifier reports it and the operator recovers it.
 			continue
 		}
 		ts := parseIssueOpsTime(record.UpdatedAt)

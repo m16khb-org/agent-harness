@@ -35,6 +35,12 @@ func forceDoneIssueOpsLocked(stateRoot, id string) (IssueOpsRecord, error) {
 	if record.Phase != IssueOpsPhasePR {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot force-done from phase %s; must be in pr phase", record.Phase)
 	}
+	// force-done bypasses remote-artifact verification, not handoff terminality:
+	// a non-terminal supervised handoff must be recovered first (Task F3), never
+	// stranded behind a done phase.
+	if err := issueOpsTerminalPhaseHandoffGuard(record, IssueOpsPhaseDone); err != nil {
+		return IssueOpsRecord{OK: false}, err
+	}
 	activeChildren, err := issueOpsActiveChildIDs(stateRoot, record)
 	if err != nil {
 		return IssueOpsRecord{OK: false}, err
