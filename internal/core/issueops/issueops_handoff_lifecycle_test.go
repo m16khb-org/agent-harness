@@ -115,6 +115,28 @@ func TestHandoffFinishProjectionFailureIsTerminalAndNeverRetries(t *testing.T) {
 	}
 }
 
+func TestHandoffFinishRetriesOnlyUninvokedWorkerDoneInvalidProjection(t *testing.T) {
+	stateRoot, _, _, finish, _ := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
+	client := &workerDoneProjectionFake{err: &port.OrcaError{Code: "worker_done_invalid"}}
+	first, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if projection := first.ExecutionHandoff.WorkerDoneProjection; projection == nil || projection.State != workerDoneProjectionFailed || projection.Invoked || projection.DiagnosticCode != "worker_done_invalid" {
+		t.Fatalf("uninvoked invalid projection = %#v", projection)
+	}
+
+	client.err = nil
+	client.result = port.OrcaWorkerDoneResult{MessageID: "msg-repaired", Sequence: 99}
+	second, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls, _ := client.snapshot(); calls != 2 || second.ExecutionHandoff.WorkerDoneProjection == nil || second.ExecutionHandoff.WorkerDoneProjection.State != workerDoneProjectionSent || !second.ExecutionHandoff.WorkerDoneProjection.Invoked || second.ExecutionHandoff.WorkerDoneProjection.MessageID != "msg-repaired" {
+		t.Fatalf("safe projection retry = calls=%d projection=%#v", calls, second.ExecutionHandoff.WorkerDoneProjection)
+	}
+}
+
 func TestHandoffFinishProjectionPreconditionsNeverCallOrca(t *testing.T) {
 	stateRoot, record, _, finish, submitted := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
 	submitted.ExecutionHandoff.CoordinatorMailboxHandle = ""

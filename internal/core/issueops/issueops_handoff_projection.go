@@ -77,14 +77,15 @@ func finishIssueOpsHandoffWithProjection(ctx context.Context, stateRoot string, 
 		if readErr != nil {
 			return readErr
 		}
-		if record.ExecutionHandoff.WorkerDoneProjection != nil {
+		existingProjection := record.ExecutionHandoff.WorkerDoneProjection
+		if existingProjection != nil && !retryableWorkerDoneProjection(existingProjection) {
 			if _, finishErr := handoff.Finish(record, finishRequest); finishErr != nil {
 				return finishErr
 			}
 			persisted = record
 			return nil
 		}
-		if !reflect.DeepEqual(record, validated) {
+		if existingProjection == nil && !reflect.DeepEqual(record, validated) {
 			return fmt.Errorf("handoff changed before atomic submitted projection intent")
 		}
 		if record.ExecutionHandoff.State == handoff.StateClaimed {
@@ -128,6 +129,14 @@ func finishIssueOpsHandoffWithProjection(ctx context.Context, stateRoot string, 
 	request := workerDoneRequestFromProjection(persisted.ExecutionHandoff.WorkerDoneProjection)
 	result, sendErr := client.SendWorkerDone(ctx, request)
 	return persistWorkerDoneProjectionOutcome(stateRoot, persisted.ID, sendErr, result)
+}
+
+// retryableWorkerDoneProjection permits only a proven pre-invocation adapter
+// validation failure to be rebuilt after a local compatibility repair. Any
+// projection that may have reached Orca stays terminal to avoid duplicate
+// coordinator notifications.
+func retryableWorkerDoneProjection(projection *model.IssueOpsExecutionHandoffWorkerDoneProjection) bool {
+	return projection != nil && projection.State == workerDoneProjectionFailed && !projection.Invoked && projection.DiagnosticCode == "worker_done_invalid"
 }
 
 func projectionFinishRequest(req IssueOpsHandoffFinishRequest, now string) handoff.FinishRequest {
