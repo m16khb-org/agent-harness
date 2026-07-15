@@ -238,6 +238,31 @@ func (c *Client) CreateWorktree(ctx context.Context, req port.OrcaCreateWorktree
 	return created, err
 }
 
+func (c *Client) AdoptWorktree(ctx context.Context, req port.OrcaAdoptWorktreeRequest) (port.OrcaWorktree, error) {
+	provider, ok := orcaIssueProvider(req.Provider)
+	if !ok {
+		return port.OrcaWorktree{}, &port.OrcaError{Code: "unsupported_provider", Detail: strings.ToLower(strings.TrimSpace(req.Provider))}
+	}
+	if strings.TrimSpace(req.WorktreeID) == "" || strings.TrimSpace(req.Comment) == "" {
+		return port.OrcaWorktree{}, &port.OrcaError{Code: "worktree_adopt_invalid", Detail: "worktree id and comment are required"}
+	}
+	argv := []string{"orca", "worktree", "set", "--worktree", idSelector(req.WorktreeID), "--comment", strings.TrimSpace(req.Comment)}
+	if provider == "github" {
+		if req.Issue <= 0 {
+			return port.OrcaWorktree{}, &port.OrcaError{Code: "github_issue_required", Detail: "a positive linked GitHub issue number is required"}
+		}
+		argv = append(argv, "--issue", strconv.Itoa(req.Issue))
+	}
+	argv = append(argv, "--json")
+	var payload struct {
+		Worktree worktreePayload `json:"worktree"`
+	}
+	runtimeID, err := c.runJSON(ctx, "", createTimeout, argv, &payload)
+	adopted := payload.Worktree.portValue()
+	adopted.RuntimeID = runtimeID
+	return adopted, err
+}
+
 func (c *Client) RemoveWorktree(ctx context.Context, id string, force bool) error {
 	argv := []string{"orca", "worktree", "rm", "--worktree", idSelector(id)}
 	if force {

@@ -419,7 +419,8 @@ func reconcileRuntimeReissuedHandoffWorktree(record IssueOpsRecord, rows []port.
 	}
 	row := candidates[0]
 	marker := issueOpsHandoffMarker(record.ID, h.OwnershipEpoch, h.Attempt)
-	if strings.TrimSpace(row.RuntimeID) == "" || row.RuntimeID == h.Orca.RuntimeID || strings.TrimSpace(row.InstanceID) == "" || row.RepoID != h.Orca.RepoID || row.BaseRef != h.Orca.BaseRef || filepath.Clean(strings.TrimSpace(row.Path)) != filepath.Clean(h.WorkerRoot) || strings.TrimPrefix(strings.TrimSpace(row.Branch), "refs/heads/") != record.Branch || row.Head != h.AttemptBaseHead || row.Comment != marker {
+	baseRefMatches := row.BaseRef == h.Orca.BaseRef || h.Orca.WorktreeAdopted && strings.TrimSpace(row.BaseRef) == ""
+	if strings.TrimSpace(row.RuntimeID) == "" || row.RuntimeID == h.Orca.RuntimeID || strings.TrimSpace(row.InstanceID) == "" || row.RepoID != h.Orca.RepoID || !baseRefMatches || filepath.Clean(strings.TrimSpace(row.Path)) != filepath.Clean(h.WorkerRoot) || strings.TrimPrefix(strings.TrimSpace(row.Branch), "refs/heads/") != record.Branch || row.Head != h.AttemptBaseHead || row.Comment != marker {
 		return port.OrcaWorktree{}, fmt.Errorf("current-runtime worktree does not match exact repo/base/path/branch/head/comment identity")
 	}
 	if err := validateHandoffWorktreeIssueMetadata(record, row); err != nil {

@@ -80,6 +80,13 @@ type OrcaCreateWorktreeRequest struct {
 	Comment    string `json:"comment"`
 }
 
+type OrcaAdoptWorktreeRequest struct {
+	WorktreeID string `json:"worktree_id"`
+	Provider   string `json:"provider,omitempty"`
+	Issue      int    `json:"issue,omitempty"`
+	Comment    string `json:"comment"`
+}
+
 type OrcaTerminal struct {
 	RuntimeID      string `json:"runtime_id,omitempty"`
 	Handle         string `json:"handle"`
@@ -165,6 +172,7 @@ type OrcaClient interface {
 	Probe(context.Context, OrcaProbeRequest) (OrcaProbeResult, error)
 	ListWorktrees(context.Context, string) ([]OrcaWorktree, error)
 	CreateWorktree(context.Context, OrcaCreateWorktreeRequest) (OrcaWorktree, error)
+	AdoptWorktree(context.Context, OrcaAdoptWorktreeRequest) (OrcaWorktree, error)
 	RemoveWorktree(context.Context, string, bool) error
 	ListTerminals(context.Context, string) ([]OrcaTerminal, error)
 	CreateTerminal(context.Context, OrcaCreateTerminalRequest) (OrcaTerminal, error)

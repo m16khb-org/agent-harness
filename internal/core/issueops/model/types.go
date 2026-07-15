@@ -406,6 +406,7 @@ type IssueOpsOrcaIdentity struct {
 	WorktreeID              string   `json:"worktree_id,omitempty"`
 	WorktreeInstanceID      string   `json:"worktree_instance_id,omitempty"`
 	WorktreePath            string   `json:"worktree_path,omitempty"`
+	WorktreeAdopted         bool     `json:"worktree_adopted,omitempty"`
 	TerminalBaselinePTYIDs  []string `json:"terminal_baseline_pty_ids,omitempty"`
 	WorkerPTYID             string   `json:"worker_pty_id,omitempty"`
 	WorkerTerminalHandle    string   `json:"worker_terminal_handle,omitempty"`

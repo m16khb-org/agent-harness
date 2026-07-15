@@ -27,6 +27,9 @@
 - Modify: `internal/core/lifecycle/lifecycle_handoff_coordinator_dispatch_test.go` — late context와 record isolation regression을 고정한다.
 - Modify: `internal/core/issueops/issueops_handoff_dispatch.go` — source recipient candidate resolution, active-record collision rejection, baseline adopt/create, pre-dispatch reconcile을 구현한다.
 - Modify: `internal/core/issueops/issueops_handoff_dispatch_test.go` — terminal inventory, same-record race, partial-state false case를 고정한다.
+- Modify: `internal/core/issueops/issueops_handoff_prepare.go` — 동일 branch의 기존 Orca-managed Git worktree를 create collision으로 버리지 않고, exact identity를 검증한 뒤 IssueOps handoff로 adopt한다.
+- Modify: `internal/adapter/orca/client.go` and `internal/port/orca.go` — 기존 Orca worktree의 issue/comment metadata를 조회·설정하는 좁은 adapter contract를 제공한다.
+- Modify: `internal/core/issueops/issueops_handoff_prepare_test.go` — exact legacy adoption, metadata drift, duplicate/mismatched checkout의 fail-closed 경계를 고정한다.
 - Modify: `.agent-harness/ADR.md` — record-scoped authority와 bounded self-heal 결정을 기록한다.
 - Create: `docs/superpowers/plans/2026-07-15-supervised-handoff-multicoordinator-acceptance.md` — runtime/fixture acceptance matrix.
 
@@ -221,6 +224,56 @@ In a disposable IssueOps record, run a non-confirmed start preview. With the cur
 - [ ] **Step 3: Record evidence and update #26 only if the contract changed**
 
 Use `issueops feedback add` and `feedback mark-issue-updated` for a contract change; otherwise retain the verified existing issue body.
+
+### Task 6: Existing legacy worktree adoption
+
+**Files:**
+- Modify: `internal/core/issueops/issueops_handoff_prepare.go`
+- Modify: `internal/core/issueops/issueops_handoff_prepare_test.go`
+- Modify: `internal/port/orca.go`
+- Modify: `internal/adapter/orca/client.go`
+- Test: `internal/adapter/orca/client_test.go`
+
+**Consumes:** an existing real Git worktree at the canonical IssueOps path and its Orca worktree inventory row.
+
+**Produces:** a supervised handoff record attached to that exact checkout. It records the existing Orca identity after setting the current IssueOps issue link and attempt marker; it never removes or recreates the checkout as an adoption side effect.
+
+- [ ] **Step 1: Write adoption tests before production changes**
+
+```go
+func TestWorktreePrepareAdoptsExactExistingOrcaWorktree(t *testing.T) {
+    // Existing canonical Git checkout and a single matching Orca row must
+    // persist coordinator_preparing without calling CreateWorktree.
+}
+
+func TestWorktreePrepareRejectsMismatchedOrAmbiguousExistingOrcaWorktree(t *testing.T) {
+    // Path/branch/head/repo/instance or duplicate-row drift must make zero
+    // metadata mutations and leave ExecutionHandoff absent.
+}
+```
+
+- [ ] **Step 2: Run the focused test and observe the collision failure**
+
+Run: `go test ./internal/core/issueops -run 'TestWorktreePrepareAdopts|TestWorktreePrepareRejectsMismatchedOrAmbiguousExisting' -count=1`
+
+Expected: FAIL before the production change because the preflight classifies the exact existing checkout as an Orca create collision.
+
+- [ ] **Step 3: Implement exact adoption**
+
+Classify a canonical legacy checkout separately from a collision. Permit adoption only when one Orca row has the canonical path, repo ID, branch, instance ID, and local prepared HEAD. Persist the operation journal before `orca worktree set`; require the returned row to have the current issue link and exact attempt marker. Keep normal create behavior unchanged, reject a pre-existing active IssueOps owner, and do not issue `orca worktree rm` in this path.
+
+- [ ] **Step 4: Verify adapter and recovery boundaries**
+
+Run: `go test ./internal/adapter/orca ./internal/core/issueops -run 'Test.*(Adopt|Legacy|WorktreePrepare)' -count=1`
+
+Expected: PASS; list/show mismatch, missing metadata update, duplicate rows, and update ambiguity remain recovery/fail-closed cases.
+
+- [ ] **Step 5: Commit the adoption slice**
+
+```bash
+git add internal/core/issueops/issueops_handoff_prepare.go internal/core/issueops/issueops_handoff_prepare_test.go internal/port/orca.go internal/adapter/orca/client.go internal/adapter/orca/client_test.go docs/superpowers/plans/2026-07-15-supervised-handoff-multicoordinator-self-heal.md
+git commit -m "fix(handoff): adopt verified legacy worktrees"
+```
 
 ## Self-Review
 

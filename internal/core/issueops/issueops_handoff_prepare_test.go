@@ -1075,6 +1075,94 @@ func TestWorktreePreparePreCreateCollisionNeverInvokesOrca(t *testing.T) {
 	}
 }
 
+func TestWorktreePrepareAdoptsExactExistingOrcaWorktree(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	worktree := handoffPrepareWorktreePath(record)
+	makeGitWorktreeMarker(t, worktree)
+	marker := issueOpsHandoffMarker(record.ID, "epoch-1", 1)
+	client := &prepareOrcaFake{
+		probe: port.OrcaProbeResult{Available: true, Ready: true, RuntimeID: "runtime-1", RepoID: "repo-1", RepoRemoteName: "origin"},
+		worktrees: []port.OrcaWorktree{{
+			ID: "wt-existing", InstanceID: "inst-existing", RepoID: "repo-1", Path: worktree,
+			Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA,
+			BaseRef: "refs/remotes/origin/" + record.Branch, Issue: 16, Comment: marker,
+		}},
+	}
+
+	got, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+		ID: record.ID, Orchestrator: IssueOpsOrchestratorOrca, Agent: "codex", Confirm: true,
+	}, client, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateCoordinatorPreparing || got.Orca == nil || got.Orca.WorktreeID != "wt-existing" || client.createCalls != 0 {
+		t.Fatalf("exact existing worktree was not adopted: result=%#v creates=%d", got, client.createCalls)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.ExecutionHandoff == nil || persisted.ExecutionHandoff.Orca == nil || persisted.ExecutionHandoff.Orca.WorktreeID != "wt-existing" || !persisted.ExecutionHandoff.Orca.WorktreeAdopted {
+		t.Fatalf("adopted identity was not persisted: %#v", persisted.ExecutionHandoff)
+	}
+}
+
+func TestWorktreePrepareMarksAndAdoptsUnlinkedExistingOrcaWorktree(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	worktree := handoffPrepareWorktreePath(record)
+	makeGitWorktreeMarker(t, worktree)
+	marker := issueOpsHandoffMarker(record.ID, "epoch-1", 1)
+	client := &prepareOrcaFake{
+		probe: port.OrcaProbeResult{Available: true, Ready: true, RuntimeID: "runtime-1", RepoID: "repo-1", RepoRemoteName: "origin"},
+		worktrees: []port.OrcaWorktree{{
+			ID: "wt-existing", InstanceID: "inst-existing", RepoID: "repo-1", Path: worktree,
+			Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA,
+		}},
+		adopt: port.OrcaWorktree{
+			ID: "wt-existing", InstanceID: "inst-existing", RepoID: "repo-1", Path: worktree,
+			Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA,
+			Issue: 16, Comment: marker,
+		},
+	}
+
+	got, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+		ID: record.ID, Orchestrator: IssueOpsOrchestratorOrca, Agent: "codex", Confirm: true,
+	}, client, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Orca == nil || got.Orca.WorktreeID != "wt-existing" || client.adoptCalls != 1 || client.createCalls != 0 {
+		t.Fatalf("unlinked existing worktree was not marked and adopted: result=%#v adopts=%d creates=%d", got, client.adoptCalls, client.createCalls)
+	}
+	if len(client.adoptRequests) != 1 || client.adoptRequests[0].Issue != 16 || client.adoptRequests[0].Comment != marker {
+		t.Fatalf("adoption request = %#v", client.adoptRequests)
+	}
+}
+
+func TestWorktreePrepareRejectsAmbiguousExistingOrcaWorktreeWithoutMutation(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	worktree := handoffPrepareWorktreePath(record)
+	makeGitWorktreeMarker(t, worktree)
+	row := port.OrcaWorktree{
+		ID: "wt-existing", InstanceID: "inst-existing", RepoID: "repo-1", Path: worktree,
+		Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA,
+	}
+	client := &prepareOrcaFake{
+		probe:     port.OrcaProbeResult{Available: true, Ready: true, RuntimeID: "runtime-1", RepoID: "repo-1", RepoRemoteName: "origin"},
+		worktrees: []port.OrcaWorktree{row, row},
+	}
+	_, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
+		ID: record.ID, Orchestrator: IssueOpsOrchestratorOrca, Agent: "codex", Confirm: true,
+	}, client, handoffPrepareTestClock())
+	if err == nil || !strings.Contains(err.Error(), "ambiguous") || client.adoptCalls != 0 || client.createCalls != 0 {
+		t.Fatalf("ambiguous existing worktree crossed mutation boundary: err=%v adopts=%d creates=%d", err, client.adoptCalls, client.createCalls)
+	}
+	persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+	if readErr != nil || persisted.ExecutionHandoff != nil {
+		t.Fatalf("ambiguous existing worktree persisted handoff: %#v err=%v", persisted.ExecutionHandoff, readErr)
+	}
+}
+
 func TestWorktreePrepareRejectsSymlinkedCanonicalWorktreeBaseBeforeCreate(t *testing.T) {
 	for _, mode := range []string{IssueOpsOrchestratorAuto, IssueOpsOrchestratorOrca} {
 		t.Run(mode, func(t *testing.T) {
@@ -1344,6 +1432,10 @@ type prepareOrcaFake struct {
 	createErr      error
 	createCalls    int
 	createRequests []port.OrcaCreateWorktreeRequest
+	adopt          port.OrcaWorktree
+	adoptErr       error
+	adoptCalls     int
+	adoptRequests  []port.OrcaAdoptWorktreeRequest
 	probeRequests  []port.OrcaProbeRequest
 	beforeCreate   func()
 	trace          []string
@@ -1368,6 +1460,13 @@ func (f *prepareOrcaFake) CreateWorktree(_ context.Context, req port.OrcaCreateW
 		f.beforeCreate()
 	}
 	return f.create, f.createErr
+}
+
+func (f *prepareOrcaFake) AdoptWorktree(_ context.Context, req port.OrcaAdoptWorktreeRequest) (port.OrcaWorktree, error) {
+	f.trace = append(f.trace, "worktree-adopt")
+	f.adoptCalls++
+	f.adoptRequests = append(f.adoptRequests, req)
+	return f.adopt, f.adoptErr
 }
 
 func materializePrepareWorktreeOnCreate(t *testing.T, client *prepareOrcaFake, worktree string) {

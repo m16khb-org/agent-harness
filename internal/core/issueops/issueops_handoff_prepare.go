@@ -72,6 +72,7 @@ type IssueOpsOrcaWorktreeClient interface {
 	Probe(context.Context, port.OrcaProbeRequest) (port.OrcaProbeResult, error)
 	ListWorktrees(context.Context, string) ([]port.OrcaWorktree, error)
 	CreateWorktree(context.Context, port.OrcaCreateWorktreeRequest) (port.OrcaWorktree, error)
+	AdoptWorktree(context.Context, port.OrcaAdoptWorktreeRequest) (port.OrcaWorktree, error)
 }
 
 func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req IssueOpsHandoffPrepareRequest, client IssueOpsOrcaWorktreeClient, clock IssueOpsHandoffPrepareClock) (IssueOpsHandoffPrepareResult, error) {
@@ -129,6 +130,60 @@ func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req I
 	if err := handoff.RequireBaselineDeltaHeadroom("worktree", baseline); err != nil {
 		return result, fmt.Errorf("Orca worktree baseline is unsafe: %w", err)
 	}
+	existing, err := exactExistingHandoffWorktree(record, result.WorktreePath, probe.RepoID, worktrees)
+	if err != nil {
+		return result, err
+	}
+	if existing != nil {
+		linkedIssue, issueErr := issueNumber(record.IssueURL)
+		if issueErr != nil {
+			return result, fmt.Errorf("resolve IssueOps issue for existing worktree adoption: %w", issueErr)
+		}
+		epoch, epochErr := issueOpsHandoffEpoch(clock)
+		if epochErr != nil {
+			return result, epochErr
+		}
+		now := issueOpsHandoffNow(clock)
+		fence := handoff.Fence{Attempt: 1, OwnershipEpoch: epoch}
+		begin, beginErr := beginHandoffWorktreeCreate(stateRoot, record.ID, result.WorktreePath, req.Agent, probe.RuntimeID, probe.RepoID, providerTrackingRef, fence, baseline, now)
+		if beginErr != nil {
+			return result, beginErr
+		}
+		if !begin.Authorized {
+			current, readErr := ReadIssueOps(stateRoot, record.ID)
+			if readErr != nil {
+				return result, readErr
+			}
+			return existingHandoffPrepareResult(stateRoot, current, result, now)
+		}
+		marker := issueOpsHandoffMarker(record.ID, fence.OwnershipEpoch, fence.Attempt)
+		adopted := *existing
+		if adopted.Comment != marker || validateHandoffWorktreeIssueMetadata(record, adopted) != nil {
+			adopted, err = client.AdoptWorktree(ctx, port.OrcaAdoptWorktreeRequest{
+				WorktreeID: adopted.ID, Provider: record.BranchPrepare.Provider, Issue: linkedIssue, Comment: marker,
+			})
+			if err != nil {
+				if externalMutationNotInvoked(err) {
+					if rollbackErr := rollbackHandoffWorktreeStartFailure(stateRoot, record.ID, begin); rollbackErr != nil {
+						return result, fmt.Errorf("clear non-invoked Orca worktree adopt journal: %w", rollbackErr)
+					}
+					return result, fmt.Errorf("Orca worktree adopt was not invoked and is safe to retry: %w", err)
+				}
+				_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "worktree_adopt_ambiguous", err.Error(), now)
+				return result, fmt.Errorf("Orca worktree adopt requires recovery: %w", err)
+			}
+		}
+		if validateErr := validateAdoptedHandoffWorktree(record, result.WorktreePath, probe.RepoID, adopted, marker); validateErr != nil {
+			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "worktree_adopt_identity_mismatch", validateErr.Error(), now)
+			return result, validateErr
+		}
+		persisted, persistErr := persistHandoffWorktreeCreate(stateRoot, record.ID, adopted, providerIssueLinkStatus(record, adopted), true, fence, begin, now)
+		if persistErr != nil {
+			_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "worktree_adopt_persist_failed", persistErr.Error(), now)
+			return result, persistErr
+		}
+		return projectHandoffPrepareResult(result, persisted), nil
+	}
 	collisionCode, err := preflightHandoffWorktreeCreate(record, result.WorktreePath, worktrees)
 	if err != nil {
 		return result, err
@@ -165,12 +220,42 @@ func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req I
 		return result, err
 	}
 	linkStatus := providerIssueLinkStatus(record, created)
-	persisted, err := persistHandoffWorktreeCreate(stateRoot, record.ID, created, linkStatus, fence, begin, now)
+	persisted, err := persistHandoffWorktreeCreate(stateRoot, record.ID, created, linkStatus, false, fence, begin, now)
 	if err != nil {
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "worktree_persist_failed", err.Error(), now)
 		return result, err
 	}
 	return projectHandoffPrepareResult(result, persisted), nil
+}
+
+func exactExistingHandoffWorktree(record IssueOpsRecord, expectedPath, expectedRepoID string, rows []port.OrcaWorktree) (*port.OrcaWorktree, error) {
+	info, err := os.Lstat(expectedPath)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("inspect expected Orca worktree path: %w", err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() || !existingLegacyWorktreeMatches(record, expectedPath) {
+		return nil, nil
+	}
+	candidates := make([]port.OrcaWorktree, 0, 1)
+	for _, row := range rows {
+		if filepath.Clean(strings.TrimSpace(row.Path)) != filepath.Clean(expectedPath) {
+			continue
+		}
+		if err := validateAdoptableHandoffWorktree(record, expectedPath, expectedRepoID, row); err != nil {
+			return nil, fmt.Errorf("existing Orca worktree is not adoptable: %w", err)
+		}
+		candidates = append(candidates, row)
+	}
+	if len(candidates) > 1 {
+		return nil, fmt.Errorf("existing Orca worktree identity is ambiguous")
+	}
+	if len(candidates) == 1 {
+		return &candidates[0], nil
+	}
+	return nil, nil
 }
 
 func preflightHandoffWorktreeCreate(record IssueOpsRecord, expectedPath string, rows []port.OrcaWorktree) (string, error) {
@@ -455,7 +540,7 @@ func markHandoffCleanupOnlyWorktree(stateRoot, id string, fence handoff.Fence, c
 	})
 }
 
-func persistHandoffWorktreeCreate(stateRoot, id string, created port.OrcaWorktree, linkStatus string, fence handoff.Fence, begin handoffWorktreeBeginSnapshot, now string) (IssueOpsRecord, error) {
+func persistHandoffWorktreeCreate(stateRoot, id string, created port.OrcaWorktree, linkStatus string, adopted bool, fence handoff.Fence, begin handoffWorktreeBeginSnapshot, now string) (IssueOpsRecord, error) {
 	var persisted IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		current, err := ReadIssueOps(stateRoot, id)
@@ -473,7 +558,7 @@ func persistHandoffWorktreeCreate(stateRoot, id string, created port.OrcaWorktre
 		}
 		current.ExecutionHandoff.Orca = &model.IssueOpsOrcaIdentity{
 			RuntimeID: current.ExecutionHandoff.Orca.RuntimeID, RepoID: current.ExecutionHandoff.Orca.RepoID, BaseRef: current.ExecutionHandoff.Orca.BaseRef, ProviderIssueLinkStatus: linkStatus,
-			WorktreeID: created.ID, WorktreeInstanceID: created.InstanceID, WorktreePath: filepath.Clean(created.Path),
+			WorktreeID: created.ID, WorktreeInstanceID: created.InstanceID, WorktreePath: filepath.Clean(created.Path), WorktreeAdopted: adopted,
 		}
 		current.ExecutionHandoff.ProvisionedAt = now
 		current.WorktreePath = filepath.Clean(created.Path)
@@ -640,6 +725,49 @@ func validateCreatedHandoffWorktree(record IssueOpsRecord, expectedPath, expecte
 	}
 	if branch := strings.TrimSpace(preflight.GitOut(created.Path, "branch", "--show-current")); branch == "" || branch != strings.TrimSpace(record.Branch) {
 		return fmt.Errorf("Orca worktree local branch does not match the provider branch")
+	}
+	return nil
+}
+
+func validateAdoptableHandoffWorktree(record IssueOpsRecord, expectedPath, expectedRepoID string, existing port.OrcaWorktree) error {
+	if strings.TrimSpace(existing.ID) == "" || strings.TrimSpace(existing.InstanceID) == "" {
+		return fmt.Errorf("Orca worktree id and instance id are required")
+	}
+	if strings.TrimSpace(expectedRepoID) == "" || strings.TrimSpace(existing.RepoID) == "" || existing.RepoID != expectedRepoID {
+		return fmt.Errorf("Orca worktree repo identity does not match the probed repository")
+	}
+	expectedClean := filepath.Clean(strings.TrimSpace(expectedPath))
+	existingClean := filepath.Clean(strings.TrimSpace(existing.Path))
+	if expectedClean == "." || existingClean != expectedClean {
+		return fmt.Errorf("Orca worktree path does not match the canonical IssueOps path")
+	}
+	if strings.TrimPrefix(strings.TrimSpace(existing.Branch), "refs/heads/") != strings.TrimSpace(record.Branch) {
+		return fmt.Errorf("Orca worktree branch %q does not match %q", existing.Branch, record.Branch)
+	}
+	if strings.TrimSpace(existing.Head) != strings.TrimSpace(record.BranchPrepare.BaseSHA) {
+		return fmt.Errorf("Orca worktree head does not match prepared base sha")
+	}
+	resolvedExpected, expectedErr := filepath.EvalSymlinks(expectedPath)
+	code, localRoot, _ := preflight.GitCmd(existing.Path, "rev-parse", "--show-toplevel")
+	if code != 0 || expectedErr != nil || filepath.Clean(localRoot) != filepath.Clean(resolvedExpected) {
+		return fmt.Errorf("Orca worktree path is not the expected local Git checkout")
+	}
+	code, localHead, _ := preflight.GitCmd(existing.Path, "rev-parse", "--verify", "HEAD^{commit}")
+	if code != 0 || strings.TrimSpace(localHead) != strings.TrimSpace(record.BranchPrepare.BaseSHA) || strings.TrimSpace(localHead) != strings.TrimSpace(existing.Head) {
+		return fmt.Errorf("Orca worktree local HEAD does not match the prepared base sha and response")
+	}
+	return nil
+}
+
+func validateAdoptedHandoffWorktree(record IssueOpsRecord, expectedPath, expectedRepoID string, adopted port.OrcaWorktree, marker string) error {
+	if err := validateAdoptableHandoffWorktree(record, expectedPath, expectedRepoID, adopted); err != nil {
+		return err
+	}
+	if adopted.Comment != marker {
+		return fmt.Errorf("Orca worktree response does not contain the exact attempt marker")
+	}
+	if err := validateHandoffWorktreeIssueMetadata(record, adopted); err != nil {
+		return err
 	}
 	return nil
 }
