@@ -84,6 +84,13 @@ func handleMCPIssueOpsLinkWorktree(args map[string]any) MCPToolOutcome {
 	return issueOpsMCPOutcome(result, err, "IssueOps worktree link failed")
 }
 
+func handleMCPIssueOpsMigrateLegacyWorktree(args map[string]any) MCPToolOutcome {
+	result, err := core.MigrateIssueOpsLegacyWorktree(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsLegacyWorktreeMigrationRequest{
+		ID: argmap.String(args, "id"), Confirm: argmap.Bool(args, "confirm"),
+	}, IssueOpsWorktreeOrcaClient(), core.IssueOpsHandoffPrepareClock{})
+	return issueOpsMCPOutcome(result, err, "IssueOps legacy worktree migration failed")
+}
+
 func handleMCPIssueOpsPrepareWorktreeTools(args map[string]any) MCPToolOutcome {
 	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), argmap.String(args, "id"))
 	if err == nil {

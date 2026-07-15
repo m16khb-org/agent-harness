@@ -9,6 +9,31 @@ description: Structural decisions, rationale, and rejected alternatives.
 
 ---
 
+## 2026-07-15 — Supervised handoff coordinator isolation and bounded self-heal
+
+**결정:** coordinator authority와 mutation lease는 전역 singleton이 아니라 `IssueOps record ID + worker worktree + sealed native session` 범위에만 결속한다. Orca terminal handle은 권한 증명이 아닌 routing metadata다.
+
+- source worktree의 connected+writable candidate가 정확히 하나일 때만 recipient를 자동 resolve한다. 0개·다수 candidate와 다른 active record가 이미 seal한 handle은 fail-closed하며 task/dispatch를 만들지 않는다.
+- worker worktree의 connected+writable baseline terminal은 정확히 하나일 때만 adopt한다. 없으면 하나를 생성하고, 다수·partial checkpoint·runtime mismatch는 recovery evidence를 남기고 멈춘다.
+- self-heal은 task, dispatch, worker session, result, pending external mutation이 모두 없는 pre-dispatch 상태에만 한정한다. terminal을 자동 stop하거나 partial dispatch를 자동 취소하지 않는다.
+- 서로 다른 record/worktree는 동시 진행 가능하지만 같은 record의 durable mutation은 existing record lock과 checkpoint revalidation으로 exactly-once를 유지한다.
+
+**거절:** 전역 coordinator registry/lock은 독립 worktree의 throughput을 직렬화하고 unrelated handoff까지 deadlock 범위를 넓히므로 도입하지 않는다.
+
+## 2026-07-15 — Raw legacy worktree is migrated, never metadata-adopted
+
+**결정:** `orca worktree list` runtime inventory에 존재하는 exact path/branch/HEAD checkout만 supervised worker worktree로 reuse한다. Git에만 존재하는 raw legacy checkout은 `orca worktree show` 결과나 `worktree set` metadata만으로 adopt하지 않는다. 대신 명시적 `issueops worktree migrate-legacy --confirm`이 clean·provider-tracking-ref-equal snapshot을 schema-v7 record에 journal하고, Git worktree와 local branch를 제거한 뒤 Orca가 같은 canonical path/branch를 재생성하게 한다.
+
+- migration은 `prepared` → `git_removed` → `orca_managed` durable state를 유지한다. timeout/host interruption 뒤에는 같은 command가 identity snapshot을 재검증해 recreate를 재개한다.
+- dirty, local/remote head drift, symlink, path/branch ambiguity, active handoff는 Git removal 전에 fail-closed한다. raw checkout의 uncommitted WIP를 stash·copy·force-remove하지 않는다.
+- schema v7은 destructive recovery snapshot의 ownership authority를 보호한다. v6 reader는 v7을 future schema로 거부한다.
+
+**근거:** disposable live Orca probe에서 raw Git checkout은 `show`에는 보였지만 runtime `list`에 없었고 terminal create는 timeout이었다. raw checkout을 clean·remote-equal 상태로 제거한 뒤 Orca create는 같은 path/branch와 live terminal handle을 반환했다.
+
+**거절:** raw checkout을 metadata-only로 adopt하는 방식은 terminal/task/dispatch가 없는 fictitious worktree identity를 durable state에 기록한다. unconfirmed automatic replacement와 dirty checkout backup/restore는 data loss 및 scope ambiguity를 만든다.
+
+---
+
 ## 1. 최종 결정
 
 ### 1.1 Plugin 방식 vs 외부 worker 방식

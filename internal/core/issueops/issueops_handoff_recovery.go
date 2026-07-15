@@ -737,6 +737,16 @@ func verifyIssueOpsCleanupStep(ctx context.Context, record IssueOpsRecord, step 
 		}
 		receipt.TaskID, receipt.DispatchID = taskID, dispatchID
 	case "terminal_quiescent":
+		if terminallessPreDispatchCancellation(record.ExecutionHandoff) {
+			dispatchClient, ok := client.(IssueOpsOrcaDispatchClient)
+			if !ok {
+				return receipt, fmt.Errorf("complete terminalless pre-dispatch cleanup inventory is unavailable")
+			}
+			if err := attestHandoffSoleWriter(ctx, record, dispatchClient, ""); err != nil {
+				return receipt, err
+			}
+			break
+		}
 		reader, ok := client.(interface {
 			ListTerminals(context.Context, string) ([]port.OrcaTerminal, error)
 		})
@@ -838,6 +848,10 @@ func verifyIssueOpsCleanupStep(ctx context.Context, record IssueOpsRecord, step 
 		return receipt, fmt.Errorf("unknown cleanup step %q", step)
 	}
 	return receipt, nil
+}
+
+func terminallessPreDispatchCancellation(h *model.IssueOpsExecutionHandoff) bool {
+	return h != nil && h.Orca != nil && h.ClosedDisposition == handoff.DispositionCancelled && h.DeliveryMode == "" && h.WorkerSession == nil && h.Result == nil && h.Orca.TaskID == "" && h.Orca.DispatchID == "" && h.Orca.WorkerPTYID == "" && h.Orca.WorkerTerminalHandle == "" && h.Orca.WorkerMailboxHandle == "" && h.Orca.WorkerTabID == "" && h.Orca.WorkerLeafID == ""
 }
 
 func retryIssueOpsHandoff(ctx context.Context, stateRoot, id string, client any, clock IssueOpsHandoffPrepareClock) (IssueOpsHandoffRecoverResult, error) {

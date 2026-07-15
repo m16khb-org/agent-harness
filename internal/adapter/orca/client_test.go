@@ -414,6 +414,34 @@ func TestClientBuildsSpikeVerifiedArgvWithoutShell(t *testing.T) {
 	}
 }
 
+func TestClientAdoptsExistingGitHubWorktreeWithIssueAndMarker(t *testing.T) {
+	runner := newFakeRunner(t)
+	command := "orca worktree set --worktree id:worktree-1 --comment agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1 --issue 16 --json"
+	runner.responses[command] = fixtureOutput(t, "worktree_create.json")
+	got, err := NewClient(runner).AdoptWorktree(context.Background(), port.OrcaAdoptWorktreeRequest{
+		WorktreeID: "worktree-1", Provider: "github", Issue: 16, Comment: "agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != "worktree-1" || got.InstanceID != "instance-1" || len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != command {
+		t.Fatalf("adopted worktree = %#v calls=%#v", got, runner.calls)
+	}
+}
+
+func TestClientShowsExistingWorktreeByExactPath(t *testing.T) {
+	runner := newFakeRunner(t)
+	command := "orca worktree show --worktree path:/repo.worktrees/16-demo --json"
+	runner.responses[command] = fixtureOutput(t, "worktree_create.json")
+	got, err := NewClient(runner).ShowWorktree(context.Background(), "/repo.worktrees/16-demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != "worktree-1" || got.InstanceID != "instance-1" || len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != command {
+		t.Fatalf("shown worktree = %#v calls=%#v", got, runner.calls)
+	}
+}
+
 func TestClientCreateWorktreeUsesProviderSpecificIssueMetadata(t *testing.T) {
 	for _, tt := range []struct {
 		name, provider, command, output string

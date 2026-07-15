@@ -74,6 +74,7 @@ type IssueOpsExecutionHandoffCleanup = model.IssueOpsExecutionHandoffCleanup
 type IssueOpsOrcaCleanupArtifact = model.IssueOpsOrcaCleanupArtifact
 type IssueOpsExecutionHandoffPriorAttempt = model.IssueOpsExecutionHandoffPriorAttempt
 type IssueOpsExecutionHandoff = model.IssueOpsExecutionHandoff
+type IssueOpsLegacyWorktreeMigration = model.IssueOpsLegacyWorktreeMigration
 type IssueOpsReadiness = model.IssueOpsReadiness
 type IssueOpsDomainReview = model.IssueOpsDomainReview
 type IssueOpsDomainReviewRequest = model.IssueOpsDomainReviewRequest

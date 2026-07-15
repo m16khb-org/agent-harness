@@ -73,7 +73,7 @@ func TestIssueOpsHandoffUsageExposesCodexHookTrustBypassAttestation(t *testing.T
 }
 
 func TestIssueOpsHandoffUsageExposesForceAbandon(t *testing.T) {
-	for _, fragment := range []string{"reconcile|abandon|cancel|finalize-cancel|retry", "--confirm", "--force", "--reason"} {
+	for _, fragment := range []string{"reconcile|abandon|cancel|finalize-cancel|retry|approve-cleanup|record-cleanup", "--confirm", "--force", "--reason"} {
 		if !strings.Contains(issueOpsHandoffUsage, fragment) {
 			t.Fatalf("handoff recover usage missing %q", fragment)
 		}

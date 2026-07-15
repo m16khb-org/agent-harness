@@ -161,6 +161,44 @@ func TestHandoffCleanupAllowsTasklessPreDispatchCancellation(t *testing.T) {
 	}
 }
 
+func TestHandoffCleanupRetriesTerminallessPreDispatchCancellation(t *testing.T) {
+	stateRoot, record, client := dispatchedHandoffRecord(t)
+	record.ExecutionHandoff.State = handoff.StateClosed
+	record.ExecutionHandoff.ClosedDisposition = handoff.DispositionCancelled
+	record.ExecutionHandoff.DeliveryMode = ""
+	record.ExecutionHandoff.DispatchedAt = ""
+	record.ExecutionHandoff.Orca.TaskID = ""
+	record.ExecutionHandoff.Orca.DispatchID = ""
+	record.ExecutionHandoff.Orca.WorkerMailboxHandle = ""
+	record.ExecutionHandoff.Orca.WorkerPTYID = ""
+	record.ExecutionHandoff.Orca.WorkerTerminalHandle = ""
+	record.ExecutionHandoff.Orca.WorkerTabID = ""
+	record.ExecutionHandoff.Orca.WorkerLeafID = ""
+	client.terminals = nil
+	client.dispatchedTasks = nil
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, req := range []IssueOpsHandoffRecoverRequest{
+		{ID: record.ID, Action: "approve-cleanup", Confirm: true, CleanupDisposition: "retry", Reason: "retry terminalless pre-dispatch handoff"},
+		{ID: record.ID, Action: "record-cleanup", Confirm: true, CleanupStep: "task_terminal"},
+		{ID: record.ID, Action: "record-cleanup", Confirm: true, CleanupStep: "terminal_quiescent"},
+		{ID: record.ID, Action: "retry", Confirm: true},
+	} {
+		if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, req, client, handoffPrepareTestClock()); err != nil {
+			t.Fatalf("%s terminalless pre-dispatch recovery: %v", req.Action, err)
+		}
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.ExecutionHandoff.State != handoff.StateCoordinatorPreparing || persisted.ExecutionHandoff.Attempt != 2 || persisted.ExecutionHandoff.Orca.WorkerPTYID != "" || persisted.ExecutionHandoff.Orca.WorkerTerminalHandle != "" {
+		t.Fatalf("terminalless retry = %#v", persisted.ExecutionHandoff)
+	}
+}
+
 func TestHandoffCleanupQuiescenceRejectsPossibleWritersDispatchesAndReissuedWorktree(t *testing.T) {
 	stateRoot, record, _ := dispatchedHandoffRecord(t)
 	record.ExecutionHandoff.State = handoff.StateClosed
