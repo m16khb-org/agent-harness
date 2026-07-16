@@ -95,6 +95,36 @@ func TestIssueOpsExecutionHandoffTransitionTable(t *testing.T) {
 	}
 }
 
+func TestFinishAcceptsCompletedVerificationWithoutSourceChanges(t *testing.T) {
+	record := claimedRecordForEnvelopeTest(t)
+	handoffRecord := record.ExecutionHandoff
+	worker := *handoffRecord.WorkerSession
+	result := model.IssueOpsExecutionHandoffResult{
+		Outcome:          OutcomeCompleted,
+		FinalHead:        strings.Repeat("b", 40),
+		TuringReportPath: "docs/superpowers/plans/verification.md",
+		Verification:     []string{"go test ./internal/core/issueops: pass"},
+		CleanupReceipts:  []string{"git status --short: clean; source changes: none"},
+		TaskID:           handoffRecord.Orca.TaskID,
+		DispatchID:       handoffRecord.Orca.DispatchID,
+	}
+
+	submitted, err := Finish(record, FinishRequest{
+		Fence:  Fence{Attempt: handoffRecord.Attempt, OwnershipEpoch: handoffRecord.OwnershipEpoch, ContextSHA256: handoffRecord.ContextSHA256},
+		Worker: worker,
+		Result: result,
+	})
+	if err != nil {
+		t.Fatalf("completed verification without source changes must be accepted: %v", err)
+	}
+	if got := submitted.ExecutionHandoff.State; got != StateSubmitted {
+		t.Fatalf("submitted state = %q, want %q", got, StateSubmitted)
+	}
+	if got := submitted.ExecutionHandoff.Result.ChangedFiles; len(got) != 0 {
+		t.Fatalf("changed files = %v, want no source changes", got)
+	}
+}
+
 func TestIssueOpsExecutionHandoffRejectsStaleAttemptEpochAndContext(t *testing.T) {
 	record := dispatchedRecordForTest(t)
 	tests := []struct {

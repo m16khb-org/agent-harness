@@ -159,6 +159,12 @@ func decodeIssueOpsRecord(id string, b []byte) (IssueOpsRecord, error) {
 		record.InvalidReason = boundedIssueOpsInvalidReason(err.Error())
 		return record, err
 	}
+	if err := validatePersistedLegacyWorktreeMigration(record); err != nil {
+		record.OK = false
+		record.Invalid = true
+		record.InvalidReason = boundedIssueOpsInvalidReason(err.Error())
+		return record, err
+	}
 	record.OK = true
 	return record, nil
 }
@@ -219,6 +225,10 @@ func writeIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, err
 		record.OK = false
 		return record, err
 	}
+	if err := validatePersistedLegacyWorktreeMigration(record); err != nil {
+		record.OK = false
+		return record, err
+	}
 	if err := handoff.ValidateEnvelope(record); err != nil {
 		record.OK = false
 		return record, err
@@ -264,7 +274,7 @@ func normalizeIssueOpsSchemaVersion(record *IssueOpsRecord) error {
 		return err
 	}
 	legacyIdentitySchema := record.SchemaVersion == 0 || record.SchemaVersion == 1 || record.SchemaVersion == 2 || record.SchemaVersion == 3
-	legacySchema := legacyIdentitySchema || record.SchemaVersion == 4 || record.SchemaVersion == 5
+	legacySchema := legacyIdentitySchema || record.SchemaVersion == 4 || record.SchemaVersion == 5 || record.SchemaVersion == 6
 	if legacySchema {
 		record.SchemaVersion = IssueOpsCurrentSchemaVersion
 		if legacyIdentitySchema && record.ExecutionHandoff != nil {
@@ -291,7 +301,7 @@ func migrateLegacyIssueOpsOrcaIdentity(identity *IssueOpsOrcaIdentity) {
 
 func issueOpsSchemaVersionError(version int) error {
 	switch {
-	case version == 0 || version == 1 || version == 2 || version == 3 || version == 4 || version == 5 || version == IssueOpsCurrentSchemaVersion:
+	case version == 0 || version == 1 || version == 2 || version == 3 || version == 4 || version == 5 || version == 6 || version == IssueOpsCurrentSchemaVersion:
 		return nil
 	case version > IssueOpsCurrentSchemaVersion:
 		return fmt.Errorf("unsupported issueops schema_version %d; current is %d", version, IssueOpsCurrentSchemaVersion)

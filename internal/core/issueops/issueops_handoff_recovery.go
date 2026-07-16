@@ -737,6 +737,16 @@ func verifyIssueOpsCleanupStep(ctx context.Context, record IssueOpsRecord, step 
 		}
 		receipt.TaskID, receipt.DispatchID = taskID, dispatchID
 	case "terminal_quiescent":
+		if terminallessPreDispatchCancellation(record.ExecutionHandoff) {
+			dispatchClient, ok := client.(IssueOpsOrcaDispatchClient)
+			if !ok {
+				return receipt, fmt.Errorf("complete terminalless pre-dispatch cleanup inventory is unavailable")
+			}
+			if err := attestHandoffSoleWriter(ctx, record, dispatchClient, ""); err != nil {
+				return receipt, err
+			}
+			break
+		}
 		reader, ok := client.(interface {
 			ListTerminals(context.Context, string) ([]port.OrcaTerminal, error)
 		})
@@ -838,6 +848,10 @@ func verifyIssueOpsCleanupStep(ctx context.Context, record IssueOpsRecord, step 
 		return receipt, fmt.Errorf("unknown cleanup step %q", step)
 	}
 	return receipt, nil
+}
+
+func terminallessPreDispatchCancellation(h *model.IssueOpsExecutionHandoff) bool {
+	return h != nil && h.Orca != nil && h.ClosedDisposition == handoff.DispositionCancelled && h.DeliveryMode == "" && h.WorkerSession == nil && h.Result == nil && h.Orca.TaskID == "" && h.Orca.DispatchID == "" && h.Orca.WorkerPTYID == "" && h.Orca.WorkerTerminalHandle == "" && h.Orca.WorkerMailboxHandle == "" && h.Orca.WorkerTabID == "" && h.Orca.WorkerLeafID == ""
 }
 
 func retryIssueOpsHandoff(ctx context.Context, stateRoot, id string, client any, clock IssueOpsHandoffPrepareClock) (IssueOpsHandoffRecoverResult, error) {
@@ -958,6 +972,7 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 	desiredWorktreePath := record.WorktreePath
 	next := "agent-harness issueops handoff start --id " + id + " --confirm"
 	newState := handoff.StateCoordinatorPreparing
+	dispatchAbsent := false
 	switch pending.Kind {
 	case handoff.OperationWorktreeCreate:
 		reader, ok := client.(interface {
@@ -1037,7 +1052,14 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		}
 		candidate, matchErr := ReconcileIssueOpsHandoffDispatch(ctx, identity.TaskID, pending.ExpectedAssigneeHandle, pending.DeliveryMode, reader, record.ExecutionHandoff.CoordinatorMailboxHandle)
 		if matchErr != nil {
-			return IssueOpsHandoffRecoverResult{}, matchErr
+			var orcaErr *port.OrcaError
+			if !errors.As(matchErr, &orcaErr) || strings.TrimSpace(orcaErr.Code) != "not_found" {
+				return IssueOpsHandoffRecoverResult{}, matchErr
+			}
+			dispatchAbsent = true
+			identity.DispatchID = ""
+			identity.WorkerMailboxHandle = ""
+			break
 		}
 		identity.DispatchID, identity.WorkerMailboxHandle = candidate.ID, candidate.AssigneeHandle
 		identity.WorkerTerminalHandle = candidate.AssigneeHandle
@@ -1064,9 +1086,9 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		if !ok {
 			return IssueOpsHandoffRecoverResult{}, fmt.Errorf("Orca sole writer recovery dependency is unavailable")
 		}
-		allowedHandle := ""
-		if identity.WorkerTerminalHandle != "" {
-			allowedHandle = identity.WorkerTerminalHandle
+		allowedHandle, matchErr := reconcileLeaseAttestationAllowedHandle(ctx, record, reader)
+		if matchErr != nil {
+			return IssueOpsHandoffRecoverResult{}, matchErr
 		}
 		if matchErr := attestHandoffSoleWriter(ctx, record, reader, allowedHandle); matchErr != nil {
 			return IssueOpsHandoffRecoverResult{}, matchErr
@@ -1096,7 +1118,7 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		current.ExecutionHandoff.PendingOperation = nil
 		current.ExecutionHandoff.State = newState
 		current.ExecutionHandoff.Failure = nil
-		if pending.Kind == handoff.OperationDispatch {
+		if pending.Kind == handoff.OperationDispatch && !dispatchAbsent {
 			current.ExecutionHandoff.DeliveryMode = pending.DeliveryMode
 			current.ExecutionHandoff.DispatchedAt = now
 		}
@@ -1107,6 +1129,31 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		return readErr
 	})
 	return projectHandoffRecovery(persisted, "reconcile", next), err
+}
+
+func reconcileLeaseAttestationAllowedHandle(ctx context.Context, record IssueOpsRecord, client IssueOpsOrcaDispatchClient) (string, error) {
+	h := record.ExecutionHandoff
+	if h == nil || h.Orca == nil || strings.TrimSpace(h.Orca.WorktreeID) == "" {
+		return "", fmt.Errorf("lease attestation reconciliation requires exact Orca worktree authority")
+	}
+	if handle := strings.TrimSpace(h.Orca.WorkerTerminalHandle); handle != "" {
+		return handle, nil
+	}
+	terminals, err := client.ListTerminals(ctx, h.Orca.WorktreeID)
+	if err != nil {
+		return "", err
+	}
+	var candidate string
+	for _, terminal := range terminals {
+		if terminal.WorktreeID != h.Orca.WorktreeID || !terminalWorktreePathMatches(terminal, h.WorkerRoot) || !terminal.Connected && !terminal.Writable {
+			continue
+		}
+		if candidate != "" {
+			return "", nil
+		}
+		candidate = terminal.Handle
+	}
+	return candidate, nil
 }
 
 func cloneHandoffReconcileSnapshot(record IssueOpsRecord) IssueOpsRecord {

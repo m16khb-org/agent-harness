@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -13,6 +14,8 @@ import (
 	issueopsmodel "agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/searchrouting"
 )
+
+var concreteCoordinatorTerminalHandle = regexp.MustCompile(`^term_[A-Za-z0-9_-]+$`)
 
 func BuildIssueOpsHandoffSessionGuidance(repo, host, sessionID, agentID string) string {
 	records := uniqueSupervisedHandoffRecords(supervisedHandoffGuardRecords(repo))
@@ -162,6 +165,12 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 	if !req.EnforceWorktree {
 		return false, ""
 	}
+	// A Codex coordinator must observe this exact read-only command before an
+	// attested supervised start. It carries no lifecycle target or mutation, so
+	// multi-cycle source ambiguity cannot safely turn it into a deadlock.
+	if searchrouting.IsShellTool(req.Tool) && strings.TrimSpace(req.Command) == "codex --help" {
+		return false, ""
+	}
 	record, ok, selectionReason := selectSupervisedHandoffRecord(req)
 	if selectionReason != "" {
 		return true, selectionReason
@@ -201,6 +210,9 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 			return true, "supervised IssueOps role=worker may use exact heartbeat or handoff finish only; coordinator owns start, recover, accept, phase, remote publish, and cleanup"
 		}
 		return true, "supervised IssueOps MCP lifecycle payload does not match the native session, actor, and persisted fence"
+	}
+	if command := bootstrapCoordinatorStartGuidance(req, record); command != "" {
+		return true, "supervised IssueOps bootstrap requires the authenticated native coordinator identity; rerun this exact harness-authored preview command: " + command
 	}
 	if acceptedCoordinatorDownstreamCommand(req, record) {
 		return true, ""

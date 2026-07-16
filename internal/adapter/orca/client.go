@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -217,6 +217,16 @@ func (c *Client) ListWorktrees(ctx context.Context, repo string) ([]port.OrcaWor
 	return result, nil
 }
 
+func (c *Client) ShowWorktree(ctx context.Context, path string) (port.OrcaWorktree, error) {
+	var payload struct {
+		Worktree worktreePayload `json:"worktree"`
+	}
+	runtimeID, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "worktree", "show", "--worktree", pathSelector(path), "--json"}, &payload)
+	shown := payload.Worktree.portValue()
+	shown.RuntimeID = runtimeID
+	return shown, err
+}
+
 func (c *Client) CreateWorktree(ctx context.Context, req port.OrcaCreateWorktreeRequest) (port.OrcaWorktree, error) {
 	provider, ok := orcaIssueProvider(req.Provider)
 	if !ok {
@@ -238,6 +248,31 @@ func (c *Client) CreateWorktree(ctx context.Context, req port.OrcaCreateWorktree
 	return created, err
 }
 
+func (c *Client) AdoptWorktree(ctx context.Context, req port.OrcaAdoptWorktreeRequest) (port.OrcaWorktree, error) {
+	provider, ok := orcaIssueProvider(req.Provider)
+	if !ok {
+		return port.OrcaWorktree{}, &port.OrcaError{Code: "unsupported_provider", Detail: strings.ToLower(strings.TrimSpace(req.Provider))}
+	}
+	if strings.TrimSpace(req.WorktreeID) == "" || strings.TrimSpace(req.Comment) == "" {
+		return port.OrcaWorktree{}, &port.OrcaError{Code: "worktree_adopt_invalid", Detail: "worktree id and comment are required"}
+	}
+	argv := []string{"orca", "worktree", "set", "--worktree", idSelector(req.WorktreeID), "--comment", strings.TrimSpace(req.Comment)}
+	if provider == "github" {
+		if req.Issue <= 0 {
+			return port.OrcaWorktree{}, &port.OrcaError{Code: "github_issue_required", Detail: "a positive linked GitHub issue number is required"}
+		}
+		argv = append(argv, "--issue", strconv.Itoa(req.Issue))
+	}
+	argv = append(argv, "--json")
+	var payload struct {
+		Worktree worktreePayload `json:"worktree"`
+	}
+	runtimeID, err := c.runJSON(ctx, "", createTimeout, argv, &payload)
+	adopted := payload.Worktree.portValue()
+	adopted.RuntimeID = runtimeID
+	return adopted, err
+}
+
 func (c *Client) RemoveWorktree(ctx context.Context, id string, force bool) error {
 	argv := []string{"orca", "worktree", "rm", "--worktree", idSelector(id)}
 	if force {
@@ -255,7 +290,12 @@ func (c *Client) ListTerminals(ctx context.Context, worktreeID string) ([]port.O
 		TotalCount    *int                  `json:"totalCount"`
 		Truncated     bool                  `json:"truncated"`
 	}
-	runtimeID, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "terminal", "list", "--worktree", idSelector(worktreeID), "--limit", strconv.Itoa(port.OrcaMaxBaselineIDs), "--json"}, &payload)
+	argv := []string{"orca", "terminal", "list"}
+	if strings.TrimSpace(worktreeID) != "" {
+		argv = append(argv, "--worktree", idSelector(worktreeID))
+	}
+	argv = append(argv, "--limit", strconv.Itoa(port.OrcaMaxBaselineIDs), "--json")
+	runtimeID, err := c.runJSON(ctx, "", readTimeout, argv, &payload)
 	if err != nil {
 		return nil, err
 	}
@@ -314,6 +354,46 @@ func (c *Client) CreateTerminal(ctx context.Context, req port.OrcaCreateTerminal
 		return port.OrcaTerminal{}, &port.OrcaError{Code: "terminal_identity_mismatch", Detail: "terminal identity returned by create is incomplete", Invoked: true}
 	}
 	return created, nil
+}
+
+// BootstrapTerminalAgent turns an exact, already-owned legacy terminal into
+// an Orca-recognized agent target before inject dispatch. The worker terminal
+// is selected and sole-writer-attested by IssueOps; this adapter only emits a
+// fixed host command and waits for Orca to settle its TUI state.
+func (c *Client) BootstrapTerminalAgent(ctx context.Context, req port.OrcaBootstrapTerminalAgentRequest) error {
+	if strings.TrimSpace(req.TerminalHandle) == "" {
+		return &port.OrcaError{Code: "terminal_agent_bootstrap_invalid", Detail: "terminal handle is required"}
+	}
+	command, ok := hostCommand(req.Agent)
+	if !ok {
+		return &port.OrcaError{Code: "unsupported_agent", Detail: req.Agent}
+	}
+	if strings.EqualFold(strings.TrimSpace(req.Agent), "codex") && req.AllowCodexHookTrustBypass {
+		command = "codex --dangerously-bypass-hook-trust"
+	}
+	var send struct {
+		Send struct {
+			Accepted bool `json:"accepted"`
+		} `json:"send"`
+	}
+	if _, err := c.runJSON(ctx, "", createTimeout, []string{"orca", "terminal", "send", "--terminal", strings.TrimSpace(req.TerminalHandle), "--text", command, "--enter", "--json"}, &send); err != nil {
+		return err
+	}
+	if !send.Send.Accepted {
+		return &port.OrcaError{Code: "terminal_agent_bootstrap_rejected", Detail: "Orca did not accept the exact terminal bootstrap", Invoked: true}
+	}
+	var wait struct {
+		Wait struct {
+			Satisfied bool `json:"satisfied"`
+		} `json:"wait"`
+	}
+	if _, err := c.runJSON(ctx, "", createTimeout, []string{"orca", "terminal", "wait", "--terminal", strings.TrimSpace(req.TerminalHandle), "--for", "tui-idle", "--timeout-ms", "10000", "--json"}, &wait); err != nil {
+		return err
+	}
+	if !wait.Wait.Satisfied {
+		return &port.OrcaError{Code: "terminal_agent_bootstrap_timeout", Detail: "agent terminal did not reach Orca TUI idle state", Invoked: true}
+	}
+	return nil
 }
 
 func (c *Client) RefreshTerminal(ctx context.Context, worktreeID, ptyID string) (port.OrcaTerminal, error) {
@@ -415,10 +495,11 @@ func (c *Client) SendWorkerDone(ctx context.Context, req port.OrcaWorkerDoneRequ
 		"--body", req.Body,
 		"--task-id", req.TaskID,
 		"--dispatch-id", req.DispatchID,
-		"--files-modified", strings.Join(req.ChangedFiles, ","),
-		"--report-path", req.ReportPath,
-		"--json",
 	}
+	if len(req.ChangedFiles) > 0 {
+		argv = append(argv, "--files-modified", strings.Join(req.ChangedFiles, ","))
+	}
+	argv = append(argv, "--report-path", req.ReportPath, "--json")
 	output, err := c.runner.Run(ctx, "", createTimeout, argv)
 	if err != nil {
 		return port.OrcaWorkerDoneResult{}, err
@@ -448,7 +529,7 @@ func (c *Client) SendWorkerDone(ctx context.Context, req port.OrcaWorkerDoneRequ
 		FilesModified []string `json:"filesModified"`
 		ReportPath    string   `json:"reportPath"`
 	}
-	if len(message.Payload) > 64*1024 || json.Unmarshal([]byte(message.Payload), &evidence) != nil || evidence.TaskID != req.TaskID || evidence.DispatchID != req.DispatchID || !reflect.DeepEqual(evidence.FilesModified, req.ChangedFiles) || evidence.ReportPath != req.ReportPath {
+	if len(message.Payload) > 64*1024 || json.Unmarshal([]byte(message.Payload), &evidence) != nil || evidence.TaskID != req.TaskID || evidence.DispatchID != req.DispatchID || !slices.Equal(evidence.FilesModified, req.ChangedFiles) || evidence.ReportPath != req.ReportPath {
 		return port.OrcaWorkerDoneResult{}, &port.OrcaError{Code: "worker_done_response_mismatch", Detail: "Orca message payload does not match the requested projection", Invoked: true}
 	}
 	return port.OrcaWorkerDoneResult{MessageID: message.ID, Sequence: message.Sequence}, nil
@@ -468,8 +549,8 @@ func validateWorkerDoneRequest(req port.OrcaWorkerDoneRequest) error {
 			return fmt.Errorf("worker_done %s is missing, non-canonical, or unbounded", name)
 		}
 	}
-	if len(req.ChangedFiles) == 0 || len(req.ChangedFiles) > 512 {
-		return fmt.Errorf("worker_done changed files are missing or unbounded")
+	if len(req.ChangedFiles) > 512 {
+		return fmt.Errorf("worker_done changed files are unbounded")
 	}
 	for _, path := range req.ChangedFiles {
 		if path == "" || strings.ContainsAny(path, ",\x00") {
@@ -484,7 +565,7 @@ func validateWorkerDoneRequest(req port.OrcaWorkerDoneRequest) error {
 
 func (c *Client) dispatchResult(ctx context.Context, argv []string) (port.OrcaDispatch, error) {
 	var payload struct {
-		Dispatch struct {
+		Dispatch *struct {
 			ID             string `json:"id"`
 			TaskID         string `json:"task_id"`
 			AssigneeHandle string `json:"assignee_handle"`
@@ -494,7 +575,13 @@ func (c *Client) dispatchResult(ctx context.Context, argv []string) (port.OrcaDi
 		Preamble string `json:"preamble"`
 	}
 	_, err := c.runJSON(ctx, "", createTimeout, argv, &payload)
-	return port.OrcaDispatch{ID: payload.Dispatch.ID, TaskID: payload.Dispatch.TaskID, AssigneeHandle: payload.Dispatch.AssigneeHandle, Status: payload.Dispatch.Status, Injected: payload.Injected, Preamble: payload.Preamble}, err
+	if err != nil {
+		return port.OrcaDispatch{}, err
+	}
+	if payload.Dispatch == nil {
+		return port.OrcaDispatch{}, &port.OrcaError{Code: "not_found"}
+	}
+	return port.OrcaDispatch{ID: payload.Dispatch.ID, TaskID: payload.Dispatch.TaskID, AssigneeHandle: payload.Dispatch.AssigneeHandle, Status: payload.Dispatch.Status, Injected: payload.Injected, Preamble: payload.Preamble}, nil
 }
 
 func (c *Client) runJSON(ctx context.Context, cwd string, timeout time.Duration, argv []string, target any) (string, error) {

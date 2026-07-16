@@ -1307,6 +1307,38 @@ func TestHandoffRecoverExactOneOnlyAndNeverAdvances(t *testing.T) {
 	}
 }
 
+func TestHandoffReconcileLeaseAttestationAllowsSingletonLegacyTerminal(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.CoordinatorMailboxHandle = testCoordinatorRecipient
+	record.ExecutionHandoff.CoordinatorSession = &model.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "coordinator-session", AgentID: "coordinator-agent"}
+	options := handoff.ContextOptions{AllowCodexHookTrustBypass: true}
+	packet, err := handoff.BuildContext(record, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.ExecutionHandoff.ContextVersion = packet.Version
+	record.ExecutionHandoff.ContextSHA256 = packet.SHA256
+	record.ExecutionHandoff.ContextSourceSHA256 = packet.SourceSHA256
+	record.ExecutionHandoff.ContextOptions = &model.IssueOpsExecutionHandoffContextOptions{AllowCodexHookTrustBypass: true}
+	setRecoveryRequiredForTest(&record, IssueOpsExecutionHandoffPendingOperation{Kind: handoff.OperationLeaseAttestation})
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	client.terminals = []port.OrcaTerminal{{
+		Handle: "term-legacy", PTYID: "pty-legacy", WorktreeID: record.ExecutionHandoff.Orca.WorktreeID,
+		WorktreePath: record.ExecutionHandoff.WorkerRoot, Connected: true, Writable: true,
+	}}
+
+	got, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{ID: record.ID, Action: "reconcile"}, client, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateCoordinatorPreparing || got.Orca == nil || got.Orca.WorkerTerminalHandle != "" || client.terminalCreates != 0 || client.taskCreates != 0 || client.dispatchCalls != 0 {
+		t.Fatalf("lease reconcile did not clear only the ambiguous attestation: result=%#v trace=%v", got, client.trace)
+	}
+}
+
 func TestHandoffRecoverDispatchRequiresDurableDeliveryIdentityAndDispatchedStatus(t *testing.T) {
 	tests := []struct {
 		name, expectedAssignee, deliveryMode, returnedAssignee, status, dispatchID string
@@ -1358,6 +1390,43 @@ func TestHandoffRecoverDispatchRequiresDurableDeliveryIdentityAndDispatchedStatu
 				t.Fatal("invalid durable delivery journal was accepted")
 			}
 		})
+	}
+}
+
+func TestHandoffRecoverDispatchNotFoundReturnsToCoordinatorPreparing(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.CoordinatorMailboxHandle = testCoordinatorRecipient
+	record.ExecutionHandoff.Orca.WorkerPTYID = "pty-1"
+	record.ExecutionHandoff.Orca.WorkerTerminalHandle = "term-1"
+	record.ExecutionHandoff.Orca.TaskID = "task-1"
+	setRecoveryRequiredForTest(&record, IssueOpsExecutionHandoffPendingOperation{
+		Kind: handoff.OperationDispatch, ExpectedAssigneeHandle: "term-1", DeliveryMode: "inject",
+	})
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	client.dispatchShowErr = &port.OrcaError{Code: "not_found", Invoked: true}
+
+	got, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "reconcile",
+	}, client, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateCoordinatorPreparing || got.NextCommand == "" {
+		t.Fatalf("absent dispatch recovery = %#v, want coordinator preparation retry", got)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := persisted.ExecutionHandoff
+	if h.PendingOperation != nil || h.Failure != nil || h.DeliveryMode != "" || h.DispatchedAt != "" {
+		t.Fatalf("absent dispatch recovery retained terminal state: %#v", h)
+	}
+	if h.Orca.TaskID != "task-1" || h.Orca.WorkerTerminalHandle != "term-1" || h.Orca.DispatchID != "" || h.Orca.WorkerMailboxHandle != "" {
+		t.Fatalf("absent dispatch recovery changed retained identity: %#v", h.Orca)
 	}
 }
 

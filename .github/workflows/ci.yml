@@ -30,6 +30,8 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - uses: oven-sh/setup-bun@v2
+
       - name: Format check (gofmt)
         # gofmt does not understand the `./...` package pattern, so check the
         # tracked Go files explicitly (this also skips vendored / worktree copies).
@@ -69,5 +71,5 @@ jobs:
             rm -rf "$tmp_home"
           }
           trap cleanup EXIT
-          HOME="$tmp_home" CODEX_HOME="$tmp_home/.codex" ./scripts/install-native.sh --skip-upstream-tools --skip-build --path-mode=skip
+          HOME="$tmp_home" CODEX_HOME="$tmp_home/.codex" ./scripts/install-native.sh --skip-build --path-mode=skip
           HOME="$tmp_home" CODEX_HOME="$tmp_home/.codex" ./bin/agent-harness self-verify --seed=100 --target-score=95 --json

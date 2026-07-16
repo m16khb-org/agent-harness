@@ -435,6 +435,9 @@ func cloneResult(value model.IssueOpsExecutionHandoffResult) model.IssueOpsExecu
 }
 
 func cleanChangedFileList(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
 	clean := make([]string, 0, len(values))
 	seen := map[string]struct{}{}
 	for _, value := range values {
@@ -446,6 +449,9 @@ func cleanChangedFileList(values []string) []string {
 		}
 		seen[value] = struct{}{}
 		clean = append(clean, value)
+	}
+	if len(clean) == 0 {
+		return nil
 	}
 	return clean
 }

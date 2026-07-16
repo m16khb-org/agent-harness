@@ -121,11 +121,35 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 		cwd, cwdOK := oneFlag(flags, "--cwd")
 		worktreeID, wtOK := oneFlag(flags, "--orca-worktree-id")
 		return worker && currentWorkerBranchMatches(record) && h.State == handoff.StateDispatched && exactFenceFlags(flags, record) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && wtOK && h.Orca != nil && worktreeID == h.Orca.WorktreeID
-	case "heartbeat", "handoff finish":
+	case "heartbeat":
 		return worker && currentWorkerBranchMatches(record) && exactFenceFlags(flags, record) && nativeSessionMatches(req, h.WorkerSession) && eventIdentityFlagsMatch(req, flags)
+	case "handoff finish":
+		return worker && currentWorkerBranchMatches(record) && exactFenceFlags(flags, record) && nativeSessionMatches(req, h.WorkerSession) && eventIdentityFlagsMatch(req, flags) && exactNoChangeFinishFlags(flags)
 	default:
 		return false
 	}
+}
+
+// exactNoChangeFinishFlags keeps the hook's worker authority in lockstep with
+// the CLI's self-healing no-change finish path. The CLI derives these values
+// from the sealed record and worker filesystem; accepting caller-provided
+// equivalents here would let the hook authorize a materially different result.
+func exactNoChangeFinishFlags(flags map[string][]string) bool {
+	if _, noChange := flags["--no-change"]; !noChange {
+		return true
+	}
+	if outcome, specified := oneFlag(flags, "--outcome"); specified && outcome != string(handoff.OutcomeCompleted) {
+		return false
+	}
+	if len(flags["--verification"]) == 0 {
+		return false
+	}
+	for _, prohibited := range []string{"--changed-file", "--turing-report", "--cleanup-receipt", "--final-head", "--task-id", "--dispatch-id"} {
+		if _, present := flags[prohibited]; present {
+			return false
+		}
+	}
+	return true
 }
 
 func exactCoordinatorPreparingCancel(req HookToolUseLifecycleRequest, flags map[string][]string, record IssueOpsRecord) bool {
@@ -740,6 +764,42 @@ func buildCoordinatorDispatchCommand(record IssueOpsRecord, host, sessionID, age
 		parts = append(parts, "--coordinator-agent-id "+shellGuidanceQuote(agentID))
 	}
 	parts = append(parts, "--source-cwd "+shellGuidanceQuote(record.Repo))
+	return strings.Join(parts, " ")
+}
+
+// bootstrapCoordinatorStartGuidance recognizes only the first, unsealed
+// coordinator-start probe. The hook supplies the native identity from its
+// authenticated event and leaves the exact terminal handle supplied by the
+// caller intact. The probe itself stays blocked, so no lifecycle mutation can
+// run with a missing or guessed identity.
+func bootstrapCoordinatorStartGuidance(req HookToolUseLifecycleRequest, record IssueOpsRecord) string {
+	if !searchrouting.IsShellTool(req.Tool) || record.ExecutionHandoff == nil {
+		return ""
+	}
+	h := record.ExecutionHandoff
+	if h.State != handoff.StateCoordinatorPreparing || h.CoordinatorSession != nil || strings.TrimSpace(h.CoordinatorMailboxHandle) != "" || h.PendingOperation != nil || h.WorkerSession != nil || h.Result != nil || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || strings.TrimSpace(req.Host) == "" || strings.TrimSpace(req.SessionID) == "" {
+		return ""
+	}
+	command, flags, ok := parsedExactIssueOps(req.Command)
+	if !ok || command.Path != "handoff start" || len(flags) < 3 || len(flags) > 4 {
+		return ""
+	}
+	id, idOK := oneFlag(flags, "--id")
+	recipient, recipientOK := oneFlag(flags, "--coordinator-recipient")
+	sourceCWD, cwdOK := oneFlag(flags, "--source-cwd")
+	if !idOK || id != record.ID || !recipientOK || !concreteCoordinatorTerminalHandle.MatchString(recipient) || len(recipient) > 256 || !cwdOK || cleanAbsPath(sourceCWD) != cleanAbsPath(record.Repo) {
+		return ""
+	}
+	if len(flags) == 4 {
+		if _, ok := flags["--json"]; !ok {
+			return ""
+		}
+	}
+	parts := []string{"agent-harness issueops handoff start", "--id " + shellGuidanceQuote(record.ID), "--coordinator-recipient " + shellGuidanceQuote(recipient), "--coordinator-host " + shellGuidanceQuote(req.Host), "--coordinator-session-id " + shellGuidanceQuote(req.SessionID)}
+	if strings.TrimSpace(req.AgentID) != "" {
+		parts = append(parts, "--coordinator-agent-id "+shellGuidanceQuote(req.AgentID))
+	}
+	parts = append(parts, "--source-cwd "+shellGuidanceQuote(record.Repo), "--json")
 	return strings.Join(parts, " ")
 }
 

@@ -72,6 +72,13 @@ func TestExactFlagsCorpus(t *testing.T) {
 	if _, ok := ExactFlags(cmd4, v4, b4, r4); ok {
 		t.Fatal("duplicate non-repeatable flag must be rejected")
 	}
+	// The long-form legacy spelling remains valid because older coordinator
+	// packets emitted it. It must not fall back to multi-cycle ambiguity.
+	cmd5, _ := ParseExactIssueOpsCommand("agent-harness issueops handoff start --id io-1 --verification-command go-test --verification-command go-vet")
+	v5, b5, r5 := spec(cmd5.Path)
+	if flags, ok := ExactFlags(cmd5, v5, b5, r5); !ok || len(flags["--verification-command"]) != 2 {
+		t.Fatalf("legacy verification-command alias not accepted: ok=%v flags=%#v", ok, flags)
+	}
 }
 
 func TestExactReadOnlyShellCommandCorpus(t *testing.T) {

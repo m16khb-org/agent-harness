@@ -15,6 +15,7 @@ func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 		"issueops_link_issue",
 		"issueops_prepare_branch",
 		"issueops_link_worktree",
+		"issueops_migrate_legacy_worktree",
 		"issueops_review_design",
 		"issueops_link_plan",
 		"issueops_prepare_worktree_tools",
@@ -63,6 +64,9 @@ func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 	}
 	if !schemaRequires(byName["issueops_link_worktree"].InputSchema, "worktree_path") {
 		t.Fatalf("issueops_link_worktree must require worktree_path: %#v", byName["issueops_link_worktree"].InputSchema)
+	}
+	if !schemaHasProperty(byName["issueops_migrate_legacy_worktree"].InputSchema, "confirm") {
+		t.Fatalf("issueops_migrate_legacy_worktree schema missing confirm: %#v", byName["issueops_migrate_legacy_worktree"].InputSchema)
 	}
 	if !schemaRequires(byName["issueops_review_design"].InputSchema, "verification") {
 		t.Fatalf("issueops_review_design must require verification: %#v", byName["issueops_review_design"].InputSchema)
@@ -166,6 +170,9 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 		if !schemaRequires(verifyRemote.InputSchema, required) {
 			t.Fatalf("issueops_verify_remote_artifact must require %q: %#v", required, verifyRemote.InputSchema)
 		}
+	}
+	if !schemaHasProperty(verifyRemote.InputSchema, "target_branch") {
+		t.Fatalf("issueops_verify_remote_artifact schema missing target_branch: %#v", verifyRemote.InputSchema)
 	}
 
 	if !schemaRequires(byName["issueops_pr_readiness"].InputSchema, "id") {

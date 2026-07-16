@@ -33,6 +33,25 @@ func TestClientProjectsWorkerDoneThroughDedicatedSafeArgvMethod(t *testing.T) {
 	}
 }
 
+func TestClientProjectsNoChangeWorkerDoneWithoutFilesModifiedFlag(t *testing.T) {
+	runner := newFakeRunner(t)
+	req := port.OrcaWorkerDoneRequest{
+		FromHandle: "term_worker", ToHandle: "term_coordinator", Subject: "Completed no-change issue io-demo",
+		Body:   "Verification evidence is persisted and no files changed.",
+		TaskID: "task-1", DispatchID: "dispatch-1", ReportPath: "/repo/report.md",
+	}
+	argv := []string{"orca", "orchestration", "send", "--to", req.ToHandle, "--from", req.FromHandle, "--type", "worker_done", "--subject", req.Subject, "--body", req.Body, "--task-id", req.TaskID, "--dispatch-id", req.DispatchID, "--report-path", req.ReportPath, "--json"}
+	runner.responses[strings.Join(argv, " ")] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{"message":{"id":"msg-clean","from_handle":"term_worker","to_handle":"term_coordinator","type":"worker_done","subject":"Completed no-change issue io-demo","body":"Verification evidence is persisted and no files changed.","payload":"{\"taskId\":\"task-1\",\"dispatchId\":\"dispatch-1\",\"filesModified\":[],\"reportPath\":\"/repo/report.md\"}","sequence":43}}}`)}
+
+	got, err := NewClient(runner).SendWorkerDone(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.MessageID != "msg-clean" || got.Sequence != 43 || len(runner.calls) != 1 || !slices.Equal(runner.calls[0], argv) {
+		t.Fatalf("no-change worker_done projection = %#v calls=%#v", got, runner.calls)
+	}
+}
+
 func TestClientWorkerDonePreconditionAndAmbiguityCallCounts(t *testing.T) {
 	valid := port.OrcaWorkerDoneRequest{
 		FromHandle: "term_worker", ToHandle: "term_coordinator", Subject: "Completed issue io-demo",
@@ -414,6 +433,34 @@ func TestClientBuildsSpikeVerifiedArgvWithoutShell(t *testing.T) {
 	}
 }
 
+func TestClientAdoptsExistingGitHubWorktreeWithIssueAndMarker(t *testing.T) {
+	runner := newFakeRunner(t)
+	command := "orca worktree set --worktree id:worktree-1 --comment agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1 --issue 16 --json"
+	runner.responses[command] = fixtureOutput(t, "worktree_create.json")
+	got, err := NewClient(runner).AdoptWorktree(context.Background(), port.OrcaAdoptWorktreeRequest{
+		WorktreeID: "worktree-1", Provider: "github", Issue: 16, Comment: "agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != "worktree-1" || got.InstanceID != "instance-1" || len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != command {
+		t.Fatalf("adopted worktree = %#v calls=%#v", got, runner.calls)
+	}
+}
+
+func TestClientShowsExistingWorktreeByExactPath(t *testing.T) {
+	runner := newFakeRunner(t)
+	command := "orca worktree show --worktree path:/repo.worktrees/16-demo --json"
+	runner.responses[command] = fixtureOutput(t, "worktree_create.json")
+	got, err := NewClient(runner).ShowWorktree(context.Background(), "/repo.worktrees/16-demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != "worktree-1" || got.InstanceID != "instance-1" || len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != command {
+		t.Fatalf("shown worktree = %#v calls=%#v", got, runner.calls)
+	}
+}
+
 func TestClientCreateWorktreeUsesProviderSpecificIssueMetadata(t *testing.T) {
 	for _, tt := range []struct {
 		name, provider, command, output string
@@ -465,6 +512,21 @@ func TestClientRefreshesTerminalHandleByWorktreeAndPTY(t *testing.T) {
 	}
 	if terminal.RuntimeID != "runtime-1" || terminal.Handle != "term-live" || terminal.PTYID != "pty-2" || terminal.TabID != "tab-live" || terminal.LeafID != "leaf-live" || terminal.Title != "agent-harness issueops=io-demo ownership=epoch-1 attempt=1" {
 		t.Fatalf("refreshed terminal = %#v", terminal)
+	}
+}
+
+func TestClientListsCompleteGlobalTerminalInventoryWithoutWorktreeSelector(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca terminal list --limit 512 --json"] = fixtureOutput(t, "terminal_list.json")
+	terminals, err := NewClient(runner).ListTerminals(context.Background(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(terminals) != 2 || terminals[0].Handle != "term-old" || terminals[1].Handle != "term-live" {
+		t.Fatalf("global terminal inventory = %#v", terminals)
+	}
+	if len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != "orca terminal list --limit 512 --json" {
+		t.Fatalf("global terminal inventory argv = %#v", runner.calls)
 	}
 }
 
@@ -525,6 +587,22 @@ func TestClientCreateTerminalNegotiatesOnlyFixedBuiltInLaunchShape(t *testing.T)
 				t.Fatalf("fixed launch negotiation terminal=%#v calls=%#v", terminal, runner.calls)
 			}
 		})
+	}
+}
+
+func TestClientBootstrapsExactLegacyTerminalWithAttestedCodex(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca terminal send --terminal term-legacy --text codex --dangerously-bypass-hook-trust --enter --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"send":{"accepted":true}}}`)}
+	runner.responses["orca terminal wait --terminal term-legacy --for tui-idle --timeout-ms 10000 --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"wait":{"satisfied":true}}}`)}
+	if err := NewClient(runner).BootstrapTerminalAgent(context.Background(), port.OrcaBootstrapTerminalAgentRequest{TerminalHandle: "term-legacy", Agent: "codex", AllowCodexHookTrustBypass: true}); err != nil {
+		t.Fatal(err)
+	}
+	want := [][]string{
+		{"orca", "terminal", "send", "--terminal", "term-legacy", "--text", "codex --dangerously-bypass-hook-trust", "--enter", "--json"},
+		{"orca", "terminal", "wait", "--terminal", "term-legacy", "--for", "tui-idle", "--timeout-ms", "10000", "--json"},
+	}
+	if !reflect.DeepEqual(runner.calls, want) {
+		t.Fatalf("bootstrap calls = %#v, want %#v", runner.calls, want)
 	}
 }
 
@@ -690,6 +768,16 @@ func TestClientShowDispatchDecodesInstalledShapeWithoutInjectedField(t *testing.
 	}
 	if got.Injected {
 		t.Fatalf("dispatch-show must not synthesize absent injected evidence: %#v", got)
+	}
+}
+
+func TestClientShowDispatchNullReturnsNotFound(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca orchestration dispatch-show --task task-absent --json"] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{"dispatch":null}}`)}
+	_, err := NewClient(runner).ShowDispatch(context.Background(), "task-absent")
+	var orcaErr *port.OrcaError
+	if !errors.As(err, &orcaErr) || orcaErr.Code != "not_found" {
+		t.Fatalf("dispatch=null error = %v, want Orca not_found", err)
 	}
 }
 

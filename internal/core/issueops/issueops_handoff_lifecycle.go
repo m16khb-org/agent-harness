@@ -294,6 +294,9 @@ func normalizeHandoffFinishRequest(req IssueOpsHandoffFinishRequest) IssueOpsHan
 }
 
 func canonicalChangedFileList(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
 	seen := map[string]struct{}{}
 	clean := make([]string, 0, len(values))
 	for _, value := range values {
@@ -305,6 +308,9 @@ func canonicalChangedFileList(values []string) []string {
 		}
 		seen[value] = struct{}{}
 		clean = append(clean, value)
+	}
+	if len(clean) == 0 {
+		return nil
 	}
 	return clean
 }
@@ -518,8 +524,10 @@ func validateHandoffAcceptEvidence(record IssueOpsRecord, req IssueOpsHandoffAcc
 	if err != nil || filepath.IsAbs(reportRelative) || reportRelative == ".." || strings.HasPrefix(filepath.ToSlash(reportRelative), "../") {
 		return fmt.Errorf("Turing report must resolve to a safe relative worker path")
 	}
-	if _, ok := expected[filepath.ToSlash(filepath.Clean(reportRelative))]; !ok {
-		return fmt.Errorf("committed Turing report must be included in changed_files")
+	if len(actual) > 0 {
+		if _, ok := expected[filepath.ToSlash(filepath.Clean(reportRelative))]; !ok {
+			return fmt.Errorf("committed Turing report must be included in changed_files")
+		}
 	}
 	return nil
 }

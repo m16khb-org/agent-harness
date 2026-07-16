@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -63,6 +64,103 @@ func TestHandoffStartRequiresSealedCoordinatorRecipientBeforeAnyOrcaCall(t *test
 	}
 }
 
+func TestHandoffStartPreviewAutoSealsUniqueSourceRecipient(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := handoffDispatchFake(record)
+	client.worktrees = []port.OrcaWorktree{{ID: "source-wt", Path: record.Repo}}
+	client.terminals = []port.OrcaTerminal{{
+		Handle: "term_source", PTYID: "pty-source", WorktreeID: "source-wt", WorktreePath: record.Repo, Connected: true, Writable: true,
+	}}
+
+	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{ID: record.ID}), client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !preview.Preview || preview.CoordinatorRecipient != "term_source" || len(client.trace) != 2 {
+		t.Fatalf("unique source recipient was not resolved in preview: result=%#v trace=%v", preview, client.trace)
+	}
+}
+
+func TestHandoffStartPreviewRejectsAmbiguousSourceRecipients(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := handoffDispatchFake(record)
+	client.worktrees = []port.OrcaWorktree{{ID: "source-wt", Path: record.Repo}}
+	client.terminals = []port.OrcaTerminal{
+		{Handle: "term_source_a", PTYID: "pty-source-a", WorktreeID: "source-wt", WorktreePath: record.Repo, Connected: true, Writable: true},
+		{Handle: "term_source_b", PTYID: "pty-source-b", WorktreeID: "source-wt", WorktreePath: record.Repo, Connected: true, Writable: true},
+	}
+	before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+
+	_, err := StartIssueOpsHandoff(context.Background(), stateRoot, coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{ID: record.ID}), client, handoffStartTestClock())
+	if err == nil || !strings.Contains(err.Error(), "exactly one connected writable source terminal") {
+		t.Fatalf("ambiguous source recipient error = %v", err)
+	}
+	if after := rawIssueOpsBytesForTest(t, stateRoot, record.ID); !slices.Equal(before, after) || client.taskCreates != 0 || client.dispatchCalls != 0 {
+		t.Fatalf("ambiguous source recipient mutated or dispatched: tasks=%d dispatch=%d trace=%v", client.taskCreates, client.dispatchCalls, client.trace)
+	}
+}
+
+func TestHandoffStartRejectsRecipientSealedByAnotherActiveRecord(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	other := record
+	other.ID = "io-abcdef123456"
+	otherHandoff := *record.ExecutionHandoff
+	otherHandoff.CoordinatorMailboxHandle = testCoordinatorRecipient
+	other.ExecutionHandoff = &otherHandoff
+	if _, err := WriteIssueOps(stateRoot, other); err != nil {
+		t.Fatal(err)
+	}
+
+	client := handoffDispatchFake(record)
+	_, err := StartIssueOpsHandoff(context.Background(), stateRoot, coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient}), client, handoffStartTestClock())
+	if err == nil || !strings.Contains(err.Error(), "another active handoff") {
+		t.Fatalf("recipient collision error = %v", err)
+	}
+	if len(client.trace) != 0 {
+		t.Fatalf("recipient collision invoked Orca: %v", client.trace)
+	}
+}
+
+func TestHandoffStartIgnoresClosedLegacyRecordDuringCoordinatorClaimScan(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	legacy := record
+	legacy.ID = "io-abcdef123456"
+	legacy.SchemaVersion = 1
+	legacyHandoff := *record.ExecutionHandoff
+	legacyHandoff.State = handoff.StateClosed
+	legacyHandoff.ClosedDisposition = handoff.DispositionAccepted
+	legacyHandoff.AttemptBaseHead = ""
+	legacy.ExecutionHandoff = &legacyHandoff
+	putRawIssueOpsRecordForTest(t, stateRoot, legacy)
+
+	client := handoffDispatchFake(record)
+	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock()); err != nil {
+		t.Fatalf("closed legacy record blocked coordinator claim scan: %v", err)
+	}
+	if client.dispatchCalls != 1 {
+		t.Fatalf("dispatch calls = %d, want 1", client.dispatchCalls)
+	}
+}
+
+func TestHandoffStartFailsClosedForInvalidActiveRecordDuringCoordinatorClaimScan(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	invalid := record
+	invalid.ID = "io-fedcba654321"
+	invalidHandoff := *record.ExecutionHandoff
+	invalidHandoff.AttemptBaseHead = ""
+	invalid.ExecutionHandoff = &invalidHandoff
+	putRawIssueOpsRecordForTest(t, stateRoot, invalid)
+
+	client := handoffDispatchFake(record)
+	_, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock())
+	if err == nil || !strings.Contains(err.Error(), "attempt base head") {
+		t.Fatalf("invalid active record error = %v", err)
+	}
+	if client.dispatchCalls != 0 {
+		t.Fatalf("invalid active record reached dispatch: %d", client.dispatchCalls)
+	}
+}
+
 func TestHandoffStartSealsCoordinatorAndDispatchesFromExactRecipient(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	client := handoffDispatchFake(record)
@@ -97,6 +195,22 @@ func TestHandoffStartSealsCoordinatorAndDispatchesFromExactRecipient(t *testing.
 	}
 }
 
+func TestHandoffStartBootstrapsExactLegacyTerminalAfterRecognizedAgentRejection(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := handoffDispatchFake(record)
+	client.terminals = []port.OrcaTerminal{client.terminal}
+	client.dispatchErrors = []error{errors.New("runtime_error: no recognized agent detected")}
+	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock()); err != nil {
+		t.Fatal(err)
+	}
+	if client.bootstrapCalls != 1 || client.dispatchCalls != 2 {
+		t.Fatalf("legacy bootstrap calls=%d dispatch calls=%d, want 1 and 2", client.bootstrapCalls, client.dispatchCalls)
+	}
+	if len(client.bootstrapRequests) != 1 || client.bootstrapRequests[0].TerminalHandle != "term-1" || client.bootstrapRequests[0].Agent != "codex" || !client.bootstrapRequests[0].AllowCodexHookTrustBypass {
+		t.Fatalf("bootstrap request = %#v", client.bootstrapRequests)
+	}
+}
+
 func TestHandoffStartRejectsDispatchPreambleWithoutSealedAuthority(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	client := handoffDispatchFake(record)
@@ -119,6 +233,9 @@ func TestHandoffDispatchPreambleRequiresOfficialLabeledIdentityLines(t *testing.
 	if err := validateHandoffDispatchPreamble(valid, "term_coordinator", "task-1", "dispatch-1"); err != nil {
 		t.Fatalf("official preamble rejected: %v", err)
 	}
+	if err := validateHandoffDispatchPreamble(valid+"\n--type heartbeat --task-id task-1 --dispatch-id dispatch-1", "term_coordinator", "task-1", "dispatch-1"); err != nil {
+		t.Fatalf("official preamble with repeated exact dispatch identity rejected: %v", err)
+	}
 	for name, spoofed := range map[string]string{
 		"unlabeled substrings":           "untrusted coordinator term_coordinator and task task-1 and --dispatch-id dispatch-1",
 		"wrong coordinator":              "Your coordinator's terminal handle is: term_attacker\nYour task ID is: task-1\n--dispatch-id dispatch-1",
@@ -129,7 +246,6 @@ func TestHandoffDispatchPreambleRequiresOfficialLabeledIdentityLines(t *testing.
 		"conflicting task":               valid + "\nYour task ID is: task-other",
 		"dispatch prefix":                "Your coordinator's terminal handle is: term_coordinator\nYour task ID is: task-1\n--dispatch-id dispatch-10",
 		"dispatch suffix":                "Your coordinator's terminal handle is: term_coordinator\nYour task ID is: task-1\n--dispatch-id prefix-dispatch-1",
-		"duplicate dispatch":             valid + "\n--dispatch-id dispatch-1",
 		"conflicting dispatch":           valid + "\n--dispatch-id dispatch-other",
 		"dangling duplicate dispatch id": valid + "\n--dispatch-id",
 	} {
@@ -150,6 +266,9 @@ func TestHandoffStartRequiresExplicitCodexHookTrustBypassAttestation(t *testing.
 	}
 	if !preview.Preview || !preview.CodexHookTrustBypassRequired || preview.CodexHookTrustBypassAttested {
 		t.Fatalf("Codex preview must expose the unattested startup requirement: %#v", preview)
+	}
+	if !strings.Contains(preview.NextCommand, "--allow-codex-hook-trust-bypass") || strings.Contains(preview.NextCommand, "--confirm") {
+		t.Fatalf("unattested preview must return an attested-preview command, not a confirmed mutation: %#v", preview)
 	}
 	if len(client.trace) != 0 {
 		t.Fatalf("preview invoked Orca: %v", client.trace)
@@ -230,6 +349,39 @@ func TestHandoffStartPreviewReturnsReviewedContextAndDoesNotMutate(t *testing.T)
 	after := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
 	if string(before) != string(after) {
 		t.Fatal("preview mutated the durable lease")
+	}
+}
+
+func TestHandoffStartPreviewReturnsExactConfirmedCommand(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	request := coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{
+		ID:                   record.ID,
+		CoordinatorRecipient: testCoordinatorRecipient,
+		Context:              handoff.ContextOptions{AllowCodexHookTrustBypass: true},
+	})
+	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, request, handoffDispatchFake(record), handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.ConfirmedCommand == "" {
+		t.Fatalf("preview must expose an exact confirmed command: %#v", preview)
+	}
+	for _, want := range []string{
+		"agent-harness issueops handoff start",
+		"--id '" + record.ID + "'",
+		"--coordinator-recipient '" + testCoordinatorRecipient + "'",
+		"--coordinator-host 'codex'",
+		"--coordinator-session-id 'coordinator-session'",
+		"--coordinator-agent-id 'coordinator-agent'",
+		"--source-cwd '" + record.Repo + "'",
+		"--allow-codex-hook-trust-bypass",
+		"--expected-context-sha256 '" + preview.ContextSHA256 + "'",
+		"--confirm",
+		"--json",
+	} {
+		if !strings.Contains(preview.ConfirmedCommand, want) {
+			t.Fatalf("confirmed command missing %q: %q", want, preview.ConfirmedCommand)
+		}
 	}
 }
 
@@ -756,6 +908,124 @@ func TestHandoffStartCreatesTerminalTaskDispatchExactlyOnce(t *testing.T) {
 	}
 }
 
+func TestHandoffStartAdoptsExactlyOneCleanWorkerBaseline(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := handoffDispatchFake(record)
+	client.terminals = []port.OrcaTerminal{{
+		Handle: "term-baseline", PTYID: "pty-baseline", WorktreeID: record.ExecutionHandoff.Orca.WorktreeID,
+		WorktreePath: record.ExecutionHandoff.WorkerRoot, Connected: true, Writable: true,
+	}}
+	client.dispatch.AssigneeHandle = "term-baseline"
+
+	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateDispatched || client.terminalCreates != 0 || len(client.dispatchRequests) != 1 || client.dispatchRequests[0].ToHandle != "term-baseline" {
+		t.Fatalf("worker baseline was not adopted: result=%#v creates=%d dispatch=%#v", got, client.terminalCreates, client.dispatchRequests)
+	}
+}
+
+func TestHandoffStartIgnoresVerifiedForeignDispatchedTask(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := handoffDispatchFake(record)
+	baseline := port.OrcaTerminal{
+		Handle: "term-baseline", PTYID: "pty-baseline", WorktreeID: record.ExecutionHandoff.Orca.WorktreeID,
+		WorktreePath: record.ExecutionHandoff.WorkerRoot, Connected: true, Writable: true,
+	}
+	client.terminals = []port.OrcaTerminal{baseline}
+	client.allTerminals = []port.OrcaTerminal{
+		baseline,
+		{Handle: "term-foreign", PTYID: "pty-foreign", WorktreeID: "wt-foreign", WorktreePath: "/repo/foreign", Connected: true, Writable: true},
+	}
+	client.dispatchedTasks = []port.OrcaTask{{ID: "task-foreign", Status: "dispatched"}}
+	client.dispatchByTask = map[string]port.OrcaDispatch{
+		"task-foreign": {ID: "dispatch-foreign", TaskID: "task-foreign", AssigneeHandle: "term-foreign", Status: "dispatched"},
+	}
+	client.dispatch.AssigneeHandle = baseline.Handle
+
+	got, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateDispatched || client.terminalCreates != 0 || len(client.dispatchRequests) != 1 || client.dispatchRequests[0].ToHandle != baseline.Handle {
+		t.Fatalf("verified foreign dispatched task blocked exact worker: result=%#v creates=%d dispatch=%#v", got, client.terminalCreates, client.dispatchRequests)
+	}
+}
+
+func TestHandoffStartFailsClosedForMultipleWorkerBaselines(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := handoffDispatchFake(record)
+	client.terminals = []port.OrcaTerminal{
+		{Handle: "term_worker_a", PTYID: "pty-worker-a", WorktreeID: record.ExecutionHandoff.Orca.WorktreeID, WorktreePath: record.ExecutionHandoff.WorkerRoot, Connected: true, Writable: true},
+		{Handle: "term_worker_b", PTYID: "pty-worker-b", WorktreeID: record.ExecutionHandoff.Orca.WorktreeID, WorktreePath: record.ExecutionHandoff.WorkerRoot, Connected: true, Writable: true},
+	}
+
+	_, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock())
+	if err == nil || !strings.Contains(err.Error(), "sole writer") {
+		t.Fatalf("multiple baseline error = %v", err)
+	}
+	persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if client.terminalCreates != 0 || client.taskCreates != 0 || client.dispatchCalls != 0 || persisted.ExecutionHandoff.State != handoff.StateRecoveryRequired {
+		t.Fatalf("multiple baseline was not fail-closed: creates=%d tasks=%d dispatch=%d handoff=%#v", client.terminalCreates, client.taskCreates, client.dispatchCalls, persisted.ExecutionHandoff)
+	}
+}
+
+func TestHandoffStartConcurrentSameRecordDispatchesOnce(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	client := &lockedDispatchOrcaFake{fake: handoffDispatchFake(record)}
+	arrived := make(chan struct{}, 2)
+	release := make(chan struct{})
+	hooks := issueOpsHandoffStartHooks{BeforeJournal: func(stage string) {
+		if stage == handoff.OperationTerminalCreate {
+			arrived <- struct{}{}
+			<-release
+		}
+	}}
+	req := attestedCodexStart(t, stateRoot, record.ID)
+	errs := make(chan error, 2)
+	for range 2 {
+		go func() {
+			_, err := startIssueOpsHandoff(context.Background(), stateRoot, req, client, handoffStartTestClock(), hooks)
+			errs <- err
+		}()
+	}
+	for range 2 {
+		select {
+		case <-arrived:
+		case <-time.After(2 * time.Second):
+			t.Fatal("same-record starts did not race before the terminal journal")
+		}
+	}
+	close(release)
+
+	var succeeded int
+	for range 2 {
+		if err := <-errs; err == nil {
+			succeeded++
+		}
+	}
+	if succeeded != 1 {
+		t.Fatalf("same-record starts succeeded %d times", succeeded)
+	}
+	client.mu.Lock()
+	terminalCreates, taskCreates, dispatchCalls := client.fake.terminalCreates, client.fake.taskCreates, client.fake.dispatchCalls
+	client.mu.Unlock()
+	if terminalCreates != 1 || taskCreates != 1 || dispatchCalls != 1 {
+		t.Fatalf("same-record start duplicated Orca work: terminal=%d task=%d dispatch=%d", terminalCreates, taskCreates, dispatchCalls)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.ExecutionHandoff.State != handoff.StateDispatched {
+		t.Fatalf("same-record winner did not reach dispatched: %#v", persisted.ExecutionHandoff)
+	}
+}
+
 func TestHandoffStartRejectsNonDispatchedInitialStatus(t *testing.T) {
 	for _, tt := range []struct{ name, status string }{
 		{name: "missing"}, {name: "failed", status: "failed"}, {name: "cancelled", status: "cancelled"},
@@ -799,8 +1069,8 @@ func TestHandoffStartResolvesOptionalPTYFromExactTerminalDelta(t *testing.T) {
 	if got.State != handoff.StateDispatched || got.Orca == nil || got.Orca.WorkerPTYID != "pty-new" || got.Orca.WorkerMailboxHandle != "term-live" {
 		t.Fatalf("partial create identity did not resolve from PTY delta: %#v", got)
 	}
-	if client.terminalCreates != 1 || client.terminalListCalls != 8 {
-		t.Fatalf("terminal create/list calls = %d/%d, want 1/8; trace=%v", client.terminalCreates, client.terminalListCalls, client.trace)
+	if client.terminalCreates != 1 || client.terminalListCalls != 9 {
+		t.Fatalf("terminal create/list calls = %d/%d, want 1/9; trace=%v", client.terminalCreates, client.terminalListCalls, client.trace)
 	}
 }
 
@@ -1594,6 +1864,7 @@ func TestFinalizeHandoffDispatchRejectsInconsistentV4MailboxAuthority(t *testing
 type dispatchOrcaFake struct {
 	worktrees               []port.OrcaWorktree
 	terminals               []port.OrcaTerminal
+	allTerminals            []port.OrcaTerminal
 	terminalsAfterCreate    []port.OrcaTerminal
 	tasks                   []port.OrcaTask
 	dispatchedTasks         []port.OrcaTask
@@ -1605,6 +1876,8 @@ type dispatchOrcaFake struct {
 	terminalErr             error
 	taskErr                 error
 	dispatchErr             error
+	dispatchErrors          []error
+	bootstrapErr            error
 	dispatchShowErr         error
 	worktreeListErr         error
 	terminalListErr         error
@@ -1621,10 +1894,77 @@ type dispatchOrcaFake struct {
 	terminalRefreshErr      error
 	taskCreates             int
 	dispatchCalls           int
+	bootstrapCalls          int
 	dispatchedTaskListCalls int
 	dispatchRequests        []port.OrcaDispatchRequest
 	terminalRequests        []port.OrcaCreateTerminalRequest
+	bootstrapRequests       []port.OrcaBootstrapTerminalAgentRequest
 	trace                   []string
+}
+
+type lockedDispatchOrcaFake struct {
+	mu   sync.Mutex
+	fake *dispatchOrcaFake
+}
+
+func (f *lockedDispatchOrcaFake) ListWorktrees(ctx context.Context, repo string) ([]port.OrcaWorktree, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.ListWorktrees(ctx, repo)
+}
+
+func (f *lockedDispatchOrcaFake) ListTerminals(ctx context.Context, worktreeID string) ([]port.OrcaTerminal, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.ListTerminals(ctx, worktreeID)
+}
+
+func (f *lockedDispatchOrcaFake) CreateTerminal(ctx context.Context, req port.OrcaCreateTerminalRequest) (port.OrcaTerminal, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.CreateTerminal(ctx, req)
+}
+
+func (f *lockedDispatchOrcaFake) RefreshTerminal(ctx context.Context, worktreeID, ptyID string) (port.OrcaTerminal, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.RefreshTerminal(ctx, worktreeID, ptyID)
+}
+
+func (f *lockedDispatchOrcaFake) ListTasks(ctx context.Context) ([]port.OrcaTask, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.ListTasks(ctx)
+}
+
+func (f *lockedDispatchOrcaFake) ListDispatchedTasks(ctx context.Context) ([]port.OrcaTask, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.ListDispatchedTasks(ctx)
+}
+
+func (f *lockedDispatchOrcaFake) CreateTask(ctx context.Context, req port.OrcaCreateTaskRequest) (port.OrcaTask, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.CreateTask(ctx, req)
+}
+
+func (f *lockedDispatchOrcaFake) Dispatch(ctx context.Context, req port.OrcaDispatchRequest) (port.OrcaDispatch, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.Dispatch(ctx, req)
+}
+
+func (f *lockedDispatchOrcaFake) ShowDispatch(ctx context.Context, taskID string) (port.OrcaDispatch, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.ShowDispatch(ctx, taskID)
+}
+
+func (f *lockedDispatchOrcaFake) ShowDispatchFrom(ctx context.Context, taskID, fromHandle string) (port.OrcaDispatch, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.fake.ShowDispatchFrom(ctx, taskID, fromHandle)
 }
 
 func (f *dispatchOrcaFake) ListWorktrees(context.Context, string) ([]port.OrcaWorktree, error) {
@@ -1705,11 +2045,14 @@ func mustHandoffTaskDisplay(t *testing.T, record IssueOpsRecord) string {
 	return display
 }
 
-func (f *dispatchOrcaFake) ListTerminals(context.Context, string) ([]port.OrcaTerminal, error) {
+func (f *dispatchOrcaFake) ListTerminals(_ context.Context, worktreeID string) ([]port.OrcaTerminal, error) {
 	f.trace = append(f.trace, "terminal-list")
 	f.terminalListCalls++
 	if f.beforeTerminalList != nil {
 		f.beforeTerminalList()
+	}
+	if worktreeID == "" && f.allTerminals != nil {
+		return append([]port.OrcaTerminal(nil), f.allTerminals...), f.terminalListErr
 	}
 	return append([]port.OrcaTerminal(nil), f.terminals...), f.terminalListErr
 }
@@ -1778,7 +2121,19 @@ func (f *dispatchOrcaFake) Dispatch(_ context.Context, req port.OrcaDispatchRequ
 	if result.Preamble == "" {
 		result.Preamble = fmt.Sprintf("Your coordinator's terminal handle is: %s\nYour task ID is: %s\n  --task-id %s --dispatch-id %s", req.FromHandle, result.TaskID, result.TaskID, result.ID)
 	}
+	if len(f.dispatchErrors) > 0 {
+		err := f.dispatchErrors[0]
+		f.dispatchErrors = f.dispatchErrors[1:]
+		return result, err
+	}
 	return result, f.dispatchErr
+}
+
+func (f *dispatchOrcaFake) BootstrapTerminalAgent(_ context.Context, req port.OrcaBootstrapTerminalAgentRequest) error {
+	f.trace = append(f.trace, "terminal-agent-bootstrap")
+	f.bootstrapCalls++
+	f.bootstrapRequests = append(f.bootstrapRequests, req)
+	return f.bootstrapErr
 }
 
 func (f *dispatchOrcaFake) ShowDispatch(_ context.Context, taskID string) (port.OrcaDispatch, error) {

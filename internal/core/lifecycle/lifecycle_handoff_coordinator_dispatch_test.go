@@ -73,6 +73,53 @@ func TestCoordinatorPreparingGuidanceOmitsAgentFlagWhenAgentless(t *testing.T) {
 	}
 }
 
+func TestCoordinatorPreparingBootstrapProbeReturnsAuthenticatedRunnableCommand(t *testing.T) {
+	repo, record, _ := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
+	record.ExecutionHandoff.CoordinatorSession = nil
+	record.ExecutionHandoff.CoordinatorMailboxHandle = ""
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+
+	probe := handoffEditRequest(record, repo, "codex", "fresh-coordinator", "")
+	probe.AgentID = "agent-31"
+	probe.Tool = "Bash"
+	probe.Command = "agent-harness issueops handoff start --id " + record.ID + " --coordinator-recipient term_bootstrap_31 --source-cwd " + repo + " --json"
+	got := BuildLifecyclePreToolUseDecision(probe)
+	if got.Decision != "block" || !strings.Contains(got.Reason, "harness-authored preview command") {
+		t.Fatalf("bootstrap probe must be blocked with runnable guidance: %#v", got)
+	}
+	want := "agent-harness issueops handoff start --id '" + record.ID + "' --coordinator-recipient 'term_bootstrap_31' --coordinator-host 'codex' --coordinator-session-id 'fresh-coordinator' --coordinator-agent-id 'agent-31' --source-cwd '" + repo + "' --json"
+	if !strings.Contains(got.Reason, want) {
+		t.Fatalf("bootstrap guidance missing authenticated command %q: %s", want, got.Reason)
+	}
+	probe.Command = want
+	if got := BuildLifecyclePreToolUseDecision(probe); got.Decision != "allow" {
+		t.Fatalf("returned bootstrap command must pass the lifecycle fence: %#v", got)
+	}
+
+	for _, command := range []string{
+		"agent-harness issueops handoff start --id " + record.ID + " --coordinator-recipient terminal_bootstrap_31 --source-cwd " + repo,
+		"agent-harness issueops handoff start --id " + record.ID + " --coordinator-recipient term_bootstrap_31 --source-cwd /wrong",
+		"agent-harness issueops handoff start --id " + record.ID + " --coordinator-recipient term_bootstrap_31 --source-cwd " + repo + " --confirm",
+	} {
+		probe.Command = command
+		if got := BuildLifecyclePreToolUseDecision(probe); got.Decision != "block" || strings.Contains(got.Reason, "harness-authored preview command") {
+			t.Fatalf("invalid bootstrap probe must remain normally blocked: command=%q got=%#v", command, got)
+		}
+	}
+}
+
+func TestCoordinatorPreparingAllowsExactCodexTrustObservationBeforeCycleSelection(t *testing.T) {
+	repo, record, _ := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
+	request := handoffEditRequest(record, repo, "codex", "fresh-coordinator", "")
+	request.Tool = "Bash"
+	request.Command = "codex --help"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("exact Codex trust observation must remain read-only: %#v", got)
+	}
+}
+
 // TestCoordinatorPreparingDispatchStillDeniesMismatchedIdentity keeps the fence
 // intact: the emitted skeleton with a mismatched coordinator session is denied.
 func TestCoordinatorPreparingDispatchStillDeniesMismatchedIdentity(t *testing.T) {

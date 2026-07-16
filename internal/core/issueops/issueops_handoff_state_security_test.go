@@ -59,6 +59,10 @@ func TestHandoffStartRejectsPreexistingWritableTerminalAsCompetingWriter(t *test
 		Handle: "term_baseline", PTYID: "pty-baseline", WorktreeID: record.ExecutionHandoff.Orca.WorktreeID,
 		WorktreePath: record.ExecutionHandoff.WorkerRoot, Connected: true, Writable: true,
 	}}
+	client.dispatchedTasks = []port.OrcaTask{{ID: "task-other", Status: "dispatched"}}
+	client.dispatchByTask = map[string]port.OrcaDispatch{
+		"task-other": {ID: "dispatch-other", TaskID: "task-other", AssigneeHandle: "term_baseline", Status: "dispatched"},
+	}
 
 	_, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedCodexStart(t, stateRoot, record.ID), client, handoffStartTestClock())
 	if err == nil || !strings.Contains(err.Error(), "sole writer") {

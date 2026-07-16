@@ -16,6 +16,7 @@ type Deps struct {
 	PrintJSON      func(any) error
 	PrintError     func(error) error
 	PrepareHandoff func(context.Context, string, core.IssueOpsHandoffPrepareRequest) (core.IssueOpsHandoffPrepareResult, error)
+	MigrateLegacy  func(context.Context, string, core.IssueOpsLegacyWorktreeMigrationRequest) (core.IssueOpsLegacyWorktreeMigrationResult, error)
 }
 
 type PrepareResult = worktreetools.PrepareResult
@@ -24,6 +25,7 @@ func Run(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
 		fmt.Println("Usage:")
 		fmt.Println("  agent-harness issueops worktree prepare --id ID [--orchestrator auto|orca|inline] [--inline-reason user-requested|recovery] [--agent NAME] [--confirm] [--json]")
+		fmt.Println("  agent-harness issueops worktree migrate-legacy --id ID --confirm [--json]")
 		fmt.Println("  agent-harness issueops worktree prepare-tools --id ID [--json]")
 		fmt.Println("  agent-harness issueops worktree verify --id ID [--json]")
 		fmt.Println("  agent-harness issueops worktree cleanup-readiness --id ID [--merged] [--json]")
@@ -32,6 +34,8 @@ func Run(args []string, deps Deps) error {
 	switch args[0] {
 	case "prepare":
 		return runWorktreePrepare(args[1:], deps)
+	case "migrate-legacy":
+		return runWorktreeMigrateLegacy(args[1:], deps)
 	case "prepare-tools":
 		return runWorktreePrepareTools(args[1:], deps)
 	case "verify":
@@ -41,6 +45,35 @@ func Run(args []string, deps Deps) error {
 	default:
 		return fmt.Errorf("unknown issueops worktree subcommand %q", args[0])
 	}
+}
+
+func runWorktreeMigrateLegacy(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops worktree migrate-legacy", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	confirm := fs.Bool("confirm", false, "confirm replacement of a clean remote-equal Git worktree")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := deps.ParseFlags(fs, args); help || err != nil {
+		return err
+	}
+	if deps.MigrateLegacy == nil {
+		return fmt.Errorf("IssueOps legacy worktree migration dependency is unavailable")
+	}
+	result, err := deps.MigrateLegacy(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsLegacyWorktreeMigrationRequest{ID: *id, Confirm: *confirm})
+	if err != nil {
+		if *jsonOut {
+			_ = deps.PrintError(err)
+		}
+		return err
+	}
+	if *jsonOut {
+		return deps.PrintJSON(result)
+	}
+	fmt.Printf("worktree_path: %s\n", result.WorktreePath)
+	fmt.Printf("state: %s\n", result.State)
+	if result.NextStep != "" {
+		fmt.Printf("next_step: %s\n", result.NextStep)
+	}
+	return nil
 }
 
 func runWorktreePrepareTools(args []string, deps Deps) error {

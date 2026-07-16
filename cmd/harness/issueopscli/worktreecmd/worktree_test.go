@@ -86,6 +86,31 @@ func TestWorktreePrepareCLIForwardsOrchestratorAgentAndConfirmation(t *testing.T
 	}
 }
 
+func TestWorktreeMigrateLegacyCLIForwardsConfirmation(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := worktreeIssueOpsRecord(t)
+	var captured core.IssueOpsLegacyWorktreeMigrationRequest
+	var printed any
+	deps := Deps{
+		ParseFlags: parseWorktreeFlags,
+		PrintJSON:  func(value any) error { printed = value; return nil },
+		PrintError: func(error) error { return nil },
+		MigrateLegacy: func(_ context.Context, _ string, req core.IssueOpsLegacyWorktreeMigrationRequest) (core.IssueOpsLegacyWorktreeMigrationResult, error) {
+			captured = req
+			return core.IssueOpsLegacyWorktreeMigrationResult{OK: true, ID: req.ID, State: "orca_managed"}, nil
+		},
+	}
+	if err := Run([]string{"migrate-legacy", "--id", record.ID, "--confirm", "--json"}, deps); err != nil {
+		t.Fatal(err)
+	}
+	if captured.ID != record.ID || !captured.Confirm {
+		t.Fatalf("migration flags not forwarded: %#v", captured)
+	}
+	if _, ok := printed.(core.IssueOpsLegacyWorktreeMigrationResult); !ok {
+		t.Fatalf("expected typed result, got %T", printed)
+	}
+}
+
 func TestWorktreePrepareCLIRejectsInlineWithoutAuthorizationBeforeDependency(t *testing.T) {
 	called := false
 	deps := Deps{

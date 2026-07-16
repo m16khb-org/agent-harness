@@ -71,6 +71,31 @@ func TestHandoffFinishProjectsWorkerDoneOnceFromPersistedEvidence(t *testing.T) 
 	}
 }
 
+func TestHandoffFinishProjectsCleanVerificationWithEmptyChangedFiles(t *testing.T) {
+	stateRoot, record := gitBackedDispatchedHandoff(t)
+	claim := handoffClaimRequest(record)
+	claimed, err := ClaimIssueOpsHandoff(stateRoot, claim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	finish := handoffFinishRequest(claim, claimed)
+	finish.FinalHead = strings.TrimSpace(preflight.GitOut(record.WorktreePath, "rev-parse", "HEAD"))
+	finish.ChangedFiles = nil
+	finish.TuringReportPath = "plans/plan.md"
+	client := &workerDoneProjectionFake{result: port.OrcaWorkerDoneResult{MessageID: "msg-clean", Sequence: 98}}
+
+	submitted, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if submitted.ExecutionHandoff.WorkerDoneProjection == nil || submitted.ExecutionHandoff.WorkerDoneProjection.State != workerDoneProjectionSent {
+		t.Fatalf("clean verification projection = %#v", submitted.ExecutionHandoff.WorkerDoneProjection)
+	}
+	if calls, requests := client.snapshot(); calls != 1 || len(requests) != 1 || len(requests[0].ChangedFiles) != 0 {
+		t.Fatalf("clean verification worker_done = calls=%d requests=%#v", calls, requests)
+	}
+}
+
 func TestHandoffFinishProjectionFailureIsTerminalAndNeverRetries(t *testing.T) {
 	stateRoot, _, _, finish, _ := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
 	client := &workerDoneProjectionFake{err: &port.OrcaError{Code: "command_timeout", Invoked: true, Timeout: true}}
@@ -87,6 +112,28 @@ func TestHandoffFinishProjectionFailureIsTerminalAndNeverRetries(t *testing.T) {
 	}
 	if calls, _ := client.snapshot(); calls != 1 {
 		t.Fatalf("ambiguous send was retried: %d", calls)
+	}
+}
+
+func TestHandoffFinishRetriesOnlyUninvokedWorkerDoneInvalidProjection(t *testing.T) {
+	stateRoot, _, _, finish, _ := submittedGitHandoff(t, ".agent-harness/research/report.md", true)
+	client := &workerDoneProjectionFake{err: &port.OrcaError{Code: "worker_done_invalid"}}
+	first, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if projection := first.ExecutionHandoff.WorkerDoneProjection; projection == nil || projection.State != workerDoneProjectionFailed || projection.Invoked || projection.DiagnosticCode != "worker_done_invalid" {
+		t.Fatalf("uninvoked invalid projection = %#v", projection)
+	}
+
+	client.err = nil
+	client.result = port.OrcaWorkerDoneResult{MessageID: "msg-repaired", Sequence: 99}
+	second, err := FinishIssueOpsHandoffWithProjection(context.Background(), stateRoot, finish, client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls, _ := client.snapshot(); calls != 2 || second.ExecutionHandoff.WorkerDoneProjection == nil || second.ExecutionHandoff.WorkerDoneProjection.State != workerDoneProjectionSent || !second.ExecutionHandoff.WorkerDoneProjection.Invoked || second.ExecutionHandoff.WorkerDoneProjection.MessageID != "msg-repaired" {
+		t.Fatalf("safe projection retry = calls=%d projection=%#v", calls, second.ExecutionHandoff.WorkerDoneProjection)
 	}
 }
 
@@ -696,6 +743,33 @@ func TestHandoffAcceptRevalidatesFilesystemEvidenceInsideLock(t *testing.T) {
 				t.Fatal("failed accept lock revalidation mutated the lease")
 			}
 		})
+	}
+}
+
+func TestHandoffAcceptAllowsCleanVerificationWithPreexistingTuringReport(t *testing.T) {
+	stateRoot, record := gitBackedDispatchedHandoff(t)
+	claim := handoffClaimRequest(record)
+	claimed, err := ClaimIssueOpsHandoff(stateRoot, claim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	finish := handoffFinishRequest(claim, claimed)
+	finish.FinalHead = strings.TrimSpace(preflight.GitOut(record.WorktreePath, "rev-parse", "HEAD"))
+	finish.ChangedFiles = nil
+	finish.TuringReportPath = "plans/plan.md"
+	submitted, err := finishIssueOpsHandoffWithoutProjection(stateRoot, finish)
+	if err != nil {
+		t.Fatal(err)
+	}
+	accepted, err := AcceptIssueOpsHandoff(stateRoot, coordinatorAcceptRequest(record, IssueOpsHandoffAcceptRequest{
+		ID: record.ID, Attempt: submitted.ExecutionHandoff.Attempt, OwnershipEpoch: submitted.ExecutionHandoff.OwnershipEpoch,
+		ContextSHA256: submitted.ExecutionHandoff.ContextSHA256, FinalHead: finish.FinalHead,
+	}))
+	if err != nil {
+		t.Fatalf("clean verification accept = %v", err)
+	}
+	if accepted.ExecutionHandoff.State != handoff.StateClosed || accepted.ExecutionHandoff.ClosedDisposition != handoff.DispositionAccepted {
+		t.Fatalf("clean verification accept state = %#v", accepted.ExecutionHandoff)
 	}
 }
 

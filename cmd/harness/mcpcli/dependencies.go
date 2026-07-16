@@ -115,6 +115,10 @@ var PrepareIssueOpsWorktreeTools = func(core.IssueOpsRecord) (any, error) {
 	return nil, fmt.Errorf("issueops worktree tool preparation dependency is not configured")
 }
 
+var IssueOpsWorktreeOrcaClient = func() core.IssueOpsOrcaWorktreeClient {
+	return orca.New()
+}
+
 var IssueOpsHandoffOrcaClient = func() core.IssueOpsOrcaDispatchClient {
 	return orca.New()
 }

@@ -327,8 +327,13 @@ func publicationGitConfigOrigins(ctx context.Context, repo string) ([]string, er
 			continue
 		}
 		parts := strings.SplitN(line, "\t", 2)
-		if len(parts) != 2 || !strings.HasPrefix(parts[0], "file:") {
+		if len(parts) != 2 {
 			return nil, fmt.Errorf("publication git config origin is incomplete")
+		}
+		// Command-line configuration is immutable for this git subprocess. Only
+		// file-backed configuration can change while the publication locks are held.
+		if !strings.HasPrefix(parts[0], "file:") {
+			continue
 		}
 		origin := strings.TrimPrefix(parts[0], "file:")
 		if !filepath.IsAbs(origin) {
@@ -388,7 +393,10 @@ func publicationGitConfigPaths(ctx context.Context, repo string, rules []publica
 	if xdg == "" {
 		xdg = filepath.Join(home, ".config")
 	}
-	paths[filepath.Join(xdg, "git", "config")] = true
+	xdgConfig := filepath.Join(xdg, "git", "config")
+	if info, err := os.Stat(filepath.Dir(xdgConfig)); err == nil && info.IsDir() {
+		paths[xdgConfig] = true
+	}
 	for _, name := range []string{"GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM"} {
 		configured := strings.TrimSpace(os.Getenv(name))
 		if configured == "" || configured == os.DevNull || name == "GIT_CONFIG_SYSTEM" && strings.TrimSpace(os.Getenv("GIT_CONFIG_NOSYSTEM")) != "" {

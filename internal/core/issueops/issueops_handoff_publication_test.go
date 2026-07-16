@@ -188,6 +188,23 @@ func TestGitPublicationPushTargetUsesRealGitInsteadOfAndDistinctPushURL(t *testi
 	}
 }
 
+func TestGitPublicationIgnoresUnrelatedCommandLineConfigOrigins(t *testing.T) {
+	repo := t.TempDir()
+	t.Setenv("GIT_CONFIG_COUNT", "1")
+	t.Setenv("GIT_CONFIG_KEY_0", "credential.interactive")
+	t.Setenv("GIT_CONFIG_VALUE_0", "false")
+	runPublicationGitTest(t, repo, "init", "-q")
+	runPublicationGitTest(t, repo, "remote", "add", "origin", "https://github.com/acme/repo.git")
+
+	target, err := (GitIssueOpsHandoffPublicationReader{}).PushTarget(context.Background(), repo, "origin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if target.URL != "https://github.com/acme/repo.git" {
+		t.Fatalf("push target = %q", target.URL)
+	}
+}
+
 func TestNestedGitRewriteToWrongAuthorityBlocksBeforePushOrProvider(t *testing.T) {
 	stateRoot, record := acceptedPublishedRemoteCreateRecord(t, "github")
 	if err := os.MkdirAll(record.Repo, 0o755); err != nil {
@@ -336,50 +353,67 @@ func TestPublicationGlobalRewriteRaceCannotRedirectPush(t *testing.T) {
 	}
 }
 
+func TestGitPublicationAllowsAbsentDefaultXDGConfig(t *testing.T) {
+	repo, destination := t.TempDir(), t.TempDir()
+	home, xdg := t.TempDir(), filepath.Join(t.TempDir(), "absent-xdg")
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	runPublicationGitTest(t, repo, "init", "-q")
+	runPublicationGitTest(t, repo, "config", "user.name", "Publication Test")
+	runPublicationGitTest(t, repo, "config", "user.email", "publication@example.test")
+	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("publication\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runPublicationGitTest(t, repo, "add", "README.md")
+	runPublicationGitTest(t, repo, "commit", "-q", "-m", "test: publication")
+	finalHead := strings.TrimSpace(runPublicationGitTest(t, repo, "rev-parse", "HEAD"))
+	runPublicationGitTest(t, destination, "init", "-q", "--bare")
+	runPublicationGitTest(t, repo, "remote", "add", "origin", destination)
+	targetSum := sha256.Sum256([]byte(destination))
+	if err := (GitIssueOpsHandoffPublicationReader{}).PushExact(context.Background(), repo, "origin", hex.EncodeToString(targetSum[:]), "16-demo", finalHead); err != nil {
+		t.Fatalf("PushExact with no effective XDG config: %v", err)
+	}
+	if got := strings.TrimSpace(runPublicationGitTest(t, destination, "rev-parse", "refs/heads/16-demo")); got != finalHead {
+		t.Fatalf("destination head = %q, want %q", got, finalHead)
+	}
+}
+
 func TestPublicationMissingConfigAuthorityParentFailsBeforePushAndLeavesDestinationsUnchanged(t *testing.T) {
-	for _, mode := range []string{"absent XDG", "absent include parent"} {
-		t.Run(mode, func(t *testing.T) {
-			repo, good, evil := t.TempDir(), t.TempDir(), t.TempDir()
-			home := t.TempDir()
-			t.Setenv("HOME", home)
-			t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
-			t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
-			xdg := filepath.Join(t.TempDir(), "absent-xdg")
-			if mode == "absent include parent" {
-				xdg = t.TempDir()
-				if err := os.MkdirAll(filepath.Join(xdg, "git"), 0o700); err != nil {
-					t.Fatal(err)
-				}
-			}
-			t.Setenv("XDG_CONFIG_HOME", xdg)
-			runPublicationGitTest(t, repo, "init", "-q")
-			runPublicationGitTest(t, repo, "config", "user.name", "Publication Test")
-			runPublicationGitTest(t, repo, "config", "user.email", "publication@example.test")
-			if mode == "absent include parent" {
-				missingInclude := filepath.Join(t.TempDir(), "absent-parent", "included.config")
-				runPublicationGitTest(t, repo, "config", "include.path", missingInclude)
-			}
-			if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("publication\n"), 0o600); err != nil {
-				t.Fatal(err)
-			}
-			runPublicationGitTest(t, repo, "add", "README.md")
-			runPublicationGitTest(t, repo, "commit", "-q", "-m", "test: publication")
-			finalHead := strings.TrimSpace(runPublicationGitTest(t, repo, "rev-parse", "HEAD"))
-			runPublicationGitTest(t, good, "init", "-q", "--bare")
-			runPublicationGitTest(t, evil, "init", "-q", "--bare")
-			runPublicationGitTest(t, repo, "remote", "add", "origin", good)
-			targetSum := sha256.Sum256([]byte(good))
-			err := (GitIssueOpsHandoffPublicationReader{}).PushExact(context.Background(), repo, "origin", hex.EncodeToString(targetSum[:]), "16-demo", finalHead)
-			if err == nil || !strings.Contains(err.Error(), "config authority parent") {
-				t.Fatalf("missing authority parent error = %v", err)
-			}
-			for name, destination := range map[string]string{"good": good, "evil": evil} {
-				cmd := exec.Command("git", "--git-dir", destination, "rev-parse", "--verify", "refs/heads/16-demo")
-				if err := cmd.Run(); err == nil {
-					t.Fatalf("%s destination changed despite missing config authority parent", name)
-				}
-			}
-		})
+	repo, good, evil := t.TempDir(), t.TempDir(), t.TempDir()
+	home, xdg := t.TempDir(), t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	if err := os.MkdirAll(filepath.Join(xdg, "git"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	runPublicationGitTest(t, repo, "init", "-q")
+	runPublicationGitTest(t, repo, "config", "user.name", "Publication Test")
+	runPublicationGitTest(t, repo, "config", "user.email", "publication@example.test")
+	missingInclude := filepath.Join(t.TempDir(), "absent-parent", "included.config")
+	runPublicationGitTest(t, repo, "config", "include.path", missingInclude)
+	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("publication\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runPublicationGitTest(t, repo, "add", "README.md")
+	runPublicationGitTest(t, repo, "commit", "-q", "-m", "test: publication")
+	finalHead := strings.TrimSpace(runPublicationGitTest(t, repo, "rev-parse", "HEAD"))
+	runPublicationGitTest(t, good, "init", "-q", "--bare")
+	runPublicationGitTest(t, evil, "init", "-q", "--bare")
+	runPublicationGitTest(t, repo, "remote", "add", "origin", good)
+	targetSum := sha256.Sum256([]byte(good))
+	err := (GitIssueOpsHandoffPublicationReader{}).PushExact(context.Background(), repo, "origin", hex.EncodeToString(targetSum[:]), "16-demo", finalHead)
+	if err == nil || !strings.Contains(err.Error(), "config authority parent") {
+		t.Fatalf("missing authority parent error = %v", err)
+	}
+	for name, destination := range map[string]string{"good": good, "evil": evil} {
+		cmd := exec.Command("git", "--git-dir", destination, "rev-parse", "--verify", "refs/heads/16-demo")
+		if err := cmd.Run(); err == nil {
+			t.Fatalf("%s destination changed despite missing config authority parent", name)
+		}
 	}
 }
 
@@ -659,7 +693,7 @@ func TestAcceptedHandoffPublicationRejectsDifferentNativeCoordinatorBeforePush(t
 	}
 }
 
-func TestRawSchemaV5PublishReceiptHasExecutableLockedReattestationToV6(t *testing.T) {
+func TestRawSchemaV5PublishReceiptHasExecutableLockedReattestationToCurrentSchema(t *testing.T) {
 	stateRoot, record := acceptedPublishedRemoteCreateRecord(t, "github")
 	coordinator := *record.ExecutionHandoff.CoordinatorSession
 	raw, err := json.Marshal(record)
@@ -713,7 +747,7 @@ func TestRawSchemaV5PublishReceiptHasExecutableLockedReattestationToV6(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.SchemaVersion != 6 || got.ExecutionHandoff.CoordinatorSession == nil || *got.ExecutionHandoff.CoordinatorSession != coordinator || got.ExecutionHandoff.PublishReceipt == nil || !publicationSHA256Pattern.MatchString(got.ExecutionHandoff.PublishReceipt.PushTargetSHA256) || reader.pushCalls != 0 {
+	if got.SchemaVersion != IssueOpsCurrentSchemaVersion || got.ExecutionHandoff.CoordinatorSession == nil || *got.ExecutionHandoff.CoordinatorSession != coordinator || got.ExecutionHandoff.PublishReceipt == nil || !publicationSHA256Pattern.MatchString(got.ExecutionHandoff.PublishReceipt.PushTargetSHA256) || reader.pushCalls != 0 {
 		t.Fatalf("raw v5 re-attestation = %#v pushCalls=%d", got.ExecutionHandoff.PublishReceipt, reader.pushCalls)
 	}
 	if !reflect.DeepEqual(reader.trace, []string{"target", "local", "remote"}) {

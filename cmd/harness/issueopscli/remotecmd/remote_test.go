@@ -77,7 +77,7 @@ func TestRunVerifyArtifactAndRemoteCreateDryRuns(t *testing.T) {
 			return nil
 		},
 	}
-	if err := Run([]string{"verify-artifact", "--id", record.ID, "--provider", "github", "--kind", "pr", "--url", "https://github.com/acme/repo/pull/1", "--label", "bug", "--assignee", "octocat", "--json"}, deps); err != nil {
+	if err := Run([]string{"verify-artifact", "--id", record.ID, "--provider", "github", "--kind", "pr", "--url", "https://github.com/acme/repo/pull/1", "--target-branch", "main", "--label", "bug", "--assignee", "octocat", "--json"}, deps); err != nil {
 		t.Fatalf("verify-artifact returned error: %v", err)
 	}
 	if err := Run([]string{"create-issue", "--id", record.ID, "--title", "Title", "--body", "Body", "--label", "bug", "--json"}, deps); err != nil {
@@ -94,6 +94,9 @@ func TestRunVerifyArtifactAndRemoteCreateDryRuns(t *testing.T) {
 	}
 	if len(records) != 1 {
 		t.Fatalf("expected one verified record, got %d", len(records))
+	}
+	if records[0].RemoteArtifact == nil || records[0].RemoteArtifact.TargetBranch != "main" {
+		t.Fatalf("verify-artifact did not persist target branch: %#v", records[0].RemoteArtifact)
 	}
 	if len(printed) != 4 {
 		t.Fatalf("expected four JSON dry-run outputs, got %d", len(printed))

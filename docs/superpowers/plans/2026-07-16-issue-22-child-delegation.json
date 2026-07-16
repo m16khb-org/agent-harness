@@ -1,0 +1,12 @@
+[
+  {
+    "objective": "fix the coordinator bootstrap handoff authority regression in one isolated child worktree",
+    "pattern": "isolated-worktree-work",
+    "benefit": "parallel_speed",
+    "tradeoffs": ["parent must verify the child evidence", "handoff state adds bounded coordination"],
+    "net_positive_rationale": "the lifecycle scope and focused tests are isolated from the existing #23-#25 workers",
+    "scope": "one child branch and one Orca-managed worktree",
+    "verification": "child reports focused lifecycle and IssueOps tests; parent repeats the handoff preview",
+    "fallback": "parent performs the same focused fix directly if the worker cannot claim"
+  }
+]

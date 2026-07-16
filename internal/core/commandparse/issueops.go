@@ -125,8 +125,8 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 	case "worktree prepare-tools":
 		return v("--id"), b("--json"), r, true
 	case "handoff start":
-		values := v("--id", "--coordinator-recipient", "--coordinator-host", "--coordinator-session-id", "--coordinator-agent-id", "--source-cwd", "--expected-context-sha256", "--criteria-id", "--required-doc", "--required-skill", "--verification", "--stop-condition", "--worker-scope", "--heartbeat-cadence", "--result-format")
-		for _, name := range []string{"--criteria-id", "--required-doc", "--required-skill", "--verification", "--stop-condition"} {
+		values := v("--id", "--coordinator-recipient", "--coordinator-host", "--coordinator-session-id", "--coordinator-agent-id", "--source-cwd", "--expected-context-sha256", "--criteria-id", "--required-doc", "--required-skill", "--verification", "--verification-command", "--stop-condition", "--worker-scope", "--heartbeat-cadence", "--result-format")
+		for _, name := range []string{"--criteria-id", "--required-doc", "--required-skill", "--verification", "--verification-command", "--stop-condition"} {
 			r[name] = true
 		}
 		return values, b("--allow-codex-hook-trust-bypass", "--confirm", "--json"), r, true
@@ -143,7 +143,7 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		for _, name := range []string{"--changed-file", "--verification", "--cleanup-receipt"} {
 			r[name] = true
 		}
-		return values, b("--json"), r, true
+		return values, b("--no-change", "--json"), r, true
 	case "heartbeat":
 		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id"), b("--json"), r, true
 	default:

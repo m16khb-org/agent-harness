@@ -406,6 +406,7 @@ type IssueOpsOrcaIdentity struct {
 	WorktreeID              string   `json:"worktree_id,omitempty"`
 	WorktreeInstanceID      string   `json:"worktree_instance_id,omitempty"`
 	WorktreePath            string   `json:"worktree_path,omitempty"`
+	WorktreeAdopted         bool     `json:"worktree_adopted,omitempty"`
 	TerminalBaselinePTYIDs  []string `json:"terminal_baseline_pty_ids,omitempty"`
 	WorkerPTYID             string   `json:"worker_pty_id,omitempty"`
 	WorkerTerminalHandle    string   `json:"worker_terminal_handle,omitempty"`
@@ -597,7 +598,23 @@ type IssueOpsExecutionHandoff struct {
 	UpdatedAt                string                                        `json:"updated_at,omitempty"`
 }
 
-const IssueOpsCurrentSchemaVersion = 6
+// IssueOpsLegacyWorktreeMigration records the bounded conversion of a clean,
+// remote-equal Git worktree into an Orca-managed checkout at the same path.
+// It deliberately lives outside execution_handoff: migration finishes before a
+// supervised worker lease is prepared.
+type IssueOpsLegacyWorktreeMigration struct {
+	State        string                `json:"state"`
+	WorktreePath string                `json:"worktree_path"`
+	Branch       string                `json:"branch"`
+	Head         string                `json:"head"`
+	BaseRef      string                `json:"base_ref"`
+	Orca         *IssueOpsOrcaIdentity `json:"orca,omitempty"`
+	PreparedAt   string                `json:"prepared_at"`
+	GitRemovedAt string                `json:"git_removed_at,omitempty"`
+	CompletedAt  string                `json:"completed_at,omitempty"`
+}
+
+const IssueOpsCurrentSchemaVersion = 7
 
 type IssueOpsRecord struct {
 	OK                      bool                                `json:"ok"`
@@ -629,6 +646,7 @@ type IssueOpsRecord struct {
 	Delegation              *IssueOpsDelegationContract         `json:"delegation,omitempty"`
 	ChildCycles             []IssueOpsChildCycleRef             `json:"child_cycles,omitempty"`
 	ExecutionHandoff        *IssueOpsExecutionHandoff           `json:"execution_handoff,omitempty"`
+	LegacyWorktreeMigration *IssueOpsLegacyWorktreeMigration    `json:"legacy_worktree_migration,omitempty"`
 	RoutingTrace            []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
 	AISlopCleanAt           string                              `json:"ai_slop_clean_at,omitempty"`
 	AISlopCleanHead         string                              `json:"ai_slop_clean_head,omitempty"`
