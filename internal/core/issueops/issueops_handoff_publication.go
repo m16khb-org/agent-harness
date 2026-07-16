@@ -327,8 +327,13 @@ func publicationGitConfigOrigins(ctx context.Context, repo string) ([]string, er
 			continue
 		}
 		parts := strings.SplitN(line, "\t", 2)
-		if len(parts) != 2 || !strings.HasPrefix(parts[0], "file:") {
+		if len(parts) != 2 {
 			return nil, fmt.Errorf("publication git config origin is incomplete")
+		}
+		// Command-line configuration is immutable for this git subprocess. Only
+		// file-backed configuration can change while the publication locks are held.
+		if !strings.HasPrefix(parts[0], "file:") {
+			continue
 		}
 		origin := strings.TrimPrefix(parts[0], "file:")
 		if !filepath.IsAbs(origin) {

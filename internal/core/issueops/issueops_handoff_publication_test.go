@@ -188,6 +188,23 @@ func TestGitPublicationPushTargetUsesRealGitInsteadOfAndDistinctPushURL(t *testi
 	}
 }
 
+func TestGitPublicationIgnoresUnrelatedCommandLineConfigOrigins(t *testing.T) {
+	repo := t.TempDir()
+	t.Setenv("GIT_CONFIG_COUNT", "1")
+	t.Setenv("GIT_CONFIG_KEY_0", "credential.interactive")
+	t.Setenv("GIT_CONFIG_VALUE_0", "false")
+	runPublicationGitTest(t, repo, "init", "-q")
+	runPublicationGitTest(t, repo, "remote", "add", "origin", "https://github.com/acme/repo.git")
+
+	target, err := (GitIssueOpsHandoffPublicationReader{}).PushTarget(context.Background(), repo, "origin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if target.URL != "https://github.com/acme/repo.git" {
+		t.Fatalf("push target = %q", target.URL)
+	}
+}
+
 func TestNestedGitRewriteToWrongAuthorityBlocksBeforePushOrProvider(t *testing.T) {
 	stateRoot, record := acceptedPublishedRemoteCreateRecord(t, "github")
 	if err := os.MkdirAll(record.Repo, 0o755); err != nil {
