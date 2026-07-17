@@ -422,8 +422,44 @@ GitHub 재조회 결과 open issue는 `#18`, `#19`, `#20`, `#21`, `#28`이고, `
 - 직접 원인: temp root 생성과 process environment 주입을 별도 줄로 작성하고 둘의 연결을 검증하지 않았다.
 - 영향: 격리 검증이라고 보고하면서 실제 user state DB를 열 수 있다. 이번 실행 시각에 user IssueOps DB/WAL mtime이 관찰돼 내용 변경 여부를 근거 없이 부정할 수 없다.
 - 안전한 탈출 경로: self-verify executable 바로 앞에 `HARNESS_STATE_DIR="$state_dir"`를 붙이고, 종료 뒤 exact directory 부재와 reduced JSON 판정 필드를 함께 확인한다. process inventory에서 잘못 시작한 verifier가 남지 않았는지도 확인한다.
-- 상태: **즉시 중단·빈 temp root 삭제·잔류 process 없음 확인 후 격리 명령으로 재실행 예정**.
-- 근거: 중단된 session의 `^C`/exit 1, 비어 있던 `/var/folders/mt/cyw_xzps58768x9tq23r5t200000gn/T/tmp.odzsRRNTUI`, user IssueOps DB/WAL mtime, self-verify process inventory 0건.
+- 상태: **즉시 중단·빈 temp root 삭제·잔류 process 없음 확인 후 격리 재실행 완료**. 최종 run은 exit 0과 cleanup을 함께 확인했다.
+- 근거: 중단된 session의 `^C`/exit 1, 비어 있던 `/var/folders/mt/cyw_xzps58768x9tq23r5t200000gn/T/tmp.odzsRRNTUI`, user IssueOps DB/WAL mtime, self-verify process inventory 0건; 재실행의 `ok=true`, 25/25 steps, minimum score 100, termination eligible, temp root absent.
+
+### B-45 — publication이 읽기 전용 system Git config에도 `.lock` 생성을 요구함
+
+- 증상: GitHub PR이 병합된 뒤 `issueops handoff publish --confirm`이 active lock이 없는데도 `publication git config lock is unavailable`로 실패했다.
+- 직접 원인: `publicationGitConfigOrigins`가 macOS Command Line Tools의 `/Library/Developer/CommandLineTools/usr/share/git-core/gitconfig`를 유효 origin으로 수집하고, `withPublicationGitConfigLocks`가 모든 origin 옆에 `O_EXCL` `.lock`을 생성한다. 일반 사용자에게 `/Library/.../git-core`는 쓰기 불가다.
+- 영향: system Git config가 존재하는 표준 macOS 환경에서는 stale lock이나 동시 writer가 없어도 supervised publication receipt를 만들 수 없다.
+- 안전한 탈출 경로: 진단에서는 단일 process에 `GIT_CONFIG_NOSYSTEM=1`을 주어 system authority를 읽기와 push 모두에서 제외했다. 제품 수정은 읽기 전용·비사용 config의 안전한 fingerprint 계약을 별도 설계해야 하며, lock 삭제나 권한 상승으로 우회하지 않는다.
+- 상태: **원인 확정, 원격 PR/merge는 GitHub에서 완료됐지만 IssueOps publication receipt는 미기록**.
+- 근거: system config parent `not writable`, pre-existing `.lock` 없음, 다른 repo/user config parent는 writable, `issueops_handoff_publication.go:272-308,317-433`.
+
+### B-46 — bounded config inventory가 4096바이트 중간에서 잘려 유효 origin을 invalid로 만듦
+
+- 증상: B-45를 process-local `GIT_CONFIG_NOSYSTEM=1`로 격리하자 다음 실패가 `publication git config origin is incomplete`로 바뀌었다.
+- 직접 원인: `publicationGitCmd` stdout buffer 한도는 4096바이트인데 현재 `git config --show-origin --includes --list` 출력은 4987바이트다. 4096바이트 prefix의 마지막 줄이 `file:.git/`에서 잘려 tab/value 없는 invalid origin이 됐다.
+- 영향: branch/config 항목이 많은 정상 저장소는 config authority를 완전하게 열거할 수 없고 publication이 fail-closed된다. 단순 retry로는 동일 byte boundary가 반복된다.
+- 안전한 탈출 경로: config origin/rule inventory에는 완전성 검증 가능한 별도 상한과 explicit truncation error를 사용해야 한다. 진단 한도를 높이거나 출력 일부를 정상 origin으로 해석해서는 안 된다.
+- 상태: **exact byte 재현 완료, 제품 개선 후보로 남음**.
+- 근거: full output `4987`, `head -c 4096` tail의 `file:.git/`, `publicationDiagnosticLimit=4096`과 bounded buffer 구현.
+
+### B-47 — verification-only accepted parent가 coordinator 후속 구현 변경을 durable phase에 기록하지 못함
+
+- 증상: #18 handoff는 no-change verification worker가 `a21441c`에서 accepted됐지만 coordinator가 그 뒤 통합 회귀와 reviewer finding을 수정해 `c699913`을 만들었다. merge 뒤 `phase --to ai-slop-clean`은 `missing implementation_changes`로 실패했다.
+- 직접 원인: accepted result는 의도적으로 worker changed files가 없고, 현재 CLI에는 accepted 뒤 coordinator-owned implementation evidence를 사후 추가하는 명령이 없다. publication도 B-45/B-46에 막혔다.
+- 영향: GitHub 원격은 PR #44 merge와 모든 issue close를 정확히 반영하지만 durable parent cycle은 `implement`에 남아 원격 완료와 불일치한다.
+- 안전한 탈출 경로: coordinator 후속 fix가 생기면 publication 전에 새 supervised attempt/cycle로 final HEAD를 재봉인하거나, 명시적 coordinator implementation evidence transition을 제품 계약으로 추가한다. 기존 accepted envelope를 직접 편집하지 않는다.
+- 상태: **원격 작업 완료, durable phase 불일치 기록**.
+- 근거: accepted `a21441c`, final feature `c699913`, merge `30a4aa4`, exact phase error `missing implementation_changes`.
+
+### B-48 — 설치된 agent-harness binary가 병합 소스보다 오래됨
+
+- 증상: 동일 publication 진단에서 PATH의 `/Users/m16khb/.local/bin/agent-harness`와 final source build의 SHA-256이 달랐다.
+- 직접 원인: 설치 binary build metadata는 revision `18a8083e3f2a`이고 final 검증 binary는 이번 통합 source에서 빌드됐다. main 병합은 user-level install/update를 자동 수행하지 않는다.
+- 영향: source와 CI가 고친 CLI/parser 동작을 로컬 운영 command가 아직 사용하지 않을 수 있어 원인 분리가 어려워진다. 이번 config truncation은 최신 build에서도 재현돼 stale binary만의 문제는 아니다.
+- 안전한 탈출 경로: 설치 변경 권한이 있는 별도 update 작업에서 `agent-harness update`와 native integration 검증을 수행한다. 현재 issue merge를 이유로 사용자 설치를 암묵 변경하지 않는다.
+- 상태: **version drift 확인·분리 완료, 설치는 변경하지 않음**.
+- 근거: installed build `vcs.revision=18a8083e3f2a...`, installed/final binary SHA-256 불일치, 최신 build에서도 B-46 동일 재현.
 
 ## 2026-07-17 실행 완료 스냅샷
 
@@ -432,6 +468,7 @@ GitHub 재조회 결과 open issue는 `#18`, `#19`, `#20`, `#21`, `#28`이고, `
 - #21 `io-ff473d80b45b`: attempt 2 accepted, commit `defb73d8f7e6d147f0777b4c3060057f7c78dec4`.
 - #28 `io-959e7d74d2ac`: attempt 5 accepted, no-change final HEAD `bafcbbeb2c9ef65be2f8cd7fc770fd5e98dcd08f`.
 - #18 `io-8dab82ade5bf`: attempt 2 accepted, integrated final HEAD `a21441c8b4c28a1781ca95df0bd8a5d209bf689f`.
+- PR #44: CI push/pull_request 두 run 성공, merge commit `30a4aa4dc98f02bd288e8c59b53b65a5de11efd0`; GitHub open issue 0, open PR 0.
 - resumed session에서는 hook을 비활성화하지 않았다. final #28 start 직전 exact cwd `hooks/list`에서 agent-harness/Orca hooks가 모두 enabled/trusted이고 warnings/errors는 비어 있음을 확인했다.
 
 ## 금지된 우회
