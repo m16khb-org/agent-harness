@@ -79,12 +79,12 @@ git diff --stat HEAD | tail -1
 git ls-files --others --exclude-standard
 
 # 3. Estimate noise lines in tracked diff (comments, dead code, debug prints).
-git diff HEAD | grep '^+[^+]' | grep -cE '^\+\s*(//|#|/\*|\*|console\.(log|debug|info)|print\(|log\.(debug|info|warn))' || true
+git diff HEAD | grep '^+[^+]' | grep -cE '^\+[[:space:]]*(//|#|/\*|\*|console\.(log|debug|info)|print\(|log\.(debug|info|warn))' || true
 
 # 4. Estimate signal lines (rough: total minus noise)
 # More precise: remove signal line candidates and check if tests break
-SIGNAL=$(git diff HEAD | grep '^\+[^+]' | grep -cvE '^\+\s*(//|#|/\*|\*|console\.(log|debug|info|warn)|print\(|log\.)' || true)
-NOISE=$(git diff HEAD | grep '^\+[^+]' | grep -cE '^\+\s*(//|#|/\*|\*|console\.(log|debug|info|warn)|print\(|log\.)' || true)
+SIGNAL=$(git diff HEAD | grep '^\+[^+]' | grep -cvE '^\+[[:space:]]*(//|#|/\*|\*|console\.(log|debug|info|warn)|print\(|log\.)' || true)
+NOISE=$(git diff HEAD | grep '^\+[^+]' | grep -cE '^\+[[:space:]]*(//|#|/\*|\*|console\.(log|debug|info|warn)|print\(|log\.)' || true)
 TOTAL=$((SIGNAL + NOISE))
 if [ "$TOTAL" -eq 0 ]; then
   echo "SNR: insufficient-input (signal=0, noise=0, total=0)"
@@ -130,12 +130,12 @@ for func in $(grep -n '^func ' *.go | cut -d: -f1); do
   name=$(sed -n "${func}p" *.go | head -1)
   end=$(tail -n +$func *.go | grep -n '^}' | head -1 | cut -d: -f1)
   body=$(sed -n "$func,$((func+end))p" *.go)
-  branches=$(echo "$body" | grep -cE '\b(if|else|for|while|case)\b')
+  branches=$(echo "$body" | grep -cE '(^|[^[:alnum:]_])(if|else|for|while|case)([^[:alnum:]_]|$)')
   if [ $branches -gt 6 ]; then echo "WARN: $name — $branches branch points (ceiling: 6)"; fi
   if [ $branches -gt 12 ]; then echo "FAIL: $name — $branches branch points (ceiling: 12)"; fi
 done
-# This script adapts trivially: change the function-line pattern (line 89) and the
-# closing-brace pattern (line 91) to match your language's syntax.
+# This script adapts by changing the function-line and closing-brace patterns to
+# match your language's syntax.
 ```
 
 ### Metric 3: Redundancy — Duplicate Code Ratio
@@ -164,8 +164,8 @@ done | sort -t: -k2 -n
 
 **For real measurement**, use AST-based tools:
 ```bash
-# Go: goplantuml, golangci-lint dupl
-golangci-lint run --enable dupl --max-dupl-lines 6 ./...
+# Go: golangci-lint dupl (threshold comes from the project config/tool default)
+golangci-lint run --enable-only dupl ./...
 
 # JavaScript/TypeScript: jscpd
 npx jscpd --min-lines 6 --min-tokens 50 src/
@@ -192,7 +192,7 @@ for f in $(git diff --name-only HEAD; git ls-files --others --exclude-standard);
   [ -f "$f" ] || continue
   TOTAL=$(wc -l < "$f")
   [ "$TOTAL" -gt 0 ] || { echo "SKIP EMPTY: $f"; continue; }
-  BOILER=$(grep -cE '^\s*(import|package|@|//|/\*|type.*struct|func.*return|func \(.*\) .*return)' "$f" || echo 0)
+  BOILER=$(grep -cE '^[[:space:]]*(import|package|@|//|/\*|type.*struct|func.*return|func \(.*\) .*return)' "$f" || echo 0)
   LOGIC=$((TOTAL - BOILER))
   OVERHEAD=$(echo "scale=2; $BOILER / $TOTAL" | bc)
   if (( $(echo "$OVERHEAD > 0.5" | bc -l) )); then
@@ -207,39 +207,38 @@ done
 
 Always measure before any cleanup pass. Record the baseline in a structured snapshot.
 
-```bash
-# Save baseline snapshot under the ignored evidence path. Keep runtime
-# measurements out of repo commits unless the project explicitly tracks them.
-mkdir -p .agent-harness/evidence/shannon
-cat > .agent-harness/evidence/shannon/baseline-$(date +%Y%m%d-%H%M%S).json << 'EOF'
+Write a valid JSON snapshot using the values captured above. Use `.agent-harness/evidence/shannon/` only when the
+project ignores that path; otherwise use harness state or a temporary path so runtime evidence is not accidentally
+committed. The object below is a schema example; replace its sample values rather than executing it as a shell heredoc.
+
+```json
 {
-  "measured_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "scope": "$(git rev-parse HEAD)",
+  "measured_at": "1970-01-01T00:00:00Z",
+  "scope": "0123456789abcdef0123456789abcdef01234567",
   "git_status_short": "<captured from git status --short>",
   "changed_files": ["<staged, unstaged, and untracked files measured>"],
   "snr": {
-    "signal_lines": <N>,
-    "noise_lines": <N>,
-    "snr": <float>,
-    "passed": <bool>
+    "signal_lines": 0,
+    "noise_lines": 0,
+    "snr": 0.0,
+    "passed": false
   },
   "entropy": {
-    "functions_exceeding_6": <N>,
-    "functions_exceeding_12": <N>,
-    "total_functions": <N>,
-    "passed": <bool>
+    "functions_exceeding_6": 0,
+    "functions_exceeding_12": 0,
+    "total_functions": 0,
+    "passed": false
   },
   "redundancy": {
-    "duplicate_blocks": <N>,
-    "passed": <bool>
+    "duplicate_blocks": 0,
+    "passed": false
   },
   "channel_overhead": {
-    "files_over_50pct_boilerplate": <N>,
-    "total_files": <N>,
-    "passed": <bool>
+    "files_over_50pct_boilerplate": 0,
+    "total_files": 0,
+    "passed": false
   }
 }
-EOF
 ```
 
 **Baseline pass/fail criteria:**

@@ -160,14 +160,18 @@ The single most common Go/JS test failure is a golden/snapshot mismatch, where t
 large to read. Do not eyeball it — regenerate and diff:
 
 ```bash
+# 0. Require a clean target so the diagnostic cannot overwrite user work.
+git status --short -- path/to/testdata/snapshot.golden.json
+# Stop if the command prints anything.
+
 # 1. Regenerate the golden/snapshot in place (Go: -update; JS: -u / --updateSnapshot)
 go test ./path/to/pkg -run TestX -update -count=1
 
 # 2. The exact divergence is now a normal VCS diff — read it directly
 git --no-pager diff -- path/to/testdata/snapshot.golden.json
 
-# 3. Restore the committed golden once you understand the diff (do NOT commit the regen yet)
-git checkout -- path/to/testdata/snapshot.golden.json
+# 3. Restore only the clean, QA-generated golden once you understand the diff.
+git restore --source=HEAD -- path/to/testdata/snapshot.golden.json
 ```
 
 The diff IS your root-cause signal. Watch especially for **non-hermetic content** — timestamps, absolute paths,
