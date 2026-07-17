@@ -60,16 +60,16 @@
       "id": "G3",
       "title": "Verify final worker source",
       "objective": "Pass focused and repository-wide quality gates without install or publication side effects.",
-      "status": "pending",
+      "status": "pass",
       "successCriteria": [
         {
           "id": "G3-C1",
           "scenario": "Pass focused, full, race, vet, golden, source build, Windows compile/link, and deterministic self-verify gates.",
           "channel": "cli",
           "expectedEvidence": ".agent-harness/turing/evidence/issue46-G3-C1-full-gates.txt",
-          "status": "pending",
+          "status": "pass",
           "capturedEvidence": ".agent-harness/turing/evidence/issue46-G3-C1-full-gates.txt",
-          "cleanupReceipt": "Internal temp/process cleanup passed; exact outer self-verify state root is explicitly delegated to coordinator because worker hook blocked outside-worktree deletion.",
+          "cleanupReceipt": "Internal temp/process cleanup passed; coordinator verified lsof had no users, removed the exact outer state root, and separately verified absence with exit 0 before attempt 4 evidence reconciliation.",
           "ultraqaClasses": ["cross_platform", "flaky_test", "hung_command", "misleading_success"]
         }
       ]
@@ -77,6 +77,6 @@
   ],
   "metrics": {
     "evidenceCoverage": 1.0,
-    "cleanupCompliance": 0.8
+    "cleanupCompliance": 1.0
   }
 }

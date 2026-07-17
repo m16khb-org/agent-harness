@@ -25,9 +25,10 @@ Adversarial review receipt:
 - First verdict: REJECT; reviewer found Git canonicalizes conditional include keys to lowercase `includeif` while the matcher used mixed-case `includeIf`.
 - RED: TestPublicationRejectsPreexistingActiveEmptyConditionalIncludeLock returned `<nil>` with a real active empty conditional include and pre-existing sibling lock.
 - GREEN: lowercase matcher plus the same real-Git test rejects the pre-existing lock; >4096-byte and overflow inventory regressions remain PASS.
-- Second verdict: no Critical or Important code/docs correctness finding remains; reviewer still rejects unconditional Task 5 completion solely because the exact outer state root is coordinator-owned and present.
+- Second verdict: no Critical or Important code/docs correctness finding remains; reviewer withheld unconditional Task 5 completion solely pending coordinator-owned removal of the exact outer state root.
 
 Cleanup receipt:
 - Go test/self-verify internal TempDir processes exited normally, including daemon stop evidence in self-verify.
-- Isolated outer state root /var/folders/mt/cyw_xzps58768x9tq23r5t200000gn/T/tmp.hFFtPPfGPk remains pending coordinator cleanup because the enabled supervised-worker hook rejected its exact rm as an outside-worktree mutation.
+- The enabled supervised-worker hook rejected both exact removal and read-only absence inspection of the isolated outer state root as outside-worktree mutation; no bypass was used.
+- Coordinator recovery evidence: lsof reported no users, the exact root was removed, and a separate absence check exited 0 before attempt 4 metadata reconciliation.
 - No install, publish, push, PR, merge, source-checkout mutation, or hook bypass was performed.

@@ -560,6 +560,78 @@ GitHub 재조회 결과 open issue는 `#18`, `#19`, `#20`, `#21`, `#28`이고, `
 - 상태: **수정 완료**. Windows compile/link gate와 macOS publication authority 회귀가 모두 통과했다.
 - 근거: 수정 전 exact undefined-symbol 출력, `issueops_handoff_publication_authority_unix.go`, `issueops_handoff_publication_authority_other.go`, 수정 후 `GOOS=windows GOARCH=amd64 go test -exec=true ./internal/core/issueops -run '^$' -count=1` PASS; native immutable authority focused tests PASS.
 
+### B-60 — Git의 lowercase `includeif` canonicalization이 conditional-include lock authority를 누락시킴
+
+- 증상: 독립 reviewer가 active empty conditional include와 pre-existing sibling lock을 만든 real-Git 회귀에서 publication callback이 차단되지 않고 `<nil>`을 반환함을 발견했다.
+- 직접 원인: Git config key 출력은 conditional include section을 lowercase `includeif`로 canonicalize하지만 include-path matcher는 mixed-case `includeIf`만 인식해 해당 authority를 inventory에서 빠뜨렸다.
+- 영향: active conditional include가 빈 파일이어도 publication transaction이 그 파일의 sibling lock 경쟁을 봉인하지 않아 동시 rewrite authority가 보호 범위 밖에 남을 수 있다.
+- 안전한 탈출 경로: matcher를 Git의 canonical lowercase key에 맞추고 real-Git active-empty-include fixture로 pre-existing lock 거부를 고정한다. 기존 >4096-byte complete inventory와 >1 MiB overflow 회귀도 함께 재검증한다.
+- 상태: **review RED 후 수정·GREEN·전체 gate 재검증 완료**.
+- 근거: `TestPublicationRejectsPreexistingActiveEmptyConditionalIncludeLock` 수정 전 `<nil>`, lowercase `includeif` matcher 적용 뒤 PASS, post-review full/race/vet/golden/build/Windows/self-verify exit 0.
+
+### B-61 — supervised worker의 outside-worktree false positive가 outer self-verify cleanup 확인까지 차단함
+
+- 증상: attempt 3 worker가 exact isolated self-verify state root를 제거하거나 read-only `test ! -e`로 부재를 확인하려 하자 enabled hook이 모두 `outside-worktree mutation`으로 차단했고, reviewer는 cleanup receipt가 없다는 이유만으로 unconditional approval을 보류했다. attempt 4에서도 canonical Orca inbox read는 coordinator-owned로 차단됐다.
+- 직접 원인: supervised-worker guard가 explicit outside-worktree path를 실제 read/write semantics보다 먼저 mutation target으로 분류하고, Orca mailbox observation도 worker lifecycle allowlist 밖으로 분류한다.
+- 영향: product code와 모든 source gates가 GREEN이어도 worker 혼자서는 outer QA root의 cleanup compliance나 coordinator cleanup message를 증명할 수 없어 handoff completion이 evidence-only retry를 필요로 한다.
+- 안전한 탈출 경로: worker는 우회하지 않고 failed result에 exact pending root를 남긴다. coordinator가 lsof no-user 확인, exact root 제거, 별도 absence check exit 0을 수행한 뒤 durable task-terminal/terminal-quiescent receipts와 clean-head retry를 발급하고, 새 worker는 그 coordinator evidence만 메타데이터에 반영한다.
+- 상태: **attempt 3 coordinator cleanup 완료, attempt 4 evidence-only reconciliation으로 복구 완료**. worker hook은 끝까지 enabled였고 production 재구현은 없었다.
+- 근거: attempt 3 durable cleanup의 `task_terminal`/`terminal_quiescent` receipts, coordinator recovery evidence의 lsof no users·exact root removed·separate absence check exit 0, attempt 4 base HEAD `ff5eea0df70c113cfa0260b2e829ee3baa3efb02` clean claim, read-only absence check와 canonical mailbox check의 exact PreToolUse 차단.
+
+### B-62 — supervised recovery에서 amend/history rewrite가 올바르게 차단됨
+
+- 증상: attempt 4 evidence reconciliation을 기존 implementation commit에 amend하려는 복구 지시가 있었지만 supervised worker guard가 history rewrite를 허용하지 않았다.
+- 직접 원인: completed production commit `ff5eea0`은 attempt 3의 immutable result evidence이며, claimed retry worker에게 commit 교체 권한을 주면 이전 result와 새 FinalHead 사이의 audit chain이 사라진다.
+- 영향: cleanup receipt 보정은 기존 commit을 덮어쓸 수 없고 별도 metadata commit이 필요하다. 이는 coordinator가 acceptance/publication 시 두 commit을 보존하거나 명시적으로 squash할 수 있게 한다.
+- 안전한 탈출 경로: amend를 우회하지 않고 production commit을 byte-for-byte 보존한다. cleanup/blocker/Turing 파일만 별도 atomic commit으로 만들고 coordinator가 accepted publication 경계에서 history policy를 결정한다.
+- 상태: **guard 의도대로 동작, 별도 metadata-only commit으로 전환**.
+- 근거: clean base HEAD `ff5eea0df70c113cfa0260b2e829ee3baa3efb02`, supervisor history-rewrite denial, coordinator의 “do not amend; separate atomic metadata-only commit” 복구 지시.
+
+### B-63 — enabled worker hook이 ignored repo-local active binary overwrite를 차단함
+
+- 증상: source verification용 `go build -o bin/agent-harness`가 ignored repo-local runnable/active harness binary overwrite로 분류되어 enabled supervised-worker hook에 차단됐다.
+- 직접 원인: `bin/agent-harness`는 Git tracked 파일은 아니지만 repository 안에서 실행에 사용되는 active binary다. supervised guard는 그 overwrite를 repository mutation으로 취급해 source/binary authority가 verification 중 바뀌는 일을 막는다.
+- 영향: 계획의 literal build 경로는 worker lease에서 사용할 수 없지만 source compile/self-verify 자체가 실패한 것은 아니다. 차단을 우회하면 현재 attempt가 참조할 runnable binary authority가 검증 도중 교체된다.
+- 안전한 탈출 경로: repo-local output을 덮어쓰지 않는 `go build ./cmd/harness/...`와 `go run ./cmd/harness self-verify ...`를 사용하고, install/update는 coordinator-owned Task 6까지 수행하지 않는다.
+- 상태: **의도된 차단을 보존하고 non-installing build/run으로 전체 source verification 완료**.
+- 근거: `git ls-files --error-unmatch bin/agent-harness` exit 1, `git check-ignore -v`의 `.gitignore:2:bin/`, repo-local active binary overwrite PreToolUse denial, `go build ./cmd/harness/...` exit 0, deterministic `go run ./cmd/harness self-verify ...` exit 0·25/25·minimum score 100.
+
+### B-64 — installed golangci-lint가 `--disable-all`을 거부함
+
+- 증상: ai-slop duplicate probe가 `golangci-lint run --disable-all --enable dupl ...`에서 unknown/deprecated flag 오류로 실행되지 않았다.
+- 직접 원인: installed golangci-lint CLI는 해당 legacy flag 조합을 지원하지 않고 help가 단일 linter 선택을 `--enable-only dupl`로 안내한다.
+- 영향: 도구 버전 계약을 확인하지 않고 예전 invocation을 반복하면 cleanup gate를 미실행 상태로 두거나 lint 실패를 source 결함으로 오분류한다.
+- 안전한 탈출 경로: installed binary의 help를 read-only로 확인하고 지원되는 `--enable-only dupl` argv로 같은 bounded diff probe를 재실행한다.
+- 상태: **CLI contract 확인 후 수정 invocation으로 dupl 0 issues 검증 완료**.
+- 근거: `--disable-all` exact rejection, installed `golangci-lint run --help`의 `--enable-only`, `golangci-lint run --enable-only dupl --new-from-rev HEAD` 결과 0 issues.
+
+### B-65 — coordinator가 Orca task/terminal flag를 다른 command 계약과 혼동함
+
+- 증상: coordinator message 전송에서 `orca orchestration send --task`가 거부됐고 inbox 조회에서 `--recipient`가 거부됐다. send는 `--task-id`, inbox는 `--terminal`로 고친 뒤에만 실행됐다.
+- 직접 원인: orchestration/terminal subcommand마다 identity flag 이름이 다른데 다른 command의 argv 계약을 재사용했다.
+- 영향: parser 실패는 외부 identity 부재 증거가 아니며, 잘못된 flag를 반복하면 task terminalization과 cleanup receipt가 지연된다.
+- 안전한 탈출 경로: 실행 전 해당 installed subcommand help를 확인한다. `orchestration send`는 `--task-id`, inbox 조회는 `--terminal`, `orchestration task-update`는 별도 계약인 `--id`를 사용하며 parser 실패로 absence를 추론하지 않는다.
+- 상태: **corrected argv로 coordinator cleanup 진행 완료**.
+- 근거: send의 invalid `--task`와 corrected `--task-id`, inbox의 invalid `--recipient`와 corrected `--terminal`, installed `orca orchestration task-update --help`의 `--id` 계약.
+
+### B-66 — unsealed sender의 guidance가 worker authority와 일치하지 않음
+
+- 증상: worker 복구 guidance 한 건이 sealed coordinator mailbox가 아닌 sender로 전송되어 current handoff direction evidence로 사용할 수 없었다.
+- 직접 원인: live terminal/control identity와 handoff에 봉인된 historical coordinator mailbox identity를 같은 sender authority로 취급했다.
+- 영향: 메시지 본문이 올바르더라도 sender/recipient/task/dispatch tuple이 맞지 않으면 worker가 실행 근거로 채택할 수 없고 stale 또는 foreign steering 위험이 생긴다.
+- 안전한 탈출 경로: 잘못된 guidance는 폐기하고 sealed coordinator `term_fd1bcca4-f44d-4442-be2f-e4c6dc159705`에서 exact current worker/task/dispatch로 다시 전달한다.
+- 상태: **unsealed message 미채택, sealed coordinator guidance로 교체 완료**.
+- 근거: 두 guidance envelope의 sender 비교, current handoff의 `coordinator_mailbox_handle`, sealed sender로 재전달된 recovery instruction.
+
+### B-67 — terminal stop이 disconnected replacement handle을 만들어 quiescence receipt를 지연함
+
+- 증상: coordinator가 worker terminal set을 stop한 뒤 기존 handle 대신 regenerated disconnected handle/tab이 inventory에 나타났고, exact task가 아직 terminal이 아니어서 `terminal_quiescent` 기록이 실패했다.
+- 직접 원인: Orca terminal stop은 runtime terminal identity를 재발급할 수 있으며 terminal absence만으로 orchestration task/dispatch terminality를 원자적으로 보장하지 않는다.
+- 영향: pre-stop handle만 검사하면 replacement tab을 놓치고, task가 dispatched인 채 quiescence를 거짓 기록하거나 retry를 영구 차단할 수 있다.
+- 안전한 탈출 경로: stop 뒤 complete exact-worktree inventory를 다시 읽고 regenerated handle/tab을 해석한다. exact task를 failed terminal state로 기록한 뒤 replacement tab을 닫고 inventory 부재를 확인한 다음 `terminal_quiescent` receipt를 기록한다.
+- 상태: **exact task failed 처리와 regenerated tab close 후 quiescence receipt 성공**.
+- 근거: stop 전후 handle 차이, regenerated terminal의 disconnected 상태, 최초 `terminal_quiescent` rejection, exact task failed update와 replacement tab close 뒤 durable receipt.
+
 ## 2026-07-17 실행 완료 스냅샷
 
 - #19 `io-339c2fca0e34`: accepted, commit `a8e7dce90500e80a3cb3b68f889710df90ec7374`.
