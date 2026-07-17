@@ -416,6 +416,15 @@ GitHub 재조회 결과 open issue는 `#18`, `#19`, `#20`, `#21`, `#28`이고, `
 - 상태: **RED 재현 후 portable pipeline으로 수정·실행 검증 완료**.
 - 근거: 수정 전 BSD sed exact 오류와 수정 후 `internal/core/issueops/*.go`에서 정상 출력된 `issueops_ai_slop_clean_test.go:10:49:...` 등 file-aware 측정 결과.
 
+### B-44 — final self-verify wrapper가 생성한 temp state를 process 환경에 전달하지 않음
+
+- 증상: final self-verify 재실행을 위해 `state_dir=$(mktemp -d)`를 만들었지만 command 앞에 `HARNESS_STATE_DIR="$state_dir"`를 빠뜨려 기본 user state를 대상으로 시작했다. 시작 1초 안에 발견해 Ctrl-C로 중단했으며 생성한 temp directory는 비어 있었다.
+- 직접 원인: temp root 생성과 process environment 주입을 별도 줄로 작성하고 둘의 연결을 검증하지 않았다.
+- 영향: 격리 검증이라고 보고하면서 실제 user state DB를 열 수 있다. 이번 실행 시각에 user IssueOps DB/WAL mtime이 관찰돼 내용 변경 여부를 근거 없이 부정할 수 없다.
+- 안전한 탈출 경로: self-verify executable 바로 앞에 `HARNESS_STATE_DIR="$state_dir"`를 붙이고, 종료 뒤 exact directory 부재와 reduced JSON 판정 필드를 함께 확인한다. process inventory에서 잘못 시작한 verifier가 남지 않았는지도 확인한다.
+- 상태: **즉시 중단·빈 temp root 삭제·잔류 process 없음 확인 후 격리 명령으로 재실행 예정**.
+- 근거: 중단된 session의 `^C`/exit 1, 비어 있던 `/var/folders/mt/cyw_xzps58768x9tq23r5t200000gn/T/tmp.odzsRRNTUI`, user IssueOps DB/WAL mtime, self-verify process inventory 0건.
+
 ## 2026-07-17 실행 완료 스냅샷
 
 - #19 `io-339c2fca0e34`: accepted, commit `a8e7dce90500e80a3cb3b68f889710df90ec7374`.
