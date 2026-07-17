@@ -33,7 +33,7 @@ Verification mode: <full loop or proportionate lightweight mode, with rationale>
 Skipped checks: <checks skipped with explicit reason; "none" if all ran>
 ```
 
-For a supervised execution lease, render the criteria IDs named in the sealed worker contract as binary observations. The handoff result report must contain the evidence artifact paths and cleanup receipts required by `issueops handoff finish`.
+For a supervised execution lease, render the named ORCA criteria (for the current contract, `ORCA-01` through `ORCA-14`) as binary observations. The handoff result report must contain the evidence artifact paths and cleanup receipts required by `issueops handoff finish`.
 
 Before dispatch, verify that the linked supervised plan states the current issue and cycle intent and its acceptance criteria directly, including exact branch/path/base, exact bounded worker scope (report-only only when that is the current cycle's declared scope), claim/finish/accept commands, verification, and cleanup. Never link an unrelated legacy plan as readiness evidence. The coordinator plan commit must contain only that current-cycle Markdown file; after a clean exact-branch checkpoint, `link-plan` moves the attempt base head to that commit so the worker's changed-file evidence excludes the coordinator plan.
 
