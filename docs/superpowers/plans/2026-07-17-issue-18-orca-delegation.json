@@ -1,0 +1,41 @@
+[
+  {
+    "objective": "review von-neumann, berners-lee, and karpathy skill contracts in the #19 isolated worktree",
+    "pattern": "isolated-worktree-work",
+    "benefit": "parallel_speed",
+    "tradeoffs": [
+      "the parent must independently inspect the accepted diff",
+      "the repository-wide sole-writer lease serializes actual dispatch"
+    ],
+    "net_positive_rationale": "the strategy and research skill files do not overlap the other child ownership sets",
+    "scope": "GitHub #19 and its three owned skill directories",
+    "verification": "validate the three skills and persist a Turing evidence report",
+    "fallback": "the parent rejects the result and retries the same isolated cycle"
+  },
+  {
+    "objective": "review turing, hopper, and shannon skill contracts in the #20 isolated worktree",
+    "pattern": "isolated-worktree-work",
+    "benefit": "parallel_speed",
+    "tradeoffs": [
+      "the parent must independently inspect the accepted diff",
+      "the repository-wide sole-writer lease serializes actual dispatch"
+    ],
+    "net_positive_rationale": "the execution and quality skill files do not overlap the other child ownership sets",
+    "scope": "GitHub #20 and its three owned skill directories",
+    "verification": "validate the three skills and persist a review report",
+    "fallback": "the parent rejects the result and retries the same isolated cycle"
+  },
+  {
+    "objective": "review dijkstra, codd, torvalds, and issueops skill contracts in the #21 isolated worktree",
+    "pattern": "isolated-worktree-work",
+    "benefit": "parallel_speed",
+    "tradeoffs": [
+      "the parent must independently inspect the accepted diff",
+      "the repository-wide sole-writer lease serializes actual dispatch"
+    ],
+    "net_positive_rationale": "the engineering and workflow skill files are exclusively owned by this child",
+    "scope": "GitHub #21 and its four owned skill directories",
+    "verification": "validate all four skills and persist a review report, including unchanged-file evidence",
+    "fallback": "the parent rejects the result and retries the same isolated cycle"
+  }
+]

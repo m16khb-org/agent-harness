@@ -441,7 +441,7 @@ Wave 2: [dependent tasks]
 
 ## IssueOps Integration
 
-When an IssueOps cycle exists (`agent-harness issueops status --json`):
+When an IssueOps cycle exists (`agent-harness issueops status --id "$ISSUEOPS_ID" --json`):
 
 1. Derive the plan slug from the issue number: `{issue-number}-{short-title}`
 2. Write the plan inside the linked worktree: `$WORKTREE/.agent-harness/plans/{slug}.md`

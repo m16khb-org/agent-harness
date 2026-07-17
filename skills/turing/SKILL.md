@@ -183,9 +183,9 @@ Fallback (no agent-harness):
 
 ---
 
-## Manual-QA Channels (PICK ONE PER CRITERION — ACTUALLY RUN IT)
+## Manual-QA Channels (FULL MODE: PICK ONE PER CRITERION — ACTUALLY RUN IT)
 
-For every criterion, build a real-usage scenario through ONE of these four channels and run it yourself before recording PASS. The full test suite being green is NEVER verification on its own.
+In full mode, build a real-usage scenario for every criterion through ONE of these four channels and run it yourself before recording PASS. In proportionate mode, follow its explicit auxiliary-surface exception for low-risk CLI-, data-, or docs-shaped criteria. The full test suite being green is NEVER verification on its own.
 
 | # | Channel | Tool | Evidence Artifact |
 |---|---------|------|-------------------|
@@ -412,15 +412,15 @@ Loop per goal. Cap at 5 cycles per goal (after 5, checkpoint and surface diagnos
 
 ## Final Quality Gate
 
-Trigger when one goal remains and all its criteria are passing.
+Trigger when every goal's criteria are passing.
 
 1. **Targeted verification**: Re-run the changed behavior tests.
 2. **AI slop clean**: Run targeted verification plus the IssueOps `ai-slop-clean` reference (`skills/issueops/references/ai-slop-clean.md`) when cleanup is in scope; use `agent-harness self-verify` for harness-level health, not as a generic cleanup substitute.
 3. **Re-verify** after cleanup.
-4. **Reviewer**: Spawn an adversarial reviewer sub-agent (pattern #2: Devil's advocate). Give it: goal, all criteria, all evidence, full diff. A fresh model with no implementation bias must refute your work.
-   - The reviewer's verdict is BINDING. There is no "false positive."
-   - Every concern is real. Do not argue. Do not minimize.
-   - Fix every issue yourself. Re-run the FULL scenario QA. Capture fresh evidence.
+4. **Reviewer (when required by the recorded risk decision)**: For full mode and any user-facing or hard-to-reverse work, spawn an adversarial reviewer sub-agent (pattern #2: Devil's advocate). Give it: goal, all criteria, all evidence, full diff. A fresh model with no implementation bias must refute your work. For a trivially reversible low-risk change in proportionate mode, record the skip rationale instead.
+   - The reviewer's verdict is BINDING as a gate: do not pass while a concern remains unresolved.
+   - Verify every concern against the diff, criteria, and evidence. Fix confirmed findings; return disconfirming evidence for invalid findings to the same reviewer. Never dismiss a concern without evidence.
+   - Fix every confirmed issue yourself. Re-run the FULL scenario QA. Capture fresh evidence.
    - Re-submit to the SAME reviewer. Loop until UNCONDITIONAL approval.
    - "looks good but..." = REJECTION. "LGTM" without evidence review = REJECTION.
 5. **Quality gate record**:
@@ -428,11 +428,13 @@ Trigger when one goal remains and all its criteria are passing.
    {
      "aiSlopCleaner": {"status": "passed", "evidence": "cleaner report"},
      "verification": {"status": "passed", "commands": ["go test ./..."], "evidence": "all green"},
-     "codeReview": {"recommendation": "APPROVE", "evidence": "all concerns resolved"},
+     "codeReview": {"status": "passed", "recommendation": "APPROVE", "evidence": "all concerns resolved"},
      "criteriaCoverage": {"totalCriteria": N, "passCount": N},
      "metrics": {"evidenceCoverage": 1.0, "reworkRate": 0.08, "cycleEfficiency": 0.92, "parallelizationRatio": 5.0, "cleanupCompliance": 1.0}
    }
    ```
+
+   When the recorded proportionate-mode risk decision skips review, record `codeReview` as `{"status":"skipped","recommendation":null,"evidence":"<specific low-risk skip rationale>"}` instead. Never claim `APPROVE` without a reviewer.
 
 다단계 검증에서 한 단계라도 실패하면 1단계부터 재실행하며 부분 통과 evidence를 재사용하지 않는다 (규범 출처: `.agent-harness/TESTING.md` 부분 검증 상태 금지 절).
 
@@ -500,7 +502,7 @@ When an IssueOps cycle exists:
 3. **BASELINE-PIN** existing behavior before changing it: characterization test FIRST.
 4. **CLEANUP IS PAIRED**: no PASS without cleanup receipt. Leftover runtime state = BLOCKED.
 5. **METRICS ARE TRACKED**: recompute evidence coverage, rework rate, cycle efficiency, parallelization ratio, cleanup compliance after every criterion.
-6. **REVIEWER IS BINDING**: spawn adversarial reviewer (pattern #2). Every concern is real. Fix everything yourself. Re-submit until unconditional approval.
+6. **REVIEWER IS BINDING**: when the risk-calibrated gate requires one, spawn an adversarial reviewer (pattern #2), verify every concern, fix confirmed findings yourself, and re-submit until unconditional approval.
 7. **SUB-AGENT OUTPUT IS A CLAIM**: re-verify diff, tests, LSP yourself before accepting.
 8. **3x same-criterion failure** → exit the goal with diagnosis.
 9. **5 cycles on one goal without all-pass** → checkpoint failed, surface diagnosis.
@@ -521,7 +523,7 @@ When an IssueOps cycle exists:
 
 | Skill | How Turing integrates |
 |-------|----------------------|
-| **von-neumann** | Von Neumann produces the decision-complete plan; Turing executes it as evidence-bound goals. Plan TODOs map 1:1 to Turing criteria. For plans with 5+ TODOs, independent read-only exploration or isolated worktree edits are dispatched as background sub-agents; all interdependent implementation stays in the main agent. |
+| **von-neumann** | Von Neumann produces the decision-complete plan; Turing executes it as evidence-bound goals. Plan TODOs map 1:1 to Turing criteria. Dispatch independent read-only exploration or isolated worktree edits only when a documented net-positive pattern applies; all interdependent implementation stays in the main agent. |
 | **hopper** | Hopper is called within Turing's execution loop when a criterion fails 2+ times. Hopper delivers the root cause diagnosis; Turing verifies the fix through channel QA. |
 | **dijkstra** | Turing invokes Dijkstra for "optimize," "reduce complexity," or "improve performance" criteria. Dijkstra delivers the algorithmic redesign with benchmark evidence. |
 | **codd** | Codd's EXPLAIN ANALYZE before/after evidence becomes Turing's evidence artifact. Codd recommends; Turing verifies the recommendation through channel QA. |
@@ -532,3 +534,5 @@ When an IssueOps cycle exists:
 | **self-augment** | Turing records Reflexion-style lessons via self-augment when a criterion fails repeatedly; the lesson informs future execution strategies. |
 
 ## Reference: evidence-contract
+
+For portable domain, API-documentation, live-evidence, review-accountability, and completion-hygiene rules, use `skills/issueops/references/evidence-contract.md`.

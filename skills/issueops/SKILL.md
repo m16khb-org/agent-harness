@@ -15,6 +15,8 @@ The workflow is advisory and agent-driven. Hooks may suggest this skill, but hoo
 
 The cycle has one durable state record. Use `agent-harness issueops ... --json` or matching MCP tools when the cycle needs to survive compaction, handoff, or another host. Optional Orca supervision is a conditional execution lease inside that record; Orca never becomes a second workflow authority, and inline execution keeps `execution_handoff` absent.
 
+In a claimed supervised handoff, the worker uses only the sealed `agent-harness issueops heartbeat` and `agent-harness issueops handoff finish` lifecycle commands. Direct `orca` controllers remain coordinator-owned; successful finish projects `worker_done` automatically.
+
 IssueOps is a main-agent state machine:
 
 ```text
@@ -237,7 +239,7 @@ or
 
 ## Agent-Harness Phase Assist Map
 
-IssueOps phases are supported by 9 agent-harness native skills covering strategy, research, design, execution, debugging, optimization, git operations, quality measurement, and cleanup. Each skill works standalone or integrated; when an IssueOps cycle exists, state is persisted through `agent-harness` CLI/MCP. Skills form a pipeline from problem discovery through PR/MR completion:
+IssueOps phases are supported by 11 agent-harness native skills covering strategy, research, design, execution, debugging, optimization, git operations, quality measurement, and cleanup. Each skill works standalone or integrated; when an IssueOps cycle exists, state is persisted through `agent-harness` CLI/MCP. Skills form a pipeline from problem discovery through PR/MR completion:
 
 ```
 problem → grill → issue → plan → compatibility-review → implement → ai-slop-clean → feedback → pr → cleanup

@@ -102,7 +102,7 @@ Tim Berners-Lee's Web was designed for open access, but many modern sites block 
 
 **Core principle: "Prefer official/public access paths first. HTTP 200 is the START of validation, not success."**
 
-Fetch resilience must stay inside authorization boundaries. Do not bypass login, paywalls, CAPTCHAs, robots-sensitive restrictions, or site abuse controls. If access requires authentication, subscription, or human challenge solving, stop escalation for that source and report the limitation.
+Fetch resilience must stay inside authorization boundaries. Do not bypass login, paywalls, CAPTCHAs, robots-sensitive restrictions, or site abuse controls. If access requires authentication, subscription, human challenge solving, or defeating a bot/WAF block, stop escalation for that source and report the limitation.
 
 #### Harness Web-Fetch First
 
@@ -129,32 +129,33 @@ Before any generic fetch, check if the target platform has a public no-auth API.
 | **Wayback Machine** | CDX API | `curl -sL "https://web.archive.org/cdx/search/cdx?url={domain}/*&output=json&limit=10"` |
 | **YouTube / 1,858 media sites** | yt-dlp metadata | `yt-dlp --dump-json --skip-download "{URL}" 2>/dev/null` |
 
-#### Level FR-1: Lightweight Probes (Parallel)
+#### Level FR-1: Direct Boundary Probe, Then Public Alternatives
 
-When no Level FR-0 match exists or it failed, run ALL of these in parallel:
+When no Level FR-0 match exists, or when a matching public API failed without an access-control signal, first request the original public URL directly with a truthful research User-Agent and inspect its status, headers, redirects, and body. Do not start a proxy, cache, mobile variant, or sidecar request in parallel with this boundary probe. Any blocked, challenge, auth, or paywall result ends attempts for that source.
 
 ```
-1. Jina Reader (no-key, auto-cleans HTML to markdown):
+1. Direct boundary probe (always first):
+   curl -sSL -D - -H "User-Agent: agent-harness-research/1.0" "{URL}"
+
+Only when the direct probe has no access-control signal but does not yield usable content, run the applicable public alternatives in parallel:
+
+2. Jina Reader (no-key, auto-cleans HTML to markdown):
    curl -s "https://r.jina.ai/{URL}"
 
-2. Current host fetch/search tool, if exposed.
+3. Current host fetch/search tool, if exposed.
 
-3. curl with a transparent desktop User-Agent for sites that block default CLI user agents:
-   curl -sL -H "User-Agent: Mozilla/5.0 (Macintosh; ...) Chrome/131.0.0.0 Safari/537.36" "{URL}"
-
-4. curl with mobile public endpoint variant (www. → m.) when the site publicly serves equivalent content there:
-   curl -sL -H "User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 17_0...)" "https://m.{domain}/{path}"
+4. curl with a mobile public endpoint variant (www. → m.) when the site documents or publicly links equivalent content there:
+   curl -sL -H "User-Agent: agent-harness-research/1.0" "https://m.{domain}/{path}"
 
 5. URL variants:
    Original → try appending: /rss, /feed, .json, /api
 ```
 
-**Sidecar sources in parallel (lower trust, tag provenance):**
+**Sidecar sources after a clean direct boundary probe (lower trust, tag provenance):**
 - Google AMP cache: `https://www.google.com/amp/s/{URL_WITHOUT_HTTPS}`
-- archive.today: submit via `https://archive.today/?run=1&url={URL}`
 - Wayback Machine CDX lookup for historical snapshots
 
-→ Sidecar content is used only when ALL primary sources fail, and MUST be tagged: "(Source: archive.today snapshot, retrieved YYYY-MM-DD. Original unavailable.)"
+→ Sidecar content is used only when ALL primary sources fail, and MUST be tagged: "(Source: <archive/cache name> snapshot, retrieved YYYY-MM-DD. Original unavailable.)"
 
 #### Escalation Signals — When to Move to FR-2
 
@@ -170,35 +171,13 @@ When no Level FR-0 match exists or it failed, run ALL of these in parallel:
 
 **Stop escalation immediately if:** `login`, `sign in`, `로그인`, `subscribe`, `구독` detected → "Authentication required — cannot bypass login/paywall."
 
-#### Level FR-2: Alternate HTTP Client (curl_cffi, If Already Available or Approved)
+#### Level FR-2: Stop On Access-Control Blocking
 
-When Level FR-1 detected WAF/bot blocking signals:
+When Level FR-1 detects WAF/bot blocking, a challenge, CAPTCHA, authentication, or a paywall signal, stop attempts for that source and record the observed signal. Do not use TLS/browser impersonation, alternate clients, cookie warming, or referrer fabrication to defeat the block; continue with independent lawful sources instead.
 
-Use this only for public pages when the dependency is already available or the user approved a project-local temporary environment. Do not use it to cross login, paywall, CAPTCHA, or abuse-control boundaries.
+#### Level FR-3: Full Browser For Ordinary Client Rendering (When Exposed by Current Host)
 
-```python
-from curl_cffi import requests
-
-TARGETS = ["safari", "safari_ios", "chrome", "chrome_android", "firefox"]
-for target in TARGETS:
-    session = requests.Session(impersonate=target)
-    session.headers.update({
-        "Accept-Language": "en-US,en;q=0.9",
-    })
-    resp = session.get(url, timeout=20)
-    if resp.status_code == 200 and len(resp.text) > 500:
-        # SUCCESS — use this response
-        break
-```
-
-**Session continuity for public pages only:**
-- **Cookie continuity**: first GET the homepage, wait 2s, then GET the target URL with cookies from the homepage when this does not cross a login, paywall, or challenge boundary
-- **Referrer header**: use only truthful referrers from pages actually visited in the same research path
-- **Locale-matched headers**: match `Accept-Language` to the site's expected language (ko-KR for Korean sites, ja-JP for Japanese)
-
-#### Level FR-3: Full Browser (When Exposed by Current Host)
-
-When Level FR-2 also fails, or JS challenge/CAPTCHA detected:
+Use this only when the page is an ordinary client-rendered SPA with no access-control or challenge signal. A JS challenge or CAPTCHA is an FR-2 stop condition, not authorization to continue in a browser.
 
 ```
 1. Use the current host's browser navigation tool for {URL}
@@ -243,7 +222,7 @@ When only a blocked page shell is available, structured metadata can still provi
 
 ```bash
 # OpenGraph tags (title, description, image, URL)
-grep -oP '<meta property="og:(title|description|image|url)"[^>]*content="[^"]*"' page.html
+rg -o '<meta property="og:(title|description|image|url)"[^>]*content="[^"]*"' page.html
 
 # JSON-LD structured data (Schema.org — product prices, article bodies, person profiles)
 python3 -c "
@@ -255,14 +234,14 @@ for block in re.findall(r'<script type=\"application/ld\+json\">(.*?)</script>',
 "
 
 # Twitter Card metadata
-grep -oP '<meta name="twitter:(title|description|image|creator)"[^>]*content="[^"]*"' page.html
+rg -o '<meta name="twitter:(title|description|image|creator)"[^>]*content="[^"]*"' page.html
 ```
 
 #### Dependency Availability
 
 Do not install dependencies globally or silently. First check whether the tool is already available. If a missing tool is important, ask for permission or use a project-local temporary environment only when the host policy allows it. If installation is not allowed, skip that method and record the limitation.
 
-Useful optional dependencies: `curl_cffi` for TLS-compatible public fetches, `beautifulsoup4` for HTML parsing, `feedparser` for RSS/Atom parsing, and `yt-dlp` for public media metadata.
+Useful optional dependencies: `beautifulsoup4` for HTML parsing, `feedparser` for RSS/Atom parsing, and `yt-dlp` for public media metadata.
 
 ### Phase 2: Cross-Verification
 
