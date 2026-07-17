@@ -398,6 +398,24 @@ GitHub 재조회 결과 open issue는 `#18`, `#19`, `#20`, `#21`, `#28`이고, `
 - 상태: **원인 확정·누수 디렉터리 정리 후 안전한 변수명으로 재검증**.
 - 근거: self-verify JSON의 `ok=true`, `summary.failed_steps=0`, `minimum_goal_score=100`, `termination_eligible=true`; zsh의 두 exact 오류와 `/var/folders/mt/cyw_xzps58768x9tq23r5t200000gn/T/tmp.jtXhIRBXxD` 생성 시각·state 내용.
 
+### B-42 — format validator와 focused test가 실행 가능한 문서 계약 결함 일곱 건을 놓침
+
+- 증상: 전체 테스트·race·self-verify와 10개 `validate-skill.py`가 통과한 뒤 독립 reviewer가 #28 계획의 무효한 `issueops status --json`, Turing의 조건부 reviewer와 무조건 reviewer 지시 충돌, Berners-Lee의 direct access-control 확인 전 Jina 병렬 요청, Shannon의 다중 Go 파일에서 깨지는 line-number loop를 발견해 `REQUEST CHANGES`를 냈다. 1차 수정 재검토에서는 Berners-Lee의 FR-0 비차단 실패 fallback 누락, Turing skip 시 거짓 `APPROVE` JSON, Shannon redundancy 예제의 같은 다중 파일 오류 세 건을 추가 발견했다.
+- 직접 원인: Markdown validator는 구조만 검사하고 shell 예제를 실제로 실행하지 않는다. focused contract test는 일부 exact phrase만 고정하며 같은 문서 내 규칙 간 모순과 retrieval 순서까지 모델링하지 않는다.
+- 영향: 자동 게이트가 모두 GREEN이어도 사용자가 문서 명령을 그대로 실행하면 `id is required` 또는 `sed` parse 오류가 나고, 안전·위험도 계약도 실행 순서에서 위반될 수 있다.
+- 안전한 탈출 경로: 병합 전 fresh reviewer에게 issue 완료 기준과 전체 diff를 제공한다. 명령 finding은 실제 CLI/다중 파일 corpus에서 RED를 재현하고, 안전 finding은 단계 순서를 명시적으로 직렬화한 뒤 같은 reviewer에게 재제출한다.
+- 상태: **일곱 건 모두 수정·실행 검증 후 동일 reviewer 최종 재검토 중**.
+- 근거: reviewer의 Critical 0/Important 4 및 Critical 0/Important 3 판정, 수정 전 `issueops: id is required`, 수정 전 Shannon `sed ... command i expects` 오류, 수정 후 #28 status exit 0·두 다중 파일 Shannon 예제 실행·skill validator·focused IssueOps test 출력.
+
+### B-43 — macOS BSD sed가 range address의 `=` command를 거부함
+
+- 증상: reviewer의 redundancy finding을 고친 첫 예제에서 `sed -n "${line},/^}/="`가 macOS에서 `command = expects up to 1 address(es), found 2`를 모든 함수마다 출력했다.
+- 직접 원인: GNU/BSD 차이를 확인하지 않고 `=` command에 address range를 적용했다. `=`는 현재 line number 출력 command지만 BSD sed에서는 두 address를 받지 않는다.
+- 영향: 다중 파일 field parsing은 고쳐졌어도 함수 길이 계산이 비어 음수/잘못된 결과를 만들고 stderr를 대량 발생시킨다.
+- 안전한 탈출 경로: range 본문을 portable `p`로 출력하고 `wc -l | tr -d ' '`로 길이를 센다. 예제 전체를 실제 다중 Go 파일 corpus에서 실행해 `file:start:length:name` 출력을 확인한다.
+- 상태: **RED 재현 후 portable pipeline으로 수정·실행 검증 완료**.
+- 근거: 수정 전 BSD sed exact 오류와 수정 후 `internal/core/issueops/*.go`에서 정상 출력된 `issueops_ai_slop_clean_test.go:10:49:...` 등 file-aware 측정 결과.
+
 ## 2026-07-17 실행 완료 스냅샷
 
 - #19 `io-339c2fca0e34`: accepted, commit `a8e7dce90500e80a3cb3b68f889710df90ec7374`.
