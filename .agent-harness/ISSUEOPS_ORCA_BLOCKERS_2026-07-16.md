@@ -389,6 +389,15 @@ GitHub 재조회 결과 open issue는 `#18`, `#19`, `#20`, `#21`, `#28`이고, `
 - 상태: **#19/#20/#21/#28/#18 종료 terminal 정리 완료**.
 - 근거: accepted record 목록과 정리 전후 `orca terminal list`, `orca task-list --status dispatched` 결과.
 
+### B-41 — zsh 예약 변수명이 성공한 QA wrapper의 종료·정리를 깨뜨림
+
+- 증상: self-verify 본체는 `ok=true`, `termination_eligible=true`, 25/25 단계와 최소 점수 100을 반환했지만 후속 `status=$?`에서 `read-only variable: status`가 발생해 wrapper가 exit 1이 됐고 임시 state 삭제도 실행되지 않았다. 이어진 진단 loop에서 `path`를 지역 변수처럼 쓰자 zsh의 `PATH` 연동 배열을 덮어써 loop 내부 기본 명령 탐색도 실패했다.
+- 직접 원인: zsh에서 `status`는 읽기 전용 exit-status parameter이고 `path`는 `PATH`와 연결된 특수 배열인데, POSIX shell의 평범한 변수처럼 사용했다.
+- 영향: 제품 검증 성공을 외부 wrapper 실패로 오분류하고, cleanup receipt가 거짓이 되며, 뒤따르는 진단 명령까지 `command not found`로 연쇄 실패할 수 있다.
+- 안전한 탈출 경로: 종료 코드는 `rc`, 경로 iterator는 `candidate`처럼 예약되지 않은 이름을 사용한다. 본체 JSON의 exact 성공 필드와 wrapper exit를 분리해서 판정하고, 누수된 temp root는 생성 시각·내용을 확인한 exact path만 삭제한다.
+- 상태: **원인 확정·누수 디렉터리 정리 후 안전한 변수명으로 재검증**.
+- 근거: self-verify JSON의 `ok=true`, `summary.failed_steps=0`, `minimum_goal_score=100`, `termination_eligible=true`; zsh의 두 exact 오류와 `/var/folders/mt/cyw_xzps58768x9tq23r5t200000gn/T/tmp.jtXhIRBXxD` 생성 시각·state 내용.
+
 ## 2026-07-17 실행 완료 스냅샷
 
 - #19 `io-339c2fca0e34`: accepted, commit `a8e7dce90500e80a3cb3b68f889710df90ec7374`.
