@@ -130,6 +130,54 @@ func TestSessionStartGuidanceSelectsExactWorkerAndFailsClosedOnSourceAmbiguity(t
 	}
 }
 
+func TestSessionStartGuidanceSelectsOnlyCoordinatorPreparingSourceCycle(t *testing.T) {
+	_, dispatchedTemplate, _ := lifecycleHandoffRecord(t, handoff.StateDispatched)
+	repo, preparing, _ := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
+	dispatched := preparing
+	dispatched.ID = "io-dispatched-cycle"
+	dispatched.Branch = "2-dispatched"
+	dispatched.WorktreePath = makeIssueOpsGuardWorktreeForTest(t, repo, dispatched.Branch)
+	dispatched.ExecutionHandoff = cloneLifecycleHandoffForTest(t, dispatchedTemplate.ExecutionHandoff)
+	dispatched.ExecutionHandoff.CoordinatorRoot = repo
+	dispatched.ExecutionHandoff.WorkerRoot = dispatched.WorktreePath
+	dispatched.ExecutionHandoff.OwnershipEpoch = "epoch-dispatched"
+	dispatched.ExecutionHandoff.Orca.WorktreeID = "wt-dispatched"
+	dispatched.ExecutionHandoff.Orca.WorktreePath = dispatched.WorktreePath
+	dispatched.ExecutionHandoff.Orca.TaskID = "task-dispatched"
+	dispatched.ExecutionHandoff.Orca.DispatchID = "dispatch-dispatched"
+	if _, err := writeIssueOps(IssueOpsStateRoot(), dispatched); err != nil {
+		t.Fatal(err)
+	}
+
+	guidance := BuildIssueOpsHandoffSessionGuidance(repo, "codex", "coordinator", "agent-1")
+	for _, want := range []string{"role=coordinator", "handoff start", preparing.ID, "--coordinator-session-id 'coordinator'"} {
+		if !strings.Contains(guidance, want) {
+			t.Fatalf("unique coordinator_preparing source guidance missing %q: %s", want, guidance)
+		}
+	}
+	if strings.Contains(guidance, dispatched.ID) || strings.Contains(strings.ToLower(guidance), "multiple active") {
+		t.Fatalf("non-preparing cycle kept coordinator dispatch unreachable: %s", guidance)
+	}
+
+	secondPreparing := dispatched
+	secondPreparing.ID = "io-second-preparing"
+	secondPreparing.Branch = "3-preparing"
+	secondPreparing.WorktreePath = makeIssueOpsGuardWorktreeForTest(t, repo, secondPreparing.Branch)
+	secondPreparing.ExecutionHandoff = cloneLifecycleHandoffForTest(t, preparing.ExecutionHandoff)
+	secondPreparing.ExecutionHandoff.WorkerRoot = secondPreparing.WorktreePath
+	secondPreparing.ExecutionHandoff.OwnershipEpoch = "epoch-second-preparing"
+	secondPreparing.ExecutionHandoff.Orca.WorktreeID = "wt-second-preparing"
+	secondPreparing.ExecutionHandoff.Orca.WorktreePath = secondPreparing.WorktreePath
+	if _, err := writeIssueOps(IssueOpsStateRoot(), secondPreparing); err != nil {
+		t.Fatal(err)
+	}
+
+	ambiguous := BuildIssueOpsHandoffSessionGuidance(repo, "codex", "coordinator", "agent-1")
+	if !strings.Contains(strings.ToLower(ambiguous), "multiple") || !strings.Contains(ambiguous, preparing.ID) || !strings.Contains(ambiguous, secondPreparing.ID) || strings.Contains(ambiguous, "handoff start") {
+		t.Fatalf("multiple coordinator_preparing cycles must remain fail-closed: %s", ambiguous)
+	}
+}
+
 func TestSessionStartWorkerGuidanceEmitsUsageModelUserDecisionBoundary(t *testing.T) {
 	_, record, worktree := lifecycleHandoffRecord(t, handoff.StateDispatched)
 	guidance := strings.ToLower(BuildIssueOpsHandoffSessionGuidance(worktree, "codex", "session-1", "worker-1"))

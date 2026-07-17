@@ -461,6 +461,51 @@ GitHub 재조회 결과 open issue는 `#18`, `#19`, `#20`, `#21`, `#28`이고, `
 - 상태: **version drift 확인·분리 완료, 설치는 변경하지 않음**.
 - 근거: installed build `vcs.revision=18a8083e3f2a...`, installed/final binary SHA-256 불일치, 최신 build에서도 B-46 동일 재현.
 
+### B-49 — 승인된 design review가 의미상 충분해도 exact 한국어 literal 누락으로 거부됨
+
+- 증상: issue #46의 design review에 대안, 위험, 검증 계획을 모두 기록했지만 첫 승인 명령은 `approved design review requires design_review_evidence (add --verification "설계 검토 완료: 대안과 위험 확인")`로 거부됐다. 오류가 요구한 exact verification 문구를 추가한 두 번째 명령만 성공했다.
+- 직접 원인: 승인 게이트가 구조화된 `alternatives`/`risks`/`verification`의 의미 조합을 판정하지 않고 `설계 검토 완료: 대안과 위험 확인`이라는 literal evidence를 별도 필수 계약으로 요구한다. CLI 도움말이나 최초 오류 전 경로에서는 이 exact 문구가 충분히 선제 노출되지 않았다.
+- 영향: 실제 설계 검토가 완료돼도 coordinator가 exact literal을 모르면 phase 전이가 막힌다. 의미상 같은 자유 문구를 반복해도 해결되지 않아 구현 착수와 Orca handoff가 지연된다.
+- 안전한 탈출 경로: review 승인 전에 CLI가 요구하는 exact verification template을 렌더하고, 기존 대안·위험·테스트 근거를 유지한 채 그 literal을 추가한다. 문구 검사를 삭제하거나 빈 evidence로 우회하지 않는다.
+- 상태: **exact evidence를 추가해 issue #46 design review 승인 완료; discoverability 개선 후보 기록**.
+- 근거: 첫 승인 명령의 exact 오류, 두 번째 승인 뒤 `design_review.approved=true` 및 verification 배열의 `설계 검토 완료: 대안과 위험 확인.`.
+
+### B-50 — source checkout에 여러 supervised cycle이 있으면 유일한 준비 중 coordinator도 SessionStart에서 선택되지 않음
+
+- 증상: issue #46 전용 Orca coordinator를 source checkout에서 시작했지만 SessionStart가 `Multiple active supervised IssueOps cycles match this source checkout`만 출력하고 authenticated `handoff start` 명령을 생략했다. coordinator는 identity-filled claim/start 명령을 얻지 못했고, PreToolUse는 그 상태에서 읽기와 escalation 전달까지 막아 자기 복구가 불가능해졌다.
+- 직접 원인: `SessionStartGuidance`는 worker root exact match 다음에 source match 수만 센다. source match가 둘 이상이면 lifecycle state를 보지 않고 항상 ambiguity guidance를 반환해, 전체 후보 중 정확히 하나만 `coordinator_preparing`이어도 선택하지 않는다. 안내문은 `status/resume --id`로 cycle을 선택하라고 하지만 SessionStart의 후보 선택은 그 결과나 binding을 읽지 않는다.
+- 영향: 과거 active/closed-recovery cycle이 source에 남은 정상 운영 환경에서 새 coordinator가 시작 권한을 받을 수 없다. hook을 유지한 채 하는 공식 self-recovery도 동일 hook에 차단돼 Orca task dispatch 전 deadlock이 된다.
+- 안전한 탈출 경로: source match가 여러 개일 때 `coordinator_preparing` 후보만 다시 분류하고 정확히 하나면 그 record의 authenticated guidance를 렌더한다. 준비 중 후보가 0개 또는 2개 이상이면 계속 fail-closed ambiguity를 유지한다.
+- 상태: **TDD bootstrap 수정 중**. `TestSessionStartGuidanceSelectsOnlyCoordinatorPreparingSourceCycle`이 수정 전 unique preparing scenario에서 RED였고, 최소 filtering 구현 뒤 unique selection과 two-preparing ambiguity가 GREEN이다.
+- 근거: `internal/core/lifecycle/lifecycle_handoff_guard.go:20-41`, 새 lifecycle 회귀 테스트의 수정 전 exact failure와 focused GREEN 출력, failed Orca coordinator task `task_3956069b023d`/dispatch `ctx_388c9cc0ea54`.
+
+### B-51 — ambiguity 안내의 `resume --id --bind`가 supervised handoff에서 실제 선택 수단이 아님
+
+- 증상: B-50 안내대로 exact cycle을 선택하려고 `agent-harness issueops resume --repo ... --id io-65b25b19728b --bind --json`을 실행했지만 `resume bind is read-only and refused for a supervised handoff; use the exact handoff claim command`로 거부됐다. `status --id`와 bind 없는 `resume --id`도 조회 결과만 반환하고 다음 SessionStart 선택을 바꾸지 않았다.
+- 직접 원인: supervised handoff는 sole-writer 안전 때문에 generic resume binding을 의도적으로 금지하지만, multi-cycle SessionStart 안내는 그 금지된 경로를 coordinator selection 방법처럼 제시한다. lifecycle guard와 resume binding 계약 사이에 실행 가능한 연결이 없다.
+- 영향: 사용자가 올바른 cycle ID를 알고 있어도 공식 안내만으로 coordinator identity를 복구할 수 없다. 같은 coordinator를 재시작하거나 resume를 반복하면 상태 변화 없이 차단만 누적된다.
+- 안전한 탈출 경로: B-50처럼 lifecycle state로 유일한 preparing coordinator를 직접 선택하고 exact authenticated handoff command를 렌더한다. supervised worker binding 금지는 유지한다.
+- 상태: **원인 확정; B-50 회귀 수정으로 실행 불가능한 안내 경로를 우회하지 않고 제거 중**.
+- 근거: exact resume 오류, bind 없는 status/resume 전후 동일 SessionStart ambiguity, `lifecycle_handoff_guard.go`의 source-match 분기.
+
+### B-52 — cancellation finalize의 sole-writer attestation과 관찰 inventory 사이 일시적 불일치
+
+- 증상: 실패한 issue #46 attempt 1을 cancel한 뒤 첫 `finalize-cancel`은 exact worker worktree의 idle fallback terminal 때문에 `cancellation quiescence found a possible writer: sole writer attestation found a competing connected or writable terminal`로 거부됐다. 그 terminal을 닫고 exact worktree inventory 0건을 확인한 직후에도 같은 오류가 한 차례 반복됐다. 최종적으로 exact worktree terminal 0건, 해당 attempt의 task/dispatch/claim/result 부재를 다시 확인하고 `--force`로 cancellation을 마감했다.
+- 직접 원인: `requireCancellationQuiescence`는 local cleanup 확인 전에 `attestHandoffSoleWriter(..., allowedHandle="")`를 호출한다. 이 attestation은 exact worktree의 connected 또는 writable terminal 한 건도 conflict로 보고, 이어 전역 dispatched task와 assignee terminal을 별도로 교차 검사한다. 첫 실패 원인은 남아 있던 fallback terminal로 확정됐다. 닫은 직후 반복된 동일 오류는 같은 시점의 exact Orca list 0건과 모순돼 runtime inventory 반영 지연 또는 두 조회 사이 snapshot 불일치로 한정되며, 현재 저장된 응답만으로 둘을 더 세분할 수 없다.
+- 영향: 실제 writer를 안전하게 제거한 뒤에도 cancellation tombstone을 정상 finalize하지 못해 retry가 막힌다. 반대로 inventory 확인 없이 force하면 duplicate writer 위험이 있으므로 무조건 force할 수 없다.
+- 안전한 탈출 경로: exact worktree terminal inventory, attempt-scoped task/dispatch/claim/result를 각각 재조회해 모두 비었고 HEAD/branch가 보존됨을 증명한 경우에만 reason을 남겨 force-finalize한다. product 개선은 동일 attestation snapshot/receipt를 오류에 노출해 어느 row가 conflict였는지 식별 가능하게 해야 한다.
+- 상태: **attempt 1은 증거 기반 force-finalize로 cancelled/closed; 관찰성 개선 후보 기록**.
+- 근거: `internal/core/issueops/issueops_handoff_recovery.go:480-493`, `issueops_handoff_dispatch.go:845-963`, exact worker worktree terminal `totalCount=0`, final record `state=closed`/`closed_disposition=cancelled`/`failure.code=cancellation_finalized`.
+
+### B-53 — 과거 Orca dispatched task가 완료 result를 갖고도 전역 inventory에 잔존
+
+- 증상: issue #46 cancellation 원인을 교차 검사하던 중 과거 issue #16 task `task_c9f3866d42b7`가 `result={"reason":"codex_hook_trust_review","claim_observed":false,"retry_after_guard_fix":true}`와 `completed_at`을 갖고도 status `dispatched`로 반환됐다. assignee `term_c2f50780-d4e1-4c0b-a983-9b53154d5b08`는 source checkout의 열린 lazygit terminal이다.
+- 직접 원인: Orca task result/completed timestamp 기록과 dispatch status terminalization이 원자적이지 않아 과거 dispatch가 `dispatched`에 남았다. 현재 sole-writer 검사는 이를 전역 possible-writer inventory로 매번 읽지만, assignee가 다른 worktree에 실제 존재하면 foreign writer로 허용한다.
+- 영향: 현재 issue #46 exact worker worktree writer는 아니므로 직접 차단하지 않지만, source terminal이 닫혀 assignee가 inventory에서 사라지면 새 handoff attestation이 `assignee terminal is absent` recovery error로 바뀔 수 있다. 사용자의 활성 lazygit terminal이므로 현재 작업이 임의 종료하거나 task 상태를 변조하면 안 된다.
+- 안전한 탈출 경로: issue #46에서는 foreign writer 판정을 그대로 보존한다. 과거 #16 cleanup은 해당 cycle의 durable record와 task/dispatch authority를 별도로 복구한 뒤 사용자 활성 terminal과 분리해 처리한다.
+- 상태: **현재 비차단 anomaly로 기록; 사용자 활성 terminal에는 변경 없음**.
+- 근거: `orca orchestration task-list --status dispatched --json`의 유일한 task와 `orca terminal list --json`의 matching assignee/worktree, `attestHandoffSoleWriter`의 foreign-dispatch 분기.
+
 ## 2026-07-17 실행 완료 스냅샷
 
 - #19 `io-339c2fca0e34`: accepted, commit `a8e7dce90500e80a3cb3b68f889710df90ec7374`.

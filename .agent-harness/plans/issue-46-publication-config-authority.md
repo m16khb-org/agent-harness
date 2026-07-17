@@ -70,6 +70,17 @@ None blocking. The root-administrator boundary is documented as a threat-model l
 | G4-C2 | A fresh hooks-enabled Codex process executes an allowed observation and blocks an unauthorized source mutation before execution; the IssueOps publication/phase scenario completes from durable state. | `.agent-harness/turing/evidence/issue46-G4-C2-live-e2e.txt` |
 | G5-C1 | Independent reviewer returns unconditional approval, PR CI is green, PR is merged, issue #46 is closed, and local `main == origin/main`. | `.agent-harness/turing/evidence/issue46-G5-C1-remote-completion.txt` |
 
+## Task 0: Restore multi-cycle coordinator reachability
+
+**Files:**
+- Modify: `internal/core/lifecycle/lifecycle_handoff_guard.go`
+- Modify: `internal/core/lifecycle/lifecycle_handoff_guard_test.go`
+
+- [ ] Reproduce B-50: one `coordinator_preparing` cycle plus older non-preparing source cycles currently yields ambiguous SessionStart guidance and omits the authenticated `handoff start` command.
+- [ ] When source matches contain exactly one `coordinator_preparing` cycle, render its identity-filled coordinator guidance; two preparing cycles remain ambiguous and no start command is emitted.
+- [ ] Run the focused lifecycle test RED then GREEN, the lifecycle package, and full Go tests before building the bootstrap binary used by the next fresh Orca coordinator.
+- [ ] Record B-50 through B-52 in the blocker ledger. This bootstrap correction is the only main-agent implementation exception; B-45 through B-49 remain assigned to the Orca worker.
+
 ## Task 1: Pin publication failures
 
 **Files:**
