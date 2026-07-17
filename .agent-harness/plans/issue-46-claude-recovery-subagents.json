@@ -1,0 +1,38 @@
+[
+  {
+    "objective": "Implement the three remaining issue 46 publication-authority findings in the isolated recovery worktree with RED-GREEN TDD and complete Turing evidence.",
+    "pattern": "isolated-worktree-work",
+    "benefit": "isolated_worktree",
+    "tradeoffs": [
+      "The recovery commit must be integrated back into the original issue branch after acceptance."
+    ],
+    "net_positive_rationale": "A dedicated Claude worker avoids the exhausted Codex lease while preserving sole-writer isolation and the exact e035206 base.",
+    "scope": "Only issue 46 publication authority production files, focused tests, blocker ledger, plan cautions, and Turing evidence in the recovery worktree.",
+    "verification": "Require named RED and GREEN tests, full Go race vet Windows golden build and self-verify gates, an atomic Lore commit, and a clean worker_done receipt.",
+    "fallback": "If worker authority or scope fails, close the exact handoff without edits and retain the clean recovery branch for another fenced attempt."
+  },
+  {
+    "objective": "Adversarially test the completed recovery HEAD against all issue 46 Turing criteria and the three independent Important findings.",
+    "pattern": "devils-advocate-review",
+    "benefit": "fresh_review",
+    "tradeoffs": [
+      "Adds one review cycle before integration."
+    ],
+    "net_positive_rationale": "Publication authority failures are security-sensitive and the fresh reviewer did not author the implementation.",
+    "scope": "Read the plan, diff, real-Git regressions, Turing artifacts, and gate receipts; report only Critical or Important findings with source evidence.",
+    "verification": "The coordinator reproduces every finding or records an evidence-backed rejection, then reruns affected gates.",
+    "fallback": "Use a second fresh reviewer if the first review cannot inspect the final committed HEAD."
+  },
+  {
+    "objective": "Perform a final cross-verification review before the recovery commit is integrated into the issue branch and published.",
+    "pattern": "cross-verification-consensus",
+    "benefit": "fresh_review",
+    "tradeoffs": [
+      "Delays publication until two independent reviews agree there are no Critical or Important findings."
+    ],
+    "net_positive_rationale": "Independent agreement reduces the risk of accepting a fix that passes focused tests but weakens the wider publication contract.",
+    "scope": "Final committed recovery diff, backward compatibility, blocker completeness, and observable verification evidence only.",
+    "verification": "Require an unconditional GO with zero Critical and Important findings before integration.",
+    "fallback": "Keep the recovery commit unmerged and return findings to the same fenced worker in a fresh task."
+  }
+]
