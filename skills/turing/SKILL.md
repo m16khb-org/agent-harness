@@ -417,7 +417,7 @@ Trigger when every goal's criteria are passing.
 1. **Targeted verification**: Re-run the changed behavior tests.
 2. **AI slop clean**: Run targeted verification plus the IssueOps `ai-slop-clean` reference (`skills/issueops/references/ai-slop-clean.md`) when cleanup is in scope; use `agent-harness self-verify` for harness-level health, not as a generic cleanup substitute.
 3. **Re-verify** after cleanup.
-4. **Reviewer**: Spawn an adversarial reviewer sub-agent (pattern #2: Devil's advocate). Give it: goal, all criteria, all evidence, full diff. A fresh model with no implementation bias must refute your work.
+4. **Reviewer (when required by the recorded risk decision)**: For full mode and any user-facing or hard-to-reverse work, spawn an adversarial reviewer sub-agent (pattern #2: Devil's advocate). Give it: goal, all criteria, all evidence, full diff. A fresh model with no implementation bias must refute your work. For a trivially reversible low-risk change in proportionate mode, record the skip rationale instead.
    - The reviewer's verdict is BINDING as a gate: do not pass while a concern remains unresolved.
    - Verify every concern against the diff, criteria, and evidence. Fix confirmed findings; return disconfirming evidence for invalid findings to the same reviewer. Never dismiss a concern without evidence.
    - Fix every confirmed issue yourself. Re-run the FULL scenario QA. Capture fresh evidence.
@@ -428,11 +428,13 @@ Trigger when every goal's criteria are passing.
    {
      "aiSlopCleaner": {"status": "passed", "evidence": "cleaner report"},
      "verification": {"status": "passed", "commands": ["go test ./..."], "evidence": "all green"},
-     "codeReview": {"recommendation": "APPROVE", "evidence": "all concerns resolved"},
+     "codeReview": {"status": "passed", "recommendation": "APPROVE", "evidence": "all concerns resolved"},
      "criteriaCoverage": {"totalCriteria": N, "passCount": N},
      "metrics": {"evidenceCoverage": 1.0, "reworkRate": 0.08, "cycleEfficiency": 0.92, "parallelizationRatio": 5.0, "cleanupCompliance": 1.0}
    }
    ```
+
+   When the recorded proportionate-mode risk decision skips review, record `codeReview` as `{"status":"skipped","recommendation":null,"evidence":"<specific low-risk skip rationale>"}` instead. Never claim `APPROVE` without a reviewer.
 
 다단계 검증에서 한 단계라도 실패하면 1단계부터 재실행하며 부분 통과 evidence를 재사용하지 않는다 (규범 출처: `.agent-harness/TESTING.md` 부분 검증 상태 금지 절).
 

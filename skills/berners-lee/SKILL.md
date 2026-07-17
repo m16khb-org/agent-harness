@@ -129,18 +129,20 @@ Before any generic fetch, check if the target platform has a public no-auth API.
 | **Wayback Machine** | CDX API | `curl -sL "https://web.archive.org/cdx/search/cdx?url={domain}/*&output=json&limit=10"` |
 | **YouTube / 1,858 media sites** | yt-dlp metadata | `yt-dlp --dump-json --skip-download "{URL}" 2>/dev/null` |
 
-#### Level FR-1: Lightweight Probes (Parallel)
+#### Level FR-1: Direct Boundary Probe, Then Public Alternatives
 
-When no Level FR-0 match exists or it failed without an access-control signal, run these public read-only probes in parallel. Any blocked, challenge, auth, or paywall result ends attempts for that source:
+When no Level FR-0 match exists, or when a matching public API failed without an access-control signal, first request the original public URL directly with a truthful research User-Agent and inspect its status, headers, redirects, and body. Do not start a proxy, cache, mobile variant, or sidecar request in parallel with this boundary probe. Any blocked, challenge, auth, or paywall result ends attempts for that source.
 
 ```
-1. Jina Reader (no-key, auto-cleans HTML to markdown):
+1. Direct boundary probe (always first):
+   curl -sSL -D - -H "User-Agent: agent-harness-research/1.0" "{URL}"
+
+Only when the direct probe has no access-control signal but does not yield usable content, run the applicable public alternatives in parallel:
+
+2. Jina Reader (no-key, auto-cleans HTML to markdown):
    curl -s "https://r.jina.ai/{URL}"
 
-2. Current host fetch/search tool, if exposed.
-
-3. curl with a truthful research User-Agent:
-   curl -sL -H "User-Agent: agent-harness-research/1.0" "{URL}"
+3. Current host fetch/search tool, if exposed.
 
 4. curl with a mobile public endpoint variant (www. → m.) when the site documents or publicly links equivalent content there:
    curl -sL -H "User-Agent: agent-harness-research/1.0" "https://m.{domain}/{path}"
@@ -149,7 +151,7 @@ When no Level FR-0 match exists or it failed without an access-control signal, r
    Original → try appending: /rss, /feed, .json, /api
 ```
 
-**Sidecar sources in parallel (lower trust, tag provenance):**
+**Sidecar sources after a clean direct boundary probe (lower trust, tag provenance):**
 - Google AMP cache: `https://www.google.com/amp/s/{URL_WITHOUT_HTTPS}`
 - Wayback Machine CDX lookup for historical snapshots
 

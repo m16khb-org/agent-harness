@@ -126,16 +126,18 @@ Heuristic (does not require AST parser):
 # JavaScript/TypeScript: grep 'function \|=> {'
 # Rust: grep '^fn \|^pub fn '
 
-for func in $(grep -n '^func ' *.go | cut -d: -f1); do
-  name=$(sed -n "${func}p" *.go | head -1)
-  end=$(tail -n +$func *.go | grep -n '^}' | head -1 | cut -d: -f1)
-  body=$(sed -n "$func,$((func+end))p" *.go)
-  branches=$(echo "$body" | grep -cE '(^|[^[:alnum:]_])(if|else|for|while|case)([^[:alnum:]_]|$)')
-  if [ $branches -gt 6 ]; then echo "WARN: $name — $branches branch points (ceiling: 6)"; fi
-  if [ $branches -gt 12 ]; then echo "FAIL: $name — $branches branch points (ceiling: 12)"; fi
+for file in *.go; do
+  [ -f "$file" ] || continue
+  rg -n '^func ' "$file" | while IFS=: read -r line signature; do
+    name="$file:$line $signature"
+    body=$(sed -n "${line},/^}/p" "$file")
+    branches=$(echo "$body" | grep -cE '(^|[^[:alnum:]_])(if|else|for|while|case)([^[:alnum:]_]|$)')
+    if [ "$branches" -gt 6 ]; then echo "WARN: $name — $branches branch points (ceiling: 6)"; fi
+    if [ "$branches" -gt 12 ]; then echo "FAIL: $name — $branches branch points (ceiling: 12)"; fi
+  done
 done
-# This script adapts by changing the function-line and closing-brace patterns to
-# match your language's syntax.
+# This file-aware heuristic stops at a top-level Go closing brace. Adapt both
+# the function-line and closing-brace patterns for other languages.
 ```
 
 ### Metric 3: Redundancy — Duplicate Code Ratio
@@ -153,12 +155,18 @@ Heuristic (same-file only, no AST):
 # Quick redundancy check: find functions with similar line counts (first-order approximation)
 # Adapt the function-line pattern to your language:
 #   Go: '^func '     Python: '^def \|^    def '     JS/TS: 'function \|=> {'     Rust: '^fn \|^pub fn '
-grep -n '^func ' *.go | while read line; do
-  name=$(echo "$line" | cut -d: -f3- | sed 's/^func //' | cut -d'(' -f1)
-  start=$(echo "$line" | cut -d: -f1)
-  echo "$name: $start"
-done | sort -t: -k2 -n
-# Manual inspection: adjacent functions with similar line counts are redundancy candidates.
+for file in *.go; do
+  [ -f "$file" ] || continue
+  {
+    rg -n '^func ' "$file" | while IFS=: read -r line signature; do
+      name=$(printf '%s\n' "$signature" | sed 's/^func //' | cut -d'(' -f1)
+      length=$(sed -n "${line},/^}/p" "$file" | wc -l | tr -d ' ')
+      printf '%s:%s:%s:%s\n' "$file" "$line" "$length" "$name"
+    done
+  } | sort -t: -k3,3n
+done
+# Output fields are file:start-line:function-length:name. Within each file,
+# adjacent rows with similar lengths are first-order redundancy candidates.
 # For reliable results, use AST-based tools (below).
 ```
 

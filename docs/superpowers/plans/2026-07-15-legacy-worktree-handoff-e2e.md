@@ -21,14 +21,14 @@
 - Verify only: durable IssueOps state, Orca worktree/terminal/task/dispatch inventory.
 
 - [ ] Record the provider-linked branch head and design review.
-- [ ] Run `issueops worktree prepare --orchestrator orca --confirm` and require `worktree_adopted=true` with the existing canonical path.
-- [ ] Run `issueops handoff start --confirm` using the exact current coordinator recipient identity.
+- [ ] Run `agent-harness issueops worktree prepare --id "$ISSUEOPS_ID" --orchestrator orca --confirm` and require `worktree_adopted=true` with the existing canonical path.
+- [ ] Run `agent-harness issueops handoff start --id "$ISSUEOPS_ID" --confirm` with the remaining preview-sealed arguments and exact current coordinator recipient identity.
 - [ ] Require one worker terminal, one task, and one dispatch linked to the adopted worktree before reporting success.
 
 ### Task 2: Worker-side bounded verification
 
 **Files:**
-- Verify only: `git status --short` and `issueops status --json`.
+- Verify only: `git status --short` and `agent-harness issueops status --id "$ISSUEOPS_ID" --json`.
 
 - [ ] Claim the assigned task through IssueOps.
 - [ ] Verify the worktree is unchanged and report the terminal/task/dispatch IDs through the durable result path.
