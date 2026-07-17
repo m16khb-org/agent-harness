@@ -8,7 +8,7 @@
 
 이번 수정은 다중-cycle source checkout에서 기존의 좁은 read-only grammar와 명시적 read tool만 record 선택 전에 처리하고, exact parser에 `bin/agent-harness`를 추가한다. 테스트·patch·Orca terminal write·malformed shell은 계속 fail-closed다.
 
-## 현재 상태 스냅샷
+## 2026-07-16 복구 전 상태 스냅샷
 
 2026-07-16 재조회에서 같은 source checkout에 다음 다섯 durable handoff가 `coordinator_preparing`으로 남아 있었다.
 
@@ -98,8 +98,8 @@ GitHub 재조회 결과 open issue는 `#18`, `#19`, `#20`, `#21`, `#28`이고, `
 - 직접 원인: 기존 Git checkout의 path/branch/HEAD가 맞는 것과 Orca가 그 checkout을 exact worktree instance로 adopt하고 terminal/task/dispatch를 봉인하는 것은 별도 단계다.
 - 영향: raw legacy worktree를 이미 worker-capable하다고 간주하면 dispatch가 없거나 foreign/stale terminal을 채택할 수 있다.
 - 안전한 탈출 경로: #28의 exact adoption 조건(path·branch·HEAD·repo·instance·marker·issue metadata)과 singleton terminal bootstrap을 통과한 뒤 durable identity와 raw Orca inventory를 교차 확인한다.
-- 상태: **GitHub #28 open backlog**. hook deadlock 수정만으로 자동 완료되지 않는다.
-- 근거: GitHub issue #28 body와 현재 `28-legacy-worktree-handoff-e2e` worktree.
+- 상태: **2026-07-17 attempt 5에서 실 Orca E2E 완료·수락**. task `task_13fac2099adb`, dispatch `ctx_ed4a3f4d84ef`, worker terminal `term_2fc8f58c-c71c-469f-b0d9-41484c43cba1`가 동일 worktree에 생성됐고 dispatch는 `completed`, terminal 종료 뒤 issue #28 inventory는 0건, durable handoff는 `closed/accepted`다.
+- 근거: GitHub issue #28 body, `orca orchestration dispatch-show --task task_13fac2099adb`, `orca terminal list --worktree issue:28`, `issueops status --id io-959e7d74d2ac`.
 
 ### B-09 — branch prepare의 provider base SHA가 로컬에서 확인되지 않던 readiness 실패
 
@@ -244,6 +244,131 @@ GitHub 재조회 결과 open issue는 `#18`, `#19`, `#20`, `#21`, `#28`이고, `
 - 안전한 탈출 경로: `sqlstore.Open`은 오직 typed `SQLITE_BUSY`/`SQLITE_LOCKED` 초기화 오류만 10초 한도로 재시도하고 다른 오류는 즉시 반환한다. process test는 두 helper가 start barrier에 모두 도달한 뒤 동시에 진입시키며, exact claim/finalized exclusion만 `blocked`로 인정하고 그 밖의 오류는 helper별 stderr와 nonzero exit로 보존한다.
 - 상태: **독립 검토 후 이번 변경에서 수정**. 오류 분류 unit test는 helper classifier 부재로 RED였고, 강화된 process test가 수정 전 BUSY/예상 외 오류를 반복 재현했다. 최소 재시도와 barrier/진단 보강 후 claim/create process tests 20회, `sqlstore`/`issueops` 일반·race package가 통과했다.
 - 근거: `internal/core/sqlstore/sqlstore.go`의 `newDBWithRetry`, `internal/core/issueops/issueops_remote_create_claim_test.go`의 exact outcome classifier/start barrier/full Wait, 반대 검토 finding과 named `-count=20`/package race 출력.
+
+### B-25 — 닫힌 child의 stale global dispatch가 새 #19 worker 배정을 막음
+
+- 증상: #19 handoff bootstrap 직전에 해당 issue와 무관한 #23 task가 전역 `dispatched` inventory에 남아 새 task dispatch가 singleton/sole-writer 검사에서 거부됐다.
+- 직접 원인: GitHub issue와 durable child cycle은 닫혔지만 Orca task/dispatch terminality가 같은 시점에 정리되지 않았다. IssueOps의 record 상태와 Orca runtime의 전역 task 상태는 별도 authority라 한쪽만 닫아서는 충분하지 않았다.
+- 영향: 독립적인 새 issue도 runtime 전체의 stale writer 하나 때문에 시작되지 않는다. 단순 재시도는 duplicate task를 만들거나 기존 stale lease를 잘못 채택할 수 있다.
+- 안전한 탈출 경로: stale task의 원래 cycle과 terminal을 exact ID로 조회하고, 원래 작업이 끝났음을 durable/GitHub evidence로 확인한 뒤 terminal 상태로 정리한다. 그 후 global `task-list --status dispatched`가 0건인지 확인하고 새 handoff를 시작한다.
+- 상태: **정리 완료**. #19/#20/#21/#28 실제 Orca wave를 순차 실행해 모두 accepted로 마쳤다.
+- 근거: #19 최초 dispatch 차단 당시 global task inventory와 이후 각 accepted record `io-339c2fca0e34`, `io-4f4603393a22`, `io-ff473d80b45b`, `io-959e7d74d2ac`.
+
+### B-26 — coordinator bootstrap이 canonical source cwd를 암묵 추론하지 않음
+
+- 증상: worker worktree 또는 wrapper cwd에서 `handoff start`를 preview하면 source checkout을 확정하지 못해 bootstrap이 중단되거나 다른 root를 기준으로 hook trust를 검사했다.
+- 직접 원인: coordinator source와 worker root가 분리된 supervised handoff에서 process cwd 하나만으로 양쪽 identity를 안전하게 추론할 수 없다. CLI는 이 경우 `--source-cwd`를 요구한다.
+- 영향: 올바른 record ID와 worktree가 있어도 hook inventory, coordinator session seal, Git base 검증이 서로 다른 root를 보게 된다.
+- 안전한 탈출 경로: coordinator가 canonical source의 `pwd -P`와 `git rev-parse --show-toplevel`을 확인한 뒤 모든 preview/confirm/accept에 동일한 `--source-cwd`를 전달한다.
+- 상태: **운영 계약 확인·적용 완료**.
+- 근거: #19 bootstrap probe 실패와 이후 `/Users/m16khb/Workspace/agent-harness`를 명시해 성공한 #19/#20/#21/#28 handoff records.
+
+### B-27 — coordinator mailbox 재사용과 전역 sole-writer가 독립 issue도 직렬화함
+
+- 증상: 이미 다른 active handoff가 봉인한 coordinator recipient를 새 cycle이 재사용하면 ownership seal 충돌이 발생했다. 별도 mailbox를 만들어도 global dispatched worker가 있으면 다음 issue는 시작할 수 없었다.
+- 직접 원인: coordinator mailbox는 cycle-scoped reply authority이고, 현재 Orca adapter는 repository runtime에 한 명의 active writer만 허용한다. Git 파일이 겹치지 않는다는 사실만으로 runtime lease를 병렬화하지 않는다.
+- 영향: #19/#20/#21처럼 독립 skill 파일을 다루는 작업도 handoff bootstrap은 병렬 배정할 수 없고 순차 accepted/cleanup이 필요했다.
+- 안전한 탈출 경로: attempt마다 고유 coordinator mailbox를 만들고, worker_done을 받은 뒤 worker terminal 종료·dispatch terminality·durable accept까지 마친 다음 다음 cycle을 시작한다.
+- 상태: **설계된 안전 경계로 준수**. 성능 한계는 남지만 임의 병렬화로 완화하지 않는다.
+- 근거: 각 accepted record의 서로 다른 `coordinator_mailbox_handle`, dispatch/terminal inventory 0건 확인 뒤 다음 cycle을 시작한 실행 원장.
+
+### B-28 — worker task의 검증 문구와 lifecycle guard의 Orca controller 권한이 충돌
+
+- 증상: #28 worker prompt는 terminal/task/dispatch inventory 재조회를 요구했지만 worker가 `orca terminal`, orchestration inbox/escalation/heartbeat/controller를 직접 실행하면 `coordinator-owned`로 PreToolUse 차단됐다.
+- 직접 원인: task의 자연어 acceptance criteria는 coordinator/worker 역할을 구분하지 않았고, guard는 worker에게 exact IssueOps `status`, `resume`, `heartbeat`, `handoff finish`와 일반 구현·검증만 허용한다. raw Orca controller는 coordinator 권한이다.
+- 영향: worker가 acceptance criteria를 문자 그대로 수행하려 하면 안전 훅에 반복 차단되고, 이를 실패로 오해해 정상 no-change E2E를 `outcome failed`로 제출할 수 있다.
+- 안전한 탈출 경로: worker는 sealed IssueOps state·Git root/branch/HEAD/cleanliness만 확인하고, coordinator가 worker_done 뒤 raw Orca terminal/task/dispatch/worktree inventory를 독립 교차 검증한다.
+- 상태: **attempt 5에서 역할 분리로 해결**. task prompt 생성 계약 개선은 후속 후보로 기록한다.
+- 근거: attempt 4/5 worker terminal의 `wrapped controller commands are coordinator-owned` feedback, coordinator의 `dispatch-show`, `terminal list`, `worktree show` 결과.
+
+### B-29 — hardened shell grammar가 안전한 관찰 명령의 표기 차이까지 controller로 오분류
+
+- 증상: worker에서 `/bin/pwd`는 outside-target command로, `git version --build-options`는 controller 성격 명령으로, 외부 plugin/source tree read와 compound shell·substitution은 wrapped controller로 차단됐다. 같은 목적의 bare `pwd`, `git rev-parse`, `git status`는 허용됐다.
+- 직접 원인: allowlist는 executable basename을 정규화하지 않고 정확한 token grammar만 허용하며, shell control/expansion은 의도적으로 fail-closed다. 안전성은 높지만 동등한 read-only 표기의 사용성이 불균일하다.
+- 영향: worker가 보편적인 diagnostic 습관을 따르면 검증 자체가 막히고, 반복 차단 output이 실제 제품 결함을 가린다.
+- 안전한 탈출 경로: worker prompt에 허용된 standalone grammar를 명시하고 bare `pwd`, `rg`, 제한된 `git status|diff|log|show|rev-parse`, exact IssueOps lifecycle 명령만 사용한다. allowlist 확대는 별도 negative test와 threat review 없이 하지 않는다.
+- 상태: **운영 우회 확정, parser 개선 후보 기록**.
+- 근거: `internal/core/commandparse/issueops.go`의 `ExactReadOnlyShellCommand`와 #21/#28 worker PreToolUse feedback.
+
+### B-30 — CLI 표면의 실제 flag 이름을 추측해 Orca 전달과 Git commit이 차단됨
+
+- 증상: Orca terminal 전달에 `--payload`를 사용하면 flag parse가 실패했고 실제 flag는 `--text`였다. worker의 multiline commit body 한 덩어리는 shell-special quoting 검사에 막혔지만 분리된 `git commit -m <subject> -m <body>`는 허용됐다.
+- 직접 원인: CLI help/source 확인 전에 유사 도구의 flag 이름과 shell command 형태를 추정했다.
+- 영향: 작업 결과와 무관한 command-construction 오류가 lifecycle failure처럼 보이고, worker guidance 도착이 지연됐다.
+- 안전한 탈출 경로: mutation 전에 설치 CLI `--help`와 exact parser spec을 확인하고, terminal send는 `orca terminal send --terminal <id> --text <message> --json`, commit은 control operator 없는 단일 command와 분리된 `-m` 인자를 사용한다.
+- 상태: **운영 명령 교정 완료**.
+- 근거: `orca terminal send --help`, worker terminal의 commit hook feedback, 이후 성공한 #19/#20/#21 commits.
+
+### B-31 — 실패 result의 빈 evidence slice가 JSON/SQLite 왕복 뒤 invalid envelope로 변함
+
+- 증상: #21 attempt 1이 `outcome failed`로 닫힌 직후 같은 record를 다시 읽으면 `closed worker_failed handoff requires a failed result`로 거부됐다. 최초 in-memory result는 valid였지만 persistence 왕복 후 invalid였다.
+- 직접 원인: `cleanResultList`가 nil 입력을 non-nil empty slice로 바꿨다. `verification`/`cleanup_receipts`는 `omitempty`라 JSON 저장에서 사라지고 재로드 시 nil이 되지만, `ValidateEnvelope`의 canonical equality는 nil과 empty slice를 다르게 비교했다.
+- 영향: 정확한 failed result를 기록한 cycle도 status/recovery가 불가능해져 durable 복구 경로 자체가 막힌다.
+- 안전한 탈출 경로: empty canonical list는 `cleanChangedFileList`처럼 nil로 정규화한다. 실제 손상 record는 원본 DB를 백업하고 integrity를 확인한 뒤 exact cycle에 최소 cleanup receipt를 보강해 복구했다.
+- 상태: **이번 통합에서 TDD 수정**. `TestFailedResultRemainsValidAfterJSONRoundTrip`이 수정 전 RED, nil canonicalization 뒤 GREEN이다.
+- 근거: `internal/core/issueops/handoff/state.go`의 `cleanResultList`, `state_test.go` 회귀 테스트, 복구 전 백업 `/tmp/agent-harness-issueops-before-ff473d80b45b-20260717.db`와 `PRAGMA integrity_check=ok`.
+
+### B-32 — failed Orca task와 dispatch terminality가 항상 함께 전이되지 않음
+
+- 증상: #21의 잘못 종료된 attempt에서 task는 failed였지만 dispatch는 한동안 `dispatched`로 남아 다음 sole-writer bootstrap을 막았다. #28 attempt 4에서는 worker terminal을 닫자 dispatch가 `failed`로 terminalize되어 경로별 동작도 달랐다.
+- 직접 원인: task outcome 기록, terminal close, dispatch completion은 별도 Orca operation이며 한 operation의 성공이 다른 두 상태의 원자적 전이를 보장하지 않는다.
+- 영향: durable handoff가 closed여도 global dispatched inventory가 남을 수 있고, 성급한 retry는 duplicate writer 위험 때문에 fail-closed된다.
+- 안전한 탈출 경로: cleanup은 approve-cleanup → task terminality 확인 → exact task/dispatch receipt → worker terminal close → terminal inventory 0건 → terminal_quiescent receipt 순서를 지킨다.
+- 상태: **#21/#28 recovery에서 정리 완료, 교차 시스템 atomicity 한계 기록**.
+- 근거: `io-ff473d80b45b` prior attempt와 `io-959e7d74d2ac` attempt 4 cleanup receipts, raw `dispatch-show` 결과.
+
+### B-33 — no-change finish 기능의 source·worktree binary·설치 binary 버전이 달랐음
+
+- 증상: #28 attempt 5 worker가 `./bin/agent-harness issueops handoff finish --no-change`를 만들려 했지만 worktree의 추적 binary help에는 `--no-change`가 없었다. 반면 hook parser source와 `/Users/m16khb/.local/bin/agent-harness` help에는 flag가 있었다. absolute main binary 경로를 쓰면 exact executable grammar를 벗어나 hook이 controller로 차단했다.
+- 직접 원인: legacy branch에 포함된 `bin/agent-harness` artifact가 최신 main/install-native보다 오래됐고, exact parser는 bare `agent-harness`, `bin/agent-harness`, `./bin/agent-harness`만 받는다.
+- 영향: 최신 no-change contract를 구현한 저장소에서도 worker가 가장 가까운 stale binary를 실행하면 unknown flag 또는 잘못된 failed outcome으로 종료한다.
+- 안전한 탈출 경로: version-sensitive lifecycle에는 PATH의 설치 binary `agent-harness`를 사용하고 `command -v`/`--help`를 coordinator가 미리 검증한다. worker에는 `--cleanup-receipt`를 직접 넣지 않고 `--no-change`가 sealed plan path와 no-temp receipt를 파생한다는 exact guidance를 claim 직후 전달한다.
+- 상태: **attempt 5에서 해결·accepted**. tracked binary 배포 정책은 별도 개선 후보로 남는다.
+- 근거: 동일 #28 worktree에서 `./bin/agent-harness ... --help`에는 flag 부재, `agent-harness ... --help`에는 `-no-change` 존재, durable result의 derived plan/cleanup evidence.
+
+### B-34 — no-change worker guidance가 늦으면 정상 검증을 실패로 제출함
+
+- 증상: #28 attempt 4는 source mutation 없이 exact HEAD와 clean status를 모두 증명했지만 worker가 completed result에는 changed file/Turing report가 필수라고 판단해 `outcome failed`를 먼저 제출했다. coordinator의 no-change 안내는 그 뒤 도착했다.
+- 직접 원인: generic completed contract와 `--no-change` 파생 계약이 help/prompt에서 충분히 눈에 띄지 않았고, claim 직후 역할별 finish template을 제공하지 않았다.
+- 영향: 실제 성공한 verification-only task가 irreversible한 failed result로 닫혀 cleanup/retry 한 사이클을 추가로 소비한다.
+- 안전한 탈출 경로: dispatch 전에 no-change finish template을 task body에 포함하고, claim 확인 즉시 coordinator가 exact attempt fence·task·dispatch·final HEAD를 포함한 안내를 보낸다.
+- 상태: **attempt 5에서 선제 guidance로 해결**.
+- 근거: `io-959e7d74d2ac` attempt 4 `worker_failed` result와 attempt 5 `completed/accepted` result 비교.
+
+### B-35 — Orca worktree comment의 attempt marker가 durable current attempt와 불일치
+
+- 증상: #28 attempt 5가 accepted된 뒤에도 `orca worktree show` comment는 `ownership=b571... attempt=1`을 유지했다. raw worktree HEAD/branch/instance와 durable record는 attempt 5의 `ec5b...`로 정확했다.
+- 직접 원인: legacy adoption comment는 최초 adoption metadata로 남고 retry 때 갱신되지 않는다. 현재 acceptance는 durable fence와 raw stable worktree identity를 사용해 comment를 current lease authority로 보지 않는다.
+- 영향: 운영자가 comment를 current ownership으로 오해하면 stale attempt를 선택하거나 false mismatch로 E2E를 실패시킬 수 있다.
+- 안전한 탈출 경로: current attempt authority는 `issueops status`의 attempt/epoch/context와 exact Orca task/dispatch identity로 판단한다. comment 갱신 여부는 별도 UX/metadata issue로 다룬다.
+- 상태: **E2E 비차단 anomaly로 기록**.
+- 근거: `orca worktree show --worktree issue:28`의 comment와 `io-959e7d74d2ac` accepted attempt 5 비교.
+
+### B-36 — tool wrapper의 PTY hook 출력이 손상돼 차단 원인을 읽기 어려움
+
+- 증상: `orca terminal read`가 Codex spinner와 PreToolUse 출력이 섞인 긴 tail을 반환해 실제 feedback과 실행 command가 수백 개의 progress token 사이에 묻혔다.
+- 직접 원인: interactive PTY rendering stream을 line-oriented JSON tail로 그대로 전달해 carriage-return 기반 UI 갱신이 정규화되지 않았다.
+- 영향: 차단 원인이 unknown flag인지 authority fence인지 즉시 분리하기 어렵고, 같은 명령을 반복할 위험이 커진다.
+- 안전한 탈출 경로: durable status와 raw command help를 별도로 조회하고 `PreToolUse hook (blocked)` 인접 feedback만 증거로 사용한다. wrapper output만으로 lifecycle 상태를 추정하지 않는다.
+- 상태: **관찰성 한계 기록, 작업은 durable/Orca 교차 조회로 완료**.
+- 근거: #28 worker terminal cursor 279~305 tail과 같은 시점의 submitted durable record.
+
+### B-37 — 진단 중 ORCA 환경 secret 원문 조회를 시도한 절차 오류
+
+- 증상: runtime identity를 확인하는 과정에서 환경 변수 전체를 조회하는 과도한 진단을 한 번 시도했다.
+- 직접 원인: 필요한 값이 runtime/repo/session ID뿐인데 bounded Orca status/API 대신 process environment를 진단 경로로 선택했다.
+- 영향: secret이 tool transcript에 노출될 수 있는 위험이 있다. 값은 문서·source·commit·GitHub artifact에 기록하지 않았고 이후 같은 조회를 반복하지 않았다.
+- 안전한 탈출 경로: runtime/session/worktree identity는 `orca ... --json`과 redacted IssueOps record에서만 읽고, 환경 변수 dump·token 출력은 금지한다.
+- 상태: **절차 위반 기록 및 재발 금지 적용**.
+- 근거: 이후 모든 Orca 증거는 runtime ID, repo ID, terminal/task/dispatch ID만 사용하며 secret 원문을 포함하지 않는다.
+
+## 2026-07-17 실행 완료 스냅샷
+
+- #19 `io-339c2fca0e34`: accepted, commit `a8e7dce90500e80a3cb3b68f889710df90ec7374`.
+- #20 `io-4f4603393a22`: accepted, commit `73c44725b2693d9276df05af3c509bee5a6b21e9`.
+- #21 `io-ff473d80b45b`: attempt 2 accepted, commit `defb73d8f7e6d147f0777b4c3060057f7c78dec4`.
+- #28 `io-959e7d74d2ac`: attempt 5 accepted, no-change final HEAD `bafcbbeb2c9ef65be2f8cd7fc770fd5e98dcd08f`.
+- resumed session에서는 hook을 비활성화하지 않았다. final #28 start 직전 exact cwd `hooks/list`에서 agent-harness/Orca hooks가 모두 enabled/trusted이고 warnings/errors는 비어 있음을 확인했다.
 
 ## 금지된 우회
 
