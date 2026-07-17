@@ -177,7 +177,7 @@ Prompt engineering is resource management. Every token in the prompt costs money
 
 ### 3.1 Test Suite Construction
 
-Build a test suite BEFORE finalizing the prompt. Minimum: 5 cases × (3 happy path + 2 edge).
+For reused/production prompts, build a test suite BEFORE finalizing the prompt. Minimum: 5 cases × (3 happy path + 2 edge). One-shot/orchestration prompts use the 1–2 sanity checks from the lifespan gate instead.
 
 ```
 Test case 1 (happy path): [typical input] → [expected output]
@@ -422,7 +422,7 @@ USAGE RULES:
 ## Critical Rules
 
 **NEVER:**
-- Publish a prompt without testing it against a test suite (Phase 3)
+- Publish a reused/production prompt without testing it against a test suite (Phase 3)
 - Change more than one prompt element at a time during iteration (can't isolate effects)
 - Trust "looks good" as evidence — always compare against baseline metrics
 - Use vague constraints ("try hard," "be concise") — use numeric bounds or explicit examples
@@ -434,8 +434,8 @@ USAGE RULES:
 
 **ALWAYS:**
 - Define success criteria before writing the prompt (Phase 1)
-- Build a test suite with happy path + edge cases before finalizing (Phase 3)
-- Run adversarial tests — prompt extraction, role confusion, boundary testing (Phase 3.3)
+- For reused/production prompts, build a test suite with happy path + edge cases before finalizing; for one-shot/orchestration prompts, run the 1–2 sanity checks defined by the lightweight mode (Phase 3)
+- For reused/production prompts, run the full adversarial suite; for one-shot/orchestration prompts, include the relevant privacy/tool-truth sanity check (Phase 3.3)
 - Document before/after performance when optimizing (Phase 5)
 - Place constraints at the TOP (primacy) and format specs at the BOTTOM (recency)
 - Budget context window tokens — every word must justify its cost (Phase 2.4)
@@ -445,7 +445,7 @@ USAGE RULES:
 
 ## Stop Rules
 
-- All test cases pass + adversarial tests clean + benchmark metrics recorded: **DONE**.
+- Reused/production prompt: all test cases pass + adversarial tests clean + benchmark metrics recorded. One-shot/orchestration prompt: contract is clear + 1–2 sanity checks pass + privacy/tool truth is clean. **DONE**.
 - Three iterations without measurable improvement: the prompt may be at the performance ceiling of the model. Document the ceiling.
 - Adversarial test failure cannot be fixed without degrading core performance: document the trade-off, flag the risk, escalate to a design decision.
 - Task requirements change during prompt optimization: stop, re-enter Phase 1 (SPECIFY) with the new requirements.
