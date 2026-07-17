@@ -32,3 +32,11 @@ Cleanup receipt:
 - The enabled supervised-worker hook rejected both exact removal and read-only absence inspection of the isolated outer state root as outside-worktree mutation; no bypass was used.
 - Coordinator recovery evidence: lsof reported no users, the exact root was removed, and a separate absence check exited 0 before attempt 4 metadata reconciliation.
 - No install, publish, push, PR, merge, source-checkout mutation, or hook bypass was performed.
+
+Post-reconciliation binding review:
+- Verdict: REQUEST CHANGES; prior gate exits remain historical evidence but do not authorize completion.
+- Important B-69: include authority expansion covers only `~/`, not Git `~user/` or `%(prefix)/`; both regression tests are absent.
+- Important B-70: initially absent XDG Git config parent is excluded, allowing transient create/rewrite/remove with absent pre/post inventory.
+- Important B-71: immutable fallback accepts any non-current owner UID instead of the documented root-owned/system-trusted authority boundary.
+- Required next action: fresh TDD lease, named RED cases, minimal production fixes, affected/full verification restart, and unconditional re-review.
+- Cleanup remains PASS: coordinator lsof no users, exact root removal, and separate absence check exit 0 are unaffected.

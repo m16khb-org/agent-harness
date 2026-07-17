@@ -4,14 +4,14 @@
       "id": "G1",
       "title": "Preserve publication Git config authority",
       "objective": "Allow only genuinely immutable system config fallback while retaining writable lock and rewrite race defenses and complete bounded inventories.",
-      "status": "pass",
+      "status": "pending",
       "successCriteria": [
         {
           "id": "G1-C1",
           "scenario": "Reject owner-controlled and drifting config while allowing the actual immutable macOS system config.",
           "channel": "cli",
           "expectedEvidence": ".agent-harness/turing/evidence/issue46-G1-C1-readonly-config.txt",
-          "status": "pass",
+          "status": "pending",
           "capturedEvidence": ".agent-harness/turing/evidence/issue46-G1-C1-readonly-config.txt",
           "cleanupReceipt": "Go TempDir fixtures removed; external system config read only.",
           "ultraqaClasses": ["permission_boundary", "race_condition", "misleading_success"]
@@ -21,7 +21,7 @@
           "scenario": "Parse all three >4096-byte config inventories completely and fail closed above 1 MiB without partial results.",
           "channel": "cli",
           "expectedEvidence": ".agent-harness/turing/evidence/issue46-G1-C2-config-inventory.txt",
-          "status": "pass",
+          "status": "pending",
           "capturedEvidence": ".agent-harness/turing/evidence/issue46-G1-C2-config-inventory.txt",
           "cleanupReceipt": "Fake Git and inventory TempDir fixtures removed.",
           "ultraqaClasses": ["boundary_value", "truncated_output", "malformed_input"]
@@ -31,7 +31,7 @@
           "scenario": "Keep existing writable config lock collision and rewrite-race regressions green.",
           "channel": "cli",
           "expectedEvidence": ".agent-harness/turing/evidence/issue46-G1-C3-writable-lock.txt",
-          "status": "pass",
+          "status": "pending",
           "capturedEvidence": ".agent-harness/turing/evidence/issue46-G1-C3-writable-lock.txt",
           "cleanupReceipt": "Lock, script, marker, and repository TempDir fixtures removed.",
           "ultraqaClasses": ["race_condition", "permission_boundary"]
@@ -60,14 +60,14 @@
       "id": "G3",
       "title": "Verify final worker source",
       "objective": "Pass focused and repository-wide quality gates without install or publication side effects.",
-      "status": "pass",
+      "status": "pending",
       "successCriteria": [
         {
           "id": "G3-C1",
           "scenario": "Pass focused, full, race, vet, golden, source build, Windows compile/link, and deterministic self-verify gates.",
           "channel": "cli",
           "expectedEvidence": ".agent-harness/turing/evidence/issue46-G3-C1-full-gates.txt",
-          "status": "pass",
+          "status": "pending",
           "capturedEvidence": ".agent-harness/turing/evidence/issue46-G3-C1-full-gates.txt",
           "cleanupReceipt": "Internal temp/process cleanup passed; coordinator verified lsof had no users, removed the exact outer state root, and separately verified absence with exit 0 before attempt 4 evidence reconciliation.",
           "ultraqaClasses": ["cross_platform", "flaky_test", "hung_command", "misleading_success"]
@@ -76,7 +76,7 @@
     }
   ],
   "metrics": {
-    "evidenceCoverage": 1.0,
+    "evidenceCoverage": 0.2,
     "cleanupCompliance": 1.0
   }
 }

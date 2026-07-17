@@ -632,6 +632,42 @@ GitHub 재조회 결과 open issue는 `#18`, `#19`, `#20`, `#21`, `#28`이고, `
 - 상태: **exact task failed 처리와 regenerated tab close 후 quiescence receipt 성공**.
 - 근거: stop 전후 handle 차이, regenerated terminal의 disconnected 상태, 최초 `terminal_quiescent` rejection, exact task failed update와 replacement tab close 뒤 durable receipt.
 
+### B-68 — shell-like Lore text가 commit mutation target으로 오분류됨
+
+- 증상: metadata commit의 quoted Lore `Verify` 문장에 semicolon과 command-shaped path가 들어가자 `git commit`이 `mutation target is outside the claimed worker worktree`로 차단됐다. 같은 staged diff와 평문 Lore는 성공했다.
+- 직접 원인: supervised shell classifier가 commit-message argv의 quoted shell-like prose를 data로 유지하지 못하고 mutation target 후보로 해석했다.
+- 영향: 실제 file target과 staging은 안전해도 정확한 verification command를 Lore에 그대로 쓰면 local commit이 불가능해질 수 있다. 우회 재해석을 시도하면 guard 계약을 약화한다.
+- 안전한 탈출 경로: 차단된 commit은 실행되지 않았음을 확인하고 staging을 보존한다. 동일 의미를 command-shaped punctuation 없는 평문 Lore로 기록해 새 commit을 만든다.
+- 상태: **false positive 기록, guard 우회 없이 metadata commit `cecf4df` 생성 완료**.
+- 근거: 최초 `git commit` PreToolUse denial, 동일 staged 5-file diff, 평문 Lore commit `cecf4df5750937533cf1650c23bcf175d8df3e55`.
+
+### B-69 — include path expansion이 `~user/`와 `%(prefix)/`를 처리하지 않음
+
+- 증상: binding reviewer가 active empty include를 `~user/...` 또는 `%(prefix)/...`로 지정하면 authority code가 실제 Git include와 다른 nonexistent relative path를 잠글 수 있음을 발견했다. callback에서 실제 include를 rewrite하고 원복해도 잘못된 path snapshot은 변하지 않는다.
+- 직접 원인: include resolution은 `internal/core/issueops/issueops_handoff_publication.go:533-541`에서 `~/`만 home으로 확장하고, Git이 지원하는 named-user home 및 runtime prefix interpolation을 구현하지 않는다.
+- 영향: publication config lock/snapshot이 Git이 실제 읽는 include authority를 봉인하지 않아 transient URL rewrite-and-restore가 push target resolution을 바꿀 수 있다.
+- 안전한 탈출 경로: fresh TDD attempt에서 real-Git `~user/`와 `%(prefix)/` active-empty-include fixtures를 각각 RED로 고정하고 Git과 동일한 bounded canonical resolution 또는 fail-closed rejection을 구현한다.
+- 상태: **binding Important finding, 현재 attempt 실패; production 수정은 fresh lease로 이관**.
+- 근거: `issueops_handoff_publication.go:533-541`; `issueops_handoff_publication_test.go`에 `~user/`/`%(prefix)/` authority regression이 없음; fresh Turing review REQUEST CHANGES.
+
+### B-70 — absent XDG Git config parent가 inventory 밖에서 transient 생성될 수 있음
+
+- 증상: `XDG_CONFIG_HOME/git` directory가 operation 전 없으면 callback이 directory와 config를 생성해 rewrite를 적용한 뒤 둘 다 제거할 수 있고, pre/post inventory는 모두 absent라 drift를 보지 못한다.
+- 직접 원인: `internal/core/issueops/issueops_handoff_publication.go:576-582`는 XDG config의 parent directory가 이미 존재할 때만 path를 authority set에 추가한다.
+- 영향: current-user mutable default config authority가 lock/snapshot set에서 빠져 publication 중 push URL rewrite를 주입하고 흔적 없이 원복할 수 있다.
+- 안전한 탈출 경로: fresh TDD attempt에서 absent XDG parent를 callback 중 create/rewrite/remove하는 real-process RED를 추가한다. optional path가 없더라도 생성 가능한 parent authority를 lock하거나 생성 자체를 fail-closed로 봉인한다.
+- 상태: **binding Important finding, 현재 attempt 실패; transient create/remove test 필요**.
+- 근거: `issueops_handoff_publication.go:576-582`; 기존 `issueops_handoff_publication_test.go:546`은 absent XDG를 설정하지만 callback create/rewrite/remove를 검증하지 않음; fresh review REQUEST CHANGES.
+
+### B-71 — immutable fallback이 root-owned system authority보다 넓은 ordinary UID ownership을 신뢰함
+
+- 증상: immutable classification은 current UID만 아니면 다른 ordinary UID 소유 path도 admissible로 판단한다. 그 소유자가 config를 transient rewrite/restore하면 current-user snapshot 전후는 같아질 수 있다.
+- 직접 원인: `internal/core/issueops/issueops_handoff_publication.go:223-232`는 `ownerUID == currentUID`와 writable bit만 거부하고 trusted root/system owner인지 확인하지 않는다. `issueops_handoff_publication_test.go:477-506`의 “non-owner non-writable” 기대도 이 넓은 계약을 허용한다.
+- 영향: 계획이 명시한 root-administrator threat exclusion을 unrelated ordinary account까지 확장해, snapshot-only authority의 공격자 범위를 과도하게 신뢰한다.
+- 안전한 탈출 경로: fresh TDD attempt에서 ordinary non-current UID owner를 RED로 거부하고 root-owned/system-trusted authority 또는 동등하게 강한 verified criterion만 admissible로 제한한다. 실제 macOS system config success와 owner/path-chain failures를 함께 재검증한다.
+- 상태: **binding Important finding, 현재 attempt 실패; authority criterion 재설계와 TDD 필요**.
+- 근거: `issueops_handoff_publication.go:223-232`, `issueops_handoff_publication_test.go:477-506`, fresh review REQUEST CHANGES.
+
 ## 2026-07-17 실행 완료 스냅샷
 
 - #19 `io-339c2fca0e34`: accepted, commit `a8e7dce90500e80a3cb3b68f889710df90ec7374`.
