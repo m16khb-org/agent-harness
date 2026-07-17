@@ -506,6 +506,33 @@ GitHub 재조회 결과 open issue는 `#18`, `#19`, `#20`, `#21`, `#28`이고, `
 - 상태: **현재 비차단 anomaly로 기록; 사용자 활성 terminal에는 변경 없음**.
 - 근거: `orca orchestration task-list --status dispatched --json`의 유일한 task와 `orca terminal list --json`의 matching assignee/worktree, `attestHandoffSoleWriter`의 foreign-dispatch 분기.
 
+### B-54 — cancelled attempt retry가 명시적 cleanup approval과 두 receipt 없이는 거부됨
+
+- 증상: issue #46 attempt 1을 cancellation-finalized한 뒤 바로 `recover --action retry --confirm`을 실행하자 `retry requires durable retry cleanup approval with task and terminal quiescence receipts`로 거부됐다.
+- 직접 원인: retry는 closed/cancelled만으로 worktree 재사용을 허가하지 않는다. disposition `retry`의 durable cleanup approval과 순서가 고정된 `task_terminal`, `terminal_quiescent` receipt 두 개를 별도 요구한다.
+- 영향: cancellation quiescence를 이미 확인했더라도 receipt가 durable record에 없으면 다음 ownership epoch를 발급할 수 없다. 이 단계를 모르면 같은 retry를 반복하게 된다.
+- 안전한 탈출 경로: exact worktree에 task/dispatch/terminal이 없음을 다시 확인하고 `approve-cleanup --cleanup-disposition retry`, `record-cleanup --cleanup-step task_terminal`, `record-cleanup --cleanup-step terminal_quiescent`를 순서대로 기록한 뒤 retry한다.
+- 상태: **문서 계약대로 세 단계 기록 후 issue #46 attempt 2 생성 성공**.
+- 근거: 최초 retry exact 오류, attempt 1 cleanup의 approval/reason과 두 ordered receipts, attempt 2 `state=coordinator_preparing`/`attempt_base_head=1218db6...`.
+
+### B-55 — 과거 완료 이슈의 handoff 두 개가 실제 `coordinator_preparing`으로 남아 새 coordinator 선택을 계속 모호하게 함
+
+- 증상: B-50 수정 바이너리로 fresh Codex coordinator를 시작했지만 SessionStart는 `io-5ee972c2604d, io-c85c9bca45ac, io-65b25b19728b` 세 cycle을 다시 ambiguity로 출력했다. exact status 결과 앞의 두 cycle도 각각 issue #25 attempt 2와 #33 attempt 1의 `coordinator_preparing`이었다.
+- 직접 원인: B-50 수정은 non-preparing 과거 cycle만 제외한다. #25/#33은 2026-07-15의 이전 Orca runtime에서 task/dispatch/worker 없이 preparing으로 남았고, GitHub issue는 모두 completed/closed이며 #33 PR #34도 merged지만 durable handoff closeout이 누락됐다.
+- 영향: fail-closed 동작 자체는 맞지만 새 issue #46도 authenticated start guidance를 받지 못한다. source coordinator의 status/resume 반복은 binding을 바꾸지 않고 일반 읽기와 escalation도 hook에 계속 차단된다.
+- 안전한 탈출 경로: 세 preparing 후보 중 최신을 임의 선택하지 않는다. GitHub 완료 상태, exact handoff task/dispatch/worker 부재, exact worktree terminal 0건을 각각 확인하고 과거 #25/#33만 공식 cancel/finalize한 뒤 fresh SessionStart를 다시 시작한다.
+- 상태: **B-56 수정 바이너리로 #25 attempt 2와 #33 attempt 1을 모두 `closed/cancelled`로 정상 마감; issue #46 fresh start 재검증 대기**.
+- 근거: fresh coordinator terminal `term_445aa87d-fcb7-45b6-8934-c8ad4ba65cbb` SessionStart transcript, 세 exact status projection, GitHub #25/#33 `CLOSED/COMPLETED`, PR #34 `MERGED`.
+
+### B-56 — unsealed context options가 cancellation finalization의 closed envelope를 invalid로 만듦
+
+- 증상: task/dispatch/worker가 없고 exact worktree terminal도 0건인 stale #25 attempt 2를 cancel한 뒤 `finalize-cancel`이 `unsealed context options are permitted only while preparing or recovering`로 실패했다.
+- 직접 원인: retry가 새 `coordinator_preparing` record에 canonical empty `context_options={}`를 보존한다. `finalizeCancelledIssueOpsHandoff`는 state를 `closed/cancelled`로 바꾸지만 context hash/version이 없는 unsealed options를 지우지 않아, `ValidateEnvelope`가 write 직전에 새 closed record를 거부한다. direct cancelled close와 force-abandon도 같은 전이 형태를 갖는다.
+- 영향: stale preparing cycle을 안전하게 quiesce해도 close할 수 없으므로 B-55 ambiguity가 영구화되고 새 coordinator bootstrap이 막힌다.
+- 안전한 탈출 경로: closed/cancelled 전이 직전에 context version/hash/source hash가 모두 비어 있는 경우에만 `ContextOptions=nil`로 canonicalize한다. sealed context options는 증거이므로 유지한다. finalize, direct close, abandon 세 경로를 같은 좁은 helper로 처리한다.
+- 상태: **TDD 수정·실제 stale-cycle 복구 완료**. `TestHandoffFinalizeCancelClearsUnsealedPreparingContextOptions`가 수정 전 exact 오류로 RED, 최소 canonicalization 뒤 GREEN이며 같은 바이너리로 #25/#33 finalization이 성공했다.
+- 근거: `internal/core/issueops/handoff/envelope.go:76-84`, `issueops_handoff_recovery.go`의 세 cancelled-close 전이, 새 focused regression 출력.
+
 ## 2026-07-17 실행 완료 스냅샷
 
 - #19 `io-339c2fca0e34`: accepted, commit `a8e7dce90500e80a3cb3b68f889710df90ec7374`.

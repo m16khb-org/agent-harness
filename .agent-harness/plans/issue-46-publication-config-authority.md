@@ -75,11 +75,15 @@ None blocking. The root-administrator boundary is documented as a threat-model l
 **Files:**
 - Modify: `internal/core/lifecycle/lifecycle_handoff_guard.go`
 - Modify: `internal/core/lifecycle/lifecycle_handoff_guard_test.go`
+- Modify: `internal/core/issueops/issueops_handoff_recovery.go`
+- Modify: `internal/core/issueops/issueops_handoff_recovery_test.go`
 
-- [ ] Reproduce B-50: one `coordinator_preparing` cycle plus older non-preparing source cycles currently yields ambiguous SessionStart guidance and omits the authenticated `handoff start` command.
-- [ ] When source matches contain exactly one `coordinator_preparing` cycle, render its identity-filled coordinator guidance; two preparing cycles remain ambiguous and no start command is emitted.
-- [ ] Run the focused lifecycle test RED then GREEN, the lifecycle package, and full Go tests before building the bootstrap binary used by the next fresh Orca coordinator.
-- [ ] Record B-50 through B-52 in the blocker ledger. This bootstrap correction is the only main-agent implementation exception; B-45 through B-49 remain assigned to the Orca worker.
+- [x] Reproduce B-50: one `coordinator_preparing` cycle plus older non-preparing source cycles currently yields ambiguous SessionStart guidance and omits the authenticated `handoff start` command.
+- [x] When source matches contain exactly one `coordinator_preparing` cycle, render its identity-filled coordinator guidance; two preparing cycles remain ambiguous and no start command is emitted.
+- [x] Run the focused lifecycle test RED then GREEN, the lifecycle package, and full Go tests before building the bootstrap binary used by the next fresh Orca coordinator.
+- [x] Reproduce B-56: finalizing a stale pre-dispatch cancellation with unsealed empty context options fails while writing the otherwise canonical closed record; clear only unsealed options on every cancelled close transition and keep sealed context evidence unchanged.
+- [ ] Close the completed #25/#33 stale pre-dispatch cycles through normal cancellation after the B-56 test is GREEN, then prove a fresh SessionStart selects only issue #46. The two stale cycles are closed; fresh SessionStart proof remains.
+- [x] Record B-50 through B-56 in the blocker ledger. These bootstrap corrections are the only main-agent implementation exceptions; B-45 through B-49 remain assigned to the Orca worker.
 
 ## Task 1: Pin publication failures
 
