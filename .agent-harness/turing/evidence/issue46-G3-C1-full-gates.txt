@@ -1,0 +1,33 @@
+Criterion: G3-C1
+Status: PASS
+
+Final worker-source gate exits:
+- gofmt on the six changed Go files: exit 0.
+- git diff --check: exit 0.
+- Focused publication tests with named === RUN output: exit 0.
+- Focused immutable-base test with named === RUN output: exit 0.
+- GOOS=windows GOARCH=amd64 go test -exec=true ./internal/core/issueops -run '^$' -count=1: exit 0.
+- go test ./... -count=1 after the reviewer correction: exit 0; internal/core/issueops PASS in 142.806s.
+- go test -race ./... -count=1 after the reviewer correction: exit 0; internal/core/issueops PASS in 180.239s.
+- go vet ./...: exit 0.
+- go test ./cmd/harness/contractgolden -run Golden -count=1: exit 0.
+- go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1: exit 0.
+- go build ./cmd/harness/...: exit 0.
+- HARNESS_STATE_DIR=<isolated> go run ./cmd/harness self-verify --seed=100 --target-score=95 --llm-eval=false --json after the reviewer correction: exit 0; ok=true, 25/25 steps, failed_steps=0, minimum_goal_score=100, termination_eligible=true, elapsed_ms=459122.
+
+AI slop-clean receipt:
+- Code-only additions decreased from 631 to 617 by removing one redundant nested snapshot wrapper.
+- Approximate shell SNR remained at its 1.00 ceiling: no added TODO/FIXME/debug/comment noise was found before or after.
+- golangci-lint dupl --new-from-rev HEAD reported 0 new issues; unfiltered duplicate findings were pre-existing tests outside this diff.
+- No algorithmic optimization was justified: inventories are bounded to 1 MiB and dominated by Git/filesystem I/O; the retained scans are O(n).
+
+Adversarial review receipt:
+- First verdict: REJECT; reviewer found Git canonicalizes conditional include keys to lowercase `includeif` while the matcher used mixed-case `includeIf`.
+- RED: TestPublicationRejectsPreexistingActiveEmptyConditionalIncludeLock returned `<nil>` with a real active empty conditional include and pre-existing sibling lock.
+- GREEN: lowercase matcher plus the same real-Git test rejects the pre-existing lock; >4096-byte and overflow inventory regressions remain PASS.
+- Second verdict: no Critical or Important code/docs correctness finding remains; reviewer still rejects unconditional Task 5 completion solely because the exact outer state root is coordinator-owned and present.
+
+Cleanup receipt:
+- Go test/self-verify internal TempDir processes exited normally, including daemon stop evidence in self-verify.
+- Isolated outer state root /var/folders/mt/cyw_xzps58768x9tq23r5t200000gn/T/tmp.hFFtPPfGPk remains pending coordinator cleanup because the enabled supervised-worker hook rejected its exact rm as an outside-worktree mutation.
+- No install, publish, push, PR, merge, source-checkout mutation, or hook bypass was performed.

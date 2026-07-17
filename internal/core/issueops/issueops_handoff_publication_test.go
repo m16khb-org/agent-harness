@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -137,7 +138,7 @@ func TestGitPublicationPushUsesImmutableFinalHeadArgv(t *testing.T) {
 		"if [ \"$1\" = remote ]; then printf '%s\\n' '" + target + "'; exit 0; fi\n" +
 		"if [ \"$1 $2\" = 'rev-parse --git-common-dir' ]; then printf '.git\\n'; exit 0; fi\n" +
 		"if [ \"$1 $2 $3\" = 'rev-parse --git-path config.worktree' ]; then printf '.git/config.worktree\\n'; exit 0; fi\n" +
-		"if [ \"$1 $2 $3 $4\" = 'config --show-origin --includes --list' ]; then exit 0; fi\n" +
+		"if [ \"$1 $2 $3 $4 $5\" = 'config --show-origin --includes --name-only --list' ]; then exit 0; fi\n" +
 		"if [ \"$1\" = config ]; then exit 1; fi\n" +
 		"printf '%s\\n' \"$@\" > \"$PUSH_ARGV_LOG\"\n" +
 		"printf '%s' \"$GIT_TERMINAL_PROMPT\" > \"$PUSH_ENV_LOG\"\n"
@@ -251,6 +252,113 @@ func TestPublicationURLRewriteCycleFailsClosed(t *testing.T) {
 	}
 }
 
+func TestPublicationConfigInventoriesAreCompleteBeyondDiagnosticLimit(t *testing.T) {
+	repo := t.TempDir()
+	lastOrigin := filepath.Join(repo, "origin-final.config")
+	lastInclude := filepath.Join(repo, "include final.config")
+	originLines := strings.Repeat("file:"+filepath.Join(repo, "padding.config")+"\tpadding.key\n", 128) +
+		"file:" + lastOrigin + "\tfinal.key\n"
+	includeLines := strings.Repeat("file:"+filepath.Join(repo, "source.config")+"\tinclude.path "+filepath.Join(repo, "padding-include.config")+"\n", 96) +
+		"file:" + filepath.Join(repo, "source.config") + "\tinclude.path " + lastInclude + "\n"
+	rewriteLines := strings.Repeat("file:"+filepath.Join(repo, "rewrite.config")+"\turl.https://example.test/.insteadOf padding:\n", 80) +
+		"file:" + filepath.Join(repo, "rewrite.config") + "\turl.https://final.example/.insteadOf final:\n"
+	installPublicationInventoryGit(t, originLines, includeLines, rewriteLines)
+
+	origins, err := publicationGitConfigOrigins(context.Background(), repo)
+	if err != nil || !containsPublicationPath(origins, lastOrigin) {
+		t.Fatalf("complete origin inventory missing final entry: found=%v err=%v", containsPublicationPath(origins, lastOrigin), err)
+	}
+	includes, err := publicationGitConfigIncludePaths(context.Background(), repo)
+	if err != nil || !containsPublicationPath(includes, lastInclude) {
+		t.Fatalf("complete include inventory missing final entry: found=%v err=%v", containsPublicationPath(includes, lastInclude), err)
+	}
+	rules, err := publicationGitURLRules(context.Background(), repo)
+	if err != nil || len(rules) == 0 || rules[len(rules)-1].prefix != "final:" {
+		t.Fatalf("complete rewrite inventory missing final entry: rules=%d err=%v", len(rules), err)
+	}
+}
+
+func TestPublicationConfigInventoriesRejectOverflowWithoutPartialResult(t *testing.T) {
+	repo := t.TempDir()
+	overflow := strings.Repeat("x", publicationConfigInventoryLimit+1)
+	tests := []struct {
+		name string
+		run  func() (int, error)
+	}{
+		{
+			name: "origins",
+			run: func() (int, error) {
+				installPublicationInventoryGit(t, overflow, "", "")
+				values, err := publicationGitConfigOrigins(context.Background(), repo)
+				return len(values), err
+			},
+		},
+		{
+			name: "includes",
+			run: func() (int, error) {
+				installPublicationInventoryGit(t, "", overflow, "")
+				values, err := publicationGitConfigIncludePaths(context.Background(), repo)
+				return len(values), err
+			},
+		},
+		{
+			name: "URL rewrites",
+			run: func() (int, error) {
+				installPublicationInventoryGit(t, "", "", overflow)
+				values, err := publicationGitURLRules(context.Background(), repo)
+				return len(values), err
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			count, err := tt.run()
+			if err == nil || !strings.Contains(err.Error(), "inventory exceeds 1048576 bytes") || count != 0 {
+				t.Fatalf("overflow result count=%d err=%v", count, err)
+			}
+		})
+	}
+}
+
+func installPublicationInventoryGit(t *testing.T, origins, includes, rewrites string) {
+	t.Helper()
+	bin := t.TempDir()
+	write := func(name, value string) string {
+		t.Helper()
+		path := filepath.Join(bin, name)
+		if err := os.WriteFile(path, []byte(value), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	originPath := write("origins", origins)
+	includePath := write("includes", includes)
+	rewritePath := write("rewrites", rewrites)
+	script := filepath.Join(bin, "git")
+	body := "#!/bin/sh\n" +
+		"if [ \"$1 $2 $3 $4 $5\" = 'config --show-origin --includes --name-only --list' ]; then /bin/cat \"$PUBLICATION_ORIGINS\"; exit 0; fi\n" +
+		"if [ \"$1 $2 $3 $4 $5\" = 'config --show-origin --includes --get-regexp ^(include\\.path|includeif\\..*\\.path)$' ]; then /bin/cat \"$PUBLICATION_INCLUDES\"; test -s \"$PUBLICATION_INCLUDES\"; exit $?; fi\n" +
+		"if [ \"$1 $2 $3 $4 $5\" = 'config --show-origin --includes --get-regexp ^url\\..*\\.(insteadOf|pushInsteadOf)$' ]; then /bin/cat \"$PUBLICATION_REWRITES\"; test -s \"$PUBLICATION_REWRITES\"; exit $?; fi\n" +
+		"if [ \"$1 $2 $3 $4\" = 'config --show-origin --includes --list' ]; then /bin/cat \"$PUBLICATION_ORIGINS\"; exit 0; fi\n" +
+		"exit 1\n"
+	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PUBLICATION_ORIGINS", originPath)
+	t.Setenv("PUBLICATION_INCLUDES", includePath)
+	t.Setenv("PUBLICATION_REWRITES", rewritePath)
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+}
+
+func containsPublicationPath(paths []string, want string) bool {
+	for _, path := range paths {
+		if path == want {
+			return true
+		}
+	}
+	return false
+}
+
 func TestPublicationRejectsPreexistingEffectiveIncludeConfigLock(t *testing.T) {
 	repo := t.TempDir()
 	if code, _, stderr := preflight.GitCmd(repo, "init", "-q"); code != 0 {
@@ -275,6 +383,31 @@ func TestPublicationRejectsPreexistingEffectiveIncludeConfigLock(t *testing.T) {
 	}
 }
 
+func TestPublicationRejectsPreexistingActiveEmptyConditionalIncludeLock(t *testing.T) {
+	repo := t.TempDir()
+	global := filepath.Join(t.TempDir(), "gitconfig")
+	include := filepath.Join(t.TempDir(), "conditional.config")
+	if err := os.WriteFile(include, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	condition := filepath.ToSlash(filepath.Join(repo, ".git")) + "/"
+	config := "[includeIf \"gitdir:" + condition + "\"]\n\tpath = " + filepath.ToSlash(include) + "\n"
+	if err := os.WriteFile(global, []byte(config), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GIT_CONFIG_GLOBAL", global)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	runPublicationGitTest(t, repo, "init", "-q")
+	runPublicationGitTest(t, repo, "remote", "add", "origin", "https://github.com/acme/repo.git")
+	if err := os.WriteFile(include+".lock", []byte("busy"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := (GitIssueOpsHandoffPublicationReader{}).PushTarget(context.Background(), repo, "origin")
+	if err == nil || !strings.Contains(err.Error(), "config lock") {
+		t.Fatalf("pre-existing active empty conditional include lock error = %v", err)
+	}
+}
+
 func TestPublicationRejectsPreexistingUnrelatedEffectiveGlobalConfigLock(t *testing.T) {
 	repo := t.TempDir()
 	global := filepath.Join(t.TempDir(), "gitconfig")
@@ -291,6 +424,138 @@ func TestPublicationRejectsPreexistingUnrelatedEffectiveGlobalConfigLock(t *test
 	_, err := (GitIssueOpsHandoffPublicationReader{}).PushTarget(context.Background(), repo, "origin")
 	if err == nil || !strings.Contains(err.Error(), "config lock") {
 		t.Fatalf("pre-existing unrelated effective global config lock error = %v", err)
+	}
+}
+
+func TestPublicationOwnerControlledConfigInReadOnlyParentRejectsBeforeTransientRewrite(t *testing.T) {
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := t.TempDir()
+	configDir := t.TempDir()
+	global := filepath.Join(configDir, "gitconfig")
+	original := []byte("[user]\n\tname = publication fixture\n")
+	if err := os.WriteFile(global, original, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GIT_CONFIG_GLOBAL", global)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	runPublicationGitTest(t, repo, "init", "-q")
+	runPublicationGitTest(t, repo, "remote", "add", "origin", "https://github.com/acme/repo.git")
+	if err := os.Chmod(configDir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(configDir, 0o700) })
+
+	bin := t.TempDir()
+	marker := filepath.Join(t.TempDir(), "push-ran")
+	script := filepath.Join(bin, "git")
+	body := "#!/bin/sh\n" +
+		"if [ \"$1\" = push ]; then cp \"$GLOBAL_CONFIG\" \"$GLOBAL_CONFIG.saved\"; printf '[url \\\"https://evil.example/\\\"]\\n\\tinsteadOf = https://github.com/\\n' > \"$GLOBAL_CONFIG\"; cp \"$GLOBAL_CONFIG.saved\" \"$GLOBAL_CONFIG\"; printf ran > \"$PUSH_MARKER\"; fi\n" +
+		"exec \"$REAL_GIT\" \"$@\"\n"
+	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GLOBAL_CONFIG", global)
+	t.Setenv("PUSH_MARKER", marker)
+	t.Setenv("REAL_GIT", realGit)
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	err = (GitIssueOpsHandoffPublicationReader{}).PushExact(context.Background(), repo, "origin", strings.Repeat("0", 64), "46-demo", strings.Repeat("a", 40))
+	if err == nil || !strings.Contains(err.Error(), "config lock") {
+		t.Fatalf("owner-controlled config under read-only parent error = %v", err)
+	}
+	if _, err := os.Stat(marker); !os.IsNotExist(err) {
+		t.Fatalf("transient rewrite callback ran before authority rejection: %v", err)
+	}
+	if got, err := os.ReadFile(global); err != nil || !bytes.Equal(got, original) {
+		t.Fatalf("owner-controlled config changed: equal=%v err=%v", bytes.Equal(got, original), err)
+	}
+}
+
+func TestPublicationImmutableConfigClassificationFailsClosed(t *testing.T) {
+	const currentUID = uint32(501)
+	base := publicationConfigAuthorityInspection{
+		canonical: true,
+		regular:   true,
+		components: []publicationConfigPathComponent{
+			{ownerUID: 0},
+			{ownerUID: 0},
+			{ownerUID: 0},
+		},
+	}
+	tests := []struct {
+		name       string
+		inspection publicationConfigAuthorityInspection
+		want       bool
+	}{
+		{name: "non-owner non-writable canonical regular", inspection: base, want: true},
+		{name: "owner-controlled file", inspection: publicationConfigAuthorityInspection{canonical: true, regular: true, components: []publicationConfigPathComponent{{ownerUID: currentUID}, {ownerUID: 0}}}},
+		{name: "owner-controlled parent", inspection: publicationConfigAuthorityInspection{canonical: true, regular: true, components: []publicationConfigPathComponent{{ownerUID: 0}, {ownerUID: currentUID}}}},
+		{name: "writable component", inspection: publicationConfigAuthorityInspection{canonical: true, regular: true, components: []publicationConfigPathComponent{{ownerUID: 0}, {ownerUID: 0, writable: true}}}},
+		{name: "symlink or noncanonical", inspection: publicationConfigAuthorityInspection{regular: true, components: base.components}},
+		{name: "non-regular", inspection: publicationConfigAuthorityInspection{canonical: true, components: base.components}},
+		{name: "ambiguous empty chain", inspection: publicationConfigAuthorityInspection{canonical: true, regular: true}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := publicationImmutableConfigAdmissible(tt.inspection, currentUID); got != tt.want {
+				t.Fatalf("admissible=%v want=%v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPublicationImmutableConfigSnapshotRejectsCallbackDrift(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "system.config")
+	if err := os.WriteFile(path, []byte("before\n"), 0o444); err != nil {
+		t.Fatal(err)
+	}
+	before, err := publicationConfigSnapshotForPath(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("after\n"), 0o444); err != nil {
+		t.Fatal(err)
+	}
+	if publicationImmutableConfigSnapshotsMatch([]publicationConfigSnapshot{before}) {
+		t.Fatal("persistent immutable config drift matched the pre-operation snapshot")
+	}
+}
+
+func TestPublicationImmutableMacOSSystemConfigAllowsProtectedCallback(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("macOS system Git config integration")
+	}
+	systemConfig := "/Library/Developer/CommandLineTools/usr/share/git-core/gitconfig"
+	if _, err := os.Stat(systemConfig); err != nil {
+		t.Skipf("system Git config is unavailable: %v", err)
+	}
+	repo := t.TempDir()
+	cmd := exec.Command("git", "init", "-q")
+	cmd.Dir = repo
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "absent-xdg"))
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_SYSTEM", systemConfig)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "")
+	called := false
+	if err := withPublicationGitConfigLocks(context.Background(), repo, func() error {
+		called = true
+		return nil
+	}); err != nil {
+		t.Fatalf("immutable macOS system config authority: %v", err)
+	}
+	if !called {
+		t.Fatal("protected callback did not run")
 	}
 }
 

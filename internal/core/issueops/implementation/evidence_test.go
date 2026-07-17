@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"agent-harness/internal/core/issueops/model"
@@ -178,6 +179,47 @@ func TestHasEvidenceForGitAndFileTreeChanges(t *testing.T) {
 	})
 }
 
+func TestImplementationEvidenceUsesImmutableBranchPrepareBaseSHA(t *testing.T) {
+	repo := newImplementationGitRepo(t)
+	baseSHA := strings.TrimSpace(runGitOutput(t, repo, "rev-parse", "HEAD"))
+	if err := os.WriteFile(filepath.Join(repo, "impl.go"), []byte("package impl\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, repo, "add", "impl.go")
+	runGit(t, repo, "commit", "-m", "add impl")
+	featureSHA := strings.TrimSpace(runGitOutput(t, repo, "rev-parse", "HEAD"))
+	runGit(t, repo, "update-ref", "refs/remotes/origin/main", featureSHA)
+
+	record := model.IssueOpsRecord{
+		WorktreePath: repo,
+		PlanPath:     filepath.Join(repo, "plan.md"),
+		BranchPrepare: &model.IssueOpsBranchPrepare{
+			BaseBranch: "main",
+			BaseSHA:    baseSHA,
+		},
+	}
+	if !HasEvidence(record) {
+		t.Fatal("feature change disappeared after origin/main moved to feature HEAD")
+	}
+	if got := ChangeFingerprint(record); got == "" {
+		t.Fatal("immutable base change did not produce a fingerprint")
+	}
+
+	record.BranchPrepare.BaseSHA = featureSHA
+	if HasEvidence(record) {
+		t.Fatal("HEAD equal to immutable base SHA reported implementation evidence")
+	}
+	record.BranchPrepare.BaseSHA = "not-a-full-sha"
+	runGit(t, repo, "update-ref", "refs/remotes/origin/main", baseSHA)
+	if !HasEvidence(record) {
+		t.Fatal("malformed base SHA did not preserve moving-ref compatibility fallback")
+	}
+	record.BranchPrepare.BaseSHA = ""
+	if !HasEvidence(record) {
+		t.Fatal("missing base SHA did not preserve moving-ref compatibility fallback")
+	}
+}
+
 func newImplementationGitRepo(t *testing.T) string {
 	t.Helper()
 	repo := t.TempDir()
@@ -200,4 +242,15 @@ func runGit(t *testing.T, dir string, args ...string) {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git %v: %v\n%s", args, err, out)
 	}
+}
+
+func runGitOutput(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %v: %v\n%s", args, err, out)
+	}
+	return string(out)
 }

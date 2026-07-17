@@ -2,96 +2,81 @@
   "goals": [
     {
       "id": "G1",
-      "title": "Repair multi-cycle PreToolUse reachability",
-      "objective": "Allow exact lifecycle and proven read-only observations before ambiguous supervised-record selection while preserving every writer fence.",
+      "title": "Preserve publication Git config authority",
+      "objective": "Allow only genuinely immutable system config fallback while retaining writable lock and rewrite race defenses and complete bounded inventories.",
       "status": "pass",
       "successCriteria": [
         {
           "id": "G1-C1",
-          "scenario": "Run the named baseline lifecycle test with two source-matching handoffs; ambiguous apply_patch and raw terminal steering must return block on unchanged production code.",
-          "channel": "tmux",
-          "expectedEvidence": ".agent-harness/turing/evidence/G1-C1-baseline.txt",
+          "scenario": "Reject owner-controlled and drifting config while allowing the actual immutable macOS system config.",
+          "channel": "cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/issue46-G1-C1-readonly-config.txt",
           "status": "pass",
-          "capturedEvidence": ".agent-harness/turing/evidence/G1-C1-baseline.txt",
-          "cleanupReceipt": "tmux session turing-qa-g1-c1 killed; absence verified",
-          "ultraqaClasses": ["stale_state", "misleading_success"]
+          "capturedEvidence": ".agent-harness/turing/evidence/issue46-G1-C1-readonly-config.txt",
+          "cleanupReceipt": "Go TempDir fixtures removed; external system config read only.",
+          "ultraqaClasses": ["permission_boundary", "race_condition", "misleading_success"]
         },
         {
           "id": "G1-C2",
-          "scenario": "Run named parser and lifecycle regressions; bin/agent-harness exact status/resume plus pwd, safe rg, read-only git, and explicit read tools must allow across two source-matching handoffs.",
-          "channel": "tmux",
-          "expectedEvidence": ".agent-harness/turing/evidence/G1-C2-observations.txt",
+          "scenario": "Parse all three >4096-byte config inventories completely and fail closed above 1 MiB without partial results.",
+          "channel": "cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/issue46-G1-C2-config-inventory.txt",
           "status": "pass",
-          "capturedEvidence": ".agent-harness/turing/evidence/G1-C2-observations.txt",
-          "cleanupReceipt": "tmux session turing-qa-g1-c2 killed; absence verified",
-          "ultraqaClasses": ["malformed_input", "stale_state"]
+          "capturedEvidence": ".agent-harness/turing/evidence/issue46-G1-C2-config-inventory.txt",
+          "cleanupReceipt": "Fake Git and inventory TempDir fixtures removed.",
+          "ultraqaClasses": ["boundary_value", "truncated_output", "malformed_input"]
         },
         {
           "id": "G1-C3",
-          "scenario": "Run negative companions; shell control, malformed exact commands, go test, source patch, and Orca terminal writes must remain blocked.",
-          "channel": "tmux",
-          "expectedEvidence": ".agent-harness/turing/evidence/G1-C3-negative-fence.txt",
+          "scenario": "Keep existing writable config lock collision and rewrite-race regressions green.",
+          "channel": "cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/issue46-G1-C3-writable-lock.txt",
           "status": "pass",
-          "capturedEvidence": ".agent-harness/turing/evidence/G1-C3-negative-fence.txt",
-          "cleanupReceipt": "tmux session turing-qa-g1-c3 killed; absence verified",
-          "ultraqaClasses": ["malformed_input", "prompt_injection", "misleading_success"]
-        },
-        {
-          "id": "G1-C4",
-          "scenario": "Inspect the tracked blocker record and verify each incident has symptom, cause, impact, bounded escape, status, and evidence without recommending hook disablement or ambiguous retry.",
-          "channel": "tmux",
-          "expectedEvidence": ".agent-harness/turing/evidence/G1-C4-blocker-record.txt",
-          "status": "pass",
-          "capturedEvidence": ".agent-harness/turing/evidence/G1-C4-blocker-record.txt",
-          "cleanupReceipt": "tmux session turing-qa-g1-c4 killed; absence verified",
-          "ultraqaClasses": ["stale_state", "misleading_success"]
+          "capturedEvidence": ".agent-harness/turing/evidence/issue46-G1-C3-writable-lock.txt",
+          "cleanupReceipt": "Lock, script, marker, and repository TempDir fixtures removed.",
+          "ultraqaClasses": ["race_condition", "permission_boundary"]
         }
       ]
     },
     {
       "id": "G2",
-      "title": "Restore and verify native hooks",
-      "objective": "Build, install, and prove the repaired hook in the actual Codex integration without version skew or leftover QA state.",
+      "title": "Use immutable implementation evidence",
+      "objective": "Prefer valid branch_prepare.base_sha over moving refs without breaking legacy records.",
       "status": "pass",
       "successCriteria": [
         {
           "id": "G2-C1",
-          "scenario": "Run the focused packages and the final full Go test, race, vet, build, contract, self-verify, and stability audit sequence; every command exits zero in one uninterrupted final wave.",
-          "channel": "tmux",
-          "expectedEvidence": ".agent-harness/turing/evidence/G2-C1-full-verification.txt",
+          "scenario": "Retain implementation evidence after origin/main moves, reject unchanged HEAD, and preserve malformed/missing SHA fallback.",
+          "channel": "cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/issue46-G2-C1-immutable-base.txt",
           "status": "pass",
-          "capturedEvidence": ".agent-harness/turing/evidence/G2-C1-full-verification.txt",
-          "cleanupReceipt": "post-review tmux session turing-qa-g2-c1-r11, runner script, JSON receipts, and matching QA processes removed after evidence extraction",
-          "ultraqaClasses": ["flaky_test", "hung_command", "misleading_success"]
-        },
+          "capturedEvidence": ".agent-harness/turing/evidence/issue46-G2-C1-immutable-base.txt",
+          "cleanupReceipt": "Temporary Git repository removed by Go TempDir cleanup.",
+          "ultraqaClasses": ["stale_state", "backward_compatibility"]
+        }
+      ]
+    },
+    {
+      "id": "G3",
+      "title": "Verify final worker source",
+      "objective": "Pass focused and repository-wide quality gates without install or publication side effects.",
+      "status": "pending",
+      "successCriteria": [
         {
-          "id": "G2-C2",
-          "scenario": "Install native hooks, invoke every configured agent-harness event with representative JSON, and verify schema-valid output plus preserved unrelated hook groups.",
-          "channel": "tmux",
-          "expectedEvidence": ".agent-harness/turing/evidence/G2-C2-installed-events.txt",
-          "status": "pass",
-          "capturedEvidence": ".agent-harness/turing/evidence/G2-C2-installed-events.txt",
-          "cleanupReceipt": "fresh app-server terminated; configured-event smoke spawned no persistent process; temp receipts retained until final cleanup",
-          "ultraqaClasses": ["stale_state", "misleading_success"]
-        },
-        {
-          "id": "G2-C3",
-          "scenario": "Use Codex hooks/list for the exact cwd and a fresh hooks-enabled process to execute an allowed observation and reject an ambiguous source mutation before execution.",
-          "channel": "tmux",
-          "expectedEvidence": ".agent-harness/turing/evidence/G2-C3-codex-live.txt",
-          "status": "pass",
-          "capturedEvidence": ".agent-harness/turing/evidence/G2-C3-codex-live.txt",
-          "cleanupReceipt": "ephemeral Codex exited; mutation marker absent; no live app-server or tmux session remains",
-          "ultraqaClasses": ["cancel_resume", "stale_state", "repeated_interruption"]
+          "id": "G3-C1",
+          "scenario": "Pass focused, full, race, vet, golden, source build, Windows compile/link, and deterministic self-verify gates.",
+          "channel": "cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/issue46-G3-C1-full-gates.txt",
+          "status": "pending",
+          "capturedEvidence": ".agent-harness/turing/evidence/issue46-G3-C1-full-gates.txt",
+          "cleanupReceipt": "Internal temp/process cleanup passed; exact outer self-verify state root is explicitly delegated to coordinator because worker hook blocked outside-worktree deletion.",
+          "ultraqaClasses": ["cross_platform", "flaky_test", "hung_command", "misleading_success"]
         }
       ]
     }
   ],
   "metrics": {
     "evidenceCoverage": 1.0,
-    "reworkRate": 0.6,
-    "cycleEfficiency": 0.4,
-    "parallelizationRatio": 1.0,
-    "cleanupCompliance": 1.0
+    "cleanupCompliance": 0.8
   }
 }

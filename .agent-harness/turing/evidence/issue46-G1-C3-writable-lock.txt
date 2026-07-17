@@ -1,0 +1,18 @@
+Criterion: G1-C3
+Status: PASS
+
+Fresh GREEN evidence:
+- TestPublicationRejectsPreexistingEffectiveIncludeConfigLock: PASS.
+- TestPublicationRejectsPreexistingActiveEmptyConditionalIncludeLock: PASS after reproducing RED `<nil>` with Git's canonical lowercase `includeif` key.
+- TestPublicationRejectsPreexistingUnrelatedEffectiveGlobalConfigLock: PASS.
+- TestPublicationGlobalRewriteRaceCannotRedirectPush: PASS.
+- TestPublicationOwnerControlledConfigInReadOnlyParentRejectsBeforeTransientRewrite: PASS.
+
+Invariant receipt:
+- Existing writable-config sibling lock collision remains fail-closed.
+- URL rewrite inventory is checked after authority acquisition and after the protected operation.
+- Active empty conditional includes are discovered from their lowercase directive and their sibling lock is enforced even though they contribute no origin entry.
+- The immutable fallback is not available to an owner-controlled file even when its parent is temporarily non-writable.
+
+Cleanup receipt:
+- Test locks, scripts, marker files, and repositories used testing.T.TempDir and were removed by the Go test process.

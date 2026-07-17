@@ -1,0 +1,15 @@
+Criterion: G1-C2
+Status: PASS
+
+RED evidence:
+- The >4096-byte origin fixture lost its final entry at the diagnostic boundary.
+- Include and URL-rewrite overflow fixtures returned partial/empty results without the required explicit bounded-overflow error.
+- A valid include value containing a space was initially parsed as an incomplete origin.
+
+GREEN evidence:
+- TestPublicationConfigInventoriesAreCompleteBeyondDiagnosticLimit: PASS for origin, include-value, and URL-rewrite inventories whose final entries occur beyond 4096 bytes.
+- TestPublicationConfigInventoriesRejectOverflowWithoutPartialResult: PASS for all three inventory consumers; each >1048576-byte result returns an explicit inventory overflow and a zero-length result.
+- Diagnostic command output remains bounded by publicationDiagnosticLimit=4096; only private authority inventory reads use publicationConfigInventoryLimit=1 MiB.
+
+Cleanup receipt:
+- Fake Git executables and inventory fixtures used testing.T.TempDir and were removed by the Go test process.

@@ -364,12 +364,12 @@ GitHub 재조회 결과 open issue는 `#18`, `#19`, `#20`, `#21`, `#28`이고, `
 
 ### B-38 — preview가 생성한 confirmed command에서 sealed delivery option이 누락됨
 
-- 증상: `handoff start` preview가 출력한 `confirmed_command`를 그대로 실행하자 `expected_context_sha256 does not match freshly recomputed sealed context`로 거부됐다. 원래 preview의 delivery option을 모두 다시 넣고 같은 expected hash로 confirm하면 성공했다.
-- 직접 원인: sealed context hash는 task/dispatch/terminal/worktree 전달 옵션 전체를 포함하지만, 사람이 복사하도록 렌더된 confirmed command에는 그 옵션 일부가 보존되지 않았다. 기존 contract test도 preview와 confirm 사이의 delivery option 동일성을 요구한다.
-- 영향: 안전하게 생성된 명령을 그대로 따른 coordinator가 hash mismatch에 막히고, 임의 재시도나 새 task 생성으로 빠질 위험이 있다.
-- 안전한 탈출 경로: preview 입력의 모든 delivery option과 `--expected-context-sha256`를 그대로 보존해 confirm한다. 생성 명령 렌더러 보강은 별도 회귀 테스트와 함께 처리한다.
-- 상태: **원 입력 보존으로 운영 복구 완료, CLI 렌더링 개선 후보 기록**.
-- 근거: #18 `io-8dab82ade5bf` preview/confirm transcript와 `TestHandoffStartConfirmedCommandPreservesDeliveryOptions` 계약.
+- 증상: `handoff start` preview가 출력한 `confirmed_command`를 그대로 실행하자 `expected_context_sha256 does not match freshly recomputed sealed context`로 거부됐다. 원래 preview의 delivery option을 모두 다시 넣고 같은 expected hash로 confirm하면 성공했다. #46 attempt 3에서도 렌더된 명령이 sealed packet option을 누락해 같은 hash mismatch가 재발했다.
+- 직접 원인: sealed context hash는 criteria/docs/skills/scope/verification/stop/result와 task/dispatch/terminal/worktree 전달 옵션 전체를 포함하지만, 사람이 복사하도록 렌더된 confirmed command에는 그 옵션 일부가 보존되지 않았다. 기존 contract test도 preview와 confirm 사이의 delivery option 동일성을 요구하지만 전체 sealed packet 보존을 고정하지 못했다.
+- 영향: 안전하게 생성된 명령을 그대로 따른 coordinator가 hash mismatch에 막히고, 임의 재시도나 새 task 생성으로 빠질 위험이 있다. #46에서는 exact packet을 다시 조립할 때까지 supervised dispatch가 지연됐다.
+- 안전한 탈출 경로: preview 입력의 모든 sealed packet/delivery option과 `--expected-context-sha256`를 그대로 보존해 confirm한다. 생성 명령 렌더러는 전체 sealed packet argv round-trip 회귀로 보강해야 한다.
+- 상태: **#18과 #46 모두 원 입력 보존으로 운영 복구 완료, 전체 sealed packet 렌더링 결함 재발 확인**.
+- 근거: #18 `io-8dab82ade5bf` preview/confirm transcript, `TestHandoffStartConfirmedCommandPreservesDeliveryOptions` 계약, #46 `io-65b25b19728b` attempt 3의 rendered `confirmed_command` hash mismatch와 최종 sealed context SHA-256 `1238cee958091f673ecdea26203ea843c60b8ab5e8172a267d86d36e74326494`.
 
 ### B-39 — child별 focused 검증이 통합된 cross-skill·docs-index 계약 회귀를 놓침
 
@@ -430,9 +430,9 @@ GitHub 재조회 결과 open issue는 `#18`, `#19`, `#20`, `#21`, `#28`이고, `
 - 증상: GitHub PR이 병합된 뒤 `issueops handoff publish --confirm`이 active lock이 없는데도 `publication git config lock is unavailable`로 실패했다.
 - 직접 원인: `publicationGitConfigOrigins`가 macOS Command Line Tools의 `/Library/Developer/CommandLineTools/usr/share/git-core/gitconfig`를 유효 origin으로 수집하고, `withPublicationGitConfigLocks`가 모든 origin 옆에 `O_EXCL` `.lock`을 생성한다. 일반 사용자에게 `/Library/.../git-core`는 쓰기 불가다.
 - 영향: system Git config가 존재하는 표준 macOS 환경에서는 stale lock이나 동시 writer가 없어도 supervised publication receipt를 만들 수 없다.
-- 안전한 탈출 경로: 진단에서는 단일 process에 `GIT_CONFIG_NOSYSTEM=1`을 주어 system authority를 읽기와 push 모두에서 제외했다. 제품 수정은 읽기 전용·비사용 config의 안전한 fingerprint 계약을 별도 설계해야 하며, lock 삭제나 권한 상승으로 우회하지 않는다.
-- 상태: **원인 확정, 원격 PR/merge는 GitHub에서 완료됐지만 IssueOps publication receipt는 미기록**.
-- 근거: system config parent `not writable`, pre-existing `.lock` 없음, 다른 repo/user config parent는 writable, `issueops_handoff_publication.go:272-308,317-433`.
+- 안전한 탈출 경로: current-user writable/owner-controlled config는 기존 `O_EXCL` lock authority를 유지한다. sibling lock이 `EACCES`/`EPERM`/`EROFS`인 canonical regular file만 current UID가 file/path chain 어느 것도 소유하거나 쓸 수 없을 때 immutable snapshot authority로 분류하고, protected callback 전후 identity/content fingerprint와 inventory를 다시 검증한다.
+- 상태: **TDD 수정 완료**. macOS 실제 Command Line Tools system config는 immutable authority로 통과하고 owner-controlled transient rewrite-and-restore와 snapshot drift는 fail-closed된다.
+- 근거: `issueops_handoff_publication.go`, `issueops_handoff_publication_authority_unix.go`, `issueops_handoff_publication_authority_other.go`, `TestPublicationOwnerControlledConfigInReadOnlyParentRejectsBeforeTransientRewrite`, `TestPublicationImmutableConfigSnapshotRejectsCallbackDrift`, `TestPublicationImmutableMacOSSystemConfigAllowsProtectedCallback`.
 
 ### B-46 — bounded config inventory가 4096바이트 중간에서 잘려 유효 origin을 invalid로 만듦
 
@@ -440,17 +440,17 @@ GitHub 재조회 결과 open issue는 `#18`, `#19`, `#20`, `#21`, `#28`이고, `
 - 직접 원인: `publicationGitCmd` stdout buffer 한도는 4096바이트인데 현재 `git config --show-origin --includes --list` 출력은 4987바이트다. 4096바이트 prefix의 마지막 줄이 `file:.git/`에서 잘려 tab/value 없는 invalid origin이 됐다.
 - 영향: branch/config 항목이 많은 정상 저장소는 config authority를 완전하게 열거할 수 없고 publication이 fail-closed된다. 단순 retry로는 동일 byte boundary가 반복된다.
 - 안전한 탈출 경로: config origin/rule inventory에는 완전성 검증 가능한 별도 상한과 explicit truncation error를 사용해야 한다. 진단 한도를 높이거나 출력 일부를 정상 origin으로 해석해서는 안 된다.
-- 상태: **exact byte 재현 완료, 제품 개선 후보로 남음**.
-- 근거: full output `4987`, `head -c 4096` tail의 `file:.git/`, `publicationDiagnosticLimit=4096`과 bounded buffer 구현.
+- 상태: **TDD 수정 완료**. diagnostic 4096-byte 계약은 유지하고 origin/include/URL rewrite inventory만 private 1 MiB bounded-complete read를 공유하며 초과 시 partial parse 없이 명시적으로 거부한다.
+- 근거: `publicationConfigInventoryLimit`, `publicationGitInventoryCmd`, `TestPublicationConfigInventoriesAreCompleteBeyondDiagnosticLimit`, `TestPublicationConfigInventoriesRejectOverflowWithoutPartialResult`; origin/include/rewrite 세 consumer의 focused GREEN.
 
 ### B-47 — verification-only accepted parent가 coordinator 후속 구현 변경을 durable phase에 기록하지 못함
 
 - 증상: #18 handoff는 no-change verification worker가 `a21441c`에서 accepted됐지만 coordinator가 그 뒤 통합 회귀와 reviewer finding을 수정해 `c699913`을 만들었다. merge 뒤 `phase --to ai-slop-clean`은 `missing implementation_changes`로 실패했다.
 - 직접 원인: accepted result는 의도적으로 worker changed files가 없고, 현재 CLI에는 accepted 뒤 coordinator-owned implementation evidence를 사후 추가하는 명령이 없다. publication도 B-45/B-46에 막혔다.
 - 영향: GitHub 원격은 PR #44 merge와 모든 issue close를 정확히 반영하지만 durable parent cycle은 `implement`에 남아 원격 완료와 불일치한다.
-- 안전한 탈출 경로: coordinator 후속 fix가 생기면 publication 전에 새 supervised attempt/cycle로 final HEAD를 재봉인하거나, 명시적 coordinator implementation evidence transition을 제품 계약으로 추가한다. 기존 accepted envelope를 직접 편집하지 않는다.
-- 상태: **원격 작업 완료, durable phase 불일치 기록**.
-- 근거: accepted `a21441c`, final feature `c699913`, merge `30a4aa4`, exact phase error `missing implementation_changes`.
+- 안전한 탈출 경로: valid full `branch_prepare.base_sha`가 있으면 implementation diff/fingerprint의 immutable base로 우선 사용한다. SHA가 없거나 malformed/unresolvable인 legacy record만 기존 `origin/<base>`와 `<base>` moving-ref fallback을 유지한다. 기존 accepted envelope를 직접 편집하지 않는다.
+- 상태: **TDD 수정 완료**. origin/main이 feature HEAD로 이동해도 recorded base SHA 기준 implementation evidence가 유지되고 legacy fallback은 보존된다.
+- 근거: `implementation/evidence.go`의 `diffBaseRef`, `fullGitObjectID`, `TestImplementationEvidenceUsesImmutableBranchPrepareBaseSHA`.
 
 ### B-48 — 설치된 agent-harness binary가 병합 소스보다 오래됨
 
@@ -532,6 +532,33 @@ GitHub 재조회 결과 open issue는 `#18`, `#19`, `#20`, `#21`, `#28`이고, `
 - 안전한 탈출 경로: closed/cancelled 전이 직전에 context version/hash/source hash가 모두 비어 있는 경우에만 `ContextOptions=nil`로 canonicalize한다. sealed context options는 증거이므로 유지한다. finalize, direct close, abandon 세 경로를 같은 좁은 helper로 처리한다.
 - 상태: **TDD 수정·실제 stale-cycle 복구 완료**. `TestHandoffFinalizeCancelClearsUnsealedPreparingContextOptions`가 수정 전 exact 오류로 RED, 최소 canonicalization 뒤 GREEN이며 같은 바이너리로 #25/#33 finalization이 성공했다.
 - 근거: `internal/core/issueops/handoff/envelope.go:76-84`, `issueops_handoff_recovery.go`의 세 cancelled-close 전이, 새 focused regression 출력.
+
+### B-57 — 여러 connected+writable source terminal이 coordinator recipient 자동 해석을 막음
+
+- 증상: #46 supervised handoff 준비 중 source worktree에 connected+writable terminal이 둘 이상 있어 자동 coordinator recipient resolution이 exactly-one 조건으로 실패했다. 그중 하나는 사용자가 쓰는 lazygit terminal이라 종료로 후보를 줄이는 것은 허용되지 않았다.
+- 직접 원인: 자동 resolver는 source worktree의 connected+writable terminal을 모두 coordinator 후보로 취급하며, 여러 후보 중 실제 coordinator mailbox를 구분할 durable 신호가 없다.
+- 영향: 사용자의 정상 interactive terminal을 닫지 않으면 dispatch를 시작할 수 없는 것처럼 보이며, 임의 terminal 종료는 사용자 상태 손실과 잘못된 recipient sealing을 유발할 수 있다.
+- 안전한 탈출 경로: authenticated SessionStart와 coordinator가 보유한 mailbox handle을 exact `--coordinator-recipient`로 지정한다. explicit recipient도 sealed context에 포함해 confirm/claim에서 검증하며 user lazygit은 닫지 않는다.
+- 상태: **운영 복구 완료**. user lazygit을 유지한 채 explicit recipient `term_fd1bcca4-f44d-4442-be2f-e4c6dc159705`로 #46 attempt 3을 dispatch하고 worker가 claim했다.
+- 근거: `issueops_handoff_dispatch.go`의 connected+writable exactly-one resolver, #46 attempt 3 handoff envelope의 `coordinator_mailbox_handle`, coordinator 실행 transcript와 claimed worker session.
+
+### B-58 — supervised worker hook이 read-only discovery/edit retry를 outside-worktree mutation으로 오분류함
+
+- 증상: #46 worker가 installed skill과 macOS system Git config를 read-only로 확인하는 `cat`/`ls -l` discovery 및 편집 재시도 경로를 실행하자 hook이 `outside-worktree mutation`으로 차단했다. 명령은 hooks를 끄거나 대상 파일을 변경하지 않았다.
+- 직접 원인: supervised-worker mutation classifier가 canonical path가 claimed worktree 밖이라는 사실을 command의 실제 read/write semantics보다 먼저 적용해 read-only argv도 mutation으로 분류한다.
+- 영향: immutable system config authority를 검증하는 데 필요한 read-only discovery가 막히고, worker가 hook bypass나 범위 밖 복사/변경으로 유도될 수 있다.
+- 안전한 탈출 경로: hooks는 계속 enabled로 두고 worktree-local skill source를 읽으며, system config 검증은 Go test가 exact canonical path를 read-only로 여는 integration test로 고정한다. classifier 수정 전까지 외부 파일 편집이나 trust bypass는 하지 않는다.
+- 상태: **false positive 재현·안전한 우회 완료, classifier 제품 결함 기록**. 작업 중 hooks를 비활성화하지 않았고 outside-worktree mutation도 수행하지 않았다.
+- 근거: installed `issueops/SKILL.md` read-only `cat` 및 `/Library/Developer/CommandLineTools/usr/share/git-core/gitconfig` read-only `ls -l`에 대한 exact PreToolUse 차단 메시지, `TestPublicationImmutableMacOSSystemConfigAllowsProtectedCallback` GREEN.
+
+### B-59 — publication authority 공통 파일의 Unix syscall 사용이 Windows cross-build를 깨뜨림
+
+- 증상: `GOOS=windows GOARCH=amd64 go test ./internal/core/issueops -run '^$' -count=1`이 `undefined: syscall.Stat_t`와 `undefined: syscall.Access`로 compile 실패했다.
+- 직접 원인: immutable config classification의 Unix metadata/access 구현을 공통 `.go` 파일에 직접 넣어 Windows compiler도 `syscall.Stat_t`, `syscall.Access`, effective UID 경로를 type-check했다.
+- 영향: macOS focused test는 통과해도 repository의 supported cross-platform build surface가 깨지고, publication package를 포함한 Windows gate가 source 단계에서 중단된다.
+- 안전한 탈출 경로: 최소 OS seam을 `//go:build unix`와 `//go:build !unix` helper로 분리한다. Unix helper만 stat/access/UID와 lock permission errno를 해석하고 unsupported platform helper는 immutable fallback을 허용하지 않아 fail-closed한다.
+- 상태: **수정 완료**. Windows compile/link gate와 macOS publication authority 회귀가 모두 통과했다.
+- 근거: 수정 전 exact undefined-symbol 출력, `issueops_handoff_publication_authority_unix.go`, `issueops_handoff_publication_authority_other.go`, 수정 후 `GOOS=windows GOARCH=amd64 go test -exec=true ./internal/core/issueops -run '^$' -count=1` PASS; native immutable authority focused tests PASS.
 
 ## 2026-07-17 실행 완료 스냅샷
 
