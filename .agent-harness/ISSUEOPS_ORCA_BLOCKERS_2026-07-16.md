@@ -362,12 +362,40 @@ GitHub 재조회 결과 open issue는 `#18`, `#19`, `#20`, `#21`, `#28`이고, `
 - 상태: **절차 위반 기록 및 재발 금지 적용**.
 - 근거: 이후 모든 Orca 증거는 runtime ID, repo ID, terminal/task/dispatch ID만 사용하며 secret 원문을 포함하지 않는다.
 
+### B-38 — preview가 생성한 confirmed command에서 sealed delivery option이 누락됨
+
+- 증상: `handoff start` preview가 출력한 `confirmed_command`를 그대로 실행하자 `expected_context_sha256 does not match freshly recomputed sealed context`로 거부됐다. 원래 preview의 delivery option을 모두 다시 넣고 같은 expected hash로 confirm하면 성공했다.
+- 직접 원인: sealed context hash는 task/dispatch/terminal/worktree 전달 옵션 전체를 포함하지만, 사람이 복사하도록 렌더된 confirmed command에는 그 옵션 일부가 보존되지 않았다. 기존 contract test도 preview와 confirm 사이의 delivery option 동일성을 요구한다.
+- 영향: 안전하게 생성된 명령을 그대로 따른 coordinator가 hash mismatch에 막히고, 임의 재시도나 새 task 생성으로 빠질 위험이 있다.
+- 안전한 탈출 경로: preview 입력의 모든 delivery option과 `--expected-context-sha256`를 그대로 보존해 confirm한다. 생성 명령 렌더러 보강은 별도 회귀 테스트와 함께 처리한다.
+- 상태: **원 입력 보존으로 운영 복구 완료, CLI 렌더링 개선 후보 기록**.
+- 근거: #18 `io-8dab82ade5bf` preview/confirm transcript와 `TestHandoffStartConfirmedCommandPreservesDeliveryOptions` 계약.
+
+### B-39 — child별 focused 검증이 통합된 cross-skill·docs-index 계약 회귀를 놓침
+
+- 증상: #19/#20/#21/#28과 parent #18 handoff가 모두 accepted였지만 parent 전체 `go test ./... -count=1`에서 Turing의 `ORCA-01` 계약 문구 누락과 response-contract golden의 docs count 불일치가 검출됐다.
+- 직접 원인: #20의 문구 간소화가 기존 exact contract phrase를 제거했고, 새 `.agent-harness` 문서 네 개가 docs index에 들어갔지만 child 범위 검증은 전역 golden을 실행하지 않았다.
+- 영향: 각 작업의 focused test와 skill validator가 통과해도 main 후보 전체 계약은 실패한다. accepted 상태를 곧바로 publish 완료로 해석하면 깨진 main을 만들 수 있다.
+- 안전한 탈출 경로: coordinator가 모든 child를 합친 exact HEAD에서 named contract test와 response-contract golden, 전체 Go test를 다시 실행한다. 제거된 ORCA 범위를 최소 복원하고 의도된 docs projection으로 golden을 갱신한다.
+- 상태: **parent Turing QA에서 재현 후 TDD 수정 완료**. ORCA 범위 contract test와 갱신된 response-contract golden test가 모두 통과했다.
+- 근거: `TestTuringSkillDocumentsSupervisedHandoffEvidenceContract`, `TestResponseContractsGolden`, `origin/main...HEAD` docs diff.
+
+### B-40 — accepted handoff 뒤 Orca terminal이 자동으로 닫히지 않음
+
+- 증상: durable record와 task/dispatch가 accepted/terminal 상태인데 #19/#20/#21 worker·coordinator terminal 일부가 runtime inventory에 계속 열려 있었다.
+- 직접 원인: IssueOps accept와 Orca terminal close는 별도 operation이고, acceptance가 이미 열린 PTY lifecycle을 자동 종료하지 않는다.
+- 영향: 열린 terminal은 다음 실행의 inventory를 오염시키고 stale writer/ownership 문제로 오인될 수 있으며 리소스도 남긴다.
+- 안전한 탈출 경로: accept 뒤 exact task/dispatch terminality를 확인하고 worker와 coordinator terminal을 ID별로 닫은 다음 global terminal/dispatched inventory가 0인지 재확인한다.
+- 상태: **#19/#20/#21/#28/#18 종료 terminal 정리 완료**.
+- 근거: accepted record 목록과 정리 전후 `orca terminal list`, `orca task-list --status dispatched` 결과.
+
 ## 2026-07-17 실행 완료 스냅샷
 
 - #19 `io-339c2fca0e34`: accepted, commit `a8e7dce90500e80a3cb3b68f889710df90ec7374`.
 - #20 `io-4f4603393a22`: accepted, commit `73c44725b2693d9276df05af3c509bee5a6b21e9`.
 - #21 `io-ff473d80b45b`: attempt 2 accepted, commit `defb73d8f7e6d147f0777b4c3060057f7c78dec4`.
 - #28 `io-959e7d74d2ac`: attempt 5 accepted, no-change final HEAD `bafcbbeb2c9ef65be2f8cd7fc770fd5e98dcd08f`.
+- #18 `io-8dab82ade5bf`: attempt 2 accepted, integrated final HEAD `a21441c8b4c28a1781ca95df0bd8a5d209bf689f`.
 - resumed session에서는 hook을 비활성화하지 않았다. final #28 start 직전 exact cwd `hooks/list`에서 agent-harness/Orca hooks가 모두 enabled/trusted이고 warnings/errors는 비어 있음을 확인했다.
 
 ## 금지된 우회
