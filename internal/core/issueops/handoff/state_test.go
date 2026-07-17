@@ -640,6 +640,18 @@ func failedRecordForEnvelopeTest(t *testing.T) model.IssueOpsRecord {
 	return record
 }
 
+func TestFailedResultRemainsValidAfterJSONRoundTrip(t *testing.T) {
+	record := failedRecordForEnvelopeTest(t)
+	if err := ValidateEnvelope(record); err != nil {
+		t.Fatalf("failed result was invalid before JSON round trip: %v", err)
+	}
+
+	roundTrip := cloneRecord(t, record)
+	if err := ValidateEnvelope(roundTrip); err != nil {
+		t.Fatalf("failed result was invalid after JSON round trip: %v", err)
+	}
+}
+
 func cloneRecord(t *testing.T, record model.IssueOpsRecord) model.IssueOpsRecord {
 	t.Helper()
 	raw, err := json.Marshal(record)
