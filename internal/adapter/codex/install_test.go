@@ -87,6 +87,30 @@ func TestCodexInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 	}
 }
 
+func TestMergeHookConfigPreservesCoResidentHookPositions(t *testing.T) {
+	agentHarness := map[string]any{"hooks": []any{map[string]any{
+		"type": "command", "command": "'/old/bin/agent-harness' hook pre-tool-use --host codex", "timeout": float64(5),
+	}}}
+	orca := map[string]any{"hooks": []any{map[string]any{
+		"type": "command", "command": "/bin/sh /Users/example/.orca/agent-hooks/codex-hook.sh", "timeout": float64(10),
+	}}}
+	config := map[string]any{"hooks": map[string]any{"PreToolUse": []any{agentHarness, orca}}}
+
+	merged := mergeHookConfig(config, "/new/bin/agent-harness")
+	groups := merged["hooks"].(map[string]any)["PreToolUse"].([]any)
+	if len(groups) != 2 {
+		t.Fatalf("PreToolUse groups = %d, want 2: %#v", len(groups), groups)
+	}
+	firstCommand := groups[0].(map[string]any)["hooks"].([]any)[0].(map[string]any)["command"].(string)
+	secondCommand := groups[1].(map[string]any)["hooks"].([]any)[0].(map[string]any)["command"].(string)
+	if !strings.Contains(firstCommand, "/new/bin/agent-harness") {
+		t.Fatalf("agent-harness replacement moved away from its trusted index: first=%q second=%q", firstCommand, secondCommand)
+	}
+	if secondCommand != "/bin/sh /Users/example/.orca/agent-hooks/codex-hook.sh" {
+		t.Fatalf("co-resident hook index changed: first=%q second=%q", firstCommand, secondCommand)
+	}
+}
+
 func TestCodexInstallerDropsEmptyHookGroups(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()

@@ -18,15 +18,16 @@ type ExactIssueOpsCommand struct {
 
 // ParseExactIssueOpsCommand parses a command into an ExactIssueOpsCommand,
 // rejecting any command that carries active shell control/expansion (fail
-// closed). Only bare `agent-harness`/`./bin/agent-harness issueops …` invocations
-// parse; two-word subcommands (handoff/worktree/…) are folded into Path.
+// closed). Only bare `agent-harness`, `bin/agent-harness`, or
+// `./bin/agent-harness issueops …` invocations parse; two-word subcommands
+// (handoff/worktree/…) are folded into Path.
 func ParseExactIssueOpsCommand(command string) (ExactIssueOpsCommand, bool) {
 	command = strings.TrimSpace(command)
 	if command == "" || HasUnquotedControlOperator(command) || HasActiveCommandSubstitution(command) || HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) || HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) || HasActiveZshEqualsExpansion(command) {
 		return ExactIssueOpsCommand{}, false
 	}
 	tokens := SplitCommandTokens(command)
-	if len(tokens) < 3 || (tokens[0] != "agent-harness" && tokens[0] != "./bin/agent-harness") || tokens[1] != "issueops" {
+	if len(tokens) < 3 || (tokens[0] != "agent-harness" && tokens[0] != "bin/agent-harness" && tokens[0] != "./bin/agent-harness") || tokens[1] != "issueops" {
 		return ExactIssueOpsCommand{}, false
 	}
 	parts := []string{tokens[2]}

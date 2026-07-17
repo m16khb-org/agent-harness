@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -203,11 +204,15 @@ func TestRemoteCreateClaimIsAtomicAcrossOSProcesses(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := ClaimIssueOpsRemoteCreate(context.Background(), stateRoot, remoteCreateClaimRequest(record)); err != nil {
-			fmt.Print("blocked")
-		} else {
+		_, err = ClaimIssueOpsRemoteCreate(context.Background(), stateRoot, remoteCreateClaimRequest(record))
+		if err == nil {
 			fmt.Print("claimed")
+			return
 		}
+		if err.Error() != "remote create is already claimed or requires reconciliation" {
+			t.Fatalf("unexpected claim helper error: %v", err)
+		}
+		fmt.Print("blocked")
 		return
 	}
 	stateRoot, record := acceptedPublishedRemoteCreateRecord(t, "github")
@@ -249,17 +254,71 @@ func TestRemoteCreateClaimIsAtomicAcrossOSProcesses(t *testing.T) {
 	}
 }
 
+func TestRemoteCreateHelperOutcomeRejectsUnexpectedErrors(t *testing.T) {
+	got, err := remoteCreateHelperOutcome(errors.New("remote create is already claimed or requires reconciliation"))
+	if err != nil || got != "blocked" {
+		t.Fatalf("claim conflict outcome = %q, %v", got, err)
+	}
+	got, err = remoteCreateHelperOutcome(errors.New("publication readback failed"))
+	if err == nil || got != "" || !strings.Contains(err.Error(), "publication readback failed") {
+		t.Fatalf("unexpected error outcome = %q, %v", got, err)
+	}
+}
+
+func remoteCreateHelperOutcome(err error) (string, error) {
+	if err == nil {
+		return "created", nil
+	}
+	if err.Error() == "remote create is already claimed or requires reconciliation" {
+		return "blocked", nil
+	}
+	if err.Error() == "remote create requires phase pr and no existing artifact" {
+		return "blocked", nil
+	}
+	return "", fmt.Errorf("unexpected remote create helper error: %w", err)
+}
+
+func waitForRemoteCreateHelperFiles(paths []string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		allPresent := true
+		for _, path := range paths {
+			if _, err := os.Stat(path); err != nil {
+				if !os.IsNotExist(err) {
+					return err
+				}
+				allPresent = false
+			}
+		}
+		if allPresent {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timed out waiting for helper files: %v", paths)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 func TestCreateRemotePullRequestTwoProcessesInvokeProviderOnce(t *testing.T) {
 	if stateRoot := os.Getenv("ISSUEOPS_CREATE_HELPER_STATE"); stateRoot != "" {
 		record, err := ReadIssueOps(stateRoot, os.Getenv("ISSUEOPS_CREATE_HELPER_ID"))
 		if err != nil {
-			return
+			t.Fatal(err)
 		}
 		finalHead := record.ExecutionHandoff.Result.FinalHead
 		reader := &publicationRefFake{localHead: finalHead, remoteHead: finalHead, pushTarget: "https://github.com/acme/repo.git"}
 		lease := handoffDispatchFake(record)
 		lease.terminals = nil
-		_, _ = CreateIssueOpsRemotePullRequest(context.Background(), stateRoot, record.ID, "github", port.IssueProviderCreatePullRequestRequest{
+		readyPath := os.Getenv("ISSUEOPS_CREATE_HELPER_READY")
+		releasePath := os.Getenv("ISSUEOPS_CREATE_HELPER_RELEASE")
+		if err := os.WriteFile(readyPath, []byte("ready"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := waitForRemoteCreateHelperFiles([]string{releasePath}, 5*time.Second); err != nil {
+			t.Fatal(err)
+		}
+		_, err = CreateIssueOpsRemotePullRequest(context.Background(), stateRoot, record.ID, "github", port.IssueProviderCreatePullRequestRequest{
 			Repo: record.Repo, Title: "PR", Body: "body", HeadBranch: record.Branch, BaseBranch: record.BranchPrepare.BaseBranch,
 			Labels: []string{"bug"}, Assignees: []string{"octocat"}, Draft: true, Confirm: true,
 		}, reader, lease, func(port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
@@ -277,24 +336,56 @@ func TestCreateRemotePullRequestTwoProcessesInvokeProviderOnce(t *testing.T) {
 			}
 			return port.IssueProviderCreatePullRequestResult{URL: "https://github.com/acme/repo/pull/16"}, nil
 		})
+		outcome, outcomeErr := remoteCreateHelperOutcome(err)
+		if outcomeErr != nil {
+			t.Fatal(outcomeErr)
+		}
+		fmt.Print(outcome)
 		return
 	}
 	stateRoot, record := acceptedPublishedRemoteCreateRecord(t, "github")
 	countPath := filepath.Join(t.TempDir(), "provider-count")
+	barrierDir := t.TempDir()
+	releasePath := filepath.Join(barrierDir, "release")
+	readyPaths := []string{filepath.Join(barrierDir, "ready-0"), filepath.Join(barrierDir, "ready-1")}
 	commands := make([]*exec.Cmd, 2)
 	for i := range commands {
 		commands[i] = exec.Command(os.Args[0], "-test.run=^TestCreateRemotePullRequestTwoProcessesInvokeProviderOnce$")
-		commands[i].Env = append(os.Environ(), "ISSUEOPS_CREATE_HELPER_STATE="+stateRoot, "ISSUEOPS_CREATE_HELPER_ID="+record.ID, "ISSUEOPS_CREATE_HELPER_COUNT="+countPath)
+		commands[i].Env = append(os.Environ(), "ISSUEOPS_CREATE_HELPER_STATE="+stateRoot, "ISSUEOPS_CREATE_HELPER_ID="+record.ID, "ISSUEOPS_CREATE_HELPER_COUNT="+countPath, "ISSUEOPS_CREATE_HELPER_READY="+readyPaths[i], "ISSUEOPS_CREATE_HELPER_RELEASE="+releasePath)
 	}
-	var wg sync.WaitGroup
-	for _, command := range commands {
-		wg.Add(1)
-		go func(command *exec.Cmd) {
-			defer wg.Done()
-			_ = command.Run()
-		}(command)
+	outputs := make([]bytes.Buffer, len(commands))
+	for i, command := range commands {
+		command.Stdout = &outputs[i]
+		command.Stderr = &outputs[i]
+		if err := command.Start(); err != nil {
+			t.Fatalf("start helper %d: %v", i, err)
+		}
 	}
-	wg.Wait()
+	if err := waitForRemoteCreateHelperFiles(readyPaths, 5*time.Second); err != nil {
+		for _, command := range commands {
+			_ = command.Process.Kill()
+			_ = command.Wait()
+		}
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(releasePath, []byte("release"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	created, blocked := 0, 0
+	waitErrors := make([]string, 0, len(commands))
+	for i, command := range commands {
+		if err := command.Wait(); err != nil {
+			waitErrors = append(waitErrors, fmt.Sprintf("helper %d: %v\n%s", i, err, outputs[i].String()))
+		}
+		created += strings.Count(outputs[i].String(), "created")
+		blocked += strings.Count(outputs[i].String(), "blocked")
+	}
+	if len(waitErrors) != 0 {
+		t.Fatalf("wait helpers failed:\n%s", strings.Join(waitErrors, "\n"))
+	}
+	if created != 1 || blocked != 1 {
+		t.Fatalf("two-process create outcomes created=%d blocked=%d outputs=%q", created, blocked, []string{outputs[0].String(), outputs[1].String()})
+	}
 	count, err := os.ReadFile(countPath)
 	if err != nil {
 		t.Fatal(err)

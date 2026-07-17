@@ -4,27 +4,33 @@ import "testing"
 
 func TestNormalizeContractValueRewritesDynamicFields(t *testing.T) {
 	input := map[string]any{
-		"updated_at":           "2026-06-13T12:00:00Z",
-		"audit_log_id":         "audit-123",
-		"project_claude_skill": true,
-		"project_codex_skill":  false,
-		"id":                   "job-123",
-		"pid":                  1234,
-		"head":                 "abcdef1",
-		"message":              "/tmp/repo changed",
-		"commit":               "1234567 subject",
-		"command":              map[string]any{"executed": true, "exit_code": float64(0), "started_at": "x", "finished_at": "y", "duration_ms": float64(17), "policy": map[string]any{}},
-		"checkpoint":           map[string]any{"state_dir": "/state", "path": "x", "key": "k", "bytes": float64(10)},
-		"record":               map[string]any{"key": "self-verify-baseline", "schema_version": float64(1), "updated_at": "x", "bytes": float64(20)},
-		"history":              map[string]any{"key": "self-verify-candidate", "generated_at": "x", "updated_at": "y", "bytes": float64(30)},
-		"items":                []any{"2026-06-13T12:00:00Z"},
-		"score":                89.23999999999998,
+		"updated_at":                "2026-06-13T12:00:00Z",
+		"audit_log_id":              "audit-123",
+		"project_claude_skill":      true,
+		"project_codex_skill":       false,
+		"project_gjc_skill":         true,
+		"project_reasonix_skill":    true,
+		"project_reasonix_settings": true,
+		"id":                        "job-123",
+		"pid":                       1234,
+		"head":                      "abcdef1",
+		"message":                   "/tmp/repo changed",
+		"commit":                    "1234567 subject",
+		"command":                   map[string]any{"executed": true, "exit_code": float64(0), "started_at": "x", "finished_at": "y", "duration_ms": float64(17), "policy": map[string]any{}},
+		"checkpoint":                map[string]any{"state_dir": "/state", "path": "x", "key": "k", "bytes": float64(10)},
+		"record":                    map[string]any{"key": "self-verify-baseline", "schema_version": float64(1), "updated_at": "x", "bytes": float64(20)},
+		"history":                   map[string]any{"key": "self-verify-candidate", "generated_at": "x", "updated_at": "y", "bytes": float64(30)},
+		"items":                     []any{"2026-06-13T12:00:00Z"},
+		"score":                     89.23999999999998,
 	}
 	got := NormalizeContractValue(input, map[string]string{"/tmp/repo": "$REPO"}).(map[string]any)
 	assertEqual(t, got["updated_at"], "$TIMESTAMP")
 	assertEqual(t, got["audit_log_id"], "$AUDIT_ID")
 	assertEqual(t, got["project_claude_skill"], "$PROJECT_SKILL_PRESENCE")
 	assertEqual(t, got["project_codex_skill"], "$PROJECT_SKILL_PRESENCE")
+	assertEqual(t, got["project_gjc_skill"], "$PROJECT_SKILL_PRESENCE")
+	assertEqual(t, got["project_reasonix_skill"], "$PROJECT_SKILL_PRESENCE")
+	assertEqual(t, got["project_reasonix_settings"], "$PROJECT_SETTINGS_PRESENCE")
 	assertEqual(t, got["id"], "$WORKER_JOB_ID")
 	assertEqual(t, got["pid"], "$PID")
 	assertEqual(t, got["head"], "$GIT_SHA")

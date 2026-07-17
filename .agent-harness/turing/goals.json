@@ -1,0 +1,97 @@
+{
+  "goals": [
+    {
+      "id": "G1",
+      "title": "Repair multi-cycle PreToolUse reachability",
+      "objective": "Allow exact lifecycle and proven read-only observations before ambiguous supervised-record selection while preserving every writer fence.",
+      "status": "pass",
+      "successCriteria": [
+        {
+          "id": "G1-C1",
+          "scenario": "Run the named baseline lifecycle test with two source-matching handoffs; ambiguous apply_patch and raw terminal steering must return block on unchanged production code.",
+          "channel": "tmux",
+          "expectedEvidence": ".agent-harness/turing/evidence/G1-C1-baseline.txt",
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/G1-C1-baseline.txt",
+          "cleanupReceipt": "tmux session turing-qa-g1-c1 killed; absence verified",
+          "ultraqaClasses": ["stale_state", "misleading_success"]
+        },
+        {
+          "id": "G1-C2",
+          "scenario": "Run named parser and lifecycle regressions; bin/agent-harness exact status/resume plus pwd, safe rg, read-only git, and explicit read tools must allow across two source-matching handoffs.",
+          "channel": "tmux",
+          "expectedEvidence": ".agent-harness/turing/evidence/G1-C2-observations.txt",
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/G1-C2-observations.txt",
+          "cleanupReceipt": "tmux session turing-qa-g1-c2 killed; absence verified",
+          "ultraqaClasses": ["malformed_input", "stale_state"]
+        },
+        {
+          "id": "G1-C3",
+          "scenario": "Run negative companions; shell control, malformed exact commands, go test, source patch, and Orca terminal writes must remain blocked.",
+          "channel": "tmux",
+          "expectedEvidence": ".agent-harness/turing/evidence/G1-C3-negative-fence.txt",
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/G1-C3-negative-fence.txt",
+          "cleanupReceipt": "tmux session turing-qa-g1-c3 killed; absence verified",
+          "ultraqaClasses": ["malformed_input", "prompt_injection", "misleading_success"]
+        },
+        {
+          "id": "G1-C4",
+          "scenario": "Inspect the tracked blocker record and verify each incident has symptom, cause, impact, bounded escape, status, and evidence without recommending hook disablement or ambiguous retry.",
+          "channel": "tmux",
+          "expectedEvidence": ".agent-harness/turing/evidence/G1-C4-blocker-record.txt",
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/G1-C4-blocker-record.txt",
+          "cleanupReceipt": "tmux session turing-qa-g1-c4 killed; absence verified",
+          "ultraqaClasses": ["stale_state", "misleading_success"]
+        }
+      ]
+    },
+    {
+      "id": "G2",
+      "title": "Restore and verify native hooks",
+      "objective": "Build, install, and prove the repaired hook in the actual Codex integration without version skew or leftover QA state.",
+      "status": "pass",
+      "successCriteria": [
+        {
+          "id": "G2-C1",
+          "scenario": "Run the focused packages and the final full Go test, race, vet, build, contract, self-verify, and stability audit sequence; every command exits zero in one uninterrupted final wave.",
+          "channel": "tmux",
+          "expectedEvidence": ".agent-harness/turing/evidence/G2-C1-full-verification.txt",
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/G2-C1-full-verification.txt",
+          "cleanupReceipt": "post-review tmux session turing-qa-g2-c1-r11, runner script, JSON receipts, and matching QA processes removed after evidence extraction",
+          "ultraqaClasses": ["flaky_test", "hung_command", "misleading_success"]
+        },
+        {
+          "id": "G2-C2",
+          "scenario": "Install native hooks, invoke every configured agent-harness event with representative JSON, and verify schema-valid output plus preserved unrelated hook groups.",
+          "channel": "tmux",
+          "expectedEvidence": ".agent-harness/turing/evidence/G2-C2-installed-events.txt",
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/G2-C2-installed-events.txt",
+          "cleanupReceipt": "fresh app-server terminated; configured-event smoke spawned no persistent process; temp receipts retained until final cleanup",
+          "ultraqaClasses": ["stale_state", "misleading_success"]
+        },
+        {
+          "id": "G2-C3",
+          "scenario": "Use Codex hooks/list for the exact cwd and a fresh hooks-enabled process to execute an allowed observation and reject an ambiguous source mutation before execution.",
+          "channel": "tmux",
+          "expectedEvidence": ".agent-harness/turing/evidence/G2-C3-codex-live.txt",
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/G2-C3-codex-live.txt",
+          "cleanupReceipt": "ephemeral Codex exited; mutation marker absent; no live app-server or tmux session remains",
+          "ultraqaClasses": ["cancel_resume", "stale_state", "repeated_interruption"]
+        }
+      ]
+    }
+  ],
+  "metrics": {
+    "evidenceCoverage": 1.0,
+    "reworkRate": 0.6,
+    "cycleEfficiency": 0.4,
+    "parallelizationRatio": 1.0,
+    "cleanupCompliance": 1.0
+  }
+}

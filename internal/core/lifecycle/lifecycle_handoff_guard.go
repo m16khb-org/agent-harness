@@ -171,6 +171,12 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 	if searchrouting.IsShellTool(req.Tool) && strings.TrimSpace(req.Command) == "codex --help" {
 		return false, ""
 	}
+	// Proven observations do not require choosing an owner. Evaluate the
+	// deliberately narrow read-only grammar before supervised-record selection
+	// so multiple source-matching cycles cannot deadlock inspection and recovery.
+	if ambiguousSupervisedSourceCheckout(req) && (searchrouting.IsShellTool(req.Tool) && commandparse.ExactReadOnlyShellCommand(req.Command) || !searchrouting.IsShellTool(req.Tool) && explicitHandoffReadOnlyTool(req.Tool)) {
+		return true, ""
+	}
 	record, ok, selectionReason := selectSupervisedHandoffRecord(req)
 	if selectionReason != "" {
 		return true, selectionReason
@@ -297,6 +303,25 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 		}
 	}
 	return true, ""
+}
+
+func ambiguousSupervisedSourceCheckout(req HookToolUseLifecycleRequest) bool {
+	cwd := cleanAbsPath(req.CWD)
+	if cwd == "" {
+		return false
+	}
+	byID := map[string]bool{}
+	for _, repo := range []string{req.Repo, req.SourceCheckout, sourceCheckoutFromWorktree(req.Repo), sourceCheckoutFromWorktree(req.CWD)} {
+		if strings.TrimSpace(repo) == "" {
+			continue
+		}
+		for _, record := range supervisedHandoffGuardRecords(repo) {
+			if record.ExecutionHandoff != nil && cwd == cleanAbsPath(record.Repo) {
+				byID[record.ID] = true
+			}
+		}
+	}
+	return len(byID) > 1
 }
 
 func allowedInvalidLegacyV5PublicationSeal(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {

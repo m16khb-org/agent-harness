@@ -109,14 +109,25 @@ func mergeHookConfig(config map[string]any, binPath string) map[string]any {
 	}
 	for _, spec := range codexLifecycleHookSpecs(binPath) {
 		groups := []any{}
+		replaced := false
 		if existing, ok := hooks[spec.Event].([]any); ok {
 			for _, group := range existing {
-				if hookGroupHasHooks(group) && !installutil.HookGroupContainsAgentHarness(group) {
-					groups = append(groups, group)
+				if !hookGroupHasHooks(group) {
+					continue
 				}
+				if installutil.HookGroupContainsAgentHarness(group) {
+					if !replaced {
+						groups = append(groups, codexHookGroup(spec))
+						replaced = true
+					}
+					continue
+				}
+				groups = append(groups, group)
 			}
 		}
-		groups = append(groups, codexHookGroup(spec))
+		if !replaced {
+			groups = append(groups, codexHookGroup(spec))
+		}
 		hooks[spec.Event] = groups
 	}
 	return config

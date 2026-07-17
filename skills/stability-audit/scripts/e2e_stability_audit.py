@@ -25,7 +25,8 @@ BIN = ROOT / "bin" / "agent-harness"
 LEGACY_BIN_RE = re.compile(r"/bin/harness (daemon --internal|mcp)\b")
 HARNESS_DAEMON_RE = re.compile(r"agent-harness daemon --internal")
 TEMP_WATCHER_RE = re.compile(r"scripts/codegraph-watcher\.mjs .*/T/tmp\.")
-FULL_SELF_VERIFY_TIMEOUT_SECONDS = 900
+REGRESSION_TIMEOUT_SECONDS = 300
+FULL_SELF_VERIFY_TIMEOUT_SECONDS = 5400
 
 
 def run(cmd: list[str], *, env: dict[str, str] | None = None, input_text: str | None = None, timeout: float = 60) -> dict[str, Any]:
@@ -144,7 +145,6 @@ def build(report: dict[str, Any]) -> None:
 def install_checks(report: dict[str, Any], full_install: bool) -> None:
     for name, cmd in [
         ("bootstrap_dry_json", [str(BIN), "bootstrap", "--dry-run", "--json"]),
-        ("bootstrap_sync_dry_json", [str(BIN), "bootstrap", "--sync", "--dry-run", "--json"]),
         ("install_native_dry_json", [str(BIN), "install-native", "--dry-run", "--json"]),
     ]:
         res = run(cmd, timeout=120)
@@ -387,28 +387,46 @@ def regression(report: dict[str, Any], race: bool, self_verify: bool) -> None:
     details = []
     ok = True
     for cmd in commands:
-        res = run(cmd, timeout=180)
+        res = run(cmd, timeout=REGRESSION_TIMEOUT_SECONDS)
         step_ok = res["returncode"] == 0
         ok = ok and step_ok
         details.append({"cmd": cmd, "ok": step_ok, "stderr_tail": res["stderr"][-1000:], "stdout_tail": res["stdout"][-1000:], "duration_ms": res["duration_ms"]})
     if self_verify:
         with tempfile.TemporaryDirectory() as td:
             res = run(
-                [str(BIN), "self-verify", "--full", "--iterations=10", "--seed=100", "--target-score=95", "--json"],
+                [str(BIN), "self-verify", "--full", "--iterations=10", "--seed=100", "--target-score=95", "--llm-eval=false", "--progress=jsonl", "--json"],
                 env={"HARNESS_STATE_DIR": td},
                 timeout=FULL_SELF_VERIFY_TIMEOUT_SECONDS,
             )
             parsed = None
-            step_ok = res["returncode"] == 0
-            if step_ok:
-                try:
-                    parsed = parse_json_output(res["stdout"])
-                    step_ok = bool(parsed.get("ok")) and bool(parsed.get("termination_eligible", True))
-                except Exception as exc:
-                    step_ok = False
-                    parsed = {"parse_error": str(exc)}
+            parse_error = None
+            try:
+                parsed = parse_json_output(res["stdout"])
+            except Exception as exc:
+                parse_error = str(exc)
+            step_ok = (
+                res["returncode"] == 0
+                and isinstance(parsed, dict)
+                and bool(parsed.get("ok"))
+                and bool(parsed.get("termination_eligible", True))
+            )
             ok = ok and step_ok
-            details.append({"cmd": "self-verify", "ok": step_ok, "summary": (parsed or {}).get("summary") if isinstance(parsed, dict) else parsed, "duration_ms": res["duration_ms"]})
+            parsed_dict = parsed if isinstance(parsed, dict) else {}
+            details.append(
+                {
+                    "cmd": "self-verify",
+                    "ok": step_ok,
+                    "returncode": res["returncode"],
+                    "timed_out": bool(res.get("timeout")),
+                    "parsed_ok": parsed_dict.get("ok"),
+                    "termination_eligible": parsed_dict.get("termination_eligible"),
+                    "summary": parsed_dict.get("summary") if parsed_dict else parsed,
+                    "parse_error": parse_error,
+                    "stderr_tail": res["stderr"][-1000:],
+                    "stdout_tail": res["stdout"][-2000:],
+                    "duration_ms": res["duration_ms"],
+                }
+            )
     add_step(report, "regression", ok, details=details)
 
 

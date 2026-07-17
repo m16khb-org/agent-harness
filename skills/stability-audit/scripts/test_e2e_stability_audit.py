@@ -1,0 +1,105 @@
+import importlib.util
+import unittest
+from pathlib import Path
+from unittest import mock
+
+
+SCRIPT = Path(__file__).with_name("e2e_stability_audit.py")
+
+
+def load_audit_module():
+    spec = importlib.util.spec_from_file_location("e2e_stability_audit", SCRIPT)
+    if spec is None or spec.loader is None:
+        raise AssertionError(f"cannot load {SCRIPT}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class StabilityAuditScriptTest(unittest.TestCase):
+    def test_install_checks_use_only_current_bootstrap_flags(self) -> None:
+        audit = load_audit_module()
+        calls: list[list[str]] = []
+
+        def fake_run(cmd, **_kwargs):
+            calls.append([str(arg) for arg in cmd])
+            return {
+                "returncode": 0,
+                "stdout": '{"ok": true}',
+                "stderr": "",
+                "duration_ms": 1,
+                "timeout": False,
+            }
+
+        report = {"steps": [], "failures": []}
+        with mock.patch.object(audit, "run", side_effect=fake_run):
+            audit.install_checks(report, full_install=False)
+
+        self.assertEqual(
+            [step["name"] for step in report["steps"]],
+            ["bootstrap_dry_json", "install_native_dry_json"],
+        )
+        self.assertNotIn("--sync", [arg for call in calls for arg in call])
+
+    def test_regression_timeouts_cover_observed_full_gate_durations(self) -> None:
+        audit = load_audit_module()
+        calls: list[tuple[list[str], float]] = []
+
+        def fake_run(cmd, *, timeout=60, **_kwargs):
+            call = [str(arg) for arg in cmd]
+            calls.append((call, timeout))
+            stdout = '{"ok": true, "termination_eligible": true, "summary": {}}' if "self-verify" in call else ""
+            return {
+                "returncode": 0,
+                "stdout": stdout,
+                "stderr": "",
+                "duration_ms": 1,
+                "timeout": False,
+            }
+
+        report = {"steps": [], "failures": []}
+        with mock.patch.object(audit, "run", side_effect=fake_run):
+            audit.regression(report, race=True, self_verify=True)
+
+        regression_timeout = getattr(audit, "REGRESSION_TIMEOUT_SECONDS", 0)
+        self.assertGreaterEqual(regression_timeout, 300)
+        go_test_timeouts = [timeout for cmd, timeout in calls if cmd[:2] == ["go", "test"]]
+        self.assertEqual(go_test_timeouts, [regression_timeout] * 2)
+        self_verify_timeouts = [timeout for cmd, timeout in calls if "self-verify" in cmd]
+        self.assertEqual(self_verify_timeouts, [audit.FULL_SELF_VERIFY_TIMEOUT_SECONDS])
+        self_verify_commands = [cmd for cmd, _timeout in calls if "self-verify" in cmd]
+        self.assertIn("--progress=jsonl", self_verify_commands[0])
+        self.assertIn("--llm-eval=false", self_verify_commands[0])
+        self.assertGreaterEqual(audit.FULL_SELF_VERIFY_TIMEOUT_SECONDS, 5400)
+
+    def test_regression_preserves_self_verify_failure_diagnostics(self) -> None:
+        audit = load_audit_module()
+
+        def fake_run(cmd, **_kwargs):
+            call = [str(arg) for arg in cmd]
+            stdout = '{"ok": false, "termination_eligible": false, "summary": {"failed_step": "go test"}}' if "self-verify" in call else ""
+            return {
+                "returncode": 1 if "self-verify" in call else 0,
+                "stdout": stdout,
+                "stderr": "self-verify diagnostic",
+                "duration_ms": 123,
+                "timeout": False,
+            }
+
+        report = {"steps": [], "failures": []}
+        with mock.patch.object(audit, "run", side_effect=fake_run):
+            audit.regression(report, race=False, self_verify=True)
+
+        detail = report["steps"][0]["details"][-1]
+        self.assertFalse(detail["ok"])
+        self.assertEqual(detail["returncode"], 1)
+        self.assertFalse(detail["timed_out"])
+        self.assertFalse(detail["parsed_ok"])
+        self.assertFalse(detail["termination_eligible"])
+        self.assertEqual(detail["summary"], {"failed_step": "go test"})
+        self.assertEqual(detail["stderr_tail"], "self-verify diagnostic")
+        self.assertIn('"ok": false', detail["stdout_tail"])
+
+
+if __name__ == "__main__":
+    unittest.main()

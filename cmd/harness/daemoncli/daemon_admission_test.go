@@ -156,11 +156,11 @@ func TestServeDaemonConnectionBoundsUnclassifiedConnections(t *testing.T) {
 	})
 
 	deadline := time.Now().Add(time.Second)
-	for admission.snapshot().ActiveConnections != 1 && time.Now().Before(deadline) {
+	for (admission.snapshot().ActiveConnections != 1 || len(admission.overflowClassifier) != 1) && time.Now().Before(deadline) {
 		time.Sleep(time.Millisecond)
 	}
-	if got := admission.snapshot(); got.ActiveConnections != 1 || got.Accepting {
-		t.Fatalf("first silent connection must occupy MCP admission: %#v", got)
+	if got := admission.snapshot(); got.ActiveConnections != 1 || got.Accepting || len(admission.overflowClassifier) != 1 {
+		t.Fatalf("silent connections must occupy MCP admission and its bounded classifier: status=%#v overflow=%d", got, len(admission.overflowClassifier))
 	}
 
 	server, client := net.Pipe()

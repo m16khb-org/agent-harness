@@ -30,6 +30,7 @@ const (
 	spanDBFile       = "harness.lock.db"
 	spanLockMaxWait  = 60 * time.Second
 	spanLockRetryGap = 10 * time.Millisecond
+	openLockMaxWait  = 10 * time.Second
 )
 
 var sqliteFileSuffixes = [...]string{"", "-wal", "-shm", "-journal"}
@@ -85,12 +86,30 @@ func Open(dir string) (*DB, error) {
 	if d, ok := handles[abs]; ok {
 		return d, nil
 	}
-	d, err := newDB(abs)
+	d, err := newDBWithRetry(abs)
 	if err != nil {
 		return nil, err
 	}
 	handles[abs] = d
 	return d, nil
+}
+
+func newDBWithRetry(abs string) (*DB, error) {
+	deadline := time.NewTimer(openLockMaxWait)
+	defer deadline.Stop()
+	retry := time.NewTicker(spanLockRetryGap)
+	defer retry.Stop()
+	for {
+		db, err := newDB(abs)
+		if err == nil || !isSQLiteLockContention(err) {
+			return db, err
+		}
+		select {
+		case <-deadline.C:
+			return nil, err
+		case <-retry.C:
+		}
+	}
 }
 
 // newDB opens an uncached handle. Tests use a second uncached handle to prove

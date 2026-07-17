@@ -41,6 +41,16 @@ func TestParseExactIssueOpsCommandCorpus(t *testing.T) {
 	}
 }
 
+func TestParseExactIssueOpsCommandAcceptsRepoLocalBinSpelling(t *testing.T) {
+	parsed, ok := ParseExactIssueOpsCommand("bin/agent-harness issueops status --id io-1 --json")
+	if !ok || parsed.Path != "status" {
+		t.Fatalf("repo-local bin spelling must parse exactly: parsed=%#v ok=%v", parsed, ok)
+	}
+	if _, ok := ParseExactIssueOpsCommand("bin/agent-harness issueops status --id io-1; rm -rf /"); ok {
+		t.Fatal("repo-local bin spelling must still reject active shell control")
+	}
+}
+
 func TestExactFlagsCorpus(t *testing.T) {
 	spec := func(path string) (map[string]bool, map[string]bool, map[string]bool) {
 		v, b, r, ok := IssueOpsCommandSpec(path)

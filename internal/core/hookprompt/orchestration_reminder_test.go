@@ -33,6 +33,126 @@ func TestOrchestrationReminderAbsentWithoutBoundCycle(t *testing.T) {
 	}
 }
 
+func TestOrchestrationReminderIgnoresDroppedChild(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	now := "2026-07-16T00:00:00Z"
+	childID := issueops.NewIssueOpsID(repo, "dropped-child")
+	parent := issueops.IssueOpsRecord{
+		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
+		ID:            issueops.NewIssueOpsID(repo, "parent-with-dropped-child"),
+		Repo:          repo,
+		Branch:        "parent-with-dropped-child",
+		Phase:         issueops.IssueOpsPhasePR,
+		ChildCycles: []issueops.IssueOpsChildCycleRef{{
+			CycleID: childID, Branch: "dropped-child", Title: "Dropped child", CreatedAt: now,
+			ValidationVerdict: "dropped", ValidationReason: "parent already contains the verified change", ValidatedAt: now,
+		}},
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	writeIssueOpsRecordForReminderTest(t, parent)
+	writeIssueOpsRecordForReminderTest(t, issueops.IssueOpsRecord{
+		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
+		ID:            childID,
+		Repo:          repo,
+		Branch:        "dropped-child",
+		Phase:         issueops.IssueOpsPhaseProblem,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	})
+	if err := issueops.BindIssueOpsSessionForCycle(repo, parent.ID); err != nil {
+		t.Fatalf("bind issueops session: %v", err)
+	}
+
+	if got := StopOrchestrationRelayFacts(repo); got != "" {
+		t.Fatalf("dropped child must not keep Stop relay blocked, got %q", got)
+	}
+	if got := orchestrationReminderValue(repo); got != "" {
+		t.Fatalf("dropped child must not remain in the active child reminder, got %q", got)
+	}
+}
+
+func TestOrchestrationReminderIgnoresDoneBoundCycle(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	now := "2026-07-16T00:00:00Z"
+	childID := issueops.NewIssueOpsID(repo, "stale-active-child")
+	parent := issueops.IssueOpsRecord{
+		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
+		ID:            issueops.NewIssueOpsID(repo, "done-parent"),
+		Repo:          repo,
+		Branch:        "done-parent",
+		Phase:         issueops.IssueOpsPhaseDone,
+		ChildCycles:   []issueops.IssueOpsChildCycleRef{{CycleID: childID, Branch: "stale-active-child", CreatedAt: now}},
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+	writeIssueOpsRecordForReminderTest(t, parent)
+	writeIssueOpsRecordForReminderTest(t, issueops.IssueOpsRecord{
+		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
+		ID:            childID,
+		Repo:          repo,
+		Branch:        "stale-active-child",
+		Phase:         issueops.IssueOpsPhaseProblem,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	})
+	if err := issueops.BindIssueOpsSessionForCycle(repo, parent.ID); err != nil {
+		t.Fatalf("bind issueops session: %v", err)
+	}
+
+	if got := StopOrchestrationRelayFacts(repo); got != "" {
+		t.Fatalf("done bound cycle must not keep Stop relay blocked, got %q", got)
+	}
+	if got := orchestrationReminderValue(repo); got != "" {
+		t.Fatalf("done bound cycle must not inject orchestration reminders, got %q", got)
+	}
+}
+
+func TestOrchestrationRelayBoundCountsNonDroppedChildren(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	now := "2026-07-16T00:00:00Z"
+	refs := make([]issueops.IssueOpsChildCycleRef, 0, orchestrationChildReadLimit+1)
+	for i := 0; i < orchestrationChildReadLimit; i++ {
+		refs = append(refs, issueops.IssueOpsChildCycleRef{
+			CycleID: issueops.NewIssueOpsID(repo, "dropped-child-"+string(rune('a'+i))),
+			Branch:  "dropped-child", CreatedAt: now, ValidationVerdict: "dropped", ValidatedAt: now,
+		})
+	}
+	activeID := issueops.NewIssueOpsID(repo, "active-child-after-dropped-prefix")
+	refs = append(refs, issueops.IssueOpsChildCycleRef{CycleID: activeID, Branch: "active-child", CreatedAt: now})
+	parent := issueops.IssueOpsRecord{
+		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
+		ID:            issueops.NewIssueOpsID(repo, "parent-with-bounded-dropped-prefix"),
+		Repo:          repo,
+		Branch:        "parent-with-bounded-dropped-prefix",
+		Phase:         issueops.IssueOpsPhaseImplement,
+		ChildCycles:   refs,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+	writeIssueOpsRecordForReminderTest(t, parent)
+	writeIssueOpsRecordForReminderTest(t, issueops.IssueOpsRecord{
+		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
+		ID:            activeID,
+		Repo:          repo,
+		Branch:        "active-child",
+		Phase:         issueops.IssueOpsPhaseImplement,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	})
+	if err := issueops.BindIssueOpsSessionForCycle(repo, parent.ID); err != nil {
+		t.Fatalf("bind issueops session: %v", err)
+	}
+
+	got := StopOrchestrationRelayFacts(repo)
+	if !strings.Contains(got, "child_incomplete:"+activeID) {
+		t.Fatalf("dropped children must not consume the bounded active-child scan, got %q", got)
+	}
+}
+
 func TestUserPromptHintsIncludeOrchestrationReminder(t *testing.T) {
 	repo, parent := seedOrchestrationReminderFixture(t)
 

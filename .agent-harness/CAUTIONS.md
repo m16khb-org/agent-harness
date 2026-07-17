@@ -510,6 +510,9 @@ Orca worktree/terminal/task create 또는 dispatch는 프로세스 timeout/error
 - Codex 0.144.1 PreToolUse payload는 repo 밖 rollout을 가리키는 top-level `transcript_path`를 항상 포함하고 subagent에서는 `agent_transcript_path`도 포함할 수 있다. 이를 일반 `*_path` edit target으로 재귀 수집하면 정상 in-tree patch가 외부 target으로 오판되어 block된다. 두 키는 `tool_input` 밖에서만 hook metadata로 제외하고, `tool_input` 안의 동일 키·file path·patch target은 계속 검사한다. 라이브 재시도 전 probe는 transcript metadata까지 포함한 full payload여야 하며, 이를 생략한 synthetic allow 결과만으로 성공을 주장하지 않는다.
 - Live worker의 첫 `handoff finish`는 shell-quoted `--verification` 값 안의 세미콜론 때문에 false block됐다. raw `strings.ContainsAny(";&|\\n\\r")`는 quote 안의 evidence data와 실제 compound operator를 구분하지 못한다. lifecycle guard는 quote-aware scan으로 quote 밖의 `;`, `&`, `|`, CR/LF만 차단하고, quoted punctuation은 그대로 허용해야 한다. 빈 native agent id는 이 장애의 원인이 아니지만 `SplitCommandTokens`가 quoted empty argument를 버리므로, `--agent-id ''`를 렌더하지 말고 flag 자체를 생략한다.
 - supervised source checkout은 observation-only다. `git status/diff/log/show/rev-parse/ls-files`와 `rg` 같은 비실행 관찰만 허용하고, test/build/format/install/generate는 claim된 worker root에서만 실행한다. 테스트 초기화와 fixture도 파일·프로세스·네트워크를 바꿀 수 있어 read-only로 분류하지 않는다.
+- 같은 source checkout에 supervised cycle이 여러 개면 proven observation은 record 선택 전에 분류해야 한다. owner가 필요 없는 hardened `pwd`/`rg`/read-only Git/명시적 read tool까지 먼저 exact record를 고르게 하면 복구 self-lock이 된다. 단, 이 선처리는 source-matching supervised record가 실제로 둘 이상인 경우에만 적용해 일반 linked-worktree MCP guard를 우회하지 않는다. exact lifecycle parser는 문서화된 `agent-harness`, `bin/agent-harness`, `./bin/agent-harness` 표기만 받고 shell control·unknown flag는 계속 거부한다. `handoff start` identity flags를 `handoff recover`에 추정으로 붙이지 말고 실제 subcommand help/spec을 확인한다. 상세 사건 기록은 `ISSUEOPS_ORCA_BLOCKERS_2026-07-16.md`를 참조한다.
+- response-contract golden에는 gitignored project-local host 설치 여부를 raw boolean으로 남기지 않는다. `.claude`, `.codex`, `.gjc`, `.reasonix` skill presence는 같은 placeholder로, project-local settings presence는 settings placeholder로 정규화한다. 머신 상태 때문에 golden이 실패하면 user artifact를 삭제하거나 update 결과를 그대로 수용하지 말고 실제 diff가 contract인지 environment drift인지 먼저 분리한다.
+- bounded concurrency test는 최종 assertion이 요구하는 모든 reserve 상태를 기다려야 한다. channel A의 길이만 보고 channel B의 overflow/classifier goroutine도 준비됐다고 가정하면 third caller가 B를 먼저 차지해 false timeout이 된다. production limit을 느슨하게 고치지 말고 active slot과 bounded overflow reserve를 각각 관찰한 뒤 rejection을 시작한다.
 - supervised readiness를 통과시키려고 현재 cycle과 무관한 legacy plan을 link하지 않는다. `coordinator_preparing`에서 current issue/cycle intent와 acceptance criteria, exact branch/path/base, exact bounded worker scope, claim/finish/accept, verification, cleanup을 담은 Markdown만 plan-only coordinator commit으로 보존하고, clean exact branch에서 `link-plan`이 그 commit을 새 attempt base head로 고정한 뒤 dispatch한다. Report-only는 해당 disposable cycle이 그렇게 선언했을 때만 적용하며 production implementation worker까지 일반화하지 않는다.
 - zsh의 unquoted word-leading `=git`은 command-path expansion이고 `=(...)`는 프로세스를 실행해 임시 경로를 만든다. active command/process substitution, parameter/tilde, brace/glob pathname expansion, `eval`/`source`를 supervised shell에서 차단하고 quoted/escaped literal만 데이터로 취급한다.
 - zsh의 `status`는 read-only 예약 parameter다. 검증 wrapper에서 `status=$?`를 쓰면 실제 명령이 성공해도 wrapper가 실패한다. exit code를 저장해야 하면 `rc` 또는 `exit_code`를 쓰고, test verdict와 wrapper bookkeeping 오류를 별도로 보고한다. 2026-07-11 incident에서는 `go test ./internal/core/issueops`가 `ok`였고 그 다음 `status=$?` 대입만 실패했다.
@@ -617,3 +620,65 @@ Orca completion reconciliation은 message `from_handle`이 원래 dispatch `assi
 ## 리뷰 finding의 production fix를 named RED보다 먼저 적용하지 말 것
 
 리뷰가 구체적인 재현을 제공해도 그것은 코드 변경 전 named failing-test transcript를 대신하지 않는다. 먼저 regression test만 추가하고 exact test name이 `RUN` 뒤 의도한 assertion으로 FAIL하는 terminal exit를 기록한 다음 production code를 수정한다. 순서를 어겼다면 RED를 소급 합성하거나 RED→GREEN이라 부르지 말고 `RED skipped` process defect로 기록하며, reviewer repro는 별도 pre-fix evidence로만 남긴다.
+
+## JSON 검증 wrapper에서 추측한 필드를 성공 조건으로 쓰지 말 것
+
+`jq`는 존재하지 않는 필드를 `null`로 평가하므로 `.passed == true` 같은 잘못된 predicate가 schema error가 아니라 정상적인 `false`와 exit 1로 나타난다. 이 때문에 성공한 장기 self-verify를 제품 실패로 오인하고 전체 검증 파동을 반복한 사고가 있었다.
+
+- 장기 명령의 JSON 성공 조건은 실행 전에 DTO의 실제 JSON tag 또는 response contract golden에서 확인한다.
+- `self-verify`의 종료 조건은 top-level `.ok`, `.termination_eligible`, `.summary.termination_eligible`이며 top-level `.passed`가 아니다.
+- wrapper 실패는 제품 명령의 raw exit와 JSON artifact를 보존해 product failure와 orchestration/predicate failure로 분리한다.
+
+## 긴 QA 파동을 interactive `tmux send-keys` 한 줄로 주입하지 말 것
+
+긴 ZLE 입력을 여러 `send-keys` chunk로 빠르게 붙이면 중간 suffix가 유실되어 테스트 selector와 다음 명령이 결합될 수 있다. 실행은 계속되고 일부 명령은 exit 0을 반환하므로 단계 marker가 없으면 false-green이 된다.
+
+- 긴 검증 파동은 reviewable temp script로 고정하고 tmux에는 script path 한 줄만 전달한다.
+- script는 `set -euo pipefail`을 사용하고 각 필수 단계 전후 marker를 남긴다.
+- named test 출력의 `[no tests to run]`, 누락된 marker, 예상하지 않은 결합 token은 파동 실패다.
+- temp script와 JSON artifact는 terminal exit를 회수한 뒤 삭제하고 process/session 부재를 확인한다.
+
+## Stability audit 명령과 timeout을 현재 공개 계약·측정치에 맞출 것
+
+- top-level install audit에 과거 `bootstrap --sync`를 남기지 않는다. 현재 install 표면은 `bootstrap`/`install-native`; docs sync는 `project bootstrap --sync`다.
+- full repository test timeout은 가장 느린 정상 package와 race의 관측 상한보다 커야 한다. 현재 regression timeout은 300초다.
+- `self-verify --full --iterations=10`은 매 seed마다 test/race를 실제 실행한다. 현재 약 3712초가 관측됐으므로 audit timeout은 5400초다.
+- timeout 실패는 마지막 성공 package, elapsed time, 살아 있는 child command를 확인해 hang과 짧은 wrapper 상한을 구분한다.
+- 장기 self-verify가 nonzero 또는 JSON parse 실패하면 audit report에 exit code, timeout 여부, parse error, parsed 종료 필드, bounded stdout/stderr tail을 남긴다. `summary: null`만 남기면 제품 실패와 audit 해석 실패를 구분할 수 없다.
+- JSON parse를 `returncode == 0` 분기 안에 두지 않는다. nonzero가 바로 구조화된 실패 summary를 보존해야 하는 경우이며, parse와 성공 판정은 별도 단계다.
+- deterministic stability gate에서 `self-verify`를 호출할 때는 `--llm-eval=false`를 명시한다. 코드 250단계가 모두 성공해도 암묵적 LLM gate의 외부 실패가 command exit를 뒤집을 수 있다.
+
+## dropped child와 done parent를 Stop orchestration에 재진입시키지 말 것
+
+IssueOps PR readiness는 `validation_verdict=dropped` child를 scope에서 제외하지만 Stop hook의 별도 reminder 경로가 같은 규칙을 적용하지 않아, 병합된 parent가 `child_incomplete`로 영구 재진입한 사고가 있었다.
+
+- dropped child는 active child total, incomplete key, unvalidated key에서 모두 제외한다. `rejected`나 verdict 없는 child와 혼동하지 않는다.
+- 이미 `phase=done`인 bound parent는 오래된 session binding이 남아 있어도 orchestration reminder/Stop relay 대상으로 다시 읽지 않는다.
+- core readiness와 hook hot path가 같은 child verdict 의미를 갖는 named regression을 함께 유지한다.
+- bounded scan은 raw child 목록을 먼저 자른 뒤 dropped를 건너뛰지 않는다. dropped를 제외한 처음 N개를 읽어야 앞의 removed scope가 뒤의 active child를 숨기지 않는다.
+
+## Codex co-resident hook merge에서 matcher 배열 위치를 바꾸지 말 것
+
+Codex hook trust는 command 내용만이 아니라 `source:event:matcher-index:hook-index` key의 `trusted_hash`에 결합된다. installer가 agent-harness 그룹을 제거한 뒤 끝에 append하면 co-resident Orca hook과 배열 위치가 바뀌고, 두 command가 모두 상대방의 stored hash와 비교되어 `modified`가 된다.
+
+- 기존 agent-harness 그룹은 첫 발견 위치에서 in-place replacement하고, 유효한 제3자 그룹의 상대 순서를 보존한다.
+- agent-harness 그룹이 없을 때만 append하고, 중복 agent-harness 그룹은 한 개로 축약한다.
+- install JSON과 direct hook smoke만으로 trust를 주장하지 않는다. fresh `codex app-server`의 exact-cwd `hooks/list`에서 key, current hash, enabled, trust status, warnings/errors를 확인한다.
+- automation에서 `--dangerously-bypass-hook-trust`를 사용한 결과는 command 동작 증거일 뿐 정상 trust 상태의 증거가 아니다.
+
+## cross-process 테스트에서 helper 시작·종료 오류를 버리지 말 것
+
+두 helper의 `exec.Cmd.Run` error와 helper 내부 초기 read error를 버린 결과, provider 호출 횟수 파일이 없다는 2차 증상만 남고 실제 실패 원인이 사라진 적이 있다.
+
+- 여러 helper를 동시에 검증할 때는 각 process를 순서대로 `Start`해 launch를 확인한 뒤 모두 `Wait`하여 동시 실행과 진단을 함께 보장한다.
+- stdout/stderr와 exit error를 helper별로 보존하고, 승자·차단자처럼 기대하는 서로 다른 결과를 명시적 marker로 검증한다.
+- count/result artifact 부재만 보고 production concurrency defect로 분류하지 않는다. helper launch/read/create 경계를 먼저 확인한다.
+
+## SQLite state root 최초 초기화도 cross-process 경합으로 취급할 것
+
+같은 state root를 두 process가 처음 열 때 process-local handle mutex는 data/span DB 파일 생성과 schema pragma를 직렬화하지 못한다. transaction lock만 재시도해도 open/schema 단계의 `SQLITE_BUSY`는 그대로 노출된다.
+
+- `sqlstore.Open`의 초기화 재시도는 typed `SQLITE_BUSY`/`SQLITE_LOCKED`에만 적용하고 명명된 짧은 상한을 둔다. permission, symlink, schema, path 오류를 retry로 숨기지 않는다.
+- cross-process 회귀는 양쪽 helper가 준비됐다는 barrier 뒤 동시에 진입시킨다. 단순히 process 두 개를 순서대로 `Start`한 것만 actual contention 증거로 삼지 않는다.
+- expected loser error를 exact allowlist로 분류한다. 이미 artifact가 확정된 뒤의 phase exclusion과 live claim exclusion 외 오류는 `blocked`로 축약하지 말고 helper stderr와 nonzero exit로 남긴다.
+- parent는 첫 `Wait` 실패에서 즉시 종료하지 말고 시작된 모든 helper를 회수해 orphan과 TempDir cleanup race를 방지한다.

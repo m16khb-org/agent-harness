@@ -58,20 +58,20 @@ func boundOrchestrationCycle(repo string) (issueops.IssueOpsRecord, bool) {
 		return issueops.IssueOpsRecord{}, false
 	}
 	record, err := issueops.ReadIssueOps(issueops.IssueOpsStateRoot(), id)
-	if err != nil || !record.OK {
+	if err != nil || !record.OK || record.Phase == issueops.IssueOpsPhaseDone {
 		return issueops.IssueOpsRecord{}, false
 	}
 	return record, true
 }
 
 func orchestrationChildrenReminder(record issueops.IssueOpsRecord) string {
-	total := len(record.ChildCycles)
+	bounded, total := boundedOrchestrationChildren(record)
 	if total == 0 {
 		return ""
 	}
 	done := 0
 	unvalidated := 0
-	for _, ref := range record.ChildCycles[:min(total, orchestrationChildReadLimit)] {
+	for _, ref := range bounded {
 		child, ok := readBoundChild(ref.CycleID)
 		if !ok || child.Phase != issueops.IssueOpsPhaseDone {
 			continue
@@ -86,7 +86,8 @@ func orchestrationChildrenReminder(record issueops.IssueOpsRecord) string {
 
 func orchestrationChildMissingKeys(record issueops.IssueOpsRecord) []string {
 	missing := []string{}
-	for _, ref := range record.ChildCycles[:min(len(record.ChildCycles), orchestrationChildReadLimit)] {
+	bounded, _ := boundedOrchestrationChildren(record)
+	for _, ref := range bounded {
 		id := strings.TrimSpace(ref.CycleID)
 		if id == "" {
 			continue
@@ -101,6 +102,25 @@ func orchestrationChildMissingKeys(record issueops.IssueOpsRecord) []string {
 		}
 	}
 	return missing
+}
+
+func orchestrationChildDropped(ref issueops.IssueOpsChildCycleRef) bool {
+	return strings.TrimSpace(ref.ValidationVerdict) == "dropped"
+}
+
+func boundedOrchestrationChildren(record issueops.IssueOpsRecord) ([]issueops.IssueOpsChildCycleRef, int) {
+	total := 0
+	bounded := make([]issueops.IssueOpsChildCycleRef, 0, orchestrationChildReadLimit)
+	for _, ref := range record.ChildCycles {
+		if orchestrationChildDropped(ref) {
+			continue
+		}
+		total++
+		if len(bounded) < orchestrationChildReadLimit {
+			bounded = append(bounded, ref)
+		}
+	}
+	return bounded, total
 }
 
 func readBoundChild(id string) (issueops.IssueOpsRecord, bool) {
