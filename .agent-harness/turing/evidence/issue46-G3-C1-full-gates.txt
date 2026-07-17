@@ -40,3 +40,19 @@ Post-reconciliation binding review:
 - Important B-71: immutable fallback accepts any non-current owner UID instead of the documented root-owned/system-trusted authority boundary.
 - Required next action: fresh TDD lease, named RED cases, minimal production fixes, affected/full verification restart, and unconditional re-review.
 - Cleanup remains PASS: coordinator lsof no users, exact root removal, and separate absence check exit 0 are unaffected.
+
+Recovery attempt io-d492e1a529e3 gate wave (2026-07-17 ~ 2026-07-18, from recovery worker HEAD):
+1. Focused named publication tests (11 named tests incl. the three new B-69/70/71 regressions) with === RUN output: exit 0.
+2. git diff --check: exit 0. gofmt -l on the two changed Go files: no output, exit 0.
+3. go test ./... -count=1: exit 0 (internal/core/issueops 158.206s; all packages ok). A first run failed only on the stale base golden (B-77); rerun after regeneration was fully green.
+4. go test -race ./... -count=1: exit 0 (internal/core/issueops 185.228s; all packages ok).
+5. go vet ./...: exit 0.
+6. go test ./cmd/harness/contractgolden -run Golden -count=1: exit 0. go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1: RED on stale base golden, then exit 0 after -update with the diff pinned to docs_count 89->90 plus the committed turing report doc entry (B-77).
+7. Skill validators: python3 scripts/validate_skill_test.py OK (3 tests); scripts/validate-skill.py over all 19 skills/* directories each printed "Skill is valid!".
+8. go build -o tmp-recovery-build/harness-build-check ./cmd/harness: exit 0 (outside-repo output path and agent-harness-named output are hook-fenced, B-75/B-78); artifact and directory removed.
+9. HARNESS_STATE_DIR=tmp-selfverify-state go run ./cmd/harness self-verify --seed=100 --target-score=95 --llm-eval=false --json: exit 0; ok=true, 25/25 steps, failed_steps=0, termination_eligible=true, elapsed_ms=459155.
+
+Recovery cleanup receipt:
+- tmp-selfverify-state removed by the worker and absence verified (ls exits nonzero with No such file or directory).
+- tmp-recovery-build and tmp-scratch-b69 removed; git status shows only the intended changed files.
+- No install, publish, push, PR, merge, source-checkout mutation, or hook bypass was performed; hooks stayed enabled for the whole attempt.

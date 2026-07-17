@@ -9,6 +9,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -337,7 +338,7 @@ func installPublicationInventoryGit(t *testing.T, origins, includes, rewrites st
 	script := filepath.Join(bin, "git")
 	body := "#!/bin/sh\n" +
 		"if [ \"$1 $2 $3 $4 $5\" = 'config --show-origin --includes --name-only --list' ]; then /bin/cat \"$PUBLICATION_ORIGINS\"; exit 0; fi\n" +
-		"if [ \"$1 $2 $3 $4 $5\" = 'config --show-origin --includes --get-regexp ^(include\\.path|includeif\\..*\\.path)$' ]; then /bin/cat \"$PUBLICATION_INCLUDES\"; test -s \"$PUBLICATION_INCLUDES\"; exit $?; fi\n" +
+		"if [ \"$1 $2 $3 $4 $5 $6\" = 'config --show-origin --includes --type=path --get-regexp ^(include\\.path|includeif\\..*\\.path)$' ]; then /bin/cat \"$PUBLICATION_INCLUDES\"; test -s \"$PUBLICATION_INCLUDES\"; exit $?; fi\n" +
 		"if [ \"$1 $2 $3 $4 $5\" = 'config --show-origin --includes --get-regexp ^url\\..*\\.(insteadOf|pushInsteadOf)$' ]; then /bin/cat \"$PUBLICATION_REWRITES\"; test -s \"$PUBLICATION_REWRITES\"; exit $?; fi\n" +
 		"if [ \"$1 $2 $3 $4\" = 'config --show-origin --includes --list' ]; then /bin/cat \"$PUBLICATION_ORIGINS\"; exit 0; fi\n" +
 		"exit 1\n"
@@ -357,6 +358,57 @@ func containsPublicationPath(paths []string, want string) bool {
 		}
 	}
 	return false
+}
+
+func TestPublicationIncludeInventoryResolvesTildeUserAndRuntimePrefixLikeGit(t *testing.T) {
+	current, err := user.Current()
+	if err != nil || strings.TrimSpace(current.Username) == "" {
+		t.Skipf("current user is unavailable: %v", err)
+	}
+	repo := t.TempDir()
+	global := filepath.Join(t.TempDir(), "gitconfig")
+	body := "[include]\n\tpath = ~" + current.Username + "/publication-usertilde-include.config\n" +
+		"\tpath = %(prefix)/publication-prefix-include.config\n"
+	if err := os.WriteFile(global, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GIT_CONFIG_GLOBAL", global)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	runPublicationGitTest(t, repo, "init", "-q")
+	oracleOut := runPublicationGitTest(t, repo, "config", "--file", global, "--type=path", "--get-all", "include.path")
+	oracle := strings.Split(strings.TrimSpace(oracleOut), "\n")
+	if len(oracle) != 2 {
+		t.Fatalf("real-Git include oracle = %q", oracleOut)
+	}
+	includes, err := publicationGitConfigIncludePaths(context.Background(), repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range oracle {
+		want = filepath.Clean(strings.TrimSpace(want))
+		if !filepath.IsAbs(want) {
+			t.Fatalf("real-Git include oracle is not absolute: %q", want)
+		}
+		if !containsPublicationPath(includes, want) {
+			t.Fatalf("include inventory %v is missing real-Git authority %q", includes, want)
+		}
+	}
+}
+
+func TestPublicationIncludeInventoryFailsClosedOnUnresolvableTildeUser(t *testing.T) {
+	repo := t.TempDir()
+	runPublicationGitTest(t, repo, "init", "-q")
+	global := filepath.Join(t.TempDir(), "gitconfig")
+	body := "[include]\n\tpath = ~publication-no-such-user-8b21/include.config\n"
+	if err := os.WriteFile(global, []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GIT_CONFIG_GLOBAL", global)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	includes, err := publicationGitConfigIncludePaths(context.Background(), repo)
+	if err == nil {
+		t.Fatalf("unresolvable tilde-user include was admitted into inventory: %v", includes)
+	}
 }
 
 func TestPublicationRejectsPreexistingEffectiveIncludeConfigLock(t *testing.T) {
@@ -490,7 +542,9 @@ func TestPublicationImmutableConfigClassificationFailsClosed(t *testing.T) {
 		inspection publicationConfigAuthorityInspection
 		want       bool
 	}{
-		{name: "non-owner non-writable canonical regular", inspection: base, want: true},
+		{name: "root-owned non-writable canonical regular", inspection: base, want: true},
+		{name: "ordinary non-current uid file", inspection: publicationConfigAuthorityInspection{canonical: true, regular: true, components: []publicationConfigPathComponent{{ownerUID: 777}, {ownerUID: 0}}}},
+		{name: "ordinary non-current uid parent", inspection: publicationConfigAuthorityInspection{canonical: true, regular: true, components: []publicationConfigPathComponent{{ownerUID: 0}, {ownerUID: 777}}}},
 		{name: "owner-controlled file", inspection: publicationConfigAuthorityInspection{canonical: true, regular: true, components: []publicationConfigPathComponent{{ownerUID: currentUID}, {ownerUID: 0}}}},
 		{name: "owner-controlled parent", inspection: publicationConfigAuthorityInspection{canonical: true, regular: true, components: []publicationConfigPathComponent{{ownerUID: 0}, {ownerUID: currentUID}}}},
 		{name: "writable component", inspection: publicationConfigAuthorityInspection{canonical: true, regular: true, components: []publicationConfigPathComponent{{ownerUID: 0}, {ownerUID: 0, writable: true}}}},
@@ -642,6 +696,79 @@ func TestGitPublicationAllowsAbsentDefaultXDGConfig(t *testing.T) {
 	}
 	if got := strings.TrimSpace(runPublicationGitTest(t, destination, "rev-parse", "refs/heads/16-demo")); got != finalHead {
 		t.Fatalf("destination head = %q, want %q", got, finalHead)
+	}
+}
+
+func TestPublicationAbsentXDGConfigAuthorityCannotBeTransientlyCreatedDuringPush(t *testing.T) {
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo, good, evil := t.TempDir(), t.TempDir(), t.TempDir()
+	home := t.TempDir()
+	xdg := filepath.Join(t.TempDir(), "absent-xdg")
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	runPublicationGitTest(t, repo, "init", "-q")
+	runPublicationGitTest(t, repo, "config", "user.name", "Publication Test")
+	runPublicationGitTest(t, repo, "config", "user.email", "publication@example.test")
+	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("publication\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runPublicationGitTest(t, repo, "add", "README.md")
+	runPublicationGitTest(t, repo, "commit", "-q", "-m", "test: publication")
+	finalHead := strings.TrimSpace(runPublicationGitTest(t, repo, "rev-parse", "HEAD"))
+	runPublicationGitTest(t, good, "init", "-q", "--bare")
+	runPublicationGitTest(t, evil, "init", "-q", "--bare")
+	runPublicationGitTest(t, repo, "remote", "add", "origin", good)
+
+	reader := GitIssueOpsHandoffPublicationReader{}
+	target, err := reader.PushTarget(context.Background(), repo, "origin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(xdg); !os.IsNotExist(err) {
+		t.Fatalf("push-target resolution left transient XDG authority residue: %v", err)
+	}
+
+	bin := t.TempDir()
+	marker := filepath.Join(t.TempDir(), "xdg-rewrite-succeeded")
+	script := filepath.Join(bin, "git")
+	body := "#!/bin/sh\n" +
+		"if [ \"$1\" = push ]; then\n" +
+		"  /bin/mkdir -p \"$XDG_CONFIG_HOME/git\"\n" +
+		"  \"$REAL_GIT\" config --file \"$XDG_CONFIG_HOME/git/config\" \"url.$EVIL_REPO.insteadOf\" \"$GOOD_REPO\" && printf succeeded > \"$XDG_REWRITE_MARKER\"\n" +
+		"  \"$REAL_GIT\" \"$@\"\n" +
+		"  rc=$?\n" +
+		"  /bin/rm -rf \"$XDG_CONFIG_HOME\"\n" +
+		"  exit $rc\n" +
+		"fi\n" +
+		"exec \"$REAL_GIT\" \"$@\"\n"
+	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("REAL_GIT", realGit)
+	t.Setenv("GOOD_REPO", good)
+	t.Setenv("EVIL_REPO", evil)
+	t.Setenv("XDG_REWRITE_MARKER", marker)
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	if err := reader.PushExact(context.Background(), repo, "origin", target.Fingerprint, "46-demo", finalHead); err != nil {
+		t.Fatalf("publication with initially absent XDG parent: %v", err)
+	}
+	if _, err := os.Stat(marker); !os.IsNotExist(err) {
+		t.Fatalf("transient XDG create/rewrite/remove bypassed sealed publication authority: %v", err)
+	}
+	if got := strings.TrimSpace(runPublicationGitTest(t, good, "rev-parse", "refs/heads/46-demo")); got != finalHead {
+		t.Fatalf("good destination head = %q, want %q", got, finalHead)
+	}
+	cmd := exec.Command(realGit, "--git-dir", evil, "rev-parse", "--verify", "refs/heads/46-demo")
+	if err := cmd.Run(); err == nil {
+		t.Fatal("transient XDG rewrite redirected publication to evil destination")
+	}
+	if _, err := os.Stat(xdg); !os.IsNotExist(err) {
+		t.Fatalf("transient XDG authority seal left residue: %v", err)
 	}
 }
 

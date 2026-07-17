@@ -220,12 +220,17 @@ type publicationConfigSnapshot struct {
 	contentHash [sha256.Size]byte
 }
 
+// publicationImmutableConfigAdmissible admits fingerprint-only authority solely
+// for a defensible system chain: every path component must be owned by root and
+// denied for current-user writes. An arbitrary non-current ordinary UID owner
+// could transiently rewrite and restore the file between snapshots, so it is
+// mutable authority and must fail closed (B-71).
 func publicationImmutableConfigAdmissible(inspection publicationConfigAuthorityInspection, currentUID uint32) bool {
 	if !inspection.canonical || !inspection.regular || len(inspection.components) == 0 {
 		return false
 	}
 	for _, component := range inspection.components {
-		if component.ownerUID == currentUID || component.writable {
+		if component.ownerUID != 0 || component.ownerUID == currentUID || component.writable {
 			return false
 		}
 	}
@@ -317,18 +322,38 @@ func withPublicationGitConfigLocks(ctx context.Context, repo string, fn func() e
 	if err != nil {
 		return err
 	}
-	paths, err := publicationGitConfigPaths(ctx, repo, before, beforeOrigins)
+	paths, creatable, err := publicationGitConfigPaths(ctx, repo, before, beforeOrigins)
 	if err != nil {
 		return err
 	}
+	creatableSet := make(map[string]bool, len(creatable))
+	for _, path := range creatable {
+		creatableSet[path] = true
+	}
 	locks := make([]string, 0, len(paths))
+	createdDirs := make([]string, 0)
 	immutable := make([]publicationConfigSnapshot, 0)
-	releaseLocks := func() {
+	release := func() {
 		for i := len(locks) - 1; i >= 0; i-- {
 			_ = os.Remove(locks[i])
 		}
+		for i := len(createdDirs) - 1; i >= 0; i-- {
+			_ = os.Remove(createdDirs[i])
+		}
 	}
 	for _, path := range paths {
+		if creatableSet[path] {
+			// An initially absent default config parent is mutable authority: the
+			// current user (or any same-UID racer) could create it during the
+			// operation. Seal it by creating the parent chain transiently and
+			// holding the sibling lock; the chain is removed on release (B-70).
+			created, createErr := publicationCreateAuthorityParents(path)
+			createdDirs = append(createdDirs, created...)
+			if createErr != nil {
+				release()
+				return fmt.Errorf("publication git config authority parent cannot be sealed")
+			}
+		}
 		lock := path + ".lock"
 		file, openErr := os.OpenFile(lock, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 		if openErr != nil {
@@ -339,22 +364,27 @@ func withPublicationGitConfigLocks(ctx context.Context, repo string, fn func() e
 					continue
 				}
 			}
-			releaseLocks()
+			release()
 			return fmt.Errorf("publication git config lock is unavailable")
 		}
 		if closeErr := file.Close(); closeErr != nil {
 			_ = os.Remove(lock)
-			releaseLocks()
+			release()
 			return fmt.Errorf("publication git config lock could not be sealed")
 		}
 		locks = append(locks, lock)
 	}
-	defer releaseLocks()
+	defer release()
 	verifyAuthority := func() bool {
 		after, rulesErr := publicationGitURLRules(ctx, repo)
 		afterOrigins, originsErr := publicationGitConfigOrigins(ctx, repo)
 		if rulesErr != nil || originsErr != nil || !reflect.DeepEqual(before, after) || !reflect.DeepEqual(beforeOrigins, afterOrigins) {
 			return false
+		}
+		for _, path := range creatable {
+			if _, statErr := os.Lstat(path); !os.IsNotExist(statErr) {
+				return false
+			}
 		}
 		return publicationImmutableConfigSnapshotsMatch(immutable)
 	}
@@ -415,7 +445,7 @@ func publicationImmutableConfigSnapshot(path string) (publicationConfigSnapshot,
 	}
 	currentUID, ok := publicationEffectiveUID()
 	if !ok || !publicationImmutableConfigAdmissible(inspection, currentUID) {
-		return publicationConfigSnapshot{}, fmt.Errorf("publication immutable config is owner-controlled or writable")
+		return publicationConfigSnapshot{}, fmt.Errorf("publication immutable config is not root-owned defensible system authority")
 	}
 	return publicationConfigSnapshotForPath(abs)
 }
@@ -505,7 +535,10 @@ func publicationGitConfigOrigins(ctx context.Context, repo string) ([]string, er
 func publicationGitConfigIncludePaths(ctx context.Context, repo string) ([]string, error) {
 	bounded, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	code, stdout, stderr, truncated := publicationGitInventoryCmd(bounded, repo, "config", "--show-origin", "--includes", "--get-regexp", `^(include\.path|includeif\..*\.path)$`)
+	// --type=path makes Git itself perform the canonical include interpolation
+	// (~/, ~user/, %(prefix)/) instead of a partial re-implementation, so the
+	// sealed inventory matches the authority Git actually reads (B-69).
+	code, stdout, stderr, truncated := publicationGitInventoryCmd(bounded, repo, "config", "--show-origin", "--includes", "--type=path", "--get-regexp", `^(include\.path|includeif\..*\.path)$`)
 	if truncated {
 		return nil, fmt.Errorf("publication git include inventory exceeds %d bytes", publicationConfigInventoryLimit)
 	}
@@ -530,12 +563,8 @@ func publicationGitConfigIncludePaths(ctx context.Context, repo string) ([]strin
 			origin = filepath.Join(repo, origin)
 		}
 		included := strings.TrimSpace(parts[1][separator:])
-		if strings.HasPrefix(included, "~/") {
-			home, homeErr := os.UserHomeDir()
-			if homeErr != nil {
-				return nil, fmt.Errorf("publication git include origin cannot be resolved")
-			}
-			included = filepath.Join(home, strings.TrimPrefix(included, "~/"))
+		if strings.HasPrefix(included, "~") || strings.HasPrefix(included, "%(prefix)/") {
+			return nil, fmt.Errorf("publication git include path interpolation is unresolved")
 		}
 		if !filepath.IsAbs(included) {
 			included = filepath.Join(filepath.Dir(origin), included)
@@ -550,14 +579,14 @@ func publicationGitConfigIncludePaths(ctx context.Context, repo string) ([]strin
 	return ordered, nil
 }
 
-func publicationGitConfigPaths(ctx context.Context, repo string, rules []publicationGitURLRule, origins []string) ([]string, error) {
+func publicationGitConfigPaths(ctx context.Context, repo string, rules []publicationGitURLRule, origins []string) ([]string, []string, error) {
 	paths := map[string]bool{}
 	for index, args := range [][]string{{"rev-parse", "--git-common-dir"}, {"rev-parse", "--git-path", "config.worktree"}} {
 		bounded, cancel := context.WithTimeout(ctx, 5*time.Second)
 		code, stdout, stderr := publicationGitCmd(bounded, repo, args...)
 		cancel()
 		if code != 0 || strings.TrimSpace(stdout) == "" {
-			return nil, fmt.Errorf("resolve publication git config authority: %s", publicationDiagnostic(stderr))
+			return nil, nil, fmt.Errorf("resolve publication git config authority: %s", publicationDiagnostic(stderr))
 		}
 		path := strings.TrimSpace(stdout)
 		if !filepath.IsAbs(path) {
@@ -570,17 +599,18 @@ func publicationGitConfigPaths(ctx context.Context, repo string, rules []publica
 	}
 	home, homeErr := os.UserHomeDir()
 	if homeErr != nil || strings.TrimSpace(home) == "" {
-		return nil, fmt.Errorf("publication git user config authority cannot be resolved")
+		return nil, nil, fmt.Errorf("publication git user config authority cannot be resolved")
 	}
 	paths[filepath.Join(home, ".gitconfig")] = true
 	xdg := strings.TrimSpace(os.Getenv("XDG_CONFIG_HOME"))
 	if xdg == "" {
 		xdg = filepath.Join(home, ".config")
 	}
+	// The default XDG config is authority even when its parent does not exist
+	// yet: the current user could create it during the operation, so an absent
+	// parent chain is sealed transiently instead of skipped (B-70).
 	xdgConfig := filepath.Join(xdg, "git", "config")
-	if info, err := os.Stat(filepath.Dir(xdgConfig)); err == nil && info.IsDir() {
-		paths[xdgConfig] = true
-	}
+	paths[xdgConfig] = true
 	for _, name := range []string{"GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM"} {
 		configured := strings.TrimSpace(os.Getenv(name))
 		if configured == "" || configured == os.DevNull || name == "GIT_CONFIG_SYSTEM" && strings.TrimSpace(os.Getenv("GIT_CONFIG_NOSYSTEM")) != "" {
@@ -594,27 +624,66 @@ func publicationGitConfigPaths(ctx context.Context, repo string, rules []publica
 	for _, rule := range rules {
 		path := rule.origin
 		if !filepath.IsAbs(path) {
-			return nil, fmt.Errorf("publication URL rewrite origin is not absolute")
+			return nil, nil, fmt.Errorf("publication URL rewrite origin is not absolute")
 		}
 		paths[filepath.Clean(path)] = true
 	}
 	for _, origin := range origins {
 		if !filepath.IsAbs(origin) {
-			return nil, fmt.Errorf("publication git config origin is not absolute")
+			return nil, nil, fmt.Errorf("publication git config origin is not absolute")
 		}
 		paths[filepath.Clean(origin)] = true
 	}
 	ordered := make([]string, 0, len(paths))
+	creatable := make([]string, 0, 1)
 	for path := range paths {
 		parent := filepath.Dir(path)
 		info, err := os.Stat(parent)
 		if err != nil || !info.IsDir() {
-			return nil, fmt.Errorf("publication git config authority parent is unavailable")
+			if path == xdgConfig && err != nil && os.IsNotExist(err) {
+				creatable = append(creatable, path)
+				ordered = append(ordered, path)
+				continue
+			}
+			return nil, nil, fmt.Errorf("publication git config authority parent is unavailable")
 		}
 		ordered = append(ordered, path)
 	}
 	sort.Strings(ordered)
-	return ordered, nil
+	sort.Strings(creatable)
+	return ordered, creatable, nil
+}
+
+// publicationCreateAuthorityParents creates the missing directory chain above a
+// creatable config authority so its sibling lock can be held, returning every
+// directory it created in top-down order for exact reverse removal.
+func publicationCreateAuthorityParents(path string) ([]string, error) {
+	missing := []string{}
+	for current := filepath.Dir(path); ; current = filepath.Dir(current) {
+		info, err := os.Stat(current)
+		if err == nil {
+			if !info.IsDir() {
+				return nil, fmt.Errorf("publication git config authority parent is not a directory")
+			}
+			break
+		}
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			return nil, fmt.Errorf("publication git config authority parent cannot be resolved")
+		}
+		missing = append([]string{current}, missing...)
+	}
+	created := make([]string, 0, len(missing))
+	for _, dir := range missing {
+		if err := os.Mkdir(dir, 0o700); err != nil {
+			return created, err
+		}
+		created = append(created, dir)
+	}
+	return created, nil
 }
 
 func publicationGitCmd(ctx context.Context, repo string, args ...string) (int, string, string) {

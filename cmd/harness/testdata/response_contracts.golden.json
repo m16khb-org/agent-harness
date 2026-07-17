@@ -696,7 +696,7 @@
       "running": false
     },
     "docs_index": {
-      "docs_count": 89,
+      "docs_count": 90,
       "harness_root": "$HARNESS_ROOT",
       "ok": true,
       "required_docs": {
@@ -799,6 +799,7 @@
         "$HARNESS_ROOT/.agent-harness/research/quality-audit-2026-06-30.md",
         "$HARNESS_ROOT/.agent-harness/research/spike-tool-error-nudge.md",
         "$HARNESS_ROOT/.agent-harness/research/subagent-tradeoffs.md",
+        "$HARNESS_ROOT/.agent-harness/turing/issue46-report.md",
         "$HARNESS_ROOT/AGENTS.md",
         "$HARNESS_ROOT/CLAUDE.md",
         "$HARNESS_ROOT/GENIUS_THINK.md",
@@ -5191,7 +5192,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 89,
+        "docs_indexed": 90,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -7185,7 +7186,7 @@
       "content": [
         {
           "json": {
-            "docs_count": 89,
+            "docs_count": 90,
             "harness_root": "$HARNESS_ROOT",
             "ok": true,
             "required_docs": {
@@ -7295,6 +7296,7 @@
               "$HARNESS_ROOT/.agent-harness/research/quality-audit-2026-06-30.md",
               "$HARNESS_ROOT/.agent-harness/research/spike-tool-error-nudge.md",
               "$HARNESS_ROOT/.agent-harness/research/subagent-tradeoffs.md",
+              "$HARNESS_ROOT/.agent-harness/turing/issue46-report.md",
               "$HARNESS_ROOT/AGENTS.md",
               "$HARNESS_ROOT/CLAUDE.md",
               "$HARNESS_ROOT/GENIUS_THINK.md",
@@ -10357,7 +10359,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 89,
+              "docs_indexed": 90,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,

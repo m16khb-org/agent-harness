@@ -13,3 +13,8 @@ GREEN evidence:
 
 Cleanup receipt:
 - The temporary Git repository used testing.T.TempDir and exited with no persistent process or ref mutation outside the fixture.
+
+Recovery attempt io-d492e1a529e3 (2026-07-17, regression re-run):
+- Command: go test -v ./internal/core/issueops/implementation -run 'Evidence|Base' -count=1
+- Result: PASS with named === RUN lines including TestImplementationEvidenceUsesImmutableBranchPrepareBaseSHA; the recovery diff does not touch implementation evidence code.
+- Cleanup: testing.T.TempDir fixtures removed by the Go test process.

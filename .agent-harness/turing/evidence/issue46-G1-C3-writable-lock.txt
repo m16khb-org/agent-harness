@@ -16,3 +16,9 @@ Invariant receipt:
 
 Cleanup receipt:
 - Test locks, scripts, marker files, and repositories used testing.T.TempDir and were removed by the Go test process.
+
+Recovery attempt io-d492e1a529e3 (2026-07-17, B-70 fix and lock regressions):
+- RED: TestPublicationAbsentXDGConfigAuthorityCannotBeTransientlyCreatedDuringPush left the transient-rewrite marker and redirected the push to the evil destination while pre/post inventories both saw the XDG path absent.
+- GREEN: the initially absent default XDG config is now sealed by transiently creating its parent chain and holding the sibling .lock; the attacker git config --file write fails, the push lands only on the good destination, the marker is absent, and no XDG residue remains.
+- Regressions kept GREEN: TestGitPublicationAllowsAbsentDefaultXDGConfig, TestPublicationMissingConfigAuthorityParentFailsBeforePushAndLeavesDestinationsUnchanged, TestPublicationGlobalRewriteRaceCannotRedirectPush, all pre-existing lock collision tests, and the full -run Publication suite (exit 0).
+- Cleanup: transiently created XDG directories are removed in exact reverse creation order on release; all fixtures used testing.T.TempDir.

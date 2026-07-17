@@ -13,3 +13,11 @@ GREEN evidence:
 
 Cleanup receipt:
 - Fake Git executables and inventory fixtures used testing.T.TempDir and were removed by the Go test process.
+
+Recovery attempt io-d492e1a529e3 (2026-07-17, B-69 fix):
+- The include enumeration argv changed to git config --show-origin --includes --type=path --get-regexp so Git itself performs canonical include interpolation; the fake-Git fixture was updated to the new exact argv.
+- RED: TestPublicationIncludeInventoryResolvesTildeUserAndRuntimePrefixLikeGit showed the old inventory held relative-joined ~user/ and %(prefix)/ paths that mismatched the real-Git --type=path oracle.
+- GREEN: the inventory now equals the real-Git oracle for both ~<currentuser>/ and %(prefix)/ include values; unresolved interpolation residue fails closed.
+- TestPublicationIncludeInventoryFailsClosedOnUnresolvableTildeUser: PASS; git exits 128 on an unresolvable ~user include and enumeration propagates the failure.
+- TestPublicationConfigInventoriesAreCompleteBeyondDiagnosticLimit and TestPublicationConfigInventoriesRejectOverflowWithoutPartialResult: PASS with the new argv.
+- Cleanup: fake Git executables and fixtures used testing.T.TempDir; a temporary in-worktree scratch config used for design was removed before commit.
