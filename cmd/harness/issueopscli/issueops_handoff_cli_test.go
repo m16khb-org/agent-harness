@@ -147,13 +147,13 @@ func TestRunIssueOpsHandoffRequiresConfirmationForMutation(t *testing.T) {
 }
 
 func TestIssueOpsHandoffUsageExposesCodexHookTrustBypassAttestation(t *testing.T) {
-	for _, want := range []string{"--coordinator-recipient", "--coordinator-host", "--coordinator-session-id", "--coordinator-agent-id", "--source-cwd", "--allow-codex-hook-trust-bypass", "--expected-context-sha256", "--approve-legacy-coordinator-seal"} {
+	for _, want := range []string{"--coordinator-recipient", "--coordinator-host", "--coordinator-session-id", "--coordinator-agent-id", "--source-cwd", "--allow-codex-hook-trust-bypass", "--expected-context-sha256", "--approve-legacy-coordinator-seal", "codex-hooks-list --id ID --json"} {
 		if !strings.Contains(issueOpsHandoffUsage, want) {
 			t.Fatalf("handoff start usage must expose %s", want)
 		}
 	}
 	usage, err := captureProjectCLIStderr(t, func() error { issueOpsUsage(); return nil })
-	if err != nil || !strings.Contains(usage, "start|claim|finish|accept|publish|recover") {
+	if err != nil || !strings.Contains(usage, "start|claim|finish|accept|publish|codex-hooks-list|recover") {
 		t.Fatal("top-level handoff usage omits publish")
 	}
 }

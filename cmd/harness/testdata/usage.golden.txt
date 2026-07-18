@@ -42,7 +42,7 @@ Usage:
   agent-harness issueops worktree prepare-tools --id ID [--json]
   agent-harness issueops worktree prepare --id ID [--orchestrator auto|orca|inline] [--inline-reason user-requested|recovery] [--agent NAME] [--confirm] [--json]
   agent-harness issueops worktree migrate-legacy --id ID --confirm [--json]
-  agent-harness issueops handoff start|claim|finish|accept|recover [flags] [--json]
+  agent-harness issueops handoff start|claim|finish|accept|publish|codex-hooks-list|recover [flags] [--json]
   agent-harness issueops feedback add --id ID --source TEXT --body TEXT [--json]
   agent-harness issueops feedback mark-issue-updated --id ID [--json]
   agent-harness issueops pr-readiness --id ID [--strict] [--json]

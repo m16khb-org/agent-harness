@@ -93,6 +93,9 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 	switch command.Path {
 	case "status", "resume":
 		return true
+	case "handoff codex-hooks-list":
+		_, jsonOut := flags["--json"]
+		return source && req.Host == "codex" && h.Agent == "codex" && h.State == handoff.StateCoordinatorPreparing && h.PendingOperation == nil && h.CleanupOnly == nil && h.WorkerSession == nil && h.Result == nil && jsonOut && len(flags) == 2
 	case "handoff start":
 		host, hok := oneFlag(flags, "--coordinator-host")
 		sessionID, sok := oneFlag(flags, "--coordinator-session-id")
@@ -803,9 +806,102 @@ func bootstrapCoordinatorStartGuidance(req HookToolUseLifecycleRequest, record I
 	return strings.Join(parts, " ")
 }
 
+func exactHostControlPlaneTool(tool string) bool {
+	switch tool {
+	case "get_goal", "update_goal", "update_plan", "request_user_input":
+		return true
+	default:
+		return false
+	}
+}
+
+func issueOpsObservationMCPKind(tool string) (string, bool) {
+	for _, name := range []string{"issueops_status", "issueops_resume"} {
+		if tool == name || tool == "mcp__agent_harness__"+name {
+			return name, true
+		}
+	}
+	return "", false
+}
+
+func issueOpsObservationMCPTool(tool string) bool {
+	_, ok := issueOpsObservationMCPKind(tool)
+	return ok
+}
+
+func requiresMatchingSupervisedRecord(req HookToolUseLifecycleRequest) bool {
+	if issueOpsObservationMCPTool(req.Tool) {
+		return true
+	}
+	if !searchrouting.IsShellTool(req.Tool) {
+		return false
+	}
+	command, ok := commandparse.ParseExactIssueOpsCommand(req.Command)
+	return ok && command.Path == "handoff codex-hooks-list"
+}
+
+func allowedIssueOpsObservationMCP(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+	kind, ok := issueOpsObservationMCPKind(req.Tool)
+	if !ok || req.ToolInput == nil {
+		return false
+	}
+	input := req.ToolInput
+	if !matchingIssueOpsObservationID(input, record.ID) {
+		return false
+	}
+	switch kind {
+	case "issueops_status":
+		return len(input) == 1
+	case "issueops_resume":
+		return allowedIssueOpsResumeObservation(input, record.Repo)
+	default:
+		return false
+	}
+}
+
+func matchingIssueOpsObservationID(input map[string]any, recordID string) bool {
+	id, ok := input["id"].(string)
+	return ok && id != "" && id == recordID
+}
+
+func allowedIssueOpsResumeObservation(input map[string]any, recordRepo string) bool {
+	if len(input) > 3 {
+		return false
+	}
+	for key := range input {
+		if key != "id" && key != "repo" && key != "bind" {
+			return false
+		}
+	}
+	return matchingOptionalIssueOpsRepo(input, recordRepo) && falseOptionalIssueOpsBind(input)
+}
+
+func matchingOptionalIssueOpsRepo(input map[string]any, recordRepo string) bool {
+	if repo, exists := input["repo"]; exists {
+		value, ok := repo.(string)
+		return ok && strings.TrimSpace(value) != "" && cleanAbsPath(value) == cleanAbsPath(recordRepo)
+	}
+	return true
+}
+
+func falseOptionalIssueOpsBind(input map[string]any) bool {
+	if bind, exists := input["bind"]; exists {
+		value, ok := bind.(bool)
+		return ok && !value
+	}
+	return true
+}
+
 func lifecycleRecordID(req HookToolUseLifecycleRequest) (string, bool) {
 	if id, ok := exactLifecycleID(req.Command); ok {
 		return id, true
+	}
+	if issueOpsObservationMCPTool(req.Tool) {
+		if req.ToolInput == nil {
+			return "", false
+		}
+		id, ok := req.ToolInput["id"].(string)
+		return id, ok && strings.TrimSpace(id) != ""
 	}
 	if isHandoffMCPTool(req.Tool) {
 		input, ok := flatMCPInput(req.ToolInput)
@@ -866,6 +962,17 @@ func selectSupervisedHandoffRecord(req HookToolUseLifecycleRequest) (IssueOpsRec
 	if id, ok := lifecycleRecordID(req); ok {
 		if record, exists := byID[id]; exists {
 			return record, true, ""
+		}
+	}
+	// Status/resume MCP and the bounded Codex hook review are the only new
+	// record-targeted routes. A missing or foreign ID must not inherit the
+	// pre-existing explicit-different-cycle escape below, including when the ID
+	// belongs to another source checkout.
+	if requiresMatchingSupervisedRecord(req) {
+		if _, ok := lifecycleRecordID(req); !ok {
+			return IssueOpsRecord{}, false, "record-targeted supervised observation requires one exact non-empty lifecycle id"
+		} else {
+			return IssueOpsRecord{}, false, "record-targeted supervised observation id does not match a supervised cycle for this source checkout"
 		}
 	}
 	targets := worktreeGuardEditTargets(req)

@@ -131,6 +131,8 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 			r[name] = true
 		}
 		return values, b("--allow-codex-hook-trust-bypass", "--confirm", "--json"), r, true
+	case "handoff codex-hooks-list":
+		return v("--id"), b("--json"), r, true
 	case "handoff recover":
 		return v("--id", "--action", "--reason", "--cleanup-disposition", "--cleanup-step"), b("--confirm", "--force", "--json"), r, true
 	case "handoff publish":
@@ -158,7 +160,7 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 // control/expansion. The issueops status/resume read-only carve-out is handled
 // by the caller (it needs the record identity).
 func ExactReadOnlyShellCommand(command string) bool {
-	if HasUnquotedControlOperator(command) || HasActiveCommandSubstitution(command) || HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) || HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) || HasActiveZshEqualsExpansion(command) {
+	if HasUnquotedControlOperator(command) || HasActiveCommandSubstitution(command) || HasActiveInputRedirect(command) || HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) || HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) || HasActiveZshEqualsExpansion(command) {
 		return false
 	}
 	tokens := SplitCommandTokens(strings.TrimSpace(command))
@@ -168,6 +170,8 @@ func ExactReadOnlyShellCommand(command string) bool {
 	switch tokens[0] {
 	case "pwd":
 		return len(tokens) == 1
+	case "codegraph":
+		return len(tokens) == 3 && tokens[1] == "explore" && strings.TrimSpace(tokens[2]) != "" && !strings.HasPrefix(tokens[2], "-")
 	case "rg":
 		return SafeRipgrepArgs(tokens[1:])
 	case "git":
