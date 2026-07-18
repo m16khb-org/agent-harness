@@ -16,6 +16,9 @@ func TestGenerate(t *testing.T) {
 
 	// Same inputs should produce same hash portion
 	id2 := Generate("/tmp/repo", "/tmp/repo/src", []string{"git", "status"})
+	if id2 == id {
+		t.Fatalf("consecutive audit records reused id %q", id)
+	}
 	hash1 := id[strings.LastIndex(id, "-")+1:]
 	hash2 := id2[strings.LastIndex(id2, "-")+1:]
 	if hash1 != hash2 {

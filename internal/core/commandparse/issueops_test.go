@@ -127,6 +127,36 @@ func TestExactReadOnlyShellCommandCorpus(t *testing.T) {
 	}
 }
 
+func TestExactReadOnlyShellCommandAllowsOnlyExactCodeGraphExplore(t *testing.T) {
+	allow := []string{
+		"codegraph explore 'handoff ownership path'",
+		`codegraph explore "lifecycleRecordID"`,
+	}
+	deny := []string{
+		"codegraph explore",
+		"codegraph explore -q",
+		"codegraph explore --path /tmp query",
+		"codegraph explore one two",
+		"codegraph sync query",
+		"./codegraph explore query",
+		"codegraph explore query > out.txt",
+		"codegraph explore </tmp/input",
+		"codegraph explore 0</tmp/input",
+		"codegraph explore <<<value",
+		"codegraph explore $(whoami)",
+	}
+	for _, command := range allow {
+		if !ExactReadOnlyShellCommand(command) {
+			t.Fatalf("expected exact CodeGraph observation allow: %q", command)
+		}
+	}
+	for _, command := range deny {
+		if ExactReadOnlyShellCommand(command) {
+			t.Fatalf("expected inexact CodeGraph command deny: %q", command)
+		}
+	}
+}
+
 func TestSafeRipgrepArgsCorpus(t *testing.T) {
 	safe := [][]string{
 		{"-n", "pattern"},
