@@ -696,7 +696,7 @@
       "running": false
     },
     "docs_index": {
-      "docs_count": 88,
+      "docs_count": 89,
       "harness_root": "$HARNESS_ROOT",
       "ok": true,
       "required_docs": {
@@ -769,6 +769,7 @@
         "$HARNESS_ROOT/.agent-harness/plans/harness-quality-performance-program-v3.md",
         "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
         "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
+        "$HARNESS_ROOT/.agent-harness/plans/issue-47-supervised-multicycle-control-plane-deadlock.md",
         "$HARNESS_ROOT/.agent-harness/plans/issueops-hook-deadlock.md",
         "$HARNESS_ROOT/.agent-harness/plans/karpathy-prompt-augmentation-hook.md",
         "$HARNESS_ROOT/.agent-harness/plans/loop-article-gaps-123.md",
@@ -5190,7 +5191,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 88,
+        "docs_indexed": 89,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -7184,7 +7185,7 @@
       "content": [
         {
           "json": {
-            "docs_count": 88,
+            "docs_count": 89,
             "harness_root": "$HARNESS_ROOT",
             "ok": true,
             "required_docs": {
@@ -7264,6 +7265,7 @@
               "$HARNESS_ROOT/.agent-harness/plans/harness-quality-performance-program-v3.md",
               "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
               "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
+              "$HARNESS_ROOT/.agent-harness/plans/issue-47-supervised-multicycle-control-plane-deadlock.md",
               "$HARNESS_ROOT/.agent-harness/plans/issueops-hook-deadlock.md",
               "$HARNESS_ROOT/.agent-harness/plans/karpathy-prompt-augmentation-hook.md",
               "$HARNESS_ROOT/.agent-harness/plans/loop-article-gaps-123.md",
@@ -10355,7 +10357,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 88,
+              "docs_indexed": 89,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
