@@ -28,7 +28,7 @@
         },
         {
           "id": "G1-C3",
-          "scenario": "Keep existing writable config lock collision and rewrite-race regressions green and seal the initially absent XDG parent against transient create/rewrite/remove.",
+          "scenario": "Keep existing writable config lock collision and rewrite-race regressions green and seal the initially absent XDG parent against transient create/rewrite/remove and same-UID whole-tree identity replacement during push (B79).",
           "channel": "cli",
           "expectedEvidence": ".agent-harness/turing/evidence/issue46-G1-C3-writable-lock.txt",
           "status": "pass",
@@ -60,16 +60,16 @@
       "id": "G3",
       "title": "Verify final worker source",
       "objective": "Pass focused and repository-wide quality gates without install or publication side effects.",
-      "status": "pass",
+      "status": "blocked",
       "successCriteria": [
         {
           "id": "G3-C1",
           "scenario": "Pass focused, full, race, vet, golden, skill validator, source build, and deterministic self-verify gates.",
           "channel": "cli",
           "expectedEvidence": ".agent-harness/turing/evidence/issue46-G3-C1-full-gates.txt",
-          "status": "pass",
-          "capturedEvidence": ".agent-harness/turing/evidence/issue46-G3-C1-full-gates.txt",
-          "cleanupReceipt": "Recovery attempt used an in-worktree isolated self-verify state root removed by the worker with verified absence; temp build and scratch artifacts removed; prior coordinator outer-root receipts retained as history.",
+          "status": "blocked",
+          "capturedEvidence": ".agent-harness/turing/evidence/issue46-G3-C1-full-gates.txt | .agent-harness/turing/evidence/issue46-B79-xdg-identity-replacement.txt",
+          "cleanupReceipt": "Attempt 3: all source gates exit 0 and self-verify state roots removed with verified absence; self-verify is blocked at the native-integration probe only by the absent host ~/.codex/hooks.json (B-80), whose restoration is coordinator-owned. Prior receipts retained as history.",
           "ultraqaClasses": ["cross_platform", "flaky_test", "hung_command", "misleading_success"]
         }
       ]

@@ -374,6 +374,12 @@ func withPublicationGitConfigLocks(ctx context.Context, repo string, fn func() e
 		}
 		locks = append(locks, lock)
 	}
+	unpin, pinErr := publicationPinAbsentXDGConfigAuthority()
+	if pinErr != nil {
+		release()
+		return pinErr
+	}
+	defer unpin()
 	defer release()
 	verifyAuthority := func() bool {
 		after, rulesErr := publicationGitURLRules(ctx, repo)
@@ -602,14 +608,10 @@ func publicationGitConfigPaths(ctx context.Context, repo string, rules []publica
 		return nil, nil, fmt.Errorf("publication git user config authority cannot be resolved")
 	}
 	paths[filepath.Join(home, ".gitconfig")] = true
-	xdg := strings.TrimSpace(os.Getenv("XDG_CONFIG_HOME"))
-	if xdg == "" {
-		xdg = filepath.Join(home, ".config")
-	}
 	// The default XDG config is authority even when its parent does not exist
 	// yet: the current user could create it during the operation, so an absent
 	// parent chain is sealed transiently instead of skipped (B-70).
-	xdgConfig := filepath.Join(xdg, "git", "config")
+	xdgConfig := publicationDefaultXDGGitConfig(home)
 	paths[xdgConfig] = true
 	for _, name := range []string{"GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM"} {
 		configured := strings.TrimSpace(os.Getenv(name))
@@ -652,6 +654,45 @@ func publicationGitConfigPaths(ctx context.Context, repo string, rules []publica
 	sort.Strings(ordered)
 	sort.Strings(creatable)
 	return ordered, creatable, nil
+}
+
+func publicationDefaultXDGGitConfig(home string) string {
+	xdg := strings.TrimSpace(os.Getenv("XDG_CONFIG_HOME"))
+	if xdg == "" {
+		xdg = filepath.Join(home, ".config")
+	}
+	return filepath.Join(xdg, "git", "config")
+}
+
+// publicationPinAbsentXDGConfigAuthority seals the identity of an absent XDG
+// config authority for the duration of the protected callback. The sibling
+// lock only binds cooperating Git config writers at one path identity: a
+// same-UID racer can rename the whole XDG_CONFIG_HOME tree (lock included)
+// aside, substitute a replacement tree whose fresh config the push would read,
+// then restore the original tree so every post-operation snapshot matches
+// (B79). When the XDG config is absent under the held seal, pinning
+// GIT_CONFIG_GLOBAL to the canonical home config preserves the verified
+// effective configuration exactly while making any substituted XDG identity
+// unreadable during the operation. When GIT_CONFIG_GLOBAL is already present,
+// Git never reads the XDG config, so no pin is needed; an existing XDG config
+// keeps the plain lock protocol unchanged.
+func publicationPinAbsentXDGConfigAuthority() (func(), error) {
+	if _, present := os.LookupEnv("GIT_CONFIG_GLOBAL"); present {
+		return func() {}, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil || strings.TrimSpace(home) == "" {
+		return nil, fmt.Errorf("publication git user config authority cannot be resolved")
+	}
+	if _, statErr := os.Lstat(publicationDefaultXDGGitConfig(home)); statErr == nil {
+		return func() {}, nil
+	} else if !os.IsNotExist(statErr) {
+		return nil, fmt.Errorf("publication git config authority is unavailable")
+	}
+	if err := os.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(home, ".gitconfig")); err != nil {
+		return nil, fmt.Errorf("publication git config authority cannot be pinned")
+	}
+	return func() { _ = os.Unsetenv("GIT_CONFIG_GLOBAL") }, nil
 }
 
 // publicationCreateAuthorityParents creates the missing directory chain above a

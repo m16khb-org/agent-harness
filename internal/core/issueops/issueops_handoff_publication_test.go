@@ -772,6 +772,87 @@ func TestPublicationAbsentXDGConfigAuthorityCannotBeTransientlyCreatedDuringPush
 	}
 }
 
+func TestPublicationAbsentXDGConfigAuthorityCannotBeReplacedDuringPush(t *testing.T) {
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo, good, evil := t.TempDir(), t.TempDir(), t.TempDir()
+	home := t.TempDir()
+	xdg := filepath.Join(t.TempDir(), "absent-xdg")
+	aside := filepath.Join(filepath.Dir(xdg), "replaced-aside")
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", xdg)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	t.Setenv("GIT_CONFIG_GLOBAL", "")
+	if err := os.Unsetenv("GIT_CONFIG_GLOBAL"); err != nil {
+		t.Fatal(err)
+	}
+	runPublicationGitTest(t, repo, "init", "-q")
+	runPublicationGitTest(t, repo, "config", "user.name", "Publication Test")
+	runPublicationGitTest(t, repo, "config", "user.email", "publication@example.test")
+	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("publication\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runPublicationGitTest(t, repo, "add", "README.md")
+	runPublicationGitTest(t, repo, "commit", "-q", "-m", "test: publication")
+	finalHead := strings.TrimSpace(runPublicationGitTest(t, repo, "rev-parse", "HEAD"))
+	runPublicationGitTest(t, good, "init", "-q", "--bare")
+	runPublicationGitTest(t, evil, "init", "-q", "--bare")
+	runPublicationGitTest(t, repo, "remote", "add", "origin", good)
+
+	reader := GitIssueOpsHandoffPublicationReader{}
+	target, err := reader.PushTarget(context.Background(), repo, "origin")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bin := t.TempDir()
+	marker := filepath.Join(t.TempDir(), "xdg-replace-succeeded")
+	script := filepath.Join(bin, "git")
+	body := "#!/bin/sh\n" +
+		"if [ \"$1\" = push ]; then\n" +
+		"  /bin/mv \"$XDG_CONFIG_HOME\" \"$XDG_ASIDE\"\n" +
+		"  /bin/mkdir -p \"$XDG_CONFIG_HOME/git\"\n" +
+		"  \"$REAL_GIT\" config --file \"$XDG_CONFIG_HOME/git/config\" \"url.$EVIL_REPO.insteadOf\" \"$GOOD_REPO\" && printf succeeded > \"$XDG_REPLACE_MARKER\"\n" +
+		"  \"$REAL_GIT\" \"$@\"\n" +
+		"  rc=$?\n" +
+		"  /bin/rm -rf \"$XDG_CONFIG_HOME\"\n" +
+		"  /bin/mv \"$XDG_ASIDE\" \"$XDG_CONFIG_HOME\"\n" +
+		"  exit $rc\n" +
+		"fi\n" +
+		"exec \"$REAL_GIT\" \"$@\"\n"
+	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("REAL_GIT", realGit)
+	t.Setenv("GOOD_REPO", good)
+	t.Setenv("EVIL_REPO", evil)
+	t.Setenv("XDG_ASIDE", aside)
+	t.Setenv("XDG_REPLACE_MARKER", marker)
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	if err := reader.PushExact(context.Background(), repo, "origin", target.Fingerprint, "46-demo", finalHead); err != nil {
+		t.Fatalf("publication with replaced XDG authority chain: %v", err)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("replacement XDG rewrite was not exercised during push: %v", err)
+	}
+	if got := strings.TrimSpace(runPublicationGitTest(t, good, "rev-parse", "refs/heads/46-demo")); got != finalHead {
+		t.Fatalf("good destination head = %q, want %q", got, finalHead)
+	}
+	cmd := exec.Command(realGit, "--git-dir", evil, "rev-parse", "--verify", "refs/heads/46-demo")
+	if err := cmd.Run(); err == nil {
+		t.Fatal("same-UID XDG authority chain replacement redirected publication to evil destination")
+	}
+	if _, err := os.Stat(xdg); !os.IsNotExist(err) {
+		t.Fatalf("replaced XDG authority seal left residue: %v", err)
+	}
+	if _, err := os.Stat(aside); !os.IsNotExist(err) {
+		t.Fatalf("replaced XDG authority aside tree left residue: %v", err)
+	}
+}
+
 func TestPublicationMissingConfigAuthorityParentFailsBeforePushAndLeavesDestinationsUnchanged(t *testing.T) {
 	repo, good, evil := t.TempDir(), t.TempDir(), t.TempDir()
 	home, xdg := t.TempDir(), t.TempDir()

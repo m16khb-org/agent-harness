@@ -730,6 +730,35 @@ GitHub 재조회 결과 open issue는 `#18`, `#19`, `#20`, `#21`, `#28`이고, `
 - 상태: **우회 경로 확인됨**; build 검증 의도는 컴파일/링크 성공 확인이므로 동등성 유지.
 - 근거: 2026-07-17 worker 세션 build 차단/성공 transcript.
 
+### B-79 — 초기 생성된 XDG authority tree가 same-UID rename 치환으로 sibling lock을 우회함
+
+- 증상: sibling lock이 잡힌 동안 같은 UID racer가 `XDG_CONFIG_HOME` tree 전체(lock 포함)를 rename으로 옮기고, 대체 tree에 evil URL rewrite config를 새로 만들어 push가 이를 읽게 한 뒤, 대체 tree를 제거하고 원본 tree를 원복하면 pre/post inventory·snapshot·absent 검증이 모두 통과한다.
+- 직접 원인: B-70 seal의 sibling `O_EXCL` lock은 하나의 path identity에서 협조적 Git config writer만 차단한다. parent tree rename은 lock 파일의 경로 identity 자체를 대체하므로, 새 tree에는 lock이 없고 Git은 push 시점에 경로를 다시 해석해 대체 config를 읽는다. 원복 후 최종 `verifyAuthority`는 동일한 rules/origins/absent 상태만 보므로 drift를 관찰할 수 없다.
+- 영향: initially-created(또는 부재 파일) XDG authority에 대해 transient rewrite가 흔적 없이 push URL을 탈취할 수 있어 B-70의 봉인 목표가 우회된다.
+- 안전한 탈출 경로: 봉인 시점에 `GIT_CONFIG_GLOBAL`이 부재하고 기본 XDG config 파일이 없으면, protected callback 동안 `GIT_CONFIG_GLOBAL`을 canonical home config(`~/.gitconfig`)로 pin한다(`publicationPinAbsentXDGConfigAuthority`). 부재 XDG 파일은 effective 구성에 아무것도 기여하지 않으므로 검증된 구성이 그대로 보존되고, 치환된 XDG identity는 Git이 읽을 수 없게 된다. `GIT_CONFIG_GLOBAL`이 이미 존재하면 Git이 XDG를 읽지 않으므로 pin 불필요, 존재하는 XDG config는 기존 lock protocol 유지, pin 획득 실패는 callback 이전 fail-closed.
+- 상태: **해결(2026-07-18, Claude recovery attempt io-d492e1a529e3 attempt 3)**. 기존 안전 케이스(absent XDG 허용, transient create 봉인, global rewrite race, missing-parent fail-closed, owner-controlled 거부, macOS system config 성공)는 모두 GREEN 유지.
+- 근거: RED `TestPublicationAbsentXDGConfigAuthorityCannotBeReplacedDuringPush`(PushExact nil + marker 존재 + good ref 부재 = push가 evil로 redirect) → GREEN(동일 테스트가 marker 존재·good 정확 갱신·evil 무변경·xdg/aside 무잔재를 동시 증명); `.agent-harness/turing/evidence/issue46-B79-xdg-identity-replacement.txt`.
+
+### B-80 — host의 `~/.codex/hooks.json` 부재로 self-verify native-integration 게이트가 환경 원인 RED
+
+- 증상: attempt 3 recovery worker의 `self-verify --seed=100 --target-score=95 --llm-eval=false`가 두 번 모두 exit 1로 실패했다. fail-fast 지점은 25단계 중 23번째 `native integration`(total_steps=23, passed_steps=22, minimum_goal_score=0, qa_smoke 4/5는 미실행 QA gate)이며, 소스 게이트(전체/`-race`/vet/golden/skill/build)와 focused 테스트는 같은 HEAD에서 모두 exit 0이었다.
+- 직접 원인: `nativeIntegrationCodexConfigErrors`는 `~/.codex/hooks.json` 존재와 `hook user-prompt` 내용을 요구하는데, 현재 host에 이 파일이 존재하지 않는다(Read: File does not exist). 2026-07-17 attempt 1 wave는 같은 검증을 25/25로 통과했으므로 그 이후 host 상태가 변한 환경 회귀이며, 이 diff의 변경(코드·문서)은 native integration 입력에 관여하지 않는다.
+- 영향: B79 지시의 sealed self-verify 게이트를 worker가 GREEN으로 만들 수 없다. 복원은 install/native 통합 경로 소유이고, worker는 install 금지 제약과 outside-worktree mutation fence(B-75 family)로 `~/.codex` 파일을 검사(ls/grep 차단)·복원할 수 없다.
+- 우회(worker 측): Read 도구(read-only 예외)로 부재를 확증하고, 나머지 22개 실행 단계 GREEN과 두 회 재현(결정적 동일 지점 실패)을 증거로 기록한 뒤, 게이트 상태를 환경 blocker로 분리 보고한다.
+- 영구 해결: coordinator(또는 사용자)가 `~/.codex/hooks.json`을 repository-native install 경로로 복원한 뒤 self-verify를 재실행하면 native integration이 다시 판정 가능하다(Task 6 소유권과 일치).
+- 검증: 복원 후 `HARNESS_STATE_DIR=<isolated> self-verify --seed=100 --target-score=95 --llm-eval=false --json`이 ok=true, 25/25, termination_eligible=true를 반환하는지 확인한다.
+- 근거: 2026-07-18 attempt 3의 self-verify JSON 요약(exit 1, total_steps 23, qa_smoke 80, minimum_goal_score 0); `/Users/m16khb/.codex/hooks.json` Read 부재 확인; `cmd/harness/validationcli/nativeintegration/validation_native_integration_contract.go:39-41`; 2026-07-17 wave의 25/25 통과 기록(G3-C1).
+
+### B-81 — 커밋 메시지의 슬래시 포함 일반 단어가 outside-worktree 경로로 오분류되어 로컬 커밋이 차단됨
+
+- 증상: `git commit -m` 본문에 `pre/post` 같은 슬래시 포함 산문 토큰이 있으면 "supervised IssueOps worker mutation target is outside the claimed worker worktree"로 커밋이 차단된다.
+- 직접 원인: worktree guard가 shell 명령의 인자 토큰을 경로 후보로 스캔하면서 커밋 메시지 문자열 내부 단어까지 파일 인자로 취급한다(B-75 family의 새 표면).
+- 영향: 정당한 로컬 커밋이 메시지 문구만으로 반복 차단되어 이분 탐색으로 원인을 격리해야 했다.
+- 우회: 메시지 산문에서 슬래시 토큰을 하이픈 표기(`pre-and-post`)로 치환했다. subject-only dry-run → Intent 줄 → Why 줄 순 이분 탐색으로 트리거 토큰을 확정했다.
+- 영구 해결 후보: guard가 `-m` 인자 값(메시지 데이터)을 경로 후보 스캔에서 제외하거나, 존재하지 않는 상대 토큰을 mutation 대상으로 보지 않게 한다.
+- 검증: 동일 diff에서 치환된 본문의 `git commit --dry-run`이 통과했고 실제 커밋도 성공했다.
+- 근거: 2026-07-18 attempt 3 커밋 차단/성공 transcript(subject-only 통과, Why 줄 차단, `pre-and-post` 치환 후 통과).
+
 coordinator가 dispatch 계약에서 지명한 나머지 orchestration blocker family(agent retry preservation, manual dispatch fence, same PTY claim race, regenerated close identity)는 이 recovery worker 세션에서 관찰 가능한 이벤트를 만들지 않았다. worker 측 근거 없는 상세 기록은 남기지 않으며, 해당 family의 상세 entry는 이를 직접 관찰한 coordinator 기록 권한으로 남겨 둔다.
 
 ## 2026-07-17 실행 완료 스냅샷

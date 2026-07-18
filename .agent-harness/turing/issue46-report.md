@@ -36,3 +36,20 @@ Strict RED→GREEN TDD from exact base b348a16 as sole writer, hooks enabled thr
 - B-77: the attempt base carried a stale response-contract golden (docs_count 89 vs 90 after `.agent-harness/turing/issue46-report.md` was committed); the golden was regenerated and the diff confirmed as the single-doc drift.
 - Orchestration blockers B-72 through B-76 (claim host transcription, Orca-channel/fence mismatch, exact-form discovery, outside-worktree scratchpad/grep fences, git-config read classification) are recorded with working escapes in `.agent-harness/ISSUEOPS_ORCA_BLOCKERS_2026-07-16.md`.
 - Cleanup: all test fixtures were `testing.T.TempDir`; the in-worktree scratch config was removed before commit; no install, push, PR, merge, source-checkout mutation, or hook bypass occurred.
+
+## Claude recovery attempt io-d492e1a529e3 attempt 3 — B79 (2026-07-18)
+
+Binding independent-review finding within the sealed B70 scope: the sibling
+lock binds cooperating writers at one path identity only, so a same-UID racer
+can rename the initially-created XDG_CONFIG_HOME tree (lock included) aside,
+substitute a replacement tree whose fresh evil-rewrite config the push reads,
+then remove it and restore the original so every post-operation verification
+matches.
+
+- RED `TestPublicationAbsentXDGConfigAuthorityCannotBeReplacedDuringPush` at attempt base 8886856: PushExact returned nil, the replacement rewrite marker existed, and the good destination never received the ref — the push was redirected to the evil destination through the substituted chain.
+- GREEN: `publicationPinAbsentXDGConfigAuthority` pins `GIT_CONFIG_GLOBAL` to the canonical home config for the protected callback whenever `GIT_CONFIG_GLOBAL` is absent and the default XDG config file does not exist under the held seal, making any substituted XDG identity unreadable while preserving the verified effective configuration exactly; failures to pin fail closed before the callback.
+- Safe cases retained GREEN: absent-XDG availability, transient-create seal (B-70), global rewrite race, missing-parent fail-closed, owner-controlled rejection, macOS root-owned system config success.
+- Evidence: `.agent-harness/turing/evidence/issue46-B79-xdg-identity-replacement.txt`; ledger entry B-79 in `.agent-harness/ISSUEOPS_ORCA_BLOCKERS_2026-07-16.md`.
+- Gate wave from the final worker HEAD: focused/named -v, gofmt, diff --check, windows cross-compile, full go test, full -race, vet, contract/response goldens, 19 skill validators plus validator unit tests, and neutral-name build all exit 0. Independent adversarial review returned UNCONDITIONAL APPROVE with zero Critical/Important findings.
+- Self-verify failed deterministically at step 23/25 "native integration" only, because the host's `~/.codex/hooks.json` is absent — an environment regression since the 2026-07-17 25/25 pass that this diff cannot influence and the worker fence cannot repair; recorded as B-80 with the coordinator-owned restoration and re-verification path.
+- No other new coordinator/runtime/hook blocker beyond the already-recorded B-72–B-78 families was observed; re-observed fences (claim-before-mutation exact command, orca-channel block, shell-control fence, outside-worktree read fences) matched their documented escapes.
