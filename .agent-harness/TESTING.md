@@ -95,6 +95,13 @@ go build -o bin/agent-harness ./cmd/harness
 
 작은 변경은 targeted test를 먼저 실행하고, 완료 전 영향 범위에 맞게 전체 테스트를 실행한다.
 
+### Operational-health and stability delegation
+
+- Pure classifier tests pin the 15-minute heartbeat boundary, invocation-only preserves, duplicate/incomplete inventory failure, and exact resource ownership.
+- Stale-scan integration must prove `operational_dead_owner` is report-only (`needs-review`, `releasable=false`) for missing/stale heartbeat while existing confirmed worktree/remote evidence remains releasable after the locked fresh re-probe.
+- Stability audit unit tests must prove it calls the freshly built top-level `doctor`, forwards only a non-empty exact `ORCA_TERMINAL_HANDLE`, requires exit zero plus JSON `ok=true` and `healthy=true`, and stores only bounded issue code/summary failure details.
+- Final live reconciliation verification runs `python3 skills/stability-audit/scripts/e2e_stability_audit.py --cleanup-stale --json` only after the external recovery manifest/journal is sealed and cleanup readbacks are complete. Orca snapshot evidence is archival-only; reset ambiguity follows forward recovery, never an inferred rollback.
+
 core 패키지 변경 시 최소 targeted 검증:
 
 ```bash

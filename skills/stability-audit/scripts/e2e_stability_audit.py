@@ -27,6 +27,9 @@ HARNESS_DAEMON_RE = re.compile(r"agent-harness daemon --internal")
 TEMP_WATCHER_RE = re.compile(r"scripts/codegraph-watcher\.mjs .*/T/tmp\.")
 REGRESSION_TIMEOUT_SECONDS = 300
 FULL_SELF_VERIFY_TIMEOUT_SECONDS = 5400
+DOCTOR_ISSUE_LIMIT = 20
+DOCTOR_CODE_LIMIT = 96
+DOCTOR_SUMMARY_LIMIT = 320
 
 
 def run(cmd: list[str], *, env: dict[str, str] | None = None, input_text: str | None = None, timeout: float = 60) -> dict[str, Any]:
@@ -140,6 +143,49 @@ def classify_processes(rows: list[dict[str, Any]]) -> dict[str, Any]:
 def build(report: dict[str, Any]) -> None:
     res = run(["go", "build", "-o", str(BIN), "./cmd/harness"], timeout=120)
     add_step(report, "build", res["returncode"] == 0, result={k: res[k] for k in ("returncode", "stderr", "duration_ms")})
+
+
+def operational_doctor(report: dict[str, Any]) -> None:
+    cmd = [str(BIN), "doctor", "--repo", str(ROOT), "--json"]
+    terminal = os.environ.get("ORCA_TERMINAL_HANDLE", "").strip()
+    if terminal:
+        cmd.extend(["--preserve-terminal", terminal])
+    res = run(cmd, timeout=120)
+
+    parsed: dict[str, Any] = {}
+    parse_error = ""
+    try:
+        value = parse_json_output(res["stdout"])
+        if isinstance(value, dict):
+            parsed = value
+        else:
+            parse_error = "doctor output is not a JSON object"
+    except Exception as exc:
+        parse_error = str(exc)[:DOCTOR_SUMMARY_LIMIT]
+
+    ok = res["returncode"] == 0 and bool(parsed.get("ok")) and bool(parsed.get("healthy"))
+    details: dict[str, Any] = {
+        "returncode": res["returncode"],
+        "doctor_ok": bool(parsed.get("ok")),
+        "healthy": bool(parsed.get("healthy")),
+    }
+    if not ok:
+        issues = []
+        raw_issues = parsed.get("issues")
+        if isinstance(raw_issues, list):
+            for raw in raw_issues[:DOCTOR_ISSUE_LIMIT]:
+                if not isinstance(raw, dict):
+                    continue
+                raw_code = raw.get("code")
+                raw_summary = raw.get("summary")
+                code = raw_code[:DOCTOR_CODE_LIMIT] if isinstance(raw_code, str) else ""
+                summary = raw_summary[:DOCTOR_SUMMARY_LIMIT] if isinstance(raw_summary, str) else ""
+                if code or summary:
+                    issues.append({"code": code, "summary": summary})
+        details["issues"] = issues
+        if parse_error:
+            details["parse_error"] = parse_error
+    add_step(report, "operational_doctor", ok, **details)
 
 
 def install_checks(report: dict[str, Any], full_install: bool) -> None:
@@ -454,6 +500,7 @@ def main() -> int:
 
     add_step(report, "git_status", True, output=run(["git", "status", "--short", "--branch"], timeout=10)["stdout"])
     build(report)
+    operational_doctor(report)
     install_checks(report, args.full_install)
     host_mcp_checks(report)
     hook_smoke(report)

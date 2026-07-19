@@ -318,6 +318,17 @@ the required agent-harness skill validation gate.
   valid upstream evidence, but it must not block local agent-harness
   verification when the repo-owned validator passes.
 
+## 23.1 Operational health is diagnosis, not cleanup authority
+
+Cross-system residue must not acquire a second truth source in stale scan, status, or the stability script.
+
+주의:
+- `agent-harness doctor` is the sole public operational-health gate. `--preserve-cycle` and `--preserve-terminal` are exact, invocation-only inputs; never persist them as exemptions.
+- A binding proves ownership, not liveness. A claimed cycle without complete identity and a heartbeat within 15 minutes is unhealthy even when every stored resource ID matches.
+- The 15-minute boundary is diagnostic only. Missing/stale heartbeat must not interrupt a worker, delete a resource, or promote stale scan to `confirmed-stale`/auto-release; destructive eligibility still requires the existing strong signal and fresh locked re-probe.
+- Orca absence is optional only when no durable cycle claims Orca resources. Never turn a missing or incomplete Orca inventory into an empty healthy list.
+- One-time global cleanup evidence lives in an external `0700` recovery bundle. Git/SQLite copies can be restore-tested, but Orca snapshot is archival-only: the public CLI has no conditional reset/import/restore and a last-moment external actor race remains. Stop on pre-reset digest drift; after reset, continue idempotently from the append-only journal instead of guessing rollback.
+
 ## 24. IssueOps 도메인 어휘를 CLI 서브커맨드로 착각
 
 에이전트가 `issueops grill`, `issueops domain`, `issueops split` 같은 존재하지 않는 서브커맨드를 반복적으로 호출한다. 원인은 IssueOps skill 산문이 grill/domain/split 같은 선명한 도메인 명사(phase 이름, 결정 동사, ledger artifact)를 1급 개념으로 쓰는 반면 CLI는 `phase`, `remote create-child`, `link-related` 같은 제네릭 동사를 쓰는 **명명 불일치**다.

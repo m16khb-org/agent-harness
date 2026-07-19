@@ -32,11 +32,14 @@ python3 skills/stability-audit/scripts/e2e_stability_audit.py --full-install --c
 
 If the script reports `ok: false`, inspect `failures`, patch the root cause, and rerun the same command plus the relevant targeted tests.
 
+The script builds the current binary and immediately runs the existing top-level `doctor` as its `operational_doctor` gate. A non-empty `ORCA_TERMINAL_HANDLE` is forwarded as the exact invocation-only `--preserve-terminal` value. Non-zero exit, malformed output, `ok=false`, `healthy=false`, or unknown operational inventory fails the audit; the report retains only bounded issue codes and summaries, not raw doctor or Orca output.
+
 ## Manual workflow
 
 1. **Preflight scope**
    - Read `.agent-harness/OPERATIONS.md`, `.agent-harness/CONVENTIONS.md`, and `.agent-harness/TESTING.md` when install, hooks, MCP, daemon, worker, or native integration behavior is in scope.
    - Capture `git status --short --branch`, process baseline, daemon status, and host MCP registrations.
+   - Treat `doctor` as the sole cross-system operational-health authority. Do not duplicate Git/IssueOps/Orca ownership or residue rules in this script.
 
 2. **Install/update E2E**
    - Build: `go build -o bin/agent-harness ./cmd/harness`.

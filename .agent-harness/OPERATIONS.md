@@ -39,6 +39,21 @@ agent-harness status --json
 agent-harness docs --json
 ```
 
+## Operational Health and One-Time Reconciliation
+
+`agent-harness doctor` is the sole public cross-system health gate for canonical Git state, all IssueOps records/bindings, optional Orca inventory, and unexpected user-state artifacts. Invocation-only preservation never writes state:
+
+```bash
+agent-harness doctor --repo . --preserve-cycle EXACT_CYCLE_ID --preserve-terminal EXACT_HANDLE --json
+```
+
+- A claimed cycle is live only with complete fenced identity/resources and a heartbeat no older than 15 minutes. The threshold is diagnostic: heartbeat age alone never authorizes interrupt, delete, or IssueOps release. `issueops cleanup stale --apply` still requires its existing confirmed worktree/remote signal and locked fresh re-probe.
+- Preserve flags are repeatable exact values for one doctor invocation. They do not create persistent exceptions or cure incomplete/duplicate identity.
+- Orca remains optional. Absence is healthy only when no durable cycle claims Orca resources; otherwise inventory is unknown and doctor fails closed.
+- The stability audit builds the binary, then delegates operational judgement to `doctor`. If `ORCA_TERMINAL_HANDLE` is non-empty, it passes that exact handle as `--preserve-terminal`.
+
+The approved one-time full reconciliation uses an external mode-`0700` bundle at `~/.local/state/agent-harness-backups/<repo-fingerprint>/<UTC-timestamp>/`, not a product cleanup command. Git and SQLite backups are restore-tested; Orca snapshots are archival evidence only because the installed CLI exposes global reset but no conditional reset/import/restore. Stop before reset if the final full digest drifts. After a reset or crash seam, resume the sealed append-only journal and complete idempotently forward; do not infer a partial rollback.
+
 ## Tool Contract Conformance
 
 ```bash

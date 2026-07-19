@@ -1,4 +1,6 @@
+import contextlib
 import importlib.util
+import json
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -17,6 +19,135 @@ def load_audit_module():
 
 
 class StabilityAuditScriptTest(unittest.TestCase):
+    def test_operational_doctor_invokes_top_level_gate_with_exact_terminal(self) -> None:
+        audit = load_audit_module()
+        calls: list[list[str]] = []
+
+        def fake_run(cmd, **_kwargs):
+            calls.append([str(arg) for arg in cmd])
+            return {
+                "returncode": 0,
+                "stdout": '{"ok": true, "healthy": true, "issues": []}',
+                "stderr": "",
+                "duration_ms": 1,
+                "timeout": False,
+            }
+
+        report = {"steps": [], "failures": []}
+        with mock.patch.dict(audit.os.environ, {"ORCA_TERMINAL_HANDLE": "term_current"}, clear=True):
+            with mock.patch.object(audit, "run", side_effect=fake_run):
+                audit.operational_doctor(report)
+
+        self.assertEqual(
+            calls,
+            [[str(audit.BIN), "doctor", "--repo", "/Users/m16khb/Workspace/agent-harness", "--json", "--preserve-terminal", "term_current"]],
+        )
+        self.assertEqual(report["steps"][0]["name"], "operational_doctor")
+        self.assertTrue(report["steps"][0]["ok"])
+        self.assertEqual(report["failures"], [])
+
+    def test_operational_doctor_omits_blank_terminal_and_requires_ok_and_healthy(self) -> None:
+        audit = load_audit_module()
+        cases = [
+            ("nonzero", 1, '{"ok": true, "healthy": true}', False),
+            ("not_ok", 0, '{"ok": false, "healthy": true}', False),
+            ("unhealthy", 0, '{"ok": true, "healthy": false}', False),
+            ("malformed", 0, "not-json", False),
+            ("healthy", 0, '{"ok": true, "healthy": true}', True),
+        ]
+
+        for name, returncode, stdout, want_ok in cases:
+            with self.subTest(name=name):
+                calls: list[list[str]] = []
+
+                def fake_run(cmd, **_kwargs):
+                    calls.append([str(arg) for arg in cmd])
+                    return {
+                        "returncode": returncode,
+                        "stdout": stdout,
+                        "stderr": "",
+                        "duration_ms": 1,
+                        "timeout": False,
+                    }
+
+                report = {"steps": [], "failures": []}
+                with mock.patch.dict(audit.os.environ, {"ORCA_TERMINAL_HANDLE": "   "}, clear=True):
+                    with mock.patch.object(audit, "run", side_effect=fake_run):
+                        audit.operational_doctor(report)
+
+                self.assertEqual(calls, [[str(audit.BIN), "doctor", "--repo", str(audit.ROOT), "--json"]])
+                self.assertEqual(report["steps"][0]["ok"], want_ok)
+                self.assertEqual(bool(report["failures"]), not want_ok)
+
+    def test_operational_doctor_failure_retains_only_bounded_issue_summaries(self) -> None:
+        audit = load_audit_module()
+        raw_issues = [
+            {
+                "code": "operational_dead_owner_" + "c" * 200,
+                "summary": "dead cycle " + "s" * 500,
+                "path": "/private/secret/path",
+                "raw_message": "must-not-survive",
+            }
+            for _ in range(30)
+        ]
+
+        def fake_run(_cmd, **_kwargs):
+            return {
+                "returncode": 0,
+                "stdout": json.dumps({"ok": True, "healthy": False, "issues": raw_issues}),
+                "stderr": "raw stderr must not survive",
+                "duration_ms": 1,
+                "timeout": False,
+            }
+
+        report = {"steps": [], "failures": []}
+        with mock.patch.dict(audit.os.environ, {}, clear=True):
+            with mock.patch.object(audit, "run", side_effect=fake_run):
+                audit.operational_doctor(report)
+
+        failure = report["failures"][0]
+        self.assertLessEqual(len(failure["issues"]), audit.DOCTOR_ISSUE_LIMIT)
+        for issue in failure["issues"]:
+            self.assertEqual(set(issue), {"code", "summary"})
+            self.assertLessEqual(len(issue["code"]), audit.DOCTOR_CODE_LIMIT)
+            self.assertLessEqual(len(issue["summary"]), audit.DOCTOR_SUMMARY_LIMIT)
+        self.assertNotIn("must-not-survive", repr(failure))
+        self.assertNotIn("raw stderr", repr(failure))
+        self.assertNotIn("/private/secret/path", repr(failure))
+
+    def test_main_runs_operational_doctor_immediately_after_build(self) -> None:
+        audit = load_audit_module()
+        order: list[str] = []
+        steps = [
+            "build",
+            "operational_doctor",
+            "install_checks",
+            "host_mcp_checks",
+            "hook_smoke",
+            "temp_state_worker_policy",
+            "daemon_and_mcp_stress",
+            "cleanup_stale",
+            "rss_sample",
+            "regression",
+        ]
+
+        def record(name):
+            def call(*_args, **_kwargs):
+                order.append(name)
+
+            return call
+
+        status = {"returncode": 0, "stdout": "", "stderr": "", "duration_ms": 1, "timeout": False}
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch.object(audit, "run", return_value=status))
+            stack.enter_context(mock.patch.object(audit.sys, "argv", ["stability-audit", "--skip-race", "--skip-self-verify"]))
+            stack.enter_context(mock.patch("builtins.print"))
+            for name in steps:
+                stack.enter_context(mock.patch.object(audit, name, side_effect=record(name)))
+            self.assertEqual(audit.main(), 0)
+
+        self.assertEqual(order[:3], ["build", "operational_doctor", "install_checks"])
+
     def test_install_checks_use_only_current_bootstrap_flags(self) -> None:
         audit = load_audit_module()
         calls: list[list[str]] = []
