@@ -16,7 +16,7 @@
 - `binding` proves ownership only. A claimed cycle is live only with exact resource identity and a fenced heartbeat no older than `15m`; heartbeat age alone never authorizes interrupt, delete, or release.
 - `--preserve-cycle` and `--preserve-terminal` are repeatable, non-empty, exact, invocation-scoped flags. They never write state and never cure incomplete or ambiguous identity.
 - Any incomplete list, duplicate identity, count mismatch, truncation, unsupported state, parse failure, or collection error is `operational_inventory_unknown` and makes doctor unhealthy.
-- Product code is read-only with respect to operational cleanup. The one-time external runner may mutate only targets sealed in its manifest and must stop on any identity, digest, OID, owner, or inventory drift.
+- Operational-health product code remains read-only. The one-time external runner may mutate only targets sealed in its manifest, using existing exact primitives plus the fail-safe paired-digest mode on `issueops force-release`, and must stop on any identity, digest, OID, owner, or inventory drift.
 - The current operator terminal is resolved at execution time from non-empty `ORCA_TERMINAL_HANDLE` and must match exactly one current Orca terminal row. No guessed handle is accepted.
 - Preserve unrelated user changes. Before every commit and before creating the cleanup manifest, require a clean source checkout except for the exact files of the current task.
 - Use CodeGraph before new code-location exploration. Use `apply_patch` for source and external-runner edits. Never use broad globs, unresolved deletion targets, `git branch -D`, plain `git push --delete`, or direct SQLite file copying as a backup claim.
@@ -642,6 +642,8 @@ def operational_doctor(report: dict[str, Any]) -> None:
 
 Assert it invokes `bin/agent-harness doctor --repo /Users/m16khb/Workspace/agent-harness --json` and appends `--preserve-terminal` plus exact non-empty `ORCA_TERMINAL_HANDLE` when present. It passes only when exit is zero and parsed `ok` and `healthy` are true. Failure details retain only bounded issue codes/summaries.
 
+Also assert the doctor call inherits the outer live harness environment, while ordinary/race Go regression subprocesses receive the exact audited source checkout as `HARNESS_ROOT` and their own temporary `HARNESS_STATE_DIR`, `HARNESS_DAEMON_DIR`, and `HARNESS_WORKER_DIR`. Simulate a regression write and prove the outer IssueOps DB/session projection is byte-for-byte unchanged.
+
 - [ ] **Step 3: Run Python tests and verify RED**
 
 Run:
@@ -654,7 +656,7 @@ Expected: FAIL before the function exists.
 
 - [ ] **Step 4: Implement and call the doctor gate immediately after build**
 
-The stability script does not reimplement ownership or residue logic. Add one report step named `operational_doctor`; unknown/unhealthy fails the audit.
+The stability script does not reimplement ownership or residue logic. Add one report step named `operational_doctor`; unknown/unhealthy fails the audit. Keep that step on the inherited live environment. For ordinary/race Go regression subprocesses, explicitly pin `HARNESS_ROOT` to the audited checkout and isolate the other three harness paths so the final gate cannot recreate the residue it just removed.
 
 - [ ] **Step 5: Update narrow docs**
 
@@ -787,7 +789,7 @@ Journal appends and fsyncs the file and parent directory. Each operation advance
 
 - [ ] **Step 3: Test the runner against synthetic resources**
 
-Test stable digest volatility, identity drift, duplicate/symlink rejection, journal order/fsync, started recovery, local/remote ref argv, reset ambiguity, and redaction of task/message content.
+Test stable digest volatility, identity drift, duplicate/symlink rejection, journal order/fsync, started recovery, planned-exception and started reset recovery against Git-only worktree drift, locked force-release CAS proof, hostile inherited environment overrides, bundle-executor tampering, singleton/equal fetch-push authority, exact sealed fetch/prune argv, operation-order phase projections across every Orca/Git/IssueOps/state inventory, pre-stop new-task rejection, post-reset new-owner rejection before ref deletion, blank/mismatched environment-terminal rejection before observation, reset ambiguity, and redaction of task/message content.
 
 Run:
 
@@ -797,19 +799,21 @@ python3 "$BUNDLE_ROOT/test_reconcile.py"
 
 Expected: PASS before live observation.
 
+After the implementation commit is clean and equals `refs/remotes/origin/main`, run `simulate_copy.py`. It builds its own `0700` `-trimpath` executor, verifies SHA-256 plus VCS revision and `modified=false`, then exercises the exact binding deletion, every force-release CAS, and the approved test-session transaction against an online backup of the live SQLite database. It must never invoke the ignored repository `bin/agent-harness`.
+
 - [ ] **Step 4: Collect the live manifest and backups without deletion**
 
 The runner:
 
-- fetches/prunes tracking refs and records direct server ref OIDs;
+- requires an explicit-URL, heads-only, `--no-tags --no-write-fetch-head` fetch/prune dry-run to be empty, records direct server ref OIDs, and proves each remote OID is already present in the local object database without mutating the source checkout;
 - records every Git worktree path/branch/HEAD/clean state;
 - creates/verifies `git/all-refs.bundle`;
 - uses `sqlite3.Connection.backup()` and verifies backup `PRAGMA integrity_check == ok`;
-- pins canonical SHA-256 for every IssueOps/session row;
+- pins exact raw-byte SHA-256 and key-sorted compact UTF-8 canonical SHA-256 (without HTML escaping) for every IssueOps/session row;
 - writes redacted Orca projections and `limitations.json`;
 - copies/hashes unexpected state artifacts into `state/backup/`;
-- pins the exact current terminal and all approved targets;
-- pins runner/test script hashes.
+- requires the caller terminal argument to equal a non-empty valid `ORCA_TERMINAL_HANDLE` before observation, then pins that exact current terminal and all approved targets; every later live-validation/apply/final CLI entry rechecks the same environment-to-seal equality before mutation or readback;
+- builds a private executor from the clean sealed HEAD and pins its SHA-256 plus Go VCS revision alongside runner/test script hashes.
 
 - [ ] **Step 5: Seal and independently validate**
 
@@ -842,7 +846,7 @@ Invoke `orca terminal close --terminal EXACT_HANDLE --json` per manifest target.
 
 - [ ] **Step 3: Stop the active coordinator run once**
 
-Invoke `orca orchestration run-stop --json`, journal bounded result, and verify no new task/terminal/dispatch. On ambiguity, stop for readback instead of repeating.
+Before invoking anything, require the exact journal-derived Orca/Git/IssueOps/state phase projection; a new task/terminal/dispatch/worktree or any other unsealed resource prevents the stop call. Then invoke `orca orchestration run-stop --json`, journal bounded result, and verify the same exact post-operation projection. On ambiguity, stop for readback instead of repeating.
 
 - [ ] **Step 4: Remove each non-main Orca worktree by exact ID**
 
@@ -854,7 +858,7 @@ Two consecutive stable projections must equal each other and the manifest's expe
 
 - [ ] **Step 6: Reset orchestration once and verify zero**
 
-Invoke `orca orchestration reset --all --json` exactly once. Verify all-task `0`, dispatched `0`, gate `0`, inbox limit-one count/rows `0`, and exact current terminal remains. Ambiguous reset is read back and never auto-retried.
+Invoke `orca orchestration reset --all --json` exactly once. Verify all-task `0`, dispatched `0`, gate `0`, inbox count/rows `0`, the exact current terminal, and exact singleton canonical Git/Orca source worktrees. Every later fence requires that same exact projection. Ambiguous reset is read back and never auto-retried.
 
 ---
 
@@ -867,23 +871,19 @@ Invoke `orca orchestration reset --all --json` exactly once. Verify all-task `0`
 
 - [ ] **Step 1: Force-release every pinned non-done record after digest CAS**
 
-For each row, recompute canonical SQLite JSON digest and require manifest equality. Then invoke:
+Delete only the manifest-pinned canonical-repository bindings with the exact SQLite transaction CAS. For each record, pass its sealed raw and canonical digests to the bundle-private clean-HEAD executor; the core re-reads both digests and proves zero repository bindings under the same state-root span lock before mutating:
 
 ```text
-/Users/m16khb/Workspace/agent-harness/bin/agent-harness issueops force-release --id EXACT_ID --reason operational-reconciliation-2026-07-19 --json
+BUNDLE_ROOT/bin/agent-harness issueops force-release --id EXACT_ID --reason operational-reconciliation-2026-07-19 --expected-raw-sha256 RAW_SHA256 --expected-canonical-sha256 CANONICAL_SHA256 --json
 ```
 
-Read back `phase=done`, exact reason, timestamp, and expected cleanup/orphan stamps. Journal separately. New/drifted records stop the stage.
+Pin `HARNESS_STATE_DIR`, `HARNESS_ROOT`, `HARNESS_DAEMON_DIR`, and `HARNESS_WORKER_DIR` for every live executor call. Journal the locked before/after digests, binding counts, executor digest, `phase=done`, exact reason, timestamp, and expected cleanup/orphan stamps separately. New/drifted records or bindings stop the stage.
 
-- [ ] **Step 2: Remove stale primary/scoped bindings through existing locked code**
+Before and after every post-reset operation, recompute the journal-order phase projection. Sealed resources may be absent only after their own verified removal; all record IDs, session keys, other SQLite rows, local/remote refs and OIDs, and state artifact paths/hashes must otherwise remain exact. This fence runs before branch/ref/state mutation, so a newly created IssueOps owner cannot be discovered only after its branch was deleted.
 
-Run:
+- [ ] **Step 2: Delete only the approved stale test-session set by exact transaction**
 
-```bash
-./bin/agent-harness issueops cleanup stale --repo /Users/m16khb/Workspace/agent-harness --apply --prune-done 0s --json
-```
-
-Require zero canonical-repo `session` bindings and no deletion of done cycle records.
+Require every manifest-pinned test-session row to be present with its exact raw/canonical digest, delete the whole approved set under the shared SQLite span lock, and prove all are absent with unrelated rows unchanged. Partial presence, a new canonical-repository binding, or any digest drift stops without broad stale cleanup or done-record pruning.
 
 - [ ] **Step 3: Delete non-canonical local refs with expected-old OIDs**
 
@@ -891,7 +891,7 @@ For each sealed target invoke only `git update-ref -d refs/heads/EXACT_BRANCH EX
 
 - [ ] **Step 4: Delete non-canonical remote refs with leases**
 
-Re-read each server OID, require manifest equality, then invoke only `git push --force-with-lease=refs/heads/EXACT_BRANCH:EXPECTED_FULL_OID origin :refs/heads/EXACT_BRANCH`. Verify server absence and never target `main`.
+Re-read each server OID through the sealed explicit URL, require manifest equality, then invoke only `git push --force-with-lease=refs/heads/EXACT_BRANCH:EXPECTED_FULL_OID SEALED_PUSH_URL :refs/heads/EXACT_BRANCH`. Collection and every fence require exactly one fetch URL and one push URL with the same credential-free canonical authority. Verify server absence and never target `main`.
 
 - [ ] **Step 5: Relocate each state artifact after double hash verification**
 
@@ -899,7 +899,7 @@ Verify original identity/hash and backup hash, require empty destination, atomic
 
 - [ ] **Step 6: Prune registrations and run final runner invariant check**
 
-Run `git worktree prune`, `git fetch --prune origin`, then `reconcile.py verify-final`. Require no new unaccounted resource.
+Run `git worktree prune`, then fetch/prune only `+refs/heads/*:refs/remotes/origin/*` from `SEALED_FETCH_URL` with `--no-tags --no-write-fetch-head`, then run `reconcile.py verify-final`. The journaled mutation and its dry-run readback must use the exact same sealed URL/refspec; require no new unaccounted resource.
 
 ---
 

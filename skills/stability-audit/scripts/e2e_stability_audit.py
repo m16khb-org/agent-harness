@@ -432,11 +432,24 @@ def regression(report: dict[str, Any], race: bool, self_verify: bool) -> None:
     commands.append(["go", "build", "-o", str(BIN), "./cmd/harness"])
     details = []
     ok = True
-    for cmd in commands:
-        res = run(cmd, timeout=REGRESSION_TIMEOUT_SECONDS)
-        step_ok = res["returncode"] == 0
-        ok = ok and step_ok
-        details.append({"cmd": cmd, "ok": step_ok, "stderr_tail": res["stderr"][-1000:], "stdout_tail": res["stdout"][-1000:], "duration_ms": res["duration_ms"]})
+    with tempfile.TemporaryDirectory(prefix="agent-harness-stability-regression-") as td:
+        isolated_root = Path(td)
+        isolated_env = {
+            "HARNESS_STATE_DIR": str(isolated_root / "state"),
+            "HARNESS_ROOT": str(ROOT),
+            "HARNESS_DAEMON_DIR": str(isolated_root / "daemon"),
+            "HARNESS_WORKER_DIR": str(isolated_root / "worker"),
+        }
+        for key, path in isolated_env.items():
+            if key == "HARNESS_ROOT":
+                continue
+            Path(path).mkdir(mode=0o700)
+        for cmd in commands:
+            env = isolated_env if cmd[:2] == ["go", "test"] else None
+            res = run(cmd, env=env, timeout=REGRESSION_TIMEOUT_SECONDS)
+            step_ok = res["returncode"] == 0
+            ok = ok and step_ok
+            details.append({"cmd": cmd, "ok": step_ok, "stderr_tail": res["stderr"][-1000:], "stdout_tail": res["stdout"][-1000:], "duration_ms": res["duration_ms"]})
     if self_verify:
         with tempfile.TemporaryDirectory() as td:
             res = run(

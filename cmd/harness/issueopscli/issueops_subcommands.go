@@ -347,9 +347,45 @@ func runIssueOpsForceRelease(args []string) error {
 	fs := flag.NewFlagSet("issueops force-release", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
 	reason := fs.String("reason", "", "reason for force-release")
+	expectedRawSHA256 := fs.String("expected-raw-sha256", "", "sealed raw record SHA-256 (requires expected-canonical-sha256)")
+	expectedCanonicalSHA256 := fs.String("expected-canonical-sha256", "", "sealed canonical record SHA-256 (requires expected-raw-sha256)")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
+	}
+	var rawDigestProvided, canonicalDigestProvided bool
+	fs.Visit(func(option *flag.Flag) {
+		switch option.Name {
+		case "expected-raw-sha256":
+			rawDigestProvided = true
+		case "expected-canonical-sha256":
+			canonicalDigestProvided = true
+		}
+	})
+	casRequested := rawDigestProvided || canonicalDigestProvided
+	if casRequested && (!rawDigestProvided || !canonicalDigestProvided) {
+		err := fmt.Errorf("expected-raw-sha256 and expected-canonical-sha256 must be provided together")
+		if *jsonOut {
+			_ = printIssueOpsErrorJSON(err)
+		}
+		return err
+	}
+	if casRequested {
+		result, err := core.ForceReleaseIssueOpsCAS(core.IssueOpsStateRoot(), *id, *reason, core.ForceReleaseCASRequest{
+			ExpectedRawSHA256:       *expectedRawSHA256,
+			ExpectedCanonicalSHA256: *expectedCanonicalSHA256,
+		})
+		if err != nil {
+			if *jsonOut {
+				_ = printIssueOpsErrorJSON(err)
+			}
+			return err
+		}
+		if *jsonOut {
+			return printJSON(result)
+		}
+		fmt.Printf("%s %s %s\n", result.Record.ID, result.Record.Phase, result.Record.Repo)
+		return nil
 	}
 	record, err := core.ForceReleaseIssueOps(core.IssueOpsStateRoot(), *id, *reason)
 	return printIssueOpsResult(record, *jsonOut, err)

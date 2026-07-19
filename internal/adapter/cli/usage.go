@@ -98,7 +98,7 @@ Usage:
   agent-harness issueops pr-readiness --id ID [--strict] [--json]
   agent-harness issueops cleanup status --id ID [--merged] [--json]
   agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]
-  agent-harness issueops force-release --id ID --reason REASON [--json]
+  agent-harness issueops force-release --id ID --reason REASON [--expected-raw-sha256 SHA256 --expected-canonical-sha256 SHA256] [--json]
   agent-harness issueops remote score --input PATH [--judge none|file] [--judge-file PATH] [--json]
   agent-harness issueops remote render-template --kind issue|child|pr --template KIND --title TEXT --provider github|gitlab --field key=value... [--score-file PATH] [--json]
   agent-harness issueops remote create-issue --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]

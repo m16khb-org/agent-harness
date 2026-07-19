@@ -328,6 +328,8 @@ Cross-system residue must not acquire a second truth source in stale scan, statu
 - The 15-minute boundary is diagnostic only. Missing/stale heartbeat must not interrupt a worker, delete a resource, or promote stale scan to `confirmed-stale`/auto-release; destructive eligibility still requires the existing strong signal and fresh locked re-probe.
 - Orca absence is optional only when no durable cycle claims Orca resources. Never turn a missing or incomplete Orca inventory into an empty healthy list.
 - One-time global cleanup evidence lives in an external `0700` recovery bundle. Git/SQLite copies can be restore-tested, but Orca snapshot is archival-only: the public CLI has no conditional reset/import/restore and a last-moment external actor race remains. Stop on pre-reset digest drift; after reset, continue idempotently from the append-only journal instead of guessing rollback.
+- A destructive IssueOps release must not rely on a runner-side digest check followed by ordinary `force-release`: record or session-binding state can change in that gap. Use the paired raw/canonical digest CAS mode, require repository binding zero under the same state-root span lock, and journal the locked before/after proof. The CAS path never performs a post-lock unbind.
+- A sealed cleanup must also seal its authorities: invoke a bundle-private clean-HEAD executor by hash/VCS revision, override live state/root/daemon/worker environment paths, require singleton equal fetch/push authorities, and push to the sealed explicit URL. Fetch/prune readiness, mutation, and readback must share that URL plus a heads-only refspec, `--no-tags`, and `--no-write-fetch-head`; never reopen mutable `origin` refspec/tag authority. Ignored `bin/agent-harness`, inherited environment, and mutable remote names are not execution evidence.
 
 ## 24. IssueOps 도메인 어휘를 CLI 서브커맨드로 착각
 
@@ -652,12 +654,20 @@ Orca completion reconciliation은 message `from_handle`이 원래 dispatch `assi
 ## Stability audit 명령과 timeout을 현재 공개 계약·측정치에 맞출 것
 
 - top-level install audit에 과거 `bootstrap --sync`를 남기지 않는다. 현재 install 표면은 `bootstrap`/`install-native`; docs sync는 `project bootstrap --sync`다.
+- live 정합성 gate인 `operational_doctor`는 상위 live harness 환경을 그대로 사용해야 한다. 반대로 audit 내부 ordinary/race `go test`는 `HARNESS_ROOT`를 exact audited source checkout으로 고정하고 `HARNESS_STATE_DIR`, `HARNESS_DAEMON_DIR`, `HARNESS_WORKER_DIR`를 audit 전용 임시 루트로 격리한다. live 환경으로 회귀 테스트를 실행하면 성공한 테스트가 IssueOps session row를 다시 만들어 최종 정리가 영구히 종료되지 않으며, `HARNESS_ROOT`를 빈 임시 경로로 바꾸면 source identity를 잃어 정상 회귀 검사가 실패한다.
 - full repository test timeout은 가장 느린 정상 package와 race의 관측 상한보다 커야 한다. 현재 regression timeout은 300초다.
 - `self-verify --full --iterations=10`은 매 seed마다 test/race를 실제 실행한다. 현재 약 3712초가 관측됐으므로 audit timeout은 5400초다.
 - timeout 실패는 마지막 성공 package, elapsed time, 살아 있는 child command를 확인해 hang과 짧은 wrapper 상한을 구분한다.
 - 장기 self-verify가 nonzero 또는 JSON parse 실패하면 audit report에 exit code, timeout 여부, parse error, parsed 종료 필드, bounded stdout/stderr tail을 남긴다. `summary: null`만 남기면 제품 실패와 audit 해석 실패를 구분할 수 없다.
 - JSON parse를 `returncode == 0` 분기 안에 두지 않는다. nonzero가 바로 구조화된 실패 summary를 보존해야 하는 경우이며, parse와 성공 판정은 별도 단계다.
 - deterministic stability gate에서 `self-verify`를 호출할 때는 `--llm-eval=false`를 명시한다. 코드 250단계가 모두 성공해도 암묵적 LLM gate의 외부 실패가 command exit를 뒤집을 수 있다.
+
+## Sealed reconciliation에서 target CAS만으로 전체 소유권을 보호했다고 간주하지 말 것
+
+- 개별 ref OID나 IssueOps record digest가 그대로여도 seal 이후 새 task, record, session binding이 같은 branch/worktree를 새로 소유할 수 있다. target CAS만 확인하면 새 owner를 final gate에서야 발견해 이미 봉인된 ref/state를 삭제한 뒤가 된다.
+- 매 operation 전후에 journal order로 exact phase projection을 계산하고 Orca terminal/worktree/task/dispatch/gate/inbox, Git worktree/local·remote ref, IssueOps record/session/other row, state artifact를 모두 비교한다. `started` recovery는 해당 operation의 before/after 중 하나만 허용하며, inventory drift를 target readback 성공으로 삼켜 `verified`로 전진하지 않는다.
+- collection의 current terminal argument는 추측 가능한 입력이 아니다. observation 전에 non-empty valid `ORCA_TERMINAL_HANDLE`과 exact equality를 요구하고, 각 live-validation/apply/final CLI에서도 sealed handle과 다시 비교한다. 그렇지 않으면 같은 source worktree의 다른 connected/writable terminal을 보존 대상으로 잘못 봉인하거나, 이후 다른 terminal에서 bundle을 재개해 실제 operator terminal을 close target으로 만들 수 있다.
+- Python canonical JSON과 맞추는 Go CAS decoder는 `UseNumber`를 사용한다. 일반 `json.Unmarshal(any)`의 `float64` 변환은 `2^53`보다 큰 integer를 반올림해 raw가 같은 record의 canonical SHA-256을 다른 값으로 계산한다.
 
 ## dropped child와 done parent를 Stop orchestration에 재진입시키지 말 것
 

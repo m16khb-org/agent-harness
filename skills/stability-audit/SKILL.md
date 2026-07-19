@@ -12,7 +12,7 @@ Prove agent-harness is operationally stable across install/update, native host i
 ## Safety model
 
 - Default to evidence-first audit; do not kill processes or alter user/global config unless the user asked to resolve issues or the stale target is clearly owned by this harness checkout.
-- Use temp `HARNESS_STATE_DIR`, `HARNESS_DAEMON_DIR`, and `HARNESS_WORKER_DIR` for stress tests.
+- Keep the top-level `operational_doctor` on the inherited live harness environment. For regression/stress tests, pin `HARNESS_ROOT` to the exact audited source checkout and use dedicated temporary `HARNESS_STATE_DIR`, `HARNESS_DAEMON_DIR`, and `HARNESS_WORKER_DIR`; successful tests must not write IssueOps sessions back into the state being audited.
 - Never kill active `codex`, `claude`, `tmux`, or unrelated MCP processes. Only clean up confirmed stale `agent-harness`/legacy `bin/harness` daemons or temp watchers after recording evidence.
 - Treat host-level install commands as side-effecting. Use dry-run first; run real install only when the user asked for install E2E or the current task is explicitly about installed hooks/MCP.
 
@@ -71,6 +71,7 @@ The script builds the current binary and immediately runs the existing top-level
    - Sample daemon RSS after warmup; treat repeated monotonic growth across multiple rounds as suspicious, not a single Go runtime warmup jump.
 
 7. **Regression gate**
+   - Pin `HARNESS_ROOT` to the audited checkout and the three mutable harness paths to one audit-owned temporary root for ordinary/race Go tests. Compare the outer IssueOps DB/session projection before and after when auditing a cleanup workflow.
    - Run at minimum:
      - `go test ./... -count=1`
      - `go test -race ./... -count=1` for code/runtime changes

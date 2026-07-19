@@ -233,7 +233,7 @@ Stale scan은 자체 liveness 규칙을 다시 구현하지 않고 cycle별 oper
 
 ### 8.3 Stability audit
 
-stability audit script는 별도 정합성 계산을 하지 않고 마지막 binary의 top-level doctor를 호출한다. 현재 session을 보존해야 하면 환경의 exact terminal handle을 `--preserve-terminal`로 전달한다. doctor가 unhealthy이거나 operational inventory가 unknown이면 audit도 실패한다.
+stability audit script는 별도 정합성 계산을 하지 않고 마지막 binary의 top-level doctor를 호출한다. 현재 session을 보존해야 하면 환경의 exact terminal handle을 `--preserve-terminal`로 전달한다. doctor가 unhealthy이거나 operational inventory가 unknown이면 audit도 실패한다. 이 doctor 호출만 상위 live harness 환경을 상속한다. audit 내부 ordinary/race Go regression은 `HARNESS_ROOT`를 exact audited source checkout으로 고정하고 `HARNESS_STATE_DIR`, `HARNESS_DAEMON_DIR`, `HARNESS_WORKER_DIR`는 audit 전용 임시 루트로 격리해 live IssueOps session projection을 바꾸지 않아야 한다.
 
 ## 9. 일회 전체 정리 프로토콜
 
@@ -281,23 +281,25 @@ orca/limitations.json
 - repo fingerprint, canonical path, canonical branch와 HEAD
 - 모든 Git worktree path/branch/HEAD/clean state
 - 삭제할 local/remote ref와 expected full OID
-- 모든 IssueOps record ID, phase, handoff identity, record digest, session binding
+- 모든 IssueOps record ID, phase, handoff identity, raw/canonical record digest, session binding
 - Orca runtime ID, worktree ID/instance/path, terminal handle/PTY/tab/leaf, task/dispatch ID/status, gate ID, bounded message observation
 - 보존할 현재 terminal handle
 - 이동할 state artifact path와 SHA-256
 - 전체 stable projection digest
 
-Generated timestamp와 read latency 같은 volatile field는 stable digest에서 제외한다. destructive 단계는 target 하나마다 현재 identity가 manifest와 exact 일치하는지 다시 확인한다. 새 resource, OID drift, record digest drift, incomplete inventory가 있으면 그 단계 전에 중단하고 새 manifest를 만들지 여부를 사용자 범위 안에서 다시 판단한다.
+Generated timestamp와 read latency 같은 volatile field는 stable digest에서 제외한다. destructive 단계는 target 하나마다 현재 identity가 manifest와 exact 일치하는지 다시 확인한다. 매 operation 전후에는 journal order로 계산한 exact phase projection을 적용해 Orca terminal/worktree/task/dispatch/gate/inbox, Git worktree와 local/remote ref, IssueOps record/session/other row, state artifact를 모두 다시 읽는다. 이미 journaled된 제거·repair·release만 허용하며 신규 ID/key/path/ref, 남아 있는 resource의 digest/OID/hash drift, incomplete inventory가 있으면 다음 mutation을 호출하기 전에 중단한다. `started` recovery는 해당 operation의 exact before/after projection 중 하나만 허용한다.
+
+Raw digest는 SQLite에 저장된 JSON bytes 그대로의 SHA-256이다. Canonical digest는 key-sorted compact UTF-8 JSON의 SHA-256이며 `<`, `>`, `&`를 HTML escape하지 않는다. runner와 locked core CAS가 같은 규칙을 사용해야 한다.
 
 ### 9.3 Quiescence와 Orca reset 경계
 
-1. 현재 operator terminal을 환경의 exact `ORCA_TERMINAL_HANDLE`과 inventory로 고정한다.
+1. observation을 시작하기 전에 non-empty valid `ORCA_TERMINAL_HANDLE`을 읽고 caller argument와 exact equality를 요구한 뒤, 같은 handle을 inventory의 현재 operator terminal로 고정한다. 이후 `validate-live`, 각 `apply`, `verify-final` CLI 진입도 환경 handle과 sealed handle의 exact equality를 mutation/readback 전에 다시 요구한다.
 2. 다른 terminal을 exact handle로 close/stop하고 absence 또는 disconnected/quiescent 상태를 재확인한다.
 3. active Orca coordinator run을 `orchestration run-stop`으로 멈춘다.
 4. non-main Orca worktree를 exact ID로 제거하고 Git/Orca 양쪽 inventory에서 absence를 확인한다.
 5. 전체 stable projection을 연속 두 번 읽어 동일 digest인지 확인한다.
 6. 두 번째 digest가 manifest의 remaining-state projection과 일치할 때만 `orca orchestration reset --all --json`을 한 번 실행한다.
-7. reset 뒤 task 0, gate 0, inbox `limit=1`에서 message 0, dispatched 0을 즉시 확인한다.
+7. reset 뒤 task/gate/message/dispatched가 모두 0이고 current terminal과 canonical Git/Orca source worktree가 각각 정확히 하나인 sealed projection과 완전히 같은지 확인한다. 이후 모든 mutation fence도 이 exact projection을 요구한다.
 
 Orca reset은 rollback하지 않는다. invocation timeout/transport ambiguity가 발생하면 reset을 자동 재호출하지 않고 current zero/nonzero observations와 journal을 읽어 forward recovery한다.
 
@@ -310,10 +312,10 @@ Orca reset은 rollback하지 않는다. invocation timeout/transport ambiguity�
 3. current terminal 외 terminal을 닫고 coordinator run을 멈춘다.
 4. non-main Orca/Git worktree를 exact identity로 제거한다.
 5. Orca full digest 두 번 일치 후 orchestration reset을 실행한다.
-6. manifest에 고정된 각 non-done IssueOps record를 fresh re-read하고 exact digest가 같을 때 명시 reason으로 force-release한다.
-7. 모든 primary/scoped session binding을 재조회해 done/absent owner binding을 제거하고 binding 0을 확인한다.
+6. manifest에 고정된 primary/scoped binding만 SQLite exact transaction CAS로 제거한다.
+7. collection 단계에서 clean sealed HEAD로 빌드해 hash/VCS seal한 bundle-private executor를 사용해, 각 non-done IssueOps record의 raw/canonical digest와 repository binding 0을 같은 state-root lock 안에서 재검증하는 CAS mode로 force-release한다. live executor 환경의 state/root/daemon/worker 경로는 명시적으로 고정한다.
 8. non-canonical local ref를 `git update-ref -d <ref> <expected-old-oid>`로 삭제한다.
-9. non-canonical remote ref를 `git push --force-with-lease=<ref>:<expected-oid> origin :<ref>`로 삭제한다.
+9. fetch/push URL이 각각 singleton이며 동일 canonical authority인지 다시 확인한 뒤 non-canonical remote ref를 `git push --force-with-lease=<ref>:<expected-oid> <sealed-explicit-push-url> :<ref>`로 삭제한다.
 10. state artifact의 검증된 backup copy를 유지한 채 original을 bundle의 별도 `state/relocated/` target으로 move하고 original path absence와 양쪽 hash를 확인한다.
 11. Git/IssueOps/Orca/state/doctor 전체 inventory를 처음부터 다시 검증한다.
 

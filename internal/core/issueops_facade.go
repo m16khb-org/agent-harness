@@ -442,6 +442,13 @@ func ForceReleaseIssueOps(stateRoot, id, reason string) (IssueOpsRecord, error) 
 	return issueops.ForceReleaseIssueOps(stateRoot, id, reason)
 }
 
+type ForceReleaseCASRequest = issueops.ForceReleaseCASRequest
+type ForceReleaseCASResult = issueops.ForceReleaseCASResult
+
+func ForceReleaseIssueOpsCAS(stateRoot, id, reason string, req ForceReleaseCASRequest) (ForceReleaseCASResult, error) {
+	return issueops.ForceReleaseIssueOpsCAS(stateRoot, id, reason, req)
+}
+
 func ScanStaleIssueOpsCycles(req IssueOpsStaleScanRequest) IssueOpsStaleScanResult {
 	return issueops.ScanStaleIssueOpsCycles(req)
 }

@@ -19,6 +19,7 @@ func TestResponseContractsGolden(t *testing.T) {
 	auditLog := filepath.Join(t.TempDir(), "audit.jsonl")
 	workerDir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateDir)
+	t.Setenv("HARNESS_DAEMON_DIR", filepath.Join(stateDir, "daemon"))
 	t.Setenv("HARNESS_AUDIT_LOG", auditLog)
 	t.Setenv("HARNESS_WORKER_DIR", workerDir)
 	t.Setenv("HOME", homeDir)

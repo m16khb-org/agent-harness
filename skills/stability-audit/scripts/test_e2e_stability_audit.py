@@ -1,6 +1,7 @@
 import contextlib
 import importlib.util
 import json
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -202,6 +203,61 @@ class StabilityAuditScriptTest(unittest.TestCase):
         self.assertIn("--progress=jsonl", self_verify_commands[0])
         self.assertIn("--llm-eval=false", self_verify_commands[0])
         self.assertGreaterEqual(audit.FULL_SELF_VERIFY_TIMEOUT_SECONDS, 5400)
+
+    def test_regression_isolates_harness_state_while_operational_doctor_stays_live(self) -> None:
+        audit = load_audit_module()
+        calls: list[tuple[list[str], dict[str, str] | None]] = []
+
+        with tempfile.TemporaryDirectory() as live_td:
+            live_root = Path(live_td)
+            live_db = live_root / "issueops" / "harness.db"
+            live_db.parent.mkdir(parents=True)
+            live_db.write_text("live-session-projection")
+            live_env = {
+                "HARNESS_STATE_DIR": str(live_root),
+                "HARNESS_ROOT": str(live_root / "root"),
+                "HARNESS_DAEMON_DIR": str(live_root / "daemon"),
+                "HARNESS_WORKER_DIR": str(live_root / "worker"),
+            }
+
+            def fake_run(cmd, *, env=None, **_kwargs):
+                call = [str(arg) for arg in cmd]
+                captured_env = dict(env) if env is not None else None
+                calls.append((call, captured_env))
+                if call[:2] == ["go", "test"]:
+                    isolated_db = Path(captured_env["HARNESS_STATE_DIR"]) / "issueops" / "harness.db"
+                    isolated_db.parent.mkdir(parents=True, exist_ok=True)
+                    isolated_db.write_text("isolated-test-session")
+                stdout = '{"ok": true, "healthy": true, "issues": []}' if "doctor" in call else ""
+                return {
+                    "returncode": 0,
+                    "stdout": stdout,
+                    "stderr": "",
+                    "duration_ms": 1,
+                    "timeout": False,
+                }
+
+            report = {"steps": [], "failures": []}
+            with mock.patch.dict(audit.os.environ, live_env, clear=True):
+                with mock.patch.object(audit, "run", side_effect=fake_run):
+                    audit.operational_doctor(report)
+                    audit.regression(report, race=True, self_verify=False)
+
+            self.assertEqual(live_db.read_text(), "live-session-projection")
+
+        doctor_calls = [(cmd, env) for cmd, env in calls if "doctor" in cmd]
+        self.assertEqual(len(doctor_calls), 1)
+        self.assertIsNone(doctor_calls[0][1])
+
+        go_test_envs = [env for cmd, env in calls if cmd[:2] == ["go", "test"]]
+        self.assertEqual(len(go_test_envs), 2)
+        for isolated_env in go_test_envs:
+            self.assertIsNotNone(isolated_env)
+            self.assertEqual(set(isolated_env), set(live_env))
+            self.assertEqual(isolated_env["HARNESS_ROOT"], str(audit.ROOT))
+            for key in ("HARNESS_STATE_DIR", "HARNESS_DAEMON_DIR", "HARNESS_WORKER_DIR"):
+                self.assertNotEqual(isolated_env[key], live_env[key])
+        self.assertEqual(go_test_envs[0], go_test_envs[1])
 
     def test_regression_preserves_self_verify_failure_diagnostics(self) -> None:
         audit = load_audit_module()
