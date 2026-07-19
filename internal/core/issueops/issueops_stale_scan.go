@@ -11,6 +11,7 @@ import (
 	"agent-harness/internal/core/issueops/readinesspaths"
 	"agent-harness/internal/core/issueops/session"
 	"agent-harness/internal/core/issueops/stalescan"
+	"agent-harness/internal/core/operationalhealth"
 	"agent-harness/internal/core/preflight"
 	"context"
 )
@@ -47,14 +48,31 @@ func ScanStaleIssueOpsCycles(req IssueOpsStaleScanRequest) IssueOpsStaleScanResu
 		result.Errors = append(result.Errors, "repo is required")
 		return result
 	}
+	now := time.Now()
 	probe := stalescan.Probe{
 		WorktreeDirExists:  readinesspaths.WorktreePathValid,
 		WorktreeHeadBranch: pathutil.GitBranchFromHead,
 		RemoteBranchExists: issueOpsRemoteBranchExists,
-		Now:                time.Now,
+		Now:                func() time.Time { return now },
 	}
 	for _, record := range active.NonDoneCyclesForRepo(issueOpsActiveStore(), repo) {
 		finding, ok := stalescan.Classify(record, probe, req.MaxAge)
+		if operationalhealth.EvaluateCycleAuthority(issueOpsOperationalCycle(record), operationalhealth.Options{Now: now}) == operationalhealth.AuthorityDead {
+			if ok {
+				finding.Reasons = appendUniqueStaleReason(finding.Reasons, operationalhealth.FindingDeadOwner)
+			} else {
+				finding = stalescan.Finding{
+					ID:           record.ID,
+					Branch:       strings.TrimSpace(record.Branch),
+					Phase:        string(record.Phase),
+					Category:     stalescan.CategoryNeedsReview,
+					Reasons:      []string{operationalhealth.FindingDeadOwner},
+					WorktreePath: strings.TrimSpace(record.WorktreePath),
+					Releasable:   false,
+				}
+				ok = true
+			}
+		}
 		if !ok {
 			continue
 		}
@@ -143,6 +161,59 @@ func ScanStaleIssueOpsCycles(req IssueOpsStaleScanRequest) IssueOpsStaleScanResu
 		pruneDoneCycles(repo, req.PruneDoneAge, &result)
 	}
 	return result
+}
+
+func issueOpsOperationalCycle(record model.IssueOpsRecord) operationalhealth.Cycle {
+	cycle := operationalhealth.Cycle{
+		ID:           strings.TrimSpace(record.ID),
+		Repo:         pathutil.CleanAbsPath(record.Repo),
+		Branch:       strings.TrimSpace(record.Branch),
+		Phase:        string(record.Phase),
+		WorktreePath: pathutil.CleanAbsPath(record.WorktreePath),
+	}
+	if record.ExecutionHandoff == nil {
+		cycle.LastHeartbeatAt = parseIssueOpsTime(record.LastHeartbeatAt)
+		return cycle
+	}
+
+	handoffRecord := record.ExecutionHandoff
+	cycle.HandoffState = strings.TrimSpace(handoffRecord.State)
+	cycle.Attempt = handoffRecord.Attempt
+	cycle.OwnershipEpoch = strings.TrimSpace(handoffRecord.OwnershipEpoch)
+	cycle.ContextSHA256 = strings.TrimSpace(handoffRecord.ContextSHA256)
+	if handoffRecord.WorkerSession != nil {
+		cycle.WorkerSessionID = strings.TrimSpace(handoffRecord.WorkerSession.SessionID)
+		cycle.WorkerAgentID = strings.TrimSpace(handoffRecord.WorkerSession.AgentID)
+	}
+	if handoffRecord.Orca != nil {
+		cycle.OrcaWorktreeID = strings.TrimSpace(handoffRecord.Orca.WorktreeID)
+		cycle.OrcaWorktreeInstanceID = strings.TrimSpace(handoffRecord.Orca.WorktreeInstanceID)
+		cycle.TerminalHandle = strings.TrimSpace(handoffRecord.Orca.WorkerTerminalHandle)
+		cycle.PTYID = strings.TrimSpace(handoffRecord.Orca.WorkerPTYID)
+		cycle.TaskID = strings.TrimSpace(handoffRecord.Orca.TaskID)
+		cycle.DispatchID = strings.TrimSpace(handoffRecord.Orca.DispatchID)
+		if cycle.WorktreePath == "" {
+			cycle.WorktreePath = pathutil.CleanAbsPath(handoffRecord.Orca.WorktreePath)
+		}
+	}
+	if cycle.WorktreePath == "" {
+		cycle.WorktreePath = pathutil.CleanAbsPath(handoffRecord.WorkerRoot)
+	}
+	heartbeat := strings.TrimSpace(handoffRecord.LastHeartbeatAt)
+	if heartbeat == "" {
+		heartbeat = strings.TrimSpace(record.LastHeartbeatAt)
+	}
+	cycle.LastHeartbeatAt = parseIssueOpsTime(heartbeat)
+	return cycle
+}
+
+func appendUniqueStaleReason(reasons []string, reason string) []string {
+	for _, existing := range reasons {
+		if existing == reason {
+			return reasons
+		}
+	}
+	return append(reasons, reason)
 }
 
 // issueOpsGitWorktreeCleanup runs git worktree prune on the repo and, for

@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"agent-harness/internal/core/issueops/stalescan"
 )
 
 // TestWithIssueOpsLockSpanDBPersists verifies that withIssueOpsLock creates the
@@ -255,6 +257,9 @@ func TestScanStaleApplyReleasesConfirmedStaleAfterReprobe(t *testing.T) {
 	res := ScanStaleIssueOpsCycles(IssueOpsStaleScanRequest{Repo: repo, Apply: true})
 	if !res.OK {
 		t.Fatalf("scan should succeed, got %+v", res)
+	}
+	if len(res.Findings) != 1 || res.Findings[0].Category != stalescan.CategoryConfirmedStale || !res.Findings[0].Releasable {
+		t.Fatalf("strong worktree evidence must remain confirmed-stale and releasable, got %+v", res.Findings)
 	}
 	if len(res.Released) != 1 || res.Released[0] != id {
 		t.Fatalf("confirmed-stale cycle should be released after re-probe, got released=%v findings=%+v errors=%v", res.Released, res.Findings, res.Errors)
