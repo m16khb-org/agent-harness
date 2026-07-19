@@ -688,7 +688,8 @@ type worktreePayload struct {
 }
 
 func (w worktreePayload) portValue() port.OrcaWorktree {
-	return port.OrcaWorktree{ID: w.ID, InstanceID: w.InstanceID, RepoID: w.RepoID, Path: w.Path, Head: w.Head, Branch: w.Branch, Name: w.DisplayName, Comment: w.Comment, BaseRef: w.BaseRef, Issue: w.LinkedIssue, GitLabIssue: w.LinkedGitLabIssue}
+	branch := strings.TrimPrefix(strings.TrimSpace(w.Branch), "refs/heads/")
+	return port.OrcaWorktree{ID: w.ID, InstanceID: w.InstanceID, RepoID: w.RepoID, Path: w.Path, Head: w.Head, Branch: branch, Name: w.DisplayName, Comment: w.Comment, BaseRef: w.BaseRef, Issue: w.LinkedIssue, GitLabIssue: w.LinkedGitLabIssue}
 }
 
 type terminalPayload struct {

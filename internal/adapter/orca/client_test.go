@@ -551,6 +551,19 @@ func TestClientDecodesRuntimeRolloverStableTerminalAndWorktreeIdentity(t *testin
 	}
 }
 
+func TestClientNormalizesWorktreeHeadRefBranch(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca worktree list --repo path:/repo --limit 512 --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"worktrees":[{"id":"wt-main","instanceId":"instance-main","repoId":"repo-1","path":"/repo","head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"refs/heads/main"}],"totalCount":1,"truncated":false},"_meta":{"runtimeId":"runtime-1"}}`)}
+
+	worktrees, err := NewClient(runner).ListWorktrees(context.Background(), "/repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(worktrees) != 1 || worktrees[0].Branch != "main" {
+		t.Fatalf("normalized worktree branch = %#v", worktrees)
+	}
+}
+
 func TestStableVisualTabTitlesBoundsTotalInventoryAcrossLayouts(t *testing.T) {
 	layouts := make([]visualLayoutPayload, 2)
 	for i := 0; i < port.OrcaMaxBaselineIDs+1; i++ {
