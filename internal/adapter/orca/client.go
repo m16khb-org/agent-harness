@@ -196,8 +196,8 @@ func (c *Client) showRepo(ctx context.Context, repo string) (port.OrcaRepo, erro
 			} `json:"gitRemoteIdentity"`
 		} `json:"repo"`
 	}
-	_, err := c.runJSON(ctx, repo, readTimeout, []string{"orca", "repo", "show", "--repo", pathSelector(repo), "--json"}, &payload)
-	return port.OrcaRepo{ID: payload.Repo.ID, Path: payload.Repo.Path, Name: payload.Repo.DisplayName, RemoteName: payload.Repo.GitRemoteIdentity.RemoteName, WorktreeBasePath: payload.Repo.WorktreeBasePath}, err
+	runtimeID, err := c.runJSON(ctx, repo, readTimeout, []string{"orca", "repo", "show", "--repo", pathSelector(repo), "--json"}, &payload)
+	return port.OrcaRepo{RuntimeID: runtimeID, ID: payload.Repo.ID, Path: payload.Repo.Path, Name: payload.Repo.DisplayName, RemoteName: payload.Repo.GitRemoteIdentity.RemoteName, WorktreeBasePath: payload.Repo.WorktreeBasePath}, err
 }
 
 func (c *Client) ResolveRepo(ctx context.Context, repo string) (port.OrcaRepo, error) {
@@ -446,7 +446,7 @@ func (c *Client) listTasks(ctx context.Context, argv []string) ([]port.OrcaTask,
 		Tasks []taskPayload `json:"tasks"`
 		Count *int          `json:"count"`
 	}
-	_, err := c.runJSON(ctx, "", readTimeout, argv, &payload)
+	runtimeID, err := c.runJSON(ctx, "", readTimeout, argv, &payload)
 	if err != nil {
 		return nil, err
 	}
@@ -458,7 +458,9 @@ func (c *Client) listTasks(ctx context.Context, argv []string) ([]port.OrcaTask,
 		if strings.TrimSpace(task.ID) == "" || strings.TrimSpace(task.Status) == "" {
 			return nil, fmt.Errorf("Orca task row identity is incomplete")
 		}
-		result = append(result, task.portValue())
+		value := task.portValue()
+		value.RuntimeID = runtimeID
+		result = append(result, value)
 	}
 	return result, nil
 }
@@ -472,7 +474,7 @@ func (c *Client) ListGates(ctx context.Context) ([]port.OrcaGate, error) {
 		} `json:"gates"`
 		Count *int `json:"count"`
 	}
-	_, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "orchestration", "gate-list", "--json"}, &payload)
+	runtimeID, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "orchestration", "gate-list", "--json"}, &payload)
 	if err != nil {
 		return nil, err
 	}
@@ -484,7 +486,7 @@ func (c *Client) ListGates(ctx context.Context) ([]port.OrcaGate, error) {
 		if strings.TrimSpace(gate.ID) == "" || strings.TrimSpace(gate.TaskID) == "" || strings.TrimSpace(gate.Status) == "" {
 			return nil, fmt.Errorf("Orca gate row identity is incomplete")
 		}
-		result = append(result, port.OrcaGate{ID: gate.ID, TaskID: gate.TaskID, Status: gate.Status})
+		result = append(result, port.OrcaGate{RuntimeID: runtimeID, ID: gate.ID, TaskID: gate.TaskID, Status: gate.Status})
 	}
 	return result, nil
 }
@@ -494,7 +496,7 @@ func (c *Client) InboxPresence(ctx context.Context) (port.OrcaInboxPresence, err
 		Messages []struct{} `json:"messages"`
 		Count    *int       `json:"count"`
 	}
-	_, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "orchestration", "inbox", "--limit", "1", "--json"}, &payload)
+	runtimeID, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "orchestration", "inbox", "--limit", "1", "--json"}, &payload)
 	if err != nil {
 		return port.OrcaInboxPresence{}, err
 	}
@@ -503,7 +505,7 @@ func (c *Client) InboxPresence(ctx context.Context) (port.OrcaInboxPresence, err
 	}
 	count := *payload.Count
 	rows := len(payload.Messages)
-	return port.OrcaInboxPresence{Count: count, RowCount: rows, CompleteAbsence: count == 0 && rows == 0}, nil
+	return port.OrcaInboxPresence{RuntimeID: runtimeID, Count: count, RowCount: rows, CompleteAbsence: count == 0 && rows == 0}, nil
 }
 
 func (c *Client) CreateTask(ctx context.Context, req port.OrcaCreateTaskRequest) (port.OrcaTask, error) {
@@ -511,8 +513,10 @@ func (c *Client) CreateTask(ctx context.Context, req port.OrcaCreateTaskRequest)
 	var payload struct {
 		Task taskPayload `json:"task"`
 	}
-	_, err := c.runJSON(ctx, "", createTimeout, argv, &payload)
-	return payload.Task.portValue(), err
+	runtimeID, err := c.runJSON(ctx, "", createTimeout, argv, &payload)
+	created := payload.Task.portValue()
+	created.RuntimeID = runtimeID
+	return created, err
 }
 
 func (c *Client) UpdateTask(ctx context.Context, id, status, result string) error {
@@ -640,14 +644,14 @@ func (c *Client) dispatchResult(ctx context.Context, argv []string) (port.OrcaDi
 		Injected bool   `json:"injected"`
 		Preamble string `json:"preamble"`
 	}
-	_, err := c.runJSON(ctx, "", createTimeout, argv, &payload)
+	runtimeID, err := c.runJSON(ctx, "", createTimeout, argv, &payload)
 	if err != nil {
 		return port.OrcaDispatch{}, err
 	}
 	if payload.Dispatch == nil {
 		return port.OrcaDispatch{}, &port.OrcaError{Code: "not_found"}
 	}
-	return port.OrcaDispatch{ID: payload.Dispatch.ID, TaskID: payload.Dispatch.TaskID, AssigneeHandle: payload.Dispatch.AssigneeHandle, Status: payload.Dispatch.Status, Injected: payload.Injected, Preamble: payload.Preamble}, nil
+	return port.OrcaDispatch{RuntimeID: runtimeID, ID: payload.Dispatch.ID, TaskID: payload.Dispatch.TaskID, AssigneeHandle: payload.Dispatch.AssigneeHandle, Status: payload.Dispatch.Status, Injected: payload.Injected, Preamble: payload.Preamble}, nil
 }
 
 func (c *Client) runJSON(ctx context.Context, cwd string, timeout time.Duration, argv []string, target any) (string, error) {

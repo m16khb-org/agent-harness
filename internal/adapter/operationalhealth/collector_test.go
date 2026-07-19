@@ -86,20 +86,100 @@ func TestCollectorDoesNotCreateMissingIssueOpsStore(t *testing.T) {
 	}
 }
 
-func TestExecGitRunnerDisablesOptionalGitLocks(t *testing.T) {
+func TestCollectorDoesNotRepairExistingIssueOpsStore(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	fixture := newCollectorGitFixture(t, "19-existing-read-only")
+	record := startCollectorRecord(t, fixture.repo, "19-existing-read-only")
+	if err := issueops.BindIssueOpsSession(record.Repo, record.ID, record.Branch, fixture.worktree); err != nil {
+		t.Fatal(err)
+	}
+
+	stateRoot := issueops.IssueOpsStateRoot()
+	paths := []string{
+		stateRoot,
+		filepath.Join(stateRoot, "harness.db"),
+		filepath.Join(stateRoot, "harness.lock.db"),
+	}
+	for index, path := range paths {
+		mode := os.FileMode(0o644)
+		if index == 0 {
+			mode = 0o755
+		}
+		if err := os.Chmod(path, mode); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	snapshot := (Collector{Git: ExecGitRunner{}, Orca: &fakeOrcaInventory{}}).Collect(context.Background(), fixture.repo)
+
+	if len(snapshot.Cycles) != 1 || len(snapshot.Bindings) != 1 {
+		t.Fatalf("existing state projection cycles=%#v bindings=%#v problems=%#v", snapshot.Cycles, snapshot.Bindings, snapshot.InventoryProblems)
+	}
+	for index, path := range paths {
+		want := os.FileMode(0o644)
+		if index == 0 {
+			want = 0o755
+		}
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := info.Mode().Perm(); got != want {
+			t.Fatalf("collector repaired %s mode to %o, want unchanged %o", path, got, want)
+		}
+	}
+}
+
+func TestCollectorIncludesBindingWithoutSurvivingCycleRecord(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	fixture := newCollectorGitFixture(t, "19-orphan-binding")
+	if err := issueops.BindIssueOpsSession(fixture.repo, "io-orphan", "19-orphan-binding", fixture.worktree); err != nil {
+		t.Fatal(err)
+	}
+
+	snapshot := (Collector{Git: ExecGitRunner{}, Orca: &fakeOrcaInventory{}}).Collect(context.Background(), fixture.repo)
+
+	if len(snapshot.Cycles) != 0 || len(snapshot.Bindings) != 1 || snapshot.Bindings[0].CycleID != "io-orphan" {
+		t.Fatalf("orphan binding was omitted: cycles=%#v bindings=%#v problems=%#v", snapshot.Cycles, snapshot.Bindings, snapshot.InventoryProblems)
+	}
+}
+
+func TestExecGitRunnerUsesNoninteractiveReadOnlyEnvironment(t *testing.T) {
 	binDir := t.TempDir()
 	script := filepath.Join(binDir, "git")
-	if err := os.WriteFile(script, []byte("#!/bin/sh\nprintf '%s' \"$GIT_OPTIONAL_LOCKS\"\n"), 0o700); err != nil {
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nprintf '%s|%s|%s|%s' \"$GIT_OPTIONAL_LOCKS\" \"$GIT_TERMINAL_PROMPT\" \"$GCM_INTERACTIVE\" \"$SSH_ASKPASS_REQUIRE\"\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", binDir)
+	t.Setenv("GIT_TERMINAL_PROMPT", "1")
+	t.Setenv("GCM_INTERACTIVE", "Always")
+	t.Setenv("SSH_ASKPASS_REQUIRE", "force")
 
 	output, err := (ExecGitRunner{}).Run(context.Background(), t.TempDir(), "probe")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(output) != "0" {
-		t.Fatalf("GIT_OPTIONAL_LOCKS = %q, want 0", output)
+	if string(output) != "0|0|Never|never" {
+		t.Fatalf("Git inventory environment = %q", output)
+	}
+}
+
+func TestExecGitRunnerAppliesLocalDeadline(t *testing.T) {
+	binDir := t.TempDir()
+	script := filepath.Join(binDir, "git")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nsleep 10\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", binDir)
+	started := time.Now()
+
+	_, err := (ExecGitRunner{timeout: 25 * time.Millisecond}).Run(context.Background(), t.TempDir(), "probe")
+
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Git inventory timeout error = %v", err)
+	}
+	if elapsed := time.Since(started); elapsed > time.Second {
+		t.Fatalf("Git inventory ignored local deadline: %s", elapsed)
 	}
 }
 
@@ -168,18 +248,21 @@ func TestCollectorCollectsRegisteredGlobalOrcaInventory(t *testing.T) {
 	orca := &fakeOrcaInventory{
 		available: true,
 		status:    port.OrcaStatus{RuntimeID: "runtime-1", RuntimeReachable: true, RuntimeState: "ready", GraphState: "ready"},
-		repo:      port.OrcaRepo{ID: "repo-1", Path: fixture.repo, RemoteName: "origin"},
-		worktrees: []port.OrcaWorktree{{RuntimeID: "runtime-1", ID: "wt-1", InstanceID: "instance-1", RepoID: "repo-1", Path: worker, Branch: record.Branch, Head: fixture.mainHead}},
-		terminals: []port.OrcaTerminal{{RuntimeID: "runtime-1", Handle: "term-global", PTYID: "pty-global", WorktreeID: "wt-1", WorktreePath: worker, Connected: true, Writable: true}},
-		tasks: []port.OrcaTask{
-			{ID: "task-completed", Status: "completed", CompletedAt: "2026-07-19T01:02:03Z", HasResult: true},
-			{ID: "task-dispatched", Status: "dispatched"},
-			{ID: "task-completed", Status: "failed"},
+		repo:      port.OrcaRepo{RuntimeID: "runtime-1", ID: "repo-1", Path: fixture.repo, RemoteName: "origin"},
+		worktrees: []port.OrcaWorktree{
+			{RuntimeID: "runtime-1", ID: "wt-main", InstanceID: "instance-main", RepoID: "repo-1", Path: fixture.repo, Branch: "main", Head: fixture.mainHead},
+			{RuntimeID: "runtime-1", ID: "wt-1", InstanceID: "instance-1", RepoID: "repo-1", Path: worker, Branch: record.Branch, Head: fixture.mainHead},
 		},
-		dispatchedTasks: []port.OrcaTask{{ID: "task-dispatched", Status: "dispatched"}},
-		dispatches:      map[string]port.OrcaDispatch{"task-dispatched": {ID: "dispatch-1", TaskID: "task-dispatched", AssigneeHandle: "term-global", Status: "dispatched"}},
-		gates:           []port.OrcaGate{{ID: "gate-1", TaskID: "task-dispatched", Status: "pending"}},
-		inbox:           port.OrcaInboxPresence{Count: 1, RowCount: 1},
+		terminals: []port.OrcaTerminal{{RuntimeID: "runtime-1", Handle: "term-global", PTYID: "pty-global", TabID: "tab-global", LeafID: "leaf-global", WorktreeID: "wt-1", WorktreePath: worker, Connected: true, Writable: true}},
+		tasks: []port.OrcaTask{
+			{RuntimeID: "runtime-1", ID: "task-completed", Status: "completed", CompletedAt: "2026-07-19T01:02:03Z", HasResult: true},
+			{RuntimeID: "runtime-1", ID: "task-dispatched", Status: "dispatched"},
+			{RuntimeID: "runtime-1", ID: "task-completed", Status: "failed"},
+		},
+		dispatchedTasks: []port.OrcaTask{{RuntimeID: "runtime-1", ID: "task-dispatched", Status: "dispatched"}},
+		dispatches:      map[string]port.OrcaDispatch{"task-dispatched": {RuntimeID: "runtime-1", ID: "dispatch-1", TaskID: "task-dispatched", AssigneeHandle: "term-global", Status: "dispatched"}},
+		gates:           []port.OrcaGate{{RuntimeID: "runtime-1", ID: "gate-1", TaskID: "task-dispatched", Status: "pending"}},
+		inbox:           port.OrcaInboxPresence{RuntimeID: "runtime-1", Count: 1, RowCount: 1},
 	}
 
 	snapshot := (Collector{Git: ExecGitRunner{}, Orca: orca}).Collect(context.Background(), fixture.repo)
@@ -187,7 +270,7 @@ func TestCollectorCollectsRegisteredGlobalOrcaInventory(t *testing.T) {
 	if len(snapshot.InventoryProblems) != 0 {
 		t.Fatalf("registered Orca collection problems = %#v", snapshot.InventoryProblems)
 	}
-	if !snapshot.OrcaObserved || snapshot.OrcaRuntimeID != "runtime-1" || len(snapshot.OrcaWorktrees) != 1 || len(snapshot.Terminals) != 1 || len(snapshot.Tasks) != 3 || len(snapshot.Dispatches) != 1 || len(snapshot.Gates) != 1 {
+	if !snapshot.OrcaObserved || snapshot.OrcaRuntimeID != "runtime-1" || snapshot.OrcaRepoID != "repo-1" || len(snapshot.OrcaWorktrees) != 2 || len(snapshot.Terminals) != 1 || len(snapshot.Tasks) != 3 || len(snapshot.Dispatches) != 1 || len(snapshot.Gates) != 1 {
 		t.Fatalf("Orca projection = %#v", snapshot)
 	}
 	if snapshot.Tasks[0].CompletedAt.IsZero() || !hasOperationalTask(snapshot.Tasks, "task-dispatched", "dispatch-1") {
@@ -203,6 +286,26 @@ func TestCollectorCollectsRegisteredGlobalOrcaInventory(t *testing.T) {
 		if !slices.Contains(orca.calls, call) {
 			t.Fatalf("missing Orca read %q in %#v", call, orca.calls)
 		}
+	}
+}
+
+func TestCycleFromRecordPreservesCompleteDurableOrcaIdentity(t *testing.T) {
+	record := issueops.IssueOpsRecord{
+		ID: "io-sealed", Repo: "/repo", Branch: "1-sealed", Phase: issueops.IssueOpsPhaseImplement,
+		ExecutionHandoff: &issueops.IssueOpsExecutionHandoff{
+			State: handoff.StateClaimed,
+			Orca: &issueops.IssueOpsOrcaIdentity{
+				RuntimeID: "runtime-1", RepoID: "repo-1", WorktreeID: "wt-1", WorktreeInstanceID: "instance-1",
+				WorktreePath: "/repo.wt/1-sealed", WorkerTerminalHandle: "term-1", WorkerPTYID: "pty-1",
+				WorkerTabID: "tab-1", WorkerLeafID: "leaf-1", TaskID: "task-1", DispatchID: "dispatch-1",
+			},
+		},
+	}
+
+	cycle, problems := cycleFromRecord(record)
+
+	if len(problems) != 0 || cycle.OrcaRuntimeID != "runtime-1" || cycle.OrcaRepoID != "repo-1" || cycle.TerminalTabID != "tab-1" || cycle.TerminalLeafID != "leaf-1" {
+		t.Fatalf("durable Orca identity projection cycle=%#v problems=%#v", cycle, problems)
 	}
 }
 
@@ -262,6 +365,23 @@ func TestCollectorFailsClosedOnDispatchedTaskInventoryMismatch(t *testing.T) {
 				t.Fatalf("inconsistent dispatched-task projections were accepted: %#v", snapshot.InventoryProblems)
 			}
 		})
+	}
+}
+
+func TestCollectorFailsClosedOnDispatchedTaskRuntimeDrift(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	fixture := newCollectorGitFixture(t, "24-dispatch-runtime")
+	orca := healthyEmptyOrca(fixture.repo)
+	orca.tasks = []port.OrcaTask{{RuntimeID: "runtime-1", ID: "task-dispatched", Status: "dispatched"}}
+	orca.dispatchedTasks = []port.OrcaTask{{RuntimeID: "runtime-other", ID: "task-dispatched", Status: "dispatched"}}
+	orca.dispatches = map[string]port.OrcaDispatch{
+		"task-dispatched": {RuntimeID: "runtime-1", ID: "dispatch-1", TaskID: "task-dispatched", AssigneeHandle: "term-1", Status: "dispatched"},
+	}
+
+	snapshot := (Collector{Git: ExecGitRunner{}, Orca: orca}).Collect(context.Background(), fixture.repo)
+
+	if !hasInventoryProblem(snapshot.InventoryProblems, "orca_dispatched_task_runtime_mismatch") {
+		t.Fatalf("dispatched task runtime drift was hidden: %#v", snapshot.InventoryProblems)
 	}
 }
 
@@ -494,8 +614,8 @@ func healthyEmptyOrca(repo string) *fakeOrcaInventory {
 	return &fakeOrcaInventory{
 		available: true,
 		status:    port.OrcaStatus{RuntimeID: "runtime-1", RuntimeReachable: true, RuntimeState: "ready", GraphState: "ready"},
-		repo:      port.OrcaRepo{ID: "repo-1", Path: repo},
-		inbox:     port.OrcaInboxPresence{CompleteAbsence: true},
+		repo:      port.OrcaRepo{RuntimeID: "runtime-1", ID: "repo-1", Path: repo},
+		inbox:     port.OrcaInboxPresence{RuntimeID: "runtime-1", CompleteAbsence: true},
 	}
 }
 

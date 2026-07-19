@@ -19,7 +19,10 @@ func EvaluateCycleAuthority(cycle Cycle, opts Options) CycleAuthority {
 		return AuthorityDead
 	}
 	if state == "claimed" {
-		if !claimedIdentityComplete(cycle) || cycle.LastHeartbeatAt.IsZero() || opts.Now.IsZero() {
+		if !claimedIdentityComplete(cycle) || opts.Now.IsZero() {
+			return AuthorityUnknown
+		}
+		if cycle.LastHeartbeatAt.IsZero() {
 			return AuthorityDead
 		}
 		age := opts.Now.Sub(cycle.LastHeartbeatAt)
@@ -49,12 +52,16 @@ func Classify(snapshot Snapshot, opts Options) Result {
 	validateCanonicalSource(&builder, snapshot)
 	if snapshot.OrcaObserved {
 		runtimeID := strings.TrimSpace(snapshot.OrcaRuntimeID)
+		repoID := strings.TrimSpace(snapshot.OrcaRepoID)
 		if runtimeID == "" {
 			builder.add(FindingInventoryUnknown, "orca_runtime", "runtime", "observed Orca inventory has no runtime identity", "")
 		}
+		if repoID == "" {
+			builder.add(FindingInventoryUnknown, "orca_repo", "repo", "observed Orca inventory has no repository identity", clean(snapshot.RepoRoot))
+		}
 		for _, worktree := range snapshot.OrcaWorktrees {
-			if strings.TrimSpace(worktree.RuntimeID) != runtimeID {
-				builder.add(FindingInventoryUnknown, "worktree", strings.TrimSpace(worktree.ID), "Orca worktree runtime identity does not match the observed runtime", clean(worktree.Path))
+			if strings.TrimSpace(worktree.RuntimeID) != runtimeID || strings.TrimSpace(worktree.RepoID) != repoID {
+				builder.add(FindingInventoryUnknown, "worktree", strings.TrimSpace(worktree.ID), "Orca worktree runtime or repository identity does not match the observed inventory", clean(worktree.Path))
 			}
 		}
 		for _, terminal := range snapshot.Terminals {
@@ -62,6 +69,25 @@ func Classify(snapshot Snapshot, opts Options) Result {
 				builder.add(FindingInventoryUnknown, "terminal", strings.TrimSpace(terminal.Handle), "Orca terminal runtime identity does not match the observed runtime", clean(terminal.WorktreePath))
 			}
 		}
+		for _, task := range snapshot.Tasks {
+			if strings.TrimSpace(task.RuntimeID) != runtimeID {
+				builder.add(FindingInventoryUnknown, "task", strings.TrimSpace(task.ID), "Orca task runtime identity does not match the observed runtime", "")
+			}
+		}
+		for _, dispatch := range snapshot.Dispatches {
+			if strings.TrimSpace(dispatch.RuntimeID) != runtimeID {
+				builder.add(FindingInventoryUnknown, "dispatch", strings.TrimSpace(dispatch.ID), "Orca dispatch runtime identity does not match the observed runtime", "")
+			}
+		}
+		for _, gate := range snapshot.Gates {
+			if strings.TrimSpace(gate.RuntimeID) != runtimeID {
+				builder.add(FindingInventoryUnknown, "gate", strings.TrimSpace(gate.ID), "Orca gate runtime identity does not match the observed runtime", "")
+			}
+		}
+		if strings.TrimSpace(snapshot.Messages.RuntimeID) != runtimeID {
+			builder.add(FindingInventoryUnknown, "message", "inbox", "Orca inbox runtime identity does not match the observed runtime", "")
+		}
+		validateCanonicalOrcaSource(&builder, snapshot)
 	}
 
 	cycleCounts := countBy(snapshot.Cycles, func(cycle Cycle) string { return strings.TrimSpace(cycle.ID) })
@@ -93,6 +119,12 @@ func Classify(snapshot Snapshot, opts Options) Result {
 		}
 		authority := EvaluateCycleAuthority(cycle, opts)
 		authorities[id] = authority
+		runtimeMismatch := strings.TrimSpace(cycle.OrcaRuntimeID) != strings.TrimSpace(snapshot.OrcaRuntimeID)
+		repoMismatch := clean(cycle.Repo) == clean(snapshot.RepoRoot) && strings.TrimSpace(cycle.OrcaRepoID) != strings.TrimSpace(snapshot.OrcaRepoID)
+		if snapshot.OrcaObserved && (strings.TrimSpace(cycle.OrcaRuntimeID) != "" || strings.TrimSpace(cycle.OrcaRepoID) != "") &&
+			(runtimeMismatch || repoMismatch) {
+			builder.add(FindingInventoryUnknown, "cycle", id, "cycle Orca runtime or repository identity does not match the observed inventory", clean(cycle.WorktreePath))
+		}
 		switch {
 		case authority == AuthorityUnknown:
 			builder.add(FindingInventoryUnknown, "cycle", id, "cycle phase, handoff state, or durable identity is unsupported or incomplete", clean(cycle.WorktreePath))
@@ -102,9 +134,14 @@ func Classify(snapshot Snapshot, opts Options) Result {
 	}
 
 	for _, binding := range snapshot.Bindings {
-		cycle, ok := cycleByID[strings.TrimSpace(binding.CycleID)]
-		if !ok || clean(binding.Repo) != clean(cycle.Repo) || (strings.TrimSpace(binding.Branch) != "" && strings.TrimSpace(binding.Branch) != strings.TrimSpace(cycle.Branch)) {
-			builder.add(FindingInventoryUnknown, "binding", strings.TrimSpace(binding.CycleID), "session binding does not match one durable cycle", clean(binding.ExpectedWorktree))
+		cycleID := strings.TrimSpace(binding.CycleID)
+		cycle, ok := cycleByID[cycleID]
+		authority := authorities[cycleID]
+		if !ok || clean(binding.Repo) != clean(cycle.Repo) ||
+			(strings.TrimSpace(binding.Branch) != "" && strings.TrimSpace(binding.Branch) != strings.TrimSpace(cycle.Branch)) ||
+			(clean(binding.ExpectedWorktree) != "" && clean(binding.ExpectedWorktree) != clean(cycle.WorktreePath)) ||
+			(authority != AuthorityLive && authority != AuthorityPreserved) {
+			builder.add(FindingInventoryUnknown, "binding", cycleID, "session binding does not match one live or invocation-preserved durable cycle", clean(binding.ExpectedWorktree))
 		}
 	}
 
@@ -272,6 +309,23 @@ func validateCanonicalSource(builder *findingBuilder, snapshot Snapshot) {
 	validateCanonicalRef(builder, snapshot.RemoteRefs, "remote", branch, head)
 }
 
+func validateCanonicalOrcaSource(builder *findingBuilder, snapshot Snapshot) {
+	repo := clean(snapshot.RepoRoot)
+	branch := strings.TrimSpace(snapshot.CanonicalBranch)
+	head := strings.TrimSpace(snapshot.SourceHead)
+	runtimeID := strings.TrimSpace(snapshot.OrcaRuntimeID)
+	repoID := strings.TrimSpace(snapshot.OrcaRepoID)
+	matches := make([]OrcaWorktree, 0, 1)
+	for _, worktree := range snapshot.OrcaWorktrees {
+		if clean(worktree.Path) == repo {
+			matches = append(matches, worktree)
+		}
+	}
+	if len(matches) != 1 || strings.TrimSpace(matches[0].RuntimeID) != runtimeID || strings.TrimSpace(matches[0].RepoID) != repoID || clean(matches[0].Repo) != repo || strings.TrimSpace(matches[0].Branch) != branch || strings.TrimSpace(matches[0].Head) != head {
+		builder.add(FindingInventoryUnknown, "orca_source_worktree", repo, "canonical Orca worktree must occur once and match the source runtime, repository, branch, and HEAD", repo)
+	}
+}
+
 func validateCanonicalRef(builder *findingBuilder, refs []GitRef, location, branch, head string) {
 	matches := make([]GitRef, 0, 1)
 	for _, ref := range refs {
@@ -288,8 +342,10 @@ func claimedIdentityComplete(cycle Cycle) bool {
 	return strings.TrimSpace(cycle.ID) != "" && strings.TrimSpace(cycle.Repo) != "" && strings.TrimSpace(cycle.Branch) != "" &&
 		cycle.Attempt > 0 && strings.TrimSpace(cycle.OwnershipEpoch) != "" && len(strings.TrimSpace(cycle.ContextSHA256)) == 64 &&
 		strings.TrimSpace(cycle.WorkerSessionID) != "" && strings.TrimSpace(cycle.WorkerAgentID) != "" &&
+		strings.TrimSpace(cycle.OrcaRuntimeID) != "" && strings.TrimSpace(cycle.OrcaRepoID) != "" &&
 		strings.TrimSpace(cycle.WorktreePath) != "" && strings.TrimSpace(cycle.OrcaWorktreeID) != "" && strings.TrimSpace(cycle.OrcaWorktreeInstanceID) != "" &&
-		strings.TrimSpace(cycle.TerminalHandle) != "" && strings.TrimSpace(cycle.PTYID) != "" && strings.TrimSpace(cycle.TaskID) != "" && strings.TrimSpace(cycle.DispatchID) != ""
+		strings.TrimSpace(cycle.TerminalHandle) != "" && strings.TrimSpace(cycle.PTYID) != "" && strings.TrimSpace(cycle.TerminalTabID) != "" && strings.TrimSpace(cycle.TerminalLeafID) != "" &&
+		strings.TrimSpace(cycle.TaskID) != "" && strings.TrimSpace(cycle.DispatchID) != ""
 }
 
 func knownPhase(value string) bool {
@@ -339,8 +395,8 @@ func preservableIdentityComplete(cycle Cycle) bool {
 	if state != "" && (cycle.Attempt <= 0 || strings.TrimSpace(cycle.OwnershipEpoch) == "") {
 		return false
 	}
-	return completeGroup(cycle.WorktreePath, cycle.OrcaWorktreeID, cycle.OrcaWorktreeInstanceID) &&
-		completeGroup(cycle.TerminalHandle, cycle.PTYID) && completeGroup(cycle.TaskID, cycle.DispatchID)
+	return completeGroup(cycle.OrcaRuntimeID, cycle.OrcaRepoID, cycle.WorktreePath, cycle.OrcaWorktreeID, cycle.OrcaWorktreeInstanceID) &&
+		completeGroup(cycle.TerminalHandle, cycle.PTYID, cycle.TerminalTabID, cycle.TerminalLeafID) && completeGroup(cycle.TaskID, cycle.DispatchID)
 }
 
 func completeGroup(values ...string) bool {
@@ -365,25 +421,25 @@ func validateCycleResources(builder *findingBuilder, snapshot Snapshot, cycle Cy
 	if repoScoped && (authority == AuthorityLive || strings.TrimSpace(cycle.OrcaWorktreeID) != "") {
 		worktree, ok := uniqueBy(snapshot.OrcaWorktrees, cycle.OrcaWorktreeID, func(value OrcaWorktree) string { return value.ID })
 		headMismatch := gitWorktreeOK && strings.TrimSpace(worktree.Head) != strings.TrimSpace(gitWorktree.Head)
-		if !ok || worktreeCounts[strings.TrimSpace(cycle.OrcaWorktreeID)] != 1 || strings.TrimSpace(worktree.InstanceID) != strings.TrimSpace(cycle.OrcaWorktreeInstanceID) || clean(worktree.Repo) != clean(cycle.Repo) || clean(worktree.Path) != clean(cycle.WorktreePath) || strings.TrimSpace(worktree.Branch) != strings.TrimSpace(cycle.Branch) || headMismatch {
+		if !ok || worktreeCounts[strings.TrimSpace(cycle.OrcaWorktreeID)] != 1 || strings.TrimSpace(worktree.RuntimeID) != strings.TrimSpace(cycle.OrcaRuntimeID) || strings.TrimSpace(worktree.RepoID) != strings.TrimSpace(cycle.OrcaRepoID) || strings.TrimSpace(worktree.InstanceID) != strings.TrimSpace(cycle.OrcaWorktreeInstanceID) || clean(worktree.Repo) != clean(cycle.Repo) || clean(worktree.Path) != clean(cycle.WorktreePath) || strings.TrimSpace(worktree.Branch) != strings.TrimSpace(cycle.Branch) || headMismatch {
 			builder.add(FindingInventoryUnknown, "worktree", cycle.OrcaWorktreeID, "cycle worktree identity does not match exactly one Orca worktree", clean(cycle.WorktreePath))
 		}
 	}
 	if authority == AuthorityLive || strings.TrimSpace(cycle.TerminalHandle) != "" {
 		terminal, ok := uniqueBy(snapshot.Terminals, cycle.TerminalHandle, func(value OrcaTerminal) string { return value.Handle })
-		if !ok || terminalCounts[cycle.TerminalHandle] != 1 || strings.TrimSpace(terminal.PTYID) != strings.TrimSpace(cycle.PTYID) || strings.TrimSpace(terminal.WorktreeID) != strings.TrimSpace(cycle.OrcaWorktreeID) || clean(terminal.WorktreePath) != clean(cycle.WorktreePath) || !terminal.Connected || !terminal.Writable {
+		if !ok || terminalCounts[cycle.TerminalHandle] != 1 || strings.TrimSpace(terminal.RuntimeID) != strings.TrimSpace(cycle.OrcaRuntimeID) || strings.TrimSpace(terminal.PTYID) != strings.TrimSpace(cycle.PTYID) || strings.TrimSpace(terminal.TabID) != strings.TrimSpace(cycle.TerminalTabID) || strings.TrimSpace(terminal.LeafID) != strings.TrimSpace(cycle.TerminalLeafID) || strings.TrimSpace(terminal.WorktreeID) != strings.TrimSpace(cycle.OrcaWorktreeID) || clean(terminal.WorktreePath) != clean(cycle.WorktreePath) || !terminal.Connected || !terminal.Writable {
 			builder.add(FindingInventoryUnknown, "terminal", cycle.TerminalHandle, "cycle terminal identity or liveness does not match exactly one writable connected terminal", clean(cycle.WorktreePath))
 		}
 	}
 	if authority == AuthorityLive || strings.TrimSpace(cycle.TaskID) != "" {
 		task, ok := uniqueBy(snapshot.Tasks, cycle.TaskID, func(value OrcaTask) string { return value.ID })
-		if !ok || taskCounts[cycle.TaskID] != 1 || (authority == AuthorityLive && strings.TrimSpace(task.Status) != "dispatched") || (strings.TrimSpace(task.DispatchID) != "" && strings.TrimSpace(task.DispatchID) != strings.TrimSpace(cycle.DispatchID)) {
+		if !ok || taskCounts[cycle.TaskID] != 1 || strings.TrimSpace(task.RuntimeID) != strings.TrimSpace(cycle.OrcaRuntimeID) || (authority == AuthorityLive && strings.TrimSpace(task.Status) != "dispatched") || (strings.TrimSpace(task.DispatchID) != "" && strings.TrimSpace(task.DispatchID) != strings.TrimSpace(cycle.DispatchID)) {
 			builder.add(FindingInventoryUnknown, "task", cycle.TaskID, "cycle task identity or status does not match exactly one task", "")
 		}
 	}
 	if authority == AuthorityLive || strings.TrimSpace(cycle.DispatchID) != "" {
 		dispatch, ok := uniqueBy(snapshot.Dispatches, cycle.DispatchID, func(value OrcaDispatch) string { return value.ID })
-		if !ok || dispatchCounts[cycle.DispatchID] != 1 || strings.TrimSpace(dispatch.TaskID) != strings.TrimSpace(cycle.TaskID) || strings.TrimSpace(dispatch.AssigneeHandle) != strings.TrimSpace(cycle.TerminalHandle) || strings.TrimSpace(dispatch.Status) != "dispatched" {
+		if !ok || dispatchCounts[cycle.DispatchID] != 1 || strings.TrimSpace(dispatch.RuntimeID) != strings.TrimSpace(cycle.OrcaRuntimeID) || strings.TrimSpace(dispatch.TaskID) != strings.TrimSpace(cycle.TaskID) || strings.TrimSpace(dispatch.AssigneeHandle) != strings.TrimSpace(cycle.TerminalHandle) || strings.TrimSpace(dispatch.Status) != "dispatched" {
 			builder.add(FindingInventoryUnknown, "dispatch", cycle.DispatchID, "cycle dispatch identity does not match exactly one active dispatch", "")
 		}
 	}

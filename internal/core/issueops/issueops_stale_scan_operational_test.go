@@ -36,6 +36,8 @@ func TestStaleScanOperationalDeadOwnerHeartbeatIsReportOnly(t *testing.T) {
 
 			heartbeat := tt.heartbeat()
 			claimed.ExecutionHandoff.LastHeartbeatAt = heartbeat
+			claimed.ExecutionHandoff.Orca.WorkerTabID = "tab-1"
+			claimed.ExecutionHandoff.Orca.WorkerLeafID = "leaf-1"
 			claimed.LastHeartbeatAt = heartbeat
 			if _, err := WriteIssueOps(stateRoot, claimed); err != nil {
 				t.Fatal(err)

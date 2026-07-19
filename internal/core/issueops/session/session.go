@@ -17,7 +17,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"sort"
 	"strings"
 	"time"
@@ -265,6 +267,27 @@ func ListBindings(store Store, repo string) ([]Binding, error) {
 		if b.CycleID != "" {
 			bindings = append(bindings, b)
 		}
+	}
+	return bindings, nil
+}
+
+// ListAllExisting returns every persisted primary or scoped binding without
+// creating, repairing, or changing permissions on the state store.
+func ListAllExisting(store Store) ([]Binding, error) {
+	rows, err := sqlstore.GetAllExisting(store.StateRoot(), sessionBucket)
+	if errors.Is(err, fs.ErrNotExist) {
+		return []Binding{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	bindings := make([]Binding, 0, len(rows))
+	for _, row := range rows {
+		var binding Binding
+		if err := json.Unmarshal(row.Data, &binding); err != nil {
+			return nil, fmt.Errorf("decode session binding %s: %w", row.ID, err)
+		}
+		bindings = append(bindings, binding)
 	}
 	return bindings, nil
 }

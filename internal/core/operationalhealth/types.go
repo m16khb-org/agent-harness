@@ -27,11 +27,15 @@ type Cycle struct {
 	ContextSHA256          string
 	WorkerSessionID        string
 	WorkerAgentID          string
+	OrcaRuntimeID          string
+	OrcaRepoID             string
 	WorktreePath           string
 	OrcaWorktreeID         string
 	OrcaWorktreeInstanceID string
 	TerminalHandle         string
 	PTYID                  string
+	TerminalTabID          string
+	TerminalLeafID         string
 	TaskID                 string
 	DispatchID             string
 	LastHeartbeatAt        time.Time
@@ -61,6 +65,7 @@ type GitRef struct {
 
 type OrcaWorktree struct {
 	RuntimeID  string
+	RepoID     string
 	ID         string
 	InstanceID string
 	Repo       string
@@ -73,6 +78,8 @@ type OrcaTerminal struct {
 	RuntimeID    string
 	Handle       string
 	PTYID        string
+	TabID        string
+	LeafID       string
 	WorktreeID   string
 	WorktreePath string
 	Connected    bool
@@ -80,6 +87,7 @@ type OrcaTerminal struct {
 }
 
 type OrcaTask struct {
+	RuntimeID   string
 	ID          string
 	Status      string
 	DispatchID  string
@@ -88,6 +96,7 @@ type OrcaTask struct {
 }
 
 type OrcaDispatch struct {
+	RuntimeID      string
 	ID             string
 	TaskID         string
 	AssigneeHandle string
@@ -95,12 +104,14 @@ type OrcaDispatch struct {
 }
 
 type OrcaGate struct {
-	ID     string
-	TaskID string
-	Status string
+	RuntimeID string
+	ID        string
+	TaskID    string
+	Status    string
 }
 
 type MessagePresence struct {
+	RuntimeID       string
 	Count           int
 	Empty           bool
 	CompleteAbsence bool
@@ -124,6 +135,7 @@ type Snapshot struct {
 	SourceClean     bool
 	OrcaObserved    bool
 	OrcaRuntimeID   string
+	OrcaRepoID      string
 
 	Cycles            []Cycle
 	Bindings          []Binding

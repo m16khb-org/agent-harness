@@ -35,6 +35,12 @@ func ReadIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
 // ReadIssueOpsForStopSuppression reads exactly one existing record through the
 // bounded, non-creating sqlstore path used by the Stop-hook hot path.
 func ReadIssueOpsForStopSuppression(stateRoot, id string) (IssueOpsRecord, error) {
+	return ReadIssueOpsExisting(stateRoot, id)
+}
+
+// ReadIssueOpsExisting reads exactly one existing record without creating,
+// repairing, migrating, or changing permissions on the state store.
+func ReadIssueOpsExisting(stateRoot, id string) (IssueOpsRecord, error) {
 	id, err := normalizeIssueOpsID(id)
 	if err != nil {
 		return IssueOpsRecord{OK: false}, err

@@ -186,10 +186,14 @@ func issueOpsOperationalCycle(record model.IssueOpsRecord) operationalhealth.Cyc
 		cycle.WorkerAgentID = strings.TrimSpace(handoffRecord.WorkerSession.AgentID)
 	}
 	if handoffRecord.Orca != nil {
+		cycle.OrcaRuntimeID = strings.TrimSpace(handoffRecord.Orca.RuntimeID)
+		cycle.OrcaRepoID = strings.TrimSpace(handoffRecord.Orca.RepoID)
 		cycle.OrcaWorktreeID = strings.TrimSpace(handoffRecord.Orca.WorktreeID)
 		cycle.OrcaWorktreeInstanceID = strings.TrimSpace(handoffRecord.Orca.WorktreeInstanceID)
 		cycle.TerminalHandle = strings.TrimSpace(handoffRecord.Orca.WorkerTerminalHandle)
 		cycle.PTYID = strings.TrimSpace(handoffRecord.Orca.WorkerPTYID)
+		cycle.TerminalTabID = strings.TrimSpace(handoffRecord.Orca.WorkerTabID)
+		cycle.TerminalLeafID = strings.TrimSpace(handoffRecord.Orca.WorkerLeafID)
 		cycle.TaskID = strings.TrimSpace(handoffRecord.Orca.TaskID)
 		cycle.DispatchID = strings.TrimSpace(handoffRecord.Orca.DispatchID)
 		if cycle.WorktreePath == "" {

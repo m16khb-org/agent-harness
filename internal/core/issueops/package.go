@@ -523,6 +523,10 @@ func ListIssueOpsSessionBindings(repo string) ([]SessionBinding, error) {
 	return session.ListBindings(issueOpsSessionStore(), repo)
 }
 
+func ListAllIssueOpsSessionBindingsExisting() ([]SessionBinding, error) {
+	return session.ListAllExisting(issueOpsSessionStore())
+}
+
 // ExpectedWorktreeFromSession returns the expected worktree for the current
 // session, falling back to the cycle record's linked worktree.
 func ExpectedWorktreeFromSession(repo string, cycleWorktree func() string) string {

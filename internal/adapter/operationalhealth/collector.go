@@ -35,16 +35,30 @@ type GitRunner interface {
 	Run(context.Context, string, ...string) ([]byte, error)
 }
 
-type ExecGitRunner struct{}
+const gitInventoryCommandTimeout = 15 * time.Second
 
-func (ExecGitRunner) Run(ctx context.Context, repo string, args ...string) ([]byte, error) {
+type ExecGitRunner struct {
+	timeout time.Duration
+}
+
+func (runner ExecGitRunner) Run(ctx context.Context, repo string, args ...string) ([]byte, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("git arguments are required")
 	}
-	command := exec.CommandContext(ctx, "git", args...)
+	timeout := runner.timeout
+	if timeout <= 0 {
+		timeout = gitInventoryCommandTimeout
+	}
+	commandCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	command := exec.CommandContext(commandCtx, "git", args...)
 	command.Dir = repo
-	command.Env = append(os.Environ(), "GIT_OPTIONAL_LOCKS=0")
-	return command.Output()
+	command.Env = append(os.Environ(), "GIT_OPTIONAL_LOCKS=0", "GIT_TERMINAL_PROMPT=0", "GCM_INTERACTIVE=Never", "SSH_ASKPASS_REQUIRE=never")
+	output, err := command.Output()
+	if commandCtx.Err() != nil {
+		return nil, fmt.Errorf("git inventory command: %w", commandCtx.Err())
+	}
+	return output, err
 }
 
 func canonicalInventoryPath(path string) string {
@@ -87,8 +101,8 @@ func (collector Collector) Collect(ctx context.Context, repo string) corehealth.
 		return snapshot
 	}
 	collector.collectGit(ctx, &snapshot)
-	records, orcaOwned := collectIssueOps(&snapshot)
-	collectBindings(&snapshot, records)
+	_, orcaOwned := collectIssueOps(&snapshot)
+	collectBindings(&snapshot)
 	collector.collectOrca(ctx, &snapshot, orcaOwned)
 	sortSnapshot(&snapshot)
 	return snapshot
@@ -193,7 +207,7 @@ func collectIssueOps(snapshot *corehealth.Snapshot) ([]issueops.IssueOpsRecord, 
 	records := make([]issueops.IssueOpsRecord, 0, len(ids))
 	orcaOwned := false
 	for _, id := range ids {
-		record, err := issueops.ReadIssueOps(stateRoot, id)
+		record, err := issueops.ReadIssueOpsExisting(stateRoot, id)
 		if err != nil {
 			addProblem(snapshot, "issueops_record", "issueops_read_failed", "could not read IssueOps record "+strings.TrimSpace(id))
 			continue
@@ -207,37 +221,24 @@ func collectIssueOps(snapshot *corehealth.Snapshot) ([]issueops.IssueOpsRecord, 
 	return records, orcaOwned
 }
 
-func collectBindings(snapshot *corehealth.Snapshot, records []issueops.IssueOpsRecord) {
-	repos := make(map[string]struct{})
-	for _, record := range records {
-		if repo := pathutil.CleanAbsPath(record.Repo); repo != "" {
-			repos[repo] = struct{}{}
-		}
+func collectBindings(snapshot *corehealth.Snapshot) {
+	bindings, err := issueops.ListAllIssueOpsSessionBindingsExisting()
+	if err != nil {
+		addProblem(snapshot, "issueops_binding", "binding_list_failed", "could not read complete binding inventory")
+		return
 	}
-	ordered := make([]string, 0, len(repos))
-	for repo := range repos {
-		ordered = append(ordered, repo)
-	}
-	sort.Strings(ordered)
 	seen := make(map[string]struct{})
-	for _, repo := range ordered {
-		bindings, err := issueops.ListIssueOpsSessionBindings(repo)
-		if err != nil {
-			addProblem(snapshot, "issueops_binding", "binding_list_failed", "could not read bindings for "+repo)
+	for _, binding := range bindings {
+		value := corehealth.Binding{
+			CycleID: strings.TrimSpace(binding.CycleID), Repo: canonicalInventoryPath(binding.Repo),
+			Branch: strings.TrimSpace(binding.Branch), ExpectedWorktree: canonicalInventoryPath(binding.ExpectedWorktree),
+		}
+		key := strings.Join([]string{value.CycleID, value.Repo, value.Branch, value.ExpectedWorktree}, "\x00")
+		if _, ok := seen[key]; ok {
 			continue
 		}
-		for _, binding := range bindings {
-			value := corehealth.Binding{
-				CycleID: strings.TrimSpace(binding.CycleID), Repo: canonicalInventoryPath(binding.Repo),
-				Branch: strings.TrimSpace(binding.Branch), ExpectedWorktree: canonicalInventoryPath(binding.ExpectedWorktree),
-			}
-			key := strings.Join([]string{value.CycleID, value.Repo, value.Branch, value.ExpectedWorktree}, "\x00")
-			if _, ok := seen[key]; ok {
-				continue
-			}
-			seen[key] = struct{}{}
-			snapshot.Bindings = append(snapshot.Bindings, value)
-		}
+		seen[key] = struct{}{}
+		snapshot.Bindings = append(snapshot.Bindings, value)
 	}
 }
 
@@ -265,9 +266,10 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 	resolved, resolveErr := collector.Orca.ResolveRepo(ctx, snapshot.RepoRoot)
 	if resolveErr != nil {
 		addProblem(snapshot, "orca_repo", "orca_repo_failed", "Orca repo resolution failed")
-	} else if strings.TrimSpace(resolved.ID) == "" || canonicalInventoryPath(resolved.Path) != snapshot.RepoRoot {
+	} else if strings.TrimSpace(resolved.RuntimeID) != snapshot.OrcaRuntimeID || strings.TrimSpace(resolved.ID) == "" || canonicalInventoryPath(resolved.Path) != snapshot.RepoRoot {
 		addProblem(snapshot, "orca_repo", "orca_repo_identity_mismatch", "Orca repo identity does not match the requested repository")
 	}
+	snapshot.OrcaRepoID = strings.TrimSpace(resolved.ID)
 	repoPath := snapshot.RepoRoot
 	if resolveErr == nil && canonicalInventoryPath(resolved.Path) != "" {
 		repoPath = canonicalInventoryPath(resolved.Path)
@@ -278,11 +280,11 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 		addProblem(snapshot, "orca_worktrees", "orca_worktrees_failed", "Orca worktree inventory failed")
 	} else {
 		for _, value := range worktrees {
-			if strings.TrimSpace(value.ID) == "" || strings.TrimSpace(value.InstanceID) == "" || canonicalInventoryPath(value.Path) == "" || (resolved.ID != "" && strings.TrimSpace(value.RepoID) != strings.TrimSpace(resolved.ID)) {
+			if strings.TrimSpace(value.RuntimeID) != snapshot.OrcaRuntimeID || strings.TrimSpace(value.ID) == "" || strings.TrimSpace(value.InstanceID) == "" || canonicalInventoryPath(value.Path) == "" || (resolved.ID != "" && strings.TrimSpace(value.RepoID) != strings.TrimSpace(resolved.ID)) {
 				addProblem(snapshot, "orca_worktrees", "orca_worktree_identity_invalid", "Orca worktree identity is incomplete or mismatched")
 			}
 			snapshot.OrcaWorktrees = append(snapshot.OrcaWorktrees, corehealth.OrcaWorktree{
-				RuntimeID: value.RuntimeID, ID: value.ID, InstanceID: value.InstanceID, Repo: repoPath,
+				RuntimeID: value.RuntimeID, RepoID: value.RepoID, ID: value.ID, InstanceID: value.InstanceID, Repo: repoPath,
 				Path: canonicalInventoryPath(value.Path), Branch: strings.TrimSpace(value.Branch), Head: strings.TrimSpace(value.Head),
 			})
 		}
@@ -293,11 +295,11 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 		addProblem(snapshot, "orca_terminals", "orca_terminals_failed", "Orca terminal inventory failed")
 	} else {
 		for _, value := range terminals {
-			if strings.TrimSpace(value.Handle) == "" || strings.TrimSpace(value.PTYID) == "" || strings.TrimSpace(value.WorktreeID) == "" {
+			if strings.TrimSpace(value.RuntimeID) != snapshot.OrcaRuntimeID || strings.TrimSpace(value.Handle) == "" || strings.TrimSpace(value.PTYID) == "" || strings.TrimSpace(value.WorktreeID) == "" || strings.TrimSpace(value.TabID) == "" || strings.TrimSpace(value.LeafID) == "" {
 				addProblem(snapshot, "orca_terminals", "orca_terminal_identity_invalid", "Orca terminal identity is incomplete")
 			}
 			snapshot.Terminals = append(snapshot.Terminals, corehealth.OrcaTerminal{
-				RuntimeID: value.RuntimeID, Handle: value.Handle, PTYID: value.PTYID, WorktreeID: value.WorktreeID,
+				RuntimeID: value.RuntimeID, Handle: value.Handle, PTYID: value.PTYID, TabID: value.TabID, LeafID: value.LeafID, WorktreeID: value.WorktreeID,
 				WorktreePath: canonicalInventoryPath(value.WorktreePath), Connected: value.Connected, Writable: value.Writable,
 			})
 		}
@@ -308,7 +310,10 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 		addProblem(snapshot, "orca_tasks", "orca_tasks_failed", "Orca task inventory failed")
 	} else {
 		for _, value := range tasks {
-			task := corehealth.OrcaTask{ID: strings.TrimSpace(value.ID), Status: strings.TrimSpace(value.Status), HasResult: value.HasResult}
+			task := corehealth.OrcaTask{RuntimeID: strings.TrimSpace(value.RuntimeID), ID: strings.TrimSpace(value.ID), Status: strings.TrimSpace(value.Status), HasResult: value.HasResult}
+			if task.RuntimeID != snapshot.OrcaRuntimeID {
+				addProblem(snapshot, "orca_tasks", "orca_task_runtime_mismatch", "task "+task.ID+" runtime identity does not match")
+			}
 			if strings.TrimSpace(value.CompletedAt) != "" {
 				parsed, parseErr := time.Parse(time.RFC3339Nano, strings.TrimSpace(value.CompletedAt))
 				if parseErr != nil {
@@ -327,7 +332,11 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 	} else {
 		dispatchedCounts := make(map[string]int, len(dispatched))
 		for _, task := range dispatched {
-			dispatchedCounts[strings.TrimSpace(task.ID)]++
+			taskID := strings.TrimSpace(task.ID)
+			if strings.TrimSpace(task.RuntimeID) != snapshot.OrcaRuntimeID {
+				addProblem(snapshot, "orca_dispatches", "orca_dispatched_task_runtime_mismatch", "dispatched task "+taskID+" runtime identity does not match")
+			}
+			dispatchedCounts[taskID]++
 		}
 		for _, task := range snapshot.Tasks {
 			if strings.TrimSpace(task.Status) == "dispatched" && dispatchedCounts[strings.TrimSpace(task.ID)] != 1 {
@@ -347,8 +356,8 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 				addProblem(snapshot, "orca_dispatches", "orca_dispatch_failed", "could not resolve dispatch for task "+taskID)
 				continue
 			}
-			value := corehealth.OrcaDispatch{ID: strings.TrimSpace(dispatch.ID), TaskID: strings.TrimSpace(dispatch.TaskID), AssigneeHandle: strings.TrimSpace(dispatch.AssigneeHandle), Status: strings.TrimSpace(dispatch.Status)}
-			if value.ID == "" || value.TaskID != taskID || value.AssigneeHandle == "" || value.Status != "dispatched" {
+			value := corehealth.OrcaDispatch{RuntimeID: strings.TrimSpace(dispatch.RuntimeID), ID: strings.TrimSpace(dispatch.ID), TaskID: strings.TrimSpace(dispatch.TaskID), AssigneeHandle: strings.TrimSpace(dispatch.AssigneeHandle), Status: strings.TrimSpace(dispatch.Status)}
+			if value.RuntimeID != snapshot.OrcaRuntimeID || value.ID == "" || value.TaskID != taskID || value.AssigneeHandle == "" || value.Status != "dispatched" {
 				addProblem(snapshot, "orca_dispatches", "orca_dispatch_identity_mismatch", "dispatch identity does not match task "+taskID)
 			}
 			snapshot.Dispatches = append(snapshot.Dispatches, value)
@@ -367,15 +376,19 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 		addProblem(snapshot, "orca_gates", "orca_gates_failed", "Orca gate inventory failed")
 	} else {
 		for _, value := range gates {
-			snapshot.Gates = append(snapshot.Gates, corehealth.OrcaGate{ID: strings.TrimSpace(value.ID), TaskID: strings.TrimSpace(value.TaskID), Status: strings.TrimSpace(value.Status)})
+			gate := corehealth.OrcaGate{RuntimeID: strings.TrimSpace(value.RuntimeID), ID: strings.TrimSpace(value.ID), TaskID: strings.TrimSpace(value.TaskID), Status: strings.TrimSpace(value.Status)}
+			if gate.RuntimeID != snapshot.OrcaRuntimeID {
+				addProblem(snapshot, "orca_gates", "orca_gate_runtime_mismatch", "gate "+gate.ID+" runtime identity does not match")
+			}
+			snapshot.Gates = append(snapshot.Gates, gate)
 		}
 	}
 	inbox, err := collector.Orca.InboxPresence(ctx)
 	if err != nil {
 		addProblem(snapshot, "orca_inbox", "orca_inbox_failed", "Orca inbox presence inventory failed")
 	} else {
-		snapshot.Messages = corehealth.MessagePresence{Count: inbox.Count, Empty: inbox.RowCount == 0, CompleteAbsence: inbox.CompleteAbsence}
-		if inbox.Count != inbox.RowCount || inbox.RowCount < 0 || inbox.RowCount > 1 {
+		snapshot.Messages = corehealth.MessagePresence{RuntimeID: strings.TrimSpace(inbox.RuntimeID), Count: inbox.Count, Empty: inbox.RowCount == 0, CompleteAbsence: inbox.CompleteAbsence}
+		if snapshot.Messages.RuntimeID != snapshot.OrcaRuntimeID || inbox.Count != inbox.RowCount || inbox.RowCount < 0 || inbox.RowCount > 1 {
 			addProblem(snapshot, "orca_inbox", "orca_inbox_count_mismatch", "bounded Orca inbox count does not match returned rows")
 		}
 	}
@@ -405,6 +418,8 @@ func cycleFromRecord(record issueops.IssueOpsRecord) (corehealth.Cycle, []corehe
 	mergeWorktreePath(record.WorktreePath)
 	if record.ExecutionHandoff == nil {
 		if migration := record.LegacyWorktreeMigration; migration != nil && migration.Orca != nil {
+			cycle.OrcaRuntimeID = strings.TrimSpace(migration.Orca.RuntimeID)
+			cycle.OrcaRepoID = strings.TrimSpace(migration.Orca.RepoID)
 			cycle.OrcaWorktreeID = strings.TrimSpace(migration.Orca.WorktreeID)
 			cycle.OrcaWorktreeInstanceID = strings.TrimSpace(migration.Orca.WorktreeInstanceID)
 			mergeWorktreePath(migration.WorktreePath)
@@ -423,10 +438,14 @@ func cycleFromRecord(record issueops.IssueOpsRecord) (corehealth.Cycle, []corehe
 		cycle.WorkerAgentID = strings.TrimSpace(handoff.WorkerSession.AgentID)
 	}
 	if handoff.Orca != nil {
+		cycle.OrcaRuntimeID = strings.TrimSpace(handoff.Orca.RuntimeID)
+		cycle.OrcaRepoID = strings.TrimSpace(handoff.Orca.RepoID)
 		cycle.OrcaWorktreeID = strings.TrimSpace(handoff.Orca.WorktreeID)
 		cycle.OrcaWorktreeInstanceID = strings.TrimSpace(handoff.Orca.WorktreeInstanceID)
 		cycle.TerminalHandle = strings.TrimSpace(handoff.Orca.WorkerTerminalHandle)
 		cycle.PTYID = strings.TrimSpace(handoff.Orca.WorkerPTYID)
+		cycle.TerminalTabID = strings.TrimSpace(handoff.Orca.WorkerTabID)
+		cycle.TerminalLeafID = strings.TrimSpace(handoff.Orca.WorkerLeafID)
 		cycle.TaskID = strings.TrimSpace(handoff.Orca.TaskID)
 		cycle.DispatchID = strings.TrimSpace(handoff.Orca.DispatchID)
 		mergeWorktreePath(handoff.Orca.WorktreePath)
@@ -573,8 +592,8 @@ func sortSnapshot(snapshot *corehealth.Snapshot) {
 	sort.Slice(snapshot.Cycles, func(i, j int) bool {
 		left, right := snapshot.Cycles[i], snapshot.Cycles[j]
 		return orderedBefore(
-			[]string{left.ID, left.Repo, left.Branch, left.Phase, left.HandoffState, strconv.Itoa(left.Attempt), left.OwnershipEpoch, left.ContextSHA256, left.WorkerSessionID, left.WorkerAgentID, left.WorktreePath, left.OrcaWorktreeID, left.OrcaWorktreeInstanceID, left.TerminalHandle, left.PTYID, left.TaskID, left.DispatchID, timeSortValue(left.LastHeartbeatAt)},
-			[]string{right.ID, right.Repo, right.Branch, right.Phase, right.HandoffState, strconv.Itoa(right.Attempt), right.OwnershipEpoch, right.ContextSHA256, right.WorkerSessionID, right.WorkerAgentID, right.WorktreePath, right.OrcaWorktreeID, right.OrcaWorktreeInstanceID, right.TerminalHandle, right.PTYID, right.TaskID, right.DispatchID, timeSortValue(right.LastHeartbeatAt)},
+			[]string{left.ID, left.Repo, left.Branch, left.Phase, left.HandoffState, strconv.Itoa(left.Attempt), left.OwnershipEpoch, left.ContextSHA256, left.WorkerSessionID, left.WorkerAgentID, left.OrcaRuntimeID, left.OrcaRepoID, left.WorktreePath, left.OrcaWorktreeID, left.OrcaWorktreeInstanceID, left.TerminalHandle, left.PTYID, left.TerminalTabID, left.TerminalLeafID, left.TaskID, left.DispatchID, timeSortValue(left.LastHeartbeatAt)},
+			[]string{right.ID, right.Repo, right.Branch, right.Phase, right.HandoffState, strconv.Itoa(right.Attempt), right.OwnershipEpoch, right.ContextSHA256, right.WorkerSessionID, right.WorkerAgentID, right.OrcaRuntimeID, right.OrcaRepoID, right.WorktreePath, right.OrcaWorktreeID, right.OrcaWorktreeInstanceID, right.TerminalHandle, right.PTYID, right.TerminalTabID, right.TerminalLeafID, right.TaskID, right.DispatchID, timeSortValue(right.LastHeartbeatAt)},
 		)
 	})
 	sort.Slice(snapshot.Bindings, func(i, j int) bool {
@@ -593,34 +612,34 @@ func sortSnapshot(snapshot *corehealth.Snapshot) {
 	sort.Slice(snapshot.OrcaWorktrees, func(i, j int) bool {
 		left, right := snapshot.OrcaWorktrees[i], snapshot.OrcaWorktrees[j]
 		return orderedBefore(
-			[]string{left.RuntimeID, left.ID, left.InstanceID, left.Repo, left.Path, left.Branch, left.Head},
-			[]string{right.RuntimeID, right.ID, right.InstanceID, right.Repo, right.Path, right.Branch, right.Head},
+			[]string{left.RuntimeID, left.RepoID, left.ID, left.InstanceID, left.Repo, left.Path, left.Branch, left.Head},
+			[]string{right.RuntimeID, right.RepoID, right.ID, right.InstanceID, right.Repo, right.Path, right.Branch, right.Head},
 		)
 	})
 	sort.Slice(snapshot.Terminals, func(i, j int) bool {
 		left, right := snapshot.Terminals[i], snapshot.Terminals[j]
 		return orderedBefore(
-			[]string{left.RuntimeID, left.Handle, left.PTYID, left.WorktreeID, left.WorktreePath, strconv.FormatBool(left.Connected), strconv.FormatBool(left.Writable)},
-			[]string{right.RuntimeID, right.Handle, right.PTYID, right.WorktreeID, right.WorktreePath, strconv.FormatBool(right.Connected), strconv.FormatBool(right.Writable)},
+			[]string{left.RuntimeID, left.Handle, left.PTYID, left.TabID, left.LeafID, left.WorktreeID, left.WorktreePath, strconv.FormatBool(left.Connected), strconv.FormatBool(left.Writable)},
+			[]string{right.RuntimeID, right.Handle, right.PTYID, right.TabID, right.LeafID, right.WorktreeID, right.WorktreePath, strconv.FormatBool(right.Connected), strconv.FormatBool(right.Writable)},
 		)
 	})
 	sort.Slice(snapshot.Tasks, func(i, j int) bool {
 		left, right := snapshot.Tasks[i], snapshot.Tasks[j]
 		return orderedBefore(
-			[]string{left.ID, left.Status, left.DispatchID, timeSortValue(left.CompletedAt), strconv.FormatBool(left.HasResult)},
-			[]string{right.ID, right.Status, right.DispatchID, timeSortValue(right.CompletedAt), strconv.FormatBool(right.HasResult)},
+			[]string{left.RuntimeID, left.ID, left.Status, left.DispatchID, timeSortValue(left.CompletedAt), strconv.FormatBool(left.HasResult)},
+			[]string{right.RuntimeID, right.ID, right.Status, right.DispatchID, timeSortValue(right.CompletedAt), strconv.FormatBool(right.HasResult)},
 		)
 	})
 	sort.Slice(snapshot.Dispatches, func(i, j int) bool {
 		left, right := snapshot.Dispatches[i], snapshot.Dispatches[j]
 		return orderedBefore(
-			[]string{left.ID, left.TaskID, left.AssigneeHandle, left.Status},
-			[]string{right.ID, right.TaskID, right.AssigneeHandle, right.Status},
+			[]string{left.RuntimeID, left.ID, left.TaskID, left.AssigneeHandle, left.Status},
+			[]string{right.RuntimeID, right.ID, right.TaskID, right.AssigneeHandle, right.Status},
 		)
 	})
 	sort.Slice(snapshot.Gates, func(i, j int) bool {
 		left, right := snapshot.Gates[i], snapshot.Gates[j]
-		return orderedBefore([]string{left.ID, left.TaskID, left.Status}, []string{right.ID, right.TaskID, right.Status})
+		return orderedBefore([]string{left.RuntimeID, left.ID, left.TaskID, left.Status}, []string{right.RuntimeID, right.ID, right.TaskID, right.Status})
 	})
 	sort.Slice(snapshot.StateArtifacts, func(i, j int) bool {
 		left, right := snapshot.StateArtifacts[i], snapshot.StateArtifacts[j]

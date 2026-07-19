@@ -49,6 +49,7 @@ type OrcaStatus struct {
 }
 
 type OrcaRepo struct {
+	RuntimeID        string `json:"-"`
 	ID               string `json:"id"`
 	Path             string `json:"path"`
 	Name             string `json:"name,omitempty"`
@@ -118,6 +119,7 @@ type OrcaBootstrapTerminalAgentRequest struct {
 }
 
 type OrcaTask struct {
+	RuntimeID   string `json:"-"`
 	ID          string `json:"id"`
 	Title       string `json:"title,omitempty"`
 	DisplayName string `json:"display_name,omitempty"`
@@ -127,15 +129,17 @@ type OrcaTask struct {
 }
 
 type OrcaGate struct {
-	ID     string `json:"id"`
-	TaskID string `json:"task_id"`
-	Status string `json:"status"`
+	RuntimeID string `json:"-"`
+	ID        string `json:"id"`
+	TaskID    string `json:"task_id"`
+	Status    string `json:"status"`
 }
 
 type OrcaInboxPresence struct {
-	Count           int  `json:"count"`
-	RowCount        int  `json:"row_count"`
-	CompleteAbsence bool `json:"complete_absence"`
+	RuntimeID       string `json:"-"`
+	Count           int    `json:"count"`
+	RowCount        int    `json:"row_count"`
+	CompleteAbsence bool   `json:"complete_absence"`
 }
 
 type OrcaCreateTaskRequest struct {
@@ -153,6 +157,7 @@ type OrcaDispatchRequest struct {
 }
 
 type OrcaDispatch struct {
+	RuntimeID      string `json:"-"`
 	ID             string `json:"id"`
 	TaskID         string `json:"task_id"`
 	AssigneeHandle string `json:"assignee_handle,omitempty"`

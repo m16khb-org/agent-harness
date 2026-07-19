@@ -723,7 +723,7 @@ func TestClientListAllTasksProjectsCompletionSemanticsWithoutRawResult(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 2 || got[0].ID != "task-ready" || got[0].CompletedAt != "" || got[0].HasResult || got[1].ID != "task-complete" || got[1].CompletedAt != "2026-07-19T01:02:03.000Z" || !got[1].HasResult {
+	if len(got) != 2 || got[0].RuntimeID != "runtime-1" || got[0].ID != "task-ready" || got[0].CompletedAt != "" || got[0].HasResult || got[1].RuntimeID != "runtime-1" || got[1].ID != "task-complete" || got[1].CompletedAt != "2026-07-19T01:02:03.000Z" || !got[1].HasResult {
 		t.Fatalf("all-task semantic projection = %#v", got)
 	}
 	projected := fmt.Sprintf("%#v", got)
@@ -751,13 +751,13 @@ func TestClientListGatesRequiresCountEquality(t *testing.T) {
 	t.Run("complete", func(t *testing.T) {
 		runner := newFakeRunner(t)
 		command := "orca orchestration gate-list --json"
-		runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"gates":[{"id":"gate-1","task_id":"task-1","status":"pending","question":"raw-question-must-not-escape"}],"count":1}}`)}
+		runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"gates":[{"id":"gate-1","task_id":"task-1","status":"pending","question":"raw-question-must-not-escape"}],"count":1},"_meta":{"runtimeId":"runtime-1"}}`)}
 
 		got, err := NewClient(runner).ListGates(context.Background())
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(got) != 1 || got[0].ID != "gate-1" || got[0].TaskID != "task-1" || got[0].Status != "pending" || strings.Contains(fmt.Sprintf("%#v", got), "raw-question-must-not-escape") {
+		if len(got) != 1 || got[0].RuntimeID != "runtime-1" || got[0].ID != "gate-1" || got[0].TaskID != "task-1" || got[0].Status != "pending" || strings.Contains(fmt.Sprintf("%#v", got), "raw-question-must-not-escape") {
 			t.Fatalf("gate projection = %#v", got)
 		}
 		if len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != command {
@@ -827,13 +827,13 @@ func TestClientInboxPresenceProvesOnlyBoundedZero(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			runner := newFakeRunner(t)
 			command := "orca orchestration inbox --limit 1 --json"
-			runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":` + test.result + `}`)}
+			runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":` + test.result + `,"_meta":{"runtimeId":"runtime-1"}}`)}
 
 			got, err := NewClient(runner).InboxPresence(context.Background())
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.Count != test.count || got.RowCount != test.rows || got.CompleteAbsence != test.completeAbsence {
+			if got.RuntimeID != "runtime-1" || got.Count != test.count || got.RowCount != test.rows || got.CompleteAbsence != test.completeAbsence {
 				t.Fatalf("inbox presence = %#v", got)
 			}
 			projected := fmt.Sprintf("%#v", got)
@@ -850,13 +850,13 @@ func TestClientInboxPresenceProvesOnlyBoundedZero(t *testing.T) {
 func TestClientResolveRepoReturnsCanonicalRegistration(t *testing.T) {
 	runner := newFakeRunner(t)
 	command := "orca repo show --repo path:/absolute/repo --json"
-	runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"repo":{"id":"repo-1","path":"/absolute/repo","displayName":"repo","worktreeBasePath":"../repo.worktrees","gitRemoteIdentity":{"remoteName":"origin"}}}}`)}
+	runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"repo":{"id":"repo-1","path":"/absolute/repo","displayName":"repo","worktreeBasePath":"../repo.worktrees","gitRemoteIdentity":{"remoteName":"origin"}}},"_meta":{"runtimeId":"runtime-1"}}`)}
 
 	got, err := NewClient(runner).ResolveRepo(context.Background(), "/absolute/repo")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.ID != "repo-1" || got.Path != "/absolute/repo" || got.RemoteName != "origin" || len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != command {
+	if got.RuntimeID != "runtime-1" || got.ID != "repo-1" || got.Path != "/absolute/repo" || got.RemoteName != "origin" || len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != command {
 		t.Fatalf("canonical repo projection = %#v calls=%#v", got, runner.calls)
 	}
 
@@ -911,13 +911,14 @@ func TestClientListDispatchedTasksUsesServerFilteredCompleteInventory(t *testing
 	runner := newFakeRunner(t)
 	runner.responses["orca orchestration task-list --status dispatched --json"] = CommandOutput{Stdout: []byte(`{
 		"ok": true,
-		"result": {"tasks": [{"id": "task-dispatched", "task_title": "writer", "status": "dispatched"}], "count": 1}
+		"result": {"tasks": [{"id": "task-dispatched", "task_title": "writer", "status": "dispatched"}], "count": 1},
+		"_meta": {"runtimeId": "runtime-1"}
 	}`)}
 	got, err := NewClient(runner).ListDispatchedTasks(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || got[0].ID != "task-dispatched" || got[0].Status != "dispatched" {
+	if len(got) != 1 || got[0].RuntimeID != "runtime-1" || got[0].ID != "task-dispatched" || got[0].Status != "dispatched" {
 		t.Fatalf("dispatched task projection = %#v", got)
 	}
 	if len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != "orca orchestration task-list --status dispatched --json" {
@@ -932,7 +933,7 @@ func TestClientShowDispatchDecodesInstalledShapeWithoutInjectedField(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.ID != "dispatch-1" || got.TaskID != "task-1" || got.AssigneeHandle != "term-live" || got.Status != "dispatched" {
+	if got.RuntimeID != "runtime-1" || got.ID != "dispatch-1" || got.TaskID != "task-1" || got.AssigneeHandle != "term-live" || got.Status != "dispatched" {
 		t.Fatalf("installed dispatch-show projection = %#v", got)
 	}
 	if got.Injected {

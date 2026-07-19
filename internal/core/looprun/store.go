@@ -41,6 +41,27 @@ func ReadLoop(loopID string) (LoopRun, error) {
 	if !ok {
 		return LoopRun{OK: false, ID: loopID}, fmt.Errorf("loop %s: %w", loopID, fs.ErrNotExist)
 	}
+	return decodeLoop(loopID, data)
+}
+
+// ReadLoopExisting reads one existing loop without creating, repairing, or
+// changing permissions on the loop store.
+func ReadLoopExisting(loopID string) (LoopRun, error) {
+	loopID, err := normalizeLoopID(loopID)
+	if err != nil {
+		return LoopRun{OK: false}, err
+	}
+	data, ok, err := sqlstore.GetExisting(StateRoot(), loopBucket, loopID)
+	if err != nil {
+		return LoopRun{OK: false, ID: loopID}, err
+	}
+	if !ok {
+		return LoopRun{OK: false, ID: loopID}, fmt.Errorf("loop %s: %w", loopID, fs.ErrNotExist)
+	}
+	return decodeLoop(loopID, data)
+}
+
+func decodeLoop(loopID string, data []byte) (LoopRun, error) {
 	var loop LoopRun
 	if err := json.Unmarshal(data, &loop); err != nil {
 		return LoopRun{OK: false, ID: loopID}, err

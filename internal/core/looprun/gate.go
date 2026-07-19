@@ -27,7 +27,7 @@ func RepoGateMissing(repo string) ([]string, []string) {
 	missing := []string{}
 	warnings := []string{}
 	for _, id := range ids {
-		loop, err := ReadLoop(id)
+		loop, err := ReadLoopExisting(id)
 		if err != nil {
 			missing = append(missing, "loop_incomplete:"+id)
 			warnings = append(warnings, "failed to inspect loop run "+id+": "+err.Error())
@@ -60,7 +60,7 @@ func RepoGateSummaryFor(repo string) (RepoGateSummary, []string) {
 	summary := RepoGateSummary{}
 	warnings := []string{}
 	for _, id := range ids {
-		loop, err := ReadLoop(id)
+		loop, err := ReadLoopExisting(id)
 		if err != nil {
 			warnings = append(warnings, fmt.Sprintf("failed to inspect loop run %s: %v", id, err))
 			continue

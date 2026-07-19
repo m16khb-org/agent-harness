@@ -7,34 +7,15 @@ import (
 
 func TestClassifyOperationalHealthRejectsBoundCycleWithoutFreshHeartbeat(t *testing.T) {
 	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
-	snapshot := Snapshot{
-		Cycles: []Cycle{{
-			ID:              "io-dead-owner",
-			Repo:            "/repo",
-			Branch:          "1-dead-owner",
-			Phase:           "implement",
-			HandoffState:    "claimed",
-			Attempt:         1,
-			OwnershipEpoch:  "epoch-1",
-			ContextSHA256:   "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-			WorkerSessionID: "session-1",
-			WorkerAgentID:   "agent-1",
-			TaskID:          "task-1",
-		}},
-		Bindings: []Binding{{
-			CycleID: "io-dead-owner",
-			Repo:    "/repo",
-			Branch:  "1-dead-owner",
-		}},
-		Tasks: []OrcaTask{{ID: "task-1", Status: "ready"}},
-	}
+	snapshot := healthyOperationalSnapshot(now)
+	snapshot.Cycles[0].LastHeartbeatAt = time.Time{}
 
 	result := Classify(snapshot, Options{Now: now})
 
 	if result.Healthy {
 		t.Fatalf("bound cycle without a fresh heartbeat classified healthy: %#v", result)
 	}
-	if !hasFinding(result.Findings, FindingDeadOwner, "io-dead-owner") {
+	if !hasFinding(result.Findings, FindingDeadOwner, "io-live") {
 		t.Fatalf("missing %s finding for dead owner: %#v", FindingDeadOwner, result.Findings)
 	}
 }
@@ -46,6 +27,81 @@ func TestClassifyOperationalHealthAcceptsFreshClaimedExactResources(t *testing.T
 
 	if !result.Healthy || len(result.Findings) != 0 {
 		t.Fatalf("fresh exact claimed cycle should be healthy: %#v", result)
+	}
+}
+
+func TestClassifyOperationalHealthRejectsBindingWorktreeMismatch(t *testing.T) {
+	now := operationalTestNow()
+	snapshot := healthyOperationalSnapshot(now)
+	snapshot.Bindings[0].ExpectedWorktree = "/repo.wt/not-the-owner"
+
+	result := Classify(snapshot, Options{Now: now})
+
+	if !hasFinding(result.Findings, FindingInventoryUnknown, "io-live") {
+		t.Fatalf("contradictory binding worktree passed: %#v", result.Findings)
+	}
+}
+
+func TestClassifyOperationalHealthRequiresOneCanonicalOrcaSourceWorktree(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		worktrees []OrcaWorktree
+	}{
+		{name: "missing"},
+		{name: "duplicate", worktrees: []OrcaWorktree{
+			{RuntimeID: "runtime-1", ID: "wt-main-a", InstanceID: "instance-main-a", Repo: "/repo", Path: "/repo", Branch: "main", Head: "head-main"},
+			{RuntimeID: "runtime-1", ID: "wt-main-b", InstanceID: "instance-main-b", Repo: "/repo", Path: "/repo", Branch: "main", Head: "head-main"},
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			snapshot := minimalOperationalSnapshot()
+			snapshot.OrcaObserved = true
+			snapshot.OrcaRuntimeID = "runtime-1"
+			snapshot.OrcaWorktrees = test.worktrees
+
+			result := Classify(snapshot, Options{Now: operationalTestNow()})
+
+			if !hasFinding(result.Findings, FindingInventoryUnknown, "/repo") {
+				t.Fatalf("%s canonical Orca source worktree passed: %#v", test.name, result.Findings)
+			}
+		})
+	}
+}
+
+func TestClassifyOperationalHealthFencesCompleteDurableOrcaIdentity(t *testing.T) {
+	now := operationalTestNow()
+	baseline := observedHealthyOperationalSnapshot(now)
+	if result := Classify(baseline, Options{Now: now}); !result.Healthy {
+		t.Fatalf("complete observed Orca identity should be healthy: %#v", result.Findings)
+	}
+
+	for _, test := range []struct {
+		name   string
+		mutate func(*Snapshot)
+		id     string
+	}{
+		{name: "cycle runtime", id: "io-live", mutate: func(snapshot *Snapshot) { snapshot.Cycles[0].OrcaRuntimeID = "runtime-old" }},
+		{name: "cycle repo", id: "wt-1", mutate: func(snapshot *Snapshot) { snapshot.Cycles[0].OrcaRepoID = "repo-old" }},
+		{name: "terminal tab", id: "term-1", mutate: func(snapshot *Snapshot) { snapshot.Terminals[0].TabID = "tab-other" }},
+		{name: "terminal leaf", id: "term-1", mutate: func(snapshot *Snapshot) { snapshot.Terminals[0].LeafID = "leaf-other" }},
+		{name: "task runtime", id: "task-1", mutate: func(snapshot *Snapshot) { snapshot.Tasks[0].RuntimeID = "runtime-other" }},
+		{name: "dispatch runtime", id: "dispatch-1", mutate: func(snapshot *Snapshot) { snapshot.Dispatches[0].RuntimeID = "runtime-other" }},
+		{name: "message runtime", id: "inbox", mutate: func(snapshot *Snapshot) { snapshot.Messages.RuntimeID = "runtime-other" }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			snapshot := baseline
+			snapshot.Cycles = append([]Cycle(nil), baseline.Cycles...)
+			snapshot.Terminals = append([]OrcaTerminal(nil), baseline.Terminals...)
+			snapshot.Tasks = append([]OrcaTask(nil), baseline.Tasks...)
+			snapshot.Dispatches = append([]OrcaDispatch(nil), baseline.Dispatches...)
+			test.mutate(&snapshot)
+
+			result := Classify(snapshot, Options{Now: now})
+
+			if !hasFinding(result.Findings, FindingInventoryUnknown, test.id) {
+				t.Fatalf("%s drift passed: %#v", test.name, result.Findings)
+			}
+		})
 	}
 }
 
@@ -77,6 +133,12 @@ func TestClassifyOperationalHealthRejectsCanonicalSourceDrift(t *testing.T) {
 func TestClassifyOperationalHealthUsesGlobalOrcaOwnersAcrossRepos(t *testing.T) {
 	now := operationalTestNow()
 	snapshot := minimalOperationalSnapshot()
+	snapshot.OrcaObserved = true
+	snapshot.OrcaRuntimeID = "runtime-1"
+	snapshot.OrcaRepoID = "repo-1"
+	snapshot.OrcaWorktrees[0].RuntimeID = "runtime-1"
+	snapshot.OrcaWorktrees[0].RepoID = "repo-1"
+	snapshot.Messages.RuntimeID = "runtime-1"
 	snapshot.Cycles = []Cycle{{
 		ID:                     "io-foreign-live",
 		Repo:                   "/other",
@@ -88,22 +150,26 @@ func TestClassifyOperationalHealthUsesGlobalOrcaOwnersAcrossRepos(t *testing.T) 
 		ContextSHA256:          "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 		WorkerSessionID:        "session-foreign",
 		WorkerAgentID:          "agent-foreign",
+		OrcaRuntimeID:          "runtime-1",
+		OrcaRepoID:             "repo-foreign",
 		WorktreePath:           "/other.wt/2-foreign-live",
 		OrcaWorktreeID:         "wt-foreign",
 		OrcaWorktreeInstanceID: "instance-foreign",
 		TerminalHandle:         "term-foreign",
 		PTYID:                  "pty-foreign",
+		TerminalTabID:          "tab-foreign",
+		TerminalLeafID:         "leaf-foreign",
 		TaskID:                 "task-foreign",
 		DispatchID:             "dispatch-foreign",
 		LastHeartbeatAt:        now.Add(-time.Minute),
 	}}
 	snapshot.Terminals = []OrcaTerminal{{
-		Handle: "term-foreign", PTYID: "pty-foreign", WorktreeID: "wt-foreign",
+		RuntimeID: "runtime-1", Handle: "term-foreign", PTYID: "pty-foreign", TabID: "tab-foreign", LeafID: "leaf-foreign", WorktreeID: "wt-foreign",
 		WorktreePath: "/other.wt/2-foreign-live", Connected: true, Writable: true,
 	}}
-	snapshot.Tasks = []OrcaTask{{ID: "task-foreign", Status: "dispatched", DispatchID: "dispatch-foreign"}}
+	snapshot.Tasks = []OrcaTask{{RuntimeID: "runtime-1", ID: "task-foreign", Status: "dispatched", DispatchID: "dispatch-foreign"}}
 	snapshot.Dispatches = []OrcaDispatch{{
-		ID: "dispatch-foreign", TaskID: "task-foreign", AssigneeHandle: "term-foreign", Status: "dispatched",
+		RuntimeID: "runtime-1", ID: "dispatch-foreign", TaskID: "task-foreign", AssigneeHandle: "term-foreign", Status: "dispatched",
 	}}
 
 	result := Classify(snapshot, Options{Now: now})
@@ -314,6 +380,19 @@ func TestClassifyOperationalHealthTreatsDoneOwnerResourcesAsResidue(t *testing.T
 	}
 }
 
+func TestClassifyOperationalHealthTreatsDoneOwnerBindingAsResidue(t *testing.T) {
+	now := operationalTestNow()
+	snapshot := minimalOperationalSnapshot()
+	snapshot.Cycles = []Cycle{{ID: "io-done", Repo: "/repo", Branch: "main", Phase: "done", HandoffState: "closed"}}
+	snapshot.Bindings = []Binding{{CycleID: "io-done", Repo: "/repo", Branch: "main"}}
+
+	result := Classify(snapshot, Options{Now: now})
+
+	if !hasFinding(result.Findings, FindingInventoryUnknown, "io-done") {
+		t.Fatalf("done owner binding passed: %#v", result.Findings)
+	}
+}
+
 func TestClassifyOperationalHealthReportsUnmatchedResources(t *testing.T) {
 	now := operationalTestNow()
 	snapshot := minimalOperationalSnapshot()
@@ -373,6 +452,7 @@ func TestClassifyOperationalHealthFailsClosedOnUnknownState(t *testing.T) {
 	}{
 		{name: "phase", id: "io-live", mutate: func(snapshot *Snapshot) { snapshot.Cycles[0].Phase = "mystery" }},
 		{name: "handoff", id: "io-live", mutate: func(snapshot *Snapshot) { snapshot.Cycles[0].HandoffState = "mystery" }},
+		{name: "incomplete claimed identity", id: "io-live", mutate: func(snapshot *Snapshot) { snapshot.Cycles[0].TerminalLeafID = "" }},
 		{name: "task", id: "task-1", mutate: func(snapshot *Snapshot) { snapshot.Tasks[0].Status = "mystery" }},
 		{name: "gate", id: "gate-1", mutate: func(snapshot *Snapshot) { snapshot.Gates = []OrcaGate{{ID: "gate-1", Status: "mystery"}} }},
 		{name: "non-contract gate", id: "gate-1", mutate: func(snapshot *Snapshot) { snapshot.Gates = []OrcaGate{{ID: "gate-1", Status: "approved"}} }},
@@ -525,11 +605,15 @@ func healthyOperationalSnapshot(now time.Time) Snapshot {
 		ContextSHA256:          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		WorkerSessionID:        "session-1",
 		WorkerAgentID:          "agent-1",
+		OrcaRuntimeID:          "runtime-1",
+		OrcaRepoID:             "repo-1",
 		WorktreePath:           "/repo.wt/1-live",
 		OrcaWorktreeID:         "wt-1",
 		OrcaWorktreeInstanceID: "instance-1",
 		TerminalHandle:         "term-1",
 		PTYID:                  "pty-1",
+		TerminalTabID:          "tab-1",
+		TerminalLeafID:         "leaf-1",
 		TaskID:                 "task-1",
 		DispatchID:             "dispatch-1",
 		LastHeartbeatAt:        now.Add(-5 * time.Minute),
@@ -538,10 +622,32 @@ func healthyOperationalSnapshot(now time.Time) Snapshot {
 	snapshot.GitWorktrees = append(snapshot.GitWorktrees, GitWorktree{Path: "/repo.wt/1-live", Branch: "1-live", Head: "head-live", Clean: false})
 	snapshot.LocalRefs = append(snapshot.LocalRefs, GitRef{Name: "refs/heads/1-live", Branch: "1-live", OID: "head-live", Location: "local"})
 	snapshot.RemoteRefs = append(snapshot.RemoteRefs, GitRef{Name: "refs/heads/1-live", Branch: "1-live", OID: "head-live", Location: "remote"})
-	snapshot.OrcaWorktrees = append(snapshot.OrcaWorktrees, OrcaWorktree{ID: "wt-1", InstanceID: "instance-1", Repo: "/repo", Path: "/repo.wt/1-live", Branch: "1-live", Head: "head-live"})
-	snapshot.Terminals = []OrcaTerminal{{Handle: "term-1", PTYID: "pty-1", WorktreeID: "wt-1", WorktreePath: "/repo.wt/1-live", Connected: true, Writable: true}}
-	snapshot.Tasks = []OrcaTask{{ID: "task-1", Status: "dispatched", DispatchID: "dispatch-1"}}
-	snapshot.Dispatches = []OrcaDispatch{{ID: "dispatch-1", TaskID: "task-1", AssigneeHandle: "term-1", Status: "dispatched"}}
+	snapshot.OrcaWorktrees = append(snapshot.OrcaWorktrees, OrcaWorktree{RuntimeID: "runtime-1", RepoID: "repo-1", ID: "wt-1", InstanceID: "instance-1", Repo: "/repo", Path: "/repo.wt/1-live", Branch: "1-live", Head: "head-live"})
+	snapshot.Terminals = []OrcaTerminal{{RuntimeID: "runtime-1", Handle: "term-1", PTYID: "pty-1", TabID: "tab-1", LeafID: "leaf-1", WorktreeID: "wt-1", WorktreePath: "/repo.wt/1-live", Connected: true, Writable: true}}
+	snapshot.Tasks = []OrcaTask{{RuntimeID: "runtime-1", ID: "task-1", Status: "dispatched", DispatchID: "dispatch-1"}}
+	snapshot.Dispatches = []OrcaDispatch{{RuntimeID: "runtime-1", ID: "dispatch-1", TaskID: "task-1", AssigneeHandle: "term-1", Status: "dispatched"}}
+	return snapshot
+}
+
+func observedHealthyOperationalSnapshot(now time.Time) Snapshot {
+	snapshot := healthyOperationalSnapshot(now)
+	snapshot.OrcaObserved = true
+	snapshot.OrcaRuntimeID = "runtime-1"
+	snapshot.OrcaRepoID = "repo-1"
+	snapshot.Cycles[0].OrcaRuntimeID = "runtime-1"
+	snapshot.Cycles[0].OrcaRepoID = "repo-1"
+	snapshot.Cycles[0].TerminalTabID = "tab-1"
+	snapshot.Cycles[0].TerminalLeafID = "leaf-1"
+	for index := range snapshot.OrcaWorktrees {
+		snapshot.OrcaWorktrees[index].RuntimeID = "runtime-1"
+		snapshot.OrcaWorktrees[index].RepoID = "repo-1"
+	}
+	snapshot.Terminals[0].RuntimeID = "runtime-1"
+	snapshot.Terminals[0].TabID = "tab-1"
+	snapshot.Terminals[0].LeafID = "leaf-1"
+	snapshot.Tasks[0].RuntimeID = "runtime-1"
+	snapshot.Dispatches[0].RuntimeID = "runtime-1"
+	snapshot.Messages.RuntimeID = "runtime-1"
 	return snapshot
 }
 
