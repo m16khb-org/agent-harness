@@ -73,6 +73,75 @@
           "ultraqaClasses": ["cross_platform", "flaky_test", "hung_command", "misleading_success"]
         }
       ]
+    },
+    {
+      "id": "G3",
+      "title": "Repair supervised multi-cycle control-plane reachability",
+      "objective": "Allow only exact host control-plane, CodeGraph observation, targeted IssueOps MCP, and bounded Codex hook review while preserving every mutation fence.",
+      "status": "pending",
+      "successCriteria": [
+        {
+          "id": "G3-C1",
+          "scenario": "Capture named RED then GREEN parser, lifecycle, and real hook-adapter rows for exact control-plane/CodeGraph/MCP/helper requests and their inexact companions.",
+          "channel": "cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/G3-C1-red-green.txt",
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/G3-C1-red-green.txt",
+          "cleanupReceipt": "focused fixtures exited; no persistent process remains",
+          "ultraqaClasses": ["malformed_input", "stale_state", "misleading_success"]
+        },
+        {
+          "id": "G3-C2",
+          "scenario": "Use a fake Codex executable to prove exact child argv and three-message JSONL ownership plus protocol, size, count, cwd, and string bounds.",
+          "channel": "cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/G3-C2-codex-adapter.txt",
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/G3-C2-codex-adapter.txt",
+          "cleanupReceipt": "fake app-server roots removed by test cleanup; Unix parent and descendant reaped",
+          "ultraqaClasses": ["malformed_input", "hung_command", "prompt_injection"]
+        },
+        {
+          "id": "G3-C3",
+          "scenario": "Run focused, full, race, vet, build, contract-golden, self-verify, skill validation, and installed native allow/block verification with fresh exits.",
+          "channel": "cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/G3-C3-full-verification.txt",
+          "status": "pending",
+          "capturedEvidence": ".agent-harness/turing/evidence/G3-C3-full-verification.txt",
+          "ultraqaClasses": ["flaky_test", "hung_command", "misleading_success"]
+        }
+      ]
+    },
+    {
+      "id": "G4",
+      "title": "Publish repair and resume issue 46 safely",
+      "objective": "Merge and install issue 47 from verified bytes, then reconcile issue 46 without changing or losing its preserved recovery diff.",
+      "status": "pending",
+      "successCriteria": [
+        {
+          "id": "G4-C1",
+          "scenario": "Publish one atomic issue-linked commit and PR, require green CI and no Critical/Important review findings, then verify the PR merged and issue 47 closed.",
+          "channel": "github",
+          "expectedEvidence": ".agent-harness/turing/evidence/G4-C1-publication.txt",
+          "status": "pending",
+          "ultraqaClasses": ["stale_state", "misleading_success"]
+        },
+        {
+          "id": "G4-C2",
+          "scenario": "Build a clean merge-commit reference, install through the official path, prove installed hash equality, and verify Codex, Claude, GJC, MCP, and hook smokes.",
+          "channel": "cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/G4-C2-install-readback.txt",
+          "status": "pending",
+          "ultraqaClasses": ["stale_state", "misleading_success"]
+        },
+        {
+          "id": "G4-C3",
+          "scenario": "Re-read both issue 46 records, re-hash the untouched recovery diff, establish one writer, and integrate or preserve the recovery change according to focused evidence before lifecycle cleanup.",
+          "channel": "cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/G4-C3-issue-46-recovery.txt",
+          "status": "pending",
+          "ultraqaClasses": ["cancel_resume", "stale_state", "repeated_interruption"]
+        }
+      ]
     }
   ],
   "metrics": {

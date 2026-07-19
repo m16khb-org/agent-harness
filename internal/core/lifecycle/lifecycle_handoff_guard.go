@@ -180,6 +180,13 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 	if searchrouting.IsShellTool(req.Tool) && strings.TrimSpace(req.Command) == "codex --help" {
 		return false, ""
 	}
+	// Host-owned goal, plan, and input control never edits repository or
+	// IssueOps state. Classify only the four exact tool identities before record
+	// selection so multiple source-sharing handoffs cannot deadlock their own
+	// coordinator. Look-alike and namespaced spellings remain fenced.
+	if exactHostControlPlaneTool(req.Tool) {
+		return true, ""
+	}
 	// Proven observations do not require choosing an owner. Evaluate the
 	// deliberately narrow read-only grammar before supervised-record selection
 	// so multiple source-matching cycles cannot deadlock inspection and recovery.
@@ -204,6 +211,12 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 	}
 	if err := handoff.ValidateEnvelope(record); err != nil {
 		return true, "invalid supervised IssueOps handoff envelope: " + err.Error()
+	}
+	if issueOpsObservationMCPTool(req.Tool) {
+		if allowedIssueOpsObservationMCP(req, record) {
+			return true, ""
+		}
+		return true, "exact IssueOps status/resume MCP payload does not match the selected supervised cycle"
 	}
 	if claimedWorkerProgressMessageAllowed(req, record) {
 		return true, ""

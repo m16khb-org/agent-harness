@@ -431,7 +431,9 @@ func TestSupervisedHandoffSkillsPinCorrectiveOperationalRecipes(t *testing.T) {
 			"live terminal handle is not historical mailbox identity",
 			"PreToolUse blocks every other explicit message type",
 			"--allow-codex-hook-trust-bypass",
-			"codex app-server --stdio",
+			"codex-hooks-list --id <exact-cycle-id> --json",
+			"Direct app-server",
+			"emit PreToolUse",
 			"warnings and errors are both empty",
 			"SessionStart and PreToolUse",
 			"untrusted or modified",
@@ -452,7 +454,13 @@ func TestSupervisedHandoffSkillsPinCorrectiveOperationalRecipes(t *testing.T) {
 				t.Fatalf("%s supervised handoff recipe missing %q", name, want)
 			}
 		}
-		for _, forbidden := range []string{"--lines", "--interrupt", "orca terminal rm"} {
+		for _, forbidden := range []string{
+			"then run `codex app-server --stdio`",
+			"open the supported read-only catalog with `codex app-server --stdio`",
+			"--lines",
+			"--interrupt",
+			"orca terminal rm",
+		} {
 			if strings.Contains(body, forbidden) {
 				t.Fatalf("%s supervised handoff recipe contains forbidden terminal form %q", name, forbidden)
 			}

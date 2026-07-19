@@ -20,6 +20,7 @@ const issueOpsHandoffUsage = `Usage:
   agent-harness issueops handoff finish --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --outcome completed|failed [evidence flags] [--no-change --verification RESULT] [--json]
   agent-harness issueops handoff accept --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --final-head SHA --host HOST --session-id SESSION --source-cwd PATH [--agent-id ID] [--json]
   agent-harness issueops handoff publish --id ID --host HOST --session-id SESSION --source-cwd PATH [--agent-id ID] [--approve-legacy-coordinator-seal] --confirm [--json]
+  agent-harness issueops handoff codex-hooks-list --id ID --json
   agent-harness issueops handoff recover --id ID --action reconcile|abandon|cancel|finalize-cancel|retry|approve-cleanup|record-cleanup [--cleanup-disposition retry|remove] [--cleanup-step STEP] [--confirm] [--force --reason TEXT] [--json]`
 
 func runIssueOpsHandoff(args []string) error {
@@ -38,6 +39,8 @@ func runIssueOpsHandoff(args []string) error {
 		return runIssueOpsHandoffAccept(args[1:])
 	case "publish":
 		return runIssueOpsHandoffPublish(args[1:])
+	case "codex-hooks-list":
+		return runIssueOpsHandoffCodexHooksList(args[1:])
 	case "recover":
 		return runIssueOpsHandoffRecover(args[1:])
 	default:
