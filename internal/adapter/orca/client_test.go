@@ -714,6 +714,175 @@ func TestClientCreateTerminalRejectsIncompleteRuntimeIdentity(t *testing.T) {
 	}
 }
 
+func TestClientListAllTasksProjectsCompletionSemanticsWithoutRawResult(t *testing.T) {
+	runner := newFakeRunner(t)
+	command := "orca orchestration task-list --brief --json"
+	runner.responses[command] = fixtureOutput(t, "task_list_all.json")
+
+	got, err := NewClient(runner).ListAllTasks(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].ID != "task-ready" || got[0].CompletedAt != "" || got[0].HasResult || got[1].ID != "task-complete" || got[1].CompletedAt != "2026-07-19T01:02:03.000Z" || !got[1].HasResult {
+		t.Fatalf("all-task semantic projection = %#v", got)
+	}
+	projected := fmt.Sprintf("%#v", got)
+	if strings.Contains(projected, "raw-spec-must-not-escape") || strings.Contains(projected, "raw-result-must-not-escape") {
+		t.Fatalf("all-task projection retained raw content: %s", projected)
+	}
+	if len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != command {
+		t.Fatalf("all-task command = %#v", runner.calls)
+	}
+}
+
+func TestClientListAllTasksRejectsCountMismatch(t *testing.T) {
+	runner := newFakeRunner(t)
+	command := "orca orchestration task-list --brief --json"
+	runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"tasks":[{"id":"task-1","status":"ready"}],"count":2}}`)}
+
+	_, err := NewClient(runner).ListAllTasks(context.Background())
+
+	if err == nil || !strings.Contains(err.Error(), "incomplete") {
+		t.Fatalf("count mismatch error = %v", err)
+	}
+}
+
+func TestClientListGatesRequiresCountEquality(t *testing.T) {
+	t.Run("complete", func(t *testing.T) {
+		runner := newFakeRunner(t)
+		command := "orca orchestration gate-list --json"
+		runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"gates":[{"id":"gate-1","task_id":"task-1","status":"pending","question":"raw-question-must-not-escape"}],"count":1}}`)}
+
+		got, err := NewClient(runner).ListGates(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got) != 1 || got[0].ID != "gate-1" || got[0].TaskID != "task-1" || got[0].Status != "pending" || strings.Contains(fmt.Sprintf("%#v", got), "raw-question-must-not-escape") {
+			t.Fatalf("gate projection = %#v", got)
+		}
+		if len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != command {
+			t.Fatalf("gate-list command = %#v", runner.calls)
+		}
+	})
+
+	t.Run("count mismatch", func(t *testing.T) {
+		runner := newFakeRunner(t)
+		runner.responses["orca orchestration gate-list --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"gates":[],"count":1}}`)}
+
+		_, err := NewClient(runner).ListGates(context.Background())
+
+		if err == nil || !strings.Contains(err.Error(), "incomplete") {
+			t.Fatalf("gate count mismatch error = %v", err)
+		}
+	})
+}
+
+func TestClientOperationalInventoryRejectsMalformedIdentity(t *testing.T) {
+	tests := []struct {
+		name    string
+		command string
+		result  string
+		call    func(*Client) error
+	}{
+		{
+			name:    "task id",
+			command: "orca orchestration task-list --brief --json",
+			result:  `{"tasks":[{"id":"","status":"ready"}],"count":1}`,
+			call:    func(client *Client) error { _, err := client.ListAllTasks(context.Background()); return err },
+		},
+		{
+			name:    "gate task id",
+			command: "orca orchestration gate-list --json",
+			result:  `{"gates":[{"id":"gate-1","task_id":"","status":"pending"}],"count":1}`,
+			call:    func(client *Client) error { _, err := client.ListGates(context.Background()); return err },
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			runner := newFakeRunner(t)
+			runner.responses[test.command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":` + test.result + `}`)}
+
+			err := test.call(NewClient(runner))
+
+			if err == nil || !strings.Contains(err.Error(), "identity") {
+				t.Fatalf("malformed %s error = %v", test.name, err)
+			}
+		})
+	}
+}
+
+func TestClientInboxPresenceProvesOnlyBoundedZero(t *testing.T) {
+	tests := []struct {
+		name            string
+		result          string
+		count           int
+		rows            int
+		completeAbsence bool
+	}{
+		{name: "bounded zero", result: `{"messages":[],"count":0}`, completeAbsence: true},
+		{name: "present", result: `{"messages":[{"id":"msg-1","subject":"raw-subject-must-not-escape","body":"raw-body-must-not-escape","payload":"raw-payload-must-not-escape"}],"count":1}`, count: 1, rows: 1},
+		{name: "count mismatch", result: `{"messages":[{"id":"msg-1","body":"raw-body-must-not-escape"}],"count":0}`, rows: 1},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			runner := newFakeRunner(t)
+			command := "orca orchestration inbox --limit 1 --json"
+			runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":` + test.result + `}`)}
+
+			got, err := NewClient(runner).InboxPresence(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Count != test.count || got.RowCount != test.rows || got.CompleteAbsence != test.completeAbsence {
+				t.Fatalf("inbox presence = %#v", got)
+			}
+			projected := fmt.Sprintf("%#v", got)
+			if strings.Contains(projected, "raw-subject") || strings.Contains(projected, "raw-body") || strings.Contains(projected, "raw-payload") {
+				t.Fatalf("inbox presence retained raw content: %s", projected)
+			}
+			if len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != command {
+				t.Fatalf("inbox command = %#v", runner.calls)
+			}
+		})
+	}
+}
+
+func TestClientResolveRepoReturnsCanonicalRegistration(t *testing.T) {
+	runner := newFakeRunner(t)
+	command := "orca repo show --repo path:/absolute/repo --json"
+	runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"repo":{"id":"repo-1","path":"/absolute/repo","displayName":"repo","worktreeBasePath":"../repo.worktrees","gitRemoteIdentity":{"remoteName":"origin"}}}}`)}
+
+	got, err := NewClient(runner).ResolveRepo(context.Background(), "/absolute/repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != "repo-1" || got.Path != "/absolute/repo" || got.RemoteName != "origin" || len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != command {
+		t.Fatalf("canonical repo projection = %#v calls=%#v", got, runner.calls)
+	}
+
+	t.Run("path mismatch", func(t *testing.T) {
+		runner := newFakeRunner(t)
+		runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"repo":{"id":"repo-1","path":"/different/repo"}}}`)}
+
+		_, err := NewClient(runner).ResolveRepo(context.Background(), "/absolute/repo")
+
+		if err == nil || !strings.Contains(err.Error(), "repo identity") {
+			t.Fatalf("repo path mismatch error = %v", err)
+		}
+	})
+}
+
+func TestClientAvailableUsesPathLookupOnly(t *testing.T) {
+	runner := newFakeRunner(t)
+	if NewClient(runner).Available() {
+		t.Fatal("missing Orca binary reported available")
+	}
+	runner.lookPaths["orca"] = "/usr/local/bin/orca"
+	if !NewClient(runner).Available() || len(runner.calls) != 0 {
+		t.Fatalf("available check ran commands: %#v", runner.calls)
+	}
+}
+
 func TestClientCreateTaskDecodesOfficialSnakeCaseShape(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca orchestration task-create --spec spec --task-title agent-harness marker --display-name 16-demo --json"] = fixtureOutput(t, "task_create.json")

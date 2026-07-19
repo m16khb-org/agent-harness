@@ -33,6 +33,11 @@ func NewClient(runner Runner) *Client {
 	return &Client{runner: runner}
 }
 
+func (c *Client) Available() bool {
+	_, err := c.runner.LookPath("orca")
+	return err == nil
+}
+
 func (c *Client) Status(ctx context.Context) (port.OrcaStatus, error) {
 	var payload struct {
 		Runtime struct {
@@ -193,6 +198,21 @@ func (c *Client) showRepo(ctx context.Context, repo string) (port.OrcaRepo, erro
 	}
 	_, err := c.runJSON(ctx, repo, readTimeout, []string{"orca", "repo", "show", "--repo", pathSelector(repo), "--json"}, &payload)
 	return port.OrcaRepo{ID: payload.Repo.ID, Path: payload.Repo.Path, Name: payload.Repo.DisplayName, RemoteName: payload.Repo.GitRemoteIdentity.RemoteName, WorktreeBasePath: payload.Repo.WorktreeBasePath}, err
+}
+
+func (c *Client) ResolveRepo(ctx context.Context, repo string) (port.OrcaRepo, error) {
+	repo = strings.TrimSpace(repo)
+	if !filepath.IsAbs(repo) {
+		return port.OrcaRepo{}, &port.OrcaError{Code: "repo_identity_invalid", Detail: "absolute repo path is required"}
+	}
+	resolved, err := c.showRepo(ctx, repo)
+	if err != nil {
+		return port.OrcaRepo{}, err
+	}
+	if strings.TrimSpace(resolved.ID) == "" || strings.TrimSpace(resolved.Path) == "" || !samePath(resolved.Path, repo) {
+		return port.OrcaRepo{}, &port.OrcaError{Code: "repo_identity_mismatch", Detail: "resolved repo identity does not match the requested path", Invoked: true}
+	}
+	return resolved, nil
 }
 
 func (c *Client) ListWorktrees(ctx context.Context, repo string) ([]port.OrcaWorktree, error) {
@@ -417,6 +437,10 @@ func (c *Client) ListDispatchedTasks(ctx context.Context) ([]port.OrcaTask, erro
 	return c.listTasks(ctx, []string{"orca", "orchestration", "task-list", "--status", "dispatched", "--json"})
 }
 
+func (c *Client) ListAllTasks(ctx context.Context) ([]port.OrcaTask, error) {
+	return c.listTasks(ctx, []string{"orca", "orchestration", "task-list", "--brief", "--json"})
+}
+
 func (c *Client) listTasks(ctx context.Context, argv []string) ([]port.OrcaTask, error) {
 	var payload struct {
 		Tasks []taskPayload `json:"tasks"`
@@ -426,18 +450,60 @@ func (c *Client) listTasks(ctx context.Context, argv []string) ([]port.OrcaTask,
 	if err != nil {
 		return nil, err
 	}
-	if payload.Count == nil || *payload.Count != len(payload.Tasks) {
-		count := -1
-		if payload.Count != nil {
-			count = *payload.Count
-		}
-		return nil, fmt.Errorf("Orca task list is incomplete: count=%d returned=%d", count, len(payload.Tasks))
+	if err := requireReturnedCount("task", len(payload.Tasks), payload.Count); err != nil {
+		return nil, err
 	}
 	result := make([]port.OrcaTask, 0, len(payload.Tasks))
 	for _, task := range payload.Tasks {
+		if strings.TrimSpace(task.ID) == "" || strings.TrimSpace(task.Status) == "" {
+			return nil, fmt.Errorf("Orca task row identity is incomplete")
+		}
 		result = append(result, task.portValue())
 	}
 	return result, nil
+}
+
+func (c *Client) ListGates(ctx context.Context) ([]port.OrcaGate, error) {
+	var payload struct {
+		Gates []struct {
+			ID     string `json:"id"`
+			TaskID string `json:"task_id"`
+			Status string `json:"status"`
+		} `json:"gates"`
+		Count *int `json:"count"`
+	}
+	_, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "orchestration", "gate-list", "--json"}, &payload)
+	if err != nil {
+		return nil, err
+	}
+	if err := requireReturnedCount("gate", len(payload.Gates), payload.Count); err != nil {
+		return nil, err
+	}
+	result := make([]port.OrcaGate, 0, len(payload.Gates))
+	for _, gate := range payload.Gates {
+		if strings.TrimSpace(gate.ID) == "" || strings.TrimSpace(gate.TaskID) == "" || strings.TrimSpace(gate.Status) == "" {
+			return nil, fmt.Errorf("Orca gate row identity is incomplete")
+		}
+		result = append(result, port.OrcaGate{ID: gate.ID, TaskID: gate.TaskID, Status: gate.Status})
+	}
+	return result, nil
+}
+
+func (c *Client) InboxPresence(ctx context.Context) (port.OrcaInboxPresence, error) {
+	var payload struct {
+		Messages []struct{} `json:"messages"`
+		Count    *int       `json:"count"`
+	}
+	_, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "orchestration", "inbox", "--limit", "1", "--json"}, &payload)
+	if err != nil {
+		return port.OrcaInboxPresence{}, err
+	}
+	if payload.Count == nil {
+		return port.OrcaInboxPresence{}, fmt.Errorf("Orca inbox completeness metadata is missing")
+	}
+	count := *payload.Count
+	rows := len(payload.Messages)
+	return port.OrcaInboxPresence{Count: count, RowCount: rows, CompleteAbsence: count == 0 && rows == 0}, nil
 }
 
 func (c *Client) CreateTask(ctx context.Context, req port.OrcaCreateTaskRequest) (port.OrcaTask, error) {
@@ -644,14 +710,39 @@ type visualLayoutPayload struct {
 }
 
 type taskPayload struct {
-	ID          string `json:"id"`
-	TaskTitle   string `json:"task_title"`
-	DisplayName string `json:"display_name"`
-	Status      string `json:"status"`
+	ID          string          `json:"id"`
+	TaskTitle   string          `json:"task_title"`
+	DisplayName string          `json:"display_name"`
+	Status      string          `json:"status"`
+	CompletedAt string          `json:"completed_at"`
+	Result      json.RawMessage `json:"result"`
 }
 
 func (t taskPayload) portValue() port.OrcaTask {
-	return port.OrcaTask{ID: t.ID, Title: t.TaskTitle, DisplayName: t.DisplayName, Status: t.Status}
+	return port.OrcaTask{ID: t.ID, Title: t.TaskTitle, DisplayName: t.DisplayName, Status: t.Status, CompletedAt: t.CompletedAt, HasResult: hasJSONValue(t.Result)}
+}
+
+func hasJSONValue(raw json.RawMessage) bool {
+	value := strings.TrimSpace(string(raw))
+	if value == "" || value == "null" {
+		return false
+	}
+	var text string
+	if json.Unmarshal(raw, &text) == nil {
+		return strings.TrimSpace(text) != ""
+	}
+	return true
+}
+
+func requireReturnedCount(kind string, length int, count *int) error {
+	value := -1
+	if count != nil {
+		value = *count
+	}
+	if count == nil || value != length {
+		return fmt.Errorf("Orca %s list is incomplete: count=%d returned=%d", kind, value, length)
+	}
+	return nil
 }
 
 func requireCompleteList(kind string, length int, total *int, truncated bool) error {

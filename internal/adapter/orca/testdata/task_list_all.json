@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "result": {
+    "tasks": [
+      {
+        "id": "task-ready",
+        "task_title": "ready task",
+        "display_name": "ready",
+        "status": "ready",
+        "completed_at": null,
+        "spec": "raw-spec-must-not-escape",
+        "result": null
+      },
+      {
+        "id": "task-complete",
+        "task_title": "complete task",
+        "display_name": "complete",
+        "status": "completed",
+        "completed_at": "2026-07-19T01:02:03.000Z",
+        "spec": "raw-spec-must-not-escape",
+        "result": "raw-result-must-not-escape"
+      }
+    ],
+    "count": 2
+  },
+  "_meta": {
+    "runtimeId": "runtime-1"
+  }
+}

@@ -122,6 +122,20 @@ type OrcaTask struct {
 	Title       string `json:"title,omitempty"`
 	DisplayName string `json:"display_name,omitempty"`
 	Status      string `json:"status,omitempty"`
+	CompletedAt string `json:"completed_at,omitempty"`
+	HasResult   bool   `json:"has_result,omitempty"`
+}
+
+type OrcaGate struct {
+	ID     string `json:"id"`
+	TaskID string `json:"task_id"`
+	Status string `json:"status"`
+}
+
+type OrcaInboxPresence struct {
+	Count           int  `json:"count"`
+	RowCount        int  `json:"row_count"`
+	CompleteAbsence bool `json:"complete_absence"`
 }
 
 type OrcaCreateTaskRequest struct {
