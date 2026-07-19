@@ -1,0 +1,38 @@
+[
+  {
+    "objective": "Fix the independently reproduced same-UID XDG parent-tree replacement bypass from exact HEAD 8886856 with strict RED-GREEN TDD.",
+    "pattern": "isolated-worktree-work",
+    "benefit": "isolated_worktree",
+    "tradeoffs": [
+      "The focused recovery commit must be integrated into the original issue branch only after acceptance."
+    ],
+    "net_positive_rationale": "A fenced Claude worker preserves sole-writer isolation while the coordinator retains publication and merge authority.",
+    "scope": "Only the XDG parent-tree identity seal, its real-process rename regression, blocker ledger, cautions, and affected Turing evidence.",
+    "verification": "Require a named RED that redirects to the evil destination, the smallest GREEN, all publication/full/race/vet/golden/build/self-verify gates, one Lore commit, and a clean worker_done receipt.",
+    "fallback": "If an identity-stable seal cannot be proven without redesign, fail closed before push and report the exact compatibility impact."
+  },
+  {
+    "objective": "Adversarially falsify the final recovery-2 HEAD against parent rename, symlink substitution, cleanup identity, and existing B69-B71 guarantees.",
+    "pattern": "devils-advocate-review",
+    "benefit": "fresh_review",
+    "tradeoffs": [
+      "Adds a mandatory review cycle before integration."
+    ],
+    "net_positive_rationale": "Both prior reviewers independently found the same security-sensitive gap, so author-independent falsification is required.",
+    "scope": "Read-only review of the exact committed recovery-2 diff and observable tests; report only Critical or Important findings.",
+    "verification": "Require unconditional GO or return a reproducible test to a fresh fenced attempt.",
+    "fallback": "Keep the recovery-2 branch unaccepted and start another bounded attempt from its last verified checkpoint."
+  },
+  {
+    "objective": "Cross-verify blocker completeness, backward compatibility, and the final Turing evidence before publication.",
+    "pattern": "cross-verification-consensus",
+    "benefit": "fresh_review",
+    "tradeoffs": [
+      "Publication waits for two independent zero-finding reviews."
+    ],
+    "net_positive_rationale": "Consensus is warranted because the first XDG fix passed all automated gates yet remained bypassable.",
+    "scope": "Final HEAD, blocker B79 onward, cleanup receipts, full gate evidence, and unchanged public CLI/MCP contracts.",
+    "verification": "Two reviewers must independently return unconditional GO with no Critical or Important finding.",
+    "fallback": "Do not merge; send any verified finding to a new sole-writer attempt."
+  }
+]
