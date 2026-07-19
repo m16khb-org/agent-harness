@@ -220,6 +220,11 @@ type publicationConfigSnapshot struct {
 	contentHash [sha256.Size]byte
 }
 
+type publicationGlobalConfigPinPlan struct {
+	required     bool
+	globalConfig string
+}
+
 // publicationImmutableConfigAdmissible admits fingerprint-only authority solely
 // for a defensible system chain: every path component must be owned by root and
 // denied for current-user writes. An arbitrary non-current ordinary UID owner
@@ -322,6 +327,10 @@ func withPublicationGitConfigLocks(ctx context.Context, repo string, fn func() e
 	if err != nil {
 		return err
 	}
+	pinPlan, err := publicationAbsentXDGConfigPinPlanFromInventory(beforeOrigins)
+	if err != nil {
+		return err
+	}
 	paths, creatable, err := publicationGitConfigPaths(ctx, repo, before, beforeOrigins)
 	if err != nil {
 		return err
@@ -374,12 +383,6 @@ func withPublicationGitConfigLocks(ctx context.Context, repo string, fn func() e
 		}
 		locks = append(locks, lock)
 	}
-	unpin, pinErr := publicationPinAbsentXDGConfigAuthority()
-	if pinErr != nil {
-		release()
-		return pinErr
-	}
-	defer unpin()
 	defer release()
 	verifyAuthority := func() bool {
 		after, rulesErr := publicationGitURLRules(ctx, repo)
@@ -394,14 +397,16 @@ func withPublicationGitConfigLocks(ctx context.Context, repo string, fn func() e
 		}
 		return publicationImmutableConfigSnapshotsMatch(immutable)
 	}
-	if !verifyAuthority() {
-		return fmt.Errorf("publication git URL rewrite authority changed while acquiring config locks")
-	}
-	operationErr := fn()
-	if !verifyAuthority() {
-		return fmt.Errorf("publication git config authority changed during publication operation")
-	}
-	return operationErr
+	return withPublicationAbsentXDGConfigPin(pinPlan, os.Setenv, os.Unsetenv, func() error {
+		if !verifyAuthority() {
+			return fmt.Errorf("publication git URL rewrite authority changed while acquiring config locks")
+		}
+		operationErr := fn()
+		if !verifyAuthority() {
+			return fmt.Errorf("publication git config authority changed during publication operation")
+		}
+		return operationErr
+	})
 }
 
 func publicationImmutableConfigSnapshotsMatch(snapshots []publicationConfigSnapshot) bool {
@@ -676,23 +681,44 @@ func publicationDefaultXDGGitConfig(home string) string {
 // unreadable during the operation. When GIT_CONFIG_GLOBAL is already present,
 // Git never reads the XDG config, so no pin is needed; an existing XDG config
 // keeps the plain lock protocol unchanged.
-func publicationPinAbsentXDGConfigAuthority() (func(), error) {
+func publicationAbsentXDGConfigPinPlan(origins []string, defaultConfig string, explicitGlobal bool, pinnedGlobalConfig string) publicationGlobalConfigPinPlan {
+	if explicitGlobal {
+		return publicationGlobalConfigPinPlan{}
+	}
+	defaultConfig = filepath.Clean(defaultConfig)
+	for _, origin := range origins {
+		if filepath.Clean(origin) == defaultConfig {
+			return publicationGlobalConfigPinPlan{}
+		}
+	}
+	return publicationGlobalConfigPinPlan{required: true, globalConfig: pinnedGlobalConfig}
+}
+
+func publicationAbsentXDGConfigPinPlanFromInventory(origins []string) (publicationGlobalConfigPinPlan, error) {
 	if _, present := os.LookupEnv("GIT_CONFIG_GLOBAL"); present {
-		return func() {}, nil
+		return publicationAbsentXDGConfigPinPlan(origins, "", true, ""), nil
 	}
 	home, err := os.UserHomeDir()
 	if err != nil || strings.TrimSpace(home) == "" {
-		return nil, fmt.Errorf("publication git user config authority cannot be resolved")
+		return publicationGlobalConfigPinPlan{}, fmt.Errorf("publication git user config authority cannot be resolved")
 	}
-	if _, statErr := os.Lstat(publicationDefaultXDGGitConfig(home)); statErr == nil {
-		return func() {}, nil
-	} else if !os.IsNotExist(statErr) {
-		return nil, fmt.Errorf("publication git config authority is unavailable")
+	return publicationAbsentXDGConfigPinPlan(
+		origins,
+		publicationDefaultXDGGitConfig(home),
+		false,
+		filepath.Join(home, ".gitconfig"),
+	), nil
+}
+
+func withPublicationAbsentXDGConfigPin(plan publicationGlobalConfigPinPlan, setenv func(string, string) error, unsetenv func(string) error, fn func() error) error {
+	if !plan.required {
+		return fn()
 	}
-	if err := os.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(home, ".gitconfig")); err != nil {
-		return nil, fmt.Errorf("publication git config authority cannot be pinned")
+	if err := setenv("GIT_CONFIG_GLOBAL", plan.globalConfig); err != nil {
+		return fmt.Errorf("publication git config authority cannot be pinned")
 	}
-	return func() { _ = os.Unsetenv("GIT_CONFIG_GLOBAL") }, nil
+	defer func() { _ = unsetenv("GIT_CONFIG_GLOBAL") }()
+	return fn()
 }
 
 // publicationCreateAuthorityParents creates the missing directory chain above a

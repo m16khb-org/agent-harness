@@ -643,6 +643,7 @@ func TestPublicationGlobalRewriteRaceCannotRedirectPush(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	bin := t.TempDir()
 	marker := filepath.Join(t.TempDir(), "rewrite-succeeded")
 	script := filepath.Join(bin, "git")
@@ -669,6 +670,52 @@ func TestPublicationGlobalRewriteRaceCannotRedirectPush(t *testing.T) {
 	cmd := exec.Command(realGit, "--git-dir", evil, "rev-parse", "--verify", "refs/heads/16-demo")
 	if err := cmd.Run(); err == nil {
 		t.Fatal("global rewrite race changed evil destination")
+	}
+}
+
+func TestPublicationAbsentXDGPinPlanUsesInitialEffectiveInventory(t *testing.T) {
+	defaultConfig := filepath.Join("home", "agent", ".config", "git", "config")
+	pinnedGlobalConfig := filepath.Join("home", "agent", ".gitconfig")
+	origins := []string{filepath.Join("repo", ".git", "config")}
+	plan := publicationAbsentXDGConfigPinPlan(origins, defaultConfig, false, pinnedGlobalConfig)
+	if !plan.required {
+		t.Fatal("initially absent default XDG origin must require a pin plan")
+	}
+	origins = append(origins, defaultConfig)
+	if !plan.required {
+		t.Fatal("pin plan changed after the default XDG origin later appeared")
+	}
+	origins = origins[:1]
+	if !plan.required {
+		t.Fatal("pin plan changed after the default XDG origin later disappeared")
+	}
+
+	if explicit := publicationAbsentXDGConfigPinPlan(origins, defaultConfig, true, pinnedGlobalConfig); explicit.required {
+		t.Fatal("explicit GIT_CONFIG_GLOBAL must retain the existing no-pin behavior")
+	}
+	if present := publicationAbsentXDGConfigPinPlan([]string{defaultConfig}, defaultConfig, false, pinnedGlobalConfig); present.required {
+		t.Fatal("an initially effective default XDG origin must not require an absent-origin pin")
+	}
+
+	pinErr := errors.New("pin apply rejected")
+	callbackCalled := false
+	err := withPublicationAbsentXDGConfigPin(
+		plan,
+		func(string, string) error { return pinErr },
+		func(string) error {
+			t.Fatal("unset must not run when pin application fails")
+			return nil
+		},
+		func() error {
+			callbackCalled = true
+			return nil
+		},
+	)
+	if err == nil {
+		t.Fatal("expected pin application error")
+	}
+	if callbackCalled {
+		t.Fatal("callback ran after pin application failed")
 	}
 }
 
@@ -806,7 +853,6 @@ func TestPublicationAbsentXDGConfigAuthorityCannotBeReplacedDuringPush(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	bin := t.TempDir()
 	marker := filepath.Join(t.TempDir(), "xdg-replace-succeeded")
 	script := filepath.Join(bin, "git")
