@@ -49,6 +49,79 @@ func TestClassifyOperationalHealthAcceptsFreshClaimedExactResources(t *testing.T
 	}
 }
 
+func TestClassifyOperationalHealthUsesGlobalOrcaOwnersAcrossRepos(t *testing.T) {
+	now := operationalTestNow()
+	snapshot := minimalOperationalSnapshot()
+	snapshot.Cycles = []Cycle{{
+		ID:                     "io-foreign-live",
+		Repo:                   "/other",
+		Branch:                 "2-foreign-live",
+		Phase:                  "implement",
+		HandoffState:           "claimed",
+		Attempt:                1,
+		OwnershipEpoch:         "epoch-foreign",
+		ContextSHA256:          "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+		WorkerSessionID:        "session-foreign",
+		WorkerAgentID:          "agent-foreign",
+		WorktreePath:           "/other.wt/2-foreign-live",
+		OrcaWorktreeID:         "wt-foreign",
+		OrcaWorktreeInstanceID: "instance-foreign",
+		TerminalHandle:         "term-foreign",
+		PTYID:                  "pty-foreign",
+		TaskID:                 "task-foreign",
+		DispatchID:             "dispatch-foreign",
+		LastHeartbeatAt:        now.Add(-time.Minute),
+	}}
+	snapshot.Terminals = []OrcaTerminal{{
+		Handle: "term-foreign", PTYID: "pty-foreign", WorktreeID: "wt-foreign",
+		WorktreePath: "/other.wt/2-foreign-live", Connected: true, Writable: true,
+	}}
+	snapshot.Tasks = []OrcaTask{{ID: "task-foreign", Status: "dispatched", DispatchID: "dispatch-foreign"}}
+	snapshot.Dispatches = []OrcaDispatch{{
+		ID: "dispatch-foreign", TaskID: "task-foreign", AssigneeHandle: "term-foreign", Status: "dispatched",
+	}}
+
+	result := Classify(snapshot, Options{Now: now})
+
+	if !result.Healthy || len(result.Findings) != 0 {
+		t.Fatalf("foreign live cycle should own global Orca resources without requiring foreign repo worktree inventory: %#v", result)
+	}
+}
+
+func TestClassifyOperationalHealthDoesNotLetForeignCycleOwnRequestedRepoResources(t *testing.T) {
+	now := operationalTestNow()
+	snapshot := minimalOperationalSnapshot()
+	snapshot.Cycles = []Cycle{{
+		ID: "io-foreign-preserved", Repo: "/other", Branch: "orphan", Phase: "plan",
+		WorktreePath: "/repo.wt/orphan", OrcaWorktreeID: "wt-orphan", OrcaWorktreeInstanceID: "instance-orphan",
+	}}
+	snapshot.GitWorktrees = append(snapshot.GitWorktrees, GitWorktree{
+		Path: "/repo.wt/orphan", Branch: "orphan", Head: "head-orphan",
+	})
+	snapshot.OrcaWorktrees = append(snapshot.OrcaWorktrees, OrcaWorktree{
+		ID: "wt-orphan", InstanceID: "instance-orphan", Repo: "/repo",
+		Path: "/repo.wt/orphan", Branch: "orphan", Head: "head-orphan",
+	})
+	snapshot.LocalRefs = append(snapshot.LocalRefs, GitRef{
+		Name: "refs/heads/orphan", Branch: "orphan", OID: "head-orphan", Location: "local",
+	})
+
+	result := Classify(snapshot, Options{Now: now, PreserveCycleIDs: []string{"io-foreign-preserved"}})
+
+	for _, expected := range []struct {
+		code string
+		id   string
+	}{
+		{FindingWorktreeResidue, "/repo.wt/orphan"},
+		{FindingWorktreeResidue, "wt-orphan"},
+		{FindingNonMainBranchResidue, "non_main"},
+	} {
+		if !hasFinding(result.Findings, expected.code, expected.id) {
+			t.Fatalf("foreign cycle hid requested-repo residue %s/%s: %#v", expected.code, expected.id, result.Findings)
+		}
+	}
+}
+
 func TestClassifyOperationalHealthPreservesExactPlanningCycleForInvocation(t *testing.T) {
 	now := operationalTestNow()
 	snapshot := minimalOperationalSnapshot()

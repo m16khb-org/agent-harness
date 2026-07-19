@@ -108,18 +108,22 @@ func Classify(snapshot Snapshot, opts Options) Result {
 	}
 
 	activeCycles := make([]Cycle, 0, len(snapshot.Cycles))
+	activeRepoCycles := make([]Cycle, 0, len(snapshot.Cycles))
 	for _, cycle := range snapshot.Cycles {
 		authority := authorities[strings.TrimSpace(cycle.ID)]
 		if authority == AuthorityLive || authority == AuthorityPreserved {
 			activeCycles = append(activeCycles, cycle)
+			if clean(cycle.Repo) == clean(snapshot.RepoRoot) {
+				activeRepoCycles = append(activeRepoCycles, cycle)
+			}
 		}
 	}
 
-	worktreeOwners := ownerIndex(activeCycles, func(cycle Cycle) string { return strings.TrimSpace(cycle.OrcaWorktreeID) })
+	worktreeOwners := ownerIndex(activeRepoCycles, func(cycle Cycle) string { return strings.TrimSpace(cycle.OrcaWorktreeID) })
 	terminalOwners := ownerIndex(activeCycles, func(cycle Cycle) string { return strings.TrimSpace(cycle.TerminalHandle) })
 	taskOwners := ownerIndex(activeCycles, func(cycle Cycle) string { return strings.TrimSpace(cycle.TaskID) })
 	dispatchOwners := ownerIndex(activeCycles, func(cycle Cycle) string { return strings.TrimSpace(cycle.DispatchID) })
-	gitPathOwners := ownerIndex(activeCycles, func(cycle Cycle) string { return clean(cycle.WorktreePath) })
+	gitPathOwners := ownerIndex(activeRepoCycles, func(cycle Cycle) string { return clean(cycle.WorktreePath) })
 	for kind, owners := range map[string]map[string][]string{
 		"worktree": worktreeOwners, "terminal": terminalOwners, "task": taskOwners,
 		"dispatch": dispatchOwners, "git_worktree": gitPathOwners,
@@ -132,7 +136,7 @@ func Classify(snapshot Snapshot, opts Options) Result {
 	}
 
 	for _, cycle := range activeCycles {
-		validateCycleResources(&builder, snapshot, cycle, authorities[strings.TrimSpace(cycle.ID)], gitPathCounts, worktreeCounts, terminalCounts, taskCounts, dispatchCounts)
+		validateCycleResources(&builder, snapshot, cycle, authorities[strings.TrimSpace(cycle.ID)], clean(cycle.Repo) == clean(snapshot.RepoRoot), gitPathCounts, worktreeCounts, terminalCounts, taskCounts, dispatchCounts)
 	}
 
 	preservedTerminalCounts, invalidPreserveTerminals := normalizedSet(opts.PreserveTerminalHandles)
@@ -218,7 +222,7 @@ func Classify(snapshot Snapshot, opts Options) Result {
 
 	branchResidue := make([]string, 0)
 	activeBranches := map[string]struct{}{strings.TrimSpace(snapshot.CanonicalBranch): {}}
-	for _, cycle := range activeCycles {
+	for _, cycle := range activeRepoCycles {
 		if branch := strings.TrimSpace(cycle.Branch); branch != "" {
 			activeBranches[branch] = struct{}{}
 		}
@@ -312,16 +316,16 @@ func completeGroup(values ...string) bool {
 	return present == 0 || present == len(values)
 }
 
-func validateCycleResources(builder *findingBuilder, snapshot Snapshot, cycle Cycle, authority CycleAuthority, gitPathCounts, worktreeCounts, terminalCounts, taskCounts, dispatchCounts map[string]int) {
+func validateCycleResources(builder *findingBuilder, snapshot Snapshot, cycle Cycle, authority CycleAuthority, repoScoped bool, gitPathCounts, worktreeCounts, terminalCounts, taskCounts, dispatchCounts map[string]int) {
 	var gitWorktree GitWorktree
 	gitWorktreeOK := false
-	if authority == AuthorityLive || strings.TrimSpace(cycle.WorktreePath) != "" {
+	if repoScoped && (authority == AuthorityLive || strings.TrimSpace(cycle.WorktreePath) != "") {
 		gitWorktree, gitWorktreeOK = uniqueBy(snapshot.GitWorktrees, cycle.WorktreePath, func(value GitWorktree) string { return clean(value.Path) })
 		if !gitWorktreeOK || gitPathCounts[clean(cycle.WorktreePath)] != 1 || strings.TrimSpace(gitWorktree.Branch) != strings.TrimSpace(cycle.Branch) {
 			builder.add(FindingInventoryUnknown, "git_worktree", clean(cycle.WorktreePath), "cycle identity does not match exactly one Git worktree", clean(cycle.WorktreePath))
 		}
 	}
-	if authority == AuthorityLive || strings.TrimSpace(cycle.OrcaWorktreeID) != "" {
+	if repoScoped && (authority == AuthorityLive || strings.TrimSpace(cycle.OrcaWorktreeID) != "") {
 		worktree, ok := uniqueBy(snapshot.OrcaWorktrees, cycle.OrcaWorktreeID, func(value OrcaWorktree) string { return value.ID })
 		headMismatch := gitWorktreeOK && strings.TrimSpace(worktree.Head) != strings.TrimSpace(gitWorktree.Head)
 		if !ok || worktreeCounts[strings.TrimSpace(cycle.OrcaWorktreeID)] != 1 || strings.TrimSpace(worktree.InstanceID) != strings.TrimSpace(cycle.OrcaWorktreeInstanceID) || clean(worktree.Repo) != clean(cycle.Repo) || clean(worktree.Path) != clean(cycle.WorktreePath) || strings.TrimSpace(worktree.Branch) != strings.TrimSpace(cycle.Branch) || headMismatch {
