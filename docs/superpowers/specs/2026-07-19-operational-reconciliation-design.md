@@ -233,7 +233,7 @@ Stale scan은 자체 liveness 규칙을 다시 구현하지 않고 cycle별 oper
 
 ### 8.3 Stability audit
 
-stability audit script는 별도 정합성 계산을 하지 않고 마지막 binary의 top-level doctor를 호출한다. 현재 session을 보존해야 하면 환경의 exact terminal handle을 `--preserve-terminal`로 전달한다. doctor가 unhealthy이거나 operational inventory가 unknown이면 audit도 실패한다. 이 doctor 호출만 상위 live harness 환경을 상속한다. audit 내부 ordinary/race Go regression은 `HARNESS_ROOT`를 exact audited source checkout으로 고정하고 `HARNESS_STATE_DIR`, `HARNESS_DAEMON_DIR`, `HARNESS_WORKER_DIR`는 audit 전용 임시 루트로 격리해 live IssueOps session projection을 바꾸지 않아야 한다.
+stability audit script는 별도 정합성 계산을 하지 않고 마지막 binary의 top-level doctor를 호출한다. 현재 session을 보존해야 하면 singular optional `--preserve-terminal`을 받는다. 명시값은 exact `term_*`, 최대 256 bytes여야 하고 inherited environment보다 우선하며, 옵션이 없을 때만 기존 `ORCA_TERMINAL_HANDLE` fallback을 쓴다. sealed reconciliation은 `manifest.current_terminal.handle`을 명시 argv로 전달하고 환경 변수를 덮어쓰지 않는다. doctor가 unhealthy이거나 operational inventory가 unknown이면 audit도 실패한다. 이 doctor 호출만 상위 live harness 환경을 상속한다. audit 내부 ordinary/race Go regression은 `HARNESS_ROOT`를 exact audited source checkout으로 고정하고 `HARNESS_STATE_DIR`, `HARNESS_DAEMON_DIR`, `HARNESS_WORKER_DIR`는 audit 전용 임시 루트로 격리해 live IssueOps session projection을 바꾸지 않아야 한다.
 
 ## 9. 일회 전체 정리 프로토콜
 
@@ -283,7 +283,7 @@ orca/limitations.json
 - 삭제할 local/remote ref와 expected full OID
 - 모든 IssueOps record ID, phase, handoff identity, raw/canonical record digest, session binding
 - Orca runtime ID, worktree ID/instance/path, terminal handle/PTY/tab/leaf, task/dispatch ID/status, gate ID, bounded message observation
-- 보존할 현재 terminal handle
+- 보존할 현재 terminal의 runtime/handle/PTY/tab/leaf/worktree ID/path/connected/writable exact tuple
 - 이동할 state artifact path와 SHA-256
 - 전체 stable projection digest
 
@@ -293,7 +293,7 @@ Raw digest는 SQLite에 저장된 JSON bytes 그대로의 SHA-256이다. Canonic
 
 ### 9.3 Quiescence와 Orca reset 경계
 
-1. observation을 시작하기 전에 non-empty valid `ORCA_TERMINAL_HANDLE`을 읽고 caller argument와 exact equality를 요구한 뒤, 같은 handle을 inventory의 현재 operator terminal로 고정한다. 이후 `validate-live`, 각 `apply`, `verify-final` CLI 진입도 환경 handle과 sealed handle의 exact equality를 mutation/readback 전에 다시 요구한다.
+1. observation을 시작하기 전에 official no-selector `orca terminal show`로 current row를 resolve한다. 그 runtime/handle/PTY/tab/leaf/worktree ID/path/connected/writable tuple이 complete terminal list의 단 하나의 row와 unique source worktree에 exact match해야 한다. 명시적으로 읽은 `ORCA_TAB_ID`, `ORCA_PANE_KEY`, `ORCA_WORKTREE_ID` composite도 같아야 하며, `ORCA_TERMINAL_HANDLE` explicit probe는 같은 current row이거나 exact structured `terminal_handle_stale`만 허용한다. caller argument는 resolved current handle에 대한 assertion일 뿐이다. 같은 resolve-and-compare를 collection의 두 관측, `validate-live`/각 `apply`/`verify-final` 진입, 모든 mutation fence 전후에 반복하고 sealed current tuple/runtime과 다르면 mutation/readback 전에 중단한다.
 2. 다른 terminal을 exact handle로 close/stop하고 absence 또는 disconnected/quiescent 상태를 재확인한다.
 3. active Orca coordinator run을 `orchestration run-stop`으로 멈춘다.
 4. non-main Orca worktree를 exact ID로 제거하고 Git/Orca 양쪽 inventory에서 absence를 확인한다.

@@ -17,7 +17,7 @@
 - `--preserve-cycle` and `--preserve-terminal` are repeatable, non-empty, exact, invocation-scoped flags. They never write state and never cure incomplete or ambiguous identity.
 - Any incomplete list, duplicate identity, count mismatch, truncation, unsupported state, parse failure, or collection error is `operational_inventory_unknown` and makes doctor unhealthy.
 - Operational-health product code remains read-only. The one-time external runner may mutate only targets sealed in its manifest, using existing exact primitives plus the fail-safe paired-digest mode on `issueops force-release`, and must stop on any identity, digest, OID, owner, or inventory drift.
-- The current operator terminal is resolved at execution time from non-empty `ORCA_TERMINAL_HANDLE` and must match exactly one current Orca terminal row. No guessed handle is accepted.
+- Resolve the current operator terminal with official no-selector `orca terminal show --json`, then require its runtime/handle/PTY/tab/leaf/worktree ID/path/connected/writable tuple to match exactly one complete terminal-list row and the unique source worktree. Cross-check only the explicitly named `ORCA_TERMINAL_HANDLE`, `ORCA_TAB_ID`, `ORCA_PANE_KEY`, and `ORCA_WORKTREE_ID`: the environment handle's explicit selector must either return that same current row or the exact structured `terminal_handle_stale` error. No guessed handle or environment override is accepted.
 - Preserve unrelated user changes. Before every commit and before creating the cleanup manifest, require a clean source checkout except for the exact files of the current task.
 - Use CodeGraph before new code-location exploration. Use `apply_patch` for source and external-runner edits. Never use broad globs, unresolved deletion targets, `git branch -D`, plain `git push --delete`, or direct SQLite file copying as a backup claim.
 - Every code task ends with a focused test and an atomic Conventional Commit + Lore body. Do not push until Tasks 1–7 pass the pre-cleanup verification gate.
@@ -636,11 +636,13 @@ This skill action is mandatory because the script and its operational contract c
 Add tests for:
 
 ```python
-def operational_doctor(report: dict[str, Any]) -> None:
+def operational_doctor(report: dict[str, Any], preserve_terminal: str | None = None) -> None:
     ...
 ```
 
-Assert it invokes `bin/agent-harness doctor --repo /Users/m16khb/Workspace/agent-harness --json` and appends `--preserve-terminal` plus exact non-empty `ORCA_TERMINAL_HANDLE` when present. It passes only when exit is zero and parsed `ok` and `healthy` are true. Failure details retain only bounded issue codes/summaries.
+Assert it invokes `bin/agent-harness doctor --repo /Users/m16khb/Workspace/agent-harness --json`. A singular explicit `--preserve-terminal` must match `^term_[A-Za-z0-9_-]+$`, be at most 256 bytes, override a stale inherited handle, and be forwarded unchanged. Absence alone retains the environment fallback; blank, invalid, overlong, or repeated explicit input must stop before build, doctor, or cleanup. It passes only when exit is zero and parsed `ok` and `healthy` are true. Failure details retain only bounded issue codes/summaries.
+
+The sealed runner's final stability-gate argv must include `--preserve-terminal` plus `manifest.current_terminal.handle`, while its live `env_overrides` must not contain `ORCA_TERMINAL_HANDLE`.
 
 Also assert the doctor call inherits the outer live harness environment, while ordinary/race Go regression subprocesses receive the exact audited source checkout as `HARNESS_ROOT` and their own temporary `HARNESS_STATE_DIR`, `HARNESS_DAEMON_DIR`, and `HARNESS_WORKER_DIR`. Simulate a regression write and prove the outer IssueOps DB/session projection is byte-for-byte unchanged.
 
@@ -767,10 +769,16 @@ git status --porcelain=v1
 git rev-parse HEAD
 git rev-parse refs/remotes/origin/main
 printenv ORCA_TERMINAL_HANDLE
+printenv ORCA_TAB_ID
+printenv ORCA_PANE_KEY
+printenv ORCA_WORKTREE_ID
+orca terminal show --json
 orca terminal list --limit 512 --json
+orca worktree list --repo path:/Users/m16khb/Workspace/agent-harness --limit 512 --json
+orca terminal show --terminal "$ORCA_TERMINAL_HANDLE" --json
 ```
 
-Expected: exact canonical repo, clean source, equal main OIDs, non-empty environment handle, and exactly one matching terminal row.
+Expected: exact canonical repo, clean source, equal main OIDs, and an official no-selector current terminal whose full tuple matches the named tab/pane/worktree composite, exactly one complete terminal row, and the unique source worktree/runtime. The explicit environment-handle probe must either return that same row or fail only with structured `terminal_handle_stale`; a stale handle is transient evidence, not the durable recovery authority.
 
 - [ ] **Step 2: Create the external runner with explicit stages**
 
@@ -789,7 +797,7 @@ Journal appends and fsyncs the file and parent directory. Each operation advance
 
 - [ ] **Step 3: Test the runner against synthetic resources**
 
-Test stable digest volatility, identity drift, duplicate/symlink rejection, journal order/fsync, started recovery, planned-exception and started reset recovery against Git-only worktree drift, locked force-release CAS proof, hostile inherited environment overrides, bundle-executor tampering, singleton/equal fetch-push authority, exact sealed fetch/prune argv, operation-order phase projections across every Orca/Git/IssueOps/state inventory, pre-stop new-task rejection, post-reset new-owner rejection before ref deletion, blank/mismatched environment-terminal rejection before observation, reset ambiguity, and redaction of task/message content.
+Test stable digest volatility, identity drift, duplicate/symlink rejection, journal order/fsync, started recovery, planned-exception and started reset recovery against Git-only worktree drift, locked force-release CAS proof, hostile inherited environment values without override, current/stale explicit-selector branches, malformed no-selector results, duplicate/composite conflicts, runtime/source-worktree drift, bundle-executor tampering, singleton/equal fetch-push authority, exact sealed fetch/prune argv, operation-order phase projections across every Orca/Git/IssueOps/state inventory, pre-stop new-task rejection, post-reset new-owner rejection before ref deletion, assertion-handle mismatch before observation, reset ambiguity, and redaction of task/message content.
 
 Run:
 
@@ -812,7 +820,7 @@ The runner:
 - pins exact raw-byte SHA-256 and key-sorted compact UTF-8 canonical SHA-256 (without HTML escaping) for every IssueOps/session row;
 - writes redacted Orca projections and `limitations.json`;
 - copies/hashes unexpected state artifacts into `state/backup/`;
-- requires the caller terminal argument to equal a non-empty valid `ORCA_TERMINAL_HANDLE` before observation, then pins that exact current terminal and all approved targets; every later live-validation/apply/final CLI entry rechecks the same environment-to-seal equality before mutation or readback;
+- treats the caller terminal argument only as an assertion against the official no-selector current row, pins that row's exact runtime/handle/PTY/tab/leaf/worktree ID/path/connected/writable tuple, and repeats the full authority resolution at collection stability, every live CLI entry, and both sides of each mutation fence; the transient environment handle may be current or structurally stale and is never rewritten or stored as recovery authority;
 - builds a private executor from the clean sealed HEAD and pins its SHA-256 plus Go VCS revision alongside runner/test script hashes.
 
 - [ ] **Step 5: Seal and independently validate**
@@ -937,7 +945,7 @@ Expected: one source/main Git and Orca worktree; only local/remote main; only ex
 Run:
 
 ```bash
-./bin/agent-harness doctor --repo /Users/m16khb/Workspace/agent-harness --preserve-terminal "$ORCA_TERMINAL_HANDLE" --json
+./bin/agent-harness doctor --repo /Users/m16khb/Workspace/agent-harness --preserve-terminal EXACT_SEALED_CURRENT_TERMINAL_HANDLE --json
 ```
 
 Expected: `ok=true`, `healthy=true`, healthy `operational_state`, and no `operational_*` issue.
