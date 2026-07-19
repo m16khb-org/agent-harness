@@ -4,11 +4,15 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/doctor"
 	"agent-harness/internal/core/looprun"
+	"agent-harness/internal/core/operationalhealth"
 )
 
 func TestHarnessDoctorJSONIncludesDaemonAdmissionHealth(t *testing.T) {
@@ -62,6 +66,105 @@ func TestHarnessDoctorHealthyBaseline(t *testing.T) {
 	}
 	if hasHarnessDoctorIssue(result.Issues, "repo_local_state_present") || hasHarnessDoctorIssue(result.Issues, "lifecycle_namespace_mismatch") {
 		t.Fatalf("unexpected serious project issue: %+v", result.Issues)
+	}
+}
+
+func TestHarnessDoctorProjectsOperationalFinding(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	snapshot := healthyDoctorOperationalSnapshot(repo)
+	snapshot.Gates = []operationalhealth.OrcaGate{{ID: "gate-1", Status: "pending"}}
+
+	result, err := doctor.HarnessDoctor(doctor.HarnessDoctorRequest{
+		RepoRoot: repo, HarnessRoot: repo, Home: t.TempDir(), Version: "test",
+		OperationalSnapshot: &snapshot,
+		OperationalOptions:  operationalhealth.Options{Now: doctorOperationalNow()},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	check, ok := harnessDoctorCheck(result.Checks, "operational_state")
+	if !ok || check.Healthy || harnessDoctorCheckCount(result.Checks, "operational_state") != 1 {
+		t.Fatalf("operational check projection = %#v", result.Checks)
+	}
+	issue, ok := harnessDoctorIssue(result.Issues, operationalhealth.FindingGateResidue)
+	if !ok || issue.Severity != "warning" || !strings.Contains(issue.Summary, "gate-1") || issue.Fix == nil || issue.Fix.Destructive || issue.Fix.Command != "" {
+		t.Fatalf("operational issue projection = %#v", issue)
+	}
+}
+
+func TestHarnessDoctorOperationalInventoryProblemIsError(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	snapshot := healthyDoctorOperationalSnapshot(repo)
+	snapshot.InventoryProblems = []operationalhealth.InventoryProblem{{
+		Source: "orca_tasks", Code: "orca_tasks_failed", Detail: "task inventory failed",
+	}}
+
+	result, err := doctor.HarnessDoctor(doctor.HarnessDoctorRequest{
+		RepoRoot: repo, HarnessRoot: repo, Home: t.TempDir(), Version: "test",
+		OperationalSnapshot: &snapshot,
+		OperationalOptions:  operationalhealth.Options{Now: doctorOperationalNow()},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	issue, ok := harnessDoctorIssue(result.Issues, operationalhealth.FindingInventoryUnknown)
+	if result.Healthy || !ok || issue.Severity != "error" {
+		t.Fatalf("inventory problem projection = healthy=%v issue=%#v all=%#v", result.Healthy, issue, result.Issues)
+	}
+}
+
+func TestHarnessDoctorProjectsStateArtifactsWithoutLegacyDuplicates(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateRoot)
+	unexpectedFile := filepath.Join(stateRoot, "recovery.patch")
+	unexpectedDirectory := filepath.Join(stateRoot, "legacy-recovery")
+	mustWrite(t, unexpectedFile, "recovery evidence")
+	if err := os.MkdirAll(unexpectedDirectory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	repo := t.TempDir()
+	snapshot := healthyDoctorOperationalSnapshot(repo)
+	snapshot.StateArtifacts = make([]operationalhealth.StateArtifact, 1, 4)
+	snapshot.StateArtifacts[0] = operationalhealth.StateArtifact{Path: unexpectedFile, Code: "unexpected_file"}
+	before := append(make([]operationalhealth.StateArtifact, 0, len(snapshot.StateArtifacts)), snapshot.StateArtifacts...)
+
+	result, err := doctor.HarnessDoctor(doctor.HarnessDoctorRequest{
+		RepoRoot: repo, HarnessRoot: repo, Home: t.TempDir(), Version: "test",
+		OperationalSnapshot: &snapshot,
+		OperationalOptions:  operationalhealth.Options{Now: doctorOperationalNow()},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(snapshot.StateArtifacts, before) {
+		t.Fatalf("doctor mutated injected snapshot: before=%#v after=%#v", before, snapshot.StateArtifacts)
+	}
+	if hasHarnessDoctorIssue(result.Issues, "state_unexpected_file") || hasHarnessDoctorIssue(result.Issues, "state_unexpected_directory") {
+		t.Fatalf("legacy state issues duplicated operational residue: %#v", result.Issues)
+	}
+	if countHarnessDoctorIssues(result.Issues, operationalhealth.FindingStateArtifactResidue) != 2 {
+		t.Fatalf("state artifact projection = %#v", result.Issues)
+	}
+}
+
+func TestHarnessDoctorNilOperationalSnapshotPreservesLegacyStateIssues(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateRoot)
+	mustWrite(t, filepath.Join(stateRoot, "recovery.patch"), "recovery evidence")
+	repo := t.TempDir()
+
+	result, err := doctor.HarnessDoctor(doctor.HarnessDoctorRequest{RepoRoot: repo, HarnessRoot: repo, Home: t.TempDir(), Version: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !hasHarnessDoctorIssue(result.Issues, "state_unexpected_file") || harnessDoctorCheckCount(result.Checks, "operational_state") != 0 {
+		t.Fatalf("nil operational snapshot changed legacy behavior: checks=%#v issues=%#v", result.Checks, result.Issues)
 	}
 }
 
@@ -170,6 +273,50 @@ func hasHarnessDoctorIssue(issues []doctor.HarnessDoctorIssue, code string) bool
 		}
 	}
 	return false
+}
+
+func harnessDoctorIssue(issues []doctor.HarnessDoctorIssue, code string) (doctor.HarnessDoctorIssue, bool) {
+	for _, issue := range issues {
+		if issue.Code == code {
+			return issue, true
+		}
+	}
+	return doctor.HarnessDoctorIssue{}, false
+}
+
+func countHarnessDoctorIssues(issues []doctor.HarnessDoctorIssue, code string) int {
+	count := 0
+	for _, issue := range issues {
+		if issue.Code == code {
+			count++
+		}
+	}
+	return count
+}
+
+func harnessDoctorCheckCount(checks []doctor.HarnessDoctorCheck, name string) int {
+	count := 0
+	for _, check := range checks {
+		if check.Name == name {
+			count++
+		}
+	}
+	return count
+}
+
+func doctorOperationalNow() time.Time {
+	return time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
+}
+
+func healthyDoctorOperationalSnapshot(repo string) operationalhealth.Snapshot {
+	return operationalhealth.Snapshot{
+		RepoRoot: repo, CanonicalBranch: "main", SourceHead: "head-main", SourceClean: true,
+		GitWorktrees:  []operationalhealth.GitWorktree{{Path: repo, Branch: "main", Head: "head-main", Clean: true, Canonical: true}},
+		LocalRefs:     []operationalhealth.GitRef{{Name: "refs/heads/main", Branch: "main", OID: "head-main", Location: "local"}},
+		RemoteRefs:    []operationalhealth.GitRef{{Name: "refs/heads/main", Branch: "main", OID: "head-main", Location: "remote"}},
+		OrcaWorktrees: []operationalhealth.OrcaWorktree{{ID: "wt-main", InstanceID: "instance-main", Repo: repo, Path: repo, Branch: "main", Head: "head-main"}},
+		Messages:      operationalhealth.MessagePresence{Empty: true, CompleteAbsence: true},
+	}
 }
 
 func mustWrite(t *testing.T, path string, content string) {

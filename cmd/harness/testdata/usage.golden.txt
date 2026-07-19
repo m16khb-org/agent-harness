@@ -4,7 +4,7 @@ Usage:
   agent-harness inspect [--json] [--repo PATH]
   agent-harness preflight [--json] [PATH]
   agent-harness status [--repo PATH] [--json]
-  agent-harness doctor [--repo PATH] [--json]
+  agent-harness doctor [--repo PATH] [--preserve-cycle ID]... [--preserve-terminal HANDLE]... [--json]
   agent-harness docs [index] [--json]
   agent-harness policy check [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...
   agent-harness policy fake-run [--workspace-root PATH] [--cwd PATH] [--write] [--network] [--json] -- ARGV...

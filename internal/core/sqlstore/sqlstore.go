@@ -346,18 +346,7 @@ func (d *DB) Get(bucket, id string) ([]byte, bool, error) {
 // database, span database, or schema. Its read-only connection never waits on
 // SQLite contention, which keeps lifecycle-hook lookups bounded.
 func GetExisting(dir, bucket, id string) ([]byte, bool, error) {
-	abs, err := filepath.Abs(dir)
-	if err != nil {
-		return nil, false, fmt.Errorf("sqlstore existing open %q: %w", dir, err)
-	}
-	dataPath := filepath.Join(abs, dataDBFile)
-	if _, err := os.Stat(dataPath); err != nil {
-		if os.IsNotExist(err) {
-			return nil, false, fmt.Errorf("sqlstore existing data db %s: %w", abs, fs.ErrNotExist)
-		}
-		return nil, false, err
-	}
-	data, err := openSQLite(dataPath, "mode=ro&_pragma=busy_timeout(0)&_pragma=query_only(1)")
+	data, err := openExistingData(dir)
 	if err != nil {
 		return nil, false, err
 	}
@@ -371,6 +360,69 @@ func GetExisting(dir, bucket, id string) ([]byte, bool, error) {
 		return nil, false, err
 	}
 	return raw, true, nil
+}
+
+// ListExisting returns bucket IDs from an existing data store without creating
+// or repairing any state files. Missing stores return fs.ErrNotExist.
+func ListExisting(dir, bucket string) ([]string, error) {
+	data, err := openExistingData(dir)
+	if err != nil {
+		return nil, err
+	}
+	defer data.Close()
+	rows, err := data.Query(`SELECT id FROM records WHERE bucket = ? ORDER BY id`, bucket)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	ids := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// GetAllExisting returns bucket rows from an existing data store without
+// creating or repairing any state files. Missing stores return fs.ErrNotExist.
+func GetAllExisting(dir, bucket string) ([]Row, error) {
+	data, err := openExistingData(dir)
+	if err != nil {
+		return nil, err
+	}
+	defer data.Close()
+	rows, err := data.Query(`SELECT id, data FROM records WHERE bucket = ? ORDER BY id`, bucket)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := []Row{}
+	for rows.Next() {
+		var row Row
+		if err := rows.Scan(&row.ID, &row.Data); err != nil {
+			return nil, err
+		}
+		result = append(result, row)
+	}
+	return result, rows.Err()
+}
+
+func openExistingData(dir string) (*sql.DB, error) {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, fmt.Errorf("sqlstore existing open %q: %w", dir, err)
+	}
+	dataPath := filepath.Join(abs, dataDBFile)
+	if _, err := os.Stat(dataPath); err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("sqlstore existing data db %s: %w", abs, fs.ErrNotExist)
+		}
+		return nil, err
+	}
+	return openSQLite(dataPath, "mode=ro&_pragma=busy_timeout(0)&_pragma=query_only(1)")
 }
 
 // Put upserts the record data for (bucket, id).

@@ -1,8 +1,12 @@
 package state
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"sort"
+
+	"agent-harness/internal/core/sqlstore"
 )
 
 func StateDoctor() (StateDoctorResult, error) {
@@ -25,12 +29,10 @@ func StateDoctor() (StateDoctorResult, error) {
 		inspected := inspectStateDoctorEntry(dir, entry)
 		result.Issues = append(result.Issues, inspected.Issues...)
 	}
-	db, err := openStateDB(dir)
-	if err != nil {
-		return result, err
-	}
-	rows, err := db.GetAll(stateBucket)
-	if err != nil {
+	rows, err := sqlstore.GetAllExisting(dir, stateBucket)
+	if errors.Is(err, fs.ErrNotExist) {
+		rows = nil
+	} else if err != nil {
 		return result, err
 	}
 	for _, row := range rows {

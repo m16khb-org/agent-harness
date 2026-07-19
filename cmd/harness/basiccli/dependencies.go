@@ -1,22 +1,25 @@
 package basiccli
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 
 	"agent-harness/cmd/harness/daemoncli"
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/operationalhealth"
 )
 
 // Deps holds the host-provided implementations the basic CLI commands depend on.
 // The composition root injects real implementations via Configure; standalone
 // use and tests fall back to defaults.
 type Deps struct {
-	HarnessRoot       func() string
-	ResolveTarget     func(string) string
-	Version           string
-	InspectHarness    func(string) core.InspectInfo
-	CheckDaemonStatus func() daemoncli.Status
+	HarnessRoot              func() string
+	ResolveTarget            func(string) string
+	Version                  string
+	InspectHarness           func(string) core.InspectInfo
+	CheckDaemonStatus        func() daemoncli.Status
+	CollectOperationalHealth func(context.Context, string) operationalhealth.Snapshot
 }
 
 // deps holds the currently configured dependencies. It is package-private and
@@ -39,6 +42,14 @@ func defaultDeps() Deps {
 		Version:           "dev",
 		InspectHarness:    func(string) core.InspectInfo { return core.InspectInfo{} },
 		CheckDaemonStatus: daemoncli.CheckDaemonStatus,
+		CollectOperationalHealth: func(_ context.Context, repo string) operationalhealth.Snapshot {
+			return operationalhealth.Snapshot{
+				RepoRoot: repo,
+				InventoryProblems: []operationalhealth.InventoryProblem{{
+					Source: "doctor", Code: "operational_collector_unconfigured", Detail: "operational inventory collector is not configured",
+				}},
+			}
+		},
 	}
 }
 

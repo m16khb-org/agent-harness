@@ -49,6 +49,31 @@ func TestClassifyOperationalHealthAcceptsFreshClaimedExactResources(t *testing.T
 	}
 }
 
+func TestClassifyOperationalHealthRejectsCanonicalSourceDrift(t *testing.T) {
+	now := operationalTestNow()
+	for _, test := range []struct {
+		name   string
+		mutate func(*Snapshot)
+		id     string
+	}{
+		{name: "dirty source", id: "/repo", mutate: func(snapshot *Snapshot) { snapshot.SourceClean = false }},
+		{name: "source worktree head", id: "/repo", mutate: func(snapshot *Snapshot) { snapshot.GitWorktrees[0].Head = "different" }},
+		{name: "local canonical ref", id: "local:main", mutate: func(snapshot *Snapshot) { snapshot.LocalRefs[0].OID = "different" }},
+		{name: "missing remote canonical ref", id: "remote:main", mutate: func(snapshot *Snapshot) { snapshot.RemoteRefs = nil }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			snapshot := minimalOperationalSnapshot()
+			test.mutate(&snapshot)
+
+			result := Classify(snapshot, Options{Now: now})
+
+			if !hasFinding(result.Findings, FindingInventoryUnknown, test.id) {
+				t.Fatalf("canonical source drift was accepted: %#v", result.Findings)
+			}
+		})
+	}
+}
+
 func TestClassifyOperationalHealthUsesGlobalOrcaOwnersAcrossRepos(t *testing.T) {
 	now := operationalTestNow()
 	snapshot := minimalOperationalSnapshot()
@@ -465,6 +490,7 @@ func minimalOperationalSnapshot() Snapshot {
 		RepoRoot:        "/repo",
 		CanonicalBranch: "main",
 		SourceHead:      "head-main",
+		SourceClean:     true,
 		GitWorktrees: []GitWorktree{{
 			Path:      "/repo",
 			Branch:    "main",

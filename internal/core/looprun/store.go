@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"path/filepath"
@@ -82,11 +83,14 @@ func writeLoop(loop LoopRun) (LoopRun, error) {
 }
 
 func ListLoopIDs() ([]string, error) {
-	db, err := openStore()
+	ids, err := sqlstore.ListExisting(StateRoot(), loopBucket)
+	if errors.Is(err, fs.ErrNotExist) {
+		return []string{}, nil
+	}
 	if err != nil {
 		return nil, err
 	}
-	return db.List(loopBucket)
+	return ids, nil
 }
 
 func newLoopID(repo, name string) string {

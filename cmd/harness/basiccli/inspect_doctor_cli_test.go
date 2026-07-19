@@ -1,14 +1,20 @@
 package basiccli
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"flag"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"agent-harness/cmd/harness/daemoncli"
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/operationalhealth"
+	"agent-harness/internal/testsupport"
 )
 
 func TestRunInspect_printsText_whenRepoIsPositional(t *testing.T) {
@@ -129,6 +135,9 @@ func TestRunDoctor_printsLiveDaemonAdmissionHealth(t *testing.T) {
 				Draining:          false,
 			}
 		},
+		CollectOperationalHealth: func(_ context.Context, root string) operationalhealth.Snapshot {
+			return healthyCLIOperationalSnapshot(root)
+		},
 	})
 
 	out := captureStatusVerifyStdout(t, func() error {
@@ -140,6 +149,143 @@ func TestRunDoctor_printsLiveDaemonAdmissionHealth(t *testing.T) {
 	}
 	if result.ActiveConnections != 64 || result.MaxConnections != 64 || result.Accepting || result.Draining {
 		t.Fatalf("doctor CLI lost daemon admission health: %#v", result)
+	}
+}
+
+func TestRunDoctorOperationalPreserveFlagsAreRepeatableAndInvocationScoped(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	configureOperationalCollectorTest(t, func(_ context.Context, root string) operationalhealth.Snapshot {
+		snapshot := healthyCLIOperationalSnapshot(root)
+		snapshot.Cycles = []operationalhealth.Cycle{
+			{ID: "io-a", Repo: root, Branch: "main", Phase: "plan"},
+			{ID: "io-z", Repo: root, Branch: "main", Phase: "plan"},
+		}
+		snapshot.Terminals = []operationalhealth.OrcaTerminal{{Handle: "term-a"}, {Handle: "term-z"}}
+		return snapshot
+	})
+
+	out := captureStatusVerifyStdout(t, func() error {
+		return RunDoctor([]string{
+			"--repo", repo,
+			"--preserve-cycle", " io-z ", "--preserve-cycle", "io-a", "--preserve-cycle", "io-a",
+			"--preserve-terminal", " term-z ", "--preserve-terminal", "term-a", "--preserve-terminal", "term-a",
+			"--json",
+		})
+	})
+	var result core.HarnessDoctorResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("decode doctor json: %v\n%s", err, out)
+	}
+	check, ok := doctorResultCheck(result, "operational_state")
+	if !ok || !check.Healthy {
+		t.Fatalf("repeatable invocation preserves were not applied exactly: check=%#v issues=%#v", check, result.Issues)
+	}
+
+	withoutPreserve := captureStatusVerifyStdout(t, func() error {
+		return RunDoctor([]string{"--repo", repo, "--json"})
+	})
+	if err := json.Unmarshal([]byte(withoutPreserve), &result); err != nil {
+		t.Fatalf("decode unpreserved doctor json: %v\n%s", err, withoutPreserve)
+	}
+	check, ok = doctorResultCheck(result, "operational_state")
+	if !ok || check.Healthy {
+		t.Fatalf("preserve flags leaked beyond one invocation: check=%#v issues=%#v", check, result.Issues)
+	}
+}
+
+func TestRunDoctorPreserveValuesNormalizeAndRejectBlank(t *testing.T) {
+	got, err := normalizeDoctorPreserve([]string{" io-z ", "io-a", "io-z"}, "--preserve-cycle")
+	if err != nil || !slices.Equal(got, []string{"io-a", "io-z"}) {
+		t.Fatalf("normalized preserves = %#v, err=%v", got, err)
+	}
+	if _, err := normalizeDoctorPreserve([]string{" "}, "--preserve-terminal"); err == nil {
+		t.Fatal("blank preserve value was accepted")
+	}
+
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	collectorCalls := 0
+	configureOperationalCollectorTest(t, func(_ context.Context, root string) operationalhealth.Snapshot {
+		collectorCalls++
+		return healthyCLIOperationalSnapshot(root)
+	})
+	for _, args := range [][]string{
+		{"--repo", repo, "--preserve-cycle", " "},
+		{"--repo", repo, "--preserve-terminal="},
+	} {
+		if err := RunDoctor(args); err == nil {
+			t.Fatalf("blank preserve args were accepted: %#v", args)
+		}
+	}
+	if collectorCalls != 0 {
+		t.Fatalf("collector ran after invalid preserve input: calls=%d", collectorCalls)
+	}
+}
+
+func TestRunDoctorOperationalInventoryFailureHasJSONTextParity(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	configureOperationalCollectorTest(t, func(_ context.Context, root string) operationalhealth.Snapshot {
+		snapshot := healthyCLIOperationalSnapshot(root)
+		snapshot.InventoryProblems = []operationalhealth.InventoryProblem{{Source: "orca_tasks", Code: "orca_tasks_failed", Detail: "task inventory failed"}}
+		return snapshot
+	})
+
+	jsonOut := captureStatusVerifyStdout(t, func() error {
+		return RunDoctor([]string{"--repo", repo, "--json"})
+	})
+	var result core.HarnessDoctorResult
+	if err := json.Unmarshal([]byte(jsonOut), &result); err != nil {
+		t.Fatalf("decode doctor json: %v\n%s", err, jsonOut)
+	}
+	if result.Healthy || !doctorResultHasIssue(result, operationalhealth.FindingInventoryUnknown) {
+		t.Fatalf("inventory failure JSON projection = %#v", result)
+	}
+	textOut := captureStatusVerifyStdout(t, func() error {
+		return RunDoctor([]string{"--repo", repo})
+	})
+	if !strings.Contains(textOut, operationalhealth.FindingInventoryUnknown) {
+		t.Fatalf("text output lost operational code:\n%s", textOut)
+	}
+}
+
+func TestRunDoctorOperationalHelpListsPreserveFlags(t *testing.T) {
+	out, err := testsupport.CaptureStderrAndError(t, func() error {
+		return RunDoctor([]string{"--help"})
+	})
+	if !errors.Is(err, flag.ErrHelp) {
+		t.Fatalf("doctor help error = %v, want flag.ErrHelp", err)
+	}
+	for _, flagName := range []string{"--preserve-cycle", "--preserve-terminal"} {
+		if !strings.Contains(out, flagName) {
+			t.Fatalf("doctor help missing %s:\n%s", flagName, out)
+		}
+	}
+}
+
+func TestRunDoctorOperationalDoesNotWriteEmptyState(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", stateRoot)
+	repo := t.TempDir()
+	configureOperationalCollectorTest(t, func(_ context.Context, root string) operationalhealth.Snapshot {
+		return healthyCLIOperationalSnapshot(root)
+	})
+
+	_ = captureStatusVerifyStdout(t, func() error {
+		return RunDoctor([]string{"--repo", repo, "--json"})
+	})
+
+	entries, err := os.ReadDir(stateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		names := make([]string, 0, len(entries))
+		for _, entry := range entries {
+			names = append(names, entry.Name())
+		}
+		t.Fatalf("read-only doctor created user-state entries: %#v", names)
 	}
 }
 
@@ -163,6 +309,15 @@ func doctorResultHasIssue(result core.HarnessDoctorResult, code string) bool {
 		}
 	}
 	return false
+}
+
+func doctorResultCheck(result core.HarnessDoctorResult, name string) (core.HarnessDoctorCheck, bool) {
+	for _, check := range result.Checks {
+		if check.Name == name {
+			return check, true
+		}
+	}
+	return core.HarnessDoctorCheck{}, false
 }
 
 func TestRunDoctor_doesNotRequireRealHome(t *testing.T) {

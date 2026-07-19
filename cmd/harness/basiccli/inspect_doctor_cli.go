@@ -1,12 +1,29 @@
 package basiccli
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
+	"sort"
+	"strings"
+	"time"
 
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/operationalhealth"
+	"agent-harness/internal/core/repopath"
 )
+
+type doctorRepeatedFlag []string
+
+func (values *doctorRepeatedFlag) String() string {
+	return fmt.Sprint([]string(*values))
+}
+
+func (values *doctorRepeatedFlag) Set(value string) error {
+	*values = append(*values, value)
+	return nil
+}
 
 func runInspect(args []string) error {
 	fs := flag.NewFlagSet("inspect", flag.ContinueOnError)
@@ -38,19 +55,47 @@ func runDoctor(args []string) error {
 	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
 	repo := fs.String("repo", ".", "target repository path")
 	jsonOut := fs.Bool("json", false, "print JSON")
+	var preserveCycles doctorRepeatedFlag
+	var preserveTerminals doctorRepeatedFlag
+	fs.Var(&preserveCycles, "preserve-cycle", "preserve one exact IssueOps cycle for this invocation (repeatable)")
+	fs.Var(&preserveTerminals, "preserve-terminal", "preserve one exact terminal handle for this invocation (repeatable)")
+	fs.Usage = func() {
+		fmt.Fprintln(fs.Output(), "Usage: agent-harness doctor [--repo PATH] [--preserve-cycle ID]... [--preserve-terminal HANDLE]... [--json]")
+		fs.PrintDefaults()
+	}
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
 		*repo = fs.Arg(0)
 	}
+	cycleIDs, err := normalizeDoctorPreserve(preserveCycles, "--preserve-cycle")
+	if err != nil {
+		return err
+	}
+	terminalHandles, err := normalizeDoctorPreserve(preserveTerminals, "--preserve-terminal")
+	if err != nil {
+		return err
+	}
+	root, err := repopath.NormalizeRoot(*repo)
+	if err != nil {
+		return err
+	}
+	now := time.Now().UTC()
+	snapshot := deps.CollectOperationalHealth(context.Background(), root)
 	home, _ := os.UserHomeDir()
 	daemon := deps.CheckDaemonStatus()
 	result, err := core.HarnessDoctor(core.HarnessDoctorRequest{
-		RepoRoot:    *repo,
-		HarnessRoot: deps.HarnessRoot(),
-		Home:        home,
-		Version:     deps.Version,
+		RepoRoot:            root,
+		HarnessRoot:         deps.HarnessRoot(),
+		Home:                home,
+		Version:             deps.Version,
+		OperationalSnapshot: &snapshot,
+		OperationalOptions: operationalhealth.Options{
+			Now:                     now,
+			PreserveCycleIDs:        cycleIDs,
+			PreserveTerminalHandles: terminalHandles,
+		},
 		DaemonAdmission: core.HarnessDoctorDaemonAdmission{
 			ActiveConnections: daemon.ActiveConnections,
 			MaxConnections:    daemon.MaxConnections,
@@ -76,4 +121,22 @@ func runDoctor(args []string) error {
 		}
 	}
 	return nil
+}
+
+func normalizeDoctorPreserve(values []string, flagName string) ([]string, error) {
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	for _, raw := range values {
+		value := strings.TrimSpace(raw)
+		if value == "" {
+			return nil, fmt.Errorf("%s requires a non-empty value", flagName)
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	sort.Strings(result)
+	return result, nil
 }

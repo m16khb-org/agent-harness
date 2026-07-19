@@ -72,6 +72,37 @@ func TestCollectorCollectsCanonicalGitIssueOpsAndBindings(t *testing.T) {
 	}
 }
 
+func TestCollectorDoesNotCreateMissingIssueOpsStore(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	fixture := newCollectorGitFixture(t, "19-read-only")
+
+	snapshot := (Collector{Git: ExecGitRunner{}, Orca: &fakeOrcaInventory{}}).Collect(context.Background(), fixture.repo)
+
+	if len(snapshot.InventoryProblems) != 0 {
+		t.Fatalf("read-only empty inventory problems = %#v", snapshot.InventoryProblems)
+	}
+	if _, err := os.Stat(issueops.IssueOpsStateRoot()); !os.IsNotExist(err) {
+		t.Fatalf("collector created missing IssueOps store: err=%v", err)
+	}
+}
+
+func TestExecGitRunnerDisablesOptionalGitLocks(t *testing.T) {
+	binDir := t.TempDir()
+	script := filepath.Join(binDir, "git")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nprintf '%s' \"$GIT_OPTIONAL_LOCKS\"\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", binDir)
+
+	output, err := (ExecGitRunner{}).Run(context.Background(), t.TempDir(), "probe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(output) != "0" {
+		t.Fatalf("GIT_OPTIONAL_LOCKS = %q, want 0", output)
+	}
+}
+
 func TestCanonicalInventoryPathResolvesExistingSymlinkAncestors(t *testing.T) {
 	realRoot := t.TempDir()
 	resolvedRoot, err := filepath.EvalSymlinks(realRoot)

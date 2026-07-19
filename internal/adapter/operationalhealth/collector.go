@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
@@ -42,6 +43,7 @@ func (ExecGitRunner) Run(ctx context.Context, repo string, args ...string) ([]by
 	}
 	command := exec.CommandContext(ctx, "git", args...)
 	command.Dir = repo
+	command.Env = append(os.Environ(), "GIT_OPTIONAL_LOCKS=0")
 	return command.Output()
 }
 

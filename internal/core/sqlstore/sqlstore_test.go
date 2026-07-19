@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -25,6 +26,53 @@ func TestGetExistingMissingDoesNotCreateStore(t *testing.T) {
 	}
 	if len(entries) != 0 {
 		t.Fatalf("existing-store read created files or directories: %v", entries)
+	}
+}
+
+func TestListAndGetAllExistingDoNotCreateMissingStore(t *testing.T) {
+	parent := t.TempDir()
+	dir := filepath.Join(parent, "missing")
+	if _, err := ListExisting(dir, "b"); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("missing existing-store list error = %v", err)
+	}
+	if _, err := GetAllExisting(dir, "b"); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("missing existing-store get-all error = %v", err)
+	}
+	entries, err := os.ReadDir(parent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("existing-store collection created files or directories: %v", entries)
+	}
+}
+
+func TestListAndGetAllExistingReadSortedRows(t *testing.T) {
+	dir := t.TempDir()
+	db, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Put("b", "z", []byte(`{"value":2}`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Put("b", "a", []byte(`{"value":1}`)); err != nil {
+		t.Fatal(err)
+	}
+
+	ids, err := ListExisting(dir, "b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, err := GetAllExisting(dir, "b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(ids, []string{"a", "z"}) {
+		t.Fatalf("existing ids = %#v", ids)
+	}
+	if len(rows) != 2 || rows[0].ID != "a" || string(rows[0].Data) != `{"value":1}` || rows[1].ID != "z" {
+		t.Fatalf("existing rows = %#v", rows)
 	}
 }
 

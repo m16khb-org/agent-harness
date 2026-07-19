@@ -14,6 +14,8 @@ import (
 	"agent-harness/cmd/harness/webfetchcli"
 	"agent-harness/cmd/harness/workercli"
 	"agent-harness/cmd/harness/workpoolcli"
+	"agent-harness/internal/adapter/operationalhealth"
+	"agent-harness/internal/adapter/orca"
 	"agent-harness/internal/port"
 )
 
@@ -28,12 +30,14 @@ type (
 )
 
 func wireBasicCLIDeps() {
+	operationalCollector := operationalhealth.Collector{Git: operationalhealth.ExecGitRunner{}, Orca: orca.New()}
 	basiccli.Configure(basiccli.Deps{
-		HarnessRoot:       harnessRoot,
-		ResolveTarget:     resolveTarget,
-		Version:           version,
-		InspectHarness:    inspectHarness,
-		CheckDaemonStatus: checkDaemonStatus,
+		HarnessRoot:              harnessRoot,
+		ResolveTarget:            resolveTarget,
+		Version:                  version,
+		InspectHarness:           inspectHarness,
+		CheckDaemonStatus:        checkDaemonStatus,
+		CollectOperationalHealth: operationalCollector.Collect,
 	})
 	installcli.Configure(installcli.Deps{HarnessRoot: harnessRoot})
 	qualitycli.Configure(qualitycli.Deps{

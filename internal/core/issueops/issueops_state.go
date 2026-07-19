@@ -1,12 +1,11 @@
 package issueops
 
 import (
-	"agent-harness/internal/core/sqlstore"
-	"agent-harness/internal/core/state"
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"path/filepath"
@@ -14,6 +13,8 @@ import (
 	"time"
 
 	"agent-harness/internal/core/issueops/handoff"
+	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/core/state"
 )
 
 // issueOpsBucket is the sqlstore bucket holding one row per cycle record.
@@ -177,11 +178,14 @@ func rawIssueOpsAuthorityPresent(raw json.RawMessage) bool {
 // ListIssueOpsIDs returns every cycle id stored under stateRoot in ascending
 // order.
 func ListIssueOpsIDs(stateRoot string) ([]string, error) {
-	db, err := sqlstore.Open(stateRoot)
+	ids, err := sqlstore.ListExisting(stateRoot, issueOpsBucket)
+	if errors.Is(err, fs.ErrNotExist) {
+		return []string{}, nil
+	}
 	if err != nil {
 		return nil, err
 	}
-	return db.List(issueOpsBucket)
+	return ids, nil
 }
 
 // deleteIssueOps removes the cycle record for id; deleting an absent record is

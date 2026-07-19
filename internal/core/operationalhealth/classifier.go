@@ -46,6 +46,7 @@ func Classify(snapshot Snapshot, opts Options) Result {
 		id := firstNonEmpty(problem.Code, problem.Source, "inventory")
 		builder.add(FindingInventoryUnknown, problem.Source, id, firstNonEmpty(problem.Detail, problem.Code, "inventory collection failed"), "")
 	}
+	validateCanonicalSource(&builder, snapshot)
 	if snapshot.OrcaObserved {
 		runtimeID := strings.TrimSpace(snapshot.OrcaRuntimeID)
 		if runtimeID == "" {
@@ -245,6 +246,42 @@ func Classify(snapshot Snapshot, opts Options) Result {
 
 	findings := builder.sorted()
 	return Result{Healthy: len(findings) == 0, Findings: findings}
+}
+
+func validateCanonicalSource(builder *findingBuilder, snapshot Snapshot) {
+	repo := clean(snapshot.RepoRoot)
+	branch := strings.TrimSpace(snapshot.CanonicalBranch)
+	head := strings.TrimSpace(snapshot.SourceHead)
+	if repo == "" || branch == "" || head == "" {
+		builder.add(FindingInventoryUnknown, "source", "source", "canonical source repository, branch, and HEAD identity must be complete", repo)
+		return
+	}
+	if !snapshot.SourceClean {
+		builder.add(FindingInventoryUnknown, "source", repo, "canonical source checkout is not clean", repo)
+	}
+	canonicalWorktrees := make([]GitWorktree, 0, 1)
+	for _, worktree := range snapshot.GitWorktrees {
+		if worktree.Canonical || clean(worktree.Path) == repo {
+			canonicalWorktrees = append(canonicalWorktrees, worktree)
+		}
+	}
+	if len(canonicalWorktrees) != 1 || clean(canonicalWorktrees[0].Path) != repo || !canonicalWorktrees[0].Canonical || strings.TrimSpace(canonicalWorktrees[0].Branch) != branch || strings.TrimSpace(canonicalWorktrees[0].Head) != head || !canonicalWorktrees[0].Clean {
+		builder.add(FindingInventoryUnknown, "source_worktree", repo, "canonical Git worktree must occur once and match the clean source branch and HEAD", repo)
+	}
+	validateCanonicalRef(builder, snapshot.LocalRefs, "local", branch, head)
+	validateCanonicalRef(builder, snapshot.RemoteRefs, "remote", branch, head)
+}
+
+func validateCanonicalRef(builder *findingBuilder, refs []GitRef, location, branch, head string) {
+	matches := make([]GitRef, 0, 1)
+	for _, ref := range refs {
+		if strings.TrimSpace(ref.Location) == location && strings.TrimSpace(ref.Branch) == branch {
+			matches = append(matches, ref)
+		}
+	}
+	if len(matches) != 1 || strings.TrimSpace(matches[0].OID) != head {
+		builder.add(FindingInventoryUnknown, "branch", location+":"+branch, fmt.Sprintf("canonical %s ref must occur once at source HEAD %s", location, head), "")
+	}
 }
 
 func claimedIdentityComplete(cycle Cycle) bool {

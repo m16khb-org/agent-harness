@@ -1,6 +1,7 @@
 package basiccli
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 
 	"agent-harness/cmd/harness/daemoncli"
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/operationalhealth"
 	"agent-harness/internal/testsupport"
 )
 
@@ -18,12 +20,35 @@ func init() {
 		ResolveTarget:     testResolveTarget,
 		Version:           "0.1.0",
 		CheckDaemonStatus: daemoncli.CheckDaemonStatus,
+		CollectOperationalHealth: func(_ context.Context, repo string) operationalhealth.Snapshot {
+			return healthyCLIOperationalSnapshot(repo)
+		},
 		InspectHarness: func(repo string) core.InspectInfo {
 			target := testResolveTarget(repo)
 			home, _ := os.UserHomeDir()
 			return core.InspectHarness(root, target, home, "0.1.0", "atomic-commit-push")
 		},
 	})
+}
+
+func configureOperationalCollectorTest(t *testing.T, collect func(context.Context, string) operationalhealth.Snapshot) {
+	t.Helper()
+	oldDeps := deps
+	t.Cleanup(func() { Configure(oldDeps) })
+	next := deps
+	next.CollectOperationalHealth = collect
+	Configure(next)
+}
+
+func healthyCLIOperationalSnapshot(repo string) operationalhealth.Snapshot {
+	return operationalhealth.Snapshot{
+		RepoRoot: repo, CanonicalBranch: "main", SourceHead: "head-main", SourceClean: true,
+		GitWorktrees:  []operationalhealth.GitWorktree{{Path: repo, Branch: "main", Head: "head-main", Clean: true, Canonical: true}},
+		LocalRefs:     []operationalhealth.GitRef{{Name: "refs/heads/main", Branch: "main", OID: "head-main", Location: "local"}},
+		RemoteRefs:    []operationalhealth.GitRef{{Name: "refs/heads/main", Branch: "main", OID: "head-main", Location: "remote"}},
+		OrcaWorktrees: []operationalhealth.OrcaWorktree{{ID: "wt-main", InstanceID: "instance-main", Repo: repo, Path: repo, Branch: "main", Head: "head-main"}},
+		Messages:      operationalhealth.MessagePresence{Empty: true, CompleteAbsence: true},
+	}
 }
 
 func testHarnessRoot() string {
