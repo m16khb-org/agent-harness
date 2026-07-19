@@ -289,6 +289,8 @@ orca/limitations.json
 
 Generated timestamp와 read latency 같은 volatile field는 stable digest에서 제외한다. destructive 단계는 target 하나마다 현재 identity가 manifest와 exact 일치하는지 다시 확인한다. 매 operation 전후에는 journal order로 계산한 exact phase projection을 적용해 Orca terminal/worktree/task/dispatch/gate/inbox, Git worktree와 local/remote ref, IssueOps record/session/other row, state artifact를 모두 다시 읽는다. 이미 journaled된 제거·repair·release만 허용하며 신규 ID/key/path/ref, 남아 있는 resource의 digest/OID/hash drift, incomplete inventory가 있으면 다음 mutation을 호출하기 전에 중단한다. `started` recovery는 해당 operation의 exact before/after projection 중 하나만 허용한다.
 
+Preservation/authority fence의 timeout, parse, incomplete inventory, identity 오류는 모두 target readback보다 먼저 non-recoverable inventory drift로 정규화한다. Mutation invocation 자체가 실패하거나 timeout된 뒤 완전한 post-fence가 성공한 경우에만 exact operation readback recovery를 고려한다. Mutation은 성공했더라도 post-fence가 실패하면 ordinary operation과 reset 모두 journal을 `started`에 남기고 같은 호출에서 `completed`/`verified`로 전진하지 않는다.
+
 Raw digest는 SQLite에 저장된 JSON bytes 그대로의 SHA-256이다. Canonical digest는 key-sorted compact UTF-8 JSON의 SHA-256이며 `<`, `>`, `&`를 HTML escape하지 않는다. runner와 locked core CAS가 같은 규칙을 사용해야 한다.
 
 ### 9.3 Quiescence와 Orca reset 경계

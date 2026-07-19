@@ -797,7 +797,7 @@ Journal appends and fsyncs the file and parent directory. Each operation advance
 
 - [ ] **Step 3: Test the runner against synthetic resources**
 
-Test stable digest volatility, identity drift, duplicate/symlink rejection, journal order/fsync, started recovery, planned-exception and started reset recovery against Git-only worktree drift, locked force-release CAS proof, hostile inherited environment values without override, current/stale explicit-selector branches, malformed no-selector results, duplicate/composite conflicts, runtime/source-worktree drift, bundle-executor tampering, singleton/equal fetch-push authority, exact sealed fetch/prune argv, operation-order phase projections across every Orca/Git/IssueOps/state inventory, pre-stop new-task rejection, post-reset new-owner rejection before ref deletion, assertion-handle mismatch before observation, reset ambiguity, and redaction of task/message content.
+Test stable digest volatility, identity drift, duplicate/symlink rejection, journal order/fsync, started recovery, planned-exception and started reset recovery against Git-only worktree drift, locked force-release CAS proof, hostile inherited environment values without override, current/stale explicit-selector branches, malformed no-selector results, duplicate/composite conflicts, runtime/source-worktree drift, bundle-executor tampering, singleton/equal fetch-push authority, exact sealed fetch/prune argv, operation-order phase projections across every Orca/Git/IssueOps/state inventory, pre-stop new-task rejection, post-reset new-owner rejection before ref deletion, assertion-handle mismatch before observation, reset ambiguity, and redaction of task/message content. For both ordinary operations and reset, a post-mutation preservation-fence timeout with a satisfied target-only readback must leave the journal at `planned -> started`; it must never append `completed` or `verified`.
 
 Run:
 
@@ -806,6 +806,8 @@ python3 "$BUNDLE_ROOT/test_reconcile.py"
 ```
 
 Expected: PASS before live observation.
+
+Copy only `reconcile.py` and `test_reconcile.py` into a temporary clean directory and run the copied test directly. It must pass without importing `simulate_copy.py` or any unsealed sibling. Repeat that two-file standalone test after creating the fresh final bundle and before collection.
 
 After the implementation commit is clean and equals `refs/remotes/origin/main`, run `simulate_copy.py`. It builds its own `0700` `-trimpath` executor, verifies SHA-256 plus VCS revision and `modified=false`, then exercises the exact binding deletion, every force-release CAS, and the approved test-session transaction against an online backup of the live SQLite database. It must never invoke the ignored repository `bin/agent-harness`.
 
