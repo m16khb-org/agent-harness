@@ -1,0 +1,71 @@
+Criterion: G1-C3 extension (B79 binding independent-review finding, sealed B70 scope)
+Status: PASS after RED->GREEN
+
+Threat: while the sibling lock is held on the initially-created XDG_CONFIG_HOME
+chain, a same-UID racer renames the entire tree (lock included) aside, creates a
+replacement XDG_CONFIG_HOME/git/config with an evil URL rewrite, lets push
+observe the replacement, removes it, and restores the original tree so every
+post-operation snapshot and inventory matches.
+
+RED (exact, at attempt base HEAD 8886856 plus only the new test):
+$ go test ./internal/core/issueops -run 'TestPublicationAbsentXDGConfigAuthorityCannotBeReplacedDuringPush' -count=1 -v
+=== RUN   TestPublicationAbsentXDGConfigAuthorityCannotBeReplacedDuringPush
+    issueops_handoff_publication_test.go:841: git [rev-parse refs/heads/46-demo] in <good bare repo>: exit status 128: fatal: ambiguous argument 'refs/heads/46-demo': unknown revision or path not in the working tree.
+--- FAIL: TestPublicationAbsentXDGConfigAuthorityCannotBeReplacedDuringPush (1.01s)
+Causal reading: PushExact returned nil and the replacement marker existed, but
+the good destination never received refs/heads/46-demo — the push observed the
+substituted evil insteadOf rewrite and was redirected; the restore made the
+final authority verification pass silently.
+
+Fix (smallest fail-closed seal): when GIT_CONFIG_GLOBAL is absent and the
+default XDG git config does not exist under the held seal,
+publicationPinAbsentXDGConfigAuthority pins GIT_CONFIG_GLOBAL to the canonical
+home config for the duration of the protected callback. This preserves the
+verified effective configuration byte-for-byte (the absent XDG file contributed
+nothing) while making any substituted XDG tree identity unreadable by Git during
+the operation. Present GIT_CONFIG_GLOBAL (any value) and existing XDG configs
+keep their prior behavior unchanged; pin acquisition failure fails closed before
+the callback.
+
+GREEN (same test after the seal):
+=== RUN   TestPublicationAbsentXDGConfigAuthorityCannotBeReplacedDuringPush
+--- PASS: TestPublicationAbsentXDGConfigAuthorityCannotBeReplacedDuringPush (0.58s)
+The test additionally proves the attack was exercised (replacement rewrite
+marker exists), the good destination holds the exact final head, the evil
+destination has no ref, and neither the XDG tree nor the aside tree leaves
+residue after release.
+
+Safe-case regressions rerun verbosely, all PASS:
+TestPublicationOwnerControlledConfigInReadOnlyParentRejectsBeforeTransientRewrite,
+TestPublicationImmutableMacOSSystemConfigAllowsProtectedCallback,
+TestPublicationGlobalRewriteRaceCannotRedirectPush,
+TestGitPublicationAllowsAbsentDefaultXDGConfig,
+TestPublicationAbsentXDGConfigAuthorityCannotBeTransientlyCreatedDuringPush,
+TestPublicationMissingConfigAuthorityParentFailsBeforePushAndLeavesDestinationsUnchanged.
+
+Gates from the final worker HEAD:
+- Focused publication suite -run 'TestPublication|TestGitPublication': exit 0.
+- Seven named safe-case/attack tests rerun with -v === RUN output: exit 0.
+- git diff --check: exit 0. gofmt -l on the two changed Go files: no output.
+- GOOS=windows GOARCH=amd64 go test -exec=true ./internal/core/issueops -run '^$' -count=1: exit 0.
+- go test ./... -count=1: exit 0 (all packages ok).
+- go test -race ./... -count=1: exit 0 (all packages ok; internal/core/issueops included).
+- go vet ./...: exit 0.
+- go test ./cmd/harness/contractgolden -run Golden -count=1: exit 0.
+- go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1: exit 0.
+- python3 scripts/validate_skill_test.py: OK (3 tests); scripts/validate-skill.py over all 19 skills/*: each "Skill is valid!".
+- go build -o tmp-recovery-build/harness-build-check ./cmd/harness: exit 0; artifact and directory removed (B-78 neutral-name escape).
+- HARNESS_STATE_DIR=tmp-selfverify-state self-verify --seed=100 --target-score=95 --llm-eval=false --json: exit 1 at step 23/25 "native integration" only (total_steps=23, passed_steps=22, minimum_goal_score=0). Cause is the host environment: /Users/m16khb/.codex/hooks.json is absent (Read: File does not exist), which nativeIntegrationCodexConfigErrors requires; the 2026-07-17 wave passed the same check 25/25, and this diff does not touch native-integration inputs. Recorded as blocker B-80; restoration is install/coordinator-owned and outside the worker fence. All 22 executed steps were green, including go test, contract goldens, risk QA (race+vet), build, and every smoke before the native-integration probe; the failure reproduced deterministically at the same step across two runs. State root tmp-selfverify-state removed after each run.
+
+Independent adversarial review (fresh reviewer, read-only): UNCONDITIONAL
+APPROVE with zero Critical/Important findings. The reviewer verified the
+GIT_CONFIG_GLOBAL presence semantics (including empty-value suppression), the
+absence of behavior change across all enumerated safe cases, fail-closed
+coverage of racer variants (create-between-enumeration-and-pin fails on origin
+re-enumeration; non-restored substitution fails on absent-path/rules checks),
+env pin/unpin hygiene, RED causality, and doc consistency, and re-ran the
+publication suite GREEN.
+
+Cleanup: all fixtures are testing.T.TempDir; the shim restores and the release
+path removes the transient XDG chain (asserted NotExist for both xdg and aside).
+No config values or credentials appear in this artifact.

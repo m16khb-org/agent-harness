@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"os/exec"
@@ -31,6 +32,7 @@ var publicationSHA256Pattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 var publicationGlabVersionPattern = regexp.MustCompile(`(?:^|\s)v?(\d+)\.(\d+)\.(\d+)(?:\s|$)`)
 
 const publicationDiagnosticLimit = 4096
+const publicationConfigInventoryLimit = 1 << 20
 
 type IssueOpsHandoffPublishRequest struct {
 	ID                           string `json:"id"`
@@ -196,10 +198,57 @@ type publicationGitURLRule struct {
 	prefix string
 }
 
+type publicationConfigPathComponent struct {
+	ownerUID uint32
+	writable bool
+}
+
+type publicationConfigAuthorityInspection struct {
+	canonical  bool
+	regular    bool
+	components []publicationConfigPathComponent
+}
+
+type publicationConfigSnapshot struct {
+	path        string
+	mode        os.FileMode
+	size        int64
+	modTimeNano int64
+	ownerUID    uint32
+	device      uint64
+	inode       uint64
+	contentHash [sha256.Size]byte
+}
+
+type publicationGlobalConfigPinPlan struct {
+	required     bool
+	globalConfig string
+}
+
+// publicationImmutableConfigAdmissible admits fingerprint-only authority solely
+// for a defensible system chain: every path component must be owned by root and
+// denied for current-user writes. An arbitrary non-current ordinary UID owner
+// could transiently rewrite and restore the file between snapshots, so it is
+// mutable authority and must fail closed (B-71).
+func publicationImmutableConfigAdmissible(inspection publicationConfigAuthorityInspection, currentUID uint32) bool {
+	if !inspection.canonical || !inspection.regular || len(inspection.components) == 0 {
+		return false
+	}
+	for _, component := range inspection.components {
+		if component.ownerUID != 0 || component.ownerUID == currentUID || component.writable {
+			return false
+		}
+	}
+	return true
+}
+
 func publicationGitURLRules(ctx context.Context, repo string) ([]publicationGitURLRule, error) {
 	bounded, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	code, stdout, stderr := publicationGitCmd(bounded, repo, "config", "--show-origin", "--get-regexp", `^url\..*\.(insteadOf|pushInsteadOf)$`)
+	code, stdout, stderr, truncated := publicationGitInventoryCmd(bounded, repo, "config", "--show-origin", "--includes", "--get-regexp", `^url\..*\.(insteadOf|pushInsteadOf)$`)
+	if truncated {
+		return nil, fmt.Errorf("publication URL rewrite inventory exceeds %d bytes", publicationConfigInventoryLimit)
+	}
 	if (code == 0 || code == 1) && strings.TrimSpace(stdout) == "" {
 		return nil, nil
 	}
@@ -278,46 +327,180 @@ func withPublicationGitConfigLocks(ctx context.Context, repo string, fn func() e
 	if err != nil {
 		return err
 	}
-	paths, err := publicationGitConfigPaths(ctx, repo, before, beforeOrigins)
+	pinPlan, err := publicationAbsentXDGConfigPinPlanFromInventory(beforeOrigins)
 	if err != nil {
 		return err
 	}
+	paths, creatable, err := publicationGitConfigPaths(ctx, repo, before, beforeOrigins)
+	if err != nil {
+		return err
+	}
+	creatableSet := make(map[string]bool, len(creatable))
+	for _, path := range creatable {
+		creatableSet[path] = true
+	}
 	locks := make([]string, 0, len(paths))
+	createdDirs := make([]string, 0)
+	immutable := make([]publicationConfigSnapshot, 0)
+	release := func() {
+		for i := len(locks) - 1; i >= 0; i-- {
+			_ = os.Remove(locks[i])
+		}
+		for i := len(createdDirs) - 1; i >= 0; i-- {
+			_ = os.Remove(createdDirs[i])
+		}
+	}
 	for _, path := range paths {
+		if creatableSet[path] {
+			// An initially absent default config parent is mutable authority: the
+			// current user (or any same-UID racer) could create it during the
+			// operation. Seal it by creating the parent chain transiently and
+			// holding the sibling lock; the chain is removed on release (B-70).
+			created, createErr := publicationCreateAuthorityParents(path)
+			createdDirs = append(createdDirs, created...)
+			if createErr != nil {
+				release()
+				return fmt.Errorf("publication git config authority parent cannot be sealed")
+			}
+		}
 		lock := path + ".lock"
 		file, openErr := os.OpenFile(lock, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 		if openErr != nil {
-			for i := len(locks) - 1; i >= 0; i-- {
-				_ = os.Remove(locks[i])
+			if publicationImmutableLockFallbackAllowed(openErr) {
+				snapshot, snapshotErr := publicationImmutableConfigSnapshot(path)
+				if snapshotErr == nil {
+					immutable = append(immutable, snapshot)
+					continue
+				}
 			}
+			release()
 			return fmt.Errorf("publication git config lock is unavailable")
 		}
 		if closeErr := file.Close(); closeErr != nil {
 			_ = os.Remove(lock)
-			for i := len(locks) - 1; i >= 0; i-- {
-				_ = os.Remove(locks[i])
-			}
+			release()
 			return fmt.Errorf("publication git config lock could not be sealed")
 		}
 		locks = append(locks, lock)
 	}
-	defer func() {
-		for i := len(locks) - 1; i >= 0; i-- {
-			_ = os.Remove(locks[i])
+	defer release()
+	verifyAuthority := func() bool {
+		after, rulesErr := publicationGitURLRules(ctx, repo)
+		afterOrigins, originsErr := publicationGitConfigOrigins(ctx, repo)
+		if rulesErr != nil || originsErr != nil || !reflect.DeepEqual(before, after) || !reflect.DeepEqual(beforeOrigins, afterOrigins) {
+			return false
 		}
-	}()
-	after, err := publicationGitURLRules(ctx, repo)
-	afterOrigins, originsErr := publicationGitConfigOrigins(ctx, repo)
-	if err != nil || originsErr != nil || !reflect.DeepEqual(before, after) || !reflect.DeepEqual(beforeOrigins, afterOrigins) {
-		return fmt.Errorf("publication git URL rewrite authority changed while acquiring config locks")
+		for _, path := range creatable {
+			if _, statErr := os.Lstat(path); !os.IsNotExist(statErr) {
+				return false
+			}
+		}
+		return publicationImmutableConfigSnapshotsMatch(immutable)
 	}
-	return fn()
+	return withPublicationAbsentXDGConfigPin(pinPlan, os.Setenv, os.Unsetenv, func() error {
+		if !verifyAuthority() {
+			return fmt.Errorf("publication git URL rewrite authority changed while acquiring config locks")
+		}
+		operationErr := fn()
+		if !verifyAuthority() {
+			return fmt.Errorf("publication git config authority changed during publication operation")
+		}
+		return operationErr
+	})
+}
+
+func publicationImmutableConfigSnapshotsMatch(snapshots []publicationConfigSnapshot) bool {
+	for _, snapshot := range snapshots {
+		current, err := publicationConfigSnapshotForPath(snapshot.path)
+		if err != nil || current != snapshot {
+			return false
+		}
+	}
+	return true
+}
+
+func publicationImmutableConfigSnapshot(path string) (publicationConfigSnapshot, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return publicationConfigSnapshot{}, err
+	}
+	abs = filepath.Clean(abs)
+	resolved, err := filepath.EvalSymlinks(abs)
+	if err != nil || filepath.Clean(resolved) != abs {
+		return publicationConfigSnapshot{}, fmt.Errorf("publication immutable config path is not canonical")
+	}
+	inspection := publicationConfigAuthorityInspection{canonical: true}
+	for current := abs; ; current = filepath.Dir(current) {
+		info, statErr := os.Lstat(current)
+		if statErr != nil || info.Mode()&os.ModeSymlink != 0 {
+			return publicationConfigSnapshot{}, fmt.Errorf("publication immutable config path is ambiguous")
+		}
+		ownerUID, _, _, ok := publicationPathIdentity(info)
+		if !ok {
+			return publicationConfigSnapshot{}, fmt.Errorf("publication immutable config ownership is unavailable")
+		}
+		writable, accessErr := publicationPathWritable(current)
+		if accessErr != nil {
+			return publicationConfigSnapshot{}, accessErr
+		}
+		inspection.components = append(inspection.components, publicationConfigPathComponent{ownerUID: ownerUID, writable: writable})
+		if current == abs {
+			inspection.regular = info.Mode().IsRegular()
+		} else if !info.IsDir() {
+			return publicationConfigSnapshot{}, fmt.Errorf("publication immutable config parent is not a directory")
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			break
+		}
+	}
+	currentUID, ok := publicationEffectiveUID()
+	if !ok || !publicationImmutableConfigAdmissible(inspection, currentUID) {
+		return publicationConfigSnapshot{}, fmt.Errorf("publication immutable config is not root-owned defensible system authority")
+	}
+	return publicationConfigSnapshotForPath(abs)
+}
+
+func publicationConfigSnapshotForPath(path string) (publicationConfigSnapshot, error) {
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+		return publicationConfigSnapshot{}, fmt.Errorf("publication immutable config snapshot is unavailable")
+	}
+	ownerUID, device, inode, ok := publicationPathIdentity(info)
+	if !ok {
+		return publicationConfigSnapshot{}, fmt.Errorf("publication immutable config identity is unavailable")
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return publicationConfigSnapshot{}, fmt.Errorf("publication immutable config cannot be read")
+	}
+	hash := sha256.New()
+	_, copyErr := io.Copy(hash, file)
+	closeErr := file.Close()
+	if copyErr != nil || closeErr != nil {
+		return publicationConfigSnapshot{}, fmt.Errorf("publication immutable config cannot be fingerprinted")
+	}
+	var contentHash [sha256.Size]byte
+	copy(contentHash[:], hash.Sum(nil))
+	return publicationConfigSnapshot{
+		path:        filepath.Clean(path),
+		mode:        info.Mode(),
+		size:        info.Size(),
+		modTimeNano: info.ModTime().UnixNano(),
+		ownerUID:    ownerUID,
+		device:      device,
+		inode:       inode,
+		contentHash: contentHash,
+	}, nil
 }
 
 func publicationGitConfigOrigins(ctx context.Context, repo string) ([]string, error) {
 	bounded, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	code, stdout, stderr := publicationGitCmd(bounded, repo, "config", "--show-origin", "--includes", "--list")
+	code, stdout, stderr, truncated := publicationGitInventoryCmd(bounded, repo, "config", "--show-origin", "--includes", "--name-only", "--list")
+	if truncated {
+		return nil, fmt.Errorf("publication git config origin inventory exceeds %d bytes", publicationConfigInventoryLimit)
+	}
 	if code != 0 {
 		return nil, fmt.Errorf("enumerate publication git config origins: %s", publicationDiagnostic(stderr))
 	}
@@ -341,22 +524,16 @@ func publicationGitConfigOrigins(ctx context.Context, repo string) ([]string, er
 		}
 		origin = filepath.Clean(origin)
 		origins[origin] = true
-		key, value, found := strings.Cut(parts[1], "=")
-		includeKey := strings.EqualFold(key, "include.path") || strings.HasPrefix(strings.ToLower(key), "includeif.") && strings.HasSuffix(strings.ToLower(key), ".path")
-		if found && includeKey {
-			included := value
-			if strings.HasPrefix(included, "~/") {
-				home, homeErr := os.UserHomeDir()
-				if homeErr != nil {
-					return nil, fmt.Errorf("publication git include origin cannot be resolved")
-				}
-				included = filepath.Join(home, strings.TrimPrefix(included, "~/"))
-			}
-			if !filepath.IsAbs(included) {
-				included = filepath.Join(filepath.Dir(origin), included)
-			}
-			origins[filepath.Clean(included)] = true
+		if strings.TrimSpace(parts[1]) == "" {
+			return nil, fmt.Errorf("publication git config origin is incomplete")
 		}
+	}
+	includes, err := publicationGitConfigIncludePaths(ctx, repo)
+	if err != nil {
+		return nil, err
+	}
+	for _, included := range includes {
+		origins[included] = true
 	}
 	ordered := make([]string, 0, len(origins))
 	for origin := range origins {
@@ -366,14 +543,61 @@ func publicationGitConfigOrigins(ctx context.Context, repo string) ([]string, er
 	return ordered, nil
 }
 
-func publicationGitConfigPaths(ctx context.Context, repo string, rules []publicationGitURLRule, origins []string) ([]string, error) {
+func publicationGitConfigIncludePaths(ctx context.Context, repo string) ([]string, error) {
+	bounded, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	// --type=path makes Git itself perform the canonical include interpolation
+	// (~/, ~user/, %(prefix)/) instead of a partial re-implementation, so the
+	// sealed inventory matches the authority Git actually reads (B-69).
+	code, stdout, stderr, truncated := publicationGitInventoryCmd(bounded, repo, "config", "--show-origin", "--includes", "--type=path", "--get-regexp", `^(include\.path|includeif\..*\.path)$`)
+	if truncated {
+		return nil, fmt.Errorf("publication git include inventory exceeds %d bytes", publicationConfigInventoryLimit)
+	}
+	if (code == 0 || code == 1) && strings.TrimSpace(stdout) == "" {
+		return nil, nil
+	}
+	if code != 0 {
+		return nil, fmt.Errorf("enumerate publication git include authority: %s", publicationDiagnostic(stderr))
+	}
+	paths := map[string]bool{}
+	for _, line := range strings.Split(strings.TrimSpace(stdout), "\n") {
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) != 2 || !strings.HasPrefix(parts[0], "file:") {
+			return nil, fmt.Errorf("publication git include origin is incomplete")
+		}
+		separator := strings.IndexFunc(parts[1], unicode.IsSpace)
+		if separator <= 0 || strings.TrimSpace(parts[1][separator:]) == "" {
+			return nil, fmt.Errorf("publication git include origin is incomplete")
+		}
+		origin := strings.TrimPrefix(parts[0], "file:")
+		if !filepath.IsAbs(origin) {
+			origin = filepath.Join(repo, origin)
+		}
+		included := strings.TrimSpace(parts[1][separator:])
+		if strings.HasPrefix(included, "~") || strings.HasPrefix(included, "%(prefix)/") {
+			return nil, fmt.Errorf("publication git include path interpolation is unresolved")
+		}
+		if !filepath.IsAbs(included) {
+			included = filepath.Join(filepath.Dir(origin), included)
+		}
+		paths[filepath.Clean(included)] = true
+	}
+	ordered := make([]string, 0, len(paths))
+	for path := range paths {
+		ordered = append(ordered, path)
+	}
+	sort.Strings(ordered)
+	return ordered, nil
+}
+
+func publicationGitConfigPaths(ctx context.Context, repo string, rules []publicationGitURLRule, origins []string) ([]string, []string, error) {
 	paths := map[string]bool{}
 	for index, args := range [][]string{{"rev-parse", "--git-common-dir"}, {"rev-parse", "--git-path", "config.worktree"}} {
 		bounded, cancel := context.WithTimeout(ctx, 5*time.Second)
 		code, stdout, stderr := publicationGitCmd(bounded, repo, args...)
 		cancel()
 		if code != 0 || strings.TrimSpace(stdout) == "" {
-			return nil, fmt.Errorf("resolve publication git config authority: %s", publicationDiagnostic(stderr))
+			return nil, nil, fmt.Errorf("resolve publication git config authority: %s", publicationDiagnostic(stderr))
 		}
 		path := strings.TrimSpace(stdout)
 		if !filepath.IsAbs(path) {
@@ -386,17 +610,14 @@ func publicationGitConfigPaths(ctx context.Context, repo string, rules []publica
 	}
 	home, homeErr := os.UserHomeDir()
 	if homeErr != nil || strings.TrimSpace(home) == "" {
-		return nil, fmt.Errorf("publication git user config authority cannot be resolved")
+		return nil, nil, fmt.Errorf("publication git user config authority cannot be resolved")
 	}
 	paths[filepath.Join(home, ".gitconfig")] = true
-	xdg := strings.TrimSpace(os.Getenv("XDG_CONFIG_HOME"))
-	if xdg == "" {
-		xdg = filepath.Join(home, ".config")
-	}
-	xdgConfig := filepath.Join(xdg, "git", "config")
-	if info, err := os.Stat(filepath.Dir(xdgConfig)); err == nil && info.IsDir() {
-		paths[xdgConfig] = true
-	}
+	// The default XDG config is authority even when its parent does not exist
+	// yet: the current user could create it during the operation, so an absent
+	// parent chain is sealed transiently instead of skipped (B-70).
+	xdgConfig := publicationDefaultXDGGitConfig(home)
+	paths[xdgConfig] = true
 	for _, name := range []string{"GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM"} {
 		configured := strings.TrimSpace(os.Getenv(name))
 		if configured == "" || configured == os.DevNull || name == "GIT_CONFIG_SYSTEM" && strings.TrimSpace(os.Getenv("GIT_CONFIG_NOSYSTEM")) != "" {
@@ -410,27 +631,126 @@ func publicationGitConfigPaths(ctx context.Context, repo string, rules []publica
 	for _, rule := range rules {
 		path := rule.origin
 		if !filepath.IsAbs(path) {
-			return nil, fmt.Errorf("publication URL rewrite origin is not absolute")
+			return nil, nil, fmt.Errorf("publication URL rewrite origin is not absolute")
 		}
 		paths[filepath.Clean(path)] = true
 	}
 	for _, origin := range origins {
 		if !filepath.IsAbs(origin) {
-			return nil, fmt.Errorf("publication git config origin is not absolute")
+			return nil, nil, fmt.Errorf("publication git config origin is not absolute")
 		}
 		paths[filepath.Clean(origin)] = true
 	}
 	ordered := make([]string, 0, len(paths))
+	creatable := make([]string, 0, 1)
 	for path := range paths {
 		parent := filepath.Dir(path)
 		info, err := os.Stat(parent)
 		if err != nil || !info.IsDir() {
-			return nil, fmt.Errorf("publication git config authority parent is unavailable")
+			if path == xdgConfig && err != nil && os.IsNotExist(err) {
+				creatable = append(creatable, path)
+				ordered = append(ordered, path)
+				continue
+			}
+			return nil, nil, fmt.Errorf("publication git config authority parent is unavailable")
 		}
 		ordered = append(ordered, path)
 	}
 	sort.Strings(ordered)
-	return ordered, nil
+	sort.Strings(creatable)
+	return ordered, creatable, nil
+}
+
+func publicationDefaultXDGGitConfig(home string) string {
+	xdg := strings.TrimSpace(os.Getenv("XDG_CONFIG_HOME"))
+	if xdg == "" {
+		xdg = filepath.Join(home, ".config")
+	}
+	return filepath.Join(xdg, "git", "config")
+}
+
+// publicationPinAbsentXDGConfigAuthority seals the identity of an absent XDG
+// config authority for the duration of the protected callback. The sibling
+// lock only binds cooperating Git config writers at one path identity: a
+// same-UID racer can rename the whole XDG_CONFIG_HOME tree (lock included)
+// aside, substitute a replacement tree whose fresh config the push would read,
+// then restore the original tree so every post-operation snapshot matches
+// (B79). When the XDG config is absent under the held seal, pinning
+// GIT_CONFIG_GLOBAL to the canonical home config preserves the verified
+// effective configuration exactly while making any substituted XDG identity
+// unreadable during the operation. When GIT_CONFIG_GLOBAL is already present,
+// Git never reads the XDG config, so no pin is needed; an existing XDG config
+// keeps the plain lock protocol unchanged.
+func publicationAbsentXDGConfigPinPlan(origins []string, defaultConfig string, explicitGlobal bool, pinnedGlobalConfig string) publicationGlobalConfigPinPlan {
+	if explicitGlobal {
+		return publicationGlobalConfigPinPlan{}
+	}
+	defaultConfig = filepath.Clean(defaultConfig)
+	for _, origin := range origins {
+		if filepath.Clean(origin) == defaultConfig {
+			return publicationGlobalConfigPinPlan{}
+		}
+	}
+	return publicationGlobalConfigPinPlan{required: true, globalConfig: pinnedGlobalConfig}
+}
+
+func publicationAbsentXDGConfigPinPlanFromInventory(origins []string) (publicationGlobalConfigPinPlan, error) {
+	if _, present := os.LookupEnv("GIT_CONFIG_GLOBAL"); present {
+		return publicationAbsentXDGConfigPinPlan(origins, "", true, ""), nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil || strings.TrimSpace(home) == "" {
+		return publicationGlobalConfigPinPlan{}, fmt.Errorf("publication git user config authority cannot be resolved")
+	}
+	return publicationAbsentXDGConfigPinPlan(
+		origins,
+		publicationDefaultXDGGitConfig(home),
+		false,
+		filepath.Join(home, ".gitconfig"),
+	), nil
+}
+
+func withPublicationAbsentXDGConfigPin(plan publicationGlobalConfigPinPlan, setenv func(string, string) error, unsetenv func(string) error, fn func() error) error {
+	if !plan.required {
+		return fn()
+	}
+	if err := setenv("GIT_CONFIG_GLOBAL", plan.globalConfig); err != nil {
+		return fmt.Errorf("publication git config authority cannot be pinned")
+	}
+	defer func() { _ = unsetenv("GIT_CONFIG_GLOBAL") }()
+	return fn()
+}
+
+// publicationCreateAuthorityParents creates the missing directory chain above a
+// creatable config authority so its sibling lock can be held, returning every
+// directory it created in top-down order for exact reverse removal.
+func publicationCreateAuthorityParents(path string) ([]string, error) {
+	missing := []string{}
+	for current := filepath.Dir(path); ; current = filepath.Dir(current) {
+		info, err := os.Stat(current)
+		if err == nil {
+			if !info.IsDir() {
+				return nil, fmt.Errorf("publication git config authority parent is not a directory")
+			}
+			break
+		}
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			return nil, fmt.Errorf("publication git config authority parent cannot be resolved")
+		}
+		missing = append([]string{current}, missing...)
+	}
+	created := make([]string, 0, len(missing))
+	for _, dir := range missing {
+		if err := os.Mkdir(dir, 0o700); err != nil {
+			return created, err
+		}
+		created = append(created, dir)
+	}
+	return created, nil
 }
 
 func publicationGitCmd(ctx context.Context, repo string, args ...string) (int, string, string) {
@@ -453,6 +773,29 @@ func publicationGitCmd(ctx context.Context, repo string, args ...string) (int, s
 		return exitErr.ExitCode(), strings.TrimSpace(stdout.String()), publicationDiagnostic(stderr.String())
 	}
 	return 1, strings.TrimSpace(stdout.String()), publicationDiagnostic(err.Error())
+}
+
+func publicationGitInventoryCmd(ctx context.Context, repo string, args ...string) (int, string, string, bool) {
+	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd.Dir = repo
+	env := make([]string, 0, len(os.Environ())+1)
+	for _, entry := range os.Environ() {
+		if !strings.HasPrefix(entry, "GIT_TERMINAL_PROMPT=") {
+			env = append(env, entry)
+		}
+	}
+	cmd.Env = append(env, "GIT_TERMINAL_PROMPT=0")
+	stdout := &publicationBoundedBuffer{limit: publicationConfigInventoryLimit}
+	stderr := &publicationBoundedBuffer{limit: publicationDiagnosticLimit}
+	cmd.Stdout, cmd.Stderr = stdout, stderr
+	err := cmd.Run()
+	if err == nil {
+		return 0, strings.TrimSpace(stdout.String()), publicationDiagnostic(stderr.String()), stdout.truncated
+	}
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		return exitErr.ExitCode(), strings.TrimSpace(stdout.String()), publicationDiagnostic(stderr.String()), stdout.truncated
+	}
+	return 1, strings.TrimSpace(stdout.String()), publicationDiagnostic(err.Error()), stdout.truncated
 }
 
 type publicationBoundedBuffer struct {

@@ -1,0 +1,20 @@
+Criterion: G2-C1
+Status: PASS
+
+RED evidence:
+- TestImplementationEvidenceUsesImmutableBranchPrepareBaseSHA initially reported no implementation evidence after origin/main moved to the feature HEAD.
+
+GREEN evidence:
+- A recorded original base_sha plus a changed feature HEAD reports HasEvidence=true and a non-empty ChangeFingerprint after origin/main moves to feature HEAD.
+- An unchanged base_sha equal to HEAD reports HasEvidence=false.
+- Malformed and missing base_sha cases preserve the legacy origin/<base>, then <base>, fallback.
+- Command: go test -v ./internal/core/issueops/implementation -run TestImplementationEvidenceUsesImmutableBranchPrepareBaseSHA -count=1
+- Result: PASS with the named === RUN line.
+
+Cleanup receipt:
+- The temporary Git repository used testing.T.TempDir and exited with no persistent process or ref mutation outside the fixture.
+
+Recovery attempt io-d492e1a529e3 (2026-07-17, regression re-run):
+- Command: go test -v ./internal/core/issueops/implementation -run 'Evidence|Base' -count=1
+- Result: PASS with named === RUN lines including TestImplementationEvidenceUsesImmutableBranchPrepareBaseSHA; the recovery diff does not touch implementation evidence code.
+- Cleanup: testing.T.TempDir fixtures removed by the Go test process.

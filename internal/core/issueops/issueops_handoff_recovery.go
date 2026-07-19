@@ -136,6 +136,7 @@ func forceAbandonIssueOpsHandoff(ctx context.Context, stateRoot, id, reason stri
 		current.ExecutionHandoff.PendingOperation = nil
 		current.ExecutionHandoff.State = handoff.StateClosed
 		current.ExecutionHandoff.ClosedDisposition = handoff.DispositionCancelled
+		clearUnsealedContextOptionsForClose(current.ExecutionHandoff)
 		current.ExecutionHandoff.Failure = &model.IssueOpsExecutionHandoffFailure{
 			Code: forceAbandonedOperationCode, Message: strings.TrimSpace(policy.RedactFreeform(reason)), At: now,
 		}
@@ -373,6 +374,7 @@ func cancelIssueOpsHandoff(stateRoot, id string, force bool, reason, now string)
 		if !handoffHasExternalMutation(record.ExecutionHandoff) {
 			record.ExecutionHandoff.State = handoff.StateClosed
 			record.ExecutionHandoff.ClosedDisposition = handoff.DispositionCancelled
+			clearUnsealedContextOptionsForClose(record.ExecutionHandoff)
 			record.ExecutionHandoff.UpdatedAt = now
 			record.UpdatedAt = now
 			persisted, err = writeIssueOps(stateRoot, record)
@@ -438,6 +440,7 @@ func finalizeCancelledIssueOpsHandoff(ctx context.Context, stateRoot, id string,
 		current.ExecutionHandoff.PendingOperation = nil
 		current.ExecutionHandoff.State = handoff.StateClosed
 		current.ExecutionHandoff.ClosedDisposition = handoff.DispositionCancelled
+		clearUnsealedContextOptionsForClose(current.ExecutionHandoff)
 		current.ExecutionHandoff.Failure = &model.IssueOpsExecutionHandoffFailure{Code: "cancellation_finalized", Message: reason, At: now}
 		current.ExecutionHandoff.UpdatedAt = now
 		current.UpdatedAt = now
@@ -445,6 +448,12 @@ func finalizeCancelledIssueOpsHandoff(ctx context.Context, stateRoot, id string,
 		return readErr
 	})
 	return projectHandoffRecovery(persisted, "finalize-cancel", ""), err
+}
+
+func clearUnsealedContextOptionsForClose(h *model.IssueOpsExecutionHandoff) {
+	if h != nil && h.ContextVersion == 0 && h.ContextSHA256 == "" && h.ContextSourceSHA256 == "" {
+		h.ContextOptions = nil
+	}
 }
 
 func requireCancellationQuiescence(ctx context.Context, record IssueOpsRecord, client any, now string) error {

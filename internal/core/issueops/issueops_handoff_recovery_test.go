@@ -31,6 +31,31 @@ func TestHandoffCancelWritesTombstoneBeforeReleasingExternalLease(t *testing.T) 
 	}
 }
 
+func TestHandoffFinalizeCancelClearsUnsealedPreparingContextOptions(t *testing.T) {
+	stateRoot, record := handoffDispatchRecord(t)
+	record.ExecutionHandoff.ContextOptions = &model.IssueOpsExecutionHandoffContextOptions{}
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "cancel", Confirm: true, Reason: "cancel stale pre-dispatch coordinator",
+	}, nil, handoffPrepareTestClock()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "finalize-cancel", Confirm: true,
+	}, handoffDispatchFake(record), handoffPrepareTestClock()); err != nil {
+		t.Fatal(err)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.ExecutionHandoff.State != handoff.StateClosed || persisted.ExecutionHandoff.ClosedDisposition != handoff.DispositionCancelled || persisted.ExecutionHandoff.ContextOptions != nil {
+		t.Fatalf("cancelled unsealed context was not canonicalized for close: %#v", persisted.ExecutionHandoff)
+	}
+}
+
 func TestHandoffCancelRejectsClaimedWithoutStaleEvidence(t *testing.T) {
 	stateRoot, record, _ := dispatchedHandoffRecord(t)
 	claim := handoffClaimRequest(record)

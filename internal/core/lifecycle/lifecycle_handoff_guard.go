@@ -36,6 +36,15 @@ func BuildIssueOpsHandoffSessionGuidance(repo, host, sessionID, agentID string) 
 		return renderHandoffSessionGuidance(sourceMatches[0], false, host, sessionID, agentID)
 	}
 	if len(sourceMatches) > 1 {
+		preparingMatches := filterHandoffRecords(sourceMatches, func(record IssueOpsRecord) bool {
+			return record.ExecutionHandoff != nil && record.ExecutionHandoff.State == handoff.StateCoordinatorPreparing
+		})
+		if len(preparingMatches) == 1 {
+			return renderHandoffSessionGuidance(preparingMatches[0], false, host, sessionID, agentID)
+		}
+		if len(preparingMatches) > 1 {
+			return ambiguousHandoffSessionGuidance(preparingMatches, "source checkout")
+		}
 		return ambiguousHandoffSessionGuidance(sourceMatches, "source checkout")
 	}
 	return ""

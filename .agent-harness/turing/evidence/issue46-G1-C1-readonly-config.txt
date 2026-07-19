@@ -1,0 +1,29 @@
+Criterion: G1-C1
+Status: PASS
+
+RED evidence:
+- TestPublicationOwnerControlledConfigInReadOnlyParentRejectsBeforeTransientRewrite initially reached the protected callback instead of rejecting owner-controlled config.
+- TestPublicationImmutableConfigClassificationFailsClosed initially rejected the admissible non-owner case.
+- TestPublicationImmutableConfigSnapshotRejectsCallbackDrift initially returned nil after persistent content drift.
+
+GREEN evidence:
+- TestPublicationOwnerControlledConfigInReadOnlyParentRejectsBeforeTransientRewrite: PASS; callback marker absent and original config unchanged.
+- TestPublicationImmutableConfigClassificationFailsClosed: PASS for canonicality, regular-file, file/path ownership, and writability cases.
+- TestPublicationImmutableConfigSnapshotRejectsCallbackDrift: PASS; post-operation fingerprint mismatch is rejected.
+- TestPublicationImmutableMacOSSystemConfigAllowsProtectedCallback: PASS against /Library/Developer/CommandLineTools/usr/share/git-core/gitconfig without creating its sibling lock.
+
+Threat-model receipt:
+- Writable or current-user owner-controlled authorities still require O_EXCL locks.
+- Immutable fallback is limited to a canonical regular Unix file whose complete path chain is neither owned nor writable by the effective UID.
+- Unsupported operating systems do not infer immutable authority.
+
+Cleanup receipt:
+- Test fixtures used testing.T.TempDir and exited normally; no fixture process or worktree artifact remains.
+- The external macOS system config was read only and was not modified.
+
+Recovery attempt io-d492e1a529e3 (2026-07-17, B-71 fix):
+- RED: TestPublicationImmutableConfigClassificationFailsClosed new cases "ordinary non-current uid file" and "ordinary non-current uid parent" returned admissible=true against uid 777 components.
+- GREEN: publicationImmutableConfigAdmissible now requires every path component to be root-owned (uid 0) and non-writable; both new cases return false and the root-owned base case remains true.
+- TestPublicationImmutableMacOSSystemConfigAllowsProtectedCallback: PASS against the real root-owned macOS system config, proving the defensible system success path survived the tightening.
+- TestPublicationImmutableConfigSnapshotRejectsCallbackDrift and TestPublicationOwnerControlledConfigInReadOnlyParentRejectsBeforeTransientRewrite: PASS unchanged.
+- Cleanup: all fixtures used testing.T.TempDir; the system config was read only.

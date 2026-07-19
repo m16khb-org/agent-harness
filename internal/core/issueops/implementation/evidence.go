@@ -125,25 +125,16 @@ func gitStatusHasImplementationChange(record model.IssueOpsRecord, worktree stri
 }
 
 func gitHeadDiffersFromBase(record model.IssueOpsRecord, worktree string) bool {
-	base := ""
-	if record.BranchPrepare != nil {
-		base = strings.TrimSpace(record.BranchPrepare.BaseBranch)
-	}
-	if base == "" {
+	ref := diffBaseRef(record, worktree)
+	if ref == "" {
 		return false
 	}
-	for _, ref := range []string{"origin/" + base, base} {
-		if code, _, _ := preflight.GitCmd(worktree, "rev-parse", "--verify", ref+"^{commit}"); code != 0 {
-			continue
+	_, names, _ := preflight.GitCmd(worktree, "diff", "--name-only", ref+"..HEAD", "--")
+	for _, name := range strings.Split(names, "\n") {
+		name = strings.TrimSpace(name)
+		if name != "" && !PathMatchesPlan(record, worktree, name) {
+			return true
 		}
-		_, names, _ := preflight.GitCmd(worktree, "diff", "--name-only", ref+"..HEAD", "--")
-		for _, name := range strings.Split(names, "\n") {
-			name = strings.TrimSpace(name)
-			if name != "" && !PathMatchesPlan(record, worktree, name) {
-				return true
-			}
-		}
-		return false
 	}
 	return false
 }
@@ -172,6 +163,11 @@ func diffBaseRef(record model.IssueOpsRecord, gitRoot string) string {
 	if record.BranchPrepare == nil {
 		return ""
 	}
+	if baseSHA := strings.TrimSpace(record.BranchPrepare.BaseSHA); fullGitObjectID(baseSHA) {
+		if code, _, _ := preflight.GitCmd(gitRoot, "rev-parse", "--verify", "--end-of-options", baseSHA+"^{commit}"); code == 0 {
+			return baseSHA
+		}
+	}
 	base := strings.TrimSpace(record.BranchPrepare.BaseBranch)
 	if base == "" {
 		return ""
@@ -182,6 +178,20 @@ func diffBaseRef(record model.IssueOpsRecord, gitRoot string) string {
 		}
 	}
 	return ""
+}
+
+func fullGitObjectID(value string) bool {
+	if len(value) != 40 && len(value) != 64 {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			if r < 'a' || r > 'f' {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func cleanRelativePath(path string) string {
