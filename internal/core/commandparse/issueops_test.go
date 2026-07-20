@@ -89,6 +89,11 @@ func TestExactFlagsCorpus(t *testing.T) {
 	if flags, ok := ExactFlags(cmd5, v5, b5, r5); !ok || len(flags["--verification-command"]) != 2 {
 		t.Fatalf("legacy verification-command alias not accepted: ok=%v flags=%#v", ok, flags)
 	}
+	cmd6, _ := ParseExactIssueOpsCommand("agent-harness issueops handoff start --id io-1 --codex-model gpt-5.6-terra --codex-reasoning-effort high")
+	v6, b6, r6 := spec(cmd6.Path)
+	if flags, ok := ExactFlags(cmd6, v6, b6, r6); !ok || flags["--codex-model"][0] != "gpt-5.6-terra" || flags["--codex-reasoning-effort"][0] != "high" {
+		t.Fatalf("sealed Codex launch options not accepted: ok=%v flags=%#v", ok, flags)
+	}
 }
 
 func TestReadyWorkspaceCheckpointSpecsAcceptNativeActorFlags(t *testing.T) {
