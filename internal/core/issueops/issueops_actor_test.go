@@ -121,8 +121,20 @@ func TestReadyWorkspacePlanCheckpointRequiresSourceActorAndPlanOnlyCommit(t *tes
 		t.Fatal(err)
 	}
 	head := preflight.GitOut(worktree, "rev-parse", "HEAD")
-	if persisted.PlanPath != plan || persisted.ExecutionWorkspace == nil || persisted.ExecutionWorkspace.BaseHead != head {
-		t.Fatalf("plan checkpoint did not advance the workspace base: %#v", persisted.ExecutionWorkspace)
+	base := preflight.GitOut(worktree, "rev-parse", "HEAD^")
+	if persisted.PlanPath != plan || persisted.ExecutionWorkspace == nil || persisted.ExecutionWorkspace.BaseHead != base {
+		t.Fatalf("plan checkpoint did not preserve the pre-plan workspace base: %#v", persisted.ExecutionWorkspace)
+	}
+	persisted.ExecutionWorkspace.BaseHead = head
+	if _, err := WriteIssueOps(stateRoot, persisted); err != nil {
+		t.Fatal(err)
+	}
+	persisted, err = LinkIssueOpsPlanWithActor(stateRoot, record.ID, plan, actor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.ExecutionWorkspace.BaseHead != base {
+		t.Fatalf("legacy plan-head base was not repaired to the pre-plan commit: %#v", persisted.ExecutionWorkspace)
 	}
 	if _, err := LinkIssueOpsPlanWithActor(stateRoot, record.ID, plan, IssueOpsActor{Host: "codex", SessionID: "prepare-1", AgentID: "agent-1", CWD: worktree}); err == nil {
 		t.Fatal("worker-root actor gained source coordinator checkpoint authority")

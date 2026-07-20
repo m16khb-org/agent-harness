@@ -13,9 +13,10 @@ import (
 )
 
 type coordinatorPlanCheckpoint struct {
-	record IssueOpsRecord
-	head   string
-	active bool
+	record        IssueOpsRecord
+	head          string
+	workspaceBase string
+	active        bool
 }
 
 func linkIssueOpsPlanWithCoordinatorCheckpoint(stateRoot, id, planPath string) (IssueOpsRecord, error) {
@@ -59,7 +60,7 @@ func linkIssueOpsPlanWithCoordinatorCheckpointActor(stateRoot, id, planPath stri
 				if record.ExecutionHandoff != nil {
 					record.ExecutionHandoff.AttemptBaseHead = validated.head
 				} else if record.ExecutionWorkspace != nil {
-					record.ExecutionWorkspace.BaseHead = validated.head
+					record.ExecutionWorkspace.BaseHead = validated.workspaceBase
 				}
 			}
 			return write(root, record)
@@ -77,6 +78,7 @@ func validateCoordinatorPlanCheckpoint(stateRoot, id, planPath string) (coordina
 		return coordinatorPlanCheckpoint{}, err
 	}
 	var workerRoot, base string
+	var ownershipWorkspace bool
 	h := record.ExecutionHandoff
 	workspace := record.ExecutionWorkspace
 	switch {
@@ -86,6 +88,7 @@ func validateCoordinatorPlanCheckpoint(stateRoot, id, planPath string) (coordina
 	case h == nil && workspace != nil && workspace.State == "ready" && workspace.PendingOperation == nil:
 		workerRoot = filepath.Clean(strings.TrimSpace(workspace.WorkerRoot))
 		base = strings.TrimSpace(workspace.BaseHead)
+		ownershipWorkspace = true
 	default:
 		return coordinatorPlanCheckpoint{record: record}, nil
 	}
@@ -114,6 +117,22 @@ func validateCoordinatorPlanCheckpoint(stateRoot, id, planPath string) (coordina
 	}
 	if code, _, _ := preflight.GitCmd(workerRoot, "merge-base", "--is-ancestor", base, head); code != 0 {
 		return coordinatorPlanCheckpoint{}, fmt.Errorf("coordinator plan commit must descend from the current attempt base head")
+	}
+	if ownershipWorkspace {
+		if head == base {
+			code, parent, _ := preflight.GitCmd(workerRoot, "rev-parse", "--verify", "HEAD^")
+			parent = strings.TrimSpace(parent)
+			if code != 0 || parent == "" {
+				return coordinatorPlanCheckpoint{}, fmt.Errorf("recover coordinator plan base head")
+			}
+			if err := requireCoordinatorPlanOnlyDiff(workerRoot, parent, head, candidate); err != nil {
+				return coordinatorPlanCheckpoint{}, err
+			}
+			base = parent
+		} else if err := requireCoordinatorPlanOnlyDiff(workerRoot, base, head, candidate); err != nil {
+			return coordinatorPlanCheckpoint{}, err
+		}
+		return coordinatorPlanCheckpoint{record: record, head: head, workspaceBase: base, active: true}, nil
 	}
 	if head != base {
 		if err := requireCoordinatorPlanOnlyDiff(workerRoot, base, head, candidate); err != nil {
