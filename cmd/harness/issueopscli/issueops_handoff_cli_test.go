@@ -153,8 +153,8 @@ func TestIssueOpsHandoffUsageExposesCodexHookTrustBypassAttestation(t *testing.T
 		}
 	}
 	usage, err := captureProjectCLIStderr(t, func() error { issueOpsUsage(); return nil })
-	if err != nil || !strings.Contains(usage, "start|claim|finish|accept|publish|codex-hooks-list|recover") {
-		t.Fatal("top-level handoff usage omits publish")
+	if err != nil || !strings.Contains(usage, "start|claim|acknowledge-context|finish|accept|publish|codex-hooks-list|recover") {
+		t.Fatal("top-level handoff usage omits acknowledgement")
 	}
 }
 

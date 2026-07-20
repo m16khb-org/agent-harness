@@ -411,6 +411,13 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 			Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), CWD: argmap.String(args, "cwd"), OrcaWorktreeID: argmap.String(args, "orca_worktree_id"),
 		})
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff claim failed")
+	case "acknowledge-context":
+		result, err := core.AcknowledgeIssueOpsHandoffContext(core.IssueOpsStateRoot(), core.IssueOpsHandoffAcknowledgeRequest{
+			ID: id, Attempt: argmap.Int(args, "attempt", 0), OwnershipEpoch: argmap.String(args, "ownership_epoch"), ContextSHA256: argmap.String(args, "context_sha256"),
+			Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), CWD: argmap.String(args, "cwd"),
+			IssueURL: argmap.String(args, "issue_url"), PlanSHA256: argmap.String(args, "plan_sha256"), Understanding: argmap.String(args, "understanding"), ScopeConfirmation: argmap.String(args, "scope_confirmation"),
+		})
+		return issueOpsMCPOutcome(result, err, "IssueOps handoff acknowledgement failed")
 	case "finish":
 		result, err := core.FinishIssueOpsHandoffWithProjection(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffFinishRequest{
 			ID: id, Attempt: argmap.Int(args, "attempt", 0), OwnershipEpoch: argmap.String(args, "ownership_epoch"), ContextSHA256: argmap.String(args, "context_sha256"),
@@ -439,6 +446,6 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 		}, orca.New(), core.IssueOpsHandoffPrepareClock{})
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff recover failed")
 	default:
-		return issueOpsMCPOutcome(nil, fmt.Errorf("handoff action must be start, claim, finish, accept, publish, or recover"), "IssueOps handoff failed")
+		return issueOpsMCPOutcome(nil, fmt.Errorf("handoff action must be start, claim, acknowledge-context, finish, accept, publish, or recover"), "IssueOps handoff failed")
 	}
 }

@@ -84,7 +84,7 @@ func claimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest, hoo
 	if err := validateHandoffClaimIdentity(validated, req); err != nil {
 		return IssueOpsRecord{}, err
 	}
-	if validated.ExecutionHandoff.State != handoff.StateClaimed {
+	if validated.ExecutionHandoff.State != handoff.StateClaimed && validated.ExecutionHandoff.State != handoff.StateOwnerOrienting {
 		if err := validateHandoffClaim(validated, req); err != nil {
 			return IssueOpsRecord{}, err
 		}
@@ -99,7 +99,7 @@ func claimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest, hoo
 		if !reflect.DeepEqual(record, validated) {
 			return fmt.Errorf("handoff changed after claim validation; retry with the current fence")
 		}
-		alreadyClaimed := record.ExecutionHandoff.State == handoff.StateClaimed
+		alreadyClaimed := record.ExecutionHandoff.State == handoff.StateClaimed || record.ExecutionHandoff.State == handoff.StateOwnerOrienting
 		if !alreadyClaimed {
 			if err := validateHandoffClaim(record, req); err != nil {
 				return err
@@ -114,7 +114,7 @@ func claimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest, hoo
 		if err != nil {
 			return err
 		}
-		if !alreadyClaimed && record.Phase != IssueOpsPhaseImplement {
+		if !alreadyClaimed && record.ExecutionHandoff.ProtocolVersion != handoff.OwnershipTransferProtocolVersion && record.Phase != IssueOpsPhaseImplement {
 			if err := validateIssueOpsPhaseTransition(stateRoot, record, IssueOpsPhaseImplement); err != nil {
 				return err
 			}
@@ -155,7 +155,7 @@ func validateHandoffClaim(record IssueOpsRecord, req IssueOpsHandoffClaimRequest
 	if err := validateHandoffContextSource(record); err != nil {
 		return err
 	}
-	if err := validateHandoffCleanExactCheckpoint(record); err != nil {
+	if err := validateHandoffStartCheckpoint(record); err != nil {
 		return err
 	}
 	return nil

@@ -47,3 +47,33 @@ func TestCoordinatorCommandStateAllowsMatchesLegacy(t *testing.T) {
 		}
 	}
 }
+
+func TestProtocolStateRoleAuthorityMatrix(t *testing.T) {
+	cases := []struct {
+		protocol int
+		role     string
+		action   string
+		state    string
+		want     bool
+	}{
+		{ProtocolVersion, RoleLegacyCoordinator, "phase", StateCoordinatorPreparing, true},
+		{ProtocolVersion, RoleLegacyWorker, "claim", StateDispatched, true},
+		{ProtocolVersion, RoleLegacyWorker, "mutate", StateClaimed, true},
+		{ProtocolVersion, RoleLegacyWorker, "mutate", StateDispatched, false},
+		{OwnershipTransferProtocolVersion, RoleSourceOwnerTransfer, "status", StateOwnerActive, true},
+		{OwnershipTransferProtocolVersion, RoleSourceOwnerTransfer, "mutate", StateOwnerActive, false},
+		{OwnershipTransferProtocolVersion, RoleTransferredOwner, "claim", StateOwnershipDispatched, true},
+		{OwnershipTransferProtocolVersion, RoleTransferredOwner, "acknowledge-context", StateOwnerOrienting, true},
+		{OwnershipTransferProtocolVersion, RoleTransferredOwner, "heartbeat", StateOwnerOrienting, true},
+		{OwnershipTransferProtocolVersion, RoleTransferredOwner, "mutate", StateOwnerActive, true},
+		{OwnershipTransferProtocolVersion, RoleTransferredOwner, "mutate", StateOwnerOrienting, false},
+		{OwnershipTransferProtocolVersion, RoleTransferredOwner, "publish", StateOwnerActive, false},
+		{99, RoleTransferredOwner, "mutate", StateOwnerActive, false},
+		{OwnershipTransferProtocolVersion, "unknown", "mutate", StateOwnerActive, false},
+	}
+	for _, tc := range cases {
+		if got := ProtocolStateRoleAllows(tc.protocol, tc.role, tc.action, tc.state, ""); got != tc.want {
+			t.Fatalf("protocol=%d role=%s action=%s state=%s: got %t want %t", tc.protocol, tc.role, tc.action, tc.state, got, tc.want)
+		}
+	}
+}

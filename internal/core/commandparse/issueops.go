@@ -141,6 +141,8 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--final-head", "--host", "--session-id", "--agent-id", "--source-cwd"), b("--json"), r, true
 	case "handoff claim":
 		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id", "--cwd", "--orca-worktree-id"), b("--json"), r, true
+	case "handoff acknowledge-context":
+		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id", "--cwd", "--issue-url", "--plan-sha256", "--understanding", "--scope-confirmation"), b("--json"), r, true
 	case "handoff finish":
 		values := v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id", "--outcome", "--final-head", "--changed-file", "--turing-report", "--verification", "--cleanup-receipt", "--evidence-digest", "--task-id", "--dispatch-id")
 		for _, name := range []string{"--changed-file", "--verification", "--cleanup-receipt"} {

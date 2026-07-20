@@ -2,6 +2,13 @@ package handoff
 
 import "slices"
 
+const (
+	RoleLegacyCoordinator   = "legacy_coordinator"
+	RoleLegacyWorker        = "legacy_worker"
+	RoleSourceOwnerTransfer = "source_owner_transfer"
+	RoleTransferredOwner    = "transferred_owner"
+)
+
 // This file is the single declarative source for the *state dimension* of the
 // supervised-handoff authority decision (Task A). The recurring-bug history
 // showed the same state+role+command invariants re-implemented across the
@@ -52,4 +59,60 @@ func CoordinatorCommandStateAllows(path, state, closedDisposition string) bool {
 		return slices.Contains(states, state)
 	}
 	return state == StateCoordinatorPreparing
+}
+
+// ProtocolStateRoleAllows is the shared protocol/state/role authority table.
+// Callers still enforce identity, fence, canonical root, and target scope; an
+// unknown row deliberately denies rather than falling back to a neighbouring
+// protocol or role.
+func ProtocolStateRoleAllows(protocol int, role, action, state, closedDisposition string) bool {
+	switch protocol {
+	case ProtocolVersion:
+		switch role {
+		case RoleLegacyCoordinator:
+			return CoordinatorCommandStateAllows(action, state, closedDisposition)
+		case RoleLegacyWorker:
+			switch action {
+			case "claim":
+				return state == StateDispatched
+			case "heartbeat", "finish", "mutate":
+				return state == StateClaimed
+			default:
+				return false
+			}
+		}
+	case OwnershipTransferProtocolVersion:
+		switch role {
+		case RoleSourceOwnerTransfer:
+			switch action {
+			case "status", "resume":
+				return slices.Contains([]string{StateOwnershipDispatching, StateOwnershipDispatched, StateOwnerOrienting, StateOwnerActive, StateCleanupPendingHumanDecision, StateCleanupExecuting, StateClosed, StateRecoveryRequired}, state)
+			default:
+				return false
+			}
+		case RoleTransferredOwner:
+			switch action {
+			case "claim":
+				return state == StateOwnershipDispatched
+			case "acknowledge-context":
+				return state == StateOwnerOrienting
+			case "heartbeat":
+				return state == StateOwnerOrienting || state == StateOwnerActive
+			case "mutate":
+				return state == StateOwnerActive
+			default:
+				return false
+			}
+		}
+	}
+	return false
+}
+
+// OwnershipTransferOwnerStateAllows is the protocol-v2 owner half of the
+// authority table. Source-checkout work deliberately is not represented here:
+// it is outside the isolated-worktree fence unless it explicitly targets this
+// cycle or worker root. Once selected, the protocol-v2 owner is the only role
+// that may mutate the worker root after a successful acknowledgement.
+func OwnershipTransferOwnerStateAllows(action, state string) bool {
+	return ProtocolStateRoleAllows(OwnershipTransferProtocolVersion, RoleTransferredOwner, action, state, "")
 }

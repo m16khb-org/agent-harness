@@ -96,7 +96,14 @@ func renderHandoffSessionGuidance(record IssueOpsRecord, worker bool, host, sess
 	}
 	modelBoundary := " Host usage-limit, rate-limit, reset, and model-selection prompts are user-decision boundaries: dismiss or stop and relay; never auto switch models or reset usage."
 	resume := "agent-harness issueops resume --repo " + shellGuidanceQuote(record.Repo) + " --id " + shellGuidanceQuote(record.ID)
-	if h.State != handoff.StateDispatched {
+	claimState := h.State == handoff.StateDispatched || h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State == handoff.StateOwnershipDispatched
+	if !claimState {
+		if h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State == handoff.StateOwnerOrienting {
+			return fmt.Sprintf("IssueOps ownership transfer role=owner state=%s attempt=%d context=%s. Acknowledge the sealed issue and plan context before editing; implementation remains read-only until acknowledgement. Resume: %s", h.State, h.Attempt, h.ContextSHA256, resume) + modelBoundary
+		}
+		if h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State == handoff.StateOwnerActive {
+			return fmt.Sprintf("IssueOps ownership transfer role=owner state=%s attempt=%d context=%s. The acknowledged owner may implement and verify only inside the canonical worker root; publication, terminal steering, and resource cleanup remain human-directed. Resume: %s", h.State, h.Attempt, h.ContextSHA256, resume) + modelBoundary
+		}
 		return fmt.Sprintf("IssueOps supervised handoff role=worker state=%s attempt=%d context=%s. Resume: %s", h.State, h.Attempt, h.ContextSHA256, resume) + modelBoundary
 	}
 	if h.Orca == nil || strings.TrimSpace(h.Orca.WorktreeID) == "" {
@@ -231,6 +238,11 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 		if allowedIssueOpsObservationMCP(req, record) {
 			return true, ""
 		}
+		if kind, ok := issueOpsObservationMCPKind(req.Tool); ok && kind == "issueops_resume" && req.ToolInput != nil {
+			if bind, exists := req.ToolInput["bind"]; exists && bind == true {
+				return true, "IssueOps resume observation must omit bind or set bind=false for a supervised handoff"
+			}
+		}
 		return true, "exact IssueOps status/resume MCP payload does not match the selected supervised cycle"
 	}
 	if claimedWorkerProgressMessageAllowed(req, record) {
@@ -280,11 +292,17 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 		return true, "supervised IssueOps worker cannot delete, move, or change permissions on the canonical worker root or its Git metadata; coordinator recovery owns lifecycle cleanup"
 	}
 	h := record.ExecutionHandoff
+	if h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
+		return ownershipTransferMutationBlockReason(req, record)
+	}
 	if coordinatorPlanMutationAllowed(req, record) {
 		return true, ""
 	}
 	if coordinatorPlanGitCommandAllowed(req, record) {
 		return true, ""
+	}
+	if guidance := coordinatorPlanGitMismatchGuidance(req, record); guidance != "" {
+		return true, guidance
 	}
 	if record.Phase != issueopsmodel.IssueOpsPhaseImplement && h.State == handoff.StateClaimed {
 		return true, "supervised IssueOps handoff cannot authorize implementation mutation before the durable implement phase"
@@ -337,6 +355,48 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 	for _, target := range worktreeGuardEditTargets(req) {
 		if !pathWithin(target, workerRoot) || !resolvedPathWithin(target, workerRoot) {
 			return true, "supervised IssueOps worker mutation target is outside the claimed worker worktree"
+		}
+	}
+	return true, ""
+}
+
+func ownershipTransferMutationBlockReason(req HookToolUseLifecycleRequest, record IssueOpsRecord) (bool, string) {
+	h := record.ExecutionHandoff
+	if h == nil {
+		return true, "ownership transfer handoff record is incomplete"
+	}
+	if !handoff.OwnershipTransferOwnerStateAllows("mutate", h.State) {
+		if h.State == handoff.StateOwnershipDispatched && cleanAbsPath(req.CWD) == cleanAbsPath(h.WorkerRoot) {
+			if claim := buildExactClaimCommand(record, req); claim != "" {
+				return true, "ownership transfer handoff must be claimed before mutation; run only: " + claim
+			}
+		}
+		if h.State == handoff.StateOwnerOrienting && nativeSessionMatches(req, h.OwnerSession) {
+			return true, "ownership transfer owner must acknowledge the sealed issue and plan context before mutation"
+		}
+		return true, "ownership transfer handoff does not grant worker-root mutation authority in state " + h.State
+	}
+	if !nativeSessionMatches(req, h.OwnerSession) {
+		return true, "ownership transfer worker-root mutation is restricted to the acknowledged native owner session"
+	}
+	if !currentWorkerBranchMatches(record) {
+		return true, "ownership transfer owner mutation requires the current Git branch to exactly match the persisted handoff branch; remain read-only and run the exact resume command"
+	}
+	if searchrouting.IsShellTool(req.Tool) {
+		if violation := claimedWorkerRoleViolation(req.Command); violation != "" {
+			return true, "ownership transfer owner may implement, verify, and locally commit only; " + violation + ". Source coordinator and owner cannot push, publish, steer terminals, or clean up resources automatically"
+		}
+	}
+	if searchrouting.IsShellTool(req.Tool) && unresolvedNestedShellMutation(req.Command) {
+		return true, "ownership transfer owner shell mutation target cannot be resolved safely inside the canonical worker worktree"
+	}
+	workerRoot := cleanAbsPath(h.WorkerRoot)
+	if cleanAbsPath(req.CWD) != workerRoot || cleanAbsPath(req.Repo) != workerRoot {
+		return true, "ownership transfer owner must mutate from the canonical worker worktree root"
+	}
+	for _, target := range worktreeGuardEditTargets(req) {
+		if !pathWithin(target, workerRoot) || !resolvedPathWithin(target, workerRoot) {
+			return true, "ownership transfer owner mutation target is outside the canonical worker worktree"
 		}
 	}
 	return true, ""
@@ -511,6 +571,22 @@ func coordinatorPlanGitCommandAllowed(req HookToolUseLifecycleRequest, record Is
 	default:
 		return false
 	}
+}
+
+func coordinatorPlanGitMismatchGuidance(req HookToolUseLifecycleRequest, record IssueOpsRecord) string {
+	h := record.ExecutionHandoff
+	if h == nil || h.ProtocolVersion != handoff.ProtocolVersion || h.State != handoff.StateCoordinatorPreparing || strings.TrimSpace(h.ContextSHA256) != "" || h.PendingOperation != nil || !searchrouting.IsShellTool(req.Tool) || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
+		return ""
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	if len(tokens) != 6 || tokens[0] != "git" || tokens[1] != "-C" || cleanAbsPath(tokens[2]) != cleanAbsPath(h.WorkerRoot) || tokens[3] != "add" || tokens[4] != "--" || filepath.IsAbs(tokens[5]) {
+		return ""
+	}
+	plan := filepath.Join(h.WorkerRoot, tokens[5])
+	if !coordinatorPlanPathAllowed(record, plan) {
+		return ""
+	}
+	return "protocol-v1 coordinator plan Git target must be absolute; run only: git -C " + shellGuidanceQuote(h.WorkerRoot) + " add -- " + shellGuidanceQuote(plan)
 }
 
 func resolvedPathWithin(path, root string) bool {

@@ -165,9 +165,23 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 	case "handoff claim":
 		cwd, cwdOK := oneFlag(flags, "--cwd")
 		worktreeID, wtOK := oneFlag(flags, "--orca-worktree-id")
-		return worker && currentWorkerBranchMatches(record) && h.State == handoff.StateDispatched && exactFenceFlags(flags, record) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && wtOK && h.Orca != nil && worktreeID == h.Orca.WorktreeID
+		claimState := h.State == handoff.StateDispatched || h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State == handoff.StateOwnershipDispatched
+		return worker && currentWorkerBranchMatches(record) && claimState && exactFenceFlags(flags, record) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && wtOK && h.Orca != nil && worktreeID == h.Orca.WorktreeID
+	case "handoff acknowledge-context":
+		cwd, cwdOK := oneFlag(flags, "--cwd")
+		_, issueOK := oneFlag(flags, "--issue-url")
+		_, planOK := oneFlag(flags, "--plan-sha256")
+		_, understandingOK := oneFlag(flags, "--understanding")
+		_, scopeOK := oneFlag(flags, "--scope-confirmation")
+		return worker && currentWorkerBranchMatches(record) && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State == handoff.StateOwnerOrienting && exactFenceFlags(flags, record) && eventIdentityFlagsMatch(req, flags) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && issueOK && planOK && understandingOK && scopeOK
 	case "heartbeat":
-		return worker && currentWorkerBranchMatches(record) && exactFenceFlags(flags, record) && nativeSessionMatches(req, h.WorkerSession) && eventIdentityFlagsMatch(req, flags)
+		session := h.WorkerSession
+		stateAllowed := true
+		if h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
+			session = h.OwnerSession
+			stateAllowed = handoff.OwnershipTransferOwnerStateAllows("heartbeat", h.State)
+		}
+		return worker && currentWorkerBranchMatches(record) && stateAllowed && exactFenceFlags(flags, record) && nativeSessionMatches(req, session) && eventIdentityFlagsMatch(req, flags)
 	case "handoff finish":
 		return worker && currentWorkerBranchMatches(record) && exactFenceFlags(flags, record) && nativeSessionMatches(req, h.WorkerSession) && eventIdentityFlagsMatch(req, flags) && exactNoChangeFinishFlags(flags)
 	default:
@@ -1420,7 +1434,13 @@ func allowedHandoffMCPTool(req HookToolUseLifecycleRequest, record IssueOpsRecor
 		return coordinator && record.RemoteCreateClaim != nil && claimOK && claimID == record.RemoteCreateClaim.ClaimID && recipientOK && recipient == h.CoordinatorMailboxHandle && confirmOK && confirm && hostOK && strings.EqualFold(host, strings.TrimSpace(req.Host)) && sessionOK && sessionID == strings.TrimSpace(req.SessionID) && agentMatches && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(record.Repo)
 	}
 	if tool == "issueops_heartbeat" {
-		return worker && currentWorkerBranchMatches(record) && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.WorkerSession)
+		session := h.WorkerSession
+		stateAllowed := true
+		if h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
+			session = h.OwnerSession
+			stateAllowed = handoff.OwnershipTransferOwnerStateAllows("heartbeat", h.State)
+		}
+		return worker && currentWorkerBranchMatches(record) && stateAllowed && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, session)
 	}
 	action, ok := mcpString(input, "action")
 	if !ok {
@@ -1449,7 +1469,15 @@ func allowedHandoffMCPTool(req HookToolUseLifecycleRequest, record IssueOpsRecor
 	case "claim":
 		cwd, cwdOK := mcpString(input, "cwd")
 		wt, wtOK := mcpString(input, "orca_worktree_id")
-		return worker && currentWorkerBranchMatches(record) && h.State == handoff.StateDispatched && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && wtOK && h.Orca != nil && wt == h.Orca.WorktreeID
+		claimState := h.State == handoff.StateDispatched || h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && handoff.OwnershipTransferOwnerStateAllows("claim", h.State)
+		return worker && currentWorkerBranchMatches(record) && claimState && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && wtOK && h.Orca != nil && wt == h.Orca.WorktreeID
+	case "acknowledge-context":
+		cwd, cwdOK := mcpString(input, "cwd")
+		issueURL, issueOK := mcpString(input, "issue_url")
+		planSHA, planOK := mcpString(input, "plan_sha256")
+		understanding, understandingOK := mcpString(input, "understanding")
+		scope, scopeOK := mcpString(input, "scope_confirmation")
+		return worker && currentWorkerBranchMatches(record) && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && handoff.OwnershipTransferOwnerStateAllows("acknowledge-context", h.State) && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && issueOK && strings.TrimSpace(issueURL) != "" && planOK && strings.TrimSpace(planSHA) != "" && understandingOK && strings.TrimSpace(understanding) != "" && scopeOK && strings.TrimSpace(scope) != ""
 	case "finish":
 		return worker && currentWorkerBranchMatches(record) && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.WorkerSession)
 	default:

@@ -202,6 +202,23 @@ func Claim(record model.IssueOpsRecord, req ClaimRequest) (model.IssueOpsRecord,
 	if workerRoot != strings.TrimSpace(handoff.WorkerRoot) {
 		return record, fmt.Errorf("worker root does not match handoff")
 	}
+	if handoff.ProtocolVersion == OwnershipTransferProtocolVersion {
+		if handoff.State == StateOwnerOrienting {
+			if handoff.OwnerSession != nil && *handoff.OwnerSession == worker {
+				return updated, nil
+			}
+			return record, fmt.Errorf("ownership handoff is already orienting another owner")
+		}
+		if handoff.State != StateOwnershipDispatched {
+			return record, fmt.Errorf("ownership claim requires %s state", StateOwnershipDispatched)
+		}
+		handoff.OwnerSession = &worker
+		handoff.State = StateOwnerOrienting
+		handoff.ClaimedAt = req.Now
+		handoff.LastHeartbeatAt = req.Now
+		handoff.UpdatedAt = req.Now
+		return updated, nil
+	}
 	if handoff.State == StateClaimed {
 		if handoff.WorkerSession != nil && *handoff.WorkerSession == worker {
 			return updated, nil
@@ -223,6 +240,14 @@ func Heartbeat(record model.IssueOpsRecord, fence Fence, worker model.IssueOpsHo
 	updated, handoff, err := fencedCopy(record, fence, true)
 	if err != nil {
 		return record, err
+	}
+	if handoff.ProtocolVersion == OwnershipTransferProtocolVersion {
+		if (handoff.State != StateOwnerOrienting && handoff.State != StateOwnerActive) || handoff.OwnerSession == nil || *handoff.OwnerSession != cleanSession(worker) {
+			return record, fmt.Errorf("heartbeat requires the active ownership-transfer owner")
+		}
+		handoff.LastHeartbeatAt = now
+		handoff.UpdatedAt = now
+		return updated, nil
 	}
 	if handoff.State != StateClaimed || handoff.WorkerSession == nil || *handoff.WorkerSession != cleanSession(worker) {
 		return record, fmt.Errorf("heartbeat requires the claimed worker")
@@ -366,6 +391,20 @@ func cloneHandoff(value model.IssueOpsExecutionHandoff) model.IssueOpsExecutionH
 	if value.WorkerSession != nil {
 		v := *value.WorkerSession
 		cloned.WorkerSession = &v
+	}
+	if value.OwnerSession != nil {
+		v := *value.OwnerSession
+		cloned.OwnerSession = &v
+	}
+	if value.Orientation != nil {
+		v := *value.Orientation
+		cloned.Orientation = &v
+	}
+	if value.Completion != nil {
+		v := *value.Completion
+		v.ChangedFiles = append([]string(nil), value.Completion.ChangedFiles...)
+		v.Verification = append([]string(nil), value.Completion.Verification...)
+		cloned.Completion = &v
 	}
 	if value.Orca != nil {
 		v := cloneOrca(*value.Orca)

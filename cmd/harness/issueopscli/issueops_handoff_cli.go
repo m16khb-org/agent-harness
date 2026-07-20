@@ -17,6 +17,7 @@ import (
 const issueOpsHandoffUsage = `Usage:
   agent-harness issueops handoff start --id ID --coordinator-recipient TERM --coordinator-host HOST --coordinator-session-id SESSION --source-cwd PATH [--coordinator-agent-id ID] [--workspace-epoch EPOCH] [--allow-codex-hook-trust-bypass] [--expected-context-sha256 SHA] [--confirm] [--json]
   agent-harness issueops handoff claim --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd PATH --orca-worktree-id ID [--agent-id ID] [--json]
+  agent-harness issueops handoff acknowledge-context --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd PATH --issue-url URL --plan-sha256 SHA --understanding TEXT --scope-confirmation TEXT [--agent-id ID] [--json]
   agent-harness issueops handoff finish --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --outcome completed|failed [evidence flags] [--no-change --verification RESULT] [--json]
   agent-harness issueops handoff accept --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --final-head SHA --host HOST --session-id SESSION --source-cwd PATH [--agent-id ID] [--json]
   agent-harness issueops handoff publish --id ID --host HOST --session-id SESSION --source-cwd PATH [--agent-id ID] [--approve-legacy-coordinator-seal] --confirm [--json]
@@ -33,6 +34,8 @@ func runIssueOpsHandoff(args []string) error {
 		return runIssueOpsHandoffStart(args[1:])
 	case "claim":
 		return runIssueOpsHandoffClaim(args[1:])
+	case "acknowledge-context":
+		return runIssueOpsHandoffAcknowledgeContext(args[1:])
 	case "finish":
 		return runIssueOpsHandoffFinish(args[1:])
 	case "accept":
@@ -120,6 +123,29 @@ func runIssueOpsHandoffClaim(args []string) error {
 	record, err := core.ClaimIssueOpsHandoff(core.IssueOpsStateRoot(), core.IssueOpsHandoffClaimRequest{
 		ID: *common.id, Attempt: *common.attempt, OwnershipEpoch: *common.epoch, ContextSHA256: *common.context,
 		Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd, OrcaWorktreeID: *worktreeID,
+	})
+	return printIssueOpsResult(record, *jsonOut, err)
+}
+
+func runIssueOpsHandoffAcknowledgeContext(args []string) error {
+	fs := flag.NewFlagSet("issueops handoff acknowledge-context", flag.ContinueOnError)
+	common := addIssueOpsHandoffFenceFlags(fs)
+	host := fs.String("host", "", "native host")
+	sessionID := fs.String("session-id", "", "native session id")
+	agentID := fs.String("agent-id", "", "native agent id")
+	cwd := fs.String("cwd", "", "canonical worker cwd")
+	issueURL := fs.String("issue-url", "", "exact IssueOps issue URL")
+	planSHA256 := fs.String("plan-sha256", "", "exact linked plan SHA-256")
+	understanding := fs.String("understanding", "", "bounded owner understanding")
+	scopeConfirmation := fs.String("scope-confirmation", "", "bounded owner scope confirmation")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	record, err := core.AcknowledgeIssueOpsHandoffContext(core.IssueOpsStateRoot(), core.IssueOpsHandoffAcknowledgeRequest{
+		ID: *common.id, Attempt: *common.attempt, OwnershipEpoch: *common.epoch, ContextSHA256: *common.context,
+		Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd, IssueURL: *issueURL, PlanSHA256: *planSHA256,
+		Understanding: *understanding, ScopeConfirmation: *scopeConfirmation,
 	})
 	return printIssueOpsResult(record, *jsonOut, err)
 }

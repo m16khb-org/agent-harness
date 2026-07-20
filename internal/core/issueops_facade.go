@@ -50,6 +50,7 @@ type IssueOpsHandoffStartClock = issueops.IssueOpsHandoffStartClock
 type IssueOpsOrcaDispatchClient = issueops.IssueOpsOrcaDispatchClient
 type IssueOpsWorkerDoneProjectionClient = issueops.IssueOpsWorkerDoneProjectionClient
 type IssueOpsHandoffClaimRequest = issueops.IssueOpsHandoffClaimRequest
+type IssueOpsHandoffAcknowledgeRequest = issueops.IssueOpsHandoffAcknowledgeRequest
 type IssueOpsHeartbeatRequest = issueops.IssueOpsHeartbeatRequest
 type IssueOpsHandoffFinishRequest = issueops.IssueOpsHandoffFinishRequest
 type IssueOpsHandoffAcceptRequest = issueops.IssueOpsHandoffAcceptRequest
@@ -359,6 +360,10 @@ func StartIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 
 func ClaimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest) (IssueOpsRecord, error) {
 	return issueops.ClaimIssueOpsHandoff(stateRoot, req)
+}
+
+func AcknowledgeIssueOpsHandoffContext(stateRoot string, req IssueOpsHandoffAcknowledgeRequest) (IssueOpsRecord, error) {
+	return issueops.AcknowledgeIssueOpsHandoffContext(stateRoot, req)
 }
 
 func FinishIssueOpsHandoffWithProjection(ctx context.Context, stateRoot string, req IssueOpsHandoffFinishRequest, client IssueOpsWorkerDoneProjectionClient) (IssueOpsRecord, error) {

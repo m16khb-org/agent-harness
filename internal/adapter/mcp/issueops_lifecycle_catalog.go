@@ -283,9 +283,9 @@ func IssueOpsLifecycleTools() []Tool {
 		},
 		{
 			Name:        "issueops_handoff",
-			Description: "Run one supervised IssueOps handoff action (start, claim, finish, accept, publish, or recover) through the same durable DTO contract as the CLI. External mutations remain preview-only unless confirm=true; recovery never advances to the next operation.",
+			Description: "Run one supervised IssueOps handoff action (start, claim, acknowledge-context, finish, accept, publish, or recover) through the same durable DTO contract as the CLI. External mutations remain preview-only unless confirm=true; recovery never advances to the next operation.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"action", "id"}, "properties": map[string]any{
-				"action":                          map[string]any{"type": "string", "enum": []string{"start", "claim", "finish", "accept", "publish", "recover"}},
+				"action":                          map[string]any{"type": "string", "enum": []string{"start", "claim", "acknowledge-context", "finish", "accept", "publish", "recover"}},
 				"id":                              map[string]any{"type": "string"},
 				"coordinator_recipient":           map[string]any{"type": "string", "description": "Concrete Orca coordinator mailbox recipient sealed before first dispatch."},
 				"coordinator_host":                map[string]any{"type": "string"},
@@ -313,6 +313,10 @@ func IssueOpsLifecycleTools() []Tool {
 				"agent_id":                        map[string]any{"type": "string"},
 				"cwd":                             map[string]any{"type": "string"},
 				"orca_worktree_id":                map[string]any{"type": "string"},
+				"issue_url":                       map[string]any{"type": "string"},
+				"plan_sha256":                     map[string]any{"type": "string"},
+				"understanding":                   map[string]any{"type": "string"},
+				"scope_confirmation":              map[string]any{"type": "string"},
 				"outcome":                         map[string]any{"type": "string", "enum": []string{"completed", "failed"}},
 				"final_head":                      map[string]any{"type": "string"},
 				"changed_files":                   map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
