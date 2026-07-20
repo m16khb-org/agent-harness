@@ -40,7 +40,7 @@ const (
 var coordinatorCommandAllowedStates = map[string][]string{
 	"phase":           {StateCoordinatorPreparing},
 	"handoff accept":  {StateSubmitted, StateClosed},
-	"handoff recover": {StateRecoveryRequired, StateSubmitted, StateClosed, StateClaimed},
+	"handoff recover": {StateOwnershipDispatching, StateRecoveryRequired, StateSubmitted, StateClosed, StateClaimed},
 }
 
 // CoordinatorCommandStateAllows reports whether a coordinator lifecycle command

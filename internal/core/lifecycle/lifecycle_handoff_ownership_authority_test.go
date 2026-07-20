@@ -143,6 +143,18 @@ func TestOwnershipCoordinatorCanCancelActiveOwnerForBoundedRetry(t *testing.T) {
 	}
 }
 
+func TestOwnershipCoordinatorCanReconcileStagedDispatch(t *testing.T) {
+	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateOwnershipDispatching)
+	req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+	req.AgentID = "worker-1"
+	req.Tool = "Bash"
+	req.Command = "agent-harness issueops handoff recover --id " + record.ID + " --action reconcile --json"
+
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("sealed source coordinator must be able to reconcile a staged v2 dispatch: %#v", got)
+	}
+}
+
 func TestOwnershipCoordinatorCanQuiesceExactCancelledAttemptResources(t *testing.T) {
 	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
 	record.ExecutionHandoff.State = handoff.StateRecoveryRequired

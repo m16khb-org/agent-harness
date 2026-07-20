@@ -48,6 +48,12 @@ func TestCoordinatorCommandStateAllowsMatchesLegacy(t *testing.T) {
 	}
 }
 
+func TestCoordinatorCommandStateAllowsOwnershipDispatchRecovery(t *testing.T) {
+	if !CoordinatorCommandStateAllows("handoff recover", StateOwnershipDispatching, "") {
+		t.Fatal("source coordinator must be able to reconcile a staged ownership dispatch")
+	}
+}
+
 func TestProtocolStateRoleAuthorityMatrix(t *testing.T) {
 	cases := []struct {
 		protocol int

@@ -637,9 +637,20 @@ func TestOwnershipHandoffRetryPreservesProtocolWorkspaceAndOwnerAudit(t *testing
 	if !preview.Preview || preview.Attempt != 2 || preview.ContextSHA256 == "" {
 		t.Fatalf("ownership retry preview = %#v", preview)
 	}
-	startReq.Confirm = true
-	startReq.ExpectedContextSHA256 = preview.ContextSHA256
-	dispatched, err := StartIssueOpsHandoff(context.Background(), stateRoot, startReq, client, handoffStartTestClock())
+	workspaceSHA, err := issueOpsWorkspaceFingerprint(persisted.ExecutionWorkspace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dispatchingRecord := persisted
+	dispatchingRecord.ExecutionHandoff = ownershipDispatchingContext(persisted, testCoordinatorRecipient, *persisted.ExecutionWorkspace.PreparationSession, persisted.ExecutionHandoff.AttemptBaseHead, workspaceSHA)
+	packet, err := handoff.BuildContext(dispatchingRecord, startReq.Context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = persistOwnershipHandoffContext(stateRoot, dispatchingRecord, packet, handoff.CanonicalContextOptions(startReq.Context), issueOpsHandoffStartNow(handoffStartTestClock())); err != nil {
+		t.Fatal(err)
+	}
+	dispatched, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{ID: persisted.ID, Action: "reconcile"}, client, handoffPrepareTestClock())
 	if err != nil {
 		t.Fatal(err)
 	}

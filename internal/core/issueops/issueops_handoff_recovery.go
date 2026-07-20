@@ -1008,6 +1008,9 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 	if err != nil {
 		return IssueOpsHandoffRecoverResult{}, err
 	}
+	if ownershipDispatchStagedWithoutExternalMutation(record) {
+		return resumeStagedOwnershipDispatch(ctx, stateRoot, record, client, now)
+	}
 	if record.ExecutionHandoff == nil || record.ExecutionHandoff.State != handoff.StateRecoveryRequired || record.ExecutionHandoff.PendingOperation == nil {
 		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("reconcile requires recovery_required with a pending operation")
 	}
@@ -1178,6 +1181,42 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		return readErr
 	})
 	return projectHandoffRecovery(persisted, "reconcile", next), err
+}
+
+func ownershipDispatchStagedWithoutExternalMutation(record IssueOpsRecord) bool {
+	h := record.ExecutionHandoff
+	if h == nil || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || h.State != handoff.StateOwnershipDispatching || h.PendingOperation != nil || h.Orca == nil {
+		return false
+	}
+	return h.Orca.WorkerPTYID == "" && h.Orca.WorkerTerminalHandle == "" && h.Orca.WorkerMailboxHandle == "" && h.Orca.TaskID == "" && h.Orca.DispatchID == ""
+}
+
+func resumeStagedOwnershipDispatch(ctx context.Context, stateRoot string, record IssueOpsRecord, client any, now string) (IssueOpsHandoffRecoverResult, error) {
+	dispatcher, ok := client.(IssueOpsOrcaDispatchClient)
+	if !ok {
+		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("Orca dispatch recovery dependency is unavailable")
+	}
+	if err := validateHandoffContextSource(record); err != nil {
+		return IssueOpsHandoffRecoverResult{}, err
+	}
+	if err := validateHandoffCleanExactCheckpoint(record); err != nil {
+		return IssueOpsHandoffRecoverResult{}, err
+	}
+	if record.ExecutionHandoff.ContextOptions == nil {
+		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("staged ownership dispatch context options are unavailable")
+	}
+	packet, err := handoff.BuildContext(record, handoff.ContextOptionsFromModel(*record.ExecutionHandoff.ContextOptions))
+	if err != nil {
+		return IssueOpsHandoffRecoverResult{}, err
+	}
+	if packet.SHA256 != record.ExecutionHandoff.ContextSHA256 || packet.SourceSHA256 != record.ExecutionHandoff.ContextSourceSHA256 {
+		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("staged ownership dispatch context changed before recovery")
+	}
+	if _, err := dispatchStartedHandoff(ctx, stateRoot, record, dispatcher, packet, func() string { return now }, issueOpsHandoffStartHooks{}); err != nil {
+		return IssueOpsHandoffRecoverResult{}, err
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	return projectHandoffRecovery(persisted, "reconcile", ""), err
 }
 
 func reconcileLeaseAttestationAllowedHandle(ctx context.Context, record IssueOpsRecord, client IssueOpsOrcaDispatchClient) (string, error) {
