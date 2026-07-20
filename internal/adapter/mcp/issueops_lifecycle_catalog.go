@@ -287,9 +287,9 @@ func IssueOpsLifecycleTools() []Tool {
 		},
 		{
 			Name:        "issueops_handoff",
-			Description: "Run one supervised IssueOps handoff action (start, claim, acknowledge-context, finish, complete, accept, publish, or recover) through the same durable DTO contract as the CLI. Ownership completion records a notification only and never cleans up resources.",
+			Description: "Run one supervised IssueOps handoff action (start, claim, acknowledge-context, finish, complete, cleanup-preview, cleanup-approve, cleanup-record, accept, publish, or recover) through the same durable DTO contract as the CLI. Cleanup preview is read-only; approval and each receipt are human-directed.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"action", "id"}, "properties": map[string]any{
-				"action":                          map[string]any{"type": "string", "enum": []string{"start", "claim", "acknowledge-context", "finish", "complete", "accept", "publish", "recover"}},
+				"action":                          map[string]any{"type": "string", "enum": []string{"start", "claim", "acknowledge-context", "finish", "complete", "cleanup-preview", "cleanup-approve", "cleanup-record", "accept", "publish", "recover"}},
 				"id":                              map[string]any{"type": "string"},
 				"coordinator_recipient":           map[string]any{"type": "string", "description": "Concrete Orca coordinator mailbox recipient sealed before first dispatch."},
 				"coordinator_host":                map[string]any{"type": "string"},
@@ -335,6 +335,9 @@ func IssueOpsLifecycleTools() []Tool {
 				"cleanup_step":                    map[string]any{"type": "string", "enum": []string{"task_terminal", "terminal_quiescent", "worktree_removed"}},
 				"force":                           map[string]any{"type": "boolean"},
 				"reason":                          map[string]any{"type": "string"},
+				"inventory_fingerprint":           map[string]any{"type": "string"},
+				"disposition":                     map[string]any{"type": "string", "enum": []string{"close-owner", "remove-local"}},
+				"step":                            map[string]any{"type": "string", "enum": []string{"remote_head_safe", "task_terminal", "terminal_quiescent", "worktree_removed", "local_branch_removed"}},
 			}},
 		},
 		{

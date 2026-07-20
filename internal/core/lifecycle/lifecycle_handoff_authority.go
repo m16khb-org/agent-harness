@@ -197,9 +197,68 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 		_, finalHeadOK := oneFlag(flags, "--final-head")
 		_, reportOK := oneFlag(flags, "--turing-report")
 		return worker && currentWorkerBranchMatches(record) && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && handoff.OwnershipTransferOwnerStateAllows("complete", h.State) && exactFenceFlags(flags, record) && nativeSessionMatches(req, h.OwnerSession) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && finalHeadOK && reportOK && len(flags["--verification"]) > 0
+	case "handoff cleanup-preview":
+		return ownershipCleanupSourceCommandAllowed(req, record, flags, false)
+	case "handoff cleanup-approve":
+		return ownershipCleanupSourceCommandAllowed(req, record, flags, true)
+	case "handoff cleanup-record":
+		return ownershipCleanupRecordCommandAllowed(req, record, flags)
 	default:
 		return false
 	}
+}
+
+func ownershipCleanupSourceCommandAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord, flags map[string][]string, approve bool) bool {
+	h := record.ExecutionHandoff
+	host, hostOK := oneFlag(flags, "--host")
+	session, sessionOK := oneFlag(flags, "--session-id")
+	sourceCWD, cwdOK := oneFlag(flags, "--source-cwd")
+	if !hostOK || !sessionOK || !cwdOK || !strings.EqualFold(host, req.Host) || session != req.SessionID || cleanAbsPath(sourceCWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || h == nil || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || h.State != handoff.StateCleanupPendingHumanDecision || h.OwnerSession != nil && nativeSessionMatches(req, h.OwnerSession) {
+		return false
+	}
+	agent, hasAgent := oneFlag(flags, "--agent-id")
+	if strings.TrimSpace(req.AgentID) == "" && hasAgent || strings.TrimSpace(req.AgentID) != "" && (!hasAgent || agent != req.AgentID) {
+		return false
+	}
+	if !approve {
+		return true
+	}
+	_, fingerprintOK := oneFlag(flags, "--inventory-fingerprint")
+	disposition, dispositionOK := oneFlag(flags, "--disposition")
+	_, reasonOK := oneFlag(flags, "--reason")
+	_, confirm := flags["--confirm"]
+	return fingerprintOK && dispositionOK && reasonOK && confirm && (disposition == "close-owner" || disposition == "remove-local")
+}
+
+func ownershipCleanupRecordCommandAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord, flags map[string][]string) bool {
+	h := record.ExecutionHandoff
+	step, stepOK := oneFlag(flags, "--step")
+	host, hostOK := oneFlag(flags, "--host")
+	session, sessionOK := oneFlag(flags, "--session-id")
+	sourceCWD, cwdOK := oneFlag(flags, "--source-cwd")
+	if !stepOK || !hostOK || !sessionOK || !cwdOK || h == nil || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || h.State != handoff.StateCleanupExecuting || h.Cleanup == nil || h.Cleanup.ApprovedBySession == nil || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(sourceCWD) != cleanAbsPath(record.Repo) || !strings.EqualFold(host, req.Host) || session != req.SessionID || !nativeSessionMatches(req, h.Cleanup.ApprovedBySession) {
+		return false
+	}
+	agent, hasAgent := oneFlag(flags, "--agent-id")
+	if strings.TrimSpace(req.AgentID) == "" && hasAgent || strings.TrimSpace(req.AgentID) != "" && (!hasAgent || agent != req.AgentID) {
+		return false
+	}
+	expected := ownershipCleanupExpectedStep(h)
+	return step == expected
+}
+
+func ownershipCleanupExpectedStep(h *issueopsmodel.IssueOpsExecutionHandoff) string {
+	if h == nil || h.Cleanup == nil {
+		return ""
+	}
+	steps := []string{"remote_head_safe", "task_terminal", "terminal_quiescent", "worktree_removed", "local_branch_removed"}
+	if h.Cleanup.Disposition == "close-owner" {
+		steps = steps[:2]
+	}
+	if len(h.Cleanup.Receipts) >= len(steps) {
+		return ""
+	}
+	return steps[len(h.Cleanup.Receipts)]
 }
 
 func allowedReadyWorkspaceOwnershipStart(req HookToolUseLifecycleRequest, record IssueOpsRecord, command commandparse.ExactIssueOpsCommand, flags map[string][]string) bool {
@@ -360,7 +419,12 @@ func worktreepathShellPaths(repo, command string) []string {
 
 func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
 	h := record.ExecutionHandoff
-	if h == nil || h.State != handoff.StateClosed || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
+	if h == nil || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
+		return false
+	}
+	ownershipCleanup := h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State == handoff.StateCleanupExecuting && h.Cleanup != nil && h.Cleanup.ApprovedBySession != nil && nativeSessionMatches(req, h.Cleanup.ApprovedBySession)
+	legacyCleanup := h.State == handoff.StateClosed
+	if !ownershipCleanup && !legacyCleanup {
 		return false
 	}
 	if commandparse.HasUnquotedControlOperator(req.Command) || commandparse.HasActiveCommandSubstitution(req.Command) || commandparse.HasActiveOutputRedirect(req.Command) || commandparse.HasActiveParameterOrTildeExpansion(req.Command) || commandparse.HasActivePathnameExpansion(req.Command) || commandparse.HasActiveShellSpecialQuoting(req.Command) || commandparse.HasActiveZshEqualsExpansion(req.Command) {
@@ -371,13 +435,13 @@ func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRe
 		return false
 	}
 	if len(tokens) == 6 && tokens[1] == "terminal" && tokens[2] == "close" {
-		if h.ClosedDisposition != handoff.DispositionWorkerFailed && h.ClosedDisposition != handoff.DispositionCancelled {
+		if !ownershipCleanup && h.ClosedDisposition != handoff.DispositionWorkerFailed && h.ClosedDisposition != handoff.DispositionCancelled {
 			return false
 		}
 		return cleanupStepAuthorized(h, "terminal_quiescent") && h.Orca != nil && h.Orca.WorkerTerminalHandle != "" && tokens[3] == "--terminal" && tokens[4] == h.Orca.WorkerTerminalHandle && tokens[5] == "--json"
 	}
 	if len(tokens) == 6 && tokens[1] == "terminal" && tokens[2] == "stop" {
-		if h.ClosedDisposition != handoff.DispositionWorkerFailed && h.ClosedDisposition != handoff.DispositionCancelled {
+		if !ownershipCleanup && h.ClosedDisposition != handoff.DispositionWorkerFailed && h.ClosedDisposition != handoff.DispositionCancelled {
 			return false
 		}
 		return cleanupStepAuthorized(h, "terminal_quiescent") && h.Orca != nil && h.Orca.WorktreeID != "" && tokens[3] == "--worktree" && tokens[4] == "id:"+h.Orca.WorktreeID && tokens[5] == "--json"
@@ -390,6 +454,9 @@ func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRe
 		status, statusOK := uniqueTokenFlag(tokens[3:], "--status")
 		result, resultOK := uniqueTokenFlag(tokens[3:], "--result")
 		wantStatus := "failed"
+		if ownershipCleanup {
+			wantStatus = "completed"
+		}
 		if h.ClosedDisposition == handoff.DispositionAccepted {
 			wantStatus = "completed"
 		} else if !cleanupStepAuthorized(h, "task_terminal") {
@@ -403,6 +470,9 @@ func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRe
 func cleanupStepAuthorized(h *issueopsmodel.IssueOpsExecutionHandoff, step string) bool {
 	if h == nil || h.Cleanup == nil {
 		return false
+	}
+	if h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State == handoff.StateCleanupExecuting {
+		return ownershipCleanupExpectedStep(h) == step
 	}
 	switch step {
 	case "task_terminal":
@@ -1534,6 +1604,26 @@ func allowedHandoffMCPTool(req HookToolUseLifecycleRequest, record IssueOpsRecor
 		_, headOK := mcpString(input, "final_head")
 		_, reportOK := mcpString(input, "turing_report_path")
 		return worker && currentWorkerBranchMatches(record) && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && handoff.OwnershipTransferOwnerStateAllows("complete", h.State) && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && headOK && reportOK && mcpNonEmptyStringList(input, "verification")
+	case "cleanup-preview", "cleanup-approve":
+		sourceCWD, cwdOK := mcpString(input, "source_cwd")
+		if !source || !cwdOK || cleanAbsPath(sourceCWD) != cleanAbsPath(record.Repo) || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || h.State != handoff.StateCleanupPendingHumanDecision || nativeSessionMatches(req, h.OwnerSession) || !mcpEventIdentityMatches(input, req) {
+			return false
+		}
+		if action == "cleanup-preview" {
+			return true
+		}
+		fingerprint, fingerprintOK := mcpString(input, "inventory_fingerprint")
+		disposition, dispositionOK := mcpString(input, "disposition")
+		reason, reasonOK := mcpString(input, "reason")
+		confirmed, confirmOK := input["confirm"].(bool)
+		return fingerprintOK && strings.TrimSpace(fingerprint) != "" && dispositionOK && (disposition == "close-owner" || disposition == "remove-local") && reasonOK && strings.TrimSpace(reason) != "" && confirmOK && confirmed
+	case "cleanup-record":
+		sourceCWD, cwdOK := mcpString(input, "source_cwd")
+		step, stepOK := mcpString(input, "step")
+		if !source || !cwdOK || !stepOK || cleanAbsPath(sourceCWD) != cleanAbsPath(record.Repo) || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || h.State != handoff.StateCleanupExecuting || h.Cleanup == nil || h.Cleanup.ApprovedBySession == nil || !mcpEventIdentityMatches(input, req) || !nativeSessionMatches(req, h.Cleanup.ApprovedBySession) {
+			return false
+		}
+		return step == ownershipCleanupExpectedStep(h)
 	default:
 		return false
 	}

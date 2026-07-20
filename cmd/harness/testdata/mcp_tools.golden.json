@@ -2575,7 +2575,7 @@
     "name": "issueops_remote_sync_graph"
   },
   {
-    "description": "Run one supervised IssueOps handoff action (start, claim, acknowledge-context, finish, complete, accept, publish, or recover) through the same durable DTO contract as the CLI. Ownership completion records a notification only and never cleans up resources.",
+    "description": "Run one supervised IssueOps handoff action (start, claim, acknowledge-context, finish, complete, cleanup-preview, cleanup-approve, cleanup-record, accept, publish, or recover) through the same durable DTO contract as the CLI. Cleanup preview is read-only; approval and each receipt are human-directed.",
     "inputSchema": {
       "properties": {
         "action": {
@@ -2585,6 +2585,9 @@
             "acknowledge-context",
             "finish",
             "complete",
+            "cleanup-preview",
+            "cleanup-approve",
+            "cleanup-record",
             "accept",
             "publish",
             "recover"
@@ -2663,6 +2666,13 @@
         "dispatch_id": {
           "type": "string"
         },
+        "disposition": {
+          "enum": [
+            "close-owner",
+            "remove-local"
+          ],
+          "type": "string"
+        },
         "evidence_digest": {
           "type": "string"
         },
@@ -2683,6 +2693,9 @@
           "type": "string"
         },
         "id": {
+          "type": "string"
+        },
+        "inventory_fingerprint": {
           "type": "string"
         },
         "issue_url": {
@@ -2741,6 +2754,16 @@
           "type": "string"
         },
         "source_cwd": {
+          "type": "string"
+        },
+        "step": {
+          "enum": [
+            "remote_head_safe",
+            "task_terminal",
+            "terminal_quiescent",
+            "worktree_removed",
+            "local_branch_removed"
+          ],
           "type": "string"
         },
         "stop_conditions": {

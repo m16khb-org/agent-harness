@@ -85,6 +85,10 @@ func BuildLifecycleStopReminder(repo string) LifecycleStopReminderResult {
 	return lifecycle.BuildLifecycleStopReminder(repo)
 }
 
+func OwnershipCleanupHumanGate(req HookToolUseLifecycleRequest) (string, bool) {
+	return lifecycle.OwnershipCleanupHumanGate(req)
+}
+
 func BuildLifecyclePreCompactCapsule(repo string) LifecycleCompactResult {
 	return lifecycle.BuildLifecyclePreCompactCapsule(repo)
 }

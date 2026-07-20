@@ -497,10 +497,12 @@ type IssueOpsExecutionHandoffCleanupReceipt struct {
 }
 
 type IssueOpsExecutionHandoffCleanup struct {
-	Disposition string                                   `json:"disposition"`
-	Reason      string                                   `json:"reason"`
-	ApprovedAt  string                                   `json:"approved_at"`
-	Receipts    []IssueOpsExecutionHandoffCleanupReceipt `json:"receipts,omitempty"`
+	Disposition          string                                   `json:"disposition"`
+	Reason               string                                   `json:"reason"`
+	ApprovedAt           string                                   `json:"approved_at"`
+	ApprovedBySession    *IssueOpsHostSessionIdentity             `json:"approved_by_session,omitempty"`
+	InventoryFingerprint string                                   `json:"inventory_fingerprint,omitempty"`
+	Receipts             []IssueOpsExecutionHandoffCleanupReceipt `json:"receipts,omitempty"`
 }
 
 type IssueOpsOrcaCleanupArtifact struct {

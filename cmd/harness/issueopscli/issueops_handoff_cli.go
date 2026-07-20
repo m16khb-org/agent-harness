@@ -20,6 +20,9 @@ const issueOpsHandoffUsage = `Usage:
   agent-harness issueops handoff acknowledge-context --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd PATH --issue-url URL --plan-sha256 SHA --understanding TEXT --scope-confirmation TEXT [--agent-id ID] [--json]
   agent-harness issueops handoff finish --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --outcome completed|failed [evidence flags] [--no-change --verification RESULT] [--json]
   agent-harness issueops handoff complete --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd WORKER_PATH --final-head SHA --turing-report PATH --verification RESULT [--changed-file PATH] [--json]
+  agent-harness issueops handoff cleanup-preview --id ID --host HOST --session-id SESSION --source-cwd PATH [--agent-id ID] [--json]
+  agent-harness issueops handoff cleanup-approve --id ID --host HOST --session-id SESSION --source-cwd PATH --inventory-fingerprint SHA --disposition close-owner|remove-local --reason TEXT --confirm [--agent-id ID] [--json]
+  agent-harness issueops handoff cleanup-record --id ID --host HOST --session-id SESSION --source-cwd PATH --step STEP [--agent-id ID] [--json]
   agent-harness issueops handoff accept --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --final-head SHA --host HOST --session-id SESSION --source-cwd PATH [--agent-id ID] [--json]
   agent-harness issueops handoff publish --id ID --host HOST --session-id SESSION [--cwd WORKER_PATH|--source-cwd SOURCE_PATH] [--agent-id ID] [--approve-legacy-coordinator-seal] --confirm [--json]
   agent-harness issueops handoff codex-hooks-list --id ID --json
@@ -41,6 +44,12 @@ func runIssueOpsHandoff(args []string) error {
 		return runIssueOpsHandoffFinish(args[1:])
 	case "complete":
 		return runIssueOpsHandoffComplete(args[1:])
+	case "cleanup-preview":
+		return runIssueOpsHandoffCleanupPreview(args[1:])
+	case "cleanup-approve":
+		return runIssueOpsHandoffCleanupApprove(args[1:])
+	case "cleanup-record":
+		return runIssueOpsHandoffCleanupRecord(args[1:])
 	case "accept":
 		return runIssueOpsHandoffAccept(args[1:])
 	case "publish":
@@ -216,6 +225,56 @@ func runIssueOpsHandoffComplete(args []string) error {
 		ID: *common.id, Attempt: *common.attempt, OwnershipEpoch: *common.epoch, ContextSHA256: *common.context,
 		Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd, FinalHead: *finalHead, ChangedFiles: changedFiles, TuringReportPath: *turingReport, Verification: verification,
 	}, issueOpsWorkerDoneProjectionClient())
+	return printIssueOpsResult(record, *jsonOut, err)
+}
+
+func runIssueOpsHandoffCleanupPreview(args []string) error {
+	fs := flag.NewFlagSet("issueops handoff cleanup-preview", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	host := fs.String("host", "", "native source host")
+	sessionID := fs.String("session-id", "", "native source session id")
+	agentID := fs.String("agent-id", "", "native source agent id")
+	sourceCWD := fs.String("source-cwd", "", "exact source checkout cwd")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	result, err := core.PreviewIssueOpsOwnershipCleanup(core.IssueOpsStateRoot(), core.IssueOpsOwnershipCleanupPreviewRequest{ID: *id, Host: *host, Session: *sessionID, AgentID: *agentID, CWD: *sourceCWD})
+	return printIssueOpsHandoffValue(result, *jsonOut, err)
+}
+
+func runIssueOpsHandoffCleanupApprove(args []string) error {
+	fs := flag.NewFlagSet("issueops handoff cleanup-approve", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	host := fs.String("host", "", "native source host")
+	sessionID := fs.String("session-id", "", "native source session id")
+	agentID := fs.String("agent-id", "", "native source agent id")
+	sourceCWD := fs.String("source-cwd", "", "exact source checkout cwd")
+	fingerprint := fs.String("inventory-fingerprint", "", "exact cleanup preview fingerprint")
+	disposition := fs.String("disposition", "", "close-owner or remove-local")
+	reason := fs.String("reason", "", "human cleanup direction")
+	confirm := fs.Bool("confirm", false, "confirm human-selected cleanup authority")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	record, err := core.ApproveIssueOpsOwnershipCleanup(core.IssueOpsStateRoot(), core.IssueOpsOwnershipCleanupApproveRequest{IssueOpsOwnershipCleanupPreviewRequest: core.IssueOpsOwnershipCleanupPreviewRequest{ID: *id, Host: *host, Session: *sessionID, AgentID: *agentID, CWD: *sourceCWD}, InventoryFingerprint: *fingerprint, Disposition: *disposition, Reason: *reason, Confirm: *confirm})
+	return printIssueOpsResult(record, *jsonOut, err)
+}
+
+func runIssueOpsHandoffCleanupRecord(args []string) error {
+	fs := flag.NewFlagSet("issueops handoff cleanup-record", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	host := fs.String("host", "", "native source host")
+	sessionID := fs.String("session-id", "", "native source session id")
+	agentID := fs.String("agent-id", "", "native source agent id")
+	sourceCWD := fs.String("source-cwd", "", "exact source checkout cwd")
+	step := fs.String("step", "", "ordered cleanup receipt step")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	record, err := core.RecordIssueOpsOwnershipCleanup(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsOwnershipCleanupRecordRequest{IssueOpsOwnershipCleanupPreviewRequest: core.IssueOpsOwnershipCleanupPreviewRequest{ID: *id, Host: *host, Session: *sessionID, AgentID: *agentID, CWD: *sourceCWD}, Step: *step}, orca.New())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 

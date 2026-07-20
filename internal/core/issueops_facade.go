@@ -56,6 +56,10 @@ type IssueOpsHandoffFinishRequest = issueops.IssueOpsHandoffFinishRequest
 type IssueOpsHandoffAcceptRequest = issueops.IssueOpsHandoffAcceptRequest
 type IssueOpsHandoffRecoverRequest = issueops.IssueOpsHandoffRecoverRequest
 type IssueOpsHandoffRecoverResult = issueops.IssueOpsHandoffRecoverResult
+type IssueOpsOwnershipCleanupPreviewRequest = issueops.IssueOpsOwnershipCleanupPreviewRequest
+type IssueOpsOwnershipCleanupPreview = issueops.IssueOpsOwnershipCleanupPreview
+type IssueOpsOwnershipCleanupApproveRequest = issueops.IssueOpsOwnershipCleanupApproveRequest
+type IssueOpsOwnershipCleanupRecordRequest = issueops.IssueOpsOwnershipCleanupRecordRequest
 type IssueOpsHandoffPublishRequest = issueops.IssueOpsHandoffPublishRequest
 type IssueOpsHandoffPublicationReader = issueops.IssueOpsHandoffPublicationReader
 type GitIssueOpsHandoffPublicationReader = issueops.GitIssueOpsHandoffPublicationReader
@@ -380,6 +384,18 @@ func FinishIssueOpsHandoffWithProjection(ctx context.Context, stateRoot string, 
 
 func CompleteIssueOpsOwnershipTransferWithProjection(ctx context.Context, stateRoot string, req IssueOpsHandoffFinishRequest, client IssueOpsWorkerDoneProjectionClient) (IssueOpsRecord, error) {
 	return issueops.CompleteIssueOpsOwnershipTransferWithProjection(ctx, stateRoot, req, client)
+}
+
+func PreviewIssueOpsOwnershipCleanup(stateRoot string, req IssueOpsOwnershipCleanupPreviewRequest) (IssueOpsOwnershipCleanupPreview, error) {
+	return issueops.PreviewIssueOpsOwnershipCleanup(stateRoot, req)
+}
+
+func ApproveIssueOpsOwnershipCleanup(stateRoot string, req IssueOpsOwnershipCleanupApproveRequest) (IssueOpsRecord, error) {
+	return issueops.ApproveIssueOpsOwnershipCleanup(stateRoot, req)
+}
+
+func RecordIssueOpsOwnershipCleanup(ctx context.Context, stateRoot string, req IssueOpsOwnershipCleanupRecordRequest, client any) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsOwnershipCleanup(ctx, stateRoot, req, client)
 }
 
 func AcceptIssueOpsHandoff(stateRoot string, req IssueOpsHandoffAcceptRequest) (IssueOpsRecord, error) {

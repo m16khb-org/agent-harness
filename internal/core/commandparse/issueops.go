@@ -155,6 +155,12 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 			r[name] = true
 		}
 		return values, b("--json"), r, true
+	case "handoff cleanup-preview":
+		return v("--id", "--host", "--session-id", "--agent-id", "--source-cwd"), b("--json"), r, true
+	case "handoff cleanup-approve":
+		return v("--id", "--host", "--session-id", "--agent-id", "--source-cwd", "--inventory-fingerprint", "--disposition", "--reason"), b("--confirm", "--json"), r, true
+	case "handoff cleanup-record":
+		return v("--id", "--host", "--session-id", "--agent-id", "--source-cwd", "--step"), b("--json"), r, true
 	case "heartbeat":
 		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id"), b("--json"), r, true
 	default:

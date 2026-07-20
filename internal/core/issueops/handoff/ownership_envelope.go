@@ -64,7 +64,11 @@ func validateOwnershipEnvelope(record model.IssueOpsRecord) error {
 		if !validWorkerSession(h.OwnerSession) || !validOwnershipOrientation(record, h.Orientation) || h.Completion == nil {
 			return fmt.Errorf("ownership terminal recovery requires owner completion")
 		}
-	case StateCleanupExecuting, StateClosed:
+	case StateCleanupExecuting:
+		if !validWorkerSession(h.OwnerSession) || !validOwnershipOrientation(record, h.Orientation) || h.Completion == nil || h.Cleanup == nil || !validWorkerSession(h.Cleanup.ApprovedBySession) || !sha256Pattern.MatchString(h.Cleanup.InventoryFingerprint) {
+			return fmt.Errorf("ownership cleanup execution requires explicit human approval")
+		}
+	case StateClosed:
 		if !validWorkerSession(h.OwnerSession) || !validOwnershipOrientation(record, h.Orientation) || h.Completion == nil {
 			return fmt.Errorf("ownership terminal state requires owner completion")
 		}

@@ -433,6 +433,15 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 			Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), CWD: argmap.String(args, "cwd"), FinalHead: argmap.String(args, "final_head"), ChangedFiles: argmap.StringSlice(args, "changed_files"), TuringReportPath: argmap.String(args, "turing_report_path"), Verification: argmap.StringSlice(args, "verification"),
 		}, IssueOpsWorkerDoneProjectionClient())
 		return issueOpsMCPOutcome(result, err, "IssueOps ownership completion failed")
+	case "cleanup-preview":
+		result, err := core.PreviewIssueOpsOwnershipCleanup(core.IssueOpsStateRoot(), core.IssueOpsOwnershipCleanupPreviewRequest{ID: id, Host: argmap.String(args, "host"), Session: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), CWD: argmap.String(args, "source_cwd")})
+		return issueOpsMCPOutcome(result, err, "IssueOps ownership cleanup preview failed")
+	case "cleanup-approve":
+		result, err := core.ApproveIssueOpsOwnershipCleanup(core.IssueOpsStateRoot(), core.IssueOpsOwnershipCleanupApproveRequest{IssueOpsOwnershipCleanupPreviewRequest: core.IssueOpsOwnershipCleanupPreviewRequest{ID: id, Host: argmap.String(args, "host"), Session: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), CWD: argmap.String(args, "source_cwd")}, InventoryFingerprint: argmap.String(args, "inventory_fingerprint"), Disposition: argmap.String(args, "disposition"), Reason: argmap.String(args, "reason"), Confirm: argmap.Bool(args, "confirm")})
+		return issueOpsMCPOutcome(result, err, "IssueOps ownership cleanup approval failed")
+	case "cleanup-record":
+		result, err := core.RecordIssueOpsOwnershipCleanup(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsOwnershipCleanupRecordRequest{IssueOpsOwnershipCleanupPreviewRequest: core.IssueOpsOwnershipCleanupPreviewRequest{ID: id, Host: argmap.String(args, "host"), Session: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), CWD: argmap.String(args, "source_cwd")}, Step: argmap.String(args, "step")}, orca.New())
+		return issueOpsMCPOutcome(result, err, "IssueOps ownership cleanup receipt failed")
 	case "accept":
 		result, err := core.AcceptIssueOpsHandoff(core.IssueOpsStateRoot(), core.IssueOpsHandoffAcceptRequest{
 			ID: id, Attempt: argmap.Int(args, "attempt", 0), OwnershipEpoch: argmap.String(args, "ownership_epoch"), ContextSHA256: argmap.String(args, "context_sha256"), FinalHead: argmap.String(args, "final_head"),
@@ -452,6 +461,6 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 		}, orca.New(), core.IssueOpsHandoffPrepareClock{})
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff recover failed")
 	default:
-		return issueOpsMCPOutcome(nil, fmt.Errorf("handoff action must be start, claim, acknowledge-context, finish, complete, accept, publish, or recover"), "IssueOps handoff failed")
+		return issueOpsMCPOutcome(nil, fmt.Errorf("handoff action must be start, claim, acknowledge-context, finish, complete, cleanup-preview, cleanup-approve, cleanup-record, accept, publish, or recover"), "IssueOps handoff failed")
 	}
 }

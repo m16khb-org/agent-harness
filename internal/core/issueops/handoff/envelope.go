@@ -514,7 +514,7 @@ func validateHandoffExternalStringBounds(h *model.IssueOpsExecutionHandoff) erro
 			boundedHandoffString{"cleanup reason", h.Cleanup.Reason, 4096},
 			boundedHandoffString{"cleanup approved timestamp", h.Cleanup.ApprovedAt, 128},
 		)
-		if len(h.Cleanup.Receipts) > 3 {
+		if h.ProtocolVersion != OwnershipTransferProtocolVersion && len(h.Cleanup.Receipts) > 3 {
 			return fmt.Errorf("cleanup receipts exceed 3 entries")
 		}
 		for _, receipt := range h.Cleanup.Receipts {

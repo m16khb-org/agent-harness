@@ -114,6 +114,41 @@ func TestOwnershipOwnerOnlyCompletesIntoHumanCleanupBoundary(t *testing.T) {
 	}
 }
 
+func TestOwnershipCleanupAllowsFreshSourceButRejectsCompletedOwner(t *testing.T) {
+	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateCleanupPendingHumanDecision)
+	fresh := handoffEditRequest(record, repo, "codex", "fresh-source", "")
+	fresh.AgentID, fresh.Tool = "source-agent", "mcp__agent_harness__issueops_handoff"
+	fresh.ToolInput = map[string]any{"action": "cleanup-preview", "id": record.ID, "host": "codex", "session_id": "fresh-source", "agent_id": "source-agent", "source_cwd": repo}
+	if got := BuildLifecyclePreToolUseDecision(fresh); got.Decision != "allow" {
+		t.Fatalf("fresh exact source cleanup preview blocked: %#v", got)
+	}
+	fresh.ToolInput = map[string]any{"action": "cleanup-approve", "id": record.ID, "host": "codex", "session_id": "fresh-source", "agent_id": "source-agent", "source_cwd": repo, "inventory_fingerprint": strings.Repeat("a", 64), "disposition": "close-owner", "reason": "human selected retained workspace", "confirm": true}
+	if got := BuildLifecyclePreToolUseDecision(fresh); got.Decision != "allow" {
+		t.Fatalf("fresh exact source cleanup approval blocked: %#v", got)
+	}
+
+	owner := handoffEditRequest(record, worker, "claude", "owner-session", "")
+	owner.AgentID, owner.Tool = "owner-agent", "mcp__agent_harness__issueops_handoff"
+	owner.ToolInput = map[string]any{"action": "cleanup-preview", "id": record.ID, "host": "claude", "session_id": "owner-session", "agent_id": "owner-agent", "source_cwd": repo}
+	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "block" {
+		t.Fatalf("completed owner became cleanup candidate: %#v", got)
+	}
+}
+
+func TestOwnershipCleanupPendingStopsAtHumanSourceGate(t *testing.T) {
+	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateCleanupPendingHumanDecision)
+	record.Phase = IssueOpsPhaseDone
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	if id, ok := OwnershipCleanupHumanGate(HookToolUseLifecycleRequest{Repo: repo, CWD: repo, Host: "codex", SessionID: "fresh-source", AgentID: "source-agent"}); !ok || id != record.ID {
+		t.Fatalf("fresh source must see human cleanup gate: id=%q ok=%v", id, ok)
+	}
+	if _, ok := OwnershipCleanupHumanGate(HookToolUseLifecycleRequest{Repo: repo, CWD: repo, Host: "claude", SessionID: "owner-session", AgentID: "owner-agent"}); ok {
+		t.Fatal("completed owner must not receive cleanup authority through Stop")
+	}
+}
+
 func TestOwnershipRoleAuthorityMatrix(t *testing.T) {
 	_, orienting, worker := ownershipLifecycleRecord(t, handoff.StateOwnerOrienting)
 	target := filepath.Join(worker, "internal", "owner.go")
