@@ -105,7 +105,7 @@ lint_diagnose(command_argv: ["go", "test", "./pkg/auth", "-run", "TestLoginFlow"
 
 ---
 
-## Step 3: ISOLATE — Narrow the Cause (Three Strategies)
+## Step 3: ISOLATE — Narrow the Cause (Four Strategies)
 
 Choose the strategy that matches the failure shape:
 
@@ -250,7 +250,7 @@ Record a Reflexion-style lesson so future debugging sessions can reference this 
 
 ```bash
 agent-harness self-augment lesson \
-  --candidate hopper-debug \
+  --candidate self-verify-progress-heartbeat \
   --lesson "Auth middleware init before config load → 401 for all requests. Fix: ensure middleware init runs after config loader in the boot sequence." \
   --next-action "Audit all middleware init calls for config dependency ordering" \
   --severity warning \
@@ -316,6 +316,7 @@ Some bug patterns transcend language boundaries. Recognize them regardless of sy
 | "Everything is broken" (broad failure) | Config/init/infrastructure change | Strategy B: Divide & Conquer |
 | "Sometimes it fails" (flaky) | Race condition, timeout, stale state | Strategy C: Trace Diff |
 | "Expected X, got Y" (assertion) | Logic error in the assertion's code or test | Strategy B, then Step 2 |
+| Golden/snapshot mismatch | Non-hermetic fixture or changed serialized output | Strategy D: Snapshot/Golden Diff |
 | "Connection refused" / timeout | Service not running, port mismatch | Check process list, port bindings |
 | "Import cycle" / build failure | Circular dependency introduced | Check git diff for new imports |
 | "Panic / nil pointer" | Missing nil check, wrong init order | Read stack trace → locate line |

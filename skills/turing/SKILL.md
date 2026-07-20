@@ -35,6 +35,10 @@ Skipped checks: <checks skipped with explicit reason; "none" if all ran>
 
 For a supervised execution lease, render the named ORCA criteria (for the current contract, `ORCA-01` through `ORCA-14`) as binary observations. The handoff result report must contain the evidence artifact paths and cleanup receipts required by `issueops handoff finish`.
 
+## Supervised IssueOps Handoff
+
+For the canonical handoff lifecycle, ownership fence, command forms, and cleanup protocol, follow `skills/issueops/references/orca-handoff.md`. Keep this skill's handoff evidence proportionate to the recorded risk decision and use the reference rather than duplicating lifecycle instructions here.
+
 Before dispatch, verify that the linked supervised plan states the current issue and cycle intent and its acceptance criteria directly, including exact branch/path/base, exact bounded worker scope (report-only only when that is the current cycle's declared scope), claim/finish/accept commands, verification, and cleanup. Never link an unrelated legacy plan as readiness evidence. The coordinator plan commit must contain only that current-cycle Markdown file; after a clean exact-branch checkpoint, `link-plan` moves the attempt base head to that commit so the worker's changed-file evidence excludes the coordinator plan.
 
 Coordinator plan file edits must originate from the source coordinator root, with both hook CWD and repo identity equal to `record.Repo`. A feature-worktree session must not steer a child plan; stop and let the main source coordinator perform the plan edit, plan-only commit, and link.
@@ -191,8 +195,8 @@ In full mode, build a real-usage scenario for every criterion through ONE of the
 |---|---------|------|-------------------|
 | 1 | **HTTP call** | `curl -i` or Playwright APIRequestContext | status line + headers + body |
 | 2 | **tmux** | `tmux new-session -d -s turing-qa-<criterion>`, `send-keys`, `capture-pane -pS -E -` | transcript file |
-| 3 | **Browser use** | Chrome / agent-browser | action log + screenshot path |
-| 4 | **Computer use** | AppleScript, xdotool, computer-use agent | action log + screenshot |
+| 3 | **Browser use** | current host's available browser tool | action log + screenshot path |
+| 4 | **Computer use** | AppleScript on macOS; `xdotool` on Linux only; current host computer-use tool when available | action log + screenshot |
 
 **Auxiliary surfaces** (pure CLI stdout, DB state diff, parsed config dump) are valid for CLI- or data-shaped criteria but NEVER replace a channel scenario for user-facing behavior. `--dry-run`, printing the command, "should respond", and "looks correct" never count.
 

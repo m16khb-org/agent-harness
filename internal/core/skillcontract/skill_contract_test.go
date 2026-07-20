@@ -27,6 +27,15 @@ func assertSkillContains(t *testing.T, skillName string, phrases []string) {
 	}
 }
 
+func readRepoFileForTest(t *testing.T, relPath string) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("..", "..", "..", relPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
 func TestKarpathySkillPinsPrivacyAndProportionalityContract(t *testing.T) {
 	assertSkillContains(t, "karpathy", []string{
 		// CoT privacy guardrail (the holdout-fixed boundary).
@@ -71,6 +80,60 @@ func TestBernersLeeSkillPrefersHarnessWebFetchContract(t *testing.T) {
 		"Report `auth_required`, `paywalled`, `challenge`, or `blocked`",
 		"Do not add host-specific fictional tools",
 	})
+}
+
+func TestP1PioneerSkillCorrectnessContracts(t *testing.T) {
+	assertSkillContains(t, "berners-lee", []string{
+		"high-volume-exploration",
+		"devils-advocate-review",
+		"parallel-independent-research",
+		"cross-verification-consensus",
+	})
+	assertSkillContains(t, "brooks", []string{
+		"## IssueOps Integration",
+		"agent-harness issueops devils-advocate review",
+		"issueops_record_devils_advocate_review",
+	})
+	assertSkillContains(t, "karpathy", []string{
+		"Shannon measures generated code artifacts, not prompt quality.",
+	})
+	turing := readSkillForTest(t, "turing")
+	for _, want := range []string{
+		"skills/issueops/references/orca-handoff.md",
+		"current host's available browser tool",
+		"AppleScript on macOS",
+		"`xdotool` on Linux only",
+	} {
+		if !strings.Contains(turing, want) {
+			t.Fatalf("turing SKILL.md missing P1 contract phrase %q", want)
+		}
+	}
+	if strings.Contains(turing, "Chrome / agent-browser") {
+		t.Fatal("turing SKILL.md must not name the nonexistent agent-browser tool")
+	}
+	rebase := readRepoFileForTest(t, filepath.Join("skills", "torvalds", "references", "rebase-protocol.md"))
+	for _, want := range []string{"Backup refs persist until explicitly deleted.", "git branch -D <backup-ref>"} {
+		if !strings.Contains(rebase, want) {
+			t.Fatalf("rebase protocol missing P1 retention phrase %q", want)
+		}
+	}
+	vonNeumann := readSkillForTest(t, "von-neumann")
+	if strings.Contains(vonNeumann, "task(subagent_type=") {
+		t.Fatal("von-neumann SKILL.md must not prescribe a host-specific task pseudo-API")
+	}
+	if !strings.Contains(vonNeumann, "current host's delegation tool") {
+		t.Fatal("von-neumann SKILL.md must use host-neutral delegation wording")
+	}
+	hopper := readSkillForTest(t, "hopper")
+	for _, want := range []string{"Four Strategies", "self-verify-progress-heartbeat", "Strategy D: Snapshot/Golden Diff"} {
+		if !strings.Contains(hopper, want) {
+			t.Fatalf("hopper SKILL.md missing P1 routing phrase %q", want)
+		}
+	}
+	dijkstra := readSkillForTest(t, "dijkstra")
+	if !strings.Contains(dijkstra, "```text\n   Equivalent in any language") {
+		t.Fatal("dijkstra SKILL.md must keep scaling-test interpretation inside its fenced block")
+	}
 }
 
 func TestAtomicCommitPushSkillPinsStagingAndPushSafetyContract(t *testing.T) {

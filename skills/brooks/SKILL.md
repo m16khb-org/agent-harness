@@ -82,6 +82,16 @@ Return a structured verdict, not prose:
 
 If the plan survives all five gates, say so plainly and return `proceed` — a devil's advocate that never approves anything is noise. Earned approval is a real signal.
 
+## IssueOps Integration
+
+When an IssueOps cycle records this independent review, use the implemented CLI contract:
+
+```bash
+agent-harness issueops devils-advocate review --id ID --verdict pass|revise|stop [--finding TEXT]... [--waive --waiver-rationale TEXT] --json
+```
+
+The equivalent MCP tool is `issueops_record_devils_advocate_review` with `id`, `verdict`, optional `findings`, and the explicit waiver fields. A `revise` or unwaived `stop` verdict remains recorded evidence for the cycle's regress-and-replan path; it is not permission to implement the reviewed plan.
+
 ## Rationalizations Brooks Refuses (the author will offer these)
 
 | Author says | Brooks's reply |
