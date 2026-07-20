@@ -192,6 +192,11 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 		return worker && currentWorkerBranchMatches(record) && stateAllowed && exactFenceFlags(flags, record) && nativeSessionMatches(req, session) && eventIdentityFlagsMatch(req, flags)
 	case "handoff finish":
 		return worker && currentWorkerBranchMatches(record) && exactFenceFlags(flags, record) && nativeSessionMatches(req, h.WorkerSession) && eventIdentityFlagsMatch(req, flags) && exactNoChangeFinishFlags(flags)
+	case "handoff complete":
+		cwd, cwdOK := oneFlag(flags, "--cwd")
+		_, finalHeadOK := oneFlag(flags, "--final-head")
+		_, reportOK := oneFlag(flags, "--turing-report")
+		return worker && currentWorkerBranchMatches(record) && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && handoff.OwnershipTransferOwnerStateAllows("complete", h.State) && exactFenceFlags(flags, record) && nativeSessionMatches(req, h.OwnerSession) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && finalHeadOK && reportOK && len(flags["--verification"]) > 0
 	default:
 		return false
 	}
@@ -1524,6 +1529,11 @@ func allowedHandoffMCPTool(req HookToolUseLifecycleRequest, record IssueOpsRecor
 		return worker && currentWorkerBranchMatches(record) && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && handoff.OwnershipTransferOwnerStateAllows("acknowledge-context", h.State) && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && issueOK && strings.TrimSpace(issueURL) != "" && planOK && strings.TrimSpace(planSHA) != "" && understandingOK && strings.TrimSpace(understanding) != "" && scopeOK && strings.TrimSpace(scope) != ""
 	case "finish":
 		return worker && currentWorkerBranchMatches(record) && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.WorkerSession)
+	case "complete":
+		cwd, cwdOK := mcpString(input, "cwd")
+		_, headOK := mcpString(input, "final_head")
+		_, reportOK := mcpString(input, "turing_report_path")
+		return worker && currentWorkerBranchMatches(record) && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && handoff.OwnershipTransferOwnerStateAllows("complete", h.State) && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && headOK && reportOK && mcpNonEmptyStringList(input, "verification")
 	default:
 		return false
 	}

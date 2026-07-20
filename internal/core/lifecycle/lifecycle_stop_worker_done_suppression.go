@@ -35,14 +35,21 @@ func SuppressStopNextActionForCompletedWorker(req HookToolUseLifecycleRequest) b
 	cwd := cleanAbsPath(req.CWD)
 	recordWorktree := cleanAbsPath(record.WorktreePath)
 	workerRoot := cleanAbsPath(h.WorkerRoot)
-	if cwd == "" || cwd != recordWorktree || recordWorktree != workerRoot || !nativeSessionMatches(req, h.WorkerSession) {
+	session := h.WorkerSession
+	if h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
+		session = h.OwnerSession
+	}
+	if cwd == "" || cwd != recordWorktree || recordWorktree != workerRoot || !nativeSessionMatches(req, session) {
 		return false
 	}
 	completed := h.State == handoff.StateSubmitted || (h.State == handoff.StateClosed && h.ClosedDisposition == handoff.DispositionAccepted)
+	if h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
+		completed = h.State == handoff.StateCleanupPendingHumanDecision && h.Completion != nil
+	}
 	if !completed {
 		return false
 	}
-	if h.Result == nil || h.Result.Outcome != handoff.OutcomeCompleted {
+	if h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion && (h.Result == nil || h.Result.Outcome != handoff.OutcomeCompleted) {
 		return false
 	}
 	projection := h.WorkerDoneProjection

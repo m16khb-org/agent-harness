@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/issueops/session"
 )
 
@@ -179,6 +180,12 @@ func forceReleaseLocked(stateRoot, id, reason string) (IssueOpsRecord, error) {
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return record, err
+	}
+	if h := record.ExecutionHandoff; h != nil && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State != handoff.StateClosed {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("force-release cannot change a non-closed ownership-transfer handoff; use the explicit human cleanup flow")
+	}
+	if w := record.ExecutionWorkspace; w != nil && w.State != handoff.StateRecoveryRequired {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("force-release cannot change a live execution workspace; use explicit workspace recovery")
 	}
 	if record.Phase == IssueOpsPhaseDone {
 		return record, nil

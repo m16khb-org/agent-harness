@@ -22,6 +22,8 @@ type Cycle struct {
 	Branch                 string
 	Phase                  string
 	HandoffState           string
+	HandoffProtocolVersion int
+	WorkspaceState         string
 	Attempt                int
 	OwnershipEpoch         string
 	ContextSHA256          string

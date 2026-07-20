@@ -98,7 +98,7 @@ func ProtocolStateRoleAllows(protocol int, role, action, state, closedDispositio
 				return state == StateOwnerOrienting
 			case "heartbeat":
 				return state == StateOwnerOrienting || state == StateOwnerActive
-			case "mutate", "publish", "remote-create":
+			case "mutate", "publish", "remote-create", "complete":
 				return state == StateOwnerActive
 			default:
 				return false

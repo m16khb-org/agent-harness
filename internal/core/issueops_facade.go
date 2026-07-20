@@ -378,6 +378,10 @@ func FinishIssueOpsHandoffWithProjection(ctx context.Context, stateRoot string, 
 	return issueops.FinishIssueOpsHandoffWithProjection(ctx, stateRoot, req, client)
 }
 
+func CompleteIssueOpsOwnershipTransferWithProjection(ctx context.Context, stateRoot string, req IssueOpsHandoffFinishRequest, client IssueOpsWorkerDoneProjectionClient) (IssueOpsRecord, error) {
+	return issueops.CompleteIssueOpsOwnershipTransferWithProjection(ctx, stateRoot, req, client)
+}
+
 func AcceptIssueOpsHandoff(stateRoot string, req IssueOpsHandoffAcceptRequest) (IssueOpsRecord, error) {
 	return issueops.AcceptIssueOpsHandoff(stateRoot, req)
 }

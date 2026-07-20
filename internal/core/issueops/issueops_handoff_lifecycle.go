@@ -45,6 +45,7 @@ type IssueOpsHandoffFinishRequest struct {
 	Host             string   `json:"host"`
 	SessionID        string   `json:"session_id"`
 	AgentID          string   `json:"agent_id,omitempty"`
+	CWD              string   `json:"cwd,omitempty"`
 	Outcome          string   `json:"outcome"`
 	FinalHead        string   `json:"final_head,omitempty"`
 	ChangedFiles     []string `json:"changed_files,omitempty"`

@@ -669,7 +669,7 @@ func isHandoffLifecycleCommand(command string) bool {
 			return false
 		}
 		switch searchrouting.SearchTokenName(tokens[issueops+2]) {
-		case "start", "recover", "accept", "claim", "finish":
+		case "start", "recover", "accept", "claim", "finish", "complete":
 			return true
 		}
 	}

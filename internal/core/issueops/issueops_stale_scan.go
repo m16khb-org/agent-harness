@@ -178,12 +178,20 @@ func issueOpsOperationalCycle(record model.IssueOpsRecord) operationalhealth.Cyc
 
 	handoffRecord := record.ExecutionHandoff
 	cycle.HandoffState = strings.TrimSpace(handoffRecord.State)
+	cycle.HandoffProtocolVersion = handoffRecord.ProtocolVersion
+	if record.ExecutionWorkspace != nil {
+		cycle.WorkspaceState = strings.TrimSpace(record.ExecutionWorkspace.State)
+	}
 	cycle.Attempt = handoffRecord.Attempt
 	cycle.OwnershipEpoch = strings.TrimSpace(handoffRecord.OwnershipEpoch)
 	cycle.ContextSHA256 = strings.TrimSpace(handoffRecord.ContextSHA256)
 	if handoffRecord.WorkerSession != nil {
 		cycle.WorkerSessionID = strings.TrimSpace(handoffRecord.WorkerSession.SessionID)
 		cycle.WorkerAgentID = strings.TrimSpace(handoffRecord.WorkerSession.AgentID)
+	}
+	if handoffRecord.OwnerSession != nil {
+		cycle.WorkerSessionID = strings.TrimSpace(handoffRecord.OwnerSession.SessionID)
+		cycle.WorkerAgentID = strings.TrimSpace(handoffRecord.OwnerSession.AgentID)
 	}
 	if handoffRecord.Orca != nil {
 		cycle.OrcaRuntimeID = strings.TrimSpace(handoffRecord.Orca.RuntimeID)

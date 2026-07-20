@@ -29,6 +29,10 @@ const (
 	// releasable, because the handoff may still own un-reconciled Orca artifacts
 	// (cleanup_only) that an auto-release would abandon. The operator recovers it.
 	CategoryHandoffInconsistent Category = "handoff-nonterminal-on-terminal-phase"
+	// CategoryHumanCleanupPending is a completed ownership-transfer cycle whose
+	// retained resources await an explicit human cleanup decision. It is never
+	// a stale-release candidate.
+	CategoryHumanCleanupPending Category = "human-cleanup-pending"
 )
 
 // Probe supplies the external signals used for classification. Any nil probe is
@@ -65,6 +69,9 @@ type Finding struct {
 // age-only needs-review fallback.
 func Classify(record model.IssueOpsRecord, probe Probe, maxAge time.Duration) (Finding, bool) {
 	if record.Phase == model.IssueOpsPhaseDone {
+		if h := record.ExecutionHandoff; h != nil && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State == handoff.StateCleanupPendingHumanDecision {
+			return Finding{ID: record.ID, Branch: strings.TrimSpace(record.Branch), Phase: string(record.Phase), Category: CategoryHumanCleanupPending, Reasons: []string{"human_cleanup_pending"}, WorktreePath: strings.TrimSpace(record.WorktreePath), Releasable: false}, true
+		}
 		// A done cycle is normally never flagged — except the #2581 blind spot:
 		// a terminal phase whose supervised handoff is still non-terminal. This
 		// combination keeps fencing the source checkout, so report it (never

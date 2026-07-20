@@ -16,9 +16,21 @@ func EvaluateCycleAuthority(cycle Cycle, opts Options) CycleAuthority {
 		return AuthorityUnknown
 	}
 	if phase == "done" || state == "closed" {
+		if cycle.HandoffProtocolVersion == 2 && state != "closed" {
+			if retainedOwnershipIdentityComplete(cycle) {
+				return AuthorityPreserved
+			}
+			return AuthorityUnknown
+		}
 		return AuthorityDead
 	}
-	if state == "claimed" {
+	if cycle.HandoffProtocolVersion == 2 && state != "owner_active" {
+		if retainedOwnershipIdentityComplete(cycle) {
+			return AuthorityPreserved
+		}
+		return AuthorityUnknown
+	}
+	if state == "claimed" || cycle.HandoffProtocolVersion == 2 && state == "owner_active" {
 		if !claimedIdentityComplete(cycle) || opts.Now.IsZero() {
 			return AuthorityUnknown
 		}
@@ -359,11 +371,15 @@ func knownPhase(value string) bool {
 
 func knownHandoffState(value string) bool {
 	switch value {
-	case "", "coordinator_preparing", "dispatched", "claimed", "submitted", "closed", "recovery_required":
+	case "", "coordinator_preparing", "dispatched", "claimed", "submitted", "closed", "recovery_required", "ownership_dispatching", "ownership_dispatched", "owner_orienting", "owner_active", "cleanup_pending_human_decision", "cleanup_executing":
 		return true
 	default:
 		return false
 	}
+}
+
+func retainedOwnershipIdentityComplete(cycle Cycle) bool {
+	return strings.TrimSpace(cycle.ID) != "" && strings.TrimSpace(cycle.Repo) != "" && strings.TrimSpace(cycle.Branch) != "" && strings.TrimSpace(cycle.WorktreePath) != "" && strings.TrimSpace(cycle.OrcaWorktreeID) != ""
 }
 
 func knownTaskStatus(value string) bool {

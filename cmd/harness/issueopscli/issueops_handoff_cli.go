@@ -19,6 +19,7 @@ const issueOpsHandoffUsage = `Usage:
   agent-harness issueops handoff claim --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd PATH --orca-worktree-id ID [--agent-id ID] [--json]
   agent-harness issueops handoff acknowledge-context --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd PATH --issue-url URL --plan-sha256 SHA --understanding TEXT --scope-confirmation TEXT [--agent-id ID] [--json]
   agent-harness issueops handoff finish --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --outcome completed|failed [evidence flags] [--no-change --verification RESULT] [--json]
+  agent-harness issueops handoff complete --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd WORKER_PATH --final-head SHA --turing-report PATH --verification RESULT [--changed-file PATH] [--json]
   agent-harness issueops handoff accept --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --final-head SHA --host HOST --session-id SESSION --source-cwd PATH [--agent-id ID] [--json]
   agent-harness issueops handoff publish --id ID --host HOST --session-id SESSION [--cwd WORKER_PATH|--source-cwd SOURCE_PATH] [--agent-id ID] [--approve-legacy-coordinator-seal] --confirm [--json]
   agent-harness issueops handoff codex-hooks-list --id ID --json
@@ -38,6 +39,8 @@ func runIssueOpsHandoff(args []string) error {
 		return runIssueOpsHandoffAcknowledgeContext(args[1:])
 	case "finish":
 		return runIssueOpsHandoffFinish(args[1:])
+	case "complete":
+		return runIssueOpsHandoffComplete(args[1:])
 	case "accept":
 		return runIssueOpsHandoffAccept(args[1:])
 	case "publish":
@@ -157,6 +160,7 @@ func runIssueOpsHandoffFinish(args []string) error {
 	host := fs.String("host", "", "native host")
 	sessionID := fs.String("session-id", "", "native session id")
 	agentID := fs.String("agent-id", "", "native agent id")
+	cwd := fs.String("cwd", "", "canonical ownership-transfer worker cwd")
 	outcome := fs.String("outcome", "", "completed or failed")
 	finalHead := fs.String("final-head", "", "final git head")
 	turingReport := fs.String("turing-report", "", "Turing evidence report path")
@@ -174,7 +178,7 @@ func runIssueOpsHandoffFinish(args []string) error {
 	}
 	req := core.IssueOpsHandoffFinishRequest{
 		ID: *common.id, Attempt: *common.attempt, OwnershipEpoch: *common.epoch, ContextSHA256: *common.context,
-		Host: *host, SessionID: *sessionID, AgentID: *agentID, Outcome: *outcome, FinalHead: *finalHead,
+		Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd, Outcome: *outcome, FinalHead: *finalHead,
 		ChangedFiles: changedFiles, TuringReportPath: *turingReport, Verification: verification, CleanupReceipts: cleanup,
 		EvidenceDigest: *evidenceDigest, TaskID: *taskID, DispatchID: *dispatchID,
 	}
@@ -189,6 +193,29 @@ func runIssueOpsHandoffFinish(args []string) error {
 		}
 	}
 	record, err := core.FinishIssueOpsHandoffWithProjection(context.Background(), core.IssueOpsStateRoot(), req, issueOpsWorkerDoneProjectionClient())
+	return printIssueOpsResult(record, *jsonOut, err)
+}
+
+func runIssueOpsHandoffComplete(args []string) error {
+	fs := flag.NewFlagSet("issueops handoff complete", flag.ContinueOnError)
+	common := addIssueOpsHandoffFenceFlags(fs)
+	host := fs.String("host", "", "native host")
+	sessionID := fs.String("session-id", "", "native session id")
+	agentID := fs.String("agent-id", "", "native agent id")
+	cwd := fs.String("cwd", "", "canonical owner worker cwd")
+	finalHead := fs.String("final-head", "", "published final git head")
+	turingReport := fs.String("turing-report", "", "Turing evidence report path")
+	var changedFiles, verification repeatedFlag
+	fs.Var(&changedFiles, "changed-file", "changed file path")
+	fs.Var(&verification, "verification", "verification command/result")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	record, err := core.CompleteIssueOpsOwnershipTransferWithProjection(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffFinishRequest{
+		ID: *common.id, Attempt: *common.attempt, OwnershipEpoch: *common.epoch, ContextSHA256: *common.context,
+		Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd, FinalHead: *finalHead, ChangedFiles: changedFiles, TuringReportPath: *turingReport, Verification: verification,
+	}, issueOpsWorkerDoneProjectionClient())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 

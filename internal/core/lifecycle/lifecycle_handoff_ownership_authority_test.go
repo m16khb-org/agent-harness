@@ -87,6 +87,33 @@ func TestOwnershipOwnerOnlyPublishesAndCreatesRemotePR(t *testing.T) {
 	}
 }
 
+func TestOwnershipOwnerOnlyCompletesIntoHumanCleanupBoundary(t *testing.T) {
+	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+	owner := handoffEditRequest(record, worker, "claude", "owner-session", "")
+	owner.AgentID, owner.Tool = "owner-agent", "mcp__agent_harness__issueops_handoff"
+	owner.ToolInput = map[string]any{
+		"action": "complete", "id": record.ID, "attempt": 1, "ownership_epoch": record.ExecutionHandoff.OwnershipEpoch,
+		"context_sha256": record.ExecutionHandoff.ContextSHA256, "host": "claude", "session_id": "owner-session", "agent_id": "owner-agent", "cwd": worker,
+		"final_head": strings.Repeat("f", 40), "turing_report_path": "plans/owner.md", "verification": []any{"go test ./..."},
+	}
+	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "allow" {
+		t.Fatalf("exact owner completion blocked: %#v", got)
+	}
+
+	source := handoffEditRequest(record, repo, "claude", "coordinator-session", "")
+	source.AgentID, source.Tool, source.ToolInput = "coordinator-agent", "mcp__agent_harness__issueops_handoff", owner.ToolInput
+	if got := BuildLifecyclePreToolUseDecision(source); got.Decision != "block" {
+		t.Fatalf("source session regained owner completion authority: %#v", got)
+	}
+
+	cli := handoffEditRequest(record, worker, "claude", "owner-session", "")
+	cli.AgentID, cli.Tool = "owner-agent", "Bash"
+	cli.Command = "agent-harness issueops handoff complete --id " + record.ID + " --attempt 1 --ownership-epoch " + record.ExecutionHandoff.OwnershipEpoch + " --context-sha256 " + record.ExecutionHandoff.ContextSHA256 + " --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --final-head " + strings.Repeat("f", 40) + " --turing-report plans/owner.md --verification 'go test ./...'"
+	if got := BuildLifecyclePreToolUseDecision(cli); got.Decision != "allow" {
+		t.Fatalf("exact owner complete command blocked: %#v", got)
+	}
+}
+
 func TestOwnershipRoleAuthorityMatrix(t *testing.T) {
 	_, orienting, worker := ownershipLifecycleRecord(t, handoff.StateOwnerOrienting)
 	target := filepath.Join(worker, "internal", "owner.go")

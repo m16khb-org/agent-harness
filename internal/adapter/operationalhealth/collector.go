@@ -430,12 +430,20 @@ func cycleFromRecord(record issueops.IssueOpsRecord) (corehealth.Cycle, []corehe
 	}
 	handoff := record.ExecutionHandoff
 	cycle.HandoffState = strings.TrimSpace(handoff.State)
+	cycle.HandoffProtocolVersion = handoff.ProtocolVersion
+	if record.ExecutionWorkspace != nil {
+		cycle.WorkspaceState = strings.TrimSpace(record.ExecutionWorkspace.State)
+	}
 	cycle.Attempt = handoff.Attempt
 	cycle.OwnershipEpoch = strings.TrimSpace(handoff.OwnershipEpoch)
 	cycle.ContextSHA256 = strings.TrimSpace(handoff.ContextSHA256)
 	if handoff.WorkerSession != nil {
 		cycle.WorkerSessionID = strings.TrimSpace(handoff.WorkerSession.SessionID)
 		cycle.WorkerAgentID = strings.TrimSpace(handoff.WorkerSession.AgentID)
+	}
+	if handoff.OwnerSession != nil {
+		cycle.WorkerSessionID = strings.TrimSpace(handoff.OwnerSession.SessionID)
+		cycle.WorkerAgentID = strings.TrimSpace(handoff.OwnerSession.AgentID)
 	}
 	if handoff.Orca != nil {
 		cycle.OrcaRuntimeID = strings.TrimSpace(handoff.Orca.RuntimeID)
@@ -474,6 +482,7 @@ func parsePersistedTime(value, id, field string, problems []corehealth.Inventory
 
 func recordOwnsOrca(record issueops.IssueOpsRecord) bool {
 	return record.ExecutionHandoff != nil && record.ExecutionHandoff.Orca != nil ||
+		record.ExecutionWorkspace != nil && record.ExecutionWorkspace.Orca != nil ||
 		record.LegacyWorktreeMigration != nil && record.LegacyWorktreeMigration.Orca != nil
 }
 

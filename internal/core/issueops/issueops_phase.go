@@ -161,7 +161,7 @@ func issueOpsTerminalPhaseHandoffGuard(record IssueOpsRecord, phase IssueOpsPhas
 		return nil
 	}
 	h := record.ExecutionHandoff
-	if h == nil || h.State == handoff.StateClosed {
+	if h == nil || h.State == handoff.StateClosed || h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State == handoff.StateCleanupPendingHumanDecision && h.Completion != nil {
 		return nil
 	}
 	return fmt.Errorf("cannot advance to done while the supervised handoff is non-terminal (handoff state=%s); recover it first from the source checkout: agent-harness issueops handoff recover --id %s --action <cancel|finalize-cancel|approve-cleanup> --confirm", h.State, record.ID)

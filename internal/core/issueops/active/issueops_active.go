@@ -26,7 +26,7 @@ func CycleForBranch(store Store, repo, branch string) (model.IssueOpsRecord, boo
 	if err != nil {
 		return model.IssueOpsRecord{}, false
 	}
-	if record.Phase == model.IssueOpsPhaseDone {
+	if record.Phase == model.IssueOpsPhaseDone && !retainsOwnershipTransferAuthority(record) {
 		return model.IssueOpsRecord{}, false
 	}
 	if planBranchMismatchesRecord(record) {
@@ -79,7 +79,7 @@ func LinkedWorktreeCyclesForRepo(store Store, repo string) []model.IssueOpsRecor
 		if err != nil {
 			continue
 		}
-		if record.Phase == model.IssueOpsPhaseDone {
+		if record.Phase == model.IssueOpsPhaseDone && !retainsOwnershipTransferAuthority(record) {
 			continue
 		}
 		if planBranchMismatchesRecord(record) {
@@ -108,6 +108,11 @@ func LinkedWorktreeCyclesForRepo(store Store, repo string) []model.IssueOpsRecor
 		return records[i].ID < records[j].ID
 	})
 	return records
+}
+
+func retainsOwnershipTransferAuthority(record model.IssueOpsRecord) bool {
+	h := record.ExecutionHandoff
+	return h != nil && h.ProtocolVersion == 2 && h.State != "closed"
 }
 
 // NonDoneCyclesForRepo returns every non-done cycle whose record.Repo matches

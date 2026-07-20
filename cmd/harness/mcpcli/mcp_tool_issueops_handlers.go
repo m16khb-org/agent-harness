@@ -421,12 +421,18 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 	case "finish":
 		result, err := core.FinishIssueOpsHandoffWithProjection(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffFinishRequest{
 			ID: id, Attempt: argmap.Int(args, "attempt", 0), OwnershipEpoch: argmap.String(args, "ownership_epoch"), ContextSHA256: argmap.String(args, "context_sha256"),
-			Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), Outcome: argmap.String(args, "outcome"),
+			Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), CWD: argmap.String(args, "cwd"), Outcome: argmap.String(args, "outcome"),
 			FinalHead: argmap.String(args, "final_head"), ChangedFiles: argmap.StringSlice(args, "changed_files"), TuringReportPath: argmap.String(args, "turing_report_path"),
 			Verification: argmap.StringSlice(args, "verification"), CleanupReceipts: argmap.StringSlice(args, "cleanup_receipts"), EvidenceDigest: argmap.String(args, "evidence_digest"),
 			TaskID: argmap.String(args, "task_id"), DispatchID: argmap.String(args, "dispatch_id"),
 		}, IssueOpsWorkerDoneProjectionClient())
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff finish failed")
+	case "complete":
+		result, err := core.CompleteIssueOpsOwnershipTransferWithProjection(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffFinishRequest{
+			ID: id, Attempt: argmap.Int(args, "attempt", 0), OwnershipEpoch: argmap.String(args, "ownership_epoch"), ContextSHA256: argmap.String(args, "context_sha256"),
+			Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), CWD: argmap.String(args, "cwd"), FinalHead: argmap.String(args, "final_head"), ChangedFiles: argmap.StringSlice(args, "changed_files"), TuringReportPath: argmap.String(args, "turing_report_path"), Verification: argmap.StringSlice(args, "verification"),
+		}, IssueOpsWorkerDoneProjectionClient())
+		return issueOpsMCPOutcome(result, err, "IssueOps ownership completion failed")
 	case "accept":
 		result, err := core.AcceptIssueOpsHandoff(core.IssueOpsStateRoot(), core.IssueOpsHandoffAcceptRequest{
 			ID: id, Attempt: argmap.Int(args, "attempt", 0), OwnershipEpoch: argmap.String(args, "ownership_epoch"), ContextSHA256: argmap.String(args, "context_sha256"), FinalHead: argmap.String(args, "final_head"),
@@ -446,6 +452,6 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 		}, orca.New(), core.IssueOpsHandoffPrepareClock{})
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff recover failed")
 	default:
-		return issueOpsMCPOutcome(nil, fmt.Errorf("handoff action must be start, claim, acknowledge-context, finish, accept, publish, or recover"), "IssueOps handoff failed")
+		return issueOpsMCPOutcome(nil, fmt.Errorf("handoff action must be start, claim, acknowledge-context, finish, complete, accept, publish, or recover"), "IssueOps handoff failed")
 	}
 }

@@ -287,9 +287,9 @@ func IssueOpsLifecycleTools() []Tool {
 		},
 		{
 			Name:        "issueops_handoff",
-			Description: "Run one supervised IssueOps handoff action (start, claim, acknowledge-context, finish, accept, publish, or recover) through the same durable DTO contract as the CLI. External mutations remain preview-only unless confirm=true; recovery never advances to the next operation.",
+			Description: "Run one supervised IssueOps handoff action (start, claim, acknowledge-context, finish, complete, accept, publish, or recover) through the same durable DTO contract as the CLI. Ownership completion records a notification only and never cleans up resources.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"action", "id"}, "properties": map[string]any{
-				"action":                          map[string]any{"type": "string", "enum": []string{"start", "claim", "acknowledge-context", "finish", "accept", "publish", "recover"}},
+				"action":                          map[string]any{"type": "string", "enum": []string{"start", "claim", "acknowledge-context", "finish", "complete", "accept", "publish", "recover"}},
 				"id":                              map[string]any{"type": "string"},
 				"coordinator_recipient":           map[string]any{"type": "string", "description": "Concrete Orca coordinator mailbox recipient sealed before first dispatch."},
 				"coordinator_host":                map[string]any{"type": "string"},
