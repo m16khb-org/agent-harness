@@ -55,6 +55,12 @@ func validateOwnershipEnvelope(record model.IssueOpsRecord) error {
 			return fmt.Errorf("cleanup_pending_human_decision requires immutable owner completion and no cleanup approval")
 		}
 	case StateRecoveryRequired:
+		if h.Cancellation != nil {
+			if !validOwnershipCancellationSnapshot(record, h) {
+				return fmt.Errorf("ownership cancellation recovery contains an invalid owner snapshot")
+			}
+			return nil
+		}
 		if h.OwnerSession == nil && h.Orientation == nil && h.Completion == nil {
 			if h.PendingOperation == nil || !validFailure(h.Failure) {
 				return fmt.Errorf("ownership dispatch recovery requires pending operation and failure")
@@ -69,6 +75,12 @@ func validateOwnershipEnvelope(record model.IssueOpsRecord) error {
 			return fmt.Errorf("ownership cleanup execution requires explicit human approval")
 		}
 	case StateClosed:
+		if h.ClosedDisposition == DispositionCancelled && h.Completion == nil {
+			if !validOwnershipCancellationSnapshot(record, h) {
+				return fmt.Errorf("ownership cancelled state contains an invalid owner snapshot")
+			}
+			return nil
+		}
 		if !validWorkerSession(h.OwnerSession) || !validOwnershipOrientation(record, h.Orientation) || h.Completion == nil {
 			return fmt.Errorf("ownership terminal state requires owner completion")
 		}
@@ -76,6 +88,25 @@ func validateOwnershipEnvelope(record model.IssueOpsRecord) error {
 		return fmt.Errorf("unknown ownership handoff state")
 	}
 	return nil
+}
+
+func validOwnershipCancellationSnapshot(record model.IssueOpsRecord, h *model.IssueOpsExecutionHandoff) bool {
+	if h == nil {
+		return false
+	}
+	if h.OwnerSession == nil {
+		return h.Orientation == nil && h.Completion == nil && h.Cleanup == nil
+	}
+	if !validWorkerSession(h.OwnerSession) {
+		return false
+	}
+	if h.Orientation == nil {
+		return h.Completion == nil && h.Cleanup == nil
+	}
+	if !validOwnershipOrientation(record, h.Orientation) {
+		return false
+	}
+	return h.Completion != nil || h.Cleanup == nil
 }
 
 func validOwnershipOrientation(record model.IssueOpsRecord, orientation *model.IssueOpsOwnershipOrientation) bool {
