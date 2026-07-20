@@ -3,7 +3,6 @@ package lifecycle
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"agent-harness/internal/core/issueops"
@@ -32,8 +31,8 @@ func TestLifecycleGuardPrefersScopedBindingOnBranchMatch(t *testing.T) {
 	childBlocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "mcp__filesystem__read_file", EnforceWorktree: true,
 	})
-	if childBlocked.Decision != "block" || !strings.Contains(childBlocked.Reason, childWorktree) {
-		t.Fatalf("child branch should prefer scoped binding worktree, got %+v", childBlocked)
+	if childBlocked.Decision != "allow" {
+		t.Fatalf("source filesystem read must remain available, got %+v", childBlocked)
 	}
 
 	if err := writeLifecycleRepoHead(t, repo, "1-parent-scoped-guard"); err != nil {
@@ -42,8 +41,8 @@ func TestLifecycleGuardPrefersScopedBindingOnBranchMatch(t *testing.T) {
 	parentBlocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "mcp__filesystem__read_file", EnforceWorktree: true,
 	})
-	if parentBlocked.Decision != "block" || !strings.Contains(parentBlocked.Reason, parentWorktree) {
-		t.Fatalf("parent branch should use primary binding worktree, got %+v", parentBlocked)
+	if parentBlocked.Decision != "allow" {
+		t.Fatalf("source filesystem read must remain available, got %+v", parentBlocked)
 	}
 }
 
@@ -64,8 +63,8 @@ func TestLifecycleGuardEnvBeatsScopedBinding(t *testing.T) {
 	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "mcp__filesystem__read_file", ExpectedWorktree: envWorktree, EnforceWorktree: true,
 	})
-	if blocked.Decision != "block" || !strings.Contains(blocked.Reason, envWorktree) {
-		t.Fatalf("ExpectedWorktree env should beat scoped binding, got %+v", blocked)
+	if blocked.Decision != "allow" {
+		t.Fatalf("ExpectedWorktree must not capture a source filesystem read, got %+v", blocked)
 	}
 }
 

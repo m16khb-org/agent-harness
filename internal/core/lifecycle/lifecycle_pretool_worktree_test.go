@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestPreToolUseWorktreeGuardBlocksSourceCheckoutMutation(t *testing.T) {
+func TestPreToolUseWorktreeGuardAllowsSourceCheckoutMutation(t *testing.T) {
 	source := filepath.Join(t.TempDir(), "agent-harness")
 	worktree := filepath.Join(t.TempDir(), "agent-harness.worktrees", "chore-19-docs")
 	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
@@ -17,8 +17,8 @@ func TestPreToolUseWorktreeGuardBlocksSourceCheckoutMutation(t *testing.T) {
 		ExpectedWorktree: worktree,
 		SourceCheckout:   source,
 	})
-	if got.Decision != "block" || !strings.Contains(got.Reason, "expected IssueOps worktree") {
-		t.Fatalf("expected source checkout mutation to be blocked: %+v", got)
+	if got.Decision != "allow" {
+		t.Fatalf("expected ordinary source checkout mutation to be allowed: %+v", got)
 	}
 }
 
@@ -86,7 +86,7 @@ func TestPreToolUseWorktreeGuardAllowsShellRedirectAfterCdIntoExpectedWorktree(t
 	}
 }
 
-func TestPreToolUseWorktreeGuardBlocksShellRedirectAfterCdIntoSourceCheckout(t *testing.T) {
+func TestPreToolUseWorktreeGuardAllowsShellRedirectAfterCdIntoSourceCheckout(t *testing.T) {
 	source := filepath.Join(t.TempDir(), "agent-harness")
 	worktree := filepath.Join(t.TempDir(), "agent-harness.worktrees", "chore-19-docs")
 	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
@@ -97,8 +97,8 @@ func TestPreToolUseWorktreeGuardBlocksShellRedirectAfterCdIntoSourceCheckout(t *
 		ExpectedWorktree: worktree,
 		SourceCheckout:   source,
 	})
-	if got.Decision != "block" || !strings.Contains(got.Reason, "expected IssueOps worktree") {
-		t.Fatalf("expected shell redirect after cd into source checkout to be blocked: %+v", got)
+	if got.Decision != "allow" {
+		t.Fatalf("expected shell redirect after cd into source checkout to be allowed: %+v", got)
 	}
 }
 
@@ -120,12 +120,13 @@ func TestPreToolUseWorktreeGuardDoesNotSpecialCaseExternalSearchMCPTools(t *test
 	}
 }
 
-func TestPreToolUseWorktreeGuardBlocksSourceBoundMCPTools(t *testing.T) {
+func TestPreToolUseWorktreeGuardBlocksSourceBoundMCPToolsFromWorkerContext(t *testing.T) {
 	source := filepath.Join(t.TempDir(), "agent-harness")
 	worktree := filepath.Join(t.TempDir(), "agent-harness.worktrees", "chore-19-docs")
 	for _, tool := range []string{"mcp__filesystem__read_file", "mcp__plugin_serena_serena__find_symbol"} {
 		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
-			Repo:             source,
+			Repo:             worktree,
+			CWD:              worktree,
 			Tool:             tool,
 			Command:          "BuildLifecyclePreToolUseDecision",
 			EnforceWorktree:  true,
@@ -138,7 +139,7 @@ func TestPreToolUseWorktreeGuardBlocksSourceBoundMCPTools(t *testing.T) {
 	}
 }
 
-func TestPreToolUseWorktreeGuardInfersExpectedWorktreeFromLinkedCycle(t *testing.T) {
+func TestPreToolUseWorktreeGuardAllowsSourceBoundMCPFromLinkedCycleSourceRoot(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := guardRepoWithCycle(t, "1-current", IssueOpsPhaseProblem)
 	record, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: source, Branch: "1-x"})
@@ -152,15 +153,15 @@ func TestPreToolUseWorktreeGuardInfersExpectedWorktreeFromLinkedCycle(t *testing
 		t.Fatal(err)
 	}
 
-	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+	allowed := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: source, Tool: "mcp__filesystem__read_file", Command: "BuildLifecyclePreToolUseDecision", EnforceWorktree: true,
 	})
-	if blocked.Decision != "block" || !strings.Contains(blocked.Reason, worktree) {
-		t.Fatalf("linked IssueOps cycle should infer the expected worktree for the MCP guard: %+v", blocked)
+	if allowed.Decision != "allow" {
+		t.Fatalf("linked IssueOps cycle must not block a source-root MCP tool: %+v", allowed)
 	}
 }
 
-func TestPreToolUseWorktreeGuardInfersSourceBoundMCPBlockFromLinkedCycle(t *testing.T) {
+func TestPreToolUseWorktreeGuardAllowsSourceBoundMCPFromParallelLinkedCycle(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := guardRepoWithCycle(t, "1-current", IssueOpsPhaseProblem)
 	record, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: source, Branch: "1-x"})
@@ -178,8 +179,8 @@ func TestPreToolUseWorktreeGuardInfersSourceBoundMCPBlockFromLinkedCycle(t *test
 		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 			Repo: source, Tool: tool, Command: "BuildLifecyclePreToolUseDecision", EnforceWorktree: true,
 		})
-		if got.Decision != "block" || !strings.Contains(got.Reason, "source-root-bound MCP tool") || !strings.Contains(got.Reason, worktree) {
-			t.Fatalf("linked IssueOps cycle should block %s without explicit ExpectedWorktree: %+v", tool, got)
+		if got.Decision != "allow" {
+			t.Fatalf("parallel linked IssueOps cycle must not block source-root %s: %+v", tool, got)
 		}
 	}
 }

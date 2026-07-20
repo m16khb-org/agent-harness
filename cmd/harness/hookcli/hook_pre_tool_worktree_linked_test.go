@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"agent-harness/internal/core"
@@ -65,12 +64,8 @@ func TestRunHookPreToolUseEnforcesLinkedIssueOpsWorktree(t *testing.T) {
 	obj := runHookCapture(t, string(payload), func() error {
 		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
 	})
-	if obj["decision"] != "block" {
-		t.Fatalf("expected linked IssueOps worktree guard to block source checkout edit, got %+v", obj)
-	}
-	reason, _ := obj["reason"].(string)
-	if !strings.Contains(reason, "linked IssueOps worktree") {
-		t.Fatalf("expected linked worktree reason, got %q", reason)
+	if obj["decision"] != "allow" {
+		t.Fatalf("expected linked IssueOps worktree guard to allow source checkout edit, got %+v", obj)
 	}
 }
 
@@ -183,19 +178,14 @@ func TestRunHookPreToolUseAsksForSessionBoundMirrorFileEdit(t *testing.T) {
 	obj := runHookCapture(t, string(payload), func() error {
 		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
 	})
-	if obj["decision"] != "ask" {
-		t.Fatalf("expected raw PreToolUse decision to ask, got %+v", obj)
-	}
-	reason, _ := obj["reason"].(string)
-	if !strings.Contains(reason, cycle.path) || !strings.Contains(reason, "force-release") {
-		t.Fatalf("expected ask reason to name worktree and escape, got %q", reason)
+	if obj["decision"] != "allow" {
+		t.Fatalf("expected raw PreToolUse decision to allow, got %+v", obj)
 	}
 
 	claude := runHookCapture(t, string(payload), func() error {
 		return runHookPreToolUse([]string{"--host", "claude", "--enforce-worktree"})
 	})
-	hso, _ := claude["hookSpecificOutput"].(map[string]any)
-	if hso["hookEventName"] != "PreToolUse" || hso["permissionDecision"] != "ask" {
-		t.Fatalf("expected Claude native ask output, got %+v", claude)
+	if _, exists := claude["hookSpecificOutput"]; exists {
+		t.Fatalf("Claude allow must not emit an unnecessary native decision, got %+v", claude)
 	}
 }

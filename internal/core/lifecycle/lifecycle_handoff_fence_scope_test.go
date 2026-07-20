@@ -3,16 +3,11 @@ package lifecycle
 import (
 	"strings"
 	"testing"
-
-	"agent-harness/internal/core/issueops/handoff"
-	issueopsmodel "agent-harness/internal/core/issueops/model"
 )
 
 // TestFenceScopeNarrowingUnblocksDifferentCycleFromSource proves the Task F2
-// allow-delta: a stranded recovery_required record that fences the source
-// checkout must not capture a command that explicitly names a *different* cycle
-// id. Provably-unrelated work (resume/status/start for another id) proceeds,
-// while id-less mutation and stranded-id targeting stay denied.
+// scope rule: an ordinary source-root request must not be captured by a
+// stranded recovery_required record. Exact-cycle control remains fenced.
 func TestFenceScopeNarrowingUnblocksDifferentCycleFromSource(t *testing.T) {
 	repo, record, _ := strandedRecoveryRequiredRecord(t)
 
@@ -33,12 +28,12 @@ func TestFenceScopeNarrowingUnblocksDifferentCycleFromSource(t *testing.T) {
 		}
 	}
 
-	// Companion: id-less mutation from the source checkout stays denied
-	// (default-deny preserved), and targeting the stranded id for mutation stays
-	// denied with the recover escape.
+	// Companion: an id-less source-root mutation is ordinary source work and is
+	// allowed, while targeting the stranded id for mutation stays denied with the
+	// recover escape.
 	idless := handoffEditRequest(record, repo, "codex", "any-session", repo+"/internal/x.go")
-	if got := BuildLifecyclePreToolUseDecision(idless); got.Decision != "block" {
-		t.Fatalf("id-less mutation from source must stay denied: %#v", got)
+	if got := BuildLifecyclePreToolUseDecision(idless); got.Decision != "allow" {
+		t.Fatalf("id-less ordinary source mutation must not be fenced: %#v", got)
 	}
 	strandedTarget := handoffEditRequest(record, repo, "codex", "any-session", "")
 	strandedTarget.Tool = "Bash"
@@ -49,8 +44,8 @@ func TestFenceScopeNarrowingUnblocksDifferentCycleFromSource(t *testing.T) {
 }
 
 // TestFenceScopeNarrowingSelectionDirect exercises selectSupervisedHandoffRecord
-// directly: an explicit different-id command from source selects no record; an
-// id-less request still selects the stranded record.
+// directly: an explicit different-id command and an id-less source-only
+// mutation both select no record.
 func TestFenceScopeNarrowingSelectionDirect(t *testing.T) {
 	repo, record, _ := strandedRecoveryRequiredRecord(t)
 	_ = record
@@ -64,14 +59,13 @@ func TestFenceScopeNarrowingSelectionDirect(t *testing.T) {
 		t.Fatalf("different-id source command must select no stranded record: ok=%v reason=%q", ok, reason)
 	}
 
-	// Id-less mutation -> still selects the stranded record (fenced).
+	// Id-less source mutation -> not fenced.
 	idless := HookToolUseLifecycleRequest{
 		Repo: repo, CWD: repo, Host: "codex", SessionID: "s", AgentID: "worker-1", Tool: "Edit",
 		Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true, SourceCheckout: repo,
 	}
-	got, ok, _ := selectSupervisedHandoffRecord(idless)
-	if !ok || got.ExecutionHandoff == nil || got.ExecutionHandoff.State != handoff.StateRecoveryRequired {
-		t.Fatalf("id-less mutation from source must still select the stranded record")
+	got, ok, reason := selectSupervisedHandoffRecord(idless)
+	if ok || reason != "" || got.ExecutionHandoff != nil {
+		t.Fatalf("id-less source mutation must select no stranded record: got=%#v ok=%v reason=%q", got, ok, reason)
 	}
-	_ = issueopsmodel.IssueOpsPhaseDone
 }

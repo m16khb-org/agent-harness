@@ -46,6 +46,45 @@ func exactLifecycleID(command string) (string, bool) {
 	return oneFlag(flags, "--id")
 }
 
+// literalIssueOpsLifecycleID deliberately recognizes the exact, bare IssueOps
+// command prefix even when the command itself later fails a command-specific
+// allowlist. Fence selection must still bind that malformed command to the
+// named cycle so the authority layer can reject it, rather than treating it as
+// unrelated source work.
+func literalIssueOpsLifecycleID(command string) (string, bool) {
+	if commandparse.HasUnquotedControlOperator(command) || commandparse.HasActiveCommandSubstitution(command) || commandparse.HasActiveOutputRedirect(command) || commandparse.HasActiveParameterOrTildeExpansion(command) || commandparse.HasActivePathnameExpansion(command) || commandparse.HasActiveShellSpecialQuoting(command) || commandparse.HasActiveZshEqualsExpansion(command) {
+		return "", false
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(command))
+	if len(tokens) < 4 || (tokens[0] != "agent-harness" && tokens[0] != "bin/agent-harness" && tokens[0] != "./bin/agent-harness") || tokens[1] != "issueops" {
+		return "", false
+	}
+	var id string
+	for i := 2; i < len(tokens); i++ {
+		if tokens[i] == "--id" && i+1 < len(tokens) {
+			if id != "" {
+				return id, true
+			}
+			if strings.TrimSpace(tokens[i+1]) == "" || strings.HasPrefix(tokens[i+1], "--") {
+				return "", false
+			}
+			id = tokens[i+1]
+			i++
+			continue
+		}
+		if strings.HasPrefix(tokens[i], "--id=") {
+			if id != "" {
+				return id, true
+			}
+			if strings.TrimSpace(strings.TrimPrefix(tokens[i], "--id=")) == "" {
+				return "", false
+			}
+			id = strings.TrimPrefix(tokens[i], "--id=")
+		}
+	}
+	return id, id != ""
+}
+
 func nativeSessionMatches(req HookToolUseLifecycleRequest, session *issueopsmodel.IssueOpsHostSessionIdentity) bool {
 	if session == nil || !strings.EqualFold(strings.TrimSpace(req.Host), strings.TrimSpace(session.Host)) || strings.TrimSpace(req.SessionID) == "" || strings.TrimSpace(req.SessionID) != strings.TrimSpace(session.SessionID) {
 		return false
@@ -896,6 +935,9 @@ func lifecycleRecordID(req HookToolUseLifecycleRequest) (string, bool) {
 	if id, ok := exactLifecycleID(req.Command); ok {
 		return id, true
 	}
+	if id, ok := literalIssueOpsLifecycleID(req.Command); ok {
+		return id, true
+	}
 	if issueOpsObservationMCPTool(req.Tool) {
 		if req.ToolInput == nil {
 			return "", false
@@ -934,24 +976,18 @@ func selectSupervisedHandoffRecord(req HookToolUseLifecycleRequest) (IssueOpsRec
 	if len(records) == 0 {
 		return IssueOpsRecord{}, false, ""
 	}
-	if terminalControlWriteRequest(req) {
-		if handle, ok := literalSafeTerminalSendHandle(req); ok {
-			matches := filterHandoffRecords(records, func(record IssueOpsRecord) bool {
-				return record.ExecutionHandoff.Orca != nil && strings.TrimSpace(record.ExecutionHandoff.Orca.WorkerTerminalHandle) == handle
-			})
-			switch len(matches) {
-			case 1:
-				return matches[0], true, ""
-			case 0:
-				return IssueOpsRecord{}, false, "raw terminal steering does not match a persisted worker terminal handle"
-			default:
-				return IssueOpsRecord{}, false, "raw terminal steering is ambiguous across duplicate persisted worker terminal handles"
-			}
-		}
-		if len(records) == 1 {
-			return records[0], true, ""
-		}
-		return IssueOpsRecord{}, false, "raw terminal steering is ambiguous across active supervised IssueOps cycles"
+	switch classifyHandoffFenceScope(req, records) {
+	case handoffFenceScopeSourceOnly:
+		return IssueOpsRecord{}, false, ""
+	case handoffFenceScopeAmbiguousCrossRoot:
+		return IssueOpsRecord{}, false, "supervised IssueOps mutation scope is ambiguous across source and worker roots; use a literal source-root command or an exact worker path, lifecycle id, or persisted Orca resource"
+	}
+	if matches, reason := recordsMatchingProtectedOrcaResource(req, records); reason != "" {
+		return IssueOpsRecord{}, false, reason
+	} else if len(matches) == 1 {
+		return matches[0], true, ""
+	} else if len(matches) > 1 {
+		return IssueOpsRecord{}, false, "Orca resource control is ambiguous across persisted IssueOps resources"
 	}
 	cwd := cleanAbsPath(req.CWD)
 	if matches := filterHandoffRecords(records, func(record IssueOpsRecord) bool { return cwd == cleanAbsPath(record.ExecutionHandoff.WorkerRoot) }); len(matches) == 1 {
@@ -988,26 +1024,6 @@ func selectSupervisedHandoffRecord(req HookToolUseLifecycleRequest) (IssueOpsRec
 		return matches[0], true, ""
 	} else if len(matches) > 1 {
 		return IssueOpsRecord{}, false, "ambiguous supervised IssueOps mutation target"
-	}
-	// Fence-scope narrowing (Task F2): the source-checkout fallback below binds
-	// every unmatched command in the source checkout to the fenced record. A
-	// command that explicitly names a *different* cycle id is provably unrelated
-	// — any explicit id that reaches here missed the byID match above, so it is
-	// not one of the supervised records fencing this checkout. Do not capture it
-	// (this is the plan's single allowed-set change). id-less commands (bare
-	// mutations, no lifecycle/MCP id) fall through and stay fenced by default,
-	// so nothing without an explicit different target escapes. Worker-context
-	// and same-id-as-stranded commands were already resolved above, so this only
-	// unblocks source-checkout commands targeting another cycle.
-	if _, hasExplicitID := lifecycleRecordID(req); hasExplicitID {
-		return IssueOpsRecord{}, false, ""
-	}
-	sourceMatches := filterHandoffRecords(records, func(record IssueOpsRecord) bool { return cwd == cleanAbsPath(record.Repo) })
-	if len(sourceMatches) == 1 {
-		return sourceMatches[0], true, ""
-	}
-	if len(sourceMatches) > 1 {
-		return IssueOpsRecord{}, false, "multiple active supervised IssueOps cycles share this source checkout; use an exact lifecycle --id or worker target"
 	}
 	return IssueOpsRecord{}, false, ""
 }

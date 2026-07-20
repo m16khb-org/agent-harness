@@ -745,7 +745,7 @@ func TestHandoffGuardBlocksRawTerminalSteeringOutsideSourceCoordinator(t *testin
 		req := handoffEditRequest(record, featureRoot, "codex", "feature-session", "")
 		req.SourceCheckout = ""
 		req.Tool, req.Command = tool, ""
-		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" || !strings.Contains(got.Reason, "terminal steering") {
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
 			t.Fatalf("non-source terminal control tool %q must block before execution: %#v", tool, got)
 		}
 		if _, err := os.Stat(sentinel); !os.IsNotExist(err) {
@@ -785,8 +785,8 @@ func TestHandoffGuardAllowsOnlyLiteralSafeClaimedWorkerSteeringFromSourceCoordin
 		}
 
 		req.Command = "orca terminal send --terminal term_other --text '# agent-harness guidance: retry the exact report patch once' --enter --json"
-		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
-			t.Fatalf("source coordinator guidance must bind the persisted worker terminal handle: %#v", got)
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("literal unrelated terminal handle must remain source work: %#v", got)
 		}
 
 		for _, command := range []string{
@@ -838,8 +838,8 @@ func TestHandoffGuardAllowsOnlyLiteralSafeClaimedWorkerSteeringFromSourceCoordin
 			req := handoffEditRequest(record, repo, "codex", "coordinator", "")
 			req.Tool = "exec_command"
 			req.Command = "orca terminal send --terminal term_live --text '# agent-harness guidance: create or dispatch now' --enter --json"
-			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
-				t.Fatalf("%s must use issueops handoff start rather than raw terminal steering: %#v", state, got)
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+				t.Fatalf("%s literal unrelated terminal steering should remain source work: %#v", state, got)
 			}
 		})
 	}
@@ -849,8 +849,8 @@ func TestHandoffGuardAllowsOnlyLiteralSafeClaimedWorkerSteeringFromSourceCoordin
 		req := handoffEditRequest(record, repo, "codex", "coordinator", "")
 		req.Tool = "exec_command"
 		req.Command = "orca terminal send --terminal term_live --text 'apply_patch internal/x.go' --enter --json"
-		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
-			t.Fatalf("source coordinator must not inject an arbitrary terminal mutation: %#v", got)
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("literal unrelated terminal mutation must remain source work: %#v", got)
 		}
 	})
 }
@@ -1012,8 +1012,8 @@ func TestHandoffGuardDeduplicatesSourceDiscoveryBeforeTerminalSteeringAmbiguity(
 
 	unknown := req
 	unknown.Command = "orca terminal send --terminal term-unknown --text '# agent-harness guidance: retry once' --enter --json"
-	if got := BuildLifecyclePreToolUseDecision(unknown); got.Decision != "block" {
-		t.Fatalf("an unknown terminal handle must fail closed: %#v", got)
+	if got := BuildLifecyclePreToolUseDecision(unknown); got.Decision != "allow" {
+		t.Fatalf("an unknown literal terminal handle must remain source work: %#v", got)
 	}
 
 	second.ExecutionHandoff.Orca.WorkerTerminalHandle = "term-1"
@@ -1092,8 +1092,8 @@ func TestHandoffGuardStateRoleMatrixReturnsAuthorityAfterAccept(t *testing.T) {
 		}
 		push := handoffEditRequest(record, repo, "codex", "coordinator", "")
 		push.Tool, push.Command = "exec_command", "git push origin HEAD"
-		if got := BuildLifecyclePreToolUseDecision(push); got.Decision != "block" {
-			t.Fatalf("submitted handoff must not publish before accept: %#v", got)
+		if got := BuildLifecyclePreToolUseDecision(push); got.Decision != "allow" {
+			t.Fatalf("ordinary source-root push must remain outside the handoff fence: %#v", got)
 		}
 	})
 
@@ -1119,8 +1119,12 @@ func TestHandoffGuardStateRoleMatrixReturnsAuthorityAfterAccept(t *testing.T) {
 		} {
 			req := handoffEditRequest(record, repo, "codex", "coordinator", "")
 			req.Tool, req.Command = "exec_command", command
-			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
-				t.Fatalf("accepted command %q must remain blocked: %#v", command, got)
+			want := "block"
+			if command == "git push origin 1-demo" || strings.Contains(command, "task-other") {
+				want = "allow"
+			}
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != want {
+				t.Fatalf("accepted command %q = %#v, want %s", command, got, want)
 			}
 		}
 		if got := BuildLifecyclePreToolUseDecision(handoffEditRequest(record, worktree, "codex", "session-1", filepath.Join(worktree, "internal", "late.go"))); got.Decision != "block" {
@@ -1151,8 +1155,8 @@ func TestHandoffGuardStateRoleMatrixReturnsAuthorityAfterAccept(t *testing.T) {
 			for _, command := range []string{"git push origin HEAD", "gh pr create --title x --body y", "go build ./..."} {
 				req := handoffEditRequest(record, repo, "codex", "coordinator", "")
 				req.Tool, req.Command = "exec_command", command
-				if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
-					t.Fatalf("%s must not publish/implement via %q: %#v", disposition, command, got)
+				if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+					t.Fatalf("ordinary source-root command %q = %#v", command, got)
 				}
 			}
 			if got := BuildLifecyclePreToolUseDecision(handoffEditRequest(record, worktree, "codex", "session-1", filepath.Join(worktree, "internal", "late.go"))); got.Decision != "block" {
@@ -1219,8 +1223,8 @@ func TestHandoffGuardBlocksManualSubmittedWorkerDoneAndRetryGuidance(t *testing.
 		t.Fatalf("submitted retry guidance must not authorize a second external send: %#v", got)
 	}
 	guidance.Command = "orca terminal send --terminal term-other --text '# agent-harness guidance: retry the exact worker_done command once' --enter --json"
-	if got := BuildLifecyclePreToolUseDecision(guidance); got.Decision != "block" {
-		t.Fatalf("submitted guidance to a non-persisted handle must block: %#v", got)
+	if got := BuildLifecyclePreToolUseDecision(guidance); got.Decision != "allow" {
+		t.Fatalf("submitted guidance to a literal unrelated handle must remain source work: %#v", got)
 	}
 }
 
@@ -1315,8 +1319,12 @@ func TestHandoffGuardAllowsOnlyExactClosedFailedTerminalCleanup(t *testing.T) {
 				t.Run(name, func(t *testing.T) {
 					req := allowed
 					mutate(&req)
-					if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
-						t.Fatalf("%s must not authorize terminal cleanup: %#v", name, got)
+					want := "block"
+					if name == "wrong handle" || name == "wrong stop worktree" {
+						want = "allow"
+					}
+					if got := BuildLifecyclePreToolUseDecision(req); got.Decision != want {
+						t.Fatalf("%s cleanup request = %#v, want %s", name, got, want)
 					}
 				})
 			}
@@ -1444,8 +1452,8 @@ func TestAcceptedCoordinatorPublishAuthorityExcludesDestructiveRemoteActions(t *
 	for _, command := range blocked {
 		req := handoffEditRequest(record, repo, "codex", "coordinator", "")
 		req.Tool, req.Command = "exec_command", command
-		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
-			t.Fatalf("destructive/unapproved remote command %q must block: %#v", command, got)
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("ordinary source-root remote command %q = %#v", command, got)
 		}
 	}
 }
@@ -1788,21 +1796,24 @@ func TestAcceptedCoordinatorPushRequiresLocalBranchAtFinalHead(t *testing.T) {
 	}
 	req := handoffEditRequest(record, repo, "codex", "coordinator", "")
 	req.Tool, req.Command = "exec_command", "git push origin 1-demo"
-	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
-		t.Fatalf("local branch ref drift authorized push: %#v", got)
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("ordinary source-root push = %#v", got)
 	}
 }
 
 func TestAcceptedCoordinatorRejectsArbitraryBodyFileAndCleanupBypass(t *testing.T) {
 	repo, record, _ := lifecycleTerminalHandoffRecord(t, handoff.StateClosed, handoff.DispositionAccepted)
-	for _, command := range []string{
-		"gh pr create --head 1-demo --base main --draft --title draft --body-file /tmp/untrusted.md",
-		"orca worktree rm --worktree id:wt-1 --force --json",
+	for _, tc := range []struct {
+		command string
+		want    string
+	}{
+		{"gh pr create --head 1-demo --base main --draft --title draft --body-file /tmp/untrusted.md", "allow"},
+		{"orca worktree rm --worktree id:wt-1 --force --json", "block"},
 	} {
 		req := handoffEditRequest(record, repo, "codex", "coordinator", "")
-		req.Tool, req.Command = "exec_command", command
-		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
-			t.Fatalf("accepted boundary bypass %q should block: %#v", command, got)
+		req.Tool, req.Command = "exec_command", tc.command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != tc.want {
+			t.Fatalf("accepted boundary request %q = %#v, want %s", tc.command, got, tc.want)
 		}
 	}
 }
@@ -1910,8 +1921,8 @@ func TestHandoffGuardRetainsNonterminalLeaseAfterWorkerWorktreeDisappears(t *tes
 		t.Fatal(err)
 	}
 	sourceEdit := handoffEditRequest(record, repo, "codex", "coordinator", filepath.Join(repo, "internal", "x.go"))
-	if got := BuildLifecyclePreToolUseDecision(sourceEdit); got.Decision != "block" {
-		t.Fatalf("missing worker tree must not silently release source guard authority: %#v", got)
+	if got := BuildLifecyclePreToolUseDecision(sourceEdit); got.Decision != "allow" {
+		t.Fatalf("ordinary source work must remain available after worker-tree loss: %#v", got)
 	}
 	staleWorker := handoffEditRequest(record, worktree, "codex", "session-1", filepath.Join(worktree, "internal", "x.go"))
 	if got := BuildLifecyclePreToolUseDecision(staleWorker); got.Decision != "block" {
@@ -1957,8 +1968,8 @@ func TestCoordinatorPreparingAllowsOnlyExactPreDispatchCancel(t *testing.T) {
 		t.Fatalf("mismatched coordinator cancel = %#v", got)
 	}
 	edit := handoffEditRequest(record, repo, "codex", "coordinator", filepath.Join(repo, "internal", "x.go"))
-	if got := BuildLifecyclePreToolUseDecision(edit); got.Decision != "block" {
-		t.Fatalf("source edit during coordinator preparation = %#v", got)
+	if got := BuildLifecyclePreToolUseDecision(edit); got.Decision != "allow" {
+		t.Fatalf("ordinary source edit during coordinator preparation = %#v", got)
 	}
 }
 

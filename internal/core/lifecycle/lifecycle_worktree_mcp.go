@@ -12,6 +12,9 @@ func mcpWorktreeRootBlockReason(req HookToolUseLifecycleRequest) string {
 		return ""
 	}
 	primary := expected[0]
+	if requestIsProvenSourceOnly(req, sourceRootForExpectedWorktree(req, primary)) {
+		return ""
+	}
 	tool := strings.ToLower(strings.TrimSpace(req.Tool))
 	if strings.Contains(tool, "filesystem") || strings.Contains(tool, "serena") {
 		return "source-root-bound MCP tool is not allowed during IssueOps worktree implementation; use native absolute-path file tools, rg rooted at the IssueOps worktree, or git -C " + primary

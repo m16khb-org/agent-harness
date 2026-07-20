@@ -14,8 +14,8 @@ func TestRunHookPreToolUseEnforcesIssueOpsWorktree(t *testing.T) {
 	obj := runHookCapture(t, `{"cwd":"`+source+`","tool_name":"apply_patch","tool_input":{"file_path":"`+source+`/.agent-harness/OPERATIONS.md"}}`, func() error {
 		return runHookPreToolUse([]string{"--enforce-worktree", "--expected-worktree", worktree, "--source-checkout", source, "--json"})
 	})
-	if obj["decision"] != "block" {
-		t.Fatalf("expected source checkout edit to be blocked, got %+v", obj)
+	if obj["decision"] != "allow" {
+		t.Fatalf("expected source checkout edit to remain available, got %+v", obj)
 	}
 }
 
@@ -42,7 +42,7 @@ func TestRunHookPreToolUseAllowsApplyPatchInsideExpectedWorktree(t *testing.T) {
 	}
 }
 
-func TestRunHookPreToolUseBlocksApplyPatchOutsideExpectedWorktree(t *testing.T) {
+func TestRunHookPreToolUseAllowsSourceApplyPatchOutsideExpectedWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := filepath.Join(t.TempDir(), "api-servers")
 	worktree := filepath.Join(filepath.Dir(source), "api-servers.worktrees", "2193-demo")
@@ -60,8 +60,8 @@ func TestRunHookPreToolUseBlocksApplyPatchOutsideExpectedWorktree(t *testing.T) 
 	obj := runHookCapture(t, string(payload), func() error {
 		return runHookPreToolUse([]string{"--enforce-worktree", "--expected-worktree", worktree, "--source-checkout", source, "--json"})
 	})
-	if obj["decision"] != "block" {
-		t.Fatalf("expected apply_patch target outside expected worktree to be blocked, got %+v", obj)
+	if obj["decision"] != "allow" {
+		t.Fatalf("expected source apply_patch to remain available, got %+v", obj)
 	}
 }
 

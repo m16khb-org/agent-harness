@@ -13,6 +13,51 @@ type BranchCreation struct {
 	SourceRef string
 }
 
+// BranchSelection describes an existing branch checkout. It intentionally
+// excludes `git checkout -- <path>` so ordinary path operations are not
+// mistaken for IssueOps topology changes.
+type BranchSelection struct {
+	Branch  string
+	Dynamic bool
+}
+
+func LocalIssueOpsBranchSelection(command string) BranchSelection {
+	tokens := commandparse.SplitCommandTokens(command)
+	for i, token := range tokens {
+		if searchrouting.SearchTokenName(token) != "git" || i+2 >= len(tokens) {
+			continue
+		}
+		subcommand := searchrouting.SearchTokenName(tokens[i+1])
+		if subcommand != "checkout" && subcommand != "switch" {
+			continue
+		}
+		args := tokens[i+2:]
+		if len(args) == 0 || args[0] == "--" || containsBranchCreateFlag(args) {
+			continue
+		}
+		for _, arg := range args {
+			if arg == "--" {
+				break
+			}
+			if strings.HasPrefix(arg, "-") {
+				continue
+			}
+			branch := strings.TrimSpace(arg)
+			return BranchSelection{Branch: branch, Dynamic: ShellTokenLooksDynamic(branch)}
+		}
+	}
+	return BranchSelection{}
+}
+
+func containsBranchCreateFlag(args []string) bool {
+	for _, arg := range args {
+		if arg == "-b" || arg == "-B" || arg == "-c" || arg == "-C" || arg == "--create" || strings.HasPrefix(arg, "--create=") {
+			return true
+		}
+	}
+	return false
+}
+
 func LocalIssueOpsBranchCreation(command string) BranchCreation {
 	tokens := commandparse.SplitCommandTokens(command)
 	for i, token := range tokens {

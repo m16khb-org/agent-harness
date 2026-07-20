@@ -1,7 +1,6 @@
 package lifecycle
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -45,12 +44,14 @@ func strandedRecoveryRequiredRecord(t *testing.T) (string, IssueOpsRecord, strin
 // "flags do not match the native session" wording (Task F1, CAUTIONS escape rule).
 func TestStrandedHandoffBlockNamesRecoverEscape(t *testing.T) {
 	repo, record, _ := strandedRecoveryRequiredRecord(t)
-	req := handoffEditRequest(record, repo, "codex", "any-session", filepath.Join(repo, "internal", "x.go"))
+	req := handoffEditRequest(record, repo, "codex", "any-session", "")
+	req.Tool = "Bash"
+	req.Command = "agent-harness issueops heartbeat --id " + record.ID + " --attempt 1 --ownership-epoch epoch-1 --context-sha256 " + strings.Repeat("a", 64) + " --host codex --session-id any-session --agent-id worker-1"
 	got := BuildLifecyclePreToolUseDecision(req)
 	if got.Decision != "block" {
-		t.Fatalf("stranded record must still fence source-checkout mutation: %#v", got)
+		t.Fatalf("stranded record must still fence exact-cycle mutation: %#v", got)
 	}
-	for _, want := range []string{"handoff recover", "--id " + shellGuidanceQuote(record.ID), "--action cancel", "recovery_required"} {
+	for _, want := range []string{"handoff recover", "--id " + shellGuidanceQuote(record.ID), "--action cancel"} {
 		if !strings.Contains(got.Reason, want) {
 			t.Fatalf("stranded block reason missing escape token %q: %s", want, got.Reason)
 		}

@@ -96,6 +96,23 @@ func TestShellTokenLooksDynamic(t *testing.T) {
 	}
 }
 
+func TestLocalIssueOpsBranchSelection(t *testing.T) {
+	for _, tt := range []struct {
+		command string
+		want    BranchSelection
+	}{
+		{`git checkout 123-demo`, BranchSelection{Branch: "123-demo"}},
+		{`git switch 123-demo`, BranchSelection{Branch: "123-demo"}},
+		{`git checkout -- internal/x.go`, BranchSelection{}},
+		{`git switch -c 123-demo origin/main`, BranchSelection{}},
+		{`git checkout "$BRANCH"`, BranchSelection{Branch: "$BRANCH", Dynamic: true}},
+	} {
+		if got := LocalIssueOpsBranchSelection(tt.command); got != tt.want {
+			t.Errorf("LocalIssueOpsBranchSelection(%q) = %+v, want %+v", tt.command, got, tt.want)
+		}
+	}
+}
+
 func TestIssueOpsBranchCreationSourceReason(t *testing.T) {
 	reason := IssueOpsBranchCreationSourceReason("feature/foo")
 	if reason == "" {

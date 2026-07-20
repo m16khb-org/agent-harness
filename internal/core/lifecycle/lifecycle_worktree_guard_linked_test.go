@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestWorktreeGuardBlocksSourceEditWhenCycleHasLinkedWorktree(t *testing.T) {
+func TestWorktreeGuardAllowsSourceEditWhenCycleHasLinkedWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "1-x", IssueOpsPhaseImplement)
 	id := newIssueOpsID(repo, "1-x")
@@ -17,11 +17,11 @@ func TestWorktreeGuardBlocksSourceEditWhenCycleHasLinkedWorktree(t *testing.T) {
 	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), id, linked); err != nil {
 		t.Fatal(err)
 	}
-	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+	allowedSource := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
 	})
-	if blocked.Decision != "block" {
-		t.Fatalf("source-checkout edit should block when an exact worktree is linked, got %+v", blocked)
+	if allowedSource.Decision != "allow" {
+		t.Fatalf("ordinary source-checkout edit must remain available when an exact worktree is linked, got %+v", allowedSource)
 	}
 	wtTarget := filepath.Join(linked, "internal", "x.go")
 	allowed := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
@@ -57,7 +57,7 @@ func TestWorktreeGuardAllowsSourceEditWhenLinkedWorktreeDirIsDeleted(t *testing.
 	}
 }
 
-func TestWorktreeGuardBlockMessageNamesForceReleaseEscape(t *testing.T) {
+func TestWorktreeGuardDoesNotRequireForceReleaseForSourceEdit(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "1-x", IssueOpsPhaseImplement)
 	id := newIssueOpsID(repo, "1-x")
@@ -67,18 +67,15 @@ func TestWorktreeGuardBlockMessageNamesForceReleaseEscape(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+	allowed := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
 	})
-	if blocked.Decision != "block" {
-		t.Fatalf("source edit with a live linked worktree should block, got %+v", blocked)
-	}
-	if !strings.Contains(blocked.Reason, "force-release") {
-		t.Fatalf("block reason must name the working escape command (force-release), got %q", blocked.Reason)
+	if allowed.Decision != "allow" {
+		t.Fatalf("source edit with a live linked worktree must not require force-release, got %+v", allowed)
 	}
 }
 
-func TestWorktreeGuardBlocksSourceEditDuringAISlopClean(t *testing.T) {
+func TestWorktreeGuardAllowsSourceEditDuringAISlopClean(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "1-x", IssueOpsPhaseImplement)
 	id := newIssueOpsID(repo, "1-x")
@@ -109,11 +106,11 @@ func TestWorktreeGuardBlocksSourceEditDuringAISlopClean(t *testing.T) {
 	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), id, string(IssueOpsPhaseAISlopClean)); err != nil {
 		t.Fatal(err)
 	}
-	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+	allowed := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
 	})
-	if blocked.Decision != "block" || !strings.Contains(blocked.Reason, "linked IssueOps worktree") {
-		t.Fatalf("source-checkout edit should block during ai-slop-clean, got %+v", blocked)
+	if allowed.Decision != "allow" {
+		t.Fatalf("source-checkout edit must remain available during ai-slop-clean, got %+v", allowed)
 	}
 }
 
@@ -143,7 +140,7 @@ func TestWorktreeGuardBlocksOtherWorktreeWhenCycleHasExactWorktree(t *testing.T)
 	}
 }
 
-func TestWorktreeGuardBlocksSourceCheckoutWhenLinkedCycleExists(t *testing.T) {
+func TestWorktreeGuardAllowsSourceCheckoutWhenLinkedCycleExists(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "1-current", IssueOpsPhaseProblem)
 	rec, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "1-x"})
@@ -158,11 +155,11 @@ func TestWorktreeGuardBlocksSourceCheckoutWhenLinkedCycleExists(t *testing.T) {
 	}
 	writeIssueOpsGuardFileForTest(t, expected, "internal/x.go", "package internal\n")
 
-	blocked := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+	allowedSource := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{filepath.Join(repo, "internal", "x.go")}, EnforceWorktree: true,
 	})
-	if blocked.Decision != "block" || !strings.Contains(blocked.Reason, "linked IssueOps worktree") {
-		t.Fatalf("other branch linked worktree should block source checkout edits: %+v", blocked)
+	if allowedSource.Decision != "allow" {
+		t.Fatalf("other branch linked worktree must not block source checkout edits: %+v", allowedSource)
 	}
 
 	allowed := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
@@ -196,13 +193,7 @@ func TestWorktreeGuardBlocksOtherWorktreeWhenCurrentBranchCycleIsUnlinked(t *tes
 	}
 }
 
-// TestWorktreeGuardBlockNamesAllParallelWorktreeCyclesDeterministically guards
-// SCENARIO 1: when several parallel IssueOps cycles each hold a worktree and the
-// user edits a shared source-checkout file, the block message must be
-// deterministic and must NOT single out one arbitrary cycle as the force-release
-// target (that cycle may be unrelated/live, and releasing it would not unblock
-// the edit while the other worktrees remain — the non-working-escape trap).
-func TestWorktreeGuardBlockNamesAllParallelWorktreeCyclesDeterministically(t *testing.T) {
+func TestWorktreeGuardAllowsSourceEditWithParallelWorktreeCycles(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	// Current branch carries a non-worktree-phase (problem) cycle; two OTHER
 	// branches each hold a live linked worktree.
@@ -215,26 +206,14 @@ func TestWorktreeGuardBlockNamesAllParallelWorktreeCyclesDeterministically(t *te
 	first := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{filepath.Join(repo, "internal", "x.go")}, EnforceWorktree: true,
 	})
-	if first.Decision != "block" {
-		t.Fatalf("source edit must block while parallel worktree cycles are active, got %+v", first)
+	if first.Decision != "allow" {
+		t.Fatalf("source edit must remain available while parallel worktree cycles are active (%s, %s), got %+v", cycleB.id, cycleC.id, first)
 	}
-	// Both holders are named (no arbitrary single-cycle force-release target).
-	if !strings.Contains(first.Reason, cycleB.id) || !strings.Contains(first.Reason, cycleC.id) {
-		t.Fatalf("block reason must name every active worktree cycle (%s, %s), got %q", cycleB.id, cycleC.id, first.Reason)
-	}
-	// Branch-sorted order: "2-bravo" before "3-charlie".
-	if strings.Index(first.Reason, cycleB.id) > strings.Index(first.Reason, cycleC.id) {
-		t.Fatalf("block reason must order cycles deterministically by branch, got %q", first.Reason)
-	}
-	if !strings.Contains(first.Reason, "linked IssueOps worktree") || !strings.Contains(first.Reason, "force-release") {
-		t.Fatalf("block reason must keep the worktree+force-release vocabulary, got %q", first.Reason)
-	}
-	// Deterministic across repeated evaluation (no os.ReadDir order dependence).
 	second := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{filepath.Join(repo, "internal", "x.go")}, EnforceWorktree: true,
 	})
-	if first.Reason != second.Reason {
-		t.Fatalf("block reason must be deterministic across calls:\n  first=%q\n  second=%q", first.Reason, second.Reason)
+	if second.Decision != "allow" {
+		t.Fatalf("repeated source edit classification must remain allow, got %+v", second)
 	}
 }
 

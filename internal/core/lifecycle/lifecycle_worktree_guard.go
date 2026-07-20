@@ -69,6 +69,12 @@ func sourceCheckoutWorktreeGuardBlockReason(req HookToolUseLifecycleRequest) str
 	if reason := localIssueOpsBranchCreationBlockReason(req); reason != "" {
 		return reason
 	}
+	if reason := localIssueOpsBranchSelectionBlockReason(req); reason != "" {
+		return reason
+	}
+	if requestIsProvenSourceOnly(req, req.Repo) {
+		return ""
+	}
 	currentBranch := gitBranchFromHead(req.Repo)
 	rec, ok := ActiveIssueOpsCycleForBranch(req.Repo, currentBranch)
 	if issueOpsWorktreePreparationCommand(req.Command) {
@@ -108,6 +114,23 @@ func sourceCheckoutWorktreeGuardBlockReason(req HookToolUseLifecycleRequest) str
 		if !pathWithin(target, linked) {
 			return "mutating tool target is outside the linked IssueOps worktree for " + rec.ID + "; run issue-based work from " + linked + " or release the stale cycle with `issueops force-release --id " + rec.ID + " --reason <why>`"
 		}
+	}
+	return ""
+}
+
+func localIssueOpsBranchSelectionBlockReason(req HookToolUseLifecycleRequest) string {
+	selection := worktreeguard.LocalIssueOpsBranchSelection(req.Command)
+	if selection.Branch == "" {
+		return ""
+	}
+	if selection.Dynamic {
+		return "IssueOps branch selection from the source checkout must name one literal branch; use the linked isolated worktree for the selected IssueOps branch"
+	}
+	if rec, ok := ActiveIssueOpsCycleForBranch(req.Repo, selection.Branch); ok {
+		if worktree := cleanAbsPath(rec.WorktreePath); worktree != "" {
+			return "IssueOps branch " + selection.Branch + " must not be checked out in the source checkout; use the linked isolated worktree " + worktree
+		}
+		return "IssueOps branch " + selection.Branch + " must not be checked out in the source checkout before its isolated worktree is ready"
 	}
 	return ""
 }
@@ -167,6 +190,9 @@ func expectedWorktreeGuardBlockReason(req HookToolUseLifecycleRequest, expected 
 	if issueOpsWorktreePreparationCommand(req.Command) {
 		return ""
 	}
+	if requestIsProvenSourceOnly(req, sourceRootForExpectedWorktree(req, expected)) {
+		return ""
+	}
 	targets := worktreeGuardEditTargets(req)
 	if len(targets) == 0 {
 		return ""
@@ -177,6 +203,20 @@ func expectedWorktreeGuardBlockReason(req HookToolUseLifecycleRequest, expected 
 		}
 	}
 	return ""
+}
+
+func sourceRootForExpectedWorktree(req HookToolUseLifecycleRequest, expected string) string {
+	if source := cleanAbsPath(req.SourceCheckout); source != "" {
+		return source
+	}
+	repo := cleanAbsPath(req.Repo)
+	if repo == "" || repo == cleanAbsPath(expected) {
+		return ""
+	}
+	if source := sourceCheckoutFromWorktree(repo); source != "" {
+		return source
+	}
+	return repo
 }
 
 // linkedWorktreeCyclesBlockReason builds the block message shown when a source-

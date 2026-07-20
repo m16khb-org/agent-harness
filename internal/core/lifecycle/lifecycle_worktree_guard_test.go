@@ -8,14 +8,14 @@ import (
 	"testing"
 )
 
-func TestWorktreeGuardBlocksSourceEditWhenImplementCycleHasNoLinkedWorktree(t *testing.T) {
+func TestWorktreeGuardAllowsSourceEditWhenImplementCycleHasNoLinkedWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "1-development", IssueOpsPhaseImplement)
 	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
 	})
-	if res.Decision != "block" || !strings.Contains(res.Reason, "requires a linked isolated worktree") {
-		t.Fatalf("unlinked implement cycle should block source checkout edits, got %+v", res)
+	if res.Decision != "allow" {
+		t.Fatalf("unlinked implement cycle must not block ordinary source checkout edits, got %+v", res)
 	}
 }
 
@@ -95,7 +95,7 @@ func TestWorktreeGuardNoBlockWithoutCycle(t *testing.T) {
 	}
 }
 
-func TestWorktreeGuardBlocksIssueShapedBranchEditWithoutCycle(t *testing.T) {
+func TestWorktreeGuardAllowsIssueShapedBranchEditWithoutCycle(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o755); err != nil {
@@ -107,8 +107,8 @@ func TestWorktreeGuardBlocksIssueShapedBranchEditWithoutCycle(t *testing.T) {
 	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{repo + "/internal/x.go"}, EnforceWorktree: true,
 	})
-	if res.Decision != "block" || !strings.Contains(res.Reason, "IssueOps branch 2403-fix-dmm-fanza-account-merge has no active IssueOps cycle") {
-		t.Fatalf("issue-shaped branch without cycle should block source checkout edits, got %+v", res)
+	if res.Decision != "allow" {
+		t.Fatalf("issue-shaped branch without a cycle should remain ordinary source work, got %+v", res)
 	}
 }
 
@@ -199,7 +199,7 @@ func TestWorktreeGuardAllowsSourceEditWithoutParallelWorktreePathCollision(t *te
 	}
 }
 
-func TestWorktreeGuardBlocksSourceEditWithParallelWorktreePathCollision(t *testing.T) {
+func TestWorktreeGuardAllowsSourceEditWithParallelWorktreePathCollision(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := guardRepoWithCycle(t, "2518-main-maintenance", IssueOpsPhasePlan)
 	cycle := linkIssueOpsWorktreeForGuardTest(t, repo, "2519-vertex-cache")
@@ -208,8 +208,8 @@ func TestWorktreeGuardBlocksSourceEditWithParallelWorktreePathCollision(t *testi
 	res := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Edit", Paths: []string{filepath.Join(repo, ".gitkeep")}, EnforceWorktree: true,
 	})
-	if res.Decision != "block" || !strings.Contains(res.Reason, "same relative path") || !strings.Contains(res.Reason, cycle.id) {
-		t.Fatalf("parallel worktree path collision should name its cycle, got %+v", res)
+	if res.Decision != "allow" {
+		t.Fatalf("ordinary source edit must remain available despite a parallel path collision: cycle=%s result=%+v", cycle.id, res)
 	}
 }
 
@@ -254,7 +254,7 @@ func TestWorktreeGuardAllowsTempFileBashWrites(t *testing.T) {
 	}
 }
 
-func TestWorktreeGuardAsksForSessionBoundMirrorFileEditInSourceCheckout(t *testing.T) {
+func TestWorktreeGuardAllowsSessionBoundMirrorFileEditInSourceCheckout(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := sourceCheckoutRepoForMisdirectTest(t)
 	cycle := linkIssueOpsWorktreeForGuardTest(t, repo, "2519-test-quality-comprehensive")
@@ -269,11 +269,8 @@ func TestWorktreeGuardAsksForSessionBoundMirrorFileEditInSourceCheckout(t *testi
 		Paths:           []string{filepath.Join(repo, "src", "a.ts")},
 		EnforceWorktree: true,
 	})
-	if res.Decision != "ask" {
-		t.Fatalf("session-bound mirror file edit should ask, got %+v", res)
-	}
-	if !strings.Contains(res.Reason, cycle.path) || !strings.Contains(res.Reason, "force-release") {
-		t.Fatalf("ask reason must name worktree and escape, got %q", res.Reason)
+	if res.Decision != "allow" {
+		t.Fatalf("session-bound mirror file edit must remain source-only work: cycle=%s result=%+v", cycle.id, res)
 	}
 }
 
