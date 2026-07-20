@@ -1159,11 +1159,14 @@ func issueOpsOwnerPublicationIdentity(ctx context.Context, record IssueOpsRecord
 }
 
 func attestIssueOpsPublicationSoleWriter(ctx context.Context, stateRoot string, expected IssueOpsRecord, lease IssueOpsOrcaDispatchClient, now string) (IssueOpsRecord, error) {
-	allowedHandle := ""
+	allowedHandle, allowedTaskID, allowedDispatchID := "", "", ""
 	if h := expected.ExecutionHandoff; h != nil && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.Orca != nil {
 		allowedHandle = h.Orca.WorkerTerminalHandle
+		if h.State == handoff.StateOwnerActive {
+			allowedTaskID, allowedDispatchID = h.Orca.TaskID, h.Orca.DispatchID
+		}
 	}
-	err := attestHandoffSoleWriter(ctx, expected, lease, allowedHandle)
+	err := attestHandoffSoleWriterWithAllowedDispatch(ctx, expected, lease, allowedHandle, allowedTaskID, allowedDispatchID)
 	if err == nil && expected.ExecutionHandoff.PublicationRecovery == nil {
 		return expected, nil
 	}

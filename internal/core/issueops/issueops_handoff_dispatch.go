@@ -1130,9 +1130,16 @@ func markHandoffSoleWriterRecovery(stateRoot string, expected IssueOpsRecord, fe
 }
 
 func attestHandoffSoleWriter(ctx context.Context, record IssueOpsRecord, client IssueOpsOrcaDispatchClient, allowedHandle string) error {
+	return attestHandoffSoleWriterWithAllowedDispatch(ctx, record, client, allowedHandle, "", "")
+}
+
+func attestHandoffSoleWriterWithAllowedDispatch(ctx context.Context, record IssueOpsRecord, client IssueOpsOrcaDispatchClient, allowedHandle, allowedTaskID, allowedDispatchID string) error {
 	h := record.ExecutionHandoff
 	if h == nil || h.Orca == nil || strings.TrimSpace(h.Orca.WorktreeID) == "" {
 		return soleWriterRecoveryError("sole writer attestation requires exact Orca worktree authority")
+	}
+	if (strings.TrimSpace(allowedTaskID) == "") != (strings.TrimSpace(allowedDispatchID) == "") {
+		return soleWriterRecoveryError("sole writer allowed dispatch identity is incomplete")
 	}
 	terminals, err := client.ListTerminals(ctx, h.Orca.WorktreeID)
 	if err != nil {
@@ -1191,6 +1198,7 @@ func attestHandoffSoleWriter(ctx context.Context, record IssueOpsRecord, client 
 	if err := requireStableInventoryIdentities("task", taskIDs); err != nil {
 		return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: %v", err)
 	}
+	allowedDispatchMatches := 0
 	for _, task := range dispatchedTasks {
 		if strings.TrimSpace(task.Status) != "dispatched" {
 			return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: row has a non-dispatched status")
@@ -1204,6 +1212,15 @@ func attestHandoffSoleWriter(ctx context.Context, record IssueOpsRecord, client 
 		}
 		if dispatch.TaskID != task.ID || dispatch.Status != "dispatched" {
 			return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: row has incomplete dispatch identity")
+		}
+		currentTask := task.ID == strings.TrimSpace(allowedTaskID)
+		currentDispatch := dispatch.ID == strings.TrimSpace(allowedDispatchID)
+		if currentTask || currentDispatch {
+			if !currentTask || !currentDispatch || dispatch.AssigneeHandle != strings.TrimSpace(h.Orca.WorkerMailboxHandle) {
+				return soleWriterRecoveryError("sole writer allowed dispatch identity does not match the sealed current owner task")
+			}
+			allowedDispatchMatches++
+			continue
 		}
 		if _, assignedHere := exactHandles[dispatch.AssigneeHandle]; assignedHere {
 			return soleWriterConflictError("sole writer attestation found a dispatched task assigned to the exact worktree")
@@ -1240,6 +1257,9 @@ func attestHandoffSoleWriter(ctx context.Context, record IssueOpsRecord, client 
 			continue
 		}
 		return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: assignee terminal is absent from the exact worktree inventory")
+	}
+	if allowedTaskID != "" && allowedDispatchMatches != 1 {
+		return soleWriterRecoveryError("sole writer attestation requires exactly one sealed current owner dispatch; found %d", allowedDispatchMatches)
 	}
 	return nil
 }

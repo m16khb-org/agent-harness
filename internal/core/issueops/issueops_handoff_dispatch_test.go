@@ -2301,6 +2301,12 @@ func handoffDispatchFake(records ...IssueOpsRecord) *dispatchOrcaFake {
 			WorktreePath: workerRoot, Connected: true, Writable: true,
 		}
 		fake.terminals = []port.OrcaTerminal{fake.terminal}
+		if records[0].ExecutionHandoff.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && records[0].ExecutionHandoff.State == handoff.StateOwnerActive {
+			fake.dispatchedTasks = []port.OrcaTask{{ID: identity.TaskID, Status: "dispatched"}}
+			fake.dispatchByTask = map[string]port.OrcaDispatch{identity.TaskID: {
+				ID: identity.DispatchID, TaskID: identity.TaskID, AssigneeHandle: identity.WorkerMailboxHandle, Status: "dispatched",
+			}}
+		}
 	}
 	return fake
 }

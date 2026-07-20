@@ -1366,6 +1366,11 @@ func TestProtocolV2OwnerPublishesExactHeadWithoutAccept(t *testing.T) {
 	finalHead := strings.TrimSpace(preflight.GitOut(record.ExecutionHandoff.WorkerRoot, "rev-parse", "refs/heads/"+record.Branch))
 	reader := &publicationRefFake{localHead: finalHead, remoteHead: finalHead}
 	lease := handoffDispatchFake(record)
+	lease.dispatchedTasks = []port.OrcaTask{{ID: record.ExecutionHandoff.Orca.TaskID, Status: "dispatched"}}
+	lease.dispatchByTask = map[string]port.OrcaDispatch{record.ExecutionHandoff.Orca.TaskID: {
+		ID: record.ExecutionHandoff.Orca.DispatchID, TaskID: record.ExecutionHandoff.Orca.TaskID,
+		AssigneeHandle: record.ExecutionHandoff.Orca.WorkerMailboxHandle, Status: "dispatched",
+	}}
 
 	published, err := RecordIssueOpsHandoffPublishReceipt(context.Background(), stateRoot, IssueOpsHandoffPublishRequest{
 		ID: record.ID, Confirm: true, Host: owner.Host, SessionID: owner.SessionID, AgentID: owner.AgentID, CWD: owner.CWD,
@@ -1378,6 +1383,34 @@ func TestProtocolV2OwnerPublishesExactHeadWithoutAccept(t *testing.T) {
 	}
 	if published.ExecutionHandoff.PublishReceipt == nil || published.ExecutionHandoff.PublishReceipt.FinalHead != finalHead {
 		t.Fatalf("owner publication receipt = %#v", published.ExecutionHandoff.PublishReceipt)
+	}
+}
+
+func TestProtocolV2OwnerPublicationRejectsAdditionalDispatchedTask(t *testing.T) {
+	stateRoot, record, owner := ownershipActiveRecorderRecord(t)
+	record.Phase = IssueOpsPhasePR
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	finalHead := strings.TrimSpace(preflight.GitOut(record.ExecutionHandoff.WorkerRoot, "rev-parse", "refs/heads/"+record.Branch))
+	reader := &publicationRefFake{localHead: finalHead, remoteHead: finalHead}
+	lease := handoffDispatchFake(record)
+	lease.dispatchedTasks = []port.OrcaTask{
+		{ID: record.ExecutionHandoff.Orca.TaskID, Status: "dispatched"},
+		{ID: "task-competing", Status: "dispatched"},
+	}
+	lease.dispatchByTask = map[string]port.OrcaDispatch{
+		record.ExecutionHandoff.Orca.TaskID: {ID: record.ExecutionHandoff.Orca.DispatchID, TaskID: record.ExecutionHandoff.Orca.TaskID, AssigneeHandle: record.ExecutionHandoff.Orca.WorkerMailboxHandle, Status: "dispatched"},
+		"task-competing":                    {ID: "dispatch-competing", TaskID: "task-competing", AssigneeHandle: record.ExecutionHandoff.Orca.WorkerTerminalHandle, Status: "dispatched"},
+	}
+
+	if _, err := RecordIssueOpsHandoffPublishReceipt(context.Background(), stateRoot, IssueOpsHandoffPublishRequest{
+		ID: record.ID, Confirm: true, Host: owner.Host, SessionID: owner.SessionID, AgentID: owner.AgentID, CWD: owner.CWD,
+	}, reader, lease, handoffPrepareTestClock()); err == nil || !strings.Contains(err.Error(), "dispatched task") {
+		t.Fatalf("additional dispatched task publication error = %v", err)
+	}
+	if reader.pushCalls != 0 {
+		t.Fatalf("additional dispatched task crossed push boundary: %d", reader.pushCalls)
 	}
 }
 
