@@ -509,3 +509,9 @@ Do not move to PR/MR drafting when `issueops pr-readiness --strict` reports miss
 Do not mark an IssueOps loop `done` before it has entered the `pr` phase. Completion reporting happens after PR/MR readiness and review/merge hygiene, not as an escape hatch from planning or implementation.
 
 Before PR/MR create, verify the linked issue labels and pass them to the provider create command. If the linked issue has no labels, create or apply an explicit manual label first, or stop and record label-decision feedback; never create the PR/MR with an empty label set.
+
+## Protocol-v2 ownership transfer
+
+Load `references/orca-handoff.md` for a full Orca transfer and `references/cleanup-state.md` for its terminal boundary. Workspace provisioning before ownership transfer is mandatory: prepare the worker, complete plan/gates, make a plan-only commit, preview/confirm start, then let the owner claim and acknowledge context. The source main worktree remains available before, during, and after handoff for unrelated work.
+
+Fence only the canonical worker root, exact cycle ID, native owner, or persisted Orca resource. Protocol-v1 is historical and remains v1; protocol-v2 requires owner orientation and gives the oriented owner post-handoff authority for the exact cycle. There is no `accept` in protocol-v2. `handoff complete` moves to `cleanup_pending_human_decision`, with no automatic cleanup.

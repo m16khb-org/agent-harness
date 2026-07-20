@@ -790,3 +790,11 @@ Archived entries:
   - 조직 adoption scorecard는 두 번째 human operator opt-in, data scope/retention 승인, review rework·incident·completed-task quality outcome proxy 합의, host cost source와 baseline 확보가 모두 끝날 때까지 구현하지 않는다.
 - Consequences: 기본 self-verify는 deterministic baseline만 실행한다. Live initial/reproduction/context-pressure/post-enforcement batch는 각각 별도 외부 비용 경계이며, one-off observation이나 환경 실패로 production 계약을 바꾸지 않는다. Scheduler, RL trainer, 조직 dashboard는 이 결정의 범위가 아니다.
 - Verification: `agent-harness contract conformance baseline --json`, capture-only MCP round-trip tests, three-host fake-runner isolation tests, self-verify failure-cause/trace/history compatibility tests, contract response goldens.
+
+## 2026-07-20 — Protocol-v2 separates workspace provisioning from ownership transfer
+
+- Kind: `adr`
+- Context: The `coordinator_preparing` incident showed that source-CWD fallback, mirrored-path matching, and coordinator session bindings were incorrectly used as a fence boundary. They blocked the main checkout even though only a worker-owned cycle required isolation.
+- Decision: Provision a workspace first, complete gates and a plan-only commit, then confirm a protocol-v2 ownership transfer to an Orca-created native owner. Source-main availability is protocol-independent; the owner alone mutates, publishes, and completes the exact v2 cycle after orientation. Protocol-v1 records retain their historical coordinator/worker roles and are never schema- or background-converted.
+- Cleanup: v2 completion stops at `cleanup_pending_human_decision`. There is no automatic cleanup and no v2 accept transition. A fresh authenticated source-root session may preview resources, but only a human-confirmed approval names one session to receive the next cleanup receipt authority.
+- Rejected alternatives: broad source-CWD/session allowlists, same-relative-path deny rules, automatic stale cleanup, and inferring authority from elapsed time or a generic session binding.

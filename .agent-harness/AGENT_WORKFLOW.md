@@ -95,3 +95,9 @@ phase 진입은 fail-closed다: `grill` 진입은 problem 완료(`intent_contrac
 ## OpenAPI prompt source
 
 Endpoint/controller/DTO/schema/OpenAPI 변경 시 `.agent-harness/OPEN_API_SPEC.md`를 프로젝트별 프롬프트 source로 사용한다. `agent-harness api-doc review`는 별도 `--prompt-file`이 없으면 이 문서를 자동으로 포함한다.
+
+## Protocol-v2 ownership-transfer workflow
+
+After `worktree prepare`, finish the plan and gates and create a plan-only commit before confirmed start. The Orca-created owner then claims, acknowledges context, implements, publishes, and completes the exact cycle. The source main worktree remains available before, during, and after handoff: source disengagement applies only to steering or mutation of that transferred cycle.
+
+Do not use source-CWD/session binding as a fence. Select the canonical worker root, exact cycle ID, native owner, or persisted Orca resource. Protocol-v1 stays historical; protocol-v2 has no `accept` in protocol-v2 and completion becomes `cleanup_pending_human_decision`, not automatic cleanup.

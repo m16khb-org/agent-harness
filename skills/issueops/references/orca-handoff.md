@@ -388,3 +388,9 @@ The exact `orca terminal close --terminal <resolved-worker-terminal-handle> --js
 Bootstrap exception: issue #16 cycle `io-47c93d1ef742` is a schema-v4 record with no `execution_handoff`; its `branch_prepare.base_sha` is `2ba240b94477190071598b3f1c7278312b296611`. `fe2ed683bd02a5b0e7b029eb10a82e59777b9dbb` is the observed pre-correction local/remote published branch HEAD and `ai_slop_clean_head`, not the cycle base. It must refuse supervised publish. After the worker fully exits, publication for that one cycle requires coordinator-only exact untruncated terminal/task inventory plus immutable commit SHA and local/remote ref verification. Automatic publication-fence guarantees apply only to future supervised envelopes; do not adopt the legacy row into an envelope.
 
 `auto` fallback is allowed only when Orca is absent or unready before the first external mutation, and it must be byte-identical to the legacy inline path with no state rewrite. It is never a recovery strategy for `coordinator_preparing`, `dispatched`, `claimed`, `submitted`, or `recovery_required` state.
+
+## Protocol-v2 ownership transfer (current)
+
+The prior supervised flow above is protocol-v1 history where it assigns coordinator acceptance. Current v2 begins with workspace provisioning before ownership transfer: `worktree prepare` -> plan/gates -> plan-only commit -> `handoff start` preview/confirm -> owner `claim` -> `acknowledge-context` -> implementation/PR/MR -> `complete` -> human cleanup choice.
+
+The source main worktree remains available before, during, and after handoff. The worker fence is the canonical worker root, exact cycle ID, native owner, or persisted Orca resource; source CWD, session binding, and mirrored paths are never a broad source-worktree fence. Owner orientation grants post-handoff authority to publish and complete this cycle. There is no `accept` in protocol-v2.

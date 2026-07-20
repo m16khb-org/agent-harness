@@ -161,3 +161,13 @@ agent-harness issueops benchmark gate --baseline "$BASELINE_ID" --candidate "$CA
 The candidate file records the hypothesis, target dimensions, edit surface, and keep/discard criteria. The gate keeps a candidate only when the candidate benchmark passes, baseline comparison has no regression, target dimensions do not regress, and every changed path is inside the declared edit surface.
 
 All IssueOps LLM judging must go through the shared external LLM wrapper in the harness core. The wrapper invokes the Z.AI Coding Plan chat completions API with `glm-5-turbo` by default.
+
+## Protocol-v2 human cleanup succession
+
+`handoff complete` writes `cleanup_pending_human_decision`; there is no automatic cleanup. From the exact sealed source root, any authenticated session may preview, but preview grants no authority. Present exactly these choices to the human:
+
+1. retain resources;
+2. close owner terminal and retain workspace;
+3. remove local worker resources.
+
+Only a human-confirmed approval names the candidate session that may record the next ordered receipt. If the original source session is gone, a new authenticated session may preview and the human must re-authorize it; generic binding, Stop hooks, stale scan, and elapsed time never transfer cleanup authority. Preserve every non-`closed` protocol-v2 resource until that decision.

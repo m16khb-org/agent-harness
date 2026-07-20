@@ -312,7 +312,7 @@ Every supervised attempt records attempt/epoch/context, native host session iden
 
 - 어느 non-terminal 상태에서든 create/dispatch 실패는 `recovery_required`로 멈춘다(worktree가 provisioning되지 못하면 `cleanup_only` tombstone을 남긴다). `recovery_required`는 hard deadlock이 아니라 회복 가능 상태다 — block 메시지는 그 sub-state의 정확한 `handoff recover --action …` escape를 이름으로 제시해야 한다(CAUTIONS의 "block message must name a working escape").
 - **유일한 terminal handoff 상태는 `closed`다.** `closed/accepted`는 종결이며 재시도 불가. `closed/worker_failed`와 `closed/cancelled`만 새 attempt/epoch를 mint할 수 있다. `StateClosed`만 검사하면 이미 accept된 결과를 다시 열게 된다.
-- **phase와 handoff terminality는 독립 축이다.** cycle이 `phase=done`이면서 handoff는 non-terminal일 수 있고, 그 경우 여전히 source checkout을 fence하고 un-reconciled Orca artifact를 소유한다. write-time 가드가 이 조합의 생성을 막고, stale classifier(`handoff_nonterminal_on_terminal_phase`)가 report-only로 감지한다(auto-release 금지).
+- **phase와 handoff terminality는 독립 축이다.** cycle이 `phase=done`이면서 handoff는 non-terminal일 수 있고, 그 경우에도 exact worker resource와 un-reconciled Orca artifact만 fence한다. source checkout의 unrelated work remains available. write-time 가드가 이 조합의 생성을 막고, stale classifier(`handoff_nonterminal_on_terminal_phase`)가 report-only로 감지한다(auto-release 금지).
 
 ### Lock 규율
 
@@ -340,6 +340,14 @@ Every supervised attempt records attempt/epoch/context, native host session iden
 - Keep tool list ordering deterministic for stable client caching and golden tests.
 - Use resources for reusable context, tools for actions, and project docs routing for deciding what to read.
 - Writable MCP tools should either be dry-run by default or append-only with narrow target files.
+
+## Protocol-v2 ownership transfer boundary
+
+The 2026-07 supervised design is protocol-v1 history. Its source-CWD fallback and mirrored-path blocking treated coordinator routing metadata as a broad write fence, which caused coordinator-preparing deadlocks. Protocol-v2 separates **workspace provisioning before ownership transfer**: an Orca worktree may be prepared and a plan/gates may be completed without transferring lifecycle authority.
+
+The **source main worktree remains available before, during, and after handoff**. A session binding is routing metadata only, and same-relative-path detection is at most a non-blocking warning. The fence selects a **canonical worker root, exact cycle ID, native owner, or persisted Orca resource**; it never turns ordinary source file, Git, or MCP work into a prohibited surface. Still-fenced surfaces are the isolated root, exact cycle lifecycle commands, IssueOps branch topology, and persisted Orca resources.
+
+Protocol-v1 records retain coordinator/worker acceptance semantics. Protocol-v2 starts only from a plan-only commit, then seals a native owner. The owner performs orientation, has post-handoff authority for the exact cycle, publishes, and completes. There is **no `accept` in protocol-v2**. Completion enters `cleanup_pending_human_decision`; it does not close terminals, remove worktrees, or delete branches automatically.
 
 ## 현재 hardening 추가 사항
 

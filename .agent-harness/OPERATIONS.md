@@ -154,3 +154,23 @@ agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
 ```
 
 For deeper verification, use `.agent-harness/operations/verification.md` and `.agent-harness/TESTING.md`.
+
+## Protocol-v2 Orca ownership handoff
+
+Use this exact order for a new ownership transfer:
+
+```text
+worktree prepare
+-> plan and gates
+-> plan-only commit
+-> handoff start preview/confirm
+-> owner claim
+-> acknowledge-context
+-> implement through PR/MR
+-> handoff complete
+-> human cleanup choice
+```
+
+Workspace provisioning before ownership transfer is deliberate. At every arrow, the source main worktree remains available before, during, and after handoff for unrelated work. “Disengage” means the source does not mutate or steer this exact cycle; it never makes the source checkout read-only. The v2 fence is the canonical worker root, exact cycle ID, native owner, or persisted Orca resource, never a source CWD fallback or generic session binding.
+
+The worker owner runs orientation and has post-handoff authority to publish and complete. There is no `accept` in protocol-v2. `handoff complete` ends at `cleanup_pending_human_decision`; no automatic cleanup occurs. Use `handoff cleanup-preview` from the sealed source root, present the three choices, then use `cleanup-approve --confirm` and ordered `cleanup-record` receipts only after the human directs it.

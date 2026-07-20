@@ -1273,6 +1273,50 @@ func TestRemoteCreateReconcileAdaptersUseOneDurableClaimProjection(t *testing.T)
 	}
 }
 
+func TestIssueOpsOwnershipTransferOperatingContract(t *testing.T) {
+	documents := map[string]string{
+		"architecture": readProjectContractFileForTest(t, ".agent-harness", "ARCHITECTURE.md"),
+		"adr":          readProjectContractFileForTest(t, ".agent-harness", "ADR.md"),
+		"operations":   readProjectContractFileForTest(t, ".agent-harness", "OPERATIONS.md"),
+		"workflow":     readProjectContractFileForTest(t, ".agent-harness", "AGENT_WORKFLOW.md"),
+		"cautions":     readCautionsForTest(t),
+		"skill":        readIssueOpsSkillForTest(t),
+		"orca":         readIssueOpsReferenceForTest(t, "orca-handoff.md"),
+		"worktree":     readIssueOpsReferenceForTest(t, "worktree-context.md"),
+		"cleanup":      readIssueOpsReferenceForTest(t, "cleanup-state.md"),
+	}
+	all := ""
+	for _, document := range documents {
+		all += "\n" + document
+	}
+	for _, want := range []string{
+		"workspace provisioning before ownership transfer",
+		"source main worktree remains available before, during, and after handoff",
+		"canonical worker root, exact cycle ID, native owner, or persisted Orca resource",
+		"plan-only commit",
+		"protocol-v1",
+		"protocol-v2",
+		"owner orientation",
+		"post-handoff authority",
+		"no `accept` in protocol-v2",
+		"cleanup_pending_human_decision",
+		"no automatic cleanup",
+		"retain resources",
+		"close owner terminal and retain workspace",
+		"remove local worker resources",
+		"authenticated session may preview",
+		"human-confirmed approval",
+		"every non-`closed` protocol-v2 resource",
+		"never schema- or background-converted",
+		"io-b9f8cd45e152",
+		"read-only incident evidence",
+	} {
+		if !strings.Contains(all, want) {
+			t.Fatalf("IssueOps ownership-transfer operating contract missing %q", want)
+		}
+	}
+}
+
 func readIssueOpsSkillForTest(t *testing.T) string {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join("..", "..", "..", "skills", "issueops", "SKILL.md"))
