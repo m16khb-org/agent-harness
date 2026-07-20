@@ -447,8 +447,9 @@ func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRe
 		return false
 	}
 	ownershipCleanup := h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State == handoff.StateCleanupExecuting && h.Cleanup != nil && h.Cleanup.ApprovedBySession != nil && nativeSessionMatches(req, h.Cleanup.ApprovedBySession)
+	cancellationQuiescence := h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State == handoff.StateRecoveryRequired && h.Cancellation != nil && nativeSessionMatches(req, h.CoordinatorSession)
 	legacyCleanup := h.State == handoff.StateClosed
-	if !ownershipCleanup && !legacyCleanup {
+	if !ownershipCleanup && !cancellationQuiescence && !legacyCleanup {
 		return false
 	}
 	if commandparse.HasUnquotedControlOperator(req.Command) || commandparse.HasActiveCommandSubstitution(req.Command) || commandparse.HasActiveOutputRedirect(req.Command) || commandparse.HasActiveParameterOrTildeExpansion(req.Command) || commandparse.HasActivePathnameExpansion(req.Command) || commandparse.HasActiveShellSpecialQuoting(req.Command) || commandparse.HasActiveZshEqualsExpansion(req.Command) {
@@ -459,6 +460,9 @@ func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRe
 		return false
 	}
 	if len(tokens) == 6 && tokens[1] == "terminal" && tokens[2] == "close" {
+		if cancellationQuiescence {
+			return h.Orca != nil && h.Orca.WorkerTerminalHandle != "" && tokens[3] == "--terminal" && tokens[4] == h.Orca.WorkerTerminalHandle && tokens[5] == "--json"
+		}
 		if !ownershipCleanup && h.ClosedDisposition != handoff.DispositionWorkerFailed && h.ClosedDisposition != handoff.DispositionCancelled {
 			return false
 		}
@@ -481,7 +485,9 @@ func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRe
 		if ownershipCleanup {
 			wantStatus = "completed"
 		}
-		if h.ClosedDisposition == handoff.DispositionAccepted {
+		if cancellationQuiescence {
+			wantStatus = "failed"
+		} else if h.ClosedDisposition == handoff.DispositionAccepted {
 			wantStatus = "completed"
 		} else if !cleanupStepAuthorized(h, "task_terminal") {
 			return false

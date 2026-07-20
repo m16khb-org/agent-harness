@@ -143,6 +143,47 @@ func TestOwnershipCoordinatorCanCancelActiveOwnerForBoundedRetry(t *testing.T) {
 	}
 }
 
+func TestOwnershipCoordinatorCanQuiesceExactCancelledAttemptResources(t *testing.T) {
+	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+	record.ExecutionHandoff.State = handoff.StateRecoveryRequired
+	record.ExecutionHandoff.Cancellation = &issueopsmodel.IssueOpsExecutionHandoffCancellation{RequestedAt: "2026-07-20T00:01:00Z", Reason: "sealed context contradiction"}
+	record.ExecutionHandoff.Failure = &issueopsmodel.IssueOpsExecutionHandoffFailure{Code: "cancellation_requested", Message: "sealed context contradiction", At: "2026-07-20T00:01:00Z"}
+	var err error
+	record, err = writeIssueOps(IssueOpsStateRoot(), record)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, command := range []string{
+		"orca orchestration task-update --id task-1 --status failed --result '{\"reason\":\"bounded retry\"}' --json",
+		"orca terminal close --terminal term-1 --json",
+	} {
+		req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+		req.AgentID, req.Tool, req.Command = "worker-1", "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("exact cancellation quiescence command %q should pass: %#v", command, got)
+		}
+	}
+
+	for _, command := range []string{
+		"orca orchestration task-update --id task-1 --status completed --json",
+		"orca terminal close --terminal term-1",
+	} {
+		req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+		req.AgentID, req.Tool, req.Command = "worker-1", "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("mismatched cancellation quiescence command %q must block: %#v", command, got)
+		}
+	}
+
+	wrongSession := handoffEditRequest(record, repo, "codex", "different-source", "")
+	wrongSession.AgentID, wrongSession.Tool = "worker-1", "exec_command"
+	wrongSession.Command = "orca terminal close --terminal term-1 --json"
+	if got := BuildLifecyclePreToolUseDecision(wrongSession); got.Decision != "block" {
+		t.Fatalf("unsealed source session must not quiesce the cancelled owner: %#v", got)
+	}
+}
+
 func TestOwnershipCleanupAllowsFreshSourceButRejectsCompletedOwner(t *testing.T) {
 	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateCleanupPendingHumanDecision)
 	fresh := handoffEditRequest(record, repo, "codex", "fresh-source", "")
