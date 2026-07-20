@@ -1335,20 +1335,20 @@ func TestMigrateLegacyWorktreeCanBeAdoptedByTheFollowingSupervisedHandoff(t *tes
 	client.adopt = client.create
 	client.adopt.Comment = issueOpsHandoffMarker(record.ID, "epoch-1", 1)
 	got, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{
-		ID: record.ID, Orchestrator: IssueOpsOrchestratorOrca, Agent: "codex", Confirm: true,
+		ID: record.ID, Orchestrator: IssueOpsOrchestratorOrca, Agent: "codex", Host: "codex", SessionID: "source-session", AgentID: "source-agent", SourceCWD: record.Repo, Confirm: true,
 	}, client, handoffPrepareTestClock())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.State != handoff.StateCoordinatorPreparing || got.Orca == nil || !got.Orca.WorktreeAdopted || client.createCalls != 1 || client.adoptCalls != 1 {
-		t.Fatalf("migrated worktree was not adopted by the supervised handoff: result=%#v creates=%d adopts=%d", got, client.createCalls, client.adoptCalls)
+	if got.State != "ready" || got.HandoffState != "" || got.Orca == nil || !got.Orca.WorktreeAdopted || client.createCalls != 1 || client.adoptCalls != 1 {
+		t.Fatalf("migrated worktree was not adopted as a ready workspace: result=%#v creates=%d adopts=%d", got, client.createCalls, client.adoptCalls)
 	}
 	persisted, err := ReadIssueOps(stateRoot, record.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if persisted.LegacyWorktreeMigration == nil || persisted.LegacyWorktreeMigration.State != IssueOpsLegacyWorktreeMigrationStateOrcaManaged || persisted.ExecutionHandoff == nil || persisted.ExecutionHandoff.Orca == nil || !persisted.ExecutionHandoff.Orca.WorktreeAdopted {
-		t.Fatalf("migration audit or supervised handoff was not persisted: %#v", persisted)
+	if persisted.LegacyWorktreeMigration == nil || persisted.LegacyWorktreeMigration.State != IssueOpsLegacyWorktreeMigrationStateOrcaManaged || persisted.ExecutionWorkspace == nil || persisted.ExecutionWorkspace.Orca == nil || !persisted.ExecutionWorkspace.Orca.WorktreeAdopted || persisted.ExecutionHandoff != nil {
+		t.Fatalf("migration audit or ready workspace was not persisted: %#v", persisted)
 	}
 }
 
