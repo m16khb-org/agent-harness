@@ -1355,7 +1355,7 @@ func TestAcceptedHandoffPublicationRejectsAnyPossibleWriterAndDispatchedAssignme
 
 func TestProtocolV2OwnerPublishesExactHeadWithoutAccept(t *testing.T) {
 	stateRoot, record, owner := ownershipActiveRecorderRecord(t)
-	record.Phase = IssueOpsPhasePR
+	record.Phase = IssueOpsPhaseImplement
 	if _, err := WriteIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}
@@ -1383,6 +1383,9 @@ func TestProtocolV2OwnerPublishesExactHeadWithoutAccept(t *testing.T) {
 	}
 	if published.ExecutionHandoff.PublishReceipt == nil || published.ExecutionHandoff.PublishReceipt.FinalHead != finalHead {
 		t.Fatalf("owner publication receipt = %#v", published.ExecutionHandoff.PublishReceipt)
+	}
+	if published.Phase != IssueOpsPhasePR {
+		t.Fatalf("owner publication phase = %q, want pr", published.Phase)
 	}
 }
 

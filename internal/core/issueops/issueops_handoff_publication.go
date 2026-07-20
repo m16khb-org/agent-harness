@@ -926,7 +926,7 @@ func RecordIssueOpsHandoffPublishReceipt(ctx context.Context, stateRoot string, 
 			if err := verifyIssueOpsRemotePublicationHead(ctx, publicationRecord.Repo, identity, reader); err != nil {
 				return IssueOpsRecord{}, err
 			}
-			return validated, nil
+			return persistIssueOpsOwnershipPublicationPhase(ctx, stateRoot, validated, issueOpsHandoffNow(clock))
 		}
 	}
 	if err := verifyIssueOpsLocalPublicationHead(ctx, publicationRecord.Repo, identity, reader); err != nil {
@@ -952,12 +952,45 @@ func RecordIssueOpsHandoffPublishReceipt(ctx context.Context, stateRoot string, 
 			Provider: identity.Provider, ProjectKey: identity.ProjectKey, Remote: identity.Remote, PushTargetSHA256: identity.PushTargetSHA256, Branch: identity.Branch, Base: identity.Base,
 			RemoteRef: identity.RemoteRef, FinalHead: identity.FinalHead, VerifiedAt: now,
 		}
+		stampIssueOpsOwnershipPublicationPhase(&current, now)
 		current.ExecutionHandoff.UpdatedAt = now
 		current.UpdatedAt = now
 		persisted, readErr = writeIssueOps(stateRoot, current)
 		return readErr
 	})
 	return persisted, err
+}
+
+func persistIssueOpsOwnershipPublicationPhase(ctx context.Context, stateRoot string, expected IssueOpsRecord, now string) (IssueOpsRecord, error) {
+	h := expected.ExecutionHandoff
+	if h == nil || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || expected.Phase == model.IssueOpsPhasePR {
+		return expected, nil
+	}
+	var persisted IssueOpsRecord
+	err := withIssueOpsLock(ctx, stateRoot, expected.ID, func(context.Context) error {
+		current, readErr := ReadIssueOps(stateRoot, expected.ID)
+		if readErr != nil {
+			return readErr
+		}
+		if !reflect.DeepEqual(current, expected) {
+			return fmt.Errorf("ownership handoff changed during publication phase transition")
+		}
+		stampIssueOpsOwnershipPublicationPhase(&current, now)
+		current.ExecutionHandoff.UpdatedAt = now
+		current.UpdatedAt = now
+		persisted, readErr = writeIssueOps(stateRoot, current)
+		return readErr
+	})
+	return persisted, err
+}
+
+func stampIssueOpsOwnershipPublicationPhase(record *IssueOpsRecord, now string) {
+	if record == nil || record.ExecutionHandoff == nil || record.ExecutionHandoff.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || record.Phase == model.IssueOpsPhasePR {
+		return
+	}
+	previous := record.Phase
+	record.Phase = model.IssueOpsPhasePR
+	record.PhaseLedger = stampIssueOpsForwardTransition(record.PhaseLedger, previous, record.Phase, now)
 }
 
 func issueOpsOwnerPublicationReplacementAllowed(ctx context.Context, record IssueOpsRecord, identity issueOpsPublicationIdentity, reader IssueOpsHandoffPublicationReader) bool {
