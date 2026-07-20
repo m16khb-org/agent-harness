@@ -1394,10 +1394,25 @@ func resolveHandoffContextOptions(record IssueOpsRecord, supplied handoff.Contex
 			return expected, nil
 		}
 	}
+	if unsealedRetryContextOptionsMayChange(record) {
+		return supplied, nil
+	}
 	if !reflect.DeepEqual(handoff.CanonicalContextOptions(supplied), handoff.CanonicalContextOptions(handoff.ContextOptionsFromModel(persisted))) {
 		return handoff.ContextOptions{}, fmt.Errorf("supplied handoff context options do not match the sealed delivery contract")
 	}
 	return handoff.ContextOptionsFromModel(persisted), nil
+}
+
+func unsealedRetryContextOptionsMayChange(record IssueOpsRecord) bool {
+	h := record.ExecutionHandoff
+	if h == nil || h.State != handoff.StateCoordinatorPreparing || h.Attempt <= 1 || h.ContextSHA256 != "" || len(h.PriorAttempts) == 0 {
+		return false
+	}
+	prior := h.PriorAttempts[len(h.PriorAttempts)-1]
+	return prior.Attempt == h.Attempt-1 && prior.State == handoff.StateClosed &&
+		(prior.ClosedDisposition == handoff.DispositionWorkerFailed || prior.ClosedDisposition == handoff.DispositionCancelled) &&
+		prior.Cleanup != nil && prior.Cleanup.Disposition == "retry" && len(prior.Cleanup.Receipts) == 2 &&
+		prior.Cleanup.Receipts[0].Step == "task_terminal" && prior.Cleanup.Receipts[1].Step == "terminal_quiescent"
 }
 
 func validateCodexHandoffOptions(record IssueOpsRecord, options handoff.ContextOptions) error {

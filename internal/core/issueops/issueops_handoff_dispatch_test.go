@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -2296,6 +2297,31 @@ func handoffDispatchFake(records ...IssueOpsRecord) *dispatchOrcaFake {
 		fake.terminals = []port.OrcaTerminal{fake.terminal}
 	}
 	return fake
+}
+
+func TestResolveHandoffContextOptionsAllowsExplicitUnsealedRetryCorrection(t *testing.T) {
+	record := IssueOpsRecord{ExecutionHandoff: &IssueOpsExecutionHandoff{
+		State: handoff.StateCoordinatorPreparing, Attempt: 2,
+		ContextOptions: &issueopsmodel.IssueOpsExecutionHandoffContextOptions{WorkerScope: "stale scope", StopConditions: []string{"do not push or open a PR"}},
+		PriorAttempts: []issueopsmodel.IssueOpsExecutionHandoffPriorAttempt{{
+			State: handoff.StateClosed, ClosedDisposition: handoff.DispositionCancelled, Attempt: 1,
+			Cleanup: &issueopsmodel.IssueOpsExecutionHandoffCleanup{Disposition: "retry", Receipts: []issueopsmodel.IssueOpsExecutionHandoffCleanupReceipt{{Step: "task_terminal"}, {Step: "terminal_quiescent"}}},
+		}},
+	}}
+	want := handoff.ContextOptions{WorkerScope: "corrected scope", StopConditions: []string{"owner may publish exact branch; stop before merge"}}
+	got, err := resolveHandoffContextOptions(record, want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(handoff.CanonicalContextOptions(got), handoff.CanonicalContextOptions(want)) {
+		t.Fatalf("corrected retry context = %#v, want %#v", got, want)
+	}
+
+	record.ExecutionHandoff.Attempt = 1
+	record.ExecutionHandoff.PriorAttempts = nil
+	if _, err := resolveHandoffContextOptions(record, want); err == nil {
+		t.Fatal("initial prepared attempt must not replace persisted delivery options")
+	}
 }
 
 func attestedCodexStart(t *testing.T, stateRoot, id string) IssueOpsHandoffStartRequest {
