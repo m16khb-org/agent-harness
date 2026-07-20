@@ -15,7 +15,7 @@ import (
 )
 
 const issueOpsHandoffUsage = `Usage:
-  agent-harness issueops handoff start --id ID --coordinator-recipient TERM --coordinator-host HOST --coordinator-session-id SESSION --source-cwd PATH [--coordinator-agent-id ID] [--workspace-epoch EPOCH] [--allow-codex-hook-trust-bypass] [--expected-context-sha256 SHA] [--result-format FORMAT] [--confirm] [--json]
+  agent-harness issueops handoff start --id ID --coordinator-recipient TERM --coordinator-host HOST --coordinator-session-id SESSION --source-cwd PATH [--coordinator-agent-id ID] [--workspace-epoch EPOCH] [--allow-codex-hook-trust-bypass] [--codex-model MODEL --codex-reasoning-effort EFFORT] [--expected-context-sha256 SHA] [--result-format FORMAT] [--confirm] [--json]
   agent-harness issueops handoff claim --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd PATH --orca-worktree-id ID [--agent-id ID] [--json]
   agent-harness issueops handoff acknowledge-context --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd PATH --issue-url URL --plan-sha256 SHA --understanding TEXT --scope-confirmation TEXT [--agent-id ID] [--json]
   agent-harness issueops handoff finish --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --outcome completed|failed [evidence flags] [--no-change --verification RESULT] [--json]
@@ -94,6 +94,8 @@ func runIssueOpsHandoffStart(args []string) error {
 	workspaceEpoch := fs.String("workspace-epoch", "", "sealed ready workspace epoch for ownership transfer")
 	confirm := fs.Bool("confirm", false, "confirm terminal, task, and dispatch mutations")
 	allowCodexHookTrustBypass := fs.Bool("allow-codex-hook-trust-bypass", false, "attest that the documented Codex hooks/list trust review passed")
+	codexModel := fs.String("codex-model", "", "sealed Codex worker model slug")
+	codexReasoningEffort := fs.String("codex-reasoning-effort", "", "sealed Codex worker reasoning effort")
 	expectedContextSHA256 := fs.String("expected-context-sha256", "", "reviewed sealed context sha256")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	var criteria, docs, skills, verification, stops repeatedFlag
@@ -116,6 +118,7 @@ func runIssueOpsHandoffStart(args []string) error {
 			CriteriaIDs: criteria, RequiredDocs: docs, RequiredSkills: skills, WorkerScope: *scope,
 			VerificationCommands: verification, HeartbeatCadence: *heartbeat, StopConditions: stops, ResultFormat: *resultFormat,
 			AllowCodexHookTrustBypass: *allowCodexHookTrustBypass,
+			CodexModel:                *codexModel, CodexReasoningEffort: *codexReasoningEffort,
 		},
 	}, orca.New(), core.IssueOpsHandoffStartClock{})
 	return printIssueOpsHandoffValue(result, *jsonOut, err)

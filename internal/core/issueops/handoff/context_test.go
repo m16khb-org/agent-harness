@@ -63,6 +63,8 @@ func TestIssueOpsHandoffContextDeterministicAndBounded(t *testing.T) {
 		StopConditions:            []string{"scope drift", "destructive action"},
 		ResultFormat:              "bounded Turing evidence",
 		AllowCodexHookTrustBypass: true,
+		CodexModel:                "gpt-5.6-terra",
+		CodexReasoningEffort:      "high",
 	}
 	first, err := BuildContext(record, options)
 	if err != nil {
@@ -84,8 +86,10 @@ func TestIssueOpsHandoffContextDeterministicAndBounded(t *testing.T) {
 	if first.Projection.Provider != "github" || first.Projection.IssueURL != record.IssueURL {
 		t.Fatalf("provider-linked issue authority missing from context: %#v", first.Projection)
 	}
-	if !first.Projection.AllowCodexHookTrustBypass || !CanonicalContextOptions(options).AllowCodexHookTrustBypass || !ContextOptionsFromModel(CanonicalContextOptions(options)).AllowCodexHookTrustBypass {
-		t.Fatal("Codex hook-trust attestation was not preserved in the delivery projection and model")
+	canonical := CanonicalContextOptions(options)
+	fromModel := ContextOptionsFromModel(canonical)
+	if !first.Projection.AllowCodexHookTrustBypass || first.Projection.CodexModel != "gpt-5.6-terra" || first.Projection.CodexReasoningEffort != "high" || !canonical.AllowCodexHookTrustBypass || canonical.CodexModel != "gpt-5.6-terra" || canonical.CodexReasoningEffort != "high" || fromModel.CodexModel != "gpt-5.6-terra" || fromModel.CodexReasoningEffort != "high" {
+		t.Fatal("Codex launch options were not preserved in the sealed delivery projection and model")
 	}
 	withDifferentOptions, err := BuildContext(record, ContextOptions{WorkerScope: "different runtime delivery option"})
 	if err != nil {

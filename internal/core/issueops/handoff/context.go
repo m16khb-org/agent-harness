@@ -28,6 +28,8 @@ type ContextOptions struct {
 	StopConditions            []string
 	ResultFormat              string
 	AllowCodexHookTrustBypass bool
+	CodexModel                string
+	CodexReasoningEffort      string
 }
 
 type ContextProjection struct {
@@ -68,6 +70,8 @@ type ContextProjection struct {
 	StopConditions            []string `json:"stop_conditions,omitempty"`
 	ResultFormat              string   `json:"result_format,omitempty"`
 	AllowCodexHookTrustBypass bool     `json:"allow_codex_hook_trust_bypass,omitempty"`
+	CodexModel                string   `json:"codex_model,omitempty"`
+	CodexReasoningEffort      string   `json:"codex_reasoning_effort,omitempty"`
 }
 
 type ContextPacket struct {
@@ -112,6 +116,8 @@ func BuildContext(record model.IssueOpsRecord, options ContextOptions) (ContextP
 		StopConditions:            cleanList(options.StopConditions),
 		ResultFormat:              redact(options.ResultFormat),
 		AllowCodexHookTrustBypass: options.AllowCodexHookTrustBypass,
+		CodexModel:                strings.TrimSpace(options.CodexModel),
+		CodexReasoningEffort:      strings.ToLower(strings.TrimSpace(options.CodexReasoningEffort)),
 	}
 	if record.BranchPrepare != nil {
 		projection.Provider = strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider))
@@ -180,6 +186,7 @@ func CanonicalContextOptions(options ContextOptions) model.IssueOpsExecutionHand
 		WorkerScope: redact(options.WorkerScope), VerificationCommands: cleanList(options.VerificationCommands), HeartbeatCadence: redact(options.HeartbeatCadence),
 		StopConditions: cleanList(options.StopConditions), ResultFormat: redact(options.ResultFormat),
 		AllowCodexHookTrustBypass: options.AllowCodexHookTrustBypass,
+		CodexModel:                strings.TrimSpace(options.CodexModel), CodexReasoningEffort: strings.ToLower(strings.TrimSpace(options.CodexReasoningEffort)),
 	}
 }
 
@@ -189,6 +196,7 @@ func ContextOptionsFromModel(options model.IssueOpsExecutionHandoffContextOption
 		WorkerScope: options.WorkerScope, VerificationCommands: append([]string(nil), options.VerificationCommands...), HeartbeatCadence: options.HeartbeatCadence,
 		StopConditions: append([]string(nil), options.StopConditions...), ResultFormat: options.ResultFormat,
 		AllowCodexHookTrustBypass: options.AllowCodexHookTrustBypass,
+		CodexModel:                options.CodexModel, CodexReasoningEffort: options.CodexReasoningEffort,
 	}
 }
 
@@ -196,7 +204,7 @@ func ContextOptionsEmpty(options ContextOptions) bool {
 	canonical := CanonicalContextOptions(options)
 	return len(canonical.CriteriaIDs) == 0 && len(canonical.RequiredDocs) == 0 && len(canonical.RequiredSkills) == 0 &&
 		canonical.WorkerScope == "" && len(canonical.VerificationCommands) == 0 && canonical.HeartbeatCadence == "" &&
-		len(canonical.StopConditions) == 0 && canonical.ResultFormat == "" && !canonical.AllowCodexHookTrustBypass
+		len(canonical.StopConditions) == 0 && canonical.ResultFormat == "" && !canonical.AllowCodexHookTrustBypass && canonical.CodexModel == "" && canonical.CodexReasoningEffort == ""
 }
 
 func contextSourceProjection(projection ContextProjection) ContextProjection {
@@ -209,6 +217,8 @@ func contextSourceProjection(projection ContextProjection) ContextProjection {
 	projection.StopConditions = nil
 	projection.ResultFormat = ""
 	projection.AllowCodexHookTrustBypass = false
+	projection.CodexModel = ""
+	projection.CodexReasoningEffort = ""
 	return projection
 }
 

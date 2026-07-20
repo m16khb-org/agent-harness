@@ -60,6 +60,8 @@ func TestMCPIssueOpsHandoffLifecycleParity(t *testing.T) {
 		"coordinator_agent_id":          "coordinator-agent",
 		"source_cwd":                    record.Repo,
 		"allow_codex_hook_trust_bypass": true,
+		"codex_model":                   "gpt-5.6-terra",
+		"codex_reasoning_effort":        "high",
 	})
 	if finalPreview["preview"] != true || finalPreview["codex_hook_trust_bypass_attested"] != true {
 		t.Fatalf("attested final start preview parity failed: %#v", finalPreview)
@@ -78,10 +80,15 @@ func TestMCPIssueOpsHandoffLifecycleParity(t *testing.T) {
 		"source_cwd":                    record.Repo,
 		"confirm":                       true,
 		"allow_codex_hook_trust_bypass": true,
+		"codex_model":                   "gpt-5.6-terra",
+		"codex_reasoning_effort":        "high",
 		"expected_context_sha256":       reviewedContextSHA256,
 	})
 	if startConfirm["state"] != handoff.StateDispatched || startConfirm["context_sha256"] != reviewedContextSHA256 {
 		t.Fatalf("start parity failed: %#v", startConfirm)
+	}
+	if fake.terminalRequest.CodexModel != "gpt-5.6-terra" || fake.terminalRequest.CodexReasoningEffort != "high" {
+		t.Fatalf("MCP start did not preserve Codex launch options: %#v", fake.terminalRequest)
 	}
 	common := map[string]any{
 		"id": record.ID, "attempt": 1, "ownership_epoch": "epoch-1", "context_sha256": startConfirm["context_sha256"],
@@ -346,6 +353,7 @@ func callMCPUnknownTool(t *testing.T, name string) string {
 type handoffStartOrcaFake struct {
 	workerRoot      string
 	terminals       []port.OrcaTerminal
+	terminalRequest port.OrcaCreateTerminalRequest
 	workerDoneCalls int
 }
 
@@ -358,6 +366,7 @@ func (f *handoffStartOrcaFake) ListTerminals(context.Context, string) ([]port.Or
 }
 
 func (f *handoffStartOrcaFake) CreateTerminal(_ context.Context, req port.OrcaCreateTerminalRequest) (port.OrcaTerminal, error) {
+	f.terminalRequest = req
 	terminal := port.OrcaTerminal{Handle: "term_worker", PTYID: "pty-1", WorktreeID: req.WorktreeID, WorktreePath: f.workerRoot, Connected: true, Writable: true}
 	f.terminals = []port.OrcaTerminal{terminal}
 	return terminal, nil

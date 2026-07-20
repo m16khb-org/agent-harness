@@ -3,9 +3,9 @@
 ## TL;DR
 > **Summary**: 2026-07-20 전수 감사(스킬 11종 4,200줄 + references/scripts/testdata 전량 정독, 실행 계약 실측 검증)에서 도출된 결함을 P0(안전·치명) → P4(인프라 재발 방지) 순으로 수정한다. 6월 품질 프로그램의 성과(가드레일 수정 안착, harness/orca/git 계약 stale 0건)는 유지하고, 이번에 드러난 실행 계층 결함·측정 드리프트·커버리지 갭을 닫는다.
 > **Deliverables**: P0 안전 수정 3건, P1 정확성 수정 10건, P2 references 분리 패스(6개 스킬), P3 사용성 패스(경량 모드·라우팅 양방향화·한국어 출력 가이드), P4 인프라 5건(측정 편입·핀 확대·검증 도구 2종·stop-hook 재접지)
-> **Effort**: Large (P0만 반나절, 전체 3–5 세션)
-> **Parallel**: YES — P0 3건은 상호 독립, P2 분리 패스는 스킬별 병렬 가능
-> **Critical Path**: P0-1(engelbart 픽스처) → P4-A(측정 편입)는 픽스처 교체 후에만 의미. 나머지는 독립.
+> **Effort**: Large (Wave 0–5, provider-native child 12개; 초기 3–5 세션 추정은 폐기)
+> **Parallel**: YES — prerequisites가 없는 #51/#52/#62만 `[p]`; #59/#60은 #51 수락 후 같은 wave에 동시 dispatch하는 `[s]`
+> **Critical Path**: #62 → child dispatch; #51/#52 → #53 → #54 → #55 → #61; #54 → #56 → #57/#58
 
 ## Context
 
@@ -108,3 +108,16 @@
 - 각 단계는 issueops 사이클로 진행, 커밋은 atomic-commit-push 계약 준수.
 - 전 단계 공통 검증: `go build ./cmd/harness && go test ./... -count=1`, `scripts/validate-skill.py` 전 스킬, `python3 scripts/engelbart_skill_contract_test.py`(engelbart 접촉 시).
 - 승인 경계 요약: ① P0-1 git 이력 정리(비가역) — 명시 승인 필수, ② P3-B issueops 라우팅 자기모순 해소(정책 결정), ③ P4-A 홀드아웃 fresh-context 재실행(토큰 비용 opt-in). 그 외는 가역적 파일 수정.
+
+## IssueOps 실행 분해 보정 (Brooks review, 2026-07-20)
+
+초기 child 분해의 #53(P2+P3)과 #54(P4 전체)는 독립 검증·rollback 경계를 충분히 보존하지 못해 Brooks 판정 `revise`를 받았다. 원래 P0–P4 항목은 유지하되 실행 단위를 다음처럼 보정한다.
+
+- Wave 0: #62가 세션별 Codex model/reasoning을 sealed handoff context와 안전한 Orca launch command에 추가한다. 이 기능 없이는 자기 자신을 요구 모델로 handoff할 수 없어 parent coordinator가 TDD bootstrap한다.
+- Wave 1: #51 P0, #52 P1 병렬. Torvalds 소유권은 #51=`SKILL.md`+`bisect-protocol.md`, #52=`rebase-protocol.md`; parent가 통합 안전 계약을 검증한다.
+- Wave 2: #53 P2 reference extraction만 수행한다.
+- Wave 3: #54 P3-A/C, #59 Shannon shell pilot, #60 Engelbart stop-hook를 독립 실행한다.
+- Wave 4: #55 P3-B의 검증된 edge만 #54 수락 후 실행하고, #56 Brooks/Engelbart evidence 계약·fixture를 실행한다.
+- Wave 5: #58 metadata/orphan-reference 정적 검증은 #56 수락 후, #61 P4-G source 후속은 #55 수락 후 실행한다. #57은 #56의 확정 계약을 소비해 deterministic benchmark·pins·offline dashboard를 구현한다.
+
+P4-D는 Shannon의 실제 회귀 fixture pilot부터 시작하고 재사용 가치가 입증되기 전에는 범용 fenced-bash extractor를 만들지 않는다. Fresh-context holdout은 실행하지 않으며 isolated score는 `not remeasured`로 남긴다. 모든 격리 child는 Orca coordinator가 worktree와 Codex 세션을 만들고 `gpt-5.6-terra`, `model_reasoning_effort=high`로 supervised handoff한다.

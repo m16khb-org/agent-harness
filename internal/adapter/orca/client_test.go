@@ -603,6 +603,39 @@ func TestClientCreateTerminalNegotiatesOnlyFixedBuiltInLaunchShape(t *testing.T)
 	}
 }
 
+func TestClientCreateTerminalPinsCodexModelAndReasoning(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca terminal create --help"] = CommandOutput{Stdout: []byte("--worktree --command --title --json")}
+	wantCommand := "codex -m gpt-5.6-terra -c model_reasoning_effort=high --dangerously-bypass-hook-trust"
+	runner.responses["orca terminal create --worktree id:worktree-1 --command "+wantCommand+" --title marker --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"terminal":{"handle":"term-1","worktreeId":"worktree-1"}},"_meta":{"runtimeId":"runtime-1"}}`)}
+
+	terminal, err := NewClient(runner).CreateTerminal(context.Background(), port.OrcaCreateTerminalRequest{
+		WorktreeID: "worktree-1", Agent: "codex", Title: "marker", AllowCodexHookTrustBypass: true,
+		CodexModel: "gpt-5.6-terra", CodexReasoningEffort: "high",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if terminal.RuntimeID != "runtime-1" || len(runner.calls) != 2 || strings.Join(runner.calls[1], " ") != "orca terminal create --worktree id:worktree-1 --command "+wantCommand+" --title marker --json" {
+		t.Fatalf("pinned Codex launch terminal=%#v calls=%#v", terminal, runner.calls)
+	}
+}
+
+func TestClientCreateTerminalRejectsUnsafeCodexLaunchOptionsBeforeMutation(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca terminal create --help"] = CommandOutput{Stdout: []byte("--worktree --command --title --json")}
+	_, err := NewClient(runner).CreateTerminal(context.Background(), port.OrcaCreateTerminalRequest{
+		WorktreeID: "worktree-1", Agent: "codex", CodexModel: "gpt-5.6-terra; touch /tmp/pwned", CodexReasoningEffort: "high",
+	})
+	var orcaErr *port.OrcaError
+	if !errors.As(err, &orcaErr) || orcaErr.Code != "codex_launch_options_invalid" || orcaErr.Invoked {
+		t.Fatalf("unsafe Codex launch error = %#v", err)
+	}
+	if len(runner.calls) != 0 {
+		t.Fatalf("unsafe Codex launch invoked external command: %#v", runner.calls)
+	}
+}
+
 func TestClientBootstrapsExactLegacyTerminalWithAttestedCodex(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca terminal send --terminal term-legacy --text codex --dangerously-bypass-hook-trust --enter --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"send":{"accepted":true}}}`)}

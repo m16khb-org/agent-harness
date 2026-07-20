@@ -309,6 +309,8 @@ func IssueOpsLifecycleTools() []Tool {
 				"stop_conditions":                 map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 				"result_format":                   map[string]any{"type": "string"},
 				"allow_codex_hook_trust_bypass":   map[string]any{"type": "boolean", "description": "Explicit attestation that the documented Codex hooks/list trust review passed before supervised startup."},
+				"codex_model":                     map[string]any{"type": "string", "description": "Sealed Codex worker model slug; requires codex_reasoning_effort."},
+				"codex_reasoning_effort":          map[string]any{"type": "string", "enum": []string{"minimal", "low", "medium", "high", "xhigh", "max", "ultra"}},
 				"attempt":                         map[string]any{"type": "integer"},
 				"ownership_epoch":                 map[string]any{"type": "string"},
 				"context_sha256":                  map[string]any{"type": "string"},

@@ -534,7 +534,8 @@ func TestHandoffDispatchPreambleRequiresOfficialLabeledIdentityLines(t *testing.
 func TestHandoffStartRequiresExplicitCodexHookTrustBypassAttestation(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	client := handoffDispatchFake(record)
-	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient}), client, handoffStartTestClock())
+	launchOptions := handoff.ContextOptions{CodexModel: "gpt-5.6-terra", CodexReasoningEffort: "high"}
+	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, Context: launchOptions}), client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -543,6 +544,9 @@ func TestHandoffStartRequiresExplicitCodexHookTrustBypassAttestation(t *testing.
 	}
 	if !strings.Contains(preview.NextCommand, "--allow-codex-hook-trust-bypass") || strings.Contains(preview.NextCommand, "--confirm") {
 		t.Fatalf("unattested preview must return an attested-preview command, not a confirmed mutation: %#v", preview)
+	}
+	if !strings.Contains(preview.NextCommand, "--codex-model 'gpt-5.6-terra'") || !strings.Contains(preview.NextCommand, "--codex-reasoning-effort 'high'") {
+		t.Fatalf("attested-preview command dropped sealed Codex launch options: %#v", preview)
 	}
 	if len(client.trace) != 0 {
 		t.Fatalf("preview invoked Orca: %v", client.trace)
@@ -563,7 +567,8 @@ func TestHandoffStartRequiresExplicitCodexHookTrustBypassAttestation(t *testing.
 		t.Fatalf("missing attestation persisted dispatch state: %#v", persisted.ExecutionHandoff)
 	}
 
-	attestedRequest := IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, Context: handoff.ContextOptions{AllowCodexHookTrustBypass: true}}
+	launchOptions.AllowCodexHookTrustBypass = true
+	attestedRequest := IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, Context: launchOptions}
 	attestedRequest = coordinatorStartIdentity(record, attestedRequest)
 	reviewed, err := StartIssueOpsHandoff(context.Background(), stateRoot, attestedRequest, client, handoffStartTestClock())
 	if err != nil {
@@ -631,7 +636,7 @@ func TestHandoffStartPreviewReturnsExactConfirmedCommand(t *testing.T) {
 	request := coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{
 		ID:                   record.ID,
 		CoordinatorRecipient: testCoordinatorRecipient,
-		Context:              handoff.ContextOptions{AllowCodexHookTrustBypass: true},
+		Context:              handoff.ContextOptions{AllowCodexHookTrustBypass: true, CodexModel: "gpt-5.6-terra", CodexReasoningEffort: "high"},
 	})
 	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, request, handoffDispatchFake(record), handoffStartTestClock())
 	if err != nil {
@@ -649,6 +654,8 @@ func TestHandoffStartPreviewReturnsExactConfirmedCommand(t *testing.T) {
 		"--coordinator-agent-id 'coordinator-agent'",
 		"--source-cwd '" + record.Repo + "'",
 		"--allow-codex-hook-trust-bypass",
+		"--codex-model 'gpt-5.6-terra'",
+		"--codex-reasoning-effort 'high'",
 		"--expected-context-sha256 '" + preview.ContextSHA256 + "'",
 		"--confirm",
 		"--json",

@@ -332,7 +332,8 @@ func SnapshotPriorAttempt(current *model.IssueOpsExecutionHandoff) (model.IssueO
 func contextOptionsEqual(left, right model.IssueOpsExecutionHandoffContextOptions) bool {
 	return stringListEqual(left.CriteriaIDs, right.CriteriaIDs) && stringListEqual(left.RequiredDocs, right.RequiredDocs) && stringListEqual(left.RequiredSkills, right.RequiredSkills) &&
 		left.WorkerScope == right.WorkerScope && stringListEqual(left.VerificationCommands, right.VerificationCommands) && left.HeartbeatCadence == right.HeartbeatCadence &&
-		stringListEqual(left.StopConditions, right.StopConditions) && left.ResultFormat == right.ResultFormat && left.AllowCodexHookTrustBypass == right.AllowCodexHookTrustBypass
+		stringListEqual(left.StopConditions, right.StopConditions) && left.ResultFormat == right.ResultFormat && left.AllowCodexHookTrustBypass == right.AllowCodexHookTrustBypass &&
+		left.CodexModel == right.CodexModel && left.CodexReasoningEffort == right.CodexReasoningEffort
 }
 
 func stringListEqual(left, right []string) bool {

@@ -145,6 +145,9 @@ func startIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 	if err != nil {
 		return IssueOpsHandoffStartResult{}, err
 	}
+	if err := validateCodexHandoffOptions(record, contextOptions); err != nil {
+		return IssueOpsHandoffStartResult{}, err
+	}
 	contextRecord := record
 	contextHandoff := *record.ExecutionHandoff
 	contextHandoff.CoordinatorMailboxHandle = coordinatorRecipient
@@ -160,7 +163,7 @@ func startIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 		result.CoordinatorRecipient = coordinatorRecipient
 		result.CodexHookTrustBypassAttested = contextOptions.AllowCodexHookTrustBypass
 		if codexHookTrustBypassRequired(record) && !contextOptions.AllowCodexHookTrustBypass {
-			result.NextCommand = attestedHandoffPreviewCommand(record, coordinatorRecipient, coordinatorSession)
+			result.NextCommand = attestedHandoffPreviewCommand(record, coordinatorRecipient, coordinatorSession, contextOptions)
 		} else {
 			result.ConfirmedCommand = confirmedHandoffStartCommand(record, coordinatorRecipient, coordinatorSession, contextOptions, packet.SHA256)
 			result.NextCommand = result.ConfirmedCommand
@@ -280,6 +283,9 @@ func previewOwnershipHandoffStart(ctx context.Context, stateRoot string, record 
 	if err != nil {
 		return IssueOpsHandoffStartResult{}, err
 	}
+	if err := validateCodexHandoffOptions(contextRecord, options); err != nil {
+		return IssueOpsHandoffStartResult{}, err
+	}
 	packet, err := handoff.BuildContext(contextRecord, options)
 	if err != nil {
 		return IssueOpsHandoffStartResult{}, err
@@ -289,7 +295,7 @@ func previewOwnershipHandoffStart(ctx context.Context, stateRoot string, record 
 	result.CoordinatorRecipient = coordinatorRecipient
 	result.CodexHookTrustBypassAttested = options.AllowCodexHookTrustBypass
 	if codexHookTrustBypassRequired(contextRecord) && !options.AllowCodexHookTrustBypass {
-		result.NextCommand = attestedHandoffPreviewCommand(contextRecord, coordinatorRecipient, session)
+		result.NextCommand = attestedHandoffPreviewCommand(contextRecord, coordinatorRecipient, session, options)
 	} else {
 		result.ConfirmedCommand = confirmedHandoffStartCommand(contextRecord, coordinatorRecipient, session, options, packet.SHA256)
 		result.NextCommand = result.ConfirmedCommand
@@ -441,11 +447,14 @@ func confirmedHandoffStartCommand(record IssueOpsRecord, recipient string, coord
 	if options.AllowCodexHookTrustBypass {
 		parts = append(parts, "--allow-codex-hook-trust-bypass")
 	}
+	if options.CodexModel != "" {
+		parts = append(parts, "--codex-model "+quoteHandoffCLIToken(options.CodexModel), "--codex-reasoning-effort "+quoteHandoffCLIToken(options.CodexReasoningEffort))
+	}
 	parts = append(parts, "--expected-context-sha256 "+quoteHandoffCLIToken(contextSHA), "--confirm", "--json")
 	return strings.Join(parts, " ")
 }
 
-func attestedHandoffPreviewCommand(record IssueOpsRecord, recipient string, coordinator model.IssueOpsHostSessionIdentity) string {
+func attestedHandoffPreviewCommand(record IssueOpsRecord, recipient string, coordinator model.IssueOpsHostSessionIdentity, options handoff.ContextOptions) string {
 	parts := []string{
 		"agent-harness issueops handoff start",
 		"--id " + quoteHandoffCLIToken(record.ID),
@@ -456,7 +465,11 @@ func attestedHandoffPreviewCommand(record IssueOpsRecord, recipient string, coor
 	if coordinator.AgentID != "" {
 		parts = append(parts, "--coordinator-agent-id "+quoteHandoffCLIToken(coordinator.AgentID))
 	}
-	parts = append(parts, "--source-cwd "+quoteHandoffCLIToken(record.Repo), "--allow-codex-hook-trust-bypass", "--json")
+	parts = append(parts, "--source-cwd "+quoteHandoffCLIToken(record.Repo), "--allow-codex-hook-trust-bypass")
+	if options.CodexModel != "" {
+		parts = append(parts, "--codex-model "+quoteHandoffCLIToken(options.CodexModel), "--codex-reasoning-effort "+quoteHandoffCLIToken(options.CodexReasoningEffort))
+	}
+	parts = append(parts, "--json")
 	return strings.Join(parts, " ")
 }
 
@@ -784,6 +797,7 @@ func createHandoffTerminal(ctx context.Context, stateRoot string, record IssueOp
 		Title:      issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt),
 		AllowCodexHookTrustBypass: record.ExecutionHandoff.ContextOptions != nil &&
 			record.ExecutionHandoff.ContextOptions.AllowCodexHookTrustBypass,
+		CodexModel: contextOptionCodexModel(record.ExecutionHandoff.ContextOptions), CodexReasoningEffort: contextOptionCodexReasoningEffort(record.ExecutionHandoff.ContextOptions),
 	})
 	if err != nil {
 		transitionAt := now()
@@ -933,7 +947,7 @@ func dispatchHandoff(ctx context.Context, stateRoot string, record IssueOpsRecor
 		} else {
 			options := record.ExecutionHandoff.ContextOptions
 			allowCodexHookTrustBypass := options != nil && options.AllowCodexHookTrustBypass
-			if bootstrapErr := bootstrapper.BootstrapTerminalAgent(ctx, port.OrcaBootstrapTerminalAgentRequest{TerminalHandle: liveHandle, Agent: record.ExecutionHandoff.Agent, AllowCodexHookTrustBypass: allowCodexHookTrustBypass}); bootstrapErr != nil {
+			if bootstrapErr := bootstrapper.BootstrapTerminalAgent(ctx, port.OrcaBootstrapTerminalAgentRequest{TerminalHandle: liveHandle, Agent: record.ExecutionHandoff.Agent, AllowCodexHookTrustBypass: allowCodexHookTrustBypass, CodexModel: contextOptionCodexModel(options), CodexReasoningEffort: contextOptionCodexReasoningEffort(options)}); bootstrapErr != nil {
 				err = fmt.Errorf("bootstrap exact worker terminal agent: %w", bootstrapErr)
 			} else {
 				dispatched, err = client.Dispatch(ctx, dispatchRequest)
@@ -1384,6 +1398,31 @@ func resolveHandoffContextOptions(record IssueOpsRecord, supplied handoff.Contex
 		return handoff.ContextOptions{}, fmt.Errorf("supplied handoff context options do not match the sealed delivery contract")
 	}
 	return handoff.ContextOptionsFromModel(persisted), nil
+}
+
+func validateCodexHandoffOptions(record IssueOpsRecord, options handoff.ContextOptions) error {
+	model, effort, err := port.NormalizeCodexLaunchOptions(options.CodexModel, options.CodexReasoningEffort)
+	if err != nil {
+		return fmt.Errorf("invalid sealed Codex launch options: %w", err)
+	}
+	if (model != "" || effort != "") && (record.ExecutionHandoff == nil || !strings.EqualFold(strings.TrimSpace(record.ExecutionHandoff.Agent), "codex")) {
+		return fmt.Errorf("sealed Codex launch options require a Codex execution workspace")
+	}
+	return nil
+}
+
+func contextOptionCodexModel(options *model.IssueOpsExecutionHandoffContextOptions) string {
+	if options == nil {
+		return ""
+	}
+	return options.CodexModel
+}
+
+func contextOptionCodexReasoningEffort(options *model.IssueOpsExecutionHandoffContextOptions) string {
+	if options == nil {
+		return ""
+	}
+	return options.CodexReasoningEffort
 }
 
 func beginHandoffOperation(stateRoot string, expected IssueOpsRecord, fence handoff.Fence, pending model.IssueOpsExecutionHandoffPendingOperation) (IssueOpsRecord, error) {

@@ -341,17 +341,25 @@ func (c *Client) CreateTerminal(ctx context.Context, req port.OrcaCreateTerminal
 	if !ok {
 		return port.OrcaTerminal{}, &port.OrcaError{Code: "unsupported_agent", Detail: req.Agent}
 	}
+	model, effort, err := port.NormalizeCodexLaunchOptions(req.CodexModel, req.CodexReasoningEffort)
+	if err != nil || (!strings.EqualFold(strings.TrimSpace(req.Agent), "codex") && (model != "" || effort != "")) {
+		return port.OrcaTerminal{}, &port.OrcaError{Code: "codex_launch_options_invalid", Detail: boundedDiagnostic(fmt.Sprint(err))}
+	}
+	pinnedCodex := model != ""
+	if pinnedCodex {
+		command += " -m " + model + " -c model_reasoning_effort=" + effort
+	}
 	help, err := c.runText(ctx, "", readTimeout, []string{"orca", "terminal", "create", "--help"})
 	if err != nil {
 		return port.OrcaTerminal{}, &port.OrcaError{Code: "terminal_create_capability_unavailable", Detail: boundedDiagnostic(err.Error())}
 	}
 	argv := []string{"orca", "terminal", "create", "--worktree", idSelector(req.WorktreeID)}
 	switch {
-	case containsAllHelpFlags(help, []string{"--worktree", "--agent", "--title", "--json"}):
+	case !pinnedCodex && containsAllHelpFlags(help, []string{"--worktree", "--agent", "--title", "--json"}):
 		argv = append(argv, "--agent", command)
 	case containsAllHelpFlags(help, []string{"--worktree", "--command", "--title", "--json"}):
 		if strings.EqualFold(strings.TrimSpace(req.Agent), "codex") && req.AllowCodexHookTrustBypass {
-			command = "codex --dangerously-bypass-hook-trust"
+			command += " --dangerously-bypass-hook-trust"
 		}
 		argv = append(argv, "--command", command)
 	default:
@@ -388,8 +396,15 @@ func (c *Client) BootstrapTerminalAgent(ctx context.Context, req port.OrcaBootst
 	if !ok {
 		return &port.OrcaError{Code: "unsupported_agent", Detail: req.Agent}
 	}
+	model, effort, err := port.NormalizeCodexLaunchOptions(req.CodexModel, req.CodexReasoningEffort)
+	if err != nil || (!strings.EqualFold(strings.TrimSpace(req.Agent), "codex") && (model != "" || effort != "")) {
+		return &port.OrcaError{Code: "codex_launch_options_invalid", Detail: boundedDiagnostic(fmt.Sprint(err))}
+	}
+	if model != "" {
+		command += " -m " + model + " -c model_reasoning_effort=" + effort
+	}
 	if strings.EqualFold(strings.TrimSpace(req.Agent), "codex") && req.AllowCodexHookTrustBypass {
-		command = "codex --dangerously-bypass-hook-trust"
+		command += " --dangerously-bypass-hook-trust"
 	}
 	var send struct {
 		Send struct {

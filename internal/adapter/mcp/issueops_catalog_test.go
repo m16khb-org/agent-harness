@@ -271,6 +271,11 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 	if !schemaHasProperty(byName["issueops_handoff"].InputSchema, "allow_codex_hook_trust_bypass") {
 		t.Fatalf("issueops_handoff must expose the explicit Codex hook-trust bypass attestation: %#v", byName["issueops_handoff"].InputSchema)
 	}
+	for _, property := range []string{"codex_model", "codex_reasoning_effort"} {
+		if !schemaHasProperty(byName["issueops_handoff"].InputSchema, property) {
+			t.Fatalf("issueops_handoff must expose sealed Codex launch option %q: %#v", property, byName["issueops_handoff"].InputSchema)
+		}
+	}
 	properties := byName["issueops_handoff"].InputSchema["properties"].(map[string]any)
 	recoveryActions := properties["recovery_action"].(map[string]any)["enum"].([]string)
 	for _, action := range []string{"abandon", "finalize-cancel"} {

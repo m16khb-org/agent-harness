@@ -558,6 +558,8 @@ type IssueOpsExecutionHandoffContextOptions struct {
 	StopConditions            []string `json:"stop_conditions,omitempty"`
 	ResultFormat              string   `json:"result_format,omitempty"`
 	AllowCodexHookTrustBypass bool     `json:"allow_codex_hook_trust_bypass,omitempty"`
+	CodexModel                string   `json:"codex_model,omitempty"`
+	CodexReasoningEffort      string   `json:"codex_reasoning_effort,omitempty"`
 }
 
 type IssueOpsExecutionHandoff struct {

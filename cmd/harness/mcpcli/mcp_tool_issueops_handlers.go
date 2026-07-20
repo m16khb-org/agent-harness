@@ -402,6 +402,7 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 				WorkerScope: argmap.String(args, "worker_scope"), VerificationCommands: argmap.StringSlice(args, "verification_commands"), HeartbeatCadence: argmap.String(args, "heartbeat_cadence"),
 				StopConditions: argmap.StringSlice(args, "stop_conditions"), ResultFormat: argmap.String(args, "result_format"),
 				AllowCodexHookTrustBypass: argmap.Bool(args, "allow_codex_hook_trust_bypass"),
+				CodexModel:                argmap.String(args, "codex_model"), CodexReasoningEffort: argmap.String(args, "codex_reasoning_effort"),
 			},
 		}, IssueOpsHandoffOrcaClient(), core.IssueOpsHandoffStartClock{})
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff start failed")

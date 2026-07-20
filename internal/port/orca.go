@@ -3,9 +3,13 @@ package port
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strings"
 )
 
 const OrcaMaxBaselineIDs = 512
+
+var codexModelSlugPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
 
 type OrcaError struct {
 	Code    string `json:"code"`
@@ -107,6 +111,8 @@ type OrcaCreateTerminalRequest struct {
 	Agent                     string `json:"agent"`
 	Title                     string `json:"title,omitempty"`
 	AllowCodexHookTrustBypass bool   `json:"allow_codex_hook_trust_bypass,omitempty"`
+	CodexModel                string `json:"codex_model,omitempty"`
+	CodexReasoningEffort      string `json:"codex_reasoning_effort,omitempty"`
 }
 
 // OrcaBootstrapTerminalAgentRequest starts the selected supported host agent
@@ -116,6 +122,25 @@ type OrcaBootstrapTerminalAgentRequest struct {
 	TerminalHandle            string `json:"terminal_handle"`
 	Agent                     string `json:"agent"`
 	AllowCodexHookTrustBypass bool   `json:"allow_codex_hook_trust_bypass,omitempty"`
+	CodexModel                string `json:"codex_model,omitempty"`
+	CodexReasoningEffort      string `json:"codex_reasoning_effort,omitempty"`
+}
+
+func NormalizeCodexLaunchOptions(model, effort string) (string, string, error) {
+	model = strings.TrimSpace(model)
+	effort = strings.ToLower(strings.TrimSpace(effort))
+	if model == "" && effort == "" {
+		return "", "", nil
+	}
+	if model == "" || effort == "" || !codexModelSlugPattern.MatchString(model) {
+		return "", "", fmt.Errorf("Codex model and reasoning effort must be supplied together with a safe model slug")
+	}
+	switch effort {
+	case "minimal", "low", "medium", "high", "xhigh", "max", "ultra":
+		return model, effort, nil
+	default:
+		return "", "", fmt.Errorf("unsupported Codex reasoning effort %q", effort)
+	}
 }
 
 type OrcaTask struct {
