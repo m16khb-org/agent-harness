@@ -291,6 +291,9 @@ func ownershipLifecycleRecord(t *testing.T, state string) (string, IssueOpsRecor
 	if state == handoff.StateCleanupPendingHumanDecision || state == handoff.StateCleanupExecuting || state == handoff.StateClosed || state == handoff.StateRecoveryRequired {
 		h.Completion = &issueopsmodel.IssueOpsOwnershipCompletion{FinalHead: strings.Repeat("e", 40), CompletedAt: "2026-07-20T00:00:01Z"}
 	}
+	if state == handoff.StateCleanupExecuting {
+		h.Cleanup = &issueopsmodel.IssueOpsExecutionHandoffCleanup{Disposition: "close-owner", Reason: "human directed retained workspace", ApprovedAt: "2026-07-20T00:00:02Z", ApprovedBySession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "claude", SessionID: "coordinator-session", AgentID: "coordinator-agent"}, InventoryFingerprint: strings.Repeat("f", 64)}
+	}
 	updated, err := writeIssueOps(IssueOpsStateRoot(), record)
 	if err != nil {
 		t.Fatal(err)

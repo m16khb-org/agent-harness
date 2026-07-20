@@ -32,6 +32,9 @@ func TestOwnershipEnvelopeStateMatrix(t *testing.T) {
 		case StateCleanupPendingHumanDecision, StateCleanupExecuting, StateClosed, StateRecoveryRequired:
 			record.ExecutionHandoff.Completion = &model.IssueOpsOwnershipCompletion{FinalHead: strings.Repeat("a", 40), CompletedAt: "2026-07-20T00:00:00Z"}
 		}
+		if state == StateCleanupExecuting {
+			record.ExecutionHandoff.Cleanup = &model.IssueOpsExecutionHandoffCleanup{ApprovedBySession: &model.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "source"}, InventoryFingerprint: strings.Repeat("b", 64)}
+		}
 		if err := ValidateEnvelope(record); err != nil {
 			t.Fatalf("state %s rejected: %v", state, err)
 		}
