@@ -267,7 +267,7 @@ func allowedReadyWorkspaceOwnershipStart(req HookToolUseLifecycleRequest, record
 		return false
 	}
 	switch command.Path {
-	case "link-plan", "compatibility review", "execution decide", "devils-advocate review", "worktree prepare-tools":
+	case "link-plan", "compatibility review", "execution decide", "devils-advocate review", "phase", "worktree prepare-tools":
 		cwd, cwdOK := oneFlag(flags, "--cwd")
 		return nativeSessionMatches(req, workspace.PreparationSession) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(record.Repo)
 	case "handoff start":

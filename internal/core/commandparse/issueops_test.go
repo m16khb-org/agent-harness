@@ -96,6 +96,7 @@ func TestReadyWorkspaceCheckpointSpecsAcceptNativeActorFlags(t *testing.T) {
 		"agent-harness issueops link-plan --id io-1 --plan-path /w/plans/io-1.md",
 		"agent-harness issueops compatibility review --id io-1 --approved",
 		"agent-harness issueops execution decide --id io-1 --subagent-use none",
+		"agent-harness issueops phase --id io-1 --to implement",
 		"agent-harness issueops devils-advocate review --id io-1 --verdict pass",
 		"agent-harness issueops worktree prepare-tools --id io-1",
 	}

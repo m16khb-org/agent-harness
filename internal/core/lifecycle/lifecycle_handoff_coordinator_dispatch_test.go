@@ -167,6 +167,14 @@ func TestOwnershipTransferPreparationAllowsCLIAndMCPBeforeDispatch(t *testing.T)
 	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
 		t.Fatalf("sealed source coordinator link-plan must remain allowed before ownership dispatch: %#v", got)
 	}
+	request.Command = "agent-harness issueops phase --id " + record.ID + " --to implement --host codex --session-id preparer --agent-id agent-1 --cwd " + repo + " --json"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("sealed source coordinator phase advance must remain allowed before ownership dispatch: %#v", got)
+	}
+	request.Command = "agent-harness issueops phase --id " + record.ID + " --to implement --host codex --session-id other --agent-id agent-1 --cwd " + repo + " --json"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "block" {
+		t.Fatalf("different source session gained phase authority: %#v", got)
+	}
 	request.Tool = "mcp__agent_harness__issueops_link_plan"
 	request.Command = ""
 	request.ToolInput = map[string]any{"id": record.ID, "plan_path": "plans/ownership.md", "host": "codex", "session_id": "preparer", "agent_id": "agent-1", "cwd": repo}

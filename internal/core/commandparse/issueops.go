@@ -126,7 +126,7 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		r["--finding"] = true
 		return values, b("--waive", "--json"), r, true
 	case "phase":
-		return v("--id", "--to"), b("--force", "--json"), r, true
+		return v("--id", "--to", "--host", "--session-id", "--agent-id", "--cwd"), b("--force", "--json"), r, true
 	case "worktree prepare":
 		return v("--id", "--orchestrator", "--inline-reason", "--agent"), b("--confirm", "--json"), r, true
 	case "worktree prepare-tools":
