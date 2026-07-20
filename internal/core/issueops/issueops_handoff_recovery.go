@@ -973,8 +973,9 @@ func retryIssueOpsHandoff(ctx context.Context, stateRoot, id string, client any,
 			contextOptions = &cloned
 		}
 		record.ExecutionHandoff = &model.IssueOpsExecutionHandoff{
-			ProtocolVersion: handoff.ProtocolVersion, State: handoff.StateCoordinatorPreparing,
-			Attempt: old.Attempt + 1, OwnershipEpoch: epoch, Driver: "orca", Agent: old.Agent,
+			ProtocolVersion: old.ProtocolVersion, State: handoff.StateCoordinatorPreparing,
+			Attempt: old.Attempt + 1, OwnershipEpoch: epoch, WorkspaceEpoch: old.WorkspaceEpoch, WorkspaceSHA256: old.WorkspaceSHA256,
+			Driver: "orca", Agent: old.Agent,
 			AttemptBaseHead: attemptBaseHead,
 			CoordinatorRoot: old.CoordinatorRoot, WorkerRoot: old.WorkerRoot, Orca: worktreeIdentity, ContextOptions: contextOptions,
 			PriorAttempts: priorAttempts,

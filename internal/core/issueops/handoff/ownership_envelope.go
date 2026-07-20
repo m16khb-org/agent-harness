@@ -38,6 +38,10 @@ func validateOwnershipEnvelope(record model.IssueOpsRecord) error {
 		return fmt.Errorf("ownership handoff external fields or timestamps are invalid")
 	}
 	switch h.State {
+	case StateCoordinatorPreparing:
+		if h.Attempt <= 1 || h.OwnerSession != nil || h.Orientation != nil || h.Completion != nil || h.CoordinatorSession != nil || h.ContextSHA256 != "" {
+			return fmt.Errorf("ownership coordinator_preparing requires an unsealed retry seed")
+		}
 	case StateOwnershipDispatching, StateOwnershipDispatched:
 		if h.OwnerSession != nil || h.Orientation != nil || h.Completion != nil {
 			return fmt.Errorf("ownership dispatch state contains owner completion authority")

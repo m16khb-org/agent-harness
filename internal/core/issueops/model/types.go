@@ -519,6 +519,8 @@ type IssueOpsExecutionHandoffPriorAttempt struct {
 	ClosedDisposition        string                                        `json:"closed_disposition"`
 	Attempt                  int                                           `json:"attempt"`
 	OwnershipEpoch           string                                        `json:"ownership_epoch"`
+	WorkspaceEpoch           string                                        `json:"workspace_epoch,omitempty"`
+	WorkspaceSHA256          string                                        `json:"workspace_sha256,omitempty"`
 	AttemptBaseHead          string                                        `json:"attempt_base_head"`
 	ContextSHA256            string                                        `json:"context_sha256,omitempty"`
 	ContextSourceSHA256      string                                        `json:"context_source_sha256,omitempty"`
@@ -532,6 +534,9 @@ type IssueOpsExecutionHandoffPriorAttempt struct {
 	CoordinatorSession       *IssueOpsHostSessionIdentity                  `json:"coordinator_session,omitempty"`
 	WorkerRoot               string                                        `json:"worker_root"`
 	WorkerSession            *IssueOpsHostSessionIdentity                  `json:"worker_session,omitempty"`
+	OwnerSession             *IssueOpsHostSessionIdentity                  `json:"owner_session,omitempty"`
+	Orientation              *IssueOpsOwnershipOrientation                 `json:"orientation,omitempty"`
+	Completion               *IssueOpsOwnershipCompletion                  `json:"completion,omitempty"`
 	Orca                     *IssueOpsOrcaIdentity                         `json:"orca,omitempty"`
 	Result                   *IssueOpsExecutionHandoffResult               `json:"result,omitempty"`
 	WorkerDoneProjection     *IssueOpsExecutionHandoffWorkerDoneProjection `json:"worker_done_projection,omitempty"`

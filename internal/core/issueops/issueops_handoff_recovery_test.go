@@ -564,6 +564,79 @@ func TestHandoffRetryUsesNewAttemptAndEpoch(t *testing.T) {
 	}
 }
 
+func TestOwnershipHandoffRetryPreservesProtocolWorkspaceAndOwnerAudit(t *testing.T) {
+	stateRoot, record, _ := dispatchedHandoffRecord(t)
+	h := record.ExecutionHandoff
+	h.ProtocolVersion = handoff.OwnershipTransferProtocolVersion
+	h.State = handoff.StateClosed
+	h.ClosedDisposition = handoff.DispositionCancelled
+	h.WorkspaceEpoch = "workspace-epoch-1"
+	h.WorkspaceSHA256 = strings.Repeat("c", 64)
+	h.WorkerSession = nil
+	h.Result = nil
+	h.OwnerSession = &IssueOpsHostSessionIdentity{Host: "codex", SessionID: "owner-session", AgentID: "owner-agent"}
+	h.Orientation = &model.IssueOpsOwnershipOrientation{
+		IssueURL: record.IssueURL, PlanSHA256: strings.Repeat("d", 64), Understanding: "understood",
+		ScopeConfirmation: "bounded owner scope", RecordedAt: "2026-07-20T00:00:00Z",
+	}
+	h.Failure = &model.IssueOpsExecutionHandoffFailure{Code: "cancellation_finalized", Message: "correct sealed context", At: "2026-07-20T00:01:00Z"}
+	workspaceOrca := *h.Orca
+	workspaceOrca.WorkerPTYID, workspaceOrca.WorkerTerminalHandle, workspaceOrca.WorkerMailboxHandle = "", "", ""
+	workspaceOrca.WorkerTabID, workspaceOrca.WorkerLeafID, workspaceOrca.TaskID, workspaceOrca.DispatchID = "", "", "", ""
+	record.ExecutionWorkspace = &model.IssueOpsExecutionWorkspace{
+		State: "ready", WorkspaceEpoch: h.WorkspaceEpoch, Driver: h.Driver, Agent: h.Agent,
+		CoordinatorRoot: record.Repo, WorkerRoot: h.WorkerRoot,
+		PreparationSession: &IssueOpsHostSessionIdentity{Host: "codex", SessionID: "prep-session", AgentID: "prep-agent"},
+		BaseHead:           h.AttemptBaseHead, Orca: &workspaceOrca,
+	}
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "retry", Confirm: true,
+	}, quiescentRetryClient(t, stateRoot, record.ID), IssueOpsHandoffPrepareClock{
+		Now: handoffPrepareTestClock().Now, NewEpoch: func() (string, error) { return "owner-epoch-2", nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Attempt != 2 || got.State != handoff.StateCoordinatorPreparing {
+		t.Fatalf("ownership retry result = %#v", got)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.ExecutionHandoff.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || persisted.ExecutionHandoff.WorkspaceEpoch != h.WorkspaceEpoch || persisted.ExecutionHandoff.WorkspaceSHA256 != h.WorkspaceSHA256 {
+		t.Fatalf("ownership retry lost protocol or workspace seal: %#v", persisted.ExecutionHandoff)
+	}
+	encoded, err := json.Marshal(persisted.ExecutionHandoff.PriorAttempts[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"\"workspace_epoch\":\"workspace-epoch-1\"", "\"owner_session\"", "\"orientation\""} {
+		if !strings.Contains(string(encoded), want) {
+			t.Fatalf("ownership prior attempt lost %s: %s", want, encoded)
+		}
+	}
+	client := handoffDispatchFake(persisted)
+	client.worktrees = []port.OrcaWorktree{{ID: "source-wt", Path: persisted.Repo}}
+	client.terminals = []port.OrcaTerminal{{Handle: testCoordinatorRecipient, PTYID: "pty-source", WorktreeID: "source-wt", WorktreePath: persisted.Repo, Connected: true, Writable: true}}
+	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{
+		ID: persisted.ID, CoordinatorRecipient: testCoordinatorRecipient,
+		CoordinatorHost: "codex", CoordinatorSessionID: "prep-session", CoordinatorAgentID: "prep-agent", SourceCWD: persisted.Repo,
+		WorkspaceEpoch: persisted.ExecutionWorkspace.WorkspaceEpoch,
+		Context:        handoff.ContextOptions{WorkerScope: "corrected retry scope", StopConditions: []string{"owner may publish exact branch; stop before merge"}, AllowCodexHookTrustBypass: true},
+	}, client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !preview.Preview || preview.Attempt != 2 || preview.ContextSHA256 == "" {
+		t.Fatalf("ownership retry preview = %#v", preview)
+	}
+}
+
 func TestHandoffRetryAllowsWorkerFailedDisposition(t *testing.T) {
 	stateRoot, record, _ := dispatchedHandoffRecord(t)
 	record.ExecutionHandoff.State = handoff.StateClosed

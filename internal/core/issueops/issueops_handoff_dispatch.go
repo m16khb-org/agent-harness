@@ -110,7 +110,7 @@ func startIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 	if err != nil {
 		return IssueOpsHandoffStartResult{}, err
 	}
-	if record.ExecutionHandoff == nil {
+	if record.ExecutionHandoff == nil || (record.ExecutionHandoff.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && record.ExecutionHandoff.State == handoff.StateCoordinatorPreparing) {
 		return previewOwnershipHandoffStart(ctx, stateRoot, record, req, client, clock, hooks)
 	}
 	if record.ExecutionHandoff.State != handoff.StateCoordinatorPreparing {
@@ -247,12 +247,23 @@ func previewOwnershipHandoffStart(ctx context.Context, stateRoot string, record 
 		return IssueOpsHandoffStartResult{}, fmt.Errorf("ownership handoff start requires the exact sealed workspace epoch")
 	}
 	readiness := IssueOpsImplementationReadiness(record)
+	if record.ExecutionHandoff != nil {
+		readiness = IssueOpsPreDispatchReadiness(record)
+	}
 	if !readiness.Ready {
 		return IssueOpsHandoffStartResult{}, fmt.Errorf("ownership handoff pre-dispatch readiness missing: %s", strings.Join(readiness.Missing, ", "))
 	}
-	head, err := validateOwnershipStartCheckpoint(record)
-	if err != nil {
-		return IssueOpsHandoffStartResult{}, err
+	head := ""
+	if record.ExecutionHandoff == nil {
+		head, err = validateOwnershipStartCheckpoint(record)
+		if err != nil {
+			return IssueOpsHandoffStartResult{}, err
+		}
+	} else {
+		if err = validateHandoffCleanExactCheckpoint(record); err != nil {
+			return IssueOpsHandoffStartResult{}, err
+		}
+		head = record.ExecutionHandoff.AttemptBaseHead
 	}
 	coordinatorRecipient, err := resolveHandoffCoordinatorRecipient(ctx, stateRoot, record, req.CoordinatorRecipient, session, client)
 	if err != nil {
@@ -263,22 +274,7 @@ func previewOwnershipHandoffStart(ctx context.Context, stateRoot string, record 
 		return IssueOpsHandoffStartResult{}, err
 	}
 	contextRecord := record
-	contextRecord.ExecutionHandoff = &IssueOpsExecutionHandoff{
-		ProtocolVersion:          handoff.OwnershipTransferProtocolVersion,
-		State:                    handoff.StateOwnershipDispatching,
-		Attempt:                  1,
-		OwnershipEpoch:           ownershipPreviewEpoch(record.ID, workspace.WorkspaceEpoch, head),
-		WorkspaceEpoch:           workspace.WorkspaceEpoch,
-		WorkspaceSHA256:          workspaceSHA,
-		AttemptBaseHead:          head,
-		Driver:                   workspace.Driver,
-		Agent:                    workspace.Agent,
-		CoordinatorRoot:          workspace.CoordinatorRoot,
-		CoordinatorMailboxHandle: coordinatorRecipient,
-		CoordinatorSession:       &session,
-		WorkerRoot:               workspace.WorkerRoot,
-		Orca:                     cloneOwnershipWorkspaceOrca(workspace.Orca),
-	}
+	contextRecord.ExecutionHandoff = ownershipDispatchingContext(record, coordinatorRecipient, session, head, workspaceSHA)
 	options, err := resolveHandoffContextOptions(record, req.Context)
 	if err != nil {
 		return IssueOpsHandoffStartResult{}, err
@@ -330,11 +326,21 @@ func persistOwnershipHandoffContext(stateRoot string, expected IssueOpsRecord, p
 		if err != nil {
 			return err
 		}
-		if current.ExecutionHandoff != nil || current.ExecutionWorkspace == nil || !reflect.DeepEqual(current.ExecutionWorkspace, expected.ExecutionWorkspace) {
+		retrySeed := current.ExecutionHandoff != nil && current.ExecutionHandoff.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && current.ExecutionHandoff.State == handoff.StateCoordinatorPreparing
+		if (current.ExecutionHandoff != nil && !retrySeed) || current.ExecutionWorkspace == nil || !reflect.DeepEqual(current.ExecutionWorkspace, expected.ExecutionWorkspace) {
 			return fmt.Errorf("ownership workspace changed before confirmed dispatch")
 		}
-		if _, err := validateOwnershipStartCheckpoint(current); err != nil {
-			return err
+		head := ""
+		if retrySeed {
+			if err := validateHandoffCleanExactCheckpoint(current); err != nil {
+				return err
+			}
+			head = current.ExecutionHandoff.AttemptBaseHead
+		} else {
+			head, err = validateOwnershipStartCheckpoint(current)
+			if err != nil {
+				return err
+			}
 		}
 		fingerprint, err := issueOpsWorkspaceFingerprint(current.ExecutionWorkspace)
 		if err != nil {
@@ -342,6 +348,9 @@ func persistOwnershipHandoffContext(stateRoot string, expected IssueOpsRecord, p
 		}
 		if expected.ExecutionHandoff == nil || expected.ExecutionHandoff.WorkspaceSHA256 != fingerprint {
 			return fmt.Errorf("ownership workspace fingerprint changed before confirmed dispatch")
+		}
+		if rebuilt := ownershipDispatchingContext(current, expected.ExecutionHandoff.CoordinatorMailboxHandle, *expected.ExecutionHandoff.CoordinatorSession, head, fingerprint); !reflect.DeepEqual(rebuilt, expected.ExecutionHandoff) {
+			return fmt.Errorf("ownership retry seed changed before confirmed dispatch")
 		}
 		handoffCopy := *expected.ExecutionHandoff
 		currentContext := current
@@ -427,6 +436,31 @@ func cloneOwnershipWorkspaceOrca(identity *IssueOpsOrcaIdentity) *IssueOpsOrcaId
 	}
 	clone := *identity
 	return &clone
+}
+
+func ownershipDispatchingContext(record IssueOpsRecord, coordinatorRecipient string, session model.IssueOpsHostSessionIdentity, head, workspaceSHA string) *IssueOpsExecutionHandoff {
+	workspace := record.ExecutionWorkspace
+	context := IssueOpsExecutionHandoff{}
+	if record.ExecutionHandoff != nil {
+		context = *record.ExecutionHandoff
+	} else {
+		context.ProtocolVersion = handoff.OwnershipTransferProtocolVersion
+		context.Attempt = 1
+		context.OwnershipEpoch = ownershipPreviewEpoch(record.ID, workspace.WorkspaceEpoch, head)
+	}
+	context.State = handoff.StateOwnershipDispatching
+	context.ClosedDisposition = ""
+	context.WorkspaceEpoch = workspace.WorkspaceEpoch
+	context.WorkspaceSHA256 = workspaceSHA
+	context.AttemptBaseHead = head
+	context.Driver = workspace.Driver
+	context.Agent = workspace.Agent
+	context.CoordinatorRoot = workspace.CoordinatorRoot
+	context.CoordinatorMailboxHandle = coordinatorRecipient
+	context.CoordinatorSession = &session
+	context.WorkerRoot = workspace.WorkerRoot
+	context.Orca = cloneOwnershipWorkspaceOrca(workspace.Orca)
+	return &context
 }
 
 func confirmedHandoffStartCommand(record IssueOpsRecord, recipient string, coordinator model.IssueOpsHostSessionIdentity, options handoff.ContextOptions, contextSHA string) string {
