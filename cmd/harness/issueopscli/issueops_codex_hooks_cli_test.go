@@ -92,6 +92,45 @@ func TestIssueOpsHandoffCodexHooksListOwnsExactCodexArgvAndJSONL(t *testing.T) {
 	}
 }
 
+func TestIssueOpsHandoffCodexHooksListSupportsReadyWorkspaceBeforeHandoff(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := coordinatorPreparingCLIRecord(t)
+	record.ExecutionWorkspace = &issueopsmodel.IssueOpsExecutionWorkspace{
+		State:              "ready",
+		WorkspaceEpoch:     "workspace-epoch-1",
+		Driver:             "orca",
+		Agent:              "codex",
+		CoordinatorRoot:    record.Repo,
+		WorkerRoot:         record.WorktreePath,
+		PreparationSession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "coordinator"},
+		BaseHead:           strings.Repeat("a", 40),
+	}
+	record.ExecutionHandoff = nil
+	written, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(written.Repo)
+	installCodexHooksListFake(t, codexHooksListHappyScript)
+	response, err := json.Marshal(map[string]any{
+		"id": 2,
+		"result": map[string]any{"data": []any{map[string]any{
+			"cwd": written.WorktreePath, "hooks": []any{}, "warnings": []any{}, "errors": []any{},
+		}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	setCodexHooksListFakeInput(t, "response", string(response))
+
+	out := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"handoff", "codex-hooks-list", "--id", written.ID, "--json"})
+	})
+	if !strings.Contains(out, `"cwd": "`+written.WorktreePath+`"`) {
+		t.Fatalf("ready workspace hook evidence used the wrong worker root: %s", out)
+	}
+}
+
 func TestIssueOpsHandoffCodexHooksListFailsClosedOnMalformedOrUnboundedResponse(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record := coordinatorPreparingCLIRecord(t)
