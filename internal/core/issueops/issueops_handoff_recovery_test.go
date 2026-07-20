@@ -419,6 +419,34 @@ func TestHandoffFinalizeCancelClosesAfterStaleDisconnectedFailedEvidence(t *test
 	}
 }
 
+func TestHandoffFinalizeCancelAcceptsTerminalTaskWithStaleDispatchProjection(t *testing.T) {
+	stateRoot, record, _ := dispatchedHandoffRecord(t)
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "cancel", Confirm: true, Reason: "replace contradictory sealed context",
+	}, nil, handoffPrepareTestClock()); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	client.terminals = nil
+	client.dispatch.Status = "dispatched"
+	client.tasks = []port.OrcaTask{{ID: record.ExecutionHandoff.Orca.TaskID, Status: "dispatched"}}
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "finalize-cancel", Confirm: true,
+	}, client, handoffPrepareTestClock()); err == nil {
+		t.Fatal("stale dispatch projection without terminal task evidence must not close")
+	}
+	client.tasks = []port.OrcaTask{{ID: record.ExecutionHandoff.Orca.TaskID, Status: "failed", HasResult: true}}
+	got, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "finalize-cancel", Confirm: true,
+	}, client, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateClosed || got.Disposition != handoff.DispositionCancelled {
+		t.Fatalf("terminal task with stale dispatch projection did not close: %#v", got)
+	}
+}
+
 func TestHandoffFinalizeCancelRejectsMalformedQuiescenceInventory(t *testing.T) {
 	stateRoot, record, _ := dispatchedHandoffRecord(t)
 	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{

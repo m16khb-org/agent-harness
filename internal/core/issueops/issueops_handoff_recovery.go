@@ -585,8 +585,12 @@ func requireCancellationQuiescence(ctx context.Context, record IssueOpsRecord, c
 			if err := requireTaskNotReady(ctx, client, taskID); err != nil {
 				return err
 			}
-		} else if dispatch.ID != dispatchID || dispatch.TaskID != taskID || strings.TrimSpace(dispatch.AssigneeHandle) != strings.TrimSpace(identity.WorkerMailboxHandle) || !terminalDispatchStatus(dispatch.Status) {
+		} else if dispatch.ID != dispatchID || dispatch.TaskID != taskID || strings.TrimSpace(dispatch.AssigneeHandle) != strings.TrimSpace(identity.WorkerMailboxHandle) {
 			return fmt.Errorf("exact task and dispatch are not terminal")
+		} else if !terminalDispatchStatus(dispatch.Status) {
+			if err := requireExactTaskTerminal(ctx, client, taskID); err != nil {
+				return fmt.Errorf("exact task and dispatch are not terminal: %w", err)
+			}
 		}
 	}
 	if h.WorkerSession != nil || strings.TrimSpace(h.LastHeartbeatAt) != "" {
@@ -630,6 +634,36 @@ func requireTaskNotReady(ctx context.Context, client any, taskID string) error {
 		}
 	}
 	return nil
+}
+
+func requireExactTaskTerminal(ctx context.Context, client any, taskID string) error {
+	reader, ok := client.(interface {
+		ListTasks(context.Context) ([]port.OrcaTask, error)
+	})
+	if !ok {
+		return fmt.Errorf("task terminal inventory is unavailable")
+	}
+	rows, err := reader.ListTasks(ctx)
+	if err != nil {
+		return err
+	}
+	ids := make([]string, len(rows))
+	for i := range rows {
+		ids[i] = rows[i].ID
+	}
+	if err := requireStableInventoryIdentities("task", ids); err != nil {
+		return err
+	}
+	for _, row := range rows {
+		if strings.TrimSpace(row.ID) != taskID {
+			continue
+		}
+		if terminalDispatchStatus(row.Status) {
+			return nil
+		}
+		return fmt.Errorf("exact worker task is not terminal")
+	}
+	return fmt.Errorf("exact worker task terminal evidence is missing")
 }
 
 func terminalDispatchStatus(status string) bool {
