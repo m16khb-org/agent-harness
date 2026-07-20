@@ -1345,7 +1345,7 @@ func linkedWorktreeDecisionGateReason(req HookToolUseLifecycleRequest) string {
 
 func sourceCoordinatorTerminalSteeringAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
 	h := record.ExecutionHandoff
-	if h == nil || h.State != handoff.StateClaimed || !searchrouting.IsShellTool(req.Tool) || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
+	if _, active := handoffWorkerCommunicationSession(h); !active || !searchrouting.IsShellTool(req.Tool) || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
 		return false
 	}
 	handle, ok := literalSafeTerminalSendHandle(req)
@@ -1361,9 +1361,10 @@ func sourceCoordinatorTerminalSteeringAllowed(req HookToolUseLifecycleRequest, r
 
 func claimedWorkerProgressMessageAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
 	h := record.ExecutionHandoff
-	if h == nil || h.State != handoff.StateClaimed || h.Orca == nil || !searchrouting.IsShellTool(req.Tool) ||
+	session, active := handoffWorkerCommunicationSession(h)
+	if !active || h.Orca == nil || !searchrouting.IsShellTool(req.Tool) ||
 		cleanAbsPath(req.CWD) != cleanAbsPath(h.WorkerRoot) || cleanAbsPath(req.Repo) != cleanAbsPath(h.WorkerRoot) ||
-		!nativeSessionMatches(req, h.WorkerSession) || !currentWorkerBranchMatches(record) {
+		!nativeSessionMatches(req, session) || !currentWorkerBranchMatches(record) {
 		return false
 	}
 	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
@@ -1371,7 +1372,7 @@ func claimedWorkerProgressMessageAllowed(req HookToolUseLifecycleRequest, record
 		return false
 	}
 	flags, ok := commandparse.ExactFlags(commandparse.ExactIssueOpsCommand{Tokens: tokens, Start: 3}, map[string]bool{
-		"--to": true, "--type": true, "--subject": true, "--body": true, "--task-id": true, "--dispatch-id": true, "--phase": true,
+		"--to": true, "--from": true, "--type": true, "--subject": true, "--body": true, "--task-id": true, "--dispatch-id": true, "--phase": true,
 	}, map[string]bool{"--json": true}, map[string]bool{})
 	if !ok {
 		return false
@@ -1383,8 +1384,9 @@ func claimedWorkerProgressMessageAllowed(req HookToolUseLifecycleRequest, record
 	dispatchID, dispatchOK := oneFlag(flags, "--dispatch-id")
 	body, bodyOK := oneFlag(flags, "--body")
 	phase, phaseOK := oneFlag(flags, "--phase")
+	from, fromOK := oneFlag(flags, "--from")
 	if !toOK || to != h.CoordinatorMailboxHandle || !typeOK || !subjectOK || strings.TrimSpace(subject) == "" || len(subject) > 256 || commandparse.ContainsASCIITerminalControl(subject) ||
-		!taskOK || taskID != h.Orca.TaskID || !dispatchOK || dispatchID != h.Orca.DispatchID {
+		!taskOK || taskID != h.Orca.TaskID || !dispatchOK || dispatchID != h.Orca.DispatchID || fromOK && from != h.Orca.WorkerTerminalHandle {
 		return false
 	}
 	switch messageType {
@@ -1395,6 +1397,22 @@ func claimedWorkerProgressMessageAllowed(req HookToolUseLifecycleRequest, record
 	default:
 		return false
 	}
+}
+
+func handoffWorkerCommunicationSession(h *issueopsmodel.IssueOpsExecutionHandoff) (*issueopsmodel.IssueOpsHostSessionIdentity, bool) {
+	if h == nil {
+		return nil, false
+	}
+	if h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
+		if h.State != handoff.StateOwnerOrienting && h.State != handoff.StateOwnerActive {
+			return nil, false
+		}
+		return h.OwnerSession, h.OwnerSession != nil
+	}
+	if h.State != handoff.StateClaimed {
+		return nil, false
+	}
+	return h.WorkerSession, h.WorkerSession != nil
 }
 
 func literalSafeTerminalSendHandle(req HookToolUseLifecycleRequest) (string, bool) {

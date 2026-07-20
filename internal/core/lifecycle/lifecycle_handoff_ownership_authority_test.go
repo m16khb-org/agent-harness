@@ -197,6 +197,36 @@ func TestOwnershipRoleAuthorityMatrix(t *testing.T) {
 	}
 }
 
+func TestOwnershipOrientingKeepsCoordinatorGuidanceAndWorkerEscalationOpen(t *testing.T) {
+	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerOrienting)
+	record.ExecutionHandoff.Orca.WorkerTerminalHandle = "term-owner"
+	record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-owner"
+	var err error
+	record, err = writeIssueOps(IssueOpsStateRoot(), record)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	coordinator := handoffEditRequest(record, repo, "codex", "coordinator", "")
+	coordinator.AgentID, coordinator.Tool = "worker-1", "exec_command"
+	coordinator.Command = "orca terminal send --terminal term-owner --text '# agent-harness guidance: run the exact acknowledgement command once' --enter --json"
+	if got := BuildLifecyclePreToolUseDecision(coordinator); got.Decision != "allow" {
+		t.Fatalf("sealed source coordinator guidance must remain available while owner is orienting: %#v", got)
+	}
+
+	owner := handoffEditRequest(record, worker, "claude", "owner-session", "")
+	owner.AgentID, owner.Tool = "owner-agent", "exec_command"
+	owner.Command = "orca orchestration send --to term_coordinator --from term-owner --type escalation --subject blocked --body 'acknowledgement guidance required' --task-id task-1 --dispatch-id dispatch-1 --json"
+	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "allow" {
+		t.Fatalf("orienting owner must be able to escalate through its sealed mailbox: %#v", got)
+	}
+
+	owner.Command = "orca orchestration send --to term_coordinator --from term-other --type escalation --subject blocked --body 'acknowledgement guidance required' --task-id task-1 --dispatch-id dispatch-1 --json"
+	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "block" {
+		t.Fatalf("orienting owner escalation must reject a mismatched sender mailbox: %#v", got)
+	}
+}
+
 func TestOwnershipFenceStillProtectsWorkerRootAndCycleControl(t *testing.T) {
 	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
 	sourcePhase := handoffEditRequest(record, repo, "claude", "coordinator-session", "")
