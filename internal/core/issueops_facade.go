@@ -271,8 +271,16 @@ func RecordIssueOpsAISlopCleanEvidence(stateRoot, id string, categories, verific
 	return issueops.RecordIssueOpsAISlopCleanEvidence(stateRoot, id, categories, verification)
 }
 
+func RecordIssueOpsAISlopCleanEvidenceWithActor(stateRoot, id string, categories, verification []string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsAISlopCleanEvidenceWithActor(stateRoot, id, categories, verification, actor)
+}
+
 func ResolveIssueOpsFeedback(stateRoot, id string, index int, resolution string) (IssueOpsRecord, error) {
 	return issueops.ResolveIssueOpsFeedback(stateRoot, id, index, resolution)
+}
+
+func ResolveIssueOpsFeedbackWithActor(stateRoot, id string, index int, resolution string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.ResolveIssueOpsFeedbackWithActor(stateRoot, id, index, resolution, actor)
 }
 
 func RegressIssueOpsForReplan(stateRoot, id, reason string) (IssueOpsRecord, error) {
@@ -418,8 +426,16 @@ func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (Is
 	return issueops.AddIssueOpsFeedback(stateRoot, id, source, body, classification)
 }
 
+func AddIssueOpsFeedbackWithActor(stateRoot, id, source, body, classification string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.AddIssueOpsFeedbackWithActor(stateRoot, id, source, body, classification, actor)
+}
+
 func MarkIssueOpsContractFeedbackIssueUpdated(stateRoot, id string) (IssueOpsRecord, error) {
 	return issueops.MarkIssueOpsContractFeedbackIssueUpdated(stateRoot, id)
+}
+
+func MarkIssueOpsContractFeedbackIssueUpdatedWithActor(stateRoot, id string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.MarkIssueOpsContractFeedbackIssueUpdatedWithActor(stateRoot, id, actor)
 }
 
 func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {

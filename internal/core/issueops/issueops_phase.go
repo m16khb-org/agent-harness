@@ -38,7 +38,10 @@ func advanceIssueOpsPhaseWithActor(stateRoot, id, to string, actor *IssueOpsActo
 		if readErr != nil {
 			return readErr
 		}
-		if record.ExecutionWorkspace != nil {
+		if actorErr := validatePostTransferMutation(record, actor); actorErr != nil {
+			return actorErr
+		}
+		if record.ExecutionWorkspace != nil && (record.ExecutionHandoff == nil || record.ExecutionHandoff.ProtocolVersion != handoff.OwnershipTransferProtocolVersion) {
 			if actor == nil {
 				return fmt.Errorf("workspace preparation requires a native actor; use the actor-aware phase recorder")
 			}

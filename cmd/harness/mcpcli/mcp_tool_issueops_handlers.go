@@ -168,12 +168,12 @@ func handleMCPIssueOpsRecordDomainReview(args map[string]any) MCPToolOutcome {
 }
 
 func handleMCPIssueOpsRecordAISlopCleanEvidence(args map[string]any) MCPToolOutcome {
-	result, err := core.RecordIssueOpsAISlopCleanEvidence(core.IssueOpsStateRoot(), argmap.String(args, "id"), argmap.StringSlice(args, "categories"), argmap.StringSlice(args, "verification"))
+	result, err := core.RecordIssueOpsAISlopCleanEvidenceWithActor(core.IssueOpsStateRoot(), argmap.String(args, "id"), argmap.StringSlice(args, "categories"), argmap.StringSlice(args, "verification"), issueOpsActorFromMCP(args))
 	return issueOpsMCPOutcome(result, err, "IssueOps ai-slop-clean evidence record failed")
 }
 
 func handleMCPIssueOpsResolveFeedback(args map[string]any) MCPToolOutcome {
-	result, err := core.ResolveIssueOpsFeedback(core.IssueOpsStateRoot(), argmap.String(args, "id"), argmap.Int(args, "index", -1), argmap.String(args, "resolution"))
+	result, err := core.ResolveIssueOpsFeedbackWithActor(core.IssueOpsStateRoot(), argmap.String(args, "id"), argmap.Int(args, "index", -1), argmap.String(args, "resolution"), issueOpsActorFromMCP(args))
 	return issueOpsMCPOutcome(result, err, "IssueOps resolve feedback failed")
 }
 
@@ -258,7 +258,7 @@ func handleMCPIssueOpsPrepareBranch(args map[string]any) MCPToolOutcome {
 }
 
 func handleMCPIssueOpsAddFeedback(args map[string]any) MCPToolOutcome {
-	result, err := core.AddIssueOpsFeedback(core.IssueOpsStateRoot(), argmap.String(args, "id"), argmap.String(args, "source"), argmap.String(args, "body"), argmap.String(args, "classification"))
+	result, err := core.AddIssueOpsFeedbackWithActor(core.IssueOpsStateRoot(), argmap.String(args, "id"), argmap.String(args, "source"), argmap.String(args, "body"), argmap.String(args, "classification"), issueOpsActorFromMCP(args))
 	return issueOpsMCPOutcome(result, err, "IssueOps feedback failed")
 }
 
@@ -281,7 +281,7 @@ func handleMCPIssueOpsRecordRouting(args map[string]any) MCPToolOutcome {
 }
 
 func handleMCPIssueOpsMarkIssueUpdated(args map[string]any) MCPToolOutcome {
-	result, err := core.MarkIssueOpsContractFeedbackIssueUpdated(core.IssueOpsStateRoot(), argmap.String(args, "id"))
+	result, err := core.MarkIssueOpsContractFeedbackIssueUpdatedWithActor(core.IssueOpsStateRoot(), argmap.String(args, "id"), issueOpsActorFromMCP(args))
 	return issueOpsMCPOutcome(result, err, "IssueOps issue update mark failed")
 }
 

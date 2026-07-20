@@ -79,6 +79,33 @@ func validateWorkspacePreparationMutation(record IssueOpsRecord, actor *IssueOps
 	return validateReadyWorkspacePreparationActor(record, *actor)
 }
 
+// validatePostTransferMutation keeps protocol-v2 durable writes bound to the
+// owner even when callers bypass lifecycle hooks through a direct CLI or MCP
+// request. Legacy cycles retain their existing actor-optional behavior.
+func validatePostTransferMutation(record IssueOpsRecord, actor *IssueOpsActor) error {
+	h := record.ExecutionHandoff
+	if h == nil || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion {
+		return nil
+	}
+	if h.State != handoff.StateOwnerActive {
+		return fmt.Errorf("ownership transfer post-transfer mutation requires owner_active state")
+	}
+	if actor == nil {
+		return fmt.Errorf("ownership transfer post-transfer mutation requires a native owner actor")
+	}
+	session, err := actor.session()
+	if err != nil {
+		return fmt.Errorf("ownership transfer post-transfer mutation requires %w", err)
+	}
+	if h.OwnerSession == nil || *h.OwnerSession != session {
+		return fmt.Errorf("ownership transfer post-transfer mutation requires the exact native owner session")
+	}
+	if !filepath.IsAbs(strings.TrimSpace(actor.CWD)) || filepath.Clean(actor.CWD) != filepath.Clean(h.WorkerRoot) {
+		return fmt.Errorf("ownership transfer post-transfer mutation requires the canonical worker root cwd")
+	}
+	return nil
+}
+
 // ValidateReadyWorkspacePreparationActor is the pre-side-effect guard for
 // adapters that must inspect or prepare dependencies before they persist their
 // result. It intentionally has the same legacy/source-root behavior as the

@@ -266,6 +266,12 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 		}
 		return true, "supervised IssueOps MCP lifecycle payload does not match the native session, actor, and persisted fence"
 	}
+	if isPostTransferRecorderMCP(req.Tool) {
+		if allowedPostTransferRecorderMCP(req, record) {
+			return true, ""
+		}
+		return true, "ownership-transfer recorder MCP payload does not match the active native owner and canonical worker root"
+	}
 	if command := bootstrapCoordinatorStartGuidance(req, record); command != "" {
 		return true, "supervised IssueOps bootstrap requires the authenticated native coordinator identity; rerun this exact harness-authored preview command: " + command
 	}

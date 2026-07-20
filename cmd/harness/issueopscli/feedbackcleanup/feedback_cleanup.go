@@ -18,7 +18,7 @@ type Deps struct {
 
 func RunFeedback(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops feedback add --id ID --source TEXT --body TEXT [--classification TEXT] [--json]\n       agent-harness issueops feedback mark-issue-updated --id ID [--json]")
+		fmt.Println("Usage: agent-harness issueops feedback add --id ID --source TEXT --body TEXT --host HOST --session-id SESSION --cwd PATH [--agent-id ID] [--classification TEXT] [--json]\n       agent-harness issueops feedback mark-issue-updated --id ID --host HOST --session-id SESSION --cwd PATH [--agent-id ID] [--json]")
 		return nil
 	}
 	switch args[0] {
@@ -28,20 +28,28 @@ func RunFeedback(args []string, deps Deps) error {
 		source := fs.String("source", "", "feedback source")
 		body := fs.String("body", "", "feedback body")
 		classification := fs.String("classification", "", "optional feedback classification, such as contract_change, defect, question, or noise")
+		host := fs.String("host", "", "native actor host")
+		sessionID := fs.String("session-id", "", "native actor session id")
+		agentID := fs.String("agent-id", "", "native actor agent id")
+		cwd := fs.String("cwd", "", "canonical actor cwd")
 		jsonOut := fs.Bool("json", false, "print JSON")
 		if help, err := deps.ParseFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
-		record, err := core.AddIssueOpsFeedback(core.IssueOpsStateRoot(), *id, *source, *body, *classification)
+		record, err := core.AddIssueOpsFeedbackWithActor(core.IssueOpsStateRoot(), *id, *source, *body, *classification, core.IssueOpsActor{Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd})
 		return deps.PrintResult(record, *jsonOut, err)
 	case "mark-issue-updated":
 		fs := flag.NewFlagSet("issueops feedback mark-issue-updated", flag.ContinueOnError)
 		id := fs.String("id", "", "issueops id")
+		host := fs.String("host", "", "native actor host")
+		sessionID := fs.String("session-id", "", "native actor session id")
+		agentID := fs.String("agent-id", "", "native actor agent id")
+		cwd := fs.String("cwd", "", "canonical actor cwd")
 		jsonOut := fs.Bool("json", false, "print JSON")
 		if help, err := deps.ParseFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
-		record, err := core.MarkIssueOpsContractFeedbackIssueUpdated(core.IssueOpsStateRoot(), *id)
+		record, err := core.MarkIssueOpsContractFeedbackIssueUpdatedWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsActor{Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd})
 		return deps.PrintResult(record, *jsonOut, err)
 	default:
 		return fmt.Errorf("unknown issueops feedback subcommand")

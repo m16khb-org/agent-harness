@@ -40,7 +40,7 @@ func runIssueOpsDomainReview(args []string) error {
 
 func runIssueOpsAISlopClean(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops ai-slop-clean record --id ID --category TEXT --verification TEXT [--json]")
+		fmt.Println("Usage: agent-harness issueops ai-slop-clean record --id ID --category TEXT --verification TEXT --host HOST --session-id SESSION --cwd PATH [--agent-id ID] [--json]")
 		return nil
 	}
 	if args[0] != "record" {
@@ -48,6 +48,7 @@ func runIssueOpsAISlopClean(args []string) error {
 	}
 	fs := flag.NewFlagSet("issueops ai-slop-clean record", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	jsonOut := fs.Bool("json", false, "print JSON")
 	var categories repeatedFlag
 	var verification repeatedFlag
@@ -56,7 +57,7 @@ func runIssueOpsAISlopClean(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsAISlopCleanEvidence(core.IssueOpsStateRoot(), *id, categories, verification)
+	record, err := core.RecordIssueOpsAISlopCleanEvidenceWithActor(core.IssueOpsStateRoot(), *id, categories, verification, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -84,12 +85,13 @@ func runIssueOpsFeedbackResolve(args []string) error {
 	}
 	fs := flag.NewFlagSet("issueops feedback resolve", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	index := fs.Int("index", -1, "feedback item index (0-based)")
 	resolution := fs.String("resolution", "", "resolution outcome: valid-defect, question-answered, or noise-dismissed")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := core.ResolveIssueOpsFeedback(core.IssueOpsStateRoot(), *id, *index, *resolution)
+	record, err := core.ResolveIssueOpsFeedbackWithActor(core.IssueOpsStateRoot(), *id, *index, *resolution, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }

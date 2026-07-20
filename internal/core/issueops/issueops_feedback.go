@@ -8,8 +8,23 @@ import (
 )
 
 func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (IssueOpsRecord, error) {
+	return addIssueOpsFeedback(stateRoot, id, source, body, classification, nil)
+}
+
+func AddIssueOpsFeedbackWithActor(stateRoot, id, source, body, classification string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return addIssueOpsFeedback(stateRoot, id, source, body, classification, &actor)
+}
+
+func addIssueOpsFeedback(stateRoot, id, source, body, classification string, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, err := ReadIssueOps(stateRoot, id)
+		if err != nil {
+			return err
+		}
+		if err := validatePostTransferMutation(record, actor); err != nil {
+			return err
+		}
 		var e error
 		rec, e = addIssueOpsFeedbackLocked(stateRoot, id, source, body, classification)
 		return e
@@ -56,8 +71,23 @@ func knownIssueOpsFeedbackClassification(classification string) bool {
 }
 
 func MarkIssueOpsContractFeedbackIssueUpdated(stateRoot, id string) (IssueOpsRecord, error) {
+	return markIssueOpsContractFeedbackIssueUpdated(stateRoot, id, nil)
+}
+
+func MarkIssueOpsContractFeedbackIssueUpdatedWithActor(stateRoot, id string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return markIssueOpsContractFeedbackIssueUpdated(stateRoot, id, &actor)
+}
+
+func markIssueOpsContractFeedbackIssueUpdated(stateRoot, id string, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, err := ReadIssueOps(stateRoot, id)
+		if err != nil {
+			return err
+		}
+		if err := validatePostTransferMutation(record, actor); err != nil {
+			return err
+		}
 		var e error
 		rec, e = markIssueOpsContractFeedbackIssueUpdatedLocked(stateRoot, id)
 		return e

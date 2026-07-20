@@ -1027,7 +1027,7 @@ func lifecycleRecordID(req HookToolUseLifecycleRequest) (string, bool) {
 		id, ok := mcpString(input, "id")
 		return id, ok && id != ""
 	}
-	for _, name := range []string{"issueops_link_plan", "issueops_record_compatibility_review", "issueops_record_execution_decision", "issueops_record_devils_advocate_review", "issueops_worktree_prepare_tools"} {
+	for _, name := range []string{"issueops_link_plan", "issueops_record_compatibility_review", "issueops_record_execution_decision", "issueops_record_devils_advocate_review", "issueops_worktree_prepare_tools", "issueops_record_ai_slop_clean_evidence", "issueops_add_feedback", "issueops_resolve_feedback", "issueops_mark_issue_updated", "issueops_set_phase"} {
 		if req.Tool != name && req.Tool != "mcp__agent_harness__"+name {
 			continue
 		}
@@ -1038,6 +1038,29 @@ func lifecycleRecordID(req HookToolUseLifecycleRequest) (string, bool) {
 		return id, ok && strings.TrimSpace(id) != ""
 	}
 	return "", false
+}
+
+func isPostTransferRecorderMCP(tool string) bool {
+	for _, name := range []string{"issueops_record_ai_slop_clean_evidence", "issueops_add_feedback", "issueops_resolve_feedback", "issueops_mark_issue_updated", "issueops_set_phase"} {
+		if tool == name || tool == "mcp__agent_harness__"+name {
+			return true
+		}
+	}
+	return false
+}
+
+func allowedPostTransferRecorderMCP(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+	h := record.ExecutionHandoff
+	if h == nil || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || !handoff.OwnershipTransferOwnerStateAllows("mutate", h.State) || cleanAbsPath(req.CWD) != cleanAbsPath(h.WorkerRoot) {
+		return false
+	}
+	input, ok := flatMCPInput(req.ToolInput)
+	if !ok {
+		return false
+	}
+	id, ok := mcpString(input, "id")
+	cwd, cwdOK := mcpString(input, "cwd")
+	return ok && id == record.ID && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.OwnerSession)
 }
 
 func allowedReadyWorkspacePreparationMCP(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
