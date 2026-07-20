@@ -52,7 +52,7 @@ func runHookStop(args []string) error {
 		})
 	}
 	result := core.BuildLifecycleStopReminder(parsedRepo)
-	cleanupID, cleanupPending := core.OwnershipCleanupHumanGate(core.HookToolUseLifecycleRequest{Repo: parsedRepo, CWD: hookinput.CWDFromHookInput(stdin), Host: resolvedHost, SessionID: hookinput.SessionIDFromHookInput(stdin), AgentID: hookinput.AgentIDFromHookInput(stdin)})
+	_, cleanupPending := core.OwnershipCleanupHumanGate(core.HookToolUseLifecycleRequest{Repo: parsedRepo, CWD: hookinput.CWDFromHookInput(stdin), Host: resolvedHost, SessionID: hookinput.SessionIDFromHookInput(stdin), AgentID: hookinput.AgentIDFromHookInput(stdin)})
 	message := hookinput.LastAssistantMessageFromHookInput(stdin)
 	if message == "" {
 		message = hookinput.ReadLastAssistantMessageFromTranscript(hookinput.TranscriptPathFromHookInput(stdin))
@@ -83,10 +83,9 @@ func runHookStop(args []string) error {
 		})
 	}
 	ho := hookadapter.Resolve(strings.TrimSpace(*host))
-	if cleanupPending {
-		markHookMetricBlocked()
-		return printJSON(ho.FormatStopBlock("IssueOps " + cleanupID + " is at cleanup_pending_human_decision. No cleanup has run. Do not auto-proceed or invoke preview, approve, record, Orca, Git, or provider tools from Stop; the source/main session must present the three human choices: retain resources, close owner while retaining the workspace, or remove local resources."))
-	}
+	// cleanup_pending_human_decision is intentionally informational here. The
+	// source/main session ends after handoff; cleanup remains a separate,
+	// explicit human-in-the-loop command flow and must never re-enter Stop.
 	if nextActionTriggerEnabled && nextActionTrigger.ShouldReenterAgent && !suppressNextAction {
 		relayRecord := core.RecordStopNextActionRelay(parsedRepo, nextActionTrigger)
 		if !relayRecord.ShouldRelay {
