@@ -775,8 +775,13 @@ func verifyIssueOpsCleanupStep(ctx context.Context, record IssueOpsRecord, step 
 		if err != nil {
 			return receipt, err
 		}
-		if dispatch.ID != dispatchID || dispatch.TaskID != taskID || dispatch.AssigneeHandle != identity.WorkerMailboxHandle || !terminalDispatchStatus(dispatch.Status) {
+		if dispatch.ID != dispatchID || dispatch.TaskID != taskID || strings.TrimSpace(dispatch.AssigneeHandle) != strings.TrimSpace(identity.WorkerMailboxHandle) {
 			return receipt, fmt.Errorf("exact task and dispatch are not terminal")
+		}
+		if !terminalDispatchStatus(dispatch.Status) {
+			if err := requireExactTaskTerminal(ctx, client, taskID); err != nil {
+				return receipt, fmt.Errorf("exact task and dispatch are not terminal: %w", err)
+			}
 		}
 		receipt.TaskID, receipt.DispatchID = taskID, dispatchID
 	case "terminal_quiescent":

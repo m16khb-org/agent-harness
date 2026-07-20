@@ -92,6 +92,36 @@ func TestAcceptedHandoffCannotApproveCleanupDisposition(t *testing.T) {
 	}
 }
 
+func TestHandoffCleanupRecordsTerminalTaskWithStaleDispatchProjection(t *testing.T) {
+	stateRoot, record, _ := dispatchedHandoffRecord(t)
+	record.ExecutionHandoff.State = handoff.StateClosed
+	record.ExecutionHandoff.ClosedDisposition = handoff.DispositionCancelled
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	client.terminals = nil
+	client.tasks = []port.OrcaTask{{ID: record.ExecutionHandoff.Orca.TaskID, Status: "failed", HasResult: true}}
+	client.dispatch = port.OrcaDispatch{
+		ID: record.ExecutionHandoff.Orca.DispatchID, TaskID: record.ExecutionHandoff.Orca.TaskID,
+		AssigneeHandle: record.ExecutionHandoff.Orca.WorkerMailboxHandle, Status: "dispatched",
+	}
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "approve-cleanup", Confirm: true, CleanupDisposition: "retry", Reason: "preserve committed checkpoint",
+	}, client, handoffPrepareTestClock()); err != nil {
+		t.Fatal(err)
+	}
+	got, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "record-cleanup", Confirm: true, CleanupStep: "task_terminal",
+	}, client, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Cleanup == nil || len(got.Cleanup.Receipts) != 1 || got.Cleanup.Receipts[0].Step != "task_terminal" {
+		t.Fatalf("stale dispatch cleanup receipt = %#v", got.Cleanup)
+	}
+}
+
 func TestHandoffCleanupAllowsTasklessPreDispatchCancellation(t *testing.T) {
 	stateRoot, record, _ := dispatchedHandoffRecord(t)
 	record.ExecutionHandoff.State = handoff.StateClosed
