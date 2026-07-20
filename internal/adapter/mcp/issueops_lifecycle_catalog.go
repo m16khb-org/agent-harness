@@ -287,7 +287,7 @@ func IssueOpsLifecycleTools() []Tool {
 		},
 		{
 			Name:        "issueops_handoff",
-			Description: "Run one supervised IssueOps handoff action (start, claim, acknowledge-context, finish, complete, cleanup-preview, cleanup-approve, cleanup-record, accept, publish, or recover) through the same durable DTO contract as the CLI. Cleanup preview is read-only; approval and each receipt are human-directed.",
+			Description: "Run one supervised IssueOps handoff action (start, claim, acknowledge-context, finish, complete, cleanup-preview, cleanup-approve, cleanup-record, accept, publish, or recover) through the same durable DTO contract as the CLI. Writing actions require the applicable native actor identity fields and persist the durable execution_handoff result shape. Cleanup preview is read-only; approval and each receipt require explicit human direction and confirmation, and no cleanup runs automatically. Responses retain the same handoff mode and receipt fields as the CLI.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"action", "id"}, "properties": map[string]any{
 				"action":                          map[string]any{"type": "string", "enum": []string{"start", "claim", "acknowledge-context", "finish", "complete", "cleanup-preview", "cleanup-approve", "cleanup-record", "accept", "publish", "recover"}},
 				"id":                              map[string]any{"type": "string"},

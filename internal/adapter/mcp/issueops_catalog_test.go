@@ -279,3 +279,25 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 		}
 	}
 }
+
+func TestOwnershipTransferCLIAndMCPActionParity(t *testing.T) {
+	handoff := toolsByName(IssueOpsLifecycleTools())["issueops_handoff"]
+	properties := handoff.InputSchema["properties"].(map[string]any)
+	actions := properties["action"].(map[string]any)["enum"].([]string)
+	for _, action := range []string{"start", "claim", "acknowledge-context", "publish", "complete", "cleanup-preview", "cleanup-approve", "cleanup-record", "recover"} {
+		if !strings.Contains("|"+strings.Join(actions, "|")+"|", "|"+action+"|") {
+			t.Fatalf("MCP handoff action enum missing CLI action %q: %#v", action, actions)
+		}
+	}
+	for _, field := range []string{"id", "host", "session_id", "agent_id", "source_cwd", "cwd", "attempt", "ownership_epoch", "context_sha256", "inventory_fingerprint", "disposition", "step", "confirm", "result_format"} {
+		if _, ok := properties[field]; !ok {
+			t.Fatalf("MCP handoff schema missing action-conditional field %q", field)
+		}
+	}
+	description := strings.ToLower(handoff.Description)
+	for _, phrase := range []string{"writing actions", "native actor", "preview", "no cleanup runs automatically", "handoff mode"} {
+		if !strings.Contains(description, phrase) {
+			t.Fatalf("MCP handoff description must state %q: %s", phrase, handoff.Description)
+		}
+	}
+}

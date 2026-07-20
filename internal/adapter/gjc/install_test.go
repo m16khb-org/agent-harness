@@ -106,7 +106,7 @@ func TestGJCInstallerFailsWhenHookShimSourceMissing(t *testing.T) {
 	}
 }
 
-func TestGJCHookShimForwardsNativeIdentityAndEnforcesBlock(t *testing.T) {
+func TestOwnershipTransferGJCHostTranslatesBlock(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatal(err)

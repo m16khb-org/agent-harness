@@ -8,9 +8,26 @@ import (
 	"testing"
 
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/commandparse"
 	"agent-harness/internal/core/issueops/handoff"
 	issueopsmodel "agent-harness/internal/core/issueops/model"
 )
+
+func TestOwnershipTransferCLIAndMCPActionParity(t *testing.T) {
+	for _, action := range []string{"start", "claim", "acknowledge-context", "publish", "complete", "cleanup-preview", "cleanup-approve", "cleanup-record", "recover"} {
+		command, ok := commandparse.ParseExactIssueOpsCommand("agent-harness issueops handoff " + action + " --id io-parity --json")
+		if !ok || command.Path != "handoff "+action {
+			t.Fatalf("lifecycle parser did not recognize handoff %q: command=%#v ok=%v", action, command, ok)
+		}
+		values, booleans, repeatable, ok := commandparse.IssueOpsCommandSpec(command.Path)
+		if !ok {
+			t.Fatalf("lifecycle guard has no exact command spec for handoff %q", action)
+		}
+		if _, ok := commandparse.ExactFlags(command, values, booleans, repeatable); !ok {
+			t.Fatalf("lifecycle guard rejected canonical handoff %q command", action)
+		}
+	}
+}
 
 func TestRunHookPreToolUseSupervisedMultiCycleControlPlaneMatrix(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())

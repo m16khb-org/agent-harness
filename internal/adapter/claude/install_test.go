@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/adapter/hook"
 	"agent-harness/internal/core"
 )
 
@@ -39,6 +40,14 @@ func TestClaudeInstallerDefaultsToUserScopeOnly(t *testing.T) {
 		if exists(path) {
 			t.Fatalf("default installer wrote unexpected path %s", path)
 		}
+	}
+}
+
+func TestOwnershipTransferClaudeHostPreservesPermissionDecisionMeaning(t *testing.T) {
+	output := hook.ClaudeHookOutput{}.FormatBlock("worker ownership is sealed")
+	specific, ok := output["hookSpecificOutput"].(map[string]any)
+	if !ok || specific["permissionDecision"] != "deny" || specific["permissionDecisionReason"] != "worker ownership is sealed" {
+		t.Fatalf("Claude ownership block must preserve permissionDecision deny semantics: %#v", output)
 	}
 }
 

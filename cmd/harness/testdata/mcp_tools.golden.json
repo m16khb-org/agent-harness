@@ -2575,7 +2575,7 @@
     "name": "issueops_remote_sync_graph"
   },
   {
-    "description": "Run one supervised IssueOps handoff action (start, claim, acknowledge-context, finish, complete, cleanup-preview, cleanup-approve, cleanup-record, accept, publish, or recover) through the same durable DTO contract as the CLI. Cleanup preview is read-only; approval and each receipt are human-directed.",
+    "description": "Run one supervised IssueOps handoff action (start, claim, acknowledge-context, finish, complete, cleanup-preview, cleanup-approve, cleanup-record, accept, publish, or recover) through the same durable DTO contract as the CLI. Writing actions require the applicable native actor identity fields and persist the durable execution_handoff result shape. Cleanup preview is read-only; approval and each receipt require explicit human direction and confirmation, and no cleanup runs automatically. Responses retain the same handoff mode and receipt fields as the CLI.",
     "inputSchema": {
       "properties": {
         "action": {

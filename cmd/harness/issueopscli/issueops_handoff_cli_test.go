@@ -158,6 +158,19 @@ func TestIssueOpsHandoffUsageExposesCodexHookTrustBypassAttestation(t *testing.T
 	}
 }
 
+func TestOwnershipTransferCLIAndMCPActionParity(t *testing.T) {
+	for _, action := range []string{"start", "claim", "acknowledge-context", "publish", "complete", "cleanup-preview", "cleanup-approve", "cleanup-record", "recover"} {
+		if !strings.Contains(issueOpsHandoffUsage, "handoff "+action+" ") {
+			t.Fatalf("handoff usage missing ownership-transfer action %q", action)
+		}
+	}
+	for _, flag := range []string{"--workspace-epoch", "--host", "--session-id", "--agent-id", "--source-cwd", "--cwd", "--attempt", "--ownership-epoch", "--context-sha256", "--inventory-fingerprint", "--disposition", "--step", "--confirm", "--result-format"} {
+		if !strings.Contains(issueOpsHandoffUsage, flag) {
+			t.Fatalf("handoff usage missing MCP-parity flag %q", flag)
+		}
+	}
+}
+
 func TestRunIssueOpsHandoffStartAcceptsLegacyVerificationCommandAlias(t *testing.T) {
 	fs := flag.NewFlagSet("issueops handoff start", flag.ContinueOnError)
 	var verification repeatedFlag

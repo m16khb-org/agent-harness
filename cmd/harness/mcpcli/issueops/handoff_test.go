@@ -194,6 +194,18 @@ func TestMCPIssueOpsHandoffUsesOneActionTool(t *testing.T) {
 	}
 }
 
+func TestOwnershipTransferCLIAndMCPActionParity(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	for _, action := range []string{"start", "claim", "acknowledge-context", "publish", "complete", "cleanup-preview", "cleanup-approve", "cleanup-record", "recover"} {
+		t.Run(action, func(t *testing.T) {
+			err := callMCPToolForIssueOpsTestError(t, "issueops_handoff", map[string]any{"action": action, "id": "io-missing"})
+			if strings.Contains(err, "handoff action must be") {
+				t.Fatalf("MCP handler did not dispatch ownership-transfer action %q: %s", action, err)
+			}
+		})
+	}
+}
+
 func mcpHandoffRecord(t *testing.T) core.IssueOpsRecord {
 	t.Helper()
 	repo := makeIssueOpsCLIRepoForTest(t, "handoff")

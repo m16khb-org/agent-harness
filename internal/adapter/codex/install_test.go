@@ -7,12 +7,20 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/adapter/hook"
 	"agent-harness/internal/core"
 )
 
 func TestInstallerName(t *testing.T) {
 	if got := NewInstaller().Name(); got != "codex" {
 		t.Fatalf("Name() = %q, want %q", got, "codex")
+	}
+}
+
+func TestOwnershipTransferCodexHostPreservesFlatBlockMeaning(t *testing.T) {
+	output := hook.CodexHookOutput{}.FormatBlock("worker ownership is sealed")
+	if output["decision"] != "block" || output["reason"] != "worker ownership is sealed" {
+		t.Fatalf("Codex ownership block must keep the flat decision/reason contract: %#v", output)
 	}
 }
 
