@@ -39,42 +39,46 @@ func runIssueOpsStatus(args []string) error {
 func runIssueOpsLinkIssue(args []string) error {
 	fs := flag.NewFlagSet("issueops link-issue", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	issueURL := fs.String("issue-url", "", "GitHub/GitLab issue URL")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), *id, *issueURL)
+	record, err := core.LinkIssueOpsIssueWithActor(core.IssueOpsStateRoot(), *id, *issueURL, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
 func runIssueOpsLinkPlan(args []string) error {
 	fs := flag.NewFlagSet("issueops link-plan", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	planPath := fs.String("plan-path", "", "issue-driven plan path")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), *id, *planPath)
+	record, err := core.LinkIssueOpsPlanWithActor(core.IssueOpsStateRoot(), *id, *planPath, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
 func runIssueOpsLinkWorktree(args []string) error {
 	fs := flag.NewFlagSet("issueops link-worktree", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	worktreePath := fs.String("worktree-path", "", "issue-driven worktree path")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), *id, *worktreePath)
+	record, err := core.LinkIssueOpsWorktreeWithActor(core.IssueOpsStateRoot(), *id, *worktreePath, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
 func runIssueOpsLinkChild(args []string) error {
 	fs := flag.NewFlagSet("issueops link-child", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	childURL := fs.String("child-url", "", "GitHub sub-issue or GitLab child item URL")
 	title := fs.String("title", "", "optional child issue title")
 	jsonOut := fs.Bool("json", false, "print JSON")
@@ -84,13 +88,14 @@ func runIssueOpsLinkChild(args []string) error {
 	if err := verifyIssueOpsChildIssueBeforeLink(*childURL); err != nil {
 		return printIssueOpsResult(core.IssueOpsRecord{OK: false}, *jsonOut, err)
 	}
-	record, err := core.LinkIssueOpsChild(core.IssueOpsStateRoot(), *id, *childURL, *title)
+	record, err := core.LinkIssueOpsChildWithActor(core.IssueOpsStateRoot(), *id, *childURL, *title, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
 func runIssueOpsLinkRelated(args []string) error {
 	fs := flag.NewFlagSet("issueops link-related", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	linkType := fs.String("type", "", "link type: depends-on, blocks, supersedes, follows-up, duplicates, splits-from, implements")
 	relatedURL := fs.String("related-url", "", "related issue URL")
 	title := fs.String("title", "", "optional related issue title")
@@ -98,7 +103,7 @@ func runIssueOpsLinkRelated(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := core.LinkIssueOpsRelated(core.IssueOpsStateRoot(), *id, *linkType, *relatedURL, *title)
+	record, err := core.LinkIssueOpsRelatedWithActor(core.IssueOpsStateRoot(), *id, *linkType, *relatedURL, *title, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -128,6 +133,7 @@ func runIssueOpsChild(args []string) error {
 func runIssueOpsChildStart(args []string) error {
 	fs := flag.NewFlagSet("issueops child start", flag.ContinueOnError)
 	parentID := fs.String("parent", "", "parent issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	branch := fs.String("branch", "", "child branch")
 	title := fs.String("title", "", "child task title")
 	scope := fs.String("scope", "", "delegated task scope")
@@ -138,26 +144,27 @@ func runIssueOpsChildStart(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	result, err := core.StartIssueOpsChild(core.IssueOpsStateRoot(), core.IssueOpsChildStartRequest{
+	result, err := core.StartIssueOpsChildWithActor(core.IssueOpsStateRoot(), core.IssueOpsChildStartRequest{
 		ParentID:           *parentID,
 		Branch:             *branch,
 		Title:              *title,
 		TaskScope:          *scope,
 		AcceptanceCriteria: []string(acceptance),
 		ChildIssueURL:      *childIssueURL,
-	})
+	}, actor.actor())
 	return printIssueOpsChildValue(result, *jsonOut, err)
 }
 
 func runIssueOpsChildStatus(args []string, repairDefault bool) error {
 	fs := flag.NewFlagSet("issueops child status", flag.ContinueOnError)
 	parentID := fs.String("parent", "", "parent issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	repair := fs.Bool("repair", repairDefault, "append scanned children missing from the parent index")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	result, err := core.IssueOpsChildStatus(core.IssueOpsStateRoot(), *parentID, *repair)
+	result, err := core.IssueOpsChildStatusWithActor(core.IssueOpsStateRoot(), *parentID, *repair, actor.actor())
 	if *jsonOut {
 		return printIssueOpsChildValue(result, true, err)
 	}
@@ -173,6 +180,7 @@ func runIssueOpsChildStatus(args []string, repairDefault bool) error {
 func runIssueOpsChildAccept(args []string) error {
 	fs := flag.NewFlagSet("issueops child accept", flag.ContinueOnError)
 	parentID := fs.String("parent", "", "parent issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	childID := fs.String("child", "", "child issueops id")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	var evidence repeatedFlag
@@ -180,33 +188,35 @@ func runIssueOpsChildAccept(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	result, err := core.AcceptIssueOpsChild(core.IssueOpsStateRoot(), *parentID, *childID, []string(evidence))
+	result, err := core.AcceptIssueOpsChildWithActor(core.IssueOpsStateRoot(), *parentID, *childID, []string(evidence), actor.actor())
 	return printIssueOpsChildValue(result, *jsonOut, err)
 }
 
 func runIssueOpsChildReject(args []string) error {
 	fs := flag.NewFlagSet("issueops child reject", flag.ContinueOnError)
 	parentID := fs.String("parent", "", "parent issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	childID := fs.String("child", "", "child issueops id")
 	reason := fs.String("reason", "", "rejection reason")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	result, err := core.RejectIssueOpsChild(core.IssueOpsStateRoot(), *parentID, *childID, *reason, nil)
+	result, err := core.RejectIssueOpsChildWithActor(core.IssueOpsStateRoot(), *parentID, *childID, *reason, nil, actor.actor())
 	return printIssueOpsChildValue(result, *jsonOut, err)
 }
 
 func runIssueOpsChildDrop(args []string) error {
 	fs := flag.NewFlagSet("issueops child drop", flag.ContinueOnError)
 	parentID := fs.String("parent", "", "parent issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	childID := fs.String("child", "", "child issueops id")
 	reason := fs.String("reason", "", "drop reason")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	result, err := core.DropIssueOpsChild(core.IssueOpsStateRoot(), *parentID, *childID, *reason)
+	result, err := core.DropIssueOpsChildWithActor(core.IssueOpsStateRoot(), *parentID, *childID, *reason, actor.actor())
 	return printIssueOpsChildValue(result, *jsonOut, err)
 }
 
@@ -283,19 +293,21 @@ func parseExpectedRouting(spec string) ([]core.SkillRouting, error) {
 func runIssueOpsRecordRouting(args []string) error {
 	fs := flag.NewFlagSet("issueops record-routing", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	phase := fs.String("phase", "", "lifecycle phase at which the skill fired")
 	skill := fs.String("skill", "", "skill that fired (codd, dijkstra, hopper, shannon, ...)")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsRouting(core.IssueOpsStateRoot(), *id, *phase, *skill)
+	record, err := core.RecordIssueOpsRoutingWithActor(core.IssueOpsStateRoot(), *id, *phase, *skill, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
 func runIssueOpsPhase(args []string) error {
 	fs := flag.NewFlagSet("issueops phase", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	to := fs.String("to", "", "target phase: problem, grill, plan, compatibility-review, implement, ai-slop-clean, feedback, pr, done")
 	force := fs.Bool("force", false, "bypass remote artifact verification when advancing to done")
 	jsonOut := fs.Bool("json", false, "print JSON")
@@ -307,7 +319,7 @@ func runIssueOpsPhase(args []string) error {
 	if *force && *to == "done" {
 		record, err = core.ForceDoneIssueOps(core.IssueOpsStateRoot(), *id)
 	} else {
-		record, err = core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), *id, *to)
+		record, err = core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), *id, *to, actor.actor())
 	}
 	return printIssueOpsResult(record, *jsonOut, err)
 }

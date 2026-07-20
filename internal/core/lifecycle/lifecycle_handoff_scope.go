@@ -26,7 +26,10 @@ func classifyHandoffFenceScope(req HookToolUseLifecycleRequest, records []IssueO
 		if !literal {
 			return handoffFenceScopeAmbiguousCrossRoot
 		}
-		matches, _ := recordsMatchingProtectedOrcaResource(req, records)
+		matches, reason := recordsMatchingProtectedOrcaResource(req, records)
+		if reason != "" {
+			return handoffFenceScopeAmbiguousCrossRoot
+		}
 		if len(matches) == 1 {
 			return handoffFenceScopeWorkerOrCycleTargeted
 		}
@@ -35,7 +38,7 @@ func classifyHandoffFenceScope(req HookToolUseLifecycleRequest, records []IssueO
 		}
 	}
 	for _, record := range records {
-		if requestRunsFromOrTargetsWorkerRoot(req, record.ExecutionHandoff.WorkerRoot) {
+		if requestRunsFromOrTargetsWorkerRoot(req, executionWorkerRoot(record)) {
 			return handoffFenceScopeWorkerOrCycleTargeted
 		}
 	}
@@ -48,6 +51,16 @@ func classifyHandoffFenceScope(req HookToolUseLifecycleRequest, records []IssueO
 		}
 	}
 	return handoffFenceScopeSourceOnly
+}
+
+func executionWorkerRoot(record IssueOpsRecord) string {
+	if record.ExecutionHandoff != nil {
+		return record.ExecutionHandoff.WorkerRoot
+	}
+	if record.ExecutionWorkspace != nil {
+		return record.ExecutionWorkspace.WorkerRoot
+	}
+	return ""
 }
 
 func looksLikeIssueOpsControl(req HookToolUseLifecycleRequest) bool {

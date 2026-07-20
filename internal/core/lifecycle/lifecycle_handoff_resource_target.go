@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"agent-harness/internal/core/commandparse"
+	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/searchrouting"
 )
 
@@ -211,6 +212,9 @@ func recordsMatchingProtectedOrcaResource(req HookToolUseLifecycleRequest, recor
 	matched := map[string]IssueOpsRecord{}
 	for _, record := range records {
 		for _, target := range targets {
+			if recordHasAmbiguousProtectedOrcaResource(record, target) {
+				return nil, "IssueOps record has an ambiguous workspace and handoff Orca resource identity"
+			}
 			if recordOwnsProtectedOrcaResource(record, target) {
 				matched[record.ID] = record
 			}
@@ -224,10 +228,32 @@ func recordsMatchingProtectedOrcaResource(req HookToolUseLifecycleRequest, recor
 }
 
 func recordOwnsProtectedOrcaResource(record IssueOpsRecord, target protectedOrcaResourceTarget) bool {
-	if record.ExecutionHandoff == nil || record.ExecutionHandoff.Orca == nil {
+	return protectedOrcaIdentityOwns(handoffOrcaIdentity(record), target) || protectedOrcaIdentityOwns(workspaceOrcaIdentity(record), target)
+}
+
+func recordHasAmbiguousProtectedOrcaResource(record IssueOpsRecord, target protectedOrcaResourceTarget) bool {
+	handoffOrca, workspaceOrca := handoffOrcaIdentity(record), workspaceOrcaIdentity(record)
+	return handoffOrca != nil && workspaceOrca != nil && protectedOrcaIdentityOwns(handoffOrca, target) && protectedOrcaIdentityOwns(workspaceOrca, target)
+}
+
+func handoffOrcaIdentity(record IssueOpsRecord) *model.IssueOpsOrcaIdentity {
+	if record.ExecutionHandoff == nil {
+		return nil
+	}
+	return record.ExecutionHandoff.Orca
+}
+
+func workspaceOrcaIdentity(record IssueOpsRecord) *model.IssueOpsOrcaIdentity {
+	if record.ExecutionWorkspace == nil {
+		return nil
+	}
+	return record.ExecutionWorkspace.Orca
+}
+
+func protectedOrcaIdentityOwns(orca *model.IssueOpsOrcaIdentity, target protectedOrcaResourceTarget) bool {
+	if orca == nil {
 		return false
 	}
-	orca := record.ExecutionHandoff.Orca
 	switch target.Kind {
 	case protectedOrcaTerminal:
 		return target.ID != "" && (target.ID == strings.TrimSpace(orca.WorkerTerminalHandle) || target.ID == strings.TrimSpace(orca.WorkerMailboxHandle))

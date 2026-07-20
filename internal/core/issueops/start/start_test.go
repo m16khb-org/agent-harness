@@ -160,3 +160,32 @@ func TestStartNeverStaleResetsExecutionHandoffLease(t *testing.T) {
 		})
 	}
 }
+
+func TestStartNeverStaleResetsExecutionWorkspaceAuthority(t *testing.T) {
+	for _, state := range []string{"provisioning", "ready", handoff.StateRecoveryRequired} {
+		t.Run(state, func(t *testing.T) {
+			s := newFakeStartStore()
+			s.valid = func(string) bool { return false }
+			record := model.IssueOpsRecord{
+				OK: true, ID: "io-fixed", Repo: "/repo", Branch: "1-x", Phase: model.IssueOpsPhaseImplement, WorktreePath: "/gone/worktree", CreatedAt: "2026-01-01T00:00:00Z", UpdatedAt: "2026-01-01T00:01:00Z",
+				ExecutionWorkspace: &model.IssueOpsExecutionWorkspace{State: state, WorkspaceEpoch: "workspace-preserved", Driver: "orca", Agent: "codex", CoordinatorRoot: "/repo", WorkerRoot: "/gone/worktree", BaseHead: "0123456789012345678901234567890123456789"},
+			}
+			s.records[record.ID] = record
+			before, err := json.Marshal(record)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := Start(s.store(), "/state", model.IssueOpsStartRequest{Repo: record.Repo, Branch: record.Branch})
+			if err != nil {
+				t.Fatal(err)
+			}
+			after, err := json.Marshal(got)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(after) != string(before) || len(s.writes) != 0 {
+				t.Fatalf("execution workspace authority changed during stale reset: before=%s after=%s writes=%d", before, after, len(s.writes))
+			}
+		})
+	}
+}

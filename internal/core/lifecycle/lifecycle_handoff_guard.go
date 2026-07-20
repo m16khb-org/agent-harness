@@ -212,6 +212,12 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 	if err := handoff.ValidateEnvelope(record); err != nil {
 		return true, "invalid supervised IssueOps handoff envelope: " + err.Error()
 	}
+	if workspacePreparationStateKnown(record) {
+		if reason := workspacePreparationBlockReason(req, record); reason != "" {
+			return true, reason
+		}
+		return true, ""
+	}
 	if issueOpsObservationMCPTool(req.Tool) {
 		if allowedIssueOpsObservationMCP(req, record) {
 			return true, ""

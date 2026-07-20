@@ -17,6 +17,7 @@ func runIssueOpsIntent(args []string) error {
 	}
 	fs := flag.NewFlagSet("issueops intent record", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	rawRequest := fs.String("raw-request", "", "raw user request")
 	interpretedIntent := fs.String("interpreted-intent", "", "agent interpretation of user intent")
 	var successCriteria repeatedFlag
@@ -32,7 +33,7 @@ func runIssueOpsIntent(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsIntent(core.IssueOpsStateRoot(), *id, core.IssueOpsIntentRecordRequest{
+	record, err := core.RecordIssueOpsIntentWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsIntentRecordRequest{
 		RawRequest:        *rawRequest,
 		InterpretedIntent: *interpretedIntent,
 		SuccessCriteria:   []string(successCriteria),
@@ -40,7 +41,7 @@ func runIssueOpsIntent(args []string) error {
 		Ambiguities:       []string(ambiguities),
 		NonGoals:          []string(nonGoals),
 		IntentClass:       *intentClass,
-	})
+	}, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -58,6 +59,7 @@ func runIssueOpsDesign(args []string) error {
 	}
 	fs := flag.NewFlagSet("issueops design review", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	problemSummary := fs.String("problem-summary", "", "reviewed problem summary")
 	proposedDesign := fs.String("proposed-design", "", "reviewed design")
 	refactorPlan := fs.String("refactor-plan", "", "refactor plan or boundary decision")
@@ -74,7 +76,7 @@ func runIssueOpsDesign(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsDesignReview(core.IssueOpsStateRoot(), *id, core.IssueOpsDesignReviewRequest{
+	record, err := core.RecordIssueOpsDesignReviewWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsDesignReviewRequest{
 		ProblemSummary: *problemSummary,
 		ProposedDesign: *proposedDesign,
 		RefactorPlan:   *refactorPlan,
@@ -83,7 +85,7 @@ func runIssueOpsDesign(args []string) error {
 		Verification:   []string(verification),
 		OpenQuestions:  []string(openQuestions),
 		Approved:       *approved,
-	})
+	}, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 

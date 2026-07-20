@@ -21,8 +21,23 @@ var validIssueOpsFeedbackResolutions = map[string]bool{
 // (terminology, model fit, risks, uncertainties) — the source of truth backing
 // the grill domain_review artifact.
 func RecordIssueOpsDomainReview(stateRoot, id string, req IssueOpsDomainReviewRequest) (IssueOpsRecord, error) {
+	return recordIssueOpsDomainReview(stateRoot, id, req, nil)
+}
+
+func RecordIssueOpsDomainReviewWithActor(stateRoot, id string, req IssueOpsDomainReviewRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return recordIssueOpsDomainReview(stateRoot, id, req, &actor)
+}
+
+func recordIssueOpsDomainReview(stateRoot, id string, req IssueOpsDomainReviewRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if actorErr := validateWorkspacePreparationMutation(record, actor); actorErr != nil {
+			return actorErr
+		}
 		var e error
 		rec, e = recordIssueOpsDomainReviewLocked(stateRoot, id, req)
 		return e

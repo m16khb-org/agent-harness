@@ -486,12 +486,28 @@
     "description": "Start an IssueOps loop and persist its issue-driven workflow state under harness state.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
         "branch": {
           "description": "Optional working branch name.",
           "type": "string"
         },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd for preparation.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Native preparation actor host when operating a ready execution workspace.",
+          "type": "string"
+        },
         "repo": {
           "description": "Repository path this IssueOps loop belongs to.",
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Native preparation actor session id.",
           "type": "string"
         }
       },
@@ -506,8 +522,24 @@
     "description": "Read a persisted IssueOps loop by id.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd for preparation.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Native preparation actor host when operating a ready execution workspace.",
+          "type": "string"
+        },
         "id": {
           "description": "IssueOps id.",
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Native preparation actor session id.",
           "type": "string"
         }
       },
@@ -522,6 +554,10 @@
     "description": "Record the raw user request, interpreted intent, success criteria, constraints, non-goals, and ambiguity ledger before an IssueOps loop may enter planning.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
         "ambiguities": {
           "description": "Resolved, deferred, or blocking ambiguity ledger entries.",
           "items": {
@@ -535,6 +571,14 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd for preparation.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Native preparation actor host when operating a ready execution workspace.",
+          "type": "string"
         },
         "id": {
           "description": "IssueOps id.",
@@ -566,6 +610,10 @@
           "description": "Original user request text.",
           "type": "string"
         },
+        "session_id": {
+          "description": "Native preparation actor session id.",
+          "type": "string"
+        },
         "success_criteria": {
           "description": "Concrete success criteria.",
           "items": {
@@ -588,6 +636,14 @@
     "description": "Record the pre-plan evidence gate for an IssueOps loop: prior-decision lookup, related-issue scoring, and web research. Each item takes either evidence or a mutually-exclusive waive reason. Required before entering the plan phase for non-trivial intent classes.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd for preparation.",
+          "type": "string"
+        },
         "decisions_evidence": {
           "description": "Prior-decision evidence such as ADR or decision links.",
           "items": {
@@ -597,6 +653,10 @@
         },
         "decisions_waive": {
           "description": "Reason prior-decision lookup is unnecessary.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Native preparation actor host when operating a ready execution workspace.",
           "type": "string"
         },
         "id": {
@@ -612,6 +672,10 @@
         },
         "related_waive": {
           "description": "Reason related-issue scoring is unnecessary.",
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Native preparation actor session id.",
           "type": "string"
         },
         "web_research_evidence": {
@@ -637,12 +701,28 @@
     "description": "Attach a GitHub/GitLab issue URL to an IssueOps loop. The loop moves to plan phase only when its intent contract is recorded.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd for preparation.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Native preparation actor host when operating a ready execution workspace.",
+          "type": "string"
+        },
         "id": {
           "description": "IssueOps id.",
           "type": "string"
         },
         "issue_url": {
           "description": "GitHub/GitLab issue URL.",
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Native preparation actor session id.",
           "type": "string"
         }
       },
@@ -658,6 +738,10 @@
     "description": "Record provider-linked issue branch preparation and expose the required MCP-first, provider API fallback, fail-closed order. This must be used before creating a local worktree for an IssueOps issue branch.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
         "base_branch": {
           "description": "Remote base branch or ref.",
           "type": "string"
@@ -668,6 +752,14 @@
         },
         "branch": {
           "description": "Provider-linked branch name, such as 2386-title or 2387-title. For GitLab, the full branch name must start with the issue number followed by a hyphen so the issue Development section links it.",
+          "type": "string"
+        },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd for preparation.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Native preparation actor host when operating a ready execution workspace.",
           "type": "string"
         },
         "id": {
@@ -693,6 +785,10 @@
         "remote_branch_url": {
           "description": "Optional provider branch URL after creation.",
           "type": "string"
+        },
+        "session_id": {
+          "description": "Native preparation actor session id.",
+          "type": "string"
         }
       },
       "required": [
@@ -710,8 +806,24 @@
     "description": "Attach the exact existing issue-driven worktree path that mutating tool guards must target. Requires linked issue and verified provider branch evidence.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd for preparation.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Native preparation actor host when operating a ready execution workspace.",
+          "type": "string"
+        },
         "id": {
           "description": "IssueOps id.",
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Native preparation actor session id.",
           "type": "string"
         },
         "worktree_path": {
@@ -731,12 +843,28 @@
     "description": "Preview or, with confirm=true, safely replace one clean provider-tracking-ref-equal raw Git worktree with an Orca-managed worktree at the same canonical path and branch. The durable migration resumes prepared → git_removed → orca_managed after an interrupted Orca create.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
         "confirm": {
           "description": "Allow replacement only after the clean remote-equal legacy checkout preflight passes.",
           "type": "boolean"
         },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd for preparation.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Native preparation actor host when operating a ready execution workspace.",
+          "type": "string"
+        },
         "id": {
           "description": "IssueOps id.",
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Native preparation actor session id.",
           "type": "string"
         }
       },
@@ -751,6 +879,10 @@
     "description": "Record the reviewed IssueOps design, refactor boundary, alternatives, risks, verification matrix, and approval before implementation. When approved=true, include refactor_plan, at least one alternative, at least one risk, no open_questions, and a verification item such as \"design review checked alternatives and risks\"; design_review_evidence is not a separate field.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
         "alternatives": {
           "description": "Alternatives considered.",
           "items": {
@@ -761,6 +893,14 @@
         "approved": {
           "description": "Whether the design is approved for implementation.",
           "type": "boolean"
+        },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Native preparation actor host.",
+          "type": "string"
         },
         "id": {
           "description": "IssueOps id.",
@@ -792,6 +932,10 @@
           },
           "type": "array"
         },
+        "session_id": {
+          "description": "Native preparation actor session id.",
+          "type": "string"
+        },
         "verification": {
           "description": "Verification steps. For approved=true, one item must be design review evidence, for example: design review checked alternatives and risks. Add normal test commands as separate items.",
           "items": {
@@ -814,12 +958,28 @@
     "description": "Attach the issue-driven plan path to an IssueOps loop. Requires linked issue, verified provider branch evidence, linked worktree, and approved design review. This does not enter implementation by itself; run issueops_prepare_worktree_tools to prepare dependencies for the linked worktree before implementation.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd for preparation.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Native preparation actor host when operating a ready execution workspace.",
+          "type": "string"
+        },
         "id": {
           "description": "IssueOps id.",
           "type": "string"
         },
         "plan_path": {
           "description": "Plan file path.",
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Native preparation actor session id.",
           "type": "string"
         }
       },
@@ -835,8 +995,24 @@
     "description": "Prepare the linked IssueOps worktree before implementation by checking dependencies and installing supported missing dependencies. The result is persisted on the IssueOps record and gates implementation readiness.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd for preparation.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Native preparation actor host when operating a ready execution workspace.",
+          "type": "string"
+        },
         "id": {
           "description": "IssueOps id.",
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Native preparation actor session id.",
           "type": "string"
         }
       },
@@ -851,6 +1027,10 @@
     "description": "Record the durable pre-implementation execution decision: auto-proceed boundaries, hook-blocked work, human gates, and whether sub-agents are not used or explicitly planned from the documented allowlist.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
         "auto_proceed": {
           "description": "Conditions under which the main agent may continue without asking again.",
           "items": {
@@ -858,12 +1038,20 @@
           },
           "type": "array"
         },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd.",
+          "type": "string"
+        },
         "hook_blocked": {
           "description": "Workflow actions hooks must not perform.",
           "items": {
             "type": "string"
           },
           "type": "array"
+        },
+        "host": {
+          "description": "Native preparation actor host.",
+          "type": "string"
         },
         "human_gates": {
           "description": "Conditions that require human-in-the-loop confirmation.",
@@ -874,6 +1062,10 @@
         },
         "id": {
           "description": "IssueOps id.",
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Native preparation actor session id.",
           "type": "string"
         },
         "subagent_plans": {
@@ -975,6 +1167,10 @@
     "description": "Record the IssueOps compatibility-review phase: backward compatibility findings, side effects, rollback plan, verification evidence, unresolved blockers, and approval before implementation may proceed.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
         "approved": {
           "description": "Whether compatibility and side effects are resolved enough to proceed.",
           "type": "boolean"
@@ -993,12 +1189,24 @@
           },
           "type": "array"
         },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Native preparation actor host.",
+          "type": "string"
+        },
         "id": {
           "description": "IssueOps id.",
           "type": "string"
         },
         "rollback_plan": {
           "description": "Concrete rollback or mitigation path if the compatibility review was wrong.",
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Native preparation actor session id.",
           "type": "string"
         },
         "side_effects": {
@@ -1031,6 +1239,14 @@
     "description": "Record the brooks devil's-advocate verdict on the completed plan: pass, revise, or stop, with surfaced findings and an optional explicit waiver. A recorded pass (or a waived stop/revise) is a fail-closed precondition of implement entry; a stop is reflected into the remote issue before the cycle regresses.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd.",
+          "type": "string"
+        },
         "findings": {
           "description": "Surfaced problems. Required for a stop/revise verdict unless waived.",
           "items": {
@@ -1038,8 +1254,16 @@
           },
           "type": "array"
         },
+        "host": {
+          "description": "Native preparation actor host.",
+          "type": "string"
+        },
         "id": {
           "description": "IssueOps id.",
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Native preparation actor session id.",
           "type": "string"
         },
         "verdict": {
@@ -1067,6 +1291,18 @@
     "description": "Record the IssueOps grill-phase domain review: terminology, how the change fits the current domain model, risks, and unresolved uncertainties. Backs the grill domain_review phase-ledger artifact.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd for preparation.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Native preparation actor host when operating a ready execution workspace.",
+          "type": "string"
+        },
         "id": {
           "description": "IssueOps id.",
           "type": "string"
@@ -1089,6 +1325,10 @@
           },
           "type": "array"
         },
+        "session_id": {
+          "description": "Native preparation actor session id.",
+          "type": "string"
+        },
         "terminology": {
           "description": "Domain terminology notes.",
           "items": {
@@ -1108,6 +1348,10 @@
     "description": "Record AI-slop-clean evidence: which cleanup categories were checked or cleaned and which verifications were rerun afterwards. Backs the ai-slop-clean cleanup_evidence and verification_evidence phase-ledger artifacts.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
         "categories": {
           "description": "Cleanup categories checked or cleaned.",
           "items": {
@@ -1115,8 +1359,20 @@
           },
           "type": "array"
         },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd for preparation.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Native preparation actor host when operating a ready execution workspace.",
+          "type": "string"
+        },
         "id": {
           "description": "IssueOps id.",
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Native preparation actor session id.",
           "type": "string"
         },
         "verification": {
@@ -1140,6 +1396,18 @@
     "description": "Record the resolution outcome of an IssueOps feedback item by index. Backs the feedback feedback_resolution phase-ledger artifact.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd for preparation.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Native preparation actor host when operating a ready execution workspace.",
+          "type": "string"
+        },
         "id": {
           "description": "IssueOps id.",
           "type": "string"
@@ -1156,6 +1424,10 @@
             "noise-dismissed"
           ],
           "type": "string"
+        },
+        "session_id": {
+          "description": "Native preparation actor session id.",
+          "type": "string"
         }
       },
       "required": [
@@ -1171,12 +1443,28 @@
     "description": "Take the IssueOps feedback loop backward when the Brooks devil's advocate returns a stop verdict: regress a plan or compatibility-review cycle to grill so scope is re-investigated and the plan redone. Records the stop reason as a scope decision, clears the rejected design's approval, and marks the plan/compatibility-review ledger entries stale. Does not delete the worktree, branch, or remote artifacts.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd for preparation.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Native preparation actor host when operating a ready execution workspace.",
+          "type": "string"
+        },
         "id": {
           "description": "IssueOps id.",
           "type": "string"
         },
         "reason": {
           "description": "The Brooks stop verdict / why the plan must be redone.",
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Native preparation actor session id.",
           "type": "string"
         }
       },
@@ -1192,12 +1480,28 @@
     "description": "Record an existing provider-native child work item for an IssueOps loop, such as a GitHub sub-issue or GitLab child item.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
         "child_url": {
           "description": "GitHub sub-issue or GitLab child item URL.",
           "type": "string"
         },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd for preparation.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Native preparation actor host when operating a ready execution workspace.",
+          "type": "string"
+        },
         "id": {
           "description": "IssueOps id.",
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Native preparation actor session id.",
           "type": "string"
         },
         "title": {
@@ -1217,12 +1521,28 @@
     "description": "Record a typed relationship between the current IssueOps issue and another issue. Supports depends-on, blocks, supersedes, follows-up, duplicates, splits-from, and implements link types. Unlike link-child, this does not require the linked issue to be in the same project.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native preparation actor id.",
+          "type": "string"
+        },
+        "cwd": {
+          "description": "Canonical isolated workspace cwd for preparation.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Native preparation actor host when operating a ready execution workspace.",
+          "type": "string"
+        },
         "id": {
           "description": "IssueOps id.",
           "type": "string"
         },
         "related_url": {
           "description": "URL of the related issue.",
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Native preparation actor session id.",
           "type": "string"
         },
         "title": {

@@ -17,6 +17,7 @@ func runIssueOpsPlanPrep(args []string) error {
 	}
 	fs := flag.NewFlagSet("issueops plan-prep record", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	var decisionsEvidence repeatedFlag
 	var relatedScore repeatedFlag
 	var webResearch repeatedFlag
@@ -30,10 +31,10 @@ func runIssueOpsPlanPrep(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsPlanPrep(core.IssueOpsStateRoot(), *id, core.IssueOpsPlanPrepRequest{
+	record, err := core.RecordIssueOpsPlanPrepWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsPlanPrepRequest{
 		PriorDecisions: core.IssueOpsPlanPrepItemRequest{Evidence: []string(decisionsEvidence), WaiveReason: *decisionsWaive},
 		RelatedIssues:  core.IssueOpsPlanPrepItemRequest{Evidence: []string(relatedScore), WaiveReason: *relatedWaive},
 		WebResearch:    core.IssueOpsPlanPrepItemRequest{Evidence: []string(webResearch), WaiveReason: *webWaive},
-	})
+	}, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }

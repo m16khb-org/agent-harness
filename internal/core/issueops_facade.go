@@ -36,6 +36,7 @@ type IssueOpsDomainReviewRequest = issueops.IssueOpsDomainReviewRequest
 type IssueOpsPlanPrepRequest = issueops.IssueOpsPlanPrepRequest
 type IssueOpsPlanPrepItemRequest = issueops.IssueOpsPlanPrepItemRequest
 type IssueOpsWorktreeToolPreparation = issueops.IssueOpsWorktreeToolPreparation
+type IssueOpsActor = issueops.IssueOpsActor
 type IssueOpsHandoffPrepareRequest = issueops.IssueOpsHandoffPrepareRequest
 type IssueOpsHandoffPrepareResult = issueops.IssueOpsHandoffPrepareResult
 type IssueOpsHandoffPrepareClock = issueops.IssueOpsHandoffPrepareClock
@@ -165,20 +166,40 @@ func StartIssueOpsChild(stateRoot string, req IssueOpsChildStartRequest) (IssueO
 	return issueops.StartIssueOpsChild(stateRoot, req)
 }
 
+func StartIssueOpsChildWithActor(stateRoot string, req IssueOpsChildStartRequest, actor IssueOpsActor) (IssueOpsChildStartResult, error) {
+	return issueops.StartIssueOpsChildWithActor(stateRoot, req, actor)
+}
+
 func IssueOpsChildStatus(stateRoot, parentID string, repair bool) (IssueOpsChildStatusResult, error) {
 	return issueops.IssueOpsChildStatus(stateRoot, parentID, repair)
+}
+
+func IssueOpsChildStatusWithActor(stateRoot, parentID string, repair bool, actor IssueOpsActor) (IssueOpsChildStatusResult, error) {
+	return issueops.IssueOpsChildStatusWithActor(stateRoot, parentID, repair, actor)
 }
 
 func AcceptIssueOpsChild(stateRoot, parentID, childID string, evidence []string) (IssueOpsChildValidationResult, error) {
 	return issueops.AcceptIssueOpsChild(stateRoot, parentID, childID, evidence)
 }
 
+func AcceptIssueOpsChildWithActor(stateRoot, parentID, childID string, evidence []string, actor IssueOpsActor) (IssueOpsChildValidationResult, error) {
+	return issueops.AcceptIssueOpsChildWithActor(stateRoot, parentID, childID, evidence, actor)
+}
+
 func RejectIssueOpsChild(stateRoot, parentID, childID, reason string, evidence []string) (IssueOpsChildValidationResult, error) {
 	return issueops.RejectIssueOpsChild(stateRoot, parentID, childID, reason, evidence)
 }
 
+func RejectIssueOpsChildWithActor(stateRoot, parentID, childID, reason string, evidence []string, actor IssueOpsActor) (IssueOpsChildValidationResult, error) {
+	return issueops.RejectIssueOpsChildWithActor(stateRoot, parentID, childID, reason, evidence, actor)
+}
+
 func DropIssueOpsChild(stateRoot, parentID, childID, reason string) (IssueOpsChildValidationResult, error) {
 	return issueops.DropIssueOpsChild(stateRoot, parentID, childID, reason)
+}
+
+func DropIssueOpsChildWithActor(stateRoot, parentID, childID, reason string, actor IssueOpsActor) (IssueOpsChildValidationResult, error) {
+	return issueops.DropIssueOpsChildWithActor(stateRoot, parentID, childID, reason, actor)
 }
 
 func IssueOpsStatus(stateRoot, id string) (IssueOpsRecord, error) {
@@ -193,28 +214,56 @@ func RecordIssueOpsIntent(stateRoot, id string, req IssueOpsIntentRecordRequest)
 	return issueops.RecordIssueOpsIntent(stateRoot, id, req)
 }
 
+func RecordIssueOpsIntentWithActor(stateRoot, id string, req IssueOpsIntentRecordRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsIntentWithActor(stateRoot, id, req, actor)
+}
+
 func RecordIssueOpsPlanPrep(stateRoot, id string, req IssueOpsPlanPrepRequest) (IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsPlanPrep(stateRoot, id, req)
+}
+
+func RecordIssueOpsPlanPrepWithActor(stateRoot, id string, req IssueOpsPlanPrepRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsPlanPrepWithActor(stateRoot, id, req, actor)
 }
 
 func RecordIssueOpsDesignReview(stateRoot, id string, req IssueOpsDesignReviewRequest) (IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsDesignReview(stateRoot, id, req)
 }
 
+func RecordIssueOpsDesignReviewWithActor(stateRoot, id string, req IssueOpsDesignReviewRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsDesignReviewWithActor(stateRoot, id, req, actor)
+}
+
 func RecordIssueOpsExecutionDecision(stateRoot, id string, req IssueOpsExecutionDecisionRecordRequest) (IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsExecutionDecision(stateRoot, id, req)
+}
+
+func RecordIssueOpsExecutionDecisionWithActor(stateRoot, id string, req IssueOpsExecutionDecisionRecordRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsExecutionDecisionWithActor(stateRoot, id, req, actor)
 }
 
 func RecordIssueOpsCompatibilityReview(stateRoot, id string, req IssueOpsCompatibilityReviewRequest) (IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsCompatibilityReview(stateRoot, id, req)
 }
 
+func RecordIssueOpsCompatibilityReviewWithActor(stateRoot, id string, req IssueOpsCompatibilityReviewRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsCompatibilityReviewWithActor(stateRoot, id, req, actor)
+}
+
 func RecordIssueOpsDevilsAdvocateReview(stateRoot, id string, req IssueOpsDevilsAdvocateReviewRequest) (IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsDevilsAdvocateReview(stateRoot, id, req)
 }
 
+func RecordIssueOpsDevilsAdvocateReviewWithActor(stateRoot, id string, req IssueOpsDevilsAdvocateReviewRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsDevilsAdvocateReviewWithActor(stateRoot, id, req, actor)
+}
+
 func RecordIssueOpsDomainReview(stateRoot, id string, req IssueOpsDomainReviewRequest) (IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsDomainReview(stateRoot, id, req)
+}
+
+func RecordIssueOpsDomainReviewWithActor(stateRoot, id string, req IssueOpsDomainReviewRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsDomainReviewWithActor(stateRoot, id, req, actor)
 }
 
 func RecordIssueOpsAISlopCleanEvidence(stateRoot, id string, categories, verification []string) (IssueOpsRecord, error) {
@@ -227,6 +276,10 @@ func ResolveIssueOpsFeedback(stateRoot, id string, index int, resolution string)
 
 func RegressIssueOpsForReplan(stateRoot, id, reason string) (IssueOpsRecord, error) {
 	return issueops.RegressIssueOpsForReplan(stateRoot, id, reason)
+}
+
+func RegressIssueOpsForReplanWithActor(stateRoot, id, reason string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.RegressIssueOpsForReplanWithActor(stateRoot, id, reason, actor)
 }
 
 func IssueOpsStateRoot() string {
@@ -253,20 +306,47 @@ func LinkIssueOpsIssue(stateRoot, id, issueURL string) (IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsIssue(stateRoot, id, issueURL)
 }
 
+func LinkIssueOpsIssueWithActor(stateRoot, id, issueURL string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.LinkIssueOpsIssueWithActor(stateRoot, id, issueURL, actor)
+}
+
 func LinkIssueOpsPlan(stateRoot, id, planPath string) (IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsPlan(stateRoot, id, planPath)
+}
+
+func LinkIssueOpsPlanWithActor(stateRoot, id, planPath string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.LinkIssueOpsPlanWithActor(stateRoot, id, planPath, actor)
 }
 
 func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsWorktree(stateRoot, id, worktreePath)
 }
 
+func LinkIssueOpsWorktreeWithActor(stateRoot, id, worktreePath string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.LinkIssueOpsWorktreeWithActor(stateRoot, id, worktreePath, actor)
+}
+
 func RecordIssueOpsWorktreeTools(stateRoot, id string, prep IssueOpsWorktreeToolPreparation) (IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsWorktreeTools(stateRoot, id, prep)
 }
 
+func RecordIssueOpsWorktreeToolsWithActor(stateRoot, id string, actor IssueOpsActor, prep IssueOpsWorktreeToolPreparation) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsWorktreeToolsWithActor(stateRoot, id, actor, prep)
+}
+
 func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req IssueOpsHandoffPrepareRequest, client IssueOpsOrcaWorktreeClient, clock IssueOpsHandoffPrepareClock) (IssueOpsHandoffPrepareResult, error) {
 	return issueops.PrepareIssueOpsHandoffWorktree(ctx, stateRoot, req, client, clock)
+}
+
+type IssueOpsExecutionWorkspaceReconcileRequest = issueops.IssueOpsExecutionWorkspaceReconcileRequest
+type IssueOpsExecutionWorkspaceRecoveryClient = issueops.IssueOpsExecutionWorkspaceRecoveryClient
+
+func ReconcileIssueOpsExecutionWorkspace(ctx context.Context, stateRoot string, req IssueOpsExecutionWorkspaceReconcileRequest, client IssueOpsExecutionWorkspaceRecoveryClient, now string) (IssueOpsRecord, error) {
+	return issueops.ReconcileIssueOpsExecutionWorkspace(ctx, stateRoot, req, client, now)
+}
+
+func ValidateReadyWorkspacePreparationActor(record IssueOpsRecord, actor IssueOpsActor) error {
+	return issueops.ValidateReadyWorkspacePreparationActor(record, actor)
 }
 
 func MigrateIssueOpsLegacyWorktree(ctx context.Context, stateRoot string, req IssueOpsLegacyWorktreeMigrationRequest, client IssueOpsOrcaWorktreeClient, clock IssueOpsHandoffPrepareClock) (IssueOpsLegacyWorktreeMigrationResult, error) {
@@ -305,12 +385,24 @@ func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, e
 	return issueops.LinkIssueOpsChild(stateRoot, id, childURL, title)
 }
 
+func LinkIssueOpsChildWithActor(stateRoot, id, childURL, title string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.LinkIssueOpsChildWithActor(stateRoot, id, childURL, title, actor)
+}
+
 func LinkIssueOpsRelated(stateRoot, id, linkType, relatedURL, title string) (IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsRelated(stateRoot, id, linkType, relatedURL, title)
 }
 
+func LinkIssueOpsRelatedWithActor(stateRoot, id, linkType, relatedURL, title string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.LinkIssueOpsRelatedWithActor(stateRoot, id, linkType, relatedURL, title, actor)
+}
+
 func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareRequest) (IssueOpsRecord, error) {
 	return issueops.PrepareIssueOpsBranch(stateRoot, id, req)
+}
+
+func PrepareIssueOpsBranchWithActor(stateRoot, id string, req IssueOpsBranchPrepareRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.PrepareIssueOpsBranchWithActor(stateRoot, id, req, actor)
 }
 
 func validateIssueOpsIssueBranch(branch string) error {
@@ -338,6 +430,21 @@ func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
 		}
 	}
 	return issueops.AdvanceIssueOpsPhase(stateRoot, id, to)
+}
+
+func AdvanceIssueOpsPhaseWithActor(stateRoot, id, to string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	if IssueOpsPhase(strings.TrimSpace(to)) == IssueOpsPhasePR {
+		record, err := issueops.ReadIssueOps(stateRoot, id)
+		if err != nil {
+			return record, err
+		}
+		if record.Phase != IssueOpsPhasePR {
+			if ready := IssueOpsStrictPRReadiness(record); !ready.Ready {
+				return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter pr phase: missing %s", strings.Join(ready.Missing, ", "))
+			}
+		}
+	}
+	return issueops.AdvanceIssueOpsPhaseWithActor(stateRoot, id, to, actor)
 }
 
 func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
@@ -461,12 +568,20 @@ func AddIssueOpsDecision(stateRoot, id string, req IssueOpsDecisionRecordRequest
 	return issueops.AddIssueOpsDecision(stateRoot, id, req)
 }
 
+func AddIssueOpsDecisionWithActor(stateRoot, id string, req IssueOpsDecisionRecordRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.AddIssueOpsDecisionWithActor(stateRoot, id, req, actor)
+}
+
 type SkillRoutingEntry = issueops.SkillRoutingEntry
 
 // RecordIssueOpsRouting captures a live (phase, skill) routing pairing on the
 // cycle record so skill_routing_fidelity can score real activation.
 func RecordIssueOpsRouting(stateRoot, id, phase, skill string) (IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsRouting(stateRoot, id, phase, skill)
+}
+
+func RecordIssueOpsRoutingWithActor(stateRoot, id, phase, skill string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsRoutingWithActor(stateRoot, id, phase, skill, actor)
 }
 
 // RoutingTraceAsSkillRouting projects a cycle's live routing trace onto the

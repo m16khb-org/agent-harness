@@ -45,8 +45,25 @@ var validDecisionArtifacts = map[string]bool{
 }
 
 func AddIssueOpsDecision(stateRoot, id string, req IssueOpsDecisionRecordRequest) (IssueOpsRecord, error) {
+	return addIssueOpsDecision(stateRoot, id, req, nil)
+}
+
+// AddIssueOpsDecisionWithActor records a durable decision from the sealed
+// preparation session when an execution workspace is present.
+func AddIssueOpsDecisionWithActor(stateRoot, id string, req IssueOpsDecisionRecordRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return addIssueOpsDecision(stateRoot, id, req, &actor)
+}
+
+func addIssueOpsDecision(stateRoot, id string, req IssueOpsDecisionRecordRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if actorErr := validateWorkspacePreparationMutation(record, actor); actorErr != nil {
+			return actorErr
+		}
 		var e error
 		rec, e = addIssueOpsDecisionLocked(stateRoot, id, req)
 		return e

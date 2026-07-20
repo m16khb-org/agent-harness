@@ -17,6 +17,7 @@ func runIssueOpsDomainReview(args []string) error {
 	}
 	fs := flag.NewFlagSet("issueops domain-review record", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	modelFit := fs.String("model-fit", "", "how the change fits the current domain model")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	var terminology repeatedFlag
@@ -28,12 +29,12 @@ func runIssueOpsDomainReview(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsDomainReview(core.IssueOpsStateRoot(), *id, core.IssueOpsDomainReviewRequest{
+	record, err := core.RecordIssueOpsDomainReviewWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsDomainReviewRequest{
 		Terminology:       terminology,
 		ModelFit:          *modelFit,
 		Risks:             risks,
 		OpenUncertainties: uncertainties,
-	})
+	}, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -66,12 +67,13 @@ func runIssueOpsRegress(args []string) error {
 	}
 	fs := flag.NewFlagSet("issueops regress", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	reason := fs.String("reason", "", "the Brooks stop verdict / regression reason")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := core.RegressIssueOpsForReplan(core.IssueOpsStateRoot(), *id, *reason)
+	record, err := core.RegressIssueOpsForReplanWithActor(core.IssueOpsStateRoot(), *id, *reason, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 

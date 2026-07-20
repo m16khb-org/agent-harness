@@ -17,6 +17,7 @@ func runIssueOpsCompatibility(args []string) error {
 	}
 	fs := flag.NewFlagSet("issueops compatibility review", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	rollbackPlan := fs.String("rollback-plan", "", "rollback plan if compatibility or side effects break")
 	approved := fs.Bool("approved", false, "approve compatibility and side-effect review")
 	jsonOut := fs.Bool("json", false, "print JSON")
@@ -31,13 +32,13 @@ func runIssueOpsCompatibility(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsCompatibilityReview(core.IssueOpsStateRoot(), *id, core.IssueOpsCompatibilityReviewRequest{
+	record, err := core.RecordIssueOpsCompatibilityReviewWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsCompatibilityReviewRequest{
 		BackwardCompatibility: backwardCompatibility,
 		SideEffects:           sideEffects,
 		RollbackPlan:          *rollbackPlan,
 		Verification:          verification,
 		Blockers:              blockers,
 		Approved:              *approved,
-	})
+	}, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }

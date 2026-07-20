@@ -24,9 +24,9 @@ type PrepareResult = worktreetools.PrepareResult
 func Run(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
 		fmt.Println("Usage:")
-		fmt.Println("  agent-harness issueops worktree prepare --id ID [--orchestrator auto|orca|inline] [--inline-reason user-requested|recovery] [--agent NAME] [--confirm] [--json]")
+		fmt.Println("  agent-harness issueops worktree prepare --id ID [--orchestrator auto|orca|inline] [--inline-reason user-requested|recovery] [--agent NAME] [--host HOST --session-id SESSION --agent-id ID --source-cwd PATH] [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops worktree migrate-legacy --id ID --confirm [--json]")
-		fmt.Println("  agent-harness issueops worktree prepare-tools --id ID [--json]")
+		fmt.Println("  agent-harness issueops worktree prepare-tools --id ID [--host HOST --session-id SESSION --agent-id ID --cwd PATH] [--json]")
 		fmt.Println("  agent-harness issueops worktree verify --id ID [--json]")
 		fmt.Println("  agent-harness issueops worktree cleanup-readiness --id ID [--merged] [--json]")
 		return nil
@@ -79,6 +79,10 @@ func runWorktreeMigrateLegacy(args []string, deps Deps) error {
 func runWorktreePrepareTools(args []string, deps Deps) error {
 	fs := flag.NewFlagSet("issueops worktree prepare-tools", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	host := fs.String("host", "", "native actor host")
+	sessionID := fs.String("session-id", "", "native actor session id")
+	agentID := fs.String("agent-id", "", "native actor agent id")
+	cwd := fs.String("cwd", "", "canonical actor cwd")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := deps.ParseFlags(fs, args); help || err != nil {
 		return err
@@ -92,6 +96,13 @@ func runWorktreePrepareTools(args []string, deps Deps) error {
 		}
 		return err
 	}
+	actor := core.IssueOpsActor{Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd}
+	if err := core.ValidateReadyWorkspacePreparationActor(record, actor); err != nil {
+		if *jsonOut {
+			_ = deps.PrintError(err)
+		}
+		return err
+	}
 	result, err := PrepareWorktreeTools(record)
 	if err != nil {
 		if *jsonOut {
@@ -101,7 +112,7 @@ func runWorktreePrepareTools(args []string, deps Deps) error {
 		}
 		return err
 	}
-	updated, err := core.RecordIssueOpsWorktreeTools(core.IssueOpsStateRoot(), record.ID, result.IssueOpsWorktreeToolPreparation())
+	updated, err := core.RecordIssueOpsWorktreeToolsWithActor(core.IssueOpsStateRoot(), record.ID, actor, result.IssueOpsWorktreeToolPreparation())
 	if err != nil {
 		if *jsonOut {
 			if printErr := deps.PrintError(err); printErr != nil {
@@ -162,6 +173,10 @@ func runWorktreePrepare(args []string, deps Deps) error {
 	orchestrator := fs.String("orchestrator", "auto", "orchestrator: auto, orca, or inline")
 	inlineReason := fs.String("inline-reason", "", "explicit inline authorization: user-requested or recovery")
 	agent := fs.String("agent", "codex", "built-in Orca agent host")
+	host := fs.String("host", "", "native preparation host")
+	sessionID := fs.String("session-id", "", "native preparation session id")
+	agentID := fs.String("agent-id", "", "native preparation agent id")
+	sourceCWD := fs.String("source-cwd", "", "exact source checkout cwd")
 	confirm := fs.Bool("confirm", false, "confirm Orca worktree creation")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := deps.ParseFlags(fs, args); help || err != nil {
@@ -174,7 +189,7 @@ func runWorktreePrepare(args []string, deps Deps) error {
 		return fmt.Errorf("explicit inline requires --inline-reason user-requested|recovery")
 	}
 	result, err := deps.PrepareHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffPrepareRequest{
-		ID: *id, Orchestrator: *orchestrator, InlineReason: *inlineReason, Agent: *agent, Confirm: *confirm,
+		ID: *id, Orchestrator: *orchestrator, InlineReason: *inlineReason, Agent: *agent, Host: *host, SessionID: *sessionID, AgentID: *agentID, SourceCWD: *sourceCWD, Confirm: *confirm,
 	})
 	if err != nil {
 		if *jsonOut {
@@ -189,6 +204,12 @@ func runWorktreePrepare(args []string, deps Deps) error {
 	fmt.Printf("branch: %s (base: %s)\n", result.Branch, result.BaseBranch)
 	if result.State != "" {
 		fmt.Printf("orchestrator: %s (state: %s)\n", result.ResolvedMode, result.State)
+	}
+	if result.WorkspaceState != "" {
+		fmt.Printf("workspace: %s (epoch: %s, preparation_session: %s)\n", result.WorkspaceState, result.WorkspaceEpoch, result.PreparationSession)
+	}
+	if result.HandoffState != "" {
+		fmt.Printf("handoff_state: %s\n", result.HandoffState)
 	}
 	for _, warning := range result.Warnings {
 		fmt.Printf("warning: %s\n", warning)

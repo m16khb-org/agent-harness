@@ -19,6 +19,14 @@ type coordinatorPlanCheckpoint struct {
 }
 
 func linkIssueOpsPlanWithCoordinatorCheckpoint(stateRoot, id, planPath string) (IssueOpsRecord, error) {
+	return linkIssueOpsPlanWithCoordinatorCheckpointActor(stateRoot, id, planPath, nil)
+}
+
+func LinkIssueOpsPlanWithActor(stateRoot, id, planPath string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return linkIssueOpsPlanWithCoordinatorCheckpointActor(stateRoot, id, planPath, &actor)
+}
+
+func linkIssueOpsPlanWithCoordinatorCheckpointActor(stateRoot, id, planPath string, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	validated, err := validateCoordinatorPlanCheckpoint(stateRoot, id, planPath)
 	if err != nil {
 		return IssueOpsRecord{}, err
@@ -35,6 +43,14 @@ func linkIssueOpsPlanWithCoordinatorCheckpoint(stateRoot, id, planPath string) (
 			}
 			if validated.active && !reflect.DeepEqual(current, validated.record) {
 				return IssueOpsRecord{}, fmt.Errorf("stale coordinator plan checkpoint")
+			}
+			if current.ExecutionWorkspace != nil {
+				if actor == nil {
+					return IssueOpsRecord{}, fmt.Errorf("workspace preparation requires a native actor; use the actor-aware plan linker")
+				}
+				if actorErr := validateReadyWorkspacePreparationActor(current, *actor); actorErr != nil {
+					return IssueOpsRecord{}, actorErr
+				}
 			}
 			return current, nil
 		}

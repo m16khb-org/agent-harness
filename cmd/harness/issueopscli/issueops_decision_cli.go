@@ -17,6 +17,7 @@ func runIssueOpsDecision(args []string) error {
 	}
 	fs := flag.NewFlagSet("issueops decision add", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	title := fs.String("title", "", "decision title")
 	body := fs.String("body", "", "decision body")
 	kind := fs.String("kind", "", "decision kind: product, architecture, implementation, test, review, scope, follow-up")
@@ -31,7 +32,7 @@ func runIssueOpsDecision(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.AddIssueOpsDecision(core.IssueOpsStateRoot(), *id, core.IssueOpsDecisionRecordRequest{
+	record, err := core.AddIssueOpsDecisionWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsDecisionRecordRequest{
 		Title:              *title,
 		Body:               *body,
 		Kind:               *kind,
@@ -39,6 +40,6 @@ func runIssueOpsDecision(args []string) error {
 		Alternatives:       alternatives,
 		AffectedIssueLinks: affectedLinks,
 		AffectedArtifacts:  affectedArtifacts,
-	})
+	}, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }

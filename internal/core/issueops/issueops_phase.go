@@ -24,8 +24,28 @@ func IssueOpsPhaseExpectsWorktree(phase IssueOpsPhase) bool {
 }
 
 func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
+	return advanceIssueOpsPhaseWithActor(stateRoot, id, to, nil)
+}
+
+func AdvanceIssueOpsPhaseWithActor(stateRoot, id, to string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return advanceIssueOpsPhaseWithActor(stateRoot, id, to, &actor)
+}
+
+func advanceIssueOpsPhaseWithActor(stateRoot, id, to string, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if record.ExecutionWorkspace != nil {
+			if actor == nil {
+				return fmt.Errorf("workspace preparation requires a native actor; use the actor-aware phase recorder")
+			}
+			if actorErr := validateReadyWorkspacePreparationActor(record, *actor); actorErr != nil {
+				return actorErr
+			}
+		}
 		var e error
 		rec, e = advanceIssueOpsPhaseLocked(stateRoot, id, to)
 		return e

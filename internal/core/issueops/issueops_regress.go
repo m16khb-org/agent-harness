@@ -24,12 +24,27 @@ import (
 const issueOpsRegressCap = 3
 
 func RegressIssueOpsForReplan(stateRoot, id, reason string) (IssueOpsRecord, error) {
+	return regressIssueOpsForReplan(stateRoot, id, reason, nil)
+}
+
+func RegressIssueOpsForReplanWithActor(stateRoot, id, reason string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return regressIssueOpsForReplan(stateRoot, id, reason, &actor)
+}
+
+func regressIssueOpsForReplan(stateRoot, id, reason string, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	reason = strings.TrimSpace(reason)
 	if reason == "" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("regression reason is required (the Brooks stop verdict)")
 	}
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if actorErr := validateWorkspacePreparationMutation(record, actor); actorErr != nil {
+			return actorErr
+		}
 		var e error
 		rec, e = regressIssueOpsForReplanLocked(stateRoot, id, reason)
 		return e

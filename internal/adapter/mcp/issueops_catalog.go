@@ -1,7 +1,7 @@
 package mcp
 
 func IssueOpsBasicTools() []Tool {
-	return []Tool{
+	tools := []Tool{
 		{
 			Name:        "issueops_start",
 			Description: "Start an IssueOps loop and persist its issue-driven workflow state under harness state.",
@@ -36,6 +36,10 @@ func IssueOpsBasicTools() []Tool {
 			Description: "Record the pre-plan evidence gate for an IssueOps loop: prior-decision lookup, related-issue scoring, and web research. Each item takes either evidence or a mutually-exclusive waive reason. Required before entering the plan phase for non-trivial intent classes.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
 				"id":                    map[string]any{"type": "string", "description": "IssueOps id."},
+				"host":                  map[string]any{"type": "string", "description": "Native preparation actor host when operating a ready execution workspace."},
+				"session_id":            map[string]any{"type": "string", "description": "Native preparation actor session id."},
+				"agent_id":              map[string]any{"type": "string", "description": "Optional native preparation actor id."},
+				"cwd":                   map[string]any{"type": "string", "description": "Canonical isolated workspace cwd for preparation."},
 				"decisions_evidence":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Prior-decision evidence such as ADR or decision links."},
 				"decisions_waive":       map[string]any{"type": "string", "description": "Reason prior-decision lookup is unnecessary."},
 				"related_score_ref":     map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "remote score result summary (selected/rejected candidates, threshold)."},
@@ -87,6 +91,10 @@ func IssueOpsBasicTools() []Tool {
 			Description: "Record the reviewed IssueOps design, refactor boundary, alternatives, risks, verification matrix, and approval before implementation. When approved=true, include refactor_plan, at least one alternative, at least one risk, no open_questions, and a verification item such as \"design review checked alternatives and risks\"; design_review_evidence is not a separate field.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id", "problem_summary", "proposed_design", "verification"}, "properties": map[string]any{
 				"id":              map[string]any{"type": "string", "description": "IssueOps id."},
+				"host":            map[string]any{"type": "string", "description": "Native preparation actor host."},
+				"session_id":      map[string]any{"type": "string", "description": "Native preparation actor session id."},
+				"agent_id":        map[string]any{"type": "string", "description": "Optional native preparation actor id."},
+				"cwd":             map[string]any{"type": "string", "description": "Canonical isolated workspace cwd."},
 				"problem_summary": map[string]any{"type": "string", "description": "Reviewed problem summary."},
 				"proposed_design": map[string]any{"type": "string", "description": "Reviewed design."},
 				"refactor_plan":   map[string]any{"type": "string", "description": "Refactor plan or boundary decision."},
@@ -117,6 +125,10 @@ func IssueOpsBasicTools() []Tool {
 			Description: "Record the durable pre-implementation execution decision: auto-proceed boundaries, hook-blocked work, human gates, and whether sub-agents are not used or explicitly planned from the documented allowlist.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id", "auto_proceed", "hook_blocked", "human_gates", "subagent_use"}, "properties": map[string]any{
 				"id":                 map[string]any{"type": "string", "description": "IssueOps id."},
+				"host":               map[string]any{"type": "string", "description": "Native preparation actor host."},
+				"session_id":         map[string]any{"type": "string", "description": "Native preparation actor session id."},
+				"agent_id":           map[string]any{"type": "string", "description": "Optional native preparation actor id."},
+				"cwd":                map[string]any{"type": "string", "description": "Canonical isolated workspace cwd."},
 				"auto_proceed":       map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Conditions under which the main agent may continue without asking again."},
 				"hook_blocked":       map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Workflow actions hooks must not perform."},
 				"human_gates":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Conditions that require human-in-the-loop confirmation."},
@@ -139,6 +151,10 @@ func IssueOpsBasicTools() []Tool {
 			Description: "Record the IssueOps compatibility-review phase: backward compatibility findings, side effects, rollback plan, verification evidence, unresolved blockers, and approval before implementation may proceed.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id", "backward_compatibility", "side_effects", "rollback_plan", "verification"}, "properties": map[string]any{
 				"id":                     map[string]any{"type": "string", "description": "IssueOps id."},
+				"host":                   map[string]any{"type": "string", "description": "Native preparation actor host."},
+				"session_id":             map[string]any{"type": "string", "description": "Native preparation actor session id."},
+				"agent_id":               map[string]any{"type": "string", "description": "Optional native preparation actor id."},
+				"cwd":                    map[string]any{"type": "string", "description": "Canonical isolated workspace cwd."},
 				"backward_compatibility": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Findings about existing public behavior, state JSON, CLI/MCP/API, schema, or migration compatibility."},
 				"side_effects":           map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Expected side effects and their affected surfaces."},
 				"rollback_plan":          map[string]any{"type": "string", "description": "Concrete rollback or mitigation path if the compatibility review was wrong."},
@@ -152,6 +168,10 @@ func IssueOpsBasicTools() []Tool {
 			Description: "Record the brooks devil's-advocate verdict on the completed plan: pass, revise, or stop, with surfaced findings and an optional explicit waiver. A recorded pass (or a waived stop/revise) is a fail-closed precondition of implement entry; a stop is reflected into the remote issue before the cycle regresses.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id", "verdict"}, "properties": map[string]any{
 				"id":               map[string]any{"type": "string", "description": "IssueOps id."},
+				"host":             map[string]any{"type": "string", "description": "Native preparation actor host."},
+				"session_id":       map[string]any{"type": "string", "description": "Native preparation actor session id."},
+				"agent_id":         map[string]any{"type": "string", "description": "Optional native preparation actor id."},
+				"cwd":              map[string]any{"type": "string", "description": "Canonical isolated workspace cwd."},
 				"verdict":          map[string]any{"type": "string", "description": "Devil's-advocate verdict: pass, revise, or stop."},
 				"findings":         map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Surfaced problems. Required for a stop/revise verdict unless waived."},
 				"waived":           map[string]any{"type": "boolean", "description": "Explicitly waive a stop/revise verdict to proceed."},
@@ -215,4 +235,26 @@ func IssueOpsBasicTools() []Tool {
 			}},
 		},
 	}
+	for i := range tools {
+		addIssueOpsWorkspaceActorProperties(tools[i].InputSchema)
+	}
+	return tools
+}
+
+// addIssueOpsWorkspaceActorProperties keeps every IssueOps mutator capable of
+// proving the sealed native actor after a workspace becomes ready. The fields
+// remain optional for legacy/source-root cycles; core validation makes them
+// mandatory only for a ready execution workspace.
+func addIssueOpsWorkspaceActorProperties(schema map[string]any) {
+	properties, ok := schema["properties"].(map[string]any)
+	if !ok {
+		return
+	}
+	if _, exists := properties["host"]; exists {
+		return
+	}
+	properties["host"] = map[string]any{"type": "string", "description": "Native preparation actor host when operating a ready execution workspace."}
+	properties["session_id"] = map[string]any{"type": "string", "description": "Native preparation actor session id."}
+	properties["agent_id"] = map[string]any{"type": "string", "description": "Optional native preparation actor id."}
+	properties["cwd"] = map[string]any{"type": "string", "description": "Canonical isolated workspace cwd for preparation."}
 }

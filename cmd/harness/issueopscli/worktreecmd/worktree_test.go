@@ -75,10 +75,10 @@ func TestWorktreePrepareCLIForwardsOrchestratorAgentAndConfirmation(t *testing.T
 			return core.IssueOpsHandoffPrepareResult{OK: true, ID: req.ID, RequestedMode: req.Orchestrator, ResolvedMode: "orca", Preview: !req.Confirm}, nil
 		},
 	}
-	if err := Run([]string{"prepare", "--id", record.ID, "--orchestrator", "inline", "--inline-reason", "user-requested", "--agent", "claude", "--confirm", "--json"}, deps); err != nil {
+	if err := Run([]string{"prepare", "--id", record.ID, "--orchestrator", "inline", "--inline-reason", "user-requested", "--agent", "claude", "--host", "claude", "--session-id", "session-1", "--agent-id", "agent-1", "--source-cwd", record.Repo, "--confirm", "--json"}, deps); err != nil {
 		t.Fatal(err)
 	}
-	if captured.ID != record.ID || captured.Orchestrator != "inline" || captured.InlineReason != "user-requested" || captured.Agent != "claude" || !captured.Confirm {
+	if captured.ID != record.ID || captured.Orchestrator != "inline" || captured.InlineReason != "user-requested" || captured.Agent != "claude" || captured.Host != "claude" || captured.SessionID != "session-1" || captured.AgentID != "agent-1" || captured.SourceCWD != record.Repo || !captured.Confirm {
 		t.Fatalf("flags not forwarded: %#v", captured)
 	}
 	if _, ok := printed.(core.IssueOpsHandoffPrepareResult); !ok {

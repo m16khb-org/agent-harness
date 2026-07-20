@@ -1,6 +1,10 @@
 package lifecycle
 
-import "testing"
+import (
+	"testing"
+
+	issueopsmodel "agent-harness/internal/core/issueops/model"
+)
 
 func TestIssueOpsFenceResourceTargetsMatchCLIAndMCP(t *testing.T) {
 	repo, record, worktree := lifecycleHandoffRecord(t, "claimed")
@@ -41,5 +45,22 @@ func TestIssueOpsFenceResourceTargetsMatchCLIAndMCP(t *testing.T) {
 	request := HookToolUseLifecycleRequest{Repo: repo, CWD: worktree, Tool: "Bash", Command: "orca terminal close --terminal $TERM --json", EnforceWorktree: true, SourceCheckout: repo}
 	if _, ok, reason := selectSupervisedHandoffRecord(request); ok || reason == "" {
 		t.Fatalf("dynamic worker-root resource control must fail closed: ok=%v reason=%q", ok, reason)
+	}
+}
+
+func TestProtectedOrcaResourcesIncludeWorkspaceAndRejectDuplicateOwnership(t *testing.T) {
+	workspace := IssueOpsRecord{ID: "io-workspace", ExecutionWorkspace: &issueopsmodel.IssueOpsExecutionWorkspace{Orca: &issueopsmodel.IssueOpsOrcaIdentity{WorktreeID: "wt-workspace"}}}
+	targets, control, literal := protectedOrcaResourceTargets(HookToolUseLifecycleRequest{Tool: "Bash", Command: "orca worktree remove --id wt-workspace"})
+	if !control || !literal || len(targets) != 1 || !recordOwnsProtectedOrcaResource(workspace, targets[0]) {
+		t.Fatalf("workspace worktree must be protected: targets=%#v control=%v literal=%v", targets, control, literal)
+	}
+	duplicate := workspace
+	duplicate.ExecutionHandoff = &issueopsmodel.IssueOpsExecutionHandoff{Orca: &issueopsmodel.IssueOpsOrcaIdentity{WorktreeID: "wt-workspace"}}
+	request := HookToolUseLifecycleRequest{Repo: "/repo", CWD: "/repo", Tool: "Bash", Command: "orca worktree remove --id wt-workspace"}
+	if _, reason := recordsMatchingProtectedOrcaResource(request, []IssueOpsRecord{duplicate}); reason == "" {
+		t.Fatal("duplicate workspace/handoff worktree identity must fail closed")
+	}
+	if got := classifyHandoffFenceScope(request, []IssueOpsRecord{duplicate}); got != handoffFenceScopeAmbiguousCrossRoot {
+		t.Fatalf("duplicate resource scope = %q", got)
 	}
 }

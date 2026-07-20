@@ -31,8 +31,23 @@ const maxRoutingTraceEntries = 500
 // observed activation, so skill_routing_fidelity can be scored against real
 // behavior rather than a tautology. It is idempotent per (phase, skill).
 func RecordIssueOpsRouting(stateRoot, id, phase, skill string) (IssueOpsRecord, error) {
+	return recordIssueOpsRouting(stateRoot, id, phase, skill, nil)
+}
+
+func RecordIssueOpsRoutingWithActor(stateRoot, id, phase, skill string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return recordIssueOpsRouting(stateRoot, id, phase, skill, &actor)
+}
+
+func recordIssueOpsRouting(stateRoot, id, phase, skill string, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if actorErr := validateWorkspacePreparationMutation(record, actor); actorErr != nil {
+			return actorErr
+		}
 		var e error
 		rec, e = recordIssueOpsRoutingLocked(stateRoot, id, phase, skill)
 		return e

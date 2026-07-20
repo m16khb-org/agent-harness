@@ -80,6 +80,7 @@ func runIssueOpsBranch(args []string) error {
 	}
 	fs := flag.NewFlagSet("issueops branch prepare", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	provider := fs.String("provider", "", "remote provider: github or gitlab")
 	issueURL := fs.String("issue-url", "", "GitHub/GitLab issue URL")
 	branch := fs.String("branch", "", "provider-linked issue-number branch name")
@@ -91,7 +92,7 @@ func runIssueOpsBranch(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), *id, core.IssueOpsBranchPrepareRequest{
+	record, err := core.PrepareIssueOpsBranchWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsBranchPrepareRequest{
 		Provider:        *provider,
 		IssueURL:        *issueURL,
 		Branch:          *branch,
@@ -99,7 +100,7 @@ func runIssueOpsBranch(args []string) error {
 		BaseSHA:         *baseSHA,
 		RemoteBranchURL: *remoteBranchURL,
 		LinkVerified:    *linkVerified,
-	})
+	}, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 

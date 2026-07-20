@@ -20,6 +20,7 @@ func runIssueOpsExecution(args []string) error {
 	}
 	fs := flag.NewFlagSet("issueops execution decide", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	subagentUse := fs.String("subagent-use", "none", "sub-agent use: none or planned")
 	subagentRationale := fs.String("subagent-rationale", "", "why sub-agents are not used, or the top-level planned-use rationale")
 	subagentPlanFile := fs.String("subagent-plan-file", "", "strict JSON file containing an array of sub-agent plans")
@@ -40,14 +41,14 @@ func runIssueOpsExecution(args []string) error {
 		}
 		return err
 	}
-	record, err := core.RecordIssueOpsExecutionDecision(core.IssueOpsStateRoot(), *id, core.IssueOpsExecutionDecisionRecordRequest{
+	record, err := core.RecordIssueOpsExecutionDecisionWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsExecutionDecisionRecordRequest{
 		AutoProceed:       autoProceed,
 		HookBlocked:       hookBlocked,
 		HumanGates:        humanGates,
 		SubagentUse:       *subagentUse,
 		SubagentRationale: *subagentRationale,
 		SubagentPlans:     plans,
-	})
+	}, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 

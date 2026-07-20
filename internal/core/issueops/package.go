@@ -204,8 +204,23 @@ func issueOpsCleanupStatusStore() cleanupstatus.Store {
 }
 
 func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareRequest) (IssueOpsRecord, error) {
+	return prepareIssueOpsBranch(stateRoot, id, req, nil)
+}
+
+func PrepareIssueOpsBranchWithActor(stateRoot, id string, req IssueOpsBranchPrepareRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return prepareIssueOpsBranch(stateRoot, id, req, &actor)
+}
+
+func prepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if actorErr := validateWorkspacePreparationMutation(record, actor); actorErr != nil {
+			return actorErr
+		}
 		var e error
 		rec, e = branchprepare.Prepare(issueOpsBranchPrepareStore(), stateRoot, id, req)
 		return e
@@ -270,8 +285,23 @@ func issueOpsStartStore() start.Store {
 }
 
 func RecordIssueOpsIntent(stateRoot, id string, req IssueOpsIntentRecordRequest) (IssueOpsRecord, error) {
+	return recordIssueOpsIntent(stateRoot, id, req, nil)
+}
+
+func RecordIssueOpsIntentWithActor(stateRoot, id string, req IssueOpsIntentRecordRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return recordIssueOpsIntent(stateRoot, id, req, &actor)
+}
+
+func recordIssueOpsIntent(stateRoot, id string, req IssueOpsIntentRecordRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if actorErr := validateWorkspacePreparationMutation(record, actor); actorErr != nil {
+			return actorErr
+		}
 		var e error
 		rec, e = intentdesign.RecordIntent(issueOpsIntentDesignStore(), stateRoot, id, req)
 		return e
@@ -280,8 +310,23 @@ func RecordIssueOpsIntent(stateRoot, id string, req IssueOpsIntentRecordRequest)
 }
 
 func RecordIssueOpsPlanPrep(stateRoot, id string, req IssueOpsPlanPrepRequest) (IssueOpsRecord, error) {
+	return recordIssueOpsPlanPrep(stateRoot, id, req, nil)
+}
+
+func RecordIssueOpsPlanPrepWithActor(stateRoot, id string, req IssueOpsPlanPrepRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return recordIssueOpsPlanPrep(stateRoot, id, req, &actor)
+}
+
+func recordIssueOpsPlanPrep(stateRoot, id string, req IssueOpsPlanPrepRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if actorErr := validateWorkspacePreparationMutation(record, actor); actorErr != nil {
+			return actorErr
+		}
 		var e error
 		rec, e = intentdesign.RecordPlanPrep(issueOpsIntentDesignStore(), stateRoot, id, req)
 		return e
@@ -290,8 +335,23 @@ func RecordIssueOpsPlanPrep(stateRoot, id string, req IssueOpsPlanPrepRequest) (
 }
 
 func RecordIssueOpsDesignReview(stateRoot, id string, req IssueOpsDesignReviewRequest) (IssueOpsRecord, error) {
+	return recordIssueOpsDesignReview(stateRoot, id, req, nil)
+}
+
+func RecordIssueOpsDesignReviewWithActor(stateRoot, id string, req IssueOpsDesignReviewRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return recordIssueOpsDesignReview(stateRoot, id, req, &actor)
+}
+
+func recordIssueOpsDesignReview(stateRoot, id string, req IssueOpsDesignReviewRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if actorErr := validateWorkspacePreparationMutation(record, actor); actorErr != nil {
+			return actorErr
+		}
 		var e error
 		rec, e = intentdesign.RecordDesignReview(issueOpsIntentDesignStore(), stateRoot, id, req)
 		return e
@@ -312,8 +372,23 @@ func issueOpsIntentDesignStore() intentdesign.Store {
 }
 
 func LinkIssueOpsIssue(stateRoot, id, issueURL string) (IssueOpsRecord, error) {
+	return linkIssueOpsIssue(stateRoot, id, issueURL, nil)
+}
+
+func LinkIssueOpsIssueWithActor(stateRoot, id, issueURL string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return linkIssueOpsIssue(stateRoot, id, issueURL, &actor)
+}
+
+func linkIssueOpsIssue(stateRoot, id, issueURL string, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if actorErr := validateWorkspacePreparationMutation(record, actor); actorErr != nil {
+			return actorErr
+		}
 		var e error
 		rec, e = linking.LinkIssue(issueOpsLinkingStore(), stateRoot, id, issueURL)
 		return e
@@ -326,8 +401,23 @@ func LinkIssueOpsPlan(stateRoot, id, planPath string) (IssueOpsRecord, error) {
 }
 
 func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, error) {
+	return linkIssueOpsWorktree(stateRoot, id, worktreePath, nil)
+}
+
+func LinkIssueOpsWorktreeWithActor(stateRoot, id, worktreePath string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return linkIssueOpsWorktree(stateRoot, id, worktreePath, &actor)
+}
+
+func linkIssueOpsWorktree(stateRoot, id, worktreePath string, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if actorErr := validateWorkspacePreparationMutation(record, actor); actorErr != nil {
+			return actorErr
+		}
 		var e error
 		rec, e = linking.LinkWorktree(issueOpsLinkingStore(), stateRoot, id, worktreePath)
 		return e
@@ -350,11 +440,27 @@ func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, e
 }
 
 func RecordIssueOpsWorktreeTools(stateRoot, id string, prep IssueOpsWorktreeToolPreparation) (IssueOpsRecord, error) {
+	return recordIssueOpsWorktreeTools(stateRoot, id, IssueOpsActor{}, prep, false)
+}
+
+func RecordIssueOpsWorktreeToolsWithActor(stateRoot, id string, actor IssueOpsActor, prep IssueOpsWorktreeToolPreparation) (IssueOpsRecord, error) {
+	return recordIssueOpsWorktreeTools(stateRoot, id, actor, prep, true)
+}
+
+func recordIssueOpsWorktreeTools(stateRoot, id string, actor IssueOpsActor, prep IssueOpsWorktreeToolPreparation, actorSupplied bool) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
 			return readErr
+		}
+		if record.ExecutionWorkspace != nil {
+			if !actorSupplied {
+				return fmt.Errorf("workspace preparation requires a native actor; use the actor-aware recorder")
+			}
+			if actorErr := validateReadyWorkspacePreparationActor(record, actor); actorErr != nil {
+				return actorErr
+			}
 		}
 		if strings.TrimSpace(record.WorktreePath) == "" {
 			return fmt.Errorf("worktree_path is required")
@@ -375,15 +481,31 @@ func RecordIssueOpsWorktreeTools(stateRoot, id string, prep IssueOpsWorktreeTool
 			record.Phase = IssueOpsPhaseImplement
 		}
 		var writeErr error
-		rec, writeErr = touchAndWriteIssueOps(stateRoot, record)
+		record.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
+		rec, writeErr = writeIssueOps(stateRoot, record)
 		return writeErr
 	})
 	return rec, err
 }
 
 func RecordIssueOpsExecutionDecision(stateRoot, id string, req IssueOpsExecutionDecisionRecordRequest) (IssueOpsRecord, error) {
+	return recordIssueOpsExecutionDecision(stateRoot, id, req, nil)
+}
+
+func RecordIssueOpsExecutionDecisionWithActor(stateRoot, id string, req IssueOpsExecutionDecisionRecordRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return recordIssueOpsExecutionDecision(stateRoot, id, req, &actor)
+}
+
+func recordIssueOpsExecutionDecision(stateRoot, id string, req IssueOpsExecutionDecisionRecordRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if actorErr := validateWorkspacePreparationMutation(record, actor); actorErr != nil {
+			return actorErr
+		}
 		var e error
 		rec, e = executiondecision.Record(issueOpsExecutionDecisionStore(), stateRoot, id, req)
 		return e
@@ -399,8 +521,23 @@ func issueOpsExecutionDecisionStore() executiondecision.Store {
 }
 
 func RecordIssueOpsCompatibilityReview(stateRoot, id string, req IssueOpsCompatibilityReviewRequest) (IssueOpsRecord, error) {
+	return recordIssueOpsCompatibilityReview(stateRoot, id, req, nil)
+}
+
+func RecordIssueOpsCompatibilityReviewWithActor(stateRoot, id string, req IssueOpsCompatibilityReviewRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return recordIssueOpsCompatibilityReview(stateRoot, id, req, &actor)
+}
+
+func recordIssueOpsCompatibilityReview(stateRoot, id string, req IssueOpsCompatibilityReviewRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if actorErr := validateWorkspacePreparationMutation(record, actor); actorErr != nil {
+			return actorErr
+		}
 		var e error
 		rec, e = compatibilityreview.Record(issueOpsCompatibilityReviewStore(), stateRoot, id, req)
 		return e
@@ -418,8 +555,23 @@ func issueOpsCompatibilityReviewStore() compatibilityreview.Store {
 }
 
 func RecordIssueOpsDevilsAdvocateReview(stateRoot, id string, req IssueOpsDevilsAdvocateReviewRequest) (IssueOpsRecord, error) {
+	return recordIssueOpsDevilsAdvocateReview(stateRoot, id, req, nil)
+}
+
+func RecordIssueOpsDevilsAdvocateReviewWithActor(stateRoot, id string, req IssueOpsDevilsAdvocateReviewRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return recordIssueOpsDevilsAdvocateReview(stateRoot, id, req, &actor)
+}
+
+func recordIssueOpsDevilsAdvocateReview(stateRoot, id string, req IssueOpsDevilsAdvocateReviewRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if actorErr := validateWorkspacePreparationMutation(record, actor); actorErr != nil {
+			return actorErr
+		}
 		var e error
 		rec, e = devilsadvocate.Record(devilsadvocate.Store{Read: ReadIssueOps, TouchWrite: touchAndWriteIssueOps}, stateRoot, id, req)
 		return e
@@ -439,8 +591,23 @@ func unbindIssueOpsSessionForCycle(record IssueOpsRecord) {
 }
 
 func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, error) {
+	return linkIssueOpsChild(stateRoot, id, childURL, title, nil)
+}
+
+func LinkIssueOpsChildWithActor(stateRoot, id, childURL, title string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return linkIssueOpsChild(stateRoot, id, childURL, title, &actor)
+}
+
+func linkIssueOpsChild(stateRoot, id, childURL, title string, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if actorErr := validateWorkspacePreparationMutation(record, actor); actorErr != nil {
+			return actorErr
+		}
 		var e error
 		rec, e = linking.LinkChild(issueOpsLinkingStore(), stateRoot, id, childURL, title)
 		return e
@@ -449,8 +616,23 @@ func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, e
 }
 
 func LinkIssueOpsRelated(stateRoot, id, linkType, relatedURL, title string) (IssueOpsRecord, error) {
+	return linkIssueOpsRelated(stateRoot, id, linkType, relatedURL, title, nil)
+}
+
+func LinkIssueOpsRelatedWithActor(stateRoot, id, linkType, relatedURL, title string, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return linkIssueOpsRelated(stateRoot, id, linkType, relatedURL, title, &actor)
+}
+
+func linkIssueOpsRelated(stateRoot, id, linkType, relatedURL, title string, actor *IssueOpsActor) (IssueOpsRecord, error) {
 	var rec IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, readErr := ReadIssueOps(stateRoot, id)
+		if readErr != nil {
+			return readErr
+		}
+		if actorErr := validateWorkspacePreparationMutation(record, actor); actorErr != nil {
+			return actorErr
+		}
 		var e error
 		rec, e = linking.LinkRelated(issueOpsLinkingStore(), stateRoot, id, linkType, relatedURL, title)
 		return e

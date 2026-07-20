@@ -604,8 +604,9 @@ type IssueOpsExecutionHandoff struct {
 }
 
 type IssueOpsExecutionWorkspacePendingOperation struct {
-	Kind      string `json:"kind"`
-	StartedAt string `json:"started_at"`
+	Kind                string   `json:"kind"`
+	StartedAt           string   `json:"started_at"`
+	BaselineWorktreeIDs []string `json:"baseline_worktree_ids,omitempty"`
 }
 
 type IssueOpsExecutionWorkspace struct {

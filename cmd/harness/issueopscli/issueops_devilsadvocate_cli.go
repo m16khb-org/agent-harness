@@ -17,6 +17,7 @@ func runIssueOpsDevilsAdvocate(args []string) error {
 	}
 	fs := flag.NewFlagSet("issueops devils-advocate review", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
+	actor := addIssueOpsActorFlags(fs)
 	verdict := fs.String("verdict", "", "devil's-advocate verdict: pass|revise|stop")
 	waive := fs.Bool("waive", false, "explicitly waive a stop/revise verdict")
 	rationale := fs.String("waiver-rationale", "", "rationale required when --waive is set")
@@ -26,11 +27,11 @@ func runIssueOpsDevilsAdvocate(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsDevilsAdvocateReview(core.IssueOpsStateRoot(), *id, core.IssueOpsDevilsAdvocateReviewRequest{
+	record, err := core.RecordIssueOpsDevilsAdvocateReviewWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsDevilsAdvocateReviewRequest{
 		Verdict:         *verdict,
 		Findings:        findings,
 		Waived:          *waive,
 		WaiverRationale: *rationale,
-	})
+	}, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }

@@ -965,7 +965,7 @@ func selectSupervisedHandoffRecord(req HookToolUseLifecycleRequest) (IssueOpsRec
 	}
 	byID := map[string]IssueOpsRecord{}
 	for _, record := range records {
-		if record.ExecutionHandoff != nil {
+		if record.ExecutionHandoff != nil || record.ExecutionWorkspace != nil {
 			byID[record.ID] = record
 		}
 	}
@@ -990,7 +990,7 @@ func selectSupervisedHandoffRecord(req HookToolUseLifecycleRequest) (IssueOpsRec
 		return IssueOpsRecord{}, false, "Orca resource control is ambiguous across persisted IssueOps resources"
 	}
 	cwd := cleanAbsPath(req.CWD)
-	if matches := filterHandoffRecords(records, func(record IssueOpsRecord) bool { return cwd == cleanAbsPath(record.ExecutionHandoff.WorkerRoot) }); len(matches) == 1 {
+	if matches := filterHandoffRecords(records, func(record IssueOpsRecord) bool { return cwd == cleanAbsPath(executionWorkerRoot(record)) }); len(matches) == 1 {
 		return matches[0], true, ""
 	} else if len(matches) > 1 {
 		return IssueOpsRecord{}, false, "ambiguous supervised IssueOps worker-root ownership"
@@ -1013,7 +1013,7 @@ func selectSupervisedHandoffRecord(req HookToolUseLifecycleRequest) (IssueOpsRec
 	}
 	targets := worktreeGuardEditTargets(req)
 	if matches := filterHandoffRecords(records, func(record IssueOpsRecord) bool {
-		workerRoot := cleanAbsPath(record.ExecutionHandoff.WorkerRoot)
+		workerRoot := cleanAbsPath(executionWorkerRoot(record))
 		for _, target := range targets {
 			if pathWithin(target, workerRoot) {
 				return true
