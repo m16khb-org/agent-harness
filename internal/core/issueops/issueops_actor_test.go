@@ -86,6 +86,11 @@ func TestReadyWorkspaceWorktreeToolsRequireExactPreparationActor(t *testing.T) {
 
 func TestReadyWorkspacePlanCheckpointRequiresSourceActorAndPlanOnlyCommit(t *testing.T) {
 	stateRoot, record := handoffPrepareRecord(t)
+	if _, err := RecordIssueOpsIntent(stateRoot, record.ID, IssueOpsIntentRecordRequest{
+		RawRequest: "request", InterpretedIntent: "intent", SuccessCriteria: []string{"criterion"},
+	}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := RecordIssueOpsDesignReview(stateRoot, record.ID, IssueOpsDesignReviewRequest{
 		ProblemSummary: "problem", ProposedDesign: "design", RefactorPlan: "bounded plan",
 		Alternatives: []string{"alternative"}, Risks: []string{"risk"}, Verification: []string{"verify"}, Approved: true,
