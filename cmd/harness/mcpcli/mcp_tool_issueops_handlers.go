@@ -435,7 +435,7 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff accept failed")
 	case "publish":
 		result, err := core.RecordIssueOpsHandoffPublishReceipt(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffPublishRequest{
-			ID: id, Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), SourceCWD: argmap.String(args, "source_cwd"), Confirm: argmap.Bool(args, "confirm"), ApproveLegacyCoordinatorSeal: argmap.Bool(args, "approve_legacy_coordinator_seal"),
+			ID: id, Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), SourceCWD: argmap.String(args, "source_cwd"), CWD: argmap.String(args, "cwd"), Confirm: argmap.Bool(args, "confirm"), ApproveLegacyCoordinatorSeal: argmap.Bool(args, "approve_legacy_coordinator_seal"),
 		}, IssueOpsPublicationReader(), IssueOpsHandoffOrcaClient(), core.IssueOpsHandoffPrepareClock{})
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff publish failed")
 	case "recover":

@@ -20,7 +20,7 @@ const issueOpsHandoffUsage = `Usage:
   agent-harness issueops handoff acknowledge-context --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd PATH --issue-url URL --plan-sha256 SHA --understanding TEXT --scope-confirmation TEXT [--agent-id ID] [--json]
   agent-harness issueops handoff finish --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --outcome completed|failed [evidence flags] [--no-change --verification RESULT] [--json]
   agent-harness issueops handoff accept --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --final-head SHA --host HOST --session-id SESSION --source-cwd PATH [--agent-id ID] [--json]
-  agent-harness issueops handoff publish --id ID --host HOST --session-id SESSION --source-cwd PATH [--agent-id ID] [--approve-legacy-coordinator-seal] --confirm [--json]
+  agent-harness issueops handoff publish --id ID --host HOST --session-id SESSION [--cwd WORKER_PATH|--source-cwd SOURCE_PATH] [--agent-id ID] [--approve-legacy-coordinator-seal] --confirm [--json]
   agent-harness issueops handoff codex-hooks-list --id ID --json
   agent-harness issueops handoff recover --id ID --action reconcile|abandon|cancel|finalize-cancel|retry|approve-cleanup|record-cleanup [--cleanup-disposition retry|remove] [--cleanup-step STEP] [--confirm] [--force --reason TEXT] [--json]`
 
@@ -54,10 +54,11 @@ func runIssueOpsHandoff(args []string) error {
 func runIssueOpsHandoffPublish(args []string) error {
 	fs := flag.NewFlagSet("issueops handoff publish", flag.ContinueOnError)
 	id := fs.String("id", "", "issueops id")
-	host := fs.String("host", "", "native coordinator host")
-	sessionID := fs.String("session-id", "", "native coordinator session id")
-	agentID := fs.String("agent-id", "", "native coordinator agent id")
+	host := fs.String("host", "", "native actor host")
+	sessionID := fs.String("session-id", "", "native actor session id")
+	agentID := fs.String("agent-id", "", "native actor agent id")
 	sourceCWD := fs.String("source-cwd", "", "exact source checkout cwd")
+	cwd := fs.String("cwd", "", "canonical worker cwd for ownership-transfer publication")
 	approveLegacyCoordinatorSeal := fs.Bool("approve-legacy-coordinator-seal", false, "explicitly seal the current source coordinator identity while re-attesting a genuine schema-v5 publication")
 	confirm := fs.Bool("confirm", false, "verify and persist the exact local and remote final head")
 	jsonOut := fs.Bool("json", false, "print JSON")
@@ -65,7 +66,7 @@ func runIssueOpsHandoffPublish(args []string) error {
 		return err
 	}
 	record, err := core.RecordIssueOpsHandoffPublishReceipt(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffPublishRequest{
-		ID: *id, Host: *host, SessionID: *sessionID, AgentID: *agentID, SourceCWD: *sourceCWD, Confirm: *confirm, ApproveLegacyCoordinatorSeal: *approveLegacyCoordinatorSeal,
+		ID: *id, Host: *host, SessionID: *sessionID, AgentID: *agentID, SourceCWD: *sourceCWD, CWD: *cwd, Confirm: *confirm, ApproveLegacyCoordinatorSeal: *approveLegacyCoordinatorSeal,
 	}, core.GitIssueOpsHandoffPublicationReader{}, orca.New(), core.IssueOpsHandoffPrepareClock{})
 	return printIssueOpsResult(record, *jsonOut, err)
 }

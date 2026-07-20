@@ -33,7 +33,7 @@ func Run(args []string, deps Deps) error {
 		fmt.Println("  agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --target-branch BRANCH --label LABEL --assignee USER [--json]")
 		fmt.Println("  agent-harness issueops remote create-issue --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote create-child --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
-		fmt.Println("  agent-harness issueops remote create-pr --id ID --title TEXT --head BRANCH --base BRANCH [--body TEXT] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
+		fmt.Println("  agent-harness issueops remote create-pr --id ID --title TEXT --head BRANCH --base BRANCH [--body TEXT] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--host HOST --session-id SESSION --cwd WORKER_PATH] [--agent-id ID] [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote reconcile-create --id ID --claim-id CLAIM --coordinator-recipient HANDLE --host HOST --session-id SESSION [--agent-id AGENT] --source-cwd PATH [--approve-zero-clear] --confirm [--json]")
 		fmt.Println("  agent-harness issueops remote sync-graph --id ID [--confirm] [--json]")
 		return nil
@@ -567,6 +567,10 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	scoreFile := fs.String("score-file", "", "IssueOps remote score result JSON")
 	head := fs.String("head", "", "source branch")
 	base := fs.String("base", "", "target branch")
+	host := fs.String("host", "", "native owner host")
+	sessionID := fs.String("session-id", "", "native owner session id")
+	agentID := fs.String("agent-id", "", "native owner agent id")
+	cwd := fs.String("cwd", "", "canonical owner worker cwd")
 	confirm := fs.Bool("confirm", false, "execute creation; without this, dry-run preview only")
 	var labels repeatedFlag
 	var assignees repeatedFlag
@@ -621,6 +625,10 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 		Assignees:  assignees,
 		Draft:      pullRequestDraft(record),
 		Confirm:    *confirm,
+		Host:       *host,
+		SessionID:  *sessionID,
+		AgentID:    *agentID,
+		CWD:        *cwd,
 	}
 	reader := deps.PublicationReader
 	if reader == nil {

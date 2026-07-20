@@ -43,6 +43,10 @@ type IssueProviderCreatePullRequestRequest struct {
 	Draft           bool     `json:"draft"`
 	ExpectedHeadSHA string   `json:"expected_head_sha,omitempty"`
 	Confirm         bool     `json:"confirm"`
+	Host            string   `json:"host,omitempty"`
+	SessionID       string   `json:"session_id,omitempty"`
+	AgentID         string   `json:"agent_id,omitempty"`
+	CWD             string   `json:"cwd,omitempty"`
 }
 
 // IssueProviderCreatePullRequestResult reports the outcome.

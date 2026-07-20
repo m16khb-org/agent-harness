@@ -118,7 +118,8 @@ func CreateIssueOpsRemotePullRequest(ctx context.Context, stateRoot, id, provide
 	if policy.RedactFreeform(request.Title) != request.Title || policy.RedactFreeform(request.Body) != request.Body {
 		return port.IssueProviderCreatePullRequestResult{}, fmt.Errorf("supervised remote create title or rendered body contains secret-like content")
 	}
-	if err := ValidateIssueOpsHandoffPublication(ctx, stateRoot, record, provider, request.HeadBranch, request.BaseBranch, reader, lease); err != nil {
+	actor := IssueOpsActor{Host: request.Host, SessionID: request.SessionID, AgentID: request.AgentID, CWD: request.CWD}
+	if err := ValidateIssueOpsHandoffPublicationWithActor(ctx, stateRoot, record, provider, request.HeadBranch, request.BaseBranch, reader, lease, actor); err != nil {
 		return port.IssueProviderCreatePullRequestResult{}, err
 	}
 	kind := "pr"
@@ -129,17 +130,18 @@ func CreateIssueOpsRemotePullRequest(ctx context.Context, stateRoot, id, provide
 	err = withIssueOpsRemoteCreateLiveLock(ctx, stateRoot, record.ID, func(spanCtx context.Context) error {
 		claimed, claimErr := ClaimIssueOpsRemoteCreate(spanCtx, stateRoot, IssueOpsRemoteCreateClaimRequest{
 			ID: record.ID, Provider: provider, Kind: kind, Title: request.Title, Body: request.Body, Head: request.HeadBranch, Base: request.BaseBranch,
-			Labels: request.Labels, Assignees: request.Assignees, Draft: request.Draft,
+			Labels: request.Labels, Assignees: request.Assignees, Draft: request.Draft, Actor: actor,
 		})
 		if claimErr != nil {
 			return claimErr
 		}
 		claim := claimed.RemoteCreateClaim
 		request.ProjectKey, request.HeadBranch, request.BaseBranch = claim.ProjectKey, claim.Head, claim.Base
+		request.Repo = issueOpsPublicationWorkingRoot(claimed)
 		request.Title, request.Body = claim.Title, claim.Body
 		request.Labels, request.Assignees, request.Draft = append([]string(nil), claim.Labels...), append([]string(nil), claim.Assignees...), claim.Draft
 		request.ExpectedHeadSHA = claim.FinalHead
-		if validationErr := ValidateIssueOpsHandoffPublication(spanCtx, stateRoot, claimed, claim.Provider, claim.Head, claim.Base, reader, lease); validationErr != nil {
+		if validationErr := ValidateIssueOpsHandoffPublicationWithActor(spanCtx, stateRoot, claimed, claim.Provider, claim.Head, claim.Base, reader, lease, actor); validationErr != nil {
 			proof := &port.IssueProviderCreateError{Invoked: false, Err: validationErr}
 			clearErr := ClearIssueOpsRemoteCreateClaimPreInvocation(spanCtx, stateRoot, claimed, claim.ClaimID, proof)
 			return combineRemoteCreateTransitionError("remote create publication revalidation failed before provider invocation", validationErr, clearErr)
@@ -155,7 +157,7 @@ func CreateIssueOpsRemotePullRequest(ctx context.Context, stateRoot, id, provide
 			markErr := MarkIssueOpsRemoteCreateUnknown(spanCtx, stateRoot, claimed, result.URL)
 			return combineRemoteCreateTransitionError("remote create outcome is ambiguous and requires reconciliation; do not retry", createErr, markErr)
 		}
-		if validationErr := ValidateIssueOpsHandoffPublication(spanCtx, stateRoot, claimed, provider, claim.Head, claim.Base, reader, lease); validationErr != nil {
+		if validationErr := ValidateIssueOpsHandoffPublicationWithActor(spanCtx, stateRoot, claimed, provider, claim.Head, claim.Base, reader, lease, actor); validationErr != nil {
 			markErr := MarkIssueOpsRemoteCreateUnknown(spanCtx, stateRoot, claimed, result.URL)
 			return combineRemoteCreateTransitionError("remote ref changed after provider readback; create outcome requires reconciliation and must not be retried", validationErr, markErr)
 		}
@@ -372,6 +374,7 @@ type IssueOpsRemoteCreateClaimRequest struct {
 	Labels    []string
 	Assignees []string
 	Draft     bool
+	Actor     IssueOpsActor
 }
 
 func ClaimIssueOpsRemoteCreate(ctx context.Context, stateRoot string, req IssueOpsRemoteCreateClaimRequest) (IssueOpsRecord, error) {
@@ -388,7 +391,15 @@ func ClaimIssueOpsRemoteCreate(ctx context.Context, stateRoot string, req IssueO
 			return fmt.Errorf("remote create is already claimed or requires reconciliation")
 		}
 		h := r.ExecutionHandoff
-		if h == nil || h.State != handoff.StateClosed || h.ClosedDisposition != handoff.DispositionAccepted || h.Result == nil || h.PublishReceipt == nil || h.CoordinatorSession == nil || filepath.Clean(h.CoordinatorRoot) != filepath.Clean(r.Repo) || r.BranchPrepare == nil {
+		if h == nil || h.PublishReceipt == nil || r.BranchPrepare == nil {
+			return fmt.Errorf("remote create requires published final head authority")
+		}
+		ownerTransfer := h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion
+		if ownerTransfer {
+			if err := validatePostTransferMutation(r, &req.Actor); err != nil {
+				return err
+			}
+		} else if h.State != handoff.StateClosed || h.ClosedDisposition != handoff.DispositionAccepted || h.Result == nil || h.CoordinatorSession == nil || filepath.Clean(h.CoordinatorRoot) != filepath.Clean(r.Repo) {
 			return fmt.Errorf("remote create requires accepted published final head authority")
 		}
 		provider := strings.ToLower(strings.TrimSpace(req.Provider))
@@ -398,8 +409,12 @@ func ClaimIssueOpsRemoteCreate(ctx context.Context, stateRoot string, req IssueO
 		}
 		projectKey := remote.ProjectKey(r.IssueURL, provider, "issue")
 		receipt := h.PublishReceipt
+		finalHead := receipt.FinalHead
+		if !ownerTransfer {
+			finalHead = h.Result.FinalHead
+		}
 		if projectKey == "" || provider != strings.ToLower(strings.TrimSpace(r.BranchPrepare.Provider)) || strings.TrimSpace(req.Head) != r.Branch || strings.TrimSpace(req.Base) != r.BranchPrepare.BaseBranch ||
-			receipt.Provider != provider || receipt.ProjectKey != projectKey || receipt.Branch != r.Branch || receipt.Base != r.BranchPrepare.BaseBranch || receipt.FinalHead != h.Result.FinalHead {
+			receipt.Provider != provider || receipt.ProjectKey != projectKey || receipt.Branch != r.Branch || receipt.Base != r.BranchPrepare.BaseBranch || receipt.FinalHead != finalHead {
 			return fmt.Errorf("remote create request does not match exact durable publication authority")
 		}
 		labels := remote.CleanValues(req.Labels)
@@ -429,7 +444,7 @@ func ClaimIssueOpsRemoteCreate(ctx context.Context, stateRoot string, req IssueO
 		r.RemoteCreateClaim = &model.IssueOpsRemoteCreateClaim{
 			ClaimID: claimID, Provider: provider, Kind: kind, ProjectKey: projectKey,
 			Remote: receipt.Remote, RemoteRef: receipt.RemoteRef, PushTargetSHA256: receipt.PushTargetSHA256, Head: r.Branch, Base: r.BranchPrepare.BaseBranch,
-			FinalHead: h.Result.FinalHead, Labels: labels, Assignees: assignees, Draft: true,
+			FinalHead: finalHead, Labels: labels, Assignees: assignees, Draft: true,
 			Title: title, Body: req.Body, BodySHA256: hex.EncodeToString(bodySum[:]),
 			State: "pending", InvocationState: "reserved", ClaimedAt: now,
 		}

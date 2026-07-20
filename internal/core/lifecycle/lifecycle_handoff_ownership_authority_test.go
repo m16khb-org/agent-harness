@@ -59,6 +59,34 @@ func TestOwnershipFenceNeverCapturesOrdinarySourceMutation(t *testing.T) {
 	}
 }
 
+func TestOwnershipOwnerOnlyPublishesAndCreatesRemotePR(t *testing.T) {
+	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+	record.Phase = IssueOpsPhasePR
+	record.ExecutionHandoff.PublishReceipt = &issueopsmodel.IssueOpsExecutionHandoffPublishReceipt{
+		Provider: "github", ProjectKey: "github.com/example/repo", Remote: "origin", PushTargetSHA256: strings.Repeat("a", 64),
+		Branch: record.Branch, Base: record.BranchPrepare.BaseBranch, RemoteRef: "refs/heads/" + record.Branch, FinalHead: strings.Repeat("f", 40), VerifiedAt: "2026-07-20T00:00:00Z",
+	}
+	record, _ = writeIssueOps(IssueOpsStateRoot(), record)
+
+	owner := handoffEditRequest(record, worker, "claude", "owner-session", "")
+	owner.AgentID, owner.Tool = "owner-agent", "mcp__agent_harness__issueops_handoff"
+	owner.ToolInput = map[string]any{"action": "publish", "id": record.ID, "host": "claude", "session_id": "owner-session", "agent_id": "owner-agent", "cwd": worker, "confirm": true}
+	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "allow" {
+		t.Fatalf("exact owner publish blocked: %#v", got)
+	}
+	owner.Tool = "mcp__agent_harness__issueops_remote_create_pr"
+	owner.ToolInput = map[string]any{"id": record.ID, "title": "draft", "body": "rendered", "provider": "github", "head": record.Branch, "base": record.BranchPrepare.BaseBranch, "labels": []any{"bug"}, "assignees": []any{"octocat"}, "confirm": true, "host": "claude", "session_id": "owner-session", "agent_id": "owner-agent", "cwd": worker}
+	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "allow" {
+		t.Fatalf("exact owner remote create blocked: %#v", got)
+	}
+
+	source := handoffEditRequest(record, repo, "claude", "coordinator-session", "")
+	source.AgentID, source.Tool, source.ToolInput = "coordinator-agent", "mcp__agent_harness__issueops_handoff", owner.ToolInput
+	if got := BuildLifecyclePreToolUseDecision(source); got.Decision != "block" {
+		t.Fatalf("source session regained owner publish authority: %#v", got)
+	}
+}
+
 func TestOwnershipRoleAuthorityMatrix(t *testing.T) {
 	_, orienting, worker := ownershipLifecycleRecord(t, handoff.StateOwnerOrienting)
 	target := filepath.Join(worker, "internal", "owner.go")

@@ -153,6 +153,11 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 		cwd, cwdOK := oneFlag(flags, "--source-cwd")
 		return source && coordinatorLifecycleStateAllows(command.Path, record) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(record.Repo) && handoff.CoordinatorIdentityMatches(record, issueopsmodel.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID}, req.CWD)
 	case "handoff publish":
+		if h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
+			cwd, cwdOK := oneFlag(flags, "--cwd")
+			_, confirmed := flags["--confirm"]
+			return worker && currentWorkerBranchMatches(record) && handoff.OwnershipTransferOwnerStateAllows("publish", h.State) && eventIdentityFlagsMatch(req, flags) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && confirmed
+		}
 		cwd, cwdOK := oneFlag(flags, "--source-cwd")
 		_, confirmed := flags["--confirm"]
 		_, approveLegacySeal := flags["--approve-legacy-coordinator-seal"]
@@ -160,6 +165,9 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 		coordinator := handoff.CoordinatorIdentityMatches(record, native, req.CWD)
 		legacySeal := approveLegacySeal && confirmed && handoff.LegacyCoordinatorIdentityCanBeSealed(record, native, req.CWD)
 		return source && coordinatorLifecycleStateAllows(command.Path, record) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(record.Repo) && (coordinator || legacySeal)
+	case "remote create-pr":
+		cwd, cwdOK := oneFlag(flags, "--cwd")
+		return worker && currentWorkerBranchMatches(record) && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && handoff.OwnershipTransferOwnerStateAllows("remote-create", h.State) && eventIdentityFlagsMatch(req, flags) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot)
 	case "phase":
 		return source && h.State == handoff.StateCoordinatorPreparing
 	case "handoff claim":
@@ -497,7 +505,7 @@ func acceptedIssueOpsDownstreamCommand(req HookToolUseLifecycleRequest, record I
 		}
 		required = append(required, "--provider", "--kind", "--url")
 	case "remote create-pr":
-		for _, name := range []string{"--id", "--provider", "--title", "--body", "--head", "--base", "--label", "--assignee"} {
+		for _, name := range []string{"--id", "--provider", "--title", "--body", "--head", "--base", "--label", "--assignee", "--host", "--session-id", "--agent-id", "--cwd"} {
 			values[name] = true
 		}
 		repeatable["--label"], repeatable["--assignee"] = true, true
@@ -569,7 +577,7 @@ func acceptedIssueOpsDownstreamCommand(req HookToolUseLifecycleRequest, record I
 }
 
 func publicationReceiptMatches(record IssueOpsRecord, provider, head, base string) bool {
-	if record.ExecutionHandoff == nil || record.ExecutionHandoff.Result == nil || record.ExecutionHandoff.Orca == nil || record.ExecutionHandoff.PublishReceipt == nil || record.BranchPrepare == nil {
+	if record.ExecutionHandoff == nil || record.ExecutionHandoff.Orca == nil || record.ExecutionHandoff.PublishReceipt == nil || record.BranchPrepare == nil {
 		return false
 	}
 	receipt := record.ExecutionHandoff.PublishReceipt
@@ -581,10 +589,17 @@ func publicationReceiptMatches(record IssueOpsRecord, provider, head, base strin
 		return false
 	}
 	remote := strings.TrimSuffix(strings.TrimPrefix(baseRef, prefix), suffix)
+	finalHead := receipt.FinalHead
+	if record.ExecutionHandoff.ProtocolVersion != handoff.OwnershipTransferProtocolVersion {
+		if record.ExecutionHandoff.Result == nil {
+			return false
+		}
+		finalHead = record.ExecutionHandoff.Result.FinalHead
+	}
 	return provider != "" && provider == strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider)) &&
 		strings.TrimSpace(head) == branch && strings.TrimSpace(base) == strings.TrimSpace(record.BranchPrepare.BaseBranch) &&
 		receipt.Provider == provider && receipt.Remote == remote && receipt.Branch == branch && receipt.RemoteRef == "refs/heads/"+branch &&
-		receipt.FinalHead == record.ExecutionHandoff.Result.FinalHead && receipt.VerifiedAt != ""
+		receipt.FinalHead == finalHead && receipt.VerifiedAt != ""
 }
 
 func allowedAcceptedReviewSubcommand(value string, allowed map[string]bool) bool {
@@ -1436,6 +1451,7 @@ func allowedHandoffMCPTool(req HookToolUseLifecycleRequest, record IssueOpsRecor
 	worker := cleanAbsPath(req.CWD) == cleanAbsPath(h.WorkerRoot)
 	source := cleanAbsPath(req.CWD) == cleanAbsPath(record.Repo)
 	coordinator := source && h.State == handoff.StateClosed && h.ClosedDisposition == handoff.DispositionAccepted && handoff.CoordinatorIdentityMatches(record, issueopsmodel.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID}, req.CWD)
+	owner := worker && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && handoff.OwnershipTransferOwnerStateAllows("remote-create", h.State) && nativeSessionMatches(req, h.OwnerSession)
 	if tool == "issueops_remote_create_pr" {
 		provider, pok := mcpString(input, "provider")
 		head, hok := mcpString(input, "head")
@@ -1443,7 +1459,7 @@ func allowedHandoffMCPTool(req HookToolUseLifecycleRequest, record IssueOpsRecor
 		confirm, cok := input["confirm"].(bool)
 		title, tok := mcpString(input, "title")
 		body, bodyOK := mcpString(input, "body")
-		return coordinator && pok && strings.TrimSpace(provider) != "" && hok && strings.TrimSpace(head) != "" && bok && strings.TrimSpace(base) != "" && cok && confirm && tok && strings.TrimSpace(title) != "" && bodyOK && strings.TrimSpace(body) != "" && mcpNonEmptyStringList(input, "labels") && mcpNonEmptyStringList(input, "assignees") && publicationReceiptMatches(record, provider, head, base)
+		return (coordinator || owner && mcpEventIdentityMatches(input, req)) && pok && strings.TrimSpace(provider) != "" && hok && strings.TrimSpace(head) != "" && bok && strings.TrimSpace(base) != "" && cok && confirm && tok && strings.TrimSpace(title) != "" && bodyOK && strings.TrimSpace(body) != "" && mcpNonEmptyStringList(input, "labels") && mcpNonEmptyStringList(input, "assignees") && publicationReceiptMatches(record, provider, head, base)
 	}
 	if tool == "issueops_remote_reconcile_create" {
 		claimID, claimOK := mcpString(input, "claim_id")
@@ -1483,6 +1499,11 @@ func allowedHandoffMCPTool(req HookToolUseLifecycleRequest, record IssueOpsRecor
 	case "recover":
 		return source && coordinatorLifecycleStateAllows("handoff recover", record)
 	case "publish":
+		if h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
+			cwd, cwdOK := mcpString(input, "cwd")
+			confirm, confirmOK := input["confirm"].(bool)
+			return worker && currentWorkerBranchMatches(record) && handoff.OwnershipTransferOwnerStateAllows("publish", h.State) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && confirmOK && confirm
+		}
 		cwd, cwdOK := mcpString(input, "source_cwd")
 		confirm, confirmOK := input["confirm"].(bool)
 		approveLegacySeal, _ := input["approve_legacy_coordinator_seal"].(bool)

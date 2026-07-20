@@ -42,6 +42,7 @@ type IssueOpsHandoffPublishRequest struct {
 	SessionID                    string `json:"session_id"`
 	AgentID                      string `json:"agent_id,omitempty"`
 	SourceCWD                    string `json:"source_cwd"`
+	CWD                          string `json:"cwd,omitempty"`
 }
 
 type IssueOpsHandoffPublicationReader interface {
@@ -58,6 +59,13 @@ type IssueOpsPublicationPushTarget struct {
 
 type IssueOpsGitLabCapabilityReader interface {
 	GitLabVersion(context.Context, string) (string, error)
+}
+
+// IssueOpsPublicationAncestryReader proves that a replacement v2 receipt only
+// advances the same worker branch; it deliberately has no fallback because a
+// force-push must not be re-attested as a routine republish.
+type IssueOpsPublicationAncestryReader interface {
+	IsAncestor(context.Context, string, string, string) (bool, error)
 }
 
 func (GitIssueOpsHandoffPublicationReader) PushTarget(ctx context.Context, repo, remote string) (IssueOpsPublicationPushTarget, error) {
@@ -161,6 +169,22 @@ func (GitIssueOpsHandoffPublicationReader) LocalRefHead(ctx context.Context, rep
 		return "", fmt.Errorf("resolve local publication ref %s: %s", ref, strings.TrimSpace(stderr))
 	}
 	return strings.TrimSpace(stdout), nil
+}
+
+func (GitIssueOpsHandoffPublicationReader) IsAncestor(ctx context.Context, repo, ancestor, descendant string) (bool, error) {
+	if !publicationFullCommitPattern.MatchString(ancestor) || !publicationFullCommitPattern.MatchString(descendant) {
+		return false, fmt.Errorf("publication ancestry commit is unsafe")
+	}
+	bounded, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	code, _, stderr := publicationGitCmd(bounded, repo, "merge-base", "--is-ancestor", ancestor, descendant)
+	if code == 0 {
+		return true, nil
+	}
+	if code == 1 {
+		return false, nil
+	}
+	return false, fmt.Errorf("verify publication ancestry: %s", publicationDiagnostic(stderr))
 }
 
 func (g GitIssueOpsHandoffPublicationReader) RemoteRefHead(ctx context.Context, repo, remote, expectedFingerprint, ref string) (string, error) {
@@ -871,12 +895,9 @@ func RecordIssueOpsHandoffPublishReceipt(ctx context.Context, stateRoot string, 
 		}
 		return IssueOpsRecord{}, err
 	}
-	identity, err := issueOpsAcceptedPublicationIdentity(validated)
+	identity, err := issueOpsPublicationIdentityForRequest(ctx, validated, req, reader)
 	if err != nil {
 		return IssueOpsRecord{}, err
-	}
-	if !handoff.CoordinatorIdentityMatches(validated, model.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID}, req.SourceCWD) {
-		return IssueOpsRecord{}, fmt.Errorf("handoff publish requires the sealed coordinator native session from the exact source checkout")
 	}
 	if lease == nil {
 		return IssueOpsRecord{}, fmt.Errorf("publication sole-writer dependency is unavailable")
@@ -885,29 +906,36 @@ func RecordIssueOpsHandoffPublishReceipt(ctx context.Context, stateRoot string, 
 	if err != nil {
 		return IssueOpsRecord{}, err
 	}
-	identity, err = resolveIssueOpsPublicationPushTarget(ctx, validated, identity, reader)
+	publicationRecord := validated
+	publicationRecord.Repo = issueOpsPublicationWorkingRoot(validated)
+	identity, err = resolveIssueOpsPublicationPushTarget(ctx, publicationRecord, identity, reader)
 	if err != nil {
 		return IssueOpsRecord{}, err
 	}
 	if validated.ExecutionHandoff.PublishReceipt != nil {
-		if err := validateIssueOpsPublishReceipt(validated, identity); err != nil {
-			return IssueOpsRecord{}, err
+		if issueOpsOwnerPublicationReplacementAllowed(ctx, validated, identity, reader) {
+			// A protocol-v2 owner can replace only a receipt that its worker branch
+			// advances by ancestry; perform the same exact push/readback below.
+		} else {
+			if err := validateIssueOpsPublishReceipt(validated, identity); err != nil {
+				return IssueOpsRecord{}, err
+			}
+			if err := verifyIssueOpsLocalPublicationHead(ctx, publicationRecord.Repo, identity, reader); err != nil {
+				return IssueOpsRecord{}, err
+			}
+			if err := verifyIssueOpsRemotePublicationHead(ctx, publicationRecord.Repo, identity, reader); err != nil {
+				return IssueOpsRecord{}, err
+			}
+			return validated, nil
 		}
-		if err := verifyIssueOpsLocalPublicationHead(ctx, validated.Repo, identity, reader); err != nil {
-			return IssueOpsRecord{}, err
-		}
-		if err := verifyIssueOpsRemotePublicationHead(ctx, validated.Repo, identity, reader); err != nil {
-			return IssueOpsRecord{}, err
-		}
-		return validated, nil
 	}
-	if err := verifyIssueOpsLocalPublicationHead(ctx, validated.Repo, identity, reader); err != nil {
+	if err := verifyIssueOpsLocalPublicationHead(ctx, publicationRecord.Repo, identity, reader); err != nil {
 		return IssueOpsRecord{}, err
 	}
-	if err := reader.PushExact(ctx, validated.Repo, identity.Remote, identity.PushTargetSHA256, identity.Branch, identity.FinalHead); err != nil {
+	if err := reader.PushExact(ctx, publicationRecord.Repo, identity.Remote, identity.PushTargetSHA256, identity.Branch, identity.FinalHead); err != nil {
 		return IssueOpsRecord{}, err
 	}
-	if err := verifyIssueOpsRemotePublicationHead(ctx, validated.Repo, identity, reader); err != nil {
+	if err := verifyIssueOpsRemotePublicationHead(ctx, publicationRecord.Repo, identity, reader); err != nil {
 		return IssueOpsRecord{}, err
 	}
 	now := issueOpsHandoffNow(clock)
@@ -930,6 +958,23 @@ func RecordIssueOpsHandoffPublishReceipt(ctx context.Context, stateRoot string, 
 		return readErr
 	})
 	return persisted, err
+}
+
+func issueOpsOwnerPublicationReplacementAllowed(ctx context.Context, record IssueOpsRecord, identity issueOpsPublicationIdentity, reader IssueOpsHandoffPublicationReader) bool {
+	h := record.ExecutionHandoff
+	if h == nil || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || h.PublishReceipt == nil || h.PublishReceipt.FinalHead == identity.FinalHead {
+		return false
+	}
+	receipt := h.PublishReceipt
+	if receipt.Provider != identity.Provider || receipt.ProjectKey != identity.ProjectKey || receipt.Remote != identity.Remote || receipt.PushTargetSHA256 != identity.PushTargetSHA256 || receipt.Branch != identity.Branch || receipt.Base != identity.Base || receipt.RemoteRef != identity.RemoteRef || strings.TrimSpace(receipt.VerifiedAt) == "" || !publicationFullCommitPattern.MatchString(receipt.FinalHead) {
+		return false
+	}
+	ancestry, ok := reader.(IssueOpsPublicationAncestryReader)
+	if !ok {
+		return false
+	}
+	allowed, err := ancestry.IsAncestor(ctx, issueOpsPublicationWorkingRoot(record), h.PublishReceipt.FinalHead, identity.FinalHead)
+	return err == nil && allowed
 }
 
 func reattestRawV5Publication(ctx context.Context, stateRoot string, req IssueOpsHandoffPublishRequest, reader IssueOpsHandoffPublicationReader, lease IssueOpsOrcaDispatchClient, clock IssueOpsHandoffPrepareClock) (IssueOpsRecord, bool, error) {
@@ -1016,10 +1061,25 @@ func reattestRawV5Publication(ctx context.Context, stateRoot string, req IssueOp
 }
 
 func ValidateIssueOpsHandoffPublication(ctx context.Context, stateRoot string, record IssueOpsRecord, provider, head, base string, reader IssueOpsHandoffPublicationReader, lease IssueOpsOrcaDispatchClient) error {
+	return ValidateIssueOpsHandoffPublicationWithActor(ctx, stateRoot, record, provider, head, base, reader, lease, IssueOpsActor{})
+}
+
+// ValidateIssueOpsHandoffPublicationWithActor re-attests the exact receipt
+// immediately before a provider create. Protocol-v2 uses the transferred
+// owner and the isolated worker root; v1 retains coordinator-only authority.
+func ValidateIssueOpsHandoffPublicationWithActor(ctx context.Context, stateRoot string, record IssueOpsRecord, provider, head, base string, reader IssueOpsHandoffPublicationReader, lease IssueOpsOrcaDispatchClient, actor IssueOpsActor) error {
 	if err := handoff.ValidateEnvelope(record); err != nil {
 		return err
 	}
-	identity, err := issueOpsAcceptedPublicationIdentity(record)
+	var identity issueOpsPublicationIdentity
+	var err error
+	if record.ExecutionHandoff != nil && record.ExecutionHandoff.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
+		if err = validatePostTransferMutation(record, &actor); err == nil {
+			identity, err = issueOpsOwnerPublicationIdentity(ctx, record, reader)
+		}
+	} else {
+		identity, err = issueOpsAcceptedPublicationIdentity(record)
+	}
 	if err != nil {
 		return err
 	}
@@ -1033,18 +1093,77 @@ func ValidateIssueOpsHandoffPublication(ctx context.Context, stateRoot string, r
 	if err != nil {
 		return err
 	}
-	identity, err = resolveIssueOpsPublicationPushTarget(ctx, current, identity, reader)
+	publicationRecord := current
+	publicationRecord.Repo = issueOpsPublicationWorkingRoot(current)
+	identity, err = resolveIssueOpsPublicationPushTarget(ctx, publicationRecord, identity, reader)
 	if err != nil {
 		return err
 	}
 	if err := validateIssueOpsPublishReceipt(current, identity); err != nil {
 		return err
 	}
-	return verifyIssueOpsPublicationHeads(ctx, current.Repo, identity, reader)
+	return verifyIssueOpsPublicationHeads(ctx, publicationRecord.Repo, identity, reader)
+}
+
+func issueOpsPublicationIdentityForRequest(ctx context.Context, record IssueOpsRecord, req IssueOpsHandoffPublishRequest, reader IssueOpsHandoffPublicationReader) (issueOpsPublicationIdentity, error) {
+	if record.ExecutionHandoff != nil && record.ExecutionHandoff.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
+		actor := IssueOpsActor{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID, CWD: req.CWD}
+		if err := validatePostTransferMutation(record, &actor); err != nil {
+			return issueOpsPublicationIdentity{}, err
+		}
+		return issueOpsOwnerPublicationIdentity(ctx, record, reader)
+	}
+	identity, err := issueOpsAcceptedPublicationIdentity(record)
+	if err != nil {
+		return issueOpsPublicationIdentity{}, err
+	}
+	if !handoff.CoordinatorIdentityMatches(record, model.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID}, req.SourceCWD) {
+		return issueOpsPublicationIdentity{}, fmt.Errorf("handoff publish requires the sealed coordinator native session from the exact source checkout")
+	}
+	return identity, nil
+}
+
+func issueOpsPublicationWorkingRoot(record IssueOpsRecord) string {
+	if h := record.ExecutionHandoff; h != nil && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
+		return h.WorkerRoot
+	}
+	return record.Repo
+}
+
+func issueOpsOwnerPublicationIdentity(ctx context.Context, record IssueOpsRecord, reader IssueOpsHandoffPublicationReader) (issueOpsPublicationIdentity, error) {
+	h := record.ExecutionHandoff
+	if h == nil || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || h.State != handoff.StateOwnerActive || h.Orca == nil || record.BranchPrepare == nil {
+		return issueOpsPublicationIdentity{}, fmt.Errorf("publication requires an active ownership-transfer handoff")
+	}
+	if reader == nil {
+		return issueOpsPublicationIdentity{}, fmt.Errorf("publication ref verification dependency is unavailable")
+	}
+	provider := strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider))
+	projectKey := remote.ProjectKey(record.IssueURL, provider, "issue")
+	branch := strings.TrimSpace(record.Branch)
+	base := strings.TrimSpace(record.BranchPrepare.BaseBranch)
+	baseRef := strings.TrimSpace(h.Orca.BaseRef)
+	prefix, suffix := "refs/remotes/", "/"+branch
+	if (provider != "github" && provider != "gitlab") || projectKey == "" || record.BranchPrepare.IssueURL != record.IssueURL || branch == "" || base == "" || !strings.HasPrefix(baseRef, prefix) || !strings.HasSuffix(baseRef, suffix) {
+		return issueOpsPublicationIdentity{}, fmt.Errorf("publication provider, branch, base, or remote authority is incomplete")
+	}
+	remoteName := strings.TrimSuffix(strings.TrimPrefix(baseRef, prefix), suffix)
+	if remoteName == "" || strings.ContainsAny(remoteName, " \t\r\n") {
+		return issueOpsPublicationIdentity{}, fmt.Errorf("publication remote authority is invalid")
+	}
+	finalHead, err := reader.LocalRefHead(ctx, h.WorkerRoot, "refs/heads/"+branch)
+	if err != nil || !publicationFullCommitPattern.MatchString(strings.TrimSpace(finalHead)) {
+		return issueOpsPublicationIdentity{}, fmt.Errorf("publication requires an exact local worker branch head")
+	}
+	return issueOpsPublicationIdentity{Provider: provider, ProjectKey: projectKey, Remote: remoteName, Branch: branch, Base: base, LocalRef: "refs/heads/" + branch, RemoteRef: "refs/heads/" + branch, FinalHead: strings.TrimSpace(finalHead)}, nil
 }
 
 func attestIssueOpsPublicationSoleWriter(ctx context.Context, stateRoot string, expected IssueOpsRecord, lease IssueOpsOrcaDispatchClient, now string) (IssueOpsRecord, error) {
-	err := attestHandoffSoleWriter(ctx, expected, lease, "")
+	allowedHandle := ""
+	if h := expected.ExecutionHandoff; h != nil && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.Orca != nil {
+		allowedHandle = h.Orca.WorkerTerminalHandle
+	}
+	err := attestHandoffSoleWriter(ctx, expected, lease, allowedHandle)
 	if err == nil && expected.ExecutionHandoff.PublicationRecovery == nil {
 		return expected, nil
 	}

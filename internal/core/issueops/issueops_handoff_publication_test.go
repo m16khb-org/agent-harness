@@ -37,7 +37,12 @@ type publicationRefFake struct {
 	pushTargets     []string
 	pushTargetCalls int
 	glabVersion     string
+	ancestor        bool
 	trace           []string
+}
+
+func (f *publicationRefFake) IsAncestor(_ context.Context, _, _, _ string) (bool, error) {
+	return f.ancestor, nil
 }
 
 func (f *publicationRefFake) GitLabVersion(_ context.Context, _ string) (string, error) {
@@ -1345,6 +1350,81 @@ func TestAcceptedHandoffPublicationRejectsAnyPossibleWriterAndDispatchedAssignme
 				t.Fatalf("known writer conflict was not persisted: %#v", persisted.ExecutionHandoff.PublicationRecovery)
 			}
 		})
+	}
+}
+
+func TestProtocolV2OwnerPublishesExactHeadWithoutAccept(t *testing.T) {
+	stateRoot, record, owner := ownershipActiveRecorderRecord(t)
+	record.Phase = IssueOpsPhasePR
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	record, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	finalHead := strings.TrimSpace(preflight.GitOut(record.ExecutionHandoff.WorkerRoot, "rev-parse", "refs/heads/"+record.Branch))
+	reader := &publicationRefFake{localHead: finalHead, remoteHead: finalHead}
+	lease := handoffDispatchFake(record)
+
+	published, err := RecordIssueOpsHandoffPublishReceipt(context.Background(), stateRoot, IssueOpsHandoffPublishRequest{
+		ID: record.ID, Confirm: true, Host: owner.Host, SessionID: owner.SessionID, AgentID: owner.AgentID, CWD: owner.CWD,
+	}, reader, lease, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reader.pushCalls != 1 || reader.pushHead != finalHead {
+		t.Fatalf("owner publish = calls %d, head %q; want one exact push of %q", reader.pushCalls, reader.pushHead, finalHead)
+	}
+	if published.ExecutionHandoff.PublishReceipt == nil || published.ExecutionHandoff.PublishReceipt.FinalHead != finalHead {
+		t.Fatalf("owner publication receipt = %#v", published.ExecutionHandoff.PublishReceipt)
+	}
+}
+
+func TestProtocolV2SourceCannotPublish(t *testing.T) {
+	stateRoot, record, owner := ownershipActiveRecorderRecord(t)
+	record.Phase = IssueOpsPhasePR
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	record, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	finalHead := strings.TrimSpace(preflight.GitOut(record.ExecutionHandoff.WorkerRoot, "rev-parse", "refs/heads/"+record.Branch))
+	reader := &publicationRefFake{localHead: finalHead, remoteHead: finalHead}
+	if _, err := RecordIssueOpsHandoffPublishReceipt(context.Background(), stateRoot, IssueOpsHandoffPublishRequest{
+		ID: record.ID, Confirm: true, Host: owner.Host, SessionID: "source-session", AgentID: owner.AgentID, CWD: record.Repo,
+	}, reader, handoffDispatchFake(record), handoffPrepareTestClock()); err == nil || !strings.Contains(err.Error(), "ownership transfer") {
+		t.Fatalf("source publication error = %v", err)
+	}
+	if reader.pushCalls != 0 {
+		t.Fatalf("source crossed push boundary: %d", reader.pushCalls)
+	}
+}
+
+func TestProtocolV2RepublishRequiresDescendantSameAuthority(t *testing.T) {
+	stateRoot, record, owner := ownershipActiveRecorderRecord(t)
+	record.Phase = IssueOpsPhasePR
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	firstHead := strings.TrimSpace(preflight.GitOut(record.ExecutionHandoff.WorkerRoot, "rev-parse", "refs/heads/"+record.Branch))
+	reader := &publicationRefFake{localHead: firstHead, remoteHead: firstHead}
+	request := IssueOpsHandoffPublishRequest{ID: record.ID, Confirm: true, Host: owner.Host, SessionID: owner.SessionID, AgentID: owner.AgentID, CWD: owner.CWD}
+	published, err := RecordIssueOpsHandoffPublishReceipt(context.Background(), stateRoot, request, reader, handoffDispatchFake(record), handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	nextHead := strings.Repeat("c", 40)
+	reader.localHead, reader.remoteHead = nextHead, nextHead
+	if _, err := RecordIssueOpsHandoffPublishReceipt(context.Background(), stateRoot, request, reader, handoffDispatchFake(published), handoffPrepareTestClock()); err == nil {
+		t.Fatal("non-descendant receipt replacement was accepted")
+	}
+	reader.ancestor = true
+	republished, err := RecordIssueOpsHandoffPublishReceipt(context.Background(), stateRoot, request, reader, handoffDispatchFake(published), handoffPrepareTestClock())
+	if err != nil || republished.ExecutionHandoff.PublishReceipt.FinalHead != nextHead || reader.pushCalls != 2 {
+		t.Fatalf("descendant republish=%#v err=%v pushes=%d", republished.ExecutionHandoff.PublishReceipt, err, reader.pushCalls)
 	}
 }
 

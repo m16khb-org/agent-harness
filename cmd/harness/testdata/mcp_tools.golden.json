@@ -2239,6 +2239,10 @@
     "description": "Create a remote issue (GitHub/GitLab) for the IssueOps cycle. Dry-run by default; pass confirm=true to execute. Returns the URL of the created issue or a preview of what would be created.",
     "inputSchema": {
       "properties": {
+        "agent_id": {
+          "description": "Optional native owner agent identity.",
+          "type": "string"
+        },
         "assignees": {
           "description": "Assignee usernames.",
           "items": {
@@ -2254,9 +2258,17 @@
           "description": "Set true to execute; omit for dry-run preview.",
           "type": "boolean"
         },
+        "cwd": {
+          "description": "Canonical owner worker root for ownership-transfer cycles.",
+          "type": "string"
+        },
         "fields": {
           "description": "Template field values keyed by canonical field name or documented alias.",
           "type": "object"
+        },
+        "host": {
+          "description": "Native owner host for ownership-transfer cycles.",
+          "type": "string"
         },
         "id": {
           "description": "IssueOps id. The provider is inferred from the cycle's issue_url or branch_prepare records.",
@@ -2283,6 +2295,10 @@
         },
         "score_summary": {
           "description": "Related issue and label scoring summary.",
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Native owner session for ownership-transfer cycles.",
           "type": "string"
         },
         "template": {

@@ -297,6 +297,10 @@ func handleMCPRemoteCreatePR(args map[string]any) MCPToolOutcome {
 		Assignees:  argmap.StringSlice(args, "assignees"),
 		Draft:      record.ExecutionHandoff != nil,
 		Confirm:    argmap.Bool(args, "confirm"),
+		Host:       argmap.String(args, "host"),
+		SessionID:  argmap.String(args, "session_id"),
+		AgentID:    argmap.String(args, "agent_id"),
+		CWD:        argmap.String(args, "cwd"),
 	}
 	result, err := core.CreateIssueOpsRemotePullRequest(context.Background(), core.IssueOpsStateRoot(), record.ID, providerName, request, IssueOpsPublicationReader(), IssueOpsHandoffOrcaClient(), func(req core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
 		return core.CreateRemotePullRequest(req, prov)

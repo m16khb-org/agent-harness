@@ -18,6 +18,7 @@ import (
 
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/remote"
+	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
 
@@ -46,6 +47,58 @@ func remoteCreateClaimRequest(record IssueOpsRecord) IssueOpsRemoteCreateClaimRe
 		kind = "mr"
 	}
 	return IssueOpsRemoteCreateClaimRequest{ID: record.ID, Provider: record.BranchPrepare.Provider, Kind: kind, Title: "title", Body: "body", Head: record.Branch, Base: record.BranchPrepare.BaseBranch, Labels: []string{"bug"}, Assignees: []string{"octocat"}, Draft: true}
+}
+
+func TestProtocolV2RemoteCreateRequiresOwnerAndLatestReceipt(t *testing.T) {
+	stateRoot, record, owner := ownershipActiveRecorderRecord(t)
+	record.Phase = IssueOpsPhasePR
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	finalHead := strings.TrimSpace(preflight.GitOut(record.ExecutionHandoff.WorkerRoot, "rev-parse", "refs/heads/"+record.Branch))
+	reader := &publicationRefFake{localHead: finalHead, remoteHead: finalHead}
+	lease := handoffDispatchFake(record)
+	published, err := RecordIssueOpsHandoffPublishReceipt(context.Background(), stateRoot, IssueOpsHandoffPublishRequest{
+		ID: record.ID, Confirm: true, Host: owner.Host, SessionID: owner.SessionID, AgentID: owner.AgentID, CWD: owner.CWD,
+	}, reader, lease, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	providerCalls := 0
+	result, err := CreateIssueOpsRemotePullRequest(context.Background(), stateRoot, published.ID, "github", port.IssueProviderCreatePullRequestRequest{
+		Repo: published.Repo, Title: "owner PR", Body: "body", HeadBranch: published.Branch, BaseBranch: published.BranchPrepare.BaseBranch,
+		Labels: []string{"bug"}, Assignees: []string{"octocat"}, Draft: true, Confirm: true,
+		Host: owner.Host, SessionID: owner.SessionID, AgentID: owner.AgentID, CWD: owner.CWD,
+	}, reader, handoffDispatchFake(published), func(request port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
+		providerCalls++
+		if request.Repo != published.ExecutionHandoff.WorkerRoot || request.ExpectedHeadSHA != finalHead {
+			t.Fatalf("provider request did not retain worker authority: %#v", request)
+		}
+		return port.IssueProviderCreatePullRequestResult{OK: true, URL: "https://github.com/acme/repo/pull/17"}, nil
+	})
+	if err != nil || result.URL == "" || providerCalls != 1 {
+		t.Fatalf("owner remote create result=%#v err=%v calls=%d", result, err, providerCalls)
+	}
+}
+
+func TestProtocolV2SourceCannotCreateRemotePR(t *testing.T) {
+	stateRoot, record, owner := ownershipActiveRecorderRecord(t)
+	record.Phase = IssueOpsPhasePR
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	providerCalls := 0
+	_, err := CreateIssueOpsRemotePullRequest(context.Background(), stateRoot, record.ID, "github", port.IssueProviderCreatePullRequestRequest{
+		Repo: record.Repo, Title: "source PR", Body: "body", HeadBranch: record.Branch, BaseBranch: record.BranchPrepare.BaseBranch,
+		Labels: []string{"bug"}, Assignees: []string{"octocat"}, Draft: true, Confirm: true,
+		Host: owner.Host, SessionID: "source-session", AgentID: owner.AgentID, CWD: record.Repo,
+	}, &publicationRefFake{}, handoffDispatchFake(record), func(port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
+		providerCalls++
+		return port.IssueProviderCreatePullRequestResult{}, nil
+	})
+	if err == nil || !strings.Contains(err.Error(), "ownership transfer") || providerCalls != 0 {
+		t.Fatalf("source remote create err=%v calls=%d", err, providerCalls)
+	}
 }
 
 func TestRemoteCreateClaimAllowsOnlyOneConcurrentCallerAndFinalizes(t *testing.T) {
