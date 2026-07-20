@@ -46,14 +46,45 @@ Phase 3: GATE       — Re-measure after cleanup; confirm improvement
 
 ## The 4 Quality Metrics
 
-> **Command portability (read first).** The measurement commands below use POSIX ERE patterns like `grep '^\+[^+]'`.
-> On hosts where `grep` is aliased to `ugrep` or `rg` (common in agent shells), these patterns FAIL with "invalid
-> syntax" and the command silently returns a false `insufficient-input`/zero. If a pattern errors or a non-empty
-> diff measures as zero, re-run with `command grep` (bypasses the alias) — e.g. `git diff HEAD | command grep -E '^\+[^+]'`.
->
 > **Scope (code-only metrics).** SNR/Entropy/Redundancy/Channel-overhead assume source code. If the change set is
 > predominantly markdown/docs/config (no source lines), say so and report these metrics as N/A — a "noise = comment"
 > SNR is meaningless for prose. Fall back to a plain line-delta summary for non-code diffs.
+
+## Safe Shell Measurement Contract
+
+Use this Bash-only measurement block for diff-derived counts. It deliberately uses `LC_ALL=C awk`, not `grep`, so a
+`ugrep alias` cannot reinterpret POSIX ERE syntax. `awk` returns a numeric zero for an empty diff and for a no-match;
+neither outcome is an error or a false `insufficient-input` result.
+
+```bash
+# Requires Bash 4+. The literal `--` preserves a space-containing path argument.
+measure_added_lines() {
+  git diff --no-ext-diff --unified=0 HEAD -- "$@" |
+    LC_ALL=C awk '/^\+[^+]/ { print }'
+}
+
+count_matching_added_lines() {
+  local pattern=$1
+  shift
+  measure_added_lines "$@" |
+    LC_ALL=C awk -v pattern="$pattern" '$0 ~ pattern { count += 1 } END { print count + 0 }'
+}
+
+NOISE_PATTERN='^\+[[:space:]]*(//|#|/\*|\*|console\.(log|debug|info)|print\(|log\.(debug|info|warn))'
+NOISE=$(count_matching_added_lines "$NOISE_PATTERN")
+TOTAL=$(measure_added_lines | LC_ALL=C awk 'END { print NR + 0 }')
+SIGNAL=$((TOTAL - NOISE))
+
+if [ "$TOTAL" -eq 0 ]; then
+  printf 'SNR: insufficient-input (signal=0, noise=0, total=0)\n'
+else
+  SNR=$(LC_ALL=C awk -v signal="$SIGNAL" -v total="$TOTAL" 'BEGIN { printf "%.2f", signal / total }')
+  printf 'SNR: %s (signal=%s, noise=%s, total=%s)\n' "$SNR" "$SIGNAL" "$NOISE" "$TOTAL"
+fi
+```
+
+Exercise this exact block before relying on it: empty diff, no-match, a `space-containing path`, and an environment
+where `grep` is an `ugrep alias`. Any command failure is a measurement failure to report, never a coerced zero.
 
 ### Metric 1: SNR — Signal-to-Noise Ratio
 
@@ -78,20 +109,8 @@ git diff --stat HEAD | tail -1
 # before scoring; `git diff` cannot measure files Git does not know about.
 git ls-files --others --exclude-standard
 
-# 3. Estimate noise lines in tracked diff (comments, dead code, debug prints).
-git diff HEAD | grep '^+[^+]' | grep -cE '^\+[[:space:]]*(//|#|/\*|\*|console\.(log|debug|info)|print\(|log\.(debug|info|warn))' || true
-
-# 4. Estimate signal lines (rough: total minus noise)
-# More precise: remove signal line candidates and check if tests break
-SIGNAL=$(git diff HEAD | grep '^\+[^+]' | grep -cvE '^\+[[:space:]]*(//|#|/\*|\*|console\.(log|debug|info|warn)|print\(|log\.)' || true)
-NOISE=$(git diff HEAD | grep '^\+[^+]' | grep -cE '^\+[[:space:]]*(//|#|/\*|\*|console\.(log|debug|info|warn)|print\(|log\.)' || true)
-TOTAL=$((SIGNAL + NOISE))
-if [ "$TOTAL" -eq 0 ]; then
-  echo "SNR: insufficient-input (signal=0, noise=0, total=0)"
-else
-  SNR=$(echo "scale=2; $SIGNAL / $TOTAL" | bc)
-  echo "SNR: $SNR (signal=$SIGNAL, noise=$NOISE, total=$TOTAL)"
-fi
+# 3. Run the Safe Shell Measurement Contract above. Do not replace it with
+# grep pipelines or error-masking fallbacks.
 ```
 
 **Interpretation:**
@@ -196,17 +215,17 @@ Logic:       Business rules, algorithmic code, type contracts, error handling wi
 git diff --name-only HEAD
 git ls-files --others --exclude-standard
 
-for f in $(git diff --name-only HEAD; git ls-files --others --exclude-standard); do
+while IFS= read -r -d '' f; do
   [ -f "$f" ] || continue
   TOTAL=$(wc -l < "$f")
   [ "$TOTAL" -gt 0 ] || { echo "SKIP EMPTY: $f"; continue; }
-  BOILER=$(grep -cE '^[[:space:]]*(import|package|@|//|/\*|type.*struct|func.*return|func \(.*\) .*return)' "$f" || echo 0)
+  BOILER=$(LC_ALL=C awk '/^[[:space:]]*(import|package|@|\/\/|\/\*|type.*struct|func.*return|func \(.*\) .*return)/ { count += 1 } END { print count + 0 }' "$f")
   LOGIC=$((TOTAL - BOILER))
   OVERHEAD=$(echo "scale=2; $BOILER / $TOTAL" | bc)
   if (( $(echo "$OVERHEAD > 0.5" | bc -l) )); then
     echo "HIGH OVERHEAD: $f — $BOILER/$TOTAL lines boilerplate (overhead=$OVERHEAD)"
   fi
-done
+done < <(git diff --name-only -z HEAD; git ls-files --others --exclude-standard -z)
 ```
 
 ---
@@ -389,7 +408,7 @@ go test -cover ./... 2>&1 | grep -E 'coverage: [0-9]'
 # 5. Dead code via unused. Use an installed or project-local tool. Ask before
 # installing global tools; do not run `go install ...@latest` as a default.
 if command -v staticcheck >/dev/null 2>&1; then
-  staticcheck ./... 2>&1 | grep 'U1000' || true
+  staticcheck ./... 2>&1 | command grep 'U1000'
 else
   echo "staticcheck unavailable; use project-local tooling or ask before installing"
 fi

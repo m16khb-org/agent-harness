@@ -19,19 +19,21 @@ git log --oneline -30  # scan for the last known-good state
 
 ### 2. Define the Test Command
 The test command MUST be:
-- A single shell command or script
+- A reviewed executable script with fixed argv (do not expand a command-string variable)
 - Read-only (no file changes, no network side effects)
 - Exit 0 = good, exit non-0 = bad
 
 ```bash
-# Example: a specific test that used to pass
-TEST_CMD="go test ./pkg/auth -run TestLoginFlow -count=1"
-
-# Example: a build that used to succeed
-TEST_CMD="go build ./..."
-
-# Example: a custom script
-TEST_CMD="bash -c 'grep -q \"expected-string\" src/config.go'"
+# Put the test in a script boundary once, inspect it, and pass its path as one argv.
+BISECT_SCRIPT="$(pwd)/.agent-harness/evidence/bisect-auth-test.sh"
+mkdir -p "$(dirname "$BISECT_SCRIPT")"
+cat > "$BISECT_SCRIPT" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+go test ./pkg/auth -run TestLoginFlow -count=1
+EOF
+chmod 700 "$BISECT_SCRIPT"
+"$BISECT_SCRIPT"
 ```
 
 ### 3. Run Bisect
@@ -39,7 +41,7 @@ TEST_CMD="bash -c 'grep -q \"expected-string\" src/config.go'"
 git bisect start
 git bisect bad HEAD
 git bisect good <known-good-sha-or-tag>
-git bisect run $TEST_CMD
+git bisect run "$BISECT_SCRIPT"
 ```
 
 ### 4. Record and Reset

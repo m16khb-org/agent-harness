@@ -294,6 +294,31 @@ git worktree prune
 - Worktrees share the same `.git` directory — operations in one worktree affect refs visible in others
 - IssueOps worktree management is in `skills/issueops/references/worktree-context.md` — don't duplicate those rules
 
+### 7. Clean Safety Protocol
+
+`git clean` is destructive. Prefer an inspected stash; never treat a clean working tree as permission to remove
+untracked files. The required sequence is dry-run, review the exact list, offer a stash, then require explicit user
+confirmation for a bounded pathspec.
+
+```bash
+# 1. Preview both normal and ignored candidates without deleting anything.
+git clean -nd
+git clean -ndx
+
+# 2. Review the list with the caller. Keep files unless their removal is necessary.
+git status --short
+
+# 3. Prefer a recoverable alternative first.
+git stash push -u -m "pre-clean backup"
+git stash list
+
+# 4. Only after explicit user confirmation of the reviewed pathspec, run exactly:
+git clean -fd -- <approved-pathspec>
+```
+
+Do not substitute `-x` into the final command without a separate explicit user confirmation. If the caller cannot
+name the approved pathspec after seeing the dry-run list, stop and preserve the files.
+
 ---
 
 ## Relationship with Other Skills

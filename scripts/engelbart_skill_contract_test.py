@@ -17,6 +17,15 @@ HANDOFF = TESTDATA / "ai_devops_onboarding_handoff.md"
 BAD_HANDOFF = TESTDATA / "ai_devops_onboarding_handoff.bad.md"
 RUBRIC = ROOT / "scripts" / "engelbart_quality_rubric.py"
 PUBLISH_SCRIPT = ROOT / "skills" / "engelbart" / "scripts" / "publish_meeting_canvas.py"
+SYNTHETIC_FIXTURES = (
+    TESTDATA / "ai_devops_onboarding_transcript.txt",
+    TESTDATA / "ai_devops_onboarding_output.baseline.md",
+    TESTDATA / "ai_devops_onboarding_output.md",
+    TESTDATA / "ai_devops_onboarding_output.bad_canvas_readback.md",
+    TESTDATA / "ai_devops_onboarding_handoff.md",
+    TESTDATA / "ai_devops_onboarding_handoff.bad.md",
+)
+SYNTHETIC_FIXTURE_MARKER = "<!-- synthetic-fixture: no real people, services, or policies -->"
 
 
 class EngelbartSkillContractTest(unittest.TestCase):
@@ -40,6 +49,17 @@ class EngelbartSkillContractTest(unittest.TestCase):
         start = content.index("## Meeting Canvas Template")
         end = content.index("The full transcript must remain", start)
         return content[start:end]
+
+    def test_tracking_fixtures_are_explicitly_synthetic_and_identifier_free(self) -> None:
+        for fixture in SYNTHETIC_FIXTURES:
+            with self.subTest(fixture=fixture.name):
+                content = fixture.read_text(encoding="utf-8")
+                self.assertIn(SYNTHETIC_FIXTURE_MARKER, content)
+                self.assertNotRegex(content, r"xox[baprs]-")
+                self.assertNotRegex(content, r"https://[^ ]+\.slack\.com/")
+                self.assertNotRegex(content, r"\b[TC][0-9A-Z]{8,}\b")
+                self.assertNotRegex(content, r"\b[가-힣]{2,4}\s*님\b")
+                self.assertNotRegex(content, r"(?i)\b(production|gitlab|release/stg)\b")
 
     def test_skill_is_named_after_engelbart(self) -> None:
         content = self.read_skill()
@@ -187,12 +207,12 @@ class EngelbartSkillContractTest(unittest.TestCase):
 
         for field in [
             "수동 List 바인딩 값",
-            "- 이름: AI DevOps R&R 및 추천 시스템 온보딩",
+            "- 이름: 합성 운영 연습 온보딩",
             "- Date: 2026-06-24",
-            "- Topic: 온보딩",
+            "- Topic: 연습",
             "- Status: Follow-up 필요",
-            "- Counts: 결정 9 / 액션 10 / 질문 6",
-            "- Meeting Canvas: https://bubbletap.slack.com/docs/T048JBUDF9U/F0BDLM3631N",
+            "- Counts: 결정 7 / 액션 8 / 질문 3",
+            "- Meeting Canvas: https://example.invalid/docs/synthetic-canvas",
         ]:
             self.assertIn(field, handoff)
         self.assertNotIn("- Title:", handoff)
