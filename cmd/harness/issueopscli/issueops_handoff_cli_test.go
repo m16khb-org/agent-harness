@@ -153,8 +153,20 @@ func TestIssueOpsHandoffUsageExposesCodexHookTrustBypassAttestation(t *testing.T
 		}
 	}
 	usage, err := captureProjectCLIStderr(t, func() error { issueOpsUsage(); return nil })
-	if err != nil || !strings.Contains(usage, "start|claim|acknowledge-context|finish|accept|publish|codex-hooks-list|recover") {
+	if err != nil || !strings.Contains(usage, "start|claim|acknowledge-context|finish|complete|cleanup-preview|cleanup-approve|cleanup-record|accept|publish|codex-hooks-list|recover") {
 		t.Fatal("top-level handoff usage omits acknowledgement")
+	}
+}
+
+func TestIssueOpsTopLevelUsageExposesOwnershipTransferActions(t *testing.T) {
+	usage, err := captureProjectCLIStderr(t, func() error { issueOpsUsage(); return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, action := range []string{"complete", "cleanup-preview", "cleanup-approve", "cleanup-record"} {
+		if !strings.Contains(usage, action) {
+			t.Fatalf("top-level handoff usage missing ownership-transfer action %q", action)
+		}
 	}
 }
 

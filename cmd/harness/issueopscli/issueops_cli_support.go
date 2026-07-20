@@ -34,7 +34,7 @@ func issueOpsUsage() {
   agent-harness issueops worktree prepare-tools --id ID [--json]
   agent-harness issueops worktree prepare --id ID [--orchestrator auto|orca|inline] [--inline-reason user-requested|recovery] [--agent NAME] [--confirm] [--json]
   agent-harness issueops worktree migrate-legacy --id ID --confirm [--json]
-  agent-harness issueops handoff start|claim|acknowledge-context|finish|accept|publish|codex-hooks-list|recover [flags] [--json]
+  agent-harness issueops handoff start|claim|acknowledge-context|finish|complete|cleanup-preview|cleanup-approve|cleanup-record|accept|publish|codex-hooks-list|recover [flags] [--json]
   agent-harness issueops worktree verify --id ID [--json]
   agent-harness issueops worktree cleanup-readiness --id ID [--merged] [--json]
   agent-harness issueops phase --id ID --to problem|grill|plan|compatibility-review|implement|ai-slop-clean|feedback|pr|done [--force] [--json]

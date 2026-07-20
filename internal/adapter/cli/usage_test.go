@@ -34,3 +34,12 @@ func TestUsageIncludesUpdateCommand(t *testing.T) {
 		t.Fatalf("command catalog missing update")
 	}
 }
+
+func TestUsageIncludesOwnershipTransferHandoffActions(t *testing.T) {
+	usage := Usage("test")
+	for _, action := range []string{"complete", "cleanup-preview", "cleanup-approve", "cleanup-record"} {
+		if !strings.Contains(usage, action) {
+			t.Fatalf("usage missing ownership-transfer handoff action %q\n%s", action, usage)
+		}
+	}
+}
