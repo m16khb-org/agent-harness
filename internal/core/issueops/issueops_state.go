@@ -106,12 +106,15 @@ func readRawIssueOpsBytes(stateRoot, id string) ([]byte, error) {
 
 func decodeIssueOpsRecord(id string, b []byte) (IssueOpsRecord, error) {
 	var header struct {
-		SchemaVersion     int             `json:"schema_version"`
-		ID                string          `json:"id"`
-		RemoteCreateClaim json.RawMessage `json:"remote_create_claim"`
-		ExecutionHandoff  *struct {
+		SchemaVersion      int             `json:"schema_version"`
+		ID                 string          `json:"id"`
+		RemoteCreateClaim  json.RawMessage `json:"remote_create_claim"`
+		ExecutionWorkspace json.RawMessage `json:"execution_workspace"`
+		ExecutionHandoff   *struct {
+			ProtocolVersion    int             `json:"protocol_version"`
 			CoordinatorSession json.RawMessage `json:"coordinator_session"`
 			PublishReceipt     json.RawMessage `json:"publish_receipt"`
+			OwnerSession       json.RawMessage `json:"owner_session"`
 		} `json:"execution_handoff"`
 	}
 	if err := json.Unmarshal(b, &header); err != nil {
@@ -119,6 +122,9 @@ func decodeIssueOpsRecord(id string, b []byte) (IssueOpsRecord, error) {
 	}
 	if header.ID != id {
 		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops id mismatch: record has %q", header.ID)
+	}
+	if header.SchemaVersion <= 7 && (rawIssueOpsAuthorityPresent(header.ExecutionWorkspace) || header.ExecutionHandoff != nil && (header.ExecutionHandoff.ProtocolVersion == handoff.OwnershipTransferProtocolVersion || rawIssueOpsAuthorityPresent(header.ExecutionHandoff.OwnerSession))) {
+		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops schema_version %d cannot contain schema-8 workspace or ownership authority", header.SchemaVersion)
 	}
 	if header.SchemaVersion <= 5 && rawIssueOpsAuthorityPresent(header.RemoteCreateClaim) {
 		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops schema_version %d cannot contain remote_create_claim durable mutation authority", header.SchemaVersion)
@@ -284,7 +290,7 @@ func normalizeIssueOpsSchemaVersion(record *IssueOpsRecord) error {
 		return err
 	}
 	legacyIdentitySchema := record.SchemaVersion == 0 || record.SchemaVersion == 1 || record.SchemaVersion == 2 || record.SchemaVersion == 3
-	legacySchema := legacyIdentitySchema || record.SchemaVersion == 4 || record.SchemaVersion == 5 || record.SchemaVersion == 6
+	legacySchema := legacyIdentitySchema || record.SchemaVersion == 4 || record.SchemaVersion == 5 || record.SchemaVersion == 6 || record.SchemaVersion == 7
 	if legacySchema {
 		record.SchemaVersion = IssueOpsCurrentSchemaVersion
 		if legacyIdentitySchema && record.ExecutionHandoff != nil {
@@ -311,7 +317,7 @@ func migrateLegacyIssueOpsOrcaIdentity(identity *IssueOpsOrcaIdentity) {
 
 func issueOpsSchemaVersionError(version int) error {
 	switch {
-	case version == 0 || version == 1 || version == 2 || version == 3 || version == 4 || version == 5 || version == 6 || version == IssueOpsCurrentSchemaVersion:
+	case version == 0 || version == 1 || version == 2 || version == 3 || version == 4 || version == 5 || version == 6 || version == 7 || version == IssueOpsCurrentSchemaVersion:
 		return nil
 	case version > IssueOpsCurrentSchemaVersion:
 		return fmt.Errorf("unsupported issueops schema_version %d; current is %d", version, IssueOpsCurrentSchemaVersion)

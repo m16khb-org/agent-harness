@@ -30,9 +30,31 @@ const (
 	ProviderIssueLinkGitLabExact       = "gitlab_native_exact"
 )
 
-// ValidateEnvelope rejects corrupted or future supervised-handoff state. An
-// absent execution_handoff is the only legacy/inline representation.
+// ValidateEnvelope routes each durable protocol through an explicit validator;
+// schema migration never reinterprets a protocol-v1 handoff as ownership v2.
 func ValidateEnvelope(record model.IssueOpsRecord) error {
+	if err := validateExecutionWorkspace(record); err != nil {
+		return err
+	}
+	if record.ExecutionHandoff == nil {
+		if record.RemoteCreateClaim != nil {
+			return fmt.Errorf("remote create claim requires supervised execution handoff authority")
+		}
+		return nil
+	}
+	switch record.ExecutionHandoff.ProtocolVersion {
+	case ProtocolVersion:
+		return validateV1Envelope(record)
+	case OwnershipTransferProtocolVersion:
+		return validateOwnershipEnvelope(record)
+	default:
+		return fmt.Errorf("unsupported execution handoff protocol_version %d", record.ExecutionHandoff.ProtocolVersion)
+	}
+}
+
+// validateV1Envelope is deliberately the prior validator body, kept intact as
+// the compatibility contract for all existing handoff records.
+func validateV1Envelope(record model.IssueOpsRecord) error {
 	if record.ExecutionHandoff == nil {
 		if record.RemoteCreateClaim != nil {
 			return fmt.Errorf("remote create claim requires supervised execution handoff authority")

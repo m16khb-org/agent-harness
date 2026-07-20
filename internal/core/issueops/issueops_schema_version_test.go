@@ -104,7 +104,7 @@ func TestIssueOpsReadRejectsFutureSchemaVersion(t *testing.T) {
 	id := "io-future-schema"
 	writeRawIssueOpsRecord(t, stateRoot, id, `{
   "ok": true,
-  "schema_version": 8,
+  "schema_version": 9,
   "id": "io-future-schema",
   "repo": "/repo/example",
   "branch": "1-demo",
@@ -115,7 +115,7 @@ func TestIssueOpsReadRejectsFutureSchemaVersion(t *testing.T) {
 `)
 
 	_, err := ReadIssueOps(stateRoot, id)
-	if err == nil || !strings.Contains(err.Error(), "unsupported issueops schema_version 8") {
+	if err == nil || !strings.Contains(err.Error(), "unsupported issueops schema_version 9") {
 		t.Fatalf("expected future schema rejection, got %v", err)
 	}
 }
@@ -302,7 +302,7 @@ func TestIssueOpsSchemaV4PreservesSealedOrcaMailboxAuthorities(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`"schema_version":7`, `"coordinator_mailbox_handle":"term_coordinator"`, `"worker_terminal_handle":"term_live"`, `"worker_mailbox_handle":"term_dispatched"`} {
+	for _, want := range []string{`"schema_version":8`, `"coordinator_mailbox_handle":"term_coordinator"`, `"worker_terminal_handle":"term_live"`, `"worker_mailbox_handle":"term_dispatched"`} {
 		if !bytes.Contains(reencoded, []byte(want)) {
 			t.Fatalf("schema-v4 authority %s was not preserved: %s", want, reencoded)
 		}

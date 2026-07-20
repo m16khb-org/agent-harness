@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	ProtocolVersion = 1
+	ProtocolVersion                  = 1
+	OwnershipTransferProtocolVersion = 2
 
 	StateCoordinatorPreparing = "coordinator_preparing"
 	StateDispatched           = "dispatched"
@@ -18,9 +19,18 @@ const (
 	StateClosed               = "closed"
 	StateRecoveryRequired     = "recovery_required"
 
-	DispositionAccepted     = "accepted"
-	DispositionWorkerFailed = "worker_failed"
-	DispositionCancelled    = "cancelled"
+	StateOwnershipDispatching        = "ownership_dispatching"
+	StateOwnershipDispatched         = "ownership_dispatched"
+	StateOwnerOrienting              = "owner_orienting"
+	StateOwnerActive                 = "owner_active"
+	StateCleanupPendingHumanDecision = "cleanup_pending_human_decision"
+	StateCleanupExecuting            = "cleanup_executing"
+
+	DispositionAccepted                     = "accepted"
+	DispositionWorkerFailed                 = "worker_failed"
+	DispositionCancelled                    = "cancelled"
+	DispositionOwnerClosedWorkspaceRetained = "owner_closed_workspace_retained"
+	DispositionLocalResourcesRemoved        = "local_resources_removed"
 
 	OutcomeCompleted = "completed"
 	OutcomeFailed    = "failed"

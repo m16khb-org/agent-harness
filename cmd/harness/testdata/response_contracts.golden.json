@@ -1183,7 +1183,7 @@
         }
       ],
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -1330,7 +1330,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -1524,7 +1524,7 @@
         }
       ],
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -1679,7 +1679,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -1893,7 +1893,7 @@
         }
       ],
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2110,7 +2110,7 @@
         }
       ],
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2233,7 +2233,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2284,7 +2284,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_link_plan": {
@@ -2397,7 +2397,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2527,7 +2527,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2623,7 +2623,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2779,7 +2779,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2829,7 +2829,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_pr_readiness": {
@@ -2944,7 +2944,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_record_devils_advocate_review": {
@@ -3107,7 +3107,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -3136,7 +3136,7 @@
       "ok": true,
       "phase": "problem",
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_regress_for_replan": {
@@ -3319,7 +3319,7 @@
         }
       ],
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -3455,7 +3455,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -3662,7 +3662,7 @@
         }
       ],
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -3673,7 +3673,7 @@
       "ok": true,
       "phase": "problem",
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_status": {
@@ -3924,7 +3924,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 7,
+      "schema_version": 8,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -7596,7 +7596,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 7,
+            "schema_version": 8,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -7716,7 +7716,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 7,
+            "schema_version": 8,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -7774,7 +7774,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 7,
+            "schema_version": 8,
             "updated_at": "$TIMESTAMP"
           },
           "type": "text"
@@ -7884,7 +7884,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 7,
+            "schema_version": 8,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -7977,7 +7977,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 7,
+            "schema_version": 8,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -8106,7 +8106,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 7,
+            "schema_version": 8,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -8163,7 +8163,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 7,
+            "schema_version": 8,
             "updated_at": "$TIMESTAMP"
           },
           "type": "text"
@@ -8285,7 +8285,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 7,
+            "schema_version": 8,
             "updated_at": "$TIMESTAMP"
           },
           "type": "text"
@@ -8437,7 +8437,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 7,
+            "schema_version": 8,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -8574,7 +8574,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 7,
+            "schema_version": 8,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -8721,7 +8721,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 7,
+            "schema_version": 8,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -8769,7 +8769,7 @@
             "ok": true,
             "phase": "problem",
             "repo": "$WORKSPACE",
-            "schema_version": 7,
+            "schema_version": 8,
             "updated_at": "$TIMESTAMP"
           },
           "type": "text"
@@ -8959,7 +8959,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 7,
+            "schema_version": 8,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -9069,7 +9069,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 7,
+            "schema_version": 8,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -9216,7 +9216,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 7,
+            "schema_version": 8,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
@@ -9234,7 +9234,7 @@
             "ok": true,
             "phase": "problem",
             "repo": "$WORKSPACE",
-            "schema_version": 7,
+            "schema_version": 8,
             "updated_at": "$TIMESTAMP"
           },
           "type": "text"
@@ -9458,7 +9458,7 @@
               }
             },
             "repo": "$WORKSPACE",
-            "schema_version": 7,
+            "schema_version": 8,
             "updated_at": "$TIMESTAMP",
             "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
           },
