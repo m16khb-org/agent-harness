@@ -478,12 +478,7 @@ func confirmedHandoffStartCommand(record IssueOpsRecord, recipient string, coord
 	if record.ExecutionHandoff != nil && record.ExecutionHandoff.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
 		parts = append(parts, "--workspace-epoch "+quoteHandoffCLIToken(record.ExecutionHandoff.WorkspaceEpoch))
 	}
-	if options.AllowCodexHookTrustBypass {
-		parts = append(parts, "--allow-codex-hook-trust-bypass")
-	}
-	if options.CodexModel != "" {
-		parts = append(parts, "--codex-model "+quoteHandoffCLIToken(options.CodexModel), "--codex-reasoning-effort "+quoteHandoffCLIToken(options.CodexReasoningEffort))
-	}
+	parts = appendHandoffContextCommandOptions(parts, options, false)
 	parts = append(parts, "--expected-context-sha256 "+quoteHandoffCLIToken(contextSHA), "--confirm", "--json")
 	return strings.Join(parts, " ")
 }
@@ -499,12 +494,44 @@ func attestedHandoffPreviewCommand(record IssueOpsRecord, recipient string, coor
 	if coordinator.AgentID != "" {
 		parts = append(parts, "--coordinator-agent-id "+quoteHandoffCLIToken(coordinator.AgentID))
 	}
-	parts = append(parts, "--source-cwd "+quoteHandoffCLIToken(record.Repo), "--allow-codex-hook-trust-bypass")
+	parts = append(parts, "--source-cwd "+quoteHandoffCLIToken(record.Repo))
+	parts = appendHandoffContextCommandOptions(parts, options, true)
+	parts = append(parts, "--json")
+	return strings.Join(parts, " ")
+}
+
+func appendHandoffContextCommandOptions(parts []string, options handoff.ContextOptions, attestCodexHooks bool) []string {
+	for _, value := range options.CriteriaIDs {
+		parts = append(parts, "--criteria-id "+quoteHandoffCLIToken(value))
+	}
+	for _, value := range options.RequiredDocs {
+		parts = append(parts, "--required-doc "+quoteHandoffCLIToken(value))
+	}
+	for _, value := range options.RequiredSkills {
+		parts = append(parts, "--required-skill "+quoteHandoffCLIToken(value))
+	}
+	if options.WorkerScope != "" {
+		parts = append(parts, "--worker-scope "+quoteHandoffCLIToken(options.WorkerScope))
+	}
+	for _, value := range options.VerificationCommands {
+		parts = append(parts, "--verification "+quoteHandoffCLIToken(value))
+	}
+	if options.HeartbeatCadence != "" {
+		parts = append(parts, "--heartbeat-cadence "+quoteHandoffCLIToken(options.HeartbeatCadence))
+	}
+	for _, value := range options.StopConditions {
+		parts = append(parts, "--stop-condition "+quoteHandoffCLIToken(value))
+	}
+	if options.ResultFormat != "" {
+		parts = append(parts, "--result-format "+quoteHandoffCLIToken(options.ResultFormat))
+	}
+	if options.AllowCodexHookTrustBypass || attestCodexHooks {
+		parts = append(parts, "--allow-codex-hook-trust-bypass")
+	}
 	if options.CodexModel != "" {
 		parts = append(parts, "--codex-model "+quoteHandoffCLIToken(options.CodexModel), "--codex-reasoning-effort "+quoteHandoffCLIToken(options.CodexReasoningEffort))
 	}
-	parts = append(parts, "--json")
-	return strings.Join(parts, " ")
+	return parts
 }
 
 func quoteHandoffCLIToken(value string) string {

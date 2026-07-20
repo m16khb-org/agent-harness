@@ -621,19 +621,30 @@ func TestOwnershipHandoffRetryPreservesProtocolWorkspaceAndOwnerAudit(t *testing
 		}
 	}
 	client := handoffDispatchFake(persisted)
-	client.worktrees = []port.OrcaWorktree{{ID: "source-wt", Path: persisted.Repo}}
-	client.terminals = []port.OrcaTerminal{{Handle: testCoordinatorRecipient, PTYID: "pty-source", WorktreeID: "source-wt", WorktreePath: persisted.Repo, Connected: true, Writable: true}}
-	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffStartRequest{
+	client.terminal.WorktreeID = persisted.ExecutionWorkspace.Orca.WorktreeID
+	client.terminal.WorktreePath = persisted.WorktreePath
+	client.terminalsAfterCreate = []port.OrcaTerminal{client.terminal}
+	startReq := IssueOpsHandoffStartRequest{
 		ID: persisted.ID, CoordinatorRecipient: testCoordinatorRecipient,
 		CoordinatorHost: "codex", CoordinatorSessionID: "prep-session", CoordinatorAgentID: "prep-agent", SourceCWD: persisted.Repo,
 		WorkspaceEpoch: persisted.ExecutionWorkspace.WorkspaceEpoch,
 		Context:        handoff.ContextOptions{WorkerScope: "corrected retry scope", StopConditions: []string{"owner may publish exact branch; stop before merge"}, AllowCodexHookTrustBypass: true},
-	}, client, handoffStartTestClock())
+	}
+	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, startReq, client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !preview.Preview || preview.Attempt != 2 || preview.ContextSHA256 == "" {
 		t.Fatalf("ownership retry preview = %#v", preview)
+	}
+	startReq.Confirm = true
+	startReq.ExpectedContextSHA256 = preview.ContextSHA256
+	dispatched, err := StartIssueOpsHandoff(context.Background(), stateRoot, startReq, client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dispatched.State != handoff.StateOwnershipDispatched || dispatched.Attempt != 2 {
+		t.Fatalf("ownership retry dispatch = %#v", dispatched)
 	}
 }
 

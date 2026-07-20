@@ -555,7 +555,7 @@ func TestHandoffDispatchPreambleRequiresOfficialLabeledIdentityLines(t *testing.
 func TestHandoffStartRequiresExplicitCodexHookTrustBypassAttestation(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	client := handoffDispatchFake(record)
-	launchOptions := handoff.ContextOptions{CodexModel: "gpt-5.6-terra", CodexReasoningEffort: "high"}
+	launchOptions := handoff.ContextOptions{WorkerScope: "bounded owner scope", StopConditions: []string{"stop before merge"}, CodexModel: "gpt-5.6-terra", CodexReasoningEffort: "high"}
 	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, Context: launchOptions}), client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
@@ -568,6 +568,9 @@ func TestHandoffStartRequiresExplicitCodexHookTrustBypassAttestation(t *testing.
 	}
 	if !strings.Contains(preview.NextCommand, "--codex-model 'gpt-5.6-terra'") || !strings.Contains(preview.NextCommand, "--codex-reasoning-effort 'high'") {
 		t.Fatalf("attested-preview command dropped sealed Codex launch options: %#v", preview)
+	}
+	if !strings.Contains(preview.NextCommand, "--worker-scope 'bounded owner scope'") || !strings.Contains(preview.NextCommand, "--stop-condition 'stop before merge'") {
+		t.Fatalf("attested-preview command dropped sealed context options: %#v", preview)
 	}
 	if len(client.trace) != 0 {
 		t.Fatalf("preview invoked Orca: %v", client.trace)
@@ -597,6 +600,9 @@ func TestHandoffStartRequiresExplicitCodexHookTrustBypassAttestation(t *testing.
 	}
 	if !reviewed.Preview || !reviewed.CodexHookTrustBypassRequired || !reviewed.CodexHookTrustBypassAttested || len(reviewed.ContextSHA256) != 64 {
 		t.Fatalf("attested no-confirm preview must expose the reviewed context hash: %#v", reviewed)
+	}
+	if !strings.Contains(reviewed.ConfirmedCommand, "--worker-scope 'bounded owner scope'") || !strings.Contains(reviewed.ConfirmedCommand, "--stop-condition 'stop before merge'") {
+		t.Fatalf("confirmed command dropped sealed context options: %#v", reviewed)
 	}
 	if len(client.trace) != 0 {
 		t.Fatalf("attested preview invoked Orca: %v", client.trace)
