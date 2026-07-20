@@ -2389,6 +2389,11 @@ func (f *dispatchOrcaFake) ListTasks(context.Context) ([]port.OrcaTask, error) {
 	return append([]port.OrcaTask(nil), f.tasks...), f.taskListErr
 }
 
+func (f *dispatchOrcaFake) ListAllTasks(context.Context) ([]port.OrcaTask, error) {
+	f.trace = append(f.trace, "all-task-list")
+	return append([]port.OrcaTask(nil), f.tasks...), f.taskListErr
+}
+
 func (f *dispatchOrcaFake) ListDispatchedTasks(context.Context) ([]port.OrcaTask, error) {
 	f.trace = append(f.trace, "dispatched-task-list")
 	f.dispatchedTaskListCalls++

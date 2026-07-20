@@ -638,12 +638,12 @@ func requireTaskNotReady(ctx context.Context, client any, taskID string) error {
 
 func requireExactTaskTerminal(ctx context.Context, client any, taskID string) error {
 	reader, ok := client.(interface {
-		ListTasks(context.Context) ([]port.OrcaTask, error)
+		ListAllTasks(context.Context) ([]port.OrcaTask, error)
 	})
 	if !ok {
 		return fmt.Errorf("task terminal inventory is unavailable")
 	}
-	rows, err := reader.ListTasks(ctx)
+	rows, err := reader.ListAllTasks(ctx)
 	if err != nil {
 		return err
 	}
