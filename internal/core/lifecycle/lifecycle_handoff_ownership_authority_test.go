@@ -33,6 +33,18 @@ func TestOwnershipAcknowledgementGrantsOwnerAndRevokesSource(t *testing.T) {
 	}
 }
 
+func TestOwnershipOwnerCanCommitLoreContainingVerificationPaths(t *testing.T) {
+	_, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+	req := handoffEditRequest(record, worker, "claude", "owner-session", "")
+	req.AgentID = "owner-agent"
+	req.Tool = "shell_command"
+	req.Command = "git commit -m 'fix(skills): correct P1 pioneer contracts' -m 'Lore:\n- Intent: Correct the ten bounded P1 pioneer skill and CLI usage contracts.\n- Why: Remove stale slugs, pseudo-APIs, tool claims, and safety guidance from issue #52.\n- Changes:\n  - Pin the corrected skill contracts with focused regression tests.\n  - Document the implemented IssueOps devils-advocate CLI and MCP forms.\n  - Repair Turing, Hopper, Torvalds, and Dijkstra correctness details.\n- Verify: go test ./internal/core/skillcontract -count=1; go test ./cmd/harness/contractgolden ./cmd/harness/issueopscli -count=1; eight skill validators pass.\n- Risk: Low; docs, usage help, goldens, and contract tests only. Full suite has a known ignored-plan docs-index golden mismatch in this worktree.'"
+
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("local owner commit message text must not be treated as a filesystem mutation target: %#v", got)
+	}
+}
+
 func TestOwnershipFenceNeverCapturesOrdinarySourceMutation(t *testing.T) {
 	states := []string{
 		handoff.StateOwnershipDispatching,

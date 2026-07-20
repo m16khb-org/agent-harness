@@ -98,9 +98,27 @@ func ShellCommandGuardPaths(repo, command string) []string {
 				}
 			}
 		}
-		addConservativePathOperand(&out, seen, currentDir, token)
+		if !gitCommitMessageValue(tokens, i) {
+			addConservativePathOperand(&out, seen, currentDir, token)
+		}
 	}
 	return out
+}
+
+func gitCommitMessageValue(tokens []string, index int) bool {
+	if index < 1 || (tokens[index-1] != "-m" && tokens[index-1] != "--message") {
+		return false
+	}
+	seenCommit := false
+	for i := index - 2; i >= 0; i-- {
+		switch searchrouting.SearchTokenName(tokens[i]) {
+		case "commit":
+			seenCommit = true
+		case "git":
+			return seenCommit
+		}
+	}
+	return false
 }
 
 func addGitRepositoryOverridePath(out *[]string, seen map[string]bool, currentDir, token string) {
