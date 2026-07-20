@@ -86,6 +86,12 @@ func TestReadyWorkspaceWorktreeToolsRequireExactPreparationActor(t *testing.T) {
 
 func TestReadyWorkspacePlanCheckpointRequiresSourceActorAndPlanOnlyCommit(t *testing.T) {
 	stateRoot, record := handoffPrepareRecord(t)
+	if _, err := RecordIssueOpsDesignReview(stateRoot, record.ID, IssueOpsDesignReviewRequest{
+		ProblemSummary: "problem", ProposedDesign: "design", RefactorPlan: "bounded plan",
+		Alternatives: []string{"alternative"}, Risks: []string{"risk"}, Verification: []string{"verify"}, Approved: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
 	worktree := handoffPrepareWorktreePath(record)
 	client := &prepareOrcaFake{probe: port.OrcaProbeResult{Available: true, Ready: true, RepoID: "repo-1", RepoRemoteName: "origin"}, create: port.OrcaWorktree{ID: "wt-1", InstanceID: "inst-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/16-demo", Path: worktree, Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16, Comment: issueOpsHandoffMarker(record.ID, "epoch-1", 1)}}
 	materializePrepareWorktreeOnCreate(t, client, worktree)

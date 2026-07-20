@@ -1155,13 +1155,19 @@ func allowedPostTransferRecorderMCP(req HookToolUseLifecycleRequest, record Issu
 }
 
 func allowedReadyWorkspacePreparationMCP(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
-	if record.ExecutionWorkspace == nil || record.ExecutionWorkspace.State != "ready" || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || req.ToolInput == nil {
+	workspace := record.ExecutionWorkspace
+	if workspace == nil || workspace.State != "ready" || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || req.ToolInput == nil || !nativeSessionMatches(req, workspace.PreparationSession) {
 		return false
 	}
 	for _, name := range []string{"issueops_link_plan", "issueops_record_compatibility_review", "issueops_record_execution_decision", "issueops_record_devils_advocate_review", "issueops_worktree_prepare_tools"} {
 		if req.Tool == name || req.Tool == "mcp__agent_harness__"+name {
-			id, ok := req.ToolInput["id"].(string)
-			return ok && id == record.ID
+			input, ok := flatMCPInput(req.ToolInput)
+			if !ok {
+				return false
+			}
+			id, idOK := mcpString(input, "id")
+			cwd, cwdOK := mcpString(input, "cwd")
+			return idOK && id == record.ID && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(record.Repo) && mcpEventIdentityMatches(input, req)
 		}
 	}
 	return false
