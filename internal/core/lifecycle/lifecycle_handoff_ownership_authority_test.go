@@ -126,6 +126,23 @@ func TestOwnershipOwnerOnlyCompletesIntoHumanCleanupBoundary(t *testing.T) {
 	}
 }
 
+func TestOwnershipCoordinatorCanCancelActiveOwnerForBoundedRetry(t *testing.T) {
+	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+	req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+	req.AgentID = "worker-1"
+	req.Tool = "Bash"
+	req.Command = "agent-harness issueops handoff recover --id " + record.ID + " --action cancel --confirm --force --reason 'sealed context contradiction requires bounded retry' --json"
+
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("sealed source coordinator must be able to cancel an active v2 owner for safe retry: %#v", got)
+	}
+
+	req.SessionID = "different-source"
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+		t.Fatalf("an unsealed source session must not cancel the active owner: %#v", got)
+	}
+}
+
 func TestOwnershipCleanupAllowsFreshSourceButRejectsCompletedOwner(t *testing.T) {
 	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateCleanupPendingHumanDecision)
 	fresh := handoffEditRequest(record, repo, "codex", "fresh-source", "")
