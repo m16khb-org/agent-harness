@@ -213,6 +213,15 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 		return true, "invalid supervised IssueOps handoff envelope: " + err.Error()
 	}
 	if workspacePreparationStateKnown(record) {
+		if command := bootstrapCoordinatorStartGuidance(req, record); command != "" {
+			return true, "supervised IssueOps bootstrap requires the authenticated native coordinator identity; rerun this exact harness-authored preview command: " + command
+		}
+		if isHandoffLifecycleCommand(req.Command) && allowedExactHandoffLifecycleCommand(req, record) {
+			return true, ""
+		}
+		if allowedReadyWorkspacePreparationMCP(req, record) {
+			return true, ""
+		}
 		if reason := workspacePreparationBlockReason(req, record); reason != "" {
 			return true, reason
 		}

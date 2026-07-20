@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -19,6 +20,279 @@ import (
 )
 
 const testCoordinatorRecipient = "term_coordinator"
+
+func TestOwnershipStartPreviewPersistsNothing(t *testing.T) {
+	stateRoot, record := ownershipStartReadyRecord(t)
+	client := handoffDispatchFake()
+	client.worktrees = []port.OrcaWorktree{{ID: "source-wt", Path: record.Repo}}
+	client.terminals = []port.OrcaTerminal{{
+		Handle: "term_source", PTYID: "pty-source", WorktreeID: "source-wt", WorktreePath: record.Repo, Connected: true, Writable: true,
+	}}
+	before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+
+	request := coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{ID: record.ID, WorkspaceEpoch: record.ExecutionWorkspace.WorkspaceEpoch})
+	request.CoordinatorHost = "claude"
+	result, err := StartIssueOpsHandoff(context.Background(), stateRoot, request, client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Preview || result.ContextSHA256 == "" || result.ConfirmedCommand == "" {
+		t.Fatalf("ownership preview = %#v, want preview context and confirm command", result)
+	}
+	if after := rawIssueOpsBytesForTest(t, stateRoot, record.ID); !slices.Equal(before, after) {
+		t.Fatal("ownership preview mutated the durable record")
+	}
+	if client.terminalCreates != 0 || client.taskCreates != 0 || client.dispatchCalls != 0 {
+		t.Fatalf("ownership preview invoked an external mutation: trace=%v", client.trace)
+	}
+}
+
+func TestOwnershipStartCreatesOneFreshConfiguredOwnerSession(t *testing.T) {
+	stateRoot, record := ownershipStartReadyRecord(t)
+	client := handoffDispatchFake()
+	client.terminal.WorktreeID = record.ExecutionWorkspace.Orca.WorktreeID
+	client.terminal.WorktreePath = record.WorktreePath
+	client.terminalsAfterCreate = []port.OrcaTerminal{client.terminal}
+	request := coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, WorkspaceEpoch: record.ExecutionWorkspace.WorkspaceEpoch})
+	request.CoordinatorHost = "claude"
+	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, request, client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Confirm = true
+	request.ExpectedContextSHA256 = preview.ContextSHA256
+
+	result, err := StartIssueOpsHandoff(context.Background(), stateRoot, request, client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != handoff.StateOwnershipDispatched || client.terminalCreates != 1 || client.taskCreates != 1 || client.dispatchCalls != 1 {
+		t.Fatalf("ownership dispatch result=%#v trace=%v", result, client.trace)
+	}
+	if len(client.terminalRequests) != 1 || client.terminalRequests[0].Agent != "claude" {
+		t.Fatalf("owner terminal agent = %#v, want exactly one sealed claude terminal", client.terminalRequests)
+	}
+}
+
+func TestOwnershipStartRequiresExactPreparationSessionAndWorkspaceEpoch(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		mutate func(*IssueOpsHandoffStartRequest)
+		want   string
+	}{
+		{name: "workspace epoch", mutate: func(request *IssueOpsHandoffStartRequest) { request.WorkspaceEpoch = "workspace-epoch-other" }, want: "workspace epoch"},
+		{name: "preparation session", mutate: func(request *IssueOpsHandoffStartRequest) { request.CoordinatorAgentID = "other-agent" }, want: "exact sealed workspace preparation session"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			stateRoot, record := ownershipStartReadyRecord(t)
+			request := coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{
+				ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, WorkspaceEpoch: record.ExecutionWorkspace.WorkspaceEpoch,
+			})
+			request.CoordinatorHost = "claude"
+			test.mutate(&request)
+			_, err := StartIssueOpsHandoff(context.Background(), stateRoot, request, handoffDispatchFake(), handoffStartTestClock())
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("ownership preparation mismatch error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
+func TestOwnershipStartRejectsIncompletePreparation(t *testing.T) {
+	stateRoot, record := ownershipStartReadyRecord(t)
+	record.WorktreeTools = nil
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	request := coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{
+		ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, WorkspaceEpoch: record.ExecutionWorkspace.WorkspaceEpoch,
+	})
+	request.CoordinatorHost = "claude"
+	client := handoffDispatchFake()
+	before := rawIssueOpsBytesForTest(t, stateRoot, record.ID)
+
+	_, err := StartIssueOpsHandoff(context.Background(), stateRoot, request, client, handoffStartTestClock())
+	if err == nil || !strings.Contains(err.Error(), "worktree_tools_prepared") {
+		t.Fatalf("incomplete ownership preparation error = %v", err)
+	}
+	if after := rawIssueOpsBytesForTest(t, stateRoot, record.ID); !slices.Equal(before, after) || len(client.trace) != 0 {
+		t.Fatalf("incomplete preparation mutated or invoked Orca: trace=%v", client.trace)
+	}
+}
+
+func TestOwnershipStartRequiresPlanOnlyCommittedHead(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		mutate func(*testing.T, *IssueOpsRecord)
+		want   string
+	}{
+		{
+			name: "dirty worktree",
+			mutate: func(t *testing.T, record *IssueOpsRecord) {
+				writeIssueOpsFile(t, record.WorktreePath, "scratch.txt", "not committed\n")
+			},
+			want: "clean worker worktree",
+		},
+		{
+			name: "untracked plan",
+			mutate: func(t *testing.T, record *IssueOpsRecord) {
+				writeIssueOpsFile(t, record.WorktreePath, "plans/untracked.md", "# not sealed\n")
+			},
+			want: "clean worker worktree",
+		},
+		{
+			name: "plan absent from head",
+			mutate: func(t *testing.T, record *IssueOpsRecord) {
+				record.PlanPath = filepath.Join(record.WorktreePath, "plans/missing.md")
+				writeIssueOpsFile(t, record.WorktreePath, "plans/missing.md", "# ignored but unsealed\n")
+				code, exclude, stderr := preflight.GitCmd(record.WorktreePath, "rev-parse", "--git-path", "info/exclude")
+				if code != 0 {
+					t.Fatalf("git rev-parse exclude failed: %s", stderr)
+				}
+				exclude = strings.TrimSpace(exclude)
+				if !filepath.IsAbs(exclude) {
+					exclude = filepath.Join(record.WorktreePath, exclude)
+				}
+				if err := os.WriteFile(exclude, []byte("plans/missing.md\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			},
+			want: "plan must be committed at HEAD",
+		},
+		{
+			name: "non-plan commit",
+			mutate: func(t *testing.T, record *IssueOpsRecord) {
+				writeIssueOpsFile(t, record.WorktreePath, "internal/unrelated.go", "package internal\n")
+				for _, args := range [][]string{{"add", "internal/unrelated.go"}, {"commit", "-q", "-m", "test: unrelated change"}} {
+					if code, _, stderr := preflight.GitCmd(record.WorktreePath, args...); code != 0 {
+						t.Fatalf("git %v failed: %s", args, stderr)
+					}
+				}
+			},
+			want: "only the linked plan commit",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			stateRoot, record := ownershipStartReadyRecord(t)
+			test.mutate(t, &record)
+			if _, err := WriteIssueOps(stateRoot, record); err != nil {
+				t.Fatal(err)
+			}
+			request := coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{
+				ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, WorkspaceEpoch: record.ExecutionWorkspace.WorkspaceEpoch,
+			})
+			request.CoordinatorHost = "claude"
+			_, err := StartIssueOpsHandoff(context.Background(), stateRoot, request, handoffDispatchFake(), handoffStartTestClock())
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("plan-only checkpoint error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
+func TestOwnershipStartSealsWorkspaceAndHeadBeforeDispatch(t *testing.T) {
+	stateRoot, record := ownershipStartReadyRecord(t)
+	client := handoffDispatchFake()
+	client.terminal.WorktreeID = record.ExecutionWorkspace.Orca.WorktreeID
+	client.terminal.WorktreePath = record.WorktreePath
+	client.terminalsAfterCreate = []port.OrcaTerminal{client.terminal}
+	request := coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{
+		ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, WorkspaceEpoch: record.ExecutionWorkspace.WorkspaceEpoch,
+	})
+	request.CoordinatorHost = "claude"
+	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, request, client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Confirm = true
+	request.ExpectedContextSHA256 = preview.ContextSHA256
+	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, request, client, handoffStartTestClock()); err != nil {
+		t.Fatal(err)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, head, stderr := preflight.GitCmd(record.WorktreePath, "rev-parse", "HEAD")
+	if code != 0 {
+		t.Fatalf("git rev-parse HEAD failed: %s", stderr)
+	}
+	wantWorkspaceSHA, err := issueOpsWorkspaceFingerprint(record.ExecutionWorkspace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := persisted.ExecutionHandoff
+	if h == nil || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || h.State != handoff.StateOwnershipDispatched || h.WorkspaceEpoch != record.ExecutionWorkspace.WorkspaceEpoch || h.WorkspaceSHA256 != wantWorkspaceSHA || h.AttemptBaseHead != strings.TrimSpace(head) || h.CoordinatorSession == nil || *h.CoordinatorSession != *record.ExecutionWorkspace.PreparationSession {
+		t.Fatalf("ownership dispatch did not seal workspace and head: %#v", h)
+	}
+}
+
+func TestOwnershipStartConfirmRejectsPreviewInputDrift(t *testing.T) {
+	stateRoot, record := ownershipStartReadyRecord(t)
+	client := handoffDispatchFake()
+	request := coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{
+		ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, WorkspaceEpoch: record.ExecutionWorkspace.WorkspaceEpoch,
+	})
+	request.CoordinatorHost = "claude"
+	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, request, client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Confirm = true
+	request.ExpectedContextSHA256 = preview.ContextSHA256
+
+	_, err = startIssueOpsHandoff(context.Background(), stateRoot, request, client, handoffStartTestClock(), issueOpsHandoffStartHooks{
+		BeforeOwnershipPersist: func() {
+			current, readErr := ReadIssueOps(stateRoot, record.ID)
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			current.Intent.InterpretedIntent = "changed after preview"
+			if _, writeErr := WriteIssueOps(stateRoot, current); writeErr != nil {
+				t.Fatal(writeErr)
+			}
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "ownership handoff preview") {
+		t.Fatalf("preview input drift error = %v", err)
+	}
+	persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if persisted.ExecutionHandoff != nil || len(client.trace) != 0 {
+		t.Fatalf("preview input drift persisted or invoked Orca: handoff=%#v trace=%v", persisted.ExecutionHandoff, client.trace)
+	}
+}
+
+func TestOwnershipStartAmbiguityNeverRetries(t *testing.T) {
+	stateRoot, record := ownershipStartReadyRecord(t)
+	client := handoffDispatchFake()
+	client.terminal.WorktreeID = record.ExecutionWorkspace.Orca.WorktreeID
+	client.terminal.WorktreePath = record.WorktreePath
+	client.terminalsAfterCreate = []port.OrcaTerminal{
+		client.terminal,
+		{Handle: "term-2", PTYID: "pty-2", WorktreeID: record.ExecutionWorkspace.Orca.WorktreeID, WorktreePath: record.WorktreePath, Connected: true, Writable: true},
+	}
+	request := coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, WorkspaceEpoch: record.ExecutionWorkspace.WorkspaceEpoch})
+	request.CoordinatorHost = "claude"
+	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, request, client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Confirm = true
+	request.ExpectedContextSHA256 = preview.ContextSHA256
+	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, request, client, handoffStartTestClock()); err == nil || !strings.Contains(err.Error(), "reconcile created terminal") {
+		t.Fatalf("ambiguous ownership terminal error = %v", err)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.ExecutionHandoff == nil || persisted.ExecutionHandoff.State != handoff.StateRecoveryRequired || client.terminalCreates != 1 || client.taskCreates != 0 || client.dispatchCalls != 0 {
+		t.Fatalf("ambiguous ownership dispatch must persist recovery without retry: record=%#v trace=%v", persisted.ExecutionHandoff, client.trace)
+	}
+}
 
 func TestHandoffStartRequiresPreDispatchReadiness(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
@@ -2194,6 +2468,31 @@ func handoffDispatchRecord(t *testing.T) (string, IssueOpsRecord) {
 		t.Fatal(err)
 	}
 	return stateRoot, got
+}
+
+func ownershipStartReadyRecord(t *testing.T) (string, IssueOpsRecord) {
+	t.Helper()
+	stateRoot, record := handoffDispatchRecord(t)
+	baseHead := record.ExecutionHandoff.AttemptBaseHead
+	writeIssueOpsFile(t, record.WorktreePath, "plans/plan.md", "# ownership plan\n")
+	for _, args := range [][]string{{"add", "plans/plan.md"}, {"commit", "-q", "-m", "docs: add ownership plan"}} {
+		if code, _, stderr := preflight.GitCmd(record.WorktreePath, args...); code != 0 {
+			t.Fatalf("git %v failed: %s", args, stderr)
+		}
+	}
+	workspaceOrca := *record.ExecutionHandoff.Orca
+	record.ExecutionWorkspace = &IssueOpsExecutionWorkspace{
+		State: "ready", WorkspaceEpoch: "workspace-epoch-1", Driver: "orca", Agent: "claude",
+		CoordinatorRoot: record.Repo, WorkerRoot: record.WorktreePath,
+		PreparationSession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "claude", SessionID: "coordinator-session", AgentID: "coordinator-agent"},
+		BaseHead:           baseHead, Orca: &workspaceOrca,
+	}
+	record.ExecutionHandoff = nil
+	updated, err := WriteIssueOps(stateRoot, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return stateRoot, updated
 }
 
 func handoffStartTestClock() IssueOpsHandoffStartClock {

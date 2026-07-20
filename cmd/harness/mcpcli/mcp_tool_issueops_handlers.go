@@ -397,7 +397,7 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 	case "start":
 		result, err := core.StartIssueOpsHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffStartRequest{
 			ID: id, CoordinatorRecipient: argmap.String(args, "coordinator_recipient"), Confirm: argmap.Bool(args, "confirm"), ExpectedContextSHA256: argmap.String(args, "expected_context_sha256"),
-			CoordinatorHost: argmap.String(args, "coordinator_host"), CoordinatorSessionID: argmap.String(args, "coordinator_session_id"), CoordinatorAgentID: argmap.String(args, "coordinator_agent_id"), SourceCWD: argmap.String(args, "source_cwd"), Context: handoff.ContextOptions{
+			CoordinatorHost: argmap.String(args, "coordinator_host"), CoordinatorSessionID: argmap.String(args, "coordinator_session_id"), CoordinatorAgentID: argmap.String(args, "coordinator_agent_id"), SourceCWD: argmap.String(args, "source_cwd"), WorkspaceEpoch: argmap.String(args, "workspace_epoch"), Context: handoff.ContextOptions{
 				CriteriaIDs: argmap.StringSlice(args, "criteria_ids"), RequiredDocs: argmap.StringSlice(args, "required_docs"), RequiredSkills: argmap.StringSlice(args, "required_skills"),
 				WorkerScope: argmap.String(args, "worker_scope"), VerificationCommands: argmap.StringSlice(args, "verification_commands"), HeartbeatCadence: argmap.String(args, "heartbeat_cadence"),
 				StopConditions: argmap.StringSlice(args, "stop_conditions"), ResultFormat: argmap.String(args, "result_format"),

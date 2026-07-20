@@ -292,6 +292,7 @@ func IssueOpsLifecycleTools() []Tool {
 				"coordinator_session_id":          map[string]any{"type": "string"},
 				"coordinator_agent_id":            map[string]any{"type": "string"},
 				"source_cwd":                      map[string]any{"type": "string"},
+				"workspace_epoch":                 map[string]any{"type": "string", "description": "Exact ready-workspace epoch required for protocol-v2 ownership dispatch."},
 				"approve_legacy_coordinator_seal": map[string]any{"type": "boolean", "description": "Explicitly seal the current source coordinator identity while re-attesting a genuine schema-v5 publication."},
 				"confirm":                         map[string]any{"type": "boolean"},
 				"expected_context_sha256":         map[string]any{"type": "string", "description": "Reviewed sealed context SHA-256 required for confirmed supervised startup."},

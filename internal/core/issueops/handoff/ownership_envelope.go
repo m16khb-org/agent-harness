@@ -50,7 +50,17 @@ func validateOwnershipEnvelope(record model.IssueOpsRecord) error {
 		if !validWorkerSession(h.OwnerSession) || h.Orientation == nil || h.Completion == nil || h.Cleanup != nil {
 			return fmt.Errorf("cleanup_pending_human_decision requires immutable owner completion and no cleanup approval")
 		}
-	case StateCleanupExecuting, StateClosed, StateRecoveryRequired:
+	case StateRecoveryRequired:
+		if h.OwnerSession == nil && h.Orientation == nil && h.Completion == nil {
+			if h.PendingOperation == nil || !validFailure(h.Failure) {
+				return fmt.Errorf("ownership dispatch recovery requires pending operation and failure")
+			}
+			return nil
+		}
+		if !validWorkerSession(h.OwnerSession) || h.Orientation == nil || h.Completion == nil {
+			return fmt.Errorf("ownership terminal recovery requires owner completion")
+		}
+	case StateCleanupExecuting, StateClosed:
 		if !validWorkerSession(h.OwnerSession) || h.Orientation == nil || h.Completion == nil {
 			return fmt.Errorf("ownership terminal state requires owner completion")
 		}

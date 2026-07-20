@@ -110,6 +110,65 @@ func TestCoordinatorPreparingBootstrapProbeReturnsAuthenticatedRunnableCommand(t
 	}
 }
 
+func TestOwnershipTransferBootstrapRendersRunnableNativeStart(t *testing.T) {
+	repo, record, _ := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
+	workspaceOrca := *record.ExecutionHandoff.Orca
+	record.ExecutionWorkspace = &issueopsmodel.IssueOpsExecutionWorkspace{
+		State: "ready", WorkspaceEpoch: "workspace-epoch-1", Driver: "orca", Agent: "codex",
+		CoordinatorRoot: repo, WorkerRoot: record.WorktreePath,
+		PreparationSession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "fresh-coordinator", AgentID: "agent-31"},
+		BaseHead:           record.ExecutionHandoff.AttemptBaseHead, Orca: &workspaceOrca,
+	}
+	record.ExecutionHandoff = nil
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+
+	probe := handoffEditRequest(record, repo, "codex", "fresh-coordinator", "")
+	probe.AgentID = "agent-31"
+	probe.Tool = "Bash"
+	probe.Command = "agent-harness issueops handoff start --id " + record.ID + " --source-cwd " + repo + " --json"
+	got := BuildLifecyclePreToolUseDecision(probe)
+	if got.Decision != "block" || !strings.Contains(got.Reason, "harness-authored preview command") {
+		t.Fatalf("ownership bootstrap probe must be blocked with runnable guidance: %#v", got)
+	}
+	want := "agent-harness issueops handoff start --id '" + record.ID + "' --coordinator-host 'codex' --coordinator-session-id 'fresh-coordinator' --coordinator-agent-id 'agent-31' --source-cwd '" + repo + "' --workspace-epoch 'workspace-epoch-1' --json"
+	if !strings.Contains(got.Reason, want) {
+		t.Fatalf("ownership bootstrap guidance missing authenticated command %q: %s", want, got.Reason)
+	}
+	probe.Command = want
+	if got := BuildLifecyclePreToolUseDecision(probe); got.Decision != "allow" {
+		t.Fatalf("ownership bootstrap replacement must pass the lifecycle fence: %#v", got)
+	}
+}
+
+func TestOwnershipTransferPreparationAllowsCLIAndMCPBeforeDispatch(t *testing.T) {
+	repo, record, _ := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
+	workspaceOrca := *record.ExecutionHandoff.Orca
+	record.ExecutionWorkspace = &issueopsmodel.IssueOpsExecutionWorkspace{
+		State: "ready", WorkspaceEpoch: "workspace-epoch-1", Driver: "orca", Agent: "codex",
+		CoordinatorRoot: repo, WorkerRoot: record.WorktreePath,
+		PreparationSession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "preparer", AgentID: "agent-1"},
+		BaseHead:           record.ExecutionHandoff.AttemptBaseHead, Orca: &workspaceOrca,
+	}
+	record.ExecutionHandoff = nil
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	request := handoffEditRequest(record, repo, "codex", "other-source-session", "")
+	request.Tool = "Bash"
+	request.Command = "agent-harness issueops link-plan --id " + record.ID + " --plan-path plans/ownership.md --json"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("source coordinator link-plan must remain allowed before ownership dispatch: %#v", got)
+	}
+	request.Tool = "mcp__agent_harness__issueops_link_plan"
+	request.Command = ""
+	request.ToolInput = map[string]any{"id": record.ID, "plan_path": "plans/ownership.md"}
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("source coordinator MCP plan link must remain allowed before ownership dispatch: %#v", got)
+	}
+}
+
 func TestCoordinatorPreparingAllowsExactCodexTrustObservationBeforeCycleSelection(t *testing.T) {
 	repo, record, _ := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
 	request := handoffEditRequest(record, repo, "codex", "fresh-coordinator", "")

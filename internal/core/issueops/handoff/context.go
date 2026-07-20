@@ -43,6 +43,8 @@ type ContextProjection struct {
 	PlanSHA256                string   `json:"plan_sha256"`
 	Attempt                   int      `json:"attempt"`
 	OwnershipEpoch            string   `json:"ownership_epoch"`
+	WorkspaceEpoch            string   `json:"workspace_epoch,omitempty"`
+	WorkspaceSHA256           string   `json:"workspace_sha256,omitempty"`
 	AttemptBaseHead           string   `json:"attempt_base_head"`
 	CoordinatorRecipient      string   `json:"coordinator_recipient,omitempty"`
 	Problem                   string   `json:"problem,omitempty"`
@@ -97,6 +99,8 @@ func BuildContext(record model.IssueOpsRecord, options ContextOptions) (ContextP
 		PlanSHA256:                hex.EncodeToString(planHash[:]),
 		Attempt:                   record.ExecutionHandoff.Attempt,
 		OwnershipEpoch:            strings.TrimSpace(record.ExecutionHandoff.OwnershipEpoch),
+		WorkspaceEpoch:            strings.TrimSpace(record.ExecutionHandoff.WorkspaceEpoch),
+		WorkspaceSHA256:           strings.TrimSpace(record.ExecutionHandoff.WorkspaceSHA256),
 		AttemptBaseHead:           strings.TrimSpace(record.ExecutionHandoff.AttemptBaseHead),
 		CoordinatorRecipient:      strings.TrimSpace(record.ExecutionHandoff.CoordinatorMailboxHandle),
 		CriteriaIDs:               cleanList(options.CriteriaIDs),

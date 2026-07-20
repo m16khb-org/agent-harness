@@ -96,6 +96,21 @@ func TestIssueOpsHandoffContextDeterministicAndBounded(t *testing.T) {
 	}
 }
 
+func TestIssueOpsOwnershipContextIncludesWorkspaceSeal(t *testing.T) {
+	record := contextRecordForTest(t)
+	record.ExecutionHandoff.ProtocolVersion = OwnershipTransferProtocolVersion
+	record.ExecutionHandoff.WorkspaceEpoch = "workspace-epoch-1"
+	record.ExecutionHandoff.WorkspaceSHA256 = strings.Repeat("c", 64)
+
+	packet, err := BuildContext(record, ContextOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if packet.Projection.WorkspaceEpoch != "workspace-epoch-1" || packet.Projection.WorkspaceSHA256 != strings.Repeat("c", 64) {
+		t.Fatalf("ownership workspace seal missing from context: %#v", packet.Projection)
+	}
+}
+
 func TestIssueOpsHandoffContextRedactsSecrets(t *testing.T) {
 	record := contextRecordForTest(t)
 	record.Intent.RawRequest = "Authorization: Bearer super-secret-token"

@@ -123,8 +123,11 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 		return false
 	}
 	id, ok := oneFlag(flags, "--id")
-	if !ok || id != record.ID || record.ExecutionHandoff == nil {
+	if !ok || id != record.ID {
 		return false
+	}
+	if record.ExecutionHandoff == nil {
+		return allowedReadyWorkspaceOwnershipStart(req, record, command, flags)
 	}
 	h := record.ExecutionHandoff
 	source := cleanAbsPath(req.CWD) == cleanAbsPath(record.Repo)
@@ -170,6 +173,32 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 	default:
 		return false
 	}
+}
+
+func allowedReadyWorkspaceOwnershipStart(req HookToolUseLifecycleRequest, record IssueOpsRecord, command commandparse.ExactIssueOpsCommand, flags map[string][]string) bool {
+	workspace := record.ExecutionWorkspace
+	if workspace == nil || workspace.State != "ready" || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) {
+		return false
+	}
+	switch command.Path {
+	case "link-plan", "compatibility review", "execution decide", "devils-advocate review", "worktree prepare-tools":
+		return true
+	case "handoff start":
+	default:
+		return false
+	}
+	host, hok := oneFlag(flags, "--coordinator-host")
+	sessionID, sok := oneFlag(flags, "--coordinator-session-id")
+	agentID, aok := oneFlag(flags, "--coordinator-agent-id")
+	cwd, cwdOK := oneFlag(flags, "--source-cwd")
+	epoch, epochOK := oneFlag(flags, "--workspace-epoch")
+	if !hok || !sok || !cwdOK || !epochOK || !strings.EqualFold(host, req.Host) || sessionID != req.SessionID || cleanAbsPath(cwd) != cleanAbsPath(record.Repo) || epoch != workspace.WorkspaceEpoch {
+		return false
+	}
+	if strings.TrimSpace(req.AgentID) == "" {
+		return !aok
+	}
+	return aok && agentID == req.AgentID
 }
 
 // exactNoChangeFinishFlags keeps the hook's worker authority in lockstep with
@@ -815,8 +844,11 @@ func buildCoordinatorDispatchCommand(record IssueOpsRecord, host, sessionID, age
 // caller intact. The probe itself stays blocked, so no lifecycle mutation can
 // run with a missing or guessed identity.
 func bootstrapCoordinatorStartGuidance(req HookToolUseLifecycleRequest, record IssueOpsRecord) string {
-	if !searchrouting.IsShellTool(req.Tool) || record.ExecutionHandoff == nil {
+	if !searchrouting.IsShellTool(req.Tool) {
 		return ""
+	}
+	if record.ExecutionHandoff == nil {
+		return bootstrapOwnershipStartGuidance(req, record)
 	}
 	h := record.ExecutionHandoff
 	if h.State != handoff.StateCoordinatorPreparing || h.CoordinatorSession != nil || strings.TrimSpace(h.CoordinatorMailboxHandle) != "" || h.PendingOperation != nil || h.WorkerSession != nil || h.Result != nil || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || strings.TrimSpace(req.Host) == "" || strings.TrimSpace(req.SessionID) == "" {
@@ -842,6 +874,34 @@ func bootstrapCoordinatorStartGuidance(req HookToolUseLifecycleRequest, record I
 		parts = append(parts, "--coordinator-agent-id "+shellGuidanceQuote(req.AgentID))
 	}
 	parts = append(parts, "--source-cwd "+shellGuidanceQuote(record.Repo), "--json")
+	return strings.Join(parts, " ")
+}
+
+func bootstrapOwnershipStartGuidance(req HookToolUseLifecycleRequest, record IssueOpsRecord) string {
+	workspace := record.ExecutionWorkspace
+	if workspace == nil || workspace.State != "ready" || workspace.PreparationSession == nil || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || strings.TrimSpace(req.Host) == "" || strings.TrimSpace(req.SessionID) == "" {
+		return ""
+	}
+	if workspace.PreparationSession.Host != req.Host || workspace.PreparationSession.SessionID != req.SessionID || workspace.PreparationSession.AgentID != req.AgentID {
+		return ""
+	}
+	command, flags, ok := parsedExactIssueOps(req.Command)
+	if !ok || command.Path != "handoff start" || len(flags) != 3 {
+		return ""
+	}
+	id, idOK := oneFlag(flags, "--id")
+	sourceCWD, cwdOK := oneFlag(flags, "--source-cwd")
+	if !idOK || id != record.ID || !cwdOK || cleanAbsPath(sourceCWD) != cleanAbsPath(record.Repo) {
+		return ""
+	}
+	if _, ok := flags["--json"]; !ok {
+		return ""
+	}
+	parts := []string{"agent-harness issueops handoff start", "--id " + shellGuidanceQuote(record.ID), "--coordinator-host " + shellGuidanceQuote(req.Host), "--coordinator-session-id " + shellGuidanceQuote(req.SessionID)}
+	if strings.TrimSpace(req.AgentID) != "" {
+		parts = append(parts, "--coordinator-agent-id "+shellGuidanceQuote(req.AgentID))
+	}
+	parts = append(parts, "--source-cwd "+shellGuidanceQuote(record.Repo), "--workspace-epoch "+shellGuidanceQuote(workspace.WorkspaceEpoch), "--json")
 	return strings.Join(parts, " ")
 }
 
@@ -953,7 +1013,30 @@ func lifecycleRecordID(req HookToolUseLifecycleRequest) (string, bool) {
 		id, ok := mcpString(input, "id")
 		return id, ok && id != ""
 	}
+	for _, name := range []string{"issueops_link_plan", "issueops_record_compatibility_review", "issueops_record_execution_decision", "issueops_record_devils_advocate_review", "issueops_worktree_prepare_tools"} {
+		if req.Tool != name && req.Tool != "mcp__agent_harness__"+name {
+			continue
+		}
+		if req.ToolInput == nil {
+			return "", false
+		}
+		id, ok := req.ToolInput["id"].(string)
+		return id, ok && strings.TrimSpace(id) != ""
+	}
 	return "", false
+}
+
+func allowedReadyWorkspacePreparationMCP(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+	if record.ExecutionWorkspace == nil || record.ExecutionWorkspace.State != "ready" || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || req.ToolInput == nil {
+		return false
+	}
+	for _, name := range []string{"issueops_link_plan", "issueops_record_compatibility_review", "issueops_record_execution_decision", "issueops_record_devils_advocate_review", "issueops_worktree_prepare_tools"} {
+		if req.Tool == name || req.Tool == "mcp__agent_harness__"+name {
+			id, ok := req.ToolInput["id"].(string)
+			return ok && id == record.ID
+		}
+	}
+	return false
 }
 
 func selectSupervisedHandoffRecord(req HookToolUseLifecycleRequest) (IssueOpsRecord, bool, string) {

@@ -15,7 +15,7 @@ import (
 )
 
 const issueOpsHandoffUsage = `Usage:
-  agent-harness issueops handoff start --id ID --coordinator-recipient TERM --coordinator-host HOST --coordinator-session-id SESSION --source-cwd PATH [--coordinator-agent-id ID] [--allow-codex-hook-trust-bypass] [--expected-context-sha256 SHA] [--confirm] [--json]
+  agent-harness issueops handoff start --id ID --coordinator-recipient TERM --coordinator-host HOST --coordinator-session-id SESSION --source-cwd PATH [--coordinator-agent-id ID] [--workspace-epoch EPOCH] [--allow-codex-hook-trust-bypass] [--expected-context-sha256 SHA] [--confirm] [--json]
   agent-harness issueops handoff claim --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd PATH --orca-worktree-id ID [--agent-id ID] [--json]
   agent-harness issueops handoff finish --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --outcome completed|failed [evidence flags] [--no-change --verification RESULT] [--json]
   agent-harness issueops handoff accept --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --final-head SHA --host HOST --session-id SESSION --source-cwd PATH [--agent-id ID] [--json]
@@ -75,6 +75,7 @@ func runIssueOpsHandoffStart(args []string) error {
 	coordinatorSessionID := fs.String("coordinator-session-id", "", "native coordinator session id")
 	coordinatorAgentID := fs.String("coordinator-agent-id", "", "native coordinator agent id")
 	sourceCWD := fs.String("source-cwd", "", "exact source checkout cwd")
+	workspaceEpoch := fs.String("workspace-epoch", "", "sealed ready workspace epoch for ownership transfer")
 	confirm := fs.Bool("confirm", false, "confirm terminal, task, and dispatch mutations")
 	allowCodexHookTrustBypass := fs.Bool("allow-codex-hook-trust-bypass", false, "attest that the documented Codex hooks/list trust review passed")
 	expectedContextSHA256 := fs.String("expected-context-sha256", "", "reviewed sealed context sha256")
@@ -94,7 +95,7 @@ func runIssueOpsHandoffStart(args []string) error {
 	}
 	result, err := core.StartIssueOpsHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffStartRequest{
 		ID: *id, CoordinatorRecipient: *coordinatorRecipient, Confirm: *confirm, ExpectedContextSHA256: *expectedContextSHA256,
-		CoordinatorHost: *coordinatorHost, CoordinatorSessionID: *coordinatorSessionID, CoordinatorAgentID: *coordinatorAgentID, SourceCWD: *sourceCWD,
+		CoordinatorHost: *coordinatorHost, CoordinatorSessionID: *coordinatorSessionID, CoordinatorAgentID: *coordinatorAgentID, SourceCWD: *sourceCWD, WorkspaceEpoch: *workspaceEpoch,
 		Context: handoff.ContextOptions{
 			CriteriaIDs: criteria, RequiredDocs: docs, RequiredSkills: skills, WorkerScope: *scope,
 			VerificationCommands: verification, HeartbeatCadence: *heartbeat, StopConditions: stops, ResultFormat: *resultFormat,

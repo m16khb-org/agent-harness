@@ -173,13 +173,17 @@ func Dispatch(record model.IssueOpsRecord, fence Fence, identity model.IssueOpsO
 	if err != nil {
 		return record, err
 	}
-	if handoff.State != StateCoordinatorPreparing {
+	if handoff.State != StateCoordinatorPreparing && handoff.State != StateOwnershipDispatching {
 		return record, fmt.Errorf("dispatch requires %s state", StateCoordinatorPreparing)
 	}
 	cleanIdentity := cloneOrca(identity)
 	handoff.Orca = &cleanIdentity
 	handoff.DeliveryMode = "inject"
-	handoff.State = StateDispatched
+	if handoff.ProtocolVersion == OwnershipTransferProtocolVersion {
+		handoff.State = StateOwnershipDispatched
+	} else {
+		handoff.State = StateDispatched
+	}
 	handoff.DispatchedAt = now
 	handoff.UpdatedAt = now
 	return updated, nil
@@ -294,8 +298,8 @@ func MarkRecoveryRequired(record model.IssueOpsRecord, fence Fence, failure mode
 	if err != nil {
 		return record, err
 	}
-	if handoff.State != StateCoordinatorPreparing || handoff.PendingOperation == nil {
-		return record, fmt.Errorf("recovery requires coordinator_preparing with a pending operation")
+	if (handoff.State != StateCoordinatorPreparing && handoff.State != StateOwnershipDispatching) || handoff.PendingOperation == nil {
+		return record, fmt.Errorf("recovery requires a dispatching handoff with a pending operation")
 	}
 	cleanFailure := failure
 	cleanFailure.Code = strings.TrimSpace(cleanFailure.Code)

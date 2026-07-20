@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/issueops/pathutil"
 	"agent-harness/internal/core/preflight"
 )
@@ -33,4 +34,12 @@ func validateHandoffCleanExactCheckpoint(record IssueOpsRecord) error {
 		return fmt.Errorf("handoff checkpoint requires a clean worker worktree")
 	}
 	return nil
+}
+
+func validateHandoffStartCheckpoint(record IssueOpsRecord) error {
+	if record.ExecutionHandoff != nil && record.ExecutionHandoff.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
+		_, err := validateOwnershipStartCheckpoint(record)
+		return err
+	}
+	return validateHandoffCleanExactCheckpoint(record)
 }

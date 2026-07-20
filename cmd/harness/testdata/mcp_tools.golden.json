@@ -2742,6 +2742,10 @@
         },
         "worker_scope": {
           "type": "string"
+        },
+        "workspace_epoch": {
+          "description": "Exact ready-workspace epoch required for protocol-v2 ownership dispatch.",
+          "type": "string"
         }
       },
       "required": [
