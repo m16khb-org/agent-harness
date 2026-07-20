@@ -167,7 +167,13 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 		return source && coordinatorLifecycleStateAllows(command.Path, record) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(record.Repo) && (coordinator || legacySeal)
 	case "remote create-pr":
 		cwd, cwdOK := oneFlag(flags, "--cwd")
-		return worker && currentWorkerBranchMatches(record) && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && handoff.OwnershipTransferOwnerStateAllows("remote-create", h.State) && eventIdentityFlagsMatch(req, flags) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot)
+		provider, providerOK := oneFlag(flags, "--provider")
+		title, titleOK := oneFlag(flags, "--title")
+		body, bodyOK := oneFlag(flags, "--body")
+		head, headOK := oneFlag(flags, "--head")
+		base, baseOK := oneFlag(flags, "--base")
+		_, confirmed := flags["--confirm"]
+		return worker && currentWorkerBranchMatches(record) && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && handoff.OwnershipTransferOwnerStateAllows("remote-create", h.State) && eventIdentityFlagsMatch(req, flags) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && providerOK && titleOK && strings.TrimSpace(title) != "" && bodyOK && strings.TrimSpace(body) != "" && headOK && baseOK && len(flags["--label"]) > 0 && len(flags["--assignee"]) > 0 && confirmed && publicationReceiptMatches(record, provider, head, base)
 	case "phase":
 		return source && h.State == handoff.StateCoordinatorPreparing
 	case "handoff claim":

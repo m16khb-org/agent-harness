@@ -92,6 +92,20 @@ func TestOwnershipOwnerOnlyPublishesAndCreatesRemotePR(t *testing.T) {
 		t.Fatalf("exact owner remote create blocked: %#v", got)
 	}
 
+	owner.Tool, owner.ToolInput = "Bash", nil
+	owner.Command = "agent-harness issueops handoff publish --id " + record.ID + " --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --confirm --json"
+	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "allow" {
+		t.Fatalf("exact owner CLI publish blocked: %#v", got)
+	}
+	owner.Command = "agent-harness issueops remote create-pr --id " + record.ID + " --provider github --title draft --body rendered --head " + record.Branch + " --base " + record.BranchPrepare.BaseBranch + " --label bug --assignee octocat --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --confirm --json"
+	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "allow" {
+		t.Fatalf("exact owner CLI remote create blocked: %#v", got)
+	}
+	owner.Command = strings.Replace(owner.Command, " --confirm", "", 1)
+	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "block" {
+		t.Fatalf("owner CLI remote create without confirmation must remain blocked: %#v", got)
+	}
+
 	source := handoffEditRequest(record, repo, "claude", "coordinator-session", "")
 	source.AgentID, source.Tool, source.ToolInput = "coordinator-agent", "mcp__agent_harness__issueops_handoff", owner.ToolInput
 	if got := BuildLifecyclePreToolUseDecision(source); got.Decision != "block" {

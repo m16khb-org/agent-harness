@@ -142,7 +142,7 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 	case "handoff recover":
 		return v("--id", "--action", "--reason", "--cleanup-disposition", "--cleanup-step"), b("--confirm", "--force", "--json"), r, true
 	case "handoff publish":
-		return v("--id", "--host", "--session-id", "--agent-id", "--source-cwd"), b("--approve-legacy-coordinator-seal", "--confirm", "--json"), r, true
+		return v("--id", "--host", "--session-id", "--agent-id", "--source-cwd", "--cwd"), b("--approve-legacy-coordinator-seal", "--confirm", "--json"), r, true
 	case "handoff accept":
 		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--final-head", "--host", "--session-id", "--agent-id", "--source-cwd"), b("--json"), r, true
 	case "handoff claim":
@@ -169,6 +169,10 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v("--id", "--host", "--session-id", "--agent-id", "--source-cwd", "--step"), b("--json"), r, true
 	case "heartbeat":
 		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id"), b("--json"), r, true
+	case "remote create-pr":
+		values := v("--id", "--provider", "--title", "--body", "--head", "--base", "--label", "--assignee", "--host", "--session-id", "--agent-id", "--cwd")
+		r["--label"], r["--assignee"] = true, true
+		return values, b("--confirm", "--json"), r, true
 	default:
 		return nil, nil, nil, false
 	}
