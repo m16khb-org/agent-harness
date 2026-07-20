@@ -232,8 +232,8 @@ func previewOwnershipHandoffStart(ctx context.Context, stateRoot string, record 
 	if workspace == nil || workspace.State != "ready" {
 		return IssueOpsHandoffStartResult{}, fmt.Errorf("ready execution workspace is required before ownership handoff start")
 	}
-	if record.Phase != IssueOpsPhaseCompatibilityReview {
-		return IssueOpsHandoffStartResult{}, fmt.Errorf("ownership handoff start requires compatibility-review phase")
+	if record.Phase != IssueOpsPhaseCompatibilityReview && record.Phase != IssueOpsPhaseImplement {
+		return IssueOpsHandoffStartResult{}, fmt.Errorf("ownership handoff start requires compatibility-review or implement phase")
 	}
 	coordinator := IssueOpsActor{Host: req.CoordinatorHost, SessionID: req.CoordinatorSessionID, AgentID: req.CoordinatorAgentID, CWD: req.SourceCWD}
 	session, err := validateWorkspacePreparationActor(record, workspace.Agent, coordinator)

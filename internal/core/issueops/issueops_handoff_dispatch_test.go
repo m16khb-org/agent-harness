@@ -47,6 +47,26 @@ func TestOwnershipStartPreviewPersistsNothing(t *testing.T) {
 	}
 }
 
+func TestOwnershipStartPreviewRecoversEmptyImplementPhase(t *testing.T) {
+	stateRoot, record := ownershipStartReadyRecord(t)
+	record.Phase = IssueOpsPhaseImplement
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	request := coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{
+		ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, WorkspaceEpoch: record.ExecutionWorkspace.WorkspaceEpoch,
+	})
+	request.CoordinatorHost = "claude"
+
+	result, err := StartIssueOpsHandoff(context.Background(), stateRoot, request, handoffDispatchFake(), handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Preview || result.ContextSHA256 == "" {
+		t.Fatalf("empty implement-phase recovery did not produce an ownership preview: %#v", result)
+	}
+}
+
 func TestOwnershipStartCreatesOneFreshConfiguredOwnerSession(t *testing.T) {
 	stateRoot, record := ownershipStartReadyRecord(t)
 	client := handoffDispatchFake()
