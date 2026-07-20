@@ -3,6 +3,7 @@ package issueops
 import (
 	"strings"
 
+	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/issueops/implementation"
 	"agent-harness/internal/core/issueops/intentdesign"
 	"agent-harness/internal/core/issueops/model"
@@ -123,7 +124,7 @@ func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	}
 	missing = append(missing, issueOpsCompatibilityReviewMissing(record)...)
 	missing = append(missing, issueOpsDevilsAdvocateReviewMissing(record)...)
-	if record.ExecutionHandoff != nil && record.ExecutionHandoff.State != "claimed" && record.ExecutionHandoff.State != "submitted" && !(record.ExecutionHandoff.State == "closed" && record.ExecutionHandoff.ClosedDisposition == "accepted") {
+	if record.ExecutionHandoff != nil && !issueOpsHandoffClaimSatisfied(record.ExecutionHandoff) {
 		missing = append(missing, "handoff_worker_claim")
 	}
 	return IssueOpsReadiness{
@@ -134,6 +135,21 @@ func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 		PlanPath:     record.PlanPath,
 		WorktreePath: record.WorktreePath,
 		Branch:       record.Branch,
+	}
+}
+
+func issueOpsHandoffClaimSatisfied(h *IssueOpsExecutionHandoff) bool {
+	if h.State == handoff.StateClaimed || h.State == handoff.StateSubmitted || h.State == handoff.StateClosed && h.ClosedDisposition == handoff.DispositionAccepted {
+		return true
+	}
+	if h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || h.OwnerSession == nil {
+		return false
+	}
+	switch h.State {
+	case handoff.StateOwnerOrienting, handoff.StateOwnerActive, handoff.StateCleanupPendingHumanDecision, handoff.StateCleanupExecuting, handoff.StateClosed:
+		return true
+	default:
+		return false
 	}
 }
 
