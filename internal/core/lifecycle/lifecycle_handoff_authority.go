@@ -799,6 +799,16 @@ func currentWorkerBranchMatches(record IssueOpsRecord) bool {
 	return record.ExecutionHandoff != nil && strings.TrimSpace(record.Branch) != "" && gitBranchFromHead(record.ExecutionHandoff.WorkerRoot) == strings.TrimSpace(record.Branch)
 }
 
+func ownershipOwnerExactPushAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+	h := record.ExecutionHandoff
+	if h == nil || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || h.State != handoff.StateOwnerActive ||
+		!searchrouting.IsShellTool(req.Tool) || cleanAbsPath(req.CWD) != cleanAbsPath(h.WorkerRoot) || cleanAbsPath(req.Repo) != cleanAbsPath(h.WorkerRoot) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	return len(tokens) == 4 && tokens[0] == "git" && tokens[1] == "push" && tokens[2] == "origin" && tokens[3] == strings.TrimSpace(record.Branch)
+}
+
 func claimedWorkerRoleViolation(command string) string {
 	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(command))
 	if len(tokens) == 0 {

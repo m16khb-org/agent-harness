@@ -99,6 +99,33 @@ func TestOwnershipOwnerOnlyPublishesAndCreatesRemotePR(t *testing.T) {
 	}
 }
 
+func TestOwnershipOwnerCanPushOnlyExactTransferredBranch(t *testing.T) {
+	_, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+
+	for _, command := range []string{
+		"git push origin " + record.Branch,
+	} {
+		req := handoffEditRequest(record, worker, "claude", "owner-session", "")
+		req.AgentID, req.Tool, req.Command = "owner-agent", "Bash", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("exact transferred-branch push %q blocked: %#v", command, got)
+		}
+	}
+
+	for _, command := range []string{
+		"git push upstream " + record.Branch,
+		"git push origin other-branch",
+		"git push --force origin " + record.Branch,
+		"git push origin " + record.Branch + ":other-branch",
+	} {
+		req := handoffEditRequest(record, worker, "claude", "owner-session", "")
+		req.AgentID, req.Tool, req.Command = "owner-agent", "Bash", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("non-exact owner push %q must remain blocked: %#v", command, got)
+		}
+	}
+}
+
 func TestOwnershipOwnerOnlyCompletesIntoHumanCleanupBoundary(t *testing.T) {
 	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
 	owner := handoffEditRequest(record, worker, "claude", "owner-session", "")

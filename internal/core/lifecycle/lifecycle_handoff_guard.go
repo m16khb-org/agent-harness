@@ -395,8 +395,10 @@ func ownershipTransferMutationBlockReason(req HookToolUseLifecycleRequest, recor
 		return true, "ownership transfer owner mutation requires the current Git branch to exactly match the persisted handoff branch; remain read-only and run the exact resume command"
 	}
 	if searchrouting.IsShellTool(req.Tool) {
-		if violation := claimedWorkerRoleViolation(req.Command); violation != "" {
-			return true, "ownership transfer owner may implement, verify, and locally commit only; " + violation + ". Source coordinator and owner cannot push, publish, steer terminals, or clean up resources automatically"
+		if !ownershipOwnerExactPushAllowed(req, record) {
+			if violation := claimedWorkerRoleViolation(req.Command); violation != "" {
+				return true, "ownership transfer owner may implement, verify, locally commit, and push only the exact transferred branch; " + violation + ". Publication must use the sealed handoff publish and remote create-pr commands; terminal steering and cleanup remain outside owner authority"
+			}
 		}
 	}
 	if searchrouting.IsShellTool(req.Tool) && unresolvedNestedShellMutation(req.Command) {
