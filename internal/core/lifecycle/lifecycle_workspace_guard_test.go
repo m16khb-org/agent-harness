@@ -72,6 +72,31 @@ func TestReadyWorkspaceAllowsOnlySourceCoordinatorPlanCheckpoint(t *testing.T) {
 		}
 	}
 
+	status := handoffEditRequest(record, repo, "codex", "coordinator", "")
+	status.Tool = "Bash"
+	status.Command = "agent-harness issueops status --id " + record.ID + " --json"
+	if got := BuildLifecyclePreToolUseDecision(status); got.Decision != "allow" {
+		t.Fatalf("ready workspace status observation blocked: %#v", got)
+	}
+
+	linkPlan := handoffEditRequest(record, repo, "codex", "coordinator", "")
+	linkPlan.Tool = "Bash"
+	linkPlan.Command = "agent-harness issueops link-plan --id " + record.ID + " --plan-path " + plan +
+		" --host codex --session-id coordinator --agent-id worker-1 --cwd " + repo + " --json"
+	if got := BuildLifecyclePreToolUseDecision(linkPlan); got.Decision != "allow" {
+		t.Fatalf("exact sealed source coordinator link-plan blocked: %#v", got)
+	}
+	missingActor := linkPlan
+	missingActor.Command = "agent-harness issueops link-plan --id " + record.ID + " --plan-path " + plan + " --json"
+	if got := BuildLifecyclePreToolUseDecision(missingActor); got.Decision != "block" {
+		t.Fatalf("actor-less link-plan gained preparation authority: %#v", got)
+	}
+	wrongActor := linkPlan
+	wrongActor.Command = strings.Replace(linkPlan.Command, "--session-id coordinator", "--session-id other", 1)
+	if got := BuildLifecyclePreToolUseDecision(wrongActor); got.Decision != "block" {
+		t.Fatalf("different actor gained link-plan authority: %#v", got)
+	}
+
 	wrongSession := handoffEditRequest(record, repo, "codex", "other", plan)
 	if got := BuildLifecyclePreToolUseDecision(wrongSession); got.Decision != "block" {
 		t.Fatalf("different session gained plan checkpoint authority: %#v", got)

@@ -223,6 +223,9 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 		if command := bootstrapCoordinatorStartGuidance(req, record); command != "" {
 			return true, "supervised IssueOps bootstrap requires the authenticated native coordinator identity; rerun this exact harness-authored preview command: " + command
 		}
+		if searchrouting.IsShellTool(req.Tool) && exactReadOnlyShellCommand(req, record) || !searchrouting.IsShellTool(req.Tool) && explicitHandoffReadOnlyTool(req.Tool) {
+			return true, ""
+		}
 		if isHandoffLifecycleCommand(req.Command) && allowedExactHandoffLifecycleCommand(req, record) {
 			return true, ""
 		}

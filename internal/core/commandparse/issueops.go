@@ -95,6 +95,12 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return out
 	}
 	b := func(names ...string) map[string]bool { return v(names...) }
+	withActor := func(values map[string]bool) map[string]bool {
+		for _, name := range []string{"--host", "--session-id", "--agent-id", "--cwd"} {
+			values[name] = true
+		}
+		return values
+	}
 	r := map[string]bool{}
 	switch path {
 	case "status":
@@ -102,21 +108,21 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 	case "resume":
 		return v("--repo", "--id"), b("--bind", "--json"), r, true
 	case "link-plan":
-		return v("--id", "--plan-path"), b("--json"), r, true
+		return withActor(v("--id", "--plan-path")), b("--json"), r, true
 	case "compatibility review":
-		values := v("--id", "--backward-compatibility", "--side-effect", "--rollback-plan", "--verification", "--blocker")
+		values := withActor(v("--id", "--backward-compatibility", "--side-effect", "--rollback-plan", "--verification", "--blocker"))
 		for _, name := range []string{"--backward-compatibility", "--side-effect", "--verification", "--blocker"} {
 			r[name] = true
 		}
 		return values, b("--approved", "--json"), r, true
 	case "execution decide":
-		values := v("--id", "--auto", "--hook-block", "--human-gate", "--subagent-use", "--subagent-rationale", "--subagent-plan-file")
+		values := withActor(v("--id", "--auto", "--hook-block", "--human-gate", "--subagent-use", "--subagent-rationale", "--subagent-plan-file"))
 		for _, name := range []string{"--auto", "--hook-block", "--human-gate"} {
 			r[name] = true
 		}
 		return values, b("--json"), r, true
 	case "devils-advocate review":
-		values := v("--id", "--verdict", "--finding", "--waiver-rationale")
+		values := withActor(v("--id", "--verdict", "--finding", "--waiver-rationale"))
 		r["--finding"] = true
 		return values, b("--waive", "--json"), r, true
 	case "phase":
@@ -124,7 +130,7 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 	case "worktree prepare":
 		return v("--id", "--orchestrator", "--inline-reason", "--agent"), b("--confirm", "--json"), r, true
 	case "worktree prepare-tools":
-		return v("--id"), b("--json"), r, true
+		return withActor(v("--id")), b("--json"), r, true
 	case "handoff start":
 		values := v("--id", "--coordinator-recipient", "--coordinator-host", "--coordinator-session-id", "--coordinator-agent-id", "--source-cwd", "--workspace-epoch", "--expected-context-sha256", "--criteria-id", "--required-doc", "--required-skill", "--verification", "--verification-command", "--stop-condition", "--worker-scope", "--heartbeat-cadence", "--result-format")
 		for _, name := range []string{"--criteria-id", "--required-doc", "--required-skill", "--verification", "--verification-command", "--stop-condition"} {
