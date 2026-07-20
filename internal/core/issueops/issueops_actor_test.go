@@ -93,7 +93,7 @@ func TestReadyWorkspacePlanCheckpointRequiresSourceActorAndPlanOnlyCommit(t *tes
 	}
 	if _, err := RecordIssueOpsDesignReview(stateRoot, record.ID, IssueOpsDesignReviewRequest{
 		ProblemSummary: "problem", ProposedDesign: "design", RefactorPlan: "bounded plan",
-		Alternatives: []string{"alternative"}, Risks: []string{"risk"}, Verification: []string{"verify"}, Approved: true,
+		Alternatives: []string{"alternative"}, Risks: []string{"risk"}, Verification: []string{"design review checked alternatives and risks"}, Approved: true,
 	}); err != nil {
 		t.Fatal(err)
 	}
