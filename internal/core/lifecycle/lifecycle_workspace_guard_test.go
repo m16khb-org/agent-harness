@@ -1,6 +1,9 @@
 package lifecycle
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	issueopsmodel "agent-harness/internal/core/issueops/model"
@@ -32,5 +35,49 @@ func TestReadyWorkspaceRequiresSealedPreparationSessionAtIsolatedRoot(t *testing
 		if reason := workspacePreparationBlockReason(request, record); reason == "" {
 			t.Fatalf("unsealed preparation was allowed: %#v", request)
 		}
+	}
+}
+
+func TestReadyWorkspaceAllowsOnlySourceCoordinatorPlanCheckpoint(t *testing.T) {
+	repo, record, worker := lifecycleHandoffRecord(t, "coordinator_preparing")
+	preparer := &issueopsmodel.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "coordinator", AgentID: "worker-1"}
+	record.ExecutionWorkspace = &issueopsmodel.IssueOpsExecutionWorkspace{
+		State: "ready", WorkspaceEpoch: "workspace-epoch-1", Driver: "orca", Agent: "codex",
+		CoordinatorRoot: repo, WorkerRoot: worker, PreparationSession: preparer,
+		BaseHead: strings.Repeat("b", 40),
+	}
+	record.ExecutionHandoff = nil
+	var err error
+	if record, err = writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+
+	plan := filepath.Join(worker, ".agent-harness", "plans", record.ID+"-checkpoint.md")
+	if err := os.MkdirAll(filepath.Dir(plan), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	edit := handoffEditRequest(record, repo, "codex", "coordinator", plan)
+	if got := BuildLifecyclePreToolUseDecision(edit); got.Decision != "allow" {
+		t.Fatalf("sealed source coordinator plan edit blocked: %#v", got)
+	}
+
+	for _, command := range []string{
+		"git -C " + worker + " add -- " + plan,
+		"git -C " + worker + " commit --only -m 'docs: record current cycle plan' -- " + plan,
+	} {
+		req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+		req.Tool, req.Command = "Bash", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("sealed source coordinator plan command %q blocked: %#v", command, got)
+		}
+	}
+
+	wrongSession := handoffEditRequest(record, repo, "codex", "other", plan)
+	if got := BuildLifecyclePreToolUseDecision(wrongSession); got.Decision != "block" {
+		t.Fatalf("different session gained plan checkpoint authority: %#v", got)
+	}
+	codeEdit := handoffEditRequest(record, repo, "codex", "coordinator", filepath.Join(worker, "internal", "x.go"))
+	if got := BuildLifecyclePreToolUseDecision(codeEdit); got.Decision != "block" {
+		t.Fatalf("source coordinator gained implementation authority: %#v", got)
 	}
 }
