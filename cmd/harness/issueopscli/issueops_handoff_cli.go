@@ -15,7 +15,7 @@ import (
 )
 
 const issueOpsHandoffUsage = `Usage:
-  agent-harness issueops handoff start --id ID --coordinator-recipient TERM --coordinator-host HOST --coordinator-session-id SESSION --source-cwd PATH [--coordinator-agent-id ID] [--workspace-epoch EPOCH] [--allow-codex-hook-trust-bypass] [--expected-context-sha256 SHA] [--confirm] [--json]
+  agent-harness issueops handoff start --id ID --coordinator-recipient TERM --coordinator-host HOST --coordinator-session-id SESSION --source-cwd PATH [--coordinator-agent-id ID] [--workspace-epoch EPOCH] [--allow-codex-hook-trust-bypass] [--expected-context-sha256 SHA] [--result-format FORMAT] [--confirm] [--json]
   agent-harness issueops handoff claim --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd PATH --orca-worktree-id ID [--agent-id ID] [--json]
   agent-harness issueops handoff acknowledge-context --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --cwd PATH --issue-url URL --plan-sha256 SHA --understanding TEXT --scope-confirmation TEXT [--agent-id ID] [--json]
   agent-harness issueops handoff finish --id ID --attempt N --ownership-epoch EPOCH --context-sha256 SHA --host HOST --session-id SESSION --outcome completed|failed [evidence flags] [--no-change --verification RESULT] [--json]
