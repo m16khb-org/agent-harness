@@ -56,7 +56,11 @@ func linkIssueOpsPlanWithCoordinatorCheckpointActor(stateRoot, id, planPath stri
 		}
 		store.TouchWrite = func(root string, record IssueOpsRecord) (IssueOpsRecord, error) {
 			if validated.active {
-				record.ExecutionHandoff.AttemptBaseHead = validated.head
+				if record.ExecutionHandoff != nil {
+					record.ExecutionHandoff.AttemptBaseHead = validated.head
+				} else if record.ExecutionWorkspace != nil {
+					record.ExecutionWorkspace.BaseHead = validated.head
+				}
 			}
 			return write(root, record)
 		}
@@ -72,11 +76,19 @@ func validateCoordinatorPlanCheckpoint(stateRoot, id, planPath string) (coordina
 	if err != nil {
 		return coordinatorPlanCheckpoint{}, err
 	}
+	var workerRoot, base string
 	h := record.ExecutionHandoff
-	if h == nil || h.State != handoff.StateCoordinatorPreparing || strings.TrimSpace(h.ContextSHA256) != "" || h.PendingOperation != nil {
+	workspace := record.ExecutionWorkspace
+	switch {
+	case h != nil && h.State == handoff.StateCoordinatorPreparing && strings.TrimSpace(h.ContextSHA256) == "" && h.PendingOperation == nil:
+		workerRoot = filepath.Clean(strings.TrimSpace(h.WorkerRoot))
+		base = strings.TrimSpace(h.AttemptBaseHead)
+	case h == nil && workspace != nil && workspace.State == "ready" && workspace.PendingOperation == nil:
+		workerRoot = filepath.Clean(strings.TrimSpace(workspace.WorkerRoot))
+		base = strings.TrimSpace(workspace.BaseHead)
+	default:
 		return coordinatorPlanCheckpoint{record: record}, nil
 	}
-	workerRoot := filepath.Clean(strings.TrimSpace(h.WorkerRoot))
 	if workerRoot == "." || workerRoot != filepath.Clean(strings.TrimSpace(record.WorktreePath)) {
 		return coordinatorPlanCheckpoint{}, fmt.Errorf("coordinator plan commit requires the exact worker root")
 	}
@@ -97,7 +109,6 @@ func validateCoordinatorPlanCheckpoint(stateRoot, id, planPath string) (coordina
 	if code != 0 || strings.TrimSpace(status) != "" {
 		return coordinatorPlanCheckpoint{}, fmt.Errorf("link-plan requires a clean coordinator plan commit")
 	}
-	base := strings.TrimSpace(h.AttemptBaseHead)
 	if base == "" {
 		return coordinatorPlanCheckpoint{}, fmt.Errorf("coordinator plan commit requires the persisted attempt base head")
 	}

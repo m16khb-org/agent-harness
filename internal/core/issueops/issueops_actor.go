@@ -63,8 +63,8 @@ func validateReadyWorkspacePreparationActor(record IssueOpsRecord, actor IssueOp
 	if workspace.PreparationSession == nil || *workspace.PreparationSession != session {
 		return fmt.Errorf("workspace preparation requires the exact sealed native preparation session")
 	}
-	if !filepath.IsAbs(strings.TrimSpace(actor.CWD)) || filepath.Clean(actor.CWD) != filepath.Clean(workspace.WorkerRoot) {
-		return fmt.Errorf("workspace preparation requires the canonical ready workspace cwd")
+	if !filepath.IsAbs(strings.TrimSpace(actor.CWD)) || filepath.Clean(actor.CWD) != filepath.Clean(workspace.CoordinatorRoot) || filepath.Clean(actor.CWD) != filepath.Clean(record.Repo) {
+		return fmt.Errorf("workspace preparation requires the canonical source coordinator cwd")
 	}
 	return nil
 }

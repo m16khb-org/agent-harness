@@ -2,9 +2,12 @@ package issueops
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
+	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
 
@@ -48,7 +51,10 @@ func TestReadyWorkspaceWorktreeToolsRequireExactPreparationActor(t *testing.T) {
 	if _, err := RecordIssueOpsWorktreeToolsWithActor(stateRoot, record.ID, IssueOpsActor{Host: "codex", SessionID: "other", AgentID: "agent-1", CWD: worktree}, prep); err == nil {
 		t.Fatal("different preparation actor unexpectedly succeeded")
 	}
-	persisted, err := RecordIssueOpsWorktreeToolsWithActor(stateRoot, record.ID, IssueOpsActor{Host: "codex", SessionID: "prepare-1", AgentID: "agent-1", CWD: worktree}, prep)
+	if _, err := RecordIssueOpsWorktreeToolsWithActor(stateRoot, record.ID, IssueOpsActor{Host: "codex", SessionID: "prepare-1", AgentID: "agent-1", CWD: worktree}, prep); err == nil {
+		t.Fatal("worker-root actor gained source coordinator preparation authority")
+	}
+	persisted, err := RecordIssueOpsWorktreeToolsWithActor(stateRoot, record.ID, IssueOpsActor{Host: "codex", SessionID: "prepare-1", AgentID: "agent-1", CWD: record.Repo}, prep)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +68,7 @@ func TestReadyWorkspaceWorktreeToolsRequireExactPreparationActor(t *testing.T) {
 	if after := rawIssueOpsBytesForTest(t, stateRoot, record.ID); !reflect.DeepEqual(after, before) {
 		t.Fatal("actorless ready-workspace phase recorder mutated the record")
 	}
-	if _, err := AdvanceIssueOpsPhaseWithActor(stateRoot, record.ID, string(persisted.Phase), IssueOpsActor{Host: "codex", SessionID: "prepare-1", AgentID: "agent-1", CWD: worktree}); err != nil {
+	if _, err := AdvanceIssueOpsPhaseWithActor(stateRoot, record.ID, string(persisted.Phase), IssueOpsActor{Host: "codex", SessionID: "prepare-1", AgentID: "agent-1", CWD: record.Repo}); err != nil {
 		t.Fatalf("exact preparation actor phase recorder: %v", err)
 	}
 	before = rawIssueOpsBytesForTest(t, stateRoot, record.ID)
@@ -73,8 +79,42 @@ func TestReadyWorkspaceWorktreeToolsRequireExactPreparationActor(t *testing.T) {
 	if after := rawIssueOpsBytesForTest(t, stateRoot, record.ID); !reflect.DeepEqual(after, before) {
 		t.Fatal("actorless ready-workspace plan-prep mutated the record")
 	}
-	if _, err := RecordIssueOpsPlanPrepWithActor(stateRoot, record.ID, planPrep, IssueOpsActor{Host: "codex", SessionID: "prepare-1", AgentID: "agent-1", CWD: worktree}); err != nil {
+	if _, err := RecordIssueOpsPlanPrepWithActor(stateRoot, record.ID, planPrep, IssueOpsActor{Host: "codex", SessionID: "prepare-1", AgentID: "agent-1", CWD: record.Repo}); err != nil {
 		t.Fatalf("exact preparation actor plan-prep recorder: %v", err)
+	}
+}
+
+func TestReadyWorkspacePlanCheckpointRequiresSourceActorAndPlanOnlyCommit(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	worktree := handoffPrepareWorktreePath(record)
+	client := &prepareOrcaFake{probe: port.OrcaProbeResult{Available: true, Ready: true, RepoID: "repo-1", RepoRemoteName: "origin"}, create: port.OrcaWorktree{ID: "wt-1", InstanceID: "inst-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/16-demo", Path: worktree, Branch: "refs/heads/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16, Comment: issueOpsHandoffMarker(record.ID, "epoch-1", 1)}}
+	materializePrepareWorktreeOnCreate(t, client, worktree)
+	if _, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{ID: record.ID, Orchestrator: "orca", Agent: "codex", Host: "codex", SessionID: "prepare-1", AgentID: "agent-1", SourceCWD: record.Repo, Confirm: true}, client, handoffPrepareTestClock()); err != nil {
+		t.Fatal(err)
+	}
+	plan := filepath.Join(worktree, ".agent-harness", "plans", record.ID+".md")
+	if err := os.MkdirAll(filepath.Dir(plan), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(plan, []byte("# current cycle\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"add", "--", plan}, {"commit", "-q", "-m", "docs: checkpoint plan", "--only", "--", plan}} {
+		if code, _, stderr := preflight.GitCmd(worktree, args...); code != 0 {
+			t.Fatalf("git %v: %s", args, stderr)
+		}
+	}
+	actor := IssueOpsActor{Host: "codex", SessionID: "prepare-1", AgentID: "agent-1", CWD: record.Repo}
+	persisted, err := LinkIssueOpsPlanWithActor(stateRoot, record.ID, plan, actor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	head := preflight.GitOut(worktree, "rev-parse", "HEAD")
+	if persisted.PlanPath != plan || persisted.ExecutionWorkspace == nil || persisted.ExecutionWorkspace.BaseHead != head {
+		t.Fatalf("plan checkpoint did not advance the workspace base: %#v", persisted.ExecutionWorkspace)
+	}
+	if _, err := LinkIssueOpsPlanWithActor(stateRoot, record.ID, plan, IssueOpsActor{Host: "codex", SessionID: "prepare-1", AgentID: "agent-1", CWD: worktree}); err == nil {
+		t.Fatal("worker-root actor gained source coordinator checkpoint authority")
 	}
 }
 
@@ -116,7 +156,7 @@ func TestReadyWorkspaceRejectsActorlessPreparationMutators(t *testing.T) {
 			t.Fatalf("actorless %s mutation changed the record", name)
 		}
 	}
-	actor := IssueOpsActor{Host: "codex", SessionID: "prepare-1", CWD: worktree}
+	actor := IssueOpsActor{Host: "codex", SessionID: "prepare-1", CWD: record.Repo}
 	if _, err := RecordIssueOpsIntentWithActor(stateRoot, record.ID, IssueOpsIntentRecordRequest{RawRequest: "request", InterpretedIntent: "intent", SuccessCriteria: []string{"criterion"}}, actor); err != nil {
 		t.Fatalf("exact actor intent mutation: %v", err)
 	}
