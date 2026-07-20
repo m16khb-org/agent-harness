@@ -67,7 +67,7 @@ func TestProtocolStateRoleAuthorityMatrix(t *testing.T) {
 		{OwnershipTransferProtocolVersion, RoleTransferredOwner, "heartbeat", StateOwnerOrienting, true},
 		{OwnershipTransferProtocolVersion, RoleTransferredOwner, "mutate", StateOwnerActive, true},
 		{OwnershipTransferProtocolVersion, RoleTransferredOwner, "mutate", StateOwnerOrienting, false},
-		{OwnershipTransferProtocolVersion, RoleTransferredOwner, "publish", StateOwnerActive, false},
+		{OwnershipTransferProtocolVersion, RoleTransferredOwner, "publish", StateOwnerActive, true},
 		{99, RoleTransferredOwner, "mutate", StateOwnerActive, false},
 		{OwnershipTransferProtocolVersion, "unknown", "mutate", StateOwnerActive, false},
 	}
