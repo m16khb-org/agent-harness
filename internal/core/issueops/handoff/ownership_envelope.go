@@ -94,19 +94,20 @@ func validOwnershipCancellationSnapshot(record model.IssueOpsRecord, h *model.Is
 	if h == nil {
 		return false
 	}
+	cleanupAllowed := h.State == StateClosed && h.ClosedDisposition == DispositionCancelled
 	if h.OwnerSession == nil {
-		return h.Orientation == nil && h.Completion == nil && h.Cleanup == nil
+		return h.Orientation == nil && h.Completion == nil && (cleanupAllowed || h.Cleanup == nil)
 	}
 	if !validWorkerSession(h.OwnerSession) {
 		return false
 	}
 	if h.Orientation == nil {
-		return h.Completion == nil && h.Cleanup == nil
+		return h.Completion == nil && (cleanupAllowed || h.Cleanup == nil)
 	}
 	if !validOwnershipOrientation(record, h.Orientation) {
 		return false
 	}
-	return h.Completion != nil || h.Cleanup == nil
+	return h.Completion != nil || cleanupAllowed || h.Cleanup == nil
 }
 
 func validOwnershipOrientation(record model.IssueOpsRecord, orientation *model.IssueOpsOwnershipOrientation) bool {

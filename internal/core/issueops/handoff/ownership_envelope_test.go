@@ -73,6 +73,13 @@ func TestOwnershipEnvelopeAllowsActiveOwnerCancellationLifecycle(t *testing.T) {
 	if err := ValidateEnvelope(record); err != nil {
 		t.Fatalf("finalized active owner cancellation rejected: %v", err)
 	}
+
+	record.ExecutionHandoff.Cleanup = &model.IssueOpsExecutionHandoffCleanup{
+		Disposition: "retry", Reason: "preserve committed checkpoint", ApprovedAt: "2026-07-20T00:03:00Z",
+	}
+	if err := ValidateEnvelope(record); err != nil {
+		t.Fatalf("approved retry cleanup for cancelled owner rejected: %v", err)
+	}
 }
 
 func validOwnershipEnvelopeRecord(t *testing.T) model.IssueOpsRecord {
