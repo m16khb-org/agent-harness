@@ -175,6 +175,15 @@ func TestOwnershipTransferPreparationAllowsCLIAndMCPBeforeDispatch(t *testing.T)
 	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "block" {
 		t.Fatalf("different source session gained phase authority: %#v", got)
 	}
+	request.Command = "agent-harness issueops handoff codex-hooks-list --id " + record.ID + " --json"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("sealed Codex source coordinator must be able to inspect worker hook trust: %#v", got)
+	}
+	request.SessionID = "other"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "block" {
+		t.Fatalf("different source session gained Codex hook observation authority: %#v", got)
+	}
+	request.SessionID = "preparer"
 	request.Tool = "mcp__agent_harness__issueops_link_plan"
 	request.Command = ""
 	request.ToolInput = map[string]any{"id": record.ID, "plan_path": "plans/ownership.md", "host": "codex", "session_id": "preparer", "agent_id": "agent-1", "cwd": repo}

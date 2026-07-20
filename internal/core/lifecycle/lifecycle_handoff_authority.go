@@ -270,6 +270,9 @@ func allowedReadyWorkspaceOwnershipStart(req HookToolUseLifecycleRequest, record
 	case "link-plan", "compatibility review", "execution decide", "devils-advocate review", "phase", "worktree prepare-tools":
 		cwd, cwdOK := oneFlag(flags, "--cwd")
 		return nativeSessionMatches(req, workspace.PreparationSession) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(record.Repo)
+	case "handoff codex-hooks-list":
+		_, jsonOut := flags["--json"]
+		return req.Host == "codex" && workspace.Agent == "codex" && nativeSessionMatches(req, workspace.PreparationSession) && jsonOut && len(flags) == 2
 	case "handoff start":
 	default:
 		return false
