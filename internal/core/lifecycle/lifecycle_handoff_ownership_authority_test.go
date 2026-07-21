@@ -101,6 +101,39 @@ func TestOwnershipSourceCanRequestForcedCancellationOfStrandedActiveOwner(t *tes
 	}
 }
 
+func TestOwnershipSourceCanTerminalizeOnlyCancelledHandoffTask(t *testing.T) {
+	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateRecoveryRequired)
+	h := record.ExecutionHandoff
+	h.Completion = nil
+	h.Cancellation = &issueopsmodel.IssueOpsExecutionHandoffCancellation{RequestedAt: "2026-07-22T00:00:00Z", Reason: "stranded owner terminal removed"}
+	h.Failure = &issueopsmodel.IssueOpsExecutionHandoffFailure{Code: "cancellation_requested", Message: h.Cancellation.Reason, At: h.Cancellation.RequestedAt}
+	var err error
+	record, err = writeIssueOps(IssueOpsStateRoot(), record)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	request := handoffEditRequest(record, repo, "claude", "coordinator-session", "")
+	request.AgentID, request.Tool = "coordinator-agent", "Bash"
+	request.Command = "orca orchestration task-update --id " + h.Orca.TaskID + " --status failed --json"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("source terminalization of the cancelled task was blocked: %#v", got)
+	}
+
+	for name, command := range map[string]string{
+		"wrong status": "orca orchestration task-update --id " + h.Orca.TaskID + " --status completed --json",
+		"extra action": "orca orchestration task-update --id " + h.Orca.TaskID + " --status failed --force --json",
+	} {
+		t.Run(name, func(t *testing.T) {
+			candidate := request
+			candidate.Command = command
+			if got := BuildLifecyclePreToolUseDecision(candidate); got.Decision != "block" {
+				t.Fatalf("unsafe cancellation task command was allowed: %#v", got)
+			}
+		})
+	}
+}
+
 func TestOwnershipCoordinatorCanWakeOrientingOwnerForExactAcknowledgement(t *testing.T) {
 	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateOwnerOrienting)
 	request := handoffEditRequest(record, repo, "claude", "coordinator-session", "")

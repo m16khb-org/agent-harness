@@ -453,6 +453,29 @@ func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRe
 	return false
 }
 
+// allowedCancellationTaskTerminalization permits the source checkout to close
+// only the exact persisted task after a cancellation tombstone was recorded.
+// It does not grant generic orchestration authority while recovery is pending.
+func allowedCancellationTaskTerminalization(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+	h := record.ExecutionHandoff
+	if h == nil || h.Orca == nil || h.State != handoff.StateRecoveryRequired || h.Cancellation == nil || h.Orca.TaskID == "" ||
+		cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
+		return false
+	}
+	if commandparse.HasUnquotedControlOperator(req.Command) || commandparse.HasActiveCommandSubstitution(req.Command) || commandparse.HasActiveOutputRedirect(req.Command) || commandparse.HasActiveParameterOrTildeExpansion(req.Command) || commandparse.HasActivePathnameExpansion(req.Command) || commandparse.HasActiveShellSpecialQuoting(req.Command) || commandparse.HasActiveZshEqualsExpansion(req.Command) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	if len(tokens) < 3 || tokens[0] != "orca" || tokens[1] != "orchestration" || tokens[2] != "task-update" {
+		return false
+	}
+	id, idOK := uniqueTokenFlag(tokens[3:], "--id")
+	status, statusOK := uniqueTokenFlag(tokens[3:], "--status")
+	result, resultOK := uniqueTokenFlag(tokens[3:], "--result")
+	return idOK && id == h.Orca.TaskID && statusOK && status == "failed" && (!resultOK || len(result) <= 4096) &&
+		onlyTokenFlags(tokens[3:], map[string]bool{"--id": true, "--status": true, "--result": true}, map[string]bool{"--json": true})
+}
+
 func allowedSourceOwnerContinue(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
 	h := record.ExecutionHandoff
 	if h == nil || h.Orca == nil || (h.State != handoff.StateOwnerActive && h.State != handoff.StateOwnerOrienting) ||

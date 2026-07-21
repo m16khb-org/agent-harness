@@ -255,7 +255,7 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 		return true, "supervised IssueOps handoff lifecycle command is not in the supervised-fence allowlist for this session and state; the working escape from the source checkout " + shellGuidanceQuote(record.Repo) + " is " + supervisedFenceRecoverEscape(record)
 	}
 	if searchrouting.IsShellTool(req.Tool) {
-		if exactReadOnlyShellCommand(req, record) || allowedClosedOrcaCleanup(req, record) {
+		if exactReadOnlyShellCommand(req, record) || allowedClosedOrcaCleanup(req, record) || allowedCancellationTaskTerminalization(req, record) {
 			return true, ""
 		}
 	} else if explicitHandoffReadOnlyTool(req.Tool) {
