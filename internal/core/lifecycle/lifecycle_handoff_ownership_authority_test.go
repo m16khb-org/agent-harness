@@ -32,6 +32,49 @@ func TestOwnershipAcknowledgementGrantsOwnerAndRevokesSource(t *testing.T) {
 	}
 }
 
+func TestOwnershipCoordinatorCanOnlyResumeSealedOwner(t *testing.T) {
+	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+	request := handoffEditRequest(record, repo, "claude", "coordinator-session", "")
+	request.AgentID = "coordinator-agent"
+	request.Tool = "Bash"
+	request.Command = "orca terminal send --terminal term-1 --text '계속 진행' --enter --json"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("sealed coordinator resume blocked: %#v", got)
+	}
+	enterOnly := request
+	enterOnly.Command = "orca terminal send --terminal term-1 --enter --json"
+	if got := BuildLifecyclePreToolUseDecision(enterOnly); got.Decision != "allow" {
+		t.Fatalf("sealed coordinator enter blocked: %#v", got)
+	}
+
+	otherTerminal := request
+	otherTerminal.Command = "orca terminal send --terminal term-other --text '계속 진행' --enter --json"
+	if allowedSourceOwnerContinue(otherTerminal, record) {
+		t.Fatal("coordinator resume predicate accepted a different terminal")
+	}
+
+	for name, mutate := range map[string]func(*HookToolUseLifecycleRequest){
+		"arbitrary prompt": func(req *HookToolUseLifecycleRequest) {
+			req.Command = "orca terminal send --terminal term-1 --text 'change scope' --enter --json"
+		},
+		"worker caller": func(req *HookToolUseLifecycleRequest) {
+			req.Repo, req.CWD = worker, worker
+			req.SessionID, req.AgentID = "owner-session", "owner-agent"
+		},
+		"different source session": func(req *HookToolUseLifecycleRequest) {
+			req.SessionID = "other-source"
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			candidate := request
+			mutate(&candidate)
+			if got := BuildLifecyclePreToolUseDecision(candidate); got.Decision != "block" {
+				t.Fatalf("unsafe owner steering allowed: %#v", got)
+			}
+		})
+	}
+}
+
 func TestOwnershipFenceNeverCapturesOrdinarySourceMutation(t *testing.T) {
 	states := []string{
 		handoff.StateOwnershipDispatching,
@@ -202,6 +245,12 @@ func TestOwnershipOwnerOnlyPublishesAndCreatesRemotePR(t *testing.T) {
 	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "allow" {
 		t.Fatalf("exact owner remote create blocked: %#v", got)
 	}
+	verifyArtifact := handoffEditRequest(record, worker, "claude", "owner-session", "")
+	verifyArtifact.AgentID, verifyArtifact.Tool = "owner-agent", "Bash"
+	verifyArtifact.Command = "agent-harness issueops remote verify-artifact --id " + record.ID + " --provider github --kind pr --url https://github.com/example/repo/pull/63 --target-branch " + record.BranchPrepare.BaseBranch + " --label bug --assignee octocat --json"
+	if got := BuildLifecyclePreToolUseDecision(verifyArtifact); got.Decision != "allow" {
+		t.Fatalf("exact owner existing PR verification blocked: %#v", got)
+	}
 
 	for _, command := range []string{
 		"git push origin " + record.Branch,
@@ -230,6 +279,11 @@ func TestOwnershipOwnerOnlyPublishesAndCreatesRemotePR(t *testing.T) {
 	source.AgentID, source.Tool, source.ToolInput = "coordinator-agent", "mcp__agent_harness__issueops_handoff", owner.ToolInput
 	if got := BuildLifecyclePreToolUseDecision(source); got.Decision != "block" {
 		t.Fatalf("source session regained owner publish authority: %#v", got)
+	}
+	verifyArtifact.Repo, verifyArtifact.CWD = repo, repo
+	verifyArtifact.SessionID, verifyArtifact.AgentID = "coordinator-session", "coordinator-agent"
+	if got := BuildLifecyclePreToolUseDecision(verifyArtifact); got.Decision != "block" {
+		t.Fatalf("source session recorded owner remote artifact: %#v", got)
 	}
 }
 
@@ -393,6 +447,7 @@ func ownershipLifecycleRecord(t *testing.T, state string) (string, IssueOpsRecor
 		State: state, Attempt: 1, OwnershipEpoch: "ownership-epoch-1", WorkspaceEpoch: "workspace-epoch-1", WorkspaceSHA256: strings.Repeat("c", 64),
 		AttemptBaseHead: baseHead, ContextSHA256: strings.Repeat("a", 64), ContextSourceSHA256: strings.Repeat("d", 64), ContextVersion: handoff.ContextVersion,
 		Driver: "orca", Agent: "claude", DeliveryMode: "inject", CoordinatorRoot: repo, CoordinatorMailboxHandle: "term-coordinator", WorkerRoot: worker, Orca: orca,
+		CoordinatorSession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "claude", SessionID: "coordinator-session", AgentID: "coordinator-agent"},
 	}
 	record.ExecutionHandoff = h
 	workspaceOrca := *orca

@@ -154,6 +154,15 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 	case "remote create-pr":
 		cwd, cwdOK := oneFlag(flags, "--cwd")
 		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("remote-create", h.State) && eventIdentityFlagsMatch(req, flags) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot)
+	case "remote verify-artifact":
+		provider, providerOK := oneFlag(flags, "--provider")
+		kind, kindOK := oneFlag(flags, "--kind")
+		_, urlOK := oneFlag(flags, "--url")
+		target, targetOK := oneFlag(flags, "--target-branch")
+		expectedKind := map[string]string{"github": "pr", "gitlab": "mr"}[strings.ToLower(provider)]
+		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("mutate", h.State) && nativeSessionMatches(req, h.OwnerSession) &&
+			h.PublishReceipt != nil && providerOK && strings.EqualFold(provider, h.PublishReceipt.Provider) && kindOK && kind == expectedKind && urlOK &&
+			targetOK && target == h.PublishReceipt.Base
 	case "handoff claim":
 		cwd, cwdOK := oneFlag(flags, "--cwd")
 		worktreeID, wtOK := oneFlag(flags, "--orca-worktree-id")
@@ -404,6 +413,25 @@ func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRe
 		return idOK && id == h.Orca.TaskID && statusOK && status == "completed" && (!resultOK || len(result) <= 4096) && onlyTokenFlags(tokens[3:], map[string]bool{"--id": true, "--status": true, "--result": true}, map[string]bool{"--json": true})
 	}
 	return false
+}
+
+func allowedSourceOwnerContinue(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+	h := record.ExecutionHandoff
+	if h == nil || h.State != handoff.StateOwnerActive || h.Orca == nil ||
+		cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) ||
+		!nativeSessionMatches(req, h.CoordinatorSession) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	if len(tokens) < 7 || tokens[0] != "orca" || tokens[1] != "terminal" || tokens[2] != "send" ||
+		tokens[3] != "--terminal" || tokens[4] != h.Orca.WorkerTerminalHandle {
+		return false
+	}
+	if len(tokens) == 7 {
+		return tokens[5] == "--enter" && tokens[6] == "--json"
+	}
+	return len(tokens) == 9 && tokens[5] == "--text" && tokens[6] == "계속 진행" &&
+		tokens[7] == "--enter" && tokens[8] == "--json"
 }
 
 func cleanupStepAuthorized(h *issueopsmodel.IssueOpsExecutionHandoff, step string) bool {

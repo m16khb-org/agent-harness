@@ -220,6 +220,9 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 		return true, "exact IssueOps status/resume MCP payload does not match the selected supervised cycle"
 	}
 	if terminalControlWriteRequest(req) {
+		if allowedSourceOwnerContinue(req, record) {
+			return true, ""
+		}
 		if allowedClosedOrcaCleanup(req, record) {
 			return true, ""
 		}

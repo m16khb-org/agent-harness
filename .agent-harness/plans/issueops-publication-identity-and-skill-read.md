@@ -79,3 +79,22 @@
 - [x] Add deny cases for `gh pr merge`, `gh run rerun/delete`, `gh api`, `--web`, arbitrary ls-remote URLs, upload-pack overrides, control operators, and redirection.
 - [x] Run the commandparse corpus and confirm the new readback cases fail before implementation.
 - [x] Implement exact argv validators and re-run commandparse plus lifecycle tests to GREEN.
+
+### Task 5: Owner publication completion
+
+**Files:**
+- Modify: `internal/core/commandparse/issueops.go`
+- Modify: `internal/core/commandparse/issueops_test.go`
+- Modify: `internal/core/lifecycle/lifecycle_handoff_authority.go`
+- Modify: `internal/core/lifecycle/lifecycle_handoff_guard.go`
+- Modify: `internal/core/lifecycle/lifecycle_handoff_ownership_authority_test.go`
+
+**Interfaces:**
+- Consumes: sealed coordinator and owner sessions, exact Orca owner handle, authenticated GitHub PR observation, and the existing `issueops remote verify-artifact` recorder.
+- Produces: exact source-to-owner resume, owner-only existing-PR verification, durable PR-phase transition, and completion without source-session takeover.
+
+- [x] Add exact source coordinator resume tests and retain rejection of arbitrary prompts, worker steering, and mismatched source sessions.
+- [x] Implement and live-prove `계속 진행` plus Enter against the sealed #51 owner handle.
+- [x] Allow bounded `--repo owner/name` on read-only GitHub observations.
+- [x] Add an exact owner-only `remote verify-artifact` CLI path for an existing PR/MR.
+- [ ] Reinstall, resume #51, and verify durable handoff completion reaches the human cleanup boundary.

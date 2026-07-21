@@ -137,6 +137,18 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v("--id", "--action", "--reason", "--cleanup-disposition", "--cleanup-step"), b("--confirm", "--force", "--json"), r, true
 	case "handoff publish":
 		return v("--id", "--host", "--session-id", "--agent-id", "--cwd"), b("--confirm", "--json"), r, true
+	case "remote create-pr":
+		values := v("--id", "--title", "--body", "--body-file", "--template", "--provider", "--score-file", "--head", "--base", "--host", "--session-id", "--agent-id", "--cwd", "--label", "--assignee", "--field")
+		for _, name := range []string{"--label", "--assignee", "--field"} {
+			r[name] = true
+		}
+		return values, b("--confirm", "--json"), r, true
+	case "remote verify-artifact":
+		values := v("--id", "--provider", "--kind", "--url", "--target-branch", "--label", "--labels", "--assignee", "--assignees")
+		for _, name := range []string{"--label", "--labels", "--assignee", "--assignees"} {
+			r[name] = true
+		}
+		return values, b("--json"), r, true
 	case "handoff claim":
 		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id", "--cwd", "--orca-worktree-id"), b("--json"), r, true
 	case "handoff acknowledge-context":
@@ -258,7 +270,7 @@ func exactReadOnlyGHPRCommand(tokens []string) bool {
 	if err != nil || number <= 0 {
 		return false
 	}
-	values := map[string]bool{"--json": true}
+	values := map[string]bool{"--json": true, "--repo": true}
 	booleans := map[string]bool{}
 	switch tokens[2] {
 	case "view":
@@ -275,6 +287,9 @@ func exactReadOnlyGHPRCommand(tokens []string) bool {
 	if fields, exists := flags["--json"]; exists && !safeGHJSONFields(fields[0]) {
 		return false
 	}
+	if repo, exists := flags["--repo"]; exists && !safeGHRepository(repo[0]) {
+		return false
+	}
 	return true
 }
 
@@ -288,7 +303,7 @@ func exactReadOnlyGHRunCommand(tokens []string) bool {
 	}
 	flags, ok := ExactFlags(
 		ExactIssueOpsCommand{Tokens: tokens, Start: 4},
-		map[string]bool{"--json": true, "--job": true, "--attempt": true},
+		map[string]bool{"--json": true, "--job": true, "--attempt": true, "--repo": true},
 		map[string]bool{"--log": true, "--log-failed": true, "--verbose": true},
 		map[string]bool{},
 	)
@@ -298,10 +313,31 @@ func exactReadOnlyGHRunCommand(tokens []string) bool {
 	if fields, exists := flags["--json"]; exists && !safeGHJSONFields(fields[0]) {
 		return false
 	}
+	if repo, exists := flags["--repo"]; exists && !safeGHRepository(repo[0]) {
+		return false
+	}
 	for _, name := range []string{"--job", "--attempt"} {
 		if values, exists := flags[name]; exists {
 			value, parseErr := strconv.ParseUint(values[0], 10, 64)
 			if parseErr != nil || value == 0 {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func safeGHRepository(value string) bool {
+	parts := strings.Split(value, "/")
+	if len(parts) != 2 {
+		return false
+	}
+	for _, part := range parts {
+		if part == "" || len(part) > 100 {
+			return false
+		}
+		for _, r := range part {
+			if r != '-' && r != '_' && r != '.' && (r < '0' || r > '9') && (r < 'A' || r > 'Z') && (r < 'a' || r > 'z') {
 				return false
 			}
 		}

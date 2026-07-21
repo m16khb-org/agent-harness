@@ -107,6 +107,21 @@ func TestWorktreeReconcileExactFlags(t *testing.T) {
 	}
 }
 
+func TestRemoteArtifactExactFlags(t *testing.T) {
+	command, ok := ParseExactIssueOpsCommand("agent-harness issueops remote verify-artifact --id io-1 --provider github --kind pr --url https://github.com/acme/repo/pull/1 --target-branch main --label bug --assignee octocat --json")
+	if !ok {
+		t.Fatal("remote verify-artifact command did not parse")
+	}
+	values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
+	if !ok {
+		t.Fatal("remote verify-artifact command has no exact flag spec")
+	}
+	flags, ok := ExactFlags(command, values, booleans, repeatable)
+	if !ok || flags["--provider"][0] != "github" || len(flags["--label"]) != 1 {
+		t.Fatalf("remote verify-artifact flags = %#v ok=%v", flags, ok)
+	}
+}
+
 func TestExactReadOnlyShellCommandCorpus(t *testing.T) {
 	allow := []string{
 		"pwd",
@@ -118,10 +133,10 @@ func TestExactReadOnlyShellCommandCorpus(t *testing.T) {
 		"git -C /repo diff --stat",
 		"git log -1",
 		"git ls-remote --heads origin refs/heads/51-p0-safety-critical-fixes",
-		"gh pr view 63 --json headRefOid,isDraft,url,statusCheckRollup",
+		"gh pr view 63 --repo m16khb/agent-harness --json headRefOid,isDraft,url,statusCheckRollup",
 		"gh pr checks 63",
 		"gh pr checks 63 --json name,state,link",
-		"gh run view 29810891454 --log-failed",
+		"gh run view 29810891454 --repo m16khb/agent-harness --log-failed",
 		"gh run view 29810891454 --json conclusion,status,url",
 		"orca terminal list --json",
 		"orca terminal wait --terminal t --for exit --json",
@@ -146,6 +161,7 @@ func TestExactReadOnlyShellCommandCorpus(t *testing.T) {
 		"gh pr merge 63",
 		"gh api repos/m16khb/agent-harness/pulls/63",
 		"gh pr view 63 --web",
+		"gh pr view 63 --repo https://github.com/m16khb/agent-harness",
 		"gh pr checks 63 > /tmp/checks",
 		"gh run rerun 29810891454",
 		"gh run delete 29810891454",
