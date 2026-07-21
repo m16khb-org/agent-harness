@@ -120,7 +120,12 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		r["--finding"] = true
 		return values, b("--waive", "--json"), r, true
 	case "phase":
-		return v("--id", "--to"), b("--force", "--json"), r, true
+		return v("--id", "--to", "--host", "--session-id", "--agent-id", "--cwd"), b("--force", "--json"), r, true
+	case "ai-slop-clean record":
+		values := v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--category", "--verification")
+		r["--category"] = true
+		r["--verification"] = true
+		return values, b("--json"), r, true
 	case "worktree prepare":
 		return v("--id", "--orchestrator", "--inline-reason", "--agent", "--host", "--session-id", "--agent-id", "--source-cwd"), b("--confirm", "--json"), r, true
 	case "worktree prepare-tools":

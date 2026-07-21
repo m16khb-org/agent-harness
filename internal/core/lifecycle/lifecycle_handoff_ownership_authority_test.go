@@ -287,6 +287,34 @@ func TestOwnershipOwnerOnlyPublishesAndCreatesRemotePR(t *testing.T) {
 	}
 }
 
+func TestOwnershipOwnerCanAdvanceAndRecordAISlopClean(t *testing.T) {
+	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+	commands := []string{
+		"agent-harness issueops phase --id " + record.ID + " --to implement --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json",
+		"agent-harness issueops ai-slop-clean record --id " + record.ID + " --category dead-code --verification 'go test ./...' --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json",
+	}
+	for _, command := range commands {
+		owner := handoffEditRequest(record, worker, "claude", "owner-session", "")
+		owner.AgentID, owner.Tool, owner.Command = "owner-agent", "Bash", command
+		if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "allow" {
+			t.Fatalf("exact owner recorder blocked: command=%q result=%#v", command, got)
+		}
+
+		source := owner
+		source.Repo, source.CWD = repo, repo
+		source.SessionID, source.AgentID = "coordinator-session", "coordinator-agent"
+		if got := BuildLifecyclePreToolUseDecision(source); got.Decision != "block" {
+			t.Fatalf("source session used owner recorder: command=%q result=%#v", command, got)
+		}
+
+		otherOwner := owner
+		otherOwner.SessionID = "other-owner"
+		if got := BuildLifecyclePreToolUseDecision(otherOwner); got.Decision != "block" {
+			t.Fatalf("different worker session used owner recorder: command=%q result=%#v", command, got)
+		}
+	}
+}
+
 func TestOwnershipOwnerOnlyCompletesIntoHumanCleanupBoundary(t *testing.T) {
 	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
 	owner := handoffEditRequest(record, worker, "claude", "owner-session", "")
@@ -424,6 +452,21 @@ func TestOwnershipSessionGuidanceRendersClaimAndOrientationBoundary(t *testing.T
 	guidance = BuildIssueOpsHandoffSessionGuidance(worker, "claude", "owner-session", "owner-agent")
 	if !strings.Contains(guidance, "Acknowledge") || !strings.Contains(guidance, "read-only") {
 		t.Fatalf("orienting owner guidance must name acknowledgement boundary: %s", guidance)
+	}
+
+	_, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+	record.ExecutionHandoff.PublishReceipt = &issueopsmodel.IssueOpsExecutionHandoffPublishReceipt{
+		Provider: "github", ProjectKey: "github.com/example/repo", Remote: "origin", PushTargetSHA256: strings.Repeat("a", 64),
+		Branch: record.Branch, Base: record.BranchPrepare.BaseBranch, RemoteRef: "refs/heads/" + record.Branch, FinalHead: strings.Repeat("f", 40), VerifiedAt: "2026-07-20T00:00:00Z",
+	}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	guidance = BuildIssueOpsHandoffSessionGuidance(worker, "claude", "owner-session", "owner-agent")
+	for _, expected := range []string{"issueops phase", "ai-slop-clean record", "remote verify-artifact", "owner"} {
+		if !strings.Contains(guidance, expected) {
+			t.Fatalf("published owner guidance must name %q: %s", expected, guidance)
+		}
 	}
 }
 

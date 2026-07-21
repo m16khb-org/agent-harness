@@ -163,6 +163,17 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("mutate", h.State) && nativeSessionMatches(req, h.OwnerSession) &&
 			h.PublishReceipt != nil && providerOK && strings.EqualFold(provider, h.PublishReceipt.Provider) && kindOK && kind == expectedKind && urlOK &&
 			targetOK && target == h.PublishReceipt.Base
+	case "phase":
+		to, toOK := oneFlag(flags, "--to")
+		cwd, cwdOK := oneFlag(flags, "--cwd")
+		_, forced := flags["--force"]
+		allowedPhase := map[string]bool{"implement": true, "ai-slop-clean": true, "feedback": true, "pr": true}[to]
+		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("mutate", h.State) && nativeSessionMatches(req, h.OwnerSession) &&
+			eventIdentityFlagsMatch(req, flags) && toOK && allowedPhase && !forced && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot)
+	case "ai-slop-clean record":
+		cwd, cwdOK := oneFlag(flags, "--cwd")
+		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("mutate", h.State) && nativeSessionMatches(req, h.OwnerSession) &&
+			eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && len(flags["--category"]) > 0 && len(flags["--verification"]) > 0
 	case "handoff claim":
 		cwd, cwdOK := oneFlag(flags, "--cwd")
 		worktreeID, wtOK := oneFlag(flags, "--orca-worktree-id")

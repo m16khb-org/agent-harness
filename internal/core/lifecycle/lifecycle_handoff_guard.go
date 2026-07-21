@@ -80,7 +80,11 @@ func renderHandoffSessionGuidance(record IssueOpsRecord, worker bool, host, sess
 			return fmt.Sprintf("IssueOps ownership transfer role=owner state=%s attempt=%d context=%s. Acknowledge the sealed issue and plan context before editing; implementation remains read-only until acknowledgement. Resume: %s", h.State, h.Attempt, h.ContextSHA256, resume) + modelBoundary
 		}
 		if h.State == handoff.StateOwnerActive {
-			return fmt.Sprintf("IssueOps ownership transfer role=owner state=%s attempt=%d context=%s. The acknowledged owner may implement and verify inside the canonical worker root, publish only through the exact IssueOps owner lifecycle, and complete the handoff; terminal steering and resource cleanup remain human-directed. Resume: %s", h.State, h.Attempt, h.ContextSHA256, resume) + modelBoundary
+			publicationCompletion := ""
+			if h.PublishReceipt != nil && record.RemoteArtifact == nil {
+				publicationCompletion = " A publish receipt exists but the remote artifact is missing. The sealed owner must advance normal non-terminal phases with actor-bearing agent-harness issueops phase, record cleanup evidence with agent-harness issueops ai-slop-clean record, verify the existing PR/MR with agent-harness issueops remote verify-artifact, then retry handoff complete; the source must not perform these owner recorders."
+			}
+			return fmt.Sprintf("IssueOps ownership transfer role=owner state=%s attempt=%d context=%s. The acknowledged owner may implement and verify inside the canonical worker root, publish only through the exact IssueOps owner lifecycle, and complete the handoff; terminal steering and resource cleanup remain human-directed. Resume: %s", h.State, h.Attempt, h.ContextSHA256, resume) + publicationCompletion + modelBoundary
 		}
 		return fmt.Sprintf("IssueOps handoff role=owner state=%s attempt=%d context=%s. Resume: %s", h.State, h.Attempt, h.ContextSHA256, resume) + modelBoundary
 	}

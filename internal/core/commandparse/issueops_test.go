@@ -122,6 +122,26 @@ func TestRemoteArtifactExactFlags(t *testing.T) {
 	}
 }
 
+func TestOwnerRecorderExactFlags(t *testing.T) {
+	for _, commandText := range []string{
+		"agent-harness issueops phase --id io-1 --to implement --host codex --session-id owner-1 --agent-id agent-1 --cwd /worker --json",
+		"agent-harness issueops ai-slop-clean record --id io-1 --category dead-code --verification 'go test ./...' --host codex --session-id owner-1 --agent-id agent-1 --cwd /worker --json",
+	} {
+		command, ok := ParseExactIssueOpsCommand(commandText)
+		if !ok {
+			t.Fatalf("owner recorder command did not parse: %q", commandText)
+		}
+		values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
+		if !ok {
+			t.Fatalf("owner recorder command has no exact flag spec: path=%q", command.Path)
+		}
+		flags, ok := ExactFlags(command, values, booleans, repeatable)
+		if !ok || flags["--host"][0] != "codex" || flags["--session-id"][0] != "owner-1" || flags["--cwd"][0] != "/worker" {
+			t.Fatalf("owner recorder flags = %#v ok=%v command=%q", flags, ok, commandText)
+		}
+	}
+}
+
 func TestExactReadOnlyShellCommandCorpus(t *testing.T) {
 	allow := []string{
 		"pwd",
