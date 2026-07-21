@@ -60,8 +60,10 @@ git diff <backup-branch>..HEAD --stat
 # 2. Verify history structure
 git log --oneline --graph -n 10
 
-# 3. If satisfied, the backup can stay as a safety reference.
-#    It will be cleaned up by git gc after 90 days unless you delete it.
+# 3. If satisfied, retain the backup as a safety reference.
+#    Backup refs persist until explicitly deleted.
+#    Only after this confirmation ladder, bounded cleanup is optional:
+git branch -D <backup-ref>
 ```
 
 ## Squash Rules

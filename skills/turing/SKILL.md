@@ -185,8 +185,8 @@ In full mode, build a real-usage scenario for every criterion through ONE of the
 |---|---------|------|-------------------|
 | 1 | **HTTP call** | `curl -i` or Playwright APIRequestContext | status line + headers + body |
 | 2 | **tmux** | `tmux new-session -d -s turing-qa-<criterion>`, `send-keys`, `capture-pane -pS -E -` | transcript file |
-| 3 | **Browser use** | Chrome / agent-browser | action log + screenshot path |
-| 4 | **Computer use** | AppleScript, xdotool, computer-use agent | action log + screenshot |
+| 3 | **Browser use** | current host's available browser tool | action log + screenshot path |
+| 4 | **Computer use** | AppleScript on macOS; `xdotool` on Linux only; current host computer-use tool when available | action log + screenshot |
 
 **Auxiliary surfaces** (pure CLI stdout, DB state diff, parsed config dump) are valid for CLI- or data-shaped criteria but NEVER replace a channel scenario for user-facing behavior. `--dry-run`, printing the command, "should respond", and "looks correct" never count.
 

@@ -169,16 +169,7 @@ Once you delegate exploration to subagents, **DO NOT perform the same search you
 - Work on unrelated parts of the codebase
 - Preparation work (e.g., setting up drafts) that can proceed independently
 
-```
-// WRONG: After delegating, re-doing the search
-task(subagent_type="explore", prompt="Find all auth patterns in src/")
-// Then immediately grep for auth patterns yourself — FORBIDDEN
-
-// CORRECT: Continue non-overlapping work
-task(subagent_type="explore", prompt="Find all auth patterns in src/")
-// Work on a different, unrelated question while they search
-// End your response and wait for the notification
-```
+Use the current host's delegation tool to assign one explorer the bounded request “Find all auth patterns in `src/`.” Re-running that search yourself is forbidden; continue with a different question or wait for the delegated result.
 
 **Why**: Duplicate exploration wastes context budget, contradicts agent findings, and defeats the purpose of parallel throughput.
 

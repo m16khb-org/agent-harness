@@ -307,10 +307,10 @@ Write to `.agent-harness/research/<slug>.md`:
 
 | Pattern | When applied | Example |
 |---------|-------------|---------|
-| **Pattern #1** (High-volume exploration) | When a search angle returns many candidate sources | Fetching top 10 results, filtering by relevance |
-| **Pattern #2** (Devil's advocate) | For critical factual claims | Adversarial sub-agent tries to disprove a key finding |
-| **Pattern #3** (Parallel independent research) | Every research task | 3 angles searched simultaneously by 3 sub-agents |
-| **Pattern #4** (Cross-verification) | When two sub-agents' findings overlap | Two agents independently verify the same API behavior |
+| `high-volume-exploration` | When a search angle returns many candidate sources | Fetching top 10 results, filtering by relevance |
+| `devils-advocate-review` | For critical factual claims | Adversarial sub-agent tries to disprove a key finding |
+| `parallel-independent-research` | Every research task | 3 angles searched simultaneously by 3 sub-agents |
+| `cross-verification-consensus` | When two sub-agents' findings overlap | Two agents independently verify the same API behavior |
 
 **All other work (reading sub-agent results, cross-checking, synthesizing, writing the report) is done by you — the main agent — directly.**
 
