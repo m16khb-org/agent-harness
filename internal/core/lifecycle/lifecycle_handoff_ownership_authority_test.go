@@ -76,6 +76,29 @@ func TestOwnershipCoordinatorCanOnlyResumeSealedOwner(t *testing.T) {
 	}
 }
 
+func TestOwnershipCoordinatorCanWakeOrientingOwnerForExactAcknowledgement(t *testing.T) {
+	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateOwnerOrienting)
+	request := handoffEditRequest(record, repo, "claude", "coordinator-session", "")
+	request.AgentID, request.Tool = "coordinator-agent", "Bash"
+	request.Command = "orca terminal send --terminal term-1 --text '계속 진행' --enter --json"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("sealed coordinator orienting wake blocked: %#v", got)
+	}
+
+	enterOnly := request
+	enterOnly.Command = "orca terminal send --terminal term-1 --enter --json"
+	if got := BuildLifecyclePreToolUseDecision(enterOnly); got.Decision != "block" {
+		t.Fatalf("orienting wake without the canonical signal must stay blocked: %#v", got)
+	}
+
+	owner := handoffEditRequest(record, repo, "claude", "owner-session", "")
+	owner.AgentID, owner.Tool = "owner-agent", "Bash"
+	owner.Command, _ = issueOpsHandoffAcknowledgeCommand(record)
+	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "allow" {
+		t.Fatalf("fresh-shell owner acknowledgement blocked: %#v", got)
+	}
+}
+
 func TestOwnershipFenceNeverCapturesOrdinarySourceMutation(t *testing.T) {
 	states := []string{
 		handoff.StateOwnershipDispatching,
@@ -285,6 +308,70 @@ func TestOwnershipOwnerOnlyPublishesAndCreatesRemotePR(t *testing.T) {
 	verifyArtifact.SessionID, verifyArtifact.AgentID = "coordinator-session", "coordinator-agent"
 	if got := BuildLifecyclePreToolUseDecision(verifyArtifact); got.Decision != "block" {
 		t.Fatalf("source session recorded owner remote artifact: %#v", got)
+	}
+}
+
+func TestOwnershipOwnerCanRunExactLifecycleFromFreshSourceRootShell(t *testing.T) {
+	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+	record.ExecutionHandoff.PublishReceipt = &issueopsmodel.IssueOpsExecutionHandoffPublishReceipt{
+		Provider: "github", ProjectKey: "github.com/example/repo", Remote: "origin", PushTargetSHA256: strings.Repeat("a", 64),
+		Branch: record.Branch, Base: record.BranchPrepare.BaseBranch, RemoteRef: "refs/heads/" + record.Branch, FinalHead: strings.Repeat("f", 40), VerifiedAt: "2026-07-20T00:00:00Z",
+	}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	h := record.ExecutionHandoff
+	createPR := "agent-harness issueops remote create-pr --id " + record.ID +
+		" --title draft --body rendered --provider github --head " + record.Branch +
+		" --base " + record.BranchPrepare.BaseBranch + " --label bug --assignee octocat" +
+		" --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --confirm --json"
+	commands := map[string]string{
+		"publish":         "agent-harness issueops handoff publish --id " + record.ID + " --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --confirm --json",
+		"create PR":       createPR,
+		"verify artifact": "agent-harness issueops remote verify-artifact --id " + record.ID + " --provider github --kind pr --url https://github.com/example/repo/pull/1 --target-branch " + record.BranchPrepare.BaseBranch + " --label bug --assignee octocat --json",
+		"phase":           "agent-harness issueops phase --id " + record.ID + " --to pr --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json",
+		"ai slop clean":   "agent-harness issueops ai-slop-clean record --id " + record.ID + " --category dead-code --verification 'go test ./...' --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json",
+		"heartbeat":       ownershipHeartbeatCommand(record),
+		"complete":        "agent-harness issueops handoff complete --id " + record.ID + " --attempt 1 --ownership-epoch " + h.OwnershipEpoch + " --context-sha256 " + h.ContextSHA256 + " --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --final-head " + strings.Repeat("f", 40) + " --turing-report plans/owner.md --verification 'go test ./...' --json",
+	}
+	for name, command := range commands {
+		t.Run(name, func(t *testing.T) {
+			owner := handoffEditRequest(record, repo, "claude", "owner-session", "")
+			owner.AgentID, owner.Tool, owner.Command = "owner-agent", "Bash", command
+			if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "allow" {
+				t.Fatalf("exact owner lifecycle command from a fresh source-root shell blocked: %#v", got)
+			}
+		})
+	}
+
+	wrapped := handoffEditRequest(record, repo, "claude", "owner-session", "")
+	wrapped.AgentID, wrapped.Tool = "owner-agent", "Bash"
+	wrapped.Command = "env HARNESS_EXPECTED_WORKTREE=" + worker + " " + createPR
+	if got := BuildLifecyclePreToolUseDecision(wrapped); got.Decision != "block" || !strings.Contains(got.Reason, "wrapped controller") {
+		t.Fatalf("fresh-shell wrapper bypass must stay blocked: %#v", got)
+	}
+	coordinator := wrapped
+	coordinator.SessionID, coordinator.AgentID, coordinator.Command = "coordinator-session", "coordinator-agent", createPR
+	if got := BuildLifecyclePreToolUseDecision(coordinator); got.Decision != "block" {
+		t.Fatalf("source coordinator must not gain owner remote-create authority: %#v", got)
+	}
+
+	mcp := handoffEditRequest(record, repo, "claude", "owner-session", "")
+	mcp.AgentID, mcp.Tool = "owner-agent", "mcp__agent_harness__issueops_remote_create_pr"
+	mcp.ToolInput = map[string]any{
+		"id": record.ID, "title": "draft", "body": "rendered", "provider": "github",
+		"head": record.Branch, "base": record.BranchPrepare.BaseBranch,
+		"labels": []any{"bug"}, "assignees": []any{"octocat"}, "confirm": true,
+		"host": "claude", "session_id": "owner-session", "agent_id": "owner-agent", "cwd": worker,
+	}
+	if got := BuildLifecyclePreToolUseDecision(mcp); got.Decision != "allow" {
+		t.Fatalf("exact owner MCP remote create from a fresh source-root shell blocked: %#v", got)
+	}
+
+	mutation := handoffEditRequest(record, repo, "claude", "owner-session", filepath.Join(worker, "internal", "owner.go"))
+	mutation.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(mutation); got.Decision != "block" || !strings.Contains(got.Reason, "canonical worker worktree root") {
+		t.Fatalf("fresh source-root shell must not gain ordinary worker mutation authority: %#v", got)
 	}
 }
 
