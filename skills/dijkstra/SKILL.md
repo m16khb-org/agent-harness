@@ -206,6 +206,7 @@ Dijkstra solved his algorithm with pencil and paper. You have profilers.
      go test -bench=TargetFunc -benchtime=1x -count=3 -run='^$' . | grep "ns/op"
    done
    ```
+   ```text
    Equivalent in any language: run the function with scaled input, time each run,
    divide T(sN)/T(N) to reveal the complexity class.
 
@@ -225,7 +226,6 @@ Dijkstra solved his algorithm with pencil and paper. You have profilers.
 4. READ the algorithm:
    Identify: loop nesting, data structure operations, recursive calls
    Derive: worst-case, average-case, amortized complexity
-```
 
 **Record the baseline:**
 ```

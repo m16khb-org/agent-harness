@@ -1,11 +1,14 @@
 package skillcontract
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/core"
 )
 
 func readSkillForTest(t *testing.T, name string) string {
@@ -21,8 +24,82 @@ func assertSkillContains(t *testing.T, skillName string, phrases []string) {
 	t.Helper()
 	body := readSkillForTest(t, skillName)
 	for _, want := range phrases {
-		if !strings.Contains(body, want) {
+		if !strings.Contains(body, want) && !strings.Contains(strings.ReplaceAll(body, "`", ""), strings.ReplaceAll(want, "`", "")) {
 			t.Fatalf("%s SKILL.md missing contract phrase %q", skillName, want)
+		}
+	}
+}
+
+func readRepoFileForTest(t *testing.T, relPath string) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("..", "..", "..", relPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+func TestP1PioneerCorrectnessContracts(t *testing.T) {
+	assertSkillContains(t, "berners-lee", []string{
+		"high-volume-exploration",
+		"devils-advocate-review",
+		"parallel-independent-research",
+		"cross-verification-consensus",
+	})
+	assertSkillContains(t, "brooks", []string{
+		"## IssueOps Integration",
+		"agent-harness issueops devils-advocate review",
+		"issueops_record_devils_advocate_review",
+	})
+	assertSkillContains(t, "karpathy", []string{
+		"Shannon measures generated code artifacts, not prompt quality.",
+	})
+	assertSkillContains(t, "turing", []string{
+		"skills/issueops/references/orca-handoff.md",
+		"current host's available browser tool",
+		"AppleScript on macOS",
+		"`xdotool` on Linux only",
+	})
+	turing := readSkillForTest(t, "turing")
+	if strings.Contains(turing, "Chrome / agent-browser") {
+		t.Fatal("turing SKILL.md must not name the nonexistent agent-browser tool")
+	}
+	rebase := readRepoFileForTest(t, filepath.Join("skills", "torvalds", "references", "rebase-protocol.md"))
+	for _, want := range []string{"Backup refs persist until explicitly deleted.", "git branch -D <backup-ref>"} {
+		if !strings.Contains(rebase, want) {
+			t.Fatalf("rebase protocol missing P1 retention phrase %q", want)
+		}
+	}
+	vonNeumann := readSkillForTest(t, "von-neumann")
+	if strings.Contains(vonNeumann, "task(subagent_type=") {
+		t.Fatal("von-neumann SKILL.md must not prescribe a host-specific task pseudo-API")
+	}
+	if !strings.Contains(vonNeumann, "current host's delegation tool") {
+		t.Fatal("von-neumann SKILL.md must use host-neutral delegation wording")
+	}
+	assertSkillContains(t, "hopper", []string{"Four Strategies", "self-verify-progress-heartbeat", "Strategy D: Snapshot/Golden Diff"})
+	dijkstra := readSkillForTest(t, "dijkstra")
+	if !strings.Contains(dijkstra, "```text\n   Equivalent in any language") {
+		t.Fatal("dijkstra SKILL.md must keep scaling-test interpretation inside its fenced block")
+	}
+
+	fixtures, err := core.LoadIssueOpsBenchmarkFixtures(filepath.Join("..", "..", "..", "testdata", "issueops", "fixtures"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pioneerCount := 0
+	for _, fixture := range fixtures {
+		if fixture.PioneerSkillTarget != "" {
+			pioneerCount++
+		}
+	}
+	dashboard := readRepoFileForTest(t, filepath.Join(".agent-harness", "operations", "quality-dashboard.md"))
+	for _, want := range []string{
+		"historical 2026-06-16 isolated-rubric cohort: 9 skills",
+		fmt.Sprintf("current IssueOps benchmark fixture loader: %d pioneer-targeted fixtures", pioneerCount),
+	} {
+		if !strings.Contains(dashboard, want) {
+			t.Fatalf("quality dashboard missing P1 count contract %q", want)
 		}
 	}
 }

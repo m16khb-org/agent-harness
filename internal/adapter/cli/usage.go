@@ -2,6 +2,8 @@ package cli
 
 import "fmt"
 
+const issueOpsDevilsAdvocateUsage = "  agent-harness " + "issueops devils-advocate review --id ID --verdict pass|revise|stop [--finding TEXT]... [--waive --waiver-rationale TEXT] [--json]"
+
 // Command describes a stable top-level CLI command exposed by the harness.
 type Command struct {
 	Name        string `json:"name"`
@@ -148,5 +150,6 @@ Usage:
   agent-harness self-augment lesson [--candidate ID] --lesson TEXT --next-action TEXT [--source TEXT] [--severity info|warning|error] [--state-key KEY] [--json]
   agent-harness mcp [cleanup [--dry-run|--apply] [--json]]
   agent-harness version
-`, version)
+%s
+`, version, issueOpsDevilsAdvocateUsage)
 }

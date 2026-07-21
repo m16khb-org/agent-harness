@@ -706,7 +706,7 @@
       "running": false
     },
     "docs_index": {
-      "docs_count": 88,
+      "docs_count": 89,
       "harness_root": "$HARNESS_ROOT",
       "ok": true,
       "required_docs": {
@@ -767,6 +767,7 @@
         "$HARNESS_ROOT/.agent-harness/operations/web-fetch-live-parity.md",
         "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
         "$HARNESS_ROOT/.agent-harness/plans/13-codex-system-skill-quick-validate.md",
+        "$HARNESS_ROOT/.agent-harness/plans/52-p1-pioneer-contract-cli-correctness.md",
         "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
         "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
         "$HARNESS_ROOT/.agent-harness/plans/agent-harness-optimization-plan.md",
@@ -5200,7 +5201,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 88,
+        "docs_indexed": 89,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -7204,7 +7205,7 @@
       "content": [
         {
           "json": {
-            "docs_count": 88,
+            "docs_count": 89,
             "harness_root": "$HARNESS_ROOT",
             "ok": true,
             "required_docs": {
@@ -7272,6 +7273,7 @@
               "$HARNESS_ROOT/.agent-harness/operations/web-fetch-live-parity.md",
               "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
               "$HARNESS_ROOT/.agent-harness/plans/13-codex-system-skill-quick-validate.md",
+              "$HARNESS_ROOT/.agent-harness/plans/52-p1-pioneer-contract-cli-correctness.md",
               "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
               "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
               "$HARNESS_ROOT/.agent-harness/plans/agent-harness-optimization-plan.md",
@@ -10375,7 +10377,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 88,
+              "docs_indexed": 89,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
