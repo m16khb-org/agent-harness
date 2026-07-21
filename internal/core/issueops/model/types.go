@@ -513,6 +513,12 @@ type IssueOpsExecutionHandoffContextOptions struct {
 	AllowCodexHookTrustBypass bool     `json:"allow_codex_hook_trust_bypass,omitempty"`
 }
 
+type IssueOpsAgentLaunchProfile struct {
+	Agent           string `json:"agent"`
+	Model           string `json:"model,omitempty"`
+	ReasoningEffort string `json:"reasoning_effort,omitempty"`
+}
+
 type IssueOpsExecutionHandoff struct {
 	State                    string                                        `json:"state"`
 	ClosedDisposition        string                                        `json:"closed_disposition,omitempty"`
@@ -527,6 +533,7 @@ type IssueOpsExecutionHandoff struct {
 	ContextOptions           *IssueOpsExecutionHandoffContextOptions       `json:"context_options,omitempty"`
 	Driver                   string                                        `json:"driver,omitempty"`
 	Agent                    string                                        `json:"agent,omitempty"`
+	LaunchProfile            *IssueOpsAgentLaunchProfile                   `json:"launch_profile,omitempty"`
 	DeliveryMode             string                                        `json:"delivery_mode,omitempty"`
 	CoordinatorRoot          string                                        `json:"coordinator_root,omitempty"`
 	CoordinatorMailboxHandle string                                        `json:"coordinator_mailbox_handle,omitempty"`

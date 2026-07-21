@@ -110,6 +110,42 @@ func TestIssueOpsOwnershipContextIncludesWorkspaceSeal(t *testing.T) {
 	}
 }
 
+func TestIssueOpsOwnershipContextSealsHostLaunchProfile(t *testing.T) {
+	record := contextRecordForTest(t)
+	profile, err := ResolveAgentLaunchProfile("codex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.ExecutionHandoff.Agent = "codex"
+	record.ExecutionHandoff.LaunchProfile = &profile
+
+	packet, err := BuildContext(record, ContextOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if packet.Projection.Agent != "codex" || packet.Projection.Model != "gpt-5.6-terra" || packet.Projection.ReasoningEffort != "high" {
+		t.Fatalf("host launch profile missing from context: %#v", packet.Projection)
+	}
+}
+
+func TestResolveAgentLaunchProfileUsesCurrentHostDefaults(t *testing.T) {
+	for _, tt := range []struct {
+		agent, model, effort string
+	}{
+		{agent: "codex", model: "gpt-5.6-terra", effort: "high"},
+		{agent: "claude", model: "opus"},
+		{agent: "gjc"},
+	} {
+		profile, err := ResolveAgentLaunchProfile(tt.agent)
+		if err != nil {
+			t.Fatalf("ResolveAgentLaunchProfile(%q): %v", tt.agent, err)
+		}
+		if profile.Agent != tt.agent || profile.Model != tt.model || profile.ReasoningEffort != tt.effort {
+			t.Fatalf("ResolveAgentLaunchProfile(%q) = %#v", tt.agent, profile)
+		}
+	}
+}
+
 func TestIssueOpsHandoffContextRedactsSecrets(t *testing.T) {
 	record := contextRecordForTest(t)
 	record.Intent.RawRequest = "Authorization: Bearer super-secret-token"

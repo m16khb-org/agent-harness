@@ -47,6 +47,9 @@ type ContextProjection struct {
 	WorkspaceSHA256           string   `json:"workspace_sha256,omitempty"`
 	AttemptBaseHead           string   `json:"attempt_base_head"`
 	CoordinatorRecipient      string   `json:"coordinator_recipient,omitempty"`
+	Agent                     string   `json:"agent,omitempty"`
+	Model                     string   `json:"model,omitempty"`
+	ReasoningEffort           string   `json:"reasoning_effort,omitempty"`
 	Problem                   string   `json:"problem,omitempty"`
 	Intent                    string   `json:"intent,omitempty"`
 	SuccessCriteria           []string `json:"success_criteria,omitempty"`
@@ -103,6 +106,7 @@ func BuildContext(record model.IssueOpsRecord, options ContextOptions) (ContextP
 		WorkspaceSHA256:           strings.TrimSpace(record.ExecutionHandoff.WorkspaceSHA256),
 		AttemptBaseHead:           strings.TrimSpace(record.ExecutionHandoff.AttemptBaseHead),
 		CoordinatorRecipient:      strings.TrimSpace(record.ExecutionHandoff.CoordinatorMailboxHandle),
+		Agent:                     strings.TrimSpace(record.ExecutionHandoff.Agent),
 		CriteriaIDs:               cleanList(options.CriteriaIDs),
 		RequiredDocs:              cleanList(options.RequiredDocs),
 		RequiredSkills:            cleanList(options.RequiredSkills),
@@ -112,6 +116,10 @@ func BuildContext(record model.IssueOpsRecord, options ContextOptions) (ContextP
 		StopConditions:            cleanList(options.StopConditions),
 		ResultFormat:              redact(options.ResultFormat),
 		AllowCodexHookTrustBypass: options.AllowCodexHookTrustBypass,
+	}
+	if profile := record.ExecutionHandoff.LaunchProfile; profile != nil {
+		projection.Model = strings.TrimSpace(profile.Model)
+		projection.ReasoningEffort = strings.TrimSpace(profile.ReasoningEffort)
 	}
 	if record.BranchPrepare != nil {
 		projection.Provider = strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider))

@@ -44,6 +44,9 @@ type IssueOpsHandoffStartResult struct {
 	Attempt                      int                   `json:"attempt"`
 	ContextSHA256                string                `json:"context_sha256,omitempty"`
 	PlanSHA256                   string                `json:"plan_sha256,omitempty"`
+	Agent                        string                `json:"agent,omitempty"`
+	Model                        string                `json:"model,omitempty"`
+	ReasoningEffort              string                `json:"reasoning_effort,omitempty"`
 	RecoveryCode                 string                `json:"recovery_code,omitempty"`
 	CodexHookTrustBypassRequired bool                  `json:"codex_hook_trust_bypass_required"`
 	CodexHookTrustBypassAttested bool                  `json:"codex_hook_trust_bypass_attested"`
@@ -98,6 +101,9 @@ func startIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 }
 
 func dispatchStartedHandoff(ctx context.Context, stateRoot string, record IssueOpsRecord, client IssueOpsOrcaDispatchClient, packet handoff.ContextPacket, now func() string, hooks issueOpsHandoffStartHooks) (IssueOpsHandoffStartResult, error) {
+	if _, err := sealedHandoffLaunchProfile(record.ExecutionHandoff); err != nil {
+		return IssueOpsHandoffStartResult{}, err
+	}
 	fence := handoffFence(record)
 	var err error
 
@@ -173,6 +179,10 @@ func previewOwnershipHandoffStart(ctx context.Context, stateRoot string, record 
 		return IssueOpsHandoffStartResult{}, err
 	}
 	contextRecord := record
+	launchProfile, err := handoff.ResolveAgentLaunchProfile(workspace.Agent)
+	if err != nil {
+		return IssueOpsHandoffStartResult{}, err
+	}
 	contextRecord.ExecutionHandoff = &IssueOpsExecutionHandoff{
 		State:                    handoff.StateOwnershipDispatching,
 		Attempt:                  1,
@@ -182,6 +192,7 @@ func previewOwnershipHandoffStart(ctx context.Context, stateRoot string, record 
 		AttemptBaseHead:          head,
 		Driver:                   workspace.Driver,
 		Agent:                    workspace.Agent,
+		LaunchProfile:            &launchProfile,
 		CoordinatorRoot:          workspace.CoordinatorRoot,
 		CoordinatorMailboxHandle: coordinatorRecipient,
 		CoordinatorSession:       &session,
@@ -688,6 +699,10 @@ func terminalCreateCapabilityLost(err error) bool {
 }
 
 func createHandoffTerminal(ctx context.Context, stateRoot string, record IssueOpsRecord, fence handoff.Fence, client IssueOpsOrcaDispatchClient, now func() string, beforeJournal func()) (IssueOpsRecord, string, error) {
+	launchProfile, err := sealedHandoffLaunchProfile(record.ExecutionHandoff)
+	if err != nil {
+		return record, "", err
+	}
 	terminals, err := client.ListTerminals(ctx, record.ExecutionHandoff.Orca.WorktreeID)
 	if err != nil {
 		return record, "", persistHandoffSoleWriterInventoryFailure(stateRoot, record, fence, fmt.Errorf("list terminals before create requires recovery: %w", err), now)
@@ -716,9 +731,11 @@ func createHandoffTerminal(ctx context.Context, stateRoot string, record IssueOp
 		return record, "", err
 	}
 	created, err := client.CreateTerminal(ctx, port.OrcaCreateTerminalRequest{
-		WorktreeID: record.ExecutionHandoff.Orca.WorktreeID,
-		Agent:      record.ExecutionHandoff.Agent,
-		Title:      issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt),
+		WorktreeID:      record.ExecutionHandoff.Orca.WorktreeID,
+		Agent:           record.ExecutionHandoff.Agent,
+		Model:           launchProfile.Model,
+		ReasoningEffort: launchProfile.ReasoningEffort,
+		Title:           issueOpsHandoffMarker(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt),
 		AllowCodexHookTrustBypass: record.ExecutionHandoff.ContextOptions != nil &&
 			record.ExecutionHandoff.ContextOptions.AllowCodexHookTrustBypass,
 	})
@@ -870,7 +887,10 @@ func dispatchHandoff(ctx context.Context, stateRoot string, record IssueOpsRecor
 		} else {
 			options := record.ExecutionHandoff.ContextOptions
 			allowCodexHookTrustBypass := options != nil && options.AllowCodexHookTrustBypass
-			if bootstrapErr := bootstrapper.BootstrapTerminalAgent(ctx, port.OrcaBootstrapTerminalAgentRequest{TerminalHandle: liveHandle, Agent: record.ExecutionHandoff.Agent, AllowCodexHookTrustBypass: allowCodexHookTrustBypass}); bootstrapErr != nil {
+			launchProfile, profileErr := sealedHandoffLaunchProfile(record.ExecutionHandoff)
+			if profileErr != nil {
+				err = fmt.Errorf("exact worker terminal launch profile is invalid: %w", profileErr)
+			} else if bootstrapErr := bootstrapper.BootstrapTerminalAgent(ctx, port.OrcaBootstrapTerminalAgentRequest{TerminalHandle: liveHandle, Agent: record.ExecutionHandoff.Agent, Model: launchProfile.Model, ReasoningEffort: launchProfile.ReasoningEffort, AllowCodexHookTrustBypass: allowCodexHookTrustBypass}); bootstrapErr != nil {
 				err = fmt.Errorf("bootstrap exact worker terminal agent: %w", bootstrapErr)
 			} else {
 				dispatched, err = client.Dispatch(ctx, dispatchRequest)
@@ -903,6 +923,20 @@ func dispatchHandoff(ctx context.Context, stateRoot string, record IssueOpsRecor
 		_ = markHandoffPrepareRecovery(stateRoot, record.ID, fence, "dispatch_persist_failed", err.Error(), now())
 	}
 	return record, err
+}
+
+func sealedHandoffLaunchProfile(h *IssueOpsExecutionHandoff) (model.IssueOpsAgentLaunchProfile, error) {
+	if h == nil || h.LaunchProfile == nil {
+		return model.IssueOpsAgentLaunchProfile{}, fmt.Errorf("sealed handoff launch profile is required")
+	}
+	expected, err := handoff.ResolveAgentLaunchProfile(h.Agent)
+	if err != nil {
+		return model.IssueOpsAgentLaunchProfile{}, err
+	}
+	if *h.LaunchProfile != expected {
+		return model.IssueOpsAgentLaunchProfile{}, fmt.Errorf("sealed handoff launch profile does not match agent %q", h.Agent)
+	}
+	return expected, nil
 }
 
 func isOrcaUnrecognizedAgentDispatch(err error) bool {
@@ -1402,6 +1436,11 @@ func projectHandoffStart(record IssueOpsRecord, preview bool, planSHA string) Is
 	result.Disposition = record.ExecutionHandoff.ClosedDisposition
 	result.Attempt = record.ExecutionHandoff.Attempt
 	result.ContextSHA256 = record.ExecutionHandoff.ContextSHA256
+	result.Agent = record.ExecutionHandoff.Agent
+	if profile := record.ExecutionHandoff.LaunchProfile; profile != nil {
+		result.Model = profile.Model
+		result.ReasoningEffort = profile.ReasoningEffort
+	}
 	result.CodexHookTrustBypassRequired = codexHookTrustBypassRequired(record)
 	result.CodexHookTrustBypassAttested = record.ExecutionHandoff.ContextOptions != nil && record.ExecutionHandoff.ContextOptions.AllowCodexHookTrustBypass
 	result.Orca = record.ExecutionHandoff.Orca

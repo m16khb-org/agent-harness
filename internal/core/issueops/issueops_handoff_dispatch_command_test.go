@@ -41,3 +41,26 @@ func TestConfirmedHandoffStartCommandReplaysSealedContextOptions(t *testing.T) {
 		}
 	}
 }
+
+func TestProjectHandoffStartReportsSealedLaunchProfile(t *testing.T) {
+	record := IssueOpsRecord{ID: "io-current", ExecutionHandoff: &IssueOpsExecutionHandoff{
+		State: "ownership_dispatching", Attempt: 1, Agent: "codex",
+		LaunchProfile: &model.IssueOpsAgentLaunchProfile{Agent: "codex", Model: "gpt-5.6-terra", ReasoningEffort: "high"},
+	}}
+
+	result := projectHandoffStart(record, true, "plan-sha")
+	if result.Agent != "codex" || result.Model != "gpt-5.6-terra" || result.ReasoningEffort != "high" {
+		t.Fatalf("projected launch profile = %#v", result)
+	}
+}
+
+func TestSealedHandoffLaunchProfileRejectsMissingAndMismatchedProfiles(t *testing.T) {
+	for _, handoff := range []*IssueOpsExecutionHandoff{
+		{Agent: "codex"},
+		{Agent: "codex", LaunchProfile: &model.IssueOpsAgentLaunchProfile{Agent: "codex", Model: "gpt-5.6-sol", ReasoningEffort: "high"}},
+	} {
+		if _, err := sealedHandoffLaunchProfile(handoff); err == nil {
+			t.Fatalf("invalid launch profile accepted: %#v", handoff)
+		}
+	}
+}

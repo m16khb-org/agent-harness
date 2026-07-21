@@ -303,6 +303,7 @@ Every ownership attempt records attempt/epoch/context, native source and owner i
 - **Attempt** — 단조 증가하는 ownership 시도 번호.
 - **OwnershipEpoch** — 한 attempt의 소유권 토큰. stale attempt/epoch는 CAS 이전에 거부된다.
 - **ContextSHA256** — sealed owner context의 해시. dispatch·claim·acknowledge·complete 같은 context 의존 전이는 정확히 이 해시를 요구한다(`requireContext`).
+- **Launch profile** — owner host, model, reasoning effort는 preview에서 결정되어 context와 durable `execution_handoff`에 함께 봉인된다. Codex는 `gpt-5.6-terra/high`, Claude는 runtime에서 `claude-opus-4-8`로 해석되는 `opus` alias를 사용한다. Adapter는 이 exact 조합과 Orca `--command` launch만 허용하며 모델 없는 terminal create/bootstrap은 fail closed다.
 
 세 값은 ownership lease의 현재 불변식이다. 필드 semantics를 바꾸려면 root schema bump와 hard-cutover 검증을 함께 수행한다.
 

@@ -167,4 +167,6 @@ worktree prepare
 
 Workspace provisioning before ownership transfer is deliberate. At every arrow, the source main worktree remains available before, during, and after handoff for unrelated work. “Disengage” means the source does not mutate or steer this exact cycle; it never makes the source checkout read-only. The fence is the canonical worker root, exact cycle ID, native owner, or persisted Orca resource, never a source CWD fallback or generic session binding.
 
+`handoff start` seals the owner launch profile into the context hash and durable record before terminal creation. Codex owners run `gpt-5.6-terra` with `model_reasoning_effort="high"`; Claude owners pass the `opus` alias, which the installed Claude Code resolves to `claude-opus-4-8`. GJC keeps its host default. Orca must expose `terminal create --command`; the older `--agent` launch shape cannot carry the sealed model contract and is rejected.
+
 The worker owner runs orientation and has post-handoff authority to publish and complete. `handoff complete` ends at `cleanup_pending_human_decision`; no automatic cleanup occurs. Use `handoff cleanup-preview` from the exact source root, present the three choices, then use `cleanup-approve --confirm` and ordered `cleanup-record` receipts only after the human directs it.

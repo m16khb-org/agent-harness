@@ -5,7 +5,12 @@ import (
 	"fmt"
 )
 
-const OrcaMaxBaselineIDs = 512
+const (
+	OrcaMaxBaselineIDs           = 512
+	IssueOpsCodexModel           = "gpt-5.6-terra"
+	IssueOpsCodexReasoningEffort = "high"
+	IssueOpsClaudeModel          = "opus"
+)
 
 type OrcaError struct {
 	Code    string `json:"code"`
@@ -105,6 +110,8 @@ type OrcaTerminal struct {
 type OrcaCreateTerminalRequest struct {
 	WorktreeID                string `json:"worktree_id"`
 	Agent                     string `json:"agent"`
+	Model                     string `json:"model,omitempty"`
+	ReasoningEffort           string `json:"reasoning_effort,omitempty"`
 	Title                     string `json:"title,omitempty"`
 	AllowCodexHookTrustBypass bool   `json:"allow_codex_hook_trust_bypass,omitempty"`
 }
@@ -115,6 +122,8 @@ type OrcaCreateTerminalRequest struct {
 type OrcaBootstrapTerminalAgentRequest struct {
 	TerminalHandle            string `json:"terminal_handle"`
 	Agent                     string `json:"agent"`
+	Model                     string `json:"model,omitempty"`
+	ReasoningEffort           string `json:"reasoning_effort,omitempty"`
 	AllowCodexHookTrustBypass bool   `json:"allow_codex_hook_trust_bypass,omitempty"`
 }
 

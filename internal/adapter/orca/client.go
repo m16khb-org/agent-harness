@@ -144,7 +144,7 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 	}{
 		{argv: []string{"orca", "worktree", "create", "--help"}, want: worktreeCreateFlags},
 		{argv: []string{"orca", "worktree", "list", "--help"}, want: []string{"--repo", "--limit", "--json"}},
-		{argv: []string{"orca", "terminal", "create", "--help"}, wantAny: [][]string{{"--worktree", "--agent", "--title", "--json"}, {"--worktree", "--command", "--title", "--json"}}},
+		{argv: []string{"orca", "terminal", "create", "--help"}, want: []string{"--worktree", "--command", "--title", "--json"}},
 		{argv: []string{"orca", "terminal", "list", "--help"}, want: []string{"--worktree", "--limit", "--json"}},
 		{argv: []string{"orca", "orchestration", "task-create", "--help"}, want: []string{"--spec", "--task-title", "--display-name", "--json"}},
 		{argv: []string{"orca", "orchestration", "task-list", "--help"}, want: []string{"--ready", "--status", "--json"}},
@@ -172,6 +172,17 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 		help, err := c.runText(ctx, "", readTimeout, []string{"codex", "--help"})
 		if err != nil || !containsAllHelpFlags(help, []string{"--dangerously-bypass-hook-trust"}) {
 			result.Code = "codex_hook_trust_bypass_unsupported"
+			return result, nil
+		}
+		if !containsAllHelpFlags(help, []string{"--model", "--config"}) {
+			result.Code = "host_model_selection_unsupported"
+			return result, nil
+		}
+	}
+	if agent == "claude" {
+		help, err := c.runText(ctx, "", readTimeout, []string{"claude", "--help"})
+		if err != nil || !containsAllHelpFlags(help, []string{"--model"}) {
+			result.Code = "host_model_selection_unsupported"
 			return result, nil
 		}
 	}
@@ -369,26 +380,18 @@ func (c *Client) ListTerminals(ctx context.Context, worktreeID string) ([]port.O
 }
 
 func (c *Client) CreateTerminal(ctx context.Context, req port.OrcaCreateTerminalRequest) (port.OrcaTerminal, error) {
-	command, ok := hostCommand(req.Agent)
+	command, ok := handoffAgentCommand(req.Agent, req.Model, req.ReasoningEffort, req.AllowCodexHookTrustBypass)
 	if !ok {
-		return port.OrcaTerminal{}, &port.OrcaError{Code: "unsupported_agent", Detail: req.Agent}
+		return port.OrcaTerminal{}, &port.OrcaError{Code: "unsupported_agent_profile", Detail: strings.TrimSpace(req.Agent)}
 	}
 	help, err := c.runText(ctx, "", readTimeout, []string{"orca", "terminal", "create", "--help"})
 	if err != nil {
 		return port.OrcaTerminal{}, &port.OrcaError{Code: "terminal_create_capability_unavailable", Detail: boundedDiagnostic(err.Error())}
 	}
-	argv := []string{"orca", "terminal", "create", "--worktree", idSelector(req.WorktreeID)}
-	switch {
-	case containsAllHelpFlags(help, []string{"--worktree", "--agent", "--title", "--json"}):
-		argv = append(argv, "--agent", command)
-	case containsAllHelpFlags(help, []string{"--worktree", "--command", "--title", "--json"}):
-		if strings.EqualFold(strings.TrimSpace(req.Agent), "codex") && req.AllowCodexHookTrustBypass {
-			command = "codex --dangerously-bypass-hook-trust"
-		}
-		argv = append(argv, "--command", command)
-	default:
-		return port.OrcaTerminal{}, &port.OrcaError{Code: "terminal_create_capability_missing", Detail: "installed Orca exposes neither the fixed --agent nor fixed --command launch shape"}
+	if !containsAllHelpFlags(help, []string{"--worktree", "--command", "--title", "--json"}) {
+		return port.OrcaTerminal{}, &port.OrcaError{Code: "terminal_create_capability_missing", Detail: "installed Orca does not expose the fixed --command launch shape"}
 	}
+	argv := []string{"orca", "terminal", "create", "--worktree", idSelector(req.WorktreeID), "--command", command}
 	if title := strings.TrimSpace(req.Title); title != "" {
 		argv = append(argv, "--title", title)
 	}
@@ -416,12 +419,9 @@ func (c *Client) BootstrapTerminalAgent(ctx context.Context, req port.OrcaBootst
 	if strings.TrimSpace(req.TerminalHandle) == "" {
 		return &port.OrcaError{Code: "terminal_agent_bootstrap_invalid", Detail: "terminal handle is required"}
 	}
-	command, ok := hostCommand(req.Agent)
+	command, ok := handoffAgentCommand(req.Agent, req.Model, req.ReasoningEffort, req.AllowCodexHookTrustBypass)
 	if !ok {
-		return &port.OrcaError{Code: "unsupported_agent", Detail: req.Agent}
-	}
-	if strings.EqualFold(strings.TrimSpace(req.Agent), "codex") && req.AllowCodexHookTrustBypass {
-		command = "codex --dangerously-bypass-hook-trust"
+		return &port.OrcaError{Code: "unsupported_agent_profile", Detail: strings.TrimSpace(req.Agent)}
 	}
 	var send struct {
 		Send struct {
@@ -844,6 +844,32 @@ func hostCommand(agent string) (string, bool) {
 	case "claude":
 		return "claude", true
 	case "gjc":
+		return "gjc", true
+	default:
+		return "", false
+	}
+}
+
+func handoffAgentCommand(agent, model, reasoningEffort string, allowCodexHookTrustBypass bool) (string, bool) {
+	switch strings.TrimSpace(strings.ToLower(agent)) {
+	case "codex":
+		if strings.TrimSpace(model) != port.IssueOpsCodexModel || strings.TrimSpace(reasoningEffort) != port.IssueOpsCodexReasoningEffort {
+			return "", false
+		}
+		command := `codex --model ` + port.IssueOpsCodexModel + ` -c model_reasoning_effort="` + port.IssueOpsCodexReasoningEffort + `"`
+		if allowCodexHookTrustBypass {
+			command += " --dangerously-bypass-hook-trust"
+		}
+		return command, true
+	case "claude":
+		if strings.TrimSpace(model) != port.IssueOpsClaudeModel || strings.TrimSpace(reasoningEffort) != "" {
+			return "", false
+		}
+		return "claude --model " + port.IssueOpsClaudeModel, true
+	case "gjc":
+		if strings.TrimSpace(model) != "" || strings.TrimSpace(reasoningEffort) != "" {
+			return "", false
+		}
 		return "gjc", true
 	default:
 		return "", false
