@@ -292,6 +292,8 @@ func TestOwnershipOwnerCanAdvanceAndRecordAISlopClean(t *testing.T) {
 	commands := []string{
 		"agent-harness issueops phase --id " + record.ID + " --to implement --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json",
 		"agent-harness issueops ai-slop-clean record --id " + record.ID + " --category dead-code --verification 'go test ./...' --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json",
+		"agent-harness issueops feedback mark-issue-updated --id " + record.ID + " --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json",
+		"agent-harness issueops feedback resolve --id " + record.ID + " --index 0 --resolution valid-defect --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json",
 	}
 	for _, command := range commands {
 		owner := handoffEditRequest(record, worker, "claude", "owner-session", "")

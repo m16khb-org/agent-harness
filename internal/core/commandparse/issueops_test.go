@@ -126,6 +126,8 @@ func TestOwnerRecorderExactFlags(t *testing.T) {
 	for _, commandText := range []string{
 		"agent-harness issueops phase --id io-1 --to implement --host codex --session-id owner-1 --agent-id agent-1 --cwd /worker --json",
 		"agent-harness issueops ai-slop-clean record --id io-1 --category dead-code --verification 'go test ./...' --host codex --session-id owner-1 --agent-id agent-1 --cwd /worker --json",
+		"agent-harness issueops feedback mark-issue-updated --id io-1 --host codex --session-id owner-1 --agent-id agent-1 --cwd /worker --json",
+		"agent-harness issueops feedback resolve --id io-1 --index 0 --resolution valid-defect --host codex --session-id owner-1 --agent-id agent-1 --cwd /worker --json",
 	} {
 		command, ok := ParseExactIssueOpsCommand(commandText)
 		if !ok {
