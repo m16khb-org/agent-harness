@@ -41,6 +41,23 @@ func TestOwnershipEnvelopeStateMatrix(t *testing.T) {
 	}
 }
 
+func TestOwnershipEnvelopeAllowsCancellationRecoveryWithoutCompletion(t *testing.T) {
+	record := validOwnershipEnvelopeRecord(t)
+	record.ExecutionHandoff.State = StateRecoveryRequired
+	record.ExecutionHandoff.Cancellation = &model.IssueOpsExecutionHandoffCancellation{
+		RequestedAt: "2026-07-20T00:00:00Z",
+		Reason:      "stranded owner cleanup requested",
+	}
+	record.ExecutionHandoff.Failure = &model.IssueOpsExecutionHandoffFailure{
+		Code:    "cancellation_requested",
+		Message: "stranded owner cleanup requested",
+		At:      "2026-07-20T00:00:00Z",
+	}
+	if err := ValidateEnvelope(record); err != nil {
+		t.Fatalf("cancellation recovery without completion rejected: %v", err)
+	}
+}
+
 func TestOwnershipEnvelopeRejectsInvalidOrientation(t *testing.T) {
 	for _, mutate := range []func(*model.IssueOpsOwnershipOrientation){
 		func(o *model.IssueOpsOwnershipOrientation) { o.IssueURL = "https://example.test/issues/other" },

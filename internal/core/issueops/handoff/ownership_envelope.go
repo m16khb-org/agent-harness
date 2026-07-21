@@ -61,6 +61,12 @@ func validateOwnershipEnvelope(record model.IssueOpsRecord) error {
 			}
 			return nil
 		}
+		if h.Cancellation != nil {
+			if !validWorkerSession(h.OwnerSession) || !validOwnershipOrientation(record, h.Orientation) || h.Completion != nil || !validCancellationRecovery(h) {
+				return fmt.Errorf("ownership cancellation recovery requires the active owner context and cancellation tombstone")
+			}
+			return nil
+		}
 		if !validWorkerSession(h.OwnerSession) || !validOwnershipOrientation(record, h.Orientation) || h.Completion == nil {
 			return fmt.Errorf("ownership terminal recovery requires owner completion")
 		}
@@ -76,6 +82,13 @@ func validateOwnershipEnvelope(record model.IssueOpsRecord) error {
 		return fmt.Errorf("unknown ownership handoff state")
 	}
 	return nil
+}
+
+func validCancellationRecovery(h *model.IssueOpsExecutionHandoff) bool {
+	if h == nil || h.Cancellation == nil || h.Cancellation.RequestedAt == "" || !canonicalTimestamp(h.Cancellation.RequestedAt) || strings.TrimSpace(h.Cancellation.Reason) == "" || h.Cancellation.Reason != redact(h.Cancellation.Reason) || !validFailure(h.Failure) {
+		return false
+	}
+	return h.Failure.Code == "cancellation_requested" && h.Failure.Message == h.Cancellation.Reason && h.Failure.At == h.Cancellation.RequestedAt
 }
 
 func validOwnershipOrientation(record model.IssueOpsRecord, orientation *model.IssueOpsOwnershipOrientation) bool {
