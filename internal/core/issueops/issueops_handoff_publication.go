@@ -23,6 +23,7 @@ import (
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/remote"
 	"agent-harness/internal/core/policy"
+	"agent-harness/internal/port"
 )
 
 var publicationFullCommitPattern = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
@@ -1053,11 +1054,15 @@ func issueOpsOwnerPublicationIdentity(ctx context.Context, record IssueOpsRecord
 }
 
 func attestIssueOpsPublicationSoleWriter(ctx context.Context, stateRoot string, expected IssueOpsRecord, lease IssueOpsOrcaDispatchClient, now string) (IssueOpsRecord, error) {
+	var err error
+	expected, err = reconcileIssueOpsPublicationOwnerTerminal(ctx, stateRoot, expected, lease, now)
 	allowedHandle := ""
 	if h := expected.ExecutionHandoff; h != nil && h.Orca != nil {
 		allowedHandle = h.Orca.WorkerTerminalHandle
 	}
-	err := attestHandoffSoleWriter(ctx, expected, lease, allowedHandle)
+	if err == nil {
+		err = attestHandoffSoleWriter(ctx, expected, lease, allowedHandle)
+	}
 	if err == nil && expected.ExecutionHandoff.PublicationRecovery == nil {
 		return expected, nil
 	}
@@ -1097,6 +1102,70 @@ func attestIssueOpsPublicationSoleWriter(ctx context.Context, stateRoot string, 
 		return persisted, fmt.Errorf("publication sole-writer re-attestation failed: %w", err)
 	}
 	return persisted, nil
+}
+
+func reconcileIssueOpsPublicationOwnerTerminal(ctx context.Context, stateRoot string, expected IssueOpsRecord, lease IssueOpsOrcaDispatchClient, now string) (IssueOpsRecord, error) {
+	h := expected.ExecutionHandoff
+	if h == nil || h.Orca == nil {
+		return expected, soleWriterRecoveryError("publication owner terminal identity is unavailable")
+	}
+	identity := h.Orca
+	if strings.TrimSpace(identity.WorktreeID) == "" || strings.TrimSpace(identity.WorkerPTYID) == "" {
+		return expected, soleWriterRecoveryError("publication owner stable worktree or PTY identity is unavailable")
+	}
+	live, err := lease.RefreshTerminal(ctx, identity.WorktreeID, identity.WorkerPTYID)
+	if err != nil {
+		return expected, soleWriterRecoveryError("publication owner terminal refresh requires recovery: %v", err)
+	}
+	reconciled, err := reconcilePublicationOwnerTerminalIdentity(expected, live)
+	if err != nil {
+		return expected, soleWriterRecoveryError("publication owner terminal refresh requires recovery: %v", err)
+	}
+	if reflect.DeepEqual(reconciled, expected) {
+		return expected, nil
+	}
+	var persisted IssueOpsRecord
+	if err := withIssueOpsLock(ctx, stateRoot, expected.ID, func(context.Context) error {
+		current, readErr := ReadIssueOps(stateRoot, expected.ID)
+		if readErr != nil {
+			return readErr
+		}
+		if !reflect.DeepEqual(current, expected) {
+			return fmt.Errorf("accepted handoff changed during publication owner terminal refresh")
+		}
+		reconciled.ExecutionHandoff.UpdatedAt = now
+		reconciled.UpdatedAt = now
+		persisted, readErr = writeIssueOps(stateRoot, reconciled)
+		return readErr
+	}); err != nil {
+		return expected, soleWriterRecoveryError("persist publication owner terminal refresh: %v", err)
+	}
+	return persisted, nil
+}
+
+func reconcilePublicationOwnerTerminalIdentity(record IssueOpsRecord, live port.OrcaTerminal) (IssueOpsRecord, error) {
+	h := record.ExecutionHandoff
+	if h == nil || h.Orca == nil {
+		return record, fmt.Errorf("execution handoff Orca identity is unavailable")
+	}
+	identity := h.Orca
+	if strings.TrimSpace(identity.WorkerPTYID) == "" || strings.TrimSpace(identity.WorkerTabID) == "" || strings.TrimSpace(identity.WorkerLeafID) == "" {
+		return record, fmt.Errorf("sealed worker PTY, tab, and leaf identity is required")
+	}
+	if strings.TrimSpace(live.Handle) == "" || live.PTYID != identity.WorkerPTYID || live.TabID != identity.WorkerTabID || live.LeafID != identity.WorkerLeafID ||
+		live.WorktreeID != identity.WorktreeID || !terminalWorktreePathMatches(live, h.WorkerRoot) || !live.Connected || !live.Writable {
+		return record, fmt.Errorf("live worker terminal does not match the sealed stable identity")
+	}
+	if live.Handle == identity.WorkerTerminalHandle {
+		return record, nil
+	}
+	updated := record
+	updatedHandoff := *h
+	updatedIdentity := *identity
+	updatedIdentity.WorkerTerminalHandle = live.Handle
+	updatedHandoff.Orca = &updatedIdentity
+	updated.ExecutionHandoff = &updatedHandoff
+	return updated, nil
 }
 
 func resolveIssueOpsPublicationPushTarget(ctx context.Context, record IssueOpsRecord, identity issueOpsPublicationIdentity, reader IssueOpsHandoffPublicationReader) (issueOpsPublicationIdentity, error) {

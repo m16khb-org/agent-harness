@@ -1062,6 +1062,9 @@ func attestHandoffSoleWriter(ctx context.Context, record IssueOpsRecord, client 
 		exactHandles[terminal.Handle] = struct{}{}
 		if terminal.Connected || terminal.Writable {
 			if terminal.Handle != strings.TrimSpace(allowedHandle) {
+				if canonicalOrcaLazygitSidecar(terminal) {
+					continue
+				}
 				return soleWriterConflictError("sole writer attestation found a competing connected or writable terminal")
 			}
 			if !terminal.Connected || !terminal.Writable {
@@ -1141,6 +1144,14 @@ func attestHandoffSoleWriter(ctx context.Context, record IssueOpsRecord, client 
 		return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: assignee terminal is absent from the exact worktree inventory")
 	}
 	return nil
+}
+
+func canonicalOrcaLazygitSidecar(terminal port.OrcaTerminal) bool {
+	ptyID := strings.TrimSpace(terminal.PTYID)
+	syntheticVisualID := "pty:" + ptyID
+	return ptyID != "" && strings.TrimSpace(terminal.Title) == "lazygit" &&
+		terminal.TabID == syntheticVisualID && terminal.LeafID == syntheticVisualID &&
+		terminal.Connected && terminal.Writable
 }
 
 func exactOwnedHandoffDispatch(h *IssueOpsExecutionHandoff, task port.OrcaTask, dispatch port.OrcaDispatch, allowedHandle string) bool {

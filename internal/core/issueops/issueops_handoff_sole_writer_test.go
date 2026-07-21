@@ -17,6 +17,66 @@ func TestHandoffSoleWriterAllowsExactOwnedDispatch(t *testing.T) {
 	}
 }
 
+func TestHandoffSoleWriterAllowsCanonicalLazygitSidecar(t *testing.T) {
+	record, client := soleWriterOwnedDispatchFixture()
+	client.terminals = append(client.terminals, port.OrcaTerminal{
+		Handle:       "term_lazygit",
+		PTYID:        "pty_lazygit",
+		WorktreeID:   "worktree_owner",
+		WorktreePath: record.ExecutionHandoff.WorkerRoot,
+		TabID:        "pty:pty_lazygit",
+		LeafID:       "pty:pty_lazygit",
+		Title:        "lazygit",
+		Connected:    true,
+		Writable:     true,
+	})
+
+	if err := attestHandoffSoleWriter(context.Background(), record, client, "term_owner"); err != nil {
+		t.Fatalf("canonical Orca lazygit sidecar rejected: %v", err)
+	}
+}
+
+func TestHandoffSoleWriterRejectsWritableNonSidecarTerminal(t *testing.T) {
+	record, client := soleWriterOwnedDispatchFixture()
+	client.terminals = append(client.terminals, port.OrcaTerminal{
+		Handle:       "term_shell",
+		PTYID:        "pty_shell",
+		WorktreeID:   "worktree_owner",
+		WorktreePath: record.ExecutionHandoff.WorkerRoot,
+		TabID:        "tab_shell",
+		LeafID:       "leaf_shell",
+		Title:        "shell",
+		Connected:    true,
+		Writable:     true,
+	})
+
+	err := attestHandoffSoleWriter(context.Background(), record, client, "term_owner")
+	if err == nil || !strings.Contains(err.Error(), "competing connected or writable terminal") {
+		t.Fatalf("writable non-sidecar terminal accepted: %v", err)
+	}
+}
+
+func TestReconcilePublicationOwnerTerminalIdentityPreservesMailbox(t *testing.T) {
+	record, client := soleWriterOwnedDispatchFixture()
+	live := client.terminals[0]
+	live.Handle = "term_reissued"
+
+	updated, err := reconcilePublicationOwnerTerminalIdentity(record, live)
+	if err != nil {
+		t.Fatalf("reconcile reissued owner terminal: %v", err)
+	}
+	if updated.ExecutionHandoff.Orca.WorkerTerminalHandle != "term_reissued" {
+		t.Fatalf("live terminal handle = %q", updated.ExecutionHandoff.Orca.WorkerTerminalHandle)
+	}
+	if updated.ExecutionHandoff.Orca.WorkerMailboxHandle != "term_owner" {
+		t.Fatalf("sealed mailbox handle changed = %q", updated.ExecutionHandoff.Orca.WorkerMailboxHandle)
+	}
+	client.terminals[0] = live
+	if err := attestHandoffSoleWriter(context.Background(), updated, client, live.Handle); err != nil {
+		t.Fatalf("reissued stable owner terminal rejected: %v", err)
+	}
+}
+
 func TestHandoffSoleWriterRejectsOwnedDispatchFromNonOwnerTerminal(t *testing.T) {
 	record, client := soleWriterOwnedDispatchFixture()
 
@@ -84,15 +144,18 @@ func soleWriterOwnedDispatchFixture() (IssueOpsRecord, *soleWriterOrcaFake) {
 		WorkerRoot: workerRoot,
 		Orca: &model.IssueOpsOrcaIdentity{
 			WorktreeID:           "worktree_owner",
+			WorkerPTYID:          "pty_owner",
 			WorkerTerminalHandle: "term_owner",
 			WorkerMailboxHandle:  "term_owner",
+			WorkerTabID:          "tab_owner",
+			WorkerLeafID:         "leaf_owner",
 			TaskID:               "task_owner",
 			DispatchID:           "dispatch_owner",
 		},
 	}}
 	client := &soleWriterOrcaFake{
 		terminals: []port.OrcaTerminal{{
-			Handle: "term_owner", PTYID: "pty_owner", WorktreeID: "worktree_owner", WorktreePath: workerRoot, Connected: true, Writable: true,
+			Handle: "term_owner", PTYID: "pty_owner", WorktreeID: "worktree_owner", WorktreePath: workerRoot, TabID: "tab_owner", LeafID: "leaf_owner", Connected: true, Writable: true,
 		}},
 		tasks: []port.OrcaTask{{ID: "task_owner", Status: "dispatched"}},
 		dispatches: map[string]port.OrcaDispatch{"task_owner": {

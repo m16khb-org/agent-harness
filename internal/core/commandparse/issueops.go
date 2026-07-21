@@ -176,6 +176,10 @@ func ExactReadOnlyShellCommand(command string) bool {
 	switch tokens[0] {
 	case "pwd":
 		return len(tokens) == 1
+	case "wc":
+		return exactReadOnlyWCCommand(tokens[1:])
+	case "sed":
+		return exactReadOnlySedCommand(tokens[1:])
 	case "codegraph":
 		return len(tokens) == 3 && tokens[1] == "explore" && strings.TrimSpace(tokens[2]) != "" && !strings.HasPrefix(tokens[2], "-")
 	case "rg":
@@ -193,12 +197,204 @@ func ExactReadOnlyShellCommand(command string) bool {
 				}
 			}
 			return true
+		case "ls-remote":
+			return exactReadOnlyGitLSRemote(tokens[i+1:])
 		}
+	case "gh":
+		return exactReadOnlyGHCommand(tokens)
 	case "orca":
 		return ExactReadOnlyOrcaTerminalCommand(tokens) ||
 			(len(tokens) == 4 && tokens[1] == "orchestration" && tokens[2] == "task-list" && tokens[3] == "--json")
 	}
 	return false
+}
+
+func exactReadOnlyGitLSRemote(tokens []string) bool {
+	if len(tokens) < 2 {
+		return false
+	}
+	allowedOptions := map[string]bool{
+		"--heads": true, "--tags": true, "--refs": true, "--quiet": true,
+		"-q": true, "--exit-code": true, "--symref": true,
+	}
+	i := 0
+	for i < len(tokens) && strings.HasPrefix(tokens[i], "-") {
+		if !allowedOptions[tokens[i]] {
+			return false
+		}
+		i++
+	}
+	if i >= len(tokens) || tokens[i] != "origin" {
+		return false
+	}
+	i++
+	if i >= len(tokens) {
+		return false
+	}
+	for _, ref := range tokens[i:] {
+		if (!strings.HasPrefix(ref, "refs/heads/") && !strings.HasPrefix(ref, "refs/tags/")) || strings.ContainsAny(ref, "*?[]") {
+			return false
+		}
+	}
+	return true
+}
+
+func exactReadOnlyGHCommand(tokens []string) bool {
+	if len(tokens) < 4 || tokens[0] != "gh" {
+		return false
+	}
+	switch tokens[1] {
+	case "pr":
+		return exactReadOnlyGHPRCommand(tokens)
+	case "run":
+		return exactReadOnlyGHRunCommand(tokens)
+	default:
+		return false
+	}
+}
+
+func exactReadOnlyGHPRCommand(tokens []string) bool {
+	number, err := strconv.Atoi(tokens[3])
+	if err != nil || number <= 0 {
+		return false
+	}
+	values := map[string]bool{"--json": true}
+	booleans := map[string]bool{}
+	switch tokens[2] {
+	case "view":
+		booleans["--comments"] = true
+	case "checks":
+		booleans["--required"] = true
+	default:
+		return false
+	}
+	flags, ok := ExactFlags(ExactIssueOpsCommand{Tokens: tokens, Start: 4}, values, booleans, map[string]bool{})
+	if !ok {
+		return false
+	}
+	if fields, exists := flags["--json"]; exists && !safeGHJSONFields(fields[0]) {
+		return false
+	}
+	return true
+}
+
+func exactReadOnlyGHRunCommand(tokens []string) bool {
+	if tokens[2] != "view" {
+		return false
+	}
+	runID, err := strconv.ParseUint(tokens[3], 10, 64)
+	if err != nil || runID == 0 {
+		return false
+	}
+	flags, ok := ExactFlags(
+		ExactIssueOpsCommand{Tokens: tokens, Start: 4},
+		map[string]bool{"--json": true, "--job": true, "--attempt": true},
+		map[string]bool{"--log": true, "--log-failed": true, "--verbose": true},
+		map[string]bool{},
+	)
+	if !ok {
+		return false
+	}
+	if fields, exists := flags["--json"]; exists && !safeGHJSONFields(fields[0]) {
+		return false
+	}
+	for _, name := range []string{"--job", "--attempt"} {
+		if values, exists := flags[name]; exists {
+			value, parseErr := strconv.ParseUint(values[0], 10, 64)
+			if parseErr != nil || value == 0 {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func safeGHJSONFields(value string) bool {
+	parts := strings.Split(value, ",")
+	for _, part := range parts {
+		if part == "" {
+			return false
+		}
+		for _, r := range part {
+			if r != '_' && (r < '0' || r > '9') && (r < 'A' || r > 'Z') && (r < 'a' || r > 'z') {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func exactReadOnlyWCCommand(tokens []string) bool {
+	if len(tokens) == 0 {
+		return false
+	}
+	longOptions := map[string]bool{
+		"--bytes": true, "--chars": true, "--lines": true,
+		"--max-line-length": true, "--words": true,
+	}
+	operands, optionsDone := 0, false
+	for _, token := range tokens {
+		if token == "" {
+			return false
+		}
+		if !optionsDone && token == "--" {
+			optionsDone = true
+			continue
+		}
+		if !optionsDone && strings.HasPrefix(token, "--") {
+			if !longOptions[token] {
+				return false
+			}
+			continue
+		}
+		if !optionsDone && strings.HasPrefix(token, "-") {
+			if token == "-" || len(token) == 1 {
+				return false
+			}
+			for _, flag := range token[1:] {
+				if !strings.ContainsRune("cmlwL", flag) {
+					return false
+				}
+			}
+			continue
+		}
+		if token == "-" {
+			return false
+		}
+		operands++
+	}
+	return operands > 0
+}
+
+func exactReadOnlySedCommand(tokens []string) bool {
+	if len(tokens) < 3 || tokens[0] != "-n" || !numericSedPrintRange(tokens[1]) {
+		return false
+	}
+	for _, operand := range tokens[2:] {
+		if operand == "" || operand == "-" || strings.HasPrefix(operand, "-") {
+			return false
+		}
+	}
+	return true
+}
+
+func numericSedPrintRange(script string) bool {
+	if !strings.HasSuffix(script, "p") {
+		return false
+	}
+	parts := strings.Split(strings.TrimSuffix(script, "p"), ",")
+	if len(parts) < 1 || len(parts) > 2 {
+		return false
+	}
+	lines := make([]int, len(parts))
+	for i, part := range parts {
+		line, err := strconv.Atoi(part)
+		if err != nil || line <= 0 {
+			return false
+		}
+		lines[i] = line
+	}
+	return len(lines) == 1 || lines[0] <= lines[1]
 }
 
 // ExactReadOnlyOrcaTerminalCommand reports whether the tokens are an exact
