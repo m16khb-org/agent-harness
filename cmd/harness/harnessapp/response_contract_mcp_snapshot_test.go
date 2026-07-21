@@ -12,9 +12,9 @@ import (
 func buildMCPResponseContractSnapshot(t *testing.T, replacements map[string]string, workspaceDir, gitRepoDir string) map[string]any {
 	t.Helper()
 	mcpSnapshot := map[string]any{}
-	mcpSnapshot["harness_inspect"] = runMCPToolContract(t, replacements, "harness_inspect", map[string]any{
+	mcpSnapshot["harness_inspect"] = inspectMCPContractProjection(t, runMCPToolContract(t, replacements, "harness_inspect", map[string]any{
 		"repo": workspaceDir,
-	})
+	}))
 	mcpSnapshot["docs_index"] = docsIndexMCPContractProjection(t, runMCPToolContract(t, replacements, "docs_index", map[string]any{}))
 	mcpSnapshot["daemon_status"] = runMCPToolContract(t, replacements, "daemon_status", map[string]any{})
 	mcpSnapshot["atomic_commit_preflight"] = runMCPToolContract(t, replacements, "atomic_commit_preflight", map[string]any{

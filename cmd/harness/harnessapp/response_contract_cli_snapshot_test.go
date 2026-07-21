@@ -15,9 +15,9 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 	t.Helper()
 	installFakeGlabForDevilsAdvocateReflect(t)
 	cliSnapshot := map[string]any{}
-	cliSnapshot["inspect"] = runCLIJSONContract(t, replacements, func() error {
+	cliSnapshot["inspect"] = inspectContractProjection(runCLIJSONContract(t, replacements, func() error {
 		return runInspect([]string{"--json", "--repo", workspaceDir})
-	})
+	}))
 	cliSnapshot["docs_index"] = docsIndexContractProjection(runCLIJSONContract(t, replacements, func() error {
 		return runDocs([]string{"--json"})
 	}))

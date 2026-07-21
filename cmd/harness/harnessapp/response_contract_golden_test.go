@@ -3,8 +3,11 @@ package harnessapp
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -71,6 +74,73 @@ func assertGolden(t *testing.T, name string, got []byte) {
 		t.Fatalf("read golden %s: %v (run go test ./cmd/harness/harnessapp -run Golden -update)", path, err)
 	}
 	if string(got) != string(want) {
-		t.Fatalf("golden mismatch for %s\n--- got ---\n%s\n--- want ---\n%s", name, string(got), string(want))
+		t.Fatalf("golden mismatch for %s: %s", name, firstJSONDifference(t, want, got, "$"))
 	}
+}
+
+func firstJSONDifference(t *testing.T, want, got []byte, path string) string {
+	t.Helper()
+	var wantValue any
+	if err := json.Unmarshal(want, &wantValue); err != nil {
+		t.Fatalf("unmarshal expected golden JSON: %v", err)
+	}
+	var gotValue any
+	if err := json.Unmarshal(got, &gotValue); err != nil {
+		t.Fatalf("unmarshal actual golden JSON: %v", err)
+	}
+	return firstContractValueDifference(wantValue, gotValue, path)
+}
+
+func firstContractValueDifference(want, got any, path string) string {
+	if reflect.DeepEqual(want, got) {
+		return ""
+	}
+	switch wantValue := want.(type) {
+	case map[string]any:
+		gotValue, ok := got.(map[string]any)
+		if !ok {
+			return fmt.Sprintf("%s type: got %T, want %T", path, got, want)
+		}
+		wantKeys := make([]string, 0, len(wantValue))
+		for key := range wantValue {
+			wantKeys = append(wantKeys, key)
+		}
+		sort.Strings(wantKeys)
+		for _, key := range wantKeys {
+			wantChild := wantValue[key]
+			gotChild, exists := gotValue[key]
+			if !exists {
+				return fmt.Sprintf("%s.%s missing from actual value", path, key)
+			}
+			if difference := firstContractValueDifference(wantChild, gotChild, path+"."+key); difference != "" {
+				return difference
+			}
+		}
+		gotKeys := make([]string, 0, len(gotValue))
+		for key := range gotValue {
+			gotKeys = append(gotKeys, key)
+		}
+		sort.Strings(gotKeys)
+		for _, key := range gotKeys {
+			if _, exists := wantValue[key]; !exists {
+				return fmt.Sprintf("%s.%s unexpected in actual value", path, key)
+			}
+		}
+	case []any:
+		gotValue, ok := got.([]any)
+		if !ok {
+			return fmt.Sprintf("%s type: got %T, want %T", path, got, want)
+		}
+		if len(wantValue) != len(gotValue) {
+			return fmt.Sprintf("%s length: got %d, want %d", path, len(gotValue), len(wantValue))
+		}
+		for index, wantChild := range wantValue {
+			if difference := firstContractValueDifference(wantChild, gotValue[index], fmt.Sprintf("%s[%d]", path, index)); difference != "" {
+				return difference
+			}
+		}
+	default:
+		return fmt.Sprintf("%s: got %#v, want %#v", path, got, want)
+	}
+	return fmt.Sprintf("%s differs", path)
 }
