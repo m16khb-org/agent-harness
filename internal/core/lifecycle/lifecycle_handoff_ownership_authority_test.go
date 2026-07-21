@@ -134,6 +134,29 @@ func TestOwnershipSourceCanTerminalizeOnlyCancelledHandoffTask(t *testing.T) {
 	}
 }
 
+func TestOwnershipSourceCanRemoveOnlyClosedCancelledWorktree(t *testing.T) {
+	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateClosed)
+	h := record.ExecutionHandoff
+	h.Completion = nil
+	h.ClosedDisposition = handoff.DispositionCancelled
+	h.Failure = &issueopsmodel.IssueOpsExecutionHandoffFailure{Code: "cancellation_finalized", Message: "stranded owner cleanup requested", At: "2026-07-22T00:00:00Z"}
+	var err error
+	record, err = writeIssueOps(IssueOpsStateRoot(), record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := handoffEditRequest(record, repo, "claude", "coordinator-session", "")
+	request.AgentID, request.Tool = "coordinator-agent", "Bash"
+	request.Command = "git worktree remove " + worker
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("closed cancelled worktree removal blocked: %#v", got)
+	}
+	request.Command = "git worktree remove --force " + worker
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "block" {
+		t.Fatalf("forced worktree removal allowed: %#v", got)
+	}
+}
+
 func TestOwnershipCoordinatorCanWakeOrientingOwnerForExactAcknowledgement(t *testing.T) {
 	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateOwnerOrienting)
 	request := handoffEditRequest(record, repo, "claude", "coordinator-session", "")

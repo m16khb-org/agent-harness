@@ -476,6 +476,15 @@ func allowedCancellationTaskTerminalization(req HookToolUseLifecycleRequest, rec
 		onlyTokenFlags(tokens[3:], map[string]bool{"--id": true, "--status": true, "--result": true}, map[string]bool{"--json": true})
 }
 
+func allowedClosedCancelledWorktreeRemoval(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+	h := record.ExecutionHandoff
+	if h == nil || h.State != handoff.StateClosed || h.ClosedDisposition != handoff.DispositionCancelled || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	return len(tokens) == 4 && tokens[0] == "git" && tokens[1] == "worktree" && tokens[2] == "remove" && cleanAbsPath(tokens[3]) == cleanAbsPath(h.WorkerRoot)
+}
+
 func allowedSourceOwnerContinue(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
 	h := record.ExecutionHandoff
 	if h == nil || h.Orca == nil || (h.State != handoff.StateOwnerActive && h.State != handoff.StateOwnerOrienting) ||
