@@ -12,10 +12,11 @@ import (
 )
 
 type Deps struct {
-	ParseFlags     func(*flag.FlagSet, []string) (bool, error)
-	PrintJSON      func(any) error
-	PrintError     func(error) error
-	PrepareHandoff func(context.Context, string, core.IssueOpsHandoffPrepareRequest) (core.IssueOpsHandoffPrepareResult, error)
+	ParseFlags         func(*flag.FlagSet, []string) (bool, error)
+	PrintJSON          func(any) error
+	PrintError         func(error) error
+	PrepareHandoff     func(context.Context, string, core.IssueOpsHandoffPrepareRequest) (core.IssueOpsHandoffPrepareResult, error)
+	ReconcileWorkspace func(context.Context, string, core.IssueOpsExecutionWorkspaceReconcileRequest) (core.IssueOpsRecord, error)
 }
 
 type PrepareResult = worktreetools.PrepareResult
@@ -25,6 +26,7 @@ func Run(args []string, deps Deps) error {
 		fmt.Println("Usage:")
 		fmt.Println("  agent-harness issueops worktree prepare --id ID [--orchestrator auto|orca|inline] [--inline-reason user-requested|recovery] [--agent NAME] [--host HOST --session-id SESSION --agent-id ID --source-cwd PATH] [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops worktree prepare-tools --id ID [--host HOST --session-id SESSION --agent-id ID --cwd PATH] [--json]")
+		fmt.Println("  agent-harness issueops worktree reconcile --id ID --workspace-epoch EPOCH --host HOST --session-id SESSION [--agent-id ID] --source-cwd PATH [--json]")
 		fmt.Println("  agent-harness issueops worktree verify --id ID [--json]")
 		fmt.Println("  agent-harness issueops worktree cleanup-readiness --id ID [--merged] [--json]")
 		return nil
@@ -34,6 +36,8 @@ func Run(args []string, deps Deps) error {
 		return runWorktreePrepare(args[1:], deps)
 	case "prepare-tools":
 		return runWorktreePrepareTools(args[1:], deps)
+	case "reconcile":
+		return runWorktreeReconcile(args[1:], deps)
 	case "verify":
 		return runWorktreeVerify(args[1:], deps)
 	case "cleanup-readiness":
@@ -41,6 +45,39 @@ func Run(args []string, deps Deps) error {
 	default:
 		return fmt.Errorf("unknown issueops worktree subcommand %q", args[0])
 	}
+}
+
+func runWorktreeReconcile(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops worktree reconcile", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	workspaceEpoch := fs.String("workspace-epoch", "", "exact execution workspace epoch")
+	host := fs.String("host", "", "sealed preparation host")
+	sessionID := fs.String("session-id", "", "sealed preparation session id")
+	agentID := fs.String("agent-id", "", "optional sealed preparation agent id")
+	sourceCWD := fs.String("source-cwd", "", "exact source checkout cwd")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := deps.ParseFlags(fs, args); help || err != nil {
+		return err
+	}
+	if deps.ReconcileWorkspace == nil {
+		return fmt.Errorf("IssueOps workspace reconciliation dependency is unavailable")
+	}
+	result, err := deps.ReconcileWorkspace(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsExecutionWorkspaceReconcileRequest{
+		ID: *id, WorkspaceEpoch: *workspaceEpoch,
+		Actor: core.IssueOpsActor{Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *sourceCWD},
+	})
+	if err != nil {
+		if *jsonOut {
+			_ = deps.PrintError(err)
+		}
+		return err
+	}
+	if *jsonOut {
+		return deps.PrintJSON(result)
+	}
+	fmt.Printf("workspace: ready (epoch: %s)\n", *workspaceEpoch)
+	fmt.Printf("worktree: %s\n", result.WorktreePath)
+	return nil
 }
 
 func runWorktreePrepareTools(args []string, deps Deps) error {

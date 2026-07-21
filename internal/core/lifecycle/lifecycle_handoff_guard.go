@@ -188,6 +188,9 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 		return true, "invalid supervised IssueOps handoff envelope: " + err.Error()
 	}
 	if workspacePreparationStateKnown(record) {
+		if searchrouting.IsShellTool(req.Tool) && exactReadOnlyShellCommand(req, record) || issueOpsObservationMCPTool(req.Tool) && allowedIssueOpsObservationMCP(req, record) {
+			return true, ""
+		}
 		if command := bootstrapOwnershipStartGuidance(req, record); command != "" {
 			return true, "supervised IssueOps bootstrap requires the authenticated native coordinator identity; rerun this exact harness-authored preview command: " + command
 		}
@@ -195,6 +198,9 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 			return true, ""
 		}
 		if allowedReadyWorkspacePreparationMCP(req, record) {
+			return true, ""
+		}
+		if allowedSourceWorkspacePlanMutation(req, record) {
 			return true, ""
 		}
 		if reason := workspacePreparationBlockReason(req, record); reason != "" {

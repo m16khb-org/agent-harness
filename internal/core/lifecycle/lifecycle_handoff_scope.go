@@ -60,7 +60,7 @@ func isLiteralNewCycleStartFromSource(req HookToolUseLifecycleRequest, records [
 	sourceRoot := ""
 	for _, record := range records {
 		candidate := cleanAbsPath(record.Repo)
-		if candidate == "" || cleanAbsPath(req.CWD) != candidate || cleanAbsPath(req.Repo) != candidate {
+		if candidate == "" || cleanAbsPath(req.CWD) != candidate {
 			continue
 		}
 		if sourceRoot != "" && sourceRoot != candidate {
@@ -116,12 +116,10 @@ func looksLikeIssueOpsControl(req HookToolUseLifecycleRequest) bool {
 	if !searchrouting.IsShellTool(req.Tool) {
 		return false
 	}
-	for i, token := range commandparse.SplitCommandTokens(strings.TrimSpace(req.Command)) {
-		if searchrouting.SearchTokenName(token) == "issueops" && i > 0 {
-			return true
-		}
-	}
-	return false
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	return len(tokens) >= 2 &&
+		(tokens[0] == "agent-harness" || tokens[0] == "bin/agent-harness" || tokens[0] == "./bin/agent-harness") &&
+		tokens[1] == "issueops"
 }
 
 func requestRunsFromOrTargetsWorkerRoot(req HookToolUseLifecycleRequest, workerRoot string) bool {
@@ -129,7 +127,8 @@ func requestRunsFromOrTargetsWorkerRoot(req HookToolUseLifecycleRequest, workerR
 	if workerRoot == "" {
 		return false
 	}
-	if cleanAbsPath(req.CWD) == workerRoot || cleanAbsPath(req.Repo) == workerRoot {
+	requestCWD := cleanAbsPath(req.CWD)
+	if requestCWD == workerRoot || requestCWD == "" && cleanAbsPath(req.Repo) == workerRoot {
 		return true
 	}
 	for _, target := range worktreeGuardEditTargets(req) {

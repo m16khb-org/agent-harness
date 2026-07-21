@@ -18,6 +18,7 @@ func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 		"issueops_review_design",
 		"issueops_link_plan",
 		"issueops_prepare_worktree_tools",
+		"issueops_reconcile_workspace",
 		"issueops_record_execution_decision",
 		"issueops_record_compatibility_review",
 		"issueops_record_devils_advocate_review",
@@ -63,6 +64,11 @@ func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 	}
 	if !schemaRequires(byName["issueops_link_worktree"].InputSchema, "worktree_path") {
 		t.Fatalf("issueops_link_worktree must require worktree_path: %#v", byName["issueops_link_worktree"].InputSchema)
+	}
+	for _, field := range []string{"id", "workspace_epoch", "host", "session_id", "source_cwd"} {
+		if !schemaRequires(byName["issueops_reconcile_workspace"].InputSchema, field) {
+			t.Fatalf("issueops_reconcile_workspace must require %s", field)
+		}
 	}
 	if !schemaRequires(byName["issueops_review_design"].InputSchema, "verification") {
 		t.Fatalf("issueops_review_design must require verification: %#v", byName["issueops_review_design"].InputSchema)

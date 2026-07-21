@@ -647,6 +647,37 @@ func TestExecutionWorkspaceReconcileAdoptsExactlyOneCandidate(t *testing.T) {
 	}
 }
 
+func TestExecutionWorkspaceReconcileCanonicalizesNamespacedBranch(t *testing.T) {
+	stateRoot, record := handoffPrepareRecord(t)
+	worktree := handoffPrepareWorktreePath(record)
+	client := &prepareOrcaFake{
+		probe:     port.OrcaProbeResult{Available: true, Ready: true, RepoID: "repo-1", RepoRemoteName: "origin"},
+		create:    port.OrcaWorktree{ID: "wt-1", InstanceID: "inst-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/16-demo", Path: worktree, Branch: "alice/" + record.Branch, Head: record.BranchPrepare.BaseSHA, Issue: 16, Comment: issueOpsHandoffMarker(record.ID, "epoch-1", 1)},
+		createErr: &port.OrcaError{Code: "timeout", Invoked: true, Timeout: true},
+	}
+	if _, err := PrepareIssueOpsHandoffWorktree(context.Background(), stateRoot, IssueOpsHandoffPrepareRequest{ID: record.ID, Orchestrator: "orca", Agent: "codex", Host: "codex", SessionID: "preparation-session", SourceCWD: record.Repo, Confirm: true}, client, handoffPrepareTestClock()); err == nil {
+		t.Fatal("expected recovery-required workspace")
+	}
+	makeGitWorktreeMarker(t, worktree)
+	if code, _, stderr := preflight.GitCmd(worktree, "branch", "-m", "alice/"+record.Branch); code != 0 {
+		t.Fatalf("namespace recovery fixture branch: %s", stderr)
+	}
+	if code, _, stderr := preflight.GitCmd(worktree, "remote", "add", "origin", "https://example.invalid/repo.git"); code != 0 {
+		t.Fatalf("namespace recovery fixture remote: %s", stderr)
+	}
+	if code, _, stderr := preflight.GitCmd(worktree, "update-ref", "refs/remotes/origin/16-demo", "HEAD"); code != 0 {
+		t.Fatalf("namespace recovery fixture remote ref: %s", stderr)
+	}
+	client.worktrees = []port.OrcaWorktree{client.create}
+	persisted, err := ReconcileIssueOpsExecutionWorkspace(context.Background(), stateRoot, IssueOpsExecutionWorkspaceReconcileRequest{ID: record.ID, WorkspaceEpoch: "epoch-1", Actor: IssueOpsActor{Host: "codex", SessionID: "preparation-session", CWD: record.Repo}}, client, "2026-07-11T01:02:04Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if client.canonicalizeCalls != 1 || persisted.ExecutionWorkspace.State != "ready" || strings.TrimSpace(preflight.GitOut(worktree, "branch", "--show-current")) != record.Branch {
+		t.Fatalf("namespaced recovery = calls:%d record:%#v", client.canonicalizeCalls, persisted.ExecutionWorkspace)
+	}
+}
+
 func TestWorktreePrepareGitLabAutoAndExplicitUseVerifiedBranchWithoutGitHubIssueMetadata(t *testing.T) {
 	for _, mode := range []string{IssueOpsOrchestratorAuto, IssueOpsOrchestratorOrca} {
 		for _, confirm := range []bool{false, true} {
@@ -1505,21 +1536,34 @@ func TestWorktreePrepareExactOneMarkerRecovery(t *testing.T) {
 }
 
 type prepareOrcaFake struct {
-	probe          port.OrcaProbeResult
-	probeErr       error
-	worktrees      []port.OrcaWorktree
-	worktreeErr    error
-	create         port.OrcaWorktree
-	createErr      error
-	createCalls    int
-	createRequests []port.OrcaCreateWorktreeRequest
-	adopt          port.OrcaWorktree
-	adoptErr       error
-	adoptCalls     int
-	adoptRequests  []port.OrcaAdoptWorktreeRequest
-	probeRequests  []port.OrcaProbeRequest
-	beforeCreate   func()
-	trace          []string
+	probe             port.OrcaProbeResult
+	probeErr          error
+	worktrees         []port.OrcaWorktree
+	worktreeErr       error
+	create            port.OrcaWorktree
+	createErr         error
+	createCalls       int
+	createRequests    []port.OrcaCreateWorktreeRequest
+	adopt             port.OrcaWorktree
+	adoptErr          error
+	adoptCalls        int
+	adoptRequests     []port.OrcaAdoptWorktreeRequest
+	probeRequests     []port.OrcaProbeRequest
+	beforeCreate      func()
+	trace             []string
+	canonicalizeCalls int
+}
+
+func (f *prepareOrcaFake) CanonicalizeWorktreeBranch(_ context.Context, worktree port.OrcaWorktree, branch, upstream string) (port.OrcaWorktree, error) {
+	f.trace = append(f.trace, "worktree-canonicalize")
+	f.canonicalizeCalls++
+	for _, args := range [][]string{{"branch", "-m", branch}, {"branch", "--set-upstream-to", upstream, branch}} {
+		if code, _, stderr := preflight.GitCmd(worktree.Path, args...); code != 0 {
+			return worktree, fmt.Errorf("git %v: %s", args, stderr)
+		}
+	}
+	worktree.Branch = branch
+	return worktree, nil
 }
 
 func (f *prepareOrcaFake) Probe(_ context.Context, req port.OrcaProbeRequest) (port.OrcaProbeResult, error) {

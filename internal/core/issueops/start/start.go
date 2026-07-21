@@ -21,12 +21,11 @@ type Store struct {
 }
 
 func Start(store Store, stateRoot string, req model.IssueOpsStartRequest) (model.IssueOpsRecord, error) {
-	rawRepo := strings.TrimSpace(req.Repo)
-	if rawRepo == "" {
+	repo := strings.TrimSpace(req.Repo)
+	if repo == "" {
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("repo is required")
 	}
-	repo := rawRepo
-	if absRepo, err := filepath.Abs(rawRepo); err == nil {
+	if absRepo, err := filepath.Abs(repo); err == nil {
 		repo = absRepo
 	}
 	branch := strings.TrimSpace(req.Branch)
@@ -39,11 +38,6 @@ func Start(store Store, stateRoot string, req model.IssueOpsStartRequest) (model
 	// across processes (sqlstore span: in-process mutex + sqlite write lock).
 	if existing, err := store.Read(stateRoot, id); err == nil {
 		return resumeOrReset(store, stateRoot, existing)
-	}
-	if legacyID := store.NewID(rawRepo, branch); legacyID != id {
-		if existing, err := store.Read(stateRoot, legacyID); err == nil {
-			return resumeOrReset(store, stateRoot, existing)
-		}
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	record := model.IssueOpsRecord{

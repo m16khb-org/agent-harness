@@ -17,6 +17,7 @@ func TestParseExactIssueOpsCommandCorpus(t *testing.T) {
 		{"./bin/agent-harness issueops handoff claim --id io-1", true, "handoff claim"},
 		{"agent-harness issueops handoff start --id io-1", true, "handoff start"},
 		{"agent-harness issueops worktree prepare --id io-1", true, "worktree prepare"},
+		{"agent-harness issueops worktree reconcile --id io-1 --workspace-epoch epoch-1", true, "worktree reconcile"},
 		{"agent-harness issueops compatibility review --id io-1", true, "compatibility review"},
 		{"agent-harness issueops phase --id io-1 --to done", true, "phase"},
 		// Two-word subcommand with a flag where the second word is missing -> reject.
@@ -88,6 +89,21 @@ func TestExactFlagsCorpus(t *testing.T) {
 	v5, b5, r5 := spec(cmd5.Path)
 	if flags, ok := ExactFlags(cmd5, v5, b5, r5); ok || flags != nil {
 		t.Fatalf("removed verification-command alias was accepted: ok=%v flags=%#v", ok, flags)
+	}
+}
+
+func TestWorktreeReconcileExactFlags(t *testing.T) {
+	command, ok := ParseExactIssueOpsCommand("agent-harness issueops worktree reconcile --id io-1 --workspace-epoch epoch-1 --host codex --session-id session-1 --agent-id agent-1 --source-cwd /repo --json")
+	if !ok {
+		t.Fatal("worktree reconcile command did not parse")
+	}
+	values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
+	if !ok {
+		t.Fatal("worktree reconcile command has no exact flag spec")
+	}
+	flags, ok := ExactFlags(command, values, booleans, repeatable)
+	if !ok || flags["--workspace-epoch"][0] != "epoch-1" || flags["--source-cwd"][0] != "/repo" {
+		t.Fatalf("worktree reconcile flags = %#v ok=%v", flags, ok)
 	}
 }
 

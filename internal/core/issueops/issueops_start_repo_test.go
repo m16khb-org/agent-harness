@@ -192,31 +192,3 @@ func TestStartIssueOpsResumesNonWorktreePhaseWithoutWorktree(t *testing.T) {
 		t.Fatalf("non-worktree phase should resume unchanged, got phase=%q reset=%q", record.Phase, record.StaleResetAt)
 	}
 }
-
-func TestStartIssueOpsResumesLegacyRelativeRepoRecord(t *testing.T) {
-	stateRoot := t.TempDir()
-	repo := filepath.Join(t.TempDir(), "example")
-	if err := os.MkdirAll(repo, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	t.Chdir(repo)
-	legacy := IssueOpsRecord{
-		OK:     true,
-		ID:     newIssueOpsID(".", "13-demo"),
-		Repo:   ".",
-		Branch: "13-demo",
-		Phase:  IssueOpsPhasePlan,
-	}
-	if _, err := WriteIssueOps(stateRoot, legacy); err != nil {
-		t.Fatal(err)
-	}
-
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: ".", Branch: "13-demo"})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if record.ID != legacy.ID || record.Repo != legacy.Repo || record.Phase != legacy.Phase {
-		t.Fatalf("start should resume legacy relative repo record, got %+v want %+v", record, legacy)
-	}
-}

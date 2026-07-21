@@ -71,6 +71,8 @@ agent-harness issueops phase --id "$ISSUEOPS_ID" --to implement --json
 
 A supervised worker still uses the same fixed sibling path and exact branch, but its Orca worktree id and `execution_handoff` lease are authoritative for ownership checks.
 
+Orca installations may namespace a newly created local branch with their configured Git username. The harness accepts only the exact `<namespace>/<provider-branch>` suffix shape, renames it immediately to the provider branch, and sets its upstream to the sealed remote base ref before marking the workspace ready. A different branch shape is an ambiguous external mutation and enters `recovery_required`; do not accept the namespaced branch as the IssueOps branch or retry creation.
+
 Keep IssueOps worktrees as siblings of the source checkout under the fixed pattern `../<repo>.worktrees/<branch-slug-with-slashes-replaced>`. Do not create ad hoc worktree paths inside the repo or under temporary directories unless the user explicitly asks for a different location.
 
 Run implementation from the worktree path, not from the source checkout. Record the expected branch and worktree path in the issue-based plan and in any worker prompt. `issueops phase --to plan` requires both linked issue and recorded intent contract. `issueops link-worktree` requires linked issue plus verified provider branch evidence and an existing worktree directory. `issueops link-plan` is recorded after `link-worktree` and approved design review, and requires the plan file to exist inside that linked worktree. If the source checkout already contains implementation edits from before this gate, stop and ask how to move or reconcile those edits into the issue branch worktree.

@@ -228,11 +228,12 @@ func normalizeTargetDocs(docs []string) []string {
 
 func worktreeGuardTargets(req HookToolUseLifecycleRequest) []string {
 	targets := []string{}
-	if repo := cleanAbsPath(req.Repo); repo != "" {
-		targets = append(targets, repo)
+	base := hookRequestPathBase(req)
+	if base != "" {
+		targets = append(targets, base)
 	}
 	for _, path := range req.Paths {
-		if target := resolveHookTargetPath(req.Repo, path); target != "" {
+		if target := resolveHookTargetPath(base, path); target != "" {
 			targets = append(targets, target)
 		}
 	}
@@ -241,24 +242,32 @@ func worktreeGuardTargets(req HookToolUseLifecycleRequest) []string {
 
 func worktreeGuardEditTargets(req HookToolUseLifecycleRequest) []string {
 	targets := []string{}
+	base := hookRequestPathBase(req)
 	for _, path := range req.Paths {
-		if target := resolveHookTargetPath(req.Repo, path); target != "" {
+		if target := resolveHookTargetPath(base, path); target != "" {
 			targets = append(targets, target)
 		}
 	}
 	if len(targets) == 0 && searchrouting.IsShellTool(req.Tool) {
-		for _, path := range shellCommandWorktreeGuardPaths(req.Repo, req.Command) {
-			if target := resolveHookTargetPath(req.Repo, path); target != "" {
+		for _, path := range shellCommandWorktreeGuardPaths(base, req.Command) {
+			if target := resolveHookTargetPath(base, path); target != "" {
 				targets = append(targets, target)
 			}
 		}
 	}
 	if len(targets) == 0 {
-		if repo := cleanAbsPath(req.Repo); repo != "" {
-			targets = append(targets, repo)
+		if base != "" {
+			targets = append(targets, base)
 		}
 	}
 	return targets
+}
+
+func hookRequestPathBase(req HookToolUseLifecycleRequest) string {
+	if cwd := cleanAbsPath(req.CWD); cwd != "" {
+		return cwd
+	}
+	return cleanAbsPath(req.Repo)
 }
 
 func shellCommandWorktreeGuardPaths(repo, command string) []string {

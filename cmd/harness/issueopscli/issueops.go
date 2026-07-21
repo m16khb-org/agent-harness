@@ -7,6 +7,7 @@ import (
 	"agent-harness/cmd/harness/issueopscli/worktreecmd"
 	"agent-harness/internal/adapter/orca"
 	"agent-harness/internal/adapter/provider"
+	"context"
 	"flag"
 	"fmt"
 	"strings"
@@ -126,6 +127,9 @@ func issueOpsWorktreeDeps() worktreecmd.Deps {
 		PrintJSON:      printJSON,
 		PrintError:     printIssueOpsErrorJSON,
 		PrepareHandoff: prepareIssueOpsHandoffWorktree,
+		ReconcileWorkspace: func(ctx context.Context, stateRoot string, req core.IssueOpsExecutionWorkspaceReconcileRequest) (core.IssueOpsRecord, error) {
+			return core.ReconcileIssueOpsExecutionWorkspace(ctx, stateRoot, req, orca.New(), time.Now().UTC().Format(time.RFC3339Nano))
+		},
 	}
 }
 

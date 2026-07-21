@@ -24,6 +24,7 @@ var issueOpsMCPHandlers = map[string]func(map[string]any) MCPToolOutcome{
 	"issueops_link_plan":                      handleMCPIssueOpsLinkPlan,
 	"issueops_link_worktree":                  handleMCPIssueOpsLinkWorktree,
 	"issueops_prepare_worktree_tools":         handleMCPIssueOpsPrepareWorktreeTools,
+	"issueops_reconcile_workspace":            handleMCPIssueOpsReconcileWorkspace,
 	"issueops_record_execution_decision":      handleMCPIssueOpsRecordExecutionDecision,
 	"issueops_record_compatibility_review":    handleMCPIssueOpsRecordCompatibilityReview,
 	"issueops_record_devils_advocate_review":  handleMCPIssueOpsRecordDevilsAdvocateReview,

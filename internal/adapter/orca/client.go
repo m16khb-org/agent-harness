@@ -265,7 +265,39 @@ func (c *Client) CreateWorktree(ctx context.Context, req port.OrcaCreateWorktree
 	runtimeID, err := c.runJSON(ctx, req.Repo, createTimeout, argv, &payload)
 	created := payload.Worktree.portValue()
 	created.RuntimeID = runtimeID
-	return created, err
+	if err != nil {
+		return created, err
+	}
+	requestedBranch := strings.TrimSpace(req.Name)
+	if created.Branch == "" || created.Branch == requestedBranch {
+		return created, nil
+	}
+	return c.CanonicalizeWorktreeBranch(ctx, created, requestedBranch, strings.TrimSpace(req.BaseBranch))
+}
+
+// CanonicalizeWorktreeBranch removes an Orca-configured username namespace
+// only when the returned branch is exactly <namespace>/<provider-branch>, then
+// restores the sealed provider upstream. It is shared by create and explicit
+// pre-dispatch workspace recovery; unrelated branch shapes fail closed.
+func (c *Client) CanonicalizeWorktreeBranch(ctx context.Context, created port.OrcaWorktree, requestedBranch, upstream string) (port.OrcaWorktree, error) {
+	requestedBranch = strings.TrimSpace(requestedBranch)
+	upstream = strings.TrimSpace(upstream)
+	if requestedBranch == "" || !strings.HasSuffix(created.Branch, "/"+requestedBranch) || strings.TrimSuffix(created.Branch, "/"+requestedBranch) == "" || !filepath.IsAbs(strings.TrimSpace(created.Path)) {
+		return created, &port.OrcaError{Code: "worktree_branch_mismatch", Detail: fmt.Sprintf("created branch %q does not match requested branch %q", created.Branch, requestedBranch), Invoked: true}
+	}
+	if upstream == "" {
+		return created, &port.OrcaError{Code: "worktree_upstream_missing", Detail: "sealed provider upstream is required", Invoked: true}
+	}
+	for _, gitArgv := range [][]string{
+		{"git", "branch", "-m", requestedBranch},
+		{"git", "branch", "--set-upstream-to", upstream, requestedBranch},
+	} {
+		if _, runErr := c.runner.Run(ctx, filepath.Clean(created.Path), createTimeout, gitArgv); runErr != nil {
+			return created, fmt.Errorf("canonicalize Orca worktree branch: %w", runErr)
+		}
+	}
+	created.Branch = requestedBranch
+	return created, nil
 }
 
 func (c *Client) AdoptWorktree(ctx context.Context, req port.OrcaAdoptWorktreeRequest) (port.OrcaWorktree, error) {

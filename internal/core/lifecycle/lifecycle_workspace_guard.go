@@ -1,7 +1,10 @@
 package lifecycle
 
 import (
+	"path/filepath"
 	"strings"
+
+	"agent-harness/internal/core/commandparse"
 )
 
 // workspacePreparationBlockReason controls only a request already resolved to
@@ -31,4 +34,53 @@ func workspacePreparationBlockReason(req HookToolUseLifecycleRequest, record Iss
 
 func workspacePreparationStateKnown(record IssueOpsRecord) bool {
 	return record.ExecutionWorkspace != nil && record.ExecutionHandoff == nil
+}
+
+// allowedSourceWorkspacePlanMutation keeps planning ownership in the sealed
+// source session without granting source-side implementation authority. The
+// only writable worker artifact is the already-linked plan, and the only Git
+// mutation is an argv-shaped commit restricted by git commit --only to that
+// same file.
+func allowedSourceWorkspacePlanMutation(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+	workspace := record.ExecutionWorkspace
+	if workspace == nil || workspace.State != "ready" || workspace.PreparationSession == nil || !nativeSessionMatches(req, workspace.PreparationSession) {
+		return false
+	}
+	sourceRoot, workerRoot, planPath := cleanAbsPath(record.Repo), cleanAbsPath(workspace.WorkerRoot), cleanAbsPath(record.PlanPath)
+	requestSource := cleanAbsPath(req.SourceCheckout)
+	if cleanAbsPath(req.CWD) != sourceRoot || requestSource != "" && requestSource != sourceRoot || planPath == "" || !pathWithin(planPath, workerRoot) {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(req.Tool)) {
+	case "apply_patch", "edit", "write", "multiedit":
+		targets := worktreeGuardEditTargets(req)
+		if len(targets) == 0 {
+			return false
+		}
+		for _, target := range targets {
+			if cleanAbsPath(target) != planPath {
+				return false
+			}
+		}
+		return true
+	case "bash", "shell", "exec_command":
+		return exactLinkedPlanOnlyCommit(req.Command, workerRoot, planPath)
+	default:
+		return false
+	}
+}
+
+func exactLinkedPlanOnlyCommit(command, workerRoot, planPath string) bool {
+	if commandparse.HasUnquotedControlOperator(command) || commandparse.HasActiveCommandSubstitution(command) || commandparse.HasActiveOutputRedirect(command) || commandparse.HasActiveParameterOrTildeExpansion(command) || commandparse.HasActivePathnameExpansion(command) || commandparse.HasActiveShellSpecialQuoting(command) || commandparse.HasActiveZshEqualsExpansion(command) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(command))
+	if len(tokens) != 8 || tokens[0] != "git" || tokens[1] != "-C" || cleanAbsPath(tokens[2]) != workerRoot || tokens[3] != "commit" || tokens[4] != "--only" || tokens[6] != "-m" || strings.TrimSpace(tokens[7]) == "" {
+		return false
+	}
+	target := tokens[5]
+	if !filepath.IsAbs(target) {
+		target = filepath.Join(workerRoot, target)
+	}
+	return cleanAbsPath(target) == planPath
 }

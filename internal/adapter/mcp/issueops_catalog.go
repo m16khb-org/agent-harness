@@ -113,6 +113,18 @@ func IssueOpsBasicTools() []Tool {
 			}},
 		},
 		{
+			Name:        "issueops_reconcile_workspace",
+			Description: "Reconcile exactly one Orca worktree created by a recovery-required execution workspace journal. Requires the sealed source session and exact workspace epoch; it cannot create or dispatch an ownership handoff.",
+			InputSchema: map[string]any{"type": "object", "required": []string{"id", "workspace_epoch", "host", "session_id", "source_cwd"}, "properties": map[string]any{
+				"id":              map[string]any{"type": "string", "description": "IssueOps id."},
+				"workspace_epoch": map[string]any{"type": "string", "description": "Exact recovery workspace epoch."},
+				"host":            map[string]any{"type": "string", "description": "Sealed preparation host."},
+				"session_id":      map[string]any{"type": "string", "description": "Sealed preparation session id."},
+				"agent_id":        map[string]any{"type": "string", "description": "Optional sealed preparation agent id."},
+				"source_cwd":      map[string]any{"type": "string", "description": "Exact source checkout cwd."},
+			}},
+		},
+		{
 			Name:        "issueops_record_execution_decision",
 			Description: "Record the durable pre-implementation execution decision: auto-proceed boundaries, hook-blocked work, human gates, and whether sub-agents are not used or explicitly planned from the documented allowlist.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id", "auto_proceed", "hook_blocked", "human_gates", "subagent_use"}, "properties": map[string]any{

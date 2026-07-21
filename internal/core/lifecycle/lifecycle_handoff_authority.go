@@ -127,6 +127,9 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 		return false
 	}
 	if record.ExecutionHandoff == nil {
+		if record.ExecutionWorkspace != nil && record.ExecutionWorkspace.State == handoff.StateRecoveryRequired {
+			return allowedRecoveryWorkspaceReconciliation(req, record, command, flags)
+		}
 		return allowedReadyWorkspaceOwnershipStart(req, record, command, flags)
 	}
 	h := record.ExecutionHandoff
@@ -178,6 +181,29 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 	default:
 		return false
 	}
+}
+
+func allowedRecoveryWorkspaceReconciliation(req HookToolUseLifecycleRequest, record IssueOpsRecord, command commandparse.ExactIssueOpsCommand, flags map[string][]string) bool {
+	workspace := record.ExecutionWorkspace
+	if workspace == nil || workspace.State != handoff.StateRecoveryRequired || command.Path != "worktree reconcile" || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) {
+		return false
+	}
+	epoch, epochOK := oneFlag(flags, "--workspace-epoch")
+	host, hostOK := oneFlag(flags, "--host")
+	sessionID, sessionOK := oneFlag(flags, "--session-id")
+	agentID, agentOK := oneFlag(flags, "--agent-id")
+	sourceCWD, cwdOK := oneFlag(flags, "--source-cwd")
+	if !epochOK || epoch != workspace.WorkspaceEpoch || !hostOK || !sessionOK || !cwdOK || cleanAbsPath(sourceCWD) != cleanAbsPath(record.Repo) || workspace.PreparationSession == nil {
+		return false
+	}
+	sealed := workspace.PreparationSession
+	if !strings.EqualFold(host, sealed.Host) || sessionID != sealed.SessionID || !strings.EqualFold(req.Host, sealed.Host) || req.SessionID != sealed.SessionID {
+		return false
+	}
+	if strings.TrimSpace(sealed.AgentID) == "" {
+		return !agentOK && strings.TrimSpace(req.AgentID) == ""
+	}
+	return agentOK && agentID == sealed.AgentID && req.AgentID == sealed.AgentID
 }
 
 func ownershipCleanupSourceCommandAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord, flags map[string][]string, approve bool) bool {
@@ -235,14 +261,22 @@ func ownershipCleanupExpectedStep(h *issueopsmodel.IssueOpsExecutionHandoff) str
 
 func allowedReadyWorkspaceOwnershipStart(req HookToolUseLifecycleRequest, record IssueOpsRecord, command commandparse.ExactIssueOpsCommand, flags map[string][]string) bool {
 	workspace := record.ExecutionWorkspace
-	if workspace == nil || workspace.State != "ready" || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) {
+	if workspace == nil || workspace.State != "ready" {
 		return false
 	}
 	switch command.Path {
-	case "link-plan", "compatibility review", "execution decide", "devils-advocate review", "worktree prepare-tools":
+	case "status", "resume":
 		return true
+	case "link-plan", "compatibility review", "execution decide", "devils-advocate review", "worktree prepare-tools":
+		cwd, cwdOK := oneFlag(flags, "--cwd")
+		requestRoot := cleanAbsPath(req.CWD)
+		atPreparationRoot := requestRoot == cleanAbsPath(record.Repo) || requestRoot == cleanAbsPath(workspace.WorkerRoot)
+		return atPreparationRoot && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(workspace.WorkerRoot) && eventIdentityFlagsMatch(req, flags) && workspace.PreparationSession != nil && nativeSessionMatches(req, workspace.PreparationSession)
 	case "handoff start":
 	default:
+		return false
+	}
+	if cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) {
 		return false
 	}
 	host, hok := oneFlag(flags, "--coordinator-host")

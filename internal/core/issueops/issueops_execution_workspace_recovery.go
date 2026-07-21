@@ -21,6 +21,10 @@ type IssueOpsExecutionWorkspaceRecoveryClient interface {
 	ListWorktrees(context.Context, string) ([]port.OrcaWorktree, error)
 }
 
+type issueOpsExecutionWorkspaceBranchCanonicalizer interface {
+	CanonicalizeWorktreeBranch(context.Context, port.OrcaWorktree, string, string) (port.OrcaWorktree, error)
+}
+
 // markExecutionWorkspaceRecovery records uncertainty from an Orca worktree
 // operation without creating an ownership handoff. Recovery remains an
 // explicit preparation concern until a human or the sealed preparer reconciles
@@ -106,6 +110,16 @@ func ReconcileIssueOpsExecutionWorkspace(ctx context.Context, stateRoot string, 
 	candidate, err := ReconcileIssueOpsExecutionWorkspaceWorktree(*workspace.PendingOperation, record.ID, workspace.WorkspaceEpoch, rows)
 	if err != nil {
 		return IssueOpsRecord{}, err
+	}
+	if strings.TrimPrefix(strings.TrimSpace(candidate.Branch), "refs/heads/") != strings.TrimSpace(record.Branch) {
+		canonicalizer, ok := client.(issueOpsExecutionWorkspaceBranchCanonicalizer)
+		if !ok || workspace.Orca == nil {
+			return IssueOpsRecord{}, fmt.Errorf("workspace recovery candidate branch requires canonicalization support")
+		}
+		candidate, err = canonicalizer.CanonicalizeWorktreeBranch(ctx, candidate, record.Branch, workspace.Orca.BaseRef)
+		if err != nil {
+			return IssueOpsRecord{}, fmt.Errorf("canonicalize workspace recovery candidate: %w", err)
+		}
 	}
 	if workspace.Orca == nil || validateCreatedHandoffWorktree(record, workspace.WorkerRoot, workspace.Orca.RepoID, workspace.Orca.BaseRef, candidate) != nil || candidate.Comment != issueOpsHandoffMarker(record.ID, workspace.WorkspaceEpoch, 1) {
 		return IssueOpsRecord{}, fmt.Errorf("workspace recovery candidate does not match the sealed worktree identity")

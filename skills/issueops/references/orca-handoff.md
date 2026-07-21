@@ -41,6 +41,24 @@ workspace ready
 operation. Recovery actions are `reconcile`, `abandon`, `cancel`, and
 `finalize-cancel`; do not repeat an ambiguous external mutation.
 
+When worktree creation completed but the pre-dispatch workspace journal is
+`recovery_required`, the sealed preparation session reconciles exactly one
+marker-matching Orca worktree from the source checkout:
+
+```bash
+agent-harness issueops worktree reconcile \
+  --id "$ISSUEOPS_ID" \
+  --workspace-epoch "$WORKSPACE_EPOCH" \
+  --host "$HOST" \
+  --session-id "$SESSION_ID" \
+  --source-cwd "$SOURCE_ROOT" \
+  --json
+```
+
+Include `--agent-id` when the preparation session sealed one. This command
+cannot create a worktree, dispatch an owner, or recover a post-dispatch
+handoff; those remain under `issueops handoff recover`.
+
 ## Dispatch and claim
 
 From the source checkout, preview `handoff start`, review the sealed context

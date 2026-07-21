@@ -102,29 +102,31 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 	case "resume":
 		return v("--repo", "--id"), b("--bind", "--json"), r, true
 	case "link-plan":
-		return v("--id", "--plan-path"), b("--json"), r, true
+		return v("--id", "--plan-path", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
 	case "compatibility review":
-		values := v("--id", "--backward-compatibility", "--side-effect", "--rollback-plan", "--verification", "--blocker")
+		values := v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--backward-compatibility", "--side-effect", "--rollback-plan", "--verification", "--blocker")
 		for _, name := range []string{"--backward-compatibility", "--side-effect", "--verification", "--blocker"} {
 			r[name] = true
 		}
 		return values, b("--approved", "--json"), r, true
 	case "execution decide":
-		values := v("--id", "--auto", "--hook-block", "--human-gate", "--subagent-use", "--subagent-rationale", "--subagent-plan-file")
+		values := v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--auto", "--hook-block", "--human-gate", "--subagent-use", "--subagent-rationale", "--subagent-plan-file")
 		for _, name := range []string{"--auto", "--hook-block", "--human-gate"} {
 			r[name] = true
 		}
 		return values, b("--json"), r, true
 	case "devils-advocate review":
-		values := v("--id", "--verdict", "--finding", "--waiver-rationale")
+		values := v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--verdict", "--finding", "--waiver-rationale")
 		r["--finding"] = true
 		return values, b("--waive", "--json"), r, true
 	case "phase":
 		return v("--id", "--to"), b("--force", "--json"), r, true
 	case "worktree prepare":
-		return v("--id", "--orchestrator", "--inline-reason", "--agent"), b("--confirm", "--json"), r, true
+		return v("--id", "--orchestrator", "--inline-reason", "--agent", "--host", "--session-id", "--agent-id", "--source-cwd"), b("--confirm", "--json"), r, true
 	case "worktree prepare-tools":
-		return v("--id"), b("--json"), r, true
+		return v("--id", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
+	case "worktree reconcile":
+		return v("--id", "--workspace-epoch", "--host", "--session-id", "--agent-id", "--source-cwd"), b("--json"), r, true
 	case "handoff start":
 		values := v("--id", "--coordinator-recipient", "--coordinator-host", "--coordinator-session-id", "--coordinator-agent-id", "--source-cwd", "--workspace-epoch", "--expected-context-sha256", "--criteria-id", "--required-doc", "--required-skill", "--verification", "--stop-condition", "--worker-scope", "--heartbeat-cadence", "--result-format")
 		for _, name := range []string{"--criteria-id", "--required-doc", "--required-skill", "--verification", "--stop-condition"} {

@@ -112,6 +112,17 @@ func handleMCPIssueOpsPrepareWorktreeTools(args map[string]any) MCPToolOutcome {
 	return issueOpsMCPOutcome(nil, err, "IssueOps worktree tool preparation failed")
 }
 
+func handleMCPIssueOpsReconcileWorkspace(args map[string]any) MCPToolOutcome {
+	result, err := core.ReconcileIssueOpsExecutionWorkspace(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsExecutionWorkspaceReconcileRequest{
+		ID:             argmap.String(args, "id"),
+		WorkspaceEpoch: argmap.String(args, "workspace_epoch"),
+		Actor: core.IssueOpsActor{
+			Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), CWD: argmap.String(args, "source_cwd"),
+		},
+	}, IssueOpsWorktreeOrcaClient(), time.Now().UTC().Format(time.RFC3339Nano))
+	return issueOpsMCPOutcome(result, err, "IssueOps workspace reconciliation failed")
+}
+
 func handleMCPIssueOpsRecordExecutionDecision(args map[string]any) MCPToolOutcome {
 	plans, err := issueOpsSubagentPlansFromMCP(args["subagent_plans"])
 	if err != nil {

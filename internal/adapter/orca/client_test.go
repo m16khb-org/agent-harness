@@ -433,6 +433,29 @@ func TestClientBuildsSpikeVerifiedArgvWithoutShell(t *testing.T) {
 	}
 }
 
+func TestClientCanonicalizesNamespacedCreatedBranchAndUpstream(t *testing.T) {
+	runner := newFakeRunner(t)
+	create := "orca worktree create --repo path:/repo --name 16-demo --base-branch refs/remotes/origin/16-demo --no-parent --setup skip --comment marker --issue 16 --json"
+	runner.responses[create] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{"worktree":{"id":"wt-1","instanceId":"inst-1","repoId":"repo-1","path":"/repo.worktrees/16-demo","head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"refs/heads/alice/16-demo","comment":"marker","baseRef":"refs/remotes/origin/16-demo","linkedIssue":16}},"_meta":{"runtimeId":"runtime-1"}}`)}
+	runner.responses["git branch -m 16-demo"] = CommandOutput{Invoked: true}
+	runner.responses["git branch --set-upstream-to refs/remotes/origin/16-demo 16-demo"] = CommandOutput{Invoked: true}
+
+	got, err := NewClient(runner).CreateWorktree(context.Background(), port.OrcaCreateWorktreeRequest{
+		Repo: "/repo", Name: "16-demo", BaseBranch: "refs/remotes/origin/16-demo", Provider: "github", Issue: 16, Comment: "marker",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantCalls := [][]string{
+		{"orca", "worktree", "create", "--repo", "path:/repo", "--name", "16-demo", "--base-branch", "refs/remotes/origin/16-demo", "--no-parent", "--setup", "skip", "--comment", "marker", "--issue", "16", "--json"},
+		{"git", "branch", "-m", "16-demo"},
+		{"git", "branch", "--set-upstream-to", "refs/remotes/origin/16-demo", "16-demo"},
+	}
+	if got.Branch != "16-demo" || !reflect.DeepEqual(runner.calls, wantCalls) {
+		t.Fatalf("canonicalized worktree = %#v calls=%#v", got, runner.calls)
+	}
+}
+
 func TestClientAdoptsExistingGitHubWorktreeWithIssueAndMarker(t *testing.T) {
 	runner := newFakeRunner(t)
 	command := "orca worktree set --worktree id:worktree-1 --comment agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1 --issue 16 --json"

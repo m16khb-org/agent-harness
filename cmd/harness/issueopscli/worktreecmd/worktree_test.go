@@ -86,6 +86,30 @@ func TestWorktreePrepareCLIForwardsOrchestratorAgentAndConfirmation(t *testing.T
 	}
 }
 
+func TestWorktreeReconcileCLIForwardsExactWorkspaceFence(t *testing.T) {
+	var captured core.IssueOpsExecutionWorkspaceReconcileRequest
+	var printed any
+	deps := Deps{
+		ParseFlags: parseWorktreeFlags,
+		PrintJSON:  func(value any) error { printed = value; return nil },
+		PrintError: func(error) error { return nil },
+		ReconcileWorkspace: func(_ context.Context, _ string, req core.IssueOpsExecutionWorkspaceReconcileRequest) (core.IssueOpsRecord, error) {
+			captured = req
+			return core.IssueOpsRecord{ID: req.ID}, nil
+		},
+	}
+	args := []string{"reconcile", "--id", "io-demo", "--workspace-epoch", "epoch-1", "--host", "codex", "--session-id", "session-1", "--agent-id", "agent-1", "--source-cwd", "/repo", "--json"}
+	if err := Run(args, deps); err != nil {
+		t.Fatal(err)
+	}
+	if captured.ID != "io-demo" || captured.WorkspaceEpoch != "epoch-1" || captured.Actor != (core.IssueOpsActor{Host: "codex", SessionID: "session-1", AgentID: "agent-1", CWD: "/repo"}) {
+		t.Fatalf("reconcile flags not forwarded: %#v", captured)
+	}
+	if got, ok := printed.(core.IssueOpsRecord); !ok || got.ID != "io-demo" {
+		t.Fatalf("reconcile output = %#v", printed)
+	}
+}
+
 func TestWorktreePrepareCLIRejectsInlineWithoutAuthorizationBeforeDependency(t *testing.T) {
 	called := false
 	deps := Deps{

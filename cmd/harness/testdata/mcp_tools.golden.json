@@ -988,6 +988,46 @@
     "name": "issueops_prepare_worktree_tools"
   },
   {
+    "description": "Reconcile exactly one Orca worktree created by a recovery-required execution workspace journal. Requires the sealed source session and exact workspace epoch; it cannot create or dispatch an ownership handoff.",
+    "inputSchema": {
+      "properties": {
+        "agent_id": {
+          "description": "Optional sealed preparation agent id.",
+          "type": "string"
+        },
+        "host": {
+          "description": "Sealed preparation host.",
+          "type": "string"
+        },
+        "id": {
+          "description": "IssueOps id.",
+          "type": "string"
+        },
+        "session_id": {
+          "description": "Sealed preparation session id.",
+          "type": "string"
+        },
+        "source_cwd": {
+          "description": "Exact source checkout cwd.",
+          "type": "string"
+        },
+        "workspace_epoch": {
+          "description": "Exact recovery workspace epoch.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "workspace_epoch",
+        "host",
+        "session_id",
+        "source_cwd"
+      ],
+      "type": "object"
+    },
+    "name": "issueops_reconcile_workspace"
+  },
+  {
     "description": "Record the durable pre-implementation execution decision: auto-proceed boundaries, hook-blocked work, human gates, and whether sub-agents are not used or explicitly planned from the documented allowlist.",
     "inputSchema": {
       "properties": {
