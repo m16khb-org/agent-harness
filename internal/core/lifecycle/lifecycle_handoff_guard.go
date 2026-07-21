@@ -77,7 +77,11 @@ func renderHandoffSessionGuidance(record IssueOpsRecord, worker bool, host, sess
 	claimState := h.State == handoff.StateOwnershipDispatched
 	if !claimState {
 		if h.State == handoff.StateOwnerOrienting {
-			return fmt.Sprintf("IssueOps ownership transfer role=owner state=%s attempt=%d context=%s. Acknowledge the sealed issue and plan context before editing; implementation remains read-only until acknowledgement. Resume: %s", h.State, h.Attempt, h.ContextSHA256, resume) + modelBoundary
+			acknowledge, err := issueOpsHandoffAcknowledgeCommand(record)
+			if err != nil {
+				return fmt.Sprintf("IssueOps ownership transfer role=owner state=%s attempt=%d context=%s. The sealed acknowledgement context is stale or invalid; remain read-only and require source-session recovery: %s", h.State, h.Attempt, h.ContextSHA256, err) + modelBoundary
+			}
+			return fmt.Sprintf("IssueOps ownership transfer role=owner state=%s attempt=%d context=%s. Review the sealed issue and plan context, then run only this acknowledgement command; implementation remains read-only until acknowledgement: %s", h.State, h.Attempt, h.ContextSHA256, acknowledge) + modelBoundary
 		}
 		if h.State == handoff.StateOwnerActive {
 			publicationCompletion := ""
@@ -275,7 +279,11 @@ func ownershipTransferMutationBlockReason(req HookToolUseLifecycleRequest, recor
 			}
 		}
 		if h.State == handoff.StateOwnerOrienting && nativeSessionMatches(req, h.OwnerSession) {
-			return true, "ownership transfer owner must acknowledge the sealed issue and plan context before mutation"
+			acknowledge, err := issueOpsHandoffAcknowledgeCommand(record)
+			if err != nil {
+				return true, "ownership transfer owner acknowledgement context is stale or invalid; remain read-only and require source-session recovery: " + err.Error()
+			}
+			return true, "ownership transfer owner must acknowledge the sealed issue and plan context before mutation; run only: " + acknowledge
 		}
 		return true, "ownership transfer handoff does not grant worker-root mutation authority in state " + h.State
 	}

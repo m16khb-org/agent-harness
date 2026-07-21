@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -383,7 +384,11 @@ func TestOwnershipRoleAuthorityMatrix(t *testing.T) {
 
 	ownerEdit := handoffEditRequest(orienting, worker, "claude", "owner-session", target)
 	ownerEdit.AgentID = "owner-agent"
-	if got := BuildLifecyclePreToolUseDecision(ownerEdit); got.Decision != "block" || !strings.Contains(got.Reason, "acknowledge") {
+	wantAcknowledge, err := issueOpsHandoffAcknowledgeCommand(orienting)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := BuildLifecyclePreToolUseDecision(ownerEdit); got.Decision != "block" || !strings.Contains(got.Reason, wantAcknowledge) || strings.Contains(got.Reason, "issueops resume") {
 		t.Fatalf("orienting owner must acknowledge before mutation: %#v", got)
 	}
 
@@ -395,10 +400,14 @@ func TestOwnershipRoleAuthorityMatrix(t *testing.T) {
 	}
 	ackMCP := handoffEditRequest(orienting, worker, "claude", "owner-session", "")
 	ackMCP.AgentID, ackMCP.Tool = "owner-agent", "mcp__agent_harness__issueops_handoff"
+	packet, err := handoff.BuildContext(orienting, handoff.ContextOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ackMCP.ToolInput = map[string]any{
 		"action": "acknowledge-context", "id": orienting.ID, "attempt": 1, "ownership_epoch": orienting.ExecutionHandoff.OwnershipEpoch,
 		"context_sha256": orienting.ExecutionHandoff.ContextSHA256, "host": "claude", "session_id": "owner-session", "agent_id": "owner-agent", "cwd": worker,
-		"issue_url": orienting.IssueURL, "plan_sha256": strings.Repeat("d", 64), "understanding": "understood", "scope_confirmation": "scoped",
+		"issue_url": orienting.IssueURL, "plan_sha256": packet.PlanSHA256, "understanding": "understood", "scope_confirmation": "scoped",
 	}
 	if got := BuildLifecyclePreToolUseDecision(ackMCP); got.Decision != "allow" {
 		t.Fatalf("exact MCP acknowledgement must be allowed while orienting: %#v", got)
@@ -425,6 +434,36 @@ func TestOwnershipRoleAuthorityMatrix(t *testing.T) {
 	}
 }
 
+func TestOwnerOrientingAllowsBoundedObservationAndExplainsUnsafeShell(t *testing.T) {
+	_, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerOrienting)
+	for _, command := range []string{
+		"rg -n handoff internal",
+		"sed -n '1,20p' " + filepath.Join(worker, "AGENTS.md"),
+		"git status --short",
+		"codegraph explore 'handoff ownership path'",
+		"agent-harness issueops status --id " + record.ID,
+		"agent-harness issueops resume --repo " + record.Repo + " --id " + record.ID,
+	} {
+		req := handoffEditRequest(record, worker, "claude", "owner-session", "")
+		req.AgentID, req.Tool, req.Command = "owner-agent", "Bash", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("bounded owner observation blocked: command=%q decision=%#v", command, got)
+		}
+	}
+
+	compound := handoffEditRequest(record, worker, "claude", "owner-session", "")
+	compound.AgentID, compound.Tool, compound.Command = "owner-agent", "Bash", "rg -n handoff internal && git status --short"
+	if got := BuildLifecyclePreToolUseDecision(compound); got.Decision != "block" || !strings.Contains(got.Reason, "shell control") || strings.Contains(got.Reason, "acknowledge") {
+		t.Fatalf("unsafe shell syntax must have a syntax-specific block: %#v", got)
+	}
+
+	mutation := handoffEditRequest(record, worker, "claude", "owner-session", filepath.Join(worker, "marker"))
+	mutation.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(mutation); got.Decision != "block" || !strings.Contains(got.Reason, "handoff acknowledge-context") || strings.Contains(got.Reason, "shell control") {
+		t.Fatalf("repository mutation must have an acknowledgement-specific block: %#v", got)
+	}
+}
+
 func TestOwnershipFenceStillProtectsWorkerRootAndCycleControl(t *testing.T) {
 	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
 	sourcePhase := handoffEditRequest(record, repo, "claude", "coordinator-session", "")
@@ -448,9 +487,21 @@ func TestOwnershipSessionGuidanceRendersClaimAndOrientationBoundary(t *testing.T
 		t.Fatalf("ownership dispatched guidance must render the exact claim path: %s", guidance)
 	}
 
-	_, _, worker = ownershipLifecycleRecord(t, handoff.StateOwnerOrienting)
+	_, orienting, worker := ownershipLifecycleRecord(t, handoff.StateOwnerOrienting)
 	guidance = BuildIssueOpsHandoffSessionGuidance(worker, "claude", "owner-session", "owner-agent")
-	if !strings.Contains(guidance, "Acknowledge") || !strings.Contains(guidance, "read-only") {
+	wantAcknowledge, err := issueOpsHandoffAcknowledgeCommand(orienting)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{
+		wantAcknowledge, orienting.ID, orienting.ExecutionHandoff.OwnershipEpoch,
+		orienting.ExecutionHandoff.ContextSHA256, "owner-session", worker, orienting.IssueURL,
+	} {
+		if !strings.Contains(guidance, expected) {
+			t.Fatalf("orienting owner guidance must contain %q: %s", expected, guidance)
+		}
+	}
+	if !strings.Contains(guidance, "read-only") || strings.Contains(guidance, "Resume:") {
 		t.Fatalf("orienting owner guidance must name acknowledgement boundary: %s", guidance)
 	}
 
@@ -484,6 +535,10 @@ func ownershipLifecycleRecord(t *testing.T, state string) (string, IssueOpsRecor
 		t.Fatal(err)
 	}
 	record, _ = ReadIssueOps(IssueOpsStateRoot(), record.ID)
+	record.PlanPath = filepath.Join(repo, "handoff-plan.md")
+	if err := os.WriteFile(record.PlanPath, []byte("# Sealed handoff plan\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	baseHead := strings.Repeat("b", 40)
 	orca := &issueopsmodel.IssueOpsOrcaIdentity{RuntimeID: "runtime-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/1-demo", WorktreeID: "wt-1", WorktreeInstanceID: "inst-1", WorktreePath: worker, WorkerPTYID: "pty-1", WorkerTerminalHandle: "term-1", WorkerMailboxHandle: "term-1", TaskID: "task-1", DispatchID: "dispatch-1"}
 	h := &issueopsmodel.IssueOpsExecutionHandoff{
@@ -502,11 +557,17 @@ func ownershipLifecycleRecord(t *testing.T, state string) (string, IssueOpsRecor
 		PreparationSession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "claude", SessionID: "coordinator-session", AgentID: "coordinator-agent"},
 		BaseHead:           baseHead, Orca: &workspaceOrca,
 	}
+	packet, err := handoff.BuildContext(record, handoff.ContextOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.ContextSHA256 = packet.SHA256
+	h.ContextSourceSHA256 = packet.SourceSHA256
 	if state == handoff.StateOwnerOrienting || state == handoff.StateOwnerActive || state == handoff.StateCleanupPendingHumanDecision || state == handoff.StateCleanupExecuting || state == handoff.StateClosed || state == handoff.StateRecoveryRequired {
 		h.OwnerSession = &issueopsmodel.IssueOpsHostSessionIdentity{Host: "claude", SessionID: "owner-session", AgentID: "owner-agent"}
 	}
 	if state == handoff.StateOwnerActive || state == handoff.StateCleanupPendingHumanDecision || state == handoff.StateCleanupExecuting || state == handoff.StateClosed || state == handoff.StateRecoveryRequired {
-		h.Orientation = &issueopsmodel.IssueOpsOwnershipOrientation{IssueURL: record.IssueURL, PlanSHA256: strings.Repeat("d", 64), Understanding: "understood", ScopeConfirmation: "worker root only", RecordedAt: "2026-07-20T00:00:00Z"}
+		h.Orientation = &issueopsmodel.IssueOpsOwnershipOrientation{IssueURL: record.IssueURL, PlanSHA256: packet.PlanSHA256, Understanding: "understood", ScopeConfirmation: "worker root only", RecordedAt: "2026-07-20T00:00:00Z"}
 	}
 	if state == handoff.StateCleanupPendingHumanDecision || state == handoff.StateCleanupExecuting || state == handoff.StateClosed || state == handoff.StateRecoveryRequired {
 		h.Completion = &issueopsmodel.IssueOpsOwnershipCompletion{FinalHead: strings.Repeat("e", 40), CompletedAt: "2026-07-20T00:00:01Z"}
@@ -551,10 +612,14 @@ func handoffEditRequest(record IssueOpsRecord, cwd, host, session, target string
 
 func ownershipAcknowledgementCommand(record IssueOpsRecord, worker string) string {
 	h := record.ExecutionHandoff
+	packet, err := handoff.BuildContext(record, handoff.ContextOptions{})
+	if err != nil {
+		return ""
+	}
 	return "agent-harness issueops handoff acknowledge-context --id " + record.ID +
 		" --attempt 1 --ownership-epoch " + h.OwnershipEpoch + " --context-sha256 " + h.ContextSHA256 +
 		" --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker +
-		" --issue-url " + record.IssueURL + " --plan-sha256 " + strings.Repeat("d", 64) +
+		" --issue-url " + record.IssueURL + " --plan-sha256 " + packet.PlanSHA256 +
 		" --understanding understood --scope-confirmation scoped"
 }
 

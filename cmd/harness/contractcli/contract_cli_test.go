@@ -51,6 +51,10 @@ func TestRunContractSchemaPrintsTextAndJSON(t *testing.T) {
 	if !contract.OK || contract.Name != "agent_harness_cli_mcp_compatibility" || contract.Version != 2 || contract.Hash == "" {
 		t.Fatalf("unexpected contract schema: %#v", contract)
 	}
+	wantClaimFields := []string{"ok", "id", "state", "attempt", "ownership_epoch", "context_sha256", "plan_sha256", "next_command"}
+	if got := contract.ResponseFields["issueops_handoff_claim"]; strings.Join(got, ",") != strings.Join(wantClaimFields, ",") {
+		t.Fatalf("issueops handoff claim response fields = %v, want %v", got, wantClaimFields)
+	}
 }
 
 func TestRunContractCheckPrintsTextAndJSON(t *testing.T) {

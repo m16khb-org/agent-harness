@@ -258,7 +258,7 @@
           "name": "version"
         }
       ],
-      "hash": "d1ce84f980578984b72fd522e3e7869730911244bc95631a59466a12ed090e5e",
+      "hash": "0957a62fdcdf6bee5296d5737de9dae362d41cd9e3d42af92848d4588c32531b",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -474,6 +474,16 @@
           "worktree_path",
           "branch",
           "remote_artifact_url"
+        ],
+        "issueops_handoff_claim": [
+          "ok",
+          "id",
+          "state",
+          "attempt",
+          "ownership_epoch",
+          "context_sha256",
+          "plan_sha256",
+          "next_command"
         ],
         "issueops_pr_readiness": [
           "ok",
@@ -696,7 +706,7 @@
       "running": false
     },
     "docs_index": {
-      "docs_count": 87,
+      "docs_count": 88,
       "harness_root": "$HARNESS_ROOT",
       "ok": true,
       "required_docs": {
@@ -769,6 +779,7 @@
         "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
         "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
         "$HARNESS_ROOT/.agent-harness/plans/issueops-hook-deadlock.md",
+        "$HARNESS_ROOT/.agent-harness/plans/issueops-publication-identity-and-skill-read.md",
         "$HARNESS_ROOT/.agent-harness/plans/issueops-selective-absorption-2026-07-21.md",
         "$HARNESS_ROOT/.agent-harness/plans/karpathy-prompt-augmentation-hook.md",
         "$HARNESS_ROOT/.agent-harness/plans/loop-article-gaps-123.md",
@@ -5189,7 +5200,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 87,
+        "docs_indexed": 88,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -6731,7 +6742,7 @@
                 "name": "version"
               }
             ],
-            "hash": "d1ce84f980578984b72fd522e3e7869730911244bc95631a59466a12ed090e5e",
+            "hash": "0957a62fdcdf6bee5296d5737de9dae362d41cd9e3d42af92848d4588c32531b",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6947,6 +6958,16 @@
                 "worktree_path",
                 "branch",
                 "remote_artifact_url"
+              ],
+              "issueops_handoff_claim": [
+                "ok",
+                "id",
+                "state",
+                "attempt",
+                "ownership_epoch",
+                "context_sha256",
+                "plan_sha256",
+                "next_command"
               ],
               "issueops_pr_readiness": [
                 "ok",
@@ -7183,7 +7204,7 @@
       "content": [
         {
           "json": {
-            "docs_count": 87,
+            "docs_count": 88,
             "harness_root": "$HARNESS_ROOT",
             "ok": true,
             "required_docs": {
@@ -7263,6 +7284,7 @@
               "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
               "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
               "$HARNESS_ROOT/.agent-harness/plans/issueops-hook-deadlock.md",
+              "$HARNESS_ROOT/.agent-harness/plans/issueops-publication-identity-and-skill-read.md",
               "$HARNESS_ROOT/.agent-harness/plans/issueops-selective-absorption-2026-07-21.md",
               "$HARNESS_ROOT/.agent-harness/plans/karpathy-prompt-augmentation-hook.md",
               "$HARNESS_ROOT/.agent-harness/plans/loop-article-gaps-123.md",
@@ -10353,7 +10375,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 87,
+              "docs_indexed": 88,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
