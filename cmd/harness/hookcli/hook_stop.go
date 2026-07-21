@@ -145,8 +145,10 @@ func buildEngelbartCanvasSectionsBlock(message, transcriptPath string, enforce b
 		return false, ""
 	}
 	evidence := write.Content
-	if !looksLikeEngelbartCanvasContext(message + "\n" + evidence) {
-		return false, ""
+	if !write.IsCreate || strings.TrimSpace(evidence) != "" {
+		if !looksLikeEngelbartCanvasContext(message + "\n" + evidence) {
+			return false, ""
+		}
 	}
 	// Only a freshly created canvas must carry the full template. A
 	// slack_update_canvas is an incremental fix, so it can clear the gate when it is
@@ -281,7 +283,7 @@ func collectCanvasWriteValues(value any, kind slackCanvasToolKind) []slackCanvas
 		writes := []slackCanvasWrite{}
 		for key, child := range v {
 			if kind != slackCanvasToolNone && strings.EqualFold(key, "content") {
-				if text, ok := child.(string); ok && strings.TrimSpace(text) != "" {
+				if text, ok := child.(string); ok {
 					writes = append(writes, slackCanvasWrite{Content: text, IsCreate: kind == slackCanvasToolCreate})
 				}
 			}

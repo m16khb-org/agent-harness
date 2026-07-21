@@ -218,6 +218,19 @@ func TestRunHookStopBlocksIncompleteEngelbartCreateDespiteCompleteAssistantProse
 	}
 }
 
+func TestRunHookStopBlocksEmptyEngelbartCreateWithoutMeetingKeywords(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	transcript := writeTranscriptForTest(t, writeCanvasToolLine(t, "mcp__codex_apps__slack._slack_create_canvas", ""))
+	msg := "Canvas created."
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","transcript_path":"`+transcript+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--enforce-engelbart-canvas-sections"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("an empty Slack Canvas create must not bypass the required-section gate, got %+v", obj)
+	}
+}
+
 func TestRunHookStopRelaysOncePerTurnAndRefreshesRecord(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
