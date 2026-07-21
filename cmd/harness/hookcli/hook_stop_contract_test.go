@@ -180,6 +180,44 @@ func TestRunHookStopAllowsEngelbartCanvasWithWebAPISafeStatusQuote(t *testing.T)
 	}
 }
 
+func TestRunHookStopAllowsEngelbartDiscussionWithoutCanvasWrite(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	msg := "회의록 Canvas를 생성하기 전에 회의 내용을 정리했습니다."
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--enforce-engelbart-canvas-sections"})
+	})
+	if len(obj) != 0 {
+		t.Fatalf("discussion without a Slack Canvas write must allow Stop, got %+v", obj)
+	}
+}
+
+func TestRunHookStopAllowsEngelbartDiscussionWithUnreadableTranscript(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	transcript := filepath.Join(t.TempDir(), "missing-transcript.jsonl")
+	msg := "새 회의록 Canvas를 만들었습니다."
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","transcript_path":"`+transcript+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--enforce-engelbart-canvas-sections"})
+	})
+	if len(obj) != 0 {
+		t.Fatalf("an unreadable transcript without a Slack Canvas write must allow Stop, got %+v", obj)
+	}
+}
+
+func TestRunHookStopBlocksIncompleteEngelbartCreateDespiteCompleteAssistantProse(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	transcript := writeTranscriptForTest(t, writeCanvasToolLine(t, "mcp__codex_apps__slack._slack_create_canvas", incompleteEngelbartCanvasContent))
+	msg := "새 회의록 Canvas를 만들었습니다.\\n" + strings.ReplaceAll(completeEngelbartCanvasContent(), "\n", "\\n")
+	obj := runHookCapture(t, `{"cwd":"`+repo+`","transcript_path":"`+transcript+`","last_assistant_message":"`+msg+`"}`, func() error {
+		return runHookStop([]string{"--enforce-engelbart-canvas-sections"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("an incomplete Slack Canvas create must block despite complete assistant prose, got %+v", obj)
+	}
+}
+
 func TestRunHookStopRelaysOncePerTurnAndRefreshesRecord(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()

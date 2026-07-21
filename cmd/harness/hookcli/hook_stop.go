@@ -141,19 +141,10 @@ func buildEngelbartCanvasSectionsBlock(message, transcriptPath string, enforce b
 	// one, and a corrected second create_canvas must not trip the cross-blob section
 	// order check.
 	write, hasWrite := latestSlackCanvasWrite(transcriptPath)
-	evidence := ""
-	createContext := false
-	if hasWrite {
-		evidence = write.Content
-		createContext = write.IsCreate
+	if !hasWrite {
+		return false, ""
 	}
-	if strings.TrimSpace(evidence) == "" {
-		if !looksLikeEngelbartCanvasCreationContext(message) {
-			return false, ""
-		}
-		evidence = message
-		createContext = true
-	}
+	evidence := write.Content
 	if !looksLikeEngelbartCanvasContext(message + "\n" + evidence) {
 		return false, ""
 	}
@@ -161,15 +152,12 @@ func buildEngelbartCanvasSectionsBlock(message, transcriptPath string, enforce b
 	// slack_update_canvas is an incremental fix, so it can clear the gate when it is
 	// the most recent write (the canvas was corrected) but never blocks on its own
 	// (a partial append must not be forced to repeat the whole template).
-	if !createContext {
-		return false, ""
-	}
-	if len(missingRequiredEngelbartCanvasBlocks(evidence)) == 0 || len(missingRequiredEngelbartCanvasBlocks(message)) == 0 {
+	if !write.IsCreate {
 		return false, ""
 	}
 	missing := missingRequiredEngelbartCanvasBlocks(evidence)
 	if len(missing) == 0 {
-		missing = missingRequiredEngelbartCanvasBlocks(message)
+		return false, ""
 	}
 	return true, "Stop hook blocked because Engelbart meeting Canvas creation is missing required template blocks: " + strings.Join(missing, ", ") + ". Create the Canvas with the full Engelbart template before finalizing; do not ask the user to re-request this."
 }
@@ -179,19 +167,6 @@ func looksLikeEngelbartCanvasContext(text string) bool {
 	hasCanvas := strings.Contains(lower, "canvas") || strings.Contains(text, "캔버스") || strings.Contains(lower, "bubbletap.slack.com/docs")
 	hasMeeting := strings.Contains(text, "회의록") || strings.Contains(text, "회의") || strings.Contains(text, "전사") || strings.Contains(lower, "clova") || strings.Contains(lower, "engelbart")
 	return hasCanvas && hasMeeting
-}
-
-func looksLikeEngelbartCanvasCreationContext(text string) bool {
-	if !looksLikeEngelbartCanvasContext(text) {
-		return false
-	}
-	lower := strings.ToLower(text)
-	return strings.Contains(text, "생성") ||
-		strings.Contains(text, "만들") ||
-		strings.Contains(text, "새 Canvas") ||
-		strings.Contains(text, "새 캔버스") ||
-		strings.Contains(lower, "created") ||
-		strings.Contains(lower, "create_canvas")
 }
 
 type requiredEngelbartBlock struct {
