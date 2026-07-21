@@ -1,6 +1,9 @@
 package harnessapp
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestDocsIndexContractProjectionKeepsShapeAndRequiredDocsOnly(t *testing.T) {
 	input := map[string]any{
@@ -41,5 +44,64 @@ func TestDocsIndexContractProjectionKeepsShapeAndRequiredDocsOnly(t *testing.T) 
 	}
 	if _, present := got["docs"]; present {
 		t.Fatalf("full docs array must not be snapshotted: %#v", got)
+	}
+}
+
+func TestInspectContractProjectionKeepsOnlyRequiredDocs(t *testing.T) {
+	input := map[string]any{
+		"docs": []any{
+			"$HARNESS_ROOT/.agent-harness/CONSTITUTION.md",
+			"$HARNESS_ROOT/.agent-harness/plans/transient.md",
+			"$HARNESS_ROOT/AGENTS.md",
+		},
+		"version": "0.1.0",
+	}
+	want := map[string]any{
+		"docs": []any{
+			"AGENTS.md",
+			".agent-harness/CONSTITUTION.md",
+		},
+		"version": "0.1.0",
+	}
+	if got := inspectContractProjection(input); !reflect.DeepEqual(got, want) {
+		t.Fatalf("inspect contract projection = %#v, want %#v", got, want)
+	}
+}
+
+func TestInspectMCPContractProjectionKeepsOnlyRequiredDocs(t *testing.T) {
+	input := map[string]any{
+		"content": []any{
+			map[string]any{
+				"type": "text",
+				"json": map[string]any{
+					"docs": []any{
+						"$HARNESS_ROOT/.agent-harness/CONSTITUTION.md",
+						"$HARNESS_ROOT/.agent-harness/plans/transient.md",
+						"$HARNESS_ROOT/AGENTS.md",
+					},
+				},
+			},
+		},
+	}
+	want := map[string]any{
+		"content": []any{
+			map[string]any{
+				"type": "text",
+				"json": map[string]any{
+					"docs": []any{"AGENTS.md", ".agent-harness/CONSTITUTION.md"},
+				},
+			},
+		},
+	}
+	if got := inspectMCPContractProjection(t, input); !reflect.DeepEqual(got, want) {
+		t.Fatalf("MCP inspect contract projection = %#v, want %#v", got, want)
+	}
+}
+
+func TestFirstContractValueDifferenceSortsMapKeys(t *testing.T) {
+	want := map[string]any{"z": "expected-z", "a": "expected-a"}
+	got := map[string]any{"z": "actual-z", "a": "actual-a"}
+	if difference := firstContractValueDifference(want, got, "$"); difference != "$.a: got \"actual-a\", want \"expected-a\"" {
+		t.Fatalf("first difference = %q", difference)
 	}
 }

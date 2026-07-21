@@ -175,9 +175,13 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 		return ownerInvocation && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("mutate", h.State) &&
 			eventIdentityFlagsMatch(req, flags) && toOK && allowedPhase && !forced && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot)
 	case "ai-slop-clean record":
-		cwd, cwdOK := oneFlag(flags, "--cwd")
-		return ownerInvocation && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("mutate", h.State) &&
-			eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && len(flags["--category"]) > 0 && len(flags["--verification"]) > 0
+		return allowedOwnerLifecycleRecorder(req, record, flags) && len(flags["--category"]) > 0 && len(flags["--verification"]) > 0
+	case "feedback mark-issue-updated":
+		return allowedOwnerLifecycleRecorder(req, record, flags)
+	case "feedback resolve":
+		_, indexOK := oneFlag(flags, "--index")
+		_, resolutionOK := oneFlag(flags, "--resolution")
+		return allowedOwnerLifecycleRecorder(req, record, flags) && indexOK && resolutionOK
 	case "handoff claim":
 		cwd, cwdOK := oneFlag(flags, "--cwd")
 		worktreeID, wtOK := oneFlag(flags, "--orca-worktree-id")
@@ -205,6 +209,18 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 	default:
 		return false
 	}
+}
+
+func allowedOwnerLifecycleRecorder(req HookToolUseLifecycleRequest, record IssueOpsRecord, flags map[string][]string) bool {
+	h := record.ExecutionHandoff
+	if h == nil {
+		return false
+	}
+	cwd, cwdOK := oneFlag(flags, "--cwd")
+	source := cleanAbsPath(req.CWD) == cleanAbsPath(record.Repo)
+	worker := cleanAbsPath(req.CWD) == cleanAbsPath(h.WorkerRoot)
+	return (source || worker) && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("mutate", h.State) && nativeSessionMatches(req, h.OwnerSession) &&
+		eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot)
 }
 
 func allowedRecoveryWorkspaceReconciliation(req HookToolUseLifecycleRequest, record IssueOpsRecord, command commandparse.ExactIssueOpsCommand, flags map[string][]string) bool {

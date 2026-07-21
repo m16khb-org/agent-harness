@@ -126,6 +126,10 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		r["--category"] = true
 		r["--verification"] = true
 		return values, b("--json"), r, true
+	case "feedback mark-issue-updated":
+		return v("--id", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
+	case "feedback resolve":
+		return v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--index", "--resolution"), b("--json"), r, true
 	case "worktree prepare":
 		return v("--id", "--orchestrator", "--inline-reason", "--agent", "--host", "--session-id", "--agent-id", "--source-cwd"), b("--confirm", "--json"), r, true
 	case "worktree prepare-tools":
