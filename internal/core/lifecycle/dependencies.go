@@ -48,6 +48,10 @@ type IssueOpsBranchPrepareRequest = issueops.IssueOpsBranchPrepareRequest
 type IssueOpsRemoteArtifactVerification = issueops.IssueOpsRemoteArtifactVerification
 type IssueOpsPhase = issueops.IssueOpsPhase
 
+func issueOpsHandoffAcknowledgeCommand(record IssueOpsRecord) (string, error) {
+	return issueops.IssueOpsHandoffAcknowledgeCommand(record)
+}
+
 const (
 	IssueOpsPhaseProblem     = issueops.IssueOpsPhaseProblem
 	IssueOpsPhaseGrill       = issueops.IssueOpsPhaseGrill

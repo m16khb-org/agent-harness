@@ -124,6 +124,7 @@ func BuildCompatibilityContract() CompatibilityContract {
 			"workpool_claim":                  {"ok", "task", "prompt"},
 			"workpool_status":                 {"ok", "pool", "tasks", "counts"},
 			"issueops_record":                 {"ok", "schema_version", "id", "repo", "branch", "phase", "intent", "design_review", "issue_url", "plan_path", "branch_prepare", "remote_artifact", "worktree_tools", "execution_decision", "feedback", "ai_slop_clean_at", "created_at", "updated_at"},
+			"issueops_handoff_claim":          {"ok", "id", "state", "attempt", "ownership_epoch", "context_sha256", "plan_sha256", "next_command"},
 			"issueops_pr_readiness":           {"ok", "ready", "missing", "issue_url", "plan_path", "branch"},
 			"issueops_cleanup_status":         {"ok", "ready", "id", "merged", "missing", "warnings", "choices", "worktree_path", "branch", "remote_artifact_url"},
 			"issueops_cleanup_close_children": {"ok", "id", "merged", "confirmed", "dry_run", "closed_count", "children", "missing"},

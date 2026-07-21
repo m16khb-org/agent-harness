@@ -1,9 +1,28 @@
 package issueopscli
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/core"
 )
+
+func TestIssueOpsHandoffClaimJSONPreservesRecordAndNextCommand(t *testing.T) {
+	result := core.IssueOpsHandoffClaimResult{
+		IssueOpsRecord: core.IssueOpsRecord{OK: true, ID: "io-claim"},
+		State:          "owner_orienting",
+		NextCommand:    "agent-harness issueops handoff acknowledge-context --id 'io-claim'",
+	}
+	out := captureStdoutForContract(t, func() error { return printIssueOpsHandoffValue(result, true, nil) })
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["ok"] != true || payload["id"] != "io-claim" || payload["state"] != "owner_orienting" || !strings.Contains(payload["next_command"].(string), "acknowledge-context") {
+		t.Fatalf("claim JSON contract = %#v", payload)
+	}
+}
 
 func TestIssueOpsHandoffExposesOnlyCurrentActions(t *testing.T) {
 	for _, current := range []string{

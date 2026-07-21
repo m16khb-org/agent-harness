@@ -258,7 +258,7 @@
           "name": "version"
         }
       ],
-      "hash": "d1ce84f980578984b72fd522e3e7869730911244bc95631a59466a12ed090e5e",
+      "hash": "0957a62fdcdf6bee5296d5737de9dae362d41cd9e3d42af92848d4588c32531b",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -474,6 +474,16 @@
           "worktree_path",
           "branch",
           "remote_artifact_url"
+        ],
+        "issueops_handoff_claim": [
+          "ok",
+          "id",
+          "state",
+          "attempt",
+          "ownership_epoch",
+          "context_sha256",
+          "plan_sha256",
+          "next_command"
         ],
         "issueops_pr_readiness": [
           "ok",
@@ -6656,7 +6666,7 @@
                 "name": "version"
               }
             ],
-            "hash": "d1ce84f980578984b72fd522e3e7869730911244bc95631a59466a12ed090e5e",
+            "hash": "0957a62fdcdf6bee5296d5737de9dae362d41cd9e3d42af92848d4588c32531b",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6872,6 +6882,16 @@
                 "worktree_path",
                 "branch",
                 "remote_artifact_url"
+              ],
+              "issueops_handoff_claim": [
+                "ok",
+                "id",
+                "state",
+                "attempt",
+                "ownership_epoch",
+                "context_sha256",
+                "plan_sha256",
+                "next_command"
               ],
               "issueops_pr_readiness": [
                 "ok",

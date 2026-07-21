@@ -135,6 +135,10 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 	h := record.ExecutionHandoff
 	source := cleanAbsPath(req.CWD) == cleanAbsPath(record.Repo)
 	worker := cleanAbsPath(req.CWD) == cleanAbsPath(h.WorkerRoot)
+	// Host tool calls may start a fresh shell at the source root. Exact owner
+	// lifecycle authority comes from the sealed native session and canonical
+	// actor cwd in the command, not from shell-local environment persistence.
+	ownerInvocation := (worker || source) && nativeSessionMatches(req, h.OwnerSession)
 	switch command.Path {
 	case "status", "resume":
 		return true
@@ -150,17 +154,17 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 	case "handoff publish":
 		cwd, cwdOK := oneFlag(flags, "--cwd")
 		_, confirmed := flags["--confirm"]
-		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("publish", h.State) && eventIdentityFlagsMatch(req, flags) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && confirmed
+		return ownerInvocation && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("publish", h.State) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && confirmed
 	case "remote create-pr":
 		cwd, cwdOK := oneFlag(flags, "--cwd")
-		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("remote-create", h.State) && eventIdentityFlagsMatch(req, flags) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot)
+		return ownerInvocation && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("remote-create", h.State) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot)
 	case "remote verify-artifact":
 		provider, providerOK := oneFlag(flags, "--provider")
 		kind, kindOK := oneFlag(flags, "--kind")
 		_, urlOK := oneFlag(flags, "--url")
 		target, targetOK := oneFlag(flags, "--target-branch")
 		expectedKind := map[string]string{"github": "pr", "gitlab": "mr"}[strings.ToLower(provider)]
-		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("mutate", h.State) && nativeSessionMatches(req, h.OwnerSession) &&
+		return ownerInvocation && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("mutate", h.State) &&
 			h.PublishReceipt != nil && providerOK && strings.EqualFold(provider, h.PublishReceipt.Provider) && kindOK && kind == expectedKind && urlOK &&
 			targetOK && target == h.PublishReceipt.Base
 	case "phase":
@@ -168,7 +172,7 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 		cwd, cwdOK := oneFlag(flags, "--cwd")
 		_, forced := flags["--force"]
 		allowedPhase := map[string]bool{"implement": true, "ai-slop-clean": true, "feedback": true, "pr": true}[to]
-		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("mutate", h.State) && nativeSessionMatches(req, h.OwnerSession) &&
+		return ownerInvocation && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("mutate", h.State) &&
 			eventIdentityFlagsMatch(req, flags) && toOK && allowedPhase && !forced && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot)
 	case "ai-slop-clean record":
 		return allowedOwnerLifecycleRecorder(req, record, flags) && len(flags["--category"]) > 0 && len(flags["--verification"]) > 0
@@ -188,14 +192,14 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 		_, planOK := oneFlag(flags, "--plan-sha256")
 		_, understandingOK := oneFlag(flags, "--understanding")
 		_, scopeOK := oneFlag(flags, "--scope-confirmation")
-		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("acknowledge-context", h.State) && exactFenceFlags(flags, record) && eventIdentityFlagsMatch(req, flags) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && issueOK && planOK && understandingOK && scopeOK
+		return ownerInvocation && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("acknowledge-context", h.State) && exactFenceFlags(flags, record) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && issueOK && planOK && understandingOK && scopeOK
 	case "heartbeat":
-		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("heartbeat", h.State) && exactFenceFlags(flags, record) && nativeSessionMatches(req, h.OwnerSession) && eventIdentityFlagsMatch(req, flags)
+		return ownerInvocation && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("heartbeat", h.State) && exactFenceFlags(flags, record) && eventIdentityFlagsMatch(req, flags)
 	case "handoff complete":
 		cwd, cwdOK := oneFlag(flags, "--cwd")
 		_, finalHeadOK := oneFlag(flags, "--final-head")
 		_, reportOK := oneFlag(flags, "--turing-report")
-		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("complete", h.State) && exactFenceFlags(flags, record) && nativeSessionMatches(req, h.OwnerSession) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && finalHeadOK && reportOK && len(flags["--verification"]) > 0
+		return ownerInvocation && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("complete", h.State) && exactFenceFlags(flags, record) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && finalHeadOK && reportOK && len(flags["--verification"]) > 0
 	case "handoff cleanup-preview":
 		return ownershipCleanupSourceCommandAllowed(req, record, flags, false)
 	case "handoff cleanup-approve":
@@ -213,7 +217,9 @@ func allowedOwnerLifecycleRecorder(req HookToolUseLifecycleRequest, record Issue
 		return false
 	}
 	cwd, cwdOK := oneFlag(flags, "--cwd")
-	return cleanAbsPath(req.CWD) == cleanAbsPath(h.WorkerRoot) && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("mutate", h.State) && nativeSessionMatches(req, h.OwnerSession) &&
+	source := cleanAbsPath(req.CWD) == cleanAbsPath(record.Repo)
+	worker := cleanAbsPath(req.CWD) == cleanAbsPath(h.WorkerRoot)
+	return (source || worker) && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("mutate", h.State) && nativeSessionMatches(req, h.OwnerSession) &&
 		eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot)
 }
 
@@ -442,7 +448,7 @@ func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRe
 
 func allowedSourceOwnerContinue(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
 	h := record.ExecutionHandoff
-	if h == nil || h.State != handoff.StateOwnerActive || h.Orca == nil ||
+	if h == nil || h.Orca == nil || (h.State != handoff.StateOwnerActive && h.State != handoff.StateOwnerOrienting) ||
 		cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) ||
 		!nativeSessionMatches(req, h.CoordinatorSession) {
 		return false
@@ -453,7 +459,7 @@ func allowedSourceOwnerContinue(req HookToolUseLifecycleRequest, record IssueOps
 		return false
 	}
 	if len(tokens) == 7 {
-		return tokens[5] == "--enter" && tokens[6] == "--json"
+		return h.State == handoff.StateOwnerActive && tokens[5] == "--enter" && tokens[6] == "--json"
 	}
 	return len(tokens) == 9 && tokens[5] == "--text" && tokens[6] == "계속 진행" &&
 		tokens[7] == "--enter" && tokens[8] == "--json"
@@ -1134,7 +1140,7 @@ func allowedHandoffMCPTool(req HookToolUseLifecycleRequest, record IssueOpsRecor
 	h := record.ExecutionHandoff
 	worker := cleanAbsPath(req.CWD) == cleanAbsPath(h.WorkerRoot)
 	source := cleanAbsPath(req.CWD) == cleanAbsPath(record.Repo)
-	owner := worker && handoff.OwnerStateAllows("remote-create", h.State) && nativeSessionMatches(req, h.OwnerSession)
+	owner := (worker || source) && handoff.OwnerStateAllows("remote-create", h.State) && nativeSessionMatches(req, h.OwnerSession)
 	if tool == "issueops_remote_create_pr" {
 		provider, pok := mcpString(input, "provider")
 		head, hok := mcpString(input, "head")
