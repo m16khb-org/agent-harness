@@ -35,8 +35,8 @@ func AcknowledgeIssueOpsHandoffContext(stateRoot string, req IssueOpsHandoffAckn
 			return err
 		}
 		h := record.ExecutionHandoff
-		if h == nil || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion {
-			return fmt.Errorf("ownership acknowledgement requires a protocol-v2 handoff")
+		if h == nil {
+			return fmt.Errorf("ownership acknowledgement requires a handoff")
 		}
 		if h.State != handoff.StateOwnerOrienting && h.State != handoff.StateOwnerActive {
 			return fmt.Errorf("ownership acknowledgement requires %s state", handoff.StateOwnerOrienting)

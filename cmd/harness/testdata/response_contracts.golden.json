@@ -258,7 +258,7 @@
           "name": "version"
         }
       ],
-      "hash": "ced673f30660920d634d1123d7e4fc84aeb2f991a7a3c18bfe4ade614213f926",
+      "hash": "7b98e7fdc085f5654fa2adc24f1cd3dacd5ba791a905d2b8cc4b7a6cb9aa0382",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -292,7 +292,6 @@
         "issueops_link_related",
         "issueops_link_worktree",
         "issueops_mark_issue_updated",
-        "issueops_migrate_legacy_worktree",
         "issueops_plan_prep_record",
         "issueops_pr_readiness",
         "issueops_prepare_branch",
@@ -696,7 +695,7 @@
       "running": false
     },
     "docs_index": {
-      "docs_count": 92,
+      "docs_count": 87,
       "harness_root": "$HARNESS_ROOT",
       "ok": true,
       "required_docs": {
@@ -725,7 +724,6 @@
         "$HARNESS_ROOT/.agent-harness/CONSTITUTION.md",
         "$HARNESS_ROOT/.agent-harness/CONVENTIONS.md",
         "$HARNESS_ROOT/.agent-harness/ISSUEOPS_AUDIT.md",
-        "$HARNESS_ROOT/.agent-harness/ISSUEOPS_ORCA_BLOCKERS_2026-07-16.md",
         "$HARNESS_ROOT/.agent-harness/OPEN_API_SPEC.md",
         "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
         "$HARNESS_ROOT/.agent-harness/PROJECT_AUDIT.md",
@@ -769,9 +767,8 @@
         "$HARNESS_ROOT/.agent-harness/plans/harness-quality-performance-program-v3.md",
         "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
         "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
-        "$HARNESS_ROOT/.agent-harness/plans/issue-46-publication-config-authority.md",
-        "$HARNESS_ROOT/.agent-harness/plans/issue-47-supervised-multicycle-control-plane-deadlock.md",
         "$HARNESS_ROOT/.agent-harness/plans/issueops-hook-deadlock.md",
+        "$HARNESS_ROOT/.agent-harness/plans/issueops-selective-absorption-2026-07-21.md",
         "$HARNESS_ROOT/.agent-harness/plans/karpathy-prompt-augmentation-hook.md",
         "$HARNESS_ROOT/.agent-harness/plans/loop-article-gaps-123.md",
         "$HARNESS_ROOT/.agent-harness/plans/p3-doc-upkeep-pending-retention-policy.md",
@@ -791,11 +788,8 @@
         "$HARNESS_ROOT/.agent-harness/research/issue-20-execution-quality-pioneers-review.md",
         "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
         "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
-        "$HARNESS_ROOT/.agent-harness/research/orca-handoff-state-security-evidence-2026-07-12.md",
-        "$HARNESS_ROOT/.agent-harness/research/orca-handoff-turing-evidence-2026-07-11.md",
         "$HARNESS_ROOT/.agent-harness/research/orca-issueops-orchestration-contract.md",
         "$HARNESS_ROOT/.agent-harness/research/orca-live-handoff-spike-2026-07-11.md",
-        "$HARNESS_ROOT/.agent-harness/research/orca-skill-baseline-2026-07-11.md",
         "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
         "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
         "$HARNESS_ROOT/.agent-harness/research/quality-audit-2026-06-30.md",
@@ -5194,7 +5188,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 92,
+        "docs_indexed": 87,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -6736,7 +6730,7 @@
                 "name": "version"
               }
             ],
-            "hash": "ced673f30660920d634d1123d7e4fc84aeb2f991a7a3c18bfe4ade614213f926",
+            "hash": "7b98e7fdc085f5654fa2adc24f1cd3dacd5ba791a905d2b8cc4b7a6cb9aa0382",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6770,7 +6764,6 @@
               "issueops_link_related",
               "issueops_link_worktree",
               "issueops_mark_issue_updated",
-              "issueops_migrate_legacy_worktree",
               "issueops_plan_prep_record",
               "issueops_pr_readiness",
               "issueops_prepare_branch",
@@ -7188,7 +7181,7 @@
       "content": [
         {
           "json": {
-            "docs_count": 92,
+            "docs_count": 87,
             "harness_root": "$HARNESS_ROOT",
             "ok": true,
             "required_docs": {
@@ -7224,7 +7217,6 @@
               "$HARNESS_ROOT/.agent-harness/CONSTITUTION.md",
               "$HARNESS_ROOT/.agent-harness/CONVENTIONS.md",
               "$HARNESS_ROOT/.agent-harness/ISSUEOPS_AUDIT.md",
-              "$HARNESS_ROOT/.agent-harness/ISSUEOPS_ORCA_BLOCKERS_2026-07-16.md",
               "$HARNESS_ROOT/.agent-harness/OPEN_API_SPEC.md",
               "$HARNESS_ROOT/.agent-harness/OPERATIONS.md",
               "$HARNESS_ROOT/.agent-harness/PROJECT_AUDIT.md",
@@ -7268,9 +7260,8 @@
               "$HARNESS_ROOT/.agent-harness/plans/harness-quality-performance-program-v3.md",
               "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
               "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
-              "$HARNESS_ROOT/.agent-harness/plans/issue-46-publication-config-authority.md",
-              "$HARNESS_ROOT/.agent-harness/plans/issue-47-supervised-multicycle-control-plane-deadlock.md",
               "$HARNESS_ROOT/.agent-harness/plans/issueops-hook-deadlock.md",
+              "$HARNESS_ROOT/.agent-harness/plans/issueops-selective-absorption-2026-07-21.md",
               "$HARNESS_ROOT/.agent-harness/plans/karpathy-prompt-augmentation-hook.md",
               "$HARNESS_ROOT/.agent-harness/plans/loop-article-gaps-123.md",
               "$HARNESS_ROOT/.agent-harness/plans/p3-doc-upkeep-pending-retention-policy.md",
@@ -7290,11 +7281,8 @@
               "$HARNESS_ROOT/.agent-harness/research/issue-20-execution-quality-pioneers-review.md",
               "$HARNESS_ROOT/.agent-harness/research/karpathy-autoresearch-for-pioneer-skill-quality.md",
               "$HARNESS_ROOT/.agent-harness/research/multi-agent-orchestration-quality-patterns.md",
-              "$HARNESS_ROOT/.agent-harness/research/orca-handoff-state-security-evidence-2026-07-12.md",
-              "$HARNESS_ROOT/.agent-harness/research/orca-handoff-turing-evidence-2026-07-11.md",
               "$HARNESS_ROOT/.agent-harness/research/orca-issueops-orchestration-contract.md",
               "$HARNESS_ROOT/.agent-harness/research/orca-live-handoff-spike-2026-07-11.md",
-              "$HARNESS_ROOT/.agent-harness/research/orca-skill-baseline-2026-07-11.md",
               "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-audit.md",
               "$HARNESS_ROOT/.agent-harness/research/pioneer-skill-evaluation-and-issueops-integration-assessment.md",
               "$HARNESS_ROOT/.agent-harness/research/quality-audit-2026-06-30.md",
@@ -10363,7 +10351,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 92,
+              "docs_indexed": 87,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,

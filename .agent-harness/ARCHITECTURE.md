@@ -138,7 +138,7 @@ Draft wiki staging:
 - 기본 위치: `~/.local/state/agent-harness/`
 - project lifecycle 위치: `~/.local/state/agent-harness/projects/<repo-id>/project.json` 및 `doc-upkeep-queue.jsonl`; `<repo-id>`는 repo fingerprint hash라 같은 머신의 여러 repo가 섞이지 않는다.
 - IssueOps 위치: `~/.local/state/agent-harness/issueops/<id>.json`; issue URL, intent contract, design review, domain review, plan path, feedback log(+resolution), PR/MR readiness evidence, 그리고 phase별 진입/완료를 인덱싱하는 additive `phase_ledger`를 저장한다. delegated child cycle은 같은 record의 additive child/delegation 필드에 저장하고, parent/child 세션 binding은 scoped binding 파일로 분리해 같은 repo 안에서도 각 agent가 자기 worktree를 resume할 수 있게 한다. `phase_ledger`는 phase 전이 시에만 실관측 timestamp로 stamp되고(매 write 아님), 없으면 status가 read 시 sentinel timestamp로 파생한다. `grill` 진입은 problem 완료(intent), `plan` 진입은 grill 완료(issue_url+branch+plan_prep+split_decision+domain_review)를 fail-closed로 요구한다. 사용자 요청과 설계 검토 같은 freeform 값은 secret-like 패턴을 redaction한 뒤 저장한다.
-- IssueOps root record의 현재 쓰기 버전은 `schema_version=7`이다. missing/zero/v1/v2/v3/v4, 새 mutation authority가 없는 v5, 그리고 v6은 인식 가능한 필드를 보존한 채 read-compatible하고 다음 write에서 v7이 된다. v5의 historical publish/cleanup 의미는 그대로 보존하되, v6가 추가한 push-target fingerprint와 `remote_create_claim`을 v5 row에 소급해 만들지 않는다. v7은 raw legacy Git worktree를 제거한 뒤 Orca-managed checkout으로 재생성하는 `prepared` → `git_removed` → `orca_managed` recovery snapshot을 추가한다. 따라서 raw v5 row에 claim이 있거나 구형 publish receipt가 있으면 저장 bytes를 바꾸지 않고 재-attest 또는 전용 remote-create reconcile 진단으로 fail-closed한다. Genuine accepted v5 publication은 native coordinator seal 이전 형식이므로 exact source checkout의 현재 native event와 명시적 `--approve-legacy-coordinator-seal`을 함께 검증한 locked re-attestation만 v6 receipt authority를 보존한 v7 record로 쓸 수 있다. 거부된 row는 byte-identical하고, invalid closed v5 publication projection은 hook scan에 남아 direct mutation을 계속 막는다. v7보다 큰 row는 bounded identity와 invalid marker만 hook scan에 남긴다.
+- IssueOps root record의 현재 쓰기 버전은 `schema_version=8`이다. Missing/zero부터 schema 7까지의 일반 cycle은 인식 가능한 비-ownership 필드를 보존해 다음 write에서 8이 된다. 그러나 schema 7 이하의 `execution_workspace`/`execution_handoff`, 제거된 `execution_handoff.protocol_version`, future schema는 byte-identical fail-closed다. 제거된 handoff authority를 변환·재-attest·background migration하는 경로는 없다. 새 ownership cycle로 다시 시작해야 한다.
 - Workpool 위치: `~/.local/state/agent-harness/workpool/<pool-id>.json` 및 task record. Pool은 main agent가 분해·검증하는 host-neutral durable queue이며, worker agent는 claim한 task와 lease/heartbeat만 갱신한다. Harness는 agent를 spawn하지 않고, state/lease/gate만 기록한다.
 - Loop 위치: `~/.local/state/agent-harness/loop/<loop-id>.json`. CLI `loop start/record-attempt/status/stop`와 MCP `loop_start/loop_record_attempt/loop_status/loop_stop`가 같은 state machine을 사용한다. 같은 repo+name의 active loop는 resume되고 terminal loop는 새 name이 필요하다. strict PR readiness는 같은 repo의 `active`/`exhausted` loop를 `loop_incomplete:<loop-id>`로 막고, `stopped`/`succeeded` loop는 통과한다.
 - Actor model: main agent는 dispatch, safety/reversibility/user-intent judgement, child/pool result acceptance를 소유한다. child agent와 pool worker는 각자 할당된 isolated worktree와 heartbeat를 소유한다. Hook은 관찰·차단·relay만 담당하고, phase 진행·branch/worktree 준비·테스트·merge·cleanup을 대신 실행하지 않는다.
@@ -282,9 +282,9 @@ Readiness gates, self-verification, install/update success, and core CLI/MCP con
 
 ## Optional Orca execution boundary
 
-Orca integration is an optional CLI adapter, not a native-install dependency or second scheduler. `issueops worktree prepare --orchestrator auto|orca|inline` probes with structured status before mutation. `auto` may return the legacy inline result only on a pre-mutation probe failure; after any Orca mutation is invoked, the durable `pending_operation` journal and explicit recovery path are authoritative.
+Orca integration is an optional CLI adapter, not a native-install dependency or second scheduler. `issueops worktree prepare --orchestrator auto|orca|inline` probes with structured status before mutation. `auto` may select inline only on a pre-mutation readiness failure; after any Orca mutation is invoked, the durable `pending_operation` journal and explicit recovery path are authoritative.
 
-Every supervised attempt records attempt/epoch/context, native host session identity, coordinator/worker roots, sealed coordinator and worker mailbox recipients, refreshable live terminal control identity, and stable Orca domain ids in the IssueOps record. Runtime rollover recovery treats tab/leaf as the stable terminal locator, joins the bounded visual-layout tab title only for legacy rows that never observed those IDs, and atomically refreshes runtime + exact current worktree instance + live terminal tuple after complete worktree/terminal inventories agree; it never overwrites either sealed mailbox. Completed finish writes the submitted result and deterministic `worker_done` projection intent or terminal diagnostic in the same cycle lock, then performs at most one argv-only Orca send outside the lock from the sealed worker mailbox to the sealed coordinator mailbox. State compare-and-set runs under the existing cycle lock, but no Orca process call may run while that lock is held. Hooks are limited to SessionStart claim guidance and PreToolUse ownership enforcement; that ownership check includes exact source-root plan authority and blocks non-source terminal control before it can bypass a target terminal's hooks. Coordinator acceptance and cleanup remain explicit commands.
+Every ownership attempt records attempt/epoch/context, native source and owner identities, exact source/worker roots, sealed mailbox recipients, refreshable terminal control identity, and stable Orca domain IDs. Exact lifecycle ID and linked-worktree context route before source-wide inference, so prep-only and active parallel cycles cannot capture each other. The source root stays available for unrelated research and new cycle/worktree creation. After claim and context acknowledgement, only the owner mutates, publishes, and completes that cycle. Completion writes the deterministic `worker_done` notification projection and enters `cleanup_pending_human_decision`; no source acceptance step exists. After human merge, any fresh authenticated exact-source session can receive explicit cleanup authority. State compare-and-set runs under the cycle lock, but no Orca process call may run while that lock is held.
 
 ## IssueOps handoff: threat model and invariants
 
@@ -292,32 +292,32 @@ Every supervised attempt records attempt/epoch/context, native host session iden
 
 ### 적대적 다중 세션 모델
 
-- 한 supervised cycle은 두 역할이 하나의 durable state(`state.json` / sqlstore row)와 외부 Orca 런타임을 공유한다: **coordinator**(source checkout에서 준비·dispatch·accept·cleanup을 소유)와 **worker**(canonical worktree에서 claim 후에만 mutation).
-- 신뢰 경계는 **native host session identity**다. mailbox handle은 routing 전용이며 권한이 아니다. worker 세션이 coordinator mailbox handle을 복사해도 coordinator 권한을 얻지 못한다(`CoordinatorIdentityMatches`는 sealed `CoordinatorSession` + `cwd == record.Repo == CoordinatorRoot`를 요구).
+- 한 supervised cycle은 두 역할이 하나의 durable sqlstore row와 외부 Orca 런타임을 공유한다: **source**(workspace/plan/gate 준비와 dispatch)와 **owner**(canonical worktree에서 claim+acknowledge 뒤 구현·publication·completion). Cleanup은 human 승인 뒤의 fresh exact-source session이 소유할 수 있다.
+- 신뢰 경계는 **native host session identity**다. mailbox handle은 routing 전용이며 권한이 아니다. owner가 source mailbox handle을 복사해도 source 또는 cleanup 권한을 얻지 못한다.
 - PreToolUse hook은 default-deny다. 허용은 상태×역할×명령/도구 표면이 정확히 일치할 때만 부여되며, 애매하거나 unnamed면 fail closed다.
 
 ### Fence triple (재생·탈취 방지)
 
 모든 mutating 전이는 `fencedCopy`가 세 값으로 gate한다:
 
-- **Attempt** — 단조 증가하는 시도 번호. 재시도마다 새 attempt/epoch를 mint한다.
+- **Attempt** — 단조 증가하는 ownership 시도 번호.
 - **OwnershipEpoch** — 한 attempt의 소유권 토큰. stale attempt/epoch는 CAS 이전에 거부된다.
-- **ContextSHA256** — sealed worker context의 해시. dispatch·claim·finish·accept 같은 context 의존 전이는 정확히 이 해시를 요구한다(`requireContext`).
+- **ContextSHA256** — sealed owner context의 해시. dispatch·claim·acknowledge·complete 같은 context 의존 전이는 정확히 이 해시를 요구한다(`requireContext`).
 
-세 값은 schema 버전 bump 때 파괴되기 쉬운 lease 필드였다(v1→v2→v3 회귀 이력). 필드 semantics를 바꾸지 말고 additive로만 확장한다.
+세 값은 ownership lease의 현재 불변식이다. 필드 semantics를 바꾸려면 root schema bump와 hard-cutover 검증을 함께 수행한다.
 
 ### 상태 기계
 
-`coordinator_preparing → dispatched → claimed → submitted → closed` (정상 경로). 분기:
+`ownership_dispatching → ownership_dispatched → owner_orienting → owner_active → cleanup_pending_human_decision → cleanup_executing → closed`가 정상 경로다.
 
 - 어느 non-terminal 상태에서든 create/dispatch 실패는 `recovery_required`로 멈춘다(worktree가 provisioning되지 못하면 `cleanup_only` tombstone을 남긴다). `recovery_required`는 hard deadlock이 아니라 회복 가능 상태다 — block 메시지는 그 sub-state의 정확한 `handoff recover --action …` escape를 이름으로 제시해야 한다(CAUTIONS의 "block message must name a working escape").
-- **유일한 terminal handoff 상태는 `closed`다.** `closed/accepted`는 종결이며 재시도 불가. `closed/worker_failed`와 `closed/cancelled`만 새 attempt/epoch를 mint할 수 있다. `StateClosed`만 검사하면 이미 accept된 결과를 다시 열게 된다.
-- **phase와 handoff terminality는 독립 축이다.** cycle이 `phase=done`이면서 handoff는 non-terminal일 수 있고, 그 경우에도 exact worker resource와 un-reconciled Orca artifact만 fence한다. source checkout의 unrelated work remains available. write-time 가드가 이 조합의 생성을 막고, stale classifier(`handoff_nonterminal_on_terminal_phase`)가 report-only로 감지한다(auto-release 금지).
+- **유일한 terminal handoff 상태는 `closed`다.** `cleanup_pending_human_decision`은 완료됐지만 cleanup authority를 기다리는 보존 상태이고 자동 종료·재사용하지 않는다.
+- **phase와 handoff terminality는 독립 축이다.** `phase=done`이면서 cleanup-pending일 수 있고, 그 경우에도 exact worker resource와 unreconciled Orca artifact만 fence한다. Source checkout의 unrelated work remains available.
 
 ### Lock 규율
 
 - `with*Lock` 계열(issueops/session/state/workpool/worker)은 모두 sqlstore span(`BEGIN IMMEDIATE`)이다. 같은 root 재진입과 `A→B→A`는 self-deadlock 위험이며, 한 번에 하나의 entity lock만 잡는다.
-- **cycle lock 안에서는 record CAS만 수행하고, lock을 쥔 채로 어떤 Orca process도 호출하지 않는다.** Completed finish는 submitted 결과와 `worker_done` projection intent를 같은 cycle lock에서 쓴 뒤, lock 밖에서 sealed worker→coordinator mailbox로 argv-only Orca send를 최대 한 번 수행한다.
+- **cycle lock 안에서는 record CAS만 수행하고, lock을 쥔 채로 어떤 Orca process도 호출하지 않는다.** Ownership completion은 immutable result와 `worker_done` projection intent를 같은 cycle lock에서 쓴 뒤, lock 밖에서 sealed owner→source mailbox로 argv-only Orca send를 최대 한 번 수행한다.
 
 ### Pending-operation journal ("timeout ≠ absence")
 
@@ -331,7 +331,7 @@ Every supervised attempt records attempt/epoch/context, native host session iden
 
 ### Cleanup-receipt 순서
 
-- coordinator cleanup은 정확히 정해진 순서로만 진행하며, 각 단계는 앞선 단계의 receipt가 존재할 때만 authorize된다. sealed historical `WorkerMailboxHandle`은 close/stop 권한이 아니고, close/stop 성공 자체도 spawned PTY 전체 정리 증거가 아니다 — exact worktree removal 뒤 terminal inventory로 각 handle/PTY의 absent/disconnected를 재확인한다.
+- Human-approved exact-source cleanup은 정해진 순서로만 진행하며, 각 단계는 앞선 단계의 receipt가 존재할 때만 authorize된다. Sealed mailbox handle은 close/stop 권한이 아니고, close/stop 성공 자체도 spawned PTY 전체 정리 증거가 아니다. Exact worktree removal 뒤 terminal inventory로 각 handle/PTY의 absent/disconnected를 재확인한다.
 
 ## MCP tool design guidance
 
@@ -341,14 +341,20 @@ Every supervised attempt records attempt/epoch/context, native host session iden
 - Use resources for reusable context, tools for actions, and project docs routing for deciding what to read.
 - Writable MCP tools should either be dry-run by default or append-only with narrow target files.
 
-## Protocol-v2 ownership transfer boundary
+## Ownership transfer boundary
 
-The 2026-07 supervised design is protocol-v1 history. Its source-CWD fallback and mirrored-path blocking treated coordinator routing metadata as a broad write fence, which caused coordinator-preparing deadlocks. Protocol-v2 separates **workspace provisioning before ownership transfer**: an Orca worktree may be prepared and a plan/gates may be completed without transferring lifecycle authority.
+Workspace provisioning and ownership transfer are separate. The source main
+worktree remains available before, during, and after handoff. A session binding
+is routing metadata only. The fence selects the canonical worker root, exact
+lifecycle ID, native owner, or persisted Orca resource.
 
-The **source main worktree remains available before, during, and after handoff**. A session binding is routing metadata only, and same-relative-path detection is at most a non-blocking warning. The fence selects a **canonical worker root, exact cycle ID, native owner, or persisted Orca resource**; it never turns ordinary source file, Git, or MCP work into a prohibited surface. Still-fenced surfaces are the isolated root, exact cycle lifecycle commands, IssueOps branch topology, and persisted Orca resources.
-
-Protocol-v1 records retain coordinator/worker acceptance semantics. Protocol-v2 starts only from a plan-only commit, then seals a native owner. The owner performs orientation, has post-handoff authority for the exact cycle, publishes, and completes. There is **no `accept` in protocol-v2**. Completion enters `cleanup_pending_human_decision`; it does not close terminals, remove worktrees, or delete branches automatically.
-
+An exact lifecycle ID resolves before source-wide inference and must still match
+the current source or worker context. Thus an active #2589 owner cannot capture
+a new #2598 source start, and #2598 owner gate/observation calls cannot resolve
+to #2589. The acknowledged owner performs remaining gates, implementation,
+publication, and completion. Completion enters
+`cleanup_pending_human_decision`; cleanup requires a later human-approved
+authenticated source session.
 ## 현재 hardening 추가 사항
 
 - `internal/adapter/cli`는 top-level command catalog와 canonical usage text를 소유한다. `cmd/harness`는 process entrypoint와 dispatch layer로 남는다.

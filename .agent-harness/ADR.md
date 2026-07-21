@@ -2,7 +2,6 @@
 name: ADR.md
 description: Structural decisions, rationale, and rejected alternatives.
 ---
-
 # agent-harness 구현 계획
 
 작성일: 2026-05-25
@@ -32,20 +31,6 @@ description: Structural decisions, rationale, and rejected alternatives.
 - 서로 다른 record/worktree는 동시 진행 가능하지만 같은 record의 durable mutation은 existing record lock과 checkpoint revalidation으로 exactly-once를 유지한다.
 
 **거절:** 전역 coordinator registry/lock은 독립 worktree의 throughput을 직렬화하고 unrelated handoff까지 deadlock 범위를 넓히므로 도입하지 않는다.
-
-## 2026-07-15 — Raw legacy worktree is migrated, never metadata-adopted
-
-**결정:** `orca worktree list` runtime inventory에 존재하는 exact path/branch/HEAD checkout만 supervised worker worktree로 reuse한다. Git에만 존재하는 raw legacy checkout은 `orca worktree show` 결과나 `worktree set` metadata만으로 adopt하지 않는다. 대신 명시적 `issueops worktree migrate-legacy --confirm`이 clean·provider-tracking-ref-equal snapshot을 schema-v7 record에 journal하고, Git worktree와 local branch를 제거한 뒤 Orca가 같은 canonical path/branch를 재생성하게 한다.
-
-- migration은 `prepared` → `git_removed` → `orca_managed` durable state를 유지한다. timeout/host interruption 뒤에는 같은 command가 identity snapshot을 재검증해 recreate를 재개한다.
-- dirty, local/remote head drift, symlink, path/branch ambiguity, active handoff는 Git removal 전에 fail-closed한다. raw checkout의 uncommitted WIP를 stash·copy·force-remove하지 않는다.
-- schema v7은 destructive recovery snapshot의 ownership authority를 보호한다. v6 reader는 v7을 future schema로 거부한다.
-
-**근거:** disposable live Orca probe에서 raw Git checkout은 `show`에는 보였지만 runtime `list`에 없었고 terminal create는 timeout이었다. raw checkout을 clean·remote-equal 상태로 제거한 뒤 Orca create는 같은 path/branch와 live terminal handle을 반환했다.
-
-**거절:** raw checkout을 metadata-only로 adopt하는 방식은 terminal/task/dispatch가 없는 fictitious worktree identity를 durable state에 기록한다. unconfirmed automatic replacement와 dirty checkout backup/restore는 data loss 및 scope ambiguity를 만든다.
-
----
 
 ## 1. 최종 결정
 
@@ -702,81 +687,6 @@ Archived entries:
   - Auto-restarting Codex or other host processes from doctor — rejected because the leaking process belongs to the host/user session boundary.
   - Immediately folding the existing harnessapp helper into `internal/testsupport` — rejected because it already uses the safe concurrent-reader pattern and was explicitly out of the sweep scope.
 
-## 2026-07-11 — IssueOps remains authority for optional Orca supervised handoff
-
-- Kind: `adr`
-- Source: GitHub issue #16, IssueOps cycle `io-47c93d1ef742`, design `docs/superpowers/specs/2026-07-11-orca-aware-issueops-handoff-design.md`
-- Summary: IssueOps may delegate one implementation attempt to an installed Orca CLI, while retaining durable workflow, ownership, recovery, evidence acceptance, PR, and cleanup authority.
-- Context: Inline IssueOps worktrees survive compaction but cannot independently supervise a fresh host session or safely join a partially created external worktree/task/dispatch after coordinator failure.
-- Decision:
-  - Add a concrete bounded `internal/adapter/orca` process adapter and no generic driver registry. Orca is optional and is never installed or required by native install/self-verify.
-  - Persist `execution_handoff` only for the Orca path. `auto` probe failure before mutation preserves the legacy inline projection with the field absent; explicit `orca` fails before mutation.
-  - Journal `pending_operation` before every external create/dispatch. Never hold the IssueOps cycle lock across an external call; reacquire it and compare attempt/epoch/context before persisting the result.
-  - Treat ambiguous post-invocation errors as `recovery_required`. Automatic retry and inline fallback are forbidden; explicit reconciliation accepts exactly one marker/baseline candidate.
-  - Permit a new attempt only from `closed/worker_failed` or `closed/cancelled`. `closed/accepted` is terminal because coordinator acceptance has already verified and consumed that result.
-  - Treat Orca `RuntimeTerminalCreate.ptyId` as optional. After create, list terminals and reconcile exactly one new connected/writable PTY for the exact worktree against the persisted baseline; when create returned a PTY ID, require it to match that candidate.
-  - Bind worker mutation to native host/session/agent plus exact worktree root. SessionStart only renders claim guidance and PreToolUse enforces ownership; no other hook takes workflow ownership.
-- Consequences: CLI and MCP share one core lifecycle and one MCP action tool. The fresh worker finishes with bounded Turing evidence and stops; the coordinator verifies, accepts, owns PR/merge, and later performs cleanup. V1 native hooks resolve the default IssueOps state root only; propagating a custom `HARNESS_STATE_DIR` into a fresh Orca terminal is deferred to issue #17 rather than injected implicitly across the host boundary.
-- Rejected alternatives: Orca as the durable authority; a generic orchestration plugin registry; blind create retry after timeout; lease transfer through `resume --bind`; expanding V1 recipes beyond IssueOps and Turing.
-
-## 2026-07-11 — IssueOps root schema v3 protects supervised ownership and stable terminal identity
-
-- Kind: `adr`
-- Source: GitHub issue #16 schema compatibility review
-- Summary: Stamp every IssueOps write as schema v3 so v1 cannot erase `execution_handoff` and v2 cannot erase the stable terminal tab/leaf locator needed after an Orca runtime rollover.
-- Context: `execution_handoff` and stable terminal identity are not optional display metadata; they own mutation authority across host sessions. Leaving either addition under a schema already understood by an older writer lets that writer ignore the unknown field and weaken the guard during an unrelated read-modify-write.
-- Decision:
-  - Read missing, zero, v1, and v2 rows with the current model and preserve every recognized field; stamp v3 on the next write.
-  - Reject versions greater than v3. For hook scans, retain only a bounded repo/worker identity projection and an in-memory invalid marker so unsupported rows remain fail-closed without being interpreted or rewritten.
-  - Keep v3 visible at the root. Do not use a private migration table or infer compatibility from nested protocol_version.
-- Consequences: CLI, MCP, daemon, and all native hosts must be updated together before mutating supervised rows. Compatibility fixtures must prove v1 rejects v2 and v2 rejects v3 byte-equivalently; install smoke must verify v1/v2 migration plus v3 readback.
-- Evidence: `internal/core/issueops/issueops_schema_version_test.go`, the real sqlstore future-schema lifecycle guard test, and three-host install migration verification recorded in the issue evidence ledger.
-- Rejected alternatives: keeping schema v1 because the field is `omitempty`; silently downgrading v2 for old binaries; discarding future-schema rows from hook ownership scans.
-
-## 2026-07-11 — IssueOps root schema v4 protects sealed completion authority
-
-- Kind: `adr`
-- Source: GitHub issue #16 sealed completion authority review
-- Summary: Stamp every IssueOps write as schema v4 so v3 binaries cannot erase sealed coordinator/worker mailbox identities, the separate live worker terminal identity, or the one-attempt `worker_done` projection intent.
-- Context: These fields carry mutation and no-retry authority across host sessions. Leaving them under schema v3 would let a v3 writer ignore the unknown fields and weaken or duplicate completion during an unrelated read-modify-write.
-- Decision:
-  - Read missing, zero, v1, v2, and v3 rows with the current model and preserve every recognized field; stamp v4 on the next write. A legacy pre-dispatch mailbox value becomes live terminal control and is not treated as a sealed worker mailbox; no coordinator recipient is invented.
-  - Reject versions greater than v4. For hook scans, retain only a bounded repo/worker identity projection and an in-memory invalid marker so unsupported rows remain fail-closed without being interpreted or rewritten.
-  - Keep v4 visible at the root. Do not use a private migration table or infer compatibility from nested protocol_version.
-- Consequences: CLI, MCP, daemon, and all native hosts must be updated together before mutating supervised rows. Compatibility fixtures prove v1 rejects v2, v2 rejects v3, and v3 rejects v4 byte-equivalently; install smoke verifies current migration plus v4 readback.
-- Evidence: `internal/core/issueops/issueops_schema_version_test.go`, automatic projection crash/call-count tests, the real sqlstore future-schema lifecycle guard test, and this issue evidence ledger.
-- Rejected alternatives: additive `omitempty` authority under v3; deriving completion recipients from live terminal/current-task state; retrying a persisted projection intent.
-
-## 2026-07-12 — IssueOps root schema v5 protects publication and cleanup authority
-
-- Kind: `adr`
-- Source: GitHub issue #16 state/security review
-- Summary: Stamp every IssueOps write as schema v5 so v4 binaries cannot erase the provider-neutral exact-head publish receipt or the explicit cleanup approval and ordered receipts.
-- Context: A PR/MR creation fence and destructive cleanup sequence are durable mutation authority, not display metadata. Leaving them additive under v4 would let an older writer discard a receipt, repeat cleanup against replaced identities, or publish a drifted branch after an unrelated rewrite.
-- Decision:
-  - Read missing, zero, v1, v2, v3, and v4 rows with the current model, preserving recognized fields, and stamp v5 on the next write. Apply the legacy mailbox migration only through v3; v4 identities are already sealed and must not be reinterpreted.
-  - Persist a provider-neutral publish receipt only after the exact local branch ref and exact remote branch ref both equal the accepted full `FinalHead`; validate provider, remote, branch, ref, and FinalHead again immediately before the GitHub or GitLab create adapter runs.
-  - Persist cleanup disposition before task/terminal/worktree mutation and ordered exact-identity receipts afterward. Failed/cancelled handoffs may approve cleanup; accepted handoffs cannot use cleanup to cross the publish boundary.
-  - Reject versions greater than v5. A frozen v4 decoder rejects v5 byte-equivalently before rewrite, extending the existing v1→v2, v2→v3, and v3→v4 chain.
-- Consequences: CLI, MCP, lifecycle guards, IssueOps recovery, and canonical skill documentation share one v5 contract. Missing/stale publish receipts and ambiguous cleanup inventories fail closed for both providers.
-- Evidence: `internal/core/issueops/issueops_handoff_publication_test.go`, `issueops_handoff_cleanup_test.go`, `issueops_schema_version_test.go`, lifecycle authority tests, response-contract goldens, and the issue #16 evidence addendum.
-- Rejected alternatives: trusting caller flags or a one-time push result; provider-specific receipt shapes; direct PR/MR create with arbitrary body-file paths; unrecorded best-effort cleanup; a generic driver registry or scheduler reserved for issue #17.
-
-## 2026-07-12 — IssueOps root schema v6 protects push-target and provider-create authority
-
-- Kind: `adr`
-- Source: GitHub issue #16 provider fencing and crash-recovery review
-- Summary: Schema v6 extends, rather than rewrites, the historical v5 publication/cleanup decision with an exact effective push-target fingerprint and a request-bound `remote_create_claim`.
-- Decision:
-  - Resolve one effective push URL through `git remote get-url --push --all`, fingerprint it without persisting or logging the URL, and re-check it before push, provider mutation, and every remote readback.
-  - CLI and MCP use one operation ordered as pre-claim publication validation, atomic claim, claimed-record revalidation, provider create/readback, post-provider publication validation, and atomic finalize. Only the same live wrapper with exact ClaimID and typed `Invoked=false` may clear a reserved claim.
-  - A coordinator-only `remote reconcile-create` operation may adopt exactly one live verified candidate. Zero candidates require explicit approval plus authoritative live proof; multiple candidates or transport ambiguity retain `unknown`. Ordinary artifact verification is blocked while any claim exists.
-  - Raw v5 rows never gain v6 authority by inference. A v5 claim, copied `coordinator_session`, or old publish receipt fails before rewrite with bounded re-attest/reconcile guidance; v5 rows without new authority may migrate, v6 is accepted, and v7+ is rejected. A genuine accepted v5 publication predates the native coordinator seal, so its only migration is an explicit source-checkout `--approve-legacy-coordinator-seal` re-attestation: lifecycle and core verify the same current native event, rejection preserves the stored v5 bytes, and the successful locked write atomically seals that identity together with the v6 receipt.
-  - The current v6 reader preserves historical v5 rows that carry no v6-only authority and stamps v6 only on a subsequent valid write. Conversely, the frozen v5 raw-store reader rejects schema-v6 bytes before any rewrite, preserving the forward-reader boundary byte-for-byte.
-  - Privileged lifecycle MCP tools are recognized only by their exact bare names or exact `mcp__agent_harness__<name>` identities. Suffix matches are rejected because a foreign MCP namespace must never inherit agent-harness mutation authority.
-- Consequences: provider selectors are derived from one canonical project authority (`HOST/OWNER/REPO` for gh and full canonical HTTPS URL for glab). Custom-port or IPv6 GitLab requires proven glab v1.82+ both before publication and again at the provider mutation boundary; no bespoke HTTP adapter is introduced.
-- Evidence: schema raw-store tests, real-git push-target tests, claim/reconcile OS-process tests, provider exact-argv/readback tests, lifecycle hook tests, and CLI/MCP parity tests.
-
 ## 2026-07-14 — Evidence-first cross-host tool contract hardening
 
 - Kind: `adr`
@@ -791,10 +701,22 @@ Archived entries:
 - Consequences: 기본 self-verify는 deterministic baseline만 실행한다. Live initial/reproduction/context-pressure/post-enforcement batch는 각각 별도 외부 비용 경계이며, one-off observation이나 환경 실패로 production 계약을 바꾸지 않는다. Scheduler, RL trainer, 조직 dashboard는 이 결정의 범위가 아니다.
 - Verification: `agent-harness contract conformance baseline --json`, capture-only MCP round-trip tests, three-host fake-runner isolation tests, self-verify failure-cause/trace/history compatibility tests, contract response goldens.
 
-## 2026-07-20 — Protocol-v2 separates workspace provisioning from ownership transfer
+## 2026-07-21 — IssueOps uses one ownership handoff contract
 
-- Kind: `adr`
-- Context: The `coordinator_preparing` incident showed that source-CWD fallback, mirrored-path matching, and coordinator session bindings were incorrectly used as a fence boundary. They blocked the main checkout even though only a worker-owned cycle required isolation.
-- Decision: Provision a workspace first, complete gates and a plan-only commit, then confirm a protocol-v2 ownership transfer to an Orca-created native owner. Source-main availability is protocol-independent; the owner alone mutates, publishes, and completes the exact v2 cycle after orientation. Protocol-v1 records retain their historical coordinator/worker roles and are never schema- or background-converted.
-- Cleanup: v2 completion stops at `cleanup_pending_human_decision`. There is no automatic cleanup and no v2 accept transition. A fresh authenticated source-root session may preview resources, but only a human-confirmed approval names one session to receive the next cleanup receipt authority.
-- Rejected alternatives: broad source-CWD/session allowlists, same-relative-path deny rules, automatic stale cleanup, and inferring authority from elapsed time or a generic session binding.
+- Context: source-CWD and session-binding inference allowed an unrelated active
+  cycle to capture new source work and made exact worker IssueOps calls
+  ambiguous when several cycles shared one source checkout.
+- Decision: keep one unversioned ownership state machine. A literal new-cycle
+  start at the exact source root selects no existing cycle. An exact lifecycle
+  ID resolves before source-wide inference and must match the current source or
+  worker or linked-worktree context. A prep-only linked cycle remains outside
+  unrelated ownership fences. After dispatch, the acknowledged owner alone
+  performs implementation, publication, and completion for that cycle.
+- Cleanup: completion stops at `cleanup_pending_human_decision`. After a human
+  merges the MR/PR, any fresh authenticated exact-source session may preview;
+  only the human-approved session records ordered cleanup receipts.
+- Cutover: removed handoff protocol fields, coordinator/worker finish and
+  acceptance transitions, compatibility handlers, raw-worktree migration, and
+  obsolete operational artifacts are rejected or deleted rather than adapted.
+- Rejected: repository-wide source fences, generic session binding as authority,
+  background conversion, inferred cleanup authority, and compatibility wrappers.

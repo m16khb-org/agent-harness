@@ -1,6 +1,7 @@
 package handoff
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -8,14 +9,13 @@ import (
 	"agent-harness/internal/core/issueops/model"
 )
 
-func TestOwnershipEnvelopeRejectsV1FieldsInProtocolV2(t *testing.T) {
-	record := validOwnershipEnvelopeRecord(t)
-	if err := ValidateEnvelope(record); err != nil {
-		t.Fatalf("valid ownership envelope rejected: %v", err)
+func TestCurrentHandoffEnvelopeHasNoProtocolVersion(t *testing.T) {
+	encoded, err := json.Marshal(validOwnershipEnvelopeRecord(t).ExecutionHandoff)
+	if err != nil {
+		t.Fatal(err)
 	}
-	record.ExecutionHandoff.WorkerSession = &model.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "legacy-worker"}
-	if err := ValidateEnvelope(record); err == nil || !strings.Contains(err.Error(), "protocol-v1") {
-		t.Fatalf("protocol-v2 envelope accepted worker_session: %v", err)
+	if strings.Contains(string(encoded), "protocol_version") {
+		t.Fatalf("current handoff envelope still exposes protocol version: %s", encoded)
 	}
 }
 
@@ -65,6 +65,6 @@ func validOwnershipEnvelopeRecord(t *testing.T) model.IssueOpsRecord {
 	return model.IssueOpsRecord{
 		SchemaVersion: model.IssueOpsCurrentSchemaVersion, ID: "io-ownership", Repo: repo, Branch: "demo", IssueURL: "https://example.test/issues/1",
 		ExecutionWorkspace: &model.IssueOpsExecutionWorkspace{State: "ready", WorkspaceEpoch: "workspace-1", Driver: "orca", Agent: "codex", CoordinatorRoot: repo, WorkerRoot: worker, PreparationSession: preparation, BaseHead: strings.Repeat("b", 40)},
-		ExecutionHandoff:   &model.IssueOpsExecutionHandoff{ProtocolVersion: OwnershipTransferProtocolVersion, State: StateOwnerActive, WorkspaceEpoch: "workspace-1", WorkspaceSHA256: strings.Repeat("c", 64), OwnerSession: &model.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "owner"}, Orientation: &model.IssueOpsOwnershipOrientation{IssueURL: "https://example.test/issues/1", PlanSHA256: strings.Repeat("d", 64), Understanding: "understood", ScopeConfirmation: "scoped", RecordedAt: "2026-07-20T00:00:00Z"}},
+		ExecutionHandoff:   &model.IssueOpsExecutionHandoff{State: StateOwnerActive, WorkspaceEpoch: "workspace-1", WorkspaceSHA256: strings.Repeat("c", 64), OwnerSession: &model.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "owner"}, Orientation: &model.IssueOpsOwnershipOrientation{IssueURL: "https://example.test/issues/1", PlanSHA256: strings.Repeat("d", 64), Understanding: "understood", ScopeConfirmation: "scoped", RecordedAt: "2026-07-20T00:00:00Z"}},
 	}
 }

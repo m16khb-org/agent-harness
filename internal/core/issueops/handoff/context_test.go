@@ -13,9 +13,9 @@ import (
 	"agent-harness/internal/core/issueops/model"
 )
 
-func TestIssueOpsHandoffContextV1PreservesLegacyEmptyCoordinatorProjectionBytes(t *testing.T) {
+func TestIssueOpsHandoffContextOmitsEmptySourceRecipient(t *testing.T) {
 	projection := ContextProjection{
-		Version: 1, CycleID: "io-legacy-v3", Branch: "16-demo",
+		Version: 1, CycleID: "io-current-context", Branch: "16-demo",
 		WorktreePath: "/repo.worktrees/16-demo", PlanPath: "/repo/plans/handoff.md", PlanSHA256: strings.Repeat("a", 64),
 		Attempt: 1, OwnershipEpoch: "epoch-1", AttemptBaseHead: strings.Repeat("b", 40),
 	}
@@ -23,13 +23,13 @@ func TestIssueOpsHandoffContextV1PreservesLegacyEmptyCoordinatorProjectionBytes(
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []byte(`{"version":1,"cycle_id":"io-legacy-v3","branch":"16-demo","worktree_path":"/repo.worktrees/16-demo","plan_path":"/repo/plans/handoff.md","plan_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","attempt":1,"ownership_epoch":"epoch-1","attempt_base_head":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}`)
+	want := []byte(`{"version":1,"cycle_id":"io-current-context","branch":"16-demo","worktree_path":"/repo.worktrees/16-demo","plan_path":"/repo/plans/handoff.md","plan_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","attempt":1,"ownership_epoch":"epoch-1","attempt_base_head":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}`)
 	if !bytes.Equal(encoded, want) {
-		t.Fatalf("ContextVersion-1 legacy projection changed\n got=%s\nwant=%s", encoded, want)
+		t.Fatalf("current context projection changed\n got=%s\nwant=%s", encoded, want)
 	}
 	sum := sha256.Sum256(encoded)
-	if got := hex.EncodeToString(sum[:]); got != "f8ac8bf957e53fbff75e6ee8e26ddd20270b24d6c05cf29a804f1a728251234a" {
-		t.Fatalf("ContextVersion-1 legacy projection hash = %s", got)
+	if got := hex.EncodeToString(sum[:]); got != "be16a043efdf7e84cf09750ff40a03573b60b21610b8c78989c80357ecf85daa" {
+		t.Fatalf("current context projection hash = %s", got)
 	}
 
 	projection.CoordinatorRecipient = "term_coordinator"
@@ -98,7 +98,6 @@ func TestIssueOpsHandoffContextDeterministicAndBounded(t *testing.T) {
 
 func TestIssueOpsOwnershipContextIncludesWorkspaceSeal(t *testing.T) {
 	record := contextRecordForTest(t)
-	record.ExecutionHandoff.ProtocolVersion = OwnershipTransferProtocolVersion
 	record.ExecutionHandoff.WorkspaceEpoch = "workspace-epoch-1"
 	record.ExecutionHandoff.WorkspaceSHA256 = strings.Repeat("c", 64)
 
@@ -200,20 +199,15 @@ func contextRecordForTest(t *testing.T) model.IssueOpsRecord {
 			BackwardCompatibility: []string{"absent handoff remains inline"},
 			SideEffects:           []string{"optional Orca mutations"},
 			RollbackPlan:          "remove optional handoff wiring",
-			Verification:          []string{"legacy fixtures"},
+			Verification:          []string{"current fixtures"},
 			Approved:              true,
 		},
 		DevilsAdvocateReview: &model.IssueOpsDevilsAdvocateReview{
 			Verdict:  "pass",
 			Findings: []string{"prove create-at-most-once"},
 		},
-		BranchPrepare: &model.IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/example/repo/issues/16", BaseBranch: "main", BaseSHA: strings.Repeat("b", 40)},
-		ExecutionHandoff: &model.IssueOpsExecutionHandoff{
-			ProtocolVersion: 1,
-			State:           StateCoordinatorPreparing,
-			Attempt:         1,
-			AttemptBaseHead: strings.Repeat("b", 40),
-			OwnershipEpoch:  "epoch-1",
-		},
+		BranchPrepare:      &model.IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/example/repo/issues/16", BaseBranch: "main", BaseSHA: strings.Repeat("b", 40)},
+		ExecutionWorkspace: &model.IssueOpsExecutionWorkspace{State: "ready", WorkspaceEpoch: "workspace-epoch-1", Driver: "orca", Agent: "codex", CoordinatorRoot: "/repo/example", WorkerRoot: "/repo/example.worktrees/16-demo", PreparationSession: &model.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "source"}, BaseHead: strings.Repeat("b", 40)},
+		ExecutionHandoff:   &model.IssueOpsExecutionHandoff{State: StateOwnershipDispatching, Attempt: 1, AttemptBaseHead: strings.Repeat("b", 40), OwnershipEpoch: "epoch-1", WorkspaceEpoch: "workspace-epoch-1", WorkspaceSHA256: strings.Repeat("c", 64), CoordinatorRoot: "/repo/example", WorkerRoot: "/repo/example.worktrees/16-demo"},
 	}
 }

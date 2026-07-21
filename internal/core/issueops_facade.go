@@ -41,9 +41,6 @@ type IssueOpsHandoffPrepareRequest = issueops.IssueOpsHandoffPrepareRequest
 type IssueOpsHandoffPrepareResult = issueops.IssueOpsHandoffPrepareResult
 type IssueOpsHandoffPrepareClock = issueops.IssueOpsHandoffPrepareClock
 type IssueOpsOrcaWorktreeClient = issueops.IssueOpsOrcaWorktreeClient
-type IssueOpsLegacyWorktreeMigration = issueops.IssueOpsLegacyWorktreeMigration
-type IssueOpsLegacyWorktreeMigrationRequest = issueops.IssueOpsLegacyWorktreeMigrationRequest
-type IssueOpsLegacyWorktreeMigrationResult = issueops.IssueOpsLegacyWorktreeMigrationResult
 type IssueOpsHandoffStartRequest = issueops.IssueOpsHandoffStartRequest
 type IssueOpsHandoffStartResult = issueops.IssueOpsHandoffStartResult
 type IssueOpsHandoffStartClock = issueops.IssueOpsHandoffStartClock
@@ -52,8 +49,7 @@ type IssueOpsWorkerDoneProjectionClient = issueops.IssueOpsWorkerDoneProjectionC
 type IssueOpsHandoffClaimRequest = issueops.IssueOpsHandoffClaimRequest
 type IssueOpsHandoffAcknowledgeRequest = issueops.IssueOpsHandoffAcknowledgeRequest
 type IssueOpsHeartbeatRequest = issueops.IssueOpsHeartbeatRequest
-type IssueOpsHandoffFinishRequest = issueops.IssueOpsHandoffFinishRequest
-type IssueOpsHandoffAcceptRequest = issueops.IssueOpsHandoffAcceptRequest
+type IssueOpsHandoffCompleteRequest = issueops.IssueOpsHandoffCompleteRequest
 type IssueOpsHandoffRecoverRequest = issueops.IssueOpsHandoffRecoverRequest
 type IssueOpsHandoffRecoverResult = issueops.IssueOpsHandoffRecoverResult
 type IssueOpsOwnershipCleanupPreviewRequest = issueops.IssueOpsOwnershipCleanupPreviewRequest
@@ -362,10 +358,6 @@ func ValidateReadyWorkspacePreparationActor(record IssueOpsRecord, actor IssueOp
 	return issueops.ValidateReadyWorkspacePreparationActor(record, actor)
 }
 
-func MigrateIssueOpsLegacyWorktree(ctx context.Context, stateRoot string, req IssueOpsLegacyWorktreeMigrationRequest, client IssueOpsOrcaWorktreeClient, clock IssueOpsHandoffPrepareClock) (IssueOpsLegacyWorktreeMigrationResult, error) {
-	return issueops.MigrateIssueOpsLegacyWorktree(ctx, stateRoot, req, client, clock)
-}
-
 func StartIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHandoffStartRequest, client IssueOpsOrcaDispatchClient, clock IssueOpsHandoffStartClock) (IssueOpsHandoffStartResult, error) {
 	return issueops.StartIssueOpsHandoff(ctx, stateRoot, req, client, clock)
 }
@@ -378,12 +370,8 @@ func AcknowledgeIssueOpsHandoffContext(stateRoot string, req IssueOpsHandoffAckn
 	return issueops.AcknowledgeIssueOpsHandoffContext(stateRoot, req)
 }
 
-func FinishIssueOpsHandoffWithProjection(ctx context.Context, stateRoot string, req IssueOpsHandoffFinishRequest, client IssueOpsWorkerDoneProjectionClient) (IssueOpsRecord, error) {
-	return issueops.FinishIssueOpsHandoffWithProjection(ctx, stateRoot, req, client)
-}
-
-func CompleteIssueOpsOwnershipTransferWithProjection(ctx context.Context, stateRoot string, req IssueOpsHandoffFinishRequest, client IssueOpsWorkerDoneProjectionClient) (IssueOpsRecord, error) {
-	return issueops.CompleteIssueOpsOwnershipTransferWithProjection(ctx, stateRoot, req, client)
+func CompleteIssueOpsHandoffWithProjection(ctx context.Context, stateRoot string, req IssueOpsHandoffCompleteRequest, client IssueOpsWorkerDoneProjectionClient) (IssueOpsRecord, error) {
+	return issueops.CompleteIssueOpsHandoffWithProjection(ctx, stateRoot, req, client)
 }
 
 func PreviewIssueOpsOwnershipCleanup(stateRoot string, req IssueOpsOwnershipCleanupPreviewRequest) (IssueOpsOwnershipCleanupPreview, error) {
@@ -396,10 +384,6 @@ func ApproveIssueOpsOwnershipCleanup(stateRoot string, req IssueOpsOwnershipClea
 
 func RecordIssueOpsOwnershipCleanup(ctx context.Context, stateRoot string, req IssueOpsOwnershipCleanupRecordRequest, client any) (IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsOwnershipCleanup(ctx, stateRoot, req, client)
-}
-
-func AcceptIssueOpsHandoff(stateRoot string, req IssueOpsHandoffAcceptRequest) (IssueOpsRecord, error) {
-	return issueops.AcceptIssueOpsHandoff(stateRoot, req)
 }
 
 func RecoverIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHandoffRecoverRequest, client any, clock IssueOpsHandoffPrepareClock) (IssueOpsHandoffRecoverResult, error) {

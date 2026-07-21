@@ -79,14 +79,6 @@ func IssueOpsBasicTools() []Tool {
 			}},
 		},
 		{
-			Name:        "issueops_migrate_legacy_worktree",
-			Description: "Preview or, with confirm=true, safely replace one clean provider-tracking-ref-equal raw Git worktree with an Orca-managed worktree at the same canonical path and branch. The durable migration resumes prepared → git_removed → orca_managed after an interrupted Orca create.",
-			InputSchema: map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{
-				"id":      map[string]any{"type": "string", "description": "IssueOps id."},
-				"confirm": map[string]any{"type": "boolean", "description": "Allow replacement only after the clean remote-equal legacy checkout preflight passes."},
-			}},
-		},
-		{
 			Name:        "issueops_review_design",
 			Description: "Record the reviewed IssueOps design, refactor boundary, alternatives, risks, verification matrix, and approval before implementation. When approved=true, include refactor_plan, at least one alternative, at least one risk, no open_questions, and a verification item such as \"design review checked alternatives and risks\"; design_review_evidence is not a separate field.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"id", "problem_summary", "proposed_design", "verification"}, "properties": map[string]any{
@@ -243,7 +235,7 @@ func IssueOpsBasicTools() []Tool {
 
 // addIssueOpsWorkspaceActorProperties keeps every IssueOps mutator capable of
 // proving the sealed native actor after a workspace becomes ready. The fields
-// remain optional for legacy/source-root cycles; core validation makes them
+// remain optional for source-root cycles; core validation makes them
 // mandatory only for a ready execution workspace.
 func addIssueOpsWorkspaceActorProperties(schema map[string]any) {
 	properties, ok := schema["properties"].(map[string]any)

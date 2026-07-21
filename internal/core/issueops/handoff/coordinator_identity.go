@@ -23,22 +23,6 @@ func CoordinatorIdentityMatches(record model.IssueOpsRecord, native model.IssueO
 	return cleanCoordinatorPath(cwd) != "" && cleanCoordinatorPath(cwd) == cleanCoordinatorPath(record.Repo) && cleanCoordinatorPath(h.CoordinatorRoot) == cleanCoordinatorPath(record.Repo)
 }
 
-// LegacyCoordinatorIdentityCanBeSealed authorizes the one explicit recovery
-// transition for a genuine schema-v5 accepted publication record, which
-// predates the durable native coordinator identity. The source checkout and
-// current native event are the authority; the mailbox remains routing only.
-func LegacyCoordinatorIdentityCanBeSealed(record model.IssueOpsRecord, native model.IssueOpsHostSessionIdentity, cwd string) bool {
-	h := record.ExecutionHandoff
-	if record.SchemaVersion != 5 || h == nil || h.CoordinatorSession != nil || h.State != StateClosed || h.ClosedDisposition != DispositionAccepted || h.PublishReceipt == nil || strings.TrimSpace(h.CoordinatorMailboxHandle) == "" {
-		return false
-	}
-	if strings.TrimSpace(native.Host) == "" || strings.TrimSpace(native.SessionID) == "" {
-		return false
-	}
-	repo := cleanCoordinatorPath(record.Repo)
-	return repo != "" && cleanCoordinatorPath(cwd) == repo && cleanCoordinatorPath(h.CoordinatorRoot) == repo
-}
-
 func cleanCoordinatorPath(value string) string {
 	value = strings.TrimSpace(value)
 	if value == "" {

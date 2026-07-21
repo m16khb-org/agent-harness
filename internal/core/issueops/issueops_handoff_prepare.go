@@ -97,7 +97,7 @@ func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req I
 	if err != nil {
 		return IssueOpsHandoffPrepareResult{}, err
 	}
-	result, err := issueOpsLegacyWorktreePrepareResult(record)
+	result, err := issueOpsWorktreePrepareResult(record)
 	if err != nil {
 		return result, err
 	}
@@ -203,9 +203,6 @@ func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req I
 		if requested == IssueOpsOrchestratorAuto {
 			return inlineHandoffPrepareFallback(result, collisionCode), nil
 		}
-		if collisionCode == "orca_existing_legacy_worktree" {
-			return result, fmt.Errorf("Orca worktree create collision: %s; migrate the clean remote-equal checkout with issueops worktree migrate-legacy --id %s --confirm", collisionCode, record.ID)
-		}
 		return result, fmt.Errorf("Orca worktree create collision: %s", collisionCode)
 	}
 	preparationSession, err := validateWorkspacePreparationActor(record, req.Agent, IssueOpsActor{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID, CWD: req.SourceCWD})
@@ -254,7 +251,7 @@ func exactExistingHandoffWorktree(record IssueOpsRecord, expectedPath, expectedR
 	if err != nil {
 		return nil, fmt.Errorf("inspect expected Orca worktree path: %w", err)
 	}
-	if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() || !existingLegacyWorktreeMatches(record, expectedPath) {
+	if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() || !existingWorktreeMatchesPreparedBranch(record, expectedPath) {
 		return nil, nil
 	}
 	candidates := make([]port.OrcaWorktree, 0, 1)
@@ -304,10 +301,10 @@ func preflightHandoffWorktreeCreate(record IssueOpsRecord, expectedPath string, 
 		if leafInfo.Mode()&os.ModeSymlink != 0 || !leafInfo.IsDir() {
 			return "", fmt.Errorf("expected Orca worktree path already exists but is not a real directory")
 		}
-		if !existingLegacyWorktreeMatches(record, expectedPath) {
+		if !existingWorktreeMatchesPreparedBranch(record, expectedPath) {
 			return "", fmt.Errorf("expected Orca worktree path is occupied by a stale or mismatched checkout")
 		}
-		return "orca_existing_legacy_worktree", nil
+		return "orca_existing_raw_worktree", nil
 	case !os.IsNotExist(err):
 		return "", fmt.Errorf("inspect expected Orca worktree path: %w", err)
 	}
@@ -323,7 +320,7 @@ func preflightHandoffWorktreeCreate(record IssueOpsRecord, expectedPath string, 
 	}
 }
 
-func existingLegacyWorktreeMatches(record IssueOpsRecord, expectedPath string) bool {
+func existingWorktreeMatchesPreparedBranch(record IssueOpsRecord, expectedPath string) bool {
 	root := filepath.Clean(preflight.GitOut(expectedPath, "rev-parse", "--show-toplevel"))
 	branch := strings.TrimSpace(preflight.GitOut(expectedPath, "branch", "--show-current"))
 	head := strings.TrimSpace(preflight.GitOut(expectedPath, "rev-parse", "HEAD"))
@@ -590,7 +587,7 @@ func issueOpsOrcaProviderTrackingRef(remoteName, branch string) (string, error) 
 	return "refs/remotes/" + remoteName + "/" + branch, nil
 }
 
-func issueOpsLegacyWorktreePrepareResult(record IssueOpsRecord) (IssueOpsHandoffPrepareResult, error) {
+func issueOpsWorktreePrepareResult(record IssueOpsRecord) (IssueOpsHandoffPrepareResult, error) {
 	repo := strings.TrimSpace(record.Repo)
 	branch := strings.TrimSpace(record.Branch)
 	if repo == "" || branch == "" {

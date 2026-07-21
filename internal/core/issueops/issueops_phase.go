@@ -41,7 +41,7 @@ func advanceIssueOpsPhaseWithActor(stateRoot, id, to string, actor *IssueOpsActo
 		if actorErr := validatePostTransferMutation(record, actor); actorErr != nil {
 			return actorErr
 		}
-		if record.ExecutionWorkspace != nil && (record.ExecutionHandoff == nil || record.ExecutionHandoff.ProtocolVersion != handoff.OwnershipTransferProtocolVersion) {
+		if record.ExecutionWorkspace != nil && record.ExecutionHandoff == nil {
 			if actor == nil {
 				return fmt.Errorf("workspace preparation requires a native actor; use the actor-aware phase recorder")
 			}
@@ -161,10 +161,10 @@ func issueOpsTerminalPhaseHandoffGuard(record IssueOpsRecord, phase IssueOpsPhas
 		return nil
 	}
 	h := record.ExecutionHandoff
-	if h == nil || h.State == handoff.StateClosed || h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State == handoff.StateCleanupPendingHumanDecision && h.Completion != nil {
+	if h == nil || h.State == handoff.StateClosed || h.State == handoff.StateCleanupPendingHumanDecision && h.Completion != nil {
 		return nil
 	}
-	return fmt.Errorf("cannot advance to done while the supervised handoff is non-terminal (handoff state=%s); recover it first from the source checkout: agent-harness issueops handoff recover --id %s --action <cancel|finalize-cancel|approve-cleanup> --confirm", h.State, record.ID)
+	return fmt.Errorf("cannot advance to done while the ownership handoff is non-terminal (handoff state=%s); recover it first from the source checkout: agent-harness issueops handoff recover --id %s --action <cancel|finalize-cancel> --confirm", h.State, record.ID)
 }
 
 func applyIssueOpsPhaseTransition(record IssueOpsRecord, phase IssueOpsPhase) IssueOpsRecord {

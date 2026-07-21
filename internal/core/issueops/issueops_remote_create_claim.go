@@ -394,13 +394,8 @@ func ClaimIssueOpsRemoteCreate(ctx context.Context, stateRoot string, req IssueO
 		if h == nil || h.PublishReceipt == nil || r.BranchPrepare == nil {
 			return fmt.Errorf("remote create requires published final head authority")
 		}
-		ownerTransfer := h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion
-		if ownerTransfer {
-			if err := validatePostTransferMutation(r, &req.Actor); err != nil {
-				return err
-			}
-		} else if h.State != handoff.StateClosed || h.ClosedDisposition != handoff.DispositionAccepted || h.Result == nil || h.CoordinatorSession == nil || filepath.Clean(h.CoordinatorRoot) != filepath.Clean(r.Repo) {
-			return fmt.Errorf("remote create requires accepted published final head authority")
+		if err := validatePostTransferMutation(r, &req.Actor); err != nil {
+			return err
 		}
 		provider := strings.ToLower(strings.TrimSpace(req.Provider))
 		kind := strings.ToLower(strings.TrimSpace(req.Kind))
@@ -410,9 +405,6 @@ func ClaimIssueOpsRemoteCreate(ctx context.Context, stateRoot string, req IssueO
 		projectKey := remote.ProjectKey(r.IssueURL, provider, "issue")
 		receipt := h.PublishReceipt
 		finalHead := receipt.FinalHead
-		if !ownerTransfer {
-			finalHead = h.Result.FinalHead
-		}
 		if projectKey == "" || provider != strings.ToLower(strings.TrimSpace(r.BranchPrepare.Provider)) || strings.TrimSpace(req.Head) != r.Branch || strings.TrimSpace(req.Base) != r.BranchPrepare.BaseBranch ||
 			receipt.Provider != provider || receipt.ProjectKey != projectKey || receipt.Branch != r.Branch || receipt.Base != r.BranchPrepare.BaseBranch || receipt.FinalHead != finalHead {
 			return fmt.Errorf("remote create request does not match exact durable publication authority")

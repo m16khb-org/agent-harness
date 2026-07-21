@@ -9,7 +9,7 @@ import (
 	"agent-harness/internal/core/preflight"
 )
 
-func TestProtocolV2OwnerCompletionWaitsForHumanCleanupDecision(t *testing.T) {
+func TestOwnerCompletionWaitsForHumanCleanupDecision(t *testing.T) {
 	stateRoot, record, owner := ownershipActiveRecorderRecord(t)
 	finalHead := strings.TrimSpace(preflight.GitOut(record.ExecutionHandoff.WorkerRoot, "rev-parse", "refs/heads/"+record.Branch))
 	record.Phase = model.IssueOpsPhasePR
@@ -19,7 +19,7 @@ func TestProtocolV2OwnerCompletionWaitsForHumanCleanupDecision(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	completed, err := CompleteIssueOpsOwnershipTransfer(stateRoot, IssueOpsHandoffFinishRequest{
+	completed, err := CompleteIssueOpsHandoff(stateRoot, IssueOpsHandoffCompleteRequest{
 		ID: record.ID, Attempt: record.ExecutionHandoff.Attempt, OwnershipEpoch: record.ExecutionHandoff.OwnershipEpoch, ContextSHA256: record.ExecutionHandoff.ContextSHA256,
 		Host: owner.Host, SessionID: owner.SessionID, AgentID: owner.AgentID, CWD: owner.CWD, FinalHead: finalHead, TuringReportPath: "plans/test.md", Verification: []string{"go test ./..."},
 	})
@@ -31,7 +31,7 @@ func TestProtocolV2OwnerCompletionWaitsForHumanCleanupDecision(t *testing.T) {
 	}
 }
 
-func TestProtocolV2NonClosedCompletionRejectsForceRelease(t *testing.T) {
+func TestNonClosedCompletionRejectsForceRelease(t *testing.T) {
 	stateRoot, record, owner := ownershipActiveRecorderRecord(t)
 	finalHead := strings.TrimSpace(preflight.GitOut(record.ExecutionHandoff.WorkerRoot, "rev-parse", "refs/heads/"+record.Branch))
 	record.Phase = model.IssueOpsPhasePR
@@ -40,7 +40,7 @@ func TestProtocolV2NonClosedCompletionRejectsForceRelease(t *testing.T) {
 	if _, err := WriteIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := CompleteIssueOpsOwnershipTransfer(stateRoot, IssueOpsHandoffFinishRequest{ID: record.ID, Attempt: record.ExecutionHandoff.Attempt, OwnershipEpoch: record.ExecutionHandoff.OwnershipEpoch, ContextSHA256: record.ExecutionHandoff.ContextSHA256, Host: owner.Host, SessionID: owner.SessionID, AgentID: owner.AgentID, CWD: owner.CWD, FinalHead: finalHead, TuringReportPath: "plans/test.md", Verification: []string{"go test ./..."}}); err != nil {
+	if _, err := CompleteIssueOpsHandoff(stateRoot, IssueOpsHandoffCompleteRequest{ID: record.ID, Attempt: record.ExecutionHandoff.Attempt, OwnershipEpoch: record.ExecutionHandoff.OwnershipEpoch, ContextSHA256: record.ExecutionHandoff.ContextSHA256, Host: owner.Host, SessionID: owner.SessionID, AgentID: owner.AgentID, CWD: owner.CWD, FinalHead: finalHead, TuringReportPath: "plans/test.md", Verification: []string{"go test ./..."}}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := ForceReleaseIssueOps(stateRoot, record.ID, "manual release attempt"); err == nil || !strings.Contains(err.Error(), "ownership-transfer") {
@@ -48,7 +48,7 @@ func TestProtocolV2NonClosedCompletionRejectsForceRelease(t *testing.T) {
 	}
 }
 
-func TestProtocolV2SourceCannotCompleteOwnershipTransfer(t *testing.T) {
+func TestSourceCannotCompleteOwnerHandoff(t *testing.T) {
 	stateRoot, record, owner := ownershipActiveRecorderRecord(t)
 	finalHead := strings.TrimSpace(preflight.GitOut(record.ExecutionHandoff.WorkerRoot, "rev-parse", "refs/heads/"+record.Branch))
 	record.Phase = model.IssueOpsPhasePR
@@ -57,7 +57,7 @@ func TestProtocolV2SourceCannotCompleteOwnershipTransfer(t *testing.T) {
 	if _, err := WriteIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := CompleteIssueOpsOwnershipTransfer(stateRoot, IssueOpsHandoffFinishRequest{
+	if _, err := CompleteIssueOpsHandoff(stateRoot, IssueOpsHandoffCompleteRequest{
 		ID: record.ID, Attempt: record.ExecutionHandoff.Attempt, OwnershipEpoch: record.ExecutionHandoff.OwnershipEpoch, ContextSHA256: record.ExecutionHandoff.ContextSHA256,
 		Host: owner.Host, SessionID: "source-session", AgentID: owner.AgentID, CWD: record.Repo, FinalHead: finalHead, TuringReportPath: "plans/test.md", Verification: []string{"go test ./..."},
 	}); err == nil || !strings.Contains(err.Error(), "ownership transfer") {

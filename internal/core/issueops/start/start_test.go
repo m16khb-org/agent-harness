@@ -116,12 +116,12 @@ func TestStartNeverStaleResetsExecutionHandoffLease(t *testing.T) {
 		state       string
 		disposition string
 	}{
-		{name: "coordinator preparing", state: handoff.StateCoordinatorPreparing},
+		{name: "ownership dispatching", state: handoff.StateOwnershipDispatching},
 		{name: "recovery required", state: handoff.StateRecoveryRequired},
-		{name: "dispatched", state: handoff.StateDispatched},
-		{name: "claimed", state: handoff.StateClaimed},
-		{name: "submitted", state: handoff.StateSubmitted},
-		{name: "closed accepted", state: handoff.StateClosed, disposition: handoff.DispositionAccepted},
+		{name: "ownership dispatched", state: handoff.StateOwnershipDispatched},
+		{name: "owner orienting", state: handoff.StateOwnerOrienting},
+		{name: "owner active", state: handoff.StateOwnerActive},
+		{name: "cleanup pending", state: handoff.StateCleanupPendingHumanDecision},
 		{name: "closed worker failed", state: handoff.StateClosed, disposition: handoff.DispositionWorkerFailed},
 		{name: "closed cancelled", state: handoff.StateClosed, disposition: handoff.DispositionCancelled},
 	}
@@ -134,7 +134,7 @@ func TestStartNeverStaleResetsExecutionHandoffLease(t *testing.T) {
 				Phase: model.IssueOpsPhaseImplement, WorktreePath: "/gone/worktree",
 				CreatedAt: "2026-01-01T00:00:00Z", UpdatedAt: "2026-01-01T00:01:00Z",
 				ExecutionHandoff: &model.IssueOpsExecutionHandoff{
-					ProtocolVersion: handoff.ProtocolVersion, State: tt.state, ClosedDisposition: tt.disposition,
+					State: tt.state, ClosedDisposition: tt.disposition,
 					Attempt: 7, OwnershipEpoch: "epoch-preserved", AttemptBaseHead: "0123456789012345678901234567890123456789",
 					Driver: "orca", Agent: "codex", CoordinatorRoot: "/repo", WorkerRoot: "/gone/worktree",
 					Orca: &model.IssueOpsOrcaIdentity{WorktreeID: "wt-preserved", TaskID: "task-preserved", DispatchID: "dispatch-preserved"},

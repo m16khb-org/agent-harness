@@ -88,13 +88,6 @@ func handleMCPIssueOpsLinkWorktree(args map[string]any) MCPToolOutcome {
 	return issueOpsMCPOutcome(result, err, "IssueOps worktree link failed")
 }
 
-func handleMCPIssueOpsMigrateLegacyWorktree(args map[string]any) MCPToolOutcome {
-	result, err := core.MigrateIssueOpsLegacyWorktree(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsLegacyWorktreeMigrationRequest{
-		ID: argmap.String(args, "id"), Confirm: argmap.Bool(args, "confirm"),
-	}, IssueOpsWorktreeOrcaClient(), core.IssueOpsHandoffPrepareClock{})
-	return issueOpsMCPOutcome(result, err, "IssueOps legacy worktree migration failed")
-}
-
 func handleMCPIssueOpsPrepareWorktreeTools(args map[string]any) MCPToolOutcome {
 	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), argmap.String(args, "id"))
 	if err == nil {
@@ -418,17 +411,8 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 			IssueURL: argmap.String(args, "issue_url"), PlanSHA256: argmap.String(args, "plan_sha256"), Understanding: argmap.String(args, "understanding"), ScopeConfirmation: argmap.String(args, "scope_confirmation"),
 		})
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff acknowledgement failed")
-	case "finish":
-		result, err := core.FinishIssueOpsHandoffWithProjection(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffFinishRequest{
-			ID: id, Attempt: argmap.Int(args, "attempt", 0), OwnershipEpoch: argmap.String(args, "ownership_epoch"), ContextSHA256: argmap.String(args, "context_sha256"),
-			Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), CWD: argmap.String(args, "cwd"), Outcome: argmap.String(args, "outcome"),
-			FinalHead: argmap.String(args, "final_head"), ChangedFiles: argmap.StringSlice(args, "changed_files"), TuringReportPath: argmap.String(args, "turing_report_path"),
-			Verification: argmap.StringSlice(args, "verification"), CleanupReceipts: argmap.StringSlice(args, "cleanup_receipts"), EvidenceDigest: argmap.String(args, "evidence_digest"),
-			TaskID: argmap.String(args, "task_id"), DispatchID: argmap.String(args, "dispatch_id"),
-		}, IssueOpsWorkerDoneProjectionClient())
-		return issueOpsMCPOutcome(result, err, "IssueOps handoff finish failed")
 	case "complete":
-		result, err := core.CompleteIssueOpsOwnershipTransferWithProjection(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffFinishRequest{
+		result, err := core.CompleteIssueOpsHandoffWithProjection(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffCompleteRequest{
 			ID: id, Attempt: argmap.Int(args, "attempt", 0), OwnershipEpoch: argmap.String(args, "ownership_epoch"), ContextSHA256: argmap.String(args, "context_sha256"),
 			Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), CWD: argmap.String(args, "cwd"), FinalHead: argmap.String(args, "final_head"), ChangedFiles: argmap.StringSlice(args, "changed_files"), TuringReportPath: argmap.String(args, "turing_report_path"), Verification: argmap.StringSlice(args, "verification"),
 		}, IssueOpsWorkerDoneProjectionClient())
@@ -442,25 +426,18 @@ func handleMCPIssueOpsHandoff(args map[string]any) MCPToolOutcome {
 	case "cleanup-record":
 		result, err := core.RecordIssueOpsOwnershipCleanup(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsOwnershipCleanupRecordRequest{IssueOpsOwnershipCleanupPreviewRequest: core.IssueOpsOwnershipCleanupPreviewRequest{ID: id, Host: argmap.String(args, "host"), Session: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), CWD: argmap.String(args, "source_cwd")}, Step: argmap.String(args, "step")}, orca.New())
 		return issueOpsMCPOutcome(result, err, "IssueOps ownership cleanup receipt failed")
-	case "accept":
-		result, err := core.AcceptIssueOpsHandoff(core.IssueOpsStateRoot(), core.IssueOpsHandoffAcceptRequest{
-			ID: id, Attempt: argmap.Int(args, "attempt", 0), OwnershipEpoch: argmap.String(args, "ownership_epoch"), ContextSHA256: argmap.String(args, "context_sha256"), FinalHead: argmap.String(args, "final_head"),
-			Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), SourceCWD: argmap.String(args, "source_cwd"),
-		})
-		return issueOpsMCPOutcome(result, err, "IssueOps handoff accept failed")
 	case "publish":
 		result, err := core.RecordIssueOpsHandoffPublishReceipt(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffPublishRequest{
-			ID: id, Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), SourceCWD: argmap.String(args, "source_cwd"), CWD: argmap.String(args, "cwd"), Confirm: argmap.Bool(args, "confirm"), ApproveLegacyCoordinatorSeal: argmap.Bool(args, "approve_legacy_coordinator_seal"),
+			ID: id, Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"), CWD: argmap.String(args, "cwd"), Confirm: argmap.Bool(args, "confirm"),
 		}, IssueOpsPublicationReader(), IssueOpsHandoffOrcaClient(), core.IssueOpsHandoffPrepareClock{})
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff publish failed")
 	case "recover":
 		result, err := core.RecoverIssueOpsHandoff(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsHandoffRecoverRequest{
 			ID: id, Action: argmap.String(args, "recovery_action"), Confirm: argmap.Bool(args, "confirm"),
 			Force: argmap.Bool(args, "force"), Reason: argmap.String(args, "reason"),
-			CleanupDisposition: argmap.String(args, "cleanup_disposition"), CleanupStep: argmap.String(args, "cleanup_step"),
 		}, orca.New(), core.IssueOpsHandoffPrepareClock{})
 		return issueOpsMCPOutcome(result, err, "IssueOps handoff recover failed")
 	default:
-		return issueOpsMCPOutcome(nil, fmt.Errorf("handoff action must be start, claim, acknowledge-context, finish, complete, cleanup-preview, cleanup-approve, cleanup-record, accept, publish, or recover"), "IssueOps handoff failed")
+		return issueOpsMCPOutcome(nil, fmt.Errorf("handoff action must be start, claim, acknowledge-context, complete, cleanup-preview, cleanup-approve, cleanup-record, publish, or recover"), "IssueOps handoff failed")
 	}
 }

@@ -135,68 +135,40 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 	switch command.Path {
 	case "status", "resume":
 		return true
-	case "handoff codex-hooks-list":
-		_, jsonOut := flags["--json"]
-		return source && req.Host == "codex" && h.Agent == "codex" && h.State == handoff.StateCoordinatorPreparing && h.PendingOperation == nil && h.CleanupOnly == nil && h.WorkerSession == nil && h.Result == nil && jsonOut && len(flags) == 2
 	case "handoff start":
 		host, hok := oneFlag(flags, "--coordinator-host")
 		sessionID, sok := oneFlag(flags, "--coordinator-session-id")
 		agentID, aok := oneFlag(flags, "--coordinator-agent-id")
 		cwd, cwdOK := oneFlag(flags, "--source-cwd")
 		agentMatches := strings.TrimSpace(req.AgentID) == "" && !aok || aok && agentID == strings.TrimSpace(req.AgentID)
-		return source && coordinatorLifecycleStateAllows(command.Path, record) && hok && sok && cwdOK && strings.EqualFold(host, strings.TrimSpace(req.Host)) && sessionID == strings.TrimSpace(req.SessionID) && agentMatches && cleanAbsPath(cwd) == cleanAbsPath(record.Repo)
-	case "link-plan", "compatibility review", "execution decide", "devils-advocate review", "worktree prepare", "worktree prepare-tools":
-		return source && coordinatorLifecycleStateAllows(command.Path, record)
+		return source && hok && sok && cwdOK && strings.EqualFold(host, strings.TrimSpace(req.Host)) && sessionID == strings.TrimSpace(req.SessionID) && agentMatches && cleanAbsPath(cwd) == cleanAbsPath(record.Repo)
 	case "handoff recover":
-		return source && (coordinatorLifecycleStateAllows(command.Path, record) || exactCoordinatorPreparingCancel(req, flags, record))
-	case "handoff accept":
-		cwd, cwdOK := oneFlag(flags, "--source-cwd")
-		return source && coordinatorLifecycleStateAllows(command.Path, record) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(record.Repo) && handoff.CoordinatorIdentityMatches(record, issueopsmodel.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID}, req.CWD)
+		return source && h.State == handoff.StateRecoveryRequired
 	case "handoff publish":
-		if h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
-			cwd, cwdOK := oneFlag(flags, "--cwd")
-			_, confirmed := flags["--confirm"]
-			return worker && currentWorkerBranchMatches(record) && handoff.OwnershipTransferOwnerStateAllows("publish", h.State) && eventIdentityFlagsMatch(req, flags) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && confirmed
-		}
-		cwd, cwdOK := oneFlag(flags, "--source-cwd")
+		cwd, cwdOK := oneFlag(flags, "--cwd")
 		_, confirmed := flags["--confirm"]
-		_, approveLegacySeal := flags["--approve-legacy-coordinator-seal"]
-		native := issueopsmodel.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID}
-		coordinator := handoff.CoordinatorIdentityMatches(record, native, req.CWD)
-		legacySeal := approveLegacySeal && confirmed && handoff.LegacyCoordinatorIdentityCanBeSealed(record, native, req.CWD)
-		return source && coordinatorLifecycleStateAllows(command.Path, record) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(record.Repo) && (coordinator || legacySeal)
+		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("publish", h.State) && eventIdentityFlagsMatch(req, flags) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && confirmed
 	case "remote create-pr":
 		cwd, cwdOK := oneFlag(flags, "--cwd")
-		return worker && currentWorkerBranchMatches(record) && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && handoff.OwnershipTransferOwnerStateAllows("remote-create", h.State) && eventIdentityFlagsMatch(req, flags) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot)
-	case "phase":
-		return source && h.State == handoff.StateCoordinatorPreparing
+		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("remote-create", h.State) && eventIdentityFlagsMatch(req, flags) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot)
 	case "handoff claim":
 		cwd, cwdOK := oneFlag(flags, "--cwd")
 		worktreeID, wtOK := oneFlag(flags, "--orca-worktree-id")
-		claimState := h.State == handoff.StateDispatched || h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State == handoff.StateOwnershipDispatched
-		return worker && currentWorkerBranchMatches(record) && claimState && exactFenceFlags(flags, record) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && wtOK && h.Orca != nil && worktreeID == h.Orca.WorktreeID
+		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("claim", h.State) && exactFenceFlags(flags, record) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && wtOK && h.Orca != nil && worktreeID == h.Orca.WorktreeID
 	case "handoff acknowledge-context":
 		cwd, cwdOK := oneFlag(flags, "--cwd")
 		_, issueOK := oneFlag(flags, "--issue-url")
 		_, planOK := oneFlag(flags, "--plan-sha256")
 		_, understandingOK := oneFlag(flags, "--understanding")
 		_, scopeOK := oneFlag(flags, "--scope-confirmation")
-		return worker && currentWorkerBranchMatches(record) && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State == handoff.StateOwnerOrienting && exactFenceFlags(flags, record) && eventIdentityFlagsMatch(req, flags) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && issueOK && planOK && understandingOK && scopeOK
+		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("acknowledge-context", h.State) && exactFenceFlags(flags, record) && eventIdentityFlagsMatch(req, flags) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && issueOK && planOK && understandingOK && scopeOK
 	case "heartbeat":
-		session := h.WorkerSession
-		stateAllowed := true
-		if h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
-			session = h.OwnerSession
-			stateAllowed = handoff.OwnershipTransferOwnerStateAllows("heartbeat", h.State)
-		}
-		return worker && currentWorkerBranchMatches(record) && stateAllowed && exactFenceFlags(flags, record) && nativeSessionMatches(req, session) && eventIdentityFlagsMatch(req, flags)
-	case "handoff finish":
-		return worker && currentWorkerBranchMatches(record) && exactFenceFlags(flags, record) && nativeSessionMatches(req, h.WorkerSession) && eventIdentityFlagsMatch(req, flags) && exactNoChangeFinishFlags(flags)
+		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("heartbeat", h.State) && exactFenceFlags(flags, record) && nativeSessionMatches(req, h.OwnerSession) && eventIdentityFlagsMatch(req, flags)
 	case "handoff complete":
 		cwd, cwdOK := oneFlag(flags, "--cwd")
 		_, finalHeadOK := oneFlag(flags, "--final-head")
 		_, reportOK := oneFlag(flags, "--turing-report")
-		return worker && currentWorkerBranchMatches(record) && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && handoff.OwnershipTransferOwnerStateAllows("complete", h.State) && exactFenceFlags(flags, record) && nativeSessionMatches(req, h.OwnerSession) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && finalHeadOK && reportOK && len(flags["--verification"]) > 0
+		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("complete", h.State) && exactFenceFlags(flags, record) && nativeSessionMatches(req, h.OwnerSession) && eventIdentityFlagsMatch(req, flags) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && finalHeadOK && reportOK && len(flags["--verification"]) > 0
 	case "handoff cleanup-preview":
 		return ownershipCleanupSourceCommandAllowed(req, record, flags, false)
 	case "handoff cleanup-approve":
@@ -213,7 +185,7 @@ func ownershipCleanupSourceCommandAllowed(req HookToolUseLifecycleRequest, recor
 	host, hostOK := oneFlag(flags, "--host")
 	session, sessionOK := oneFlag(flags, "--session-id")
 	sourceCWD, cwdOK := oneFlag(flags, "--source-cwd")
-	if !hostOK || !sessionOK || !cwdOK || !strings.EqualFold(host, req.Host) || session != req.SessionID || cleanAbsPath(sourceCWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || h == nil || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || h.State != handoff.StateCleanupPendingHumanDecision || h.OwnerSession != nil && nativeSessionMatches(req, h.OwnerSession) {
+	if !hostOK || !sessionOK || !cwdOK || !strings.EqualFold(host, req.Host) || session != req.SessionID || cleanAbsPath(sourceCWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || h == nil || h.State != handoff.StateCleanupPendingHumanDecision || h.OwnerSession != nil && nativeSessionMatches(req, h.OwnerSession) {
 		return false
 	}
 	agent, hasAgent := oneFlag(flags, "--agent-id")
@@ -236,7 +208,7 @@ func ownershipCleanupRecordCommandAllowed(req HookToolUseLifecycleRequest, recor
 	host, hostOK := oneFlag(flags, "--host")
 	session, sessionOK := oneFlag(flags, "--session-id")
 	sourceCWD, cwdOK := oneFlag(flags, "--source-cwd")
-	if !stepOK || !hostOK || !sessionOK || !cwdOK || h == nil || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || h.State != handoff.StateCleanupExecuting || h.Cleanup == nil || h.Cleanup.ApprovedBySession == nil || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(sourceCWD) != cleanAbsPath(record.Repo) || !strings.EqualFold(host, req.Host) || session != req.SessionID || !nativeSessionMatches(req, h.Cleanup.ApprovedBySession) {
+	if !stepOK || !hostOK || !sessionOK || !cwdOK || h == nil || h.State != handoff.StateCleanupExecuting || h.Cleanup == nil || h.Cleanup.ApprovedBySession == nil || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(sourceCWD) != cleanAbsPath(record.Repo) || !strings.EqualFold(host, req.Host) || session != req.SessionID || !nativeSessionMatches(req, h.Cleanup.ApprovedBySession) {
 		return false
 	}
 	agent, hasAgent := oneFlag(flags, "--agent-id")
@@ -285,55 +257,6 @@ func allowedReadyWorkspaceOwnershipStart(req HookToolUseLifecycleRequest, record
 		return !aok
 	}
 	return aok && agentID == req.AgentID
-}
-
-// exactNoChangeFinishFlags keeps the hook's worker authority in lockstep with
-// the CLI's self-healing no-change finish path. The CLI derives these values
-// from the sealed record and worker filesystem; accepting caller-provided
-// equivalents here would let the hook authorize a materially different result.
-func exactNoChangeFinishFlags(flags map[string][]string) bool {
-	if _, noChange := flags["--no-change"]; !noChange {
-		return true
-	}
-	if outcome, specified := oneFlag(flags, "--outcome"); specified && outcome != string(handoff.OutcomeCompleted) {
-		return false
-	}
-	if len(flags["--verification"]) == 0 {
-		return false
-	}
-	for _, prohibited := range []string{"--changed-file", "--turing-report", "--cleanup-receipt", "--final-head", "--task-id", "--dispatch-id"} {
-		if _, present := flags[prohibited]; present {
-			return false
-		}
-	}
-	return true
-}
-
-func exactCoordinatorPreparingCancel(req HookToolUseLifecycleRequest, flags map[string][]string, record IssueOpsRecord) bool {
-	h := record.ExecutionHandoff
-	if h == nil || h.State != handoff.StateCoordinatorPreparing || h.PendingOperation != nil || h.CleanupOnly != nil || h.WorkerSession != nil || h.Result != nil {
-		return false
-	}
-	if h.Orca != nil && (strings.TrimSpace(h.Orca.TaskID) != "" || strings.TrimSpace(h.Orca.DispatchID) != "") {
-		return false
-	}
-	action, actionOK := oneFlag(flags, "--action")
-	_, confirmed := flags["--confirm"]
-	if !actionOK || action != "cancel" || !confirmed || len(flags) != 3 || !nativeSessionMatches(req, h.CoordinatorSession) {
-		return false
-	}
-	return handoff.CoordinatorIdentityMatches(record, issueopsmodel.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID}, req.CWD)
-}
-
-func coordinatorLifecycleStateAllows(path string, record IssueOpsRecord) bool {
-	// Default-deny wrapper over the shared declarative authority table (Task A):
-	// the state dimension lives in handoff.CoordinatorCommandStateAllows; the
-	// fence/identity/cwd predicates are applied by the caller.
-	h := record.ExecutionHandoff
-	if h == nil {
-		return false
-	}
-	return handoff.CoordinatorCommandStateAllows(path, h.State, h.ClosedDisposition)
 }
 
 func exactReadOnlyShellCommand(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
@@ -422,9 +345,7 @@ func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRe
 	if h == nil || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
 		return false
 	}
-	ownershipCleanup := h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State == handoff.StateCleanupExecuting && h.Cleanup != nil && h.Cleanup.ApprovedBySession != nil && nativeSessionMatches(req, h.Cleanup.ApprovedBySession)
-	legacyCleanup := h.State == handoff.StateClosed
-	if !ownershipCleanup && !legacyCleanup {
+	if h.State != handoff.StateCleanupExecuting || h.Cleanup == nil || h.Cleanup.ApprovedBySession == nil || !nativeSessionMatches(req, h.Cleanup.ApprovedBySession) {
 		return false
 	}
 	if commandparse.HasUnquotedControlOperator(req.Command) || commandparse.HasActiveCommandSubstitution(req.Command) || commandparse.HasActiveOutputRedirect(req.Command) || commandparse.HasActiveParameterOrTildeExpansion(req.Command) || commandparse.HasActivePathnameExpansion(req.Command) || commandparse.HasActiveShellSpecialQuoting(req.Command) || commandparse.HasActiveZshEqualsExpansion(req.Command) {
@@ -435,15 +356,9 @@ func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRe
 		return false
 	}
 	if len(tokens) == 6 && tokens[1] == "terminal" && tokens[2] == "close" {
-		if !ownershipCleanup && h.ClosedDisposition != handoff.DispositionWorkerFailed && h.ClosedDisposition != handoff.DispositionCancelled {
-			return false
-		}
 		return cleanupStepAuthorized(h, "terminal_quiescent") && h.Orca != nil && h.Orca.WorkerTerminalHandle != "" && tokens[3] == "--terminal" && tokens[4] == h.Orca.WorkerTerminalHandle && tokens[5] == "--json"
 	}
 	if len(tokens) == 6 && tokens[1] == "terminal" && tokens[2] == "stop" {
-		if !ownershipCleanup && h.ClosedDisposition != handoff.DispositionWorkerFailed && h.ClosedDisposition != handoff.DispositionCancelled {
-			return false
-		}
 		return cleanupStepAuthorized(h, "terminal_quiescent") && h.Orca != nil && h.Orca.WorktreeID != "" && tokens[3] == "--worktree" && tokens[4] == "id:"+h.Orca.WorktreeID && tokens[5] == "--json"
 	}
 	if len(tokens) >= 3 && tokens[1] == "orchestration" && tokens[2] == "task-update" {
@@ -453,16 +368,10 @@ func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRe
 		id, idOK := uniqueTokenFlag(tokens[3:], "--id")
 		status, statusOK := uniqueTokenFlag(tokens[3:], "--status")
 		result, resultOK := uniqueTokenFlag(tokens[3:], "--result")
-		wantStatus := "failed"
-		if ownershipCleanup {
-			wantStatus = "completed"
-		}
-		if h.ClosedDisposition == handoff.DispositionAccepted {
-			wantStatus = "completed"
-		} else if !cleanupStepAuthorized(h, "task_terminal") {
+		if !cleanupStepAuthorized(h, "task_terminal") {
 			return false
 		}
-		return idOK && id == h.Orca.TaskID && statusOK && status == wantStatus && (!resultOK || len(result) <= 4096) && onlyTokenFlags(tokens[3:], map[string]bool{"--id": true, "--status": true, "--result": true}, map[string]bool{"--json": true})
+		return idOK && id == h.Orca.TaskID && statusOK && status == "completed" && (!resultOK || len(result) <= 4096) && onlyTokenFlags(tokens[3:], map[string]bool{"--id": true, "--status": true, "--result": true}, map[string]bool{"--json": true})
 	}
 	return false
 }
@@ -471,184 +380,7 @@ func cleanupStepAuthorized(h *issueopsmodel.IssueOpsExecutionHandoff, step strin
 	if h == nil || h.Cleanup == nil {
 		return false
 	}
-	if h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State == handoff.StateCleanupExecuting {
-		return ownershipCleanupExpectedStep(h) == step
-	}
-	switch step {
-	case "task_terminal":
-		return !cleanupReceiptExists(h, "task_terminal")
-	case "terminal_quiescent":
-		return cleanupReceiptExists(h, "task_terminal") && !cleanupReceiptExists(h, "terminal_quiescent")
-	default:
-		return false
-	}
-}
-
-func cleanupReceiptExists(h *issueopsmodel.IssueOpsExecutionHandoff, step string) bool {
-	if h == nil || h.Cleanup == nil {
-		return false
-	}
-	for _, receipt := range h.Cleanup.Receipts {
-		if receipt.Step == step {
-			return true
-		}
-	}
-	return false
-}
-
-func acceptedCoordinatorDownstreamCommand(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
-	h := record.ExecutionHandoff
-	if h == nil || h.State != handoff.StateClosed || h.ClosedDisposition != handoff.DispositionAccepted || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) ||
-		!handoff.CoordinatorIdentityMatches(record, issueopsmodel.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID}, req.CWD) {
-		return false
-	}
-	if commandparse.HasUnquotedControlOperator(req.Command) || commandparse.HasActiveCommandSubstitution(req.Command) || commandparse.HasActiveOutputRedirect(req.Command) || commandparse.HasActiveParameterOrTildeExpansion(req.Command) || commandparse.HasActivePathnameExpansion(req.Command) || commandparse.HasActiveShellSpecialQuoting(req.Command) || commandparse.HasActiveZshEqualsExpansion(req.Command) {
-		return false
-	}
-	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
-	if len(tokens) == 0 {
-		return false
-	}
-	switch tokens[0] {
-	case "git":
-		return false
-	case "gh":
-		if len(tokens) <= 2 || tokens[1] != "pr" {
-			return false
-		}
-		if tokens[2] == "create" {
-			return false
-		}
-		return allowedAcceptedReviewSubcommand(tokens[2], map[string]bool{"view": true, "list": true, "status": true, "checks": true, "diff": true})
-	case "glab":
-		if len(tokens) <= 2 || tokens[1] != "mr" {
-			return false
-		}
-		if tokens[2] == "create" {
-			return false
-		}
-		return allowedAcceptedReviewSubcommand(tokens[2], map[string]bool{"view": true, "list": true, "status": true, "diff": true})
-	case "agent-harness", "./bin/agent-harness":
-		return acceptedIssueOpsDownstreamCommand(req, record)
-	}
-	return false
-}
-
-func acceptedIssueOpsDownstreamCommand(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
-	command, ok := commandparse.ParseExactIssueOpsCommand(req.Command)
-	if !ok {
-		return false
-	}
-	values := map[string]bool{}
-	booleans := map[string]bool{"--json": true}
-	repeatable := map[string]bool{}
-	required := []string{"--id"}
-	switch command.Path {
-	case "phase":
-		values["--id"], values["--to"] = true, true
-		required = append(required, "--to")
-	case "feedback add":
-		for _, name := range []string{"--id", "--source", "--body", "--classification"} {
-			values[name] = true
-		}
-		required = append(required, "--source", "--body")
-	case "feedback resolve":
-		for _, name := range []string{"--id", "--index", "--resolution"} {
-			values[name] = true
-		}
-		required = append(required, "--index", "--resolution")
-	case "feedback mark-issue-updated":
-		values["--id"] = true
-	case "pr-readiness":
-		values["--id"] = true
-		booleans["--strict"] = true
-	case "ai-slop-clean record":
-		for _, name := range []string{"--id", "--category", "--verification"} {
-			values[name] = true
-		}
-		repeatable["--category"], repeatable["--verification"] = true, true
-		required = append(required, "--category", "--verification")
-	case "cleanup status":
-		values["--id"] = true
-		booleans["--merged"] = true
-	case "remote verify-artifact":
-		for _, name := range []string{"--id", "--provider", "--kind", "--url", "--label", "--labels", "--assignee", "--assignees"} {
-			values[name] = true
-		}
-		for _, name := range []string{"--label", "--labels", "--assignee", "--assignees"} {
-			repeatable[name] = true
-		}
-		required = append(required, "--provider", "--kind", "--url")
-	case "remote create-pr":
-		for _, name := range []string{"--id", "--provider", "--title", "--body", "--head", "--base", "--label", "--assignee", "--host", "--session-id", "--agent-id", "--cwd"} {
-			values[name] = true
-		}
-		repeatable["--label"], repeatable["--assignee"] = true, true
-		booleans["--confirm"] = true
-		required = append(required, "--provider", "--title", "--body", "--head", "--base", "--label", "--assignee")
-	case "remote reconcile-create":
-		for _, name := range []string{"--id", "--claim-id", "--coordinator-recipient", "--host", "--session-id", "--agent-id", "--source-cwd"} {
-			values[name] = true
-		}
-		booleans["--confirm"], booleans["--approve-zero-clear"] = true, true
-		required = append(required, "--claim-id", "--coordinator-recipient")
-	default:
-		return false
-	}
-	flags, ok := commandparse.ExactFlags(command, values, booleans, repeatable)
-	if !ok {
-		return false
-	}
-	for _, name := range required {
-		if repeatable[name] {
-			if len(flags[name]) == 0 {
-				return false
-			}
-			for _, value := range flags[name] {
-				if value == "" {
-					return false
-				}
-			}
-			continue
-		}
-		value, present := oneFlag(flags, name)
-		if !present || value == "" {
-			return false
-		}
-	}
-	id, _ := oneFlag(flags, "--id")
-	if id != record.ID {
-		return false
-	}
-	switch command.Path {
-	case "phase":
-		to, _ := oneFlag(flags, "--to")
-		return to == "ai-slop-clean" || to == "feedback" || to == "pr"
-	case "remote verify-artifact":
-		provider, _ := oneFlag(flags, "--provider")
-		kind, _ := oneFlag(flags, "--kind")
-		labels := append(append([]string(nil), flags["--label"]...), flags["--labels"]...)
-		assignees := append(append([]string(nil), flags["--assignee"]...), flags["--assignees"]...)
-		return (provider == "github" && kind == "pr" || provider == "gitlab" && kind == "mr") && len(labels) > 0 && len(assignees) > 0
-	case "remote create-pr":
-		provider, _ := oneFlag(flags, "--provider")
-		head, _ := oneFlag(flags, "--head")
-		base, _ := oneFlag(flags, "--base")
-		_, confirmed := oneFlag(flags, "--confirm")
-		return confirmed && publicationReceiptMatches(record, provider, head, base)
-	case "remote reconcile-create":
-		claimID, _ := oneFlag(flags, "--claim-id")
-		coordinator, _ := oneFlag(flags, "--coordinator-recipient")
-		_, confirmed := oneFlag(flags, "--confirm")
-		host, hok := oneFlag(flags, "--host")
-		sessionID, sok := oneFlag(flags, "--session-id")
-		agentID, aok := oneFlag(flags, "--agent-id")
-		cwd, cwdOK := oneFlag(flags, "--source-cwd")
-		agentMatches := strings.TrimSpace(req.AgentID) == "" && !aok || aok && agentID == strings.TrimSpace(req.AgentID)
-		return confirmed && record.RemoteCreateClaim != nil && claimID == record.RemoteCreateClaim.ClaimID && record.ExecutionHandoff != nil && coordinator == record.ExecutionHandoff.CoordinatorMailboxHandle && hok && sok && cwdOK && strings.EqualFold(host, strings.TrimSpace(req.Host)) && sessionID == strings.TrimSpace(req.SessionID) && agentMatches && cleanAbsPath(cwd) == cleanAbsPath(record.Repo)
-	default:
-		return true
-	}
+	return h.State == handoff.StateCleanupExecuting && ownershipCleanupExpectedStep(h) == step
 }
 
 func publicationReceiptMatches(record IssueOpsRecord, provider, head, base string) bool {
@@ -664,105 +396,10 @@ func publicationReceiptMatches(record IssueOpsRecord, provider, head, base strin
 		return false
 	}
 	remote := strings.TrimSuffix(strings.TrimPrefix(baseRef, prefix), suffix)
-	finalHead := receipt.FinalHead
-	if record.ExecutionHandoff.ProtocolVersion != handoff.OwnershipTransferProtocolVersion {
-		if record.ExecutionHandoff.Result == nil {
-			return false
-		}
-		finalHead = record.ExecutionHandoff.Result.FinalHead
-	}
 	return provider != "" && provider == strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider)) &&
 		strings.TrimSpace(head) == branch && strings.TrimSpace(base) == strings.TrimSpace(record.BranchPrepare.BaseBranch) &&
 		receipt.Provider == provider && receipt.Remote == remote && receipt.Branch == branch && receipt.RemoteRef == "refs/heads/"+branch &&
-		receipt.FinalHead == finalHead && receipt.VerifiedAt != ""
-}
-
-func allowedAcceptedReviewSubcommand(value string, allowed map[string]bool) bool {
-	return allowed[value]
-}
-
-func acceptedGitHubPRCreate(tokens []string, record IssueOpsRecord) bool {
-	if record.BranchPrepare == nil {
-		return false
-	}
-	head, headOK := uniqueAliasedTokenFlag(tokens, "--head", "-H")
-	base, baseOK := uniqueAliasedTokenFlag(tokens, "--base", "-B")
-	if !headOK || !baseOK || head != strings.TrimSpace(record.Branch) || base != strings.TrimSpace(record.BranchPrepare.BaseBranch) || aliasedBoolCount(tokens, "--draft", "-d") != 1 {
-		return false
-	}
-	return onlyAcceptedCreateFlags(tokens,
-		map[string]bool{"--head": true, "-H": true, "--base": true, "-B": true, "--title": true, "--body": true, "--label": true, "--assignee": true, "--reviewer": true, "--milestone": true, "--project": true},
-		map[string]bool{"--draft": true, "-d": true})
-}
-
-func acceptedGitLabMRCreate(tokens []string, record IssueOpsRecord) bool {
-	if record.BranchPrepare == nil {
-		return false
-	}
-	source, sourceOK := uniqueAliasedTokenFlag(tokens, "--source-branch", "-s")
-	target, targetOK := uniqueAliasedTokenFlag(tokens, "--target-branch", "-b")
-	if !sourceOK || !targetOK || source != strings.TrimSpace(record.Branch) || target != strings.TrimSpace(record.BranchPrepare.BaseBranch) || aliasedBoolCount(tokens, "--draft") != 1 {
-		return false
-	}
-	return onlyAcceptedCreateFlags(tokens,
-		map[string]bool{"--source-branch": true, "-s": true, "--target-branch": true, "-b": true, "--title": true, "--description": true, "--label": true, "--assignee": true, "--reviewer": true, "--milestone": true},
-		map[string]bool{"--draft": true})
-}
-
-func uniqueAliasedTokenFlag(tokens []string, names ...string) (string, bool) {
-	value, found := "", false
-	for i := 0; i < len(tokens); i++ {
-		for _, name := range names {
-			if tokens[i] == name {
-				if found || i+1 >= len(tokens) || strings.HasPrefix(tokens[i+1], "-") {
-					return "", false
-				}
-				value, found = tokens[i+1], true
-				i++
-				break
-			}
-			if strings.HasPrefix(tokens[i], name+"=") {
-				if found || strings.TrimPrefix(tokens[i], name+"=") == "" {
-					return "", false
-				}
-				value, found = strings.TrimPrefix(tokens[i], name+"="), true
-				break
-			}
-		}
-	}
-	return value, found
-}
-
-func aliasedBoolCount(tokens []string, names ...string) int {
-	count := 0
-	for _, token := range tokens {
-		for _, name := range names {
-			if token == name {
-				count++
-			}
-		}
-	}
-	return count
-}
-
-func onlyAcceptedCreateFlags(tokens []string, valueFlags, boolFlags map[string]bool) bool {
-	for i := 0; i < len(tokens); i++ {
-		name := tokens[i]
-		if at := strings.Index(name, "="); at >= 0 {
-			if !valueFlags[name[:at]] || at == len(name)-1 {
-				return false
-			}
-			continue
-		}
-		if boolFlags[name] {
-			continue
-		}
-		if !valueFlags[name] || i+1 >= len(tokens) {
-			return false
-		}
-		i++
-	}
-	return true
+		receipt.FinalHead != "" && receipt.VerifiedAt != ""
 }
 
 func currentWorkerBranchMatches(record IssueOpsRecord) bool {
@@ -917,70 +554,6 @@ func buildExactClaimCommand(record IssueOpsRecord, req HookToolUseLifecycleReque
 	return strings.Join(parts, " ")
 }
 
-// buildCoordinatorDispatchCommand renders the harness-authored identity-filled
-// `handoff start` preview command for a coordinator_preparing handoff. The
-// coordinator-identity flags are copied verbatim from the authenticated native
-// event so identity is never agent-guessed; the emitted command satisfies the
-// unchanged allowedExactHandoffLifecycleCommand fence (source checkout, exact
-// coordinator host/session/agent, --source-cwd == record.Repo). Preview form
-// omits --confirm; the guidance names the --expected-context-sha256/--confirm
-// finalize step separately.
-func buildCoordinatorDispatchCommand(record IssueOpsRecord, host, sessionID, agentID string) string {
-	h := record.ExecutionHandoff
-	if h == nil {
-		return ""
-	}
-	parts := []string{"agent-harness issueops handoff start", "--id " + shellGuidanceQuote(record.ID)}
-	if handle := strings.TrimSpace(h.CoordinatorMailboxHandle); handle != "" {
-		parts = append(parts, "--coordinator-recipient "+shellGuidanceQuote(handle))
-	}
-	parts = append(parts, "--coordinator-host "+shellGuidanceQuote(host), "--coordinator-session-id "+shellGuidanceQuote(sessionID))
-	if strings.TrimSpace(agentID) != "" {
-		parts = append(parts, "--coordinator-agent-id "+shellGuidanceQuote(agentID))
-	}
-	parts = append(parts, "--source-cwd "+shellGuidanceQuote(record.Repo))
-	return strings.Join(parts, " ")
-}
-
-// bootstrapCoordinatorStartGuidance recognizes only the first, unsealed
-// coordinator-start probe. The hook supplies the native identity from its
-// authenticated event and leaves the exact terminal handle supplied by the
-// caller intact. The probe itself stays blocked, so no lifecycle mutation can
-// run with a missing or guessed identity.
-func bootstrapCoordinatorStartGuidance(req HookToolUseLifecycleRequest, record IssueOpsRecord) string {
-	if !searchrouting.IsShellTool(req.Tool) {
-		return ""
-	}
-	if record.ExecutionHandoff == nil {
-		return bootstrapOwnershipStartGuidance(req, record)
-	}
-	h := record.ExecutionHandoff
-	if h.State != handoff.StateCoordinatorPreparing || h.CoordinatorSession != nil || strings.TrimSpace(h.CoordinatorMailboxHandle) != "" || h.PendingOperation != nil || h.WorkerSession != nil || h.Result != nil || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || strings.TrimSpace(req.Host) == "" || strings.TrimSpace(req.SessionID) == "" {
-		return ""
-	}
-	command, flags, ok := parsedExactIssueOps(req.Command)
-	if !ok || command.Path != "handoff start" || len(flags) < 3 || len(flags) > 4 {
-		return ""
-	}
-	id, idOK := oneFlag(flags, "--id")
-	recipient, recipientOK := oneFlag(flags, "--coordinator-recipient")
-	sourceCWD, cwdOK := oneFlag(flags, "--source-cwd")
-	if !idOK || id != record.ID || !recipientOK || !concreteCoordinatorTerminalHandle.MatchString(recipient) || len(recipient) > 256 || !cwdOK || cleanAbsPath(sourceCWD) != cleanAbsPath(record.Repo) {
-		return ""
-	}
-	if len(flags) == 4 {
-		if _, ok := flags["--json"]; !ok {
-			return ""
-		}
-	}
-	parts := []string{"agent-harness issueops handoff start", "--id " + shellGuidanceQuote(record.ID), "--coordinator-recipient " + shellGuidanceQuote(recipient), "--coordinator-host " + shellGuidanceQuote(req.Host), "--coordinator-session-id " + shellGuidanceQuote(req.SessionID)}
-	if strings.TrimSpace(req.AgentID) != "" {
-		parts = append(parts, "--coordinator-agent-id "+shellGuidanceQuote(req.AgentID))
-	}
-	parts = append(parts, "--source-cwd "+shellGuidanceQuote(record.Repo), "--json")
-	return strings.Join(parts, " ")
-}
-
 func bootstrapOwnershipStartGuidance(req HookToolUseLifecycleRequest, record IssueOpsRecord) string {
 	workspace := record.ExecutionWorkspace
 	if workspace == nil || workspace.State != "ready" || workspace.PreparationSession == nil || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || strings.TrimSpace(req.Host) == "" || strings.TrimSpace(req.SessionID) == "" {
@@ -1036,11 +609,7 @@ func requiresMatchingSupervisedRecord(req HookToolUseLifecycleRequest) bool {
 	if issueOpsObservationMCPTool(req.Tool) {
 		return true
 	}
-	if !searchrouting.IsShellTool(req.Tool) {
-		return false
-	}
-	command, ok := commandparse.ParseExactIssueOpsCommand(req.Command)
-	return ok && command.Path == "handoff codex-hooks-list"
+	return false
 }
 
 func allowedIssueOpsObservationMCP(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
@@ -1117,13 +686,11 @@ func lifecycleRecordID(req HookToolUseLifecycleRequest) (string, bool) {
 		id, ok := mcpString(input, "id")
 		return id, ok && id != ""
 	}
-	for _, name := range []string{"issueops_link_plan", "issueops_record_compatibility_review", "issueops_record_execution_decision", "issueops_record_devils_advocate_review", "issueops_worktree_prepare_tools", "issueops_record_ai_slop_clean_evidence", "issueops_add_feedback", "issueops_resolve_feedback", "issueops_mark_issue_updated", "issueops_set_phase"} {
-		if req.Tool != name && req.Tool != "mcp__agent_harness__"+name {
-			continue
-		}
-		if req.ToolInput == nil {
-			return "", false
-		}
+	tool := strings.TrimSpace(req.Tool)
+	if index := strings.LastIndex(tool, "__"); index >= 0 {
+		tool = tool[index+2:]
+	}
+	if strings.HasPrefix(tool, "issueops_") && req.ToolInput != nil {
 		id, ok := req.ToolInput["id"].(string)
 		return id, ok && strings.TrimSpace(id) != ""
 	}
@@ -1141,7 +708,7 @@ func isPostTransferRecorderMCP(tool string) bool {
 
 func allowedPostTransferRecorderMCP(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
 	h := record.ExecutionHandoff
-	if h == nil || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || !handoff.OwnershipTransferOwnerStateAllows("mutate", h.State) || cleanAbsPath(req.CWD) != cleanAbsPath(h.WorkerRoot) {
+	if h == nil || !handoff.OwnerStateAllows("mutate", h.State) || cleanAbsPath(req.CWD) != cleanAbsPath(h.WorkerRoot) {
 		return false
 	}
 	input, ok := flatMCPInput(req.ToolInput)
@@ -1167,6 +734,24 @@ func allowedReadyWorkspacePreparationMCP(req HookToolUseLifecycleRequest, record
 }
 
 func selectSupervisedHandoffRecord(req HookToolUseLifecycleRequest) (IssueOpsRecord, bool, string) {
+	if id, ok := lifecycleRecordID(req); ok {
+		record, err := ReadIssueOps(IssueOpsStateRoot(), id)
+		if err == nil {
+			if !requestContextMatchesLifecycleRecord(req, record) {
+				return IssueOpsRecord{}, false, "exact IssueOps lifecycle id does not match the current source or worker context"
+			}
+			if record.ExecutionHandoff != nil || record.ExecutionWorkspace != nil {
+				return record, true, ""
+			}
+			// An exact linked-worktree cycle without an ownership handoff is not
+			// governed by another cycle's supervised fence. Its ordinary IssueOps
+			// guards remain authoritative for the requested operation.
+			return IssueOpsRecord{}, false, ""
+		}
+		if looksLikeIssueOpsControl(req) {
+			return IssueOpsRecord{}, false, "record-targeted IssueOps lifecycle id does not resolve to an active workspace or ownership handoff"
+		}
+	}
 	records := []IssueOpsRecord{}
 	for _, repo := range []string{req.Repo, req.SourceCheckout, sourceCheckoutFromWorktree(req.Repo), sourceCheckoutFromWorktree(req.CWD)} {
 		if strings.TrimSpace(repo) != "" {
@@ -1236,6 +821,20 @@ func selectSupervisedHandoffRecord(req HookToolUseLifecycleRequest) (IssueOpsRec
 		return IssueOpsRecord{}, false, "ambiguous supervised IssueOps mutation target"
 	}
 	return IssueOpsRecord{}, false, ""
+}
+
+func requestContextMatchesLifecycleRecord(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
+	source := cleanAbsPath(record.Repo)
+	worker := cleanAbsPath(executionWorkerRoot(record))
+	linkedWorktree := cleanAbsPath(record.WorktreePath)
+	matches := func(path string) bool {
+		path = cleanAbsPath(path)
+		return path != "" && (path == source || path == worker || path == linkedWorktree)
+	}
+	if strings.TrimSpace(req.CWD) != "" {
+		return matches(req.CWD)
+	}
+	return matches(req.Repo)
 }
 
 func terminalControlWriteRequest(req HookToolUseLifecycleRequest) bool {
@@ -1331,81 +930,6 @@ func linkedWorktreeDecisionGateReason(req HookToolUseLifecycleRequest) string {
 		}
 	}
 	return ""
-}
-
-func sourceCoordinatorTerminalSteeringAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
-	h := record.ExecutionHandoff
-	if h == nil || h.State != handoff.StateClaimed || !searchrouting.IsShellTool(req.Tool) || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
-		return false
-	}
-	handle, ok := literalSafeTerminalSendHandle(req)
-	if !ok {
-		return false
-	}
-	persistedHandle := ""
-	if h.Orca != nil {
-		persistedHandle = strings.TrimSpace(h.Orca.WorkerTerminalHandle)
-	}
-	return persistedHandle != "" && handle == persistedHandle
-}
-
-func claimedWorkerProgressMessageAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
-	h := record.ExecutionHandoff
-	if h == nil || h.State != handoff.StateClaimed || h.Orca == nil || !searchrouting.IsShellTool(req.Tool) ||
-		cleanAbsPath(req.CWD) != cleanAbsPath(h.WorkerRoot) || cleanAbsPath(req.Repo) != cleanAbsPath(h.WorkerRoot) ||
-		!nativeSessionMatches(req, h.WorkerSession) || !currentWorkerBranchMatches(record) {
-		return false
-	}
-	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
-	if len(tokens) < 3 || tokens[0] != "orca" || tokens[1] != "orchestration" || tokens[2] != "send" {
-		return false
-	}
-	flags, ok := commandparse.ExactFlags(commandparse.ExactIssueOpsCommand{Tokens: tokens, Start: 3}, map[string]bool{
-		"--to": true, "--type": true, "--subject": true, "--body": true, "--task-id": true, "--dispatch-id": true, "--phase": true,
-	}, map[string]bool{"--json": true}, map[string]bool{})
-	if !ok {
-		return false
-	}
-	to, toOK := oneFlag(flags, "--to")
-	messageType, typeOK := oneFlag(flags, "--type")
-	subject, subjectOK := oneFlag(flags, "--subject")
-	taskID, taskOK := oneFlag(flags, "--task-id")
-	dispatchID, dispatchOK := oneFlag(flags, "--dispatch-id")
-	body, bodyOK := oneFlag(flags, "--body")
-	phase, phaseOK := oneFlag(flags, "--phase")
-	if !toOK || to != h.CoordinatorMailboxHandle || !typeOK || !subjectOK || strings.TrimSpace(subject) == "" || len(subject) > 256 || commandparse.ContainsASCIITerminalControl(subject) ||
-		!taskOK || taskID != h.Orca.TaskID || !dispatchOK || dispatchID != h.Orca.DispatchID {
-		return false
-	}
-	switch messageType {
-	case "heartbeat":
-		return phaseOK && !bodyOK && strings.TrimSpace(phase) != "" && len(phase) <= 256 && !commandparse.ContainsASCIITerminalControl(phase)
-	case "status", "escalation":
-		return bodyOK && !phaseOK && strings.TrimSpace(body) != "" && len(body) <= 4096 && !commandparse.ContainsASCIITerminalControl(body)
-	default:
-		return false
-	}
-}
-
-func literalSafeTerminalSendHandle(req HookToolUseLifecycleRequest) (string, bool) {
-	if !searchrouting.IsShellTool(req.Tool) {
-		return "", false
-	}
-	if commandparse.HasUnquotedControlOperator(req.Command) || commandparse.HasActiveCommandSubstitution(req.Command) || commandparse.HasActiveOutputRedirect(req.Command) || commandparse.HasActiveParameterOrTildeExpansion(req.Command) || commandparse.HasActivePathnameExpansion(req.Command) || commandparse.HasActiveShellSpecialQuoting(req.Command) || commandparse.HasActiveZshEqualsExpansion(req.Command) {
-		return "", false
-	}
-	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
-	if len(tokens) != 9 || tokens[0] != "orca" || tokens[1] != "terminal" || tokens[2] != "send" || tokens[3] != "--terminal" || tokens[5] != "--text" || tokens[7] != "--enter" || tokens[8] != "--json" {
-		return "", false
-	}
-	handle, guidance := strings.TrimSpace(tokens[4]), tokens[6]
-	if handle == "" || len(handle) > 256 || !strings.HasPrefix(guidance, "# agent-harness guidance: ") || len(guidance) > 4096 || commandparse.ContainsASCIITerminalControl(guidance) {
-		return "", false
-	}
-	if commandparse.HasUnquotedControlOperator(guidance) || commandparse.HasActiveCommandSubstitution(guidance) || commandparse.HasActiveOutputRedirect(guidance) || commandparse.HasActiveParameterOrTildeExpansion(guidance) || commandparse.HasActivePathnameExpansion(guidance) || commandparse.HasActiveShellSpecialQuoting(guidance) || commandparse.HasActiveZshEqualsExpansion(guidance) {
-		return "", false
-	}
-	return handle, true
 }
 
 func supervisedHandoffGuardRecords(repo string) []IssueOpsRecord {
@@ -1525,8 +1049,7 @@ func allowedHandoffMCPTool(req HookToolUseLifecycleRequest, record IssueOpsRecor
 	h := record.ExecutionHandoff
 	worker := cleanAbsPath(req.CWD) == cleanAbsPath(h.WorkerRoot)
 	source := cleanAbsPath(req.CWD) == cleanAbsPath(record.Repo)
-	coordinator := source && h.State == handoff.StateClosed && h.ClosedDisposition == handoff.DispositionAccepted && handoff.CoordinatorIdentityMatches(record, issueopsmodel.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID}, req.CWD)
-	owner := worker && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && handoff.OwnershipTransferOwnerStateAllows("remote-create", h.State) && nativeSessionMatches(req, h.OwnerSession)
+	owner := worker && handoff.OwnerStateAllows("remote-create", h.State) && nativeSessionMatches(req, h.OwnerSession)
 	if tool == "issueops_remote_create_pr" {
 		provider, pok := mcpString(input, "provider")
 		head, hok := mcpString(input, "head")
@@ -1534,7 +1057,7 @@ func allowedHandoffMCPTool(req HookToolUseLifecycleRequest, record IssueOpsRecor
 		confirm, cok := input["confirm"].(bool)
 		title, tok := mcpString(input, "title")
 		body, bodyOK := mcpString(input, "body")
-		return (coordinator || owner && mcpEventIdentityMatches(input, req)) && pok && strings.TrimSpace(provider) != "" && hok && strings.TrimSpace(head) != "" && bok && strings.TrimSpace(base) != "" && cok && confirm && tok && strings.TrimSpace(title) != "" && bodyOK && strings.TrimSpace(body) != "" && mcpNonEmptyStringList(input, "labels") && mcpNonEmptyStringList(input, "assignees") && publicationReceiptMatches(record, provider, head, base)
+		return owner && mcpEventIdentityMatches(input, req) && pok && strings.TrimSpace(provider) != "" && hok && strings.TrimSpace(head) != "" && bok && strings.TrimSpace(base) != "" && cok && confirm && tok && strings.TrimSpace(title) != "" && bodyOK && strings.TrimSpace(body) != "" && mcpNonEmptyStringList(input, "labels") && mcpNonEmptyStringList(input, "assignees") && publicationReceiptMatches(record, provider, head, base)
 	}
 	if tool == "issueops_remote_reconcile_create" {
 		claimID, claimOK := mcpString(input, "claim_id")
@@ -1545,16 +1068,10 @@ func allowedHandoffMCPTool(req HookToolUseLifecycleRequest, record IssueOpsRecor
 		agentID, agentOK := mcpString(input, "agent_id")
 		cwd, cwdOK := mcpString(input, "source_cwd")
 		agentMatches := strings.TrimSpace(req.AgentID) == "" && !agentOK || agentOK && agentID == strings.TrimSpace(req.AgentID)
-		return coordinator && record.RemoteCreateClaim != nil && claimOK && claimID == record.RemoteCreateClaim.ClaimID && recipientOK && recipient == h.CoordinatorMailboxHandle && confirmOK && confirm && hostOK && strings.EqualFold(host, strings.TrimSpace(req.Host)) && sessionOK && sessionID == strings.TrimSpace(req.SessionID) && agentMatches && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(record.Repo)
+		return source && record.RemoteCreateClaim != nil && claimOK && claimID == record.RemoteCreateClaim.ClaimID && recipientOK && recipient == h.CoordinatorMailboxHandle && confirmOK && confirm && hostOK && strings.EqualFold(host, strings.TrimSpace(req.Host)) && sessionOK && sessionID == strings.TrimSpace(req.SessionID) && agentMatches && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(record.Repo)
 	}
 	if tool == "issueops_heartbeat" {
-		session := h.WorkerSession
-		stateAllowed := true
-		if h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
-			session = h.OwnerSession
-			stateAllowed = handoff.OwnershipTransferOwnerStateAllows("heartbeat", h.State)
-		}
-		return worker && currentWorkerBranchMatches(record) && stateAllowed && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, session)
+		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("heartbeat", h.State) && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.OwnerSession)
 	}
 	action, ok := mcpString(input, "action")
 	if !ok {
@@ -1567,46 +1084,32 @@ func allowedHandoffMCPTool(req HookToolUseLifecycleRequest, record IssueOpsRecor
 		agentID, agentOK := mcpString(input, "coordinator_agent_id")
 		cwd, cwdOK := mcpString(input, "source_cwd")
 		agentMatches := strings.TrimSpace(req.AgentID) == "" && !agentOK || agentOK && agentID == strings.TrimSpace(req.AgentID)
-		return source && coordinatorLifecycleStateAllows("handoff start", record) && hostOK && strings.EqualFold(host, strings.TrimSpace(req.Host)) && sessionOK && sessionID == strings.TrimSpace(req.SessionID) && agentMatches && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(record.Repo)
-	case "accept":
-		cwd, cwdOK := mcpString(input, "source_cwd")
-		return source && coordinatorLifecycleStateAllows("handoff accept", record) && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(record.Repo) && handoff.CoordinatorIdentityMatches(record, issueopsmodel.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID}, req.CWD)
+		return source && hostOK && strings.EqualFold(host, strings.TrimSpace(req.Host)) && sessionOK && sessionID == strings.TrimSpace(req.SessionID) && agentMatches && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(record.Repo)
 	case "recover":
-		return source && coordinatorLifecycleStateAllows("handoff recover", record)
+		return source && h.State == handoff.StateRecoveryRequired
 	case "publish":
-		if h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
-			cwd, cwdOK := mcpString(input, "cwd")
-			confirm, confirmOK := input["confirm"].(bool)
-			return worker && currentWorkerBranchMatches(record) && handoff.OwnershipTransferOwnerStateAllows("publish", h.State) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && confirmOK && confirm
-		}
-		cwd, cwdOK := mcpString(input, "source_cwd")
+		cwd, cwdOK := mcpString(input, "cwd")
 		confirm, confirmOK := input["confirm"].(bool)
-		approveLegacySeal, _ := input["approve_legacy_coordinator_seal"].(bool)
-		native := issueopsmodel.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID}
-		legacySeal := approveLegacySeal && confirmOK && confirm && handoff.LegacyCoordinatorIdentityCanBeSealed(record, native, req.CWD)
-		return source && coordinatorLifecycleStateAllows("handoff publish", record) && mcpEventIdentityMatches(input, req) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(record.Repo) && (handoff.CoordinatorIdentityMatches(record, native, req.CWD) || legacySeal)
+		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("publish", h.State) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && confirmOK && confirm
 	case "claim":
 		cwd, cwdOK := mcpString(input, "cwd")
 		wt, wtOK := mcpString(input, "orca_worktree_id")
-		claimState := h.State == handoff.StateDispatched || h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && handoff.OwnershipTransferOwnerStateAllows("claim", h.State)
-		return worker && currentWorkerBranchMatches(record) && claimState && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && wtOK && h.Orca != nil && wt == h.Orca.WorktreeID
+		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("claim", h.State) && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && wtOK && h.Orca != nil && wt == h.Orca.WorktreeID
 	case "acknowledge-context":
 		cwd, cwdOK := mcpString(input, "cwd")
 		issueURL, issueOK := mcpString(input, "issue_url")
 		planSHA, planOK := mcpString(input, "plan_sha256")
 		understanding, understandingOK := mcpString(input, "understanding")
 		scope, scopeOK := mcpString(input, "scope_confirmation")
-		return worker && currentWorkerBranchMatches(record) && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && handoff.OwnershipTransferOwnerStateAllows("acknowledge-context", h.State) && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && issueOK && strings.TrimSpace(issueURL) != "" && planOK && strings.TrimSpace(planSHA) != "" && understandingOK && strings.TrimSpace(understanding) != "" && scopeOK && strings.TrimSpace(scope) != ""
-	case "finish":
-		return worker && currentWorkerBranchMatches(record) && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.WorkerSession)
+		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("acknowledge-context", h.State) && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && issueOK && strings.TrimSpace(issueURL) != "" && planOK && strings.TrimSpace(planSHA) != "" && understandingOK && strings.TrimSpace(understanding) != "" && scopeOK && strings.TrimSpace(scope) != ""
 	case "complete":
 		cwd, cwdOK := mcpString(input, "cwd")
 		_, headOK := mcpString(input, "final_head")
 		_, reportOK := mcpString(input, "turing_report_path")
-		return worker && currentWorkerBranchMatches(record) && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && handoff.OwnershipTransferOwnerStateAllows("complete", h.State) && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && headOK && reportOK && mcpNonEmptyStringList(input, "verification")
+		return worker && currentWorkerBranchMatches(record) && handoff.OwnerStateAllows("complete", h.State) && mcpFenceMatches(input, record) && mcpEventIdentityMatches(input, req) && nativeSessionMatches(req, h.OwnerSession) && cwdOK && cleanAbsPath(cwd) == cleanAbsPath(h.WorkerRoot) && headOK && reportOK && mcpNonEmptyStringList(input, "verification")
 	case "cleanup-preview", "cleanup-approve":
 		sourceCWD, cwdOK := mcpString(input, "source_cwd")
-		if !source || !cwdOK || cleanAbsPath(sourceCWD) != cleanAbsPath(record.Repo) || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || h.State != handoff.StateCleanupPendingHumanDecision || nativeSessionMatches(req, h.OwnerSession) || !mcpEventIdentityMatches(input, req) {
+		if !source || !cwdOK || cleanAbsPath(sourceCWD) != cleanAbsPath(record.Repo) || h.State != handoff.StateCleanupPendingHumanDecision || nativeSessionMatches(req, h.OwnerSession) || !mcpEventIdentityMatches(input, req) {
 			return false
 		}
 		if action == "cleanup-preview" {
@@ -1620,7 +1123,7 @@ func allowedHandoffMCPTool(req HookToolUseLifecycleRequest, record IssueOpsRecor
 	case "cleanup-record":
 		sourceCWD, cwdOK := mcpString(input, "source_cwd")
 		step, stepOK := mcpString(input, "step")
-		if !source || !cwdOK || !stepOK || cleanAbsPath(sourceCWD) != cleanAbsPath(record.Repo) || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || h.State != handoff.StateCleanupExecuting || h.Cleanup == nil || h.Cleanup.ApprovedBySession == nil || !mcpEventIdentityMatches(input, req) || !nativeSessionMatches(req, h.Cleanup.ApprovedBySession) {
+		if !source || !cwdOK || !stepOK || cleanAbsPath(sourceCWD) != cleanAbsPath(record.Repo) || h.State != handoff.StateCleanupExecuting || h.Cleanup == nil || h.Cleanup.ApprovedBySession == nil || !mcpEventIdentityMatches(input, req) || !nativeSessionMatches(req, h.Cleanup.ApprovedBySession) {
 			return false
 		}
 		return step == ownershipCleanupExpectedStep(h)

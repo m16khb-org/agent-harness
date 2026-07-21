@@ -28,11 +28,11 @@ func validateExecutionWorkspace(record model.IssueOpsRecord) error {
 
 func validateOwnershipEnvelope(record model.IssueOpsRecord) error {
 	h := record.ExecutionHandoff
-	if h == nil || h.ProtocolVersion != OwnershipTransferProtocolVersion || record.ExecutionWorkspace == nil {
+	if h == nil || record.ExecutionWorkspace == nil {
 		return fmt.Errorf("ownership handoff requires execution workspace")
 	}
-	if !canonicalNonSpace(h.WorkspaceEpoch) || !sha256Pattern.MatchString(h.WorkspaceSHA256) || h.WorkspaceEpoch != record.ExecutionWorkspace.WorkspaceEpoch || h.WorkerSession != nil || h.Result != nil || h.AcceptedAt != "" {
-		return fmt.Errorf("ownership handoff contains missing workspace seal or protocol-v1 authority")
+	if !canonicalNonSpace(h.WorkspaceEpoch) || !sha256Pattern.MatchString(h.WorkspaceSHA256) || h.WorkspaceEpoch != record.ExecutionWorkspace.WorkspaceEpoch {
+		return fmt.Errorf("ownership handoff contains a missing or mismatched workspace seal")
 	}
 	if err := validateHandoffExternalStringBounds(h); err != nil || !validOptionalTimestamps(h) {
 		return fmt.Errorf("ownership handoff external fields or timestamps are invalid")

@@ -293,7 +293,7 @@ func TestCycleFromRecordPreservesCompleteDurableOrcaIdentity(t *testing.T) {
 	record := issueops.IssueOpsRecord{
 		ID: "io-sealed", Repo: "/repo", Branch: "1-sealed", Phase: issueops.IssueOpsPhaseImplement,
 		ExecutionHandoff: &issueops.IssueOpsExecutionHandoff{
-			State: handoff.StateClaimed,
+			State: handoff.StateOwnerActive,
 			Orca: &issueops.IssueOpsOrcaIdentity{
 				RuntimeID: "runtime-1", RepoID: "repo-1", WorktreeID: "wt-1", WorktreeInstanceID: "instance-1",
 				WorktreePath: "/repo.wt/1-sealed", WorkerTerminalHandle: "term-1", WorkerPTYID: "pty-1",
@@ -402,24 +402,6 @@ func TestCycleFromRecordRejectsConflictingWorktreePaths(t *testing.T) {
 	}
 }
 
-func TestCycleFromRecordProjectsLegacyOrcaWorktreeOwnership(t *testing.T) {
-	record := issueops.IssueOpsRecord{
-		ID: "io-legacy", Repo: "/repo", Branch: "26-legacy", Phase: issueops.IssueOpsPhasePlan,
-		LegacyWorktreeMigration: &issueops.IssueOpsLegacyWorktreeMigration{
-			WorktreePath: "/repo.wt/26-legacy",
-			Orca: &issueops.IssueOpsOrcaIdentity{
-				WorktreeID: "wt-legacy", WorktreeInstanceID: "instance-legacy", WorktreePath: "/repo.wt/26-legacy",
-			},
-		},
-	}
-
-	cycle, problems := cycleFromRecord(record)
-
-	if len(problems) != 0 || cycle.WorktreePath != "/repo.wt/26-legacy" || cycle.OrcaWorktreeID != "wt-legacy" || cycle.OrcaWorktreeInstanceID != "instance-legacy" {
-		t.Fatalf("legacy Orca ownership projection = %#v, problems=%#v", cycle, problems)
-	}
-}
-
 func TestSortSnapshotIsDeterministicForDuplicateIdentities(t *testing.T) {
 	earlier := time.Date(2026, 7, 19, 1, 0, 0, 0, time.UTC)
 	later := earlier.Add(time.Minute)
@@ -523,19 +505,18 @@ func attachPreparingOrcaIdentity(t *testing.T, record *issueops.IssueOpsRecord, 
 	worker := record.Repo + ".worktrees" + string(filepath.Separator) + record.Branch
 	record.WorktreePath = worker
 	record.ExecutionHandoff = &issueops.IssueOpsExecutionHandoff{
-		ProtocolVersion: handoff.ProtocolVersion,
-		State:           handoff.StateCoordinatorPreparing,
-		Attempt:         1,
-		OwnershipEpoch:  "epoch-1",
-		AttemptBaseHead: head,
-		Driver:          "orca",
-		Agent:           "codex",
-		CoordinatorRoot: record.Repo,
-		WorkerRoot:      worker,
+		State: handoff.StateOwnershipDispatching, Attempt: 1, OwnershipEpoch: "epoch-1",
+		WorkspaceEpoch: "workspace-1", WorkspaceSHA256: strings.Repeat("a", 64), AttemptBaseHead: head,
+		Driver: "orca", Agent: "codex", CoordinatorRoot: record.Repo, WorkerRoot: worker,
 		Orca: &issueops.IssueOpsOrcaIdentity{
 			RuntimeID: "runtime-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/" + record.Branch,
 			WorktreeID: "wt-1", WorktreeInstanceID: "instance-1", WorktreePath: worker,
 		},
+	}
+	record.ExecutionWorkspace = &issueops.IssueOpsExecutionWorkspace{
+		State: "ready", WorkspaceEpoch: "workspace-1", Driver: "orca", Agent: "codex", CoordinatorRoot: record.Repo, WorkerRoot: worker,
+		PreparationSession: &issueops.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "source-session"}, BaseHead: head,
+		Orca: record.ExecutionHandoff.Orca,
 	}
 }
 

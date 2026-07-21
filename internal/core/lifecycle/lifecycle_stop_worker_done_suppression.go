@@ -16,10 +16,10 @@ import (
 // ORCA_TERMINAL_HANDLE or mailbox handles.
 //
 // Suppression requires a durable handoff that is authoritatively complete
-// (submitted, or closed+accepted) with a completed result and a persisted
+// with completion evidence and a persisted
 // terminal worker_done_projection state (sent, failed, or intent), plus exact
 // canonical worktree, branch, host, native-session, and agent identity. Any
-// mismatch or ambiguity fails closed and leaves legacy Stop behavior untouched.
+// mismatch or ambiguity fails closed and leaves normal Stop behavior untouched.
 func SuppressStopNextActionForCompletedWorker(req HookToolUseLifecycleRequest) bool {
 	record, ok := stopSuppressionRecord(req)
 	if !ok {
@@ -35,21 +35,10 @@ func SuppressStopNextActionForCompletedWorker(req HookToolUseLifecycleRequest) b
 	cwd := cleanAbsPath(req.CWD)
 	recordWorktree := cleanAbsPath(record.WorktreePath)
 	workerRoot := cleanAbsPath(h.WorkerRoot)
-	session := h.WorkerSession
-	if h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
-		session = h.OwnerSession
-	}
-	if cwd == "" || cwd != recordWorktree || recordWorktree != workerRoot || !nativeSessionMatches(req, session) {
+	if cwd == "" || cwd != recordWorktree || recordWorktree != workerRoot || !nativeSessionMatches(req, h.OwnerSession) {
 		return false
 	}
-	completed := h.State == handoff.StateSubmitted || (h.State == handoff.StateClosed && h.ClosedDisposition == handoff.DispositionAccepted)
-	if h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
-		completed = h.State == handoff.StateCleanupPendingHumanDecision && h.Completion != nil
-	}
-	if !completed {
-		return false
-	}
-	if h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion && (h.Result == nil || h.Result.Outcome != handoff.OutcomeCompleted) {
+	if h.State != handoff.StateCleanupPendingHumanDecision || h.Completion == nil {
 		return false
 	}
 	projection := h.WorkerDoneProjection

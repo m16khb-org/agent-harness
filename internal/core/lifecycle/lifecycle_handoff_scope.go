@@ -19,6 +19,9 @@ func classifyHandoffFenceScope(req HookToolUseLifecycleRequest, records []IssueO
 	if _, ok := lifecycleRecordID(req); ok {
 		return handoffFenceScopeWorkerOrCycleTargeted
 	}
+	if isLiteralNewCycleStartFromSource(req, records) {
+		return handoffFenceScopeSourceOnly
+	}
 	if looksLikeIssueOpsControl(req) {
 		return handoffFenceScopeAmbiguousCrossRoot
 	}
@@ -51,6 +54,48 @@ func classifyHandoffFenceScope(req HookToolUseLifecycleRequest, records []IssueO
 		}
 	}
 	return handoffFenceScopeSourceOnly
+}
+
+func isLiteralNewCycleStartFromSource(req HookToolUseLifecycleRequest, records []IssueOpsRecord) bool {
+	sourceRoot := ""
+	for _, record := range records {
+		candidate := cleanAbsPath(record.Repo)
+		if candidate == "" || cleanAbsPath(req.CWD) != candidate || cleanAbsPath(req.Repo) != candidate {
+			continue
+		}
+		if sourceRoot != "" && sourceRoot != candidate {
+			return false
+		}
+		sourceRoot = candidate
+	}
+	if sourceRoot == "" {
+		return false
+	}
+	tool := strings.TrimSpace(req.Tool)
+	if tool == "issueops_start" || tool == "mcp__agent_harness__issueops_start" {
+		if req.ToolInput == nil {
+			return false
+		}
+		repo, ok := req.ToolInput["repo"].(string)
+		return ok && resolveHookTargetPath(req.CWD, repo) == sourceRoot
+	}
+	if !searchrouting.IsShellTool(req.Tool) {
+		return false
+	}
+	command, ok := commandparse.ParseExactIssueOpsCommand(req.Command)
+	if !ok || command.Path != "start" {
+		return false
+	}
+	flags, ok := commandparse.ExactFlags(command,
+		map[string]bool{"--repo": true, "--branch": true},
+		map[string]bool{"--json": true},
+		map[string]bool{},
+	)
+	if !ok {
+		return false
+	}
+	repo, ok := flags["--repo"]
+	return ok && len(repo) == 1 && resolveHookTargetPath(req.CWD, repo[0]) == sourceRoot
 }
 
 func executionWorkerRoot(record IssueOpsRecord) string {

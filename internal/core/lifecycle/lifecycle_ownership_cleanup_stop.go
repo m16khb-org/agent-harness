@@ -25,7 +25,7 @@ func OwnershipCleanupHumanGate(req HookToolUseLifecycleRequest) (string, bool) {
 			continue
 		}
 		h := record.ExecutionHandoff
-		if h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || h.State != handoff.StateCleanupPendingHumanDecision || h.Completion == nil {
+		if h.State != handoff.StateCleanupPendingHumanDecision || h.Completion == nil {
 			continue
 		}
 		if h.OwnerSession != nil && nativeSessionMatches(req, h.OwnerSession) {

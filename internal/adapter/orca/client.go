@@ -376,7 +376,7 @@ func (c *Client) CreateTerminal(ctx context.Context, req port.OrcaCreateTerminal
 	return created, nil
 }
 
-// BootstrapTerminalAgent turns an exact, already-owned legacy terminal into
+// BootstrapTerminalAgent turns an exact, already-owned terminal into
 // an Orca-recognized agent target before inject dispatch. The worker terminal
 // is selected and sole-writer-attested by IssueOps; this adapter only emits a
 // fixed host command and waits for Orca to settle its TUI state.

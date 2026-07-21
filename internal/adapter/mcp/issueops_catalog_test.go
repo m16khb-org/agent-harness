@@ -15,7 +15,6 @@ func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 		"issueops_link_issue",
 		"issueops_prepare_branch",
 		"issueops_link_worktree",
-		"issueops_migrate_legacy_worktree",
 		"issueops_review_design",
 		"issueops_link_plan",
 		"issueops_prepare_worktree_tools",
@@ -64,9 +63,6 @@ func TestIssueOpsBasicToolsExposeStableDescriptors(t *testing.T) {
 	}
 	if !schemaRequires(byName["issueops_link_worktree"].InputSchema, "worktree_path") {
 		t.Fatalf("issueops_link_worktree must require worktree_path: %#v", byName["issueops_link_worktree"].InputSchema)
-	}
-	if !schemaHasProperty(byName["issueops_migrate_legacy_worktree"].InputSchema, "confirm") {
-		t.Fatalf("issueops_migrate_legacy_worktree schema missing confirm: %#v", byName["issueops_migrate_legacy_worktree"].InputSchema)
 	}
 	if !schemaRequires(byName["issueops_review_design"].InputSchema, "verification") {
 		t.Fatalf("issueops_review_design must require verification: %#v", byName["issueops_review_design"].InputSchema)
@@ -191,9 +187,6 @@ func TestIssueOpsLifecycleToolsExposeStableDescriptors(t *testing.T) {
 	if !schemaHasProperty(handoff.InputSchema, "expected_context_sha256") {
 		t.Fatalf("issueops_handoff schema missing expected_context_sha256: %#v", handoff.InputSchema)
 	}
-	if !schemaHasProperty(handoff.InputSchema, "approve_legacy_coordinator_seal") {
-		t.Fatalf("issueops_handoff schema missing explicit schema-v5 coordinator seal approval: %#v", handoff.InputSchema)
-	}
 	renderTemplate := byName["issueops_remote_render_template"]
 	for _, required := range []string{"kind", "template", "title"} {
 		if !schemaRequires(renderTemplate.InputSchema, required) {
@@ -295,7 +288,7 @@ func TestOwnershipTransferCLIAndMCPActionParity(t *testing.T) {
 		}
 	}
 	description := strings.ToLower(handoff.Description)
-	for _, phrase := range []string{"writing actions", "native actor", "preview", "no cleanup runs automatically", "handoff mode"} {
+	for _, phrase := range []string{"isolated owner", "fresh source session", "after merge", "no cleanup runs automatically"} {
 		if !strings.Contains(description, phrase) {
 			t.Fatalf("MCP handoff description must state %q: %s", phrase, handoff.Description)
 		}

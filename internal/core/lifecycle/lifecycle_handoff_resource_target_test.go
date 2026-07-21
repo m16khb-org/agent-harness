@@ -7,7 +7,7 @@ import (
 )
 
 func TestIssueOpsFenceResourceTargetsMatchCLIAndMCP(t *testing.T) {
-	repo, record, worktree := lifecycleHandoffRecord(t, "claimed")
+	repo, record, worktree := ownershipLifecycleRecord(t, "owner_active")
 	record.ExecutionHandoff.Orca.WorkerTerminalHandle = "term-worker"
 	record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-worker"
 	record.ExecutionHandoff.Orca.TaskID = "task-worker"

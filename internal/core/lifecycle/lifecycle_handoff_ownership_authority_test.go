@@ -1,7 +1,6 @@
 package lifecycle
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -50,12 +49,136 @@ func TestOwnershipFenceNeverCapturesOrdinarySourceMutation(t *testing.T) {
 			req := handoffEditRequest(record, repo, "claude", "coordinator-session", filepath.Join(repo, "internal", "ordinary.go"))
 			req.AgentID = "coordinator-agent"
 			if _, selected, reason := selectSupervisedHandoffRecord(req); selected || reason != "" {
-				t.Fatalf("ordinary source work must not select v2 state %s: selected=%v reason=%q", state, selected, reason)
+				t.Fatalf("ordinary source work must not select ownership state %s: selected=%v reason=%q", state, selected, reason)
 			}
 			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
-				t.Fatalf("ordinary source work must remain allowed in v2 state %s: %#v", state, got)
+				t.Fatalf("ordinary source work must remain allowed in ownership state %s: %#v", state, got)
 			}
 		})
+	}
+}
+
+func TestOwnershipFenceNeverCapturesNewSourceCycle(t *testing.T) {
+	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+	second := record
+	second.ID = newIssueOpsID(repo, "2589-other-active-cycle")
+	second.Branch = "2589-other-active-cycle"
+	second.ExecutionHandoff = cloneOwnershipHandoffForTest(record.ExecutionHandoff)
+	second.ExecutionHandoff.OwnershipEpoch = "ownership-epoch-2"
+	second.ExecutionHandoff.WorkerRoot = filepath.Join(filepath.Dir(record.ExecutionHandoff.WorkerRoot), second.Branch)
+	second.ExecutionWorkspace = nil
+	workspace := *record.ExecutionWorkspace
+	workspace.WorkerRoot = second.ExecutionHandoff.WorkerRoot
+	second.ExecutionWorkspace = &workspace
+	if _, err := writeIssueOps(IssueOpsStateRoot(), second); err != nil {
+		t.Fatal(err)
+	}
+
+	requests := []HookToolUseLifecycleRequest{
+		{
+			Repo: repo, CWD: repo, Host: "codex", SessionID: "source-session", AgentID: "source-agent",
+			Tool: "mcp__agent_harness__issueops_start", ToolInput: map[string]any{"repo": repo, "branch": "2598-add-firebase-anonymous-guest-module"},
+			EnforceWorktree: true, SourceCheckout: repo,
+		},
+		{
+			Repo: repo, CWD: repo, Host: "codex", SessionID: "source-session", AgentID: "source-agent",
+			Tool: "Bash", Command: "agent-harness issueops start --repo " + shellQuote(repo) + " --branch 2598-add-firebase-anonymous-guest-module --json",
+			EnforceWorktree: true, SourceCheckout: repo,
+		},
+	}
+	for _, req := range requests {
+		if _, selected, reason := selectSupervisedHandoffRecord(req); selected || reason != "" {
+			t.Fatalf("new source cycle must not inherit an existing ownership fence: tool=%s selected=%v reason=%q", req.Tool, selected, reason)
+		}
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("new source cycle must remain independent from active owner sessions: tool=%s result=%#v", req.Tool, got)
+		}
+	}
+}
+
+func TestOwnershipOwnerExactIDRoutesIssueOpsGatesAcrossParallelCycles(t *testing.T) {
+	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+	second := record
+	second.ID = newIssueOpsID(repo, "2589-other-active-cycle")
+	second.Branch = "2589-other-active-cycle"
+	second.ExecutionHandoff = cloneOwnershipHandoffForTest(record.ExecutionHandoff)
+	second.ExecutionHandoff.OwnershipEpoch = "ownership-epoch-2"
+	second.ExecutionHandoff.WorkerRoot = filepath.Join(filepath.Dir(worker), second.Branch)
+	workspace := *record.ExecutionWorkspace
+	workspace.WorkerRoot = second.ExecutionHandoff.WorkerRoot
+	second.ExecutionWorkspace = &workspace
+	if _, err := writeIssueOps(IssueOpsStateRoot(), second); err != nil {
+		t.Fatal(err)
+	}
+
+	requests := []HookToolUseLifecycleRequest{
+		{
+			Repo: worker, CWD: worker, Host: "claude", SessionID: "owner-session", AgentID: "owner-agent",
+			Tool: "mcp__agent_harness__issueops_record_intent", ToolInput: map[string]any{
+				"id": record.ID, "raw_request": "implement issue", "interpreted_intent": "implement only this issue", "success_criteria": []any{"verified implementation"},
+			},
+			EnforceWorktree: true, SourceCheckout: repo,
+		},
+		{
+			Repo: worker, CWD: worker, Host: "claude", SessionID: "owner-session", AgentID: "owner-agent",
+			Tool: "mcp__agent_harness__issueops_status", ToolInput: map[string]any{"id": record.ID},
+			EnforceWorktree: true, SourceCheckout: repo,
+		},
+	}
+	for _, req := range requests {
+		selected, ok, reason := selectSupervisedHandoffRecord(req)
+		if !ok || reason != "" || selected.ID != record.ID {
+			t.Fatalf("exact owner lifecycle id must select only its own cycle: tool=%s selected=%s ok=%v reason=%q", req.Tool, selected.ID, ok, reason)
+		}
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("exact owner IssueOps gate/observation blocked by another cycle: tool=%s result=%#v", req.Tool, got)
+		}
+	}
+}
+
+func TestParallelOwnershipCyclesDoNotCaptureExactPrepOnlyWorkerCycle(t *testing.T) {
+	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+	second := record
+	second.ID = newIssueOpsID(repo, "2589-other-active-cycle")
+	second.Branch = "2589-other-active-cycle"
+	second.ExecutionHandoff = cloneOwnershipHandoffForTest(record.ExecutionHandoff)
+	second.ExecutionHandoff.OwnershipEpoch = "ownership-epoch-2"
+	second.ExecutionHandoff.WorkerRoot = filepath.Join(filepath.Dir(record.ExecutionHandoff.WorkerRoot), second.Branch)
+	workspace := *record.ExecutionWorkspace
+	workspace.WorkerRoot = second.ExecutionHandoff.WorkerRoot
+	second.ExecutionWorkspace = &workspace
+	if _, err := writeIssueOps(IssueOpsStateRoot(), second); err != nil {
+		t.Fatal(err)
+	}
+	prep := linkIssueOpsWorktreeForGuardTest(t, repo, "2598-prep-only-cycle")
+
+	requests := []HookToolUseLifecycleRequest{
+		{
+			Repo: prep.path, CWD: prep.path, Host: "codex", SessionID: "prep-owner", AgentID: "prep-agent",
+			Tool: "mcp__agent_harness__issueops_record_intent", ToolInput: map[string]any{
+				"id": prep.id, "raw_request": "implement issue", "interpreted_intent": "implement only this issue", "success_criteria": []any{"verified implementation"},
+			},
+			EnforceWorktree: true, SourceCheckout: repo,
+		},
+		{
+			Repo: prep.path, CWD: prep.path, Host: "codex", SessionID: "prep-owner", AgentID: "prep-agent",
+			Tool: "mcp__agent_harness__issueops_status", ToolInput: map[string]any{"id": prep.id},
+			EnforceWorktree: true, SourceCheckout: repo,
+		},
+	}
+	for _, req := range requests {
+		if selected, ok, reason := selectSupervisedHandoffRecord(req); ok || reason != "" || selected.ID != "" {
+			t.Fatalf("prep-only exact cycle must stay outside unrelated ownership fences: tool=%s selected=%s ok=%v reason=%q", req.Tool, selected.ID, ok, reason)
+		}
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("prep-only worker IssueOps call was captured by another cycle: tool=%s result=%#v", req.Tool, got)
+		}
+	}
+	foreign := requests[0]
+	foreign.CWD = filepath.Join(filepath.Dir(prep.path), "2600-foreign-cycle")
+	foreign.Repo = repo
+	if got := BuildLifecyclePreToolUseDecision(foreign); got.Decision != "block" || !strings.Contains(got.Reason, "does not match the current source or worker context") {
+		t.Fatalf("foreign worktree reused prep-only lifecycle id: %#v", got)
 	}
 }
 
@@ -213,35 +336,6 @@ func TestOwnershipFenceStillProtectsWorkerRootAndCycleControl(t *testing.T) {
 	}
 }
 
-func TestHandoffGuardNarrowDiagnostics(t *testing.T) {
-	repo, record, worker := lifecycleHandoffRecord(t, handoff.StateCoordinatorPreparing)
-	planRel := filepath.Join("plans", "io-plan.md")
-	if err := os.MkdirAll(filepath.Join(worker, "plans"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(worker, planRel), []byte("# plan\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	record.PlanPath = planRel
-	updated, err := writeIssueOps(IssueOpsStateRoot(), record)
-	if err != nil {
-		t.Fatal(err)
-	}
-	gitMismatch := handoffEditRequest(updated, repo, "codex", "coordinator", "")
-	gitMismatch.Tool = "Bash"
-	gitMismatch.Command = "git -C " + worker + " add -- " + planRel
-	if got := BuildLifecyclePreToolUseDecision(gitMismatch); got.Decision != "block" || !strings.Contains(got.Reason, filepath.Join(worker, planRel)) {
-		t.Fatalf("v1 relative plan Git path must name its exact absolute rewrite: %#v", got)
-	}
-
-	resumeBind := handoffEditRequest(updated, repo, "codex", "coordinator", "")
-	resumeBind.Tool = "mcp__agent_harness__issueops_resume"
-	resumeBind.ToolInput = map[string]any{"id": updated.ID, "bind": true}
-	if got := BuildLifecyclePreToolUseDecision(resumeBind); got.Decision != "block" || !strings.Contains(got.Reason, "omit bind or set bind=false") {
-		t.Fatalf("resume bind diagnostic must name the safe payload correction: %#v", got)
-	}
-}
-
 func TestOwnershipSessionGuidanceRendersClaimAndOrientationBoundary(t *testing.T) {
 	_, _, worker := ownershipLifecycleRecord(t, handoff.StateOwnershipDispatched)
 	guidance := BuildIssueOpsHandoffSessionGuidance(worker, "claude", "owner-session", "owner-agent")
@@ -258,29 +352,34 @@ func TestOwnershipSessionGuidanceRendersClaimAndOrientationBoundary(t *testing.T
 
 func ownershipLifecycleRecord(t *testing.T, state string) (string, IssueOpsRecord, string) {
 	t.Helper()
-	repo, record, worker := lifecycleHandoffRecord(t, handoff.StateClaimed)
-	h := record.ExecutionHandoff
-	h.ProtocolVersion = handoff.OwnershipTransferProtocolVersion
-	h.State = state
-	h.WorkspaceEpoch = "workspace-epoch-1"
-	h.WorkspaceSHA256 = strings.Repeat("c", 64)
-	h.WorkerSession = nil
-	h.Result = nil
-	h.AcceptedAt = ""
-	h.OwnerSession = nil
-	h.Orientation = nil
-	h.Completion = nil
-	workspaceOrca := *h.Orca
-	workspaceOrca.WorkerPTYID = ""
-	workspaceOrca.WorkerTerminalHandle = ""
-	workspaceOrca.WorkerMailboxHandle = ""
-	workspaceOrca.TaskID = ""
-	workspaceOrca.DispatchID = ""
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := guardRepoWithCycle(t, "1-demo", IssueOpsPhaseImplement)
+	record, ok := ActiveIssueOpsCycleForBranch(repo, "1-demo")
+	if !ok {
+		t.Fatal("active record missing")
+	}
+	worker := makeIssueOpsGuardWorktreeForTest(t, repo, "1-demo")
+	linkIssueOpsBranchEvidenceForTest(t, repo, "1-demo")
+	if _, err := LinkIssueOpsWorktree(IssueOpsStateRoot(), record.ID, worker); err != nil {
+		t.Fatal(err)
+	}
+	record, _ = ReadIssueOps(IssueOpsStateRoot(), record.ID)
+	baseHead := strings.Repeat("b", 40)
+	orca := &issueopsmodel.IssueOpsOrcaIdentity{RuntimeID: "runtime-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/1-demo", WorktreeID: "wt-1", WorktreeInstanceID: "inst-1", WorktreePath: worker, WorkerPTYID: "pty-1", WorkerTerminalHandle: "term-1", WorkerMailboxHandle: "term-1", TaskID: "task-1", DispatchID: "dispatch-1"}
+	h := &issueopsmodel.IssueOpsExecutionHandoff{
+		State: state, Attempt: 1, OwnershipEpoch: "ownership-epoch-1", WorkspaceEpoch: "workspace-epoch-1", WorkspaceSHA256: strings.Repeat("c", 64),
+		AttemptBaseHead: baseHead, ContextSHA256: strings.Repeat("a", 64), ContextSourceSHA256: strings.Repeat("d", 64), ContextVersion: handoff.ContextVersion,
+		Driver: "orca", Agent: "claude", DeliveryMode: "inject", CoordinatorRoot: repo, CoordinatorMailboxHandle: "term-coordinator", WorkerRoot: worker, Orca: orca,
+	}
+	record.ExecutionHandoff = h
+	workspaceOrca := *orca
+	workspaceOrca.WorkerPTYID, workspaceOrca.WorkerTerminalHandle, workspaceOrca.WorkerMailboxHandle = "", "", ""
+	workspaceOrca.TaskID, workspaceOrca.DispatchID = "", ""
 	record.ExecutionWorkspace = &issueopsmodel.IssueOpsExecutionWorkspace{
 		State: "ready", WorkspaceEpoch: h.WorkspaceEpoch, Driver: "orca", Agent: "claude",
 		CoordinatorRoot: repo, WorkerRoot: worker,
 		PreparationSession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "claude", SessionID: "coordinator-session", AgentID: "coordinator-agent"},
-		BaseHead:           h.AttemptBaseHead, Orca: &workspaceOrca,
+		BaseHead:           baseHead, Orca: &workspaceOrca,
 	}
 	if state == handoff.StateOwnerOrienting || state == handoff.StateOwnerActive || state == handoff.StateCleanupPendingHumanDecision || state == handoff.StateCleanupExecuting || state == handoff.StateClosed || state == handoff.StateRecoveryRequired {
 		h.OwnerSession = &issueopsmodel.IssueOpsHostSessionIdentity{Host: "claude", SessionID: "owner-session", AgentID: "owner-agent"}
@@ -299,6 +398,34 @@ func ownershipLifecycleRecord(t *testing.T, state string) (string, IssueOpsRecor
 		t.Fatal(err)
 	}
 	return repo, updated, worker
+}
+
+func cloneOwnershipHandoffForTest(value *issueopsmodel.IssueOpsExecutionHandoff) *issueopsmodel.IssueOpsExecutionHandoff {
+	cloned := *value
+	if value.OwnerSession != nil {
+		owner := *value.OwnerSession
+		cloned.OwnerSession = &owner
+	}
+	if value.Orientation != nil {
+		orientation := *value.Orientation
+		cloned.Orientation = &orientation
+	}
+	if value.Orca != nil {
+		orca := *value.Orca
+		cloned.Orca = &orca
+	}
+	return &cloned
+}
+
+func handoffEditRequest(record IssueOpsRecord, cwd, host, session, target string) HookToolUseLifecycleRequest {
+	paths := []string(nil)
+	if target != "" {
+		paths = []string{target}
+	}
+	return HookToolUseLifecycleRequest{
+		Repo: cwd, CWD: cwd, Host: host, SessionID: session, AgentID: "worker-1", Tool: "Edit", Paths: paths,
+		EnforceWorktree: true, ExpectedWorktree: record.WorktreePath, SourceCheckout: record.Repo,
+	}
 }
 
 func ownershipAcknowledgementCommand(record IssueOpsRecord, worker string) string {

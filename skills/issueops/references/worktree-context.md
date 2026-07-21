@@ -18,7 +18,7 @@ Use this as the only generic/default worktree recipe:
 agent-harness issueops worktree prepare --id "$ISSUEOPS_ID" --orchestrator auto --json
 ```
 
-`auto` may fall back to the unchanged inline flow only when the Orca readiness probe fails before mutation. Inspect `resolved_mode`; if it is `orca`, load `orca-handoff.md` and create a fresh worker through the supervised path. Do not also run `git worktree add` for that same cycle. If the byte-exact legacy response has no `resolved_mode`, execute its returned inline command. Absence of an explicit handoff request is not authorization for inline. Coordination cost or implementation simplicity is not a valid inline reason.
+`auto` may fall back to the inline flow only when the Orca readiness probe fails before mutation. Inspect `resolved_mode`; if it is `orca`, load `orca-handoff.md` and create a fresh worker through the supervised path. Do not also run `git worktree add` for that same cycle. If the response selects inline mode, execute its returned command. Absence of an explicit handoff request is not authorization for inline. Coordination cost or implementation simplicity is not a valid inline reason.
 
 Never pass `--orchestrator inline` unless the current user explicitly requested inline execution or a documented recovery procedure requires it.
 
@@ -42,7 +42,7 @@ agent-harness issueops design review --id "$ISSUEOPS_ID" \
 agent-harness issueops worktree prepare --id "$ISSUEOPS_ID" --orchestrator auto --json
 ```
 
-If `resolved_mode` is `orca`, stop this generic sequence, load `orca-handoff.md`, and create the supervised fresh worker. If the user requested a full handoff, the coordinator stops implementation after dispatch. If the command returned the legacy inline fallback, execute the returned command and continue with the existing link-worktree flow.
+If `resolved_mode` is `orca`, stop this generic sequence, load `orca-handoff.md`, and create the supervised fresh worker. If the user requested a full handoff, the coordinator stops implementation after dispatch. If the command selected inline fallback, execute the returned command and continue with the link-worktree flow.
 
 ## Exceptional Explicit Inline
 
@@ -52,11 +52,11 @@ Explicit inline remains available only for an auditable user request or document
 # Current user explicitly requested inline execution.
 agent-harness issueops worktree prepare --id "$ISSUEOPS_ID" --orchestrator inline --inline-reason user-requested --json
 
-# A documented recovery procedure requires the legacy inline path.
+# A documented recovery procedure requires the inline path.
 agent-harness issueops worktree prepare --id "$ISSUEOPS_ID" --orchestrator inline --inline-reason recovery --json
 ```
 
-After an authorized explicit inline result or an automatic legacy fallback, use the existing sibling-worktree flow:
+After an authorized explicit inline result or an automatic pre-mutation fallback, use the existing sibling-worktree flow:
 
 ```bash
 worktree_path="../$(basename "$PWD").worktrees/${branch_slug//\//-}"
@@ -156,8 +156,8 @@ Use `rg` and native file tools rooted at the linked worktree as the default cont
 - If a separately installed code-intelligence tool is available, make sure every call is rooted at the linked worktree path, not the source checkout; a source-checkout root is stale by construction.
 - After edits, use `rg` plus relevant tests to catch missed references or regressions.
 
-## Protocol-v2 source-main availability
+## Source-main availability
 
-The preceding v1 edit guard applies to the isolated implementation cycle, not all work at the source root. In protocol-v2, workspace provisioning before ownership transfer keeps the source main worktree available before, during, and after handoff. Once ownership is sealed, do not steer or mutate that exact cycle from source; do continue unrelated source file, Git, and MCP work.
+The edit guard applies to the isolated implementation cycle, not all work at the source root. Workspace provisioning before ownership transfer keeps the source main worktree available before, during, and after handoff. Once ownership is sealed, do not steer or mutate that exact cycle from source; do continue unrelated source file, Git, and MCP work.
 
-Select the fence by canonical worker root, exact cycle ID, native owner, or persisted Orca resource. A session binding is routing metadata; same-relative-path detection is only a non-blocking warning. Protocol-v1 records remain historical and are never schema- or background-converted.
+Select the fence by canonical worker root, exact cycle ID, native owner, or persisted Orca resource. An exact lifecycle ID takes precedence over source-wide inference. A session binding is routing metadata; same-relative-path detection is only a non-blocking warning.

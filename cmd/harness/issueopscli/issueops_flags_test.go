@@ -46,7 +46,6 @@ func TestIssueOpsUsageListsNewlyAddedSubcommands(t *testing.T) {
 		"issueops remote-score",
 		"compatibility-review",
 		"issueops worktree prepare --id ID [--orchestrator auto|orca|inline] [--inline-reason user-requested|recovery]",
-		"issueops worktree migrate-legacy --id ID --confirm",
 	}
 	for _, fragment := range wantFragments {
 		if !strings.Contains(usage, fragment) {

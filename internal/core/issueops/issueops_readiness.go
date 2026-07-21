@@ -3,6 +3,7 @@ package issueops
 import (
 	"strings"
 
+	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/issueops/implementation"
 	"agent-harness/internal/core/issueops/intentdesign"
 	"agent-harness/internal/core/issueops/model"
@@ -123,8 +124,8 @@ func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	}
 	missing = append(missing, issueOpsCompatibilityReviewMissing(record)...)
 	missing = append(missing, issueOpsDevilsAdvocateReviewMissing(record)...)
-	if record.ExecutionHandoff != nil && record.ExecutionHandoff.State != "claimed" && record.ExecutionHandoff.State != "submitted" && !(record.ExecutionHandoff.State == "closed" && record.ExecutionHandoff.ClosedDisposition == "accepted") {
-		missing = append(missing, "handoff_worker_claim")
+	if record.ExecutionHandoff != nil && record.ExecutionHandoff.State != handoff.StateOwnerActive {
+		missing = append(missing, "handoff_owner_active")
 	}
 	return IssueOpsReadiness{
 		OK:           true,

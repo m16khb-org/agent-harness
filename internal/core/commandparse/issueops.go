@@ -126,29 +126,19 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 	case "worktree prepare-tools":
 		return v("--id"), b("--json"), r, true
 	case "handoff start":
-		values := v("--id", "--coordinator-recipient", "--coordinator-host", "--coordinator-session-id", "--coordinator-agent-id", "--source-cwd", "--workspace-epoch", "--expected-context-sha256", "--criteria-id", "--required-doc", "--required-skill", "--verification", "--verification-command", "--stop-condition", "--worker-scope", "--heartbeat-cadence", "--result-format")
-		for _, name := range []string{"--criteria-id", "--required-doc", "--required-skill", "--verification", "--verification-command", "--stop-condition"} {
+		values := v("--id", "--coordinator-recipient", "--coordinator-host", "--coordinator-session-id", "--coordinator-agent-id", "--source-cwd", "--workspace-epoch", "--expected-context-sha256", "--criteria-id", "--required-doc", "--required-skill", "--verification", "--stop-condition", "--worker-scope", "--heartbeat-cadence", "--result-format")
+		for _, name := range []string{"--criteria-id", "--required-doc", "--required-skill", "--verification", "--stop-condition"} {
 			r[name] = true
 		}
 		return values, b("--allow-codex-hook-trust-bypass", "--confirm", "--json"), r, true
-	case "handoff codex-hooks-list":
-		return v("--id"), b("--json"), r, true
 	case "handoff recover":
 		return v("--id", "--action", "--reason", "--cleanup-disposition", "--cleanup-step"), b("--confirm", "--force", "--json"), r, true
 	case "handoff publish":
-		return v("--id", "--host", "--session-id", "--agent-id", "--source-cwd"), b("--approve-legacy-coordinator-seal", "--confirm", "--json"), r, true
-	case "handoff accept":
-		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--final-head", "--host", "--session-id", "--agent-id", "--source-cwd"), b("--json"), r, true
+		return v("--id", "--host", "--session-id", "--agent-id", "--cwd"), b("--confirm", "--json"), r, true
 	case "handoff claim":
 		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id", "--cwd", "--orca-worktree-id"), b("--json"), r, true
 	case "handoff acknowledge-context":
 		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id", "--cwd", "--issue-url", "--plan-sha256", "--understanding", "--scope-confirmation"), b("--json"), r, true
-	case "handoff finish":
-		values := v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id", "--outcome", "--final-head", "--changed-file", "--turing-report", "--verification", "--cleanup-receipt", "--evidence-digest", "--task-id", "--dispatch-id")
-		for _, name := range []string{"--changed-file", "--verification", "--cleanup-receipt"} {
-			r[name] = true
-		}
-		return values, b("--no-change", "--json"), r, true
 	case "handoff complete":
 		values := v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id", "--cwd", "--final-head", "--changed-file", "--turing-report", "--verification")
 		for _, name := range []string{"--changed-file", "--verification"} {

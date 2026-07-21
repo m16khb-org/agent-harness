@@ -20,13 +20,13 @@ func TestClassifyOperationalHealthRejectsBoundCycleWithoutFreshHeartbeat(t *test
 	}
 }
 
-func TestClassifyOperationalHealthAcceptsFreshClaimedExactResources(t *testing.T) {
+func TestClassifyOperationalHealthAcceptsFreshOwnerExactResources(t *testing.T) {
 	now := operationalTestNow()
 
 	result := Classify(healthyOperationalSnapshot(now), Options{Now: now})
 
 	if !result.Healthy || len(result.Findings) != 0 {
-		t.Fatalf("fresh exact claimed cycle should be healthy: %#v", result)
+		t.Fatalf("fresh exact owner cycle should be healthy: %#v", result)
 	}
 }
 
@@ -144,7 +144,7 @@ func TestClassifyOperationalHealthUsesGlobalOrcaOwnersAcrossRepos(t *testing.T) 
 		Repo:                   "/other",
 		Branch:                 "2-foreign-live",
 		Phase:                  "implement",
-		HandoffState:           "claimed",
+		HandoffState:           "owner_active",
 		Attempt:                1,
 		OwnershipEpoch:         "epoch-foreign",
 		ContextSHA256:          "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -232,7 +232,7 @@ func TestClassifyOperationalHealthPreservesExactPlanningCycleForInvocation(t *te
 
 func TestClassifyOperationalHealthPreservesOnlyCompleteExactNonClaimedCycles(t *testing.T) {
 	now := operationalTestNow()
-	for _, state := range []string{"", "coordinator_preparing", "dispatched", "submitted", "recovery_required"} {
+	for _, state := range []string{"", "ownership_dispatching", "ownership_dispatched", "owner_orienting", "recovery_required"} {
 		t.Run(firstNonEmpty(state, "no-handoff"), func(t *testing.T) {
 			snapshot := minimalOperationalSnapshot()
 			cycle := Cycle{ID: "io-preserved", Repo: "/repo", Branch: "main", Phase: "plan", HandoffState: state}
@@ -599,7 +599,7 @@ func healthyOperationalSnapshot(now time.Time) Snapshot {
 		Repo:                   "/repo",
 		Branch:                 "1-live",
 		Phase:                  "implement",
-		HandoffState:           "claimed",
+		HandoffState:           "owner_active",
 		Attempt:                1,
 		OwnershipEpoch:         "epoch-1",
 		ContextSHA256:          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

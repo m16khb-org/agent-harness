@@ -126,7 +126,6 @@ func issueOpsWorktreeDeps() worktreecmd.Deps {
 		PrintJSON:      printJSON,
 		PrintError:     printIssueOpsErrorJSON,
 		PrepareHandoff: prepareIssueOpsHandoffWorktree,
-		MigrateLegacy:  migrateIssueOpsLegacyWorktree,
 	}
 }
 

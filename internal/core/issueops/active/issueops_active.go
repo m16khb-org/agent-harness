@@ -26,7 +26,7 @@ func CycleForBranch(store Store, repo, branch string) (model.IssueOpsRecord, boo
 	if err != nil {
 		return model.IssueOpsRecord{}, false
 	}
-	if record.Phase == model.IssueOpsPhaseDone && !retainsOwnershipTransferAuthority(record) {
+	if record.Phase == model.IssueOpsPhaseDone && !retainsHandoffAuthority(record) {
 		return model.IssueOpsRecord{}, false
 	}
 	if planBranchMismatchesRecord(record) {
@@ -79,7 +79,7 @@ func LinkedWorktreeCyclesForRepo(store Store, repo string) []model.IssueOpsRecor
 		if err != nil {
 			continue
 		}
-		if record.Phase == model.IssueOpsPhaseDone && !retainsOwnershipTransferAuthority(record) {
+		if record.Phase == model.IssueOpsPhaseDone && !retainsHandoffAuthority(record) {
 			continue
 		}
 		if planBranchMismatchesRecord(record) {
@@ -110,9 +110,9 @@ func LinkedWorktreeCyclesForRepo(store Store, repo string) []model.IssueOpsRecor
 	return records
 }
 
-func retainsOwnershipTransferAuthority(record model.IssueOpsRecord) bool {
+func retainsHandoffAuthority(record model.IssueOpsRecord) bool {
 	h := record.ExecutionHandoff
-	return h != nil && h.ProtocolVersion == 2 && h.State != "closed"
+	return h != nil && h.State != "closed"
 }
 
 // NonDoneCyclesForRepo returns every non-done cycle whose record.Repo matches
@@ -148,8 +148,7 @@ func NonDoneCyclesForRepo(store Store, repo string) []model.IssueOpsRecord {
 }
 
 // SupervisedHandoffCyclesForRepo keeps nonterminal durable handoff authority
-// even when the linked worktree or its .git metadata has disappeared. Legacy
-// cycles continue to use LinkedWorktreeCyclesForRepo's stale-release behavior.
+// even when the linked worktree or its .git metadata has disappeared.
 func SupervisedHandoffCyclesForRepo(store Store, repo string) []model.IssueOpsRecord {
 	repo = pathutil.CleanAbsPath(repo)
 	if repo == "" {
@@ -166,8 +165,7 @@ func SupervisedHandoffCyclesForRepo(store Store, repo string) []model.IssueOpsRe
 		if record.ExecutionHandoff == nil {
 			continue
 		}
-		legacyClosedPublication := err != nil && record.Invalid && record.SchemaVersion == 5 && record.ExecutionHandoff.State == "closed" && record.ExecutionHandoff.ClosedDisposition == "accepted" && record.ExecutionHandoff.PublishReceipt != nil
-		if record.ExecutionHandoff.State == "closed" && !legacyClosedPublication {
+		if record.ExecutionHandoff.State == "closed" {
 			continue
 		}
 		if err != nil && !safelyIdentifiableSupervisedHandoff(record) {

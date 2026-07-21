@@ -69,7 +69,7 @@ type Finding struct {
 // age-only needs-review fallback.
 func Classify(record model.IssueOpsRecord, probe Probe, maxAge time.Duration) (Finding, bool) {
 	if record.Phase == model.IssueOpsPhaseDone {
-		if h := record.ExecutionHandoff; h != nil && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State == handoff.StateCleanupPendingHumanDecision {
+		if h := record.ExecutionHandoff; h != nil && h.State == handoff.StateCleanupPendingHumanDecision {
 			return Finding{ID: record.ID, Branch: strings.TrimSpace(record.Branch), Phase: string(record.Phase), Category: CategoryHumanCleanupPending, Reasons: []string{"human_cleanup_pending"}, WorktreePath: strings.TrimSpace(record.WorktreePath), Releasable: false}, true
 		}
 		// A done cycle is normally never flagged — except the #2581 blind spot:

@@ -19,7 +19,7 @@ func completedOwnershipCleanupRecord(t *testing.T) (string, IssueOpsRecord) {
 	if _, err := WriteIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}
-	completed, err := CompleteIssueOpsOwnershipTransfer(stateRoot, IssueOpsHandoffFinishRequest{ID: record.ID, Attempt: record.ExecutionHandoff.Attempt, OwnershipEpoch: record.ExecutionHandoff.OwnershipEpoch, ContextSHA256: record.ExecutionHandoff.ContextSHA256, Host: owner.Host, SessionID: owner.SessionID, AgentID: owner.AgentID, CWD: owner.CWD, FinalHead: finalHead, TuringReportPath: "plans/test.md", Verification: []string{"go test ./..."}})
+	completed, err := CompleteIssueOpsHandoff(stateRoot, IssueOpsHandoffCompleteRequest{ID: record.ID, Attempt: record.ExecutionHandoff.Attempt, OwnershipEpoch: record.ExecutionHandoff.OwnershipEpoch, ContextSHA256: record.ExecutionHandoff.ContextSHA256, Host: owner.Host, SessionID: owner.SessionID, AgentID: owner.AgentID, CWD: owner.CWD, FinalHead: finalHead, TuringReportPath: "plans/test.md", Verification: []string{"go test ./..."}})
 	if err != nil {
 		t.Fatal(err)
 	}

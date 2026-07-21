@@ -82,25 +82,6 @@ type issueOpsOrcaTerminalAgentBootstrapper interface {
 	BootstrapTerminalAgent(context.Context, port.OrcaBootstrapTerminalAgentRequest) error
 }
 
-func IssueOpsPreDispatchReadiness(record IssueOpsRecord) IssueOpsReadiness {
-	ready := IssueOpsImplementationReadiness(record)
-	missing := make([]string, 0, len(ready.Missing))
-	for _, item := range ready.Missing {
-		if item != "handoff_worker_claim" {
-			missing = append(missing, item)
-		}
-	}
-	if record.ExecutionHandoff == nil || record.ExecutionHandoff.State != handoff.StateCoordinatorPreparing {
-		missing = append(missing, "handoff_coordinator_preparing")
-	}
-	if record.ExecutionHandoff == nil || record.ExecutionHandoff.Orca == nil || strings.TrimSpace(record.ExecutionHandoff.Orca.WorktreeID) == "" {
-		missing = append(missing, "handoff_orca_worktree")
-	}
-	ready.Missing = uniqueStrings(missing)
-	ready.Ready = len(ready.Missing) == 0
-	return ready
-}
-
 func StartIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHandoffStartRequest, client IssueOpsOrcaDispatchClient, clock IssueOpsHandoffStartClock) (IssueOpsHandoffStartResult, error) {
 	return startIssueOpsHandoff(ctx, stateRoot, req, client, clock, issueOpsHandoffStartHooks{})
 }
@@ -110,78 +91,10 @@ func startIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 	if err != nil {
 		return IssueOpsHandoffStartResult{}, err
 	}
-	if record.ExecutionHandoff == nil {
-		return previewOwnershipHandoffStart(ctx, stateRoot, record, req, client, clock, hooks)
-	}
-	if record.ExecutionHandoff.State != handoff.StateCoordinatorPreparing {
+	if record.ExecutionHandoff != nil {
 		return projectHandoffStart(record, false, ""), nil
 	}
-	if record.ExecutionHandoff.PendingOperation != nil {
-		fence := handoffFence(record)
-		now := issueOpsHandoffStartNow(clock)
-		if err := markHandoffPrepareRecovery(stateRoot, record.ID, fence, "pending_operation_requires_recovery", "start observed an unresolved external mutation", now); err != nil {
-			return IssueOpsHandoffStartResult{}, err
-		}
-		record, err = ReadIssueOps(stateRoot, record.ID)
-		return projectHandoffStart(record, false, ""), err
-	}
-	readiness := IssueOpsPreDispatchReadiness(record)
-	if !readiness.Ready {
-		return IssueOpsHandoffStartResult{}, fmt.Errorf("handoff pre-dispatch readiness missing: %s", strings.Join(readiness.Missing, ", "))
-	}
-	coordinatorSession := model.IssueOpsHostSessionIdentity{Host: strings.TrimSpace(req.CoordinatorHost), SessionID: strings.TrimSpace(req.CoordinatorSessionID), AgentID: strings.TrimSpace(req.CoordinatorAgentID)}
-	coordinatorRecipient, err := resolveHandoffCoordinatorRecipient(ctx, stateRoot, record, req.CoordinatorRecipient, coordinatorSession, client)
-	if err != nil {
-		return IssueOpsHandoffStartResult{}, err
-	}
-	identityRecord := record
-	identityHandoff := *record.ExecutionHandoff
-	identityHandoff.CoordinatorSession = &coordinatorSession
-	identityRecord.ExecutionHandoff = &identityHandoff
-	if !handoff.CoordinatorIdentityMatches(identityRecord, coordinatorSession, req.SourceCWD) {
-		return IssueOpsHandoffStartResult{}, fmt.Errorf("handoff start requires authenticated coordinator native session from the exact source checkout")
-	}
-	contextOptions, err := resolveHandoffContextOptions(record, req.Context)
-	if err != nil {
-		return IssueOpsHandoffStartResult{}, err
-	}
-	contextRecord := record
-	contextHandoff := *record.ExecutionHandoff
-	contextHandoff.CoordinatorMailboxHandle = coordinatorRecipient
-	contextHandoff.CoordinatorSession = &coordinatorSession
-	contextRecord.ExecutionHandoff = &contextHandoff
-	packet, err := handoff.BuildContext(contextRecord, contextOptions)
-	if err != nil {
-		return IssueOpsHandoffStartResult{}, err
-	}
-	if !req.Confirm {
-		result := projectHandoffStart(record, true, packet.PlanSHA256)
-		result.ContextSHA256 = packet.SHA256
-		result.CoordinatorRecipient = coordinatorRecipient
-		result.CodexHookTrustBypassAttested = contextOptions.AllowCodexHookTrustBypass
-		if codexHookTrustBypassRequired(record) && !contextOptions.AllowCodexHookTrustBypass {
-			result.NextCommand = attestedHandoffPreviewCommand(record, coordinatorRecipient, coordinatorSession)
-		} else {
-			result.ConfirmedCommand = confirmedHandoffStartCommand(record, coordinatorRecipient, coordinatorSession, contextOptions, packet.SHA256)
-			result.NextCommand = result.ConfirmedCommand
-		}
-		return result, nil
-	}
-	if codexHookTrustBypassRequired(record) && !contextOptions.AllowCodexHookTrustBypass {
-		return IssueOpsHandoffStartResult{}, fmt.Errorf("confirmed supervised Codex start requires --allow-codex-hook-trust-bypass after the documented hooks/list attestation")
-	}
-	if client == nil {
-		return IssueOpsHandoffStartResult{}, fmt.Errorf("Orca dispatch dependency is unavailable")
-	}
-	if err := validateExpectedContextSHA256(req.ExpectedContextSHA256); err != nil {
-		return IssueOpsHandoffStartResult{}, err
-	}
-	nextNow := func() string { return issueOpsHandoffStartNow(clock) }
-	record, err = persistHandoffContext(stateRoot, record.ID, coordinatorRecipient, coordinatorSession, handoff.CanonicalContextOptions(contextOptions), req.ExpectedContextSHA256, nextNow())
-	if err != nil {
-		return IssueOpsHandoffStartResult{}, err
-	}
-	return dispatchStartedHandoff(ctx, stateRoot, record, client, packet, nextNow, hooks)
+	return previewOwnershipHandoffStart(ctx, stateRoot, record, req, client, clock, hooks)
 }
 
 func dispatchStartedHandoff(ctx context.Context, stateRoot string, record IssueOpsRecord, client IssueOpsOrcaDispatchClient, packet handoff.ContextPacket, now func() string, hooks issueOpsHandoffStartHooks) (IssueOpsHandoffStartResult, error) {
@@ -261,7 +174,6 @@ func previewOwnershipHandoffStart(ctx context.Context, stateRoot string, record 
 	}
 	contextRecord := record
 	contextRecord.ExecutionHandoff = &IssueOpsExecutionHandoff{
-		ProtocolVersion:          handoff.OwnershipTransferProtocolVersion,
 		State:                    handoff.StateOwnershipDispatching,
 		Attempt:                  1,
 		OwnershipEpoch:           ownershipPreviewEpoch(record.ID, workspace.WorkspaceEpoch, head),
@@ -435,7 +347,7 @@ func confirmedHandoffStartCommand(record IssueOpsRecord, recipient string, coord
 		parts = append(parts, "--coordinator-agent-id "+quoteHandoffCLIToken(coordinator.AgentID))
 	}
 	parts = append(parts, "--source-cwd "+quoteHandoffCLIToken(record.Repo))
-	if record.ExecutionHandoff != nil && record.ExecutionHandoff.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
+	if record.ExecutionHandoff != nil {
 		parts = append(parts, "--workspace-epoch "+quoteHandoffCLIToken(record.ExecutionHandoff.WorkspaceEpoch))
 	}
 	if options.AllowCodexHookTrustBypass {
@@ -1169,53 +1081,6 @@ func attestHandoffSoleWriter(ctx context.Context, record IssueOpsRecord, client 
 	return nil
 }
 
-func persistHandoffContext(stateRoot, id, coordinatorRecipient string, coordinatorSession model.IssueOpsHostSessionIdentity, options model.IssueOpsExecutionHandoffContextOptions, expectedContextSHA256 string, now string) (IssueOpsRecord, error) {
-	var persisted IssueOpsRecord
-	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
-		record, err := ReadIssueOps(stateRoot, id)
-		if err != nil {
-			return err
-		}
-		if err := validateHandoffStartCheckpoint(record); err != nil {
-			return err
-		}
-		if sealed := strings.TrimSpace(record.ExecutionHandoff.CoordinatorMailboxHandle); sealed != "" && sealed != coordinatorRecipient {
-			return fmt.Errorf("coordinator recipient differs from sealed handoff authority")
-		}
-		record.ExecutionHandoff.CoordinatorMailboxHandle = coordinatorRecipient
-		if record.ExecutionHandoff.CoordinatorSession != nil && !reflect.DeepEqual(*record.ExecutionHandoff.CoordinatorSession, coordinatorSession) {
-			return fmt.Errorf("coordinator native session differs from sealed handoff authority")
-		}
-		record.ExecutionHandoff.CoordinatorSession = &coordinatorSession
-		packet, err := handoff.BuildContext(record, handoff.ContextOptionsFromModel(options))
-		if err != nil {
-			return fmt.Errorf("re-render handoff context before persist: %w", err)
-		}
-		if packet.SHA256 != expectedContextSHA256 {
-			return fmt.Errorf("expected_context_sha256 does not match freshly recomputed sealed context")
-		}
-		if record.ExecutionHandoff.ContextSHA256 != "" {
-			persistedOptions := model.IssueOpsExecutionHandoffContextOptions{}
-			if record.ExecutionHandoff.ContextOptions != nil {
-				persistedOptions = handoff.CanonicalContextOptions(handoff.ContextOptionsFromModel(*record.ExecutionHandoff.ContextOptions))
-			}
-			if record.ExecutionHandoff.ContextSHA256 != packet.SHA256 || record.ExecutionHandoff.ContextSourceSHA256 != packet.SourceSHA256 || record.ExecutionHandoff.ContextVersion != packet.Version || record.ExecutionHandoff.ContextOptions == nil || !reflect.DeepEqual(persistedOptions, handoff.CanonicalContextOptions(handoff.ContextOptionsFromModel(options))) {
-				return fmt.Errorf("persisted handoff context differs from current context")
-			}
-			persisted = record
-			return nil
-		}
-		record, err = handoff.SetContext(record, handoffFence(record), packet.Version, packet.SHA256, packet.SourceSHA256, options, now)
-		if err != nil {
-			return err
-		}
-		record.UpdatedAt = now
-		persisted, err = writeIssueOps(stateRoot, record)
-		return err
-	})
-	return persisted, err
-}
-
 func validateExpectedContextSHA256(expected string) error {
 	if strings.TrimSpace(expected) == "" {
 		return fmt.Errorf("expected_context_sha256 is required for confirmed supervised start")
@@ -1448,7 +1313,7 @@ func completeHandoffOperation(stateRoot, id string, fence handoff.Fence, kind, n
 		if err != nil {
 			return err
 		}
-		if record.ExecutionHandoff == nil || (record.ExecutionHandoff.State != handoff.StateCoordinatorPreparing && record.ExecutionHandoff.State != handoff.StateOwnershipDispatching) {
+		if record.ExecutionHandoff == nil || record.ExecutionHandoff.State != handoff.StateOwnershipDispatching {
 			return fmt.Errorf("handoff is no longer dispatching")
 		}
 		if update != nil {
@@ -1474,7 +1339,7 @@ func finalizeHandoffDispatch(stateRoot, id string, fence handoff.Fence, dispatch
 		if err != nil {
 			return err
 		}
-		if record.ExecutionHandoff == nil || record.ExecutionHandoff.Orca == nil || (record.ExecutionHandoff.State != handoff.StateCoordinatorPreparing && record.ExecutionHandoff.State != handoff.StateOwnershipDispatching) {
+		if record.ExecutionHandoff == nil || record.ExecutionHandoff.Orca == nil || record.ExecutionHandoff.State != handoff.StateOwnershipDispatching {
 			return fmt.Errorf("handoff is no longer dispatching")
 		}
 		identity := *record.ExecutionHandoff.Orca

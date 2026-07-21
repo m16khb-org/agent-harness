@@ -1196,7 +1196,6 @@ Scenario: Duplicate sequence
 	WorkspaceReady     bool   `json:"workspace_ready,omitempty"`
 	WorkspaceEpoch     string `json:"workspace_epoch,omitempty"`
 	OwnershipMilestone string `json:"ownership_milestone,omitempty"`
-	ProtocolVersion    int    `json:"protocol_version,omitempty"`
 	Attempt            int    `json:"attempt,omitempty"`
 	OwnershipEpoch     string `json:"ownership_epoch,omitempty"`
 	ClosedDisposition  string `json:"closed_disposition,omitempty"`
@@ -1204,7 +1203,7 @@ Scenario: Duplicate sequence
   }
   ```
 
-  `OwnershipMilestone` is derived only for protocol v2: `dispatched`, `claimed`, `oriented`, `completed`, `cleanup_started`, or `closed`. Pre-dispatch internal states and recovery details do not alter the projection. `WorkspaceReady` becomes true only for the final ready workspace, never provisioning.
+  `OwnershipMilestone` is derived only for the current ownership contract: `dispatched`, `claimed`, `oriented`, `completed`, `cleanup_started`, or `closed`. Pre-dispatch internal states and recovery details do not alter the projection. `WorkspaceReady` becomes true only for the final ready workspace, never provisioning.
 
 - [ ] **Step 4: Implement event canonicalization and verification.**
 
@@ -1363,7 +1362,7 @@ Scenario: Direct critical write bypass
 
 **Commit:** NO — stage with T8–T12.
 
-### Task 11: Journal the selected protocol-v2 workspace and ownership milestones
+### Task 11: Journal the current workspace and ownership milestones
 
 **Files:**
 - Modify: `internal/core/issueops/issueops_handoff_prepare.go`
@@ -1381,7 +1380,7 @@ Scenario: Direct critical write bypass
 - Modify: `internal/core/issueops/issueops_audit_test.go`
 
 **Interfaces:**
-- Consumes: Task 9 audited write helper and the stable protocol-v2 ownership projection.
+- Consumes: Task 9 audited write helper and the stable ownership projection.
 - Produces: exactly-once events for workspace readiness and public ownership milestones.
 
 - [ ] **Step 1: Write RED milestone tests.**
@@ -1393,7 +1392,7 @@ Scenario: Direct critical write bypass
   TestAuditOwnershipDispatchClaimOrientComplete
   TestAuditOwnershipCleanupStartAndClose
   TestAuditOwnershipMilestonesAreIdempotent
-  TestAuditProtocolV1DoesNotEmitProtocolV2Milestones
+  TestAuditPreDispatchDoesNotEmitOwnershipMilestones
   TestAuditRecoveryAndHeartbeatDoNotChangeCriticalProjection
   ```
 
@@ -1402,7 +1401,7 @@ Scenario: Direct critical write bypass
 - [ ] **Step 2: Run ownership RED.**
 
   ```bash
-  go test ./internal/core/issueops -run 'Audit.*Workspace|Audit.*Ownership|Audit.*ProtocolV1|Audit.*Recovery' -count=1 -v
+  go test ./internal/core/issueops -run 'Audit.*Workspace|Audit.*Ownership|Audit.*PreDispatch|Audit.*Recovery' -count=1 -v
   ```
 
 - [ ] **Step 3: Replace only the final public milestone writes.**
@@ -1412,9 +1411,9 @@ Scenario: Direct critical write bypass
   | Existing boundary | Event kind | Emit only when |
   |---|---|---|
   | `persistHandoffWorktreeCreate` | `workspace_prepared` | final workspace state becomes ready |
-  | `finalizeHandoffDispatch` | `ownership_dispatched` | protocol v2 becomes dispatched |
-  | `ClaimIssueOpsHandoff` | `ownership_claimed` | protocol v2 claim succeeds |
-  | `AcknowledgeIssueOpsHandoffContext` | `ownership_oriented` | protocol v2 owner becomes active |
+  | `finalizeHandoffDispatch` | `ownership_dispatched` | ownership becomes dispatched |
+  | `ClaimIssueOpsHandoff` | `ownership_claimed` | owner claim succeeds |
+  | `AcknowledgeIssueOpsHandoffContext` | `ownership_oriented` | owner becomes active |
   | `CompleteIssueOpsOwnershipTransfer` | `ownership_completed` | completion is accepted |
   | `ApproveIssueOpsOwnershipCleanup` | `ownership_cleanup_started` | cleanup approval becomes executing |
   | `RecordIssueOpsOwnershipCleanup` | `ownership_closed` | cleanup closes the record |
@@ -1423,17 +1422,17 @@ Scenario: Direct critical write bypass
 
 - [ ] **Step 4: Preserve the exclusion boundary.**
 
-  Protocol-v1 acceptance, provisioning/intermediate preparation, heartbeat, poll, lease refresh, recovery checkpoint, and pending cleanup operations remain ordinary writes because they do not change the stable critical projection. If one changes that projection, the Task 9 guard must fail rather than silently emit an inferred event.
+  Provisioning/intermediate preparation, heartbeat, poll, lease refresh, recovery checkpoint, and pending cleanup operations remain ordinary writes because they do not change the stable critical projection. If one changes that projection, the Task 9 guard must fail rather than silently emit an inferred event.
 
 - [ ] **Step 5: Run focused GREEN and the ownership race suite.**
 
   ```bash
-  go test ./internal/core/issueops -run 'Audit.*Workspace|Audit.*Ownership|Audit.*ProtocolV1|Audit.*Recovery' -count=1 -v
+  go test ./internal/core/issueops -run 'Audit.*Workspace|Audit.*Ownership|Audit.*PreDispatch|Audit.*Recovery' -count=1 -v
   go test ./internal/core/issueops -run 'Handoff|Ownership|Cleanup|Recovery|Heartbeat' -count=1
   go test -race ./internal/core/issueops -run 'Handoff|Ownership|Cleanup' -count=1
   ```
 
-**Must NOT do:** Journal protocol-v1 pseudo-milestones, low-level recovery states, heartbeats, or retry attempts; change Orca side effects; or emit before the existing external action has reached its current success boundary.
+**Must NOT do:** Journal pre-dispatch pseudo-milestones, low-level recovery states, heartbeats, or retry attempts; change Orca side effects; or emit before the existing external action has reached its current success boundary.
 
 **Recommended Agent:** deep — multiple mutation sites share one closed event contract and must remain idempotent.
 
@@ -1442,13 +1441,13 @@ Scenario: Direct critical write bypass
 **Acceptance Criteria:**
 - [ ] Seven selected event kinds append once at their current authoritative success boundaries.
 - [ ] Repeated calls append zero duplicate events.
-- [ ] Protocol v1, recovery, and heartbeat paths remain outside the critical journal.
+- [ ] Pre-dispatch, recovery, and heartbeat paths remain outside the critical journal.
 - [ ] Existing handoff side-effect order and failure recovery remain unchanged.
 
 **QA Scenarios:**
 
 ```text
-Scenario: Full protocol-v2 ownership lifecycle
+Scenario: Full ownership lifecycle
   Channel: bash/go test
   Steps: prepare ready workspace→dispatch→claim→orient→complete→approve cleanup→close.
   Expected: seven ordered milestone events with a valid final head and no duplicate on retries.
@@ -1521,7 +1520,7 @@ Scenario: Recovery noise does not become authority history
 
 - [ ] **Step 6: Document the authority and compatibility boundaries.**
 
-  State consistently that the snapshot remains current-state authority; the audit stream is prospective evidence, not replay authority; pre-v10 history is not synthesized; verification is read-only; selected protocol-v2 milestones only are journaled; and CLI/MCP expose identical response semantics.
+  State consistently that the snapshot remains current-state authority; the audit stream is prospective evidence, not replay authority; pre-v10 history is not synthesized; verification is read-only; selected ownership milestones only are journaled; and CLI/MCP expose identical response semantics.
 
 - [ ] **Step 7: Run adapter GREEN and documentation/contract tests.**
 

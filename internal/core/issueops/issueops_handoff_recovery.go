@@ -11,9 +11,7 @@ import (
 
 	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/issueops/model"
-	"agent-harness/internal/core/issueops/pathutil"
 	"agent-harness/internal/core/policy"
-	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
 
@@ -25,13 +23,11 @@ const (
 )
 
 type IssueOpsHandoffRecoverRequest struct {
-	ID                 string `json:"id"`
-	Action             string `json:"action"`
-	Confirm            bool   `json:"confirm,omitempty"`
-	Force              bool   `json:"force,omitempty"`
-	Reason             string `json:"reason,omitempty"`
-	CleanupDisposition string `json:"cleanup_disposition,omitempty"`
-	CleanupStep        string `json:"cleanup_step,omitempty"`
+	ID      string `json:"id"`
+	Action  string `json:"action"`
+	Confirm bool   `json:"confirm,omitempty"`
+	Force   bool   `json:"force,omitempty"`
+	Reason  string `json:"reason,omitempty"`
 }
 
 type IssueOpsHandoffRecoverResult struct {
@@ -70,23 +66,8 @@ func RecoverIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsH
 			return IssueOpsHandoffRecoverResult{}, fmt.Errorf("abandon requires --force")
 		}
 		return forceAbandonIssueOpsHandoff(ctx, stateRoot, req.ID, req.Reason, client, issueOpsHandoffNow(clock))
-	case "retry":
-		if !req.Confirm {
-			return IssueOpsHandoffRecoverResult{}, fmt.Errorf("retry requires --confirm")
-		}
-		return retryIssueOpsHandoff(ctx, stateRoot, req.ID, client, clock)
-	case "approve-cleanup":
-		if !req.Confirm {
-			return IssueOpsHandoffRecoverResult{}, fmt.Errorf("approve-cleanup requires --confirm")
-		}
-		return approveIssueOpsHandoffCleanup(stateRoot, req.ID, req.CleanupDisposition, req.Reason, issueOpsHandoffNow(clock))
-	case "record-cleanup":
-		if !req.Confirm {
-			return IssueOpsHandoffRecoverResult{}, fmt.Errorf("record-cleanup requires --confirm")
-		}
-		return recordIssueOpsHandoffCleanup(ctx, stateRoot, req.ID, req.CleanupStep, client, issueOpsHandoffNow(clock))
 	default:
-		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("recovery action must be reconcile, abandon, cancel, finalize-cancel, retry, approve-cleanup, or record-cleanup")
+		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("recovery action must be reconcile, abandon, cancel, or finalize-cancel")
 	}
 }
 
@@ -366,9 +347,9 @@ func cancelIssueOpsHandoff(stateRoot, id string, force bool, reason, now string)
 			persisted = record
 			return nil
 		}
-		if record.ExecutionHandoff.State == handoff.StateClaimed || record.ExecutionHandoff.State == handoff.StateSubmitted {
+		if record.ExecutionHandoff.State == handoff.StateOwnerOrienting || record.ExecutionHandoff.State == handoff.StateOwnerActive {
 			if !force || strings.TrimSpace(reason) == "" {
-				return fmt.Errorf("claimed or submitted handoff cancel requires --force with a nonempty --reason")
+				return fmt.Errorf("active owner handoff cancel requires --force with a nonempty --reason")
 			}
 		}
 		if !handoffHasExternalMutation(record.ExecutionHandoff) {
@@ -400,7 +381,7 @@ func handoffHasExternalMutation(h *model.IssueOpsExecutionHandoff) bool {
 	if h == nil {
 		return false
 	}
-	if h.PendingOperation != nil || h.CleanupOnly != nil || h.WorkerSession != nil || h.Result != nil {
+	if h.PendingOperation != nil || h.CleanupOnly != nil || h.OwnerSession != nil || h.Completion != nil {
 		return true
 	}
 	if h.Orca == nil {
@@ -589,7 +570,7 @@ func requireCancellationQuiescence(ctx context.Context, record IssueOpsRecord, c
 			return fmt.Errorf("exact task and dispatch are not terminal")
 		}
 	}
-	if h.WorkerSession != nil || strings.TrimSpace(h.LastHeartbeatAt) != "" {
+	if h.OwnerSession != nil || strings.TrimSpace(h.LastHeartbeatAt) != "" {
 		last := strings.TrimSpace(h.LastHeartbeatAt)
 		if last == "" {
 			last = strings.TrimSpace(h.ClaimedAt)
@@ -639,85 +620,6 @@ func terminalDispatchStatus(status string) bool {
 	default:
 		return false
 	}
-}
-
-func approveIssueOpsHandoffCleanup(stateRoot, id, disposition, reason, now string) (IssueOpsHandoffRecoverResult, error) {
-	disposition = strings.ToLower(strings.TrimSpace(disposition))
-	reason = strings.TrimSpace(policy.RedactFreeform(strings.TrimSpace(reason)))
-	if disposition != "retry" && disposition != "remove" {
-		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("cleanup disposition must be retry or remove")
-	}
-	if reason == "" || len(reason) > IssueOpsHandoffForceAbandonReasonBytes {
-		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("cleanup approval requires a nonempty bounded reason")
-	}
-	var persisted IssueOpsRecord
-	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
-		record, err := ReadIssueOps(stateRoot, id)
-		if err != nil {
-			return err
-		}
-		h := record.ExecutionHandoff
-		if h == nil || h.State != handoff.StateClosed || h.ClosedDisposition != handoff.DispositionWorkerFailed && h.ClosedDisposition != handoff.DispositionCancelled || h.Orca == nil {
-			return fmt.Errorf("cleanup approval requires a closed worker_failed or cancelled handoff")
-		}
-		if h.Cleanup != nil {
-			if h.Cleanup.Disposition != disposition || h.Cleanup.Reason != reason {
-				return fmt.Errorf("cleanup approval already exists with a different disposition or reason")
-			}
-			persisted = record
-			return nil
-		}
-		h.Cleanup = &model.IssueOpsExecutionHandoffCleanup{Disposition: disposition, Reason: reason, ApprovedAt: now}
-		h.UpdatedAt = now
-		record.UpdatedAt = now
-		persisted, err = writeIssueOps(stateRoot, record)
-		return err
-	})
-	return projectHandoffRecovery(persisted, "approve-cleanup", ""), err
-}
-
-func recordIssueOpsHandoffCleanup(ctx context.Context, stateRoot, id, step string, client any, now string) (IssueOpsHandoffRecoverResult, error) {
-	step = strings.ToLower(strings.TrimSpace(step))
-	validated, err := ReadIssueOps(stateRoot, id)
-	if err != nil {
-		return IssueOpsHandoffRecoverResult{}, err
-	}
-	h := validated.ExecutionHandoff
-	if h == nil || h.Cleanup == nil || h.Orca == nil {
-		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("cleanup receipt requires prior cleanup approval and exact Orca identity")
-	}
-	for _, receipt := range h.Cleanup.Receipts {
-		if receipt.Step == step {
-			return projectHandoffRecovery(validated, "record-cleanup", ""), nil
-		}
-	}
-	expected := []string{"task_terminal", "terminal_quiescent"}
-	if h.Cleanup.Disposition == "remove" {
-		expected = append(expected, "worktree_removed")
-	}
-	if len(h.Cleanup.Receipts) >= len(expected) || step != expected[len(h.Cleanup.Receipts)] {
-		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("cleanup receipt %q is out of order for disposition %s", step, h.Cleanup.Disposition)
-	}
-	receipt, err := verifyIssueOpsCleanupStep(ctx, validated, step, client, now)
-	if err != nil {
-		return IssueOpsHandoffRecoverResult{}, err
-	}
-	var persisted IssueOpsRecord
-	err = withIssueOpsLock(ctx, stateRoot, id, func(context.Context) error {
-		current, readErr := ReadIssueOps(stateRoot, id)
-		if readErr != nil {
-			return readErr
-		}
-		if !reflect.DeepEqual(current, validated) {
-			return fmt.Errorf("handoff changed during cleanup verification")
-		}
-		current.ExecutionHandoff.Cleanup.Receipts = append(current.ExecutionHandoff.Cleanup.Receipts, receipt)
-		current.ExecutionHandoff.UpdatedAt = now
-		current.UpdatedAt = now
-		persisted, readErr = writeIssueOps(stateRoot, current)
-		return readErr
-	})
-	return projectHandoffRecovery(persisted, "record-cleanup", ""), err
 }
 
 func verifyIssueOpsCleanupStep(ctx context.Context, record IssueOpsRecord, step string, client any, now string) (model.IssueOpsExecutionHandoffCleanupReceipt, error) {
@@ -860,107 +762,7 @@ func verifyIssueOpsCleanupStep(ctx context.Context, record IssueOpsRecord, step 
 }
 
 func terminallessPreDispatchCancellation(h *model.IssueOpsExecutionHandoff) bool {
-	return h != nil && h.Orca != nil && h.ClosedDisposition == handoff.DispositionCancelled && h.DeliveryMode == "" && h.WorkerSession == nil && h.Result == nil && h.Orca.TaskID == "" && h.Orca.DispatchID == "" && h.Orca.WorkerPTYID == "" && h.Orca.WorkerTerminalHandle == "" && h.Orca.WorkerMailboxHandle == "" && h.Orca.WorkerTabID == "" && h.Orca.WorkerLeafID == ""
-}
-
-func retryIssueOpsHandoff(ctx context.Context, stateRoot, id string, client any, clock IssueOpsHandoffPrepareClock) (IssueOpsHandoffRecoverResult, error) {
-	validated, err := ReadIssueOps(stateRoot, id)
-	if err != nil {
-		return IssueOpsHandoffRecoverResult{}, err
-	}
-	old := validated.ExecutionHandoff
-	if old == nil || old.State != handoff.StateClosed {
-		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("retry requires a safely closed prior attempt")
-	}
-	if old.ClosedDisposition != handoff.DispositionWorkerFailed && old.ClosedDisposition != handoff.DispositionCancelled {
-		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("retry requires a closed worker_failed or cancelled prior attempt")
-	}
-	if old.PendingOperation != nil {
-		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("retry requires every ambiguous operation to be reconciled")
-	}
-	if old.CleanupOnly != nil {
-		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("retry is forbidden for a cleanup-only invalid Orca artifact; remove exact worktree id:%s and start a fresh IssueOps cycle", old.CleanupOnly.ID)
-	}
-	if old.Failure != nil && old.Failure.Code == forceAbandonedOperationCode {
-		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("retry is forbidden after a force-abandoned ambiguous operation; start a fresh IssueOps cycle")
-	}
-	if old.Cleanup == nil || old.Cleanup.Disposition != "retry" || len(old.Cleanup.Receipts) != 2 || old.Cleanup.Receipts[0].Step != "task_terminal" || old.Cleanup.Receipts[1].Step != "terminal_quiescent" {
-		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("retry requires durable retry cleanup approval with task and terminal quiescence receipts")
-	}
-	attemptBaseHead, err := retryIssueOpsHandoffCheckpoint(validated)
-	if err != nil {
-		return IssueOpsHandoffRecoverResult{}, err
-	}
-	now := issueOpsHandoffNow(clock)
-	if err := requireRetryHandoffQuiescence(ctx, validated, client, now); err != nil {
-		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("retry requires exact external quiescence: %w", err)
-	}
-	epoch, err := issueOpsHandoffEpoch(clock)
-	if err != nil {
-		return IssueOpsHandoffRecoverResult{}, err
-	}
-	var persisted IssueOpsRecord
-	err = withIssueOpsLock(ctx, stateRoot, id, func(context.Context) error {
-		record, readErr := ReadIssueOps(stateRoot, id)
-		if readErr != nil {
-			return readErr
-		}
-		if !reflect.DeepEqual(record, validated) {
-			return fmt.Errorf("handoff changed after retry checkpoint validation")
-		}
-		old := record.ExecutionHandoff
-		priorAttempt, snapshotErr := handoff.SnapshotPriorAttempt(old)
-		if snapshotErr != nil {
-			return snapshotErr
-		}
-		priorAttempts := append([]model.IssueOpsExecutionHandoffPriorAttempt(nil), old.PriorAttempts...)
-		priorAttempts = append(priorAttempts, priorAttempt)
-		var worktreeIdentity *model.IssueOpsOrcaIdentity
-		if old.Orca != nil && old.Orca.WorktreeID != "" {
-			worktreeIdentity = &model.IssueOpsOrcaIdentity{
-				RuntimeID: old.Orca.RuntimeID, RepoID: old.Orca.RepoID, BaseRef: old.Orca.BaseRef, ProviderIssueLinkStatus: old.Orca.ProviderIssueLinkStatus,
-				WorktreeID: old.Orca.WorktreeID, WorktreeInstanceID: old.Orca.WorktreeInstanceID, WorktreePath: old.Orca.WorktreePath,
-			}
-		}
-		var contextOptions *model.IssueOpsExecutionHandoffContextOptions
-		if old.ContextOptions != nil {
-			cloned := *old.ContextOptions
-			cloned.CriteriaIDs = append([]string(nil), old.ContextOptions.CriteriaIDs...)
-			cloned.RequiredDocs = append([]string(nil), old.ContextOptions.RequiredDocs...)
-			cloned.RequiredSkills = append([]string(nil), old.ContextOptions.RequiredSkills...)
-			cloned.VerificationCommands = append([]string(nil), old.ContextOptions.VerificationCommands...)
-			cloned.StopConditions = append([]string(nil), old.ContextOptions.StopConditions...)
-			cloned.AllowCodexHookTrustBypass = false
-			contextOptions = &cloned
-		}
-		record.ExecutionHandoff = &model.IssueOpsExecutionHandoff{
-			ProtocolVersion: handoff.ProtocolVersion, State: handoff.StateCoordinatorPreparing,
-			Attempt: old.Attempt + 1, OwnershipEpoch: epoch, Driver: "orca", Agent: old.Agent,
-			AttemptBaseHead: attemptBaseHead,
-			CoordinatorRoot: old.CoordinatorRoot, WorkerRoot: old.WorkerRoot, Orca: worktreeIdentity, ContextOptions: contextOptions,
-			PriorAttempts: priorAttempts,
-			PreparedAt:    now, ProvisionedAt: now, UpdatedAt: now,
-		}
-		record.UpdatedAt = now
-		persisted, readErr = writeIssueOps(stateRoot, record)
-		return readErr
-	})
-	return projectHandoffRecovery(persisted, "retry", "agent-harness issueops handoff start --id "+id+" --confirm"), err
-}
-
-func requireRetryHandoffQuiescence(ctx context.Context, record IssueOpsRecord, client any, now string) error {
-	clone := cloneHandoffReconcileSnapshot(record)
-	clone.ExecutionHandoff.WorkerSession = nil
-	clone.ExecutionHandoff.LastHeartbeatAt = ""
-	clone.ExecutionHandoff.ClaimedAt = ""
-	if err := requireCancellationQuiescence(ctx, clone, client, now); err != nil {
-		return err
-	}
-	dispatchClient, ok := client.(IssueOpsOrcaDispatchClient)
-	if !ok {
-		return fmt.Errorf("complete Orca terminal and dispatched-task inventory is unavailable")
-	}
-	return attestHandoffSoleWriter(ctx, record, dispatchClient, "")
+	return h != nil && h.Orca != nil && h.ClosedDisposition == handoff.DispositionCancelled && h.DeliveryMode == "" && h.OwnerSession == nil && h.Completion == nil && h.Orca.TaskID == "" && h.Orca.DispatchID == "" && h.Orca.WorkerPTYID == "" && h.Orca.WorkerTerminalHandle == "" && h.Orca.WorkerMailboxHandle == "" && h.Orca.WorkerTabID == "" && h.Orca.WorkerLeafID == ""
 }
 
 func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client any, now string) (IssueOpsHandoffRecoverResult, error) {
@@ -980,7 +782,7 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 	}
 	desiredWorktreePath := record.WorktreePath
 	next := "agent-harness issueops handoff start --id " + id + " --confirm"
-	newState := handoff.StateCoordinatorPreparing
+	newState := handoff.StateOwnershipDispatching
 	dispatchAbsent := false
 	switch pending.Kind {
 	case handoff.OperationWorktreeCreate:
@@ -1072,7 +874,7 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		}
 		identity.DispatchID, identity.WorkerMailboxHandle = candidate.ID, candidate.AssigneeHandle
 		identity.WorkerTerminalHandle = candidate.AssigneeHandle
-		newState = handoff.StateDispatched
+		newState = handoff.StateOwnershipDispatched
 		next = "agent-harness issueops handoff claim --id " + id
 	case handoff.OperationRuntimeRefresh:
 		reader, ok := client.(IssueOpsOrcaDispatchClient)
@@ -1211,33 +1013,6 @@ func persistReconciledCleanupOnlyWorktree(stateRoot string, validated IssueOpsRe
 		return err
 	})
 	return persisted, err
-}
-
-func retryIssueOpsHandoffCheckpoint(record IssueOpsRecord) (string, error) {
-	if record.ExecutionHandoff == nil {
-		return "", fmt.Errorf("execution handoff is required")
-	}
-	workerRoot := pathutil.CleanAbsPath(record.ExecutionHandoff.WorkerRoot)
-	if workerRoot == "" || workerRoot != pathutil.CleanAbsPath(record.WorktreePath) {
-		return "", fmt.Errorf("retry requires the exact persisted worker worktree")
-	}
-	branch := strings.TrimSpace(preflight.GitOut(workerRoot, "branch", "--show-current"))
-	if branch == "" || branch != strings.TrimSpace(record.Branch) {
-		return "", fmt.Errorf("retry requires the clean exact branch and HEAD checkpoint")
-	}
-	code, head, _ := preflight.GitCmd(workerRoot, "rev-parse", "--verify", "HEAD^{commit}")
-	head = strings.TrimSpace(head)
-	if code != 0 || head == "" {
-		return "", fmt.Errorf("retry requires a readable current HEAD checkpoint")
-	}
-	code, status, _ := preflight.GitCmd(workerRoot, "status", "--porcelain=v1")
-	if code != 0 {
-		return "", fmt.Errorf("retry requires a readable worker worktree status")
-	}
-	if strings.TrimSpace(status) != "" {
-		return "", fmt.Errorf("retry requires a clean worker worktree checkpoint")
-	}
-	return head, nil
 }
 
 func projectHandoffRecovery(record IssueOpsRecord, action, next string) IssueOpsHandoffRecoverResult {

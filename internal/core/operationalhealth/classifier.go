@@ -16,7 +16,7 @@ func EvaluateCycleAuthority(cycle Cycle, opts Options) CycleAuthority {
 		return AuthorityUnknown
 	}
 	if phase == "done" || state == "closed" {
-		if cycle.HandoffProtocolVersion == 2 && state != "closed" {
+		if state != "closed" {
 			if retainedOwnershipIdentityComplete(cycle) {
 				return AuthorityPreserved
 			}
@@ -24,13 +24,19 @@ func EvaluateCycleAuthority(cycle Cycle, opts Options) CycleAuthority {
 		}
 		return AuthorityDead
 	}
-	if cycle.HandoffProtocolVersion == 2 && state != "owner_active" {
+	if preserveContains(opts.PreserveCycleIDs, cycle.ID) {
+		if !preservableIdentityComplete(cycle) {
+			return AuthorityUnknown
+		}
+		return AuthorityPreserved
+	}
+	if state != "owner_active" {
 		if retainedOwnershipIdentityComplete(cycle) {
 			return AuthorityPreserved
 		}
-		return AuthorityUnknown
+		return AuthorityDead
 	}
-	if state == "claimed" || cycle.HandoffProtocolVersion == 2 && state == "owner_active" {
+	if state == "owner_active" {
 		if !claimedIdentityComplete(cycle) || opts.Now.IsZero() {
 			return AuthorityUnknown
 		}
@@ -42,12 +48,6 @@ func EvaluateCycleAuthority(cycle Cycle, opts Options) CycleAuthority {
 			return AuthorityDead
 		}
 		return AuthorityLive
-	}
-	if preserveContains(opts.PreserveCycleIDs, cycle.ID) {
-		if !preservableIdentityComplete(cycle) {
-			return AuthorityUnknown
-		}
-		return AuthorityPreserved
 	}
 	return AuthorityDead
 }
@@ -371,7 +371,7 @@ func knownPhase(value string) bool {
 
 func knownHandoffState(value string) bool {
 	switch value {
-	case "", "coordinator_preparing", "dispatched", "claimed", "submitted", "closed", "recovery_required", "ownership_dispatching", "ownership_dispatched", "owner_orienting", "owner_active", "cleanup_pending_human_decision", "cleanup_executing":
+	case "", "closed", "recovery_required", "ownership_dispatching", "ownership_dispatched", "owner_orienting", "owner_active", "cleanup_pending_human_decision", "cleanup_executing":
 		return true
 	default:
 		return false
@@ -405,7 +405,7 @@ func preservableIdentityComplete(cycle Cycle) bool {
 		return false
 	}
 	state := strings.TrimSpace(cycle.HandoffState)
-	if state == "claimed" || state == "closed" {
+	if state == "closed" {
 		return false
 	}
 	if state != "" && (cycle.Attempt <= 0 || strings.TrimSpace(cycle.OwnershipEpoch) == "") {

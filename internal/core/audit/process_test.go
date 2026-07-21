@@ -12,7 +12,7 @@ func TestAuditProcessExecutionWritesBoundedRedactedJSONL(t *testing.T) {
 	stateDir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateDir)
 	record, err := AuditProcessExecution(ProcessExecutionRequest{
-		Name:       "codex-hooks-list",
+		Name:       "bounded-hook-probe",
 		Executable: "/usr/local/bin/codex",
 		Argv:       []string{"/usr/local/bin/codex", "token=process-secret"},
 		CWD:        stateDir,
@@ -41,7 +41,7 @@ func TestAuditProcessExecutionWritesBoundedRedactedJSONL(t *testing.T) {
 func TestAuditProcessExecutionAssignsUniqueIDsToConsecutiveRecords(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	req := ProcessExecutionRequest{
-		Name:      "codex-hooks-list",
+		Name:      "bounded-hook-probe",
 		Argv:      []string{"/usr/local/bin/codex", "app-server", "--stdio"},
 		CWD:       "/tmp/worker",
 		Timeout:   15 * time.Second,

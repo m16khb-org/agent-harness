@@ -110,12 +110,7 @@ func decodeIssueOpsRecord(id string, b []byte) (IssueOpsRecord, error) {
 		ID                 string          `json:"id"`
 		RemoteCreateClaim  json.RawMessage `json:"remote_create_claim"`
 		ExecutionWorkspace json.RawMessage `json:"execution_workspace"`
-		ExecutionHandoff   *struct {
-			ProtocolVersion    int             `json:"protocol_version"`
-			CoordinatorSession json.RawMessage `json:"coordinator_session"`
-			PublishReceipt     json.RawMessage `json:"publish_receipt"`
-			OwnerSession       json.RawMessage `json:"owner_session"`
-		} `json:"execution_handoff"`
+		ExecutionHandoff   json.RawMessage `json:"execution_handoff"`
 	}
 	if err := json.Unmarshal(b, &header); err != nil {
 		return IssueOpsRecord{OK: false, ID: id}, err
@@ -123,31 +118,22 @@ func decodeIssueOpsRecord(id string, b []byte) (IssueOpsRecord, error) {
 	if header.ID != id {
 		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops id mismatch: record has %q", header.ID)
 	}
-	if header.SchemaVersion <= 7 && (rawIssueOpsAuthorityPresent(header.ExecutionWorkspace) || header.ExecutionHandoff != nil && (header.ExecutionHandoff.ProtocolVersion == handoff.OwnershipTransferProtocolVersion || rawIssueOpsAuthorityPresent(header.ExecutionHandoff.OwnerSession))) {
-		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops schema_version %d cannot contain schema-8 workspace or ownership authority", header.SchemaVersion)
+	var handoffHeader struct {
+		ProtocolVersion json.RawMessage `json:"protocol_version"`
+	}
+	if rawIssueOpsAuthorityPresent(header.ExecutionHandoff) {
+		if err := json.Unmarshal(header.ExecutionHandoff, &handoffHeader); err != nil {
+			return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("decode execution_handoff header: %w", err)
+		}
+	}
+	if rawIssueOpsAuthorityPresent(handoffHeader.ProtocolVersion) {
+		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("execution_handoff.protocol_version was removed; reset and start a new handoff")
+	}
+	if header.SchemaVersion <= 7 && (rawIssueOpsAuthorityPresent(header.ExecutionWorkspace) || rawIssueOpsAuthorityPresent(header.ExecutionHandoff)) {
+		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops schema_version %d predates the current ownership contract; reset and start a new handoff", header.SchemaVersion)
 	}
 	if header.SchemaVersion <= 5 && rawIssueOpsAuthorityPresent(header.RemoteCreateClaim) {
 		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops schema_version %d cannot contain remote_create_claim durable mutation authority", header.SchemaVersion)
-	}
-	if header.SchemaVersion <= 5 && header.ExecutionHandoff != nil && rawIssueOpsAuthorityPresent(header.ExecutionHandoff.CoordinatorSession) {
-		record, projectionErr := decodeInvalidIssueOpsProjection(b)
-		if projectionErr != nil {
-			return IssueOpsRecord{OK: false, ID: id}, projectionErr
-		}
-		record.OK = false
-		record.Invalid = true
-		record.InvalidReason = boundedIssueOpsInvalidReason(fmt.Sprintf("issueops schema_version %d cannot contain coordinator_session durable mutation authority", header.SchemaVersion))
-		return record, fmt.Errorf("issueops schema_version %d cannot contain coordinator_session durable mutation authority", header.SchemaVersion)
-	}
-	if header.SchemaVersion <= 5 && header.ExecutionHandoff != nil && rawIssueOpsAuthorityPresent(header.ExecutionHandoff.PublishReceipt) {
-		record, projectionErr := decodeInvalidIssueOpsProjection(b)
-		if projectionErr != nil {
-			return IssueOpsRecord{OK: false, ID: id}, projectionErr
-		}
-		record.OK = false
-		record.Invalid = true
-		record.InvalidReason = boundedIssueOpsInvalidReason(fmt.Sprintf("issueops schema_version %d publish receipt predates v6 push-target authority", header.SchemaVersion))
-		return record, fmt.Errorf("issueops schema_version %d publish receipt predates v6 push-target authority; re-attest publication or use the dedicated remote-create reconcile path", header.SchemaVersion)
 	}
 	if schemaErr := issueOpsSchemaVersionError(header.SchemaVersion); schemaErr != nil {
 		record, projectionErr := decodeInvalidIssueOpsProjection(b)
@@ -167,12 +153,6 @@ func decodeIssueOpsRecord(id string, b []byte) (IssueOpsRecord, error) {
 		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops id mismatch: record has %q", record.ID)
 	}
 	if err := normalizeIssueOpsSchemaVersion(&record); err != nil {
-		record.OK = false
-		record.Invalid = true
-		record.InvalidReason = boundedIssueOpsInvalidReason(err.Error())
-		return record, err
-	}
-	if err := validatePersistedLegacyWorktreeMigration(record); err != nil {
 		record.OK = false
 		record.Invalid = true
 		record.InvalidReason = boundedIssueOpsInvalidReason(err.Error())
@@ -241,10 +221,6 @@ func writeIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, err
 		record.OK = false
 		return record, err
 	}
-	if err := validatePersistedLegacyWorktreeMigration(record); err != nil {
-		record.OK = false
-		return record, err
-	}
 	if err := handoff.ValidateEnvelope(record); err != nil {
 		record.OK = false
 		return record, err
@@ -289,30 +265,11 @@ func normalizeIssueOpsSchemaVersion(record *IssueOpsRecord) error {
 	if err := issueOpsSchemaVersionError(record.SchemaVersion); err != nil {
 		return err
 	}
-	legacyIdentitySchema := record.SchemaVersion == 0 || record.SchemaVersion == 1 || record.SchemaVersion == 2 || record.SchemaVersion == 3
-	legacySchema := legacyIdentitySchema || record.SchemaVersion == 4 || record.SchemaVersion == 5 || record.SchemaVersion == 6 || record.SchemaVersion == 7
-	if legacySchema {
+	olderSchema := record.SchemaVersion == 0 || record.SchemaVersion == 1 || record.SchemaVersion == 2 || record.SchemaVersion == 3 || record.SchemaVersion == 4 || record.SchemaVersion == 5 || record.SchemaVersion == 6 || record.SchemaVersion == 7
+	if olderSchema {
 		record.SchemaVersion = IssueOpsCurrentSchemaVersion
-		if legacyIdentitySchema && record.ExecutionHandoff != nil {
-			migrateLegacyIssueOpsOrcaIdentity(record.ExecutionHandoff.Orca)
-			for i := range record.ExecutionHandoff.PriorAttempts {
-				migrateLegacyIssueOpsOrcaIdentity(record.ExecutionHandoff.PriorAttempts[i].Orca)
-			}
-		}
 	}
 	return nil
-}
-
-func migrateLegacyIssueOpsOrcaIdentity(identity *IssueOpsOrcaIdentity) {
-	if identity == nil {
-		return
-	}
-	if identity.WorkerTerminalHandle == "" {
-		identity.WorkerTerminalHandle = identity.WorkerMailboxHandle
-	}
-	if identity.DispatchID == "" {
-		identity.WorkerMailboxHandle = ""
-	}
 }
 
 func issueOpsSchemaVersionError(version int) error {
@@ -335,7 +292,6 @@ func decodeInvalidIssueOpsProjection(raw []byte) (IssueOpsRecord, error) {
 		Phase         IssueOpsPhase `json:"phase"`
 		WorktreePath  string        `json:"worktree_path"`
 		Handoff       *struct {
-			ProtocolVersion          int             `json:"protocol_version"`
 			State                    string          `json:"state"`
 			ClosedDisposition        string          `json:"closed_disposition"`
 			Attempt                  int             `json:"attempt"`
@@ -358,7 +314,6 @@ func decodeInvalidIssueOpsProjection(raw []byte) (IssueOpsRecord, error) {
 	}
 	if projection.Handoff != nil {
 		record.ExecutionHandoff = &IssueOpsExecutionHandoff{
-			ProtocolVersion:          projection.Handoff.ProtocolVersion,
 			State:                    boundedIssueOpsIdentity(projection.Handoff.State, 64),
 			ClosedDisposition:        boundedIssueOpsIdentity(projection.Handoff.ClosedDisposition, 64),
 			Attempt:                  projection.Handoff.Attempt,

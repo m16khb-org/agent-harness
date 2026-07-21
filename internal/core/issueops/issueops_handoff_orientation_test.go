@@ -1,12 +1,10 @@
 package issueops
 
 import (
-	"context"
 	"strings"
 	"testing"
 
 	"agent-harness/internal/core/issueops/handoff"
-	"agent-harness/internal/port"
 )
 
 func TestOwnershipClaimEntersOrientationWithoutWriteLease(t *testing.T) {
@@ -59,30 +57,16 @@ func TestOwnershipOrientationRequiresExactIssuePlanAndContext(t *testing.T) {
 
 func ownershipOrientingRecord(t *testing.T) (string, IssueOpsRecord, IssueOpsHandoffClaimRequest) {
 	t.Helper()
-	stateRoot, record := ownershipStartReadyRecord(t)
-	client := handoffDispatchFake()
-	client.terminal.WorktreeID = record.ExecutionWorkspace.Orca.WorktreeID
-	client.terminal.WorktreePath = record.WorktreePath
-	client.terminalsAfterCreate = []port.OrcaTerminal{client.terminal}
-	request := coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{
-		ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, WorkspaceEpoch: record.ExecutionWorkspace.WorkspaceEpoch,
-	})
-	request.CoordinatorHost = "claude"
-	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, request, client, handoffStartTestClock())
-	if err != nil {
-		t.Fatal(err)
-	}
-	request.Confirm, request.ExpectedContextSHA256 = true, preview.ContextSHA256
-	if _, err := StartIssueOpsHandoff(context.Background(), stateRoot, request, client, handoffStartTestClock()); err != nil {
-		t.Fatal(err)
-	}
-	dispatched, err := ReadIssueOps(stateRoot, record.ID)
-	if err != nil {
+	stateRoot, dispatched, actor := ownershipActiveRecorderRecord(t)
+	dispatched.ExecutionHandoff.State = handoff.StateOwnershipDispatched
+	dispatched.ExecutionHandoff.OwnerSession = nil
+	dispatched.ExecutionHandoff.Orientation = nil
+	if _, err := WriteIssueOps(stateRoot, dispatched); err != nil {
 		t.Fatal(err)
 	}
 	claim := IssueOpsHandoffClaimRequest{
 		ID: dispatched.ID, Attempt: dispatched.ExecutionHandoff.Attempt, OwnershipEpoch: dispatched.ExecutionHandoff.OwnershipEpoch,
-		ContextSHA256: dispatched.ExecutionHandoff.ContextSHA256, Host: "claude", SessionID: "owner-session", AgentID: "owner-agent",
+		ContextSHA256: dispatched.ExecutionHandoff.ContextSHA256, Host: actor.Host, SessionID: actor.SessionID, AgentID: actor.AgentID,
 		CWD: dispatched.WorktreePath, OrcaWorktreeID: dispatched.ExecutionHandoff.Orca.WorktreeID,
 	}
 	claimed, err := ClaimIssueOpsHandoff(stateRoot, claim)

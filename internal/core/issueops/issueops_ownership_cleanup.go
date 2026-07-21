@@ -148,7 +148,7 @@ func ownershipCleanupSteps(disposition string) []string {
 
 func validateOwnershipCleanupExecutor(record IssueOpsRecord, req IssueOpsOwnershipCleanupPreviewRequest) error {
 	h := record.ExecutionHandoff
-	if h == nil || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || h.State != handoff.StateCleanupExecuting || h.Cleanup == nil || h.Cleanup.ApprovedBySession == nil || pathutil.CleanAbsPath(req.CWD) != pathutil.CleanAbsPath(record.Repo) {
+	if h == nil || h.State != handoff.StateCleanupExecuting || h.Cleanup == nil || h.Cleanup.ApprovedBySession == nil || pathutil.CleanAbsPath(req.CWD) != pathutil.CleanAbsPath(record.Repo) {
 		return fmt.Errorf("ownership cleanup receipt requires approved cleanup execution from the exact source root")
 	}
 	want := h.Cleanup.ApprovedBySession
@@ -178,7 +178,7 @@ func verifyOwnershipCleanupStep(ctx context.Context, record IssueOpsRecord, step
 
 func validateOwnershipCleanupCandidate(record IssueOpsRecord, req IssueOpsOwnershipCleanupPreviewRequest) error {
 	h := record.ExecutionHandoff
-	if h == nil || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || h.State != handoff.StateCleanupPendingHumanDecision || h.Completion == nil || h.Cleanup != nil {
+	if h == nil || h.State != handoff.StateCleanupPendingHumanDecision || h.Completion == nil || h.Cleanup != nil {
 		return fmt.Errorf("ownership cleanup requires cleanup_pending_human_decision")
 	}
 	if pathutil.CleanAbsPath(req.CWD) != pathutil.CleanAbsPath(record.Repo) || strings.TrimSpace(req.Host) == "" || strings.TrimSpace(req.Session) == "" {

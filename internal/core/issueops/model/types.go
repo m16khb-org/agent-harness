@@ -427,18 +427,6 @@ type IssueOpsExecutionHandoffPendingOperation struct {
 	BaselinePTYIDs         []string `json:"baseline_pty_ids,omitempty"`
 }
 
-type IssueOpsExecutionHandoffResult struct {
-	Outcome          string   `json:"outcome"`
-	FinalHead        string   `json:"final_head,omitempty"`
-	ChangedFiles     []string `json:"changed_files,omitempty"`
-	TuringReportPath string   `json:"turing_report_path,omitempty"`
-	Verification     []string `json:"verification,omitempty"`
-	CleanupReceipts  []string `json:"cleanup_receipts,omitempty"`
-	EvidenceDigest   string   `json:"evidence_digest,omitempty"`
-	TaskID           string   `json:"task_id,omitempty"`
-	DispatchID       string   `json:"dispatch_id,omitempty"`
-}
-
 type IssueOpsExecutionHandoffFailure struct {
 	Code    string `json:"code"`
 	Message string `json:"message,omitempty"`
@@ -513,41 +501,6 @@ type IssueOpsOrcaCleanupArtifact struct {
 	Reason     string `json:"reason"`
 }
 
-type IssueOpsExecutionHandoffPriorAttempt struct {
-	ProtocolVersion          int                                           `json:"protocol_version"`
-	State                    string                                        `json:"state"`
-	ClosedDisposition        string                                        `json:"closed_disposition"`
-	Attempt                  int                                           `json:"attempt"`
-	OwnershipEpoch           string                                        `json:"ownership_epoch"`
-	AttemptBaseHead          string                                        `json:"attempt_base_head"`
-	ContextSHA256            string                                        `json:"context_sha256,omitempty"`
-	ContextSourceSHA256      string                                        `json:"context_source_sha256,omitempty"`
-	ContextVersion           int                                           `json:"context_version,omitempty"`
-	ContextOptions           *IssueOpsExecutionHandoffContextOptions       `json:"context_options,omitempty"`
-	Driver                   string                                        `json:"driver"`
-	Agent                    string                                        `json:"agent"`
-	DeliveryMode             string                                        `json:"delivery_mode,omitempty"`
-	CoordinatorRoot          string                                        `json:"coordinator_root"`
-	CoordinatorMailboxHandle string                                        `json:"coordinator_mailbox_handle,omitempty"`
-	CoordinatorSession       *IssueOpsHostSessionIdentity                  `json:"coordinator_session,omitempty"`
-	WorkerRoot               string                                        `json:"worker_root"`
-	WorkerSession            *IssueOpsHostSessionIdentity                  `json:"worker_session,omitempty"`
-	Orca                     *IssueOpsOrcaIdentity                         `json:"orca,omitempty"`
-	Result                   *IssueOpsExecutionHandoffResult               `json:"result,omitempty"`
-	WorkerDoneProjection     *IssueOpsExecutionHandoffWorkerDoneProjection `json:"worker_done_projection,omitempty"`
-	Failure                  *IssueOpsExecutionHandoffFailure              `json:"failure,omitempty"`
-	Cleanup                  *IssueOpsExecutionHandoffCleanup              `json:"cleanup,omitempty"`
-	CleanupOnly              *IssueOpsOrcaCleanupArtifact                  `json:"cleanup_only,omitempty"`
-	PreparedAt               string                                        `json:"prepared_at,omitempty"`
-	ProvisionedAt            string                                        `json:"provisioned_at,omitempty"`
-	DispatchedAt             string                                        `json:"dispatched_at,omitempty"`
-	ClaimedAt                string                                        `json:"claimed_at,omitempty"`
-	LastHeartbeatAt          string                                        `json:"last_heartbeat_at,omitempty"`
-	CompletedAt              string                                        `json:"completed_at,omitempty"`
-	AcceptedAt               string                                        `json:"accepted_at,omitempty"`
-	UpdatedAt                string                                        `json:"updated_at,omitempty"`
-}
-
 type IssueOpsExecutionHandoffContextOptions struct {
 	CriteriaIDs               []string `json:"criteria_ids,omitempty"`
 	RequiredDocs              []string `json:"required_docs,omitempty"`
@@ -561,7 +514,6 @@ type IssueOpsExecutionHandoffContextOptions struct {
 }
 
 type IssueOpsExecutionHandoff struct {
-	ProtocolVersion          int                                           `json:"protocol_version"`
 	State                    string                                        `json:"state"`
 	ClosedDisposition        string                                        `json:"closed_disposition,omitempty"`
 	Attempt                  int                                           `json:"attempt"`
@@ -580,13 +532,11 @@ type IssueOpsExecutionHandoff struct {
 	CoordinatorMailboxHandle string                                        `json:"coordinator_mailbox_handle,omitempty"`
 	CoordinatorSession       *IssueOpsHostSessionIdentity                  `json:"coordinator_session,omitempty"`
 	WorkerRoot               string                                        `json:"worker_root,omitempty"`
-	WorkerSession            *IssueOpsHostSessionIdentity                  `json:"worker_session,omitempty"`
 	OwnerSession             *IssueOpsHostSessionIdentity                  `json:"owner_session,omitempty"`
 	Orientation              *IssueOpsOwnershipOrientation                 `json:"orientation,omitempty"`
 	Completion               *IssueOpsOwnershipCompletion                  `json:"completion,omitempty"`
 	Orca                     *IssueOpsOrcaIdentity                         `json:"orca,omitempty"`
 	PendingOperation         *IssueOpsExecutionHandoffPendingOperation     `json:"pending_operation,omitempty"`
-	Result                   *IssueOpsExecutionHandoffResult               `json:"result,omitempty"`
 	WorkerDoneProjection     *IssueOpsExecutionHandoffWorkerDoneProjection `json:"worker_done_projection,omitempty"`
 	Failure                  *IssueOpsExecutionHandoffFailure              `json:"failure,omitempty"`
 	Cancellation             *IssueOpsExecutionHandoffCancellation         `json:"cancellation,omitempty"`
@@ -594,14 +544,12 @@ type IssueOpsExecutionHandoff struct {
 	PublicationRecovery      *IssueOpsExecutionHandoffFailure              `json:"publication_recovery,omitempty"`
 	Cleanup                  *IssueOpsExecutionHandoffCleanup              `json:"cleanup,omitempty"`
 	CleanupOnly              *IssueOpsOrcaCleanupArtifact                  `json:"cleanup_only,omitempty"`
-	PriorAttempts            []IssueOpsExecutionHandoffPriorAttempt        `json:"prior_attempts,omitempty"`
 	PreparedAt               string                                        `json:"prepared_at,omitempty"`
 	ProvisionedAt            string                                        `json:"provisioned_at,omitempty"`
 	DispatchedAt             string                                        `json:"dispatched_at,omitempty"`
 	ClaimedAt                string                                        `json:"claimed_at,omitempty"`
 	LastHeartbeatAt          string                                        `json:"last_heartbeat_at,omitempty"`
 	CompletedAt              string                                        `json:"completed_at,omitempty"`
-	AcceptedAt               string                                        `json:"accepted_at,omitempty"`
 	UpdatedAt                string                                        `json:"updated_at,omitempty"`
 }
 
@@ -644,22 +592,6 @@ type IssueOpsOwnershipCompletion struct {
 	CompletedAt  string   `json:"completed_at"`
 }
 
-// IssueOpsLegacyWorktreeMigration records the bounded conversion of a clean,
-// remote-equal Git worktree into an Orca-managed checkout at the same path.
-// It deliberately lives outside execution_handoff: migration finishes before a
-// supervised worker lease is prepared.
-type IssueOpsLegacyWorktreeMigration struct {
-	State        string                `json:"state"`
-	WorktreePath string                `json:"worktree_path"`
-	Branch       string                `json:"branch"`
-	Head         string                `json:"head"`
-	BaseRef      string                `json:"base_ref"`
-	Orca         *IssueOpsOrcaIdentity `json:"orca,omitempty"`
-	PreparedAt   string                `json:"prepared_at"`
-	GitRemovedAt string                `json:"git_removed_at,omitempty"`
-	CompletedAt  string                `json:"completed_at,omitempty"`
-}
-
 const IssueOpsCurrentSchemaVersion = 8
 
 type IssueOpsRecord struct {
@@ -693,7 +625,6 @@ type IssueOpsRecord struct {
 	ChildCycles             []IssueOpsChildCycleRef             `json:"child_cycles,omitempty"`
 	ExecutionHandoff        *IssueOpsExecutionHandoff           `json:"execution_handoff,omitempty"`
 	ExecutionWorkspace      *IssueOpsExecutionWorkspace         `json:"execution_workspace,omitempty"`
-	LegacyWorktreeMigration *IssueOpsLegacyWorktreeMigration    `json:"legacy_worktree_migration,omitempty"`
 	RoutingTrace            []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
 	AISlopCleanAt           string                              `json:"ai_slop_clean_at,omitempty"`
 	AISlopCleanHead         string                              `json:"ai_slop_clean_head,omitempty"`

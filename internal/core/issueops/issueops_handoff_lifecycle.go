@@ -1,8 +1,8 @@
 package issueops
 
 import (
+	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -11,8 +11,6 @@ import (
 	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/pathutil"
-	"agent-harness/internal/core/preflight"
-	"context"
 )
 
 type IssueOpsHandoffClaimRequest struct {
@@ -37,7 +35,7 @@ type IssueOpsHeartbeatRequest struct {
 	AgentID        string `json:"agent_id,omitempty"`
 }
 
-type IssueOpsHandoffFinishRequest struct {
+type IssueOpsHandoffCompleteRequest struct {
 	ID               string   `json:"id"`
 	Attempt          int      `json:"attempt"`
 	OwnershipEpoch   string   `json:"ownership_epoch"`
@@ -46,27 +44,10 @@ type IssueOpsHandoffFinishRequest struct {
 	SessionID        string   `json:"session_id"`
 	AgentID          string   `json:"agent_id,omitempty"`
 	CWD              string   `json:"cwd,omitempty"`
-	Outcome          string   `json:"outcome"`
-	FinalHead        string   `json:"final_head,omitempty"`
+	FinalHead        string   `json:"final_head"`
 	ChangedFiles     []string `json:"changed_files,omitempty"`
-	TuringReportPath string   `json:"turing_report_path,omitempty"`
-	Verification     []string `json:"verification,omitempty"`
-	CleanupReceipts  []string `json:"cleanup_receipts,omitempty"`
-	EvidenceDigest   string   `json:"evidence_digest,omitempty"`
-	TaskID           string   `json:"task_id,omitempty"`
-	DispatchID       string   `json:"dispatch_id,omitempty"`
-}
-
-type IssueOpsHandoffAcceptRequest struct {
-	ID             string `json:"id"`
-	Attempt        int    `json:"attempt"`
-	OwnershipEpoch string `json:"ownership_epoch"`
-	ContextSHA256  string `json:"context_sha256"`
-	FinalHead      string `json:"final_head"`
-	Host           string `json:"host"`
-	SessionID      string `json:"session_id"`
-	AgentID        string `json:"agent_id,omitempty"`
-	SourceCWD      string `json:"source_cwd"`
+	TuringReportPath string   `json:"turing_report_path"`
+	Verification     []string `json:"verification"`
 }
 
 type issueOpsHandoffLifecycleHooks struct {
@@ -85,7 +66,7 @@ func claimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest, hoo
 	if err := validateHandoffClaimIdentity(validated, req); err != nil {
 		return IssueOpsRecord{}, err
 	}
-	if validated.ExecutionHandoff.State != handoff.StateClaimed && validated.ExecutionHandoff.State != handoff.StateOwnerOrienting {
+	if validated.ExecutionHandoff.State != handoff.StateOwnerOrienting {
 		if err := validateHandoffClaim(validated, req); err != nil {
 			return IssueOpsRecord{}, err
 		}
@@ -100,7 +81,7 @@ func claimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest, hoo
 		if !reflect.DeepEqual(record, validated) {
 			return fmt.Errorf("handoff changed after claim validation; retry with the current fence")
 		}
-		alreadyClaimed := record.ExecutionHandoff.State == handoff.StateClaimed || record.ExecutionHandoff.State == handoff.StateOwnerOrienting
+		alreadyClaimed := record.ExecutionHandoff.State == handoff.StateOwnerOrienting
 		if !alreadyClaimed {
 			if err := validateHandoffClaim(record, req); err != nil {
 				return err
@@ -114,12 +95,6 @@ func claimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest, hoo
 		})
 		if err != nil {
 			return err
-		}
-		if !alreadyClaimed && record.ExecutionHandoff.ProtocolVersion != handoff.OwnershipTransferProtocolVersion && record.Phase != IssueOpsPhaseImplement {
-			if err := validateIssueOpsPhaseTransition(stateRoot, record, IssueOpsPhaseImplement); err != nil {
-				return err
-			}
-			record = applyIssueOpsPhaseTransition(record, IssueOpsPhaseImplement)
 		}
 		record.LastHeartbeatAt = now
 		record.UpdatedAt = now
@@ -156,10 +131,7 @@ func validateHandoffClaim(record IssueOpsRecord, req IssueOpsHandoffClaimRequest
 	if err := validateHandoffContextSource(record); err != nil {
 		return err
 	}
-	if err := validateHandoffStartCheckpoint(record); err != nil {
-		return err
-	}
-	return nil
+	return validateHandoffStartCheckpoint(record)
 }
 
 func RecordIssueOpsHeartbeatWithRequest(stateRoot string, req IssueOpsHeartbeatRequest) (IssueOpsRecord, error) {
@@ -188,116 +160,37 @@ func RecordIssueOpsHeartbeatWithRequest(stateRoot string, req IssueOpsHeartbeatR
 	return persisted, err
 }
 
-func finishIssueOpsHandoffWithoutProjection(stateRoot string, req IssueOpsHandoffFinishRequest) (IssueOpsRecord, error) {
-	return finishIssueOpsHandoff(stateRoot, req, issueOpsHandoffLifecycleHooks{})
-}
-
-func finishIssueOpsHandoff(stateRoot string, req IssueOpsHandoffFinishRequest, hooks issueOpsHandoffLifecycleHooks) (IssueOpsRecord, error) {
-	req = normalizeHandoffFinishRequest(req)
-	if err := validateHandoffFinishRequest(req); err != nil {
-		return IssueOpsRecord{}, err
-	}
-	validated, err := ReadIssueOps(stateRoot, req.ID)
-	if err != nil {
-		return IssueOpsRecord{}, err
-	}
-	if err := validateHandoffResultIdentity(validated, req); err != nil {
-		return IssueOpsRecord{}, err
-	}
-	if validated.ExecutionHandoff.State == handoff.StateClaimed {
-		if err := validateHandoffContextSource(validated); err != nil {
-			return IssueOpsRecord{}, err
-		}
-	}
-	finishRequest := handoff.FinishRequest{
-		Fence:  handoff.Fence{Attempt: req.Attempt, OwnershipEpoch: req.OwnershipEpoch, ContextSHA256: req.ContextSHA256},
-		Worker: model.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID},
-		Result: model.IssueOpsExecutionHandoffResult{
-			Outcome: req.Outcome, FinalHead: req.FinalHead, ChangedFiles: req.ChangedFiles, TuringReportPath: req.TuringReportPath,
-			Verification: req.Verification, CleanupReceipts: req.CleanupReceipts, EvidenceDigest: req.EvidenceDigest, TaskID: req.TaskID, DispatchID: req.DispatchID,
-		}, Now: validated.UpdatedAt,
-	}
-	if _, err := handoff.Finish(validated, finishRequest); err != nil {
-		return IssueOpsRecord{}, err
-	}
-	if validated.ExecutionHandoff.State != handoff.StateClaimed {
-		return validated, nil
-	}
-	runHandoffLifecycleHook(hooks.BeforeLockedRevalidation)
-	var persisted IssueOpsRecord
-	err = withIssueOpsLock(context.Background(), stateRoot, req.ID, func(context.Context) error {
-		record, err := ReadIssueOps(stateRoot, req.ID)
-		if err != nil {
-			return err
-		}
-		if !reflect.DeepEqual(record, validated) {
-			if _, finishErr := handoff.Finish(record, finishRequest); finishErr == nil && record.ExecutionHandoff.State != handoff.StateClaimed {
-				persisted = record
-				return nil
-			}
-			return fmt.Errorf("handoff changed after finish validation; retry with the current fence")
-		}
-		if record.ExecutionHandoff.State == handoff.StateClaimed {
-			if err := validateHandoffContextSource(record); err != nil {
-				return err
-			}
-		}
-		now := time.Now().UTC().Format(time.RFC3339Nano)
-		record, err = handoff.Finish(record, handoff.FinishRequest{
-			Fence:  handoff.Fence{Attempt: req.Attempt, OwnershipEpoch: req.OwnershipEpoch, ContextSHA256: req.ContextSHA256},
-			Worker: model.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID},
-			Result: model.IssueOpsExecutionHandoffResult{
-				Outcome: req.Outcome, FinalHead: req.FinalHead, ChangedFiles: req.ChangedFiles, TuringReportPath: req.TuringReportPath,
-				Verification: req.Verification, CleanupReceipts: req.CleanupReceipts, EvidenceDigest: req.EvidenceDigest, TaskID: req.TaskID, DispatchID: req.DispatchID,
-			}, Now: now,
-		})
-		if err != nil {
-			return err
-		}
-		record.UpdatedAt = now
-		persisted, err = writeIssueOps(stateRoot, record)
-		return err
-	})
-	return persisted, err
-}
-
-func validateHandoffResultIdentity(record IssueOpsRecord, req IssueOpsHandoffFinishRequest) error {
-	if record.ExecutionHandoff == nil || record.ExecutionHandoff.Orca == nil {
-		return fmt.Errorf("execution handoff is required")
-	}
-	orca := record.ExecutionHandoff.Orca
-	if strings.TrimSpace(orca.TaskID) == "" || strings.TrimSpace(req.TaskID) == "" || req.TaskID != orca.TaskID {
-		return fmt.Errorf("worker result task id must exactly match the persisted handoff")
-	}
-	if strings.TrimSpace(orca.DispatchID) == "" || strings.TrimSpace(req.DispatchID) == "" || req.DispatchID != orca.DispatchID {
-		return fmt.Errorf("worker result dispatch id must exactly match the persisted handoff")
-	}
-	return nil
-}
-
-func normalizeHandoffFinishRequest(req IssueOpsHandoffFinishRequest) IssueOpsHandoffFinishRequest {
+func normalizeHandoffCompleteRequest(req IssueOpsHandoffCompleteRequest) IssueOpsHandoffCompleteRequest {
 	req.ID = strings.TrimSpace(req.ID)
 	req.OwnershipEpoch = strings.TrimSpace(req.OwnershipEpoch)
 	req.ContextSHA256 = strings.TrimSpace(req.ContextSHA256)
 	req.Host = strings.TrimSpace(req.Host)
 	req.SessionID = strings.TrimSpace(req.SessionID)
 	req.AgentID = strings.TrimSpace(req.AgentID)
-	req.Outcome = strings.TrimSpace(req.Outcome)
+	req.CWD = pathutil.CleanAbsPath(req.CWD)
 	req.FinalHead = strings.TrimSpace(req.FinalHead)
 	req.TuringReportPath = strings.TrimSpace(req.TuringReportPath)
-	req.EvidenceDigest = strings.TrimSpace(req.EvidenceDigest)
-	req.TaskID = strings.TrimSpace(req.TaskID)
-	req.DispatchID = strings.TrimSpace(req.DispatchID)
 	req.ChangedFiles = canonicalChangedFileList(req.ChangedFiles)
 	req.Verification = canonicalEvidenceList(req.Verification)
-	req.CleanupReceipts = canonicalEvidenceList(req.CleanupReceipts)
 	return req
 }
 
-func canonicalChangedFileList(values []string) []string {
-	if len(values) == 0 {
-		return nil
+func validateHandoffCompleteRequest(req IssueOpsHandoffCompleteRequest) error {
+	if !safeRelativeHandoffResultPath(req.TuringReportPath) {
+		return fmt.Errorf("Turing report path must be a safe relative owner-worktree path")
 	}
+	if len(req.ChangedFiles) > 512 || len(req.Verification) > 128 {
+		return fmt.Errorf("handoff completion evidence exceeds bounded limits")
+	}
+	for _, value := range append(append([]string{}, req.ChangedFiles...), req.Verification...) {
+		if len(value) > 4096 {
+			return fmt.Errorf("handoff completion evidence item exceeds bounded limit")
+		}
+	}
+	return nil
+}
+
+func canonicalChangedFileList(values []string) []string {
 	seen := map[string]struct{}{}
 	clean := make([]string, 0, len(values))
 	for _, value := range values {
@@ -333,88 +226,6 @@ func canonicalEvidenceList(values []string) []string {
 	return clean
 }
 
-func validateHandoffFinishRequest(req IssueOpsHandoffFinishRequest) error {
-	if req.Outcome == handoff.OutcomeCompleted {
-		if strings.TrimSpace(req.FinalHead) == "" || strings.TrimSpace(req.TuringReportPath) == "" || !hasNonEmptyHandoffEvidence(req.Verification) || !hasNonEmptyHandoffEvidence(req.CleanupReceipts) {
-			return fmt.Errorf("completed finish requires final head, Turing report, verification, and cleanup receipts")
-		}
-		if !safeRelativeHandoffResultPath(req.TuringReportPath) {
-			return fmt.Errorf("Turing report path must be a safe relative worker path")
-		}
-	}
-	if len(req.ChangedFiles) > 512 || len(req.Verification) > 128 || len(req.CleanupReceipts) > 128 {
-		return fmt.Errorf("handoff result evidence exceeds bounded limits")
-	}
-	for _, value := range append(append(append([]string{}, req.ChangedFiles...), req.Verification...), req.CleanupReceipts...) {
-		if len(value) > 4096 {
-			return fmt.Errorf("handoff result evidence item exceeds bounded limit")
-		}
-	}
-	return nil
-}
-
-func AcceptIssueOpsHandoff(stateRoot string, req IssueOpsHandoffAcceptRequest) (IssueOpsRecord, error) {
-	return acceptIssueOpsHandoff(stateRoot, req, issueOpsHandoffLifecycleHooks{})
-}
-
-func acceptIssueOpsHandoff(stateRoot string, req IssueOpsHandoffAcceptRequest, hooks issueOpsHandoffLifecycleHooks) (IssueOpsRecord, error) {
-	validated, err := ReadIssueOps(stateRoot, req.ID)
-	if err != nil {
-		return IssueOpsRecord{}, err
-	}
-	if validated.ExecutionHandoff == nil {
-		return IssueOpsRecord{}, fmt.Errorf("execution handoff is required")
-	}
-	if !handoff.CoordinatorIdentityMatches(validated, model.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID}, req.SourceCWD) {
-		return IssueOpsRecord{}, fmt.Errorf("handoff accept requires the sealed coordinator native session from the exact source checkout")
-	}
-	if validated.ExecutionHandoff.State != handoff.StateClosed {
-		if strings.TrimSpace(req.ContextSHA256) == "" || req.ContextSHA256 != validated.ExecutionHandoff.ContextSHA256 {
-			return IssueOpsRecord{}, fmt.Errorf("stale handoff context")
-		}
-		if err := validateHandoffContextSource(validated); err != nil {
-			return IssueOpsRecord{}, err
-		}
-		if err := validateHandoffAcceptEvidence(validated, req); err != nil {
-			return IssueOpsRecord{}, err
-		}
-	}
-	runHandoffLifecycleHook(hooks.BeforeLockedRevalidation)
-	var persisted IssueOpsRecord
-	err = withIssueOpsLock(context.Background(), stateRoot, req.ID, func(context.Context) error {
-		record, err := ReadIssueOps(stateRoot, req.ID)
-		if err != nil {
-			return err
-		}
-		if !reflect.DeepEqual(record, validated) {
-			return fmt.Errorf("handoff changed after accept validation; retry with the current fence")
-		}
-		if !handoff.CoordinatorIdentityMatches(record, model.IssueOpsHostSessionIdentity{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID}, req.SourceCWD) {
-			return fmt.Errorf("handoff accept requires the sealed coordinator native session from the exact source checkout")
-		}
-		if record.ExecutionHandoff.State != handoff.StateClosed {
-			if strings.TrimSpace(req.ContextSHA256) == "" || req.ContextSHA256 != record.ExecutionHandoff.ContextSHA256 {
-				return fmt.Errorf("stale handoff context")
-			}
-			if err := validateHandoffContextSource(record); err != nil {
-				return err
-			}
-			if err := validateHandoffAcceptEvidence(record, req); err != nil {
-				return err
-			}
-		}
-		now := time.Now().UTC().Format(time.RFC3339Nano)
-		record, err = handoff.Accept(record, handoff.AcceptRequest{Fence: handoff.Fence{Attempt: req.Attempt, OwnershipEpoch: req.OwnershipEpoch, ContextSHA256: req.ContextSHA256}, FinalHead: req.FinalHead, Now: now})
-		if err != nil {
-			return err
-		}
-		record.UpdatedAt = now
-		persisted, err = writeIssueOps(stateRoot, record)
-		return err
-	})
-	return persisted, err
-}
-
 func runHandoffLifecycleHook(hook func()) {
 	if hook != nil {
 		hook()
@@ -431,104 +242,6 @@ func validateHandoffContextSource(record IssueOpsRecord) error {
 	}
 	if current != record.ExecutionHandoff.ContextSourceSHA256 {
 		return fmt.Errorf("stale handoff context source fingerprint")
-	}
-	return nil
-}
-
-func validateHandoffAcceptEvidence(record IssueOpsRecord, req IssueOpsHandoffAcceptRequest) error {
-	h := record.ExecutionHandoff
-	if h == nil || h.Result == nil || h.Orca == nil {
-		return fmt.Errorf("submitted completed result evidence is required")
-	}
-	result := h.Result
-	if result.Outcome != handoff.OutcomeCompleted || strings.TrimSpace(result.FinalHead) == "" || strings.TrimSpace(result.TuringReportPath) == "" || !hasNonEmptyHandoffEvidence(result.Verification) || !hasNonEmptyHandoffEvidence(result.CleanupReceipts) {
-		return fmt.Errorf("submitted completed result evidence is incomplete")
-	}
-	if strings.TrimSpace(result.FinalHead) != strings.TrimSpace(req.FinalHead) {
-		return fmt.Errorf("submitted result head does not match accepted head")
-	}
-	if strings.TrimSpace(h.Orca.TaskID) == "" || strings.TrimSpace(result.TaskID) == "" || result.TaskID != h.Orca.TaskID {
-		return fmt.Errorf("submitted result task identity does not match handoff")
-	}
-	if strings.TrimSpace(h.Orca.DispatchID) == "" || strings.TrimSpace(result.DispatchID) == "" || result.DispatchID != h.Orca.DispatchID {
-		return fmt.Errorf("submitted result dispatch identity does not match handoff")
-	}
-	workerRoot := pathutil.CleanAbsPath(h.WorkerRoot)
-	if workerRoot == "" || workerRoot != pathutil.CleanAbsPath(record.WorktreePath) {
-		return fmt.Errorf("canonical worker root does not match the linked worktree")
-	}
-	reportPath := strings.TrimSpace(result.TuringReportPath)
-	if reportPath == "" {
-		return fmt.Errorf("Turing report is required")
-	}
-	if !safeRelativeHandoffResultPath(reportPath) {
-		return fmt.Errorf("Turing report path must be a safe relative worker path")
-	}
-	reportPath = filepath.Join(workerRoot, reportPath)
-	leafInfo, err := os.Lstat(reportPath)
-	if err != nil {
-		return fmt.Errorf("Turing report does not exist: %w", err)
-	}
-	if leafInfo.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("Turing report leaf must not be a symlink")
-	}
-	resolvedRoot, err := filepath.EvalSymlinks(workerRoot)
-	if err != nil {
-		return fmt.Errorf("resolve canonical worker root: %w", err)
-	}
-	resolvedReport, err := filepath.EvalSymlinks(reportPath)
-	if err != nil {
-		return fmt.Errorf("Turing report does not exist: %w", err)
-	}
-	if !pathutil.PathWithin(resolvedReport, resolvedRoot) {
-		return fmt.Errorf("Turing report must exist inside the canonical worker root")
-	}
-	info, err := os.Stat(resolvedReport)
-	if err != nil || !info.Mode().IsRegular() {
-		return fmt.Errorf("Turing report must be a regular file")
-	}
-	if branch := strings.TrimSpace(preflight.GitOut(workerRoot, "branch", "--show-current")); branch == "" || branch != strings.TrimSpace(record.Branch) {
-		return fmt.Errorf("worker branch does not match handoff branch at accept")
-	}
-	code, head, _ := preflight.GitCmd(workerRoot, "rev-parse", "--verify", "HEAD^{commit}")
-	if code != 0 || strings.TrimSpace(head) != strings.TrimSpace(req.FinalHead) {
-		return fmt.Errorf("current worktree head does not match submitted head")
-	}
-	code, status, _ := preflight.GitCmd(workerRoot, "status", "--porcelain=v1")
-	if code != 0 {
-		return fmt.Errorf("worker worktree status is unreadable")
-	}
-	if strings.TrimSpace(status) != "" {
-		return fmt.Errorf("worker worktree must be clean before accept")
-	}
-	base := strings.TrimSpace(h.AttemptBaseHead)
-	finalHead := strings.TrimSpace(req.FinalHead)
-	if base == "" {
-		return fmt.Errorf("attempt base head is required for accept lineage")
-	}
-	if code, _, _ := preflight.GitCmd(workerRoot, "merge-base", "--is-ancestor", base, finalHead); code != 0 {
-		return fmt.Errorf("submitted head must descend from the attempt base head")
-	}
-	code, diffOutput, _ := preflight.GitCmdRaw(workerRoot, "diff", "--name-only", "-z", base+".."+finalHead)
-	if code != 0 {
-		return fmt.Errorf("read committed handoff diff")
-	}
-	actual := canonicalGitPathSet(splitNULTerminatedPaths(diffOutput))
-	expected, err := canonicalChangedFileSet(result.ChangedFiles)
-	if err != nil {
-		return err
-	}
-	if !reflect.DeepEqual(actual, expected) {
-		return fmt.Errorf("submitted changed_files do not exactly match the committed attempt diff")
-	}
-	reportRelative, err := filepath.Rel(resolvedRoot, resolvedReport)
-	if err != nil || filepath.IsAbs(reportRelative) || reportRelative == ".." || strings.HasPrefix(filepath.ToSlash(reportRelative), "../") {
-		return fmt.Errorf("Turing report must resolve to a safe relative worker path")
-	}
-	if len(actual) > 0 {
-		if _, ok := expected[filepath.ToSlash(filepath.Clean(reportRelative))]; !ok {
-			return fmt.Errorf("committed Turing report must be included in changed_files")
-		}
 	}
 	return nil
 }
@@ -570,13 +283,4 @@ func splitNULTerminatedPaths(value string) []string {
 		parts = parts[:len(parts)-1]
 	}
 	return parts
-}
-
-func hasNonEmptyHandoffEvidence(values []string) bool {
-	for _, value := range values {
-		if strings.TrimSpace(value) != "" {
-			return true
-		}
-	}
-	return false
 }

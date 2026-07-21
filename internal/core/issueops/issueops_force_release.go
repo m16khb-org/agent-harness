@@ -181,7 +181,7 @@ func forceReleaseLocked(stateRoot, id, reason string) (IssueOpsRecord, error) {
 	if err != nil {
 		return record, err
 	}
-	if h := record.ExecutionHandoff; h != nil && h.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && h.State != handoff.StateClosed {
+	if h := record.ExecutionHandoff; h != nil && h.State != handoff.StateClosed {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("force-release cannot change a non-closed ownership-transfer handoff; use the explicit human cleanup flow")
 	}
 	if w := record.ExecutionWorkspace; w != nil && w.State != handoff.StateRecoveryRequired {

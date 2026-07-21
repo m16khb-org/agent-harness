@@ -79,12 +79,12 @@ func validateWorkspacePreparationMutation(record IssueOpsRecord, actor *IssueOps
 	return validateReadyWorkspacePreparationActor(record, *actor)
 }
 
-// validatePostTransferMutation keeps protocol-v2 durable writes bound to the
+// validatePostTransferMutation keeps current-contract durable writes bound to the
 // owner even when callers bypass lifecycle hooks through a direct CLI or MCP
 // request. Legacy cycles retain their existing actor-optional behavior.
 func validatePostTransferMutation(record IssueOpsRecord, actor *IssueOpsActor) error {
 	h := record.ExecutionHandoff
-	if h == nil || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion {
+	if h == nil {
 		return nil
 	}
 	if h.State != handoff.StateOwnerActive {
@@ -108,7 +108,7 @@ func validatePostTransferMutation(record IssueOpsRecord, actor *IssueOpsActor) e
 
 // ValidateReadyWorkspacePreparationActor is the pre-side-effect guard for
 // adapters that must inspect or prepare dependencies before they persist their
-// result. It intentionally has the same legacy/source-root behavior as the
+// result. It intentionally has the same source-root behavior as the
 // durable recorders: only an execution workspace requires the sealed actor.
 func ValidateReadyWorkspacePreparationActor(record IssueOpsRecord, actor IssueOpsActor) error {
 	if record.ExecutionWorkspace == nil {

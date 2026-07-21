@@ -19,10 +19,6 @@ func prepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req c
 	return core.PrepareIssueOpsHandoffWorktree(ctx, stateRoot, req, orca.New(), core.IssueOpsHandoffPrepareClock{})
 }
 
-func migrateIssueOpsLegacyWorktree(ctx context.Context, stateRoot string, req core.IssueOpsLegacyWorktreeMigrationRequest) (core.IssueOpsLegacyWorktreeMigrationResult, error) {
-	return core.MigrateIssueOpsLegacyWorktree(ctx, stateRoot, req, orca.New(), core.IssueOpsHandoffPrepareClock{})
-}
-
 var issueOpsWorkerDoneProjectionClient = func() core.IssueOpsWorkerDoneProjectionClient {
 	return orca.New()
 }

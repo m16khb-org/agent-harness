@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/issueops/pathutil"
 	"agent-harness/internal/core/preflight"
 )
@@ -37,7 +36,7 @@ func validateHandoffCleanExactCheckpoint(record IssueOpsRecord) error {
 }
 
 func validateHandoffStartCheckpoint(record IssueOpsRecord) error {
-	if record.ExecutionHandoff != nil && record.ExecutionHandoff.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
+	if record.ExecutionHandoff != nil {
 		_, err := validateOwnershipStartCheckpoint(record)
 		return err
 	}
