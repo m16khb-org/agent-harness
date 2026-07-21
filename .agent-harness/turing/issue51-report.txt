@@ -1,0 +1,51 @@
+IssueOps #51 supervised worker report
+
+Identity and acknowledged context
+
+- Cycle: io-a370d531cf9f, attempt 1, ownership epoch ownership-1742f5d8e68597ebe104f2f63ff434f7.
+- Worker root: /Users/habin/workspace/agent-harness.worktrees/51-p0-safety-critical-fixes.
+- Branch: 51-p0-safety-critical-fixes; initial HEAD: 83697913a7de2c0b3231a2c948f5e13ef1740819.
+- Initial upstream HEAD: 4d347ddaa4bef18e5221a733eb32c8e139118a69; the worker began clean and one plan-only commit ahead.
+- Scope: GitHub issue #51 and existing Draft PR #63 only. No work was performed on #52 or another cycle.
+
+Reproductions and root causes
+
+1. `go test -v ./internal/holdoutdeleak -run '^TestEvidenceAnswerFilesNotForceTracked$' -count=1` failed because `.agent-harness/evidence/51-p0-safety-critical-fixes.md` was force-tracked. Removing the tracked answer artifact makes the holdout contract pass.
+2. `TestExecGitRunnerAppliesLocalDeadline` passed on this macOS worker, while the CI failure exited 127. The test replaces PATH with a directory containing only fake `git`, but the fake script invoked external `sleep`; Linux `/bin/sh` could not find it and exited before the deadline. A POSIX shell-builtin infinite loop preserves the intended timeout test without production changes.
+3. A new semantic contract test failed before the Shannon fix because the skill used `awk -v pattern="$pattern"`. That transport may reinterpret regex backslashes before compilation. Transport through `ENVIRON["SHANNON_PATTERN"]` preserves the expression bytes; the positive comment fixture matches and the negative code fixture does not.
+
+Changed files
+
+- Removed `.agent-harness/evidence/51-p0-safety-critical-fixes.md` from tracking.
+- Changed `internal/adapter/operationalhealth/collector_test.go` to use only shell builtins in the deadline fixture.
+- Added positive and negative Shannon regex contract fixtures in `internal/core/skillcontract/skill_contract_test.go`.
+- Changed and documented the regex transport in `skills/shannon/SKILL.md`.
+- Added this committed execution report at `.agent-harness/turing/issue51-report.txt`.
+
+Verification evidence
+
+- PASS: `go test -v ./internal/holdoutdeleak -run '^TestEvidenceAnswerFilesNotForceTracked$' -count=1`.
+- PASS: `go test -v ./internal/adapter/operationalhealth -run '^TestExecGitRunnerAppliesLocalDeadline$' -count=1`.
+- PASS: `go test -v ./internal/core/skillcontract -run '^TestShannonNoisePatternPreservesRegexEscapes$' -count=1`.
+- PASS: `python3 scripts/p0_skill_safety_test.py`.
+- PASS: `python3 scripts/validate-skill.py skills/shannon`.
+- PASS: `go vet ./...`.
+- PASS: `git diff --check`.
+- FAIL, unrelated live baseline: `go test ./... -count=1` passed the changed packages and all other packages except `cmd/harness/harnessapp.TestResponseContractsGolden`; the golden embeds live operational inventory and did not match the active Orca/IssueOps/worktree snapshot.
+- FAIL, unrelated suite capacity plus the same golden: `go test -race ./... -count=1` passed all changed packages, reported the same `harnessapp` live-inventory golden mismatch, and timed out `internal/core/issueops` at its 10-minute package deadline while running `TestCreateRemotePullRequestPreservesSecretLikeLegacyInputBytes`. The non-race package consumed about 540 seconds; race overhead crossed the fixed 10-minute package timeout.
+- PASS: isolated `go test -race ./internal/core/issueops -run '^TestCreateRemotePullRequestPreservesSecretLikeLegacyInputBytes$' -count=1` completed in 2.996 seconds, showing the reported race failure is aggregate package runtime rather than this change.
+- BLOCKED by supervised ownership hook: `go build -o bin/agent-harness ./cmd/harness`. The hook reserves wrapped controller/build publication actions for the coordinator during ownership transfer; no bypass was attempted.
+- BLOCKED by the same hook: `gh pr checks 63` and other remote PR reads. The worker did not bypass the coordinator-owned publication boundary.
+
+Shannon assessment
+
+- Baseline was insufficient for a before/after ratio because the worker began with an empty implementation diff.
+- The final pre-report diff was 40 insertions and 84 deletions: one behavioral fixture line, 34 contract-test lines, a narrow skill matcher/documentation correction, and removal of an 80-line tracked answer artifact.
+- Approximate added-code SNR is 1.00: all added Go lines exercise the corrected contract, no new abstraction or production branch was introduced, and review found no duplicated block. This is labeled approximate because the supervised shell policy blocked the skill's pipeline-based measurement command.
+
+Publication and safety boundaries
+
+- This report is part of one normal local follow-up commit without amend, rebase, force-push, or history rewriting.
+- Push and Draft PR #63 publication/readback remain coordinator-owned under the active supervised handoff hook.
+- Zero merge, deploy, issue close, remote cleanup, local cleanup, or changes outside #51 were performed.
+- Remaining risks are the live operational-inventory golden and aggregate race-suite timeout described above; neither is caused by the scoped diff, and broadening this patch to rewrite those baselines would violate #51's minimal-fix boundary.

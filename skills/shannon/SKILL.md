@@ -67,7 +67,7 @@ count_matching_added_lines() {
   local pattern=$1
   shift
   measure_added_lines "$@" |
-    LC_ALL=C awk -v pattern="$pattern" '$0 ~ pattern { count += 1 } END { print count + 0 }'
+    SHANNON_PATTERN="$pattern" LC_ALL=C awk '$0 ~ ENVIRON["SHANNON_PATTERN"] { count += 1 } END { print count + 0 }'
 }
 
 NOISE_PATTERN='^\+[[:space:]]*(//|#|/\*|\*|console\.(log|debug|info)|print\(|log\.(debug|info|warn))'
@@ -83,8 +83,10 @@ else
 fi
 ```
 
-Exercise this exact block before relying on it: empty diff, no-match, a `space-containing path`, and an environment
-where `grep` is an `ugrep alias`. Any command failure is a measurement failure to report, never a coerced zero.
+The environment variable carries the regular expression bytes unchanged; `awk -v` may reinterpret backslash escapes
+before compiling the pattern. Exercise this exact block before relying on it: positive and negative regex fixtures,
+empty diff, no-match, a `space-containing path`, and an environment where `grep` is an `ugrep alias`. Any command
+failure is a measurement failure to report, never a coerced zero.
 
 ### Metric 1: SNR — Signal-to-Noise Ratio
 

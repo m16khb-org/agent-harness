@@ -84,6 +84,40 @@ func TestAtomicCommitPushSkillPinsStagingAndPushSafetyContract(t *testing.T) {
 	})
 }
 
+func TestShannonNoisePatternPreservesRegexEscapes(t *testing.T) {
+	body := readSkillForTest(t, "shannon")
+	if !strings.Contains(body, `ENVIRON["SHANNON_PATTERN"]`) {
+		t.Fatal("shannon SKILL.md must transport the noise regex without awk -v escape processing")
+	}
+
+	awk, err := exec.LookPath("awk")
+	if err != nil {
+		t.Skipf("awk not available: %v", err)
+	}
+	pattern := `^\+[[:space:]]*(//|#|/\*|\*|console\.(log|debug|info)|print\(|log\.(debug|info|warn))`
+	for _, test := range []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{name: "positive", input: "+ // explanatory noise\n", want: "1\n"},
+		{name: "negative", input: "+ value := 1\n", want: "0\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			cmd := exec.Command(awk, `$0 ~ ENVIRON["SHANNON_PATTERN"] { count += 1 } END { print count + 0 }`)
+			cmd.Env = append(os.Environ(), "LC_ALL=C", "SHANNON_PATTERN="+pattern)
+			cmd.Stdin = strings.NewReader(test.input)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("awk noise matcher failed: %v: %s", err, output)
+			}
+			if string(output) != test.want {
+				t.Fatalf("noise matches = %q, want %q", output, test.want)
+			}
+		})
+	}
+}
+
 func TestGitlabUsecaseSkillPinsAssigneeContract(t *testing.T) {
 	assertSkillContains(t, "gitlab-usecase", []string{
 		// Concrete-assignee guardrail (no `@me` placeholder).
