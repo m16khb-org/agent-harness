@@ -38,6 +38,9 @@ func validateHandoffCleanExactCheckpoint(record IssueOpsRecord) error {
 
 func validateHandoffStartCheckpoint(record IssueOpsRecord) error {
 	if record.ExecutionHandoff != nil && record.ExecutionHandoff.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
+		if record.ExecutionHandoff.Attempt > 1 {
+			return validateHandoffCleanExactCheckpoint(record)
+		}
 		_, err := validateOwnershipStartCheckpoint(record)
 		return err
 	}

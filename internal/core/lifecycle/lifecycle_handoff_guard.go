@@ -223,10 +223,16 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 		if command := bootstrapCoordinatorStartGuidance(req, record); command != "" {
 			return true, "supervised IssueOps bootstrap requires the authenticated native coordinator identity; rerun this exact harness-authored preview command: " + command
 		}
+		if searchrouting.IsShellTool(req.Tool) && exactReadOnlyShellCommand(req, record) || !searchrouting.IsShellTool(req.Tool) && explicitHandoffReadOnlyTool(req.Tool) {
+			return true, ""
+		}
 		if isHandoffLifecycleCommand(req.Command) && allowedExactHandoffLifecycleCommand(req, record) {
 			return true, ""
 		}
 		if allowedReadyWorkspacePreparationMCP(req, record) {
+			return true, ""
+		}
+		if coordinatorPlanMutationAllowed(req, record) || coordinatorPlanGitCommandAllowed(req, record) {
 			return true, ""
 		}
 		if reason := workspacePreparationBlockReason(req, record); reason != "" {
@@ -389,8 +395,10 @@ func ownershipTransferMutationBlockReason(req HookToolUseLifecycleRequest, recor
 		return true, "ownership transfer owner mutation requires the current Git branch to exactly match the persisted handoff branch; remain read-only and run the exact resume command"
 	}
 	if searchrouting.IsShellTool(req.Tool) {
-		if violation := claimedWorkerRoleViolation(req.Command); violation != "" {
-			return true, "ownership transfer owner may implement, verify, and locally commit only; " + violation + ". Source coordinator and owner cannot push, publish, steer terminals, or clean up resources automatically"
+		if !ownershipOwnerExactPushAllowed(req, record) {
+			if violation := claimedWorkerRoleViolation(req.Command); violation != "" {
+				return true, "ownership transfer owner may implement, verify, locally commit, and push only the exact transferred branch; " + violation + ". Publication must use the sealed handoff publish and remote create-pr commands; terminal steering and cleanup remain outside owner authority"
+			}
 		}
 	}
 	if searchrouting.IsShellTool(req.Tool) && unresolvedNestedShellMutation(req.Command) {
@@ -492,8 +500,8 @@ func protectedWorkerRootMutation(req HookToolUseLifecycleRequest, record IssueOp
 }
 
 func coordinatorPlanMutationAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
-	h := record.ExecutionHandoff
-	if h == nil || h.State != handoff.StateCoordinatorPreparing || strings.TrimSpace(h.ContextSHA256) != "" || h.PendingOperation != nil {
+	workerRoot, ok := coordinatorPlanPreparationWorkerRoot(req, record)
+	if !ok {
 		return false
 	}
 	switch strings.ToLower(strings.TrimSpace(req.Tool)) {
@@ -505,25 +513,35 @@ func coordinatorPlanMutationAllowed(req HookToolUseLifecycleRequest, record Issu
 	if cleanAbsPath(req.CWD) != coordinatorRoot || cleanAbsPath(req.Repo) != coordinatorRoot {
 		return false
 	}
-	workerRoot := cleanAbsPath(h.WorkerRoot)
 	targets := worktreeGuardEditTargets(req)
 	if workerRoot == "" || len(targets) == 0 {
 		return false
 	}
 	for _, target := range targets {
-		if !coordinatorPlanPathAllowed(record, target) {
+		if !coordinatorPlanPathAllowed(record, workerRoot, target) {
 			return false
 		}
 	}
 	return true
 }
 
-func coordinatorPlanPathAllowed(record IssueOpsRecord, target string) bool {
+func coordinatorPlanPreparationWorkerRoot(req HookToolUseLifecycleRequest, record IssueOpsRecord) (string, bool) {
 	h := record.ExecutionHandoff
-	if h == nil {
-		return false
+	if h != nil {
+		if h.State != handoff.StateCoordinatorPreparing || strings.TrimSpace(h.ContextSHA256) != "" || h.PendingOperation != nil {
+			return "", false
+		}
+		return cleanAbsPath(h.WorkerRoot), true
 	}
-	workerRoot := cleanAbsPath(h.WorkerRoot)
+	workspace := record.ExecutionWorkspace
+	if workspace == nil || workspace.State != "ready" || workspace.PendingOperation != nil || !nativeSessionMatches(req, workspace.PreparationSession) {
+		return "", false
+	}
+	return cleanAbsPath(workspace.WorkerRoot), true
+}
+
+func coordinatorPlanPathAllowed(record IssueOpsRecord, workerRoot, target string) bool {
+	workerRoot = cleanAbsPath(workerRoot)
 	target = cleanAbsPath(target)
 	if workerRoot == "" || !pathWithin(target, workerRoot) || !resolvedPathWithin(target, workerRoot) || strings.ToLower(filepath.Ext(target)) != ".md" {
 		return false
@@ -558,22 +576,22 @@ func coordinatorPlanPathAllowed(record IssueOpsRecord, target string) bool {
 }
 
 func coordinatorPlanGitCommandAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
-	h := record.ExecutionHandoff
-	if h == nil || h.State != handoff.StateCoordinatorPreparing || strings.TrimSpace(h.ContextSHA256) != "" || h.PendingOperation != nil || !searchrouting.IsShellTool(req.Tool) {
+	workerRoot, ok := coordinatorPlanPreparationWorkerRoot(req, record)
+	if !ok || !searchrouting.IsShellTool(req.Tool) {
 		return false
 	}
 	if cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
 		return false
 	}
 	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
-	if len(tokens) < 6 || tokens[0] != "git" || tokens[1] != "-C" || cleanAbsPath(tokens[2]) != cleanAbsPath(h.WorkerRoot) {
+	if len(tokens) < 6 || tokens[0] != "git" || tokens[1] != "-C" || cleanAbsPath(tokens[2]) != workerRoot {
 		return false
 	}
 	switch tokens[3] {
 	case "add":
-		return len(tokens) == 6 && tokens[4] == "--" && coordinatorPlanPathAllowed(record, tokens[5])
+		return len(tokens) == 6 && tokens[4] == "--" && coordinatorPlanPathAllowed(record, workerRoot, tokens[5])
 	case "commit":
-		return len(tokens) == 9 && tokens[4] == "--only" && tokens[5] == "-m" && strings.TrimSpace(tokens[6]) != "" && len(tokens[6]) <= 256 && tokens[7] == "--" && coordinatorPlanPathAllowed(record, tokens[8])
+		return len(tokens) == 9 && tokens[4] == "--only" && tokens[5] == "-m" && strings.TrimSpace(tokens[6]) != "" && len(tokens[6]) <= 256 && tokens[7] == "--" && coordinatorPlanPathAllowed(record, workerRoot, tokens[8])
 	default:
 		return false
 	}
@@ -589,7 +607,7 @@ func coordinatorPlanGitMismatchGuidance(req HookToolUseLifecycleRequest, record 
 		return ""
 	}
 	plan := filepath.Join(h.WorkerRoot, tokens[5])
-	if !coordinatorPlanPathAllowed(record, plan) {
+	if !coordinatorPlanPathAllowed(record, h.WorkerRoot, plan) {
 		return ""
 	}
 	return "protocol-v1 coordinator plan Git target must be absolute; run only: git -C " + shellGuidanceQuote(h.WorkerRoot) + " add -- " + shellGuidanceQuote(plan)

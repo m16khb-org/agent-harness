@@ -419,6 +419,34 @@ func TestHandoffFinalizeCancelClosesAfterStaleDisconnectedFailedEvidence(t *test
 	}
 }
 
+func TestHandoffFinalizeCancelAcceptsTerminalTaskWithStaleDispatchProjection(t *testing.T) {
+	stateRoot, record, _ := dispatchedHandoffRecord(t)
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "cancel", Confirm: true, Reason: "replace contradictory sealed context",
+	}, nil, handoffPrepareTestClock()); err != nil {
+		t.Fatal(err)
+	}
+	client := handoffDispatchFake(record)
+	client.terminals = nil
+	client.dispatch.Status = "dispatched"
+	client.tasks = []port.OrcaTask{{ID: record.ExecutionHandoff.Orca.TaskID, Status: "dispatched"}}
+	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "finalize-cancel", Confirm: true,
+	}, client, handoffPrepareTestClock()); err == nil {
+		t.Fatal("stale dispatch projection without terminal task evidence must not close")
+	}
+	client.tasks = []port.OrcaTask{{ID: record.ExecutionHandoff.Orca.TaskID, Status: "failed", HasResult: true}}
+	got, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "finalize-cancel", Confirm: true,
+	}, client, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.State != handoff.StateClosed || got.Disposition != handoff.DispositionCancelled {
+		t.Fatalf("terminal task with stale dispatch projection did not close: %#v", got)
+	}
+}
+
 func TestHandoffFinalizeCancelRejectsMalformedQuiescenceInventory(t *testing.T) {
 	stateRoot, record, _ := dispatchedHandoffRecord(t)
 	if _, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
@@ -533,6 +561,101 @@ func TestHandoffRetryUsesNewAttemptAndEpoch(t *testing.T) {
 	persisted, _ := ReadIssueOps(stateRoot, record.ID)
 	if persisted.ExecutionHandoff.OwnershipEpoch != "epoch-2" {
 		t.Fatalf("epoch not replaced: %#v", persisted.ExecutionHandoff)
+	}
+}
+
+func TestOwnershipHandoffRetryPreservesProtocolWorkspaceAndOwnerAudit(t *testing.T) {
+	stateRoot, record, _ := dispatchedHandoffRecord(t)
+	h := record.ExecutionHandoff
+	h.ProtocolVersion = handoff.OwnershipTransferProtocolVersion
+	h.State = handoff.StateClosed
+	h.ClosedDisposition = handoff.DispositionCancelled
+	h.WorkspaceEpoch = "workspace-epoch-1"
+	h.WorkspaceSHA256 = strings.Repeat("c", 64)
+	h.WorkerSession = nil
+	h.Result = nil
+	h.OwnerSession = &IssueOpsHostSessionIdentity{Host: "codex", SessionID: "owner-session", AgentID: "owner-agent"}
+	h.Orientation = &model.IssueOpsOwnershipOrientation{
+		IssueURL: record.IssueURL, PlanSHA256: strings.Repeat("d", 64), Understanding: "understood",
+		ScopeConfirmation: "bounded owner scope", RecordedAt: "2026-07-20T00:00:00Z",
+	}
+	h.Failure = &model.IssueOpsExecutionHandoffFailure{Code: "cancellation_finalized", Message: "correct sealed context", At: "2026-07-20T00:01:00Z"}
+	workspaceOrca := *h.Orca
+	workspaceOrca.WorkerPTYID, workspaceOrca.WorkerTerminalHandle, workspaceOrca.WorkerMailboxHandle = "", "", ""
+	workspaceOrca.WorkerTabID, workspaceOrca.WorkerLeafID, workspaceOrca.TaskID, workspaceOrca.DispatchID = "", "", "", ""
+	record.ExecutionWorkspace = &model.IssueOpsExecutionWorkspace{
+		State: "ready", WorkspaceEpoch: h.WorkspaceEpoch, Driver: h.Driver, Agent: h.Agent,
+		CoordinatorRoot: record.Repo, WorkerRoot: h.WorkerRoot,
+		PreparationSession: &IssueOpsHostSessionIdentity{Host: "codex", SessionID: "prep-session", AgentID: "prep-agent"},
+		BaseHead:           h.AttemptBaseHead, Orca: &workspaceOrca,
+	}
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{
+		ID: record.ID, Action: "retry", Confirm: true,
+	}, quiescentRetryClient(t, stateRoot, record.ID), IssueOpsHandoffPrepareClock{
+		Now: handoffPrepareTestClock().Now, NewEpoch: func() (string, error) { return "owner-epoch-2", nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Attempt != 2 || got.State != handoff.StateCoordinatorPreparing {
+		t.Fatalf("ownership retry result = %#v", got)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.ExecutionHandoff.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || persisted.ExecutionHandoff.WorkspaceEpoch != h.WorkspaceEpoch || persisted.ExecutionHandoff.WorkspaceSHA256 != h.WorkspaceSHA256 {
+		t.Fatalf("ownership retry lost protocol or workspace seal: %#v", persisted.ExecutionHandoff)
+	}
+	encoded, err := json.Marshal(persisted.ExecutionHandoff.PriorAttempts[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"\"workspace_epoch\":\"workspace-epoch-1\"", "\"owner_session\"", "\"orientation\""} {
+		if !strings.Contains(string(encoded), want) {
+			t.Fatalf("ownership prior attempt lost %s: %s", want, encoded)
+		}
+	}
+	client := handoffDispatchFake(persisted)
+	client.terminal.WorktreeID = persisted.ExecutionWorkspace.Orca.WorktreeID
+	client.terminal.WorktreePath = persisted.WorktreePath
+	client.terminalsAfterCreate = []port.OrcaTerminal{client.terminal}
+	startReq := IssueOpsHandoffStartRequest{
+		ID: persisted.ID, CoordinatorRecipient: testCoordinatorRecipient,
+		CoordinatorHost: "codex", CoordinatorSessionID: "prep-session", CoordinatorAgentID: "prep-agent", SourceCWD: persisted.Repo,
+		WorkspaceEpoch: persisted.ExecutionWorkspace.WorkspaceEpoch,
+		Context:        handoff.ContextOptions{WorkerScope: "corrected retry scope", StopConditions: []string{"owner may publish exact branch; stop before merge"}, AllowCodexHookTrustBypass: true},
+	}
+	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, startReq, client, handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !preview.Preview || preview.Attempt != 2 || preview.ContextSHA256 == "" {
+		t.Fatalf("ownership retry preview = %#v", preview)
+	}
+	workspaceSHA, err := issueOpsWorkspaceFingerprint(persisted.ExecutionWorkspace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dispatchingRecord := persisted
+	dispatchingRecord.ExecutionHandoff = ownershipDispatchingContext(persisted, testCoordinatorRecipient, *persisted.ExecutionWorkspace.PreparationSession, persisted.ExecutionHandoff.AttemptBaseHead, workspaceSHA)
+	packet, err := handoff.BuildContext(dispatchingRecord, startReq.Context)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = persistOwnershipHandoffContext(stateRoot, dispatchingRecord, packet, handoff.CanonicalContextOptions(startReq.Context), issueOpsHandoffStartNow(handoffStartTestClock())); err != nil {
+		t.Fatal(err)
+	}
+	dispatched, err := RecoverIssueOpsHandoff(context.Background(), stateRoot, IssueOpsHandoffRecoverRequest{ID: persisted.ID, Action: "reconcile"}, client, handoffPrepareTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dispatched.State != handoff.StateOwnershipDispatched || dispatched.Attempt != 2 {
+		t.Fatalf("ownership retry dispatch = %#v", dispatched)
 	}
 }
 

@@ -57,6 +57,31 @@ func TestOwnershipEnvelopeRejectsInvalidOrientation(t *testing.T) {
 	}
 }
 
+func TestOwnershipEnvelopeAllowsActiveOwnerCancellationLifecycle(t *testing.T) {
+	record := validOwnershipEnvelopeRecord(t)
+	record.ExecutionHandoff.State = StateRecoveryRequired
+	record.ExecutionHandoff.Cancellation = &model.IssueOpsExecutionHandoffCancellation{RequestedAt: "2026-07-20T00:01:00Z", Reason: "sealed context contradiction"}
+	record.ExecutionHandoff.Failure = &model.IssueOpsExecutionHandoffFailure{Code: "cancellation_requested", Message: "sealed context contradiction", At: "2026-07-20T00:01:00Z"}
+	if err := ValidateEnvelope(record); err != nil {
+		t.Fatalf("active owner cancellation tombstone rejected: %v", err)
+	}
+
+	record.ExecutionHandoff.State = StateClosed
+	record.ExecutionHandoff.ClosedDisposition = DispositionCancelled
+	record.ExecutionHandoff.Cancellation = nil
+	record.ExecutionHandoff.Failure = &model.IssueOpsExecutionHandoffFailure{Code: "cancellation_finalized", Message: "sealed context contradiction", At: "2026-07-20T00:02:00Z"}
+	if err := ValidateEnvelope(record); err != nil {
+		t.Fatalf("finalized active owner cancellation rejected: %v", err)
+	}
+
+	record.ExecutionHandoff.Cleanup = &model.IssueOpsExecutionHandoffCleanup{
+		Disposition: "retry", Reason: "preserve committed checkpoint", ApprovedAt: "2026-07-20T00:03:00Z",
+	}
+	if err := ValidateEnvelope(record); err != nil {
+		t.Fatalf("approved retry cleanup for cancelled owner rejected: %v", err)
+	}
+}
+
 func validOwnershipEnvelopeRecord(t *testing.T) model.IssueOpsRecord {
 	t.Helper()
 	repo := filepath.Join(t.TempDir(), "repo")

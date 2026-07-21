@@ -110,7 +110,7 @@ func startIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHan
 	if err != nil {
 		return IssueOpsHandoffStartResult{}, err
 	}
-	if record.ExecutionHandoff == nil {
+	if record.ExecutionHandoff == nil || (record.ExecutionHandoff.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && record.ExecutionHandoff.State == handoff.StateCoordinatorPreparing) {
 		return previewOwnershipHandoffStart(ctx, stateRoot, record, req, client, clock, hooks)
 	}
 	if record.ExecutionHandoff.State != handoff.StateCoordinatorPreparing {
@@ -232,8 +232,8 @@ func previewOwnershipHandoffStart(ctx context.Context, stateRoot string, record 
 	if workspace == nil || workspace.State != "ready" {
 		return IssueOpsHandoffStartResult{}, fmt.Errorf("ready execution workspace is required before ownership handoff start")
 	}
-	if record.Phase != IssueOpsPhaseCompatibilityReview {
-		return IssueOpsHandoffStartResult{}, fmt.Errorf("ownership handoff start requires compatibility-review phase")
+	if record.Phase != IssueOpsPhaseCompatibilityReview && record.Phase != IssueOpsPhaseImplement {
+		return IssueOpsHandoffStartResult{}, fmt.Errorf("ownership handoff start requires compatibility-review or implement phase")
 	}
 	coordinator := IssueOpsActor{Host: req.CoordinatorHost, SessionID: req.CoordinatorSessionID, AgentID: req.CoordinatorAgentID, CWD: req.SourceCWD}
 	session, err := validateWorkspacePreparationActor(record, workspace.Agent, coordinator)
@@ -247,12 +247,23 @@ func previewOwnershipHandoffStart(ctx context.Context, stateRoot string, record 
 		return IssueOpsHandoffStartResult{}, fmt.Errorf("ownership handoff start requires the exact sealed workspace epoch")
 	}
 	readiness := IssueOpsImplementationReadiness(record)
+	if record.ExecutionHandoff != nil {
+		readiness = IssueOpsPreDispatchReadiness(record)
+	}
 	if !readiness.Ready {
 		return IssueOpsHandoffStartResult{}, fmt.Errorf("ownership handoff pre-dispatch readiness missing: %s", strings.Join(readiness.Missing, ", "))
 	}
-	head, err := validateOwnershipStartCheckpoint(record)
-	if err != nil {
-		return IssueOpsHandoffStartResult{}, err
+	head := ""
+	if record.ExecutionHandoff == nil {
+		head, err = validateOwnershipStartCheckpoint(record)
+		if err != nil {
+			return IssueOpsHandoffStartResult{}, err
+		}
+	} else {
+		if err = validateHandoffCleanExactCheckpoint(record); err != nil {
+			return IssueOpsHandoffStartResult{}, err
+		}
+		head = record.ExecutionHandoff.AttemptBaseHead
 	}
 	coordinatorRecipient, err := resolveHandoffCoordinatorRecipient(ctx, stateRoot, record, req.CoordinatorRecipient, session, client)
 	if err != nil {
@@ -263,22 +274,7 @@ func previewOwnershipHandoffStart(ctx context.Context, stateRoot string, record 
 		return IssueOpsHandoffStartResult{}, err
 	}
 	contextRecord := record
-	contextRecord.ExecutionHandoff = &IssueOpsExecutionHandoff{
-		ProtocolVersion:          handoff.OwnershipTransferProtocolVersion,
-		State:                    handoff.StateOwnershipDispatching,
-		Attempt:                  1,
-		OwnershipEpoch:           ownershipPreviewEpoch(record.ID, workspace.WorkspaceEpoch, head),
-		WorkspaceEpoch:           workspace.WorkspaceEpoch,
-		WorkspaceSHA256:          workspaceSHA,
-		AttemptBaseHead:          head,
-		Driver:                   workspace.Driver,
-		Agent:                    workspace.Agent,
-		CoordinatorRoot:          workspace.CoordinatorRoot,
-		CoordinatorMailboxHandle: coordinatorRecipient,
-		CoordinatorSession:       &session,
-		WorkerRoot:               workspace.WorkerRoot,
-		Orca:                     cloneOwnershipWorkspaceOrca(workspace.Orca),
-	}
+	contextRecord.ExecutionHandoff = ownershipDispatchingContext(record, coordinatorRecipient, session, head, workspaceSHA)
 	options, err := resolveHandoffContextOptions(record, req.Context)
 	if err != nil {
 		return IssueOpsHandoffStartResult{}, err
@@ -330,11 +326,21 @@ func persistOwnershipHandoffContext(stateRoot string, expected IssueOpsRecord, p
 		if err != nil {
 			return err
 		}
-		if current.ExecutionHandoff != nil || current.ExecutionWorkspace == nil || !reflect.DeepEqual(current.ExecutionWorkspace, expected.ExecutionWorkspace) {
+		retrySeed := current.ExecutionHandoff != nil && current.ExecutionHandoff.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && current.ExecutionHandoff.State == handoff.StateCoordinatorPreparing
+		if (current.ExecutionHandoff != nil && !retrySeed) || current.ExecutionWorkspace == nil || !reflect.DeepEqual(current.ExecutionWorkspace, expected.ExecutionWorkspace) {
 			return fmt.Errorf("ownership workspace changed before confirmed dispatch")
 		}
-		if _, err := validateOwnershipStartCheckpoint(current); err != nil {
-			return err
+		head := ""
+		if retrySeed {
+			if err := validateHandoffCleanExactCheckpoint(current); err != nil {
+				return err
+			}
+			head = current.ExecutionHandoff.AttemptBaseHead
+		} else {
+			head, err = validateOwnershipStartCheckpoint(current)
+			if err != nil {
+				return err
+			}
 		}
 		fingerprint, err := issueOpsWorkspaceFingerprint(current.ExecutionWorkspace)
 		if err != nil {
@@ -342,6 +348,9 @@ func persistOwnershipHandoffContext(stateRoot string, expected IssueOpsRecord, p
 		}
 		if expected.ExecutionHandoff == nil || expected.ExecutionHandoff.WorkspaceSHA256 != fingerprint {
 			return fmt.Errorf("ownership workspace fingerprint changed before confirmed dispatch")
+		}
+		if rebuilt := ownershipDispatchingContext(current, expected.ExecutionHandoff.CoordinatorMailboxHandle, *expected.ExecutionHandoff.CoordinatorSession, head, fingerprint); !reflect.DeepEqual(rebuilt, expected.ExecutionHandoff) {
+			return fmt.Errorf("ownership retry seed changed before confirmed dispatch")
 		}
 		handoffCopy := *expected.ExecutionHandoff
 		currentContext := current
@@ -429,6 +438,31 @@ func cloneOwnershipWorkspaceOrca(identity *IssueOpsOrcaIdentity) *IssueOpsOrcaId
 	return &clone
 }
 
+func ownershipDispatchingContext(record IssueOpsRecord, coordinatorRecipient string, session model.IssueOpsHostSessionIdentity, head, workspaceSHA string) *IssueOpsExecutionHandoff {
+	workspace := record.ExecutionWorkspace
+	context := IssueOpsExecutionHandoff{}
+	if record.ExecutionHandoff != nil {
+		context = *record.ExecutionHandoff
+	} else {
+		context.ProtocolVersion = handoff.OwnershipTransferProtocolVersion
+		context.Attempt = 1
+		context.OwnershipEpoch = ownershipPreviewEpoch(record.ID, workspace.WorkspaceEpoch, head)
+	}
+	context.State = handoff.StateOwnershipDispatching
+	context.ClosedDisposition = ""
+	context.WorkspaceEpoch = workspace.WorkspaceEpoch
+	context.WorkspaceSHA256 = workspaceSHA
+	context.AttemptBaseHead = head
+	context.Driver = workspace.Driver
+	context.Agent = workspace.Agent
+	context.CoordinatorRoot = workspace.CoordinatorRoot
+	context.CoordinatorMailboxHandle = coordinatorRecipient
+	context.CoordinatorSession = &session
+	context.WorkerRoot = workspace.WorkerRoot
+	context.Orca = cloneOwnershipWorkspaceOrca(workspace.Orca)
+	return &context
+}
+
 func confirmedHandoffStartCommand(record IssueOpsRecord, recipient string, coordinator model.IssueOpsHostSessionIdentity, options handoff.ContextOptions, contextSHA string) string {
 	parts := []string{
 		"agent-harness issueops handoff start",
@@ -444,12 +478,7 @@ func confirmedHandoffStartCommand(record IssueOpsRecord, recipient string, coord
 	if record.ExecutionHandoff != nil && record.ExecutionHandoff.ProtocolVersion == handoff.OwnershipTransferProtocolVersion {
 		parts = append(parts, "--workspace-epoch "+quoteHandoffCLIToken(record.ExecutionHandoff.WorkspaceEpoch))
 	}
-	if options.AllowCodexHookTrustBypass {
-		parts = append(parts, "--allow-codex-hook-trust-bypass")
-	}
-	if options.CodexModel != "" {
-		parts = append(parts, "--codex-model "+quoteHandoffCLIToken(options.CodexModel), "--codex-reasoning-effort "+quoteHandoffCLIToken(options.CodexReasoningEffort))
-	}
+	parts = appendHandoffContextCommandOptions(parts, options, false)
 	parts = append(parts, "--expected-context-sha256 "+quoteHandoffCLIToken(contextSHA), "--confirm", "--json")
 	return strings.Join(parts, " ")
 }
@@ -465,12 +494,44 @@ func attestedHandoffPreviewCommand(record IssueOpsRecord, recipient string, coor
 	if coordinator.AgentID != "" {
 		parts = append(parts, "--coordinator-agent-id "+quoteHandoffCLIToken(coordinator.AgentID))
 	}
-	parts = append(parts, "--source-cwd "+quoteHandoffCLIToken(record.Repo), "--allow-codex-hook-trust-bypass")
+	parts = append(parts, "--source-cwd "+quoteHandoffCLIToken(record.Repo))
+	parts = appendHandoffContextCommandOptions(parts, options, true)
+	parts = append(parts, "--json")
+	return strings.Join(parts, " ")
+}
+
+func appendHandoffContextCommandOptions(parts []string, options handoff.ContextOptions, attestCodexHooks bool) []string {
+	for _, value := range options.CriteriaIDs {
+		parts = append(parts, "--criteria-id "+quoteHandoffCLIToken(value))
+	}
+	for _, value := range options.RequiredDocs {
+		parts = append(parts, "--required-doc "+quoteHandoffCLIToken(value))
+	}
+	for _, value := range options.RequiredSkills {
+		parts = append(parts, "--required-skill "+quoteHandoffCLIToken(value))
+	}
+	if options.WorkerScope != "" {
+		parts = append(parts, "--worker-scope "+quoteHandoffCLIToken(options.WorkerScope))
+	}
+	for _, value := range options.VerificationCommands {
+		parts = append(parts, "--verification "+quoteHandoffCLIToken(value))
+	}
+	if options.HeartbeatCadence != "" {
+		parts = append(parts, "--heartbeat-cadence "+quoteHandoffCLIToken(options.HeartbeatCadence))
+	}
+	for _, value := range options.StopConditions {
+		parts = append(parts, "--stop-condition "+quoteHandoffCLIToken(value))
+	}
+	if options.ResultFormat != "" {
+		parts = append(parts, "--result-format "+quoteHandoffCLIToken(options.ResultFormat))
+	}
+	if options.AllowCodexHookTrustBypass || attestCodexHooks {
+		parts = append(parts, "--allow-codex-hook-trust-bypass")
+	}
 	if options.CodexModel != "" {
 		parts = append(parts, "--codex-model "+quoteHandoffCLIToken(options.CodexModel), "--codex-reasoning-effort "+quoteHandoffCLIToken(options.CodexReasoningEffort))
 	}
-	parts = append(parts, "--json")
-	return strings.Join(parts, " ")
+	return parts
 }
 
 func quoteHandoffCLIToken(value string) string {
@@ -1069,9 +1130,16 @@ func markHandoffSoleWriterRecovery(stateRoot string, expected IssueOpsRecord, fe
 }
 
 func attestHandoffSoleWriter(ctx context.Context, record IssueOpsRecord, client IssueOpsOrcaDispatchClient, allowedHandle string) error {
+	return attestHandoffSoleWriterWithAllowedDispatch(ctx, record, client, allowedHandle, "", "")
+}
+
+func attestHandoffSoleWriterWithAllowedDispatch(ctx context.Context, record IssueOpsRecord, client IssueOpsOrcaDispatchClient, allowedHandle, allowedTaskID, allowedDispatchID string) error {
 	h := record.ExecutionHandoff
 	if h == nil || h.Orca == nil || strings.TrimSpace(h.Orca.WorktreeID) == "" {
 		return soleWriterRecoveryError("sole writer attestation requires exact Orca worktree authority")
+	}
+	if (strings.TrimSpace(allowedTaskID) == "") != (strings.TrimSpace(allowedDispatchID) == "") {
+		return soleWriterRecoveryError("sole writer allowed dispatch identity is incomplete")
 	}
 	terminals, err := client.ListTerminals(ctx, h.Orca.WorktreeID)
 	if err != nil {
@@ -1130,6 +1198,7 @@ func attestHandoffSoleWriter(ctx context.Context, record IssueOpsRecord, client 
 	if err := requireStableInventoryIdentities("task", taskIDs); err != nil {
 		return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: %v", err)
 	}
+	allowedDispatchMatches := 0
 	for _, task := range dispatchedTasks {
 		if strings.TrimSpace(task.Status) != "dispatched" {
 			return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: row has a non-dispatched status")
@@ -1143,6 +1212,15 @@ func attestHandoffSoleWriter(ctx context.Context, record IssueOpsRecord, client 
 		}
 		if dispatch.TaskID != task.ID || dispatch.Status != "dispatched" {
 			return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: row has incomplete dispatch identity")
+		}
+		currentTask := task.ID == strings.TrimSpace(allowedTaskID)
+		currentDispatch := dispatch.ID == strings.TrimSpace(allowedDispatchID)
+		if currentTask || currentDispatch {
+			if !currentTask || !currentDispatch || dispatch.AssigneeHandle != strings.TrimSpace(h.Orca.WorkerMailboxHandle) {
+				return soleWriterRecoveryError("sole writer allowed dispatch identity does not match the sealed current owner task")
+			}
+			allowedDispatchMatches++
+			continue
 		}
 		if _, assignedHere := exactHandles[dispatch.AssigneeHandle]; assignedHere {
 			return soleWriterConflictError("sole writer attestation found a dispatched task assigned to the exact worktree")
@@ -1179,6 +1257,9 @@ func attestHandoffSoleWriter(ctx context.Context, record IssueOpsRecord, client 
 			continue
 		}
 		return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: assignee terminal is absent from the exact worktree inventory")
+	}
+	if allowedTaskID != "" && allowedDispatchMatches != 1 {
+		return soleWriterRecoveryError("sole writer attestation requires exactly one sealed current owner dispatch; found %d", allowedDispatchMatches)
 	}
 	return nil
 }
@@ -1394,10 +1475,25 @@ func resolveHandoffContextOptions(record IssueOpsRecord, supplied handoff.Contex
 			return expected, nil
 		}
 	}
+	if unsealedRetryContextOptionsMayChange(record) {
+		return supplied, nil
+	}
 	if !reflect.DeepEqual(handoff.CanonicalContextOptions(supplied), handoff.CanonicalContextOptions(handoff.ContextOptionsFromModel(persisted))) {
 		return handoff.ContextOptions{}, fmt.Errorf("supplied handoff context options do not match the sealed delivery contract")
 	}
 	return handoff.ContextOptionsFromModel(persisted), nil
+}
+
+func unsealedRetryContextOptionsMayChange(record IssueOpsRecord) bool {
+	h := record.ExecutionHandoff
+	if h == nil || h.State != handoff.StateCoordinatorPreparing || h.Attempt <= 1 || h.ContextSHA256 != "" || len(h.PriorAttempts) == 0 {
+		return false
+	}
+	prior := h.PriorAttempts[len(h.PriorAttempts)-1]
+	return prior.Attempt == h.Attempt-1 && prior.State == handoff.StateClosed &&
+		(prior.ClosedDisposition == handoff.DispositionWorkerFailed || prior.ClosedDisposition == handoff.DispositionCancelled) &&
+		prior.Cleanup != nil && prior.Cleanup.Disposition == "retry" && len(prior.Cleanup.Receipts) == 2 &&
+		prior.Cleanup.Receipts[0].Step == "task_terminal" && prior.Cleanup.Receipts[1].Step == "terminal_quiescent"
 }
 
 func validateCodexHandoffOptions(record IssueOpsRecord, options handoff.ContextOptions) error {

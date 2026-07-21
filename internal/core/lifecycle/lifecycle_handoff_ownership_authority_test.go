@@ -33,6 +33,18 @@ func TestOwnershipAcknowledgementGrantsOwnerAndRevokesSource(t *testing.T) {
 	}
 }
 
+func TestOwnershipOwnerCanCommitLoreContainingVerificationPaths(t *testing.T) {
+	_, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+	req := handoffEditRequest(record, worker, "claude", "owner-session", "")
+	req.AgentID = "owner-agent"
+	req.Tool = "shell_command"
+	req.Command = "git commit -m 'fix(skills): correct P1 pioneer contracts' -m 'Lore:\n- Intent: Correct the ten bounded P1 pioneer skill and CLI usage contracts.\n- Why: Remove stale slugs, pseudo-APIs, tool claims, and safety guidance from issue #52.\n- Changes:\n  - Pin the corrected skill contracts with focused regression tests.\n  - Document the implemented IssueOps devils-advocate CLI and MCP forms.\n  - Repair Turing, Hopper, Torvalds, and Dijkstra correctness details.\n- Verify: go test ./internal/core/skillcontract -count=1; go test ./cmd/harness/contractgolden ./cmd/harness/issueopscli -count=1; eight skill validators pass.\n- Risk: Low; docs, usage help, goldens, and contract tests only. Full suite has a known ignored-plan docs-index golden mismatch in this worktree.'"
+
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("local owner commit message text must not be treated as a filesystem mutation target: %#v", got)
+	}
+}
+
 func TestOwnershipFenceNeverCapturesOrdinarySourceMutation(t *testing.T) {
 	states := []string{
 		handoff.StateOwnershipDispatching,
@@ -80,10 +92,51 @@ func TestOwnershipOwnerOnlyPublishesAndCreatesRemotePR(t *testing.T) {
 		t.Fatalf("exact owner remote create blocked: %#v", got)
 	}
 
+	owner.Tool, owner.ToolInput = "Bash", nil
+	owner.Command = "agent-harness issueops handoff publish --id " + record.ID + " --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --confirm --json"
+	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "allow" {
+		t.Fatalf("exact owner CLI publish blocked: %#v", got)
+	}
+	owner.Command = "agent-harness issueops remote create-pr --id " + record.ID + " --provider github --title draft --body rendered --head " + record.Branch + " --base " + record.BranchPrepare.BaseBranch + " --label bug --assignee octocat --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --confirm --json"
+	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "allow" {
+		t.Fatalf("exact owner CLI remote create blocked: %#v", got)
+	}
+	owner.Command = strings.Replace(owner.Command, " --confirm", "", 1)
+	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "block" {
+		t.Fatalf("owner CLI remote create without confirmation must remain blocked: %#v", got)
+	}
+
 	source := handoffEditRequest(record, repo, "claude", "coordinator-session", "")
 	source.AgentID, source.Tool, source.ToolInput = "coordinator-agent", "mcp__agent_harness__issueops_handoff", owner.ToolInput
 	if got := BuildLifecyclePreToolUseDecision(source); got.Decision != "block" {
 		t.Fatalf("source session regained owner publish authority: %#v", got)
+	}
+}
+
+func TestOwnershipOwnerCanPushOnlyExactTransferredBranch(t *testing.T) {
+	_, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+
+	for _, command := range []string{
+		"git push origin " + record.Branch,
+	} {
+		req := handoffEditRequest(record, worker, "claude", "owner-session", "")
+		req.AgentID, req.Tool, req.Command = "owner-agent", "Bash", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("exact transferred-branch push %q blocked: %#v", command, got)
+		}
+	}
+
+	for _, command := range []string{
+		"git push upstream " + record.Branch,
+		"git push origin other-branch",
+		"git push --force origin " + record.Branch,
+		"git push origin " + record.Branch + ":other-branch",
+	} {
+		req := handoffEditRequest(record, worker, "claude", "owner-session", "")
+		req.AgentID, req.Tool, req.Command = "owner-agent", "Bash", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("non-exact owner push %q must remain blocked: %#v", command, got)
+		}
 	}
 }
 
@@ -111,6 +164,76 @@ func TestOwnershipOwnerOnlyCompletesIntoHumanCleanupBoundary(t *testing.T) {
 	cli.Command = "agent-harness issueops handoff complete --id " + record.ID + " --attempt 1 --ownership-epoch " + record.ExecutionHandoff.OwnershipEpoch + " --context-sha256 " + record.ExecutionHandoff.ContextSHA256 + " --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --final-head " + strings.Repeat("f", 40) + " --turing-report plans/owner.md --verification 'go test ./...'"
 	if got := BuildLifecyclePreToolUseDecision(cli); got.Decision != "allow" {
 		t.Fatalf("exact owner complete command blocked: %#v", got)
+	}
+}
+
+func TestOwnershipCoordinatorCanCancelActiveOwnerForBoundedRetry(t *testing.T) {
+	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+	req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+	req.AgentID = "worker-1"
+	req.Tool = "Bash"
+	req.Command = "agent-harness issueops handoff recover --id " + record.ID + " --action cancel --confirm --force --reason 'sealed context contradiction requires bounded retry' --json"
+
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("sealed source coordinator must be able to cancel an active v2 owner for safe retry: %#v", got)
+	}
+
+	req.SessionID = "different-source"
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+		t.Fatalf("an unsealed source session must not cancel the active owner: %#v", got)
+	}
+}
+
+func TestOwnershipCoordinatorCanReconcileStagedDispatch(t *testing.T) {
+	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateOwnershipDispatching)
+	req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+	req.AgentID = "worker-1"
+	req.Tool = "Bash"
+	req.Command = "agent-harness issueops handoff recover --id " + record.ID + " --action reconcile --json"
+
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("sealed source coordinator must be able to reconcile a staged v2 dispatch: %#v", got)
+	}
+}
+
+func TestOwnershipCoordinatorCanQuiesceExactCancelledAttemptResources(t *testing.T) {
+	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+	record.ExecutionHandoff.State = handoff.StateRecoveryRequired
+	record.ExecutionHandoff.Cancellation = &issueopsmodel.IssueOpsExecutionHandoffCancellation{RequestedAt: "2026-07-20T00:01:00Z", Reason: "sealed context contradiction"}
+	record.ExecutionHandoff.Failure = &issueopsmodel.IssueOpsExecutionHandoffFailure{Code: "cancellation_requested", Message: "sealed context contradiction", At: "2026-07-20T00:01:00Z"}
+	var err error
+	record, err = writeIssueOps(IssueOpsStateRoot(), record)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, command := range []string{
+		"orca orchestration task-update --id task-1 --status failed --result '{\"reason\":\"bounded retry\"}' --json",
+		"orca terminal close --terminal term-1 --json",
+	} {
+		req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+		req.AgentID, req.Tool, req.Command = "worker-1", "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("exact cancellation quiescence command %q should pass: %#v", command, got)
+		}
+	}
+
+	for _, command := range []string{
+		"orca orchestration task-update --id task-1 --status completed --json",
+		"orca terminal close --terminal term-1",
+	} {
+		req := handoffEditRequest(record, repo, "codex", "coordinator", "")
+		req.AgentID, req.Tool, req.Command = "worker-1", "exec_command", command
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+			t.Fatalf("mismatched cancellation quiescence command %q must block: %#v", command, got)
+		}
+	}
+
+	wrongSession := handoffEditRequest(record, repo, "codex", "different-source", "")
+	wrongSession.AgentID, wrongSession.Tool = "worker-1", "exec_command"
+	wrongSession.Command = "orca terminal close --terminal term-1 --json"
+	if got := BuildLifecyclePreToolUseDecision(wrongSession); got.Decision != "block" {
+		t.Fatalf("unsealed source session must not quiesce the cancelled owner: %#v", got)
 	}
 }
 
@@ -194,6 +317,36 @@ func TestOwnershipRoleAuthorityMatrix(t *testing.T) {
 	wrongRoot.AgentID = "owner-agent"
 	if got := BuildLifecyclePreToolUseDecision(wrongRoot); got.Decision != "block" || !strings.Contains(got.Reason, "canonical worker") {
 		t.Fatalf("active owner must mutate from the canonical worker root: %#v", got)
+	}
+}
+
+func TestOwnershipOrientingKeepsCoordinatorGuidanceAndWorkerEscalationOpen(t *testing.T) {
+	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerOrienting)
+	record.ExecutionHandoff.Orca.WorkerTerminalHandle = "term-owner"
+	record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-owner"
+	var err error
+	record, err = writeIssueOps(IssueOpsStateRoot(), record)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	coordinator := handoffEditRequest(record, repo, "codex", "coordinator", "")
+	coordinator.AgentID, coordinator.Tool = "worker-1", "exec_command"
+	coordinator.Command = "orca terminal send --terminal term-owner --text '# agent-harness guidance: run the exact acknowledgement command once' --enter --json"
+	if got := BuildLifecyclePreToolUseDecision(coordinator); got.Decision != "allow" {
+		t.Fatalf("sealed source coordinator guidance must remain available while owner is orienting: %#v", got)
+	}
+
+	owner := handoffEditRequest(record, worker, "claude", "owner-session", "")
+	owner.AgentID, owner.Tool = "owner-agent", "exec_command"
+	owner.Command = "orca orchestration send --to term_coordinator --from term-owner --type escalation --subject blocked --body 'acknowledgement guidance required' --task-id task-1 --dispatch-id dispatch-1 --json"
+	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "allow" {
+		t.Fatalf("orienting owner must be able to escalate through its sealed mailbox: %#v", got)
+	}
+
+	owner.Command = "orca orchestration send --to term_coordinator --from term-other --type escalation --subject blocked --body 'acknowledgement guidance required' --task-id task-1 --dispatch-id dispatch-1 --json"
+	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "block" {
+		t.Fatalf("orienting owner escalation must reject a mismatched sender mailbox: %#v", got)
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -44,6 +45,26 @@ func TestOwnershipStartPreviewPersistsNothing(t *testing.T) {
 	}
 	if client.terminalCreates != 0 || client.taskCreates != 0 || client.dispatchCalls != 0 {
 		t.Fatalf("ownership preview invoked an external mutation: trace=%v", client.trace)
+	}
+}
+
+func TestOwnershipStartPreviewRecoversEmptyImplementPhase(t *testing.T) {
+	stateRoot, record := ownershipStartReadyRecord(t)
+	record.Phase = IssueOpsPhaseImplement
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	request := coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{
+		ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, WorkspaceEpoch: record.ExecutionWorkspace.WorkspaceEpoch,
+	})
+	request.CoordinatorHost = "claude"
+
+	result, err := StartIssueOpsHandoff(context.Background(), stateRoot, request, handoffDispatchFake(), handoffStartTestClock())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Preview || result.ContextSHA256 == "" {
+		t.Fatalf("empty implement-phase recovery did not produce an ownership preview: %#v", result)
 	}
 }
 
@@ -534,7 +555,7 @@ func TestHandoffDispatchPreambleRequiresOfficialLabeledIdentityLines(t *testing.
 func TestHandoffStartRequiresExplicitCodexHookTrustBypassAttestation(t *testing.T) {
 	stateRoot, record := handoffDispatchRecord(t)
 	client := handoffDispatchFake(record)
-	launchOptions := handoff.ContextOptions{CodexModel: "gpt-5.6-terra", CodexReasoningEffort: "high"}
+	launchOptions := handoff.ContextOptions{WorkerScope: "bounded owner scope", StopConditions: []string{"stop before merge"}, CodexModel: "gpt-5.6-terra", CodexReasoningEffort: "high"}
 	preview, err := StartIssueOpsHandoff(context.Background(), stateRoot, coordinatorStartIdentity(record, IssueOpsHandoffStartRequest{ID: record.ID, CoordinatorRecipient: testCoordinatorRecipient, Context: launchOptions}), client, handoffStartTestClock())
 	if err != nil {
 		t.Fatal(err)
@@ -547,6 +568,9 @@ func TestHandoffStartRequiresExplicitCodexHookTrustBypassAttestation(t *testing.
 	}
 	if !strings.Contains(preview.NextCommand, "--codex-model 'gpt-5.6-terra'") || !strings.Contains(preview.NextCommand, "--codex-reasoning-effort 'high'") {
 		t.Fatalf("attested-preview command dropped sealed Codex launch options: %#v", preview)
+	}
+	if !strings.Contains(preview.NextCommand, "--worker-scope 'bounded owner scope'") || !strings.Contains(preview.NextCommand, "--stop-condition 'stop before merge'") {
+		t.Fatalf("attested-preview command dropped sealed context options: %#v", preview)
 	}
 	if len(client.trace) != 0 {
 		t.Fatalf("preview invoked Orca: %v", client.trace)
@@ -576,6 +600,9 @@ func TestHandoffStartRequiresExplicitCodexHookTrustBypassAttestation(t *testing.
 	}
 	if !reviewed.Preview || !reviewed.CodexHookTrustBypassRequired || !reviewed.CodexHookTrustBypassAttested || len(reviewed.ContextSHA256) != 64 {
 		t.Fatalf("attested no-confirm preview must expose the reviewed context hash: %#v", reviewed)
+	}
+	if !strings.Contains(reviewed.ConfirmedCommand, "--worker-scope 'bounded owner scope'") || !strings.Contains(reviewed.ConfirmedCommand, "--stop-condition 'stop before merge'") {
+		t.Fatalf("confirmed command dropped sealed context options: %#v", reviewed)
 	}
 	if len(client.trace) != 0 {
 		t.Fatalf("attested preview invoked Orca: %v", client.trace)
@@ -2274,8 +2301,39 @@ func handoffDispatchFake(records ...IssueOpsRecord) *dispatchOrcaFake {
 			WorktreePath: workerRoot, Connected: true, Writable: true,
 		}
 		fake.terminals = []port.OrcaTerminal{fake.terminal}
+		if records[0].ExecutionHandoff.ProtocolVersion == handoff.OwnershipTransferProtocolVersion && records[0].ExecutionHandoff.State == handoff.StateOwnerActive {
+			fake.dispatchedTasks = []port.OrcaTask{{ID: identity.TaskID, Status: "dispatched"}}
+			fake.dispatchByTask = map[string]port.OrcaDispatch{identity.TaskID: {
+				ID: identity.DispatchID, TaskID: identity.TaskID, AssigneeHandle: identity.WorkerMailboxHandle, Status: "dispatched",
+			}}
+		}
 	}
 	return fake
+}
+
+func TestResolveHandoffContextOptionsAllowsExplicitUnsealedRetryCorrection(t *testing.T) {
+	record := IssueOpsRecord{ExecutionHandoff: &IssueOpsExecutionHandoff{
+		State: handoff.StateCoordinatorPreparing, Attempt: 2,
+		ContextOptions: &issueopsmodel.IssueOpsExecutionHandoffContextOptions{WorkerScope: "stale scope", StopConditions: []string{"do not push or open a PR"}},
+		PriorAttempts: []issueopsmodel.IssueOpsExecutionHandoffPriorAttempt{{
+			State: handoff.StateClosed, ClosedDisposition: handoff.DispositionCancelled, Attempt: 1,
+			Cleanup: &issueopsmodel.IssueOpsExecutionHandoffCleanup{Disposition: "retry", Receipts: []issueopsmodel.IssueOpsExecutionHandoffCleanupReceipt{{Step: "task_terminal"}, {Step: "terminal_quiescent"}}},
+		}},
+	}}
+	want := handoff.ContextOptions{WorkerScope: "corrected scope", StopConditions: []string{"owner may publish exact branch; stop before merge"}}
+	got, err := resolveHandoffContextOptions(record, want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(handoff.CanonicalContextOptions(got), handoff.CanonicalContextOptions(want)) {
+		t.Fatalf("corrected retry context = %#v, want %#v", got, want)
+	}
+
+	record.ExecutionHandoff.Attempt = 1
+	record.ExecutionHandoff.PriorAttempts = nil
+	if _, err := resolveHandoffContextOptions(record, want); err == nil {
+		t.Fatal("initial prepared attempt must not replace persisted delivery options")
+	}
 }
 
 func attestedCodexStart(t *testing.T, stateRoot, id string) IssueOpsHandoffStartRequest {
@@ -2366,6 +2424,11 @@ func (f *dispatchOrcaFake) RefreshTerminal(context.Context, string, string) (por
 
 func (f *dispatchOrcaFake) ListTasks(context.Context) ([]port.OrcaTask, error) {
 	f.trace = append(f.trace, "task-list")
+	return append([]port.OrcaTask(nil), f.tasks...), f.taskListErr
+}
+
+func (f *dispatchOrcaFake) ListAllTasks(context.Context) ([]port.OrcaTask, error) {
+	f.trace = append(f.trace, "all-task-list")
 	return append([]port.OrcaTask(nil), f.tasks...), f.taskListErr
 }
 

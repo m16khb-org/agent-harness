@@ -203,6 +203,7 @@ func TestShellCommandGuardPaths(t *testing.T) {
 		{"2> redirect", "cmd 2> /tmp/err.txt", t.TempDir(), 1},
 		{"inline redirect", "echo hi >/tmp/out.txt 2>/tmp/err.txt", t.TempDir(), 2},
 		{"no paths", "echo hello", t.TempDir(), 0},
+		{"git commit message paths are text", "git commit -m subject -m 'Verify: go test ./internal/core/skillcontract ./cmd/harness/issueopscli'", t.TempDir(), 0},
 		{"subshell ignored", "echo $(pwd)", t.TempDir(), 0},
 		{"backtick ignored", "echo `date`", t.TempDir(), 0},
 	}

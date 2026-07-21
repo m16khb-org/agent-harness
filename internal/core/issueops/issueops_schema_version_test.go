@@ -63,6 +63,24 @@ func TestIssueOpsImplementationReadinessRequiresClaimOnlyForHandoff(t *testing.T
 	}
 }
 
+func TestIssueOpsImplementationReadinessRecognizesOwnershipClaim(t *testing.T) {
+	record := IssueOpsRecord{ExecutionHandoff: &IssueOpsExecutionHandoff{
+		ProtocolVersion: handoff.OwnershipTransferProtocolVersion,
+		State:           handoff.StateOwnerOrienting,
+		OwnerSession:    &IssueOpsHostSessionIdentity{Host: "codex", SessionID: "owner-session"},
+	}}
+	readiness := IssueOpsImplementationReadiness(record)
+	if containsString(readiness.Missing, "handoff_worker_claim") {
+		t.Fatalf("ownership claim still requires worker claim: %#v", readiness.Missing)
+	}
+
+	record.ExecutionHandoff.OwnerSession = nil
+	readiness = IssueOpsImplementationReadiness(record)
+	if !containsString(readiness.Missing, "handoff_worker_claim") {
+		t.Fatalf("owner_orienting without owner identity must require worker claim: %#v", readiness.Missing)
+	}
+}
+
 // writeRawIssueOpsRecord inserts record bytes directly into the state store,
 // bypassing WriteIssueOps normalization, to simulate legacy or foreign rows.
 func writeRawIssueOpsRecord(t *testing.T, stateRoot, id, raw string) {

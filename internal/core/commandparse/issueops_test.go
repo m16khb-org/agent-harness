@@ -89,6 +89,35 @@ func TestExactFlagsCorpus(t *testing.T) {
 	if flags, ok := ExactFlags(cmd5, v5, b5, r5); !ok || len(flags["--verification-command"]) != 2 {
 		t.Fatalf("legacy verification-command alias not accepted: ok=%v flags=%#v", ok, flags)
 	}
+	cmd6, _ := ParseExactIssueOpsCommand("agent-harness issueops handoff start --id io-1 --codex-model gpt-5.6-terra --codex-reasoning-effort high")
+	v6, b6, r6 := spec(cmd6.Path)
+	if flags, ok := ExactFlags(cmd6, v6, b6, r6); !ok || flags["--codex-model"][0] != "gpt-5.6-terra" || flags["--codex-reasoning-effort"][0] != "high" {
+		t.Fatalf("sealed Codex launch options not accepted: ok=%v flags=%#v", ok, flags)
+	}
+}
+
+func TestReadyWorkspaceCheckpointSpecsAcceptNativeActorFlags(t *testing.T) {
+	commands := []string{
+		"agent-harness issueops link-plan --id io-1 --plan-path /w/plans/io-1.md",
+		"agent-harness issueops compatibility review --id io-1 --approved",
+		"agent-harness issueops execution decide --id io-1 --subagent-use none",
+		"agent-harness issueops phase --id io-1 --to implement",
+		"agent-harness issueops devils-advocate review --id io-1 --verdict pass",
+		"agent-harness issueops worktree prepare-tools --id io-1",
+	}
+	for _, base := range commands {
+		command, ok := ParseExactIssueOpsCommand(base + " --host codex --session-id session-1 --agent-id agent-1 --cwd /repo --json")
+		if !ok {
+			t.Fatalf("checkpoint command did not parse: %q", base)
+		}
+		values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
+		if !ok {
+			t.Fatalf("checkpoint command has no exact spec: %q", command.Path)
+		}
+		if _, ok := ExactFlags(command, values, booleans, repeatable); !ok {
+			t.Fatalf("checkpoint actor flags rejected for %q", command.Path)
+		}
+	}
 }
 
 func TestExactReadOnlyShellCommandCorpus(t *testing.T) {

@@ -585,8 +585,12 @@ func requireCancellationQuiescence(ctx context.Context, record IssueOpsRecord, c
 			if err := requireTaskNotReady(ctx, client, taskID); err != nil {
 				return err
 			}
-		} else if dispatch.ID != dispatchID || dispatch.TaskID != taskID || strings.TrimSpace(dispatch.AssigneeHandle) != strings.TrimSpace(identity.WorkerMailboxHandle) || !terminalDispatchStatus(dispatch.Status) {
+		} else if dispatch.ID != dispatchID || dispatch.TaskID != taskID || strings.TrimSpace(dispatch.AssigneeHandle) != strings.TrimSpace(identity.WorkerMailboxHandle) {
 			return fmt.Errorf("exact task and dispatch are not terminal")
+		} else if !terminalDispatchStatus(dispatch.Status) {
+			if err := requireExactTaskTerminal(ctx, client, taskID); err != nil {
+				return fmt.Errorf("exact task and dispatch are not terminal: %w", err)
+			}
 		}
 	}
 	if h.WorkerSession != nil || strings.TrimSpace(h.LastHeartbeatAt) != "" {
@@ -630,6 +634,36 @@ func requireTaskNotReady(ctx context.Context, client any, taskID string) error {
 		}
 	}
 	return nil
+}
+
+func requireExactTaskTerminal(ctx context.Context, client any, taskID string) error {
+	reader, ok := client.(interface {
+		ListAllTasks(context.Context) ([]port.OrcaTask, error)
+	})
+	if !ok {
+		return fmt.Errorf("task terminal inventory is unavailable")
+	}
+	rows, err := reader.ListAllTasks(ctx)
+	if err != nil {
+		return err
+	}
+	ids := make([]string, len(rows))
+	for i := range rows {
+		ids[i] = rows[i].ID
+	}
+	if err := requireStableInventoryIdentities("task", ids); err != nil {
+		return err
+	}
+	for _, row := range rows {
+		if strings.TrimSpace(row.ID) != taskID {
+			continue
+		}
+		if terminalDispatchStatus(row.Status) {
+			return nil
+		}
+		return fmt.Errorf("exact worker task is not terminal")
+	}
+	return fmt.Errorf("exact worker task terminal evidence is missing")
 }
 
 func terminalDispatchStatus(status string) bool {
@@ -741,8 +775,13 @@ func verifyIssueOpsCleanupStep(ctx context.Context, record IssueOpsRecord, step 
 		if err != nil {
 			return receipt, err
 		}
-		if dispatch.ID != dispatchID || dispatch.TaskID != taskID || dispatch.AssigneeHandle != identity.WorkerMailboxHandle || !terminalDispatchStatus(dispatch.Status) {
+		if dispatch.ID != dispatchID || dispatch.TaskID != taskID || strings.TrimSpace(dispatch.AssigneeHandle) != strings.TrimSpace(identity.WorkerMailboxHandle) {
 			return receipt, fmt.Errorf("exact task and dispatch are not terminal")
+		}
+		if !terminalDispatchStatus(dispatch.Status) {
+			if err := requireExactTaskTerminal(ctx, client, taskID); err != nil {
+				return receipt, fmt.Errorf("exact task and dispatch are not terminal: %w", err)
+			}
 		}
 		receipt.TaskID, receipt.DispatchID = taskID, dispatchID
 	case "terminal_quiescent":
@@ -934,8 +973,9 @@ func retryIssueOpsHandoff(ctx context.Context, stateRoot, id string, client any,
 			contextOptions = &cloned
 		}
 		record.ExecutionHandoff = &model.IssueOpsExecutionHandoff{
-			ProtocolVersion: handoff.ProtocolVersion, State: handoff.StateCoordinatorPreparing,
-			Attempt: old.Attempt + 1, OwnershipEpoch: epoch, Driver: "orca", Agent: old.Agent,
+			ProtocolVersion: old.ProtocolVersion, State: handoff.StateCoordinatorPreparing,
+			Attempt: old.Attempt + 1, OwnershipEpoch: epoch, WorkspaceEpoch: old.WorkspaceEpoch, WorkspaceSHA256: old.WorkspaceSHA256,
+			Driver: "orca", Agent: old.Agent,
 			AttemptBaseHead: attemptBaseHead,
 			CoordinatorRoot: old.CoordinatorRoot, WorkerRoot: old.WorkerRoot, Orca: worktreeIdentity, ContextOptions: contextOptions,
 			PriorAttempts: priorAttempts,
@@ -967,6 +1007,9 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return IssueOpsHandoffRecoverResult{}, err
+	}
+	if ownershipDispatchStagedWithoutExternalMutation(record) {
+		return resumeStagedOwnershipDispatch(ctx, stateRoot, record, client, now)
 	}
 	if record.ExecutionHandoff == nil || record.ExecutionHandoff.State != handoff.StateRecoveryRequired || record.ExecutionHandoff.PendingOperation == nil {
 		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("reconcile requires recovery_required with a pending operation")
@@ -1138,6 +1181,42 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		return readErr
 	})
 	return projectHandoffRecovery(persisted, "reconcile", next), err
+}
+
+func ownershipDispatchStagedWithoutExternalMutation(record IssueOpsRecord) bool {
+	h := record.ExecutionHandoff
+	if h == nil || h.ProtocolVersion != handoff.OwnershipTransferProtocolVersion || h.State != handoff.StateOwnershipDispatching || h.PendingOperation != nil || h.Orca == nil {
+		return false
+	}
+	return h.Orca.WorkerPTYID == "" && h.Orca.WorkerTerminalHandle == "" && h.Orca.WorkerMailboxHandle == "" && h.Orca.TaskID == "" && h.Orca.DispatchID == ""
+}
+
+func resumeStagedOwnershipDispatch(ctx context.Context, stateRoot string, record IssueOpsRecord, client any, now string) (IssueOpsHandoffRecoverResult, error) {
+	dispatcher, ok := client.(IssueOpsOrcaDispatchClient)
+	if !ok {
+		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("Orca dispatch recovery dependency is unavailable")
+	}
+	if err := validateHandoffContextSource(record); err != nil {
+		return IssueOpsHandoffRecoverResult{}, err
+	}
+	if err := validateHandoffCleanExactCheckpoint(record); err != nil {
+		return IssueOpsHandoffRecoverResult{}, err
+	}
+	if record.ExecutionHandoff.ContextOptions == nil {
+		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("staged ownership dispatch context options are unavailable")
+	}
+	packet, err := handoff.BuildContext(record, handoff.ContextOptionsFromModel(*record.ExecutionHandoff.ContextOptions))
+	if err != nil {
+		return IssueOpsHandoffRecoverResult{}, err
+	}
+	if packet.SHA256 != record.ExecutionHandoff.ContextSHA256 || packet.SourceSHA256 != record.ExecutionHandoff.ContextSourceSHA256 {
+		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("staged ownership dispatch context changed before recovery")
+	}
+	if _, err := dispatchStartedHandoff(ctx, stateRoot, record, dispatcher, packet, func() string { return now }, issueOpsHandoffStartHooks{}); err != nil {
+		return IssueOpsHandoffRecoverResult{}, err
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	return projectHandoffRecovery(persisted, "reconcile", ""), err
 }
 
 func reconcileLeaseAttestationAllowedHandle(ctx context.Context, record IssueOpsRecord, client IssueOpsOrcaDispatchClient) (string, error) {

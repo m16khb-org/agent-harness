@@ -158,14 +158,41 @@ func TestOwnershipTransferPreparationAllowsCLIAndMCPBeforeDispatch(t *testing.T)
 	request := handoffEditRequest(record, repo, "codex", "other-source-session", "")
 	request.Tool = "Bash"
 	request.Command = "agent-harness issueops link-plan --id " + record.ID + " --plan-path plans/ownership.md --json"
-	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
-		t.Fatalf("source coordinator link-plan must remain allowed before ownership dispatch: %#v", got)
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "block" {
+		t.Fatalf("different source session must not link the plan: %#v", got)
 	}
+	request.SessionID = "preparer"
+	request.AgentID = "agent-1"
+	request.Command = "agent-harness issueops link-plan --id " + record.ID + " --plan-path plans/ownership.md --host codex --session-id preparer --agent-id agent-1 --cwd " + repo + " --json"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("sealed source coordinator link-plan must remain allowed before ownership dispatch: %#v", got)
+	}
+	request.Command = "agent-harness issueops phase --id " + record.ID + " --to implement --host codex --session-id preparer --agent-id agent-1 --cwd " + repo + " --json"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("sealed source coordinator phase advance must remain allowed before ownership dispatch: %#v", got)
+	}
+	request.Command = "agent-harness issueops phase --id " + record.ID + " --to implement --host codex --session-id other --agent-id agent-1 --cwd " + repo + " --json"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "block" {
+		t.Fatalf("different source session gained phase authority: %#v", got)
+	}
+	request.Command = "agent-harness issueops handoff codex-hooks-list --id " + record.ID + " --json"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("sealed Codex source coordinator must be able to inspect worker hook trust: %#v", got)
+	}
+	request.SessionID = "other"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "block" {
+		t.Fatalf("different source session gained Codex hook observation authority: %#v", got)
+	}
+	request.SessionID = "preparer"
 	request.Tool = "mcp__agent_harness__issueops_link_plan"
 	request.Command = ""
-	request.ToolInput = map[string]any{"id": record.ID, "plan_path": "plans/ownership.md"}
+	request.ToolInput = map[string]any{"id": record.ID, "plan_path": "plans/ownership.md", "host": "codex", "session_id": "preparer", "agent_id": "agent-1", "cwd": repo}
 	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
-		t.Fatalf("source coordinator MCP plan link must remain allowed before ownership dispatch: %#v", got)
+		t.Fatalf("sealed source coordinator MCP plan link must remain allowed before ownership dispatch: %#v", got)
+	}
+	request.ToolInput["session_id"] = "other"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "block" {
+		t.Fatalf("different MCP actor gained plan link authority: %#v", got)
 	}
 }
 

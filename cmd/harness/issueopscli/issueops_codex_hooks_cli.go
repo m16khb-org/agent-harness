@@ -39,7 +39,11 @@ func runIssueOpsHandoffCodexHooksList(args []string) error {
 	if err := requireCodexHooksListSource(record.Repo); err != nil {
 		return printCodexHooksListResult(codex.HooksListResult{}, true, err)
 	}
-	result, err := codex.ListHooks(context.Background(), record.ExecutionHandoff.WorkerRoot)
+	workerRoot, err := codexHooksListWorkerRoot(record)
+	if err != nil {
+		return printCodexHooksListResult(codex.HooksListResult{}, true, err)
+	}
+	result, err := codex.ListHooks(context.Background(), workerRoot)
 	return printCodexHooksListResult(result, true, err)
 }
 
@@ -66,11 +70,22 @@ func readCodexHooksListRecord(id string) (core.IssueOpsRecord, error) {
 	if err := handoff.ValidateEnvelope(record); err != nil {
 		return core.IssueOpsRecord{}, fmt.Errorf("invalid supervised IssueOps handoff envelope: %w", err)
 	}
-	h := record.ExecutionHandoff
-	if h == nil || h.Agent != "codex" || h.State != handoff.StateCoordinatorPreparing || h.PendingOperation != nil || h.CleanupOnly != nil || h.WorkerSession != nil || h.Result != nil {
-		return core.IssueOpsRecord{}, fmt.Errorf("codex-hooks-list requires a pristine codex coordinator_preparing handoff")
+	if _, err := codexHooksListWorkerRoot(record); err != nil {
+		return core.IssueOpsRecord{}, err
 	}
 	return record, nil
+}
+
+func codexHooksListWorkerRoot(record core.IssueOpsRecord) (string, error) {
+	if h := record.ExecutionHandoff; h != nil {
+		if h.Agent == "codex" && h.State == handoff.StateCoordinatorPreparing && h.PendingOperation == nil && h.CleanupOnly == nil && h.WorkerSession == nil && h.Result == nil {
+			return h.WorkerRoot, nil
+		}
+	}
+	if workspace := record.ExecutionWorkspace; record.ExecutionHandoff == nil && workspace != nil && workspace.State == "ready" && workspace.Agent == "codex" && sameCodexHooksListPath(workspace.CoordinatorRoot, record.Repo) && sameCodexHooksListPath(workspace.WorkerRoot, record.WorktreePath) {
+		return workspace.WorkerRoot, nil
+	}
+	return "", fmt.Errorf("codex-hooks-list requires a pristine codex coordinator_preparing handoff or ready execution workspace")
 }
 
 func requireCodexHooksListSource(repo string) error {
