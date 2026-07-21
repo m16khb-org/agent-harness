@@ -167,7 +167,7 @@ func TestExecGitRunnerUsesNoninteractiveReadOnlyEnvironment(t *testing.T) {
 func TestExecGitRunnerAppliesLocalDeadline(t *testing.T) {
 	binDir := t.TempDir()
 	script := filepath.Join(binDir, "git")
-	if err := os.WriteFile(script, []byte("#!/bin/sh\nsleep 10\n"), 0o700); err != nil {
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nwhile :; do :; done\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", binDir)

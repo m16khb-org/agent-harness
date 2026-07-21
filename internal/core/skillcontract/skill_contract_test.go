@@ -54,17 +54,13 @@ func TestP1PioneerCorrectnessContracts(t *testing.T) {
 	assertSkillContains(t, "karpathy", []string{
 		"Shannon measures generated code artifacts, not prompt quality.",
 	})
-	turing := readSkillForTest(t, "turing")
-	for _, want := range []string{
+	assertSkillContains(t, "turing", []string{
 		"skills/issueops/references/orca-handoff.md",
 		"current host's available browser tool",
 		"AppleScript on macOS",
 		"`xdotool` on Linux only",
-	} {
-		if !strings.Contains(turing, want) {
-			t.Fatalf("turing SKILL.md missing P1 contract phrase %q", want)
-		}
-	}
+	})
+	turing := readSkillForTest(t, "turing")
 	if strings.Contains(turing, "Chrome / agent-browser") {
 		t.Fatal("turing SKILL.md must not name the nonexistent agent-browser tool")
 	}
@@ -81,12 +77,7 @@ func TestP1PioneerCorrectnessContracts(t *testing.T) {
 	if !strings.Contains(vonNeumann, "current host's delegation tool") {
 		t.Fatal("von-neumann SKILL.md must use host-neutral delegation wording")
 	}
-	hopper := readSkillForTest(t, "hopper")
-	for _, want := range []string{"Four Strategies", "self-verify-progress-heartbeat", "Strategy D: Snapshot/Golden Diff"} {
-		if !strings.Contains(hopper, want) {
-			t.Fatalf("hopper SKILL.md missing P1 routing phrase %q", want)
-		}
-	}
+	assertSkillContains(t, "hopper", []string{"Four Strategies", "self-verify-progress-heartbeat", "Strategy D: Snapshot/Golden Diff"})
 	dijkstra := readSkillForTest(t, "dijkstra")
 	if !strings.Contains(dijkstra, "```text\n   Equivalent in any language") {
 		t.Fatal("dijkstra SKILL.md must keep scaling-test interpretation inside its fenced block")
