@@ -722,3 +722,12 @@ Codex hook trust는 command 내용만이 아니라 `source:event:matcher-index:h
 - Current ownership contract는 workspace provisioning before ownership transfer를 보장한다. source main worktree remains available before, during, and after handoff; generic session binding과 mirrored relative path는 authority가 아니다.
 - Fence는 canonical worker root, exact cycle ID, native owner, or persisted Orca resource만 선택한다. Removed handoff record shapes are rejected rather than converted.
 - `cleanup_pending_human_decision`의 every non-`closed` ownership resource는 stale scan과 operational health가 보존한다. elapsed time, Stop hook, original source identity는 cleanup authority를 만들지 않는다.
+
+## dirty main에서 원격 변경과 겹치는 파일을 바로 pull하지 말 것
+
+로컬 `main`의 미커밋 변경과 `origin/main`의 fast-forward 변경이 같은 파일을 수정하면 `git pull --ff-only`는 overwrite 방지를 위해 중단한다. 이 실패를 branch divergence나 pull 설정 문제로 오인하지 않는다.
+
+- 먼저 `git rev-list --left-right --count HEAD...origin/main`, 로컬 `git diff --name-only`, `git diff --name-only HEAD..origin/main`을 대조해 실제 겹침을 증명한다.
+- tracked와 untracked 변경을 이름 있는 `git stash push --include-untracked`로 보존하고 stash SHA를 기록한 뒤 fast-forward한다.
+- `git stash apply`를 사용해 복구 지점을 유지한 채 변경을 재적용하고, conflict marker·diff·focused/full tests와 두 번째 `git pull --ff-only`를 확인한 뒤에만 stash를 제거한다.
+- dirty `main`을 맞추기 위해 `reset --hard`, `clean`, 사용자 변경 폐기, 임시 worktree branch 삭제를 사용하지 않는다.
