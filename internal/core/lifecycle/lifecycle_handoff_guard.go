@@ -80,7 +80,7 @@ func renderHandoffSessionGuidance(record IssueOpsRecord, worker bool, host, sess
 			return fmt.Sprintf("IssueOps ownership transfer role=owner state=%s attempt=%d context=%s. Acknowledge the sealed issue and plan context before editing; implementation remains read-only until acknowledgement. Resume: %s", h.State, h.Attempt, h.ContextSHA256, resume) + modelBoundary
 		}
 		if h.State == handoff.StateOwnerActive {
-			return fmt.Sprintf("IssueOps ownership transfer role=owner state=%s attempt=%d context=%s. The acknowledged owner may implement and verify only inside the canonical worker root; publication, terminal steering, and resource cleanup remain human-directed. Resume: %s", h.State, h.Attempt, h.ContextSHA256, resume) + modelBoundary
+			return fmt.Sprintf("IssueOps ownership transfer role=owner state=%s attempt=%d context=%s. The acknowledged owner may implement and verify inside the canonical worker root, publish only through the exact IssueOps owner lifecycle, and complete the handoff; terminal steering and resource cleanup remain human-directed. Resume: %s", h.State, h.Attempt, h.ContextSHA256, resume) + modelBoundary
 		}
 		return fmt.Sprintf("IssueOps handoff role=owner state=%s attempt=%d context=%s. Resume: %s", h.State, h.Attempt, h.ContextSHA256, resume) + modelBoundary
 	}
@@ -280,7 +280,7 @@ func ownershipTransferMutationBlockReason(req HookToolUseLifecycleRequest, recor
 	}
 	if searchrouting.IsShellTool(req.Tool) {
 		if violation := claimedWorkerRoleViolation(req.Command); violation != "" {
-			return true, "ownership transfer owner may implement, verify, and locally commit only; " + violation + ". Source coordinator and owner cannot push, publish, steer terminals, or clean up resources automatically"
+			return true, "ownership transfer owner may implement, verify, locally commit, and publish only through the exact IssueOps owner lifecycle; " + violation
 		}
 	}
 	if searchrouting.IsShellTool(req.Tool) && unresolvedNestedShellMutation(req.Command) {

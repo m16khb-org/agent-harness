@@ -203,6 +203,29 @@ func TestOwnershipOwnerOnlyPublishesAndCreatesRemotePR(t *testing.T) {
 		t.Fatalf("exact owner remote create blocked: %#v", got)
 	}
 
+	for _, command := range []string{
+		"git push origin " + record.Branch,
+		"gh pr create --head " + record.Branch,
+		"glab mr create --source-branch " + record.Branch,
+		"/usr/bin/git push origin " + record.Branch,
+	} {
+		directController := handoffEditRequest(record, worker, "claude", "owner-session", "")
+		directController.AgentID, directController.Tool, directController.Command = "owner-agent", "Bash", command
+		if got := BuildLifecyclePreToolUseDecision(directController); got.Decision != "block" {
+			t.Fatalf("direct remote controller must be blocked: command=%q result=%#v", command, got)
+		}
+	}
+	for _, command := range []string{
+		"bash -c 'touch internal/x.go; git push origin " + record.Branch + "'",
+		"bash -c 'touch internal/x.go; gh pr create --head " + record.Branch + "'",
+	} {
+		nestedController := handoffEditRequest(record, worker, "claude", "owner-session", "")
+		nestedController.AgentID, nestedController.Tool, nestedController.Command = "owner-agent", "Bash", command
+		if got := BuildLifecyclePreToolUseDecision(nestedController); got.Decision != "block" {
+			t.Fatalf("nested remote controller must not bypass the sealed publication lifecycle: command=%q result=%#v", command, got)
+		}
+	}
+
 	source := handoffEditRequest(record, repo, "claude", "coordinator-session", "")
 	source.AgentID, source.Tool, source.ToolInput = "coordinator-agent", "mcp__agent_harness__issueops_handoff", owner.ToolInput
 	if got := BuildLifecyclePreToolUseDecision(source); got.Decision != "block" {

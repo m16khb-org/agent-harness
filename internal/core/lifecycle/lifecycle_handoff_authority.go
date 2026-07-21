@@ -362,16 +362,12 @@ func unresolvedNestedShellMutation(command string) bool {
 			for j := i + 1; j < len(tokens); j++ {
 				arg := tokens[j]
 				if strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "--") && strings.Contains(strings.TrimPrefix(arg, "-"), "c") {
-					return j+1 >= len(tokens) || len(worktreepathShellPaths(".", tokens[j+1])) == 0
+					return true
 				}
 			}
 		}
 	}
 	return false
-}
-
-func worktreepathShellPaths(repo, command string) []string {
-	return shellCommandWorktreeGuardPaths(repo, command)
 }
 
 func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
@@ -458,7 +454,7 @@ func claimedWorkerRoleViolation(command string) string {
 				return ""
 			}
 		}
-		return "push, remote, branch switching, history rewrite, worktree, and cleanup operations are coordinator-owned"
+		return "direct push, remote, branch switching, history rewrite, worktree, and cleanup operations are forbidden; use the exact IssueOps owner publication lifecycle for remote publication"
 	}
 	protected := map[string]bool{"git": true, "gh": true, "glab": true, "orca": true, "agent-harness": true}
 	first := tokens[0]
@@ -468,12 +464,14 @@ func claimedWorkerRoleViolation(command string) string {
 	}
 	for i := 1; i < len(tokens); i++ {
 		if protected[filepath.Base(tokens[i])] {
-			return "wrapped controller commands are coordinator-owned"
+			return "wrapped controller commands are forbidden"
 		}
 	}
 	switch first {
-	case "gh", "glab", "orca":
-		return "remote, Orca, and cleanup controllers are coordinator-owned"
+	case "gh", "glab":
+		return "direct remote controllers are forbidden; use the exact IssueOps owner publication lifecycle"
+	case "orca":
+		return "direct Orca terminal and cleanup controllers are forbidden"
 	case "agent-harness", "./bin/agent-harness":
 		if len(tokens) > 1 && tokens[1] == "issueops" {
 			return "IssueOps coordinator lifecycle commands are not worker implementation commands"
@@ -493,7 +491,7 @@ func claimedWorkerRoleViolation(command string) string {
 				return ""
 			}
 		}
-		return "push, remote, branch switching, history rewrite, worktree, and cleanup operations are coordinator-owned"
+		return "direct push, remote, branch switching, history rewrite, worktree, and cleanup operations are forbidden; use the exact IssueOps owner publication lifecycle for remote publication"
 	}
 	return ""
 }

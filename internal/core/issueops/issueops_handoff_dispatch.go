@@ -1102,6 +1102,9 @@ func attestHandoffSoleWriter(ctx context.Context, record IssueOpsRecord, client 
 			return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: row has incomplete dispatch identity")
 		}
 		if _, assignedHere := exactHandles[dispatch.AssigneeHandle]; assignedHere {
+			if exactOwnedHandoffDispatch(h, task, dispatch, allowedHandle) {
+				continue
+			}
 			return soleWriterConflictError("sole writer attestation found a dispatched task assigned to the exact worktree")
 		}
 		allTerminals, listErr := client.ListTerminals(ctx, "")
@@ -1138,6 +1141,21 @@ func attestHandoffSoleWriter(ctx context.Context, record IssueOpsRecord, client 
 		return soleWriterRecoveryError("sole writer dispatched task inventory requires recovery: assignee terminal is absent from the exact worktree inventory")
 	}
 	return nil
+}
+
+func exactOwnedHandoffDispatch(h *IssueOpsExecutionHandoff, task port.OrcaTask, dispatch port.OrcaDispatch, allowedHandle string) bool {
+	if h == nil || h.Orca == nil {
+		return false
+	}
+	terminalHandle := strings.TrimSpace(h.Orca.WorkerTerminalHandle)
+	mailboxHandle := strings.TrimSpace(h.Orca.WorkerMailboxHandle)
+	if mailboxHandle == "" {
+		mailboxHandle = terminalHandle
+	}
+	return terminalHandle != "" && strings.TrimSpace(allowedHandle) == terminalHandle &&
+		strings.TrimSpace(h.Orca.TaskID) != "" && task.ID == h.Orca.TaskID &&
+		strings.TrimSpace(h.Orca.DispatchID) != "" && dispatch.ID == h.Orca.DispatchID &&
+		dispatch.AssigneeHandle == mailboxHandle
 }
 
 func validateExpectedContextSHA256(expected string) error {
