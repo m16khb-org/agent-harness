@@ -20,6 +20,8 @@ import (
 // issueOpsBucket is the sqlstore bucket holding one row per cycle record.
 const issueOpsBucket = "issueops"
 
+var errRemovedHandoffContract = errors.New("removed IssueOps handoff contract")
+
 func ReadIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
 	record, err := readIssueOpsUnchecked(stateRoot, id)
 	if err != nil {
@@ -127,10 +129,10 @@ func decodeIssueOpsRecord(id string, b []byte) (IssueOpsRecord, error) {
 		}
 	}
 	if rawIssueOpsAuthorityPresent(handoffHeader.ProtocolVersion) {
-		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("execution_handoff.protocol_version was removed; reset and start a new handoff")
+		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("%w: execution_handoff.protocol_version was removed; reset and start a new handoff", errRemovedHandoffContract)
 	}
 	if header.SchemaVersion <= 7 && (rawIssueOpsAuthorityPresent(header.ExecutionWorkspace) || rawIssueOpsAuthorityPresent(header.ExecutionHandoff)) {
-		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops schema_version %d predates the current ownership contract; reset and start a new handoff", header.SchemaVersion)
+		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("%w: issueops schema_version %d predates the current ownership contract; reset and start a new handoff", errRemovedHandoffContract, header.SchemaVersion)
 	}
 	if header.SchemaVersion <= 5 && rawIssueOpsAuthorityPresent(header.RemoteCreateClaim) {
 		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops schema_version %d cannot contain remote_create_claim durable mutation authority", header.SchemaVersion)

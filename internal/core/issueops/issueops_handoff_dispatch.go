@@ -336,6 +336,7 @@ func cloneOwnershipWorkspaceOrca(identity *IssueOpsOrcaIdentity) *IssueOpsOrcaId
 }
 
 func confirmedHandoffStartCommand(record IssueOpsRecord, recipient string, coordinator model.IssueOpsHostSessionIdentity, options handoff.ContextOptions, contextSHA string) string {
+	options = handoff.ContextOptionsFromModel(handoff.CanonicalContextOptions(options))
 	parts := []string{
 		"agent-harness issueops handoff start",
 		"--id " + quoteHandoffCLIToken(record.ID),
@@ -349,6 +350,30 @@ func confirmedHandoffStartCommand(record IssueOpsRecord, recipient string, coord
 	parts = append(parts, "--source-cwd "+quoteHandoffCLIToken(record.Repo))
 	if record.ExecutionHandoff != nil {
 		parts = append(parts, "--workspace-epoch "+quoteHandoffCLIToken(record.ExecutionHandoff.WorkspaceEpoch))
+	}
+	for _, value := range options.CriteriaIDs {
+		parts = append(parts, "--criteria-id "+quoteHandoffCLIToken(value))
+	}
+	for _, value := range options.RequiredDocs {
+		parts = append(parts, "--required-doc "+quoteHandoffCLIToken(value))
+	}
+	for _, value := range options.RequiredSkills {
+		parts = append(parts, "--required-skill "+quoteHandoffCLIToken(value))
+	}
+	if options.WorkerScope != "" {
+		parts = append(parts, "--worker-scope "+quoteHandoffCLIToken(options.WorkerScope))
+	}
+	for _, value := range options.VerificationCommands {
+		parts = append(parts, "--verification "+quoteHandoffCLIToken(value))
+	}
+	if options.HeartbeatCadence != "" {
+		parts = append(parts, "--heartbeat-cadence "+quoteHandoffCLIToken(options.HeartbeatCadence))
+	}
+	for _, value := range options.StopConditions {
+		parts = append(parts, "--stop-condition "+quoteHandoffCLIToken(value))
+	}
+	if options.ResultFormat != "" {
+		parts = append(parts, "--result-format "+quoteHandoffCLIToken(options.ResultFormat))
 	}
 	if options.AllowCodexHookTrustBypass {
 		parts = append(parts, "--allow-codex-hook-trust-bypass")
@@ -1166,6 +1191,9 @@ func handoffCoordinatorRecipientClaimed(stateRoot, currentID, repo, handle strin
 		}
 		record, err := readIssueOpsUnchecked(stateRoot, id)
 		if err != nil {
+			if errors.Is(err, errRemovedHandoffContract) {
+				continue
+			}
 			return false, err
 		}
 		if filepath.Clean(record.Repo) != filepath.Clean(repo) || record.ExecutionHandoff == nil || record.ExecutionHandoff.State == handoff.StateClosed {

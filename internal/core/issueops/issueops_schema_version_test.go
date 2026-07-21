@@ -33,6 +33,30 @@ func TestReadRejectsRemovedHandoffProtocolVersionWithoutRewriting(t *testing.T) 
 	}
 }
 
+func TestCoordinatorRecipientScanIgnoresRemovedProtocolRecords(t *testing.T) {
+	stateRoot := t.TempDir()
+	id := "io-removed-protocol"
+	raw := []byte(`{"ok":true,"schema_version":8,"id":"io-removed-protocol","repo":"/repo/example","branch":"16-demo","phase":"implement","execution_handoff":{"protocol_version":1,"state":"recovery_required","coordinator_mailbox_handle":"term_stale"}}`)
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Put(issueOpsBucket, id, raw); err != nil {
+		t.Fatal(err)
+	}
+
+	claimed, err := handoffCoordinatorRecipientClaimed(stateRoot, "io-current", "/repo/current", "term_current")
+	if err != nil {
+		t.Fatalf("unrelated removed-protocol record blocked a current handoff: %v", err)
+	}
+	if claimed {
+		t.Fatal("removed-protocol record claimed current coordinator authority")
+	}
+	if after := rawIssueOpsBytesForTest(t, stateRoot, id); !bytes.Equal(after, raw) {
+		t.Fatalf("removed-protocol record was rewritten\n got: %s\nwant: %s", after, raw)
+	}
+}
+
 func TestReadRejectsPreOwnershipSchemaHandoffWithoutCompatibilityProjection(t *testing.T) {
 	stateRoot := t.TempDir()
 	id := "io-removed-handoff-shape"
