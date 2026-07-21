@@ -291,7 +291,7 @@ func ownershipCleanupExpectedStep(h *issueopsmodel.IssueOpsExecutionHandoff) str
 	}
 	steps := []string{"remote_head_safe", "task_terminal", "terminal_quiescent", "worktree_removed", "local_branch_removed"}
 	if h.Cleanup.Disposition == "close-owner" {
-		steps = steps[:2]
+		steps = []string{"task_terminal", "terminal_quiescent"}
 	}
 	if len(h.Cleanup.Receipts) >= len(steps) {
 		return ""
@@ -500,6 +500,9 @@ func claimedWorkerRoleViolation(command string) string {
 	if len(tokens) == 0 {
 		return "empty worker shell command"
 	}
+	if violation := claimedWorkerIntegrationMutationViolation(tokens); violation != "" {
+		return violation
+	}
 	if gitTokens, ok := claimedWorkerGitTokens(tokens); ok {
 		i := commandAfterGitRepositoryOptions(gitTokens, 1)
 		if i < 0 || i >= len(gitTokens) {
@@ -551,6 +554,33 @@ func claimedWorkerRoleViolation(command string) string {
 			}
 		}
 		return "direct push, remote, branch switching, history rewrite, worktree, and cleanup operations are forbidden; use the exact IssueOps owner publication lifecycle for remote publication"
+	}
+	return ""
+}
+
+func claimedWorkerIntegrationMutationViolation(tokens []string) string {
+	dryRun := false
+	for _, token := range tokens {
+		if token == "--dry-run" {
+			dryRun = true
+		}
+	}
+	for _, token := range tokens {
+		if filepath.Base(token) == "install-native.sh" {
+			if dryRun {
+				return ""
+			}
+			return "user-scope integrations may be installed or updated only from the source checkout"
+		}
+	}
+	if tokens[0] != "agent-harness" && tokens[0] != "./bin/agent-harness" || len(tokens) < 2 {
+		return ""
+	}
+	switch tokens[1] {
+	case "install", "install-native", "update", "bootstrap":
+		if !dryRun {
+			return "user-scope integrations may be installed or updated only from the source checkout"
+		}
 	}
 	return ""
 }

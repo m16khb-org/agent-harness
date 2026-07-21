@@ -60,6 +60,7 @@ description: Instruction priority, safety, and accuracy principles.
 
 - 실패나 사용자 불편을 처리할 때는 눈에 보이는 증상만 덮고 끝내지 않는다. 재현 근거, 호출 경로, 상태 전이, 정책 경계, 문서 계약을 따라가며 문제가 발생한 근본 원인을 확인한 뒤 그 원인을 제거한다.
 - 임시 우회, 출력 문구 보정, 테스트 기대값 완화, 문서만 변경하는 대응은 근본 원인이 이미 제거됐거나 현재 범위에서 물리적으로 제거할 수 없다는 근거가 있을 때만 허용한다.
+- 에이전트, hook, relay, retry, monitor, orchestration의 모든 반복은 유한한 상한과 명시적인 성공·실패·취소·timeout·no-op 종료 경로를 가져야 한다. 탈출 없는 무한 재진입은 금지한다. 사용자의 명시적 종료/`자동진행하지 않음` 판단은 동일한 durable state보다 우선하며, 사람 입력만 남았을 때는 background agent를 기다리지 않고 현재 turn을 종료한다.
 - 수정 뒤에는 같은 실패가 재발하지 않음을 보여주는 targeted test, command smoke, grep evidence, 로그/상태 확인 중 작업 성격에 맞는 검증을 남긴다.
 
 ---

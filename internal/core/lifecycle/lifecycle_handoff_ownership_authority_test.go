@@ -375,6 +375,42 @@ func TestOwnershipOwnerCanRunExactLifecycleFromFreshSourceRootShell(t *testing.T
 	}
 }
 
+func TestClaimedWorkerCannotReplaceUserScopeIntegrations(t *testing.T) {
+	for _, command := range []string{
+		"./scripts/install-native.sh",
+		"bash ./scripts/install-native.sh --skip-build",
+		"agent-harness install",
+		"agent-harness install-native --skip-build",
+		"agent-harness update",
+		"./bin/agent-harness bootstrap",
+	} {
+		t.Run(command, func(t *testing.T) {
+			if got := claimedWorkerRoleViolation(command); !strings.Contains(got, "user-scope integrations") {
+				t.Fatalf("owner user-scope integration mutation must be blocked: command=%q violation=%q", command, got)
+			}
+		})
+	}
+
+	for _, command := range []string{
+		"./scripts/install-native.sh --dry-run",
+		"agent-harness install-native --dry-run --json",
+		"./bin/agent-harness update --dry-run",
+	} {
+		t.Run("dry-run "+command, func(t *testing.T) {
+			if got := claimedWorkerRoleViolation(command); got != "" {
+				t.Fatalf("read-only integration plan should remain available: command=%q violation=%q", command, got)
+			}
+		})
+	}
+
+	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+	owner := handoffEditRequest(record, worker, "claude", "owner-session", "")
+	owner.AgentID, owner.Tool, owner.Command = "owner-agent", "Bash", "./scripts/install-native.sh"
+	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "block" || !strings.Contains(got.Reason, "user-scope integrations") {
+		t.Fatalf("owner pre-tool gate allowed user-scope integration replacement from %s: %#v", repo, got)
+	}
+}
+
 func TestOwnershipOwnerCanAdvanceAndRecordAISlopClean(t *testing.T) {
 	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
 	commands := []string{
@@ -450,6 +486,34 @@ func TestOwnershipCleanupAllowsFreshSourceButRejectsCompletedOwner(t *testing.T)
 	owner.ToolInput = map[string]any{"action": "cleanup-preview", "id": record.ID, "host": "claude", "session_id": "owner-session", "agent_id": "owner-agent", "source_cwd": repo}
 	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "block" {
 		t.Fatalf("completed owner became cleanup candidate: %#v", got)
+	}
+}
+
+func TestOwnershipCloseOwnerCleanupUsesCoreReceiptOrder(t *testing.T) {
+	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateCleanupExecuting)
+	request := handoffEditRequest(record, repo, "claude", "coordinator-session", "")
+	request.AgentID, request.Tool = "coordinator-agent", "Bash"
+	command := func(step string) string {
+		return "agent-harness issueops handoff cleanup-record --id " + record.ID +
+			" --host claude --session-id coordinator-session --agent-id coordinator-agent --source-cwd " + repo + " --step " + step + " --json"
+	}
+
+	request.Command = command("task_terminal")
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("close-owner cleanup must begin with task_terminal: %#v", got)
+	}
+	request.Command = command("remote_head_safe")
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "block" {
+		t.Fatalf("close-owner cleanup must not require remove-local receipt: %#v", got)
+	}
+
+	record.ExecutionHandoff.Cleanup.Receipts = append(record.ExecutionHandoff.Cleanup.Receipts, issueopsmodel.IssueOpsExecutionHandoffCleanupReceipt{Step: "task_terminal"})
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	request.Command = command("terminal_quiescent")
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("close-owner cleanup must end with terminal_quiescent: %#v", got)
 	}
 }
 

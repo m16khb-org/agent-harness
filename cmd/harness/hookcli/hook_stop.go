@@ -84,6 +84,12 @@ func runHookStop(args []string) error {
 	}
 	ho := hookadapter.Resolve(strings.TrimSpace(*host))
 	if cleanupPending {
+		// A cleanup decision is durable, but a Stop relay is episodic. Continuation
+		// Stops and explicit no-auto-proceed judgements must terminate here instead
+		// of falling through to another gate that can re-enter the agent again.
+		if stopHookActive || noAutoProceedJudgement {
+			return printJSON(ho.FormatNoop())
+		}
 		markHookMetricBlocked()
 		return printJSON(ho.FormatStopBlock("IssueOps " + cleanupID + " is at cleanup_pending_human_decision. No cleanup has run. Do not auto-proceed or invoke preview, approve, record, Orca, Git, or provider tools from Stop; the source/main session must present the three human choices: retain resources, close owner while retaining the workspace, or remove local resources."))
 	}
