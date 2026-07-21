@@ -76,6 +76,31 @@ func TestOwnershipCoordinatorCanOnlyResumeSealedOwner(t *testing.T) {
 	}
 }
 
+func TestOwnershipSourceCanRequestForcedCancellationOfStrandedActiveOwner(t *testing.T) {
+	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
+	request := handoffEditRequest(record, repo, "claude", "coordinator-session", "")
+	request.AgentID = "coordinator-agent"
+	request.Tool = "Bash"
+	request.Command = "agent-harness issueops handoff recover --id " + record.ID + " --action cancel --confirm --force --reason stranded-owner --json"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("source cancellation of a stranded active owner was blocked: %#v", got)
+	}
+
+	for name, command := range map[string]string{
+		"missing force":  "agent-harness issueops handoff recover --id " + record.ID + " --action cancel --confirm --reason stranded-owner --json",
+		"missing reason": "agent-harness issueops handoff recover --id " + record.ID + " --action cancel --confirm --force --json",
+		"wrong action":   "agent-harness issueops handoff recover --id " + record.ID + " --action finalize-cancel --confirm --json",
+	} {
+		t.Run(name, func(t *testing.T) {
+			candidate := request
+			candidate.Command = command
+			if got := BuildLifecyclePreToolUseDecision(candidate); got.Decision != "block" {
+				t.Fatalf("unsafe source recovery command was allowed: %#v", got)
+			}
+		})
+	}
+}
+
 func TestOwnershipCoordinatorCanWakeOrientingOwnerForExactAcknowledgement(t *testing.T) {
 	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateOwnerOrienting)
 	request := handoffEditRequest(record, repo, "claude", "coordinator-session", "")

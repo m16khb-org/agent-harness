@@ -150,7 +150,14 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 		agentMatches := strings.TrimSpace(req.AgentID) == "" && !aok || aok && agentID == strings.TrimSpace(req.AgentID)
 		return source && hok && sok && cwdOK && strings.EqualFold(host, strings.TrimSpace(req.Host)) && sessionID == strings.TrimSpace(req.SessionID) && agentMatches && cleanAbsPath(cwd) == cleanAbsPath(record.Repo)
 	case "handoff recover":
-		return source && h.State == handoff.StateRecoveryRequired
+		if source && h.State == handoff.StateRecoveryRequired {
+			return true
+		}
+		action, actionOK := oneFlag(flags, "--action")
+		reason, reasonOK := oneFlag(flags, "--reason")
+		_, confirmed := flags["--confirm"]
+		_, forced := flags["--force"]
+		return source && h.State == handoff.StateOwnerActive && actionOK && action == "cancel" && reasonOK && strings.TrimSpace(reason) != "" && confirmed && forced
 	case "handoff publish":
 		cwd, cwdOK := oneFlag(flags, "--cwd")
 		_, confirmed := flags["--confirm"]
