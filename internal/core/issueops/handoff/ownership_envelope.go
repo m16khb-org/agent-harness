@@ -75,6 +75,9 @@ func validateOwnershipEnvelope(record model.IssueOpsRecord) error {
 			return fmt.Errorf("ownership cleanup execution requires explicit human approval")
 		}
 	case StateClosed:
+		if h.ClosedDisposition == DispositionCancelled && h.Completion == nil && validFinalizedCancellation(h) {
+			return nil
+		}
 		if !validWorkerSession(h.OwnerSession) || !validOwnershipOrientation(record, h.Orientation) || h.Completion == nil {
 			return fmt.Errorf("ownership terminal state requires owner completion")
 		}
@@ -82,6 +85,10 @@ func validateOwnershipEnvelope(record model.IssueOpsRecord) error {
 		return fmt.Errorf("unknown ownership handoff state")
 	}
 	return nil
+}
+
+func validFinalizedCancellation(h *model.IssueOpsExecutionHandoff) bool {
+	return h != nil && h.Cancellation == nil && validFailure(h.Failure) && h.Failure.Code == "cancellation_finalized"
 }
 
 func validCancellationRecovery(h *model.IssueOpsExecutionHandoff) bool {
