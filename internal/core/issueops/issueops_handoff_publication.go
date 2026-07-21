@@ -109,7 +109,7 @@ func (g GitIssueOpsHandoffPublicationReader) PushExact(ctx context.Context, repo
 	if !publicationRemotePattern.MatchString(remote) || !safePublicationBranch(branch) || !publicationFullCommitPattern.MatchString(finalHead) {
 		return fmt.Errorf("publication remote, branch, or final head is unsafe")
 	}
-	return withPublicationGitConfigLocks(ctx, repo, func() error {
+	if err := withPublicationGitConfigLocks(ctx, repo, func() error {
 		target, err := publicationPushTargetLocked(ctx, repo, remote)
 		if err != nil {
 			return err
@@ -125,7 +125,26 @@ func (g GitIssueOpsHandoffPublicationReader) PushExact(ctx context.Context, repo
 			return fmt.Errorf("push exact publication ref at %s: %s", finalHead, publicationDiagnosticWithoutTarget(stderr, target.URL))
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+	return setIssueOpsPublicationBranchUpstream(ctx, repo, remote, branch)
+}
+
+func setIssueOpsPublicationBranchUpstream(ctx context.Context, repo, remote, branch string) error {
+	bounded, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	trackingRef := "refs/remotes/" + remote + "/" + branch
+	remoteRef := "refs/heads/" + branch
+	code, _, stderr := publicationGitCmd(bounded, repo, "fetch", "--no-tags", "--", remote, remoteRef+":"+trackingRef)
+	if code != 0 {
+		return fmt.Errorf("fetch exact publication tracking ref: %s", publicationDiagnostic(stderr))
+	}
+	code, _, stderr = publicationGitCmd(bounded, repo, "branch", "--set-upstream-to", remote+"/"+branch, branch)
+	if code != 0 {
+		return fmt.Errorf("set publication branch upstream: %s", publicationDiagnostic(stderr))
+	}
+	return nil
 }
 
 func publicationURLLines(stdout string) ([]string, error) {
