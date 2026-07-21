@@ -414,8 +414,8 @@ USAGE RULES:
 | **turing** | Turing uses Karpathy-optimized prompts for QA channels and worker dispatch. Every Turing sub-agent prompt passes through Karpathy's adversarial testing before production use. |
 | **hopper** | Hopper diagnoses why a prompt failed. Karpathy fixes the prompt based on Hopper's root cause analysis. Hopper finds the bug; Karpathy rewrites the instructions. |
 | **berners-lee** | Berners-Lee researches prompt engineering literature, model-specific prompt guides, and community best practices. Karpathy applies the findings to concrete prompts. |
-| **shannon** | Shannon measures prompt quality quantitatively (output accuracy, format compliance rate, failure rate). Karpathy's A/B test results feed into Shannon's before/after metrics. |
-| **issueops** | All IssueOps skill prompts (agent prompts, system prompts, tool descriptions) are maintained by Karpathy. IssueOps skill files ARE prompts — they must pass Karpathy's test suite. |
+| **shannon** | Shannon measures generated code artifacts, not prompt quality. Karpathy evaluates prompt changes with task-specific outcome metrics such as accuracy, format compliance, and failure rate. |
+| **issueops** | When an IssueOps task explicitly changes a prompt artifact, Karpathy can define its outcome metrics and record the verified result as IssueOps feedback. |
 
 ---
 

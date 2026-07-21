@@ -696,7 +696,7 @@
       "running": false
     },
     "docs_index": {
-      "docs_count": 87,
+      "docs_count": 89,
       "harness_root": "$HARNESS_ROOT",
       "ok": true,
       "required_docs": {
@@ -757,6 +757,7 @@
         "$HARNESS_ROOT/.agent-harness/operations/web-fetch-live-parity.md",
         "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
         "$HARNESS_ROOT/.agent-harness/plans/13-codex-system-skill-quick-validate.md",
+        "$HARNESS_ROOT/.agent-harness/plans/52-p1-pioneer-contract-cli-correctness.md",
         "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
         "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
         "$HARNESS_ROOT/.agent-harness/plans/agent-harness-optimization-plan.md",
@@ -769,6 +770,7 @@
         "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
         "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
         "$HARNESS_ROOT/.agent-harness/plans/issueops-hook-deadlock.md",
+        "$HARNESS_ROOT/.agent-harness/plans/issueops-publication-identity-and-skill-read.md",
         "$HARNESS_ROOT/.agent-harness/plans/issueops-selective-absorption-2026-07-21.md",
         "$HARNESS_ROOT/.agent-harness/plans/karpathy-prompt-augmentation-hook.md",
         "$HARNESS_ROOT/.agent-harness/plans/loop-article-gaps-123.md",
@@ -5189,7 +5191,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 87,
+        "docs_indexed": 89,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -7183,7 +7185,7 @@
       "content": [
         {
           "json": {
-            "docs_count": 87,
+            "docs_count": 89,
             "harness_root": "$HARNESS_ROOT",
             "ok": true,
             "required_docs": {
@@ -7251,6 +7253,7 @@
               "$HARNESS_ROOT/.agent-harness/operations/web-fetch-live-parity.md",
               "$HARNESS_ROOT/.agent-harness/plans/10-pioneer-skill-routing-hints.md",
               "$HARNESS_ROOT/.agent-harness/plans/13-codex-system-skill-quick-validate.md",
+              "$HARNESS_ROOT/.agent-harness/plans/52-p1-pioneer-contract-cli-correctness.md",
               "$HARNESS_ROOT/.agent-harness/plans/6-fix-lifecycle-state-init-race.md",
               "$HARNESS_ROOT/.agent-harness/plans/8-fix-smoke-truncated-json-parse.md",
               "$HARNESS_ROOT/.agent-harness/plans/agent-harness-optimization-plan.md",
@@ -7263,6 +7266,7 @@
               "$HARNESS_ROOT/.agent-harness/plans/harness-quality-program-v2-externally-benchmarked.md",
               "$HARNESS_ROOT/.agent-harness/plans/io-086195b77c2d-pioneer-skill-audit.md",
               "$HARNESS_ROOT/.agent-harness/plans/issueops-hook-deadlock.md",
+              "$HARNESS_ROOT/.agent-harness/plans/issueops-publication-identity-and-skill-read.md",
               "$HARNESS_ROOT/.agent-harness/plans/issueops-selective-absorption-2026-07-21.md",
               "$HARNESS_ROOT/.agent-harness/plans/karpathy-prompt-augmentation-hook.md",
               "$HARNESS_ROOT/.agent-harness/plans/loop-article-gaps-123.md",
@@ -10353,7 +10357,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 87,
+              "docs_indexed": 89,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,

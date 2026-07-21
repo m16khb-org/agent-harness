@@ -19,7 +19,7 @@
 
 | # | 측정면 | 계층 | 최신값 | 측정일 | 게이트 | 다음 측정 |
 |---|--------|------|--------|--------|--------|-----------|
-| 1 | Pioneer 스킬 9종 | 격리 rubric | **v2 단일척도 ≈3.07(pre)→4.78(post), +1.71** (holdout n=1; 양끝점 v2 재채점) | 2026-06-16 | ✅ ≥4.2 | 분기 도그푸드(S1) 또는 SKILL.md 변경 시 |
+| 1 | Pioneer 스킬 9종 (historical cohort) | 격리 rubric | **v2 단일척도 ≈3.07(pre)→4.78(post), +1.71** (holdout n=1; 양끝점 v2 재채점) | 2026-06-16 | ✅ ≥4.2 | 분기 도그푸드(S1) 또는 SKILL.md 변경 시 |
 | 2 | 비-pioneer 스킬 7종 | 격리 rubric | **7/7 측정 완료**, 전 skill ≥4.86, holdout ≥4.8 | 2026-06-13 | ✅ GREEN | 분기 도그푸드(S1) 또는 SKILL.md 변경 시 |
 | 3 | IssueOps 산출물 벤치마크 | 통합 | **100/100** (avg·min), critical 0, 9 fixtures, `--judge file` green | 2026-06-13 | ✅ GREEN | pre-push 상시 |
 | 4 | Hook 런타임 메트릭 | 런타임 | 전 hook p95 **<40ms**, blocks 0 | 2026-06-13 | ✅ stop p95 38ms (<1s) | 상시 누적(자동) |
@@ -31,7 +31,9 @@ strict 잔여였던 ACP-O 재측정, STA-H holdout n≥3, IssueOps judge file �
 
 ---
 
-## 측정면 1 — Pioneer 스킬 9종 (격리 rubric)
+## 측정면 1 — Pioneer 스킬 9종 (historical cohort, 격리 rubric)
+
+`historical 2026-06-16 isolated-rubric cohort: 9 skills`는 당시 재채점 대상 수를 뜻한다. `current IssueOps benchmark fixture loader: 10 pioneer-targeted fixtures`는 현재 `LoadIssueOpsBenchmarkFixtures`가 읽는 별도 benchmark fixture 수이며, historical rubric 점수를 재측정한 수치가 아니다.
 
 - **v2 단일척도 holdout 평균: 4.78/5.0** (2026-06-16 A6 재채점, range 4.7–4.9, 전 9종 ≥4.7, n=1/skill).
   - **단일척도 정렬**: 직전 **4.92**는 *같은 run*을 v1 앵커(5.0=완전충족)로 채점한 값. v2 5.0-유보 규칙("흠잡을 데 없음"=4.8)에서 그 5.0들이 4.8로 재보정 → **4.92 → 4.78은 척도 재보정이지 품질 회귀가 아니다.**
