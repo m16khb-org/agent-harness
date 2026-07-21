@@ -53,6 +53,22 @@ func TestCLIAndMCPRemoteCreateReconcileCallbacksCaptureIdenticalCompleteClaimPro
 	}
 }
 
+func TestIssueOpsHandoffClaimMCPPayloadExposesNextCommand(t *testing.T) {
+	claim := core.IssueOpsHandoffClaimResult{
+		IssueOpsRecord: core.IssueOpsRecord{OK: true, ID: "io-claim"},
+		State:          "owner_orienting",
+		NextCommand:    "agent-harness issueops handoff acknowledge-context --id 'io-claim'",
+	}
+	outcome := issueOpsMCPOutcome(claim, nil, "IssueOps handoff claim failed")
+	payload, err := json.Marshal(outcome.Payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(payload, []byte(`"next_command":"agent-harness issueops handoff acknowledge-context`)) {
+		t.Fatalf("claim MCP payload = %s", payload)
+	}
+}
+
 func TestIssueOpsMCPHelpersAndRemoteDryRuns(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record := mcpIssueOpsRecord(t)

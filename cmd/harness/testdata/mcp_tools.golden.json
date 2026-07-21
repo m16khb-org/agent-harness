@@ -2579,7 +2579,7 @@
     "name": "issueops_remote_sync_graph"
   },
   {
-    "description": "Run one IssueOps handoff action (start, claim, acknowledge-context, publish, complete, cleanup-preview, cleanup-approve, cleanup-record, or recover) through the same durable DTO contract as the CLI. The isolated owner publishes and completes its cycle; a fresh source session may perform human-approved cleanup after merge. No cleanup runs automatically.",
+    "description": "Run one IssueOps handoff action (start, claim, acknowledge-context, publish, complete, cleanup-preview, cleanup-approve, cleanup-record, or recover) through the same durable DTO contract as the CLI. A successful claim returns the exact acknowledge-context next_command for the sealed owner session. The isolated owner publishes and completes its cycle; a fresh source session may perform human-approved cleanup after merge. No cleanup runs automatically.",
     "inputSchema": {
       "properties": {
         "action": {

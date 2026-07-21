@@ -287,7 +287,7 @@ func IssueOpsLifecycleTools() []Tool {
 		},
 		{
 			Name:        "issueops_handoff",
-			Description: "Run one IssueOps handoff action (start, claim, acknowledge-context, publish, complete, cleanup-preview, cleanup-approve, cleanup-record, or recover) through the same durable DTO contract as the CLI. The isolated owner publishes and completes its cycle; a fresh source session may perform human-approved cleanup after merge. No cleanup runs automatically.",
+			Description: "Run one IssueOps handoff action (start, claim, acknowledge-context, publish, complete, cleanup-preview, cleanup-approve, cleanup-record, or recover) through the same durable DTO contract as the CLI. A successful claim returns the exact acknowledge-context next_command for the sealed owner session. The isolated owner publishes and completes its cycle; a fresh source session may perform human-approved cleanup after merge. No cleanup runs automatically.",
 			InputSchema: map[string]any{"type": "object", "required": []string{"action", "id"}, "properties": map[string]any{
 				"action":                        map[string]any{"type": "string", "enum": []string{"start", "claim", "acknowledge-context", "publish", "complete", "cleanup-preview", "cleanup-approve", "cleanup-record", "recover"}},
 				"id":                            map[string]any{"type": "string"},

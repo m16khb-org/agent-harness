@@ -117,11 +117,11 @@ func runIssueOpsHandoffClaim(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := core.ClaimIssueOpsHandoff(core.IssueOpsStateRoot(), core.IssueOpsHandoffClaimRequest{
+	result, err := core.ClaimIssueOpsHandoff(core.IssueOpsStateRoot(), core.IssueOpsHandoffClaimRequest{
 		ID: *common.id, Attempt: *common.attempt, OwnershipEpoch: *common.epoch, ContextSHA256: *common.context,
 		Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd, OrcaWorktreeID: *worktreeID,
 	})
-	return printIssueOpsResult(record, *jsonOut, err)
+	return printIssueOpsHandoffValue(result, *jsonOut, err)
 }
 
 func runIssueOpsHandoffAcknowledgeContext(args []string) error {

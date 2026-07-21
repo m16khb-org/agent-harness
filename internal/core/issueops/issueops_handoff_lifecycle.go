@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,6 +24,16 @@ type IssueOpsHandoffClaimRequest struct {
 	AgentID        string `json:"agent_id,omitempty"`
 	CWD            string `json:"cwd"`
 	OrcaWorktreeID string `json:"orca_worktree_id"`
+}
+
+type IssueOpsHandoffClaimResult struct {
+	IssueOpsRecord
+	State          string `json:"state"`
+	Attempt        int    `json:"attempt"`
+	OwnershipEpoch string `json:"ownership_epoch"`
+	ContextSHA256  string `json:"context_sha256"`
+	PlanSHA256     string `json:"plan_sha256"`
+	NextCommand    string `json:"next_command"`
 }
 
 type IssueOpsHeartbeatRequest struct {
@@ -54,25 +65,26 @@ type issueOpsHandoffLifecycleHooks struct {
 	BeforeLockedRevalidation func()
 }
 
-func ClaimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest) (IssueOpsRecord, error) {
+func ClaimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest) (IssueOpsHandoffClaimResult, error) {
 	return claimIssueOpsHandoff(stateRoot, req, issueOpsHandoffLifecycleHooks{})
 }
 
-func claimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest, hooks issueOpsHandoffLifecycleHooks) (IssueOpsRecord, error) {
+func claimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest, hooks issueOpsHandoffLifecycleHooks) (IssueOpsHandoffClaimResult, error) {
 	validated, err := ReadIssueOps(stateRoot, req.ID)
 	if err != nil {
-		return IssueOpsRecord{}, err
+		return IssueOpsHandoffClaimResult{}, err
 	}
 	if err := validateHandoffClaimIdentity(validated, req); err != nil {
-		return IssueOpsRecord{}, err
+		return IssueOpsHandoffClaimResult{}, err
 	}
 	if validated.ExecutionHandoff.State != handoff.StateOwnerOrienting {
-		if err := validateHandoffClaim(validated, req); err != nil {
-			return IssueOpsRecord{}, err
+		if _, err := validateHandoffClaim(validated, req); err != nil {
+			return IssueOpsHandoffClaimResult{}, err
 		}
 	}
 	runHandoffLifecycleHook(hooks.BeforeLockedRevalidation)
 	var persisted IssueOpsRecord
+	var planSHA256 string
 	err = withIssueOpsLock(context.Background(), stateRoot, req.ID, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, req.ID)
 		if err != nil {
@@ -83,7 +95,13 @@ func claimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest, hoo
 		}
 		alreadyClaimed := record.ExecutionHandoff.State == handoff.StateOwnerOrienting
 		if !alreadyClaimed {
-			if err := validateHandoffClaim(record, req); err != nil {
+			planSHA256, err = validateHandoffClaim(record, req)
+			if err != nil {
+				return err
+			}
+		} else {
+			planSHA256, err = validatedHandoffClaimPlanSHA256(record)
+			if err != nil {
 				return err
 			}
 		}
@@ -101,7 +119,89 @@ func claimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest, hoo
 		persisted, err = writeIssueOps(stateRoot, record)
 		return err
 	})
-	return persisted, err
+	if err != nil {
+		return IssueOpsHandoffClaimResult{}, err
+	}
+	return projectIssueOpsHandoffClaim(persisted, planSHA256)
+}
+
+func IssueOpsHandoffAcknowledgeCommand(record IssueOpsRecord) (string, error) {
+	planSHA256, err := validatedHandoffClaimPlanSHA256(record)
+	if err != nil {
+		return "", err
+	}
+	return issueOpsHandoffAcknowledgeCommand(record, planSHA256)
+}
+
+func projectIssueOpsHandoffClaim(record IssueOpsRecord, planSHA256 string) (IssueOpsHandoffClaimResult, error) {
+	h := record.ExecutionHandoff
+	if h == nil || h.State != handoff.StateOwnerOrienting || h.OwnerSession == nil {
+		return IssueOpsHandoffClaimResult{}, fmt.Errorf("claimed ownership handoff must be owner_orienting with an exact owner session")
+	}
+	nextCommand, err := issueOpsHandoffAcknowledgeCommand(record, planSHA256)
+	if err != nil {
+		return IssueOpsHandoffClaimResult{}, err
+	}
+	return IssueOpsHandoffClaimResult{
+		IssueOpsRecord: record, State: h.State, Attempt: h.Attempt, OwnershipEpoch: h.OwnershipEpoch,
+		ContextSHA256: h.ContextSHA256, PlanSHA256: planSHA256, NextCommand: nextCommand,
+	}, nil
+}
+
+func issueOpsHandoffAcknowledgeCommand(record IssueOpsRecord, planSHA256 string) (string, error) {
+	h := record.ExecutionHandoff
+	if h == nil || h.State != handoff.StateOwnerOrienting || h.OwnerSession == nil {
+		return "", fmt.Errorf("acknowledgement command requires owner_orienting with an exact owner session")
+	}
+	if strings.TrimSpace(planSHA256) == "" || strings.TrimSpace(record.IssueURL) == "" || strings.TrimSpace(h.WorkerRoot) == "" {
+		return "", fmt.Errorf("acknowledgement command requires exact issue, plan, and worker-root context")
+	}
+	owner := *h.OwnerSession
+	parts := []string{
+		"agent-harness issueops handoff acknowledge-context",
+		"--id " + issueOpsShellQuote(record.ID),
+		"--attempt " + strconv.Itoa(h.Attempt),
+		"--ownership-epoch " + issueOpsShellQuote(h.OwnershipEpoch),
+		"--context-sha256 " + issueOpsShellQuote(h.ContextSHA256),
+		"--host " + issueOpsShellQuote(owner.Host),
+		"--session-id " + issueOpsShellQuote(owner.SessionID),
+	}
+	if strings.TrimSpace(owner.AgentID) != "" {
+		parts = append(parts, "--agent-id "+issueOpsShellQuote(owner.AgentID))
+	}
+	parts = append(parts,
+		"--cwd "+issueOpsShellQuote(h.WorkerRoot),
+		"--issue-url "+issueOpsShellQuote(record.IssueURL),
+		"--plan-sha256 "+issueOpsShellQuote(planSHA256),
+		"--understanding "+issueOpsShellQuote("I reviewed the sealed issue and plan context."),
+		"--scope-confirmation "+issueOpsShellQuote("I will implement only the sealed worker-root scope."),
+	)
+	return strings.Join(parts, " "), nil
+}
+
+func issueOpsShellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
+}
+
+func validatedHandoffClaimPlanSHA256(record IssueOpsRecord) (string, error) {
+	if record.ExecutionHandoff == nil {
+		return "", fmt.Errorf("execution handoff is required")
+	}
+	options := handoff.ContextOptions{}
+	if record.ExecutionHandoff.ContextOptions != nil {
+		options = handoff.ContextOptionsFromModel(*record.ExecutionHandoff.ContextOptions)
+	}
+	packet, err := handoff.BuildContext(record, options)
+	if err != nil {
+		return "", fmt.Errorf("re-render exact handoff context: %w", err)
+	}
+	if packet.SourceSHA256 != record.ExecutionHandoff.ContextSourceSHA256 {
+		return "", fmt.Errorf("stale handoff context source fingerprint")
+	}
+	if packet.SHA256 != record.ExecutionHandoff.ContextSHA256 {
+		return "", fmt.Errorf("stale handoff context")
+	}
+	return packet.PlanSHA256, nil
 }
 
 func validateHandoffClaimIdentity(record IssueOpsRecord, req IssueOpsHandoffClaimRequest) error {
@@ -124,14 +224,14 @@ func validateHandoffClaimIdentity(record IssueOpsRecord, req IssueOpsHandoffClai
 	return nil
 }
 
-func validateHandoffClaim(record IssueOpsRecord, req IssueOpsHandoffClaimRequest) error {
+func validateHandoffClaim(record IssueOpsRecord, req IssueOpsHandoffClaimRequest) (string, error) {
 	if err := validateHandoffClaimIdentity(record, req); err != nil {
-		return err
+		return "", err
 	}
-	if err := validateHandoffContextSource(record); err != nil {
-		return err
+	if err := validateHandoffStartCheckpoint(record); err != nil {
+		return "", err
 	}
-	return validateHandoffStartCheckpoint(record)
+	return validatedHandoffClaimPlanSHA256(record)
 }
 
 func RecordIssueOpsHeartbeatWithRequest(stateRoot string, req IssueOpsHeartbeatRequest) (IssueOpsRecord, error) {
