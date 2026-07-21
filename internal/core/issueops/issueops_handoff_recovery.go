@@ -596,12 +596,12 @@ func requireCancellationQuiescence(ctx context.Context, record IssueOpsRecord, c
 
 func requireCancellationFailedTask(ctx context.Context, client any, taskID string) error {
 	reader, ok := client.(interface {
-		ListAllTasks(context.Context) ([]port.OrcaTask, error)
+		ListFailedTasks(context.Context) ([]port.OrcaTask, error)
 	})
 	if !ok {
-		return fmt.Errorf("full task inventory is unavailable for cancellation quiescence")
+		return fmt.Errorf("failed-task inventory is unavailable for cancellation quiescence")
 	}
-	rows, err := reader.ListAllTasks(ctx)
+	rows, err := reader.ListFailedTasks(ctx)
 	if err != nil {
 		return err
 	}
@@ -620,7 +620,7 @@ func requireCancellationFailedTask(ctx context.Context, client any, taskID strin
 			return fmt.Errorf("exact worker task is not failed")
 		}
 	}
-	return fmt.Errorf("exact worker task is absent from the full task inventory")
+	return fmt.Errorf("exact worker task is absent from the failed-task inventory")
 }
 
 func requireTaskNotReady(ctx context.Context, client any, taskID string) error {

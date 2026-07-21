@@ -830,6 +830,23 @@ func TestClientListAllTasksRejectsCountMismatch(t *testing.T) {
 	}
 }
 
+func TestClientListFailedTasksUsesStatusFilter(t *testing.T) {
+	runner := newFakeRunner(t)
+	command := "orca orchestration task-list --status failed --json"
+	runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"tasks":[{"id":"task-failed","status":"failed"}],"count":1},"_meta":{"runtimeId":"runtime-1"}}`)}
+
+	got, err := NewClient(runner).ListFailedTasks(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].ID != "task-failed" || got[0].Status != "failed" || got[0].RuntimeID != "runtime-1" {
+		t.Fatalf("failed-task projection = %#v", got)
+	}
+	if len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != command {
+		t.Fatalf("failed-task command = %#v", runner.calls)
+	}
+}
+
 func TestClientListGatesRequiresCountEquality(t *testing.T) {
 	t.Run("complete", func(t *testing.T) {
 		runner := newFakeRunner(t)

@@ -473,6 +473,10 @@ func (c *Client) ListAllTasks(ctx context.Context) ([]port.OrcaTask, error) {
 	return c.listTasks(ctx, []string{"orca", "orchestration", "task-list", "--brief", "--json"})
 }
 
+func (c *Client) ListFailedTasks(ctx context.Context) ([]port.OrcaTask, error) {
+	return c.listTasks(ctx, []string{"orca", "orchestration", "task-list", "--status", "failed", "--json"})
+}
+
 func (c *Client) listTasks(ctx context.Context, argv []string) ([]port.OrcaTask, error) {
 	var payload struct {
 		Tasks []taskPayload `json:"tasks"`

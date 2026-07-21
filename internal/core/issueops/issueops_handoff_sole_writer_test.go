@@ -166,10 +166,10 @@ func soleWriterOwnedDispatchFixture() (IssueOpsRecord, *soleWriterOrcaFake) {
 }
 
 type soleWriterOrcaFake struct {
-	terminals  []port.OrcaTerminal
-	tasks      []port.OrcaTask
-	allTasks   []port.OrcaTask
-	dispatches map[string]port.OrcaDispatch
+	terminals   []port.OrcaTerminal
+	tasks       []port.OrcaTask
+	failedTasks []port.OrcaTask
+	dispatches  map[string]port.OrcaDispatch
 }
 
 func (f *soleWriterOrcaFake) ListWorktrees(context.Context, string) ([]port.OrcaWorktree, error) {
@@ -196,8 +196,8 @@ func (f *soleWriterOrcaFake) ListDispatchedTasks(context.Context) ([]port.OrcaTa
 	return append([]port.OrcaTask(nil), f.tasks...), nil
 }
 
-func (f *soleWriterOrcaFake) ListAllTasks(context.Context) ([]port.OrcaTask, error) {
-	return append([]port.OrcaTask(nil), f.allTasks...), nil
+func (f *soleWriterOrcaFake) ListFailedTasks(context.Context) ([]port.OrcaTask, error) {
+	return append([]port.OrcaTask(nil), f.failedTasks...), nil
 }
 
 func (f *soleWriterOrcaFake) CreateTask(context.Context, port.OrcaCreateTaskRequest) (port.OrcaTask, error) {
