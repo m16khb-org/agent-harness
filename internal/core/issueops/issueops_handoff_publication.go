@@ -23,6 +23,7 @@ import (
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/remote"
 	"agent-harness/internal/core/policy"
+	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
 
@@ -109,26 +110,38 @@ func (g GitIssueOpsHandoffPublicationReader) PushExact(ctx context.Context, repo
 	if !publicationRemotePattern.MatchString(remote) || !safePublicationBranch(branch) || !publicationFullCommitPattern.MatchString(finalHead) {
 		return fmt.Errorf("publication remote, branch, or final head is unsafe")
 	}
-	if err := withPublicationGitConfigLocks(ctx, repo, func() error {
-		target, err := publicationPushTargetLocked(ctx, repo, remote)
-		if err != nil {
+	return withIssueOpsPublicationOperationLock(ctx, repo, func(spanCtx context.Context) error {
+		if err := withPublicationGitConfigLocks(spanCtx, repo, func() error {
+			target, err := publicationPushTargetLocked(spanCtx, repo, remote)
+			if err != nil {
+				return err
+			}
+			if target.Fingerprint != expectedFingerprint {
+				return fmt.Errorf("publication push target changed before push")
+			}
+			bounded, cancel := context.WithTimeout(spanCtx, 30*time.Second)
+			defer cancel()
+			ref := "refs/heads/" + branch
+			code, _, stderr := publicationGitCmd(bounded, repo, "push", "--", target.URL, finalHead+":"+ref)
+			if code != 0 {
+				return fmt.Errorf("push exact publication ref at %s: %s", finalHead, publicationDiagnosticWithoutTarget(stderr, target.URL))
+			}
+			return nil
+		}); err != nil {
 			return err
 		}
-		if target.Fingerprint != expectedFingerprint {
-			return fmt.Errorf("publication push target changed before push")
-		}
-		bounded, cancel := context.WithTimeout(ctx, 30*time.Second)
-		defer cancel()
-		ref := "refs/heads/" + branch
-		code, _, stderr := publicationGitCmd(bounded, repo, "push", "--", target.URL, finalHead+":"+ref)
-		if code != 0 {
-			return fmt.Errorf("push exact publication ref at %s: %s", finalHead, publicationDiagnosticWithoutTarget(stderr, target.URL))
-		}
-		return nil
-	}); err != nil {
+		return setIssueOpsPublicationBranchUpstream(spanCtx, repo, remote, branch)
+	})
+}
+
+func withIssueOpsPublicationOperationLock(ctx context.Context, repo string, fn func(context.Context) error) error {
+	sum := sha256.Sum256([]byte(filepath.Clean(repo)))
+	lockRoot := filepath.Join(IssueOpsStateRoot(), "publication-locks", hex.EncodeToString(sum[:]))
+	db, err := sqlstore.Open(lockRoot)
+	if err != nil {
 		return err
 	}
-	return setIssueOpsPublicationBranchUpstream(ctx, repo, remote, branch)
+	return db.WithSpan(ctx, fn)
 }
 
 func setIssueOpsPublicationBranchUpstream(ctx context.Context, repo, remote, branch string) error {
