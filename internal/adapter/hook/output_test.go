@@ -90,9 +90,6 @@ func TestResolveKnownHosts(t *testing.T) {
 	if _, ok := Resolve("claude").(ClaudeHookOutput); !ok {
 		t.Error("expected ClaudeHookOutput for claude")
 	}
-	if _, ok := Resolve("reasonix").(ReasonixHookOutput); !ok {
-		t.Error("expected ReasonixHookOutput for reasonix")
-	}
 }
 
 func TestResolveUnknownDefaultsToCodex(t *testing.T) {
@@ -105,7 +102,7 @@ func TestResolveUnknownDefaultsToCodex(t *testing.T) {
 }
 
 func TestFormatStopBlock(t *testing.T) {
-	for _, h := range []HostHookOutput{CodexHookOutput{}, ClaudeHookOutput{}, ReasonixHookOutput{}} {
+	for _, h := range []HostHookOutput{CodexHookOutput{}, ClaudeHookOutput{}} {
 		out := h.FormatStopBlock("reason")
 		if out["continue"] != true {
 			t.Errorf("%T: expected continue=true", h)
@@ -120,7 +117,7 @@ func TestFormatStopBlock(t *testing.T) {
 }
 
 func TestFormatNoop(t *testing.T) {
-	for _, h := range []HostHookOutput{CodexHookOutput{}, ClaudeHookOutput{}, ReasonixHookOutput{}} {
+	for _, h := range []HostHookOutput{CodexHookOutput{}, ClaudeHookOutput{}} {
 		out := h.FormatNoop()
 		if len(out) != 0 {
 			t.Errorf("%T: expected empty noop, got %+v", h, out)
@@ -142,7 +139,7 @@ func TestCodexFormatAskFallsBackToBlock(t *testing.T) {
 }
 
 func TestFormatAskForHostsWithNativeAsk(t *testing.T) {
-	for _, h := range []HostHookOutput{ClaudeHookOutput{}, ReasonixHookOutput{}} {
+	for _, h := range []HostHookOutput{ClaudeHookOutput{}} {
 		out := h.FormatAsk("please confirm")
 		hso := out["hookSpecificOutput"].(map[string]any)
 		if hso["permissionDecision"] != "ask" {

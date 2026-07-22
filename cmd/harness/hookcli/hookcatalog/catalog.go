@@ -20,7 +20,7 @@ type Config struct {
 func RunPostCompact(args []string, config Config) error {
 	fs := flag.NewFlagSet("hook post-compact", flag.ContinueOnError)
 	repo := fs.String("repo", "", "target repository path; defaults to hook stdin JSON or cwd")
-	hostFlag := fs.String("host", "", "hook host (codex, claude, or reasonix); controls user-visible compatibility fields")
+	hostFlag := fs.String("host", "", "hook host (codex or claude); controls user-visible compatibility fields")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -64,7 +64,7 @@ func RunPostCompact(args []string, config Config) error {
 func RunSessionStart(args []string, config Config) error {
 	fs := flag.NewFlagSet("hook session-start", flag.ContinueOnError)
 	repo := fs.String("repo", "", "target repository path; defaults to hook stdin JSON or cwd")
-	hostFlag := fs.String("host", "", "hook host (codex, claude, or reasonix); controls user-visible compatibility fields")
+	hostFlag := fs.String("host", "", "hook host (codex or claude); controls user-visible compatibility fields")
 	jsonOut := fs.Bool("json", false, "print raw analysis JSON instead of host hook JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -101,21 +101,10 @@ func RunSessionStart(args []string, config Config) error {
 	if hookinput.SourceFromHookInput(stdin) == "compact" {
 		return config.PrintJSON(ho.FormatContext("SessionStart", "", ""))
 	}
-	host := firstNonEmptyCatalogValue(hookinput.HostFromHookInput(stdin), hostOf(hostFlag))
-	guidance := core.BuildIssueOpsHandoffSessionGuidance(parsedRepo, host, hookinput.SessionIDFromHookInput(stdin), hookinput.AgentIDFromHookInput(stdin))
-	if !cat.ShouldInject && guidance == "" {
+	if !cat.ShouldInject {
 		return config.PrintJSON(ho.FormatContext("SessionStart", "", ""))
 	}
-	return config.PrintJSON(ho.FormatContext("SessionStart", joinContext(guidance, cat.Compact), joinContext(guidance, cat.UserView)))
-}
-
-func firstNonEmptyCatalogValue(values ...string) string {
-	for _, value := range values {
-		if value = strings.TrimSpace(value); value != "" {
-			return value
-		}
-	}
-	return ""
+	return config.PrintJSON(ho.FormatContext("SessionStart", cat.Compact, cat.UserView))
 }
 
 // resolveCatalogHost returns the hook output adapter for catalog hooks.
@@ -124,8 +113,6 @@ func resolveCatalogHost(hostFlag *string) hookadapter.HostHookOutput {
 	switch hostOf(hostFlag) {
 	case "codex":
 		return hookadapter.CodexHookOutput{}
-	case "reasonix":
-		return hookadapter.ReasonixHookOutput{}
 	default:
 		return hookadapter.ClaudeHookOutput{}
 	}

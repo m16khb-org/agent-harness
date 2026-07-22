@@ -7,7 +7,7 @@ description: Run or interpret the agent-harness self-verification loop. Use when
 
 ## Goal
 
-Verify that the harness behaves consistently across Codex, Claude Code, and GJC, and that CLI, MCP, native integration, state, policy, docs, and skills work as intended. This skill is a QA gate; it does not choose improvements by itself.
+First-party hosts are exactly Codex and Claude Code. Verify that the harness behaves consistently across both hosts and that CLI, MCP, native integration, state, policy, docs, and skills work as intended. This skill is a QA gate; it does not choose improvements by itself.
 
 ## Commands
 
@@ -25,7 +25,7 @@ HARNESS_SELF_VERIFY_LLM_EVAL=gate ./bin/agent-harness self-verify --seed=100 --t
 ```
 
 Default `self-verify` is quick mode: one deterministic evidence pass. Use `--full` for the full ten-plus-iteration gate. Passing `--iterations` without `--full` is invalid.
-The quick and full modes both run the deterministic 10-case `contract conformance baseline`; they never launch Codex, Claude, GJC, or a live model. The normative live/reproduction and evidence rules are in `.agent-harness/TESTING.md`.
+The quick and full modes both run the deterministic 10-case `contract conformance baseline`; they never launch Codex, Claude, or a live model. The normative live/reproduction and evidence rules are in `.agent-harness/TESTING.md`.
 
 `HARNESS_SELF_VERIFY_LLM_EVAL` defaults to off. In the current implementation, setting it to `advisory` or `gate` only renders the read-only evaluator prompt after deterministic self-verification. No Z.AI request is sent. The `advisory` result exposes that prompt without changing deterministic success, while `gate` therefore returns a non-passing `llm_eval` result because no external verdict is ingested.
 

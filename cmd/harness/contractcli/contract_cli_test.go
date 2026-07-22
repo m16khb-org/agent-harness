@@ -37,7 +37,7 @@ func TestRunContractSchemaPrintsTextAndJSON(t *testing.T) {
 	text := captureStdoutForContract(t, func() error {
 		return Run([]string{"schema"})
 	})
-	if !strings.Contains(text, "agent_harness_cli_mcp_compatibility v2 ") {
+	if !strings.Contains(text, "agent_harness_cli_mcp_compatibility v3 ") {
 		t.Fatalf("expected schema text summary, got:\n%s", text)
 	}
 
@@ -48,12 +48,24 @@ func TestRunContractSchemaPrintsTextAndJSON(t *testing.T) {
 	if err := json.Unmarshal([]byte(jsonOut), &contract); err != nil {
 		t.Fatalf("decode contract schema JSON: %v\n%s", err, jsonOut)
 	}
-	if !contract.OK || contract.Name != "agent_harness_cli_mcp_compatibility" || contract.Version != 2 || contract.Hash == "" {
+	if !contract.OK || contract.Name != "agent_harness_cli_mcp_compatibility" || contract.Version != 3 || contract.Hash == "" {
 		t.Fatalf("unexpected contract schema: %#v", contract)
 	}
-	wantClaimFields := []string{"ok", "id", "state", "attempt", "ownership_epoch", "context_sha256", "plan_sha256", "next_command"}
-	if got := contract.ResponseFields["issueops_handoff_claim"]; strings.Join(got, ",") != strings.Join(wantClaimFields, ",") {
-		t.Fatalf("issueops handoff claim response fields = %v, want %v", got, wantClaimFields)
+	wantExecutionFields := []string{"ok", "id", "execution", "next_command"}
+	if got := contract.ResponseFields["issueops_execution"]; strings.Join(got, ",") != strings.Join(wantExecutionFields, ",") {
+		t.Fatalf("issueops execution response fields = %v, want %v", got, wantExecutionFields)
+	}
+	if _, exists := contract.ResponseFields["issueops_handoff_claim"]; exists {
+		t.Fatal("legacy issueops handoff response contract remains advertised")
+	}
+	issueOpsTools := []string{}
+	for _, name := range contract.MCPTools {
+		if strings.HasPrefix(name, "issueops_") {
+			issueOpsTools = append(issueOpsTools, name)
+		}
+	}
+	if strings.Join(issueOpsTools, ",") != "issueops_execution" {
+		t.Fatalf("IssueOps MCP tools = %v", issueOpsTools)
 	}
 }
 

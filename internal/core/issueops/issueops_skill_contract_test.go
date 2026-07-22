@@ -13,7 +13,7 @@ func TestIssueOpsSkillKeepsCoreWorkflowContract(t *testing.T) {
 		"problem", "grill", "issue", "plan", "compatibility-review", "implement",
 		"ai-slop-clean", "feedback", "pr", "cleanup", "RED→GREEN→SURFACE→CLEAN",
 		"agent-harness issueops intent record", "agent-harness issueops design review",
-		"agent-harness issueops worktree prepare --id \"$ISSUEOPS_ID\" --orchestrator auto --json",
+		"agent-harness issueops execution prepare --id \"$ISSUEOPS_ID\" --mode auto",
 	} {
 		if !strings.Contains(skill, want) {
 			t.Fatalf("IssueOps skill missing current workflow contract %q", want)
@@ -21,51 +21,55 @@ func TestIssueOpsSkillKeepsCoreWorkflowContract(t *testing.T) {
 	}
 }
 
-func TestIssueOpsOwnershipDocumentationHasOneCurrentContract(t *testing.T) {
+func TestIssueOpsExecutionV1DocumentationHasOneCurrentContract(t *testing.T) {
 	documents := map[string]string{
 		"skill":        readIssueOpsContractFile(t, "skills", "issueops", "SKILL.md"),
-		"handoff":      readIssueOpsContractFile(t, "skills", "issueops", "references", "orca-handoff.md"),
+		"execution":    readIssueOpsContractFile(t, "skills", "issueops", "references", "execution-v1.md"),
 		"cleanup":      readIssueOpsContractFile(t, "skills", "issueops", "references", "cleanup-state.md"),
 		"worktree":     readIssueOpsContractFile(t, "skills", "issueops", "references", "worktree-context.md"),
+		"start":        readIssueOpsContractFile(t, "skills", "issueops", "references", "operational-start.md"),
 		"workflow":     readIssueOpsContractFile(t, ".agent-harness", "AGENT_WORKFLOW.md"),
 		"operations":   readIssueOpsContractFile(t, ".agent-harness", "OPERATIONS.md"),
 		"architecture": readIssueOpsContractFile(t, ".agent-harness", "ARCHITECTURE.md"),
 	}
 	all := joinIssueOpsContractDocuments(documents)
 	for _, want := range []string{
-		"ownership_dispatching", "ownership_dispatched", "owner_orienting", "owner_active",
-		"cleanup_pending_human_decision", "cleanup_executing", "closed",
-		"canonical worker root", "exact lifecycle ID", "source main worktree remains available",
-		"prep-only", "handoff complete", "fresh authenticated", "human",
+		"one `ExecutionV1`", "canonical worktree", "exact lifecycle ID",
+		"source main worktree remains available", "direct", "orca",
+		"issueops execution prepare", "--mode auto", "issueops execution status",
+		"issueops execution claim", "--claim-token-file", "--issue-body-sha256",
+		"--context-packet-sha256", "issueops execution release",
+		"issueops execution replace", "issueops execution reconcile",
+		"issueops execution complete",
 	} {
 		if !strings.Contains(all, want) {
-			t.Fatalf("current ownership contract missing %q", want)
+			t.Fatalf("current execution v1 contract missing %q", want)
 		}
 	}
-	for _, removed := range removedIssueOpsHandoffTerms() {
+	for _, removed := range removedIssueOpsExecutionV1Terms() {
 		for name, document := range documents {
 			if strings.Contains(strings.ToLower(document), removed) {
-				t.Fatalf("%s retains removed handoff contract term %q", name, removed)
+				t.Fatalf("%s retains removed execution contract term %q", name, removed)
 			}
 		}
 	}
 }
 
-func TestIssueOpsOwnershipDocumentationPreservesParallelIndependence(t *testing.T) {
+func TestIssueOpsExecutionV1DocumentationPreservesParallelIndependence(t *testing.T) {
 	all := strings.ToLower(joinIssueOpsContractDocuments(map[string]string{
-		"handoff":  readIssueOpsContractFile(t, "skills", "issueops", "references", "orca-handoff.md"),
-		"worktree": readIssueOpsContractFile(t, "skills", "issueops", "references", "worktree-context.md"),
-		"workflow": readIssueOpsContractFile(t, ".agent-harness", "AGENT_WORKFLOW.md"),
+		"execution": readIssueOpsContractFile(t, "skills", "issueops", "references", "execution-v1.md"),
+		"worktree":  readIssueOpsContractFile(t, "skills", "issueops", "references", "worktree-context.md"),
+		"workflow":  readIssueOpsContractFile(t, ".agent-harness", "AGENT_WORKFLOW.md"),
 	}))
 	for _, want := range []string{
 		"exact lifecycle id",
-		"before source-wide inference",
-		"unrelated active cycles",
-		"linked worktree",
-		"literal `issueops start --repo <exact-source>`",
+		"canonical worktree",
+		"one active execution per record",
+		"unrelated cycles",
+		"source main worktree remains available",
 	} {
 		if !strings.Contains(all, want) {
-			t.Fatalf("parallel ownership documentation missing %q", want)
+			t.Fatalf("parallel execution documentation missing %q", want)
 		}
 	}
 }
@@ -73,12 +77,12 @@ func TestIssueOpsOwnershipDocumentationPreservesParallelIndependence(t *testing.
 func TestIssueOpsCurrentSurfacesDoNotNameRemovedCommands(t *testing.T) {
 	for _, parts := range [][]string{
 		{"internal", "adapter", "cli", "usage.go"},
-		{"cmd", "harness", "issueopscli", "issueops_handoff_cli.go"},
+		{"cmd", "harness", "issueopscli", "issueops_cli_support.go"},
+		{"internal", "core", "commandparse", "issueops.go"},
 		{"internal", "adapter", "mcp", "issueops_catalog.go"},
-		{"internal", "adapter", "mcp", "issueops_lifecycle_catalog.go"},
 	} {
 		content := readIssueOpsContractFile(t, parts...)
-		for _, removed := range removedIssueOpsHandoffTerms() {
+		for _, removed := range removedIssueOpsCurrentCommandTerms() {
 			if strings.Contains(strings.ToLower(content), removed) {
 				t.Fatalf("%s retains removed handoff surface %q", filepath.Join(parts...), removed)
 			}
@@ -86,12 +90,21 @@ func TestIssueOpsCurrentSurfacesDoNotNameRemovedCommands(t *testing.T) {
 	}
 }
 
-func removedIssueOpsHandoffTerms() []string {
+func removedIssueOpsCurrentCommandTerms() []string {
 	return []string{
-		"protocol-v1", "protocol-v2", "protocol v1", "protocol v2",
-		"handoff finish", "handoff accept", "approve-cleanup", "record-cleanup",
-		"codex-hooks-list", "migrate-legacy", "approve_legacy_coordinator_seal",
+		"migrate-v9", "execution decide", "worktree prepare", "handoff start",
+		"handoff claim", "handoff complete", "force-release", "resume --repo",
+		"issueops heartbeat", "reconcile-create", "prepare-worktree-tools",
 	}
+}
+
+func removedIssueOpsExecutionV1Terms() []string {
+	return append(removedIssueOpsCurrentCommandTerms(),
+		"execution_handoff", "ownership_epoch", "ownership_dispatch", "owner_orienting",
+		"owner_active", "cleanup_pending_human_decision", "cleanup_executing",
+		"--orchestrator", "resolved_mode", "prep-only", "issueops_record_execution_decision",
+		"issueops_record_compatibility_review", "issueops_regress_for_replan",
+	)
 }
 
 func joinIssueOpsContractDocuments(documents map[string]string) string {

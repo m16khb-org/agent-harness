@@ -6,11 +6,25 @@ type NativeInstallRequest struct {
 	Root         string   `json:"root"`
 	Home         string   `json:"home"`
 	CodexHome    string   `json:"codex_home"`
-	ReasonixHome string   `json:"reasonix_home,omitempty"`
 	BinPath      string   `json:"bin_path"`
 	SkillNames   []string `json:"skill_names"`
 	ProjectLocal bool     `json:"project_local"`
 	DryRun       bool     `json:"dry_run,omitempty"`
+}
+
+// NativeActivationEvidence is a host adapter's strict semantic readback of
+// one installed MCP or hook surface. IssueOps seals the referenced file bytes
+// and identity only after both first-party hosts return all required surfaces.
+type NativeActivationEvidence struct {
+	Host           string `json:"host"`
+	Surface        string `json:"surface"`
+	Path           string `json:"path"`
+	SemanticSHA256 string `json:"semantic_sha256"`
+	SHA256         string `json:"sha256"`
+	Mode           uint32 `json:"mode"`
+	Size           int64  `json:"size"`
+	Device         uint64 `json:"device"`
+	Inode          uint64 `json:"inode"`
 }
 
 // NativeInstallResult is the aggregate result of all host installers.
@@ -19,7 +33,6 @@ type NativeInstallResult struct {
 	Root         string              `json:"root"`
 	Home         string              `json:"home"`
 	CodexHome    string              `json:"codex_home"`
-	ReasonixHome string              `json:"reasonix_home,omitempty"`
 	BinPath      string              `json:"bin_path"`
 	SkillNames   []string            `json:"skill_names"`
 	Hosts        []HostInstallResult `json:"hosts"`

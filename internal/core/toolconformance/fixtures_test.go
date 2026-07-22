@@ -27,34 +27,37 @@ func TestFixtureManifestPinsRepresentativeCatalogSchemas(t *testing.T) {
 	if !reflect.DeepEqual(distribution, map[string]int{"valid": 3, "unknown_key": 3, "coercible_type_drift": 2, "noncoercible_type_drift": 2}) {
 		t.Fatalf("distribution=%#v", distribution)
 	}
-	var mixedCoercible, nestedCoercible, mixedBad, nestedBad map[string]any
+	var mixedCoercible, executionCoercible, mixedBad, executionBad map[string]any
 	for _, c := range cases {
 		switch c.FixtureID + ":" + c.PayloadClass {
 		case "mixed_scalar_array:coercible_type_drift":
 			mixedCoercible = c.Arguments
-		case "nested_object_array:coercible_type_drift":
-			nestedCoercible = c.Arguments
+		case "nested_execution_array:coercible_type_drift":
+			executionCoercible = c.Arguments
 		case "mixed_scalar_array:noncoercible_type_drift":
 			mixedBad = c.Arguments
-		case "nested_object_array:noncoercible_type_drift":
-			nestedBad = c.Arguments
+		case "nested_execution_array:noncoercible_type_drift":
+			executionBad = c.Arguments
 		}
 	}
 	mixedExpected := cloneArguments(fixtures[1].ExpectedArguments)
 	mixedExpected["network_allowed"] = "false"
-	nestedExpected := cloneArguments(fixtures[2].ExpectedArguments)
-	nestedExpected["auto_proceed"] = "local_changes"
+	executionExpected := cloneArguments(fixtures[2].ExpectedArguments)
+	executionExpected["verification"] = "go test ./... -count=1"
 	mixedBadExpected := cloneArguments(fixtures[1].ExpectedArguments)
 	mixedBadExpected["argv"] = map[string]any{}
-	nestedBadExpected := cloneArguments(fixtures[2].ExpectedArguments)
-	nestedBadExpected["subagent_plans"] = "plan"
-	if !reflect.DeepEqual(mixedCoercible, mixedExpected) || !reflect.DeepEqual(nestedCoercible, nestedExpected) || !reflect.DeepEqual(mixedBad, mixedBadExpected) || !reflect.DeepEqual(nestedBad, nestedBadExpected) {
-		t.Fatalf("drift mutations missing: %#v %#v %#v %#v", mixedCoercible, nestedCoercible, mixedBad, nestedBad)
+	executionBadExpected := cloneArguments(fixtures[2].ExpectedArguments)
+	executionBadExpected["verification"] = map[string]any{}
+	if !reflect.DeepEqual(mixedCoercible, mixedExpected) || !reflect.DeepEqual(executionCoercible, executionExpected) || !reflect.DeepEqual(mixedBad, mixedBadExpected) || !reflect.DeepEqual(executionBad, executionBadExpected) {
+		t.Fatalf("drift mutations missing: equal=%v/%v/%v/%v\ngot=%#v\nwant=%#v",
+			reflect.DeepEqual(mixedCoercible, mixedExpected), reflect.DeepEqual(executionCoercible, executionExpected),
+			reflect.DeepEqual(mixedBad, mixedBadExpected), reflect.DeepEqual(executionBad, executionBadExpected),
+			executionCoercible, executionExpected)
 	}
 	fixtures[0].ExpectedArguments["mutated"] = true
 	cases[0].Arguments["mutated"] = true
-	fixtures[2].ExpectedArguments["subagent_plans"].([]any)[0].(map[string]any)["objective"] = "mutated"
-	cases[2].Arguments["subagent_plans"].([]any)[0].(map[string]any)["objective"] = "mutated"
+	fixtures[2].ExpectedArguments["verification"].([]any)[0] = "mutated"
+	cases[2].Arguments["verification"].([]any)[0] = "mutated"
 	again, againCases, err := core.LoadManifest(items)
 	if err != nil {
 		t.Fatal(err)
@@ -65,11 +68,11 @@ func TestFixtureManifestPinsRepresentativeCatalogSchemas(t *testing.T) {
 	if _, ok := againCases[0].Arguments["mutated"]; ok {
 		t.Fatal("case caller mutation leaked")
 	}
-	if got := again[2].ExpectedArguments["subagent_plans"].([]any)[0].(map[string]any)["objective"]; got != "probe" {
-		t.Fatalf("nested fixture mutation leaked: %#v", got)
+	if got := again[2].ExpectedArguments["verification"].([]any)[0]; got != "go test ./... -count=1" {
+		t.Fatalf("execution fixture mutation leaked: %#v", got)
 	}
-	if got := againCases[2].Arguments["subagent_plans"].([]any)[0].(map[string]any)["objective"]; got != "probe" {
-		t.Fatalf("nested case mutation leaked: %#v", got)
+	if got := againCases[2].Arguments["verification"].([]any)[0]; got != "go test ./... -count=1" {
+		t.Fatalf("execution case mutation leaked: %#v", got)
 	}
 	after, _ := json.Marshal(items)
 	if string(before) != string(after) {

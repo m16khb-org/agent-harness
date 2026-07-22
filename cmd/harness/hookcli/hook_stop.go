@@ -33,7 +33,6 @@ func runHookStop(args []string) error {
 	}
 	payloadHost := strings.TrimSpace(hookinput.HostFromHookInput(stdin))
 	flagHost := strings.TrimSpace(*host)
-	hostConflict := flagHost != "" && payloadHost != "" && !strings.EqualFold(flagHost, payloadHost)
 	resolvedHost := strings.ToLower(flagHost)
 	if resolvedHost == "" {
 		resolvedHost = strings.ToLower(payloadHost)
@@ -41,18 +40,7 @@ func runHookStop(args []string) error {
 	if resolvedHost == "" {
 		resolvedHost = string(hookadapter.HostCodex)
 	}
-	suppressNextAction := false
-	if !*jsonOut && !hostConflict && (*enforceNumberedNextActions || *relayNextActionJudgement) {
-		suppressNextAction = core.SuppressStopNextActionForCompletedWorker(core.HookToolUseLifecycleRequest{
-			Repo:      parsedRepo,
-			CWD:       hookinput.CWDFromHookInput(stdin),
-			Host:      resolvedHost,
-			SessionID: hookinput.SessionIDFromHookInput(stdin),
-			AgentID:   hookinput.AgentIDFromHookInput(stdin),
-		})
-	}
 	result := core.BuildLifecycleStopReminder(parsedRepo)
-	cleanupID, cleanupPending := core.OwnershipCleanupHumanGate(core.HookToolUseLifecycleRequest{Repo: parsedRepo, CWD: hookinput.CWDFromHookInput(stdin), Host: resolvedHost, SessionID: hookinput.SessionIDFromHookInput(stdin), AgentID: hookinput.AgentIDFromHookInput(stdin)})
 	message := hookinput.LastAssistantMessageFromHookInput(stdin)
 	if message == "" {
 		message = hookinput.ReadLastAssistantMessageFromTranscript(hookinput.TranscriptPathFromHookInput(stdin))
@@ -79,21 +67,10 @@ func runHookStop(args []string) error {
 				"decision": map[bool]string{true: "block", false: "allow"}[engelbartCanvasBlock],
 				"reason":   engelbartCanvasReason,
 			},
-			"ownership_cleanup_pending_human_decision": cleanupPending,
 		})
 	}
-	ho := hookadapter.Resolve(strings.TrimSpace(*host))
-	if cleanupPending {
-		// A cleanup decision is durable, but a Stop relay is episodic. Continuation
-		// Stops and explicit no-auto-proceed judgements must terminate here instead
-		// of falling through to another gate that can re-enter the agent again.
-		if stopHookActive || noAutoProceedJudgement {
-			return printJSON(ho.FormatNoop())
-		}
-		markHookMetricBlocked()
-		return printJSON(ho.FormatStopBlock("IssueOps " + cleanupID + " is at cleanup_pending_human_decision. No cleanup has run. Do not auto-proceed or invoke preview, approve, record, Orca, Git, or provider tools from Stop; the source/main session must present the three human choices: retain resources, close owner while retaining the workspace, or remove local resources."))
-	}
-	if nextActionTriggerEnabled && nextActionTrigger.ShouldReenterAgent && !suppressNextAction {
+	ho := hookadapter.Resolve(resolvedHost)
+	if nextActionTriggerEnabled && nextActionTrigger.ShouldReenterAgent {
 		relayRecord := core.RecordStopNextActionRelay(parsedRepo, nextActionTrigger)
 		if !relayRecord.ShouldRelay {
 			return printJSON(ho.FormatNoop())
@@ -126,7 +103,7 @@ func runHookStop(args []string) error {
 	// true when this Stop is itself a continuation of a prior stop-hook block. Valid
 	// next-action choices still need the judgement relay above; otherwise a
 	// recovered response can present choices and then silently stop.
-	if nextActions.Decision == "block" && !stopHookActive && !noAutoProceedJudgement && !suppressNextAction {
+	if nextActions.Decision == "block" && !stopHookActive && !noAutoProceedJudgement {
 		markHookMetricBlocked()
 		return printJSON(ho.FormatStopBlock(nextActions.Reason))
 	}

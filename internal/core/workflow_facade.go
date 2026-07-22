@@ -65,14 +65,6 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 	return lifecycle.BuildLifecyclePreToolUseDecision(req)
 }
 
-func BuildIssueOpsHandoffSessionGuidance(repo, host, sessionID, agentID string) string {
-	return lifecycle.BuildIssueOpsHandoffSessionGuidance(repo, host, sessionID, agentID)
-}
-
-func SuppressStopNextActionForCompletedWorker(req HookToolUseLifecycleRequest) bool {
-	return lifecycle.SuppressStopNextActionForCompletedWorker(req)
-}
-
 func RecordLifecycleToolUse(req HookToolUseLifecycleRequest) (HookToolUseLifecycleResult, error) {
 	return lifecycle.RecordLifecycleToolUse(req)
 }
@@ -83,10 +75,6 @@ func SourceCheckoutMisdirectWarning(req HookToolUseLifecycleRequest) string {
 
 func BuildLifecycleStopReminder(repo string) LifecycleStopReminderResult {
 	return lifecycle.BuildLifecycleStopReminder(repo)
-}
-
-func OwnershipCleanupHumanGate(req HookToolUseLifecycleRequest) (string, bool) {
-	return lifecycle.OwnershipCleanupHumanGate(req)
 }
 
 func BuildLifecyclePreCompactCapsule(repo string) LifecycleCompactResult {

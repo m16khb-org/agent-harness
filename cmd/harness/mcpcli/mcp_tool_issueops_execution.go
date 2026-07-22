@@ -1,0 +1,82 @@
+package mcpcli
+
+import (
+	"context"
+	"os"
+
+	"agent-harness/cmd/harness/issueopscli/remoteverify"
+	"agent-harness/cmd/harness/mcpcli/argmap"
+	"agent-harness/internal/adapter/gitworktree"
+	"agent-harness/internal/adapter/orca"
+	"agent-harness/internal/adapter/provider"
+	"agent-harness/internal/core"
+	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/core/issueops/model"
+)
+
+func handleMCPIssueOpsExecution(args map[string]any) MCPToolOutcome {
+	orcaExecution := orca.NewExecutionV1()
+	result, err := issueops.ExecuteExecutionV1(context.Background(), core.IssueOpsStateRoot(), executionActionRequestFromMCP(args), issueops.ExecutionActionDependenciesV1{
+		Direct: gitworktree.New(), Orca: orcaExecution, OrcaOwner: orcaExecution, ReadIssue: provider.ReadExecutionIssueSnapshot,
+		RemotePR: issueops.RemotePullRequestDependenciesV1{
+			Create: func(providerName string, req core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
+				prov, err := provider.Resolve(providerName)
+				if err != nil {
+					return core.IssueProviderCreatePullRequestResult{}, err
+				}
+				return core.CreateRemotePullRequest(req, prov)
+			},
+			Reconcile: func(providerName string, req core.IssueProviderReconcilePullRequestRequest) (core.IssueProviderReconcilePullRequestResult, error) {
+				prov, err := provider.Resolve(providerName)
+				if err != nil {
+					return core.IssueProviderReconcilePullRequestResult{}, err
+				}
+				return core.ReconcileRemotePullRequest(req, prov)
+			},
+			Verify: remoteverify.VerifyRemoteArtifactLive,
+		},
+	})
+	if err != nil {
+		return mcpToolErrorPayload(issueOpsMCPErrorPayload(err))
+	}
+	return mcpToolPayload(result)
+}
+
+func issueOpsMCPErrorPayload(err error) map[string]any {
+	payload := map[string]any{"ok": false, "error": err.Error()}
+	if structured, ok := err.(interface{ IssueOpsErrorFields() map[string]any }); ok {
+		for key, value := range structured.IssueOpsErrorFields() {
+			if value != nil && value != "" {
+				payload[key] = value
+			}
+		}
+	}
+	return payload
+}
+
+func executionActionRequestFromMCP(args map[string]any) issueops.ExecutionActionRequestV1 {
+	ancestry, _ := issueops.ObserveNativeProcessAncestryV1(os.Getpid())
+	// An observation failure leaves ancestry empty so core mutation validation
+	// fails closed instead of trusting the caller's process receipt.
+	return executionActionRequestFromMCPWithAncestry(args, ancestry)
+}
+
+func executionActionRequestFromMCPWithAncestry(args map[string]any, ancestry []model.NativeProcessReceiptV1) issueops.ExecutionActionRequestV1 {
+	pid := argmap.Int(args, "session_pid", 0)
+	return issueops.ExecutionActionRequestV1{
+		Action: argmap.String(args, "action"), ID: argmap.String(args, "id"), Mode: argmap.String(args, "mode"),
+		Actor: model.NativeActorV1{
+			Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"),
+			SessionProcess:  &model.NativeProcessReceiptV1{PID: pid, StartedAt: argmap.String(args, "session_started_at"), Executable: argmap.String(args, "session_executable")},
+			ProcessAncestry: append([]model.NativeProcessReceiptV1(nil), ancestry...),
+		},
+		CWD: argmap.String(args, "cwd"), OwnerHost: argmap.String(args, "owner_host"), OwnerModel: argmap.String(args, "owner_model"), OwnerEffort: argmap.String(args, "owner_effort"),
+		Generation: uint64(argmap.Int64(args, "generation", 0)), ExpectedGeneration: uint64(argmap.Int64(args, "expected_generation", 0)),
+		TokenFile: argmap.String(args, "claim_token_file"), ReplaceAction: argmap.String(args, "replace_action"),
+		IssueBodySHA256: argmap.String(args, "issue_body_sha256"), ContextPacketSHA256: argmap.String(args, "context_packet_sha256"),
+		InventoryFingerprint: argmap.String(args, "inventory_fingerprint"), QuiescenceFingerprint: argmap.String(args, "quiescence_fingerprint"),
+		Reason: argmap.String(args, "reason"), Preview: argmap.Bool(args, "preview"), Confirm: argmap.Bool(args, "confirm"),
+		FinalHead: argmap.String(args, "final_head"), TuringReportPath: argmap.String(args, "turing_report_path"),
+		Verification: argmap.StringSlice(args, "verification"), RemoteArtifactURL: argmap.String(args, "remote_artifact_url"),
+	}
+}

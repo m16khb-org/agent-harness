@@ -183,7 +183,6 @@ func isUnexpectedStateArtifact(code string) bool {
 
 func cloneOperationalSnapshot(snapshot operationalhealth.Snapshot) operationalhealth.Snapshot {
 	snapshot.Cycles = append([]operationalhealth.Cycle(nil), snapshot.Cycles...)
-	snapshot.Bindings = append([]operationalhealth.Binding(nil), snapshot.Bindings...)
 	snapshot.GitWorktrees = append([]operationalhealth.GitWorktree(nil), snapshot.GitWorktrees...)
 	snapshot.LocalRefs = append([]operationalhealth.GitRef(nil), snapshot.LocalRefs...)
 	snapshot.RemoteRefs = append([]operationalhealth.GitRef(nil), snapshot.RemoteRefs...)

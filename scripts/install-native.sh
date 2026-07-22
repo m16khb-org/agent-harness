@@ -2,9 +2,11 @@
 set -euo pipefail
 
 ROOT="${HARNESS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+export HARNESS_ROOT="$ROOT"
 BIN="$ROOT/bin/agent-harness"
 SKIP_BUILD="${HARNESS_SKIP_BUILD:-0}"
 HARNESS_ARGS=()
+STAGED_BIN=""
 
 usage() {
   cat <<'EOF'
@@ -41,6 +43,14 @@ log() {
   printf '[agent-harness] %s\n' "$*" >&2
 }
 
+cleanup_stage() {
+  if [[ -n "$STAGED_BIN" && -e "$STAGED_BIN" ]]; then
+    rm -f -- "$STAGED_BIN"
+  fi
+}
+
+trap cleanup_stage EXIT
+
 DRY_RUN=0
 for arg in "$@"; do
   case "$arg" in
@@ -71,15 +81,48 @@ if [[ "$DRY_RUN" == "1" ]]; then
   fi
 elif is_truthy "$SKIP_BUILD"; then
   log "skip-build: leaving existing harness binary unchanged"
-elif [[ -x "$BIN" ]]; then
-  log "updating agent-harness binary from current checkout"
-  (cd "$ROOT" && go build -o bin/agent-harness ./cmd/harness)
 else
-  log "building agent-harness binary"
-  (cd "$ROOT" && go build -o bin/agent-harness ./cmd/harness)
+  mkdir -p "$ROOT/bin"
+  STAGED_BIN="$(mktemp "$ROOT/bin/.agent-harness.activate-XXXXXX")"
+  if [[ -x "$BIN" ]]; then
+    log "staging agent-harness binary update from current checkout"
+  else
+    log "staging initial agent-harness binary from current checkout"
+  fi
+  (cd "$ROOT" && go build -o "$STAGED_BIN" ./cmd/harness)
+  chmod 0755 "$STAGED_BIN"
+  "$STAGED_BIN" version >/dev/null
+  "$STAGED_BIN" issueops reset-legacy \
+    --target-schema 1 \
+    --activation-begin \
+    --harness-root "$ROOT" \
+    --target-binary "$BIN" \
+    --json >/dev/null
+  python3 - "$STAGED_BIN" "$BIN" <<'PY'
+import os
+import sys
+
+source, target = sys.argv[1], sys.argv[2]
+os.replace(source, target)
+directory = os.open(os.path.dirname(target), os.O_RDONLY)
+try:
+    os.fsync(directory)
+finally:
+    os.close(directory)
+PY
+  STAGED_BIN=""
+  "$BIN" version >/dev/null
 fi
 
 if [[ -x "$BIN" ]]; then
+  if [[ "$DRY_RUN" != "1" ]] && is_truthy "$SKIP_BUILD"; then
+    "$BIN" issueops reset-legacy \
+      --target-schema 1 \
+      --activation-begin \
+      --harness-root "$ROOT" \
+      --target-binary "$BIN" \
+      --json >/dev/null
+  fi
   if ((${#HARNESS_ARGS[@]})); then
     "$BIN" install-native "${HARNESS_ARGS[@]}"
   else
@@ -92,49 +135,9 @@ else
   exit 1
 fi
 
-if command -v claude >/dev/null 2>&1 && [[ "$DRY_RUN" != "1" ]]; then
-  log "refreshing Claude user-scope MCP server agent_harness"
-  claude mcp remove agent_harness -s user >/dev/null 2>&1 || true
-  claude mcp remove agent-harness -s user >/dev/null 2>&1 || true
-  claude mcp add-json -s user agent_harness "$(python3 - "$BIN" "$ROOT" <<'PY'
-import json
-import sys
-bin_path, root = sys.argv[1], sys.argv[2]
-print(json.dumps({
-  "type": "stdio",
-  "command": bin_path,
-  "args": ["mcp"],
-  "env": {"HARNESS_ROOT": root},
-}))
-PY
-)" >/dev/null 2>&1 || true
-elif [[ "$DRY_RUN" == "1" ]]; then
-  log "dry-run: would refresh Claude user-scope MCP server agent_harness"
-fi
-
-# --- GJC host integration: plugin bundle (MCP+launcher), first-party lifecycle hook,
-# and filesystem skill discovery. The plugin manifest only carries `mcps` (GJC
-# forbids `skills` in bundles and plugin hooks are constrained to one declared
-# event, which does not fit agent-harness's multi-event hook), so skills and
-# hooks are wired via GJC's first-party discovery surfaces here.
-if command -v gjc >/dev/null 2>&1 && [[ "$DRY_RUN" != "1" ]]; then
-  log "refreshing GJC plugin agent-harness (user scope)"
-  gjc plugin install --user --force "$ROOT" >/dev/null 2>&1 || true
-
-  log "syncing agent-harness lifecycle hook to ~/.gjc/agent/hooks/"
-  mkdir -p "$HOME/.gjc/agent/hooks"
-  cp "$ROOT/gjc-plugin/hook.ts" "$HOME/.gjc/agent/hooks/agent-harness.ts"
-
-  log "ensuring GJC filesystem skill discovery points at agent-harness skills/"
-  gjc config set skills.enabled true >/dev/null 2>&1 || true
-  gjc config set skills.customDirectories "[\"$ROOT/skills\"]" >/dev/null 2>&1 || true
-elif [[ "$DRY_RUN" == "1" ]]; then
-  log "dry-run: would refresh GJC plugin, lifecycle hook, and skill discovery"
-fi
-
 # --- Optional glab MCP sync across hosts (no-op when glab-mcp-wrapper absent).
 # Keeps the user's profile-scoped glab MCP servers consistent on Codex, Claude
-# Code, and GJC. Profiles come from GLAB_MCP_PROFILES or ~/.config/glab-mcp/profiles.
+# Code. Profiles come from GLAB_MCP_PROFILES or ~/.config/glab-mcp/profiles.
 if [[ -x "${HOME}/.local/bin/glab-mcp-wrapper" || -n "${GLAB_MCP_WRAPPER:-}" ]]; then
   if [[ "$DRY_RUN" == "1" ]]; then
     log "dry-run: would sync glab MCP servers across hosts (scripts/sync-glab-mcp.sh)"

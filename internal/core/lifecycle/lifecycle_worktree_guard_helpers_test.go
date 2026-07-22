@@ -1,7 +1,6 @@
 package lifecycle
 
 import (
-	"agent-harness/internal/core/issueops"
 	"os"
 	"path/filepath"
 	"strings"
@@ -166,41 +165,4 @@ func linkIssueOpsWorktreeForGuardTest(t *testing.T, repo, branch string) linkedI
 	}
 	setIssueOpsPhaseForTest(t, repo, branch, IssueOpsPhaseImplement)
 	return linkedIssueOpsWorktreeForTest{id: record.ID, path: worktree}
-}
-
-func recordIssueOpsWorktreeToolsForGuardTest(t *testing.T, id, worktree string) {
-	t.Helper()
-	record, err := ReadIssueOps(IssueOpsStateRoot(), id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	record.WorktreeTools = &issueops.IssueOpsWorktreeToolPreparation{
-		OK:           true,
-		WorktreePath: worktree,
-		PreparedAt:   "2026-06-05T00:00:00Z",
-	}
-	record.CompatibilityReview = &issueops.IssueOpsCompatibilityReview{
-		BackwardCompatibility: []string{"guard fixture preserves existing worktree edit boundaries"},
-		SideEffects:           []string{"source checkout edits remain blocked after implementation starts"},
-		RollbackPlan:          "reset fixture state and rerun lifecycle guard tests",
-		Verification:          []string{"go test ./internal/core/lifecycle"},
-		Approved:              true,
-		ReviewedAt:            "2026-06-26T00:00:00Z",
-	}
-	record.ExecutionDecision = &issueops.IssueOpsExecutionDecision{
-		AutoProceed:       []string{"guard fixture may enter implementation after linked worktree readiness is durable"},
-		HookBlocked:       []string{"hooks do not prepare worktrees, create remote artifacts, or choose sub-agents"},
-		HumanGates:        []string{"ask before destructive cleanup or unclear product behavior"},
-		SubagentUse:       "none",
-		SubagentRationale: "main agent owns this focused lifecycle fixture",
-		RecordedAt:        "2026-06-23T00:00:00Z",
-	}
-	record.DevilsAdvocateReview = &issueops.IssueOpsDevilsAdvocateReview{
-		Verdict:         "pass",
-		ReviewerPattern: "devils-advocate-review",
-		RecordedAt:      "2026-06-29T00:00:00Z",
-	}
-	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
-		t.Fatal(err)
-	}
 }

@@ -19,9 +19,6 @@ func Verify(store Store, stateRoot, id string, req model.IssueOpsRemoteArtifactV
 	if err != nil {
 		return record, err
 	}
-	if record.RemoteCreateClaim != nil {
-		return model.IssueOpsRecord{OK: false}, fmt.Errorf("ordinary remote artifact verification is forbidden while a remote create claim exists; reconcile the claim")
-	}
 	artifact, err := verificationFromRequest(record, req)
 	if err != nil {
 		return model.IssueOpsRecord{OK: false}, err
@@ -34,9 +31,6 @@ func Validate(store Store, stateRoot, id string, req model.IssueOpsRemoteArtifac
 	record, err := store.Read(stateRoot, id)
 	if err != nil {
 		return record, err
-	}
-	if record.RemoteCreateClaim != nil {
-		return model.IssueOpsRecord{OK: false}, fmt.Errorf("ordinary remote artifact validation is forbidden while a remote create claim exists; reconcile the claim")
 	}
 	_, err = verificationFromRequest(record, req)
 	if err != nil {

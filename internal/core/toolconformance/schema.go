@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -181,7 +182,7 @@ func supported(schema map[string]any) error {
 	for _, key := range keys {
 		value := schema[key]
 		switch key {
-		case "type", "properties", "required", "items", "enum", "description", "additionalProperties":
+		case "type", "properties", "required", "items", "enum", "description", "additionalProperties", "minimum", "pattern":
 		default:
 			return fmt.Errorf("unsupported_schema_keyword: %s", key)
 		}
@@ -216,6 +217,18 @@ func supported(schema map[string]any) error {
 		case "additionalProperties":
 			if _, ok := value.(bool); !ok {
 				return fmt.Errorf("invalid_schema_keyword_shape: additionalProperties")
+			}
+		case "minimum":
+			if _, ok := numericValue(value); !ok {
+				return fmt.Errorf("invalid_schema_keyword_shape: minimum")
+			}
+		case "pattern":
+			pattern, ok := value.(string)
+			if !ok {
+				return fmt.Errorf("invalid_schema_keyword_shape: pattern")
+			}
+			if _, err := regexp.Compile(pattern); err != nil {
+				return fmt.Errorf("invalid_schema_keyword_value: pattern")
 			}
 		}
 	}
@@ -284,6 +297,23 @@ func validate(s map[string]any, v any, p string, out *[]Diagnostic) {
 	}
 	if (typ == "boolean" && !isBool(v)) || (typ == "string" && !isString(v)) || (typ == "number" && !isNumber(v)) || (typ == "integer" && !isInteger(v)) {
 		*out = append(*out, Diagnostic{Path: p, Code: "wrong_type", Expected: typ, Actual: typeOf(v)})
+		return
+	}
+	if minimum, present := s["minimum"]; present {
+		minimumValue, minimumOK := numericValue(minimum)
+		actualValue, actualOK := numericValue(v)
+		if minimumOK && actualOK && actualValue < minimumValue {
+			*out = append(*out, Diagnostic{
+				Path: p, Code: "minimum_mismatch",
+				Expected: ">= " + formatNumericValue(minimumValue), Actual: formatNumericValue(actualValue),
+			})
+		}
+	}
+	if pattern, present := s["pattern"].(string); present {
+		value, ok := v.(string)
+		if ok && !regexp.MustCompile(pattern).MatchString(value) {
+			*out = append(*out, Diagnostic{Path: p, Code: "pattern_mismatch", Expected: pattern, Actual: "string"})
+		}
 	}
 }
 func pointer(p, k string) string {
@@ -310,3 +340,22 @@ func isBool(v any) bool    { _, ok := v.(bool); return ok }
 func isString(v any) bool  { _, ok := v.(string); return ok }
 func isNumber(v any) bool  { _, ok := v.(float64); return ok }
 func isInteger(v any) bool { n, ok := v.(float64); return ok && n == float64(int64(n)) }
+
+func numericValue(value any) (float64, bool) {
+	switch value := value.(type) {
+	case int:
+		return float64(value), true
+	case int64:
+		return float64(value), true
+	case uint64:
+		return float64(value), true
+	case float64:
+		return value, true
+	default:
+		return 0, false
+	}
+}
+
+func formatNumericValue(value float64) string {
+	return strconv.FormatFloat(value, 'f', -1, 64)
+}

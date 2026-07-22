@@ -416,7 +416,7 @@ func isolatedHostEnv(deps Dependencies, additionalNames ...string) []string {
 	values := map[string]string{}
 	for _, entry := range deps.Environ() {
 		name, value, found := strings.Cut(entry, "=")
-		if found && (isGJCAmbientEnvironment(name) || allowed[name]) {
+		if found && (isHostAmbientEnvironment(name) || allowed[name]) {
 			values[name] = value
 		}
 	}
@@ -430,4 +430,13 @@ func isolatedHostEnv(deps Dependencies, additionalNames ...string) []string {
 		out = append(out, name+"="+values[name])
 	}
 	return out
+}
+
+func isHostAmbientEnvironment(name string) bool {
+	switch name {
+	case "PATH", "HOME", "USER", "TMPDIR", "LANG", "LANGUAGE", "LC_ALL", "LC_ADDRESS", "LC_COLLATE", "LC_CTYPE", "LC_IDENTIFICATION", "LC_MEASUREMENT", "LC_MESSAGES", "LC_MONETARY", "LC_NAME", "LC_NUMERIC", "LC_PAPER", "LC_TELEPHONE", "LC_TIME":
+		return true
+	default:
+		return false
+	}
 }

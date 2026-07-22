@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 
 	"agent-harness/internal/core/issueops"
@@ -29,6 +30,10 @@ type IssueProviderCloseChildResult = port.IssueProviderCloseChildResult
 type IssueProvider = port.IssueProvider
 type IssueProviderUpdateIssueBodySectionRequest = port.IssueProviderUpdateIssueBodySectionRequest
 type IssueProviderUpdateIssueBodySectionResult = port.IssueProviderUpdateIssueBodySectionResult
+type IssueOpsRemotePullRequestRequestV1 = issueops.RemotePullRequestRequestV1
+type IssueOpsRemotePullRequestDependenciesV1 = issueops.RemotePullRequestDependenciesV1
+type IssueOpsRemotePullRequestCreateFuncV1 = issueops.RemotePullRequestCreateFuncV1
+type IssueOpsRemotePullRequestReconcileFuncV1 = issueops.RemotePullRequestReconcileFuncV1
 
 func SyncRemoteIssueGraph(record IssueOpsRecord) (map[string]any, error) {
 	return issueops.SyncRemoteIssueGraph(record)
@@ -68,8 +73,8 @@ func ReconcileRemotePullRequest(req IssueProviderReconcilePullRequestRequest, pr
 	return reconciler.ReconcilePullRequest(req)
 }
 
-func ProjectIssueOpsRemoteCreateClaimForProviderReconcile(record IssueOpsRecord) (IssueProviderReconcilePullRequestRequest, error) {
-	return issueops.ProjectIssueOpsRemoteCreateClaimForProviderReconcile(record)
+func CreateIssueOpsRemotePullRequestV1(ctx context.Context, stateRoot string, req IssueOpsRemotePullRequestRequestV1, deps IssueOpsRemotePullRequestDependenciesV1) (IssueProviderCreatePullRequestResult, error) {
+	return issueops.CreateRemotePullRequestV1(ctx, stateRoot, req, deps)
 }
 
 // CreateRemoteChild creates and verifies a provider-native child work item

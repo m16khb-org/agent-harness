@@ -81,17 +81,7 @@ func TestImplementGateDoesNotRequireCodeGraph(t *testing.T) {
 		t.Fatal(err)
 	}
 	recordIssueOpsCompatibilityReviewForTest(t, stateRoot, record.ID)
-	recordIssueOpsExecutionDecisionForTest(t, stateRoot, record.ID)
-	record, err = RecordIssueOpsWorktreeTools(stateRoot, record.ID, IssueOpsWorktreeToolPreparation{
-		OK:                  true,
-		WorktreePath:        worktree,
-		DependenciesChecked: true,
-		DependenciesReady:   true,
-		Messages:            []string{"dependencies ready; CodeGraph unavailable"},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	record = recordIssueOpsPreparedExecutionForTest(t, stateRoot, record.ID, worktree)
 
 	ready := IssueOpsImplementationReadiness(record)
 	if containsString(ready.Missing, "codegraph_ready") {
@@ -100,7 +90,7 @@ func TestImplementGateDoesNotRequireCodeGraph(t *testing.T) {
 	if !ready.Ready {
 		t.Fatalf("implementation should be ready without CodeGraph when other gates pass: %+v", ready)
 	}
-	advanced, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseImplement))
+	advanced, err := AdvanceIssueOpsPhaseWithActor(stateRoot, record.ID, string(IssueOpsPhaseImplement), issueOpsActorForTest(worktree))
 	if err != nil {
 		t.Fatalf("AdvanceIssueOpsPhase to implement should not require CodeGraph: %v", err)
 	}
@@ -222,9 +212,9 @@ func TestIssueOpsStrictPRReadinessDetectsStaleAISlopCleanAfterImplementationChan
 	if err != nil {
 		t.Fatal(err)
 	}
-	record = recordIssueOpsPreparedWorktreeToolsForTest(t, stateRoot, record.ID, worktree)
+	record = recordIssueOpsPreparedExecutionForTest(t, stateRoot, record.ID, worktree)
 	writeIssueOpsFile(t, worktree, "internal/demo.go", "package demo\nconst Value = 1\n")
-	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean))
+	record, err = AdvanceIssueOpsPhaseWithActor(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean), issueOpsActorForTest(worktree))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2,8 +2,8 @@ package contextregion
 
 import "encoding/json"
 
-// Context region vocabulary derived from DeepSeek-Reasonix's cache-first
-// partitioning (Immutable Prefix / Append-Only Log / Volatile Scratch).
+// Context region vocabulary follows cache-first partitioning: Immutable
+// Prefix / Append-Only Log / Volatile Scratch.
 //
 // agent-harness hosts neither a model session nor a prefix cache, so it does
 // not adopt the cache engine. It borrows only the determinism contract: the
@@ -85,9 +85,9 @@ func StableProjectionJSON(value any) (string, error) {
 
 // ContextSerializationStable builds a reusable context twice and reports
 // whether its immutable-prefix portion serialized byte-identically. It is the
-// data-level enforcement of the Reasonix determinism contract: regardless of
-// how a builder assembles context, repeated builds of unchanged inputs must
-// yield an identical stable prefix. The returned JSON is that stable prefix.
+// data-level enforcement of immutable-prefix determinism: regardless of how a
+// builder assembles context, repeated builds of unchanged inputs must yield an
+// identical stable prefix. The returned JSON is that stable prefix.
 func ContextSerializationStable(build func() any) (bool, string, error) {
 	first, err := StableProjectionJSON(build())
 	if err != nil {

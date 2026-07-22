@@ -74,8 +74,8 @@ func TestRunHookPreToolUseAllowsAnyLinkedIssueOpsWorktreeForRepo(t *testing.T) {
 	obj = runHookCapture(t, string(payload), func() error {
 		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
 	})
-	if obj["decision"] != "block" {
-		t.Fatalf("expected source-root-bound MCP tool to block from linked worktree cwd, got %+v", obj)
+	if obj["decision"] != "allow" {
+		t.Fatalf("expected read-only filesystem MCP observation across linked worktrees to be allowed, got %+v", obj)
 	}
 
 	// External code-intelligence MCP tools are no longer special-cased by the

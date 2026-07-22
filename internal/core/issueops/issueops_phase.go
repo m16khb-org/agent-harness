@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/issueops/implementation"
 	"agent-harness/internal/core/issueops/model"
 	"context"
@@ -38,24 +37,13 @@ func advanceIssueOpsPhaseWithActor(stateRoot, id, to string, actor *IssueOpsActo
 		if readErr != nil {
 			return readErr
 		}
-		if actorErr := validatePostTransferMutation(record, actor); actorErr != nil {
+		if actorErr := validateExecutionMutation(record, actor); actorErr != nil {
 			return actorErr
-		}
-		if currentIssueOpsWorkspace(record) != nil && currentIssueOpsHandoff(record) == nil {
-			if actor == nil {
-				return fmt.Errorf("workspace preparation requires a native actor; use the actor-aware phase recorder")
-			}
-			if actorErr := validateReadyWorkspacePreparationActor(record, *actor); actorErr != nil {
-				return actorErr
-			}
 		}
 		var e error
 		rec, e = advanceIssueOpsPhaseLocked(stateRoot, id, to)
 		return e
 	})
-	if err == nil && rec.Phase == IssueOpsPhaseDone {
-		unbindIssueOpsSessionForCycle(rec)
-	}
 	return rec, err
 }
 
@@ -85,9 +73,6 @@ func advanceIssueOpsPhaseLocked(stateRoot, id, to string) (IssueOpsRecord, error
 }
 
 func validateIssueOpsPhaseTransition(stateRoot string, record IssueOpsRecord, phase IssueOpsPhase) error {
-	if record.CycleState == IssueOpsCyclePaused {
-		return fmt.Errorf("cannot advance a paused IssueOps cycle; restart or explicitly close it")
-	}
 	if record.Phase == IssueOpsPhaseDone {
 		return fmt.Errorf("cannot leave done phase")
 	}
@@ -145,42 +130,17 @@ func validateIssueOpsPhaseTransition(stateRoot string, record IssueOpsRecord, ph
 		if missing := issueOpsRemoteArtifactMissing(record); len(missing) > 0 {
 			return fmt.Errorf("cannot enter done phase before remote artifact verification: missing %s", strings.Join(missing, ", "))
 		}
-	}
-	if err := issueOpsTerminalPhaseHandoffGuard(record, phase); err != nil {
-		return err
+		if record.Execution == nil || record.Execution.Completion == nil || record.Execution.Lease.Status != model.LeaseStatusReleased {
+			return fmt.Errorf("cannot enter done phase before issueops execution completion")
+		}
 	}
 	return nil
-}
-
-// issueOpsTerminalPhaseHandoffGuard rejects advancing a cycle to a terminal
-// phase (done) while its supervised execution handoff is still non-terminal
-// (state != closed) — the #2581 inconsistency (Task F3). A done-phase record
-// with a recovery_required handoff still owns un-reconciled Orca artifacts and
-// keeps fencing the source checkout, so write-time prevention closes the source
-// of that surprise. The caller is pointed at the exact recover escape; this
-// never auto-releases the handoff.
-func issueOpsTerminalPhaseHandoffGuard(record IssueOpsRecord, phase IssueOpsPhase) error {
-	if phase != IssueOpsPhaseDone {
-		return nil
-	}
-	h := currentIssueOpsHandoff(record)
-	if h == nil || h.State == handoff.StateClosed || h.State == handoff.StateCleanupPendingHumanDecision && h.Completion != nil {
-		return nil
-	}
-	return fmt.Errorf("cannot advance to done while the ownership handoff is non-terminal (handoff state=%s); recover it first from the source checkout: agent-harness issueops handoff recover --id %s --action <cancel|finalize-cancel> --confirm", h.State, record.ID)
 }
 
 func applyIssueOpsPhaseTransition(record IssueOpsRecord, phase IssueOpsPhase) IssueOpsRecord {
 	prevPhase := record.Phase
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	record.Phase = phase
-	if phase == IssueOpsPhaseDone {
-		record.CycleState = IssueOpsCycleClosed
-		if attempt := CurrentOwnershipAttempt(record); attempt != nil {
-			attempt.ClosedAt = now
-			record.Ownership.ActiveAttempt = 0
-		}
-	}
 	if phase == IssueOpsPhaseAISlopClean && strings.TrimSpace(record.AISlopCleanAt) == "" {
 		record.AISlopCleanAt = now
 	}

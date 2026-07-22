@@ -16,7 +16,7 @@ IssueOps 실행 계층을 schema v1으로 다시 만들고, `lifecycle ID ↔ ca
 
 ## 검증된 현재 상태
 
-감사 기준은 [`main@1623a9d`](https://github.com/m16khb/agent-harness/tree/1623a9daad1988769fcb9d52532e8dc1c86dae0f)이며 `origin/main`과 일치했다. 아래 `file:line`은 모두 이 commit 기준이다.
+재감사 기준은 [`main@5515347`](https://github.com/m16khb/agent-harness/tree/5515347546babc1a5ae3b561cad6ba3066565a71)이며 구현 branch의 HEAD와 `origin/main`이 모두 이 commit과 일치한다. 이전 감사 기준 `1623a9d`부터 현재 HEAD까지 production code diff는 0건이고, 추가된 파일은 이 설계 초안·remote score 입력·owner prompt 3개뿐이다. 아래 `file:line`과 blast radius는 현재 HEAD에서 CodeGraph와 `rg`로 다시 확인했다.
 
 ### 현재 코드가 요구와 어긋나는 지점
 
@@ -33,8 +33,9 @@ IssueOps 실행 계층을 schema v1으로 다시 만들고, `lifecycle ID ↔ ca
 
 - 감사 범위 합계는 Go 60,086 LOC(제품 31,203+테스트 28,883), lint baseline 202건(`cyclop` 169, `gocognit` 28, `funlen` 3, `gocyclo` 2)이다.
 - 대표 cognitive complexity는 `ValidateOwnershipLedger` 82, `PrepareIssueOpsHandoffWorktree` 66, `requireCancellationQuiescence` 105, `reconcileIssueOpsHandoff` 70이다.
-- 현재 user state readback: IssueOps row 29건(schema 7: 4, schema 8: 25), session row 35,896건. v9 ownership row는 0건이었다. 이 수치는 제품 결함 건수가 아니라 legacy/runtime residue 규모이며, 기존 namespace를 v1 authority로 재사용하지 않아야 하는 근거다.
+- 현재 user state readback: IssueOps row 31건(schema 7: 4, schema 8: 24, schema 9: 3), session row 35,984건. schema 9에는 이 작업의 control cycle, 기존 #65 cycle, branch 없는 active row가 각각 1건 있다. 이 수치는 제품 결함 건수가 아니라 legacy/runtime residue 규모이며, 기존 namespace를 v1 authority로 재사용하지 않아야 하는 근거다.
 - GJC/Reasonix 문자열은 제품 Go 파일 30개와 테스트 Go 파일 18개에 걸쳐 있고, install/update/inspect/hook/conformance/Orca launch/golden까지 first-party 표면에 남아 있다.
+- 현재 HEAD의 focused baseline은 production edit 전부터 실패한다. 대표 실패는 `TestWorktreePrepareDefinitiveStartFailureClearsJournalAndAutoFallsBack`, `TestSupervisedHandoffCyclesRetainsOnlyCurrentNonterminalMissingWorktreeAuthority`, `TestIssueOpsContractChangeFeedbackBlocksPRUntilIssueUpdateRecorded`, `TestRunHookStopBoundsOwnershipCleanupRelay`이며, schema v9 ownership ledger 도입 뒤 legacy fixture의 missing `cycle_state` 정규화와 active/paused/done 검증이 충돌한다. 이 실패를 새 v1 RED로 계산하지 않고 Task 0 evidence에 별도 보존하며, 최종 full gate는 모두 GREEN이어야 한다.
 
 ### 실제 도구 확인
 
@@ -437,6 +438,14 @@ Karpathy artifact `.agent-harness/karpathy/prompts/issueops-v1-owner-execution-v
 ## 구현 계획
 
 모든 구현은 이 이슈 번호 branch의 단 하나 canonical isolated worktree에서 수행한다. 구현 owner session은 여러 worktree를 오가며 쓰지 않는다. read-only reviewer/sub-agent는 필요 시 다른 root를 관찰할 수 있지만 파일 ownership을 갖지 않는다.
+
+### Task 0a — current-HEAD audit를 구현 전제조건으로 갱신
+
+- 감사 SHA를 `5515347546babc1a5ae3b561cad6ba3066565a71`로 고정하고 `origin/main` 및 구현 branch HEAD 일치를 확인했다.
+- `1623a9d..5515347` diff가 이 설계 초안·remote score 입력·owner prompt 3개뿐이고 production code 변경은 0건임을 확인했다.
+- 위 8개 current-state claim, GJC/Reasonix active surface, legacy symbol/path family, schema별 runtime row를 CodeGraph·`rg`·read-only SQLite query로 다시 확인했다.
+- production edit 전 focused baseline 실패를 별도 선행 회귀로 기록했다. 새 RED는 요구사항 때문에 실패하는 새 test만 인정하고, 기존 실패를 가린 채 GREEN으로 보고하지 않는다.
+- Task 9에서 삭제하기 직전 다시 current HEAD 기준 CodeGraph consumer audit와 `rg` zero-reference gate를 실행한다. production path나 consumer가 달라졌으면 삭제 전에 이 SSOT와 계획을 먼저 갱신한다.
 
 ### Task 0 — characterization과 실패 회귀를 먼저 고정
 

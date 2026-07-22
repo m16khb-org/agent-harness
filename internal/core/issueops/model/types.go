@@ -79,29 +79,6 @@ type IssueOpsRemoteArtifactVerificationRequest struct {
 	TargetBranch string
 }
 
-type IssueOpsRemoteCreateClaim struct {
-	ClaimID          string   `json:"claim_id"`
-	Provider         string   `json:"provider"`
-	Kind             string   `json:"kind"`
-	ProjectKey       string   `json:"project_key"`
-	Remote           string   `json:"remote"`
-	RemoteRef        string   `json:"remote_ref"`
-	PushTargetSHA256 string   `json:"push_target_sha256"`
-	Head             string   `json:"head"`
-	Base             string   `json:"base"`
-	FinalHead        string   `json:"final_head"`
-	Title            string   `json:"title"`
-	Body             string   `json:"body"`
-	BodySHA256       string   `json:"body_sha256"`
-	Labels           []string `json:"labels"`
-	Assignees        []string `json:"assignees"`
-	Draft            bool     `json:"draft"`
-	State            string   `json:"state"`
-	InvocationState  string   `json:"invocation_state"`
-	KnownURL         string   `json:"known_url,omitempty"`
-	ClaimedAt        string   `json:"claimed_at"`
-}
-
 type IssueOpsIntentContract struct {
 	RawRequest        string   `json:"raw_request"`
 	InterpretedIntent string   `json:"interpreted_intent"`
@@ -189,48 +166,6 @@ type IssueOpsPlanPrepRequest struct {
 	PriorDecisions IssueOpsPlanPrepItemRequest
 	RelatedIssues  IssueOpsPlanPrepItemRequest
 	WebResearch    IssueOpsPlanPrepItemRequest
-}
-
-type IssueOpsWorktreeToolPreparation struct {
-	OK                  bool     `json:"ok"`
-	ID                  string   `json:"id"`
-	WorktreePath        string   `json:"worktree_path"`
-	PackageManager      string   `json:"package_manager,omitempty"`
-	DependenciesChecked bool     `json:"dependencies_checked,omitempty"`
-	DependenciesReady   bool     `json:"dependencies_ready,omitempty"`
-	DependenciesAction  string   `json:"dependencies_action,omitempty"`
-	Messages            []string `json:"messages,omitempty"`
-	PreparedAt          string   `json:"prepared_at,omitempty"`
-}
-
-type IssueOpsSubAgentPlan struct {
-	Objective            string   `json:"objective"`
-	Pattern              string   `json:"pattern"`
-	Benefit              string   `json:"benefit"`
-	Tradeoffs            []string `json:"tradeoffs"`
-	NetPositiveRationale string   `json:"net_positive_rationale"`
-	Scope                string   `json:"scope"`
-	Verification         string   `json:"verification"`
-	Fallback             string   `json:"fallback"`
-}
-
-type IssueOpsExecutionDecision struct {
-	AutoProceed       []string               `json:"auto_proceed"`
-	HookBlocked       []string               `json:"hook_blocked"`
-	HumanGates        []string               `json:"human_gates"`
-	SubagentUse       string                 `json:"subagent_use"`
-	SubagentRationale string                 `json:"subagent_rationale,omitempty"`
-	SubagentPlans     []IssueOpsSubAgentPlan `json:"subagent_plans,omitempty"`
-	RecordedAt        string                 `json:"recorded_at"`
-}
-
-type IssueOpsExecutionDecisionRecordRequest struct {
-	AutoProceed       []string
-	HookBlocked       []string
-	HumanGates        []string
-	SubagentUse       string
-	SubagentRationale string
-	SubagentPlans     []IssueOpsSubAgentPlan
 }
 
 type IssueOpsCompatibilityReview struct {
@@ -392,269 +327,7 @@ type IssueOpsChildValidationResult struct {
 	ParentRef IssueOpsChildCycleRef `json:"parent_ref"`
 }
 
-type IssueOpsHostSessionIdentity struct {
-	Host      string `json:"host"`
-	SessionID string `json:"session_id"`
-	AgentID   string `json:"agent_id,omitempty"`
-}
-
-type IssueOpsOrcaIdentity struct {
-	RuntimeID               string   `json:"runtime_id,omitempty"`
-	RepoID                  string   `json:"repo_id,omitempty"`
-	BaseRef                 string   `json:"base_ref,omitempty"`
-	ProviderIssueLinkStatus string   `json:"provider_issue_link_status,omitempty"`
-	WorktreeID              string   `json:"worktree_id,omitempty"`
-	WorktreeInstanceID      string   `json:"worktree_instance_id,omitempty"`
-	WorktreePath            string   `json:"worktree_path,omitempty"`
-	WorktreeAdopted         bool     `json:"worktree_adopted,omitempty"`
-	TerminalBaselinePTYIDs  []string `json:"terminal_baseline_pty_ids,omitempty"`
-	WorkerPTYID             string   `json:"worker_pty_id,omitempty"`
-	WorkerTerminalHandle    string   `json:"worker_terminal_handle,omitempty"`
-	WorkerMailboxHandle     string   `json:"worker_mailbox_handle,omitempty"`
-	WorkerTabID             string   `json:"worker_tab_id,omitempty"`
-	WorkerLeafID            string   `json:"worker_leaf_id,omitempty"`
-	TaskID                  string   `json:"task_id,omitempty"`
-	DispatchID              string   `json:"dispatch_id,omitempty"`
-}
-
-type IssueOpsExecutionHandoffPendingOperation struct {
-	Kind                   string   `json:"kind"`
-	StartedAt              string   `json:"started_at"`
-	ExpectedAssigneeHandle string   `json:"expected_assignee_handle,omitempty"`
-	DeliveryMode           string   `json:"delivery_mode,omitempty"`
-	BaselineWorktreeIDs    []string `json:"baseline_worktree_ids,omitempty"`
-	BaselineTaskIDs        []string `json:"baseline_task_ids,omitempty"`
-	BaselinePTYIDs         []string `json:"baseline_pty_ids,omitempty"`
-}
-
-type IssueOpsExecutionHandoffFailure struct {
-	Code    string `json:"code"`
-	Message string `json:"message,omitempty"`
-	At      string `json:"at,omitempty"`
-}
-
-type IssueOpsExecutionHandoffWorkerDoneProjection struct {
-	Attempt         int      `json:"attempt"`
-	OwnershipEpoch  string   `json:"ownership_epoch"`
-	State           string   `json:"state"`
-	Invoked         bool     `json:"invoked"`
-	DiagnosticCode  string   `json:"diagnostic_code"`
-	PayloadSHA256   string   `json:"payload_sha256"`
-	FromHandle      string   `json:"from_handle"`
-	ToHandle        string   `json:"to_handle"`
-	Subject         string   `json:"subject"`
-	Body            string   `json:"body"`
-	TaskID          string   `json:"task_id"`
-	DispatchID      string   `json:"dispatch_id"`
-	FinalHead       string   `json:"final_head"`
-	ChangedFiles    []string `json:"changed_files"`
-	ReportPath      string   `json:"report_path"`
-	HostIdentity    string   `json:"host_identity"`
-	MessageID       string   `json:"message_id,omitempty"`
-	MessageSequence int64    `json:"message_sequence,omitempty"`
-	StartedAt       string   `json:"started_at"`
-	CompletedAt     string   `json:"completed_at,omitempty"`
-}
-
-type IssueOpsExecutionHandoffCancellation struct {
-	RequestedAt string `json:"requested_at"`
-	Reason      string `json:"reason"`
-}
-
-type IssueOpsExecutionHandoffPublishReceipt struct {
-	Provider         string `json:"provider"`
-	ProjectKey       string `json:"project_key"`
-	Remote           string `json:"remote"`
-	PushTargetSHA256 string `json:"push_target_sha256"`
-	Branch           string `json:"branch"`
-	Base             string `json:"base"`
-	RemoteRef        string `json:"remote_ref"`
-	FinalHead        string `json:"final_head"`
-	VerifiedAt       string `json:"verified_at"`
-}
-
-type IssueOpsExecutionHandoffCleanupReceipt struct {
-	Step               string `json:"step"`
-	TaskID             string `json:"task_id,omitempty"`
-	DispatchID         string `json:"dispatch_id,omitempty"`
-	TerminalHandle     string `json:"terminal_handle,omitempty"`
-	PTYID              string `json:"pty_id,omitempty"`
-	WorktreeID         string `json:"worktree_id,omitempty"`
-	WorktreeInstanceID string `json:"worktree_instance_id,omitempty"`
-	RecordedAt         string `json:"recorded_at"`
-}
-
-type IssueOpsExecutionHandoffCleanup struct {
-	Disposition          string                                   `json:"disposition"`
-	Reason               string                                   `json:"reason"`
-	ApprovedAt           string                                   `json:"approved_at"`
-	ApprovedBySession    *IssueOpsHostSessionIdentity             `json:"approved_by_session,omitempty"`
-	InventoryFingerprint string                                   `json:"inventory_fingerprint,omitempty"`
-	Receipts             []IssueOpsExecutionHandoffCleanupReceipt `json:"receipts,omitempty"`
-}
-
-type IssueOpsOrcaCleanupArtifact struct {
-	Kind       string `json:"kind"`
-	ID         string `json:"id"`
-	InstanceID string `json:"instance_id,omitempty"`
-	Path       string `json:"path,omitempty"`
-	Reason     string `json:"reason"`
-}
-
-type IssueOpsExecutionHandoffContextOptions struct {
-	CriteriaIDs               []string `json:"criteria_ids,omitempty"`
-	RequiredDocs              []string `json:"required_docs,omitempty"`
-	RequiredSkills            []string `json:"required_skills,omitempty"`
-	WorkerScope               string   `json:"worker_scope,omitempty"`
-	VerificationCommands      []string `json:"verification_commands,omitempty"`
-	HeartbeatCadence          string   `json:"heartbeat_cadence,omitempty"`
-	StopConditions            []string `json:"stop_conditions,omitempty"`
-	ResultFormat              string   `json:"result_format,omitempty"`
-	AllowCodexHookTrustBypass bool     `json:"allow_codex_hook_trust_bypass,omitempty"`
-}
-
-type IssueOpsAgentLaunchProfile struct {
-	Agent           string `json:"agent"`
-	Model           string `json:"model,omitempty"`
-	ReasoningEffort string `json:"reasoning_effort,omitempty"`
-}
-
-type IssueOpsExecutionHandoff struct {
-	State                    string                                        `json:"state"`
-	ClosedDisposition        string                                        `json:"closed_disposition,omitempty"`
-	Attempt                  int                                           `json:"attempt"`
-	OwnershipEpoch           string                                        `json:"ownership_epoch"`
-	WorkspaceEpoch           string                                        `json:"workspace_epoch,omitempty"`
-	WorkspaceSHA256          string                                        `json:"workspace_sha256,omitempty"`
-	AttemptBaseHead          string                                        `json:"attempt_base_head"`
-	ContextSHA256            string                                        `json:"context_sha256,omitempty"`
-	ContextSourceSHA256      string                                        `json:"context_source_sha256,omitempty"`
-	ContextVersion           int                                           `json:"context_version,omitempty"`
-	ContextOptions           *IssueOpsExecutionHandoffContextOptions       `json:"context_options,omitempty"`
-	Driver                   string                                        `json:"driver,omitempty"`
-	Agent                    string                                        `json:"agent,omitempty"`
-	LaunchProfile            *IssueOpsAgentLaunchProfile                   `json:"launch_profile,omitempty"`
-	DeliveryMode             string                                        `json:"delivery_mode,omitempty"`
-	CoordinatorRoot          string                                        `json:"coordinator_root,omitempty"`
-	CoordinatorMailboxHandle string                                        `json:"coordinator_mailbox_handle,omitempty"`
-	CoordinatorSession       *IssueOpsHostSessionIdentity                  `json:"coordinator_session,omitempty"`
-	WorkerRoot               string                                        `json:"worker_root,omitempty"`
-	OwnerSession             *IssueOpsHostSessionIdentity                  `json:"owner_session,omitempty"`
-	Orientation              *IssueOpsOwnershipOrientation                 `json:"orientation,omitempty"`
-	Completion               *IssueOpsOwnershipCompletion                  `json:"completion,omitempty"`
-	Orca                     *IssueOpsOrcaIdentity                         `json:"orca,omitempty"`
-	PendingOperation         *IssueOpsExecutionHandoffPendingOperation     `json:"pending_operation,omitempty"`
-	WorkerDoneProjection     *IssueOpsExecutionHandoffWorkerDoneProjection `json:"worker_done_projection,omitempty"`
-	Failure                  *IssueOpsExecutionHandoffFailure              `json:"failure,omitempty"`
-	Cancellation             *IssueOpsExecutionHandoffCancellation         `json:"cancellation,omitempty"`
-	PublishReceipt           *IssueOpsExecutionHandoffPublishReceipt       `json:"publish_receipt,omitempty"`
-	PublicationRecovery      *IssueOpsExecutionHandoffFailure              `json:"publication_recovery,omitempty"`
-	Cleanup                  *IssueOpsExecutionHandoffCleanup              `json:"cleanup,omitempty"`
-	CleanupOnly              *IssueOpsOrcaCleanupArtifact                  `json:"cleanup_only,omitempty"`
-	PreparedAt               string                                        `json:"prepared_at,omitempty"`
-	ProvisionedAt            string                                        `json:"provisioned_at,omitempty"`
-	DispatchedAt             string                                        `json:"dispatched_at,omitempty"`
-	ClaimedAt                string                                        `json:"claimed_at,omitempty"`
-	LastHeartbeatAt          string                                        `json:"last_heartbeat_at,omitempty"`
-	CompletedAt              string                                        `json:"completed_at,omitempty"`
-	UpdatedAt                string                                        `json:"updated_at,omitempty"`
-}
-
-type IssueOpsExecutionWorkspacePendingOperation struct {
-	Kind                string   `json:"kind"`
-	StartedAt           string   `json:"started_at"`
-	BaselineWorktreeIDs []string `json:"baseline_worktree_ids,omitempty"`
-}
-
-type IssueOpsExecutionWorkspace struct {
-	State              string                                      `json:"state"`
-	WorkspaceEpoch     string                                      `json:"workspace_epoch"`
-	Driver             string                                      `json:"driver"`
-	Agent              string                                      `json:"agent"`
-	CoordinatorRoot    string                                      `json:"coordinator_root"`
-	WorkerRoot         string                                      `json:"worker_root"`
-	PreparationSession *IssueOpsHostSessionIdentity                `json:"preparation_session,omitempty"`
-	BaseHead           string                                      `json:"base_head"`
-	Orca               *IssueOpsOrcaIdentity                       `json:"orca,omitempty"`
-	PendingOperation   *IssueOpsExecutionWorkspacePendingOperation `json:"pending_operation,omitempty"`
-	Failure            *IssueOpsExecutionHandoffFailure            `json:"failure,omitempty"`
-	PreparedAt         string                                      `json:"prepared_at,omitempty"`
-	ProvisionedAt      string                                      `json:"provisioned_at,omitempty"`
-	UpdatedAt          string                                      `json:"updated_at,omitempty"`
-}
-
-type IssueOpsOwnershipOrientation struct {
-	IssueURL          string `json:"issue_url"`
-	PlanSHA256        string `json:"plan_sha256"`
-	Understanding     string `json:"understanding"`
-	ScopeConfirmation string `json:"scope_confirmation"`
-	RecordedAt        string `json:"recorded_at"`
-}
-
-type IssueOpsOwnershipCompletion struct {
-	FinalHead    string   `json:"final_head"`
-	ChangedFiles []string `json:"changed_files"`
-	TuringReport string   `json:"turing_report"`
-	Verification []string `json:"verification"`
-	CompletedAt  string   `json:"completed_at"`
-}
-
-type IssueOpsCycleState string
-
-const (
-	IssueOpsCycleActive IssueOpsCycleState = "active"
-	IssueOpsCyclePaused IssueOpsCycleState = "paused"
-	IssueOpsCycleClosed IssueOpsCycleState = "closed"
-)
-
-type IssueOpsOwnershipLedger struct {
-	ActiveAttempt  int                         `json:"active_attempt,omitempty"`
-	Attempts       []IssueOpsOwnershipAttempt  `json:"attempts,omitempty"`
-	PendingRestart *IssueOpsOwnerRestartIntent `json:"pending_restart,omitempty"`
-}
-
-type IssueOpsOwnershipAttempt struct {
-	Number           int                         `json:"number"`
-	Workspace        *IssueOpsExecutionWorkspace `json:"workspace,omitempty"`
-	Handoff          *IssueOpsExecutionHandoff   `json:"handoff,omitempty"`
-	InheritedWIPSeal *IssueOpsOwnershipWIPSeal   `json:"inherited_wip_seal,omitempty"`
-	RestartedFrom    int                         `json:"restarted_from,omitempty"`
-	StartedAt        string                      `json:"started_at"`
-	ClosedAt         string                      `json:"closed_at,omitempty"`
-}
-
-type IssueOpsOwnershipWIPSeal struct {
-	Ref                string `json:"ref"`
-	Commit             string `json:"commit"`
-	Tree               string `json:"tree"`
-	BaseHead           string `json:"base_head"`
-	StatusSHA256       string `json:"status_sha256"`
-	PathManifestSHA256 string `json:"path_manifest_sha256"`
-	PathCount          int    `json:"path_count"`
-	CreatedAt          string `json:"created_at"`
-}
-
-type IssueOpsOwnerRestartIntent struct {
-	State                string                           `json:"state"`
-	FromAttempt          int                              `json:"from_attempt"`
-	ToAttempt            int                              `json:"to_attempt"`
-	InventoryFingerprint string                           `json:"inventory_fingerprint"`
-	Head                 string                           `json:"head"`
-	StatusSHA256         string                           `json:"status_sha256"`
-	Dirty                bool                             `json:"dirty"`
-	SealDirtyWIP         bool                             `json:"seal_dirty_wip"`
-	WIPSeal              *IssueOpsOwnershipWIPSeal        `json:"wip_seal,omitempty"`
-	RequestedBy          *IssueOpsHostSessionIdentity     `json:"requested_by"`
-	CoordinatorRecipient string                           `json:"coordinator_recipient"`
-	PriorWorktreeID      string                           `json:"prior_worktree_id"`
-	PriorTaskID          string                           `json:"prior_task_id"`
-	PriorDispatchID      string                           `json:"prior_dispatch_id"`
-	Failure              *IssueOpsExecutionHandoffFailure `json:"failure,omitempty"`
-	StartedAt            string                           `json:"started_at"`
-	UpdatedAt            string                           `json:"updated_at"`
-}
-
-const IssueOpsCurrentSchemaVersion = 9
+const IssueOpsCurrentSchemaVersion = IssueOpsSchemaVersion
 
 type IssueOpsRecord struct {
 	OK                      bool                                `json:"ok"`
@@ -674,33 +347,21 @@ type IssueOpsRecord struct {
 	IssueLinks              []IssueOpsIssueLink                 `json:"issue_links,omitempty"`
 	BranchPrepare           *IssueOpsBranchPrepare              `json:"branch_prepare,omitempty"`
 	RemoteArtifact          *IssueOpsRemoteArtifactVerification `json:"remote_artifact,omitempty"`
-	RemoteCreateClaim       *IssueOpsRemoteCreateClaim          `json:"remote_create_claim,omitempty"`
 	Decisions               []IssueOpsDecision                  `json:"decisions,omitempty"`
 	PlanPrep                *IssueOpsPlanPrep                   `json:"plan_prep,omitempty"`
-	WorktreeTools           *IssueOpsWorktreeToolPreparation    `json:"worktree_tools,omitempty"`
-	ExecutionDecision       *IssueOpsExecutionDecision          `json:"execution_decision,omitempty"`
 	CompatibilityReview     *IssueOpsCompatibilityReview        `json:"compatibility_review,omitempty"`
 	DevilsAdvocateReview    *IssueOpsDevilsAdvocateReview       `json:"devils_advocate_review,omitempty"`
 	Feedback                []IssueOpsFeedbackItem              `json:"feedback,omitempty"`
 	RegressEvents           []IssueOpsRegressEvent              `json:"regress_events,omitempty"`
 	Delegation              *IssueOpsDelegationContract         `json:"delegation,omitempty"`
 	ChildCycles             []IssueOpsChildCycleRef             `json:"child_cycles,omitempty"`
-	ExecutionHandoff        *IssueOpsExecutionHandoff           `json:"execution_handoff,omitempty"`
-	ExecutionWorkspace      *IssueOpsExecutionWorkspace         `json:"execution_workspace,omitempty"`
-	CycleState              IssueOpsCycleState                  `json:"cycle_state,omitempty"`
-	Ownership               *IssueOpsOwnershipLedger            `json:"ownership,omitempty"`
+	Execution               *ExecutionV1                        `json:"execution,omitempty"`
 	RoutingTrace            []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
 	AISlopCleanAt           string                              `json:"ai_slop_clean_at,omitempty"`
 	AISlopCleanHead         string                              `json:"ai_slop_clean_head,omitempty"`
 	AISlopCleanFingerprint  string                              `json:"ai_slop_clean_fingerprint,omitempty"`
 	AISlopCleanCategories   []string                            `json:"ai_slop_clean_categories,omitempty"`
 	AISlopCleanVerification []string                            `json:"ai_slop_clean_verification,omitempty"`
-	ForceReleasedAt         string                              `json:"force_released_at,omitempty"`
-	ForceReleaseReason      string                              `json:"force_release_reason,omitempty"`
-	StaleResetAt            string                              `json:"stale_reset_at,omitempty"`
-	StaleResetPriorPhase    string                              `json:"stale_reset_prior_phase,omitempty"`
-	OrphanWorktreePath      string                              `json:"orphan_worktree_path,omitempty"`
-	LastHeartbeatAt         string                              `json:"last_heartbeat_at,omitempty"`
 	PhaseLedger             IssueOpsPhaseLedger                 `json:"phase_ledger,omitempty"`
 	CreatedAt               string                              `json:"created_at"`
 	UpdatedAt               string                              `json:"updated_at"`
@@ -775,20 +436,4 @@ type IssueOpsCloseChildrenResult struct {
 	ClosedCount int                        `json:"closed_count"`
 	Children    []IssueOpsCloseChildResult `json:"children"`
 	Missing     []string                   `json:"missing,omitempty"`
-}
-
-type IssueOpsResumeResult struct {
-	OK               bool                      `json:"ok"`
-	CycleID          string                    `json:"cycle_id,omitempty"`
-	Phase            IssueOpsPhase             `json:"phase,omitempty"`
-	Repo             string                    `json:"repo,omitempty"`
-	Branch           string                    `json:"branch,omitempty"`
-	WorktreePath     string                    `json:"worktree_path,omitempty"`
-	IssueURL         string                    `json:"issue_url,omitempty"`
-	PlanPath         string                    `json:"plan_path,omitempty"`
-	Bound            bool                      `json:"bound"`
-	SuggestedCycles  []string                  `json:"suggested_cycles,omitempty"`
-	Readiness        *IssueOpsReadiness        `json:"readiness,omitempty"`
-	Guidance         string                    `json:"guidance,omitempty"`
-	ExecutionHandoff *IssueOpsExecutionHandoff `json:"execution_handoff,omitempty"`
 }

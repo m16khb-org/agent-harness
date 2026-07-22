@@ -309,18 +309,18 @@ func runIssueOpsPhase(args []string) error {
 	id := fs.String("id", "", "issueops id")
 	actor := addIssueOpsActorFlags(fs)
 	to := fs.String("to", "", "target phase: problem, grill, plan, compatibility-review, implement, ai-slop-clean, feedback, pr, done")
-	force := fs.Bool("force", false, "bypass remote artifact verification when advancing to done")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	var record core.IssueOpsRecord
-	var err error
-	if *force && *to == "done" {
-		record, err = core.ForceDoneIssueOps(core.IssueOpsStateRoot(), *id)
-	} else {
-		record, err = core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), *id, *to, actor.actor())
+	if strings.TrimSpace(*to) == "done" {
+		err := fmt.Errorf("done is entered atomically by issueops execution complete")
+		if *jsonOut {
+			_ = printIssueOpsErrorJSON(err)
+		}
+		return err
 	}
+	record, err := core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), *id, *to, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -353,116 +353,4 @@ func runIssueOpsPRReadiness(args []string) error {
 		fmt.Printf("- missing: %s\n", missing)
 	}
 	return nil
-}
-
-func runIssueOpsForceRelease(args []string) error {
-	fs := flag.NewFlagSet("issueops force-release", flag.ContinueOnError)
-	id := fs.String("id", "", "issueops id")
-	reason := fs.String("reason", "", "reason for force-release")
-	expectedRawSHA256 := fs.String("expected-raw-sha256", "", "sealed raw record SHA-256 (requires expected-canonical-sha256)")
-	expectedCanonicalSHA256 := fs.String("expected-canonical-sha256", "", "sealed canonical record SHA-256 (requires expected-raw-sha256)")
-	jsonOut := fs.Bool("json", false, "print JSON")
-	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
-		return err
-	}
-	var rawDigestProvided, canonicalDigestProvided bool
-	fs.Visit(func(option *flag.Flag) {
-		switch option.Name {
-		case "expected-raw-sha256":
-			rawDigestProvided = true
-		case "expected-canonical-sha256":
-			canonicalDigestProvided = true
-		}
-	})
-	casRequested := rawDigestProvided || canonicalDigestProvided
-	if casRequested && (!rawDigestProvided || !canonicalDigestProvided) {
-		err := fmt.Errorf("expected-raw-sha256 and expected-canonical-sha256 must be provided together")
-		if *jsonOut {
-			_ = printIssueOpsErrorJSON(err)
-		}
-		return err
-	}
-	if casRequested {
-		result, err := core.ForceReleaseIssueOpsCAS(core.IssueOpsStateRoot(), *id, *reason, core.ForceReleaseCASRequest{
-			ExpectedRawSHA256:       *expectedRawSHA256,
-			ExpectedCanonicalSHA256: *expectedCanonicalSHA256,
-		})
-		if err != nil {
-			if *jsonOut {
-				_ = printIssueOpsErrorJSON(err)
-			}
-			return err
-		}
-		if *jsonOut {
-			return printJSON(result)
-		}
-		fmt.Printf("%s %s %s\n", result.Record.ID, result.Record.Phase, result.Record.Repo)
-		return nil
-	}
-	record, err := core.ForceReleaseIssueOps(core.IssueOpsStateRoot(), *id, *reason)
-	return printIssueOpsResult(record, *jsonOut, err)
-}
-
-func runIssueOpsResume(args []string) error {
-	fs := flag.NewFlagSet("issueops resume", flag.ContinueOnError)
-	repo := fs.String("repo", "", "repository path")
-	id := fs.String("id", "", "issueops id")
-	bind := fs.Bool("bind", false, "bind the session to the resumed cycle")
-	jsonOut := fs.Bool("json", false, "print JSON")
-	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
-		return err
-	}
-	result := core.IssueOpsResume(*repo, *id)
-	if *bind && result.OK && result.CycleID != "" {
-		if result.ExecutionHandoff != nil {
-			err := fmt.Errorf("resume bind is read-only and refused for a supervised handoff; use the exact handoff claim command")
-			if *jsonOut {
-				_ = printIssueOpsErrorJSON(err)
-			}
-			return err
-		}
-		if err := core.BindIssueOpsSessionForCycle(result.Repo, result.CycleID); err != nil {
-			return printIssueOpsResult(core.IssueOpsRecord{OK: false}, *jsonOut, fmt.Errorf("resume bind: %w", err))
-		}
-	}
-	if *jsonOut {
-		return printJSON(result)
-	}
-	if !result.OK {
-		return fmt.Errorf("no active IssueOps cycle to resume")
-	}
-	if result.Bound {
-		fmt.Printf("bound: %s %s %s\nworktree: %s\nbranch: %s\n",
-			result.CycleID, result.Phase, result.Repo, result.WorktreePath, result.Branch)
-		if result.Readiness != nil && !result.Readiness.Ready {
-			fmt.Printf("readiness: not ready\nmissing: %s\n", strings.Join(result.Readiness.Missing, ", "))
-		} else {
-			fmt.Printf("readiness: ready\n")
-		}
-		if result.Guidance != "" {
-			fmt.Printf("guidance: %s\n", result.Guidance)
-		}
-	} else {
-		fmt.Printf("not bound. suggested cycles: %s\n", strings.Join(result.SuggestedCycles, ", "))
-	}
-	return nil
-}
-
-func runIssueOpsHeartbeat(args []string) error {
-	fs := flag.NewFlagSet("issueops heartbeat", flag.ContinueOnError)
-	id := fs.String("id", "", "issueops id")
-	attempt := fs.Int("attempt", 0, "handoff attempt")
-	epoch := fs.String("ownership-epoch", "", "handoff ownership epoch")
-	contextSHA := fs.String("context-sha256", "", "handoff context sha256")
-	host := fs.String("host", "", "claimed worker host")
-	sessionID := fs.String("session-id", "", "claimed worker session id")
-	agentID := fs.String("agent-id", "", "claimed worker agent id")
-	jsonOut := fs.Bool("json", false, "print JSON")
-	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
-		return err
-	}
-	record, err := core.RecordIssueOpsHeartbeatWithRequest(core.IssueOpsStateRoot(), core.IssueOpsHeartbeatRequest{
-		ID: *id, Attempt: *attempt, OwnershipEpoch: *epoch, ContextSHA256: *contextSHA, Host: *host, SessionID: *sessionID, AgentID: *agentID,
-	})
-	return printIssueOpsResult(record, *jsonOut, err)
 }

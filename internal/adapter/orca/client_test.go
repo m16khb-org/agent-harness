@@ -181,8 +181,8 @@ func TestProbeRequiresHostModelSelectionCapability(t *testing.T) {
 	}
 }
 
-func TestProbeDoesNotApplyCodexBypassRequirementToClaudeOrGJC(t *testing.T) {
-	for _, agent := range []string{"claude", "gjc"} {
+func TestProbeDoesNotApplyCodexBypassRequirementToClaude(t *testing.T) {
+	for _, agent := range []string{"claude"} {
 		t.Run(agent, func(t *testing.T) {
 			runner := newFakeRunner(t)
 			runner.lookPaths["orca"] = "/usr/local/bin/orca"
@@ -637,17 +637,17 @@ func TestStableVisualTabTitlesBoundsTotalInventoryAcrossLayouts(t *testing.T) {
 	}
 }
 
-func TestClientCreateTerminalUsesSealedHostLaunchProfile(t *testing.T) {
+func TestClientCreateTerminalUsesCallerSelectedHostLaunchProfile(t *testing.T) {
 	for _, tt := range []struct {
 		name, agent, model, effort, command string
 	}{
 		{
 			name: "Codex Terra high", agent: "codex", model: "gpt-5.6-terra", effort: "high",
-			command: "codex --model gpt-5.6-terra -c model_reasoning_effort=\"high\" --dangerously-bypass-hook-trust",
+			command: "codex --model 'gpt-5.6-terra' -c model_reasoning_effort='high' --dangerously-bypass-hook-trust",
 		},
 		{
 			name: "Claude Opus 4.8", agent: "claude", model: "opus",
-			command: "claude --model opus",
+			command: "claude --model 'opus'",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -672,7 +672,7 @@ func TestClientCreateTerminalUsesSealedHostLaunchProfile(t *testing.T) {
 
 func TestClientBootstrapsExactOwnedTerminalWithSealedCodexProfile(t *testing.T) {
 	runner := newFakeRunner(t)
-	command := `codex --model gpt-5.6-terra -c model_reasoning_effort="high" --dangerously-bypass-hook-trust`
+	command := `codex --model 'gpt-5.6-terra' -c model_reasoning_effort='high' --dangerously-bypass-hook-trust`
 	runner.responses["orca terminal send --terminal term-owned --text "+command+" --enter --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"send":{"accepted":true}}}`)}
 	runner.responses["orca terminal wait --terminal term-owned --for tui-idle --timeout-ms 10000 --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"wait":{"satisfied":true}}}`)}
 	if err := NewClient(runner).BootstrapTerminalAgent(context.Background(), port.OrcaBootstrapTerminalAgentRequest{TerminalHandle: "term-owned", Agent: "codex", Model: "gpt-5.6-terra", ReasoningEffort: "high", AllowCodexHookTrustBypass: true}); err != nil {
@@ -717,7 +717,7 @@ func TestProbeRejectsAgentOnlyTerminalCreateCapability(t *testing.T) {
 func TestClientCreateTerminalAcceptsRuntimeIdentityWithoutPTY(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca terminal create --help"] = CommandOutput{Stdout: []byte("--worktree --command --title --json")}
-	command := `codex --model gpt-5.6-terra -c model_reasoning_effort="high"`
+	command := `codex --model 'gpt-5.6-terra' -c model_reasoning_effort='high'`
 	runner.responses["orca terminal create --worktree id:worktree-1 --command "+command+" --title marker --json"] = CommandOutput{Stdout: []byte(`{
 		"ok": true,
 		"result": {
@@ -754,10 +754,9 @@ func TestClientCreateTerminalUsesCodexBypassOnlyWhenAttested(t *testing.T) {
 		name, agent, model, effort, command string
 		attested                            bool
 	}{
-		{name: "attested Codex", agent: "codex", model: "gpt-5.6-terra", effort: "high", command: `codex --model gpt-5.6-terra -c model_reasoning_effort="high" --dangerously-bypass-hook-trust`, attested: true},
-		{name: "ordinary Codex", agent: "codex", model: "gpt-5.6-terra", effort: "high", command: `codex --model gpt-5.6-terra -c model_reasoning_effort="high"`},
-		{name: "Claude Opus", agent: "claude", model: "opus", command: "claude --model opus", attested: true},
-		{name: "GJC unchanged", agent: "gjc", command: "gjc", attested: true},
+		{name: "attested Codex", agent: "codex", model: "caller-model", effort: "high", command: `codex --model 'caller-model' -c model_reasoning_effort='high' --dangerously-bypass-hook-trust`, attested: true},
+		{name: "ordinary Codex", agent: "codex", model: "caller-model", effort: "xhigh", command: `codex --model 'caller-model' -c model_reasoning_effort='xhigh'`},
+		{name: "Claude caller profile", agent: "claude", model: "caller-model", effort: "max", command: "claude --model 'caller-model' --effort 'max'", attested: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -782,7 +781,7 @@ func TestClientCreateTerminalUsesCodexBypassOnlyWhenAttested(t *testing.T) {
 func TestClientCreateTerminalRejectsIncompleteRuntimeIdentity(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca terminal create --help"] = CommandOutput{Stdout: []byte("--worktree --command --title --json")}
-	command := `codex --model gpt-5.6-terra -c model_reasoning_effort="high"`
+	command := `codex --model 'gpt-5.6-terra' -c model_reasoning_effort='high'`
 	runner.responses["orca terminal create --worktree id:worktree-1 --command "+command+" --json"] = CommandOutput{Stdout: []byte(`{
 		"ok": true,
 		"result": {"terminal": {"ptyId": "pty-2", "worktreeId": "worktree-1"}}
@@ -1048,6 +1047,27 @@ func TestClientShowDispatchNullReturnsNotFound(t *testing.T) {
 	var orcaErr *port.OrcaError
 	if !errors.As(err, &orcaErr) || orcaErr.Code != "not_found" {
 		t.Fatalf("dispatch=null error = %v, want Orca not_found", err)
+	}
+}
+
+func TestClientExecutionV1InventoryPreservesRuntimeForEmptyRows(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca terminal list --worktree id:wt-1 --limit 512 --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"terminals":[],"visualLayouts":[],"totalCount":0,"truncated":false},"_meta":{"runtimeId":"runtime-1"}}`)}
+	runner.responses["orca orchestration task-list --brief --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"tasks":[],"count":0},"_meta":{"runtimeId":"runtime-1"}}`)}
+	runner.responses["orca orchestration dispatch-show --task task-1 --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"dispatch":null},"_meta":{"runtimeId":"runtime-1"}}`)}
+	client := NewClient(runner)
+
+	terminals, err := client.listTerminalsInventory(context.Background(), "wt-1")
+	if err != nil || terminals.RuntimeID != "runtime-1" || len(terminals.Rows) != 0 {
+		t.Fatalf("empty terminal inventory lost its runtime envelope: inventory=%#v err=%v", terminals, err)
+	}
+	tasks, err := client.listAllTasksInventory(context.Background())
+	if err != nil || tasks.RuntimeID != "runtime-1" || len(tasks.Rows) != 0 {
+		t.Fatalf("empty task inventory lost its runtime envelope: inventory=%#v err=%v", tasks, err)
+	}
+	dispatch, err := client.showDispatchInventory(context.Background(), "task-1")
+	if err != nil || dispatch.RuntimeID != "runtime-1" || dispatch.Dispatch != nil {
+		t.Fatalf("absent dispatch inventory lost its runtime envelope: inventory=%#v err=%v", dispatch, err)
 	}
 }
 

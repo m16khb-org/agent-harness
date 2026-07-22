@@ -55,7 +55,7 @@ func TestP1PioneerCorrectnessContracts(t *testing.T) {
 		"Shannon measures generated code artifacts, not prompt quality.",
 	})
 	assertSkillContains(t, "turing", []string{
-		"skills/issueops/references/orca-handoff.md",
+		"skills/issueops/references/execution-v1.md",
 		"current host's available browser tool",
 		"AppleScript on macOS",
 		"`xdotool` on Linux only",
@@ -171,6 +171,7 @@ func TestGitlabUsecaseSkillPinsAssigneeContract(t *testing.T) {
 func TestSelfVerifySkillPinsGateContract(t *testing.T) {
 	body := readSkillForTest(t, "self-verify")
 	for _, want := range []string{
+		"First-party hosts are exactly Codex and Claude Code.",
 		// QA-gate boundary: this loop does not pick improvements itself.
 		"This skill is a QA gate; it does not choose improvements by itself.",
 		// Promote safety: confirmed promote refuses a failed source snapshot.
@@ -188,8 +189,6 @@ func TestSelfVerifySkillPinsGateContract(t *testing.T) {
 	}
 	for _, hostSpecificRecipe := range []string{
 		"./cmd/harness/hookcli/hookinput",
-		"bun scripts/smoke-gjc-native-hook.ts",
-		"Do not use a literal `--host gjc` grep",
 	} {
 		if strings.Contains(body, hostSpecificRecipe) {
 			t.Fatalf("self-verify SKILL.md must keep host-specific handoff recipe in IssueOps/Turing: %q", hostSpecificRecipe)
@@ -198,6 +197,7 @@ func TestSelfVerifySkillPinsGateContract(t *testing.T) {
 	if strings.Contains(body, "to run the Z.AI Coding Plan") {
 		t.Fatal("self-verify SKILL.md must not claim that prompt-only evaluation invokes Z.AI")
 	}
+	assertRetiredHostsAbsent(t, "self-verify SKILL.md", body)
 }
 
 func TestVerificationDocsPinHandoffProbeCommands(t *testing.T) {
@@ -211,7 +211,8 @@ func TestVerificationDocsPinHandoffProbeCommands(t *testing.T) {
 		}
 		for _, want := range []string{
 			"./cmd/harness/hookcli/hookinput",
-			"bun scripts/smoke-gjc-native-hook.ts",
+			"Codex",
+			"Claude",
 		} {
 			if !strings.Contains(string(body), want) {
 				t.Fatalf("%s missing verification probe %q", relPath, want)
@@ -221,6 +222,24 @@ func TestVerificationDocsPinHandoffProbeCommands(t *testing.T) {
 			if strings.Contains(line, "go test ") && strings.Contains(line, "./internal/core/hookinput") {
 				t.Fatalf("%s must not execute nonexistent hookinput package: %s", relPath, line)
 			}
+		}
+		assertRetiredHostsAbsent(t, relPath, string(body))
+	}
+}
+
+func TestTuringSkillPinsTwoHostExecutionContract(t *testing.T) {
+	body := readSkillForTest(t, "turing")
+	if !strings.Contains(body, "First-party hosts are exactly Codex and Claude Code.") {
+		t.Fatal("turing SKILL.md must state the exact first-party host set")
+	}
+	assertRetiredHostsAbsent(t, "turing SKILL.md", body)
+}
+
+func assertRetiredHostsAbsent(t *testing.T, name, body string) {
+	t.Helper()
+	for _, host := range []string{strings.Join([]string{"g", "jc"}, ""), strings.Join([]string{"reason", "ix"}, "")} {
+		if strings.Contains(strings.ToLower(body), host) {
+			t.Fatalf("%s retains retired host %q", name, host)
 		}
 	}
 }

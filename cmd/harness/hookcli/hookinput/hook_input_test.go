@@ -112,6 +112,31 @@ func TestPathsFromHookInputIgnoresHookTranscriptMetadata(t *testing.T) {
 	}
 }
 
+func TestPathsFromHookInputCollectsFilesystemSourceDestinationAliasesOnlyInsideToolInput(t *testing.T) {
+	input := []byte(`{
+	  "source":"hook-metadata",
+	  "destination":"hook-metadata-destination",
+	  "tool_input":{
+	    "source":"/repo/source.txt",
+	    "destination":"/repo/destination.txt",
+	    "src":"/repo/src.txt",
+	    "dst":"/repo/dst.txt",
+	    "target":"/repo/target.txt"
+	  }
+	}`)
+	got := PathsFromHookInput(input)
+	for _, want := range []string{"/repo/source.txt", "/repo/destination.txt", "/repo/src.txt", "/repo/dst.txt", "/repo/target.txt"} {
+		if !containsString(got, want) {
+			t.Fatalf("filesystem alias %q missing from mutation targets: %#v", want, got)
+		}
+	}
+	for _, unwanted := range []string{"hook-metadata", "hook-metadata-destination"} {
+		if containsString(got, unwanted) {
+			t.Fatalf("top-level hook metadata alias %q must not become a mutation target: %#v", unwanted, got)
+		}
+	}
+}
+
 func TestToolCommandAndProjectPathExtraction(t *testing.T) {
 	input := []byte(`{"tool_name":"gitlab_create_mr","tool_input":{"flags":{"title":" Add feature ","description":"Body","labels":["bug",2],"assignee_id":[7],"copy_issue_labels":true},"issue_iid":"12","projectPath":"/repo"}}`)
 	if got := ToolNameFromHookInput(input); got != "gitlab_create_mr" {

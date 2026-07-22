@@ -313,40 +313,70 @@ CLI/MCP DTO를 변경할 때는 `agent-harness contract check --json`과 golden 
 - kubectl live-access hook tests must cover Codex first-block/token reuse/exact approval/one allow/re-block, session/workspace/cwd/tool/command mismatch, 10-minute pending/granted expiry, concurrent single consume, `0600` state without raw command, and unchanged Claude native `ask` behavior.
 - doctor tests should cover repo-local `.agent-harness/state/` and namespace mismatch warnings.
 
-## Optional Orca handoff verification
+## IssueOps v1 execution and optional Orca verification
 
-Normal tests and self-verification must remain green without Orca. Use an injected fake runner to prove stable JSON/text `auto` fallback with no state rewrite, explicit-mode failure, pending-operation ordering, at-most-once external calls, post-invocation `recovery_required`, exact-one reconciliation, stale ownership rejection, and CLI/MCP parity. Sole-writer tables cover connected or writable baseline terminals, server-filtered dispatched-task conflicts, and immediate pre-create/pre-dispatch re-attestation; only the designated active owner may be both connected and writable. Publication tables cover wrong local FinalHead, missing/stale/wrong remote receipts, provider/branch/ref drift, GitHub/GitLab parity, and PR/MR body-file rejection. Completion/cleanup tables cover owner-only completion, human approval before mutation, fresh exact-source succession after merge, ordered idempotent receipts, stale-quiescence denial of raw removal, and incomplete worktree-row refusal. Schema fixtures keep missing/zero non-ownership records readable, reject pre-current ownership records and removed handoff fields byte-identically, and reject future versions. MCP authority tests include foreign namespace suffix collisions for every privileged handoff tool. Lifecycle tests must cover literal new source cycles, exact owner IDs, exact prep-only linked-worktree IDs, and rejection of the same ID from an unrelated sibling worktree.
+Normal tests and self-verification must remain green without Orca. Use injected
+workspace, provider, process, and Orca adapters for the default suite. The
+current execution contract is `issueops_v1` with `schema_version=1`; legacy
+rows and files are reset through the explicit fingerprint-CAS maintenance path,
+never migrated or dual-read by normal execution.
 
-Completion projection tests begin from `owner_active` and observe the crash seam immediately after the locked write: the durable row already contains immutable completion evidence and projection `intent`, while the external call count remains zero. Success and every ambiguous/malformed/timeout notification path call the dedicated adapter at most once; every failed completion precondition calls it zero times. A persisted intent, sent result, or failed diagnostic makes identical completion calls return stable evidence without retry. Payload assertions derive sender and recipient from sealed mailbox identities and task/dispatch/files/report/final-head/host/attempt only from the durable row; a different rollover terminal handle remains live-control evidence and never becomes the sender.
+Execution tests must cover:
 
-Dispatch context tests require the exact installed preamble labels and dispatch token. Substring-only, wrong-label, wrong-task, wrong-dispatch, oversized, or missing preambles fail closed after one dispatch attempt. Recovery rejects group, shell-like, or overlong source recipients before `ShowDispatchFrom`. Root schema tests prove current ownership round trips without a protocol field, pre-current ownership records fail byte-identically, and future schemas fail closed. The current context fixture proves an empty source recipient is omitted while a nonempty sealed recipient participates in preview/confirm context and source hashes. Launch-profile tests prove Codex resolves to `gpt-5.6-terra/high`, Claude uses the runtime-verified `opus` alias, the profile participates in context projection, and Orca receives only the exact `--command` string; missing or mismatched profiles and agent-only terminal capability fail before mutation.
+- `direct`, explicit `orca`, and `auto`; `auto` may fall back only when the
+  read-only Orca probe fails before the first external mutation.
+- claimable → active → revoking/released generation transitions, the
+  `lease_holder_v1` reverse index, exact native process identity, and stale
+  holder/generation rejection across CLI, MCP, and hooks.
+- every record-specific hook block exposes exactly `code`, `lifecycle_id`,
+  `expected_root`, `current_generation`, and `next_command` in raw JSON. The
+  Codex/Claude native reason string must decode to the same five-field object
+  without adding fields rejected by either host's strict hook schema.
+- replacement preview, revoke, and finalize with PID-reuse-safe process
+  observation plus complete Orca owner inventory. A live terminal, task, or
+  dispatch blocks finalization.
+- a sealed context packet and owner prompt with exact digests, no raw claim
+  token, no unresolved placeholder, only current catalog commands, and the
+  exact ordered 14-field owner report golden.
+- completion only from `pr` with the durable verified PR/MR projection; the
+  completion receipt, lease release, reverse-index deletion, and `done` phase
+  transition are one atomic write. An identical retry is idempotent only when
+  all terminal invariants still hold.
 
-Filesystem evidence is a second CAS dimension, not a substitute for durable record equality. Deterministic seam tests mutate source fingerprint, branch, HEAD, clean status, or completion report after outer validation and prove the same evidence is rechecked inside the cycle lock immediately before every affected write. Dispatch-stage seams additionally prove completed identities remain exact and `pending_operation` stays nil. Progressing-clock fixtures distinguish every operation `started_at` from its post-call completion/failure timestamp.
+Orca external-intent tests treat worktree, terminal, task, and dispatch as four
+separate durable stages. For every stage, exercise authoritative 0, exact 1,
+multiple candidates, transport failure, post-mutation crash, and CAS identity
+change. Zero may invoke only with durable `not_invoked_proven` evidence and at
+most one proven-not-invoked retry; exact one adopts; every ambiguous outcome
+retains the intent without fallback or duplicate mutation.
 
-The PreToolUse matrix proves that source plan edits require both request CWD and repo identity to equal `record.Repo`. It table-tests installed Orca terminal controls plus write/input/type/paste aliases from an owner and non-source session, while preserving read-only inventory. Exact lifecycle ID selection precedes source-wide inference; a prep-only linked worker may mutate its exact cycle, and another sibling worktree reusing that ID is blocked. Two active cycles with distinct handles select the exact persisted resource; unknown or duplicated identities block.
+The prepared runtime ID is mandatory on every terminal/task/dispatch receipt
+and inventory row. Task title/display name and dispatch assignee/injection must
+match the sealed intent. A terminal handle is runtime-scoped and is never
+durable authority: later stages re-resolve the current handle from exact
+worktree ID plus PTY. Owner quiescence uses the complete task inventory and
+checks the bound dispatch independently, so a dispatched/running task cannot be
+hidden by a ready-only listing.
 
-When Orca is installed in the verification environment, add one disposable live E2E; this is release evidence, not a default unit-test dependency. Create a uniquely named repo/branch/worktree/terminal/task, let a fresh owner claim, acknowledge, publish, and complete, then require a human-approved exact-source session to remove every disposable resource and record the cleanup receipts. Never use a global Orca reset.
-
-Use this exact focused package set for the handoff and hook contracts. Hook input is under the CLI adapter; `./internal/core/hookinput` does not exist.
+Use this focused package set before the full repository gates:
 
 ```bash
-go test ./internal/core/issueops ./internal/core/issueops/handoff ./internal/adapter/orca ./internal/core/lifecycle ./internal/core/commandparse ./internal/core/skillcontract ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/issueopscli ./cmd/harness/harnessapp -count=1
+go test ./internal/core/issueops/... ./internal/core/lifecycle ./internal/adapter/orca ./internal/adapter/codex ./internal/adapter/claude ./cmd/harness/issueopscli ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/mcpcli -count=1
+go test -race ./internal/core/issueops/... ./internal/core/lifecycle ./internal/adapter/orca ./cmd/harness/issueopscli ./cmd/harness/hookcli ./cmd/harness/hookcli/hookinput ./cmd/harness/mcpcli -count=1
 ```
 
-Native ownership smokes are required for Codex, Claude, and GJC. Feed each installed adapter a distinct native `session_id`, assert source/wrong-session mutation of a transferred cycle produces that host's real block shape, and verify a matching owner passes. GJC coverage must exercise the HookAPI `(event, ctx)` bridge so `ctx.sessionManager.getSessionId()` and `ctx.cwd` reach the common hook command.
+Native activation tests use isolated temporary homes. They require same-
+directory staged build, smoke, atomic rename, strict Codex/Claude semantic and
+raw-file readback, and a sealed activation receipt written last. Every injected
+crash before that final receipt must leave destructive legacy reset blocked.
 
-Supervised Codex startup tests require four separate assertions: an unreviewed confirmed start makes zero terminal/task/dispatch calls; installed probe help contains `--dangerously-bypass-hook-trust`; a reviewed no-confirm preview and otherwise identical confirm render the same context hash; and fake-runner terminal argv uses the bypass flag only for explicitly attested Codex, never Claude or GJC.
+When Orca is installed, a disposable live E2E may be added as release evidence;
+it is never a default unit-test dependency. Resolve exact runtime/repo/worktree/
+PTY/task/dispatch identities, never use a global reset, and remove only the
+uniquely named disposable resources after an explicit cleanup decision. When
+Orca is absent, prove explicit Orca mode fails before mutation and `auto`
+returns the deterministic direct fallback projection.
 
-Runtime-rollover fixtures use the installed public shape: changed runtime/handle/PTY, stable tab/leaf, and a complete current-runtime worktree row. Missing/conflicting instance, terminal/worktree mismatch, wrong marker/HEAD/branch, incomplete or duplicate inventory, title-only inference, and connected reissued cancellation all fail closed. A deterministic after-inventory seam changes the durable journal, context source, or owner cleanliness before the locked write; every row preserves the old runtime/instance/handle/PTY/tab/leaf and pending `runtime_refresh` with zero later Orca mutation.
-
-Provider-aware worktree tests prove GitHub alone requires/passes the public `--issue` flag and GitLab passes no invented metadata option. Re-read the durable row and reproject prepare status to prove warnings survive restart, and assert both JSON and human CLI warning surfaces. GitLab `auto` with missing, unready, or capability-failed Orca—and a post-probe inline fallback—remains warning-free and leaves `execution_handoff` absent.
-
-The lifecycle hook has two minimal direct-command prefilters. A unique invalid or duplicate explicit `orca orchestration send --type` blocks with the installed eight-value set, while no type and valid no-record values fall through without new authority. Any explicit `--inject` or equals form on direct `orca orchestration check` blocks before record selection; exact `check --all --json` and unrelated observations fall through. The skill recipe then selects exact current task/dispatch/sequence and never treats a live handle as historical mailbox identity.
-
-After native installation, exercise the installed GJC TypeScript shim through that behavior boundary:
-
-```bash
-bun scripts/smoke-gjc-native-hook.ts "$HOME/.gjc/agent/hooks/agent-harness.ts"
-```
-
-Require JSON `ok=true`, `host=gjc`, the fixed smoke session/cwd, and `blocked=true`. Do not use a literal `--host gjc` grep: the shim stores argv as adjacent TypeScript array elements, so a shell-string grep is not behavior evidence.
+After native installation, exercise Codex and Claude hook fixtures through the
+common hook input boundary and require exact host, session, process, cwd, and
+allow/block projections.

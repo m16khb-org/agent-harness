@@ -25,9 +25,6 @@ type IssueOpsDesignReview = issueops.IssueOpsDesignReview
 type IssueOpsDesignReviewRequest = issueops.IssueOpsDesignReviewRequest
 type IssueOpsDecision = issueops.IssueOpsDecision
 type IssueOpsDecisionRecordRequest = issueops.IssueOpsDecisionRecordRequest
-type IssueOpsExecutionDecision = issueops.IssueOpsExecutionDecision
-type IssueOpsExecutionDecisionRecordRequest = issueops.IssueOpsExecutionDecisionRecordRequest
-type IssueOpsSubAgentPlan = issueops.IssueOpsSubAgentPlan
 type IssueOpsCompatibilityReview = issueops.IssueOpsCompatibilityReview
 type IssueOpsCompatibilityReviewRequest = issueops.IssueOpsCompatibilityReviewRequest
 type IssueOpsDevilsAdvocateReviewRequest = issueops.IssueOpsDevilsAdvocateReviewRequest
@@ -35,41 +32,8 @@ type IssueOpsDomainReview = issueops.IssueOpsDomainReview
 type IssueOpsDomainReviewRequest = issueops.IssueOpsDomainReviewRequest
 type IssueOpsPlanPrepRequest = issueops.IssueOpsPlanPrepRequest
 type IssueOpsPlanPrepItemRequest = issueops.IssueOpsPlanPrepItemRequest
-type IssueOpsWorktreeToolPreparation = issueops.IssueOpsWorktreeToolPreparation
 type IssueOpsActor = issueops.IssueOpsActor
-type IssueOpsHandoffPrepareRequest = issueops.IssueOpsHandoffPrepareRequest
-type IssueOpsHandoffPrepareResult = issueops.IssueOpsHandoffPrepareResult
-type IssueOpsHandoffPrepareClock = issueops.IssueOpsHandoffPrepareClock
-type IssueOpsOrcaWorktreeClient = issueops.IssueOpsOrcaWorktreeClient
-type IssueOpsHandoffStartRequest = issueops.IssueOpsHandoffStartRequest
-type IssueOpsHandoffStartResult = issueops.IssueOpsHandoffStartResult
-type IssueOpsHandoffClaimResult = issueops.IssueOpsHandoffClaimResult
-type IssueOpsHandoffStartClock = issueops.IssueOpsHandoffStartClock
-type IssueOpsOrcaDispatchClient = issueops.IssueOpsOrcaDispatchClient
-type IssueOpsWorkerDoneProjectionClient = issueops.IssueOpsWorkerDoneProjectionClient
-type IssueOpsHandoffClaimRequest = issueops.IssueOpsHandoffClaimRequest
-type IssueOpsHandoffAcknowledgeRequest = issueops.IssueOpsHandoffAcknowledgeRequest
-type IssueOpsHeartbeatRequest = issueops.IssueOpsHeartbeatRequest
-type IssueOpsHandoffCompleteRequest = issueops.IssueOpsHandoffCompleteRequest
-type IssueOpsHandoffRecoverRequest = issueops.IssueOpsHandoffRecoverRequest
-type IssueOpsHandoffRecoverResult = issueops.IssueOpsHandoffRecoverResult
-type IssueOpsOwnershipCleanupPreviewRequest = issueops.IssueOpsOwnershipCleanupPreviewRequest
-type IssueOpsOwnershipCleanupPreview = issueops.IssueOpsOwnershipCleanupPreview
-type IssueOpsOwnershipCleanupApproveRequest = issueops.IssueOpsOwnershipCleanupApproveRequest
-type IssueOpsOwnershipCleanupRecordRequest = issueops.IssueOpsOwnershipCleanupRecordRequest
-type IssueOpsHandoffPublishRequest = issueops.IssueOpsHandoffPublishRequest
-type IssueOpsHandoffPublicationReader = issueops.IssueOpsHandoffPublicationReader
-type GitIssueOpsHandoffPublicationReader = issueops.GitIssueOpsHandoffPublicationReader
-type IssueOpsPublicationPushTarget = issueops.IssueOpsPublicationPushTarget
-type IssueOpsExecutionHandoffPublishReceipt = issueops.IssueOpsExecutionHandoffPublishReceipt
-type IssueOpsExecutionHandoffCleanupReceipt = issueops.IssueOpsExecutionHandoffCleanupReceipt
-type IssueOpsExecutionHandoffCleanup = issueops.IssueOpsExecutionHandoffCleanup
-type IssueOpsRemoteCreateClaim = issueops.IssueOpsRemoteCreateClaim
 type IssueOpsRecord = issueops.IssueOpsRecord
-type IssueOpsV8MigrationClassification = issueops.IssueOpsV8MigrationClassification
-type IssueOpsOwnershipAttempt = issueops.IssueOpsOwnershipAttempt
-type IssueOpsOwnershipLedger = issueops.IssueOpsOwnershipLedger
-type IssueOpsCycleState = issueops.IssueOpsCycleState
 type IssueOpsDelegationContract = issueops.IssueOpsDelegationContract
 type IssueOpsChildCycleRef = issueops.IssueOpsChildCycleRef
 type IssueOpsChildStartRequest = issueops.IssueOpsChildStartRequest
@@ -83,26 +47,26 @@ type IssueOpsCleanupStatus = issueops.IssueOpsCleanupStatus
 type IssueOpsCloseChildrenRequest = issueops.IssueOpsCloseChildrenRequest
 type IssueOpsCloseChildResult = issueops.IssueOpsCloseChildResult
 type IssueOpsCloseChildrenResult = issueops.IssueOpsCloseChildrenResult
-type IssueOpsStaleScanRequest = issueops.IssueOpsStaleScanRequest
-type IssueOpsStaleScanResult = issueops.IssueOpsStaleScanResult
+type LegacyResetRowCountsV1 = issueops.LegacyResetRowCountsV1
+type LegacyRemoteCreateClaimV1 = issueops.LegacyRemoteCreateClaimV1
+type LegacyOrcaTaskV1 = issueops.LegacyOrcaTaskV1
+type LegacyResetPreviewV1 = issueops.LegacyResetPreviewV1
+type LegacyResetStatusV1 = issueops.LegacyResetStatusV1
+type LegacyResetResultV1 = issueops.LegacyResetResultV1
+type LegacyResetRemoteReconcileRequestV1 = issueops.LegacyResetRemoteReconcileRequestV1
+type LegacyResetRemoteDependenciesV1 = issueops.LegacyResetRemoteDependenciesV1
+type LegacyResetRemoteReconcileResultV1 = issueops.LegacyResetRemoteReconcileResultV1
+type LegacyResetOrcaReconcileRequestV1 = issueops.LegacyResetOrcaReconcileRequestV1
+type LegacyResetOrcaDependenciesV1 = issueops.LegacyResetOrcaDependenciesV1
+type LegacyResetOrcaReconcileResultV1 = issueops.LegacyResetOrcaReconcileResultV1
+type LegacyResetDrainCycleRequestV1 = issueops.LegacyResetDrainCycleRequestV1
+type LegacyResetDrainCycleResultV1 = issueops.LegacyResetDrainCycleResultV1
+type LegacyResetActivationBeginRequestV1 = issueops.LegacyResetActivationBeginRequestV1
+type LegacyResetActivationSealRequestV1 = issueops.LegacyResetActivationSealRequestV1
+type LegacyResetActivationResultV1 = issueops.LegacyResetActivationResultV1
+type ResetRequiredError = issueops.ResetRequiredError
 
 type IssueOpsPhase = issueops.IssueOpsPhase
-
-func PreviewIssueOpsV9Migration(stateRoot, id string) (IssueOpsV8MigrationClassification, error) {
-	return issueops.PreviewIssueOpsV9Migration(stateRoot, id)
-}
-
-func ConfirmIssueOpsV9Migration(stateRoot, id string) (IssueOpsV8MigrationClassification, error) {
-	return issueops.ConfirmIssueOpsV9Migration(stateRoot, id)
-}
-
-func CurrentOwnershipAttempt(record IssueOpsRecord) *IssueOpsOwnershipAttempt {
-	return issueops.CurrentOwnershipAttempt(record)
-}
-
-func LastOwnershipAttempt(record IssueOpsRecord) *IssueOpsOwnershipAttempt {
-	return issueops.LastOwnershipAttempt(record)
-}
 
 const (
 	IssueOpsCurrentSchemaVersion     = issueops.IssueOpsCurrentSchemaVersion
@@ -115,9 +79,6 @@ const (
 	IssueOpsPhaseFeedback            = issueops.IssueOpsPhaseFeedback
 	IssueOpsPhasePR                  = issueops.IssueOpsPhasePR
 	IssueOpsPhaseDone                = issueops.IssueOpsPhaseDone
-	IssueOpsCycleActive              = issueops.IssueOpsCycleActive
-	IssueOpsCyclePaused              = issueops.IssueOpsCyclePaused
-	IssueOpsCycleClosed              = issueops.IssueOpsCycleClosed
 )
 
 var IssueOpsPhases = issueops.IssueOpsPhases
@@ -259,14 +220,6 @@ func RecordIssueOpsDesignReviewWithActor(stateRoot, id string, req IssueOpsDesig
 	return issueops.RecordIssueOpsDesignReviewWithActor(stateRoot, id, req, actor)
 }
 
-func RecordIssueOpsExecutionDecision(stateRoot, id string, req IssueOpsExecutionDecisionRecordRequest) (IssueOpsRecord, error) {
-	return issueops.RecordIssueOpsExecutionDecision(stateRoot, id, req)
-}
-
-func RecordIssueOpsExecutionDecisionWithActor(stateRoot, id string, req IssueOpsExecutionDecisionRecordRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
-	return issueops.RecordIssueOpsExecutionDecisionWithActor(stateRoot, id, req, actor)
-}
-
 func RecordIssueOpsCompatibilityReview(stateRoot, id string, req IssueOpsCompatibilityReviewRequest) (IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsCompatibilityReview(stateRoot, id, req)
 }
@@ -319,6 +272,46 @@ func IssueOpsStateRoot() string {
 	return issueops.IssueOpsStateRoot()
 }
 
+func PreviewLegacyResetV1(stateDir string, targetSchema int) (LegacyResetPreviewV1, error) {
+	return issueops.PreviewLegacyResetV1(stateDir, targetSchema)
+}
+
+func StatusLegacyResetV1(stateDir string, targetSchema int) (LegacyResetStatusV1, error) {
+	return issueops.StatusLegacyResetV1(stateDir, targetSchema)
+}
+
+func BeginLegacyResetActivationV1(stateDir string, req LegacyResetActivationBeginRequestV1) (LegacyResetActivationResultV1, error) {
+	return issueops.BeginLegacyResetActivationV1(stateDir, req)
+}
+
+func SealLegacyResetActivationV1(stateDir string, req LegacyResetActivationSealRequestV1) (LegacyResetActivationResultV1, error) {
+	return issueops.SealLegacyResetActivationV1(stateDir, req)
+}
+
+func ConfirmLegacyResetV1(stateDir string, targetSchema int, expectedFingerprint string) (LegacyResetResultV1, error) {
+	return issueops.ConfirmLegacyResetV1(stateDir, targetSchema, expectedFingerprint)
+}
+
+func ConfirmLegacyResetWithOrcaV1(ctx context.Context, stateDir string, targetSchema int, expectedFingerprint string, deps LegacyResetOrcaDependenciesV1) (LegacyResetResultV1, error) {
+	return issueops.ConfirmLegacyResetWithOrcaV1(ctx, stateDir, targetSchema, expectedFingerprint, deps)
+}
+
+func ReconcileLegacyRemoteClaimV1(ctx context.Context, stateDir string, req LegacyResetRemoteReconcileRequestV1, deps LegacyResetRemoteDependenciesV1) (LegacyResetRemoteReconcileResultV1, error) {
+	return issueops.ReconcileLegacyRemoteClaimV1(ctx, stateDir, req, deps)
+}
+
+func ReconcileLegacyOrcaTaskV1(ctx context.Context, stateDir string, req LegacyResetOrcaReconcileRequestV1, deps LegacyResetOrcaDependenciesV1) (LegacyResetOrcaReconcileResultV1, error) {
+	return issueops.ReconcileLegacyOrcaTaskV1(ctx, stateDir, req, deps)
+}
+
+func DrainLegacyCycleV1(stateDir string, req LegacyResetDrainCycleRequestV1) (LegacyResetDrainCycleResultV1, error) {
+	return issueops.DrainLegacyCycleV1(stateDir, req)
+}
+
+func DrainLegacyCycleWithOrcaV1(ctx context.Context, stateDir string, req LegacyResetDrainCycleRequestV1, deps LegacyResetOrcaDependenciesV1) (LegacyResetDrainCycleResultV1, error) {
+	return issueops.DrainLegacyCycleWithOrcaV1(ctx, stateDir, req, deps)
+}
+
 func NewIssueOpsID(repo, branch string) string {
 	return issueops.NewIssueOpsID(repo, branch)
 }
@@ -357,73 +350,6 @@ func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, e
 
 func LinkIssueOpsWorktreeWithActor(stateRoot, id, worktreePath string, actor IssueOpsActor) (IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsWorktreeWithActor(stateRoot, id, worktreePath, actor)
-}
-
-func RecordIssueOpsWorktreeTools(stateRoot, id string, prep IssueOpsWorktreeToolPreparation) (IssueOpsRecord, error) {
-	return issueops.RecordIssueOpsWorktreeTools(stateRoot, id, prep)
-}
-
-func RecordIssueOpsWorktreeToolsWithActor(stateRoot, id string, actor IssueOpsActor, prep IssueOpsWorktreeToolPreparation) (IssueOpsRecord, error) {
-	return issueops.RecordIssueOpsWorktreeToolsWithActor(stateRoot, id, actor, prep)
-}
-
-func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req IssueOpsHandoffPrepareRequest, client IssueOpsOrcaWorktreeClient, clock IssueOpsHandoffPrepareClock) (IssueOpsHandoffPrepareResult, error) {
-	return issueops.PrepareIssueOpsHandoffWorktree(ctx, stateRoot, req, client, clock)
-}
-
-type IssueOpsExecutionWorkspaceReconcileRequest = issueops.IssueOpsExecutionWorkspaceReconcileRequest
-type IssueOpsExecutionWorkspaceRecoveryClient = issueops.IssueOpsExecutionWorkspaceRecoveryClient
-
-func ReconcileIssueOpsExecutionWorkspace(ctx context.Context, stateRoot string, req IssueOpsExecutionWorkspaceReconcileRequest, client IssueOpsExecutionWorkspaceRecoveryClient, now string) (IssueOpsRecord, error) {
-	return issueops.ReconcileIssueOpsExecutionWorkspace(ctx, stateRoot, req, client, now)
-}
-
-func ValidateReadyWorkspacePreparationActor(record IssueOpsRecord, actor IssueOpsActor) error {
-	return issueops.ValidateReadyWorkspacePreparationActor(record, actor)
-}
-
-func StartIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHandoffStartRequest, client IssueOpsOrcaDispatchClient, clock IssueOpsHandoffStartClock) (IssueOpsHandoffStartResult, error) {
-	return issueops.StartIssueOpsHandoff(ctx, stateRoot, req, client, clock)
-}
-
-func ClaimIssueOpsHandoff(stateRoot string, req IssueOpsHandoffClaimRequest) (IssueOpsHandoffClaimResult, error) {
-	return issueops.ClaimIssueOpsHandoff(stateRoot, req)
-}
-
-func IssueOpsHandoffAcknowledgeCommand(record IssueOpsRecord) (string, error) {
-	return issueops.IssueOpsHandoffAcknowledgeCommand(record)
-}
-
-func AcknowledgeIssueOpsHandoffContext(stateRoot string, req IssueOpsHandoffAcknowledgeRequest) (IssueOpsRecord, error) {
-	return issueops.AcknowledgeIssueOpsHandoffContext(stateRoot, req)
-}
-
-func CompleteIssueOpsHandoffWithProjection(ctx context.Context, stateRoot string, req IssueOpsHandoffCompleteRequest, client IssueOpsWorkerDoneProjectionClient) (IssueOpsRecord, error) {
-	return issueops.CompleteIssueOpsHandoffWithProjection(ctx, stateRoot, req, client)
-}
-
-func PreviewIssueOpsOwnershipCleanup(stateRoot string, req IssueOpsOwnershipCleanupPreviewRequest) (IssueOpsOwnershipCleanupPreview, error) {
-	return issueops.PreviewIssueOpsOwnershipCleanup(stateRoot, req)
-}
-
-func ApproveIssueOpsOwnershipCleanup(stateRoot string, req IssueOpsOwnershipCleanupApproveRequest) (IssueOpsRecord, error) {
-	return issueops.ApproveIssueOpsOwnershipCleanup(stateRoot, req)
-}
-
-func RecordIssueOpsOwnershipCleanup(ctx context.Context, stateRoot string, req IssueOpsOwnershipCleanupRecordRequest, client any) (IssueOpsRecord, error) {
-	return issueops.RecordIssueOpsOwnershipCleanup(ctx, stateRoot, req, client)
-}
-
-func RecoverIssueOpsHandoff(ctx context.Context, stateRoot string, req IssueOpsHandoffRecoverRequest, client any, clock IssueOpsHandoffPrepareClock) (IssueOpsHandoffRecoverResult, error) {
-	return issueops.RecoverIssueOpsHandoff(ctx, stateRoot, req, client, clock)
-}
-
-func RecordIssueOpsHandoffPublishReceipt(ctx context.Context, stateRoot string, req IssueOpsHandoffPublishRequest, reader IssueOpsHandoffPublicationReader, lease IssueOpsOrcaDispatchClient, clock IssueOpsHandoffPrepareClock) (IssueOpsRecord, error) {
-	return issueops.RecordIssueOpsHandoffPublishReceipt(ctx, stateRoot, req, reader, lease, clock)
-}
-
-func ValidateIssueOpsHandoffPublication(ctx context.Context, stateRoot string, record IssueOpsRecord, provider, head, base string, reader IssueOpsHandoffPublicationReader, lease IssueOpsOrcaDispatchClient) error {
-	return issueops.ValidateIssueOpsHandoffPublication(ctx, stateRoot, record, provider, head, base, reader, lease)
 }
 
 func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, error) {
@@ -504,29 +430,9 @@ func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req IssueOpsRemoteArtifa
 	return issueops.VerifyIssueOpsRemoteArtifact(stateRoot, id, req)
 }
 
-var ClaimIssueOpsRemoteCreate = issueops.ClaimIssueOpsRemoteCreate
-
-type IssueOpsRemoteCreateClaimRequest = issueops.IssueOpsRemoteCreateClaimRequest
-
-var ClearIssueOpsRemoteCreateClaimPreInvocation = issueops.ClearIssueOpsRemoteCreateClaimPreInvocation
-var MarkIssueOpsRemoteCreateUnknown = issueops.MarkIssueOpsRemoteCreateUnknown
-var FinalizeIssueOpsRemoteCreateClaim = issueops.FinalizeIssueOpsRemoteCreateClaim
-
-type IssueOpsRemotePullRequestCreateFunc = issueops.IssueOpsRemotePullRequestCreateFunc
-type IssueOpsRemoteCreateReconcileRequest = issueops.IssueOpsRemoteCreateReconcileRequest
-type IssueOpsRemoteCreateCandidate = issueops.IssueOpsRemoteCreateCandidate
-type IssueOpsRemoteCreateProbeResult = issueops.IssueOpsRemoteCreateProbeResult
-type IssueOpsRemoteCreateProbe = issueops.IssueOpsRemoteCreateProbe
-
-func CreateIssueOpsRemotePullRequest(ctx context.Context, stateRoot, id, provider string, request IssueProviderCreatePullRequestRequest, reader IssueOpsHandoffPublicationReader, lease IssueOpsOrcaDispatchClient, create IssueOpsRemotePullRequestCreateFunc) (IssueProviderCreatePullRequestResult, error) {
-	return issueops.CreateIssueOpsRemotePullRequest(ctx, stateRoot, id, provider, request, reader, lease, create)
+func VerifyIssueOpsRemoteArtifactWithActor(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+	return issueops.VerifyIssueOpsRemoteArtifactWithActor(stateRoot, id, req, actor)
 }
-
-func ReconcileIssueOpsRemoteCreate(ctx context.Context, stateRoot string, req IssueOpsRemoteCreateReconcileRequest, reader IssueOpsHandoffPublicationReader, lease IssueOpsOrcaDispatchClient, probe IssueOpsRemoteCreateProbe) (IssueOpsRecord, error) {
-	return issueops.ReconcileIssueOpsRemoteCreate(ctx, stateRoot, req, reader, lease, probe)
-}
-
-var ProjectIssueOpsRemoteCreateProbeResult = issueops.ProjectIssueOpsRemoteCreateProbeResult
 
 func ValidateIssueOpsRemoteArtifactVerification(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
 	return issueops.ValidateIssueOpsRemoteArtifactVerification(stateRoot, id, req)
@@ -598,25 +504,6 @@ func CloseIssueOpsChildren(stateRoot, id string, req IssueOpsCloseChildrenReques
 	return issueops.CloseIssueOpsChildren(stateRoot, id, req, provider)
 }
 
-func ForceReleaseIssueOps(stateRoot, id, reason string) (IssueOpsRecord, error) {
-	return issueops.ForceReleaseIssueOps(stateRoot, id, reason)
-}
-
-type ForceReleaseCASRequest = issueops.ForceReleaseCASRequest
-type ForceReleaseCASResult = issueops.ForceReleaseCASResult
-
-func ForceReleaseIssueOpsCAS(stateRoot, id, reason string, req ForceReleaseCASRequest) (ForceReleaseCASResult, error) {
-	return issueops.ForceReleaseIssueOpsCAS(stateRoot, id, reason, req)
-}
-
-func ScanStaleIssueOpsCycles(req IssueOpsStaleScanRequest) IssueOpsStaleScanResult {
-	return issueops.ScanStaleIssueOpsCycles(req)
-}
-
-func ForceDoneIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
-	return issueops.ForceDoneIssueOps(stateRoot, id)
-}
-
 func AddIssueOpsDecision(stateRoot, id string, req IssueOpsDecisionRecordRequest) (IssueOpsRecord, error) {
 	return issueops.AddIssueOpsDecision(stateRoot, id, req)
 }
@@ -650,13 +537,6 @@ type RoutingFidelityResult = issueops.RoutingFidelityResult
 // with real observed activation.
 func ScoreLiveRoutingFidelity(record IssueOpsRecord, expected []SkillRouting) RoutingFidelityResult {
 	return issueops.ScoreLiveRoutingFidelity(record, expected)
-}
-
-// AutoRecordSkillRouting best-effort records a skill activation against the
-// active session-bound cycle for repo (no-op when there is none). It is
-// fail-open and safe to call from non-blocking hook paths.
-func AutoRecordSkillRouting(repo, skill string) bool {
-	return issueops.AutoRecordSkillRouting(repo, skill)
 }
 
 func ActiveIssueOpsCycleForBranch(repo, branch string) (IssueOpsRecord, bool) {
@@ -761,69 +641,6 @@ func RenderIssueOpsRemoteLLMJudgePrompt(req IssueOpsRemoteLLMJudgeRequest) (stri
 
 func DecodeIssueOpsRemoteJudgeJSON(out []byte) (IssueOpsRemoteScoringResult, error) {
 	return issueops.DecodeIssueOpsRemoteJudgeJSON(out)
-}
-
-// Session binding for multi-session continuity.
-type SessionBinding = issueops.SessionBinding
-
-func BindIssueOpsSession(repo, cycleID, branch, expectedWorktree string) error {
-	return issueops.BindIssueOpsSession(repo, cycleID, branch, expectedWorktree)
-}
-
-func BindScopedIssueOpsSession(repo, cycleID, branch, expectedWorktree string) error {
-	return issueops.BindScopedIssueOpsSession(repo, cycleID, branch, expectedWorktree)
-}
-
-func BindIssueOpsSessionForCycle(repo, cycleID string) error {
-	return issueops.BindIssueOpsSessionForCycle(repo, cycleID)
-}
-
-func ReadIssueOpsSession(repo string) (SessionBinding, error) {
-	return issueops.ReadIssueOpsSession(repo)
-}
-
-func ReadScopedIssueOpsSession(repo, cycleID string) (SessionBinding, error) {
-	return issueops.ReadScopedIssueOpsSession(repo, cycleID)
-}
-
-func UnbindIssueOpsSession(repo string) error {
-	return issueops.UnbindIssueOpsSession(repo)
-}
-
-func UnbindScopedIssueOpsSessionForCycle(repo, cycleID string) error {
-	return issueops.UnbindScopedIssueOpsSessionForCycle(repo, cycleID)
-}
-
-func ListIssueOpsSessionBindings(repo string) ([]SessionBinding, error) {
-	return issueops.ListIssueOpsSessionBindings(repo)
-}
-
-func ActiveSessionCycleID(repo string) string {
-	return issueops.ActiveSessionCycleID(repo)
-}
-
-func ExpectedWorktreeFromSession(repo string, cycleWorktree func() string) string {
-	return issueops.ExpectedWorktreeFromSession(repo, cycleWorktree)
-}
-
-func ExpectedWorktreeEnvGuidance(worktree string) string {
-	return issueops.ExpectedWorktreeEnvGuidance(worktree)
-}
-
-// IssueOpsResume reads the session-to-cycle binding for repo and returns a
-// resume result with cycle details, readiness, or suggested cycles.
-type IssueOpsResumeResult = issueops.IssueOpsResumeResult
-
-func IssueOpsResume(repo string, ids ...string) IssueOpsResumeResult {
-	return issueops.IssueOpsResume(repo, ids...)
-}
-
-func RecordIssueOpsHeartbeat(stateRoot, id string) (IssueOpsRecord, error) {
-	return issueops.RecordIssueOpsHeartbeat(stateRoot, id)
-}
-
-func RecordIssueOpsHeartbeatWithRequest(stateRoot string, req IssueOpsHeartbeatRequest) (IssueOpsRecord, error) {
-	return issueops.RecordIssueOpsHeartbeatWithRequest(stateRoot, req)
 }
 
 func IssueOpsLastActiveAt(record IssueOpsRecord) string {

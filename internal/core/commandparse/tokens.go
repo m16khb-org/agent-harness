@@ -160,6 +160,48 @@ func HasUnquotedControlOperator(command string) bool {
 	return false
 }
 
+// HasUnquotedBackgroundOperator reports a standalone shell ampersand that can
+// outlive the supervising session. Logical && and redirection forms such as
+// 2>&1 and &>file remain foreground syntax for this check.
+func HasUnquotedBackgroundOperator(command string) bool {
+	runes := []rune(command)
+	var quote rune
+	escaped := false
+	for i := 0; i < len(runes); i++ {
+		r := runes[i]
+		if escaped {
+			escaped = false
+			continue
+		}
+		if r == '\\' && quote != '\'' {
+			escaped = true
+			continue
+		}
+		if quote != 0 {
+			if r == quote {
+				quote = 0
+			}
+			continue
+		}
+		if r == '\'' || r == '"' {
+			quote = r
+			continue
+		}
+		if r != '&' {
+			continue
+		}
+		if i+1 < len(runes) && runes[i+1] == '&' {
+			i++
+			continue
+		}
+		if i+1 < len(runes) && runes[i+1] == '>' || i > 0 && runes[i-1] == '>' {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
 // HasActiveCommandSubstitution reports backtick, $(...), and unquoted process
 // substitution that a shell would execute. Single-quoted and explicitly
 // escaped forms are literal. Double quotes retain command substitution but

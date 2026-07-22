@@ -147,11 +147,11 @@ func TestConformanceLivePassesFullyParsedFlagsToInjectedProcessAfterOptIn(t *tes
 		},
 	})
 	defer restore()
-	args := []string{"--hosts", "codex,claude", "--model", "codex=default", "--model", "claude=test", "--gjc-auth-env", "GJC_TOKEN", "--profile", "context-pressure", "--only", "codex:empty_object", "--resume-report", priorPath, "--target-completed", "10", "--max-attempts-per-case", "2"}
+	args := []string{"--hosts", "codex,claude", "--model", "codex=default", "--model", "claude=test", "--profile", "context-pressure", "--only", "codex:empty_object", "--resume-report", priorPath, "--target-completed", "10", "--max-attempts-per-case", "2"}
 	if err := runConformanceLive(args); err != nil {
 		t.Fatal(err)
 	}
-	want := LiveRequest{Hosts: []string{"codex", "claude"}, Models: []string{"codex=default", "claude=test"}, GJCAuthEnv: []string{"GJC_TOKEN"}, Profile: "context-pressure", Only: "codex:empty_object", ResumeReport: priorPath, TargetCompleted: 10, MaxAttemptsPerCase: 2, EvidenceDir: ".agent-harness/evidence/tool-conformance", Previous: &prior}
+	want := LiveRequest{Hosts: []string{"codex", "claude"}, Models: []string{"codex=default", "claude=test"}, Profile: "context-pressure", Only: "codex:empty_object", ResumeReport: priorPath, TargetCompleted: 10, MaxAttemptsPerCase: 2, EvidenceDir: ".agent-harness/evidence/tool-conformance", Previous: &prior}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got=%+v want=%+v", got, want)
 	}

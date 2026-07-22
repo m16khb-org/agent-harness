@@ -1,6 +1,7 @@
 package hookcli
 
 import (
+	"encoding/json"
 	"flag"
 	"io"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	hookadapter "agent-harness/internal/adapter/hook"
 	"agent-harness/internal/core"
+	issueopscore "agent-harness/internal/core/issueops"
 )
 
 func runHookPreToolUse(args []string) error {
@@ -40,25 +42,27 @@ func runHookPreToolUse(args []string) error {
 	if nativeHost == "" {
 		nativeHost = string(hookadapter.HostCodex)
 	}
+	processAncestry, _ := issueopscore.ObserveNativeProcessAncestryV1(os.Getpid())
 	result := core.BuildLifecyclePreToolUseDecision(core.HookToolUseLifecycleRequest{
-		Repo:                 parsedRepo,
-		CWD:                  hookinput.CWDFromHookInput(stdin),
-		Host:                 nativeHost,
-		SessionID:            hookinput.SessionIDFromHookInput(stdin),
-		AgentID:              hookinput.AgentIDFromHookInput(stdin),
-		Tool:                 hookinput.ToolNameFromHookInput(stdin),
-		ToolInput:            hookinput.ToolInputFromHookInput(stdin),
-		Paths:                hookinput.PathsFromHookInput(stdin),
-		Command:              hookinput.CommandFromHookInput(stdin),
-		ProjectPath:          hookinput.ProjectPathFromHookInput(stdin),
-		Source:               "pre-tool-use",
-		EnforceWorktree:      *enforceWorktree,
-		EnforceKoreanRemote:  *enforceKoreanRemote,
-		EnforceVCSLinking:    *enforceVCSLinking,
-		EnforceGitOpsKubectl: *enforceGitOpsKubectl,
-		EnforceStagedChecks:  *enforceStagedChecks,
-		ExpectedWorktree:     resolveExpectedWorktree(*expectedWorktree, parsedRepo),
-		SourceCheckout:       *sourceCheckout,
+		Repo:                  parsedRepo,
+		CWD:                   hookinput.CWDFromHookInput(stdin),
+		Host:                  nativeHost,
+		SessionID:             hookinput.SessionIDFromHookInput(stdin),
+		AgentID:               hookinput.AgentIDFromHookInput(stdin),
+		Tool:                  hookinput.ToolNameFromHookInput(stdin),
+		ToolInput:             hookinput.ToolInputFromHookInput(stdin),
+		Paths:                 hookinput.PathsFromHookInput(stdin),
+		Command:               hookinput.CommandFromHookInput(stdin),
+		ProjectPath:           hookinput.ProjectPathFromHookInput(stdin),
+		NativeProcessAncestry: processAncestry,
+		Source:                "pre-tool-use",
+		EnforceWorktree:       *enforceWorktree,
+		EnforceKoreanRemote:   *enforceKoreanRemote,
+		EnforceVCSLinking:     *enforceVCSLinking,
+		EnforceGitOpsKubectl:  *enforceGitOpsKubectl,
+		EnforceStagedChecks:   *enforceStagedChecks,
+		ExpectedWorktree:      resolveExpectedWorktree(*expectedWorktree, parsedRepo),
+		SourceCheckout:        *sourceCheckout,
 	})
 	if payloadHost != "" && flagHost != "" && !strings.EqualFold(payloadHost, flagHost) {
 		result.Decision = "block"
@@ -77,11 +81,22 @@ func runHookPreToolUse(args []string) error {
 			return printJSON(ho.FormatAsk(result.Reason))
 		}
 		markHookMetricBlocked()
-		return printJSON(ho.FormatBlock(result.Reason))
+		return printJSON(ho.FormatBlock(hookDenyReason(result)))
 	}
 	// PreToolUse is on the critical path before every tool call. Keep the shared
 	// harness hook cheap and non-blocking by default.
 	return printJSON(ho.FormatNoop())
+}
+
+func hookDenyReason(result core.HookPreToolUseDecisionResult) string {
+	if result.Deny == nil {
+		return result.Reason
+	}
+	encoded, err := json.Marshal(result.Deny)
+	if err != nil {
+		return result.Reason
+	}
+	return string(encoded)
 }
 
 func firstNonEmptyHookValue(values ...string) string {

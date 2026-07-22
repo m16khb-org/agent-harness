@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/core/issueops"
+	issueopsmodel "agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/workpool"
 )
 
@@ -61,9 +62,7 @@ func TestOrchestrationReminderIgnoresDroppedChild(t *testing.T) {
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	})
-	if err := issueops.BindIssueOpsSessionForCycle(repo, parent.ID); err != nil {
-		t.Fatalf("bind issueops session: %v", err)
-	}
+	activateOrchestrationExecutionForTest(t, parent.ID, repo)
 
 	if got := StopOrchestrationRelayFacts(repo); got != "" {
 		t.Fatalf("dropped child must not keep Stop relay blocked, got %q", got)
@@ -98,9 +97,7 @@ func TestOrchestrationReminderIgnoresDoneBoundCycle(t *testing.T) {
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	})
-	if err := issueops.BindIssueOpsSessionForCycle(repo, parent.ID); err != nil {
-		t.Fatalf("bind issueops session: %v", err)
-	}
+	activateOrchestrationExecutionForTest(t, parent.ID, repo)
 
 	if got := StopOrchestrationRelayFacts(repo); got != "" {
 		t.Fatalf("done bound cycle must not keep Stop relay blocked, got %q", got)
@@ -143,9 +140,7 @@ func TestOrchestrationRelayBoundCountsNonDroppedChildren(t *testing.T) {
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	})
-	if err := issueops.BindIssueOpsSessionForCycle(repo, parent.ID); err != nil {
-		t.Fatalf("bind issueops session: %v", err)
-	}
+	activateOrchestrationExecutionForTest(t, parent.ID, repo)
 
 	got := StopOrchestrationRelayFacts(repo)
 	if !strings.Contains(got, "child_incomplete:"+activeID) {
@@ -218,9 +213,7 @@ func seedOrchestrationReminderFixture(t *testing.T) (string, issueops.IssueOpsRe
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	})
-	if err := issueops.BindIssueOpsSessionForCycle(repo, parent.ID); err != nil {
-		t.Fatalf("bind issueops session: %v", err)
-	}
+	activateOrchestrationExecutionForTest(t, parent.ID, repo)
 	seedPoolManifestAndCorruptTaskForReminderTest(t, repo, parent.ID)
 	return repo, parent
 }
@@ -230,6 +223,31 @@ func writeIssueOpsRecordForReminderTest(t *testing.T, record issueops.IssueOpsRe
 	if _, err := issueops.WriteIssueOps(issueops.IssueOpsStateRoot(), record); err != nil {
 		t.Fatalf("write issueops record %s: %v", record.ID, err)
 	}
+}
+
+func activateOrchestrationExecutionForTest(t *testing.T, id, repo string) {
+	t.Helper()
+	record, err := issueops.ReadIssueOps(issueops.IssueOpsStateRoot(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees", record.Branch)
+	record.WorktreePath = root
+	record.Execution = &issueopsmodel.ExecutionV1{
+		Mode: issueopsmodel.ExecutionModeDirect,
+		Workspace: issueopsmodel.WorkspaceV1{
+			SourceRoot: repo, Root: root, Branch: record.Branch,
+			BaseHead: "0123456789012345678901234567890123456789", Driver: "git", LinkedAt: "2026-07-22T00:00:00Z",
+		},
+		Lease: issueopsmodel.WriteLeaseV1{
+			Generation: 1, Status: issueopsmodel.LeaseStatusActive, ClaimedAt: "2026-07-22T00:00:00Z",
+			Holder: &issueopsmodel.NativeActorV1{
+				Host: "codex", SessionID: "reminder-session",
+				SessionProcess: &issueopsmodel.NativeProcessReceiptV1{PID: 1, StartedAt: "2026-07-22T00:00:00Z", Executable: "/usr/bin/codex"},
+			},
+		},
+	}
+	writeIssueOpsRecordForReminderTest(t, record)
 }
 
 func seedPoolManifestAndCorruptTaskForReminderTest(t *testing.T, repo, parentID string) {

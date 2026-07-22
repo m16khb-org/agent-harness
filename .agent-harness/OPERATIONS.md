@@ -47,7 +47,7 @@ agent-harness docs --json
 agent-harness doctor --repo . --preserve-cycle EXACT_CYCLE_ID --preserve-terminal EXACT_HANDLE --json
 ```
 
-- An active owner cycle is live only with complete fenced identity/resources and a heartbeat no older than 15 minutes. The threshold is diagnostic: heartbeat age alone never authorizes interrupt, delete, or IssueOps release. `issueops cleanup stale --apply` still requires its existing confirmed worktree/remote signal and locked fresh re-probe.
+- An active IssueOps execution is live only with a complete generation, native process receipt, canonical worktree, and mode-specific resource identity. Process absence alone never authorizes interrupt, deletion, or lease replacement; use the previewed generation-CAS replacement sequence and prove quiescence.
 - Preserve flags are repeatable exact values for one doctor invocation. They do not create persistent exceptions or cure incomplete/duplicate identity.
 - Orca remains optional. Absence is healthy only when no durable cycle claims Orca resources; otherwise inventory is unknown and doctor fails closed.
 - The stability audit builds the binary, then delegates operational judgement to `doctor`. `--preserve-terminal EXACT_HANDLE` is a singular explicit assertion and takes precedence over the inherited environment; only when it is absent does a non-empty `ORCA_TERMINAL_HANDLE` remain the fallback. Sealed reconciliation passes its resolved `manifest.current_terminal.handle` explicitly and does not overwrite the environment variable.
@@ -59,11 +59,9 @@ The approved one-time full reconciliation uses an external mode-`0700` bundle at
 ```bash
 agent-harness contract conformance baseline --json
 HARNESS_TOOL_CONFORMANCE_LIVE=1 agent-harness contract conformance live \
-  --hosts codex,claude,gjc \
+  --hosts codex,claude \
   --model codex=default \
   --model claude=default \
-  --model gjc=PROVIDER/MODEL \
-  --gjc-auth-env PROVIDER_API_KEY \
   --profile clean \
   --target-completed 1 \
   --max-attempts-per-case 3 \
@@ -72,7 +70,7 @@ HARNESS_TOOL_CONFORMANCE_LIVE=1 agent-harness contract conformance live \
 agent-harness contract conformance replay --fixture PATH --json
 ```
 
-`baseline`과 `replay`는 deterministic local gates다. `live`는 외부 model 비용 경계이며 opt-in env가 없으면 host process를 시작하지 않는다. Codex는 ephemeral/read-only/ignore-user-config 실행, Claude는 strict temp MCP config와 settings-source isolation, GJC는 temp project/plugin/`GJC_CODING_AGENT_DIR`와 명시한 auth env만 사용한다. 사용자 MCP 등록, GJC registry, credential DB는 수정하거나 복사하지 않는다.
+`baseline`과 `replay`는 deterministic local gates다. `live`는 외부 model 비용 경계이며 opt-in env가 없으면 host process를 시작하지 않는다. Codex는 ephemeral/read-only/ignore-user-config 실행, Claude는 strict temp MCP config와 settings-source isolation을 사용한다. 사용자 MCP 등록이나 credential DB는 수정하거나 복사하지 않는다.
 
 Initial live report가 `defer_hardening`이면 현재 preregistered matrix에서 confirmed drift가 없다는 뜻이며 production contract를 변경하지 않는다. `needs_reproduction`이면 report가 지정한 한 host+fixture만 별도 10/20-completed batch로 재현한다. `authorize_hardening`은 같은 normalized signature가 두 번 이상 관측된 경우에만 가능하다. 상세 denominator와 fixture promotion 규칙은 `.agent-harness/TESTING.md`를 따른다.
 
@@ -87,11 +85,11 @@ The sqlite-backed state stores accumulate WAL frames and sidecar files that need
 # Checkpoint WAL and repair sidecar permissions on all known store roots
 agent-harness state maintain --json
 
-# Clean up orphan session bindings (cycle done or absent) and stale cycles
-agent-harness issueops cleanup stale --repo /path/to/repo --apply --prune-done 720h
 ```
 
-`state maintain` is read-only (checkpoint + chmod); it does not delete rows. Stale binding cleanup is destructive and gated behind `--apply`; without it, stale bindings are reported but not deleted.
+`state maintain` is read-only (checkpoint + chmod); it does not delete rows.
+IssueOps v1 lease recovery is not part of store maintenance and never happens
+from a time threshold.
 
 ## Kubectl Live-Access Approval
 
@@ -121,21 +119,42 @@ Use `.agent-harness/operations/release-reproducibility.md` before deciding Homeb
 - Default install writes only user-level host configuration. Target repos get files only through explicit project bootstrap or project-local opt-in.
 - Host adapters are thin wrappers around the same CLI/core behavior. They must not duplicate policy, schema, or state semantics.
 - Hooks provide routing, lifecycle state, and bounded reminders only. They must not create issues/PRs, run tests, edit shared docs, or perform long network/file reads.
-- IssueOps implementation must pass durable `compatibility_review` and `execution_decision` gates. Hooks do not decide backward compatibility, side effects, auto-proceed, human gates, or sub-agent usage; `issueops compatibility review` / MCP `issueops_record_compatibility_review` records the compatibility and side-effect judgement, then `issueops execution decide` / MCP `issueops_record_execution_decision` records the main-agent execution judgement before `implement`.
+- IssueOps implementation must pass durable design, compatibility, devil's-advocate, and execution v1 gates. Hooks do not decide compatibility, side effects, sub-agent usage, or lease ownership. `issueops execution prepare/status/claim/release/replace/reconcile/complete` and MCP `issueops_execution` are the single execution contract.
 - Native install/update paths are standalone. External tools are neither installed nor required by `agent-harness`; use their own setup paths when a separate workflow needs them.
 - Worker functionality remains policy-gated and state-first until write/network/background execution has explicit audit, timeout, cancellation, and redaction coverage.
 
-## Optional Orca supervised execution
+## Optional Orca execution v1
 
-Orca is user-installed and optional. Preview with `agent-harness issueops worktree prepare --id ID --orchestrator auto --json`; add `--confirm` only after reviewing the resolved mode and path. `--orchestrator orca` requires readiness and `--orchestrator inline` requires an explicit user or documented recovery reason. An existing raw Git worktree is rejected; remove or re-create it through the current Orca-managed preparation flow instead of adopting it through a compatibility command.
+Orca is user-installed and optional. Preview
+`agent-harness issueops execution prepare --id ID --mode auto ... --json`,
+review the mode, branch, base SHA, canonical worktree, and owner model, then
+repeat the identical request with `--confirm`. `auto` selects Orca only when
+readiness succeeds before mutation; otherwise it selects direct. The only
+first-party owner hosts are Codex and Claude.
 
-For a resolved Orca path, follow `skills/issueops/references/orca-handoff.md`. The source session prepares the workspace and plan/gates, then previews and confirms `handoff start`. The fresh owner claims the exact cycle, acknowledges context, implements, verifies, publishes, creates the PR/MR, and calls `handoff complete`. The single flow then waits at the human cleanup boundary. Exact lifecycle ID routing wins before source-wide inference, including for a prep-only linked worker, so unrelated active cycles never capture its IssueOps status or gate mutation. A literal source-root `issueops start --repo <exact-source>` always remains available for a new cycle.
+For Orca mode, follow `skills/issueops/references/execution-v1.md`. Preparation
+seals the remote issue body, context packet, fully rendered owner prompt, and
+private claim-token file before launch. The fresh owner verifies both SHA-256
+digests and runs the exact `issueops execution claim` command. Only the active
+generation holder implements, verifies, creates the draft PR/MR, and completes
+from the canonical worktree. The source main worktree remains available for
+unrelated cycles.
 
-Every external create/dispatch boundary re-attests the complete exact-worktree terminal inventory and server-filtered dispatched tasks. Ambiguity persists `recovery_required`; inspect `issueops status --json` and reconcile explicitly rather than repeating an external mutation or switching modes. A pre-dispatch worktree-create journal is recovered only with `issueops worktree reconcile --id ID --workspace-epoch EPOCH --host HOST --session-id SESSION --source-cwd PATH`; the sealed source session and exactly one marker candidate must match. Post-dispatch recovery remains under `issueops handoff recover`. Runtime recovery requires exact persisted worktree, terminal, task, and dispatch identities plus a clean exact branch/HEAD. A dynamic title, stale handshake, missing/duplicate candidate, conflicting identity, connected worker, or uncommitted WIP is not replacement authority.
+Every external mutation stores intent first. Timeout or ambiguous output is not
+absence: inspect `issueops execution status` and use preview/confirm
+`issueops execution reconcile`; never repeat create or switch to direct after a
+possible Orca mutation. Failed-holder recovery uses the ordered generation-CAS
+replacement sequence and proves the prior process/resource is quiescent before
+creating a new claimable generation.
 
-Completion enters `cleanup_pending_human_decision`. After a human merges the PR/MR, any fresh authenticated exact-source session may preview the inventory and, after explicit human approval, record the ordered cleanup receipts. The completed owner cannot approve cleanup. Stale scan, elapsed time, Stop hooks, session binding, and the original source session's absence never grant cleanup authority.
-
-Operational release evidence includes fake-runner recovery matrices, installed Codex/Claude/GJC ownership-block smokes, and one disposable live Orca cycle with per-resource cleanup receipts. Native installation and `self-verify` do not require Orca availability.
+`issueops execution complete` requires phase `pr`, the exact active generation,
+final HEAD, committed Turing report, verification evidence, and the verified
+durable remote artifact URL. It records `done` and releases the lease
+atomically. It never merges or deletes a worktree, branch, terminal, or remote
+resource. Operational release evidence includes fake-provider recovery
+matrices, installed Codex/Claude hook smokes, and disposable live Orca
+ready/absent scenarios. Native installation and `self-verify` do not require
+Orca availability.
 
 ## Quick Smoke
 
@@ -149,24 +168,24 @@ agent-harness self-verify --seed=100 --target-score=95 --llm-eval=false --json
 
 For deeper verification, use `.agent-harness/operations/verification.md` and `.agent-harness/TESTING.md`.
 
-## Orca ownership handoff
+## Orca owner sequence
 
-Use this exact order for a new ownership transfer:
+Use this order:
 
 ```text
-worktree prepare
--> plan and gates
--> plan-only commit
--> handoff start preview/confirm
--> owner claim
--> acknowledge-context
--> implement through PR/MR
--> handoff complete
--> human cleanup choice
+provider branch + base SHA
+-> execution prepare preview/confirm
+-> sealed packet/prompt + native owner launch
+-> execution claim with token file and both digests
+-> plan/TDD/verification in the canonical worktree
+-> generation-fenced draft PR/MR + readback
+-> execution complete
+-> separate human merge and cleanup choice
 ```
 
-Workspace provisioning before ownership transfer is deliberate. At every arrow, the source main worktree remains available before, during, and after handoff for unrelated work. “Disengage” means the source does not mutate or steer this exact cycle; it never makes the source checkout read-only. The fence is the canonical worker root, exact cycle ID, native owner, or persisted Orca resource, never a source CWD fallback or generic session binding.
-
-`handoff start` seals the owner launch profile into the context hash and durable record before terminal creation. Codex owners run `gpt-5.6-terra` with `model_reasoning_effort="high"`; Claude owners pass the `opus` alias, which the installed Claude Code resolves to `claude-opus-4-8`. GJC keeps its host default. Orca must expose `terminal create --command`; the older `--agent` launch shape cannot carry the sealed model contract and is rejected.
-
-The worker owner runs orientation and has post-handoff authority to publish and complete. `handoff complete` ends at `cleanup_pending_human_decision`; no automatic cleanup occurs. Use `handoff cleanup-preview` from the exact source root, present the three choices, then use `cleanup-approve --confirm` and ordered `cleanup-record` receipts only after the human directs it.
+Preparation seals the caller-selected owner host, model, and effort before
+terminal creation. Orca must expose `terminal create --command`; a launch shape
+that cannot carry the exact model contract is rejected. The write fence is the
+exact lifecycle ID, generation, native process receipt, canonical worktree, and
+persisted Orca identity. The source main worktree remains available for
+unrelated work throughout the sequence.

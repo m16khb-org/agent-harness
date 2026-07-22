@@ -43,11 +43,11 @@ func ShellCommandGuardPaths(repo, command string) []string {
 			}
 		case "go":
 			for j := i + 1; j < len(tokens); j++ {
-				if tokens[j] == "-o" && j+1 < len(tokens) {
+				if goOutputPathFlag(tokens[j]) && j+1 < len(tokens) {
 					addGuardPath(&out, seen, resolveShellGuardPath(currentDir, tokens[j+1]))
 					j++
-				} else if strings.HasPrefix(tokens[j], "-o=") {
-					addGuardPath(&out, seen, resolveShellGuardPath(currentDir, strings.TrimPrefix(tokens[j], "-o=")))
+				} else if value, ok := goInlineOutputPath(tokens[j]); ok {
+					addGuardPath(&out, seen, resolveShellGuardPath(currentDir, value))
 				}
 			}
 		case "cp", "mv", "touch", "rm", "mkdir", "install", "truncate", "rsync":
@@ -127,7 +127,7 @@ func addConservativePathOperand(out *[]string, seen map[string]bool, currentDir,
 			return
 		}
 	}
-	for _, prefix := range []string{"--prefix=", "--directory=", "--chdir=", "--output=", "-C=", "-o="} {
+	for _, prefix := range []string{"--prefix=", "--directory=", "--chdir=", "--output=", "--target-directory=", "--destination-directory=", "-C=", "-o="} {
 		if strings.HasPrefix(value, prefix) {
 			addGuardPath(out, seen, resolveShellGuardPath(currentDir, strings.TrimPrefix(value, prefix)))
 			return
@@ -139,6 +139,24 @@ func addConservativePathOperand(out *[]string, seen map[string]bool, currentDir,
 	if filepath.IsAbs(value) || value == "." || value == ".." || value == ".git" || strings.HasPrefix(value, "."+string(filepath.Separator)) || strings.HasPrefix(value, ".."+string(filepath.Separator)) || strings.Contains(value, string(filepath.Separator)) {
 		addGuardPath(out, seen, resolveShellGuardPath(currentDir, value))
 	}
+}
+
+func goOutputPathFlag(value string) bool {
+	switch value {
+	case "-o", "-coverprofile", "-trace", "-cpuprofile", "-memprofile", "-blockprofile", "-mutexprofile", "-outputdir":
+		return true
+	default:
+		return false
+	}
+}
+
+func goInlineOutputPath(value string) (string, bool) {
+	for _, flag := range []string{"-o", "-coverprofile", "-trace", "-cpuprofile", "-memprofile", "-blockprofile", "-mutexprofile", "-outputdir"} {
+		if strings.HasPrefix(value, flag+"=") {
+			return strings.TrimPrefix(value, flag+"="), true
+		}
+	}
+	return "", false
 }
 
 func addNonFlagOperands(out *[]string, seen map[string]bool, currentDir string, tokens []string) {

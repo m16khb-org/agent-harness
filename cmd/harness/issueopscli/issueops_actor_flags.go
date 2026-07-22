@@ -2,8 +2,10 @@ package issueopscli
 
 import (
 	"flag"
+	"os"
 
 	"agent-harness/internal/core"
+	issueopscore "agent-harness/internal/core/issueops"
 )
 
 type issueOpsActorFlags struct {
@@ -21,5 +23,9 @@ func addIssueOpsActorFlags(fs *flag.FlagSet) issueOpsActorFlags {
 }
 
 func (flags issueOpsActorFlags) actor() core.IssueOpsActor {
-	return core.IssueOpsActor{Host: *flags.host, SessionID: *flags.sessionID, AgentID: *flags.agentID, CWD: *flags.cwd}
+	ancestry, _ := issueopscore.ObserveNativeProcessAncestryV1(os.Getpid())
+	return core.IssueOpsActor{
+		Host: *flags.host, SessionID: *flags.sessionID, AgentID: *flags.agentID, CWD: *flags.cwd,
+		NativeProcessAncestry: ancestry,
+	}
 }

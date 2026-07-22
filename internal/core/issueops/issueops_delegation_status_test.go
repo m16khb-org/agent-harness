@@ -8,7 +8,7 @@ import (
 func TestIssueOpsChildStatusAggregatesAndRepairs(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	first, err := StartIssueOpsChild(stateRoot, IssueOpsChildStartRequest{
+	first, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-status-a",
 		Title:              "status child a",
@@ -18,7 +18,7 @@ func TestIssueOpsChildStatusAggregatesAndRepairs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := StartIssueOpsChild(stateRoot, IssueOpsChildStartRequest{
+	second, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-status-b",
 		Title:              "status child b",
@@ -57,7 +57,7 @@ func TestIssueOpsChildStatusAggregatesAndRepairs(t *testing.T) {
 		t.Fatalf("repair=false should not mutate parent index, got %#v", status)
 	}
 
-	status, err = IssueOpsChildStatus(stateRoot, parent.ID, true)
+	status, err = IssueOpsChildStatusWithActor(stateRoot, parent.ID, true, issueOpsActorForTest(parent.WorktreePath))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestIssueOpsChildStatusAggregatesAndRepairs(t *testing.T) {
 func TestAcceptIssueOpsChildRequiresDonePhaseAndEvidence(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	started, err := StartIssueOpsChild(stateRoot, IssueOpsChildStartRequest{
+	started, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-accept",
 		Title:              "accept child",
@@ -86,17 +86,16 @@ func TestAcceptIssueOpsChildRequiresDonePhaseAndEvidence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := AcceptIssueOpsChild(stateRoot, parent.ID, started.Child.ID, []string{"tests passed"}); err == nil || !strings.Contains(err.Error(), "child_not_done") {
+	if _, err := acceptIssueOpsChildForTest(stateRoot, parent, started.Child.ID, []string{"tests passed"}); err == nil || !strings.Contains(err.Error(), "child_not_done") {
 		t.Fatalf("accept should refuse non-done child, got %v", err)
 	}
 	child := started.Child
 	child.Phase = IssueOpsPhaseDone
-	child.CycleState = IssueOpsCycleClosed
 	writeIssueOpsRecordForDelegationTest(t, stateRoot, child)
-	if _, err := AcceptIssueOpsChild(stateRoot, parent.ID, child.ID, nil); err == nil || !strings.Contains(err.Error(), "validation_evidence") {
+	if _, err := acceptIssueOpsChildForTest(stateRoot, parent, child.ID, nil); err == nil || !strings.Contains(err.Error(), "validation_evidence") {
 		t.Fatalf("accept should require evidence, got %v", err)
 	}
-	result, err := AcceptIssueOpsChild(stateRoot, parent.ID, child.ID, []string{"parent verified merged child diff"})
+	result, err := acceptIssueOpsChildForTest(stateRoot, parent, child.ID, []string{"parent verified merged child diff"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +115,7 @@ func TestAcceptIssueOpsChildRequiresDonePhaseAndEvidence(t *testing.T) {
 func TestRejectIssueOpsChildRecordsVerdictOnValidReason(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	started, err := StartIssueOpsChild(stateRoot, IssueOpsChildStartRequest{
+	started, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-reject",
 		Title:              "reject child",
@@ -126,10 +125,10 @@ func TestRejectIssueOpsChildRecordsVerdictOnValidReason(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := RejectIssueOpsChild(stateRoot, parent.ID, started.Child.ID, "too short", []string{"needs redo"}); err == nil || !strings.Contains(err.Error(), "reason") {
+	if _, err := rejectIssueOpsChildForTest(stateRoot, parent, started.Child.ID, "too short", []string{"needs redo"}); err == nil || !strings.Contains(err.Error(), "reason") {
 		t.Fatalf("reject should require a reason with at least 10 chars, got %v", err)
 	}
-	result, err := RejectIssueOpsChild(stateRoot, parent.ID, started.Child.ID, "missing required integration tests", []string{"unit tests absent"})
+	result, err := rejectIssueOpsChildForTest(stateRoot, parent, started.Child.ID, "missing required integration tests", []string{"unit tests absent"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +140,7 @@ func TestRejectIssueOpsChildRecordsVerdictOnValidReason(t *testing.T) {
 func TestDropIssueOpsChildRecordsAuditTrail(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	started, err := StartIssueOpsChild(stateRoot, IssueOpsChildStartRequest{
+	started, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-drop",
 		Title:              "drop child",
@@ -151,10 +150,10 @@ func TestDropIssueOpsChildRecordsAuditTrail(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := DropIssueOpsChild(stateRoot, parent.ID, started.Child.ID, "too short"); err == nil || !strings.Contains(err.Error(), "reason") {
+	if _, err := dropIssueOpsChildForTest(stateRoot, parent, started.Child.ID, "too short"); err == nil || !strings.Contains(err.Error(), "reason") {
 		t.Fatalf("drop should require a reason with at least 10 chars, got %v", err)
 	}
-	result, err := DropIssueOpsChild(stateRoot, parent.ID, started.Child.ID, "scope intentionally removed from parent plan")
+	result, err := dropIssueOpsChildForTest(stateRoot, parent, started.Child.ID, "scope intentionally removed from parent plan")
 	if err != nil {
 		t.Fatal(err)
 	}

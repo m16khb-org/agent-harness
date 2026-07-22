@@ -1,0 +1,15 @@
+## IssueOps v1 Owner Report
+- Status: completed | blocked
+- Lifecycle: io-69
+- Mode/host/model: orca / codex / gpt-5.6-sol (high)
+- Worktree/branch/final HEAD: <exact values>
+- Lease generation/completion: <generation + receipt or blocker>
+- Issue/packet digests: <verified | drift, 원문 secret 없음>
+- Commits: <ordered SHA + subject>
+- Changed files: <exact paths>
+- Acceptance evidence: <AC-ID → test/command/result mapping>
+- Verification: <every command + PASS/FAIL>
+- AI-slop clean: <removed duplication/legacy/noise or none>
+- Draft PR/MR: <URL or none>
+- Deviations: <issue-vs-code mismatch with file:line evidence or none>
+- Blockers: <exact state/error/next command or none>

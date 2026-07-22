@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/core"
 )
 
 func TestRunIssueOpsLifecycle(t *testing.T) {
@@ -105,51 +107,27 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	if compatibilityRecord["phase"] != "compatibility-review" {
 		t.Fatalf("compatibility review should move to compatibility-review phase: %#v", compatibilityRecord)
 	}
-	decision := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{
-			"execution", "decide",
-			"--id", id,
-			"--auto", "implementation may proceed after linked worktree readiness is durable",
-			"--hook-block", "hooks do not prepare worktrees, create remote artifacts, or decide sub-agent usage",
-			"--human-gate", "ask before destructive cleanup or unclear product behavior",
-			"--subagent-use", "none",
-			"--subagent-rationale", "main agent owns this focused lifecycle test implementation",
-			"--json",
-		})
-	})
-	var decisionRecord map[string]any
-	if err := json.Unmarshal([]byte(decision), &decisionRecord); err != nil {
-		t.Fatalf("execution decision should return JSON: %v\n%s", err, decision)
-	}
-	if _, ok := decisionRecord["execution_decision"].(map[string]any); !ok {
-		t.Fatalf("execution decision should be persisted before prepare-tools: %#v", decisionRecord)
-	}
 	captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"devils-advocate", "review", "--id", id, "--verdict", "pass", "--json"})
 	})
-	preparedTools := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"worktree", "prepare-tools", "--id", id, "--json"})
-	})
-	var tools map[string]any
-	if err := json.Unmarshal([]byte(preparedTools), &tools); err != nil {
-		t.Fatalf("worktree prepare-tools should return JSON: %v\n%s", err, preparedTools)
+	current, err := core.ReadIssueOps(core.IssueOpsStateRoot(), id)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if tools["ok"] != true || tools["worktree_path"] != worktreePath {
-		t.Fatalf("worktree prepare-tools should prepare the linked worktree: %#v", tools)
-	}
+	_, actor := seedIssueOpsCLIExecutionV1(t, current)
 	afterPrepare := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"status", "--id", id, "--json"})
+		return runIssueOps(withIssueOpsCLIActor([]string{"phase", "--id", id, "--to", "implement", "--json"}, actor))
 	})
 	var preparedRecord map[string]any
 	if err := json.Unmarshal([]byte(afterPrepare), &preparedRecord); err != nil {
-		t.Fatalf("status after prepare-tools should return JSON: %v\n%s", err, afterPrepare)
+		t.Fatalf("implement phase should return JSON: %v\n%s", err, afterPrepare)
 	}
 	if preparedRecord["phase"] != "implement" {
-		t.Fatalf("prepare-tools should move to implement phase: %#v", preparedRecord)
+		t.Fatalf("active direct execution should permit implement phase: %#v", preparedRecord)
 	}
 
 	child := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"link-child", "--id", id, "--child-url", "https://github.com/example/repo/issues/2", "--title", "write child graph tests", "--json"})
+		return runIssueOps(withIssueOpsCLIActor([]string{"link-child", "--id", id, "--child-url", "https://github.com/example/repo/issues/2", "--title", "write child graph tests", "--json"}, actor))
 	})
 	var childRecord map[string]any
 	if err := json.Unmarshal([]byte(child), &childRecord); err != nil {
@@ -165,7 +143,7 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	}
 
 	feedback := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"feedback", "add", "--id", id, "--source", "user", "--body", "tighten acceptance criteria", "--json"})
+		return runIssueOps(withIssueOpsCLIActor([]string{"feedback", "add", "--id", id, "--source", "user", "--body", "tighten acceptance criteria", "--json"}, actor))
 	})
 	var feedbackRecord map[string]any
 	if err := json.Unmarshal([]byte(feedback), &feedbackRecord); err != nil {
@@ -186,12 +164,12 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("PR readiness should require ai-slop-clean before drafting: %#v", beforeClean)
 	}
 
-	if err := runIssueOps([]string{"phase", "--id", id, "--to", "ai-slop-clean", "--json"}); err == nil || !strings.Contains(err.Error(), "implementation_changes") {
+	if err := runIssueOps(withIssueOpsCLIActor([]string{"phase", "--id", id, "--to", "ai-slop-clean", "--json"}, actor)); err == nil || !strings.Contains(err.Error(), "implementation_changes") {
 		t.Fatalf("ai-slop-clean should require implementation changes, got %v", err)
 	}
 	writeIssueOpsCLIFileForTest(t, worktreePath, "internal/demo.go", "package demo\n")
 	cleaned := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"phase", "--id", id, "--to", "ai-slop-clean", "--json"})
+		return runIssueOps(withIssueOpsCLIActor([]string{"phase", "--id", id, "--to", "ai-slop-clean", "--json"}, actor))
 	})
 	var cleanedRecord map[string]any
 	if err := json.Unmarshal([]byte(cleaned), &cleanedRecord); err != nil {
@@ -213,7 +191,7 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	}
 
 	contractFeedback := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"feedback", "add", "--id", id, "--source", "review", "--body", "acceptance criteria changed", "--classification", "contract_change", "--json"})
+		return runIssueOps(withIssueOpsCLIActor([]string{"feedback", "add", "--id", id, "--source", "review", "--body", "acceptance criteria changed", "--classification", "contract_change", "--json"}, actor))
 	})
 	var contractRecord map[string]any
 	if err := json.Unmarshal([]byte(contractFeedback), &contractRecord); err != nil {
@@ -230,7 +208,7 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 		t.Fatalf("contract feedback should block PR readiness until issue update is recorded: %#v", blocked)
 	}
 	marked := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"feedback", "mark-issue-updated", "--id", id, "--json"})
+		return runIssueOps(withIssueOpsCLIActor([]string{"feedback", "mark-issue-updated", "--id", id, "--json"}, actor))
 	})
 	var markedRecord map[string]any
 	if err := json.Unmarshal([]byte(marked), &markedRecord); err != nil {

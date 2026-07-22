@@ -7,15 +7,15 @@ import (
 	"testing"
 )
 
-func TestRunHookPreToolUseEnforcesIssueOpsWorktree(t *testing.T) {
+func TestRunHookPreToolUseBlocksSourceOutsideExpectedIssueOpsWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := filepath.Join(t.TempDir(), "agent-harness")
 	worktree := filepath.Join(t.TempDir(), "agent-harness.worktrees", "chore-19-docs")
 	obj := runHookCapture(t, `{"cwd":"`+source+`","tool_name":"apply_patch","tool_input":{"file_path":"`+source+`/.agent-harness/OPERATIONS.md"}}`, func() error {
 		return runHookPreToolUse([]string{"--enforce-worktree", "--expected-worktree", worktree, "--source-checkout", source, "--json"})
 	})
-	if obj["decision"] != "allow" {
-		t.Fatalf("expected source checkout edit to remain available, got %+v", obj)
+	if obj["decision"] != "block" {
+		t.Fatalf("expected source checkout mutation outside the canonical worktree to be blocked, got %+v", obj)
 	}
 }
 
@@ -42,7 +42,7 @@ func TestRunHookPreToolUseAllowsApplyPatchInsideExpectedWorktree(t *testing.T) {
 	}
 }
 
-func TestRunHookPreToolUseAllowsSourceApplyPatchOutsideExpectedWorktree(t *testing.T) {
+func TestRunHookPreToolUseBlocksSourceApplyPatchOutsideExpectedWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := filepath.Join(t.TempDir(), "api-servers")
 	worktree := filepath.Join(filepath.Dir(source), "api-servers.worktrees", "2193-demo")
@@ -60,8 +60,8 @@ func TestRunHookPreToolUseAllowsSourceApplyPatchOutsideExpectedWorktree(t *testi
 	obj := runHookCapture(t, string(payload), func() error {
 		return runHookPreToolUse([]string{"--enforce-worktree", "--expected-worktree", worktree, "--source-checkout", source, "--json"})
 	})
-	if obj["decision"] != "allow" {
-		t.Fatalf("expected source apply_patch to remain available, got %+v", obj)
+	if obj["decision"] != "block" {
+		t.Fatalf("expected source apply_patch outside the canonical worktree to be blocked, got %+v", obj)
 	}
 }
 
@@ -137,5 +137,26 @@ func TestRunHookPreToolUseBlocksBranchCreationWithoutSourceRef(t *testing.T) {
 	reason, _ := obj["reason"].(string)
 	if !strings.Contains(reason, "source ref") || !strings.Contains(reason, "ask the user") {
 		t.Fatalf("expected source-ref guidance, got %q", reason)
+	}
+}
+
+func TestRunHookPreToolUseBlocksDirectGitWorktreeMutationWithoutBranchCreation(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	payload, err := json.Marshal(map[string]any{
+		"cwd":       source,
+		"tool_name": "Bash",
+		"tool_input": map[string]any{
+			"command": "git worktree add ../issue-worktree existing-branch",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	obj := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
+	})
+	if obj["decision"] != "block" {
+		t.Fatalf("expected direct git worktree mutation to be blocked, got %+v", obj)
 	}
 }

@@ -258,7 +258,7 @@
           "name": "version"
         }
       ],
-      "hash": "0957a62fdcdf6bee5296d5737de9dae362d41cd9e3d42af92848d4588c32531b",
+      "hash": "280cc87b8857cee837faf03189ea0507d0978df5f8bd6f14eee9f1c28153f3a0",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -273,53 +273,7 @@
         "daemon_status",
         "docs_index",
         "harness_inspect",
-        "issueops_add_decision",
-        "issueops_add_feedback",
-        "issueops_child_accept",
-        "issueops_child_drop",
-        "issueops_child_reject",
-        "issueops_child_start",
-        "issueops_child_status",
-        "issueops_cleanup_close_children",
-        "issueops_cleanup_stale",
-        "issueops_cleanup_status",
-        "issueops_force_release",
-        "issueops_handoff",
-        "issueops_heartbeat",
-        "issueops_link_child",
-        "issueops_link_issue",
-        "issueops_link_plan",
-        "issueops_link_related",
-        "issueops_link_worktree",
-        "issueops_mark_issue_updated",
-        "issueops_plan_prep_record",
-        "issueops_pr_readiness",
-        "issueops_prepare_branch",
-        "issueops_prepare_worktree_tools",
-        "issueops_reconcile_workspace",
-        "issueops_record_ai_slop_clean_evidence",
-        "issueops_record_compatibility_review",
-        "issueops_record_devils_advocate_review",
-        "issueops_record_domain_review",
-        "issueops_record_execution_decision",
-        "issueops_record_intent",
-        "issueops_record_routing",
-        "issueops_regress_for_replan",
-        "issueops_remote_create_child",
-        "issueops_remote_create_issue",
-        "issueops_remote_create_pr",
-        "issueops_remote_reconcile_create",
-        "issueops_remote_reflect_devils_advocate",
-        "issueops_remote_render_template",
-        "issueops_remote_score",
-        "issueops_remote_sync_graph",
-        "issueops_resolve_feedback",
-        "issueops_resume",
-        "issueops_review_design",
-        "issueops_set_phase",
-        "issueops_start",
-        "issueops_status",
-        "issueops_verify_remote_artifact",
+        "issueops_execution",
         "lint_diagnose",
         "loop_record_attempt",
         "loop_start",
@@ -475,14 +429,46 @@
           "branch",
           "remote_artifact_url"
         ],
-        "issueops_handoff_claim": [
+        "issueops_execution": [
           "ok",
           "id",
-          "state",
-          "attempt",
-          "ownership_epoch",
-          "context_sha256",
-          "plan_sha256",
+          "execution",
+          "next_command"
+        ],
+        "issueops_execution_prepare": [
+          "ok",
+          "id",
+          "preview",
+          "requested_mode",
+          "resolved_mode",
+          "fallback_code",
+          "workspace",
+          "execution",
+          "claim_token_path",
+          "issue_body_sha256",
+          "context_packet_path",
+          "context_packet_sha256",
+          "owner_prompt_path",
+          "owner_prompt_sha256",
+          "next_command"
+        ],
+        "issueops_execution_reconcile": [
+          "ok",
+          "id",
+          "preview",
+          "reconciled",
+          "code",
+          "execution",
+          "pending"
+        ],
+        "issueops_execution_replace": [
+          "ok",
+          "id",
+          "action",
+          "execution",
+          "inventory_fingerprint",
+          "quiescence_fingerprint",
+          "claim_token_path",
           "next_command"
         ],
         "issueops_pr_readiness": [
@@ -502,14 +488,29 @@
           "phase",
           "intent",
           "design_review",
+          "domain_review",
           "issue_url",
           "plan_path",
+          "worktree_path",
+          "issue_links",
           "branch_prepare",
           "remote_artifact",
-          "worktree_tools",
-          "execution_decision",
+          "decisions",
+          "plan_prep",
+          "compatibility_review",
+          "devils_advocate_review",
           "feedback",
+          "regress_events",
+          "delegation",
+          "child_cycles",
+          "execution",
+          "routing_trace",
           "ai_slop_clean_at",
+          "ai_slop_clean_head",
+          "ai_slop_clean_fingerprint",
+          "ai_slop_clean_categories",
+          "ai_slop_clean_verification",
+          "phase_ledger",
           "created_at",
           "updated_at"
         ],
@@ -683,7 +684,7 @@
         "agent-harness contract conformance baseline --json",
         "agent-harness contract check --json"
       ],
-      "version": 2,
+      "version": 3,
       "warnings": []
     },
     "daemon_status": {
@@ -706,7 +707,7 @@
       "running": false
     },
     "docs_index": {
-      "docs_count": 90,
+      "docs_count": 92,
       "harness_root": "$HARNESS_ROOT",
       "ok": true,
       "required_docs": {
@@ -748,23 +749,10 @@
         "codex_mcp_configured": false,
         "codex_skill_installed": false,
         "codex_skill_path": "$HOME/.codex/skills/atomic-commit-push",
-        "gjc_hook_shim_installed": false,
-        "gjc_plugin_installed": false,
-        "gjc_skill_installed": false,
-        "gjc_skill_path": "$HOME/.gjc/agent/skills/atomic-commit-push",
         "mcp_binary_path": "$HARNESS_ROOT/bin/agent-harness",
         "project_claude_mcp_config": true,
         "project_claude_skill": "$PROJECT_SKILL_PRESENCE",
-        "project_claude_skill_path": "$HARNESS_ROOT/.claude/skills/atomic-commit-push",
-        "project_gjc_skill": "$PROJECT_SKILL_PRESENCE",
-        "project_gjc_skill_path": "$HARNESS_ROOT/.gjc/skills/atomic-commit-push",
-        "project_reasonix_settings": "$PROJECT_SETTINGS_PRESENCE",
-        "project_reasonix_skill": "$PROJECT_SKILL_PRESENCE",
-        "project_reasonix_skill_path": "$HARNESS_ROOT/.reasonix/skills/atomic-commit-push",
-        "reasonix_mcp_configured": false,
-        "reasonix_settings_installed": false,
-        "reasonix_skill_installed": false,
-        "reasonix_skill_path": "$HOME/.reasonix/skills/atomic-commit-push"
+        "project_claude_skill_path": "$HARNESS_ROOT/.claude/skills/atomic-commit-push"
       },
       "ok": true,
       "skills": [
@@ -1114,7 +1102,7 @@
         }
       ],
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -1261,7 +1249,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -1455,9 +1443,29 @@
         }
       ],
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
+    },
+    "issueops_execution_status": {
+      "execution": {
+        "lease": {
+          "claim_token_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "generation": 1,
+          "status": "claimable"
+        },
+        "mode": "direct",
+        "workspace": {
+          "base_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "branch": "69-cli-execution-contract",
+          "driver": "git",
+          "linked_at": "$TIMESTAMP",
+          "root": "$WORKSPACE.worktrees/69-cli-execution-contract",
+          "source_root": "$WORKSPACE"
+        }
+      },
+      "id": "$ISSUEOPS_ID",
+      "ok": true
     },
     "issueops_feedback_add": {
       "branch": "1-contract-branch",
@@ -1610,7 +1618,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -1824,224 +1832,7 @@
         }
       ],
       "repo": "$WORKSPACE",
-      "schema_version": 8,
-      "updated_at": "$TIMESTAMP",
-      "worktree_path": "$ISSUEOPS_WORKTREE"
-    },
-    "issueops_force_release": {
-      "ai_slop_clean_categories": [
-        "naming"
-      ],
-      "ai_slop_clean_verification": [
-        "go test ./cmd/harness/harnessapp -run Golden"
-      ],
-      "branch": "1-contract-branch",
-      "branch_prepare": {
-        "base_branch": "main",
-        "branch": "1-contract-branch",
-        "created_at": "$TIMESTAMP",
-        "issue_url": "https://gitlab.example/group/project/-/issues/1",
-        "link_verified": true,
-        "provider": "gitlab",
-        "steps": [
-          {
-            "description": "Create the issue-prefixed branch through the GitLab MCP authenticated API tool.",
-            "order": 1,
-            "strategy": "mcp",
-            "tool": "mcp__glab.glab_api",
-            "tool_arguments": {
-              "endpoint": "projects/:fullpath/repository/branches",
-              "field": [
-                "branch=1-contract-branch",
-                "ref=main"
-              ],
-              "method": "POST"
-            }
-          },
-          {
-            "command": [
-              "glab",
-              "api",
-              "projects/:fullpath/repository/branches",
-              "-X",
-              "POST",
-              "-f",
-              "branch=1-contract-branch",
-              "-f",
-              "ref=main"
-            ],
-            "description": "Fallback to the GitLab API through glab when the MCP tool is unavailable or fails.",
-            "order": 2,
-            "strategy": "fallback_api"
-          },
-          {
-            "description": "Stop the IssueOps branch preparation if neither provider-linked creation path succeeds.",
-            "order": 3,
-            "strategy": "fail"
-          }
-        ]
-      },
-      "created_at": "$TIMESTAMP",
-      "decisions": [
-        {
-          "affected_artifacts": [
-            "test",
-            "implementation"
-          ],
-          "alternatives": [
-            "Approach B: live-only verification",
-            "Approach C: manual review"
-          ],
-          "body": "Chose approach A over B for contract snapshot coverage",
-          "created_at": "$TIMESTAMP",
-          "kind": "architecture",
-          "rationale": "Approach A keeps snapshots deterministic",
-          "title": "Contract decision"
-        },
-        {
-          "body": "brooks stop: scope too broad for one cycle",
-          "created_at": "$TIMESTAMP",
-          "kind": "scope",
-          "rationale": "regressed from plan to grill for re-plan",
-          "title": "brooks devil's-advocate stop"
-        }
-      ],
-      "design_review": {
-        "alternatives": [
-          "docs-only guidance"
-        ],
-        "approved": false,
-        "problem_summary": "IssueOps needs explicit design review",
-        "proposed_design": "Gate implementation on approved design",
-        "refactor_plan": "Keep changes local to IssueOps state and adapters",
-        "reviewed_at": "$TIMESTAMP",
-        "risks": [
-          "golden contract drift"
-        ],
-        "verification": [
-          "design review checked contract drift risk",
-          "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
-        ]
-      },
-      "domain_review": {
-        "model_fit": "fits the IssueOps phase-ledger domain model",
-        "reviewed_at": "$TIMESTAMP",
-        "risks": [
-          "ledger drift between CLI and MCP"
-        ],
-        "terminology": [
-          "phase ledger"
-        ]
-      },
-      "feedback": [
-        {
-          "body": "tighten contract",
-          "classification": "contract_change",
-          "created_at": "$TIMESTAMP",
-          "issue_updated_at": "$TIMESTAMP",
-          "resolution": "valid-defect",
-          "source": "user"
-        }
-      ],
-      "force_release_reason": "contract snapshot force-release",
-      "force_released_at": "$TIMESTAMP",
-      "id": "$ISSUEOPS_ID",
-      "intent": {
-        "ambiguities": [
-          "none"
-        ],
-        "constraints": [
-          "keep contract deterministic"
-        ],
-        "intent_class": "standard",
-        "interpreted_intent": "Persist main-agent judgment before planning",
-        "non_goals": [
-          "do not continue from hook recommendation alone"
-        ],
-        "raw_request": "Refactor IssueOps intent flow",
-        "recorded_at": "$TIMESTAMP",
-        "success_criteria": [
-          "intent is recorded"
-        ]
-      },
-      "issue_links": [
-        {
-          "created_at": "$TIMESTAMP",
-          "provider": "gitlab",
-          "title": "contract child",
-          "type": "child",
-          "url": "https://gitlab.example/group/project/-/issues/2"
-        },
-        {
-          "created_at": "$TIMESTAMP",
-          "provider": "github",
-          "title": "upstream dependency",
-          "type": "depends-on",
-          "url": "https://github.com/example/repo/issues/42"
-        }
-      ],
-      "issue_url": "https://gitlab.example/group/project/-/issues/1",
-      "ok": true,
-      "orphan_worktree_path": "$ISSUEOPS_WORKTREE",
-      "phase": "done",
-      "phase_ledger": {
-        "compatibility-review": {
-          "notes": [
-            "stale: brooks regression (brooks stop: scope too broad for one cycle)"
-          ],
-          "phase": "compatibility-review"
-        },
-        "grill": {
-          "artifacts": [
-            "issue_url",
-            "branch",
-            "plan_prep",
-            "split_decision",
-            "domain_review"
-          ],
-          "completed_at": "$TIMESTAMP",
-          "entered_at": "$TIMESTAMP",
-          "phase": "grill"
-        },
-        "plan": {
-          "entered_at": "$TIMESTAMP",
-          "notes": [
-            "stale: brooks regression (brooks stop: scope too broad for one cycle)"
-          ],
-          "phase": "plan"
-        }
-      },
-      "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
-      "plan_prep": {
-        "prior_decisions": {
-          "evidence": [
-            ".agent-harness/ADR.md"
-          ],
-          "status": "evidence"
-        },
-        "recorded_at": "$TIMESTAMP",
-        "related_issues": {
-          "evidence": [
-            "remote score: selected=#1(0.81), threshold=0.70"
-          ],
-          "status": "evidence"
-        },
-        "web_research": {
-          "evidence": [
-            ".agent-harness/research/contract.md"
-          ],
-          "status": "evidence"
-        }
-      },
-      "regress_events": [
-        {
-          "at": "$TIMESTAMP",
-          "from_phase": "plan",
-          "reason": "brooks stop: scope too broad for one cycle"
-        }
-      ],
-      "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2164,7 +1955,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2215,7 +2006,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_link_plan": {
@@ -2328,7 +2119,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2458,7 +2249,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2554,7 +2345,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2710,7 +2501,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -2760,7 +2551,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_pr_readiness": {
@@ -2875,7 +2666,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_record_devils_advocate_review": {
@@ -3038,7 +2829,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -3067,7 +2858,7 @@
       "ok": true,
       "phase": "problem",
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_regress_for_replan": {
@@ -3250,7 +3041,7 @@
         }
       ],
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -3269,7 +3060,7 @@
     "issueops_remote_create_pr": {
       "number": "",
       "ok": true,
-      "preview": "[dry-run] would execute: glab mr create --title contract PR --source-branch 1-contract-branch --target-branch main --yes",
+      "preview": "[dry-run] would execute: gh pr create --title contract PR --head 69-cli-execution-contract --base main --repo github.com/example/repo --draft --label contract --assignee octocat",
       "url": ""
     },
     "issueops_remote_reflect_devils_advocate": {
@@ -3386,7 +3177,7 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -3593,7 +3384,7 @@
         }
       ],
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
@@ -3604,7 +3395,7 @@
       "ok": true,
       "phase": "problem",
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP"
     },
     "issueops_status": {
@@ -3791,9 +3582,8 @@
           "missing": [
             "compatibility_review",
             "devils_advocate_review",
-            "execution_decision",
-            "implementation_changes",
-            "worktree_tools_prepared"
+            "execution",
+            "implementation_changes"
           ],
           "notes": [
             "derived"
@@ -3855,75 +3645,8 @@
         }
       },
       "repo": "$WORKSPACE",
-      "schema_version": 8,
+      "schema_version": 1,
       "updated_at": "$TIMESTAMP",
-      "worktree_path": "$ISSUEOPS_WORKTREE"
-    },
-    "issueops_worktree_cleanup": {
-      "branch": "1-contract-branch",
-      "choices": [
-        "1. 차단 해소: missing 항목의 merge/worktree/remote branch 증거를 먼저 보강합니다. (추천)",
-        "2. 보류: worktree는 유지하고 나중에 다시 확인합니다.",
-        "3. 확장 점검: merged/stale IssueOps worktree 전체를 점검하고 정리 후보를 제시합니다."
-      ],
-      "id": "$ISSUEOPS_ID",
-      "merged": true,
-      "missing": [
-        "branch",
-        "child_tasks_closed",
-        "pr_phase",
-        "remote_artifact",
-        "remote_branch_check_unavailable",
-        "worktree_git_status"
-      ],
-      "ok": true,
-      "ready": false,
-      "warnings": [
-        "fatal: not a git repository (or any of the parent directories): .git"
-      ],
-      "worktree_path": "$ISSUEOPS_WORKTREE"
-    },
-    "issueops_worktree_prepare": {
-      "base_branch": "main",
-      "branch": "1-contract-branch",
-      "command": [
-        "git",
-        "worktree",
-        "add",
-        "$ISSUEOPS_WORKTREE",
-        "1-contract-branch"
-      ],
-      "exists": true,
-      "id": "$ISSUEOPS_ID",
-      "inline_reason": "recovery",
-      "next_step": "worktree exists; run issueops link-worktree --id $ISSUEOPS_ID --worktree-path $ISSUEOPS_WORKTREE",
-      "ok": true,
-      "preview": true,
-      "repo": "$WORKSPACE",
-      "requested_mode": "inline",
-      "resolved_mode": "inline",
-      "worktree_path": "$ISSUEOPS_WORKTREE"
-    },
-    "issueops_worktree_verify": {
-      "branch": "1-contract-branch",
-      "cleanup_missing": [
-        "branch",
-        "child_tasks_closed",
-        "pr_phase",
-        "remote_artifact",
-        "remote_artifact_merged",
-        "remote_branch_check_unavailable",
-        "worktree_git_status"
-      ],
-      "issue_url": "https://gitlab.example/group/project/-/issues/1",
-      "missing": [
-        "ai_slop_clean",
-        "repo_git"
-      ],
-      "ok": true,
-      "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
-      "ready": false,
-      "strict": true,
       "worktree_path": "$ISSUEOPS_WORKTREE"
     },
     "policy_audit": {
@@ -5124,7 +4847,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 90,
+        "docs_indexed": 92,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -5826,6 +5549,12 @@
           "message": "invalid character 'n' looking for beginning of object key string",
           "path": "$STATE_DIR/corrupt.json",
           "severity": "error"
+        },
+        {
+          "code": "unexpected_directory",
+          "message": "state directory contains an unexpected subdirectory",
+          "path": "$STATE_DIR/issueops_v1",
+          "severity": "warning"
         }
       ],
       "ok": true,
@@ -5851,8 +5580,15 @@
     },
     "state_doctor_healthy": {
       "checked": 2,
-      "healthy": true,
-      "issues": [],
+      "healthy": false,
+      "issues": [
+        {
+          "code": "unexpected_directory",
+          "message": "state directory contains an unexpected subdirectory",
+          "path": "$STATE_DIR/issueops_v1",
+          "severity": "warning"
+        }
+      ],
       "ok": true,
       "state_dir": "$STATE_DIR",
       "valid": [
@@ -5904,7 +5640,14 @@
       "confirm": true,
       "dry_run": false,
       "from_schema": 0,
-      "issues": [],
+      "issues": [
+        {
+          "code": "unexpected_directory",
+          "message": "state directory contains an unexpected subdirectory",
+          "path": "$STATE_DIR/issueops_v1",
+          "severity": "warning"
+        }
+      ],
       "migrated_keys": [
         "legacy"
       ],
@@ -5938,7 +5681,14 @@
       "confirm": false,
       "dry_run": true,
       "from_schema": 0,
-      "issues": [],
+      "issues": [
+        {
+          "code": "unexpected_directory",
+          "message": "state directory contains an unexpected subdirectory",
+          "path": "$STATE_DIR/issueops_v1",
+          "severity": "warning"
+        }
+      ],
       "migrated_keys": [],
       "ok": true,
       "skipped": [
@@ -6666,7 +6416,7 @@
                 "name": "version"
               }
             ],
-            "hash": "0957a62fdcdf6bee5296d5737de9dae362d41cd9e3d42af92848d4588c32531b",
+            "hash": "280cc87b8857cee837faf03189ea0507d0978df5f8bd6f14eee9f1c28153f3a0",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6681,53 +6431,7 @@
               "daemon_status",
               "docs_index",
               "harness_inspect",
-              "issueops_add_decision",
-              "issueops_add_feedback",
-              "issueops_child_accept",
-              "issueops_child_drop",
-              "issueops_child_reject",
-              "issueops_child_start",
-              "issueops_child_status",
-              "issueops_cleanup_close_children",
-              "issueops_cleanup_stale",
-              "issueops_cleanup_status",
-              "issueops_force_release",
-              "issueops_handoff",
-              "issueops_heartbeat",
-              "issueops_link_child",
-              "issueops_link_issue",
-              "issueops_link_plan",
-              "issueops_link_related",
-              "issueops_link_worktree",
-              "issueops_mark_issue_updated",
-              "issueops_plan_prep_record",
-              "issueops_pr_readiness",
-              "issueops_prepare_branch",
-              "issueops_prepare_worktree_tools",
-              "issueops_reconcile_workspace",
-              "issueops_record_ai_slop_clean_evidence",
-              "issueops_record_compatibility_review",
-              "issueops_record_devils_advocate_review",
-              "issueops_record_domain_review",
-              "issueops_record_execution_decision",
-              "issueops_record_intent",
-              "issueops_record_routing",
-              "issueops_regress_for_replan",
-              "issueops_remote_create_child",
-              "issueops_remote_create_issue",
-              "issueops_remote_create_pr",
-              "issueops_remote_reconcile_create",
-              "issueops_remote_reflect_devils_advocate",
-              "issueops_remote_render_template",
-              "issueops_remote_score",
-              "issueops_remote_sync_graph",
-              "issueops_resolve_feedback",
-              "issueops_resume",
-              "issueops_review_design",
-              "issueops_set_phase",
-              "issueops_start",
-              "issueops_status",
-              "issueops_verify_remote_artifact",
+              "issueops_execution",
               "lint_diagnose",
               "loop_record_attempt",
               "loop_start",
@@ -6883,14 +6587,46 @@
                 "branch",
                 "remote_artifact_url"
               ],
-              "issueops_handoff_claim": [
+              "issueops_execution": [
                 "ok",
                 "id",
-                "state",
-                "attempt",
-                "ownership_epoch",
-                "context_sha256",
-                "plan_sha256",
+                "execution",
+                "next_command"
+              ],
+              "issueops_execution_prepare": [
+                "ok",
+                "id",
+                "preview",
+                "requested_mode",
+                "resolved_mode",
+                "fallback_code",
+                "workspace",
+                "execution",
+                "claim_token_path",
+                "issue_body_sha256",
+                "context_packet_path",
+                "context_packet_sha256",
+                "owner_prompt_path",
+                "owner_prompt_sha256",
+                "next_command"
+              ],
+              "issueops_execution_reconcile": [
+                "ok",
+                "id",
+                "preview",
+                "reconciled",
+                "code",
+                "execution",
+                "pending"
+              ],
+              "issueops_execution_replace": [
+                "ok",
+                "id",
+                "action",
+                "execution",
+                "inventory_fingerprint",
+                "quiescence_fingerprint",
+                "claim_token_path",
                 "next_command"
               ],
               "issueops_pr_readiness": [
@@ -6910,14 +6646,29 @@
                 "phase",
                 "intent",
                 "design_review",
+                "domain_review",
                 "issue_url",
                 "plan_path",
+                "worktree_path",
+                "issue_links",
                 "branch_prepare",
                 "remote_artifact",
-                "worktree_tools",
-                "execution_decision",
+                "decisions",
+                "plan_prep",
+                "compatibility_review",
+                "devils_advocate_review",
                 "feedback",
+                "regress_events",
+                "delegation",
+                "child_cycles",
+                "execution",
+                "routing_trace",
                 "ai_slop_clean_at",
+                "ai_slop_clean_head",
+                "ai_slop_clean_fingerprint",
+                "ai_slop_clean_categories",
+                "ai_slop_clean_verification",
+                "phase_ledger",
                 "created_at",
                 "updated_at"
               ],
@@ -7091,7 +6842,7 @@
               "agent-harness contract conformance baseline --json",
               "agent-harness contract check --json"
             ],
-            "version": 2,
+            "version": 3,
             "warnings": []
           },
           "type": "text"
@@ -7128,7 +6879,7 @@
       "content": [
         {
           "json": {
-            "docs_count": 90,
+            "docs_count": 92,
             "harness_root": "$HARNESS_ROOT",
             "ok": true,
             "required_docs": {
@@ -7177,23 +6928,10 @@
               "codex_mcp_configured": false,
               "codex_skill_installed": false,
               "codex_skill_path": "$HOME/.codex/skills/atomic-commit-push",
-              "gjc_hook_shim_installed": false,
-              "gjc_plugin_installed": false,
-              "gjc_skill_installed": false,
-              "gjc_skill_path": "$HOME/.gjc/agent/skills/atomic-commit-push",
               "mcp_binary_path": "$HARNESS_ROOT/bin/agent-harness",
               "project_claude_mcp_config": true,
               "project_claude_skill": "$PROJECT_SKILL_PRESENCE",
-              "project_claude_skill_path": "$HARNESS_ROOT/.claude/skills/atomic-commit-push",
-              "project_gjc_skill": "$PROJECT_SKILL_PRESENCE",
-              "project_gjc_skill_path": "$HARNESS_ROOT/.gjc/skills/atomic-commit-push",
-              "project_reasonix_settings": "$PROJECT_SETTINGS_PRESENCE",
-              "project_reasonix_skill": "$PROJECT_SKILL_PRESENCE",
-              "project_reasonix_skill_path": "$HARNESS_ROOT/.reasonix/skills/atomic-commit-push",
-              "reasonix_mcp_configured": false,
-              "reasonix_settings_installed": false,
-              "reasonix_skill_installed": false,
-              "reasonix_skill_path": "$HOME/.reasonix/skills/atomic-commit-push"
+              "project_claude_skill_path": "$HARNESS_ROOT/.claude/skills/atomic-commit-push"
             },
             "ok": true,
             "skills": [
@@ -7338,1991 +7076,28 @@
         }
       ]
     },
-    "issueops_add_feedback": {
+    "issueops_execution_status": {
       "content": [
         {
           "json": {
-            "branch": "2-mcp-contract",
-            "branch_prepare": {
-              "base_branch": "main",
-              "branch": "2-mcp-contract",
-              "created_at": "$TIMESTAMP",
-              "issue_url": "https://github.com/example/repo/issues/2",
-              "link_verified": true,
-              "provider": "github",
-              "steps": [
-                {
-                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
-                  "order": 1,
-                  "strategy": "mcp_unavailable"
-                },
-                {
-                  "command": [
-                    "gh",
-                    "issue",
-                    "develop",
-                    "https://github.com/example/repo/issues/2",
-                    "--base",
-                    "main",
-                    "--name",
-                    "2-mcp-contract"
-                  ],
-                  "description": "Create a GitHub linked development branch through gh issue develop.",
-                  "order": 2,
-                  "strategy": "fallback_api"
-                },
-                {
-                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
-                  "order": 3,
-                  "strategy": "fail"
-                }
-              ]
-            },
-            "created_at": "$TIMESTAMP",
-            "design_review": {
-              "alternatives": [
-                "docs-only guidance"
-              ],
-              "approved": true,
-              "problem_summary": "IssueOps needs explicit design review",
-              "proposed_design": "Gate implementation on approved design",
-              "refactor_plan": "Keep changes local to IssueOps state and adapters",
-              "reviewed_at": "$TIMESTAMP",
-              "risks": [
-                "golden contract drift"
-              ],
-              "verification": [
-                "design review checked contract drift risk",
-                "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
-              ]
-            },
-            "feedback": [
-              {
-                "body": "tighten MCP contract",
-                "classification": "contract_change",
-                "created_at": "$TIMESTAMP",
-                "source": "review"
-              }
-            ],
-            "id": "$ISSUEOPS_ID",
-            "intent": {
-              "ambiguities": [
-                "none"
-              ],
-              "constraints": [
-                "keep contract deterministic"
-              ],
-              "intent_class": "standard",
-              "interpreted_intent": "Persist main-agent judgment before planning",
-              "non_goals": [
-                "do not continue from hook recommendation alone"
-              ],
-              "raw_request": "Refactor IssueOps intent flow",
-              "recorded_at": "$TIMESTAMP",
-              "success_criteria": [
-                "intent is recorded"
-              ]
-            },
-            "issue_links": [
-              {
-                "created_at": "$TIMESTAMP",
-                "provider": "github",
-                "title": "MCP contract child",
-                "type": "child",
-                "url": "https://github.com/example/repo/issues/3"
-              }
-            ],
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "plan",
-            "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
-            "plan_prep": {
-              "prior_decisions": {
-                "evidence": [
-                  ".agent-harness/ADR.md"
-                ],
-                "status": "evidence"
+            "execution": {
+              "lease": {
+                "claim_token_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "generation": 1,
+                "status": "claimable"
               },
-              "recorded_at": "$TIMESTAMP",
-              "related_issues": {
-                "evidence": [
-                  "remote score: selected=#1(0.81), threshold=0.70"
-                ],
-                "status": "evidence"
-              },
-              "web_research": {
-                "evidence": [
-                  ".agent-harness/research/contract.md"
-                ],
-                "status": "evidence"
+              "mode": "direct",
+              "workspace": {
+                "base_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "branch": "69-mcp-execution-contract",
+                "driver": "git",
+                "linked_at": "$TIMESTAMP",
+                "root": "$WORKSPACE.worktrees/69-mcp-execution-contract",
+                "source_root": "$WORKSPACE"
               }
             },
-            "repo": "$WORKSPACE",
-            "schema_version": 8,
-            "updated_at": "$TIMESTAMP",
-            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_link_child": {
-      "content": [
-        {
-          "json": {
-            "branch": "2-mcp-contract",
-            "branch_prepare": {
-              "base_branch": "main",
-              "branch": "2-mcp-contract",
-              "created_at": "$TIMESTAMP",
-              "issue_url": "https://github.com/example/repo/issues/2",
-              "link_verified": true,
-              "provider": "github",
-              "steps": [
-                {
-                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
-                  "order": 1,
-                  "strategy": "mcp_unavailable"
-                },
-                {
-                  "command": [
-                    "gh",
-                    "issue",
-                    "develop",
-                    "https://github.com/example/repo/issues/2",
-                    "--base",
-                    "main",
-                    "--name",
-                    "2-mcp-contract"
-                  ],
-                  "description": "Create a GitHub linked development branch through gh issue develop.",
-                  "order": 2,
-                  "strategy": "fallback_api"
-                },
-                {
-                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
-                  "order": 3,
-                  "strategy": "fail"
-                }
-              ]
-            },
-            "created_at": "$TIMESTAMP",
-            "design_review": {
-              "alternatives": [
-                "docs-only guidance"
-              ],
-              "approved": true,
-              "problem_summary": "IssueOps needs explicit design review",
-              "proposed_design": "Gate implementation on approved design",
-              "refactor_plan": "Keep changes local to IssueOps state and adapters",
-              "reviewed_at": "$TIMESTAMP",
-              "risks": [
-                "golden contract drift"
-              ],
-              "verification": [
-                "design review checked contract drift risk",
-                "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
-              ]
-            },
-            "id": "$ISSUEOPS_ID",
-            "intent": {
-              "ambiguities": [
-                "none"
-              ],
-              "constraints": [
-                "keep contract deterministic"
-              ],
-              "intent_class": "standard",
-              "interpreted_intent": "Persist main-agent judgment before planning",
-              "non_goals": [
-                "do not continue from hook recommendation alone"
-              ],
-              "raw_request": "Refactor IssueOps intent flow",
-              "recorded_at": "$TIMESTAMP",
-              "success_criteria": [
-                "intent is recorded"
-              ]
-            },
-            "issue_links": [
-              {
-                "created_at": "$TIMESTAMP",
-                "provider": "github",
-                "title": "MCP contract child",
-                "type": "child",
-                "url": "https://github.com/example/repo/issues/3"
-              }
-            ],
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "plan",
-            "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
-            "plan_prep": {
-              "prior_decisions": {
-                "evidence": [
-                  ".agent-harness/ADR.md"
-                ],
-                "status": "evidence"
-              },
-              "recorded_at": "$TIMESTAMP",
-              "related_issues": {
-                "evidence": [
-                  "remote score: selected=#1(0.81), threshold=0.70"
-                ],
-                "status": "evidence"
-              },
-              "web_research": {
-                "evidence": [
-                  ".agent-harness/research/contract.md"
-                ],
-                "status": "evidence"
-              }
-            },
-            "repo": "$WORKSPACE",
-            "schema_version": 8,
-            "updated_at": "$TIMESTAMP",
-            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_link_issue": {
-      "content": [
-        {
-          "json": {
-            "branch": "2-mcp-contract",
-            "created_at": "$TIMESTAMP",
-            "id": "$ISSUEOPS_ID",
-            "intent": {
-              "ambiguities": [
-                "none"
-              ],
-              "constraints": [
-                "keep contract deterministic"
-              ],
-              "intent_class": "standard",
-              "interpreted_intent": "Persist main-agent judgment before planning",
-              "non_goals": [
-                "do not continue from hook recommendation alone"
-              ],
-              "raw_request": "Refactor IssueOps intent flow",
-              "recorded_at": "$TIMESTAMP",
-              "success_criteria": [
-                "intent is recorded"
-              ]
-            },
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "plan",
-            "plan_prep": {
-              "prior_decisions": {
-                "evidence": [
-                  ".agent-harness/ADR.md"
-                ],
-                "status": "evidence"
-              },
-              "recorded_at": "$TIMESTAMP",
-              "related_issues": {
-                "evidence": [
-                  "remote score: selected=#1(0.81), threshold=0.70"
-                ],
-                "status": "evidence"
-              },
-              "web_research": {
-                "evidence": [
-                  ".agent-harness/research/contract.md"
-                ],
-                "status": "evidence"
-              }
-            },
-            "repo": "$WORKSPACE",
-            "schema_version": 8,
-            "updated_at": "$TIMESTAMP"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_link_plan": {
-      "content": [
-        {
-          "json": {
-            "branch": "2-mcp-contract",
-            "branch_prepare": {
-              "base_branch": "main",
-              "branch": "2-mcp-contract",
-              "created_at": "$TIMESTAMP",
-              "issue_url": "https://github.com/example/repo/issues/2",
-              "link_verified": true,
-              "provider": "github",
-              "steps": [
-                {
-                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
-                  "order": 1,
-                  "strategy": "mcp_unavailable"
-                },
-                {
-                  "command": [
-                    "gh",
-                    "issue",
-                    "develop",
-                    "https://github.com/example/repo/issues/2",
-                    "--base",
-                    "main",
-                    "--name",
-                    "2-mcp-contract"
-                  ],
-                  "description": "Create a GitHub linked development branch through gh issue develop.",
-                  "order": 2,
-                  "strategy": "fallback_api"
-                },
-                {
-                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
-                  "order": 3,
-                  "strategy": "fail"
-                }
-              ]
-            },
-            "created_at": "$TIMESTAMP",
-            "design_review": {
-              "alternatives": [
-                "docs-only guidance"
-              ],
-              "approved": true,
-              "problem_summary": "IssueOps needs explicit design review",
-              "proposed_design": "Gate implementation on approved design",
-              "refactor_plan": "Keep changes local to IssueOps state and adapters",
-              "reviewed_at": "$TIMESTAMP",
-              "risks": [
-                "golden contract drift"
-              ],
-              "verification": [
-                "design review checked contract drift risk",
-                "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
-              ]
-            },
-            "id": "$ISSUEOPS_ID",
-            "intent": {
-              "ambiguities": [
-                "none"
-              ],
-              "constraints": [
-                "keep contract deterministic"
-              ],
-              "intent_class": "standard",
-              "interpreted_intent": "Persist main-agent judgment before planning",
-              "non_goals": [
-                "do not continue from hook recommendation alone"
-              ],
-              "raw_request": "Refactor IssueOps intent flow",
-              "recorded_at": "$TIMESTAMP",
-              "success_criteria": [
-                "intent is recorded"
-              ]
-            },
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "plan",
-            "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
-            "plan_prep": {
-              "prior_decisions": {
-                "evidence": [
-                  ".agent-harness/ADR.md"
-                ],
-                "status": "evidence"
-              },
-              "recorded_at": "$TIMESTAMP",
-              "related_issues": {
-                "evidence": [
-                  "remote score: selected=#1(0.81), threshold=0.70"
-                ],
-                "status": "evidence"
-              },
-              "web_research": {
-                "evidence": [
-                  ".agent-harness/research/contract.md"
-                ],
-                "status": "evidence"
-              }
-            },
-            "repo": "$WORKSPACE",
-            "schema_version": 8,
-            "updated_at": "$TIMESTAMP",
-            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_link_worktree": {
-      "content": [
-        {
-          "json": {
-            "branch": "2-mcp-contract",
-            "branch_prepare": {
-              "base_branch": "main",
-              "branch": "2-mcp-contract",
-              "created_at": "$TIMESTAMP",
-              "issue_url": "https://github.com/example/repo/issues/2",
-              "link_verified": true,
-              "provider": "github",
-              "steps": [
-                {
-                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
-                  "order": 1,
-                  "strategy": "mcp_unavailable"
-                },
-                {
-                  "command": [
-                    "gh",
-                    "issue",
-                    "develop",
-                    "https://github.com/example/repo/issues/2",
-                    "--base",
-                    "main",
-                    "--name",
-                    "2-mcp-contract"
-                  ],
-                  "description": "Create a GitHub linked development branch through gh issue develop.",
-                  "order": 2,
-                  "strategy": "fallback_api"
-                },
-                {
-                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
-                  "order": 3,
-                  "strategy": "fail"
-                }
-              ]
-            },
-            "created_at": "$TIMESTAMP",
-            "id": "$ISSUEOPS_ID",
-            "intent": {
-              "ambiguities": [
-                "none"
-              ],
-              "constraints": [
-                "keep contract deterministic"
-              ],
-              "intent_class": "standard",
-              "interpreted_intent": "Persist main-agent judgment before planning",
-              "non_goals": [
-                "do not continue from hook recommendation alone"
-              ],
-              "raw_request": "Refactor IssueOps intent flow",
-              "recorded_at": "$TIMESTAMP",
-              "success_criteria": [
-                "intent is recorded"
-              ]
-            },
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "plan",
-            "plan_prep": {
-              "prior_decisions": {
-                "evidence": [
-                  ".agent-harness/ADR.md"
-                ],
-                "status": "evidence"
-              },
-              "recorded_at": "$TIMESTAMP",
-              "related_issues": {
-                "evidence": [
-                  "remote score: selected=#1(0.81), threshold=0.70"
-                ],
-                "status": "evidence"
-              },
-              "web_research": {
-                "evidence": [
-                  ".agent-harness/research/contract.md"
-                ],
-                "status": "evidence"
-              }
-            },
-            "repo": "$WORKSPACE",
-            "schema_version": 8,
-            "updated_at": "$TIMESTAMP",
-            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_mark_issue_updated": {
-      "content": [
-        {
-          "json": {
-            "branch": "2-mcp-contract",
-            "branch_prepare": {
-              "base_branch": "main",
-              "branch": "2-mcp-contract",
-              "created_at": "$TIMESTAMP",
-              "issue_url": "https://github.com/example/repo/issues/2",
-              "link_verified": true,
-              "provider": "github",
-              "steps": [
-                {
-                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
-                  "order": 1,
-                  "strategy": "mcp_unavailable"
-                },
-                {
-                  "command": [
-                    "gh",
-                    "issue",
-                    "develop",
-                    "https://github.com/example/repo/issues/2",
-                    "--base",
-                    "main",
-                    "--name",
-                    "2-mcp-contract"
-                  ],
-                  "description": "Create a GitHub linked development branch through gh issue develop.",
-                  "order": 2,
-                  "strategy": "fallback_api"
-                },
-                {
-                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
-                  "order": 3,
-                  "strategy": "fail"
-                }
-              ]
-            },
-            "created_at": "$TIMESTAMP",
-            "design_review": {
-              "alternatives": [
-                "docs-only guidance"
-              ],
-              "approved": true,
-              "problem_summary": "IssueOps needs explicit design review",
-              "proposed_design": "Gate implementation on approved design",
-              "refactor_plan": "Keep changes local to IssueOps state and adapters",
-              "reviewed_at": "$TIMESTAMP",
-              "risks": [
-                "golden contract drift"
-              ],
-              "verification": [
-                "design review checked contract drift risk",
-                "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
-              ]
-            },
-            "feedback": [
-              {
-                "body": "tighten MCP contract",
-                "classification": "contract_change",
-                "created_at": "$TIMESTAMP",
-                "issue_updated_at": "$TIMESTAMP",
-                "source": "review"
-              }
-            ],
-            "id": "$ISSUEOPS_ID",
-            "intent": {
-              "ambiguities": [
-                "none"
-              ],
-              "constraints": [
-                "keep contract deterministic"
-              ],
-              "intent_class": "standard",
-              "interpreted_intent": "Persist main-agent judgment before planning",
-              "non_goals": [
-                "do not continue from hook recommendation alone"
-              ],
-              "raw_request": "Refactor IssueOps intent flow",
-              "recorded_at": "$TIMESTAMP",
-              "success_criteria": [
-                "intent is recorded"
-              ]
-            },
-            "issue_links": [
-              {
-                "created_at": "$TIMESTAMP",
-                "provider": "github",
-                "title": "MCP contract child",
-                "type": "child",
-                "url": "https://github.com/example/repo/issues/3"
-              }
-            ],
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "plan",
-            "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
-            "plan_prep": {
-              "prior_decisions": {
-                "evidence": [
-                  ".agent-harness/ADR.md"
-                ],
-                "status": "evidence"
-              },
-              "recorded_at": "$TIMESTAMP",
-              "related_issues": {
-                "evidence": [
-                  "remote score: selected=#1(0.81), threshold=0.70"
-                ],
-                "status": "evidence"
-              },
-              "web_research": {
-                "evidence": [
-                  ".agent-harness/research/contract.md"
-                ],
-                "status": "evidence"
-              }
-            },
-            "repo": "$WORKSPACE",
-            "schema_version": 8,
-            "updated_at": "$TIMESTAMP",
-            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_plan_prep_record": {
-      "content": [
-        {
-          "json": {
-            "branch": "2-mcp-contract",
-            "created_at": "$TIMESTAMP",
-            "id": "$ISSUEOPS_ID",
-            "intent": {
-              "ambiguities": [
-                "none"
-              ],
-              "constraints": [
-                "keep contract deterministic"
-              ],
-              "intent_class": "standard",
-              "interpreted_intent": "Persist main-agent judgment before planning",
-              "non_goals": [
-                "do not continue from hook recommendation alone"
-              ],
-              "raw_request": "Refactor IssueOps intent flow",
-              "recorded_at": "$TIMESTAMP",
-              "success_criteria": [
-                "intent is recorded"
-              ]
-            },
-            "ok": true,
-            "phase": "problem",
-            "plan_prep": {
-              "prior_decisions": {
-                "evidence": [
-                  ".agent-harness/ADR.md"
-                ],
-                "status": "evidence"
-              },
-              "recorded_at": "$TIMESTAMP",
-              "related_issues": {
-                "evidence": [
-                  "remote score: selected=#1(0.81), threshold=0.70"
-                ],
-                "status": "evidence"
-              },
-              "web_research": {
-                "evidence": [
-                  ".agent-harness/research/contract.md"
-                ],
-                "status": "evidence"
-              }
-            },
-            "repo": "$WORKSPACE",
-            "schema_version": 8,
-            "updated_at": "$TIMESTAMP"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_pr_readiness": {
-      "content": [
-        {
-          "json": {
-            "branch": "2-mcp-contract",
-            "cleanup_missing": [
-              "branch",
-              "child_tasks_closed",
-              "pr_phase",
-              "remote_artifact",
-              "remote_artifact_merged",
-              "remote_branch_check_unavailable",
-              "worktree_git_status"
-            ],
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "missing": [
-              "ai_slop_clean"
-            ],
-            "ok": true,
-            "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
-            "ready": false,
-            "warnings": [
-              "no_decision_records"
-            ],
-            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_prepare_branch": {
-      "content": [
-        {
-          "json": {
-            "branch": "2-mcp-contract",
-            "branch_prepare": {
-              "base_branch": "main",
-              "branch": "2-mcp-contract",
-              "created_at": "$TIMESTAMP",
-              "issue_url": "https://github.com/example/repo/issues/2",
-              "link_verified": true,
-              "provider": "github",
-              "steps": [
-                {
-                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
-                  "order": 1,
-                  "strategy": "mcp_unavailable"
-                },
-                {
-                  "command": [
-                    "gh",
-                    "issue",
-                    "develop",
-                    "https://github.com/example/repo/issues/2",
-                    "--base",
-                    "main",
-                    "--name",
-                    "2-mcp-contract"
-                  ],
-                  "description": "Create a GitHub linked development branch through gh issue develop.",
-                  "order": 2,
-                  "strategy": "fallback_api"
-                },
-                {
-                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
-                  "order": 3,
-                  "strategy": "fail"
-                }
-              ]
-            },
-            "created_at": "$TIMESTAMP",
-            "id": "$ISSUEOPS_ID",
-            "intent": {
-              "ambiguities": [
-                "none"
-              ],
-              "constraints": [
-                "keep contract deterministic"
-              ],
-              "intent_class": "standard",
-              "interpreted_intent": "Persist main-agent judgment before planning",
-              "non_goals": [
-                "do not continue from hook recommendation alone"
-              ],
-              "raw_request": "Refactor IssueOps intent flow",
-              "recorded_at": "$TIMESTAMP",
-              "success_criteria": [
-                "intent is recorded"
-              ]
-            },
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "plan",
-            "plan_prep": {
-              "prior_decisions": {
-                "evidence": [
-                  ".agent-harness/ADR.md"
-                ],
-                "status": "evidence"
-              },
-              "recorded_at": "$TIMESTAMP",
-              "related_issues": {
-                "evidence": [
-                  "remote score: selected=#1(0.81), threshold=0.70"
-                ],
-                "status": "evidence"
-              },
-              "web_research": {
-                "evidence": [
-                  ".agent-harness/research/contract.md"
-                ],
-                "status": "evidence"
-              }
-            },
-            "repo": "$WORKSPACE",
-            "schema_version": 8,
-            "updated_at": "$TIMESTAMP"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_record_ai_slop_clean_evidence": {
-      "content": [
-        {
-          "json": {
-            "ai_slop_clean_categories": [
-              "naming"
-            ],
-            "ai_slop_clean_verification": [
-              "go test ./cmd/harness/harnessapp -run Golden"
-            ],
-            "branch": "2-mcp-contract",
-            "branch_prepare": {
-              "base_branch": "main",
-              "branch": "2-mcp-contract",
-              "created_at": "$TIMESTAMP",
-              "issue_url": "https://github.com/example/repo/issues/2",
-              "link_verified": true,
-              "provider": "github",
-              "steps": [
-                {
-                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
-                  "order": 1,
-                  "strategy": "mcp_unavailable"
-                },
-                {
-                  "command": [
-                    "gh",
-                    "issue",
-                    "develop",
-                    "https://github.com/example/repo/issues/2",
-                    "--base",
-                    "main",
-                    "--name",
-                    "2-mcp-contract"
-                  ],
-                  "description": "Create a GitHub linked development branch through gh issue develop.",
-                  "order": 2,
-                  "strategy": "fallback_api"
-                },
-                {
-                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
-                  "order": 3,
-                  "strategy": "fail"
-                }
-              ]
-            },
-            "created_at": "$TIMESTAMP",
-            "design_review": {
-              "alternatives": [
-                "docs-only guidance"
-              ],
-              "approved": true,
-              "problem_summary": "IssueOps needs explicit design review",
-              "proposed_design": "Gate implementation on approved design",
-              "refactor_plan": "Keep changes local to IssueOps state and adapters",
-              "reviewed_at": "$TIMESTAMP",
-              "risks": [
-                "golden contract drift"
-              ],
-              "verification": [
-                "design review checked contract drift risk",
-                "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
-              ]
-            },
-            "devils_advocate_review": {
-              "findings": [
-                "second-system effect: three cache backends for one need"
-              ],
-              "recorded_at": "$TIMESTAMP",
-              "reviewer_pattern": "devils-advocate-review",
-              "verdict": "stop"
-            },
-            "domain_review": {
-              "model_fit": "fits the IssueOps phase-ledger domain model",
-              "reviewed_at": "$TIMESTAMP",
-              "risks": [
-                "ledger drift between CLI and MCP"
-              ],
-              "terminology": [
-                "phase ledger"
-              ]
-            },
-            "feedback": [
-              {
-                "body": "tighten MCP contract",
-                "classification": "contract_change",
-                "created_at": "$TIMESTAMP",
-                "issue_updated_at": "$TIMESTAMP",
-                "source": "review"
-              }
-            ],
-            "id": "$ISSUEOPS_ID",
-            "intent": {
-              "ambiguities": [
-                "none"
-              ],
-              "constraints": [
-                "keep contract deterministic"
-              ],
-              "intent_class": "standard",
-              "interpreted_intent": "Persist main-agent judgment before planning",
-              "non_goals": [
-                "do not continue from hook recommendation alone"
-              ],
-              "raw_request": "Refactor IssueOps intent flow",
-              "recorded_at": "$TIMESTAMP",
-              "success_criteria": [
-                "intent is recorded"
-              ]
-            },
-            "issue_links": [
-              {
-                "created_at": "$TIMESTAMP",
-                "provider": "github",
-                "title": "MCP contract child",
-                "type": "child",
-                "url": "https://github.com/example/repo/issues/3"
-              }
-            ],
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "plan",
-            "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
-            "plan_prep": {
-              "prior_decisions": {
-                "evidence": [
-                  ".agent-harness/ADR.md"
-                ],
-                "status": "evidence"
-              },
-              "recorded_at": "$TIMESTAMP",
-              "related_issues": {
-                "evidence": [
-                  "remote score: selected=#1(0.81), threshold=0.70"
-                ],
-                "status": "evidence"
-              },
-              "web_research": {
-                "evidence": [
-                  ".agent-harness/research/contract.md"
-                ],
-                "status": "evidence"
-              }
-            },
-            "repo": "$WORKSPACE",
-            "schema_version": 8,
-            "updated_at": "$TIMESTAMP",
-            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_record_devils_advocate_review": {
-      "content": [
-        {
-          "json": {
-            "branch": "2-mcp-contract",
-            "branch_prepare": {
-              "base_branch": "main",
-              "branch": "2-mcp-contract",
-              "created_at": "$TIMESTAMP",
-              "issue_url": "https://github.com/example/repo/issues/2",
-              "link_verified": true,
-              "provider": "github",
-              "steps": [
-                {
-                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
-                  "order": 1,
-                  "strategy": "mcp_unavailable"
-                },
-                {
-                  "command": [
-                    "gh",
-                    "issue",
-                    "develop",
-                    "https://github.com/example/repo/issues/2",
-                    "--base",
-                    "main",
-                    "--name",
-                    "2-mcp-contract"
-                  ],
-                  "description": "Create a GitHub linked development branch through gh issue develop.",
-                  "order": 2,
-                  "strategy": "fallback_api"
-                },
-                {
-                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
-                  "order": 3,
-                  "strategy": "fail"
-                }
-              ]
-            },
-            "created_at": "$TIMESTAMP",
-            "design_review": {
-              "alternatives": [
-                "docs-only guidance"
-              ],
-              "approved": true,
-              "problem_summary": "IssueOps needs explicit design review",
-              "proposed_design": "Gate implementation on approved design",
-              "refactor_plan": "Keep changes local to IssueOps state and adapters",
-              "reviewed_at": "$TIMESTAMP",
-              "risks": [
-                "golden contract drift"
-              ],
-              "verification": [
-                "design review checked contract drift risk",
-                "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
-              ]
-            },
-            "devils_advocate_review": {
-              "findings": [
-                "second-system effect: three cache backends for one need"
-              ],
-              "recorded_at": "$TIMESTAMP",
-              "reviewer_pattern": "devils-advocate-review",
-              "verdict": "stop"
-            },
-            "feedback": [
-              {
-                "body": "tighten MCP contract",
-                "classification": "contract_change",
-                "created_at": "$TIMESTAMP",
-                "issue_updated_at": "$TIMESTAMP",
-                "source": "review"
-              }
-            ],
-            "id": "$ISSUEOPS_ID",
-            "intent": {
-              "ambiguities": [
-                "none"
-              ],
-              "constraints": [
-                "keep contract deterministic"
-              ],
-              "intent_class": "standard",
-              "interpreted_intent": "Persist main-agent judgment before planning",
-              "non_goals": [
-                "do not continue from hook recommendation alone"
-              ],
-              "raw_request": "Refactor IssueOps intent flow",
-              "recorded_at": "$TIMESTAMP",
-              "success_criteria": [
-                "intent is recorded"
-              ]
-            },
-            "issue_links": [
-              {
-                "created_at": "$TIMESTAMP",
-                "provider": "github",
-                "title": "MCP contract child",
-                "type": "child",
-                "url": "https://github.com/example/repo/issues/3"
-              }
-            ],
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "plan",
-            "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
-            "plan_prep": {
-              "prior_decisions": {
-                "evidence": [
-                  ".agent-harness/ADR.md"
-                ],
-                "status": "evidence"
-              },
-              "recorded_at": "$TIMESTAMP",
-              "related_issues": {
-                "evidence": [
-                  "remote score: selected=#1(0.81), threshold=0.70"
-                ],
-                "status": "evidence"
-              },
-              "web_research": {
-                "evidence": [
-                  ".agent-harness/research/contract.md"
-                ],
-                "status": "evidence"
-              }
-            },
-            "repo": "$WORKSPACE",
-            "schema_version": 8,
-            "updated_at": "$TIMESTAMP",
-            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_record_domain_review": {
-      "content": [
-        {
-          "json": {
-            "branch": "2-mcp-contract",
-            "branch_prepare": {
-              "base_branch": "main",
-              "branch": "2-mcp-contract",
-              "created_at": "$TIMESTAMP",
-              "issue_url": "https://github.com/example/repo/issues/2",
-              "link_verified": true,
-              "provider": "github",
-              "steps": [
-                {
-                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
-                  "order": 1,
-                  "strategy": "mcp_unavailable"
-                },
-                {
-                  "command": [
-                    "gh",
-                    "issue",
-                    "develop",
-                    "https://github.com/example/repo/issues/2",
-                    "--base",
-                    "main",
-                    "--name",
-                    "2-mcp-contract"
-                  ],
-                  "description": "Create a GitHub linked development branch through gh issue develop.",
-                  "order": 2,
-                  "strategy": "fallback_api"
-                },
-                {
-                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
-                  "order": 3,
-                  "strategy": "fail"
-                }
-              ]
-            },
-            "created_at": "$TIMESTAMP",
-            "design_review": {
-              "alternatives": [
-                "docs-only guidance"
-              ],
-              "approved": true,
-              "problem_summary": "IssueOps needs explicit design review",
-              "proposed_design": "Gate implementation on approved design",
-              "refactor_plan": "Keep changes local to IssueOps state and adapters",
-              "reviewed_at": "$TIMESTAMP",
-              "risks": [
-                "golden contract drift"
-              ],
-              "verification": [
-                "design review checked contract drift risk",
-                "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
-              ]
-            },
-            "devils_advocate_review": {
-              "findings": [
-                "second-system effect: three cache backends for one need"
-              ],
-              "recorded_at": "$TIMESTAMP",
-              "reviewer_pattern": "devils-advocate-review",
-              "verdict": "stop"
-            },
-            "domain_review": {
-              "model_fit": "fits the IssueOps phase-ledger domain model",
-              "reviewed_at": "$TIMESTAMP",
-              "risks": [
-                "ledger drift between CLI and MCP"
-              ],
-              "terminology": [
-                "phase ledger"
-              ]
-            },
-            "feedback": [
-              {
-                "body": "tighten MCP contract",
-                "classification": "contract_change",
-                "created_at": "$TIMESTAMP",
-                "issue_updated_at": "$TIMESTAMP",
-                "source": "review"
-              }
-            ],
-            "id": "$ISSUEOPS_ID",
-            "intent": {
-              "ambiguities": [
-                "none"
-              ],
-              "constraints": [
-                "keep contract deterministic"
-              ],
-              "intent_class": "standard",
-              "interpreted_intent": "Persist main-agent judgment before planning",
-              "non_goals": [
-                "do not continue from hook recommendation alone"
-              ],
-              "raw_request": "Refactor IssueOps intent flow",
-              "recorded_at": "$TIMESTAMP",
-              "success_criteria": [
-                "intent is recorded"
-              ]
-            },
-            "issue_links": [
-              {
-                "created_at": "$TIMESTAMP",
-                "provider": "github",
-                "title": "MCP contract child",
-                "type": "child",
-                "url": "https://github.com/example/repo/issues/3"
-              }
-            ],
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "plan",
-            "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
-            "plan_prep": {
-              "prior_decisions": {
-                "evidence": [
-                  ".agent-harness/ADR.md"
-                ],
-                "status": "evidence"
-              },
-              "recorded_at": "$TIMESTAMP",
-              "related_issues": {
-                "evidence": [
-                  "remote score: selected=#1(0.81), threshold=0.70"
-                ],
-                "status": "evidence"
-              },
-              "web_research": {
-                "evidence": [
-                  ".agent-harness/research/contract.md"
-                ],
-                "status": "evidence"
-              }
-            },
-            "repo": "$WORKSPACE",
-            "schema_version": 8,
-            "updated_at": "$TIMESTAMP",
-            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_record_domain_review_error": {
-      "content": [
-        {
-          "json": {
-            "error": "IssueOps domain review record failed: domain review requires model_fit or terminology",
-            "ok": false
-          },
-          "type": "text"
-        }
-      ],
-      "isError": true
-    },
-    "issueops_record_intent": {
-      "content": [
-        {
-          "json": {
-            "branch": "2-mcp-contract",
-            "created_at": "$TIMESTAMP",
-            "id": "$ISSUEOPS_ID",
-            "intent": {
-              "ambiguities": [
-                "none"
-              ],
-              "constraints": [
-                "keep contract deterministic"
-              ],
-              "intent_class": "standard",
-              "interpreted_intent": "Persist main-agent judgment before planning",
-              "non_goals": [
-                "do not continue from hook recommendation alone"
-              ],
-              "raw_request": "Refactor IssueOps intent flow",
-              "recorded_at": "$TIMESTAMP",
-              "success_criteria": [
-                "intent is recorded"
-              ]
-            },
-            "ok": true,
-            "phase": "problem",
-            "repo": "$WORKSPACE",
-            "schema_version": 8,
-            "updated_at": "$TIMESTAMP"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_regress_for_replan": {
-      "content": [
-        {
-          "json": {
-            "error": "IssueOps regress for replan failed: reflect the devil's-advocate findings to the issue before regressing (issueops remote reflect-devils-advocate --confirm)",
-            "ok": false
-          },
-          "type": "text"
-        }
-      ],
-      "isError": true
-    },
-    "issueops_remote_create_child": {
-      "content": [
-        {
-          "json": {
-            "hierarchy_verified": false,
-            "ok": true,
-            "preview": "[dry-run] would execute: gh issue create --title MCP contract child --body contract child body --label contract --assignee octocat --repo example/repo --parent 2; [dry-run] would execute: gh api repos/example/repo/issues/2/sub_issues; [dry-run] would execute: gh issue create --title MCP contract child --body contract child body --label contract --assignee octocat --repo example/repo; [dry-run] would execute: gh api -X POST repos/example/repo/issues/2/sub_issues -f sub_issue_id={child_database_id}; fallback if --parent is unsupported",
-            "provider": "github"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_remote_reflect_devils_advocate": {
-      "content": [
-        {
-          "json": {
-            "error": "IssueOps remote reflect-devils-advocate failed: gh issue view failed: $GH_AUTH_ERROR",
-            "ok": false
-          },
-          "type": "text"
-        }
-      ],
-      "isError": true
-    },
-    "issueops_resolve_feedback": {
-      "content": [
-        {
-          "json": {
-            "ai_slop_clean_categories": [
-              "naming"
-            ],
-            "ai_slop_clean_verification": [
-              "go test ./cmd/harness/harnessapp -run Golden"
-            ],
-            "branch": "2-mcp-contract",
-            "branch_prepare": {
-              "base_branch": "main",
-              "branch": "2-mcp-contract",
-              "created_at": "$TIMESTAMP",
-              "issue_url": "https://github.com/example/repo/issues/2",
-              "link_verified": true,
-              "provider": "github",
-              "steps": [
-                {
-                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
-                  "order": 1,
-                  "strategy": "mcp_unavailable"
-                },
-                {
-                  "command": [
-                    "gh",
-                    "issue",
-                    "develop",
-                    "https://github.com/example/repo/issues/2",
-                    "--base",
-                    "main",
-                    "--name",
-                    "2-mcp-contract"
-                  ],
-                  "description": "Create a GitHub linked development branch through gh issue develop.",
-                  "order": 2,
-                  "strategy": "fallback_api"
-                },
-                {
-                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
-                  "order": 3,
-                  "strategy": "fail"
-                }
-              ]
-            },
-            "created_at": "$TIMESTAMP",
-            "design_review": {
-              "alternatives": [
-                "docs-only guidance"
-              ],
-              "approved": true,
-              "problem_summary": "IssueOps needs explicit design review",
-              "proposed_design": "Gate implementation on approved design",
-              "refactor_plan": "Keep changes local to IssueOps state and adapters",
-              "reviewed_at": "$TIMESTAMP",
-              "risks": [
-                "golden contract drift"
-              ],
-              "verification": [
-                "design review checked contract drift risk",
-                "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
-              ]
-            },
-            "devils_advocate_review": {
-              "findings": [
-                "second-system effect: three cache backends for one need"
-              ],
-              "recorded_at": "$TIMESTAMP",
-              "reviewer_pattern": "devils-advocate-review",
-              "verdict": "stop"
-            },
-            "domain_review": {
-              "model_fit": "fits the IssueOps phase-ledger domain model",
-              "reviewed_at": "$TIMESTAMP",
-              "risks": [
-                "ledger drift between CLI and MCP"
-              ],
-              "terminology": [
-                "phase ledger"
-              ]
-            },
-            "feedback": [
-              {
-                "body": "tighten MCP contract",
-                "classification": "contract_change",
-                "created_at": "$TIMESTAMP",
-                "issue_updated_at": "$TIMESTAMP",
-                "resolution": "valid-defect",
-                "source": "review"
-              }
-            ],
-            "id": "$ISSUEOPS_ID",
-            "intent": {
-              "ambiguities": [
-                "none"
-              ],
-              "constraints": [
-                "keep contract deterministic"
-              ],
-              "intent_class": "standard",
-              "interpreted_intent": "Persist main-agent judgment before planning",
-              "non_goals": [
-                "do not continue from hook recommendation alone"
-              ],
-              "raw_request": "Refactor IssueOps intent flow",
-              "recorded_at": "$TIMESTAMP",
-              "success_criteria": [
-                "intent is recorded"
-              ]
-            },
-            "issue_links": [
-              {
-                "created_at": "$TIMESTAMP",
-                "provider": "github",
-                "title": "MCP contract child",
-                "type": "child",
-                "url": "https://github.com/example/repo/issues/3"
-              }
-            ],
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "plan",
-            "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
-            "plan_prep": {
-              "prior_decisions": {
-                "evidence": [
-                  ".agent-harness/ADR.md"
-                ],
-                "status": "evidence"
-              },
-              "recorded_at": "$TIMESTAMP",
-              "related_issues": {
-                "evidence": [
-                  "remote score: selected=#1(0.81), threshold=0.70"
-                ],
-                "status": "evidence"
-              },
-              "web_research": {
-                "evidence": [
-                  ".agent-harness/research/contract.md"
-                ],
-                "status": "evidence"
-              }
-            },
-            "repo": "$WORKSPACE",
-            "schema_version": 8,
-            "updated_at": "$TIMESTAMP",
-            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_review_design": {
-      "content": [
-        {
-          "json": {
-            "branch": "2-mcp-contract",
-            "branch_prepare": {
-              "base_branch": "main",
-              "branch": "2-mcp-contract",
-              "created_at": "$TIMESTAMP",
-              "issue_url": "https://github.com/example/repo/issues/2",
-              "link_verified": true,
-              "provider": "github",
-              "steps": [
-                {
-                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
-                  "order": 1,
-                  "strategy": "mcp_unavailable"
-                },
-                {
-                  "command": [
-                    "gh",
-                    "issue",
-                    "develop",
-                    "https://github.com/example/repo/issues/2",
-                    "--base",
-                    "main",
-                    "--name",
-                    "2-mcp-contract"
-                  ],
-                  "description": "Create a GitHub linked development branch through gh issue develop.",
-                  "order": 2,
-                  "strategy": "fallback_api"
-                },
-                {
-                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
-                  "order": 3,
-                  "strategy": "fail"
-                }
-              ]
-            },
-            "created_at": "$TIMESTAMP",
-            "design_review": {
-              "alternatives": [
-                "docs-only guidance"
-              ],
-              "approved": true,
-              "problem_summary": "IssueOps needs explicit design review",
-              "proposed_design": "Gate implementation on approved design",
-              "refactor_plan": "Keep changes local to IssueOps state and adapters",
-              "reviewed_at": "$TIMESTAMP",
-              "risks": [
-                "golden contract drift"
-              ],
-              "verification": [
-                "design review checked contract drift risk",
-                "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
-              ]
-            },
-            "id": "$ISSUEOPS_ID",
-            "intent": {
-              "ambiguities": [
-                "none"
-              ],
-              "constraints": [
-                "keep contract deterministic"
-              ],
-              "intent_class": "standard",
-              "interpreted_intent": "Persist main-agent judgment before planning",
-              "non_goals": [
-                "do not continue from hook recommendation alone"
-              ],
-              "raw_request": "Refactor IssueOps intent flow",
-              "recorded_at": "$TIMESTAMP",
-              "success_criteria": [
-                "intent is recorded"
-              ]
-            },
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "plan",
-            "plan_prep": {
-              "prior_decisions": {
-                "evidence": [
-                  ".agent-harness/ADR.md"
-                ],
-                "status": "evidence"
-              },
-              "recorded_at": "$TIMESTAMP",
-              "related_issues": {
-                "evidence": [
-                  "remote score: selected=#1(0.81), threshold=0.70"
-                ],
-                "status": "evidence"
-              },
-              "web_research": {
-                "evidence": [
-                  ".agent-harness/research/contract.md"
-                ],
-                "status": "evidence"
-              }
-            },
-            "repo": "$WORKSPACE",
-            "schema_version": 8,
-            "updated_at": "$TIMESTAMP",
-            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_set_phase": {
-      "content": [
-        {
-          "json": {
-            "branch": "2-mcp-contract",
-            "branch_prepare": {
-              "base_branch": "main",
-              "branch": "2-mcp-contract",
-              "created_at": "$TIMESTAMP",
-              "issue_url": "https://github.com/example/repo/issues/2",
-              "link_verified": true,
-              "provider": "github",
-              "steps": [
-                {
-                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
-                  "order": 1,
-                  "strategy": "mcp_unavailable"
-                },
-                {
-                  "command": [
-                    "gh",
-                    "issue",
-                    "develop",
-                    "https://github.com/example/repo/issues/2",
-                    "--base",
-                    "main",
-                    "--name",
-                    "2-mcp-contract"
-                  ],
-                  "description": "Create a GitHub linked development branch through gh issue develop.",
-                  "order": 2,
-                  "strategy": "fallback_api"
-                },
-                {
-                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
-                  "order": 3,
-                  "strategy": "fail"
-                }
-              ]
-            },
-            "created_at": "$TIMESTAMP",
-            "design_review": {
-              "alternatives": [
-                "docs-only guidance"
-              ],
-              "approved": true,
-              "problem_summary": "IssueOps needs explicit design review",
-              "proposed_design": "Gate implementation on approved design",
-              "refactor_plan": "Keep changes local to IssueOps state and adapters",
-              "reviewed_at": "$TIMESTAMP",
-              "risks": [
-                "golden contract drift"
-              ],
-              "verification": [
-                "design review checked contract drift risk",
-                "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
-              ]
-            },
-            "devils_advocate_review": {
-              "findings": [
-                "second-system effect: three cache backends for one need"
-              ],
-              "recorded_at": "$TIMESTAMP",
-              "reviewer_pattern": "devils-advocate-review",
-              "verdict": "stop"
-            },
-            "domain_review": {
-              "model_fit": "fits the IssueOps phase-ledger domain model",
-              "reviewed_at": "$TIMESTAMP",
-              "risks": [
-                "ledger drift between CLI and MCP"
-              ],
-              "terminology": [
-                "phase ledger"
-              ]
-            },
-            "feedback": [
-              {
-                "body": "tighten MCP contract",
-                "classification": "contract_change",
-                "created_at": "$TIMESTAMP",
-                "issue_updated_at": "$TIMESTAMP",
-                "source": "review"
-              }
-            ],
-            "id": "$ISSUEOPS_ID",
-            "intent": {
-              "ambiguities": [
-                "none"
-              ],
-              "constraints": [
-                "keep contract deterministic"
-              ],
-              "intent_class": "standard",
-              "interpreted_intent": "Persist main-agent judgment before planning",
-              "non_goals": [
-                "do not continue from hook recommendation alone"
-              ],
-              "raw_request": "Refactor IssueOps intent flow",
-              "recorded_at": "$TIMESTAMP",
-              "success_criteria": [
-                "intent is recorded"
-              ]
-            },
-            "issue_links": [
-              {
-                "created_at": "$TIMESTAMP",
-                "provider": "github",
-                "title": "MCP contract child",
-                "type": "child",
-                "url": "https://github.com/example/repo/issues/3"
-              }
-            ],
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "plan",
-            "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
-            "plan_prep": {
-              "prior_decisions": {
-                "evidence": [
-                  ".agent-harness/ADR.md"
-                ],
-                "status": "evidence"
-              },
-              "recorded_at": "$TIMESTAMP",
-              "related_issues": {
-                "evidence": [
-                  "remote score: selected=#1(0.81), threshold=0.70"
-                ],
-                "status": "evidence"
-              },
-              "web_research": {
-                "evidence": [
-                  ".agent-harness/research/contract.md"
-                ],
-                "status": "evidence"
-              }
-            },
-            "repo": "$WORKSPACE",
-            "schema_version": 8,
-            "updated_at": "$TIMESTAMP",
-            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_start": {
-      "content": [
-        {
-          "json": {
-            "branch": "2-mcp-contract",
-            "created_at": "$TIMESTAMP",
-            "id": "$ISSUEOPS_ID",
-            "ok": true,
-            "phase": "problem",
-            "repo": "$WORKSPACE",
-            "schema_version": 8,
-            "updated_at": "$TIMESTAMP"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "issueops_status": {
-      "content": [
-        {
-          "json": {
-            "branch": "2-mcp-contract",
-            "branch_prepare": {
-              "base_branch": "main",
-              "branch": "2-mcp-contract",
-              "created_at": "$TIMESTAMP",
-              "issue_url": "https://github.com/example/repo/issues/2",
-              "link_verified": true,
-              "provider": "github",
-              "steps": [
-                {
-                  "description": "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
-                  "order": 1,
-                  "strategy": "mcp_unavailable"
-                },
-                {
-                  "command": [
-                    "gh",
-                    "issue",
-                    "develop",
-                    "https://github.com/example/repo/issues/2",
-                    "--base",
-                    "main",
-                    "--name",
-                    "2-mcp-contract"
-                  ],
-                  "description": "Create a GitHub linked development branch through gh issue develop.",
-                  "order": 2,
-                  "strategy": "fallback_api"
-                },
-                {
-                  "description": "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
-                  "order": 3,
-                  "strategy": "fail"
-                }
-              ]
-            },
-            "created_at": "$TIMESTAMP",
-            "design_review": {
-              "alternatives": [
-                "docs-only guidance"
-              ],
-              "approved": true,
-              "problem_summary": "IssueOps needs explicit design review",
-              "proposed_design": "Gate implementation on approved design",
-              "refactor_plan": "Keep changes local to IssueOps state and adapters",
-              "reviewed_at": "$TIMESTAMP",
-              "risks": [
-                "golden contract drift"
-              ],
-              "verification": [
-                "design review checked contract drift risk",
-                "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden"
-              ]
-            },
-            "feedback": [
-              {
-                "body": "tighten MCP contract",
-                "classification": "contract_change",
-                "created_at": "$TIMESTAMP",
-                "issue_updated_at": "$TIMESTAMP",
-                "source": "review"
-              }
-            ],
-            "id": "$ISSUEOPS_ID",
-            "intent": {
-              "ambiguities": [
-                "none"
-              ],
-              "constraints": [
-                "keep contract deterministic"
-              ],
-              "intent_class": "standard",
-              "interpreted_intent": "Persist main-agent judgment before planning",
-              "non_goals": [
-                "do not continue from hook recommendation alone"
-              ],
-              "raw_request": "Refactor IssueOps intent flow",
-              "recorded_at": "$TIMESTAMP",
-              "success_criteria": [
-                "intent is recorded"
-              ]
-            },
-            "issue_links": [
-              {
-                "created_at": "$TIMESTAMP",
-                "provider": "github",
-                "title": "MCP contract child",
-                "type": "child",
-                "url": "https://github.com/example/repo/issues/3"
-              }
-            ],
-            "issue_url": "https://github.com/example/repo/issues/2",
-            "ok": true,
-            "phase": "plan",
-            "phase_ledger": {
-              "ai-slop-clean": {
-                "missing": [
-                  "ai_slop_clean_at",
-                  "ai_slop_clean_fingerprint",
-                  "ai_slop_clean_head",
-                  "cleanup_evidence",
-                  "verification_evidence"
-                ],
-                "notes": [
-                  "derived"
-                ],
-                "phase": "ai-slop-clean"
-              },
-              "compatibility-review": {
-                "missing": [
-                  "compatibility_review"
-                ],
-                "notes": [
-                  "derived"
-                ],
-                "phase": "compatibility-review"
-              },
-              "done": {
-                "missing": [
-                  "prior_phase_pr",
-                  "remote_artifact"
-                ],
-                "notes": [
-                  "derived"
-                ],
-                "phase": "done"
-              },
-              "feedback": {
-                "missing": [
-                  "feedback_resolution"
-                ],
-                "notes": [
-                  "derived"
-                ],
-                "phase": "feedback"
-              },
-              "grill": {
-                "missing": [
-                  "domain_review"
-                ],
-                "notes": [
-                  "derived"
-                ],
-                "phase": "grill"
-              },
-              "implement": {
-                "missing": [
-                  "compatibility_review",
-                  "devils_advocate_review",
-                  "execution_decision",
-                  "implementation_changes",
-                  "worktree_tools_prepared"
-                ],
-                "notes": [
-                  "derived"
-                ],
-                "phase": "implement"
-              },
-              "plan": {
-                "artifacts": [
-                  "branch_prepare",
-                  "worktree_path",
-                  "plan_path",
-                  "design_review"
-                ],
-                "notes": [
-                  "derived"
-                ],
-                "phase": "plan"
-              },
-              "pr": {
-                "missing": [
-                  "ai_slop_clean",
-                  "remote_artifact"
-                ],
-                "notes": [
-                  "derived"
-                ],
-                "phase": "pr"
-              },
-              "problem": {
-                "artifacts": [
-                  "intent_contract"
-                ],
-                "notes": [
-                  "derived"
-                ],
-                "phase": "problem"
-              }
-            },
-            "plan_path": "$MCP_ISSUEOPS_WORKTREE/docs/superpowers/plans/mcp-contract.md",
-            "plan_prep": {
-              "prior_decisions": {
-                "evidence": [
-                  ".agent-harness/ADR.md"
-                ],
-                "status": "evidence"
-              },
-              "recorded_at": "$TIMESTAMP",
-              "related_issues": {
-                "evidence": [
-                  "remote score: selected=#1(0.81), threshold=0.70"
-                ],
-                "status": "evidence"
-              },
-              "web_research": {
-                "evidence": [
-                  ".agent-harness/research/contract.md"
-                ],
-                "status": "evidence"
-              }
-            },
-            "repo": "$WORKSPACE",
-            "schema_version": 8,
-            "updated_at": "$TIMESTAMP",
-            "worktree_path": "$MCP_ISSUEOPS_WORKTREE"
+            "id": "$MCP_EXECUTION_ID",
+            "ok": true
           },
           "type": "text"
         }
@@ -10223,7 +7998,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 90,
+              "docs_indexed": 92,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
@@ -10991,6 +8766,12 @@
                 "message": "invalid character 'n' looking for beginning of object key string",
                 "path": "$STATE_DIR/corrupt.json",
                 "severity": "error"
+              },
+              {
+                "code": "unexpected_directory",
+                "message": "state directory contains an unexpected subdirectory",
+                "path": "$STATE_DIR/issueops_v1",
+                "severity": "warning"
               }
             ],
             "ok": true,
@@ -11062,6 +8843,12 @@
                 "message": "invalid character 'n' looking for beginning of object key string",
                 "path": "$STATE_DIR/corrupt.json",
                 "severity": "error"
+              },
+              {
+                "code": "unexpected_directory",
+                "message": "state directory contains an unexpected subdirectory",
+                "path": "$STATE_DIR/issueops_v1",
+                "severity": "warning"
               }
             ],
             "migrated_keys": [],

@@ -9,9 +9,10 @@ import (
 
 	claudeadapter "agent-harness/internal/adapter/claude"
 	codexadapter "agent-harness/internal/adapter/codex"
-	gjcadapter "agent-harness/internal/adapter/gjc"
-	reasonixadapter "agent-harness/internal/adapter/reasonix"
+	"agent-harness/internal/adapter/installutil"
+	mcpadapter "agent-harness/internal/adapter/mcp"
 	"agent-harness/internal/core"
+	"agent-harness/internal/port"
 )
 
 func runInstall(args []string) error {
@@ -40,10 +41,6 @@ func runInstallCommand(commandName string, args []string) error {
 	if codexHome == "" {
 		codexHome = filepath.Join(home, ".codex")
 	}
-	reasonixHome := os.Getenv("REASONIX_HOME")
-	if reasonixHome == "" {
-		reasonixHome = filepath.Join(home, ".reasonix")
-	}
 	if *interactive {
 		if err := validateInteractiveInstallInput(os.Stdin); err != nil {
 			return err
@@ -60,13 +57,30 @@ func runInstallCommand(commandName string, args []string) error {
 		return fmt.Errorf("invalid --path-mode %q: expected auto, manual, or skip", *pathMode)
 	}
 	root := deps.HarnessRoot()
-	req := core.DefaultNativeInstallRequest(root, home, codexHome, reasonixHome, filepath.Join(root, "bin", "agent-harness"))
+	req := core.DefaultNativeInstallRequest(root, home, codexHome, filepath.Join(root, "bin", "agent-harness"))
 	req.ProjectLocal = *projectLocal
 	req.DryRun = *dryRun
-	result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller(), reasonixadapter.NewInstaller(), gjcadapter.NewInstaller())
+	stateDir := filepath.Dir(core.IssueOpsStateRoot())
+	if !req.DryRun {
+		if _, err := core.BeginLegacyResetActivationV1(stateDir, core.LegacyResetActivationBeginRequestV1{
+			TargetSchema: 1, HarnessRoot: req.Root, TargetBinary: req.BinPath,
+		}); err != nil {
+			return fmt.Errorf("begin native activation: %w", err)
+		}
+	}
+	result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
 	if pathErr := applyInstallPathPlan(&result, req, *pathMode); pathErr != nil {
 		result.OK = false
 		err = errors.Join(err, pathErr)
+	}
+	if !req.DryRun && err == nil && result.OK {
+		activationErr := sealNativeActivationV1(stateDir, req)
+		if activationErr != nil {
+			result.OK = false
+			err = errors.Join(err, activationErr)
+		} else {
+			result.Messages = append(result.Messages, "native activation receipt sealed after strict Codex/Claude MCP and hook readback")
+		}
 	}
 	if *jsonOut {
 		_ = printJSON(result)
@@ -74,6 +88,33 @@ func runInstallCommand(commandName string, args []string) error {
 	}
 	printInstallNativeResult(result)
 	return err
+}
+
+func sealNativeActivationV1(stateDir string, req port.NativeInstallRequest) error {
+	codexEvidence, err := codexadapter.VerifyActivationV1(req)
+	if err != nil {
+		return err
+	}
+	claudeEvidence, err := claudeadapter.VerifyActivationV1(req)
+	if err != nil {
+		return err
+	}
+	tools := mcpadapter.IssueOpsBasicTools()
+	if len(tools) != 1 || tools[0].Name != "issueops_execution" {
+		return fmt.Errorf("IssueOps v1 MCP activation catalog must contain exactly issueops_execution")
+	}
+	catalogSHA, err := installutil.SemanticSHA256(tools)
+	if err != nil {
+		return err
+	}
+	_, err = core.SealLegacyResetActivationV1(stateDir, core.LegacyResetActivationSealRequestV1{
+		TargetSchema: 1, HarnessRoot: req.Root, TargetBinary: req.BinPath, CatalogSHA256: catalogSHA,
+		Evidence: append(codexEvidence, claudeEvidence...),
+	})
+	if err != nil {
+		return fmt.Errorf("seal native activation: %w", err)
+	}
+	return nil
 }
 
 func installUserHomeDir() (string, error) {

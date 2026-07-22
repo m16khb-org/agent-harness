@@ -21,6 +21,8 @@ Deliver every goal with **captured, verifiable evidence** for every success crit
 
 For repository-local symbol discovery, use CodeGraph first when `.codegraph/` exists; otherwise use local `rg` and direct reads only. Never use web search for local repository symbols. Run verification and inspection commands as separate calls; never chain them with `echo` or `printf` banner markers.
 
+First-party hosts are exactly Codex and Claude Code.
+
 ## IssueOps Benchmark Artifact Contract
 
 When Turing contributes to an IssueOps artifact or benchmark response, include a compact labeled evidence block. Scale the evidence weight to the risk, but keep the labels so the artifact proves the method was applied.
@@ -33,43 +35,41 @@ Verification mode: <full loop or proportionate lightweight mode, with rationale>
 Skipped checks: <checks skipped with explicit reason; "none" if all ran>
 ```
 
-For an ownership handoff, render the named ORCA criteria as binary observations. The owner completion report must contain the evidence artifact paths, exact final head, changed files, and verification results required by `issueops handoff complete`.
+For an IssueOps v1 execution, render every acceptance criterion as a binary observation. The owner's exact 14-field report includes evidence paths, final HEAD, changed files, remote artifact URL, verification results, and the completion receipt required by `issueops execution complete`.
 
-Before dispatch, verify that the linked supervised plan states the current issue and cycle intent and its acceptance criteria directly, including exact branch/path/base, exact bounded worker scope (report-only only when that is the current cycle's declared scope), claim/acknowledge/complete commands, verification, and cleanup. Never link an unrelated legacy plan as readiness evidence. The source plan commit must contain only that current-cycle Markdown file; after a clean exact-branch checkpoint, `link-plan` moves the attempt base head to that commit so the owner's changed-file evidence excludes the source plan.
+Before execution, verify that the plan states the current issue, exact lifecycle ID, branch, base SHA, canonical worktree, bounded scope, acceptance criteria, verification, completion, and cleanup boundary. Never link an unrelated plan as readiness evidence.
 
-Coordinator plan file edits must originate from the source coordinator root, with both hook CWD and repo identity equal to `record.Repo`. A feature-worktree session must not steer a child plan; stop and let the main source coordinator perform the plan edit, plan-only commit, and link.
+After the canonical worktree exists, the active generation holder owns plan and implementation edits there. The source checkout may observe the selected cycle but must not steer or mutate it.
 
-Do not cite stale tools such as positional `state write <key> <content>` forms as executable commands. `agent-harness issueops heartbeat` is current: an inline cycle supplies `--id`, while a supervised worker also supplies its attempt, ownership epoch, context hash, and native host/session identity.
+Do not cite stale tools such as positional `state write <key> <content>` forms as executable commands. IssueOps v1 liveness is the persisted generation plus exact native process receipt; inspect it with `agent-harness issueops execution status --id "$ISSUEOPS_ID" --json`.
 
-In a supervised handoff, the source implementation checkout is read-only and the source checkout is observation-only. From it, use only non-executing observations such as `git status`, `git diff`, `git log`, `git show`, `git rev-parse`, `git ls-files`, and `rg`. Tests, builds, formatting, installation, and generation run only in the claimed worker root; test initialization, fixtures, caches, binaries, and goldens may mutate state. A PreToolUse block must never be bypassed. The fresh worker uses the installed `agent-harness` command unless its bounded context proves `./bin/agent-harness` exists in the exact worker checkout.
+For the selected execution, the source checkout is observation-only. From it, use only non-mutating reads such as `git status`, `git diff`, `git log`, `git show`, `git rev-parse`, `git ls-files`, and `rg`. Tests, builds, formatting, installation, generation, commits, and publication run only in the canonical worktree. A PreToolUse block must never be bypassed. The owner uses the installed `agent-harness` command unless its sealed context proves `./bin/agent-harness` exists in the exact worktree.
 
 For a report-only cycle, run only the verification commands declared in the sealed worker packet. Do not invent API, provider-ref, or history probes; the bounded report is not authority to widen verification or inspect unrelated external state. If a declared command cannot run, record the exact failure instead of substituting a new probe.
 
-The Turing report path is a safe relative path from the canonical worker root. The Turing report must exist inside the canonical worker root as committed regular-file content; an absolute path, parent escape, or leaf symlink fails. The worker worktree must be clean before owner completion, and claim/complete both re-render the context source fingerprint.
+The Turing report path is a safe relative path from the canonical worktree. The report must exist inside that root as committed regular-file content; an absolute path, parent escape, or leaf symlink fails. The worktree must be clean before completion, and claim/completion must retain the sealed issue and context packet digests.
 
-Supervised shell red flags include the eval and source primitives, active command substitution, unquoted process substitution, zsh equals expansion (`=git` or `=(...)`), parameter/tilde expansion, and unquoted brace/glob pathname expansion. Use explicit canonical argv paths. The raw terminal steering surface is coordinator-only correction: a claimed worker, feature-worktree session, or other non-source session must not call terminal `send`, `stop`, `create`, `switch`, `focus`, `close`, `rename`, `split`, or equivalent write controls. The target hook is not a safety boundary for injected text, and preparation/dispatch must use `issueops handoff start`. `list`, `show`, `read`, and `wait` remain observations.
+Execution shell red flags include the eval and source primitives, active command substitution, unquoted process substitution, zsh equals expansion (`=git` or `=(...)`), parameter/tilde expansion, and unquoted brace/glob pathname expansion. Use explicit canonical argv paths. Do not steer a launched native owner through raw terminal injection; lifecycle control uses the persisted execution status, replacement, reconciliation, release, and completion commands.
 
-The sole steering exception is single-line literal-safe guidance from the exact source coordinator root to an already claimed worker. The installed argv shape is `orca terminal send --terminal <handle> --text <payload> --enter --json`, but authorization narrows both dynamic values: request CWD and repo identity must equal `record.Repo`; `--terminal` must be a uniquely matching persisted worker terminal handle across active handoffs, never an unknown, duplicated, or arbitrary handle. Distinct concurrent handles select the claimed worker without weakening ambiguity safety. The payload must be `# agent-harness guidance: <single-line-literal>`; decoded guidance must contain no ASCII C0 control rune (`0x00`–`0x1F`) or DEL (`0x7F`), because backspace, tab, and ESC can alter a bare PTY. Ordinary Korean and Unicode remain valid. Pass payload as one argv value, or apply a POSIX single-quote encoder exactly once when only shell text is available. Never use JSON double-quoting, backticks, shell substitution, or JS template interpolation such as `${...}` for freeform text.
-
-After accept, the coordinator queries `git rev-parse --verify refs/heads/<branch>` as a standalone observation and checks its stdout exactly equals the accepted FinalHead. Only then use exact branch push and explicit head/source and base/target flags for a draft PR/MR. Do not use `HEAD`, implicit branch defaults, command substitution, force/delete push, merge, or close.
+Before draft publication, query `git rev-parse HEAD` in the canonical worktree as a standalone observation. Use the exact active generation, explicit head/base branches, labels, assignee, native actor, and cwd for `issueops remote create-pr`. Do not use implicit branch defaults, force/delete push, merge, or close.
 
 For supervised evidence, self-verify requires binary/source contract parity. If an evidence worker is intentionally on a base checkout while the installed binary is feature HEAD, record a response-contract mismatch as a version-skew observation, do not mutate the base, and leave the final self-verify score to the coordinator running matching feature HEAD. The opt-in LLM path currently renders a read-only prompt only. No Z.AI request is sent, so `gate` is expected to remain non-passing without an ingested verdict. When the coordinator environment intentionally exports `HARNESS_SELF_VERIFY_LLM_EVAL=gate`, use explicit `--llm-eval=false` for the required deterministic completion sequence, record the override, and restart from its first gate after an interrupted or prompt-only run.
 
-For the focused handoff gate, use `./cmd/harness/hookcli/hookinput`; `./internal/core/hookinput` does not exist. Validate the installed GJC HookAPI bridge with `bun scripts/smoke-gjc-native-hook.ts "$HOME/.gjc/agent/hooks/agent-harness.ts"` and its JSON host/session/cwd/block output. Do not use a literal `--host gjc` grep because the shim constructs argv as separate TypeScript array elements.
+For the focused native-hook gate, use `./cmd/harness/hookcli/hookinput`; `./internal/core/hookinput` does not exist. Validate both Codex and Claude fixtures with the hook contract tests and inspect their JSON host/session/cwd/allow-or-block output.
 
 A targeted Go test is GREEN only when the intended test names actually ran. `[no tests to run]` is not GREEN; update stale regex names and rerun with `-v`, requiring the named `=== RUN` lines and PASS:
 
 ```bash
-go test -v ./internal/core/lifecycle -run '^(TestHandoffGuardBlocksExplicitHistoricalMailboxInjection|TestHandoffGuardEnforcesInstalledOrchestrationMessageTypes)$' -count=1
+go test -v ./internal/core/lifecycle -run '^TestLifecycleExecutionV1' -count=1
 ```
 
 When a zsh verification wrapper captures an exit code, never assign to `status`: zsh reserves `status` as a read-only parameter. Use `rc` or `exit_code`, and report the test command verdict separately from wrapper bookkeeping errors.
 
 Shell arguments containing Markdown backticks must be single-quoted or passed as direct argv; never place backticks inside a double-quoted shell command argument, where zsh executes command substitution.
 
-Codex supervised startup must use the exact installed native command and the canonical isolated worker root. A hook-trust, usage-limit, rate-limit, reset, or model-selection prompt is a user decision boundary; never automate it. Resume only after the native session and lifecycle claim are observable.
+Native owner startup must use the exact installed Codex or Claude command and the canonical worktree. A hook-trust, usage-limit, rate-limit, reset, or model-selection prompt is a user decision boundary; never automate it. Resume only after the native process receipt and generation claim are observable.
 
-Before any replacement or dispatch, inspect exact-worktree terminals and active orchestration tasks. Any such possible writer or dispatched task blocks another writer, even when preserved WIP or the diff appears stable; a possible writer is connected or writable, while only the designated active worker must be both. A stable diff is not ownership evidence. Do not adopt WIP until the original task is terminal and the original writer is exited or closed.
+Before any replacement, inspect the exact native process, canonical worktree, Orca resource, branch, HEAD, and dirty paths. Any possible writer blocks another writer even when the diff appears stable. A stable diff is not lease evidence. Follow preview → revoke → finalize-preview → finalize with generation and inventory fingerprints; never adopt WIP while the old writer or resource may still be active.
 
 Use server-filtered task inventory for sole-writer attestation, then inspect the exact current dispatch:
 
@@ -86,7 +86,7 @@ Startup evidence is not a convenience bundle: run cwd, git root, branch, HEAD, d
 
 Start the fresh worker from a login shell and require the actual host banner. Immediately before dispatch, obtain a fresh `connected=true` and `writable=true` check for the exact terminal. One `tui-idle` sample alone is insufficient. After an authorized terminal send delivers interrupt text plus Enter, read the target and verify that UserPromptSubmit or working state actually began. If the full instruction remains at the idle prompt, send exactly one Enter and read again. Never resend the instruction body.
 
-Preview first. If Codex requires hook-trust bypass, stop at the user decision boundary and record the reviewed nonsecret hook evidence before repeating the identical preview with `--allow-codex-hook-trust-bypass`. Final confirmed start adds the exact reviewed `--expected-context-sha256` plus `--confirm`; it never introduces another option absent from the final preview. Claude, GJC, inline fallback, and unreviewed starts do not receive the bypass flag.
+Preview `issueops execution prepare` first and review mode, branch, base SHA, canonical path, native owner model, and next command. Confirmation repeats the identical request with only `--confirm`. `auto` may resolve to direct only when Orca is absent or unready before mutation; any later ambiguity uses `issueops execution reconcile` and never another create attempt.
 
 Explicit nonsecret Orca environment-key allowlist: never dump broad ORCA-prefixed env output or use prefix filtering for identity probes. Allow only explicitly named nonsecret keys such as `ORCA_TERMINAL_HANDLE`, `ORCA_TAB_ID`, and `ORCA_WORKTREE_ID`, and never record secret values in tests, docs, logs, or evidence.
 
@@ -96,11 +96,7 @@ For Codex, top-level `transcript_path` and `agent_transcript_path` are hook meta
 
 Quoted semicolons, ampersands, and pipes in evidence values are argument data when they remain shell-quoted; unquoted shell control operators and newlines remain blocked. Preserve evidence punctuation instead of rewriting prose to satisfy the guard. Omit `--agent-id` when the native agent id is empty, and include it only when the hook payload supplies a nonempty identity.
 
-When a supervised worker is blocked, send one escalation to its concrete coordinator handle, keep heartbeat, remain mutation-free, and wait for coordinator repair, retry, or cancel. It must not invoke `orca orchestration ask` or create a second decision gate after escalation.
-
-The accepted `orca orchestration send --type` values are exactly `status`, `dispatch`, `worker_done`, `merge_ready`, `escalation`, `handoff`, `decision_gate`, and `heartbeat`. Use the semantic type rather than inventing values. IssueOps completion itself is recorded through `handoff complete`; hooks do not synthesize orchestration completion.
-
-The acknowledged owner publishes and creates the PR/MR for the exact selected lifecycle ID, then records `handoff complete` with the committed changed-file list, report path, final head, native owner identity, and verification results. Immediately before completion, inspect bounded current-task messages and process every new status or escalation for the exact task and dispatch. If a message changes the result, repeat affected verification before completing. Hooks only observe, block, or relay this boundary.
+When an owner is blocked, it remains mutation-free and returns the exact state error and rendered next command in the fixed report. It must not create a second decision system. The active holder publishes and verifies the draft PR/MR, then records `issueops execution complete` with the exact lifecycle ID, generation, actor, cwd, committed report, final HEAD, artifact URL, and verification results. Hooks only observe, block, or relay this boundary.
 
 A yielded execution cell is unfinished evidence. Poll that exact cell or its returned process session through a terminal exit and capture the final exit/output before counting, replacing, or proceeding past the gate; if an edit follows, restart the ordered verification gate from step 1. Never infer completion from partial package output or from starting a later command.
 
@@ -108,21 +104,9 @@ Never construct `gofmt -w` arguments with shell command substitution such as `$(
 
 Before this fence, each worker commit must use a Conventional Commit subject and a literal `Lore:` block with `Intent`, `Why`, `Changes`, `Verify`, and `Risk` as required by `.agent-harness/COMMIT_POLICY.md`.
 
-A completed ownership cycle is never a new mutation lease. Review feedback that requires edits starts a new bounded cycle or an explicitly authorized current-cycle continuation before completion.
+A completed execution is never a new mutation lease. Review feedback that requires edits starts a new bounded execution or an explicitly authorized continuation before completion.
 
-PreToolUse blocks every other explicit message type, including duplicate `--type` flags, before supervised-record selection; valid or omitted values continue through existing authority checks. The mailbox repeat-prevention guard blocks any explicit `--inject` on direct `orca orchestration check`, whether the command uses default unread, explicit `--unread`, `--all`, reordered flags, or equals form; in particular, never use `--unread --inject`. Follow the canonical mailbox observation in `skills/issueops/references/orca-handoff.md`: Select the numeric `sequence` plus exact `taskId`, `dispatchId`, sender and recipient direction, then attach the mailbox-observation receipt to the applicable criterion. Sequence is evidence, not a lease fence. Never prestate or predict a future mailbox sequence; only the returned send envelope or a subsequent bounded mailbox observation supplies the sequence. A live terminal handle is not historical mailbox identity. An urgent current-worker correction still uses only the existing exact literal-safe source-coordinator terminal guidance to the uniquely persisted worker handle; automatic handle/mailbox synchronization remains issue #17.
-
-Orchestration reviews and task-scoped messages target the sealed worker mailbox. The live terminal handle is terminal-control identity only and never broad lifecycle authority.
-
-PreToolUse blocks direct `orca orchestration ask` and `orca orchestration gate-create` from a linked worker checkout even when `execution_handoff` is absent. The source coordinator owns decision gates; `gate-list` remains read-only for workers. After one escalation, heartbeat and wait rather than opening a duplicate gate.
-
-`closed` is terminal. New work belongs in a new bounded cycle, not a reopened ownership epoch.
-
-A claimed cancel is fail-closed without explicit stale or force evidence; an unresolved pending journal survives cancel. Before retry, require a clean exact branch and HEAD checkpoint and persist it as the new `attempt_base_head`. An invoked/timeout create stays ambiguous and is never called again automatically; only `Invoked=false` is a definitive pre-invocation failure. Promote every observed representative mutation family into a retained hook test.
-
-For runtime restarts, follow the canonical `skills/issueops/references/orca-handoff.md` recovery recipe rather than duplicating its low-level inventory, monitoring, or cleanup commands here. Turing retains the runtime-rollover evidence in its report: before/after runtime, worktree, and terminal identities; inventory completeness and uniqueness; sealed marker and clean exact-HEAD checks; the atomic refresh result; and the no-replacement decision when live work or uncommitted changes remain. Attach the resulting monitoring and cleanup receipts to the applicable ORCA criteria.
-
-Coordinator cleanup follows the canonical low-level recipe in `skills/issueops/references/orca-handoff.md`; do not copy its argv here. Turing requires receipts for the exact task terminal update, each optional bounded cleanup attempt, the worktree terminal set reaching quiescence, worktree removal, and final inventory. A worktree removal is not terminal cleanup evidence: every exact spawned handle and PTY, including nested shells, must be `connected=false or absent from terminal list`. `WorkerMailboxHandle` is historical mailbox identity, not a general current terminal control handle, and a successful cleanup call is not sufficient evidence by itself.
+Pending external intent survives interruption. Follow `skills/issueops/references/execution-v1.md`: reconcile ambiguous workspace/publication state, or replace a failed holder with exact generation and quiescence evidence. Turing records before/after process, worktree, branch, HEAD, dirty-path, and Orca-resource observations. Cleanup remains a separate human-authorized operation after verified merge evidence.
 
 ## Quantitative Quality Metrics (vs ulw-loop baseline)
 
@@ -136,7 +120,7 @@ Turing tracks these metrics automatically. Target: **20%+ improvement over ulw-l
 | **Parallelization Ratio** | ~2x (manual wave grouping) | ≥4x (dependency-matrix-driven waves) | `total_tasks / wave_count` |
 | **Cleanup Compliance** | ~50% (cleanup receipts often missing) | 100% (no pass without receipt) | `cleanup_receipts / qa_scenarios` |
 | **Cross-Session Survival** | None (filesystem-only, no state checkpoints) | 100% (agent-harness state survives compaction) | `resumed_sessions / total_sessions` |
-| **Host Portability** | Codex-only host assumptions | 3 hosts (Codex, Claude, and GJC unified skill) | Host-specific section translates available tools |
+| **Host Portability** | Codex-only host assumptions | 2 hosts (Codex and Claude unified skill) | Host-specific section translates available tools |
 
 ---
 
@@ -224,13 +208,13 @@ In full mode, build a real-usage scenario for every criterion through ONE of the
 
 ### Host Translation (sub-agent dispatch only)
 
-| Task shape | Codex | Claude Code | GJC |
-|------------|-------|-------------|----------|
-| Read-only exploration | Use the current Codex sub-agent tool only when the session policy allows it | Use the current Task tool when available | Use the current GJC exploration tool when available |
-| Adversarial review | Use a fresh reviewer only when sub-agent dispatch is allowed | Use a reviewer task when available | Use a review task when available |
-| External docs research | Use current web/docs tools or `berners-lee`; label unavailable tools as blocked | Use current web/docs tools or `berners-lee` | Use current research tools or `berners-lee` |
-| Background work | Use current async agent/job tools only when allowed | Use current background task support when available | Use current background task support when available |
-| Isolated worktree edits | IssueOps worktree + worker | Same | Same |
+| Task shape | Codex | Claude Code |
+|------------|-------|-------------|
+| Read-only exploration | Use the current Codex sub-agent tool only when the session policy allows it | Use the current Task tool when available |
+| Adversarial review | Use a fresh reviewer only when sub-agent dispatch is allowed | Use a reviewer task when available |
+| External docs research | Use current web/docs tools or `berners-lee`; label unavailable tools as blocked | Use current web/docs tools or `berners-lee` |
+| Background work | Use current async agent/job tools only when allowed | Use current background task support when available |
+| Isolated worktree edits | IssueOps worktree + worker | Same |
 
 Every sub-agent message MUST carry: goal + exact files in scope; the baseline characterization test pinning current behavior (when touching existing code); constraints + project rules; the verification commands to run; the ONE Manual-QA channel and the exact evidence artifact path to capture. Sub-agents have NO interview context — be exhaustive.
 If the current host does not expose or allow a listed sub-agent pattern, record that limitation and keep the work in the main agent.
@@ -459,12 +443,12 @@ When an IssueOps cycle exists:
    ```bash
    agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source turing --body "G1-C1 PASS: <evidence_path> | cleanup: <receipt>" --json
    ```
-3. **Progress record**: Keep durable liveness with the current heartbeat command. Inline cycles use `agent-harness issueops heartbeat --id "$ISSUEOPS_ID" --json`; a supervised worker must also provide the exact attempt, ownership epoch, context hash, host, session id, and optional agent id from its claim. Criterion detail still belongs in a concise feedback entry:
+3. **Progress record**: Inspect the durable generation and native process receipt with execution status. Criterion detail belongs in a concise feedback entry:
    ```bash
-   agent-harness issueops heartbeat --id "$ISSUEOPS_ID" --json
+   agent-harness issueops execution status --id "$ISSUEOPS_ID" --json
    agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source turing --body "G1-C1 START: <scenario>" --json
    ```
-4. **Owner completion**: When an active ownership handoff exists, the acknowledged owner writes the evidence report, publishes the exact verified final head as authorized, and records `agent-harness issueops handoff complete`. Completion stops at the human cleanup boundary.
+4. **Owner completion**: The active generation holder writes the evidence report, creates and verifies the draft PR/MR, then records `agent-harness issueops execution complete` with exact actor, cwd, generation, final HEAD, report, artifact URL, and verification evidence. Completion releases the generation but never merges or cleans up resources.
 5. **Phase advancement**: After all criteria pass + quality gate clean:
    ```bash
    agent-harness issueops phase --id "$ISSUEOPS_ID" --to pr --json
@@ -474,18 +458,18 @@ When an IssueOps cycle exists:
 
 ## Cross-Host Translation Table
 
-| Action | Codex | Claude Code | GJC |
-|--------|-------|-------------|----------|
-| Run shell command | Use the current shell/terminal tool with explicit cwd | Same principle | Same principle |
-| Read file | Use the current file-read or shell read tool | Same principle | Same principle |
-| Search codebase | Prefer indexed search when configured; otherwise `rg` | Same principle | Same principle |
-| Write/edit files | Use the current patch/edit tool | Same principle | Same principle |
-| Write evidence file | Use the current patch/edit tool or CLI that owns the state | Same principle | Same principle |
-| State checkpoint | `agent-harness state write --key KEY (--value TEXT|--input FILE|--stdin) --json` | Same | Same |
-| Spawn explorer (pattern #1) | Only when the current Codex session exposes and permits sub-agents | Only when Task is available | Only when GJC exposes an exploration task |
-| Spawn reviewer (pattern #2) | Only when the current Codex session exposes and permits sub-agents | Only when Task is available | Only when GJC exposes a review task |
-| External docs research (pattern #3) | Use current web/docs tools or `berners-lee`; do not name unavailable tools as executable | Same principle | Same principle |
-| Background + poll (pattern #8) | Use current async/job tools only when available | Same principle | Same principle |
+| Action | Codex | Claude Code |
+|--------|-------|-------------|
+| Run shell command | Use the current shell/terminal tool with explicit cwd | Same principle |
+| Read file | Use the current file-read or shell read tool | Same principle |
+| Search codebase | Prefer indexed search when configured; otherwise `rg` | Same principle |
+| Write/edit files | Use the current patch/edit tool | Same principle |
+| Write evidence file | Use the current patch/edit tool or CLI that owns the state | Same principle |
+| State checkpoint | `agent-harness state write --key KEY (--value TEXT|--input FILE|--stdin) --json` | Same |
+| Spawn explorer (pattern #1) | Only when the current Codex session exposes and permits sub-agents | Only when Task is available |
+| Spawn reviewer (pattern #2) | Only when the current Codex session exposes and permits sub-agents | Only when Task is available |
+| External docs research (pattern #3) | Use current web/docs tools or `berners-lee`; do not name unavailable tools as executable | Same principle |
+| Background + poll (pattern #8) | Use current async/job tools only when available | Same principle |
 
 ---
 

@@ -6,6 +6,8 @@ description: Structural decisions, rationale, and rejected alternatives.
 
 작성일: 2026-05-25
 
+> 이 파일의 날짜별 항목은 append-only 결정 이력이다. 과거 항목의 retired host/schema/command 명칭은 당시 근거를 보존하는 역사 표기이며 현재 지원 계약이 아니다. 현재 운영 표면은 루트 `AGENTS.md`, `ARCHITECTURE.md`, `OPERATIONS.md`와 가장 최근의 명시적 superseding 결정이 정한다.
+
 ---
 
 ## 2026-07-19 — One operational-health authority and external one-time reconciliation
@@ -284,7 +286,7 @@ Rejected alternative: infer sub-agent usage from hook hints or phase names. This
 
 ### 2026-07-03 — Codex PreToolUse ask fallback
 
-Decision: Codex PreToolUse "ask" outcomes are emitted as a normal `decision="block"` response, while Claude Code and Reasonix keep `hookSpecificOutput.permissionDecision="ask"`.
+Decision: Codex PreToolUse "ask" outcomes are emitted as a normal `decision="block"` response, while Claude Code keeps `hookSpecificOutput.permissionDecision="ask"`.
 
 Rationale:
 

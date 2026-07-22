@@ -58,17 +58,6 @@ func TestStartIssueOpsChildFailClosedPreconditions(t *testing.T) {
 			missing: "parent_devils_advocate_missing",
 		},
 		{
-			name:        "missing subagent plan",
-			childBranch: "124-child-subagent",
-			mutate: func(t *testing.T, stateRoot string, parent IssueOpsRecord) IssueOpsRecord {
-				t.Helper()
-				parent.ExecutionDecision.SubagentUse = "none"
-				parent.ExecutionDecision.SubagentPlans = nil
-				return writeIssueOpsRecordForDelegationTest(t, stateRoot, parent)
-			},
-			missing: "execution_decision_subagent_plan",
-		},
-		{
 			name:        "parent already delegated child",
 			childBranch: "124-child-depth",
 			mutate: func(t *testing.T, stateRoot string, parent IssueOpsRecord) IssueOpsRecord {
@@ -91,7 +80,7 @@ func TestStartIssueOpsChildFailClosedPreconditions(t *testing.T) {
 			stateRoot := t.TempDir()
 			parent := createDelegationReadyParentForTest(t, stateRoot)
 			parent = tc.mutate(t, stateRoot, parent)
-			_, err := StartIssueOpsChild(stateRoot, IssueOpsChildStartRequest{
+			_, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
 				ParentID:           parent.ID,
 				Branch:             tc.childBranch,
 				Title:              "delegated child",
@@ -114,7 +103,7 @@ func TestStartIssueOpsChildFailClosedPreconditions(t *testing.T) {
 func TestStartIssueOpsChildCreatesDelegatedProfile(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	result, err := StartIssueOpsChild(stateRoot, IssueOpsChildStartRequest{
+	result, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-profile",
 		Title:              "child profile",
@@ -178,8 +167,8 @@ func TestStartIssueOpsChildCreatesDelegatedProfile(t *testing.T) {
 	if child, err = AdvanceIssueOpsPhase(stateRoot, child.ID, string(IssueOpsPhaseCompatibilityReview)); err != nil {
 		t.Fatalf("child should enter compatibility-review after earning own setup gates: %v", err)
 	}
-	if _, err := AdvanceIssueOpsPhase(stateRoot, child.ID, string(IssueOpsPhaseImplement)); err == nil || !strings.Contains(err.Error(), "worktree_tools_prepared") || !strings.Contains(err.Error(), "execution_decision") {
-		t.Fatalf("child implement should still require own worktree tools and execution decision, got %v", err)
+	if _, err := AdvanceIssueOpsPhase(stateRoot, child.ID, string(IssueOpsPhaseImplement)); err == nil || !strings.Contains(err.Error(), "execution") {
+		t.Fatalf("child implement should still require its own execution lease, got %v", err)
 	}
 }
 
@@ -251,21 +240,6 @@ func TestStartIssueOpsChildPerConditionRemedy(t *testing.T) {
 			remedyMessage: "fixing only devil's-advocate review",
 		},
 		{
-			name:        "subagent plan",
-			childBranch: "123-child-remedy-subagent",
-			missing:     "execution_decision_subagent_plan",
-			breakParent: func(parent IssueOpsRecord) IssueOpsRecord {
-				parent.ExecutionDecision.SubagentUse = "none"
-				parent.ExecutionDecision.SubagentPlans = nil
-				return parent
-			},
-			remedy: func(parent IssueOpsRecord, req *IssueOpsChildStartRequest) IssueOpsRecord {
-				parent.ExecutionDecision.SubagentPlans = []IssueOpsSubAgentPlan{delegationSubagentPlanForTest()}
-				return parent
-			},
-			remedyMessage: "fixing only the subagent plan",
-		},
-		{
 			name:        "delegation depth",
 			childBranch: "123-child-remedy-depth",
 			missing:     "delegation_depth_exceeded",
@@ -306,7 +280,7 @@ func TestStartIssueOpsChildPerConditionRemedy(t *testing.T) {
 				AcceptanceCriteria: []string{"single field remedy succeeds"},
 			}
 			parent = writeIssueOpsRecordForDelegationTest(t, stateRoot, tc.breakParent(parent))
-			if _, err := StartIssueOpsChild(stateRoot, req); err == nil || !strings.Contains(err.Error(), tc.missing) {
+			if _, err := startIssueOpsChildForTest(stateRoot, parent, req); err == nil || !strings.Contains(err.Error(), tc.missing) {
 				t.Fatalf("expected %s precondition failure, got %v", tc.missing, err)
 			}
 			childID := NewIssueOpsID(parent.Repo, req.Branch)
@@ -316,7 +290,7 @@ func TestStartIssueOpsChildPerConditionRemedy(t *testing.T) {
 				}
 			}
 			parent = writeIssueOpsRecordForDelegationTest(t, stateRoot, tc.remedy(parent, &req))
-			if _, err := StartIssueOpsChild(stateRoot, req); err != nil {
+			if _, err := startIssueOpsChildForTest(stateRoot, parent, req); err != nil {
 				t.Fatalf("%s should unblock child start: %v", tc.remedyMessage, err)
 			}
 		})
@@ -326,7 +300,7 @@ func TestStartIssueOpsChildPerConditionRemedy(t *testing.T) {
 func TestStartIssueOpsChildLinkFailureReturnsWarning(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	result, err := StartIssueOpsChild(stateRoot, IssueOpsChildStartRequest{
+	result, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "124-child-cross-project",
 		Title:              "cross project child",
@@ -355,7 +329,7 @@ func TestStartIssueOpsChildLinkFailureReturnsWarning(t *testing.T) {
 func TestStaleResetPreservesDelegationGraph(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	result, err := StartIssueOpsChild(stateRoot, IssueOpsChildStartRequest{
+	result, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-stale",
 		Title:              "stale child",
@@ -409,11 +383,11 @@ func TestStartIssueOpsChildAppendsParentRef(t *testing.T) {
 		AcceptanceCriteria: []string{"parent ref dedupes", "remote child link is recorded"},
 		ChildIssueURL:      "https://github.com/example/repo/issues/124",
 	}
-	result, err := StartIssueOpsChild(stateRoot, req)
+	result, err := startIssueOpsChildForTest(stateRoot, parent, req)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := StartIssueOpsChild(stateRoot, req)
+	second, err := startIssueOpsChildForTest(stateRoot, parent, req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -454,7 +428,7 @@ func TestStartIssueOpsChildConcurrentSameBranch(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			title := fmt.Sprintf("same child %d", i)
-			result, err := StartIssueOpsChild(stateRoot, IssueOpsChildStartRequest{
+			result, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
 				ParentID:           parent.ID,
 				Branch:             "123-child-same",
 				Title:              title,
@@ -509,7 +483,7 @@ func TestStartIssueOpsChildConcurrentSiblings(t *testing.T) {
 			defer wg.Done()
 			branch := fmt.Sprintf("12%d-child-sibling", i)
 			title := fmt.Sprintf("sibling %d", i)
-			result, err := StartIssueOpsChild(stateRoot, IssueOpsChildStartRequest{
+			result, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
 				ParentID:           parent.ID,
 				Branch:             branch,
 				Title:              title,
@@ -582,41 +556,8 @@ func createDelegationReadyParentForTest(t *testing.T, stateRoot string) IssueOps
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err = RecordIssueOpsWorktreeTools(stateRoot, record.ID, IssueOpsWorktreeToolPreparation{OK: true, WorktreePath: worktree})
-	if err != nil {
-		t.Fatal(err)
-	}
-	recordIssueOpsCompatibilityReviewForTest(t, stateRoot, record.ID)
-	record, err = RecordIssueOpsExecutionDecision(stateRoot, record.ID, IssueOpsExecutionDecisionRecordRequest{
-		AutoProceed: []string{"delegate child work after readiness gates"},
-		HookBlocked: []string{"hooks do not start child cycles"},
-		HumanGates:  []string{"parent validates child output before acceptance"},
-		SubagentUse: "planned",
-		SubagentPlans: []IssueOpsSubAgentPlan{
-			delegationSubagentPlanForTest(),
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseImplement))
-	if err != nil {
-		t.Fatal(err)
-	}
+	record = recordIssueOpsPreparedExecutionForTest(t, stateRoot, record.ID, worktree)
 	return record
-}
-
-func delegationSubagentPlanForTest() IssueOpsSubAgentPlan {
-	return IssueOpsSubAgentPlan{
-		Objective:            "implement isolated child work",
-		Pattern:              "task-fan-out-coordination",
-		Benefit:              "parallel_speed",
-		Tradeoffs:            []string{"requires parent validation", "extra state coordination"},
-		NetPositiveRationale: "child work is isolated and parent-owned validation keeps integration controlled",
-		Scope:                "one child branch and worktree",
-		Verification:         "child reports tests and parent validates evidence",
-		Fallback:             "main agent completes the child task directly",
-	}
 }
 
 func writeIssueOpsRecordForDelegationTest(t *testing.T, stateRoot string, record IssueOpsRecord) IssueOpsRecord {

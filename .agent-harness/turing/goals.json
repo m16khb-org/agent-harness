@@ -127,7 +127,7 @@
         },
         {
           "id": "G4-C2",
-          "scenario": "Build a clean merge-commit reference, install through the official path, prove installed hash equality, and verify Codex, Claude, GJC, MCP, and hook smokes.",
+          "scenario": "Build a clean merge-commit reference, install through the official path, prove installed hash equality, and verify Codex, Claude, MCP, and hook smokes.",
           "channel": "cli",
           "expectedEvidence": ".agent-harness/turing/evidence/G4-C2-install-readback.txt",
           "status": "pending",

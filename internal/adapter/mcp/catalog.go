@@ -47,7 +47,6 @@ func catalogSections() []catalogSection {
 		{DispatchPolicyState, true, CommandPolicyTools},
 		{DispatchPolicyState, true, StateTools},
 		{DispatchIssueOps, true, IssueOpsBasicTools},
-		{DispatchIssueOps, true, IssueOpsLifecycleTools},
 		{DispatchWorkPool, true, WorkPoolTools},
 		{DispatchLoop, true, LoopTools},
 		{DispatchAssistantWorker, true, func() []Tool { return []Tool{DaemonStatusTool()} }},

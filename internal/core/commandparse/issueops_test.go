@@ -3,9 +3,7 @@ package commandparse
 import "testing"
 
 // TestParseExactIssueOpsCommandCorpus is the accept/reject characterization
-// corpus for the exact-issueops parser extracted from the lifecycle authority
-// layer (Task C). It pins parsing behavior at the new home so the move stays
-// byte-identical.
+// corpus for the exact IssueOps v1 command parser.
 func TestParseExactIssueOpsCommandCorpus(t *testing.T) {
 	cases := []struct {
 		command  string
@@ -13,15 +11,13 @@ func TestParseExactIssueOpsCommandCorpus(t *testing.T) {
 		wantPath string
 	}{
 		{"agent-harness issueops status --id io-1 --json", true, "status"},
-		{"agent-harness issueops resume --repo /r --id io-1", true, "resume"},
-		{"./bin/agent-harness issueops handoff claim --id io-1", true, "handoff claim"},
-		{"agent-harness issueops handoff start --id io-1", true, "handoff start"},
-		{"agent-harness issueops worktree prepare --id io-1", true, "worktree prepare"},
-		{"agent-harness issueops worktree reconcile --id io-1 --workspace-epoch epoch-1", true, "worktree reconcile"},
+		{"./bin/agent-harness issueops execution claim --id io-1", true, "execution claim"},
+		{"agent-harness issueops execution prepare --id io-1", true, "execution prepare"},
+		{"agent-harness issueops execution reconcile --id io-1", true, "execution reconcile"},
 		{"agent-harness issueops compatibility review --id io-1", true, "compatibility review"},
-		{"agent-harness issueops phase --id io-1 --to done", true, "phase"},
+		{"agent-harness issueops phase --id io-1 --to pr", true, "phase"},
 		// Two-word subcommand with a flag where the second word is missing -> reject.
-		{"agent-harness issueops handoff --id io-1", false, ""},
+		{"agent-harness issueops execution --id io-1", false, ""},
 		{"agent-harness issueops", false, ""},
 		{"git status", false, ""},
 		{"agent-harness build", false, ""},
@@ -61,7 +57,7 @@ func TestExactFlagsCorpus(t *testing.T) {
 		return v, b, r
 	}
 	// A flag token must not become another flag's value.
-	cmd, _ := ParseExactIssueOpsCommand("agent-harness issueops handoff claim --agent-id --cwd /w")
+	cmd, _ := ParseExactIssueOpsCommand("agent-harness issueops execution claim --agent-id --cwd /w")
 	v, b, r := spec(cmd.Path)
 	if _, ok := ExactFlags(cmd, v, b, r); ok {
 		t.Fatal("flag token must not be consumed as a value")
@@ -73,9 +69,9 @@ func TestExactFlagsCorpus(t *testing.T) {
 		t.Fatal("unknown flag must be rejected")
 	}
 	// Repeatable flag accepted multiple times; non-repeatable rejected twice.
-	cmd3, _ := ParseExactIssueOpsCommand("agent-harness issueops handoff start --id io-1 --criteria-id A --criteria-id B")
+	cmd3, _ := ParseExactIssueOpsCommand("agent-harness issueops execution complete --id io-1 --verification A --verification B")
 	v3, b3, r3 := spec(cmd3.Path)
-	if flags, ok := ExactFlags(cmd3, v3, b3, r3); !ok || len(flags["--criteria-id"]) != 2 {
+	if flags, ok := ExactFlags(cmd3, v3, b3, r3); !ok || len(flags["--verification"]) != 2 {
 		t.Fatalf("repeatable flag not accepted twice: ok=%v flags=%#v", ok, flags)
 	}
 	cmd4, _ := ParseExactIssueOpsCommand("agent-harness issueops status --id io-1 --id io-2")
@@ -85,25 +81,67 @@ func TestExactFlagsCorpus(t *testing.T) {
 	}
 	// Removed aliases stay rejected instead of silently selecting a different
 	// cycle or compatibility path.
-	cmd5, _ := ParseExactIssueOpsCommand("agent-harness issueops handoff start --id io-1 --verification-command go-test --verification-command go-vet")
+	cmd5, _ := ParseExactIssueOpsCommand("agent-harness issueops execution complete --id io-1 --verification-command go-test --verification-command go-vet")
 	v5, b5, r5 := spec(cmd5.Path)
 	if flags, ok := ExactFlags(cmd5, v5, b5, r5); ok || flags != nil {
 		t.Fatalf("removed verification-command alias was accepted: ok=%v flags=%#v", ok, flags)
 	}
 }
 
-func TestWorktreeReconcileExactFlags(t *testing.T) {
-	command, ok := ParseExactIssueOpsCommand("agent-harness issueops worktree reconcile --id io-1 --workspace-epoch epoch-1 --host codex --session-id session-1 --agent-id agent-1 --source-cwd /repo --json")
+func TestExecutionReconcileExactFlags(t *testing.T) {
+	command, ok := ParseExactIssueOpsCommand("agent-harness issueops execution reconcile --id io-1 --operation-id op-1 --host codex --session-id session-1 --agent-id agent-1 --session-pid 42 --session-started-at 2026-07-22T00:00:00Z --session-executable /bin/codex --cwd /repo --confirm --json")
 	if !ok {
-		t.Fatal("worktree reconcile command did not parse")
+		t.Fatal("execution reconcile command did not parse")
 	}
 	values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
 	if !ok {
-		t.Fatal("worktree reconcile command has no exact flag spec")
+		t.Fatal("execution reconcile command has no exact flag spec")
 	}
 	flags, ok := ExactFlags(command, values, booleans, repeatable)
-	if !ok || flags["--workspace-epoch"][0] != "epoch-1" || flags["--source-cwd"][0] != "/repo" {
-		t.Fatalf("worktree reconcile flags = %#v ok=%v", flags, ok)
+	if !ok || flags["--operation-id"][0] != "op-1" || flags["--cwd"][0] != "/repo" {
+		t.Fatalf("execution reconcile flags = %#v ok=%v", flags, ok)
+	}
+}
+
+func TestExecutionClaimUsesCanonicalClaimTokenFileFlag(t *testing.T) {
+	command, ok := ParseExactIssueOpsCommand("agent-harness issueops execution claim --id io-1 --generation 1 --claim-token-file /tmp/token --host codex --session-id session-1 --session-pid 42 --session-started-at 2026-07-22T00:00:00Z --session-executable /bin/codex --cwd /repo --json")
+	if !ok {
+		t.Fatal("execution claim command did not parse")
+	}
+	values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
+	if !ok {
+		t.Fatal("execution claim command has no exact flag spec")
+	}
+	flags, ok := ExactFlags(command, values, booleans, repeatable)
+	if !ok || flags["--claim-token-file"][0] != "/tmp/token" {
+		t.Fatalf("execution claim flags = %#v ok=%v", flags, ok)
+	}
+	legacy, _ := ParseExactIssueOpsCommand("agent-harness issueops execution claim --id io-1 --generation 1 --token-file /tmp/token")
+	if flags, ok := ExactFlags(legacy, values, booleans, repeatable); ok || flags != nil {
+		t.Fatalf("legacy token-file flag was accepted: flags=%#v ok=%v", flags, ok)
+	}
+}
+
+func TestResetLegacyUsesExactV1Flags(t *testing.T) {
+	command, ok := ParseExactIssueOpsCommand("agent-harness issueops reset-legacy --target-schema 1 --confirm --expected-fingerprint abc --json")
+	if !ok || command.Path != "reset-legacy" {
+		t.Fatalf("reset command did not parse: %#v ok=%v", command, ok)
+	}
+	values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
+	if !ok {
+		t.Fatal("reset-legacy command has no exact flag spec")
+	}
+	flags, ok := ExactFlags(command, values, booleans, repeatable)
+	if !ok || flags["--target-schema"][0] != "1" || flags["--expected-fingerprint"][0] != "abc" {
+		t.Fatalf("reset flags = %#v ok=%v", flags, ok)
+	}
+}
+
+func TestRemovedExecutionCommandsHaveNoFlagSpecs(t *testing.T) {
+	for _, path := range []string{"resume", "execution decide", "worktree prepare", "worktree prepare-tools", "worktree reconcile", "heartbeat"} {
+		if _, _, _, ok := IssueOpsCommandSpec(path); ok {
+			t.Fatalf("removed IssueOps command %q still has an exact flag spec", path)
+		}
 	}
 }
 
@@ -119,6 +157,21 @@ func TestRemoteArtifactExactFlags(t *testing.T) {
 	flags, ok := ExactFlags(command, values, booleans, repeatable)
 	if !ok || flags["--provider"][0] != "github" || len(flags["--label"]) != 1 {
 		t.Fatalf("remote verify-artifact flags = %#v ok=%v", flags, ok)
+	}
+}
+
+func TestRemoteScoreExactFlags(t *testing.T) {
+	command, ok := ParseExactIssueOpsCommand("agent-harness issueops remote score --input /tmp/score-input.json --judge file --judge-file /tmp/judge.json --json")
+	if !ok {
+		t.Fatal("remote score command did not parse")
+	}
+	values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
+	if !ok {
+		t.Fatal("remote score command has no exact flag spec")
+	}
+	flags, ok := ExactFlags(command, values, booleans, repeatable)
+	if !ok || flags["--input"][0] != "/tmp/score-input.json" || flags["--judge"][0] != "file" || flags["--judge-file"][0] != "/tmp/judge.json" {
+		t.Fatalf("remote score flags = %#v ok=%v", flags, ok)
 	}
 }
 
@@ -147,6 +200,16 @@ func TestOwnerRecorderExactFlags(t *testing.T) {
 func TestExactReadOnlyShellCommandCorpus(t *testing.T) {
 	allow := []string{
 		"pwd",
+		"cat README.md",
+		"cat -n README.md internal/core/issueops/model/execution_v1.go",
+		"head -n 5 README.md",
+		"head --lines=25 README.md",
+		"tail -n 5 README.md",
+		"ls -la .",
+		"find . -maxdepth 2 -type f -name '*.go' -print",
+		"stat README.md",
+		"file README.md",
+		"file --mime-type README.md",
 		"wc -l /Users/habin/.codex/skills/verification-before-completion/SKILL.md",
 		"sed -n '1,240p' /Users/habin/.codex/skills/verification-before-completion/SKILL.md",
 		"rg -n handoff internal",
@@ -154,6 +217,7 @@ func TestExactReadOnlyShellCommandCorpus(t *testing.T) {
 		"git status --short",
 		"git -C /repo diff --stat",
 		"git log -1",
+		"git branch --show-current",
 		"git ls-remote --heads origin refs/heads/51-p0-safety-critical-fixes",
 		"gh pr view 63 --repo m16khb/agent-harness --json headRefOid,isDraft,url,statusCheckRollup",
 		"gh pr checks 63",
@@ -166,6 +230,20 @@ func TestExactReadOnlyShellCommandCorpus(t *testing.T) {
 	}
 	deny := []string{
 		"pwd extra",
+		"cat",
+		"cat -",
+		"head -n 10001 README.md",
+		"head -n -5 README.md",
+		"tail -f daemon.log",
+		"tail --follow daemon.log",
+		"ls -R .",
+		"find . -type f",
+		"find . -maxdepth 2 -delete",
+		"find . -maxdepth 2 -exec rm {} +",
+		"find . -maxdepth 99 -type f",
+		"stat",
+		"file --compile magic",
+		"file -C magic",
 		"wc -l",
 		"wc --files0-from list.txt /Users/habin/.codex/skills/verification-before-completion/SKILL.md",
 		"wc -l /Users/habin/.codex/skills/verification-before-completion/SKILL.md && rm -rf /tmp/worker",
@@ -178,6 +256,7 @@ func TestExactReadOnlyShellCommandCorpus(t *testing.T) {
 		"git status -o out.txt",
 		"git push",
 		"git commit -m x",
+		"git branch --list",
 		"git ls-remote https://example.com/repo.git refs/heads/main",
 		"git ls-remote --upload-pack=/tmp/helper origin refs/heads/main",
 		"gh pr merge 63",
@@ -192,7 +271,6 @@ func TestExactReadOnlyShellCommandCorpus(t *testing.T) {
 		"orca terminal wait --terminal t --for spin --json",
 		"rm -rf /",
 		"rg handoff > out.txt",
-		"cat file",
 	}
 	for _, c := range allow {
 		if !ExactReadOnlyShellCommand(c) {

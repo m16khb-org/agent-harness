@@ -386,9 +386,6 @@ func TestRiskMCPAndIssueOpsPolicyFacadeWrappers(t *testing.T) {
 		t.Fatal("parseGitStatusPath empty")
 	}
 
-	if _, err := prepareIssueOpsWorktreeTools(core.IssueOpsRecord{}); err == nil {
-		t.Fatal("empty issueops record should not prepare worktree tools")
-	}
 	if issueOpsCleanupMerged("", false) {
 		t.Fatal("empty cleanup should not be merged")
 	}

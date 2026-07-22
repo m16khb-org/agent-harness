@@ -312,7 +312,7 @@ Measures whether the answer is backed by proof.
 
 ### 5. Safety and Portability
 
-Measures whether the skill is safe across Codex, Claude Code, Reasonix, local repos, and user machines.
+Measures whether the skill is safe across Codex, Claude Code, local repos, and user machines.
 
 5:
 - Uses current commands and available tools.

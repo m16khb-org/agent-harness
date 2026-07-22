@@ -5,7 +5,7 @@ import "testing"
 func TestIssueOpsStrictPRReadinessBlocksIncompleteChildren(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	started, err := StartIssueOpsChild(stateRoot, IssueOpsChildStartRequest{
+	started, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-pr-incomplete",
 		Title:              "incomplete child",
@@ -23,14 +23,13 @@ func TestIssueOpsStrictPRReadinessBlocksIncompleteChildren(t *testing.T) {
 
 	child := started.Child
 	child.Phase = IssueOpsPhaseDone
-	child.CycleState = IssueOpsCycleClosed
 	writeIssueOpsRecordForDelegationTest(t, stateRoot, child)
 	ready = issueOpsStrictPRReadinessWithState(stateRoot, parent)
 	if containsString(ready.Missing, "child_incomplete:"+child.ID) || !containsString(ready.Missing, "child_unvalidated:"+child.ID) {
 		t.Fatalf("done child without verdict should be unvalidated only, got %#v", ready.Missing)
 	}
 
-	if _, err := AcceptIssueOpsChild(stateRoot, parent.ID, child.ID, []string{"parent verified child output"}); err != nil {
+	if _, err := acceptIssueOpsChildForTest(stateRoot, parent, child.ID, []string{"parent verified child output"}); err != nil {
 		t.Fatal(err)
 	}
 	parentAfter, err := ReadIssueOps(stateRoot, parent.ID)
@@ -46,7 +45,7 @@ func TestIssueOpsStrictPRReadinessBlocksIncompleteChildren(t *testing.T) {
 func TestIssueOpsStrictPRReadinessRejectedAndDroppedVerdicts(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	started, err := StartIssueOpsChild(stateRoot, IssueOpsChildStartRequest{
+	started, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-pr-rejected",
 		Title:              "rejected child",
@@ -58,9 +57,8 @@ func TestIssueOpsStrictPRReadinessRejectedAndDroppedVerdicts(t *testing.T) {
 	}
 	child := started.Child
 	child.Phase = IssueOpsPhaseDone
-	child.CycleState = IssueOpsCycleClosed
 	writeIssueOpsRecordForDelegationTest(t, stateRoot, child)
-	if _, err := RejectIssueOpsChild(stateRoot, parent.ID, child.ID, "needs another integration pass", []string{"missing validation"}); err != nil {
+	if _, err := rejectIssueOpsChildForTest(stateRoot, parent, child.ID, "needs another integration pass", []string{"missing validation"}); err != nil {
 		t.Fatal(err)
 	}
 	parentAfter, err := ReadIssueOps(stateRoot, parent.ID)
@@ -72,7 +70,7 @@ func TestIssueOpsStrictPRReadinessRejectedAndDroppedVerdicts(t *testing.T) {
 		t.Fatalf("rejected child should keep parent pr gate blocked, got %#v", ready.Missing)
 	}
 
-	if _, err := DropIssueOpsChild(stateRoot, parent.ID, child.ID, "work deliberately removed from scope"); err != nil {
+	if _, err := dropIssueOpsChildForTest(stateRoot, parent, child.ID, "work deliberately removed from scope"); err != nil {
 		t.Fatal(err)
 	}
 	parentAfter, err = ReadIssueOps(stateRoot, parent.ID)

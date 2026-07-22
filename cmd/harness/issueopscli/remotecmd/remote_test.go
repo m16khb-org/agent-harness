@@ -1,19 +1,13 @@
 package remotecmd
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 
 	"agent-harness/internal/core"
-	issueopsmodel "agent-harness/internal/core/issueops/model"
-	"agent-harness/internal/core/sqlstore"
-	"agent-harness/internal/testsupport"
 )
 
 func TestRunScoreWithJudgeNoneAndErrorPaths(t *testing.T) {
@@ -77,17 +71,17 @@ func TestRunVerifyArtifactAndRemoteCreateDryRuns(t *testing.T) {
 			return nil
 		},
 	}
-	if err := Run([]string{"verify-artifact", "--id", record.ID, "--provider", "github", "--kind", "pr", "--url", "https://github.com/acme/repo/pull/1", "--target-branch", "main", "--label", "bug", "--assignee", "octocat", "--json"}, deps); err != nil {
-		t.Fatalf("verify-artifact returned error: %v", err)
-	}
 	if err := Run([]string{"create-issue", "--id", record.ID, "--title", "Title", "--body", "Body", "--label", "bug", "--json"}, deps); err != nil {
 		t.Fatalf("create-issue dry-run returned error: %v", err)
 	}
 	if err := Run([]string{"create-child", "--id", record.ID, "--title", "Child", "--body", "Body", "--label", "bug", "--assignee", "octocat", "--json"}, deps); err != nil {
 		t.Fatalf("create-child dry-run returned error: %v", err)
 	}
-	if err := Run([]string{"create-pr", "--id", record.ID, "--title", "PR", "--body", "Body", "--head", record.Branch, "--base", "main", "--json"}, deps); err != nil {
+	if err := Run([]string{"create-pr", "--id", record.ID, "--title", "PR", "--body", "Body", "--head", record.Branch, "--base", "main", "--label", "bug", "--assignee", "octocat", "--json"}, deps); err != nil {
 		t.Fatalf("create-pr dry-run returned error: %v", err)
+	}
+	if err := Run([]string{"verify-artifact", "--id", record.ID, "--provider", "github", "--kind", "pr", "--url", "https://github.com/acme/repo/pull/1", "--target-branch", "main", "--label", "bug", "--assignee", "octocat", "--json"}, deps); err != nil {
+		t.Fatalf("verify-artifact returned error: %v", err)
 	}
 	if err := Run([]string{"sync-graph", "--id", record.ID, "--json"}, deps); err != nil {
 		t.Fatalf("sync-graph dry-run returned error: %v", err)
@@ -166,120 +160,18 @@ func TestRunRemoteCreatePRConfirmRequiresLabelAndAssignee(t *testing.T) {
 	}
 }
 
-func TestRunRemoteCreatePRPreservesLegacyBodyFileAndRejectsSupervisedBodyFile(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	record := remoteIssueOpsRecord(t)
-	bodyFile := filepath.Join(t.TempDir(), "body.md")
-	if err := os.WriteFile(bodyFile, []byte("untrusted"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	providerCalls := 0
-	var capturedBody string
-	deps := Deps{
-		PrintError: func(error) error { return nil },
-		CreatePullRequest: func(_ string, req core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
-			providerCalls++
-			capturedBody = req.Body
-			return core.IssueProviderCreatePullRequestResult{}, nil
-		},
-	}
-	err := Run([]string{"create-pr", "--id", record.ID, "--title", "PR", "--head", record.Branch, "--base", "main", "--body-file", bodyFile}, deps)
-	if err != nil || providerCalls != 1 || capturedBody != "untrusted" {
-		t.Fatalf("legacy body-file behavior changed: calls=%d body=%q err=%v", providerCalls, capturedBody, err)
-	}
-	supervised := record
-	supervised.CycleState = issueopsmodel.IssueOpsCycleActive
-	supervised.Ownership = &issueopsmodel.IssueOpsOwnershipLedger{ActiveAttempt: 1, Attempts: []issueopsmodel.IssueOpsOwnershipAttempt{{Number: 1, Handoff: &issueopsmodel.IssueOpsExecutionHandoff{}}}}
-	if supervised.Ownership == nil || strings.TrimSpace(bodyFile) == "" {
-		t.Fatal("invalid supervised body-file test setup")
-	}
-	if err := rejectSupervisedPullRequestBodyFile(supervised, bodyFile); err == nil || !strings.Contains(err.Error(), "body-file is forbidden") {
-		t.Fatalf("supervised body-file rejection = %v", err)
-	}
-}
-
-func TestRunRemoteCreatePRLegacyAtMeReachesProviderWithoutStateMutation(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	record := remoteIssueOpsRecord(t)
-	db, err := sqlstore.Open(core.IssueOpsStateRoot())
-	if err != nil {
-		t.Fatal(err)
-	}
-	before, ok, err := db.Get("issueops", record.ID)
-	if err != nil || !ok {
-		t.Fatalf("read legacy bytes: ok=%v err=%v", ok, err)
-	}
-	var captured core.IssueProviderCreatePullRequestRequest
-	deps := Deps{
-		PrintJSON: func(value any) error {
-			encoder := json.NewEncoder(os.Stdout)
-			encoder.SetIndent("", "  ")
-			return encoder.Encode(value)
-		},
-		PrintError: func(error) error { return nil },
-		CreatePullRequest: func(_ string, req core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
-			captured = req
-			return core.IssueProviderCreatePullRequestResult{OK: true, URL: "https://github.com/acme/repo/pull/16"}, nil
-		},
-	}
-	baseArgs := []string{"create-pr", "--id", record.ID, "--title", "PR", "--body", " legacy body ", "--head", record.Branch, "--base", "main", "--label", " bug ", "--assignee", "@me", "--confirm"}
-	for _, golden := range []struct {
-		name string
-		args []string
-	}{
-		{name: "testdata/legacy_create_pr_text.golden.txt", args: baseArgs},
-		{name: "testdata/legacy_create_pr_json.golden.json", args: append(append([]string(nil), baseArgs...), "--json")},
-	} {
-		got := testsupport.CaptureStdout(t, func() error { return Run(golden.args, deps) })
-		want, readErr := os.ReadFile(golden.name)
-		if readErr != nil {
-			t.Fatal(readErr)
-		}
-		if !bytes.Equal([]byte(got), want) {
-			t.Fatalf("legacy CLI output changed for %s\nwant=%q\n got=%q", golden.name, want, got)
-		}
-	}
-	if captured.Assignees[0] != "@me" || captured.Draft || captured.Body != "legacy body" {
-		t.Fatalf("legacy provider request changed: %#v", captured)
-	}
-	after, ok, err := db.Get("issueops", record.ID)
-	if err != nil || !ok || !reflect.DeepEqual(after, before) {
-		t.Fatalf("legacy create mutated IssueOps bytes: ok=%v err=%v", ok, err)
-	}
-}
-
-func TestRunRemoteCreatePRDryRunRedactsProviderArgvForGitHubAndGitLab(t *testing.T) {
+func TestRunRemoteCreatePRDryRunRejectsSecretLikeContentBeforeProviderCall(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record := remoteIssueOpsRecord(t)
 	secret := "api_key=opaque-token password=opaque-password Authorization: Bearer opaque-bearer /tmp/secret.pem"
-	for _, providerName := range []string{"github", "gitlab"} {
-		t.Run(providerName, func(t *testing.T) {
-			var printed core.IssueProviderCreatePullRequestResult
-			deps := Deps{PrintJSON: func(value any) error {
-				printed = value.(core.IssueProviderCreatePullRequestResult)
-				return nil
-			}}
-			err := Run([]string{"create-pr", "--id", record.ID, "--provider", providerName, "--title", "PR", "--body", secret, "--head", record.Branch, "--base", "main", "--json"}, deps)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if strings.Contains(printed.Preview, "opaque-") || !strings.Contains(printed.Preview, "<redacted>") || len(printed.Preview) > 4200 {
-				t.Fatalf("%s CLI dry-run preview was not bounded and redacted: %q", providerName, printed.Preview)
-			}
-		})
-	}
-}
-
-func TestPullRequestDraftIsSupervisedOnly(t *testing.T) {
-	legacy := core.IssueOpsRecord{}
-	if pullRequestDraft(legacy) {
-		t.Fatal("legacy nil-handoff PR/MR became draft")
-	}
-	supervised := legacy
-	supervised.CycleState = issueopsmodel.IssueOpsCycleActive
-	supervised.Ownership = &issueopsmodel.IssueOpsOwnershipLedger{ActiveAttempt: 1, Attempts: []issueopsmodel.IssueOpsOwnershipAttempt{{Number: 1, Handoff: &issueopsmodel.IssueOpsExecutionHandoff{}}}}
-	if !pullRequestDraft(supervised) {
-		t.Fatal("supervised PR/MR was not forced to draft")
+	providerCalls := 0
+	deps := Deps{CreatePullRequest: func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
+		providerCalls++
+		return core.IssueProviderCreatePullRequestResult{}, nil
+	}}
+	err := Run([]string{"create-pr", "--id", record.ID, "--provider", "github", "--title", "PR", "--body", secret, "--head", record.Branch, "--base", "main", "--json"}, deps)
+	if err == nil || !strings.Contains(err.Error(), "secret-like") || providerCalls != 0 {
+		t.Fatalf("error=%v providerCalls=%d", err, providerCalls)
 	}
 }
 
@@ -383,21 +275,6 @@ func TestRemoteHelpersAndBoundaries(t *testing.T) {
 	}
 	if err := Run([]string{"unknown"}, deps); err == nil || !strings.Contains(err.Error(), "unknown issueops remote") {
 		t.Fatalf("expected unknown command error, got %v", err)
-	}
-}
-
-func TestOwnershipLedgerRemoteDraftUsesOnlyCurrentAttempt(t *testing.T) {
-	record := core.IssueOpsRecord{
-		CycleState: core.IssueOpsCycleActive,
-		Ownership:  &core.IssueOpsOwnershipLedger{ActiveAttempt: 2, Attempts: []core.IssueOpsOwnershipAttempt{{Number: 1}, {Number: 2}}},
-	}
-	if !pullRequestDraft(record) {
-		t.Fatal("active current attempt must select supervised remote behavior")
-	}
-	record.CycleState = core.IssueOpsCyclePaused
-	record.Ownership.ActiveAttempt = 0
-	if pullRequestDraft(record) {
-		t.Fatal("historical attempt selected supervised remote behavior")
 	}
 }
 

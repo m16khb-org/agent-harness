@@ -30,6 +30,7 @@ type DocUpkeepAppendResult = model.DocUpkeepAppendResult
 type HookToolUseLifecycleRequest = model.HookToolUseLifecycleRequest
 type HookToolUseLifecycleResult = model.HookToolUseLifecycleResult
 type HookPreToolUseDecisionResult = model.HookPreToolUseDecisionResult
+type IssueOpsV1DenyReason = model.IssueOpsV1DenyReason
 type LifecycleStopReminderResult = model.LifecycleStopReminderResult
 type StopNextActionRelayRecord = model.StopNextActionRelayRecord
 type StopNextActionRelayResult = model.StopNextActionRelayResult
@@ -47,10 +48,6 @@ type IssueOpsDesignReviewRequest = issueops.IssueOpsDesignReviewRequest
 type IssueOpsBranchPrepareRequest = issueops.IssueOpsBranchPrepareRequest
 type IssueOpsRemoteArtifactVerification = issueops.IssueOpsRemoteArtifactVerification
 type IssueOpsPhase = issueops.IssueOpsPhase
-
-func issueOpsHandoffAcknowledgeCommand(record IssueOpsRecord) (string, error) {
-	return issueops.IssueOpsHandoffAcknowledgeCommand(record)
-}
 
 const (
 	IssueOpsPhaseProblem     = issueops.IssueOpsPhaseProblem
@@ -134,28 +131,12 @@ func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []IssueOpsRecord {
 	return issueops.ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo)
 }
 
-func ActiveIssueOpsSupervisedHandoffCyclesForRepo(repo string) []IssueOpsRecord {
-	return issueops.ActiveIssueOpsSupervisedHandoffCyclesForRepo(repo)
-}
-
 func IssueOpsPhaseExpectsWorktree(phase IssueOpsPhase) bool {
 	return issueops.IssueOpsPhaseExpectsWorktree(phase)
 }
 
 func issueOpsCycleWorktreeMissing(record IssueOpsRecord) bool {
 	return issueops.IssueOpsCycleWorktreeMissing(record)
-}
-
-func readIssueOpsSession(repo string) (issueops.SessionBinding, error) {
-	return issueops.ReadIssueOpsSession(repo)
-}
-
-func listIssueOpsSessionBindings(repo string) ([]issueops.SessionBinding, error) {
-	return issueops.ListIssueOpsSessionBindings(repo)
-}
-
-func activeSessionCycleID(repo string) string {
-	return issueops.ActiveSessionCycleID(repo)
 }
 
 func validateIssueOpsIssueBranch(branch string) error {
@@ -168,48 +149,6 @@ func newIssueOpsID(repo, branch string) string {
 
 func writeIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, error) {
 	return issueops.WriteIssueOps(stateRoot, record)
-}
-
-func currentOwnershipAttempt(record IssueOpsRecord) *issueops.IssueOpsOwnershipAttempt {
-	return issueops.CurrentOwnershipAttempt(record)
-}
-
-func currentOwnershipHandoff(record IssueOpsRecord) *issueops.IssueOpsExecutionHandoff {
-	attempt := currentOwnershipAttempt(record)
-	if attempt == nil {
-		return nil
-	}
-	return attempt.Handoff
-}
-
-func currentOwnershipWorkspace(record IssueOpsRecord) *issueops.IssueOpsExecutionWorkspace {
-	attempt := currentOwnershipAttempt(record)
-	if attempt == nil {
-		return nil
-	}
-	return attempt.Workspace
-}
-
-func retainedOwnershipHandoff(record IssueOpsRecord) *issueops.IssueOpsExecutionHandoff {
-	if h := currentOwnershipHandoff(record); h != nil {
-		return h
-	}
-	attempt := issueops.LastOwnershipAttempt(record)
-	if attempt == nil {
-		return nil
-	}
-	return attempt.Handoff
-}
-
-func retainedOwnershipWorkspace(record IssueOpsRecord) *issueops.IssueOpsExecutionWorkspace {
-	if workspace := currentOwnershipWorkspace(record); workspace != nil {
-		return workspace
-	}
-	attempt := issueops.LastOwnershipAttempt(record)
-	if attempt == nil {
-		return nil
-	}
-	return attempt.Workspace
 }
 
 func AppendDocUpkeepEvent(repoRoot string, event DocUpkeepEvent) (DocUpkeepAppendResult, error) {

@@ -59,7 +59,7 @@ func routeDocsForTask(task string) []routeDoc {
 	if strings.Contains(task, "adr") || strings.Contains(task, "decision") || strings.Contains(task, "alternative") || strings.Contains(task, "why") {
 		return add(p("ADR.md", "architecture decision rationale, rejected alternatives, and consequences"), p("ARCHITECTURE.md", "current structure affected by the decision"), p("CONSTITUTION.md", "principles that constrain decisions"))
 	}
-	if strings.Contains(task, "handoff") || strings.Contains(task, "finish") || strings.Contains(task, "complete") || strings.Contains(task, "workflow") {
+	if strings.Contains(task, "execution") || strings.Contains(task, "finish") || strings.Contains(task, "complete") || strings.Contains(task, "workflow") {
 		return add(p("AGENT_WORKFLOW.md", "agent start/work/verify/finish procedure"), p("TESTING.md", "verification evidence before completion"))
 	}
 	if strings.Contains(task, "commit") || strings.Contains(task, "pr") || strings.Contains(task, "push") {

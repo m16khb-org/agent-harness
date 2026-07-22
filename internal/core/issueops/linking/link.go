@@ -103,7 +103,6 @@ func LinkWorktree(store Store, stateRoot, id, worktreePath string) (model.IssueO
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("plan_path must be inside linked worktree: %s", path)
 	}
 	if record.WorktreePath != path {
-		record.WorktreeTools = nil
 	}
 	record.WorktreePath = path
 	return store.TouchWrite(stateRoot, record)

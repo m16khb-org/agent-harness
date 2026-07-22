@@ -15,7 +15,6 @@ type HostProbeRequest struct {
 	Profile               string
 	Attempt               int
 	RunToken              string
-	GJCAuthEnv            []string
 }
 
 // HostProbePreflight records whether a host can run without starting a model episode.

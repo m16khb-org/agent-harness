@@ -12,7 +12,7 @@ var SnapshotAssertion = regexp.MustCompile(`(?i)(toMatchSnapshot|assert.*golden|
 
 var NewSymbol = regexp.MustCompile(`^\s*(?:func\s+|function\s+|def\s+|class\s+|type\s+|interface\s+|const\s+|let\s+|var\s+)([A-Za-z_][A-Za-z0-9_]*)`)
 
-// Immutable-prefix determinism guard (Reasonix-derived). A file that opts in
+// Immutable-prefix determinism guard. A file that opts in
 // with ImmutablePrefixMarker declares that it builds context an agent reuses as
 // a stable cache prefix; introducing wall-clock/random/nonce values there
 // breaks byte-determinism. A line may carry VolatileOKMarker to declare the

@@ -11,10 +11,10 @@ import (
 
 func TestRunIssueOpsChildLifecycle(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	parent := startIssueOpsCLIReadyDelegationParent(t, makeIssueOpsCLIRepoForTest(t, "delegation-cli"), "123-parent-child-cli")
+	parent, actor := startIssueOpsCLIReadyDelegationParent(t, makeIssueOpsCLIRepoForTest(t, "delegation-cli"), "123-parent-child-cli")
 
 	startOut := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{
+		return runIssueOps(withIssueOpsCLIActor([]string{
 			"child", "start",
 			"--parent", parent.ID,
 			"--branch", "123-child-cli",
@@ -23,7 +23,7 @@ func TestRunIssueOpsChildLifecycle(t *testing.T) {
 			"--acceptance", "child cli start returns JSON",
 			"--acceptance", "parent can validate child result",
 			"--json",
-		})
+		}, actor))
 	})
 	var started core.IssueOpsChildStartResult
 	if err := json.Unmarshal([]byte(startOut), &started); err != nil {
@@ -37,7 +37,7 @@ func TestRunIssueOpsChildLifecycle(t *testing.T) {
 	}
 
 	statusOut := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"child", "status", "--parent", parent.ID, "--json"})
+		return runIssueOps(withIssueOpsCLIActor([]string{"child", "status", "--parent", parent.ID, "--json"}, actor))
 	})
 	var status core.IssueOpsChildStatusResult
 	if err := json.Unmarshal([]byte(statusOut), &status); err != nil {
@@ -48,7 +48,7 @@ func TestRunIssueOpsChildLifecycle(t *testing.T) {
 	}
 
 	listOut := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"child", "list", "--parent", parent.ID, "--json"})
+		return runIssueOps(withIssueOpsCLIActor([]string{"child", "list", "--parent", parent.ID, "--json"}, actor))
 	})
 	var listed core.IssueOpsChildStatusResult
 	if err := json.Unmarshal([]byte(listOut), &listed); err != nil {
@@ -64,7 +64,7 @@ func TestRunIssueOpsChildLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	acceptOut := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"child", "accept", "--parent", parent.ID, "--child", child.ID, "--evidence", "parent verified child output", "--json"})
+		return runIssueOps(withIssueOpsCLIActor([]string{"child", "accept", "--parent", parent.ID, "--child", child.ID, "--evidence", "parent verified child output", "--json"}, actor))
 	})
 	var accepted core.IssueOpsChildValidationResult
 	if err := json.Unmarshal([]byte(acceptOut), &accepted); err != nil {
@@ -75,12 +75,12 @@ func TestRunIssueOpsChildLifecycle(t *testing.T) {
 	}
 
 	if _, err := captureStdoutAndErrorForIssueOps(t, func() error {
-		return runIssueOps([]string{"child", "status", "--json"})
+		return runIssueOps(withIssueOpsCLIActor([]string{"child", "status", "--json"}, actor))
 	}); err == nil || !strings.Contains(err.Error(), "parent_id is required") {
 		t.Fatalf("missing --parent should fail through core validation, got %v", err)
 	}
 	if _, err := captureStdoutAndErrorForIssueOps(t, func() error {
-		return runIssueOps([]string{"child", "reject", "--parent", parent.ID, "--child", child.ID, "--reason", "short", "--json"})
+		return runIssueOps(withIssueOpsCLIActor([]string{"child", "reject", "--parent", parent.ID, "--child", child.ID, "--reason", "short", "--json"}, actor))
 	}); err == nil || !strings.Contains(err.Error(), "reason must be at least 10 characters") {
 		t.Fatalf("short reject reason should fail through core validation, got %v", err)
 	}
@@ -89,10 +89,10 @@ func TestRunIssueOpsChildLifecycle(t *testing.T) {
 func TestCLIIssueOpsPhaseAdvanceToPRBlockedByChildren(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := makeIssueOpsCLIGitRepoForRemoteVerifyTest(t)
-	parent := startIssueOpsCLIReadyPRParentWithChild(t, repo, "123-parent-pr-child-gate")
+	parent, actor := startIssueOpsCLIReadyPRParentWithChild(t, repo, "123-parent-pr-child-gate")
 
 	startOut := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{
+		return runIssueOps(withIssueOpsCLIActor([]string{
 			"child", "start",
 			"--parent", parent.ID,
 			"--branch", "123-child-pr-gate",
@@ -100,18 +100,18 @@ func TestCLIIssueOpsPhaseAdvanceToPRBlockedByChildren(t *testing.T) {
 			"--scope", "prove parent pr gate blocks incomplete child",
 			"--acceptance", "parent pr gate sees child status",
 			"--json",
-		})
+		}, actor))
 	})
 	var started core.IssueOpsChildStartResult
 	if err := json.Unmarshal([]byte(startOut), &started); err != nil {
 		t.Fatalf("child start should return JSON: %v\n%s", err, startOut)
 	}
-	if _, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), parent.ID, string(core.IssueOpsPhaseAISlopClean)); err != nil {
+	if _, err := core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), parent.ID, string(core.IssueOpsPhaseAISlopClean), actor); err != nil {
 		t.Fatal(err)
 	}
 
 	blockedOut, err := captureStdoutAndErrorForIssueOps(t, func() error {
-		return runIssueOps([]string{"phase", "--id", parent.ID, "--to", "pr", "--json"})
+		return runIssueOps(withIssueOpsCLIActor([]string{"phase", "--id", parent.ID, "--to", "pr", "--json"}, actor))
 	})
 	assertIssueOpsJSONErrorContains(t, blockedOut, err, "child_incomplete:"+started.Child.ID)
 
@@ -121,10 +121,10 @@ func TestCLIIssueOpsPhaseAdvanceToPRBlockedByChildren(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"child", "accept", "--parent", parent.ID, "--child", child.ID, "--evidence", "merged child verification", "--json"})
+		return runIssueOps(withIssueOpsCLIActor([]string{"child", "accept", "--parent", parent.ID, "--child", child.ID, "--evidence", "merged child verification", "--json"}, actor))
 	})
 	prOut := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"phase", "--id", parent.ID, "--to", "pr", "--json"})
+		return runIssueOps(withIssueOpsCLIActor([]string{"phase", "--id", parent.ID, "--to", "pr", "--json"}, actor))
 	})
 	var prRecord core.IssueOpsRecord
 	if err := json.Unmarshal([]byte(prOut), &prRecord); err != nil {
@@ -138,10 +138,10 @@ func TestCLIIssueOpsPhaseAdvanceToPRBlockedByChildren(t *testing.T) {
 func TestCLIIssueOpsStrictPRReadinessReportsIncompleteChildren(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := makeIssueOpsCLIGitRepoForRemoteVerifyTest(t)
-	parent := startIssueOpsCLIReadyPRParentWithChild(t, repo, "123-parent-pr-readiness-child-gate")
+	parent, actor := startIssueOpsCLIReadyPRParentWithChild(t, repo, "123-parent-pr-readiness-child-gate")
 
 	startOut := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{
+		return runIssueOps(withIssueOpsCLIActor([]string{
 			"child", "start",
 			"--parent", parent.ID,
 			"--branch", "123-child-pr-readiness-gate",
@@ -149,13 +149,13 @@ func TestCLIIssueOpsStrictPRReadinessReportsIncompleteChildren(t *testing.T) {
 			"--scope", "prove parent strict pr-readiness reports incomplete child",
 			"--acceptance", "parent pr-readiness sees child status",
 			"--json",
-		})
+		}, actor))
 	})
 	var started core.IssueOpsChildStartResult
 	if err := json.Unmarshal([]byte(startOut), &started); err != nil {
 		t.Fatalf("child start should return JSON: %v\n%s", err, startOut)
 	}
-	if _, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), parent.ID, string(core.IssueOpsPhaseAISlopClean)); err != nil {
+	if _, err := core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), parent.ID, string(core.IssueOpsPhaseAISlopClean), actor); err != nil {
 		t.Fatal(err)
 	}
 
@@ -171,7 +171,7 @@ func TestCLIIssueOpsStrictPRReadinessReportsIncompleteChildren(t *testing.T) {
 	}
 }
 
-func startIssueOpsCLIReadyDelegationParent(t *testing.T, repo, branch string) core.IssueOpsRecord {
+func startIssueOpsCLIReadyDelegationParent(t *testing.T, repo, branch string) (core.IssueOpsRecord, core.IssueOpsActor) {
 	t.Helper()
 	out := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"start", "--repo", repo, "--branch", branch, "--json"})
@@ -189,15 +189,15 @@ func startIssueOpsCLIReadyDelegationParent(t *testing.T, repo, branch string) co
 	if err != nil {
 		t.Fatal(err)
 	}
-	record.Phase = core.IssueOpsPhaseImplement
-	record, err = core.WriteIssueOps(core.IssueOpsStateRoot(), record)
+	record, actor := seedIssueOpsCLIExecutionV1(t, record)
+	record, err = core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), record.ID, string(core.IssueOpsPhaseImplement), actor)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return record
+	return record, actor
 }
 
-func startIssueOpsCLIReadyPRParentWithChild(t *testing.T, repo, branch string) core.IssueOpsRecord {
+func startIssueOpsCLIReadyPRParentWithChild(t *testing.T, repo, branch string) (core.IssueOpsRecord, core.IssueOpsActor) {
 	t.Helper()
 	if code, _, stderr := core.GitCmd(repo, "checkout", "-q", "-b", branch); code != 0 {
 		t.Fatalf("git checkout parent branch failed: %s", stderr)
@@ -230,23 +230,16 @@ func startIssueOpsCLIReadyPRParentWithChild(t *testing.T, repo, branch string) c
 	}
 	prepareIssueOpsCLIParentImplementationSurface(t, parent.ID, branch, worktree)
 	recordIssueOpsCLIParentDelegationPrereqs(t, parent.ID, filepath.Join(worktree, "plans", "parent-pr.md"))
-	if _, err := core.RecordIssueOpsWorktreeTools(core.IssueOpsStateRoot(), parent.ID, core.IssueOpsWorktreeToolPreparation{
-		OK:           true,
-		WorktreePath: worktree,
-		Messages:     []string{"test prepared parent worktree tools"},
-	}); err != nil {
-		t.Fatal(err)
-	}
 	parent, err := core.ReadIssueOps(core.IssueOpsStateRoot(), parent.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	parent.Phase = core.IssueOpsPhaseImplement
-	parent, err = core.WriteIssueOps(core.IssueOpsStateRoot(), parent)
+	parent, actor := seedIssueOpsCLIExecutionV1(t, parent)
+	parent, err = core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), parent.ID, string(core.IssueOpsPhaseImplement), actor)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return parent
+	return parent, actor
 }
 
 func prepareIssueOpsCLIParentImplementationSurface(t *testing.T, id, branch, worktree string) {
@@ -292,25 +285,6 @@ func recordIssueOpsCLIParentDelegationPrereqs(t *testing.T, id, planPath string)
 		t.Fatal(err)
 	}
 	if _, err := core.RecordIssueOpsDevilsAdvocateReview(core.IssueOpsStateRoot(), id, core.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := core.RecordIssueOpsExecutionDecision(core.IssueOpsStateRoot(), id, core.IssueOpsExecutionDecisionRecordRequest{
-		AutoProceed:       []string{"delegate child cycles when parent implement prerequisites are met"},
-		HookBlocked:       []string{"hooks do not spawn sub-agents"},
-		HumanGates:        []string{"ask before destructive cleanup"},
-		SubagentUse:       "planned",
-		SubagentRationale: "parent owns fan-out coordination",
-		SubagentPlans: []core.IssueOpsSubAgentPlan{{
-			Objective:            "delegate isolated child cycle",
-			Pattern:              "task-fan-out-coordination",
-			Benefit:              "parallel_speed",
-			Tradeoffs:            []string{"parent must validate each result"},
-			NetPositiveRationale: "fan-out is bounded and parent-owned",
-			Scope:                "child branch and worktree only",
-			Verification:         "parent accepts child with evidence",
-			Fallback:             "main agent completes task directly",
-		}},
-	}); err != nil {
 		t.Fatal(err)
 	}
 }

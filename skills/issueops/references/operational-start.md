@@ -1,22 +1,16 @@
-# IssueOps Operational Start Reference
+# IssueOps v1 Operational Start
 
-Load this reference only when actively starting, resuming, or documenting an IssueOps cycle.
+Load this reference only while starting, resuming, or documenting an IssueOps
+cycle. The lifecycle branch is the provider-linked issue branch, not whatever
+branch the source checkout currently has.
 
-## Start Or Resume
-
-The IssueOps branch must be the issue branch, not the source checkout's current branch.
+## Start And Record The Contract
 
 ```bash
-branch_slug="3-webhook-delivery"
+branch_slug="69-issueops-v1"
 agent-harness issueops start --repo "$PWD" --branch "$branch_slug" --json
 agent-harness issueops status --id "$ISSUEOPS_ID" --json
-```
 
-## Intent Contract
-
-Record the intent before plan phase or issue-link auto-advance:
-
-```bash
 agent-harness issueops intent record --id "$ISSUEOPS_ID" \
   --raw-request "$RAW_USER_REQUEST" \
   --interpreted-intent "$INTERPRETED_INTENT" \
@@ -28,9 +22,8 @@ agent-harness issueops intent record --id "$ISSUEOPS_ID" \
   --json
 ```
 
-## Plan Prep
-
-Record evidence before entering `plan`. Each item takes evidence or a mutually exclusive waive reason:
+For non-trivial work, record prior-decision, related-issue, and external
+research evidence or an explicit waiver before plan entry:
 
 ```bash
 agent-harness issueops plan-prep record --id "$ISSUEOPS_ID" \
@@ -40,94 +33,89 @@ agent-harness issueops plan-prep record --id "$ISSUEOPS_ID" \
   --json
 ```
 
-Waiver examples:
+## Issue, Branch, And Design
 
-```bash
-agent-harness issueops plan-prep record --id "$ISSUEOPS_ID" \
-  --decisions-waive "no prior decisions touch this area" \
-  --related-waive "no comparable issues exist" \
-  --web-research-waive "purely internal refactor, no external semantics" \
-  --json
-```
-
-## Remote Issue And Worktree Linkage
+Link the remote issue, create its provider-visible branch, and pin the exact
+base SHA before execution preparation. The approved design has no open
+questions:
 
 ```bash
 agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" --json
-agent-harness issueops branch prepare --id "$ISSUEOPS_ID" --provider "$PROVIDER" --issue-url "$ISSUE_URL" --branch "$branch_slug" --base-branch "$BASE_BRANCH" --link-verified --json
-agent-harness issueops link-worktree --id "$ISSUEOPS_ID" --worktree-path "$EXPECTED_WORKTREE" --json
+agent-harness issueops branch prepare --id "$ISSUEOPS_ID" \
+  --provider "$PROVIDER" --issue-url "$ISSUE_URL" \
+  --branch "$branch_slug" --base-branch "$BASE_BRANCH" \
+  --link-verified --json
 agent-harness issueops design review --id "$ISSUEOPS_ID" \
   --problem-summary "$PROBLEM_SUMMARY" \
   --proposed-design "$PROPOSED_DESIGN" \
   --refactor-plan "$REFACTOR_PLAN" \
-  --risk "$RISK" \
   --alternative "$ALTERNATIVE" \
+  --risk "$RISK" \
   --verification "$VERIFICATION_STEP" \
-  --approved \
-  --json
-agent-harness issueops link-plan --id "$ISSUEOPS_ID" --plan-path "$EXPECTED_WORKTREE/$PLAN_REL_PATH" --json
-agent-harness issueops link-child --id "$ISSUEOPS_ID" --child-url "$CHILD_ISSUE_URL" --title "$CHILD_TITLE" --json
-agent-harness issueops pr-readiness --id "$ISSUEOPS_ID" --strict --json
+  --approved --json
 ```
 
-`branch prepare` records the provider-linked branch contract before local worktree creation. Use provider MCP first, provider API/CLI fallback second, and fail closed if neither can create a branch that the issue shows as linked. For GitLab, branch names must start with the issue or task number followed by a hyphen, for example `123-fix-login`.
+`branch prepare` must persist `base_sha`. If provider linkage or the base SHA
+cannot be verified, stop before creating a local workspace.
 
-`link-worktree` fails closed until issue-linked branch evidence exists and the worktree path already exists on disk. `link-plan` fails closed until the issue is linked, `branch prepare --link-verified` has provider-visible branch evidence, the worktree is linked, the design review is approved with no open questions, and the plan path exists inside that linked worktree.
+## Execution v1
 
-## Implementation Entry
-
-Run `worktree prepare-tools` after `link-plan`, record compatibility review, then record execution decision:
+Use one preview/confirm request. `auto` resolves to Orca only when readiness is
+proven before mutation; otherwise it resolves to direct:
 
 ```bash
-agent-harness issueops compatibility review --id "$ISSUEOPS_ID" \
-  --backward-compatibility "existing state/CLI/MCP/API contracts checked" \
-  --side-effect "side effects are limited to the reviewed implementation surface" \
-  --rollback-plan "$ROLLBACK_PLAN" \
-  --verification "$COMPATIBILITY_VERIFICATION" \
-  --approved \
-  --json
+agent-harness issueops execution prepare --id "$ISSUEOPS_ID" --mode auto \
+  --owner-host "$OWNER_HOST" --owner-model "$OWNER_MODEL" \
+  --owner-effort "$OWNER_EFFORT" $ACTOR_FLAGS --json
+
+agent-harness issueops execution prepare --id "$ISSUEOPS_ID" --mode auto \
+  --owner-host "$OWNER_HOST" --owner-model "$OWNER_MODEL" \
+  --owner-effort "$OWNER_EFFORT" $ACTOR_FLAGS --confirm --json
 ```
+
+Inspect the durable state at any point:
 
 ```bash
-agent-harness issueops execution decide --id "$ISSUEOPS_ID" \
-  --auto "implementation may proceed after linked worktree readiness is durable" \
-  --hook-block "hooks do not create issues, prepare worktrees, run tests, or decide sub-agent usage" \
-  --human-gate "ask before destructive cleanup, live access, or unclear product behavior" \
-  --subagent-use none \
-  --subagent-rationale "main agent owns this focused implementation" \
-  --json
+agent-harness issueops execution status --id "$ISSUEOPS_ID" --json
 ```
 
-## Phase Advancement
+For direct mode, the same main session is the generation holder and continues
+from the canonical worktree. For Orca mode, the launched native owner reads the
+private packet and prompt, verifies both sealed digests, and runs the exact
+`issueops execution claim` command rendered by status. Load `execution-v1.md`
+for the full claim, replacement, reconciliation, publication, and completion
+contract.
 
-The `ai-slop-clean` phase requires linked issue, provider-linked branch, plan, an existing linked worktree, and implementation changes under that worktree. The `pr` phase requires strict PR readiness, including ai-slop-clean evidence. The `done` phase requires the loop to have already entered `pr` and a verified remote PR/MR artifact with provider URL, label, and assignee evidence:
+After workspace creation, write and link the issue-based plan inside the
+canonical worktree, complete compatibility and devil's-advocate review, then
+enter implementation. Sub-agent use follows the repository's documented
+net-positive patterns; it is main-agent judgment, not a second IssueOps state
+machine.
+
+## Publication And Completion
+
+The active holder advances through TDD, cleanup, feedback, and `pr`, then
+creates a draft PR/MR with its exact generation and actor receipt:
 
 ```bash
-agent-harness issueops phase --id "$ISSUEOPS_ID" --to grill --json
-agent-harness issueops phase --id "$ISSUEOPS_ID" --to ai-slop-clean --json
-agent-harness issueops phase --id "$ISSUEOPS_ID" --to pr --json
-agent-harness issueops remote verify-artifact --id "$ISSUEOPS_ID" --provider "$PROVIDER" --kind pr|mr --url "$PR_URL" --label "$LABEL" --assignee "$ASSIGNEE" --json
-agent-harness issueops phase --id "$ISSUEOPS_ID" --to done --json
+agent-harness issueops remote create-pr \
+  --id "$ISSUEOPS_ID" --expected-generation "$GENERATION" \
+  --title "$TITLE" --head "$branch_slug" --base "$BASE_BRANCH" \
+  --body "$BODY" --label "$LABEL" --assignee "$ASSIGNEE" \
+  $ACTOR_FLAGS --confirm --json
 ```
 
-## Cleanup And Feedback
-
-Post-merge cleanup status is read-only until the user chooses deletion:
+Once the durable remote artifact has been read back and verified, complete and
+release atomically:
 
 ```bash
-agent-harness issueops cleanup status --id "$ISSUEOPS_ID" --merged --json
+agent-harness issueops execution complete \
+  --id "$ISSUEOPS_ID" --generation "$GENERATION" \
+  --final-head "$FINAL_HEAD" --turing-report "$TURING_REPORT" \
+  --remote-artifact-url "$PR_URL" --verification "$VERIFICATION" \
+  $ACTOR_FLAGS --confirm --json
 ```
 
-Close linked child tasks separately after the child PR/MR is verified merged into the parent work branch:
-
-```bash
-agent-harness issueops cleanup close-children --id "$ISSUEOPS_ID" --merged --json
-agent-harness issueops cleanup close-children --id "$ISSUEOPS_ID" --merged --confirm --json
-```
-
-Record feedback with classification when contract-changing feedback must be distinguished:
-
-```bash
-agent-harness issueops feedback add --id "$ISSUEOPS_ID" --source review --body "$FEEDBACK" --classification contract_change --json
-agent-harness issueops feedback mark-issue-updated --id "$ISSUEOPS_ID" --json
-```
+Completion requires phase `pr`; it is not an escape from planning,
+implementation, verification, or remote readback. Merge and destructive
+worktree/branch cleanup remain separate human-authorized operations.

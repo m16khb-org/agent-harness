@@ -26,12 +26,31 @@ func ForToolUse(req model.HookToolUseLifecycleRequest) []string {
 }
 
 func ToolUseMayMutateLifecycleFiles(tool, command string) bool {
-	switch strings.ToLower(strings.TrimSpace(tool)) {
-	case "apply_patch", "edit", "write", "multiedit":
+	normalizedTool := strings.ToLower(strings.TrimSpace(tool))
+	switch normalizedTool {
+	case "apply_patch", "edit", "write", "multiedit", "notebookedit", "notebook_edit":
 		return true
+	}
+	if strings.Contains(normalizedTool, "filesystem") {
+		return !ExplicitReadOnlyFilesystemTool(normalizedTool)
 	}
 	if searchrouting.IsShellTool(tool) {
 		return bashCommandMayMutate(command)
+	}
+	return false
+}
+
+func ExplicitReadOnlyFilesystemTool(tool string) bool {
+	tool = strings.ToLower(strings.TrimSpace(tool))
+	if !strings.Contains(tool, "filesystem") {
+		return false
+	}
+	for _, suffix := range []string{
+		"__read_file", "__read_text_file", "__list_directory", "__list_files", "__search_files",
+	} {
+		if strings.HasSuffix(tool, suffix) {
+			return true
+		}
 	}
 	return false
 }
@@ -65,13 +84,18 @@ func commandTokensMayMutate(tokens []string) bool {
 		switch name {
 		case "git":
 			if mutationSubcommandAfterDirectoryFlag(tokens, i+1, map[string]bool{
-				"add": true, "commit": true, "reset": true, "restore": true, "checkout": true, "switch": true,
+				"add": true, "apply": true, "branch": true, "checkout": true, "cherry-pick": true,
+				"clean": true, "commit": true, "merge": true, "push": true, "rebase": true,
+				"reset": true, "restore": true, "revert": true, "switch": true, "tag": true, "worktree": true,
 			}) {
 				return true
 			}
 		case "go":
 			subcommand, at := nextCommandTokenAfterDirectoryFlag(tokens, i+1)
-			if subcommand == "generate" || subcommand == "mod" && at+1 < len(tokens) && searchrouting.SearchTokenName(tokens[at+1]) == "tidy" {
+			if map[string]bool{
+				"build": true, "clean": true, "generate": true, "install": true,
+				"run": true, "test": true, "tool": true, "vet": true,
+			}[subcommand] || subcommand == "mod" && at+1 < len(tokens) && searchrouting.SearchTokenName(tokens[at+1]) == "tidy" {
 				return true
 			}
 		case "npm", "pnpm", "yarn", "bun":

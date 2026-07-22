@@ -28,7 +28,7 @@ func TestCodexInstallerWritesOnlyUserAndHarnessTemplatePaths(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), "", filepath.Join(root, "bin", "harness"))
+	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
 	req.SkillNames = []string{"alpha"}
 	result, err := NewInstaller().Install(req)
 	if err != nil {
@@ -73,7 +73,7 @@ func TestCodexInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), "", filepath.Join(root, "bin", "harness"))
+	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
 	req.SkillNames = []string{"alpha"}
 	if _, err := NewInstaller().Install(req); err != nil {
 		t.Fatal(err)
@@ -123,7 +123,7 @@ func TestCodexInstallerDropsEmptyHookGroups(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), "", filepath.Join(root, "bin", "harness"))
+	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
 	req.SkillNames = []string{"alpha"}
 	hooksPath := filepath.Join(home, ".codex", "hooks.json")
 	writeFile(t, hooksPath, `{"hooks":{"PostToolUse":[{"matcher":"Write|Edit|Bash","hooks":[]}],"PreToolUse":[{"matcher":"Read","hooks":[{"type":"command","command":"echo preserved","timeout":1}]}]}}`)

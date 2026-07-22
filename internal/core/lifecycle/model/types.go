@@ -1,6 +1,9 @@
 package model
 
-import "agent-harness/internal/core/projectdocs"
+import (
+	issueopsmodel "agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/core/projectdocs"
+)
 
 const ProjectLifecycleSchemaVersion = 1
 const ProjectLifecycleProfileFile = "project.json"
@@ -79,6 +82,10 @@ type HookToolUseLifecycleRequest struct {
 	ExpectedWorktree     string         `json:"expected_worktree,omitempty"`
 	SourceCheckout       string         `json:"source_checkout,omitempty"`
 	ProjectPath          string         `json:"project_path,omitempty"`
+	// NativeProcessAncestry is collected locally by the hook process. It is not
+	// accepted from hook JSON because payload-supplied process identity is not an
+	// authority signal.
+	NativeProcessAncestry []issueopsmodel.NativeProcessReceiptV1 `json:"-"`
 }
 
 type HookToolUseLifecycleResult struct {
@@ -89,13 +96,24 @@ type HookToolUseLifecycleResult struct {
 }
 
 type HookPreToolUseDecisionResult struct {
-	OK       bool     `json:"ok"`
-	Decision string   `json:"decision"`
-	Reason   string   `json:"reason,omitempty"`
-	Tool     string   `json:"tool,omitempty"`
-	Paths    []string `json:"paths,omitempty"`
-	Command  string   `json:"command,omitempty"`
-	Source   string   `json:"source,omitempty"`
+	OK       bool                  `json:"ok"`
+	Decision string                `json:"decision"`
+	Reason   string                `json:"reason,omitempty"`
+	Deny     *IssueOpsV1DenyReason `json:"deny,omitempty"`
+	Tool     string                `json:"tool,omitempty"`
+	Paths    []string              `json:"paths,omitempty"`
+	Command  string                `json:"command,omitempty"`
+	Source   string                `json:"source,omitempty"`
+}
+
+// Native host의 엄격한 hook schema를 넓히지 않는다. raw JSON은 이 구조를
+// 유지하고 host adapter는 같은 객체를 지원되는 reason 문자열로 직렬화한다.
+type IssueOpsV1DenyReason struct {
+	Code              string `json:"code"`
+	LifecycleID       string `json:"lifecycle_id"`
+	ExpectedRoot      string `json:"expected_root"`
+	CurrentGeneration uint64 `json:"current_generation"`
+	NextCommand       string `json:"next_command"`
 }
 
 type LifecycleStopReminderResult struct {

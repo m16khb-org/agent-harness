@@ -76,7 +76,7 @@ func TestPlanReadinessRejectsEmptyStatusItem(t *testing.T) {
 	}
 }
 
-func TestImplementationReadinessRequiresPreparedWorktreeTools(t *testing.T) {
+func TestImplementationReadinessRequiresExecutionLease(t *testing.T) {
 	repo := t.TempDir()
 	worktree := makeIssueOpsWorktreeDirForTest(t, repo, "1-demo")
 	planPath := filepath.Join(worktree, "plans/demo.md")
@@ -106,9 +106,9 @@ func TestImplementationReadinessRequiresPreparedWorktreeTools(t *testing.T) {
 
 	ready := IssueOpsImplementationReadiness(rec)
 	if ready.Ready {
-		t.Fatalf("implementation should not be ready before worktree tools are prepared: %+v", ready)
+		t.Fatalf("implementation should not be ready before execution is prepared: %+v", ready)
 	}
-	if !planPrepHasMissing(ready.Missing, "worktree_tools_prepared") {
-		t.Fatalf("implementation readiness should require prepared worktree tools: %#v", ready.Missing)
+	if !planPrepHasMissing(ready.Missing, "execution") {
+		t.Fatalf("implementation readiness should require execution state: %#v", ready.Missing)
 	}
 }

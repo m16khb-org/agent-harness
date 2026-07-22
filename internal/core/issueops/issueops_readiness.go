@@ -3,7 +3,6 @@ package issueops
 import (
 	"strings"
 
-	"agent-harness/internal/core/issueops/handoff"
 	"agent-harness/internal/core/issueops/implementation"
 	"agent-harness/internal/core/issueops/intentdesign"
 	"agent-harness/internal/core/issueops/model"
@@ -118,14 +117,20 @@ func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	if !issueOpsPlanInLinkedWorktree(record) {
 		missing = append(missing, "plan_in_worktree")
 	}
-	missing = append(missing, issueOpsWorktreeToolsMissing(record)...)
-	if record.ExecutionDecision == nil || strings.TrimSpace(record.ExecutionDecision.RecordedAt) == "" {
-		missing = append(missing, "execution_decision")
-	}
 	missing = append(missing, issueOpsCompatibilityReviewMissing(record)...)
 	missing = append(missing, issueOpsDevilsAdvocateReviewMissing(record)...)
-	if currentIssueOpsHandoff(record) != nil && currentIssueOpsHandoff(record).State != handoff.StateOwnerActive {
-		missing = append(missing, "handoff_owner_active")
+	if record.Execution == nil {
+		missing = append(missing, "execution")
+	} else {
+		if err := model.ValidateExecutionV1(*record.Execution); err != nil {
+			missing = append(missing, "execution_valid")
+		}
+		if !samePath(record.WorktreePath, record.Execution.Workspace.Root) {
+			missing = append(missing, "execution_worktree_match")
+		}
+		if record.Execution.Lease.Status != model.LeaseStatusActive || record.Execution.Lease.Holder == nil {
+			missing = append(missing, "execution_write_lease")
+		}
 	}
 	return IssueOpsReadiness{
 		OK:           true,
@@ -175,24 +180,6 @@ func issueOpsCompatibilityReviewMissing(record IssueOpsRecord) []string {
 	}
 	if !review.Approved {
 		missing = append(missing, "compatibility_approval")
-	}
-	return missing
-}
-
-func issueOpsWorktreeToolsMissing(record IssueOpsRecord) []string {
-	prep := record.WorktreeTools
-	if prep == nil || strings.TrimSpace(prep.PreparedAt) == "" {
-		return []string{"worktree_tools_prepared"}
-	}
-	missing := []string{}
-	if !prep.OK {
-		missing = append(missing, "worktree_tools_prepared")
-	}
-	if strings.TrimSpace(prep.WorktreePath) == "" || strings.TrimSpace(record.WorktreePath) == "" || strings.TrimSpace(prep.WorktreePath) != strings.TrimSpace(record.WorktreePath) {
-		missing = append(missing, "worktree_tools_worktree_match")
-	}
-	if prep.DependenciesChecked && !prep.DependenciesReady {
-		missing = append(missing, "worktree_dependencies_ready")
 	}
 	return missing
 }

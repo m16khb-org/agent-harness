@@ -423,7 +423,7 @@ func mergeChildStatusRecord(entry *IssueOpsChildStatusEntry, child IssueOpsRecor
 	entry.CycleID = child.ID
 	entry.Branch = child.Branch
 	entry.Phase = child.Phase
-	entry.LastActiveAt = IssueOpsLastActiveAt(child)
+	entry.LastActiveAt = LastActiveAt(child)
 	entry.WorktreePath = strings.TrimSpace(child.WorktreePath)
 	if child.Delegation != nil && entry.ChildIssueURL == "" {
 		entry.ChildIssueURL = strings.TrimSpace(child.Delegation.ChildIssueURL)

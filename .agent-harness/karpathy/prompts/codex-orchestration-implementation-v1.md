@@ -1,5 +1,7 @@
 # codex-orchestration-implementation-v1
 
+> **Archived prompt — do not execute for current IssueOps work.** It targets the retired schema-7 orchestration plan and is retained only as prompt-history evidence. Current owners must use `.agent-harness/karpathy/prompts/issueops-v1-owner-execution-v1.md` and the schema-1 `issueops execution` catalog.
+
 Delegation prompt for implementing the sub-agent orchestration plan task-by-task with Codex.
 Substitute `{TASK_ID}` (e.g. `17`, `1`, `2`, ...) before each run. One task per run — bounded, reviewable, revertible.
 
@@ -29,8 +31,8 @@ IMMUTABLE CONSTRAINTS (these override anything else you infer):
 5. Independence invariant: do not add any dependency on CodeGraph, llm-wiki, claude-mem, an
    external LLM API (no api.z.ai, no API keys), or a spawned agent CLI. External intelligence
    is always render-prompt → record-result performed by the host agent.
-6. Compatibility: the historical orchestration fields remain additive omitempty, but the
-   repository's current IssueOps root is schema_version 7. Preserve historical v5 rows and never invent v6 publication fingerprints, remote-create claims, or v7 legacy-worktree migration snapshots while migrating them:
+6. Historical compatibility snapshot (retired): the orchestration fields were additive omitempty and the
+   repository's IssueOps root was schema_version 7 when this prompt was written. Preserve historical v5 rows and never invent v6 publication fingerprints, remote-create claims, or v7 legacy-worktree migration snapshots while migrating them:
    missing/zero/v1/v2/v3 rows upgrade with known fields preserved, v1 rejects v2+, v2 rejects
    v3, and v3 rejects v4 before rewrite. Never rename or remove existing JSON fields; lock files are persistent
    inodes — never delete them between lock/unlock.

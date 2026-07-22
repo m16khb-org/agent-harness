@@ -40,12 +40,8 @@ func NormalizeContractValue(value any, replacements map[string]string) any {
 			}
 			// Repo-local host integrations are gitignored install artifacts. Their
 			// presence is machine state, not committed response-contract behavior.
-			if key == "project_claude_skill" || key == "project_codex_skill" || key == "project_gjc_skill" || key == "project_reasonix_skill" {
+			if key == "project_claude_skill" || key == "project_codex_skill" {
 				out[key] = "$PROJECT_SKILL_PRESENCE"
-				continue
-			}
-			if key == "project_reasonix_settings" {
-				out[key] = "$PROJECT_SETTINGS_PRESENCE"
 				continue
 			}
 			if key == "id" {

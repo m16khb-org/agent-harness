@@ -6,12 +6,6 @@ import (
 	"agent-harness/internal/core/issueops/model"
 )
 
-var allowedSubagentPatterns = map[string]bool{
-	"task-fan-out-coordination":    true,
-	"isolated-worktree-work":       true,
-	"background-long-running-work": true,
-}
-
 func MissingPreconditions(parent model.IssueOpsRecord, req model.IssueOpsChildStartRequest) []string {
 	var missing []string
 	if parent.Phase != model.IssueOpsPhaseImplement {
@@ -25,9 +19,6 @@ func MissingPreconditions(parent model.IssueOpsRecord, req model.IssueOpsChildSt
 	}
 	if parent.DevilsAdvocateReview == nil || strings.TrimSpace(parent.DevilsAdvocateReview.RecordedAt) == "" || ((parent.DevilsAdvocateReview.Verdict == "stop" || parent.DevilsAdvocateReview.Verdict == "revise") && !parent.DevilsAdvocateReview.Waived) {
 		missing = append(missing, "parent_devils_advocate_missing")
-	}
-	if !hasAllowedSubagentPlan(parent.ExecutionDecision) {
-		missing = append(missing, "execution_decision_subagent_plan")
 	}
 	if parent.Delegation != nil {
 		missing = append(missing, "delegation_depth_exceeded")
@@ -125,18 +116,6 @@ func ParentRef(child model.IssueOpsRecord, req model.IssueOpsChildStartRequest, 
 		ChildIssueURL: strings.TrimSpace(req.ChildIssueURL),
 		CreatedAt:     now,
 	}
-}
-
-func hasAllowedSubagentPlan(decision *model.IssueOpsExecutionDecision) bool {
-	if decision == nil {
-		return false
-	}
-	for _, plan := range decision.SubagentPlans {
-		if allowedSubagentPatterns[strings.TrimSpace(plan.Pattern)] {
-			return true
-		}
-	}
-	return false
 }
 
 func clean(values []string) []string {

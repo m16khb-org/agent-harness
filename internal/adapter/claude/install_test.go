@@ -18,7 +18,7 @@ func TestClaudeInstallerDefaultsToUserScopeOnly(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), "", filepath.Join(root, "bin", "harness"))
+	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
 	req.SkillNames = []string{"alpha"}
 	result, err := NewInstaller().Install(req)
 	if err != nil {
@@ -35,6 +35,13 @@ func TestClaudeInstallerDefaultsToUserScopeOnly(t *testing.T) {
 		if !strings.Contains(settings, needle) {
 			t.Fatalf("claude settings missing %q:\n%s", needle, settings)
 		}
+	}
+	mcp := readClaudeTestFile(t, filepath.Join(home, ".claude.json"))
+	if !strings.Contains(mcp, `"agent_harness"`) || !strings.Contains(mcp, req.BinPath) || !strings.Contains(mcp, `"HARNESS_ROOT"`) {
+		t.Fatalf("claude user MCP config missing exact harness server:\n%s", mcp)
+	}
+	if strings.Contains(mcp, `"agent-harness"`) {
+		t.Fatalf("claude user MCP config retained obsolete alias:\n%s", mcp)
 	}
 	for _, path := range []string{filepath.Join(root, ".claude", "skills", "alpha"), filepath.Join(root, ".claude", "settings.json"), filepath.Join(root, ".mcp.json")} {
 		if exists(path) {
@@ -74,7 +81,7 @@ func TestClaudeInstallerProjectLocalIsExplicit(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), "", filepath.Join(root, "bin", "harness"))
+	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
 	req.SkillNames = []string{"alpha"}
 	req.ProjectLocal = true
 	if _, err := NewInstaller().Install(req); err != nil {
@@ -111,7 +118,7 @@ func TestClaudeInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
   }
 }
 `)
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), "", filepath.Join(root, "bin", "harness"))
+	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
 	req.SkillNames = []string{"alpha"}
 	if _, err := NewInstaller().Install(req); err != nil {
 		t.Fatal(err)
@@ -160,7 +167,7 @@ func TestClaudeInstallerReportsInvalidExistingSettings(t *testing.T) {
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
 	writeClaudeTestFile(t, filepath.Join(home, ".claude", "settings.json"), "{")
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), "", filepath.Join(root, "bin", "harness"))
+	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
 	req.SkillNames = []string{"alpha"}
 
 	result, err := NewInstaller().Install(req)

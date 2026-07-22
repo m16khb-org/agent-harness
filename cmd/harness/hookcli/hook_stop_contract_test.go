@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/lifecycle"
 	"agent-harness/internal/core/workpool"
 )
@@ -318,6 +319,22 @@ func seedStopRelayOrchestrationFixture(t *testing.T) (string, issueops.IssueOpsR
 		Branch:        "relay-parent",
 		Phase:         issueops.IssueOpsPhaseImplement,
 		WorktreePath:  repo,
+		Execution: &model.ExecutionV1{
+			Mode: model.ExecutionModeDirect,
+			Workspace: model.WorkspaceV1{
+				SourceRoot: repo,
+				Root:       filepath.Join(repo, "relay-parent-worktree"),
+				Branch:     "relay-parent",
+				BaseHead:   strings.Repeat("a", 40),
+				Driver:     "git",
+				LinkedAt:   now,
+			},
+			Lease: model.WriteLeaseV1{
+				Generation:       1,
+				Status:           model.LeaseStatusClaimable,
+				ClaimTokenSHA256: strings.Repeat("b", 64),
+			},
+		},
 		ChildCycles: []issueops.IssueOpsChildCycleRef{
 			{CycleID: childDoneID, Branch: "relay-child-done", CreatedAt: now},
 			{CycleID: childActiveID, Branch: "relay-child-active", CreatedAt: now},
@@ -344,9 +361,6 @@ func seedStopRelayOrchestrationFixture(t *testing.T) (string, issueops.IssueOpsR
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	})
-	if err := issueops.BindIssueOpsSessionForCycle(repo, parent.ID); err != nil {
-		t.Fatalf("bind issueops session: %v", err)
-	}
 	pool := workpool.WorkPool{
 		SchemaVersion: workpool.WorkPoolCurrentSchemaVersion,
 		ID:            "wp-relay001",

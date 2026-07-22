@@ -1,11 +1,13 @@
 package lifecycle
 
 import (
+	"fmt"
 	"strings"
 
 	"agent-harness/internal/core/commandguard"
 	"agent-harness/internal/core/lifecycle/liveapproval"
 	"agent-harness/internal/core/lifecycle/nextactionrelay"
+	"agent-harness/internal/core/lifecycle/worktreeguard"
 	"agent-harness/internal/core/remoteartifact"
 )
 
@@ -22,36 +24,29 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 		Command:  strings.TrimSpace(req.Command),
 		Source:   source,
 	}
-	if reason := linkedWorktreeDecisionGateReason(req); reason != "" {
-		result.Decision = "block"
-		result.Reason = reason
-		return result
-	}
-	if reason := unsafeOrcaMailboxInjectReason(req); reason != "" {
-		result.Decision = "block"
-		result.Reason = reason
-		return result
-	}
-	if reason := invalidOrcaOrchestrationMessageTypeReason(req); reason != "" {
-		result.Decision = "block"
-		result.Reason = reason
-		return result
-	}
-	handoffHandled, handoffReason := handoffOwnershipBlockReason(req)
-	if handoffReason != "" {
-		result.Decision = "block"
-		result.Reason = handoffReason
-	}
-	if !handoffHandled && req.EnforceWorktree {
-		if reason := mcpWorktreeRootBlockReason(req); reason != "" {
-			result.Decision = "block"
-			result.Reason = reason
+	observation := executionV1Observation(req)
+	typedExecutionControl := executionV1TypedControlPlane(req)
+	if !observation && !typedExecutionControl {
+		if req.EnforceWorktree {
+			if reason := directBranchCreationBlockReason(req); reason != "" {
+				result.Decision = "block"
+				result.Reason = reason
+			}
 		}
-	}
-	if !handoffHandled && result.Decision != "block" && req.EnforceWorktree {
-		if reason := worktreeGuardBlockReason(req); reason != "" {
-			result.Decision = "block"
-			result.Reason = reason
+		executionHandled := false
+		if result.Decision != "block" {
+			var executionReason string
+			executionHandled, executionReason, result.Deny = executionV1MutationDecision(req)
+			if executionReason != "" {
+				result.Decision = "block"
+				result.Reason = executionReason
+			}
+		}
+		if !executionHandled && result.Decision != "block" && req.EnforceWorktree {
+			if reason := worktreeGuardBlockReason(req); reason != "" {
+				result.Decision = "block"
+				result.Reason = reason
+			}
 		}
 	}
 	if result.Decision != "block" && req.EnforceKoreanRemote {
@@ -116,6 +111,20 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 		}
 	}
 	return result
+}
+
+func directBranchCreationBlockReason(req HookToolUseLifecycleRequest) string {
+	creation := worktreeguard.LocalIssueOpsBranchCreation(req.Command)
+	if strings.TrimSpace(creation.Branch) != "" {
+		if strings.TrimSpace(creation.SourceRef) == "" {
+			return worktreeguard.IssueOpsBranchCreationSourceReason(creation.Branch)
+		}
+		return fmt.Sprintf("branch %s must be started through IssueOps; direct Git branch creation is blocked, use `agent-harness issueops execution prepare --id ID --mode auto ...`", creation.Branch)
+	}
+	if worktreeguard.DirectGitWorktreeMutation(req.Command) {
+		return "direct Git worktree mutation is blocked; use `agent-harness issueops execution prepare --id ID --mode auto ...` so IssueOps creates the canonical isolated worktree"
+	}
+	return ""
 }
 
 func applyCodexLiveApproval(result *HookPreToolUseDecisionResult, approval liveapproval.Result) {

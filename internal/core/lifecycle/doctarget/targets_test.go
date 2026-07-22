@@ -49,8 +49,16 @@ func TestBashCommandMutationFamilies(t *testing.T) {
 		"git restore internal/x.go",
 		"git checkout -- internal/x.go",
 		"git switch feature",
+		"git push origin HEAD",
+		"git rebase origin/main",
+		"git merge feature",
+		"git worktree remove ../worktree",
 		"git -C /tmp/repo add .",
 		"git -C=/tmp/repo commit -m test",
+		"go test ./... -count=1",
+		"go -C . test ./... -count=1",
+		"go build ./...",
+		"go test -bench=. ./...",
 		"go mod tidy",
 		"go generate ./...",
 		"go -C /tmp/repo mod tidy",
@@ -83,8 +91,6 @@ func TestBashCommandReadOnlyFamilies(t *testing.T) {
 		"git status --short",
 		"git diff --stat",
 		"git log -1 --oneline",
-		"go test ./... -count=1",
-		"go -C . test ./... -count=1",
 		"rg -n 'handoff' internal",
 	} {
 		t.Run(command, func(t *testing.T) {
@@ -105,6 +111,30 @@ func TestToolUseMutationClassificationUsesShellAliases(t *testing.T) {
 				t.Fatal("shell alias classified a representative read as mutation")
 			}
 		})
+	}
+}
+
+func TestFilesystemMCPMutationClassificationFailsClosedOutsideExplicitReaders(t *testing.T) {
+	for _, tool := range []string{
+		"mcp__filesystem__create_folder",
+		"mcp__filesystem__rename_file",
+		"mcp__filesystem__append_file",
+		"mcp__filesystem__unknown_operation",
+	} {
+		if !ToolUseMayMutateLifecycleFiles(tool, "") {
+			t.Fatalf("filesystem MCP operation must fail closed as mutation: %s", tool)
+		}
+	}
+	for _, tool := range []string{
+		"mcp__filesystem__read_file",
+		"mcp__filesystem__read_text_file",
+		"mcp__filesystem__list_directory",
+		"mcp__filesystem__list_files",
+		"mcp__filesystem__search_files",
+	} {
+		if ToolUseMayMutateLifecycleFiles(tool, "") {
+			t.Fatalf("explicit filesystem reader was classified as mutation: %s", tool)
+		}
 	}
 }
 

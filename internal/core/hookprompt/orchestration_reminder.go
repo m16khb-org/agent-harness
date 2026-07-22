@@ -49,19 +49,42 @@ func StopOrchestrationRelayFacts(repo string) string {
 }
 
 func boundOrchestrationCycle(repo string) (issueops.IssueOpsRecord, bool) {
-	repo = strings.TrimSpace(repo)
+	repo = cleanOrchestrationPath(repo)
 	if repo == "" {
 		return issueops.IssueOpsRecord{}, false
 	}
-	id := strings.TrimSpace(issueops.ActiveSessionCycleID(repo))
-	if id == "" {
+	ids, err := issueops.ListIssueOpsIDs(issueops.IssueOpsStateRoot())
+	if err != nil {
 		return issueops.IssueOpsRecord{}, false
 	}
-	record, err := issueops.ReadIssueOps(issueops.IssueOpsStateRoot(), id)
-	if err != nil || !record.OK || record.Phase == issueops.IssueOpsPhaseDone {
-		return issueops.IssueOpsRecord{}, false
+	var match issueops.IssueOpsRecord
+	for _, id := range ids {
+		record, readErr := issueops.ReadIssueOps(issueops.IssueOpsStateRoot(), id)
+		if readErr != nil || !record.OK || record.Phase == issueops.IssueOpsPhaseDone || record.Execution == nil {
+			continue
+		}
+		workspace := record.Execution.Workspace
+		if repo != cleanOrchestrationPath(workspace.SourceRoot) && repo != cleanOrchestrationPath(workspace.Root) {
+			continue
+		}
+		if match.ID != "" {
+			return issueops.IssueOpsRecord{}, false
+		}
+		match = record
 	}
-	return record, true
+	return match, match.ID != ""
+}
+
+func cleanOrchestrationPath(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return ""
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return ""
+	}
+	return filepath.Clean(abs)
 }
 
 func orchestrationChildrenReminder(record issueops.IssueOpsRecord) string {

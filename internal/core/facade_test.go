@@ -91,7 +91,7 @@ func TestPolicyStateUtilityAndProjectDocFacades(t *testing.T) {
 	if _, err := ListSkillNames(repo); err == nil {
 		t.Fatal("ListSkillNames on non-skill root should fail")
 	}
-	if DefaultNativeInstallRequest(repo, t.TempDir(), "", "", "bin").Root != repo {
+	if DefaultNativeInstallRequest(repo, t.TempDir(), "", "bin").Root != repo {
 		t.Fatal("DefaultNativeInstallRequest should preserve root")
 	}
 	if !strings.Contains(BuildStructuredPrompt(StructuredPromptSpec{Identity: "id", Objective: "obj"}), "obj") {
@@ -174,9 +174,6 @@ func TestIssueOpsDraftWikiWorkflowAndWorkerFacades(t *testing.T) {
 	_ = IssueOpsAISlopCleanReadiness(record)
 	_ = IssueOpsCleanupStatusForRecord(record, IssueOpsCleanupStatusRequest{})
 	_, _ = IssueOpsCleanupStatusByID(IssueOpsStateRoot(), record.ID, IssueOpsCleanupStatusRequest{})
-	if ScanStaleIssueOpsCycles(IssueOpsStaleScanRequest{Repo: repo}).Repo == "" {
-		t.Fatal("ScanStaleIssueOpsCycles should return repo")
-	}
 	if _, err := DecodeIssueOpsBenchmarkJudgeJSON([]byte(`{"ok":true,"fixture_id":"f1","average_score":90,"minimum_score":80,"dimension_scores":[{"dimension":"intent_understanding","score":90,"evidence":"ok"}],"passed":true}`)); err != nil {
 		t.Fatalf("DecodeIssueOpsBenchmarkJudgeJSON: %v", err)
 	}
@@ -186,10 +183,6 @@ func TestIssueOpsDraftWikiWorkflowAndWorkerFacades(t *testing.T) {
 	if _, err := ScoreIssueOpsRemoteCandidates(IssueOpsRemoteScoringRequest{Issue: IssueOpsRemoteArtifact{Title: "Bug fix"}}); err != nil {
 		t.Fatalf("ScoreIssueOpsRemoteCandidates: %v", err)
 	}
-	if ExpectedWorktreeFromSession(repo, func() string { return "fallback" }) == "" {
-		t.Fatal("ExpectedWorktreeFromSession should return fallback")
-	}
-	_ = IssueOpsResume(repo)
 	_ = IssueOpsLastActiveAt(record)
 
 	initResult, err := InitDraftWiki(DraftWikiInitRequest{RepoRoot: repo, Write: true})

@@ -74,19 +74,19 @@ func (f *fakeProbeRunner) Run(_ context.Context, request port.HostProbeRequest) 
 	}
 }
 
-func TestLiveGateNineExactEpisodesDeferHardening(t *testing.T) {
+func TestLiveGateSixExactEpisodesDeferHardening(t *testing.T) {
 	fixtures := benchmarkFixtures(t)
 	runners := map[string]port.HostProbeRunner{}
-	for _, host := range []string{"codex", "claude", "gjc"} {
+	for _, host := range []string{"codex", "claude"} {
 		runners[host] = &fakeProbeRunner{host: host, fixtures: fixtures, responses: map[string][]map[string]any{}}
 	}
 	report, err := core.RunLiveBenchmark(context.Background(), core.LiveBenchmarkRequest{
-		Hosts: []string{"codex", "claude", "gjc"}, Models: map[string]string{"gjc": "test-model"}, Profile: "clean", TargetCompleted: 1, MaxAttemptsPerCase: 3, HarnessBinary: "/harness", RunID: "exact",
+		Hosts: []string{"codex", "claude"}, Profile: "clean", TargetCompleted: 1, MaxAttemptsPerCase: 3, HarnessBinary: "/harness", RunID: "exact",
 	}, catalogDescriptors(), core.LiveBenchmarkDependencies{Runners: runners, Now: func() time.Time { return time.Unix(1, 0) }, Token: func() string { return "token" }})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !report.OK || report.Gate.Decision != core.GateDeferHardening || report.Counts.Completed != 9 || report.Counts.ModelDenominator != 9 {
+	if !report.OK || report.Gate.Decision != core.GateDeferHardening || report.Counts.Completed != 6 || report.Counts.ModelDenominator != 6 {
 		t.Fatalf("report=%+v", report)
 	}
 }

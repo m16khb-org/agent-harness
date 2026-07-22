@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	"agent-harness/cmd/harness/mcpcli"
 	"agent-harness/cmd/harness/selfworkflow"
@@ -106,7 +107,7 @@ func BuildCompatibilityContract() CompatibilityContract {
 	contract := CompatibilityContract{
 		OK:          true,
 		Name:        "agent_harness_cli_mcp_compatibility",
-		Version:     2,
+		Version:     3,
 		CLICommands: cliadapter.Commands(),
 		MCPTools:    toolNames,
 		ResponseFields: map[string][]string{
@@ -123,8 +124,11 @@ func BuildCompatibilityContract() CompatibilityContract {
 			"workpool_task":                   {"ok", "schema_version", "id", "pool_id", "title", "instructions", "status", "created_at", "updated_at"},
 			"workpool_claim":                  {"ok", "task", "prompt"},
 			"workpool_status":                 {"ok", "pool", "tasks", "counts"},
-			"issueops_record":                 {"ok", "schema_version", "id", "repo", "branch", "phase", "intent", "design_review", "issue_url", "plan_path", "branch_prepare", "remote_artifact", "worktree_tools", "execution_decision", "feedback", "ai_slop_clean_at", "created_at", "updated_at"},
-			"issueops_handoff_claim":          {"ok", "id", "state", "attempt", "ownership_epoch", "context_sha256", "plan_sha256", "next_command"},
+			"issueops_record":                 {"ok", "schema_version", "id", "repo", "branch", "phase", "intent", "design_review", "domain_review", "issue_url", "plan_path", "worktree_path", "issue_links", "branch_prepare", "remote_artifact", "decisions", "plan_prep", "compatibility_review", "devils_advocate_review", "feedback", "regress_events", "delegation", "child_cycles", "execution", "routing_trace", "ai_slop_clean_at", "ai_slop_clean_head", "ai_slop_clean_fingerprint", "ai_slop_clean_categories", "ai_slop_clean_verification", "phase_ledger", "created_at", "updated_at"},
+			"issueops_execution":              {"ok", "id", "execution", "next_command"},
+			"issueops_execution_prepare":      {"ok", "id", "preview", "requested_mode", "resolved_mode", "fallback_code", "workspace", "execution", "claim_token_path", "issue_body_sha256", "context_packet_path", "context_packet_sha256", "owner_prompt_path", "owner_prompt_sha256", "next_command"},
+			"issueops_execution_replace":      {"ok", "id", "action", "execution", "inventory_fingerprint", "quiescence_fingerprint", "claim_token_path", "next_command"},
+			"issueops_execution_reconcile":    {"ok", "id", "preview", "reconciled", "code", "execution", "pending"},
 			"issueops_pr_readiness":           {"ok", "ready", "missing", "issue_url", "plan_path", "branch"},
 			"issueops_cleanup_status":         {"ok", "ready", "id", "merged", "missing", "warnings", "choices", "worktree_path", "branch", "remote_artifact_url"},
 			"issueops_cleanup_close_children": {"ok", "id", "merged", "confirmed", "dry_run", "closed_count", "children", "missing"},
@@ -149,6 +153,16 @@ func BuildCompatibilityContract() CompatibilityContract {
 			contract.OK = false
 			contract.Warnings = append(contract.Warnings, "missing_mcp_tool:"+want)
 		}
+	}
+	issueOpsTools := make([]string, 0, 1)
+	for _, name := range toolNames {
+		if strings.HasPrefix(name, "issueops_") {
+			issueOpsTools = append(issueOpsTools, name)
+		}
+	}
+	if len(issueOpsTools) != 1 || issueOpsTools[0] != "issueops_execution" {
+		contract.OK = false
+		contract.Warnings = append(contract.Warnings, "issueops_mcp_surface_mismatch:"+strings.Join(issueOpsTools, ","))
 	}
 	b, _ := json.Marshal(struct {
 		Name           string               `json:"name"`

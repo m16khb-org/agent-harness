@@ -6,10 +6,7 @@ import (
 )
 
 // ExactIssueOpsCommand is a parsed, exact `agent-harness issueops …` command:
-// its subcommand path (e.g. "handoff start"), the full token slice, and the
-// index where flags begin. Moved out of the lifecycle authority layer so the
-// parser and its security filters live in one place; the authority layer is a
-// consumer. Behavior is byte-identical to the prior lifecycle-internal parser.
+// its subcommand path, the full token slice, and the index where flags begin.
 type ExactIssueOpsCommand struct {
 	Path   string
 	Tokens []string
@@ -19,8 +16,8 @@ type ExactIssueOpsCommand struct {
 // ParseExactIssueOpsCommand parses a command into an ExactIssueOpsCommand,
 // rejecting any command that carries active shell control/expansion (fail
 // closed). Only bare `agent-harness`, `bin/agent-harness`, or
-// `./bin/agent-harness issueops …` invocations parse; two-word subcommands
-// (handoff/worktree/…) are folded into Path.
+// `./bin/agent-harness issueops …` invocations parse; supported two-word
+// subcommands are folded into Path.
 func ParseExactIssueOpsCommand(command string) (ExactIssueOpsCommand, bool) {
 	command = strings.TrimSpace(command)
 	if command == "" || HasUnquotedControlOperator(command) || HasActiveCommandSubstitution(command) || HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) || HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) || HasActiveZshEqualsExpansion(command) {
@@ -34,7 +31,7 @@ func ParseExactIssueOpsCommand(command string) (ExactIssueOpsCommand, bool) {
 	start := 3
 	if len(tokens) > 3 {
 		switch tokens[2] {
-		case "handoff", "worktree", "compatibility", "execution", "devils-advocate", "feedback", "remote", "cleanup", "ai-slop-clean":
+		case "compatibility", "execution", "devils-advocate", "feedback", "remote", "cleanup", "ai-slop-clean":
 			if strings.HasPrefix(tokens[3], "--") {
 				return ExactIssueOpsCommand{}, false
 			}
@@ -97,10 +94,24 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 	b := func(names ...string) map[string]bool { return v(names...) }
 	r := map[string]bool{}
 	switch path {
+	case "reset-legacy":
+		return v("--target-schema", "--expected-fingerprint", "--id", "--claim-id"), b("--preview", "--status", "--reconcile-remote", "--drain-cycle", "--confirm", "--json"), r, true
 	case "status":
 		return v("--id"), b("--json"), r, true
-	case "resume":
-		return v("--repo", "--id"), b("--bind", "--json"), r, true
+	case "execution status":
+		return v("--id"), b("--json"), r, true
+	case "execution prepare":
+		return v("--id", "--mode", "--owner-host", "--owner-model", "--owner-effort", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--confirm", "--json"), r, true
+	case "execution claim":
+		return v("--id", "--generation", "--claim-token-file", "--issue-body-sha256", "--context-packet-sha256", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--json"), r, true
+	case "execution release":
+		return v("--id", "--generation", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--json"), r, true
+	case "execution replace":
+		return v("--id", "--expected-generation", "--inventory-fingerprint", "--quiescence-fingerprint", "--reason", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--preview", "--revoke", "--finalize-preview", "--finalize", "--reseed", "--confirm", "--json"), r, true
+	case "execution reconcile":
+		return v("--id", "--operation-id", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--preview", "--confirm", "--json"), r, true
+	case "execution complete":
+		return v("--id", "--generation", "--final-head", "--turing-report", "--remote-artifact-url", "--verification", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--confirm", "--json"), map[string]bool{"--verification": true}, true
 	case "link-plan":
 		return v("--id", "--plan-path", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
 	case "compatibility review":
@@ -109,12 +120,6 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 			r[name] = true
 		}
 		return values, b("--approved", "--json"), r, true
-	case "execution decide":
-		values := v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--auto", "--hook-block", "--human-gate", "--subagent-use", "--subagent-rationale", "--subagent-plan-file")
-		for _, name := range []string{"--auto", "--hook-block", "--human-gate"} {
-			r[name] = true
-		}
-		return values, b("--json"), r, true
 	case "devils-advocate review":
 		values := v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--verdict", "--finding", "--waiver-rationale")
 		r["--finding"] = true
@@ -130,52 +135,20 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v("--id", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
 	case "feedback resolve":
 		return v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--index", "--resolution"), b("--json"), r, true
-	case "worktree prepare":
-		return v("--id", "--orchestrator", "--inline-reason", "--agent", "--host", "--session-id", "--agent-id", "--source-cwd"), b("--confirm", "--json"), r, true
-	case "worktree prepare-tools":
-		return v("--id", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
-	case "worktree reconcile":
-		return v("--id", "--workspace-epoch", "--host", "--session-id", "--agent-id", "--source-cwd"), b("--json"), r, true
-	case "handoff start":
-		values := v("--id", "--coordinator-recipient", "--coordinator-host", "--coordinator-session-id", "--coordinator-agent-id", "--source-cwd", "--workspace-epoch", "--expected-context-sha256", "--criteria-id", "--required-doc", "--required-skill", "--verification", "--stop-condition", "--worker-scope", "--heartbeat-cadence", "--result-format")
-		for _, name := range []string{"--criteria-id", "--required-doc", "--required-skill", "--verification", "--stop-condition"} {
-			r[name] = true
-		}
-		return values, b("--allow-codex-hook-trust-bypass", "--confirm", "--json"), r, true
-	case "handoff recover":
-		return v("--id", "--action", "--reason", "--cleanup-disposition", "--cleanup-step"), b("--confirm", "--force", "--json"), r, true
-	case "handoff publish":
-		return v("--id", "--host", "--session-id", "--agent-id", "--cwd"), b("--confirm", "--json"), r, true
 	case "remote create-pr":
-		values := v("--id", "--title", "--body", "--body-file", "--template", "--provider", "--score-file", "--head", "--base", "--host", "--session-id", "--agent-id", "--cwd", "--label", "--assignee", "--field")
+		values := v("--id", "--expected-generation", "--title", "--body", "--body-file", "--template", "--provider", "--score-file", "--head", "--base", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd", "--label", "--assignee", "--field")
 		for _, name := range []string{"--label", "--assignee", "--field"} {
 			r[name] = true
 		}
 		return values, b("--confirm", "--json"), r, true
 	case "remote verify-artifact":
-		values := v("--id", "--provider", "--kind", "--url", "--target-branch", "--label", "--labels", "--assignee", "--assignees")
+		values := v("--id", "--provider", "--kind", "--url", "--target-branch", "--label", "--labels", "--assignee", "--assignees", "--host", "--session-id", "--agent-id", "--cwd")
 		for _, name := range []string{"--label", "--labels", "--assignee", "--assignees"} {
 			r[name] = true
 		}
 		return values, b("--json"), r, true
-	case "handoff claim":
-		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id", "--cwd", "--orca-worktree-id"), b("--json"), r, true
-	case "handoff acknowledge-context":
-		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id", "--cwd", "--issue-url", "--plan-sha256", "--understanding", "--scope-confirmation"), b("--json"), r, true
-	case "handoff complete":
-		values := v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id", "--cwd", "--final-head", "--changed-file", "--turing-report", "--verification")
-		for _, name := range []string{"--changed-file", "--verification"} {
-			r[name] = true
-		}
-		return values, b("--json"), r, true
-	case "handoff cleanup-preview":
-		return v("--id", "--host", "--session-id", "--agent-id", "--source-cwd"), b("--json"), r, true
-	case "handoff cleanup-approve":
-		return v("--id", "--host", "--session-id", "--agent-id", "--source-cwd", "--inventory-fingerprint", "--disposition", "--reason"), b("--confirm", "--json"), r, true
-	case "handoff cleanup-record":
-		return v("--id", "--host", "--session-id", "--agent-id", "--source-cwd", "--step"), b("--json"), r, true
-	case "heartbeat":
-		return v("--id", "--attempt", "--ownership-epoch", "--context-sha256", "--host", "--session-id", "--agent-id"), b("--json"), r, true
+	case "remote score":
+		return v("--input", "--judge", "--judge-file"), b("--json"), r, true
 	default:
 		return nil, nil, nil, false
 	}
@@ -184,8 +157,8 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 // ExactReadOnlyShellCommand reports whether a non-issueops shell command is an
 // exact read-only observation (pwd, safe rg, read-only git, read-only orca
 // terminal/orchestration). It rejects any command carrying active shell
-// control/expansion. The issueops status/resume read-only carve-out is handled
-// by the caller (it needs the record identity).
+// control/expansion. IssueOps read-only authority is handled by the caller
+// because it needs the record identity.
 func ExactReadOnlyShellCommand(command string) bool {
 	if HasUnquotedControlOperator(command) || HasActiveCommandSubstitution(command) || HasActiveInputRedirect(command) || HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) || HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) || HasActiveZshEqualsExpansion(command) {
 		return false
@@ -197,6 +170,20 @@ func ExactReadOnlyShellCommand(command string) bool {
 	switch tokens[0] {
 	case "pwd":
 		return len(tokens) == 1
+	case "cat":
+		return exactReadOnlyCat(tokens[1:])
+	case "head":
+		return exactReadOnlyHeadOrTail(tokens[1:])
+	case "tail":
+		return exactReadOnlyHeadOrTail(tokens[1:])
+	case "ls":
+		return exactReadOnlyLS(tokens[1:])
+	case "find":
+		return exactReadOnlyFind(tokens[1:])
+	case "stat":
+		return exactReadOnlyStat(tokens[1:])
+	case "file":
+		return exactReadOnlyFile(tokens[1:])
 	case "wc":
 		return exactReadOnlyWCCommand(tokens[1:])
 	case "sed":
@@ -218,6 +205,8 @@ func ExactReadOnlyShellCommand(command string) bool {
 				}
 			}
 			return true
+		case "branch":
+			return len(tokens) == i+2 && tokens[i+1] == "--show-current"
 		case "ls-remote":
 			return exactReadOnlyGitLSRemote(tokens[i+1:])
 		}
@@ -228,6 +217,251 @@ func ExactReadOnlyShellCommand(command string) bool {
 			(len(tokens) == 4 && tokens[1] == "orchestration" && tokens[2] == "task-list" && tokens[3] == "--json")
 	}
 	return false
+}
+
+func exactReadOnlyCat(tokens []string) bool {
+	if len(tokens) == 0 {
+		return false
+	}
+	operands := 0
+	options := true
+	longOptions := map[string]bool{
+		"--show-all": true, "--number-nonblank": true, "--show-ends": true,
+		"--number": true, "--squeeze-blank": true, "--show-tabs": true,
+		"--show-nonprinting": true,
+	}
+	for _, token := range tokens {
+		if options && token == "--" {
+			options = false
+			continue
+		}
+		if options && strings.HasPrefix(token, "--") {
+			if !longOptions[token] {
+				return false
+			}
+			continue
+		}
+		if options && strings.HasPrefix(token, "-") && token != "-" {
+			for _, flag := range strings.TrimPrefix(token, "-") {
+				if !strings.ContainsRune("AbeEnstTuv", flag) {
+					return false
+				}
+			}
+			continue
+		}
+		if token == "-" || strings.TrimSpace(token) == "" {
+			return false
+		}
+		operands++
+	}
+	return operands > 0
+}
+
+func exactReadOnlyHeadOrTail(tokens []string) bool {
+	if len(tokens) == 0 {
+		return false
+	}
+	operands := 0
+	options := true
+	limitSeen := false
+	for i := 0; i < len(tokens); i++ {
+		token := tokens[i]
+		if options && token == "--" {
+			options = false
+			continue
+		}
+		if options {
+			switch token {
+			case "-q", "--quiet", "--silent", "-v", "--verbose":
+				continue
+			case "-n", "--lines":
+				if limitSeen || i+1 >= len(tokens) || !boundedLineCount(tokens[i+1]) {
+					return false
+				}
+				limitSeen = true
+				i++
+				continue
+			}
+			if strings.HasPrefix(token, "--lines=") {
+				if limitSeen || !boundedLineCount(strings.TrimPrefix(token, "--lines=")) {
+					return false
+				}
+				limitSeen = true
+				continue
+			}
+			if strings.HasPrefix(token, "-n") && len(token) > 2 {
+				if limitSeen || !boundedLineCount(strings.TrimPrefix(token, "-n")) {
+					return false
+				}
+				limitSeen = true
+				continue
+			}
+			if strings.HasPrefix(token, "-") {
+				return false
+			}
+		}
+		if token == "-" || strings.TrimSpace(token) == "" {
+			return false
+		}
+		operands++
+	}
+	return operands > 0
+}
+
+func boundedLineCount(value string) bool {
+	count, err := strconv.ParseUint(value, 10, 14)
+	return err == nil && count <= 10_000
+}
+
+func exactReadOnlyLS(tokens []string) bool {
+	options := true
+	for _, token := range tokens {
+		if options && token == "--" {
+			options = false
+			continue
+		}
+		if !options || !strings.HasPrefix(token, "-") || token == "-" {
+			continue
+		}
+		if token == "--recursive" || !strings.HasPrefix(token, "--") && strings.ContainsRune(strings.TrimPrefix(token, "-"), 'R') {
+			return false
+		}
+	}
+	return true
+}
+
+func exactReadOnlyFind(tokens []string) bool {
+	if len(tokens) < 3 {
+		return false
+	}
+	i := 0
+	for i < len(tokens) && !strings.HasPrefix(tokens[i], "-") && tokens[i] != "!" && tokens[i] != "(" {
+		if strings.TrimSpace(tokens[i]) == "" {
+			return false
+		}
+		i++
+	}
+	if i == 0 {
+		return false
+	}
+	maxDepth := false
+	valuePredicates := map[string]bool{
+		"-type": true, "-name": true, "-iname": true, "-path": true,
+		"-ipath": true, "-regex": true, "-iregex": true, "-size": true,
+		"-mtime": true, "-mmin": true, "-newer": true, "-user": true,
+		"-group": true, "-perm": true, "-links": true, "-inum": true,
+	}
+	noValuePredicates := map[string]bool{
+		"-print": true, "-print0": true, "-ls": true, "-empty": true,
+		"-readable": true, "-writable": true, "-executable": true,
+		"-true": true, "-false": true, "!": true, "-not": true,
+		"-a": true, "-and": true, "-o": true, "-or": true,
+	}
+	for i < len(tokens) {
+		token := tokens[i]
+		switch token {
+		case "-delete", "-exec", "-execdir", "-ok", "-okdir", "-fls", "-fprint", "-fprint0", "-fprintf":
+			return false
+		case "-maxdepth":
+			if maxDepth || i+1 >= len(tokens) || !boundedFindDepth(tokens[i+1]) {
+				return false
+			}
+			maxDepth = true
+			i += 2
+			continue
+		case "-mindepth":
+			if i+1 >= len(tokens) || !boundedFindDepth(tokens[i+1]) {
+				return false
+			}
+			i += 2
+			continue
+		}
+		if valuePredicates[token] {
+			if i+1 >= len(tokens) {
+				return false
+			}
+			i += 2
+			continue
+		}
+		if noValuePredicates[token] {
+			i++
+			continue
+		}
+		return false
+	}
+	return maxDepth
+}
+
+func boundedFindDepth(value string) bool {
+	depth, err := strconv.ParseUint(value, 10, 8)
+	return err == nil && depth <= 20
+}
+
+func exactReadOnlyStat(tokens []string) bool {
+	if len(tokens) == 0 {
+		return false
+	}
+	operands := 0
+	options := true
+	for i := 0; i < len(tokens); i++ {
+		token := tokens[i]
+		if options && token == "--" {
+			options = false
+			continue
+		}
+		if options {
+			switch token {
+			case "-L", "--dereference", "-t", "--terse", "-x", "-s", "-r", "-l":
+				continue
+			case "-c", "--format", "--printf", "-f":
+				if i+1 >= len(tokens) {
+					return false
+				}
+				i++
+				continue
+			}
+			if strings.HasPrefix(token, "--format=") || strings.HasPrefix(token, "--printf=") {
+				continue
+			}
+			if strings.HasPrefix(token, "-") {
+				return false
+			}
+		}
+		operands++
+	}
+	return operands > 0
+}
+
+func exactReadOnlyFile(tokens []string) bool {
+	if len(tokens) == 0 {
+		return false
+	}
+	operands := 0
+	options := true
+	allowed := map[string]bool{
+		"-b": true, "--brief": true, "-i": true, "--mime": true,
+		"--mime-type": true, "--mime-encoding": true, "-L": true,
+		"--dereference": true, "-h": true, "--no-dereference": true,
+		"-k": true, "--keep-going": true, "-z": true, "--uncompress": true,
+		"-0": true, "--print0": true,
+	}
+	for _, token := range tokens {
+		if options && token == "--" {
+			options = false
+			continue
+		}
+		if options && strings.HasPrefix(token, "-") {
+			if token == "-C" || token == "--compile" || !allowed[token] {
+				return false
+			}
+			continue
+		}
+		if token == "-" || strings.TrimSpace(token) == "" {
+			return false
+		}
+		operands++
+	}
+	return operands > 0
 }
 
 func exactReadOnlyGitLSRemote(tokens []string) bool {

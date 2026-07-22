@@ -20,7 +20,6 @@ const contextPressureBytes = 32 << 10
 type LiveBenchmarkRequest struct {
 	Hosts              []string
 	Models             map[string]string
-	GJCAuthEnv         []string
 	Profile            string
 	Only               string
 	TargetCompleted    int
@@ -92,7 +91,7 @@ func RunLiveBenchmark(ctx context.Context, request LiveBenchmarkRequest, descrip
 			}
 			hostReport.Cases = append(hostReport.Cases, episode)
 		}
-		preflightRequest := port.HostProbeRequest{HarnessBinary: request.HarnessBinary, Model: hostReport.RequestedModel, GJCAuthEnv: append([]string(nil), request.GJCAuthEnv...)}
+		preflightRequest := port.HostProbeRequest{HarnessBinary: request.HarnessBinary, Model: hostReport.RequestedModel}
 		preflight := runner.Preflight(ctx, preflightRequest)
 		hostReport.Version = preflight.Version
 		if preflight.ObservedModel != "" {
@@ -125,7 +124,6 @@ func RunLiveBenchmark(ctx context.Context, request LiveBenchmarkRequest, descrip
 					Profile:               request.Profile,
 					Attempt:               attempt,
 					RunToken:              deps.Token(),
-					GJCAuthEnv:            append([]string(nil), request.GJCAuthEnv...),
 				})
 				episode := classifyHostResult(runResult, fixture)
 				if episode.HostVersion == "" {
@@ -529,9 +527,6 @@ func countCompleted(episodes []EpisodeReport) int {
 func modelForHost(models map[string]string, host string) string {
 	if model := strings.TrimSpace(models[host]); model != "" {
 		return model
-	}
-	if host == "gjc" {
-		return ""
 	}
 	return "default"
 }

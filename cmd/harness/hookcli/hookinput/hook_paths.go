@@ -18,7 +18,8 @@ func PathsFromHookInput(input []byte) []string {
 				if !childInsideToolInput && (lk == "transcript_path" || lk == "agent_transcript_path") {
 					continue
 				}
-				if lk == "path" || strings.HasSuffix(lk, "_path") || lk == "file" || lk == "filename" {
+				filesystemAlias := insideToolInput && (lk == "source" || lk == "destination" || lk == "src" || lk == "dst" || lk == "target")
+				if lk == "path" || strings.HasSuffix(lk, "_path") || lk == "file" || lk == "filename" || filesystemAlias {
 					if s, ok := v.(string); ok {
 						addHookPath(&out, seen, s)
 					}

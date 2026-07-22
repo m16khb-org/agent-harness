@@ -5,6 +5,7 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 
 	"agent-harness/internal/adapter/provider/github"
@@ -23,4 +24,16 @@ func Resolve(name string) (port.IssueProvider, error) {
 	default:
 		return nil, fmt.Errorf("unknown provider %q; supported: github, gitlab", name)
 	}
+}
+
+func ReadExecutionIssueSnapshot(ctx context.Context, name string, req port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
+	resolved, err := Resolve(name)
+	if err != nil {
+		return port.ExecutionIssueSnapshot{}, err
+	}
+	reader, ok := resolved.(port.ExecutionIssueSnapshotReader)
+	if !ok {
+		return port.ExecutionIssueSnapshot{}, fmt.Errorf("provider %q cannot read issue snapshots", name)
+	}
+	return reader.ReadIssueSnapshot(ctx, req)
 }

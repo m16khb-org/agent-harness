@@ -30,46 +30,22 @@ type SkillInfo struct {
 }
 
 type IntegrationStatus struct {
-	CodexSkillPath            string `json:"codex_skill_path"`
-	CodexSkillInstalled       bool   `json:"codex_skill_installed"`
-	CodexMCPConfigured        bool   `json:"codex_mcp_configured"`
-	ClaudeSkillPath           string `json:"claude_skill_path"`
-	ClaudeSkillInstalled      bool   `json:"claude_skill_installed"`
-	ProjectClaudeSkillPath    string `json:"project_claude_skill_path"`
-	ProjectClaudeSkill        bool   `json:"project_claude_skill"`
-	ProjectClaudeMCPConfig    bool   `json:"project_claude_mcp_config"`
-	ReasonixSkillPath         string `json:"reasonix_skill_path"`
-	ReasonixSkillInstalled    bool   `json:"reasonix_skill_installed"`
-	ReasonixSettingsInstalled bool   `json:"reasonix_settings_installed"`
-	ReasonixMCPConfigured     bool   `json:"reasonix_mcp_configured"`
-	ProjectReasonixSkillPath  string `json:"project_reasonix_skill_path"`
-	ProjectReasonixSkill      bool   `json:"project_reasonix_skill"`
-	GJCSkillPath              string `json:"gjc_skill_path"`
-	GJCSkillInstalled         bool   `json:"gjc_skill_installed"`
-	GJCHookShimInstalled      bool   `json:"gjc_hook_shim_installed"`
-	GJCPluginInstalled        bool   `json:"gjc_plugin_installed"`
-	ProjectGJCSkillPath       string `json:"project_gjc_skill_path"`
-	ProjectGJCSkill           bool   `json:"project_gjc_skill"`
-	ProjectReasonixSettings   bool   `json:"project_reasonix_settings"`
-	MCPBinaryPath             string `json:"mcp_binary_path"`
+	CodexSkillPath         string `json:"codex_skill_path"`
+	CodexSkillInstalled    bool   `json:"codex_skill_installed"`
+	CodexMCPConfigured     bool   `json:"codex_mcp_configured"`
+	ClaudeSkillPath        string `json:"claude_skill_path"`
+	ClaudeSkillInstalled   bool   `json:"claude_skill_installed"`
+	ProjectClaudeSkillPath string `json:"project_claude_skill_path"`
+	ProjectClaudeSkill     bool   `json:"project_claude_skill"`
+	ProjectClaudeMCPConfig bool   `json:"project_claude_mcp_config"`
+	MCPBinaryPath          string `json:"mcp_binary_path"`
 }
 
 func InspectHarness(root, target, home, version, skillName string) InspectInfo {
 	codexSkill := filepath.Join(home, ".codex", "skills", skillName)
 	claudeSkill := filepath.Join(home, ".claude", "skills", skillName)
-	reasonixSkill := filepath.Join(home, ".reasonix", "skills", skillName)
-	gjcSkill := filepath.Join(home, ".gjc", "agent", "skills", skillName)
-	gjcHookShim := filepath.Join(home, ".gjc", "agent", "hooks", "agent-harness.ts")
-	gjcPluginRoot := filepath.Join(home, ".gjc", "agent", "gjc-plugins", "agent-harness")
 	projectClaudeSkill := filepath.Join(root, ".claude", "skills", skillName)
-	projectReasonixSkill := filepath.Join(root, ".reasonix", "skills", skillName)
-	projectGJCSkill := filepath.Join(root, ".gjc", "skills", skillName)
 	mcpBinary := filepath.Join(root, "bin", "agent-harness")
-	reasonixConfigDir, _ := os.UserConfigDir()
-	if reasonixConfigDir == "" {
-		reasonixConfigDir = filepath.Join(home, ".config")
-	}
-	reasonixConfigPath := filepath.Join(reasonixConfigDir, "reasonix", "config.toml")
 	return InspectInfo{
 		OK:          true,
 		Version:     version,
@@ -78,28 +54,15 @@ func InspectHarness(root, target, home, version, skillName string) InspectInfo {
 		Skills:      ListSkills(root, skillName),
 		Docs:        coredocs.ListDocs(root),
 		Integration: IntegrationStatus{
-			CodexSkillPath:            codexSkill,
-			CodexSkillInstalled:       Exists(filepath.Join(codexSkill, "SKILL.md")),
-			CodexMCPConfigured:        CodexMCPConfigured(filepath.Join(home, ".codex", "config.toml")),
-			ClaudeSkillPath:           claudeSkill,
-			ClaudeSkillInstalled:      Exists(filepath.Join(claudeSkill, "SKILL.md")),
-			ProjectClaudeSkillPath:    projectClaudeSkill,
-			ProjectClaudeSkill:        Exists(filepath.Join(projectClaudeSkill, "SKILL.md")),
-			ProjectClaudeMCPConfig:    Exists(filepath.Join(root, ".mcp.json")),
-			ReasonixSkillPath:         reasonixSkill,
-			ReasonixSkillInstalled:    Exists(filepath.Join(reasonixSkill, "SKILL.md")),
-			ReasonixSettingsInstalled: Exists(filepath.Join(home, ".reasonix", "settings.json")),
-			ReasonixMCPConfigured:     fileContains(reasonixConfigPath, "agent_harness"),
-			ProjectReasonixSkillPath:  projectReasonixSkill,
-			ProjectReasonixSkill:      Exists(filepath.Join(projectReasonixSkill, "SKILL.md")),
-			ProjectReasonixSettings:   Exists(filepath.Join(root, ".reasonix", "settings.json")),
-			GJCSkillPath:              gjcSkill,
-			GJCSkillInstalled:         Exists(filepath.Join(gjcSkill, "SKILL.md")),
-			GJCHookShimInstalled:      Exists(gjcHookShim),
-			GJCPluginInstalled:        Exists(filepath.Join(gjcPluginRoot, "gajae-plugin.json")),
-			ProjectGJCSkillPath:       projectGJCSkill,
-			ProjectGJCSkill:           Exists(filepath.Join(projectGJCSkill, "SKILL.md")),
-			MCPBinaryPath:             mcpBinary,
+			CodexSkillPath:         codexSkill,
+			CodexSkillInstalled:    Exists(filepath.Join(codexSkill, "SKILL.md")),
+			CodexMCPConfigured:     CodexMCPConfigured(filepath.Join(home, ".codex", "config.toml")),
+			ClaudeSkillPath:        claudeSkill,
+			ClaudeSkillInstalled:   Exists(filepath.Join(claudeSkill, "SKILL.md")),
+			ProjectClaudeSkillPath: projectClaudeSkill,
+			ProjectClaudeSkill:     Exists(filepath.Join(projectClaudeSkill, "SKILL.md")),
+			ProjectClaudeMCPConfig: Exists(filepath.Join(root, ".mcp.json")),
+			MCPBinaryPath:          mcpBinary,
 		},
 		GeneratedAt: time.Now().Format(time.RFC3339),
 	}
@@ -153,9 +116,4 @@ func CodexMCPConfigured(path string) bool {
 func Exists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
-}
-
-func fileContains(path, substr string) bool {
-	b, err := os.ReadFile(path)
-	return err == nil && strings.Contains(string(b), substr)
 }

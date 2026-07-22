@@ -2,7 +2,7 @@
 
 > Generated: 2026-06-14
 > Scope: Full-stack analysis of IssueOps skill, MCP tools, lifecycle hooks, state management, worktree isolation, and cross-session continuity.
-> Note (2026-07-15): the supervised execution-handoff subsystem (coordinator/worker over shared state + Orca runtime) postdates this audit and is **not** covered here. Its threat model and invariants live in `ARCHITECTURE.md` → "IssueOps handoff: threat model and invariants".
+> Status: **historical audit snapshot; do not use as current IssueOps execution guidance.** The schema-7/8 and handoff surfaces described below were removed by the IssueOps v1 cutover. Current authority is schema 1 in the dedicated v1 namespaces and the `issueops execution` contract documented in `ARCHITECTURE.md`, `OPERATIONS.md`, and `skills/issueops/references/execution-v1.md`.
 
 ---
 
@@ -229,7 +229,7 @@ Once a cycle reaches `done`, its JSON file persists forever. `NonDoneCyclesForRe
 
 ### 5.3 IssueOps Schema Versioning Is Minimal (P2)
 
-IssueOps records now write `schema_version=7`. Schema v5 remains the historical boundary for publish/cleanup authority; v6 adds the exact effective push-target fingerprint and durable `remote_create_claim` identity needed for crash-safe provider mutation, and v7 adds the separately journaled `prepared` → `git_removed` → `orca_managed` authority for safe legacy Git-worktree migration. Missing/zero through v4, plus v5 rows with no new authority and v6 rows, read as v7 in memory and are stamped only on a later authorized write. Raw v5 claim rows and old v5 publish receipts fail before rewrite with bounded re-attest/reconcile guidance, v7 is accepted, and v8+ fails closed before phase logic.
+At the time of this audit, legacy IssueOps records wrote `schema_version=7`. Schema v5 was the historical boundary for publish/cleanup authority; v6 added the exact effective push-target fingerprint and durable `remote_create_claim` identity needed for crash-safe provider mutation, and v7 added the separately journaled `prepared` → `git_removed` → `orca_managed` authority for safe legacy Git-worktree migration. This paragraph records retired behavior only; current readers do not migrate these rows into v1.
 
 **Compatibility:** Each prior-version boundary rejects its next authority-bearing schema before any write and preserves bytes. Future-schema reads retain only a bounded identifiable handoff projection plus an in-memory invalid marker so hooks keep ownership guards fail-closed without interpreting unsupported state.
 

@@ -37,6 +37,13 @@
               "content": "{\n  \"mcpServers\": {\n    \"agent_harness_project\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/agent-harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
             },
             {
+              "kind": "claude_user_mcp_config",
+              "path": "$HOME/.claude.json",
+              "written": true,
+              "content_sha256": "856dab549674100651b88005e3009e9c5de52b6a37ee7fc8295189829db869cc",
+              "content": "{\n  \"mcpServers\": {\n    \"agent_harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"$BIN\",\n      \"env\": {\n        \"HARNESS_ROOT\": \"$ROOT\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
+            },
+            {
               "kind": "claude_user_settings",
               "path": "$HOME/.claude/settings.json",
               "written": true,
@@ -142,86 +149,14 @@
           "messages": [
             "skip skill for codex: claude-only"
           ]
-        },
-        {
-          "host": "reasonix",
-          "ok": true,
-          "files": [
-            {
-              "kind": "reasonix_hooks_template",
-              "path": "$ROOT/configs/reasonix/hooks.settings.json",
-              "written": true,
-              "content_sha256": "6df86b5247c79d8f89be6be3712925880ab790d9d13080d1fcc6ee22b50e6134",
-              "content": "{\n  \"hooks\": {\n    \"PostToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook post-tool-use --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"*\"\n      }\n    ],\n    \"PreCompact\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook pre-compact\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"PreToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook pre-tool-use --host reasonix --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"*\"\n      }\n    ],\n    \"PromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook user-prompt --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"SessionEnd\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook session-end --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook session-start --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"Stop\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook stop --host reasonix --enforce-numbered-next-actions --relay-next-action-judgement\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
-            },
-            {
-              "kind": "reasonix_project_mcp_template",
-              "path": "$ROOT/configs/reasonix/mcp.config.toml",
-              "written": true,
-              "content_sha256": "7b0df25bea9a9ad04e8e3ff7c289389d373954a4052b6e4766486d63733e1e05",
-              "content": "[[plugins]]\nname = \"agent_harness_project\"\ncommand = \"./bin/agent-harness\"\nargs = [\"mcp\"]\n"
-            },
-            {
-              "kind": "reasonix_project_settings",
-              "path": "$ROOT/.reasonix/settings.json",
-              "written": true,
-              "content_sha256": "6df86b5247c79d8f89be6be3712925880ab790d9d13080d1fcc6ee22b50e6134",
-              "content": "{\n  \"hooks\": {\n    \"PostToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook post-tool-use --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"*\"\n      }\n    ],\n    \"PreCompact\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook pre-compact\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"PreToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook pre-tool-use --host reasonix --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"*\"\n      }\n    ],\n    \"PromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook user-prompt --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"SessionEnd\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook session-end --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook session-start --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"Stop\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook stop --host reasonix --enforce-numbered-next-actions --relay-next-action-judgement\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
-            },
-            {
-              "kind": "reasonix_user_mcp_config",
-              "path": "$REASONIX_CONFIG/config.toml",
-              "written": true,
-              "content_sha256": "8cd691bdd1af2b95b762f6ea3ab38ff710dac0c0cd9125af8d5ddf634f29f1a6",
-              "content": "[[plugins]]\nname = \"agent_harness_project\"\ncommand = \"$BIN\"\nargs = [\"mcp\"]\n"
-            },
-            {
-              "kind": "reasonix_user_settings",
-              "path": "$REASONIX_HOME/settings.json",
-              "written": true,
-              "content_sha256": "1d52b6b57151f8998d9f0c3e70fa92e12f38322e369b5af1429383b46b6151c7",
-              "content": "{\n  \"hooks\": {\n    \"PostToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook post-tool-use --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"*\"\n      }\n    ],\n    \"PreCompact\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook pre-compact\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"PreToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook pre-tool-use --host reasonix --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"*\"\n      }\n    ],\n    \"PromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook user-prompt --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"SessionEnd\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook session-end --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook session-start --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"Stop\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook stop --host reasonix --enforce-numbered-next-actions --relay-next-action-judgement\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
-            }
-          ],
-          "links": [
-            {
-              "path": "$REASONIX_HOME/skills/alpha",
-              "target": "$ROOT/skills/alpha",
-              "created": true,
-              "resolves_to_root_skill": true
-            },
-            {
-              "path": "$REASONIX_HOME/skills/beta",
-              "target": "$ROOT/skills/beta",
-              "created": true,
-              "resolves_to_root_skill": true
-            },
-            {
-              "path": "$ROOT/.reasonix/skills/alpha",
-              "target": "../../skills/alpha",
-              "created": true,
-              "resolves_to_root_skill": true
-            },
-            {
-              "path": "$ROOT/.reasonix/skills/beta",
-              "target": "../../skills/beta",
-              "created": true,
-              "resolves_to_root_skill": true
-            }
-          ],
-          "messages": [
-            "skip skill for reasonix: claude-only",
-            "skip skill for reasonix: codex-only"
-          ]
         }
       ],
       "assertions": [
         "core discovers shared skills once and passes sorted names to all host adapters",
-        "Codex, Claude, and Reasonix user skill installs are symlinks resolving to $ROOT/skills/*",
-        "Codex, Claude, and Reasonix user-level lifecycle hooks route through the same agent-harness hook CLI",
-        "default install writes no repo-local .claude, .mcp.json, or .reasonix paths",
-        "project-local repo files are created only when project_local=true",
-        "Reasonix host-specific hooks omit PostCompact and use PromptSubmit instead of UserPromptSubmit"
+        "Codex and Claude user skill installs are symlinks resolving to $ROOT/skills/*",
+        "Codex and Claude user-level lifecycle hooks route through the same agent-harness hook CLI",
+        "default install writes no repo-local .claude or .mcp.json paths",
+        "project-local repo files are created only when project_local=true"
       ]
     },
     {
@@ -252,6 +187,13 @@
               "written": true,
               "content_sha256": "106ae7ce02f841d069e8179bc55f2a8ce04a8677198bcc77a59df5f05decf7c6",
               "content": "{\n  \"mcpServers\": {\n    \"agent_harness_project\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"./bin/agent-harness\",\n      \"env\": {\n        \"HARNESS_ROOT\": \".\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
+            },
+            {
+              "kind": "claude_user_mcp_config",
+              "path": "$HOME/.claude.json",
+              "written": true,
+              "content_sha256": "856dab549674100651b88005e3009e9c5de52b6a37ee7fc8295189829db869cc",
+              "content": "{\n  \"mcpServers\": {\n    \"agent_harness\": {\n      \"args\": [\n        \"mcp\"\n      ],\n      \"command\": \"$BIN\",\n      \"env\": {\n        \"HARNESS_ROOT\": \"$ROOT\"\n      },\n      \"type\": \"stdio\"\n    }\n  }\n}\n"
             },
             {
               "kind": "claude_user_settings",
@@ -341,67 +283,14 @@
           "messages": [
             "skip skill for codex: claude-only"
           ]
-        },
-        {
-          "host": "reasonix",
-          "ok": true,
-          "files": [
-            {
-              "kind": "reasonix_hooks_template",
-              "path": "$ROOT/configs/reasonix/hooks.settings.json",
-              "written": true,
-              "content_sha256": "6df86b5247c79d8f89be6be3712925880ab790d9d13080d1fcc6ee22b50e6134",
-              "content": "{\n  \"hooks\": {\n    \"PostToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook post-tool-use --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"*\"\n      }\n    ],\n    \"PreCompact\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook pre-compact\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"PreToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook pre-tool-use --host reasonix --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"*\"\n      }\n    ],\n    \"PromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook user-prompt --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"SessionEnd\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook session-end --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook session-start --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"Stop\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'./bin/agent-harness' hook stop --host reasonix --enforce-numbered-next-actions --relay-next-action-judgement\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
-            },
-            {
-              "kind": "reasonix_project_mcp_template",
-              "path": "$ROOT/configs/reasonix/mcp.config.toml",
-              "written": true,
-              "content_sha256": "7b0df25bea9a9ad04e8e3ff7c289389d373954a4052b6e4766486d63733e1e05",
-              "content": "[[plugins]]\nname = \"agent_harness_project\"\ncommand = \"./bin/agent-harness\"\nargs = [\"mcp\"]\n"
-            },
-            {
-              "kind": "reasonix_user_mcp_config",
-              "path": "$REASONIX_CONFIG/config.toml",
-              "written": true,
-              "content_sha256": "8cd691bdd1af2b95b762f6ea3ab38ff710dac0c0cd9125af8d5ddf634f29f1a6",
-              "content": "[[plugins]]\nname = \"agent_harness_project\"\ncommand = \"$BIN\"\nargs = [\"mcp\"]\n"
-            },
-            {
-              "kind": "reasonix_user_settings",
-              "path": "$REASONIX_HOME/settings.json",
-              "written": true,
-              "content_sha256": "1d52b6b57151f8998d9f0c3e70fa92e12f38322e369b5af1429383b46b6151c7",
-              "content": "{\n  \"hooks\": {\n    \"PostToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook post-tool-use --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"*\"\n      }\n    ],\n    \"PreCompact\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook pre-compact\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"PreToolUse\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook pre-tool-use --host reasonix --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ],\n        \"matcher\": \"*\"\n      }\n    ],\n    \"PromptSubmit\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook user-prompt --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"SessionEnd\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook session-end --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"SessionStart\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook session-start --host reasonix\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ],\n    \"Stop\": [\n      {\n        \"hooks\": [\n          {\n            \"command\": \"'$BIN' hook stop --host reasonix --enforce-numbered-next-actions --relay-next-action-judgement\",\n            \"timeout\": 5,\n            \"type\": \"command\"\n          }\n        ]\n      }\n    ]\n  }\n}\n"
-            }
-          ],
-          "links": [
-            {
-              "path": "$REASONIX_HOME/skills/alpha",
-              "target": "$ROOT/skills/alpha",
-              "created": true,
-              "resolves_to_root_skill": true
-            },
-            {
-              "path": "$REASONIX_HOME/skills/beta",
-              "target": "$ROOT/skills/beta",
-              "created": true,
-              "resolves_to_root_skill": true
-            }
-          ],
-          "messages": [
-            "skip skill for reasonix: claude-only",
-            "skip skill for reasonix: codex-only"
-          ]
         }
       ],
       "assertions": [
         "core discovers shared skills once and passes sorted names to all host adapters",
-        "Codex, Claude, and Reasonix user skill installs are symlinks resolving to $ROOT/skills/*",
-        "Codex, Claude, and Reasonix user-level lifecycle hooks route through the same agent-harness hook CLI",
-        "default install writes no repo-local .claude, .mcp.json, or .reasonix paths",
-        "project-local repo files are created only when project_local=true",
-        "Reasonix host-specific hooks omit PostCompact and use PromptSubmit instead of UserPromptSubmit"
+        "Codex and Claude user skill installs are symlinks resolving to $ROOT/skills/*",
+        "Codex and Claude user-level lifecycle hooks route through the same agent-harness hook CLI",
+        "default install writes no repo-local .claude or .mcp.json paths",
+        "project-local repo files are created only when project_local=true"
       ]
     }
   ]

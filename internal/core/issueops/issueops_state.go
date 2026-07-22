@@ -12,22 +12,20 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/issueops/handoff"
+	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/core/state"
 )
 
-// issueOpsBucket is the sqlstore bucket holding one row per cycle record.
-const issueOpsBucket = "issueops"
-
-var errRemovedHandoffContract = errors.New("removed IssueOps handoff contract")
+// v1은 legacy row를 해석하지 않도록 물리 namespace까지 분리한다.
+const issueOpsBucket = "issueops_v1"
 
 func ReadIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
 	record, err := readIssueOpsUnchecked(stateRoot, id)
 	if err != nil {
 		return record, err
 	}
-	if err := handoff.ValidateEnvelope(record); err != nil {
+	if err := validateIssueOpsV1Record(record); err != nil {
 		record.OK = false
 		return record, err
 	}
@@ -58,7 +56,7 @@ func ReadIssueOpsExisting(stateRoot, id string) (IssueOpsRecord, error) {
 	if err != nil {
 		return record, err
 	}
-	if err := handoff.ValidateEnvelope(record); err != nil {
+	if err := validateIssueOpsV1Record(record); err != nil {
 		record.OK = false
 		return record, err
 	}
@@ -84,58 +82,16 @@ func readIssueOpsUnchecked(stateRoot, id string) (IssueOpsRecord, error) {
 	return decodeIssueOpsRecord(id, b)
 }
 
-func readRawIssueOpsBytes(stateRoot, id string) ([]byte, error) {
-	id, err := normalizeIssueOpsID(id)
-	if err != nil {
-		return nil, err
-	}
-	db, err := sqlstore.Open(stateRoot)
-	if err != nil {
-		return nil, err
-	}
-	b, ok, err := db.Get(issueOpsBucket, id)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, fmt.Errorf("issueops record %s: %w", id, fs.ErrNotExist)
-	}
-	if len(b) > 4<<20 {
-		return nil, fmt.Errorf("issueops raw record exceeds bounded migration size")
-	}
-	return append([]byte(nil), b...), nil
-}
-
 func decodeIssueOpsRecord(id string, b []byte) (IssueOpsRecord, error) {
 	var header struct {
-		SchemaVersion      int             `json:"schema_version"`
-		ID                 string          `json:"id"`
-		RemoteCreateClaim  json.RawMessage `json:"remote_create_claim"`
-		ExecutionWorkspace json.RawMessage `json:"execution_workspace"`
-		ExecutionHandoff   json.RawMessage `json:"execution_handoff"`
+		SchemaVersion int    `json:"schema_version"`
+		ID            string `json:"id"`
 	}
 	if err := json.Unmarshal(b, &header); err != nil {
 		return IssueOpsRecord{OK: false, ID: id}, err
 	}
 	if header.ID != id {
 		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops id mismatch: record has %q", header.ID)
-	}
-	var handoffHeader struct {
-		ProtocolVersion json.RawMessage `json:"protocol_version"`
-	}
-	if rawIssueOpsAuthorityPresent(header.ExecutionHandoff) {
-		if err := json.Unmarshal(header.ExecutionHandoff, &handoffHeader); err != nil {
-			return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("decode execution_handoff header: %w", err)
-		}
-	}
-	if rawIssueOpsAuthorityPresent(handoffHeader.ProtocolVersion) {
-		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("%w: execution_handoff.protocol_version was removed; reset and start a new handoff", errRemovedHandoffContract)
-	}
-	if header.SchemaVersion <= 7 && (rawIssueOpsAuthorityPresent(header.ExecutionWorkspace) || rawIssueOpsAuthorityPresent(header.ExecutionHandoff)) {
-		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("%w: issueops schema_version %d predates the current ownership contract; reset and start a new handoff", errRemovedHandoffContract, header.SchemaVersion)
-	}
-	if header.SchemaVersion <= 5 && rawIssueOpsAuthorityPresent(header.RemoteCreateClaim) {
-		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops schema_version %d cannot contain remote_create_claim durable mutation authority", header.SchemaVersion)
 	}
 	if schemaErr := issueOpsSchemaVersionError(header.SchemaVersion); schemaErr != nil {
 		record, projectionErr := decodeInvalidIssueOpsProjection(b)
@@ -147,18 +103,22 @@ func decodeIssueOpsRecord(id string, b []byte) (IssueOpsRecord, error) {
 		record.InvalidReason = boundedIssueOpsInvalidReason(schemaErr.Error())
 		return record, schemaErr
 	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(b, &fields); err != nil {
+		return IssueOpsRecord{OK: false, ID: id}, err
+	}
+	for _, name := range []string{"execution_handoff", "execution_workspace", "ownership", "remote_create_claim"} {
+		raw := fields[name]
+		if rawIssueOpsAuthorityPresent(raw) {
+			return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("legacy execution authority %s is forbidden in IssueOps v1", name)
+		}
+	}
 	var record IssueOpsRecord
 	if err := json.Unmarshal(b, &record); err != nil {
 		return IssueOpsRecord{OK: false, ID: id}, err
 	}
 	if record.ID != id {
 		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops id mismatch: record has %q", record.ID)
-	}
-	if err := normalizeIssueOpsSchemaVersion(&record); err != nil {
-		record.OK = false
-		record.Invalid = true
-		record.InvalidReason = boundedIssueOpsInvalidReason(err.Error())
-		return record, err
 	}
 	record.OK = true
 	return record, nil
@@ -185,6 +145,9 @@ func ListIssueOpsIDs(stateRoot string) ([]string, error) {
 // deleteIssueOps removes the cycle record for id; deleting an absent record is
 // not an error.
 func deleteIssueOps(stateRoot, id string) error {
+	if err := RequireIssueOpsV1MutationAllowed(stateRoot); err != nil {
+		return err
+	}
 	id, err := normalizeIssueOpsID(id)
 	if err != nil {
 		return err
@@ -197,7 +160,7 @@ func deleteIssueOps(stateRoot, id string) error {
 }
 
 func IssueOpsStateRoot() string {
-	return filepath.Join(state.StateDir(), "issueops")
+	return filepath.Join(state.StateDir(), "issueops_v1")
 }
 
 func newIssueOpsID(repo, branch string) string {
@@ -215,25 +178,15 @@ func touchAndWriteIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRec
 }
 
 func writeIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, error) {
-	if _, err := normalizeIssueOpsID(record.ID); err != nil {
+	if err := RequireIssueOpsV1MutationAllowed(stateRoot); err != nil {
 		record.OK = false
 		return record, err
 	}
-	if err := normalizeIssueOpsSchemaVersion(&record); err != nil {
-		record.OK = false
-		return record, err
-	}
-	if err := handoff.ValidateEnvelope(record); err != nil {
-		record.OK = false
+	record, b, err := encodeIssueOpsRecord(record)
+	if err != nil {
 		return record, err
 	}
 	db, err := sqlstore.Open(stateRoot)
-	if err != nil {
-		record.OK = false
-		return record, err
-	}
-	record.OK = true
-	b, err := json.MarshalIndent(record, "", "  ")
 	if err != nil {
 		record.OK = false
 		return record, err
@@ -243,6 +196,28 @@ func writeIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, err
 		return record, err
 	}
 	return record, nil
+}
+
+func encodeIssueOpsRecord(record IssueOpsRecord) (IssueOpsRecord, []byte, error) {
+	if _, err := normalizeIssueOpsID(record.ID); err != nil {
+		record.OK = false
+		return record, nil, err
+	}
+	if err := normalizeIssueOpsSchemaVersion(&record); err != nil {
+		record.OK = false
+		return record, nil, err
+	}
+	if err := validateIssueOpsV1Record(record); err != nil {
+		record.OK = false
+		return record, nil, err
+	}
+	record.OK = true
+	b, err := json.MarshalIndent(record, "", "  ")
+	if err != nil {
+		record.OK = false
+		return record, nil, err
+	}
+	return record, b, nil
 }
 
 func WriteIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, error) {
@@ -264,33 +239,28 @@ func normalizeIssueOpsID(id string) (string, error) {
 }
 
 func normalizeIssueOpsSchemaVersion(record *IssueOpsRecord) error {
-	if err := issueOpsSchemaVersionError(record.SchemaVersion); err != nil {
-		return err
+	if record.SchemaVersion == 0 {
+		// In-memory constructors may omit the field; every persisted row is still v1.
+		record.SchemaVersion = model.IssueOpsSchemaVersion
 	}
-	if record.SchemaVersion == 8 {
-		migrated, err := MigrateIssueOpsV8Record(*record)
-		if err != nil {
-			return err
-		}
-		*record = migrated
-		return nil
-	}
-	olderSchema := record.SchemaVersion == 0 || record.SchemaVersion == 1 || record.SchemaVersion == 2 || record.SchemaVersion == 3 || record.SchemaVersion == 4 || record.SchemaVersion == 5 || record.SchemaVersion == 6 || record.SchemaVersion == 7
-	if olderSchema {
-		record.SchemaVersion = IssueOpsCurrentSchemaVersion
-	}
-	return nil
+	return issueOpsSchemaVersionError(record.SchemaVersion)
 }
 
 func issueOpsSchemaVersionError(version int) error {
-	switch {
-	case version == 0 || version == 1 || version == 2 || version == 3 || version == 4 || version == 5 || version == 6 || version == 7 || version == 8 || version == IssueOpsCurrentSchemaVersion:
+	if version == model.IssueOpsSchemaVersion {
 		return nil
-	case version > IssueOpsCurrentSchemaVersion:
-		return fmt.Errorf("unsupported issueops schema_version %d; current is %d", version, IssueOpsCurrentSchemaVersion)
-	default:
-		return fmt.Errorf("unsupported issueops schema_version %d", version)
 	}
+	return fmt.Errorf("unsupported issueops schema_version %d; current is %d", version, model.IssueOpsSchemaVersion)
+}
+
+func validateIssueOpsV1Record(record IssueOpsRecord) error {
+	if record.SchemaVersion != model.IssueOpsSchemaVersion {
+		return issueOpsSchemaVersionError(record.SchemaVersion)
+	}
+	if record.Execution != nil {
+		return model.ValidateExecutionV1(*record.Execution)
+	}
+	return nil
 }
 
 func decodeInvalidIssueOpsProjection(raw []byte) (IssueOpsRecord, error) {
@@ -301,15 +271,6 @@ func decodeInvalidIssueOpsProjection(raw []byte) (IssueOpsRecord, error) {
 		Branch        string        `json:"branch"`
 		Phase         IssueOpsPhase `json:"phase"`
 		WorktreePath  string        `json:"worktree_path"`
-		Handoff       *struct {
-			State                    string          `json:"state"`
-			ClosedDisposition        string          `json:"closed_disposition"`
-			Attempt                  int             `json:"attempt"`
-			CoordinatorRoot          string          `json:"coordinator_root"`
-			CoordinatorMailboxHandle string          `json:"coordinator_mailbox_handle"`
-			WorkerRoot               string          `json:"worker_root"`
-			PublishReceipt           json.RawMessage `json:"publish_receipt"`
-		} `json:"execution_handoff"`
 	}
 	if err := json.Unmarshal(raw, &projection); err != nil {
 		return IssueOpsRecord{}, err
@@ -321,19 +282,6 @@ func decodeInvalidIssueOpsProjection(raw []byte) (IssueOpsRecord, error) {
 		Branch:        boundedIssueOpsIdentity(projection.Branch, 1024),
 		Phase:         projection.Phase,
 		WorktreePath:  boundedIssueOpsIdentity(projection.WorktreePath, 4096),
-	}
-	if projection.Handoff != nil {
-		record.ExecutionHandoff = &IssueOpsExecutionHandoff{
-			State:                    boundedIssueOpsIdentity(projection.Handoff.State, 64),
-			ClosedDisposition:        boundedIssueOpsIdentity(projection.Handoff.ClosedDisposition, 64),
-			Attempt:                  projection.Handoff.Attempt,
-			CoordinatorRoot:          boundedIssueOpsIdentity(projection.Handoff.CoordinatorRoot, 4096),
-			CoordinatorMailboxHandle: boundedIssueOpsIdentity(projection.Handoff.CoordinatorMailboxHandle, 256),
-			WorkerRoot:               boundedIssueOpsIdentity(projection.Handoff.WorkerRoot, 4096),
-		}
-		if rawIssueOpsAuthorityPresent(projection.Handoff.PublishReceipt) {
-			record.ExecutionHandoff.PublishReceipt = &IssueOpsExecutionHandoffPublishReceipt{}
-		}
 	}
 	return record, nil
 }

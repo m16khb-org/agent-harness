@@ -46,6 +46,12 @@ func TestStartIssueOpsLockIDMatchesAbsRecordID(t *testing.T) {
 	}
 }
 
+func issueOpsRecordExists(t *testing.T, stateRoot, id string) bool {
+	t.Helper()
+	_, err := ReadIssueOps(stateRoot, id)
+	return err == nil
+}
+
 // TestStartIssueOpsRelativeThenAbsoluteShareOneRecordAndLock verifies the
 // end-to-end effect of LK-01: starting with a relative repo and then with the
 // equivalent absolute repo resolves to the SAME cycle record (resume, not a

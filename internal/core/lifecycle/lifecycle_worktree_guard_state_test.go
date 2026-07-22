@@ -31,7 +31,12 @@ func TestActiveIssueOpsCycleForBranchIsDeterministicAndReleasesOnDone(t *testing
 		t.Fatalf("a different branch must not match")
 	}
 	markIssueOpsPRPhaseForTest(t, repo, "1-main")
-	if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), first.ID, string(IssueOpsPhaseDone)); err != nil {
+	record, err := ReadIssueOps(IssueOpsStateRoot(), first.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Phase = IssueOpsPhaseDone
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := ActiveIssueOpsCycleForBranch(repo, "1-main"); ok {

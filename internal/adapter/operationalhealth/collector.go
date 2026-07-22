@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/pathutil"
 	corehealth "agent-harness/internal/core/operationalhealth"
 	"agent-harness/internal/port"
@@ -34,6 +35,8 @@ type OrcaInventory interface {
 type GitRunner interface {
 	Run(context.Context, string, ...string) ([]byte, error)
 }
+
+type NativeProcessInspector func(model.NativeProcessReceiptV1) (string, model.NativeProcessReceiptV1, error)
 
 const gitInventoryCommandTimeout = 15 * time.Second
 
@@ -86,8 +89,9 @@ func canonicalInventoryPath(path string) string {
 }
 
 type Collector struct {
-	Git  GitRunner
-	Orca OrcaInventory
+	Git                  GitRunner
+	Orca                 OrcaInventory
+	InspectNativeProcess NativeProcessInspector
 }
 
 func (collector Collector) Collect(ctx context.Context, repo string) corehealth.Snapshot {
@@ -101,8 +105,7 @@ func (collector Collector) Collect(ctx context.Context, repo string) corehealth.
 		return snapshot
 	}
 	collector.collectGit(ctx, &snapshot)
-	_, orcaOwned := collectIssueOps(&snapshot)
-	collectBindings(&snapshot)
+	_, orcaOwned := collector.collectIssueOps(&snapshot)
 	collector.collectOrca(ctx, &snapshot, orcaOwned)
 	sortSnapshot(&snapshot)
 	return snapshot
@@ -197,7 +200,7 @@ func (collector Collector) collectGit(ctx context.Context, snapshot *corehealth.
 	}
 }
 
-func collectIssueOps(snapshot *corehealth.Snapshot) ([]issueops.IssueOpsRecord, bool) {
+func (collector Collector) collectIssueOps(snapshot *corehealth.Snapshot) ([]issueops.IssueOpsRecord, bool) {
 	stateRoot := issueops.IssueOpsStateRoot()
 	ids, err := issueops.ListIssueOpsIDs(stateRoot)
 	if err != nil {
@@ -213,33 +216,30 @@ func collectIssueOps(snapshot *corehealth.Snapshot) ([]issueops.IssueOpsRecord, 
 			continue
 		}
 		records = append(records, record)
-		cycle, problems := cycleFromRecord(record)
+		cycle, problems := cycleFromRecord(record, collector.nativeProcessInspector())
 		snapshot.Cycles = append(snapshot.Cycles, cycle)
 		snapshot.InventoryProblems = append(snapshot.InventoryProblems, problems...)
 		orcaOwned = orcaOwned || recordOwnsOrca(record)
 	}
+	indexes, err := issueops.ListLeaseHolderIndexesV1(stateRoot)
+	if err != nil {
+		addProblem(snapshot, "issueops_lease_holder", "issueops_lease_holder_list_failed", "IssueOps active lease-holder index inventory failed")
+	} else {
+		for _, index := range indexes {
+			snapshot.LeaseHolderIndexes = append(snapshot.LeaseHolderIndexes, corehealth.LeaseHolderIndex{
+				Key: index.Key, LifecycleID: index.LifecycleID, Generation: index.Generation,
+				Host: index.Host, SessionID: index.SessionID, AgentID: index.AgentID,
+			})
+		}
+	}
 	return records, orcaOwned
 }
 
-func collectBindings(snapshot *corehealth.Snapshot) {
-	bindings, err := issueops.ListAllIssueOpsSessionBindingsExisting()
-	if err != nil {
-		addProblem(snapshot, "issueops_binding", "binding_list_failed", "could not read complete binding inventory")
-		return
+func (collector Collector) nativeProcessInspector() NativeProcessInspector {
+	if collector.InspectNativeProcess != nil {
+		return collector.InspectNativeProcess
 	}
-	seen := make(map[string]struct{})
-	for _, binding := range bindings {
-		value := corehealth.Binding{
-			CycleID: strings.TrimSpace(binding.CycleID), Repo: canonicalInventoryPath(binding.Repo),
-			Branch: strings.TrimSpace(binding.Branch), ExpectedWorktree: canonicalInventoryPath(binding.ExpectedWorktree),
-		}
-		key := strings.Join([]string{value.CycleID, value.Repo, value.Branch, value.ExpectedWorktree}, "\x00")
-		if _, ok := seen[key]; ok {
-			continue
-		}
-		seen[key] = struct{}{}
-		snapshot.Bindings = append(snapshot.Bindings, value)
-	}
+	return issueops.InspectNativeProcessReceiptV1
 }
 
 func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth.Snapshot, owned bool) {
@@ -251,17 +251,26 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 		snapshot.Messages.CompleteAbsence = true
 		return
 	}
-	snapshot.OrcaObserved = true
 	status, err := collector.Orca.Status(ctx)
 	if err != nil {
-		addProblem(snapshot, "orca_status", "orca_status_failed", "Orca status inventory failed")
+		if owned {
+			addProblem(snapshot, "orca_status", "orca_status_failed", "Orca status inventory failed")
+		} else {
+			snapshot.Messages.CompleteAbsence = true
+		}
 		return
 	}
-	snapshot.OrcaRuntimeID = strings.TrimSpace(status.RuntimeID)
-	if snapshot.OrcaRuntimeID == "" || !status.RuntimeReachable || strings.TrimSpace(status.RuntimeState) != "ready" || strings.TrimSpace(status.GraphState) != "ready" {
-		addProblem(snapshot, "orca_status", "orca_runtime_unready", "Orca runtime and graph must be reachable and ready")
+	runtimeID := strings.TrimSpace(status.RuntimeID)
+	if runtimeID == "" || !status.RuntimeReachable || strings.TrimSpace(status.RuntimeState) != "ready" || strings.TrimSpace(status.GraphState) != "ready" {
+		if owned {
+			addProblem(snapshot, "orca_status", "orca_runtime_unready", "Orca runtime and graph must be reachable and ready")
+		} else {
+			snapshot.Messages.CompleteAbsence = true
+		}
 		return
 	}
+	snapshot.OrcaObserved = true
+	snapshot.OrcaRuntimeID = runtimeID
 
 	resolved, resolveErr := collector.Orca.ResolveRepo(ctx, snapshot.RepoRoot)
 	if resolveErr != nil {
@@ -394,7 +403,7 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 	}
 }
 
-func cycleFromRecord(record issueops.IssueOpsRecord) (corehealth.Cycle, []corehealth.InventoryProblem) {
+func cycleFromRecord(record issueops.IssueOpsRecord, inspect NativeProcessInspector) (corehealth.Cycle, []corehealth.InventoryProblem) {
 	cycle := corehealth.Cycle{
 		ID: strings.TrimSpace(record.ID), Repo: canonicalInventoryPath(record.Repo), Branch: strings.TrimSpace(record.Branch),
 		Phase: string(record.Phase),
@@ -416,62 +425,49 @@ func cycleFromRecord(record issueops.IssueOpsRecord) (corehealth.Cycle, []corehe
 		}
 	}
 	mergeWorktreePath(record.WorktreePath)
-	attempt := issueops.CurrentOwnershipAttempt(record)
-	if attempt == nil || attempt.Handoff == nil {
-		cycle.LastHeartbeatAt, problems = parsePersistedTime(record.LastHeartbeatAt, record.ID, "record", problems)
+	if record.Execution == nil {
 		return cycle, problems
 	}
-	handoff := attempt.Handoff
-	cycle.HandoffState = strings.TrimSpace(handoff.State)
-	if attempt.Workspace != nil {
-		cycle.WorkspaceState = strings.TrimSpace(attempt.Workspace.State)
+	execution := record.Execution
+	cycle.LeaseStatus = string(execution.Lease.Status)
+	cycle.ExecutionMode = string(execution.Mode)
+	cycle.Generation = execution.Lease.Generation
+	cycle.CompletionPresent = execution.Completion != nil
+	mergeWorktreePath(execution.Workspace.Root)
+	if execution.Lease.Holder != nil {
+		cycle.HolderHost = strings.TrimSpace(execution.Lease.Holder.Host)
+		cycle.HolderSessionID = strings.TrimSpace(execution.Lease.Holder.SessionID)
+		cycle.HolderAgentID = strings.TrimSpace(execution.Lease.Holder.AgentID)
+		if execution.Lease.Holder.SessionProcess != nil {
+			receipt := *execution.Lease.Holder.SessionProcess
+			cycle.HolderPID = receipt.PID
+			cycle.HolderStartedAt = strings.TrimSpace(receipt.StartedAt)
+			cycle.HolderExecutable = strings.TrimSpace(receipt.Executable)
+			if inspect != nil && execution.Lease.Status == model.LeaseStatusActive {
+				status, _, err := inspect(receipt)
+				cycle.HolderProcessStatus = strings.TrimSpace(status)
+				if err != nil {
+					cycle.HolderProcessStatus = corehealth.ProcessStatusUnknown
+					problems = append(problems, corehealth.InventoryProblem{Source: "issueops_process", Code: "issueops_process_probe_failed", Detail: "IssueOps record " + cycle.ID + " native process identity could not be observed"})
+				}
+			}
+		}
 	}
-	cycle.Attempt = handoff.Attempt
-	cycle.OwnershipEpoch = strings.TrimSpace(handoff.OwnershipEpoch)
-	cycle.ContextSHA256 = strings.TrimSpace(handoff.ContextSHA256)
-	if handoff.OwnerSession != nil {
-		cycle.WorkerSessionID = strings.TrimSpace(handoff.OwnerSession.SessionID)
-		cycle.WorkerAgentID = strings.TrimSpace(handoff.OwnerSession.AgentID)
+	if execution.Orca != nil {
+		cycle.OrcaRuntimeID = strings.TrimSpace(execution.Orca.RuntimeID)
+		cycle.OrcaRepoID = strings.TrimSpace(execution.Orca.RepoID)
+		cycle.OrcaWorktreeID = strings.TrimSpace(execution.Orca.WorktreeID)
+		cycle.OrcaWorktreeInstanceID = strings.TrimSpace(execution.Orca.WorktreeInstanceID)
+		cycle.OrcaOwnerHost = strings.TrimSpace(execution.Orca.OwnerHost)
+		cycle.TerminalPTYID = strings.TrimSpace(execution.Orca.TerminalPTYID)
+		cycle.TaskID = strings.TrimSpace(execution.Orca.TaskID)
+		cycle.DispatchID = strings.TrimSpace(execution.Orca.DispatchID)
 	}
-	if handoff.Orca != nil {
-		cycle.OrcaRuntimeID = strings.TrimSpace(handoff.Orca.RuntimeID)
-		cycle.OrcaRepoID = strings.TrimSpace(handoff.Orca.RepoID)
-		cycle.OrcaWorktreeID = strings.TrimSpace(handoff.Orca.WorktreeID)
-		cycle.OrcaWorktreeInstanceID = strings.TrimSpace(handoff.Orca.WorktreeInstanceID)
-		cycle.TerminalHandle = strings.TrimSpace(handoff.Orca.WorkerTerminalHandle)
-		cycle.PTYID = strings.TrimSpace(handoff.Orca.WorkerPTYID)
-		cycle.TerminalTabID = strings.TrimSpace(handoff.Orca.WorkerTabID)
-		cycle.TerminalLeafID = strings.TrimSpace(handoff.Orca.WorkerLeafID)
-		cycle.TaskID = strings.TrimSpace(handoff.Orca.TaskID)
-		cycle.DispatchID = strings.TrimSpace(handoff.Orca.DispatchID)
-		mergeWorktreePath(handoff.Orca.WorktreePath)
-	}
-	mergeWorktreePath(handoff.WorkerRoot)
-	heartbeat := strings.TrimSpace(handoff.LastHeartbeatAt)
-	if heartbeat == "" {
-		heartbeat = strings.TrimSpace(record.LastHeartbeatAt)
-	}
-	cycle.LastHeartbeatAt, problems = parsePersistedTime(heartbeat, record.ID, "heartbeat", problems)
 	return cycle, problems
 }
 
-func parsePersistedTime(value, id, field string, problems []corehealth.InventoryProblem) (time.Time, []corehealth.InventoryProblem) {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return time.Time{}, problems
-	}
-	parsed, err := time.Parse(time.RFC3339Nano, value)
-	if err != nil {
-		problems = append(problems, corehealth.InventoryProblem{Source: "issueops_record", Code: "issueops_timestamp_invalid", Detail: "IssueOps record " + strings.TrimSpace(id) + " has an invalid " + field + " timestamp"})
-		return time.Time{}, problems
-	}
-	return parsed, problems
-}
-
 func recordOwnsOrca(record issueops.IssueOpsRecord) bool {
-	attempt := issueops.CurrentOwnershipAttempt(record)
-	return attempt != nil && (attempt.Handoff != nil && attempt.Handoff.Orca != nil ||
-		attempt.Workspace != nil && attempt.Workspace.Orca != nil)
+	return record.Execution != nil && record.Execution.Mode == model.ExecutionModeOrca
 }
 
 func parseWorktrees(output []byte, repo string) ([]corehealth.GitWorktree, error) {
@@ -589,13 +585,16 @@ func sortSnapshot(snapshot *corehealth.Snapshot) {
 	sort.Slice(snapshot.Cycles, func(i, j int) bool {
 		left, right := snapshot.Cycles[i], snapshot.Cycles[j]
 		return orderedBefore(
-			[]string{left.ID, left.Repo, left.Branch, left.Phase, left.HandoffState, strconv.Itoa(left.Attempt), left.OwnershipEpoch, left.ContextSHA256, left.WorkerSessionID, left.WorkerAgentID, left.OrcaRuntimeID, left.OrcaRepoID, left.WorktreePath, left.OrcaWorktreeID, left.OrcaWorktreeInstanceID, left.TerminalHandle, left.PTYID, left.TerminalTabID, left.TerminalLeafID, left.TaskID, left.DispatchID, timeSortValue(left.LastHeartbeatAt)},
-			[]string{right.ID, right.Repo, right.Branch, right.Phase, right.HandoffState, strconv.Itoa(right.Attempt), right.OwnershipEpoch, right.ContextSHA256, right.WorkerSessionID, right.WorkerAgentID, right.OrcaRuntimeID, right.OrcaRepoID, right.WorktreePath, right.OrcaWorktreeID, right.OrcaWorktreeInstanceID, right.TerminalHandle, right.PTYID, right.TerminalTabID, right.TerminalLeafID, right.TaskID, right.DispatchID, timeSortValue(right.LastHeartbeatAt)},
+			[]string{left.ID, left.Repo, left.Branch, left.Phase, left.ExecutionMode, left.LeaseStatus, strconv.FormatUint(left.Generation, 10), left.HolderHost, left.HolderSessionID, left.HolderAgentID, strconv.Itoa(left.HolderPID), left.HolderStartedAt, left.HolderExecutable, left.HolderProcessStatus, strconv.FormatBool(left.CompletionPresent), left.OrcaRuntimeID, left.OrcaRepoID, left.WorktreePath, left.OrcaWorktreeID, left.OrcaWorktreeInstanceID, left.OrcaOwnerHost, left.TerminalPTYID, left.TaskID, left.DispatchID},
+			[]string{right.ID, right.Repo, right.Branch, right.Phase, right.ExecutionMode, right.LeaseStatus, strconv.FormatUint(right.Generation, 10), right.HolderHost, right.HolderSessionID, right.HolderAgentID, strconv.Itoa(right.HolderPID), right.HolderStartedAt, right.HolderExecutable, right.HolderProcessStatus, strconv.FormatBool(right.CompletionPresent), right.OrcaRuntimeID, right.OrcaRepoID, right.WorktreePath, right.OrcaWorktreeID, right.OrcaWorktreeInstanceID, right.OrcaOwnerHost, right.TerminalPTYID, right.TaskID, right.DispatchID},
 		)
 	})
-	sort.Slice(snapshot.Bindings, func(i, j int) bool {
-		left, right := snapshot.Bindings[i], snapshot.Bindings[j]
-		return orderedBefore([]string{left.Repo, left.CycleID, left.Branch, left.ExpectedWorktree}, []string{right.Repo, right.CycleID, right.Branch, right.ExpectedWorktree})
+	sort.Slice(snapshot.LeaseHolderIndexes, func(i, j int) bool {
+		left, right := snapshot.LeaseHolderIndexes[i], snapshot.LeaseHolderIndexes[j]
+		return orderedBefore(
+			[]string{left.Key, left.LifecycleID, strconv.FormatUint(left.Generation, 10), left.Host, left.SessionID, left.AgentID},
+			[]string{right.Key, right.LifecycleID, strconv.FormatUint(right.Generation, 10), right.Host, right.SessionID, right.AgentID},
+		)
 	})
 	sort.Slice(snapshot.GitWorktrees, func(i, j int) bool {
 		left, right := snapshot.GitWorktrees[i], snapshot.GitWorktrees[j]

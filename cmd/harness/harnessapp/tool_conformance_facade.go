@@ -29,10 +29,9 @@ func runToolConformanceLive(ctx context.Context, request contractcli.LiveRequest
 	runners := map[string]port.HostProbeRunner{
 		"codex":  hostprobe.NewCodexRunner(binary, hostprobe.Dependencies{}),
 		"claude": hostprobe.NewClaudeRunner(binary, hostprobe.Dependencies{}),
-		"gjc":    hostprobe.NewGJCRunner(binary, hostprobe.Dependencies{}),
 	}
 	return toolconformance.RunLiveBenchmark(ctx, toolconformance.LiveBenchmarkRequest{
-		Hosts: request.Hosts, Models: models, GJCAuthEnv: request.GJCAuthEnv,
+		Hosts: request.Hosts, Models: models,
 		Profile: request.Profile, Only: request.Only, TargetCompleted: request.TargetCompleted,
 		MaxAttemptsPerCase: request.MaxAttemptsPerCase, HarnessBinary: binary, Previous: request.Previous,
 	}, descriptors, toolconformance.LiveBenchmarkDependencies{Runners: runners})

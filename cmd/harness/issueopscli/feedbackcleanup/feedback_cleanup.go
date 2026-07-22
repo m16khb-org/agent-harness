@@ -3,8 +3,10 @@ package feedbackcleanup
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"agent-harness/internal/core"
+	issueopscore "agent-harness/internal/core/issueops"
 )
 
 type Deps struct {
@@ -36,7 +38,7 @@ func RunFeedback(args []string, deps Deps) error {
 		if help, err := deps.ParseFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
-		record, err := core.AddIssueOpsFeedbackWithActor(core.IssueOpsStateRoot(), *id, *source, *body, *classification, core.IssueOpsActor{Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd})
+		record, err := core.AddIssueOpsFeedbackWithActor(core.IssueOpsStateRoot(), *id, *source, *body, *classification, localActor(*host, *sessionID, *agentID, *cwd))
 		return deps.PrintResult(record, *jsonOut, err)
 	case "mark-issue-updated":
 		fs := flag.NewFlagSet("issueops feedback mark-issue-updated", flag.ContinueOnError)
@@ -49,10 +51,18 @@ func RunFeedback(args []string, deps Deps) error {
 		if help, err := deps.ParseFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
-		record, err := core.MarkIssueOpsContractFeedbackIssueUpdatedWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsActor{Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd})
+		record, err := core.MarkIssueOpsContractFeedbackIssueUpdatedWithActor(core.IssueOpsStateRoot(), *id, localActor(*host, *sessionID, *agentID, *cwd))
 		return deps.PrintResult(record, *jsonOut, err)
 	default:
 		return fmt.Errorf("unknown issueops feedback subcommand")
+	}
+}
+
+func localActor(host, sessionID, agentID, cwd string) core.IssueOpsActor {
+	ancestry, _ := issueopscore.ObserveNativeProcessAncestryV1(os.Getpid())
+	return core.IssueOpsActor{
+		Host: host, SessionID: sessionID, AgentID: agentID, CWD: cwd,
+		NativeProcessAncestry: ancestry,
 	}
 }
 

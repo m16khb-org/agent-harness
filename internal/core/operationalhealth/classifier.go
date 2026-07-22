@@ -8,21 +8,36 @@ import (
 
 func EvaluateCycleAuthority(cycle Cycle, opts Options) CycleAuthority {
 	phase := strings.TrimSpace(cycle.Phase)
-	state := strings.TrimSpace(cycle.HandoffState)
+	status := strings.TrimSpace(cycle.LeaseStatus)
 	if !knownPhase(phase) || strings.TrimSpace(cycle.ID) == "" || strings.TrimSpace(cycle.Repo) == "" {
 		return AuthorityUnknown
 	}
-	if !knownHandoffState(state) {
+	if !knownLeaseStatus(status) {
 		return AuthorityUnknown
 	}
-	if phase == "done" || state == "closed" {
-		if state != "closed" {
-			if retainedOwnershipIdentityComplete(cycle) {
-				return AuthorityPreserved
-			}
+	if status == "" {
+		if phase == "done" {
 			return AuthorityUnknown
 		}
-		return AuthorityDead
+		if hasExecutionProjection(cycle) {
+			return AuthorityUnknown
+		}
+		if preserveContains(opts.PreserveCycleIDs, cycle.ID) && !preservableIdentityComplete(cycle) {
+			return AuthorityUnknown
+		}
+		return AuthorityPreserved
+	}
+	if !executionIdentityComplete(cycle) {
+		return AuthorityUnknown
+	}
+	if phase == "done" {
+		if status == "released" && cycle.CompletionPresent && retainedLeaseIdentityComplete(cycle) {
+			return AuthorityDead
+		}
+		return AuthorityUnknown
+	}
+	if cycle.CompletionPresent {
+		return AuthorityUnknown
 	}
 	if preserveContains(opts.PreserveCycleIDs, cycle.ID) {
 		if !preservableIdentityComplete(cycle) {
@@ -30,26 +45,23 @@ func EvaluateCycleAuthority(cycle Cycle, opts Options) CycleAuthority {
 		}
 		return AuthorityPreserved
 	}
-	if state != "owner_active" {
-		if retainedOwnershipIdentityComplete(cycle) {
-			return AuthorityPreserved
-		}
-		return AuthorityDead
-	}
-	if state == "owner_active" {
-		if !claimedIdentityComplete(cycle) || opts.Now.IsZero() {
+	if status == "active" {
+		if !activeHolderIdentityComplete(cycle) {
 			return AuthorityUnknown
 		}
-		if cycle.LastHeartbeatAt.IsZero() {
+		switch strings.TrimSpace(cycle.HolderProcessStatus) {
+		case ProcessStatusLive:
+			return AuthorityLive
+		case ProcessStatusDead, ProcessStatusIdentityMismatch:
 			return AuthorityDead
+		default:
+			return AuthorityUnknown
 		}
-		age := opts.Now.Sub(cycle.LastHeartbeatAt)
-		if age < 0 || age > HeartbeatTTL {
-			return AuthorityDead
-		}
-		return AuthorityLive
 	}
-	return AuthorityDead
+	if retainedLeaseIdentityComplete(cycle) {
+		return AuthorityPreserved
+	}
+	return AuthorityUnknown
 }
 
 func Classify(snapshot Snapshot, opts Options) Result {
@@ -121,14 +133,11 @@ func Classify(snapshot Snapshot, opts Options) Result {
 	addDuplicateFindings(&builder, "dispatch", dispatchCounts)
 	addDuplicateFindings(&builder, "gate", gateCounts)
 	addDuplicateFindings(&builder, "git_worktree", gitPathCounts)
+	validateLeaseHolderIndexes(&builder, snapshot.Cycles, snapshot.LeaseHolderIndexes)
 
 	authorities := make(map[string]CycleAuthority, len(snapshot.Cycles))
-	cycleByID := make(map[string]Cycle, len(snapshot.Cycles))
 	for _, cycle := range snapshot.Cycles {
 		id := strings.TrimSpace(cycle.ID)
-		if id != "" && cycleCounts[id] == 1 {
-			cycleByID[id] = cycle
-		}
 		authority := EvaluateCycleAuthority(cycle, opts)
 		authorities[id] = authority
 		runtimeMismatch := strings.TrimSpace(cycle.OrcaRuntimeID) != strings.TrimSpace(snapshot.OrcaRuntimeID)
@@ -139,21 +148,9 @@ func Classify(snapshot Snapshot, opts Options) Result {
 		}
 		switch {
 		case authority == AuthorityUnknown:
-			builder.add(FindingInventoryUnknown, "cycle", id, "cycle phase, handoff state, or durable identity is unsupported or incomplete", clean(cycle.WorktreePath))
-		case authority == AuthorityDead && strings.TrimSpace(cycle.Phase) != "done" && strings.TrimSpace(cycle.HandoffState) != "closed":
-			builder.add(FindingDeadOwner, "cycle", id, "cycle owner has no fresh fenced heartbeat or invocation preservation", clean(cycle.WorktreePath))
-		}
-	}
-
-	for _, binding := range snapshot.Bindings {
-		cycleID := strings.TrimSpace(binding.CycleID)
-		cycle, ok := cycleByID[cycleID]
-		authority := authorities[cycleID]
-		if !ok || clean(binding.Repo) != clean(cycle.Repo) ||
-			(strings.TrimSpace(binding.Branch) != "" && strings.TrimSpace(binding.Branch) != strings.TrimSpace(cycle.Branch)) ||
-			(clean(binding.ExpectedWorktree) != "" && clean(binding.ExpectedWorktree) != clean(cycle.WorktreePath)) ||
-			(authority != AuthorityLive && authority != AuthorityPreserved) {
-			builder.add(FindingInventoryUnknown, "binding", cycleID, "session binding does not match one live or invocation-preserved durable cycle", clean(binding.ExpectedWorktree))
+			builder.add(FindingInventoryUnknown, "cycle", id, "cycle phase, execution lease, or durable identity is unsupported or incomplete", clean(cycle.WorktreePath))
+		case authority == AuthorityDead && strings.TrimSpace(cycle.Phase) != "done":
+			builder.add(FindingDeadOwner, "cycle", id, "cycle execution lease has no live or preserved authority", clean(cycle.WorktreePath))
 		}
 	}
 
@@ -170,7 +167,13 @@ func Classify(snapshot Snapshot, opts Options) Result {
 	}
 
 	worktreeOwners := ownerIndex(activeRepoCycles, func(cycle Cycle) string { return strings.TrimSpace(cycle.OrcaWorktreeID) })
-	terminalOwners := ownerIndex(activeCycles, func(cycle Cycle) string { return strings.TrimSpace(cycle.TerminalHandle) })
+	terminalOwners := make(map[string][]string)
+	for _, cycle := range activeCycles {
+		addOwner(terminalOwners, cycleTerminalHandle(cycle, snapshot), cycle.ID)
+	}
+	for handle := range terminalOwners {
+		sort.Strings(terminalOwners[handle])
+	}
 	taskOwners := ownerIndex(activeCycles, func(cycle Cycle) string { return strings.TrimSpace(cycle.TaskID) })
 	dispatchOwners := ownerIndex(activeCycles, func(cycle Cycle) string { return strings.TrimSpace(cycle.DispatchID) })
 	gitPathOwners := ownerIndex(activeRepoCycles, func(cycle Cycle) string { return clean(cycle.WorktreePath) })
@@ -186,7 +189,7 @@ func Classify(snapshot Snapshot, opts Options) Result {
 	}
 
 	for _, cycle := range activeCycles {
-		validateCycleResources(&builder, snapshot, cycle, authorities[strings.TrimSpace(cycle.ID)], clean(cycle.Repo) == clean(snapshot.RepoRoot), gitPathCounts, worktreeCounts, terminalCounts, taskCounts, dispatchCounts)
+		validateCycleResources(&builder, snapshot, cycle, authorities[strings.TrimSpace(cycle.ID)], clean(cycle.Repo) == clean(snapshot.RepoRoot), gitPathCounts, worktreeCounts, terminalCounts, ptyCounts, taskCounts, dispatchCounts)
 	}
 
 	preservedTerminalCounts, invalidPreserveTerminals := normalizedSet(opts.PreserveTerminalHandles)
@@ -350,16 +353,6 @@ func validateCanonicalRef(builder *findingBuilder, refs []GitRef, location, bran
 	}
 }
 
-func claimedIdentityComplete(cycle Cycle) bool {
-	return strings.TrimSpace(cycle.ID) != "" && strings.TrimSpace(cycle.Repo) != "" && strings.TrimSpace(cycle.Branch) != "" &&
-		cycle.Attempt > 0 && strings.TrimSpace(cycle.OwnershipEpoch) != "" && len(strings.TrimSpace(cycle.ContextSHA256)) == 64 &&
-		strings.TrimSpace(cycle.WorkerSessionID) != "" && strings.TrimSpace(cycle.WorkerAgentID) != "" &&
-		strings.TrimSpace(cycle.OrcaRuntimeID) != "" && strings.TrimSpace(cycle.OrcaRepoID) != "" &&
-		strings.TrimSpace(cycle.WorktreePath) != "" && strings.TrimSpace(cycle.OrcaWorktreeID) != "" && strings.TrimSpace(cycle.OrcaWorktreeInstanceID) != "" &&
-		strings.TrimSpace(cycle.TerminalHandle) != "" && strings.TrimSpace(cycle.PTYID) != "" && strings.TrimSpace(cycle.TerminalTabID) != "" && strings.TrimSpace(cycle.TerminalLeafID) != "" &&
-		strings.TrimSpace(cycle.TaskID) != "" && strings.TrimSpace(cycle.DispatchID) != ""
-}
-
 func knownPhase(value string) bool {
 	switch value {
 	case "problem", "grill", "plan", "compatibility-review", "implement", "ai-slop-clean", "feedback", "pr", "done":
@@ -369,17 +362,77 @@ func knownPhase(value string) bool {
 	}
 }
 
-func knownHandoffState(value string) bool {
+func knownLeaseStatus(value string) bool {
 	switch value {
-	case "", "closed", "recovery_required", "ownership_dispatching", "ownership_dispatched", "owner_orienting", "owner_active", "cleanup_pending_human_decision", "cleanup_executing":
+	case "", "claimable", "active", "revoking", "released":
 		return true
 	default:
 		return false
 	}
 }
 
-func retainedOwnershipIdentityComplete(cycle Cycle) bool {
-	return strings.TrimSpace(cycle.ID) != "" && strings.TrimSpace(cycle.Repo) != "" && strings.TrimSpace(cycle.Branch) != "" && strings.TrimSpace(cycle.WorktreePath) != "" && strings.TrimSpace(cycle.OrcaWorktreeID) != ""
+func hasExecutionProjection(cycle Cycle) bool {
+	return strings.TrimSpace(cycle.ExecutionMode) != "" || cycle.Generation != 0 || strings.TrimSpace(cycle.WorktreePath) != "" ||
+		!holderIdentityEmpty(cycle) || hasOrcaIdentity(cycle)
+}
+
+func executionIdentityComplete(cycle Cycle) bool {
+	if strings.TrimSpace(cycle.Branch) == "" || strings.TrimSpace(cycle.WorktreePath) == "" || cycle.Generation == 0 {
+		return false
+	}
+	switch strings.TrimSpace(cycle.ExecutionMode) {
+	case "direct":
+		return !hasOrcaIdentity(cycle)
+	case "orca":
+		return strings.TrimSpace(cycle.OrcaRuntimeID) != "" && strings.TrimSpace(cycle.OrcaRepoID) != "" &&
+			strings.TrimSpace(cycle.OrcaWorktreeID) != "" && validNativeHost(cycle.OrcaOwnerHost) &&
+			strings.TrimSpace(cycle.TaskID) != "" && strings.TrimSpace(cycle.DispatchID) != ""
+	default:
+		return false
+	}
+}
+
+func activeHolderIdentityComplete(cycle Cycle) bool {
+	if !holderIdentityComplete(cycle) {
+		return false
+	}
+	return strings.TrimSpace(cycle.ExecutionMode) != "orca" || strings.TrimSpace(cycle.OrcaOwnerHost) == strings.TrimSpace(cycle.HolderHost)
+}
+
+func retainedLeaseIdentityComplete(cycle Cycle) bool {
+	switch strings.TrimSpace(cycle.LeaseStatus) {
+	case "claimable", "released":
+		return holderIdentityEmpty(cycle)
+	case "revoking":
+		return holderIdentityComplete(cycle)
+	default:
+		return false
+	}
+
+}
+
+func holderIdentityComplete(cycle Cycle) bool {
+	host := strings.TrimSpace(cycle.HolderHost)
+	return validNativeHost(host) && strings.TrimSpace(cycle.HolderSessionID) != "" &&
+		cycle.HolderPID > 0 && strings.TrimSpace(cycle.HolderStartedAt) != "" && strings.TrimSpace(cycle.HolderExecutable) != ""
+}
+
+func validNativeHost(host string) bool {
+	host = strings.TrimSpace(host)
+	return host == "codex" || host == "claude"
+}
+
+func holderIdentityEmpty(cycle Cycle) bool {
+	return strings.TrimSpace(cycle.HolderHost) == "" && strings.TrimSpace(cycle.HolderSessionID) == "" &&
+		strings.TrimSpace(cycle.HolderAgentID) == "" && cycle.HolderPID == 0 && strings.TrimSpace(cycle.HolderStartedAt) == "" &&
+		strings.TrimSpace(cycle.HolderExecutable) == ""
+}
+
+func hasOrcaIdentity(cycle Cycle) bool {
+	return strings.TrimSpace(cycle.OrcaRuntimeID) != "" || strings.TrimSpace(cycle.OrcaRepoID) != "" ||
+		strings.TrimSpace(cycle.OrcaWorktreeID) != "" || strings.TrimSpace(cycle.OrcaWorktreeInstanceID) != "" ||
+		strings.TrimSpace(cycle.OrcaOwnerHost) != "" || strings.TrimSpace(cycle.TerminalPTYID) != "" ||
+		strings.TrimSpace(cycle.TaskID) != "" || strings.TrimSpace(cycle.DispatchID) != ""
 }
 
 func knownTaskStatus(value string) bool {
@@ -404,15 +457,17 @@ func preservableIdentityComplete(cycle Cycle) bool {
 	if strings.TrimSpace(cycle.ID) == "" || strings.TrimSpace(cycle.Repo) == "" || strings.TrimSpace(cycle.Branch) == "" {
 		return false
 	}
-	state := strings.TrimSpace(cycle.HandoffState)
-	if state == "closed" {
+	status := strings.TrimSpace(cycle.LeaseStatus)
+	if status == "" {
+		return !hasExecutionProjection(cycle)
+	}
+	if !knownLeaseStatus(status) || !executionIdentityComplete(cycle) {
 		return false
 	}
-	if state != "" && (cycle.Attempt <= 0 || strings.TrimSpace(cycle.OwnershipEpoch) == "") {
-		return false
+	if status == "active" {
+		return activeHolderIdentityComplete(cycle) && strings.TrimSpace(cycle.HolderProcessStatus) == ProcessStatusLive
 	}
-	return completeGroup(cycle.OrcaRuntimeID, cycle.OrcaRepoID, cycle.WorktreePath, cycle.OrcaWorktreeID, cycle.OrcaWorktreeInstanceID) &&
-		completeGroup(cycle.TerminalHandle, cycle.PTYID, cycle.TerminalTabID, cycle.TerminalLeafID) && completeGroup(cycle.TaskID, cycle.DispatchID)
+	return retainedLeaseIdentityComplete(cycle)
 }
 
 func completeGroup(values ...string) bool {
@@ -425,7 +480,7 @@ func completeGroup(values ...string) bool {
 	return present == 0 || present == len(values)
 }
 
-func validateCycleResources(builder *findingBuilder, snapshot Snapshot, cycle Cycle, authority CycleAuthority, repoScoped bool, gitPathCounts, worktreeCounts, terminalCounts, taskCounts, dispatchCounts map[string]int) {
+func validateCycleResources(builder *findingBuilder, snapshot Snapshot, cycle Cycle, authority CycleAuthority, repoScoped bool, gitPathCounts, worktreeCounts, terminalCounts, ptyCounts, taskCounts, dispatchCounts map[string]int) {
 	var gitWorktree GitWorktree
 	gitWorktreeOK := false
 	if repoScoped && (authority == AuthorityLive || strings.TrimSpace(cycle.WorktreePath) != "") {
@@ -434,31 +489,106 @@ func validateCycleResources(builder *findingBuilder, snapshot Snapshot, cycle Cy
 			builder.add(FindingInventoryUnknown, "git_worktree", clean(cycle.WorktreePath), "cycle identity does not match exactly one Git worktree", clean(cycle.WorktreePath))
 		}
 	}
-	if repoScoped && (authority == AuthorityLive || strings.TrimSpace(cycle.OrcaWorktreeID) != "") {
+	isOrca := strings.TrimSpace(cycle.ExecutionMode) == "orca"
+	if repoScoped && (isOrca || strings.TrimSpace(cycle.OrcaWorktreeID) != "") {
 		worktree, ok := uniqueBy(snapshot.OrcaWorktrees, cycle.OrcaWorktreeID, func(value OrcaWorktree) string { return value.ID })
 		headMismatch := gitWorktreeOK && strings.TrimSpace(worktree.Head) != strings.TrimSpace(gitWorktree.Head)
-		if !ok || worktreeCounts[strings.TrimSpace(cycle.OrcaWorktreeID)] != 1 || strings.TrimSpace(worktree.RuntimeID) != strings.TrimSpace(cycle.OrcaRuntimeID) || strings.TrimSpace(worktree.RepoID) != strings.TrimSpace(cycle.OrcaRepoID) || strings.TrimSpace(worktree.InstanceID) != strings.TrimSpace(cycle.OrcaWorktreeInstanceID) || clean(worktree.Repo) != clean(cycle.Repo) || clean(worktree.Path) != clean(cycle.WorktreePath) || strings.TrimSpace(worktree.Branch) != strings.TrimSpace(cycle.Branch) || headMismatch {
+		instanceMismatch := strings.TrimSpace(cycle.OrcaWorktreeInstanceID) != "" && strings.TrimSpace(worktree.InstanceID) != strings.TrimSpace(cycle.OrcaWorktreeInstanceID)
+		if !ok || worktreeCounts[strings.TrimSpace(cycle.OrcaWorktreeID)] != 1 || strings.TrimSpace(worktree.RuntimeID) != strings.TrimSpace(cycle.OrcaRuntimeID) || strings.TrimSpace(worktree.RepoID) != strings.TrimSpace(cycle.OrcaRepoID) || instanceMismatch || clean(worktree.Repo) != clean(cycle.Repo) || clean(worktree.Path) != clean(cycle.WorktreePath) || strings.TrimSpace(worktree.Branch) != strings.TrimSpace(cycle.Branch) || headMismatch {
 			builder.add(FindingInventoryUnknown, "worktree", cycle.OrcaWorktreeID, "cycle worktree identity does not match exactly one Orca worktree", clean(cycle.WorktreePath))
 		}
 	}
-	if authority == AuthorityLive || strings.TrimSpace(cycle.TerminalHandle) != "" {
-		terminal, ok := uniqueBy(snapshot.Terminals, cycle.TerminalHandle, func(value OrcaTerminal) string { return value.Handle })
-		if !ok || terminalCounts[cycle.TerminalHandle] != 1 || strings.TrimSpace(terminal.RuntimeID) != strings.TrimSpace(cycle.OrcaRuntimeID) || strings.TrimSpace(terminal.PTYID) != strings.TrimSpace(cycle.PTYID) || strings.TrimSpace(terminal.TabID) != strings.TrimSpace(cycle.TerminalTabID) || strings.TrimSpace(terminal.LeafID) != strings.TrimSpace(cycle.TerminalLeafID) || strings.TrimSpace(terminal.WorktreeID) != strings.TrimSpace(cycle.OrcaWorktreeID) || clean(terminal.WorktreePath) != clean(cycle.WorktreePath) || !terminal.Connected || !terminal.Writable {
-			builder.add(FindingInventoryUnknown, "terminal", cycle.TerminalHandle, "cycle terminal identity or liveness does not match exactly one writable connected terminal", clean(cycle.WorktreePath))
+	var dispatch OrcaDispatch
+	dispatchOK := false
+	if isOrca || strings.TrimSpace(cycle.DispatchID) != "" {
+		dispatch, dispatchOK = uniqueBy(snapshot.Dispatches, cycle.DispatchID, func(value OrcaDispatch) string { return value.ID })
+		statusMismatch := authority == AuthorityLive && strings.TrimSpace(dispatch.Status) != "dispatched"
+		if !dispatchOK || dispatchCounts[cycle.DispatchID] != 1 || strings.TrimSpace(dispatch.RuntimeID) != strings.TrimSpace(cycle.OrcaRuntimeID) || strings.TrimSpace(dispatch.TaskID) != strings.TrimSpace(cycle.TaskID) || statusMismatch {
+			builder.add(FindingInventoryUnknown, "dispatch", cycle.DispatchID, "cycle dispatch identity does not match exactly one expected dispatch", "")
 		}
 	}
-	if authority == AuthorityLive || strings.TrimSpace(cycle.TaskID) != "" {
+	if isOrca || strings.TrimSpace(cycle.TerminalPTYID) != "" {
+		handle := strings.TrimSpace(dispatch.AssigneeHandle)
+		var terminal OrcaTerminal
+		terminalOK := false
+		if strings.TrimSpace(cycle.TerminalPTYID) != "" {
+			terminal, terminalOK = uniqueBy(snapshot.Terminals, cycle.TerminalPTYID, func(value OrcaTerminal) string { return value.PTYID })
+		} else if handle != "" {
+			terminal, terminalOK = uniqueBy(snapshot.Terminals, handle, func(value OrcaTerminal) string { return value.Handle })
+		}
+		liveMismatch := authority == AuthorityLive && (!terminal.Connected || !terminal.Writable)
+		countMismatch := terminalCounts[strings.TrimSpace(terminal.Handle)] != 1 || (strings.TrimSpace(cycle.TerminalPTYID) != "" && ptyCounts[cycle.TerminalPTYID] != 1)
+		if !terminalOK || countMismatch || strings.TrimSpace(terminal.RuntimeID) != strings.TrimSpace(cycle.OrcaRuntimeID) ||
+			(dispatchOK && strings.TrimSpace(terminal.Handle) != handle) || strings.TrimSpace(terminal.WorktreeID) != strings.TrimSpace(cycle.OrcaWorktreeID) ||
+			clean(terminal.WorktreePath) != clean(cycle.WorktreePath) || liveMismatch {
+			builder.add(FindingInventoryUnknown, "terminal", firstNonEmpty(handle, cycle.TerminalPTYID), "cycle terminal identity or liveness does not match exactly one expected terminal", clean(cycle.WorktreePath))
+		}
+	}
+	if isOrca || strings.TrimSpace(cycle.TaskID) != "" {
 		task, ok := uniqueBy(snapshot.Tasks, cycle.TaskID, func(value OrcaTask) string { return value.ID })
 		if !ok || taskCounts[cycle.TaskID] != 1 || strings.TrimSpace(task.RuntimeID) != strings.TrimSpace(cycle.OrcaRuntimeID) || (authority == AuthorityLive && strings.TrimSpace(task.Status) != "dispatched") || (strings.TrimSpace(task.DispatchID) != "" && strings.TrimSpace(task.DispatchID) != strings.TrimSpace(cycle.DispatchID)) {
 			builder.add(FindingInventoryUnknown, "task", cycle.TaskID, "cycle task identity or status does not match exactly one task", "")
 		}
 	}
-	if authority == AuthorityLive || strings.TrimSpace(cycle.DispatchID) != "" {
-		dispatch, ok := uniqueBy(snapshot.Dispatches, cycle.DispatchID, func(value OrcaDispatch) string { return value.ID })
-		if !ok || dispatchCounts[cycle.DispatchID] != 1 || strings.TrimSpace(dispatch.RuntimeID) != strings.TrimSpace(cycle.OrcaRuntimeID) || strings.TrimSpace(dispatch.TaskID) != strings.TrimSpace(cycle.TaskID) || strings.TrimSpace(dispatch.AssigneeHandle) != strings.TrimSpace(cycle.TerminalHandle) || strings.TrimSpace(dispatch.Status) != "dispatched" {
-			builder.add(FindingInventoryUnknown, "dispatch", cycle.DispatchID, "cycle dispatch identity does not match exactly one active dispatch", "")
+}
+
+func validateLeaseHolderIndexes(builder *findingBuilder, cycles []Cycle, indexes []LeaseHolderIndex) {
+	active := make([]Cycle, 0, len(cycles))
+	holderOwners := make(map[string][]string)
+	for _, cycle := range cycles {
+		if strings.TrimSpace(cycle.LeaseStatus) != "active" {
+			continue
+		}
+		active = append(active, cycle)
+		addOwner(holderOwners, nativeHolderIdentity(cycle.HolderHost, cycle.HolderSessionID, cycle.HolderAgentID), cycle.ID)
+	}
+	for identity, owners := range holderOwners {
+		if identity != "" && len(owners) > 1 {
+			sort.Strings(owners)
+			builder.add(FindingInventoryUnknown, "lease_holder", identity, "native session is recorded as holder of multiple active cycles: "+strings.Join(owners, ","), "")
 		}
 	}
+	keyCounts := countBy(indexes, func(index LeaseHolderIndex) string { return strings.TrimSpace(index.Key) })
+	addDuplicateFindings(builder, "lease_holder", keyCounts)
+	for _, cycle := range active {
+		matches := 0
+		for _, index := range indexes {
+			if leaseHolderIndexMatchesCycle(index, cycle) {
+				matches++
+			}
+		}
+		if matches != 1 {
+			builder.add(FindingInventoryUnknown, "lease_holder", strings.TrimSpace(cycle.ID), "active cycle must match exactly one lease-holder reverse index", "")
+		}
+	}
+	for _, index := range indexes {
+		valid := strings.TrimSpace(index.Key) != "" && strings.TrimSpace(index.LifecycleID) != "" && index.Generation > 0 &&
+			validNativeHost(index.Host) && strings.TrimSpace(index.SessionID) != ""
+		matches := 0
+		for _, cycle := range active {
+			if leaseHolderIndexMatchesCycle(index, cycle) {
+				matches++
+			}
+		}
+		if !valid || matches != 1 {
+			builder.add(FindingInventoryUnknown, "lease_holder", firstNonEmpty(strings.TrimSpace(index.Key), strings.TrimSpace(index.LifecycleID), "index"), "lease-holder reverse index must match exactly one active cycle", "")
+		}
+	}
+}
+
+func leaseHolderIndexMatchesCycle(index LeaseHolderIndex, cycle Cycle) bool {
+	return strings.TrimSpace(index.LifecycleID) == strings.TrimSpace(cycle.ID) && index.Generation == cycle.Generation &&
+		strings.TrimSpace(index.Host) == strings.TrimSpace(cycle.HolderHost) &&
+		strings.TrimSpace(index.SessionID) == strings.TrimSpace(cycle.HolderSessionID) &&
+		strings.TrimSpace(index.AgentID) == strings.TrimSpace(cycle.HolderAgentID)
+}
+
+func nativeHolderIdentity(host, sessionID, agentID string) string {
+	host, sessionID, agentID = strings.TrimSpace(host), strings.TrimSpace(sessionID), strings.TrimSpace(agentID)
+	if host == "" || sessionID == "" {
+		return ""
+	}
+	return strings.ToLower(host) + "\x00" + sessionID + "\x00" + agentID
 }
 
 func classifyMessages(builder *findingBuilder, messages MessagePresence) {
@@ -507,16 +637,34 @@ func normalizedSet(values []string) (map[string]bool, []string) {
 func ownerIndex(cycles []Cycle, identity func(Cycle) string) map[string][]string {
 	owners := make(map[string][]string)
 	for _, cycle := range cycles {
-		id := identity(cycle)
-		if id == "" {
-			continue
-		}
-		owners[id] = append(owners[id], cycle.ID)
+		addOwner(owners, identity(cycle), cycle.ID)
 	}
 	for id := range owners {
 		sort.Strings(owners[id])
 	}
 	return owners
+}
+
+func addOwner(owners map[string][]string, resourceID, cycleID string) {
+	resourceID = strings.TrimSpace(resourceID)
+	if resourceID == "" {
+		return
+	}
+	owners[resourceID] = append(owners[resourceID], strings.TrimSpace(cycleID))
+}
+
+func cycleTerminalHandle(cycle Cycle, snapshot Snapshot) string {
+	if ptyID := strings.TrimSpace(cycle.TerminalPTYID); ptyID != "" {
+		if terminal, ok := uniqueBy(snapshot.Terminals, ptyID, func(value OrcaTerminal) string { return value.PTYID }); ok {
+			return strings.TrimSpace(terminal.Handle)
+		}
+	}
+	if dispatchID := strings.TrimSpace(cycle.DispatchID); dispatchID != "" {
+		if dispatch, ok := uniqueBy(snapshot.Dispatches, dispatchID, func(value OrcaDispatch) string { return value.ID }); ok {
+			return strings.TrimSpace(dispatch.AssigneeHandle)
+		}
+	}
+	return ""
 }
 
 func countBy[T any](values []T, identity func(T) string) map[string]int {

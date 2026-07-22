@@ -42,13 +42,6 @@ func validateInstallDryRunSmokeWithDeps(binary, root string, seed int64, deps in
 	if err := deps.writeFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: "+skillName+"\ndescription: install dry-run smoke\n---\n"), 0o644); err != nil {
 		return commandstep.FailedStep("install dry-run smoke", err)
 	}
-	gjcShimDir := filepath.Join(tempRoot, "gjc-plugin")
-	if err := deps.makeDirAll(gjcShimDir, 0o755); err != nil {
-		return commandstep.FailedStep("install dry-run smoke", err)
-	}
-	if err := deps.writeFile(filepath.Join(gjcShimDir, "hook.ts"), []byte("// agent-harness GJC hook shim smoke fixture\n"), 0o644); err != nil {
-		return commandstep.FailedStep("install dry-run smoke", err)
-	}
 	env := []string{
 		"HOME=" + tempHome,
 		"CODEX_HOME=" + filepath.Join(tempHome, ".codex"),

@@ -239,6 +239,35 @@ func TestShellCommandGuardPathsExtractsGitRepositoryOverrides(t *testing.T) {
 	}
 }
 
+func TestShellCommandGuardPathsExtractsOutputDirectoryFlags(t *testing.T) {
+	repo := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "outside")
+	for _, command := range []string{
+		"go test -coverprofile=" + filepath.Join(outside, "coverage.out") + " ./...",
+		"go test -trace " + filepath.Join(outside, "trace.out") + " ./...",
+		"go test -cpuprofile=" + filepath.Join(outside, "cpu.out") + " ./...",
+		"go test -memprofile=" + filepath.Join(outside, "mem.out") + " ./...",
+		"go test -blockprofile=" + filepath.Join(outside, "block.out") + " ./...",
+		"go test -mutexprofile=" + filepath.Join(outside, "mutex.out") + " ./...",
+		"go test -outputdir=" + outside + " ./...",
+		"cp --target-directory=" + outside + " local.txt",
+	} {
+		t.Run(command, func(t *testing.T) {
+			paths := ShellCommandGuardPaths(repo, command)
+			found := false
+			for _, path := range paths {
+				if path == outside || filepath.Dir(path) == outside {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Fatalf("outside output path was not extracted: command=%q paths=%v", command, paths)
+			}
+		})
+	}
+}
+
 func containsGuardPath(paths []string, want string) bool {
 	for _, path := range paths {
 		if CleanAbs(path) == CleanAbs(want) {

@@ -19,7 +19,6 @@ import (
 type LiveRequest struct {
 	Hosts              []string
 	Models             []string
-	GJCAuthEnv         []string
 	Profile            string
 	Only               string
 	ResumeReport       string
@@ -231,7 +230,7 @@ func regressionFixtures(dir string) ([]string, error) {
 
 func runConformanceLive(args []string) error {
 	fs := flag.NewFlagSet("contract conformance live", flag.ContinueOnError)
-	hosts := fs.String("hosts", "codex,claude,gjc", "comma-separated hosts")
+	hosts := fs.String("hosts", "codex,claude", "comma-separated hosts")
 	profile := fs.String("profile", "clean", "clean or context-pressure")
 	only := fs.String("only", "", "host:fixture")
 	resume := fs.String("resume-report", "", "previous report")
@@ -239,9 +238,8 @@ func runConformanceLive(args []string) error {
 	maxAttempts := fs.Int("max-attempts-per-case", 3, "1 through 3")
 	evidenceDir := fs.String("evidence-dir", ".agent-harness/evidence/tool-conformance", "ignored evidence directory")
 	jsonOut := fs.Bool("json", false, "print JSON")
-	var models, gjcAuthEnv stringSlice
+	var models stringSlice
 	fs.Var(&models, "model", "host=value")
-	fs.Var(&gjcAuthEnv, "gjc-auth-env", "environment variable name")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -255,7 +253,7 @@ func runConformanceLive(args []string) error {
 		return fmt.Errorf("invalid max-attempts-per-case %d", *maxAttempts)
 	}
 	request := LiveRequest{
-		Hosts: splitNonEmpty(*hosts), Models: models, GJCAuthEnv: gjcAuthEnv, Profile: *profile,
+		Hosts: splitNonEmpty(*hosts), Models: models, Profile: *profile,
 		Only: *only, ResumeReport: *resume, TargetCompleted: *target,
 		MaxAttemptsPerCase: *maxAttempts, EvidenceDir: *evidenceDir,
 	}

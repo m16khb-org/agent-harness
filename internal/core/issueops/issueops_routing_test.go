@@ -43,39 +43,6 @@ func TestRecordIssueOpsRouting(t *testing.T) {
 	}
 }
 
-func TestAutoRecordSkillRouting(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := initIssueOpsRepo(t)
-	stateRoot := IssueOpsStateRoot()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "1-auto"})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// No session-bound cycle yet → no-op.
-	if AutoRecordSkillRouting(repo, "codd") {
-		t.Fatal("expected no-op without an active session-bound cycle")
-	}
-	if err := BindIssueOpsSession(repo, record.ID, "1-auto", ""); err != nil {
-		t.Fatal(err)
-	}
-	// Empty skill → no-op.
-	if AutoRecordSkillRouting(repo, "") {
-		t.Fatal("empty skill must be a no-op")
-	}
-	// Active cycle + skill → recorded at the current phase.
-	if !AutoRecordSkillRouting(repo, "codd") {
-		t.Fatal("expected routing to be recorded for an active cycle")
-	}
-	got, err := ReadIssueOps(stateRoot, record.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(got.RoutingTrace) != 1 || got.RoutingTrace[0].Skill != "codd" || got.RoutingTrace[0].Phase != string(record.Phase) {
-		t.Fatalf("unexpected routing trace: %#v", got.RoutingTrace)
-	}
-}
-
 func TestScoreLiveRoutingFidelity(t *testing.T) {
 	stateRoot := t.TempDir()
 	repo := initIssueOpsRepo(t)

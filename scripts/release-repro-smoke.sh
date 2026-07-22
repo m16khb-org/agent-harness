@@ -94,7 +94,6 @@ state_json="$tmp/state-migrate.json"
 log "checking project-local install dry-run in temp HOME/CODEX_HOME/HARNESS_ROOT"
 HOME="$home" \
 CODEX_HOME="$home/.codex" \
-REASONIX_HOME="$home/.reasonix" \
 HARNESS_STATE_DIR="$state" \
 HARNESS_ROOT="$fixture_root" \
   "$BIN" install-native --dry-run --project-local --json > "$install_json"
@@ -112,9 +111,11 @@ if not data.get("dry_run"):
     errors.append("install-native result dry_run=false")
 if not data.get("project_local"):
     errors.append("install-native result project_local=false")
-hosts = {host.get("host"): host for host in data.get("hosts", [])}
-for name in ("codex", "claude", "reasonix"):
-    host = hosts.get(name)
+hosts = data.get("hosts", [])
+names = [host.get("host") for host in hosts]
+if names != ["codex", "claude"]:
+    errors.append(f"unexpected host set/order: {names}")
+for name, host in zip(("codex", "claude"), hosts):
     if not host or not host.get("ok") or not host.get("dry_run"):
         errors.append(f"{name} host did not report ok dry-run")
 for host in data.get("hosts", []):

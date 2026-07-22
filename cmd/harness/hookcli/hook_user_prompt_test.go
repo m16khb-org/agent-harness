@@ -129,23 +129,7 @@ func createLinkedIssueOpsWorktree(t *testing.T, source, branch string) linkedIss
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.RecordIssueOpsExecutionDecision(core.IssueOpsStateRoot(), record.ID, core.IssueOpsExecutionDecisionRecordRequest{
-		AutoProceed:       []string{"hook fixture may enter implementation after linked worktree readiness is durable"},
-		HookBlocked:       []string{"hooks do not prepare worktrees, create remote artifacts, or choose sub-agents"},
-		HumanGates:        []string{"ask before destructive cleanup or unclear product behavior"},
-		SubagentUse:       "none",
-		SubagentRationale: "main agent owns this focused hook fixture",
-	}); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := core.RecordIssueOpsDevilsAdvocateReview(core.IssueOpsStateRoot(), record.ID, core.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := core.RecordIssueOpsWorktreeTools(core.IssueOpsStateRoot(), record.ID, core.IssueOpsWorktreeToolPreparation{
-		OK:           true,
-		WorktreePath: worktree,
-		Messages:     []string{"test prepared IssueOps worktree tools"},
-	}); err != nil {
 		t.Fatal(err)
 	}
 	return linkedIssueOpsWorktree{id: record.ID, path: worktree}

@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/core"
 )
 
 func TestRunHookPostToolUseInjectsSourceCheckoutMisdirectWarningOnClaude(t *testing.T) {
@@ -21,15 +19,13 @@ func TestRunHookPostToolUseInjectsSourceCheckoutMisdirectWarningOnClaude(t *test
 		t.Fatal(err)
 	}
 	cycle := createLinkedIssueOpsWorktree(t, repo, "2519-test-quality-comprehensive")
-	if _, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), cycle.id, string(core.IssueOpsPhaseImplement)); err != nil {
-		t.Fatal(err)
-	}
+	activateIssueOpsHookExecutionV1(t, cycle.id)
 	target := filepath.Join(repo, "src", "a.ts")
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","tool_name":"apply_patch","tool_input":{"file_path":"`+target+`"}}`, func() error {
 		return runHookPostToolUse([]string{"--host", "claude"})
 	})
 	ctx := hookAdditionalContext(obj)
-	for _, want := range []string{cycle.id, cycle.path, "소스 체크아웃", "의도한 대상인지 확인"} {
+	for _, want := range []string{cycle.id, cycle.path, "소스 체크아웃", "generation 1", "현재 write lease holder"} {
 		if !strings.Contains(ctx, want) {
 			t.Fatalf("PostToolUse warning missing %q in context %q (obj=%+v)", want, ctx, obj)
 		}

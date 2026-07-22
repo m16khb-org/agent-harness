@@ -5,6 +5,7 @@ import (
 	"agent-harness/internal/core/preflight"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -134,32 +135,23 @@ func recordIssueOpsApprovedDesignForTest(t *testing.T, stateRoot, id string) {
 	}
 }
 
-func recordIssueOpsPreparedWorktreeToolsForTest(t *testing.T, stateRoot, id, worktree string) IssueOpsRecord {
+func recordIssueOpsPreparedExecutionForTest(t *testing.T, stateRoot, id, worktree string) IssueOpsRecord {
 	t.Helper()
 	recordIssueOpsCompatibilityReviewForTest(t, stateRoot, id)
-	recordIssueOpsExecutionDecisionForTest(t, stateRoot, id)
-	record, err := RecordIssueOpsWorktreeTools(stateRoot, id, IssueOpsWorktreeToolPreparation{
-		OK:           true,
-		WorktreePath: worktree,
-		Messages:     []string{"test prepared IssueOps worktree tools"},
-	})
+	record, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Execution = issueOpsExecutionForTest(record.Repo, worktree, record.Branch)
+	record, err = writeIssueOps(stateRoot, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = AdvanceIssueOpsPhaseWithActor(stateRoot, id, string(IssueOpsPhaseImplement), issueOpsActorForTest(worktree))
 	if err != nil {
 		t.Fatal(err)
 	}
 	return record
-}
-
-func recordIssueOpsExecutionDecisionForTest(t *testing.T, stateRoot, id string) {
-	t.Helper()
-	if _, err := RecordIssueOpsExecutionDecision(stateRoot, id, IssueOpsExecutionDecisionRecordRequest{
-		AutoProceed:       []string{"implement after durable readiness gates are present"},
-		HookBlocked:       []string{"hooks do not create issues, prepare worktrees, or choose sub-agents"},
-		HumanGates:        []string{"ask before destructive cleanup or unclear product behavior"},
-		SubagentUse:       "none",
-		SubagentRationale: "main agent directly owns this focused implementation",
-	}); err != nil {
-		t.Fatal(err)
-	}
 }
 
 func recordIssueOpsCompatibilityReviewForTest(t *testing.T, stateRoot, id string) {
@@ -208,15 +200,85 @@ func issueOpsDevilsAdvocateReviewForTest() *IssueOpsDevilsAdvocateReview {
 	}
 }
 
-func issueOpsExecutionDecisionForTest() *IssueOpsExecutionDecision {
-	return &IssueOpsExecutionDecision{
-		AutoProceed:       []string{"implement after durable readiness gates are present"},
-		HookBlocked:       []string{"hooks do not create issues, prepare worktrees, or choose sub-agents"},
-		HumanGates:        []string{"ask before destructive cleanup or unclear product behavior"},
-		SubagentUse:       "none",
-		SubagentRationale: "main agent directly owns this focused implementation",
-		RecordedAt:        "2026-06-23T00:00:00Z",
+func issueOpsExecutionForTest(repo, worktree, branch string) *ExecutionV1 {
+	return &ExecutionV1{
+		Mode: model.ExecutionModeDirect,
+		Workspace: WorkspaceV1{
+			SourceRoot: repo,
+			Root:       worktree,
+			Branch:     branch,
+			BaseHead:   "0123456789012345678901234567890123456789",
+			Driver:     "git",
+			LinkedAt:   "2026-07-22T00:00:00Z",
+		},
+		Lease: WriteLeaseV1{
+			Generation: 1,
+			Status:     model.LeaseStatusActive,
+			Holder: &NativeActorV1{
+				Host:      "codex",
+				SessionID: "test-session",
+				AgentID:   "test-agent",
+				SessionProcess: &NativeProcessReceiptV1{
+					PID:        1,
+					StartedAt:  "2026-07-22T00:00:00Z",
+					Executable: "/usr/bin/codex",
+				},
+			},
+			ClaimedAt: "2026-07-22T00:00:00Z",
+		},
 	}
+}
+
+func issueOpsActorForTest(worktree string) IssueOpsActor {
+	return IssueOpsActor{
+		Host: "codex", SessionID: "test-session", AgentID: "test-agent", CWD: worktree,
+		NativeProcessAncestry: []NativeProcessReceiptV1{{
+			PID: 1, StartedAt: "2026-07-22T00:00:00Z", Executable: "/usr/bin/codex",
+		}},
+	}
+}
+
+func startIssueOpsChildForTest(stateRoot string, parent IssueOpsRecord, req IssueOpsChildStartRequest) (IssueOpsChildStartResult, error) {
+	return StartIssueOpsChildWithActor(stateRoot, req, issueOpsActorForTest(parent.WorktreePath))
+}
+
+func acceptIssueOpsChildForTest(stateRoot string, parent IssueOpsRecord, childID string, evidence []string) (IssueOpsChildValidationResult, error) {
+	return AcceptIssueOpsChildWithActor(stateRoot, parent.ID, childID, evidence, issueOpsActorForTest(parent.WorktreePath))
+}
+
+func rejectIssueOpsChildForTest(stateRoot string, parent IssueOpsRecord, childID, reason string, evidence []string) (IssueOpsChildValidationResult, error) {
+	return RejectIssueOpsChildWithActor(stateRoot, parent.ID, childID, reason, evidence, issueOpsActorForTest(parent.WorktreePath))
+}
+
+func dropIssueOpsChildForTest(stateRoot string, parent IssueOpsRecord, childID, reason string) (IssueOpsChildValidationResult, error) {
+	return DropIssueOpsChildWithActor(stateRoot, parent.ID, childID, reason, issueOpsActorForTest(parent.WorktreePath))
+}
+
+func executionPrepareRecord(t *testing.T) (string, IssueOpsRecord) {
+	t.Helper()
+	stateRoot := t.TempDir()
+	repo := initIssueOpsRepo(t)
+	branch := "16-demo"
+	baseHead := strings.TrimSpace(preflight.GitOut(repo, "rev-parse", "HEAD"))
+	if code, _, stderr := preflight.GitCmd(repo, "update-ref", "refs/remotes/origin/"+branch, baseHead); code != 0 {
+		t.Fatalf("create remote branch fixture: %s", stderr)
+	}
+	record := IssueOpsRecord{
+		OK: true, SchemaVersion: IssueOpsCurrentSchemaVersion,
+		ID: NewIssueOpsID(repo, branch), Repo: repo, Branch: branch, Phase: IssueOpsPhasePlan,
+		IssueURL:     "https://github.com/acme/repo/issues/16",
+		DesignReview: &IssueOpsDesignReview{Approved: true, ReviewedAt: "2026-07-11T00:00:00Z"},
+		BranchPrepare: &IssueOpsBranchPrepare{
+			Provider: "github", IssueURL: "https://github.com/acme/repo/issues/16", Branch: branch,
+			BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true, CreatedAt: "2026-07-11T00:00:00Z",
+		},
+		CreatedAt: "2026-07-11T00:00:00Z", UpdatedAt: "2026-07-11T00:00:00Z",
+	}
+	written, err := WriteIssueOps(stateRoot, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return stateRoot, written
 }
 
 func issueOpsDesignReviewForTest() *IssueOpsDesignReview {

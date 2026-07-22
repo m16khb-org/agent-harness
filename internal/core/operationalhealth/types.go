@@ -2,8 +2,6 @@ package operationalhealth
 
 import "time"
 
-const HeartbeatTTL = 15 * time.Minute
-
 const (
 	FindingInventoryUnknown     = "operational_inventory_unknown"
 	FindingDeadOwner            = "operational_dead_owner"
@@ -16,37 +14,47 @@ const (
 	FindingStateArtifactResidue = "operational_state_artifact_residue"
 )
 
+const (
+	ProcessStatusLive             = "live"
+	ProcessStatusDead             = "dead"
+	ProcessStatusIdentityMismatch = "identity-mismatch"
+	ProcessStatusUnknown          = "unknown"
+)
+
 type Cycle struct {
 	ID                     string
 	Repo                   string
 	Branch                 string
 	Phase                  string
-	HandoffState           string
-	WorkspaceState         string
-	Attempt                int
-	OwnershipEpoch         string
-	ContextSHA256          string
-	WorkerSessionID        string
-	WorkerAgentID          string
+	ExecutionMode          string
+	LeaseStatus            string
+	Generation             uint64
+	HolderHost             string
+	HolderSessionID        string
+	HolderAgentID          string
+	HolderPID              int
+	HolderStartedAt        string
+	HolderExecutable       string
+	HolderProcessStatus    string
+	CompletionPresent      bool
 	OrcaRuntimeID          string
 	OrcaRepoID             string
 	WorktreePath           string
 	OrcaWorktreeID         string
 	OrcaWorktreeInstanceID string
-	TerminalHandle         string
-	PTYID                  string
-	TerminalTabID          string
-	TerminalLeafID         string
+	OrcaOwnerHost          string
+	TerminalPTYID          string
 	TaskID                 string
 	DispatchID             string
-	LastHeartbeatAt        time.Time
 }
 
-type Binding struct {
-	CycleID          string
-	Repo             string
-	Branch           string
-	ExpectedWorktree string
+type LeaseHolderIndex struct {
+	Key         string
+	LifecycleID string
+	Generation  uint64
+	Host        string
+	SessionID   string
+	AgentID     string
 }
 
 type GitWorktree struct {
@@ -138,19 +146,19 @@ type Snapshot struct {
 	OrcaRuntimeID   string
 	OrcaRepoID      string
 
-	Cycles            []Cycle
-	Bindings          []Binding
-	GitWorktrees      []GitWorktree
-	LocalRefs         []GitRef
-	RemoteRefs        []GitRef
-	OrcaWorktrees     []OrcaWorktree
-	Terminals         []OrcaTerminal
-	Tasks             []OrcaTask
-	Dispatches        []OrcaDispatch
-	Gates             []OrcaGate
-	Messages          MessagePresence
-	StateArtifacts    []StateArtifact
-	InventoryProblems []InventoryProblem
+	Cycles             []Cycle
+	LeaseHolderIndexes []LeaseHolderIndex
+	GitWorktrees       []GitWorktree
+	LocalRefs          []GitRef
+	RemoteRefs         []GitRef
+	OrcaWorktrees      []OrcaWorktree
+	Terminals          []OrcaTerminal
+	Tasks              []OrcaTask
+	Dispatches         []OrcaDispatch
+	Gates              []OrcaGate
+	Messages           MessagePresence
+	StateArtifacts     []StateArtifact
+	InventoryProblems  []InventoryProblem
 }
 
 type Options struct {

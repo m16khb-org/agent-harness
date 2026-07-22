@@ -90,7 +90,6 @@ CLI와 MCP가 서로 다른 응답 의미를 갖기 시작하면 host별 동작�
 - `additionalProperties`가 없는 implicit open object를 새로 만들지 않는다. 자유형 map은 schema owner가 `additionalProperties:true`를 명시해야 한다.
 - unknown key 삭제, alias 적용, Unicode 수정, string/CSV/bool coercion 같은 silent repair로 malformed call을 성공시키지 않는다.
 - raw argument drift는 capture-only probe에서 production handler보다 먼저 관측하고, 동일 signature가 재현되기 전에는 production validator나 tracked regression fixture로 승격하지 않는다.
-- GJC live probe는 임시 `GJC_CODING_AGENT_DIR`과 operator가 명시한 nonempty auth env만 사용한다. 실제 registry/credential DB copy, symlink, fallback은 금지한다.
 - `failure_cause`는 typed evidence로만 올리고, evidence가 없거나 상충하면 `unknown`을 유지한다. 기존 반복 패턴 축인 `failure_class`를 덮어쓰지 않는다.
 
 ---
@@ -212,23 +211,23 @@ IssueOps state is durable because `agent-harness issueops ...` commands record i
 주의:
 - Hooks may block fast, deterministic, inspectable violations only: wrong worktree target, Korean remote artifact failure, invalid VCS issue-linking body metadata, missing PR/MR target branch, missing labels/assignee, staged-check/live-command confirmation, or missing numbered next-action choices.
 - Hooks must not create or edit issues, mutate files, run tests, wait for background jobs, prepare branches or worktrees, create PRs/MRs, reply to reviews, merge, or delete branches/worktrees.
-- When readiness reports `intent_contract`, `plan_prep_*`, `branch_prepare`, `worktree_tools_*`, `compatibility_review`, `backward_compatibility`, `side_effects`, `rollback_plan`, `compatibility_verification`, `compatibility_blockers`, `compatibility_approval`, `execution_decision`, `design_review`, `plan_path`, `ai_slop_clean`, or `contract_feedback_issue_update`, run the owning `issueops` command in the main agent loop and retry readiness. Do not add a hook-side workaround.
-- Sub-agent use is not a free speedup. It can preserve the main context, give a fresh reviewer, isolate tools, or parallelize independent research, but it also reduces mid-run steering/visibility and adds latency/token/coordination cost. Record those tradeoffs plus the net-positive rationale with `issueops execution decide`; if that rationale is weak, main-agent direct execution remains the default.
+- When readiness reports `intent_contract`, `plan_prep_*`, `branch_prepare`, compatibility/design/plan evidence, canonical workspace/lease, `ai_slop_clean`, or contract feedback, run the owning `issueops` command in the main-agent loop and retry readiness. Workspace and write authority belong to `issueops execution prepare/status/claim/release/replace/reconcile/complete`; do not add a hook-side workaround.
+- Sub-agent use is not a free speedup. It can preserve main context, give a fresh reviewer, isolate tools, or parallelize independent research, but it also reduces mid-run steering/visibility and adds latency/token/coordination cost. Record the documented pattern, tradeoffs, fallback, and net-positive rationale in the plan/evidence; if that rationale is weak, direct main-agent execution remains the default.
 
-## 16.2 선택지는 기존 목표를 대체하지 않고 handoff coordinator는 block하지 않는다
+## 16.2 선택지는 기존 목표와 execution holder를 대체하지 않는다
 
 숫자 선택 응답을 복원할 때 선택지 label만 새 원문 요청으로 승격하면 이전 턴에서
-확정한 실행 주체, workspace, ownership mode가 사라질 수 있다. `handoff owner에게
+확정한 실행 주체, workspace, execution mode가 사라질 수 있다. `Orca owner에게
 실행을 위임`이 `격리된 구현 worktree에서 실행`으로 축약된 뒤 source/main이 직접
 구현한 2026-07-22 incident가 이 경로로 재현됐다.
 
 주의:
 - 선택지는 기존 사용자 목표와 명시적 제약을 유지한 채 적용하는 next-action delta다. 선택지 text를 원문 요청의 대체물로 취급하지 않는다.
-- 실행 방식이 갈리는 선택지에는 실행 주체, source/worker 위치, ownership 전환, 외부 mutation 경계를 self-contained하게 적는다.
-- active IssueOps cycle에서는 durable handoff owner/workspace state가 자유형 선택지보다 우선한다. `격리된 worktree`를 `ownership handoff`와 동의어로 추정하지 않는다.
-- `handoff start` 뒤 source/main은 owner 완료를 동기 대기하거나 terminal output을 무기한 tail하지 않는다. 한 번의 관측은 30초 이내로 제한하고, 60초 안에 사용자에게 진행 상태를 갱신한다.
-- claim/acknowledge/heartbeat가 멈추면 source가 구현을 대신하지 않는다. exact lifecycle state를 읽고 recovery 또는 재-handoff 판단 지점으로 돌아간다.
-- source/main은 coordinator로서 상태 관측과 bounded control message만 담당하고, 코드·commit·publish·PR/MR mutation은 canonical worker root의 exact owner session에 남긴다.
+- 실행 방식이 갈리는 선택지에는 실행 주체, source/canonical worktree 위치, direct/Orca mode, 외부 mutation 경계를 self-contained하게 적는다.
+- Active cycle에서는 durable generation/holder/workspace state가 자유형 선택지보다 우선한다. `격리된 worktree`만 보고 실행 주체를 추정하지 않는다.
+- Orca launch 뒤 source/main은 owner 완료를 동기 대기하거나 terminal output을 무기한 tail하지 않는다. 한 번의 관측은 30초 이내로 제한하고, 60초 안에 사용자에게 진행 상태를 갱신한다.
+- Claim 또는 native process가 멈추면 source가 구현을 대신하지 않는다. `issueops execution status`를 읽고 generation-CAS replacement/reconciliation 판단 지점으로 돌아간다.
+- 코드·commit·publish·PR/MR mutation은 active generation holder의 canonical worktree에 남긴다. Source main worktree는 unrelated work에 계속 사용할 수 있다.
 
 ## 17. MCP tool-use risks
 
@@ -247,7 +246,6 @@ A stability-audit failure is not automatically a harness defect; the audit frame
 - Give the full 10-iteration self-verify a generous timeout (>=180s); the 10 seeded deterministic iterations exceed the quick-mode budget.
 - `HARNESS_SELF_VERIFY_LLM_EVAL=gate` is a valid ambient runtime configuration, but the current self-verify implementation only renders the read-only evaluator prompt. It sends no Z.AI request and ingests no external verdict, so `gate` intentionally returns a non-passing `llm_eval` result. Do not diagnose that result as environment drift or claim an external judgment occurred. Repository completion gates must use explicit `--llm-eval=false`, record the override, and restart from the first gate after any interrupted or prompt-only run.
 - Handoff focused tests must use `./cmd/harness/hookcli/hookinput`; the plausible-looking `./internal/core/hookinput` path does not exist and causes a command-spec failure after other packages have already started. Pin the full focused command in `.agent-harness/TESTING.md` and restart the sequence rather than reusing partial results.
-- Do not validate the GJC TypeScript hook with a literal `--host gjc` grep. The shim constructs argv as adjacent array elements, so that shell string is absent even when host forwarding is correct. Run `bun scripts/smoke-gjc-native-hook.ts "$HOME/.gjc/agent/hooks/agent-harness.ts"` and require behavior-level host/session/cwd/block JSON instead.
 - `orca orchestration send --type` rejects values outside `status|dispatch|worker_done|merge_ready|escalation|handoff|decision_gate|heartbeat`. Verify the installed CLI when this enum changes; do not improvise `progress`, `blocked`, or `completed` message types.
 
 ## 19. Verify git identity before contributor-sensitive pushes
@@ -268,7 +266,7 @@ A Stop hook that wants the agent to *recover and keep going* (for example, to pr
 - Verified against host binaries. Claude `2.1.162` embedded hook docs: `continue` — "Set to `false` to block/stop (default: true)", `stopReason` — "Message shown when `continue` is false". Codex `0.137.0` `stop.command.output` schema: `continue` (default true), `decision` = `BlockDecisionWire(["block"])`, `reason` with the note "Claude requires `reason` when `decision` is `block`". Both hosts mirror the same schema.
 - `continue:false` is a hard stop and takes precedence over `decision`. To drive an IN-TURN continuation, return `decision:"block"` + `reason` and leave `continue:true` (or omit it). `runHookStop`'s next-action judgement relay branch already does this; the `--enforce-numbered-next-actions` block branch wrongly sent `continue:false`, so the agent "just stopped" and the user had to prompt it manually (observed 2026-06-04, fixed in `cmd/harness/hook_user_prompt.go`).
 - When the block branch uses `continue:true`, guard it with `stop_hook_active`: hosts set that flag true on a Stop that is itself a continuation of a prior stop-hook block. Allow the stop (no-op `{}` output) while it is true so a non-complying agent cannot loop forever.
-- 모든 `decision:"block"` Stop branch는 `stop_hook_active` continuation과 `자동진행하지 않음` exit를 평가한 뒤에만 재차단할 수 있다. `cleanup_pending_human_decision`처럼 durable state가 그대로라는 이유로 이 guard보다 먼저 무조건 반환하면 같은 hook episode가 영구 재진입한다. 해당 branch 안에서 즉시 `{}`를 반환해야 아래의 독립 relay가 다시 block하지 않는다. 최초 no-auto no-op, ordinary fresh block, relay-enabled choice continuation no-op, 다음 독립 episode 재알림을 한 회귀 테스트로 고정한다.
+- 모든 `decision:"block"` Stop branch는 `stop_hook_active` continuation과 `자동진행하지 않음` exit를 평가한 뒤에만 재차단할 수 있다. Durable decision state가 그대로라는 이유로 이 guard보다 먼저 무조건 반환하면 같은 hook episode가 영구 재진입한다. 해당 branch 안에서 즉시 `{}`를 반환해야 아래의 독립 relay가 다시 block하지 않는다. 최초 no-auto no-op, ordinary fresh block, relay-enabled choice continuation no-op, 다음 독립 episode 재알림을 한 회귀 테스트로 고정한다.
 - Stop hooks accept only the stop-control schema (`continue`/`decision`/`reason`/`stopReason`/`systemMessage`/`suppressOutput`). Injecting `hookSpecificOutput.additionalContext` on Stop makes Codex report "invalid stop hook JSON output"; use a no-op `{}` payload when not blocking.
 - The ONLY Stop-hook output reliably surfaced to the user is `decision:"block"` + `reason` — it renders as "Stop hook feedback" AND re-invokes the agent in-turn. Two channels were observed to produce NO visible notice (2026-06-04): a non-blocking `{"systemMessage": ...}` (turn allowed to end), AND `{"continue": false, "stopReason": ...}` — despite the doc claiming "systemMessage — display to the user (all hooks)" and "stopReason — shown when continue is false". Do not rely on either to notify the user from a Stop hook.
 - Claude Code labels a successful Stop `decision:"block"` relay as `hook_blocking_error` in the transcript attachment and can surface it as `stop-hook-error` in stream/UI output. Do not treat that label alone as an agent-harness hook process failure. Check the hook command exit code/stderr plus the follow-up `stop_hook_summary`: an intended next-action relay has `preventedContinuation:false`, `level:"suggestion"`, and an empty failure stderr even though the display name says "error". Treat it as a real failure only when the process failed, stderr names a schema/runtime error, or continuation was actually prevented.
@@ -295,19 +293,18 @@ Manual builds, smoke tests, and ad-hoc verification runs can leave stale binarie
 - CI and automated scripts should prefer `mktemp -d` or Go `t.TempDir()` / `os.MkdirTemp` over hardcoded `/tmp/` paths.
 - Build scripts (`scripts/install-native.sh`) build to `$ROOT/bin/agent-harness`, not `/tmp`.
 
-## 21. Worktree guard has multiple block paths; stale worktrees need consistent liveness
+## 21. Worktree guard and execution liveness must use the same v1 fence
 
-A single PreToolUse worktree-guard "fix" is rarely enough: the guard blocks through more than one path, and a record keyed only on (repo, branch) is treated as an active cycle even when its worktree was deleted. Verified 2026-06-09 via multi-session QA.
+A guard that checks only branch or path can deadlock an absent holder or admit a
+stale one. All readers must agree on the exact lifecycle ID, generation, native
+process receipt, canonical worktree, and mode-specific resource identity.
 
 주의:
-- Fixing only `CycleForBranch` did not clear a deleted-worktree deadlock — the block merely moved to `noCycleIssueOpsBranchNeedsWorktree`. Trace every block path (current-branch cycle, no-cycle issue-branch needs-worktree, linked-worktree cycles, MCP root guard) before claiming a deadlock is resolved. Add a reproduction test per path.
-- Liveness must be consistent across all readers. `CycleForBranch` (guard primary), `noCycleIssueOpsBranchNeedsWorktree`, and `LinkedWorktreeCyclesForRepo` must agree on "worktree present-but-deleted = inactive"; an empty `worktree_path` is a distinct not-yet-linked state and must NOT be treated as deleted.
-- A stale-cycle block message must name a working escape. `issueops phase --to done` and `--to done --force` both require `pr` phase, so "mark the stale cycle done" was a dead end; only `issueops force-release --id <id> --reason <why>` releases a non-pr cycle. Keep the guard message and the actual escape command in sync (pin it with a test).
-- Resetting a stale cycle on restart must exclude phases whose work product is external. `Start` reset is gated to `implement`/`ai-slop-clean`/`feedback` (worktree IS the work product); a `pr`-phase cycle with a deleted worktree resumes instead, because its issue/PR/remote-artifact linkage lives remotely and would be destroyed by a blank reset. Always preserve recovery anchors (`issue_url`/`issue_links`) and stamp audit fields (`stale_reset_at`/`stale_reset_prior_phase`).
-- Stale cleanup belongs off the hot path. The `issueops cleanup stale` CLI / `issueops_cleanup_stale` MCP tool may consult git/remote for multi-signal classification (confirmed-stale / likely-done / needs-review); do NOT add git/remote calls to the PreToolUse guard itself. `needs-review` (age-only) is never auto-released; only `confirmed-stale` and `likely-done` are releasable under `--apply`.
-- "First matching" cycle must be deterministic AND must not name an unrelated escape. `LinkedWorktreeCyclesForRepo` returned records in `os.ReadDir` order, and IDs are `sha256(repo\x00branch)` hashes, so `linkedRecs[0]` was arbitrary w.r.t. the cycle the user is editing. With ≥2 parallel worktree cycles, a block message that singled out `linkedRecs[0]` for `force-release` (a) pointed at a possibly-live, unrelated cycle and (b) would not unblock the edit while the other worktrees remain — the same non-working-escape trap as the `--to done` dead end. Fix: sort `LinkedWorktreeCyclesForRepo` deterministically (branch, then ID) and have the multi-cycle block message enumerate every worktree holder rather than one arbitrary cycle (`linkedWorktreeCyclesBlockReason`). Verified 2026-06-09.
-- Destructive cleanup (`--apply` force-release) must re-read+re-classify immediately before the write. `ScanStaleIssueOpsCycles` snapshots cycles via `NonDoneCyclesForRepo` then probes by bare `os.Stat`; a worktree briefly missing (unmount/NFS/in-flight `git worktree` recreate) or a cycle advanced by a parallel session between snapshot and release would otherwise be clobbered to `done` (TOCTOU). The fix re-reads the fresh record and re-runs `stalescan.Classify` before `ForceReleaseIssueOps`; this NARROWS but does not close the window.
-- Known residual gaps (multi-session QA round 2 — resolved): the `(repo,branch)` JSON store now uses per-id advisory flock (`withIssueOpsLock`) so concurrent `start`/`link`/`set-phase`/`force-release` on the same id serialize across processes; hot-path worktree validity now uses `os.Lstat` on `.git` (file OR directory) via `worktreeGitTracked`, so `git worktree prune`d directories and leftover non-git dirs are correctly excluded; and stale-reset/force-release now stamp `OrphanWorktreePath` for the off-hot-path stale-scan reaper to clean via `git worktree prune` and `git worktree remove --force`.
+- A block message must name one command that the current state actually allows. Start with `issueops execution status`; use its rendered claim, reconciliation, or replacement command rather than inventing an override.
+- A missing directory, old timestamp, stable diff, or absent terminal row is not lease-release evidence. Replacement requires expected generation plus preview inventory and quiescence fingerprints.
+- Hooks may read bounded state and reject a mismatched mutation, but must not call Git, provider, or Orca mutators, revoke a lease, or delete a worktree.
+- One active execution exists per record, not per repository. Exact-ID selection must not capture an unrelated parallel cycle or make the source main worktree read-only.
+- Completion is generation-fenced and requires phase `pr` plus verified remote evidence. Never force a non-PR cycle to `done` as a recovery shortcut.
 
 ## 22. Stability audit smoke tests must track current host/MCP contracts
 
@@ -341,11 +338,11 @@ Cross-system residue must not acquire a second truth source in stale scan, statu
 
 주의:
 - `agent-harness doctor` is the sole public operational-health gate. `--preserve-cycle` and `--preserve-terminal` are exact, invocation-only inputs; never persist them as exemptions.
-- A binding proves ownership, not liveness. A claimed cycle without complete identity and a heartbeat within 15 minutes is unhealthy even when every stored resource ID matches.
-- The 15-minute boundary is diagnostic only. Missing/stale heartbeat must not interrupt a worker, delete a resource, or promote stale scan to `confirmed-stale`/auto-release; destructive eligibility still requires the existing strong signal and fresh locked re-probe.
+- A generic binding proves neither authority nor liveness. An active generation without a complete native process receipt, canonical worktree, and mode-specific identity is unhealthy even when other resource IDs match.
+- Time is diagnostic only. Age never interrupts a holder, deletes a resource, or authorizes replacement; expected generation, exact inventory, and quiescence proof are required.
 - Orca absence is optional only when no durable cycle claims Orca resources. Never turn a missing or incomplete Orca inventory into an empty healthy list.
 - One-time global cleanup evidence lives in an external `0700` recovery bundle. Git/SQLite copies can be restore-tested, but Orca snapshot is archival-only: the public CLI has no conditional reset/import/restore and a last-moment external actor race remains. Stop on pre-reset digest drift; after reset, continue idempotently from the append-only journal instead of guessing rollback.
-- A destructive IssueOps release must not rely on a runner-side digest check followed by ordinary `force-release`: record or session-binding state can change in that gap. Use the paired raw/canonical digest CAS mode, require repository binding zero under the same state-root span lock, and journal the locked before/after proof. The CAS path never performs a post-lock unbind.
+- A destructive IssueOps replacement must not rely on a runner-side observation followed by an unfenced write: record and process state can change in that gap. Use expected generation plus inventory/quiescence fingerprint CAS and journal the locked before/after proof.
 - A sealed cleanup must also seal its authorities: invoke a bundle-private clean-HEAD executor by hash/VCS revision, override live state/root/daemon/worker environment paths, require singleton equal fetch/push authorities, and push to the sealed explicit URL. Fetch/prune readiness, mutation, and readback must share that URL plus a heads-only refspec, `--no-tags`, and `--no-write-fetch-head`; never reopen mutable `origin` refspec/tag authority. Ignored `bin/agent-harness`, inherited environment, and mutable remote names are not execution evidence.
 
 ## 24. IssueOps 도메인 어휘를 CLI 서브커맨드로 착각
@@ -420,15 +417,21 @@ IssueOps에 새 implement-entry(또는 임의 phase) fail-closed 게이트를 �
 IssueOps worktree 세션에서도 host cwd, MCP root, file-edit tool root가 원본 source checkout에 남아 있으면 worktree에 존재하는 같은 상대경로 파일을 source checkout에서 수정하는 실수가 발생한다. 이 경우 단순 branch gate만으로는 부족하다. 같은 파일이 worktree에도 있으면 source checkout edit는 대개 target drift다.
 
 주의:
-- `issueops resume` 또는 `issueops worktree prepare-tools`가 출력하는 `export HARNESS_EXPECTED_WORKTREE=<worktree>`를 세션 환경에 반영하고, 편집 전 cwd와 절대경로가 worktree를 가리키는지 확인한다.
+- `issueops execution prepare`가 반환한 canonical path를 `HARNESS_EXPECTED_WORKTREE`에 반영하고, 편집 전 cwd와 절대경로가 그 worktree를 가리키는지 확인한다.
 - Worktree 세션에서는 file tool에 worktree 절대경로를 넘기고, shell은 `git -C "$HARNESS_EXPECTED_WORKTREE"` 또는 `rg "$pattern" "$HARNESS_EXPECTED_WORKTREE"`처럼 명시 root로 실행한다.
 - Guard는 source checkout의 모든 edit를 막지 않는다. §21의 multi-path deadlock 방지 때문에 non-cycle branch에서 source checkout에 새 파일을 만드는 정상 작업은 허용되어야 한다.
 - 방어층은 세 겹이다: PostToolUse source-checkout warning, PreToolUse mirror-file `ask`, SessionStart/UserPrompt worktree reminder. Host가 `ask`를 지원하지 않으면 Codex처럼 `block`으로 degrade될 수 있다.
-- 의도적으로 source checkout에서 작업해야 하면 worktree 절대경로로 바꾸거나, 해당 IssueOps cycle을 `issueops force-release --id <id> --reason <why>`로 해제한 뒤 진행한다.
+- 선택된 cycle의 구현은 canonical worktree로 이동한다. Holder 교체가 필요하면 source에서 구현을 계속하지 말고 `issueops execution status`가 안내하는 generation-CAS replacement 절차를 따른다. Source checkout은 unrelated work에 계속 사용할 수 있다.
 
 ## Incident Archive
 
 Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents.md`. Keep this file focused on evergreen hazards and move one-off history there.
+
+아래 날짜별 기록에 등장하는 제거된 IssueOps 명령·필드·상태는 사고 당시
+증거일 뿐 실행 지시가 아니다. 현재 실행 계약은
+`skills/issueops/references/execution-v1.md`와
+`.agent-harness/OPERATIONS.md`를 따른다. 역사적 증거는 삭제하거나 현재 표면으로
+위장해 고쳐 쓰지 않는다.
 
 ## 2026-07-02 — Re-verify stale memory observations against HEAD before planning gaps
 
@@ -525,6 +528,7 @@ sqlite 전환 후 WAL 파일이 checkpoint 후에도 truncate되지 않고 고�
 ## Orca create 호출의 모호한 실패를 재시도하지 말 것
 
 > 이 아래 supervised handoff 사건 항목들의 위협 모델·불변식 근거는 `ARCHITECTURE.md`의 "IssueOps handoff: threat model and invariants" 절을 참조한다. 여기서는 각 사건의 한 줄 교훈만 유지한다.
+> 아래의 `issueops handoff ...`, legacy schema, coordinator/worker 명칭은 당시 사건을 식별하는 역사 표기이며 실행 명령이 아니다. 현재 복구·lease 제어는 `issueops execution status|claim|release|replace|reconcile|complete`만 사용한다.
 
 Orca worktree/terminal/task create 또는 dispatch는 프로세스 timeout/error가 mutation 부재를 뜻하지 않는다. 호출 전 IssueOps `pending_operation`을 durable하게 기록하고, 호출 뒤 실패하면 `recovery_required`로 멈춘다. 같은 create를 자동 재시도하거나 inline fallback을 시작하면 중복 worker가 생길 수 있다.
 
@@ -541,7 +545,7 @@ Orca worktree/terminal/task create 또는 dispatch는 프로세스 timeout/error
 - Completion의 shell-quoted `--verification` 값 안 세미콜론은 evidence data일 수 있다. lifecycle guard는 quote-aware scan으로 quote 밖의 `;`, `&`, `|`, CR/LF만 차단하고 quoted punctuation은 허용한다. `SplitCommandTokens`가 quoted empty argument를 버리므로 `--agent-id ''`를 렌더하지 말고 flag 자체를 생략한다.
 - Transferred ownership cycle에 관해서만 source checkout은 observation-only다: `git status/diff/log/show/rev-parse/ls-files`와 `rg` 같은 관찰은 가능하지만 그 cycle의 test/build/format/install/generate는 claimed worker root에서만 실행한다. 이 제약은 source main worktree의 unrelated work를 막지 않는다. 테스트 초기화와 fixture도 파일·프로세스·네트워크를 바꿀 수 있어 read-only로 분류하지 않는다.
 - 같은 source checkout에 supervised cycle이 여러 개면 proven observation은 record 선택 전에 분류해야 한다. owner가 필요 없는 hardened `pwd`/`rg`/read-only Git/명시적 read tool까지 먼저 exact record를 고르게 하면 복구 self-lock이 된다. 단, 이 선처리는 source-matching supervised record가 실제로 둘 이상인 경우에만 적용해 일반 linked-worktree MCP guard를 우회하지 않는다. exact lifecycle parser는 문서화된 `agent-harness`, `bin/agent-harness`, `./bin/agent-harness` 표기만 받고 shell control·unknown flag는 계속 거부한다. `handoff start` identity flags를 `handoff recover`에 추정으로 붙이지 말고 실제 subcommand help/spec을 확인한다. 상세 사건 기록은 `ISSUEOPS_ORCA_BLOCKERS_2026-07-16.md`를 참조한다.
-- response-contract golden에는 gitignored project-local host 설치 여부를 raw boolean으로 남기지 않는다. `.claude`, `.codex`, `.gjc`, `.reasonix` skill presence는 같은 placeholder로, project-local settings presence는 settings placeholder로 정규화한다. 머신 상태 때문에 golden이 실패하면 user artifact를 삭제하거나 update 결과를 그대로 수용하지 말고 실제 diff가 contract인지 environment drift인지 먼저 분리한다.
+- response-contract golden에는 gitignored project-local host 설치 여부를 raw boolean으로 남기지 않는다. `.claude`와 `.codex` skill presence는 같은 placeholder로 정규화한다. 머신 상태 때문에 golden이 실패하면 user artifact를 삭제하거나 update 결과를 그대로 수용하지 말고 실제 diff가 contract인지 environment drift인지 먼저 분리한다.
 - bounded concurrency test는 최종 assertion이 요구하는 모든 reserve 상태를 기다려야 한다. channel A의 길이만 보고 channel B의 overflow/classifier goroutine도 준비됐다고 가정하면 third caller가 B를 먼저 차지해 false timeout이 된다. production limit을 느슨하게 고치지 말고 active slot과 bounded overflow reserve를 각각 관찰한 뒤 rejection을 시작한다.
 - supervised readiness를 통과시키려고 현재 cycle과 무관한 plan을 link하지 않는다. Current issue/cycle intent와 acceptance criteria, exact branch/path/base, exact bounded worker scope, claim/acknowledge/complete, verification, cleanup을 담은 Markdown만 plan-only source commit으로 보존하고, clean exact branch에서 `link-plan`이 그 commit을 attempt base head로 고정한 뒤 dispatch한다. Report-only는 해당 disposable cycle이 그렇게 선언했을 때만 적용하며 production implementation owner까지 일반화하지 않는다.
 - zsh의 unquoted word-leading `=git`은 command-path expansion이고 `=(...)`는 프로세스를 실행해 임시 경로를 만든다. active command/process substitution, parameter/tilde, brace/glob pathname expansion, `eval`/`source`를 supervised shell에서 차단하고 quoted/escaped literal만 데이터로 취급한다.
@@ -587,11 +591,11 @@ Orca worktree/terminal/task create 또는 dispatch는 프로세스 timeout/error
 
 ## IssueOps ownership 필드를 root schema bump 없이 추가하지 말 것
 
-`execution_handoff`처럼 mutation authority를 소유하는 필드를 기존 root schema에 additive `omitempty`로만 추가하면, 그 필드를 모르는 이전 binary가 unknown JSON을 버린 뒤 같은 schema로 rewrite할 수 있다. IssueOps root의 현재 schema는 8이다. Schema 7 이하의 ownership/workspace authority와 `protocol_version`이 있는 handoff record는 byte-identical fail-closed하고 새 ownership cycle로 다시 시작한다. 호환 decoder, re-attestation, background conversion을 추가하지 않는다.
+`execution_handoff`처럼 mutation authority를 소유하는 필드를 기존 root schema에 additive `omitempty`로만 추가하면, 그 필드를 모르는 이전 binary가 unknown JSON을 버린 뒤 같은 schema로 rewrite할 수 있다. 이 사건 당시 legacy root의 schema는 8이었다. 현재 IssueOps는 dedicated v1 namespace의 schema 1만 읽고 쓰며 legacy/future rows를 migration 없이 fail-closed한다. 호환 decoder, re-attestation, background conversion을 추가하지 않는다.
 
 - 새 ownership/security 필드는 root schema compatibility를 명시적으로 검토하고 removed-shape rejection fixture를 둔다.
 - future schema hook scan은 row 전체를 해석하지 않고 bounded repo/worker identity와 invalid marker만 유지해 mutation을 fail-closed한다.
-- CLI, daemon, Codex, Claude, GJC installed binary가 같은 schema를 읽는지 migration smoke로 확인하기 전에는 mixed-version handoff를 시작하지 않는다.
+- CLI, daemon, Codex, Claude installed binary가 같은 schema를 읽는지 cutover smoke로 확인하기 전에는 mixed-version execution을 시작하지 않는다.
 
 ## Orca worker_done에서 live terminal을 sealed mailbox 대신 쓰지 말 것
 

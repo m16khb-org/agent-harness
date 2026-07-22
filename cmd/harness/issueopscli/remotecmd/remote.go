@@ -10,6 +10,8 @@ import (
 
 	"agent-harness/internal/adapter/provider"
 	"agent-harness/internal/core"
+	issueopscore "agent-harness/internal/core/issueops"
+	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/remote"
 )
 
@@ -18,11 +20,8 @@ type Deps struct {
 	PrintResult          func(core.IssueOpsRecord, bool, error) error
 	PrintError           func(error) error
 	VerifyLive           func(core.IssueOpsRemoteArtifactVerificationRequest) error
-	PublicationReader    core.IssueOpsHandoffPublicationReader
-	PublicationLease     core.IssueOpsOrcaDispatchClient
 	CreatePullRequest    func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error)
 	ReconcilePullRequest func(string, core.IssueProviderReconcilePullRequestRequest) (core.IssueProviderReconcilePullRequestResult, error)
-	VerifyArtifact       func(string, string, core.IssueOpsRemoteArtifactVerificationRequest) (core.IssueOpsRecord, error)
 }
 
 func Run(args []string, deps Deps) error {
@@ -33,8 +32,7 @@ func Run(args []string, deps Deps) error {
 		fmt.Println("  agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --target-branch BRANCH --label LABEL --assignee USER [--json]")
 		fmt.Println("  agent-harness issueops remote create-issue --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote create-child --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
-		fmt.Println("  agent-harness issueops remote create-pr --id ID --title TEXT --head BRANCH --base BRANCH [--body TEXT] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--host HOST --session-id SESSION --cwd WORKER_PATH] [--agent-id ID] [--confirm] [--json]")
-		fmt.Println("  agent-harness issueops remote reconcile-create --id ID --claim-id CLAIM --coordinator-recipient HANDLE --host HOST --session-id SESSION [--agent-id AGENT] --source-cwd PATH [--approve-zero-clear] --confirm [--json]")
+		fmt.Println("  agent-harness issueops remote create-pr --id ID --expected-generation N --title TEXT --head BRANCH --base BRANCH [--body TEXT] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... --host codex|claude --session-id SESSION [--agent-id ID] --session-pid PID --session-started-at RFC3339 --session-executable PATH --cwd WORKER_PATH [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote sync-graph --id ID [--confirm] [--json]")
 		return nil
 	}
@@ -104,6 +102,10 @@ func Run(args []string, deps Deps) error {
 		fs.Var(&labels, "labels", "verified remote label; may be repeated")
 		fs.Var(&assignees, "assignee", "verified remote assignee; may be repeated")
 		fs.Var(&assignees, "assignees", "verified remote assignee; may be repeated")
+		host := fs.String("host", "", "native holder host")
+		sessionID := fs.String("session-id", "", "native holder session id")
+		agentID := fs.String("agent-id", "", "optional native holder agent id")
+		cwd := fs.String("cwd", "", "canonical holder worktree cwd")
 		jsonOut := fs.Bool("json", false, "print JSON")
 		if help, err := parseFlags(fs, args[1:]); help || err != nil {
 			return err
@@ -122,7 +124,10 @@ func Run(args []string, deps Deps) error {
 			err = deps.verifyLive(req)
 		}
 		if err == nil {
-			record, err = core.VerifyIssueOpsRemoteArtifact(core.IssueOpsStateRoot(), *id, req)
+			ancestry, _ := issueopscore.ObserveNativeProcessAncestryV1(os.Getpid())
+			record, err = core.VerifyIssueOpsRemoteArtifactWithActor(core.IssueOpsStateRoot(), *id, req, core.IssueOpsActor{
+				Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd, NativeProcessAncestry: ancestry,
+			})
 		}
 		return deps.printResult(record, *jsonOut, err)
 	case "render-template":
@@ -133,59 +138,12 @@ func Run(args []string, deps Deps) error {
 		return runRemoteCreateChild(args[1:], deps)
 	case "create-pr":
 		return runRemoteCreatePR(args[1:], deps)
-	case "reconcile-create":
-		return runRemoteReconcileCreate(args[1:], deps)
 	case "sync-graph":
 		return runRemoteSyncGraph(args[1:], deps)
 	case "reflect-devils-advocate":
 		return runRemoteReflectDevilsAdvocate(args[1:], deps)
 	default:
 		return fmt.Errorf("unknown issueops remote subcommand %q", args[0])
-	}
-}
-
-func runRemoteReconcileCreate(args []string, deps Deps) error {
-	fs := flag.NewFlagSet("issueops remote reconcile-create", flag.ContinueOnError)
-	id := fs.String("id", "", "IssueOps id")
-	claimID := fs.String("claim-id", "", "exact durable remote create claim id")
-	coordinator := fs.String("coordinator-recipient", "", "sealed coordinator mailbox handle")
-	host := fs.String("host", "", "native coordinator host")
-	sessionID := fs.String("session-id", "", "native coordinator session id")
-	agentID := fs.String("agent-id", "", "native coordinator agent id")
-	sourceCWD := fs.String("source-cwd", "", "exact source checkout cwd")
-	approveZero := fs.Bool("approve-zero-clear", false, "explicitly approve clear only after authoritative zero-candidate proof")
-	confirm := fs.Bool("confirm", false, "execute reconciliation")
-	jsonOut := fs.Bool("json", false, "print JSON")
-	if help, err := parseFlags(fs, args); help || err != nil {
-		return err
-	}
-	reader := deps.PublicationReader
-	if reader == nil {
-		reader = core.GitIssueOpsHandoffPublicationReader{}
-	}
-	lease := deps.PublicationLease
-	result, err := core.ReconcileIssueOpsRemoteCreate(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsRemoteCreateReconcileRequest{
-		ID: *id, ClaimID: *claimID, CoordinatorRecipient: *coordinator, Confirm: *confirm, ApproveZeroClear: *approveZero,
-		Host: *host, SessionID: *sessionID, AgentID: *agentID, SourceCWD: *sourceCWD,
-	}, reader, lease, RemoteCreateReconcileProbe(deps))
-	return deps.printResult(result, *jsonOut, err)
-}
-
-func RemoteCreateReconcileProbe(deps Deps) core.IssueOpsRemoteCreateProbe {
-	return func(_ context.Context, record core.IssueOpsRecord) (core.IssueOpsRemoteCreateProbeResult, error) {
-		claim := record.RemoteCreateClaim
-		if claim == nil {
-			return core.IssueOpsRemoteCreateProbeResult{}, fmt.Errorf("remote create claim disappeared before provider reconciliation")
-		}
-		providerRequest, err := core.ProjectIssueOpsRemoteCreateClaimForProviderReconcile(record)
-		if err != nil {
-			return core.IssueOpsRemoteCreateProbeResult{}, err
-		}
-		providerResult, err := deps.reconcilePullRequest(claim.Provider, providerRequest)
-		if err != nil {
-			return core.IssueOpsRemoteCreateProbeResult{}, err
-		}
-		return core.ProjectIssueOpsRemoteCreateProbeResult(record, providerResult)
 	}
 }
 
@@ -567,9 +525,13 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	scoreFile := fs.String("score-file", "", "IssueOps remote score result JSON")
 	head := fs.String("head", "", "source branch")
 	base := fs.String("base", "", "target branch")
+	expectedGeneration := fs.Uint64("expected-generation", 0, "current execution lease generation")
 	host := fs.String("host", "", "native owner host")
 	sessionID := fs.String("session-id", "", "native owner session id")
 	agentID := fs.String("agent-id", "", "native owner agent id")
+	sessionPID := fs.Int("session-pid", 0, "native owner process id")
+	sessionStartedAt := fs.String("session-started-at", "", "native owner process start identity")
+	sessionExecutable := fs.String("session-executable", "", "native owner executable identity")
 	cwd := fs.String("cwd", "", "canonical owner worker cwd")
 	confirm := fs.Bool("confirm", false, "execute creation; without this, dry-run preview only")
 	var labels repeatedFlag
@@ -589,9 +551,6 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	providerName := firstNonEmptyMain(*providerOverride, resolveRecordProvider(record))
 	if providerName == "" {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
-		return deps.printErrorResult(*jsonOut, err)
-	}
-	if err := rejectSupervisedPullRequestBodyFile(record, *bodyFile); err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
 	headBranch := firstNonEmptyMain(*head, record.Branch)
@@ -615,27 +574,19 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	if err := validateConfirmRemoteCreate(*confirm, labels, assignees); err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	request := core.IssueProviderCreatePullRequestRequest{
-		Repo:       record.Repo,
-		Title:      *title,
-		Body:       finalBody,
-		HeadBranch: headBranch,
-		BaseBranch: baseBranch,
-		Labels:     labels,
-		Assignees:  assignees,
-		Draft:      pullRequestDraft(record),
-		Confirm:    *confirm,
-		Host:       *host,
-		SessionID:  *sessionID,
-		AgentID:    *agentID,
-		CWD:        *cwd,
-	}
-	reader := deps.PublicationReader
-	if reader == nil {
-		reader = core.GitIssueOpsHandoffPublicationReader{}
-	}
-	result, err := core.CreateIssueOpsRemotePullRequest(context.Background(), core.IssueOpsStateRoot(), record.ID, providerName, request, reader, deps.PublicationLease, func(req core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
-		return deps.createPullRequest(providerName, req)
+	result, err := core.CreateIssueOpsRemotePullRequestV1(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsRemotePullRequestRequestV1{
+		ID: record.ID, Provider: providerName, Title: *title, Body: finalBody,
+		Head: headBranch, Base: baseBranch, Labels: labels, Assignees: assignees,
+		ExpectedGeneration: *expectedGeneration,
+		Actor: model.NativeActorV1{Host: *host, SessionID: *sessionID, AgentID: *agentID,
+			SessionProcess: &model.NativeProcessReceiptV1{PID: *sessionPID, StartedAt: *sessionStartedAt, Executable: *sessionExecutable}},
+		CWD: *cwd, Confirm: *confirm,
+	}, core.IssueOpsRemotePullRequestDependenciesV1{
+		Create:    deps.createPullRequest,
+		Reconcile: deps.reconcilePullRequest,
+		Verify: func(req core.IssueOpsRemoteArtifactVerificationRequest) error {
+			return deps.verifyLive(req)
+		},
 	})
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
@@ -647,17 +598,6 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 		fmt.Printf("created: %s\n", result.URL)
 	} else {
 		fmt.Println(result.Preview)
-	}
-	return nil
-}
-
-func pullRequestDraft(record core.IssueOpsRecord) bool {
-	return core.CurrentOwnershipAttempt(record) != nil
-}
-
-func rejectSupervisedPullRequestBodyFile(record core.IssueOpsRecord, bodyFile string) error {
-	if core.CurrentOwnershipAttempt(record) != nil && strings.TrimSpace(bodyFile) != "" {
-		return fmt.Errorf("body-file is forbidden for supervised pull/merge request publication; pass the already-rendered literal --body")
 	}
 	return nil
 }

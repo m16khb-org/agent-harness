@@ -192,7 +192,7 @@ func TestVerifyGitLabRemoteArtifactURLShape(t *testing.T) {
 	}
 }
 
-func TestVerifyRejectsMalformedLinkedIssueAndExistingCreateClaim(t *testing.T) {
+func TestVerifyRejectsMalformedLinkedIssue(t *testing.T) {
 	for _, tt := range []struct {
 		name   string
 		record model.IssueOpsRecord
@@ -203,20 +203,6 @@ func TestVerifyRejectsMalformedLinkedIssueAndExistingCreateClaim(t *testing.T) {
 			record: model.IssueOpsRecord{ID: "io-malformed", Phase: model.IssueOpsPhasePR,
 				IssueURL: "https://gitlab.example/-/issues/2"},
 			want: "project authority",
-		},
-		{
-			name: "pending durable create claim",
-			record: model.IssueOpsRecord{ID: "io-claimed", Phase: model.IssueOpsPhasePR,
-				IssueURL:          "https://gitlab.example/group/project/-/issues/2",
-				RemoteCreateClaim: &model.IssueOpsRemoteCreateClaim{State: "pending"}},
-			want: "remote create claim",
-		},
-		{
-			name: "unknown durable create claim",
-			record: model.IssueOpsRecord{ID: "io-unknown", Phase: model.IssueOpsPhasePR,
-				IssueURL:          "https://gitlab.example/group/project/-/issues/2",
-				RemoteCreateClaim: &model.IssueOpsRemoteCreateClaim{State: "unknown"}},
-			want: "remote create claim",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

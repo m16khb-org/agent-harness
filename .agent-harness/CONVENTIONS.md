@@ -32,8 +32,6 @@ internal/adapter/cli/
 internal/adapter/mcp/
 internal/adapter/codex/
 internal/adapter/claude/
-internal/adapter/gjc/
-internal/adapter/reasonix/
 internal/adapter/hook/
 internal/adapter/installutil/
 internal/adapter/provider/         # github/gitlab issue provider
@@ -55,7 +53,6 @@ skills/
 | `adapter/mcp` | MCP tool schema/transport | `core`, MCP library | CLI와 다른 의미의 응답 |
 | `adapter/codex` | Codex user skill/MCP 설치 구현 | `core`, `port`, 표준 라이브러리 | 적용 대상 repo 파일 쓰기 |
 | `adapter/claude` | Claude user skill/hook/MCP 설치 구현 | `core`, `port`, 표준 라이브러리 | 기본 설치에서 `.claude/skills` 같은 repo-local 파일 쓰기 |
-| `adapter/gjc`, `adapter/reasonix` | 제3 host 어댑터(codex/claude와 같은 user/global 설치 규칙) | `core`, `port`, 표준 라이브러리 | 적용 대상 repo 파일 쓰기 |
 | `adapter/hook` | host별 hook 출력 schema formatter | `core`, `port` | host schema와 다른 응답 |
 | `adapter/provider` | github/gitlab issue·PR/MR·child 생성/검증(gh·glab CLI) | `core`, `port`, os/exec | 정책 복제, root 밖 접근 |
 
@@ -243,7 +240,7 @@ SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을
 - 확실한 금지만 `block`한다. 예: secret-like path, test sleep, real external service in tests. 기존 코드 재사용 여부, snapshot 품질, production-only 변경처럼 의미 판단이 필요한 항목은 `warn` 또는 `review`로 보고한다.
 - 새 symbol/helper가 기존 symbol과 유사하면 `reuse-before-new` review finding을 낸다. 이 finding은 자동 실패가 아니라 기존 코드 탐색 증거 또는 새 구현 근거를 요구하는 신호다.
 - 언어별 AST/linter 통합은 optional adapter로 붙이고, core guard가 특정 언어 toolchain에 의존하지 않게 한다.
-- `nondeterministic-context-serialization` rule은 DeepSeek-Reasonix의 immutable-prefix 결정성 계약에서 유래한 opt-in 규칙이다. agent가 stable cache prefix로 재사용하는 context를 만드는 파일은 `// harness:immutable-prefix` marker로 opt-in하고, 그 파일에서 `time.Now`/`rand`/`uuid` 같은 비결정 값을 도입하면 `warn`을 낸다. 의도된 volatile 값은 해당 줄에 `volatile-ok`를 달아 면제한다. volatile field 어휘와 stable projection은 `internal/core/contextregion/context_region.go`(`VolatileContextFields`, `StableProjection`, `Region*` 상수)가 source of truth이며, response-contract golden의 dynamic time key 정규화와 같은 집합을 공유한다.
+- `nondeterministic-context-serialization` rule은 immutable-prefix 결정성 계약에서 유래한 opt-in 규칙이다. agent가 stable cache prefix로 재사용하는 context를 만드는 파일은 `// harness:immutable-prefix` marker로 opt-in하고, 그 파일에서 `time.Now`/`rand`/`uuid` 같은 비결정 값을 도입하면 `warn`을 낸다. 의도된 volatile 값은 해당 줄에 `volatile-ok`를 달아 면제한다. volatile field 어휘와 stable projection은 `internal/core/contextregion/context_region.go`(`VolatileContextFields`, `StableProjection`, `Region*` 상수)가 source of truth이며, response-contract golden의 dynamic time key 정규화와 같은 집합을 공유한다.
 
 ## Policy tier 컨벤션
 

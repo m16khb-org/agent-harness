@@ -347,6 +347,11 @@ func (c *Client) RemoveWorktree(ctx context.Context, id string, force bool) erro
 }
 
 func (c *Client) ListTerminals(ctx context.Context, worktreeID string) ([]port.OrcaTerminal, error) {
+	inventory, err := c.listTerminalsInventory(ctx, worktreeID)
+	return inventory.Rows, err
+}
+
+func (c *Client) listTerminalsInventory(ctx context.Context, worktreeID string) (executionV1TerminalInventory, error) {
 	var payload struct {
 		Terminals     []terminalPayload     `json:"terminals"`
 		VisualLayouts []visualLayoutPayload `json:"visualLayouts"`
@@ -360,14 +365,14 @@ func (c *Client) ListTerminals(ctx context.Context, worktreeID string) ([]port.O
 	argv = append(argv, "--limit", strconv.Itoa(port.OrcaMaxBaselineIDs), "--json")
 	runtimeID, err := c.runJSON(ctx, "", readTimeout, argv, &payload)
 	if err != nil {
-		return nil, err
+		return executionV1TerminalInventory{}, err
 	}
 	if err := requireCompleteList("terminal", len(payload.Terminals), payload.TotalCount, payload.Truncated); err != nil {
-		return nil, err
+		return executionV1TerminalInventory{}, err
 	}
 	stableTitles, err := stableVisualTabTitles(payload.VisualLayouts)
 	if err != nil {
-		return nil, err
+		return executionV1TerminalInventory{}, err
 	}
 	result := make([]port.OrcaTerminal, 0, len(payload.Terminals))
 	for _, item := range payload.Terminals {
@@ -376,11 +381,11 @@ func (c *Client) ListTerminals(ctx context.Context, worktreeID string) ([]port.O
 		value.StableTabTitle = stableTitles[visualTabKey(value.TabID, value.LeafID)]
 		result = append(result, value)
 	}
-	return result, nil
+	return executionV1TerminalInventory{RuntimeID: runtimeID, Rows: result}, nil
 }
 
 func (c *Client) CreateTerminal(ctx context.Context, req port.OrcaCreateTerminalRequest) (port.OrcaTerminal, error) {
-	command, ok := handoffAgentCommand(req.Agent, req.Model, req.ReasoningEffort, req.AllowCodexHookTrustBypass)
+	command, ok := ownerAgentCommand(req.Agent, req.Model, req.ReasoningEffort, req.AllowCodexHookTrustBypass)
 	if !ok {
 		return port.OrcaTerminal{}, &port.OrcaError{Code: "unsupported_agent_profile", Detail: strings.TrimSpace(req.Agent)}
 	}
@@ -419,7 +424,7 @@ func (c *Client) BootstrapTerminalAgent(ctx context.Context, req port.OrcaBootst
 	if strings.TrimSpace(req.TerminalHandle) == "" {
 		return &port.OrcaError{Code: "terminal_agent_bootstrap_invalid", Detail: "terminal handle is required"}
 	}
-	command, ok := handoffAgentCommand(req.Agent, req.Model, req.ReasoningEffort, req.AllowCodexHookTrustBypass)
+	command, ok := ownerAgentCommand(req.Agent, req.Model, req.ReasoningEffort, req.AllowCodexHookTrustBypass)
 	if !ok {
 		return &port.OrcaError{Code: "unsupported_agent_profile", Detail: strings.TrimSpace(req.Agent)}
 	}
@@ -473,32 +478,41 @@ func (c *Client) ListAllTasks(ctx context.Context) ([]port.OrcaTask, error) {
 	return c.listTasks(ctx, []string{"orca", "orchestration", "task-list", "--brief", "--json"})
 }
 
+func (c *Client) listAllTasksInventory(ctx context.Context) (executionV1TaskInventory, error) {
+	return c.listTasksInventory(ctx, []string{"orca", "orchestration", "task-list", "--brief", "--json"})
+}
+
 func (c *Client) ListFailedTasks(ctx context.Context) ([]port.OrcaTask, error) {
 	return c.listTasks(ctx, []string{"orca", "orchestration", "task-list", "--status", "failed", "--json"})
 }
 
 func (c *Client) listTasks(ctx context.Context, argv []string) ([]port.OrcaTask, error) {
+	inventory, err := c.listTasksInventory(ctx, argv)
+	return inventory.Rows, err
+}
+
+func (c *Client) listTasksInventory(ctx context.Context, argv []string) (executionV1TaskInventory, error) {
 	var payload struct {
 		Tasks []taskPayload `json:"tasks"`
 		Count *int          `json:"count"`
 	}
 	runtimeID, err := c.runJSON(ctx, "", readTimeout, argv, &payload)
 	if err != nil {
-		return nil, err
+		return executionV1TaskInventory{}, err
 	}
 	if err := requireReturnedCount("task", len(payload.Tasks), payload.Count); err != nil {
-		return nil, err
+		return executionV1TaskInventory{}, err
 	}
 	result := make([]port.OrcaTask, 0, len(payload.Tasks))
 	for _, task := range payload.Tasks {
 		if strings.TrimSpace(task.ID) == "" || strings.TrimSpace(task.Status) == "" {
-			return nil, fmt.Errorf("Orca task row identity is incomplete")
+			return executionV1TaskInventory{}, fmt.Errorf("Orca task row identity is incomplete")
 		}
 		value := task.portValue()
 		value.RuntimeID = runtimeID
 		result = append(result, value)
 	}
-	return result, nil
+	return executionV1TaskInventory{RuntimeID: runtimeID, Rows: result}, nil
 }
 
 func (c *Client) ListGates(ctx context.Context) ([]port.OrcaGate, error) {
@@ -582,6 +596,10 @@ func (c *Client) Dispatch(ctx context.Context, req port.OrcaDispatchRequest) (po
 
 func (c *Client) ShowDispatch(ctx context.Context, taskID string) (port.OrcaDispatch, error) {
 	return c.dispatchResult(ctx, []string{"orca", "orchestration", "dispatch-show", "--task", taskID, "--json"})
+}
+
+func (c *Client) showDispatchInventory(ctx context.Context, taskID string) (executionV1DispatchInventory, error) {
+	return c.dispatchInventoryResult(ctx, []string{"orca", "orchestration", "dispatch-show", "--task", taskID, "--json"})
 }
 
 func (c *Client) ShowDispatchFrom(ctx context.Context, taskID, fromHandle string) (port.OrcaDispatch, error) {
@@ -670,6 +688,17 @@ func validateWorkerDoneRequest(req port.OrcaWorkerDoneRequest) error {
 }
 
 func (c *Client) dispatchResult(ctx context.Context, argv []string) (port.OrcaDispatch, error) {
+	inventory, err := c.dispatchInventoryResult(ctx, argv)
+	if err != nil {
+		return port.OrcaDispatch{}, err
+	}
+	if inventory.Dispatch == nil {
+		return port.OrcaDispatch{}, &port.OrcaError{Code: "not_found"}
+	}
+	return *inventory.Dispatch, nil
+}
+
+func (c *Client) dispatchInventoryResult(ctx context.Context, argv []string) (executionV1DispatchInventory, error) {
 	var payload struct {
 		Dispatch *struct {
 			ID             string `json:"id"`
@@ -682,12 +711,13 @@ func (c *Client) dispatchResult(ctx context.Context, argv []string) (port.OrcaDi
 	}
 	runtimeID, err := c.runJSON(ctx, "", createTimeout, argv, &payload)
 	if err != nil {
-		return port.OrcaDispatch{}, err
+		return executionV1DispatchInventory{}, err
 	}
 	if payload.Dispatch == nil {
-		return port.OrcaDispatch{}, &port.OrcaError{Code: "not_found"}
+		return executionV1DispatchInventory{RuntimeID: runtimeID}, nil
 	}
-	return port.OrcaDispatch{RuntimeID: runtimeID, ID: payload.Dispatch.ID, TaskID: payload.Dispatch.TaskID, AssigneeHandle: payload.Dispatch.AssigneeHandle, Status: payload.Dispatch.Status, Injected: payload.Injected, Preamble: payload.Preamble}, nil
+	dispatch := port.OrcaDispatch{RuntimeID: runtimeID, ID: payload.Dispatch.ID, TaskID: payload.Dispatch.TaskID, AssigneeHandle: payload.Dispatch.AssigneeHandle, Status: payload.Dispatch.Status, Injected: payload.Injected, Preamble: payload.Preamble}
+	return executionV1DispatchInventory{RuntimeID: runtimeID, Dispatch: &dispatch}, nil
 }
 
 func (c *Client) runJSON(ctx context.Context, cwd string, timeout time.Duration, argv []string, target any) (string, error) {
@@ -847,37 +877,40 @@ func hostCommand(agent string) (string, bool) {
 		return "codex", true
 	case "claude":
 		return "claude", true
-	case "gjc":
-		return "gjc", true
 	default:
 		return "", false
 	}
 }
 
-func handoffAgentCommand(agent, model, reasoningEffort string, allowCodexHookTrustBypass bool) (string, bool) {
+func ownerAgentCommand(agent, model, reasoningEffort string, allowCodexHookTrustBypass bool) (string, bool) {
+	model = strings.TrimSpace(model)
+	reasoningEffort = strings.TrimSpace(reasoningEffort)
+	if model == "" || strings.IndexByte(model, 0) >= 0 || strings.IndexByte(reasoningEffort, 0) >= 0 {
+		return "", false
+	}
 	switch strings.TrimSpace(strings.ToLower(agent)) {
 	case "codex":
-		if strings.TrimSpace(model) != port.IssueOpsCodexModel || strings.TrimSpace(reasoningEffort) != port.IssueOpsCodexReasoningEffort {
-			return "", false
+		command := "codex --model " + shellSingleQuote(model)
+		if reasoningEffort != "" {
+			command += " -c model_reasoning_effort=" + shellSingleQuote(reasoningEffort)
 		}
-		command := `codex --model ` + port.IssueOpsCodexModel + ` -c model_reasoning_effort="` + port.IssueOpsCodexReasoningEffort + `"`
 		if allowCodexHookTrustBypass {
 			command += " --dangerously-bypass-hook-trust"
 		}
 		return command, true
 	case "claude":
-		if strings.TrimSpace(model) != port.IssueOpsClaudeModel || strings.TrimSpace(reasoningEffort) != "" {
-			return "", false
+		command := "claude --model " + shellSingleQuote(model)
+		if reasoningEffort != "" {
+			command += " --effort " + shellSingleQuote(reasoningEffort)
 		}
-		return "claude --model " + port.IssueOpsClaudeModel, true
-	case "gjc":
-		if strings.TrimSpace(model) != "" || strings.TrimSpace(reasoningEffort) != "" {
-			return "", false
-		}
-		return "gjc", true
+		return command, true
 	default:
 		return "", false
 	}
+}
+
+func shellSingleQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }
 
 func orcaIssueProvider(value string) (string, bool) {

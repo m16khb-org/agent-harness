@@ -193,7 +193,7 @@ func TestIssueOpsIntentAndDesignGatePhaseProgression(t *testing.T) {
 	if err != nil || record.Phase != IssueOpsPhasePlan {
 		t.Fatalf("approved design should allow plan attachment before tool prep, got %+v err=%v", record, err)
 	}
-	record = recordIssueOpsPreparedWorktreeToolsForTest(t, stateRoot, record.ID, worktree)
+	record = recordIssueOpsPreparedExecutionForTest(t, stateRoot, record.ID, worktree)
 	if record.Phase != IssueOpsPhaseImplement {
 		t.Fatalf("worktree tool prep should allow implementation entry, got %+v", record)
 	}
@@ -245,7 +245,7 @@ func TestIssueOpsIntentAndDesignRedactSecretLikeFreeform(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stateFile, ok, err := db.Get("issueops", record.ID)
+	stateFile, ok, err := db.Get("issueops_v1", record.ID)
 	if err != nil || !ok {
 		t.Fatalf("read persisted record: ok=%v err=%v", ok, err)
 	}

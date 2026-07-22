@@ -1,5 +1,5 @@
 // Package hook provides host-specific hook output adapters.
-// Hosts (Codex, Claude, Reasonix) expect different JSON shapes for
+// Codex and Claude expect different JSON shapes for
 // hook output. This package abstracts those differences behind a
 // HostHookOutput interface so hook command implementations can emit
 // host-compatible output without inline branch logic.
@@ -9,9 +9,8 @@ package hook
 type Host string
 
 const (
-	HostCodex    Host = "codex"
-	HostClaude   Host = "claude"
-	HostReasonix Host = "reasonix"
+	HostCodex  Host = "codex"
+	HostClaude Host = "claude"
 )
 
 // HostHookOutput formats hook output for a specific host.
@@ -48,8 +47,6 @@ func Resolve(host string) HostHookOutput {
 	switch Host(host) {
 	case HostClaude:
 		return ClaudeHookOutput{}
-	case HostReasonix:
-		return ReasonixHookOutput{}
 	default:
 		return CodexHookOutput{}
 	}
@@ -139,29 +136,5 @@ func (ClaudeHookOutput) FormatStopBlock(reason string) map[string]any {
 }
 
 func (ClaudeHookOutput) FormatNoop() map[string]any {
-	return map[string]any{}
-}
-
-// ReasonixHookOutput formats output compatible with Reasonix hooks.
-// It uses the same shapes as Claude for now.
-type ReasonixHookOutput struct{}
-
-func (ReasonixHookOutput) FormatBlock(reason string) map[string]any {
-	return ClaudeHookOutput{}.FormatBlock(reason)
-}
-
-func (ReasonixHookOutput) FormatAsk(reason string) map[string]any {
-	return ClaudeHookOutput{}.FormatAsk(reason)
-}
-
-func (ReasonixHookOutput) FormatContext(eventName, additionalContext, userView string) map[string]any {
-	return ClaudeHookOutput{}.FormatContext(eventName, additionalContext, userView)
-}
-
-func (ReasonixHookOutput) FormatStopBlock(reason string) map[string]any {
-	return ClaudeHookOutput{}.FormatStopBlock(reason)
-}
-
-func (ReasonixHookOutput) FormatNoop() map[string]any {
 	return map[string]any{}
 }

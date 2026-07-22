@@ -6,9 +6,9 @@ Use this reference when an IssueOps parent cycle delegates bounded work to child
 
 1. Confirm the parent is in `implement phase`.
 2. Confirm approved reviews are recorded: design review, compatibility review, and devil's-advocate review are pass or explicitly waived.
-3. Confirm the parent has a recorded sub-agent plan in `execution_decision` with a documented pattern slug, scope, verification, fallback, and net-positive rationale.
+3. Confirm the parent plan or durable evidence records a documented pattern slug, scope, verification, fallback, tradeoffs, and net-positive rationale.
 4. Start a child with `issueops child start --parent "$ISSUEOPS_ID" --branch "$CHILD_BRANCH" --title "$TITLE" --scope "$SCOPE" --acceptance "$CRITERION" --json`.
-5. Bind and run the child in its own isolated worktree. The child must heartbeat with `issueops heartbeat --id "$CHILD_ID"` during long work.
+5. Bind and run the child in its own isolated worktree. Its exact execution generation and native process receipt fence writes; inspect them with `issueops execution status --id "$CHILD_ID"`.
 6. Inspect progress with `issueops child status --parent "$ISSUEOPS_ID" --json`.
 7. When the child reaches done, validate the evidence with `issueops child accept --parent "$ISSUEOPS_ID" --child "$CHILD_ID" --evidence "$EVIDENCE" --json`, or use `issueops child reject` / `issueops child drop` with a reason.
 
@@ -30,7 +30,7 @@ child contract:
 Rules:
 - Work only inside the expected worktree.
 - Run TDD for behavior changes.
-- Heartbeat during long work: issueops heartbeat --id <child id> --json.
+- Before each mutation, retain the exact child lifecycle ID, generation, native actor, and canonical cwd from execution status.
 - Stop and report on scope drift instead of expanding the child contract.
 - Do not mutate the parent record directly. The parent accepts, rejects, or drops your result.
 

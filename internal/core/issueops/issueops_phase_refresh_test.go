@@ -53,21 +53,21 @@ func TestIssueOpsRefreshesAISlopCleanEvidenceFromFeedback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record = recordIssueOpsPreparedWorktreeToolsForTest(t, stateRoot, record.ID, worktree)
+	record = recordIssueOpsPreparedExecutionForTest(t, stateRoot, record.ID, worktree)
 
 	writeIssueOpsFile(t, worktree, "internal/demo.go", "package demo\nconst Value = 1\n")
-	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean))
+	record, err = AdvanceIssueOpsPhaseWithActor(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean), issueOpsActorForTest(worktree))
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseFeedback))
+	record, err = AdvanceIssueOpsPhaseWithActor(stateRoot, record.ID, string(IssueOpsPhaseFeedback), issueOpsActorForTest(worktree))
 	if err != nil {
 		t.Fatal(err)
 	}
 	originalFingerprint := record.AISlopCleanFingerprint
 
 	writeIssueOpsFile(t, worktree, "internal/demo.go", "package demo\nconst Value = 2\n")
-	refreshed, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean))
+	refreshed, err := AdvanceIssueOpsPhaseWithActor(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean), issueOpsActorForTest(worktree))
 	if err != nil {
 		t.Fatal(err)
 	}

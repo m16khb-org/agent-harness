@@ -8,7 +8,7 @@
   <img src="docs/assets/agent-harness-hero.png" alt="Multiple AI coding agents sharing one local harness core" width="100%" />
 </p>
 
-**agent-harness** is a personal agent harness that gives multiple AI coding agents the same local execution rules and durable work records. Codex, Claude Code, Reasonix, GJC, and a human shell share one Go core, CLI/MCP contracts, command policy, user-state store, and skill source tree.
+**agent-harness** is a personal agent harness that gives multiple AI coding agents the same local execution rules and durable work records. Codex, Claude Code, and a human shell share one Go core, CLI/MCP contracts, command policy, user-state store, and skill source tree.
 
 The goal is not to run more agents. It is to make every host preserve the same decisions, respect the same safety boundaries, and require the same evidence before work is considered complete.
 
@@ -57,14 +57,12 @@ agent-harness inspect --json
 
 ## Host integrations
 
-The default installer currently connects four host adapters to the same execution contract.
+The default installer connects exactly two first-party host adapters to the same execution contract.
 
 | Host | Default user-level integration |
 | --- | --- |
 | Codex | `~/.codex/skills/`, MCP config, lifecycle hooks |
 | Claude Code | `~/.claude/skills/`, user-scope MCP, lifecycle hooks |
-| Reasonix | `~/.reasonix/skills/`, settings, MCP config, lifecycle hooks |
-| GJC | `~/.gjc/agent/skills/`, plugin-bundled MCP, HookAPI shim |
 
 The default install does not create host configuration in target repositories. Repo-local skills, hooks, and MCP files require explicit project-local opt-in.
 
@@ -74,8 +72,6 @@ The default install does not create host configuration in target repositories. R
 flowchart LR
     Codex["Codex"] --> Host["Thin host adapters<br/>skills · hooks · MCP wiring"]
     Claude["Claude Code"] --> Host
-    Reasonix["Reasonix"] --> Host
-    GJC["GJC"] --> Host
     Shell["Human shell"] --> Surface["agent-harness<br/>CLI · MCP proxy · daemon"]
     Host --> Surface
     Surface --> Core["Host-neutral Go core"]
@@ -167,8 +163,7 @@ cmd/harness/       Single Go binary and CLI/MCP/daemon/hook entry points
 internal/core/     Host-neutral use cases and policy/state/workflow behavior
 internal/port/     Interfaces and DTOs consumed by the core
 internal/adapter/  Filesystem, install, host, and external-boundary adapters
-configs/           Codex, Claude Code, and Reasonix configuration templates
-gjc-plugin/        GJC plugin-bundle launcher
+configs/           Codex and Claude Code configuration templates
 skills/            Skill source shared by every host
 .agent-harness/    Architecture, operations, testing, and ADR project docs
 scripts/           Install, release, smoke, and validation scripts

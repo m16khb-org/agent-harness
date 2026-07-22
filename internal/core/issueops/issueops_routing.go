@@ -88,31 +88,6 @@ func recordIssueOpsRoutingLocked(stateRoot, id, phase, skill string) (IssueOpsRe
 	return touchAndWriteIssueOps(stateRoot, record)
 }
 
-// AutoRecordSkillRouting records that skill fired at the active cycle's current
-// phase for repo, when a session-bound cycle exists. It is best-effort and
-// fail-open: a missing binding, unreadable record, or write error yields
-// recorded=false without surfacing an error, so it is safe to call from the
-// non-blocking PostToolUse hook path. Returns true only when an entry was
-// recorded against a live cycle.
-func AutoRecordSkillRouting(repo, skill string) bool {
-	if strings.TrimSpace(skill) == "" {
-		return false
-	}
-	id := ActiveSessionCycleID(repo)
-	if id == "" {
-		return false
-	}
-	stateRoot := IssueOpsStateRoot()
-	record, err := ReadIssueOps(stateRoot, id)
-	if err != nil || !record.OK {
-		return false
-	}
-	if _, err := RecordIssueOpsRouting(stateRoot, id, string(record.Phase), skill); err != nil {
-		return false
-	}
-	return true
-}
-
 // RoutingTraceAsSkillRouting projects a cycle's live RoutingTrace onto the
 // benchmark SkillRouting shape so skill_routing_fidelity can score a real run's
 // trace instead of the synthesized one.

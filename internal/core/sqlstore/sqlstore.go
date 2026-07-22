@@ -7,7 +7,8 @@
 // write lock dies with the process, so a crashed holder can never deadlock
 // later contenders. Data writes autocommit on harness.db, so a span's own
 // writes stay visible to it and to concurrent readers, matching the visibility
-// the previous flock-based file layout had.
+// the previous flock-based file layout had. Apply is the narrow exception for
+// callers that must commit multiple data rows as one transaction.
 package sqlstore
 
 import (
@@ -62,6 +63,33 @@ type Row struct {
 	Data []byte
 }
 
+// SchemaObject is one non-internal SQLite schema object from an existing
+// store. Maintenance callers use it to reject layouts they do not understand
+// before deleting any state.
+type SchemaObject struct {
+	Type  string
+	Name  string
+	Table string
+	SQL   string
+}
+
+// ExistingLayout is a read-only projection of one already-existing sqlstore
+// root. Buckets and schema objects are returned in deterministic order.
+type ExistingLayout struct {
+	Buckets    []string
+	DataSchema []SchemaObject
+	SpanSchema []SchemaObject
+}
+
+// Mutation is one row upsert or delete in an Apply transaction.
+type Mutation struct {
+	Bucket        string
+	ID            string
+	Data          []byte
+	Delete        bool
+	RequireAbsent bool
+}
+
 var (
 	handles   = map[string]*DB{}
 	handlesMu sync.Mutex
@@ -92,6 +120,26 @@ func Open(dir string) (*DB, error) {
 	}
 	handles[abs] = d
 	return d, nil
+}
+
+// CloseRoot closes and evicts the cached handle for dir. It is intentionally
+// narrow: destructive maintenance must first stop writers and finish any span
+// before calling it. Closing an uncached root is a no-op.
+func CloseRoot(dir string) error {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return fmt.Errorf("sqlstore close %q: %w", dir, err)
+	}
+	handlesMu.Lock()
+	db, ok := handles[abs]
+	if ok {
+		delete(handles, abs)
+	}
+	handlesMu.Unlock()
+	if !ok {
+		return nil
+	}
+	return errors.Join(db.data.Close(), db.span.Close())
 }
 
 func newDBWithRetry(abs string) (*DB, error) {
@@ -125,7 +173,7 @@ func newDB(abs string) (*DB, error) {
 	if err := touchPrivate(dataPath); err != nil {
 		return nil, fmt.Errorf("sqlstore create data db: %w", err)
 	}
-	data, err := openSQLite(dataPath, "_pragma=busy_timeout(10000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)")
+	data, err := openSQLite(dataPath, "_pragma=busy_timeout(10000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_txlock=immediate")
 	if err != nil {
 		return nil, fmt.Errorf("sqlstore open data db: %w", err)
 	}
@@ -410,6 +458,83 @@ func GetAllExisting(dir, bucket string) ([]Row, error) {
 	return result, rows.Err()
 }
 
+// InspectExisting reports buckets and non-internal SQLite schema objects from
+// an existing store without creating or repairing any state.
+func InspectExisting(dir string) (ExistingLayout, error) {
+	data, err := openExistingData(dir)
+	if err != nil {
+		return ExistingLayout{}, err
+	}
+	defer data.Close()
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return ExistingLayout{}, fmt.Errorf("sqlstore existing inspect %q: %w", dir, err)
+	}
+	spanPath := filepath.Join(abs, spanDBFile)
+	if _, err := os.Stat(spanPath); err != nil {
+		if os.IsNotExist(err) {
+			return ExistingLayout{}, fmt.Errorf("sqlstore existing span db %s: %w", abs, fs.ErrNotExist)
+		}
+		return ExistingLayout{}, err
+	}
+	span, err := openSQLite(spanPath, "mode=ro&_pragma=busy_timeout(0)&_pragma=query_only(1)")
+	if err != nil {
+		return ExistingLayout{}, err
+	}
+	defer span.Close()
+
+	buckets, err := existingBuckets(data)
+	if err != nil {
+		return ExistingLayout{}, err
+	}
+	dataSchema, err := existingSchema(data)
+	if err != nil {
+		return ExistingLayout{}, err
+	}
+	spanSchema, err := existingSchema(span)
+	if err != nil {
+		return ExistingLayout{}, err
+	}
+	return ExistingLayout{Buckets: buckets, DataSchema: dataSchema, SpanSchema: spanSchema}, nil
+}
+
+func existingBuckets(db *sql.DB) ([]string, error) {
+	rows, err := db.Query(`SELECT DISTINCT bucket FROM records ORDER BY bucket`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	buckets := []string{}
+	for rows.Next() {
+		var bucket string
+		if err := rows.Scan(&bucket); err != nil {
+			return nil, err
+		}
+		buckets = append(buckets, bucket)
+	}
+	return buckets, rows.Err()
+}
+
+func existingSchema(db *sql.DB) ([]SchemaObject, error) {
+	rows, err := db.Query(`SELECT type, name, tbl_name, COALESCE(sql, '')
+		FROM sqlite_schema
+		WHERE name NOT LIKE 'sqlite_%'
+		ORDER BY type, name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	objects := []SchemaObject{}
+	for rows.Next() {
+		var object SchemaObject
+		if err := rows.Scan(&object.Type, &object.Name, &object.Table, &object.SQL); err != nil {
+			return nil, err
+		}
+		objects = append(objects, object)
+	}
+	return objects, rows.Err()
+}
+
 func openExistingData(dir string) (*sql.DB, error) {
 	abs, err := filepath.Abs(dir)
 	if err != nil {
@@ -430,6 +555,49 @@ func (d *DB) Put(bucket, id string, data []byte) error {
 	_, err := d.data.Exec(`INSERT INTO records (bucket, id, data) VALUES (?, ?, ?)
 		ON CONFLICT (bucket, id) DO UPDATE SET data = excluded.data`, bucket, id, data)
 	return err
+}
+
+// Apply commits every mutation in one harness.db transaction.
+func (d *DB) Apply(ctx context.Context, mutations []Mutation) error {
+	if len(mutations) == 0 {
+		return nil
+	}
+	for _, mutation := range mutations {
+		if mutation.Delete && mutation.RequireAbsent {
+			return fmt.Errorf("sqlstore delete mutation cannot require an absent row")
+		}
+		if mutation.Bucket == "" || mutation.ID == "" {
+			return fmt.Errorf("sqlstore mutation bucket and id are required")
+		}
+	}
+	tx, err := d.data.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, mutation := range mutations {
+		if mutation.RequireAbsent {
+			var present int
+			err := tx.QueryRowContext(ctx, `SELECT 1 FROM records WHERE bucket = ? AND id = ?`, mutation.Bucket, mutation.ID).Scan(&present)
+			switch {
+			case err == nil:
+				return fmt.Errorf("sqlstore precondition failed: row %s/%s already exists", mutation.Bucket, mutation.ID)
+			case !errors.Is(err, sql.ErrNoRows):
+				return err
+			}
+		}
+		if mutation.Delete {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM records WHERE bucket = ? AND id = ?`, mutation.Bucket, mutation.ID); err != nil {
+				return err
+			}
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO records (bucket, id, data) VALUES (?, ?, ?)
+			ON CONFLICT (bucket, id) DO UPDATE SET data = excluded.data`, mutation.Bucket, mutation.ID, mutation.Data); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 // Delete removes the record for (bucket, id); deleting an absent record is

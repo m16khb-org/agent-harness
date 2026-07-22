@@ -15,9 +15,6 @@ func TestExportedIssueOpsFacades(t *testing.T) {
 	if CleanupMerged("", false) {
 		t.Fatal("cleanup without id and request should not be treated as merged")
 	}
-	if _, err := PrepareWorktreeTools(core.IssueOpsRecord{}); err == nil {
-		t.Fatal("record without worktree context should not prepare tools")
-	}
 	if err := VerifyRemoteArtifactLive(core.IssueOpsRemoteArtifactVerificationRequest{Provider: "github", Kind: "pr", URL: "not-a-url"}); err == nil {
 		t.Fatal("invalid remote artifact URL should fail before provider inspection")
 	}
@@ -75,15 +72,6 @@ func TestIssueOpsDecisionAndCleanupCLIBranches(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("decision add: %v", err)
 	}
-	if err := runIssueOpsCleanupStale([]string{"--prune-done=bad"}); err == nil {
-		t.Fatal("invalid prune duration should fail")
-	}
-	if err := runIssueOpsCleanupStale([]string{"--repo", ""}); err == nil {
-		t.Fatal("missing repo should fail in text/json result")
-	}
-	if err := runIssueOpsCleanup([]string{"stale", "--repo", t.TempDir(), "--max-age", "1"}); err != nil {
-		t.Fatalf("cleanup stale dry run: %v", err)
-	}
 }
 
 func TestIssueOpsSubcommandSuggestions(t *testing.T) {
@@ -100,7 +88,7 @@ func TestIssueOpsSubcommandSuggestions(t *testing.T) {
 		// Prefix matches against the real registry.
 		{"domain", "domain-review", false},
 		{"compat", "compatibility", false},
-		{"worktre", "worktree", false},
+		{"execut", "execution", false},
 		// No suggestion for garbage input — bare error only.
 		{"totally-bogus", "", true},
 	}

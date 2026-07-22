@@ -4,16 +4,10 @@ import (
 	"agent-harness/cmd/harness/issueopscli/benchmarkcmd"
 	"agent-harness/cmd/harness/issueopscli/feedbackcleanup"
 	"agent-harness/cmd/harness/issueopscli/remotecmd"
-	"agent-harness/cmd/harness/issueopscli/worktreecmd"
-	"agent-harness/internal/adapter/orca"
 	"agent-harness/internal/adapter/provider"
-	"context"
 	"flag"
 	"fmt"
 	"strings"
-	"time"
-
-	"agent-harness/internal/core"
 )
 
 // issueOpsSubcommands is the dispatch registry for `issueops <subcommand>`.
@@ -22,7 +16,6 @@ import (
 var issueOpsSubcommands = map[string]func([]string) error{
 	"start":           runIssueOpsStart,
 	"status":          runIssueOpsStatus,
-	"migrate-v9":      runIssueOpsMigrateV9,
 	"intent":          runIssueOpsIntent,
 	"plan-prep":       runIssueOpsPlanPrep,
 	"design":          runIssueOpsDesign,
@@ -38,7 +31,6 @@ var issueOpsSubcommands = map[string]func([]string) error{
 	"link-related":    runIssueOpsLinkRelated,
 	"child":           runIssueOpsChild,
 	"branch":          runIssueOpsBranch,
-	"worktree":        runIssueOpsWorktree,
 	"phase":           runIssueOpsPhase,
 	"record-routing":  runIssueOpsRecordRouting,
 	"routing-score":   runIssueOpsRoutingScore,
@@ -49,48 +41,10 @@ var issueOpsSubcommands = map[string]func([]string) error{
 	"remote-score": func(args []string) error {
 		return remotecmd.Run(append([]string{"score"}, args...), issueOpsRemoteDeps())
 	},
-	"pr-readiness":  runIssueOpsPRReadiness,
-	"force-release": runIssueOpsForceRelease,
-	"resume":        runIssueOpsResume,
-	"heartbeat":     runIssueOpsHeartbeat,
-	"handoff":       runIssueOpsHandoff,
-	"decision":      runIssueOpsDecision,
-	"execution":     runIssueOpsExecution,
-}
-
-func runIssueOpsMigrateV9(args []string) error {
-	fs := flag.NewFlagSet("issueops migrate-v9", flag.ContinueOnError)
-	id := fs.String("id", "", "exact issueops record id")
-	preview := fs.Bool("preview", false, "classify without writing")
-	confirm := fs.Bool("confirm", false, "persist the exact classified migration")
-	jsonOut := fs.Bool("json", false, "print JSON")
-	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
-		return err
-	}
-	if strings.TrimSpace(*id) == "" {
-		return fmt.Errorf("issueops migrate-v9 requires --id")
-	}
-	if *preview == *confirm {
-		return fmt.Errorf("issueops migrate-v9 requires exactly one of --preview or --confirm")
-	}
-	var result core.IssueOpsV8MigrationClassification
-	var err error
-	if *preview {
-		result, err = core.PreviewIssueOpsV9Migration(core.IssueOpsStateRoot(), *id)
-	} else {
-		result, err = core.ConfirmIssueOpsV9Migration(core.IssueOpsStateRoot(), *id)
-	}
-	if err != nil {
-		if *jsonOut {
-			_ = printIssueOpsErrorJSON(err)
-		}
-		return err
-	}
-	if *jsonOut {
-		return printJSON(result)
-	}
-	fmt.Printf("%s %s %s\n", result.ID, result.Classification, result.CycleState)
-	return nil
+	"pr-readiness": runIssueOpsPRReadiness,
+	"decision":     runIssueOpsDecision,
+	"execution":    runIssueOpsExecution,
+	"reset-legacy": runIssueOpsResetLegacy,
 }
 
 func runIssueOps(args []string) error {
@@ -140,32 +94,10 @@ func suggestIssueOpsSubcommand(input string) string {
 
 func issueOpsRemoteDeps() remotecmd.Deps {
 	return remotecmd.Deps{
-		PrintJSON:         printJSON,
-		PrintResult:       printIssueOpsResult,
-		PrintError:        printIssueOpsErrorJSON,
-		VerifyLive:        verifyIssueOpsRemoteArtifactLive,
-		PublicationReader: core.GitIssueOpsHandoffPublicationReader{},
-		PublicationLease:  orca.New(),
-	}
-}
-
-func runIssueOpsWorktree(args []string) error {
-	return worktreecmd.Run(args, issueOpsWorktreeDeps())
-}
-
-func prepareIssueOpsWorktreeTools(record core.IssueOpsRecord) (worktreecmd.PrepareResult, error) {
-	return worktreecmd.PrepareWorktreeTools(record)
-}
-
-func issueOpsWorktreeDeps() worktreecmd.Deps {
-	return worktreecmd.Deps{
-		ParseFlags:     parseIssueOpsFlags,
-		PrintJSON:      printJSON,
-		PrintError:     printIssueOpsErrorJSON,
-		PrepareHandoff: prepareIssueOpsHandoffWorktree,
-		ReconcileWorkspace: func(ctx context.Context, stateRoot string, req core.IssueOpsExecutionWorkspaceReconcileRequest) (core.IssueOpsRecord, error) {
-			return core.ReconcileIssueOpsExecutionWorkspace(ctx, stateRoot, req, orca.New(), time.Now().UTC().Format(time.RFC3339Nano))
-		},
+		PrintJSON:   printJSON,
+		PrintResult: printIssueOpsResult,
+		PrintError:  printIssueOpsErrorJSON,
+		VerifyLive:  verifyIssueOpsRemoteArtifactLive,
 	}
 }
 
@@ -187,61 +119,7 @@ func runIssueOpsFeedback(args []string) error {
 }
 
 func runIssueOpsCleanup(args []string) error {
-	if len(args) > 0 && args[0] == "stale" {
-		return runIssueOpsCleanupStale(args[1:])
-	}
 	return feedbackcleanup.RunCleanup(args, issueOpsFeedbackCleanupDeps())
-}
-
-func runIssueOpsCleanupStale(args []string) error {
-	fs := flag.NewFlagSet("issueops cleanup stale", flag.ContinueOnError)
-	repo := fs.String("repo", "", "source repository path")
-	maxAgeDays := fs.Int("max-age", 14, "age in days after which an idle non-done cycle is flagged needs-review")
-	apply := fs.Bool("apply", false, "force-release confirmed-stale and likely-done cycles (default: report only)")
-	pruneDone := fs.String("prune-done", "720h", "prune done cycles older than this duration (e.g. 720h for 30 days); only with --apply")
-	jsonOut := fs.Bool("json", false, "print JSON")
-	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
-		return err
-	}
-	pruneDoneAge, err := time.ParseDuration(*pruneDone)
-	if err != nil {
-		return fmt.Errorf("invalid --prune-done duration %q: %w", *pruneDone, err)
-	}
-	if pruneDoneAge < 0 {
-		return fmt.Errorf("--prune-done must be non-negative, got %s", *pruneDone)
-	}
-	result := core.ScanStaleIssueOpsCycles(core.IssueOpsStaleScanRequest{
-		Repo:         *repo,
-		MaxAge:       time.Duration(*maxAgeDays) * 24 * time.Hour,
-		Apply:        *apply,
-		PruneDoneAge: pruneDoneAge,
-	})
-	if *jsonOut {
-		return printJSON(result)
-	}
-	if !result.OK {
-		return fmt.Errorf("issueops: %s", strings.Join(result.Errors, "; "))
-	}
-	if len(result.Findings) == 0 && result.PrunedDone == 0 {
-		fmt.Printf("No stale IssueOps cycles for %s\n", result.Repo)
-		return nil
-	}
-	for _, f := range result.Findings {
-		fmt.Printf("- %s [%s] %s (%s) worktree=%s releasable=%t\n",
-			f.ID, f.Phase, f.Category, strings.Join(f.Reasons, ","), f.WorktreePath, f.Releasable)
-	}
-	if result.Applied {
-		fmt.Printf("Released %d cycle(s): %s\n", len(result.Released), strings.Join(result.Released, ", "))
-	} else {
-		fmt.Println("Dry run (report only). Re-run with --apply to force-release confirmed-stale/likely-done cycles.")
-	}
-	if result.PrunedDone > 0 {
-		fmt.Printf("Pruned %d done cycle(s)\n", result.PrunedDone)
-	}
-	if len(result.Errors) > 0 {
-		fmt.Printf("Errors: %s\n", strings.Join(result.Errors, "; "))
-	}
-	return nil
 }
 
 func issueOpsFeedbackCleanupDeps() feedbackcleanup.Deps {

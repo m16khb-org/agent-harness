@@ -11,7 +11,7 @@ import (
 
 // DefaultNativeInstallRequest normalizes common installation inputs while keeping
 // host-specific file decisions in adapter implementations.
-func DefaultNativeInstallRequest(root, home, codexHome, reasonixHome, binPath string) port.NativeInstallRequest {
+func DefaultNativeInstallRequest(root, home, codexHome, binPath string) port.NativeInstallRequest {
 	root = absClean(root)
 	if home == "" {
 		home, _ = os.UserHomeDir()
@@ -21,20 +21,15 @@ func DefaultNativeInstallRequest(root, home, codexHome, reasonixHome, binPath st
 		codexHome = filepath.Join(home, ".codex")
 	}
 	codexHome = absClean(codexHome)
-	if reasonixHome == "" && home != "" {
-		reasonixHome = filepath.Join(home, ".reasonix")
-	}
-	reasonixHome = absClean(reasonixHome)
 	if binPath == "" && root != "" {
 		binPath = filepath.Join(root, "bin", "agent-harness")
 	}
 	binPath = absClean(binPath)
 	return port.NativeInstallRequest{
-		Root:         root,
-		Home:         home,
-		CodexHome:    codexHome,
-		ReasonixHome: reasonixHome,
-		BinPath:      binPath,
+		Root:      root,
+		Home:      home,
+		CodexHome: codexHome,
+		BinPath:   binPath,
 	}
 }
 
@@ -48,7 +43,6 @@ func InstallNative(req port.NativeInstallRequest, installers ...port.HostInstall
 	req.Root = absClean(req.Root)
 	req.Home = absClean(req.Home)
 	req.CodexHome = absClean(req.CodexHome)
-	req.ReasonixHome = absClean(req.ReasonixHome)
 	req.BinPath = absClean(req.BinPath)
 	if len(req.SkillNames) == 0 {
 		skills, err := ListSkillNames(req.Root)
@@ -64,7 +58,6 @@ func InstallNative(req port.NativeInstallRequest, installers ...port.HostInstall
 		Root:         req.Root,
 		Home:         req.Home,
 		CodexHome:    req.CodexHome,
-		ReasonixHome: req.ReasonixHome,
 		BinPath:      req.BinPath,
 		SkillNames:   append([]string{}, req.SkillNames...),
 		Hosts:        []port.HostInstallResult{},

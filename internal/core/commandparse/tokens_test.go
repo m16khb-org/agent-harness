@@ -60,6 +60,28 @@ func TestHasUnquotedControlOperator(t *testing.T) {
 	}
 }
 
+func TestHasUnquotedBackgroundOperator(t *testing.T) {
+	for _, command := range []string{
+		`go test ./... 'clean & foreground'`,
+		`go test ./... "clean & foreground"`,
+		`go test ./... && go vet ./...`,
+		`printf x 2>&1`,
+		`printf x &>out.log`,
+	} {
+		if HasUnquotedBackgroundOperator(command) {
+			t.Fatalf("foreground or quoted ampersand must not be classified as background: %q", command)
+		}
+	}
+	for _, command := range []string{
+		"go test ./... &",
+		"go test ./... & git status --short",
+	} {
+		if !HasUnquotedBackgroundOperator(command) {
+			t.Fatalf("unquoted background operator must be rejected: %q", command)
+		}
+	}
+}
+
 func TestHasActiveCommandSubstitution(t *testing.T) {
 	for _, command := range []string{
 		"orca terminal send --text `touch /tmp/x`",

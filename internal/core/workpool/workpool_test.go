@@ -121,7 +121,7 @@ func TestCreatePoolRejectsParentWithoutChildStartPreconditions(t *testing.T) {
 		Name:          "blocked-parent",
 		ParentCycleID: parent.ID,
 	})
-	if err == nil || !strings.Contains(err.Error(), "parent_phase_not_implement") || !strings.Contains(err.Error(), "execution_decision_subagent_plan") {
+	if err == nil || !strings.Contains(err.Error(), "parent_phase_not_implement") || !strings.Contains(err.Error(), "parent_design_review_unapproved") {
 		t.Fatalf("CreatePool should reuse child-start parent preconditions, got %v", err)
 	}
 }
@@ -182,23 +182,6 @@ func readyWorkPoolParentCycleForTest(t *testing.T) issueops.IssueOpsRecord {
 	}
 	parent.DevilsAdvocateReview = &issueops.IssueOpsDevilsAdvocateReview{
 		Verdict:    "pass",
-		RecordedAt: "2026-07-07T00:00:00Z",
-	}
-	parent.ExecutionDecision = &issueops.IssueOpsExecutionDecision{
-		AutoProceed: []string{"create pool"},
-		HookBlocked: []string{"none"},
-		HumanGates:  []string{"accept tasks"},
-		SubagentUse: "yes",
-		SubagentPlans: []issueops.IssueOpsSubAgentPlan{{
-			Objective:            "fan out mechanical work",
-			Pattern:              "task-fan-out-coordination",
-			Benefit:              "bounded parallelism",
-			Tradeoffs:            []string{"coordination overhead"},
-			NetPositiveRationale: "many independent items",
-			Scope:                "test fixture",
-			Verification:         "go test",
-			Fallback:             "manual serial work",
-		}},
 		RecordedAt: "2026-07-07T00:00:00Z",
 	}
 	parent, err = issueops.WriteIssueOps(issueops.IssueOpsStateRoot(), parent)

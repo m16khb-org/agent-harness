@@ -53,9 +53,9 @@ func TestIssueOpsCleanupStatusRequiresMergedCleanWorktreeAndDeletedRemoteBranch(
 	if err != nil {
 		t.Fatal(err)
 	}
-	record = recordIssueOpsPreparedWorktreeToolsForTest(t, stateRoot, record.ID, worktree)
+	record = recordIssueOpsPreparedExecutionForTest(t, stateRoot, record.ID, worktree)
 	writeIssueOpsFile(t, worktree, "internal/demo.go", "package demo\n")
-	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean))
+	record, err = AdvanceIssueOpsPhaseWithActor(stateRoot, record.ID, string(IssueOpsPhaseAISlopClean), issueOpsActorForTest(worktree))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,17 +68,17 @@ func TestIssueOpsCleanupStatusRequiresMergedCleanWorktreeAndDeletedRemoteBranch(
 	if code, _, stderr := preflight.GitCmd(worktree, "push", "-q"); code != 0 {
 		t.Fatalf("git push failed: %s", stderr)
 	}
-	record, err = AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhasePR))
+	record, err = AdvanceIssueOpsPhaseWithActor(stateRoot, record.ID, string(IssueOpsPhasePR), issueOpsActorForTest(worktree))
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err = VerifyIssueOpsRemoteArtifact(stateRoot, record.ID, IssueOpsRemoteArtifactVerificationRequest{
+	record, err = VerifyIssueOpsRemoteArtifactWithActor(stateRoot, record.ID, IssueOpsRemoteArtifactVerificationRequest{
 		Provider:  "github",
 		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/2",
 		Labels:    []string{"bug"},
 		Assignees: []string{"habin"},
-	})
+	}, issueOpsActorForTest(worktree))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,7 +8,6 @@ import (
 
 	"agent-harness/cmd/harness/mcpcli"
 	"agent-harness/cmd/harness/selfworkflow"
-	"agent-harness/internal/core"
 )
 
 type rpcRequest = mcpcli.RPCRequest
@@ -38,12 +37,6 @@ func configureMCPCLI() {
 		}
 		return result, err
 	}
-	mcpcli.PrepareIssueOpsWorktreeTools = func(record core.IssueOpsRecord) (any, error) {
-		return prepareIssueOpsWorktreeTools(record)
-	}
-	mcpcli.VerifyIssueOpsChildIssueBeforeLink = verifyIssueOpsChildIssueBeforeLink
-	mcpcli.IssueOpsCleanupMerged = issueOpsCleanupMerged
-	mcpcli.VerifyIssueOpsRemoteArtifactLive = verifyIssueOpsRemoteArtifactLive
 }
 
 func runMCP() error {

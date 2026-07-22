@@ -71,14 +71,8 @@ func issueOpsChildPRGateKey(entry IssueOpsChildStatusEntry, child IssueOpsRecord
 	}
 }
 
-func issueOpsChildTerminal(entry IssueOpsChildStatusEntry, child IssueOpsRecord) bool {
-	if entry.Phase != IssueOpsPhaseDone {
-		return false
-	}
-	if child.ID != "" && strings.TrimSpace(child.ForceReleasedAt) != "" {
-		return false
-	}
-	return true
+func issueOpsChildTerminal(entry IssueOpsChildStatusEntry, _ IssueOpsRecord) bool {
+	return entry.Phase == IssueOpsPhaseDone
 }
 
 func issueOpsChildDropped(entry IssueOpsChildStatusEntry) bool {

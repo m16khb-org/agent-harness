@@ -25,7 +25,7 @@ func TestRunIssueOpsRemoteVerifyArtifactValidationErrors(t *testing.T) {
 	})
 	assertIssueOpsJSONErrorContains(t, prePROut, err, "cannot verify remote artifact before pr phase")
 
-	record = makeIssueOpsPRPhaseRecordForCLITest(t, record.ID, repo)
+	record, actor := makeIssueOpsPRPhaseRecordForCLITest(t, record.ID, repo)
 	cases := []struct {
 		name string
 		args []string
@@ -50,14 +50,14 @@ func TestRunIssueOpsRemoteVerifyArtifactValidationErrors(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			out, err := captureStdoutAndErrorForIssueOps(t, func() error {
-				return runIssueOps(tc.args)
+				return runIssueOps(withIssueOpsCLIActor(tc.args, actor))
 			})
 			assertIssueOpsJSONErrorContains(t, out, err, tc.want)
 		})
 	}
 }
 
-func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) core.IssueOpsRecord {
+func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) (core.IssueOpsRecord, core.IssueOpsActor) {
 	t.Helper()
 	recordIssueOpsCoreIntentForCLITest(t, id)
 	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), id, "https://github.com/example/repo/issues/75"); err != nil {
@@ -94,15 +94,6 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) core.Iss
 	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), id, planPath); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.RecordIssueOpsExecutionDecision(core.IssueOpsStateRoot(), id, core.IssueOpsExecutionDecisionRecordRequest{
-		AutoProceed:       []string{"remote verify test may enter implementation after durable gates"},
-		HookBlocked:       []string{"hooks do not create remote artifacts"},
-		HumanGates:        []string{"ask before destructive cleanup"},
-		SubagentUse:       "none",
-		SubagentRationale: "main agent owns this focused remote verify fixture",
-	}); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := core.RecordIssueOpsCompatibilityReview(core.IssueOpsStateRoot(), id, core.IssueOpsCompatibilityReviewRequest{
 		BackwardCompatibility: []string{"existing IssueOps JSON records remain readable"},
 		SideEffects:           []string{"phase ordering changes are limited to IssueOps lifecycle gates"},
@@ -115,18 +106,16 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) core.Iss
 	if _, err := core.RecordIssueOpsDevilsAdvocateReview(core.IssueOpsStateRoot(), id, core.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.RecordIssueOpsWorktreeTools(core.IssueOpsStateRoot(), id, core.IssueOpsWorktreeToolPreparation{
-		OK:           true,
-		WorktreePath: worktree,
-		Messages:     []string{"test prepared IssueOps worktree tools"},
-	}); err != nil {
-		t.Fatal(err)
-	}
 	writeIssueOpsCLIFileForTest(t, worktree, "internal/demo.go", "package demo\n")
 	if code, _, stderr := core.GitCmd(worktree, "add", "plans/remote-verify.md", "internal/demo.go"); code != 0 {
 		t.Fatalf("git add implementation failed: %s", stderr)
 	}
-	if _, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), id, string(core.IssueOpsPhaseAISlopClean)); err != nil {
+	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, actor := seedIssueOpsCLIExecutionV1(t, record)
+	if _, err := core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), id, string(core.IssueOpsPhaseAISlopClean), actor); err != nil {
 		t.Fatal(err)
 	}
 	if code, _, stderr := core.GitCmd(worktree, "commit", "-q", "-m", "feat: implement remote verify cli"); code != 0 {
@@ -135,11 +124,11 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) core.Iss
 	if code, _, stderr := core.GitCmd(worktree, "push", "-q"); code != 0 {
 		t.Fatalf("git push implementation failed: %s", stderr)
 	}
-	record, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), id, string(core.IssueOpsPhasePR))
+	record, err = core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), id, string(core.IssueOpsPhasePR), actor)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return record
+	return record, actor
 }
 
 func makeIssueOpsCLIGitRepoForRemoteVerifyTest(t *testing.T) string {

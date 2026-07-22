@@ -66,7 +66,7 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 | `agent-harness` CLI one-shot | 구현됨 | 모든 host에서 공통으로 호출 가능한 최소 표면 | `bin/agent-harness inspect/preflight/doctor/docs/policy/state/self-verify/self-augment` 사용 |
 | `agent-harness mcp` stdio proxy | 구현됨 | Codex/Claude Code가 같은 MCP schema로 daemon에 연결 | `agent-harness` daemon을 자동 시작하고 stdio를 Unix socket으로 proxy한다. |
 | `agent-harness daemon` user-level daemon | 구현됨 | 여러 host/session의 공통 MCP backend, 상태 공유 | `HARNESS_DAEMON_DIR` 또는 `~/.local/state/agent-harness/daemon`; stale lock, pid, socket, stop/status 제공 |
-| `agent-harness issueops` | 구현됨 | issue-driven 루프의 durable 상태와 선택적 Orca supervised execution lease | IssueOps가 단일 authority다. Orca는 worktree/terminal/task/dispatch만 수행하며 inline fallback에는 `execution_handoff`를 만들지 않는다. |
+| `agent-harness issueops` | 구현됨 | issue-driven 루프의 durable 상태와 direct/Orca execution v1 lease | IssueOps가 단일 authority다. Orca는 readiness, workspace, native owner launch/inventory만 제공하고 generation/actor/CWD fence는 core가 소유한다. |
 | `agent-harness loop` | 구현됨 | verify-until-done 루프 계약의 durable 상태와 PR readiness 게이트 | 하네스는 검증 명령을 실행하지 않고 `verify_argv`, 시도 evidence, stop 상태를 기록·게이트한다. |
 | `agent-harness worker` one-shot jobs | 부분 구현 | no-shell lifecycle job record와 draft-wiki queue 처리 | 현재 daemon은 MCP proxy backend이며 장기 상주 job daemon이 아니다. `worker draft-wiki`는 메인 에이전트가 명시 적재한 queue를 한 번 처리하고 `agy -p` argv만 호출한다. |
 | Codex plugin/skill | Phase 5 | Codex에서 설치·명령·문서 UX 개선 | core 로직 금지, CLI/MCP 호출 래퍼만 허용 |
@@ -85,7 +85,7 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 | `internal/core/toolconformance` | host-neutral fixture manifest, schema projection/validation, call classification, benchmark gate, behavioral replay | host argv, credentials, production dispatch 의존 금지 |
 | `internal/core/failurecause` | `failure_class`와 직교하는 typed causal evidence 분류 | stderr 문자열 추측이나 model blame 금지 |
 | `internal/core/operationalhealth` | normalized Git/IssueOps/Orca/user-state snapshot과 주입된 clock/preserve set을 판정하는 pure classifier | filesystem/process/SQLite I/O, cleanup mutation, host별 정책 금지 |
-| `internal/adapter/hostprobe` | Codex/Claude/GJC의 격리된 live probe 실행과 증거 정규화 | 사용자 host 설정·registry·credential DB 수정 금지 |
+| `internal/adapter/hostprobe` | Codex/Claude의 격리된 live probe 실행과 증거 정규화 | 사용자 host 설정·credential DB 수정 금지 |
 | `internal/adapter/orca` | 설치된 Orca CLI의 bounded argv/timeout/envelope projection | IssueOps 상태·복구 정책 복제, generic driver registry, 설치 대행 금지 |
 | `internal/adapter/operationalhealth` | Git, 전체 IssueOps record/binding, 선택적 Orca inventory를 read-only snapshot으로 수집 | health 판정 복제, state 생성, cleanup mutation 금지 |
 | `internal/adapter/codex` | Codex user skill symlink와 user MCP config 설치 | 대상 repo 파일 쓰기 금지 |
@@ -133,21 +133,21 @@ Draft wiki staging:
 - Hook/worker 흐름: hook은 draft-wiki 가치 판단이나 queue append를 자동 수행하지 않는다. UserPromptSubmit은 “메인 에이전트가 장기 재사용 가치 여부를 판단하라”는 지침만 주입하고, 메인 에이전트가 의미 있는 후보라고 판단한 경우에만 `agent-harness project draft-wiki queue --stdin`(heredoc 권장) 또는 `--input`으로 bounded/redacted user-state queue(`draft-wiki-queue.jsonl`)에 명시 적재한다. hook critical path에서는 `agy`를 실행하지 않는다. `agent-harness worker draft-wiki`가 queue를 읽어 `agy -p`를 argv 실행하고 응답을 `.agent-harness/draft-wiki/draft/*.md`에 쓴다.
 - 경계: `suggest`와 `worker draft-wiki`만 `agy -p`를 호출한다. `promote --confirm`은 승인된 draft를 repo-local `exported/` 디렉토리로 이동하고 `export.log`만 append한다. 외부 wiki ingest, lint, index, query-pack은 하네스 promote의 책임이 아니다.
 
-현재 `agent-harness state`는 작은 에이전트 체크포인트를 state root의 SQLite 데이터베이스(`harness.db`의 `state` bucket row)로 저장한다. project lifecycle state는 같은 user-state root 아래 `projects/<repo-id>/`에 격리되며 target repo의 `.agent-harness/`에는 쓰지 않는다. IssueOps 상태는 같은 user-state root 아래 `issueops/harness.db`의 `issueops`/`session` bucket에 저장해 host와 세션을 넘겨 이어갈 수 있게 한다. Loop 상태는 같은 user-state root 아래 `loop/harness.db`의 `loop` bucket에 저장한다. 모든 read-modify-write span은 해당 root의 `harness.lock.db`에 BEGIN IMMEDIATE 트랜잭션을 유지하는 sqlstore span으로 직렬화된다(프로세스 사망 시 자동 해제, span 중첩 금지).
+현재 `agent-harness state`는 작은 에이전트 체크포인트를 state root의 SQLite 데이터베이스(`harness.db`의 `state` bucket row)로 저장한다. project lifecycle state는 같은 user-state root 아래 `projects/<repo-id>/`에 격리되며 target repo의 `.agent-harness/`에는 쓰지 않는다. IssueOps v1 상태는 독립 namespace `issueops_v1/harness.db`의 `issueops_v1` bucket에 저장해 Codex와 Claude 세션을 넘어 이어간다. Loop 상태는 같은 user-state root 아래 `loop/harness.db`의 `loop` bucket에 저장한다. 모든 read-modify-write span은 해당 root의 `harness.lock.db`에 BEGIN IMMEDIATE 트랜잭션을 유지하는 sqlstore span으로 직렬화된다(프로세스 사망 시 자동 해제, span 중첩 금지).
 
 - 기본 위치: `~/.local/state/agent-harness/`
 - project lifecycle 위치: `~/.local/state/agent-harness/projects/<repo-id>/project.json` 및 `doc-upkeep-queue.jsonl`; `<repo-id>`는 repo fingerprint hash라 같은 머신의 여러 repo가 섞이지 않는다.
-- IssueOps 위치: `~/.local/state/agent-harness/issueops/<id>.json`; issue URL, intent contract, design review, domain review, plan path, feedback log(+resolution), PR/MR readiness evidence, 그리고 phase별 진입/완료를 인덱싱하는 additive `phase_ledger`를 저장한다. delegated child cycle은 같은 record의 additive child/delegation 필드에 저장하고, parent/child 세션 binding은 scoped binding 파일로 분리해 같은 repo 안에서도 각 agent가 자기 worktree를 resume할 수 있게 한다. `phase_ledger`는 phase 전이 시에만 실관측 timestamp로 stamp되고(매 write 아님), 없으면 status가 read 시 sentinel timestamp로 파생한다. `grill` 진입은 problem 완료(intent), `plan` 진입은 grill 완료(issue_url+branch+plan_prep+split_decision+domain_review)를 fail-closed로 요구한다. 사용자 요청과 설계 검토 같은 freeform 값은 secret-like 패턴을 redaction한 뒤 저장한다.
-- IssueOps root record의 현재 쓰기 버전은 `schema_version=8`이다. Missing/zero부터 schema 7까지의 일반 cycle은 인식 가능한 비-ownership 필드를 보존해 다음 write에서 8이 된다. 그러나 schema 7 이하의 `execution_workspace`/`execution_handoff`, 제거된 `execution_handoff.protocol_version`, future schema는 byte-identical fail-closed다. 제거된 handoff authority를 변환·재-attest·background migration하는 경로는 없다. 새 ownership cycle로 다시 시작해야 한다.
+- IssueOps 위치: `~/.local/state/agent-harness/issueops_v1/harness.db`, bucket `issueops_v1`. 한 row는 lifecycle evidence와 정확히 하나의 `ExecutionV1`을 저장한다. Execution은 canonical workspace, direct/Orca mode, generation-fenced lease, native process receipt, pending external intent, Orca resource identity, sealed owner artifacts, completion receipt를 가진다. 사용자 요청과 설계 검토 같은 freeform 값은 secret-like 패턴을 redaction한 뒤 저장한다.
+- IssueOps v1의 현재 쓰기 버전은 `schema_version=1`이다. Missing/zero v1 row는 1로 정규화하지만 legacy write-authority key, mixed schema, 또는 future schema는 byte-identical fail-closed다. Legacy namespace와 row/file은 자동 변환하지 않는다. `issueops reset-legacy preview/status/confirm`의 fingerprint-CAS, live-process barrier, staged-binary binding, exact file manifest를 통과한 명시적 destructive reset 뒤에만 v1 mutation이 열린다.
 - Workpool 위치: `~/.local/state/agent-harness/workpool/<pool-id>.json` 및 task record. Pool은 main agent가 분해·검증하는 host-neutral durable queue이며, worker agent는 claim한 task와 lease/heartbeat만 갱신한다. Harness는 agent를 spawn하지 않고, state/lease/gate만 기록한다.
 - Loop 위치: `~/.local/state/agent-harness/loop/<loop-id>.json`. CLI `loop start/record-attempt/status/stop`와 MCP `loop_start/loop_record_attempt/loop_status/loop_stop`가 같은 state machine을 사용한다. 같은 repo+name의 active loop는 resume되고 terminal loop는 새 name이 필요하다. strict PR readiness는 같은 repo의 `active`/`exhausted` loop를 `loop_incomplete:<loop-id>`로 막고, `stopped`/`succeeded` loop는 통과한다.
-- Actor model: main agent는 dispatch, safety/reversibility/user-intent judgement, child/pool result acceptance를 소유한다. child agent와 pool worker는 각자 할당된 isolated worktree와 heartbeat를 소유한다. Hook은 관찰·차단·relay만 담당하고, phase 진행·branch/worktree 준비·테스트·merge·cleanup을 대신 실행하지 않는다.
+- Actor model: main agent는 safety/reversibility/user-intent judgement와 child/pool result acceptance를 소유한다. IssueOps의 active native holder는 exact lifecycle ID, generation, process receipt, canonical cwd 안에서만 쓴다. Workpool worker는 별도 task lease/heartbeat를 소유한다. Hook은 관찰·차단·relay만 담당하고, phase 진행·workspace 준비·테스트·publication·merge·cleanup을 대신 실행하지 않는다.
 - override: `HARNESS_STATE_DIR`
 - 파일: `<key>.json`
 - key 제한: `[A-Za-z0-9._-]`, 최대 128자, `/`, `\`, `..` 금지
 - schema: current `schema_version=1`; version이 없는 legacy record는 read-compatible하고 `state migrate`로 승격한다.
 - 제공 표면: CLI `state write/read/list/prune/doctor/migrate`, MCP `state_write/state_read/state_list/state_prune/state_doctor/state_migrate`, resource `harness://state`
-- IssueOps 제공 표면: CLI `issueops start/status/intent record/link-issue/link-child/branch prepare/link-worktree/design review/link-plan/compatibility review/execution decide/worktree prepare-tools/phase/feedback add/feedback mark-issue-updated/pr-readiness/cleanup status/cleanup close-children/remote score/remote verify-artifact/benchmark run/benchmark compare/benchmark gate`, MCP `issueops_start/issueops_status/issueops_record_intent/issueops_link_issue/issueops_link_child/issueops_prepare_branch/issueops_link_worktree/issueops_review_design/issueops_link_plan/issueops_record_compatibility_review/issueops_record_execution_decision/issueops_prepare_worktree_tools/issueops_add_feedback/issueops_mark_issue_updated/issueops_set_phase/issueops_verify_remote_artifact/issueops_pr_readiness/issueops_cleanup_status/issueops_cleanup_close_children/issueops_remote_score`. Child-cycle and workpool surfaces are additive orchestration controls layered on this state model; they do not replace the main phase state machine. phase는 problem/grill/plan/compatibility-review/implement/ai-slop-clean/feedback/pr/done 9단계이며 `plan`은 linked issue와 intent contract를, `compatibility-review`는 linked worktree+approved design review+plan에 근거한 backward compatibility, side effects, rollback plan, verification, blocker-free approval을, `implement`는 issue+provider-linked branch+linked worktree+approved design review(refactor plan, alternatives, risks, verification, no open questions)+plan+approved compatibility review+durable worktree tool preparation(dependency readiness, supported install/symlink/copy/manual action)+execution decision(auto-proceed, hook-blocked work, HITL gates, sub-agent tradeoff judgement)을, `ai-slop-clean`은 추가로 implementation changes를, `pr`은 strict PR readiness를, `done`은 verified PR/MR artifact를 요구한다. feedback은 선택적 classification(contract_change/defect/question/noise)을 기록한다. `branch prepare`는 provider-linked branch 생성의 MCP-first/provider API fallback/fail-closed 순서를 상태에 기록하고, GitLab branch는 issue/task number prefix를 검증한다. `link-worktree`는 이슈 기반 작업의 정확한 isolated worktree를 상태에 고정하고, strict readiness는 해당 worktree의 branch/clean/upstream sync까지 확인한다. `worktree prepare-tools`는 linked worktree의 dependency 준비 결과를 IssueOps state에 저장하고, `compatibility review`와 `execution decide`가 각각 compatibility/side-effect 승인과 implementation 자동 진행 범위를 기록한 뒤 implementation 진입을 해제한다. `cleanup close-children`은 child PR/MR가 parent work branch에 merge된 뒤 linked child task만 닫고 parent issue는 umbrella로 유지한다. benchmark run/compare/gate는 CLI 전용 개발/autoresearch 도구다.
+- IssueOps 제공 표면: 기존 lifecycle/domain CLI와 함께 `issueops execution prepare/status/claim/release/replace/reconcile/complete`, generation-fenced `issueops remote create-pr`, destructive migration boundary인 `issueops reset-legacy preview/status/confirm`을 제공한다. IssueOps MCP 표면은 정확히 하나인 `issueops_execution`이며 action으로 같은 execution state machine을 호출한다. `execution prepare`가 provider branch의 exact base SHA에서 fixed sibling worktree를 만들고, direct는 caller에게 generation 1을 부여하며 Orca는 sealed packet/prompt/token file과 claimable lease를 만든다. External mutation은 intent-first이고 ambiguity는 reconcile 전까지 fail closed다. `execution complete`는 phase `pr`, active generation, final HEAD, committed Turing report, verification, exact verified remote URL을 요구하며 `done` 전이와 lease release를 원자적으로 기록한다.
 - cleanup: `state prune --max-age DURATION`은 기본 dry-run이고, 실제 삭제에는 `--confirm`이 필요하다.
 - integrity: `state doctor`는 checkpoint 파일을 수정하지 않고 invalid JSON, key mismatch, byte count drift, timestamp 오류를 보고한다.
 - comprehensive diagnostics: `agent-harness doctor`는 state doctor를 포함해 install, hooks, MCP, daemon, project docs, lifecycle namespace, repo-local runtime/schema 흔적을 종합 점검한다.
@@ -219,13 +219,12 @@ Draft wiki staging:
 
 ---
 
-## 7. Codex / Claude / GJC integration map
+## 7. Codex / Claude integration map
 
 | Host | 최소 통합 | 권장 통합 | 주의 |
 |------|----------|----------|------|
 | Codex | `AGENTS.md` + shell에서 `agent-harness` 실행 | `~/.codex/skills/*` native skills + `~/.codex/config.toml` MCP server + `~/.codex/hooks.json` UserPromptSubmit/PreToolUse/PostToolUse/PreCompact/PostCompact/Stop lifecycle hooks | plugin에 core logic을 넣지 않는다. 대상 repo 파일을 기본 생성하지 않는다 |
 | Claude Code | `CLAUDE.md` + shell에서 `agent-harness` 실행 | `~/.claude/skills/*` native skills + user-scope MCP server + `~/.claude/settings.json` UserPromptSubmit/PreToolUse/PostToolUse/PreCompact/PostCompact/Stop lifecycle hooks | hook에서 위험 명령을 직접 실행하지 않는다. `.claude/skills`/`.claude/settings.json`/`.mcp.json` repo-local 파일은 explicit project-local opt-in에서만 쓴다 |
-| GJC (gajae-code) | `AGENTS.md` + shell에서 `agent-harness` 실행 | `~/.gjc/agent/skills/*` native skills + `gjc plugin install` MCP bundle + `~/.gjc/agent/hooks/agent-harness.ts` HookAPI shim(`before_agent_start`, `session_start`, `turn_end`, `auto_compaction_*`, `tool_call`, `tool_result`) | shim은 `(event, ctx)`의 `ctx.sessionManager.getSessionId()`와 `ctx.cwd`를 전달하고 PreToolUse block/reason을 await한다. `.gjc/skills` repo-local 파일은 explicit project-local opt-in에서만 쓴다 |
 
 ---
 
@@ -270,7 +269,7 @@ agent-harness는 10개의 pioneer skill을 `skills/` 디렉토리에 단일 진�
 
 - **Language/tech agnostic**: 어떤 스킬도 특정 언어·프레임워크를 강제하지 않는다(6f31c55에서 검증 완료). 모든 언어별 예시는 여러 언어의 동등한 명령어를 나란히 제시한다.
 - **Namesake philosophy**: 각 스킬의 방법론은 그 이름이 된 과학자의 핵심 기여에서 파생된다(예: Codd → 정규화 이론, Dijkstra → 구조적 프로그래밍 + 최단 경로).
-- **Host-neutral**: 모든 스킬은 `skills/` 원본 하나로 Codex·Claude Code·Reasonix에서 동일하게 사용된다.
+- **Host-neutral**: 모든 스킬은 `skills/` 원본 하나로 Codex와 Claude Code에서 동일하게 사용된다.
 
 ## Standalone Runtime Policy
 
@@ -282,57 +281,59 @@ Readiness gates, self-verification, install/update success, and core CLI/MCP con
 
 ## Optional Orca execution boundary
 
-Orca integration is an optional CLI adapter, not a native-install dependency or second scheduler. `issueops worktree prepare --orchestrator auto|orca|inline` probes with structured status before mutation. `auto` may select inline only on a pre-mutation readiness failure; after any Orca mutation is invoked, the durable `pending_operation` journal and explicit recovery path are authoritative.
+Orca integration is an optional execution adapter, not a native-install
+dependency or second scheduler. `issueops execution prepare --mode auto`
+probes readiness before mutation. `auto` resolves to direct only when Orca is
+absent or unready at that pre-mutation boundary. After a possible Orca mutation,
+the durable pending intent and explicit reconciliation path are authoritative.
 
-Every ownership attempt records attempt/epoch/context, native source and owner identities, exact source/worker roots, sealed mailbox recipients, refreshable terminal control identity, and stable Orca domain IDs. Exact lifecycle ID and linked-worktree context route before source-wide inference, so prep-only and active parallel cycles cannot capture each other. The source root stays available for unrelated research and new cycle/worktree creation. After claim and context acknowledgement, only the owner mutates, publishes, and completes that cycle. Completion writes the deterministic `worker_done` notification projection and enters `cleanup_pending_human_decision`; no source acceptance step exists. After human merge, any fresh authenticated exact-source session can receive explicit cleanup authority. State compare-and-set runs under the cycle lock, but no Orca process call may run while that lock is held.
+## IssueOps execution v1 threat model and invariants
 
-## IssueOps handoff: threat model and invariants
+### Adversarial multi-session model
 
-이 절은 supervised IssueOps handoff 서브시스템의 위협 모델과 불변식을 한곳에 모은다. CAUTIONS.md의 개별 사건 항목은 그 한 줄 교훈을 유지하되 근거는 이 절을 참조한다. (이 서브시스템은 `ISSUEOPS_AUDIT.md` 이후에 추가되었으므로 그 감사 범위에 포함되지 않는다.)
+- One record has one `ExecutionV1`, one canonical worktree, and one active
+  generation at a time.
+- The trust boundary is the exact native actor: host, session/agent ID, process
+  PID/start/executable receipt, canonical cwd, lifecycle ID, and generation.
+- Branch names, source cwd, generic session bindings, terminal handles, and
+  stable diffs are not write authority.
+- Hooks are default-deny guards for mismatched mutation, not schedulers or lease
+  grantors.
 
-### 적대적 다중 세션 모델
+### Generation fence and sealed owner context
 
-- 한 supervised cycle은 두 역할이 하나의 durable sqlstore row와 외부 Orca 런타임을 공유한다: **source**(workspace/plan/gate 준비와 dispatch)와 **owner**(canonical worktree에서 claim+acknowledge 뒤 구현·publication·completion). Cleanup은 human 승인 뒤의 fresh exact-source session이 소유할 수 있다.
-- 신뢰 경계는 **native host session identity**다. mailbox handle은 routing 전용이며 권한이 아니다. owner가 source mailbox handle을 복사해도 source 또는 cleanup 권한을 얻지 못한다.
-- PreToolUse hook은 default-deny다. 허용은 상태×역할×명령/도구 표면이 정확히 일치할 때만 부여되며, 애매하거나 unnamed면 fail closed다.
+- Every mutating transition requires the active generation and matching native
+  actor/cwd. Stale generations fail before CAS.
+- Direct preparation grants generation 1 to the caller. Orca preparation stores
+  a claimable generation and seals the remote issue digest, private context
+  packet, fully rendered prompt, token-file path, owner host/model/effort, and
+  stable Orca resource IDs.
+- Orca claim consumes the private token file exactly once and requires both
+  sealed SHA-256 values. Token contents never enter state, prompts, logs, or
+  responses.
 
-### Fence triple (재생·탈취 방지)
+### External intent and lock discipline
 
-모든 mutating 전이는 `fencedCopy`가 세 값으로 gate한다:
+- Workspace and remote PR/MR creation persist intent before calling the adapter.
+  Timeout or error is ambiguity, not absence; retry and mode fallback remain
+  blocked until `execution reconcile` proves one exact outcome.
+- sqlstore `BEGIN IMMEDIATE` spans serialize record CAS. No Git, provider, or
+  Orca process call runs while the cycle lock is held.
+- Remote intent stores generation and native actor. Finish/reconcile rejects a
+  changed generation, holder, cwd, branch, or provider result.
 
-- **Attempt** — 단조 증가하는 ownership 시도 번호.
-- **OwnershipEpoch** — 한 attempt의 소유권 토큰. stale attempt/epoch는 CAS 이전에 거부된다.
-- **ContextSHA256** — sealed owner context의 해시. dispatch·claim·acknowledge·complete 같은 context 의존 전이는 정확히 이 해시를 요구한다(`requireContext`).
-- **Launch profile** — owner host, model, reasoning effort는 preview에서 결정되어 context와 durable `execution_handoff`에 함께 봉인된다. Codex는 `gpt-5.6-terra/high`, Claude는 runtime에서 `claude-opus-4-8`로 해석되는 `opus` alias를 사용한다. Adapter는 이 exact 조합과 Orca `--command` launch만 허용하며 모델 없는 terminal create/bootstrap은 fail closed다.
+### Replacement and completion
 
-세 값은 ownership lease의 현재 불변식이다. 필드 semantics를 바꾸려면 root schema bump와 hard-cutover 검증을 함께 수행한다.
-
-### 상태 기계
-
-`ownership_dispatching → ownership_dispatched → owner_orienting → owner_active → cleanup_pending_human_decision → cleanup_executing → closed`가 정상 경로다.
-
-- 어느 non-terminal 상태에서든 create/dispatch 실패는 `recovery_required`로 멈춘다(worktree가 provisioning되지 못하면 `cleanup_only` tombstone을 남긴다). `recovery_required`는 hard deadlock이 아니라 회복 가능 상태다 — block 메시지는 그 sub-state의 정확한 `handoff recover --action …` escape를 이름으로 제시해야 한다(CAUTIONS의 "block message must name a working escape").
-- **유일한 terminal handoff 상태는 `closed`다.** `cleanup_pending_human_decision`은 완료됐지만 cleanup authority를 기다리는 보존 상태이고 자동 종료·재사용하지 않는다.
-- **phase와 handoff terminality는 독립 축이다.** `phase=done`이면서 cleanup-pending일 수 있고, 그 경우에도 exact worker resource와 unreconciled Orca artifact만 fence한다. Source checkout의 unrelated work remains available.
-
-### Lock 규율
-
-- `with*Lock` 계열(issueops/session/state/workpool/worker)은 모두 sqlstore span(`BEGIN IMMEDIATE`)이다. 같은 root 재진입과 `A→B→A`는 self-deadlock 위험이며, 한 번에 하나의 entity lock만 잡는다.
-- **cycle lock 안에서는 record CAS만 수행하고, lock을 쥔 채로 어떤 Orca process도 호출하지 않는다.** Ownership completion은 immutable result와 `worker_done` projection intent를 같은 cycle lock에서 쓴 뒤, lock 밖에서 sealed owner→source mailbox로 argv-only Orca send를 최대 한 번 수행한다.
-
-### Pending-operation journal ("timeout ≠ absence")
-
-- Orca worktree/terminal/task create 또는 dispatch는 호출 전에 durable `pending_operation`을 기록하고, 실패 시 `recovery_required`로 멈춘다. process timeout/error는 mutation 부재를 뜻하지 않는다 — 같은 create를 자동 재시도하거나 inline fallback을 시작하면 중복 worker가 생긴다.
-- 어떤 stranded/inconsistent handoff도 TTL·age·`phase==done`으로 auto-release하지 않는다. 감지는 report하고 recover 명령을 넘길 뿐, release는 명시 operator 액션이다.
-
-### Exact-one-candidate 규율
-
-- `handoff recover --action reconcile`을 포함한 모든 inventory 조정은 persisted baseline + fence marker 대비 **정확히 하나**의 후보만 채택한다(CAS는 lock 안에서). 후보가 0개거나 여럿이면 fail closed 상태를 유지한다.
-- 식별 불가능한 inventory row는 절대 absence 증거가 될 수 없다(`requireStableInventoryIdentities`). unidentified-row-as-absence는 force-abandon에서 재발한 버그 클래스다.
-
-### Cleanup-receipt 순서
-
-- Human-approved exact-source cleanup은 정해진 순서로만 진행하며, 각 단계는 앞선 단계의 receipt가 존재할 때만 authorize된다. Sealed mailbox handle은 close/stop 권한이 아니고, close/stop 성공 자체도 spawned PTY 전체 정리 증거가 아니다. Exact worktree removal 뒤 terminal inventory로 각 handle/PTY의 absent/disconnected를 재확인한다.
+- Replacement is preview → revoke → finalize-preview → finalize. Inventory and
+  quiescence fingerprints, expected generation, actor, cwd, and explicit
+  confirm are required; there is no unsafe override.
+- Completion requires phase `pr`, active generation, exact final HEAD, committed
+  Turing report, verification evidence, and a durable verified remote artifact
+  at the exact URL. The completion receipt, `done` transition, and lease release
+  are one atomic state mutation.
+- Completion never merges or deletes local/remote resources. Cleanup remains a
+  separate human-authorized operation based on current merge and cleanliness
+  evidence.
 
 ## MCP tool design guidance
 
@@ -342,20 +343,19 @@ Every ownership attempt records attempt/epoch/context, native source and owner i
 - Use resources for reusable context, tools for actions, and project docs routing for deciding what to read.
 - Writable MCP tools should either be dry-run by default or append-only with narrow target files.
 
-## Ownership transfer boundary
+## Execution boundary
 
-Workspace provisioning and ownership transfer are separate. The source main
-worktree remains available before, during, and after handoff. A session binding
-is routing metadata only. The fence selects the canonical worker root, exact
-lifecycle ID, native owner, or persisted Orca resource.
+Workspace provisioning and lease grant are one execution-v1 transaction. The
+source main worktree remains available before, during, and after direct or Orca
+execution for unrelated work. A generic session binding is routing metadata
+only. The fence selects the exact lifecycle ID, generation, native process
+receipt, canonical worktree, and persisted Orca identity.
 
-An exact lifecycle ID resolves before source-wide inference and must still match
-the current source or worker context. Thus an active #2589 owner cannot capture
-a new #2598 source start, and #2598 owner gate/observation calls cannot resolve
-to #2589. The acknowledged owner performs remaining gates, implementation,
-publication, and completion. Completion enters
-`cleanup_pending_human_decision`; cleanup requires a later human-approved
-authenticated source session.
+One active execution exists per record, not per source repository. Exact-ID
+routing therefore keeps parallel cycles independent. The active holder performs
+the remaining gates, implementation, publication, and completion in its
+canonical worktree. Completion records `done` and releases the generation;
+later merge and cleanup require separate current evidence and authority.
 ## 현재 hardening 추가 사항
 
 - `internal/adapter/cli`는 top-level command catalog와 canonical usage text를 소유한다. `cmd/harness`는 process entrypoint와 dispatch layer로 남는다.

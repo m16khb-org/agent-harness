@@ -44,14 +44,6 @@ func runHookPostToolUse(args []string) error {
 		result = core.HookToolUseLifecycleResult{OK: false, Warnings: []string{"lifecycle_record_error:" + err.Error()}}
 	}
 	misdirectWarning := core.SourceCheckoutMisdirectWarning(req)
-	// Live skill-routing capture: when a Skill tool fires during a session-bound
-	// IssueOps cycle, record (current phase, skill) so skill_routing_fidelity can
-	// be scored against observed activation. Best-effort and fail-open — it never
-	// affects the hook decision and no-ops without an active cycle. Recorded here
-	// (PostToolUse, off the critical PreToolUse path) since the tool has fired.
-	if strings.EqualFold(tool, "Skill") {
-		core.AutoRecordSkillRouting(parsedRepo, hookinput.SkillFromHookInput(stdin))
-	}
 	if *jsonOut {
 		return printJSON(map[string]any{
 			"ok":                result.OK,
@@ -61,13 +53,13 @@ func runHookPostToolUse(args []string) error {
 	}
 	// B3 linter-as-gate: after an edit/write that touches .go files, surface a
 	// deterministic gofmt failure as feedback — but ONLY on hosts that accept
-	// PostToolUse additionalContext (Claude/Reasonix). Codex (which never gets
+	// PostToolUse additionalContext (Claude). Codex (which never gets
 	// --host here) and the clean case keep the no-op schema so lifecycle
 	// bookkeeping can never surface as a hook failure. LintEditedGoFiles is
 	// fail-open and self-gates on .go paths, so no process is spawned for
 	// non-Go edits, reads, or command tools.
 	h := strings.TrimSpace(*host)
-	if (h == "claude" || h == "reasonix") && doctarget.ToolUseMayMutateLifecycleFiles(tool, command) {
+	if h == "claude" && doctarget.ToolUseMayMutateLifecycleFiles(tool, command) {
 		feedbackParts := []string{}
 		if misdirectWarning != "" {
 			feedbackParts = append(feedbackParts, misdirectWarning)

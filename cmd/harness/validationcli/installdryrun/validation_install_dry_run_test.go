@@ -41,7 +41,7 @@ func TestValidateInstallDryRunSmokeWithDepsCoversSuccessAndSetupFailures(t *test
 		},
 		removeAll: func(string) error { return nil },
 		makeDirAll: func(path string, _ uint32) error {
-			if path != filepath.Join(tempRoot, "skills", skillName) && path != filepath.Join(tempRoot, "gjc-plugin") {
+			if path != filepath.Join(tempRoot, "skills", skillName) {
 				t.Fatalf("unexpected skill dir: %s", path)
 			}
 			return nil
@@ -51,10 +51,6 @@ func TestValidateInstallDryRunSmokeWithDepsCoversSuccessAndSetupFailures(t *test
 			case filepath.Join(tempRoot, "skills", skillName, "SKILL.md"):
 				if !strings.Contains(string(data), "install dry-run smoke") {
 					t.Fatalf("unexpected skill file data: %q", string(data))
-				}
-			case filepath.Join(tempRoot, "gjc-plugin", "hook.ts"):
-				if !strings.Contains(string(data), "GJC hook shim smoke fixture") {
-					t.Fatalf("unexpected GJC hook shim data: %q", string(data))
 				}
 			default:
 				t.Fatalf("unexpected skill file write: path=%s data=%q", path, string(data))
@@ -153,13 +149,17 @@ func TestValidateInstallDryRunSmokeWithDepsCoversCommandParseAndContractFailures
 	}
 }
 
-func TestInstallDryRunValidationErrorsAcceptsReasonixHost(t *testing.T) {
+func TestInstallDryRunValidationErrorsRequiresExactTwoHostSet(t *testing.T) {
 	result := validInstallDryRunResult()
 
 	errs := installDryRunValidationErrors(result, t.TempDir(), t.TempDir(), func(string) bool { return false })
 
 	if len(errs) != 0 {
-		t.Fatalf("expected three-host install dry-run result to pass, got %v", errs)
+		t.Fatalf("expected exact two-host install dry-run result to pass, got %v", errs)
+	}
+	result.Hosts = append(result.Hosts, installDryRunSmokeHost{Host: "retired", OK: true, DryRun: true})
+	if errs := installDryRunValidationErrors(result, t.TempDir(), t.TempDir(), func(string) bool { return false }); len(errs) == 0 {
+		t.Fatal("an extra host must fail the exact host-set contract")
 	}
 }
 
@@ -171,7 +171,6 @@ func validInstallDryRunResult() installDryRunSmokeResult {
 		Hosts: []installDryRunSmokeHost{
 			{Host: "codex", OK: true, DryRun: true},
 			{Host: "claude", OK: true, DryRun: true},
-			{Host: "reasonix", OK: true, DryRun: true},
 		},
 		Files: []installDryRunSmokeFile{
 			{Path: "configs/codex.toml", WouldWrite: true},

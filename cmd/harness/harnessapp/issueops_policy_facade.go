@@ -6,18 +6,12 @@ import (
 	"agent-harness/internal/core"
 )
 
-type issueOpsWorktreeToolPrepareResult = issueopscli.WorktreeToolPrepareResult
-
 func wirePolicyCLIDeps() {
 	policycli.Configure(policycli.Deps{ResolveTarget: resolveTarget})
 }
 
 func runIssueOps(args []string) error {
 	return issueopscli.RunIssueOps(args)
-}
-
-func prepareIssueOpsWorktreeTools(record core.IssueOpsRecord) (issueOpsWorktreeToolPrepareResult, error) {
-	return issueopscli.PrepareWorktreeTools(record)
 }
 
 func verifyIssueOpsChildIssueBeforeLink(childURL string) error {

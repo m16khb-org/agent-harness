@@ -57,8 +57,8 @@ func TestRunCatalogHooksFormatsHostOutputs(t *testing.T) {
 	if err := RunPostCompact([]string{"--repo", repo, "--host", "codex"}, config); err != nil {
 		t.Fatalf("RunPostCompact codex returned error: %v", err)
 	}
-	if err := RunSessionStart([]string{"--repo", repo, "--host", "reasonix"}, config); err != nil {
-		t.Fatalf("RunSessionStart reasonix returned error: %v", err)
+	if err := RunSessionStart([]string{"--repo", repo, "--host", "claude"}, config); err != nil {
+		t.Fatalf("RunSessionStart claude returned error: %v", err)
 	}
 	if len(printed) != 2 {
 		t.Fatalf("expected two printed host outputs, got %#v", printed)
@@ -79,7 +79,7 @@ func TestCatalogHostHelpers(t *testing.T) {
 	if joinContext(" ", "catalog") != "catalog" {
 		t.Fatal("joinContext should return catalog when prefix empty")
 	}
-	for _, host := range []string{"codex", "reasonix", "claude", ""} {
+	for _, host := range []string{"codex", "claude", ""} {
 		host := host
 		if resolveCatalogHost(&host) == nil {
 			t.Fatalf("expected host output for %q", host)

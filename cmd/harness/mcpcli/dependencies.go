@@ -10,8 +10,6 @@ import (
 	"agent-harness/cmd/harness/apidoc"
 	"agent-harness/cmd/harness/selfworkflow"
 	"agent-harness/cmd/harness/selfworkflow/runmode"
-	"agent-harness/internal/adapter/orca"
-	"agent-harness/internal/core"
 )
 
 const skillName = "atomic-commit-push"
@@ -109,38 +107,6 @@ func isAPIDocStaticGateError(err error) bool {
 
 func isSelfVerificationGateError(err error) bool {
 	return errors.Is(err, ErrSelfVerificationGateFailed)
-}
-
-var PrepareIssueOpsWorktreeTools = func(core.IssueOpsRecord) (any, error) {
-	return nil, fmt.Errorf("issueops worktree tool preparation dependency is not configured")
-}
-
-var IssueOpsWorktreeOrcaClient = func() core.IssueOpsOrcaWorktreeClient {
-	return orca.New()
-}
-
-var IssueOpsHandoffOrcaClient = func() core.IssueOpsOrcaDispatchClient {
-	return orca.New()
-}
-
-var IssueOpsWorkerDoneProjectionClient = func() core.IssueOpsWorkerDoneProjectionClient {
-	return orca.New()
-}
-
-var IssueOpsPublicationReader = func() core.IssueOpsHandoffPublicationReader {
-	return core.GitIssueOpsHandoffPublicationReader{}
-}
-
-var VerifyIssueOpsChildIssueBeforeLink = func(string) error {
-	return fmt.Errorf("issueops child verification dependency is not configured")
-}
-
-var IssueOpsCleanupMerged = func(_ string, requested bool) bool {
-	return requested
-}
-
-var VerifyIssueOpsRemoteArtifactLive = func(core.IssueOpsRemoteArtifactVerificationRequest) error {
-	return fmt.Errorf("issueops remote artifact live verification dependency is not configured")
 }
 
 type selfVerifyRunMode = runmode.Mode

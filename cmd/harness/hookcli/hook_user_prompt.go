@@ -62,14 +62,14 @@ func runHookUserPrompt(args []string) error {
 	// The stable project-doc catalog now ships via SessionStart/PostCompact, so
 	// UserPromptSubmit only carries the small, dynamic per-turn hints. The only
 	// user-visible line is the karpathy-first notice: augmentation must never
-	// fire silently, and Claude/Reasonix carry it via systemMessage. Codex has
+	// fire silently, and Claude carries it via systemMessage. Codex has
 	// no separate systemMessage channel here (userView would replace the hint
-	// context), so the notice is Claude/Reasonix-only.
+	// context), so the notice is Claude-only.
 	host := flagHost
 	ho := hookadapter.Resolve(host)
 	userView := ""
 	switch hookadapter.Host(host) {
-	case hookadapter.HostClaude, hookadapter.HostReasonix:
+	case hookadapter.HostClaude:
 		userView = result.UserNotice
 	}
 	return printJSON(ho.FormatContext("UserPromptSubmit", result.AdditionalContext, userView))

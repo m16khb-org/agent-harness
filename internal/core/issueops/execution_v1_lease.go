@@ -1,0 +1,768 @@
+package issueops
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/core/preflight"
+	"agent-harness/internal/port"
+)
+
+const (
+	ExecutionReplacePreview         = "preview"
+	ExecutionReplaceRevoke          = "revoke"
+	ExecutionReplaceFinalizePreview = "finalize-preview"
+	ExecutionReplaceFinalize        = "finalize"
+	ExecutionReplaceReseed          = "reseed"
+)
+
+type ExecutionResultV1 struct {
+	OK          bool              `json:"ok"`
+	ID          string            `json:"id"`
+	Execution   model.ExecutionV1 `json:"execution"`
+	NextCommand string            `json:"next_command,omitempty"`
+}
+
+type ExecutionClaimRequestV1 struct {
+	ID                  string              `json:"id"`
+	Generation          uint64              `json:"generation"`
+	Actor               model.NativeActorV1 `json:"actor"`
+	CWD                 string              `json:"cwd"`
+	TokenFile           string              `json:"claim_token_file"`
+	IssueBodySHA256     string              `json:"issue_body_sha256,omitempty"`
+	ContextPacketSHA256 string              `json:"context_packet_sha256,omitempty"`
+}
+
+type ExecutionClaimDependenciesV1 struct {
+	ReadIssue ExecutionIssueSnapshotReadFuncV1
+}
+
+type ExecutionReleaseRequestV1 struct {
+	ID         string              `json:"id"`
+	Generation uint64              `json:"generation"`
+	Actor      model.NativeActorV1 `json:"actor"`
+	CWD        string              `json:"cwd"`
+}
+
+type ExecutionReplaceRequestV1 struct {
+	ID                    string              `json:"id"`
+	Action                string              `json:"action"`
+	ExpectedGeneration    uint64              `json:"expected_generation"`
+	InventoryFingerprint  string              `json:"inventory_fingerprint,omitempty"`
+	QuiescenceFingerprint string              `json:"quiescence_fingerprint,omitempty"`
+	Reason                string              `json:"reason,omitempty"`
+	Actor                 model.NativeActorV1 `json:"actor"`
+	CWD                   string              `json:"cwd"`
+	Confirm               bool                `json:"confirm,omitempty"`
+}
+
+type ExecutionReplaceResultV1 struct {
+	OK                    bool              `json:"ok"`
+	ID                    string            `json:"id"`
+	Action                string            `json:"action"`
+	Execution             model.ExecutionV1 `json:"execution"`
+	InventoryFingerprint  string            `json:"inventory_fingerprint,omitempty"`
+	QuiescenceFingerprint string            `json:"quiescence_fingerprint,omitempty"`
+	ClaimTokenPath        string            `json:"claim_token_path,omitempty"`
+	NextCommand           string            `json:"next_command,omitempty"`
+}
+
+type ExecutionReplaceDependenciesV1 struct {
+	OrcaOwner port.ExecutionOrcaOwnerInspector
+}
+
+func StatusExecutionV1(stateRoot, id string) (ExecutionResultV1, error) {
+	record, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		return ExecutionResultV1{OK: false, ID: id}, err
+	}
+	if record.Execution == nil {
+		return ExecutionResultV1{OK: false, ID: id}, fmt.Errorf("IssueOps execution v1 is not prepared")
+	}
+	return executionResult(record), nil
+}
+
+func ClaimExecutionV1WithDependencies(ctx context.Context, stateRoot string, req ExecutionClaimRequestV1, deps ExecutionClaimDependenciesV1) (ExecutionResultV1, error) {
+	if err := RequireIssueOpsV1MutationAllowed(stateRoot); err != nil {
+		return ExecutionResultV1{OK: false, ID: req.ID}, err
+	}
+	validatePacket, err := validateExecutionInitialClaimContextV1(ctx, stateRoot, req, deps)
+	if err != nil {
+		return ExecutionResultV1{OK: false, ID: req.ID}, err
+	}
+	return claimExecutionV1(stateRoot, req, validatePacket)
+}
+
+func claimExecutionV1(stateRoot string, req ExecutionClaimRequestV1, validatePacket ...func(IssueOpsRecord) error) (ExecutionResultV1, error) {
+	if err := RequireIssueOpsV1MutationAllowed(stateRoot); err != nil {
+		return ExecutionResultV1{OK: false, ID: req.ID}, err
+	}
+	actor, err := normalizeNativeActorV1(req.Actor)
+	if err != nil {
+		return ExecutionResultV1{OK: false, ID: req.ID}, err
+	}
+	var persisted IssueOpsRecord
+	err = withIssueOpsLock(context.Background(), stateRoot, req.ID, func(context.Context) error {
+		record, err := ReadIssueOps(stateRoot, req.ID)
+		if err != nil {
+			return err
+		}
+		if record.Execution == nil {
+			return fmt.Errorf("IssueOps execution v1 is not prepared")
+		}
+		lease := &record.Execution.Lease
+		if lease.Status == model.LeaseStatusActive && lease.Generation == req.Generation && sameNativeActorV1(lease.Holder, &actor) {
+			persisted = record
+			return nil
+		}
+		if lease.Status != model.LeaseStatusClaimable || lease.Generation != req.Generation {
+			return fmt.Errorf("lease is not claimable at generation %d", req.Generation)
+		}
+		if !samePath(req.CWD, record.Execution.Workspace.Root) {
+			return fmt.Errorf("claim cwd must be the canonical worktree")
+		}
+		for _, validate := range validatePacket {
+			if validate != nil {
+				if err := validate(record); err != nil {
+					return err
+				}
+			}
+		}
+		token, err := readClaimToken(record, req.TokenFile)
+		if err != nil {
+			return err
+		}
+		if tokenSHA256(token) != lease.ClaimTokenSHA256 {
+			return fmt.Errorf("claim token does not match the current generation")
+		}
+		lease.Status = model.LeaseStatusActive
+		lease.Holder = &actor
+		lease.ClaimTokenSHA256 = ""
+		lease.ClaimedAt = time.Now().UTC().Format(time.RFC3339Nano)
+		lease.ReleasedAt = ""
+		persisted, err = persistExecutionTransition(stateRoot, record, nil)
+		if err != nil {
+			return err
+		}
+		// 상태가 active가 된 뒤 남은 파일은 hash가 비어 재사용할 수 없다.
+		_ = os.Remove(req.TokenFile)
+		return nil
+	})
+	if err != nil {
+		return ExecutionResultV1{OK: false, ID: req.ID}, err
+	}
+	return executionResult(persisted), nil
+}
+
+func ReleaseExecutionV1(stateRoot string, req ExecutionReleaseRequestV1) (ExecutionResultV1, error) {
+	if err := RequireIssueOpsV1MutationAllowed(stateRoot); err != nil {
+		return ExecutionResultV1{OK: false, ID: req.ID}, err
+	}
+	actor, err := normalizeNativeActorV1(req.Actor)
+	if err != nil {
+		return ExecutionResultV1{OK: false, ID: req.ID}, err
+	}
+	var persisted IssueOpsRecord
+	err = withIssueOpsLock(context.Background(), stateRoot, req.ID, func(context.Context) error {
+		record, err := ReadIssueOps(stateRoot, req.ID)
+		if err != nil {
+			return err
+		}
+		if record.Execution == nil {
+			return fmt.Errorf("IssueOps execution v1 is not prepared")
+		}
+		lease := &record.Execution.Lease
+		if lease.Status != model.LeaseStatusActive || lease.Generation != req.Generation || !sameNativeActorV1(lease.Holder, &actor) {
+			return fmt.Errorf("only the current holder may release generation %d", req.Generation)
+		}
+		if !samePath(req.CWD, record.Execution.Workspace.Root) {
+			return fmt.Errorf("release cwd must be the canonical worktree")
+		}
+		previous := *lease.Holder
+		lease.Status = model.LeaseStatusReleased
+		lease.Holder = nil
+		lease.ClaimTokenSHA256 = ""
+		lease.ReleasedAt = time.Now().UTC().Format(time.RFC3339Nano)
+		persisted, err = persistExecutionTransition(stateRoot, record, &previous)
+		return err
+	})
+	if err != nil {
+		return ExecutionResultV1{OK: false, ID: req.ID}, err
+	}
+	return executionResult(persisted), nil
+}
+
+func ReplaceExecutionV1(stateRoot string, req ExecutionReplaceRequestV1) (ExecutionReplaceResultV1, error) {
+	return ReplaceExecutionV1WithDependencies(context.Background(), stateRoot, req, ExecutionReplaceDependenciesV1{})
+}
+
+func ReplaceExecutionV1WithDependencies(ctx context.Context, stateRoot string, req ExecutionReplaceRequestV1, deps ExecutionReplaceDependenciesV1) (ExecutionReplaceResultV1, error) {
+	if req.Action == ExecutionReplaceRevoke || req.Action == ExecutionReplaceFinalize || req.Action == ExecutionReplaceReseed {
+		if err := RequireIssueOpsV1MutationAllowed(stateRoot); err != nil {
+			return ExecutionReplaceResultV1{OK: false, ID: req.ID, Action: req.Action}, err
+		}
+	}
+	actor, err := normalizeNativeActorV1(req.Actor)
+	if err != nil {
+		return ExecutionReplaceResultV1{OK: false, ID: req.ID, Action: req.Action}, err
+	}
+	req.Actor = actor
+	switch req.Action {
+	case ExecutionReplacePreview:
+		return previewExecutionReplacement(ctx, stateRoot, req, deps)
+	case ExecutionReplaceFinalizePreview:
+		return previewExecutionFinalization(ctx, stateRoot, req, deps)
+	case ExecutionReplaceRevoke, ExecutionReplaceFinalize, ExecutionReplaceReseed:
+		if !req.Confirm {
+			return ExecutionReplaceResultV1{OK: false, ID: req.ID, Action: req.Action}, fmt.Errorf("%s requires confirm", req.Action)
+		}
+		return mutateExecutionReplacement(ctx, stateRoot, req, deps)
+	default:
+		return ExecutionReplaceResultV1{OK: false, ID: req.ID, Action: req.Action}, fmt.Errorf("unsupported execution replace action %q", req.Action)
+	}
+}
+
+func previewExecutionReplacement(ctx context.Context, stateRoot string, req ExecutionReplaceRequestV1, deps ExecutionReplaceDependenciesV1) (ExecutionReplaceResultV1, error) {
+	record, err := executionRecordAtGeneration(stateRoot, req.ID, req.ExpectedGeneration)
+	if err != nil {
+		return ExecutionReplaceResultV1{OK: false, ID: req.ID, Action: req.Action}, err
+	}
+	if record.Execution.Lease.Status != model.LeaseStatusActive && record.Execution.Lease.Status != model.LeaseStatusReleased && record.Execution.Lease.Status != model.LeaseStatusClaimable {
+		return ExecutionReplaceResultV1{OK: false, ID: req.ID, Action: req.Action}, fmt.Errorf("replace preview is unavailable from %s", record.Execution.Lease.Status)
+	}
+	if err := validateExecutionReplacementCWD(record, req.CWD); err != nil {
+		return ExecutionReplaceResultV1{OK: false, ID: req.ID, Action: req.Action}, err
+	}
+	fingerprint, err := executionInventoryFingerprint(ctx, record, req.Actor, deps)
+	if err != nil {
+		return ExecutionReplaceResultV1{OK: false, ID: req.ID, Action: req.Action}, err
+	}
+	return replaceResult(record, req.Action, fingerprint, "", ""), nil
+}
+
+func previewExecutionFinalization(ctx context.Context, stateRoot string, req ExecutionReplaceRequestV1, deps ExecutionReplaceDependenciesV1) (ExecutionReplaceResultV1, error) {
+	record, err := executionRecordAtGeneration(stateRoot, req.ID, req.ExpectedGeneration)
+	if err != nil {
+		return ExecutionReplaceResultV1{OK: false, ID: req.ID, Action: req.Action}, err
+	}
+	if record.Execution.Lease.Status != model.LeaseStatusRevoking {
+		return ExecutionReplaceResultV1{OK: false, ID: req.ID, Action: req.Action}, fmt.Errorf("finalize preview requires a revoking lease")
+	}
+	if err := validateExecutionReplacementCWD(record, req.CWD); err != nil {
+		return ExecutionReplaceResultV1{OK: false, ID: req.ID, Action: req.Action}, err
+	}
+	fingerprint, err := executionQuiescenceFingerprint(ctx, record, req.Actor, deps)
+	if err != nil {
+		return ExecutionReplaceResultV1{OK: false, ID: req.ID, Action: req.Action}, err
+	}
+	return replaceResult(record, req.Action, "", fingerprint, ""), nil
+}
+
+func mutateExecutionReplacement(ctx context.Context, stateRoot string, req ExecutionReplaceRequestV1, deps ExecutionReplaceDependenciesV1) (ExecutionReplaceResultV1, error) {
+	var persisted IssueOpsRecord
+	var tokenPath string
+	err := withIssueOpsLock(ctx, stateRoot, req.ID, func(context.Context) error {
+		record, err := executionRecordAtGeneration(stateRoot, req.ID, req.ExpectedGeneration)
+		if err != nil {
+			return err
+		}
+		if record.Execution.Pending != nil {
+			return fmt.Errorf("execution replacement is blocked by a pending external intent; run execution reconcile")
+		}
+		lease := &record.Execution.Lease
+		if err := validateExecutionReplacementCWD(record, req.CWD); err != nil {
+			return err
+		}
+		now := time.Now().UTC().Format(time.RFC3339Nano)
+		switch req.Action {
+		case ExecutionReplaceRevoke:
+			if lease.Status != model.LeaseStatusActive || strings.TrimSpace(req.Reason) == "" {
+				return fmt.Errorf("revoke requires an active lease and a reason")
+			}
+			fingerprint, err := executionInventoryFingerprint(ctx, record, req.Actor, deps)
+			if err != nil {
+				return err
+			}
+			if fingerprint != req.InventoryFingerprint {
+				return fmt.Errorf("stale replacement inventory fingerprint")
+			}
+			previous := *lease.Holder
+			lease.Generation++
+			lease.Status = model.LeaseStatusRevoking
+			lease.ReplacedAt = now
+			lease.ReplacementReason = strings.TrimSpace(req.Reason)
+			persisted, err = persistExecutionTransition(stateRoot, record, &previous)
+			return err
+		case ExecutionReplaceFinalize:
+			if lease.Status != model.LeaseStatusRevoking {
+				return fmt.Errorf("finalize requires a revoking lease")
+			}
+			fingerprint, err := executionQuiescenceFingerprint(ctx, record, req.Actor, deps)
+			if err != nil {
+				return err
+			}
+			if fingerprint != req.QuiescenceFingerprint {
+				return fmt.Errorf("stale quiescence fingerprint")
+			}
+			token, path, err := createClaimToken(record)
+			if err != nil {
+				return err
+			}
+			tokenPath = path
+			lease.Status = model.LeaseStatusClaimable
+			lease.Holder = nil
+			lease.ClaimTokenSHA256 = tokenSHA256(token)
+			persisted, err = persistExecutionTransition(stateRoot, record, nil)
+			if err != nil {
+				_ = os.Remove(path)
+			}
+			return err
+		case ExecutionReplaceReseed:
+			if lease.Status != model.LeaseStatusReleased && lease.Status != model.LeaseStatusClaimable {
+				return fmt.Errorf("reseed requires a released or claimable lease")
+			}
+			fingerprint, err := executionInventoryFingerprint(ctx, record, req.Actor, deps)
+			if err != nil {
+				return err
+			}
+			if fingerprint != req.InventoryFingerprint {
+				return fmt.Errorf("stale replacement inventory fingerprint")
+			}
+			removeClaimTokenIfPresent(record)
+			lease.Generation++
+			token, path, err := createClaimToken(record)
+			if err != nil {
+				return err
+			}
+			tokenPath = path
+			lease.Status = model.LeaseStatusClaimable
+			lease.Holder = nil
+			lease.ClaimTokenSHA256 = tokenSHA256(token)
+			lease.ReplacedAt = now
+			lease.ReplacementReason = strings.TrimSpace(req.Reason)
+			persisted, err = persistExecutionTransition(stateRoot, record, nil)
+			if err != nil {
+				_ = os.Remove(path)
+			}
+			return err
+		}
+		return fmt.Errorf("unsupported execution replace action %q", req.Action)
+	})
+	if err != nil {
+		return ExecutionReplaceResultV1{OK: false, ID: req.ID, Action: req.Action}, err
+	}
+	return replaceResult(persisted, req.Action, "", "", tokenPath), nil
+}
+
+func executionRecordAtGeneration(stateRoot, id string, generation uint64) (IssueOpsRecord, error) {
+	record, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		return record, err
+	}
+	if record.Execution == nil {
+		return record, fmt.Errorf("IssueOps execution v1 is not prepared")
+	}
+	if generation == 0 || record.Execution.Lease.Generation != generation {
+		return record, fmt.Errorf("stale lease generation: current=%d expected=%d", record.Execution.Lease.Generation, generation)
+	}
+	return record, nil
+}
+
+func executionResult(record IssueOpsRecord) ExecutionResultV1 {
+	return ExecutionResultV1{OK: true, ID: record.ID, Execution: *record.Execution}
+}
+
+func replaceResult(record IssueOpsRecord, action, inventory, quiescence, tokenPath string) ExecutionReplaceResultV1 {
+	return ExecutionReplaceResultV1{
+		OK: true, ID: record.ID, Action: action, Execution: *record.Execution,
+		InventoryFingerprint: inventory, QuiescenceFingerprint: quiescence, ClaimTokenPath: tokenPath,
+	}
+}
+
+func normalizeNativeActorV1(actor model.NativeActorV1) (model.NativeActorV1, error) {
+	actor.Host = strings.ToLower(strings.TrimSpace(actor.Host))
+	actor.SessionID = strings.TrimSpace(actor.SessionID)
+	actor.AgentID = strings.TrimSpace(actor.AgentID)
+	if actor.SessionProcess != nil {
+		receipt := *actor.SessionProcess
+		receipt.StartedAt = strings.TrimSpace(receipt.StartedAt)
+		receipt.Executable = strings.TrimSpace(receipt.Executable)
+		actor.SessionProcess = &receipt
+	}
+	actor.ProcessAncestry = append([]model.NativeProcessReceiptV1(nil), actor.ProcessAncestry...)
+	if err := model.ValidateNativeActorV1(actor); err != nil {
+		return actor, err
+	}
+	locallyObserved := false
+	for _, receipt := range actor.ProcessAncestry {
+		if actor.SessionProcess != nil && receipt == *actor.SessionProcess {
+			locallyObserved = true
+			break
+		}
+	}
+	if !locallyObserved {
+		return actor, fmt.Errorf("native session process receipt is not in the local process ancestry")
+	}
+	if err := requireExactLiveNativeProcessReceiptV1(*actor.SessionProcess); err != nil {
+		return actor, err
+	}
+	return actor, nil
+}
+
+func sameNativeActorV1(a, b *model.NativeActorV1) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return sameNativeActorIdentityV1(a, b) && sameNativeProcessReceiptV1(a.SessionProcess, b.SessionProcess)
+}
+
+func sameNativeActorIdentityV1(a, b *model.NativeActorV1) bool {
+	return a != nil && b != nil && strings.EqualFold(a.Host, b.Host) && a.SessionID == b.SessionID && a.AgentID == b.AgentID
+}
+
+func sameNativeProcessReceiptV1(a, b *model.NativeProcessReceiptV1) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return *a == *b
+}
+
+func samePath(a, b string) bool {
+	left, err := filepath.Abs(strings.TrimSpace(a))
+	if err != nil {
+		return false
+	}
+	if resolved, resolveErr := filepath.EvalSymlinks(left); resolveErr == nil {
+		left = resolved
+	}
+	right, err := filepath.Abs(strings.TrimSpace(b))
+	if err != nil {
+		return false
+	}
+	if resolved, resolveErr := filepath.EvalSymlinks(right); resolveErr == nil {
+		right = resolved
+	}
+	return filepath.Clean(left) == filepath.Clean(right)
+}
+
+func executionInventoryFingerprint(ctx context.Context, record IssueOpsRecord, requester model.NativeActorV1, deps ExecutionReplaceDependenciesV1) (string, error) {
+	snapshot, err := workspaceSnapshotV1(record.Execution.Workspace)
+	if err != nil {
+		return "", err
+	}
+	processStatus, orcaInventory, err := executionOwnerInventoryV1(ctx, record, deps)
+	if err != nil {
+		return "", err
+	}
+	payload := struct {
+		ID         string                           `json:"id"`
+		Generation uint64                           `json:"generation"`
+		Status     model.LeaseStatusV1              `json:"status"`
+		Holder     *model.NativeActorV1             `json:"holder,omitempty"`
+		Requester  model.NativeActorV1              `json:"requester"`
+		Process    string                           `json:"process_status"`
+		Orca       port.ExecutionOrcaOwnerInventory `json:"orca"`
+		Snapshot   string                           `json:"snapshot"`
+	}{record.ID, record.Execution.Lease.Generation, record.Execution.Lease.Status, record.Execution.Lease.Holder, requester, processStatus, orcaInventory, snapshot}
+	return hashJSON(payload)
+}
+
+func executionQuiescenceFingerprint(ctx context.Context, record IssueOpsRecord, requester model.NativeActorV1, deps ExecutionReplaceDependenciesV1) (string, error) {
+	holder := record.Execution.Lease.Holder
+	if holder == nil || holder.SessionProcess == nil {
+		return "", fmt.Errorf("revoking lease is missing its old process receipt")
+	}
+	processStatus, _, err := inspectNativeProcessReceiptV1(*holder.SessionProcess)
+	if err != nil {
+		return "", err
+	}
+	if processStatus == "live" {
+		return "", fmt.Errorf("old holder process is still live: pid=%d executable=%s", holder.SessionProcess.PID, holder.SessionProcess.Executable)
+	}
+	if processStatus != "dead" {
+		return "", fmt.Errorf("old holder process identity is unsafe to finalize: pid=%d status=%s", holder.SessionProcess.PID, processStatus)
+	}
+	_, orcaInventory, err := executionOwnerInventoryV1(ctx, record, deps)
+	if err != nil {
+		return "", err
+	}
+	if orcaInventory.TerminalLive || orcaInventory.TaskLive {
+		return "", fmt.Errorf("Orca owner is not quiescent: terminal_live=%t task_live=%t task_status=%s dispatch_status=%s", orcaInventory.TerminalLive, orcaInventory.TaskLive, orcaInventory.TaskStatus, orcaInventory.DispatchStatus)
+	}
+	excluded := map[int]bool{os.Getpid(): true}
+	if requester.SessionProcess != nil {
+		excluded[requester.SessionProcess.PID] = true
+	}
+	workspaceProcesses, err := inspectWorkspaceProcessesV1(record.Execution.Workspace.Root, excluded)
+	if err != nil {
+		return "", err
+	}
+	if len(workspaceProcesses) > 0 {
+		process := workspaceProcesses[0]
+		return "", fmt.Errorf("workspace process is not quiescent: pid=%d command=%s fd=%s access=%s path=%s", process.PID, process.Command, process.FD, process.Access, process.Path)
+	}
+	snapshot, err := workspaceSnapshotV1(record.Execution.Workspace)
+	if err != nil {
+		return "", err
+	}
+	payload := struct {
+		ID         string                           `json:"id"`
+		Generation uint64                           `json:"generation"`
+		Holder     model.NativeActorV1              `json:"holder"`
+		Requester  model.NativeActorV1              `json:"requester"`
+		Process    model.NativeProcessReceiptV1     `json:"process"`
+		Orca       port.ExecutionOrcaOwnerInventory `json:"orca"`
+		Snapshot   string                           `json:"snapshot"`
+	}{record.ID, record.Execution.Lease.Generation, *holder, requester, *holder.SessionProcess, orcaInventory, snapshot}
+	return hashJSON(payload)
+}
+
+func executionOwnerInventoryV1(ctx context.Context, record IssueOpsRecord, deps ExecutionReplaceDependenciesV1) (string, port.ExecutionOrcaOwnerInventory, error) {
+	status := "none"
+	if holder := record.Execution.Lease.Holder; holder != nil && holder.SessionProcess != nil {
+		var err error
+		status, _, err = inspectNativeProcessReceiptV1(*holder.SessionProcess)
+		if err != nil {
+			return "", port.ExecutionOrcaOwnerInventory{}, err
+		}
+	}
+	if record.Execution.Mode != model.ExecutionModeOrca {
+		return status, port.ExecutionOrcaOwnerInventory{}, nil
+	}
+	if record.Execution.Orca == nil || deps.OrcaOwner == nil {
+		return "", port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca execution requires exact owner terminal and task inventory")
+	}
+	binding := record.Execution.Orca
+	inventory, err := deps.OrcaOwner.InspectOwner(ctx, port.ExecutionOrcaOwnerInventoryRequest{
+		RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, TaskID: binding.TaskID,
+		DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID,
+	})
+	return status, inventory, err
+}
+
+func validateExecutionReplacementCWD(record IssueOpsRecord, cwd string) error {
+	workspace := record.Execution.Workspace
+	if !samePath(cwd, workspace.SourceRoot) && !samePath(cwd, workspace.Root) {
+		return fmt.Errorf("execution replace cwd must be source_root or the canonical worktree")
+	}
+	return nil
+}
+
+func workspaceSnapshotV1(workspace model.WorkspaceV1) (string, error) {
+	info, err := os.Lstat(workspace.Root)
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+		return "", fmt.Errorf("canonical worktree must be a real directory")
+	}
+	top, err := gitOutput(workspace.Root, "rev-parse", "--show-toplevel")
+	if err != nil || !samePath(top, workspace.Root) {
+		return "", fmt.Errorf("canonical worktree root does not match Git top-level")
+	}
+	branch, err := gitOutput(workspace.Root, "branch", "--show-current")
+	if err != nil || branch != workspace.Branch {
+		return "", fmt.Errorf("canonical worktree branch mismatch")
+	}
+	head, err := gitOutput(workspace.Root, "rev-parse", "HEAD")
+	if err != nil {
+		return "", err
+	}
+	commonDir, err := gitOutput(workspace.Root, "rev-parse", "--git-common-dir")
+	if err != nil {
+		return "", err
+	}
+	indexPath, err := gitOutput(workspace.Root, "rev-parse", "--git-path", "index")
+	if err != nil {
+		return "", err
+	}
+	if !filepath.IsAbs(indexPath) {
+		indexPath = filepath.Join(workspace.Root, indexPath)
+	}
+	indexBytes, err := os.ReadFile(indexPath)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+	_, tracked, stderr := preflight.GitCmdRaw(workspace.Root, "diff", "--binary", "--no-ext-diff", "--")
+	if stderr != "" {
+		return "", fmt.Errorf("read tracked diff: %s", strings.TrimSpace(stderr))
+	}
+	_, staged, stderr := preflight.GitCmdRaw(workspace.Root, "diff", "--cached", "--binary", "--no-ext-diff", "--")
+	if stderr != "" {
+		return "", fmt.Errorf("read staged diff: %s", strings.TrimSpace(stderr))
+	}
+	code, untrackedRaw, stderr := preflight.GitCmdRaw(workspace.Root, "ls-files", "--others", "--exclude-standard", "-z")
+	if code != 0 {
+		return "", fmt.Errorf("list untracked files: %s", strings.TrimSpace(stderr))
+	}
+	untracked := strings.Split(strings.TrimSuffix(untrackedRaw, "\x00"), "\x00")
+	if len(untracked) == 1 && untracked[0] == "" {
+		untracked = nil
+	}
+	sort.Strings(untracked)
+	hash := sha256.New()
+	writeFingerprintPart(hash, workspace.Root)
+	writeFingerprintPart(hash, commonDir)
+	writeFingerprintPart(hash, branch)
+	writeFingerprintPart(hash, head)
+	writeFingerprintBytes(hash, indexBytes)
+	writeFingerprintPart(hash, tracked)
+	writeFingerprintPart(hash, staged)
+	for _, relative := range untracked {
+		if filepath.IsAbs(relative) || strings.HasPrefix(filepath.Clean(relative), ".."+string(filepath.Separator)) {
+			return "", fmt.Errorf("unsafe untracked path %q", relative)
+		}
+		path := filepath.Join(workspace.Root, filepath.FromSlash(relative))
+		entry, err := os.Lstat(path)
+		if err != nil || entry.Mode()&os.ModeSymlink != 0 || !entry.Mode().IsRegular() {
+			return "", fmt.Errorf("untracked path must be a regular file: %s", relative)
+		}
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return "", err
+		}
+		writeFingerprintPart(hash, relative)
+		writeFingerprintPart(hash, entry.Mode().String())
+		writeFingerprintBytes(hash, content)
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func gitOutput(root string, args ...string) (string, error) {
+	code, stdout, stderr := preflight.GitCmd(root, args...)
+	if code != 0 {
+		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), stderr)
+	}
+	return strings.TrimSpace(stdout), nil
+}
+
+type fingerprintWriter interface {
+	Write([]byte) (int, error)
+}
+
+func writeFingerprintPart(hash fingerprintWriter, value string) {
+	writeFingerprintBytes(hash, []byte(value))
+}
+
+func writeFingerprintBytes(hash fingerprintWriter, value []byte) {
+	_, _ = hash.Write([]byte(strconv.Itoa(len(value))))
+	_, _ = hash.Write([]byte{0})
+	_, _ = hash.Write(value)
+	_, _ = hash.Write([]byte{0})
+}
+
+func hashJSON(value any) (string, error) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:]), nil
+}
+
+func claimTokenPath(record IssueOpsRecord) string {
+	key := tokenSHA256(record.ID)[:16]
+	return filepath.Join(record.Execution.Workspace.Root, ".agent-harness", "state", "issueops-v1", key, fmt.Sprintf("lease-%d.token", record.Execution.Lease.Generation))
+}
+
+func createClaimToken(record IssueOpsRecord) (string, string, error) {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", "", err
+	}
+	token := hex.EncodeToString(raw)
+	path := claimTokenPath(record)
+	if err := secureMkdirAll(record.Execution.Workspace.Root, filepath.Dir(path)); err != nil {
+		return "", "", err
+	}
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return "", "", err
+	}
+	_, writeErr := file.WriteString(token + "\n")
+	closeErr := file.Close()
+	if writeErr != nil || closeErr != nil {
+		_ = os.Remove(path)
+		if writeErr != nil {
+			return "", "", writeErr
+		}
+		return "", "", closeErr
+	}
+	return token, path, nil
+}
+
+func readClaimToken(record IssueOpsRecord, path string) (string, error) {
+	expected := claimTokenPath(record)
+	if !samePath(path, expected) {
+		return "", fmt.Errorf("claim_token_file must be the deterministic current-generation path")
+	}
+	info, err := os.Lstat(expected)
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Mode().Perm() != 0o600 {
+		return "", fmt.Errorf("claim token file must be a 0600 regular file")
+	}
+	if info.Size() > 256 {
+		return "", fmt.Errorf("claim token file is oversized")
+	}
+	data, err := os.ReadFile(expected)
+	if err != nil {
+		return "", err
+	}
+	token := strings.TrimSpace(string(data))
+	if token == "" {
+		return "", fmt.Errorf("claim token file is empty")
+	}
+	return token, nil
+}
+
+func tokenSHA256(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+
+func removeClaimTokenIfPresent(record IssueOpsRecord) {
+	if record.Execution != nil {
+		_ = os.Remove(claimTokenPath(record))
+	}
+}
+
+func secureMkdirAll(root, target string) error {
+	root, err := filepath.Abs(root)
+	if err != nil {
+		return err
+	}
+	target, err = filepath.Abs(target)
+	if err != nil {
+		return err
+	}
+	relative, err := filepath.Rel(root, target)
+	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("runtime token directory escapes the canonical worktree")
+	}
+	current := root
+	for _, part := range strings.Split(relative, string(filepath.Separator)) {
+		if part == "" || part == "." {
+			continue
+		}
+		current = filepath.Join(current, part)
+		info, err := os.Lstat(current)
+		if errors.Is(err, os.ErrNotExist) {
+			if err := os.Mkdir(current, 0o700); err != nil {
+				return err
+			}
+			continue
+		}
+		if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+			return fmt.Errorf("runtime token directory must contain only real directories")
+		}
+	}
+	return nil
+}

@@ -12,7 +12,7 @@ func TestRunStateMaintainReportsRoots(t *testing.T) {
 	stateDir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateDir)
 	t.Setenv("HARNESS_WORKER_DIR", "")
-	// Materialize the root store and the issueops store; workpool, worker, and
+	// Materialize the root store and the IssueOps v1 store; workpool, worker, and
 	// loop stay absent and must be reported as skipped, not created.
 	if _, err := core.StateWrite("maintain-smoke", "content"); err != nil {
 		t.Fatalf("seed state: %v", err)

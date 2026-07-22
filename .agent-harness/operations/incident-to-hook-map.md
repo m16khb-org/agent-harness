@@ -9,7 +9,7 @@
 
 | # | Incident (출처) | 관찰된 실패 | 결정적 강제장치 (hook/test) | 상태 |
 |---|------------------|-------------|------------------------------|------|
-| 1 | CAUTIONS §15 IssueOps worktree edits | issue 작업이 worktree 밖(소스 repo)에서 편집 | PreToolUse `--enforce-worktree` (`internal/core/lifecycle/lifecycle_state.go`; install: claude/codex/reasonix `install_hooks.go`) | ✅ hook |
+| 1 | CAUTIONS §15 IssueOps worktree edits | issue 작업이 worktree 밖(소스 repo)에서 편집 | PreToolUse `--enforce-worktree` (`internal/core/lifecycle/lifecycle_state.go`; install: claude/codex `install_hooks.go`) | ✅ hook |
 | 2 | CAUTIONS §16 decision replies must have numbered choices | 결정 응답이 번호 선택지/추천 1개 없이 종료 | Stop `--enforce-numbered-next-actions` (`internal/core/nextaction/`) | ✅ hook |
 | 3 | CAUTIONS §4 Secret leakage | hook 실패 로그에 secret 원문 기록 | hook-failure-log 리댁션, `TestRunHookRecordsFailureEvent`가 "leaked secret"을 assert (`cmd/harness/hookcli/hook_post_tool_use_test.go`) | ✅ test |
 | 4 | CAUTIONS §14 Codex vs Claude hook rendering drift | host별 hook 명령/JSON 형식 drift | native 설치 계약 golden `TestNativeInstallAdapterContractMatrix` (`internal/adapter/testdata/native_install_contract_matrix.golden.json`) | ✅ golden test |

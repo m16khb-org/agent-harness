@@ -99,11 +99,13 @@ Link the issue:
 agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" --json
 ```
 
-Record branch and worktree evidence:
+Record branch evidence, then provision the canonical worktree through execution
+v1. Preview first and repeat the same request with `--confirm`:
 
 ```bash
 agent-harness issueops branch prepare --id "$ISSUEOPS_ID" --provider "$PROVIDER" --issue-url "$ISSUE_URL" --branch "$BRANCH" --base-branch "$BASE_BRANCH" --link-verified --json
-agent-harness issueops link-worktree --id "$ISSUEOPS_ID" --worktree-path "$EXPECTED_WORKTREE" --json
+agent-harness issueops execution prepare --id "$ISSUEOPS_ID" --mode auto --owner-host "$OWNER_HOST" --owner-model "$OWNER_MODEL" $ACTOR_FLAGS --json
+agent-harness issueops execution prepare --id "$ISSUEOPS_ID" --mode auto --owner-host "$OWNER_HOST" --owner-model "$OWNER_MODEL" $ACTOR_FLAGS --confirm --json
 ```
 
 Record the approved design review:
@@ -162,12 +164,11 @@ The candidate file records the hypothesis, target dimensions, edit surface, and 
 
 All IssueOps LLM judging must go through the shared external LLM wrapper in the harness core. The wrapper invokes the Z.AI Coding Plan chat completions API with `glm-5-turbo` by default.
 
-## Human cleanup succession
+## Human cleanup boundary
 
-`handoff complete` writes `cleanup_pending_human_decision`; there is no automatic cleanup. From the exact sealed source root, any authenticated session may preview, but preview grants no authority. Present exactly these choices to the human:
-
-1. retain resources;
-2. close owner terminal and retain workspace;
-3. remove local worker resources.
-
-Only a human-confirmed approval names the candidate session that may record the next ordered receipt. If the original source session is gone, a new authenticated session may preview and the human must re-authorize it; generic binding, Stop hooks, stale scan, and elapsed time never transfer cleanup authority. Preserve every non-`closed` ownership resource until that decision.
+`issueops execution complete` records the completion receipt, moves the cycle to
+`done`, and releases the generation. It does not merge, close a terminal, remove
+a worktree, or delete a branch. After verified merge evidence, present the
+numbered cleanup choices above and perform only the explicitly authorized
+operations. A Stop hook, elapsed time, or missing prior session never grants
+destructive cleanup authority.

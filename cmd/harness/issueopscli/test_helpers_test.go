@@ -1,9 +1,13 @@
 package issueopscli
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"agent-harness/internal/core"
+	issueopscore "agent-harness/internal/core/issueops"
+	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/testsupport"
 )
 
@@ -96,4 +100,47 @@ func recordIssueOpsCoreDesignForCLITest(t *testing.T, id string) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func seedIssueOpsCLIExecutionV1(t *testing.T, record core.IssueOpsRecord) (core.IssueOpsRecord, core.IssueOpsActor) {
+	t.Helper()
+	baseHead := strings.TrimSpace(record.BranchPrepare.BaseSHA)
+	if len(baseHead) != 40 {
+		baseHead = strings.Repeat("a", 40)
+	}
+	const now = "2026-07-22T00:00:00Z"
+	actor := core.IssueOpsActor{Host: "codex", SessionID: "issueops-cli-test", AgentID: "test-agent", CWD: record.WorktreePath}
+	receipt, err := issueopscore.ObserveNativeProcessReceiptV1(os.Getpid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	actor.NativeProcessAncestry = []model.NativeProcessReceiptV1{receipt}
+	record.Execution = &model.ExecutionV1{
+		Mode: model.ExecutionModeDirect,
+		Workspace: model.WorkspaceV1{
+			SourceRoot: record.Repo, Root: record.WorktreePath, Branch: record.Branch,
+			BaseHead: baseHead, Driver: "git", LinkedAt: now,
+		},
+		Lease: model.WriteLeaseV1{
+			Generation: 1, Status: model.LeaseStatusActive, ClaimedAt: now,
+			Holder: &model.NativeActorV1{
+				Host: actor.Host, SessionID: actor.SessionID, AgentID: actor.AgentID,
+				SessionProcess: &receipt,
+			},
+		},
+	}
+	written, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return written, actor
+}
+
+func withIssueOpsCLIActor(args []string, actor core.IssueOpsActor) []string {
+	return append(args,
+		"--host", actor.Host,
+		"--session-id", actor.SessionID,
+		"--agent-id", actor.AgentID,
+		"--cwd", actor.CWD,
+	)
 }

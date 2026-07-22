@@ -197,8 +197,8 @@ func CodexMCPConfigured(path string) bool {
 	return coreinspect.CodexMCPConfigured(path)
 }
 
-func DefaultNativeInstallRequest(root, home, codexHome, reasonixHome, binPath string) port.NativeInstallRequest {
-	return coreinstall.DefaultNativeInstallRequest(root, home, codexHome, reasonixHome, binPath)
+func DefaultNativeInstallRequest(root, home, codexHome, binPath string) port.NativeInstallRequest {
+	return coreinstall.DefaultNativeInstallRequest(root, home, codexHome, binPath)
 }
 
 func InstallNative(req port.NativeInstallRequest, installers ...port.HostInstaller) (port.NativeInstallResult, error) {

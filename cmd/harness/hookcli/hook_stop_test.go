@@ -1,15 +1,10 @@
 package hookcli
 
 import (
-	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
-
-	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/handoff"
 )
 
 // incompleteEngelbartCanvasContent is a meeting Canvas missing the required
@@ -108,132 +103,6 @@ func writeTranscriptForTest(t *testing.T, lines ...map[string]any) string {
 		t.Fatal(err)
 	}
 	return transcript
-}
-
-func seedPendingOwnershipCleanupForStop(t *testing.T) (string, string, []byte) {
-	t.Helper()
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	repo := t.TempDir()
-	worker := filepath.Join(repo, "worker")
-	if err := os.MkdirAll(worker, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	planPath := filepath.Join(repo, "cleanup-stop-plan.md")
-	if err := os.WriteFile(planPath, []byte("# Cleanup Stop plan\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	now := "2026-07-21T00:00:00Z"
-	baseHead := strings.Repeat("b", 40)
-	orca := &issueops.IssueOpsOrcaIdentity{
-		RuntimeID: "runtime-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/cleanup-stop-reentry",
-		WorktreeID: "wt-1", WorktreeInstanceID: "inst-1", WorktreePath: worker,
-		WorkerPTYID: "pty-1", WorkerTerminalHandle: "term-1", WorkerMailboxHandle: "term-1",
-		TaskID: "task-1", DispatchID: "dispatch-1",
-	}
-	record := issueops.IssueOpsRecord{
-		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
-		ID:            issueops.NewIssueOpsID(repo, "cleanup-stop-reentry"),
-		Repo:          repo,
-		Branch:        "cleanup-stop-reentry",
-		Phase:         issueops.IssueOpsPhaseDone,
-		IssueURL:      "https://github.com/example/agent-harness/issues/1",
-		PlanPath:      planPath,
-		WorktreePath:  worker,
-		ExecutionHandoff: &issueops.IssueOpsExecutionHandoff{
-			State: handoff.StateCleanupPendingHumanDecision, Attempt: 1,
-			OwnershipEpoch: "ownership-epoch-1", WorkspaceEpoch: "workspace-epoch-1",
-			WorkspaceSHA256: strings.Repeat("c", 64), AttemptBaseHead: baseHead,
-			ContextVersion: handoff.ContextVersion, Driver: "orca", Agent: "claude", DeliveryMode: "inject",
-			CoordinatorRoot: repo, CoordinatorMailboxHandle: "term-coordinator", WorkerRoot: worker, Orca: orca,
-			CoordinatorSession: &issueops.IssueOpsHostSessionIdentity{Host: "claude", SessionID: "coordinator-session", AgentID: "coordinator-agent"},
-		},
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-	workspaceOrca := *orca
-	workspaceOrca.WorkerPTYID, workspaceOrca.WorkerTerminalHandle, workspaceOrca.WorkerMailboxHandle = "", "", ""
-	workspaceOrca.TaskID, workspaceOrca.DispatchID = "", ""
-	record.ExecutionWorkspace = &issueops.IssueOpsExecutionWorkspace{
-		State: "ready", WorkspaceEpoch: "workspace-epoch-1", Driver: "orca", Agent: "claude",
-		CoordinatorRoot: repo, WorkerRoot: worker, BaseHead: baseHead, Orca: &workspaceOrca,
-		PreparationSession: &issueops.IssueOpsHostSessionIdentity{Host: "claude", SessionID: "coordinator-session", AgentID: "coordinator-agent"},
-	}
-	packet, err := handoff.BuildContext(record, handoff.ContextOptions{})
-	if err != nil {
-		t.Fatalf("build cleanup handoff context: %v", err)
-	}
-	record.ExecutionHandoff.ContextSHA256 = packet.SHA256
-	record.ExecutionHandoff.ContextSourceSHA256 = packet.SourceSHA256
-	record.ExecutionHandoff.OwnerSession = &issueops.IssueOpsHostSessionIdentity{Host: "claude", SessionID: "owner-session", AgentID: "owner-agent"}
-	record.ExecutionHandoff.Orientation = &issueops.IssueOpsOwnershipOrientation{
-		IssueURL: record.IssueURL, PlanSHA256: packet.PlanSHA256, Understanding: "understood",
-		ScopeConfirmation: "worker root only", RecordedAt: now,
-	}
-	record.ExecutionHandoff.Completion = &issueops.IssueOpsOwnershipCompletion{
-		FinalHead: strings.Repeat("f", 40), TuringReport: "reports/cleanup-stop.md",
-		Verification: []string{"go test ./..."}, CompletedAt: now,
-	}
-	if _, err := issueops.WriteIssueOps(issueops.IssueOpsStateRoot(), record); err != nil {
-		t.Fatalf("write pending cleanup fixture: %v", err)
-	}
-	stored, err := issueops.ReadIssueOpsExisting(issueops.IssueOpsStateRoot(), record.ID)
-	if err != nil {
-		t.Fatalf("read pending cleanup fixture: %v", err)
-	}
-	before, err := json.Marshal(stored)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return repo, record.ID, before
-}
-
-func TestRunHookStopBoundsOwnershipCleanupRelay(t *testing.T) {
-	repo, id, before := seedPendingOwnershipCleanupForStop(t)
-	freshInput := `{"cwd":"` + repo + `","session_id":"source-session","last_assistant_message":"작업을 마쳤습니다."}`
-
-	firstNoAuto := runHookCapture(t, `{"cwd":"`+repo+`","session_id":"source-session","last_assistant_message":"자동진행하지 않음 — 사용자 종료 판단을 따릅니다."}`, func() error {
-		return runHookStop([]string{"--relay-next-action-judgement"})
-	})
-	if len(firstNoAuto) != 0 {
-		t.Fatalf("an explicit no-auto-proceed judgement must outrank pending cleanup even on first contact, got %+v", firstNoAuto)
-	}
-
-	first := runHookCapture(t, freshInput, func() error {
-		return runHookStop([]string{"--relay-next-action-judgement"})
-	})
-	if first["decision"] != "block" {
-		t.Fatalf("fresh cleanup Stop must present the human decision once, got %+v", first)
-	}
-	if reason, _ := first["reason"].(string); !strings.Contains(reason, id) || !strings.Contains(reason, "three human choices") {
-		t.Fatalf("cleanup block lost the exact human-choice reason: %q", reason)
-	}
-
-	choices := `선택지:\n1. 모든 자원을 유지합니다. (추천)\n2. owner만 닫고 워크트리는 유지합니다.\n3. 모든 로컬 작업 자원을 제거합니다.`
-	continuation := runHookCapture(t, `{"cwd":"`+repo+`","session_id":"source-session","stop_hook_active":true,"last_assistant_message":"`+choices+`"}`, func() error {
-		return runHookStop([]string{"--relay-next-action-judgement"})
-	})
-	if len(continuation) != 0 {
-		t.Fatalf("cleanup continuation must no-op before the generic next-action relay, got %+v", continuation)
-	}
-
-	fresh := runHookCapture(t, freshInput, func() error {
-		return runHookStop([]string{"--relay-next-action-judgement"})
-	})
-	if fresh["decision"] != "block" {
-		t.Fatalf("a later fresh episode may remind once again, got %+v", fresh)
-	}
-
-	afterRecord, err := issueops.ReadIssueOpsExisting(issueops.IssueOpsStateRoot(), id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	after, err := json.Marshal(afterRecord)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(before, after) {
-		t.Fatalf("Stop hook mutated the IssueOps record\nbefore=%s\nafter=%s", before, after)
-	}
 }
 
 // TestRunHookStopDoesNotReBlockEngelbartCanvasWhenStopHookActive proves the

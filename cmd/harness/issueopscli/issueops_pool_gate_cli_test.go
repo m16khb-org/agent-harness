@@ -11,7 +11,7 @@ import (
 func TestCLIIssueOpsPhaseAdvanceToPRBlockedByOpenPool(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := makeIssueOpsCLIGitRepoForRemoteVerifyTest(t)
-	parent := startIssueOpsCLIReadyPRParentWithChild(t, repo, "123-parent-pr-pool-gate")
+	parent, actor := startIssueOpsCLIReadyPRParentWithChild(t, repo, "123-parent-pr-pool-gate")
 	pool, err := workpool.CreatePool(workpool.CreatePoolRequest{
 		Repo:          repo,
 		Name:          "cli pr gate open pool",
@@ -29,12 +29,12 @@ func TestCLIIssueOpsPhaseAdvanceToPRBlockedByOpenPool(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AddTask: %v", err)
 	}
-	if _, err := core.AdvanceIssueOpsPhase(core.IssueOpsStateRoot(), parent.ID, string(core.IssueOpsPhaseAISlopClean)); err != nil {
+	if _, err := core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), parent.ID, string(core.IssueOpsPhaseAISlopClean), actor); err != nil {
 		t.Fatal(err)
 	}
 
 	blockedOut, err := captureStdoutAndErrorForIssueOps(t, func() error {
-		return runIssueOps([]string{"phase", "--id", parent.ID, "--to", "pr", "--json"})
+		return runIssueOps(withIssueOpsCLIActor([]string{"phase", "--id", parent.ID, "--to", "pr", "--json"}, actor))
 	})
 	assertIssueOpsJSONErrorContains(t, blockedOut, err, "pool_incomplete:"+pool.ID)
 
@@ -52,7 +52,7 @@ func TestCLIIssueOpsPhaseAdvanceToPRBlockedByOpenPool(t *testing.T) {
 	}
 
 	prOut := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"phase", "--id", parent.ID, "--to", "pr", "--json"})
+		return runIssueOps(withIssueOpsCLIActor([]string{"phase", "--id", parent.ID, "--to", "pr", "--json"}, actor))
 	})
 	var prRecord core.IssueOpsRecord
 	if err := json.Unmarshal([]byte(prOut), &prRecord); err != nil {

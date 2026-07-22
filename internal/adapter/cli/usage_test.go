@@ -35,11 +35,20 @@ func TestUsageIncludesUpdateCommand(t *testing.T) {
 	}
 }
 
-func TestUsageIncludesOwnershipTransferHandoffActions(t *testing.T) {
+func TestUsageIncludesIssueOpsV1ExecutionActions(t *testing.T) {
 	usage := Usage("test")
-	for _, action := range []string{"complete", "cleanup-preview", "cleanup-approve", "cleanup-record"} {
+	for _, action := range []string{
+		"execution prepare",
+		"execution status",
+		"execution claim",
+		"execution release",
+		"execution replace",
+		"execution reconcile",
+		"execution complete",
+		"reset-legacy",
+	} {
 		if !strings.Contains(usage, action) {
-			t.Fatalf("usage missing ownership-transfer handoff action %q\n%s", action, usage)
+			t.Fatalf("usage missing IssueOps v1 action %q\n%s", action, usage)
 		}
 	}
 }

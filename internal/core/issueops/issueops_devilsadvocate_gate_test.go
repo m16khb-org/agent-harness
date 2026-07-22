@@ -17,14 +17,9 @@ func TestImplementationReadinessRequiresDevilsAdvocateVerdict(t *testing.T) {
 		WorktreePath:        worktree,
 		Intent:              issueOpsIntentContractForTest(),
 		DesignReview:        issueOpsDesignReviewForTest(),
-		ExecutionDecision:   issueOpsExecutionDecisionForTest(),
 		CompatibilityReview: issueOpsCompatibilityReviewForTest(),
 		BranchPrepare:       &IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/example/repo/issues/1", Branch: "1-demo", BaseBranch: "main", LinkVerified: true},
-		WorktreeTools: &IssueOpsWorktreeToolPreparation{
-			OK:           true,
-			WorktreePath: worktree,
-			PreparedAt:   "2026-06-26T00:00:00Z",
-		},
+		Execution:           issueOpsExecutionForTest(repo, worktree, "1-demo"),
 	}
 	writeIssueOpsFile(t, worktree, "plans/demo.md", "plan\n")
 

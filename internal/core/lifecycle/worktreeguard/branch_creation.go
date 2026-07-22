@@ -105,6 +105,57 @@ func LocalIssueOpsBranchCreation(command string) BranchCreation {
 	return BranchCreation{}
 }
 
+func DirectGitWorktreeMutation(command string) bool {
+	tokens := commandparse.SplitCommandTokens(command)
+	for i, token := range tokens {
+		if searchrouting.SearchTokenName(token) != "git" {
+			continue
+		}
+		worktreeAt := commandparse.CommandAfterDirectoryOption(tokens, i+1)
+		if worktreeAt < 0 || worktreeAt >= len(tokens) || searchrouting.SearchTokenName(tokens[worktreeAt]) != "worktree" {
+			continue
+		}
+		actionAt := commandparse.CommandAfterDirectoryOption(tokens, worktreeAt+1)
+		if actionAt < 0 || actionAt >= len(tokens) {
+			continue
+		}
+		switch searchrouting.SearchTokenName(tokens[actionAt]) {
+		case "add", "lock", "move", "prune", "remove", "repair", "unlock":
+			return true
+		}
+	}
+	return false
+}
+
+func SealedGitTopologyMutation(command string) bool {
+	if strings.TrimSpace(LocalIssueOpsBranchCreation(command).Branch) != "" ||
+		strings.TrimSpace(LocalIssueOpsBranchSelection(command).Branch) != "" || DirectGitWorktreeMutation(command) {
+		return true
+	}
+	tokens := commandparse.SplitCommandTokens(command)
+	for i, token := range tokens {
+		if searchrouting.SearchTokenName(token) != "git" {
+			continue
+		}
+		actionAt := commandparse.CommandAfterDirectoryOption(tokens, i+1)
+		if actionAt < 0 || actionAt >= len(tokens) {
+			continue
+		}
+		switch searchrouting.SearchTokenName(tokens[actionAt]) {
+		case "branch", "cherry-pick", "merge", "rebase", "reset", "revert":
+			return true
+		case "push":
+			for _, arg := range tokens[actionAt+1:] {
+				if arg == "-f" || strings.HasPrefix(arg, "--force") || arg == "--mirror" || arg == "--delete" ||
+					strings.HasPrefix(arg, "+") || strings.HasPrefix(arg, ":") {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 func localIssueOpsWorktreeBranchCreation(args []string) BranchCreation {
 	branch := ""
 	pathSeen := false

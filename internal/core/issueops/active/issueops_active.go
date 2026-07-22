@@ -26,10 +26,7 @@ func CycleForBranch(store Store, repo, branch string) (model.IssueOpsRecord, boo
 	if err != nil {
 		return model.IssueOpsRecord{}, false
 	}
-	if record.CycleState != "" && record.CycleState != model.IssueOpsCycleActive {
-		return model.IssueOpsRecord{}, false
-	}
-	if record.Phase == model.IssueOpsPhaseDone && !retainsHandoffAuthority(record) {
+	if record.Phase == model.IssueOpsPhaseDone {
 		return model.IssueOpsRecord{}, false
 	}
 	if planBranchMismatchesRecord(record) {
@@ -82,10 +79,7 @@ func LinkedWorktreeCyclesForRepo(store Store, repo string) []model.IssueOpsRecor
 		if err != nil {
 			continue
 		}
-		if record.Phase == model.IssueOpsPhaseDone && !retainsHandoffAuthority(record) {
-			continue
-		}
-		if record.CycleState != "" && record.CycleState != model.IssueOpsCycleActive {
+		if record.Phase == model.IssueOpsPhaseDone {
 			continue
 		}
 		if planBranchMismatchesRecord(record) {
@@ -114,11 +108,6 @@ func LinkedWorktreeCyclesForRepo(store Store, repo string) []model.IssueOpsRecor
 		return records[i].ID < records[j].ID
 	})
 	return records
-}
-
-func retainsHandoffAuthority(record model.IssueOpsRecord) bool {
-	h := model.CurrentExecutionHandoff(record)
-	return h != nil && h.State != "closed"
 }
 
 // NonDoneCyclesForRepo returns every non-done cycle whose record.Repo matches
@@ -151,71 +140,6 @@ func NonDoneCyclesForRepo(store Store, repo string) []model.IssueOpsRecord {
 		records = append(records, record)
 	}
 	return records
-}
-
-// SupervisedHandoffCyclesForRepo keeps nonterminal durable handoff authority
-// even when the linked worktree or its .git metadata has disappeared.
-func SupervisedHandoffCyclesForRepo(store Store, repo string) []model.IssueOpsRecord {
-	repo = pathutil.CleanAbsPath(repo)
-	if repo == "" {
-		return nil
-	}
-	stateRoot := store.StateRoot()
-	ids, err := store.ListIDs(stateRoot)
-	if err != nil {
-		return nil
-	}
-	records := []model.IssueOpsRecord{}
-	for _, id := range ids {
-		record, err := store.Read(stateRoot, id)
-		h := model.CurrentExecutionHandoff(record)
-		current := h != nil
-		if h == nil && (record.CycleState == model.IssueOpsCyclePaused || record.CycleState == model.IssueOpsCycleClosed) {
-			if attempt := model.LastOwnershipAttempt(record); attempt != nil {
-				h = attempt.Handoff
-			}
-		}
-		if h == nil {
-			continue
-		}
-		if current && h.State == "closed" {
-			continue
-		}
-		if err != nil && !safelyIdentifiableSupervisedHandoff(record) {
-			continue
-		}
-		recordRepo := pathutil.CleanAbsPath(record.Repo)
-		workerRoot := pathutil.CleanAbsPath(h.WorkerRoot)
-		if recordRepo != repo && workerRoot != repo && !pathutil.PathWithin(repo, workerRoot) {
-			continue
-		}
-		records = append(records, record)
-	}
-	sort.Slice(records, func(i, j int) bool {
-		if records[i].Branch != records[j].Branch {
-			return records[i].Branch < records[j].Branch
-		}
-		return records[i].ID < records[j].ID
-	})
-	return records
-}
-
-func safelyIdentifiableSupervisedHandoff(record model.IssueOpsRecord) bool {
-	h := model.CurrentExecutionHandoff(record)
-	if h == nil && (record.CycleState == model.IssueOpsCyclePaused || record.CycleState == model.IssueOpsCycleClosed) {
-		if attempt := model.LastOwnershipAttempt(record); attempt != nil {
-			h = attempt.Handoff
-		}
-	}
-	if h == nil {
-		return false
-	}
-	repo := strings.TrimSpace(record.Repo)
-	worker := strings.TrimSpace(h.WorkerRoot)
-	if repo == "" || worker == "" || len(repo) > 4096 || len(worker) > 4096 || strings.ContainsRune(repo, 0) || strings.ContainsRune(worker, 0) {
-		return false
-	}
-	return filepath.IsAbs(repo) && filepath.IsAbs(worker)
 }
 
 func planBranchMismatchesRecord(record model.IssueOpsRecord) bool {

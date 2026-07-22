@@ -24,7 +24,7 @@ scripts/release-repro-smoke.sh
 
 - `git status --short --branch`가 의도한 변경만 보여야 한다.
 - `scripts/release-repro-smoke.sh`가 temp `HOME`, `CODEX_HOME`, `HARNESS_STATE_DIR`, fixture `HARNESS_ROOT` 아래에서 통과해야 한다.
-- `install-native --dry-run --project-local --json` 결과는 `ok=true`, `dry_run=true`, `project_local=true`이며 Codex/Claude/Reasonix host가 모두 `ok=true`여야 한다.
+- `install-native --dry-run --project-local --json` 결과는 `ok=true`, `dry_run=true`, `project_local=true`이며 host 목록이 정확히 `[codex, claude]`이고 둘 다 `ok=true`여야 한다.
 - dry-run 결과의 `files[].written`과 `links[].created`는 모두 false여야 한다.
 - `inspect --json`, `docs --json`, `state migrate --json`가 temp state에서 모두 `ok=true`여야 한다.
 - 사용자용 `README.md`에는 `Release User Guide: Install, Update, Rollback` 섹션이 있어야 한다.

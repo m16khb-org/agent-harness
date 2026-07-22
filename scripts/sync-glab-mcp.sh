@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sync profile-scoped glab MCP servers across Codex, Claude Code, and GJC.
+# Sync profile-scoped glab MCP servers across Codex and Claude Code.
 # Idempotent and best-effort: acts only when glab-mcp-wrapper and a matching
 # GitLab token are detected, so it is a no-op on machines without glab MCP.
 #
@@ -80,11 +80,10 @@ for profile in "${profiles[@]}"; do
 
   if [[ "$REMOVE" == "1" ]]; then
     if [[ "$DRY_RUN" == "1" ]]; then
-      log "dry-run: would remove $server from claude/gjc/codex"
+      log "dry-run: would remove $server from claude/codex"
       continue
     fi
     command -v claude >/dev/null 2>&1 && { claude mcp remove "$server" -s user >/dev/null 2>&1 || true; log "claude: $server removed (if present)"; }
-    command -v gjc >/dev/null 2>&1 && { gjc mcp remove "$server" >/dev/null 2>&1 || true; log "gjc: $server removed (if present)"; }
     remove_codex_section "$server"
     continue
   fi
@@ -109,19 +108,6 @@ for profile in "${profiles[@]}"; do
         fi
       else
         log "claude: $server FAILED (non-fatal)"
-      fi
-    fi
-  fi
-
-  # --- GJC (user scope)
-  if command -v gjc >/dev/null 2>&1; then
-    if [[ "$DRY_RUN" == "1" ]]; then
-      log "dry-run: gjc mcp add $server"
-    else
-      if gjc mcp add "$server" "$WRAPPER" --arg="$profile" --type=stdio --force >/dev/null 2>&1; then
-        log "gjc: $server synced"
-      else
-        log "gjc: $server FAILED (non-fatal)"
       fi
     fi
   fi

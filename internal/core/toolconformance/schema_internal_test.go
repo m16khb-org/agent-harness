@@ -3,6 +3,7 @@ package toolconformance
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -93,6 +94,41 @@ func TestSortDiagnosticsUsesFullTuple(t *testing.T) {
 func TestValidatorRejectsUnsupportedSchemaKeyword(t *testing.T) {
 	if _, err := Validate(map[string]any{"type": "object", "oneOf": []any{}}, map[string]any{}); err == nil {
 		t.Fatal("unsupported keyword accepted")
+	}
+}
+
+func TestValidatorSupportsNumericMinimum(t *testing.T) {
+	schema := map[string]any{"type": "object", "properties": map[string]any{
+		"generation": map[string]any{"type": "integer", "minimum": 1},
+	}}
+	diagnostics, err := Validate(ClosedProjection(schema), map[string]any{"generation": float64(0)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Diagnostic{{Path: "/generation", Code: "minimum_mismatch", Expected: ">= 1", Actual: "0"}}
+	if !reflect.DeepEqual(diagnostics, want) {
+		t.Fatalf("diagnostics=%#v want=%#v", diagnostics, want)
+	}
+}
+
+func TestValidatorSupportsStringPatternWithoutEchoingRejectedValue(t *testing.T) {
+	schema := map[string]any{"type": "object", "properties": map[string]any{
+		"digest": map[string]any{"type": "string", "pattern": "^[0-9a-f]{64}$"},
+	}}
+	valid := map[string]any{"digest": strings.Repeat("a", 64)}
+	if diagnostics, err := Validate(ClosedProjection(schema), valid); err != nil || len(diagnostics) != 0 {
+		t.Fatalf("valid pattern diagnostics=%#v err=%v", diagnostics, err)
+	}
+	diagnostics, err := Validate(ClosedProjection(schema), map[string]any{"digest": "TOKEN=secret-value"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Diagnostic{{Path: "/digest", Code: "pattern_mismatch", Expected: "^[0-9a-f]{64}$", Actual: "string"}}
+	if !reflect.DeepEqual(diagnostics, want) {
+		t.Fatalf("diagnostics=%#v want=%#v", diagnostics, want)
+	}
+	if _, err := Validate(map[string]any{"type": "string", "pattern": "["}, "value"); err == nil {
+		t.Fatal("invalid pattern schema accepted")
 	}
 }
 
