@@ -243,7 +243,7 @@ func TestCollectorCollectsRegisteredGlobalOrcaInventory(t *testing.T) {
 	record := startCollectorRecord(t, fixture.repo, "22-orca-live")
 	attachPreparingOrcaIdentity(t, &record, fixture.mainHead)
 	writeCollectorRecord(t, record)
-	worker := record.ExecutionHandoff.WorkerRoot
+	worker := issueops.CurrentOwnershipAttempt(record).Handoff.WorkerRoot
 
 	orca := &fakeOrcaInventory{
 		available: true,
@@ -291,15 +291,15 @@ func TestCollectorCollectsRegisteredGlobalOrcaInventory(t *testing.T) {
 
 func TestCycleFromRecordPreservesCompleteDurableOrcaIdentity(t *testing.T) {
 	record := issueops.IssueOpsRecord{
-		ID: "io-sealed", Repo: "/repo", Branch: "1-sealed", Phase: issueops.IssueOpsPhaseImplement,
-		ExecutionHandoff: &issueops.IssueOpsExecutionHandoff{
+		ID: "io-sealed", Repo: "/repo", Branch: "1-sealed", Phase: issueops.IssueOpsPhaseImplement, CycleState: issueops.IssueOpsCycleActive,
+		Ownership: &issueops.IssueOpsOwnershipLedger{ActiveAttempt: 1, Attempts: []issueops.IssueOpsOwnershipAttempt{{Number: 1, Handoff: &issueops.IssueOpsExecutionHandoff{
 			State: handoff.StateOwnerActive,
 			Orca: &issueops.IssueOpsOrcaIdentity{
 				RuntimeID: "runtime-1", RepoID: "repo-1", WorktreeID: "wt-1", WorktreeInstanceID: "instance-1",
 				WorktreePath: "/repo.wt/1-sealed", WorkerTerminalHandle: "term-1", WorkerPTYID: "pty-1",
 				WorkerTabID: "tab-1", WorkerLeafID: "leaf-1", TaskID: "task-1", DispatchID: "dispatch-1",
 			},
-		},
+		}}}},
 	}
 
 	cycle, problems := cycleFromRecord(record)
@@ -387,12 +387,12 @@ func TestCollectorFailsClosedOnDispatchedTaskRuntimeDrift(t *testing.T) {
 
 func TestCycleFromRecordRejectsConflictingWorktreePaths(t *testing.T) {
 	record := issueops.IssueOpsRecord{
-		ID: "io-conflict", Repo: "/repo", Branch: "25-conflict", Phase: issueops.IssueOpsPhasePlan,
+		ID: "io-conflict", Repo: "/repo", Branch: "25-conflict", Phase: issueops.IssueOpsPhasePlan, CycleState: issueops.IssueOpsCycleActive,
 		WorktreePath: "/repo.wt/from-record",
-		ExecutionHandoff: &issueops.IssueOpsExecutionHandoff{
+		Ownership: &issueops.IssueOpsOwnershipLedger{ActiveAttempt: 1, Attempts: []issueops.IssueOpsOwnershipAttempt{{Number: 1, Handoff: &issueops.IssueOpsExecutionHandoff{
 			WorkerRoot: "/repo.wt/from-handoff",
 			Orca:       &issueops.IssueOpsOrcaIdentity{WorktreePath: "/repo.wt/from-handoff"},
-		},
+		}}}},
 	}
 
 	_, problems := cycleFromRecord(record)
@@ -504,7 +504,7 @@ func attachPreparingOrcaIdentity(t *testing.T, record *issueops.IssueOpsRecord, 
 	t.Helper()
 	worker := record.Repo + ".worktrees" + string(filepath.Separator) + record.Branch
 	record.WorktreePath = worker
-	record.ExecutionHandoff = &issueops.IssueOpsExecutionHandoff{
+	handoffRecord := &issueops.IssueOpsExecutionHandoff{
 		State: handoff.StateOwnershipDispatching, Attempt: 1, OwnershipEpoch: "epoch-1",
 		WorkspaceEpoch: "workspace-1", WorkspaceSHA256: strings.Repeat("a", 64), AttemptBaseHead: head,
 		Driver: "orca", Agent: "codex", CoordinatorRoot: record.Repo, WorkerRoot: worker,
@@ -513,11 +513,15 @@ func attachPreparingOrcaIdentity(t *testing.T, record *issueops.IssueOpsRecord, 
 			WorktreeID: "wt-1", WorktreeInstanceID: "instance-1", WorktreePath: worker,
 		},
 	}
-	record.ExecutionWorkspace = &issueops.IssueOpsExecutionWorkspace{
+	workspace := &issueops.IssueOpsExecutionWorkspace{
 		State: "ready", WorkspaceEpoch: "workspace-1", Driver: "orca", Agent: "codex", CoordinatorRoot: record.Repo, WorkerRoot: worker,
 		PreparationSession: &issueops.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "source-session"}, BaseHead: head,
-		Orca: record.ExecutionHandoff.Orca,
+		Orca: handoffRecord.Orca,
 	}
+	record.CycleState = issueops.IssueOpsCycleActive
+	record.Ownership = &issueops.IssueOpsOwnershipLedger{ActiveAttempt: 1, Attempts: []issueops.IssueOpsOwnershipAttempt{{
+		Number: 1, Workspace: workspace, Handoff: handoffRecord, StartedAt: "2026-07-19T00:00:00Z",
+	}}}
 }
 
 func hasGitWorktree(values []corehealth.GitWorktree, path, branch string, canonical bool) bool {
@@ -641,6 +645,21 @@ func (f *fakeOrcaInventory) ListGates(context.Context) ([]port.OrcaGate, error) 
 
 func (f *fakeOrcaInventory) InboxPresence(context.Context) (port.OrcaInboxPresence, error) {
 	return f.inbox, f.result("inbox-presence")
+}
+
+func TestOperationalHealthOwnershipLedgerUsesCurrentAttempt(t *testing.T) {
+	record := issueops.IssueOpsRecord{
+		ID: "io-health-ledger", Repo: "/repo", Branch: "68-health", Phase: issueops.IssueOpsPhaseImplement,
+		CycleState: issueops.IssueOpsCycleActive,
+		Ownership: &issueops.IssueOpsOwnershipLedger{ActiveAttempt: 2, Attempts: []issueops.IssueOpsOwnershipAttempt{
+			{Number: 1, Workspace: &issueops.IssueOpsExecutionWorkspace{State: "ready"}, Handoff: &issueops.IssueOpsExecutionHandoff{Attempt: 1, State: handoff.StateClosed, OwnershipEpoch: "historical", WorkerRoot: "/historical", Orca: &issueops.IssueOpsOrcaIdentity{TaskID: "task-historical"}}},
+			{Number: 2, Workspace: &issueops.IssueOpsExecutionWorkspace{State: "ready"}, Handoff: &issueops.IssueOpsExecutionHandoff{Attempt: 2, State: handoff.StateOwnerActive, OwnershipEpoch: "current", WorkerRoot: "/current", Orca: &issueops.IssueOpsOrcaIdentity{TaskID: "task-current"}}},
+		}},
+	}
+	cycle, _ := cycleFromRecord(record)
+	if cycle.Attempt != 2 || cycle.OwnershipEpoch != "current" || cycle.TaskID != "task-current" || cycle.WorktreePath != "/current" {
+		t.Fatalf("health projection selected historical authority: %+v", cycle)
+	}
 }
 
 var _ OrcaInventory = (*fakeOrcaInventory)(nil)

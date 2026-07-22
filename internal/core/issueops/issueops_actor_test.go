@@ -52,7 +52,8 @@ func TestReadyWorkspaceWorktreeToolsRequireExactPreparationActor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if persisted.WorktreeTools == nil || persisted.ExecutionHandoff != nil || persisted.ExecutionWorkspace == nil || persisted.ExecutionWorkspace.State != "ready" {
+	workspace := currentIssueOpsWorkspace(persisted)
+	if persisted.WorktreeTools == nil || currentIssueOpsHandoff(persisted) != nil || workspace == nil || workspace.State != "ready" {
 		t.Fatalf("exact preparation actor did not record worktree tools: %#v", persisted)
 	}
 	before = rawIssueOpsBytesForTest(t, stateRoot, record.ID)

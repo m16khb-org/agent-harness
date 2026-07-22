@@ -33,9 +33,6 @@ func ValidateOwnershipLedger(record model.IssueOpsRecord) error {
 
 	ledger := record.Ownership
 	if ledger == nil {
-		if record.CycleState != model.IssueOpsCycleActive && record.CycleState != model.IssueOpsCycleClosed {
-			return fmt.Errorf("paused IssueOps cycle requires ownership history")
-		}
 		return nil
 	}
 	if len(ledger.Attempts) == 0 {
@@ -63,32 +60,51 @@ func ValidateOwnershipLedger(record model.IssueOpsRecord) error {
 		}
 		seenNumbers[attempt.Number] = struct{}{}
 		lastNumber = attempt.Number
-		if attempt.Workspace == nil || attempt.Handoff == nil {
-			return fmt.Errorf("ownership attempt requires workspace and handoff")
-		}
-		if attempt.Handoff.Attempt != attempt.Number || !canonicalNonSpace(attempt.Handoff.OwnershipEpoch) || !canonicalNonSpace(attempt.Workspace.WorkspaceEpoch) || attempt.Handoff.WorkspaceEpoch != attempt.Workspace.WorkspaceEpoch {
-			return fmt.Errorf("ownership attempt number or epoch is inconsistent")
+		if attempt.Workspace == nil {
+			return fmt.Errorf("ownership attempt requires workspace")
 		}
 		if _, exists := seenWorkspaceEpochs[attempt.Workspace.WorkspaceEpoch]; exists {
 			return fmt.Errorf("ownership ledger reuses a workspace epoch")
 		}
-		if _, exists := seenOwnershipEpochs[attempt.Handoff.OwnershipEpoch]; exists {
-			return fmt.Errorf("ownership ledger reuses an ownership epoch")
-		}
 		seenWorkspaceEpochs[attempt.Workspace.WorkspaceEpoch] = struct{}{}
-		seenOwnershipEpochs[attempt.Handoff.OwnershipEpoch] = struct{}{}
 		if attempt.StartedAt == "" || !canonicalTimestamp(attempt.StartedAt) || !canonicalTimestamp(attempt.ClosedAt) {
 			return fmt.Errorf("ownership attempt timestamps are invalid")
 		}
 
 		isActive := ledger.ActiveAttempt == attempt.Number
+		if attempt.Handoff == nil {
+			if !isActive || attempt.ClosedAt != "" {
+				return fmt.Errorf("workspace-only ownership attempt must be active")
+			}
+			foundActive = true
+			projection := record
+			projection.SchemaVersion = 8
+			projection.CycleState = ""
+			projection.Ownership = nil
+			projection.ExecutionWorkspace = attempt.Workspace
+			if err := validateExecutionWorkspace(projection); err != nil {
+				return fmt.Errorf("ownership attempt %d workspace: %w", attempt.Number, err)
+			}
+			continue
+		}
+		if attempt.Handoff.Attempt != attempt.Number || !canonicalNonSpace(attempt.Handoff.OwnershipEpoch) || !canonicalNonSpace(attempt.Workspace.WorkspaceEpoch) || attempt.Handoff.WorkspaceEpoch != attempt.Workspace.WorkspaceEpoch {
+			return fmt.Errorf("ownership attempt number or epoch is inconsistent")
+		}
+		if _, exists := seenOwnershipEpochs[attempt.Handoff.OwnershipEpoch]; exists {
+			return fmt.Errorf("ownership ledger reuses an ownership epoch")
+		}
+		seenOwnershipEpochs[attempt.Handoff.OwnershipEpoch] = struct{}{}
 		if isActive {
 			foundActive = true
 			if attempt.Handoff.State == StateClosed || attempt.ClosedAt != "" {
 				return fmt.Errorf("active ownership attempt cannot be closed")
 			}
-		} else if attempt.Handoff.State != StateClosed || attempt.ClosedAt == "" {
-			return fmt.Errorf("historical ownership attempt must be closed")
+		} else {
+			retainedCleanup := record.CycleState == model.IssueOpsCycleClosed && index == len(ledger.Attempts)-1 &&
+				(attempt.Handoff.State == StateCleanupPendingHumanDecision || attempt.Handoff.State == StateCleanupExecuting)
+			if (!retainedCleanup && attempt.Handoff.State != StateClosed) || attempt.ClosedAt == "" {
+				return fmt.Errorf("historical ownership attempt must be closed or retained for explicit cleanup")
+			}
 		}
 
 		if index == 0 {

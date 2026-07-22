@@ -48,7 +48,7 @@ func CompleteIssueOpsHandoff(stateRoot string, req IssueOpsHandoffCompleteReques
 		if err != nil {
 			return err
 		}
-		h := record.ExecutionHandoff
+		h := currentIssueOpsHandoff(record)
 		actor := IssueOpsActor{Host: req.Host, SessionID: req.SessionID, AgentID: req.AgentID, CWD: req.CWD}
 		if h == nil || h.State != handoff.StateOwnerActive {
 			return fmt.Errorf("ownership completion requires an active handoff")
@@ -80,6 +80,9 @@ func CompleteIssueOpsHandoff(stateRoot string, req IssueOpsHandoffCompleteReques
 		h.WorkerDoneProjection = &projection
 		h.State = handoff.StateCleanupPendingHumanDecision
 		record.Phase = model.IssueOpsPhaseDone
+		record.CycleState = IssueOpsCycleClosed
+		CurrentOwnershipAttempt(record).ClosedAt = now
+		record.Ownership.ActiveAttempt = 0
 		h.UpdatedAt = now
 		record.UpdatedAt = now
 		persisted, err = writeIssueOps(stateRoot, record)
@@ -92,16 +95,17 @@ func CompleteIssueOpsHandoff(stateRoot string, req IssueOpsHandoffCompleteReques
 // completion notification. It never invokes Orca cleanup operations.
 func CompleteIssueOpsHandoffWithProjection(ctx context.Context, stateRoot string, req IssueOpsHandoffCompleteRequest, client IssueOpsWorkerDoneProjectionClient) (IssueOpsRecord, error) {
 	record, err := CompleteIssueOpsHandoff(stateRoot, req)
-	if err != nil || record.ExecutionHandoff == nil || record.ExecutionHandoff.WorkerDoneProjection == nil || client == nil {
+	h := retainedCleanupHandoff(record)
+	if err != nil || h == nil || h.WorkerDoneProjection == nil || client == nil {
 		return record, err
 	}
-	projection := record.ExecutionHandoff.WorkerDoneProjection
+	projection := h.WorkerDoneProjection
 	result, sendErr := client.SendWorkerDone(ctx, workerDoneRequestFromProjection(projection))
 	return persistWorkerDoneProjectionOutcome(stateRoot, record.ID, sendErr, result)
 }
 
 func validateOwnershipCompletionWorkerEvidence(record IssueOpsRecord, req IssueOpsHandoffCompleteRequest) error {
-	h := record.ExecutionHandoff
+	h := currentIssueOpsHandoff(record)
 	if h == nil {
 		return fmt.Errorf("ownership completion requires handoff evidence")
 	}
@@ -120,7 +124,7 @@ func validateOwnershipCompletionWorkerEvidence(record IssueOpsRecord, req IssueO
 }
 
 func ownershipCompletionProjection(record IssueOpsRecord, req IssueOpsHandoffCompleteRequest, now string) (model.IssueOpsExecutionHandoffWorkerDoneProjection, error) {
-	h := record.ExecutionHandoff
+	h := currentIssueOpsHandoff(record)
 	if h == nil || h.Orca == nil || h.OwnerSession == nil || strings.TrimSpace(h.Orca.WorkerMailboxHandle) == "" || strings.TrimSpace(h.CoordinatorMailboxHandle) == "" {
 		return model.IssueOpsExecutionHandoffWorkerDoneProjection{}, fmt.Errorf("ownership completion requires sealed notification identities")
 	}
@@ -152,7 +156,11 @@ func persistWorkerDoneProjectionOutcome(stateRoot, id string, sendErr error, res
 		if err != nil {
 			return err
 		}
-		projection := record.ExecutionHandoff.WorkerDoneProjection
+		h := retainedCleanupHandoff(record)
+		if h == nil {
+			return fmt.Errorf("worker-done outcome requires retained completion authority")
+		}
+		projection := h.WorkerDoneProjection
 		if projection == nil || projection.State != workerDoneProjectionIntent {
 			persisted = record
 			return nil
@@ -175,14 +183,14 @@ func persistWorkerDoneProjectionOutcome(stateRoot, id string, sendErr error, res
 				}
 			}
 		}
-		record.ExecutionHandoff.UpdatedAt = projection.CompletedAt
+		h.UpdatedAt = projection.CompletedAt
 		record.UpdatedAt = projection.CompletedAt
 		persisted, err = writeIssueOps(stateRoot, record)
 		return err
 	})
 	if err != nil {
 		current, readErr := ReadIssueOps(stateRoot, id)
-		if readErr == nil && current.ExecutionHandoff != nil && current.ExecutionHandoff.WorkerDoneProjection != nil {
+		if readErr == nil && retainedCleanupHandoff(current) != nil && retainedCleanupHandoff(current).WorkerDoneProjection != nil {
 			return current, nil
 		}
 	}

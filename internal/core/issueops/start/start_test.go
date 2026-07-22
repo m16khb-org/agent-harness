@@ -131,14 +131,17 @@ func TestStartNeverStaleResetsExecutionHandoffLease(t *testing.T) {
 			s.valid = func(string) bool { return false }
 			record := model.IssueOpsRecord{
 				OK: true, ID: "io-fixed", Repo: "/repo", Branch: "1-x",
-				Phase: model.IssueOpsPhaseImplement, WorktreePath: "/gone/worktree",
+				Phase: model.IssueOpsPhaseImplement, CycleState: model.IssueOpsCycleActive, WorktreePath: "/gone/worktree",
 				CreatedAt: "2026-01-01T00:00:00Z", UpdatedAt: "2026-01-01T00:01:00Z",
-				ExecutionHandoff: &model.IssueOpsExecutionHandoff{
-					State: tt.state, ClosedDisposition: tt.disposition,
-					Attempt: 7, OwnershipEpoch: "epoch-preserved", AttemptBaseHead: "0123456789012345678901234567890123456789",
-					Driver: "orca", Agent: "codex", CoordinatorRoot: "/repo", WorkerRoot: "/gone/worktree",
-					Orca: &model.IssueOpsOrcaIdentity{WorktreeID: "wt-preserved", TaskID: "task-preserved", DispatchID: "dispatch-preserved"},
-				},
+				Ownership: &model.IssueOpsOwnershipLedger{ActiveAttempt: 7, Attempts: []model.IssueOpsOwnershipAttempt{{
+					Number: 7, StartedAt: "2026-01-01T00:00:00Z",
+					Handoff: &model.IssueOpsExecutionHandoff{
+						State: tt.state, ClosedDisposition: tt.disposition,
+						Attempt: 7, OwnershipEpoch: "epoch-preserved", AttemptBaseHead: "0123456789012345678901234567890123456789",
+						Driver: "orca", Agent: "codex", CoordinatorRoot: "/repo", WorkerRoot: "/gone/worktree",
+						Orca: &model.IssueOpsOrcaIdentity{WorktreeID: "wt-preserved", TaskID: "task-preserved", DispatchID: "dispatch-preserved"},
+					},
+				}}},
 			}
 			s.records[record.ID] = record
 			before, err := json.Marshal(record)
@@ -155,7 +158,7 @@ func TestStartNeverStaleResetsExecutionHandoffLease(t *testing.T) {
 				t.Fatal(err)
 			}
 			if string(after) != string(before) || len(s.writes) != 0 {
-				t.Fatalf("execution handoff lease changed during legacy stale reset: before=%s after=%s writes=%d", before, after, len(s.writes))
+				t.Fatalf("execution handoff lease changed during stale reset: before=%s after=%s writes=%d", before, after, len(s.writes))
 			}
 		})
 	}
@@ -167,8 +170,8 @@ func TestStartNeverStaleResetsExecutionWorkspaceAuthority(t *testing.T) {
 			s := newFakeStartStore()
 			s.valid = func(string) bool { return false }
 			record := model.IssueOpsRecord{
-				OK: true, ID: "io-fixed", Repo: "/repo", Branch: "1-x", Phase: model.IssueOpsPhaseImplement, WorktreePath: "/gone/worktree", CreatedAt: "2026-01-01T00:00:00Z", UpdatedAt: "2026-01-01T00:01:00Z",
-				ExecutionWorkspace: &model.IssueOpsExecutionWorkspace{State: state, WorkspaceEpoch: "workspace-preserved", Driver: "orca", Agent: "codex", CoordinatorRoot: "/repo", WorkerRoot: "/gone/worktree", BaseHead: "0123456789012345678901234567890123456789"},
+				OK: true, ID: "io-fixed", Repo: "/repo", Branch: "1-x", Phase: model.IssueOpsPhaseImplement, CycleState: model.IssueOpsCycleActive, WorktreePath: "/gone/worktree", CreatedAt: "2026-01-01T00:00:00Z", UpdatedAt: "2026-01-01T00:01:00Z",
+				Ownership: &model.IssueOpsOwnershipLedger{ActiveAttempt: 1, Attempts: []model.IssueOpsOwnershipAttempt{{Number: 1, StartedAt: "2026-01-01T00:00:00Z", Workspace: &model.IssueOpsExecutionWorkspace{State: state, WorkspaceEpoch: "workspace-preserved", Driver: "orca", Agent: "codex", CoordinatorRoot: "/repo", WorkerRoot: "/gone/worktree", BaseHead: "0123456789012345678901234567890123456789"}}}},
 			}
 			s.records[record.ID] = record
 			before, err := json.Marshal(record)

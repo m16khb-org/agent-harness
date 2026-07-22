@@ -170,6 +170,48 @@ func writeIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, err
 	return issueops.WriteIssueOps(stateRoot, record)
 }
 
+func currentOwnershipAttempt(record IssueOpsRecord) *issueops.IssueOpsOwnershipAttempt {
+	return issueops.CurrentOwnershipAttempt(record)
+}
+
+func currentOwnershipHandoff(record IssueOpsRecord) *issueops.IssueOpsExecutionHandoff {
+	attempt := currentOwnershipAttempt(record)
+	if attempt == nil {
+		return nil
+	}
+	return attempt.Handoff
+}
+
+func currentOwnershipWorkspace(record IssueOpsRecord) *issueops.IssueOpsExecutionWorkspace {
+	attempt := currentOwnershipAttempt(record)
+	if attempt == nil {
+		return nil
+	}
+	return attempt.Workspace
+}
+
+func retainedOwnershipHandoff(record IssueOpsRecord) *issueops.IssueOpsExecutionHandoff {
+	if h := currentOwnershipHandoff(record); h != nil {
+		return h
+	}
+	attempt := issueops.LastOwnershipAttempt(record)
+	if attempt == nil {
+		return nil
+	}
+	return attempt.Handoff
+}
+
+func retainedOwnershipWorkspace(record IssueOpsRecord) *issueops.IssueOpsExecutionWorkspace {
+	if workspace := currentOwnershipWorkspace(record); workspace != nil {
+		return workspace
+	}
+	attempt := issueops.LastOwnershipAttempt(record)
+	if attempt == nil {
+		return nil
+	}
+	return attempt.Workspace
+}
+
 func AppendDocUpkeepEvent(repoRoot string, event DocUpkeepEvent) (DocUpkeepAppendResult, error) {
 	return docupkeep.Append(docUpkeepStore(), repoRoot, event)
 }

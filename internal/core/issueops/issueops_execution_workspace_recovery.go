@@ -35,7 +35,7 @@ func markExecutionWorkspaceRecovery(stateRoot, id, epoch, code, message, now str
 		if err != nil {
 			return err
 		}
-		workspace := record.ExecutionWorkspace
+		workspace := currentIssueOpsWorkspace(record)
 		if workspace == nil {
 			return fmt.Errorf("execution workspace is required for workspace recovery")
 		}
@@ -86,8 +86,8 @@ func ReconcileIssueOpsExecutionWorkspace(ctx context.Context, stateRoot string, 
 	if err != nil {
 		return IssueOpsRecord{}, err
 	}
-	workspace := record.ExecutionWorkspace
-	if record.ExecutionHandoff != nil || workspace == nil || workspace.State != handoff.StateRecoveryRequired || workspace.PendingOperation == nil {
+	workspace := currentIssueOpsWorkspace(record)
+	if currentIssueOpsHandoff(record) != nil || workspace == nil || workspace.State != handoff.StateRecoveryRequired || workspace.PendingOperation == nil {
 		return IssueOpsRecord{}, fmt.Errorf("workspace reconciliation requires a recovery-required workspace journal without an ownership handoff")
 	}
 	if strings.TrimSpace(req.WorkspaceEpoch) != workspace.WorkspaceEpoch {
@@ -130,8 +130,8 @@ func ReconcileIssueOpsExecutionWorkspace(ctx context.Context, stateRoot string, 
 		if readErr != nil {
 			return readErr
 		}
-		currentWorkspace := current.ExecutionWorkspace
-		if current.ExecutionHandoff != nil || currentWorkspace == nil || currentWorkspace.State != handoff.StateRecoveryRequired || currentWorkspace.PendingOperation == nil || currentWorkspace.WorkspaceEpoch != req.WorkspaceEpoch || currentWorkspace.PreparationSession == nil || *currentWorkspace.PreparationSession != session {
+		currentWorkspace := currentIssueOpsWorkspace(current)
+		if currentIssueOpsHandoff(current) != nil || currentWorkspace == nil || currentWorkspace.State != handoff.StateRecoveryRequired || currentWorkspace.PendingOperation == nil || currentWorkspace.WorkspaceEpoch != req.WorkspaceEpoch || currentWorkspace.PreparationSession == nil || *currentWorkspace.PreparationSession != session {
 			return fmt.Errorf("workspace recovery journal changed before result persist")
 		}
 		currentWorkspace.Orca = &model.IssueOpsOrcaIdentity{RuntimeID: currentWorkspace.Orca.RuntimeID, RepoID: currentWorkspace.Orca.RepoID, BaseRef: currentWorkspace.Orca.BaseRef, ProviderIssueLinkStatus: providerIssueLinkStatus(current, candidate), WorktreeID: candidate.ID, WorktreeInstanceID: candidate.InstanceID, WorktreePath: filepath.Clean(candidate.Path)}

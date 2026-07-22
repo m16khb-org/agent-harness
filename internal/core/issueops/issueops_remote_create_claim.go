@@ -104,7 +104,7 @@ func CreateIssueOpsRemotePullRequest(ctx context.Context, stateRoot, id, provide
 	if err != nil {
 		return port.IssueProviderCreatePullRequestResult{}, err
 	}
-	if record.ExecutionHandoff == nil || !request.Confirm {
+	if currentIssueOpsHandoff(record) == nil || !request.Confirm {
 		return create(request)
 	}
 	request.Title = strings.TrimSpace(request.Title)
@@ -204,8 +204,8 @@ func reconcileIssueOpsRemoteCreate(ctx context.Context, stateRoot string, req Is
 		return IssueOpsRecord{}, fmt.Errorf("remote create reconcile requires the exact durable claim identity")
 	}
 	coordinator := ""
-	if record.ExecutionHandoff != nil {
-		coordinator = strings.TrimSpace(record.ExecutionHandoff.CoordinatorMailboxHandle)
+	if currentIssueOpsHandoff(record) != nil {
+		coordinator = strings.TrimSpace(currentIssueOpsHandoff(record).CoordinatorMailboxHandle)
 	}
 	if coordinator == "" || strings.TrimSpace(req.CoordinatorRecipient) != coordinator {
 		return IssueOpsRecord{}, fmt.Errorf("remote create reconcile is coordinator-only and requires the sealed coordinator recipient")
@@ -390,7 +390,7 @@ func ClaimIssueOpsRemoteCreate(ctx context.Context, stateRoot string, req IssueO
 		if r.RemoteCreateClaim != nil {
 			return fmt.Errorf("remote create is already claimed or requires reconciliation")
 		}
-		h := r.ExecutionHandoff
+		h := currentIssueOpsHandoff(r)
 		if h == nil || h.PublishReceipt == nil || r.BranchPrepare == nil {
 			return fmt.Errorf("remote create requires published final head authority")
 		}

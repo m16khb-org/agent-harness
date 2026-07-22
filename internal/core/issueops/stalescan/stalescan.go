@@ -33,6 +33,9 @@ const (
 	// retained resources await an explicit human cleanup decision. It is never
 	// a stale-release candidate.
 	CategoryHumanCleanupPending Category = "human-cleanup-pending"
+	// CategoryPaused is an explicit operator-controlled nonterminal state. It is
+	// surfaced separately and is never a stale auto-release candidate.
+	CategoryPaused Category = "paused"
 )
 
 // Probe supplies the external signals used for classification. Any nil probe is
@@ -68,15 +71,18 @@ type Finding struct {
 // evaluated most-confident first: confirmed-stale, then likely-done, then the
 // age-only needs-review fallback.
 func Classify(record model.IssueOpsRecord, probe Probe, maxAge time.Duration) (Finding, bool) {
+	if record.CycleState == model.IssueOpsCyclePaused {
+		return Finding{ID: record.ID, Branch: strings.TrimSpace(record.Branch), Phase: string(record.Phase), Category: CategoryPaused, Reasons: []string{"cycle_paused"}, WorktreePath: strings.TrimSpace(record.WorktreePath), Releasable: false}, true
+	}
 	if record.Phase == model.IssueOpsPhaseDone {
-		if h := record.ExecutionHandoff; h != nil && h.State == handoff.StateCleanupPendingHumanDecision {
+		if h := diagnosticOwnershipHandoff(record); h != nil && h.State == handoff.StateCleanupPendingHumanDecision {
 			return Finding{ID: record.ID, Branch: strings.TrimSpace(record.Branch), Phase: string(record.Phase), Category: CategoryHumanCleanupPending, Reasons: []string{"human_cleanup_pending"}, WorktreePath: strings.TrimSpace(record.WorktreePath), Releasable: false}, true
 		}
 		// A done cycle is normally never flagged — except the #2581 blind spot:
 		// a terminal phase whose supervised handoff is still non-terminal. This
 		// combination keeps fencing the source checkout, so report it (never
 		// releasable) with the recover command rather than silently ignoring it.
-		if h := record.ExecutionHandoff; h != nil && h.State != handoff.StateClosed {
+		if h := diagnosticOwnershipHandoff(record); h != nil && h.State != handoff.StateClosed {
 			return Finding{
 				ID:           record.ID,
 				Branch:       strings.TrimSpace(record.Branch),
@@ -125,6 +131,20 @@ func Classify(record model.IssueOpsRecord, probe Probe, maxAge time.Duration) (F
 	}
 
 	return Finding{}, false
+}
+
+// diagnosticOwnershipHandoff is read-only. A closed cycle has no current
+// mutation authority, but its retained final attempt still explains cleanup
+// and inconsistent terminal-state findings.
+func diagnosticOwnershipHandoff(record model.IssueOpsRecord) *model.IssueOpsExecutionHandoff {
+	if current := model.CurrentExecutionHandoff(record); current != nil {
+		return current
+	}
+	last := model.LastOwnershipAttempt(record)
+	if last == nil {
+		return nil
+	}
+	return last.Handoff
 }
 
 func confirmedStaleReason(record model.IssueOpsRecord, probe Probe) string {

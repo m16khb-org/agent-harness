@@ -459,7 +459,7 @@ func recordIssueOpsWorktreeTools(stateRoot, id string, actor IssueOpsActor, prep
 		if readErr != nil {
 			return readErr
 		}
-		if record.ExecutionWorkspace != nil {
+		if currentIssueOpsWorkspace(record) != nil {
 			if !actorSupplied {
 				return fmt.Errorf("workspace preparation requires a native actor; use the actor-aware recorder")
 			}
@@ -776,7 +776,7 @@ func IssueOpsResume(repo string, ids ...string) IssueOpsResumeResult {
 			Bound:            true,
 			Readiness:        &readiness,
 			Guidance:         ExpectedWorktreeEnvGuidance(expectedWorktree),
-			ExecutionHandoff: rec.ExecutionHandoff,
+			ExecutionHandoff: currentIssueOpsHandoff(rec),
 		}
 	}
 
@@ -844,7 +844,7 @@ func issueOpsResumeByID(repo, id string) IssueOpsResumeResult {
 		Bound:            true,
 		Readiness:        &readiness,
 		Guidance:         ExpectedWorktreeEnvGuidance(expectedWorktree),
-		ExecutionHandoff: rec.ExecutionHandoff,
+		ExecutionHandoff: currentIssueOpsHandoff(rec),
 	}
 }
 

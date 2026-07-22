@@ -102,7 +102,7 @@ func PrepareIssueOpsHandoffWorktree(ctx context.Context, stateRoot string, req I
 		return result, err
 	}
 	result.RequestedMode = requested
-	if record.ExecutionHandoff != nil || record.ExecutionWorkspace != nil {
+	if CurrentOwnershipAttempt(record) != nil {
 		return existingHandoffPrepareResult(stateRoot, record, result, issueOpsHandoffNow(clock))
 	}
 	if requested != IssueOpsOrchestratorInline {
@@ -444,11 +444,13 @@ func beginHandoffWorktreeCreate(stateRoot, id, workerRoot, agent string, prepara
 		if err != nil {
 			return err
 		}
-		if current.ExecutionHandoff != nil || current.ExecutionWorkspace != nil {
+		if CurrentOwnershipAttempt(current) != nil {
 			return nil
 		}
 		snapshot.PreviousUpdatedAt = current.UpdatedAt
-		current.ExecutionWorkspace = &model.IssueOpsExecutionWorkspace{State: "provisioning", WorkspaceEpoch: fence.OwnershipEpoch, Driver: "orca", Agent: agent, CoordinatorRoot: current.Repo, WorkerRoot: workerRoot, PreparationSession: &preparationSession, BaseHead: current.BranchPrepare.BaseSHA, Orca: &model.IssueOpsOrcaIdentity{RuntimeID: strings.TrimSpace(runtimeID), RepoID: strings.TrimSpace(repoID), BaseRef: strings.TrimSpace(baseRef)}, PendingOperation: &model.IssueOpsExecutionWorkspacePendingOperation{Kind: handoff.OperationWorktreeCreate, StartedAt: now, BaselineWorktreeIDs: append([]string(nil), baseline...)}, PreparedAt: now, UpdatedAt: now}
+		workspace := &model.IssueOpsExecutionWorkspace{State: "provisioning", WorkspaceEpoch: fence.OwnershipEpoch, Driver: "orca", Agent: agent, CoordinatorRoot: current.Repo, WorkerRoot: workerRoot, PreparationSession: &preparationSession, BaseHead: current.BranchPrepare.BaseSHA, Orca: &model.IssueOpsOrcaIdentity{RuntimeID: strings.TrimSpace(runtimeID), RepoID: strings.TrimSpace(repoID), BaseRef: strings.TrimSpace(baseRef)}, PendingOperation: &model.IssueOpsExecutionWorkspacePendingOperation{Kind: handoff.OperationWorktreeCreate, StartedAt: now, BaselineWorktreeIDs: append([]string(nil), baseline...)}, PreparedAt: now, UpdatedAt: now}
+		current.Ownership = &IssueOpsOwnershipLedger{ActiveAttempt: fence.Attempt, Attempts: []IssueOpsOwnershipAttempt{{Number: fence.Attempt, Workspace: workspace, StartedAt: now}}}
+		current.CycleState = IssueOpsCycleActive
 		current.UpdatedAt = now
 		persisted, err := writeIssueOps(stateRoot, current)
 		if err == nil {
@@ -516,7 +518,7 @@ func rollbackHandoffWorktreeStartFailure(stateRoot, id string, begin handoffWork
 		if !begin.Authorized || !reflect.DeepEqual(record, begin.ExpectedJournal) {
 			return fmt.Errorf("worktree create journal changed before definitive rollback")
 		}
-		record.ExecutionWorkspace = nil
+		record.Ownership = nil
 		record.UpdatedAt = begin.PreviousUpdatedAt
 		_, err = writeIssueOps(stateRoot, record)
 		return err
@@ -553,23 +555,24 @@ func persistHandoffWorktreeCreate(stateRoot, id string, created port.OrcaWorktre
 		if err != nil {
 			return err
 		}
-		if current.ExecutionWorkspace == nil || current.ExecutionWorkspace.State != "provisioning" || current.ExecutionWorkspace.PendingOperation == nil || current.ExecutionWorkspace.PendingOperation.Kind != handoff.OperationWorktreeCreate {
+		workspace := currentIssueOpsWorkspace(current)
+		if workspace == nil || workspace.State != "provisioning" || workspace.PendingOperation == nil || workspace.PendingOperation.Kind != handoff.OperationWorktreeCreate {
 			return fmt.Errorf("worktree create result lost its pending-operation fence")
 		}
 		if !begin.Authorized || !reflect.DeepEqual(current, begin.ExpectedJournal) {
 			return fmt.Errorf("worktree create authorized journal changed before result persist")
 		}
-		if current.ExecutionWorkspace.WorkspaceEpoch != fence.OwnershipEpoch {
+		if workspace.WorkspaceEpoch != fence.OwnershipEpoch {
 			return fmt.Errorf("stale worktree create result")
 		}
-		current.ExecutionWorkspace.Orca = &model.IssueOpsOrcaIdentity{
-			RuntimeID: current.ExecutionWorkspace.Orca.RuntimeID, RepoID: current.ExecutionWorkspace.Orca.RepoID, BaseRef: current.ExecutionWorkspace.Orca.BaseRef, ProviderIssueLinkStatus: linkStatus,
+		workspace.Orca = &model.IssueOpsOrcaIdentity{
+			RuntimeID: workspace.Orca.RuntimeID, RepoID: workspace.Orca.RepoID, BaseRef: workspace.Orca.BaseRef, ProviderIssueLinkStatus: linkStatus,
 			WorktreeID: created.ID, WorktreeInstanceID: created.InstanceID, WorktreePath: filepath.Clean(created.Path), WorktreeAdopted: adopted,
 		}
-		current.ExecutionWorkspace.ProvisionedAt = now
-		current.ExecutionWorkspace.PendingOperation = nil
-		current.ExecutionWorkspace.State = "ready"
-		current.ExecutionWorkspace.UpdatedAt = now
+		workspace.ProvisionedAt = now
+		workspace.PendingOperation = nil
+		workspace.State = "ready"
+		workspace.UpdatedAt = now
 		current.WorktreePath = filepath.Clean(created.Path)
 		current.UpdatedAt = now
 		persisted, err = writeIssueOps(stateRoot, current)
@@ -806,8 +809,9 @@ func validateHandoffWorktreeIssueMetadata(record IssueOpsRecord, created port.Or
 }
 
 func existingHandoffPrepareResult(stateRoot string, record IssueOpsRecord, result IssueOpsHandoffPrepareResult, now string) (IssueOpsHandoffPrepareResult, error) {
-	if record.ExecutionWorkspace != nil && record.ExecutionWorkspace.PendingOperation != nil && record.ExecutionWorkspace.State != handoff.StateRecoveryRequired {
-		if err := markExecutionWorkspaceRecovery(stateRoot, record.ID, record.ExecutionWorkspace.WorkspaceEpoch, "pending_operation_requires_recovery", "restart observed an unresolved external mutation", now); err != nil {
+	workspace := currentIssueOpsWorkspace(record)
+	if workspace != nil && workspace.PendingOperation != nil && workspace.State != handoff.StateRecoveryRequired {
+		if err := markExecutionWorkspaceRecovery(stateRoot, record.ID, workspace.WorkspaceEpoch, "pending_operation_requires_recovery", "restart observed an unresolved external mutation", now); err != nil {
 			return result, err
 		}
 		var err error
@@ -816,8 +820,9 @@ func existingHandoffPrepareResult(stateRoot string, record IssueOpsRecord, resul
 			return result, err
 		}
 	}
-	if record.ExecutionHandoff != nil && record.ExecutionHandoff.PendingOperation != nil && record.ExecutionHandoff.State != handoff.StateRecoveryRequired {
-		fence := handoff.Fence{Attempt: record.ExecutionHandoff.Attempt, OwnershipEpoch: record.ExecutionHandoff.OwnershipEpoch, ContextSHA256: record.ExecutionHandoff.ContextSHA256}
+	h := currentIssueOpsHandoff(record)
+	if h != nil && h.PendingOperation != nil && h.State != handoff.StateRecoveryRequired {
+		fence := handoff.Fence{Attempt: h.Attempt, OwnershipEpoch: h.OwnershipEpoch, ContextSHA256: h.ContextSHA256}
 		if err := markHandoffPrepareRecovery(stateRoot, record.ID, fence, "pending_operation_requires_recovery", "restart observed an unresolved external mutation", now); err != nil {
 			return result, err
 		}
@@ -835,47 +840,49 @@ func projectHandoffPrepareResult(result IssueOpsHandoffPrepareResult, record Iss
 	result.ResolvedMode = IssueOpsOrchestratorOrca
 	result.Command = nil
 	result.NextStep = "inspect the persisted Orca handoff with issueops resume --repo " + record.Repo + " --id " + record.ID
-	if record.ExecutionHandoff == nil {
-		if record.ExecutionWorkspace == nil {
+	h := currentIssueOpsHandoff(record)
+	workspace := currentIssueOpsWorkspace(record)
+	if h == nil {
+		if workspace == nil {
 			return result
 		}
-		result.State = record.ExecutionWorkspace.State
-		result.WorkspaceState = record.ExecutionWorkspace.State
-		result.WorkspaceEpoch = record.ExecutionWorkspace.WorkspaceEpoch
-		result.PreparationSession = redactedPreparationSession(record.ExecutionWorkspace.PreparationSession)
-		result.Orca = record.ExecutionWorkspace.Orca
+		result.State = workspace.State
+		result.WorkspaceState = workspace.State
+		result.WorkspaceEpoch = workspace.WorkspaceEpoch
+		result.PreparationSession = redactedPreparationSession(workspace.PreparationSession)
+		result.Orca = workspace.Orca
 		result.NextStep = "continue sealed workspace preparation for " + record.ID
-		if provider, err := issueOpsHandoffProvider(record); err == nil && provider == "gitlab" && record.ExecutionWorkspace.Orca != nil {
-			if record.ExecutionWorkspace.Orca.ProviderIssueLinkStatus == handoff.ProviderIssueLinkGitLabExact {
+		if provider, err := issueOpsHandoffProvider(record); err == nil && provider == "gitlab" && workspace.Orca != nil {
+			if workspace.Orca.ProviderIssueLinkStatus == handoff.ProviderIssueLinkGitLabExact {
 				result.Warnings = removeString(result.Warnings, IssueOpsGitLabNativeMetadataUnavailableWarning)
 			} else {
 				result.Warnings = uniqueStrings(append(result.Warnings, IssueOpsGitLabNativeMetadataUnavailableWarning))
 			}
 		}
-		if record.ExecutionWorkspace.State == handoff.StateRecoveryRequired {
+		if workspace.State == handoff.StateRecoveryRequired {
 			result.RecoveryCode = "explicit_workspace_reconcile_required"
-			if record.ExecutionWorkspace.Failure != nil && record.ExecutionWorkspace.Failure.Code != "" {
-				result.RecoveryCode = record.ExecutionWorkspace.Failure.Code
+			if workspace.Failure != nil && workspace.Failure.Code != "" {
+				result.RecoveryCode = workspace.Failure.Code
 			}
 		}
 		return result
 	}
-	result.State = record.ExecutionHandoff.State
-	result.HandoffState = record.ExecutionHandoff.State
-	result.Attempt = record.ExecutionHandoff.Attempt
-	result.ContextSHA256 = record.ExecutionHandoff.ContextSHA256
-	result.Orca = record.ExecutionHandoff.Orca
-	if provider, err := issueOpsHandoffProvider(record); err == nil && provider == "gitlab" && record.ExecutionHandoff.Orca != nil {
-		if record.ExecutionHandoff.Orca.ProviderIssueLinkStatus == handoff.ProviderIssueLinkGitLabExact {
+	result.State = h.State
+	result.HandoffState = h.State
+	result.Attempt = h.Attempt
+	result.ContextSHA256 = h.ContextSHA256
+	result.Orca = h.Orca
+	if provider, err := issueOpsHandoffProvider(record); err == nil && provider == "gitlab" && h.Orca != nil {
+		if h.Orca.ProviderIssueLinkStatus == handoff.ProviderIssueLinkGitLabExact {
 			result.Warnings = removeString(result.Warnings, IssueOpsGitLabNativeMetadataUnavailableWarning)
 		} else {
 			result.Warnings = uniqueStrings(append(result.Warnings, IssueOpsGitLabNativeMetadataUnavailableWarning))
 		}
 	}
-	if record.ExecutionHandoff.State == handoff.StateRecoveryRequired {
+	if h.State == handoff.StateRecoveryRequired {
 		result.RecoveryCode = "explicit_reconcile_required"
-		if record.ExecutionHandoff.Failure != nil && record.ExecutionHandoff.Failure.Code != "" {
-			result.RecoveryCode = record.ExecutionHandoff.Failure.Code
+		if h.Failure != nil && h.Failure.Code != "" {
+			result.RecoveryCode = h.Failure.Code
 		}
 	}
 	return result
@@ -897,7 +904,8 @@ func markHandoffPrepareRecovery(stateRoot, id string, fence handoff.Fence, code,
 		if err != nil {
 			return err
 		}
-		if record.ExecutionHandoff == nil || record.ExecutionHandoff.State == handoff.StateRecoveryRequired {
+		h := currentIssueOpsHandoff(record)
+		if h == nil || h.State == handoff.StateRecoveryRequired {
 			return nil
 		}
 		record, err = handoff.MarkRecoveryRequired(record, fence, model.IssueOpsExecutionHandoffFailure{Code: code, Message: message, At: now})

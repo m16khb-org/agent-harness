@@ -67,6 +67,9 @@ type IssueOpsExecutionHandoffCleanup = issueops.IssueOpsExecutionHandoffCleanup
 type IssueOpsRemoteCreateClaim = issueops.IssueOpsRemoteCreateClaim
 type IssueOpsRecord = issueops.IssueOpsRecord
 type IssueOpsV8MigrationClassification = issueops.IssueOpsV8MigrationClassification
+type IssueOpsOwnershipAttempt = issueops.IssueOpsOwnershipAttempt
+type IssueOpsOwnershipLedger = issueops.IssueOpsOwnershipLedger
+type IssueOpsCycleState = issueops.IssueOpsCycleState
 type IssueOpsDelegationContract = issueops.IssueOpsDelegationContract
 type IssueOpsChildCycleRef = issueops.IssueOpsChildCycleRef
 type IssueOpsChildStartRequest = issueops.IssueOpsChildStartRequest
@@ -93,6 +96,14 @@ func ConfirmIssueOpsV9Migration(stateRoot, id string) (IssueOpsV8MigrationClassi
 	return issueops.ConfirmIssueOpsV9Migration(stateRoot, id)
 }
 
+func CurrentOwnershipAttempt(record IssueOpsRecord) *IssueOpsOwnershipAttempt {
+	return issueops.CurrentOwnershipAttempt(record)
+}
+
+func LastOwnershipAttempt(record IssueOpsRecord) *IssueOpsOwnershipAttempt {
+	return issueops.LastOwnershipAttempt(record)
+}
+
 const (
 	IssueOpsCurrentSchemaVersion     = issueops.IssueOpsCurrentSchemaVersion
 	IssueOpsPhaseProblem             = issueops.IssueOpsPhaseProblem
@@ -104,6 +115,9 @@ const (
 	IssueOpsPhaseFeedback            = issueops.IssueOpsPhaseFeedback
 	IssueOpsPhasePR                  = issueops.IssueOpsPhasePR
 	IssueOpsPhaseDone                = issueops.IssueOpsPhaseDone
+	IssueOpsCycleActive              = issueops.IssueOpsCycleActive
+	IssueOpsCyclePaused              = issueops.IssueOpsCyclePaused
+	IssueOpsCycleClosed              = issueops.IssueOpsCycleClosed
 )
 
 var IssueOpsPhases = issueops.IssueOpsPhases

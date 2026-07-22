@@ -104,3 +104,18 @@ func TestClassifySkipsDoneCycle(t *testing.T) {
 		t.Fatalf("done cycles must never be flagged")
 	}
 }
+
+func TestPausedCycleHasSeparateNonReleasableClassification(t *testing.T) {
+	rec := model.IssueOpsRecord{
+		SchemaVersion: model.IssueOpsCurrentSchemaVersion,
+		ID:            "io-paused",
+		Branch:        "68-paused",
+		Phase:         model.IssueOpsPhaseImplement,
+		CycleState:    model.IssueOpsCyclePaused,
+		UpdatedAt:     "2026-05-01T00:00:00Z",
+	}
+	finding, ok := Classify(rec, baseProbe(), 14*24*time.Hour)
+	if !ok || finding.Category != CategoryPaused || finding.Releasable {
+		t.Fatalf("paused cycle classification = %+v ok=%v", finding, ok)
+	}
+}

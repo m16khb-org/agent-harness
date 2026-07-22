@@ -26,6 +26,9 @@ func CycleForBranch(store Store, repo, branch string) (model.IssueOpsRecord, boo
 	if err != nil {
 		return model.IssueOpsRecord{}, false
 	}
+	if record.CycleState != "" && record.CycleState != model.IssueOpsCycleActive {
+		return model.IssueOpsRecord{}, false
+	}
 	if record.Phase == model.IssueOpsPhaseDone && !retainsHandoffAuthority(record) {
 		return model.IssueOpsRecord{}, false
 	}
@@ -82,6 +85,9 @@ func LinkedWorktreeCyclesForRepo(store Store, repo string) []model.IssueOpsRecor
 		if record.Phase == model.IssueOpsPhaseDone && !retainsHandoffAuthority(record) {
 			continue
 		}
+		if record.CycleState != "" && record.CycleState != model.IssueOpsCycleActive {
+			continue
+		}
 		if planBranchMismatchesRecord(record) {
 			continue
 		}
@@ -111,7 +117,7 @@ func LinkedWorktreeCyclesForRepo(store Store, repo string) []model.IssueOpsRecor
 }
 
 func retainsHandoffAuthority(record model.IssueOpsRecord) bool {
-	h := record.ExecutionHandoff
+	h := model.CurrentExecutionHandoff(record)
 	return h != nil && h.State != "closed"
 }
 
@@ -162,17 +168,24 @@ func SupervisedHandoffCyclesForRepo(store Store, repo string) []model.IssueOpsRe
 	records := []model.IssueOpsRecord{}
 	for _, id := range ids {
 		record, err := store.Read(stateRoot, id)
-		if record.ExecutionHandoff == nil {
+		h := model.CurrentExecutionHandoff(record)
+		current := h != nil
+		if h == nil && (record.CycleState == model.IssueOpsCyclePaused || record.CycleState == model.IssueOpsCycleClosed) {
+			if attempt := model.LastOwnershipAttempt(record); attempt != nil {
+				h = attempt.Handoff
+			}
+		}
+		if h == nil {
 			continue
 		}
-		if record.ExecutionHandoff.State == "closed" {
+		if current && h.State == "closed" {
 			continue
 		}
 		if err != nil && !safelyIdentifiableSupervisedHandoff(record) {
 			continue
 		}
 		recordRepo := pathutil.CleanAbsPath(record.Repo)
-		workerRoot := pathutil.CleanAbsPath(record.ExecutionHandoff.WorkerRoot)
+		workerRoot := pathutil.CleanAbsPath(h.WorkerRoot)
 		if recordRepo != repo && workerRoot != repo && !pathutil.PathWithin(repo, workerRoot) {
 			continue
 		}
@@ -188,11 +201,17 @@ func SupervisedHandoffCyclesForRepo(store Store, repo string) []model.IssueOpsRe
 }
 
 func safelyIdentifiableSupervisedHandoff(record model.IssueOpsRecord) bool {
-	if record.ExecutionHandoff == nil {
+	h := model.CurrentExecutionHandoff(record)
+	if h == nil && (record.CycleState == model.IssueOpsCyclePaused || record.CycleState == model.IssueOpsCycleClosed) {
+		if attempt := model.LastOwnershipAttempt(record); attempt != nil {
+			h = attempt.Handoff
+		}
+	}
+	if h == nil {
 		return false
 	}
 	repo := strings.TrimSpace(record.Repo)
-	worker := strings.TrimSpace(record.ExecutionHandoff.WorkerRoot)
+	worker := strings.TrimSpace(h.WorkerRoot)
 	if repo == "" || worker == "" || len(repo) > 4096 || len(worker) > 4096 || strings.ContainsRune(repo, 0) || strings.ContainsRune(worker, 0) {
 		return false
 	}

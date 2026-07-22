@@ -237,17 +237,17 @@ func recordHasAmbiguousProtectedOrcaResource(record IssueOpsRecord, target prote
 }
 
 func handoffOrcaIdentity(record IssueOpsRecord) *model.IssueOpsOrcaIdentity {
-	if record.ExecutionHandoff == nil {
+	if retainedOwnershipHandoff(record) == nil {
 		return nil
 	}
-	return record.ExecutionHandoff.Orca
+	return retainedOwnershipHandoff(record).Orca
 }
 
 func workspaceOrcaIdentity(record IssueOpsRecord) *model.IssueOpsOrcaIdentity {
-	if record.ExecutionWorkspace == nil {
+	if retainedOwnershipWorkspace(record) == nil {
 		return nil
 	}
-	return record.ExecutionWorkspace.Orca
+	return retainedOwnershipWorkspace(record).Orca
 }
 
 func protectedOrcaIdentityOwns(orca *model.IssueOpsOrcaIdentity, target protectedOrcaResourceTarget) bool {

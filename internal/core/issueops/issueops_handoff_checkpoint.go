@@ -9,7 +9,7 @@ import (
 )
 
 func validateHandoffCleanExactCheckpoint(record IssueOpsRecord) error {
-	h := record.ExecutionHandoff
+	h := currentIssueOpsHandoff(record)
 	if h == nil {
 		return fmt.Errorf("execution handoff checkpoint is required")
 	}
@@ -36,7 +36,7 @@ func validateHandoffCleanExactCheckpoint(record IssueOpsRecord) error {
 }
 
 func validateHandoffStartCheckpoint(record IssueOpsRecord) error {
-	if record.ExecutionHandoff != nil {
+	if currentIssueOpsHandoff(record) != nil {
 		_, err := validateOwnershipStartCheckpoint(record)
 		return err
 	}

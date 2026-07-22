@@ -6,29 +6,46 @@ import (
 	"reflect"
 
 	"agent-harness/internal/core/issueops/handoff"
+	"agent-harness/internal/core/issueops/model"
 )
 
 // CurrentOwnershipAttempt resolves mutation authority only through the durable
 // active-attempt pointer. Historical position never implies live authority.
 func CurrentOwnershipAttempt(record IssueOpsRecord) *IssueOpsOwnershipAttempt {
-	if record.Ownership == nil || record.Ownership.ActiveAttempt <= 0 {
-		return nil
-	}
-	for index := range record.Ownership.Attempts {
-		if record.Ownership.Attempts[index].Number == record.Ownership.ActiveAttempt {
-			return &record.Ownership.Attempts[index]
-		}
-	}
-	return nil
+	return model.CurrentOwnershipAttempt(record)
 }
 
 // LastOwnershipAttempt returns audit history only. Callers must not treat it as
 // live mutation authority when ActiveAttempt is zero or points elsewhere.
 func LastOwnershipAttempt(record IssueOpsRecord) *IssueOpsOwnershipAttempt {
-	if record.Ownership == nil || len(record.Ownership.Attempts) == 0 {
+	return model.LastOwnershipAttempt(record)
+}
+
+func currentIssueOpsWorkspace(record IssueOpsRecord) *IssueOpsExecutionWorkspace {
+	return model.CurrentExecutionWorkspace(record)
+}
+
+func currentIssueOpsHandoff(record IssueOpsRecord) *IssueOpsExecutionHandoff {
+	return model.CurrentExecutionHandoff(record)
+}
+
+func lastIssueOpsHandoff(record IssueOpsRecord) *IssueOpsExecutionHandoff {
+	attempt := LastOwnershipAttempt(record)
+	if attempt == nil {
 		return nil
 	}
-	return &record.Ownership.Attempts[len(record.Ownership.Attempts)-1]
+	return attempt.Handoff
+}
+
+func retainedCleanupHandoff(record IssueOpsRecord) *IssueOpsExecutionHandoff {
+	if record.CycleState != IssueOpsCycleClosed {
+		return nil
+	}
+	h := lastIssueOpsHandoff(record)
+	if h == nil || h.Completion == nil {
+		return nil
+	}
+	return h
 }
 
 func CloneIssueOpsOwnershipLedger(value *IssueOpsOwnershipLedger) *IssueOpsOwnershipLedger {

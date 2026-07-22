@@ -63,25 +63,27 @@ func ownershipActiveRecorderRecord(t *testing.T) (string, IssueOpsRecord, IssueO
 	owner := &model.IssueOpsHostSessionIdentity{Host: "claude", SessionID: "owner-session", AgentID: "owner-agent"}
 	preparation := &model.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "source-session", AgentID: "source-agent"}
 	orca := &model.IssueOpsOrcaIdentity{RuntimeID: "runtime-1", RepoID: "repo-1", BaseRef: "refs/remotes/origin/" + branch, WorktreeID: "wt-1", WorktreeInstanceID: "instance-1", WorktreePath: worker, WorkerPTYID: "pty-1", WorkerTerminalHandle: "term-1", WorkerMailboxHandle: "term-1", TaskID: "task-1", DispatchID: "dispatch-1"}
+	workspace := &model.IssueOpsExecutionWorkspace{State: "ready", WorkspaceEpoch: "workspace-1", Driver: "orca", Agent: "claude", CoordinatorRoot: repo, WorkerRoot: worker, PreparationSession: preparation, BaseHead: baseHead}
+	h := &model.IssueOpsExecutionHandoff{
+		State: handoff.StateOwnerActive, Attempt: 1, OwnershipEpoch: "ownership-1", WorkspaceEpoch: "workspace-1", WorkspaceSHA256: strings.Repeat("a", 64),
+		AttemptBaseHead: head, ContextVersion: handoff.ContextVersion,
+		Driver: "orca", Agent: "claude", DeliveryMode: "inject", CoordinatorRoot: repo, CoordinatorMailboxHandle: "term-source", WorkerRoot: worker, OwnerSession: owner,
+		Orientation: &model.IssueOpsOwnershipOrientation{IssueURL: "https://github.com/acme/repo/issues/16", PlanSHA256: strings.Repeat("d", 64), Understanding: "sealed cycle only", ScopeConfirmation: "worker root only", RecordedAt: "2026-07-20T00:00:00Z"}, Orca: orca,
+	}
 	record := IssueOpsRecord{
 		SchemaVersion: IssueOpsCurrentSchemaVersion, OK: true, ID: NewIssueOpsID(repo, branch), Repo: repo, Branch: branch,
 		IssueURL: "https://github.com/acme/repo/issues/16", Phase: IssueOpsPhaseCompatibilityReview, PlanPath: filepath.Join(worker, "plans", "demo.md"), WorktreePath: worker,
-		BranchPrepare:      &model.IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/acme/repo/issues/16", Branch: branch, BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true},
-		ExecutionWorkspace: &model.IssueOpsExecutionWorkspace{State: "ready", WorkspaceEpoch: "workspace-1", Driver: "orca", Agent: "claude", CoordinatorRoot: repo, WorkerRoot: worker, PreparationSession: preparation, BaseHead: baseHead},
-		ExecutionHandoff: &model.IssueOpsExecutionHandoff{
-			State: handoff.StateOwnerActive, Attempt: 1, OwnershipEpoch: "ownership-1", WorkspaceEpoch: "workspace-1", WorkspaceSHA256: strings.Repeat("a", 64),
-			AttemptBaseHead: head, ContextVersion: handoff.ContextVersion,
-			Driver: "orca", Agent: "claude", DeliveryMode: "inject", CoordinatorRoot: repo, CoordinatorMailboxHandle: "term-source", WorkerRoot: worker, OwnerSession: owner,
-			Orientation: &model.IssueOpsOwnershipOrientation{IssueURL: "https://github.com/acme/repo/issues/16", PlanSHA256: strings.Repeat("d", 64), Understanding: "sealed cycle only", ScopeConfirmation: "worker root only", RecordedAt: "2026-07-20T00:00:00Z"}, Orca: orca,
-		},
-		CreatedAt: "2026-07-20T00:00:00Z", UpdatedAt: "2026-07-20T00:00:00Z",
+		BranchPrepare: &model.IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/acme/repo/issues/16", Branch: branch, BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true},
+		CycleState:    IssueOpsCycleActive,
+		Ownership:     &IssueOpsOwnershipLedger{ActiveAttempt: 1, Attempts: []IssueOpsOwnershipAttempt{{Number: 1, Workspace: workspace, Handoff: h, StartedAt: "2026-07-20T00:00:00Z"}}},
+		CreatedAt:     "2026-07-20T00:00:00Z", UpdatedAt: "2026-07-20T00:00:00Z",
 	}
 	packet, err := handoff.BuildContext(record, handoff.ContextOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	record.ExecutionHandoff.ContextSHA256 = packet.SHA256
-	record.ExecutionHandoff.ContextSourceSHA256 = packet.SourceSHA256
+	h.ContextSHA256 = packet.SHA256
+	h.ContextSourceSHA256 = packet.SourceSHA256
 	active, err := WriteIssueOps(stateRoot, record)
 	if err != nil {
 		t.Fatal(err)

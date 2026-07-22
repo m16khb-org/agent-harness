@@ -652,11 +652,11 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 }
 
 func pullRequestDraft(record core.IssueOpsRecord) bool {
-	return record.ExecutionHandoff != nil
+	return core.CurrentOwnershipAttempt(record) != nil
 }
 
 func rejectSupervisedPullRequestBodyFile(record core.IssueOpsRecord, bodyFile string) error {
-	if record.ExecutionHandoff != nil && strings.TrimSpace(bodyFile) != "" {
+	if core.CurrentOwnershipAttempt(record) != nil && strings.TrimSpace(bodyFile) != "" {
 		return fmt.Errorf("body-file is forbidden for supervised pull/merge request publication; pass the already-rendered literal --body")
 	}
 	return nil

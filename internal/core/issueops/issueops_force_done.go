@@ -30,6 +30,10 @@ func forceDoneIssueOpsLocked(stateRoot, id string) (IssueOpsRecord, error) {
 		return record, err
 	}
 	if record.Phase == IssueOpsPhaseDone {
+		if record.CycleState == "" {
+			record.CycleState = IssueOpsCycleClosed
+			return touchAndWriteIssueOps(stateRoot, record)
+		}
 		return record, nil
 	}
 	if record.Phase != IssueOpsPhasePR {
@@ -62,5 +66,14 @@ func forceDoneIssueOpsLocked(stateRoot, id string) (IssueOpsRecord, error) {
 		record.ForceReleaseReason = issueOpsAppendActiveChildrenAudit(record.ForceReleaseReason, activeChildren)
 	}
 	record.Phase = IssueOpsPhaseDone
+	record.CycleState = IssueOpsCycleClosed
+	if attempt := CurrentOwnershipAttempt(record); attempt != nil {
+		now := time.Now().UTC().Format(time.RFC3339Nano)
+		if attempt.Handoff == nil || attempt.Handoff.State != "closed" {
+			return IssueOpsRecord{OK: false}, fmt.Errorf("cannot force-done while the current ownership attempt is nonterminal")
+		}
+		attempt.ClosedAt = now
+		record.Ownership.ActiveAttempt = 0
+	}
 	return touchAndWriteIssueOps(stateRoot, record)
 }

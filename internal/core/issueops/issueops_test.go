@@ -356,8 +356,8 @@ func TestForceReleaseStampsOrphanWorktreePath(t *testing.T) {
 	if released.OrphanWorktreePath != worktreeDir {
 		t.Fatalf("force-release must stamp orphan worktree path: want %q, got %q", worktreeDir, released.OrphanWorktreePath)
 	}
-	if released.Phase != IssueOpsPhaseDone {
-		t.Fatalf("force-release must advance to done, got %q", released.Phase)
+	if released.Phase != record.Phase || released.CycleState != IssueOpsCyclePaused {
+		t.Fatalf("force-release must preserve phase and pause cycle, got phase=%q state=%q", released.Phase, released.CycleState)
 	}
 }
 

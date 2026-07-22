@@ -49,11 +49,11 @@ func validateWorkspacePreparationActor(record IssueOpsRecord, selectedAgent stri
 }
 
 func validateReadyWorkspacePreparationActor(record IssueOpsRecord, actor IssueOpsActor) error {
-	workspace := record.ExecutionWorkspace
+	workspace := currentIssueOpsWorkspace(record)
 	if workspace == nil {
 		return nil
 	}
-	if record.ExecutionHandoff != nil || workspace.State != "ready" {
+	if currentIssueOpsHandoff(record) != nil || workspace.State != "ready" {
 		return fmt.Errorf("workspace preparation requires a ready execution workspace without an ownership handoff")
 	}
 	session, err := actor.session()
@@ -70,7 +70,7 @@ func validateReadyWorkspacePreparationActor(record IssueOpsRecord, actor IssueOp
 }
 
 func validateWorkspacePreparationMutation(record IssueOpsRecord, actor *IssueOpsActor) error {
-	if record.ExecutionWorkspace == nil {
+	if currentIssueOpsWorkspace(record) == nil {
 		return nil
 	}
 	if actor == nil {
@@ -83,7 +83,7 @@ func validateWorkspacePreparationMutation(record IssueOpsRecord, actor *IssueOps
 // owner even when callers bypass lifecycle hooks through a direct CLI or MCP
 // request. Legacy cycles retain their existing actor-optional behavior.
 func validatePostTransferMutation(record IssueOpsRecord, actor *IssueOpsActor) error {
-	h := record.ExecutionHandoff
+	h := currentIssueOpsHandoff(record)
 	if h == nil {
 		return nil
 	}
@@ -111,7 +111,7 @@ func validatePostTransferMutation(record IssueOpsRecord, actor *IssueOpsActor) e
 // result. It intentionally has the same source-root behavior as the
 // durable recorders: only an execution workspace requires the sealed actor.
 func ValidateReadyWorkspacePreparationActor(record IssueOpsRecord, actor IssueOpsActor) error {
-	if record.ExecutionWorkspace == nil {
+	if currentIssueOpsWorkspace(record) == nil {
 		return nil
 	}
 	return validateReadyWorkspacePreparationActor(record, actor)

@@ -41,14 +41,15 @@ func Start(store Store, stateRoot string, req model.IssueOpsStartRequest) (model
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	record := model.IssueOpsRecord{
-		OK:        true,
-		ID:        id,
-		Repo:      repo,
-		Branch:    branch,
-		Phase:     model.IssueOpsPhaseProblem,
-		Feedback:  []model.IssueOpsFeedbackItem{},
-		CreatedAt: now,
-		UpdatedAt: now,
+		OK:         true,
+		ID:         id,
+		Repo:       repo,
+		Branch:     branch,
+		Phase:      model.IssueOpsPhaseProblem,
+		CycleState: model.IssueOpsCycleActive,
+		Feedback:   []model.IssueOpsFeedbackItem{},
+		CreatedAt:  now,
+		UpdatedAt:  now,
 	}
 	return store.Write(stateRoot, record)
 }
@@ -81,11 +82,12 @@ func resumeOrReset(store Store, stateRoot string, existing model.IssueOpsRecord)
 		createdAt = now
 	}
 	reset := model.IssueOpsRecord{
-		OK:     true,
-		ID:     existing.ID,
-		Repo:   existing.Repo,
-		Branch: existing.Branch,
-		Phase:  model.IssueOpsPhaseProblem,
+		OK:         true,
+		ID:         existing.ID,
+		Repo:       existing.Repo,
+		Branch:     existing.Branch,
+		Phase:      model.IssueOpsPhaseProblem,
+		CycleState: model.IssueOpsCycleActive,
 		// Non-worktree analysis/audit metadata: this state lives in the state
 		// JSON (not the deleted worktree) and describes the problem/plan that
 		// carries into re-work, so it survives the reset.
@@ -134,7 +136,7 @@ func resumeOrReset(store Store, stateRoot string, existing model.IssueOpsRecord)
 // Store is only built by tests that do not exercise worktree-phase resumption;
 // production wiring always injects the validator (see package.go).
 func staleResettableWorktreeCycle(store Store, record model.IssueOpsRecord) bool {
-	if record.ExecutionHandoff != nil || record.ExecutionWorkspace != nil {
+	if model.CurrentOwnershipAttempt(record) != nil {
 		return false
 	}
 	if store.WorktreeValid == nil {

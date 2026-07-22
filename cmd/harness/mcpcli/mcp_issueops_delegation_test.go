@@ -45,6 +45,7 @@ func TestMCPIssueOpsChildLifecycle(t *testing.T) {
 
 	child := started.Child
 	child.Phase = core.IssueOpsPhaseDone
+	child.CycleState = core.IssueOpsCycleClosed
 	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), child); err != nil {
 		t.Fatal(err)
 	}

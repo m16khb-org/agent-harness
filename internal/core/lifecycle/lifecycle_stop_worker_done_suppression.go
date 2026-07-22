@@ -28,7 +28,7 @@ func SuppressStopNextActionForCompletedWorker(req HookToolUseLifecycleRequest) b
 	if err := handoff.ValidateEnvelope(record); err != nil {
 		return false
 	}
-	h := record.ExecutionHandoff
+	h := currentOwnershipHandoff(record)
 	if h == nil {
 		return false
 	}

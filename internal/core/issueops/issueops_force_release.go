@@ -181,21 +181,34 @@ func forceReleaseLocked(stateRoot, id, reason string) (IssueOpsRecord, error) {
 	if err != nil {
 		return record, err
 	}
-	if h := record.ExecutionHandoff; h != nil && h.State != handoff.StateClosed {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("force-release cannot change a non-closed ownership-transfer handoff; use the explicit human cleanup flow")
+	if record.CycleState == IssueOpsCycleClosed || record.Phase == IssueOpsPhaseDone {
+		return record, nil
 	}
-	if w := record.ExecutionWorkspace; w != nil && w.State != handoff.StateRecoveryRequired {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("force-release cannot change a live execution workspace; use explicit workspace recovery")
-	}
-	if record.Phase == IssueOpsPhaseDone {
+	if record.CycleState == IssueOpsCyclePaused {
 		return record, nil
 	}
 	activeChildren, err := issueOpsActiveChildIDs(stateRoot, record)
 	if err != nil {
 		return IssueOpsRecord{OK: false}, err
 	}
-	record.Phase = IssueOpsPhaseDone
-	record.ForceReleasedAt = time.Now().UTC().Format(time.RFC3339Nano)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	if attempt := CurrentOwnershipAttempt(record); attempt != nil {
+		if attempt.Handoff != nil {
+			if attempt.Handoff.Completion != nil || attempt.Handoff.State == handoff.StateCleanupPendingHumanDecision || attempt.Handoff.State == handoff.StateCleanupExecuting {
+				return IssueOpsRecord{OK: false}, fmt.Errorf("force-release cannot replace verified owner completion or human cleanup authority")
+			}
+			attempt.Handoff.State = handoff.StateClosed
+			attempt.Handoff.ClosedDisposition = handoff.DispositionCancelled
+			attempt.Handoff.Cancellation = nil
+			attempt.Handoff.Completion = nil
+			attempt.Handoff.Failure = &IssueOpsExecutionHandoffFailure{Code: "cancellation_finalized", Message: reason, At: now}
+			attempt.Handoff.UpdatedAt = now
+		}
+		attempt.ClosedAt = now
+		record.Ownership.ActiveAttempt = 0
+	}
+	record.CycleState = IssueOpsCyclePaused
+	record.ForceReleasedAt = now
 	record.ForceReleaseReason = issueOpsAppendActiveChildrenAudit(reason, activeChildren)
 	// Preserve the existing worktree path as an orphan audit marker so the
 	// off-hot-path stale-scan reaper can later run git worktree prune/remove.

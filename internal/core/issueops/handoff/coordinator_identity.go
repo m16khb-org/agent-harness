@@ -10,7 +10,7 @@ import (
 // CoordinatorIdentityMatches treats the mailbox handle as routing only. The
 // native host session and the source checkout are the durable authority.
 func CoordinatorIdentityMatches(record model.IssueOpsRecord, native model.IssueOpsHostSessionIdentity, cwd string) bool {
-	h := record.ExecutionHandoff
+	h := model.CurrentExecutionHandoff(record)
 	if h == nil || h.CoordinatorSession == nil {
 		return false
 	}

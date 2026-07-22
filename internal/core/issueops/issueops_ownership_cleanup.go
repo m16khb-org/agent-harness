@@ -81,7 +81,7 @@ func ApproveIssueOpsOwnershipCleanup(stateRoot string, req IssueOpsOwnershipClea
 			return fmt.Errorf("ownership cleanup inventory changed; preview again before approval")
 		}
 		now := time.Now().UTC().Format(time.RFC3339Nano)
-		h := record.ExecutionHandoff
+		h := retainedCleanupHandoff(record)
 		h.Cleanup = &model.IssueOpsExecutionHandoffCleanup{Disposition: disposition, Reason: reason, ApprovedAt: now, ApprovedBySession: &model.IssueOpsHostSessionIdentity{Host: strings.TrimSpace(req.Host), SessionID: strings.TrimSpace(req.Session), AgentID: strings.TrimSpace(req.AgentID)}, InventoryFingerprint: fingerprint}
 		h.State = handoff.StateCleanupExecuting
 		h.UpdatedAt, record.UpdatedAt = now, now
@@ -104,7 +104,7 @@ func RecordIssueOpsOwnershipCleanup(ctx context.Context, stateRoot string, req I
 	if err := validateOwnershipCleanupExecutor(validated, req.IssueOpsOwnershipCleanupPreviewRequest); err != nil {
 		return IssueOpsRecord{}, err
 	}
-	h := validated.ExecutionHandoff
+	h := retainedCleanupHandoff(validated)
 	expected := ownershipCleanupSteps(h.Cleanup.Disposition)
 	if len(h.Cleanup.Receipts) >= len(expected) || step != expected[len(h.Cleanup.Receipts)] {
 		return IssueOpsRecord{}, fmt.Errorf("ownership cleanup receipt %q is out of order for disposition %s", step, h.Cleanup.Disposition)
@@ -122,15 +122,19 @@ func RecordIssueOpsOwnershipCleanup(ctx context.Context, stateRoot string, req I
 		if !reflect.DeepEqual(current, validated) {
 			return fmt.Errorf("ownership cleanup changed during receipt verification")
 		}
-		current.ExecutionHandoff.Cleanup.Receipts = append(current.ExecutionHandoff.Cleanup.Receipts, receipt)
-		current.ExecutionHandoff.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
-		current.UpdatedAt = current.ExecutionHandoff.UpdatedAt
-		if len(current.ExecutionHandoff.Cleanup.Receipts) == len(expected) {
-			current.ExecutionHandoff.State = handoff.StateClosed
-			if current.ExecutionHandoff.Cleanup.Disposition == "close-owner" {
-				current.ExecutionHandoff.ClosedDisposition = handoff.DispositionOwnerClosedWorkspaceRetained
+		h := retainedCleanupHandoff(current)
+		if h == nil {
+			return fmt.Errorf("ownership cleanup lost retained completion authority")
+		}
+		h.Cleanup.Receipts = append(h.Cleanup.Receipts, receipt)
+		h.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
+		current.UpdatedAt = h.UpdatedAt
+		if len(h.Cleanup.Receipts) == len(expected) {
+			h.State = handoff.StateClosed
+			if h.Cleanup.Disposition == "close-owner" {
+				h.ClosedDisposition = handoff.DispositionOwnerClosedWorkspaceRetained
 			} else {
-				current.ExecutionHandoff.ClosedDisposition = handoff.DispositionLocalResourcesRemoved
+				h.ClosedDisposition = handoff.DispositionLocalResourcesRemoved
 			}
 		}
 		persisted, readErr = writeIssueOps(stateRoot, current)
@@ -147,7 +151,7 @@ func ownershipCleanupSteps(disposition string) []string {
 }
 
 func validateOwnershipCleanupExecutor(record IssueOpsRecord, req IssueOpsOwnershipCleanupPreviewRequest) error {
-	h := record.ExecutionHandoff
+	h := retainedCleanupHandoff(record)
 	if h == nil || h.State != handoff.StateCleanupExecuting || h.Cleanup == nil || h.Cleanup.ApprovedBySession == nil || pathutil.CleanAbsPath(req.CWD) != pathutil.CleanAbsPath(record.Repo) {
 		return fmt.Errorf("ownership cleanup receipt requires approved cleanup execution from the exact source root")
 	}
@@ -160,7 +164,7 @@ func validateOwnershipCleanupExecutor(record IssueOpsRecord, req IssueOpsOwnersh
 
 func verifyOwnershipCleanupStep(ctx context.Context, record IssueOpsRecord, step string, client any, now string) (model.IssueOpsExecutionHandoffCleanupReceipt, error) {
 	if step == "remote_head_safe" {
-		h := record.ExecutionHandoff
+		h := retainedCleanupHandoff(record)
 		if h.PublishReceipt == nil || h.Completion == nil || h.PublishReceipt.FinalHead != h.Completion.FinalHead {
 			return model.IssueOpsExecutionHandoffCleanupReceipt{}, fmt.Errorf("ownership cleanup requires the verified remote head")
 		}
@@ -177,7 +181,7 @@ func verifyOwnershipCleanupStep(ctx context.Context, record IssueOpsRecord, step
 }
 
 func validateOwnershipCleanupCandidate(record IssueOpsRecord, req IssueOpsOwnershipCleanupPreviewRequest) error {
-	h := record.ExecutionHandoff
+	h := retainedCleanupHandoff(record)
 	if h == nil || h.State != handoff.StateCleanupPendingHumanDecision || h.Completion == nil || h.Cleanup != nil {
 		return fmt.Errorf("ownership cleanup requires cleanup_pending_human_decision")
 	}
@@ -191,7 +195,7 @@ func validateOwnershipCleanupCandidate(record IssueOpsRecord, req IssueOpsOwners
 }
 
 func ownershipCleanupInventoryFingerprint(record IssueOpsRecord) string {
-	h := record.ExecutionHandoff
+	h := retainedCleanupHandoff(record)
 	values := []string{record.ID, record.Repo, record.Branch, h.WorkspaceEpoch, h.WorkerRoot, h.Completion.FinalHead}
 	if h.Orca != nil {
 		values = append(values, h.Orca.WorktreeID, h.Orca.WorkerTerminalHandle, h.Orca.TaskID, h.Orca.DispatchID)

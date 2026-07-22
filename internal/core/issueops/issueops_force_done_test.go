@@ -93,7 +93,7 @@ func TestForceReleaseParentRecordsActiveChildrenAudit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if released.Phase != IssueOpsPhaseDone || !strings.Contains(released.ForceReleaseReason, started.Child.ID) {
+	if released.Phase != parent.Phase || released.CycleState != IssueOpsCyclePaused || !strings.Contains(released.ForceReleaseReason, started.Child.ID) {
 		t.Fatalf("force-release should audit active child ids, got phase=%s reason=%q", released.Phase, released.ForceReleaseReason)
 	}
 }

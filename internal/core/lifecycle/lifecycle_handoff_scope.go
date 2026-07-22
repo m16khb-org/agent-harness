@@ -99,11 +99,11 @@ func isLiteralNewCycleStartFromSource(req HookToolUseLifecycleRequest, records [
 }
 
 func executionWorkerRoot(record IssueOpsRecord) string {
-	if record.ExecutionHandoff != nil {
-		return record.ExecutionHandoff.WorkerRoot
+	if retainedOwnershipHandoff(record) != nil {
+		return retainedOwnershipHandoff(record).WorkerRoot
 	}
-	if record.ExecutionWorkspace != nil {
-		return record.ExecutionWorkspace.WorkerRoot
+	if retainedOwnershipWorkspace(record) != nil {
+		return retainedOwnershipWorkspace(record).WorkerRoot
 	}
 	return ""
 }

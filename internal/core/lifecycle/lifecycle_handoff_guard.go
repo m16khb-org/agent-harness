@@ -17,7 +17,7 @@ func BuildIssueOpsHandoffSessionGuidance(repo, host, sessionID, agentID string) 
 	records := uniqueSupervisedHandoffRecords(supervisedHandoffGuardRecords(repo))
 	target := cleanAbsPath(repo)
 	workerMatches := filterHandoffRecords(records, func(record IssueOpsRecord) bool {
-		return record.ExecutionHandoff != nil && target == cleanAbsPath(record.ExecutionHandoff.WorkerRoot)
+		return currentOwnershipHandoff(record) != nil && target == cleanAbsPath(currentOwnershipHandoff(record).WorkerRoot)
 	})
 	if len(workerMatches) == 1 {
 		return renderHandoffSessionGuidance(workerMatches[0], true, host, sessionID, agentID)
@@ -40,7 +40,7 @@ func BuildIssueOpsHandoffSessionGuidance(repo, host, sessionID, agentID string) 
 func uniqueSupervisedHandoffRecords(records []IssueOpsRecord) []IssueOpsRecord {
 	byID := map[string]IssueOpsRecord{}
 	for _, record := range records {
-		if record.ExecutionHandoff != nil {
+		if currentOwnershipHandoff(record) != nil {
 			byID[record.ID] = record
 		}
 	}
@@ -58,7 +58,7 @@ func uniqueSupervisedHandoffRecords(records []IssueOpsRecord) []IssueOpsRecord {
 }
 
 func renderHandoffSessionGuidance(record IssueOpsRecord, worker bool, host, sessionID, agentID string) string {
-	h := record.ExecutionHandoff
+	h := currentOwnershipHandoff(record)
 	if h == nil {
 		return ""
 	}
@@ -143,7 +143,7 @@ func shellGuidanceQuote(value string) string {
 // state — handoff recover has no session-identity gate there, so the operator
 // (any session in the source checkout) can run it.
 func supervisedFenceRecoverEscape(record IssueOpsRecord) string {
-	h := record.ExecutionHandoff
+	h := currentOwnershipHandoff(record)
 	if h == nil {
 		return ""
 	}
@@ -268,7 +268,7 @@ func handoffOwnershipBlockReason(req HookToolUseLifecycleRequest) (bool, string)
 }
 
 func ownershipTransferMutationBlockReason(req HookToolUseLifecycleRequest, record IssueOpsRecord) (bool, string) {
-	h := record.ExecutionHandoff
+	h := currentOwnershipHandoff(record)
 	if h == nil {
 		return true, "ownership transfer handoff record is incomplete"
 	}
@@ -324,7 +324,7 @@ func ambiguousSupervisedSourceCheckout(req HookToolUseLifecycleRequest) bool {
 			continue
 		}
 		for _, record := range supervisedHandoffGuardRecords(repo) {
-			if record.ExecutionHandoff != nil && cwd == cleanAbsPath(record.Repo) {
+			if currentOwnershipHandoff(record) != nil && cwd == cleanAbsPath(record.Repo) {
 				byID[record.ID] = true
 			}
 		}
@@ -333,7 +333,7 @@ func ambiguousSupervisedSourceCheckout(req HookToolUseLifecycleRequest) bool {
 }
 
 func protectedWorkerRootMutation(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
-	if !searchrouting.IsShellTool(req.Tool) || record.ExecutionHandoff == nil {
+	if !searchrouting.IsShellTool(req.Tool) || currentOwnershipHandoff(record) == nil {
 		return false
 	}
 	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
@@ -355,7 +355,7 @@ func protectedWorkerRootMutation(req HookToolUseLifecycleRequest, record IssueOp
 	default:
 		return false
 	}
-	root := cleanAbsPath(record.ExecutionHandoff.WorkerRoot)
+	root := cleanAbsPath(currentOwnershipHandoff(record).WorkerRoot)
 	gitPath := filepath.Join(root, ".git")
 	targets := make([]string, 0, len(req.Paths))
 	for _, path := range req.Paths {

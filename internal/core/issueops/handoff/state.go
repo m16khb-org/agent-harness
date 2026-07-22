@@ -190,19 +190,24 @@ func fencedCopy(record model.IssueOpsRecord, fence Fence, requireContext bool) (
 	if err := ValidateEnvelope(record); err != nil {
 		return record, nil, err
 	}
-	if record.ExecutionHandoff == nil {
+	current := model.CurrentOwnershipAttempt(record)
+	if current == nil || current.Handoff == nil {
 		return record, nil, fmt.Errorf("execution handoff is required")
 	}
 	updated := record
-	copyHandoff := cloneHandoff(*record.ExecutionHandoff)
-	updated.ExecutionHandoff = &copyHandoff
+	copyLedger := *record.Ownership
+	copyLedger.Attempts = append([]model.IssueOpsOwnershipAttempt(nil), record.Ownership.Attempts...)
+	updated.Ownership = &copyLedger
+	updatedAttempt := model.CurrentOwnershipAttempt(updated)
+	copyHandoff := cloneHandoff(*current.Handoff)
+	updatedAttempt.Handoff = &copyHandoff
 	if copyHandoff.Attempt != fence.Attempt || copyHandoff.OwnershipEpoch != strings.TrimSpace(fence.OwnershipEpoch) {
 		return record, nil, fmt.Errorf("stale handoff attempt or ownership epoch")
 	}
 	if requireContext && (copyHandoff.ContextSHA256 == "" || copyHandoff.ContextSHA256 != strings.TrimSpace(fence.ContextSHA256)) {
 		return record, nil, fmt.Errorf("stale handoff context")
 	}
-	return updated, updated.ExecutionHandoff, nil
+	return updated, updatedAttempt.Handoff, nil
 }
 
 func cloneHandoff(value model.IssueOpsExecutionHandoff) model.IssueOpsExecutionHandoff {

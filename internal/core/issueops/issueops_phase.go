@@ -41,7 +41,7 @@ func advanceIssueOpsPhaseWithActor(stateRoot, id, to string, actor *IssueOpsActo
 		if actorErr := validatePostTransferMutation(record, actor); actorErr != nil {
 			return actorErr
 		}
-		if record.ExecutionWorkspace != nil && record.ExecutionHandoff == nil {
+		if currentIssueOpsWorkspace(record) != nil && currentIssueOpsHandoff(record) == nil {
 			if actor == nil {
 				return fmt.Errorf("workspace preparation requires a native actor; use the actor-aware phase recorder")
 			}
@@ -85,6 +85,9 @@ func advanceIssueOpsPhaseLocked(stateRoot, id, to string) (IssueOpsRecord, error
 }
 
 func validateIssueOpsPhaseTransition(stateRoot string, record IssueOpsRecord, phase IssueOpsPhase) error {
+	if record.CycleState == IssueOpsCyclePaused {
+		return fmt.Errorf("cannot advance a paused IssueOps cycle; restart or explicitly close it")
+	}
 	if record.Phase == IssueOpsPhaseDone {
 		return fmt.Errorf("cannot leave done phase")
 	}
@@ -160,7 +163,7 @@ func issueOpsTerminalPhaseHandoffGuard(record IssueOpsRecord, phase IssueOpsPhas
 	if phase != IssueOpsPhaseDone {
 		return nil
 	}
-	h := record.ExecutionHandoff
+	h := currentIssueOpsHandoff(record)
 	if h == nil || h.State == handoff.StateClosed || h.State == handoff.StateCleanupPendingHumanDecision && h.Completion != nil {
 		return nil
 	}
@@ -171,6 +174,13 @@ func applyIssueOpsPhaseTransition(record IssueOpsRecord, phase IssueOpsPhase) Is
 	prevPhase := record.Phase
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	record.Phase = phase
+	if phase == IssueOpsPhaseDone {
+		record.CycleState = IssueOpsCycleClosed
+		if attempt := CurrentOwnershipAttempt(record); attempt != nil {
+			attempt.ClosedAt = now
+			record.Ownership.ActiveAttempt = 0
+		}
+	}
 	if phase == IssueOpsPhaseAISlopClean && strings.TrimSpace(record.AISlopCleanAt) == "" {
 		record.AISlopCleanAt = now
 	}

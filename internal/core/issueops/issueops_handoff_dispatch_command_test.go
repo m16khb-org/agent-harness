@@ -10,11 +10,12 @@ import (
 
 func TestConfirmedHandoffStartCommandReplaysSealedContextOptions(t *testing.T) {
 	record := IssueOpsRecord{
-		ID:   "io-current",
-		Repo: "/repo/source",
-		ExecutionHandoff: &IssueOpsExecutionHandoff{
-			WorkspaceEpoch: "workspace-current",
-		},
+		ID:         "io-current",
+		Repo:       "/repo/source",
+		CycleState: IssueOpsCycleActive,
+		Ownership: &IssueOpsOwnershipLedger{ActiveAttempt: 1, Attempts: []IssueOpsOwnershipAttempt{{
+			Number: 1, Handoff: &IssueOpsExecutionHandoff{WorkspaceEpoch: "workspace-current"},
+		}}},
 	}
 	options := handoff.ContextOptions{
 		CriteriaIDs:               []string{"identity", "verification"},
@@ -43,10 +44,12 @@ func TestConfirmedHandoffStartCommandReplaysSealedContextOptions(t *testing.T) {
 }
 
 func TestProjectHandoffStartReportsSealedLaunchProfile(t *testing.T) {
-	record := IssueOpsRecord{ID: "io-current", ExecutionHandoff: &IssueOpsExecutionHandoff{
-		State: "ownership_dispatching", Attempt: 1, Agent: "codex",
-		LaunchProfile: &model.IssueOpsAgentLaunchProfile{Agent: "codex", Model: "gpt-5.6-terra", ReasoningEffort: "high"},
-	}}
+	record := IssueOpsRecord{ID: "io-current", CycleState: IssueOpsCycleActive, Ownership: &IssueOpsOwnershipLedger{ActiveAttempt: 1, Attempts: []IssueOpsOwnershipAttempt{{
+		Number: 1, Handoff: &IssueOpsExecutionHandoff{
+			State: "ownership_dispatching", Attempt: 1, Agent: "codex",
+			LaunchProfile: &model.IssueOpsAgentLaunchProfile{Agent: "codex", Model: "gpt-5.6-terra", ReasoningEffort: "high"},
+		},
+	}}}}
 
 	result := projectHandoffStart(record, true, "plan-sha")
 	if result.Agent != "codex" || result.Model != "gpt-5.6-terra" || result.ReasoningEffort != "high" {

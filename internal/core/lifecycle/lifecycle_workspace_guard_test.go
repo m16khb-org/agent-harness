@@ -10,7 +10,7 @@ import (
 )
 
 func TestWorkspaceScopeLeavesOrdinarySourceWorkUnfenced(t *testing.T) {
-	record := IssueOpsRecord{ID: "io-workspace", Repo: "/repo", ExecutionWorkspace: &issueopsmodel.IssueOpsExecutionWorkspace{State: "ready", CoordinatorRoot: "/repo", WorkerRoot: "/repo.worktrees/feature"}}
+	record := workspaceAuthorityRecord(IssueOpsRecord{ID: "io-workspace", Repo: "/repo"}, &issueopsmodel.IssueOpsExecutionWorkspace{State: "ready", CoordinatorRoot: "/repo", WorkerRoot: "/repo.worktrees/feature"})
 	source := HookToolUseLifecycleRequest{Repo: "/repo", CWD: "/repo", Tool: "Bash", Command: "git status --short"}
 	if got := classifyHandoffFenceScope(source, []IssueOpsRecord{record}); got != handoffFenceScopeSourceOnly {
 		t.Fatalf("ordinary source work scope = %q", got)
@@ -30,7 +30,7 @@ func TestWorkspaceScopeTreatsGoRecursivePackagePatternAsSourceOnly(t *testing.T)
 	if err := os.MkdirAll(worker, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	record := IssueOpsRecord{ID: "io-workspace", Repo: source, ExecutionWorkspace: &issueopsmodel.IssueOpsExecutionWorkspace{State: "ready", CoordinatorRoot: source, WorkerRoot: worker}}
+	record := workspaceAuthorityRecord(IssueOpsRecord{ID: "io-workspace", Repo: source}, &issueopsmodel.IssueOpsExecutionWorkspace{State: "ready", CoordinatorRoot: source, WorkerRoot: worker})
 	for _, command := range []string{
 		"go test ./... -count=1",
 		"go test ./internal/core/lifecycle -count=1",
@@ -47,7 +47,7 @@ func TestWorkspaceScopeTreatsGoRecursivePackagePatternAsSourceOnly(t *testing.T)
 func TestLiteralNewCycleStartUsesExactSourceCWDDespiteStaleRepoHint(t *testing.T) {
 	source := t.TempDir()
 	worker := filepath.Join(filepath.Dir(source), filepath.Base(source)+".worktrees", "active")
-	record := IssueOpsRecord{ID: "io-active", Repo: source, ExecutionWorkspace: &issueopsmodel.IssueOpsExecutionWorkspace{State: "ready", CoordinatorRoot: source, WorkerRoot: worker}}
+	record := workspaceAuthorityRecord(IssueOpsRecord{ID: "io-active", Repo: source}, &issueopsmodel.IssueOpsExecutionWorkspace{State: "ready", CoordinatorRoot: source, WorkerRoot: worker})
 	req := HookToolUseLifecycleRequest{Repo: worker, CWD: source, SourceCheckout: source, Tool: "Bash", Command: "agent-harness issueops start --repo " + source + " --branch 52-next --json"}
 	if got := classifyHandoffFenceScope(req, []IssueOpsRecord{record}); got != handoffFenceScopeSourceOnly {
 		t.Fatalf("literal source cycle start scope = %q", got)
@@ -55,7 +55,7 @@ func TestLiteralNewCycleStartUsesExactSourceCWDDespiteStaleRepoHint(t *testing.T
 }
 
 func TestReadyWorkspaceRequiresSealedPreparationSessionAtIsolatedRoot(t *testing.T) {
-	record := IssueOpsRecord{ID: "io-workspace", Repo: "/repo", ExecutionWorkspace: &issueopsmodel.IssueOpsExecutionWorkspace{State: "ready", CoordinatorRoot: "/repo", WorkerRoot: "/repo.worktrees/feature", PreparationSession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "session-1", AgentID: "agent-1"}}}
+	record := workspaceAuthorityRecord(IssueOpsRecord{ID: "io-workspace", Repo: "/repo"}, &issueopsmodel.IssueOpsExecutionWorkspace{State: "ready", CoordinatorRoot: "/repo", WorkerRoot: "/repo.worktrees/feature", PreparationSession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "session-1", AgentID: "agent-1"}})
 	allowed := HookToolUseLifecycleRequest{SourceCheckout: "/repo", CWD: "/repo.worktrees/feature", Host: "codex", SessionID: "session-1", AgentID: "agent-1"}
 	if reason := workspacePreparationBlockReason(allowed, record); reason != "" {
 		t.Fatalf("sealed preparer blocked: %s", reason)
@@ -72,10 +72,10 @@ func TestReadyWorkspaceRequiresSealedPreparationSessionAtIsolatedRoot(t *testing
 }
 
 func TestRecoveryWorkspaceAllowsOnlyExactSourceReconciliation(t *testing.T) {
-	record := IssueOpsRecord{ID: "io-workspace", Repo: "/repo", ExecutionWorkspace: &issueopsmodel.IssueOpsExecutionWorkspace{
+	record := workspaceAuthorityRecord(IssueOpsRecord{ID: "io-workspace", Repo: "/repo"}, &issueopsmodel.IssueOpsExecutionWorkspace{
 		State: "recovery_required", WorkspaceEpoch: "epoch-1", Agent: "codex", CoordinatorRoot: "/repo", WorkerRoot: "/repo.worktrees/feature",
 		PreparationSession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "session-1", AgentID: "agent-1"},
-	}}
+	})
 	command := "agent-harness issueops worktree reconcile --id io-workspace --workspace-epoch epoch-1 --host codex --session-id session-1 --agent-id agent-1 --source-cwd /repo --json"
 	req := HookToolUseLifecycleRequest{SourceCheckout: "/repo", CWD: "/repo", Host: "codex", SessionID: "session-1", AgentID: "agent-1", Tool: "Bash", Command: command}
 	if !allowedExactHandoffLifecycleCommand(req, record) {
@@ -94,10 +94,10 @@ func TestRecoveryWorkspaceAllowsOnlyExactSourceReconciliation(t *testing.T) {
 }
 
 func TestReadyWorkspacePreparationCommandsRequireSealedWorkerSession(t *testing.T) {
-	record := IssueOpsRecord{ID: "io-workspace", Repo: "/repo", ExecutionWorkspace: &issueopsmodel.IssueOpsExecutionWorkspace{
+	record := workspaceAuthorityRecord(IssueOpsRecord{ID: "io-workspace", Repo: "/repo"}, &issueopsmodel.IssueOpsExecutionWorkspace{
 		State: "ready", WorkspaceEpoch: "epoch-1", Agent: "codex", CoordinatorRoot: "/repo", WorkerRoot: "/repo.worktrees/feature",
 		PreparationSession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "session-1", AgentID: "agent-1"},
-	}}
+	})
 	command := "agent-harness issueops worktree prepare-tools --id io-workspace --host codex --session-id session-1 --agent-id agent-1 --cwd /repo.worktrees/feature --json"
 	worker := HookToolUseLifecycleRequest{SourceCheckout: "/repo", CWD: "/repo.worktrees/feature", Host: "codex", SessionID: "session-1", AgentID: "agent-1", Tool: "Bash", Command: command}
 	if !allowedExactHandoffLifecycleCommand(worker, record) {
@@ -116,10 +116,10 @@ func TestReadyWorkspacePreparationCommandsRequireSealedWorkerSession(t *testing.
 }
 
 func TestReadyWorkspaceStatusAllowsExactCycleObservationFromSource(t *testing.T) {
-	record := IssueOpsRecord{ID: "io-workspace", Repo: "/repo", ExecutionWorkspace: &issueopsmodel.IssueOpsExecutionWorkspace{
+	record := workspaceAuthorityRecord(IssueOpsRecord{ID: "io-workspace", Repo: "/repo"}, &issueopsmodel.IssueOpsExecutionWorkspace{
 		State: "ready", CoordinatorRoot: "/repo", WorkerRoot: "/repo.worktrees/feature",
 		PreparationSession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "session-1", AgentID: "agent-1"},
-	}}
+	})
 	req := HookToolUseLifecycleRequest{
 		SourceCheckout: "/repo", CWD: "/repo", Host: "codex", SessionID: "session-1", AgentID: "agent-1",
 		Tool: "Bash", Command: "agent-harness issueops status --id io-workspace --json",
@@ -130,13 +130,12 @@ func TestReadyWorkspaceStatusAllowsExactCycleObservationFromSource(t *testing.T)
 }
 
 func TestReadyWorkspaceSourcePreparationMayChangeOnlyLinkedPlan(t *testing.T) {
-	record := IssueOpsRecord{
+	record := workspaceAuthorityRecord(IssueOpsRecord{
 		ID: "io-workspace", Repo: "/repo", PlanPath: "/repo.worktrees/feature/.agent-harness/plans/feature.md",
-		ExecutionWorkspace: &issueopsmodel.IssueOpsExecutionWorkspace{
-			State: "ready", CoordinatorRoot: "/repo", WorkerRoot: "/repo.worktrees/feature",
-			PreparationSession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "session-1", AgentID: "agent-1"},
-		},
-	}
+	}, &issueopsmodel.IssueOpsExecutionWorkspace{
+		State: "ready", CoordinatorRoot: "/repo", WorkerRoot: "/repo.worktrees/feature",
+		PreparationSession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "session-1", AgentID: "agent-1"},
+	})
 	base := HookToolUseLifecycleRequest{SourceCheckout: "/repo", CWD: "/repo", Host: "codex", SessionID: "session-1", AgentID: "agent-1"}
 
 	edit := base
@@ -167,4 +166,13 @@ func TestReadyWorkspaceSourcePreparationMayChangeOnlyLinkedPlan(t *testing.T) {
 			t.Fatalf("source preparation escaped the exact linked-plan boundary: %#v", denied)
 		}
 	}
+}
+
+func workspaceAuthorityRecord(record IssueOpsRecord, workspace *issueopsmodel.IssueOpsExecutionWorkspace) IssueOpsRecord {
+	record.CycleState = issueopsmodel.IssueOpsCycleActive
+	record.Ownership = &issueopsmodel.IssueOpsOwnershipLedger{
+		ActiveAttempt: 1,
+		Attempts:      []issueopsmodel.IssueOpsOwnershipAttempt{{Number: 1, Workspace: workspace}},
+	}
+	return record
 }

@@ -25,7 +25,7 @@ func linkIssueOpsPlanWithActor(stateRoot, id, planPath string, actor *IssueOpsAc
 			if readErr != nil {
 				return current, readErr
 			}
-			if current.ExecutionWorkspace != nil {
+			if currentIssueOpsWorkspace(current) != nil {
 				if actor == nil {
 					return IssueOpsRecord{}, fmt.Errorf("workspace preparation requires a native actor; use the actor-aware plan linker")
 				}

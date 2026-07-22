@@ -416,14 +416,15 @@ func cycleFromRecord(record issueops.IssueOpsRecord) (corehealth.Cycle, []corehe
 		}
 	}
 	mergeWorktreePath(record.WorktreePath)
-	if record.ExecutionHandoff == nil {
+	attempt := issueops.CurrentOwnershipAttempt(record)
+	if attempt == nil || attempt.Handoff == nil {
 		cycle.LastHeartbeatAt, problems = parsePersistedTime(record.LastHeartbeatAt, record.ID, "record", problems)
 		return cycle, problems
 	}
-	handoff := record.ExecutionHandoff
+	handoff := attempt.Handoff
 	cycle.HandoffState = strings.TrimSpace(handoff.State)
-	if record.ExecutionWorkspace != nil {
-		cycle.WorkspaceState = strings.TrimSpace(record.ExecutionWorkspace.State)
+	if attempt.Workspace != nil {
+		cycle.WorkspaceState = strings.TrimSpace(attempt.Workspace.State)
 	}
 	cycle.Attempt = handoff.Attempt
 	cycle.OwnershipEpoch = strings.TrimSpace(handoff.OwnershipEpoch)
@@ -468,8 +469,9 @@ func parsePersistedTime(value, id, field string, problems []corehealth.Inventory
 }
 
 func recordOwnsOrca(record issueops.IssueOpsRecord) bool {
-	return record.ExecutionHandoff != nil && record.ExecutionHandoff.Orca != nil ||
-		record.ExecutionWorkspace != nil && record.ExecutionWorkspace.Orca != nil
+	attempt := issueops.CurrentOwnershipAttempt(record)
+	return attempt != nil && (attempt.Handoff != nil && attempt.Handoff.Orca != nil ||
+		attempt.Workspace != nil && attempt.Workspace.Orca != nil)
 }
 
 func parseWorktrees(output []byte, repo string) ([]corehealth.GitWorktree, error) {

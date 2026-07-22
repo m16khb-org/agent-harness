@@ -295,7 +295,7 @@ func handleMCPRemoteCreatePR(args map[string]any) MCPToolOutcome {
 		BaseBranch: base,
 		Labels:     argmap.StringSlice(args, "labels"),
 		Assignees:  argmap.StringSlice(args, "assignees"),
-		Draft:      record.ExecutionHandoff != nil,
+		Draft:      issueOpsRemoteCreateDraft(record),
 		Confirm:    argmap.Bool(args, "confirm"),
 		Host:       argmap.String(args, "host"),
 		SessionID:  argmap.String(args, "session_id"),
@@ -306,6 +306,10 @@ func handleMCPRemoteCreatePR(args map[string]any) MCPToolOutcome {
 		return core.CreateRemotePullRequest(req, prov)
 	})
 	return issueOpsMCPOutcome(result, err, "IssueOps remote create-pr failed")
+}
+
+func issueOpsRemoteCreateDraft(record core.IssueOpsRecord) bool {
+	return core.CurrentOwnershipAttempt(record) != nil
 }
 
 func handleMCPRemoteReconcileCreate(args map[string]any) MCPToolOutcome {

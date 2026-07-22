@@ -13,7 +13,7 @@ import (
 
 func TestOwnershipClaimEntersOrientationWithoutWriteLease(t *testing.T) {
 	_, record, _ := ownershipOrientingRecord(t)
-	if record.ExecutionHandoff.State != handoff.StateOwnerOrienting || record.ExecutionHandoff.OwnerSession == nil || record.Phase == IssueOpsPhaseImplement {
+	if currentIssueOpsHandoff(record).State != handoff.StateOwnerOrienting || currentIssueOpsHandoff(record).OwnerSession == nil || record.Phase == IssueOpsPhaseImplement {
 		t.Fatalf("ownership claim must enter orientation without implementation lease: %#v", record)
 	}
 }
@@ -69,8 +69,8 @@ func TestOwnershipClaimReturnsExecutableAcknowledgementCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("execute claim next command: %v", err)
 	}
-	if activated.ExecutionHandoff.State != handoff.StateOwnerActive {
-		t.Fatalf("claim next command state = %q, want %q", activated.ExecutionHandoff.State, handoff.StateOwnerActive)
+	if currentIssueOpsHandoff(activated).State != handoff.StateOwnerActive {
+		t.Fatalf("claim next command state = %q, want %q", currentIssueOpsHandoff(activated).State, handoff.StateOwnerActive)
 	}
 }
 
@@ -102,11 +102,12 @@ func TestOwnershipOrientationRequiresExactIssuePlanAndContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if persisted.ExecutionHandoff.State != handoff.StateOwnerActive || persisted.ExecutionHandoff.Orientation == nil {
-		t.Fatalf("ownership acknowledgement did not grant active owner: %#v", persisted.ExecutionHandoff)
+	persistedHandoff := currentIssueOpsHandoff(persisted)
+	if persistedHandoff.State != handoff.StateOwnerActive || persistedHandoff.Orientation == nil {
+		t.Fatalf("ownership acknowledgement did not grant active owner: %#v", persistedHandoff)
 	}
-	if repeated, err := AcknowledgeIssueOpsHandoffContext(stateRoot, req); err != nil || repeated.ExecutionHandoff.Orientation.RecordedAt != persisted.ExecutionHandoff.Orientation.RecordedAt {
-		t.Fatalf("identical acknowledgement must be idempotent: record=%#v err=%v", repeated.ExecutionHandoff, err)
+	if repeated, err := AcknowledgeIssueOpsHandoffContext(stateRoot, req); err != nil || currentIssueOpsHandoff(repeated).Orientation.RecordedAt != persistedHandoff.Orientation.RecordedAt {
+		t.Fatalf("identical acknowledgement must be idempotent: record=%#v err=%v", currentIssueOpsHandoff(repeated), err)
 	}
 
 	req.Understanding = "conflicting acknowledgement"
@@ -117,13 +118,14 @@ func TestOwnershipOrientationRequiresExactIssuePlanAndContext(t *testing.T) {
 
 func TestConcurrentHandoffPreflightRejectsSharedCoordinatorMailbox(t *testing.T) {
 	stateRoot, active, _ := ownershipActiveRecorderRecord(t)
-	active.ExecutionHandoff.CoordinatorMailboxHandle = "term_source"
+	activeHandoff := currentIssueOpsHandoff(active)
+	activeHandoff.CoordinatorMailboxHandle = "term_source"
 	active, err := WriteIssueOps(stateRoot, active)
 	if err != nil {
 		t.Fatal(err)
 	}
 	second := IssueOpsRecord{ID: NewIssueOpsID(active.Repo, "17-second"), Repo: active.Repo}
-	if _, err = resolveHandoffCoordinatorRecipient(context.Background(), stateRoot, second, active.ExecutionHandoff.CoordinatorMailboxHandle, model.IssueOpsHostSessionIdentity{}, nil); err == nil || !strings.Contains(err.Error(), "sealed by another active handoff") {
+	if _, err = resolveHandoffCoordinatorRecipient(context.Background(), stateRoot, second, activeHandoff.CoordinatorMailboxHandle, model.IssueOpsHostSessionIdentity{}, nil); err == nil || !strings.Contains(err.Error(), "sealed by another active handoff") {
 		t.Fatalf("shared coordinator mailbox must fail before dispatch mutation: %v", err)
 	}
 	got, err := resolveHandoffCoordinatorRecipient(context.Background(), stateRoot, second, "term_second", model.IssueOpsHostSessionIdentity{}, nil)
@@ -138,16 +140,17 @@ func TestConcurrentHandoffPreflightRejectsSharedCoordinatorMailbox(t *testing.T)
 func ownershipOrientingRecord(t *testing.T) (string, IssueOpsRecord, IssueOpsHandoffClaimRequest) {
 	t.Helper()
 	stateRoot, dispatched, actor := ownershipActiveRecorderRecord(t)
-	dispatched.ExecutionHandoff.State = handoff.StateOwnershipDispatched
-	dispatched.ExecutionHandoff.OwnerSession = nil
-	dispatched.ExecutionHandoff.Orientation = nil
+	dispatchedHandoff := currentIssueOpsHandoff(dispatched)
+	dispatchedHandoff.State = handoff.StateOwnershipDispatched
+	dispatchedHandoff.OwnerSession = nil
+	dispatchedHandoff.Orientation = nil
 	if _, err := WriteIssueOps(stateRoot, dispatched); err != nil {
 		t.Fatal(err)
 	}
 	claim := IssueOpsHandoffClaimRequest{
-		ID: dispatched.ID, Attempt: dispatched.ExecutionHandoff.Attempt, OwnershipEpoch: dispatched.ExecutionHandoff.OwnershipEpoch,
-		ContextSHA256: dispatched.ExecutionHandoff.ContextSHA256, Host: actor.Host, SessionID: actor.SessionID, AgentID: actor.AgentID,
-		CWD: dispatched.WorktreePath, OrcaWorktreeID: dispatched.ExecutionHandoff.Orca.WorktreeID,
+		ID: dispatched.ID, Attempt: dispatchedHandoff.Attempt, OwnershipEpoch: dispatchedHandoff.OwnershipEpoch,
+		ContextSHA256: dispatchedHandoff.ContextSHA256, Host: actor.Host, SessionID: actor.SessionID, AgentID: actor.AgentID,
+		CWD: dispatched.WorktreePath, OrcaWorktreeID: dispatchedHandoff.Orca.WorktreeID,
 	}
 	claimed, err := ClaimIssueOpsHandoff(stateRoot, claim)
 	if err != nil {

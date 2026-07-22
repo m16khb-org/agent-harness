@@ -938,7 +938,7 @@ func RecordIssueOpsHandoffPublishReceipt(ctx context.Context, stateRoot string, 
 	if err != nil {
 		return IssueOpsRecord{}, err
 	}
-	if validated.ExecutionHandoff.PublishReceipt != nil {
+	if currentIssueOpsHandoff(validated).PublishReceipt != nil {
 		if issueOpsOwnerPublicationReplacementAllowed(ctx, validated, identity, reader) {
 			// The owner can replace only a receipt that its worker branch
 			// advances by ancestry; perform the same exact push/readback below.
@@ -974,11 +974,11 @@ func RecordIssueOpsHandoffPublishReceipt(ctx context.Context, stateRoot string, 
 		if !reflect.DeepEqual(current, validated) {
 			return fmt.Errorf("accepted handoff changed during publication verification")
 		}
-		current.ExecutionHandoff.PublishReceipt = &model.IssueOpsExecutionHandoffPublishReceipt{
+		currentIssueOpsHandoff(current).PublishReceipt = &model.IssueOpsExecutionHandoffPublishReceipt{
 			Provider: identity.Provider, ProjectKey: identity.ProjectKey, Remote: identity.Remote, PushTargetSHA256: identity.PushTargetSHA256, Branch: identity.Branch, Base: identity.Base,
 			RemoteRef: identity.RemoteRef, FinalHead: identity.FinalHead, VerifiedAt: now,
 		}
-		current.ExecutionHandoff.UpdatedAt = now
+		currentIssueOpsHandoff(current).UpdatedAt = now
 		current.UpdatedAt = now
 		persisted, readErr = writeIssueOps(stateRoot, current)
 		return readErr
@@ -987,7 +987,7 @@ func RecordIssueOpsHandoffPublishReceipt(ctx context.Context, stateRoot string, 
 }
 
 func issueOpsOwnerPublicationReplacementAllowed(ctx context.Context, record IssueOpsRecord, identity issueOpsPublicationIdentity, reader IssueOpsHandoffPublicationReader) bool {
-	h := record.ExecutionHandoff
+	h := currentIssueOpsHandoff(record)
 	if h == nil || h.PublishReceipt == nil || h.PublishReceipt.FinalHead == identity.FinalHead {
 		return false
 	}
@@ -1051,14 +1051,14 @@ func issueOpsPublicationIdentityForRequest(ctx context.Context, record IssueOpsR
 }
 
 func issueOpsPublicationWorkingRoot(record IssueOpsRecord) string {
-	if h := record.ExecutionHandoff; h != nil {
+	if h := currentIssueOpsHandoff(record); h != nil {
 		return h.WorkerRoot
 	}
 	return ""
 }
 
 func issueOpsOwnerPublicationIdentity(ctx context.Context, record IssueOpsRecord, reader IssueOpsHandoffPublicationReader) (issueOpsPublicationIdentity, error) {
-	h := record.ExecutionHandoff
+	h := currentIssueOpsHandoff(record)
 	if h == nil || h.State != handoff.StateOwnerActive || h.Orca == nil || record.BranchPrepare == nil {
 		return issueOpsPublicationIdentity{}, fmt.Errorf("publication requires an active ownership-transfer handoff")
 	}
@@ -1089,13 +1089,13 @@ func attestIssueOpsPublicationSoleWriter(ctx context.Context, stateRoot string, 
 	var err error
 	expected, err = reconcileIssueOpsPublicationOwnerTerminal(ctx, stateRoot, expected, lease, now)
 	allowedHandle := ""
-	if h := expected.ExecutionHandoff; h != nil && h.Orca != nil {
+	if h := currentIssueOpsHandoff(expected); h != nil && h.Orca != nil {
 		allowedHandle = h.Orca.WorkerTerminalHandle
 	}
 	if err == nil {
 		err = attestHandoffSoleWriter(ctx, expected, lease, allowedHandle)
 	}
-	if err == nil && expected.ExecutionHandoff.PublicationRecovery == nil {
+	if err == nil && currentIssueOpsHandoff(expected).PublicationRecovery == nil {
 		return expected, nil
 	}
 	var recoveryErr handoffSoleWriterRecoveryError
@@ -1118,11 +1118,11 @@ func attestIssueOpsPublicationSoleWriter(ctx context.Context, stateRoot string, 
 			return fmt.Errorf("accepted handoff changed during publication attestation")
 		}
 		if err == nil {
-			current.ExecutionHandoff.PublicationRecovery = nil
+			currentIssueOpsHandoff(current).PublicationRecovery = nil
 		} else {
-			current.ExecutionHandoff.PublicationRecovery = &model.IssueOpsExecutionHandoffFailure{Code: recoveryCode, Message: soleWriterRecoveryDiagnostic(err.Error()), At: now}
+			currentIssueOpsHandoff(current).PublicationRecovery = &model.IssueOpsExecutionHandoffFailure{Code: recoveryCode, Message: soleWriterRecoveryDiagnostic(err.Error()), At: now}
 		}
-		current.ExecutionHandoff.UpdatedAt = now
+		currentIssueOpsHandoff(current).UpdatedAt = now
 		current.UpdatedAt = now
 		persisted, readErr = writeIssueOps(stateRoot, current)
 		return readErr
@@ -1137,7 +1137,7 @@ func attestIssueOpsPublicationSoleWriter(ctx context.Context, stateRoot string, 
 }
 
 func reconcileIssueOpsPublicationOwnerTerminal(ctx context.Context, stateRoot string, expected IssueOpsRecord, lease IssueOpsOrcaDispatchClient, now string) (IssueOpsRecord, error) {
-	h := expected.ExecutionHandoff
+	h := currentIssueOpsHandoff(expected)
 	if h == nil || h.Orca == nil {
 		return expected, soleWriterRecoveryError("publication owner terminal identity is unavailable")
 	}
@@ -1165,7 +1165,7 @@ func reconcileIssueOpsPublicationOwnerTerminal(ctx context.Context, stateRoot st
 		if !reflect.DeepEqual(current, expected) {
 			return fmt.Errorf("accepted handoff changed during publication owner terminal refresh")
 		}
-		reconciled.ExecutionHandoff.UpdatedAt = now
+		currentIssueOpsHandoff(reconciled).UpdatedAt = now
 		reconciled.UpdatedAt = now
 		persisted, readErr = writeIssueOps(stateRoot, reconciled)
 		return readErr
@@ -1176,7 +1176,7 @@ func reconcileIssueOpsPublicationOwnerTerminal(ctx context.Context, stateRoot st
 }
 
 func reconcilePublicationOwnerTerminalIdentity(record IssueOpsRecord, live port.OrcaTerminal) (IssueOpsRecord, error) {
-	h := record.ExecutionHandoff
+	h := currentIssueOpsHandoff(record)
 	if h == nil || h.Orca == nil {
 		return record, fmt.Errorf("execution handoff Orca identity is unavailable")
 	}
@@ -1192,11 +1192,12 @@ func reconcilePublicationOwnerTerminalIdentity(record IssueOpsRecord, live port.
 		return record, nil
 	}
 	updated := record
+	updated.Ownership = CloneIssueOpsOwnershipLedger(record.Ownership)
 	updatedHandoff := *h
 	updatedIdentity := *identity
 	updatedIdentity.WorkerTerminalHandle = live.Handle
 	updatedHandoff.Orca = &updatedIdentity
-	updated.ExecutionHandoff = &updatedHandoff
+	CurrentOwnershipAttempt(updated).Handoff = &updatedHandoff
 	return updated, nil
 }
 
@@ -1281,7 +1282,7 @@ func verifyIssueOpsRemotePublicationHead(ctx context.Context, repo string, ident
 }
 
 func validateIssueOpsPublishReceipt(record IssueOpsRecord, identity issueOpsPublicationIdentity) error {
-	receipt := record.ExecutionHandoff.PublishReceipt
+	receipt := currentIssueOpsHandoff(record).PublishReceipt
 	if receipt == nil {
 		return fmt.Errorf("durable publication receipt is required")
 	}

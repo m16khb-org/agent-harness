@@ -188,8 +188,9 @@ func TestRunRemoteCreatePRPreservesLegacyBodyFileAndRejectsSupervisedBodyFile(t 
 		t.Fatalf("legacy body-file behavior changed: calls=%d body=%q err=%v", providerCalls, capturedBody, err)
 	}
 	supervised := record
-	supervised.ExecutionHandoff = &issueopsmodel.IssueOpsExecutionHandoff{}
-	if supervised.ExecutionHandoff == nil || strings.TrimSpace(bodyFile) == "" {
+	supervised.CycleState = issueopsmodel.IssueOpsCycleActive
+	supervised.Ownership = &issueopsmodel.IssueOpsOwnershipLedger{ActiveAttempt: 1, Attempts: []issueopsmodel.IssueOpsOwnershipAttempt{{Number: 1, Handoff: &issueopsmodel.IssueOpsExecutionHandoff{}}}}
+	if supervised.Ownership == nil || strings.TrimSpace(bodyFile) == "" {
 		t.Fatal("invalid supervised body-file test setup")
 	}
 	if err := rejectSupervisedPullRequestBodyFile(supervised, bodyFile); err == nil || !strings.Contains(err.Error(), "body-file is forbidden") {
@@ -275,7 +276,8 @@ func TestPullRequestDraftIsSupervisedOnly(t *testing.T) {
 		t.Fatal("legacy nil-handoff PR/MR became draft")
 	}
 	supervised := legacy
-	supervised.ExecutionHandoff = &issueopsmodel.IssueOpsExecutionHandoff{}
+	supervised.CycleState = issueopsmodel.IssueOpsCycleActive
+	supervised.Ownership = &issueopsmodel.IssueOpsOwnershipLedger{ActiveAttempt: 1, Attempts: []issueopsmodel.IssueOpsOwnershipAttempt{{Number: 1, Handoff: &issueopsmodel.IssueOpsExecutionHandoff{}}}}
 	if !pullRequestDraft(supervised) {
 		t.Fatal("supervised PR/MR was not forced to draft")
 	}
@@ -381,6 +383,21 @@ func TestRemoteHelpersAndBoundaries(t *testing.T) {
 	}
 	if err := Run([]string{"unknown"}, deps); err == nil || !strings.Contains(err.Error(), "unknown issueops remote") {
 		t.Fatalf("expected unknown command error, got %v", err)
+	}
+}
+
+func TestOwnershipLedgerRemoteDraftUsesOnlyCurrentAttempt(t *testing.T) {
+	record := core.IssueOpsRecord{
+		CycleState: core.IssueOpsCycleActive,
+		Ownership:  &core.IssueOpsOwnershipLedger{ActiveAttempt: 2, Attempts: []core.IssueOpsOwnershipAttempt{{Number: 1}, {Number: 2}}},
+	}
+	if !pullRequestDraft(record) {
+		t.Fatal("active current attempt must select supervised remote behavior")
+	}
+	record.CycleState = core.IssueOpsCyclePaused
+	record.Ownership.ActiveAttempt = 0
+	if pullRequestDraft(record) {
+		t.Fatal("historical attempt selected supervised remote behavior")
 	}
 }
 

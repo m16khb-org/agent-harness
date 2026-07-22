@@ -80,7 +80,7 @@ func TestForceReleaseIssueOpsCASReleasesExactUnboundRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.OK || result.Record.Phase != IssueOpsPhaseDone || !result.BindingAbsenceVerified {
+	if !result.OK || result.Record.Phase != IssueOpsPhaseProblem || result.Record.CycleState != IssueOpsCyclePaused || !result.BindingAbsenceVerified {
 		t.Fatalf("unexpected CAS release result: %+v", result)
 	}
 	if result.BeforeRawSHA256 != req.ExpectedRawSHA256 || result.BeforeCanonicalSHA256 != req.ExpectedCanonicalSHA256 {
@@ -88,6 +88,20 @@ func TestForceReleaseIssueOpsCASReleasesExactUnboundRecord(t *testing.T) {
 	}
 	if result.AfterRawSHA256 == "" || result.AfterCanonicalSHA256 == "" || result.RepoBindingCountBefore != 0 || result.RepoBindingCountAfter != 0 {
 		t.Fatalf("CAS proof is incomplete: %+v", result)
+	}
+}
+
+func TestForceReleasePreservesWorkflowPhaseAndPausesCycle(t *testing.T) {
+	stateRoot := forceReleaseCASStateRoot(t)
+	record := startForceReleaseCASRecord(t, stateRoot)
+	beforePhase := record.Phase
+
+	released, err := ForceReleaseIssueOps(stateRoot, record.ID, "operator paused abandoned cycle")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if released.Phase != beforePhase || released.CycleState != IssueOpsCyclePaused {
+		t.Fatalf("force-release changed workflow milestone instead of pausing: %+v", released)
 	}
 }
 

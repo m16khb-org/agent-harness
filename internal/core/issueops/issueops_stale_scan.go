@@ -171,15 +171,16 @@ func issueOpsOperationalCycle(record model.IssueOpsRecord) operationalhealth.Cyc
 		Phase:        string(record.Phase),
 		WorktreePath: pathutil.CleanAbsPath(record.WorktreePath),
 	}
-	if record.ExecutionHandoff == nil {
+	attempt := CurrentOwnershipAttempt(record)
+	if attempt == nil || attempt.Handoff == nil {
 		cycle.LastHeartbeatAt = parseIssueOpsTime(record.LastHeartbeatAt)
 		return cycle
 	}
 
-	handoffRecord := record.ExecutionHandoff
+	handoffRecord := attempt.Handoff
 	cycle.HandoffState = strings.TrimSpace(handoffRecord.State)
-	if record.ExecutionWorkspace != nil {
-		cycle.WorkspaceState = strings.TrimSpace(record.ExecutionWorkspace.State)
+	if attempt.Workspace != nil {
+		cycle.WorkspaceState = strings.TrimSpace(attempt.Workspace.State)
 	}
 	cycle.Attempt = handoffRecord.Attempt
 	cycle.OwnershipEpoch = strings.TrimSpace(handoffRecord.OwnershipEpoch)
@@ -271,7 +272,7 @@ func pruneDoneCycles(repo string, maxAge time.Duration, result *IssueOpsStaleSca
 		if err != nil || record.Repo != repo || record.Phase != IssueOpsPhaseDone {
 			continue
 		}
-		if record.ExecutionHandoff != nil && record.ExecutionHandoff.State != handoff.StateClosed {
+		if h := currentIssueOpsHandoff(record); h != nil && h.State != handoff.StateClosed {
 			// #2581 (Task F3): a done cycle whose supervised handoff is
 			// non-terminal may still own un-reconciled Orca artifacts (a
 			// cleanup_only worktree/task). Age-based prune here would be a TTL

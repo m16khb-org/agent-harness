@@ -14,7 +14,8 @@ func TestTerminalPhaseHandoffGuardRejectsNonTerminalHandoff(t *testing.T) {
 	base := IssueOpsRecord{ID: "io-guard", Repo: "/tmp/repo"}
 	for _, state := range []string{handoff.StateOwnershipDispatching, handoff.StateOwnershipDispatched, handoff.StateOwnerOrienting, handoff.StateOwnerActive, handoff.StateCleanupPendingHumanDecision, handoff.StateCleanupExecuting, handoff.StateRecoveryRequired} {
 		r := base
-		r.ExecutionHandoff = &model.IssueOpsExecutionHandoff{State: state}
+		r.CycleState = IssueOpsCycleActive
+		r.Ownership = &IssueOpsOwnershipLedger{ActiveAttempt: 1, Attempts: []IssueOpsOwnershipAttempt{{Number: 1, Handoff: &model.IssueOpsExecutionHandoff{State: state}}}}
 		err := issueOpsTerminalPhaseHandoffGuard(r, IssueOpsPhaseDone)
 		if err == nil {
 			t.Fatalf("done transition must be rejected while handoff state=%s", state)
@@ -29,9 +30,9 @@ func TestTerminalPhaseHandoffGuardRejectsNonTerminalHandoff(t *testing.T) {
 		rec   IssueOpsRecord
 		phase IssueOpsPhase
 	}{
-		{"closed handoff", IssueOpsRecord{ID: "io-x", ExecutionHandoff: &model.IssueOpsExecutionHandoff{State: handoff.StateClosed}}, IssueOpsPhaseDone},
+		{"closed handoff", IssueOpsRecord{ID: "io-x", CycleState: IssueOpsCycleActive, Ownership: &IssueOpsOwnershipLedger{ActiveAttempt: 1, Attempts: []IssueOpsOwnershipAttempt{{Number: 1, Handoff: &model.IssueOpsExecutionHandoff{State: handoff.StateClosed}}}}}, IssueOpsPhaseDone},
 		{"no handoff", IssueOpsRecord{ID: "io-x"}, IssueOpsPhaseDone},
-		{"non-terminal phase", IssueOpsRecord{ID: "io-x", ExecutionHandoff: &model.IssueOpsExecutionHandoff{State: handoff.StateRecoveryRequired}}, IssueOpsPhasePR},
+		{"non-terminal phase", IssueOpsRecord{ID: "io-x", CycleState: IssueOpsCycleActive, Ownership: &IssueOpsOwnershipLedger{ActiveAttempt: 1, Attempts: []IssueOpsOwnershipAttempt{{Number: 1, Handoff: &model.IssueOpsExecutionHandoff{State: handoff.StateRecoveryRequired}}}}}, IssueOpsPhasePR},
 	} {
 		if err := issueOpsTerminalPhaseHandoffGuard(tc.rec, tc.phase); err != nil {
 			t.Fatalf("%s must be allowed: %v", tc.name, err)

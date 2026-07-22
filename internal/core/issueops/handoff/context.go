@@ -83,7 +83,8 @@ type ContextPacket struct {
 }
 
 func BuildContext(record model.IssueOpsRecord, options ContextOptions) (ContextPacket, error) {
-	if record.ExecutionHandoff == nil {
+	h := model.CurrentExecutionHandoff(record)
+	if h == nil {
 		return ContextPacket{}, fmt.Errorf("execution handoff is required")
 	}
 	planPath := strings.TrimSpace(record.PlanPath)
@@ -100,13 +101,13 @@ func BuildContext(record model.IssueOpsRecord, options ContextOptions) (ContextP
 		WorktreePath:              strings.TrimSpace(record.WorktreePath),
 		PlanPath:                  planPath,
 		PlanSHA256:                hex.EncodeToString(planHash[:]),
-		Attempt:                   record.ExecutionHandoff.Attempt,
-		OwnershipEpoch:            strings.TrimSpace(record.ExecutionHandoff.OwnershipEpoch),
-		WorkspaceEpoch:            strings.TrimSpace(record.ExecutionHandoff.WorkspaceEpoch),
-		WorkspaceSHA256:           strings.TrimSpace(record.ExecutionHandoff.WorkspaceSHA256),
-		AttemptBaseHead:           strings.TrimSpace(record.ExecutionHandoff.AttemptBaseHead),
-		CoordinatorRecipient:      strings.TrimSpace(record.ExecutionHandoff.CoordinatorMailboxHandle),
-		Agent:                     strings.TrimSpace(record.ExecutionHandoff.Agent),
+		Attempt:                   h.Attempt,
+		OwnershipEpoch:            strings.TrimSpace(h.OwnershipEpoch),
+		WorkspaceEpoch:            strings.TrimSpace(h.WorkspaceEpoch),
+		WorkspaceSHA256:           strings.TrimSpace(h.WorkspaceSHA256),
+		AttemptBaseHead:           strings.TrimSpace(h.AttemptBaseHead),
+		CoordinatorRecipient:      strings.TrimSpace(h.CoordinatorMailboxHandle),
+		Agent:                     strings.TrimSpace(h.Agent),
 		CriteriaIDs:               cleanList(options.CriteriaIDs),
 		RequiredDocs:              cleanList(options.RequiredDocs),
 		RequiredSkills:            cleanList(options.RequiredSkills),
@@ -117,7 +118,7 @@ func BuildContext(record model.IssueOpsRecord, options ContextOptions) (ContextP
 		ResultFormat:              redact(options.ResultFormat),
 		AllowCodexHookTrustBypass: options.AllowCodexHookTrustBypass,
 	}
-	if profile := record.ExecutionHandoff.LaunchProfile; profile != nil {
+	if profile := h.LaunchProfile; profile != nil {
 		projection.Model = strings.TrimSpace(profile.Model)
 		projection.ReasoningEffort = strings.TrimSpace(profile.ReasoningEffort)
 	}

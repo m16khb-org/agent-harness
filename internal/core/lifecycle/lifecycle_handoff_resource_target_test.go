@@ -8,10 +8,10 @@ import (
 
 func TestIssueOpsFenceResourceTargetsMatchCLIAndMCP(t *testing.T) {
 	repo, record, worktree := ownershipLifecycleRecord(t, "owner_active")
-	record.ExecutionHandoff.Orca.WorkerTerminalHandle = "term-worker"
-	record.ExecutionHandoff.Orca.WorkerMailboxHandle = "term-worker"
-	record.ExecutionHandoff.Orca.TaskID = "task-worker"
-	record.ExecutionHandoff.Orca.DispatchID = "dispatch-worker"
+	ownershipHandoffForTest(record).Orca.WorkerTerminalHandle = "term-worker"
+	ownershipHandoffForTest(record).Orca.WorkerMailboxHandle = "term-worker"
+	ownershipHandoffForTest(record).Orca.TaskID = "task-worker"
+	ownershipHandoffForTest(record).Orca.DispatchID = "dispatch-worker"
 	var err error
 	record, err = writeIssueOps(IssueOpsStateRoot(), record)
 	if err != nil {
@@ -49,13 +49,14 @@ func TestIssueOpsFenceResourceTargetsMatchCLIAndMCP(t *testing.T) {
 }
 
 func TestProtectedOrcaResourcesIncludeWorkspaceAndRejectDuplicateOwnership(t *testing.T) {
-	workspace := IssueOpsRecord{ID: "io-workspace", ExecutionWorkspace: &issueopsmodel.IssueOpsExecutionWorkspace{Orca: &issueopsmodel.IssueOpsOrcaIdentity{WorktreeID: "wt-workspace"}}}
+	workspace := IssueOpsRecord{ID: "io-workspace", CycleState: issueopsmodel.IssueOpsCycleActive, Ownership: &issueopsmodel.IssueOpsOwnershipLedger{ActiveAttempt: 1, Attempts: []issueopsmodel.IssueOpsOwnershipAttempt{{Number: 1, Workspace: &issueopsmodel.IssueOpsExecutionWorkspace{Orca: &issueopsmodel.IssueOpsOrcaIdentity{WorktreeID: "wt-workspace"}}}}}}
 	targets, control, literal := protectedOrcaResourceTargets(HookToolUseLifecycleRequest{Tool: "Bash", Command: "orca worktree remove --id wt-workspace"})
 	if !control || !literal || len(targets) != 1 || !recordOwnsProtectedOrcaResource(workspace, targets[0]) {
 		t.Fatalf("workspace worktree must be protected: targets=%#v control=%v literal=%v", targets, control, literal)
 	}
 	duplicate := workspace
-	duplicate.ExecutionHandoff = &issueopsmodel.IssueOpsExecutionHandoff{Orca: &issueopsmodel.IssueOpsOrcaIdentity{WorktreeID: "wt-workspace"}}
+	duplicate.Ownership = cloneOwnershipLedgerForTest(workspace.Ownership)
+	currentOwnershipAttempt(duplicate).Handoff = &issueopsmodel.IssueOpsExecutionHandoff{Orca: &issueopsmodel.IssueOpsOrcaIdentity{WorktreeID: "wt-workspace"}}
 	request := HookToolUseLifecycleRequest{Repo: "/repo", CWD: "/repo", Tool: "Bash", Command: "orca worktree remove --id wt-workspace"}
 	if _, reason := recordsMatchingProtectedOrcaResource(request, []IssueOpsRecord{duplicate}); reason == "" {
 		t.Fatal("duplicate workspace/handoff worktree identity must fail closed")

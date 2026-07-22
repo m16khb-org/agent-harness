@@ -69,6 +69,24 @@ func TestIssueOpsHandoffClaimMCPPayloadExposesNextCommand(t *testing.T) {
 	}
 }
 
+func TestOwnershipLedgerMCPDraftUsesOnlyCurrentAttempt(t *testing.T) {
+	record := core.IssueOpsRecord{
+		CycleState: core.IssueOpsCycleActive,
+		Ownership: &core.IssueOpsOwnershipLedger{ActiveAttempt: 2, Attempts: []core.IssueOpsOwnershipAttempt{
+			{Number: 1},
+			{Number: 2},
+		}},
+	}
+	if !issueOpsRemoteCreateDraft(record) {
+		t.Fatal("active current attempt must create a draft PR")
+	}
+	record.CycleState = core.IssueOpsCyclePaused
+	record.Ownership.ActiveAttempt = 0
+	if issueOpsRemoteCreateDraft(record) {
+		t.Fatal("historical attempts must not force MCP draft behavior")
+	}
+}
+
 func TestIssueOpsMCPHelpersAndRemoteDryRuns(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record := mcpIssueOpsRecord(t)

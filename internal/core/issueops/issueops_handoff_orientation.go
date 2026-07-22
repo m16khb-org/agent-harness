@@ -34,7 +34,7 @@ func AcknowledgeIssueOpsHandoffContext(stateRoot string, req IssueOpsHandoffAckn
 		if err != nil {
 			return err
 		}
-		h := record.ExecutionHandoff
+		h := currentIssueOpsHandoff(record)
 		if h == nil {
 			return fmt.Errorf("ownership acknowledgement requires a handoff")
 		}

@@ -97,7 +97,7 @@ func nativeSessionMatches(req HookToolUseLifecycleRequest, session *issueopsmode
 }
 
 func exactFenceFlags(flags map[string][]string, record IssueOpsRecord) bool {
-	h := record.ExecutionHandoff
+	h := currentOwnershipHandoff(record)
 	attempt, aok := oneFlag(flags, "--attempt")
 	epoch, eok := oneFlag(flags, "--ownership-epoch")
 	contextSHA, cok := oneFlag(flags, "--context-sha256")
@@ -126,13 +126,23 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 	if !ok || id != record.ID {
 		return false
 	}
-	if record.ExecutionHandoff == nil {
-		if record.ExecutionWorkspace != nil && record.ExecutionWorkspace.State == handoff.StateRecoveryRequired {
+	if currentOwnershipHandoff(record) == nil {
+		if retainedOwnershipHandoff(record) != nil {
+			switch command.Path {
+			case "handoff cleanup-preview":
+				return ownershipCleanupSourceCommandAllowed(req, record, flags, false)
+			case "handoff cleanup-approve":
+				return ownershipCleanupSourceCommandAllowed(req, record, flags, true)
+			case "handoff cleanup-record":
+				return ownershipCleanupRecordCommandAllowed(req, record, flags)
+			}
+		}
+		if currentOwnershipWorkspace(record) != nil && currentOwnershipWorkspace(record).State == handoff.StateRecoveryRequired {
 			return allowedRecoveryWorkspaceReconciliation(req, record, command, flags)
 		}
 		return allowedReadyWorkspaceOwnershipStart(req, record, command, flags)
 	}
-	h := record.ExecutionHandoff
+	h := currentOwnershipHandoff(record)
 	source := cleanAbsPath(req.CWD) == cleanAbsPath(record.Repo)
 	worker := cleanAbsPath(req.CWD) == cleanAbsPath(h.WorkerRoot)
 	// Host tool calls may start a fresh shell at the source root. Exact owner
@@ -219,7 +229,7 @@ func allowedExactHandoffLifecycleCommand(req HookToolUseLifecycleRequest, record
 }
 
 func allowedOwnerLifecycleRecorder(req HookToolUseLifecycleRequest, record IssueOpsRecord, flags map[string][]string) bool {
-	h := record.ExecutionHandoff
+	h := currentOwnershipHandoff(record)
 	if h == nil {
 		return false
 	}
@@ -231,7 +241,7 @@ func allowedOwnerLifecycleRecorder(req HookToolUseLifecycleRequest, record Issue
 }
 
 func allowedRecoveryWorkspaceReconciliation(req HookToolUseLifecycleRequest, record IssueOpsRecord, command commandparse.ExactIssueOpsCommand, flags map[string][]string) bool {
-	workspace := record.ExecutionWorkspace
+	workspace := currentOwnershipWorkspace(record)
 	if workspace == nil || workspace.State != handoff.StateRecoveryRequired || command.Path != "worktree reconcile" || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) {
 		return false
 	}
@@ -254,7 +264,7 @@ func allowedRecoveryWorkspaceReconciliation(req HookToolUseLifecycleRequest, rec
 }
 
 func ownershipCleanupSourceCommandAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord, flags map[string][]string, approve bool) bool {
-	h := record.ExecutionHandoff
+	h := retainedOwnershipHandoff(record)
 	host, hostOK := oneFlag(flags, "--host")
 	session, sessionOK := oneFlag(flags, "--session-id")
 	sourceCWD, cwdOK := oneFlag(flags, "--source-cwd")
@@ -276,7 +286,7 @@ func ownershipCleanupSourceCommandAllowed(req HookToolUseLifecycleRequest, recor
 }
 
 func ownershipCleanupRecordCommandAllowed(req HookToolUseLifecycleRequest, record IssueOpsRecord, flags map[string][]string) bool {
-	h := record.ExecutionHandoff
+	h := retainedOwnershipHandoff(record)
 	step, stepOK := oneFlag(flags, "--step")
 	host, hostOK := oneFlag(flags, "--host")
 	session, sessionOK := oneFlag(flags, "--session-id")
@@ -307,7 +317,7 @@ func ownershipCleanupExpectedStep(h *issueopsmodel.IssueOpsExecutionHandoff) str
 }
 
 func allowedReadyWorkspaceOwnershipStart(req HookToolUseLifecycleRequest, record IssueOpsRecord, command commandparse.ExactIssueOpsCommand, flags map[string][]string) bool {
-	workspace := record.ExecutionWorkspace
+	workspace := currentOwnershipWorkspace(record)
 	if workspace == nil || workspace.State != "ready" {
 		return false
 	}
@@ -418,7 +428,7 @@ func unresolvedNestedShellMutation(command string) bool {
 }
 
 func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
-	h := record.ExecutionHandoff
+	h := retainedOwnershipHandoff(record)
 	if h == nil || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
 		return false
 	}
@@ -457,7 +467,7 @@ func allowedClosedOrcaCleanup(req HookToolUseLifecycleRequest, record IssueOpsRe
 // only the exact persisted task after a cancellation tombstone was recorded.
 // It does not grant generic orchestration authority while recovery is pending.
 func allowedCancellationTaskTerminalization(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
-	h := record.ExecutionHandoff
+	h := currentOwnershipHandoff(record)
 	if h == nil || h.Orca == nil || h.State != handoff.StateRecoveryRequired || h.Cancellation == nil || h.Orca.TaskID == "" ||
 		cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
 		return false
@@ -477,7 +487,7 @@ func allowedCancellationTaskTerminalization(req HookToolUseLifecycleRequest, rec
 }
 
 func allowedClosedCancelledWorktreeRemoval(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
-	h := record.ExecutionHandoff
+	h := retainedOwnershipHandoff(record)
 	if h == nil || h.State != handoff.StateClosed || h.ClosedDisposition != handoff.DispositionCancelled || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) {
 		return false
 	}
@@ -486,7 +496,7 @@ func allowedClosedCancelledWorktreeRemoval(req HookToolUseLifecycleRequest, reco
 }
 
 func allowedSourceOwnerContinue(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
-	h := record.ExecutionHandoff
+	h := currentOwnershipHandoff(record)
 	if h == nil || h.Orca == nil || (h.State != handoff.StateOwnerActive && h.State != handoff.StateOwnerOrienting) ||
 		cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || cleanAbsPath(req.Repo) != cleanAbsPath(record.Repo) ||
 		!nativeSessionMatches(req, h.CoordinatorSession) {
@@ -512,13 +522,13 @@ func cleanupStepAuthorized(h *issueopsmodel.IssueOpsExecutionHandoff, step strin
 }
 
 func publicationReceiptMatches(record IssueOpsRecord, provider, head, base string) bool {
-	if record.ExecutionHandoff == nil || record.ExecutionHandoff.Orca == nil || record.ExecutionHandoff.PublishReceipt == nil || record.BranchPrepare == nil {
+	if currentOwnershipHandoff(record) == nil || currentOwnershipHandoff(record).Orca == nil || currentOwnershipHandoff(record).PublishReceipt == nil || record.BranchPrepare == nil {
 		return false
 	}
-	receipt := record.ExecutionHandoff.PublishReceipt
+	receipt := currentOwnershipHandoff(record).PublishReceipt
 	branch := strings.TrimSpace(record.Branch)
 	provider = strings.ToLower(strings.TrimSpace(provider))
-	baseRef := strings.TrimSpace(record.ExecutionHandoff.Orca.BaseRef)
+	baseRef := strings.TrimSpace(currentOwnershipHandoff(record).Orca.BaseRef)
 	prefix, suffix := "refs/remotes/", "/"+branch
 	if !strings.HasPrefix(baseRef, prefix) || !strings.HasSuffix(baseRef, suffix) {
 		return false
@@ -531,7 +541,7 @@ func publicationReceiptMatches(record IssueOpsRecord, provider, head, base strin
 }
 
 func currentWorkerBranchMatches(record IssueOpsRecord) bool {
-	return record.ExecutionHandoff != nil && strings.TrimSpace(record.Branch) != "" && gitBranchFromHead(record.ExecutionHandoff.WorkerRoot) == strings.TrimSpace(record.Branch)
+	return currentOwnershipHandoff(record) != nil && strings.TrimSpace(record.Branch) != "" && gitBranchFromHead(currentOwnershipHandoff(record).WorkerRoot) == strings.TrimSpace(record.Branch)
 }
 
 func claimedWorkerRoleViolation(command string) string {
@@ -702,7 +712,7 @@ func onlyTokenFlags(tokens []string, values, bools map[string]bool) bool {
 }
 
 func buildExactClaimCommand(record IssueOpsRecord, req HookToolUseLifecycleRequest) string {
-	h := record.ExecutionHandoff
+	h := currentOwnershipHandoff(record)
 	if h == nil || h.Orca == nil {
 		return ""
 	}
@@ -715,7 +725,7 @@ func buildExactClaimCommand(record IssueOpsRecord, req HookToolUseLifecycleReque
 }
 
 func bootstrapOwnershipStartGuidance(req HookToolUseLifecycleRequest, record IssueOpsRecord) string {
-	workspace := record.ExecutionWorkspace
+	workspace := currentOwnershipWorkspace(record)
 	if workspace == nil || workspace.State != "ready" || workspace.PreparationSession == nil || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || strings.TrimSpace(req.Host) == "" || strings.TrimSpace(req.SessionID) == "" {
 		return ""
 	}
@@ -867,7 +877,7 @@ func isPostTransferRecorderMCP(tool string) bool {
 }
 
 func allowedPostTransferRecorderMCP(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
-	h := record.ExecutionHandoff
+	h := currentOwnershipHandoff(record)
 	if h == nil || !handoff.OwnerStateAllows("mutate", h.State) || cleanAbsPath(req.CWD) != cleanAbsPath(h.WorkerRoot) {
 		return false
 	}
@@ -881,7 +891,7 @@ func allowedPostTransferRecorderMCP(req HookToolUseLifecycleRequest, record Issu
 }
 
 func allowedReadyWorkspacePreparationMCP(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
-	if record.ExecutionWorkspace == nil || record.ExecutionWorkspace.State != "ready" || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || req.ToolInput == nil {
+	if currentOwnershipWorkspace(record) == nil || currentOwnershipWorkspace(record).State != "ready" || cleanAbsPath(req.CWD) != cleanAbsPath(record.Repo) || req.ToolInput == nil {
 		return false
 	}
 	for _, name := range []string{"issueops_link_plan", "issueops_record_compatibility_review", "issueops_record_execution_decision", "issueops_record_devils_advocate_review", "issueops_worktree_prepare_tools"} {
@@ -900,7 +910,7 @@ func selectSupervisedHandoffRecord(req HookToolUseLifecycleRequest) (IssueOpsRec
 			if !requestContextMatchesLifecycleRecord(req, record) {
 				return IssueOpsRecord{}, false, "exact IssueOps lifecycle id does not match the current source or worker context"
 			}
-			if record.ExecutionHandoff != nil || record.ExecutionWorkspace != nil {
+			if currentOwnershipHandoff(record) != nil || currentOwnershipWorkspace(record) != nil || retainedOwnershipHandoff(record) != nil {
 				return record, true, ""
 			}
 			// An exact linked-worktree cycle without an ownership handoff is not
@@ -920,7 +930,7 @@ func selectSupervisedHandoffRecord(req HookToolUseLifecycleRequest) (IssueOpsRec
 	}
 	byID := map[string]IssueOpsRecord{}
 	for _, record := range records {
-		if record.ExecutionHandoff != nil || record.ExecutionWorkspace != nil {
+		if currentOwnershipHandoff(record) != nil || currentOwnershipWorkspace(record) != nil || retainedOwnershipHandoff(record) != nil {
 			byID[record.ID] = record
 		}
 	}
@@ -1199,14 +1209,24 @@ func allowedHandoffMCPTool(req HookToolUseLifecycleRequest, record IssueOpsRecor
 		return false
 	}
 	input, ok := flatMCPInput(req.ToolInput)
-	if !ok || record.ExecutionHandoff == nil {
+	if !ok {
 		return false
+	}
+	h := currentOwnershipHandoff(record)
+	if h == nil {
+		action, actionOK := mcpString(input, "action")
+		if tool != "issueops_handoff" || !actionOK || (action != "cleanup-preview" && action != "cleanup-approve" && action != "cleanup-record") {
+			return false
+		}
+		h = retainedOwnershipHandoff(record)
+		if h == nil {
+			return false
+		}
 	}
 	id, ok := mcpString(input, "id")
 	if !ok || id != record.ID {
 		return false
 	}
-	h := record.ExecutionHandoff
 	worker := cleanAbsPath(req.CWD) == cleanAbsPath(h.WorkerRoot)
 	source := cleanAbsPath(req.CWD) == cleanAbsPath(record.Repo)
 	owner := (worker || source) && handoff.OwnerStateAllows("remote-create", h.State) && nativeSessionMatches(req, h.OwnerSession)
@@ -1296,7 +1316,7 @@ func mcpFenceMatches(input map[string]any, record IssueOpsRecord) bool {
 	attempt, aok := mcpInt(input, "attempt")
 	epoch, eok := mcpString(input, "ownership_epoch")
 	contextSHA, cok := mcpString(input, "context_sha256")
-	h := record.ExecutionHandoff
+	h := currentOwnershipHandoff(record)
 	return h != nil && aok && attempt == h.Attempt && eok && epoch == h.OwnershipEpoch && cok && contextSHA == h.ContextSHA256
 }
 

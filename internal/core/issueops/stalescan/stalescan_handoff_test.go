@@ -14,11 +14,8 @@ import (
 // is never Releasable.
 func TestClassifyFlagsDoneWithNonTerminalHandoff(t *testing.T) {
 	record := model.IssueOpsRecord{
-		ID:    "io-9bab890c4d4f",
-		Phase: model.IssueOpsPhaseDone,
-		ExecutionHandoff: &model.IssueOpsExecutionHandoff{
-			State: handoff.StateRecoveryRequired,
-		},
+		ID: "io-9bab890c4d4f", Phase: model.IssueOpsPhaseDone, CycleState: model.IssueOpsCycleClosed,
+		Ownership: &model.IssueOpsOwnershipLedger{Attempts: []model.IssueOpsOwnershipAttempt{{Number: 1, Handoff: &model.IssueOpsExecutionHandoff{State: handoff.StateRecoveryRequired}}}},
 	}
 	finding, ok := Classify(record, Probe{}, time.Hour)
 	if !ok {
@@ -48,7 +45,10 @@ func TestClassifyIgnoresDoneWithTerminalHandoff(t *testing.T) {
 		nil,
 		{State: handoff.StateClosed},
 	} {
-		record := model.IssueOpsRecord{ID: "io-done", Phase: model.IssueOpsPhaseDone, ExecutionHandoff: h}
+		record := model.IssueOpsRecord{ID: "io-done", Phase: model.IssueOpsPhaseDone, CycleState: model.IssueOpsCycleClosed}
+		if h != nil {
+			record.Ownership = &model.IssueOpsOwnershipLedger{Attempts: []model.IssueOpsOwnershipAttempt{{Number: 1, Handoff: h}}}
+		}
 		if _, ok := Classify(record, Probe{}, time.Hour); ok {
 			t.Fatalf("done cycle with terminal/absent handoff must not be flagged: handoff=%#v", h)
 		}

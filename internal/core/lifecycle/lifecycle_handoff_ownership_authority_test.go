@@ -103,7 +103,7 @@ func TestOwnershipSourceCanRequestForcedCancellationOfStrandedActiveOwner(t *tes
 
 func TestOwnershipSourceCanTerminalizeOnlyCancelledHandoffTask(t *testing.T) {
 	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateRecoveryRequired)
-	h := record.ExecutionHandoff
+	h := ownershipHandoffForTest(record)
 	h.Completion = nil
 	h.Cancellation = &issueopsmodel.IssueOpsExecutionHandoffCancellation{RequestedAt: "2026-07-22T00:00:00Z", Reason: "stranded owner terminal removed"}
 	h.Failure = &issueopsmodel.IssueOpsExecutionHandoffFailure{Code: "cancellation_requested", Message: h.Cancellation.Reason, At: h.Cancellation.RequestedAt}
@@ -136,7 +136,7 @@ func TestOwnershipSourceCanTerminalizeOnlyCancelledHandoffTask(t *testing.T) {
 
 func TestOwnershipSourceCanRemoveOnlyClosedCancelledWorktree(t *testing.T) {
 	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateClosed)
-	h := record.ExecutionHandoff
+	h := ownershipHandoffForTest(record)
 	h.Completion = nil
 	h.ClosedDisposition = handoff.DispositionCancelled
 	h.Failure = &issueopsmodel.IssueOpsExecutionHandoffFailure{Code: "cancellation_finalized", Message: "stranded owner cleanup requested", At: "2026-07-22T00:00:00Z"}
@@ -209,15 +209,15 @@ func TestOwnershipFenceNeverCapturesOrdinarySourceMutation(t *testing.T) {
 func TestOwnershipFenceNeverCapturesNewSourceCycle(t *testing.T) {
 	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
 	second := record
+	second.Ownership = cloneOwnershipLedgerForTest(record.Ownership)
 	second.ID = newIssueOpsID(repo, "2589-other-active-cycle")
 	second.Branch = "2589-other-active-cycle"
-	second.ExecutionHandoff = cloneOwnershipHandoffForTest(record.ExecutionHandoff)
-	second.ExecutionHandoff.OwnershipEpoch = "ownership-epoch-2"
-	second.ExecutionHandoff.WorkerRoot = filepath.Join(filepath.Dir(record.ExecutionHandoff.WorkerRoot), second.Branch)
-	second.ExecutionWorkspace = nil
-	workspace := *record.ExecutionWorkspace
-	workspace.WorkerRoot = second.ExecutionHandoff.WorkerRoot
-	second.ExecutionWorkspace = &workspace
+	currentOwnershipAttempt(second).Handoff = cloneOwnershipHandoffForTest(ownershipHandoffForTest(record))
+	ownershipHandoffForTest(second).OwnershipEpoch = "ownership-epoch-2"
+	ownershipHandoffForTest(second).WorkerRoot = filepath.Join(filepath.Dir(ownershipHandoffForTest(record).WorkerRoot), second.Branch)
+	workspace := *ownershipWorkspaceForTest(record)
+	workspace.WorkerRoot = ownershipHandoffForTest(second).WorkerRoot
+	currentOwnershipAttempt(second).Workspace = &workspace
 	if _, err := writeIssueOps(IssueOpsStateRoot(), second); err != nil {
 		t.Fatal(err)
 	}
@@ -247,14 +247,15 @@ func TestOwnershipFenceNeverCapturesNewSourceCycle(t *testing.T) {
 func TestOwnershipOwnerExactIDRoutesIssueOpsGatesAcrossParallelCycles(t *testing.T) {
 	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
 	second := record
+	second.Ownership = cloneOwnershipLedgerForTest(record.Ownership)
 	second.ID = newIssueOpsID(repo, "2589-other-active-cycle")
 	second.Branch = "2589-other-active-cycle"
-	second.ExecutionHandoff = cloneOwnershipHandoffForTest(record.ExecutionHandoff)
-	second.ExecutionHandoff.OwnershipEpoch = "ownership-epoch-2"
-	second.ExecutionHandoff.WorkerRoot = filepath.Join(filepath.Dir(worker), second.Branch)
-	workspace := *record.ExecutionWorkspace
-	workspace.WorkerRoot = second.ExecutionHandoff.WorkerRoot
-	second.ExecutionWorkspace = &workspace
+	currentOwnershipAttempt(second).Handoff = cloneOwnershipHandoffForTest(ownershipHandoffForTest(record))
+	ownershipHandoffForTest(second).OwnershipEpoch = "ownership-epoch-2"
+	ownershipHandoffForTest(second).WorkerRoot = filepath.Join(filepath.Dir(worker), second.Branch)
+	workspace := *ownershipWorkspaceForTest(record)
+	workspace.WorkerRoot = ownershipHandoffForTest(second).WorkerRoot
+	currentOwnershipAttempt(second).Workspace = &workspace
 	if _, err := writeIssueOps(IssueOpsStateRoot(), second); err != nil {
 		t.Fatal(err)
 	}
@@ -287,14 +288,15 @@ func TestOwnershipOwnerExactIDRoutesIssueOpsGatesAcrossParallelCycles(t *testing
 func TestParallelOwnershipCyclesDoNotCaptureExactPrepOnlyWorkerCycle(t *testing.T) {
 	repo, record, _ := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
 	second := record
+	second.Ownership = cloneOwnershipLedgerForTest(record.Ownership)
 	second.ID = newIssueOpsID(repo, "2589-other-active-cycle")
 	second.Branch = "2589-other-active-cycle"
-	second.ExecutionHandoff = cloneOwnershipHandoffForTest(record.ExecutionHandoff)
-	second.ExecutionHandoff.OwnershipEpoch = "ownership-epoch-2"
-	second.ExecutionHandoff.WorkerRoot = filepath.Join(filepath.Dir(record.ExecutionHandoff.WorkerRoot), second.Branch)
-	workspace := *record.ExecutionWorkspace
-	workspace.WorkerRoot = second.ExecutionHandoff.WorkerRoot
-	second.ExecutionWorkspace = &workspace
+	currentOwnershipAttempt(second).Handoff = cloneOwnershipHandoffForTest(ownershipHandoffForTest(record))
+	ownershipHandoffForTest(second).OwnershipEpoch = "ownership-epoch-2"
+	ownershipHandoffForTest(second).WorkerRoot = filepath.Join(filepath.Dir(ownershipHandoffForTest(record).WorkerRoot), second.Branch)
+	workspace := *ownershipWorkspaceForTest(record)
+	workspace.WorkerRoot = ownershipHandoffForTest(second).WorkerRoot
+	currentOwnershipAttempt(second).Workspace = &workspace
 	if _, err := writeIssueOps(IssueOpsStateRoot(), second); err != nil {
 		t.Fatal(err)
 	}
@@ -333,7 +335,7 @@ func TestParallelOwnershipCyclesDoNotCaptureExactPrepOnlyWorkerCycle(t *testing.
 func TestOwnershipOwnerOnlyPublishesAndCreatesRemotePR(t *testing.T) {
 	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
 	record.Phase = IssueOpsPhasePR
-	record.ExecutionHandoff.PublishReceipt = &issueopsmodel.IssueOpsExecutionHandoffPublishReceipt{
+	ownershipHandoffForTest(record).PublishReceipt = &issueopsmodel.IssueOpsExecutionHandoffPublishReceipt{
 		Provider: "github", ProjectKey: "github.com/example/repo", Remote: "origin", PushTargetSHA256: strings.Repeat("a", 64),
 		Branch: record.Branch, Base: record.BranchPrepare.BaseBranch, RemoteRef: "refs/heads/" + record.Branch, FinalHead: strings.Repeat("f", 40), VerifiedAt: "2026-07-20T00:00:00Z",
 	}
@@ -394,14 +396,14 @@ func TestOwnershipOwnerOnlyPublishesAndCreatesRemotePR(t *testing.T) {
 
 func TestOwnershipOwnerCanRunExactLifecycleFromFreshSourceRootShell(t *testing.T) {
 	repo, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
-	record.ExecutionHandoff.PublishReceipt = &issueopsmodel.IssueOpsExecutionHandoffPublishReceipt{
+	ownershipHandoffForTest(record).PublishReceipt = &issueopsmodel.IssueOpsExecutionHandoffPublishReceipt{
 		Provider: "github", ProjectKey: "github.com/example/repo", Remote: "origin", PushTargetSHA256: strings.Repeat("a", 64),
 		Branch: record.Branch, Base: record.BranchPrepare.BaseBranch, RemoteRef: "refs/heads/" + record.Branch, FinalHead: strings.Repeat("f", 40), VerifiedAt: "2026-07-20T00:00:00Z",
 	}
 	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
-	h := record.ExecutionHandoff
+	h := ownershipHandoffForTest(record)
 	createPR := "agent-harness issueops remote create-pr --id " + record.ID +
 		" --title draft --body rendered --provider github --head " + record.Branch +
 		" --base " + record.BranchPrepare.BaseBranch + " --label bug --assignee octocat" +
@@ -527,8 +529,8 @@ func TestOwnershipOwnerOnlyCompletesIntoHumanCleanupBoundary(t *testing.T) {
 	owner := handoffEditRequest(record, worker, "claude", "owner-session", "")
 	owner.AgentID, owner.Tool = "owner-agent", "mcp__agent_harness__issueops_handoff"
 	owner.ToolInput = map[string]any{
-		"action": "complete", "id": record.ID, "attempt": 1, "ownership_epoch": record.ExecutionHandoff.OwnershipEpoch,
-		"context_sha256": record.ExecutionHandoff.ContextSHA256, "host": "claude", "session_id": "owner-session", "agent_id": "owner-agent", "cwd": worker,
+		"action": "complete", "id": record.ID, "attempt": 1, "ownership_epoch": ownershipHandoffForTest(record).OwnershipEpoch,
+		"context_sha256": ownershipHandoffForTest(record).ContextSHA256, "host": "claude", "session_id": "owner-session", "agent_id": "owner-agent", "cwd": worker,
 		"final_head": strings.Repeat("f", 40), "turing_report_path": "plans/owner.md", "verification": []any{"go test ./..."},
 	}
 	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "allow" {
@@ -543,7 +545,7 @@ func TestOwnershipOwnerOnlyCompletesIntoHumanCleanupBoundary(t *testing.T) {
 
 	cli := handoffEditRequest(record, worker, "claude", "owner-session", "")
 	cli.AgentID, cli.Tool = "owner-agent", "Bash"
-	cli.Command = "agent-harness issueops handoff complete --id " + record.ID + " --attempt 1 --ownership-epoch " + record.ExecutionHandoff.OwnershipEpoch + " --context-sha256 " + record.ExecutionHandoff.ContextSHA256 + " --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --final-head " + strings.Repeat("f", 40) + " --turing-report plans/owner.md --verification 'go test ./...'"
+	cli.Command = "agent-harness issueops handoff complete --id " + record.ID + " --attempt 1 --ownership-epoch " + ownershipHandoffForTest(record).OwnershipEpoch + " --context-sha256 " + ownershipHandoffForTest(record).ContextSHA256 + " --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --final-head " + strings.Repeat("f", 40) + " --turing-report plans/owner.md --verification 'go test ./...'"
 	if got := BuildLifecyclePreToolUseDecision(cli); got.Decision != "allow" {
 		t.Fatalf("exact owner complete command blocked: %#v", got)
 	}
@@ -588,7 +590,7 @@ func TestOwnershipCloseOwnerCleanupUsesCoreReceiptOrder(t *testing.T) {
 		t.Fatalf("close-owner cleanup must not require remove-local receipt: %#v", got)
 	}
 
-	record.ExecutionHandoff.Cleanup.Receipts = append(record.ExecutionHandoff.Cleanup.Receipts, issueopsmodel.IssueOpsExecutionHandoffCleanupReceipt{Step: "task_terminal"})
+	ownershipHandoffForTest(record).Cleanup.Receipts = append(ownershipHandoffForTest(record).Cleanup.Receipts, issueopsmodel.IssueOpsExecutionHandoffCleanupReceipt{Step: "task_terminal"})
 	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
@@ -639,8 +641,8 @@ func TestOwnershipRoleAuthorityMatrix(t *testing.T) {
 		t.Fatal(err)
 	}
 	ackMCP.ToolInput = map[string]any{
-		"action": "acknowledge-context", "id": orienting.ID, "attempt": 1, "ownership_epoch": orienting.ExecutionHandoff.OwnershipEpoch,
-		"context_sha256": orienting.ExecutionHandoff.ContextSHA256, "host": "claude", "session_id": "owner-session", "agent_id": "owner-agent", "cwd": worker,
+		"action": "acknowledge-context", "id": orienting.ID, "attempt": 1, "ownership_epoch": ownershipHandoffForTest(orienting).OwnershipEpoch,
+		"context_sha256": ownershipHandoffForTest(orienting).ContextSHA256, "host": "claude", "session_id": "owner-session", "agent_id": "owner-agent", "cwd": worker,
 		"issue_url": orienting.IssueURL, "plan_sha256": packet.PlanSHA256, "understanding": "understood", "scope_confirmation": "scoped",
 	}
 	if got := BuildLifecyclePreToolUseDecision(ackMCP); got.Decision != "allow" {
@@ -728,8 +730,8 @@ func TestOwnershipSessionGuidanceRendersClaimAndOrientationBoundary(t *testing.T
 		t.Fatal(err)
 	}
 	for _, expected := range []string{
-		wantAcknowledge, orienting.ID, orienting.ExecutionHandoff.OwnershipEpoch,
-		orienting.ExecutionHandoff.ContextSHA256, "owner-session", worker, orienting.IssueURL,
+		wantAcknowledge, orienting.ID, ownershipHandoffForTest(orienting).OwnershipEpoch,
+		ownershipHandoffForTest(orienting).ContextSHA256, "owner-session", worker, orienting.IssueURL,
 	} {
 		if !strings.Contains(guidance, expected) {
 			t.Fatalf("orienting owner guidance must contain %q: %s", expected, guidance)
@@ -740,7 +742,7 @@ func TestOwnershipSessionGuidanceRendersClaimAndOrientationBoundary(t *testing.T
 	}
 
 	_, record, worker := ownershipLifecycleRecord(t, handoff.StateOwnerActive)
-	record.ExecutionHandoff.PublishReceipt = &issueopsmodel.IssueOpsExecutionHandoffPublishReceipt{
+	ownershipHandoffForTest(record).PublishReceipt = &issueopsmodel.IssueOpsExecutionHandoffPublishReceipt{
 		Provider: "github", ProjectKey: "github.com/example/repo", Remote: "origin", PushTargetSHA256: strings.Repeat("a", 64),
 		Branch: record.Branch, Base: record.BranchPrepare.BaseBranch, RemoteRef: "refs/heads/" + record.Branch, FinalHead: strings.Repeat("f", 40), VerifiedAt: "2026-07-20T00:00:00Z",
 	}
@@ -781,16 +783,17 @@ func ownershipLifecycleRecord(t *testing.T, state string) (string, IssueOpsRecor
 		Driver: "orca", Agent: "claude", DeliveryMode: "inject", CoordinatorRoot: repo, CoordinatorMailboxHandle: "term-coordinator", WorkerRoot: worker, Orca: orca,
 		CoordinatorSession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "claude", SessionID: "coordinator-session", AgentID: "coordinator-agent"},
 	}
-	record.ExecutionHandoff = h
 	workspaceOrca := *orca
 	workspaceOrca.WorkerPTYID, workspaceOrca.WorkerTerminalHandle, workspaceOrca.WorkerMailboxHandle = "", "", ""
 	workspaceOrca.TaskID, workspaceOrca.DispatchID = "", ""
-	record.ExecutionWorkspace = &issueopsmodel.IssueOpsExecutionWorkspace{
+	workspace := &issueopsmodel.IssueOpsExecutionWorkspace{
 		State: "ready", WorkspaceEpoch: h.WorkspaceEpoch, Driver: "orca", Agent: "claude",
 		CoordinatorRoot: repo, WorkerRoot: worker,
 		PreparationSession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "claude", SessionID: "coordinator-session", AgentID: "coordinator-agent"},
 		BaseHead:           baseHead, Orca: &workspaceOrca,
 	}
+	record.CycleState = issueopsmodel.IssueOpsCycleActive
+	record.Ownership = &issueopsmodel.IssueOpsOwnershipLedger{ActiveAttempt: 1, Attempts: []issueopsmodel.IssueOpsOwnershipAttempt{{Number: 1, Workspace: workspace, Handoff: h, StartedAt: "2026-07-20T00:00:00Z"}}}
 	packet, err := handoff.BuildContext(record, handoff.ContextOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -806,6 +809,12 @@ func ownershipLifecycleRecord(t *testing.T, state string) (string, IssueOpsRecor
 	if state == handoff.StateCleanupPendingHumanDecision || state == handoff.StateCleanupExecuting || state == handoff.StateClosed || state == handoff.StateRecoveryRequired {
 		h.Completion = &issueopsmodel.IssueOpsOwnershipCompletion{FinalHead: strings.Repeat("e", 40), CompletedAt: "2026-07-20T00:00:01Z"}
 	}
+	if state == handoff.StateCleanupPendingHumanDecision || state == handoff.StateCleanupExecuting || state == handoff.StateClosed {
+		record.Phase = IssueOpsPhaseDone
+		record.CycleState = issueopsmodel.IssueOpsCycleClosed
+		record.Ownership.ActiveAttempt = 0
+		record.Ownership.Attempts[0].ClosedAt = "2026-07-20T00:00:01Z"
+	}
 	if state == handoff.StateCleanupExecuting {
 		h.Cleanup = &issueopsmodel.IssueOpsExecutionHandoffCleanup{Disposition: "close-owner", Reason: "human directed retained workspace", ApprovedAt: "2026-07-20T00:00:02Z", ApprovedBySession: &issueopsmodel.IssueOpsHostSessionIdentity{Host: "claude", SessionID: "coordinator-session", AgentID: "coordinator-agent"}, InventoryFingerprint: strings.Repeat("f", 64)}
 	}
@@ -814,6 +823,28 @@ func ownershipLifecycleRecord(t *testing.T, state string) (string, IssueOpsRecor
 		t.Fatal(err)
 	}
 	return repo, updated, worker
+}
+
+func ownershipHandoffForTest(record IssueOpsRecord) *issueopsmodel.IssueOpsExecutionHandoff {
+	if h := currentOwnershipHandoff(record); h != nil {
+		return h
+	}
+	attempt := issueopsmodel.LastOwnershipAttempt(record)
+	if attempt == nil {
+		return nil
+	}
+	return attempt.Handoff
+}
+
+func ownershipWorkspaceForTest(record IssueOpsRecord) *issueopsmodel.IssueOpsExecutionWorkspace {
+	if workspace := currentOwnershipWorkspace(record); workspace != nil {
+		return workspace
+	}
+	attempt := issueopsmodel.LastOwnershipAttempt(record)
+	if attempt == nil {
+		return nil
+	}
+	return attempt.Workspace
 }
 
 func cloneOwnershipHandoffForTest(value *issueopsmodel.IssueOpsExecutionHandoff) *issueopsmodel.IssueOpsExecutionHandoff {
@@ -833,6 +864,15 @@ func cloneOwnershipHandoffForTest(value *issueopsmodel.IssueOpsExecutionHandoff)
 	return &cloned
 }
 
+func cloneOwnershipLedgerForTest(value *issueopsmodel.IssueOpsOwnershipLedger) *issueopsmodel.IssueOpsOwnershipLedger {
+	if value == nil {
+		return nil
+	}
+	cloned := *value
+	cloned.Attempts = append([]issueopsmodel.IssueOpsOwnershipAttempt(nil), value.Attempts...)
+	return &cloned
+}
+
 func handoffEditRequest(record IssueOpsRecord, cwd, host, session, target string) HookToolUseLifecycleRequest {
 	paths := []string(nil)
 	if target != "" {
@@ -845,7 +885,7 @@ func handoffEditRequest(record IssueOpsRecord, cwd, host, session, target string
 }
 
 func ownershipAcknowledgementCommand(record IssueOpsRecord, worker string) string {
-	h := record.ExecutionHandoff
+	h := ownershipHandoffForTest(record)
 	packet, err := handoff.BuildContext(record, handoff.ContextOptions{})
 	if err != nil {
 		return ""
@@ -858,7 +898,7 @@ func ownershipAcknowledgementCommand(record IssueOpsRecord, worker string) strin
 }
 
 func ownershipHeartbeatCommand(record IssueOpsRecord) string {
-	h := record.ExecutionHandoff
+	h := ownershipHandoffForTest(record)
 	return "agent-harness issueops heartbeat --id " + record.ID +
 		" --attempt 1 --ownership-epoch " + h.OwnershipEpoch + " --context-sha256 " + h.ContextSHA256 +
 		" --host claude --session-id owner-session --agent-id owner-agent"

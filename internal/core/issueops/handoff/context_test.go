@@ -98,8 +98,9 @@ func TestIssueOpsHandoffContextDeterministicAndBounded(t *testing.T) {
 
 func TestIssueOpsOwnershipContextIncludesWorkspaceSeal(t *testing.T) {
 	record := contextRecordForTest(t)
-	record.ExecutionHandoff.WorkspaceEpoch = "workspace-epoch-1"
-	record.ExecutionHandoff.WorkspaceSHA256 = strings.Repeat("c", 64)
+	handoff := model.CurrentExecutionHandoff(record)
+	handoff.WorkspaceEpoch = "workspace-epoch-1"
+	handoff.WorkspaceSHA256 = strings.Repeat("c", 64)
 
 	packet, err := BuildContext(record, ContextOptions{})
 	if err != nil {
@@ -116,8 +117,9 @@ func TestIssueOpsOwnershipContextSealsHostLaunchProfile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record.ExecutionHandoff.Agent = "codex"
-	record.ExecutionHandoff.LaunchProfile = &profile
+	handoff := model.CurrentExecutionHandoff(record)
+	handoff.Agent = "codex"
+	handoff.LaunchProfile = &profile
 
 	packet, err := BuildContext(record, ContextOptions{})
 	if err != nil {
@@ -182,7 +184,9 @@ func TestIssueOpsHandoffContextHashChangesForPlanBranchIntentAndWorktree(t *test
 		{name: "provider", mutate: func(r *model.IssueOpsRecord) { r.BranchPrepare.Provider = "gitlab" }},
 		{name: "intent", mutate: func(r *model.IssueOpsRecord) { r.Intent.InterpretedIntent = "changed intent" }},
 		{name: "worktree", mutate: func(r *model.IssueOpsRecord) { r.WorktreePath = filepath.Join(filepath.Dir(r.WorktreePath), "other") }},
-		{name: "attempt base", mutate: func(r *model.IssueOpsRecord) { r.ExecutionHandoff.AttemptBaseHead = strings.Repeat("c", 40) }},
+		{name: "attempt base", mutate: func(r *model.IssueOpsRecord) {
+			model.CurrentExecutionHandoff(*r).AttemptBaseHead = strings.Repeat("c", 40)
+		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -242,8 +246,12 @@ func contextRecordForTest(t *testing.T) model.IssueOpsRecord {
 			Verdict:  "pass",
 			Findings: []string{"prove create-at-most-once"},
 		},
-		BranchPrepare:      &model.IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/example/repo/issues/16", BaseBranch: "main", BaseSHA: strings.Repeat("b", 40)},
-		ExecutionWorkspace: &model.IssueOpsExecutionWorkspace{State: "ready", WorkspaceEpoch: "workspace-epoch-1", Driver: "orca", Agent: "codex", CoordinatorRoot: "/repo/example", WorkerRoot: "/repo/example.worktrees/16-demo", PreparationSession: &model.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "source"}, BaseHead: strings.Repeat("b", 40)},
-		ExecutionHandoff:   &model.IssueOpsExecutionHandoff{State: StateOwnershipDispatching, Attempt: 1, AttemptBaseHead: strings.Repeat("b", 40), OwnershipEpoch: "epoch-1", WorkspaceEpoch: "workspace-epoch-1", WorkspaceSHA256: strings.Repeat("c", 64), CoordinatorRoot: "/repo/example", WorkerRoot: "/repo/example.worktrees/16-demo"},
+		BranchPrepare: &model.IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/example/repo/issues/16", BaseBranch: "main", BaseSHA: strings.Repeat("b", 40)},
+		CycleState:    model.IssueOpsCycleActive,
+		Ownership: &model.IssueOpsOwnershipLedger{ActiveAttempt: 1, Attempts: []model.IssueOpsOwnershipAttempt{{
+			Number:    1,
+			Workspace: &model.IssueOpsExecutionWorkspace{State: "ready", WorkspaceEpoch: "workspace-epoch-1", Driver: "orca", Agent: "codex", CoordinatorRoot: "/repo/example", WorkerRoot: "/repo/example.worktrees/16-demo", PreparationSession: &model.IssueOpsHostSessionIdentity{Host: "codex", SessionID: "source"}, BaseHead: strings.Repeat("b", 40)},
+			Handoff:   &model.IssueOpsExecutionHandoff{State: StateOwnershipDispatching, Attempt: 1, AttemptBaseHead: strings.Repeat("b", 40), OwnershipEpoch: "epoch-1", WorkspaceEpoch: "workspace-epoch-1", WorkspaceSHA256: strings.Repeat("c", 64), CoordinatorRoot: "/repo/example", WorkerRoot: "/repo/example.worktrees/16-demo"},
+		}}},
 	}
 }

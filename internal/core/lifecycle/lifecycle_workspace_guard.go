@@ -13,7 +13,7 @@ import (
 // isolated root once it is ready; all other actor/root/state combinations fail
 // closed without converting the workspace into a handoff fence.
 func workspacePreparationBlockReason(req HookToolUseLifecycleRequest, record IssueOpsRecord) string {
-	workspace := record.ExecutionWorkspace
+	workspace := currentOwnershipWorkspace(record)
 	if workspace == nil {
 		return ""
 	}
@@ -33,7 +33,7 @@ func workspacePreparationBlockReason(req HookToolUseLifecycleRequest, record Iss
 }
 
 func workspacePreparationStateKnown(record IssueOpsRecord) bool {
-	return record.ExecutionWorkspace != nil && record.ExecutionHandoff == nil
+	return currentOwnershipWorkspace(record) != nil && currentOwnershipHandoff(record) == nil
 }
 
 // allowedSourceWorkspacePlanMutation keeps planning ownership in the sealed
@@ -42,7 +42,7 @@ func workspacePreparationStateKnown(record IssueOpsRecord) bool {
 // mutation is an argv-shaped commit restricted by git commit --only to that
 // same file.
 func allowedSourceWorkspacePlanMutation(req HookToolUseLifecycleRequest, record IssueOpsRecord) bool {
-	workspace := record.ExecutionWorkspace
+	workspace := currentOwnershipWorkspace(record)
 	if workspace == nil || workspace.State != "ready" || workspace.PreparationSession == nil || !nativeSessionMatches(req, workspace.PreparationSession) {
 		return false
 	}

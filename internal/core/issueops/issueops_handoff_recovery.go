@@ -83,13 +83,13 @@ func forceAbandonIssueOpsHandoff(ctx context.Context, stateRoot, id, reason stri
 	if err != nil {
 		return IssueOpsHandoffRecoverResult{}, err
 	}
-	if record.ExecutionHandoff == nil || record.ExecutionHandoff.State != handoff.StateRecoveryRequired || record.ExecutionHandoff.PendingOperation == nil {
+	if currentIssueOpsHandoff(record) == nil || currentIssueOpsHandoff(record).State != handoff.StateRecoveryRequired || currentIssueOpsHandoff(record).PendingOperation == nil {
 		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("abandon requires recovery_required with a pending operation")
 	}
-	if record.ExecutionHandoff.PendingOperation.Kind == handoff.OperationRuntimeRefresh || record.ExecutionHandoff.PendingOperation.Kind == handoff.OperationLeaseAttestation {
+	if currentIssueOpsHandoff(record).PendingOperation.Kind == handoff.OperationRuntimeRefresh || currentIssueOpsHandoff(record).PendingOperation.Kind == handoff.OperationLeaseAttestation {
 		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("runtime_refresh is a read-only identity reconciliation and cannot be force-abandoned")
 	}
-	startedAt, err := time.Parse(time.RFC3339Nano, record.ExecutionHandoff.PendingOperation.StartedAt)
+	startedAt, err := time.Parse(time.RFC3339Nano, currentIssueOpsHandoff(record).PendingOperation.StartedAt)
 	if err != nil {
 		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("parse pending operation age: %w", err)
 	}
@@ -114,14 +114,14 @@ func forceAbandonIssueOpsHandoff(ctx context.Context, stateRoot, id, reason stri
 		if !reflect.DeepEqual(current, validated) {
 			return fmt.Errorf("handoff changed during force-abandon inventory")
 		}
-		current.ExecutionHandoff.PendingOperation = nil
-		current.ExecutionHandoff.State = handoff.StateClosed
-		current.ExecutionHandoff.ClosedDisposition = handoff.DispositionCancelled
-		clearUnsealedContextOptionsForClose(current.ExecutionHandoff)
-		current.ExecutionHandoff.Failure = &model.IssueOpsExecutionHandoffFailure{
+		currentIssueOpsHandoff(current).PendingOperation = nil
+		currentIssueOpsHandoff(current).State = handoff.StateClosed
+		currentIssueOpsHandoff(current).ClosedDisposition = handoff.DispositionCancelled
+		clearUnsealedContextOptionsForClose(currentIssueOpsHandoff(current))
+		currentIssueOpsHandoff(current).Failure = &model.IssueOpsExecutionHandoffFailure{
 			Code: forceAbandonedOperationCode, Message: strings.TrimSpace(policy.RedactFreeform(reason)), At: now,
 		}
-		current.ExecutionHandoff.UpdatedAt = now
+		currentIssueOpsHandoff(current).UpdatedAt = now
 		current.UpdatedAt = now
 		persisted, readErr = writeIssueOps(stateRoot, current)
 		return readErr
@@ -130,7 +130,7 @@ func forceAbandonIssueOpsHandoff(ctx context.Context, stateRoot, id, reason stri
 }
 
 func requireAbsentPendingOperation(ctx context.Context, record IssueOpsRecord, client any) error {
-	pending := record.ExecutionHandoff.PendingOperation
+	pending := currentIssueOpsHandoff(record).PendingOperation
 	switch pending.Kind {
 	case handoff.OperationWorktreeCreate:
 		reader, ok := client.(interface {
@@ -148,10 +148,10 @@ func requireAbsentPendingOperation(ctx context.Context, record IssueOpsRecord, c
 		reader, ok := client.(interface {
 			ListTerminals(context.Context, string) ([]port.OrcaTerminal, error)
 		})
-		if !ok || record.ExecutionHandoff.Orca == nil || strings.TrimSpace(record.ExecutionHandoff.Orca.WorktreeID) == "" {
+		if !ok || currentIssueOpsHandoff(record).Orca == nil || strings.TrimSpace(currentIssueOpsHandoff(record).Orca.WorktreeID) == "" {
 			return fmt.Errorf("Orca terminal inventory dependency and worktree id are required")
 		}
-		rows, err := reader.ListTerminals(ctx, record.ExecutionHandoff.Orca.WorktreeID)
+		rows, err := reader.ListTerminals(ctx, currentIssueOpsHandoff(record).Orca.WorktreeID)
 		if err != nil {
 			return err
 		}
@@ -172,10 +172,10 @@ func requireAbsentPendingOperation(ctx context.Context, record IssueOpsRecord, c
 		reader, ok := client.(interface {
 			ShowDispatch(context.Context, string) (port.OrcaDispatch, error)
 		})
-		if !ok || record.ExecutionHandoff.Orca == nil || strings.TrimSpace(record.ExecutionHandoff.Orca.TaskID) == "" {
+		if !ok || currentIssueOpsHandoff(record).Orca == nil || strings.TrimSpace(currentIssueOpsHandoff(record).Orca.TaskID) == "" {
 			return fmt.Errorf("Orca dispatch inventory dependency and task id are required")
 		}
-		_, err := reader.ShowDispatch(ctx, record.ExecutionHandoff.Orca.TaskID)
+		_, err := reader.ShowDispatch(ctx, currentIssueOpsHandoff(record).Orca.TaskID)
 		if err == nil {
 			return fmt.Errorf("dispatch still exists")
 		}
@@ -224,7 +224,7 @@ func countExactPostBaselineCandidates(kind string, ids, baseline []string, rowCo
 }
 
 func requireNoExactWorktreeCandidates(record IssueOpsRecord, baseline []string, rows []port.OrcaWorktree) error {
-	h := record.ExecutionHandoff
+	h := currentIssueOpsHandoff(record)
 	if h == nil || h.Orca == nil {
 		return fmt.Errorf("worktree recovery identity is unavailable")
 	}
@@ -249,7 +249,7 @@ func requireNoExactWorktreeCandidates(record IssueOpsRecord, baseline []string, 
 }
 
 func requireNoExactTerminalCandidates(record IssueOpsRecord, baseline []string, rows []port.OrcaTerminal) error {
-	h := record.ExecutionHandoff
+	h := currentIssueOpsHandoff(record)
 	if h == nil || h.Orca == nil {
 		return fmt.Errorf("terminal recovery identity is unavailable")
 	}
@@ -274,10 +274,10 @@ func requireNoExactTerminalCandidates(record IssueOpsRecord, baseline []string, 
 }
 
 func requireNoExactTaskCandidates(record IssueOpsRecord, baseline []string, rows []port.OrcaTask) error {
-	if record.ExecutionHandoff == nil {
+	if currentIssueOpsHandoff(record) == nil {
 		return fmt.Errorf("task recovery identity is unavailable")
 	}
-	title, display, err := issueOpsHandoffTaskIdentity(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt)
+	title, display, err := issueOpsHandoffTaskIdentity(record.ID, currentIssueOpsHandoff(record).OwnershipEpoch, currentIssueOpsHandoff(record).Attempt)
 	if err != nil {
 		return err
 	}
@@ -333,30 +333,30 @@ func cancelIssueOpsHandoff(stateRoot, id string, force bool, reason, now string)
 		if err != nil {
 			return err
 		}
-		if record.ExecutionHandoff == nil {
+		if currentIssueOpsHandoff(record) == nil {
 			return fmt.Errorf("execution handoff is required")
 		}
-		if record.ExecutionHandoff.State == handoff.StateClosed {
-			if record.ExecutionHandoff.ClosedDisposition != handoff.DispositionCancelled {
+		if currentIssueOpsHandoff(record).State == handoff.StateClosed {
+			if currentIssueOpsHandoff(record).ClosedDisposition != handoff.DispositionCancelled {
 				return fmt.Errorf("closed handoff cannot be cancelled")
 			}
 			persisted = record
 			return nil
 		}
-		if record.ExecutionHandoff.Cancellation != nil {
+		if currentIssueOpsHandoff(record).Cancellation != nil {
 			persisted = record
 			return nil
 		}
-		if record.ExecutionHandoff.State == handoff.StateOwnerOrienting || record.ExecutionHandoff.State == handoff.StateOwnerActive {
+		if currentIssueOpsHandoff(record).State == handoff.StateOwnerOrienting || currentIssueOpsHandoff(record).State == handoff.StateOwnerActive {
 			if !force || strings.TrimSpace(reason) == "" {
 				return fmt.Errorf("active owner handoff cancel requires --force with a nonempty --reason")
 			}
 		}
-		if !handoffHasExternalMutation(record.ExecutionHandoff) {
-			record.ExecutionHandoff.State = handoff.StateClosed
-			record.ExecutionHandoff.ClosedDisposition = handoff.DispositionCancelled
-			clearUnsealedContextOptionsForClose(record.ExecutionHandoff)
-			record.ExecutionHandoff.UpdatedAt = now
+		if !handoffHasExternalMutation(currentIssueOpsHandoff(record)) {
+			currentIssueOpsHandoff(record).State = handoff.StateClosed
+			currentIssueOpsHandoff(record).ClosedDisposition = handoff.DispositionCancelled
+			clearUnsealedContextOptionsForClose(currentIssueOpsHandoff(record))
+			currentIssueOpsHandoff(record).UpdatedAt = now
 			record.UpdatedAt = now
 			persisted, err = writeIssueOps(stateRoot, record)
 			return err
@@ -365,11 +365,11 @@ func cancelIssueOpsHandoff(stateRoot, id string, force bool, reason, now string)
 		if reason == "" {
 			reason = "coordinator requested cancellation"
 		}
-		record.ExecutionHandoff.State = handoff.StateRecoveryRequired
-		record.ExecutionHandoff.ClosedDisposition = ""
-		record.ExecutionHandoff.Cancellation = &model.IssueOpsExecutionHandoffCancellation{RequestedAt: now, Reason: reason}
-		record.ExecutionHandoff.Failure = &model.IssueOpsExecutionHandoffFailure{Code: "cancellation_requested", Message: reason, At: now}
-		record.ExecutionHandoff.UpdatedAt = now
+		currentIssueOpsHandoff(record).State = handoff.StateRecoveryRequired
+		currentIssueOpsHandoff(record).ClosedDisposition = ""
+		currentIssueOpsHandoff(record).Cancellation = &model.IssueOpsExecutionHandoffCancellation{RequestedAt: now, Reason: reason}
+		currentIssueOpsHandoff(record).Failure = &model.IssueOpsExecutionHandoffFailure{Code: "cancellation_requested", Message: reason, At: now}
+		currentIssueOpsHandoff(record).UpdatedAt = now
 		record.UpdatedAt = now
 		persisted, err = writeIssueOps(stateRoot, record)
 		return err
@@ -395,7 +395,7 @@ func finalizeCancelledIssueOpsHandoff(ctx context.Context, stateRoot, id string,
 	if err != nil {
 		return IssueOpsHandoffRecoverResult{}, err
 	}
-	h := validated.ExecutionHandoff
+	h := currentIssueOpsHandoff(validated)
 	if h == nil || h.State != handoff.StateRecoveryRequired || h.Cancellation == nil {
 		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("finalize-cancel requires a cancellation_requested tombstone")
 	}
@@ -416,14 +416,14 @@ func finalizeCancelledIssueOpsHandoff(ctx context.Context, stateRoot, id string,
 		if !reflect.DeepEqual(current, validated) {
 			return fmt.Errorf("cancellation tombstone changed during quiescence verification")
 		}
-		reason := current.ExecutionHandoff.Cancellation.Reason
-		current.ExecutionHandoff.Cancellation = nil
-		current.ExecutionHandoff.PendingOperation = nil
-		current.ExecutionHandoff.State = handoff.StateClosed
-		current.ExecutionHandoff.ClosedDisposition = handoff.DispositionCancelled
-		clearUnsealedContextOptionsForClose(current.ExecutionHandoff)
-		current.ExecutionHandoff.Failure = &model.IssueOpsExecutionHandoffFailure{Code: "cancellation_finalized", Message: reason, At: now}
-		current.ExecutionHandoff.UpdatedAt = now
+		reason := currentIssueOpsHandoff(current).Cancellation.Reason
+		currentIssueOpsHandoff(current).Cancellation = nil
+		currentIssueOpsHandoff(current).PendingOperation = nil
+		currentIssueOpsHandoff(current).State = handoff.StateClosed
+		currentIssueOpsHandoff(current).ClosedDisposition = handoff.DispositionCancelled
+		clearUnsealedContextOptionsForClose(currentIssueOpsHandoff(current))
+		currentIssueOpsHandoff(current).Failure = &model.IssueOpsExecutionHandoffFailure{Code: "cancellation_finalized", Message: reason, At: now}
+		currentIssueOpsHandoff(current).UpdatedAt = now
 		current.UpdatedAt = now
 		persisted, readErr = writeIssueOps(stateRoot, current)
 		return readErr
@@ -438,7 +438,7 @@ func clearUnsealedContextOptionsForClose(h *model.IssueOpsExecutionHandoff) {
 }
 
 func requireCancellationQuiescence(ctx context.Context, record IssueOpsRecord, client any, now string) error {
-	h := record.ExecutionHandoff
+	h := currentIssueOpsHandoff(record)
 	if h == nil {
 		return nil
 	}
@@ -659,7 +659,7 @@ func terminalDispatchStatus(status string) bool {
 }
 
 func verifyIssueOpsCleanupStep(ctx context.Context, record IssueOpsRecord, step string, client any, now string) (model.IssueOpsExecutionHandoffCleanupReceipt, error) {
-	h := record.ExecutionHandoff
+	h := currentIssueOpsHandoff(record)
 	identity := h.Orca
 	receipt := model.IssueOpsExecutionHandoffCleanupReceipt{Step: step, RecordedAt: now}
 	switch step {
@@ -684,7 +684,7 @@ func verifyIssueOpsCleanupStep(ctx context.Context, record IssueOpsRecord, step 
 		}
 		receipt.TaskID, receipt.DispatchID = taskID, dispatchID
 	case "terminal_quiescent":
-		if terminallessPreDispatchCancellation(record.ExecutionHandoff) {
+		if terminallessPreDispatchCancellation(currentIssueOpsHandoff(record)) {
 			dispatchClient, ok := client.(IssueOpsOrcaDispatchClient)
 			if !ok {
 				return receipt, fmt.Errorf("complete terminalless pre-dispatch cleanup inventory is unavailable")
@@ -806,15 +806,15 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 	if err != nil {
 		return IssueOpsHandoffRecoverResult{}, err
 	}
-	if record.ExecutionHandoff == nil || record.ExecutionHandoff.State != handoff.StateRecoveryRequired || record.ExecutionHandoff.PendingOperation == nil {
+	if currentIssueOpsHandoff(record) == nil || currentIssueOpsHandoff(record).State != handoff.StateRecoveryRequired || currentIssueOpsHandoff(record).PendingOperation == nil {
 		return IssueOpsHandoffRecoverResult{}, fmt.Errorf("reconcile requires recovery_required with a pending operation")
 	}
 	validated := cloneHandoffReconcileSnapshot(record)
-	pending := *record.ExecutionHandoff.PendingOperation
+	pending := *currentIssueOpsHandoff(record).PendingOperation
 	identity := &model.IssueOpsOrcaIdentity{}
-	if record.ExecutionHandoff.Orca != nil {
-		*identity = *record.ExecutionHandoff.Orca
-		identity.TerminalBaselinePTYIDs = append([]string(nil), record.ExecutionHandoff.Orca.TerminalBaselinePTYIDs...)
+	if currentIssueOpsHandoff(record).Orca != nil {
+		*identity = *currentIssueOpsHandoff(record).Orca
+		identity.TerminalBaselinePTYIDs = append([]string(nil), currentIssueOpsHandoff(record).Orca.TerminalBaselinePTYIDs...)
 	}
 	desiredWorktreePath := record.WorktreePath
 	next := "agent-harness issueops handoff start --id " + id + " --confirm"
@@ -832,11 +832,11 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		if listErr != nil {
 			return IssueOpsHandoffRecoverResult{}, listErr
 		}
-		candidate, matchErr := ReconcileIssueOpsHandoffWorktree(pending, record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt, rows)
+		candidate, matchErr := ReconcileIssueOpsHandoffWorktree(pending, record.ID, currentIssueOpsHandoff(record).OwnershipEpoch, currentIssueOpsHandoff(record).Attempt, rows)
 		if matchErr != nil {
 			return IssueOpsHandoffRecoverResult{}, matchErr
 		}
-		if validateErr := validateCreatedHandoffWorktree(record, record.ExecutionHandoff.WorkerRoot, identity.RepoID, identity.BaseRef, candidate); validateErr != nil {
+		if validateErr := validateCreatedHandoffWorktree(record, currentIssueOpsHandoff(record).WorkerRoot, identity.RepoID, identity.BaseRef, candidate); validateErr != nil {
 			if !worktreeCleanupCandidateExact(record, identity.RepoID, handoffFence(record), pending.BaselineWorktreeIDs, candidate) {
 				return IssueOpsHandoffRecoverResult{}, validateErr
 			}
@@ -860,7 +860,7 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		if listErr != nil {
 			return IssueOpsHandoffRecoverResult{}, listErr
 		}
-		candidate, matchErr := ReconcileIssueOpsHandoffTerminal(pending.BaselinePTYIDs, identity.WorktreeID, record.ExecutionHandoff.WorkerRoot, rows)
+		candidate, matchErr := ReconcileIssueOpsHandoffTerminal(pending.BaselinePTYIDs, identity.WorktreeID, currentIssueOpsHandoff(record).WorkerRoot, rows)
 		if matchErr != nil {
 			return IssueOpsHandoffRecoverResult{}, matchErr
 		}
@@ -881,7 +881,7 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		if listErr != nil {
 			return IssueOpsHandoffRecoverResult{}, listErr
 		}
-		title, displayName, identityErr := issueOpsHandoffTaskIdentity(record.ID, record.ExecutionHandoff.OwnershipEpoch, record.ExecutionHandoff.Attempt)
+		title, displayName, identityErr := issueOpsHandoffTaskIdentity(record.ID, currentIssueOpsHandoff(record).OwnershipEpoch, currentIssueOpsHandoff(record).Attempt)
 		if identityErr != nil {
 			return IssueOpsHandoffRecoverResult{}, identityErr
 		}
@@ -897,7 +897,7 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 		if !ok {
 			return IssueOpsHandoffRecoverResult{}, fmt.Errorf("Orca dispatch recovery dependency is unavailable")
 		}
-		candidate, matchErr := ReconcileIssueOpsHandoffDispatch(ctx, identity.TaskID, pending.ExpectedAssigneeHandle, pending.DeliveryMode, reader, record.ExecutionHandoff.CoordinatorMailboxHandle)
+		candidate, matchErr := ReconcileIssueOpsHandoffDispatch(ctx, identity.TaskID, pending.ExpectedAssigneeHandle, pending.DeliveryMode, reader, currentIssueOpsHandoff(record).CoordinatorMailboxHandle)
 		if matchErr != nil {
 			var orcaErr *port.OrcaError
 			if !errors.As(matchErr, &orcaErr) || strings.TrimSpace(orcaErr.Code) != "not_found" {
@@ -961,15 +961,15 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 				return err
 			}
 		}
-		current.ExecutionHandoff.Orca = identity
-		current.ExecutionHandoff.PendingOperation = nil
-		current.ExecutionHandoff.State = newState
-		current.ExecutionHandoff.Failure = nil
+		currentIssueOpsHandoff(current).Orca = identity
+		currentIssueOpsHandoff(current).PendingOperation = nil
+		currentIssueOpsHandoff(current).State = newState
+		currentIssueOpsHandoff(current).Failure = nil
 		if pending.Kind == handoff.OperationDispatch && !dispatchAbsent {
-			current.ExecutionHandoff.DeliveryMode = pending.DeliveryMode
-			current.ExecutionHandoff.DispatchedAt = now
+			currentIssueOpsHandoff(current).DeliveryMode = pending.DeliveryMode
+			currentIssueOpsHandoff(current).DispatchedAt = now
 		}
-		current.ExecutionHandoff.UpdatedAt = now
+		currentIssueOpsHandoff(current).UpdatedAt = now
 		current.WorktreePath = desiredWorktreePath
 		current.UpdatedAt = now
 		persisted, readErr = writeIssueOps(stateRoot, current)
@@ -979,7 +979,7 @@ func reconcileIssueOpsHandoff(ctx context.Context, stateRoot, id string, client 
 }
 
 func reconcileLeaseAttestationAllowedHandle(ctx context.Context, record IssueOpsRecord, client IssueOpsOrcaDispatchClient) (string, error) {
-	h := record.ExecutionHandoff
+	h := currentIssueOpsHandoff(record)
 	if h == nil || h.Orca == nil || strings.TrimSpace(h.Orca.WorktreeID) == "" {
 		return "", fmt.Errorf("lease attestation reconciliation requires exact Orca worktree authority")
 	}
@@ -1004,11 +1004,12 @@ func reconcileLeaseAttestationAllowedHandle(ctx context.Context, record IssueOps
 }
 
 func cloneHandoffReconcileSnapshot(record IssueOpsRecord) IssueOpsRecord {
-	if record.ExecutionHandoff == nil {
+	if currentIssueOpsHandoff(record) == nil {
 		return record
 	}
-	h := *record.ExecutionHandoff
-	record.ExecutionHandoff = &h
+	record.Ownership = CloneIssueOpsOwnershipLedger(record.Ownership)
+	h := *currentIssueOpsHandoff(record)
+	CurrentOwnershipAttempt(record).Handoff = &h
 	if h.Orca != nil {
 		orca := *h.Orca
 		orca.TerminalBaselinePTYIDs = append([]string(nil), h.Orca.TerminalBaselinePTYIDs...)
@@ -1053,16 +1054,16 @@ func persistReconciledCleanupOnlyWorktree(stateRoot string, validated IssueOpsRe
 
 func projectHandoffRecovery(record IssueOpsRecord, action, next string) IssueOpsHandoffRecoverResult {
 	result := IssueOpsHandoffRecoverResult{OK: record.OK, ID: record.ID, Action: action, NextCommand: next}
-	if record.ExecutionHandoff == nil {
+	if currentIssueOpsHandoff(record) == nil {
 		return result
 	}
-	result.State = record.ExecutionHandoff.State
-	result.Disposition = record.ExecutionHandoff.ClosedDisposition
-	result.Attempt = record.ExecutionHandoff.Attempt
-	result.Orca = record.ExecutionHandoff.Orca
-	result.Cleanup = record.ExecutionHandoff.Cleanup
-	if record.ExecutionHandoff.Failure != nil {
-		result.RecoveryCode = record.ExecutionHandoff.Failure.Code
+	result.State = currentIssueOpsHandoff(record).State
+	result.Disposition = currentIssueOpsHandoff(record).ClosedDisposition
+	result.Attempt = currentIssueOpsHandoff(record).Attempt
+	result.Orca = currentIssueOpsHandoff(record).Orca
+	result.Cleanup = currentIssueOpsHandoff(record).Cleanup
+	if currentIssueOpsHandoff(record).Failure != nil {
+		result.RecoveryCode = currentIssueOpsHandoff(record).Failure.Code
 	}
 	return result
 }

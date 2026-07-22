@@ -91,6 +91,7 @@ func TestAcceptIssueOpsChildRequiresDonePhaseAndEvidence(t *testing.T) {
 	}
 	child := started.Child
 	child.Phase = IssueOpsPhaseDone
+	child.CycleState = IssueOpsCycleClosed
 	writeIssueOpsRecordForDelegationTest(t, stateRoot, child)
 	if _, err := AcceptIssueOpsChild(stateRoot, parent.ID, child.ID, nil); err == nil || !strings.Contains(err.Error(), "validation_evidence") {
 		t.Fatalf("accept should require evidence, got %v", err)

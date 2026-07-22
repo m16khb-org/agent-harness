@@ -21,10 +21,10 @@ func OwnershipCleanupHumanGate(req HookToolUseLifecycleRequest) (string, bool) {
 	}
 	for _, id := range ids {
 		record, err := issueops.ReadIssueOpsExisting(issueops.IssueOpsStateRoot(), id)
-		if err != nil || cleanAbsPath(record.Repo) != repo || record.ExecutionHandoff == nil {
+		if err != nil || cleanAbsPath(record.Repo) != repo || retainedOwnershipHandoff(record) == nil {
 			continue
 		}
-		h := record.ExecutionHandoff
+		h := retainedOwnershipHandoff(record)
 		if h.State != handoff.StateCleanupPendingHumanDecision || h.Completion == nil {
 			continue
 		}
