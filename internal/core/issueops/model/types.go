@@ -599,7 +599,62 @@ type IssueOpsOwnershipCompletion struct {
 	CompletedAt  string   `json:"completed_at"`
 }
 
-const IssueOpsCurrentSchemaVersion = 8
+type IssueOpsCycleState string
+
+const (
+	IssueOpsCycleActive IssueOpsCycleState = "active"
+	IssueOpsCyclePaused IssueOpsCycleState = "paused"
+	IssueOpsCycleClosed IssueOpsCycleState = "closed"
+)
+
+type IssueOpsOwnershipLedger struct {
+	ActiveAttempt  int                         `json:"active_attempt,omitempty"`
+	Attempts       []IssueOpsOwnershipAttempt  `json:"attempts,omitempty"`
+	PendingRestart *IssueOpsOwnerRestartIntent `json:"pending_restart,omitempty"`
+}
+
+type IssueOpsOwnershipAttempt struct {
+	Number           int                         `json:"number"`
+	Workspace        *IssueOpsExecutionWorkspace `json:"workspace,omitempty"`
+	Handoff          *IssueOpsExecutionHandoff   `json:"handoff,omitempty"`
+	InheritedWIPSeal *IssueOpsOwnershipWIPSeal   `json:"inherited_wip_seal,omitempty"`
+	RestartedFrom    int                         `json:"restarted_from,omitempty"`
+	StartedAt        string                      `json:"started_at"`
+	ClosedAt         string                      `json:"closed_at,omitempty"`
+}
+
+type IssueOpsOwnershipWIPSeal struct {
+	Ref                string `json:"ref"`
+	Commit             string `json:"commit"`
+	Tree               string `json:"tree"`
+	BaseHead           string `json:"base_head"`
+	StatusSHA256       string `json:"status_sha256"`
+	PathManifestSHA256 string `json:"path_manifest_sha256"`
+	PathCount          int    `json:"path_count"`
+	CreatedAt          string `json:"created_at"`
+}
+
+type IssueOpsOwnerRestartIntent struct {
+	State                string                           `json:"state"`
+	FromAttempt          int                              `json:"from_attempt"`
+	ToAttempt            int                              `json:"to_attempt"`
+	InventoryFingerprint string                           `json:"inventory_fingerprint"`
+	Head                 string                           `json:"head"`
+	StatusSHA256         string                           `json:"status_sha256"`
+	Dirty                bool                             `json:"dirty"`
+	SealDirtyWIP         bool                             `json:"seal_dirty_wip"`
+	WIPSeal              *IssueOpsOwnershipWIPSeal        `json:"wip_seal,omitempty"`
+	RequestedBy          *IssueOpsHostSessionIdentity     `json:"requested_by"`
+	CoordinatorRecipient string                           `json:"coordinator_recipient"`
+	PriorWorktreeID      string                           `json:"prior_worktree_id"`
+	PriorTaskID          string                           `json:"prior_task_id"`
+	PriorDispatchID      string                           `json:"prior_dispatch_id"`
+	Failure              *IssueOpsExecutionHandoffFailure `json:"failure,omitempty"`
+	StartedAt            string                           `json:"started_at"`
+	UpdatedAt            string                           `json:"updated_at"`
+}
+
+const IssueOpsCurrentSchemaVersion = 9
 
 type IssueOpsRecord struct {
 	OK                      bool                                `json:"ok"`
@@ -632,6 +687,8 @@ type IssueOpsRecord struct {
 	ChildCycles             []IssueOpsChildCycleRef             `json:"child_cycles,omitempty"`
 	ExecutionHandoff        *IssueOpsExecutionHandoff           `json:"execution_handoff,omitempty"`
 	ExecutionWorkspace      *IssueOpsExecutionWorkspace         `json:"execution_workspace,omitempty"`
+	CycleState              IssueOpsCycleState                  `json:"cycle_state,omitempty"`
+	Ownership               *IssueOpsOwnershipLedger            `json:"ownership,omitempty"`
 	RoutingTrace            []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
 	AISlopCleanAt           string                              `json:"ai_slop_clean_at,omitempty"`
 	AISlopCleanHead         string                              `json:"ai_slop_clean_head,omitempty"`

@@ -74,6 +74,11 @@ type IssueOpsOrcaCleanupArtifact = model.IssueOpsOrcaCleanupArtifact
 type IssueOpsExecutionHandoff = model.IssueOpsExecutionHandoff
 type IssueOpsExecutionWorkspace = model.IssueOpsExecutionWorkspace
 type IssueOpsExecutionWorkspacePendingOperation = model.IssueOpsExecutionWorkspacePendingOperation
+type IssueOpsCycleState = model.IssueOpsCycleState
+type IssueOpsOwnershipLedger = model.IssueOpsOwnershipLedger
+type IssueOpsOwnershipAttempt = model.IssueOpsOwnershipAttempt
+type IssueOpsOwnershipWIPSeal = model.IssueOpsOwnershipWIPSeal
+type IssueOpsOwnerRestartIntent = model.IssueOpsOwnerRestartIntent
 type IssueOpsOwnershipOrientation = model.IssueOpsOwnershipOrientation
 type IssueOpsOwnershipCompletion = model.IssueOpsOwnershipCompletion
 type IssueOpsReadiness = model.IssueOpsReadiness
@@ -100,6 +105,9 @@ const (
 	IssueOpsPhaseFeedback            = model.IssueOpsPhaseFeedback
 	IssueOpsPhasePR                  = model.IssueOpsPhasePR
 	IssueOpsPhaseDone                = model.IssueOpsPhaseDone
+	IssueOpsCycleActive              = model.IssueOpsCycleActive
+	IssueOpsCyclePaused              = model.IssueOpsCyclePaused
+	IssueOpsCycleClosed              = model.IssueOpsCycleClosed
 )
 
 var IssueOpsPhases = model.IssueOpsPhases

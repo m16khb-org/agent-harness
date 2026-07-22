@@ -20,6 +20,9 @@ const (
 
 // ValidateEnvelope enforces the single current ownership handoff contract.
 func ValidateEnvelope(record model.IssueOpsRecord) error {
+	if record.SchemaVersion >= 9 && (record.CycleState != "" || record.Ownership != nil) {
+		return ValidateOwnershipLedger(record)
+	}
 	if err := validateExecutionWorkspace(record); err != nil {
 		return err
 	}

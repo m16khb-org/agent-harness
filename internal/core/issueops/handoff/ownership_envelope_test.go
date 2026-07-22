@@ -84,6 +84,25 @@ func TestOwnershipEnvelopeRejectsInvalidOrientation(t *testing.T) {
 	}
 }
 
+func TestSchemaV9OwnershipEnvelopeUsesLedgerAuthority(t *testing.T) {
+	legacy := validOwnershipEnvelopeRecord(t)
+	legacy.ExecutionHandoff.Attempt = 1
+	legacy.ExecutionHandoff.OwnershipEpoch = "ownership-1"
+	attempt := model.IssueOpsOwnershipAttempt{
+		Number: 1, Workspace: legacy.ExecutionWorkspace, Handoff: legacy.ExecutionHandoff,
+		StartedAt: "2026-07-22T00:00:00Z",
+	}
+	record := legacy
+	record.SchemaVersion = 9
+	record.CycleState = model.IssueOpsCycleActive
+	record.Ownership = &model.IssueOpsOwnershipLedger{ActiveAttempt: 1, Attempts: []model.IssueOpsOwnershipAttempt{attempt}}
+	record.ExecutionWorkspace = nil
+	record.ExecutionHandoff = nil
+	if err := ValidateEnvelope(record); err != nil {
+		t.Fatalf("schema-v9 ledger envelope rejected: %v", err)
+	}
+}
+
 func validOwnershipEnvelopeRecord(t *testing.T) model.IssueOpsRecord {
 	t.Helper()
 	repo := filepath.Join(t.TempDir(), "repo")
