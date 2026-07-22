@@ -215,6 +215,21 @@ IssueOps state is durable because `agent-harness issueops ...` commands record i
 - When readiness reports `intent_contract`, `plan_prep_*`, `branch_prepare`, `worktree_tools_*`, `compatibility_review`, `backward_compatibility`, `side_effects`, `rollback_plan`, `compatibility_verification`, `compatibility_blockers`, `compatibility_approval`, `execution_decision`, `design_review`, `plan_path`, `ai_slop_clean`, or `contract_feedback_issue_update`, run the owning `issueops` command in the main agent loop and retry readiness. Do not add a hook-side workaround.
 - Sub-agent use is not a free speedup. It can preserve the main context, give a fresh reviewer, isolate tools, or parallelize independent research, but it also reduces mid-run steering/visibility and adds latency/token/coordination cost. Record those tradeoffs plus the net-positive rationale with `issueops execution decide`; if that rationale is weak, main-agent direct execution remains the default.
 
+## 16.2 선택지는 기존 목표를 대체하지 않고 handoff coordinator는 block하지 않는다
+
+숫자 선택 응답을 복원할 때 선택지 label만 새 원문 요청으로 승격하면 이전 턴에서
+확정한 실행 주체, workspace, ownership mode가 사라질 수 있다. `handoff owner에게
+실행을 위임`이 `격리된 구현 worktree에서 실행`으로 축약된 뒤 source/main이 직접
+구현한 2026-07-22 incident가 이 경로로 재현됐다.
+
+주의:
+- 선택지는 기존 사용자 목표와 명시적 제약을 유지한 채 적용하는 next-action delta다. 선택지 text를 원문 요청의 대체물로 취급하지 않는다.
+- 실행 방식이 갈리는 선택지에는 실행 주체, source/worker 위치, ownership 전환, 외부 mutation 경계를 self-contained하게 적는다.
+- active IssueOps cycle에서는 durable handoff owner/workspace state가 자유형 선택지보다 우선한다. `격리된 worktree`를 `ownership handoff`와 동의어로 추정하지 않는다.
+- `handoff start` 뒤 source/main은 owner 완료를 동기 대기하거나 terminal output을 무기한 tail하지 않는다. 한 번의 관측은 30초 이내로 제한하고, 60초 안에 사용자에게 진행 상태를 갱신한다.
+- claim/acknowledge/heartbeat가 멈추면 source가 구현을 대신하지 않는다. exact lifecycle state를 읽고 recovery 또는 재-handoff 판단 지점으로 돌아간다.
+- source/main은 coordinator로서 상태 관측과 bounded control message만 담당하고, 코드·commit·publish·PR/MR mutation은 canonical worker root의 exact owner session에 남긴다.
+
 ## 17. MCP tool-use risks
 
 - Broad tool descriptions make agents over-call tools or pass wrong arguments.
