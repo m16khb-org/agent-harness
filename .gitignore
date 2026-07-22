@@ -1,5 +1,6 @@
 # Local build outputs
 bin/
+*.test
 
 # Runtime/local state
 data/
