@@ -267,6 +267,14 @@ func normalizeIssueOpsSchemaVersion(record *IssueOpsRecord) error {
 	if err := issueOpsSchemaVersionError(record.SchemaVersion); err != nil {
 		return err
 	}
+	if record.SchemaVersion == 8 {
+		migrated, err := MigrateIssueOpsV8Record(*record)
+		if err != nil {
+			return err
+		}
+		*record = migrated
+		return nil
+	}
 	olderSchema := record.SchemaVersion == 0 || record.SchemaVersion == 1 || record.SchemaVersion == 2 || record.SchemaVersion == 3 || record.SchemaVersion == 4 || record.SchemaVersion == 5 || record.SchemaVersion == 6 || record.SchemaVersion == 7
 	if olderSchema {
 		record.SchemaVersion = IssueOpsCurrentSchemaVersion
@@ -276,7 +284,7 @@ func normalizeIssueOpsSchemaVersion(record *IssueOpsRecord) error {
 
 func issueOpsSchemaVersionError(version int) error {
 	switch {
-	case version == 0 || version == 1 || version == 2 || version == 3 || version == 4 || version == 5 || version == 6 || version == 7 || version == IssueOpsCurrentSchemaVersion:
+	case version == 0 || version == 1 || version == 2 || version == 3 || version == 4 || version == 5 || version == 6 || version == 7 || version == 8 || version == IssueOpsCurrentSchemaVersion:
 		return nil
 	case version > IssueOpsCurrentSchemaVersion:
 		return fmt.Errorf("unsupported issueops schema_version %d; current is %d", version, IssueOpsCurrentSchemaVersion)

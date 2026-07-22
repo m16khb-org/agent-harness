@@ -22,6 +22,7 @@ import (
 var issueOpsSubcommands = map[string]func([]string) error{
 	"start":           runIssueOpsStart,
 	"status":          runIssueOpsStatus,
+	"migrate-v9":      runIssueOpsMigrateV9,
 	"intent":          runIssueOpsIntent,
 	"plan-prep":       runIssueOpsPlanPrep,
 	"design":          runIssueOpsDesign,
@@ -55,6 +56,41 @@ var issueOpsSubcommands = map[string]func([]string) error{
 	"handoff":       runIssueOpsHandoff,
 	"decision":      runIssueOpsDecision,
 	"execution":     runIssueOpsExecution,
+}
+
+func runIssueOpsMigrateV9(args []string) error {
+	fs := flag.NewFlagSet("issueops migrate-v9", flag.ContinueOnError)
+	id := fs.String("id", "", "exact issueops record id")
+	preview := fs.Bool("preview", false, "classify without writing")
+	confirm := fs.Bool("confirm", false, "persist the exact classified migration")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	if strings.TrimSpace(*id) == "" {
+		return fmt.Errorf("issueops migrate-v9 requires --id")
+	}
+	if *preview == *confirm {
+		return fmt.Errorf("issueops migrate-v9 requires exactly one of --preview or --confirm")
+	}
+	var result core.IssueOpsV8MigrationClassification
+	var err error
+	if *preview {
+		result, err = core.PreviewIssueOpsV9Migration(core.IssueOpsStateRoot(), *id)
+	} else {
+		result, err = core.ConfirmIssueOpsV9Migration(core.IssueOpsStateRoot(), *id)
+	}
+	if err != nil {
+		if *jsonOut {
+			_ = printIssueOpsErrorJSON(err)
+		}
+		return err
+	}
+	if *jsonOut {
+		return printJSON(result)
+	}
+	fmt.Printf("%s %s %s\n", result.ID, result.Classification, result.CycleState)
+	return nil
 }
 
 func runIssueOps(args []string) error {

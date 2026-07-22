@@ -66,6 +66,7 @@ type IssueOpsExecutionHandoffCleanupReceipt = issueops.IssueOpsExecutionHandoffC
 type IssueOpsExecutionHandoffCleanup = issueops.IssueOpsExecutionHandoffCleanup
 type IssueOpsRemoteCreateClaim = issueops.IssueOpsRemoteCreateClaim
 type IssueOpsRecord = issueops.IssueOpsRecord
+type IssueOpsV8MigrationClassification = issueops.IssueOpsV8MigrationClassification
 type IssueOpsDelegationContract = issueops.IssueOpsDelegationContract
 type IssueOpsChildCycleRef = issueops.IssueOpsChildCycleRef
 type IssueOpsChildStartRequest = issueops.IssueOpsChildStartRequest
@@ -83,6 +84,14 @@ type IssueOpsStaleScanRequest = issueops.IssueOpsStaleScanRequest
 type IssueOpsStaleScanResult = issueops.IssueOpsStaleScanResult
 
 type IssueOpsPhase = issueops.IssueOpsPhase
+
+func PreviewIssueOpsV9Migration(stateRoot, id string) (IssueOpsV8MigrationClassification, error) {
+	return issueops.PreviewIssueOpsV9Migration(stateRoot, id)
+}
+
+func ConfirmIssueOpsV9Migration(stateRoot, id string) (IssueOpsV8MigrationClassification, error) {
+	return issueops.ConfirmIssueOpsV9Migration(stateRoot, id)
+}
 
 const (
 	IssueOpsCurrentSchemaVersion     = issueops.IssueOpsCurrentSchemaVersion
