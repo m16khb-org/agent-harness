@@ -115,6 +115,19 @@ PY
 fi
 
 if [[ -x "$BIN" ]]; then
+  # --- Optional glab MCP sync across hosts (no-op when glab-mcp-wrapper absent).
+  # Keeps the user's profile-scoped glab MCP servers consistent on Codex,
+  # Claude Code. Profiles come from GLAB_MCP_PROFILES or
+  # ~/.config/glab-mcp/profiles.
+  if [[ -x "${HOME}/.local/bin/glab-mcp-wrapper" || -n "${GLAB_MCP_WRAPPER:-}" ]]; then
+    if [[ "$DRY_RUN" == "1" ]]; then
+      log "dry-run: would sync glab MCP servers across hosts (scripts/sync-glab-mcp.sh)"
+    else
+      log "syncing glab MCP servers across hosts (best-effort)"
+      bash "$ROOT/scripts/sync-glab-mcp.sh" || true
+    fi
+  fi
+
   if [[ "$DRY_RUN" != "1" ]] && is_truthy "$SKIP_BUILD"; then
     "$BIN" issueops reset-legacy \
       --target-schema 1 \
@@ -133,16 +146,4 @@ elif [[ "$DRY_RUN" == "1" ]]; then
 else
   log "agent-harness binary missing after build: ${BIN}"
   exit 1
-fi
-
-# --- Optional glab MCP sync across hosts (no-op when glab-mcp-wrapper absent).
-# Keeps the user's profile-scoped glab MCP servers consistent on Codex, Claude
-# Code. Profiles come from GLAB_MCP_PROFILES or ~/.config/glab-mcp/profiles.
-if [[ -x "${HOME}/.local/bin/glab-mcp-wrapper" || -n "${GLAB_MCP_WRAPPER:-}" ]]; then
-  if [[ "$DRY_RUN" == "1" ]]; then
-    log "dry-run: would sync glab MCP servers across hosts (scripts/sync-glab-mcp.sh)"
-  else
-    log "syncing glab MCP servers across hosts (best-effort)"
-    bash "$ROOT/scripts/sync-glab-mcp.sh" || true
-  fi
 fi
