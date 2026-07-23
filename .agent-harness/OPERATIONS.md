@@ -132,6 +132,13 @@ repeat the identical request with `--confirm`. `auto` selects Orca only when
 readiness succeeds before mutation; otherwise it selects direct. The only
 first-party owner hosts are Codex and Claude.
 
+The installed Orca CLI currently seals GitHub issue metadata but has no GitLab
+issue/work-item metadata mutation surface. For a GitLab-linked cycle, `auto`
+therefore reports `gitlab_issue_metadata_unsupported` and selects direct before
+any Orca resource is created; explicit `orca` fails with the same actionable
+code. `/issues/:iid` and `/work_items/:iid` are equivalent only when the exact
+authority (including port), project path, and IID all match.
+
 For Orca mode, follow `skills/issueops/references/execution.md`. Preparation
 seals the remote issue body, context packet, fully rendered owner prompt, and
 private claim-token file before launch. The fresh owner verifies both SHA-256

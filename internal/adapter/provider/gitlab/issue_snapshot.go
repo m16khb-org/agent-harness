@@ -15,7 +15,7 @@ func (Provider) ReadIssueSnapshot(ctx context.Context, req port.ExecutionIssueSn
 	if err := ctx.Err(); err != nil {
 		return port.ExecutionIssueSnapshot{}, err
 	}
-	hostname, projectPath, iid, err := parseGitLabIssueURL(req.URL)
+	hostname, projectPath, iid, _, err := splitGitLabIssueURL(req.URL)
 	if err != nil {
 		return port.ExecutionIssueSnapshot{}, err
 	}
@@ -36,10 +36,35 @@ func (Provider) ReadIssueSnapshot(ctx context.Context, req port.ExecutionIssueSn
 		return port.ExecutionIssueSnapshot{}, fmt.Errorf("parse glab issue snapshot: %w", err)
 	}
 	issueURL := strings.TrimSpace(req.URL)
-	if strings.TrimSpace(payload.WebURL) != issueURL {
+	if !sameGitLabIssueSnapshotIdentity(issueURL, payload.WebURL) {
 		return port.ExecutionIssueSnapshot{}, fmt.Errorf("glab issue snapshot URL does not match the linked issue")
 	}
 	return port.ExecutionIssueSnapshot{URL: issueURL, Body: payload.Description}, nil
+}
+
+func sameGitLabIssueSnapshotIdentity(left, right string) bool {
+	leftHost, leftProject, leftIID, _, leftErr := splitGitLabIssueURL(left)
+	rightHost, rightProject, rightIID, _, rightErr := splitGitLabIssueURL(right)
+	return leftErr == nil && rightErr == nil &&
+		strings.EqualFold(leftHost, rightHost) &&
+		strings.EqualFold(gitLabSnapshotAuthority(left), gitLabSnapshotAuthority(right)) &&
+		leftProject == rightProject &&
+		leftIID == rightIID
+}
+
+func gitLabSnapshotAuthority(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return ""
+	}
+	if parsed.Host == "" && !strings.Contains(trimmed, "://") {
+		parsed, err = url.Parse("https://" + trimmed)
+		if err != nil {
+			return ""
+		}
+	}
+	return parsed.Host
 }
 
 var _ port.ExecutionIssueSnapshotReader = Provider{}

@@ -246,6 +246,13 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 	if requested == string(model.ExecutionModeDirect) {
 		return requested, "", probeReq, nil
 	}
+	if probeReq.Provider == "gitlab" {
+		const code = "gitlab_issue_metadata_unsupported"
+		if requested == ExecutionModeAuto {
+			return string(model.ExecutionModeDirect), code, probeReq, nil
+		}
+		return "", "", probeReq, fmt.Errorf("%s: installed Orca cannot seal GitLab issue metadata before handoff", code)
+	}
 	if probeReq.Host != "codex" && probeReq.Host != "claude" {
 		return "", "", probeReq, fmt.Errorf("Orca owner_host must be codex or claude")
 	}

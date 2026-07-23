@@ -3,7 +3,9 @@ package issueops
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 
@@ -46,6 +48,48 @@ func TestExecutionOrcaPersistsIntentBeforeExternalMutationAndCASReceipt(t *testi
 	}
 	if got.Execution.Orca.OwnerModel != "caller-model" || got.Execution.Orca.OwnerEffort != "high" {
 		t.Fatalf("caller owner profile was not preserved: %#v", got.Execution.Orca)
+	}
+}
+
+func TestExecutionGitLabOrcaCapabilityFailsBeforeProbeOrMutation(t *testing.T) {
+	for _, mode := range []string{ExecutionModeAuto, string(model.ExecutionModeOrca)} {
+		for _, confirm := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/confirm=%t", mode, confirm), func(t *testing.T) {
+				stateRoot, record := executionPrepareRecord(t)
+				record.BranchPrepare.Provider = "gitlab"
+				record.BranchPrepare.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/69"
+				if _, err := writeIssueOps(stateRoot, record); err != nil {
+					t.Fatal(err)
+				}
+				orca := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
+				direct := &executionDirectCountingFake{}
+				got, err := PrepareExecution(context.Background(), stateRoot, ExecutionPrepareRequest{
+					ID: record.ID, Mode: mode, CWD: record.Repo, Confirm: confirm,
+					Actor: executionActor("codex", "coordinator"), OwnerHost: "claude", OwnerModel: "caller-model",
+				}, ExecutionPrepareDependencies{Direct: direct, Orca: orca, ReadIssue: executionIssueSnapshotReader})
+				if mode == ExecutionModeAuto {
+					if err != nil || got.ResolvedMode != "direct" || got.FallbackCode != "gitlab_issue_metadata_unsupported" {
+						t.Fatalf("auto GitLab readiness must fall back before Orca mutation: result=%#v err=%v", got, err)
+					}
+				} else if err == nil || !strings.Contains(err.Error(), "gitlab_issue_metadata_unsupported") {
+					t.Fatalf("explicit Orca must return the typed unsupported capability: result=%#v err=%v", got, err)
+				}
+				if orca.probeCalls != 0 || orca.prepareCalls != 0 || orca.launchCalls != 0 {
+					t.Fatalf("unsupported GitLab capability reached Orca: %#v", orca)
+				}
+				current, readErr := ReadIssueOps(stateRoot, record.ID)
+				if readErr != nil {
+					t.Fatal(readErr)
+				}
+				if mode == string(model.ExecutionModeOrca) || !confirm {
+					if current.Execution != nil {
+						t.Fatalf("readiness-only path changed durable execution state: %#v", current.Execution)
+					}
+				} else if current.Execution == nil || current.Execution.Mode != model.ExecutionModeDirect || direct.calls != 1 {
+					t.Fatalf("confirmed auto fallback did not create one direct execution: record=%#v calls=%d", current.Execution, direct.calls)
+				}
+			})
+		}
 	}
 }
 
@@ -121,9 +165,11 @@ type executionOrcaFake struct {
 	invoke       func(port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentReceipt, error)
 	prepareCalls int
 	launchCalls  int
+	probeCalls   int
 }
 
 func (f *executionOrcaFake) Probe(context.Context, port.ExecutionOrcaProbeRequest) (port.ExecutionOrcaProbeResult, error) {
+	f.probeCalls++
 	return f.probe, nil
 }
 
@@ -200,7 +246,14 @@ func executionIssueSnapshotReader(_ context.Context, _ string, request port.Exec
 
 type executionDirectCountingFake struct{ calls int }
 
-func (f *executionDirectCountingFake) Prepare(context.Context, port.ExecutionWorkspaceRequest) (port.ExecutionWorkspaceReceipt, error) {
+func (f *executionDirectCountingFake) ProbeAccess(context.Context, port.ExecutionWorkspaceRequest, string) (port.ExecutionWorkspaceAccessResult, error) {
+	return port.ExecutionWorkspaceAccessResult{Allowed: true}, nil
+}
+
+func (f *executionDirectCountingFake) Prepare(_ context.Context, req port.ExecutionWorkspaceRequest) (port.ExecutionWorkspaceReceipt, error) {
 	f.calls++
-	return port.ExecutionWorkspaceReceipt{}, nil
+	return port.ExecutionWorkspaceReceipt{
+		SourceRoot: req.SourceRoot, Root: req.Root, Branch: req.Branch,
+		BaseHead: req.BaseHead, Driver: "git", Exists: req.Confirm,
+	}, nil
 }

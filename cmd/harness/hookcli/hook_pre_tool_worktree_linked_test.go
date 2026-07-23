@@ -70,7 +70,7 @@ func TestRunHookPreToolUseEnforcesLinkedIssueOpsWorktree(t *testing.T) {
 	}
 }
 
-func TestRunHookPreToolUseBlocksSourceCheckoutWhenLinkedCycleExists(t *testing.T) {
+func TestRunHookPreToolUseDoesNotFenceUnpreparedLinkedCycle(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := filepath.Join(t.TempDir(), "agent-harness")
 	if err := os.MkdirAll(filepath.Join(source, ".git"), 0o755); err != nil {
@@ -152,7 +152,7 @@ func TestRunHookPreToolUseBlocksSourceCheckoutWhenLinkedCycleExists(t *testing.T
 	}
 }
 
-func TestRunHookPreToolUseAsksForSessionBoundMirrorFileEdit(t *testing.T) {
+func TestRunHookPreToolUseKeepsSourceFileEditIndependentFromCycle(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := filepath.Join(t.TempDir(), "agent-harness")
 	if err := os.MkdirAll(filepath.Join(source, ".git"), 0o755); err != nil {
@@ -177,27 +177,53 @@ func TestRunHookPreToolUseAsksForSessionBoundMirrorFileEdit(t *testing.T) {
 	obj := runHookCapture(t, string(payload), func() error {
 		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
 	})
-	if obj["decision"] != "block" {
-		t.Fatalf("expected source mutation to be blocked outside the active lease worktree, got %+v", obj)
+	if obj["decision"] != "allow" {
+		t.Fatalf("source checkout mutation must not be claimed by the active cycle, got %+v", obj)
 	}
-	assertIssueOpsDenyFields(t, obj["deny"], cycle.id, cycle.path, 1, "write_lease_required")
 
 	claude := runHookCapture(t, string(payload), func() error {
 		return runHookPreToolUse([]string{"--host", "claude", "--enforce-worktree"})
 	})
-	hso, exists := claude["hookSpecificOutput"].(map[string]any)
-	if !exists {
-		t.Fatalf("Claude block must emit a native decision, got %+v", claude)
+	if len(claude) != 0 {
+		t.Fatalf("Claude source edit allow must remain a no-op hook response, got %+v", claude)
 	}
-	assertIssueOpsDenyJSON(t, hso["permissionDecisionReason"], cycle.id, cycle.path, 1, "write_lease_required")
 
 	codex := runHookCapture(t, string(payload), func() error {
 		return runHookPreToolUse([]string{"--host", "codex", "--enforce-worktree"})
 	})
-	if codex["decision"] != "block" {
-		t.Fatalf("Codex block must emit a native decision, got %+v", codex)
+	if len(codex) != 0 {
+		t.Fatalf("Codex source edit allow must remain a no-op hook response, got %+v", codex)
 	}
-	assertIssueOpsDenyJSON(t, codex["reason"], cycle.id, cycle.path, 1, "write_lease_required")
+	_ = cycle
+}
+
+func TestRunHookPreToolUseAllowsHolderCanonicalPatchFromCodexSourceCWD(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	if err := os.MkdirAll(filepath.Join(source, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, ".git", "HEAD"), []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cycle := createLinkedIssueOpsWorktree(t, source, "72-cycle-target")
+	actor := activateIssueOpsHookExecution(t, cycle.id)
+	payload, err := json.Marshal(map[string]any{
+		"cwd": source, "host": actor.Host, "session_id": actor.SessionID, "agent_id": actor.AgentID,
+		"tool_name": "apply_patch",
+		"tool_input": map[string]any{
+			"file_path": filepath.Join(cycle.path, "internal", "fixed.go"),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--host", "codex", "--enforce-worktree"})
+	})
+	if len(got) != 0 {
+		t.Fatalf("Codex source cwd must not override an explicit canonical target owned by the holder: %+v", got)
+	}
 }
 
 func assertIssueOpsDenyJSON(t *testing.T, raw any, id, root string, generation int, code string) {
@@ -290,12 +316,19 @@ func TestRunHookPreToolUseBlocksFilesystemAliasTargetsFromUnrelatedCWD(t *testin
 		t.Fatal(err)
 	}
 	unrelated := t.TempDir()
-	for name, root := range map[string]string{"source": source, "canonical": cycle.path, "sibling": sibling} {
+	for name, tc := range map[string]struct {
+		root string
+		want string
+	}{
+		"source":    {source, "allow"},
+		"canonical": {cycle.path, "block"},
+		"sibling":   {sibling, "allow"},
+	} {
 		t.Run(name, func(t *testing.T) {
 			payload, err := json.Marshal(map[string]any{
 				"cwd": unrelated, "tool_name": "mcp__filesystem__move_file",
 				"tool_input": map[string]any{
-					"source": filepath.Join(root, "before.txt"), "destination": filepath.Join(root, "after.txt"),
+					"source": filepath.Join(tc.root, "before.txt"), "destination": filepath.Join(tc.root, "after.txt"),
 				},
 			})
 			if err != nil {
@@ -304,8 +337,8 @@ func TestRunHookPreToolUseBlocksFilesystemAliasTargetsFromUnrelatedCWD(t *testin
 			got := runHookCapture(t, string(payload), func() error {
 				return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
 			})
-			if got["decision"] != "block" {
-				t.Fatalf("filesystem alias target in %s escaped authority selection: %+v", name, got)
+			if got["decision"] != tc.want {
+				t.Fatalf("filesystem alias target in %s decision=%v, want %s: %+v", name, got["decision"], tc.want, got)
 			}
 		})
 	}

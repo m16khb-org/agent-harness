@@ -740,6 +740,8 @@ Codex hook trust는 command 내용만이 아니라 `source:event:matcher-index:h
 
 - Current ownership contract는 workspace provisioning before ownership transfer를 보장한다. source main worktree remains available before, during, and after handoff; generic session binding과 mirrored relative path는 authority가 아니다.
 - Fence는 canonical worker root, exact cycle ID, native owner, or persisted Orca resource만 선택한다. Removed handoff record shapes are rejected rather than converted.
+- Record 선택에 `SourceRoot`, source `cwd`, generic repo root를 다시 넣지 않는다. 명시적 canonical target이 있거나 command cwd 자체가 canonical root일 때만 cycle write lease를 적용한다. Codex hook의 top-level cwd는 effective `exec_command.workdir`가 아니므로 explicit canonical file target은 holder/lease/containment가 맞으면 source session cwd에서도 허용한다.
+- Orca의 즉시 terminal-create 응답은 stable title이 아직 반영되지 않을 수 있다. 같은 worktree와 PTY의 bounded terminal inventory를 한 번 재조회해 sealed marker를 검증하고, 없거나 중복이면 fail closed한다.
 - `cleanup_pending_human_decision`의 every non-`closed` ownership resource는 stale scan과 operational health가 보존한다. elapsed time, Stop hook, original source identity는 cleanup authority를 만들지 않는다.
 
 ## dirty main에서 원격 변경과 겹치는 파일을 바로 pull하지 말 것

@@ -283,7 +283,11 @@ func (c *Client) CreateWorktree(ctx context.Context, req port.OrcaCreateWorktree
 	if created.Branch == "" || created.Branch == requestedBranch {
 		return created, nil
 	}
-	return c.CanonicalizeWorktreeBranch(ctx, created, requestedBranch, strings.TrimSpace(req.BaseBranch))
+	upstream := strings.TrimSpace(req.UpstreamBranch)
+	if upstream == "" {
+		upstream = strings.TrimSpace(req.BaseBranch)
+	}
+	return c.CanonicalizeWorktreeBranch(ctx, created, requestedBranch, upstream)
 }
 
 // CanonicalizeWorktreeBranch removes an Orca-configured username namespace
