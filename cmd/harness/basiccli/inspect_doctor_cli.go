@@ -55,12 +55,13 @@ func runDoctor(args []string) error {
 	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
 	repo := fs.String("repo", ".", "target repository path")
 	jsonOut := fs.Bool("json", false, "print JSON")
+	sealed := fs.Bool("sealed", false, "use the sealed audit profile: unowned live terminals and orchestration message history count as residue")
 	var preserveCycles doctorRepeatedFlag
 	var preserveTerminals doctorRepeatedFlag
 	fs.Var(&preserveCycles, "preserve-cycle", "preserve one exact IssueOps cycle for this invocation (repeatable)")
 	fs.Var(&preserveTerminals, "preserve-terminal", "preserve one exact terminal handle for this invocation (repeatable)")
 	fs.Usage = func() {
-		fmt.Fprintln(fs.Output(), "Usage: agent-harness doctor [--repo PATH] [--preserve-cycle ID]... [--preserve-terminal HANDLE]... [--json]")
+		fmt.Fprintln(fs.Output(), "Usage: agent-harness doctor [--repo PATH] [--sealed] [--preserve-cycle ID]... [--preserve-terminal HANDLE]... [--json]")
 		fs.PrintDefaults()
 	}
 	if err := fs.Parse(args); err != nil {
@@ -93,6 +94,7 @@ func runDoctor(args []string) error {
 		OperationalSnapshot: &snapshot,
 		OperationalOptions: operationalhealth.Options{
 			Now:                     now,
+			Profile:                 doctorProfile(*sealed),
 			PreserveCycleIDs:        cycleIDs,
 			PreserveTerminalHandles: terminalHandles,
 		},
@@ -139,4 +141,14 @@ func normalizeDoctorPreserve(values []string, flagName string) ([]string, error)
 	}
 	sort.Strings(result)
 	return result, nil
+}
+
+// doctorProfile maps the CLI default to the interactive profile: on a live
+// developer machine, user-opened Orca tabs and orchestration message history
+// are normal. Sealed audit callers opt back into the strict residue contract.
+func doctorProfile(sealed bool) string {
+	if sealed {
+		return operationalhealth.ProfileSealed
+	}
+	return operationalhealth.ProfileInteractive
 }

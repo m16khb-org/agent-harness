@@ -196,3 +196,40 @@ func withCycle(cycle Cycle, mutate func(*Cycle)) Cycle {
 	mutate(&cycle)
 	return cycle
 }
+
+func snapshotWithUserTerminalAndInboxHistory() Snapshot {
+	snapshot := healthyDirectSnapshot()
+	// A live Orca tab the user opened directly: no cycle references it, so it
+	// has no invocation owner, but it is not residue on a live desktop.
+	snapshot.Terminals = []OrcaTerminal{{RuntimeID: "runtime", Handle: "term_user_tab", WorktreePath: "/repo", Connected: true, Writable: true}}
+	snapshot.Messages = MessagePresence{Count: 3}
+	return snapshot
+}
+
+func TestClassifyInteractiveProfileAcceptsUserTerminalsAndInboxHistory(t *testing.T) {
+	result := Classify(snapshotWithUserTerminalAndInboxHistory(), Options{Now: time.Now(), Profile: ProfileInteractive})
+	if hasFinding(result, FindingTerminalResidue, "terminal") {
+		t.Fatalf("interactive profile must not flag an unowned live terminal: %+v", result.Findings)
+	}
+	if hasFinding(result, FindingMessageResidue, "message") {
+		t.Fatalf("interactive profile must not flag orchestration message history: %+v", result.Findings)
+	}
+	if !result.Healthy {
+		t.Fatalf("interactive profile with only user terminals and message history must be healthy: %+v", result.Findings)
+	}
+}
+
+func TestClassifySealedProfileStillFlagsUnownedTerminalsAndMessages(t *testing.T) {
+	for _, opts := range []Options{
+		{Now: time.Now()},
+		{Now: time.Now(), Profile: ProfileSealed},
+	} {
+		result := Classify(snapshotWithUserTerminalAndInboxHistory(), opts)
+		if !hasFinding(result, FindingTerminalResidue, "terminal") {
+			t.Fatalf("sealed/default profile must flag an unowned terminal: %+v", result.Findings)
+		}
+		if !hasFinding(result, FindingMessageResidue, "message") {
+			t.Fatalf("sealed/default profile must flag inbox rows: %+v", result.Findings)
+		}
+	}
+}

@@ -161,8 +161,19 @@ type Snapshot struct {
 	InventoryProblems  []InventoryProblem
 }
 
+// Profile selects how strictly unowned-but-live resources are classified.
+// ProfileSealed (the zero value) is the audit contract: every terminal and
+// inbox row must be accounted for by a cycle. ProfileInteractive is for a live
+// developer machine, where Orca tabs the user opened directly and orchestration
+// message history are normal, not residue.
+const (
+	ProfileSealed      = ""
+	ProfileInteractive = "interactive"
+)
+
 type Options struct {
 	Now                     time.Time
+	Profile                 string
 	PreserveCycleIDs        []string
 	PreserveTerminalHandles []string
 }

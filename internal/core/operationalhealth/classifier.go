@@ -236,6 +236,11 @@ func Classify(snapshot Snapshot, opts Options) Result {
 		if len(terminalOwners[handle]) == 1 || preservedTerminalCounts[handle] {
 			continue
 		}
+		// Interactively, an unowned terminal is a live tab the user opened
+		// directly; only a terminal claimed by multiple cycles is a conflict.
+		if opts.Profile == ProfileInteractive && len(terminalOwners[handle]) == 0 {
+			continue
+		}
 		builder.add(FindingTerminalResidue, "terminal", handle, "terminal has no live or invocation-preserved owner", clean(terminal.WorktreePath))
 	}
 	for _, task := range snapshot.Tasks {
@@ -271,7 +276,7 @@ func Classify(snapshot Snapshot, opts Options) Result {
 		}
 		builder.add(FindingGateResidue, "gate", id, "orchestration gate remains present", "")
 	}
-	classifyMessages(&builder, snapshot.Messages)
+	classifyMessages(&builder, snapshot.Messages, opts.Profile)
 
 	branchResidue := make([]string, 0)
 	activeBranches := map[string]struct{}{strings.TrimSpace(snapshot.CanonicalBranch): {}}
@@ -591,9 +596,14 @@ func nativeHolderIdentity(host, sessionID, agentID string) string {
 	return strings.ToLower(host) + "\x00" + sessionID + "\x00" + agentID
 }
 
-func classifyMessages(builder *findingBuilder, messages MessagePresence) {
+func classifyMessages(builder *findingBuilder, messages MessagePresence, profile string) {
 	if messages.Count < 0 {
 		builder.add(FindingInventoryUnknown, "message", "inbox", "message count is invalid", "")
+		return
+	}
+	// Interactively, the orchestration inbox is durable message history the
+	// CLI cannot purge; rows only prove past coordination, not residue.
+	if profile == ProfileInteractive {
 		return
 	}
 	if messages.Count > 0 || !messages.Empty {

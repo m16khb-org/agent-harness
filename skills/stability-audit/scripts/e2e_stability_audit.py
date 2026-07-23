@@ -154,7 +154,7 @@ def _terminal_handle_arg(value: str) -> str:
 
 
 def operational_doctor(report: dict[str, Any], preserve_terminal: str | None = None) -> None:
-    cmd = [str(BIN), "doctor", "--repo", str(ROOT), "--json"]
+    cmd = [str(BIN), "doctor", "--repo", str(ROOT), "--sealed", "--json"]
     terminal = (
         _terminal_handle_arg(preserve_terminal)
         if preserve_terminal is not None

@@ -167,7 +167,7 @@ func TestRunDoctorOperationalPreserveFlagsAreRepeatableAndInvocationScoped(t *te
 
 	out := captureStatusVerifyStdout(t, func() error {
 		return RunDoctor([]string{
-			"--repo", repo,
+			"--repo", repo, "--sealed",
 			"--preserve-cycle", " io-z ", "--preserve-cycle", "io-a", "--preserve-cycle", "io-a",
 			"--preserve-terminal", " term-z ", "--preserve-terminal", "term-a", "--preserve-terminal", "term-a",
 			"--json",
@@ -183,7 +183,7 @@ func TestRunDoctorOperationalPreserveFlagsAreRepeatableAndInvocationScoped(t *te
 	}
 
 	withoutPreserve := captureStatusVerifyStdout(t, func() error {
-		return RunDoctor([]string{"--repo", repo, "--json"})
+		return RunDoctor([]string{"--repo", repo, "--sealed", "--json"})
 	})
 	if err := json.Unmarshal([]byte(withoutPreserve), &result); err != nil {
 		t.Fatalf("decode unpreserved doctor json: %v\n%s", err, withoutPreserve)
@@ -191,6 +191,28 @@ func TestRunDoctorOperationalPreserveFlagsAreRepeatableAndInvocationScoped(t *te
 	check, ok = doctorResultCheck(result, "operational_state")
 	if !ok || check.Healthy {
 		t.Fatalf("preserve flags leaked beyond one invocation: check=%#v issues=%#v", check, result.Issues)
+	}
+}
+
+func TestRunDoctorDefaultsToInteractiveProfileForUserTerminals(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := t.TempDir()
+	configureOperationalCollectorTest(t, func(_ context.Context, root string) operationalhealth.Snapshot {
+		snapshot := healthyCLIOperationalSnapshot(root)
+		snapshot.Terminals = []operationalhealth.OrcaTerminal{{Handle: "term_user_tab"}}
+		snapshot.Messages = operationalhealth.MessagePresence{Count: 5}
+		return snapshot
+	})
+	out := captureStatusVerifyStdout(t, func() error {
+		return RunDoctor([]string{"--repo", repo, "--json"})
+	})
+	var result core.HarnessDoctorResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("decode doctor json: %v\n%s", err, out)
+	}
+	check, ok := doctorResultCheck(result, "operational_state")
+	if !ok || !check.Healthy {
+		t.Fatalf("default doctor must not flag user terminals or message history: check=%#v issues=%#v", check, result.Issues)
 	}
 }
 
