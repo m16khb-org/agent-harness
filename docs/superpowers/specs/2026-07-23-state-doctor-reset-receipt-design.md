@@ -22,8 +22,11 @@ is rejected because it would remove the sealed activation evidence.
 
 - Add `issueops_reset_v1` to the existing top-level state-directory ownership
   allowlist.
-- Add a focused state-doctor test that creates this directory and proves it is
-  accepted without warnings.
+- Also add `issueops_v1` as an exact-match entry: the v1 namespace store
+  created by `issueops_state.go` lives at the same top level and was flagged
+  with the identical false positive on a live installation.
+- Add a focused state-doctor test that creates these directories and proves
+  they are accepted without warnings.
 - Do not broaden recognition to arbitrary `issueops_*` directories or change
   the contents accepted inside the reset store.
 

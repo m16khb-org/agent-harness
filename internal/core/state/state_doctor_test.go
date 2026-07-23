@@ -48,6 +48,27 @@ func TestStateDoctorEmptyDirIsHealthy(t *testing.T) {
 	}
 }
 
+func TestStateDoctorAcceptsIssueOpsResetReceiptDirectory(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", dir)
+	for _, owned := range []string{"issueops_reset_v1", "issueops_v1"} {
+		if err := os.MkdirAll(filepath.Join(dir, owned), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	result, err := StateDoctor()
+	if err != nil {
+		t.Fatalf("StateDoctor: %v", err)
+	}
+	if !result.OK || !result.Healthy {
+		t.Fatalf("issueops v1 reset receipt and namespace directories should be harness-owned: %+v", result)
+	}
+	if len(result.Issues) != 0 {
+		t.Fatalf("issueops v1 reset receipt and namespace directories should not warn: %+v", result.Issues)
+	}
+}
+
 func TestStateDoctorAllowsHarnessOwnedAuxiliaryState(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", dir)

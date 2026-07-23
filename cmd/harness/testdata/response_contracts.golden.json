@@ -5549,12 +5549,6 @@
           "message": "invalid character 'n' looking for beginning of object key string",
           "path": "$STATE_DIR/corrupt.json",
           "severity": "error"
-        },
-        {
-          "code": "unexpected_directory",
-          "message": "state directory contains an unexpected subdirectory",
-          "path": "$STATE_DIR/issueops_v1",
-          "severity": "warning"
         }
       ],
       "ok": true,
@@ -5580,15 +5574,8 @@
     },
     "state_doctor_healthy": {
       "checked": 2,
-      "healthy": false,
-      "issues": [
-        {
-          "code": "unexpected_directory",
-          "message": "state directory contains an unexpected subdirectory",
-          "path": "$STATE_DIR/issueops_v1",
-          "severity": "warning"
-        }
-      ],
+      "healthy": true,
+      "issues": [],
       "ok": true,
       "state_dir": "$STATE_DIR",
       "valid": [
@@ -5640,14 +5627,7 @@
       "confirm": true,
       "dry_run": false,
       "from_schema": 0,
-      "issues": [
-        {
-          "code": "unexpected_directory",
-          "message": "state directory contains an unexpected subdirectory",
-          "path": "$STATE_DIR/issueops_v1",
-          "severity": "warning"
-        }
-      ],
+      "issues": [],
       "migrated_keys": [
         "legacy"
       ],
@@ -5681,14 +5661,7 @@
       "confirm": false,
       "dry_run": true,
       "from_schema": 0,
-      "issues": [
-        {
-          "code": "unexpected_directory",
-          "message": "state directory contains an unexpected subdirectory",
-          "path": "$STATE_DIR/issueops_v1",
-          "severity": "warning"
-        }
-      ],
+      "issues": [],
       "migrated_keys": [],
       "ok": true,
       "skipped": [
@@ -8766,12 +8739,6 @@
                 "message": "invalid character 'n' looking for beginning of object key string",
                 "path": "$STATE_DIR/corrupt.json",
                 "severity": "error"
-              },
-              {
-                "code": "unexpected_directory",
-                "message": "state directory contains an unexpected subdirectory",
-                "path": "$STATE_DIR/issueops_v1",
-                "severity": "warning"
               }
             ],
             "ok": true,
@@ -8843,12 +8810,6 @@
                 "message": "invalid character 'n' looking for beginning of object key string",
                 "path": "$STATE_DIR/corrupt.json",
                 "severity": "error"
-              },
-              {
-                "code": "unexpected_directory",
-                "message": "state directory contains an unexpected subdirectory",
-                "path": "$STATE_DIR/issueops_v1",
-                "severity": "warning"
               }
             ],
             "migrated_keys": [],
