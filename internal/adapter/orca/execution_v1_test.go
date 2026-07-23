@@ -140,6 +140,45 @@ func TestExecutionV1IntentInventoryPreservesZeroOneManyAndRejectsMismatches(t *t
 	}
 }
 
+func TestExecutionV1TaskTitleFitsOrcaAndBindsSealedIntent(t *testing.T) {
+	marker := "agent-harness issueops-v1 lifecycle=io-c7e2d4e02b59 operation=c8b92dda09eaf3d"
+	promptSHA256 := strings.Repeat("a", 64)
+
+	title := executionV1TaskTitle(marker, promptSHA256)
+	if len(title) > 80 {
+		t.Fatalf("Orca task title exceeds the persisted limit: len=%d title=%q", len(title), title)
+	}
+	if changedMarker := executionV1TaskTitle(strings.Replace(marker, "c8b92dda09eaf3d", "different-intent", 1), promptSHA256); changedMarker == title {
+		t.Fatalf("task title did not bind the full operation marker: %q", title)
+	}
+	if changedPrompt := executionV1TaskTitle(marker, strings.Repeat("b", 64)); changedPrompt == title {
+		t.Fatalf("task title did not bind the prompt digest: %q", title)
+	}
+}
+
+func TestExecutionV1IntentInventoryRejectsLegacyOrcaTaskTitle(t *testing.T) {
+	workspace, probe := executionV1Fixture(t)
+	probe.Marker = "agent-harness issueops-v1 lifecycle=io-c7e2d4e02b59 operation=c8b92dda09eaf3d"
+	prepared := port.ExecutionOrcaWorkspaceReceipt{Workspace: port.ExecutionWorkspaceReceipt{
+		SourceRoot: workspace.SourceRoot, Root: workspace.Root, Branch: workspace.Branch, BaseHead: workspace.BaseHead, Driver: "orca", Exists: true,
+	}, RuntimeID: "runtime-69", RepoID: "repo-69", WorktreeID: "wt-69"}
+	launch := executionV1LaunchFixture(t, workspace.Root)
+	request := port.ExecutionOrcaIntentRequest{
+		Stage: port.ExecutionOrcaIntentTask, Marker: probe.Marker, Workspace: workspace, Probe: probe,
+		Prepared: &prepared, Launch: &launch, TerminalPTYID: "pty-69", TerminalHandle: "term-stale",
+	}
+	legacyTitle := probe.Marker + " prompt=" + strings.ToLower(launch.PromptSHA256[:16])
+	legacyTitle = legacyTitle[:77] + "..."
+	client := &executionV1Fake{tasks: []port.OrcaTask{{
+		RuntimeID: "runtime-69", ID: "task-legacy", Title: legacyTitle, DisplayName: workspace.Branch, Status: "ready",
+	}}}
+
+	inventory, err := NewExecutionV1Client(client).InspectIntent(context.Background(), request)
+	if err != nil || len(inventory.Candidates) != 0 || !inventory.AuthoritativeZero {
+		t.Fatalf("legacy Orca title must be ignored: inventory=%#v err=%v", inventory, err)
+	}
+}
+
 func assertExecutionV1IntentZero(t *testing.T, provisioner *ExecutionV1Provisioner, request port.ExecutionOrcaIntentRequest) {
 	t.Helper()
 	inventory, err := provisioner.InspectIntent(context.Background(), request)

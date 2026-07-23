@@ -125,10 +125,11 @@ func (p *ExecutionV1Provisioner) InspectIntent(ctx context.Context, req port.Exe
 		title := executionV1TaskTitle(req.Marker, req.Launch.PromptSHA256)
 		candidates := make([]port.ExecutionOrcaIntentReceipt, 0, 1)
 		for _, row := range inventory.Rows {
-			if strings.TrimSpace(row.Title) != title {
+			candidateTitle := strings.TrimSpace(row.Title)
+			if candidateTitle != title {
 				continue
 			}
-			if err := validateExecutionV1IntentTask(row, *req.Prepared, title, req.Workspace.Branch); err != nil {
+			if err := validateExecutionV1IntentTask(row, *req.Prepared, candidateTitle, req.Workspace.Branch); err != nil {
 				return port.ExecutionOrcaIntentInventory{}, fmt.Errorf("Orca owner task candidate does not match the sealed intent")
 			}
 			candidates = append(candidates, port.ExecutionOrcaIntentReceipt{TaskID: row.ID})
@@ -452,11 +453,16 @@ func executionV1IntentInventory(candidates []port.ExecutionOrcaIntentReceipt) po
 }
 
 func executionV1TaskTitle(marker, promptSHA256 string) string {
-	digest := strings.ToLower(strings.TrimSpace(promptSHA256))
-	if len(digest) > 16 {
-		digest = digest[:16]
+	marker = strings.TrimSpace(marker)
+	lifecycleID := ""
+	for _, field := range strings.Fields(marker) {
+		if value, ok := strings.CutPrefix(field, "lifecycle="); ok {
+			lifecycleID = value
+			break
+		}
 	}
-	return strings.TrimSpace(marker) + " prompt=" + digest
+	intentDigest := sha256.Sum256([]byte(marker + "\n" + strings.ToLower(strings.TrimSpace(promptSHA256))))
+	return fmt.Sprintf("agent-harness issueops-v1 lifecycle=%s intent=%x", lifecycleID, intentDigest[:8])
 }
 
 func validateExecutionV1IntentRequest(req port.ExecutionOrcaIntentRequest) error {
