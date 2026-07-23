@@ -16,12 +16,13 @@ import (
 )
 
 type Deps struct {
-	PrintJSON            func(any) error
-	PrintResult          func(core.IssueOpsRecord, bool, error) error
-	PrintError           func(error) error
-	VerifyLive           func(core.IssueOpsRemoteArtifactVerificationRequest) error
-	CreatePullRequest    func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error)
-	ReconcilePullRequest func(string, core.IssueProviderReconcilePullRequestRequest) (core.IssueProviderReconcilePullRequestResult, error)
+	PrintJSON              func(any) error
+	PrintResult            func(core.IssueOpsRecord, bool, error) error
+	PrintError             func(error) error
+	VerifyLive             func(core.IssueOpsRemoteArtifactVerificationRequest) error
+	CreatePullRequest      func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error)
+	ReconcilePullRequest   func(string, core.IssueProviderReconcilePullRequestRequest) (core.IssueProviderReconcilePullRequestResult, error)
+	ObserveProcessAncestry func(int) ([]model.NativeProcessReceiptV1, error)
 }
 
 func Run(args []string, deps Deps) error {
@@ -124,10 +125,13 @@ func Run(args []string, deps Deps) error {
 			err = deps.verifyLive(req)
 		}
 		if err == nil {
-			ancestry, _ := issueopscore.ObserveNativeProcessAncestryV1(os.Getpid())
-			record, err = core.VerifyIssueOpsRemoteArtifactWithActor(core.IssueOpsStateRoot(), *id, req, core.IssueOpsActor{
-				Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd, NativeProcessAncestry: ancestry,
-			})
+			var ancestry []model.NativeProcessReceiptV1
+			ancestry, err = deps.observeNativeProcessAncestry()
+			if err == nil {
+				record, err = core.VerifyIssueOpsRemoteArtifactWithActor(core.IssueOpsStateRoot(), *id, req, core.IssueOpsActor{
+					Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd, NativeProcessAncestry: ancestry,
+				})
+			}
 		}
 		return deps.printResult(record, *jsonOut, err)
 	case "render-template":
@@ -574,13 +578,16 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	if err := validateConfirmRemoteCreate(*confirm, labels, assignees); err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
+	actor, err := deps.remoteNativeActor(*host, *sessionID, *agentID, *sessionPID, *sessionStartedAt, *sessionExecutable, *confirm)
+	if err != nil {
+		return deps.printErrorResult(*jsonOut, err)
+	}
 	result, err := core.CreateIssueOpsRemotePullRequestV1(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsRemotePullRequestRequestV1{
 		ID: record.ID, Provider: providerName, Title: *title, Body: finalBody,
 		Head: headBranch, Base: baseBranch, Labels: labels, Assignees: assignees,
 		ExpectedGeneration: *expectedGeneration,
-		Actor: model.NativeActorV1{Host: *host, SessionID: *sessionID, AgentID: *agentID,
-			SessionProcess: &model.NativeProcessReceiptV1{PID: *sessionPID, StartedAt: *sessionStartedAt, Executable: *sessionExecutable}},
-		CWD: *cwd, Confirm: *confirm,
+		Actor:              actor,
+		CWD:                *cwd, Confirm: *confirm,
 	}, core.IssueOpsRemotePullRequestDependenciesV1{
 		Create:    deps.createPullRequest,
 		Reconcile: deps.reconcilePullRequest,
@@ -600,6 +607,37 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 		fmt.Println(result.Preview)
 	}
 	return nil
+}
+
+func (deps Deps) remoteNativeActor(host, sessionID, agentID string, sessionPID int, sessionStartedAt, sessionExecutable string, observe bool) (model.NativeActorV1, error) {
+	actor := model.NativeActorV1{
+		Host: host, SessionID: sessionID, AgentID: agentID,
+		SessionProcess: &model.NativeProcessReceiptV1{PID: sessionPID, StartedAt: sessionStartedAt, Executable: sessionExecutable},
+	}
+	if !observe {
+		return actor, nil
+	}
+	ancestry, err := deps.observeNativeProcessAncestry()
+	if err != nil {
+		return model.NativeActorV1{}, err
+	}
+	actor.ProcessAncestry = ancestry
+	return actor, nil
+}
+
+func (deps Deps) observeNativeProcessAncestry() ([]model.NativeProcessReceiptV1, error) {
+	observe := deps.ObserveProcessAncestry
+	if observe == nil {
+		observe = issueopscore.ObserveNativeProcessAncestryV1
+	}
+	ancestry, err := observe(os.Getpid())
+	if err != nil {
+		return nil, fmt.Errorf("observe native process ancestry: %w", err)
+	}
+	if len(ancestry) == 0 {
+		return nil, fmt.Errorf("observe native process ancestry: no process receipts returned")
+	}
+	return ancestry, nil
 }
 
 func (deps Deps) createPullRequest(providerName string, req core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {

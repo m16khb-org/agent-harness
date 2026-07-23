@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/issueops/model"
 )
 
 func TestRunScoreWithJudgeNoneAndErrorPaths(t *testing.T) {
@@ -175,6 +176,44 @@ func TestRunRemoteCreatePRDryRunRejectsSecretLikeContentBeforeProviderCall(t *te
 	}
 }
 
+func TestRunRemoteCreatePRObservesAncestryOnlyForConfirmedMutation(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecord(t)
+	observeCalls := 0
+	providerCalls := 0
+	deps := Deps{
+		ObserveProcessAncestry: func(int) ([]model.NativeProcessReceiptV1, error) {
+			observeCalls++
+			return nil, errors.New("ps unavailable")
+		},
+		CreatePullRequest: func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
+			providerCalls++
+			return core.IssueProviderCreatePullRequestResult{}, nil
+		},
+	}
+	baseArgs := []string{
+		"create-pr", "--id", record.ID, "--provider", "github", "--title", "PR", "--body", "Body",
+		"--head", record.Branch, "--base", "main", "--label", "bug", "--assignee", "octocat",
+		"--host", "codex", "--session-id", "session-1", "--session-pid", "42",
+		"--session-started-at", "2026-07-23T00:00:00Z", "--session-executable", "/bin/codex", "--cwd", record.Repo,
+	}
+	if err := Run(baseArgs, deps); err != nil {
+		t.Fatalf("create-pr dry-run must not require process observation: %v", err)
+	}
+	if observeCalls != 0 {
+		t.Fatalf("create-pr dry-run observed process ancestry %d times", observeCalls)
+	}
+	providerCalls = 0
+
+	err := Run(append(append([]string{}, baseArgs...), "--confirm"), deps)
+	if err == nil || !strings.Contains(err.Error(), "observe native process ancestry") || !strings.Contains(err.Error(), "ps unavailable") {
+		t.Fatalf("create-pr confirm did not propagate process observation failure: %v", err)
+	}
+	if observeCalls != 1 || providerCalls != 0 {
+		t.Fatalf("observation/provider calls = %d/%d, want 1/0", observeCalls, providerCalls)
+	}
+}
+
 func TestRunRemoteCreateChildConfirmRecordsChildLink(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record := remoteIssueOpsRecordWithoutChild(t)
@@ -275,6 +314,22 @@ func TestRemoteHelpersAndBoundaries(t *testing.T) {
 	}
 	if err := Run([]string{"unknown"}, deps); err == nil || !strings.Contains(err.Error(), "unknown issueops remote") {
 		t.Fatalf("expected unknown command error, got %v", err)
+	}
+}
+
+func TestRemoteNativeActorIncludesCurrentProcessAncestry(t *testing.T) {
+	actor, err := (Deps{}).remoteNativeActor("codex", "session-1", "agent-1", 42, "2026-07-23T00:00:00Z", "/bin/codex", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if actor.Host != "codex" || actor.SessionID != "session-1" || actor.AgentID != "agent-1" {
+		t.Fatalf("native actor identity was not preserved: %#v", actor)
+	}
+	if actor.SessionProcess == nil || actor.SessionProcess.PID != 42 {
+		t.Fatalf("native actor process receipt was not preserved: %#v", actor.SessionProcess)
+	}
+	if len(actor.ProcessAncestry) == 0 || actor.ProcessAncestry[0].PID != os.Getpid() {
+		t.Fatalf("native actor did not capture the current process ancestry: %#v", actor.ProcessAncestry)
 	}
 }
 
