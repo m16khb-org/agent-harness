@@ -31,7 +31,14 @@ const (
 	spanDBFile       = "harness.lock.db"
 	spanLockMaxWait  = 60 * time.Second
 	spanLockRetryGap = 10 * time.Millisecond
-	openLockMaxWait  = 10 * time.Second
+	// existingReadBusyTimeout bounds how long a read-only existing-store
+	// lookup waits on transient SQLite contention (writer commits, daemon WAL
+	// checkpoints). Zero made lifecycle-hook lookups fail instantly during
+	// millisecond-scale checkpoint windows, which fail-closed mutation guards
+	// on healthy state; a short bounded wait keeps hooks responsive without
+	// the spurious failures.
+	existingReadBusyTimeout = 2 * time.Second
+	openLockMaxWait         = 10 * time.Second
 )
 
 var sqliteFileSuffixes = [...]string{"", "-wal", "-shm", "-journal"}
@@ -391,8 +398,9 @@ func (d *DB) Get(bucket, id string) ([]byte, bool, error) {
 }
 
 // GetExisting reads one primary-key row without creating a state root, data
-// database, span database, or schema. Its read-only connection never waits on
-// SQLite contention, which keeps lifecycle-hook lookups bounded.
+// database, span database, or schema. Its read-only connection waits at most
+// existingReadBusyTimeout on SQLite contention, so lifecycle-hook lookups stay
+// bounded while surviving transient writer commits and WAL checkpoints.
 func GetExisting(dir, bucket, id string) ([]byte, bool, error) {
 	data, err := openExistingData(dir)
 	if err != nil {
@@ -547,7 +555,7 @@ func openExistingData(dir string) (*sql.DB, error) {
 		}
 		return nil, err
 	}
-	return openSQLite(dataPath, "mode=ro&_pragma=busy_timeout(0)&_pragma=query_only(1)")
+	return openSQLite(dataPath, fmt.Sprintf("mode=ro&_pragma=busy_timeout(%d)&_pragma=query_only(1)", existingReadBusyTimeout/time.Millisecond))
 }
 
 // Put upserts the record data for (bucket, id).

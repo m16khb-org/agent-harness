@@ -105,6 +105,15 @@ func TestGetExistingReturnsBoundedErrorWhileDataStoreIsContended(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Transient contention (daemon WAL checkpoints, concurrent writers) must
+	// not fail the read: the read-only connection waits up to its bounded busy
+	// timeout, so a sub-second release yields the committed row instead of a
+	// spurious lock error that fail-closes lifecycle hooks.
+	go func() {
+		time.Sleep(300 * time.Millisecond)
+		_, _ = conn.ExecContext(context.Background(), "ROLLBACK")
+	}()
+
 	type lookupResult struct {
 		data []byte
 		ok   bool
@@ -118,19 +127,64 @@ func TestGetExistingReturnsBoundedErrorWhileDataStoreIsContended(t *testing.T) {
 
 	select {
 	case result := <-lookupDone:
+		if result.err != nil || !result.ok || string(result.data) != `{"v":1}` {
+			t.Fatalf("existing-store read must survive transient contention: data=%q ok=%v err=%v", result.data, result.ok, result.err)
+		}
+	case <-time.After(existingReadBusyTimeout + 2*time.Second):
+		t.Fatal("existing-store read exceeded its bounded busy timeout")
+	}
+}
+
+func TestGetExistingStillBoundedUnderPersistentContention(t *testing.T) {
+	dir := t.TempDir()
+	dataPath := filepath.Join(dir, dataDBFile)
+	if err := touchPrivate(dataPath); err != nil {
+		t.Fatal(err)
+	}
+	dataDB, err := openSQLite(dataPath, "_pragma=busy_timeout(0)&_pragma=journal_mode(DELETE)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dataDB.Close()
+	if _, err := dataDB.Exec(`CREATE TABLE records (bucket TEXT NOT NULL, id TEXT NOT NULL, data BLOB NOT NULL, PRIMARY KEY (bucket, id)) WITHOUT ROWID`); err != nil {
+		t.Fatal(err)
+	}
+	conn, err := dataDB.Conn(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	if _, err := conn.ExecContext(context.Background(), "BEGIN EXCLUSIVE"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.ExecContext(context.Background(), `INSERT INTO records (bucket, id, data) VALUES ('b', 'x', '{"v":1}')`); err != nil {
+		t.Fatal(err)
+	}
+
+	type lookupResult struct {
+		err error
+	}
+	lookupDone := make(chan lookupResult, 1)
+	go func() {
+		_, _, err := GetExisting(dir, "b", "x")
+		lookupDone <- lookupResult{err: err}
+	}()
+
+	select {
+	case result := <-lookupDone:
 		if _, err := conn.ExecContext(context.Background(), "ROLLBACK"); err != nil {
 			t.Fatal(err)
 		}
 		lower := strings.ToLower(fmt.Sprint(result.err))
 		if result.err == nil || (!strings.Contains(lower, "locked") && !strings.Contains(lower, "busy")) {
-			t.Fatalf("contended existing-store read must return a bounded lock error: data=%q ok=%v err=%v", result.data, result.ok, result.err)
+			t.Fatalf("persistently contended existing-store read must return a bounded lock error: err=%v", result.err)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(existingReadBusyTimeout + 3*time.Second):
 		if _, err := conn.ExecContext(context.Background(), "ROLLBACK"); err != nil {
 			t.Fatal(err)
 		}
-		result := <-lookupDone
-		t.Fatalf("existing-store read waited for contended data-store release: data=%q ok=%v err=%v", result.data, result.ok, result.err)
+		<-lookupDone
+		t.Fatal("existing-store read must not wait past its bounded busy timeout")
 	}
 }
 
