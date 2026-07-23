@@ -74,6 +74,7 @@ func BuildDelegatedProfile(parent, child model.IssueOpsRecord, req model.IssueOp
 		PriorDecisions: waived,
 		RelatedIssues:  waived,
 		WebResearch:    waived,
+		CodebaseSurvey: waived,
 		RecordedAt:     now,
 	}
 	child.Decisions = []model.IssueOpsDecision{{

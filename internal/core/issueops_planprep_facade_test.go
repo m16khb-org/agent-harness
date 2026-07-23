@@ -15,6 +15,7 @@ func TestRecordIssueOpsPlanPrepFacade(t *testing.T) {
 		PriorDecisions: IssueOpsPlanPrepItemRequest{Evidence: []string{"ADR"}},
 		RelatedIssues:  IssueOpsPlanPrepItemRequest{Evidence: []string{"remote score: #1(0.9)"}},
 		WebResearch:    IssueOpsPlanPrepItemRequest{WaiveReason: "internal only"},
+		CodebaseSurvey: IssueOpsPlanPrepItemRequest{Evidence: []string{"rg sweep of touched packages"}},
 	})
 	if err != nil {
 		t.Fatalf("plan-prep: %v", err)

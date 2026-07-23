@@ -27,12 +27,28 @@ func TestRecordPlanPrepStoresEvidenceAndWaive(t *testing.T) {
 		PriorDecisions: model.IssueOpsPlanPrepItemRequest{Evidence: []string{".agent-harness/ADR.md"}},
 		RelatedIssues:  model.IssueOpsPlanPrepItemRequest{Evidence: []string{"remote score: selected=#1(0.9)"}},
 		WebResearch:    model.IssueOpsPlanPrepItemRequest{WaiveReason: "내부 전용 변경"},
+		CodebaseSurvey: model.IssueOpsPlanPrepItemRequest{Evidence: []string{"rg gate: issueops_readiness.go, plan_prep.go 관련 심볼 전수 확인"}},
 	})
 	if err != nil {
 		t.Fatalf("RecordPlanPrep error: %v", err)
 	}
 	if rec.PlanPrep == nil || rec.PlanPrep.PriorDecisions.Status != "evidence" || rec.PlanPrep.WebResearch.Status != "waived" {
 		t.Fatalf("unexpected plan_prep: %#v", rec.PlanPrep)
+	}
+	if rec.PlanPrep.CodebaseSurvey.Status != "evidence" {
+		t.Fatalf("codebase_survey not persisted: %#v", rec.PlanPrep)
+	}
+}
+
+func TestRecordPlanPrepRejectsMissingCodebaseSurvey(t *testing.T) {
+	store, _ := planPrepMemStore()
+	_, err := RecordPlanPrep(store, "state", "io-1", model.IssueOpsPlanPrepRequest{
+		PriorDecisions: model.IssueOpsPlanPrepItemRequest{Evidence: []string{"a"}},
+		RelatedIssues:  model.IssueOpsPlanPrepItemRequest{Evidence: []string{"b"}},
+		WebResearch:    model.IssueOpsPlanPrepItemRequest{WaiveReason: "c"},
+	})
+	if err == nil {
+		t.Fatal("codebase_survey with neither evidence nor waive must error")
 	}
 }
 

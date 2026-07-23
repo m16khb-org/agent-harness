@@ -42,7 +42,7 @@ func planPrepGateApplies(record IssueOpsRecord) bool {
 
 func planPrepMissing(pp *model.IssueOpsPlanPrep) []string {
 	if pp == nil {
-		return []string{"plan_prep_decisions", "plan_prep_related_issues", "plan_prep_web_research"}
+		return []string{"plan_prep_decisions", "plan_prep_related_issues", "plan_prep_web_research", "plan_prep_codebase_survey"}
 	}
 	missing := []string{}
 	if !planPrepItemValid(pp.PriorDecisions) {
@@ -53,6 +53,9 @@ func planPrepMissing(pp *model.IssueOpsPlanPrep) []string {
 	}
 	if !planPrepItemValid(pp.WebResearch) {
 		missing = append(missing, "plan_prep_web_research")
+	}
+	if !planPrepItemValid(pp.CodebaseSurvey) {
+		missing = append(missing, "plan_prep_codebase_survey")
 	}
 	return missing
 }

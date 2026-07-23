@@ -26,8 +26,19 @@ func TestRunIssueOpsPlanPrepRecord(t *testing.T) {
 		"plan-prep", "record", "--id", id,
 		"--decisions-evidence", "adr", "--decisions-waive", "nope",
 		"--related-score-ref", "score", "--web-research-waive", "internal",
+		"--codebase-survey-evidence", "rg sweep",
 	}); err == nil {
 		t.Fatal("evidence + waive on one item must error")
+	}
+
+	// Omitting the codebase survey item must be rejected.
+	if err := runIssueOps([]string{
+		"plan-prep", "record", "--id", id,
+		"--decisions-evidence", ".agent-harness/ADR.md",
+		"--related-score-ref", "remote score: selected=#1(0.9), threshold=0.70",
+		"--web-research-waive", "internal-only change",
+	}); err == nil {
+		t.Fatal("missing codebase survey item must error")
 	}
 
 	// A valid mix of evidence and waive succeeds and emits plan_prep.
@@ -37,10 +48,14 @@ func TestRunIssueOpsPlanPrepRecord(t *testing.T) {
 			"--decisions-evidence", ".agent-harness/ADR.md",
 			"--related-score-ref", "remote score: selected=#1(0.9), threshold=0.70",
 			"--web-research-waive", "internal-only change",
+			"--codebase-survey-evidence", "rg/CodeGraph sweep: touched symbols and files listed in plan",
 			"--json",
 		})
 	})
 	if !strings.Contains(out, "plan_prep") || !strings.Contains(out, "waived") {
 		t.Fatalf("plan-prep record should emit plan_prep with a waived item: %s", out)
+	}
+	if !strings.Contains(out, "codebase_survey") {
+		t.Fatalf("plan-prep record should emit codebase_survey: %s", out)
 	}
 }

@@ -19,7 +19,7 @@ func fullIntentForLedger() *model.IssueOpsIntentContract {
 
 func waivedPlanPrep() *model.IssueOpsPlanPrep {
 	item := model.IssueOpsPlanPrepItem{Status: "waived", WaiveReason: "n/a for this small change"}
-	return &model.IssueOpsPlanPrep{PriorDecisions: item, RelatedIssues: item, WebResearch: item, RecordedAt: "2026-06-29T00:00:00Z"}
+	return &model.IssueOpsPlanPrep{PriorDecisions: item, RelatedIssues: item, WebResearch: item, CodebaseSurvey: item, RecordedAt: "2026-06-29T00:00:00Z"}
 }
 
 func TestIssueOpsProblemReadinessNeedsOnlyIntent(t *testing.T) {

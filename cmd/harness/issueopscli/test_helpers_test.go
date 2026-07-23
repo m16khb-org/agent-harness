@@ -82,6 +82,7 @@ func recordIssueOpsCLIPlanPrepForTest(t *testing.T, id string) {
 		PriorDecisions: waived,
 		RelatedIssues:  waived,
 		WebResearch:    waived,
+		CodebaseSurvey: waived,
 	}); err != nil {
 		t.Fatal(err)
 	}

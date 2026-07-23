@@ -62,7 +62,7 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 		return runIssueOps([]string{"intent", "record", "--id", issueopsID, "--raw-request", "Refactor IssueOps intent flow", "--interpreted-intent", "Persist main-agent judgment before planning", "--success-criteria", "intent is recorded", "--constraint", "keep contract deterministic", "--ambiguity", "none", "--non-goal", "do not continue from hook recommendation alone", "--json"})
 	})
 	cliSnapshot["issueops_plan_prep_record"] = runCLIJSONContract(t, replacements, func() error {
-		return runIssueOps([]string{"plan-prep", "record", "--id", issueopsID, "--decisions-evidence", ".agent-harness/ADR.md", "--related-score-ref", "remote score: selected=#1(0.81), threshold=0.70", "--web-research-evidence", ".agent-harness/research/contract.md", "--json"})
+		return runIssueOps([]string{"plan-prep", "record", "--id", issueopsID, "--decisions-evidence", ".agent-harness/ADR.md", "--related-score-ref", "remote score: selected=#1(0.81), threshold=0.70", "--web-research-evidence", ".agent-harness/research/contract.md", "--codebase-survey-evidence", "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags", "--json"})
 	})
 	cliSnapshot["issueops_link_issue"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"link-issue", "--id", issueopsID, "--issue-url", "https://gitlab.example/group/project/-/issues/1", "--json"})

@@ -154,6 +154,7 @@ type IssueOpsPlanPrep struct {
 	PriorDecisions IssueOpsPlanPrepItem `json:"prior_decisions"`
 	RelatedIssues  IssueOpsPlanPrepItem `json:"related_issues"`
 	WebResearch    IssueOpsPlanPrepItem `json:"web_research"`
+	CodebaseSurvey IssueOpsPlanPrepItem `json:"codebase_survey"`
 	RecordedAt     string               `json:"recorded_at"`
 }
 
@@ -166,6 +167,7 @@ type IssueOpsPlanPrepRequest struct {
 	PriorDecisions IssueOpsPlanPrepItemRequest
 	RelatedIssues  IssueOpsPlanPrepItemRequest
 	WebResearch    IssueOpsPlanPrepItemRequest
+	CodebaseSurvey IssueOpsPlanPrepItemRequest
 }
 
 type IssueOpsCompatibilityReview struct {

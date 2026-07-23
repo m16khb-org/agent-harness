@@ -1081,6 +1081,12 @@
       },
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
+        "codebase_survey": {
+          "evidence": [
+            "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags"
+          ],
+          "status": "evidence"
+        },
         "prior_decisions": {
           "evidence": [
             ".agent-harness/ADR.md"
@@ -1235,6 +1241,12 @@
       "phase": "plan",
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
+        "codebase_survey": {
+          "evidence": [
+            "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags"
+          ],
+          "status": "evidence"
+        },
         "prior_decisions": {
           "evidence": [
             ".agent-harness/ADR.md"
@@ -1422,6 +1434,12 @@
       },
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
+        "codebase_survey": {
+          "evidence": [
+            "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags"
+          ],
+          "status": "evidence"
+        },
         "prior_decisions": {
           "evidence": [
             ".agent-harness/ADR.md"
@@ -1604,6 +1622,12 @@
       "phase": "plan",
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
+        "codebase_survey": {
+          "evidence": [
+            "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags"
+          ],
+          "status": "evidence"
+        },
         "prior_decisions": {
           "evidence": [
             ".agent-harness/ADR.md"
@@ -1811,6 +1835,12 @@
       },
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
+        "codebase_survey": {
+          "evidence": [
+            "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags"
+          ],
+          "status": "evidence"
+        },
         "prior_decisions": {
           "evidence": [
             ".agent-harness/ADR.md"
@@ -1941,6 +1971,12 @@
       "phase": "plan",
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
+        "codebase_survey": {
+          "evidence": [
+            "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags"
+          ],
+          "status": "evidence"
+        },
         "prior_decisions": {
           "evidence": [
             ".agent-harness/ADR.md"
@@ -1992,6 +2028,12 @@
       "ok": true,
       "phase": "plan",
       "plan_prep": {
+        "codebase_survey": {
+          "evidence": [
+            "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags"
+          ],
+          "status": "evidence"
+        },
         "prior_decisions": {
           "evidence": [
             ".agent-harness/ADR.md"
@@ -2105,6 +2147,12 @@
       "phase": "plan",
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
+        "codebase_survey": {
+          "evidence": [
+            "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags"
+          ],
+          "status": "evidence"
+        },
         "prior_decisions": {
           "evidence": [
             ".agent-harness/ADR.md"
@@ -2235,6 +2283,12 @@
       "phase": "plan",
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
+        "codebase_survey": {
+          "evidence": [
+            "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags"
+          ],
+          "status": "evidence"
+        },
         "prior_decisions": {
           "evidence": [
             ".agent-harness/ADR.md"
@@ -2331,6 +2385,12 @@
       "ok": true,
       "phase": "plan",
       "plan_prep": {
+        "codebase_survey": {
+          "evidence": [
+            "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags"
+          ],
+          "status": "evidence"
+        },
         "prior_decisions": {
           "evidence": [
             ".agent-harness/ADR.md"
@@ -2487,6 +2547,12 @@
       "phase": "plan",
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
+        "codebase_survey": {
+          "evidence": [
+            "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags"
+          ],
+          "status": "evidence"
+        },
         "prior_decisions": {
           "evidence": [
             ".agent-harness/ADR.md"
@@ -2537,6 +2603,12 @@
       "ok": true,
       "phase": "problem",
       "plan_prep": {
+        "codebase_survey": {
+          "evidence": [
+            "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags"
+          ],
+          "status": "evidence"
+        },
         "prior_decisions": {
           "evidence": [
             ".agent-harness/ADR.md"
@@ -2652,6 +2724,12 @@
       "ok": true,
       "phase": "plan",
       "plan_prep": {
+        "codebase_survey": {
+          "evidence": [
+            "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags"
+          ],
+          "status": "evidence"
+        },
         "prior_decisions": {
           "evidence": [
             ".agent-harness/ADR.md"
@@ -2815,6 +2893,12 @@
       "phase": "plan",
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
+        "codebase_survey": {
+          "evidence": [
+            "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags"
+          ],
+          "status": "evidence"
+        },
         "prior_decisions": {
           "evidence": [
             ".agent-harness/ADR.md"
@@ -3020,6 +3104,12 @@
       },
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
+        "codebase_survey": {
+          "evidence": [
+            "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags"
+          ],
+          "status": "evidence"
+        },
         "prior_decisions": {
           "evidence": [
             ".agent-harness/ADR.md"
@@ -3163,6 +3253,12 @@
       "ok": true,
       "phase": "plan",
       "plan_prep": {
+        "codebase_survey": {
+          "evidence": [
+            "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags"
+          ],
+          "status": "evidence"
+        },
         "prior_decisions": {
           "evidence": [
             ".agent-harness/ADR.md"
@@ -3363,6 +3459,12 @@
       },
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
+        "codebase_survey": {
+          "evidence": [
+            "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags"
+          ],
+          "status": "evidence"
+        },
         "prior_decisions": {
           "evidence": [
             ".agent-harness/ADR.md"
@@ -3631,6 +3733,12 @@
       },
       "plan_path": "$ISSUEOPS_WORKTREE/docs/superpowers/plans/contract.md",
       "plan_prep": {
+        "codebase_survey": {
+          "evidence": [
+            "rg/CodeGraph sweep: issueops readiness, plan-prep recorder, CLI flags"
+          ],
+          "status": "evidence"
+        },
         "prior_decisions": {
           "evidence": [
             ".agent-harness/ADR.md"

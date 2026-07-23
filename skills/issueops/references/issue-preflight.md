@@ -44,10 +44,11 @@ Use `--body-file` for manually drafted bodies. Do not combine `--body` and `--bo
 
 ## Plan-Prep Evidence Gate
 
-Before entering the IssueOps `plan` phase, record three pre-plan evidence items with `agent-harness issueops plan-prep record`. Each item takes either concrete evidence or a mutually-exclusive waive reason:
+Before entering the IssueOps `plan` phase, record four pre-plan evidence items with `agent-harness issueops plan-prep record`. Each item takes either concrete evidence or a mutually-exclusive waive reason:
 
 - **prior-decision lookup** (`--decisions-evidence` | `--decisions-waive`): consult `.agent-harness/ADR.md` and prior IssueOps decisions for choices that constrain this work. Evidence is the relevant ADR/decision link; waive when no recorded decision touches this area.
 - **related-issue scoring** (`--related-score-ref` | `--related-waive`): run `issueops remote score` against existing issues/labels and record the selected/rejected summary with the threshold. Waive when no comparable issues exist.
 - **web research** (`--web-research-evidence` | `--web-research-waive`): when external API semantics, library behavior, or competitive context matter, capture a `berners-lee` research file or source. Waive for purely internal changes with no external semantics.
+- **codebase survey** (`--codebase-survey-evidence` | `--codebase-survey-waive`): never build the issue contract or plan from the request text alone. Sweep the whole codebase with the available tools — rg, CodeGraph when indexed, LSP, native file tools — for every symbol, file, call path, existing similar implementation, and conflict point the change touches. Evidence must name the tools used and the concrete symbols/files/call paths found (for example `rg PlanPrep: issueops_readiness.go, model/types.go, intentdesign/plan_prep.go; CodeGraph: RecordPlanPrep callers`). Waive only when the change creates net-new files with no existing code to survey, and state that explicitly.
 
-This gate is fail-closed for non-trivial intent classes: `plan`-phase entry is blocked until all three items carry evidence or a waive reason. A `trivial` intent class (set via `intent record --intent-class trivial`) skips the gate. Design review does not require plan-prep — it runs inside the plan phase, where the gate is already satisfied.
+This gate is fail-closed for non-trivial intent classes: `plan`-phase entry is blocked until all four items carry evidence or a waive reason. A `trivial` intent class (set via `intent record --intent-class trivial`) skips the gate. Design review does not require plan-prep — it runs inside the plan phase, where the gate is already satisfied.

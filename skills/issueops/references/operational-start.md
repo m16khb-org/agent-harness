@@ -30,6 +30,7 @@ agent-harness issueops plan-prep record --id "$ISSUEOPS_ID" \
   --decisions-evidence "$PRIOR_DECISION_LINK_OR_ADR" \
   --related-score-ref "$REMOTE_SCORE_SUMMARY" \
   --web-research-evidence "$RESEARCH_FILE_OR_SOURCE" \
+  --codebase-survey-evidence "$TOOLS_AND_TOUCHED_SYMBOLS_FILES" \
   --json
 ```
 

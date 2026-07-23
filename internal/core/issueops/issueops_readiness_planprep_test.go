@@ -30,7 +30,7 @@ func planPrepHasMissing(missing []string, key string) bool {
 
 func TestPlanReadinessRequiresPlanPrepForNonTrivial(t *testing.T) {
 	ready := IssueOpsPlanReadiness(baseIntentRecord("standard"))
-	for _, key := range []string{"plan_prep_decisions", "plan_prep_related_issues", "plan_prep_web_research"} {
+	for _, key := range []string{"plan_prep_decisions", "plan_prep_related_issues", "plan_prep_web_research", "plan_prep_codebase_survey"} {
 		if !planPrepHasMissing(ready.Missing, key) {
 			t.Fatalf("standard cycle without plan_prep should miss %s: %#v", key, ready.Missing)
 		}
@@ -53,10 +53,24 @@ func TestPlanReadinessAcceptsEvidenceAndWaive(t *testing.T) {
 		PriorDecisions: model.IssueOpsPlanPrepItem{Status: "evidence", Evidence: []string{".agent-harness/ADR.md#gate"}},
 		RelatedIssues:  model.IssueOpsPlanPrepItem{Status: "evidence", Evidence: []string{"remote score: selected=#12(0.81), threshold=0.70"}},
 		WebResearch:    model.IssueOpsPlanPrepItem{Status: "waived", WaiveReason: "순수 내부 리팩토링이라 외부 근거 불필요"},
+		CodebaseSurvey: model.IssueOpsPlanPrepItem{Status: "evidence", Evidence: []string{"rg PlanPrep: internal/core/issueops/issueops_readiness.go, model/types.go, intentdesign/plan_prep.go"}},
 	}
 	ready := IssueOpsPlanReadiness(rec)
 	if !ready.Ready {
 		t.Fatalf("evidence+waive should satisfy plan-prep gate: %#v", ready.Missing)
+	}
+}
+
+func TestPlanReadinessRequiresCodebaseSurvey(t *testing.T) {
+	rec := baseIntentRecord("standard")
+	rec.PlanPrep = &model.IssueOpsPlanPrep{
+		PriorDecisions: model.IssueOpsPlanPrepItem{Status: "evidence", Evidence: []string{"adr"}},
+		RelatedIssues:  model.IssueOpsPlanPrepItem{Status: "waived", WaiveReason: "n/a"},
+		WebResearch:    model.IssueOpsPlanPrepItem{Status: "waived", WaiveReason: "n/a"},
+	}
+	ready := IssueOpsPlanReadiness(rec)
+	if !planPrepHasMissing(ready.Missing, "plan_prep_codebase_survey") {
+		t.Fatalf("plan_prep without codebase survey must be missing plan_prep_codebase_survey: %#v", ready.Missing)
 	}
 }
 

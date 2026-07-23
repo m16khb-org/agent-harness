@@ -10,9 +10,9 @@ import (
 )
 
 // RecordPlanPrep stores the pre-plan evidence gate: prior-decision lookup,
-// related-issue scoring, and web research. Each item must carry either
-// evidence or a waive reason (mutually exclusive). The plan readiness gate
-// then checks these for non-trivial intent classes.
+// related-issue scoring, web research, and the codebase survey. Each item must
+// carry either evidence or a waive reason (mutually exclusive). The plan
+// readiness gate then checks these for non-trivial intent classes.
 func RecordPlanPrep(store Store, stateRoot, id string, req model.IssueOpsPlanPrepRequest) (model.IssueOpsRecord, error) {
 	decisions, err := buildPlanPrepItem("decisions", req.PriorDecisions)
 	if err != nil {
@@ -26,6 +26,10 @@ func RecordPlanPrep(store Store, stateRoot, id string, req model.IssueOpsPlanPre
 	if err != nil {
 		return model.IssueOpsRecord{OK: false}, err
 	}
+	survey, err := buildPlanPrepItem("codebase_survey", req.CodebaseSurvey)
+	if err != nil {
+		return model.IssueOpsRecord{OK: false}, err
+	}
 	record, err := store.Read(stateRoot, id)
 	if err != nil {
 		return record, err
@@ -34,6 +38,7 @@ func RecordPlanPrep(store Store, stateRoot, id string, req model.IssueOpsPlanPre
 		PriorDecisions: decisions,
 		RelatedIssues:  related,
 		WebResearch:    research,
+		CodebaseSurvey: survey,
 		RecordedAt:     time.Now().UTC().Format(time.RFC3339Nano),
 	}
 	return store.TouchWrite(stateRoot, record)

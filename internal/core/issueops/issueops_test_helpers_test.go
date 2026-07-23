@@ -91,6 +91,7 @@ func setIssueOpsPlanPrepForTest(t *testing.T, stateRoot, id string) {
 		PriorDecisions: waived,
 		RelatedIssues:  waived,
 		WebResearch:    waived,
+		CodebaseSurvey: waived,
 	}
 	if _, err := writeIssueOps(stateRoot, rec); err != nil {
 		t.Fatal(err)
