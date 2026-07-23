@@ -59,7 +59,7 @@ func RunFeedback(args []string, deps Deps) error {
 }
 
 func localActor(host, sessionID, agentID, cwd string) core.IssueOpsActor {
-	ancestry, _ := issueopscore.ObserveNativeProcessAncestryV1(os.Getpid())
+	ancestry, _ := issueopscore.ObserveNativeProcessAncestry(os.Getpid())
 	return core.IssueOpsActor{
 		Host: host, SessionID: sessionID, AgentID: agentID, CWD: cwd,
 		NativeProcessAncestry: ancestry,

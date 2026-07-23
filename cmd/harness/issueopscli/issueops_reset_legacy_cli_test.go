@@ -10,7 +10,7 @@ import (
 	"agent-harness/internal/core/sqlstore"
 )
 
-func TestIssueOpsResetLegacyCLIPreviewUsesExactV1Contract(t *testing.T) {
+func TestIssueOpsResetLegacyCLIPreviewUsesExactSchemaContract(t *testing.T) {
 	stateDir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateDir)
 	db, err := sqlstore.Open(filepath.Join(stateDir, "issueops"))
@@ -24,7 +24,7 @@ func TestIssueOpsResetLegacyCLIPreviewUsesExactV1Contract(t *testing.T) {
 	out := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"reset-legacy", "--target-schema", "1", "--preview", "--json"})
 	})
-	var preview core.LegacyResetPreviewV1
+	var preview core.LegacyResetPreview
 	if err := json.Unmarshal([]byte(out), &preview); err != nil {
 		t.Fatalf("preview JSON: %v\n%s", err, out)
 	}

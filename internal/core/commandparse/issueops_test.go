@@ -122,7 +122,7 @@ func TestExecutionClaimUsesCanonicalClaimTokenFileFlag(t *testing.T) {
 	}
 }
 
-func TestResetLegacyUsesExactV1Flags(t *testing.T) {
+func TestResetLegacyUsesExactSchemaFlags(t *testing.T) {
 	command, ok := ParseExactIssueOpsCommand("agent-harness issueops reset-legacy --target-schema 1 --confirm --expected-fingerprint abc --json")
 	if !ok || command.Path != "reset-legacy" {
 		t.Fatalf("reset command did not parse: %#v ok=%v", command, ok)
@@ -201,7 +201,7 @@ func TestExactReadOnlyShellCommandCorpus(t *testing.T) {
 	allow := []string{
 		"pwd",
 		"cat README.md",
-		"cat -n README.md internal/core/issueops/model/execution_v1.go",
+		"cat -n README.md internal/core/issueops/model/execution.go",
 		"head -n 5 README.md",
 		"head --lines=25 README.md",
 		"tail -n 5 README.md",

@@ -137,7 +137,7 @@ Draft wiki staging:
 
 - 기본 위치: `~/.local/state/agent-harness/`
 - project lifecycle 위치: `~/.local/state/agent-harness/projects/<repo-id>/project.json` 및 `doc-upkeep-queue.jsonl`; `<repo-id>`는 repo fingerprint hash라 같은 머신의 여러 repo가 섞이지 않는다.
-- IssueOps 위치: `~/.local/state/agent-harness/issueops_v1/harness.db`, bucket `issueops_v1`. 한 row는 lifecycle evidence와 정확히 하나의 `ExecutionV1`을 저장한다. Execution은 canonical workspace, direct/Orca mode, generation-fenced lease, native process receipt, pending external intent, Orca resource identity, sealed owner artifacts, completion receipt를 가진다. 사용자 요청과 설계 검토 같은 freeform 값은 secret-like 패턴을 redaction한 뒤 저장한다.
+- IssueOps 위치: `~/.local/state/agent-harness/issueops_v1/harness.db`, bucket `issueops_v1`. 한 row는 lifecycle evidence와 정확히 하나의 `Execution`을 저장한다. Execution은 canonical workspace, direct/Orca mode, generation-fenced lease, native process receipt, pending external intent, Orca resource identity, sealed owner artifacts, completion receipt를 가진다. 사용자 요청과 설계 검토 같은 freeform 값은 secret-like 패턴을 redaction한 뒤 저장한다.
 - IssueOps v1의 현재 쓰기 버전은 `schema_version=1`이다. Missing/zero v1 row는 1로 정규화하지만 legacy write-authority key, mixed schema, 또는 future schema는 byte-identical fail-closed다. Legacy namespace와 row/file은 자동 변환하지 않는다. `issueops reset-legacy preview/status/confirm`의 fingerprint-CAS, live-process barrier, staged-binary binding, exact file manifest를 통과한 명시적 destructive reset 뒤에만 v1 mutation이 열린다.
 - Workpool 위치: `~/.local/state/agent-harness/workpool/<pool-id>.json` 및 task record. Pool은 main agent가 분해·검증하는 host-neutral durable queue이며, worker agent는 claim한 task와 lease/heartbeat만 갱신한다. Harness는 agent를 spawn하지 않고, state/lease/gate만 기록한다.
 - Loop 위치: `~/.local/state/agent-harness/loop/<loop-id>.json`. CLI `loop start/record-attempt/status/stop`와 MCP `loop_start/loop_record_attempt/loop_status/loop_stop`가 같은 state machine을 사용한다. 같은 repo+name의 active loop는 resume되고 terminal loop는 새 name이 필요하다. strict PR readiness는 같은 repo의 `active`/`exhausted` loop를 `loop_incomplete:<loop-id>`로 막고, `stopped`/`succeeded` loop는 통과한다.
@@ -291,7 +291,7 @@ the durable pending intent and explicit reconciliation path are authoritative.
 
 ### Adversarial multi-session model
 
-- One record has one `ExecutionV1`, one canonical worktree, and one active
+- One record has one `Execution`, one canonical worktree, and one active
   generation at a time.
 - The trust boundary is the exact native actor: host, session/agent ID, process
   PID/start/executable receipt, canonical cwd, lifecycle ID, and generation.
@@ -345,7 +345,7 @@ the durable pending intent and explicit reconciliation path are authoritative.
 
 ## Execution boundary
 
-Workspace provisioning and lease grant are one execution-v1 transaction. The
+Workspace provisioning and lease grant are one execution transaction. The
 source main worktree remains available before, during, and after direct or Orca
 execution for unrelated work. A generic session binding is routing metadata
 only. The fence selects the exact lifecycle ID, generation, native process

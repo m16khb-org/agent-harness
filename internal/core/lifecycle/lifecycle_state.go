@@ -24,8 +24,8 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 		Command:  strings.TrimSpace(req.Command),
 		Source:   source,
 	}
-	observation := executionV1Observation(req)
-	typedExecutionControl := executionV1TypedControlPlane(req)
+	observation := executionObservation(req)
+	typedExecutionControl := executionTypedControlPlane(req)
 	if !observation && !typedExecutionControl {
 		if req.EnforceWorktree {
 			if reason := directBranchCreationBlockReason(req); reason != "" {
@@ -36,7 +36,7 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 		executionHandled := false
 		if result.Decision != "block" {
 			var executionReason string
-			executionHandled, executionReason, result.Deny = executionV1MutationDecision(req)
+			executionHandled, executionReason, result.Deny = executionMutationDecision(req)
 			if executionReason != "" {
 				result.Decision = "block"
 				result.Reason = executionReason

@@ -47,23 +47,23 @@ type IssueOpsCleanupStatus = issueops.IssueOpsCleanupStatus
 type IssueOpsCloseChildrenRequest = issueops.IssueOpsCloseChildrenRequest
 type IssueOpsCloseChildResult = issueops.IssueOpsCloseChildResult
 type IssueOpsCloseChildrenResult = issueops.IssueOpsCloseChildrenResult
-type LegacyResetRowCountsV1 = issueops.LegacyResetRowCountsV1
-type LegacyRemoteCreateClaimV1 = issueops.LegacyRemoteCreateClaimV1
-type LegacyOrcaTaskV1 = issueops.LegacyOrcaTaskV1
-type LegacyResetPreviewV1 = issueops.LegacyResetPreviewV1
-type LegacyResetStatusV1 = issueops.LegacyResetStatusV1
-type LegacyResetResultV1 = issueops.LegacyResetResultV1
-type LegacyResetRemoteReconcileRequestV1 = issueops.LegacyResetRemoteReconcileRequestV1
-type LegacyResetRemoteDependenciesV1 = issueops.LegacyResetRemoteDependenciesV1
-type LegacyResetRemoteReconcileResultV1 = issueops.LegacyResetRemoteReconcileResultV1
-type LegacyResetOrcaReconcileRequestV1 = issueops.LegacyResetOrcaReconcileRequestV1
-type LegacyResetOrcaDependenciesV1 = issueops.LegacyResetOrcaDependenciesV1
-type LegacyResetOrcaReconcileResultV1 = issueops.LegacyResetOrcaReconcileResultV1
-type LegacyResetDrainCycleRequestV1 = issueops.LegacyResetDrainCycleRequestV1
-type LegacyResetDrainCycleResultV1 = issueops.LegacyResetDrainCycleResultV1
-type LegacyResetActivationBeginRequestV1 = issueops.LegacyResetActivationBeginRequestV1
-type LegacyResetActivationSealRequestV1 = issueops.LegacyResetActivationSealRequestV1
-type LegacyResetActivationResultV1 = issueops.LegacyResetActivationResultV1
+type LegacyResetRowCounts = issueops.LegacyResetRowCounts
+type LegacyRemoteCreateClaim = issueops.LegacyRemoteCreateClaim
+type LegacyOrcaTask = issueops.LegacyOrcaTask
+type LegacyResetPreview = issueops.LegacyResetPreview
+type LegacyResetStatus = issueops.LegacyResetStatus
+type LegacyResetResult = issueops.LegacyResetResult
+type LegacyResetRemoteReconcileRequest = issueops.LegacyResetRemoteReconcileRequest
+type LegacyResetRemoteDependencies = issueops.LegacyResetRemoteDependencies
+type LegacyResetRemoteReconcileResult = issueops.LegacyResetRemoteReconcileResult
+type LegacyResetOrcaReconcileRequest = issueops.LegacyResetOrcaReconcileRequest
+type LegacyResetOrcaDependencies = issueops.LegacyResetOrcaDependencies
+type LegacyResetOrcaReconcileResult = issueops.LegacyResetOrcaReconcileResult
+type LegacyResetDrainCycleRequest = issueops.LegacyResetDrainCycleRequest
+type LegacyResetDrainCycleResult = issueops.LegacyResetDrainCycleResult
+type LegacyResetActivationBeginRequest = issueops.LegacyResetActivationBeginRequest
+type LegacyResetActivationSealRequest = issueops.LegacyResetActivationSealRequest
+type LegacyResetActivationResult = issueops.LegacyResetActivationResult
 type ResetRequiredError = issueops.ResetRequiredError
 
 type IssueOpsPhase = issueops.IssueOpsPhase
@@ -272,44 +272,44 @@ func IssueOpsStateRoot() string {
 	return issueops.IssueOpsStateRoot()
 }
 
-func PreviewLegacyResetV1(stateDir string, targetSchema int) (LegacyResetPreviewV1, error) {
-	return issueops.PreviewLegacyResetV1(stateDir, targetSchema)
+func PreviewLegacyReset(stateDir string, targetSchema int) (LegacyResetPreview, error) {
+	return issueops.PreviewLegacyReset(stateDir, targetSchema)
 }
 
-func StatusLegacyResetV1(stateDir string, targetSchema int) (LegacyResetStatusV1, error) {
-	return issueops.StatusLegacyResetV1(stateDir, targetSchema)
+func StatusLegacyReset(stateDir string, targetSchema int) (LegacyResetStatus, error) {
+	return issueops.StatusLegacyReset(stateDir, targetSchema)
 }
 
-func BeginLegacyResetActivationV1(stateDir string, req LegacyResetActivationBeginRequestV1) (LegacyResetActivationResultV1, error) {
-	return issueops.BeginLegacyResetActivationV1(stateDir, req)
+func BeginLegacyResetActivation(stateDir string, req LegacyResetActivationBeginRequest) (LegacyResetActivationResult, error) {
+	return issueops.BeginLegacyResetActivation(stateDir, req)
 }
 
-func SealLegacyResetActivationV1(stateDir string, req LegacyResetActivationSealRequestV1) (LegacyResetActivationResultV1, error) {
-	return issueops.SealLegacyResetActivationV1(stateDir, req)
+func SealLegacyResetActivation(stateDir string, req LegacyResetActivationSealRequest) (LegacyResetActivationResult, error) {
+	return issueops.SealLegacyResetActivation(stateDir, req)
 }
 
-func ConfirmLegacyResetV1(stateDir string, targetSchema int, expectedFingerprint string) (LegacyResetResultV1, error) {
-	return issueops.ConfirmLegacyResetV1(stateDir, targetSchema, expectedFingerprint)
+func ConfirmLegacyReset(stateDir string, targetSchema int, expectedFingerprint string) (LegacyResetResult, error) {
+	return issueops.ConfirmLegacyReset(stateDir, targetSchema, expectedFingerprint)
 }
 
-func ConfirmLegacyResetWithOrcaV1(ctx context.Context, stateDir string, targetSchema int, expectedFingerprint string, deps LegacyResetOrcaDependenciesV1) (LegacyResetResultV1, error) {
-	return issueops.ConfirmLegacyResetWithOrcaV1(ctx, stateDir, targetSchema, expectedFingerprint, deps)
+func ConfirmLegacyResetWithOrca(ctx context.Context, stateDir string, targetSchema int, expectedFingerprint string, deps LegacyResetOrcaDependencies) (LegacyResetResult, error) {
+	return issueops.ConfirmLegacyResetWithOrca(ctx, stateDir, targetSchema, expectedFingerprint, deps)
 }
 
-func ReconcileLegacyRemoteClaimV1(ctx context.Context, stateDir string, req LegacyResetRemoteReconcileRequestV1, deps LegacyResetRemoteDependenciesV1) (LegacyResetRemoteReconcileResultV1, error) {
-	return issueops.ReconcileLegacyRemoteClaimV1(ctx, stateDir, req, deps)
+func ReconcileLegacyRemoteClaim(ctx context.Context, stateDir string, req LegacyResetRemoteReconcileRequest, deps LegacyResetRemoteDependencies) (LegacyResetRemoteReconcileResult, error) {
+	return issueops.ReconcileLegacyRemoteClaim(ctx, stateDir, req, deps)
 }
 
-func ReconcileLegacyOrcaTaskV1(ctx context.Context, stateDir string, req LegacyResetOrcaReconcileRequestV1, deps LegacyResetOrcaDependenciesV1) (LegacyResetOrcaReconcileResultV1, error) {
-	return issueops.ReconcileLegacyOrcaTaskV1(ctx, stateDir, req, deps)
+func ReconcileLegacyOrcaTask(ctx context.Context, stateDir string, req LegacyResetOrcaReconcileRequest, deps LegacyResetOrcaDependencies) (LegacyResetOrcaReconcileResult, error) {
+	return issueops.ReconcileLegacyOrcaTask(ctx, stateDir, req, deps)
 }
 
-func DrainLegacyCycleV1(stateDir string, req LegacyResetDrainCycleRequestV1) (LegacyResetDrainCycleResultV1, error) {
-	return issueops.DrainLegacyCycleV1(stateDir, req)
+func DrainLegacyCycle(stateDir string, req LegacyResetDrainCycleRequest) (LegacyResetDrainCycleResult, error) {
+	return issueops.DrainLegacyCycle(stateDir, req)
 }
 
-func DrainLegacyCycleWithOrcaV1(ctx context.Context, stateDir string, req LegacyResetDrainCycleRequestV1, deps LegacyResetOrcaDependenciesV1) (LegacyResetDrainCycleResultV1, error) {
-	return issueops.DrainLegacyCycleWithOrcaV1(ctx, stateDir, req, deps)
+func DrainLegacyCycleWithOrca(ctx context.Context, stateDir string, req LegacyResetDrainCycleRequest, deps LegacyResetOrcaDependencies) (LegacyResetDrainCycleResult, error) {
+	return issueops.DrainLegacyCycleWithOrca(ctx, stateDir, req, deps)
 }
 
 func NewIssueOpsID(repo, branch string) string {

@@ -60,7 +60,7 @@ For the focused native-hook gate, use `./cmd/harness/hookcli/hookinput`; `./inte
 A targeted Go test is GREEN only when the intended test names actually ran. `[no tests to run]` is not GREEN; update stale regex names and rerun with `-v`, requiring the named `=== RUN` lines and PASS:
 
 ```bash
-go test -v ./internal/core/lifecycle -run '^TestLifecycleExecutionV1' -count=1
+go test -v ./internal/core/lifecycle -run '^TestLifecycleExecution' -count=1
 ```
 
 When a zsh verification wrapper captures an exit code, never assign to `status`: zsh reserves `status` as a read-only parameter. Use `rc` or `exit_code`, and report the test command verdict separately from wrapper bookkeeping errors.
@@ -106,7 +106,7 @@ Before this fence, each worker commit must use a Conventional Commit subject and
 
 A completed execution is never a new mutation lease. Review feedback that requires edits starts a new bounded execution or an explicitly authorized continuation before completion.
 
-Pending external intent survives interruption. Follow `skills/issueops/references/execution-v1.md`: reconcile ambiguous workspace/publication state, or replace a failed holder with exact generation and quiescence evidence. Turing records before/after process, worktree, branch, HEAD, dirty-path, and Orca-resource observations. Cleanup remains a separate human-authorized operation after verified merge evidence.
+Pending external intent survives interruption. Follow `skills/issueops/references/execution.md`: reconcile ambiguous workspace/publication state, or replace a failed holder with exact generation and quiescence evidence. Turing records before/after process, worktree, branch, HEAD, dirty-path, and Orca-resource observations. Cleanup remains a separate human-authorized operation after verified merge evidence.
 
 ## Quantitative Quality Metrics (vs ulw-loop baseline)
 

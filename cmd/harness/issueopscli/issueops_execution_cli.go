@@ -13,9 +13,9 @@ func runIssueOpsExecution(args []string) error {
 	return executioncmd.Run(args, executioncmd.Deps{
 		StateRoot: core.IssueOpsStateRoot,
 		Direct:    gitworktree.New(),
-		Orca:      orca.NewExecutionV1(),
+		Orca:      orca.NewExecution(),
 		ReadIssue: provider.ReadExecutionIssueSnapshot,
-		RemotePR: issueops.RemotePullRequestDependenciesV1{
+		RemotePR: issueops.RemotePullRequestDependencies{
 			Create: func(providerName string, req core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
 				prov, err := provider.Resolve(providerName)
 				if err != nil {

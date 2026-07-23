@@ -22,7 +22,7 @@ type Deps struct {
 	VerifyLive             func(core.IssueOpsRemoteArtifactVerificationRequest) error
 	CreatePullRequest      func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error)
 	ReconcilePullRequest   func(string, core.IssueProviderReconcilePullRequestRequest) (core.IssueProviderReconcilePullRequestResult, error)
-	ObserveProcessAncestry func(int) ([]model.NativeProcessReceiptV1, error)
+	ObserveProcessAncestry func(int) ([]model.NativeProcessReceipt, error)
 }
 
 func Run(args []string, deps Deps) error {
@@ -125,7 +125,7 @@ func Run(args []string, deps Deps) error {
 			err = deps.verifyLive(req)
 		}
 		if err == nil {
-			var ancestry []model.NativeProcessReceiptV1
+			var ancestry []model.NativeProcessReceipt
 			ancestry, err = deps.observeNativeProcessAncestry()
 			if err == nil {
 				record, err = core.VerifyIssueOpsRemoteArtifactWithActor(core.IssueOpsStateRoot(), *id, req, core.IssueOpsActor{
@@ -582,13 +582,13 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	result, err := core.CreateIssueOpsRemotePullRequestV1(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsRemotePullRequestRequestV1{
+	result, err := core.CreateIssueOpsRemotePullRequest(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsRemotePullRequestRequest{
 		ID: record.ID, Provider: providerName, Title: *title, Body: finalBody,
 		Head: headBranch, Base: baseBranch, Labels: labels, Assignees: assignees,
 		ExpectedGeneration: *expectedGeneration,
 		Actor:              actor,
 		CWD:                *cwd, Confirm: *confirm,
-	}, core.IssueOpsRemotePullRequestDependenciesV1{
+	}, core.IssueOpsRemotePullRequestDependencies{
 		Create:    deps.createPullRequest,
 		Reconcile: deps.reconcilePullRequest,
 		Verify: func(req core.IssueOpsRemoteArtifactVerificationRequest) error {
@@ -609,26 +609,26 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	return nil
 }
 
-func (deps Deps) remoteNativeActor(host, sessionID, agentID string, sessionPID int, sessionStartedAt, sessionExecutable string, observe bool) (model.NativeActorV1, error) {
-	actor := model.NativeActorV1{
+func (deps Deps) remoteNativeActor(host, sessionID, agentID string, sessionPID int, sessionStartedAt, sessionExecutable string, observe bool) (model.NativeActor, error) {
+	actor := model.NativeActor{
 		Host: host, SessionID: sessionID, AgentID: agentID,
-		SessionProcess: &model.NativeProcessReceiptV1{PID: sessionPID, StartedAt: sessionStartedAt, Executable: sessionExecutable},
+		SessionProcess: &model.NativeProcessReceipt{PID: sessionPID, StartedAt: sessionStartedAt, Executable: sessionExecutable},
 	}
 	if !observe {
 		return actor, nil
 	}
 	ancestry, err := deps.observeNativeProcessAncestry()
 	if err != nil {
-		return model.NativeActorV1{}, err
+		return model.NativeActor{}, err
 	}
 	actor.ProcessAncestry = ancestry
 	return actor, nil
 }
 
-func (deps Deps) observeNativeProcessAncestry() ([]model.NativeProcessReceiptV1, error) {
+func (deps Deps) observeNativeProcessAncestry() ([]model.NativeProcessReceipt, error) {
 	observe := deps.ObserveProcessAncestry
 	if observe == nil {
-		observe = issueopscore.ObserveNativeProcessAncestryV1
+		observe = issueopscore.ObserveNativeProcessAncestry
 	}
 	ancestry, err := observe(os.Getpid())
 	if err != nil {

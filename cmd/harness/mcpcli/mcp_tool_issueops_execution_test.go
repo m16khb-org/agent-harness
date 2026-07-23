@@ -9,7 +9,7 @@ import (
 )
 
 func TestExecutionActionRequestFromMCPPreservesAutoMode(t *testing.T) {
-	wantAncestry := []model.NativeProcessReceiptV1{{
+	wantAncestry := []model.NativeProcessReceipt{{
 		PID: 42, StartedAt: "2026-07-22T00:00:00Z", Executable: "/usr/bin/codex",
 	}}
 	req := executionActionRequestFromMCPWithAncestry(map[string]any{

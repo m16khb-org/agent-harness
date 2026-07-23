@@ -62,7 +62,7 @@ func runInstallCommand(commandName string, args []string) error {
 	req.DryRun = *dryRun
 	stateDir := filepath.Dir(core.IssueOpsStateRoot())
 	if !req.DryRun {
-		if _, err := core.BeginLegacyResetActivationV1(stateDir, core.LegacyResetActivationBeginRequestV1{
+		if _, err := core.BeginLegacyResetActivation(stateDir, core.LegacyResetActivationBeginRequest{
 			TargetSchema: 1, HarnessRoot: req.Root, TargetBinary: req.BinPath,
 		}); err != nil {
 			return fmt.Errorf("begin native activation: %w", err)
@@ -74,7 +74,7 @@ func runInstallCommand(commandName string, args []string) error {
 		err = errors.Join(err, pathErr)
 	}
 	if !req.DryRun && err == nil && result.OK {
-		activationErr := sealNativeActivationV1(stateDir, req)
+		activationErr := sealNativeActivation(stateDir, req)
 		if activationErr != nil {
 			result.OK = false
 			err = errors.Join(err, activationErr)
@@ -90,12 +90,12 @@ func runInstallCommand(commandName string, args []string) error {
 	return err
 }
 
-func sealNativeActivationV1(stateDir string, req port.NativeInstallRequest) error {
-	codexEvidence, err := codexadapter.VerifyActivationV1(req)
+func sealNativeActivation(stateDir string, req port.NativeInstallRequest) error {
+	codexEvidence, err := codexadapter.VerifyActivation(req)
 	if err != nil {
 		return err
 	}
-	claudeEvidence, err := claudeadapter.VerifyActivationV1(req)
+	claudeEvidence, err := claudeadapter.VerifyActivation(req)
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func sealNativeActivationV1(stateDir string, req port.NativeInstallRequest) erro
 	if err != nil {
 		return err
 	}
-	_, err = core.SealLegacyResetActivationV1(stateDir, core.LegacyResetActivationSealRequestV1{
+	_, err = core.SealLegacyResetActivation(stateDir, core.LegacyResetActivationSealRequest{
 		TargetSchema: 1, HarnessRoot: req.Root, TargetBinary: req.BinPath, CatalogSHA256: catalogSHA,
 		Evidence: append(codexEvidence, claudeEvidence...),
 	})

@@ -82,7 +82,7 @@ agent-harness issueops execution status --id "$ISSUEOPS_ID" --json
 For direct mode, the same main session is the generation holder and continues
 from the canonical worktree. For Orca mode, the launched native owner reads the
 private packet and prompt, verifies both sealed digests, and runs the exact
-`issueops execution claim` command rendered by status. Load `execution-v1.md`
+`issueops execution claim` command rendered by status. Load `execution.md`
 for the full claim, replacement, reconciliation, publication, and completion
 contract.
 

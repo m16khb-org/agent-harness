@@ -15,10 +15,10 @@ import (
 )
 
 func handleMCPIssueOpsExecution(args map[string]any) MCPToolOutcome {
-	orcaExecution := orca.NewExecutionV1()
-	result, err := issueops.ExecuteExecutionV1(context.Background(), core.IssueOpsStateRoot(), executionActionRequestFromMCP(args), issueops.ExecutionActionDependenciesV1{
+	orcaExecution := orca.NewExecution()
+	result, err := issueops.ExecuteExecution(context.Background(), core.IssueOpsStateRoot(), executionActionRequestFromMCP(args), issueops.ExecutionActionDependencies{
 		Direct: gitworktree.New(), Orca: orcaExecution, OrcaOwner: orcaExecution, ReadIssue: provider.ReadExecutionIssueSnapshot,
-		RemotePR: issueops.RemotePullRequestDependenciesV1{
+		RemotePR: issueops.RemotePullRequestDependencies{
 			Create: func(providerName string, req core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
 				prov, err := provider.Resolve(providerName)
 				if err != nil {
@@ -54,21 +54,21 @@ func issueOpsMCPErrorPayload(err error) map[string]any {
 	return payload
 }
 
-func executionActionRequestFromMCP(args map[string]any) issueops.ExecutionActionRequestV1 {
-	ancestry, _ := issueops.ObserveNativeProcessAncestryV1(os.Getpid())
+func executionActionRequestFromMCP(args map[string]any) issueops.ExecutionActionRequest {
+	ancestry, _ := issueops.ObserveNativeProcessAncestry(os.Getpid())
 	// An observation failure leaves ancestry empty so core mutation validation
 	// fails closed instead of trusting the caller's process receipt.
 	return executionActionRequestFromMCPWithAncestry(args, ancestry)
 }
 
-func executionActionRequestFromMCPWithAncestry(args map[string]any, ancestry []model.NativeProcessReceiptV1) issueops.ExecutionActionRequestV1 {
+func executionActionRequestFromMCPWithAncestry(args map[string]any, ancestry []model.NativeProcessReceipt) issueops.ExecutionActionRequest {
 	pid := argmap.Int(args, "session_pid", 0)
-	return issueops.ExecutionActionRequestV1{
+	return issueops.ExecutionActionRequest{
 		Action: argmap.String(args, "action"), ID: argmap.String(args, "id"), Mode: argmap.String(args, "mode"),
-		Actor: model.NativeActorV1{
+		Actor: model.NativeActor{
 			Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"),
-			SessionProcess:  &model.NativeProcessReceiptV1{PID: pid, StartedAt: argmap.String(args, "session_started_at"), Executable: argmap.String(args, "session_executable")},
-			ProcessAncestry: append([]model.NativeProcessReceiptV1(nil), ancestry...),
+			SessionProcess:  &model.NativeProcessReceipt{PID: pid, StartedAt: argmap.String(args, "session_started_at"), Executable: argmap.String(args, "session_executable")},
+			ProcessAncestry: append([]model.NativeProcessReceipt(nil), ancestry...),
 		},
 		CWD: argmap.String(args, "cwd"), OwnerHost: argmap.String(args, "owner_host"), OwnerModel: argmap.String(args, "owner_model"), OwnerEffort: argmap.String(args, "owner_effort"),
 		Generation: uint64(argmap.Int64(args, "generation", 0)), ExpectedGeneration: uint64(argmap.Int64(args, "expected_generation", 0)),

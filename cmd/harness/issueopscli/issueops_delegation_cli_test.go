@@ -189,7 +189,7 @@ func startIssueOpsCLIReadyDelegationParent(t *testing.T, repo, branch string) (c
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, actor := seedIssueOpsCLIExecutionV1(t, record)
+	record, actor := seedIssueOpsCLIExecution(t, record)
 	record, err = core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), record.ID, string(core.IssueOpsPhaseImplement), actor)
 	if err != nil {
 		t.Fatal(err)
@@ -234,7 +234,7 @@ func startIssueOpsCLIReadyPRParentWithChild(t *testing.T, repo, branch string) (
 	if err != nil {
 		t.Fatal(err)
 	}
-	parent, actor := seedIssueOpsCLIExecutionV1(t, parent)
+	parent, actor := seedIssueOpsCLIExecution(t, parent)
 	parent, err = core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), parent.ID, string(core.IssueOpsPhaseImplement), actor)
 	if err != nil {
 		t.Fatal(err)

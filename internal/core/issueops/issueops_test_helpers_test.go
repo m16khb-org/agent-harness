@@ -200,10 +200,10 @@ func issueOpsDevilsAdvocateReviewForTest() *IssueOpsDevilsAdvocateReview {
 	}
 }
 
-func issueOpsExecutionForTest(repo, worktree, branch string) *ExecutionV1 {
-	return &ExecutionV1{
+func issueOpsExecutionForTest(repo, worktree, branch string) *Execution {
+	return &Execution{
 		Mode: model.ExecutionModeDirect,
-		Workspace: WorkspaceV1{
+		Workspace: Workspace{
 			SourceRoot: repo,
 			Root:       worktree,
 			Branch:     branch,
@@ -211,14 +211,14 @@ func issueOpsExecutionForTest(repo, worktree, branch string) *ExecutionV1 {
 			Driver:     "git",
 			LinkedAt:   "2026-07-22T00:00:00Z",
 		},
-		Lease: WriteLeaseV1{
+		Lease: WriteLease{
 			Generation: 1,
 			Status:     model.LeaseStatusActive,
-			Holder: &NativeActorV1{
+			Holder: &NativeActor{
 				Host:      "codex",
 				SessionID: "test-session",
 				AgentID:   "test-agent",
-				SessionProcess: &NativeProcessReceiptV1{
+				SessionProcess: &NativeProcessReceipt{
 					PID:        1,
 					StartedAt:  "2026-07-22T00:00:00Z",
 					Executable: "/usr/bin/codex",
@@ -232,7 +232,7 @@ func issueOpsExecutionForTest(repo, worktree, branch string) *ExecutionV1 {
 func issueOpsActorForTest(worktree string) IssueOpsActor {
 	return IssueOpsActor{
 		Host: "codex", SessionID: "test-session", AgentID: "test-agent", CWD: worktree,
-		NativeProcessAncestry: []NativeProcessReceiptV1{{
+		NativeProcessAncestry: []NativeProcessReceipt{{
 			PID: 1, StartedAt: "2026-07-22T00:00:00Z", Executable: "/usr/bin/codex",
 		}},
 	}

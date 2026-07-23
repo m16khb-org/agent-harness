@@ -351,7 +351,7 @@ func (c *Client) ListTerminals(ctx context.Context, worktreeID string) ([]port.O
 	return inventory.Rows, err
 }
 
-func (c *Client) listTerminalsInventory(ctx context.Context, worktreeID string) (executionV1TerminalInventory, error) {
+func (c *Client) listTerminalsInventory(ctx context.Context, worktreeID string) (executionTerminalInventory, error) {
 	var payload struct {
 		Terminals     []terminalPayload     `json:"terminals"`
 		VisualLayouts []visualLayoutPayload `json:"visualLayouts"`
@@ -365,14 +365,14 @@ func (c *Client) listTerminalsInventory(ctx context.Context, worktreeID string) 
 	argv = append(argv, "--limit", strconv.Itoa(port.OrcaMaxBaselineIDs), "--json")
 	runtimeID, err := c.runJSON(ctx, "", readTimeout, argv, &payload)
 	if err != nil {
-		return executionV1TerminalInventory{}, err
+		return executionTerminalInventory{}, err
 	}
 	if err := requireCompleteList("terminal", len(payload.Terminals), payload.TotalCount, payload.Truncated); err != nil {
-		return executionV1TerminalInventory{}, err
+		return executionTerminalInventory{}, err
 	}
 	stableTitles, err := stableVisualTabTitles(payload.VisualLayouts)
 	if err != nil {
-		return executionV1TerminalInventory{}, err
+		return executionTerminalInventory{}, err
 	}
 	result := make([]port.OrcaTerminal, 0, len(payload.Terminals))
 	for _, item := range payload.Terminals {
@@ -381,7 +381,7 @@ func (c *Client) listTerminalsInventory(ctx context.Context, worktreeID string) 
 		value.StableTabTitle = stableTitles[visualTabKey(value.TabID, value.LeafID)]
 		result = append(result, value)
 	}
-	return executionV1TerminalInventory{RuntimeID: runtimeID, Rows: result}, nil
+	return executionTerminalInventory{RuntimeID: runtimeID, Rows: result}, nil
 }
 
 func (c *Client) CreateTerminal(ctx context.Context, req port.OrcaCreateTerminalRequest) (port.OrcaTerminal, error) {
@@ -478,7 +478,7 @@ func (c *Client) ListAllTasks(ctx context.Context) ([]port.OrcaTask, error) {
 	return c.listTasks(ctx, []string{"orca", "orchestration", "task-list", "--brief", "--json"})
 }
 
-func (c *Client) listAllTasksInventory(ctx context.Context) (executionV1TaskInventory, error) {
+func (c *Client) listAllTasksInventory(ctx context.Context) (executionTaskInventory, error) {
 	return c.listTasksInventory(ctx, []string{"orca", "orchestration", "task-list", "--brief", "--json"})
 }
 
@@ -491,28 +491,28 @@ func (c *Client) listTasks(ctx context.Context, argv []string) ([]port.OrcaTask,
 	return inventory.Rows, err
 }
 
-func (c *Client) listTasksInventory(ctx context.Context, argv []string) (executionV1TaskInventory, error) {
+func (c *Client) listTasksInventory(ctx context.Context, argv []string) (executionTaskInventory, error) {
 	var payload struct {
 		Tasks []taskPayload `json:"tasks"`
 		Count *int          `json:"count"`
 	}
 	runtimeID, err := c.runJSON(ctx, "", readTimeout, argv, &payload)
 	if err != nil {
-		return executionV1TaskInventory{}, err
+		return executionTaskInventory{}, err
 	}
 	if err := requireReturnedCount("task", len(payload.Tasks), payload.Count); err != nil {
-		return executionV1TaskInventory{}, err
+		return executionTaskInventory{}, err
 	}
 	result := make([]port.OrcaTask, 0, len(payload.Tasks))
 	for _, task := range payload.Tasks {
 		if strings.TrimSpace(task.ID) == "" || strings.TrimSpace(task.Status) == "" {
-			return executionV1TaskInventory{}, fmt.Errorf("Orca task row identity is incomplete")
+			return executionTaskInventory{}, fmt.Errorf("Orca task row identity is incomplete")
 		}
 		value := task.portValue()
 		value.RuntimeID = runtimeID
 		result = append(result, value)
 	}
-	return executionV1TaskInventory{RuntimeID: runtimeID, Rows: result}, nil
+	return executionTaskInventory{RuntimeID: runtimeID, Rows: result}, nil
 }
 
 func (c *Client) ListGates(ctx context.Context) ([]port.OrcaGate, error) {
@@ -598,7 +598,7 @@ func (c *Client) ShowDispatch(ctx context.Context, taskID string) (port.OrcaDisp
 	return c.dispatchResult(ctx, []string{"orca", "orchestration", "dispatch-show", "--task", taskID, "--json"})
 }
 
-func (c *Client) showDispatchInventory(ctx context.Context, taskID string) (executionV1DispatchInventory, error) {
+func (c *Client) showDispatchInventory(ctx context.Context, taskID string) (executionDispatchInventory, error) {
 	return c.dispatchInventoryResult(ctx, []string{"orca", "orchestration", "dispatch-show", "--task", taskID, "--json"})
 }
 
@@ -698,7 +698,7 @@ func (c *Client) dispatchResult(ctx context.Context, argv []string) (port.OrcaDi
 	return *inventory.Dispatch, nil
 }
 
-func (c *Client) dispatchInventoryResult(ctx context.Context, argv []string) (executionV1DispatchInventory, error) {
+func (c *Client) dispatchInventoryResult(ctx context.Context, argv []string) (executionDispatchInventory, error) {
 	var payload struct {
 		Dispatch *struct {
 			ID             string `json:"id"`
@@ -711,13 +711,13 @@ func (c *Client) dispatchInventoryResult(ctx context.Context, argv []string) (ex
 	}
 	runtimeID, err := c.runJSON(ctx, "", createTimeout, argv, &payload)
 	if err != nil {
-		return executionV1DispatchInventory{}, err
+		return executionDispatchInventory{}, err
 	}
 	if payload.Dispatch == nil {
-		return executionV1DispatchInventory{RuntimeID: runtimeID}, nil
+		return executionDispatchInventory{RuntimeID: runtimeID}, nil
 	}
 	dispatch := port.OrcaDispatch{RuntimeID: runtimeID, ID: payload.Dispatch.ID, TaskID: payload.Dispatch.TaskID, AssigneeHandle: payload.Dispatch.AssigneeHandle, Status: payload.Dispatch.Status, Injected: payload.Injected, Preamble: payload.Preamble}
-	return executionV1DispatchInventory{RuntimeID: runtimeID, Dispatch: &dispatch}, nil
+	return executionDispatchInventory{RuntimeID: runtimeID, Dispatch: &dispatch}, nil
 }
 
 func (c *Client) runJSON(ctx context.Context, cwd string, timeout time.Duration, argv []string, target any) (string, error) {

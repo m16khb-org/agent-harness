@@ -21,10 +21,10 @@ func TestIssueOpsSkillKeepsCoreWorkflowContract(t *testing.T) {
 	}
 }
 
-func TestIssueOpsExecutionV1DocumentationHasOneCurrentContract(t *testing.T) {
+func TestIssueOpsExecutionDocumentationHasOneCurrentContract(t *testing.T) {
 	documents := map[string]string{
 		"skill":        readIssueOpsContractFile(t, "skills", "issueops", "SKILL.md"),
-		"execution":    readIssueOpsContractFile(t, "skills", "issueops", "references", "execution-v1.md"),
+		"execution":    readIssueOpsContractFile(t, "skills", "issueops", "references", "execution.md"),
 		"cleanup":      readIssueOpsContractFile(t, "skills", "issueops", "references", "cleanup-state.md"),
 		"worktree":     readIssueOpsContractFile(t, "skills", "issueops", "references", "worktree-context.md"),
 		"start":        readIssueOpsContractFile(t, "skills", "issueops", "references", "operational-start.md"),
@@ -34,7 +34,7 @@ func TestIssueOpsExecutionV1DocumentationHasOneCurrentContract(t *testing.T) {
 	}
 	all := joinIssueOpsContractDocuments(documents)
 	for _, want := range []string{
-		"one `ExecutionV1`", "canonical worktree", "exact lifecycle ID",
+		"one `Execution`", "canonical worktree", "exact lifecycle ID",
 		"source main worktree remains available", "direct", "orca",
 		"issueops execution prepare", "--mode auto", "issueops execution status",
 		"issueops execution claim", "--claim-token-file", "--issue-body-sha256",
@@ -46,7 +46,7 @@ func TestIssueOpsExecutionV1DocumentationHasOneCurrentContract(t *testing.T) {
 			t.Fatalf("current execution v1 contract missing %q", want)
 		}
 	}
-	for _, removed := range removedIssueOpsExecutionV1Terms() {
+	for _, removed := range removedIssueOpsExecutionTerms() {
 		for name, document := range documents {
 			if strings.Contains(strings.ToLower(document), removed) {
 				t.Fatalf("%s retains removed execution contract term %q", name, removed)
@@ -55,9 +55,9 @@ func TestIssueOpsExecutionV1DocumentationHasOneCurrentContract(t *testing.T) {
 	}
 }
 
-func TestIssueOpsExecutionV1DocumentationPreservesParallelIndependence(t *testing.T) {
+func TestIssueOpsExecutionDocumentationPreservesParallelIndependence(t *testing.T) {
 	all := strings.ToLower(joinIssueOpsContractDocuments(map[string]string{
-		"execution": readIssueOpsContractFile(t, "skills", "issueops", "references", "execution-v1.md"),
+		"execution": readIssueOpsContractFile(t, "skills", "issueops", "references", "execution.md"),
 		"worktree":  readIssueOpsContractFile(t, "skills", "issueops", "references", "worktree-context.md"),
 		"workflow":  readIssueOpsContractFile(t, ".agent-harness", "AGENT_WORKFLOW.md"),
 	}))
@@ -98,7 +98,7 @@ func removedIssueOpsCurrentCommandTerms() []string {
 	}
 }
 
-func removedIssueOpsExecutionV1Terms() []string {
+func removedIssueOpsExecutionTerms() []string {
 	return append(removedIssueOpsCurrentCommandTerms(),
 		"execution_handoff", "ownership_epoch", "ownership_dispatch", "owner_orienting",
 		"owner_active", "cleanup_pending_human_decision", "cleanup_executing",

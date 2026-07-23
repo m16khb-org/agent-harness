@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestIssueOpsV1AdvertisesOnlyExecutionActionTool(t *testing.T) {
+func TestIssueOpsAdvertisesOnlyExecutionActionTool(t *testing.T) {
 	tools := IssueOpsBasicTools()
 	if len(tools) != 1 || tools[0].Name != "issueops_execution" {
 		t.Fatalf("IssueOps MCP tools = %#v, want only issueops_execution", tools)
@@ -32,7 +32,7 @@ func TestIssueOpsV1AdvertisesOnlyExecutionActionTool(t *testing.T) {
 	}
 }
 
-func TestIssueOpsV1DispatchContainsNoLegacyTools(t *testing.T) {
+func TestIssueOpsDispatchContainsNoLegacyTools(t *testing.T) {
 	dispatch := DispatchMap()
 	if got := dispatch["issueops_execution"]; got != DispatchIssueOps {
 		t.Fatalf("issueops_execution dispatch = %q", got)

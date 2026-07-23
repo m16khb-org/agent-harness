@@ -15,7 +15,7 @@ import (
 	"agent-harness/internal/core/preflight"
 )
 
-func TestIssueOpsExecutionCLIPrepareAndStatusShareV1Projection(t *testing.T) {
+func TestIssueOpsExecutionCLIPrepareAndStatusShareSchemaProjection(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo, id, actorFlags := executionCLIRecord(t)
 
@@ -24,7 +24,7 @@ func TestIssueOpsExecutionCLIPrepareAndStatusShareV1Projection(t *testing.T) {
 			"execution", "prepare", "--id", id, "--mode", "direct", "--cwd", repo, "--confirm", "--json",
 		}, actorFlags...))
 	})
-	var prepared issueopscore.ExecutionPrepareResultV1
+	var prepared issueopscore.ExecutionPrepareResult
 	if err := json.Unmarshal([]byte(preparedJSON), &prepared); err != nil {
 		t.Fatalf("execution prepare should return JSON: %v\n%s", err, preparedJSON)
 	}
@@ -41,7 +41,7 @@ func TestIssueOpsExecutionCLIPrepareAndStatusShareV1Projection(t *testing.T) {
 	statusJSON := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"execution", "status", "--id", id, "--json"})
 	})
-	var status issueopscore.ExecutionResultV1
+	var status issueopscore.ExecutionResult
 	if err := json.Unmarshal([]byte(statusJSON), &status); err != nil {
 		t.Fatalf("execution status should return JSON: %v\n%s", err, statusJSON)
 	}
@@ -80,7 +80,7 @@ func TestIssueOpsExecutionCLIAndMCPStatusAndErrorsAreIdentical(t *testing.T) {
 		return runIssueOps([]string{"execution", "status", "--id", id, "--json"})
 	})
 	mcpJSON := executionMCPText(t, map[string]any{"action": "status", "id": id})
-	var cliResult, mcpResult issueopscore.ExecutionResultV1
+	var cliResult, mcpResult issueopscore.ExecutionResult
 	if err := json.Unmarshal([]byte(cliJSON), &cliResult); err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func executionCLIRecord(t *testing.T) (string, string, []string) {
 	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
-	receipt, err := issueopscore.ObserveNativeProcessReceiptV1(os.Getpid())
+	receipt, err := issueopscore.ObserveNativeProcessReceipt(os.Getpid())
 	if err != nil {
 		t.Fatal(err)
 	}

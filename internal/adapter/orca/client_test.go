@@ -1050,7 +1050,7 @@ func TestClientShowDispatchNullReturnsNotFound(t *testing.T) {
 	}
 }
 
-func TestClientExecutionV1InventoryPreservesRuntimeForEmptyRows(t *testing.T) {
+func TestClientExecutionInventoryPreservesRuntimeForEmptyRows(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca terminal list --worktree id:wt-1 --limit 512 --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"terminals":[],"visualLayouts":[],"totalCount":0,"truncated":false},"_meta":{"runtimeId":"runtime-1"}}`)}
 	runner.responses["orca orchestration task-list --brief --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"tasks":[],"count":0},"_meta":{"runtimeId":"runtime-1"}}`)}

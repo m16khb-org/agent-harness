@@ -132,7 +132,7 @@ repeat the identical request with `--confirm`. `auto` selects Orca only when
 readiness succeeds before mutation; otherwise it selects direct. The only
 first-party owner hosts are Codex and Claude.
 
-For Orca mode, follow `skills/issueops/references/execution-v1.md`. Preparation
+For Orca mode, follow `skills/issueops/references/execution.md`. Preparation
 seals the remote issue body, context packet, fully rendered owner prompt, and
 private claim-token file before launch. The fresh owner verifies both SHA-256
 digests and runs the exact `issueops execution claim` command. Only the active

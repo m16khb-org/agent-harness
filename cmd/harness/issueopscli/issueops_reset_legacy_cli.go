@@ -73,18 +73,18 @@ func runIssueOpsResetLegacy(args []string) error {
 	var err error
 	switch {
 	case *preview:
-		value, err = core.PreviewLegacyResetV1(stateDir, *targetSchema)
+		value, err = core.PreviewLegacyReset(stateDir, *targetSchema)
 	case *status:
-		value, err = core.StatusLegacyResetV1(stateDir, *targetSchema)
+		value, err = core.StatusLegacyReset(stateDir, *targetSchema)
 	case *activationBegin:
-		value, err = core.BeginLegacyResetActivationV1(stateDir, core.LegacyResetActivationBeginRequestV1{
+		value, err = core.BeginLegacyResetActivation(stateDir, core.LegacyResetActivationBeginRequest{
 			TargetSchema: *targetSchema, HarnessRoot: *harnessRoot, TargetBinary: *targetBinary,
 		})
 	case *reconcileRemote:
-		value, err = core.ReconcileLegacyRemoteClaimV1(context.Background(), stateDir, core.LegacyResetRemoteReconcileRequestV1{
+		value, err = core.ReconcileLegacyRemoteClaim(context.Background(), stateDir, core.LegacyResetRemoteReconcileRequest{
 			TargetSchema: *targetSchema, ExpectedFingerprint: *expectedFingerprint,
 			LifecycleID: *id, ClaimID: *claimID, Confirm: true,
-		}, core.LegacyResetRemoteDependenciesV1{
+		}, core.LegacyResetRemoteDependencies{
 			Reconcile: func(providerName string, request core.IssueProviderReconcilePullRequestRequest) (core.IssueProviderReconcilePullRequestResult, error) {
 				prov, resolveErr := provider.Resolve(providerName)
 				if resolveErr != nil {
@@ -96,22 +96,22 @@ func runIssueOpsResetLegacy(args []string) error {
 		})
 	case *reconcileOrca:
 		client := orcaadapter.New()
-		value, err = core.ReconcileLegacyOrcaTaskV1(context.Background(), stateDir, core.LegacyResetOrcaReconcileRequestV1{
+		value, err = core.ReconcileLegacyOrcaTask(context.Background(), stateDir, core.LegacyResetOrcaReconcileRequest{
 			TargetSchema: *targetSchema, ExpectedFingerprint: *expectedFingerprint, LifecycleID: *id,
 			RuntimeID: *runtimeID, TaskID: *taskID, DispatchID: *dispatchID, Confirm: true,
-		}, core.LegacyResetOrcaDependenciesV1{
+		}, core.LegacyResetOrcaDependencies{
 			Status: client.Status, ListTasks: client.ListAllTasks, ShowDispatch: client.ShowDispatch,
 		})
 	case *drainCycle:
 		client := orcaadapter.New()
-		value, err = core.DrainLegacyCycleWithOrcaV1(context.Background(), stateDir, core.LegacyResetDrainCycleRequestV1{
+		value, err = core.DrainLegacyCycleWithOrca(context.Background(), stateDir, core.LegacyResetDrainCycleRequest{
 			TargetSchema: *targetSchema, ExpectedFingerprint: *expectedFingerprint, LifecycleID: *id, Confirm: true,
-		}, core.LegacyResetOrcaDependenciesV1{
+		}, core.LegacyResetOrcaDependencies{
 			Status: client.Status, ListTasks: client.ListAllTasks, ShowDispatch: client.ShowDispatch,
 		})
 	case fullConfirm:
 		client := orcaadapter.New()
-		value, err = core.ConfirmLegacyResetWithOrcaV1(context.Background(), stateDir, *targetSchema, *expectedFingerprint, core.LegacyResetOrcaDependenciesV1{
+		value, err = core.ConfirmLegacyResetWithOrca(context.Background(), stateDir, *targetSchema, *expectedFingerprint, core.LegacyResetOrcaDependencies{
 			Status: client.Status, ListTasks: client.ListAllTasks, ShowDispatch: client.ShowDispatch,
 		})
 	}

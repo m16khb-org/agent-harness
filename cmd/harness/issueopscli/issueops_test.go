@@ -114,7 +114,7 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, actor := seedIssueOpsCLIExecutionV1(t, current)
+	_, actor := seedIssueOpsCLIExecution(t, current)
 	afterPrepare := captureStdoutForContract(t, func() error {
 		return runIssueOps(withIssueOpsCLIActor([]string{"phase", "--id", id, "--to", "implement", "--json"}, actor))
 	})

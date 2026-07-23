@@ -233,17 +233,17 @@ func activateOrchestrationExecutionForTest(t *testing.T, id, repo string) {
 	}
 	root := filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees", record.Branch)
 	record.WorktreePath = root
-	record.Execution = &issueopsmodel.ExecutionV1{
+	record.Execution = &issueopsmodel.Execution{
 		Mode: issueopsmodel.ExecutionModeDirect,
-		Workspace: issueopsmodel.WorkspaceV1{
+		Workspace: issueopsmodel.Workspace{
 			SourceRoot: repo, Root: root, Branch: record.Branch,
 			BaseHead: "0123456789012345678901234567890123456789", Driver: "git", LinkedAt: "2026-07-22T00:00:00Z",
 		},
-		Lease: issueopsmodel.WriteLeaseV1{
+		Lease: issueopsmodel.WriteLease{
 			Generation: 1, Status: issueopsmodel.LeaseStatusActive, ClaimedAt: "2026-07-22T00:00:00Z",
-			Holder: &issueopsmodel.NativeActorV1{
+			Holder: &issueopsmodel.NativeActor{
 				Host: "codex", SessionID: "reminder-session",
-				SessionProcess: &issueopsmodel.NativeProcessReceiptV1{PID: 1, StartedAt: "2026-07-22T00:00:00Z", Executable: "/usr/bin/codex"},
+				SessionProcess: &issueopsmodel.NativeProcessReceipt{PID: 1, StartedAt: "2026-07-22T00:00:00Z", Executable: "/usr/bin/codex"},
 			},
 		},
 	}

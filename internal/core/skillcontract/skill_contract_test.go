@@ -46,6 +46,13 @@ func TestP1PioneerCorrectnessContracts(t *testing.T) {
 		"parallel-independent-research",
 		"cross-verification-consensus",
 	})
+	assertSkillContains(t, "boehm", []string{
+		"verified high-coverage analysis",
+		"full-page-ocr",
+		"region-ocr",
+		"claimed-but-unverified",
+		"validate_analysis_report.py",
+	})
 	assertSkillContains(t, "brooks", []string{
 		"## IssueOps Integration",
 		"agent-harness issueops devils-advocate review",
@@ -55,7 +62,7 @@ func TestP1PioneerCorrectnessContracts(t *testing.T) {
 		"Shannon measures generated code artifacts, not prompt quality.",
 	})
 	assertSkillContains(t, "turing", []string{
-		"skills/issueops/references/execution-v1.md",
+		"skills/issueops/references/execution.md",
 		"current host's available browser tool",
 		"AppleScript on macOS",
 		"`xdotool` on Linux only",

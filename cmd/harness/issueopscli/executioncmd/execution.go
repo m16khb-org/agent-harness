@@ -16,25 +16,25 @@ type Deps struct {
 	StateRoot  func() string
 	Direct     port.ExecutionWorkspaceProvisioner
 	Orca       port.ExecutionOrcaProvisioner
-	ReadIssue  issueops.ExecutionIssueSnapshotReadFuncV1
-	RemotePR   issueops.RemotePullRequestDependenciesV1
+	ReadIssue  issueops.ExecutionIssueSnapshotReadFunc
+	RemotePR   issueops.RemotePullRequestDependencies
 	PrintJSON  func(any) error
 	PrintError func(error) error
 }
 
-func (deps Deps) actionDeps() issueops.ExecutionActionDependenciesV1 {
-	actionDeps := issueops.ExecutionActionDependenciesV1{Direct: deps.Direct, Orca: deps.Orca, ReadIssue: deps.ReadIssue, RemotePR: deps.RemotePR}
+func (deps Deps) actionDeps() issueops.ExecutionActionDependencies {
+	actionDeps := issueops.ExecutionActionDependencies{Direct: deps.Direct, Orca: deps.Orca, ReadIssue: deps.ReadIssue, RemotePR: deps.RemotePR}
 	if inspector, ok := deps.Orca.(port.ExecutionOrcaOwnerInspector); ok {
 		actionDeps.OrcaOwner = inspector
 	}
 	return actionDeps
 }
 
-func execute(req issueops.ExecutionActionRequestV1, deps Deps) (any, error) {
+func execute(req issueops.ExecutionActionRequest, deps Deps) (any, error) {
 	if deps.StateRoot == nil {
 		return nil, fmt.Errorf("IssueOps state root is unavailable")
 	}
-	return issueops.ExecuteExecutionV1(context.Background(), deps.StateRoot(), req, deps.actionDeps())
+	return issueops.ExecuteExecution(context.Background(), deps.StateRoot(), req, deps.actionDeps())
 }
 
 const Usage = `Usage:
@@ -90,11 +90,11 @@ func addActorFlags(fs *flag.FlagSet) actorFlags {
 	}
 }
 
-func (flags actorFlags) actor() model.NativeActorV1 {
-	ancestry, _ := issueops.ObserveNativeProcessAncestryV1(os.Getpid())
-	return model.NativeActorV1{
+func (flags actorFlags) actor() model.NativeActor {
+	ancestry, _ := issueops.ObserveNativeProcessAncestry(os.Getpid())
+	return model.NativeActor{
 		Host: strings.TrimSpace(*flags.host), SessionID: strings.TrimSpace(*flags.sessionID), AgentID: strings.TrimSpace(*flags.agentID),
-		SessionProcess:  &model.NativeProcessReceiptV1{PID: *flags.pid, StartedAt: strings.TrimSpace(*flags.startedAt), Executable: strings.TrimSpace(*flags.executable)},
+		SessionProcess:  &model.NativeProcessReceipt{PID: *flags.pid, StartedAt: strings.TrimSpace(*flags.startedAt), Executable: strings.TrimSpace(*flags.executable)},
 		ProcessAncestry: ancestry,
 	}
 }
@@ -109,7 +109,7 @@ func runPrepare(args []string, deps Deps) error {
 	if done, err := parse(fs, args); done || err != nil {
 		return err
 	}
-	result, err := execute(issueops.ExecutionActionRequestV1{
+	result, err := execute(issueops.ExecutionActionRequest{
 		Action: issueops.ExecutionActionPrepare, ID: *id, Mode: *mode, Actor: actor.actor(), CWD: *actor.cwd,
 		OwnerHost: *ownerHost, OwnerModel: *ownerModel, OwnerEffort: *ownerEffort, Confirm: *confirm,
 	}, deps)
@@ -122,7 +122,7 @@ func runStatus(args []string, deps Deps) error {
 	if done, err := parse(fs, args); done || err != nil {
 		return err
 	}
-	result, err := execute(issueops.ExecutionActionRequestV1{Action: issueops.ExecutionActionStatus, ID: *id}, deps)
+	result, err := execute(issueops.ExecutionActionRequest{Action: issueops.ExecutionActionStatus, ID: *id}, deps)
 	return output(result, *jsonOut, err, deps)
 }
 
@@ -136,7 +136,7 @@ func runClaim(args []string, deps Deps) error {
 	if done, err := parse(fs, args); done || err != nil {
 		return err
 	}
-	result, err := execute(issueops.ExecutionActionRequestV1{
+	result, err := execute(issueops.ExecutionActionRequest{
 		Action: issueops.ExecutionActionClaim, ID: *id, Generation: *generation,
 		Actor: actor.actor(), CWD: *actor.cwd, TokenFile: *claimTokenFile,
 		IssueBodySHA256: *issueDigest, ContextPacketSHA256: *packetDigest,
@@ -151,7 +151,7 @@ func runRelease(args []string, deps Deps) error {
 	if done, err := parse(fs, args); done || err != nil {
 		return err
 	}
-	result, err := execute(issueops.ExecutionActionRequestV1{
+	result, err := execute(issueops.ExecutionActionRequest{
 		Action: issueops.ExecutionActionRelease, ID: *id, Generation: *generation, Actor: actor.actor(), CWD: *actor.cwd,
 	}, deps)
 	return output(result, *jsonOut, err, deps)
@@ -188,7 +188,7 @@ func runReplace(args []string, deps Deps) error {
 	if action == "" {
 		return output(nil, *jsonOut, fmt.Errorf("execution replace requires exactly one action"), deps)
 	}
-	result, err := execute(issueops.ExecutionActionRequestV1{
+	result, err := execute(issueops.ExecutionActionRequest{
 		Action: issueops.ExecutionActionReplace, ID: *id, ReplaceAction: action, ExpectedGeneration: *generation,
 		InventoryFingerprint: *inventory, QuiescenceFingerprint: *quiescence, Reason: *reason,
 		Actor: actor.actor(), CWD: *actor.cwd, Confirm: *confirm,
@@ -204,7 +204,7 @@ func runReconcile(args []string, deps Deps) error {
 	if done, err := parse(fs, args); done || err != nil {
 		return err
 	}
-	result, err := execute(issueops.ExecutionActionRequestV1{
+	result, err := execute(issueops.ExecutionActionRequest{
 		Action: issueops.ExecutionActionReconcile, ID: *id, Preview: *preview, Confirm: *confirm,
 		Actor: actor.actor(), CWD: *actor.cwd,
 	}, deps)
@@ -231,7 +231,7 @@ func runComplete(args []string, deps Deps) error {
 	if done, err := parse(fs, args); done || err != nil {
 		return err
 	}
-	result, err := execute(issueops.ExecutionActionRequestV1{
+	result, err := execute(issueops.ExecutionActionRequest{
 		Action: issueops.ExecutionActionComplete, ID: *id, Generation: *generation, Actor: actor.actor(), CWD: *actor.cwd,
 		FinalHead: *finalHead, TuringReportPath: *report, Verification: verification,
 		RemoteArtifactURL: *remoteURL, Confirm: *confirm,
@@ -255,20 +255,20 @@ func output(value any, jsonOut bool, err error, deps Deps) error {
 
 func printText(value any) {
 	switch result := value.(type) {
-	case issueops.ExecutionPrepareResultV1:
+	case issueops.ExecutionPrepareResult:
 		fmt.Printf("%s %s %s generation=%d\n", result.ID, result.ResolvedMode, result.Workspace.Root, executionGeneration(result.Execution))
-	case issueops.ExecutionResultV1:
+	case issueops.ExecutionResult:
 		fmt.Printf("%s %s generation=%d\n", result.ID, result.Execution.Lease.Status, result.Execution.Lease.Generation)
-	case issueops.ExecutionReplaceResultV1:
+	case issueops.ExecutionReplaceResult:
 		fmt.Printf("%s %s generation=%d next=%s\n", result.ID, result.Execution.Lease.Status, result.Execution.Lease.Generation, result.NextCommand)
-	case issueops.ExecutionReconcileResultV1:
+	case issueops.ExecutionReconcileResult:
 		fmt.Printf("%s %s pending=%t\n", result.ID, result.Code, result.Pending != nil)
 	default:
 		fmt.Printf("%v\n", value)
 	}
 }
 
-func executionGeneration(execution *model.ExecutionV1) uint64 {
+func executionGeneration(execution *model.Execution) uint64 {
 	if execution == nil {
 		return 0
 	}

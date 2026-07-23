@@ -36,7 +36,7 @@ type GitRunner interface {
 	Run(context.Context, string, ...string) ([]byte, error)
 }
 
-type NativeProcessInspector func(model.NativeProcessReceiptV1) (string, model.NativeProcessReceiptV1, error)
+type NativeProcessInspector func(model.NativeProcessReceipt) (string, model.NativeProcessReceipt, error)
 
 const gitInventoryCommandTimeout = 15 * time.Second
 
@@ -221,7 +221,7 @@ func (collector Collector) collectIssueOps(snapshot *corehealth.Snapshot) ([]iss
 		snapshot.InventoryProblems = append(snapshot.InventoryProblems, problems...)
 		orcaOwned = orcaOwned || recordOwnsOrca(record)
 	}
-	indexes, err := issueops.ListLeaseHolderIndexesV1(stateRoot)
+	indexes, err := issueops.ListLeaseHolderIndexes(stateRoot)
 	if err != nil {
 		addProblem(snapshot, "issueops_lease_holder", "issueops_lease_holder_list_failed", "IssueOps active lease-holder index inventory failed")
 	} else {
@@ -239,7 +239,7 @@ func (collector Collector) nativeProcessInspector() NativeProcessInspector {
 	if collector.InspectNativeProcess != nil {
 		return collector.InspectNativeProcess
 	}
-	return issueops.InspectNativeProcessReceiptV1
+	return issueops.InspectNativeProcessReceipt
 }
 
 func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth.Snapshot, owned bool) {

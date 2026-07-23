@@ -319,9 +319,9 @@ func seedStopRelayOrchestrationFixture(t *testing.T) (string, issueops.IssueOpsR
 		Branch:        "relay-parent",
 		Phase:         issueops.IssueOpsPhaseImplement,
 		WorktreePath:  repo,
-		Execution: &model.ExecutionV1{
+		Execution: &model.Execution{
 			Mode: model.ExecutionModeDirect,
-			Workspace: model.WorkspaceV1{
+			Workspace: model.Workspace{
 				SourceRoot: repo,
 				Root:       filepath.Join(repo, "relay-parent-worktree"),
 				Branch:     "relay-parent",
@@ -329,7 +329,7 @@ func seedStopRelayOrchestrationFixture(t *testing.T) (string, issueops.IssueOpsR
 				Driver:     "git",
 				LinkedAt:   now,
 			},
-			Lease: model.WriteLeaseV1{
+			Lease: model.WriteLease{
 				Generation:       1,
 				Status:           model.LeaseStatusClaimable,
 				ClaimTokenSHA256: strings.Repeat("b", 64),

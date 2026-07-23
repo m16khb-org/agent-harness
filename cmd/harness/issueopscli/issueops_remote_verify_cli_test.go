@@ -114,7 +114,7 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) (core.Is
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, actor := seedIssueOpsCLIExecutionV1(t, record)
+	record, actor := seedIssueOpsCLIExecution(t, record)
 	if _, err := core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), id, string(core.IssueOpsPhaseAISlopClean), actor); err != nil {
 		t.Fatal(err)
 	}

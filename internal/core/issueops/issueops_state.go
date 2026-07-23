@@ -17,15 +17,16 @@ import (
 	"agent-harness/internal/core/state"
 )
 
-// v1은 legacy row를 해석하지 않도록 물리 namespace까지 분리한다.
-const issueOpsBucket = "issueops_v1"
+// 현재 schema는 legacy row를 해석하지 않도록 물리 namespace까지 분리한다.
+// namespace 이름은 model.IssueOpsSchemaVersion에서 파생된다.
+var issueOpsBucket = fmt.Sprintf("issueops_v%d", model.IssueOpsSchemaVersion)
 
 func ReadIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
 	record, err := readIssueOpsUnchecked(stateRoot, id)
 	if err != nil {
 		return record, err
 	}
-	if err := validateIssueOpsV1Record(record); err != nil {
+	if err := validateIssueOpsRecord(record); err != nil {
 		record.OK = false
 		return record, err
 	}
@@ -56,7 +57,7 @@ func ReadIssueOpsExisting(stateRoot, id string) (IssueOpsRecord, error) {
 	if err != nil {
 		return record, err
 	}
-	if err := validateIssueOpsV1Record(record); err != nil {
+	if err := validateIssueOpsRecord(record); err != nil {
 		record.OK = false
 		return record, err
 	}
@@ -145,7 +146,7 @@ func ListIssueOpsIDs(stateRoot string) ([]string, error) {
 // deleteIssueOps removes the cycle record for id; deleting an absent record is
 // not an error.
 func deleteIssueOps(stateRoot, id string) error {
-	if err := RequireIssueOpsV1MutationAllowed(stateRoot); err != nil {
+	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
 		return err
 	}
 	id, err := normalizeIssueOpsID(id)
@@ -160,7 +161,7 @@ func deleteIssueOps(stateRoot, id string) error {
 }
 
 func IssueOpsStateRoot() string {
-	return filepath.Join(state.StateDir(), "issueops_v1")
+	return filepath.Join(state.StateDir(), issueOpsBucket)
 }
 
 func newIssueOpsID(repo, branch string) string {
@@ -178,7 +179,7 @@ func touchAndWriteIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRec
 }
 
 func writeIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, error) {
-	if err := RequireIssueOpsV1MutationAllowed(stateRoot); err != nil {
+	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
 		record.OK = false
 		return record, err
 	}
@@ -207,7 +208,7 @@ func encodeIssueOpsRecord(record IssueOpsRecord) (IssueOpsRecord, []byte, error)
 		record.OK = false
 		return record, nil, err
 	}
-	if err := validateIssueOpsV1Record(record); err != nil {
+	if err := validateIssueOpsRecord(record); err != nil {
 		record.OK = false
 		return record, nil, err
 	}
@@ -253,12 +254,12 @@ func issueOpsSchemaVersionError(version int) error {
 	return fmt.Errorf("unsupported issueops schema_version %d; current is %d", version, model.IssueOpsSchemaVersion)
 }
 
-func validateIssueOpsV1Record(record IssueOpsRecord) error {
+func validateIssueOpsRecord(record IssueOpsRecord) error {
 	if record.SchemaVersion != model.IssueOpsSchemaVersion {
 		return issueOpsSchemaVersionError(record.SchemaVersion)
 	}
 	if record.Execution != nil {
-		return model.ValidateExecutionV1(*record.Execution)
+		return model.ValidateExecution(*record.Execution)
 	}
 	return nil
 }

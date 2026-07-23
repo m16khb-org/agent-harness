@@ -36,7 +36,7 @@ func recordIssueOpsHookDesignForTest(t *testing.T, id string) {
 	}
 }
 
-func activateIssueOpsHookExecutionV1(t *testing.T, id string) core.IssueOpsActor {
+func activateIssueOpsHookExecution(t *testing.T, id string) core.IssueOpsActor {
 	t.Helper()
 	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), id)
 	if err != nil {
@@ -48,20 +48,20 @@ func activateIssueOpsHookExecutionV1(t *testing.T, id string) core.IssueOpsActor
 	}
 	const now = "2026-07-22T00:00:00Z"
 	actor := core.IssueOpsActor{Host: "codex", SessionID: "hookcli-test", AgentID: "test-agent", CWD: record.WorktreePath}
-	receipt, err := issueopscore.ObserveNativeProcessReceiptV1(os.Getpid())
+	receipt, err := issueopscore.ObserveNativeProcessReceipt(os.Getpid())
 	if err != nil {
 		t.Fatal(err)
 	}
-	actor.NativeProcessAncestry = []model.NativeProcessReceiptV1{receipt}
-	record.Execution = &model.ExecutionV1{
+	actor.NativeProcessAncestry = []model.NativeProcessReceipt{receipt}
+	record.Execution = &model.Execution{
 		Mode: model.ExecutionModeDirect,
-		Workspace: model.WorkspaceV1{
+		Workspace: model.Workspace{
 			SourceRoot: record.Repo, Root: record.WorktreePath, Branch: record.Branch,
 			BaseHead: baseHead, Driver: "git", LinkedAt: now,
 		},
-		Lease: model.WriteLeaseV1{
+		Lease: model.WriteLease{
 			Generation: 1, Status: model.LeaseStatusActive, ClaimedAt: now,
-			Holder: &model.NativeActorV1{
+			Holder: &model.NativeActor{
 				Host: actor.Host, SessionID: actor.SessionID, AgentID: actor.AgentID,
 				SessionProcess: &receipt,
 			},

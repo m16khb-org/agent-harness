@@ -42,7 +42,7 @@ func runHookPreToolUse(args []string) error {
 	if nativeHost == "" {
 		nativeHost = string(hookadapter.HostCodex)
 	}
-	processAncestry, _ := issueopscore.ObserveNativeProcessAncestryV1(os.Getpid())
+	processAncestry, _ := issueopscore.ObserveNativeProcessAncestry(os.Getpid())
 	result := core.BuildLifecyclePreToolUseDecision(core.HookToolUseLifecycleRequest{
 		Repo:                  parsedRepo,
 		CWD:                   hookinput.CWDFromHookInput(stdin),

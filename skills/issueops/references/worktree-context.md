@@ -26,7 +26,7 @@ Do not run `git worktree add`, link a different path, or provision dependencies
 from a second workflow. The persisted canonical path, branch, HEAD, base SHA,
 and worktree identity are the contract for both direct and Orca modes.
 
-Load `execution-v1.md` for lease, owner claim, replacement, reconciliation,
+Load `execution.md` for lease, owner claim, replacement, reconciliation,
 remote publication, and completion commands.
 
 ## Edit Target Guard

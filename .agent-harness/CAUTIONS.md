@@ -429,7 +429,7 @@ Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents
 
 아래 날짜별 기록에 등장하는 제거된 IssueOps 명령·필드·상태는 사고 당시
 증거일 뿐 실행 지시가 아니다. 현재 실행 계약은
-`skills/issueops/references/execution-v1.md`와
+`skills/issueops/references/execution.md`와
 `.agent-harness/OPERATIONS.md`를 따른다. 역사적 증거는 삭제하거나 현재 표면으로
 위장해 고쳐 쓰지 않는다.
 

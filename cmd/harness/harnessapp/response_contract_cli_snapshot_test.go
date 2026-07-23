@@ -98,7 +98,7 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 	cliSnapshot["issueops_decision_add"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"decision", "add", "--id", issueopsID, "--title", "Contract decision", "--body", "Chose approach A over B for contract snapshot coverage", "--kind", "architecture", "--rationale", "Approach A keeps snapshots deterministic", "--alternative", "Approach B: live-only verification", "--alternative", "Approach C: manual review", "--affected-artifact", "test", "--affected-artifact", "implementation", "--json"})
 	})
-	executionContractID := seedIssueOpsExecutionV1Contract(t, workspaceDir, "69-cli-execution-contract")
+	executionContractID := seedIssueOpsExecutionContract(t, workspaceDir, "69-cli-execution-contract")
 	replacements[executionContractID] = "$CLI_EXECUTION_ID"
 	cliSnapshot["issueops_execution_status"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"execution", "status", "--id", executionContractID, "--json"})

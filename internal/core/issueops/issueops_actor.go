@@ -12,11 +12,11 @@ import (
 // request identity: a valid session in the source checkout is not authority
 // for the isolated workspace, and vice versa.
 type IssueOpsActor struct {
-	Host                  string                         `json:"host"`
-	SessionID             string                         `json:"session_id"`
-	AgentID               string                         `json:"agent_id,omitempty"`
-	CWD                   string                         `json:"cwd"`
-	NativeProcessAncestry []model.NativeProcessReceiptV1 `json:"-"`
+	Host                  string                       `json:"host"`
+	SessionID             string                       `json:"session_id"`
+	AgentID               string                       `json:"agent_id,omitempty"`
+	CWD                   string                       `json:"cwd"`
+	NativeProcessAncestry []model.NativeProcessReceipt `json:"-"`
 }
 
 // validateExecutionMutation binds every durable IssueOps mutation to the
@@ -26,7 +26,7 @@ func validateExecutionMutation(record IssueOpsRecord, actor *IssueOpsActor) erro
 	if record.Execution == nil {
 		return nil
 	}
-	if err := model.ValidateExecutionV1(*record.Execution); err != nil {
+	if err := model.ValidateExecution(*record.Execution); err != nil {
 		return fmt.Errorf("invalid IssueOps execution v1 record: %w", err)
 	}
 	lease := record.Execution.Lease
@@ -36,12 +36,12 @@ func validateExecutionMutation(record IssueOpsRecord, actor *IssueOpsActor) erro
 	if actor == nil {
 		return fmt.Errorf("IssueOps execution mutation requires the current write lease holder")
 	}
-	candidate := &model.NativeActorV1{
+	candidate := &model.NativeActor{
 		Host:      strings.ToLower(strings.TrimSpace(actor.Host)),
 		SessionID: strings.TrimSpace(actor.SessionID),
 		AgentID:   strings.TrimSpace(actor.AgentID),
 	}
-	if !sameNativeActorIdentityV1(candidate, lease.Holder) {
+	if !sameNativeActorIdentity(candidate, lease.Holder) {
 		return fmt.Errorf("IssueOps execution mutation requires the current write lease holder")
 	}
 	processMatches := false

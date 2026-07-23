@@ -122,7 +122,7 @@ func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	if record.Execution == nil {
 		missing = append(missing, "execution")
 	} else {
-		if err := model.ValidateExecutionV1(*record.Execution); err != nil {
+		if err := model.ValidateExecution(*record.Execution); err != nil {
 			missing = append(missing, "execution_valid")
 		}
 		if !samePath(record.WorktreePath, record.Execution.Workspace.Root) {

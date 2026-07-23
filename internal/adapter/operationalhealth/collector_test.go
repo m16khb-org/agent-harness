@@ -11,25 +11,25 @@ import (
 	"agent-harness/internal/port"
 )
 
-func TestCycleFromRecordProjectsExecutionV1(t *testing.T) {
+func TestCycleFromRecordProjectsExecution(t *testing.T) {
 	record := issueops.IssueOpsRecord{
 		ID: "io-v1", Repo: "/repo", Branch: "69-v1", Phase: model.IssueOpsPhaseImplement,
-		Execution: &model.ExecutionV1{
+		Execution: &model.Execution{
 			Mode:      model.ExecutionModeOrca,
-			Workspace: model.WorkspaceV1{Root: "/repo.worktrees/69-v1"},
-			Lease: model.WriteLeaseV1{
+			Workspace: model.Workspace{Root: "/repo.worktrees/69-v1"},
+			Lease: model.WriteLease{
 				Generation: 3, Status: model.LeaseStatusActive,
-				Holder: &model.NativeActorV1{Host: "codex", SessionID: "session-v1", AgentID: "agent-v1", SessionProcess: &model.NativeProcessReceiptV1{
+				Holder: &model.NativeActor{Host: "codex", SessionID: "session-v1", AgentID: "agent-v1", SessionProcess: &model.NativeProcessReceipt{
 					PID: 123, StartedAt: "2026-07-22T00:00:00Z", Executable: "/opt/../opt/codex",
 				}},
 			},
-			Orca: &model.OrcaBindingV1{
+			Orca: &model.OrcaBinding{
 				RuntimeID: "runtime", RepoID: "repo-id", WorktreeID: "worktree-id", WorktreeInstanceID: "instance-id", OwnerHost: "codex",
 				TaskID: "task-id", DispatchID: "dispatch-id", TerminalPTYID: "pty-id",
 			},
 		},
 	}
-	cycle, problems := cycleFromRecord(record, func(receipt model.NativeProcessReceiptV1) (string, model.NativeProcessReceiptV1, error) {
+	cycle, problems := cycleFromRecord(record, func(receipt model.NativeProcessReceipt) (string, model.NativeProcessReceipt, error) {
 		return corehealth.ProcessStatusLive, receipt, nil
 	})
 	if len(problems) != 0 {
@@ -49,25 +49,25 @@ func TestCycleFromRecordProjectsExecutionV1(t *testing.T) {
 }
 
 func TestCycleFromRecordReportsNativeProcessProbeFailure(t *testing.T) {
-	record := issueops.IssueOpsRecord{ID: "io-v1", Repo: "/repo", Branch: "69-v1", Phase: model.IssueOpsPhaseImplement, Execution: &model.ExecutionV1{
-		Mode: model.ExecutionModeDirect, Workspace: model.WorkspaceV1{Root: "/repo.worktrees/69-v1"},
-		Lease: model.WriteLeaseV1{Generation: 1, Status: model.LeaseStatusActive, Holder: &model.NativeActorV1{
-			Host: "codex", SessionID: "session", SessionProcess: &model.NativeProcessReceiptV1{PID: 123, StartedAt: "2026-07-22T00:00:00Z", Executable: "/opt/codex"},
+	record := issueops.IssueOpsRecord{ID: "io-v1", Repo: "/repo", Branch: "69-v1", Phase: model.IssueOpsPhaseImplement, Execution: &model.Execution{
+		Mode: model.ExecutionModeDirect, Workspace: model.Workspace{Root: "/repo.worktrees/69-v1"},
+		Lease: model.WriteLease{Generation: 1, Status: model.LeaseStatusActive, Holder: &model.NativeActor{
+			Host: "codex", SessionID: "session", SessionProcess: &model.NativeProcessReceipt{PID: 123, StartedAt: "2026-07-22T00:00:00Z", Executable: "/opt/codex"},
 		}},
 	}}
-	cycle, problems := cycleFromRecord(record, func(model.NativeProcessReceiptV1) (string, model.NativeProcessReceiptV1, error) {
-		return corehealth.ProcessStatusUnknown, model.NativeProcessReceiptV1{}, errors.New("probe failed")
+	cycle, problems := cycleFromRecord(record, func(model.NativeProcessReceipt) (string, model.NativeProcessReceipt, error) {
+		return corehealth.ProcessStatusUnknown, model.NativeProcessReceipt{}, errors.New("probe failed")
 	})
 	if cycle.HolderProcessStatus != corehealth.ProcessStatusUnknown || len(problems) != 1 || problems[0].Code != "issueops_process_probe_failed" {
 		t.Fatalf("cycle/problems = %#v / %#v", cycle, problems)
 	}
 }
 
-func TestRecordOwnsOrcaUsesOnlyExecutionV1Binding(t *testing.T) {
+func TestRecordOwnsOrcaUsesOnlyExecutionBinding(t *testing.T) {
 	if recordOwnsOrca(issueops.IssueOpsRecord{}) {
 		t.Fatal("record without execution must not own Orca")
 	}
-	record := issueops.IssueOpsRecord{Execution: &model.ExecutionV1{Mode: model.ExecutionModeOrca}}
+	record := issueops.IssueOpsRecord{Execution: &model.Execution{Mode: model.ExecutionModeOrca}}
 	if !recordOwnsOrca(record) {
 		t.Fatal("Orca execution without a completed binding was not detected")
 	}

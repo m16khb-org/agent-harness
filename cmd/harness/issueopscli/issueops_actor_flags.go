@@ -23,7 +23,7 @@ func addIssueOpsActorFlags(fs *flag.FlagSet) issueOpsActorFlags {
 }
 
 func (flags issueOpsActorFlags) actor() core.IssueOpsActor {
-	ancestry, _ := issueopscore.ObserveNativeProcessAncestryV1(os.Getpid())
+	ancestry, _ := issueopscore.ObserveNativeProcessAncestry(os.Getpid())
 	return core.IssueOpsActor{
 		Host: *flags.host, SessionID: *flags.sessionID, AgentID: *flags.agentID, CWD: *flags.cwd,
 		NativeProcessAncestry: ancestry,

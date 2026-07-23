@@ -162,7 +162,7 @@ func TestRunHookPreToolUseAsksForSessionBoundMirrorFileEdit(t *testing.T) {
 		t.Fatal(err)
 	}
 	cycle := createLinkedIssueOpsWorktree(t, source, "2519-test-quality-comprehensive")
-	activateIssueOpsHookExecutionV1(t, cycle.id)
+	activateIssueOpsHookExecution(t, cycle.id)
 	writeHookFixtureFile(t, cycle.path, "src/a.ts", "export const a = 1;\n")
 	payload, err := json.Marshal(map[string]any{
 		"cwd":       source,
@@ -180,7 +180,7 @@ func TestRunHookPreToolUseAsksForSessionBoundMirrorFileEdit(t *testing.T) {
 	if obj["decision"] != "block" {
 		t.Fatalf("expected source mutation to be blocked outside the active lease worktree, got %+v", obj)
 	}
-	assertIssueOpsV1DenyFields(t, obj["deny"], cycle.id, cycle.path, 1, "write_lease_required")
+	assertIssueOpsDenyFields(t, obj["deny"], cycle.id, cycle.path, 1, "write_lease_required")
 
 	claude := runHookCapture(t, string(payload), func() error {
 		return runHookPreToolUse([]string{"--host", "claude", "--enforce-worktree"})
@@ -189,7 +189,7 @@ func TestRunHookPreToolUseAsksForSessionBoundMirrorFileEdit(t *testing.T) {
 	if !exists {
 		t.Fatalf("Claude block must emit a native decision, got %+v", claude)
 	}
-	assertIssueOpsV1DenyJSON(t, hso["permissionDecisionReason"], cycle.id, cycle.path, 1, "write_lease_required")
+	assertIssueOpsDenyJSON(t, hso["permissionDecisionReason"], cycle.id, cycle.path, 1, "write_lease_required")
 
 	codex := runHookCapture(t, string(payload), func() error {
 		return runHookPreToolUse([]string{"--host", "codex", "--enforce-worktree"})
@@ -197,10 +197,10 @@ func TestRunHookPreToolUseAsksForSessionBoundMirrorFileEdit(t *testing.T) {
 	if codex["decision"] != "block" {
 		t.Fatalf("Codex block must emit a native decision, got %+v", codex)
 	}
-	assertIssueOpsV1DenyJSON(t, codex["reason"], cycle.id, cycle.path, 1, "write_lease_required")
+	assertIssueOpsDenyJSON(t, codex["reason"], cycle.id, cycle.path, 1, "write_lease_required")
 }
 
-func assertIssueOpsV1DenyJSON(t *testing.T, raw any, id, root string, generation int, code string) {
+func assertIssueOpsDenyJSON(t *testing.T, raw any, id, root string, generation int, code string) {
 	t.Helper()
 	encoded, ok := raw.(string)
 	if !ok {
@@ -210,10 +210,10 @@ func assertIssueOpsV1DenyJSON(t *testing.T, raw any, id, root string, generation
 	if err := json.Unmarshal([]byte(encoded), &fields); err != nil {
 		t.Fatalf("structured deny reason is not JSON: %q: %v", encoded, err)
 	}
-	assertIssueOpsV1DenyFields(t, fields, id, root, generation, code)
+	assertIssueOpsDenyFields(t, fields, id, root, generation, code)
 }
 
-func assertIssueOpsV1DenyFields(t *testing.T, raw any, id, root string, generation int, code string) {
+func assertIssueOpsDenyFields(t *testing.T, raw any, id, root string, generation int, code string) {
 	t.Helper()
 	fields, ok := raw.(map[string]any)
 	if !ok {
@@ -235,7 +235,7 @@ func TestRunHookPreToolUseBindsLeaseHolderToLocalProcessAncestry(t *testing.T) {
 		t.Fatal(err)
 	}
 	cycle := createLinkedIssueOpsWorktree(t, source, "69-process-bound")
-	actor := activateIssueOpsHookExecutionV1(t, cycle.id)
+	actor := activateIssueOpsHookExecution(t, cycle.id)
 	path := filepath.Join(cycle.path, "src", "holder.go")
 	payload, err := json.Marshal(map[string]any{
 		"cwd": cycle.path, "host": actor.Host, "session_id": actor.SessionID, "agent_id": actor.AgentID,
@@ -277,7 +277,7 @@ func TestRunHookPreToolUseBlocksFilesystemAliasTargetsFromUnrelatedCWD(t *testin
 		t.Fatal(err)
 	}
 	cycle := createLinkedIssueOpsWorktree(t, source, "69-filesystem-alias")
-	activateIssueOpsHookExecutionV1(t, cycle.id)
+	activateIssueOpsHookExecution(t, cycle.id)
 	sibling := filepath.Join(filepath.Dir(source), filepath.Base(source)+".worktrees", "foreign-alias")
 	gitDir := filepath.Join(source, ".git", "worktrees", "foreign-alias")
 	if err := os.MkdirAll(gitDir, 0o755); err != nil {

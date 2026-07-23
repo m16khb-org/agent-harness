@@ -19,7 +19,7 @@ func TestRunHookPostToolUseInjectsSourceCheckoutMisdirectWarningOnClaude(t *test
 		t.Fatal(err)
 	}
 	cycle := createLinkedIssueOpsWorktree(t, repo, "2519-test-quality-comprehensive")
-	activateIssueOpsHookExecutionV1(t, cycle.id)
+	activateIssueOpsHookExecution(t, cycle.id)
 	target := filepath.Join(repo, "src", "a.ts")
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","tool_name":"apply_patch","tool_input":{"file_path":"`+target+`"}}`, func() error {
 		return runHookPostToolUse([]string{"--host", "claude"})

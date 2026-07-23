@@ -153,7 +153,7 @@ func TestRunHookSessionStartInjectsWorktreeReminder(t *testing.T) {
 		t.Fatal(err)
 	}
 	cycle := createLinkedIssueOpsWorktree(t, repo, "2519-test-quality-comprehensive")
-	activateIssueOpsHookExecutionV1(t, cycle.id)
+	activateIssueOpsHookExecution(t, cycle.id)
 
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","source":"startup"}`, func() error { return runHookSessionStart(nil) })
 	ctx := hookAdditionalContext(obj)

@@ -2,7 +2,7 @@
 
 > Generated: 2026-06-14
 > Scope: Full-stack analysis of IssueOps skill, MCP tools, lifecycle hooks, state management, worktree isolation, and cross-session continuity.
-> Status: **historical audit snapshot; do not use as current IssueOps execution guidance.** The schema-7/8 and handoff surfaces described below were removed by the IssueOps v1 cutover. Current authority is schema 1 in the dedicated v1 namespaces and the `issueops execution` contract documented in `ARCHITECTURE.md`, `OPERATIONS.md`, and `skills/issueops/references/execution-v1.md`.
+> Status: **historical audit snapshot; do not use as current IssueOps execution guidance.** The schema-7/8 and handoff surfaces described below were removed by the IssueOps v1 cutover. Current authority is schema 1 in the dedicated v1 namespaces and the `issueops execution` contract documented in `ARCHITECTURE.md`, `OPERATIONS.md`, and `skills/issueops/references/execution.md`.
 
 ---
 

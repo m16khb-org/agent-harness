@@ -182,7 +182,7 @@ func TestRunRemoteCreatePRObservesAncestryOnlyForConfirmedMutation(t *testing.T)
 	observeCalls := 0
 	providerCalls := 0
 	deps := Deps{
-		ObserveProcessAncestry: func(int) ([]model.NativeProcessReceiptV1, error) {
+		ObserveProcessAncestry: func(int) ([]model.NativeProcessReceipt, error) {
 			observeCalls++
 			return nil, errors.New("ps unavailable")
 		},

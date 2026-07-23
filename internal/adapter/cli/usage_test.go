@@ -35,7 +35,7 @@ func TestUsageIncludesUpdateCommand(t *testing.T) {
 	}
 }
 
-func TestUsageIncludesIssueOpsV1ExecutionActions(t *testing.T) {
+func TestUsageIncludesIssueOpsExecutionActions(t *testing.T) {
 	usage := Usage("test")
 	for _, action := range []string{
 		"execution prepare",

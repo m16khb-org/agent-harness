@@ -355,7 +355,7 @@ type IssueOpsRecord struct {
 	RegressEvents           []IssueOpsRegressEvent              `json:"regress_events,omitempty"`
 	Delegation              *IssueOpsDelegationContract         `json:"delegation,omitempty"`
 	ChildCycles             []IssueOpsChildCycleRef             `json:"child_cycles,omitempty"`
-	Execution               *ExecutionV1                        `json:"execution,omitempty"`
+	Execution               *Execution                          `json:"execution,omitempty"`
 	RoutingTrace            []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
 	AISlopCleanAt           string                              `json:"ai_slop_clean_at,omitempty"`
 	AISlopCleanHead         string                              `json:"ai_slop_clean_head,omitempty"`

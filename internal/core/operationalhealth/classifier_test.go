@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func TestEvaluateCycleAuthorityUsesExecutionV1Lease(t *testing.T) {
+func TestEvaluateCycleAuthorityUsesExecutionLease(t *testing.T) {
 	base := Cycle{
 		ID: "io-v1", Repo: "/repo", Branch: "69-v1", Phase: "implement",
 		ExecutionMode: "direct", LeaseStatus: "active", Generation: 1,
@@ -109,7 +109,7 @@ func TestClassifyRejectsOneNativeSessionOwningTwoActiveCycles(t *testing.T) {
 	}
 }
 
-func TestClassifyAcceptsOrcaV1OptionalInstanceAndPTY(t *testing.T) {
+func TestClassifyAcceptsOrcaOptionalInstanceAndPTY(t *testing.T) {
 	snapshot := healthyDirectSnapshot()
 	cycle := &snapshot.Cycles[0]
 	cycle.ExecutionMode = "orca"
