@@ -489,12 +489,13 @@ func TestExecutionV1RevokingLeaseDeniesOldHolderWithFiniteNextCommand(t *testing
 		Paths: []string{filepath.Join(linked.path, "internal", "late.go")}, EnforceWorktree: true,
 	}
 	got := BuildLifecyclePreToolUseDecision(req)
-	if got.Decision != "block" || !strings.Contains(got.Reason, "--finalize-preview") || !strings.Contains(got.Reason, linked.id) {
+	wantNext := "agent-harness issueops execution status --id " + linked.id + " --json"
+	if got.Decision != "block" || !strings.Contains(got.Reason, wantNext) {
 		t.Fatalf("revoking lease did not return one finite next command: %+v", got)
 	}
 	if got.Deny == nil || got.Deny.Code != "lease_revoking" || got.Deny.LifecycleID != linked.id ||
 		!sameExecutionV1Path(got.Deny.ExpectedRoot, linked.path) || got.Deny.CurrentGeneration != 5 ||
-		!strings.Contains(got.Deny.NextCommand, "--finalize-preview") {
+		got.Deny.NextCommand != wantNext {
 		t.Fatalf("revoking lease did not expose the structured v1 escape contract: %+v", got)
 	}
 
@@ -504,5 +505,52 @@ func TestExecutionV1RevokingLeaseDeniesOldHolderWithFiniteNextCommand(t *testing
 	req.Command = "agent-harness issueops execution replace --id " + linked.id + " --finalize-preview --expected-generation 5 --json"
 	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
 		t.Fatalf("exact finalize-preview must be reachable from a fresh source session: %+v", got)
+	}
+}
+
+func TestExecutionV1ClaimableAndReleasedLeaseGuidanceUsesActorFreeStatus(t *testing.T) {
+	for _, tc := range []struct {
+		status issueopsmodel.LeaseStatusV1
+		code   string
+	}{
+		{status: issueopsmodel.LeaseStatusClaimable, code: "lease_claimable"},
+		{status: issueopsmodel.LeaseStatusReleased, code: "lease_released"},
+	} {
+		t.Run(string(tc.status), func(t *testing.T) {
+			t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+			source := guardRepoWithCycle(t, "68-source-"+string(tc.status), IssueOpsPhasePlan)
+			linked := linkIssueOpsWorktreeForGuardTest(t, source, "69-v1-"+string(tc.status))
+			record, err := ReadIssueOps(IssueOpsStateRoot(), linked.id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			lease := issueopsmodel.WriteLeaseV1{Generation: 7, Status: tc.status}
+			if tc.status == issueopsmodel.LeaseStatusClaimable {
+				lease.ClaimTokenSHA256 = strings.Repeat("a", 64)
+			} else {
+				lease.ReleasedAt = "2026-07-22T00:00:00Z"
+			}
+			record.Execution = &issueopsmodel.ExecutionV1{
+				Mode: issueopsmodel.ExecutionModeDirect,
+				Workspace: issueopsmodel.WorkspaceV1{
+					SourceRoot: source, Root: linked.path, Branch: record.Branch,
+					BaseHead: "0123456789012345678901234567890123456789", Driver: "git", LinkedAt: "2026-07-22T00:00:00Z",
+				},
+				Lease: lease,
+			}
+			if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+				t.Fatal(err)
+			}
+			got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+				Repo: linked.path, CWD: linked.path, SourceCheckout: source,
+				Host: "codex", SessionID: "observer-session", Tool: "apply_patch",
+				Paths: []string{filepath.Join(linked.path, "internal", "late.go")}, EnforceWorktree: true,
+			})
+			wantNext := "agent-harness issueops execution status --id " + linked.id + " --json"
+			if got.Decision != "block" || got.Deny == nil || got.Deny.Code != tc.code ||
+				got.Deny.NextCommand != wantNext || !strings.Contains(got.Reason, wantNext) {
+				t.Fatalf("writerless lease guidance is not actor-free: %+v", got)
+			}
+		})
 	}
 }

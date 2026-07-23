@@ -403,15 +403,14 @@ func executionV1MutationDenyReason(record IssueOpsRecord) (string, *IssueOpsV1De
 	generation := execution.Lease.Generation
 	switch execution.Lease.Status {
 	case issueopsmodel.LeaseStatusRevoking:
-		next := fmt.Sprintf("agent-harness issueops execution replace --id %s --finalize-preview --expected-generation %d --json", record.ID, generation)
-		return fmt.Sprintf("IssueOps execution %s generation %d is revoking and has no writer; run `%s` after the reported process is quiescent", record.ID, generation, next), executionV1Deny(record, "lease_revoking", next)
+		next := executionV1StatusCommand(record.ID)
+		return fmt.Sprintf("IssueOps execution %s generation %d is revoking and has no writer; inspect with `%s`", record.ID, generation, next), executionV1Deny(record, "lease_revoking", next)
 	case issueopsmodel.LeaseStatusClaimable:
-		tokenPath := filepath.Join(root, ".agent-harness", "runtime", "issueops", record.ID, fmt.Sprintf("lease-%d.token", generation))
-		next := fmt.Sprintf("agent-harness issueops execution claim --id %s --generation %d --cwd %s --claim-token-file %s --json", record.ID, generation, root, tokenPath)
-		return fmt.Sprintf("IssueOps execution %s generation %d is claimable; run `%s` from the canonical worktree", record.ID, generation, next), executionV1Deny(record, "lease_claimable", next)
+		next := executionV1StatusCommand(record.ID)
+		return fmt.Sprintf("IssueOps execution %s generation %d is claimable and has no writer; inspect with `%s`", record.ID, generation, next), executionV1Deny(record, "lease_claimable", next)
 	case issueopsmodel.LeaseStatusReleased:
-		next := fmt.Sprintf("agent-harness issueops execution replace --id %s --preview --expected-generation %d --json", record.ID, generation)
-		return fmt.Sprintf("IssueOps execution %s generation %d is released; run `%s`, then reseed the lease", record.ID, generation, next), executionV1Deny(record, "lease_released", next)
+		next := executionV1StatusCommand(record.ID)
+		return fmt.Sprintf("IssueOps execution %s generation %d is released and has no writer; inspect with `%s`", record.ID, generation, next), executionV1Deny(record, "lease_released", next)
 	default:
 		next := executionV1StatusCommand(record.ID)
 		return fmt.Sprintf("mutation requires the current write lease for IssueOps execution %s generation %d and canonical root %s; inspect with `%s`", record.ID, generation, root, next), executionV1Deny(record, "write_lease_required", next)
