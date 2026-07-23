@@ -41,6 +41,7 @@ var issueOpsSubcommands = map[string]func([]string) error{
 	"remote-score": func(args []string) error {
 		return remotecmd.Run(append([]string{"score"}, args...), issueOpsRemoteDeps())
 	},
+	"prune":        runIssueOpsPrune,
 	"pr-readiness": runIssueOpsPRReadiness,
 	"decision":     runIssueOpsDecision,
 	"execution":    runIssueOpsExecution,

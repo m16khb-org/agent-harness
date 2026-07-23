@@ -46,6 +46,7 @@ func issueOpsUsage() {
   agent-harness issueops feedback add --id ID --source TEXT --body TEXT [--classification TEXT] [--json]
   agent-harness issueops feedback mark-issue-updated --id ID [--json]
   agent-harness issueops feedback resolve --id ID --index N --resolution valid-defect|question-answered|noise-dismissed [--json]
+  agent-harness issueops prune [--max-age DURATION] [--confirm] [--json]
   agent-harness issueops pr-readiness --id ID [--strict] [--json]
   agent-harness issueops cleanup status --id ID [--merged] [--json]
   agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]

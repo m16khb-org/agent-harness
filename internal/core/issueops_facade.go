@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/issueops/artifacttemplate"
@@ -206,6 +207,12 @@ func RecordIssueOpsIntentWithActor(stateRoot, id string, req IssueOpsIntentRecor
 
 func RecordIssueOpsPlanPrep(stateRoot, id string, req IssueOpsPlanPrepRequest) (IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsPlanPrep(stateRoot, id, req)
+}
+
+type IssueOpsPruneResult = issueops.IssueOpsPruneResult
+
+func PruneIssueOps(stateRoot string, maxAge time.Duration, confirm bool) (IssueOpsPruneResult, error) {
+	return issueops.PruneIssueOps(stateRoot, maxAge, confirm)
 }
 
 func RecordIssueOpsPlanPrepWithActor(stateRoot, id string, req IssueOpsPlanPrepRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
