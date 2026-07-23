@@ -360,6 +360,7 @@ func TestExecutionAllowsExactOrcaObservationsButNotMutationForObserver(t *testin
 	for _, command := range []string{
 		"orca status --json",
 		"orca terminal list --worktree path:" + worker + " --json",
+		"orca terminal show --terminal term-1 --json",
 		"orca terminal read --terminal term-1 --json",
 		"orca skills get --name issueops --json",
 		"orca orchestration task-list --json",

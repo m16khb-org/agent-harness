@@ -80,13 +80,13 @@ func exactOrcaObservation(command string) bool {
 	case "status":
 		return true
 	case "terminal":
-		return len(tokens) >= 3 && (tokens[2] == "list" || tokens[2] == "read")
+		return len(tokens) >= 3 && (tokens[2] == "list" || tokens[2] == "show" || tokens[2] == "read")
 	case "repo", "worktree":
 		return len(tokens) >= 3 && (tokens[2] == "list" || tokens[2] == "show")
 	case "skills":
 		return len(tokens) >= 3 && (tokens[2] == "get" || tokens[2] == "list")
 	case "orchestration":
-		return len(tokens) >= 3 && (tokens[2] == "task-list" || tokens[2] == "task-show" || tokens[2] == "dispatch-show")
+		return len(tokens) >= 3 && (tokens[2] == "task-list" || tokens[2] == "dispatch-show")
 	default:
 		return false
 	}
