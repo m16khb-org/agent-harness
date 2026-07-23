@@ -95,7 +95,7 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 	if searchrouting.IsShellTool(req.Tool) && !mayMutate {
 		mayMutate = true
 		if unsafeReason == "" {
-			unsafeReason = "unclassified shell command is blocked while IssueOps v1 mutation authority is active; use an exact listed reader or a statically classified foreground mutation command"
+			unsafeReason = "unclassified shell command is blocked while IssueOps mutation authority is active; use an exact listed reader or a statically classified foreground mutation command"
 		}
 	}
 	if !mayMutate {
@@ -104,7 +104,7 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 	targets := worktreeGuardEditTargets(req)
 	records, err := executionGuardRecords(req, targets)
 	if err != nil {
-		return true, "IssueOps v1 authority state could not be validated; mutation is blocked until `agent-harness doctor --repo " + cleanAbsPath(req.Repo) + " --json` succeeds", nil
+		return true, "IssueOps authority state could not be read (often transient state-store contention); retry once, and if it persists run `agent-harness doctor --repo " + cleanAbsPath(req.Repo) + " --json`", nil
 	}
 	if len(records) == 0 {
 		return false, "", nil

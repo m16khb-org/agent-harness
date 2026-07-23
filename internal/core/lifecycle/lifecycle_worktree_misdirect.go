@@ -9,7 +9,7 @@ func SourceCheckoutMisdirectWarning(req HookToolUseLifecycleRequest) string {
 	targets := worktreeGuardEditTargets(req)
 	records, err := executionGuardRecords(req, targets)
 	if err != nil {
-		return "IssueOps v1 authority state를 검증할 수 없어 source-checkout mutation 진단을 완료하지 못했습니다. `agent-harness doctor --repo " + cleanAbsPath(req.Repo) + " --json`을 실행하세요."
+		return "IssueOps authority state를 읽을 수 없어 source-checkout mutation 진단을 완료하지 못했습니다(일시적 state-store 경합일 수 있음). 한 번 재시도하고, 지속되면 `agent-harness doctor --repo " + cleanAbsPath(req.Repo) + " --json`을 실행하세요."
 	}
 	for _, record := range records {
 		if record.Execution == nil {
