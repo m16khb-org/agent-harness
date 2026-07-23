@@ -140,7 +140,7 @@ agent-harness issueops status --id "<start 출력의 id>" --json
 
 공용 skill은 [`skills/`](skills/)가 single source of truth입니다. 설치기는 각 host의 user-level skill 경로에서 이 디렉터리를 참조하게 합니다.
 
-- 계획과 비판: `von-neumann`, `brooks`, `karpathy`
+- 계획과 비판: `von-neumann`, `boehm`, `brooks`, `karpathy`
 - 실행과 검증: `turing`, `hopper`, `dijkstra`, `codd`, `shannon`
 - 조사와 팀 기억: `berners-lee`, `engelbart`
 - Git과 작업 운영: `torvalds`, `atomic-commit-push`, `issueops`, `self-verify`, `self-augment`

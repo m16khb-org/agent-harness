@@ -771,6 +771,13 @@
           "path": "$HARNESS_ROOT/skills/berners-lee"
         },
         {
+          "description": "Use when Codex must analyze Korean planning documents with Kordoc MCP and needs to verify embedded screenshots, small text, tables, OCR uncertainty, contradictions, omissions, or implementation requirements.",
+          "has_openai_yaml": true,
+          "has_skill_md": true,
+          "name": "boehm",
+          "path": "$HARNESS_ROOT/skills/boehm"
+        },
+        {
           "description": "Devil's-advocate design and plan critic. Adversarially stress-tests a plan or design BEFORE implementation: separates essential from accidental complexity, defends conceptual integrity, exposes the second-system effect (gold-plating, speculative generality), and challenges schedule/effort optimism. Named after Fred Brooks — author of The Mythical Man-Month (1975) and No Silver Bullet (1986), manager of IBM System/360, originator of Brooks's Law (\\\"adding manpower to a late software project makes it later\\\"), the second-system effect, and the principle that conceptual integrity is the most important consideration in system design. His core insight: \\\"Plan to throw one away; you will, anyhow.\\\" Use when a plan, design, architecture, or scope decision needs an independent adversarial review before code is written — especially when the author has sunk cost in their own approach, the design feels over-engineered, complexity is growing, or the schedule feels optimistic. MUST be invoked as a sub-agent, never inline.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -4887,6 +4894,7 @@
         "skills": [
           "atomic-commit-push",
           "berners-lee",
+          "boehm",
           "brooks",
           "codd",
           "dijkstra",
@@ -6923,6 +6931,13 @@
                 "path": "$HARNESS_ROOT/skills/berners-lee"
               },
               {
+                "description": "Use when Codex must analyze Korean planning documents with Kordoc MCP and needs to verify embedded screenshots, small text, tables, OCR uncertainty, contradictions, omissions, or implementation requirements.",
+                "has_openai_yaml": true,
+                "has_skill_md": true,
+                "name": "boehm",
+                "path": "$HARNESS_ROOT/skills/boehm"
+              },
+              {
                 "description": "Devil's-advocate design and plan critic. Adversarially stress-tests a plan or design BEFORE implementation: separates essential from accidental complexity, defends conceptual integrity, exposes the second-system effect (gold-plating, speculative generality), and challenges schedule/effort optimism. Named after Fred Brooks — author of The Mythical Man-Month (1975) and No Silver Bullet (1986), manager of IBM System/360, originator of Brooks's Law (\\\"adding manpower to a late software project makes it later\\\"), the second-system effect, and the principle that conceptual integrity is the most important consideration in system design. His core insight: \\\"Plan to throw one away; you will, anyhow.\\\" Use when a plan, design, architecture, or scope decision needs an independent adversarial review before code is written — especially when the author has sunk cost in their own approach, the design feels over-engineered, complexity is growing, or the schedule feels optimistic. MUST be invoked as a sub-agent, never inline.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -8011,6 +8026,7 @@
               "skills": [
                 "atomic-commit-push",
                 "berners-lee",
+                "boehm",
                 "brooks",
                 "codd",
                 "dijkstra",

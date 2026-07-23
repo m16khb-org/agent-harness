@@ -43,15 +43,16 @@ Orca는 설치된 CLI를 `exec.CommandContext`로 호출하는 선택적 IssueOp
 
 ## 2.2 Project skills
 
-agent-harness의 `skills/` 디렉토리에는 **19개** 스킬이 있다(`ls skills/` 기준). 두 부류로
-나뉘며 분해 합계는 **pioneer-namesake 11 + operational 8 = 19**이다. 상세한 namesake 설명은
-`README.md` "Skills & Their Namesakes" 표를 참조한다.
+agent-harness의 `skills/` 디렉토리에는 **21개** 스킬이 있다(`ls skills/` 기준). 두 부류로
+나뉘며 분해 합계는 **pioneer-namesake 12 + operational 9 = 21**이다. 상세한 namesake 설명과
+실제 사용 계약은 각 `skills/<name>/SKILL.md`의 frontmatter와 identity를 참조한다.
 
-**Pioneer-namesake (11)** — 컴퓨터 과학 선구자의 이름을 딴 language/tech agnostic 스킬:
+**Pioneer-namesake (12)** — 컴퓨터 과학 선구자의 이름을 딴 language/tech agnostic 스킬:
 
 | 스킬 | 역할 |
 |------|------|
 | `berners-lee` | Web Research — 다중 소스 출처 인용 조사 |
+| `boehm` | Risk-driven planning-document analysis — Kordoc·OCR·시각 증거 조정 |
 | `brooks` | Devil's-advocate design/plan critic — 구현 전 계획 적대 검증 |
 | `codd` | Database Design & Optimization |
 | `dijkstra` | Algorithm Design & Complexity Optimization |
@@ -63,7 +64,7 @@ agent-harness의 `skills/` 디렉토리에는 **19개** 스킬이 있다(`ls ski
 | `turing` | Evidence-Bound Execution — 증거 기반 목표 실행 |
 | `von-neumann` | Strategic Planning — decision-complete 계획 수립 |
 
-**Operational (8)** — 하네스 운영 workflow 스킬(설계상 harness-specific):
+**Operational (9)** — 하네스 운영 workflow 스킬(설계상 harness-specific):
 
 | 스킬 | 역할 |
 |------|------|
@@ -71,14 +72,15 @@ agent-harness의 `skills/` 디렉토리에는 **19개** 스킬이 있다(`ls ski
 | `draft-wiki-promoter` | draft-wiki 후보 판정·승격 |
 | `gitlab-usecase` | GitLab/glab/IssueOps remote 가이드 |
 | `issueops` | Issue-Driven Work Cycle Router |
+| `kody-review-feedback` | Kody/Kodus GitLab review 검증·답글·reaction |
 | `project-bootstrap` | repo-local AGENTS.md + `.agent-harness/` 문서 생성 |
 | `self-augment` | 자가 개선 루프(95점 게이트) |
 | `self-verify` | 자가 검증 루프(95점 게이트) |
 | `stability-audit` | 설치/안정성 전수조사 |
 
 모든 스킬은 `scripts/install-native.sh`를 통해 사용자 홈(`~/.codex/skills/`, `~/.claude/skills/`)에
-symlink로 설치된다. Pioneer-namesake 11개는 language/tech agnostic을 원칙으로 하고(6f31c55 검증 완료),
-operational 8개는 agent-harness 운영에 특화되어 있다. 스킬 mesh는 hub-and-spoke cross-reference(
+symlink로 설치된다. Pioneer-namesake 12개는 language/tech agnostic을 원칙으로 하고(6f31c55 검증 완료),
+operational 9개는 agent-harness 운영에 특화되어 있다. 스킬 mesh는 hub-and-spoke cross-reference(
 `turing`·`issueops`가 hub)를 형성한다.
 
 ---
