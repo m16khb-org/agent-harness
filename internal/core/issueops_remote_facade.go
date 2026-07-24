@@ -93,3 +93,33 @@ func CloseRemoteChild(req IssueProviderCloseChildRequest, prov IssueProvider) (I
 	}
 	return prov.CloseChild(req)
 }
+
+type IssueProviderCloseIssueResult = port.IssueProviderCloseIssueResult
+type IssueProviderCompletionSection = port.IssueProviderCompletionSection
+type ExecutionIssueSnapshotRequest = port.ExecutionIssueSnapshotRequest
+type ExecutionIssueSnapshot = port.ExecutionIssueSnapshot
+
+const IssueBodyCompletionStartMarker = port.IssueBodyCompletionStartMarker
+
+// ReadRemoteIssueSnapshot readback-reads the linked issue through the provider
+// when it supports snapshot reads; cleanup finish uses this for fail-closed
+// completion/close verification.
+func ReadRemoteIssueSnapshot(ctx context.Context, prov IssueProvider, req ExecutionIssueSnapshotRequest) (ExecutionIssueSnapshot, error) {
+	reader, ok := prov.(port.ExecutionIssueSnapshotReader)
+	if !ok {
+		return ExecutionIssueSnapshot{}, fmt.Errorf("issue provider does not support issue snapshot reads")
+	}
+	return reader.ReadIssueSnapshot(ctx, req)
+}
+
+// ReflectIssueOpsCompletion writes the completion section into the linked
+// issue body. merged must carry caller-verified provider merge readback.
+func ReflectIssueOpsCompletion(stateRoot, id string, merged, confirm bool, prov IssueProvider) (IssueOpsRecord, IssueProviderUpdateIssueBodySectionResult, error) {
+	return issueops.ReflectIssueCompletion(stateRoot, id, merged, confirm, prov)
+}
+
+// CloseIssueOpsRemoteIssue closes the linked parent issue after caller-verified
+// merge evidence, stamping the local completion cache on verified success.
+func CloseIssueOpsRemoteIssue(stateRoot, id string, merged, confirm bool, prov IssueProvider) (IssueOpsRecord, IssueProviderCloseIssueResult, error) {
+	return issueops.CloseIssueOpsRemoteIssue(stateRoot, id, merged, confirm, prov)
+}

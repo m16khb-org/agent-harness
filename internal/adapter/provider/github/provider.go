@@ -564,26 +564,98 @@ func githubAssigneeLogins(assignees []githubAssignee) []string {
 	return out
 }
 
+// gitHubIssueBodyLimit is GitHub's documented issue-body size ceiling. The
+// section budget is computed against the merged body, not the section alone.
+const gitHubIssueBodyLimit = 60000
+
 func (Provider) UpdateIssueBodySection(req port.IssueProviderUpdateIssueBodySectionRequest) (port.IssueProviderUpdateIssueBodySectionResult, error) {
 	issueURL := strings.TrimSpace(req.IssueURL)
 	if issueURL == "" {
 		return port.IssueProviderUpdateIssueBodySectionResult{OK: false}, fmt.Errorf("issue url is required")
 	}
-	section := issuebody.RenderDevilsAdvocateSection(req.Findings, time.Now().UTC().Format(time.RFC3339))
+	ts := time.Now().UTC().Format(time.RFC3339)
 	if !req.Confirm {
+		// preview는 네트워크 없이 payload 유효성만 검증한다.
+		if _, _, _, err := issuebody.RenderSection(req, ts, gitHubIssueBodyLimit); err != nil {
+			return port.IssueProviderUpdateIssueBodySectionResult{OK: false}, err
+		}
 		return port.IssueProviderUpdateIssueBodySectionResult{
 			OK:      true,
-			Preview: fmt.Sprintf("[dry-run] would execute: gh issue view %s --json body; gh issue edit %s --body <merged devil's-advocate section>", issueURL, issueURL),
+			Preview: fmt.Sprintf("[dry-run] would execute: gh issue view %s --json body; gh issue edit %s --body <merged %s section>", issueURL, issueURL, req.Section),
 		}, nil
 	}
 	body, err := readGhIssueBody(req.Repo, issueURL)
 	if err != nil {
 		return port.IssueProviderUpdateIssueBodySectionResult{OK: false}, err
 	}
-	if err := runGhIssueEdit(req.Repo, issueURL, issuebody.MergeIssueBodySection(body, section)); err != nil {
+	start, end, err := issuebody.SectionMarkers(req.Section)
+	if err != nil {
+		return port.IssueProviderUpdateIssueBodySectionResult{OK: false}, err
+	}
+	// 병합 결과가 한도를 지키도록 기존 본문을 반영한 예산으로 렌더한다(C3-F1).
+	section, start, end, err := issuebody.RenderSection(req, ts, issuebody.SectionBudget(body, gitHubIssueBodyLimit, start, end))
+	if err != nil {
+		return port.IssueProviderUpdateIssueBodySectionResult{OK: false}, err
+	}
+	if err := runGhIssueEdit(req.Repo, issueURL, issuebody.MergeManagedSection(body, section, start, end)); err != nil {
 		return port.IssueProviderUpdateIssueBodySectionResult{OK: false}, err
 	}
 	return port.IssueProviderUpdateIssueBodySectionResult{OK: true, URL: issueURL, Updated: true}, nil
+}
+
+// CloseIssue closes the parent/primary issue as completed and verifies the
+// final state by readback. Merge-evidence gating is owned by the core caller.
+func (Provider) CloseIssue(req port.IssueProviderCloseIssueRequest) (port.IssueProviderCloseIssueResult, error) {
+	issueURL := strings.TrimSpace(req.IssueURL)
+	if issueURL == "" {
+		return port.IssueProviderCloseIssueResult{OK: false, Provider: "github"}, fmt.Errorf("issue url is required")
+	}
+	if !req.Confirm {
+		return port.IssueProviderCloseIssueResult{
+			OK: true, Provider: "github", IssueURL: issueURL,
+			Preview: fmt.Sprintf("[dry-run] would execute: gh issue close %s --reason completed; gh issue view %s --json state", issueURL, issueURL),
+		}, nil
+	}
+	state, err := readGhIssueState(req.Repo, issueURL)
+	if err != nil {
+		return port.IssueProviderCloseIssueResult{OK: false, Provider: "github"}, err
+	}
+	if strings.EqualFold(state, "CLOSED") {
+		return port.IssueProviderCloseIssueResult{OK: true, Provider: "github", IssueURL: issueURL, Closed: true, AlreadyClosed: true, State: state}, nil
+	}
+	closeCmd := exec.Command("gh", "issue", "close", issueURL, "--reason", "completed")
+	if req.Repo != "" {
+		closeCmd.Dir = req.Repo
+	}
+	if err := closeCmd.Run(); err != nil {
+		return port.IssueProviderCloseIssueResult{OK: false, Provider: "github"}, fmt.Errorf("gh issue close failed: %s", ghExecStderr(err))
+	}
+	state, err = readGhIssueState(req.Repo, issueURL)
+	if err != nil {
+		return port.IssueProviderCloseIssueResult{OK: false, Provider: "github"}, err
+	}
+	if !strings.EqualFold(state, "CLOSED") {
+		return port.IssueProviderCloseIssueResult{OK: false, Provider: "github", IssueURL: issueURL, State: state}, fmt.Errorf("issue close was not verified: state=%s", state)
+	}
+	return port.IssueProviderCloseIssueResult{OK: true, Provider: "github", IssueURL: issueURL, Closed: true, State: state}, nil
+}
+
+func readGhIssueState(repo, issueURL string) (string, error) {
+	cmd := exec.Command("gh", "issue", "view", issueURL, "--json", "state")
+	if repo != "" {
+		cmd.Dir = repo
+	}
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("gh issue view failed: %s", ghExecStderr(err))
+	}
+	var payload struct {
+		State string `json:"state"`
+	}
+	if err := json.Unmarshal(out, &payload); err != nil {
+		return "", fmt.Errorf("parse gh issue state: %w", err)
+	}
+	return payload.State, nil
 }
 
 func readGhIssueBody(repo, issueURL string) (string, error) {

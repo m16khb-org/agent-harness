@@ -226,10 +226,14 @@ func advanceOrcaIntentReceipt(ctx context.Context, stateRoot string, record Issu
 		if err != nil {
 			return record, expected, err
 		}
+		artifactManifest, err := materializeStagedArtifacts(stateRoot, prepared)
+		if err != nil {
+			return record, expected, err
+		}
 		artifacts, err := buildExecutionOwnerArtifacts(prepared, ExecutionPrepareRequest{
 			ID: prepared.ID, Mode: string(model.ExecutionModeOrca), OwnerHost: expected.Probe.Host,
 			OwnerModel: expected.Probe.Model, OwnerEffort: expected.Probe.Effort,
-		}, snapshot)
+		}, snapshot, artifactManifest)
 		if err != nil {
 			return record, expected, err
 		}

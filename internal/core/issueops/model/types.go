@@ -358,6 +358,9 @@ type IssueOpsRecord struct {
 	Delegation              *IssueOpsDelegationContract         `json:"delegation,omitempty"`
 	ChildCycles             []IssueOpsChildCycleRef             `json:"child_cycles,omitempty"`
 	Execution               *Execution                          `json:"execution,omitempty"`
+	RemoteCompletion        *IssueOpsRemoteCompletion           `json:"remote_completion,omitempty"`
+	CleanupFinishFailure    *IssueOpsCleanupFinishFailure       `json:"cleanup_finish_failure,omitempty"`
+	ImplementationReview    *IssueOpsImplementationReview       `json:"implementation_review,omitempty"`
 	RoutingTrace            []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
 	AISlopCleanAt           string                              `json:"ai_slop_clean_at,omitempty"`
 	AISlopCleanHead         string                              `json:"ai_slop_clean_head,omitempty"`
@@ -367,6 +370,39 @@ type IssueOpsRecord struct {
 	PhaseLedger             IssueOpsPhaseLedger                 `json:"phase_ledger,omitempty"`
 	CreatedAt               string                              `json:"created_at"`
 	UpdatedAt               string                              `json:"updated_at"`
+}
+
+// IssueOpsImplementationReview captures the brooks adversarial verdict on the
+// implementation diff, recorded by the execution owner before publication.
+// reviewer_* 필드는 감사 기록이며 게이트 조건이 아니다 — 하네스는 모델
+// 자기신고를 검증할 수 없으므로 verdict와 실질 내용만 게이트한다(설계 v5 WS5).
+type IssueOpsImplementationReview struct {
+	Verdict  string   `json:"verdict"` // pass | revise | stop
+	Findings []string `json:"findings"`
+	Evidence []string `json:"evidence"`
+	// ReviewedFingerprint는 리뷰가 검토한 변경 집합의 content fingerprint다
+	// (implementation.ChangeFingerprint — 커밋 후에도 안정). 게이트는 현재
+	// fingerprint와 비교해 stale 리뷰를 거부한다(C4b-F1, ai_slop_clean 선례).
+	ReviewedFingerprint string `json:"reviewed_fingerprint"`
+	ReviewerHost        string `json:"reviewer_host,omitempty"`
+	ReviewerModel       string `json:"reviewer_model,omitempty"`
+	ReviewerEffort      string `json:"reviewer_effort,omitempty"`
+	RecordedAt          string `json:"recorded_at"`
+}
+
+// IssueOpsCleanupFinishFailure marks the step where a destructive cleanup
+// apply stopped. finish 재실행이 이어받을 수 있도록 레코드에 남긴다(resumable).
+type IssueOpsCleanupFinishFailure struct {
+	Step    string `json:"step"`
+	Message string `json:"message"`
+	At      string `json:"at"`
+}
+
+// IssueOpsRemoteCompletion caches confirmed remote completion mutations.
+// 원격 readback이 항상 우선 판정이고 이 필드는 보조 캐시다(설계 v5 WS3).
+type IssueOpsRemoteCompletion struct {
+	ReflectedAt   string `json:"reflected_at,omitempty"`
+	IssueClosedAt string `json:"issue_closed_at,omitempty"`
 }
 
 // SkillRoutingEntry records that a pioneer/CS skill fired at a given IssueOps

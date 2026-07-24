@@ -30,3 +30,4 @@ GOOD_PROMPT_EXAMPLE.md
 skills/*/background.local.md
 # Local, non-portable external skill links (e.g. host-specific MCP workflow skills)
 skills/kody-review-feedback
+.agent-harness/artifact/

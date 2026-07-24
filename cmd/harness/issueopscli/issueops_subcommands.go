@@ -3,6 +3,7 @@ package issueopscli
 import (
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 
 	"agent-harness/internal/core"
@@ -353,4 +354,93 @@ func runIssueOpsPRReadiness(args []string) error {
 		fmt.Printf("- missing: %s\n", missing)
 	}
 	return nil
+}
+
+// runIssueOpsArtifact는 코디네이터가 prepare 이전에 plan/spec/turing-loop
+// artifact를 스테이징하는 진입점이다. materialize와 manifest 봉인은
+// execution prepare가 소유한다(설계 v5 WS2).
+func runIssueOpsArtifact(args []string) error {
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
+		fmt.Println("Usage:\n  agent-harness issueops artifact stage --id ID --name plan|spec|turing-loop --file PATH [--json]\n  agent-harness issueops artifact unstage --id ID --name plan|spec|turing-loop [--json]")
+		return nil
+	}
+	if args[0] == "unstage" {
+		fs := flag.NewFlagSet("issueops artifact unstage", flag.ContinueOnError)
+		id := fs.String("id", "", "issueops id")
+		name := fs.String("name", "", "artifact name: plan|spec|turing-loop")
+		jsonOut := fs.Bool("json", false, "print JSON")
+		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
+			return err
+		}
+		record, err := core.UnstageIssueOpsArtifact(core.IssueOpsStateRoot(), *id, *name)
+		return printIssueOpsResult(record, *jsonOut, err)
+	}
+	if args[0] != "stage" {
+		return fmt.Errorf("unknown issueops artifact subcommand %q", args[0])
+	}
+	fs := flag.NewFlagSet("issueops artifact stage", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	name := fs.String("name", "", "artifact name: plan|spec|turing-loop")
+	file := fs.String("file", "", "artifact source file path")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
+		return err
+	}
+	if strings.TrimSpace(*file) == "" {
+		return fmt.Errorf("artifact stage requires --file")
+	}
+	content, err := os.ReadFile(*file)
+	if err != nil {
+		return err
+	}
+	record, err := core.StageIssueOpsArtifact(core.IssueOpsStateRoot(), *id, *name, content)
+	if err != nil {
+		if *jsonOut {
+			if printErr := printIssueOpsErrorJSON(err); printErr != nil {
+				return printErr
+			}
+		}
+		return err
+	}
+	staged, err := core.StagedIssueOpsArtifactNames(core.IssueOpsStateRoot(), record.ID)
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		return printJSON(map[string]any{"ok": true, "id": record.ID, "staged": staged})
+	}
+	fmt.Printf("staged artifacts for %s: %s\n", record.ID, strings.Join(staged, ", "))
+	return nil
+}
+
+// runIssueOpsImplementationReview는 execution owner가 publication 전에
+// planner급 brooks 리뷰 verdict를 기록하는 표면이다. reviewer 필드는 감사
+// 기록이며 게이트는 verdict pass + 실질 내용만 본다(설계 v5 WS5).
+func runIssueOpsImplementationReview(args []string) error {
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
+		fmt.Println("Usage: agent-harness issueops implementation-review record --id ID --verdict pass|revise|stop --finding TEXT... --evidence TEXT... [--reviewer-host codex|claude] [--reviewer-model MODEL] [--reviewer-effort EFFORT] [--json]")
+		return nil
+	}
+	if args[0] != "record" {
+		return fmt.Errorf("unknown issueops implementation-review subcommand %q", args[0])
+	}
+	fs := flag.NewFlagSet("issueops implementation-review record", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	verdict := fs.String("verdict", "", "pass|revise|stop")
+	var findings, evidence repeatedFlag
+	fs.Var(&findings, "finding", "review finding (repeatable)")
+	fs.Var(&evidence, "evidence", "review evidence (repeatable)")
+	reviewerHost := fs.String("reviewer-host", "", "reviewer host (audit only)")
+	reviewerModel := fs.String("reviewer-model", "", "reviewer model (audit only)")
+	reviewerEffort := fs.String("reviewer-effort", "", "reviewer effort (audit only)")
+	addIssueOpsActorFlags(fs)
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
+		return err
+	}
+	record, err := core.RecordIssueOpsImplementationReview(core.IssueOpsStateRoot(), *id, core.IssueOpsImplementationReviewRequest{
+		Verdict: *verdict, Findings: findings, Evidence: evidence,
+		ReviewerHost: *reviewerHost, ReviewerModel: *reviewerModel, ReviewerEffort: *reviewerEffort,
+	})
+	return printIssueOpsResult(record, *jsonOut, err)
 }

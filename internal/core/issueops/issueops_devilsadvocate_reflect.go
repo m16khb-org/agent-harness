@@ -33,6 +33,7 @@ func ReflectDevilsAdvocateFindings(stateRoot, id string, confirm bool, prov port
 	result, err := prov.UpdateIssueBodySection(port.IssueProviderUpdateIssueBodySectionRequest{
 		Repo:     record.Repo,
 		IssueURL: record.IssueURL,
+		Section:  port.IssueBodySectionDevilsAdvocate,
 		Findings: review.Findings,
 		Confirm:  confirm,
 	})

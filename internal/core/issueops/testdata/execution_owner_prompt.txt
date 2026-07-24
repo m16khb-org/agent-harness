@@ -29,6 +29,8 @@ canonical isolated worktree만 구현한다. coordinator의 응답이나 생존�
 - owner_host={OWNER_HOST}
 - owner_model={OWNER_MODEL}
 - owner_effort={OWNER_EFFORT}
+- reviewer_model={REVIEWER_MODEL} (구현 diff brooks 리뷰 전용 planner급 모델)
+- reviewer_effort={REVIEWER_EFFORT}
 - source_root={SOURCE_ROOT}
 - worktree_root={WORKTREE_ROOT}
 - observable_worktree_base={WORKTREE_BASE}
@@ -55,7 +57,9 @@ Required skills:
 {REQUIRED_SKILLS}
 
 3. {PACKET_PATH}의 digest와 issue body digest를 확인하고 acceptance IDs
-   [{ACCEPTANCE_IDS}]를 개인 체크리스트로 만든다.
+   [{ACCEPTANCE_IDS}]를 개인 체크리스트로 만든다. packet의 artifact_manifest에
+   항목이 있으면 {WORKTREE_ROOT}/.agent-harness/artifact/의 plan/spec/turing-loop
+   문서를 digest 검증 후 읽고 구현 계약의 일부로 삼는다.
 4. `{LEASE_STATUS_COMMAND}`를 한 번 실행한다.
 5. claim command가 `none`이면 durable holder가 현재 native session/generation/worktree와 같은지
    확인한다. 아니면 다음 exact command를 한 번 실행하고 token 원문은 출력하지 않는다:
@@ -75,12 +79,17 @@ Verification commands:
 {VERIFICATION_COMMANDS}
 
 publication과 종료:
-1. 모든 acceptance와 verification이 PASS한 뒤 exact governed command로 draft PR/MR을 만든다:
+1. 모든 acceptance와 verification이 PASS한 뒤, planner급 모델 {REVIEWER_MODEL}
+   ({REVIEWER_EFFORT})의 fresh 서브에이전트로 구현 diff에 대한 brooks 적대 리뷰를
+   수행한다. verdict pass와 findings/evidence를 다음 command로 기록하며, pass가
+   기록되기 전에는 commit/push/PR을 진행하지 않는다:
+   {IMPLEMENTATION_REVIEW_COMMAND}
+2. exact governed command로 draft PR/MR을 만든다:
    {REMOTE_CREATE_COMMAND}
-2. PR/MR URL, target branch, label, assignee, Korean body를 API/CLI로 다시 읽어 검증한다.
-3. final HEAD와 {TURING_REPORT_PATH}를 사용해 다음 command를 완성하고 한 번 실행한다:
+3. PR/MR URL, target branch, label, assignee, Korean body를 API/CLI로 다시 읽어 검증한다.
+4. final HEAD와 {TURING_REPORT_PATH}를 사용해 다음 command를 완성하고 한 번 실행한다:
    {COMPLETE_COMMAND}
-4. completion receipt가 lease를 release했는지 status로 한 번 확인한 뒤 종료한다. coordinator에게
+5. completion receipt가 lease를 release했는지 status로 한 번 확인한 뒤 종료한다. coordinator에게
    결과를 받으라고 기다리거나 worktree/branch를 cleanup하지 않는다.
 
 막힘 규칙:

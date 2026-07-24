@@ -157,6 +157,11 @@ func deleteIssueOps(stateRoot, id string) error {
 	if err != nil {
 		return err
 	}
+	// 스테이징 artifact는 레코드와 수명을 같이한다 — 레코드 삭제(prune,
+	// cleanup finish)가 스테이지 blob을 고아로 남기지 않는다(C4a-F1 ②).
+	if err := db.Delete(artifactStageBucket, id); err != nil {
+		return err
+	}
 	return db.Delete(issueOpsBucket, id)
 }
 

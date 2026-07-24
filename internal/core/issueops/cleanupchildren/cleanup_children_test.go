@@ -154,6 +154,10 @@ func (p *fakeCloseChildProvider) UpdateIssueBodySection(port.IssueProviderUpdate
 	return port.IssueProviderUpdateIssueBodySectionResult{}, nil
 }
 
+func (p *fakeCloseChildProvider) CloseIssue(port.IssueProviderCloseIssueRequest) (port.IssueProviderCloseIssueResult, error) {
+	return port.IssueProviderCloseIssueResult{}, nil
+}
+
 func (p *fakeCloseChildProvider) CloseChild(req port.IssueProviderCloseChildRequest) (port.IssueProviderCloseChildResult, error) {
 	p.calls = append(p.calls, req)
 	result := p.result

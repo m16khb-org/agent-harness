@@ -17,7 +17,26 @@ const (
 	// 플래그가 제거되면 ownerAgentCommand(adapter/orca/client.go)의 claude
 	// 분기에서 effort 인자를 조건부 생략으로 되돌린다.
 	IssueOpsImplementerEffortClaude = "high"
+
+	// IssueOps planner(계획/리뷰 세션)의 host별 기본 모델. 하위 세션이 구현
+	// diff의 brooks 적대 리뷰 서브에이전트를 띄울 때 사용한다(설계 v5 WS5).
+	IssueOpsPlannerModelCodex   = "gpt-5.6-sol"
+	IssueOpsPlannerEffortCodex  = "xhigh"
+	IssueOpsPlannerModelClaude  = "claude-fable-5"
+	IssueOpsPlannerEffortClaude = "high"
 )
+
+// IssueOpsPlannerDefaults는 host별 planner(reviewer급) 기본 모델/effort를
+// 반환한다.
+func IssueOpsPlannerDefaults(host string) (model string, effort string, ok bool) {
+	switch host {
+	case "codex":
+		return IssueOpsPlannerModelCodex, IssueOpsPlannerEffortCodex, true
+	case "claude":
+		return IssueOpsPlannerModelClaude, IssueOpsPlannerEffortClaude, true
+	}
+	return "", "", false
+}
 
 // IssueOpsImplementerDefaults는 host별 implementer 기본 모델/effort를 반환한다.
 // 지원하지 않는 host면 ok=false를 반환하고 호출자가 host 검증 에러를 처리한다.

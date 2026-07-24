@@ -9,7 +9,9 @@ import (
 	"agent-harness/internal/adapter/provider"
 	"agent-harness/internal/core/issueops/orphancleanup"
 	corehealth "agent-harness/internal/core/operationalhealth"
+	"agent-harness/internal/port"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"strings"
@@ -19,30 +21,32 @@ import (
 // 라우팅은 단일 map 조회이므로 subcommand 추가는 분기가 많은 switch를 키우는
 // 대신 항목 하나와 핸들러 하나를 더하는 것으로 끝난다.
 var issueOpsSubcommands = map[string]func([]string) error{
-	"start":           runIssueOpsStart,
-	"status":          runIssueOpsStatus,
-	"intent":          runIssueOpsIntent,
-	"plan-prep":       runIssueOpsPlanPrep,
-	"design":          runIssueOpsDesign,
-	"compatibility":   runIssueOpsCompatibility,
-	"devils-advocate": runIssueOpsDevilsAdvocate,
-	"domain-review":   runIssueOpsDomainReview,
-	"ai-slop-clean":   runIssueOpsAISlopClean,
-	"regress":         runIssueOpsRegress,
-	"link-issue":      runIssueOpsLinkIssue,
-	"link-plan":       runIssueOpsLinkPlan,
-	"link-worktree":   runIssueOpsLinkWorktree,
-	"link-child":      runIssueOpsLinkChild,
-	"link-related":    runIssueOpsLinkRelated,
-	"child":           runIssueOpsChild,
-	"branch":          runIssueOpsBranch,
-	"phase":           runIssueOpsPhase,
-	"record-routing":  runIssueOpsRecordRouting,
-	"routing-score":   runIssueOpsRoutingScore,
-	"feedback":        runIssueOpsFeedback,
-	"cleanup":         runIssueOpsCleanup,
-	"benchmark":       func(args []string) error { return benchmarkcmd.Run(args) },
-	"remote":          func(args []string) error { return remotecmd.Run(args, issueOpsRemoteDeps()) },
+	"start":                 runIssueOpsStart,
+	"status":                runIssueOpsStatus,
+	"intent":                runIssueOpsIntent,
+	"plan-prep":             runIssueOpsPlanPrep,
+	"design":                runIssueOpsDesign,
+	"compatibility":         runIssueOpsCompatibility,
+	"devils-advocate":       runIssueOpsDevilsAdvocate,
+	"domain-review":         runIssueOpsDomainReview,
+	"ai-slop-clean":         runIssueOpsAISlopClean,
+	"regress":               runIssueOpsRegress,
+	"link-issue":            runIssueOpsLinkIssue,
+	"link-plan":             runIssueOpsLinkPlan,
+	"link-worktree":         runIssueOpsLinkWorktree,
+	"link-child":            runIssueOpsLinkChild,
+	"link-related":          runIssueOpsLinkRelated,
+	"child":                 runIssueOpsChild,
+	"artifact":              runIssueOpsArtifact,
+	"implementation-review": runIssueOpsImplementationReview,
+	"branch":                runIssueOpsBranch,
+	"phase":                 runIssueOpsPhase,
+	"record-routing":        runIssueOpsRecordRouting,
+	"routing-score":         runIssueOpsRoutingScore,
+	"feedback":              runIssueOpsFeedback,
+	"cleanup":               runIssueOpsCleanup,
+	"benchmark":             func(args []string) error { return benchmarkcmd.Run(args) },
+	"remote":                func(args []string) error { return remotecmd.Run(args, issueOpsRemoteDeps()) },
 	"remote-score": func(args []string) error {
 		return remotecmd.Run(append([]string{"score"}, args...), issueOpsRemoteDeps())
 	},
@@ -98,10 +102,11 @@ func suggestIssueOpsSubcommand(input string) string {
 
 func issueOpsRemoteDeps() remotecmd.Deps {
 	return remotecmd.Deps{
-		PrintJSON:   printJSON,
-		PrintResult: printIssueOpsResult,
-		PrintError:  printIssueOpsErrorJSON,
-		VerifyLive:  verifyIssueOpsRemoteArtifactLive,
+		PrintJSON:    printJSON,
+		PrintResult:  printIssueOpsResult,
+		PrintError:   printIssueOpsErrorJSON,
+		VerifyLive:   verifyIssueOpsRemoteArtifactLive,
+		VerifyMerged: verifyIssueOpsRemoteArtifactMergedLive,
 	}
 }
 
@@ -128,7 +133,25 @@ func runIssueOpsCleanup(args []string) error {
 
 func issueOpsFeedbackCleanupDeps() feedbackcleanup.Deps {
 	orphanDeps := issueOpsOrphanCleanupDeps()
+	orcaClient := orca.New()
 	return feedbackcleanup.Deps{
+		// cleanup finish ② 단계: orca 회수. "이미 없음"은 멱등 계약상 성공.
+		RemoveOrcaWorktree: func(ctx context.Context, worktreeID string) error {
+			err := orcaClient.RemoveWorktree(ctx, worktreeID, false)
+			if err == nil {
+				return nil
+			}
+			var orcaErr *port.OrcaError
+			if errors.As(err, &orcaErr) && strings.Contains(strings.ToLower(orcaErr.Code), "not_found") {
+				return nil
+			}
+			// 폴백: orca CLI 산문 메시지 매칭. 문구/로캘 변경에 취약하므로
+			// 타입드 코드가 항상 우선이다(C2-F5).
+			if strings.Contains(strings.ToLower(err.Error()), "not found") || strings.Contains(strings.ToLower(err.Error()), "unknown worktree") {
+				return nil
+			}
+			return err
+		},
 		ParseFlags:   parseIssueOpsFlags,
 		PrintResult:  printIssueOpsResult,
 		PrintJSON:    printJSON,
