@@ -245,9 +245,21 @@ func assertIssueOpsDenyFields(t *testing.T, raw any, id, root string, generation
 	if !ok {
 		t.Fatalf("structured deny fields missing: %#v", raw)
 	}
-	if len(fields) != 5 || fields["code"] != code || fields["lifecycle_id"] != id || fields["expected_root"] != root ||
+	if fields["code"] != code || fields["lifecycle_id"] != id || fields["expected_root"] != root ||
 		fields["current_generation"] != float64(generation) || !strings.Contains(fields["next_command"].(string), "--id "+id) {
 		t.Fatalf("unexpected structured deny fields: %+v", fields)
+	}
+	// identity 진단 필드는 holder 불일치 deny에서만 나타난다.
+	wantIdentityEcho := code == "holder_identity_mismatch"
+	_, hasAxis := fields["identity_mismatch"]
+	_, hasObserved := fields["observed_actor"]
+	if wantLen := 5; wantIdentityEcho {
+		wantLen = 7
+		if len(fields) != wantLen || !hasAxis || !hasObserved {
+			t.Fatalf("identity mismatch deny must echo the observed actor: %+v", fields)
+		}
+	} else if len(fields) != wantLen || hasAxis || hasObserved {
+		t.Fatalf("non-identity deny must stay compact: %+v", fields)
 	}
 }
 

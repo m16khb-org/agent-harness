@@ -60,5 +60,5 @@ func TestRunHookPreToolUseClassifiesExactOwnedResourceWait(t *testing.T) {
 		})
 	}
 	wrongIdentity := evaluate("wrong-session", command(cycle.path))
-	assertIssueOpsDenyFields(t, wrongIdentity["deny"], cycle.id, cycle.path, 1, "write_lease_required")
+	assertIssueOpsDenyFields(t, wrongIdentity["deny"], cycle.id, cycle.path, 1, "holder_identity_mismatch")
 }
