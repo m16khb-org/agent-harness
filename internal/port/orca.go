@@ -6,11 +6,30 @@ import (
 )
 
 const (
-	OrcaMaxBaselineIDs           = 512
-	IssueOpsCodexModel           = "gpt-5.6-terra"
-	IssueOpsCodexReasoningEffort = "high"
-	IssueOpsClaudeModel          = "opus"
+	OrcaMaxBaselineIDs = 512
+
+	// IssueOps implementer(하위 세션 execution owner)의 host별 기본 모델.
+	// execution prepare가 --owner-model/--owner-effort 미지정 호출에 적용한다.
+	IssueOpsImplementerModelCodex  = "gpt-5.6-terra"
+	IssueOpsImplementerEffortCodex = "xhigh"
+	IssueOpsImplementerModelClaude = "claude-opus-4-8"
+	// claude CLI의 --effort <level> 플래그 실지원을 확인함(2026-07-24).
+	// 플래그가 제거되면 ownerAgentCommand(adapter/orca/client.go)의 claude
+	// 분기에서 effort 인자를 조건부 생략으로 되돌린다.
+	IssueOpsImplementerEffortClaude = "high"
 )
+
+// IssueOpsImplementerDefaults는 host별 implementer 기본 모델/effort를 반환한다.
+// 지원하지 않는 host면 ok=false를 반환하고 호출자가 host 검증 에러를 처리한다.
+func IssueOpsImplementerDefaults(host string) (model string, effort string, ok bool) {
+	switch host {
+	case "codex":
+		return IssueOpsImplementerModelCodex, IssueOpsImplementerEffortCodex, true
+	case "claude":
+		return IssueOpsImplementerModelClaude, IssueOpsImplementerEffortClaude, true
+	}
+	return "", "", false
+}
 
 type OrcaError struct {
 	Code    string `json:"code"`

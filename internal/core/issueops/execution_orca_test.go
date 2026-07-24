@@ -51,6 +51,45 @@ func TestExecutionOrcaPersistsIntentBeforeExternalMutationAndCASReceipt(t *testi
 	}
 }
 
+func TestExecutionOrcaPrepareAppliesHostImplementerDefaults(t *testing.T) {
+	cases := []struct {
+		host       string
+		wantModel  string
+		wantEffort string
+	}{
+		{host: "codex", wantModel: port.IssueOpsImplementerModelCodex, wantEffort: port.IssueOpsImplementerEffortCodex},
+		{host: "claude", wantModel: port.IssueOpsImplementerModelClaude, wantEffort: port.IssueOpsImplementerEffortClaude},
+	}
+	for _, tc := range cases {
+		t.Run(tc.host, func(t *testing.T) {
+			stateRoot, record := executionPrepareRecord(t)
+			fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
+			fake.prepare = func(workspace port.ExecutionWorkspaceRequest, request port.ExecutionOrcaProbeRequest) (port.ExecutionOrcaWorkspaceReceipt, error) {
+				if request.Model != tc.wantModel || request.Effort != tc.wantEffort {
+					t.Fatalf("probe request must carry host implementer defaults: %#v", request)
+				}
+				if err := os.MkdirAll(workspace.Root, 0o755); err != nil {
+					return port.ExecutionOrcaWorkspaceReceipt{}, err
+				}
+				return executionOrcaWorkspaceReceipt(workspace), nil
+			}
+			got, err := PrepareExecution(context.Background(), stateRoot, ExecutionPrepareRequest{
+				ID: record.ID, Mode: "orca", CWD: record.Repo, Confirm: true,
+				Actor: executionActor("codex", "coordinator"), OwnerHost: tc.host,
+			}, ExecutionPrepareDependencies{Orca: fake, ReadIssue: executionIssueSnapshotReader})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Execution == nil || got.Execution.Orca == nil {
+				t.Fatalf("prepare must record Orca binding: %#v", got)
+			}
+			if got.Execution.Orca.OwnerModel != tc.wantModel || got.Execution.Orca.OwnerEffort != tc.wantEffort {
+				t.Fatalf("empty owner model/effort must resolve to host implementer defaults: %#v", got.Execution.Orca)
+			}
+		})
+	}
+}
+
 func TestExecutionGitLabOrcaCapabilityFailsBeforeProbeOrMutation(t *testing.T) {
 	for _, mode := range []string{ExecutionModeAuto, string(model.ExecutionModeOrca)} {
 		for _, confirm := range []bool{false, true} {
