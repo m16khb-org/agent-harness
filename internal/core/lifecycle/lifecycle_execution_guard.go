@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"agent-harness/internal/core/commandparse"
 	issueopscore "agent-harness/internal/core/issueops"
@@ -123,10 +124,11 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 		return false, "", nil
 	}
 	unsafeReason := executionUnsafeMutationReason(req)
+	resourceWaitRoot, exactResourceWait := exactOwnedResourceWait(req.Command)
 	mayMutate := toolUseMayMutateLifecycleFiles(req.Tool, req.Command)
 	if searchrouting.IsShellTool(req.Tool) && !mayMutate {
 		mayMutate = true
-		if unsafeReason == "" {
+		if unsafeReason == "" && !exactIssueOpsOwnerMutation(req.Command) && !exactResourceWait {
 			unsafeReason = "unclassified shell command is blocked while IssueOps mutation authority is active; use an exact listed reader or a statically classified foreground mutation command"
 		}
 	}
@@ -134,11 +136,17 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 		return false, "", nil
 	}
 	targets := executionMutationTargets(req)
+	if exactResourceWait {
+		targets = append(targets, resourceWaitRoot)
+	}
 	records, err := executionGuardRecords(req, targets)
 	if err != nil {
 		return true, "IssueOps authority state could not be read (often transient state-store contention); retry once, and if it persists run `agent-harness doctor --repo " + cleanAbsPath(req.Repo) + " --json`", nil
 	}
 	if len(records) == 0 {
+		if exactResourceWait {
+			return true, "resource wait requires an exact canonical IssueOps worktree owned by the current lifecycle", nil
+		}
 		return false, "", nil
 	}
 	for _, record := range records {
@@ -164,6 +172,89 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 		return true, reason, deny
 	}
 	return false, "", nil
+}
+
+func exactIssueOpsOwnerMutation(commandText string) bool {
+	command, ok := commandparse.ParseExactIssueOpsCommand(commandText)
+	if !ok {
+		return false
+	}
+	switch command.Path {
+	case "link-plan", "compatibility review", "devils-advocate review", "phase",
+		"ai-slop-clean record", "feedback mark-issue-updated", "feedback resolve",
+		"remote create-pr", "remote verify-artifact":
+	default:
+		return false
+	}
+	values, booleans, repeatable, ok := commandparse.IssueOpsCommandSpec(command.Path)
+	if !ok {
+		return false
+	}
+	flags, ok := commandparse.ExactFlags(command, values, booleans, repeatable)
+	if !ok {
+		return false
+	}
+	for _, name := range []string{"--id", "--host", "--session-id", "--cwd"} {
+		value, found := oneFlag(flags, name)
+		if !found || strings.TrimSpace(value) == "" {
+			return false
+		}
+	}
+	return true
+}
+
+func exactOwnedResourceWait(commandText string) (string, bool) {
+	commandText = strings.TrimSpace(commandText)
+	if commandText == "" || commandparse.HasUnquotedControlOperator(commandText) ||
+		commandparse.HasActiveCommandSubstitution(commandText) ||
+		commandparse.HasActiveInputRedirect(commandText) ||
+		commandparse.HasActiveOutputRedirect(commandText) ||
+		commandparse.HasActiveParameterOrTildeExpansion(commandText) ||
+		commandparse.HasActivePathnameExpansion(commandText) ||
+		commandparse.HasActiveShellSpecialQuoting(commandText) ||
+		commandparse.HasActiveZshEqualsExpansion(commandText) {
+		return "", false
+	}
+	tokens := commandparse.SplitCommandTokens(commandText)
+	if len(tokens) < 3 ||
+		(tokens[0] != "agent-harness" && tokens[0] != "bin/agent-harness" && tokens[0] != "./bin/agent-harness") ||
+		tokens[1] != "resource" || tokens[2] != "wait" {
+		return "", false
+	}
+	values := map[string]bool{
+		"--workspace-root": true,
+		"--profile":        true,
+		"--timeout":        true,
+		"--interval":       true,
+		"--progress":       true,
+	}
+	booleans := map[string]bool{"--json": true}
+	flags, ok := commandparse.ExactFlags(
+		commandparse.ExactIssueOpsCommand{Path: "resource wait", Tokens: tokens, Start: 3},
+		values,
+		booleans,
+		map[string]bool{},
+	)
+	if !ok {
+		return "", false
+	}
+	root, rootOK := oneFlag(flags, "--workspace-root")
+	profile, profileOK := oneFlag(flags, "--profile")
+	timeout, timeoutOK := oneFlag(flags, "--timeout")
+	interval, intervalOK := oneFlag(flags, "--interval")
+	progress, progressOK := oneFlag(flags, "--progress")
+	_, jsonOK := flags["--json"]
+	if !rootOK || !filepath.IsAbs(root) || !profileOK || profile != "e2e" ||
+		!timeoutOK || !positiveDuration(timeout) || !intervalOK || !positiveDuration(interval) ||
+		!progressOK || (progress != "none" && progress != "jsonl") || !jsonOK {
+		return "", false
+	}
+	return cleanAbsPath(root), true
+}
+
+func positiveDuration(value string) bool {
+	duration, err := time.ParseDuration(value)
+	return err == nil && duration > 0
 }
 
 func executionMutationTargets(req HookToolUseLifecycleRequest) []string {

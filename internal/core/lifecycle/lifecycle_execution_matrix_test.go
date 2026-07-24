@@ -354,6 +354,76 @@ func TestExecutionTypedClaimRemainsAvailableFromSourceCheckout(t *testing.T) {
 	}
 }
 
+func TestExecutionExactResourceWaitReachesCanonicalHolderFence(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source, record, worker := executionActiveLifecycleRecord(t)
+	command := func(root string) string {
+		return "./bin/agent-harness resource wait --workspace-root " + root +
+			" --profile e2e --timeout 1m --interval 5s --progress jsonl --json"
+	}
+
+	holder := executionRequest(record, worker, "claude", "owner-session", command(worker))
+	holder.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(holder); got.Decision != "allow" {
+		t.Fatalf("exact resource wait in the canonical root must reach the holder fence: %+v", got)
+	}
+
+	for name, root := range map[string]string{
+		"source root":  source,
+		"foreign root": t.TempDir(),
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := holder
+			req.Command = command(root)
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+				t.Fatalf("resource wait for %s must be denied: %+v", name, got)
+			}
+		})
+	}
+
+	for name, commandText := range map[string]string{
+		"other subcommand": "./bin/agent-harness resource inspect --workspace-root " + worker,
+		"shell wrapper":    "sh -c '" + command(worker) + "'",
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := holder
+			req.Command = commandText
+			got := BuildLifecyclePreToolUseDecision(req)
+			if got.Decision != "block" || got.Deny == nil || got.Deny.Code != "unsafe_mutation" {
+				t.Fatalf("%s must remain an unsafe mutation: %+v", name, got)
+			}
+		})
+	}
+
+	wrongIdentity := holder
+	wrongIdentity.SessionID = "wrong-session"
+	got := BuildLifecyclePreToolUseDecision(wrongIdentity)
+	if got.Decision != "block" || got.Deny == nil || got.Deny.Code != "write_lease_required" {
+		t.Fatalf("resource wait from a non-holder must remain behind the write lease: %+v", got)
+	}
+}
+
+func TestExecutionExactLinkPlanReachesCanonicalHolderFence(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	command := "agent-harness issueops link-plan --id " + record.ID +
+		" --plan-path " + filepath.Join(worker, "plan.md") +
+		" --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json"
+
+	holder := executionRequest(record, worker, "claude", "owner-session", command)
+	holder.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(holder); got.Decision != "allow" {
+		t.Fatalf("exact link-plan must preserve the active hook's holder-fence behavior: %+v", got)
+	}
+
+	wrongIdentity := holder
+	wrongIdentity.SessionID = "wrong-session"
+	got := BuildLifecyclePreToolUseDecision(wrongIdentity)
+	if got.Decision != "block" || got.Deny == nil || got.Deny.Code != "write_lease_required" {
+		t.Fatalf("link-plan from a non-holder must remain behind the write lease: %+v", got)
+	}
+}
+
 func TestExecutionAllowsExactOrcaObservationsButNotMutationForObserver(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	_, record, worker := executionActiveLifecycleRecord(t)
