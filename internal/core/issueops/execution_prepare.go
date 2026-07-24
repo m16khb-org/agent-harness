@@ -54,6 +54,16 @@ type ExecutionPrepareResult struct {
 }
 
 func PrepareExecution(ctx context.Context, stateRoot string, req ExecutionPrepareRequest, deps ExecutionPrepareDependencies) (ExecutionPrepareResult, error) {
+	// 기본값은 요청 정규화 단계에서 한 번만 적용한다: 이후의 probe 조립과
+	// intent 드리프트 검사(beginOrcaExecutionIntent)가 같은 값을 보게 된다.
+	if defaultModel, defaultEffort, ok := port.IssueOpsImplementerDefaults(strings.ToLower(strings.TrimSpace(req.OwnerHost))); ok {
+		if strings.TrimSpace(req.OwnerModel) == "" {
+			req.OwnerModel = defaultModel
+		}
+		if strings.TrimSpace(req.OwnerEffort) == "" {
+			req.OwnerEffort = defaultEffort
+		}
+	}
 	if req.Confirm {
 		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
 			return ExecutionPrepareResult{OK: false, ID: req.ID}, err
@@ -255,9 +265,6 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 	}
 	if probeReq.Host != "codex" && probeReq.Host != "claude" {
 		return "", "", probeReq, fmt.Errorf("Orca owner_host must be codex or claude")
-	}
-	if probeReq.Model == "" {
-		return "", "", probeReq, fmt.Errorf("Orca owner_model is required")
 	}
 	if orca == nil {
 		if requested == ExecutionModeAuto {

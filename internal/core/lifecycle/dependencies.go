@@ -211,20 +211,6 @@ func normalizeTargetDocs(docs []string) []string {
 	return docupkeep.NormalizeTargetDocs(docs)
 }
 
-func worktreeGuardTargets(req HookToolUseLifecycleRequest) []string {
-	targets := []string{}
-	base := hookRequestPathBase(req)
-	if base != "" {
-		targets = append(targets, base)
-	}
-	for _, path := range req.Paths {
-		if target := resolveHookTargetPath(base, path); target != "" {
-			targets = append(targets, target)
-		}
-	}
-	return targets
-}
-
 func worktreeGuardEditTargets(req HookToolUseLifecycleRequest) []string {
 	targets := []string{}
 	base := hookRequestPathBase(req)
@@ -259,20 +245,8 @@ func shellCommandWorktreeGuardPaths(repo, command string) []string {
 	return worktreepath.ShellCommandGuardPaths(repo, command)
 }
 
-func issueOpsWorktreePreparationCommand(command string) bool {
-	return worktreepath.IssueOpsPreparationCommand(command)
-}
-
 func gitBranchFromHead(repo string) string {
 	return worktreepath.GitBranchFromHead(repo)
-}
-
-func sourceCheckoutFromWorktree(repo string) string {
-	return worktreepath.SourceCheckout(repo)
-}
-
-func isInsideWorktreesPath(target string) bool {
-	return worktreepath.IsInsideWorktreesPath(target)
 }
 
 func resolveHookTargetPath(repo, path string) string {

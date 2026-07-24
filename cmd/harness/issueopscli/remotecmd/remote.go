@@ -164,7 +164,7 @@ func runRemoteReflectDevilsAdvocate(args []string, deps Deps) error {
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	providerName := firstNonEmptyMain(*providerOverride, resolveRecordProvider(record))
+	providerName := firstNonEmptyMain(*providerOverride, core.ResolveRecordProvider(record))
 	if providerName == "" {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
 		return deps.printErrorResult(*jsonOut, err)
@@ -372,7 +372,7 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	providerName := firstNonEmptyMain(*providerOverride, resolveRecordProvider(record))
+	providerName := firstNonEmptyMain(*providerOverride, core.ResolveRecordProvider(record))
 	if providerName == "" {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
 		return deps.printErrorResult(*jsonOut, err)
@@ -464,7 +464,7 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 	if err := validateCreateChildInputs(*title, labels, assignees); err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	providerName := firstNonEmptyMain(*providerOverride, resolveRecordProvider(record))
+	providerName := firstNonEmptyMain(*providerOverride, core.ResolveRecordProvider(record))
 	if providerName == "" {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
 		return deps.printErrorResult(*jsonOut, err)
@@ -552,7 +552,7 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	providerName := firstNonEmptyMain(*providerOverride, resolveRecordProvider(record))
+	providerName := firstNonEmptyMain(*providerOverride, core.ResolveRecordProvider(record))
 	if providerName == "" {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
 		return deps.printErrorResult(*jsonOut, err)
@@ -822,23 +822,4 @@ func runRemoteSyncGraph(args []string, deps Deps) error {
 	}
 	fmt.Printf("synced: %v links\n", result["link_count"])
 	return nil
-}
-
-func resolveRecordProvider(record core.IssueOpsRecord) string {
-	if record.BranchPrepare != nil && record.BranchPrepare.Provider != "" {
-		return record.BranchPrepare.Provider
-	}
-	if record.RemoteArtifact != nil && record.RemoteArtifact.Provider != "" {
-		return record.RemoteArtifact.Provider
-	}
-	// Fall back to inferring from the issue URL.
-	if record.IssueURL != "" {
-		if strings.Contains(record.IssueURL, "github.com") {
-			return "github"
-		}
-		if strings.Contains(record.IssueURL, "gitlab") {
-			return "gitlab"
-		}
-	}
-	return ""
 }

@@ -3,6 +3,7 @@
 > Generated: 2026-06-14
 > Scope: Full-stack analysis of IssueOps skill, MCP tools, lifecycle hooks, state management, worktree isolation, and cross-session continuity.
 > Status: **historical audit snapshot; do not use as current IssueOps execution guidance.** The schema-7/8 and handoff surfaces described below were removed by the IssueOps v1 cutover. Current authority is schema 1 in the dedicated v1 namespaces and the `issueops execution` contract documented in `ARCHITECTURE.md`, `OPERATIONS.md`, and `skills/issueops/references/execution.md`.
+> Removed-surface note (2026-07-24): `BindIssueOpsSession`/session-binding, `LastHeartbeatAt`/heartbeat, `mcpWorktreeRootBlockReason`, `stalescan`/`issueops cleanup stale`, and per-record JSON+flock state were all deleted by the v1 write-lease cutover (`a875a16`) and the SQLite store migration. Sections 1-3 describe that retired implementation only; the live guard chain is `internal/core/lifecycle/lifecycle_state.go` and the live cleanup surfaces are `issueops cleanup status|close-children|orphan` plus `issueops prune`.
 
 ---
 

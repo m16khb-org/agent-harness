@@ -9,7 +9,13 @@ import (
 )
 
 func issueOpsUsage() {
-	fmt.Fprintf(os.Stderr, `Usage:
+	fmt.Fprint(os.Stderr, issueOpsUsageText())
+}
+
+// issueOpsUsageText는 issueops 서브커맨드 usage 원문을 반환한다. 최상위
+// adapter usage(internal/adapter/cli)와의 라인 단위 일치는 테스트로 고정한다.
+func issueOpsUsageText() string {
+	return `Usage:
   agent-harness issueops start --repo PATH [--branch NAME] [--json]
   agent-harness issueops status --id ID [--json]
   agent-harness issueops intent record --id ID --raw-request TEXT --interpreted-intent TEXT --success-criteria TEXT [--constraint TEXT] [--ambiguity TEXT] [--non-goal TEXT] [--intent-class CLASS] [--json]
@@ -30,9 +36,9 @@ func issueOpsUsage() {
   agent-harness issueops design review --id ID --problem-summary TEXT --proposed-design TEXT --verification TEXT [--refactor-plan TEXT] [--alternative TEXT] [--risk TEXT] [--open-question TEXT] [--approved] [--json]
   agent-harness issueops compatibility review --id ID --backward-compatibility TEXT --side-effect TEXT --rollback-plan TEXT --verification TEXT [--blocker TEXT] [--approved] [--json]
   agent-harness issueops link-plan --id ID --plan-path PATH [--json]
-  agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude --owner-model MODEL [--owner-effort EFFORT] ACTOR_FLAGS [--confirm] [--json]
+  agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude [--owner-model MODEL] [--owner-effort EFFORT] ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops execution status --id ID [--json]
-  agent-harness issueops execution claim --id ID --generation N --claim-token-file PATH ACTOR_FLAGS [--json]
+  agent-harness issueops execution claim --id ID --generation N --claim-token-file PATH [--issue-body-sha256 SHA256 --context-packet-sha256 SHA256] ACTOR_FLAGS [--json]
   agent-harness issueops execution release --id ID --generation N ACTOR_FLAGS [--json]
   agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [fingerprint/reason flags] ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops execution reconcile --id ID (--preview|--confirm) ACTOR_FLAGS [--json]
@@ -53,12 +59,12 @@ func issueOpsUsage() {
   agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]
   agent-harness issueops remote score --input PATH [--judge none|file] [--judge-file PATH] [--json]
   agent-harness issueops remote-score --input PATH [--judge none|file] [--judge-file PATH] [--json]
-  agent-harness issueops remote create-pr --id ID --expected-generation N --title TEXT --head BRANCH --base BRANCH [--body TEXT|--body-file PATH] [--label LABEL]... [--assignee USER]... ACTOR_FLAGS [--confirm] [--json]
+  agent-harness issueops remote create-pr --id ID --expected-generation N --title TEXT --head BRANCH --base BRANCH [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --target-branch BRANCH --label LABEL --assignee USER ACTOR_FLAGS [--json]
   agent-harness issueops benchmark run --fixtures PATH [--judge none|file] [--judge-file PATH] [--json]
   agent-harness issueops benchmark compare --baseline KEY --candidate KEY [--json]
   agent-harness issueops benchmark gate --baseline KEY --candidate KEY --candidate-file PATH [--changed-path PATH]... [--json]
-`)
+`
 }
 
 const issueOpsBranchPrepareUsage = "Usage: agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--remote-branch-url URL] [--link-verified] [--json]"

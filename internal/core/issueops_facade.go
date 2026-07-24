@@ -192,6 +192,10 @@ func IssueOpsStatus(stateRoot, id string) (IssueOpsRecord, error) {
 	return issueops.IssueOpsStatus(stateRoot, id)
 }
 
+func ResolveRecordProvider(record IssueOpsRecord) string {
+	return issueops.ResolveRecordProvider(record)
+}
+
 func ReadIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
 	return issueops.ReadIssueOps(stateRoot, id)
 }
