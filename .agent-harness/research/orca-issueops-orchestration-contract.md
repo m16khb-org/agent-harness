@@ -169,7 +169,7 @@ The new worker claims only when its native session ID, canonical cwd/worktree, i
 - Persist an attempt token before mutation; reconcile partial success instead of replaying blindly.
 - Gate implementation entry on a valid worker claim only for resolved Orca mode. A missing handoff field on legacy records remains inline-compatible.
 - Hooks only read durable state to enforce coordinator-versus-worker mutation ownership and show recovery reminders. They do not spawn agents, wait on Orca, run tests, or advance phases.
-- Use Orca task/dispatch messaging only for this explicitly supervised handoff. Keep existing IssueOps child/workpool contracts for other delegation shapes.
+- Use Orca task/dispatch messaging only for this explicitly supervised handoff. Keep existing IssueOps child contracts for other delegation shapes.
 - Verify the unknown create/dispatch schemas with an isolated disposable-repository criterion test before relying on them in production code.
 
 ## Live-spike resolution

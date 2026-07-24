@@ -117,7 +117,7 @@ func resetLegacyHarnessExecutable(raw, firstArg string) bool {
 		return false
 	}
 	switch strings.ToLower(strings.Trim(firstArg, `"'`)) {
-	case "daemon", "mcp", "worker", "workpool", "hook", "issueops":
+	case "daemon", "mcp", "worker", "hook", "issueops":
 		return true
 	default:
 		return false
@@ -133,7 +133,7 @@ func resetLegacyProcessKind(args []string) string {
 		return "daemon"
 	case "mcp":
 		return "mcp"
-	case "worker", "workpool":
+	case "worker":
 		return "worker"
 	default:
 		return "harness"

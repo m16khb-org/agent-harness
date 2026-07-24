@@ -52,3 +52,15 @@ func TestUsageIncludesIssueOpsExecutionActions(t *testing.T) {
 		}
 	}
 }
+
+func TestUsageOmitsRetiredPoolCommand(t *testing.T) {
+	retiredCommand := strings.Join([]string{"work", "pool"}, "")
+	for _, command := range Commands() {
+		if command.Name == retiredCommand {
+			t.Fatalf("%s command must be removed", retiredCommand)
+		}
+	}
+	if strings.Contains(Usage("test"), "agent-harness "+retiredCommand) {
+		t.Fatalf("usage must not advertise %s", retiredCommand)
+	}
+}

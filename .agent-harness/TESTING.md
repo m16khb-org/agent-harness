@@ -177,7 +177,6 @@ Live 측정은 CI와 기본 self-verify에 포함하지 않는다. `HARNESS_TOOL
 - `cmd/harness/testdata/mcp_resources.golden.json`
 - `cmd/harness/testdata/response_contracts.golden.json`
 - `agent-harness loop start/record-attempt/status/stop` CLI/MCP schema and response-contract entries
-- workpool `--pilot` / `pilot_required` CLI/MCP schema entries and pilot field response compatibility
 - `internal/adapter/testdata/native_install_contract_matrix.golden.json` — Codex/Claude user-global 기본 설치와 project-local opt-in 계약
 - `agent-harness self-verify` 10회 반복 결과
 - `agent-harness self-verify`의 `risk QA tier` step과 `risk_qa` goal score

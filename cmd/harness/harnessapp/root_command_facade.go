@@ -52,7 +52,6 @@ func rootCommand() rootcmd.Command {
 			"update":         runUpdate,
 			"bootstrap":      runBootstrap,
 			"worker":         runWorker,
-			"workpool":       runWorkpool,
 			"loop":           runLoop,
 			"web-fetch":      runWebFetch,
 			"daemon":         runDaemon,

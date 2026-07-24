@@ -76,7 +76,7 @@ flowchart LR
     Host --> Surface
     Surface --> Core["Host-neutral Go core"]
     Core --> Policy["policy · guard · contracts"]
-    Core --> Flow["IssueOps · workpool · loop"]
+    Core --> Flow["IssueOps · loop"]
     Core --> State["SQLite user state · audit"]
     Core --> Worker["policy-gated worker"]
 ```
@@ -96,7 +96,7 @@ The following boundaries are deliberate:
 | Install and refresh | `install`, `update`, `bootstrap` | Refresh the binary, skills, hooks, and MCP wiring |
 | Health and docs | `inspect`, `status`, `doctor`, `docs` | Inspect installation, daemon, state, and project docs |
 | Safety and quality | `policy`, `guard`, `quality`, `verify-work`, `trace`, `contract`, `api-doc` | Check execution policy, change quality, evidence, and public contracts |
-| Workflows | `issueops`, `workpool`, `loop` | Manage durable workflows, bounded task pools, and verify-until-done contracts |
+| Workflows | `issueops`, `loop` | Manage durable workflows and verify-until-done contracts |
 | State and runtime | `state`, `daemon`, `mcp`, `worker` | Manage user state, the MCP backend, and constrained local jobs |
 | Improvement and research | `self-verify`, `self-augment`, `web-fetch` | Verify the harness, record improvements, and fetch public web content resiliently |
 

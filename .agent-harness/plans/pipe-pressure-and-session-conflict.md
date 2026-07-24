@@ -15,7 +15,7 @@
 ### 진단 근거 (요약)
 - 시스템 파이프 fd 14,402개, codex 1개 프로세스가 3,112개 점유 → 신규 파이프 100/100이 512B 버퍼로 강등(실측) → write-then-read 캡처 헬퍼가 512B 초과 JSON에서 데드락 → go test 600s FAIL. 상세: `.agent-harness/CAUTIONS.md` 2026-07-09 파이프 KVA 항목.
 - 표준 수정 패턴 실재: `cmd/harness/harnessapp/response_contract_runners_test.go:66-85` — `io.ReadAll(r)`을 goroutine으로 **fn 실행 전에** 시작해 파이프 버퍼 크기 의존을 제거(6ee897d).
-- 취약 write-then-read 헬퍼 전수(grep `os.Pipe()` + fn 후 `io.ReadAll`): `cmd/harness/{loopcli,workpoolcli,statecli,policycli,projectcli,basiccli,qualitycli,commandstep,issueopscli(2),hookcli(hook_user_prompt, vcsissue/hook_capture, hook_post_tool_use),mcpcli,daemoncli,selfworkflow/{historycompare,candidatescmd},...}` — 고아로 발견된 `.test` 바이너리 목록(statecli/statuscli/workercli/candidatescmd/historycompare/promotecmd/verifycmd/workpoolcli)과 일치.
+- 취약 write-then-read 헬퍼 전수(grep `os.Pipe()` + fn 후 `io.ReadAll`): `cmd/harness/{loopcli,statecli,policycli,projectcli,basiccli,qualitycli,commandstep,issueopscli(2),hookcli(hook_user_prompt, vcsissue/hook_capture, hook_post_tool_use),mcpcli,daemoncli,selfworkflow/{historycompare,candidatescmd},...}` — 고아로 발견된 `.test` 바이너리 목록(statecli/statuscli/workercli/candidatescmd/historycompare/promotecmd/verifycmd)과 일치.
 - 다른 세션이 `cmd/harness/updatecli/update_bootstrap_mcp.go`(+테스트)를 수정 중 — updatecli/mcp proxy 영역은 이 계획의 범위에서 제외한다.
 
 ### Gap Analysis
@@ -123,7 +123,7 @@
 
   **Must NOT do**: production 코드에서 이 패키지 import 금지(테스트 전용 계약을 doc comment로 명시).
   **Recommended Agent**: deep
-  **References**: `cmd/harness/harnessapp/response_contract_runners_test.go:66-85`(정확한 복제 원형), `cmd/harness/workpoolcli/workpool_cli_test.go:130-152`(교체될 대표 취약형)
+  **References**: `cmd/harness/harnessapp/response_contract_runners_test.go:66-85`(정확한 복제 원형)
   **Acceptance Criteria**: `go test ./internal/testsupport -count=1 -timeout 30s` 통과(64KB 케이스 포함)
   **QA**:
   ```
@@ -140,16 +140,16 @@
 
 - [ ] 4. 취약 캡처 헬퍼 전수 교체
 
-  **What to do**: grep 목록의 write-then-read 헬퍼를 `testsupport.CaptureStdout` 호출로 교체. 대상(현 시점 확인분): `cmd/harness/{loopcli,workpoolcli,statecli,policycli(2),projectcli(2),basiccli,qualitycli,commandstep,hookcli(hook_user_prompt/vcsissue/hook_post_tool_use),selfworkflow/{historycompare,candidatescmd},issueopscli(2)}` + 착수 시 `rg -n 'io.ReadAll' $(rg -ln 'os\.Pipe\(\)' --type go)`로 재수집해 신규 발생분 포함. **mcpcli/daemoncli는 착수 시 main tree의 다른 세션 변경과 겹치는지 확인 후, 겹치면 보류 목록으로 이월하고 계획 파일에 기록**. 각 파일은 로컬 헬퍼 함수 삭제 + import 추가의 기계적 diff로 제한. 패키지별 targeted test 즉시 실행.
+  **What to do**: grep 목록의 write-then-read 헬퍼를 `testsupport.CaptureStdout` 호출로 교체. 대상(현 시점 확인분): `cmd/harness/{loopcli,statecli,policycli(2),projectcli(2),basiccli,qualitycli,commandstep,hookcli(hook_user_prompt/vcsissue/hook_post_tool_use),selfworkflow/{historycompare,candidatescmd},issueopscli(2)}` + 착수 시 `rg -n 'io.ReadAll' $(rg -ln 'os\.Pipe\(\)' --type go)`로 재수집해 신규 발생분 포함. **mcpcli/daemoncli는 착수 시 main tree의 다른 세션 변경과 겹치는지 확인 후, 겹치면 보류 목록으로 이월하고 계획 파일에 기록**. 각 파일은 로컬 헬퍼 함수 삭제 + import 추가의 기계적 diff로 제한. 패키지별 targeted test 즉시 실행.
 
   **Must NOT do**: updatecli 제외. harnessapp(이미 수정됨)은 testsupport로 옮기지 않음(동작 동일한 중복이지만 다른 세션 활동 영역 — 이월 항목으로만 기록). assertion 로직 변경 금지.
   **Recommended Agent**: deep (12+ 파일 기계 교체, 패키지별 검증)
   **References**: T3 헬퍼; 취약형 원형 `cmd/harness/loopcli/loop_cli_test.go:88-110`
-  **Acceptance Criteria**: 교체 패키지 각각 `go test <pkg> -count=1 -timeout 120s` 통과; `rg -c 'os\.Pipe\(\)' cmd/harness/loopcli cmd/harness/workpoolcli ...` 교체 대상에서 0
+  **Acceptance Criteria**: 교체 패키지 각각 `go test <pkg> -count=1 -timeout 120s` 통과; `rg -c 'os\.Pipe\(\)' cmd/harness/loopcli ...` 교체 대상에서 0
   **QA**:
   ```
   Scenario: 행 재발 방지 회귀 (happy — 핵심)
-    Channel: bash — go test ./cmd/harness/loopcli ./cmd/harness/workpoolcli -count=1 -timeout 120s
+    Channel: bash — go test ./cmd/harness/loopcli -count=1 -timeout 120s
     Expected: 두 패키지 ok, 120s 내 완료 (교체 전에는 파이프 강등 시 600s 행이던 케이스)
     Evidence: .agent-harness/evidence/pipefix-sweep-core.txt
   Scenario: 잔존 취약 패턴 없음 (failure 감시)

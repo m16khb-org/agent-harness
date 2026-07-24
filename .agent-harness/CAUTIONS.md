@@ -448,12 +448,12 @@ Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents
 
 - Kind: `caution`
 - Source: codex Task 15 project docs update from codex-orchestration implementation plan
-- Summary: IssueOps child/workpool orchestration must preserve single-entity lock boundaries, additive mixed-binary compatibility, and timestamp lease heartbeat semantics.
-- Context: Delegated child cycles and workpool state add orchestration records that can be touched by multiple sessions. The existing store is per-key/per-entity atomic and host-neutral, not a cross-entity transaction manager or process supervisor.
-- Resolution: Use only one entity lock at a time and never call a same-entity with*Lock helper from inside another same-entity lock callback. At the July 7 baseline the non-ownership orchestration fields remained additive under schema v1; issue #16 introduced schema v3 for supervised ownership/stable terminal identity, v4 for sealed mailbox/completion projection, and now v5 for publish/cleanup authority. Verify the active binary, docs, CLI/MCP schema, and daemon readback before trusting mixed-version state. Treat pool liveness as LeaseExpiresAt plus heartbeat, not PID ownership: a worker whose lease is expired or lost must stop and let another claim proceed.
+- Summary: IssueOps child orchestration must preserve single-entity lock boundaries and additive mixed-binary compatibility.
+- Context: Delegated child cycles add orchestration records that can be touched by multiple sessions. The existing store is per-key/per-entity atomic and host-neutral, not a cross-entity transaction manager or process supervisor.
+- Resolution: Use only one entity lock at a time and never call a same-entity with*Lock helper from inside another same-entity lock callback. At the July 7 baseline the non-ownership orchestration fields remained additive under schema v1; issue #16 introduced schema v3 for supervised ownership/stable terminal identity, v4 for sealed mailbox/completion projection, and now v5 for publish/cleanup authority. Verify the active binary, docs, CLI/MCP schema, and daemon readback before trusting mixed-version state.
 - Evidence:
-  - .agent-harness/ARCHITECTURE.md actor model and workpool namespace
-  - .agent-harness/AGENT_WORKFLOW.md pool worker loop and heartbeat contract
+  - .agent-harness/ARCHITECTURE.md actor model
+  - .agent-harness/AGENT_WORKFLOW.md child-cycle contract
   - .agent-harness/CAUTIONS.md existing state and worktree lock cautions
 - Alternatives / rejected options:
   - Nested parent/child/pool locks — rejected because lock ordering is hard to prove and same-entity re-entry can self-deadlock.
@@ -472,25 +472,18 @@ Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents
 ## 2026-07-09 — macOS 파이프 KVA 고갈이 stdout-capture CLI 테스트를 무기한 블록시킨다
 
 - Kind: `caution`
-- Source: b9e293c 감사 중 workpoolcli/loopcli 테스트 600s 행 진단 (goroutine dump + 파이프 용량 실측)
-- Summary: 시스템 전체 파이프 fd가 폭증하면(관측: 14,402개, codex 호스트 1개가 3,112개) xnu의 전역 파이프 버퍼 풀이 고갈되어 **새 파이프가 512바이트 최소 버퍼로 강등**된다(정상 16,384 — 100/100 실측). 이때 "쓰기 완료 후 읽기" 방식의 stdout 캡처 테스트 헬퍼는 512B를 넘는 JSON 출력(예: loop record-attempt 579B, workpool claim 결과)에서 write가 영구 블록되어 go test 타임아웃 FAIL이 된다. 코드 회귀처럼 보이지만 머신 상태 문제다(부모 커밋에서도 동일 재현).
-- Context: 증상은 간헐적이다 — KVA 압력이 변동하며 새 파이프가 16K↔512B를 오간다. 타임아웃/중단된 `go test` 실행을 `pkill -f 'go test'`로 죽이면 `.test` 바이너리가 고아로 살아남아 파이프 압력을 가중시킨다(양성 피드백). 6ee897d가 harnessapp response-contract 캡처는 동시 reader로 고쳤지만, `cmd/harness/workpoolcli`·`cmd/harness/loopcli`의 capture 헬퍼는 아직 write-then-read 패턴이다.
+- Source: b9e293c 감사 중 CLI 테스트 600s 행 진단 (goroutine dump + 파이프 용량 실측)
+- Summary: 시스템 전체 파이프 fd가 폭증하면(관측: 14,402개, codex 호스트 1개가 3,112개) xnu의 전역 파이프 버퍼 풀이 고갈되어 **새 파이프가 512바이트 최소 버퍼로 강등**된다(정상 16,384 — 100/100 실측). 이때 "쓰기 완료 후 읽기" 방식의 stdout 캡처 테스트 헬퍼는 512B를 넘는 JSON 출력(예: loop record-attempt 579B)에서 write가 영구 블록되어 go test 타임아웃 FAIL이 된다. 코드 회귀처럼 보이지만 머신 상태 문제다(부모 커밋에서도 동일 재현).
+- Context: 증상은 간헐적이다 — KVA 압력이 변동하며 새 파이프가 16K↔512B를 오간다. 타임아웃/중단된 `go test` 실행을 `pkill -f 'go test'`로 죽이면 `.test` 바이너리가 고아로 살아남아 파이프 압력을 가중시킨다(양성 피드백). 6ee897d가 harnessapp response-contract 캡처는 동시 reader로 고쳤지만, 일부 CLI capture 헬퍼는 아직 write-then-read 패턴이다.
 - Triage: (1) `ps -axo pid,etime,ppid,command | rg '\.test'`로 고아 테스트 바이너리 확인·제거, (2) `lsof -n | rg -c PIPE`로 총량과 `awk '{print $1,$2}' | sort | uniq -c | sort -rn`으로 최다 점유 프로세스 확인, (3) 신규 파이프에 nonblocking write를 가득 채우는 프로브로 실효 버퍼 크기 측정 — 512B면 KVA 고갈 확정.
 - Resolution: 재발 방지는 완료됐다. stdout/stderr 캡처 테스트는 `internal/testsupport.CaptureStdout`, `CaptureStdoutAndError`, `CaptureStderrAndError`를 사용한다. 이 헬퍼들은 fn 실행 전에 reader goroutine을 시작하므로 파이프 버퍼 크기에 의존하지 않는다. `agent-harness doctor --json`은 `pipe_capacity_bytes`와 `pipe_capacity` 체크를 노출하고 8192B 미만이면 `pipe_capacity_degraded` warning을 낸다. 근본 완화는 여전히 파이프를 누수하는 장수 host 프로세스 재시작이다. `agent-harness mcp cleanup --apply`는 부모가 죽은 고아 프록시만 정리하므로 살아 있는 host의 누수에는 효과가 없다. `go test`를 죽일 때는 `pkill -f 'go test'`가 아니라 `.test` 바이너리까지 함께 정리한다.
-
-## 2026-07-09 — Workpool pilot gates require updated binaries
-
-- Kind: `caution`
-- Source: loop/article gaps 1-2-3 implementation
-- Summary: `pilot_required` is an additive field, so a stale binary can ignore it and claim non-pilot work.
-- Resolution: Update the shared daemon and local CLI together before trusting pilot-first fan-out. Verify with `agent-harness workpool status --pool ID --json` and `agent-harness contract check --json` when mixed sessions may be active.
 
 ## 2026-07-07 — SQLite sqlstore span 규율: active-root chain, per-root 직렬화, fresh start
 
 - Kind: `caution`
 - Source: JSON+flock → sqlite 전면 전환 세션 (사용자 결정: 전체 일괄 전환 + fresh start)
 - Summary: 모든 상태 저장/락은 `internal/core/sqlstore`를 통해야 한다. span은 state root 단위로 직렬화되며, 전달된 context의 active-root chain에 이미 있는 root로 재진입하면 `*NestedSpanError`로 즉시 실패한다. 서로 다른 root는 문서화된 비순환 순서에서만 중첩할 수 있다. 레거시 JSON/lock 파일은 무시된다(마이그레이션 없음).
-- Context: 5개 with*Lock 계열(issueops, session, state, workpool, worker)이 전부 sqlstore span으로 이동했다. 같은 root 재진입과 `A -> B -> A`는 self-deadlock 위험이 있지만, remote-create는 `remote-create-live/<id>` child root에서 main IssueOps root로 이어지는 실제 `A -> B` 순서를 필요로 한다.
+- Context: 4개 with*Lock 계열(issueops, session, state, worker)이 전부 sqlstore span으로 이동했다. 같은 root 재진입과 `A -> B -> A`는 self-deadlock 위험이 있지만, remote-create는 `remote-create-live/<id>` child root에서 main IssueOps root로 이어지는 실제 `A -> B` 순서를 필요로 한다.
 - Resolution: 모든 lock helper는 `WithSpan(ctx, fn)`의 `spanCtx`를 내부 호출에 전달한다. 같은 root나 chain cycle은 금지하고, distinct-root 중첩은 호출부에 순서를 명시한다. 현재 허용된 production 순서는 remote-create child root 다음 main IssueOps root다. multi-entity 작업은 가능한 한 순차 single-span 단계 + read-repair로 유지한다. 새 저장 표면은 파일 I/O가 아니라 sqlstore bucket(Get/Put/List/Delete)으로 추가한다. `harness.db`/`harness.lock.db`와 그 sidecar(-wal/-shm/-journal)는 삭제하지 않는다. 테스트 픽스처는 raw 파일 쓰기 대신 `sqlstore.Open(dir).Put(bucket, id, raw)`로 심는다. 레거시 `<key>.json`/`.lock`/`.state-lock` 파일은 fresh start 정책상 읽지도 지우지도 않는다(doctor는 무시).
 - Evidence:
   - internal/core/sqlstore/span_context_test.go의 same-root, distinct-root, cycle, cancellation 회귀 테스트
@@ -559,7 +552,6 @@ Orca worktree/terminal/task create 또는 dispatch는 프로세스 timeout/error
 - Cleanup에서 terminal close 성공 자체는 spawned PTY 전체 정리 증거가 아니다. Exact worktree removal 뒤 terminal inventory로 각 handle/PTY의 absent 또는 disconnected 상태를 다시 확인한다. Active/cleanup-unapproved state, worker/non-source session, 다른 identity, extra flag, create/send는 계속 차단한다.
 - `orca orchestration send --type` prefilter는 direct `orca orchestration send`의 explicit type만 검사한다. 8개 installed value 밖의 unique type 또는 duplicate type은 record selection 전에 차단하고 enum을 안내한다. type 생략/valid value는 새 권한을 부여하지 않고 기존 policy로 그대로 넘긴다.
 - `orca orchestration check`는 기본이 unread이고 `--all --inject`는 더 많은 history를 주입할 수 있다. repeat-prevention PreToolUse guard는 direct check의 any explicit `--inject`(equals/reordered 포함)를 record lookup 전에 차단한다. read-only JSON envelope의 message array는 `.result.messages`에 있다. top-level `.messages`를 조회하면 오류 없이 빈 결과가 나올 수 있으므로 absence 증거가 아니다. opaque `msg_*` ID를 lexical order/filter에 쓰지 말고 numeric `sequence`와 exact `taskId`/`dispatchId`, sender/recipient direction을 선택한다. Sequence는 selection evidence일 뿐 lease fence가 아니다. exact executable projection은 `skills/issueops/references/orca-handoff.md`만 원본으로 둔다. live terminal handle을 historical mailbox identity로 간주하지 않으며 urgent worker correction은 uniquely persisted handle의 literal-safe source-coordinator guidance만 사용한다. 자동 handle/mailbox 동기화는 issue #17이다.
-- 별도의 legacy-JSON workpool reminder defect는 이 handoff 변경과 무관한 follow-up이다. SQLite workpool 상태를 읽지 못하는 기존 reminder를 이 branch에서 함께 고치거나 handoff recovery와 결합하지 않는다.
 - Explicit nonsecret Orca environment-key allowlist: never dump broad ORCA-prefixed env output or use prefix filtering for identity probes. Allow only explicitly named nonsecret keys such as `ORCA_TERMINAL_HANDLE`, `ORCA_TAB_ID`, `ORCA_PANE_KEY`, and `ORCA_WORKTREE_ID`, and never record secret values in tests, docs, logs, or evidence.
 
 ## Orca correction과 재개 attestation을 interrupt나 transcript 기억으로 처리하지 말 것

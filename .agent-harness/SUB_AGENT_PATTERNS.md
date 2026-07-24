@@ -89,14 +89,12 @@
 - **근거:** Claude Code agent teams, Google ADK Parallel workflow templates.
 - **agent-harness 적용:** 규모가 크고 자연스럽게 분해되는 마이그레이션·audit 작업에만 제한적 사용.
 - **D1 delegated child cycle 적용:** parent issue가 child cycle들을 만든 뒤, main agent가 dependency order와 final acceptance를 소유한다. 각 child dispatch 전에는 `task-fan-out-coordination` 실행 결정을 durable record에 남긴다.
-- **D3 workpool 적용:** 독립 task가 여러 개이고 main agent가 결과를 합칠 수 있을 때만 pool로 fan-out한다. Pool 생성도 `task-fan-out-coordination` 실행 결정이 있어야 하며, worker 수/lease/acceptance boundary를 record에 남긴다.
-- **Pilot-first 원칙:** 예상 task 3개 이상 pool은 `--pilot`로 생성해 대표 task 1건의 submit→accept로 접근법·비용을 검증한 뒤 mass claim을 연다. pilot dropped 시 자동 재지정은 없으며 `workpool close --force --reason`이 탈출구다. pilot accept evidence에는 관측된 소요(시도 횟수, 소요 시간)를 기록한다.
+- **Native fan-out과 child cycle 적용:** 일시적 독립 fan-out은 host-native concurrency로 수행한다. durable delegation은 isolated canonical worktree와 generation-fenced ownership을 가진 IssueOps child cycle로 기록하고 parent가 accept/reject validation을 수행한다.
 
 #### 8. 장시간 백그라운드 작업 (Background Long-Running Work)
 - **설명:** 메인 대화를 차단하지 않고 비동기 실행. 진행상황 체크·취소 가능.
 - **근거:** OpenAI Sandbox Agents, DeepAgents async subagents.
 - **agent-harness 적용:** agent-harness worker system (no-shell lifecycle MVP). draft-wiki worker.
-- **D3 workpool 적용:** long-running pool worker는 `background-long-running-work` 실행 결정을 기록하고 heartbeat/lease로 liveness를 증명한다. Harness는 agent process를 감시하거나 spawn하지 않으며, lease 만료와 submitted result를 durable state로 판단한다.
 
 ### Category D: 다른 권한·모델 필요
 

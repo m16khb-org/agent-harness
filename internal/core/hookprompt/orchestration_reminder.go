@@ -1,14 +1,11 @@
 package hookprompt
 
 import (
-	"encoding/json"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/workpool"
 )
 
 const orchestrationChildReadLimit = 16
@@ -22,11 +19,6 @@ func orchestrationReminderValue(repo string) string {
 	if line := orchestrationChildrenReminder(record); line != "" {
 		lines = append(lines, line)
 	}
-	for _, line := range orchestrationPoolReminders(record) {
-		if line != "" {
-			lines = append(lines, line)
-		}
-	}
 	return strings.Join(lines, "\n")
 }
 
@@ -36,11 +28,6 @@ func StopOrchestrationRelayFacts(repo string) string {
 		return ""
 	}
 	facts := orchestrationChildMissingKeys(record)
-	for _, pool := range linkedActivePoolSummaries(record) {
-		if pool.taskFiles > 0 {
-			facts = append(facts, "pool_incomplete:"+pool.id)
-		}
-	}
 	if len(facts) == 0 {
 		return ""
 	}
@@ -156,85 +143,6 @@ func readBoundChild(id string) (issueops.IssueOpsRecord, bool) {
 		return issueops.IssueOpsRecord{}, false
 	}
 	return child, true
-}
-
-func orchestrationPoolReminders(record issueops.IssueOpsRecord) []string {
-	summaries := linkedActivePoolSummaries(record)
-	lines := make([]string, 0, len(summaries))
-	for _, pool := range summaries {
-		lines = append(lines, "pool "+pool.name+": 0 leased / "+itoa(pool.taskFiles)+" pending / 0 expired - workpool status")
-	}
-	return lines
-}
-
-type orchestrationPoolSummary struct {
-	id        string
-	name      string
-	taskFiles int
-}
-
-func linkedActivePoolSummaries(record issueops.IssueOpsRecord) []orchestrationPoolSummary {
-	entries, err := os.ReadDir(workpool.StateRoot())
-	if err != nil {
-		return nil
-	}
-	summaries := []orchestrationPoolSummary{}
-	for _, entry := range entries {
-		name := entry.Name()
-		if entry.IsDir() || !strings.HasPrefix(name, "wp-") || !strings.HasSuffix(name, ".json") {
-			continue
-		}
-		pool, ok := readPoolManifestOnly(filepath.Join(workpool.StateRoot(), name))
-		if !ok || strings.TrimSpace(pool.ParentCycleID) != record.ID || strings.TrimSpace(pool.Status) == "closed" {
-			continue
-		}
-		displayName := strings.TrimSpace(pool.Name)
-		if displayName == "" {
-			displayName = pool.ID
-		}
-		summaries = append(summaries, orchestrationPoolSummary{
-			id:        pool.ID,
-			name:      displayName,
-			taskFiles: countPoolTaskFiles(pool.ID),
-		})
-	}
-	sort.Slice(summaries, func(i, j int) bool {
-		if summaries[i].name == summaries[j].name {
-			return summaries[i].id < summaries[j].id
-		}
-		return summaries[i].name < summaries[j].name
-	})
-	return summaries
-}
-
-func readPoolManifestOnly(path string) (workpool.WorkPool, bool) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return workpool.WorkPool{}, false
-	}
-	var pool workpool.WorkPool
-	if err := json.Unmarshal(data, &pool); err != nil {
-		return workpool.WorkPool{}, false
-	}
-	if strings.TrimSpace(pool.ID) == "" {
-		return workpool.WorkPool{}, false
-	}
-	return pool, true
-}
-
-func countPoolTaskFiles(poolID string) int {
-	entries, err := os.ReadDir(filepath.Join(workpool.StateRoot(), poolID))
-	if err != nil {
-		return 0
-	}
-	count := 0
-	for _, entry := range entries {
-		name := entry.Name()
-		if !entry.IsDir() && strings.HasPrefix(name, "task-") && strings.HasSuffix(name, ".json") {
-			count++
-		}
-	}
-	return count
 }
 
 func itoa(n int) string {

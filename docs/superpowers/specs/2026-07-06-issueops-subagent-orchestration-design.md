@@ -16,7 +16,7 @@ Cross-cutting gaps found by direct audit (`.agent-harness/ISSUEOPS_AUDIT.md`, re
 
 ## Goal
 
-Add a **delegation graph** (parent/child IssueOps cycles) and a **work pool** (bounded lease-based task queue) to agent-harness as durable, fail-closed, host-neutral coordination state — integrated with the existing phase machine, phase ledger, hooks, and skills — so that the main agent can orchestrate sub-agents across worktrees while the harness guarantees:
+Add a **delegation graph** (parent/child IssueOps cycles) to agent-harness as durable, fail-closed, host-neutral coordination state — integrated with the existing phase machine, phase ledger, hooks, and skills — so that the main agent can orchestrate sub-agents across worktrees while the harness guarantees:
 
 - no lost updates or double-claims under concurrent multi-session access (verified with `-race` and adversarial concurrency tests),
 - fail-closed parent completion (a parent cannot pass `pr` readiness while children are incomplete or unvalidated),
@@ -51,7 +51,6 @@ Three additive state features, one binding extension, hook/skill surfacing, and 
 |---|---------|-----------|----------------|
 | D1 | Delegation graph (parent/child cycles) | `ParentCycleID`, `Delegation`, `ChildCycles` on `IssueOpsRecord` | `issueops child start/status/accept/list` |
 | D2 | Scoped session bindings | per-cycle binding files | `issueops resume --id`, `issueops bind --id` |
-| D3 | Work pool | `internal/core/workpool` (`<state>/workpool/`) | `workpool create/add-task/claim/heartbeat/submit/accept/reject/reap/status/close` |
 | D4 | Hook surfacing | none (read-only) | UserPromptSubmit hint + Stop relay additions |
 | D5 | Skill/doc integration | none | `skills/issueops` sections + references, SUB_AGENT_PATTERNS, AGENT_WORKFLOW, ADR |
 | D6 | Upstream independence | none (removals) | gate/install/update/review/judge decoupling from upstream tools & services |
@@ -166,7 +165,6 @@ Reachability note (verified against the current gates): a parent normally delega
 - **Stale reset preserves the delegation graph.** `resumeOrReset` (`start/start.go:80-133`) rebuilds a reset record from an explicit field allow-list; `Delegation` and `ChildCycles` MUST be added to that allow-list (alongside `IssueURL`/`IssueLinks`/`Decisions` it already preserves). Otherwise a worktree-deleted CHILD would lose `Delegation.ParentCycleID` (orphaned from the read-repair scan) and a reset PARENT would lose `ChildCycles` including validation verdicts. A reset child re-enters at `problem` (not `done`), so it correctly remains `child_incomplete` on the parent.
 - **Parent force-done/force-release with active children is allowed but audited, never silent.** Force paths set `Phase=done` directly (`issueops_force_release.go:38`, `issueops_force_done.go`), bypassing strict PR readiness — they are deliberate human escape hatches and refusing them could deadlock recovery. Instead: the force result and the parent record's force reason capture the list of then-active child cycle ids, and `issueops child status` (read-repair) marks children whose parent is `done` as `parent_closed` so their sub-agent sessions surface the orphan state. The Stop-hook relay names active children when a bound parent is force-closed.
 - **Child-link partial success.** `child start` step 4 (`LinkIssueOpsChild` for `--child-issue-url`) can fail after the child cycle and parent ref were durably created — e.g. `remote.ValidateChildMatchesParent` requires the child issue to live in the SAME provider project as the umbrella issue (cross-project child issues are unsupported). The command then returns the created child with a `child_link_warning` instead of failing the whole operation; the remote link can be retried with the existing `issueops link-child`.
-- **Pools cannot permanently deadlock a parent.** `pool_incomplete` is computed from live pool manifests; an abandoned pool is always resolvable by `workpool close --force --reason ...` (audited), so the parent gate has a human escape hatch with a trail.
 
 ### Depth limit
 
@@ -182,86 +180,6 @@ Design (backward compatible):
 - Add per-cycle **scoped bindings**: `issueops-session-<repoHash>-<cycleID>.json` (cycleID is already filesystem-safe `io-[0-9a-f]{12}`). Written by `LinkIssueOpsWorktree` for delegated children (a cycle with `Delegation != nil` writes a scoped binding INSTEAD of overwriting the primary) and by explicit `issueops bind --id <cycle> --json`. Removed cycle-guarded on done/force paths (same compare-and-delete discipline, under the same per-repo session flock — one flock for all binding files of a repo keeps bind/unbind linearized and avoids a lock-file-per-cycle sprawl).
 - `issueops resume` gains `--id <cycle>`: resolves that cycle directly, returns the same `IssueOpsResumeResult` (+ `export HARNESS_EXPECTED_WORKTREE=` guidance), and with `--bind` writes the scoped (child) or primary (non-delegated) binding.
 - Guard resolution order (lifecycle MCP guard only; hookcli PreToolUse stays env/flag-only by design): env → **branch-matched scoped binding** → branch-matched primary binding → active cycles. Each sub-agent session runs with its own `HARNESS_EXPECTED_WORKTREE` export (per-process env, no cross-talk), so the strong guard works per-worker today; scoped bindings restore context after compaction/restart.
-
-## D3: Work Pool (S2)
-
-New package `internal/core/workpool` + state namespace `<state.StateDir()>/workpool/`.
-
-### State shape
-
-```go
-const WorkPoolCurrentSchemaVersion = 1
-
-type WorkPool struct {
-	OK            bool   `json:"ok"`
-	SchemaVersion int    `json:"schema_version"`
-	ID            string `json:"id"`   // wp-<sha256(repo\0name)[:12]>
-	Repo          string `json:"repo"`
-	Name          string `json:"name"`
-	ParentCycleID string `json:"parent_cycle_id,omitempty"` // umbrella IssueOps cycle
-	Size          int    `json:"size"`            // max concurrent leases, 1..16
-	LeaseTTL      string `json:"lease_ttl"`       // Go duration, default "15m"
-	MaxAttempts   int    `json:"max_attempts"`    // default 2
-	Status        string `json:"status"`          // active | draining | closed
-	CreatedAt     string `json:"created_at"`
-	UpdatedAt     string `json:"updated_at"`
-}
-
-type WorkTask struct {
-	OK                 bool     `json:"ok"`
-	SchemaVersion      int      `json:"schema_version"`
-	ID                 string   `json:"id"`      // task-<seq>-<sha256(title)[:8]>
-	PoolID             string   `json:"pool_id"`
-	Title              string   `json:"title"`
-	Instructions       string   `json:"instructions"`        // redacted on write
-	Scope              []string `json:"scope,omitempty"`      // target paths/globs
-	AcceptanceCriteria []string `json:"acceptance_criteria,omitempty"`
-	Status             string   `json:"status"` // pending | leased | submitted | accepted | rejected | dropped
-	WorkerID           string   `json:"worker_id,omitempty"`
-	LeaseExpiresAt     string   `json:"lease_expires_at,omitempty"`
-	LastHeartbeatAt    string   `json:"last_heartbeat_at,omitempty"`
-	Attempts           int      `json:"attempts"`
-	Branch             string   `json:"branch,omitempty"`
-	WorktreePath       string   `json:"worktree_path,omitempty"`
-	Evidence           []string `json:"evidence,omitempty"`   // worker-submitted verification evidence
-	SubmittedAt        string   `json:"submitted_at,omitempty"`
-	RejectReason       string   `json:"reject_reason,omitempty"`
-	CreatedAt          string   `json:"created_at"`
-	UpdatedAt          string   `json:"updated_at"`
-}
-```
-
-Layout: `<state>/workpool/<pool-id>.json` (manifest), `<state>/workpool/<pool-id>/<task-id>.json` (one file per task), `.lock` siblings following the persistent-inode flock pattern verbatim (`issueops_lock_unix.go` discipline; non-unix in-process fallback mirrors the existing ones).
-
-### Task lifecycle
-
-```
-pending ──claim──▶ leased ──submit──▶ submitted ──accept──▶ accepted (terminal)
-   ▲                 │                     │
-   │            lease expiry          reject (attempts < max)
-   │            (reap)                     │
-   └──────attempts++ ──────────────────────┘
-                └── attempts ≥ max ──▶ dropped (terminal)
-```
-
-- **claim** (`workpool claim --pool <id> --worker <worker-id> --json`): under the **pool lock** (single short critical section): reap expired leases (below), count `leased` tasks; if count ≥ `Size` → refuse with `pool_saturated` (this is the load-control contract); else pick the oldest `pending` task, stamp `leased/WorkerID/LeaseExpiresAt = now+TTL`, and return the task + a rendered delegation prompt (recommended branch name `pool/<pool-name>/<task-id>`, worktree guidance, `export HARNESS_EXPECTED_WORKTREE=` once the worker prepares it, owner-command contract: heartbeat/submit). Claims are pool-lock-serialized; task mutations after claim use the per-task lock only.
-- **heartbeat** (`workpool heartbeat --pool --task --worker --json`): per-task lock; refuse if `WorkerID` mismatch or lease expired (worker learns it lost the lease and must stop); extends `LeaseExpiresAt = now+TTL`.
-- **submit** (`workpool submit --pool --task --worker --evidence ... --branch --worktree --json`): per-task lock; requires live lease + worker match + ≥1 evidence entry; → `submitted`.
-- **accept / reject** (`workpool accept|reject ...` — main-agent commands): per-task lock; `accept` requires ≥1 validation evidence entry recorded with the verdict; `reject --reason` (≥10 chars) requeues (`pending`, attempts++) or drops at `MaxAttempts`.
-- **reap** (`workpool reap --pool --json`, also run inline at the start of every claim/status under the pool lock): `leased` tasks whose lease is expired → `pending`, attempts++ (→ `dropped` at cap). **Expiry boundary is defined as `now >= LeaseExpiresAt`** (the expiry instant itself is expired) and is pinned by boundary tests on both sides. Reaping is timestamp-based (sub-agents are not PIDs the harness tracks); TTL + heartbeat is the liveness contract.
-- **close / draining**: `draining` refuses new claims but allows submit/accept; `close` requires all tasks terminal or `--force` with reason; a pool with zero tasks closes trivially; a `closed` pool refuses ALL task mutations (claim/heartbeat/submit/accept/reject).
-
-### Pool ↔ IssueOps integration
-
-- `workpool create` with `--parent-cycle <id>` requires the same parent preconditions as `child start` step 1 (implement phase, approved reviews, recorded sub-agent plan with slug `task-fan-out-coordination`).
-- Parent strict-PR readiness gains `pool_incomplete:<pool-id>` while a linked pool has non-terminal tasks or `Status != closed`.
-- Pool workers do NOT get IssueOps cycles; the parent cycle owns integration evidence. Worker branches PR into (or are merged by the main agent onto) the parent work branch; `accept` evidence records the verification (tests/diff review) per task.
-
-### Sizing and performance
-
-- `Size` clamped to 1..16 (matches host concurrency reality; Claude Code caps concurrent subagents ≈ min(16, cores−2)). Default 4.
-- Claim cost: O(tasks in pool) directory scan under the pool lock. Budget: ≤ 4096 tasks per pool (explicit cap on `add-task`), scan is one `ReadDir` + per-file decode of only non-terminal tasks (terminal tasks are skipped by a status suffix in the filename? — no: keep filenames stable, decode all; at 4096 files × ~1KB this is single-digit ms and only under claim/status, not on any hook hot path). A Go benchmark pins claim latency at 1000 tasks.
-- Hook hint reads the pool manifest + one `ReadDir` count only (no per-task decode) and only when a pool is linked to a bound/active cycle — hooks stay cheap.
 
 ## D6: Upstream Independence (standalone operation)
 
@@ -288,16 +206,16 @@ Interaction with D1: the delegated child's `worktree_tools` gate (spec above) no
 
 ## D4: Hooks (observe/relay only)
 
-- **UserPromptSubmit** — extend the existing `[agent-harness]` dynamic hints (pattern: `activeWorktreeReminderValue`): when the resolved repo has a bound cycle with children or a linked active pool, add one line each: `children: 2/5 done, 1 unvalidated — issueops child status --parent <id>` and `pool <name>: 3 leased / 4 pending / 1 expired — workpool status`. Deterministic reads, bounded cost (parent record + child refs read-repair capped at N=16 children displayed; pool manifest + dir count).
-- **Stop** — the next-action relay gains deterministic facts: if the bound cycle has `child_incomplete`/`child_unvalidated`/`pool_incomplete` missing keys, the relay names them (it does not judge). This prevents "declared done while children run" without making the hook a workflow actor.
+- **UserPromptSubmit** — extend the existing `[agent-harness]` dynamic hints (pattern: `activeWorktreeReminderValue`): when the resolved repo has a bound cycle with children, add `children: 2/5 done, 1 unvalidated — issueops child status --parent <id>`. Deterministic reads are bounded to the parent record and child refs, with at most N=16 children displayed.
+- **Stop** — the next-action relay gains deterministic child facts: if the bound cycle has `child_incomplete`/`child_unvalidated` missing keys, the relay names them (it does not judge). This prevents "declared done while children run" without making the hook a workflow actor.
 - **PreToolUse** — unchanged. The per-process `HARNESS_EXPECTED_WORKTREE` env guard already gives each sub-agent session its own strong worktree fence; scoped bindings (D2) only improve post-compaction fallback in the lifecycle MCP guard chain.
 
 ## D5: Skills and docs
 
-- `skills/issueops/SKILL.md`: new **Delegated Child Cycles** and **Worker Pool** sections — owner-command map additions (`children_complete` → `issueops child status/accept`, `pool_incomplete` → `workpool status/accept`), delegation preconditions, and the sub-agent prompt contract. Contract strings pinned by extending `issueops_skill_contract_test.go`.
-- New reference `skills/issueops/references/orchestration.md`: the delegation prompt template (child: cycle id, worktree, export line, phase contract, "stop and report on scope drift"; pool worker: claim→prepare worktree→heartbeat→submit loop), validation rubric for `accept`, and the S1/S2 walkthroughs.
-- `.agent-harness/SUB_AGENT_PATTERNS.md`: map D1→patterns #2/#7, D3→#7/#8 with the recorded-execution-decision requirement.
-- `.agent-harness/AGENT_WORKFLOW.md`: resume contract additions (`issueops resume --id`, scoped bindings, pool worker loop).
+- `skills/issueops/SKILL.md`: new **Delegated Child Cycles** section — owner-command map additions (`children_complete` → `issueops child status/accept`), delegation preconditions, and the sub-agent prompt contract. Contract strings pinned by extending `issueops_skill_contract_test.go`.
+- New reference `skills/issueops/references/orchestration.md`: the delegation prompt template (child: cycle id, worktree, export line, phase contract, "stop and report on scope drift"), validation rubric for `accept`, and the child walkthrough.
+- `.agent-harness/SUB_AGENT_PATTERNS.md`: map D1→patterns #2/#7 with the recorded-execution-decision requirement.
+- `.agent-harness/AGENT_WORKFLOW.md`: resume contract additions (`issueops resume --id`, scoped bindings).
 - `.agent-harness/ADR.md`: record the decision (harness-as-coordinator, host-spawns-agents; delegated-artifact profile instead of a phase-machine fork; lease-TTL pool instead of a process-supervising executor) and rejected alternatives (harness-side process spawning — violates worker preconditions; per-child reduced phase enum — forks the machine; single shared pool file — lock contention and lost updates).
 - Golden/contract surfaces: `cmd/harness/testdata/mcp_tools.golden.json`, `response_contracts.golden.json`, `cmd/harness/contractgolden`, usage goldens.
 
@@ -321,13 +239,12 @@ Interaction with D1: the delegated child's `worktree_tools` gate (spec above) no
 
 - At this design's July 6 baseline, the delegation additions were `omitempty` fields under IssueOps schema v1. Issue #16 supersedes the root version with schema v5 for supervised ownership, stable terminal identity, sealed completion authority, and publish/cleanup authority; records without delegation fields and parents without children still preserve the same behavior.
 - The historical mixed-binary risk was that an older writer could drop unknown delegation fields. Current schema-v5 writers instead require v1 to reject v2+, v2 to reject v3, v3 to reject v4, and v4 to reject v5 before rewrite; the single central binary update model remains operationally required.
-- The workpool namespace is separate and remains at `schema_version=1`; its records apply the same fail-closed-on-future-version principle, not the IssueOps root version number.
 - Legacy per-repo session binding keeps working unchanged for the single-cycle workflow.
 
 ## CLI and MCP Surface
 
-New CLI: `issueops child start|status|list|accept|reject|drop`, `issueops bind --id`, `issueops resume --id`, `issueops heartbeat --id` (expose the existing core heartbeat for sub-agent liveness), `workpool create|add-task|claim|heartbeat|submit|accept|reject|reap|status|close`.
-New MCP tools (same daemon, both server identities): `issueops_child_start`, `issueops_child_status`, `issueops_child_accept`, `issueops_child_reject`, `issueops_child_drop`, `issueops_resume` (extended arg `id`), `issueops_heartbeat`, `workpool_create`, `workpool_add_task`, `workpool_claim`, `workpool_heartbeat`, `workpool_submit`, `workpool_accept`, `workpool_reject`, `workpool_status`, `workpool_reap`, `workpool_close`.
+New CLI: `issueops child start|status|list|accept|reject|drop`, `issueops bind --id`, `issueops resume --id`, `issueops heartbeat --id` (expose the existing core heartbeat for sub-agent liveness).
+New MCP tools (same daemon, both server identities): `issueops_child_start`, `issueops_child_status`, `issueops_child_accept`, `issueops_child_reject`, `issueops_child_drop`, `issueops_resume` (extended arg `id`), `issueops_heartbeat`.
 Every readiness missing key maps to exactly one owner command in `issueops status` output (ledger convention).
 
 ## Testing
@@ -339,8 +256,7 @@ Verification commands:
 
 ```bash
 go test ./internal/core/issueops/... -count=1
-go test ./internal/core/workpool/... -count=1
-go test -race ./internal/core/issueops/... ./internal/core/workpool/... -count=1
+go test -race ./internal/core/issueops/... -count=1
 go test ./cmd/harness/... -count=1
 go test ./cmd/harness/... -run Golden -count=1
 go test ./... -count=1

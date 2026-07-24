@@ -111,7 +111,6 @@ The eight production call sites in these seven files migrate in the same change:
 - `internal/core/state/state_lock.go`
 - `internal/core/looprun/lifecycle.go`
 - `internal/core/issueops/session/session.go`
-- `internal/core/workpool/workpool.go` (two call sites)
 - `internal/core/issueops/issueops_lock.go`
 - `internal/core/issueops/issueops_remote_create_claim.go`
 
@@ -223,7 +222,7 @@ The crash-recovery and FD tests may be characterization tests that pass against 
 Focused verification must cover sqlstore plus every migrated production caller:
 
 ```bash
-go test ./internal/core/sqlstore ./internal/core/state ./internal/core/issueops/... ./internal/core/workpool ./internal/core/looprun ./internal/core/worker -count=1
+go test ./internal/core/sqlstore ./internal/core/state ./internal/core/issueops/... ./internal/core/looprun ./internal/core/worker -count=1
 ```
 
 Final verification uses serialized full-suite commands because this repository's broad parallel suite can exceed local memory independently of the changed packages:
@@ -249,7 +248,7 @@ No command may target live user state, overwrite tracked `bin/agent-harness`, or
 - Existing concurrent spans still serialize and enter after release when their context remains active.
 - A killed real holder process releases the lock and an already-waiting contender acquires it within the test deadline.
 - Repeated `Open` of one root preserves handle identity and stable data/span connection counts; OS FD observations are recorded when supported.
-- Existing state, IssueOps, session, workpool, loop, and worker behavior remains green.
+- Existing state, IssueOps, session, loop, and worker behavior remains green.
 - Full tests, race tests, vet, and temporary binary build pass.
 
 ## 13. Rollback

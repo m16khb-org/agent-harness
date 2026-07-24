@@ -99,20 +99,6 @@ Verdict table:
 
 Do not mutate child records from the parent to "fix" them. The child owns its own cycle; the parent owns only the child index and validation verdict. Use `references/orchestration.md` for the child contract prompt, scope-drift stop rule, and validation rubric.
 
-### Worker Pool
-
-Worker pools coordinate repeated, same-shape work units where one parent owns a bounded set of tasks. The harness provides lease bookkeeping; the host agent still creates workers and validates results.
-
-Pool owner loop:
-
-1. Create a pool with `workpool create --repo "$PWD" --name "$POOL" --parent-cycle "$ISSUEOPS_ID" --json`.
-2. Add task contracts with `workpool add-task --pool "$POOL_ID" --title "$TITLE" --instructions "$INSTRUCTIONS" --acceptance "$CRITERION" --json`.
-3. Workers claim and heartbeat: `workpool claim --pool "$POOL_ID" --worker "$WORKER_ID" --json`, then `workpool heartbeat --pool "$POOL_ID" --task "$TASK_ID" --worker "$WORKER_ID" --json`.
-4. Workers submit evidence: `workpool submit --pool "$POOL_ID" --task "$TASK_ID" --worker "$WORKER_ID" --evidence "$EVIDENCE" --branch "$BRANCH" --worktree "$WORKTREE" --json`.
-5. The main agent validates with `workpool accept --pool "$POOL_ID" --task "$TASK_ID" --evidence "$EVIDENCE" --json` or `workpool reject --pool "$POOL_ID" --task "$TASK_ID" --reason "$REASON" --json`.
-
-Pool tasks must include a small contract, expected evidence, and a stop rule for scope drift. Workers renew only their workpool task lease with `workpool heartbeat`; the parent execution lease is fenced by native process identity and generation.
-
 ### Large Issue Breakdown Gate
 
 Run this gate after the remote Issue Contract exists and before entering the IssueOps `plan` phase.
@@ -292,7 +278,7 @@ Load these files only when the phase applies:
 - `references/evidence-contract.md`: portable domain contract, API documentation, live evidence, review accountability, and completion hygiene rules.
 - `references/worktree-context.md`: branch/worktree contract, local config symlink rules, context routing.
 - `references/execution.md`: direct/Orca mode selection, sealed owner claim, generation lease, replacement, reconciliation, publication, and completion.
-- `references/orchestration.md`: delegated child cycle and workpool prompt templates, S1/S2 walkthroughs, scope-drift stop rule, validation rubric.
+- `references/orchestration.md`: delegated child-cycle prompt template, scope-drift stop rule, and validation rubric.
 - `references/ai-slop-clean.md`: PR/MR-prep cleanup prompt for removing lazy agent residue while preserving behavior. Run **`shannon`** SNR measurement before and after.
 - `references/review-feedback.md`: worker prompt requirements, bounded subagent review rules, remote review feedback replies and thread resolution.
 - `references/cleanup-state.md`: post-merge cleanup, state commands, benchmark commands, stop conditions.
@@ -365,7 +351,6 @@ When an IssueOps command reports a missing gate, do not guess a new hidden flag.
 - `child_incomplete` | `issueops child status`: inspect child phase, heartbeat age, worktree, and latest evidence; continue or recover the child before parent PR readiness.
 - `child_unvalidated` | `issueops child accept`: validate the done child with evidence, or reject/drop it with a reason when the result is not acceptable.
 - `child_rejected_unresolved` | `issueops child accept` or `issueops child drop`: resolve a rejected child by accepting corrected evidence or dropping it from the parent gate with an auditable reason.
-- `pool_incomplete` | `workpool status`: inspect pool task counts and submitted evidence; accept/reject/close tasks before parent PR readiness.
 - `children_active` | `issueops child status`: active children prevent parent regression/cleanup shortcuts; inspect children and stop at the owner decision boundary.
 
 Approved design reviews require `--refactor-plan`, at least one `--alternative`, at least one `--risk`, no `--open-question`, and at least one design-review evidence verification item. `design_review_evidence` is not a separate CLI flag, MCP field, or decision record. Put it in `--verification`, for example:
@@ -399,9 +384,7 @@ The IssueOps skill prose uses vivid domain nouns — phase names, decision verbs
 | `intent` (contract) | **problem-phase ledger artifact** | `issueops intent record` |
 | `regress` (for replan) | **feedback action** | `issueops regress` |
 | `delegated child` | **parent-owned sub-agent cycle reference** | `issueops child start/status/accept/reject/drop` |
-| `worker pool` | **leased fan-out task queue** | `workpool create/add-task/claim/submit/accept/status/close` |
 | `child validation` | **parent verdict over child evidence** | `issueops child accept` or `issueops child reject` |
-| `pool validation` | **main-agent verdict over submitted task evidence** | `workpool accept` or `workpool reject` |
 
 ## Quality Upgrade Gates
 

@@ -1,11 +1,6 @@
 package harnessapp
 
-import (
-	"encoding/json"
-	"testing"
-
-	"agent-harness/cmd/harness/harnessapp/responsecontract"
-)
+import "testing"
 
 func buildMCPResponseContractSnapshot(t *testing.T, replacements map[string]string, workspaceDir, gitRepoDir string) map[string]any {
 	t.Helper()
@@ -39,38 +34,6 @@ func buildMCPResponseContractSnapshot(t *testing.T, replacements map[string]stri
 		"workspace_root": gitRepoDir,
 		"cwd":            gitRepoDir,
 		"argv":           []string{"git", "status", "--short"},
-	})
-	workpoolMCPCreateRaw := runMCPToolContractRaw(t, "workpool_create", map[string]any{
-		"repo": workspaceDir, "name": "contract mcp pool", "size": 2, "lease_ttl": "1h",
-	})
-	var workpoolMCPCreateText map[string]any
-	if text, ok := workpoolMCPCreateRaw["content"].([]any)[0].(map[string]any)["text"].(string); !ok {
-		t.Fatalf("MCP workpool create missing text: %#v", workpoolMCPCreateRaw)
-	} else if err := json.Unmarshal([]byte(text), &workpoolMCPCreateText); err != nil {
-		t.Fatalf("unmarshal MCP workpool create text: %v\n%s", err, text)
-	}
-	workpoolMCPID, ok := workpoolMCPCreateText["id"].(string)
-	if !ok || workpoolMCPID == "" {
-		t.Fatalf("MCP workpool create missing id: %#v", workpoolMCPCreateText)
-	}
-	replacements[workpoolMCPID] = "$MCP_WORKPOOL_ID"
-	mcpSnapshot["workpool_create"] = responsecontract.NormalizeMCPTextJSON(responsecontract.NormalizeContractValue(workpoolMCPCreateRaw, replacements), replacements)
-	workpoolMCPTaskRaw := runMCPToolContractRaw(t, "workpool_add_task", map[string]any{
-		"pool": workpoolMCPID, "title": "mcp contract task", "instructions": "check response contract", "scope": []string{"contract fixture"}, "acceptance": []string{"JSON is stable"},
-	})
-	var workpoolMCPTaskText map[string]any
-	if text, ok := workpoolMCPTaskRaw["content"].([]any)[0].(map[string]any)["text"].(string); !ok {
-		t.Fatalf("MCP workpool add-task missing text: %#v", workpoolMCPTaskRaw)
-	} else if err := json.Unmarshal([]byte(text), &workpoolMCPTaskText); err != nil {
-		t.Fatalf("unmarshal MCP workpool add-task text: %v\n%s", err, text)
-	}
-	if workpoolMCPTaskID, ok := workpoolMCPTaskText["id"].(string); ok && workpoolMCPTaskID != "" {
-		replacements[workpoolMCPTaskID] = "$MCP_WORKTASK_ID"
-	}
-	mcpSnapshot["workpool_add_task"] = responsecontract.NormalizeMCPTextJSON(responsecontract.NormalizeContractValue(workpoolMCPTaskRaw, replacements), replacements)
-	mcpSnapshot["workpool_status"] = runMCPToolContract(t, replacements, "workpool_status", map[string]any{"pool": workpoolMCPID})
-	mcpSnapshot["workpool_close"] = runMCPToolContract(t, replacements, "workpool_close", map[string]any{
-		"pool": workpoolMCPID, "force": true, "reason": "contract fixture closes pending task",
 	})
 	mcpSnapshot["state_prune"] = runMCPToolContract(t, replacements, "state_prune", map[string]any{
 		"max_age": "1h",

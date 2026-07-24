@@ -1,8 +1,8 @@
-# 루프 아티클 갭 3종 적용: loop-contract 프리미티브 · 부분 검증 금지 · workpool pilot 게이트
+# 루프 아티클 갭 2종 적용: loop-contract 프리미티브 · 부분 검증 금지
 
 ## TL;DR
 > **Summary**: Claude Code "Getting Started with Loops" 아티클 갭 분석에서 승인된 제안 1,2,3을 brooks 악마의 변호인 검토로 축소한 범위로 구현한다. P1은 소비자 게이트(strict PR readiness)를 포함한 4-tool 최소 스키마, P2는 TESTING.md 단일 규범 소유, P3는 명시적 `--pilot` 지정 방식.
-> **Deliverables**: `internal/core/looprun` 패키지 + `agent-harness loop` CLI/MCP 4종 + strict readiness `loop_incomplete:` 게이트, TESTING.md "부분 검증 상태 금지" 규범 + 스킬 2종 포인터, workpool `PilotRequired`/`PilotTaskID` claim 게이트, golden/contract/문서 동기화, ADR 기록.
+> **Deliverables**: `internal/core/looprun` 패키지 + `agent-harness loop` CLI/MCP 4종 + strict readiness `loop_incomplete:` 게이트, TESTING.md "부분 검증 상태 금지" 규범 + 스킬 2종 포인터, golden/contract/문서 동기화, ADR 기록.
 > **Effort**: Large (P2 0.5일 · P3 1–2일 · P1 3–5일, brooks 추정)
 > **Parallel**: YES — 4 waves + Final wave
 > **Critical Path**: T3(looprun core) → T5(loop wiring) → T6(consumer 게이트) → T7(golden 재생성) → T9(self-verify)
@@ -10,14 +10,14 @@
 ## Context
 
 ### Original Request
-사용자: "1,2,3 전부 적용하기 위한 구체적이고 실행가능한 계획을 수립해줘" — 앞선 분석 턴에서 확정한 갭 제안 1(host-neutral durable loop-contract 프리미티브), 2(부분 검증 상태 금지 명문화), 3(workpool 파일럿-우선 게이트)를 모두 구현하는 계획. 제안 4(이벤트 경계)는 범위 밖.
+사용자: "1,2 전부 적용하기 위한 구체적이고 실행가능한 계획을 수립해줘" — 앞선 분석 턴에서 확정한 갭 제안 1(host-neutral durable loop-contract 프리미티브), 2(부분 검증 상태 금지 명문화)를 구현하는 계획. 제안 4(이벤트 경계)는 범위 밖.
 
 ### Interview Summary
 사용자 결정이 이미 명확해 인터뷰는 생략하고 repo 탐색 + brooks sub-agent 악마의 변호인 검토로 대체했다. brooks 판정: P1 TRIM(4 tools, name-키, list/success_criteria 삭제, 소비자 1개 명시 필수), P2 PROCEED(단일 규범 소유), P3 TRIM(명시적 `--pilot` 플래그, pilot-accepted 조건, 버전 스큐 문서화). brooks는 P1에 대해 "1주 state-write 컨벤션 스파이크 후 위반 실측 시 착수"를 권했으나, 사용자가 3종 전부 적용을 명시 지시했으므로 스파이크 대신 **소비자 게이트를 v1 스코프에 포함**하는 것으로 강제력 부재 리스크를 상쇄한다(이 결정은 ADR에 기록).
 
 ### Gap Analysis
 - **P1 소비자 부재 리스크**: 아무 게이트도 loop 상태를 읽지 않으면 fail-closed 규칙이 opt-in에게만 구속됨 → T6에서 `IssueOpsStrictPRReadiness`가 같은 repo의 active/exhausted loop을 `loop_incomplete:<id>`로 차단(기존 `pool_incomplete:` 패턴 복제).
-- **id=hash(repo+goal) footgun**: goal free-text 드리프트 → 좀비 active loop 축적 → workpool `newPoolID` 패턴대로 `hash(repo+name)` 슬러그 키로 교체. 같은 name 재시작 = durable resume.
+- **id=hash(repo+goal) footgun**: goal free-text 드리프트 → 좀비 active loop 축적 → `hash(repo+name)` 슬러그 키로 교체. 같은 name 재시작 = durable resume.
 - **P3 "첫 추가 task=pilot" 암묵 규칙**: 의도 감사 불가 → `add-task --pilot` 명시 지정으로 교체. 게이트 조건은 "accepted task 존재"가 아니라 "**pilot task가 accepted**"(다른 경로 accepted로 게이트가 조용히 열리는 버그 씨앗 차단).
 - **P2 3파일 드리프트**: TESTING.md가 규범 전문을 소유하고 스킬 2종은 1문장 + 규범 출처 포인터만.
 - **golden 연쇄**: `response_contracts.golden.json`(11,336줄, cli 58/mcp 43 엔트리), `usage.golden.txt`, `mcp_tools.golden.json`, adapter catalog 패리티 테스트가 새 command/tool마다 연쇄로 깨짐 → golden 재생성은 T7 단일 task로 직렬화.
@@ -33,7 +33,6 @@
 - `cmd/harness/loopcli` + `internal/adapter/cli/usage.go` catalog + `internal/adapter/mcp/loop_catalog.go`(tools: `loop_start`/`loop_record_attempt`/`loop_status`/`loop_stop`)
 - `IssueOpsStrictPRReadiness`의 `loop_incomplete:<id>` 차단 + doctor active-loop 경고
 - TESTING.md "부분 검증 상태 금지" 규범 절 + `skills/self-verify/SKILL.md`·`skills/turing/SKILL.md` 포인터
-- workpool `PilotRequired`/`PilotTaskID` 필드, `create --pilot`, `add-task --pilot`, claim 게이트 3종 에러
 - golden/contract 갱신, ARCHITECTURE/AGENTS/OPERATIONS/CAUTIONS/SUB_AGENT_PATTERNS/ADR 문서 동기화
 
 ### Definition of Done (검증 명령 포함)
@@ -49,7 +48,7 @@
 - P1 소비자: strict PR readiness가 같은 repo의 active/exhausted loop을 차단
 - 하네스는 `verify_argv`를 절대 실행하지 않음(no-shell) — 기록만
 - P3 게이트 조건은 `pool.PilotTaskID` task의 `status == "accepted"` 검사
-- 모든 신규 freeform 텍스트(goal, evidence)는 workpool `redactInstructions`와 동일한 secret 패턴 redaction 경유
+- 모든 신규 freeform 텍스트(goal, evidence)는 기존 secret 패턴 redaction 경유
 
 ### Must NOT Have (guardrails)
 - 스케줄러/타이머/데몬 상주 루프 금지(ADR 기각 결정 유지)
@@ -57,7 +56,6 @@
 - hook에서 loop 자동 진행/자동 기록 금지(hook은 observe/block/relay만)
 - `loop list` CLI/MCP 표면 금지(v1; 내부 enumeration은 store 함수로만) · `success_criteria` 별도 필드 금지(goal에 포함)
 - 토큰 사용량 계측 금지(host 내부 데이터) — attempt 수 + evidence로 대체
-- workpool schema_version bump 금지(additive omitempty 필드만)
 - 기존 pool 동작 변경 금지: `PilotRequired=false` pool은 현재와 byte-level 동일 동작
 
 ## Verification Strategy
@@ -70,7 +68,7 @@
 ## Execution Strategy
 
 ### Parallel Execution Waves
-- **Wave 1**: T1(P2 문서 규범), T2(P3 workpool core+테스트), T3(P1 looprun core+테스트) — 서로 다른 파일/패키지, 완전 병렬
+- **Wave 1**: T1(P2 문서 규범), T3(P1 looprun core+테스트) — 서로 다른 파일/패키지, 완전 병렬
 - **Wave 2**: T4(P3 CLI/MCP 배선), T5(P1 CLI/MCP 배선) — golden은 건드리지 않고 코드/카탈로그만
 - **Wave 3**: T6(P1 소비자 게이트 + doctor), T7(golden/contract 일괄 재생성) — T7은 T4·T5·T6 완료 후 단일 실행
 - **Wave 4**: T8(문서 동기화 + ADR), T9(전체 검증 + self-verify)
@@ -134,50 +132,6 @@
 
   **Commit**: YES | `docs(testing): forbid partial verification state with single normative source` | Files: `.agent-harness/TESTING.md`, `skills/self-verify/SKILL.md`, `skills/turing/SKILL.md`
 
-- [ ] 2. P3 core: workpool pilot 필드와 claim 게이트 구현 + 테스트
-
-  **What to do**:
-  1. `internal/core/workpool/types.go`: `WorkPool`에 `PilotRequired bool \`json:"pilot_required,omitempty"\``, `PilotTaskID string \`json:"pilot_task_id,omitempty"\`` 추가. `CreatePoolRequest`에 `PilotRequired bool`, `AddTaskRequest`에 `Pilot bool` 추가. schema_version bump 없음.
-  2. `internal/core/workpool/workpool.go` `CreatePool`: `req.PilotRequired`를 pool에 저장.
-  3. `AddTask`: `req.Pilot == true`일 때 — pool이 `PilotRequired`가 아니면 `pool_pilot_not_required` 에러; `pool.PilotTaskID != ""`이면 `pool_pilot_already_set` 에러; 정상이면 생성한 task ID를 `pool.PilotTaskID`에 기록하고 `writePool` (기존 `withPoolLock` 스팬 내에서 처리 — task write와 pool write가 같은 스팬).
-  4. `internal/core/workpool/lifecycle.go` `Claim`: pool이 `PilotRequired`일 때 — `PilotTaskID == ""`이면 `pool_pilot_unassigned` 에러; pilot task를 `ReadTask`로 읽어 `status == "dropped"`이면 `pool_pilot_dropped` 에러; `status != "accepted"`이면 pending 선택 대상을 pilot task로만 제한하고, pilot이 pending에 없으면(leased 중) `pool_pilot_pending` 에러; pilot accepted면 기존 로직 그대로.
-  5. 테스트(`internal/core/workpool/lifecycle_test.go` 또는 신규 `pilot_gate_test.go`): (a) PilotRequired=false pool은 기존 동작 그대로(회귀), (b) pilot 미지정 claim → `pool_pilot_unassigned`, (c) pilot 지정 후 non-pilot task만 pending이어도 pilot 우선/차단, (d) pilot submit→accept 후 다른 task claim 가능, (e) pilot dropped(reject requeue로 max_attempts 소진) → `pool_pilot_dropped`, (f) `--pilot` 중복 지정 → `pool_pilot_already_set`, (g) race: `lifecycle_race_test.go` 스타일로 동시 claim이 pilot 게이트를 우회하지 못함.
-
-  **Must NOT do**: schema_version bump 금지. pilot 자동 재지정 금지(dropped는 fail-closed 유지 — 탈출구는 기존 `close --force --reason`). "첫 추가 task = pilot" 암묵 규칙 금지.
-
-  **Recommended Agent**: deep — 동시성 스팬 락 안의 상태 전이 로직.
-
-  **Parallelization**: Can Parallel: YES | Wave 1 | Blocks: T4 | Blocked By: —
-
-  **References**:
-  - `internal/core/workpool/types.go:5-57` — 필드 추가 위치(verbatim 확보됨)
-  - `internal/core/workpool/workpool.go:25-138` — CreatePool/AddTask/withPoolLock 스팬 규칙(스팬 중첩 금지 주석 준수)
-  - `internal/core/workpool/lifecycle.go:15-86` — Claim의 pending 선택 루프(44-54행)가 게이트 삽입점
-  - `internal/core/workpool/lifecycle.go:133-160` — Reject/max_attempts→dropped 경로(테스트 e 재현용)
-  - 에러 토큰 스타일: `pool_saturated`/`pool_no_pending_tasks`처럼 snake_case 단일 토큰
-
-  **Acceptance Criteria**:
-  - [ ] `go test ./internal/core/workpool -count=1` 통과
-  - [ ] `go test -race ./internal/core/workpool -count=1` 통과
-  - [ ] 회귀: 기존 테스트 전부 무수정 통과(PilotRequired=false 경로 불변 증명)
-
-  **QA Scenarios**:
-  ```
-  Scenario: pilot 게이트 전체 수명주기 (happy)
-    Channel: bash (go test)
-    Steps: go test ./internal/core/workpool -run 'Pilot' -count=1 -v
-    Expected: 지정→claim 제한→submit→accept→mass claim 해제 시나리오 테스트 PASS 출력
-    Evidence: .agent-harness/evidence/task-2-pilot-lifecycle.txt
-
-  Scenario: dropped pilot fail-closed (failure)
-    Channel: bash (go test)
-    Steps: go test ./internal/core/workpool -run 'PilotDropped' -count=1 -v
-    Expected: claim이 pool_pilot_dropped 에러 반환, 자동 재지정 없음 assert PASS
-    Evidence: .agent-harness/evidence/task-2-pilot-dropped.txt
-  ```
-
-  **Commit**: YES | `feat(workpool): add opt-in pilot-first claim gate` | Files: `internal/core/workpool/types.go`, `internal/core/workpool/workpool.go`, `internal/core/workpool/lifecycle.go`, `internal/core/workpool/pilot_gate_test.go`
-
 - [ ] 3. P1 core: `internal/core/looprun` 패키지(types/store/lifecycle) + 테스트
 
   **What to do**:
@@ -186,11 +140,11 @@
      - `LoopRun{OK bool, SchemaVersion int, ID string, Repo string, Name string, Goal string, VerifyArgv []string, MaxAttempts int, Status string, Attempts []LoopAttempt, StopReason string \`json:",omitempty"\`, CreatedAt, UpdatedAt string}` — status enum: `active`/`succeeded`/`exhausted`/`stopped`
      - `LoopAttempt{Seq int, Verdict string, Evidence []string, At string}` — verdict enum: `pass`/`fail`
      - `StartLoopRequest{Repo, Name, Goal string, VerifyArgv []string, MaxAttempts int}`, `RecordAttemptRequest{Verdict string, Evidence []string}`
-  2. `internal/core/looprun/store.go`: workpool `store.go` 패턴 복제 — `StateRoot() = filepath.Join(state.StateDir(), "loop")`, sqlstore bucket `"loop"`, `newLoopID(repo, name) = "loop-" + sha256(repo+"\x00"+name)[:12]`, `normalizeLoopID`(`loop-` prefix, `..`/`/`/`\` 금지), `ReadLoop`/`writeLoop`/`ListLoopIDs`(내부 전용, CLI 미노출), `normalizeLoopSchemaVersion`(future version fail-safe 거부), `loopNow = time.Now` 테스트 훅.
+  2. `internal/core/looprun/store.go`: 기존 sqlstore 패턴을 사용 — `StateRoot() = filepath.Join(state.StateDir(), "loop")`, sqlstore bucket `"loop"`, `newLoopID(repo, name) = "loop-" + sha256(repo+"\x00"+name)[:12]`, `normalizeLoopID`(`loop-` prefix, `..`/`/`/`\` 금지), `ReadLoop`/`writeLoop`/`ListLoopIDs`(내부 전용, CLI 미노출), `normalizeLoopSchemaVersion`(future version fail-safe 거부), `loopNow = time.Now` 테스트 훅.
   3. `internal/core/looprun/lifecycle.go`:
-     - `Start(req)`: repo abs 정규화, name/goal 필수, `MaxAttempts` 기본 5·최대 50, goal은 workpool `redactInstructions`와 동일 secret 패턴으로 redaction. 같은 id의 기존 record가 있으면 — `active`면 기존 record 반환(durable resume), terminal이면 `loop_terminal` 에러(새 name 안내).
+     - `Start(req)`: repo abs 정규화, name/goal 필수, `MaxAttempts` 기본 5·최대 50, goal은 기존 secret 패턴으로 redaction. 같은 id의 기존 record가 있으면 — `active`면 기존 record 반환(durable resume), terminal이면 `loop_terminal` 에러(새 name 안내).
      - `RecordAttempt(id, req)`: `withLoopLock`(sqlstore WithSpan) 안에서 — status != active → `loop_not_active`; evidence 비면 `evidence_required`; verdict는 pass/fail만; append 후 `verdict == "fail" && len(Attempts) >= MaxAttempts`면 status=`exhausted`로 자동 전이; `verdict == "pass"`는 상태를 바꾸지 않음(성공 선언은 stop의 책임).
-     - `Stop(id, success bool, reason string)`: success=true면 마지막 attempt가 존재하고 verdict==pass여야 함(`loop_success_requires_pass`), status=`succeeded`; success=false면 reason ≥10자 필수(`stop_reason_too_short`, workpool Reject 스타일), status=`stopped`. exhausted 상태에서도 stop 가능(사유 기록 종결).
+     - `Stop(id, success bool, reason string)`: success=true면 마지막 attempt가 존재하고 verdict==pass여야 함(`loop_success_requires_pass`), status=`succeeded`; success=false면 reason ≥10자 필수(`stop_reason_too_short`), status=`stopped`. exhausted 상태에서도 stop 가능(사유 기록 종결).
      - `Status(id)`: record + 파생 요약(attempt count, last verdict) 반환.
      - 하네스는 `VerifyArgv`를 절대 실행하지 않음 — 저장만.
   4. 테스트(`lifecycle_test.go`, `store_test.go`): start-resume 멱등성, terminal 재시작 거부, evidence 필수, auto-exhaust 경계(max번째 fail에서 전이, pass는 미전이), exhausted 후 attempt 거부, success-stop의 pass 요구, stop reason 길이, schema future-version 거부, redaction(`token=abc` → `<redacted>`), `HARNESS_STATE_DIR` temp 격리.
@@ -202,10 +156,8 @@
   **Parallelization**: Can Parallel: YES | Wave 1 | Blocks: T5, T6 | Blocked By: —
 
   **References**:
-  - `internal/core/workpool/store.go:1-258` — sqlstore open/Get/Put/List, id 정규화, schema version 처리, `workPoolNow` 훅 (전체 복제 대상 패턴, verbatim 확보됨)
-  - `internal/core/workpool/workpool.go:127-155` — `withPoolLock`/WithSpan 규칙(스팬 중첩 금지)
-  - `internal/core/workpool/workpool.go:220-224` — `secretAssignmentPattern` redaction (동일 정규식 사용; looprun에 복제하되 공용화는 하지 않음 — 기존 코드 이동 금지)
-  - `internal/core/workpool/lifecycle.go:133-136` — reason ≥10자 검증 스타일
+  - `internal/core/sqlstore` — open/Get/Put/List, id 정규화, schema version 처리와 span 규칙
+  - 기존 secret-redaction helper — 동일 정규식 사용; looprun에 복제하되 공용화는 하지 않음
   - `.agent-harness/ARCHITECTURE.md` §5 — state root 격리 원칙
 
   **Acceptance Criteria**:
@@ -230,58 +182,10 @@
 
   **Commit**: YES | `feat(looprun): add durable loop-contract state machine core` | Files: `internal/core/looprun/{types,store,lifecycle}.go`, `internal/core/looprun/{store,lifecycle}_test.go`
 
-- [ ] 4. P3 wiring: workpool CLI/MCP에 pilot 표면 노출
-
-  **What to do**:
-  1. `internal/core/workpool_facade.go`: `CreateWorkPool`/`AddWorkPoolTask` 시그니처는 request struct 경유이므로 변경 없음 확인(필드 추가만으로 전파).
-  2. `cmd/harness/workpoolcli/workpool.go`: `create`에 `--pilot` bool flag(→ `CreatePoolRequest.PilotRequired`), `add-task`에 `--pilot` bool flag(→ `AddTaskRequest.Pilot`) 추가. JSON 출력에 새 필드는 struct tag로 자동 노출.
-  3. `internal/adapter/cli/usage.go:118-119`: `workpool create` 라인에 `[--pilot]`, `workpool add-task` 라인에 `[--pilot]` 추가.
-  4. `internal/adapter/mcp/workpool_catalog.go`: `workpool_create` tool schema에 `pilot_required`(boolean, optional), `workpool_add_task`에 `pilot`(boolean, optional) property 추가. description에 "pilot task must be accepted before other tasks can be claimed" 명시(MCP tool design guidance: 목적·쓰기 여부·결과 shape).
-  5. MCP handler(`cmd/harness` 쪽 workpool MCP 매핑)에서 새 property를 request struct로 전달.
-  6. `cmd/harness/workpoolcli/workpool_cli_test.go`: `--pilot` flag 파싱과 JSON 출력에 `pilot_required`/`pilot_task_id`가 나타나는지 테스트. golden 재생성은 하지 않는다(T7).
-
-  **Must NOT do**: golden 파일 수정 금지(T7 전담). CLI와 MCP가 다른 의미의 schema를 갖지 않게 필드명 통일(`pilot_required`/`pilot`).
-
-  **Recommended Agent**: quick — 기계적 flag/schema 배선.
-
-  **Parallelization**: Can Parallel: YES | Wave 2 | Blocks: T7 | Blocked By: T2
-
-  **References**:
-  - `cmd/harness/workpoolcli/workpool.go:58` — usage 함수와 flag 파싱 구조
-  - `internal/adapter/cli/usage.go:38,118-126` — catalog/usage 라인 형식
-  - `internal/adapter/mcp/workpool_catalog.go` — 기존 workpool tool descriptor 형식
-  - `.agent-harness/ARCHITECTURE.md` "MCP tool design guidance" — description 필수 요소
-
-  **Acceptance Criteria**:
-  - [ ] `go test ./cmd/harness/workpoolcli -count=1` 통과
-  - [ ] `go build -o bin/agent-harness ./cmd/harness` 성공
-  - [ ] 수동 스모크: 아래 QA 시나리오 통과
-
-  **QA Scenarios**:
-  ```
-  Scenario: pilot pool E2E CLI 스모크 (happy)
-    Channel: bash
-    Steps: tmp=$(mktemp -d); export HARNESS_STATE_DIR=$tmp
-      ./bin/agent-harness workpool create --repo "$PWD" --name pilot-smoke --pilot --json  # id 캡처
-      ./bin/agent-harness workpool add-task --pool <ID> --title "pilot task" --pilot --json
-      ./bin/agent-harness workpool add-task --pool <ID> --title "mass task" --json
-      ./bin/agent-harness workpool claim --pool <ID> --worker w1 --json
-    Expected: create 출력에 "pilot_required": true; claim이 pilot task를 반환(task ID가 add-task --pilot의 ID와 일치)
-    Evidence: .agent-harness/evidence/task-4-pilot-cli-smoke.txt
-
-  Scenario: pilot 미accept 상태의 mass claim 차단 (failure)
-    Channel: bash
-    Steps: 위 상태에서 두 번째 worker로 claim: ./bin/agent-harness workpool claim --pool <ID> --worker w2 --json
-    Expected: 비정상 종료 + 에러 메시지에 pool_pilot_pending 토큰
-    Evidence: .agent-harness/evidence/task-4-pilot-cli-blocked.txt
-  ```
-
-  **Commit**: YES | `feat(workpool): expose pilot gate through CLI and MCP surfaces` | Files: `cmd/harness/workpoolcli/workpool.go`, `cmd/harness/workpoolcli/workpool_cli_test.go`, `internal/adapter/cli/usage.go`, `internal/adapter/mcp/workpool_catalog.go`, MCP handler 파일
-
 - [ ] 5. P1 wiring: `agent-harness loop` CLI + MCP 4-tool 배선
 
   **What to do**:
-  1. `internal/core/loop_facade.go`: workpool_facade 패턴대로 `StartLoopRun`/`RecordLoopAttempt`/`LoopRunStatus`/`StopLoopRun` + type alias.
+  1. `internal/core/loop_facade.go`: 기존 core facade 패턴대로 `StartLoopRun`/`RecordLoopAttempt`/`LoopRunStatus`/`StopLoopRun` + type alias.
   2. `cmd/harness/loopcli/loop.go` 신설: 서브커맨드 `start`(`--repo`, `--name`, `--goal`, `--max-attempts`, verify argv는 `--` 뒤 나머지 인자 — policy check와 동일 문법), `record-attempt`(`--id`, `--verdict pass|fail`, `--evidence TEXT` 반복 허용), `status`(`--id` 또는 `--repo`+`--name`), `stop`(`--id`, `--success` 또는 `--reason TEXT`). 모두 `--json` 지원, 사람이 읽을 text 출력 병행(AGENTS.md §7 계약).
   3. dispatch 등록: `cmd/harness/harnessapp/cli_facade.go` + `root_command_facade.go`의 기존 도메인 등록 방식 복제.
   4. `internal/adapter/cli/usage.go`: catalog에 `{Name: "loop", Description: "track durable verify-until-done loop contracts"}` + usage 4줄 추가.
@@ -295,10 +199,8 @@
   **Parallelization**: Can Parallel: YES | Wave 2 | Blocks: T6, T7 | Blocked By: T3
 
   **References**:
-  - `internal/core/workpool_facade.go:1-50` — facade 패턴(verbatim 확보됨)
-  - `cmd/harness/workpoolcli/workpool.go` — 도메인 CLI 구조 원형
-  - `cmd/harness/harnessapp/cli_facade.go`, `cmd/harness/harnessapp/root_command_facade.go` — dispatch 등록 지점(grep `workpool`)
-  - `internal/adapter/mcp/workpool_catalog.go` + `internal/adapter/mcp/catalog.go` — MCP catalog 등록·순서 규칙
+  - `cmd/harness/harnessapp/cli_facade.go`, `cmd/harness/harnessapp/root_command_facade.go` — dispatch 등록 지점
+  - `internal/adapter/mcp/catalog.go` — MCP catalog 등록·순서 규칙
   - `internal/adapter/cli/usage.go:38,118-126` — catalog entry/usage 라인 형식
   - `./bin/agent-harness policy check ... --json -- git status` — `--` argv 문법 선례
 
@@ -332,9 +234,9 @@
 - [ ] 6. P1 소비자: strict PR readiness의 `loop_incomplete:` 차단 + doctor 경고
 
   **What to do**:
-  1. `internal/core`의 `IssueOpsStrictPRReadiness`(pool 게이트가 있는 곳)에 loop 게이트 추가: record의 repo와 같은 repo를 가진 loop 중 status가 `active` 또는 `exhausted`인 것이 있으면 `Missing`에 `loop_incomplete:<loop-id>` append. 내부 enumeration은 `looprun.ListLoopIDs()` + `ReadLoop` 사용(CLI 표면 아님). repo 비교는 abs path 정규화 후 일치.
+  1. `internal/core`의 `IssueOpsStrictPRReadiness`에 loop 게이트 추가: record의 repo와 같은 repo를 가진 loop 중 status가 `active` 또는 `exhausted`인 것이 있으면 `Missing`에 `loop_incomplete:<loop-id>` append. 내부 enumeration은 `looprun.ListLoopIDs()` + `ReadLoop` 사용(CLI 표면 아님). repo 비교는 abs path 정규화 후 일치.
   2. `agent-harness doctor`에 active loop 관측 추가: state root의 loop bucket을 읽어 repo별 active/exhausted loop 수를 진단 항목으로 보고(수정 없음, 보고만 — doctor 계약 유지).
-  3. 테스트: `internal/core/issueops_pool_gate_test.go` 스타일 신규 `issueops_loop_gate_test.go` — (a) loop 없음 → strict-ready 유지, (b) active loop → `loop_incomplete:` 차단, (c) `loop stop --success`/`stop --reason` 후 차단 해제, (d) 다른 repo의 loop은 차단하지 않음. doctor 출력 테스트 1건.
+  3. 테스트: 신규 `issueops_loop_gate_test.go` — (a) loop 없음 → strict-ready 유지, (b) active loop → `loop_incomplete:` 차단, (c) `loop stop --success`/`stop --reason` 후 차단 해제, (d) 다른 repo의 loop은 차단하지 않음. doctor 출력 테스트 1건.
 
   **Must NOT do**: pr-readiness 외 다른 phase 게이트에 loop을 끼워넣지 않는다(스코프 최소). hook에서 loop 상태를 강제하지 않는다.
 
@@ -375,7 +277,7 @@
   **What to do**:
   1. TESTING.md §2 절차대로 의도된 contract 변경만 갱신:
      `go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -update -count=1`
-  2. `git diff`로 golden 변경을 라인 단위 검수: `usage.golden.txt`(+loop 4줄, workpool `--pilot` 2곳), `mcp_tools.golden.json`(+4 loop tools, workpool 2 property), `response_contracts.golden.json`(loop 4 command/tool required-field 엔트리, workpool 추가 필드는 omitempty라 required 목록 불변 확인). **추가 엔트리 외 기존 라인 변경이 있으면 원인 규명 후 롤백**.
+  2. `git diff`로 golden 변경을 라인 단위 검수: `usage.golden.txt`(+loop 4줄), `mcp_tools.golden.json`(+4 loop tools), `response_contracts.golden.json`(loop 4 command/tool required-field 엔트리). **추가 엔트리 외 기존 라인 변경이 있으면 원인 규명 후 롤백**.
   3. `./bin/agent-harness contract check --json` + `go test ./cmd/harness/contractcli -count=1` 실행.
   4. self-verify의 `summary.contract` goal이 카탈로그 수 변화에 실패하지 않는지 확인, 실패 시 해당 fixture 갱신.
 
@@ -410,7 +312,7 @@
     Evidence: .agent-harness/evidence/task-7-golden-additive.txt
   ```
 
-  **Commit**: YES | `test(contract): regenerate goldens for loop and workpool pilot surfaces` | Files: `cmd/harness/testdata/*.golden.*`
+  **Commit**: YES | `test(contract): regenerate goldens for loop surfaces` | Files: `cmd/harness/testdata/*.golden.*`
 
 - [ ] 8. 문서 동기화 + ADR 기록
 
@@ -418,7 +320,6 @@
   1. `.agent-harness/ARCHITECTURE.md`: §3 실행 모드 표에 `agent-harness loop` 행(용도: verify-until-done 루프 계약의 durable 상태; 원칙: 하네스는 검증을 실행하지 않고 기록·게이트만), §5 state 절에 loop 위치(`~/.local/state/agent-harness/loop/`)와 제공 표면(CLI 4종/MCP 4종), strict readiness 요구 항목에 loop 추가.
   2. `AGENTS.md`: §8 디렉토리 맵 `cmd/harness` 행의 명령 목록에 `loop` 추가, §9 Essential Commands에 loop 스모크 1줄.
   3. `.agent-harness/OPERATIONS.md` Core Surfaces CLI 목록 + `.agent-harness/operations/cli-and-mcp.md`에 loop/pilot 사용법.
-  4. `.agent-harness/SUB_AGENT_PATTERNS.md`: 대량 위임 패턴에 파일럿-우선 원칙 추가 — "예상 task 3개 이상 pool은 `--pilot`로 생성해 대표 task 1건의 submit→accept로 접근법·비용을 검증한 뒤 mass claim을 연다; pilot dropped 시 자동 재지정은 없으며 `workpool close --force --reason`이 탈출구다. pilot accept evidence에는 관측된 소요(시도 횟수, 소요 시간)를 기록한다."
   5. `.agent-harness/CAUTIONS.md`: 버전 스큐 1줄 — "pilot_required pool은 구버전 바이너리에서 게이트 없이 claim될 수 있다(additive 필드 무시). shared daemon과 로컬 CLI 버전을 함께 갱신한다."
   6. `.agent-harness/ADR.md`: 신규 결정 기록 — 아티클 출처, brooks TRIM 결정(4 tools/name-키/소비자 게이트, list·success_criteria 기각, goal-hash 기각, "첫 task=pilot" 기각), 스파이크 대신 소비자 게이트 포함으로 간 근거(사용자 명시 지시), 기각 대안(스케줄러, hook 강제, 토큰 계측), `state write` 컨벤션 대안이 진 이유(전이 강제 불가).
   7. TESTING.md §4 golden 목록에 loop/pilot 항목 추가.
@@ -454,7 +355,7 @@
     Evidence: .agent-harness/evidence/task-8-docs-index.txt
   ```
 
-  **Commit**: YES | `docs(harness): document loop contract, pilot gate, and ADR decisions` | Files: `.agent-harness/{ARCHITECTURE,ADR,OPERATIONS,CAUTIONS,SUB_AGENT_PATTERNS,TESTING}.md`, `.agent-harness/operations/cli-and-mcp.md`, `AGENTS.md`
+  **Commit**: YES | `docs(harness): document loop contract and ADR decisions` | Files: `.agent-harness/{ARCHITECTURE,ADR,OPERATIONS,CAUTIONS,SUB_AGENT_PATTERNS,TESTING}.md`, `.agent-harness/operations/cli-and-mcp.md`, `AGENTS.md`
 
 - [ ] 9. 전체 검증 + self-verify 게이트 + 완료 보고
 
@@ -489,7 +390,7 @@
 
   Scenario: race detector 청정 (failure 감시)
     Channel: bash
-    Steps: go test -race ./internal/core/workpool ./internal/core/looprun -count=1
+    Steps: go test -race ./internal/core/looprun -count=1
     Expected: PASS, DATA RACE 출력 0건
     Evidence: .agent-harness/evidence/task-9-race.txt
   ```
@@ -499,9 +400,9 @@
 ## Final Verification Wave (MANDATORY — 모든 구현 task 후)
 > ALL must APPROVE. 통합 결과를 사용자에게 보고하고 명시적 승인 후 완료.
 - [ ] F1. Plan Compliance Audit — 모든 TODO가 명세대로 실행됐는가? (Must NOT Have 목록 위반 grep 포함: `rg -n "loop list|loop_list|success_criteria" cmd internal`이 0건)
-- [ ] F2. Code Quality Review — `oh-my-claudecode:code-reviewer` 또는 shannon 측정으로 AI slop/불필요 추상화 부재 확인. 신규 패키지가 workpool 대비 과잉 일반화 없는지.
+- [ ] F2. Code Quality Review — `oh-my-claudecode:code-reviewer` 또는 shannon 측정으로 AI slop/불필요 추상화 부재 확인.
 - [ ] F3. Real Manual QA — T1–T9의 모든 QA 시나리오 evidence가 `.agent-harness/evidence/`에 실재하고 PASS인지 재확인. 특히 T9의 self-verify 95점 게이트.
-- [ ] F4. Scope Fidelity Check — 제안 4(이벤트 경계)·스케줄러·hook 자동화가 스며들지 않았는지, 기존 pool/state 동작 회귀가 없는지 `git diff --stat`로 대조.
+- [ ] F4. Scope Fidelity Check — 제안 4(이벤트 경계)·스케줄러·hook 자동화가 스며들지 않았는지, 기존 state 동작 회귀가 없는지 `git diff --stat`로 대조.
 
 ## Commit Strategy
 task별 원자 커밋(각 task의 Commit 라인 참조). 순서: T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8. 형식은 `.agent-harness/COMMIT_POLICY.md`의 Conventional Commit subject + Lore body. golden 갱신(T7)은 배선 커밋과 분리해 리뷰 가능하게 유지. push는 사용자 지시 시에만.
