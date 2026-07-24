@@ -1,5 +1,7 @@
 # Agent Harness 동시성·멀티세션·유실·고아·품질 강화 계획
 
+> **역사 문서**: 본문이 인용하는 `internal/core/issueops/issueops_stale_scan.go`와 stale-scan/`cleanup stale` 표면은 IssueOps v1 전환(`a875a16`)에서 제거되었다. 현행 정리 표면은 `issueops cleanup status|close-children|orphan`과 `issueops prune`이다. 이 문서는 당시 분석 기록으로만 읽는다.
+
 ## TL;DR
 
 > **기준점**: `main` / `88c29161f08c46b153278aa80e383e58e1198eaa` (2026-07-10)
