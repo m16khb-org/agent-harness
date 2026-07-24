@@ -19,6 +19,7 @@ func TestPlannedSelfVerifyStepsPreservesExecutionOrder(t *testing.T) {
 		"harness invariants",
 		"go test",
 		"contract golden tests",
+		"resource admission contract",
 		"risk QA tier",
 		"go build",
 		"binary drift",
@@ -138,6 +139,9 @@ func fakeSelfVerifyStepDeps(t *testing.T) SelfVerifyStepDeps {
 		},
 		ValidateRiskQATier: func(string) StepResult {
 			return ok("risk QA tier")
+		},
+		ValidateResourceAdmission: func() StepResult {
+			return ok("resource admission contract")
 		},
 		ValidateInspect: func(string, string) StepResult {
 			return ok("inspect smoke")

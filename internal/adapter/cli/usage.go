@@ -40,6 +40,7 @@ func Commands() []Command {
 		{Name: "workpool", Description: "manage bounded lease-based work pools"},
 		{Name: "loop", Description: "track durable verify-until-done loop contracts"},
 		{Name: "web-fetch", Description: "fetch public web pages with resilient validation and run deterministic web-fetch benchmarks"},
+		{Name: "resource", Description: "wait for a bounded read-only E2E resource admission decision"},
 		{Name: "self-verify", Description: "run harness verification gates"},
 		{Name: "self-augment", Description: "plan self-augmentation candidates and lessons"},
 		{Name: "mcp", Description: "serve the MCP stdio proxy and clean up proxy processes"},
@@ -139,6 +140,7 @@ Usage:
   agent-harness loop stop --id ID (--success | --reason TEXT) [--json]
   agent-harness web-fetch fetch --url URL [--timeout 30s] [--max-chars N] [--json]
   agent-harness web-fetch benchmark --fixtures PATH [--live] [--compare-baseline PATH] [--json]
+  agent-harness resource wait [--workspace-root PATH] [--profile e2e] [--timeout DURATION] [--interval DURATION] [--progress none|jsonl] [--json]
   agent-harness install [--interactive] [--project-local] [--path-mode=auto|manual|skip] [--dry-run] [--json]
   agent-harness install-native [--interactive] [--project-local] [--path-mode=auto|manual|skip] [--dry-run] [--json]  # compatibility alias
   agent-harness update [--path-mode=auto|manual|skip] [--dry-run] [--json]

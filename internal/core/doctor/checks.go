@@ -12,10 +12,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"agent-harness/internal/core/looprun"
+	"agent-harness/internal/core/resourcewait"
 )
 
 const pipeCapacityWarningThreshold = 8192
@@ -24,7 +24,7 @@ const pipeCapacityWarningThreshold = 8192
 // accumulation (2026-07-10 EMFILE incident hit a 256-fd launchd limit at 240).
 const mcpGatewayFDWarningThreshold = 512
 
-var measurePipeCapacity = measureSystemPipeCapacity
+var measurePipeCapacity = resourcewait.MeasurePipeCapacity
 
 var (
 	probeMCPGateway    = probeMCPGatewayHTTP
@@ -93,65 +93,6 @@ func (r *HarnessDoctorResult) checkPipeCapacity() {
 		return
 	}
 	r.addCheck("pipe_capacity", true, summary)
-}
-
-func measureSystemPipeCapacity() (int, error) {
-	r, w, err := os.Pipe()
-	if err != nil {
-		return 0, err
-	}
-	defer r.Close()
-	defer w.Close()
-
-	progress := make(chan int, 64)
-	done := make(chan error, 1)
-	total := 0
-	go func() {
-		chunk := make([]byte, 512)
-		for {
-			n, err := w.Write(chunk)
-			if n > 0 {
-				progress <- n
-			}
-			if err != nil {
-				done <- err
-				return
-			}
-		}
-	}()
-
-	idle := time.NewTimer(100 * time.Millisecond)
-	defer idle.Stop()
-	for total < 1<<20 {
-		select {
-		case n := <-progress:
-			total += n
-			if !idle.Stop() {
-				select {
-				case <-idle.C:
-				default:
-				}
-			}
-			idle.Reset(100 * time.Millisecond)
-		case err := <-done:
-			if errors.Is(err, os.ErrClosed) || errors.Is(err, syscall.EPIPE) {
-				return total, nil
-			}
-			return total, err
-		case <-idle.C:
-			_ = r.Close()
-			_ = w.Close()
-			select {
-			case err := <-done:
-				if err != nil && !errors.Is(err, os.ErrClosed) && !errors.Is(err, syscall.EPIPE) {
-					return total, err
-				}
-			case <-time.After(time.Second):
-			}
-			return total, nil
-		}
-	}
-	return total, nil
 }
 
 type mcpGatewayEndpoint struct {

@@ -87,6 +87,7 @@ Usage:
   agent-harness loop stop --id ID (--success | --reason TEXT) [--json]
   agent-harness web-fetch fetch --url URL [--timeout 30s] [--max-chars N] [--json]
   agent-harness web-fetch benchmark --fixtures PATH [--live] [--compare-baseline PATH] [--json]
+  agent-harness resource wait [--workspace-root PATH] [--profile e2e] [--timeout DURATION] [--interval DURATION] [--progress none|jsonl] [--json]
   agent-harness install [--interactive] [--project-local] [--path-mode=auto|manual|skip] [--dry-run] [--json]
   agent-harness install-native [--interactive] [--project-local] [--path-mode=auto|manual|skip] [--dry-run] [--json]  # compatibility alias
   agent-harness update [--path-mode=auto|manual|skip] [--dry-run] [--json]

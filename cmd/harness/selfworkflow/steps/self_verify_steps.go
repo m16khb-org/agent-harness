@@ -20,6 +20,7 @@ type SelfVerifyStepDeps struct {
 	RunCommandStep                  func(string, string, time.Duration, string, string, ...string) StepResult
 	ValidateHarnessInvariants       func(string) StepResult
 	ValidateRiskQATier              func(string) StepResult
+	ValidateResourceAdmission       func() StepResult
 	ValidateInspect                 func(string, string) StepResult
 	ValidateDocsIndex               func(string, string) StepResult
 	ValidateSelfVerifyCandidate     func(string, string, int64) StepResult
@@ -51,6 +52,7 @@ func PlannedSelfVerifySteps(root string, tempBin string, seed int64, goTestStep 
 		{Label: "contract golden tests", Run: func() StepResult {
 			return CachedContractGoldenStep(*goTestStep, deps)
 		}},
+		{Label: "resource admission contract", Run: func() StepResult { return deps.ValidateResourceAdmission() }},
 		{Label: "risk QA tier", Run: func() StepResult { return deps.ValidateRiskQATier(root) }},
 		{Label: "go build", Run: func() StepResult {
 			return deps.RunCommandStep(root, "go build", 120*time.Second, "", "go", "build", "-o", tempBin, "./cmd/harness")

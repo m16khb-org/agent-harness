@@ -199,6 +199,7 @@ func selfVerifyStepDeps() selfworkflow.SelfVerifyStepDeps {
 		RunCommandStep:                  runCommandStepAdapter,
 		ValidateHarnessInvariants:       validateHarnessInvariants,
 		ValidateRiskQATier:              validateRiskQATier,
+		ValidateResourceAdmission:       validateResourceAdmission,
 		ValidateInspect:                 validateInspect,
 		ValidateDocsIndex:               validateDocsIndex,
 		ValidateSelfVerifyCandidate:     validateSelfVerifyCandidateExport,

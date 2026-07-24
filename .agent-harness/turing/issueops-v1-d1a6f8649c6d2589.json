@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "lifecycle": "io-425bd56304f9",
+  "mode": "orca",
+  "lease_generation": 1,
+  "worktree": "/Users/habin/workspace/agent-harness.worktrees/74-e2e-resource-wait",
+  "branch": "74-e2e-resource-wait",
+  "issue_context": {
+    "issue_body_verified_by_claim": true,
+    "context_packet_verified_by_claim": true
+  },
+  "tdd": [
+    {
+      "test": "TestParseDarwinVMStatAcceptsCurrentSwapCounterNames",
+      "red_command": "go test ./internal/adapter/systemresource -run TestParseDarwinVMStatAcceptsCurrentSwapCounterNames -count=1",
+      "red_result": "FAIL: darwin vm_stat missing required fields for current Swapins/Swapouts output",
+      "green_command": "go test ./internal/adapter/systemresource -run TestParseDarwinVMStatAcceptsCurrentSwapCounterNames -count=1",
+      "green_result": "PASS after accepting current Darwin counter names"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "tests": ["TestRunWaitKeepsJSONStdoutCleanWhenProgressIsJSONL", "TestAppAndRootCommandFacadeWrappers"],
+      "command": "go test ./cmd/harness/resourcecli ./cmd/harness/harnessapp -count=1",
+      "result": "PASS",
+      "observation": "resource wait is an additive CLI-only command and rejects positional E2E argv"
+    },
+    {
+      "id": "AC-02",
+      "tests": ["TestWaitRequiresBaselineAndThreeStableIntervals", "TestWaitStopsAfterScheduledSampleFinishesPastDeadline"],
+      "command": "go test ./internal/core/resourcewait -count=1",
+      "result": "PASS",
+      "observation": "baseline plus three stable intervals and bounded deadline are deterministic"
+    },
+    {
+      "id": "AC-03",
+      "tests": ["TestEvaluateOrdersEveryResourceBlocker"],
+      "command": "go test ./internal/core/resourcewait -count=1",
+      "result": "PASS",
+      "observation": "CPU, memory, swap I/O, workspace/temp disk, and pipe thresholds produce ordered blockers"
+    },
+    {
+      "id": "AC-04",
+      "tests": ["TestRunWaitKeepsJSONStdoutCleanWhenProgressIsJSONL"],
+      "command": "go test ./cmd/harness/resourcecli -count=1",
+      "result": "PASS",
+      "observation": "JSONL progress is stderr-only and final stdout is one JSON object"
+    },
+    {
+      "id": "AC-05",
+      "tests": ["TestWaitReturnsCollectionError", "TestWaitCancelsBeforeSamplerCommit", "TestWaitResetsStabilityAndTimesOutAtScheduledSample"],
+      "command": "go test ./internal/core/resourcewait ./cmd/harness/resourcecli -count=1",
+      "result": "PASS",
+      "observation": "ready, timed_out, cancelled, and error remain distinct terminal contracts"
+    },
+    {
+      "id": "AC-06",
+      "tests": ["TestParsePlatformFixtures", "TestParseDarwinVMStatAcceptsCurrentSwapCounterNames", "TestSwapRateSaturatesOnOverflow"],
+      "command": "go test ./internal/adapter/systemresource -count=1",
+      "result": "PASS",
+      "observation": "Darwin/Linux parser fixtures and fake wait dependencies are deterministic"
+    },
+    {
+      "id": "AC-07",
+      "tests": ["TestResponseContractsGolden", "TestPlannedSelfVerifyStepsPreservesExecutionOrder", "TestValidateResourceAdmissionUsesDeterministicSamples"],
+      "command": "go test ./cmd/harness/contractgolden -run Golden -count=1",
+      "result": "PASS",
+      "observation": "usage/response goldens, doctor compatibility, and deterministic self-verify coverage were updated"
+    },
+    {
+      "id": "AC-08",
+      "tests": ["full repository suite", "race repository suite"],
+      "command": "go test ./... -count=1; go test -race ./... -count=1; go build -o bin/agent-harness ./cmd/harness",
+      "result": "PASS",
+      "observation": "all required repository verification and build commands completed successfully"
+    }
+  ],
+  "verification": [
+    {"command": "go test ./internal/core/... -count=1", "result": "PASS"},
+    {"command": "go test ./cmd/harness/contractgolden -run Golden -count=1", "result": "PASS"},
+    {"command": "go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1", "result": "PASS"},
+    {"command": "go test ./... -count=1", "result": "PASS"},
+    {"command": "go test -race ./... -count=1", "result": "PASS"},
+    {"command": "go build -o bin/agent-harness ./cmd/harness", "result": "PASS"},
+    {
+      "command": "./bin/agent-harness resource wait --workspace-root /Users/habin/workspace/agent-harness.worktrees/74-e2e-resource-wait --profile e2e --timeout 1m --interval 5s --progress jsonl --json",
+      "result": "PASS",
+      "observation": "ready after 4 samples with 3 consecutive stable samples"
+    },
+    {"command": "git diff --check", "result": "PASS"}
+  ],
+  "additional_observations": [
+    {
+      "command": "./bin/agent-harness contract check --json",
+      "result": "BLOCKED",
+      "observation": "active PreToolUse policy denies this unrelated subcommand before execution; it is not in the issue's required verification command list"
+    }
+  ],
+  "ai_slop_clean": "Removed five newly added code-translation comments; no compatibility shim, broad abstraction, or legacy branch remains."
+}

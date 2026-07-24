@@ -141,6 +141,7 @@ func fakeVerifyLoopStepDepsOK(ok func(string) commandstep.StepResult) steps.Self
 		},
 		ValidateHarnessInvariants: func(string) commandstep.StepResult { return ok("harness invariants") },
 		ValidateRiskQATier:        func(string) commandstep.StepResult { return ok("risk QA tier") },
+		ValidateResourceAdmission: func() commandstep.StepResult { return ok("resource admission contract") },
 		ValidateInspect: func(string, string) commandstep.StepResult {
 			return ok("inspect smoke")
 		},

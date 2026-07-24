@@ -242,6 +242,10 @@
           "name": "web-fetch"
         },
         {
+          "description": "wait for a bounded read-only E2E resource admission decision",
+          "name": "resource"
+        },
+        {
           "description": "run harness verification gates",
           "name": "self-verify"
         },
@@ -258,7 +262,7 @@
           "name": "version"
         }
       ],
-      "hash": "280cc87b8857cee837faf03189ea0507d0978df5f8bd6f14eee9f1c28153f3a0",
+      "hash": "da6db4ec4f73aa18d3eab76323c27f3a9962aa3dfddea4739219a60c902ad754",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -562,6 +566,24 @@
           "selected_labels",
           "rejected_labels",
           "apply_instructions",
+          "warnings"
+        ],
+        "resource_wait": [
+          "ok",
+          "kind",
+          "status",
+          "profile",
+          "workspace_root",
+          "started_at",
+          "finished_at",
+          "waited_ms",
+          "sample_count",
+          "required_stable_samples",
+          "consecutive_stable_samples",
+          "thresholds",
+          "latest_sample",
+          "recent_samples",
+          "blockers",
           "warnings"
         ],
         "self_verification_summary": [
@@ -6489,6 +6511,10 @@
                 "name": "web-fetch"
               },
               {
+                "description": "wait for a bounded read-only E2E resource admission decision",
+                "name": "resource"
+              },
+              {
                 "description": "run harness verification gates",
                 "name": "self-verify"
               },
@@ -6505,7 +6531,7 @@
                 "name": "version"
               }
             ],
-            "hash": "280cc87b8857cee837faf03189ea0507d0978df5f8bd6f14eee9f1c28153f3a0",
+            "hash": "da6db4ec4f73aa18d3eab76323c27f3a9962aa3dfddea4739219a60c902ad754",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6809,6 +6835,24 @@
                 "selected_labels",
                 "rejected_labels",
                 "apply_instructions",
+                "warnings"
+              ],
+              "resource_wait": [
+                "ok",
+                "kind",
+                "status",
+                "profile",
+                "workspace_root",
+                "started_at",
+                "finished_at",
+                "waited_ms",
+                "sample_count",
+                "required_stable_samples",
+                "consecutive_stable_samples",
+                "thresholds",
+                "latest_sample",
+                "recent_samples",
+                "blockers",
                 "warnings"
               ],
               "self_verification_summary": [

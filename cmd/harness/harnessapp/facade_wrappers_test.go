@@ -13,6 +13,7 @@ import (
 
 	"agent-harness/cmd/harness/qualitycli"
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/resourcewait"
 	"agent-harness/internal/port"
 )
 
@@ -71,6 +72,15 @@ func TestAppAndRootCommandFacadeWrappers(t *testing.T) {
 	cmd := rootCommand()
 	if cmd.Version != version || len(cmd.Runners) == 0 {
 		t.Fatalf("root command = %#v", cmd)
+	}
+	if _, ok := cmd.Runners["resource"]; !ok {
+		t.Fatal("root command does not expose resource")
+	}
+	if code := rootSubcommandErrorExitCode("resource", &resourcewait.AdmissionError{Status: resourcewait.StatusTimedOut}); code != 3 {
+		t.Fatalf("resource timeout exit code = %d, want 3", code)
+	}
+	if code := rootSubcommandErrorExitCode("resource", &resourcewait.AdmissionError{Status: resourcewait.StatusError}); code != 1 {
+		t.Fatalf("resource error exit code = %d, want 1", code)
 	}
 	if rootSubcommandErrorExitCode("unknown", errors.New("bad")) != 1 {
 		t.Fatal("default root subcommand exit code changed")

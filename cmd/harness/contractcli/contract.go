@@ -111,6 +111,7 @@ func BuildCompatibilityContract() CompatibilityContract {
 		CLICommands: cliadapter.Commands(),
 		MCPTools:    toolNames,
 		ResponseFields: map[string][]string{
+			"resource_wait":                   {"ok", "kind", "status", "profile", "workspace_root", "started_at", "finished_at", "waited_ms", "sample_count", "required_stable_samples", "consecutive_stable_samples", "thresholds", "latest_sample", "recent_samples", "blockers", "warnings"},
 			"self_verification_summary":       selfworkflow.BuildSelfVerificationContract().RequiredFields,
 			"harness_doctor":                  {"ok", "healthy", "kind", "repo_root", "state_dir", "lifecycle_state", "pipe_capacity_bytes", "checks", "issues"},
 			"harness_status":                  {"ok", "kind", "version", "repo", "inspect", "doctor", "daemon", "state", "workers", "self_verify", "warnings"},

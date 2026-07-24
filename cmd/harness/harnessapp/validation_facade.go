@@ -49,6 +49,10 @@ func validateDocsIndex(binary, root string) StepResult {
 	return validationcli.ValidateDocsIndex(binary, root)
 }
 
+func validateResourceAdmission() StepResult {
+	return validationcli.ValidateResourceAdmission()
+}
+
 func validateCommandPolicy(binary, root string) StepResult {
 	return validationcli.ValidateCommandPolicy(binary, root)
 }

@@ -55,6 +55,7 @@ func rootCommand() rootcmd.Command {
 			"workpool":       runWorkpool,
 			"loop":           runLoop,
 			"web-fetch":      runWebFetch,
+			"resource":       runResource,
 			"daemon":         runDaemon,
 			"mcp":            runMCPCommand,
 		},
@@ -76,6 +77,8 @@ func rootSubcommandErrorExitCode(name string, err error) int {
 		if core.IsGuardBlocked(err) {
 			return 3
 		}
+	case "resource":
+		return resourceExitCode(err)
 	}
 	return 1
 }

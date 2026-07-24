@@ -9,6 +9,7 @@ import (
 	"agent-harness/cmd/harness/loopcli"
 	"agent-harness/cmd/harness/projectcli"
 	"agent-harness/cmd/harness/qualitycli"
+	"agent-harness/cmd/harness/resourcecli"
 	"agent-harness/cmd/harness/statecli"
 	"agent-harness/cmd/harness/statuscli"
 	"agent-harness/cmd/harness/webfetchcli"
@@ -233,6 +234,14 @@ func runLoop(args []string) error {
 
 func runWebFetch(args []string) error {
 	return webfetchcli.Run(args)
+}
+
+func runResource(args []string) error {
+	return resourcecli.Run(args)
+}
+
+func resourceExitCode(err error) int {
+	return resourcecli.ExitCode(err)
 }
 
 func runWorkerEnqueue(args []string) error {
