@@ -97,6 +97,8 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v("--target-schema", "--expected-fingerprint", "--id", "--claim-id"), b("--preview", "--status", "--reconcile-remote", "--drain-cycle", "--confirm", "--json"), r, true
 	case "status":
 		return v("--id"), b("--json"), r, true
+	case "list":
+		return v("--repo"), b("--json"), r, true
 	case "execution status":
 		return v("--id"), b("--json"), r, true
 	case "execution prepare":

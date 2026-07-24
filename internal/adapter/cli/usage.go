@@ -76,6 +76,7 @@ Usage:
   agent-harness state migrate [--confirm] [--json]
   agent-harness issueops start --repo PATH [--branch NAME] [--json]
   agent-harness issueops status --id ID [--json]
+  agent-harness issueops list [--repo PATH] [--json]
   agent-harness issueops intent record --id ID --raw-request TEXT --interpreted-intent TEXT --success-criteria TEXT [--constraint TEXT] [--ambiguity TEXT] [--non-goal TEXT] [--intent-class CLASS] [--json]
   agent-harness issueops link-issue --id ID --issue-url URL [--json]
   agent-harness issueops link-child --id ID --child-url URL [--title TEXT] [--json]
