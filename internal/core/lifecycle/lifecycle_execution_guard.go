@@ -41,6 +41,10 @@ func executionObservation(req HookToolUseLifecycleRequest) bool {
 	case "status", "execution status":
 		id, ok := oneFlag(flags, "--id")
 		return ok && strings.TrimSpace(id) != ""
+	case "execution whoami":
+		// claim identity 부트스트랩: owner가 자기 native receipt를 관측할
+		// 유일한 admitted 경로다. 읽기 전용이고 인자를 받지 않는다.
+		return true
 	case "remote score":
 		return exactRemoteScoreObservation(flags)
 	case "execution replace":

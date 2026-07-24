@@ -109,6 +109,8 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v("--id", "--generation", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--json"), r, true
 	case "execution replace":
 		return v("--id", "--expected-generation", "--inventory-fingerprint", "--quiescence-fingerprint", "--reason", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--preview", "--revoke", "--finalize-preview", "--finalize", "--reseed", "--confirm", "--json"), r, true
+	case "execution whoami":
+		return v(), b("--json"), r, true
 	case "execution reconcile":
 		return v("--id", "--operation-id", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--preview", "--confirm", "--json"), r, true
 	case "execution complete":

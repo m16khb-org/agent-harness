@@ -109,7 +109,11 @@ Required skills:
    문서를 digest 검증 후 읽고 구현 계약의 일부로 삼는다.
 4. `{LEASE_STATUS_COMMAND}`를 한 번 실행한다.
 5. claim command가 `none`이면 durable holder가 현재 native session/generation/worktree와 같은지
-   확인한다. 아니면 다음 exact command를 한 번 실행하고 token 원문은 출력하지 않는다:
+   확인한다. 아니면 먼저 `agent-harness issueops execution whoami --json`을 실행해 ancestry에서
+   native session 프로세스(owner host 실행 파일)의 receipt를 읽고, 그 pid/started_at/executable
+   리터럴 값으로 아래 placeholder를 채운 exact command를 한 번 실행한다. `$$`, `$(...)`, `$VAR`
+   같은 shell 확장이 섞인 명령은 hook이 fail-closed로 거부하며, 빈 값 placeholder는 넣지 않는다.
+   token 원문은 출력하지 않는다:
    {CLAIM_COMMAND}
 6. claim/holder 확인 전 production mutation을 하지 않는다.
 

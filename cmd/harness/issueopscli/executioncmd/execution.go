@@ -40,6 +40,7 @@ func execute(req issueops.ExecutionActionRequest, deps Deps) (any, error) {
 const Usage = `Usage:
   agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude [--owner-model MODEL] [--owner-effort EFFORT] ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops execution status --id ID [--json]
+  agent-harness issueops execution whoami [--json]
   agent-harness issueops execution claim --id ID --generation N --claim-token-file PATH [--issue-body-sha256 HEX --context-packet-sha256 HEX] ACTOR_FLAGS [--json]
   agent-harness issueops execution release --id ID --generation N ACTOR_FLAGS [--json]
   agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [fingerprint/reason flags] ACTOR_FLAGS [--confirm] [--json]
@@ -58,6 +59,8 @@ func Run(args []string, deps Deps) error {
 		return runPrepare(args[1:], deps)
 	case "status":
 		return runStatus(args[1:], deps)
+	case "whoami":
+		return runWhoami(args[1:], deps)
 	case "claim":
 		return runClaim(args[1:], deps)
 	case "release":
@@ -124,6 +127,35 @@ func runStatus(args []string, deps Deps) error {
 	}
 	result, err := execute(issueops.ExecutionActionRequest{Action: issueops.ExecutionActionStatus, ID: *id}, deps)
 	return output(result, *jsonOut, err, deps)
+}
+
+// ExecutionWhoamiResult는 호출 프로세스의 native ancestry receipt를 노출한다.
+// owner가 claim identity를 shell 확장 없이 리터럴 값으로 채우기 위한 read-only
+// 표면이다(이슈 #90 발견 3 — 확장이 섞인 claim은 exact 파싱이 fail-closed로
+// 거부하므로, 관측 가능한 대체 경로가 없으면 부트스트랩이 교착한다).
+type ExecutionWhoamiResult struct {
+	OK              bool                         `json:"ok"`
+	Ancestry        []model.NativeProcessReceipt `json:"ancestry"`
+	ClaimActorFlags []string                     `json:"claim_actor_flags"`
+}
+
+func runWhoami(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops execution whoami", flag.ContinueOnError)
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if done, err := parse(fs, args); done || err != nil {
+		return err
+	}
+	ancestry, err := issueops.ObserveNativeProcessAncestry(os.Getpid())
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
+	result := ExecutionWhoamiResult{OK: true, Ancestry: ancestry}
+	for _, receipt := range ancestry {
+		result.ClaimActorFlags = append(result.ClaimActorFlags, fmt.Sprintf(
+			"--session-pid %d --session-started-at %s --session-executable '%s'",
+			receipt.PID, receipt.StartedAt, receipt.Executable))
+	}
+	return output(result, *jsonOut, nil, deps)
 }
 
 func runClaim(args []string, deps Deps) error {

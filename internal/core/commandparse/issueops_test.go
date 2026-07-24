@@ -14,6 +14,7 @@ func TestParseExactIssueOpsCommandCorpus(t *testing.T) {
 		{"./bin/agent-harness issueops execution claim --id io-1", true, "execution claim"},
 		{"agent-harness issueops execution prepare --id io-1", true, "execution prepare"},
 		{"agent-harness issueops execution reconcile --id io-1", true, "execution reconcile"},
+		{"agent-harness issueops execution whoami --json", true, "execution whoami"},
 		{"agent-harness issueops compatibility review --id io-1", true, "compatibility review"},
 		{"agent-harness issueops phase --id io-1 --to pr", true, "phase"},
 		// Two-word subcommand with a flag where the second word is missing -> reject.

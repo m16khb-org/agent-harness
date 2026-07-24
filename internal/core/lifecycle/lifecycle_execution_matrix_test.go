@@ -107,6 +107,9 @@ func TestExecutionShellReadersAreObservationFirst(t *testing.T) {
 		"find " + repo + " -maxdepth 1 -type f",
 		"stat " + filepath.Join(repo, "README.md"),
 		"file " + filepath.Join(repo, "README.md"),
+		// claim identity bootstrap(이슈 #90 발견 3): owner는 자기 native
+		// receipt를 관측할 admitted 표면이 필요하다.
+		"agent-harness issueops execution whoami --json",
 	}
 	for _, command := range commands {
 		t.Run(command, func(t *testing.T) {
