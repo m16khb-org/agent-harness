@@ -300,13 +300,13 @@ func TestRemoteHelpersAndBoundaries(t *testing.T) {
 	if _, err := readIssueOpsRemoteScoringRequestFile(bad); err == nil {
 		t.Fatal("bad scoring JSON should fail")
 	}
-	if resolveRecordProvider(core.IssueOpsRecord{BranchPrepare: &core.IssueOpsBranchPrepare{Provider: "gitlab"}}) != "gitlab" {
+	if core.ResolveRecordProvider(core.IssueOpsRecord{BranchPrepare: &core.IssueOpsBranchPrepare{Provider: "gitlab"}}) != "gitlab" {
 		t.Fatal("branch prepare provider should win")
 	}
-	if resolveRecordProvider(core.IssueOpsRecord{RemoteArtifact: &core.IssueOpsRemoteArtifactVerification{Provider: "github"}}) != "github" {
+	if core.ResolveRecordProvider(core.IssueOpsRecord{RemoteArtifact: &core.IssueOpsRemoteArtifactVerification{Provider: "github"}}) != "github" {
 		t.Fatal("remote artifact provider should be used")
 	}
-	if resolveRecordProvider(core.IssueOpsRecord{IssueURL: "https://gitlab.com/acme/repo/-/issues/1"}) != "gitlab" {
+	if core.ResolveRecordProvider(core.IssueOpsRecord{IssueURL: "https://gitlab.com/acme/repo/-/issues/1"}) != "gitlab" {
 		t.Fatal("gitlab issue URL should infer provider")
 	}
 	if err := Run(nil, deps); err != nil {
