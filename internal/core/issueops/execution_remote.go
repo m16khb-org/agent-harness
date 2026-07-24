@@ -157,8 +157,15 @@ func prepareRemotePullRequest(stateRoot string, req RemotePullRequestRequest) (I
 		// orca 모드(이원 구조 사이클) 한정 하드 게이트: planner급 brooks 리뷰의
 		// pass 기록 없이는 publication을 열지 않는다(설계 v5 WS5). direct 모드는
 		// 단독 구현 세션의 자기리뷰가 devils-advocate ledger로 기록되므로 제외.
-		if missing := implementationReviewMissing(record, implementation.ChangeFingerprint(record)); missing != "" {
+		currentReviewFingerprint := implementation.ChangeFingerprint(record)
+		if missing := implementationReviewMissing(record, currentReviewFingerprint); missing != "" {
 			return IssueOpsRecord{}, port.IssueProviderCreatePullRequestRequest{}, "", fmt.Errorf("remote create requires a pass implementation review (%s); record it with `agent-harness issueops implementation-review record --id %s ...`", missing, record.ID)
+		}
+		// ai_slop_clean 선례(strict:59-61)와 동형: 리뷰가 fingerprint를 봉인했는데
+		// 현재 값을 계산할 수 없으면 staleness 판정을 조용히 끄는 대신 거부한다.
+		if record.Execution.Mode == model.ExecutionModeOrca && currentReviewFingerprint == "" &&
+			record.ImplementationReview != nil && record.ImplementationReview.ReviewedFingerprint != "" {
+			return IssueOpsRecord{}, port.IssueProviderCreatePullRequestRequest{}, "", fmt.Errorf("remote create cannot verify implementation review freshness (current_fingerprint unavailable)")
 		}
 	}
 	if record.BranchPrepare == nil {
