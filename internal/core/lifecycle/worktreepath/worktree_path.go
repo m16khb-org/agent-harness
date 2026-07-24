@@ -36,52 +36,6 @@ func GitBranchFromHead(repo string) string {
 	return ""
 }
 
-// SourceCheckout resolves a linked worktree's public .git pointer without
-// spawning Git. A main checkout resolves to itself.
-func SourceCheckout(repo string) string {
-	root := CleanAbs(repo)
-	if root == "" {
-		return ""
-	}
-	gitPath := filepath.Join(root, ".git")
-	info, err := os.Lstat(gitPath)
-	if err != nil {
-		return ""
-	}
-	if info.IsDir() {
-		return root
-	}
-	b, err := os.ReadFile(gitPath)
-	if err != nil {
-		return ""
-	}
-	line := strings.TrimSpace(string(b))
-	gitDir, ok := strings.CutPrefix(line, "gitdir:")
-	if !ok {
-		return ""
-	}
-	gitDir = strings.TrimSpace(gitDir)
-	if !filepath.IsAbs(gitDir) {
-		gitDir = filepath.Join(root, gitDir)
-	}
-	gitDir = filepath.Clean(gitDir)
-	worktreesDir := filepath.Dir(gitDir)
-	commonGitDir := filepath.Dir(worktreesDir)
-	if filepath.Base(worktreesDir) != "worktrees" || filepath.Base(commonGitDir) != ".git" {
-		return ""
-	}
-	return filepath.Dir(commonGitDir)
-}
-
-func IsInsideWorktreesPath(target string) bool {
-	for _, segment := range strings.Split(filepath.ToSlash(target), "/") {
-		if strings.HasSuffix(segment, ".worktrees") {
-			return true
-		}
-	}
-	return false
-}
-
 func ResolveHookTargetPath(repo, path string) string {
 	p := strings.TrimSpace(path)
 	if p == "" {

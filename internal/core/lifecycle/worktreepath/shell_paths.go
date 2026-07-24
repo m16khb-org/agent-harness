@@ -194,24 +194,6 @@ func shellEvalFlag(value string) bool {
 	return strings.Contains(strings.TrimPrefix(value, "-"), "c")
 }
 
-func IssueOpsPreparationCommand(command string) bool {
-	tokens := commandparse.SplitCommandTokens(command)
-	for i, token := range tokens {
-		if searchrouting.SearchTokenName(token) != "git" || i+2 >= len(tokens) {
-			continue
-		}
-		if searchrouting.SearchTokenName(tokens[i+1]) != "worktree" || searchrouting.SearchTokenName(tokens[i+2]) != "add" {
-			continue
-		}
-		for _, value := range gitWorktreeAddTargets(tokens[i+3:]) {
-			if IsInsideWorktreesPath(ResolveHookTargetPath("", value)) || strings.Contains(filepath.ToSlash(value), ".worktrees/") {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func resolveShellGuardPath(currentDir, value string) string {
 	path := strings.TrimSpace(value)
 	if path == "" || strings.HasPrefix(path, "-") || strings.Contains(path, "$(") || strings.Contains(path, "`") {

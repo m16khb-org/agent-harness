@@ -64,24 +64,6 @@ func TestGitBranchFromHead(t *testing.T) {
 	})
 }
 
-func TestSourceCheckoutFromLinkedWorktreeGitdir(t *testing.T) {
-	source := t.TempDir()
-	gitDir := filepath.Join(source, ".git", "worktrees", "feature")
-	if err := os.MkdirAll(gitDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	worktree := t.TempDir()
-	if err := os.WriteFile(filepath.Join(worktree, ".git"), []byte("gitdir: "+gitDir+"\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if got := SourceCheckout(worktree); got != source {
-		t.Fatalf("SourceCheckout=%q, want %q", got, source)
-	}
-	if got := SourceCheckout(source); got != source {
-		t.Fatalf("main checkout SourceCheckout=%q, want %q", got, source)
-	}
-}
-
 func TestCleanAbsAndWithin(t *testing.T) {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -132,24 +114,6 @@ func TestResolveHookTargetPath(t *testing.T) {
 	}
 	if got := ResolveHookTargetPath(repo, " "); got != "" {
 		t.Fatalf("blank target=%q, want empty", got)
-	}
-}
-
-func TestIsInsideWorktreesPath(t *testing.T) {
-	tests := []struct {
-		path     string
-		expected bool
-	}{
-		{"/tmp/myproject.worktrees/feature-a", true},
-		{"/tmp/.worktrees/something", true},
-		{"/tmp/regular/path", false},
-		{"", false},
-	}
-	for _, tt := range tests {
-		got := IsInsideWorktreesPath(tt.path)
-		if got != tt.expected {
-			t.Errorf("IsInsideWorktreesPath(%q) = %v, want %v", tt.path, got, tt.expected)
-		}
 	}
 }
 
@@ -275,28 +239,6 @@ func containsGuardPath(paths []string, want string) bool {
 		}
 	}
 	return false
-}
-
-func TestIssueOpsPreparationCommand(t *testing.T) {
-	tests := []struct {
-		name     string
-		command  string
-		expected bool
-	}{
-		{"worktree add into worktrees", "git worktree add -b feature /tmp/proj.worktrees/feat", true},
-		{"worktree add with .worktrees in path", "git worktree add ../some.worktrees/feat", true},
-		{"regular worktree add", "git worktree add -b feature /tmp/normal/path", false},
-		{"not worktree", "git status", false},
-		{"not git", "echo hello", false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := IssueOpsPreparationCommand(tt.command)
-			if got != tt.expected {
-				t.Errorf("IssueOpsPreparationCommand(%q) = %v, want %v", tt.command, got, tt.expected)
-			}
-		})
-	}
 }
 
 func stringSlicesEqual(a, b []string) bool {
