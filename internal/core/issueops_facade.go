@@ -214,6 +214,17 @@ func RecordIssueOpsImplementationReview(stateRoot, id string, req IssueOpsImplem
 	return issueops.RecordIssueOpsImplementationReview(stateRoot, id, req)
 }
 
+type IssueOpsListResult = issueops.IssueOpsListResult
+type IssueOpsListEntry = issueops.IssueOpsListEntry
+
+func ListIssueOpsCycles(stateRoot, repo string) (IssueOpsListResult, error) {
+	return issueops.ListIssueOpsCycles(stateRoot, repo)
+}
+
+func IncrementIssueOpsSourceMisdirect(stateRoot, id string) (int, error) {
+	return issueops.IncrementIssueOpsSourceMisdirect(stateRoot, id)
+}
+
 type IssueOpsCleanupFinishRequest = issueops.CleanupFinishRequest
 type IssueOpsCleanupFinishDeps = issueops.CleanupFinishDeps
 type IssueOpsCleanupFinishResult = issueops.CleanupFinishResult

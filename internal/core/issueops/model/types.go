@@ -359,6 +359,7 @@ type IssueOpsRecord struct {
 	ChildCycles             []IssueOpsChildCycleRef             `json:"child_cycles,omitempty"`
 	Execution               *Execution                          `json:"execution,omitempty"`
 	RemoteCompletion        *IssueOpsRemoteCompletion           `json:"remote_completion,omitempty"`
+	SourceMisdirectWarnings int                                 `json:"source_misdirect_warnings,omitempty"`
 	CleanupFinishFailure    *IssueOpsCleanupFinishFailure       `json:"cleanup_finish_failure,omitempty"`
 	ImplementationReview    *IssueOpsImplementationReview       `json:"implementation_review,omitempty"`
 	RoutingTrace            []SkillRoutingEntry                 `json:"routing_trace,omitempty"`

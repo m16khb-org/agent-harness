@@ -444,3 +444,36 @@ func runIssueOpsImplementationReview(args []string) error {
 	})
 	return printIssueOpsResult(record, *jsonOut, err)
 }
+
+// runIssueOpsList는 다중 사이클 조망 표면이다. span lock·repair 없이 전량
+// 읽고, scanned_records로 O(N) 비용을 관측 가능하게 한다(설계 v5 WS6).
+func runIssueOpsList(args []string) error {
+	fs := flag.NewFlagSet("issueops list", flag.ContinueOnError)
+	repo := fs.String("repo", "", "filter cycles by repository path")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	result, err := core.ListIssueOpsCycles(core.IssueOpsStateRoot(), *repo)
+	if err != nil {
+		return err
+	}
+	if *jsonOut {
+		return printJSON(result)
+	}
+	fmt.Printf("cycles: %d (scanned %d records at %s)\n", len(result.Entries), result.ScannedRecords, result.GeneratedAt)
+	for _, entry := range result.Entries {
+		flags := ""
+		if entry.Claimable {
+			flags += " [claimable]"
+		}
+		if entry.CleanupCandidate {
+			flags += " [cleanup]"
+		}
+		if entry.CompletionUnreflected {
+			flags += " [unreflected]"
+		}
+		fmt.Printf("- %s %s phase=%s lease=%s%s\n", entry.ID, entry.Branch, entry.Phase, entry.LeaseStatus, flags)
+	}
+	return nil
+}

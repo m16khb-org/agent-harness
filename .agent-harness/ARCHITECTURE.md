@@ -146,7 +146,7 @@ Draft wiki staging:
 - key 제한: `[A-Za-z0-9._-]`, 최대 128자, `/`, `\`, `..` 금지
 - schema: current `schema_version=1`; version이 없는 legacy record는 read-compatible하고 `state migrate`로 승격한다.
 - 제공 표면: CLI `state write/read/list/prune/doctor/migrate`, MCP `state_write/state_read/state_list/state_prune/state_doctor/state_migrate`, resource `harness://state`
-- IssueOps 제공 표면: 기존 lifecycle/domain CLI와 함께 `issueops execution prepare/status/claim/release/replace/reconcile/complete`, generation-fenced `issueops remote create-pr`, destructive migration boundary인 `issueops reset-legacy preview/status/confirm`을 제공한다. IssueOps MCP 표면은 정확히 하나인 `issueops_execution`이며 action으로 같은 execution state machine을 호출한다. `execution prepare`가 provider branch의 exact base SHA에서 fixed sibling worktree를 만들고, direct는 caller에게 generation 1을 부여하며 Orca는 sealed packet/prompt/token file과 claimable lease를 만든다. External mutation은 intent-first이고 ambiguity는 reconcile 전까지 fail closed다. `execution complete`는 phase `pr`, active generation, final HEAD, committed Turing report, verification, exact verified remote URL을 요구하며 `done` 전이와 lease release를 원자적으로 기록한다.
+- IssueOps 제공 표면: 기존 lifecycle/domain CLI와 함께 `issueops execution prepare/status/claim/release/replace/reconcile/complete`, generation-fenced `issueops remote create-pr`, destructive migration boundary인 `issueops reset-legacy preview/status/confirm`을 제공한다. 이원 구조 운영 표면으로 `issueops artifact stage/unstage`(prepare 전 스테이징·materialize·orca packet manifest 봉인), `issueops implementation-review record`(orca 모드 publication fail-closed 게이트, 변경 집합 fingerprint 바인딩), `issueops list`(read-only 다중 사이클 집계, scanned_records 비용 노출), `issueops cleanup finish`(record-backed 머지 후 정리 — orca 회수→git worktree 제거→브랜치 CAS 삭제→감사 라인 멱등 반영→레코드 삭제, resumable), `issueops remote reflect-completion/close-issue`(completion 섹션 보존·부모 이슈 close, 원격 readback fail-closed)를 제공한다. execution prepare는 `--owner-model` 미지정 시 host별 implementer 기본값(codex gpt-5.6-terra/xhigh, claude claude-opus-4-8/high)을 적용하고, owner 프롬프트에 planner급 reviewer 모델(codex gpt-5.6-sol/xhigh, claude claude-fable-5/high)을 렌더한다. IssueOps MCP 표면은 정확히 하나인 `issueops_execution`이며 action으로 같은 execution state machine을 호출한다. `execution prepare`가 provider branch의 exact base SHA에서 fixed sibling worktree를 만들고, direct는 caller에게 generation 1을 부여하며 Orca는 sealed packet/prompt/token file과 claimable lease를 만든다. External mutation은 intent-first이고 ambiguity는 reconcile 전까지 fail closed다. `execution complete`는 phase `pr`, active generation, final HEAD, committed Turing report, verification, exact verified remote URL을 요구하며 `done` 전이와 lease release를 원자적으로 기록한다.
 - cleanup: `state prune --max-age DURATION`은 기본 dry-run이고, 실제 삭제에는 `--confirm`이 필요하다.
 - integrity: `state doctor`는 checkpoint 파일을 수정하지 않고 invalid JSON, key mismatch, byte count drift, timestamp 오류를 보고한다.
 - comprehensive diagnostics: `agent-harness doctor`는 state doctor를 포함해 install, hooks, MCP, daemon, project docs, lifecycle namespace, repo-local runtime/schema 흔적을 종합 점검한다.
@@ -362,6 +362,16 @@ routing therefore keeps parallel cycles independent. The active holder performs
 the remaining gates, implementation, publication, and completion in its
 canonical worktree. Completion records `done` and releases the generation;
 later merge and cleanup require separate current evidence and authority.
+
+Post-merge cleanup ordering is a contract: `reflect-completion`(completion
+섹션에 최종 head·PR URL·검증 요약·artifact 본문 보존) → `close-issue` →
+`cleanup finish`. finish는 preview 게이트(원격 readback fail-closed·터미널
+quiescence·head OID CAS·fingerprint) 뒤에만 파괴 단계를 수행하고 마지막에
+레코드를 삭제한다 — 결정적 ID(`sha256(repo+branch)`) 재사용과 충돌하지 않는
+유일한 수명 종료다. 각 파괴 단계는 멱등이며, 실패 시 레코드가 보존되고 재실행
+전 preview 재발급이 요구된다. prune은 completion 미반영 + RemoteArtifact 보유
+레코드를 나이와 무관하게 보존한다(보존 불변식). staged artifact의 수명은
+레코드와 같다(deleteIssueOps가 스테이지 버킷을 동반 삭제).
 ## 현재 hardening 추가 사항
 
 - `internal/adapter/cli`는 top-level command catalog와 canonical usage text를 소유한다. `cmd/harness`는 process entrypoint와 dispatch layer로 남는다.
