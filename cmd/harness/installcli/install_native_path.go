@@ -20,12 +20,18 @@ func applyInstallPathPlan(result *port.NativeInstallResult, req port.NativeInsta
 	if err != nil {
 		return err
 	}
+	shortCommandPath := filepath.Join(userBin, "ah")
+	shortLink, err := ensureShortCommandShimPlan(commandPath, shortCommandPath, req.DryRun)
+	result.Links = append(result.Links, shortLink)
+	if err != nil {
+		return err
+	}
 	if mode == "manual" {
-		result.Messages = append(result.Messages, `path-mode=manual: command shim is planned; run export PATH="$HOME/.local/bin:$PATH" for this shell or add it to your shell rc`)
+		result.Messages = append(result.Messages, `path-mode=manual: command shims are planned at `+commandPath+` and `+shortCommandPath+`; run export PATH="$HOME/.local/bin:$PATH" for this shell or add it to your shell rc`)
 		return nil
 	}
 	if mode == "skip" {
-		result.Messages = append(result.Messages, "path-mode=skip: shell rc PATH update skipped; command shim still uses "+commandPath)
+		result.Messages = append(result.Messages, "path-mode=skip: shell rc PATH update skipped; command shims still use "+commandPath+" and "+shortCommandPath)
 		return nil
 	}
 	if localBinInPath(req.Home) {
@@ -48,6 +54,28 @@ func applyInstallPathPlan(result *port.NativeInstallResult, req port.NativeInsta
 		result.Messages = append(result.Messages, `added ~/.local/bin to PATH in `+rcPath+`; restart shell or run: export PATH="$HOME/.local/bin:$PATH"`)
 	}
 	return nil
+}
+
+func ensureShortCommandShimPlan(target, path string, dryRun bool) (port.InstallLink, error) {
+	link := port.InstallLink{Path: path, Target: target}
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return installutil.EnsureSymlinkPlan(target, path, dryRun)
+	}
+	if err != nil {
+		return link, err
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		return link, fmt.Errorf("refusing to replace existing ah command: %s", path)
+	}
+	current, err := os.Readlink(path)
+	if err != nil {
+		return link, err
+	}
+	if current != target {
+		return link, fmt.Errorf("refusing to replace existing ah command symlink %s -> %s", path, current)
+	}
+	return link, nil
 }
 
 func preferredShellRC(home string) string {

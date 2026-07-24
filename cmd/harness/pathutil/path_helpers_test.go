@@ -161,6 +161,46 @@ func TestHarnessRootPrefersEnvironmentAndReadHarnessFile(t *testing.T) {
 	}
 }
 
+func TestHarnessRootFromFollowsExecutableSymlink(t *testing.T) {
+	root := t.TempDir()
+	marker := filepath.Join("skills", "atomic-commit-push", "SKILL.md")
+	markerPath := filepath.Join(root, marker)
+	if err := os.MkdirAll(filepath.Dir(markerPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(markerPath, []byte("skill"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	binary := filepath.Join(root, "bin", "agent-harness")
+	if err := os.MkdirAll(filepath.Dir(binary), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(binary, []byte("binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	userBin := filepath.Join(t.TempDir(), ".local", "bin")
+	if err := os.MkdirAll(userBin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	canonical := filepath.Join(userBin, "agent-harness")
+	short := filepath.Join(userBin, "ah")
+	if err := os.Symlink(binary, canonical); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(canonical, short); err != nil {
+		t.Fatal(err)
+	}
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := harnessRootFrom(marker, "", t.TempDir(), short)
+	if got != resolvedRoot {
+		t.Fatalf("harnessRootFrom symlink = %q, want %q", got, resolvedRoot)
+	}
+}
+
 func TestSplitCSVContainsAndStateIssueHelpers(t *testing.T) {
 	if Exists(filepath.Join(t.TempDir(), "missing")) {
 		t.Fatal("missing path should not exist")

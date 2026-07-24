@@ -170,6 +170,18 @@ func TestInstallNativeScriptDoesNotWireCompanionTools(t *testing.T) {
 	}
 }
 
+func TestInstallNativeScriptDocumentsCommandShims(t *testing.T) {
+	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
+	for _, want := range []string{
+		"~/.local/bin/agent-harness",
+		"~/.local/bin/ah",
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("install-native.sh user command help missing %q", want)
+		}
+	}
+}
+
 func TestInstallNativeScriptSyncsGlabBeforeSealingActivation(t *testing.T) {
 	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
 	syncOffset := strings.Index(script, `bash "$ROOT/scripts/sync-glab-mcp.sh" || true`)

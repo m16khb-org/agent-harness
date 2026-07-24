@@ -49,11 +49,14 @@ fresh clone에서 처음 설치할 때:
 
 ```bash
 git pull --ff-only
-agent-harness update
-agent-harness inspect --json
+ah update
+ah inspect --json
 ```
 
-`agent-harness update`는 현재 checkout을 build하고 user-level integration을 갱신하지만 `git pull`은 실행하지 않습니다.
+`agent-harness`가 canonical command이고 `ah`는 installer가 관리하는 짧은
+symlink입니다. 기존 `ah` 파일이나 다른 symlink가 있으면 덮어쓰지 않고 설치가
+실패합니다. `ah update`는 현재 checkout을 build하고 user-level integration을
+갱신하지만 `git pull`은 실행하지 않습니다.
 
 ## Host 통합
 

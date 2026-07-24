@@ -137,6 +137,46 @@ func TestRunUpdateAndBootstrapForwardToInstallScript(t *testing.T) {
 	}
 }
 
+func TestRunUpdateUsesResolvedHarnessRootOutsideCheckout(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "scripts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	script := filepath.Join(root, "scripts", "install-native.sh")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	oldCWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(outside); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(oldCWD) })
+	Configure(Deps{HarnessRoot: func() string { return root }})
+	t.Cleanup(Reset)
+
+	var got string
+	restore := stubInstallScriptCommandRunner(t, func(name string, args ...string) error {
+		got = name
+		return nil
+	})
+	defer restore()
+	restoreDaemon := stubPostInstallDaemonRefresh(t, func() (bool, error) { return false, nil })
+	defer restoreDaemon()
+	restoreMCP := stubPostInstallMCPProxyRefresh(t, func() (int, error) { return 0, nil })
+	defer restoreMCP()
+
+	if err := runUpdate([]string{"--dry-run", "--path-mode=skip"}); err != nil {
+		t.Fatal(err)
+	}
+	if got != script {
+		t.Fatalf("update script = %q, want %q", got, script)
+	}
+}
+
 func TestRunInstallScriptCommandSkipsRuntimeProcessRefreshOnDryRun(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("HARNESS_ROOT", root)

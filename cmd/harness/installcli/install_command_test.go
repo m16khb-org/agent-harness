@@ -40,6 +40,9 @@ func TestInstallCommandDryRunAutoPathModePlansShimAndShellRC(t *testing.T) {
 	if !hasInstallLink(result.Links, filepath.Join(home, ".local", "bin", "agent-harness"), filepath.Join(root, "bin", "agent-harness"), true) {
 		t.Fatalf("auto path mode did not plan command shim link: %+v", result.Links)
 	}
+	if !hasInstallLink(result.Links, filepath.Join(home, ".local", "bin", "ah"), filepath.Join(home, ".local", "bin", "agent-harness"), true) {
+		t.Fatalf("auto path mode did not plan ah command shim: %+v", result.Links)
+	}
 	if !hasInstallFile(result.Files, filepath.Join(home, ".zshrc"), "shell_path_rc", true) {
 		t.Fatalf("auto path mode did not plan shell rc PATH write: %+v", result.Files)
 	}
@@ -51,6 +54,9 @@ func TestInstallCommandDryRunManualPathModePlansShimWithoutShellRC(t *testing.T)
 	result := runInstallDryRunJSON(t, home, "install", "manual")
 	if !hasInstallLink(result.Links, filepath.Join(home, ".local", "bin", "agent-harness"), filepath.Join(root, "bin", "agent-harness"), true) {
 		t.Fatalf("manual path mode did not plan command shim link: %+v", result.Links)
+	}
+	if !hasInstallLink(result.Links, filepath.Join(home, ".local", "bin", "ah"), filepath.Join(home, ".local", "bin", "agent-harness"), true) {
+		t.Fatalf("manual path mode did not plan ah command shim: %+v", result.Links)
 	}
 	if hasInstallFileKind(result.Files, "shell_path_rc") {
 		t.Fatalf("manual path mode unexpectedly planned shell rc write: %+v", result.Files)
@@ -141,10 +147,84 @@ func TestInstallNativeAliasAcceptsPathMode(t *testing.T) {
 
 func TestInstallCommandDryRunSkipPathModeDoesNotPlanShellRC(t *testing.T) {
 	home := t.TempDir()
-	configureInstallCommandTest(t, home)
+	root := configureInstallCommandTest(t, home)
 	result := runInstallDryRunJSON(t, home, "install", "skip")
+	if !hasInstallLink(result.Links, filepath.Join(home, ".local", "bin", "agent-harness"), filepath.Join(root, "bin", "agent-harness"), true) {
+		t.Fatalf("skip path mode did not plan command shim link: %+v", result.Links)
+	}
+	if !hasInstallLink(result.Links, filepath.Join(home, ".local", "bin", "ah"), filepath.Join(home, ".local", "bin", "agent-harness"), true) {
+		t.Fatalf("skip path mode did not plan ah command shim: %+v", result.Links)
+	}
 	if hasInstallFileKind(result.Files, "shell_path_rc") {
 		t.Fatalf("skip path mode unexpectedly planned shell rc write: %+v", result.Files)
+	}
+}
+
+func TestInstallCommandShortShimKeepsMatchingLink(t *testing.T) {
+	home := t.TempDir()
+	configureInstallCommandTest(t, home)
+	canonical := filepath.Join(home, ".local", "bin", "agent-harness")
+	short := filepath.Join(home, ".local", "bin", "ah")
+	if err := os.MkdirAll(filepath.Dir(short), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(canonical, short); err != nil {
+		t.Fatal(err)
+	}
+
+	result := runInstallDryRunJSON(t, home, "install", "skip")
+	if !hasInstallLink(result.Links, short, canonical, false) {
+		t.Fatalf("matching ah shim was not preserved: %+v", result.Links)
+	}
+}
+
+func TestInstallCommandShortShimRefusesExistingFile(t *testing.T) {
+	home := t.TempDir()
+	configureInstallCommandTest(t, home)
+	short := filepath.Join(home, ".local", "bin", "ah")
+	if err := os.MkdirAll(filepath.Dir(short), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(short, []byte("user command"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err := captureInstallCommandOutput(t, nil, func() error {
+		return RunInstallCommand("install", []string{"--dry-run", "--json", "--path-mode=skip"})
+	})
+	if err == nil || !strings.Contains(err.Error(), "refusing to replace existing ah command") {
+		t.Fatalf("existing ah file error = %v", err)
+	}
+	body, readErr := os.ReadFile(short)
+	if readErr != nil || string(body) != "user command" {
+		t.Fatalf("existing ah file changed: body=%q err=%v", body, readErr)
+	}
+}
+
+func TestInstallCommandShortShimRefusesUnrelatedSymlink(t *testing.T) {
+	home := t.TempDir()
+	configureInstallCommandTest(t, home)
+	short := filepath.Join(home, ".local", "bin", "ah")
+	if err := os.MkdirAll(filepath.Dir(short), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	unrelated := filepath.Join(home, "bin", "another-ah")
+	if err := os.MkdirAll(filepath.Dir(unrelated), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(unrelated, short); err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err := captureInstallCommandOutput(t, nil, func() error {
+		return RunInstallCommand("install", []string{"--dry-run", "--json", "--path-mode=skip"})
+	})
+	if err == nil || !strings.Contains(err.Error(), "refusing to replace existing ah command") {
+		t.Fatalf("unrelated ah symlink error = %v", err)
+	}
+	target, readErr := os.Readlink(short)
+	if readErr != nil || target != unrelated {
+		t.Fatalf("unrelated ah symlink changed: target=%q err=%v", target, readErr)
 	}
 }
 

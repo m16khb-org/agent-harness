@@ -16,7 +16,8 @@ agent-harness install --dry-run --json
 agent-harness install
 
 # Ongoing refresh from the current checkout.
-agent-harness update
+ah update
+ah inspect --json
 
 # Initialize project docs/profile for a target repository.
 agent-harness project bootstrap --repo /path/to/repo
@@ -27,12 +28,15 @@ agent-harness project bootstrap --repo /path/to/repo --sync
 
 `./install.sh` computes the checkout root, builds `bin/agent-harness` when needed, and then runs `agent-harness install`. In a real terminal with no arguments it enters the interactive installer. Non-interactive automation can pass explicit flags such as `--dry-run --json`.
 
-`install` owns environment setup. Normal users should not export `HARNESS_ROOT` manually; the installer writes it into Codex/Claude MCP configuration. `CODEX_HOME` is honored when already set and otherwise defaults to `~/.codex`. PATH setup is selected with `--path-mode=auto|manual|skip`, and the default `auto` mode plans or writes `~/.local/bin/agent-harness` plus a shell rc PATH line when needed.
+`install` owns environment setup. Normal users should not export `HARNESS_ROOT` manually; the installer writes it into Codex/Claude MCP configuration. `CODEX_HOME` is honored when already set and otherwise defaults to `~/.codex`. PATH setup is selected with `--path-mode=auto|manual|skip`. Every mode plans or writes the canonical `~/.local/bin/agent-harness` shim and the managed `~/.local/bin/ah -> ~/.local/bin/agent-harness` shorthand; `manual` and `skip` only omit shell rc changes. The default `auto` mode also adds a shell rc PATH line when needed.
 
-`bootstrap` and `update` use the current `agent-harness` checkout. They build `bin/agent-harness`, refresh the `~/.local/bin/agent-harness` shim through the same installer path, run native host installation, refresh MCP registration, and restart the shared daemon when it is already running so the MCP backend uses the rebuilt binary. They do not run `git pull`.
+`agent-harness` remains the canonical command identity. `ah` is a command symlink, not a shell alias or wrapper. If `~/.local/bin/ah` is a regular file, directory, or points elsewhere, install/update refuses to overwrite it and requires manual resolution.
+
+`bootstrap` and `update` use the current `agent-harness` checkout. They build `bin/agent-harness`, refresh both command shims through the same installer path, run native host installation, refresh MCP registration, and restart the shared daemon when it is already running so the MCP backend uses the rebuilt binary. They do not run `git pull`. Executable symlinks are resolved back to the checkout, so `ah update` works outside the repository directory.
 
 Default user-level install updates:
 
+- Command shims: `~/.local/bin/agent-harness -> <agent-harness>/bin/agent-harness`, `~/.local/bin/ah -> ~/.local/bin/agent-harness`
 - Codex skill symlinks: `~/.codex/skills/* -> <agent-harness>/skills/*`
 - Claude skill symlinks: `~/.claude/skills/* -> <agent-harness>/skills/*`
 - Codex MCP config: `~/.codex/config.toml` `[mcp_servers.agent_harness]`

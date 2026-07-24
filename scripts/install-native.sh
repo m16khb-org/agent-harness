@@ -24,8 +24,9 @@ Harness binary:
 
 User command:
   PATH setup is handled by `agent-harness install --path-mode=auto|manual|skip`.
-  The default auto mode creates ~/.local/bin/agent-harness and adds ~/.local/bin
-  to the detected shell rc when it is not already on PATH.
+  The default auto mode creates ~/.local/bin/agent-harness plus the safe
+  ~/.local/bin/ah shorthand, and adds ~/.local/bin to the detected shell rc
+  when it is not already on PATH.
 
 Environment:
   HARNESS_SKIP_BUILD=1              Same as --skip-build.

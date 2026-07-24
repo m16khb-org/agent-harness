@@ -15,25 +15,36 @@ func ReadHarnessFile(root string, parts ...string) (string, error) {
 }
 
 func HarnessRoot(marker string) string {
-	if env := os.Getenv("HARNESS_ROOT"); env != "" {
-		if root, err := filepath.Abs(env); err == nil {
+	envRoot := os.Getenv("HARNESS_ROOT")
+	cwd, _ := os.Getwd()
+	executable, _ := os.Executable()
+	return harnessRootFrom(marker, envRoot, cwd, executable)
+}
+
+func harnessRootFrom(marker, envRoot, cwd, executable string) string {
+	if envRoot != "" {
+		if root, err := filepath.Abs(envRoot); err == nil {
 			return root
 		}
 	}
 	var starts []string
-	if cwd, err := os.Getwd(); err == nil {
+	if cwd != "" {
 		starts = append(starts, cwd)
 	}
-	if exe, err := os.Executable(); err == nil {
-		d := filepath.Dir(exe)
-		starts = append(starts, d, filepath.Dir(d))
+	if executable != "" {
+		executableDir := filepath.Dir(executable)
+		starts = append(starts, executableDir, filepath.Dir(executableDir))
+		if resolved, err := filepath.EvalSymlinks(executable); err == nil && resolved != executable {
+			resolvedDir := filepath.Dir(resolved)
+			starts = append(starts, resolvedDir, filepath.Dir(resolvedDir))
+		}
 	}
 	for _, start := range starts {
 		if root, ok := FindUp(start, marker); ok {
 			return root
 		}
 	}
-	if cwd, err := os.Getwd(); err == nil {
+	if cwd != "" {
 		return cwd
 	}
 	return "."

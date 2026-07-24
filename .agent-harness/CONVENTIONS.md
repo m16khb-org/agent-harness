@@ -141,7 +141,7 @@ skills/
 
 - `internal/core.InstallNative`가 host-neutral 설치 engine이고 `port.HostInstaller`가 SOLID 경계다.
 - Codex/Claude adapter는 자기 host의 user/global 설정만 기본으로 쓴다. Codex는 `~/.codex/hooks.json`, Claude는 `~/.claude/settings.json`에 같은 lifecycle hook CLI를 등록한다. repo-local `.mcp.json`, `.claude/settings.json`, `.claude/skills`는 `--project-local` 같은 명시적 opt-in 없이는 만들지 않는다.
-- symlink는 사용자 홈의 skill 경로에서 중앙 `skills/<name>`을 참조하기 위해서만 기본 사용한다.
+- 기본 symlink는 사용자 홈의 skill 경로에서 중앙 `skills/<name>`을 참조하거나 installer-owned command shim(`~/.local/bin/agent-harness`, `~/.local/bin/ah`)을 연결할 때만 사용한다.
 - adapter 설치 계약을 바꾸면 `internal/adapter/install_contract_matrix_test.go`와 `internal/adapter/testdata/native_install_contract_matrix.golden.json`을 함께 갱신해 user/global 기본 설치와 explicit project-local opt-in의 차이를 보존한다.
 
 self-augment/self-verify 교정 가드레일 (v1 S5/S6 승계):
