@@ -384,6 +384,11 @@ The IssueOps skill prose uses vivid domain nouns — phase names, decision verbs
 | `intent` (contract) | **problem-phase ledger artifact** | `issueops intent record` |
 | `regress` (for replan) | **feedback action** | `issueops regress` |
 | `delegated child` | **parent-owned sub-agent cycle reference** | `issueops child start/status/accept/reject/drop` |
+| `artifact` (plan/spec/turing-loop 전달) | **prepare 전 스테이징 → materialize/봉인** | `issueops artifact stage/unstage` |
+| `implementation review` / 구현 diff brooks | **orca 모드 publication 게이트** | `issueops implementation-review record --verdict pass\|revise\|stop` |
+| 다중 사이클 조망 / cleanup 후보 | **read-only 집계 표면** | `issueops list [--repo PATH]` |
+| 머지 후 정리(finish) | **record-backed 정리 + 레코드 삭제** | `issueops cleanup finish (--preview \| --apply --confirm --fingerprint SHA)` |
+| 완료 기록/이슈 close | **completion 섹션 보존·부모 이슈 close** | `issueops remote reflect-completion` / `issueops remote close-issue` |
 | `child validation` | **parent verdict over child evidence** | `issueops child accept` or `issueops child reject` |
 
 ## Quality Upgrade Gates

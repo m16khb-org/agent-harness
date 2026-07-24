@@ -20,6 +20,12 @@ func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	if strings.TrimSpace(record.AISlopCleanAt) == "" {
 		missing = append(missing, "ai_slop_clean")
 	}
+	// non-strict readiness는 git 실행 컨텍스트가 없어 현재 fingerprint를 알 수
+	// 없다 — staleness 판정은 strict(IssueOpsStrictPRReadinessWithState)와
+	// create-pr 경로가 소유한다.
+	if reviewMissing := implementationReviewMissing(record, ""); reviewMissing != "" {
+		missing = append(missing, reviewMissing)
+	}
 	if issueOpsHasUnresolvedContractFeedback(record) {
 		missing = append(missing, "contract_feedback_issue_update")
 	}

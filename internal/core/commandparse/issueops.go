@@ -30,7 +30,7 @@ func ParseExactIssueOpsCommand(command string) (ExactIssueOpsCommand, bool) {
 	start := 3
 	if len(tokens) > 3 {
 		switch tokens[2] {
-		case "compatibility", "execution", "devils-advocate", "feedback", "remote", "cleanup", "ai-slop-clean":
+		case "compatibility", "execution", "devils-advocate", "feedback", "remote", "cleanup", "ai-slop-clean", "artifact", "implementation-review":
 			if strings.HasPrefix(tokens[3], "--") {
 				return ExactIssueOpsCommand{}, false
 			}
@@ -97,6 +97,8 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v("--target-schema", "--expected-fingerprint", "--id", "--claim-id"), b("--preview", "--status", "--reconcile-remote", "--drain-cycle", "--confirm", "--json"), r, true
 	case "status":
 		return v("--id"), b("--json"), r, true
+	case "list":
+		return v("--repo"), b("--json"), r, true
 	case "execution status":
 		return v("--id"), b("--json"), r, true
 	case "execution prepare":
@@ -148,6 +150,27 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return values, b("--json"), r, true
 	case "remote score":
 		return v("--input", "--judge", "--judge-file"), b("--json"), r, true
+	case "implementation-review record":
+		values := v("--id", "--verdict", "--finding", "--evidence", "--reviewer-host", "--reviewer-model", "--reviewer-effort", "--host", "--session-id", "--agent-id", "--cwd")
+		r["--finding"] = true
+		r["--evidence"] = true
+		return values, b("--json"), r, true
+	case "artifact unstage":
+		return v("--id", "--name"), b("--json"), r, true
+	case "artifact stage":
+		return v("--id", "--name", "--file", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
+	case "cleanup status":
+		return v("--id", "--host", "--session-id", "--agent-id", "--cwd"), b("--merged", "--json"), r, true
+	case "cleanup close-children":
+		return v("--id", "--host", "--session-id", "--agent-id", "--cwd"), b("--merged", "--confirm", "--json"), r, true
+	case "cleanup orphan":
+		return v("--id", "--repo", "--worktree", "--branch", "--provider", "--kind", "--artifact-url", "--fingerprint", "--host", "--session-id", "--agent-id", "--cwd"), b("--apply", "--confirm", "--json"), r, true
+	case "cleanup finish":
+		return v("--id", "--provider", "--fingerprint"), b("--preview", "--apply", "--confirm", "--json"), r, true
+	case "remote reflect-completion":
+		return v("--id", "--provider"), b("--confirm", "--json"), r, true
+	case "remote close-issue":
+		return v("--id", "--provider"), b("--confirm", "--json"), r, true
 	default:
 		return nil, nil, nil, false
 	}

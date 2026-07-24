@@ -69,6 +69,17 @@ func issueOpsRecordPrunable(record IssueOpsRecord, cutoff time.Time) bool {
 	if record.Execution != nil && record.Execution.Lease.Status != model.LeaseStatusReleased {
 		return false
 	}
+	// 보존 불변식(설계 v5 WS3): 머지 증적(RemoteArtifact)이 있는 레코드는
+	// reflect-completion 전까지 나이와 무관하게 보존된다. 이 부류의 가시화는
+	// `issueops list`(WS6)가 cleanup 후보로 집계해 담당한다 — 강제 prune
+	// 탈출구는 의도적으로 두지 않는다(C2-F6, 방치 사이클은 reflect가 정답).
+	// completion 섹션 반영(write-after-verify 캐시)이 확인되기 전에는 prune으로
+	// 삭제하지 않는다 — "레코드 삭제 전 보존 완료"를 전 경로에서 보장한다.
+	if record.RemoteArtifact != nil {
+		if record.RemoteCompletion == nil || record.RemoteCompletion.ReflectedAt == "" {
+			return false
+		}
+	}
 	updatedAt, err := time.Parse(time.RFC3339Nano, record.UpdatedAt)
 	if err != nil || updatedAt.IsZero() {
 		return false

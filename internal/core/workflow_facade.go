@@ -69,7 +69,7 @@ func RecordLifecycleToolUse(req HookToolUseLifecycleRequest) (HookToolUseLifecyc
 	return lifecycle.RecordLifecycleToolUse(req)
 }
 
-func SourceCheckoutMisdirectWarning(req HookToolUseLifecycleRequest) string {
+func SourceCheckoutMisdirectWarning(req HookToolUseLifecycleRequest) (string, string) {
 	return lifecycle.SourceCheckoutMisdirectWarning(req)
 }
 

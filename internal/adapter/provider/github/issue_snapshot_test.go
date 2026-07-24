@@ -11,7 +11,7 @@ import (
 func TestReadIssueSnapshotUsesBoundedExactGitHubURL(t *testing.T) {
 	binDir, repo := t.TempDir(), t.TempDir()
 	writeFakeGh(t, binDir, `#!/bin/sh
-if [ "$*" != "issue view https://github.com/acme/repo/issues/69 --json url,body" ]; then exit 2; fi
+if [ "$*" != "issue view https://github.com/acme/repo/issues/69 --json url,body,state" ]; then exit 2; fi
 printf '%s' '{"url":"https://github.com/acme/repo/issues/69","body":"AC-01"}'
 `)
 	t.Setenv("PATH", binDir+string(filepath.ListSeparator)+t.TempDir())

@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	"fmt"
 	"strings"
 
 	"agent-harness/internal/core/issueops/implementation"
@@ -50,6 +51,14 @@ func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 				}
 			}
 		}
+	}
+	if record.SourceMisdirectWarnings > 0 {
+		warnings = append(warnings, fmt.Sprintf("source_misdirect_warnings:%d", record.SourceMisdirectWarnings))
+	}
+	// strict는 :12에서 IssueOpsPRReadiness를 포함하므로 미기록/비-pass 미싱은
+	// 이미 들어 있다 — 여기서는 fingerprint가 필요한 stale 판정만 추가한다.
+	if reviewMissing := implementationReviewMissing(record, currentFingerprint); strings.HasSuffix(reviewMissing, "_stale") {
+		missing = append(missing, reviewMissing)
 	}
 	if strings.TrimSpace(record.AISlopCleanAt) != "" {
 		storedFingerprint := strings.TrimSpace(record.AISlopCleanFingerprint)

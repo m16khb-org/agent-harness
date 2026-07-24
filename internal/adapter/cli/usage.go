@@ -2,7 +2,8 @@ package cli
 
 import "fmt"
 
-const issueOpsDevilsAdvocateUsage = "  agent-harness " + "issueops devils-advocate review --id ID --verdict pass|revise|stop [--finding TEXT]... [--waive --waiver-rationale TEXT] [--json]"
+const issueOpsDevilsAdvocateUsage = "  agent-harness " + "issueops devils-advocate review --id ID --verdict pass|revise|stop [--finding TEXT]... [--waive --waiver-rationale TEXT] [--json]" +
+	"\n  agent-harness issueops implementation-review record --id ID --verdict pass|revise|stop --finding TEXT... --evidence TEXT... [--reviewer-host codex|claude] [--reviewer-model MODEL] [--reviewer-effort EFFORT] [--json]"
 
 // Command describes a stable top-level CLI command exposed by the harness.
 type Command struct {
@@ -75,6 +76,7 @@ Usage:
   agent-harness state migrate [--confirm] [--json]
   agent-harness issueops start --repo PATH [--branch NAME] [--json]
   agent-harness issueops status --id ID [--json]
+  agent-harness issueops list [--repo PATH] [--json]
   agent-harness issueops intent record --id ID --raw-request TEXT --interpreted-intent TEXT --success-criteria TEXT [--constraint TEXT] [--ambiguity TEXT] [--non-goal TEXT] [--intent-class CLASS] [--json]
   agent-harness issueops link-issue --id ID --issue-url URL [--json]
   agent-harness issueops link-child --id ID --child-url URL [--title TEXT] [--json]
@@ -89,6 +91,8 @@ Usage:
   agent-harness issueops design review --id ID --problem-summary TEXT --proposed-design TEXT --verification TEXT [--refactor-plan TEXT] [--alternative TEXT] [--risk TEXT] [--open-question TEXT] [--approved] [--json]
   agent-harness issueops compatibility review --id ID --backward-compatibility TEXT --side-effect TEXT --rollback-plan TEXT --verification TEXT [--blocker TEXT] [--approved] [--json]
   agent-harness issueops link-plan --id ID --plan-path PATH [--json]
+  agent-harness issueops artifact stage --id ID --name plan|spec|turing-loop --file PATH [--json]
+  agent-harness issueops artifact unstage --id ID --name plan|spec|turing-loop [--json]
   agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude [--owner-model MODEL] [--owner-effort EFFORT] ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops execution status --id ID [--json]
   agent-harness issueops execution claim --id ID --generation N --claim-token-file PATH [--issue-body-sha256 SHA256 --context-packet-sha256 SHA256] ACTOR_FLAGS [--json]
@@ -103,6 +107,7 @@ Usage:
   agent-harness issueops cleanup status --id ID [--merged] [--json]
   agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]
   agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]
+  agent-harness issueops cleanup finish --id ID [--provider github|gitlab] (--preview | --apply --confirm --fingerprint SHA256) [--json]
   agent-harness issueops remote score --input PATH [--judge none|file] [--judge-file PATH] [--json]
   agent-harness issueops remote render-template --kind issue|child|pr --template KIND --title TEXT --provider github|gitlab --field key=value... [--score-file PATH] [--json]
   agent-harness issueops remote create-issue --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]

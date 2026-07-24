@@ -152,6 +152,12 @@ func prepareDirectExecution(ctx context.Context, stateRoot string, record IssueO
 			ClaimedAt: executionNow(deps.Now),
 		},
 	}
+	// direct 모드도 스테이징 artifact를 워크트리로 materialize한다 — packet
+	// manifest 봉인은 orca 전용이지만, 스테이징이 조용한 no-op이 되어서는 안
+	// 된다(C4a-F3). 홀더(호출 세션)가 같은 파일을 즉시 읽는다.
+	if _, err := materializeStagedArtifacts(stateRoot, record); err != nil {
+		return ExecutionPrepareResult{OK: false, ID: record.ID}, err
+	}
 	var persisted IssueOpsRecord
 	err = withIssueOpsLock(context.Background(), stateRoot, record.ID, func(context.Context) error {
 		current, err := ReadIssueOps(stateRoot, record.ID)

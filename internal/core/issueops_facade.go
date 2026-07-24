@@ -196,6 +196,47 @@ func ResolveRecordProvider(record IssueOpsRecord) string {
 	return issueops.ResolveRecordProvider(record)
 }
 
+func StageIssueOpsArtifact(stateRoot, id, name string, content []byte) (IssueOpsRecord, error) {
+	return issueops.StageIssueOpsArtifact(stateRoot, id, name, content)
+}
+
+func StagedIssueOpsArtifactNames(stateRoot, id string) ([]string, error) {
+	return issueops.StagedIssueOpsArtifactNames(stateRoot, id)
+}
+
+func UnstageIssueOpsArtifact(stateRoot, id, name string) (IssueOpsRecord, error) {
+	return issueops.UnstageIssueOpsArtifact(stateRoot, id, name)
+}
+
+type IssueOpsImplementationReviewRequest = issueops.IssueOpsImplementationReviewRequest
+
+func RecordIssueOpsImplementationReview(stateRoot, id string, req IssueOpsImplementationReviewRequest) (IssueOpsRecord, error) {
+	return issueops.RecordIssueOpsImplementationReview(stateRoot, id, req)
+}
+
+type IssueOpsListResult = issueops.IssueOpsListResult
+type IssueOpsListEntry = issueops.IssueOpsListEntry
+
+func ListIssueOpsCycles(stateRoot, repo string) (IssueOpsListResult, error) {
+	return issueops.ListIssueOpsCycles(stateRoot, repo)
+}
+
+func IncrementIssueOpsSourceMisdirect(stateRoot, id string) (int, error) {
+	return issueops.IncrementIssueOpsSourceMisdirect(stateRoot, id)
+}
+
+type IssueOpsCleanupFinishRequest = issueops.CleanupFinishRequest
+type IssueOpsCleanupFinishDeps = issueops.CleanupFinishDeps
+type IssueOpsCleanupFinishResult = issueops.CleanupFinishResult
+
+func IssueOpsCleanupFinish(ctx context.Context, stateRoot string, req IssueOpsCleanupFinishRequest, deps IssueOpsCleanupFinishDeps) (IssueOpsCleanupFinishResult, error) {
+	return issueops.CleanupFinish(ctx, stateRoot, req, deps)
+}
+
+func ReflectIssueOpsCleanupAudit(record IssueOpsRecord, completion IssueProviderCompletionSection, audit string, prov IssueProvider) error {
+	return issueops.ReflectCleanupAudit(record, completion, audit, prov)
+}
+
 func ReadIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
 	return issueops.ReadIssueOps(stateRoot, id)
 }

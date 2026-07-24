@@ -39,10 +39,11 @@ type executionOwnerIssue struct {
 }
 
 type executionOwnerCommands struct {
-	LeaseStatus  string `json:"lease_status"`
-	Claim        string `json:"claim"`
-	RemoteCreate string `json:"remote_create"`
-	Complete     string `json:"complete"`
+	LeaseStatus          string `json:"lease_status"`
+	Claim                string `json:"claim"`
+	RemoteCreate         string `json:"remote_create"`
+	Complete             string `json:"complete"`
+	ImplementationReview string `json:"implementation_review"`
 }
 
 type executionOwnerContextPacket struct {
@@ -61,11 +62,14 @@ type executionOwnerContextPacket struct {
 	OwnerHost        string                 `json:"owner_host"`
 	OwnerModel       string                 `json:"owner_model"`
 	OwnerEffort      string                 `json:"owner_effort,omitempty"`
+	ReviewerModel    string                 `json:"reviewer_model,omitempty"`
+	ReviewerEffort   string                 `json:"reviewer_effort,omitempty"`
 	RequiredDocs     []string               `json:"required_docs"`
 	RequiredSkills   []string               `json:"required_skills"`
 	AcceptanceIDs    []string               `json:"acceptance_ids"`
 	Verification     []string               `json:"verification_commands"`
 	TuringReportPath string                 `json:"turing_report_path"`
+	ArtifactManifest map[string]string      `json:"artifact_manifest,omitempty"`
 	Commands         executionOwnerCommands `json:"commands"`
 }
 
@@ -141,6 +145,18 @@ func validateExecutionClaimPacket(record IssueOpsRecord, issueDigest, packetDige
 	if packet.Issue.BodySHA256 != issueDigest || digestExecutionOwnerBytes([]byte(packet.Issue.Body)) != issueDigest {
 		return fmt.Errorf("sealed context packet issue body digest mismatch")
 	}
+	// artifact manifest 검증: materialize된 파일이 봉인 당시와 달라졌으면
+	// drift로 read-only 잔류시킨다(설계 v5 WS2).
+	for name, digest := range packet.ArtifactManifest {
+		path := filepath.Join(record.Execution.Workspace.Root, filepath.FromSlash(IssueOpsArtifactDir), name+".md")
+		data, err := readExecutionOwnerArtifact(record.Execution.Workspace.Root, path)
+		if err != nil {
+			return fmt.Errorf("read sealed artifact %s: %w", name, err)
+		}
+		if digestExecutionOwnerBytes(data) != digest {
+			return fmt.Errorf("sealed artifact %s digest mismatch", name)
+		}
+	}
 	return nil
 }
 
@@ -213,11 +229,14 @@ func executionOwnerIssueProvider(record IssueOpsRecord) string {
 	return ""
 }
 
-func buildExecutionOwnerArtifacts(record IssueOpsRecord, req ExecutionPrepareRequest, snapshot executionOwnerSnapshot) (executionOwnerArtifacts, error) {
+func buildExecutionOwnerArtifacts(record IssueOpsRecord, req ExecutionPrepareRequest, snapshot executionOwnerSnapshot, artifactManifest map[string]string) (executionOwnerArtifacts, error) {
 	if record.Execution == nil || record.Execution.Lease.Generation == 0 {
 		return executionOwnerArtifacts{}, fmt.Errorf("execution identity is unavailable for owner packet")
 	}
 	packetPath, promptPath := executionOwnerArtifactPaths(record)
+	// 구현 diff의 brooks 리뷰는 planner급 모델이 수행한다(설계 v5 WS5). 값은
+	// 감사 기록이자 owner 프롬프트 지시일 뿐 게이트 조건이 아니다.
+	reviewerModel, reviewerEffort, _ := port.IssueOpsPlannerDefaults(strings.ToLower(strings.TrimSpace(req.OwnerHost)))
 	commands := executionOwnerCommandsFor(record, req, snapshot.issue.BodySHA256)
 	packet := executionOwnerContextPacket{
 		SchemaVersion: model.IssueOpsSchemaVersion, LifecycleID: record.ID, Mode: record.Execution.Mode,
@@ -226,8 +245,10 @@ func buildExecutionOwnerArtifacts(record IssueOpsRecord, req ExecutionPrepareReq
 		BaseHead: record.Execution.Workspace.BaseHead, CurrentHead: record.Execution.Workspace.BaseHead,
 		LeaseGeneration: record.Execution.Lease.Generation, ClaimTokenFile: claimTokenPath(record), Issue: snapshot.issue,
 		OwnerHost: strings.ToLower(strings.TrimSpace(req.OwnerHost)), OwnerModel: strings.TrimSpace(req.OwnerModel), OwnerEffort: strings.TrimSpace(req.OwnerEffort),
+		ReviewerModel: reviewerModel, ReviewerEffort: reviewerEffort,
 		RequiredDocs: snapshot.requiredDocs, RequiredSkills: snapshot.requiredSkills, AcceptanceIDs: snapshot.acceptanceIDs,
 		Verification: snapshot.verificationCommands, TuringReportPath: executionOwnerTuringReportPath(record), Commands: commands,
+		ArtifactManifest: artifactManifest,
 	}
 	packetBytes, err := json.MarshalIndent(packet, "", "  ")
 	if err != nil {
@@ -269,7 +290,9 @@ func renderExecutionOwnerPrompt(packet executionOwnerContextPacket, packetPath, 
 		"ISSUE_URL": packet.Issue.URL, "ISSUE_BODY_SHA256": packet.Issue.BodySHA256,
 		"PACKET_PATH": packetPath, "PACKET_SHA256": packetDigest,
 		"OWNER_HOST": packet.OwnerHost, "OWNER_MODEL": packet.OwnerModel, "OWNER_EFFORT": packet.OwnerEffort,
-		"REQUIRED_DOCS": renderExecutionOwnerLines(packet.RequiredDocs), "REQUIRED_SKILLS": renderExecutionOwnerLines(packet.RequiredSkills),
+		"REVIEWER_MODEL": packet.ReviewerModel, "REVIEWER_EFFORT": packet.ReviewerEffort,
+		"IMPLEMENTATION_REVIEW_COMMAND": packet.Commands.ImplementationReview,
+		"REQUIRED_DOCS":                 renderExecutionOwnerLines(packet.RequiredDocs), "REQUIRED_SKILLS": renderExecutionOwnerLines(packet.RequiredSkills),
 		"ACCEPTANCE_IDS": strings.Join(packet.AcceptanceIDs, ", "), "VERIFICATION_COMMANDS": renderExecutionOwnerLines(packet.Verification),
 		"TURING_REPORT_PATH": packet.TuringReportPath, "REMOTE_CREATE_COMMAND": packet.Commands.RemoteCreate, "COMPLETE_COMMAND": packet.Commands.Complete,
 	}
@@ -303,6 +326,8 @@ func validateExecutionOwnerPromptInputs(packet executionOwnerContextPacket, pack
 		{"owner_model", packet.OwnerModel}, {"owner_effort", packet.OwnerEffort}, {"turing_report_path", packet.TuringReportPath},
 		{"lease_status_command", packet.Commands.LeaseStatus}, {"claim_command", packet.Commands.Claim},
 		{"remote_create_command", packet.Commands.RemoteCreate}, {"complete_command", packet.Commands.Complete},
+		{"reviewer_model", packet.ReviewerModel}, {"reviewer_effort", packet.ReviewerEffort},
+		{"implementation_review_command", packet.Commands.ImplementationReview},
 	}
 	for _, scalar := range scalars {
 		if strings.ContainsAny(scalar.value, "\r\n") || executionPromptPlaceholder.MatchString(scalar.value) {
@@ -351,11 +376,23 @@ func executionOwnerCommandsFor(record IssueOpsRecord, req ExecutionPrepareReques
 	complete := "agent-harness issueops execution complete --id " + quoteExecutionOwnerArg(record.ID) +
 		" --generation " + strconv.FormatUint(generation, 10) + " --final-head <FINAL_HEAD> --turing-report " + quoteExecutionOwnerArg(executionOwnerTuringReportPath(record)) +
 		" --remote-artifact-url <DRAFT_PR_OR_MR_URL> --verification <VERIFICATION_EVIDENCE> " + actorFlags + " --confirm --json"
-	return executionOwnerCommands{LeaseStatus: status, Claim: claim, RemoteCreate: remote, Complete: complete}
+	shortActor := strings.Join([]string{
+		"--host", strings.ToLower(strings.TrimSpace(req.OwnerHost)), "--session-id", "<SESSION_ID>", "--agent-id", "<AGENT_ID_OR_NONE>",
+		"--cwd", quoteExecutionOwnerArg(record.Execution.Workspace.Root),
+	}, " ")
+	plannerModel, plannerEffort, _ := port.IssueOpsPlannerDefaults(strings.ToLower(strings.TrimSpace(req.OwnerHost)))
+	implementationReview := "agent-harness issueops implementation-review record --id " + quoteExecutionOwnerArg(record.ID) +
+		" --verdict pass --finding <FINDING> --evidence <EVIDENCE> --reviewer-host " + strings.ToLower(strings.TrimSpace(req.OwnerHost)) +
+		" --reviewer-model " + quoteExecutionOwnerArg(plannerModel)
+	if strings.TrimSpace(plannerEffort) != "" {
+		implementationReview += " --reviewer-effort " + quoteExecutionOwnerArg(plannerEffort)
+	}
+	implementationReview += " " + shortActor + " --json"
+	return executionOwnerCommands{LeaseStatus: status, Claim: claim, RemoteCreate: remote, Complete: complete, ImplementationReview: implementationReview}
 }
 
 func validateExecutionOwnerCatalog(commands executionOwnerCommands) error {
-	for _, path := range []string{"execution status", "execution claim", "execution complete", "remote create-pr"} {
+	for _, path := range []string{"execution status", "execution claim", "execution complete", "remote create-pr", "implementation-review record"} {
 		if _, _, _, ok := commandparse.IssueOpsCommandSpec(path); !ok {
 			return fmt.Errorf("IssueOps v1 command catalog is not ready: missing %s", path)
 		}
@@ -368,6 +405,7 @@ func validateExecutionOwnerCatalog(commands executionOwnerCommands) error {
 	checks := []struct{ command, path string }{
 		{commands.LeaseStatus, "execution status"}, {commands.Claim, "execution claim"},
 		{commands.RemoteCreate, "remote create-pr"}, {commands.Complete, "execution complete"},
+		{commands.ImplementationReview, "implementation-review record"},
 	}
 	for _, check := range checks {
 		if check.command == "none" {

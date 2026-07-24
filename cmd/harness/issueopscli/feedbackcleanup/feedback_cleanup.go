@@ -21,6 +21,9 @@ type Deps struct {
 	Provider      func(provider string) (core.IssueProvider, error)
 	OrphanPreview func(context.Context, orphancleanup.Request) (orphancleanup.Result, error)
 	OrphanApply   func(context.Context, orphancleanup.Request, orphancleanup.ApplyRequest) (orphancleanup.Result, error)
+	// RemoveOrcaWorktree는 cleanup finish의 ② 단계(orca 회수, force=false)다.
+	// "이미 없음"은 wiring에서 성공으로 정규화한다(멱등 계약).
+	RemoveOrcaWorktree func(ctx context.Context, worktreeID string) error
 }
 
 func RunFeedback(args []string, deps Deps) error {
@@ -109,6 +112,8 @@ func RunCleanup(args []string, deps Deps) error {
 			}
 		}
 		return nil
+	case "finish":
+		return runCleanupFinish(args[1:], deps)
 	case "close-children":
 		fs := flag.NewFlagSet("issueops cleanup close-children", flag.ContinueOnError)
 		id := fs.String("id", "", "issueops id")
@@ -227,6 +232,114 @@ func printOrphanCleanupResult(result orphancleanup.Result) {
 	if result.RemoteBranchDeletion != "" {
 		fmt.Printf("remote branch: %s\n", result.RemoteBranchDeletion)
 	}
+}
+
+// runCleanupFinish는 record-backed 머지 후 정리를 실행한다. merged·completion
+// 반영·이슈 close는 전부 원격 readback으로 판정하고, readback 실패는 강등 없이
+// 거부한다(fail-closed — 설계 v5 WS3).
+func runCleanupFinish(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops cleanup finish", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	providerOverride := fs.String("provider", "", "remote provider override: github or gitlab")
+	preview := fs.Bool("preview", false, "evaluate gates and issue a fingerprint without mutating")
+	apply := fs.Bool("apply", false, "run the destructive cleanup steps")
+	confirm := fs.Bool("confirm", false, "confirm the destructive apply")
+	fingerprint := fs.String("fingerprint", "", "fingerprint issued by the latest --preview")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := deps.ParseFlags(fs, args); help || err != nil {
+		return err
+	}
+	// --preview와 --apply는 배타 모드다: 파괴 실행 요청에 preview가 섞이면
+	// 안전한 쪽이 아니라 명시적 거부를 택한다(C2-F3).
+	if *preview && *apply {
+		return fmt.Errorf("cleanup finish --preview and --apply are mutually exclusive")
+	}
+	// 모드 명시 규율: usage가 (--preview | --apply …)를 요구하므로 조용한
+	// 기본 동작 대신 명시를 요구한다.
+	if !*preview && !*apply {
+		return fmt.Errorf("cleanup finish requires exactly one mode: --preview or --apply --confirm --fingerprint SHA256")
+	}
+	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
+	if err != nil {
+		return printCleanupFinishError(deps, *jsonOut, err)
+	}
+	providerName := *providerOverride
+	if providerName == "" {
+		providerName = core.ResolveRecordProvider(record)
+	}
+	if providerName == "" {
+		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("cannot determine provider from IssueOps record; pass --provider"))
+	}
+	prov, err := deps.Provider(providerName)
+	if err != nil {
+		return printCleanupFinishError(deps, *jsonOut, err)
+	}
+	if record.RemoteArtifact == nil {
+		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("cleanup finish requires a verified remote artifact"))
+	}
+	if deps.VerifyMerged == nil {
+		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("merge verification is not configured"))
+	}
+	if err := deps.VerifyMerged(*record.RemoteArtifact); err != nil {
+		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("merge evidence readback failed (refusing to continue): %w", err))
+	}
+	snapshot, err := core.ReadRemoteIssueSnapshot(context.Background(), prov, core.ExecutionIssueSnapshotRequest{
+		Repo: record.Repo, URL: record.IssueURL,
+	})
+	if err != nil {
+		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("issue readback failed (refusing to continue): %w", err))
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		// Getwd 실패의 대표 원인이 "현재 디렉토리 삭제"다 — 자기파괴 방지
+		// 가드를 여는 대신 fail-closed로 거부한다(C2-F4).
+		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("cannot resolve current directory (refusing destructive cleanup): %w", err))
+	}
+	req := core.IssueOpsCleanupFinishRequest{
+		ID:                  *id,
+		CWD:                 cwd,
+		Merged:              true,
+		CompletionReflected: strings.Contains(snapshot.Body, core.IssueBodyCompletionStartMarker),
+		IssueClosed:         strings.EqualFold(strings.TrimSpace(snapshot.State), "closed"),
+		Apply:               *apply,
+		Confirm:             *confirm,
+		Fingerprint:         *fingerprint,
+	}
+	result, err := core.IssueOpsCleanupFinish(context.Background(), core.IssueOpsStateRoot(), req, core.IssueOpsCleanupFinishDeps{
+		RemoveOrcaWorktree: deps.RemoveOrcaWorktree,
+		ReflectAudit: func(rec core.IssueOpsRecord, completion core.IssueProviderCompletionSection, audit string) error {
+			return core.ReflectIssueOpsCleanupAudit(rec, completion, audit, prov)
+		},
+	})
+	if err != nil {
+		if *jsonOut {
+			if printErr := deps.PrintJSON(result); printErr != nil {
+				return printErr
+			}
+		}
+		return err
+	}
+	if *jsonOut {
+		return deps.PrintJSON(result)
+	}
+	if result.RecordDeleted {
+		fmt.Printf("cleanup finished: worktree=%v branch=%v record deleted\n", result.WorktreeRemoved, result.BranchDeleted)
+	} else {
+		fmt.Printf("fingerprint: %s\n", result.Fingerprint)
+		if result.NextCommand != "" {
+			fmt.Printf("next: %s\n", result.NextCommand)
+		}
+	}
+	return nil
+}
+
+func printCleanupFinishError(deps Deps, jsonOut bool, err error) error {
+	if jsonOut {
+		if printErr := deps.PrintError(err); printErr != nil {
+			return printErr
+		}
+	}
+	return err
 }
 
 func CleanupMerged(id string, requested bool, deps Deps) bool {

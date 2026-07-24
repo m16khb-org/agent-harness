@@ -31,6 +31,7 @@ func (Provider) ReadIssueSnapshot(ctx context.Context, req port.ExecutionIssueSn
 	var payload struct {
 		Description string `json:"description"`
 		WebURL      string `json:"web_url"`
+		State       string `json:"state"`
 	}
 	if err := json.Unmarshal(out, &payload); err != nil {
 		return port.ExecutionIssueSnapshot{}, fmt.Errorf("parse glab issue snapshot: %w", err)
@@ -39,7 +40,7 @@ func (Provider) ReadIssueSnapshot(ctx context.Context, req port.ExecutionIssueSn
 	if !sameGitLabIssueSnapshotIdentity(issueURL, payload.WebURL) {
 		return port.ExecutionIssueSnapshot{}, fmt.Errorf("glab issue snapshot URL does not match the linked issue")
 	}
-	return port.ExecutionIssueSnapshot{URL: issueURL, Body: payload.Description}, nil
+	return port.ExecutionIssueSnapshot{URL: issueURL, Body: payload.Description, State: payload.State}, nil
 }
 
 func sameGitLabIssueSnapshotIdentity(left, right string) bool {

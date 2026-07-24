@@ -753,6 +753,7 @@ exit 2
 func TestGitLabUpdateIssueBodySectionDryRun(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	res, err := NewProvider().UpdateIssueBodySection(port.IssueProviderUpdateIssueBodySectionRequest{
+		Section:  port.IssueBodySectionDevilsAdvocate,
 		IssueURL: "https://gitlab.example.com/acme/repo/-/issues/12",
 		Findings: []string{"gold-plating"},
 	})
@@ -788,6 +789,7 @@ exit 0
 	t.Setenv("PATH", binDir)
 
 	res, err := NewProvider().UpdateIssueBodySection(port.IssueProviderUpdateIssueBodySectionRequest{
+		Section:  port.IssueBodySectionDevilsAdvocate,
 		Repo:     repo,
 		IssueURL: "https://gitlab.example.com/acme/repo/-/issues/12",
 		Findings: []string{"gold-plating", "schedule optimism"},

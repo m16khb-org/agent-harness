@@ -41,8 +41,9 @@ type ExecutionIssueSnapshotRequest struct {
 }
 
 type ExecutionIssueSnapshot struct {
-	URL  string `json:"url"`
-	Body string `json:"body"`
+	URL   string `json:"url"`
+	Body  string `json:"body"`
+	State string `json:"state,omitempty"`
 }
 
 type ExecutionIssueSnapshotReader interface {

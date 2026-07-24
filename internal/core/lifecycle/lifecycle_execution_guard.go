@@ -182,6 +182,7 @@ func exactIssueOpsOwnerMutation(commandText string) bool {
 	switch command.Path {
 	case "link-plan", "compatibility review", "devils-advocate review", "phase",
 		"ai-slop-clean record", "feedback mark-issue-updated", "feedback resolve",
+		"implementation-review record",
 		"remote create-pr", "remote verify-artifact":
 	default:
 		return false
