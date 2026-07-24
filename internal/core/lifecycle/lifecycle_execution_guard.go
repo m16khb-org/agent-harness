@@ -172,6 +172,16 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 			executionRequestTargetsStayInside(req, targets, root) {
 			return true, "", nil
 		}
+		if lease.Status == issueopsmodel.LeaseStatusActive && lease.Holder != nil && !executionActorMatches(req, lease.Holder) {
+			axis := executionActorMismatchAxis(req, lease.Holder)
+			deny := executionDeny(record, "holder_identity_mismatch", executionStatusCommand(record.ID))
+			deny.IdentityMismatch = axis
+			deny.ObservedActor = fmt.Sprintf("host=%s session_id=%s agent_id=%s",
+				strings.TrimSpace(req.Host), strings.TrimSpace(req.SessionID), strings.TrimSpace(req.AgentID))
+			return true, fmt.Sprintf(
+				"active write lease for IssueOps execution %s generation %d is held by a different native identity (mismatch axis: %s); the durable holder must re-establish identity, not retry",
+				record.ID, lease.Generation, axis), deny
+		}
 		reason, deny := executionMutationDenyReason(record)
 		return true, reason, deny
 	}
@@ -391,6 +401,23 @@ func requestTouchesExecution(req HookToolUseLifecycleRequest, targets []string, 
 		}
 	}
 	return len(targets) == 0 && pathWithin(cleanAbsPath(req.CWD), root)
+}
+
+// executionActorMismatchAxis는 훅 관측 identity와 holder가 처음 어긋난 축을
+// 보고한다. executionActorMatches의 비교 순서와 동일해야 진단이 정확하다.
+func executionActorMismatchAxis(req HookToolUseLifecycleRequest, holder *issueopsmodel.NativeActor) string {
+	switch {
+	case holder.SessionProcess == nil:
+		return "holder_session_process_missing"
+	case !strings.EqualFold(strings.TrimSpace(req.Host), holder.Host):
+		return "host"
+	case strings.TrimSpace(req.SessionID) != holder.SessionID:
+		return "session_id"
+	case strings.TrimSpace(req.AgentID) != holder.AgentID:
+		return "agent_id"
+	default:
+		return "session_process_ancestry"
+	}
 }
 
 func executionActorMatches(req HookToolUseLifecycleRequest, holder *issueopsmodel.NativeActor) bool {
