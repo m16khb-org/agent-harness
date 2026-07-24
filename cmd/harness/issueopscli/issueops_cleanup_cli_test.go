@@ -21,6 +21,7 @@ func TestRunIssueOpsUsageAndCleanupBranches(t *testing.T) {
 	for _, want := range []string{
 		"Usage:",
 		"agent-harness issueops cleanup status --id ID [--merged] [--json]",
+		"agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME",
 	} {
 		if !strings.Contains(stderr, want) {
 			t.Fatalf("issueops usage missing %q:\n%s", want, stderr)
@@ -32,6 +33,9 @@ func TestRunIssueOpsUsageAndCleanupBranches(t *testing.T) {
 	})
 	if !strings.Contains(cleanupUsage, "Usage: agent-harness issueops cleanup status --id ID [--merged] [--json]") {
 		t.Fatalf("cleanup usage missing status syntax:\n%s", cleanupUsage)
+	}
+	if !strings.Contains(cleanupUsage, "agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME") {
+		t.Fatalf("cleanup usage missing recordless orphan syntax:\n%s", cleanupUsage)
 	}
 
 	designUsage := captureStdoutForContract(t, func() error {

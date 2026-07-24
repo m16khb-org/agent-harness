@@ -1,21 +1,26 @@
 package feedbackcleanup
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"agent-harness/internal/core"
 	issueopscore "agent-harness/internal/core/issueops"
+	"agent-harness/internal/core/issueops/orphancleanup"
 )
 
 type Deps struct {
-	ParseFlags   func(fs *flag.FlagSet, args []string) (bool, error)
-	PrintResult  func(record core.IssueOpsRecord, jsonOut bool, err error) error
-	PrintJSON    func(value any) error
-	PrintError   func(err error) error
-	VerifyMerged func(core.IssueOpsRemoteArtifactVerification) error
-	Provider     func(provider string) (core.IssueProvider, error)
+	ParseFlags    func(fs *flag.FlagSet, args []string) (bool, error)
+	PrintResult   func(record core.IssueOpsRecord, jsonOut bool, err error) error
+	PrintJSON     func(value any) error
+	PrintError    func(err error) error
+	VerifyMerged  func(core.IssueOpsRemoteArtifactVerification) error
+	Provider      func(provider string) (core.IssueProvider, error)
+	OrphanPreview func(context.Context, orphancleanup.Request) (orphancleanup.Result, error)
+	OrphanApply   func(context.Context, orphancleanup.Request, orphancleanup.ApplyRequest) (orphancleanup.Result, error)
 }
 
 func RunFeedback(args []string, deps Deps) error {
@@ -68,7 +73,7 @@ func localActor(host, sessionID, agentID, cwd string) core.IssueOpsActor {
 
 func RunCleanup(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops cleanup status --id ID [--merged] [--json]\n       agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]")
+		fmt.Println("Usage: agent-harness issueops cleanup status --id ID [--merged] [--json]\n       agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]\n       agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]")
 		return nil
 	}
 	switch args[0] {
@@ -138,8 +143,89 @@ func RunCleanup(args []string, deps Deps) error {
 			}
 		}
 		return nil
+	case "orphan":
+		return runOrphanCleanup(args[1:], deps)
 	default:
 		return fmt.Errorf("unknown issueops cleanup subcommand")
+	}
+}
+
+func runOrphanCleanup(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops cleanup orphan", flag.ContinueOnError)
+	id := fs.String("id", "", "missing IssueOps lifecycle id expected to have no record")
+	repo := fs.String("repo", "", "exact canonical repository root")
+	worktree := fs.String("worktree", "", "exact recordless worktree path")
+	branch := fs.String("branch", "", "exact local branch checked out by the worktree")
+	provider := fs.String("provider", "", "remote artifact provider: github or gitlab")
+	kind := fs.String("kind", "", "remote artifact kind: pr or mr")
+	artifactURL := fs.String("artifact-url", "", "merged remote pull or merge request URL")
+	apply := fs.Bool("apply", false, "remove only the confirmed local worktree and local branch")
+	confirm := fs.Bool("confirm", false, "confirm the exact preview fingerprint for --apply")
+	fingerprint := fs.String("fingerprint", "", "ready preview fingerprint required for --apply")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := deps.ParseFlags(fs, args); help || err != nil {
+		return err
+	}
+	if *confirm && !*apply {
+		return fmt.Errorf("orphan cleanup --confirm requires --apply")
+	}
+	if strings.TrimSpace(*fingerprint) != "" && !*apply {
+		return fmt.Errorf("orphan cleanup --fingerprint requires --apply")
+	}
+	request := orphancleanup.Request{
+		ID:           *id,
+		RepoRoot:     *repo,
+		WorktreePath: *worktree,
+		Branch:       *branch,
+		Artifact: core.IssueOpsRemoteArtifactVerification{
+			Provider: *provider,
+			Kind:     *kind,
+			URL:      *artifactURL,
+		},
+	}
+	var (
+		result orphancleanup.Result
+		err    error
+	)
+	if *apply {
+		if !*confirm {
+			return fmt.Errorf("orphan cleanup apply requires --confirm")
+		}
+		if deps.OrphanApply == nil {
+			return fmt.Errorf("orphan cleanup apply is unavailable")
+		}
+		result, err = deps.OrphanApply(context.Background(), request, orphancleanup.ApplyRequest{Confirm: *confirm, Fingerprint: *fingerprint})
+	} else {
+		if deps.OrphanPreview == nil {
+			return fmt.Errorf("orphan cleanup preview is unavailable")
+		}
+		result, err = deps.OrphanPreview(context.Background(), request)
+	}
+	if *jsonOut {
+		if printErr := deps.PrintJSON(result); printErr != nil {
+			return printErr
+		}
+	} else {
+		printOrphanCleanupResult(result)
+	}
+	return err
+}
+
+func printOrphanCleanupResult(result orphancleanup.Result) {
+	fmt.Printf("ready: %v\n", result.Ready)
+	fmt.Printf("head: %s\n", result.HeadSHA)
+	fmt.Printf("recovery path: %s\n", result.RecoveryPath)
+	for _, missing := range result.Missing {
+		fmt.Printf("- missing: %s\n", missing)
+	}
+	for _, warning := range result.Warnings {
+		fmt.Printf("- warning: %s\n", warning)
+	}
+	if result.Fingerprint != "" {
+		fmt.Printf("fingerprint: %s\n", result.Fingerprint)
+	}
+	if result.RemoteBranchDeletion != "" {
+		fmt.Printf("remote branch: %s\n", result.RemoteBranchDeletion)
 	}
 }
 

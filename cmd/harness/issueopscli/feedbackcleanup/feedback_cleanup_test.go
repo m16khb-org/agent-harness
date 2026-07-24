@@ -1,11 +1,13 @@
 package feedbackcleanup
 
 import (
+	"context"
 	"flag"
 	"strings"
 	"testing"
 
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/issueops/orphancleanup"
 )
 
 func TestRunFeedbackAddAndMarkIssueUpdated(t *testing.T) {
@@ -110,6 +112,51 @@ func TestCleanupMergedAndCommandBoundaries(t *testing.T) {
 	}
 	if err := RunFeedback([]string{"add", "--bad"}, deps); err == nil {
 		t.Fatal("expected parse flag error")
+	}
+}
+
+func TestRunCleanupOrphanDefaultsToPreviewAndGatesApply(t *testing.T) {
+	var printed []any
+	var previews []orphancleanup.Request
+	var applies []orphancleanup.ApplyRequest
+	deps := Deps{
+		ParseFlags: parseFeedbackCleanupFlags,
+		PrintJSON: func(value any) error {
+			printed = append(printed, value)
+			return nil
+		},
+		OrphanPreview: func(_ context.Context, request orphancleanup.Request) (orphancleanup.Result, error) {
+			previews = append(previews, request)
+			return orphancleanup.Result{OK: true, Preview: true, Ready: true, Fingerprint: "preview-fingerprint"}, nil
+		},
+		OrphanApply: func(_ context.Context, request orphancleanup.Request, apply orphancleanup.ApplyRequest) (orphancleanup.Result, error) {
+			previews = append(previews, request)
+			applies = append(applies, apply)
+			return orphancleanup.Result{OK: true, Confirmed: true, Applied: true}, nil
+		},
+	}
+	args := []string{
+		"orphan", "--id", "io-f4e347fe9827", "--repo", "/repo", "--worktree", "/repo.worktrees/merged-feature",
+		"--branch", "merged-feature", "--provider", "github", "--kind", "pr", "--artifact-url", "https://github.com/example/repo/pull/42", "--json",
+	}
+	if err := RunCleanup(args, deps); err != nil {
+		t.Fatalf("recordless orphan preview: %v", err)
+	}
+	if len(previews) != 1 || len(applies) != 0 || len(printed) != 1 {
+		t.Fatalf("default orphan command must be preview-only: previews=%d applies=%d printed=%d", len(previews), len(applies), len(printed))
+	}
+	if previews[0].ID != "io-f4e347fe9827" || previews[0].Artifact.URL != "https://github.com/example/repo/pull/42" {
+		t.Fatalf("orphan preview request = %#v", previews[0])
+	}
+
+	if err := RunCleanup(append(args[:len(args)-1], "--apply"), deps); err == nil || !strings.Contains(err.Error(), "--confirm") {
+		t.Fatalf("apply without confirm error = %v", err)
+	}
+	if err := RunCleanup(append(args[:len(args)-1], "--apply", "--confirm", "--fingerprint", "preview-fingerprint", "--json"), deps); err != nil {
+		t.Fatalf("confirmed orphan apply: %v", err)
+	}
+	if len(applies) != 1 || !applies[0].Confirm || applies[0].Fingerprint != "preview-fingerprint" {
+		t.Fatalf("apply request = %#v", applies)
 	}
 }
 

@@ -50,6 +50,7 @@ func issueOpsUsage() {
   agent-harness issueops pr-readiness --id ID [--strict] [--json]
   agent-harness issueops cleanup status --id ID [--merged] [--json]
   agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]
+  agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]
   agent-harness issueops remote score --input PATH [--judge none|file] [--judge-file PATH] [--json]
   agent-harness issueops remote-score --input PATH [--judge none|file] [--judge-file PATH] [--json]
   agent-harness issueops remote create-pr --id ID --expected-generation N --title TEXT --head BRANCH --base BRANCH [--body TEXT|--body-file PATH] [--label LABEL]... [--assignee USER]... ACTOR_FLAGS [--confirm] [--json]

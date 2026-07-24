@@ -13,7 +13,7 @@ import (
 
 func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]string, stateDir, workspaceDir, gitRepoDir string) map[string]any {
 	t.Helper()
-	installFakeGlabForDevilsAdvocateReflect(t)
+	glabBin := installFakeGlabForDevilsAdvocateReflect(t)
 	cliSnapshot := map[string]any{}
 	cliSnapshot["inspect"] = inspectContractProjection(runCLIJSONContract(t, replacements, func() error {
 		return runInspect([]string{"--json", "--repo", workspaceDir})
@@ -82,6 +82,35 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 	cliSnapshot["issueops_link_worktree"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"link-worktree", "--id", issueopsID, "--worktree-path", contractWorktree, "--json"})
 	})
+	orphanRepo, orphanWorktree, orphanBranch := makeRecordlessOrphanGitRepoForContract(t)
+	replacements[orphanRepo] = "$ORPHAN_REPO"
+	replacements[orphanWorktree] = "$ORPHAN_WORKTREE"
+	addEvalSymlinkReplacement(t, replacements, orphanRepo, "$ORPHAN_REPO")
+	addEvalSymlinkReplacement(t, replacements, orphanWorktree, "$ORPHAN_WORKTREE")
+	ghBin := installFakeGitHubMergedPR(t)
+	t.Setenv("PATH", ghBin+string(os.PathListSeparator)+glabBin+string(os.PathListSeparator)+"/usr/bin"+string(os.PathListSeparator)+"/bin")
+	orphanPreviewStdout := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"cleanup", "orphan", "--id", "io-f4e347fe9827", "--repo", orphanRepo, "--worktree", orphanWorktree, "--branch", orphanBranch, "--provider", "github", "--kind", "pr", "--artifact-url", "https://github.com/example/repo/pull/42", "--json"})
+	})
+	var orphanPreviewRaw map[string]any
+	if err := json.Unmarshal([]byte(orphanPreviewStdout), &orphanPreviewRaw); err != nil {
+		t.Fatalf("unmarshal recordless orphan preview JSON %q: %v", orphanPreviewStdout, err)
+	}
+	if orphanPreviewRaw["ready"] != true {
+		t.Fatalf("recordless orphan preview must be ready: %#v", orphanPreviewRaw)
+	}
+	for key, token := range map[string]string{
+		"fingerprint":      "$ORPHAN_FINGERPRINT",
+		"head_sha":         "$ORPHAN_HEAD",
+		"local_branch_oid": "$ORPHAN_HEAD",
+		"recovery_head":    "$ORPHAN_HEAD",
+		"recovery_path":    "$ORPHAN_RECOVERY_PATH",
+	} {
+		if value, ok := orphanPreviewRaw[key].(string); ok && value != "" {
+			replacements[value] = token
+		}
+	}
+	cliSnapshot["issueops_cleanup_orphan_preview"] = responsecontract.NormalizeContractValue(orphanPreviewRaw, replacements)
 	cliSnapshot["issueops_review_design"] = runCLIJSONContract(t, replacements, func() error {
 		return runIssueOps([]string{"design", "review", "--id", issueopsID, "--problem-summary", "IssueOps needs explicit design review", "--proposed-design", "Gate implementation on approved design", "--refactor-plan", "Keep changes local to IssueOps state and adapters", "--risk", "golden contract drift", "--alternative", "docs-only guidance", "--verification", "design review checked contract drift risk", "--verification", "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden", "--approved", "--json"})
 	})
@@ -265,7 +294,7 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 // reflect-devils-advocate step can round-trip the gitlab issue description
 // without a real network call. It answers the REST GET with a body and the PUT
 // with success.
-func installFakeGlabForDevilsAdvocateReflect(t *testing.T) {
+func installFakeGlabForDevilsAdvocateReflect(t *testing.T) string {
 	t.Helper()
 	bin := t.TempDir()
 	script := `#!/bin/sh
@@ -282,4 +311,23 @@ exit 0
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return bin
+}
+
+func installFakeGitHubMergedPR(t *testing.T) string {
+	t.Helper()
+	bin := t.TempDir()
+	script := `#!/bin/sh
+if [ "$1 $2" = "pr view" ]; then
+  printf '{"url":"https://github.com/example/repo/pull/42","state":"MERGED","mergedAt":"2026-07-24T00:00:00Z","labels":[],"assignees":[]}'
+  exit 0
+fi
+echo "unexpected gh call: $*" >&2
+exit 2
+`
+	if err := os.WriteFile(filepath.Join(bin, "gh"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return bin
 }
