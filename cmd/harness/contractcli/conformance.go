@@ -83,9 +83,9 @@ func defaultConformanceDependencies() ConformanceDependencies {
 	}
 }
 
-// ConfigureConformance injects harness-owned dependencies without exposing the
-// capture server to the production MCP catalog. The restore function is used by
-// focused tests; application wiring intentionally retains configured values.
+// ConfigureConformance는 capture 서버를 production MCP catalog에 노출하지 않으면서
+// 하네스 소유 의존성을 주입한다. restore 함수는 특정 테스트에서 쓰이며, 애플리케이션
+// 와이어링은 의도적으로 구성된 값을 유지한다.
 func ConfigureConformance(overrides ConformanceDependencies) func() {
 	previous := conformanceDependencies
 	if overrides.Catalog != nil {

@@ -55,7 +55,7 @@ func ensureDaemonRunningWithDeps(deps daemonStartDeps) (daemonStatus, error) {
 	}
 	lock, err := deps.acquireLock(paths)
 	if err != nil {
-		// Another launcher may be starting it. Wait briefly.
+		// 다른 launcher가 시작 중일 수 있다. 잠시 기다린다.
 		if status, waitErr := deps.wait(paths, daemonReadyTimeout); waitErr == nil && daemonStatusIsReady(status) {
 			return status, nil
 		}

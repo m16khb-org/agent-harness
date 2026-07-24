@@ -26,11 +26,10 @@ func RenderIssueOpsLLMJudgePrompt(req IssueOpsLLMJudgeRequest) (string, error) {
 	return prompt, nil
 }
 
-// DecodeIssueOpsBenchmarkJudgeJSON strictly decodes ONE judge score object
-// (the same shape the LLM judge returns). Callers holding a map of
-// fixture-ID -> score must decode the outer map themselves and feed each
-// value through this function; the strict decoder rejects unknown fields, so
-// passing the whole map here fails by design.
+// DecodeIssueOpsBenchmarkJudgeJSON는 judge score 객체 하나만 엄격하게 디코딩한다
+// (LLM judge가 반환하는 것과 같은 형태다). fixture-ID -> score 맵을 가진 호출자는
+// 바깥 맵을 직접 디코딩한 뒤 각 값을 이 함수에 넣어야 한다. strict decoder는 알 수
+// 없는 필드를 거부하므로 맵 전체를 여기 넘기면 의도적으로 실패한다.
 func DecodeIssueOpsBenchmarkJudgeJSON(out []byte) (IssueOpsBenchmarkScore, error) {
 	return decodeStrictIssueOpsBenchmarkScore(out)
 }

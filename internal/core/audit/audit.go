@@ -10,7 +10,7 @@ import (
 	"agent-harness/internal/core/policy"
 )
 
-// CommandAuditRecord is an append-only, redacted record of a policy decision.
+// CommandAuditRecord는 policy 결정을 append-only로 남긴 redacted 기록이다.
 type CommandAuditRecord struct {
 	OK          bool                           `json:"ok"`
 	Kind        string                         `json:"kind"`
@@ -20,8 +20,8 @@ type CommandAuditRecord struct {
 	Policy      policy.CommandPolicyEvaluation `json:"policy"`
 }
 
-// AuditCommandPolicy evaluates a command request and appends the redacted policy
-// decision to a JSONL audit log. It does not execute the command.
+// AuditCommandPolicy는 명령 요청을 평가해 redacted policy 결정을 JSONL audit
+// log에 append한다. 명령 자체를 실행하지는 않는다.
 func AuditCommandPolicy(req policy.CommandPolicyRequest) (CommandAuditRecord, error) {
 	evaluation := policy.EvaluateCommandPolicy(req)
 	record := CommandAuditRecord{

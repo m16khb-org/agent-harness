@@ -143,9 +143,9 @@ func normalizeDoctorPreserve(values []string, flagName string) ([]string, error)
 	return result, nil
 }
 
-// doctorProfile maps the CLI default to the interactive profile: on a live
-// developer machine, user-opened Orca tabs and orchestration message history
-// are normal. Sealed audit callers opt back into the strict residue contract.
+// doctorProfile은 CLI 기본값을 interactive profile로 매핑한다. 실제 개발자
+// 머신에서는 사용자가 연 Orca 탭과 orchestration 메시지 이력이 정상이기
+// 때문이다. sealed audit 호출자는 엄격한 residue 계약을 다시 선택한다.
 func doctorProfile(sealed bool) string {
 	if sealed {
 		return operationalhealth.ProfileSealed

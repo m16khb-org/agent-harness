@@ -6,45 +6,39 @@ import (
 	"testing"
 )
 
-// A4 — scorer check-adequacy (per-dimension mutation suite).
+// A4 — scorer 검증 충분성(차원별 mutation suite)이다.
 //
-// The live benchmark gate (issueops benchmark run) only ever scores
-// synthesized-PASSING artifacts (FromFixture builds correct artifacts from the
-// fixture's expected fields), so it reports avg=min=100 by construction. That
-// proves the SYNTHESIZER works, NOT that the SCORER catches defects: a
-// dimension whose check silently became always-ok (a "dead check") would keep
-// the gate green and escape every existing test for ~7 of the 19 dimensions
-// whose only signal is a plain artifact field (intent_understanding,
-// plan_quality, tdd_quality, implementation_readiness, phase_control_quality,
-// branch_worktree_gate_quality, worktree_cleanup_quality).
+// live benchmark gate(issueops benchmark run)는 fixture의 기대 필드로 올바른
+// artifact를 만드는 FromFixture의 PASSING 결과만 채점하므로, 구조상
+// avg=min=100을 보고한다. 이는 SYNTHESIZER의 정상 동작만 증명할 뿐 SCORER가
+// 결함을 잡는지는 증명하지 못한다. 검사 결과가 조용히 항상 ok가 된 차원(dead
+// check)은 gate를 통과해, 단순 artifact 필드만 신호로 쓰는 19개 차원 중 약 7개
+// (intent_understanding, plan_quality, tdd_quality, implementation_readiness,
+// phase_control_quality, branch_worktree_gate_quality,
+// worktree_cleanup_quality)의 기존 테스트를 모두 빠져나갈 수 있다.
 //
-// This suite closes that gap: for every dimension it mutates a fully-passing
-// artifact so the dimension's discriminating signal is removed, then proves the
-// dimension's OWN score row drops to a live 0. A dead always-ok check leaves its
-// row at 100 and fails the assertion regardless of any co-broken sibling,
-// because the contract reads the per-dimension row (dimScore), never the
-// aggregate min/avg (which a co-broken sibling could mask).
+// 이 suite는 각 차원에서 완전히 통과한 artifact를 변형해 판별 신호를 제거한 뒤,
+// 해당 차원의 점수 행 자체가 실제 0으로 떨어짐을 증명한다. 항상 ok인 dead check는
+// 행을 100으로 남겨 assertion을 실패시킨다. 함께 고장 난 sibling이 있더라도
+// aggregate min/avg가 아닌 차원별 행(dimScore)을 읽으므로 이를 가릴 수 없다.
 //
-// Design notes (S2 review):
-//   - Global isolation ("mutate D, all other 18 stay 100") is structurally
-//     impossible: several dimensions share an artifact field. So instead each
-//     row declares the OTHER dimensions that necessarily co-drop (coupled) and
-//     the suite asserts the set of dropped dimensions equals exactly
-//     {D} ∪ coupled — bounding the blast radius so an over-mutation (e.g.
-//     blanking the whole artifact) is caught.
-//   - The FULL fixture carries NO critical-failure rules, so each mutation
-//     exercises ONLY the deterministic dimension channel; the suite asserts zero
-//     criticals fire. Critical-failure detection is covered separately by the
-//     TestScoreIssueOpsBenchmarkArtifact*CriticalFailures tests.
-//   - pioneer_skill_contribution / skill_routing_fidelity are metadata-
-//     conditional: the mutation blanks only the ARTIFACT signal
-//     (PioneerSkillEvidence / RoutingTrace) and keeps the fixture metadata, so
-//     the dimension stays applicable and a genuine deterministic 0 (not an
-//     excluded N/A) is what proves the check fired. The !NotApplicable assertion
-//     rejects an N/A masquerading as a 0.
-//   - The completeness guard binds the table to issueOpsBenchmarkDimensions in
-//     both directions, so a future dimension cannot ship without an adequacy
-//     mutator (the A5 dimension-count-regression lesson).
+// 설계 메모(S2 review):
+//   - 여러 차원이 artifact 필드를 공유하므로 "D를 변형해도 나머지 18개는 100"인
+//     전역 격리는 구조적으로 불가능하다. 대신 각 행에 반드시 함께 떨어질 다른
+//     차원(coupled)을 선언하고, 하락 차원 집합이 정확히 {D} ∪ coupled인지
+//     검증한다. 전체 artifact를 비우는 과도한 변형도 이로써 잡는다.
+//   - FULL fixture에는 critical-failure 규칙이 없으므로 각 mutation은
+//     deterministic 차원 channel만 검증하며, critical이 발생하지 않아야 한다.
+//     critical-failure 검출은 TestScoreIssueOpsBenchmarkArtifact*CriticalFailures가
+//     별도로 담당한다.
+//   - pioneer_skill_contribution과 skill_routing_fidelity는 metadata 조건부다.
+//     mutation은 fixture metadata를 보존하고 artifact 신호
+//     (PioneerSkillEvidence/RoutingTrace)만 비운다. 따라서 제외된 N/A가 아닌
+//     실제 deterministic 0만이 검사가 실행됐음을 증명하며, !NotApplicable
+//     assertion이 0으로 위장한 N/A를 거부한다.
+//   - completeness guard는 테이블과 issueOpsBenchmarkDimensions를 양방향으로
+//     묶어, 충분성 mutator가 없는 새 차원이 추가되지 못하게 한다(A5
+//     dimension-count-regression 교훈).
 
 func adequacyFixtureForTest() IssueOpsBenchmarkFixture {
 	return IssueOpsBenchmarkFixture{
@@ -53,8 +47,8 @@ func adequacyFixtureForTest() IssueOpsBenchmarkFixture {
 		UserPrompt:         "exercise every scoring dimension",
 		PioneerSkillTarget: "codd",
 		ExpectedRouting:    []SkillRouting{{Phase: "plan", Skill: "codd"}},
-		// No CriticalFailures on purpose: this suite tests the deterministic
-		// dimension channel only.
+		// 이 suite는 deterministic 차원 channel만 검증하므로 의도적으로
+		// CriticalFailures를 두지 않는다.
 	}
 }
 
@@ -71,7 +65,7 @@ func adequacyRow(score IssueOpsBenchmarkScore, dimension string) IssueOpsDimensi
 			return d
 		}
 	}
-	// Sentinel: a missing dimension fails both the live-100 and live-0 checks.
+	// Sentinel: 누락 차원은 live-100과 live-0 검증을 모두 실패시킨다.
 	return IssueOpsDimensionScore{Dimension: dimension, Score: -1}
 }
 
@@ -90,10 +84,9 @@ func adequacyDroppedDims(score IssueOpsBenchmarkScore) []string {
 func TestScoreIssueOpsBenchmarkArtifactEveryDimensionDiscriminates(t *testing.T) {
 	fixture := adequacyFixtureForTest()
 
-	// Baseline: a fully-passing artifact must score every dimension live at 100
-	// with zero failures, so each mutation below starts from a known-good state
-	// and a no-op mutator (one that fails to remove the signal) is caught by the
-	// mutated-row==0 assertion rather than passing vacuously.
+	// 기준선: 완전 통과 artifact는 모든 차원에서 실패 없이 실제 100점이어야 한다.
+	// 따라서 아래 mutation은 정상 상태에서 시작하며, 신호를 제거하지 못한 no-op
+	// mutator도 공허하게 통과하지 않고 mutated-row==0 assertion에 잡힌다.
 	baseScore := ScoreIssueOpsBenchmarkArtifact(fixture, adequacyArtifactForTest())
 	if !baseScore.Passed || len(baseScore.DeterministicFailures) != 0 || len(baseScore.CriticalFailures) != 0 {
 		t.Fatalf("adequacy baseline must pass cleanly: %+v", baseScore)
@@ -106,18 +99,18 @@ func TestScoreIssueOpsBenchmarkArtifactEveryDimensionDiscriminates(t *testing.T)
 	}
 
 	type adequacyCase struct {
-		// mutate removes ONLY the discriminating signal of the keyed dimension
-		// (plus, for shared-field dimensions, whatever the coupled list declares).
+		// mutate는 대상 차원의 판별 신호만 제거한다. 공유 필드 차원은 coupled에
+		// 선언한 범위만 함께 제거한다.
 		mutate func(IssueOpsBenchmarkArtifact) IssueOpsBenchmarkArtifact
-		// coupled lists the OTHER dimensions that necessarily co-drop because they
-		// read the same artifact field; empty means the mutation is single-axis.
+		// coupled는 같은 artifact 필드를 읽어 반드시 함께 하락하는 다른 차원이다.
+		// 비어 있으면 단일 축 mutation이다.
 		coupled []string
 	}
 
 	cases := map[string]adequacyCase{
 		"intent_understanding": {
-			// ok = ProblemSummary!="" || IssueDraft!="". Both must be blanked;
-			// blanking IssueDraft co-drops issue_quality (shared field).
+			// ok = ProblemSummary!="" || IssueDraft!=""이므로 둘 다 비워야 한다.
+			// IssueDraft를 비우면 공유 필드인 issue_quality도 함께 하락한다.
 			mutate: func(a IssueOpsBenchmarkArtifact) IssueOpsBenchmarkArtifact {
 				a.ProblemSummary = ""
 				a.IssueDraft = ""
@@ -126,8 +119,8 @@ func TestScoreIssueOpsBenchmarkArtifactEveryDimensionDiscriminates(t *testing.T)
 			coupled: []string{"issue_quality"},
 		},
 		"issue_quality": {
-			// Break the issue-specific label-decision clause only; ProblemSummary
-			// and IssueDraft stay non-empty so intent_understanding stays 100.
+			// issue 전용 label-decision 절만 깨뜨린다. ProblemSummary와 IssueDraft는
+			// 비어 있지 않아 intent_understanding은 100점을 유지한다.
 			mutate: func(a IssueOpsBenchmarkArtifact) IssueOpsBenchmarkArtifact {
 				a.IssueDraft = strings.ReplaceAll(a.IssueDraft, "선택 라벨: enhancement(score 0.90), 거절 라벨: documentation(score 0.20), threshold 0.70, 수동 override 없음.\n", "")
 				return a
@@ -182,9 +175,10 @@ func TestScoreIssueOpsBenchmarkArtifactEveryDimensionDiscriminates(t *testing.T)
 			},
 		},
 		"implementation_readiness": {
-			// ok = BranchName!="" && WorktreePath!="". Blanking BranchName co-drops
-			// branch_worktree_gate_quality (feature/ prefix); they share the field
-			// and implementation_readiness has no private signal to isolate.
+			// ok = BranchName!="" && WorktreePath!=""이다. BranchName을 비우면
+			// feature/ prefix를 보는 branch_worktree_gate_quality도 함께 하락한다.
+			// 두 차원은 필드를 공유하며 implementation_readiness에는 분리 가능한
+			// 전용 신호가 없다.
 			mutate: func(a IssueOpsBenchmarkArtifact) IssueOpsBenchmarkArtifact {
 				a.BranchName = ""
 				return a
@@ -192,8 +186,8 @@ func TestScoreIssueOpsBenchmarkArtifactEveryDimensionDiscriminates(t *testing.T)
 			coupled: []string{"branch_worktree_gate_quality"},
 		},
 		"pr_mr_quality": {
-			// Remove the issue-link clause from PRDraft only; GuidelineRef stays so
-			// issue_quality's shared guideline clause is unaffected.
+			// PRDraft에서 issue-link 절만 제거한다. GuidelineRef는 보존하므로
+			// issue_quality가 공유하는 guideline 절에는 영향이 없다.
 			mutate: func(a IssueOpsBenchmarkArtifact) IssueOpsBenchmarkArtifact {
 				a.PRDraft = strings.ReplaceAll(a.PRDraft, "Issue: https://example.com/acme/agent-harness/issues/1\n", "")
 				return a
@@ -206,16 +200,16 @@ func TestScoreIssueOpsBenchmarkArtifactEveryDimensionDiscriminates(t *testing.T)
 			},
 		},
 		"branch_worktree_gate_quality": {
-			// Keep BranchName non-empty (implementation_readiness stays 100) but
-			// drop the feature/ prefix so only the gate dimension fails.
+			// BranchName은 비어 있지 않게 유지해 implementation_readiness는 100점을
+			// 유지하고, feature/ prefix만 제거해 gate 차원만 실패시킨다.
 			mutate: func(a IssueOpsBenchmarkArtifact) IssueOpsBenchmarkArtifact {
 				a.BranchName = "main"
 				return a
 			},
 		},
 		"isolation_compliance": {
-			// Implementation outside the worktree; WorktreePath/BranchName stay so
-			// implementation_readiness and the gate dimension stay 100.
+			// worktree 밖에서 구현한 것으로 만든다. WorktreePath/BranchName은 남겨
+			// implementation_readiness와 gate 차원은 100점을 유지한다.
 			mutate: func(a IssueOpsBenchmarkArtifact) IssueOpsBenchmarkArtifact {
 				a.ImplementationLocation = "/elsewhere/outside-worktree"
 				return a
@@ -234,8 +228,8 @@ func TestScoreIssueOpsBenchmarkArtifactEveryDimensionDiscriminates(t *testing.T)
 			},
 		},
 		"pioneer_skill_contribution": {
-			// Metadata stays (fixture keeps PioneerSkillTarget) so the dimension
-			// remains applicable; only the artifact signal is removed.
+			// fixture의 PioneerSkillTarget을 보존해 차원이 계속 적용되게 하고,
+			// artifact 신호만 제거한다.
 			mutate: func(a IssueOpsBenchmarkArtifact) IssueOpsBenchmarkArtifact {
 				a.PioneerSkillEvidence = ""
 				return a
@@ -249,9 +243,9 @@ func TestScoreIssueOpsBenchmarkArtifactEveryDimensionDiscriminates(t *testing.T)
 		},
 	}
 
-	// Completeness guard (both directions): every scored dimension must own an
-	// adequacy mutator, and the table may not carry an unknown dimension. A new
-	// dimension cannot ship without proving it discriminates.
+	// 양방향 completeness guard: 모든 채점 차원에는 adequacy mutator가 있어야
+	// 하며 테이블에는 알 수 없는 차원이 없어야 한다. 판별 능력을 증명하지 못한
+	// 새 차원은 추가할 수 없다.
 	if len(cases) != len(issueOpsBenchmarkDimensions) {
 		t.Fatalf("adequacy table has %d cases but there are %d dimensions", len(cases), len(issueOpsBenchmarkDimensions))
 	}
@@ -269,16 +263,16 @@ func TestScoreIssueOpsBenchmarkArtifactEveryDimensionDiscriminates(t *testing.T)
 	for dim, tc := range cases {
 		mutated := ScoreIssueOpsBenchmarkArtifact(fixture, tc.mutate(adequacyArtifactForTest()))
 
-		// (1) The targeted dimension's OWN row dropped to a live deterministic 0.
-		// Reading the row (not min/avg) is what makes a dead always-ok check
-		// detectable even when a coupled sibling also dropped.
+		// (1) 대상 차원의 행 자체가 실제 deterministic 0으로 하락해야 한다.
+		// min/avg가 아닌 행을 읽으므로 coupled sibling도 함께 하락했을 때
+		// dead always-ok check를 검출할 수 있다.
 		row := adequacyRow(mutated, dim)
 		if row.NotApplicable || row.Score != 0 {
 			t.Fatalf("mutating %q must drop its own row to a live 0, got %+v", dim, row)
 		}
 
-		// (2) Bounded blast radius: exactly {dim} ∪ coupled dropped. An
-		// over-mutation (blanking unrelated signal) would drop more and fail here.
+		// (2) 영향 범위 제한: 정확히 {dim} ∪ coupled만 하락해야 한다. 관계없는
+		// 신호까지 비우는 과도한 mutation은 더 많은 차원을 떨어뜨려 여기서 실패한다.
 		want := []string{dim}
 		want = append(want, tc.coupled...)
 		sort.Strings(want)
@@ -287,7 +281,7 @@ func TestScoreIssueOpsBenchmarkArtifactEveryDimensionDiscriminates(t *testing.T)
 			t.Fatalf("mutating %q dropped %v, want exactly %v (over/under-mutation)", dim, got, want)
 		}
 
-		// (3) The deterministic mutation must not leak into the critical channel.
+		// (3) deterministic mutation이 critical channel로 새면 안 된다.
 		if len(mutated.CriticalFailures) != 0 {
 			t.Fatalf("dimension mutation %q must not trip criticals, got %v", dim, mutated.CriticalFailures)
 		}

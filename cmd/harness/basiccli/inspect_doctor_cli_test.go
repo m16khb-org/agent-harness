@@ -18,15 +18,15 @@ import (
 )
 
 func TestRunInspect_printsText_whenRepoIsPositional(t *testing.T) {
-	// Given
+	// 준비
 	repo := t.TempDir()
 
-	// When
+	// 실행
 	out := captureStatusVerifyStdout(t, func() error {
 		return RunInspect([]string{repo})
 	})
 
-	// Then
+	// 검증
 	if !strings.Contains(out, "agent-harness root:") || !strings.Contains(out, "target repo: "+repo) {
 		t.Fatalf("unexpected inspect text:\n%s", out)
 	}
@@ -36,15 +36,15 @@ func TestRunInspect_printsText_whenRepoIsPositional(t *testing.T) {
 }
 
 func TestRunInspect_printsJSON_whenJSONFlagIsSet(t *testing.T) {
-	// Given
+	// 준비
 	repo := t.TempDir()
 
-	// When
+	// 실행
 	out := captureStatusVerifyStdout(t, func() error {
 		return RunInspect([]string{"--repo", repo, "--json"})
 	})
 
-	// Then
+	// 검증
 	var result core.InspectInfo
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode inspect json: %v\n%s", err, out)
@@ -55,37 +55,37 @@ func TestRunInspect_printsJSON_whenJSONFlagIsSet(t *testing.T) {
 }
 
 func TestRunDoctor_printsHealthyText_whenProjectDocsAreInitialized(t *testing.T) {
-	// Given
+	// 준비
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	if _, err := core.BootstrapProjectDocs(core.ProjectDocsBootstrapRequest{RepoRoot: repo, Write: true}); err != nil {
 		t.Fatalf("bootstrap project docs: %v", err)
 	}
 
-	// When
+	// 실행
 	out := captureStatusVerifyStdout(t, func() error {
 		return RunDoctor([]string{"--repo", repo})
 	})
 
-	// Then
-	// The doctor may report warnings (e.g. binary_drift if bin/agent-harness is older
-	// than source files) but should still pass the healthy check for the clean test repo.
+	// 검증
+	// doctor는 경고를 낼 수 있지만(예: bin/agent-harness가 소스 파일보다 오래되면
+	// binary_drift) 깨끗한 테스트 repo에 대해서는 healthy 검사를 통과해야 한다.
 	if !strings.Contains(out, "agent-harness doctor") || !strings.Contains(out, repo) {
 		t.Fatalf("unexpected doctor text:\n%s", out)
 	}
 }
 
 func TestRunDoctor_printsIssuesText_whenProjectDocsAreMissing(t *testing.T) {
-	// Given
+	// 준비
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 
-	// When
+	// 실행
 	out := captureStatusVerifyStdout(t, func() error {
 		return RunDoctor([]string{repo})
 	})
 
-	// Then
+	// 검증
 	if !strings.Contains(out, "agent-harness doctor found") || !strings.Contains(out, "project_docs_missing") {
 		t.Fatalf("unexpected unhealthy doctor text:\n%s", out)
 	}
@@ -95,16 +95,16 @@ func TestRunDoctor_printsIssuesText_whenProjectDocsAreMissing(t *testing.T) {
 }
 
 func TestRunDoctor_printsJSON_whenJSONFlagIsSet(t *testing.T) {
-	// Given
+	// 준비
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 
-	// When
+	// 실행
 	out := captureStatusVerifyStdout(t, func() error {
 		return RunDoctor([]string{"--repo", repo, "--json"})
 	})
 
-	// Then
+	// 검증
 	var result core.HarnessDoctorResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode doctor json: %v\n%s", err, out)
@@ -312,13 +312,13 @@ func TestRunDoctorOperationalDoesNotWriteEmptyState(t *testing.T) {
 }
 
 func TestRunDoctor_returnsError_whenRepoPathIsInvalid(t *testing.T) {
-	// Given
+	// 준비
 	badRepo := filepath.Join(t.TempDir(), "missing")
 
-	// When
+	// 실행
 	err := RunDoctor([]string{"--repo", badRepo})
 
-	// Then
+	// 검증
 	if err == nil || !strings.Contains(err.Error(), badRepo) {
 		t.Fatalf("expected invalid repo error, got %v", err)
 	}
@@ -343,7 +343,7 @@ func doctorResultCheck(result core.HarnessDoctorResult, name string) (core.Harne
 }
 
 func TestRunDoctor_doesNotRequireRealHome(t *testing.T) {
-	// Given
+	// 준비
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	home := t.TempDir()
 	t.Setenv("HOME", home)
@@ -352,12 +352,12 @@ func TestRunDoctor_doesNotRequireRealHome(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// When
+	// 실행
 	out := captureStatusVerifyStdout(t, func() error {
 		return RunDoctor([]string{"--repo", repo})
 	})
 
-	// Then
+	// 검증
 	if !strings.Contains(out, "codex_hooks_missing") {
 		t.Fatalf("doctor should inspect configured HOME integration paths:\n%s", out)
 	}

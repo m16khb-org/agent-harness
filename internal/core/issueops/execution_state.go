@@ -28,8 +28,8 @@ type LeaseHolderIndex struct {
 
 type leaseHolderIndex = LeaseHolderIndex
 
-// ListLeaseHolderIndexes reads the reverse index without creating or
-// repairing state. Every row is validated against its content-derived key.
+// ListLeaseHolderIndexes는 state를 생성하거나 복구하지 않고 reverse index를
+// 읽는다. 모든 row는 content에서 파생한 key와 대조해 검증한다.
 func ListLeaseHolderIndexes(stateRoot string) ([]LeaseHolderIndex, error) {
 	rows, err := sqlstore.GetAllExisting(stateRoot, leaseHolderBucket)
 	if errors.Is(err, fs.ErrNotExist) {

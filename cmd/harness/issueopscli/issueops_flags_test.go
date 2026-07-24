@@ -6,9 +6,9 @@ import (
 	"testing"
 )
 
-// TestRepeatedFlagRoundTripsRepeatedValues exercises the canonical repeatable
-// string flag through a real FlagSet: each --flag occurrence appends one value
-// and String() joins the collected values with the single "," separator.
+// TestRepeatedFlagRoundTripsRepeatedValues는 표준 반복 가능 문자열 flag를 실제
+// FlagSet으로 검증한다. --flag가 등장할 때마다 값 하나를 append하고, String()은
+// 모인 값들을 단일 "," 구분자로 잇는다.
 func TestRepeatedFlagRoundTripsRepeatedValues(t *testing.T) {
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	var values repeatedFlag
@@ -24,9 +24,9 @@ func TestRepeatedFlagRoundTripsRepeatedValues(t *testing.T) {
 	}
 }
 
-// TestIssueOpsUsageListsNewlyAddedSubcommands guards the usage text against the
-// docs-drift regression: every subcommand registered in issueOpsSubcommands that
-// the audit found missing must appear in issueOpsUsage().
+// TestIssueOpsUsageListsNewlyAddedSubcommands는 usage 텍스트를 docs-drift
+// 회귀로부터 지킨다. 감사에서 누락으로 드러난, issueOpsSubcommands에 등록된 모든
+// subcommand는 issueOpsUsage()에 나타나야 한다.
 func TestIssueOpsUsageListsNewlyAddedSubcommands(t *testing.T) {
 	usage, err := captureProjectCLIStderr(t, func() error {
 		issueOpsUsage()

@@ -10,9 +10,9 @@ import (
 	"agent-harness/internal/core/operationalhealth"
 )
 
-// Deps holds the host-provided implementations the basic CLI commands depend on.
-// The composition root injects real implementations via Configure; standalone
-// use and tests fall back to defaults.
+// Deps는 basic CLI 명령들이 의존하는, 호스트가 제공하는 구현을 담는다.
+// composition root가 Configure로 실제 구현을 주입하며, 단독 실행과 테스트는
+// 기본값으로 대체한다.
 type Deps struct {
 	HarnessRoot              func() string
 	ResolveTarget            func(string) string
@@ -22,17 +22,17 @@ type Deps struct {
 	CollectOperationalHealth func(context.Context, string) operationalhealth.Snapshot
 }
 
-// deps holds the currently configured dependencies. It is package-private and
-// only mutated through Configure/Reset so wiring is explicit rather than an
-// import-order-sensitive init() side effect.
+// deps는 현재 구성된 의존성을 담는다. package-private이며 Configure/Reset을
+// 통해서만 변경되므로, import 순서에 민감한 init() 부수효과가 아니라 명시적으로
+// 와이어링된다.
 var deps = defaultDeps()
 
-// Configure installs host-provided dependencies. The composition root calls this
-// once at startup; tests call it with fakes and restore with Reset via t.Cleanup.
+// Configure는 호스트가 제공하는 의존성을 설치한다. composition root가 시작 시
+// 한 번 호출하며, 테스트는 fake로 호출한 뒤 t.Cleanup에서 Reset으로 복원한다.
 func Configure(d Deps) { deps = d }
 
-// Reset restores the standalone defaults. Tests defer this to avoid cross-test
-// leakage of injected fakes.
+// Reset은 단독 실행 기본값을 복원한다. 테스트는 주입한 fake가 테스트 간에 새지
+// 않도록 이를 defer한다.
 func Reset() { deps = defaultDeps() }
 
 func defaultDeps() Deps {

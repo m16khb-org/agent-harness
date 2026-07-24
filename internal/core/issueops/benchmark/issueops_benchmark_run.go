@@ -74,8 +74,8 @@ func MergeIssueOpsBenchmarkScoreWithJudge(deterministic, judge IssueOpsBenchmark
 	}
 	for i, score := range merged.DimensionScores {
 		if score.NotApplicable {
-			// N/A dimensions are excluded from scoring; a judge score must not
-			// re-introduce them for fixtures where they do not apply.
+			// N/A dimension은 채점에서 제외한다. judge score가 적용되지 않는
+			// fixture에서 이를 다시 끌어들여서는 안 된다.
 			continue
 		}
 		judgeScore, ok := judgeByDimension[score.Dimension]

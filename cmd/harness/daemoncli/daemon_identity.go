@@ -16,9 +16,9 @@ import (
 
 const (
 	daemonProtocolVersion = "1"
-	// The NUL prefix cannot be the first byte of a valid JSON-RPC message. It
-	// lets the daemon distinguish its private health probe after one byte while
-	// preserving every byte of ordinary MCP traffic.
+	// NUL 접두사는 유효한 JSON-RPC 메시지의 첫 바이트가 될 수 없다. 덕분에 daemon은
+	// 일반 MCP 트래픽의 모든 바이트를 보존하면서도 한 바이트만으로 자신의 private
+	// health probe를 구분할 수 있다.
 	daemonIdentityRequest = "\x00agent-harness-daemon-identity/1\n"
 )
 
@@ -74,8 +74,8 @@ func probeDaemonStatus(socket string) (daemonIdentityResponse, error) {
 	if err := response.Instance.Validate(); err != nil {
 		return daemonIdentityResponse{}, fmt.Errorf("invalid daemon identity: %w", err)
 	}
-	// Daemons that predate admission health omit these additive fields. Treat
-	// that response as the historical fixed-capacity, accepting state.
+	// admission health 이전 daemon은 이 additive 필드들을 생략한다. 그런 응답은
+	// 과거의 고정 capacity, accepting 상태로 취급한다.
 	if response.MaxConnections == 0 {
 		response.MaxConnections = maxConnections
 		response.Accepting = true

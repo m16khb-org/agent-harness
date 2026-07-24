@@ -20,10 +20,10 @@ const (
 	daemonStatusConnectionLimit = "daemon_connection_limit_reached"
 )
 
-// mcpIdleTimeout bounds how long a daemon MCP connection may stay idle (no
-// reads) before being closed. Without it, server.Run blocks forever on a
-// read with no deadline, so abandoned client connections permanently occupy
-// a connSlot and exhaust the pool. Refreshed on every Read by idleConn.
+// mcpIdleTimeout은 daemon MCP 연결이 닫히기 전 유휴(읽기 없음) 상태로 머물 수
+// 있는 최대 시간을 제한한다. 없으면 server.Run이 deadline 없는 읽기에서 영원히
+// 블록되어, 버려진 클라이언트 연결이 connSlot을 영구 점유하고 풀을 고갈시킨다.
+// idleConn이 매 Read마다 갱신한다.
 var mcpIdleTimeout = func() time.Duration {
 	if v := os.Getenv("HARNESS_MCP_IDLE_TIMEOUT"); v != "" {
 		if d, err := time.ParseDuration(v); err == nil && d > 0 {
@@ -197,11 +197,10 @@ func runDaemonAcceptLoop(listener net.Listener, logFile daemonServerLogFile, dep
 	}
 }
 
-// idleConn wraps a net.Conn and refreshes the read deadline on every Read so
-// that abandoned MCP connections (no traffic) hit the idle timeout, cause
-// server.Run to return, and release their connSlot instead of blocking on a
-// read forever. Active connections refresh the deadline on each Read and are
-// unaffected.
+// idleConn은 net.Conn을 감싸 매 Read마다 read deadline을 갱신한다. 덕분에 버려진
+// MCP 연결(트래픽 없음)은 idle timeout에 걸려 server.Run이 반환되고, 연결이
+// 영원히 읽기에서 블록되는 대신 connSlot을 해제한다. 활성 연결은 매 Read마다
+// deadline을 갱신하므로 영향받지 않는다.
 type idleConn struct {
 	net.Conn
 	timeout time.Duration

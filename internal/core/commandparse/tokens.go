@@ -52,10 +52,10 @@ func SplitCommandTokens(command string) []string {
 	return tokens
 }
 
-// HasActiveShellSpecialQuoting reports Bash/zsh ANSI-C $'...' and Bash locale
-// $"..." quoting. These constructs can synthesize protected executable names
-// and are rejected for supervised shell commands. Quoted or escaped dollar
-// signs remain literal data.
+// HasActiveShellSpecialQuoting은 Bash/zsh ANSI-C $'...'와 Bash locale $"..."
+// quoting을 보고한다. 이 구문은 보호 대상 실행 파일 이름을 합성할 수 있어
+// supervised shell 명령에서는 거부된다. quote되거나 escape된 달러 기호는
+// 리터럴 데이터로 남는다.
 func HasActiveShellSpecialQuoting(command string) bool {
 	runes := []rune(command)
 	var quote rune
@@ -86,10 +86,10 @@ func HasActiveShellSpecialQuoting(command string) bool {
 	return false
 }
 
-// HasActiveZshEqualsExpansion reports zsh's unquoted word-leading =name
-// command-path expansion and =(...) temporary-file process substitution.
-// Quoted or backslash-escaped equals signs and ordinary NAME=value shell
-// assignments remain literal for this check.
+// HasActiveZshEqualsExpansion은 zsh의 unquoted 단어 선두 =name command-path
+// expansion과 =(...) 임시 파일 process substitution을 보고한다. quote되거나
+// backslash로 escape된 등호와 평범한 NAME=value shell 대입은 이 검사에서
+// 리터럴로 남는다.
 func HasActiveZshEqualsExpansion(command string) bool {
 	runes := []rune(command)
 	var quote rune
@@ -129,7 +129,8 @@ func HasActiveZshEqualsExpansion(command string) bool {
 	return false
 }
 
-// HasUnquotedControlOperator reports unquoted shell operators that can join commands.
+// HasUnquotedControlOperator는 명령을 이어 붙일 수 있는 unquoted shell
+// 연산자를 보고한다.
 func HasUnquotedControlOperator(command string) bool {
 	var quote rune
 	escaped := false
@@ -160,9 +161,9 @@ func HasUnquotedControlOperator(command string) bool {
 	return false
 }
 
-// HasUnquotedBackgroundOperator reports a standalone shell ampersand that can
-// outlive the supervising session. Logical && and redirection forms such as
-// 2>&1 and &>file remain foreground syntax for this check.
+// HasUnquotedBackgroundOperator는 supervising session보다 오래 살아남을 수
+// 있는 단독 shell ampersand를 보고한다. 논리 연산자 &&와 2>&1, &>file 같은
+// redirection 형태는 이 검사에서 foreground 문법으로 남는다.
 func HasUnquotedBackgroundOperator(command string) bool {
 	runes := []rune(command)
 	var quote rune
@@ -202,10 +203,10 @@ func HasUnquotedBackgroundOperator(command string) bool {
 	return false
 }
 
-// HasActiveCommandSubstitution reports backtick, $(...), and unquoted process
-// substitution that a shell would execute. Single-quoted and explicitly
-// escaped forms are literal. Double quotes retain command substitution but
-// make <(...) and >(...) literal data in Bash and zsh.
+// HasActiveCommandSubstitution은 shell이 실행하게 될 backtick, $(...),
+// unquoted process substitution을 보고한다. single quote되거나 명시적으로
+// escape된 형태는 리터럴이다. double quote는 command substitution을
+// 유지하지만 Bash와 zsh에서 <(...)와 >(...)는 리터럴 데이터로 만든다.
 func HasActiveCommandSubstitution(command string) bool {
 	runes := []rune(command)
 	var quote rune
@@ -244,9 +245,9 @@ func HasActiveCommandSubstitution(command string) bool {
 	return false
 }
 
-// HasActiveOutputRedirect reports shell output redirection outside quoted or
-// escaped literal data. Any unquoted '>' is active, including fd-prefixed,
-// append, and combined stdout/stderr forms.
+// HasActiveOutputRedirect는 quote되거나 escape된 리터럴 데이터 밖의 shell
+// output redirection을 보고한다. unquoted '>'는 fd 접두, append,
+// stdout/stderr 결합 형태를 포함해 전부 활성으로 본다.
 func HasActiveOutputRedirect(command string) bool {
 	var quote rune
 	escaped := false
@@ -282,9 +283,9 @@ func HasActiveOutputRedirect(command string) bool {
 	return false
 }
 
-// HasActiveInputRedirect reports shell input redirection outside quoted or
-// escaped literal data. Any unquoted '<' is active, including fd-prefixed,
-// heredoc, and here-string forms.
+// HasActiveInputRedirect는 quote되거나 escape된 리터럴 데이터 밖의 shell
+// input redirection을 보고한다. unquoted '<'는 fd 접두, heredoc, here-string
+// 형태를 포함해 전부 활성으로 본다.
 func HasActiveInputRedirect(command string) bool {
 	var quote rune
 	escaped := false
@@ -314,10 +315,10 @@ func HasActiveInputRedirect(command string) bool {
 	return false
 }
 
-// HasActiveParameterOrTildeExpansion reports shell expansion that can turn an
-// apparently relative operand into an environment-controlled path. POSIX
-// single quotes and backslash escapes remain literal; parameter expansion is
-// still active inside double quotes.
+// HasActiveParameterOrTildeExpansion은 겉보기에 상대 경로인 operand를 환경이
+// 제어하는 경로로 바꿀 수 있는 shell expansion을 보고한다. POSIX single
+// quote와 backslash escape는 리터럴로 남지만, parameter expansion은 double
+// quote 안에서도 여전히 활성이다.
 func HasActiveParameterOrTildeExpansion(command string) bool {
 	runes := []rune(command)
 	var quote rune
@@ -396,8 +397,9 @@ func shellAssignmentName(value string) bool {
 	return value != ""
 }
 
-// HasActivePathnameExpansion reports unquoted shell glob or brace expansion.
-// Quoted or backslash-escaped syntax is literal data and remains allowed.
+// HasActivePathnameExpansion은 unquoted shell glob 또는 brace expansion을
+// 보고한다. quote되거나 backslash로 escape된 문법은 리터럴 데이터이므로
+// 계속 허용된다.
 func HasActivePathnameExpansion(command string) bool {
 	runes := []rune(command)
 	var quote rune

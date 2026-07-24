@@ -10,7 +10,7 @@ import (
 	"agent-harness/internal/core/repopath"
 )
 
-// CommitSuggestRequest configures the commit message suggestion.
+// CommitSuggestRequest는 commit message 제안을 구성한다.
 type CommitSuggestRequest struct {
 	RepoRoot string `json:"repo_root"`
 	Staged   bool   `json:"staged"`
@@ -35,7 +35,6 @@ func SuggestCommit(req CommitSuggestRequest) (CommitSuggestResult, error) {
 		return CommitSuggestResult{}, err
 	}
 
-	// 1. Get git diff
 	var gitArgs []string
 	if req.Staged {
 		gitArgs = []string{"-C", root, "diff", "--cached"}

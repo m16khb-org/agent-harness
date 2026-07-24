@@ -9,9 +9,9 @@ import (
 	"strings"
 )
 
-// InstanceRecord binds daemon lifecycle actions to one exact OS process and
-// one exact daemon protocol instance. Fields are additive so older binaries
-// can continue reading the legacy integer PID format for status only.
+// InstanceRecord는 daemon 생명주기 동작을 정확히 하나의 OS 프로세스와 정확히
+// 하나의 daemon protocol 인스턴스에 묶는다. 필드는 additive이므로 구버전
+// 바이너리도 legacy 정수 PID 형식을 status 용도로만 계속 읽을 수 있다.
 type InstanceRecord struct {
 	PID              int    `json:"pid"`
 	ProcessStartTime string `json:"process_start_time"`
@@ -44,8 +44,8 @@ func (r InstanceRecord) Validate() error {
 	return nil
 }
 
-// ReadInstance returns legacy=true only for the historical integer PID file.
-// Callers may display that PID, but must not use it for destructive actions.
+// ReadInstance는 과거의 정수 PID 파일에 대해서만 legacy=true를 반환한다. 호출자는
+// 그 PID를 표시할 수는 있으나 파괴적 동작에 사용해서는 안 된다.
 func ReadInstance(path string) (record InstanceRecord, legacy bool, err error) {
 	b, err := os.ReadFile(path)
 	if err != nil {

@@ -175,8 +175,8 @@ func TestRunBenchmarkReliability(t *testing.T) {
 		t.Fatalf("reliability text output returned error: %v", err)
 	}
 
-	// The provenance guard must surface as a CLI error (duplicate run_id is a
-	// re-scoring of one artifact dressed as two runs).
+	// provenance 가드는 CLI 에러로 드러나야 한다. 같은 run_id 중복은 하나의
+	// 산출물을 두 run인 것처럼 위장한 재채점이다.
 	dupPath := filepath.Join(t.TempDir(), "dup.json")
 	if err := os.WriteFile(dupPath, []byte(`{"runs":[
 		{"run_id":"dup","provenance":"p","outcomes":{"a":true}},

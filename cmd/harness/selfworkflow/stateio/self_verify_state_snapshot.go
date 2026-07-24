@@ -55,10 +55,10 @@ func WriteSelfAugmentSnapshotRecord(dir, key string, snapshot SelfAugmentStateSn
 		UpdatedAt:     time.Now().UTC().Format(time.RFC3339Nano),
 		Bytes:         len(content),
 	}
-	// SA1: persist via the locked + atomic (temp+rename) state writer instead of a
-	// raw os.WriteFile, matching core.writeStateRecord's durability. Byte-identical
-	// on-disk output (same path, MarshalIndent, trailing newline), now crash-safe
-	// and serialized against concurrent writers.
+	// SA1: raw os.WriteFile 대신 lock + atomic(temp+rename) state writer로 저장해
+	// core.writeStateRecord의 내구성과 맞춘다. 온디스크 출력은 경로·MarshalIndent·
+	// trailing newline이 모두 같아 byte-identical하며, crash-safe하고 동시 writer에
+	// 대해 직렬화된다.
 	_, err = core.WriteStateRecord(dir, key, record)
 	return err
 }

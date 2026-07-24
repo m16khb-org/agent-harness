@@ -7,44 +7,41 @@ import (
 	"strings"
 )
 
-// A3 — reliability reporting for a STOCHASTIC system-under-test over offline-
-// recorded runs (pass@1, tau-bench pass^k, Clopper-Pearson intervals), kept
-// strictly separate from the DETERMINISTIC scorer (whose stability is the
-// scorer-determinism check, not a variance metric — see ScoreSpread and
-// issueops_determinism_test.go).
+// A3 — offline으로 기록한 확률적 system-under-test의 신뢰도를 보고한다
+// (pass@1, tau-bench pass^k, Clopper-Pearson interval). 이는 deterministic
+// scorer와 엄격히 분리한다. scorer의 안정성은 분산 지표가 아닌
+// scorer-determinism 검사로 다룬다(ScoreSpread와 issueops_determinism_test.go 참조).
 //
-// This package never EXECUTES the SUT — live-skill invocation in CI is a
-// non-goal. It only AGGREGATES outcomes recorded elsewhere. Because a
-// confidence interval over re-scorings of ONE deterministic artifact would be
-// perfectly correlated (fake degrees of freedom, a meaningless interval),
-// ComputeReliability enforces a provenance guard: every run must carry a
-// DISTINCT run_id and a non-empty provenance label naming how it was produced.
+// 이 package는 SUT를 실행하지 않는다. CI에서 live-skill을 호출하는 것은 범위 밖이며,
+// 다른 곳에서 기록한 결과만 집계한다. 하나의 deterministic artifact를 재채점한
+// 결과로 confidence interval을 계산하면 완전히 상관되어 가짜 자유도와 무의미한
+// interval이 된다. 그래서 ComputeReliability는 각 run에 서로 다른 run_id와
+// 생성 방식을 나타내는 비어 있지 않은 provenance label을 요구한다.
 
-// maxReliabilityTrials caps n so the float64 binomial tail stays exact and
-// p^j·(1-p)^(n-j) does not underflow. Offline reliability runs are k≈3..8 in
-// practice; beyond this cap the "exact binomial tail" claim would silently
-// degrade, so callers are rejected rather than handed a degraded number.
+// maxReliabilityTrials는 float64 binomial tail의 정확성과 p^j·(1-p)^(n-j)의
+// underflow 방지를 위해 n을 제한한다. 실제 offline reliability run은 k≈3..8이며,
+// 이 상한을 넘기면 "exact binomial tail" 보장이 조용히 약해진다. 저하된 수치를
+// 반환하지 않도록 호출자를 거부한다.
 const maxReliabilityTrials = 50
 
-// RecordedRun is one offline-recorded execution of the SUT: its per-fixture
-// pass/fail outcomes. RunID and Provenance are REQUIRED and RunID must be
-// distinct across runs (the machine-checkable independence guard).
+// RecordedRun은 SUT를 offline으로 한 번 실행한 fixture별 pass/fail 결과다.
+// RunID와 Provenance는 필수이고 RunID는 run마다 달라야 한다. 이는 기계적으로
+// 확인하는 독립성 guard다.
 type RecordedRun struct {
 	RunID      string          `json:"run_id"`
 	Provenance string          `json:"provenance"`
 	Outcomes   map[string]bool `json:"outcomes"` // fixtureID -> passed
 }
 
-// RecordedOutcomes is the offline input format for `issueops benchmark
-// reliability`: k whole-benchmark replays with aligned fixture sets.
+// RecordedOutcomes는 `issueops benchmark reliability`의 offline 입력 형식이다.
+// fixture 집합이 정렬된 benchmark 전체 재실행 k회를 담는다.
 type RecordedOutcomes struct {
 	Runs []RecordedRun `json:"runs"`
 }
 
-// FixtureReliability is the per-fixture breakdown. Clopper-Pearson intervals
-// are PER FIXTURE on purpose: pooling heterogeneous fixtures into one (c,n)
-// would assume a single shared Bernoulli p and report a misleadingly narrow
-// interval.
+// FixtureReliability은 fixture별 분석이다. Clopper-Pearson interval을 의도적으로
+// fixture별로 계산한다. 이질적인 fixture를 하나의 (c,n)으로 합치면 단일 Bernoulli
+// p를 가정하게 되어 지나치게 좁은 interval을 보고하게 된다.
 type FixtureReliability struct {
 	FixtureID     string  `json:"fixture_id"`
 	Trials        int     `json:"trials"`
@@ -55,17 +52,16 @@ type FixtureReliability struct {
 	IntervalWidth float64 `json:"interval_width"`
 }
 
-// PassPowKPoint is one point of the suite-level pass^k reliability curve.
+// PassPowKPoint는 suite 수준 pass^k 신뢰도 곡선의 한 점이다.
 type PassPowKPoint struct {
 	K        int     `json:"k"`
 	PassPowK float64 `json:"pass_pow_k"`
 }
 
-// ReliabilityReport summarizes SUT reliability over k offline-recorded runs.
-// pass^k follows the tau-bench definition: the suite curve is the MEAN over
-// fixtures of C(c_i,k)/C(n_i,k), and MacroPassAt1 is the per-fixture-averaged
-// (macro) success rate so a high-trial fixture does not dominate. This is NOT
-// for the deterministic scorer gate.
+// ReliabilityReport는 k개의 offline 기록 run에서 SUT 신뢰도를 요약한다.
+// pass^k는 tau-bench 정의를 따른다. suite 곡선은 fixture별 C(c_i,k)/C(n_i,k)의
+// 평균이며, MacroPassAt1은 시행 수가 많은 fixture가 지배하지 않도록 fixture별
+// 성공률을 평균한 값이다. deterministic scorer gate에는 쓰지 않는다.
 type ReliabilityReport struct {
 	Runs          int                  `json:"runs"`
 	Alpha         float64              `json:"alpha"`
@@ -76,9 +72,9 @@ type ReliabilityReport struct {
 	Provenance    []string             `json:"provenance"`
 }
 
-// ComputeReliability aggregates offline-recorded runs into a ReliabilityReport.
-// It validates the provenance guard, requires aligned fixture sets across runs,
-// and rejects malformed inputs rather than emitting Inf/NaN numbers.
+// ComputeReliability는 offline 기록 run을 ReliabilityReport로 집계한다.
+// provenance guard와 run 간 fixture 집합 정렬을 검증하며, Inf/NaN을 만들기보다
+// 잘못된 입력을 거부한다.
 func ComputeReliability(rec RecordedOutcomes, alpha float64) (ReliabilityReport, error) {
 	runs := rec.Runs
 	if len(runs) < 2 {
@@ -113,9 +109,8 @@ func ComputeReliability(rec RecordedOutcomes, alpha float64) (ReliabilityReport,
 		}
 	}
 
-	// Aligned fixture set: every run must cover exactly the same fixtures so
-	// each fixture's trial count equals the run count and the macro-average is
-	// well defined.
+	// 정렬된 fixture 집합: 각 run은 정확히 같은 fixture를 포함해야 fixture별 시행
+	// 수가 run 수와 같고 macro-average가 잘 정의된다.
 	canonical := make([]string, 0, len(runs[0].Outcomes))
 	for f := range runs[0].Outcomes {
 		canonical = append(canonical, f)
@@ -191,15 +186,13 @@ func ComputeReliability(rec RecordedOutcomes, alpha float64) (ReliabilityReport,
 	}, nil
 }
 
-// passPowK is the tau-bench per-fixture reliability kernel: the probability
-// that k trials drawn WITHOUT replacement from `trials` recorded trials (of
-// which `successes` passed) all pass, i.e. C(successes,k)/C(trials,k), computed
-// as the product ∏_{i=0}^{k-1} (successes-i)/(trials-i).
+// passPowK는 tau-bench의 fixture별 신뢰도 kernel이다. 기록된 `trials`회 중
+// `successes`회가 통과했을 때, 비복원으로 k회를 뽑아 모두 통과할 확률
+// C(successes,k)/C(trials,k)를 ∏_{i=0}^{k-1} (successes-i)/(trials-i)로 계산한다.
 //
-// The domain is validated UP FRONT — the product form would otherwise divide
-// by zero, and Go float64 x/0 yields +Inf/NaN (never a panic). A PassPowK of
-// Inf/NaN is not a probability and would poison JSON and any threshold
-// comparison, so invalid inputs are rejected rather than silently degraded.
+// 먼저 domain을 검증한다. 그렇지 않으면 곱셈식이 0으로 나눌 수 있고 Go float64의
+// x/0은 panic 대신 +Inf/NaN을 만든다. Inf/NaN PassPowK는 확률이 아니며 JSON과
+// threshold 비교를 오염시키므로, 조용히 저하하지 않고 잘못된 입력을 거부한다.
 func passPowK(successes, trials, k int) (float64, error) {
 	if trials <= 0 || trials > maxReliabilityTrials {
 		return 0, fmt.Errorf("reliability: trials must be in [1,%d], got %d", maxReliabilityTrials, trials)
@@ -213,8 +206,8 @@ func passPowK(successes, trials, k int) (float64, error) {
 	if k == 0 {
 		return 1, nil
 	}
-	// Explicit early return (not a reliance on a zero factor appearing before a
-	// negative one): you cannot draw k successes when fewer than k exist.
+	// 0 factor가 음수 factor보다 먼저 나타난다는 가정에 기대지 않는다. 성공이 k개
+	// 미만이면 k개의 성공을 뽑을 수 없으므로 명시적으로 일찍 반환한다.
 	if k > successes {
 		return 0, nil
 	}
@@ -225,11 +218,10 @@ func passPowK(successes, trials, k int) (float64, error) {
 	return r, nil
 }
 
-// clopperPearson returns the exact (1-alpha) binomial confidence interval for c
-// successes in n trials, computed by bisection on the binomial tail (no beta
-// function). The c=0 and c=n endpoints MUST be hardcoded: P(X>=0)==1 and
-// P(X<=n)==1 identically, so bisection on those degenerate equations would not
-// converge.
+// clopperPearson은 n회 중 c회 성공의 정확한 (1-alpha) binomial confidence
+// interval을 반환한다. beta function 대신 binomial tail을 이분 탐색한다. c=0과
+// c=n 끝점은 반드시 하드코딩한다. P(X>=0)==1과 P(X<=n)==1은 항등식이므로
+// 퇴화한 방정식을 이분 탐색하면 수렴하지 않는다.
 func clopperPearson(c, n int, alpha float64) (lo, hi float64, err error) {
 	if n <= 0 || n > maxReliabilityTrials {
 		return 0, 0, fmt.Errorf("reliability: trials must be in [1,%d], got %d", maxReliabilityTrials, n)
@@ -243,19 +235,19 @@ func clopperPearson(c, n int, alpha float64) (lo, hi float64, err error) {
 	if c == 0 {
 		lo = 0
 	} else {
-		// P(X>=c | p) is increasing in p; find p where it equals alpha/2.
+		// P(X>=c | p)는 p에 따라 증가하므로 alpha/2가 되는 p를 찾는다.
 		lo = bisectProb(func(p float64) float64 { return binomTailGE(n, c, p) - alpha/2 })
 	}
 	if c == n {
 		hi = 1
 	} else {
-		// P(X<=c | p) is decreasing in p, so alpha/2 - P(X<=c) is increasing.
+		// P(X<=c | p)는 p에 따라 감소하므로 alpha/2 - P(X<=c)는 증가한다.
 		hi = bisectProb(func(p float64) float64 { return alpha/2 - binomTailLE(n, c, p) })
 	}
 	return lo, hi, nil
 }
 
-// bisectProb finds the root of a monotone-increasing f on [0,1].
+// bisectProb는 [0,1]에서 단조 증가하는 f의 근을 찾는다.
 func bisectProb(f func(float64) float64) float64 {
 	lo, hi := 0.0, 1.0
 	for range 200 {
@@ -269,7 +261,7 @@ func bisectProb(f func(float64) float64) float64 {
 	return (lo + hi) / 2
 }
 
-// binomTailGE returns P(X >= c | n, p) for X ~ Binomial(n,p).
+// binomTailGE는 X ~ Binomial(n,p)일 때 P(X >= c | n, p)를 반환한다.
 func binomTailGE(n, c int, p float64) float64 {
 	sum := 0.0
 	for j := c; j <= n; j++ {
@@ -278,7 +270,7 @@ func binomTailGE(n, c int, p float64) float64 {
 	return sum
 }
 
-// binomTailLE returns P(X <= c | n, p) for X ~ Binomial(n,p).
+// binomTailLE는 X ~ Binomial(n,p)일 때 P(X <= c | n, p)를 반환한다.
 func binomTailLE(n, c int, p float64) float64 {
 	sum := 0.0
 	for j := 0; j <= c; j++ {
@@ -287,8 +279,8 @@ func binomTailLE(n, c int, p float64) float64 {
 	return sum
 }
 
-// binomCoeff returns C(n,k) exactly for the small n this package supports
-// (n<=maxReliabilityTrials, well within float64's exact-integer range).
+// binomCoeff는 이 package가 지원하는 작은 n에서 C(n,k)를 정확히 반환한다.
+// n<=maxReliabilityTrials이므로 float64의 정확한 정수 범위 안이다.
 func binomCoeff(n, k int) float64 {
 	if k < 0 || k > n {
 		return 0
@@ -303,9 +295,9 @@ func binomCoeff(n, k int) float64 {
 	return r
 }
 
-// ScoreSpread returns the min, max, and width (max-min) of scores. A width of 0
-// means every value was identical. It backs the scorer-determinism check; it is
-// deliberately NOT a reliability/variance metric for a stochastic SUT.
+// ScoreSpread는 점수의 최솟값, 최댓값, 폭(max-min)을 반환한다. 폭이 0이면 모든
+// 값이 같다. scorer-determinism 검사를 뒷받침하며, 확률적 SUT의 신뢰도/분산
+// 지표로 쓰지 않는다.
 func ScoreSpread(scores []float64) (lo, hi, width float64) {
 	if len(scores) == 0 {
 		return 0, 0, 0

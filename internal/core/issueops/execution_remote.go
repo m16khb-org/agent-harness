@@ -65,9 +65,9 @@ type externalRemotePRPayload struct {
 	KnownURL        string                                     `json:"known_url,omitempty"`
 }
 
-// CreateRemotePullRequest is the only IssueOps v1 PR/MR creation path. It
-// persists one exact operation intent before invoking the provider and never
-// retries an ambiguous call.
+// CreateRemotePullRequest는 IssueOps v1의 유일한 PR/MR 생성 경로다. provider를
+// 호출하기 전에 정확한 operation intent 하나를 영속화하며, 모호한 호출은 절대
+// 재시도하지 않는다.
 func CreateRemotePullRequest(ctx context.Context, stateRoot string, req RemotePullRequestRequest, deps RemotePullRequestDependencies) (port.IssueProviderCreatePullRequestResult, error) {
 	if req.Confirm {
 		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {

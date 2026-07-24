@@ -2,9 +2,9 @@ package issueopscli
 
 import "strings"
 
-// repeatedFlag is the canonical repeatable string flag for the issueopscli
-// package: each --flag occurrence appends one value and String() joins the
-// collected values with "," for usage/default display.
+// repeatedFlag는 issueopscli 패키지의 표준 반복 가능 문자열 flag다. --flag가
+// 등장할 때마다 값 하나를 append하고, String()은 usage/default 표시용으로 모인
+// 값들을 ","로 잇는다.
 type repeatedFlag []string
 
 func (f *repeatedFlag) String() string {

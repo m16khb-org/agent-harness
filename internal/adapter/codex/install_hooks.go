@@ -85,8 +85,8 @@ func codexHookGroup(spec codexLifecycleHookSpec) map[string]any {
 
 func codexHookCommand(binPath, subcommand string) string {
 	cmd := fmt.Sprintf("%s hook %s", shellQuote(binPath), subcommand)
-	// Events whose additionalContext is rendered in the Codex TUI pass --host
-	// codex so the readable catalog view is used and systemMessage is omitted.
+	// additionalContext가 Codex TUI에 렌더링되는 이벤트는 --host codex를 넘겨
+	// 읽기 쉬운 catalog 뷰를 쓰고 systemMessage는 생략한다.
 	switch subcommand {
 	case "user-prompt", "session-start", "post-compact":
 		cmd += " --host codex"

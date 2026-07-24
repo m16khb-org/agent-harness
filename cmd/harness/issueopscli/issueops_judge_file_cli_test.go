@@ -35,9 +35,9 @@ func writeJudgeMapForTest(t *testing.T, content string) string {
 	return path
 }
 
-// writeProvenancedJudgeMap saves a distinct source run into the state dir and
-// wraps the given scores object in the provenanced judge-map format so the
-// provenance gate (source_run_id resolves to a real, different run) passes.
+// writeProvenancedJudgeMap는 별개의 source run을 state dir에 저장하고 주어진
+// scores 객체를 provenance 붙은 judge-map 형식으로 감싸, provenance 게이트
+// (source_run_id가 실재하는 다른 run으로 해석됨)를 통과하게 한다.
 func writeProvenancedJudgeMap(t *testing.T, scoresJSON string) string {
 	t.Helper()
 	source := core.IssueOpsBenchmarkRunResult{ID: "judge-source-run", FixtureCount: 1}
@@ -102,9 +102,9 @@ func TestRunIssueOpsBenchmarkJudgeFileRejectsNoisyScore(t *testing.T) {
 	}
 }
 
-// The wrapped format is the ONLY accepted shape: a legacy flat judge map and a
-// wrapper missing source_run_id must both be rejected, so provenance cannot be
-// silently bypassed by formatting choice.
+// 감싼 형식만 유일하게 허용되는 형태다. legacy flat judge map과 source_run_id가
+// 빠진 wrapper는 둘 다 거부되어야 하며, 그래야 형식 선택으로 provenance를 몰래
+// 우회할 수 없다.
 func TestRunIssueOpsBenchmarkJudgeFileRejectsUnprovenancedMaps(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	fixtures := writeJudgeFileFixtureForTest(t)
@@ -120,8 +120,8 @@ func TestRunIssueOpsBenchmarkJudgeFileRejectsUnprovenancedMaps(t *testing.T) {
 	}
 }
 
-// The deterministic headline gate (--judge none) must NOT acquire a provenance
-// dependency: it runs with no judge file at all and must succeed.
+// 결정론적 headline 게이트(--judge none)는 provenance 의존성을 가져서는 안 된다.
+// judge file 없이 실행되며 반드시 성공해야 한다.
 func TestRunIssueOpsBenchmarkJudgeNoneNeedsNoProvenance(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	fixtures := writeJudgeFileFixtureForTest(t)

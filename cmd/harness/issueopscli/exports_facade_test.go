@@ -80,16 +80,16 @@ func TestIssueOpsSubcommandSuggestions(t *testing.T) {
 		mustContain  string
 		mustNotMatch bool
 	}{
-		// Concept hints: domain vocabulary mistaken for subcommands.
+		// concept hint: subcommand으로 오인되는 도메인 어휘.
 		{"grill", "issueops phase --to grill", false},
 		{"split", "issueops remote create-child", false},
 		{"problem", "issueops phase --to problem", false},
 		{"implement", "issueops phase --to implement", false},
-		// Prefix matches against the real registry.
+		// 실제 registry에 대한 prefix 일치.
 		{"domain", "domain-review", false},
 		{"compat", "compatibility", false},
 		{"execut", "execution", false},
-		// No suggestion for garbage input — bare error only.
+		// 무의미한 입력에는 제안 없이 에러만 낸다.
 		{"totally-bogus", "", true},
 	}
 	for _, tc := range cases {

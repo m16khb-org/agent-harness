@@ -39,8 +39,9 @@ type nativeProcessSnapshotEntry struct {
 	Receipt   model.NativeProcessReceipt
 }
 
-// ObserveNativeProcessReceipt reads the operating-system identity used to
-// fence PID reuse. Callers persist this exact receipt, not a self-reported time.
+// ObserveNativeProcessReceipt는 PID 재사용을 방지하는 데 쓰는 운영체제
+// identity를 읽는다. 호출자는 자체 보고한 시간이 아니라 이 receipt를
+// 그대로 영속화한다.
 func ObserveNativeProcessReceipt(pid int) (model.NativeProcessReceipt, error) {
 	if pid <= 0 {
 		return model.NativeProcessReceipt{}, fmt.Errorf("native process pid must be positive")
@@ -73,10 +74,10 @@ func ObserveNativeProcessReceipt(pid int) (model.NativeProcessReceipt, error) {
 	}, nil
 }
 
-// ObserveNativeProcessAncestry captures one operating-system process table
-// snapshot and returns pid followed by each parent. A single snapshot keeps the
-// PID/start/executable tuples internally consistent while the hook is deciding
-// whether it is a descendant of the durable lease holder.
+// ObserveNativeProcessAncestry는 운영체제 프로세스 테이블 snapshot 하나를
+// 캡처해 pid와 그 뒤로 각 부모를 반환한다. 단일 snapshot은 hook이 durable
+// lease holder의 자손인지 판단하는 동안 PID/start/executable tuple을 내부적으로
+// 일관되게 유지한다.
 func ObserveNativeProcessAncestry(pid int) ([]model.NativeProcessReceipt, error) {
 	if pid <= 0 {
 		return nil, fmt.Errorf("native process pid must be positive")
@@ -185,8 +186,8 @@ func requireExactLiveNativeProcessReceipt(receipt model.NativeProcessReceipt) er
 	return nil
 }
 
-// InspectNativeProcessReceipt exposes the same PID-reuse-safe, read-only
-// observation used by lease replacement to operational inventory collectors.
+// InspectNativeProcessReceipt는 lease replacement이 쓰는 것과 동일한 PID
+// 재사용에 안전한 read-only 관측을 운영 inventory 수집기에 노출한다.
 func InspectNativeProcessReceipt(receipt model.NativeProcessReceipt) (string, model.NativeProcessReceipt, error) {
 	return inspectNativeProcessReceipt(receipt)
 }

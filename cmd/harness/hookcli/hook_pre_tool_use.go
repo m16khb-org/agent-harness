@@ -73,9 +73,9 @@ func runHookPreToolUse(args []string) error {
 	}
 	ho := hookadapter.Resolve(strings.TrimSpace(*host))
 	if result.Decision == "block" || result.Decision == "ask" {
-		// "ask" decisions always use hookSpecificOutput format (host-independent).
-		// "block" decisions differ by host: Claude uses hookSpecificOutput, Codex
-		// uses a flat decision/reason object.
+		// "ask" 결정은 항상 host 독립적인 hookSpecificOutput 형식을 쓴다.
+		// "block" 결정은 host별로 다르다. Claude는 hookSpecificOutput을,
+		// Codex는 평평한 decision/reason 객체를 쓴다.
 		if result.Decision == "ask" {
 			markHookMetricAsked()
 			return printJSON(ho.FormatAsk(result.Reason))
@@ -83,8 +83,8 @@ func runHookPreToolUse(args []string) error {
 		markHookMetricBlocked()
 		return printJSON(ho.FormatBlock(hookDenyReason(result)))
 	}
-	// PreToolUse is on the critical path before every tool call. Keep the shared
-	// harness hook cheap and non-blocking by default.
+	// PreToolUse는 모든 tool 호출 전에 실행되는 critical path다. 공용 harness
+	// hook은 기본적으로 저렴하고 non-blocking으로 유지한다.
 	return printJSON(ho.FormatNoop())
 }
 
@@ -108,11 +108,11 @@ func firstNonEmptyHookValue(values ...string) string {
 	return ""
 }
 
-// resolveExpectedWorktree returns the explicitly provided expected worktree
-// (flag or HARNESS_EXPECTED_WORKTREE). The persisted session-binding fallback
-// lives in the lifecycle MCP guard, which also checks that the session is on
-// the bound branch — duplicating the fallback here without that branch guard
-// would let one cycle's binding block unrelated work in the same repo.
+// resolveExpectedWorktree는 명시적으로 제공된 expected worktree(flag 또는
+// HARNESS_EXPECTED_WORKTREE)를 반환한다. 영속된 session-binding fallback은
+// lifecycle MCP guard에 있으며, 그 guard는 session이 bound branch에 있는지도
+// 확인한다. 여기서 branch guard 없이 fallback을 중복하면 한 cycle의 binding이
+// 같은 repo의 무관한 작업을 막을 수 있다.
 func resolveExpectedWorktree(explicit, repo string) string {
 	_ = repo
 	return strings.TrimSpace(explicit)

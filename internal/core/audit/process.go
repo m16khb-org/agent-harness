@@ -20,9 +20,8 @@ const (
 	processAuditTimeout    = 2 * time.Second
 )
 
-// ProcessExecutionRequest is the host-neutral evidence required for one
-// bounded external process invocation. Environment values and process output
-// are deliberately excluded from this audit surface.
+// ProcessExecutionRequest는 bounded 외부 process 호출 하나에 필요한 host-neutral
+// 증거다. 환경 값과 process 출력은 의도적으로 이 audit 표면에서 제외한다.
 type ProcessExecutionRequest struct {
 	Name       string
 	Executable string
@@ -36,7 +35,7 @@ type ProcessExecutionRequest struct {
 	StartedAt  time.Time
 }
 
-// ProcessExecutionRecord is an append-only, redacted process audit record.
+// ProcessExecutionRecord는 append-only로 남긴 redacted process audit 기록이다.
 type ProcessExecutionRecord struct {
 	OK          bool     `json:"ok"`
 	Kind        string   `json:"kind"`
@@ -54,8 +53,8 @@ type ProcessExecutionRecord struct {
 	Diagnostic  string   `json:"diagnostic,omitempty"`
 }
 
-// AuditProcessExecution appends one bounded process record to the harness
-// state audit log. Callers must use fixed Name, EnvPolicy, and Outcome values.
+// AuditProcessExecution은 bounded process 기록 하나를 harness state audit log에
+// append한다. 호출자는 Name, EnvPolicy, Outcome에 고정된 값을 써야 한다.
 func AuditProcessExecution(req ProcessExecutionRequest) (ProcessExecutionRecord, error) {
 	if err := validateProcessExecutionRequest(req); err != nil {
 		return ProcessExecutionRecord{}, err

@@ -241,7 +241,7 @@ func TestRunDaemonAcceptLoopGracefulShutdownWaitsForActiveConnections(t *testing
 
 	var wg sync.WaitGroup
 
-	// The connection handler blocks until we signal it.
+	// 연결 핸들러는 우리가 신호를 줄 때까지 블록된다.
 	streamStarted := make(chan struct{})
 	err := runDaemonAcceptLoop(listener, &log, daemonServerLoopDeps{
 		now: func() time.Time { return now },
@@ -257,16 +257,15 @@ func TestRunDaemonAcceptLoopGracefulShutdownWaitsForActiveConnections(t *testing
 		t.Fatalf("expected clean shutdown, got %v", err)
 	}
 
-	// The goroutine should have started; now close the conn so it finishes
+	// goroutine이 시작됐을 것이다. 이제 conn을 닫아 종료시킨다.
 	select {
 	case <-streamStarted:
-		// good, the stream started
 	case <-time.After(time.Second):
 		t.Fatal("stream did not start in time")
 	}
 	_ = conn.Close()
 
-	// WaitGroup should eventually reach 0 (from the goroutine finishing)
+	// WaitGroup은 goroutine이 종료되면서 결국 0에 도달해야 한다.
 	done := make(chan struct{})
 	go func() {
 		wg.Wait()
@@ -274,7 +273,6 @@ func TestRunDaemonAcceptLoopGracefulShutdownWaitsForActiveConnections(t *testing
 	}()
 	select {
 	case <-done:
-		// graceful shutdown worked
 	case <-time.After(5 * time.Second):
 		t.Fatal("WaitGroup did not drain within timeout")
 	}

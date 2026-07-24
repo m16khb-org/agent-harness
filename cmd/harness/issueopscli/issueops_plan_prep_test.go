@@ -21,7 +21,7 @@ func TestRunIssueOpsPlanPrepRecord(t *testing.T) {
 		t.Fatalf("start should return id: %#v", record)
 	}
 
-	// Evidence and waive on the same item must be rejected.
+	// 같은 항목에 evidence와 waive를 동시에 주면 거부되어야 한다.
 	if err := runIssueOps([]string{
 		"plan-prep", "record", "--id", id,
 		"--decisions-evidence", "adr", "--decisions-waive", "nope",
@@ -31,7 +31,7 @@ func TestRunIssueOpsPlanPrepRecord(t *testing.T) {
 		t.Fatal("evidence + waive on one item must error")
 	}
 
-	// Omitting the codebase survey item must be rejected.
+	// codebase survey 항목을 빠뜨리면 거부되어야 한다.
 	if err := runIssueOps([]string{
 		"plan-prep", "record", "--id", id,
 		"--decisions-evidence", ".agent-harness/ADR.md",
@@ -41,7 +41,7 @@ func TestRunIssueOpsPlanPrepRecord(t *testing.T) {
 		t.Fatal("missing codebase survey item must error")
 	}
 
-	// A valid mix of evidence and waive succeeds and emits plan_prep.
+	// evidence와 waive를 올바르게 섞으면 성공하고 plan_prep을 낸다.
 	out := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{
 			"plan-prep", "record", "--id", id,

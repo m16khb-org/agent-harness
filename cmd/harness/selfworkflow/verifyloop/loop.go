@@ -23,11 +23,11 @@ type Deps struct {
 	FailedStep  func(string, error) commandstep.StepResult
 	PrintStep   func(commandstep.StepResult)
 	Printf      func(string, ...any) (int, error)
-	// CollectAllSteps, when true, keeps running the remaining steps of an
-	// iteration after a step fails (instead of fail-fast), so EVERY failing gate
-	// is surfaced for concurrent regression diagnosis. Default false preserves
-	// the fail-fast behavior. It NEVER weakens the gate: the iteration and the
-	// overall verdict still fail, and ErrSelfVerificationGateFailed is returned.
+	// CollectAllSteps가 true면 어떤 step이 실패한 뒤에도 fail-fast 대신 그
+	// iteration의 나머지 step을 계속 실행해, 실패한 gate를 모두 드러내 동시
+	// regression 진단을 돕는다. 기본값 false는 fail-fast 동작을 유지한다. gate를
+	// 약화시키는 일은 절대 없다: iteration과 최종 판정은 여전히 실패하며
+	// ErrSelfVerificationGateFailed를 반환한다.
 	CollectAllSteps bool
 }
 
@@ -111,12 +111,12 @@ func SelfVerifyWithProgress(iterations int, baseSeed int64, targetScore float64,
 				}
 				iterationFailed = true
 				if !deps.CollectAllSteps {
-					// fail-fast: stop at the first failed gate (default).
+					// 기본값은 첫 번째 실패 gate에서 즉시 멈춘다.
 					break
 				}
-				// collect-all-steps: keep running so every failing gate is
-				// surfaced. Each label runs exactly once, so the goal scorer
-				// cannot be masked by a later same-label success.
+				// collect-all-steps: 실패한 gate를 모두 드러내도록 계속 실행한다.
+				// 각 label은 정확히 한 번만 실행되므로, 뒤따르는 같은 label의
+				// 성공이 goal scorer를 가릴 수 없다.
 			}
 		}
 		_ = os.RemoveAll(tempDir)

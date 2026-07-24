@@ -56,8 +56,8 @@ func issueOpsMCPErrorPayload(err error) map[string]any {
 
 func executionActionRequestFromMCP(args map[string]any) issueops.ExecutionActionRequest {
 	ancestry, _ := issueops.ObserveNativeProcessAncestry(os.Getpid())
-	// An observation failure leaves ancestry empty so core mutation validation
-	// fails closed instead of trusting the caller's process receipt.
+	// 관측이 실패하면 ancestry가 비어 core mutation validation이 호출자의
+	// process receipt를 신뢰하는 대신 fail-closed로 동작한다.
 	return executionActionRequestFromMCPWithAncestry(args, ancestry)
 }
 

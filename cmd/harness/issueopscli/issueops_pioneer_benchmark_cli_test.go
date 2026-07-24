@@ -10,9 +10,9 @@ import (
 	"agent-harness/internal/core"
 )
 
-// Exercises the REAL CLI dispatch path (benchmarkcmd run -> FromFixture ->
-// RunIssueOpsBenchmark) over all repo fixtures. Calling the library directly
-// would skip the FromFixture wiring this test exists to pin.
+// 모든 repo fixture에 대해 실제 CLI 디스패치 경로(benchmarkcmd run -> FromFixture
+// -> RunIssueOpsBenchmark)를 검증한다. 라이브러리를 직접 호출하면 이 테스트가
+// 고정하려는 FromFixture 배선을 건너뛰게 된다.
 func TestRunIssueOpsBenchmarkRunCoversPioneerFixturesViaCLI(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	fixturesPath := filepath.Join("..", "..", "..", "testdata", "issueops", "fixtures")

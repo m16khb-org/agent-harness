@@ -5,19 +5,18 @@ import (
 	"strings"
 )
 
-// ExactIssueOpsCommand is a parsed, exact `agent-harness issueops …` command:
-// its subcommand path, the full token slice, and the index where flags begin.
+// ExactIssueOpsCommand은 파싱된 정확한 `agent-harness issueops …` 명령이다.
+// subcommand path, 전체 token slice, 그리고 flag가 시작되는 인덱스를 담는다.
 type ExactIssueOpsCommand struct {
 	Path   string
 	Tokens []string
 	Start  int
 }
 
-// ParseExactIssueOpsCommand parses a command into an ExactIssueOpsCommand,
-// rejecting any command that carries active shell control/expansion (fail
-// closed). Only bare `agent-harness`, `bin/agent-harness`, or
-// `./bin/agent-harness issueops …` invocations parse; supported two-word
-// subcommands are folded into Path.
+// ParseExactIssueOpsCommand은 명령을 ExactIssueOpsCommand으로 파싱하며, 활성
+// shell control/expansion을 담은 명령은 모두 거부한다(fail closed). bare
+// `agent-harness`, `bin/agent-harness`, `./bin/agent-harness issueops …`
+// 호출만 파싱되고, 지원되는 두 단어 subcommand는 Path로 합쳐진다.
 func ParseExactIssueOpsCommand(command string) (ExactIssueOpsCommand, bool) {
 	command = strings.TrimSpace(command)
 	if command == "" || HasUnquotedControlOperator(command) || HasActiveCommandSubstitution(command) || HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) || HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) || HasActiveZshEqualsExpansion(command) {
@@ -42,9 +41,9 @@ func ParseExactIssueOpsCommand(command string) (ExactIssueOpsCommand, bool) {
 	return ExactIssueOpsCommand{Path: strings.Join(parts, " "), Tokens: tokens, Start: start}, true
 }
 
-// ExactFlags validates and collects the flags of an ExactIssueOpsCommand against
-// the value/boolean/repeatable spec, rejecting unknown flags, duplicate
-// non-repeatable flags, and missing values (fail closed).
+// ExactFlags는 ExactIssueOpsCommand의 flag를 value/boolean/repeatable spec에
+// 대조해 검증하고 수집하며, 알 수 없는 flag, non-repeatable flag의 중복, 값이
+// 빠진 경우를 거부한다(fail closed).
 func ExactFlags(command ExactIssueOpsCommand, values, booleans, repeatable map[string]bool) (map[string][]string, bool) {
 	parsed := map[string][]string{}
 	for i := command.Start; i < len(command.Tokens); i++ {
@@ -81,8 +80,8 @@ func ExactFlags(command ExactIssueOpsCommand, values, booleans, repeatable map[s
 	return parsed, true
 }
 
-// IssueOpsCommandSpec returns the (values, booleans, repeatable, ok) flag spec
-// for an exact issueops subcommand path. ok is false for unrecognized paths.
+// IssueOpsCommandSpec은 정확한 issueops subcommand path에 대한 (values,
+// booleans, repeatable, ok) flag spec을 반환한다. 알 수 없는 path면 ok는 false다.
 func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[string]bool, bool) {
 	v := func(names ...string) map[string]bool {
 		out := map[string]bool{}
@@ -154,11 +153,10 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 	}
 }
 
-// ExactReadOnlyShellCommand reports whether a non-issueops shell command is an
-// exact read-only observation (pwd, safe rg, read-only git, read-only orca
-// terminal/orchestration). It rejects any command carrying active shell
-// control/expansion. IssueOps read-only authority is handled by the caller
-// because it needs the record identity.
+// ExactReadOnlyShellCommand은 non-issueops shell 명령이 정확한 read-only
+// 관찰(pwd, safe rg, read-only git, read-only orca terminal/orchestration)인지
+// 보고한다. 활성 shell control/expansion을 담은 명령은 모두 거부한다. IssueOps의
+// read-only 권한은 record identity가 필요하므로 호출자가 처리한다.
 func ExactReadOnlyShellCommand(command string) bool {
 	if HasUnquotedControlOperator(command) || HasActiveCommandSubstitution(command) || HasActiveInputRedirect(command) || HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) || HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) || HasActiveZshEqualsExpansion(command) {
 		return false
@@ -676,8 +674,8 @@ func numericSedPrintRange(script string) bool {
 	return len(lines) == 1 || lines[0] <= lines[1]
 }
 
-// ExactReadOnlyOrcaTerminalCommand reports whether the tokens are an exact
-// read-only `orca terminal list|show|read|wait` invocation with bounded flags.
+// ExactReadOnlyOrcaTerminalCommand은 token들이 bounded flag를 가진 정확한
+// read-only `orca terminal list|show|read|wait` 호출인지 보고한다.
 func ExactReadOnlyOrcaTerminalCommand(tokens []string) bool {
 	if len(tokens) < 4 || tokens[0] != "orca" || tokens[1] != "terminal" {
 		return false
@@ -722,8 +720,8 @@ func ExactReadOnlyOrcaTerminalCommand(tokens []string) bool {
 	return tokens[2] != "wait" || len(flags["--for"]) == 1
 }
 
-// SafeRipgrepArgs reports whether every rg argument is on the read-only
-// value/boolean allowlist (fail closed on any unknown flag).
+// SafeRipgrepArgs는 모든 rg 인자가 read-only value/boolean allowlist에 있는지
+// 보고한다(알 수 없는 flag는 fail closed).
 func SafeRipgrepArgs(tokens []string) bool {
 	valueOptions := map[string]bool{
 		"-g": true, "--glob": true, "-t": true, "--type": true, "-T": true, "--type-not": true,
@@ -764,9 +762,9 @@ func SafeRipgrepArgs(tokens []string) bool {
 	return true
 }
 
-// CommandAfterDirectoryOption returns the index of the first non-`-C`
-// (directory-option) token starting from start, or -1 when the -C option is
-// malformed (missing/empty value).
+// CommandAfterDirectoryOption은 start부터 시작해 처음 나오는 non-`-C`(directory
+// 옵션) token의 인덱스를 반환하며, -C 옵션이 잘못된 경우(값이 없거나 비어 있음)
+// -1을 반환한다.
 func CommandAfterDirectoryOption(tokens []string, start int) int {
 	for start < len(tokens) {
 		token := tokens[start]
@@ -789,8 +787,8 @@ func CommandAfterDirectoryOption(tokens []string, start int) int {
 	return -1
 }
 
-// ContainsASCIITerminalControl reports whether value contains any ASCII C0
-// control or DEL character (which could steer a PTY or erase a comment marker).
+// ContainsASCIITerminalControl은 value에 ASCII C0 control이나 DEL 문자(PTY를
+// 조종하거나 comment marker를 지울 수 있음)가 들어 있는지 보고한다.
 func ContainsASCIITerminalControl(value string) bool {
 	for _, r := range value {
 		if r < 0x20 || r == 0x7f {

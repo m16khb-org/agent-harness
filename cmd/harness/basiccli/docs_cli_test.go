@@ -11,12 +11,12 @@ import (
 )
 
 func TestRunDocs_printsJSON_whenJSONFlagIsSet(t *testing.T) {
-	// When
+	// 실행
 	out := captureStatusVerifyStdout(t, func() error {
 		return RunDocs([]string{"--json"})
 	})
 
-	// Then
+	// 검증
 	var result core.DocsIndexResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode docs json: %v\n%s", err, out)
@@ -30,12 +30,12 @@ func TestRunDocs_printsJSON_whenJSONFlagIsSet(t *testing.T) {
 }
 
 func TestRunDocs_acceptsIndexAliasForTextOutput(t *testing.T) {
-	// When
+	// 실행
 	out := captureStatusVerifyStdout(t, func() error {
 		return RunDocs([]string{"index"})
 	})
 
-	// Then
+	// 검증
 	if !strings.Contains(out, "AGENTS.md") {
 		t.Fatalf("docs text should include AGENTS.md:\n%s", out)
 	}
@@ -45,18 +45,18 @@ func TestRunDocs_acceptsIndexAliasForTextOutput(t *testing.T) {
 }
 
 func TestRunDocsWithRoot_printsRelPathOnly_whenTitleIsMissing(t *testing.T) {
-	// Given
+	// 준비
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("No title here\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	// When
+	// 실행
 	out := captureStatusVerifyStdout(t, func() error {
 		return RunDocsWithRoot([]string{}, root)
 	})
 
-	// Then
+	// 검증
 	got := strings.TrimSpace(out)
 	if got != "AGENTS.md" {
 		t.Fatalf("expected untitled doc to print rel path only, got %q", got)
@@ -64,10 +64,10 @@ func TestRunDocsWithRoot_printsRelPathOnly_whenTitleIsMissing(t *testing.T) {
 }
 
 func TestRunDocsWithRoot_rejectsInvalidFlag(t *testing.T) {
-	// When
+	// 실행
 	err := RunDocsWithRoot([]string{"--missing"}, t.TempDir())
 
-	// Then
+	// 검증
 	if err == nil || !strings.Contains(err.Error(), "flag provided but not defined") {
 		t.Fatalf("expected flag parsing error, got %v", err)
 	}
