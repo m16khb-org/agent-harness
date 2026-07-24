@@ -30,7 +30,7 @@
 
 ### issueops — corrected
 
-- The in-worktree CLI registry in `cmd/harness/issueopscli/issueops.go` confirms the documented phase, review, feedback, remote, benchmark, cleanup, heartbeat, and handoff command families. `cmd/harness/workpoolcli/workpool.go` confirms the top-level workpool command map.
+- The in-worktree CLI registry in `cmd/harness/issueopscli/issueops.go` confirms the documented phase, review, feedback, remote, benchmark, cleanup, heartbeat, and handoff command families.
 - Every reference named by the skill exists, including the nine IssueOps phase references, both Torvalds protocol references, the Berners-Lee report template, `PROMPT.md`, and the sub-agent policy/tradeoff documents.
 - The lifecycle authority in `internal/core/lifecycle/lifecycle_handoff_authority.go` permits a claimed worker to commit locally but owns direct `orca` controllers on the coordinator side. A direct worker Orca heartbeat was blocked during this review; the sealed `issueops heartbeat` succeeded. The skill now states this boundary and automatic finish projection explicitly.
 - The phase-assist section enumerates 11 skills while its introduction said 9; the count now matches the table.

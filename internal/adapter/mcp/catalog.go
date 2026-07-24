@@ -22,7 +22,6 @@ const (
 	DispatchProject         DispatchGroup = "project"
 	DispatchPolicyState     DispatchGroup = "policy_state"
 	DispatchIssueOps        DispatchGroup = "issueops"
-	DispatchWorkPool        DispatchGroup = "workpool"
 	DispatchLoop            DispatchGroup = "loop"
 	DispatchAssistantWorker DispatchGroup = "assistant_worker"
 	DispatchSelfLoop        DispatchGroup = "self_loop"
@@ -47,7 +46,6 @@ func catalogSections() []catalogSection {
 		{DispatchPolicyState, true, CommandPolicyTools},
 		{DispatchPolicyState, true, StateTools},
 		{DispatchIssueOps, true, IssueOpsBasicTools},
-		{DispatchWorkPool, true, WorkPoolTools},
 		{DispatchLoop, true, LoopTools},
 		{DispatchAssistantWorker, true, func() []Tool { return []Tool{DaemonStatusTool()} }},
 		{DispatchSelfLoop, true, selfLoopAdvertisedTools},

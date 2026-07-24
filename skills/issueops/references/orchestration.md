@@ -1,6 +1,8 @@
 # IssueOps Orchestration Reference
 
-Use this reference when an IssueOps parent cycle delegates bounded work to child cycles or a workpool. The harness stores coordination state; the main agent still owns dispatch, validation, and every safety decision.
+Use this reference when an IssueOps parent cycle delegates bounded work to child cycles. The harness stores coordination state; the main agent still owns dispatch, validation, and every safety decision.
+
+Ephemeral independent fan-out uses the host's native subagent concurrency controls. Durable delegated work uses IssueOps child cycles, isolated canonical worktrees, generation-fenced execution ownership, and parent accept/reject validation.
 
 ## S1 Walkthrough: Delegated Child Cycles
 
@@ -56,47 +58,6 @@ Accept a child only when all items are true:
 
 Reject a child when the result is fixable but incomplete, out of date, weakly verified, or missing required evidence. Drop a child only when the parent intentionally removes that work from the contract or replaces it with another path, and record the reason.
 
-## S2 Walkthrough: Worker Pool
-
-Use a workpool for repeated fan-out tasks with the same owner contract. A pool is not an agent launcher; it is a lease and validation ledger.
-
-1. Create the pool: `workpool create --repo "$PWD" --name "$POOL" --parent-cycle "$ISSUEOPS_ID" --json`.
-2. Add tasks: `workpool add-task --pool "$POOL_ID" --title "$TITLE" --instructions "$INSTRUCTIONS" --acceptance "$CRITERION" --json`.
-3. Worker claims one task: `workpool claim --pool "$POOL_ID" --worker "$WORKER_ID" --json`.
-4. Worker prepares an isolated worktree and records the expected worktree in its own run context.
-5. Worker heartbeats during long work: `workpool heartbeat --pool "$POOL_ID" --task "$TASK_ID" --worker "$WORKER_ID" --json`.
-6. Worker submits evidence: `workpool submit --pool "$POOL_ID" --task "$TASK_ID" --worker "$WORKER_ID" --evidence "$EVIDENCE" --branch "$BRANCH" --worktree "$WORKTREE" --json`.
-7. Main agent validates with `workpool accept --pool "$POOL_ID" --task "$TASK_ID" --evidence "$EVIDENCE" --json` or `workpool reject --pool "$POOL_ID" --task "$TASK_ID" --reason "$REASON" --json`.
-8. Inspect owner state with `workpool status --pool "$POOL_ID" --json`; close only when terminal or when a force close is explicitly approved and reasoned.
-
-### Pool Worker Loop Prompt Template
-
-```text
-You are executing one leased workpool task.
-
-pool worker loop:
-- Pool: <pool id>
-- Task: <task id>
-- Worker: <worker id>
-- Branch: <recommended branch>
-- Expected worktree: <absolute task worktree>
-- Instructions: <task instructions>
-- Acceptance criteria: <criteria>
-
-Rules:
-- Work only in the task worktree.
-- Heartbeat before and during long work: workpool heartbeat --pool <pool id> --task <task id> --worker <worker id> --json.
-- Submit only when evidence is ready: workpool submit --pool <pool id> --task <task id> --worker <worker id> --evidence "<evidence>" --branch <branch> --worktree <worktree> --json.
-- If the lease expires or worker id mismatches, stop; do not keep editing under a lost lease.
-- Apply the scope-drift stop rule. Report drift instead of broadening the task.
-
-Output:
-- Task id and worker id.
-- Evidence submitted.
-- Verification commands and results.
-- Scope drift or blockers.
-```
-
 ## Missing Key Owner Commands
 
 | Missing key | Owner command | Meaning |
@@ -104,7 +65,6 @@ Output:
 | `child_incomplete` | `issueops child status` | A child is not done or cannot be read; inspect and continue/recover the child. |
 | `child_unvalidated` | `issueops child accept` | A child is done but has no accepted verdict; validate its evidence. |
 | `child_rejected_unresolved` | `issueops child accept` or `issueops child drop` | A rejected child still blocks the parent until corrected evidence is accepted or the child is dropped. |
-| `pool_incomplete` | `workpool status` | A linked pool still has non-terminal tasks or an open pool state. |
 | `children_active` | `issueops child status` | Active children block parent regression/cleanup shortcuts. |
 
 ## Verdict Semantics

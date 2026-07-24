@@ -69,7 +69,6 @@ func TestDispatchMapCoversAllCatalogTools(t *testing.T) {
 		DispatchProject:         true,
 		DispatchPolicyState:     true,
 		DispatchIssueOps:        true,
-		DispatchWorkPool:        true,
 		DispatchLoop:            true,
 		DispatchAssistantWorker: true,
 		DispatchSelfLoop:        true,
@@ -89,12 +88,26 @@ func TestDispatchMapCoversAllCatalogTools(t *testing.T) {
 func TestDispatchMapHasNoUnknownGroup(t *testing.T) {
 	dm := DispatchMap()
 	valid := map[DispatchGroup]bool{
-		DispatchProject: true, DispatchPolicyState: true, DispatchIssueOps: true, DispatchWorkPool: true, DispatchLoop: true,
+		DispatchProject: true, DispatchPolicyState: true, DispatchIssueOps: true, DispatchLoop: true,
 		DispatchAssistantWorker: true, DispatchSelfLoop: true,
 	}
 	for name, group := range dm {
 		if !valid[group] {
 			t.Errorf("tool %q has unknown group %q", name, group)
+		}
+	}
+}
+
+func TestCatalogOmitsRetiredPoolTools(t *testing.T) {
+	retiredPrefix := strings.Join([]string{"work", "pool"}, "") + "_"
+	for _, tool := range AdvertisedTools() {
+		if strings.HasPrefix(tool.Name, retiredPrefix) {
+			t.Fatalf("retired MCP tool must be removed: %s", tool.Name)
+		}
+	}
+	for name := range DispatchMap() {
+		if strings.HasPrefix(name, retiredPrefix) {
+			t.Fatalf("retired MCP dispatch route must be removed: %s", name)
 		}
 	}
 }

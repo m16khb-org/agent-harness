@@ -552,24 +552,6 @@ Archived entries:
   - Recording unconditionally inside externalllm — rejected: externalllm would depend on state, and every leaf-package unit test would write into the developer's real ~/.local/state dir
   - token_usage compare regression rules now — deferred until real baselines accumulate (brooks trim)
 
-## 2026-07-07 — IssueOps orchestration state model
-
-- Kind: `adr`
-- Source: codex Task 15 project docs update from codex-orchestration implementation plan
-- Summary: IssueOps orchestration uses additive child-cycle fields, scoped session bindings, and workpool state while keeping the harness host-neutral and non-spawning.
-- Context: D5 documentation update for delegated child cycles and workpool orchestration. The existing architecture keeps hooks observe-only and IssueOps as a durable main-agent state machine.
-- Decision: Represent delegated child cycles as additive IssueOps record fields, represent parent/child session binding as scoped user-state bindings, and represent pool execution in a separate workpool namespace. Main agents dispatch and accept results; child/pool workers own their isolated worktree and heartbeat; hooks only relay or block deterministic violations. The harness records state, gates, leases, and results but does not spawn host agents.
-- Consequences: At this ADR's July 7 baseline, CLI/MCP preserved schema-v1 additive compatibility for these non-ownership fields; issue #16 later introduced schema v3 for supervised ownership/stable terminal identity, schema v4 for sealed completion authority, and schema v5 for publish/cleanup authority. Locks remain single-entity and worker liveness lease/heartbeat based. Any child or pool dispatch must reference a recorded execution_decision with an allowed sub-agent pattern slug and explicit verification/fallback.
-- Evidence:
-  - .agent-harness/ARCHITECTURE.md IssueOps and workpool state model update
-  - .agent-harness/AGENT_WORKFLOW.md resume, heartbeat, and pool-worker contract update
-  - .agent-harness/SUB_AGENT_PATTERNS.md D1/D3 mapping update
-- Alternatives / rejected options:
-  - Spawn agents directly from the harness CLI or daemon — rejected because host auth, context, and approval boundaries are host-specific and would hide user-visible costs/control.
-  - Store child and pool progress only in issue comments or docs — rejected because resume, lease expiry, and acceptance gates need durable local state that survives compaction and host changes.
-  - Let lifecycle hooks advance orchestration — rejected because hooks lack full safety/reversibility/user-intent context and must remain fast observe/relay/block surfaces.
-  - Use nested or multi-entity locks for parent/child/pool updates — rejected because the current store guarantees per-entity atomicity only and nested lock re-entry can self-deadlock.
-
 ## 2026-07-07 — Standalone harness policy, upstream wiring removed
 
 - Kind: `adr`
@@ -593,16 +575,16 @@ Archived entries:
 
 - Kind: `adr`
 - Source: user decision in follow-up session ("파일락이 아니라 sqlite3 기반으로 구현"), scope confirmed as full migration of all five lock families with a fresh start
-- Summary: Every harness state layer (issueops cycles, session bindings, state KV, workpool pools/tasks, worker jobs) persists as rows in a per-state-root SQLite database (`harness.db`), and every read-modify-write span serializes through a held `BEGIN IMMEDIATE` transaction on a dedicated lock database (`harness.lock.db`). The flock layer is deleted.
+- Summary: Every harness state layer (issueops cycles, session bindings, state KV, worker jobs) persists as rows in a per-state-root SQLite database (`harness.db`), and every read-modify-write span serializes through a held `BEGIN IMMEDIATE` transaction on a dedicated lock database (`harness.lock.db`). The flock layer is deleted.
 - Context: The previous layout stored one JSON file per record with per-entity `flock` advisory locks. That left a documented P1 gap on `!unix` platforms (in-process mutex only), accumulated `.lock` inode files that could never be deleted safely, required orphan-lock sweeps, and offered no transactional listing. The five with*Lock families shared the same discipline but four separate implementations.
 - Decision: `internal/core/sqlstore` owns storage and spans. Per state-root directory: `harness.db` (WAL, `records(bucket,id,data)` JSON blob rows) plus `harness.lock.db` used only as a crash-safe cross-process span lock (transaction dies with the process, exactly like flock). Data writes autocommit so a span's own writes stay visible mid-span, matching flock-era semantics. `WithSpan(ctx, fn)` propagates an ordered active-root chain: a root may appear only once, same-root or cyclic re-entry returns `*NestedSpanError` before waiting, and distinct roots are allowed only in a documented acyclic order. The retained production order is `remote-create-live/<id>` child root followed by the main IssueOps root. Existing JSON state is NOT migrated (fresh start); legacy `*.json`/`*.lock` files are ignored by the state doctor. Record JSON schemas, IDs, and CLI/MCP response shapes are unchanged; `path` fields keep the legacy `<dir>/<key>.json` shape as a stable per-record identifier.
 - Rationale: SQLite gives real cross-process locking on every platform (closing the `!unix` gap), removes lock-inode lifecycle rules and orphan sweeps, and consolidates five storage implementations into one. The pure-Go driver (`modernc.org/sqlite`) keeps the single-binary standalone policy — no cgo, no external service.
-- Consequences: State roots now contain two SQLite files instead of JSON trees; raw-file inspection is replaced by `state read`/`state list`/`issueops status` CLI surfaces or any sqlite3 client. Concurrency granularity is per state root, not per entity — conservative but correct; the workpool race battery passes unchanged. Pre-migration state is inert on disk until manually removed.
+- Consequences: State roots now contain two SQLite files instead of JSON trees; raw-file inspection is replaced by `state read`/`state list`/`issueops status` CLI surfaces or any sqlite3 client. Concurrency granularity is per state root, not per entity — conservative but correct. Pre-migration state is inert on disk until manually removed.
 - Evidence:
   - internal/core/sqlstore/span_context_test.go (`TestWithSpanRejectsActiveRootReentry`, `TestWithSpanAllowsDistinctRootsAndRejectsCycle`, local/SQLite cancellation and panic cleanup)
   - internal/core/sqlstore/process_crash_test.go (`TestWithSpanRecoversAfterHolderProcessIsKilled`, repeated normal and race runs)
   - internal/core/issueops/issueops_remote_create_claim_test.go (create/reconcile durable projection tests retain child-root-to-main-root order)
-  - feat(issueops)!/feat(workpool)! migration commits with package + consumer + race batteries green
+  - Migration commits with package + consumer + race batteries green
   - internal/core/state, internal/core/worker ports with doctor/migrate/prune operating on rows
 - Alternatives / rejected options:
   - Keep JSON files and replace only the lock mechanism with sqlite — rejected: two storage layers, none of sqlite's transactional benefits.
@@ -618,7 +600,7 @@ Archived entries:
 - Decision:
   - `sqlstore.Open` validates the exact state root as a real directory, repairs it to 0700, rejects symlink/non-regular known SQLite paths, and repairs the fixed main/sidecar set to 0600 before returning, including cached opens.
   - `sqlstore.Maintain` runs `PRAGMA wal_checkpoint(TRUNCATE)` and re-asserts 0600 only on the fixed known store file/sidecar set. It is safe concurrent with readers/writers; busy checkpoints are skipped (Checkpointed=false), not errors.
-  - `state maintain` CLI/MCP covers five fixed roots (state, issueops, workpool, worker, loop) plus direct `projects/<repo-id>` directories that already contain a regular `harness.db`. Missing fixed roots are reported as skipped; lifecycle-only project namespaces are neither listed nor materialized.
+  - `state maintain` CLI/MCP covers four fixed roots (state, issueops, worker, loop) plus direct `projects/<repo-id>` directories that already contain a regular `harness.db`. Missing fixed roots are reported as skipped; lifecycle-only project namespaces are neither listed nor materialized.
   - `MaybeMaintainStateStores(24h)` amortizes maintenance on the session-start hook via `.last-store-maintain` sentinel, mirroring `MaybeDetectStuckWorkerJobs(6h)`.
   - Session binding cleanup (`FindStaleBindings`/`PruneStaleBindings`) runs in `ScanStaleIssueOpsCycles` with TOCTOU re-checks.
 - Rationale: WAL checkpoint is ms-scale and safe concurrent; a 24h amortization interval keeps the hot path predictable without needing a timer-based scheduler. Direct-only project discovery is bounded and runs only when the sentinel allows maintenance; a fresh-sentinel skip remains stat-only. VACUUM requires an exclusive lock and rewrites every page — unjustified at 200KB DB size. The sentinel pattern is already proven for stuck-worker detection.
@@ -637,33 +619,29 @@ Archived entries:
   - sqlstore handle eviction — rejected: the repeated-open measurement shows no handle-map or warmed connection growth for one cached root. This is not an OS-wide FD bound; revisit only with measured unique-root growth.
   - Timer-based scheduler in daemon — rejected: sentinel pattern is simpler and needs no daemon-side timer.
 
-## 2026-07-09 — Loop contracts and pilot-first workpool gates
+## 2026-07-09 — Loop contracts
 
 - Kind: `adr`
 - Source: loop/article gaps 1-2-3 plan, distilled from external article notes on agent loops, representative-task validation, and fail-closed verification contracts
-- Summary: Add a durable `agent-harness loop` state machine plus opt-in workpool pilot gates, keeping the harness as a state/gate recorder rather than a scheduler or verifier.
-- Context: The plan originally considered broader loop automation after article-inspired gap analysis. Brooks-style trim reduced the implementation to the smallest public contract that enforces observable completion discipline: four loop tools, repo+name identity, strict readiness consumption, and a pilot-first queue gate. The user explicitly directed including the consumer readiness gate rather than leaving a spike-only state package.
+- Summary: Add a durable `agent-harness loop` state machine, keeping the harness as a state/gate recorder rather than a scheduler or verifier.
+- Context: The plan originally considered broader loop automation after article-inspired gap analysis. Brooks-style trim reduced the implementation to the smallest public contract that enforces observable completion discipline: four loop tools, repo+name identity, and strict readiness consumption. The user explicitly directed including the consumer readiness gate rather than leaving a spike-only state package.
 - Decision:
   - Add `loop start/record-attempt/status/stop` CLI and matching MCP tools. `start` records `verify_argv` but never runs it; `record-attempt` requires evidence; `stop --success` requires the latest attempt to be `pass`.
   - Key loops by normalized repo+name. Active loops resume, terminal loops require a fresh name, and same-repo `active`/`exhausted` loops block strict PR readiness as `loop_incomplete:<loop-id>`.
-  - Add additive `pilot_required`/`pilot_task_id` pool fields and `--pilot` task marking. Non-pilot claim is blocked until the pilot task is accepted; a dropped pilot is fail-closed.
   - Keep partial-verification policy normative in `.agent-harness/TESTING.md`; skills only point to that source.
-- Consequences: Golden contracts include the loop command/tool list and workpool pilot schema. Mixed old/new binaries can ignore additive pilot fields, so daemon and CLI versions must be updated together when using pilot-required pools. Loop state lives in user-state `loop/` and is diagnosed by `agent-harness doctor`.
+- Consequences: Golden contracts include the loop command/tool list. Loop state lives in user-state `loop/` and is diagnosed by `agent-harness doctor`.
 - Evidence:
   - `internal/core/looprun` state machine and tests
-  - `internal/core/workpool` pilot gate tests including dropped and concurrent claim cases
   - `internal/core/issueops_facade.go` strict readiness `loop_incomplete:` gate
   - `cmd/harness/testdata/{usage.golden.txt,mcp_tools.golden.json,response_contracts.golden.json}` regenerated after CLI/MCP wiring
 - Alternatives / rejected options:
   - Scheduler or automatic verify-command execution — rejected because host approvals, tool policy, and command side effects must remain with the active agent; the harness records evidence and gates only.
   - Hook-enforced loop execution — rejected because hooks must stay fast observe/relay/block surfaces and cannot own long-running verification.
-  - Token or cost telemetry enforcement — rejected as speculative; pilot accept evidence records observed attempts/time without inventing a cost model.
+  - Token or cost telemetry enforcement — rejected as speculative; attempt evidence records observed attempts/time without inventing a cost model.
   - `state write` convention instead of a loop state machine — rejected because arbitrary checkpoints cannot enforce evidence-required attempts, max-attempt exhaustion, terminal restart refusal, or strict readiness gating.
   - Public `loop list` surface — rejected to keep the first contract minimal; doctor and PR readiness are the consumers.
   - `success_criteria` field — rejected because the loop goal plus evidence list is enough for the first state machine and avoids duplicating IssueOps intent contracts.
   - Goal-hash identity — rejected because repo+name is debuggable and supports intentional resume.
-  - “First task is pilot” implicit rule — rejected because hidden ordering would surprise workers; pilot is an explicit task flag.
-  - Automatic pilot reassignment after drop — rejected because a failed representative task means the approach is suspect and should fail closed.
 
 ## 2026-07-09 — Pipe-capture immunity and pipe-capacity doctor check
 
@@ -739,3 +717,9 @@ Archived entries:
   - Shell alias — shell-specific and unavailable to many non-interactive callers.
   - Wrapper script — duplicates root and argument forwarding behavior instead of fixing canonical executable discovery.
 - Verification: pathutil symlink-chain regression, install path-mode and collision tests, update resolved-root boundary test, installer help contract, and an isolated external-CWD `ah update --dry-run` smoke.
+
+## 2026-07-24 — Workpool removal
+
+- Kind: `adr`
+- Decision: Removed the bounded task-pool feature. It did not enforce host spawning; native Codex concurrency owns thread bounds, and IssueOps child cycles/execution v1 own durable delegation.
+- Consequences: Existing `~/.local/state/agent-harness/workpool` bytes are deliberately left inert and are not deleted.

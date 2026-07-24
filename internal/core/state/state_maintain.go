@@ -30,7 +30,6 @@ func knownStoreRoots() []string {
 	return []string{
 		base,
 		filepath.Join(base, "issueops_v1"),
-		filepath.Join(base, "workpool"),
 		workerRoot,
 		filepath.Join(base, "loop"),
 	}

@@ -13,7 +13,6 @@ import (
 	"agent-harness/cmd/harness/statuscli"
 	"agent-harness/cmd/harness/webfetchcli"
 	"agent-harness/cmd/harness/workercli"
-	"agent-harness/cmd/harness/workpoolcli"
 	"agent-harness/internal/adapter/operationalhealth"
 	"agent-harness/internal/adapter/orca"
 	"agent-harness/internal/port"
@@ -221,10 +220,6 @@ func buildVerifyWork(repo string, all bool, argv []string) VerifyWorkResult {
 
 func runWorker(args []string) error {
 	return workercli.Run(args)
-}
-
-func runWorkpool(args []string) error {
-	return workpoolcli.Run(args)
 }
 
 func runLoop(args []string) error {

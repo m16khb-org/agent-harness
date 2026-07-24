@@ -188,9 +188,9 @@ func TestStateMaintainReportsProjectDiscoveryErrors(t *testing.T) {
 
 - [ ] **Step 2: Update adapter expectations before implementation**
 
-In `cmd/harness/statecli/state_cli_maintain_test.go`, change the comment to say workpool, worker, and loop remain absent; change `len(result.Skipped) != 2` to `!= 3` and the failure message to `expected 3 skipped roots (workpool, worker, loop)`.
+In `cmd/harness/statecli/state_cli_maintain_test.go`, change the comment to say worker and loop remain absent; change `len(result.Skipped) != 2` to `!= 2` and the failure message to `expected 2 skipped roots (worker, loop)`.
 
-In `cmd/harness/mcpcli/mcp_state_maintain_test.go`, change `len(result.Skipped) != 3` to `!= 4` and the failure message to `expected 1 maintained root and 4 skipped`.
+In `cmd/harness/mcpcli/mcp_state_maintain_test.go`, change `len(result.Skipped) != 3` to `!= 3` and the failure message to `expected 1 maintained root and 3 skipped`.
 
 - [ ] **Step 3: Run RED tests and record the expected failures**
 
@@ -221,7 +221,6 @@ func knownStoreRoots() []string {
 	return []string{
 		base,
 		filepath.Join(base, "issueops"),
-		filepath.Join(base, "workpool"),
 		workerRoot,
 		filepath.Join(base, "loop"),
 	}
@@ -325,7 +324,7 @@ Lore:
 Replace the four-root decision with:
 
 ```markdown
-- `state maintain` CLI/MCP covers five fixed roots (state, issueops, workpool, worker, loop) plus direct `projects/<repo-id>` directories that already contain a regular `harness.db`. Missing fixed roots are reported as skipped; lifecycle-only project namespaces are neither listed nor materialized.
+- `state maintain` CLI/MCP covers four fixed roots (state, issueops, worker, loop) plus direct `projects/<repo-id>` directories that already contain a regular `harness.db`. Missing fixed roots are reported as skipped; lifecycle-only project namespaces are neither listed nor materialized.
 ```
 
 Add to the rationale that direct-only project discovery is bounded and runs only when the 24-hour sentinel allows maintenance; a fresh-sentinel skip remains stat-only.

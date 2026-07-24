@@ -130,7 +130,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 | 경로 | 목적 |
 |------|------|
-| `cmd/harness/` | 단일 Go 바이너리 진입점. 현재 `inspect`, `preflight`, `docs`, `policy`, `state`, `issueops`, `workpool`, `loop`, `self-verify`, `self-augment`, `mcp` 제공 |
+| `cmd/harness/` | 단일 Go 바이너리 진입점. 현재 `inspect`, `preflight`, `docs`, `policy`, `state`, `issueops`, `loop`, `self-verify`, `self-augment`, `mcp` 제공 |
 | `internal/core/` | host와 무관한 하네스 usecase. 현재 inspect, preflight, docs index, state store, command policy/fake runner 구현 위치 |
 | `internal/port/` | core가 의존하는 interface, 요청/응답 DTO |
 | `internal/adapter/cli/` | Cobra/flag 기반 CLI adapter 예정 |

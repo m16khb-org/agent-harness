@@ -6,9 +6,9 @@
 >
 > **실행 기준점**: T00 착수 시 `origin/main`은 `ec865def01a14d66eedff05c24657c908b400349`까지 전진했다. 추가된 `mcp_gateway` doctor probe는 live stateful gateway에 `initialize`를 보내므로, 진단 자체가 세션/FD를 누적하지 않는다는 계약을 T20에 포함한다.
 >
-> **결론**: P0는 확인되지 않았다. 그러나 현재 HEAD에는 실제 재현된 MCP connection-slot 고갈, `read_only` policy의 임의 실행·쓰기·workspace 밖 읽기 우회, worker secret 원문 저장, audit 중단 시 고아 프로세스 잔류가 있다. 소스 경로로 확정된 P1에는 PID 재사용 시 무관한 프로세스 종료, 병렬 세션이 sibling worktree를 편집하는 guard 허용, 재사용된 worktree 강제 삭제, state prune/migrate lost update, workpool/loop contract 덮어쓰기, install/update의 비원자 갱신 및 정상 세션 종료가 포함된다.
+> **결론**: P0는 확인되지 않았다. 그러나 현재 HEAD에는 실제 재현된 MCP connection-slot 고갈, `read_only` policy의 임의 실행·쓰기·workspace 밖 읽기 우회, worker secret 원문 저장, audit 중단 시 고아 프로세스 잔류가 있다. 소스 경로로 확정된 P1에는 PID 재사용 시 무관한 프로세스 종료, 병렬 세션이 sibling worktree를 편집하는 guard 허용, 재사용된 worktree 강제 삭제, state prune/migrate lost update, loop contract 덮어쓰기, install/update의 비원자 갱신 및 정상 세션 종료가 포함된다.
 >
-> **전략**: 공통 identity와 fail-closed 경계를 먼저 고정하고, 그 위에서 daemon·policy·IssueOps·state·workpool·install을 독립 worktree로 병렬 수정한다. 마지막에 host parity와 self-verify/stability-audit의 "검증이 실제로 검증하는가"를 교정한다. 전면 재작성은 하지 않는다.
+> **전략**: 공통 identity와 fail-closed 경계를 먼저 고정하고, 그 위에서 daemon·policy·IssueOps·state·install을 독립 worktree로 병렬 수정한다. 마지막에 host parity와 self-verify/stability-audit의 "검증이 실제로 검증하는가"를 교정한다. 전면 재작성은 하지 않는다.
 >
 > **Deliverables**: 25개 구현/검증 task, 7개 실행 wave, 3개의 명시적 설계 결정(daemon instance identity, canonical repo identity, dispatch freeze/epoch), runtime adversarial regression, CLI/MCP/host response-contract 갱신, 문서 reconciliation.
 >
@@ -21,8 +21,8 @@
 ### 1.1 확인한 표면
 
 - 공통 runtime: daemon, MCP stdio proxy, PID/socket/lock, update/cleanup
-- 상태: SQLite `sqlstore`, generic state, project lifecycle, IssueOps/session, workpool, loop, worker
-- 멀티세션: repo/worktree identity, binding, resume, stale cleanup, parent/child pool gate
+- 상태: SQLite `sqlstore`, generic state, project lifecycle, IssueOps/session, loop, worker
+- 멀티세션: repo/worktree identity, binding, resume, stale cleanup, parent/child gate
 - 실행 경계: command policy, path containment, secret redaction, output budget, timeout/process tree, audit log
 - 세 호스트: Codex, Claude Code, GJC install/update/hook/MCP/skill discovery
 - 검증 체계: response contract, self-verify, stability-audit, doctor, race/crash/parallel isolation
@@ -33,7 +33,7 @@
 | 등급 | 의미 | 이번 감사의 대표 항목 |
 |---|---|---|
 | R | 현재 HEAD runtime 재현 | MCP 64-slot 고갈 후 idle timeout 미회수, policy executable spoof/`sed -i`/`awk system`, bare symlink 외부 읽기, worker secret SQLite 유출, stability-audit 중단 후 고아 `self-verify` |
-| S | 현재 HEAD의 완전한 제어 흐름으로 확정 | PID identity 없는 signal, sibling worktree allow, orphan path 재사용 삭제, state prune/migrate race, workpool/loop contract 덮어쓰기 |
+| S | 현재 HEAD의 완전한 제어 흐름으로 확정 | PID identity 없는 signal, sibling worktree allow, orphan path 재사용 삭제, state prune/migrate race, loop contract 덮어쓰기 |
 | T | 테스트/진단 자체의 계약 결손 | self-verify false-positive, fake parallel isolation, sqlstore의 가짜 cross-process test, stability-audit의 live binary/daemon 오염 |
 | A | 수용된 제약 또는 이론적 위험 | NFS `O_EXCL`, 48/64-bit truncated hash collision, `synchronous=NORMAL`의 전원 장애 시 최신 commit 유실 가능성 |
 
@@ -41,7 +41,7 @@
 
 - `main == origin/main`, HEAD는 위 SHA다.
 - 감사 시작 시 active IssueOps binding은 없었다: `issueops resume --repo "$PWD" --json` → `{"ok":false,"bound":false}`.
-- focused 기존 테스트는 통과했다: `internal/core/{policy,state,workpool,looprun,sqlstore}`, `cmd/harness/{daemoncli,updatecli}`. 이는 아래 결함을 잡는 regression이 없다는 뜻이지 결함이 없다는 뜻이 아니다.
+- focused 기존 테스트는 통과했다: `internal/core/{policy,state,looprun,sqlstore}`, `cmd/harness/{daemoncli,updatecli}`. 이는 아래 결함을 잡는 regression이 없다는 뜻이지 결함이 없다는 뜻이 아니다.
 - stability-audit 중단으로 남은 감사 전용 temp process group은 정확한 temp 경로와 PID/PGID를 재검증한 뒤 종료했다. 실제 사용자 daemon이나 다른 프로세스는 건드리지 않았다.
 - T00 실행 직전 upstream delta `88c2916..ec865de`를 재검토했다. `doctor`의 loopback MCP `initialize` probe가 응답 body만 닫고 stateful session 종료를 보장하지 않아, 반복 진단이 검사 대상의 FD 고갈을 악화시킬 수 있는 새 경계가 확인됐다.
 
@@ -57,14 +57,13 @@
 | R04 cleanup/refresh 범위 과대 | P1 | S | 정상 `agent-harness mcp` 세션과 dbhub/context7/kordoc 같은 외부 npx MCP까지 signal 후보가 된다. | `cmd/harness/updatecli/update_bootstrap_mcp.go:42-164,365-370` (CLEAN-1, HI-01) |
 | R05 read-only policy 우회 | P1 | R | basename spoof executable, `sed -i`, `awk system()`, bare symlink operand로 arbitrary write/exec/outside read가 가능하다. | `internal/core/policy/policy_{command_classification,paths,run}.go` (SRB-01/02/03) |
 | R06 secret·runner·audit 경계 | P1/P2 | R/S | worker가 policy 전에 raw argv를 DB/JSON에 저장한다. redactor가 split token/Bearer/JWT를 놓치고, 출력은 사후 truncate, timeout은 child tree를 남기며 실행 audit append가 없다. | `internal/core/worker/read_only.go:33-45`, `policy_run.go:61-116`, `audit/audit.go:39-53` (SRB-04~10) |
-| R07 canonical repo identity 부재 | P1 | S | relative/absolute/symlink가 다른 cycle/binding/loop/pool namespace를 만들고 동시 start와 cleanup을 분리한다. | `internal/core/issueops/start/start.go:23-36`, `issueops/session/session.go:52-59,368-370`, `workpool/workpool.go:192-201`, `looprun/lifecycle.go:171-180` (MS-01) |
+| R07 canonical repo identity 부재 | P1 | S | relative/absolute/symlink가 다른 cycle/binding/loop namespace를 만들고 동시 start와 cleanup을 분리한다. | `internal/core/issueops/start/start.go:23-36`, `issueops/session/session.go:52-59,368-370`, `looprun/lifecycle.go:171-180` (MS-01) |
 | R08 host session 소유권 부재 | P1 | S | 현재 session을 식별하지 않고 repo-wide active linked worktree면 허용한다. session A가 sibling B worktree를 편집해도 기존 테스트가 통과하도록 고정돼 있다. | `internal/core/lifecycle/lifecycle_worktree_guard.go:68-90,138-208`, `lifecycle_worktree_guard_linked_test.go:238-274` (MS-02) |
 | R09 resume/binding 복구 오류 | P2 | S | stale/done primary binding이 live sibling 탐색을 가리고, `resume --id`는 실제 persistence 없이 `bound:true`; stored repo/cycle identity도 검증하지 않는다. | `internal/core/issueops/package.go:545-637`, `issueops/session/session.go:104-120,192-202` (MS-05/06, SS-05) |
 | R10 stale/orphan cleanup 안전성 | P1/P2 | S | 과거 경로가 active worktree로 재사용돼도 `git worktree remove --force`; fresh 재분류가 skip해도 receipt는 released로 기록한다. | `internal/core/issueops/issueops_stale_scan.go:60-83,131-159` (MS-03/04) |
 | R11 generic state lost update | P1 | S | prune/migrate/delete가 `StateWrite/Update` span 밖에서 snapshot/delete/write해 최신 checkpoint를 지우거나 덮을 수 있다. | `internal/core/state/state_{prune,migrate,io}.go` (SS-01) |
-| R12 workpool contract/원자성 | P1 | S | 같은 deterministic ID pool을 무조건 덮어써 기존 task와 새 contract를 섞고, cross-repo parent를 허용하며 pilot task/pool 2-write가 원자적이지 않다. | `internal/core/workpool/workpool.go:25-79,92-139,174-189` (WP-1/2, SS-02) |
 | R13 loop contract 혼선 | P1 | S | 같은 repo+name active loop면 goal/verify argv/max attempts 불일치도 조용히 기존 loop에 합류한다. | `internal/core/looprun/lifecycle.go:18-67` (LOOP-1) |
-| R14 parent readiness TOCTOU | P2 | S | pool/loop scan과 IssueOps PR phase write가 다른 root/transaction이라 scan 직후 새 dispatch가 생겨도 PR 전이가 통과한다. | `internal/core/issueops_facade.go:265-318`, `workpool/gate.go:9-60`, `looprun/gate.go:14-44` (ORCH-1) |
+| R14 parent readiness TOCTOU | P2 | S | loop scan과 IssueOps PR phase write가 다른 root/transaction이라 scan 직후 새 dispatch가 생겨도 PR 전이가 통과한다. | `internal/core/issueops_facade.go:265-318`, `looprun/gate.go:14-44` (ORCH-1) |
 | R15 compaction/project state 유실 | P2 | S | PostCompact compare 뒤 concurrent PreCompact가 새 capsule을 쓰면 새 파일을 삭제할 수 있고, existing profile RMW도 lock이 없어 metadata rollback이 가능하다. | `internal/core/lifecycle/compact/compact.go:125-175`, `lifecycle_project_state_store.go:52-119` (SS-03/06) |
 | R16 SQLite 유지보수·privacy·crash test | P2/P3 | S/T | loop 및 project-scoped store maintenance 누락은 보완됐다. existing permissive mode는 즉시 교정되지 않고, nested span은 self-deadlock하며, 실제 process crash test는 없다. | `internal/core/state/state_maintain.go:18-82`, `sqlstore/sqlstore.go:70-151`, `sqlstore_test.go:96-140` (SS-04/07/08, QCT-08) |
 | R17 install/update 비원자성 | P1/P2 | S | 전체 lock/rollback 없이 in-place write·remove/create를 하며 host 실패를 숨기고 GJC install을 중복 소유한다. crash/concurrent update가 mixed host state를 만든다. | `internal/core/install/install.go:80`, `internal/adapter/installutil/install_util.go:40-77`, `scripts/install-native.sh:95-135` (HI-03/08) |
@@ -79,7 +78,6 @@
 다음은 재개방하지 않는다. 이 구분이 없으면 계획이 불필요한 재작성으로 팽창한다.
 
 - SQLite 전환 전 JSON+flock의 non-Unix process gap, orphan `.lock`, 동일 absolute identity의 IssueOps start race는 해소됐다.
-- workpool claim/heartbeat/reap의 stale-worker fencing, pool-size serialization, pilot 선행 gate는 현재 테스트와 소스에서 유효하다.
 - stale cycle force-release 직전 fresh reclassification은 존재한다. 남은 문제는 worktree path identity와 receipt 정확성이다.
 - 기본 install의 project-local no-write와 dry-run no-mutation 경계는 유지된다.
 - daemon connection cap 64 자체는 존재한다. 문제는 idle 회수, admission error, health 관측이다.
@@ -112,7 +110,7 @@
 
 - 아래 T01~T23의 happy/failure QA가 모두 실제 temp HOME/state/socket/git repo에서 통과한다.
 - `go test ./... -count=1`, `go test -race ./... -count=1`, `go vet ./...`, golden/response-contract, native host contract matrix가 통과한다.
-- 두 실제 subprocess가 같은 SQLite/workpool/install 경계를 경합하고 holder kill 뒤 재획득되는 test가 통과한다.
+- 두 실제 subprocess가 같은 SQLite/install 경계를 경합하고 holder kill 뒤 재획득되는 test가 통과한다.
 - 두 실제 self-verify process가 격리 HOME/state/daemon에서 동시에 완료되고 descendant/process/socket/temp artifact가 0개 남는다.
 - `./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json`이 실제 executed coverage를 보고한다.
 - docs/audit reconciliation이 이전 "resolved" claim 중 재개방된 MCP shutdown/compact CAS를 현재 상태로 수정한다.
@@ -121,8 +119,7 @@
 ## 6. 실행 Guardrails
 
 - production 기능 수정은 반드시 isolated child worktree에서 한다. 여러 구현 agent가 같은 checkout을 공유하지 않는다.
-- main agent만 parent IssueOps, workpool accept/reject, integration rebase/cherry-pick, 최종 verification을 소유한다.
-- 3개 이상 fan-out은 pilot task 하나를 먼저 구현·검토·accept한 뒤 확장한다.
+- main agent만 parent IssueOps, integration rebase/cherry-pick, 최종 verification을 소유한다.
 - 각 task는 failing test → 최소 구현 → focused race/test → self-review → spec review 순서다.
 - sub-agent는 다른 sub-agent를 spawn하지 않는다. 전체 아키텍처 판단, task 경계 변경, cross-root schema 결정은 main agent가 한다.
 - user HOME, 기본 daemon, Codex/Claude/GJC live config를 test fixture로 사용하지 않는다. `mktemp` HOME/state/socket과 temp git repo만 쓴다.
@@ -134,8 +131,8 @@
 
 ```text
 Main agent
-  ├─ parent IssueOps + integration worktree + workpool/loop
-  ├─ pilot child: T01 daemon identity
+  ├─ parent IssueOps + integration worktree + loop
+  ├─ first child: T01 daemon identity
   │    ├─ implementation agent (isolated worktree)
   │    ├─ fresh-context spec reviewer
   │    └─ fresh-context quality/security reviewer
@@ -194,11 +191,11 @@ Main agent
 
 ### T00. Parent IssueOps와 격리 실행 기반 준비
 
-- **What**: 현재 plan을 review/commit한 뒤 provider issue 번호를 prefix로 둔 `<issue-number>-stability-concurrency-multisession-hardening` branch에서 parent cycle을 시작하고 전용 integration worktree를 만든다. T01을 pilot로 둔 workpool을 생성하고 나머지 task는 pilot accept 전 claim 불가로 등록한다. 기준 HEAD, active processes, user daemon/config hash는 read-only snapshot만 남긴다.
+- **What**: 현재 plan을 review/commit한 뒤 provider issue 번호를 prefix로 둔 `<issue-number>-stability-concurrency-multisession-hardening` branch에서 parent cycle을 시작하고 전용 integration worktree를 만든다. T01을 첫 검토 task로 두고 기준 HEAD, active processes, user daemon/config hash는 read-only snapshot만 남긴다.
 - **Owner**: main agent only. **Depends**: 없음.
-- **References**: `.agent-harness/AGENT_WORKFLOW.md`, `SUB_AGENT_PATTERNS.md`, `skills/issueops`, `internal/core/workpool/gate.go`.
+- **References**: `.agent-harness/AGENT_WORKFLOW.md`, `SUB_AGENT_PATTERNS.md`, `skills/issueops`.
 - **Must not**: main checkout에서 implementation edit, user daemon restart, existing untracked 파일 stage, remote push.
-- **Acceptance**: parent/child/workpool JSON에 `schema_version`, exact repo/worktree/branch가 있고 `prepare-tools`와 strict readiness가 통과한다.
+- **Acceptance**: parent/child JSON에 `schema_version`, exact repo/worktree/branch가 있고 `prepare-tools`와 strict readiness가 통과한다.
 - **QA**: happy—source checkout edit가 guard에 막히고 integration worktree edit만 허용; failure—다른 worktree path를 넘기면 block.
 - **Commit**: plan 문서만 별도 `docs(plan): define stability and multisession hardening program`; 실행 state는 commit하지 않음.
 
@@ -284,9 +281,9 @@ Main agent
 
 ### T09. Canonical physical repository identity와 legacy 호환
 
-- **What**: `Abs + Clean + EvalSymlinks` 및 git common-dir/fingerprint를 사용하는 공통 `repopath.Identity`를 만든다. IssueOps, session key, active/resume, workpool, loop, lifecycle 비교가 동일 helper를 사용한다. 기존 absolute/raw ID는 read alias로만 한 release 지원하고 신규 write는 canonical ID만 쓴다.
+- **What**: `Abs + Clean + EvalSymlinks` 및 git common-dir/fingerprint를 사용하는 공통 `repopath.Identity`를 만든다. IssueOps, session key, active/resume, loop, lifecycle 비교가 동일 helper를 사용한다. 기존 absolute/raw ID는 read alias로만 한 release 지원하고 신규 write는 canonical ID만 쓴다.
 - **Owner**: main agent가 identity/compatibility 결정을 고정하고, isolated deep agent가 그 결정만 구현. **Depends**: T00; W1 pilot accept 후 착수.
-- **References**: `internal/core/repopath/path.go`, `issueops/start/start.go:23-36`, `issueops/package.go:212-233`, `issueops/session/session.go:368-374`, `workpool/workpool.go:192-201`, `looprun/lifecycle.go:171-180`.
+- **References**: `internal/core/repopath/path.go`, `issueops/start/start.go:23-36`, `issueops/package.go:212-233`, `issueops/session/session.go:368-374`, `looprun/lifecycle.go:171-180`.
 - **Must not**: git repo가 아닌 workspace를 무조건 거부; silent duplicate migration; ID 길이/format을 즉시 깨기.
 - **Acceptance**: relative/absolute/symlink/worktree path가 같은 physical repo ID/fingerprint를 얻는다. 동시 start는 한 record만 만들고 legacy record는 발견되지만 새 duplicate write가 없다.
 - **QA**: happy—temp git repo alias matrix; failure—다른 git common-dir은 경로가 유사해도 identity mismatch.
@@ -332,16 +329,6 @@ Main agent
 - **QA**: happy—stale untouched record만 prune; failure—snapshot 후 refreshed record가 보존되고 result count도 정확.
 - **Commit**: `fix(state): serialize destructive operations with concurrent updates`.
 
-### T14. Workpool create/parent/pilot atomic invariant
-
-- **What**: deterministic pool ID가 이미 있으면 exact contract의 explicit resume만 허용하고 그 외 `pool_exists/contract_mismatch`; pool repo와 parent cycle canonical repo를 대조한다. pilot task row와 pool `PilotTaskID`는 좁은 sqlstore data transaction/batch로 한 번에 commit한다.
-- **Owner**: deep agent. **Depends**: T09, T13.
-- **References**: `internal/core/workpool/workpool.go:25-79,92-139,174-189`, `sqlstore/sqlstore.go:143-171`.
-- **Must not**: 모든 `WithSpan`을 data transaction으로 전환; closed pool 자동 재개방; cross-repo parent 허용.
-- **Acceptance**: active/closed/task-bearing pool recreation은 기존 row/task를 변경하지 않는다. cross-repo parent 거부. second-write fault에서 task와 pool 어느 쪽에도 partial state가 없다.
-- **QA**: happy—exact explicit resume; failure—SQLite trigger/fault injection 후 orphan pilot task 0.
-- **Commit**: `fix(workpool): preserve pool contracts and atomically assign pilots`.
-
 ### T15. Loop start contract idempotency
 
 - **What**: active loop resume 시 normalized `goal`, `verify_argv`, `max_attempts`, repo/name contract를 모두 비교한다. exact match만 idempotent success, 불일치는 `loop_contract_mismatch`와 필드 diff를 반환한다. explicit resume-by-ID가 필요하면 CLI/MCP에 additive하게 둔다.
@@ -354,9 +341,9 @@ Main agent
 
 ### T16. Parent dispatch freeze/epoch로 PR gate 원자화
 
-- **What**: 먼저 ADR에서 parent cycle의 dispatch epoch/frozen 상태와 pool/loop create 권한을 결정한다. PR transition은 parent를 freeze하고 같은 invariant/epoch에 연결된 open pool/loop가 0임을 검증한 뒤 commit한다. freeze 뒤 create는 거부하거나 명시 unfreeze가 필요하다. enforcement 필드는 IssueOps schema를 bump해 구 binary가 future record를 fail-safe로 거부하도록 하고, coordinated binary generation 전에는 새 schema write를 활성화하지 않는다.
-- **Owner**: architecture/deep agent; Brooks design review 필수. **Depends**: T10, T14, T15.
-- **References**: `internal/core/issueops_facade.go:265-318`, `workpool/gate.go:9-60`, `looprun/gate.go:14-44`, ADR/IssueOps schema.
+- **What**: 먼저 ADR에서 parent cycle의 dispatch epoch/frozen 상태와 loop create 권한을 결정한다. PR transition은 parent를 freeze하고 같은 invariant/epoch에 연결된 open loop가 0임을 검증한 뒤 commit한다. freeze 뒤 create는 거부하거나 명시 unfreeze가 필요하다. enforcement 필드는 IssueOps schema를 bump해 구 binary가 future record를 fail-safe로 거부하도록 하고, coordinated binary generation 전에는 새 schema write를 활성화하지 않는다.
+- **Owner**: architecture/deep agent; Brooks design review 필수. **Depends**: T10, T15.
+- **References**: `internal/core/issueops_facade.go:265-318`, `looprun/gate.go:14-44`, ADR/IssueOps schema.
 - **Must not**: 단순 두 번 scan으로 TOCTOU를 해결했다고 주장; 세 DB를 분산 transaction으로 가장; silent backward incompatibility.
 - **Acceptance**: barrier에서 gate scan 직후 concurrent create를 시도해 create 또는 PR transition 중 정확히 하나만 성공한다. old record는 unfrozen epoch 0으로 읽고 future schema는 구 binary와 신 binary 모두에서 fail-closed된다. mixed-generation fixture가 freeze를 우회하지 못한다.
 - **QA**: happy—closed dispatch set 후 PR; failure—freeze-vs-create 1,000회 race에서 invariant 위반 0.
@@ -365,7 +352,7 @@ Main agent
 ### T17. Compaction capsule과 project profile RMW 잠금
 
 - **What**: `read capsule → nonce/created_at compare → remove` 전체를 project `compact-capsule` key span에 넣는다. existing profile read/merge/write도 project span 안에서 fresh read한다. queue append와의 lock order를 문서화해 nested span을 피한다.
-- **Owner**: deep agent. **Depends**: T00; W1 pilot accept 후 착수.
+- **Owner**: deep agent. **Depends**: T00; W1 첫 검토 후 착수.
 - **References**: `internal/core/lifecycle/compact/compact.go:125-175`, `lifecycle_project_state_store.go:52-119`, `lifecycle/docupkeep/store.go`.
 - **Must not**: timestamp-only CAS로 회귀; project 전체를 단일 long-held lock; capsule을 repo source에 저장.
 - **Acceptance**: compare barrier 뒤 concurrent PreCompact의 새 nonce capsule이 보존된다. stale profile writer가 newer metadata를 되돌리지 못한다.
@@ -454,7 +441,7 @@ Main agent
    - daemon/MCP actual socket admission·shutdown·PID reuse
    - policy exploit matrix와 worker DB/WAL secret scan
    - IssueOps two-session/two-worktree, orphan path reuse
-   - state/workpool/loop actual two-process races
+   - state/loop actual two-process races
    - compact/profile barrier tests, install fault matrix
    - repeated doctor MCP gateway probe의 session/FD 비누적
 3. **Static and contracts**

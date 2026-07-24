@@ -230,10 +230,6 @@
           "name": "worker"
         },
         {
-          "description": "manage bounded lease-based work pools",
-          "name": "workpool"
-        },
-        {
           "description": "track durable verify-until-done loop contracts",
           "name": "loop"
         },
@@ -258,7 +254,7 @@
           "name": "version"
         }
       ],
-      "hash": "280cc87b8857cee837faf03189ea0507d0978df5f8bd6f14eee9f1c28153f3a0",
+      "hash": "627568cb065be4e155edaedb4a654c45f65305bcc863b1572ab1f2995dc0546f",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -304,17 +300,7 @@
         "worker_enqueue",
         "worker_list",
         "worker_run_read_only",
-        "worker_status",
-        "workpool_accept",
-        "workpool_add_task",
-        "workpool_claim",
-        "workpool_close",
-        "workpool_create",
-        "workpool_heartbeat",
-        "workpool_reap",
-        "workpool_reject",
-        "workpool_status",
-        "workpool_submit"
+        "worker_status"
       ],
       "name": "agent_harness_cli_mcp_compatibility",
       "ok": true,
@@ -641,41 +627,6 @@
           "created_at",
           "updated_at",
           "no_shell"
-        ],
-        "workpool_claim": [
-          "ok",
-          "task",
-          "prompt"
-        ],
-        "workpool_pool": [
-          "ok",
-          "schema_version",
-          "id",
-          "repo",
-          "name",
-          "size",
-          "lease_ttl",
-          "max_attempts",
-          "status",
-          "created_at",
-          "updated_at"
-        ],
-        "workpool_status": [
-          "ok",
-          "pool",
-          "tasks",
-          "counts"
-        ],
-        "workpool_task": [
-          "ok",
-          "schema_version",
-          "id",
-          "pool_id",
-          "title",
-          "instructions",
-          "status",
-          "created_at",
-          "updated_at"
         ]
       },
       "verification": [
@@ -6062,89 +6013,6 @@
       "status": "queued",
       "updated_at": "$TIMESTAMP",
       "worker_dir": "$WORKER_DIR"
-    },
-    "workpool_add_task": {
-      "acceptance_criteria": [
-        "JSON is stable"
-      ],
-      "attempts": 0,
-      "created_at": "$TIMESTAMP",
-      "id": "$WORKTASK_ID",
-      "instructions": "check response contract",
-      "ok": true,
-      "pool_id": "$WORKPOOL_ID",
-      "schema_version": 1,
-      "scope": [
-        "contract fixture"
-      ],
-      "status": "pending",
-      "title": "contract task",
-      "updated_at": "$TIMESTAMP"
-    },
-    "workpool_close": {
-      "created_at": "$TIMESTAMP",
-      "id": "$WORKPOOL_ID",
-      "lease_ttl": "1h",
-      "max_attempts": 2,
-      "name": "contract cli pool",
-      "ok": true,
-      "repo": "$WORKSPACE",
-      "schema_version": 1,
-      "size": 2,
-      "status": "closed",
-      "updated_at": "$TIMESTAMP"
-    },
-    "workpool_create": {
-      "created_at": "$TIMESTAMP",
-      "id": "$WORKPOOL_ID",
-      "lease_ttl": "1h",
-      "max_attempts": 2,
-      "name": "contract cli pool",
-      "ok": true,
-      "repo": "$WORKSPACE",
-      "schema_version": 1,
-      "size": 2,
-      "status": "active",
-      "updated_at": "$TIMESTAMP"
-    },
-    "workpool_status": {
-      "counts": {
-        "pending": 1
-      },
-      "ok": true,
-      "pool": {
-        "created_at": "$TIMESTAMP",
-        "id": "$WORKPOOL_ID",
-        "lease_ttl": "1h",
-        "max_attempts": 2,
-        "name": "contract cli pool",
-        "ok": true,
-        "repo": "$WORKSPACE",
-        "schema_version": 1,
-        "size": 2,
-        "status": "active",
-        "updated_at": "$TIMESTAMP"
-      },
-      "tasks": [
-        {
-          "acceptance_criteria": [
-            "JSON is stable"
-          ],
-          "attempts": 0,
-          "created_at": "$TIMESTAMP",
-          "id": "$WORKTASK_ID",
-          "instructions": "check response contract",
-          "ok": true,
-          "pool_id": "$WORKPOOL_ID",
-          "schema_version": 1,
-          "scope": [
-            "contract fixture"
-          ],
-          "status": "pending",
-          "title": "contract task",
-          "updated_at": "$TIMESTAMP"
-        }
-      ]
     }
   },
   "mcp": {
@@ -6477,10 +6345,6 @@
                 "name": "worker"
               },
               {
-                "description": "manage bounded lease-based work pools",
-                "name": "workpool"
-              },
-              {
                 "description": "track durable verify-until-done loop contracts",
                 "name": "loop"
               },
@@ -6505,7 +6369,7 @@
                 "name": "version"
               }
             ],
-            "hash": "280cc87b8857cee837faf03189ea0507d0978df5f8bd6f14eee9f1c28153f3a0",
+            "hash": "627568cb065be4e155edaedb4a654c45f65305bcc863b1572ab1f2995dc0546f",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6551,17 +6415,7 @@
               "worker_enqueue",
               "worker_list",
               "worker_run_read_only",
-              "worker_status",
-              "workpool_accept",
-              "workpool_add_task",
-              "workpool_claim",
-              "workpool_close",
-              "workpool_create",
-              "workpool_heartbeat",
-              "workpool_reap",
-              "workpool_reject",
-              "workpool_status",
-              "workpool_submit"
+              "worker_status"
             ],
             "name": "agent_harness_cli_mcp_compatibility",
             "ok": true,
@@ -6888,41 +6742,6 @@
                 "created_at",
                 "updated_at",
                 "no_shell"
-              ],
-              "workpool_claim": [
-                "ok",
-                "task",
-                "prompt"
-              ],
-              "workpool_pool": [
-                "ok",
-                "schema_version",
-                "id",
-                "repo",
-                "name",
-                "size",
-                "lease_ttl",
-                "max_attempts",
-                "status",
-                "created_at",
-                "updated_at"
-              ],
-              "workpool_status": [
-                "ok",
-                "pool",
-                "tasks",
-                "counts"
-              ],
-              "workpool_task": [
-                "ok",
-                "schema_version",
-                "id",
-                "pool_id",
-                "title",
-                "instructions",
-                "status",
-                "created_at",
-                "updated_at"
               ]
             },
             "verification": [
@@ -9132,117 +8951,6 @@
             "status": "succeeded",
             "updated_at": "$TIMESTAMP",
             "worker_dir": "$WORKER_DIR"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "workpool_add_task": {
-      "content": [
-        {
-          "json": {
-            "acceptance_criteria": [
-              "JSON is stable"
-            ],
-            "attempts": 0,
-            "created_at": "$TIMESTAMP",
-            "id": "$MCP_WORKTASK_ID",
-            "instructions": "check response contract",
-            "ok": true,
-            "pool_id": "$MCP_WORKPOOL_ID",
-            "schema_version": 1,
-            "scope": [
-              "contract fixture"
-            ],
-            "status": "pending",
-            "title": "mcp contract task",
-            "updated_at": "$TIMESTAMP"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "workpool_close": {
-      "content": [
-        {
-          "json": {
-            "created_at": "$TIMESTAMP",
-            "id": "$MCP_WORKPOOL_ID",
-            "lease_ttl": "1h",
-            "max_attempts": 2,
-            "name": "contract mcp pool",
-            "ok": true,
-            "repo": "$WORKSPACE",
-            "schema_version": 1,
-            "size": 2,
-            "status": "closed",
-            "updated_at": "$TIMESTAMP"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "workpool_create": {
-      "content": [
-        {
-          "json": {
-            "created_at": "$TIMESTAMP",
-            "id": "$MCP_WORKPOOL_ID",
-            "lease_ttl": "1h",
-            "max_attempts": 2,
-            "name": "contract mcp pool",
-            "ok": true,
-            "repo": "$WORKSPACE",
-            "schema_version": 1,
-            "size": 2,
-            "status": "active",
-            "updated_at": "$TIMESTAMP"
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "workpool_status": {
-      "content": [
-        {
-          "json": {
-            "counts": {
-              "pending": 1
-            },
-            "ok": true,
-            "pool": {
-              "created_at": "$TIMESTAMP",
-              "id": "$MCP_WORKPOOL_ID",
-              "lease_ttl": "1h",
-              "max_attempts": 2,
-              "name": "contract mcp pool",
-              "ok": true,
-              "repo": "$WORKSPACE",
-              "schema_version": 1,
-              "size": 2,
-              "status": "active",
-              "updated_at": "$TIMESTAMP"
-            },
-            "tasks": [
-              {
-                "acceptance_criteria": [
-                  "JSON is stable"
-                ],
-                "attempts": 0,
-                "created_at": "$TIMESTAMP",
-                "id": "$MCP_WORKTASK_ID",
-                "instructions": "check response contract",
-                "ok": true,
-                "pool_id": "$MCP_WORKPOOL_ID",
-                "schema_version": 1,
-                "scope": [
-                  "contract fixture"
-                ],
-                "status": "pending",
-                "title": "mcp contract task",
-                "updated_at": "$TIMESTAMP"
-              }
-            ]
           },
           "type": "text"
         }

@@ -10,7 +10,6 @@ import (
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/lifecycle"
-	"agent-harness/internal/core/workpool"
 )
 
 const hookChoiceQualityEvidenceEscaped = `\n\n## 선택지 품질 증거\n- context 확인: git status, 테스트 결과, 사용자 요청 범위를 확인했습니다.\n- 추천 근거: safe=상태 변경 없음, reversible=되돌릴 작업 없음, aligned=사용자 요청 범위와 일치합니다.\n- 사용자 승인 경계: 원격 push/delete/destructive 작업은 추천하지 않았습니다.`
@@ -264,7 +263,7 @@ func TestRunHookStopRelaysOncePerTurnAndRefreshesRecord(t *testing.T) {
 func TestRunHookStopRelayNamesOrchestrationMissingKeys(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo, parent := seedStopRelayOrchestrationFixture(t)
-	choices := `선택지:\n1. 검증 후 PR 단계로 진행합니다. (추천)\n2. child 상태만 확인합니다.\n3. workpool 상태만 확인합니다.` + hookChoiceQualityEvidenceEscaped
+	choices := `선택지:\n1. 검증 후 PR 단계로 진행합니다. (추천)\n2. child 상태만 확인합니다.\n3. child 실행 증거를 확인합니다.` + hookChoiceQualityEvidenceEscaped
 
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","last_assistant_message":"`+choices+`"}`, func() error {
 		return runHookStop([]string{"--relay-next-action-judgement"})
@@ -276,12 +275,14 @@ func TestRunHookStopRelayNamesOrchestrationMissingKeys(t *testing.T) {
 	for _, want := range []string{
 		"child_incomplete:" + issueops.NewIssueOpsID(repo, "relay-child-active"),
 		"child_unvalidated:" + issueops.NewIssueOpsID(repo, "relay-child-done"),
-		"pool_incomplete:wp-relay001",
 		parent.ID,
 	} {
 		if !strings.Contains(reason, want) {
 			t.Fatalf("expected Stop relay reason to name %q, got %q", want, reason)
 		}
+	}
+	if strings.Contains(reason, "pool_incomplete:") {
+		t.Fatalf("Stop relay must not surface stale pool state, got %q", reason)
 	}
 }
 
@@ -361,33 +362,23 @@ func seedStopRelayOrchestrationFixture(t *testing.T) (string, issueops.IssueOpsR
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	})
-	pool := workpool.WorkPool{
-		SchemaVersion: workpool.WorkPoolCurrentSchemaVersion,
-		ID:            "wp-relay001",
-		Repo:          repo,
-		Name:          "relay",
-		ParentCycleID: parent.ID,
-		Size:          2,
-		LeaseTTL:      "30m",
-		MaxAttempts:   2,
-		Status:        "active",
-		CreatedAt:     now,
-		UpdatedAt:     now,
-	}
-	if err := os.MkdirAll(filepath.Join(workpool.StateRoot(), pool.ID), 0o700); err != nil {
-		t.Fatalf("mkdir workpool fixture: %v", err)
-	}
-	b, err := json.MarshalIndent(pool, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(workpool.StateRoot(), pool.ID+".json"), append(b, '\n'), 0o600); err != nil {
-		t.Fatalf("write workpool fixture: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(workpool.StateRoot(), pool.ID, "task-corrupt.json"), []byte("{not-json\n"), 0o600); err != nil {
-		t.Fatalf("write corrupt task fixture: %v", err)
-	}
+	seedStopRelayStalePoolEntry(t, parent.ID, "wp-relay001")
 	return repo, parent
+}
+
+func seedStopRelayStalePoolEntry(t *testing.T, parentID, id string) {
+	t.Helper()
+	root := filepath.Join(os.Getenv("HARNESS_STATE_DIR"), strings.Join([]string{"work", "pool"}, ""))
+	if err := os.MkdirAll(filepath.Join(root, id), 0o700); err != nil {
+		t.Fatalf("mkdir legacy fixture: %v", err)
+	}
+	manifest := `{"id":"` + id + `","name":"legacy","parent_cycle_id":"` + parentID + `","status":"active"}`
+	if err := os.WriteFile(filepath.Join(root, id+".json"), []byte(manifest), 0o600); err != nil {
+		t.Fatalf("write legacy manifest: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, id, "task-stale.json"), []byte("{}"), 0o600); err != nil {
+		t.Fatalf("write legacy task: %v", err)
+	}
 }
 
 func writeStopRelayIssueOpsRecord(t *testing.T, record issueops.IssueOpsRecord) {

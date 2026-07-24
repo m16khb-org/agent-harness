@@ -45,18 +45,14 @@ agent-harness state migrate --confirm --json
 
 State commands use user-state storage, not target repo source files.
 
-## Workpool And Loop Contracts
+## Loop Contracts
 
 ```bash
-agent-harness workpool create --repo PATH --name NAME [--parent-cycle ID] [--pilot] [--size N] [--lease-ttl DURATION] [--max-attempts N] [--json]
-agent-harness workpool add-task --pool ID --title TEXT [--instructions TEXT] [--scope TEXT] [--acceptance TEXT] [--pilot] [--json]
 agent-harness loop start --repo PATH --name NAME --goal TEXT [--max-attempts N] [--json] -- [VERIFY_ARGV...]
 agent-harness loop record-attempt --id ID --verdict pass|fail --evidence TEXT [--evidence TEXT...] [--json]
 agent-harness loop status (--id ID | --repo PATH --name NAME) [--json]
 agent-harness loop stop --id ID (--success | --reason TEXT) [--json]
 ```
-
-Use `--pilot` when a pool has 3 or more expected tasks and one representative task should prove the approach before mass claim. A pilot-required pool claims only the pilot until that task is submitted and accepted. If the pilot is dropped, the pool stays fail-closed; close it with `workpool close --force --reason TEXT` or create a new pool.
 
 `loop` records a durable verify-until-done contract. `start` stores `verify_argv` but never executes it; `record-attempt` requires evidence; `stop --success` requires the latest attempt to be `pass`. Same-repo active or exhausted loops block strict PR readiness with `loop_incomplete:<loop-id>`.
 

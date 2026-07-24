@@ -399,12 +399,12 @@ source coordinator의 exact IssueOps/remote/worktree control-plane은 repository
 
 - 새 authority는 기존 `issueops`/`session` row를 읽지 않는 별도 `issueops_v1` namespace를 사용한다.
 - v1 cutover 때 기존 v7~v9 IssueOps record, native session binding, ownership/handoff journal, monitor/publication-lock/remote-create runtime을 전부 삭제한다. migrate/backfill/dual-read/inert 보존은 하지 않는다.
-- 삭제는 broad path/glob가 아니라 state adapter가 해석한 exact legacy namespace/table/file manifest만 대상으로 한다. daemon/workpool/loop/Turing/Shannon, repo 문서, Git worktree와 v1 namespace는 제외한다.
+- 삭제는 broad path/glob가 아니라 state adapter가 해석한 exact legacy namespace/table/file manifest만 대상으로 한다. daemon/loop/Turing/Shannon, repo 문서, Git worktree와 v1 namespace는 제외한다.
 - `issueops reset-legacy --target-schema 1 --preview`는 state root, 대상별 row/file count, digest, active cycle·Orca task와 모든 `RemoteCreateClaim`의 pending/unknown/invocation state를 반환한다. remote claim은 provider inventory에서 정확히 한 live artifact를 검증·finalize한 뒤 cycle까지 drain해야 한다. 0/복수 후보, transport ambiguity, interrupted provider call은 삭제하지 않고 exact reconcile 명령으로 reset을 차단한다.
 - reset은 user state 전체의 one-time maintenance barrier다. staged v1 binary를 먼저 원자적으로 활성화해 legacy 존재 시 모든 IssueOps mutation을 `reset_required`로 막고 observation/reset status만 허용한다. resident daemon/MCP/worker와 in-flight old harness PID+start identity를 모두 종료·재검증한 뒤 global state lock을 잡는다. 기존 Codex/Claude session도 다음 hook부터 같은 v1 binary를 호출하므로 새 v9 write를 만들 수 없다.
 - `--confirm --expected-fingerprint`는 같은 manifest를 lock 안에서 재검증하고 crash-resumable journal로 삭제한 뒤 schema-1 namespace를 초기화한다. stale fingerprint와 부분 삭제는 idempotent resume 외에는 진행하지 않는다.
 - raw legacy payload backup은 남기지 않는다. 완료 receipt에는 target counts/digests, binary version, timestamp만 남기고 최종 검사는 legacy rows/files 0건과 unrelated-state byte identity를 증명한다.
-- 이 이슈에서 `schema_version=1`로 리셋하는 범위는 IssueOps cycle/session/execution/context/CLI-MCP response contract다. unrelated daemon/workpool/loop protocol version을 근거 없이 renumber하지 않는다.
+- 이 이슈에서 `schema_version=1`로 리셋하는 범위는 IssueOps cycle/session/execution/context/CLI-MCP response contract다. unrelated daemon/loop protocol version을 근거 없이 renumber하지 않는다.
 
 ### 삭제할 legacy execution 개념
 

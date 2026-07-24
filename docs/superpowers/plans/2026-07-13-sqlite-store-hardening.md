@@ -48,7 +48,7 @@
 ### Context migration
 
 - State and consumers: `internal/core/state/state_lock.go`, `internal/core/state/state_io.go`, `internal/core/state/state_test.go`, `internal/core/hookfailure/log.go`, `internal/core/hookmetrics/metrics.go`, `internal/core/hookmetrics/metrics_test.go`, `internal/core/lifecycle/compact/compact.go`, `internal/core/lifecycle/docupkeep/store.go`, `internal/core/lifecycle/docupkeep/store_test.go`.
-- Loop, worker, workpool, and session: `internal/core/looprun/lifecycle.go`, `internal/core/worker/worker_lock.go`, `internal/core/worker/worker.go`, `internal/core/worker/store.go`, `internal/core/worker/read_only.go`, `internal/core/workpool/workpool.go`, `internal/core/workpool/lifecycle.go`, `internal/core/issueops/session/session.go`.
+- Loop, worker, and session: `internal/core/looprun/lifecycle.go`, `internal/core/worker/worker_lock.go`, `internal/core/worker/worker.go`, `internal/core/worker/store.go`, `internal/core/worker/read_only.go`, `internal/core/issueops/session/session.go`.
 - IssueOps main-root callers: `internal/core/issueops/issueops_lock.go`, `issueops_decision.go`, `issueops_delegation.go`, `issueops_devilsadvocate_reflect.go`, `issueops_feedback.go`, `issueops_force_done.go`, `issueops_force_release.go`, `issueops_handoff_dispatch.go`, `issueops_handoff_lifecycle.go`, `issueops_handoff_plan.go`, `issueops_handoff_prepare.go`, `issueops_handoff_projection.go`, `issueops_handoff_publication.go`, `issueops_handoff_recovery.go`, `issueops_ledger_recorders.go`, `issueops_phase.go`, `issueops_regress.go`, `issueops_remote_create_claim.go`, `issueops_routing.go`, `issueops_stale_scan.go`, `issueops_stale_scan_apply_test.go`, `issueops_stale_scan_quickwin_test.go`, and `package.go` under `internal/core/issueops/`.
 - Remote-create regression: `internal/core/issueops/issueops_remote_create_claim_test.go`.
 
@@ -371,13 +371,13 @@ git commit -m "refactor(state): propagate span contexts" -m $'Lore:\n- Intent: C
 
 ---
 
-### Task 4: Migrate loop, worker, workpool, and session helpers
+### Task 4: Migrate loop, worker, and session helpers
 
 **Files:**
-- Modify: the eight loop/worker/workpool/session files listed in File Structure.
+- Modify: the loop/worker/session files listed in File Structure.
 
 **Interfaces:**
-- Produces context-bearing `withLoopLock`, `withWorkerJobLock`, `withPoolLock`, `withTaskLock`, and `withSessionLock`, all using `func(context.Context) error`.
+- Produces context-bearing `withLoopLock`, `withWorkerJobLock`, and `withSessionLock`, all using `func(context.Context) error`.
 
 - [ ] **Step 1: Apply the common helper contract**
 
@@ -395,13 +395,13 @@ Apply the same leading-context and callback contract to worker, pool, task, and 
 - [ ] **Step 2: Verify inventory, test, and commit**
 
 ```bash
-rg -n 'withLoopLock\(|withWorkerJobLock\(|withPoolLock\(|withTaskLock\(|withSessionLock\(' internal/core/looprun internal/core/worker internal/core/workpool internal/core/issueops/session
-gofmt -w $(git diff --name-only -- internal/core/looprun internal/core/worker internal/core/workpool internal/core/issueops/session | rg '\.go$')
-go test ./internal/core/looprun ./internal/core/worker ./internal/core/workpool ./internal/core/issueops/session -count=1
-go test -race ./internal/core/looprun ./internal/core/worker ./internal/core/workpool ./internal/core/issueops/session -count=1
-git add -- internal/core/looprun internal/core/worker internal/core/workpool internal/core/issueops/session
+rg -n 'withLoopLock\(|withWorkerJobLock\(|withSessionLock\(' internal/core/looprun internal/core/worker internal/core/issueops/session
+gofmt -w $(git diff --name-only -- internal/core/looprun internal/core/worker internal/core/issueops/session | rg '\.go$')
+go test ./internal/core/looprun ./internal/core/worker ./internal/core/issueops/session -count=1
+go test -race ./internal/core/looprun ./internal/core/worker ./internal/core/issueops/session -count=1
+git add -- internal/core/looprun internal/core/worker internal/core/issueops/session
 git diff --cached --check
-git commit -m "refactor(core): thread span contexts through stores" -m $'Lore:\n- Intent: Complete context propagation for loop, worker, workpool, and session spans.\n- Why: Every direct sqlstore caller must carry cancellation and root-chain metadata.\n- Changes:\n  - Convert five helper families to context callbacks.\n  - Migrate callers without changing external operations.\n- Verify: Focused package and race suites pass.\n- Risk: Mechanical internal signature migration.'
+git commit -m "refactor(core): thread span contexts through stores" -m $'Lore:\n- Intent: Complete context propagation for loop, worker, and session spans.\n- Why: Every direct sqlstore caller must carry cancellation and root-chain metadata.\n- Changes:\n  - Convert three helper families to context callbacks.\n  - Migrate callers without changing external operations.\n- Verify: Focused package and race suites pass.\n- Risk: Mechanical internal signature migration.'
 ```
 
 ---
@@ -517,7 +517,6 @@ Replace `WithSpanContext(` with `WithSpan(` in the new context tests and these p
 - `internal/core/state/state_lock.go`
 - `internal/core/looprun/lifecycle.go`
 - `internal/core/worker/worker_lock.go`
-- `internal/core/workpool/workpool.go` at two helpers
 - `internal/core/issueops/session/session.go`
 - `internal/core/issueops/issueops_lock.go`
 - `internal/core/issueops/issueops_remote_create_claim.go`
@@ -536,10 +535,10 @@ Expected: the first command has no output; the second reports exactly eight prod
 - [ ] **Step 4: Test and commit the cutover**
 
 ```bash
-gofmt -w $(git diff --name-only -- internal/core/sqlstore internal/core/state internal/core/looprun internal/core/worker internal/core/workpool internal/core/issueops | rg '\.go$')
-go test ./internal/core/sqlstore ./internal/core/state ./internal/core/issueops/... ./internal/core/workpool ./internal/core/looprun ./internal/core/worker -count=1
-go test -race ./internal/core/sqlstore ./internal/core/state ./internal/core/issueops/... ./internal/core/workpool ./internal/core/looprun ./internal/core/worker -count=1
-git add -- internal/core/sqlstore internal/core/state internal/core/looprun internal/core/worker internal/core/workpool internal/core/issueops
+gofmt -w $(git diff --name-only -- internal/core/sqlstore internal/core/state internal/core/looprun internal/core/worker internal/core/issueops | rg '\.go$')
+go test ./internal/core/sqlstore ./internal/core/state ./internal/core/issueops/... ./internal/core/looprun ./internal/core/worker -count=1
+go test -race ./internal/core/sqlstore ./internal/core/state ./internal/core/issueops/... ./internal/core/looprun ./internal/core/worker -count=1
+git add -- internal/core/sqlstore internal/core/state internal/core/looprun internal/core/worker internal/core/issueops
 git diff --cached --check
 git commit -m "refactor(sqlstore): complete context span cutover" -m $'Lore:\n- Intent: Make the context callback the only sqlstore span API.\n- Why: The bridge would preserve an unsafe context-dropping path after migrations.\n- Changes:\n  - Rename WithSpanContext to final WithSpan.\n  - Remove the wrapper and migrate production and test calls.\n- Verify: Migrated package and race suites pass; legacy scans are empty.\n- Risk: Intentional breaking change limited to internal callers.'
 ```
@@ -742,7 +741,7 @@ Record that one root may appear once per propagated chain, same-root/cyclic re-e
 - [ ] **Step 4: Run final serialized verification**
 
 ```bash
-go test ./internal/core/sqlstore ./internal/core/state ./internal/core/issueops/... ./internal/core/workpool ./internal/core/looprun ./internal/core/worker -count=1
+go test ./internal/core/sqlstore ./internal/core/state ./internal/core/issueops/... ./internal/core/looprun ./internal/core/worker -count=1
 go test -p 1 -timeout 20m ./... -count=1
 go test -race -p 1 -timeout 20m ./... -count=1
 go vet ./...

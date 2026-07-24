@@ -1,7 +1,6 @@
 package hookprompt
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,18 +8,20 @@ import (
 
 	"agent-harness/internal/core/issueops"
 	issueopsmodel "agent-harness/internal/core/issueops/model"
-	"agent-harness/internal/core/workpool"
 )
 
-func TestOrchestrationReminderRendersChildrenAndPool(t *testing.T) {
+func TestOrchestrationReminderRendersChildrenOnly(t *testing.T) {
 	repo, parent := seedOrchestrationReminderFixture(t)
 
 	got := orchestrationReminderValue(repo)
 	wantChildren := "children: 1/3 done, 1 unvalidated - issueops child status --parent " + parent.ID
-	wantPool := "pool fanout: 0 leased / 1 pending / 0 expired - workpool status"
-	for _, want := range []string{wantChildren, wantPool} {
-		if !strings.Contains(got, want) {
-			t.Fatalf("expected orchestration reminder to contain %q, got %q", want, got)
+	if !strings.Contains(got, wantChildren) {
+		t.Fatalf("expected orchestration reminder to contain %q, got %q", wantChildren, got)
+	}
+	retiredNamespace := strings.Join([]string{"work", "pool"}, "")
+	for _, unwanted := range []string{retiredNamespace, "pool fanout"} {
+		if strings.Contains(got, unwanted) {
+			t.Fatalf("orchestration reminder must not contain %q, got %q", unwanted, got)
 		}
 	}
 }
@@ -214,7 +215,7 @@ func seedOrchestrationReminderFixture(t *testing.T) (string, issueops.IssueOpsRe
 		UpdatedAt:     now,
 	})
 	activateOrchestrationExecutionForTest(t, parent.ID, repo)
-	seedPoolManifestAndCorruptTaskForReminderTest(t, repo, parent.ID)
+	seedStaleLegacyPoolEntry(t, parent.ID, "wp-reminder001")
 	return repo, parent
 }
 
@@ -250,33 +251,17 @@ func activateOrchestrationExecutionForTest(t *testing.T, id, repo string) {
 	writeIssueOpsRecordForReminderTest(t, record)
 }
 
-func seedPoolManifestAndCorruptTaskForReminderTest(t *testing.T, repo, parentID string) {
+func seedStaleLegacyPoolEntry(t *testing.T, parentID, id string) {
 	t.Helper()
-	pool := workpool.WorkPool{
-		SchemaVersion: workpool.WorkPoolCurrentSchemaVersion,
-		ID:            "wp-reminder001",
-		Repo:          repo,
-		Name:          "fanout",
-		ParentCycleID: parentID,
-		Size:          3,
-		LeaseTTL:      "30m",
-		MaxAttempts:   2,
-		Status:        "active",
-		CreatedAt:     "2026-07-07T00:00:00Z",
-		UpdatedAt:     "2026-07-07T00:00:00Z",
+	root := filepath.Join(os.Getenv("HARNESS_STATE_DIR"), strings.Join([]string{"work", "pool"}, ""))
+	if err := os.MkdirAll(filepath.Join(root, id), 0o700); err != nil {
+		t.Fatalf("mkdir legacy fixture: %v", err)
 	}
-	if err := os.MkdirAll(filepath.Join(workpool.StateRoot(), pool.ID), 0o700); err != nil {
-		t.Fatalf("mkdir workpool fixture: %v", err)
+	manifest := `{"id":"` + id + `","name":"legacy","parent_cycle_id":"` + parentID + `","status":"active"}`
+	if err := os.WriteFile(filepath.Join(root, id+".json"), []byte(manifest), 0o600); err != nil {
+		t.Fatalf("write legacy manifest: %v", err)
 	}
-	b, err := json.MarshalIndent(pool, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(workpool.StateRoot(), pool.ID+".json"), append(b, '\n'), 0o600); err != nil {
-		t.Fatalf("write pool fixture: %v", err)
-	}
-	taskPath := filepath.Join(workpool.StateRoot(), pool.ID, "task-corrupt.json")
-	if err := os.WriteFile(taskPath, []byte("{not-json\n"), 0o600); err != nil {
-		t.Fatalf("write corrupt task fixture: %v", err)
+	if err := os.WriteFile(filepath.Join(root, id, "task-stale.json"), []byte("{}"), 0o600); err != nil {
+		t.Fatalf("write legacy task: %v", err)
 	}
 }

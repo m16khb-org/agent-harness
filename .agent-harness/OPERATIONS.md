@@ -24,7 +24,7 @@ Use this file as the quick map. Read the focused operation file that matches the
 
 1. Native skills: `atomic-commit-push`, `issueops`, `self-augment`, `project-bootstrap`, `self-verify`, `stability-audit`, plus the named specialist skills in `skills/`.
 2. MCP stdio proxy: `agent-harness mcp` starts or connects to the shared user-level `agent-harness daemon`.
-3. CLI: `agent-harness inspect/preflight/status/verify-work/doctor/docs/project/policy/guard/state/issueops/workpool/loop/contract/daemon/worker/self-verify/self-augment/api-doc/hook`.
+3. CLI: `agent-harness inspect/preflight/status/verify-work/doctor/docs/project/policy/guard/state/issueops/loop/contract/daemon/worker/self-verify/self-augment/api-doc/hook`.
 4. Loop contracts: `agent-harness loop start/record-attempt/status/stop` records verify-until-done state and strict readiness gates without executing verification commands.
 
 ## Daily Commands

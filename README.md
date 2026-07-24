@@ -79,7 +79,7 @@ flowchart LR
     Host --> Surface
     Surface --> Core["Host-neutral Go core"]
     Core --> Policy["policy · guard · contracts"]
-    Core --> Flow["IssueOps · workpool · loop"]
+    Core --> Flow["IssueOps · loop"]
     Core --> State["SQLite user state · audit"]
     Core --> Worker["policy-gated worker"]
 ```
@@ -99,7 +99,7 @@ flowchart LR
 | 설치와 갱신 | `install`, `update`, `bootstrap` | binary, skills, hooks, MCP wiring 갱신 |
 | 상태 진단 | `inspect`, `status`, `doctor`, `docs` | 설치, daemon, state, project docs 상태 확인 |
 | 안전과 품질 | `policy`, `guard`, `quality`, `verify-work`, `trace`, `contract`, `api-doc` | 실행 정책, 변경 품질, evidence와 public contract 검사 |
-| 작업 흐름 | `issueops`, `workpool`, `loop` | durable workflow, bounded task pool, verify-until-done 계약 관리 |
+| 작업 흐름 | `issueops`, `loop` | durable workflow와 verify-until-done 계약 관리 |
 | 상태와 실행 | `state`, `daemon`, `mcp`, `worker` | user state, MCP backend, 제한된 local job 관리 |
 | 개선과 조사 | `self-verify`, `self-augment`, `web-fetch` | 하네스 검증, 개선 후보, resilient public web fetch |
 

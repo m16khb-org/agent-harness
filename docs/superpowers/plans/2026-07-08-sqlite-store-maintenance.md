@@ -37,7 +37,7 @@ sqlite 전환(ADR "State storage moves from JSON files + flock to SQLite", 커�
 
 ## Task 2: state maintain CLI + MCP 표면
 
-- Files: `cmd/harness/statecli/state_cli_router.go`(서브커맨드 등록), `cmd/harness/statecli/state_cli_maintenance.go`(maintain 브랜치 추가), `internal/core/state_trace_facade.go`(facade), `internal/core/state/state_maintain.go`(신규: 알려진 root 4곳 — StateDir, issueops, workpool, worker — 순회), `cmd/harness/mcpcli/mcp_tool_policy_state.go`+`internal/adapter/mcp` catalog(도구 `state_maintain`), `cmd/harness/testdata/usage.golden.txt`, `cmd/harness/testdata/mcp_tools.golden.json`, `cmd/harness/testdata/response_contracts.golden.json`
+- Files: `cmd/harness/statecli/state_cli_router.go`(서브커맨드 등록), `cmd/harness/statecli/state_cli_maintenance.go`(maintain 브랜치 추가), `internal/core/state_trace_facade.go`(facade), `internal/core/state/state_maintain.go`(신규: 알려진 root 4곳 — StateDir, issueops, worker, loop — 순회), `cmd/harness/mcpcli/mcp_tool_policy_state.go`+`internal/adapter/mcp` catalog(도구 `state_maintain`), `cmd/harness/testdata/usage.golden.txt`, `cmd/harness/testdata/mcp_tools.golden.json`, `cmd/harness/testdata/response_contracts.golden.json`
 - Interfaces:
   - `func StateMaintain() (StateMaintainResult, error)` — `{ OK bool; Roots []sqlstore.MaintainResult; Skipped []string }` (root 부재 시 Skipped)
   - CLI: `agent-harness state maintain [--json]`, MCP: `state_maintain` (read-mostly; 파괴적 아님 — VACUUM은 이번 사이클 비범위)

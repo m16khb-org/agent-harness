@@ -2,13 +2,13 @@
 
 ## 목적
 
-`state maintain`은 현재 state root, issueops, workpool, worker 네 곳만 유지보수한다. 이후 추가된 loop store와 project-scoped `WithKeyLock` store는 같은 `sqlstore`를 사용하지만 이 목록 밖에 있어 WAL checkpoint와 권한 재보증을 받지 못한다.
+`state maintain`은 현재 state root, issueops, worker 세 곳만 유지보수한다. 이후 추가된 loop store와 project-scoped `WithKeyLock` store는 같은 `sqlstore`를 사용하지만 이 목록 밖에 있어 WAL checkpoint와 권한 재보증을 받지 못한다.
 
 이 변경은 이미 존재하는 loop 및 project SQLite store를 유지보수 대상에 포함한다. 새 store를 만들지 않고, project 디렉터리의 JSON/JSONL 파일을 수정하지 않으며, 기존 CLI/MCP DTO와 24시간 session-start 상각 주기를 보존한다.
 
 ## 관찰된 현재 상태
 
-- `knownStoreRoots`는 state root, issueops, workpool, worker만 반환한다.
+- `knownStoreRoots`는 state root, issueops, worker만 반환한다.
 - loop는 `$HARNESS_STATE_DIR/loop/harness.db`에 독립 store를 둔다.
 - kubectl live-access approval은 project namespace에서 `state.WithKeyLock`을 사용한다. 이 호출은 `$HARNESS_STATE_DIR/projects/<repo-id>/harness.db`를 생성하지만 approval record 자체는 JSON 파일이므로 `records` table은 비어 있을 수 있다.
 - 실측된 16개 project store는 각각 8,272-byte WAL 2 frames, loop store는 16,512-byte WAL 4 frames였다. 모든 data/lock DB의 `integrity_check`는 `ok`였고 파일 권한은 `0600`이었다.
@@ -37,10 +37,9 @@ store 생성 시 registry를 갱신하면 discovery는 빨라지지만 registry 
 
 1. state root
 2. issueops
-3. workpool
-4. worker (`HARNESS_WORKER_DIR` override 유지)
-5. loop
-6. `projects/<repo-id>` 중 existing `harness.db` store, repo ID 오름차순
+3. worker (`HARNESS_WORKER_DIR` override 유지)
+4. loop
+5. `projects/<repo-id>` 중 existing `harness.db` store, repo ID 오름차순
 
 고정 root는 기존처럼 `harness.db`가 없으면 `Skipped`에 보고한다. 따라서 loop가 아직 생성되지 않았다면 skipped root가 된다.
 
