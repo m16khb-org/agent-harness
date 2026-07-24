@@ -147,7 +147,7 @@ func TestRunHookPreToolUseBlocksDirectGitWorktreeMutationWithoutBranchCreation(t
 		"cwd":       source,
 		"tool_name": "Bash",
 		"tool_input": map[string]any{
-			"command": "git worktree add ../issue-worktree existing-branch",
+			"command": "git worktree remove ../merged-orphan-worktree",
 		},
 	})
 	if err != nil {
@@ -157,6 +157,6 @@ func TestRunHookPreToolUseBlocksDirectGitWorktreeMutationWithoutBranchCreation(t
 		return runHookPreToolUse([]string{"--enforce-worktree", "--json"})
 	})
 	if obj["decision"] != "block" {
-		t.Fatalf("expected direct git worktree mutation to be blocked, got %+v", obj)
+		t.Fatalf("expected direct git worktree remove to remain blocked, got %+v", obj)
 	}
 }

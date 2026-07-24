@@ -34,6 +34,41 @@ After provider merge evidence is confirmed, run the harness cleanup status check
 agent-harness issueops cleanup status --id "$ISSUEOPS_ID" --merged --json
 ```
 
+### Recordless merged orphan worktree
+
+When a merged PR/MR worktree has no IssueOps record, do not create a replacement
+lifecycle and do not call `git worktree remove` directly. Use the typed orphan
+cleanup preview with the exact source repository, worktree, local branch, and
+remote artifact identity:
+
+```bash
+agent-harness issueops cleanup orphan \
+  --id "$ORPHAN_ID" --repo "$REPO_ROOT" --worktree "$WORKTREE_PATH" \
+  --branch "$BRANCH_NAME" --provider github --kind pr \
+  --artifact-url "$PR_URL" --json
+```
+
+The default is read-only. It re-reads Git/IssueOps/lease/Orca inventory and
+provider merge evidence, requires the target exactly once in inventory, rejects
+the canonical worktree, dirty or mismatched targets, and fails closed for any
+record, lifecycle/lease, or Orca authority. A ready result includes `head_sha`,
+a recovery path, and a fingerprint.
+
+After the preview is ready and the user has explicitly approved the exact
+target, apply the same request with its fingerprint:
+
+```bash
+agent-harness issueops cleanup orphan \
+  --id "$ORPHAN_ID" --repo "$REPO_ROOT" --worktree "$WORKTREE_PATH" \
+  --branch "$BRANCH_NAME" --provider github --kind pr \
+  --artifact-url "$PR_URL" --apply --confirm --fingerprint "$FINGERPRINT" --json
+```
+
+Apply re-verifies the complete preview and removes only the local worktree and
+local branch with the preview HEAD as a CAS. It never creates IssueOps state and
+never deletes the remote branch; remote deletion is a separate explicit approval
+boundary.
+
 If the IssueOps record has linked child tasks, cleanup status also requires verified child-close evidence. After a child PR/MR has been verified merged into the parent work branch, close only the linked child tasks. Do not close the parent issue at this step; the parent remains the umbrella coordination issue until the full umbrella is merged to the mainstream target such as main or release.
 
 Dry-run child cleanup first:
@@ -63,17 +98,11 @@ Present cleanup choices in `1.`, `2.`, `3.` form:
 3. 확장 정리: merged/stale IssueOps worktree 전체를 점검하고 정리 후보를 제시합니다.
 ```
 
-Only run cleanup after the user chooses the proceed option or has explicitly instructed automatic cleanup. Before deleting, verify the target worktree is clean and the PR/MR is merged.
+Only run recordless orphan cleanup after the user chooses the proceed option or has explicitly instructed automatic cleanup. The typed `issueops cleanup orphan --apply --confirm --fingerprint` path is its only local mutation owner; direct `git worktree remove` remains hook-blocked. Do not combine it with remote branch deletion.
 
-```bash
-git push "$remote_name" --delete "$HEAD_REF_NAME"  # only when the remote source branch still exists and should be removed
-git worktree remove "$WORKTREE_PATH"
-git branch -d "$BRANCH_NAME"
-```
+For a recordless orphan, do not use an unconditional raw fallback such as `git branch -d "$BRANCH_NAME" || git branch -D "$BRANCH_NAME"`. If the typed apply cannot remove the local branch with its preview HEAD CAS, report the reason and rerun preview; do not force-delete it.
 
-Do not use an unconditional fallback such as `git branch -d "$BRANCH_NAME" || git branch -D "$BRANCH_NAME"`. If `git branch -d` fails after the PR/MR is verified merged and the worktree is clean, report the reason and offer numbered choices.
-
-If the worktree is dirty, the PR/MR is not merged, the remote source branch still exists unexpectedly, or the branch contains unmerged commits that are not explained by a verified squash/rebase merge, do not force-remove. Report the blocker and offer numbered choices.
+For ordinary record-backed cleanup status, if the worktree is dirty, the PR/MR is not merged, the remote source branch still exists unexpectedly, or the branch contains unmerged commits that are not explained by a verified squash/rebase merge, do not force-remove. Report the blocker and offer numbered choices.
 
 ## State Commands
 

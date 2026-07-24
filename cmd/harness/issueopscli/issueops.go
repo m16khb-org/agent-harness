@@ -4,7 +4,12 @@ import (
 	"agent-harness/cmd/harness/issueopscli/benchmarkcmd"
 	"agent-harness/cmd/harness/issueopscli/feedbackcleanup"
 	"agent-harness/cmd/harness/issueopscli/remotecmd"
+	"agent-harness/internal/adapter/operationalhealth"
+	"agent-harness/internal/adapter/orca"
 	"agent-harness/internal/adapter/provider"
+	"agent-harness/internal/core/issueops/orphancleanup"
+	corehealth "agent-harness/internal/core/operationalhealth"
+	"context"
 	"flag"
 	"fmt"
 	"strings"
@@ -122,6 +127,7 @@ func runIssueOpsCleanup(args []string) error {
 }
 
 func issueOpsFeedbackCleanupDeps() feedbackcleanup.Deps {
+	orphanDeps := issueOpsOrphanCleanupDeps()
 	return feedbackcleanup.Deps{
 		ParseFlags:   parseIssueOpsFlags,
 		PrintResult:  printIssueOpsResult,
@@ -129,6 +135,22 @@ func issueOpsFeedbackCleanupDeps() feedbackcleanup.Deps {
 		PrintError:   printIssueOpsErrorJSON,
 		VerifyMerged: verifyIssueOpsRemoteArtifactMergedLive,
 		Provider:     provider.Resolve,
+		OrphanPreview: func(ctx context.Context, request orphancleanup.Request) (orphancleanup.Result, error) {
+			return orphancleanup.Preview(ctx, request, orphanDeps)
+		},
+		OrphanApply: func(ctx context.Context, request orphancleanup.Request, apply orphancleanup.ApplyRequest) (orphancleanup.Result, error) {
+			return orphancleanup.Apply(ctx, request, apply, orphanDeps)
+		},
+	}
+}
+
+func issueOpsOrphanCleanupDeps() orphancleanup.Dependencies {
+	collector := operationalhealth.Collector{Git: operationalhealth.ExecGitRunner{}, Orca: orca.New()}
+	return orphancleanup.Dependencies{
+		Collect: func(ctx context.Context, repo string) (corehealth.Snapshot, error) {
+			return collector.Collect(ctx, repo), nil
+		},
+		VerifyMerged: verifyIssueOpsRemoteArtifactMergedLive,
 	}
 }
 

@@ -41,6 +41,29 @@ func makeGitRepoForContract(t *testing.T) string {
 	return dir
 }
 
+func makeRecordlessOrphanGitRepoForContract(t *testing.T) (string, string, string) {
+	t.Helper()
+	repo := filepath.Join(t.TempDir(), "repo")
+	remote := filepath.Join(t.TempDir(), "remote.git")
+	worktree := filepath.Join(t.TempDir(), "merged-orphan")
+	branch := "merged-orphan"
+	runGitForContract(t, "", "init", "-q", "--bare", remote)
+	runGitForContract(t, "", "init", "-q", "-b", "main", repo)
+	runGitForContract(t, repo, "config", "user.name", "Contract Test")
+	runGitForContract(t, repo, "config", "user.email", "contract@example.invalid")
+	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("# recordless orphan\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGitForContract(t, repo, "add", "README.md")
+	runGitForContract(t, repo, "commit", "-q", "-m", "docs(contract): add recordless orphan fixture")
+	runGitForContract(t, repo, "remote", "add", "origin", remote)
+	runGitForContract(t, repo, "push", "-q", "-u", "origin", "main")
+	runGitForContract(t, repo, "branch", branch)
+	runGitForContract(t, repo, "worktree", "add", "-q", worktree, branch)
+	runGitForContract(t, worktree, "push", "-q", "-u", "origin", branch)
+	return repo, worktree, branch
+}
+
 func runGitForContract(t *testing.T, dir string, args ...string) {
 	t.Helper()
 	cmd := exec.Command("git", args...)
