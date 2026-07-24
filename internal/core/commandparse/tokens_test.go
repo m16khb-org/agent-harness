@@ -24,6 +24,9 @@ func TestSplitCommandTokens(t *testing.T) {
 		{"gh issue with flags", `gh issue create --title "버그 수정" --body "내용"`, []string{"gh", "issue", "create", "--title", "버그 수정", "--body", "내용"}},
 		{"flag with equals", `--labels="bug,feature"`, []string{"--labels=bug,feature"}},
 		{"unclosed quote", `"unclosed`, []string{"unclosed"}},
+		{"empty single quoted value", `--agent-id ''`, []string{"--agent-id", ""}},
+		{"empty double quoted value", `--agent-id ""`, []string{"--agent-id", ""}},
+		{"empty quoted joins adjacent word", `a''b`, []string{"ab"}},
 		{"glab command", `glab mr create --title "fix"`, []string{"glab", "mr", "create", "--title", "fix"}},
 		{"git worktree", `git worktree add -b feature ../path`, []string{"git", "worktree", "add", "-b", "feature", "../path"}},
 	}

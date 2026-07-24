@@ -122,6 +122,24 @@ func TestExecutionClaimUsesCanonicalClaimTokenFileFlag(t *testing.T) {
 	}
 }
 
+// 실환경 도그푸드(이슈 #90 발견 3): sealed packet의 <AGENT_ID_OR_NONE> 자리에
+// 빈 따옴표 값(”)을 넣으면 토큰이 소실되어 exact claim 전체가 미분류로
+// 떨어졌다. 빈 따옴표 값은 빈 문자열 토큰으로 보존되어야 한다.
+func TestExecutionClaimAcceptsEmptyQuotedAgentID(t *testing.T) {
+	command, ok := ParseExactIssueOpsCommand("agent-harness issueops execution claim --id 'io-1' --generation 1 --claim-token-file '/tmp/token' --host codex --session-id s1 --agent-id '' --session-pid 42 --session-started-at 2026-07-25T00:00:00Z --session-executable codex --cwd '/w' --json")
+	if !ok {
+		t.Fatal("execution claim with empty quoted --agent-id did not parse")
+	}
+	values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
+	if !ok {
+		t.Fatal("execution claim command has no exact flag spec")
+	}
+	flags, ok := ExactFlags(command, values, booleans, repeatable)
+	if !ok || len(flags["--agent-id"]) != 1 || flags["--agent-id"][0] != "" || flags["--id"][0] != "io-1" {
+		t.Fatalf("empty quoted --agent-id must survive as an empty value: flags=%#v ok=%v", flags, ok)
+	}
+}
+
 func TestResetLegacyUsesExactSchemaFlags(t *testing.T) {
 	command, ok := ParseExactIssueOpsCommand("agent-harness issueops reset-legacy --target-schema 1 --confirm --expected-fingerprint abc --json")
 	if !ok || command.Path != "reset-legacy" {

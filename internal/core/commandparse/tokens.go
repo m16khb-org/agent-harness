@@ -6,6 +6,10 @@ func SplitCommandTokens(command string) []string {
 	tokens := []string{}
 	var current strings.Builder
 	var quote rune
+	// started는 quote가 열렸던 토큰을 기억한다. ''/"" 같은 빈 따옴표 값은
+	// 빈 문자열 argv 토큰이며, 이를 소실하면 exact flag 파싱이 뒤 토큰을
+	// 값으로 오인해 명령 전체가 미분류로 떨어진다(이슈 #90 발견 3).
+	started := false
 	runes := []rune(command)
 	for i := 0; i < len(runes); i++ {
 		r := runes[i]
@@ -32,21 +36,23 @@ func SplitCommandTokens(command string) []string {
 			current.WriteRune(r)
 		case r == '\'' || r == '"':
 			quote = r
+			started = true
 		case r == '\\' && i+1 < len(runes):
 			i++
 			if runes[i] != '\n' && runes[i] != '\r' {
 				current.WriteRune(runes[i])
 			}
 		case r == ' ' || r == '\t' || r == '\n' || r == '\r':
-			if current.Len() > 0 {
+			if current.Len() > 0 || started {
 				tokens = append(tokens, current.String())
 				current.Reset()
 			}
+			started = false
 		default:
 			current.WriteRune(r)
 		}
 	}
-	if current.Len() > 0 {
+	if current.Len() > 0 || started {
 		tokens = append(tokens, current.String())
 	}
 	return tokens
