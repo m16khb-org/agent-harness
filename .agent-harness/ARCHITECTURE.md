@@ -288,6 +288,11 @@ dependency or second scheduler. `issueops execution prepare --mode auto`
 probes readiness before mutation. `auto` resolves to direct only when Orca is
 absent or unready at that pre-mutation boundary. After a possible Orca mutation,
 the durable pending intent and explicit reconciliation path are authoritative.
+Provider capability is part of that boundary: GitLab-linked execution resolves
+to direct with `gitlab_issue_metadata_unsupported` until Orca exposes a sealed
+GitLab issue/work-item metadata surface. Exact base SHA and branch upstream are
+separate identities; the SHA creates the worktree and the remote issue branch
+is restored as upstream after namespace canonicalization.
 
 ## IssueOps execution v1 threat model and invariants
 

@@ -34,7 +34,9 @@ func TestExecutionProvisionerCreatesOneWorktreeAndLaunchesOneOwner(t *testing.T)
 	if !reflect.DeepEqual(client.calls, wantCalls) {
 		t.Fatalf("unexpected one-shot Orca sequence: got %v want %v", client.calls, wantCalls)
 	}
-	if client.worktreeRequest.Issue != 69 || client.worktreeRequest.Comment != request.Marker || client.worktreeRequest.BaseBranch != workspace.BaseHead {
+	if client.worktreeRequest.Issue != 69 || client.worktreeRequest.Comment != request.Marker ||
+		client.worktreeRequest.BaseBranch != workspace.BaseHead ||
+		client.worktreeRequest.UpstreamBranch != "refs/remotes/origin/"+workspace.Branch {
 		t.Fatalf("worktree create lost sealed identity: %#v", client.worktreeRequest)
 	}
 	if client.terminalRequest.Agent != "claude" || client.terminalRequest.Model != "caller-selected-model" || client.terminalRequest.ReasoningEffort != "high" {
@@ -113,6 +115,39 @@ func TestExecutionIntentStagesAreIndividuallyInspectableAndInvoked(t *testing.T)
 	}
 	if !reflect.DeepEqual(client.calls, wantCalls) {
 		t.Fatalf("each intent must perform only its own inventory or mutation: got %v want %v", client.calls, wantCalls)
+	}
+}
+
+func TestExecutionIntentRefreshesTruncatedTerminalCreateReceipt(t *testing.T) {
+	workspace, probe := executionFixture(t)
+	prepared := port.ExecutionOrcaWorkspaceReceipt{
+		Workspace: port.ExecutionWorkspaceReceipt{
+			SourceRoot: workspace.SourceRoot, Root: workspace.Root, Branch: workspace.Branch,
+			BaseHead: workspace.BaseHead, Driver: "orca", Exists: true,
+		},
+		RuntimeID: "runtime-69", RepoID: "repo-69", WorktreeID: "wt-69",
+	}
+	client := &executionFake{
+		workspace: workspace, probeRequest: probe,
+		createdTerminal: &port.OrcaTerminal{
+			RuntimeID: "runtime-69", Handle: "term-69", PTYID: "pty-69",
+			WorktreeID: "wt-69", Title: probe.Marker[:12], Connected: true, Writable: true,
+		},
+		terminals: []port.OrcaTerminal{{
+			RuntimeID: "runtime-69", Handle: "term-69", PTYID: "pty-69",
+			WorktreeID: "wt-69", Title: probe.Marker, Connected: true, Writable: true,
+		}},
+	}
+	launch := executionLaunchFixture(t, workspace.Root)
+	got, err := NewExecutionClient(client).InvokeIntent(context.Background(), port.ExecutionOrcaIntentRequest{
+		Stage: port.ExecutionOrcaIntentTerminal, Marker: probe.Marker, Workspace: workspace,
+		Probe: probe, Prepared: &prepared, Launch: &launch,
+	})
+	if err != nil || got.TerminalPTYID != "pty-69" {
+		t.Fatalf("terminal create receipt was not refreshed from authoritative inventory: receipt=%#v err=%v", got, err)
+	}
+	if !reflect.DeepEqual(client.calls, []string{"create-terminal", "list-terminals-inventory"}) {
+		t.Fatalf("unexpected terminal refresh sequence: %v", client.calls)
 	}
 }
 
@@ -582,6 +617,7 @@ type executionFake struct {
 	worktrees                []port.OrcaWorktree
 	worktreeRequest          port.OrcaCreateWorktreeRequest
 	terminalRequest          port.OrcaCreateTerminalRequest
+	createdTerminal          *port.OrcaTerminal
 	taskRequest              port.OrcaCreateTaskRequest
 	dispatchRequest          port.OrcaDispatchRequest
 	terminals                []port.OrcaTerminal
@@ -613,6 +649,9 @@ func (f *executionFake) CreateWorktree(_ context.Context, req port.OrcaCreateWor
 func (f *executionFake) CreateTerminal(_ context.Context, req port.OrcaCreateTerminalRequest) (port.OrcaTerminal, error) {
 	f.calls = append(f.calls, "create-terminal")
 	f.terminalRequest = req
+	if f.createdTerminal != nil {
+		return *f.createdTerminal, nil
+	}
 	return port.OrcaTerminal{RuntimeID: "runtime-69", Handle: "term-69", PTYID: "pty-69", WorktreeID: "wt-69", Title: req.Title, Connected: true, Writable: true}, nil
 }
 

@@ -21,6 +21,9 @@ func executionObservation(req HookToolUseLifecycleRequest) bool {
 	if commandparse.ExactReadOnlyShellCommand(req.Command) {
 		return true
 	}
+	if exactOrcaObservation(req.Command) {
+		return true
+	}
 	command, ok := commandparse.ParseExactIssueOpsCommand(req.Command)
 	if !ok {
 		return false
@@ -55,6 +58,35 @@ func executionObservation(req HookToolUseLifecycleRequest) bool {
 		_, confirm := flags["--confirm"]
 		id, idOK := oneFlag(flags, "--id")
 		return idOK && strings.TrimSpace(id) != "" && preview && !confirm
+	default:
+		return false
+	}
+}
+
+func exactOrcaObservation(command string) bool {
+	if commandparse.HasUnquotedControlOperator(command) ||
+		commandparse.HasActiveCommandSubstitution(command) ||
+		commandparse.HasActiveInputRedirect(command) ||
+		commandparse.HasActiveParameterOrTildeExpansion(command) ||
+		commandparse.HasActivePathnameExpansion(command) ||
+		commandparse.HasActiveShellSpecialQuoting(command) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(command)
+	if len(tokens) < 2 || searchrouting.SearchTokenName(tokens[0]) != "orca" {
+		return false
+	}
+	switch tokens[1] {
+	case "status":
+		return true
+	case "terminal":
+		return len(tokens) >= 3 && (tokens[2] == "list" || tokens[2] == "show" || tokens[2] == "read")
+	case "repo", "worktree":
+		return len(tokens) >= 3 && (tokens[2] == "list" || tokens[2] == "show")
+	case "skills":
+		return len(tokens) >= 3 && (tokens[2] == "get" || tokens[2] == "list")
+	case "orchestration":
+		return len(tokens) >= 3 && (tokens[2] == "task-list" || tokens[2] == "dispatch-show")
 	default:
 		return false
 	}
@@ -101,7 +133,7 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 	if !mayMutate {
 		return false, "", nil
 	}
-	targets := worktreeGuardEditTargets(req)
+	targets := executionMutationTargets(req)
 	records, err := executionGuardRecords(req, targets)
 	if err != nil {
 		return true, "IssueOps authority state could not be read (often transient state-store contention); retry once, and if it persists run `agent-harness doctor --repo " + cleanAbsPath(req.Repo) + " --json`", nil
@@ -111,12 +143,6 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 	}
 	for _, record := range records {
 		if record.Execution == nil {
-			if requestTouchesUnpreparedExecution(req, targets, record) {
-				if unsafeReason != "" {
-					return true, unsafeReason, nil
-				}
-				return true, fmt.Sprintf("IssueOps execution %s requires `agent-harness issueops execution prepare --id %s ...` before implementation mutation", record.ID, record.ID), nil
-			}
 			continue
 		}
 		if !requestTouchesExecution(req, targets, *record.Execution) {
@@ -131,16 +157,38 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 		lease := record.Execution.Lease
 		root := record.Execution.Workspace.Root
 		if lease.Status == issueopsmodel.LeaseStatusActive && executionActorMatches(req, lease.Holder) &&
-			sameExecutionPath(req.CWD, root) && allExecutionTargetsInside(targets, root) {
+			executionRequestTargetsStayInside(req, targets, root) {
 			return true, "", nil
 		}
 		reason, deny := executionMutationDenyReason(record)
 		return true, reason, deny
 	}
-	if executionSharesSourceCheckout(req, records) {
-		return true, "mutation is outside every canonical IssueOps worktree for this Git source checkout; use the assigned execution workspace", nil
-	}
 	return false, "", nil
+}
+
+func executionMutationTargets(req HookToolUseLifecycleRequest) []string {
+	targets := []string{}
+	base := hookRequestPathBase(req)
+	for _, path := range req.Paths {
+		if target := resolveHookTargetPath(base, path); target != "" {
+			targets = append(targets, target)
+		}
+	}
+	if len(targets) == 0 && searchrouting.IsShellTool(req.Tool) {
+		for _, path := range shellCommandWorktreeGuardPaths(base, req.Command) {
+			if target := resolveHookTargetPath(base, path); target != "" {
+				targets = append(targets, target)
+			}
+		}
+	}
+	return targets
+}
+
+func executionRequestTargetsStayInside(req HookToolUseLifecycleRequest, targets []string, root string) bool {
+	if len(targets) == 0 {
+		return sameExecutionPath(req.CWD, root)
+	}
+	return allExecutionTargetsInside(targets, root)
 }
 
 func executionUnsafeMutationReason(req HookToolUseLifecycleRequest) string {
@@ -216,9 +264,6 @@ func containsExecutionToken(tokens []string, want string) bool {
 
 func executionGuardRecords(req HookToolUseLifecycleRequest, targets []string) ([]IssueOpsRecord, error) {
 	records := []IssueOpsRecord{}
-	if strings.TrimSpace(req.SourceCheckout) == "" {
-		req.SourceCheckout = executionRequestSourceCheckout(req)
-	}
 	ids, err := issueopscore.ListIssueOpsIDs(IssueOpsStateRoot())
 	if err != nil {
 		return nil, err
@@ -235,94 +280,21 @@ func executionGuardRecords(req HookToolUseLifecycleRequest, targets []string) ([
 	return records, nil
 }
 
-func executionRequestSourceCheckout(req HookToolUseLifecycleRequest) string {
-	if source := cleanAbsPath(req.SourceCheckout); source != "" {
-		return source
-	}
-	for _, root := range []string{req.CWD, req.Repo} {
-		if source := sourceCheckoutFromWorktree(root); source != "" {
-			return cleanAbsPath(source)
-		}
-	}
-	return ""
-}
-
-func executionSharesSourceCheckout(req HookToolUseLifecycleRequest, records []IssueOpsRecord) bool {
-	source := executionRequestSourceCheckout(req)
-	if source == "" {
-		return false
-	}
-	for _, record := range records {
-		if record.Execution != nil && sameExecutionPath(source, record.Execution.Workspace.SourceRoot) {
-			return true
-		}
-	}
-	return false
-}
-
 func executionRecordTouchesRequest(record IssueOpsRecord, req HookToolUseLifecycleRequest, targets []string) bool {
-	paths := append(append([]string{}, targets...), req.SourceCheckout, req.Repo, req.CWD)
 	if record.Execution == nil {
-		root := cleanAbsPath(record.Repo)
-		for _, path := range paths {
-			if pathWithin(cleanAbsPath(path), root) || sameExecutionPath(executionContainingSourceCheckout(path), root) {
-				return true
-			}
-		}
 		return false
 	}
-	workspace := record.Execution.Workspace
-	for _, path := range paths {
-		if pathWithin(cleanAbsPath(path), cleanAbsPath(workspace.SourceRoot)) || pathWithin(cleanAbsPath(path), cleanAbsPath(workspace.Root)) ||
-			sameExecutionPath(executionContainingSourceCheckout(path), workspace.SourceRoot) {
-			return true
-		}
-	}
-	return false
+	return requestTouchesExecution(req, targets, *record.Execution)
 }
 
-func requestTouchesUnpreparedExecution(req HookToolUseLifecycleRequest, targets []string, record IssueOpsRecord) bool {
-	if !issueopscore.IssueOpsPhaseExpectsWorktree(record.Phase) {
-		return false
-	}
-	root := cleanAbsPath(record.Repo)
-	for _, path := range append(append([]string{}, targets...), req.CWD, req.Repo) {
+func requestTouchesExecution(req HookToolUseLifecycleRequest, targets []string, execution issueopsmodel.Execution) bool {
+	root := cleanAbsPath(execution.Workspace.Root)
+	for _, path := range targets {
 		if pathWithin(cleanAbsPath(path), root) {
 			return true
 		}
 	}
-	return false
-}
-
-func requestTouchesExecution(req HookToolUseLifecycleRequest, targets []string, execution issueopsmodel.Execution) bool {
-	for _, path := range append(append([]string{}, targets...), req.CWD, req.Repo) {
-		if pathWithin(cleanAbsPath(path), cleanAbsPath(execution.Workspace.Root)) ||
-			pathWithin(cleanAbsPath(path), cleanAbsPath(execution.Workspace.SourceRoot)) ||
-			sameExecutionPath(executionContainingSourceCheckout(path), execution.Workspace.SourceRoot) {
-			return true
-		}
-	}
-	return false
-}
-
-func executionContainingSourceCheckout(path string) string {
-	current := cleanAbsPath(path)
-	if current == "" {
-		return ""
-	}
-	if info, err := os.Lstat(current); err == nil && !info.IsDir() {
-		current = filepath.Dir(current)
-	}
-	for {
-		if source := sourceCheckoutFromWorktree(current); source != "" {
-			return source
-		}
-		parent := filepath.Dir(current)
-		if parent == current {
-			return ""
-		}
-		current = parent
-	}
+	return len(targets) == 0 && pathWithin(cleanAbsPath(req.CWD), root)
 }
 
 func executionActorMatches(req HookToolUseLifecycleRequest, holder *issueopsmodel.NativeActor) bool {

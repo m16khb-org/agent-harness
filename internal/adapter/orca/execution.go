@@ -171,7 +171,8 @@ func (p *ExecutionProvisioner) InvokeIntent(ctx context.Context, req port.Execut
 	case port.ExecutionOrcaIntentWorktree:
 		created, err := p.client.CreateWorktree(ctx, port.OrcaCreateWorktreeRequest{
 			Repo: req.Workspace.SourceRoot, Name: req.Workspace.Branch, BaseBranch: req.Workspace.BaseHead,
-			Provider: req.Probe.Provider, Issue: req.Probe.Issue, Comment: req.Marker,
+			UpstreamBranch: executionRemoteBranch(req.Workspace.Branch),
+			Provider:       req.Probe.Provider, Issue: req.Probe.Issue, Comment: req.Marker,
 		})
 		if err != nil {
 			return port.ExecutionOrcaIntentReceipt{}, err
@@ -189,7 +190,8 @@ func (p *ExecutionProvisioner) InvokeIntent(ctx context.Context, req port.Execut
 		if err != nil {
 			return port.ExecutionOrcaIntentReceipt{}, err
 		}
-		if err := validateExecutionIntentTerminal(created, *req.Prepared, req.Marker); err != nil {
+		created, err = p.reconcileCreatedTerminal(ctx, created, *req.Prepared, req.Marker)
+		if err != nil {
 			return port.ExecutionOrcaIntentReceipt{}, &port.OrcaError{Code: "terminal_identity_mismatch", Detail: err.Error(), Invoked: true}
 		}
 		return port.ExecutionOrcaIntentReceipt{TerminalPTYID: created.PTYID}, nil
@@ -257,6 +259,10 @@ func (p *ExecutionProvisioner) LaunchOwner(ctx context.Context, prepared port.Ex
 	})
 	if err != nil {
 		return port.ExecutionOrcaReceipt{}, err
+	}
+	terminal, err = p.reconcileCreatedTerminal(ctx, terminal, prepared, req.Marker)
+	if err != nil {
+		return port.ExecutionOrcaReceipt{}, &port.OrcaError{Code: "terminal_identity_mismatch", Detail: err.Error(), Invoked: true}
 	}
 	task, err := p.client.CreateTask(ctx, port.OrcaCreateTaskRequest{
 		Spec: launch.Prompt, Title: executionTaskTitle(req.Marker, launch.PromptSHA256), DisplayName: prepared.Workspace.Branch,
@@ -384,7 +390,8 @@ func (p *ExecutionProvisioner) prepareWorktree(ctx context.Context, workspace po
 	}
 	created, err := p.client.CreateWorktree(ctx, port.OrcaCreateWorktreeRequest{
 		Repo: workspace.SourceRoot, Name: workspace.Branch, BaseBranch: workspace.BaseHead,
-		Provider: req.Provider, Issue: req.Issue, Comment: req.Marker,
+		UpstreamBranch: executionRemoteBranch(workspace.Branch),
+		Provider:       req.Provider, Issue: req.Issue, Comment: req.Marker,
 	})
 	if err != nil {
 		return port.OrcaWorktree{}, err
@@ -393,6 +400,42 @@ func (p *ExecutionProvisioner) prepareWorktree(ctx context.Context, workspace po
 		return port.OrcaWorktree{}, err
 	}
 	return created, nil
+}
+
+func executionRemoteBranch(branch string) string {
+	return "refs/remotes/origin/" + strings.TrimSpace(branch)
+}
+
+func (p *ExecutionProvisioner) reconcileCreatedTerminal(ctx context.Context, created port.OrcaTerminal, prepared port.ExecutionOrcaWorkspaceReceipt, marker string) (port.OrcaTerminal, error) {
+	if err := validateExecutionIntentTerminal(created, prepared, marker); err == nil {
+		return created, nil
+	}
+	client, ok := p.client.(executionInventoryClient)
+	if !ok || strings.TrimSpace(created.PTYID) == "" {
+		return port.OrcaTerminal{}, fmt.Errorf("Orca owner terminal does not match the sealed intent")
+	}
+	inventory, err := client.listTerminalsInventory(ctx, prepared.WorktreeID)
+	if err != nil {
+		return port.OrcaTerminal{}, err
+	}
+	var candidate *port.OrcaTerminal
+	for index := range inventory.Rows {
+		row := inventory.Rows[index]
+		if row.PTYID != created.PTYID {
+			continue
+		}
+		if candidate != nil {
+			return port.OrcaTerminal{}, fmt.Errorf("Orca owner terminal inventory is ambiguous")
+		}
+		candidate = &row
+	}
+	if candidate == nil {
+		return port.OrcaTerminal{}, fmt.Errorf("Orca owner terminal is absent")
+	}
+	if err := validateExecutionIntentTerminal(*candidate, prepared, marker); err != nil {
+		return port.OrcaTerminal{}, err
+	}
+	return *candidate, nil
 }
 
 func (p *ExecutionProvisioner) intentInventoryClient() (executionInventoryClient, error) {

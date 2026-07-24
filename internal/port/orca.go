@@ -78,12 +78,13 @@ type OrcaWorktree struct {
 }
 
 type OrcaCreateWorktreeRequest struct {
-	Repo       string `json:"repo"`
-	Name       string `json:"name"`
-	BaseBranch string `json:"base_branch"`
-	Provider   string `json:"provider,omitempty"`
-	Issue      int    `json:"issue,omitempty"`
-	Comment    string `json:"comment"`
+	Repo           string `json:"repo"`
+	Name           string `json:"name"`
+	BaseBranch     string `json:"base_branch"`
+	UpstreamBranch string `json:"upstream_branch,omitempty"`
+	Provider       string `json:"provider,omitempty"`
+	Issue          int    `json:"issue,omitempty"`
+	Comment        string `json:"comment"`
 }
 
 type OrcaAdoptWorktreeRequest struct {

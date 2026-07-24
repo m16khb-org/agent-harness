@@ -10,7 +10,7 @@ import (
 	"agent-harness/internal/core/sqlstore"
 )
 
-func TestExecutionMatrixAllowsObservationAndDeniesSourceOrForeignMutation(t *testing.T) {
+func TestExecutionMatrixKeepsSourceAndForeignWorkIndependent(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := guardRepoWithCycle(t, "1-owner-a", IssueOpsPhaseProblem)
 	ownerA := linkIssueOpsWorktreeForGuardTest(t, source, "1-owner-a")
@@ -43,15 +43,17 @@ func TestExecutionMatrixAllowsObservationAndDeniesSourceOrForeignMutation(t *tes
 		"foreign mutation": filepath.Join(ownerB.path, "README.md"),
 	} {
 		req := base
+		req.ExpectedWorktree = ""
+		req.SessionID = "independent-session"
 		req.Tool = "apply_patch"
 		req.Paths = []string{target}
-		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
-			t.Fatalf("%s must be denied outside the assigned canonical worktree: %+v", name, got)
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("%s must stay independent from owner A's cycle: %+v", name, got)
 		}
 	}
 }
 
-func TestExecutionDirectCannotImplementInSourceWithoutWorkspace(t *testing.T) {
+func TestExecutionUnpreparedCycleDoesNotOwnSourceCheckout(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := guardRepoWithCycle(t, "69-direct", IssueOpsPhaseImplement)
 
@@ -65,8 +67,8 @@ func TestExecutionDirectCannotImplementInSourceWithoutWorkspace(t *testing.T) {
 		EnforceWorktree: true,
 		SourceCheckout:  source,
 	})
-	if got.Decision != "block" {
-		t.Fatalf("direct execution without a canonical worktree must not mutate source: %+v", got)
+	if got.Decision != "allow" {
+		t.Fatalf("an unprepared cycle must not claim its source checkout: %+v", got)
 	}
 }
 
@@ -125,13 +127,13 @@ func TestExecutionMutationClassCoversBuildGitFilesystemAndUnsafeShell(t *testing
 		"test":      "go test ./... -count=1",
 		"build":     "go build ./...",
 		"benchmark": "go test -bench=. ./...",
-		"git push":  "git push origin HEAD",
+		"opaque":    "./scripts/verify.sh",
 	} {
-		t.Run(name+" source denied", func(t *testing.T) {
+		t.Run(name+" source independent", func(t *testing.T) {
 			req := executionRequest(record, source, "claude", "owner-session", command)
 			req.Repo, req.AgentID = source, "owner-agent"
-			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
-				t.Fatalf("mutation-class command in source must be denied: %+v", got)
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+				t.Fatalf("source command must not be claimed by the cycle fence: %+v", got)
 			}
 		})
 	}
@@ -147,12 +149,12 @@ func TestExecutionMutationClassCoversBuildGitFilesystemAndUnsafeShell(t *testing
 	filesystemWrite.Tool = "mcp__filesystem__write_file"
 	filesystemWrite.Paths = []string{filepath.Join(source, "generated.txt")}
 	filesystemWrite.ToolInput = map[string]any{"path": filesystemWrite.Paths[0], "content": "x"}
-	if got := BuildLifecyclePreToolUseDecision(filesystemWrite); got.Decision != "block" {
-		t.Fatalf("filesystem write MCP in source must be denied: %+v", got)
+	if got := BuildLifecyclePreToolUseDecision(filesystemWrite); got.Decision != "allow" {
+		t.Fatalf("filesystem write MCP in source must remain cycle-independent: %+v", got)
 	}
 	filesystemWrite.Tool = "mcp__filesystem__append_file"
-	if got := BuildLifecyclePreToolUseDecision(filesystemWrite); got.Decision != "block" {
-		t.Fatalf("unenumerated filesystem write MCP in source must fail closed: %+v", got)
+	if got := BuildLifecyclePreToolUseDecision(filesystemWrite); got.Decision != "allow" {
+		t.Fatalf("filesystem append MCP in source must remain cycle-independent: %+v", got)
 	}
 	filesystemWrite.Tool = "mcp__filesystem__read_file"
 	if got := BuildLifecyclePreToolUseDecision(filesystemWrite); got.Decision != "allow" {
@@ -162,7 +164,6 @@ func TestExecutionMutationClassCoversBuildGitFilesystemAndUnsafeShell(t *testing
 	for name, command := range map[string]string{
 		"background":       "go test ./... &",
 		"detached wrapper": "nohup go test ./...",
-		"unknown wrapper":  "./scripts/verify.sh",
 	} {
 		t.Run(name+" denied for holder", func(t *testing.T) {
 			req := executionRequest(record, worker, "claude", "owner-session", command)
@@ -217,7 +218,7 @@ func TestExecutionHolderCannotMutateGitTopology(t *testing.T) {
 	}
 }
 
-func TestExecutionBlocksUnregisteredSiblingWorktreeWithoutHookEnvironment(t *testing.T) {
+func TestExecutionDoesNotOwnUnregisteredSiblingWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source, record, _ := executionActiveLifecycleRecord(t)
 	sibling := filepath.Join(filepath.Dir(source), filepath.Base(source)+".worktrees", "unregistered")
@@ -239,8 +240,8 @@ func TestExecutionBlocksUnregisteredSiblingWorktreeWithoutHookEnvironment(t *tes
 	req.AgentID = "owner-agent"
 	req.Tool = "apply_patch"
 	req.Paths = []string{filepath.Join(sibling, "foreign.go")}
-	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
-		t.Fatalf("unregistered sibling worktree mutation must be denied without hook environment hints: %+v", got)
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("unregistered sibling worktree must remain independent from this cycle: %+v", got)
 	}
 }
 
@@ -260,18 +261,21 @@ func TestExecutionMutationTargetsSelectAuthorityFromUnrelatedHookCWD(t *testing.
 		t.Fatal(err)
 	}
 
-	for name, target := range map[string]string{
-		"source":    filepath.Join(source, "absolute-source.go"),
-		"canonical": filepath.Join(worker, "absolute-owner.go"),
-		"sibling":   filepath.Join(sibling, "absolute-foreign.go"),
+	for name, tc := range map[string]struct {
+		target string
+		want   string
+	}{
+		"source":    {filepath.Join(source, "absolute-source.go"), "allow"},
+		"canonical": {filepath.Join(worker, "absolute-owner.go"), "block"},
+		"sibling":   {filepath.Join(sibling, "absolute-foreign.go"), "allow"},
 	} {
 		t.Run(name+" mutation", func(t *testing.T) {
 			req := HookToolUseLifecycleRequest{
 				Repo: unrelated, CWD: unrelated, Host: "codex", SessionID: "unrelated-session",
-				Tool: "apply_patch", Paths: []string{target}, EnforceWorktree: true,
+				Tool: "apply_patch", Paths: []string{tc.target}, EnforceWorktree: true,
 			}
-			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
-				t.Fatalf("absolute %s mutation target escaped authority selection: %+v", name, got)
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != tc.want {
+				t.Fatalf("absolute %s mutation decision=%q, want %q: %+v", name, got.Decision, tc.want, got)
 			}
 		})
 	}
@@ -283,6 +287,94 @@ func TestExecutionMutationTargetsSelectAuthorityFromUnrelatedHookCWD(t *testing.
 		t.Fatalf("absolute read target must remain observation-first: %+v", got)
 	}
 	_ = record
+}
+
+func TestExecutionHolderMayPatchCanonicalTargetFromSourceSessionCWD(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source, record, worker := executionActiveLifecycleRecord(t)
+	req := executionRequest(record, source, "claude", "owner-session", "")
+	req.Repo = source
+	req.AgentID = "owner-agent"
+	req.Tool = "apply_patch"
+	req.Paths = []string{filepath.Join(worker, "internal", "fixed.go")}
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("exact holder patch with an explicit canonical target must ignore the host session cwd: %+v", got)
+	}
+
+	req.SessionID = "wrong-session"
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+		t.Fatalf("wrong holder must not patch the canonical target: %+v", got)
+	}
+}
+
+func TestExecutionMixedSourceAndCanonicalTargetsFailClosed(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source, record, worker := executionActiveLifecycleRecord(t)
+	req := executionRequest(record, source, "claude", "owner-session", "")
+	req.Repo = source
+	req.AgentID = "owner-agent"
+	req.Tool = "apply_patch"
+	req.Paths = []string{
+		filepath.Join(source, "source.go"),
+		filepath.Join(worker, "worker.go"),
+	}
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+		t.Fatalf("mixed source and canonical targets must be split: %+v", got)
+	}
+}
+
+func TestExecutionGitCSelectsCanonicalTargetFromSource(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source, record, worker := executionActiveLifecycleRecord(t)
+	req := executionRequest(record, source, "claude", "wrong-session", "git -C "+worker+" status --short")
+	req.Repo = source
+	req.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("read-only git -C observation must remain allowed: %+v", got)
+	}
+	req.Command = "git -C " + worker + " add internal/fixed.go"
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+		t.Fatalf("mutating git -C must select the canonical cycle target: %+v", got)
+	}
+}
+
+func TestExecutionTypedClaimRemainsAvailableFromSourceCheckout(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source, record, worker := executionActiveLifecycleRecord(t)
+	req := executionRequest(record, source, "codex", "fresh-owner", "")
+	req.Repo = source
+	req.Tool = "Bash"
+	req.Command = "agent-harness issueops execution claim --id " + record.ID +
+		" --generation 1 --claim-token-file " + filepath.Join(worker, "lease-1.token") +
+		" --host codex --session-id fresh-owner --session-pid 1234" +
+		" --session-started-at 2026-07-23T00:00:00Z --session-executable codex" +
+		" --cwd " + worker + " --json"
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("exact lifecycle control plane must not deadlock on its own cycle fence: %+v", got)
+	}
+}
+
+func TestExecutionAllowsExactOrcaObservationsButNotMutationForObserver(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	for _, command := range []string{
+		"orca status --json",
+		"orca terminal list --worktree path:" + worker + " --json",
+		"orca terminal show --terminal term-1 --json",
+		"orca terminal read --terminal term-1 --json",
+		"orca skills get --name issueops --json",
+		"orca orchestration task-list --json",
+	} {
+		req := executionRequest(record, worker, "codex", "observer", command)
+		req.AgentID = ""
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("exact Orca observation %q must not require the write lease: %+v", command, got)
+		}
+	}
+	req := executionRequest(record, worker, "codex", "observer", "orca terminal create --worktree id:wt-1 --json")
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+		t.Fatalf("Orca mutation must still require cycle authority: %+v", got)
+	}
 }
 
 func TestExecutionHolderCannotEscapeCanonicalRootThroughSymlinkTarget(t *testing.T) {
@@ -453,8 +545,8 @@ func TestExecutionLeaseAllowsOnlyCurrentHolderInCanonicalRoot(t *testing.T) {
 	sourceMutation := holder
 	sourceMutation.Repo, sourceMutation.CWD = source, source
 	sourceMutation.Paths = []string{filepath.Join(source, "internal", "v1.go")}
-	if got := BuildLifecyclePreToolUseDecision(sourceMutation); got.Decision != "block" || !strings.Contains(got.Reason, linked.path) {
-		t.Fatalf("holder source mutation was not redirected to canonical root: %+v", got)
+	if got := BuildLifecyclePreToolUseDecision(sourceMutation); got.Decision != "allow" {
+		t.Fatalf("the cycle must not claim a source-checkout mutation: %+v", got)
 	}
 }
 

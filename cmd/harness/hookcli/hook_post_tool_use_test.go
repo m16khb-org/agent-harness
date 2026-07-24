@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestRunHookPostToolUseInjectsSourceCheckoutMisdirectWarningOnClaude(t *testing.T) {
+func TestRunHookPostToolUseDoesNotAttachCycleWarningToSourceCheckout(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := filepath.Join(t.TempDir(), "agent-harness")
 	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o755); err != nil {
@@ -24,11 +24,8 @@ func TestRunHookPostToolUseInjectsSourceCheckoutMisdirectWarningOnClaude(t *test
 	obj := runHookCapture(t, `{"cwd":"`+repo+`","tool_name":"apply_patch","tool_input":{"file_path":"`+target+`"}}`, func() error {
 		return runHookPostToolUse([]string{"--host", "claude"})
 	})
-	ctx := hookAdditionalContext(obj)
-	for _, want := range []string{cycle.id, cycle.path, "소스 체크아웃", "generation 1", "현재 write lease holder"} {
-		if !strings.Contains(ctx, want) {
-			t.Fatalf("PostToolUse warning missing %q in context %q (obj=%+v)", want, ctx, obj)
-		}
+	if ctx := hookAdditionalContext(obj); ctx != "" {
+		t.Fatalf("source checkout must not inherit cycle %s/%s warning: context=%q obj=%+v", cycle.id, cycle.path, ctx, obj)
 	}
 }
 
