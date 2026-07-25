@@ -31,6 +31,10 @@ type Deps struct {
 	// marker로 orca 인벤토리를 실조회하는 표면이다. nil이면 그 게이트는 통과가
 	// 아니라 거부다(#106, fail-closed).
 	OrcaIntent core.ExecutionOrcaProvisioner
+	// OrcaOwner는 cleanup abandon의 orca_resources_absent 게이트가 자원 잔여를
+	// 실조회하는 표면이다. OrcaIntent와 같은 이유로 nil이면 통과가 아니라
+	// 거부다 — 다만 orca 바인딩이 있는 레코드에서만 요구된다(#136).
+	OrcaOwner core.ExecutionOrcaOwnerInspector
 }
 
 func RunFeedback(args []string, deps Deps) error {
@@ -453,7 +457,7 @@ func runCleanupAbandon(args []string, deps Deps) error {
 		Apply:       *apply,
 		Confirm:     *confirm,
 		Fingerprint: *fingerprint,
-	}, core.IssueOpsCleanupAbandonDeps{Orca: deps.OrcaIntent})
+	}, core.IssueOpsCleanupAbandonDeps{Orca: deps.OrcaIntent, OrcaOwner: deps.OrcaOwner})
 	if err != nil {
 		if *jsonOut {
 			// 게이트 결과와 레코드 전문이 담긴 result를 그대로 흘린다 —

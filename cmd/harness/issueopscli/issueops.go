@@ -161,7 +161,10 @@ func issueOpsFeedbackCleanupDeps() feedbackcleanup.Deps {
 		},
 		// cleanup abandon pending_intent_safe 게이트: sealed marker로 orca
 		// 인벤토리를 실조회한다. 조회 전용이며 mutation은 부르지 않는다.
-		OrcaIntent:   orca.NewExecution(),
+		OrcaIntent: orca.NewExecution(),
+		// cleanup abandon orca_resources_absent 게이트: orca 자원 잔여를
+		// 실조회한다. 같은 provisioner가 owner 인벤토리도 제공한다(#136).
+		OrcaOwner:    orca.NewExecution(),
 		ParseFlags:   parseIssueOpsFlags,
 		PrintResult:  printIssueOpsResult,
 		PrintJSON:    printJSON,
