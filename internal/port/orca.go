@@ -243,6 +243,21 @@ type OrcaWorkerDoneResult struct {
 	Sequence  int64  `json:"sequence"`
 }
 
+// OrcaWorkerDoneClient는 core와 CLI에서 호출되지 않는다. 의도된 상태이며 dead
+// code 스윕이 삭제 후보로 다시 조사하지 않도록 판단 근거를 남긴다(#127에서 보존
+// 결정).
+//
+// 왜 배선이 없는가: IssueOps v1 owner 명령 카탈로그는 execution status/claim,
+// remote create-pr, execution complete, implementation-review record 5개만
+// 정의하며 Orca 메시지 전송을 요구하지 않는다. owner의 완료 보고는 durable
+// state(execution complete)와 원격 artifact(remote create-pr)가 담당한다. Orca는
+// workspace/owner adapter이지 두 번째 workflow authority가 아니다.
+//
+// 어떤 조건에서 배선되는가: Orca 모드 사이클의 task 종결 경로가 필요할 때다. 그
+// 공백은 이미 실측됐다 — execution complete와 cleanup finish 모두 task를 건드리지
+// 않으므로 task가 dispatched로 남고, 레코드 삭제 후 영구 residue가 된다. 설계와
+// 배선은 #130이 소유한다. #130이 이 경로 대신 다른 종결 방식을 택하면 그때
+// 삭제하고 이 주석도 함께 제거한다.
 type OrcaWorkerDoneClient interface {
 	SendWorkerDone(context.Context, OrcaWorkerDoneRequest) (OrcaWorkerDoneResult, error)
 }
