@@ -18,6 +18,13 @@ func PathsFromHookInput(input []byte) []string {
 				if !childInsideToolInput && (lk == "transcript_path" || lk == "agent_transcript_path") {
 					continue
 				}
+				// tool_response/tool_result는 도구 실행 결과 echo다 — diff·patch
+				// 텍스트 속 경로형 문자열이 mutation target으로 승격되면 소스
+				// 체크아웃 misdirect 오탐이 된다(#95). tool_input 내부의 동명
+				// 인자는 도구가 하려던 일이므로 보존한다.
+				if !insideToolInput && (lk == "tool_response" || lk == "tool_result") {
+					continue
+				}
 				filesystemAlias := insideToolInput && (lk == "source" || lk == "destination" || lk == "src" || lk == "dst" || lk == "target")
 				if lk == "path" || strings.HasSuffix(lk, "_path") || lk == "file" || lk == "filename" || filesystemAlias {
 					if s, ok := v.(string); ok {
