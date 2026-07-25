@@ -574,9 +574,20 @@ func (c *Client) CreateTask(ctx context.Context, req port.OrcaCreateTaskRequest)
 	return created, err
 }
 
+// taskStatusCompleted는 정상 종료된 task의 terminal 상태다. 어떤 값이 종결로
+// 취급되는지는 Orca의 지식이므로 호출자가 리터럴을 반복하지 않도록 여기서 정한다.
+const taskStatusCompleted = "completed"
+
+// SettleTask는 완료된 사이클의 task를 terminal 상태로 옮긴다(#130).
+//
+// 이 메서드가 별도로 있는 이유는 어떤 status가 종결인지가 Orca 쪽 지식이기
+// 때문이다. 호출자는 "종결시켜라"만 말하고 값은 알 필요가 없다.
+func (c *Client) SettleTask(ctx context.Context, id string) error {
+	return c.UpdateTask(ctx, id, taskStatusCompleted, "")
+}
+
 // UpdateTask는 execution complete가 orca 모드 사이클의 task를 종결시키는 경로다
-// (#130). status로는 completed를 쓴다 — operationalhealth 분류기가 completed와
-// failed를 종결로 보고 residue 판정에서 면제하기 때문이다.
+// (#130 — SettleTask를 통해 호출된다).
 //
 // #121이 이 명령을 residue 해법으로 기각했던 근거("상태를 바꿔도 소유자 조회가
 // 0건이라 분류기가 잔여물로 보고한다")는 #121 자신의 수정으로 사라졌다. 그
