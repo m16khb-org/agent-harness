@@ -24,6 +24,10 @@ type Deps struct {
 	// RemoveOrcaWorktree는 cleanup finish의 ② 단계(orca 회수, force=false)다.
 	// "이미 없음"은 wiring에서 성공으로 정규화한다(멱등 계약).
 	RemoveOrcaWorktree func(ctx context.Context, worktreeID string) error
+	// OrcaIntent는 cleanup abandon의 pending_intent_safe 게이트가 sealed
+	// marker로 orca 인벤토리를 실조회하는 표면이다. nil이면 그 게이트는 통과가
+	// 아니라 거부다(#106, fail-closed).
+	OrcaIntent core.ExecutionOrcaProvisioner
 }
 
 func RunFeedback(args []string, deps Deps) error {
@@ -76,7 +80,7 @@ func localActor(host, sessionID, agentID, cwd string) core.IssueOpsActor {
 
 func RunCleanup(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops cleanup status --id ID [--merged] [--json]\n       agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]\n       agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]\n       agent-harness issueops cleanup finish --id ID [--provider github|gitlab] (--preview | --apply --confirm --fingerprint SHA256) [--json]")
+		fmt.Println("Usage: agent-harness issueops cleanup status --id ID [--merged] [--json]\n       agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]\n       agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]\n       agent-harness issueops cleanup finish --id ID [--provider github|gitlab] (--preview | --apply --confirm --fingerprint SHA256) [--json]\n       agent-harness issueops cleanup abandon --id ID --reason TEXT (--preview | --apply --confirm --fingerprint SHA256) [--json]")
 		return nil
 	}
 	switch args[0] {
@@ -114,6 +118,8 @@ func RunCleanup(args []string, deps Deps) error {
 		return nil
 	case "finish":
 		return runCleanupFinish(args[1:], deps)
+	case "abandon":
+		return runCleanupAbandon(args[1:], deps)
 	case "close-children":
 		fs := flag.NewFlagSet("issueops cleanup close-children", flag.ContinueOnError)
 		id := fs.String("id", "", "issueops id")
@@ -324,6 +330,60 @@ func runCleanupFinish(args []string, deps Deps) error {
 	}
 	if result.RecordDeleted {
 		fmt.Printf("cleanup finished: worktree=%v branch=%v record deleted\n", result.WorktreeRemoved, result.BranchDeleted)
+	} else {
+		fmt.Printf("fingerprint: %s\n", result.Fingerprint)
+		if result.NextCommand != "" {
+			fmt.Printf("next: %s\n", result.NextCommand)
+		}
+	}
+	return nil
+}
+
+// runCleanupAbandon은 폐기된 비-done 사이클의 로컬 레코드 수명을 종료한다.
+// finish와 달리 provider를 resolve조차 하지 않는다 — 이 경로는 원격(이슈 본문·
+// PR/MR·원격 브랜치)을 어떤 단계에서도 읽거나 쓰지 않는다(#106).
+func runCleanupAbandon(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops cleanup abandon", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	reason := fs.String("reason", "", "why this cycle is abandoned (required, max 512 bytes); control characters and active shell characters are rejected because the lease guard parses this command exactly")
+	preview := fs.Bool("preview", false, "evaluate gates and issue a fingerprint without mutating")
+	apply := fs.Bool("apply", false, "delete the record and its external intent rows")
+	confirm := fs.Bool("confirm", false, "confirm the destructive apply")
+	fingerprint := fs.String("fingerprint", "", "fingerprint issued by the latest --preview")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := deps.ParseFlags(fs, args); help || err != nil {
+		return err
+	}
+	// finish와 동일한 모드 배타 규율(C2-F3): 파괴 실행 요청에 preview가 섞이면
+	// 안전한 쪽을 고르는 대신 명시적으로 거부한다.
+	if *preview && *apply {
+		return fmt.Errorf("cleanup abandon --preview and --apply are mutually exclusive")
+	}
+	if !*preview && !*apply {
+		return fmt.Errorf("cleanup abandon requires exactly one mode: --preview or --apply --confirm --fingerprint SHA256")
+	}
+	result, err := core.IssueOpsCleanupAbandon(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsCleanupAbandonRequest{
+		ID:          *id,
+		Reason:      *reason,
+		Apply:       *apply,
+		Confirm:     *confirm,
+		Fingerprint: *fingerprint,
+	}, core.IssueOpsCleanupAbandonDeps{Orca: deps.OrcaIntent})
+	if err != nil {
+		if *jsonOut {
+			// 게이트 결과와 레코드 전문이 담긴 result를 그대로 흘린다 —
+			// 이 JSON이 유일한 감사 채널이다.
+			if printErr := deps.PrintJSON(result); printErr != nil {
+				return printErr
+			}
+		}
+		return err
+	}
+	if *jsonOut {
+		return deps.PrintJSON(result)
+	}
+	if result.RecordDeleted {
+		fmt.Printf("cleanup abandoned: record deleted intent_rows=%d at=%s\n", len(result.IntentRowsDeleted), result.AbandonedAt)
 	} else {
 		fmt.Printf("fingerprint: %s\n", result.Fingerprint)
 		if result.NextCommand != "" {

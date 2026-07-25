@@ -159,6 +159,9 @@ func issueOpsFeedbackCleanupDeps() feedbackcleanup.Deps {
 		RemoveOrcaWorktree: func(ctx context.Context, worktreeID string) error {
 			return normalizeOrcaRemoveWorktreeErr(orcaClient.RemoveWorktree(ctx, worktreeID, false))
 		},
+		// cleanup abandon pending_intent_safe 게이트: sealed marker로 orca
+		// 인벤토리를 실조회한다. 조회 전용이며 mutation은 부르지 않는다.
+		OrcaIntent:   orca.NewExecution(),
 		ParseFlags:   parseIssueOpsFlags,
 		PrintResult:  printIssueOpsResult,
 		PrintJSON:    printJSON,

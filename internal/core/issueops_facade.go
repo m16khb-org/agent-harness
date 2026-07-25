@@ -233,6 +233,17 @@ func IssueOpsCleanupFinish(ctx context.Context, stateRoot string, req IssueOpsCl
 	return issueops.CleanupFinish(ctx, stateRoot, req, deps)
 }
 
+type ExecutionOrcaProvisioner = issueops.ExecutionOrcaProvisioner
+type IssueOpsCleanupAbandonRequest = issueops.CleanupAbandonRequest
+type IssueOpsCleanupAbandonDeps = issueops.CleanupAbandonDeps
+type IssueOpsCleanupAbandonResult = issueops.CleanupAbandonResult
+
+// IssueOpsCleanupAbandon은 폐기된 비-done 사이클의 로컬 레코드 수명을 종료한다.
+// 원격 무접촉 경로이므로 IssueProvider를 받지 않는다(#106).
+func IssueOpsCleanupAbandon(ctx context.Context, stateRoot string, req IssueOpsCleanupAbandonRequest, deps IssueOpsCleanupAbandonDeps) (IssueOpsCleanupAbandonResult, error) {
+	return issueops.CleanupAbandon(ctx, stateRoot, req, deps)
+}
+
 func ReflectIssueOpsCleanupAudit(record IssueOpsRecord, completion IssueProviderCompletionSection, audit string, prov IssueProvider) error {
 	return issueops.ReflectCleanupAudit(record, completion, audit, prov)
 }
