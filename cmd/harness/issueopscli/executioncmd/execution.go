@@ -46,6 +46,7 @@ const Usage = `Usage:
   agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [fingerprint/reason flags] ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops execution reconcile --id ID (--preview|--confirm) ACTOR_FLAGS [--json]
   agent-harness issueops execution complete --id ID --generation N --final-head SHA --turing-report PATH --remote-artifact-url URL --verification TEXT... ACTOR_FLAGS --confirm [--json]
+  agent-harness issueops execution sync-base --id ID (--preview | --apply --confirm --fingerprint SHA256 | --finalize | --abort) ACTOR_FLAGS [--json]
 
 ACTOR_FLAGS: --host codex|claude --session-id ID [--agent-id ID] --session-pid PID --session-started-at RFC3339 --session-executable PATH --cwd PATH`
 
@@ -71,6 +72,8 @@ func Run(args []string, deps Deps) error {
 		return runReconcile(args[1:], deps)
 	case "complete":
 		return runComplete(args[1:], deps)
+	case "sync-base":
+		return runSyncBase(args[1:], deps)
 	default:
 		return fmt.Errorf("unknown issueops execution subcommand %q", args[0])
 	}
@@ -271,6 +274,49 @@ func runComplete(args []string, deps Deps) error {
 	return output(result, *jsonOut, err, deps)
 }
 
+// runSyncBase는 completion 이후 base 재동기화를 실행한다. ExecuteExecution을
+// 거치지 않고 core를 직접 호출하는 것이 계약이다 — sync-base는 CLI 전용
+// 표면이고 MCP action 카탈로그·mcp golden은 변경하지 않는다(설계 v2 F15).
+func runSyncBase(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops execution sync-base", flag.ContinueOnError)
+	id := fs.String("id", "", "IssueOps id")
+	fingerprint := fs.String("fingerprint", "", "fingerprint issued by the latest --preview")
+	preview := fs.Bool("preview", false, "observe base divergence and issue a fingerprint")
+	apply := fs.Bool("apply", false, "merge the fetched base into the work branch and push")
+	finalize := fs.Bool("finalize", false, "commit and push a resolved merge")
+	abort := fs.Bool("abort", false, "withdraw the in-progress merge")
+	confirm := fs.Bool("confirm", false, "confirm the apply mutation")
+	actor, jsonOut := addActorFlags(fs), fs.Bool("json", false, "print JSON")
+	if done, err := parse(fs, args); done || err != nil {
+		return err
+	}
+	modes := map[string]bool{
+		issueops.ExecutionSyncBasePreview:  *preview,
+		issueops.ExecutionSyncBaseApply:    *apply,
+		issueops.ExecutionSyncBaseFinalize: *finalize,
+		issueops.ExecutionSyncBaseAbort:    *abort,
+	}
+	mode := ""
+	for candidate, selected := range modes {
+		if selected {
+			if mode != "" {
+				return output(nil, *jsonOut, fmt.Errorf("execution sync-base requires exactly one mode"), deps)
+			}
+			mode = candidate
+		}
+	}
+	if mode == "" {
+		return output(nil, *jsonOut, fmt.Errorf("execution sync-base requires exactly one mode"), deps)
+	}
+	if deps.StateRoot == nil {
+		return output(nil, *jsonOut, fmt.Errorf("IssueOps state root is unavailable"), deps)
+	}
+	result, err := issueops.SyncExecutionBase(context.Background(), deps.StateRoot(), issueops.ExecutionSyncBaseRequest{
+		ID: *id, Mode: mode, Actor: actor.actor(), CWD: *actor.cwd, Confirm: *confirm, Fingerprint: *fingerprint,
+	}, issueops.ExecutionSyncBaseDeps{})
+	return output(result, *jsonOut, err, deps)
+}
+
 func output(value any, jsonOut bool, err error, deps Deps) error {
 	if err != nil {
 		if jsonOut && deps.PrintError != nil {
@@ -295,6 +341,9 @@ func printText(value any) {
 		fmt.Printf("%s %s generation=%d next=%s\n", result.ID, result.Execution.Lease.Status, result.Execution.Lease.Generation, result.NextCommand)
 	case issueops.ExecutionReconcileResult:
 		fmt.Printf("%s %s pending=%t\n", result.ID, result.Code, result.Pending != nil)
+	case issueops.ExecutionSyncBaseResult:
+		fmt.Printf("%s %s merged=%t pushed=%t conflicts=%d next=%s\n",
+			result.ID, result.Mode, result.Merged, result.Pushed, len(result.ConflictFiles), result.NextCommand)
 	default:
 		fmt.Printf("%v\n", value)
 	}

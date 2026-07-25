@@ -32,6 +32,12 @@ type Execution struct {
 	Pending    *ExternalIntent      `json:"pending,omitempty"`
 	Completion *ExecutionCompletion `json:"completion,omitempty"`
 	Failure    *ExecutionFailure    `json:"failure,omitempty"`
+	// SyncBaseEvents는 completion 이후 base 재동기화(merge+push)의 durable
+	// 감사 기록이다. append-only이며 Completion.FinalHead는 불변으로 남는다
+	// — 완결 시점 증거를 보존하고, PR head는 provider가 관측하며, merge OID는
+	// 이 이벤트가 담당한다(설계 v2 brooks F9). 기존 레코드는 nil이므로
+	// 스키마는 additive다.
+	SyncBaseEvents []ExecutionSyncBaseEvent `json:"sync_base_events,omitempty"`
 }
 
 type Workspace struct {
@@ -105,6 +111,23 @@ type ExecutionFailure struct {
 	At          string `json:"at"`
 }
 
+const (
+	ExecutionSyncBaseEventApply    = "apply"
+	ExecutionSyncBaseEventFinalize = "finalize"
+)
+
+// ExecutionSyncBaseEvent는 성공한 sync-base 변형 1회의 증거다. abort는
+// 되돌림이므로 이벤트를 남기지 않는다(설계 v2 — apply/finalize 성공 시에만 append).
+type ExecutionSyncBaseEvent struct {
+	Mode          string `json:"mode"` // apply | finalize
+	BaseBranch    string `json:"base_branch"`
+	BaseOID       string `json:"base_oid"`
+	MergeCommit   string `json:"merge_commit"`
+	ConflictFiles int    `json:"conflict_files"`
+	Actor         string `json:"actor"`
+	At            string `json:"at"`
+}
+
 func ValidateExecution(execution Execution) error {
 	if execution.Mode != ExecutionModeDirect && execution.Mode != ExecutionModeOrca {
 		return fmt.Errorf("execution mode must be direct or orca")
@@ -143,6 +166,27 @@ func ValidateExecution(execution Execution) error {
 		if execution.Failure.Code == "" || execution.Failure.At == "" || len(execution.Failure.Message) > 4096 {
 			return fmt.Errorf("execution failure is invalid")
 		}
+	}
+	for _, event := range execution.SyncBaseEvents {
+		if err := validateExecutionSyncBaseEvent(event); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateExecutionSyncBaseEvent(event ExecutionSyncBaseEvent) error {
+	if event.Mode != ExecutionSyncBaseEventApply && event.Mode != ExecutionSyncBaseEventFinalize {
+		return fmt.Errorf("execution sync-base event mode must be apply or finalize")
+	}
+	if !validCommitSHA(event.BaseOID) || !validCommitSHA(event.MergeCommit) {
+		return fmt.Errorf("execution sync-base event requires full base and merge commit OIDs")
+	}
+	if strings.TrimSpace(event.BaseBranch) == "" || strings.TrimSpace(event.Actor) == "" || strings.TrimSpace(event.At) == "" {
+		return fmt.Errorf("execution sync-base event is incomplete")
+	}
+	if event.ConflictFiles < 0 {
+		return fmt.Errorf("execution sync-base event conflict count must not be negative")
 	}
 	return nil
 }

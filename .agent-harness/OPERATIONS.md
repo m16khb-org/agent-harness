@@ -163,6 +163,17 @@ matrices, installed Codex/Claude hook smokes, and disposable live Orca
 ready/absent scenarios. Native installation and `self-verify` do not require
 Orca availability.
 
+`issueops execution sync-base` is the post-completion conflict-resolution
+surface (#114): when the merged base advances and the PR turns conflicting,
+run `--preview` from the canonical worktree for the divergence report and
+fingerprint, then `--apply --confirm --fingerprint` to merge the fetched base
+and push (merge only; rebase and force-push are rejected). Conflicts stop as a
+merge-in-progress for the active lease holder to resolve, then `--finalize`
+commits and pushes, or `--abort` withdraws. Mutating modes require the active
+holder (reseed and claim first on a released cycle); `execution reconcile
+--preview` output is a constant, not an inventory observation — do not cite it
+as residue evidence.
+
 ## Quick Smoke
 
 ```bash
