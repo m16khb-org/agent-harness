@@ -3,6 +3,7 @@ package orca
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -727,6 +728,20 @@ func (c *Client) dispatchInventoryResult(ctx context.Context, argv []string) (ex
 func (c *Client) runJSON(ctx context.Context, cwd string, timeout time.Duration, argv []string, target any) (string, error) {
 	output, err := c.runner.Run(ctx, cwd, timeout, argv)
 	if err != nil {
+		// 비영 종료여도 orca가 정상 ok:false envelope을 남겼다면 typed 오류
+		// 코드를 복원한다 — command_failed로 뭉개면 소비처의 not_found 멱등
+		// 정규화가 무력화되어 cleanup finish가 수렴하지 못한다(#97).
+		// envelope 부재나 ok:true 모순은 원래 오류를 유지해 실패 신호를
+		// 삼키지 않는다.
+		var runErr *port.OrcaError
+		if errors.As(err, &runErr) && runErr.Code == "command_failed" {
+			if runtimeID, envErr := decodeResult(output, nil); envErr != nil {
+				var typed *port.OrcaError
+				if errors.As(envErr, &typed) {
+					return runtimeID, typed
+				}
+			}
+		}
 		return "", err
 	}
 	return decodeResult(output, target)

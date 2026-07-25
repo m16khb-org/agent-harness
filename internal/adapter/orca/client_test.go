@@ -1154,7 +1154,9 @@ func (f *fakeRunner) Run(_ context.Context, _ string, _ time.Duration, argv []st
 	f.calls = append(f.calls, copyArgv)
 	key := strings.Join(argv, " ")
 	if err := f.errors[key]; err != nil {
-		return CommandOutput{}, err
+		// 실제 ExecRunner처럼 비영 종료에서도 캡처된 stdout을 함께 돌려준다 —
+		// runJSON의 실패-envelope 복원 경로(#97)를 검증할 수 있어야 한다.
+		return f.responses[key], err
 	}
 	output, ok := f.responses[key]
 	if !ok {

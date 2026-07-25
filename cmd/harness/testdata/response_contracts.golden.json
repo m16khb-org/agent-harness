@@ -658,7 +658,7 @@
       "running": false
     },
     "docs_index": {
-      "docs_count": 94,
+      "docs_count": 95,
       "harness_root": "$HARNESS_ROOT",
       "ok": true,
       "required_docs": {
@@ -4943,7 +4943,7 @@
       "loop_kind": "self_augmentation",
       "ok": true,
       "repo_signals": {
-        "docs_indexed": 94,
+        "docs_indexed": 95,
         "has_adapter_contract_matrix": true,
         "has_candidate_refill": true,
         "has_cli_adapter_split": true,
@@ -6817,7 +6817,7 @@
       "content": [
         {
           "json": {
-            "docs_count": 94,
+            "docs_count": 95,
             "harness_root": "$HARNESS_ROOT",
             "ok": true,
             "required_docs": {
@@ -7943,7 +7943,7 @@
             "loop_kind": "self_augmentation",
             "ok": true,
             "repo_signals": {
-              "docs_indexed": 94,
+              "docs_indexed": 95,
               "has_adapter_contract_matrix": true,
               "has_candidate_refill": true,
               "has_cli_adapter_split": true,
