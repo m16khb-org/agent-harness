@@ -67,6 +67,12 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 			result.Reason = reason
 		}
 	}
+	if result.Decision != "block" && req.EnforceVCSLinking {
+		if reason := sealedIssueEditBlockReason(req); reason != "" {
+			result.Decision = "block"
+			result.Reason = reason
+		}
+	}
 	if result.Decision != "block" && req.EnforceStagedChecks {
 		if decision, reason := commandguard.StagedCheckDecision(req.Tool, req.Repo, req.Command); decision != "" {
 			result.Decision = decision

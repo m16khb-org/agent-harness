@@ -443,6 +443,17 @@ func validateExecutionOwnerCatalog(commands executionOwnerCommands) error {
 	return nil
 }
 
+// SealedOwnerContextPacketPath는 현재 세대 봉인 packet의 경로를 돌려준다.
+// 훅 가드가 봉인 실존을 확인하는 유일한 경로다 — 경로 규칙을 다른 계층에
+// 복제하지 않기 위해 노출한다. execution이 없으면 빈 문자열이다.
+func SealedOwnerContextPacketPath(record IssueOpsRecord) string {
+	if record.Execution == nil {
+		return ""
+	}
+	packetPath, _ := executionOwnerArtifactPaths(record)
+	return packetPath
+}
+
 func executionOwnerArtifactPaths(record IssueOpsRecord) (string, string) {
 	key := digestExecutionOwnerBytes([]byte(record.ID))[:16]
 	base := filepath.Join(record.Execution.Workspace.Root, ".agent-harness", "state", "issueops-v1", key, "generation-"+strconv.FormatUint(record.Execution.Lease.Generation, 10))
