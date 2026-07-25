@@ -12,7 +12,10 @@ const (
 	// execution prepare가 --owner-model/--owner-effort 미지정 호출에 적용한다.
 	IssueOpsImplementerModelCodex  = "gpt-5.6-terra"
 	IssueOpsImplementerEffortCodex = "xhigh"
-	IssueOpsImplementerModelClaude = "claude-opus-4-8"
+	// claude-opus-4-8은 설치된 claude CLI가 Opus 5로 폴백 해석해 봉인값과
+	// 실제 구동 모델이 불일치했다(#116 owner launch 실측, 2026-07-25) —
+	// 기본값을 유효 모델 ID로 갱신한다(#118).
+	IssueOpsImplementerModelClaude = "claude-opus-5"
 	// claude CLI의 --effort <level> 플래그 실지원을 확인함(2026-07-24).
 	// 플래그가 제거되면 ownerAgentCommand(adapter/orca/client.go)의 claude
 	// 분기에서 effort 인자를 조건부 생략으로 되돌린다.
