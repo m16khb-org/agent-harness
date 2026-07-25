@@ -142,6 +142,30 @@ func NonDoneCyclesForRepo(store Store, repo string) []model.IssueOpsRecord {
 	return records
 }
 
+// UmbrellaCycleForChildIssue returns the non-done cycle in the same repo that
+// links the given issue URL as a provider-native child work item. It is how a
+// child cycle discovers the umbrella branch its own work has to branch from and
+// merge back into (#129).
+//
+// Done cycles are excluded on purpose: once the umbrella has merged and been
+// cleaned up there is no branch left to target, and blocking a child on a
+// vanished parent would strand it.
+func UmbrellaCycleForChildIssue(store Store, repo, childIssueURL string) (model.IssueOpsRecord, bool) {
+	childIssueURL = strings.TrimSpace(childIssueURL)
+	if childIssueURL == "" {
+		return model.IssueOpsRecord{}, false
+	}
+	for _, record := range NonDoneCyclesForRepo(store, repo) {
+		for _, link := range record.IssueLinks {
+			if link.Type != "child" || strings.TrimSpace(link.URL) != childIssueURL {
+				continue
+			}
+			return record, true
+		}
+	}
+	return model.IssueOpsRecord{}, false
+}
+
 func planBranchMismatchesRecord(record model.IssueOpsRecord) bool {
 	planPath := pathutil.CleanAbsPath(record.PlanPath)
 	repo := pathutil.CleanAbsPath(record.Repo)

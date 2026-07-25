@@ -240,6 +240,9 @@ func issueOpsBranchPrepareStore() branchprepare.Store {
 		Read:             ReadIssueOps,
 		TouchWrite:       touchAndWriteIssueOps,
 		ValidateIssueURL: linking.ValidateIssueURL,
+		UmbrellaForChildIssue: func(repo, childIssueURL string) (IssueOpsRecord, bool) {
+			return active.UmbrellaCycleForChildIssue(issueOpsActiveStore(), repo, childIssueURL)
+		},
 	}
 }
 

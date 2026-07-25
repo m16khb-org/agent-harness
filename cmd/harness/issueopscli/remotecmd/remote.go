@@ -552,6 +552,12 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 		err := fmt.Errorf("cannot create child before linked parent issue")
 		return deps.printErrorResult(*jsonOut, err)
 	}
+	// 우산 브랜치 게이트는 provider 호출 이전에 선다. 자식이 만들어진 뒤에는
+	// 위상을 되돌릴 수 없고, 부모에 원격 artifact가 없는 채로 자식만 생기면
+	// 정리 경로가 순환 차단된다(#129).
+	if reason := core.UmbrellaBranchGateReason(record); reason != "" {
+		return deps.printErrorResult(*jsonOut, fmt.Errorf("%s", reason))
+	}
 	if err := validateCreateChildInputs(*title, labels, assignees); err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}

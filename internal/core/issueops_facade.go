@@ -196,6 +196,10 @@ func ResolveRecordProvider(record IssueOpsRecord) string {
 	return issueops.ResolveRecordProvider(record)
 }
 
+func UmbrellaBranchGateReason(record IssueOpsRecord) string {
+	return issueops.UmbrellaBranchGateReason(record)
+}
+
 func StageIssueOpsArtifact(stateRoot, id, name string, content []byte) (IssueOpsRecord, error) {
 	return issueops.StageIssueOpsArtifact(stateRoot, id, name, content)
 }
