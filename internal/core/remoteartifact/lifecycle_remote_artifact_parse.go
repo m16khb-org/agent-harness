@@ -19,6 +19,9 @@ type remoteArtifactCommand struct {
 	assignees       []string
 	headBranch      string
 	baseBranch      string
+	// target은 편집 대상 식별자다(첫 비플래그 positional 인자). 번호와 URL 두
+	// 형태가 그대로 들어오며, 어느 쪽인지 해석하는 책임은 소비자에게 있다.
+	target string
 }
 
 func parseGHRemoteArtifactCommand(command string, repo string) (remoteArtifactCommand, bool) {

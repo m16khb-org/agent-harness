@@ -82,6 +82,10 @@ func parseRemoteArtifactArg(artifact *remoteArtifactCommand, repo string, args [
 		artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--assignee-id="))
 	case strings.HasPrefix(arg, "--assignee-ids="):
 		artifact.assignees = appendRemoteArtifactListValues(artifact.assignees, strings.TrimPrefix(arg, "--assignee-ids="))
+	case !strings.HasPrefix(arg, "-") && strings.TrimSpace(arg) != "" && artifact.target == "":
+		// 첫 비플래그 positional 인자는 대상 식별자다(예: 이슈 번호 또는 URL).
+		// 봉인 보호 가드가 편집 대상을 알아야 하므로 여기서 보존한다.
+		artifact.target = strings.TrimSpace(arg)
 	}
 	return index
 }
