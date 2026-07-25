@@ -115,7 +115,11 @@ func executionTypedControlPlane(req HookToolUseLifecycleRequest) bool {
 		return false
 	}
 	switch command.Path {
-	case "execution prepare", "execution claim", "execution release", "execution replace", "execution reconcile", "execution complete":
+	// sync-base는 워크트리 cwd에서 sealed topology 가드에 걸리는 유일한 합법
+	// 표면이므로 typed 등록이 필요하다(설계 v2 F1 — "가드 무변경"은 오기).
+	// typed 등록은 훅의 mutation 가드 블록 전체를 스킵시키므로(F14) lease·권위
+	// 검사는 core(execution_sync_base.go)가 100% 책임진다.
+	case "execution prepare", "execution claim", "execution release", "execution replace", "execution reconcile", "execution complete", "execution sync-base":
 		id, ok := oneFlag(flags, "--id")
 		return ok && strings.TrimSpace(id) != ""
 	default:

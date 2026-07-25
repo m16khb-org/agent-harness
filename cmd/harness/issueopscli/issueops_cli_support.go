@@ -48,6 +48,7 @@ func issueOpsUsageText() string {
   agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [fingerprint/reason flags] ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops execution reconcile --id ID (--preview|--confirm) ACTOR_FLAGS [--json]
   agent-harness issueops execution complete --id ID --generation N --final-head SHA --turing-report PATH --remote-artifact-url URL --verification TEXT... ACTOR_FLAGS --confirm [--json]
+  agent-harness issueops execution sync-base --id ID (--preview | --apply --confirm --fingerprint SHA256 | --finalize | --abort) ACTOR_FLAGS [--json]
   agent-harness issueops reset-legacy --target-schema 1 (--preview|--status|--reconcile-remote --id ID --claim-id CLAIM --confirm|--drain-cycle --id ID --confirm|--confirm) [--expected-fingerprint SHA256] [--json]
   agent-harness issueops phase --id ID --to problem|grill|plan|compatibility-review|implement|ai-slop-clean|feedback|pr [--force] [--json]
   agent-harness issueops ai-slop-clean record --id ID --category TEXT --verification TEXT [--json]
