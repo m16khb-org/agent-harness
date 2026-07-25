@@ -56,6 +56,10 @@ func TestHookInputParsesCodexClaudeNativeSessionIdentity(t *testing.T) {
 }
 
 func TestPathsFromHookInputCollectsExplicitPatchAndInlinePaths(t *testing.T) {
+	// #100 계약: 키 기반 추출(top-level "path", nested "file"/"filename")은
+	// 의도적으로 보존한다 — 재평가 대상이 아니다. 반면 내용 heuristic
+	// (patch 스캔·인라인 경로 문자열)은 tool_input subtree 또는 command/cmd
+	// 키 아래에서만 수행된다.
 	input := []byte(`{
 	  "path":"a.go",
 	  "nested":{"file":"b.go","items":[{"filename":"testdata/case.json"}]},
@@ -64,9 +68,27 @@ func TestPathsFromHookInputCollectsExplicitPatchAndInlinePaths(t *testing.T) {
 	  "duplicate":"a.go"
 	}`)
 	got := PathsFromHookInput(input)
-	for _, want := range []string{"a.go", "b.go", "testdata/case.json", "c.go", ".agent-harness/ADR.md", "d.go", "e.go", "internal/core/foo.go"} {
+	for _, want := range []string{"a.go", "b.go", "testdata/case.json"} {
 		if !containsString(got, want) {
-			t.Fatalf("expected path %q in %#v", want, got)
+			t.Fatalf("expected key-based path %q in %#v", want, got)
+		}
+	}
+	for _, unwanted := range []string{"c.go", ".agent-harness/ADR.md", "d.go", "e.go", "internal/core/foo.go"} {
+		if containsString(got, unwanted) {
+			t.Fatalf("non tool_input content path %q must not be a mutation target: %#v", unwanted, got)
+		}
+	}
+	// 동일 추출이 tool_input 내부에서는 보존됨을 증명한다.
+	insideToolInput := []byte(`{
+	  "tool_input":{
+	    "patch":"*** Begin Patch\n*** Add File: c.go\n*** Update File: .agent-harness/ADR.md\n*** Delete File: d.go\n*** Move to: e.go\n*** End Patch",
+	    "note":"internal/core/foo.go"
+	  }
+	}`)
+	gotInside := PathsFromHookInput(insideToolInput)
+	for _, want := range []string{"c.go", ".agent-harness/ADR.md", "d.go", "e.go", "internal/core/foo.go"} {
+		if !containsString(gotInside, want) {
+			t.Fatalf("tool_input content path %q missing from mutation targets: %#v", want, gotInside)
 		}
 	}
 	var out []string

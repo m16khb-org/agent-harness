@@ -31,13 +31,27 @@ func PathsFromHookInput(input []byte) []string {
 						addHookPath(&out, seen, s)
 					}
 				}
-				walk(v, childInsideToolInput)
+				// 이 플래그는 "문자열 내용 heuristic 허용 범위"를 뜻한다(#100):
+				// tool_input subtree에 더해 command/cmd 키 값도 허용한다.
+				// CommandFromHookInput이 top-level command/cmd를 1순위로 읽으므로
+				// 같은 문자열의 patch 스캔이 소리 없이 빠지면 legacy top-level
+				// command 형상에서 worktreeguard가 base 폴백으로 약화된다.
+				// 실제 host payload에서 command 값은 문자열뿐이라 map 부수효과
+				// (alias 활성화)는 발생하지 않는다.
+				walk(v, childInsideToolInput || lk == "command" || lk == "cmd")
 			}
 		case []any:
 			for _, item := range x {
 				walk(item, insideToolInput)
 			}
 		case string:
+			// #100: 내용 heuristic(patch 스캔·인라인 경로)은 tool_input subtree
+			// 또는 command/cmd 키 값에서만 수행한다. 그 밖의 stdin 위치 문자열은
+			// mutation target으로 승격하지 않는다 — 블랙리스트 누적 클래스의
+			// 구조적 제거.
+			if !insideToolInput {
+				return
+			}
 			if addPatchPathsFromHookString(&out, seen, x) {
 				return
 			}
