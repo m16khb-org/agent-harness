@@ -37,10 +37,25 @@ func executionObservation(req HookToolUseLifecycleRequest) bool {
 	if !ok {
 		return false
 	}
+	// 관찰로 인정하는 기준: core 구현이 상태를 쓰지 않고, 파괴 작업의 preview
+	// 단계도 아닌 것. 명령 이름이 아니라 그 구현의 성질로 판단한다 — cleanup
+	// status와 cleanup finish는 경로 문자열이 prefix를 공유하지만 전자만 읽기다.
+	//
+	// 이 목록이 명시적 열거인 것은 fail-closed의 근거다. 규칙 기반 판정으로
+	// 바꾸면 분류 누락이 차단이 아니라 통과로 새어 나간다(#135).
 	switch command.Path {
-	case "status", "execution status":
+	case "status", "execution status", "pr-readiness":
 		id, ok := oneFlag(flags, "--id")
 		return ok && strings.TrimSpace(id) != ""
+	case "cleanup status":
+		// --merged가 원격을 조회하지만 그것도 읽기다. cleanup remote-branch
+		// --preview가 같은 자격으로 원격 OID를 관측하는 선례가 있다.
+		id, ok := oneFlag(flags, "--id")
+		return ok && strings.TrimSpace(id) != ""
+	case "list":
+		// 다중 사이클을 훑는 read-only 집계다. --id를 받지 않으므로 식별자
+		// 검사가 없고, --repo는 선택이다.
+		return true
 	case "execution whoami":
 		// claim identity 부트스트랩: owner가 자기 native receipt를 관측할
 		// 유일한 admitted 경로다. 읽기 전용이고 인자를 받지 않는다.

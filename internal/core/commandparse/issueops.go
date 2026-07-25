@@ -99,6 +99,8 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v("--id"), b("--json"), r, true
 	case "list":
 		return v("--repo"), b("--json"), r, true
+	case "pr-readiness":
+		return v("--id"), b("--strict", "--json"), r, true
 	case "execution status":
 		return v("--id"), b("--json"), r, true
 	case "execution prepare":
