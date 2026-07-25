@@ -7,6 +7,7 @@ import (
 	"agent-harness/internal/adapter/provider"
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/issueops"
+	"context"
 )
 
 func runIssueOpsExecution(args []string) error {
@@ -32,7 +33,17 @@ func runIssueOpsExecution(args []string) error {
 			},
 			Verify: verifyIssueOpsRemoteArtifactLive,
 		},
-		PrintJSON:  printJSON,
-		PrintError: printIssueOpsErrorJSON,
+		SettleOrcaTask: settleOrcaTask,
+		PrintJSON:      printJSON,
+		PrintError:     printIssueOpsErrorJSON,
 	})
 }
+
+// settleOrcaTask는 완료된 orca 사이클의 task를 terminal 상태로 옮긴다.
+// completed를 쓰는 이유는 operationalhealth 분류기가 completed와 failed를
+// 종결로 보고 residue 판정에서 면제하기 때문이며, 정상 완료는 completed다(#130).
+func settleOrcaTask(ctx context.Context, taskID string) error {
+	return orca.New().UpdateTask(ctx, taskID, orcaTaskStatusCompleted, "")
+}
+
+const orcaTaskStatusCompleted = "completed"

@@ -29,10 +29,15 @@ const (
 )
 
 type ExecutionResult struct {
-	OK          bool            `json:"ok"`
-	ID          string          `json:"id"`
-	Execution   model.Execution `json:"execution"`
-	NextCommand string          `json:"next_command,omitempty"`
+	OK        bool            `json:"ok"`
+	ID        string          `json:"id"`
+	Execution model.Execution `json:"execution"`
+	// OrcaTaskSettled와 OrcaTaskError는 완료가 orca task를 terminal 상태로
+	// 옮겼는지를 보고한다. 종결은 best-effort이므로 실패해도 완료 자체는
+	// 성공이며, 침묵하면 진단이 불가능하므로 사유를 남긴다(#130).
+	OrcaTaskSettled bool   `json:"orca_task_settled,omitempty"`
+	OrcaTaskError   string `json:"orca_task_error,omitempty"`
+	NextCommand     string `json:"next_command,omitempty"`
 }
 
 type ExecutionClaimRequest struct {

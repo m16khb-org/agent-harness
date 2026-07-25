@@ -253,11 +253,14 @@ type OrcaWorkerDoneResult struct {
 // state(execution complete)와 원격 artifact(remote create-pr)가 담당한다. Orca는
 // workspace/owner adapter이지 두 번째 workflow authority가 아니다.
 //
-// 어떤 조건에서 배선되는가: Orca 모드 사이클의 task 종결 경로가 필요할 때다. 그
-// 공백은 이미 실측됐다 — execution complete와 cleanup finish 모두 task를 건드리지
-// 않으므로 task가 dispatched로 남고, 레코드 삭제 후 영구 residue가 된다. 설계와
-// 배선은 #130이 소유한다. #130이 이 경로 대신 다른 종결 방식을 택하면 그때
-// 삭제하고 이 주석도 함께 제거한다.
+// #130이 그 공백을 UpdateTask로 메웠으므로 이 경로는 배선되지 않는다. 두 방식은
+// 목적이 다르다: UpdateTask는 task 상태를 종결시키고, SendWorkerDone은 Orca
+// dispatch 프로토콜의 완료 메시지를 보낸다. 후자는 owner 세션이 그 명령을
+// 실행해야 하는데 그것은 owner 명령 카탈로그 확장이며 위 계약과 충돌한다.
+//
+// 어떤 조건에서 배선되는가: Orca dispatch 프로토콜의 메시지 채널이 agent-harness
+// 계약에 편입될 때다. 그런 요구가 생기기 전까지 이 인터페이스는 adapter가 이미
+// 구현한 능력의 선언으로 남는다.
 type OrcaWorkerDoneClient interface {
 	SendWorkerDone(context.Context, OrcaWorkerDoneRequest) (OrcaWorkerDoneResult, error)
 }

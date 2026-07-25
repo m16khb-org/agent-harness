@@ -574,13 +574,13 @@ func (c *Client) CreateTask(ctx context.Context, req port.OrcaCreateTaskRequest)
 	return created, err
 }
 
-// UpdateTask는 core와 CLI에서 호출되지 않는다(#127에서 보존 결정). 판단 근거는
-// port의 OrcaWorkerDoneClient 주석에 있다 — 요약하면 Orca 모드 사이클의 task
-// 종결 경로가 아직 배선되지 않았고 그 설계는 #130이 소유한다.
+// UpdateTask는 execution complete가 orca 모드 사이클의 task를 종결시키는 경로다
+// (#130). status로는 completed를 쓴다 — operationalhealth 분류기가 completed와
+// failed를 종결로 보고 residue 판정에서 면제하기 때문이다.
 //
-// #121은 이 명령으로 상태만 바꾸는 것을 residue 해법으로 기각했다: 상태를 바꿔도
-// 소유자 조회는 여전히 0건이라 분류기가 잔여물로 보고한다. 종결 자체가 필요한
-// 곳은 사이클 완료 시점이며 #130이 그 시점을 정한다.
+// #121이 이 명령을 residue 해법으로 기각했던 근거("상태를 바꿔도 소유자 조회가
+// 0건이라 분류기가 잔여물로 보고한다")는 #121 자신의 수정으로 사라졌다. 그
+// 수정이 종결된 task를 면제하게 만들었으므로 이제 상태 변경이 곧 해법이다.
 func (c *Client) UpdateTask(ctx context.Context, id, status, result string) error {
 	argv := []string{"orca", "orchestration", "task-update", "--id", id, "--status", status}
 	if result != "" {
