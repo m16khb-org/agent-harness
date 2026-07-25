@@ -1,0 +1,81 @@
+{
+  "lifecycle_id": "io-893c0bc9d01c",
+  "issue": "https://github.com/m16khb/agent-harness/issues/123",
+  "branch": "123-sealed-packet-lifecycle",
+  "mode": "direct",
+  "generation": 1,
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "criterion": "reseed가 새 generation 기준으로 owner packet과 prompt를 재봉인하고 그 시점의 원격 이슈 본문 digest로 봉인한다",
+      "evidence": "TestExecutionReseedResealsOwnerPacketForTheNewGeneration 통과. 재봉인 경로가 이전 세대 경로와 다르고 새 digest가 발행됨을 확인",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-02",
+      "criterion": "재봉인된 packet의 lease_generation과 claim_token_file이 새 generation의 실제 값과 일치한다",
+      "evidence": "같은 테스트에서 packet을 디코드해 lease_generation 2와 새 claim token 경로를 확인",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-03",
+      "criterion": "generation 2 이상의 orca claim도 packet digest와 이슈 본문 digest를 검증하고 낡은 packet은 거부한다",
+      "evidence": "TestExecutionClaimVerifiesSealedPacketBeyondTheFirstGeneration 통과. 재봉인된 새 세대 packet을 조작하면 claim이 digest 오류로 거부됨",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-04",
+      "criterion": "봉인 이후 이슈 본문이 정당하게 개정된 사이클은 reseed를 거쳐 claim이 다시 가능해진다",
+      "evidence": "TestExecutionReseedRecoversFromLegitimateIssueRevision 통과. 개정 직후 claim은 거부되고 reseed 후 같은 개정 본문으로 claim이 성공",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-05",
+      "criterion": "digest 불일치 오류가 expected와 observed digest를 함께 담는다",
+      "evidence": "TestExecutionClaimDigestDriftErrorsCarryExpectedAndObserved 통과. 이슈 drift와 packet drift 두 하위 케이스 모두 두 값을 포함",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-06",
+      "criterion": "각 결함이 RED 테스트로 선행 실증된 뒤 GREEN으로 전환된다",
+      "evidence": "RED 1차는 필드 및 기능 부재 컴파일 실패, 2차는 재봉인 미실행으로 packet generation이 1로 남는 실패와 generation 2 claim이 조작 packet을 통과하는 실패로 확인한 뒤 GREEN 전환",
+      "result": "PASS"
+    }
+  ],
+  "verification": [
+    {
+      "command": "go test internal/core/issueops",
+      "result": "ok"
+    },
+    {
+      "command": "go test 전체 패키지",
+      "result": "ok"
+    },
+    {
+      "command": "go test cmd/harness/contractgolden Golden",
+      "result": "ok"
+    },
+    {
+      "command": "agent-harness issueops pr-readiness --strict",
+      "result": "ready true"
+    }
+  ],
+  "commits": [
+    {
+      "sha": "1ce18e6",
+      "subject": "chore(issueops): record the 123 sealed packet lifecycle plan"
+    },
+    {
+      "sha": "016d64f",
+      "subject": "fix(issueops): reseal the owner packet on reseed and verify every generation"
+    }
+  ],
+  "ai_slop_clean": "diff 316 삽입 18 삭제 전수 점검. 새 봉인 로직을 쓰지 않고 워크트리 단계 조합을 재사용했으며 새 CLI 표면과 상태 필드와 요청 플래그를 추가하지 않았다",
+  "deviations": [
+    "brooks 격리 서브에이전트를 띄우지 못했다: 이 세션은 sub-agent dispatch가 정책으로 금지되어 devil's advocate 검토를 메인 에이전트가 직접 수행했다. 반론 중 재봉인 실패 시 중간 상태 문제를 수용해 persist 이전 수행으로 설계를 보강했다.",
+    "계획의 2커밋 분리를 지키지 못했다: 재봉인과 검증 확대가 상호 의존해 검증만 먼저 커밋하면 새 세대 packet 부재로 테스트가 깨진다. 커밋 단위 green을 유지하기 위해 단일 구현 커밋으로 합쳤다.",
+    "실환경 도그푸드 불가: 활성 orca 사이클이 0건이어서 단위 테스트로만 검증했다. 다음 orca 사이클이 첫 실환경 검증 기회다."
+  ],
+  "blockers": "none",
+  "draft_pr": "https://github.com/m16khb/agent-harness/pull/124"
+}
