@@ -50,8 +50,10 @@
     },
     {
       "id": "AC-02",
-      "statement": "fail-closed 전수(fake Git): 미머지 artifact, readback 실패, stale fingerprint, 머지 후 push된 tip, 타 브랜치 PR artifact, 동명 태그(fully-qualified 검증), origin 부재/unreadable, 부재 재실행 멱등, lease active 거부.",
+      "statement": "fail-closed 전수(fake Git): 미머지 artifact, readback 실패, stale fingerprint, 머지 후 push된 tip, 타 브랜치 PR artifact, 동명 태그(fully-qualified 검증), origin 부재/unreadable, 부재 재실행 멱등, lease active 거부. 게이트 12종을 모두 덮는다.",
       "tests": [
+        "TestCleanupRemoteBranchGatesRejectUnrecordedBranch -> branch_recorded",
+        "TestCleanupRemoteBranchFailsClosed/branch_name_no_longer_valid -> branch_name_revalidated",
         "TestCleanupRemoteBranchFailsClosed/unmerged_artifact -> remote_artifact_merged",
         "TestCleanupRemoteBranchFailsClosed/readback_failure -> remote_artifact_merged",
         "TestCleanupRemoteBranchFailsClosed/tip_pushed_after_merge -> remote_tip_equals_merged_head",
@@ -69,7 +71,7 @@
       ],
       "command": "go -C <worktree> test <worktree>/internal/core/issueops -run CleanupRemoteBranch -count=1; go -C <worktree> test <worktree>/internal/core/issueops",
       "result": "PASS",
-      "observed": "차단된 게이트에서 push 호출 0회를 각 케이스가 단언. 동명 태그 보호는 fake Git이 fully-qualified 질의가 아니면 refs/tags를 돌려주고 삭제도 거부하도록 구성해, 실제 발행 명령이 refs/heads 완전수식이며 --force-with-lease가 관측 OID에 결속됨을 리터럴 비교로 고정. finish의 remote_branch_absent는 잔존과 관측 불가 모두 차단."
+      "observed": "차단된 게이트에서 push 호출 0회를 각 케이스가 단언. branch_recorded는 store가 빈 workspace branch를 거부해 저장 픽스처로 도달할 수 없어 판정 함수를 직접 호출해 고정했다(brooks 리뷰 medium 지적 반영). 동명 태그 보호는 fake Git이 fully-qualified 질의가 아니면 refs/tags를 돌려주고 삭제도 거부하도록 구성해, 실제 발행 명령이 refs/heads 완전수식이며 --force-with-lease가 관측 OID에 결속됨을 리터럴 비교로 고정. finish의 remote_branch_absent는 잔존과 관측 불가 모두 차단."
     },
     {
       "id": "AC-03",
@@ -101,6 +103,23 @@
     "중복 로직 제거: VerifyRemoteArtifactMergedLive를 신규 MergedHead 경로 위임으로 축약해 provider 분기 이중화를 만들지 않음",
     "legacy shim 없음, 추측성 추상화 없음, 요청 밖 파일 무변경"
   ],
+  "implementation_review": {
+    "reviewer_host": "claude",
+    "reviewer_model": "claude-fable-5",
+    "reviewer_effort": "high",
+    "skill": "brooks",
+    "verdict": "pass",
+    "acted_on": [
+      "medium: 게이트 branch_recorded와 branch_name_revalidated 테스트 공백 -> 두 케이스 추가",
+      "low: 테스트 주석의 fail-closed 9종 표기와 실제 케이스 수 불일치 -> 게이트 12종 전수로 정정"
+    ],
+    "accepted_as_designed": [
+      "low: absent 경로 apply가 confirm 검사보다 앞 -> 이슈의 absent-first 평가 순서가 요구하는 바이며 비파괴 경로다",
+      "low: ls-remote 3분류가 remote-branch와 finish에 각각 인라인 -> 두 Git dep 서명이 다르고 finish의 판정은 present 여부만 필요해 공통화 이득이 없다",
+      "low: readback 실패 시 remote_tip_equals_merged_head가 함께 missing -> fail-closed 유지, 원인은 artifact_error 필드로 구분된다",
+      "low: finish 기본 git 러너 교체의 잔여 회귀 표면 -> deviations에 기록된 의도된 변경"
+    ]
+  },
   "deviations": [
     "plan artifact는 deps를 VerifyMerged 재사용으로 적었으나, 이슈 게이트 ⑨·⑩이 headRefName/headRefOid를 요구하므로 단일 readback 표면 VerifyMergedHead를 추가했다(이슈 본문이 SSOT).",
     "cleanup finish의 기본 Git 러너를 preflight.GitCmd에서 sync-base의 비대화·timeout 계약으로 바꿨다. 새 remote_branch_absent 게이트가 finish에 첫 네트워크 호출을 들여오기 때문이며, 그 계약 없이는 자격증명 프롬프트가 세션을 붙잡는다.",

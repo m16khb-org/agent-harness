@@ -172,7 +172,7 @@ func TestCleanupRemoteBranchDeleteUsesFullyQualifiedRefAndForceWithLease(t *test
 	}
 }
 
-// AC-02: fail-closed 9종 전수.
+// AC-02: 게이트 12종 전수 거부.
 func TestCleanupRemoteBranchFailsClosed(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -265,6 +265,15 @@ func TestCleanupRemoteBranchFailsClosed(t *testing.T) {
 			mutate:  func(rec *IssueOpsRecord) { rec.RemoteArtifact = nil },
 			missing: "remote_artifact_present",
 		},
+		{
+			// 수동 편집된 레코드가 임의 ref를 지우지 못하게 삭제 직전 재검증한다.
+			name: "branch name no longer valid",
+			mutate: func(rec *IssueOpsRecord) {
+				rec.Branch = "release-candidate"
+				rec.Execution.Workspace.Branch = "release-candidate"
+			},
+			missing: "branch_name_revalidated",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -288,6 +297,23 @@ func TestCleanupRemoteBranchFailsClosed(t *testing.T) {
 				t.Fatalf("a blocked gate must never push: %v", git.pushArgs)
 			}
 		})
+	}
+}
+
+// 게이트 ①은 store가 거부하는 레코드 형태(빈 workspace branch)를 방어하므로
+// 저장된 픽스처로는 도달할 수 없다. 판정 함수를 직접 호출해 고정한다 — 그렇지
+// 않으면 이 방어를 삭제해도 어떤 테스트도 깨지지 않는다.
+func TestCleanupRemoteBranchGatesRejectUnrecordedBranch(t *testing.T) {
+	git := remoteBranchGit()
+	result := CleanupRemoteBranchResult{}
+	_, missing := cleanupRemoteBranchGates(context.Background(), IssueOpsRecord{
+		ID: "io-test", Repo: t.TempDir(), Phase: IssueOpsPhaseDone,
+	}, remoteBranchDeps(git), &result)
+	if !containsString(missing, "branch_recorded") {
+		t.Fatalf("an unrecorded branch must block: %v", missing)
+	}
+	if git.pushes != 0 {
+		t.Fatalf("gate evaluation must never push: %v", git.pushArgs)
 	}
 }
 
