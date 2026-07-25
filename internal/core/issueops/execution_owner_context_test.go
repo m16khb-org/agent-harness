@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
 
@@ -115,6 +116,207 @@ func TestExecutionInitialOrcaClaimRejectsIssueOrPacketDigestDrift(t *testing.T) 
 			}
 			if current.Execution.Lease.Status != model.LeaseStatusClaimable {
 				t.Fatalf("digest drift changed lease authority: %#v", current.Execution.Lease)
+			}
+		})
+	}
+}
+
+// sealedOrcaCycle는 봉인이 끝난 claimable orca 사이클을 만든다. reseed와 세대
+// 검증 테스트가 같은 출발점을 공유해야 재봉인 전후를 비교할 수 있다.
+func sealedOrcaCycle(t *testing.T, issueBody string) (string, IssueOpsRecord, ExecutionPrepareResult, ExecutionIssueSnapshotReadFunc) {
+	t.Helper()
+	stateRoot, record := executionPrepareRecord(t)
+	fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
+	// reseed는 워크스페이스 스냅샷으로 Git top-level을 확인하므로 fake가 실제
+	// 워크트리를 만들어야 한다(디렉토리만 만들면 재봉인 경로에 닿지 못한다).
+	fake.prepare = func(workspace port.ExecutionWorkspaceRequest, _ port.ExecutionOrcaProbeRequest) (port.ExecutionOrcaWorkspaceReceipt, error) {
+		if code, _, stderr := preflight.GitCmd(workspace.SourceRoot, "worktree", "add", "-q", "-b", workspace.Branch, workspace.Root, workspace.BaseHead); code != 0 {
+			return port.ExecutionOrcaWorkspaceReceipt{}, fmt.Errorf("git worktree add: %s", stderr)
+		}
+		return executionOrcaWorkspaceReceipt(workspace), nil
+	}
+	reader := func(_ context.Context, _ string, _ port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
+		return port.ExecutionIssueSnapshot{URL: record.IssueURL, Body: issueBody}, nil
+	}
+	prepared, err := PrepareExecution(context.Background(), stateRoot, ExecutionPrepareRequest{
+		ID: record.ID, Mode: "orca", CWD: record.Repo, Confirm: true,
+		Actor: executionActor("codex", "coordinator"), OwnerHost: "claude", OwnerModel: "caller-model",
+	}, ExecutionPrepareDependencies{Orca: fake, ReadIssue: reader})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return stateRoot, record, prepared, reader
+}
+
+// quiescentOrcaReplaceDeps는 owner가 이미 사라진 상태를 흉내내 reseed가 인벤토리
+// 게이트를 통과하게 한다. 재봉인 동작만 관찰하기 위한 최소 구성이다.
+func quiescentOrcaReplaceDeps(reader ExecutionIssueSnapshotReadFunc) ExecutionReplaceDependencies {
+	return ExecutionReplaceDependencies{
+		OrcaOwner: &executionOrcaOwnerInspectorFake{},
+		ReadIssue: reader,
+	}
+}
+
+func decodeOwnerPacketFile(t *testing.T, path string) map[string]any {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var packet map[string]any
+	if err := json.Unmarshal(data, &packet); err != nil {
+		t.Fatal(err)
+	}
+	return packet
+}
+
+// reseed는 generation을 올리고 claim token을 재발급하지만 packet을 재봉인하지
+// 않았다. 그 결과 새 세대 owner가 lease_generation 1과 구 token 경로가 박힌
+// packet을 읽는다.
+func TestExecutionReseedResealsOwnerPacketForTheNewGeneration(t *testing.T) {
+	issueBody := "## acceptance criteria\n\n- [ ] AC-01: first\n\n## 검증 명령\n\n```bash\ngo test ./... -count=1\n```\n"
+	stateRoot, record, prepared, reader := sealedOrcaCycle(t, issueBody)
+	requester := executionActor("codex", "reseed-requester")
+	preview, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplacePreview, ExpectedGeneration: 1, Actor: requester, CWD: record.Repo,
+	}, quiescentOrcaReplaceDeps(reader))
+	if err != nil {
+		t.Fatal(err)
+	}
+	reseeded, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
+		InventoryFingerprint: preview.InventoryFingerprint, Reason: "owner terminal lost before claim",
+		Actor: requester, CWD: record.Repo, Confirm: true,
+	}, quiescentOrcaReplaceDeps(reader))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reseeded.Execution.Lease.Generation != 2 {
+		t.Fatalf("reseed did not rotate the generation: %#v", reseeded.Execution.Lease)
+	}
+	if strings.TrimSpace(reseeded.ContextPacketSHA256) == "" || reseeded.ContextPacketSHA256 == prepared.ContextPacketSHA256 {
+		t.Fatalf("reseed must publish a resealed packet digest: got %q, prior %q", reseeded.ContextPacketSHA256, prepared.ContextPacketSHA256)
+	}
+	// packet 경로는 세대별로 격리되므로(generation-N 디렉토리) 재봉인은 새 세대
+	// 경로에 써야 한다. 재봉인이 없으면 그 경로에 파일이 아예 없어 claim이 읽기
+	// 실패로 거부된다 — 검증 확대와 재봉인을 함께 넣어야 하는 이유다.
+	if reseeded.ContextPacketPath == prepared.ContextPacketPath {
+		t.Fatalf("resealed packet must live under the new generation path: %q", reseeded.ContextPacketPath)
+	}
+	packet := decodeOwnerPacketFile(t, reseeded.ContextPacketPath)
+	if generation, _ := packet["lease_generation"].(float64); uint64(generation) != 2 {
+		t.Fatalf("resealed packet must carry the new generation: %#v", packet["lease_generation"])
+	}
+	if tokenFile, _ := packet["claim_token_file"].(string); tokenFile != reseeded.ClaimTokenPath {
+		t.Fatalf("resealed packet must point at the new claim token: %q want %q", tokenFile, reseeded.ClaimTokenPath)
+	}
+}
+
+// 봉인 이후 이슈 본문이 정당하게 개정되면 claim이 영구 거부됐다. reseed가
+// 현재 본문으로 재봉인하면 회복 경로가 생긴다.
+func TestExecutionReseedRecoversFromLegitimateIssueRevision(t *testing.T) {
+	issueBody := "## acceptance criteria\n\n- [ ] AC-01: first\n\n## 검증 명령\n\n```bash\ngo test ./... -count=1\n```\n"
+	stateRoot, record, prepared, _ := sealedOrcaCycle(t, issueBody)
+	revised := issueBody + "\n- [ ] AC-02: 사용자 요청으로 추가된 수용 기준\n"
+	revisedReader := func(_ context.Context, _ string, _ port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
+		return port.ExecutionIssueSnapshot{URL: record.IssueURL, Body: revised}, nil
+	}
+	if _, err := ClaimExecutionWithDependencies(context.Background(), stateRoot, ExecutionClaimRequest{
+		ID: record.ID, Generation: 1, Actor: executionActor("claude", "owner"), CWD: prepared.Workspace.Root,
+		TokenFile: prepared.ClaimTokenPath, IssueBodySHA256: prepared.IssueBodySHA256, ContextPacketSHA256: prepared.ContextPacketSHA256,
+	}, ExecutionClaimDependencies{ReadIssue: revisedReader}); err == nil {
+		t.Fatal("claim against a revised issue must be rejected before reseed")
+	}
+	requester := executionActor("codex", "reseed-requester")
+	preview, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplacePreview, ExpectedGeneration: 1, Actor: requester, CWD: record.Repo,
+	}, quiescentOrcaReplaceDeps(revisedReader))
+	if err != nil {
+		t.Fatal(err)
+	}
+	reseeded, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
+		InventoryFingerprint: preview.InventoryFingerprint, Reason: "issue scope revised by the user",
+		Actor: requester, CWD: record.Repo, Confirm: true,
+	}, quiescentOrcaReplaceDeps(revisedReader))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ClaimExecutionWithDependencies(context.Background(), stateRoot, ExecutionClaimRequest{
+		ID: record.ID, Generation: 2, Actor: executionActor("claude", "owner"), CWD: prepared.Workspace.Root,
+		TokenFile: reseeded.ClaimTokenPath, IssueBodySHA256: reseeded.IssueBodySHA256, ContextPacketSHA256: reseeded.ContextPacketSHA256,
+	}, ExecutionClaimDependencies{ReadIssue: revisedReader}); err != nil {
+		t.Fatalf("reseed must restore a claimable sealed context: %v", err)
+	}
+}
+
+// generation 1이 아닌 claim은 digest 검증 자체를 건너뛰어 낡은 packet이 무음으로
+// 통과했다. 봉인의 목적이 generation 2부터 사라지는 구멍이다.
+func TestExecutionClaimVerifiesSealedPacketBeyondTheFirstGeneration(t *testing.T) {
+	issueBody := "## acceptance criteria\n\n- [ ] AC-01: first\n\n## 검증 명령\n\n```bash\ngo test ./... -count=1\n```\n"
+	stateRoot, record, prepared, reader := sealedOrcaCycle(t, issueBody)
+	requester := executionActor("codex", "reseed-requester")
+	preview, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplacePreview, ExpectedGeneration: 1, Actor: requester, CWD: record.Repo,
+	}, quiescentOrcaReplaceDeps(reader))
+	if err != nil {
+		t.Fatal(err)
+	}
+	reseeded, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
+		InventoryFingerprint: preview.InventoryFingerprint, Reason: "owner terminal lost before claim",
+		Actor: requester, CWD: record.Repo, Confirm: true,
+	}, quiescentOrcaReplaceDeps(reader))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 재봉인 이후 새 세대 packet을 외부에서 바꿔치기한다: generation 2 claim도 이를 잡아야 한다.
+	if err := os.WriteFile(reseeded.ContextPacketPath, []byte("{}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err = ClaimExecutionWithDependencies(context.Background(), stateRoot, ExecutionClaimRequest{
+		ID: record.ID, Generation: 2, Actor: executionActor("claude", "owner"), CWD: prepared.Workspace.Root,
+		TokenFile: reseeded.ClaimTokenPath, IssueBodySHA256: reseeded.IssueBodySHA256, ContextPacketSHA256: reseeded.ContextPacketSHA256,
+	}, ExecutionClaimDependencies{ReadIssue: reader})
+	if err == nil || !strings.Contains(err.Error(), "digest") {
+		t.Fatalf("tampered packet must reject a later-generation claim: %v", err)
+	}
+}
+
+// drift 오류가 사실만 알리면 owner는 원인을 특정할 수 없다. digest는 secret이
+// 아니므로 expected와 observed를 병기한다.
+func TestExecutionClaimDigestDriftErrorsCarryExpectedAndObserved(t *testing.T) {
+	issueBody := "## acceptance criteria\n\n- [ ] AC-01: first\n\n## 검증 명령\n\n```bash\ngo test ./... -count=1\n```\n"
+	for _, drift := range []string{"issue", "packet"} {
+		t.Run(drift, func(t *testing.T) {
+			stateRoot, record, prepared, reader := sealedOrcaCycle(t, issueBody)
+			observed := ""
+			if drift == "issue" {
+				revised := issueBody + "\nchanged"
+				observed = digestOwnerFixture([]byte(revised))
+				reader = func(_ context.Context, _ string, _ port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
+					return port.ExecutionIssueSnapshot{URL: record.IssueURL, Body: revised}, nil
+				}
+			} else {
+				tampered := []byte("{}\n")
+				observed = digestOwnerFixture(tampered)
+				if err := os.WriteFile(prepared.ContextPacketPath, tampered, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			_, err := ClaimExecutionWithDependencies(context.Background(), stateRoot, ExecutionClaimRequest{
+				ID: record.ID, Generation: 1, Actor: executionActor("claude", "owner"), CWD: prepared.Workspace.Root,
+				TokenFile: prepared.ClaimTokenPath, IssueBodySHA256: prepared.IssueBodySHA256, ContextPacketSHA256: prepared.ContextPacketSHA256,
+			}, ExecutionClaimDependencies{ReadIssue: reader})
+			if err == nil {
+				t.Fatalf("%s drift must reject the claim", drift)
+			}
+			expected := prepared.IssueBodySHA256
+			if drift == "packet" {
+				expected = prepared.ContextPacketSHA256
+			}
+			if !strings.Contains(err.Error(), expected) || !strings.Contains(err.Error(), observed) {
+				t.Fatalf("%s drift error must carry expected and observed digests: %v", drift, err)
 			}
 		})
 	}

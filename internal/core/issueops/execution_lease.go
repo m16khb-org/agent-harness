@@ -76,11 +76,21 @@ type ExecutionReplaceResult struct {
 	InventoryFingerprint  string          `json:"inventory_fingerprint,omitempty"`
 	QuiescenceFingerprint string          `json:"quiescence_fingerprint,omitempty"`
 	ClaimTokenPath        string          `json:"claim_token_path,omitempty"`
-	NextCommand           string          `json:"next_command,omitempty"`
+	// 아래 네 값은 reseed가 새 generation으로 재봉인한 owner artifact의 정체다.
+	// owner는 이 digest들을 claim 명령에 그대로 넣어야 하므로 결과에 노출한다.
+	IssueBodySHA256     string `json:"issue_body_sha256,omitempty"`
+	ContextPacketPath   string `json:"context_packet_path,omitempty"`
+	ContextPacketSHA256 string `json:"context_packet_sha256,omitempty"`
+	OwnerPromptPath     string `json:"owner_prompt_path,omitempty"`
+	OwnerPromptSHA256   string `json:"owner_prompt_sha256,omitempty"`
+	NextCommand         string `json:"next_command,omitempty"`
 }
 
 type ExecutionReplaceDependencies struct {
 	OrcaOwner port.ExecutionOrcaOwnerInspector
+	// ReadIssue는 reseed의 재봉인이 현재 이슈 본문을 다시 읽는 경로다. orca
+	// 사이클에서 누락되면 재봉인이 fail-closed로 거부된다.
+	ReadIssue ExecutionIssueSnapshotReadFunc
 }
 
 func StatusExecution(stateRoot, id string) (ExecutionResult, error) {
@@ -98,7 +108,7 @@ func ClaimExecutionWithDependencies(ctx context.Context, stateRoot string, req E
 	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
 		return ExecutionResult{OK: false, ID: req.ID}, err
 	}
-	validatePacket, err := validateExecutionInitialClaimContext(ctx, stateRoot, req, deps)
+	validatePacket, err := validateExecutionClaimContext(ctx, stateRoot, req, deps)
 	if err != nil {
 		return ExecutionResult{OK: false, ID: req.ID}, err
 	}
@@ -273,6 +283,7 @@ func previewExecutionFinalization(ctx context.Context, stateRoot string, req Exe
 func mutateExecutionReplacement(ctx context.Context, stateRoot string, req ExecutionReplaceRequest, deps ExecutionReplaceDependencies) (ExecutionReplaceResult, error) {
 	var persisted IssueOpsRecord
 	var tokenPath string
+	var resealed executionOwnerReseal
 	err := withIssueOpsLock(ctx, stateRoot, req.ID, func(context.Context) error {
 		record, err := executionRecordAtGeneration(stateRoot, req.ID, req.ExpectedGeneration)
 		if err != nil {
@@ -352,6 +363,15 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 			lease.ClaimTokenSHA256 = tokenSHA256(token)
 			lease.ReplacedAt = now
 			lease.ReplacementReason = strings.TrimSpace(req.Reason)
+			// 재봉인은 persist 이전에 수행한다: 실패하면 generation이 올라간
+			// 상태만 남고 packet이 없는 중간 상태가 생기므로, 새 token을
+			// 정리하고 아무것도 기록하지 않는다(brooks 반론 수용).
+			reseal, err := resealOwnerContextForReseed(ctx, stateRoot, record, deps)
+			if err != nil {
+				_ = os.Remove(path)
+				return err
+			}
+			resealed = reseal
 			persisted, err = persistExecutionTransition(stateRoot, record, nil)
 			if err != nil {
 				_ = os.Remove(path)
@@ -363,7 +383,62 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 	if err != nil {
 		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, err
 	}
-	return replaceResult(persisted, req.Action, "", "", tokenPath), nil
+	result := replaceResult(persisted, req.Action, "", "", tokenPath)
+	result.IssueBodySHA256 = resealed.issueBodySHA256
+	result.ContextPacketPath, result.ContextPacketSHA256 = resealed.packetPath, resealed.packetSHA256
+	result.OwnerPromptPath, result.OwnerPromptSHA256 = resealed.promptPath, resealed.promptSHA256
+	return result, nil
+}
+
+// executionOwnerReseal은 reseed가 재봉인한 owner artifact의 정체다. direct 모드
+// 사이클에서는 모든 필드가 빈 값으로 남는다(재봉인 대상이 아니다).
+type executionOwnerReseal struct {
+	issueBodySHA256 string
+	packetPath      string
+	packetSHA256    string
+	promptPath      string
+	promptSHA256    string
+}
+
+// resealOwnerContextForReseed는 새 generation과 새 claim token이 반영된 레코드를
+// 기준으로 owner packet과 prompt를 다시 봉인한다.
+//
+// 봉인은 원래 prepare의 worktree 단계에서 단 1회 일어났고 reseed는 lease만
+// 회전시켰다. 그 결과 새 세대 owner가 lease_generation과 claim_token_file이
+// 어긋난 낡은 packet을 읽었고, 봉인 이후 이슈 본문이 정당하게 개정되면 재봉인
+// 수단이 없어 claim이 영구 거부됐다. 여기서 현재 이슈 본문을 다시 읽어 봉인하면
+// 두 문제가 함께 해소된다.
+//
+// 원격 읽기 실패는 통과가 아니라 거부다: 낡은 packet으로 owner를 띄우는 것보다
+// reseed를 멈추는 편이 안전하고 재시도로 해소된다.
+func resealOwnerContextForReseed(ctx context.Context, stateRoot string, record IssueOpsRecord, deps ExecutionReplaceDependencies) (executionOwnerReseal, error) {
+	if record.Execution == nil || record.Execution.Mode != model.ExecutionModeOrca || record.Execution.Orca == nil {
+		return executionOwnerReseal{}, nil
+	}
+	if deps.ReadIssue == nil {
+		return executionOwnerReseal{}, fmt.Errorf("reseed cannot reseal the owner context without a remote issue reader")
+	}
+	snapshot, err := readExecutionOwnerSnapshot(ctx, record, deps.ReadIssue)
+	if err != nil {
+		return executionOwnerReseal{}, fmt.Errorf("reseed stopped because the remote issue could not be read for resealing: %w", err)
+	}
+	manifest, err := materializeStagedArtifacts(stateRoot, record)
+	if err != nil {
+		return executionOwnerReseal{}, err
+	}
+	binding := record.Execution.Orca
+	artifacts, err := buildExecutionOwnerArtifacts(record, ExecutionPrepareRequest{
+		ID: record.ID, Mode: string(model.ExecutionModeOrca), OwnerHost: binding.OwnerHost,
+		OwnerModel: binding.OwnerModel, OwnerEffort: binding.OwnerEffort,
+	}, snapshot, manifest)
+	if err != nil {
+		return executionOwnerReseal{}, err
+	}
+	return executionOwnerReseal{
+		issueBodySHA256: snapshot.issue.BodySHA256,
+		packetPath:      artifacts.packetPath, packetSHA256: artifacts.packetSHA256,
+		promptPath: artifacts.promptPath, promptSHA256: artifacts.promptSHA256,
+	}, nil
 }
 
 func executionRecordAtGeneration(stateRoot, id string, generation uint64) (IssueOpsRecord, error) {
