@@ -30,7 +30,7 @@ func ParseExactIssueOpsCommand(command string) (ExactIssueOpsCommand, bool) {
 	start := 3
 	if len(tokens) > 3 {
 		switch tokens[2] {
-		case "compatibility", "execution", "devils-advocate", "feedback", "remote", "cleanup", "ai-slop-clean", "artifact", "implementation-review":
+		case "compatibility", "execution", "devils-advocate", "feedback", "remote", "cleanup", "ai-slop-clean", "artifact", "implementation-review", "branch":
 			if strings.HasPrefix(tokens[3], "--") {
 				return ExactIssueOpsCommand{}, false
 			}
@@ -109,6 +109,10 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v("--id", "--generation", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--json"), r, true
 	case "execution replace":
 		return v("--id", "--expected-generation", "--inventory-fingerprint", "--quiescence-fingerprint", "--reason", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--preview", "--revoke", "--finalize-preview", "--finalize", "--reseed", "--confirm", "--json"), r, true
+	case "execution whoami":
+		return v(), b("--json"), r, true
+	case "branch prepare":
+		return v("--id", "--provider", "--issue-url", "--branch", "--base-branch", "--base-sha", "--remote-branch-url", "--host", "--session-id", "--agent-id", "--cwd"), b("--link-verified", "--json"), r, true
 	case "execution reconcile":
 		return v("--id", "--operation-id", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--preview", "--confirm", "--json"), r, true
 	case "execution complete":

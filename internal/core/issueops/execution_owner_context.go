@@ -354,7 +354,7 @@ func validateExecutionOwnerPromptInputs(packet executionOwnerContextPacket, pack
 func executionOwnerCommandsFor(record IssueOpsRecord, req ExecutionPrepareRequest, issueBodySHA256 string) executionOwnerCommands {
 	generation := record.Execution.Lease.Generation
 	actorFlags := strings.Join([]string{
-		"--host", strings.ToLower(strings.TrimSpace(req.OwnerHost)), "--session-id", "<SESSION_ID>", "--agent-id", "<AGENT_ID_OR_NONE>",
+		"--host", strings.ToLower(strings.TrimSpace(req.OwnerHost)), "--session-id", "<SESSION_ID>",
 		"--session-pid", "<SESSION_PID>", "--session-started-at", "<SESSION_STARTED_AT>", "--session-executable", "<SESSION_EXECUTABLE>",
 		"--cwd", quoteExecutionOwnerArg(record.Execution.Workspace.Root),
 	}, " ")
@@ -377,7 +377,7 @@ func executionOwnerCommandsFor(record IssueOpsRecord, req ExecutionPrepareReques
 		" --generation " + strconv.FormatUint(generation, 10) + " --final-head <FINAL_HEAD> --turing-report " + quoteExecutionOwnerArg(executionOwnerTuringReportPath(record)) +
 		" --remote-artifact-url <DRAFT_PR_OR_MR_URL> --verification <VERIFICATION_EVIDENCE> " + actorFlags + " --confirm --json"
 	shortActor := strings.Join([]string{
-		"--host", strings.ToLower(strings.TrimSpace(req.OwnerHost)), "--session-id", "<SESSION_ID>", "--agent-id", "<AGENT_ID_OR_NONE>",
+		"--host", strings.ToLower(strings.TrimSpace(req.OwnerHost)), "--session-id", "<SESSION_ID>",
 		"--cwd", quoteExecutionOwnerArg(record.Execution.Workspace.Root),
 	}, " ")
 	plannerModel, plannerEffort, _ := port.IssueOpsPlannerDefaults(strings.ToLower(strings.TrimSpace(req.OwnerHost)))

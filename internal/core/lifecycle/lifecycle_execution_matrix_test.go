@@ -107,6 +107,9 @@ func TestExecutionShellReadersAreObservationFirst(t *testing.T) {
 		"find " + repo + " -maxdepth 1 -type f",
 		"stat " + filepath.Join(repo, "README.md"),
 		"file " + filepath.Join(repo, "README.md"),
+		// claim identity bootstrap(이슈 #90 발견 3): owner는 자기 native
+		// receipt를 관측할 admitted 표면이 필요하다.
+		"agent-harness issueops execution whoami --json",
 	}
 	for _, command := range commands {
 		t.Run(command, func(t *testing.T) {
@@ -398,7 +401,7 @@ func TestExecutionExactResourceWaitReachesCanonicalHolderFence(t *testing.T) {
 	wrongIdentity := holder
 	wrongIdentity.SessionID = "wrong-session"
 	got := BuildLifecyclePreToolUseDecision(wrongIdentity)
-	if got.Decision != "block" || got.Deny == nil || got.Deny.Code != "write_lease_required" {
+	if got.Decision != "block" || got.Deny == nil || got.Deny.Code != "holder_identity_mismatch" {
 		t.Fatalf("resource wait from a non-holder must remain behind the write lease: %+v", got)
 	}
 }
@@ -419,7 +422,7 @@ func TestExecutionExactLinkPlanReachesCanonicalHolderFence(t *testing.T) {
 	wrongIdentity := holder
 	wrongIdentity.SessionID = "wrong-session"
 	got := BuildLifecyclePreToolUseDecision(wrongIdentity)
-	if got.Decision != "block" || got.Deny == nil || got.Deny.Code != "write_lease_required" {
+	if got.Decision != "block" || got.Deny == nil || got.Deny.Code != "holder_identity_mismatch" {
 		t.Fatalf("link-plan from a non-holder must remain behind the write lease: %+v", got)
 	}
 }
@@ -590,9 +593,9 @@ func TestExecutionLeaseAllowsOnlyCurrentHolderInCanonicalRoot(t *testing.T) {
 
 	wrongSession := holder
 	wrongSession.SessionID = "other-session"
-	if got := BuildLifecyclePreToolUseDecision(wrongSession); got.Decision != "block" || !strings.Contains(got.Reason, "current write lease") {
+	if got := BuildLifecyclePreToolUseDecision(wrongSession); got.Decision != "block" || !strings.Contains(got.Reason, "different native identity") {
 		t.Fatalf("non-holder mutation was not denied by the v1 lease: %+v", got)
-	} else if got.Deny == nil || got.Deny.Code != "write_lease_required" || got.Deny.LifecycleID != linked.id ||
+	} else if got.Deny == nil || got.Deny.Code != "holder_identity_mismatch" || got.Deny.LifecycleID != linked.id ||
 		!sameExecutionPath(got.Deny.ExpectedRoot, linked.path) || got.Deny.CurrentGeneration != 4 ||
 		!strings.Contains(got.Deny.NextCommand, "issueops execution status --id "+linked.id) {
 		t.Fatalf("non-holder deny did not expose the structured v1 escape contract: %+v", got)
@@ -602,13 +605,13 @@ func TestExecutionLeaseAllowsOnlyCurrentHolderInCanonicalRoot(t *testing.T) {
 	reusedSession.NativeProcessAncestry = []issueopsmodel.NativeProcessReceipt{{
 		PID: 1234, StartedAt: "2026-07-22T00:00:01Z", Executable: "codex",
 	}}
-	if got := BuildLifecyclePreToolUseDecision(reusedSession); got.Decision != "block" || !strings.Contains(got.Reason, "current write lease") {
+	if got := BuildLifecyclePreToolUseDecision(reusedSession); got.Decision != "block" || !strings.Contains(got.Reason, "different native identity") {
 		t.Fatalf("reused session id from a different process identity was not denied: %+v", got)
 	}
 
 	missingProcess := holder
 	missingProcess.NativeProcessAncestry = nil
-	if got := BuildLifecyclePreToolUseDecision(missingProcess); got.Decision != "block" || !strings.Contains(got.Reason, "current write lease") {
+	if got := BuildLifecyclePreToolUseDecision(missingProcess); got.Decision != "block" || !strings.Contains(got.Reason, "different native identity") {
 		t.Fatalf("holder mutation without locally observed process identity was not denied: %+v", got)
 	}
 

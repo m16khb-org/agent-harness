@@ -114,6 +114,11 @@ type IssueOpsDenyReason struct {
 	ExpectedRoot      string `json:"expected_root"`
 	CurrentGeneration uint64 `json:"current_generation"`
 	NextCommand       string `json:"next_command"`
+	// IdentityMismatch/ObservedActor는 active holder identity 불일치 deny에서만
+	// 채워진다. 훅이 관측한 값을 에코하지 않으면 owner는 어떤 identity 축을
+	// 고쳐야 하는지 알 수 없어 추측 재시도만 반복한다(이슈 #90 발견 4).
+	IdentityMismatch string `json:"identity_mismatch,omitempty"`
+	ObservedActor    string `json:"observed_actor,omitempty"`
 }
 
 type LifecycleStopReminderResult struct {
