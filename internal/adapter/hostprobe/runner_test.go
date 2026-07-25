@@ -6,8 +6,8 @@ import (
 )
 
 func TestObservedModelFromOutputReadsOnlyStructuredModelFields(t *testing.T) {
-	output := []byte("{\"type\":\"system\",\"subtype\":\"init\",\"model\":\"claude-opus-4-8\"}\n{\"model\":\"later\"}\n")
-	if got := observedModelFromOutput(output); got != "claude-opus-4-8" {
+	output := []byte("{\"type\":\"system\",\"subtype\":\"init\",\"model\":\"claude-opus-5\"}\n{\"model\":\"later\"}\n")
+	if got := observedModelFromOutput(output); got != "claude-opus-5" {
 		t.Fatalf("observed model=%q", got)
 	}
 	if got := observedModelFromOutput([]byte(`{"text":"model=secret"}`)); got != "" {
