@@ -33,7 +33,14 @@ func ByID(store Store, stateRoot, id string, req model.IssueOpsCloseChildrenRequ
 		Confirmed: req.Confirm,
 		DryRun:    !req.Confirm,
 	}
-	if strings.TrimSpace(record.IssueURL) == "" && (req.Merged || req.MergeEvidenceRequested) {
+	if !req.Merged && !req.MergeEvidenceRequested {
+		result.Missing = []string{"merge_evidence"}
+		return result, fmt.Errorf("cannot close child tasks without merge evidence")
+	}
+	// 대체 증거 탐색이 부모 이슈를 통해 자식 계층을 조회하므로 이 검사가
+	// 먼저 서야 한다. 그러지 않으면 부모 미링크가 provider 파싱 실패로 둔갑해
+	// merge_evidence 오류로 잘못 보고된다.
+	if strings.TrimSpace(record.IssueURL) == "" {
 		result.Missing = []string{"parent_issue"}
 		return result, fmt.Errorf("cannot close child tasks before linked parent issue")
 	}
@@ -43,10 +50,6 @@ func ByID(store Store, stateRoot, id string, req model.IssueOpsCloseChildrenRequ
 		return result, err
 	}
 	result.EvidenceBasis = basis
-	if strings.TrimSpace(record.IssueURL) == "" {
-		result.Missing = []string{"parent_issue"}
-		return result, fmt.Errorf("cannot close child tasks before linked parent issue")
-	}
 
 	changed := false
 	for index, link := range record.IssueLinks {
@@ -97,9 +100,6 @@ func resolveEvidenceBasis(store Store, record model.IssueOpsRecord, req model.Is
 	if req.Merged {
 		return evidenceParentMergeVerified, nil
 	}
-	if !req.MergeEvidenceRequested {
-		return "", fmt.Errorf("cannot close child tasks without merge evidence")
-	}
 	if record.RemoteArtifact != nil {
 		// 부모가 원격 artifact를 가졌는데도 머지가 검증되지 않았다면 그것이
 		// 진짜 결론이다. 대체 증거로 우회해서는 안 된다.
@@ -114,8 +114,10 @@ func resolveEvidenceBasis(store Store, record model.IssueOpsRecord, req model.Is
 			return "", fmt.Errorf("cannot close child tasks without merge evidence: %w", err)
 		}
 		if !strings.EqualFold(state, "closed") {
-			return "", fmt.Errorf("cannot close child tasks without merge evidence: child %s is %s remotely",
-				link.URL, childStateForMessage(state))
+			if state == "" {
+				state = "unobserved"
+			}
+			return "", fmt.Errorf("cannot close child tasks without merge evidence: child %s is %s remotely", link.URL, state)
 		}
 	}
 	return evidenceChildrenAlreadyClosed, nil
@@ -142,13 +144,6 @@ func observeChildState(store Store, record model.IssueOpsRecord, link model.Issu
 		return "", err
 	}
 	return strings.TrimSpace(result.State), nil
-}
-
-func childStateForMessage(state string) string {
-	if strings.TrimSpace(state) == "" {
-		return "unobserved"
-	}
-	return state
 }
 
 func closeChild(store Store, record model.IssueOpsRecord, link model.IssueOpsIssueLink, req model.IssueOpsCloseChildrenRequest) (model.IssueOpsCloseChildResult, bool, error) {
