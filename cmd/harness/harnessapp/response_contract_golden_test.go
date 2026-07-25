@@ -48,7 +48,49 @@ func TestResponseContractsGolden(t *testing.T) {
 		"cli": buildCLIResponseContractSnapshot(t, replacements, stateDir, workspaceDir, gitRepoDir),
 		"mcp": buildMCPResponseContractSnapshot(t, replacements, workspaceDir, gitRepoDir),
 	}
-	assertJSONGolden(t, "response_contracts.golden.json", snapshot)
+	assertJSONGolden(t, "response_contracts.golden.json", normalizeDocsCountsForGolden(snapshot))
+}
+
+const docsCountGoldenPlaceholder = "$DOCS_COUNT"
+
+// normalizeDocsCountsForGolden은 tracked markdown 계수를 placeholder로 치환해
+// golden이 "오늘 저장소에 문서가 몇 개인가"가 아니라 응답의 형태를 기록하게
+// 한다(#109 — plan 문서 커밋마다 수동 동기화하던 함정의 구조적 제거). 수치일
+// 때만 치환한다: 비수치 docs_count는 계약 회귀라 golden이 그대로 잡아야 한다.
+func normalizeDocsCountsForGolden(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(typed))
+		for key, child := range typed {
+			if isDocsCountGoldenKey(key) && isDocsCountGoldenNumber(child) {
+				out[key] = docsCountGoldenPlaceholder
+				continue
+			}
+			out[key] = normalizeDocsCountsForGolden(child)
+		}
+		return out
+	case []any:
+		out := make([]any, 0, len(typed))
+		for _, child := range typed {
+			out = append(out, normalizeDocsCountsForGolden(child))
+		}
+		return out
+	default:
+		return value
+	}
+}
+
+func isDocsCountGoldenKey(key string) bool {
+	return key == "docs_count" || key == "docs_indexed"
+}
+
+func isDocsCountGoldenNumber(value any) bool {
+	switch value.(type) {
+	case int, int32, int64, float32, float64, json.Number:
+		return true
+	default:
+		return false
+	}
 }
 
 func assertJSONGolden(t *testing.T, name string, value any) {
