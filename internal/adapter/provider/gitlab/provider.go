@@ -394,7 +394,18 @@ func (Provider) CloseChild(req port.IssueProviderCloseChildRequest) (port.IssueP
 	if !req.Confirm {
 		preview := fmt.Sprintf("[dry-run] would execute: glab api graphql --hostname %s parentIid=%s children verify work_items/%s; workItemUpdate stateEvent: CLOSE; childCloseVerify",
 			hostname, parentIID, childIID)
-		return port.IssueProviderCloseChildResult{OK: true, Provider: "gitlab", ChildURL: strings.TrimSpace(req.ChildURL), Preview: preview}, nil
+		result := port.IssueProviderCloseChildResult{OK: true, Provider: "gitlab", ChildURL: strings.TrimSpace(req.ChildURL), Preview: preview}
+		// GitHub 쪽과 같은 계약이다: preview가 자식의 현재 원격 상태를 함께
+		// 관측한다. cleanup close-children이 부모 머지 증거 없이 정리해도
+		// 되는지 판정하는 근거다(#129). 읽기 전용이고 best-effort이므로 glab
+		// 부재나 조회 실패는 상태 미상으로 남기고 성공을 돌려준다.
+		if child, ok := observeGitLabChild(req.Repo, hostname, projectPath, parentIID, childIID); ok {
+			result.HierarchyVerified = true
+			result.State = child.State
+			result.AlreadyClosed = strings.EqualFold(child.State, "CLOSED")
+			result.ChildURL = providerutil.FirstNonEmpty(child.WebURL, result.ChildURL)
+		}
+		return result, nil
 	}
 	parent, err := runGlabGraphQL[gitlabParentIssueResponse](req.Repo, hostname, gitlabParentIssueQuery, map[string]string{
 		"projectPath": projectPath,
@@ -845,6 +856,34 @@ func gitlabChildrenContain(widgets []gitlabWorkItemWidget, id, iid string) bool 
 		}
 	}
 	return false
+}
+
+// observeGitLabChild는 부모 work item 계층에서 자식의 현재 상태를 읽는다.
+// 확인된 계층 소속일 때만 true다. 조회 실패는 오류가 아니라 미관측이다 —
+// preview에서만 쓰이며 호출자가 미상을 통과 근거로 인정하지 않는다.
+func observeGitLabChild(repo, hostname, projectPath, parentIID, childIID string) (gitlabWorkItem, bool) {
+	parent, err := runGlabGraphQL[gitlabParentIssueResponse](repo, hostname, gitlabParentIssueQuery, map[string]string{
+		"projectPath": projectPath,
+		"parentIid":   parentIID,
+	})
+	if err != nil {
+		return gitlabWorkItem{}, false
+	}
+	parentID := strings.TrimSpace(parent.Data.Project.Issue.ID)
+	if parentID == "" {
+		return gitlabWorkItem{}, false
+	}
+	children, err := runGlabGraphQL[gitlabHierarchyChildrenResponse](repo, hostname, gitlabHierarchyChildrenQuery, map[string]string{
+		"parentId": parentID,
+	})
+	if err != nil {
+		return gitlabWorkItem{}, false
+	}
+	child := gitlabChildByIID(children.Data.WorkItem.Widgets, childIID)
+	if strings.TrimSpace(child.ID) == "" {
+		return gitlabWorkItem{}, false
+	}
+	return child, true
 }
 
 func gitlabChildByIID(widgets []gitlabWorkItemWidget, iid string) gitlabWorkItem {
