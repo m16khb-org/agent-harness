@@ -78,6 +78,11 @@ func beginOrcaExecutionIntent(stateRoot string, record IssueOpsRecord, workspace
 		if current.Execution != nil {
 			return fmt.Errorf("IssueOps execution already exists; reconcile or inspect its current state")
 		}
+		// 위 검사는 자기 ID의 Execution만 본다 — 다른 레코드가 같은 canonical
+		// root를 주장하는 레코드 수준 레이스는 이 임계구역 재검사로만 봉합된다.
+		if err := ensureExecutionRootUnclaimed(stateRoot, current.ID, workspace.Root); err != nil {
+			return err
+		}
 		current.Execution = &model.Execution{
 			Mode: model.ExecutionModeOrca,
 			Workspace: model.Workspace{

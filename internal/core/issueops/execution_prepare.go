@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/core/issueops/pathutil"
 	issueremote "agent-harness/internal/core/issueops/remote"
 	"agent-harness/internal/port"
 )
@@ -90,6 +91,11 @@ func PrepareExecution(ctx context.Context, stateRoot string, req ExecutionPrepar
 	if err != nil {
 		return ExecutionPrepareResult{OK: false, ID: req.ID, RequestedMode: requested}, err
 	}
+	// preview·confirm 공통 조기 노출: 다른 lifecycle이 이미 이 canonical root를
+	// 주장하고 있으면 provisioner를 만지기 전에 선점 사이클을 그대로 알려준다.
+	if err := ensureExecutionRootUnclaimed(stateRoot, record.ID, workspaceReq.Root); err != nil {
+		return ExecutionPrepareResult{OK: false, ID: req.ID, RequestedMode: requested}, err
+	}
 	resolved, fallback, probe, err := resolveExecutionPrepareMode(ctx, record, req, requested, deps.Orca)
 	if err != nil {
 		return ExecutionPrepareResult{OK: false, ID: req.ID, RequestedMode: requested}, err
@@ -167,6 +173,11 @@ func prepareDirectExecution(ctx context.Context, stateRoot string, record IssueO
 		if current.Execution != nil {
 			persisted = current
 			return nil
+		}
+		// withIssueOpsLock은 state-root 전역 span이므로 락 밖 preview 검사 이후에
+		// 열린 TOCTOU 창을 임계구역에서 다시 닫는다.
+		if err := ensureExecutionRootUnclaimed(stateRoot, current.ID, record.WorktreePath); err != nil {
+			return err
 		}
 		current.WorktreePath = record.WorktreePath
 		current.Execution = record.Execution
@@ -309,6 +320,56 @@ func executionWorkspaceRequest(record IssueOpsRecord, confirm bool) (port.Execut
 		Branch: branch, BaseBranch: strings.TrimSpace(record.BranchPrepare.BaseBranch),
 		BaseHead: strings.TrimSpace(record.BranchPrepare.BaseSHA), Confirm: confirm,
 	}, nil
+}
+
+// ensureExecutionRootUnclaimed는 다른 lifecycle 레코드가 이미 주장한 canonical
+// worktree root를 fail-closed로 거부한다. leaf 파생(strings.ReplaceAll(branch,
+// "/", "-"))이 비단사라 "72/fix"와 "72-fix"가 같은 root로 접히지만 lifecycle ID는
+// 브랜치로 해시되어 서로 다른 레코드가 된다 — 두 사이클이 같은 워크트리를
+// 소유하는 불변식 위반을 prepare 입구에서 막는다.
+//
+// 스캔은 phase·lease 상태와 무관한 전 레코드다: cleanup finish가 워크트리를
+// 제거한 뒤에야 레코드를 삭제하므로 레코드의 존재가 곧 root 소유권이다.
+// WorktreePath와 Execution.Workspace.Root의 합집합을 보는 이유는 linking 경로가
+// Execution 없이 WorktreePath만 채울 수 있고 그 경로에는 레코드 간 유일성 검증이
+// 없기 때문이다. 읽기 오류는 통과가 아니라 거부다 — 손상된 레코드가 소유권
+// 주장을 조용히 잃어서는 안 된다.
+func ensureExecutionRootUnclaimed(stateRoot, selfID, root string) error {
+	target := pathutil.CleanAbsPath(root)
+	if target == "" {
+		return fmt.Errorf("canonical worktree root is required")
+	}
+	self := strings.TrimSpace(selfID)
+	ids, err := ListIssueOpsIDs(stateRoot)
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if id == self {
+			continue
+		}
+		record, err := readIssueOpsUnchecked(stateRoot, id)
+		if err != nil {
+			return fmt.Errorf("canonical worktree 소유권 스캔이 lifecycle %s 레코드를 읽지 못했다; 손상 레코드를 먼저 해소하라: %w", id, err)
+		}
+		for _, claimed := range []string{record.WorktreePath, executionRecordWorkspaceRoot(record)} {
+			if strings.TrimSpace(claimed) == "" || pathutil.CleanAbsPath(claimed) != target {
+				continue
+			}
+			return fmt.Errorf(
+				"canonical worktree %s는 이미 lifecycle %s(브랜치 %s)가 선점했다; 먼저 그 사이클을 정리하라: agent-harness issueops cleanup finish --id %s --preview --json",
+				target, id, strings.TrimSpace(record.Branch), id,
+			)
+		}
+	}
+	return nil
+}
+
+func executionRecordWorkspaceRoot(record IssueOpsRecord) string {
+	if record.Execution == nil {
+		return ""
+	}
+	return record.Execution.Workspace.Root
 }
 
 var issueOpsOwnerReportLabels = []string{
