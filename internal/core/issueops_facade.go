@@ -238,6 +238,7 @@ func IssueOpsCleanupFinish(ctx context.Context, stateRoot string, req IssueOpsCl
 }
 
 type ExecutionOrcaProvisioner = issueops.ExecutionOrcaProvisioner
+type ExecutionOrcaOwnerInspector = issueops.ExecutionOrcaOwnerInspector
 type IssueOpsCleanupAbandonRequest = issueops.CleanupAbandonRequest
 type IssueOpsCleanupAbandonDeps = issueops.CleanupAbandonDeps
 type IssueOpsCleanupAbandonResult = issueops.CleanupAbandonResult

@@ -448,19 +448,33 @@ func hasOrcaIdentity(cycle Cycle) bool {
 		strings.TrimSpace(cycle.TaskID) != "" || strings.TrimSpace(cycle.DispatchID) != ""
 }
 
+// knownTaskStatus reports whether a status is part of the vocabulary Orca can
+// report. The settled half must match the adapter's terminal set exactly: the
+// abandon gate (#136) trusts that set to decide whether deleting a record would
+// strand a task, so a status the gate treats as settled but this classifier does
+// not recognise would pass the gate and then be reported here forever — under a
+// different finding name, but stranded all the same.
 func knownTaskStatus(value string) bool {
 	switch value {
-	case "ready", "dispatched", "completed", "failed":
+	case "ready", "dispatched":
 		return true
 	default:
-		return false
+		return settledTaskStatus(value)
 	}
 }
 
 // settledTaskStatus reports whether a task reached a terminal state and can no
 // longer be dispatched or hold a worker.
+// The set mirrors the adapter's executionTerminalTaskStatus. Orca spells the
+// same outcome more than one way (complete/completed, cancelled/canceled), and
+// a cancelled or closed task is as unable to hold a worker as a completed one.
 func settledTaskStatus(value string) bool {
-	return value == "completed" || value == "failed"
+	switch value {
+	case "completed", "complete", "failed", "cancelled", "canceled", "closed":
+		return true
+	default:
+		return false
+	}
 }
 
 func knownGateStatus(value string) bool {

@@ -58,6 +58,13 @@ type CleanupAbandonRequest struct {
 type CleanupAbandonDeps struct {
 	Git  func(dir string, args ...string) (int, string)
 	Orca port.ExecutionOrcaProvisioner
+	// OrcaOwner는 게이트 ⑨가 orca 자원 잔여를 실조회할 때 쓴다. 게이트 ⑥은
+	// 로컬 디렉터리만 보므로 orca 레지스트리에 남은 task를 놓친다(#136).
+	//
+	// Orca와 같은 이유로 부재는 통과가 아니라 거부다. 다만 조회 자체는 orca
+	// 바인딩이 있는 레코드에서만 일어난다 — direct 사이클까지 어댑터를
+	// 요구하면 아무 관련 없는 정리가 막힌다.
+	OrcaOwner port.ExecutionOrcaOwnerInspector
 }
 
 type CleanupAbandonResult struct {
@@ -68,6 +75,7 @@ type CleanupAbandonResult struct {
 	Missing            []string `json:"missing,omitempty"`
 	ReasonError        string   `json:"reason_error,omitempty"`
 	PendingIntentError string   `json:"pending_intent_error,omitempty"`
+	OrcaResidueError   string   `json:"orca_residue_error,omitempty"`
 	Fingerprint        string   `json:"fingerprint,omitempty"`
 	WorktreePath       string   `json:"worktree_path,omitempty"`
 	Branch             string   `json:"branch,omitempty"`
@@ -241,7 +249,50 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record IssueOpsR
 			result.PendingIntentError = err.Error()
 		}
 	}
+	// ⑨ orca 자원 잔여. 게이트 ⑥은 로컬 디렉터리만 보므로 orca 레지스트리에
+	// 남은 task를 놓친다.
+	if err := cleanupAbandonOrcaResourcesAbsent(ctx, record, deps); err != nil {
+		missing = append(missing, "orca_resources_absent")
+		result.OrcaResidueError = err.Error()
+	}
 	return inventory, missing
+}
+
+// cleanupAbandonOrcaResourcesAbsent는 레코드를 지워도 orca 자원이 소유자를 잃지
+// 않는지 판정한다.
+//
+// abandon은 아무것도 지우지 않는 경로다. orca task가 살아 있는데 레코드를
+// 지우면 그 task는 소유자 조회가 영구히 0건이 되어 operational_task_residue로
+// 계속 보고된다 — #130이 정상 완료 경로에서 고친 것과 똑같은 증상이 이 경로로
+// 재현된다. 그래서 잔여물을 지울 수 있는 경로로 보낸다.
+//
+// 레코드에 바인딩이 있다는 것만으로 막지 않고 실조회한다. 그렇게 하면 orca에서
+// 이미 정리된 사이클까지 차단해 중도 포기 경로가 사라진다.
+//
+// 조회할 수 없으면 통과가 아니라 거부다(#106 pending_intent_safe와 같은 계약).
+func cleanupAbandonOrcaResourcesAbsent(ctx context.Context, record IssueOpsRecord, deps CleanupAbandonDeps) error {
+	if record.Execution == nil || record.Execution.Mode != model.ExecutionModeOrca || record.Execution.Orca == nil {
+		return nil
+	}
+	binding := *record.Execution.Orca
+	if strings.TrimSpace(binding.TaskID) == "" {
+		return nil
+	}
+	if deps.OrcaOwner == nil {
+		return fmt.Errorf("Orca owner inspector is not configured; resolve this cycle with `agent-harness issueops cleanup finish` or `agent-harness issueops cleanup orphan`")
+	}
+	inventory, err := deps.OrcaOwner.InspectOwner(ctx, port.ExecutionOrcaOwnerInventoryRequest{
+		RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, TaskID: binding.TaskID,
+		DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID,
+	})
+	if err != nil {
+		return fmt.Errorf("Orca owner inventory is ambiguous; resolve this cycle with `agent-harness issueops cleanup finish` or `agent-harness issueops cleanup orphan`: %w", err)
+	}
+	if inventory.TaskLive || inventory.TerminalLive {
+		return fmt.Errorf("Orca resources are still live (task_status=%q dispatch_status=%q terminal_live=%t); abandon leaves them without an owner, so use `agent-harness issueops cleanup finish` or `agent-harness issueops cleanup orphan`",
+			inventory.TaskStatus, inventory.DispatchStatus, inventory.TerminalLive)
+	}
+	return nil
 }
 
 // cleanupAbandonPendingSafe는 pending external intent를 가진 레코드를 삭제해도
