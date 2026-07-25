@@ -50,6 +50,8 @@ type ExecutionActionDependencies struct {
 	OrcaOwner port.ExecutionOrcaOwnerInspector
 	ReadIssue ExecutionIssueSnapshotReadFunc
 	RemotePR  RemotePullRequestDependencies
+	// SettleOrcaTask는 완료 시점의 orca task 종결 표면이다(#130).
+	SettleOrcaTask func(ctx context.Context, taskID string) error
 }
 
 func ExecuteExecution(ctx context.Context, stateRoot string, req ExecutionActionRequest, deps ExecutionActionDependencies) (any, error) {
@@ -87,7 +89,7 @@ func ExecuteExecution(ctx context.Context, stateRoot string, req ExecutionAction
 			ID: req.ID, Generation: req.Generation, Actor: req.Actor, CWD: req.CWD,
 			FinalHead: req.FinalHead, TuringReportPath: req.TuringReportPath,
 			Verification: req.Verification, RemoteArtifactURL: req.RemoteArtifactURL, Confirm: req.Confirm,
-		})
+		}, ExecutionCompleteDeps{SettleOrcaTask: deps.SettleOrcaTask})
 	default:
 		return nil, fmt.Errorf("unsupported issueops execution action %q", req.Action)
 	}

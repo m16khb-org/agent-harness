@@ -35,7 +35,7 @@ func TestExecutionCompletePersistsReceiptAndReleasesLease(t *testing.T) {
 		Verification:      []string{"go test ./... -count=1", "go test -race ./... -count=1"},
 		RemoteArtifactURL: "https://github.com/example/agent-harness/pull/69", Confirm: true,
 	}
-	completed, err := CompleteExecution(stateRoot, request)
+	completed, err := CompleteExecution(stateRoot, request, ExecutionCompleteDeps{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestExecutionCompletePersistsReceiptAndReleasesLease(t *testing.T) {
 	if entry := persisted.PhaseLedger[IssueOpsPhaseDone]; entry.EnteredAt == "" {
 		t.Fatalf("completion did not stamp the done ledger entry: %#v", persisted.PhaseLedger)
 	}
-	if _, err := CompleteExecution(stateRoot, request); err != nil {
+	if _, err := CompleteExecution(stateRoot, request, ExecutionCompleteDeps{}); err != nil {
 		t.Fatalf("byte-identical completion retry must be idempotent: %v", err)
 	}
 }
@@ -139,7 +139,7 @@ func TestExecutionCompleteRequiresVerifiedDurableRemoteArtifact(t *testing.T) {
 				ID: fixture.record.ID, Generation: 1, Actor: holder, CWD: fixture.worktree,
 				FinalHead: preflight.GitOut(fixture.worktree, "rev-parse", "HEAD"), TuringReportPath: report,
 				Verification: []string{"go test ./..."}, RemoteArtifactURL: requestURL, Confirm: true,
-			})
+			}, ExecutionCompleteDeps{})
 			if err == nil {
 				t.Fatalf("completion without %s was accepted", test.name)
 			}
@@ -177,11 +177,11 @@ func TestExecutionCompleteRejectsNonHolderAndMismatchedHead(t *testing.T) {
 		TuringReportPath: report, Verification: []string{"go test ./..."},
 		RemoteArtifactURL: "https://github.com/example/agent-harness/pull/69", Confirm: true,
 	}
-	if _, err := CompleteExecution(stateRoot, base); err == nil {
+	if _, err := CompleteExecution(stateRoot, base, ExecutionCompleteDeps{}); err == nil {
 		t.Fatal("non-holder completion was accepted")
 	}
 	base.Actor = holder
-	if _, err := CompleteExecution(stateRoot, base); err == nil {
+	if _, err := CompleteExecution(stateRoot, base, ExecutionCompleteDeps{}); err == nil {
 		t.Fatal("completion with a mismatched final HEAD was accepted")
 	}
 }

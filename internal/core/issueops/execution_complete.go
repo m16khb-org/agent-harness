@@ -36,7 +36,21 @@ type ExecutionCompleteRequest struct {
 	Confirm           bool              `json:"confirm"`
 }
 
-func CompleteExecution(stateRoot string, req ExecutionCompleteRequest) (ExecutionResult, error) {
+// ExecutionCompleteDeps는 완료 시점의 외부 표면 주입점이다.
+type ExecutionCompleteDeps struct {
+	// SettleOrcaTask는 사이클에 묶인 orca task를 terminal 상태로 옮긴다.
+	//
+	// 왜 완료 시점인가: task는 자원이 아니라 오케스트레이션 이력이므로 종결은
+	// 자원 회수가 아니라 작업 종료 사실의 기록이고, 그 시점은 owner의 마지막
+	// durable 행위인 완료다. cleanup finish에 두면 완료와 정리 사이 구간
+	// (사용자 머지 대기를 포함한다)에서 Orca가 task를 진행 중으로 오인한다.
+	//
+	// nil이면 종결을 건너뛴다. 종결 수단이 없다는 사실이 완료를 막아서는 안
+	// 된다 — Orca 상태 갱신은 durable state의 전제 조건이 아니다(#130).
+	SettleOrcaTask func(ctx context.Context, taskID string) error
+}
+
+func CompleteExecution(stateRoot string, req ExecutionCompleteRequest, deps ExecutionCompleteDeps) (ExecutionResult, error) {
 	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
 		return ExecutionResult{OK: false, ID: req.ID}, err
 	}
@@ -114,7 +128,31 @@ func CompleteExecution(stateRoot string, req ExecutionCompleteRequest) (Executio
 	if err != nil {
 		return ExecutionResult{OK: false, ID: req.ID}, err
 	}
-	return executionResult(persisted), nil
+	result := executionResult(persisted)
+	// 종결은 락 밖에서, 상태가 이미 커밋된 뒤에 일어난다. 완료는 원자적
+	// 상태 전이이고 외부 호출이 그 원자성을 흐려서는 안 된다.
+	settleExecutionOrcaTask(persisted, deps, &result)
+	return result, nil
+}
+
+// settleExecutionOrcaTask는 완료된 orca 사이클의 task를 terminal 상태로 옮기고
+// 그 결과를 표면화한다. best-effort다: 실패는 이미 커밋된 완료를 되돌리지 않고
+// 오류 사유만 결과에 남긴다(cleanup remote-branch의 audit 반영과 같은 계약).
+// 침묵하면 진단이 불가능하므로 실패를 삼키지는 않는다.
+func settleExecutionOrcaTask(record IssueOpsRecord, deps ExecutionCompleteDeps, result *ExecutionResult) {
+	if deps.SettleOrcaTask == nil || record.Execution == nil ||
+		record.Execution.Mode != model.ExecutionModeOrca || record.Execution.Orca == nil {
+		return
+	}
+	taskID := strings.TrimSpace(record.Execution.Orca.TaskID)
+	if taskID == "" {
+		return
+	}
+	if err := deps.SettleOrcaTask(context.Background(), taskID); err != nil {
+		result.OrcaTaskError = err.Error()
+		return
+	}
+	result.OrcaTaskSettled = true
 }
 
 func validateTerminalExecutionCompletion(record IssueOpsRecord, req ExecutionCompleteRequest, verification []string) error {

@@ -32,7 +32,9 @@ func runIssueOpsExecution(args []string) error {
 			},
 			Verify: verifyIssueOpsRemoteArtifactLive,
 		},
-		PrintJSON:  printJSON,
-		PrintError: printIssueOpsErrorJSON,
+		// 완료가 orca task를 종결시킨다(#130).
+		SettleOrcaTask: orca.New().SettleTask,
+		PrintJSON:      printJSON,
+		PrintError:     printIssueOpsErrorJSON,
 	})
 }
