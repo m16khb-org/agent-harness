@@ -1,0 +1,59 @@
+{
+  "issue": "https://github.com/m16khb/agent-harness/issues/129",
+  "cycle": "io-c328698d8e39",
+  "branch": "129-umbrella-branch-topology",
+  "final_head": "e5a785f1e457a7b9b3af794e4e240c0e1c7b8332",
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "statement": "우산 사이클이 자체 브랜치를 갖는다. split 결정 시 우산 브랜치 준비가 게이트로 요구된다.",
+      "verdict": "pass",
+      "evidence": "remote create-child가 provider 호출 이전에 core.UmbrellaBranchGateReason을 호출한다. TestCreateChildRequiresPreparedUmbrellaBranch가 배선을 고정하며, 게이트를 임시 비활성화하면 실제로 RED가 되는 것을 확인했다."
+    },
+    {
+      "id": "AC-02",
+      "statement": "자식 사이클의 branch_prepare.base_branch가 우산 브랜치로 기록된다.",
+      "verdict": "pass",
+      "evidence": "branchprepare.Prepare가 UmbrellaForChildIssue 역조회로 base_branch를 대조한다. TestPrepareRejectsChildBaseBranchOutsideUmbrella / TestPrepareAcceptsChildBaseBranchOnUmbrella."
+    },
+    {
+      "id": "AC-03",
+      "statement": "자식 PR의 base가 우산 브랜치가 아니면 기존 가드가 차단한다.",
+      "verdict": "pass",
+      "evidence": "기존 회귀 테스트 3건이 이미 고정한다: TestPreToolUseVCSLinkingBlocksGitLabMRTargetBranchMismatch, TestPreToolUseVCSLinkingBlocksGitHubPRBaseBranchMismatch, TestPreToolUseVCSLinkingAllowsPRTargetBranchFromBranchPrepare. 같은 계약을 다시 쓰면 어느 쪽이 근거인지 흐려지므로 중복 작성하지 않았다."
+    },
+    {
+      "id": "AC-04",
+      "statement": "우산 사이클이 자체 PR로 main에 합류하고 execution complete로 done에 도달할 수 있다.",
+      "verdict": "pass",
+      "evidence": "역조회가 우산 자신을 부모로 잡으면 base_branch가 자기 브랜치로 강요되어 main 합류가 막힌다. TestUmbrellaCycleForChildIssueDoesNotMatchItself가 이를 고정한다. done 사이클을 부모로 잡지 않는 것도 함께 고정했다."
+    },
+    {
+      "id": "AC-05",
+      "statement": "위상 규약 이전 레코드에도 정리 탈출구가 있다.",
+      "verdict": "pass_with_limitation",
+      "evidence": "cleanupchildren.resolveEvidenceBasis가 부모 머지 증거 부재 시 모든 자식의 원격 closed 상태를 대체 증거로 받는다. TestCloseChildrenAcceptsAlreadyClosedChildrenWithoutParentMergeEvidence. 한계: 대상 레코드 io-07a518945cf0의 실환경 도그푸드를 아직 하지 못했다. 그 조작이 이 사이클의 lease 가드에 걸리므로 머지 후 cleanup 단계에서 수행한다."
+    },
+    {
+      "id": "AC-06",
+      "statement": "자식이 원격에서 열려 있으면 여전히 차단한다.",
+      "verdict": "pass",
+      "evidence": "TestCloseChildrenRejectsOpenChildWithoutParentMergeEvidence, TestCloseChildrenRejectsUnknownChildStateWithoutParentMergeEvidence. 상태 미상도 통과가 아니라 거부다."
+    },
+    {
+      "id": "AC-07",
+      "statement": "각 결함이 RED 테스트로 선행 실증된 뒤 GREEN으로 전환된다.",
+      "verdict": "pass",
+      "evidence": "UmbrellaBranchGateReason 미정의, UmbrellaForChildIssue 미정의, MergeEvidenceRequested/EvidenceBasis 미정의, GitHub/GitLab preview 상태 미관측 네 건의 RED를 확인한 뒤 구현했다. active 패키지의 경계 테스트 4건은 이미 구현된 함수의 회귀 고정 목적이라 RED 단계가 없다."
+    }
+  ],
+  "verification": [
+    "go test ./... -count=1 전체 통과",
+    "go build ./... 통과",
+    "게이트 임시 비활성화로 CLI 테스트의 RED 확인"
+  ],
+  "limitations": [
+    "저자와 검토자가 분리되지 않았다. 세션 정책상 sub-agent dispatch가 금지되어 devil's advocate와 구현 검토를 메인 에이전트가 직접 수행했다.",
+    "pr-readiness가 lease 활성 중 어느 허용 목록에도 없어 unsafe_mutation으로 차단된다. 읽기 전용 명령이므로 별도 공백이며, remote create-pr가 readiness를 강제하므로 이 사이클에서는 치명적이지 않았다."
+  ]
+}
