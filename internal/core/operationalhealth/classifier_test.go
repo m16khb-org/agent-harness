@@ -219,6 +219,41 @@ func TestClassifyInteractiveProfileAcceptsUserTerminalsAndInboxHistory(t *testin
 	}
 }
 
+// A settled task is orchestration history, not residue: cleanup finish deletes
+// the record that owned it, so the owner index is permanently empty afterwards
+// and Orca exposes no per-task delete command to reach it.
+func TestClassifyExemptsSettledTasksFromOwnerRequirement(t *testing.T) {
+	for _, status := range []string{"completed", "failed"} {
+		snapshot := healthyDirectSnapshot()
+		snapshot.Tasks = []OrcaTask{{RuntimeID: "runtime", ID: "task-settled", Status: status, CompletedAt: time.Now().UTC()}}
+		result := Classify(snapshot, Options{Now: time.Now()})
+		if hasFinding(result, FindingTaskResidue, "task") {
+			t.Fatalf("settled %s task must not be task residue: %+v", status, result.Findings)
+		}
+	}
+}
+
+func TestClassifyStillFlagsUnsettledTasksWithoutOwner(t *testing.T) {
+	for _, status := range []string{"ready", "dispatched"} {
+		snapshot := healthyDirectSnapshot()
+		snapshot.Tasks = []OrcaTask{{RuntimeID: "runtime", ID: "task-open", Status: status}}
+		result := Classify(snapshot, Options{Now: time.Now()})
+		if !hasFinding(result, FindingTaskResidue, "task") {
+			t.Fatalf("unsettled %s task without an owner must stay flagged: %+v", status, result.Findings)
+		}
+	}
+}
+
+func TestClassifyKeepsReadyCompletionMetadataContradiction(t *testing.T) {
+	snapshot := healthyDirectSnapshot()
+	snapshot.Cycles[0].TaskID = "task-contradiction"
+	snapshot.Tasks = []OrcaTask{{RuntimeID: "runtime", ID: "task-contradiction", Status: "ready", HasResult: true}}
+	result := Classify(snapshot, Options{Now: time.Now()})
+	if !hasFinding(result, FindingTaskResidue, "task") {
+		t.Fatalf("ready task carrying completion metadata must stay flagged even with an owner: %+v", result.Findings)
+	}
+}
+
 func TestClassifySealedProfileStillFlagsUnownedTerminalsAndMessages(t *testing.T) {
 	for _, opts := range []Options{
 		{Now: time.Now()},

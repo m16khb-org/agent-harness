@@ -254,6 +254,14 @@ func Classify(snapshot Snapshot, opts Options) Result {
 			builder.add(FindingTaskResidue, "task", id, "ready task carries completion metadata", "")
 			continue
 		}
+		// A settled task holds no resource: it is orchestration history, unlike
+		// a worktree or terminal. cleanup finish deletes the record that owned
+		// it, so requiring an owner would flag every finished task forever, and
+		// Orca exposes no per-task delete command to clear one (only a global
+		// reset). Failed tasks stay observable through the failed-task listing.
+		if settledTaskStatus(status) {
+			continue
+		}
 		if len(taskOwners[id]) != 1 {
 			builder.add(FindingTaskResidue, "task", id, "task has no live or invocation-preserved owner", "")
 		}
@@ -447,6 +455,12 @@ func knownTaskStatus(value string) bool {
 	default:
 		return false
 	}
+}
+
+// settledTaskStatus reports whether a task reached a terminal state and can no
+// longer be dispatched or hold a worker.
+func settledTaskStatus(value string) bool {
+	return value == "completed" || value == "failed"
 }
 
 func knownGateStatus(value string) bool {

@@ -33,6 +33,10 @@ type CleanupRemoteBranchRequest struct {
 type CleanupRemoteBranchArtifactHead struct {
 	HeadRefName string
 	HeadRefOID  string
+	// BaseRefName은 같은 readback에서 관측한 artifact의 현재 base ref다.
+	// remote-branch 게이트는 이 값을 읽지 않지만, cleanup finish의 base drift
+	// 게이트가 머지 관측과 같은 시점의 base를 요구하므로 여기에 함께 실린다.
+	BaseRefName string
 }
 
 // CleanupRemoteBranchDeps는 외부 표면 주입점이다.

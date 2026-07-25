@@ -119,7 +119,7 @@ func TestVerifyRemoteArtifactMergedHeadLiveReturnsGitHubHeadRef(t *testing.T) {
 	logPath := filepath.Join(t.TempDir(), "gh.log")
 	writeFakeCommand(t, filepath.Join(bin, "gh"), `#!/bin/sh
 printf '%s\n' "$*" > "$HARNESS_FAKE_GH_LOG"
-printf '%s\n' '{"url":"https://github.com/example/repo/pull/3","state":"MERGED","mergedAt":"2026-06-05T11:00:00Z","headRefName":"116-remote-branch-delete","headRefOid":"1111111111111111111111111111111111111111","labels":[],"assignees":[]}'
+printf '%s\n' '{"url":"https://github.com/example/repo/pull/3","state":"MERGED","mergedAt":"2026-06-05T11:00:00Z","headRefName":"116-remote-branch-delete","headRefOid":"1111111111111111111111111111111111111111","baseRefName":"main","labels":[],"assignees":[]}'
 `)
 	t.Setenv("HARNESS_FAKE_GH_LOG", logPath)
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
@@ -133,11 +133,15 @@ printf '%s\n' '{"url":"https://github.com/example/repo/pull/3","state":"MERGED",
 	if head.HeadRefName != "116-remote-branch-delete" || head.HeadRefOID != "1111111111111111111111111111111111111111" {
 		t.Fatalf("unexpected head projection: %#v", head)
 	}
+	// cleanup finish의 base drift 게이트는 머지 관측과 같은 시점의 base를 요구한다.
+	if head.BaseRefName != "main" {
+		t.Fatalf("merged readback must carry the observed base ref: %#v", head)
+	}
 	log, err := os.ReadFile(logPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"headRefName", "headRefOid"} {
+	for _, want := range []string{"headRefName", "headRefOid", "baseRefName"} {
 		if !strings.Contains(string(log), want) {
 			t.Fatalf("gh --json field list must request %q: %q", want, strings.TrimSpace(string(log)))
 		}
@@ -147,7 +151,7 @@ printf '%s\n' '{"url":"https://github.com/example/repo/pull/3","state":"MERGED",
 func TestVerifyRemoteArtifactMergedHeadLiveReturnsGitLabSourceBranch(t *testing.T) {
 	bin := t.TempDir()
 	writeFakeCommand(t, filepath.Join(bin, "glab"), `#!/bin/sh
-printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/merge_requests/42","state":"merged","merged_at":"","source_branch":"116-remote-branch-delete","sha":"2222222222222222222222222222222222222222","labels":[],"assignees":[]}'
+printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/merge_requests/42","state":"merged","merged_at":"","source_branch":"116-remote-branch-delete","target_branch":"main","sha":"2222222222222222222222222222222222222222","labels":[],"assignees":[]}'
 `)
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
@@ -159,6 +163,9 @@ printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/merge_requ
 	}
 	if head.HeadRefName != "116-remote-branch-delete" || head.HeadRefOID != "2222222222222222222222222222222222222222" {
 		t.Fatalf("unexpected head projection: %#v", head)
+	}
+	if head.BaseRefName != "main" {
+		t.Fatalf("merged readback must carry the observed target branch: %#v", head)
 	}
 }
 
