@@ -111,6 +111,66 @@ printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/merge_requ
 	}
 }
 
+// #116 게이트 ⑨·⑩은 머지 검증과 같은 readback에서 head ref 정체를 함께
+// 받아야 한다. GitHub은 gh --json에 두 필드를 추가하고, GitLab은 기제공되는
+// source_branch·sha를 매핑한다.
+func TestVerifyRemoteArtifactMergedHeadLiveReturnsGitHubHeadRef(t *testing.T) {
+	bin := t.TempDir()
+	logPath := filepath.Join(t.TempDir(), "gh.log")
+	writeFakeCommand(t, filepath.Join(bin, "gh"), `#!/bin/sh
+printf '%s\n' "$*" > "$HARNESS_FAKE_GH_LOG"
+printf '%s\n' '{"url":"https://github.com/example/repo/pull/3","state":"MERGED","mergedAt":"2026-06-05T11:00:00Z","headRefName":"116-remote-branch-delete","headRefOid":"1111111111111111111111111111111111111111","labels":[],"assignees":[]}'
+`)
+	t.Setenv("HARNESS_FAKE_GH_LOG", logPath)
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	head, err := VerifyRemoteArtifactMergedHeadLive(core.IssueOpsRemoteArtifactVerification{
+		Provider: "github", Kind: "pr", URL: "https://github.com/example/repo/pull/3",
+	})
+	if err != nil {
+		t.Fatalf("merged head verification must pass: %v", err)
+	}
+	if head.HeadRefName != "116-remote-branch-delete" || head.HeadRefOID != "1111111111111111111111111111111111111111" {
+		t.Fatalf("unexpected head projection: %#v", head)
+	}
+	log, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"headRefName", "headRefOid"} {
+		if !strings.Contains(string(log), want) {
+			t.Fatalf("gh --json field list must request %q: %q", want, strings.TrimSpace(string(log)))
+		}
+	}
+}
+
+func TestVerifyRemoteArtifactMergedHeadLiveReturnsGitLabSourceBranch(t *testing.T) {
+	bin := t.TempDir()
+	writeFakeCommand(t, filepath.Join(bin, "glab"), `#!/bin/sh
+printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/merge_requests/42","state":"merged","merged_at":"","source_branch":"116-remote-branch-delete","sha":"2222222222222222222222222222222222222222","labels":[],"assignees":[]}'
+`)
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	head, err := VerifyRemoteArtifactMergedHeadLive(core.IssueOpsRemoteArtifactVerification{
+		Provider: "gitlab", Kind: "mr", URL: "https://gitlab.example.com/group/project/-/merge_requests/42",
+	})
+	if err != nil {
+		t.Fatalf("merged head verification must pass: %v", err)
+	}
+	if head.HeadRefName != "116-remote-branch-delete" || head.HeadRefOID != "2222222222222222222222222222222222222222" {
+		t.Fatalf("unexpected head projection: %#v", head)
+	}
+}
+
+func TestVerifyRemoteArtifactMergedHeadLiveRejectsUnmerged(t *testing.T) {
+	installFakeGHForRemoteArtifactTest(t)
+	if _, err := VerifyRemoteArtifactMergedHeadLive(core.IssueOpsRemoteArtifactVerification{
+		Provider: "github", Kind: "pr", URL: "https://github.com/example/repo/pull/2",
+	}); err == nil || !strings.Contains(err.Error(), "not verified merged") {
+		t.Fatalf("unmerged PR must fail head verification: %v", err)
+	}
+}
+
 func TestFetchGitLabMergeRequestArtifactRejectsInvalidMRURL(t *testing.T) {
 	_, err := fetchGitLabMergeRequestArtifact("https://gitlab.example.com/group/project/-/issues/42")
 	if err == nil || !strings.Contains(err.Error(), "remote artifact url must be a GitLab merge request URL") {

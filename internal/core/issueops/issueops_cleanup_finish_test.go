@@ -16,8 +16,12 @@ import (
 type portCompletionSection = port.IssueProviderCompletionSection
 
 type fakeFinishGit struct {
-	statusOut       string
-	branchOID       string
+	statusOut string
+	branchOID string
+	// remoteBranchOID가 비어 있으면 원격 브랜치는 이미 부재다(finish의 정상
+	// 전제). lsRemoteFail은 관측 불가를 흉내낸다.
+	remoteBranchOID string
+	lsRemoteFail    bool
 	failStep        string
 	removedWorktree bool
 	deletedBranch   bool
@@ -26,6 +30,14 @@ type fakeFinishGit struct {
 
 func (g *fakeFinishGit) run(dir string, args ...string) (int, string) {
 	switch args[0] {
+	case "ls-remote":
+		if g.lsRemoteFail {
+			return 128, "fatal: 'origin' does not appear to be a git repository"
+		}
+		if g.remoteBranchOID == "" {
+			return 0, ""
+		}
+		return 0, g.remoteBranchOID + "\trefs/heads/80-finish\n"
 	case "status":
 		return 0, g.statusOut
 	case "rev-parse":
@@ -391,6 +403,22 @@ func TestCleanupFinishAuditUsesPreDestructionSnapshot(t *testing.T) {
 	}
 	if !result2.RecordDeleted || result2.AuditReflected || !strings.Contains(result2.AuditError, "provider unavailable") {
 		t.Fatalf("audit failure must be surfaced without blocking deletion: %+v", result2)
+	}
+}
+
+// brooks H8: remote-branch를 건너뛴 finish가 레코드를 지우면 typed 원격 삭제
+// 경로가 그 브랜치에 영원히 닿지 못한다. 잔존과 관측 불가 모두 차단한다.
+func TestCleanupFinishBlocksWhileRemoteBranchStillExists(t *testing.T) {
+	stateRoot, record, _ := finishTestRecord(t, true)
+	present := &fakeFinishGit{branchOID: "abc123", remoteBranchOID: "f00dcafe"}
+	result, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), finishDeps(present))
+	if err == nil || !containsString(result.Missing, "remote_branch_absent") {
+		t.Fatalf("surviving remote branch must block finish: %v %v", err, result.Missing)
+	}
+	unreadable := &fakeFinishGit{branchOID: "abc123", lsRemoteFail: true}
+	result, err = CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), finishDeps(unreadable))
+	if err == nil || !containsString(result.Missing, "remote_branch_absent") {
+		t.Fatalf("unreadable remote must fail closed: %v %v", err, result.Missing)
 	}
 }
 
