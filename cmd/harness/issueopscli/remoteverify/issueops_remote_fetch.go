@@ -13,7 +13,7 @@ import (
 
 func fetchGitHubPullRequestArtifact(artifactURL string) (liveRemoteArtifact, error) {
 	out, err := runRemoteVerifyCommand(func() *exec.Cmd {
-		return exec.Command("gh", "pr", "view", artifactURL, "--json", "url,labels,assignees,state,mergedAt,headRefName,headRefOid")
+		return exec.Command("gh", "pr", "view", artifactURL, "--json", "url,labels,assignees,state,mergedAt,headRefName,headRefOid,baseRefName")
 	})
 	if err != nil {
 		return liveRemoteArtifact{}, fmt.Errorf("verify GitHub PR through gh failed: %w", commandOutputError(err))
@@ -24,6 +24,7 @@ func fetchGitHubPullRequestArtifact(artifactURL string) (liveRemoteArtifact, err
 		MergedAt    string `json:"mergedAt"`
 		HeadRefName string `json:"headRefName"`
 		HeadRefOid  string `json:"headRefOid"`
+		BaseRefName string `json:"baseRefName"`
 		Labels      []struct {
 			Name string `json:"name"`
 		} `json:"labels"`
@@ -40,6 +41,7 @@ func fetchGitHubPullRequestArtifact(artifactURL string) (liveRemoteArtifact, err
 		Merged:      strings.EqualFold(payload.State, "MERGED") || strings.TrimSpace(payload.MergedAt) != "",
 		HeadRefName: payload.HeadRefName,
 		HeadRefOID:  payload.HeadRefOid,
+		BaseRefName: payload.BaseRefName,
 	}
 	for _, label := range payload.Labels {
 		artifact.Labels = append(artifact.Labels, label.Name)
@@ -143,6 +145,7 @@ func fetchGitLabMergeRequestArtifact(artifactURL string) (liveRemoteArtifact, er
 		State        string   `json:"state"`
 		MergedAt     string   `json:"merged_at"`
 		SourceBranch string   `json:"source_branch"`
+		TargetBranch string   `json:"target_branch"`
 		SHA          string   `json:"sha"`
 		Labels       []string `json:"labels"`
 		Assignees    []struct {
@@ -160,6 +163,7 @@ func fetchGitLabMergeRequestArtifact(artifactURL string) (liveRemoteArtifact, er
 		Merged:      strings.EqualFold(payload.State, "merged") || strings.TrimSpace(payload.MergedAt) != "",
 		HeadRefName: payload.SourceBranch,
 		HeadRefOID:  payload.SHA,
+		BaseRefName: payload.TargetBranch,
 	}
 	for _, assignee := range payload.Assignees {
 		if assignee.ID != 0 {

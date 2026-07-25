@@ -24,9 +24,15 @@ type CleanupFinishRequest struct {
 	Merged              bool
 	CompletionReflected bool
 	IssueClosed         bool
-	Apply               bool
-	Confirm             bool
-	Fingerprint         string
+	// MergedBaseBranch는 머지 readback이 함께 관측한 원격 artifact의 현재 base
+	// ref다. done 전이는 draft PR 생성 직후에 일어나고 finish는 머지 이후에
+	// 실행되므로 그 사이 구간에서 base가 바뀔 수 있다. 레코드의 base 값은 done
+	// 시점에 검증된 과거이므로 drift를 구조적으로 검출하지 못한다 — 원격 관측만이
+	// 유효한 증거다.
+	MergedBaseBranch string
+	Apply            bool
+	Confirm          bool
+	Fingerprint      string
 }
 
 // CleanupFinishDeps는 파괴 단계의 외부 표면 주입점이다. Git은 (dir, args...)를
@@ -204,6 +210,20 @@ func cleanupFinishGates(record IssueOpsRecord, req CleanupFinishRequest, deps Cl
 	if !req.IssueClosed {
 		missing = append(missing, "issue_closed")
 	}
+	// base_branch_drifted: finish는 레코드를 지우므로 여기서 통과하면 준비된
+	// base가 아닌 브랜치로 머지된 사실을 다시 확인할 근거가 사라진다. 관측
+	// 불가는 통과가 아니라 거부다. 이 관측은 fingerprint 입력이 아니다 —
+	// 네트워크 관측을 인벤토리에 섞으면 일시적 원격 오류가 preview 재발급
+	// 루프를 만든다(remote_branch_absent와 같은 규율).
+	if preparedBase := preparedBaseBranch(record); preparedBase != "" {
+		observedBase := strings.TrimSpace(req.MergedBaseBranch)
+		switch {
+		case observedBase == "":
+			missing = append(missing, "merged_base_branch_unobserved")
+		case observedBase != preparedBase:
+			missing = append(missing, "base_branch_drifted")
+		}
+	}
 	for _, link := range record.IssueLinks {
 		if link.Type == "child" && strings.TrimSpace(link.CloseVerifiedAt) == "" {
 			missing = append(missing, "child_tasks_closed")
@@ -278,6 +298,17 @@ func cleanupFinishGates(record IssueOpsRecord, req CleanupFinishRequest, deps Cl
 		}
 	}
 	return inventory, missing
+}
+
+// preparedBaseBranch는 base drift 비교의 기준값이다. 비어 있으면 비교 대상이
+// 없다는 뜻이며(레거시 레코드), 그 경우 게이트는 적용되지 않는다. execution
+// complete가 base_branch 없는 done 전이를 거부하므로 현재 계약을 지나온
+// 사이클에서는 항상 값이 있다.
+func preparedBaseBranch(record IssueOpsRecord) string {
+	if record.BranchPrepare == nil {
+		return ""
+	}
+	return strings.TrimSpace(record.BranchPrepare.BaseBranch)
 }
 
 func cleanupFinishFingerprint(inventory cleanupFinishInventory) (string, error) {

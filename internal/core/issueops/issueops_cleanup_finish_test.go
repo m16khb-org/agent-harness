@@ -75,6 +75,12 @@ func finishTestRecord(t *testing.T, withWorktree bool) (string, IssueOpsRecord, 
 	record.Phase = IssueOpsPhaseDone
 	record.IssueURL = "https://github.com/acme/repo/issues/80"
 	record.RemoteArtifact = &IssueOpsRemoteArtifactVerification{Provider: "github", Kind: "pr", URL: "https://github.com/acme/repo/pull/90"}
+	// execution complete가 base_branch 없는 done 전이를 거부하므로 done 레코드는
+	// 항상 준비된 base를 갖는다.
+	record.BranchPrepare = &model.IssueOpsBranchPrepare{
+		Provider: "github", IssueURL: record.IssueURL, Branch: "80-finish",
+		BaseBranch: "main", BaseSHA: "deadbeef", LinkVerified: true,
+	}
 	if withWorktree {
 		worktree = filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees", "80-finish")
 		if err := os.MkdirAll(worktree, 0o755); err != nil {
@@ -99,7 +105,8 @@ func finishRequest(id string, apply bool, fingerprint string) CleanupFinishReque
 	return CleanupFinishRequest{
 		ID: id, CWD: "/tmp/elsewhere",
 		Merged: true, CompletionReflected: true, IssueClosed: true,
-		Apply: apply, Confirm: apply, Fingerprint: fingerprint,
+		MergedBaseBranch: "main",
+		Apply:            apply, Confirm: apply, Fingerprint: fingerprint,
 	}
 }
 
@@ -162,6 +169,58 @@ func TestCleanupFinishPreviewGatesRejectMissingEvidence(t *testing.T) {
 			rec.IssueLinks[len(rec.IssueLinks)-1].CloseVerifiedAt = "t"
 		})
 	})
+}
+
+// done 전이는 draft PR 생성 직후에 일어나고 finish는 머지 이후에 실행되므로, 그
+// 사이 구간에서 draft PR의 base가 바뀔 수 있다. 준비된 base가 아닌 브랜치로
+// 머지된 결과를 파괴 전에 잡지 못하면 재검증 수단이 남지 않는다.
+func TestCleanupFinishBlocksBaseBranchDrift(t *testing.T) {
+	stateRoot, record, _ := finishTestRecord(t, true)
+	git := &fakeFinishGit{branchOID: "abc123"}
+
+	t.Run("drifted", func(t *testing.T) {
+		req := finishRequest(record.ID, false, "")
+		req.MergedBaseBranch = "release"
+		result, err := CleanupFinish(context.Background(), stateRoot, req, finishDeps(git))
+		if err == nil || !containsString(result.Missing, "base_branch_drifted") {
+			t.Fatalf("drifted base must block: err=%v missing=%v", err, result.Missing)
+		}
+	})
+	t.Run("unobserved", func(t *testing.T) {
+		req := finishRequest(record.ID, false, "")
+		req.MergedBaseBranch = ""
+		result, err := CleanupFinish(context.Background(), stateRoot, req, finishDeps(git))
+		if err == nil || !containsString(result.Missing, "merged_base_branch_unobserved") {
+			t.Fatalf("unobserved base must fail closed: err=%v missing=%v", err, result.Missing)
+		}
+	})
+	t.Run("matching base still passes", func(t *testing.T) {
+		result, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), finishDeps(git))
+		if err != nil || containsString(result.Missing, "base_branch_drifted") || containsString(result.Missing, "merged_base_branch_unobserved") {
+			t.Fatalf("matching base must not block: err=%v missing=%v", err, result.Missing)
+		}
+	})
+}
+
+// base 관측은 fingerprint 입력이 아니다: 네트워크 관측을 인벤토리에 섞으면
+// 일시적 원격 오류가 preview 재발급 루프를 만들고 기존 fingerprint가 모두
+// 무효화된다(remote_branch_absent와 같은 규율).
+func TestCleanupFinishFingerprintIgnoresObservedBaseBranch(t *testing.T) {
+	stateRoot, record, _ := finishTestRecord(t, true)
+	git := &fakeFinishGit{branchOID: "abc123"}
+	first, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), finishDeps(git))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := finishRequest(record.ID, false, "")
+	req.MergedBaseBranch = "main"
+	second, err := CleanupFinish(context.Background(), stateRoot, req, finishDeps(git))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Fingerprint == "" || first.Fingerprint != second.Fingerprint {
+		t.Fatalf("observed base must stay out of the fingerprint: %q vs %q", first.Fingerprint, second.Fingerprint)
+	}
 }
 
 func TestCleanupFinishApplyRejectsStaleFingerprint(t *testing.T) {

@@ -288,10 +288,13 @@ func runCleanupFinish(args []string, deps Deps) error {
 	if record.RemoteArtifact == nil {
 		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("cleanup finish requires a verified remote artifact"))
 	}
-	if deps.VerifyMerged == nil {
+	// 머지 여부와 base ref는 반드시 같은 readback에서 나와야 한다: 다른 시점의
+	// 관측을 섞으면 "머지된 시점의 base"를 판정할 근거가 사라진다.
+	if deps.VerifyMergedHead == nil {
 		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("merge verification is not configured"))
 	}
-	if err := deps.VerifyMerged(*record.RemoteArtifact); err != nil {
+	mergedArtifact, err := deps.VerifyMergedHead(*record.RemoteArtifact)
+	if err != nil {
 		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("merge evidence readback failed (refusing to continue): %w", err))
 	}
 	snapshot, err := core.ReadRemoteIssueSnapshot(context.Background(), prov, core.ExecutionIssueSnapshotRequest{
@@ -312,6 +315,7 @@ func runCleanupFinish(args []string, deps Deps) error {
 		Merged:              true,
 		CompletionReflected: strings.Contains(snapshot.Body, core.IssueBodyCompletionStartMarker),
 		IssueClosed:         strings.EqualFold(strings.TrimSpace(snapshot.State), "closed"),
+		MergedBaseBranch:    mergedArtifact.BaseRefName,
 		Apply:               *apply,
 		Confirm:             *confirm,
 		Fingerprint:         *fingerprint,

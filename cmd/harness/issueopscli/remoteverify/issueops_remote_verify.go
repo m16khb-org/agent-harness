@@ -17,6 +17,9 @@ type liveRemoteArtifact struct {
 	// push된 커밋이 없는가"를 판정하는 유일한 근거다(#116 게이트 ⑨·⑩).
 	HeadRefName string
 	HeadRefOID  string
+	// BaseRefName은 PR/MR의 target 브랜치다. cleanup finish의 base drift
+	// 게이트가 머지 관측과 같은 시점의 base를 요구한다.
+	BaseRefName string
 }
 
 func VerifyRemoteArtifactLive(req core.IssueOpsRemoteArtifactVerificationRequest) error {
@@ -92,5 +95,6 @@ func VerifyRemoteArtifactMergedHeadLive(artifact core.IssueOpsRemoteArtifactVeri
 	return core.IssueOpsCleanupRemoteBranchArtifactHead{
 		HeadRefName: strings.TrimSpace(live.HeadRefName),
 		HeadRefOID:  strings.TrimSpace(live.HeadRefOID),
+		BaseRefName: strings.TrimSpace(live.BaseRefName),
 	}, nil
 }
