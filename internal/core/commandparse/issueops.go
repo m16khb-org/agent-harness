@@ -171,6 +171,8 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v("--id", "--repo", "--worktree", "--branch", "--provider", "--kind", "--artifact-url", "--fingerprint", "--host", "--session-id", "--agent-id", "--cwd"), b("--apply", "--confirm", "--json"), r, true
 	case "cleanup finish":
 		return v("--id", "--provider", "--fingerprint"), b("--preview", "--apply", "--confirm", "--json"), r, true
+	case "cleanup abandon":
+		return v("--id", "--reason", "--fingerprint"), b("--preview", "--apply", "--confirm", "--json"), r, true
 	case "remote reflect-completion":
 		return v("--id", "--provider"), b("--confirm", "--json"), r, true
 	case "remote close-issue":

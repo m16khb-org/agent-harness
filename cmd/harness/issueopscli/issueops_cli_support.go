@@ -64,6 +64,7 @@ func issueOpsUsageText() string {
   agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]
   agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]
   agent-harness issueops cleanup finish --id ID [--provider github|gitlab] (--preview | --apply --confirm --fingerprint SHA256) [--json]
+  agent-harness issueops cleanup abandon --id ID --reason TEXT (--preview | --apply --confirm --fingerprint SHA256) [--json]
   agent-harness issueops remote score --input PATH [--judge none|file] [--judge-file PATH] [--json]
   agent-harness issueops remote-score --input PATH [--judge none|file] [--judge-file PATH] [--json]
   agent-harness issueops remote render-template --kind issue|child|pr --template KIND --title TEXT --provider github|gitlab --field key=value... [--score-file PATH] [--json]

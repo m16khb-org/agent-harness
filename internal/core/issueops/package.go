@@ -72,6 +72,10 @@ type IssueOpsCloseChildResult = model.IssueOpsCloseChildResult
 type IssueOpsCloseChildrenResult = model.IssueOpsCloseChildrenResult
 type IssueOpsPhase = model.IssueOpsPhase
 
+// ExecutionOrcaProvisioner는 core facade가 port를 직접 import하지 않고도
+// cleanup abandon의 orca 인벤토리 실조회 표면을 주입받게 하는 alias다.
+type ExecutionOrcaProvisioner = port.ExecutionOrcaProvisioner
+
 const (
 	IssueOpsCurrentSchemaVersion     = model.IssueOpsCurrentSchemaVersion
 	IssueOpsPhaseProblem             = model.IssueOpsPhaseProblem
