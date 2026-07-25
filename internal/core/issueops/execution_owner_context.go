@@ -89,31 +89,45 @@ type executionOwnerArtifacts struct {
 	prompt       string
 }
 
-func validateExecutionInitialClaimContext(ctx context.Context, stateRoot string, req ExecutionClaimRequest, deps ExecutionClaimDependencies) (func(IssueOpsRecord) error, error) {
+// validateExecutionClaimContext는 orca claim의 봉인 검증을 준비한다.
+//
+// 이 검증은 원래 generation 1에서만 동작했다. reseed가 packet을 재봉인하지 않던
+// 시절에는 그 제약이 generation 2 이상 claim을 통과시키는 구멍이었다 — 봉인의
+// 목적(owner가 읽는 스코프가 표류·조작되지 않았음을 보증)이 두 번째 세대부터
+// 사라졌다. reseed가 재봉인을 수행하게 된 뒤로는 모든 세대가 자기 세대의 봉인을
+// 검증할 수 있다.
+func validateExecutionClaimContext(ctx context.Context, stateRoot string, req ExecutionClaimRequest, deps ExecutionClaimDependencies) (func(IssueOpsRecord) error, error) {
 	record, err := ReadIssueOps(stateRoot, req.ID)
 	if err != nil {
 		return nil, err
 	}
-	if record.Execution == nil || record.Execution.Mode != model.ExecutionModeOrca || req.Generation != 1 {
+	if record.Execution == nil || record.Execution.Mode != model.ExecutionModeOrca ||
+		req.Generation == 0 || req.Generation != record.Execution.Lease.Generation {
 		return nil, nil
 	}
 	issueDigest := strings.ToLower(strings.TrimSpace(req.IssueBodySHA256))
 	packetDigest := strings.ToLower(strings.TrimSpace(req.ContextPacketSHA256))
 	if !executionSHA256.MatchString(issueDigest) || !executionSHA256.MatchString(packetDigest) {
-		return nil, fmt.Errorf("initial Orca claim requires sealed issue and context packet digests")
+		return nil, fmt.Errorf("Orca claim requires sealed issue and context packet digests")
 	}
 	if err := validateExecutionClaimPacket(record, issueDigest, packetDigest); err != nil {
 		return nil, err
 	}
 	if deps.ReadIssue == nil {
-		return nil, fmt.Errorf("remote issue snapshot reader is unavailable for initial Orca claim")
+		return nil, fmt.Errorf("remote issue snapshot reader is unavailable for the Orca claim")
 	}
 	snapshot, err := deps.ReadIssue(ctx, executionOwnerIssueProvider(record), port.ExecutionIssueSnapshotRequest{Repo: record.Repo, URL: record.IssueURL})
 	if err != nil {
 		return nil, fmt.Errorf("read remote issue before claim: %w", err)
 	}
-	if strings.TrimSpace(snapshot.URL) != strings.TrimSpace(record.IssueURL) || digestExecutionOwnerBytes([]byte(snapshot.Body)) != issueDigest {
-		return nil, fmt.Errorf("remote issue body digest drifted from the sealed owner context")
+	if url := strings.TrimSpace(snapshot.URL); url != strings.TrimSpace(record.IssueURL) {
+		return nil, fmt.Errorf("remote issue snapshot url does not match the linked issue: observed=%s expected=%s", url, strings.TrimSpace(record.IssueURL))
+	}
+	// digest는 단방향 해시이고 대상은 공개 이슈다. 두 값을 병기하지 않으면 owner는
+	// 무엇이 어떻게 달라졌는지 알 수 없고, 세션에서 해시를 직접 계산할 경로도
+	// 없다. 병기가 곧 진단 표면이다.
+	if observed := digestExecutionOwnerBytes([]byte(snapshot.Body)); observed != issueDigest {
+		return nil, fmt.Errorf("remote issue body digest drifted from the sealed owner context: expected=%s observed=%s; reseal with `agent-harness issueops execution replace --reseed` after confirming the revision is intended", issueDigest, observed)
 	}
 	return func(current IssueOpsRecord) error {
 		return validateExecutionClaimPacket(current, issueDigest, packetDigest)
@@ -121,16 +135,17 @@ func validateExecutionInitialClaimContext(ctx context.Context, stateRoot string,
 }
 
 func validateExecutionClaimPacket(record IssueOpsRecord, issueDigest, packetDigest string) error {
-	if record.Execution == nil || record.Execution.Mode != model.ExecutionModeOrca || record.Execution.Lease.Generation != 1 {
-		return fmt.Errorf("sealed owner context no longer matches the initial Orca generation")
+	if record.Execution == nil || record.Execution.Mode != model.ExecutionModeOrca || record.Execution.Lease.Generation == 0 {
+		return fmt.Errorf("sealed owner context no longer matches an Orca execution generation")
 	}
+	generation := record.Execution.Lease.Generation
 	packetPath, _ := executionOwnerArtifactPaths(record)
 	data, err := readExecutionOwnerArtifact(record.Execution.Workspace.Root, packetPath)
 	if err != nil {
 		return fmt.Errorf("read sealed context packet: %w", err)
 	}
-	if digestExecutionOwnerBytes(data) != packetDigest {
-		return fmt.Errorf("sealed context packet digest mismatch")
+	if observed := digestExecutionOwnerBytes(data); observed != packetDigest {
+		return fmt.Errorf("sealed context packet digest mismatch: expected=%s observed=%s path=%s", packetDigest, observed, packetPath)
 	}
 	var packet executionOwnerContextPacket
 	if err := json.Unmarshal(data, &packet); err != nil {
@@ -138,12 +153,16 @@ func validateExecutionClaimPacket(record IssueOpsRecord, issueDigest, packetDige
 	}
 	if packet.SchemaVersion != model.IssueOpsSchemaVersion || packet.LifecycleID != record.ID || packet.Mode != record.Execution.Mode ||
 		!samePath(packet.SourceRoot, record.Execution.Workspace.SourceRoot) || !samePath(packet.WorktreeRoot, record.Execution.Workspace.Root) ||
-		packet.Branch != record.Execution.Workspace.Branch || packet.BaseHead != record.Execution.Workspace.BaseHead || packet.LeaseGeneration != 1 ||
+		packet.Branch != record.Execution.Workspace.Branch || packet.BaseHead != record.Execution.Workspace.BaseHead ||
+		packet.LeaseGeneration != generation ||
 		packet.ClaimTokenFile != claimTokenPath(record) || packet.Issue.URL != record.IssueURL {
-		return fmt.Errorf("sealed context packet execution identity mismatch")
+		return fmt.Errorf("sealed context packet execution identity mismatch: packet_generation=%d expected_generation=%d", packet.LeaseGeneration, generation)
 	}
-	if packet.Issue.BodySHA256 != issueDigest || digestExecutionOwnerBytes([]byte(packet.Issue.Body)) != issueDigest {
-		return fmt.Errorf("sealed context packet issue body digest mismatch")
+	if packet.Issue.BodySHA256 != issueDigest {
+		return fmt.Errorf("sealed context packet issue body digest mismatch: expected=%s observed=%s", issueDigest, packet.Issue.BodySHA256)
+	}
+	if observed := digestExecutionOwnerBytes([]byte(packet.Issue.Body)); observed != issueDigest {
+		return fmt.Errorf("sealed context packet issue body does not hash to its sealed digest: expected=%s observed=%s", issueDigest, observed)
 	}
 	// artifact manifest 검증: materialize된 파일이 봉인 당시와 달라졌으면
 	// drift로 read-only 잔류시킨다(설계 v5 WS2).
