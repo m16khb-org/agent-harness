@@ -574,6 +574,13 @@ func (c *Client) CreateTask(ctx context.Context, req port.OrcaCreateTaskRequest)
 	return created, err
 }
 
+// UpdateTask는 core와 CLI에서 호출되지 않는다(#127에서 보존 결정). 판단 근거는
+// port의 OrcaWorkerDoneClient 주석에 있다 — 요약하면 Orca 모드 사이클의 task
+// 종결 경로가 아직 배선되지 않았고 그 설계는 #130이 소유한다.
+//
+// #121은 이 명령으로 상태만 바꾸는 것을 residue 해법으로 기각했다: 상태를 바꿔도
+// 소유자 조회는 여전히 0건이라 분류기가 잔여물로 보고한다. 종결 자체가 필요한
+// 곳은 사이클 완료 시점이며 #130이 그 시점을 정한다.
 func (c *Client) UpdateTask(ctx context.Context, id, status, result string) error {
 	argv := []string{"orca", "orchestration", "task-update", "--id", id, "--status", status}
 	if result != "" {
@@ -611,6 +618,12 @@ func (c *Client) ShowDispatchFrom(ctx context.Context, taskID, fromHandle string
 	return c.dispatchResult(ctx, []string{"orca", "orchestration", "dispatch-show", "--task", taskID, "--preamble", "--from", fromHandle, "--json"})
 }
 
+// SendWorkerDone은 core와 CLI에서 호출되지 않는다(#127에서 보존 결정). 판단
+// 근거는 port의 OrcaWorkerDoneClient 주석에 있다.
+//
+// 삭제 대신 보존한 이유: 아래 검증(응답 정체 일치, payload 일치, bounded 핸들과
+// 경로 요구)은 Orca dispatch 프로토콜의 완료 보고를 신뢰 가능하게 만드는 부분이며
+// 재작성 비용이 작지 않다. #130이 task 종결 경로를 설계할 때 이 구현이 후보다.
 func (c *Client) SendWorkerDone(ctx context.Context, req port.OrcaWorkerDoneRequest) (port.OrcaWorkerDoneResult, error) {
 	if err := validateWorkerDoneRequest(req); err != nil {
 		return port.OrcaWorkerDoneResult{}, &port.OrcaError{Code: "worker_done_invalid", Detail: err.Error()}
