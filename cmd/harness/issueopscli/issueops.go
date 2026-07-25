@@ -167,7 +167,9 @@ func issueOpsFeedbackCleanupDeps() feedbackcleanup.Deps {
 		PrintJSON:    printJSON,
 		PrintError:   printIssueOpsErrorJSON,
 		VerifyMerged: verifyIssueOpsRemoteArtifactMergedLive,
-		Provider:     provider.Resolve,
+		// cleanup remote-branch 게이트 ⑧·⑨·⑩의 단일 readback 표면.
+		VerifyMergedHead: verifyIssueOpsRemoteArtifactMergedHeadLive,
+		Provider:         provider.Resolve,
 		OrphanPreview: func(ctx context.Context, request orphancleanup.Request) (orphancleanup.Result, error) {
 			return orphancleanup.Preview(ctx, request, orphanDeps)
 		},

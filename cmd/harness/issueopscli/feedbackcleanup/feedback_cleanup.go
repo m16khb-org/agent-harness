@@ -13,14 +13,17 @@ import (
 )
 
 type Deps struct {
-	ParseFlags    func(fs *flag.FlagSet, args []string) (bool, error)
-	PrintResult   func(record core.IssueOpsRecord, jsonOut bool, err error) error
-	PrintJSON     func(value any) error
-	PrintError    func(err error) error
-	VerifyMerged  func(core.IssueOpsRemoteArtifactVerification) error
-	Provider      func(provider string) (core.IssueProvider, error)
-	OrphanPreview func(context.Context, orphancleanup.Request) (orphancleanup.Result, error)
-	OrphanApply   func(context.Context, orphancleanup.Request, orphancleanup.ApplyRequest) (orphancleanup.Result, error)
+	ParseFlags   func(fs *flag.FlagSet, args []string) (bool, error)
+	PrintResult  func(record core.IssueOpsRecord, jsonOut bool, err error) error
+	PrintJSON    func(value any) error
+	PrintError   func(err error) error
+	VerifyMerged func(core.IssueOpsRemoteArtifactVerification) error
+	// VerifyMergedHead는 cleanup remote-branch 전용이다. 게이트 ⑧·⑨·⑩이
+	// 같은 readback을 공유해야 하므로 머지 여부와 head ref 정체를 함께 받는다.
+	VerifyMergedHead func(core.IssueOpsRemoteArtifactVerification) (core.IssueOpsCleanupRemoteBranchArtifactHead, error)
+	Provider         func(provider string) (core.IssueProvider, error)
+	OrphanPreview    func(context.Context, orphancleanup.Request) (orphancleanup.Result, error)
+	OrphanApply      func(context.Context, orphancleanup.Request, orphancleanup.ApplyRequest) (orphancleanup.Result, error)
 	// RemoveOrcaWorktree는 cleanup finish의 ② 단계(orca 회수, force=false)다.
 	// "이미 없음"은 wiring에서 성공으로 정규화한다(멱등 계약).
 	RemoveOrcaWorktree func(ctx context.Context, worktreeID string) error
@@ -80,7 +83,7 @@ func localActor(host, sessionID, agentID, cwd string) core.IssueOpsActor {
 
 func RunCleanup(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops cleanup status --id ID [--merged] [--json]\n       agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]\n       agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]\n       agent-harness issueops cleanup finish --id ID [--provider github|gitlab] (--preview | --apply --confirm --fingerprint SHA256) [--json]\n       agent-harness issueops cleanup abandon --id ID --reason TEXT (--preview | --apply --confirm --fingerprint SHA256) [--json]")
+		fmt.Println("Usage: agent-harness issueops cleanup status --id ID [--merged] [--json]\n       agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]\n       agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]\n       agent-harness issueops cleanup remote-branch --id ID (--preview | --apply --confirm --fingerprint SHA256) [--json]\n       agent-harness issueops cleanup finish --id ID [--provider github|gitlab] (--preview | --apply --confirm --fingerprint SHA256) [--json]\n       agent-harness issueops cleanup abandon --id ID --reason TEXT (--preview | --apply --confirm --fingerprint SHA256) [--json]")
 		return nil
 	}
 	switch args[0] {
@@ -116,6 +119,8 @@ func RunCleanup(args []string, deps Deps) error {
 			}
 		}
 		return nil
+	case "remote-branch":
+		return runCleanupRemoteBranch(args[1:], deps)
 	case "finish":
 		return runCleanupFinish(args[1:], deps)
 	case "abandon":
@@ -331,6 +336,78 @@ func runCleanupFinish(args []string, deps Deps) error {
 	if result.RecordDeleted {
 		fmt.Printf("cleanup finished: worktree=%v branch=%v record deleted\n", result.WorktreeRemoved, result.BranchDeleted)
 	} else {
+		fmt.Printf("fingerprint: %s\n", result.Fingerprint)
+		if result.NextCommand != "" {
+			fmt.Printf("next: %s\n", result.NextCommand)
+		}
+	}
+	return nil
+}
+
+// runCleanupRemoteBranch는 머지 검증된 사이클의 원격 브랜치를 typed 경로로
+// 삭제한다. 원격 삭제 자체는 git 직접 호출이고, provider는 감사 라인 반영에만
+// 쓰인다(#116 부속 변경 — brooks M12).
+func runCleanupRemoteBranch(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops cleanup remote-branch", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	preview := fs.Bool("preview", false, "evaluate gates and issue a fingerprint without mutating")
+	apply := fs.Bool("apply", false, "delete the merged remote branch")
+	confirm := fs.Bool("confirm", false, "confirm the destructive apply")
+	fingerprint := fs.String("fingerprint", "", "fingerprint issued by the latest --preview")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := deps.ParseFlags(fs, args); help || err != nil {
+		return err
+	}
+	// finish/abandon과 동일한 모드 배타 규율(C2-F3).
+	if *preview && *apply {
+		return fmt.Errorf("cleanup remote-branch --preview and --apply are mutually exclusive")
+	}
+	if !*preview && !*apply {
+		return fmt.Errorf("cleanup remote-branch requires exactly one mode: --preview or --apply --confirm --fingerprint SHA256")
+	}
+	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
+	if err != nil {
+		return printCleanupFinishError(deps, *jsonOut, err)
+	}
+	providerName := core.ResolveRecordProvider(record)
+	if providerName == "" {
+		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("cannot determine provider from IssueOps record"))
+	}
+	prov, err := deps.Provider(providerName)
+	if err != nil {
+		return printCleanupFinishError(deps, *jsonOut, err)
+	}
+	if deps.VerifyMergedHead == nil {
+		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("merge verification is not configured"))
+	}
+	result, err := core.IssueOpsCleanupRemoteBranch(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsCleanupRemoteBranchRequest{
+		ID:          *id,
+		Apply:       *apply,
+		Confirm:     *confirm,
+		Fingerprint: *fingerprint,
+	}, core.IssueOpsCleanupRemoteBranchDeps{
+		VerifyMergedArtifact: deps.VerifyMergedHead,
+		ReflectAudit: func(rec core.IssueOpsRecord, completion core.IssueProviderCompletionSection, audit string) error {
+			return core.ReflectIssueOpsCleanupAudit(rec, completion, audit, prov)
+		},
+	})
+	if err != nil {
+		if *jsonOut {
+			if printErr := deps.PrintJSON(result); printErr != nil {
+				return printErr
+			}
+		}
+		return err
+	}
+	if *jsonOut {
+		return deps.PrintJSON(result)
+	}
+	switch {
+	case result.Deleted:
+		fmt.Printf("remote branch deleted: branch=%s oid=%s at=%s\n", result.Branch, result.RemoteOID, result.DeletedAt)
+	case result.AlreadyAbsent:
+		fmt.Printf("remote branch already absent: branch=%s\n", result.Branch)
+	default:
 		fmt.Printf("fingerprint: %s\n", result.Fingerprint)
 		if result.NextCommand != "" {
 			fmt.Printf("next: %s\n", result.NextCommand)

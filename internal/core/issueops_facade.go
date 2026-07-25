@@ -244,6 +244,18 @@ func IssueOpsCleanupAbandon(ctx context.Context, stateRoot string, req IssueOpsC
 	return issueops.CleanupAbandon(ctx, stateRoot, req, deps)
 }
 
+type IssueOpsCleanupRemoteBranchRequest = issueops.CleanupRemoteBranchRequest
+type IssueOpsCleanupRemoteBranchDeps = issueops.CleanupRemoteBranchDeps
+type IssueOpsCleanupRemoteBranchResult = issueops.CleanupRemoteBranchResult
+type IssueOpsCleanupRemoteBranchArtifactHead = issueops.CleanupRemoteBranchArtifactHead
+
+// IssueOpsCleanupRemoteBranch는 머지 검증된 사이클의 원격 브랜치를 typed
+// 경로로 삭제한다(#116). 원격 삭제는 git 직접 호출이고 provider는 감사 라인
+// 반영에만 쓰인다.
+func IssueOpsCleanupRemoteBranch(ctx context.Context, stateRoot string, req IssueOpsCleanupRemoteBranchRequest, deps IssueOpsCleanupRemoteBranchDeps) (IssueOpsCleanupRemoteBranchResult, error) {
+	return issueops.CleanupRemoteBranch(ctx, stateRoot, req, deps)
+}
+
 func ReflectIssueOpsCleanupAudit(record IssueOpsRecord, completion IssueProviderCompletionSection, audit string, prov IssueProvider) error {
 	return issueops.ReflectCleanupAudit(record, completion, audit, prov)
 }

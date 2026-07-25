@@ -1,0 +1,109 @@
+{
+  "lifecycle_id": "io-5595ed109b2a",
+  "issue_url": "https://github.com/m16khb/agent-harness/issues/116",
+  "branch": "116-remote-branch-delete",
+  "worktree_root": "/Users/m16khb/Workspace/agent-harness.worktrees/116-remote-branch-delete",
+  "owner": {
+    "host": "claude",
+    "model": "claude-opus-4-8",
+    "effort": "high",
+    "mode": "orca",
+    "lease_generation": 2
+  },
+  "goal": "issueops cleanup remote-branch 신설: 머지 검증된 사이클의 원격 브랜치를 게이트 12종 fail-closed와 force-with-lease OID CAS로 삭제하는 typed 표면",
+  "tdd_loop": [
+    {
+      "step": "RED",
+      "command": "go -C <worktree> test <worktree>/internal/core/issueops -run CleanupRemoteBranch -count=1",
+      "observed": "build failed: undefined CleanupRemoteBranch, CleanupRemoteBranchRequest, CleanupRemoteBranchDeps, CleanupRemoteBranchArtifactHead",
+      "expected_reason": "명령 자체가 존재하지 않음"
+    },
+    {
+      "step": "RED",
+      "command": "go -C <worktree> test <worktree>/cmd/harness/issueopscli/remoteverify -run MergedHead -count=1",
+      "observed": "build failed: undefined VerifyRemoteArtifactMergedHeadLive",
+      "expected_reason": "head ref 관측 표면 부재"
+    },
+    {
+      "step": "RED",
+      "command": "go -C <worktree> test <worktree>/cmd/harness/issueopscli -run Cleanup -count=1",
+      "observed": "FAIL TestIssueOpsCleanupUsageDocumentsRemoteBranchDeletion: canonical usage must document cleanup remote-branch",
+      "expected_reason": "usage 3원문과 commandparse spec 미등록"
+    },
+    {
+      "step": "GREEN",
+      "command": "go -C <worktree> test <worktree>/internal/core/issueops -run CleanupRemoteBranch -count=1",
+      "observed": "ok agent-harness/internal/core/issueops"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "statement": "머지 검증된 레코드의 원격 브랜치가 preview→apply로 삭제되고, 부재 상태 재실행은 stale 없이 멱등 성공한다.",
+      "tests": [
+        "TestCleanupRemoteBranchPreviewApplyDeletesAndRerunIsIdempotent",
+        "TestCleanupRemoteBranchPushFailureSurfacesFailedStep"
+      ],
+      "command": "go -C <worktree> test <worktree>/internal/core/issueops -run CleanupRemoteBranch -count=1",
+      "result": "PASS",
+      "observed": "preview가 RemoteBranchPresent와 fingerprint를 발급하고 push는 0회. apply가 정확히 1회 push하고 Deleted=true. 동일 fingerprint로 재실행하면 관측이 absent이므로 stale 거부 없이 AlreadyAbsent=true, push 총 1회 유지."
+    },
+    {
+      "id": "AC-02",
+      "statement": "fail-closed 전수(fake Git): 미머지 artifact, readback 실패, stale fingerprint, 머지 후 push된 tip, 타 브랜치 PR artifact, 동명 태그(fully-qualified 검증), origin 부재/unreadable, 부재 재실행 멱등, lease active 거부.",
+      "tests": [
+        "TestCleanupRemoteBranchFailsClosed/unmerged_artifact -> remote_artifact_merged",
+        "TestCleanupRemoteBranchFailsClosed/readback_failure -> remote_artifact_merged",
+        "TestCleanupRemoteBranchFailsClosed/tip_pushed_after_merge -> remote_tip_equals_merged_head",
+        "TestCleanupRemoteBranchFailsClosed/artifact_head_is_another_branch -> artifact_head_branch_match",
+        "TestCleanupRemoteBranchFailsClosed/origin_unreadable -> remote_branch_readable",
+        "TestCleanupRemoteBranchFailsClosed/origin_project_mismatch -> remote_identity_match",
+        "TestCleanupRemoteBranchFailsClosed/lease_still_active -> lease_released",
+        "TestCleanupRemoteBranchFailsClosed/phase_not_done -> phase_done",
+        "TestCleanupRemoteBranchFailsClosed/branch_equals_base -> branch_not_base",
+        "TestCleanupRemoteBranchFailsClosed/unclosed_child -> child_tasks_closed",
+        "TestCleanupRemoteBranchFailsClosed/remote_artifact_absent -> remote_artifact_present",
+        "TestCleanupRemoteBranchApplyRejectsStaleFingerprint",
+        "TestCleanupRemoteBranchDeleteUsesFullyQualifiedRefAndForceWithLease",
+        "TestCleanupFinishBlocksWhileRemoteBranchStillExists"
+      ],
+      "command": "go -C <worktree> test <worktree>/internal/core/issueops -run CleanupRemoteBranch -count=1; go -C <worktree> test <worktree>/internal/core/issueops",
+      "result": "PASS",
+      "observed": "차단된 게이트에서 push 호출 0회를 각 케이스가 단언. 동명 태그 보호는 fake Git이 fully-qualified 질의가 아니면 refs/tags를 돌려주고 삭제도 거부하도록 구성해, 실제 발행 명령이 refs/heads 완전수식이며 --force-with-lease가 관측 OID에 결속됨을 리터럴 비교로 고정. finish의 remote_branch_absent는 잔존과 관측 불가 모두 차단."
+    },
+    {
+      "id": "AC-03",
+      "statement": "전체 green + usage parity(3원문) + golden + 신규 spec 파생 테스트.",
+      "tests": [
+        "TestIssueOpsCleanupHelpListsEveryCanonicalCleanupSubcommand",
+        "TestIssueOpsCleanupDocumentedSubcommandsDispatch",
+        "TestIssueOpsCleanupDocumentedSubcommandsHaveCommandParseSpec",
+        "TestIssueOpsCleanupUsageDocumentsRemoteBranchDeletion",
+        "cmd/harness/contractgolden -run Golden"
+      ],
+      "command": "go -C <worktree> test <worktree>/...",
+      "result": "PASS",
+      "observed": "전 패키지 ok. usage 3원문(adapter usage.go, issueOpsUsageText, cleanup help)이 동일 문구를 노출하고 usage.golden.txt를 -update로 재생성. 신규 파생 테스트가 canonical usage의 cleanup 서브커맨드 전체를 commandparse spec에 대조."
+    }
+  ],
+  "verification": [
+    "go -C <worktree> test <worktree>/internal/core/issueops -run CleanupRemoteBranch -count=1 => ok",
+    "go -C <worktree> test <worktree>/internal/core/issueops => ok",
+    "go -C <worktree> test <worktree>/cmd/harness/issueopscli => ok",
+    "go -C <worktree> test <worktree>/cmd/harness/issueopscli/remoteverify => ok",
+    "go -C <worktree> test <worktree>/cmd/harness/contractgolden -run Golden -update => ok",
+    "go -C <worktree> build <worktree>/... => no output",
+    "go -C <worktree> vet <worktree>/... => no output",
+    "go -C <worktree> test <worktree>/... => all packages ok"
+  ],
+  "ai_slop_clean": [
+    "중복 헬퍼 제거: 파생 테스트의 자체 containsUsageSubcommand를 slices.Contains로 대체",
+    "중복 로직 제거: VerifyRemoteArtifactMergedLive를 신규 MergedHead 경로 위임으로 축약해 provider 분기 이중화를 만들지 않음",
+    "legacy shim 없음, 추측성 추상화 없음, 요청 밖 파일 무변경"
+  ],
+  "deviations": [
+    "plan artifact는 deps를 VerifyMerged 재사용으로 적었으나, 이슈 게이트 ⑨·⑩이 headRefName/headRefOid를 요구하므로 단일 readback 표면 VerifyMergedHead를 추가했다(이슈 본문이 SSOT).",
+    "cleanup finish의 기본 Git 러너를 preflight.GitCmd에서 sync-base의 비대화·timeout 계약으로 바꿨다. 새 remote_branch_absent 게이트가 finish에 첫 네트워크 호출을 들여오기 때문이며, 그 계약 없이는 자격증명 프롬프트가 세션을 붙잡는다.",
+    "감사 라인은 apply 성공 시 CleanupAudit로 멱등 병합한다. 이후 실행되는 reflect-completion/cleanup finish가 같은 슬롯을 자기 문구로 덮으므로 원격 삭제 라인은 finish 이후 남지 않는다. 레코드 필드 추가는 이슈의 parity 목록 밖이라 수행하지 않고 관찰로만 보고한다."
+  ]
+}

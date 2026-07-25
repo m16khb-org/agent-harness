@@ -12,6 +12,11 @@ type liveRemoteArtifact struct {
 	Labels    []string
 	Assignees []string
 	Merged    bool
+	// HeadRefName/HeadRefOID는 PR/MR의 source 브랜치와 그 tip이다. cleanup
+	// remote-branch가 "이 artifact가 정말 이 브랜치의 것인가"와 "머지 이후
+	// push된 커밋이 없는가"를 판정하는 유일한 근거다(#116 게이트 ⑨·⑩).
+	HeadRefName string
+	HeadRefOID  string
 }
 
 func VerifyRemoteArtifactLive(req core.IssueOpsRemoteArtifactVerificationRequest) error {
@@ -50,6 +55,14 @@ func VerifyRemoteArtifactLive(req core.IssueOpsRemoteArtifactVerificationRequest
 }
 
 func VerifyRemoteArtifactMergedLive(artifact core.IssueOpsRemoteArtifactVerification) error {
+	_, err := VerifyRemoteArtifactMergedHeadLive(artifact)
+	return err
+}
+
+// VerifyRemoteArtifactMergedHeadLive는 머지 검증과 head ref 관측을 한 번의
+// readback으로 수행한다. 두 값이 다른 시점의 관측이면 cleanup remote-branch의
+// OID CAS가 무의미해지므로 분리된 조회 표면을 두지 않는다(#116).
+func VerifyRemoteArtifactMergedHeadLive(artifact core.IssueOpsRemoteArtifactVerification) (core.IssueOpsCleanupRemoteBranchArtifactHead, error) {
 	provider := strings.ToLower(strings.TrimSpace(artifact.Provider))
 	kind := strings.ToLower(strings.TrimSpace(artifact.Kind))
 	switch kind {
@@ -66,13 +79,18 @@ func VerifyRemoteArtifactMergedLive(artifact core.IssueOpsRemoteArtifactVerifica
 	case "gitlab:mr":
 		live, err = fetchGitLabMergeRequestArtifact(strings.TrimSpace(artifact.URL))
 	default:
-		return fmt.Errorf("unsupported remote artifact for merge verification: %s:%s", provider, kind)
+		return core.IssueOpsCleanupRemoteBranchArtifactHead{},
+			fmt.Errorf("unsupported remote artifact for merge verification: %s:%s", provider, kind)
 	}
 	if err != nil {
-		return err
+		return core.IssueOpsCleanupRemoteBranchArtifactHead{}, err
 	}
 	if !live.Merged {
-		return fmt.Errorf("remote artifact is not verified merged: %s", artifact.URL)
+		return core.IssueOpsCleanupRemoteBranchArtifactHead{},
+			fmt.Errorf("remote artifact is not verified merged: %s", artifact.URL)
 	}
-	return nil
+	return core.IssueOpsCleanupRemoteBranchArtifactHead{
+		HeadRefName: strings.TrimSpace(live.HeadRefName),
+		HeadRefOID:  strings.TrimSpace(live.HeadRefOID),
+	}, nil
 }

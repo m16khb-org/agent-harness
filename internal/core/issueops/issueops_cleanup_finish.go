@@ -12,7 +12,6 @@ import (
 
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/pathutil"
-	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
 
@@ -84,12 +83,11 @@ type cleanupFinishInventory struct {
 // 지점을 record에 남긴 채 반환한다(resumable).
 func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishRequest, deps CleanupFinishDeps) (CleanupFinishResult, error) {
 	if deps.Git == nil {
+		// remote_branch_absent 게이트가 finish에 첫 네트워크 호출(ls-remote)을
+		// 들여온다. preflight.GitCmd에는 비대화·timeout 계약이 없어 자격증명
+		// 프롬프트에 걸리면 세션을 붙잡으므로 sync-base가 확립한 계약을 쓴다.
 		deps.Git = func(dir string, args ...string) (int, string) {
-			code, stdout, stderr := preflight.GitCmd(dir, args...)
-			if code != 0 && stderr != "" {
-				return code, stderr
-			}
-			return code, stdout
+			return defaultExecutionSyncBaseGit(ctx, dir, args...)
 		}
 	}
 	if deps.InspectProcesses == nil {
@@ -269,6 +267,14 @@ func cleanupFinishGates(record IssueOpsRecord, req CleanupFinishRequest, deps Cl
 		if code, out := deps.Git(record.Repo, "rev-parse", "--verify", "--quiet", "refs/heads/"+inventory.Branch); code == 0 {
 			inventory.BranchOID = strings.TrimSpace(out)
 			result.BranchPresent = true
+		}
+		// remote_branch_absent(brooks H8): finish는 레코드를 지우므로, 원격
+		// 브랜치가 남은 채로 통과하면 typed 삭제 경로(cleanup remote-branch)가
+		// 그 브랜치에 영원히 닿지 못한다. 관측만 하고 원격은 건드리지 않으며,
+		// 관측 불가는 fail-closed다. 이 관측은 fingerprint 입력이 아니다.
+		if code, out := deps.Git(record.Repo, "ls-remote", "--heads", "origin", "refs/heads/"+inventory.Branch); code != 0 ||
+			len(strings.Fields(strings.TrimSpace(out))) > 0 {
+			missing = append(missing, "remote_branch_absent")
 		}
 	}
 	return inventory, missing

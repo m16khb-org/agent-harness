@@ -16,3 +16,7 @@ func verifyIssueOpsRemoteArtifactLive(req core.IssueOpsRemoteArtifactVerificatio
 func verifyIssueOpsRemoteArtifactMergedLive(artifact core.IssueOpsRemoteArtifactVerification) error {
 	return remoteverify.VerifyRemoteArtifactMergedLive(artifact)
 }
+
+func verifyIssueOpsRemoteArtifactMergedHeadLive(artifact core.IssueOpsRemoteArtifactVerification) (core.IssueOpsCleanupRemoteBranchArtifactHead, error) {
+	return remoteverify.VerifyRemoteArtifactMergedHeadLive(artifact)
+}

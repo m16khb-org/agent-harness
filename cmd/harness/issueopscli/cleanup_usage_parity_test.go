@@ -1,9 +1,12 @@
 package issueopscli
 
 import (
+	"slices"
 	"sort"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/core/commandparse"
 )
 
 // cleanupSubcommandsInUsageText는 usage 문자열에서 `agent-harness issueops
@@ -43,6 +46,28 @@ func TestIssueOpsCleanupHelpListsEveryCanonicalCleanupSubcommand(t *testing.T) {
 	local := cleanupSubcommandsInUsageText(help)
 	if strings.Join(canonical, ",") != strings.Join(local, ",") {
 		t.Fatalf("cleanup usage diverged from canonical usage\ncanonical: %v\ncleanup --help: %v\n--help output:\n%s", canonical, local, help)
+	}
+}
+
+// #116 파생 원칙 확장: canonical usage에 문서화된 cleanup 서브커맨드는 전부
+// commandparse spec에 등록되어 있어야 한다. spec 등록 누락은 어떤 기존 테스트도
+// 실패시키지 않고 CI green으로 통과하던 사각지대였다.
+func TestIssueOpsCleanupDocumentedSubcommandsHaveCommandParseSpec(t *testing.T) {
+	subs := cleanupSubcommandsInUsageText(issueOpsUsageText())
+	if len(subs) == 0 {
+		t.Fatalf("canonical usage must document issueops cleanup subcommands:\n%s", issueOpsUsageText())
+	}
+	for _, sub := range subs {
+		path := "cleanup " + sub
+		if _, _, _, ok := commandparse.IssueOpsCommandSpec(path); !ok {
+			t.Fatalf("documented subcommand %q has no commandparse spec", path)
+		}
+	}
+}
+
+func TestIssueOpsCleanupUsageDocumentsRemoteBranchDeletion(t *testing.T) {
+	if !slices.Contains(cleanupSubcommandsInUsageText(issueOpsUsageText()), "remote-branch") {
+		t.Fatalf("canonical usage must document cleanup remote-branch:\n%s", issueOpsUsageText())
 	}
 }
 
