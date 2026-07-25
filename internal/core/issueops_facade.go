@@ -256,8 +256,8 @@ func IssueOpsCleanupRemoteBranch(ctx context.Context, stateRoot string, req Issu
 	return issueops.CleanupRemoteBranch(ctx, stateRoot, req, deps)
 }
 
-func ReflectIssueOpsCleanupAudit(record IssueOpsRecord, completion IssueProviderCompletionSection, audit string, prov IssueProvider) error {
-	return issueops.ReflectCleanupAudit(record, completion, audit, prov)
+func ReflectIssueOpsCleanupAudit(stateRoot string, record IssueOpsRecord, completion IssueProviderCompletionSection, audit string, prov IssueProvider) error {
+	return issueops.ReflectCleanupAudit(stateRoot, record, completion, audit, prov)
 }
 
 func ReadIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
