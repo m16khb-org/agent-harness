@@ -114,6 +114,62 @@ func TestParseGHRemoteArtifactCommand(t *testing.T) {
 	}
 }
 
+// 봉인 보호 가드는 편집 대상 이슈를 알아야 한다. 파싱 계층은 식별자만 노출하고
+// 봉인 여부 판정은 레코드를 소유한 lifecycle 계층이 한다.
+func TestIssueEditTargetFromCommand(t *testing.T) {
+	tests := []struct {
+		name       string
+		command    string
+		wantOK     bool
+		wantTarget string
+	}{
+		{
+			name:       "gh issue edit by number",
+			command:    `gh issue edit 121 --body-file /tmp/body.md`,
+			wantOK:     true,
+			wantTarget: "121",
+		},
+		{
+			name:       "gh issue edit by url",
+			command:    `gh issue edit https://github.com/acme/repo/issues/121 --body "본문 개정"`,
+			wantOK:     true,
+			wantTarget: "https://github.com/acme/repo/issues/121",
+		},
+		{
+			name:       "glab issue update by number",
+			command:    `glab issue update 121 --description "본문 개정"`,
+			wantOK:     true,
+			wantTarget: "121",
+		},
+		{
+			name:    "issue create carries no edit target",
+			command: `gh issue create --title "제목" --body "본문"`,
+			wantOK:  false,
+		},
+		{
+			name:    "pr edit is not an issue edit",
+			command: `gh pr edit 122 --body "본문"`,
+			wantOK:  false,
+		},
+		{
+			name:    "edit without a resolvable target passes through",
+			command: `gh issue edit --body "본문 개정"`,
+			wantOK:  false,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			target, ok := IssueEditTargetFromCommand("Bash", tc.command, "/tmp/repo")
+			if ok != tc.wantOK {
+				t.Fatalf("ok = %v, want %v (target=%q)", ok, tc.wantOK, target)
+			}
+			if ok && target != tc.wantTarget {
+				t.Fatalf("target = %q, want %q", target, tc.wantTarget)
+			}
+		})
+	}
+}
+
 func TestParseGHRemoteArtifactCommand_LabelsAndAssignees(t *testing.T) {
 	cmd := `gh issue create --title "제목" --body "본문" --label bug --label enhancement --assignee user1 --assignees user2,user3`
 	artifact, ok := parseGHRemoteArtifactCommand(cmd, "/tmp/repo")
