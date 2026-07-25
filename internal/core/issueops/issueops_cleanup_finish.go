@@ -346,7 +346,12 @@ func orNone(v string) string {
 // ReflectCleanupAudit는 ④' 감사 라인을 completion 섹션의 멱등 병합으로
 // 반영한다(CleanupAudit 필드 재사용 — 동일 내용 재실행은 같은 본문을 만든다).
 // completion은 파괴 시작 전에 스냅샷된 payload여야 한다(C2-F1).
-func ReflectCleanupAudit(record IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string, prov port.IssueProvider) error {
+//
+// 이 경로는 audit 라인만 더하는 것이 아니라 completion payload 전체를 원격에
+// 쓴다. 따라서 성공하면 ReflectIssueCompletion과 같은 효과이며 로컬 캐시도 함께
+// 채워야 한다 — 그러지 않으면 레코드를 유지하는 cleanup remote-branch 직후
+// issueops list가 원격에 반영된 사이클을 거짓으로 미반영이라 보고한다(#128).
+func ReflectCleanupAudit(stateRoot string, record IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string, prov port.IssueProvider) error {
 	if prov == nil {
 		return fmt.Errorf("no issue provider configured")
 	}
@@ -364,5 +369,12 @@ func ReflectCleanupAudit(record IssueOpsRecord, completion port.IssueProviderCom
 	if !result.Updated {
 		return fmt.Errorf("cleanup audit reflection was not confirmed")
 	}
-	return nil
+	// 확인된 반영만 캐시에 남긴다. audit 반영은 best-effort이므로 실패가 캐시를
+	// 원격보다 낙관적으로 만들어서는 안 된다. finish 경로에서는 직후 레코드가
+	// 삭제되어 무해하고, 파괴 단계가 중간 실패해 레코드가 잔존하면 오히려
+	// 정확해진다.
+	_, err = stampRemoteCompletion(stateRoot, record.ID, func(rc *IssueOpsRemoteCompletion, now string) {
+		rc.ReflectedAt = now
+	})
+	return err
 }

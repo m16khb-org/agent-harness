@@ -323,7 +323,7 @@ func runCleanupFinish(args []string, deps Deps) error {
 	result, err := core.IssueOpsCleanupFinish(context.Background(), core.IssueOpsStateRoot(), req, core.IssueOpsCleanupFinishDeps{
 		RemoveOrcaWorktree: deps.RemoveOrcaWorktree,
 		ReflectAudit: func(rec core.IssueOpsRecord, completion core.IssueProviderCompletionSection, audit string) error {
-			return core.ReflectIssueOpsCleanupAudit(rec, completion, audit, prov)
+			return core.ReflectIssueOpsCleanupAudit(core.IssueOpsStateRoot(), rec, completion, audit, prov)
 		},
 	})
 	if err != nil {
@@ -392,7 +392,7 @@ func runCleanupRemoteBranch(args []string, deps Deps) error {
 	}, core.IssueOpsCleanupRemoteBranchDeps{
 		VerifyMergedArtifact: deps.VerifyMergedHead,
 		ReflectAudit: func(rec core.IssueOpsRecord, completion core.IssueProviderCompletionSection, audit string) error {
-			return core.ReflectIssueOpsCleanupAudit(rec, completion, audit, prov)
+			return core.ReflectIssueOpsCleanupAudit(core.IssueOpsStateRoot(), rec, completion, audit, prov)
 		},
 	})
 	if err != nil {

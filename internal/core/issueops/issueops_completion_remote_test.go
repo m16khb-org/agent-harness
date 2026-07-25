@@ -2,6 +2,7 @@ package issueops
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -92,6 +93,56 @@ func TestReflectIssueCompletionGates(t *testing.T) {
 	}
 	if got.RemoteCompletion == nil || got.RemoteCompletion.ReflectedAt == "" {
 		t.Fatalf("confirmed update must stamp ReflectedAt: %+v", got.RemoteCompletion)
+	}
+}
+
+// cleanup audit은 audit 라인만 더하는 것이 아니라 completion payload 전체를 원격에
+// 쓴다. 그런데 로컬 캐시를 갱신하지 않아, 레코드를 유지하는 cleanup remote-branch
+// 직후 issueops list가 원격에 반영된 사이클을 거짓으로 미반영이라 보고했다.
+func TestReflectCleanupAuditStampsTheCompletionCache(t *testing.T) {
+	stateRoot, record := completionTestRecord(t)
+	prov := &fakeCompletionProvider{updateRes: port.IssueProviderUpdateIssueBodySectionResult{OK: true, Updated: true, URL: record.IssueURL}}
+
+	if err := ReflectCleanupAudit(stateRoot, record, gatherCompletionSection(record), "cleanup 완료: 원격 브랜치 삭제", prov); err != nil {
+		t.Fatal(err)
+	}
+	if prov.updateReq == nil || prov.updateReq.Completion == nil || prov.updateReq.Completion.CleanupAudit == "" {
+		t.Fatalf("audit must be routed inside the completion payload: %+v", prov.updateReq)
+	}
+	got, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.RemoteCompletion == nil || got.RemoteCompletion.ReflectedAt == "" {
+		t.Fatalf("confirmed audit reflection must stamp ReflectedAt: %+v", got.RemoteCompletion)
+	}
+}
+
+// audit 반영은 best-effort다. 실패가 캐시를 오염시키면 이후 진단이 원격보다
+// 낙관적으로 보고한다.
+func TestReflectCleanupAuditDoesNotStampOnFailure(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		res  port.IssueProviderUpdateIssueBodySectionResult
+		err  error
+	}{
+		{name: "provider error", res: port.IssueProviderUpdateIssueBodySectionResult{OK: false}, err: fmt.Errorf("gh: HTTP 503")},
+		{name: "unconfirmed update", res: port.IssueProviderUpdateIssueBodySectionResult{OK: true}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			stateRoot, record := completionTestRecord(t)
+			prov := &fakeCompletionProvider{updateRes: tc.res, updateErr: tc.err}
+			if err := ReflectCleanupAudit(stateRoot, record, gatherCompletionSection(record), "cleanup 완료", prov); err == nil {
+				t.Fatal("failed audit reflection must return an error")
+			}
+			got, readErr := ReadIssueOps(stateRoot, record.ID)
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			if got.RemoteCompletion != nil && got.RemoteCompletion.ReflectedAt != "" {
+				t.Fatalf("failed reflection must not stamp the cache: %+v", got.RemoteCompletion)
+			}
+		})
 	}
 }
 
