@@ -451,8 +451,14 @@ type IssueOpsCleanupStatus struct {
 }
 
 type IssueOpsCloseChildrenRequest struct {
-	Merged  bool `json:"merged"`
-	Confirm bool `json:"confirm"`
+	// Merged는 부모 PR/MR의 머지가 원격 readback으로 검증됐음을 뜻한다.
+	Merged bool `json:"merged"`
+	// MergeEvidenceRequested는 운영자가 --merged로 정리 의도를 명시했다는
+	// 뜻이다. Merged와 다르다: 위상 규약 이전의 우산 레코드는 자체 PR이 없어
+	// 부모 머지 증거를 만들 수 없으므로 Merged가 false로 남는다. 그 구간에서만
+	// 자식의 원격 closed 상태를 대체 증거로 조회한다(#129).
+	MergeEvidenceRequested bool `json:"merge_evidence_requested,omitempty"`
+	Confirm                bool `json:"confirm"`
 }
 
 type IssueOpsCloseChildResult struct {
@@ -467,12 +473,17 @@ type IssueOpsCloseChildResult struct {
 }
 
 type IssueOpsCloseChildrenResult struct {
-	OK          bool                       `json:"ok"`
-	ID          string                     `json:"id"`
-	Merged      bool                       `json:"merged"`
-	Confirmed   bool                       `json:"confirmed"`
-	DryRun      bool                       `json:"dry_run"`
-	ClosedCount int                        `json:"closed_count"`
-	Children    []IssueOpsCloseChildResult `json:"children"`
-	Missing     []string                   `json:"missing,omitempty"`
+	OK        bool   `json:"ok"`
+	ID        string `json:"id"`
+	Merged    bool   `json:"merged"`
+	Confirmed bool   `json:"confirmed"`
+	DryRun    bool   `json:"dry_run"`
+	// EvidenceBasis는 이 실행이 무엇을 근거로 게이트를 통과했는지다.
+	// parent_merge_verified는 부모 PR/MR의 머지 readback이고,
+	// children_already_closed는 모든 자식이 원격에서 이미 닫혀 있다는 관측이다.
+	// 운영자가 어느 근거로 정리됐는지 알아야 하므로 결과에 남긴다.
+	EvidenceBasis string                     `json:"evidence_basis,omitempty"`
+	ClosedCount   int                        `json:"closed_count"`
+	Children      []IssueOpsCloseChildResult `json:"children"`
+	Missing       []string                   `json:"missing,omitempty"`
 }

@@ -13,6 +13,13 @@ type Store struct {
 	Read             func(stateRoot, id string) (model.IssueOpsRecord, error)
 	TouchWrite       func(stateRoot string, record model.IssueOpsRecord) (model.IssueOpsRecord, error)
 	ValidateIssueURL func(issueURL string) error
+	// UmbrellaForChildIssue는 이 이슈를 자식으로 링크한 우산 사이클을 돌려준다.
+	// 자식은 우산 브랜치에서 분기해 우산 브랜치로 합류해야 하므로 base_branch를
+	// 그 브랜치와 대조하는 데 쓴다(#129).
+	//
+	// nil이거나 부모를 찾지 못하면 검증을 건너뛴다. 자식이 아니거나 우산이 이미
+	// 정리된 경우이며, 근거를 잃은 검증이 일상 사이클을 막아서는 안 된다.
+	UmbrellaForChildIssue func(repo, childIssueURL string) (model.IssueOpsRecord, bool)
 }
 
 func Prepare(store Store, stateRoot, id string, req model.IssueOpsBranchPrepareRequest) (model.IssueOpsRecord, error) {
@@ -66,6 +73,9 @@ func Prepare(store Store, stateRoot, id string, req model.IssueOpsBranchPrepareR
 	if record.IssueURL != issueURL {
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("issue_url does not match linked IssueOps issue")
 	}
+	if reason := umbrellaBaseBranchMismatch(store, record, branch, baseBranch); reason != "" {
+		return model.IssueOpsRecord{OK: false}, fmt.Errorf("%s", reason)
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	record.BranchPrepare = &model.IssueOpsBranchPrepare{
 		Provider:        provider,
@@ -79,6 +89,32 @@ func Prepare(store Store, stateRoot, id string, req model.IssueOpsBranchPrepareR
 		CreatedAt:       now,
 	}
 	return store.TouchWrite(stateRoot, record)
+}
+
+// umbrellaBaseBranchMismatch는 자식 사이클의 base_branch가 우산 브랜치를
+// 가리키지 않는 이유를 돌려준다. 빈 문자열이면 통과다.
+//
+// 자식은 우산 브랜치에서 분기해 우산 브랜치로 합류하고, 우산이 하나의 PR로
+// 자기 소스 브랜치에 합류한다. 그래야 자식들이 서로 독립적으로 병렬 진행되고
+// 통합 리뷰 경계가 우산 PR 하나로 명확해진다(#129).
+func umbrellaBaseBranchMismatch(store Store, record model.IssueOpsRecord, branch, baseBranch string) string {
+	if store.UmbrellaForChildIssue == nil {
+		return ""
+	}
+	umbrella, ok := store.UmbrellaForChildIssue(record.Repo, record.IssueURL)
+	if !ok {
+		return ""
+	}
+	expected := strings.TrimSpace(umbrella.Branch)
+	// 우산이 자기 브랜치를 아직 갖지 않았다면 대조할 기준이 없다. 그 상태에서
+	// 자식이 만들어졌다는 것은 create-child 게이트 이전의 레코드라는 뜻이므로
+	// 소급 차단하지 않는다.
+	if expected == "" || expected == strings.TrimSpace(baseBranch) {
+		return ""
+	}
+	return fmt.Sprintf("자식 작업 %s는 우산 사이클 %s의 브랜치 %s에서 분기해 그 브랜치로 합류해야 한다; "+
+		"base_branch %q 대신 %s로 다시 준비하라",
+		strings.TrimSpace(branch), umbrella.ID, expected, strings.TrimSpace(baseBranch), expected)
 }
 
 func ValidateBranch(branch string) error {

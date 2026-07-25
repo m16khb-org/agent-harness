@@ -396,7 +396,24 @@ func (Provider) CloseChild(req port.IssueProviderCloseChildRequest) (port.IssueP
 	if !req.Confirm {
 		preview := fmt.Sprintf("[dry-run] would execute: gh api repos/%s/%s/issues/%s/sub_issues; gh api -X PATCH repos/%s/%s/issues/%s -f state=closed -f state_reason=completed; gh api repos/%s/%s/issues/%s",
 			owner, repoName, parentNumber, owner, repoName, childNumber, owner, repoName, childNumber)
-		return port.IssueProviderCloseChildResult{OK: true, Provider: "github", ChildURL: strings.TrimSpace(req.ChildURL), Preview: preview}, nil
+		result := port.IssueProviderCloseChildResult{OK: true, Provider: "github", ChildURL: strings.TrimSpace(req.ChildURL), Preview: preview}
+		// preview는 무엇을 할지 보여주는 것에 더해 지금 상태가 무엇인지도
+		// 관측한다. cleanup close-children이 부모 머지 증거 없이 정리해도
+		// 되는지 판정하려면 자식이 원격에서 이미 닫혔는지를 알아야 한다(#129).
+		//
+		// 읽기 전용이며 best-effort다. gh가 없거나 조회가 실패하면 상태를 비워
+		// 두고 성공을 돌려준다 — 여기서 오류를 내면 provider 없는 환경의
+		// dry-run이 통째로 깨지고, core는 어차피 미상을 통과 근거로 인정하지
+		// 않는다.
+		if children, err := runGhAPIJSON[[]githubIssue](req.Repo, []string{"repos/" + owner + "/" + repoName + "/issues/" + parentNumber + "/sub_issues"}, "sub-issue observation"); err == nil {
+			if childIssue := githubIssueByNumber(children, childNumber); childIssue.Number != 0 {
+				result.HierarchyVerified = true
+				result.State = childIssue.State
+				result.AlreadyClosed = strings.EqualFold(childIssue.State, "closed")
+				result.ChildURL = providerutil.FirstNonEmpty(childIssue.HTMLURL, result.ChildURL)
+			}
+		}
+		return result, nil
 	}
 	children, err := runGhAPIJSON[[]githubIssue](req.Repo, []string{"repos/" + owner + "/" + repoName + "/issues/" + parentNumber + "/sub_issues"}, "sub-issue verification")
 	if err != nil {

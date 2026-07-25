@@ -134,6 +134,10 @@ func (s *closeChildrenStoreForTest) touchWrite(_ string, record model.IssueOpsRe
 type fakeCloseChildProvider struct {
 	result port.IssueProviderCloseChildResult
 	calls  []port.IssueProviderCloseChildRequest
+	// previewState는 preview 경로가 관측한 자식의 원격 상태다. 빈 값은 관측
+	// 실패를 뜻한다(gh/glab 부재 등).
+	previewState      string
+	previewStateByURL map[string]string
 }
 
 func (p *fakeCloseChildProvider) Name() string { return "github" }
@@ -165,6 +169,13 @@ func (p *fakeCloseChildProvider) CloseChild(req port.IssueProviderCloseChildRequ
 	if !req.Confirm {
 		result.Closed = false
 		result.Preview = "[dry-run] close " + req.ChildURL
+		state := p.previewState
+		if override, ok := p.previewStateByURL[req.ChildURL]; ok {
+			state = override
+		}
+		result.State = state
+		result.AlreadyClosed = strings.EqualFold(state, "closed")
+		result.HierarchyVerified = state != ""
 	}
 	return result, nil
 }

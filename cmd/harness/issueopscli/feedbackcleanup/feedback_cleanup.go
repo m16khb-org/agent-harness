@@ -135,9 +135,13 @@ func RunCleanup(args []string, deps Deps) error {
 			return err
 		}
 		verifiedMerged := CleanupMerged(*id, *merged, deps)
+		// 요청 여부와 검증 결과를 함께 넘긴다. 위상 규약 이전의 우산 레코드는
+		// 자체 PR이 없어 verifiedMerged가 항상 false가 되는데, 그 구간에서만
+		// core가 자식의 원격 closed 상태를 대체 증거로 조회한다(#129).
 		result, err := core.CloseIssueOpsChildren(core.IssueOpsStateRoot(), *id, core.IssueOpsCloseChildrenRequest{
-			Merged:  verifiedMerged,
-			Confirm: *confirm,
+			Merged:                 verifiedMerged,
+			MergeEvidenceRequested: *merged,
+			Confirm:                *confirm,
 		}, deps.Provider)
 		if err != nil {
 			if *jsonOut {
