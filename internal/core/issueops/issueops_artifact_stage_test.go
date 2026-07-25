@@ -2,12 +2,14 @@ package issueops
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
 
@@ -46,6 +48,43 @@ func TestStageIssueOpsArtifactRejections(t *testing.T) {
 	})
 	if _, err := StageIssueOpsArtifact(stateRoot, record.ID, "spec", []byte("늦은 스펙")); err == nil || !strings.Contains(err.Error(), "before execution prepare") {
 		t.Fatalf("post-prepare staging must fail loudly: %v", err)
+	}
+}
+
+func TestDeleteIssueOpsRollsBackStageWhenRecordDeleteFails(t *testing.T) {
+	stateRoot := filepath.Join(t.TempDir(), "issueops")
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: t.TempDir(), Branch: "89-atomic-delete"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte("staged plan")); err != nil {
+		t.Fatal(err)
+	}
+
+	raw, err := sql.Open("sqlite", "file:"+filepath.Join(stateRoot, "harness.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer raw.Close()
+	if _, err := raw.Exec(`CREATE TRIGGER abort_issueops_delete
+		BEFORE DELETE ON records WHEN OLD.bucket = 'issueops_v1'
+		BEGIN SELECT RAISE(ABORT, 'forced issueops delete failure'); END`); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := deleteIssueOps(stateRoot, record.ID); err == nil {
+		t.Fatal("deleteIssueOps must return the forced record-delete failure")
+	}
+
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, exists, err := db.Get(artifactStageBucket, record.ID); err != nil || !exists {
+		t.Fatalf("stage row must survive a failed atomic delete: exists=%t err=%v", exists, err)
+	}
+	if _, exists, err := db.Get(issueOpsBucket, record.ID); err != nil || !exists {
+		t.Fatalf("record row must survive the forced delete failure: exists=%t err=%v", exists, err)
 	}
 }
 

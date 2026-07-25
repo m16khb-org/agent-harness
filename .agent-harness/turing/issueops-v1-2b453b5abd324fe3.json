@@ -1,0 +1,49 @@
+{
+  "lifecycle": "io-4bd36030750e",
+  "mode": "orca",
+  "acceptance": {
+    "AC-01": {
+      "test": "TestDeleteIssueOpsRollsBackStageWhenRecordDeleteFails",
+      "red_command": "go test ./internal/core/issueops -run '^TestDeleteIssueOpsRollsBackStageWhenRecordDeleteFails$' -count=1",
+      "red_result": "FAIL: stage row was deleted after the forced issueops delete failure",
+      "green_command": "go test ./internal/core/issueops -run '^TestDeleteIssueOpsRollsBackStageWhenRecordDeleteFails$' -count=1",
+      "green_result": "PASS"
+    },
+    "AC-02": {
+      "commands": [
+        "go test ./internal/core/issueops -run 'TestCleanupFinish|TestPrune|TestStageIssueOps' -count=1",
+        "go test ./internal/core/sqlstore -count=1"
+      ],
+      "result": "PASS"
+    }
+  },
+  "verification": [
+    {
+      "command": "go test ./internal/core/issueops -run 'TestCleanupFinish|TestPrune|TestStageIssueOps' -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test ./internal/core/sqlstore -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test ./... -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go build -o bin/agent-harness ./cmd/harness",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    }
+  ],
+  "ai_slop_clean": {
+    "scope": "44 tracked changed lines plus this evidence file",
+    "snr_before": 1.0,
+    "snr_after": 1.0,
+    "result": "PASS: no removable noise was found"
+  },
+  "status": "verified_pending_review"
+}
