@@ -179,10 +179,18 @@ func Steps(provider, issueURL, branch, baseBranch string) []model.IssueOpsBranch
 				Description: "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
 			},
 			{
-				Order:       2,
-				Strategy:    "fallback_api",
-				Command:     []string{"gh", "issue", "develop", issueURL, "--base", baseBranch, "--name", branch},
-				Description: "Create a GitHub linked development branch through gh issue develop.",
+				Order:    2,
+				Strategy: "fallback_api",
+				Command:  []string{"gh", "issue", "develop", issueURL, "--base", baseBranch, "--name", branch},
+				// Orca 모드에서는 이 단계를 execution prepare **이후**로 미룬다.
+				// `createLinkedBranch`는 `oid`에서 새 브랜치를 만들므로 이름이 원격에
+				// 이미 있으면 실패하지만, 로컬에만 있으면 성공한다(#163 실측). Orca는
+				// 로컬 워크트리와 로컬 브랜치만 만들고 push하지 않으므로, 먼저
+				// 실행하면 Orca가 이름 충돌로 막히고(#149·#152·#154) 나중에 실행하면
+				// linked branch 추적을 그대로 얻는다.
+				Description: "Create a GitHub linked development branch through gh issue develop. " +
+					"For Orca mode run this after `issueops execution prepare` instead: Orca creates the local branch " +
+					"without pushing, so the name is still free on the remote and the link still attaches.",
 			},
 			{
 				Order:       3,
