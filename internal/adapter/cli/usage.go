@@ -2,9 +2,6 @@ package cli
 
 import "fmt"
 
-const issueOpsDevilsAdvocateUsage = "  agent-harness " + "issueops devils-advocate review --id ID --verdict pass|revise|stop [--finding TEXT]... [--waive --waiver-rationale TEXT] RECORD_ACTOR_FLAGS [--json]" +
-	"\n  agent-harness issueops implementation-review record --id ID --verdict pass|revise|stop --finding TEXT... --evidence TEXT... [--reviewer-host codex|claude] [--reviewer-model MODEL] [--reviewer-effort EFFORT] RECORD_ACTOR_FLAGS [--json]"
-
 // Command describes a stable top-level CLI command exposed by the harness.
 type Command struct {
 	Name        string `json:"name"`
@@ -49,6 +46,10 @@ func Commands() []Command {
 
 // Usage returns the canonical CLI usage text. Keeping this in the CLI adapter
 // package makes command-surface changes testable without invoking main().
+//
+// `issueops` 줄은 이 함수에 적지 않는다. `issueOpsUsageCatalog`가 유일한 원본이고
+// 여기서는 축약 키로 걸러 렌더한다(#188). 두 곳에 손으로 적으면 양쪽에서 동시에
+// 빠진 명령을 어떤 테스트도 잡지 못한다 — `execution switch-mode`가 그랬다.
 func Usage(version string) string {
 	return fmt.Sprintf(`agent-harness %s
 
@@ -74,53 +75,7 @@ Usage:
   agent-harness state prune --max-age DURATION [--confirm] [--json]
   agent-harness state doctor [--json]
   agent-harness state migrate [--confirm] [--json]
-  agent-harness issueops start --repo PATH [--branch NAME] [--json]
-  agent-harness issueops status --id ID [--json]
-  agent-harness issueops list [--repo PATH] [--json]
-  agent-harness issueops intent record --id ID --raw-request TEXT --interpreted-intent TEXT --success-criteria TEXT [--constraint TEXT] [--ambiguity TEXT] [--non-goal TEXT] [--intent-class CLASS] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops link-issue --id ID --issue-url URL RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops link-child --id ID --child-url URL [--title TEXT] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops child start --parent ID --branch BRANCH --title TEXT --scope TEXT --acceptance TEXT [--acceptance TEXT...] [--child-issue-url URL] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops child status --parent ID [--repair] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops child list --parent ID RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops child accept --parent ID --child ID --evidence TEXT [--evidence TEXT...] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops child reject --parent ID --child ID --reason REASON RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops child drop --parent ID --child ID --reason REASON RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--remote-branch-url URL] [--link-verified] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops link-worktree --id ID --worktree-path PATH RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops design review --id ID --problem-summary TEXT --proposed-design TEXT --verification TEXT [--refactor-plan TEXT] [--alternative TEXT] [--risk TEXT] [--open-question TEXT] [--approved] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops compatibility review --id ID --backward-compatibility TEXT --side-effect TEXT --rollback-plan TEXT --verification TEXT [--blocker TEXT] [--approved] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops link-plan --id ID --plan-path PATH RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops artifact stage --id ID --name plan|spec|turing-loop --file PATH [--json]
-  agent-harness issueops artifact unstage --id ID --name plan|spec|turing-loop [--json]
-  agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude [--owner-model MODEL] [--owner-effort EFFORT] ACTOR_FLAGS [--confirm] [--json]
-  agent-harness issueops execution status --id ID [--json]
-  agent-harness issueops execution whoami [--json]
-  agent-harness issueops execution claim --id ID --generation N --claim-token-file PATH [--issue-body-sha256 SHA256 --context-packet-sha256 SHA256] ACTOR_FLAGS [--json]
-  agent-harness issueops execution release --id ID --generation N ACTOR_FLAGS [--json]
-  agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [fingerprint/reason flags] ACTOR_FLAGS [--confirm] [--json]
-  agent-harness issueops execution reconcile --id ID (--preview|--confirm) ACTOR_FLAGS [--json]
-  agent-harness issueops execution complete --id ID --generation N --final-head SHA --turing-report PATH --remote-artifact-url URL --verification TEXT... ACTOR_FLAGS --confirm [--json]
-  agent-harness issueops execution sync-base --id ID (--preview | --apply --confirm --fingerprint SHA256 | --finalize | --abort) ACTOR_FLAGS [--json]
-  agent-harness issueops execution switch-mode --id ID --mode direct|orca [--apply --confirm --fingerprint SHA256] ACTOR_FLAGS [--json]
-  agent-harness issueops reset-legacy --target-schema 1 (--preview|--status|--reconcile-remote --id ID --claim-id CLAIM --confirm|--drain-cycle --id ID --confirm|--confirm) [--expected-fingerprint SHA256] [--json]
-  agent-harness issueops feedback add --id ID --source TEXT --body TEXT [--classification TEXT] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops feedback mark-issue-updated --id ID RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops pr-readiness --id ID [--strict] [--json]
-  agent-harness issueops cleanup status --id ID [--merged] [--json]
-  agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]
-  agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]
-  agent-harness issueops cleanup remote-branch --id ID (--preview | --apply --confirm --fingerprint SHA256) [--json]
-  agent-harness issueops cleanup finish --id ID [--provider github|gitlab] (--preview | --apply --confirm --fingerprint SHA256) [--json]
-  agent-harness issueops cleanup abandon --id ID --reason TEXT (--preview | --apply --confirm --fingerprint SHA256) [--json]
-  agent-harness issueops remote score --input PATH [--judge none|file] [--judge-file PATH] [--json]
-  agent-harness issueops remote render-template --kind issue|child|pr --template KIND --title TEXT --provider github|gitlab --field key=value... [--score-file PATH] [--json]
-  agent-harness issueops remote create-issue --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]
-  agent-harness issueops remote create-child --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]
-  agent-harness issueops remote create-pr --id ID --expected-generation N --title TEXT --head BRANCH --base BRANCH [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... ACTOR_FLAGS [--confirm] [--json]
-  agent-harness issueops benchmark run --fixtures PATH [--judge none|file] [--judge-file PATH] [--json]
-  agent-harness issueops benchmark compare --baseline KEY --candidate KEY [--json]
-  agent-harness issueops benchmark gate --baseline KEY --candidate KEY --candidate-file PATH [--changed-path PATH]... [--json]
+%s
   agent-harness api-doc check|static-check|review [--repo PATH] [--all] [--json] [--] [FILES...]
   agent-harness hook user-prompt|pre-tool-use|post-tool-use|pre-compact|post-compact|session-start|stop [--json]
   agent-harness project bootstrap [--repo PATH] [--sync] [--dry-run] [--json]
@@ -154,11 +109,6 @@ Usage:
   agent-harness version
 %s
 
-RECORD_ACTOR_FLAGS: --host codex|claude --session-id ID [--agent-id ID] --cwd PATH
-ACTOR_FLAGS: --host codex|claude --session-id ID [--agent-id ID] --session-pid PID --session-started-at RFC3339 --session-executable PATH --cwd PATH
-
-Durable-record mutations take RECORD_ACTOR_FLAGS; without them an active execution rejects the
-call as a non-holder. Execution lease transitions and generation-fenced publication additionally
-verify the live session process, so they take the wider ACTOR_FLAGS.
-`, version, issueOpsDevilsAdvocateUsage)
+%s
+`, version, renderIssueOpsUsage(abridgedIssueOpsMainKeys), renderIssueOpsUsage(abridgedIssueOpsTrailingKeys), IssueOpsActorFlagLegend)
 }

@@ -4,7 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
+	cliadapter "agent-harness/internal/adapter/cli"
 	"agent-harness/internal/core"
 )
 
@@ -12,82 +14,16 @@ func issueOpsUsage() {
 	fmt.Fprint(os.Stderr, issueOpsUsageText())
 }
 
-// issueOpsUsageText는 issueops 서브커맨드 usage 원문을 반환한다. 최상위
-// adapter usage(internal/adapter/cli)와의 라인 단위 일치는 테스트로 고정한다.
+// issueOpsUsageText는 `issueops` 서브커맨드 usage 원문을 반환한다.
+//
+// 줄 자체는 여기 없다 — `internal/adapter/cli`의 카탈로그가 유일한 원본이고 최상위
+// usage는 같은 카탈로그를 축약 키로 걸러 렌더한다(#188). 전에는 같은 줄을 두 곳에
+// 손으로 유지했고, 한쪽 누락은 parity 테스트가 잡았지만 **양쪽에 아예 없으면**
+// 검사할 대상이 없어 `execution switch-mode`(#167)가 그 구멍으로 살아남았다.
 func issueOpsUsageText() string {
-	return `Usage:
-  agent-harness issueops start --repo PATH [--branch NAME] [--json]
-  agent-harness issueops status --id ID [--json]
-  agent-harness issueops list [--repo PATH] [--json]
-  agent-harness issueops intent record --id ID --raw-request TEXT --interpreted-intent TEXT --success-criteria TEXT [--constraint TEXT] [--ambiguity TEXT] [--non-goal TEXT] [--intent-class CLASS] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops plan-prep record --id ID [--decisions-evidence TEXT | --decisions-waive REASON] [--related-score-ref TEXT | --related-waive REASON] [--web-research-evidence TEXT | --web-research-waive REASON] [--codebase-survey-evidence TEXT | --codebase-survey-waive REASON] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops domain-review record --id ID --model-fit TEXT [--terminology TEXT] [--risk TEXT] [--uncertainty TEXT] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops decision add --id ID --title TEXT --body TEXT --kind product|architecture|implementation|test|review|scope|follow-up [--rationale TEXT] [--alternative TEXT] [--affected-link URL] [--affected-artifact issue|plan|test|implementation|review|pr_mr|follow-up] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops link-issue --id ID --issue-url URL RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops link-child --id ID --child-url URL [--title TEXT] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops link-related --id ID --type depends-on|blocks|supersedes|follows-up|duplicates|splits-from|implements --related-url URL [--title TEXT] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops child start --parent ID --branch BRANCH --title TEXT --scope TEXT --acceptance TEXT [--acceptance TEXT...] [--child-issue-url URL] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops child status --parent ID [--repair] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops child list --parent ID RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops child accept --parent ID --child ID --evidence TEXT [--evidence TEXT...] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops child reject --parent ID --child ID --reason REASON RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops child drop --parent ID --child ID --reason REASON RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--remote-branch-url URL] [--link-verified] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops link-worktree --id ID --worktree-path PATH RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops design review --id ID --problem-summary TEXT --proposed-design TEXT --verification TEXT [--refactor-plan TEXT] [--alternative TEXT] [--risk TEXT] [--open-question TEXT] [--approved] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops compatibility review --id ID --backward-compatibility TEXT --side-effect TEXT --rollback-plan TEXT --verification TEXT [--blocker TEXT] [--approved] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops devils-advocate review --id ID --verdict pass|revise|stop [--finding TEXT]... [--waive --waiver-rationale TEXT] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops link-plan --id ID --plan-path PATH RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops artifact stage --id ID --name plan|spec|turing-loop --file PATH [--json]
-  agent-harness issueops artifact unstage --id ID --name plan|spec|turing-loop [--json]
-  agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude [--owner-model MODEL] [--owner-effort EFFORT] ACTOR_FLAGS [--confirm] [--json]
-  agent-harness issueops execution status --id ID [--json]
-  agent-harness issueops execution whoami [--json]
-  agent-harness issueops execution claim --id ID --generation N --claim-token-file PATH [--issue-body-sha256 SHA256 --context-packet-sha256 SHA256] ACTOR_FLAGS [--json]
-  agent-harness issueops execution release --id ID --generation N ACTOR_FLAGS [--json]
-  agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [fingerprint/reason flags] ACTOR_FLAGS [--confirm] [--json]
-  agent-harness issueops execution reconcile --id ID (--preview|--confirm) ACTOR_FLAGS [--json]
-  agent-harness issueops execution complete --id ID --generation N --final-head SHA --turing-report PATH --remote-artifact-url URL --verification TEXT... ACTOR_FLAGS --confirm [--json]
-  agent-harness issueops execution sync-base --id ID (--preview | --apply --confirm --fingerprint SHA256 | --finalize | --abort) ACTOR_FLAGS [--json]
-  agent-harness issueops execution switch-mode --id ID --mode direct|orca [--apply --confirm --fingerprint SHA256] ACTOR_FLAGS [--json]
-  agent-harness issueops reset-legacy --target-schema 1 (--preview|--status|--reconcile-remote --id ID --claim-id CLAIM --confirm|--drain-cycle --id ID --confirm|--confirm) [--expected-fingerprint SHA256] [--json]
-  agent-harness issueops phase --id ID --to problem|grill|plan|compatibility-review|implement|ai-slop-clean|feedback|pr RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops ai-slop-clean record --id ID --category TEXT --verification TEXT RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops implementation-review record --id ID --verdict pass|revise|stop --finding TEXT... --evidence TEXT... [--reviewer-host codex|claude] [--reviewer-model MODEL] [--reviewer-effort EFFORT] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops regress --id ID --reason TEXT RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops record-routing --id ID --phase PHASE --skill SKILL RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops routing-score --id ID --expect phase:skill,... [--json]
-  agent-harness issueops feedback add --id ID --source TEXT --body TEXT [--classification TEXT] RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops feedback mark-issue-updated --id ID RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops feedback resolve --id ID --index N --resolution valid-defect|question-answered|noise-dismissed RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops prune [--max-age DURATION] [--confirm] [--json]
-  agent-harness issueops pr-readiness --id ID [--strict] [--json]
-  agent-harness issueops cleanup status --id ID [--merged] [--json]
-  agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]
-  agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]
-  agent-harness issueops cleanup remote-branch --id ID (--preview | --apply --confirm --fingerprint SHA256) [--json]
-  agent-harness issueops cleanup finish --id ID [--provider github|gitlab] (--preview | --apply --confirm --fingerprint SHA256) [--json]
-  agent-harness issueops cleanup abandon --id ID --reason TEXT (--preview | --apply --confirm --fingerprint SHA256) [--json]
-  agent-harness issueops remote score --input PATH [--judge none|file] [--judge-file PATH] [--json]
-  agent-harness issueops remote-score --input PATH [--judge none|file] [--judge-file PATH] [--json]
-  agent-harness issueops remote render-template --kind issue|child|pr --template KIND --title TEXT --provider github|gitlab --field key=value... [--score-file PATH] [--json]
-  agent-harness issueops remote create-issue --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]
-  agent-harness issueops remote create-child --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]
-  agent-harness issueops remote create-pr --id ID --expected-generation N --title TEXT --head BRANCH --base BRANCH [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... ACTOR_FLAGS [--confirm] [--json]
-  agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --target-branch BRANCH --label LABEL --assignee USER RECORD_ACTOR_FLAGS [--json]
-  agent-harness issueops remote reflect-completion --id ID [--provider github|gitlab] [--confirm] [--json]
-  agent-harness issueops remote close-issue --id ID [--provider github|gitlab] [--confirm] [--json]
-  agent-harness issueops benchmark run --fixtures PATH [--judge none|file] [--judge-file PATH] [--json]
-  agent-harness issueops benchmark compare --baseline KEY --candidate KEY [--json]
-  agent-harness issueops benchmark gate --baseline KEY --candidate KEY --candidate-file PATH [--changed-path PATH]... [--json]
-
-RECORD_ACTOR_FLAGS: --host codex|claude --session-id ID [--agent-id ID] --cwd PATH
-ACTOR_FLAGS: --host codex|claude --session-id ID [--agent-id ID] --session-pid PID --session-started-at RFC3339 --session-executable PATH --cwd PATH
-
-Durable-record mutations take RECORD_ACTOR_FLAGS; without them an active execution rejects the
-call as a non-holder. Execution lease transitions and generation-fenced publication additionally
-verify the live session process, so they take the wider ACTOR_FLAGS.
-`
+	return "Usage:\n" +
+		strings.Join(cliadapter.IssueOpsUsageLines(), "\n") + "\n\n" +
+		cliadapter.IssueOpsActorFlagLegend + "\n"
 }
 
 const issueOpsBranchPrepareUsage = "Usage: agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--remote-branch-url URL] [--link-verified] [--json]"

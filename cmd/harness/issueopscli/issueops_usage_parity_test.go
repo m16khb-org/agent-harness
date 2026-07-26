@@ -8,23 +8,15 @@ import (
 	cliadapter "agent-harness/internal/adapter/cli"
 )
 
-// usageCommandKey는 usage 라인에서 플래그 직전까지의 명령 경로를 뽑는다.
-// 양방향 parity 검사가 같은 파싱 규칙을 쓰도록 공유한다.
-//
-// 선택적 플래그는 `[--repo PATH]`처럼 대괄호로 감싸이고 배타 그룹은 `(--preview|...)`
-// 처럼 괄호로 감싸인다. 그 표기 문자로 시작하는 필드도 명령 경로의 끝이다 —
-// 끊지 않으면 `list [--repo`가 명령 경로가 되고, 그 키를 인자로 삼는 검사는
-// 명령을 실제로 실행해 버린다(#184에서 실측).
+// usageCommandKey는 usage 라인에서 플래그 직전까지의 명령 경로를 `agent-harness
+// issueops X` 형태로 돌려준다. 파싱 규칙은 카탈로그가 소유하며(#188) 여기서는
+// 접두를 붙여 기존 비교 형태를 유지한다 — 규칙을 두 번 적으면 그 둘이 어긋난다.
 func usageCommandKey(line string) string {
-	fields := strings.Fields(line)
-	limit := min(len(fields), 4)
-	for i, field := range fields[:limit] {
-		if strings.HasPrefix(field, "-") || strings.HasPrefix(field, "[") || strings.HasPrefix(field, "(") {
-			limit = i
-			break
-		}
+	key := cliadapter.IssueOpsUsageKey(line)
+	if key == "" {
+		return ""
 	}
-	return strings.Join(fields[:limit], " ")
+	return "agent-harness issueops " + key
 }
 
 // issueops 서브커맨드 usage와 최상위 adapter usage는 같은 명령 표면을
