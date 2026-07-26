@@ -30,7 +30,7 @@ func ParseExactIssueOpsCommand(command string) (ExactIssueOpsCommand, bool) {
 	start := 3
 	if len(tokens) > 3 {
 		switch tokens[2] {
-		case "compatibility", "execution", "devils-advocate", "feedback", "remote", "cleanup", "ai-slop-clean", "artifact", "implementation-review", "branch":
+		case "compatibility", "execution", "devils-advocate", "feedback", "remote", "cleanup", "ai-slop-clean", "artifact", "implementation-review", "branch", "decision":
 			if strings.HasPrefix(tokens[3], "--") {
 				return ExactIssueOpsCommand{}, false
 			}
@@ -135,6 +135,12 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return values, b("--waive", "--json"), r, true
 	case "phase":
 		return v("--id", "--to", "--host", "--session-id", "--agent-id", "--cwd"), b("--force", "--json"), r, true
+	case "decision add":
+		values := v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--title", "--body", "--kind", "--rationale", "--alternative", "--affected-link", "--affected-artifact")
+		for _, name := range []string{"--alternative", "--affected-link", "--affected-artifact"} {
+			r[name] = true
+		}
+		return values, b("--json"), r, true
 	case "ai-slop-clean record":
 		values := v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--category", "--verification")
 		r["--category"] = true
