@@ -430,8 +430,12 @@ func deleteAbandonedIssueOps(ctx context.Context, stateRoot string, record Issue
 		if err != nil {
 			return err
 		}
+		// lease 판정은 게이트 ③과 같은 함수를 쓴다. 같은 조건을 두 곳에서 각각
+		// 표현하면 한쪽만 바뀌었을 때 preview가 fingerprint까지 발급한 뒤 apply가
+		// 거부되는 상태가 생긴다 — 운영자에게는 이유 없이 막히는 것으로 보인다
+		// (#143, #142에서 실측).
 		if current.Phase != record.Phase || current.RemoteArtifact != nil || cleanupAbandonHasChildren(current) ||
-			(current.Execution != nil && current.Execution.Lease.Status != model.LeaseStatusReleased) {
+			(current.Execution != nil && cleanupAbandonLeaseHoldsWriter(current.Execution.Lease.Status)) {
 			return fmt.Errorf("abandon authority changed before deletion CAS")
 		}
 		rows := []string{}
