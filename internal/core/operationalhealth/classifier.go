@@ -268,8 +268,15 @@ func Classify(snapshot Snapshot, opts Options) Result {
 	}
 	for _, dispatch := range snapshot.Dispatches {
 		id := strings.TrimSpace(dispatch.ID)
-		if strings.TrimSpace(dispatch.Status) != "dispatched" {
-			builder.add(FindingInventoryUnknown, "dispatch", id, "dispatch status is unsupported: "+strings.TrimSpace(dispatch.Status), "")
+		status := strings.TrimSpace(dispatch.Status)
+		if !knownDispatchStatus(status) {
+			builder.add(FindingInventoryUnknown, "dispatch", id, "dispatch status is unsupported: "+status, "")
+			continue
+		}
+		// task와 같은 이유로 종결된 dispatch는 건너뛴다: 그것은 잔여물이 아니라
+		// 이력이고, Orca에 per-dispatch 삭제 명령이 없어 owner를 요구하면 끝난
+		// dispatch를 영원히 residue로 보고한다(#171).
+		if settledDispatchStatus(status) {
 			continue
 		}
 		if len(dispatchOwners[id]) != 1 {
@@ -483,9 +490,57 @@ func settledTaskStatus(value string) bool {
 	return value == "completed" || value == "failed"
 }
 
+// knownDispatchStatus는 Orca가 dispatch_contexts.status에 담을 수 있는 값을
+// 판정한다. 어휘의 출처는 Orca 소스이지 우리 추론이 아니다:
+//
+//	src/main/runtime/orchestration/types.ts
+//	export type DispatchStatus = 'pending' | 'dispatched' | 'completed' | 'failed' | 'circuit_broken'
+//
+//	src/main/runtime/orchestration/db.ts (dispatch_contexts 스키마)
+//	CHECK(status IN ('pending', 'dispatched', 'completed', 'failed', 'circuit_broken'))
+//
+// CHECK 제약이 있으므로 그 밖의 값은 스키마 마이그레이션 없이는 저장될 수 없다.
+// 그래도 미지 값을 unknown으로 떨어뜨리는 것은 유지한다 — Orca가 어휘를 넓히면
+// 우리가 먼저 알아야 하고, 조용히 통과시키면 그 시점을 놓친다.
+//
+// dispatched 하나만 유효로 보던 동안 유효 어휘 5개 중 4개가 "unsupported"로
+// 보고됐다. 유효 상태가 unknown으로 오면 진짜 미지 값이 그 사이에 묻힌다(#171).
+func knownDispatchStatus(value string) bool {
+	switch value {
+	case "pending", "dispatched":
+		return true
+	default:
+		return settledDispatchStatus(value)
+	}
+}
+
+// settledDispatchStatus는 dispatch가 더 이상 워커를 잡거나 획득할 수 없는
+// 상태인지 판정한다.
+//
+// failed가 여기 있는 이유는 db.ts의 failDispatch다:
+//
+//	const newStatus: DispatchStatus = newFailureCount >= 3 ? 'circuit_broken' : 'failed'
+//	const taskStatus: TaskStatus = newStatus === 'circuit_broken' ? 'failed' : 'ready'
+//
+// dispatch가 failed면 그 **시도**가 끝난 것이고, 작업은 task가 ready로 돌아가
+// 재dispatch를 기다린다 — 그 대기는 task 축(settledTaskStatus)이 본다. 재dispatch는
+// 새 dispatch ID를 만들므로 이 dispatch로 돌아오지 않는다.
+//
+// circuit_broken은 coordinator.ts가 재dispatch하지 않고 failedTasks에 넣는
+// 종착점이다. 워커를 다시 붙일 경로가 없다.
+func settledDispatchStatus(value string) bool {
+	return value == "completed" || value == "failed" || value == "circuit_broken"
+}
+
+// knownGateStatus의 어휘도 Orca 소스가 정한다:
+//
+//	src/main/runtime/orchestration/types.ts
+//	export type GateStatus = 'pending' | 'resolved' | 'timeout'
+//
+// timeout이 빠져 있던 동안 시간 초과된 gate가 "unsupported"로 보고됐다(#171).
 func knownGateStatus(value string) bool {
 	switch value {
-	case "pending", "resolved":
+	case "pending", "resolved", "timeout":
 		return true
 	default:
 		return false
