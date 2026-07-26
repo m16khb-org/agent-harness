@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,6 +24,18 @@ func executionObservation(req HookToolUseLifecycleRequest) bool {
 		return true
 	}
 	if exactOrcaObservation(req.Command) {
+		return true
+	}
+	// gh issue develop은 관측이 아니다 — provider에 브랜치를 만든다. 그런데 이
+	// 목록에 없어서 authority 활성 중 unclassified로 막혔고, #163이 정한 orca
+	// 순서(orca 준비 뒤 링크 부착)를 canonical worktree에서 실행할 수 없었다.
+	// branch prepare의 fallback_api가 그 명령을 안내하므로 안내와 실행 가능성이
+	// 어긋나 있었다(이슈 #177).
+	//
+	// ExactReadOnlyShellCommand에 넣지 않는 이유는 그 이름이 계약이기 때문이다.
+	// 여기서 별도로 판정하고, 통과 근거는 "읽기라서"가 아니라 "IssueOps가 그
+	// 명령을 지시하고 형태를 정확히 고정할 수 있어서"다.
+	if exactProviderBranchLink(req.Command) {
 		return true
 	}
 	command, ok := commandparse.ParseExactIssueOpsCommand(req.Command)
@@ -96,6 +109,54 @@ func executionObservation(req HookToolUseLifecycleRequest) bool {
 	}
 }
 
+// exactProviderBranchLink는 `gh issue develop`의 정확한 두 형태만 인정한다.
+//
+//	gh issue develop <number> --repo <slug> --base <branch> --name <branch>
+//	gh issue develop --list <number> --repo <slug>
+//
+// develop 하나를 열면서 issue 표면 전체가 열리지 않게 서브커맨드와 플래그를
+// 열거한다. create·close·edit·comment는 통과하지 않고, 열거 밖 플래그가 하나라도
+// 붙으면 거부한다(#177).
+func exactProviderBranchLink(command string) bool {
+	if commandparse.HasUnquotedControlOperator(command) ||
+		commandparse.HasActiveCommandSubstitution(command) ||
+		commandparse.HasActiveOutputRedirect(command) ||
+		commandparse.HasActiveInputRedirect(command) ||
+		commandparse.HasActiveParameterOrTildeExpansion(command) ||
+		commandparse.HasActivePathnameExpansion(command) ||
+		commandparse.HasActiveShellSpecialQuoting(command) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(command)
+	if len(tokens) < 4 || searchrouting.SearchTokenName(tokens[0]) != "gh" ||
+		tokens[1] != "issue" || tokens[2] != "develop" {
+		return false
+	}
+	rest := tokens[3:]
+	if rest[0] == "--list" {
+		// 조회 형태: --list <number> --repo <slug>
+		if len(rest) != 4 || rest[2] != "--repo" {
+			return false
+		}
+		return positiveIssueNumber(rest[1]) && strings.TrimSpace(rest[3]) != ""
+	}
+	// 생성 형태: <number> --repo <slug> --base <branch> --name <branch>
+	if len(rest) != 7 || !positiveIssueNumber(rest[0]) {
+		return false
+	}
+	for _, pair := range [][2]int{{1, 2}, {3, 4}, {5, 6}} {
+		if strings.TrimSpace(rest[pair[1]]) == "" || strings.HasPrefix(rest[pair[1]], "--") {
+			return false
+		}
+	}
+	return rest[1] == "--repo" && rest[3] == "--base" && rest[5] == "--name"
+}
+
+func positiveIssueNumber(value string) bool {
+	number, err := strconv.Atoi(strings.TrimSpace(value))
+	return err == nil && number > 0
+}
+
 func exactOrcaObservation(command string) bool {
 	if commandparse.HasUnquotedControlOperator(command) ||
 		commandparse.HasActiveCommandSubstitution(command) ||
@@ -151,7 +212,15 @@ func executionTypedControlPlane(req HookToolUseLifecycleRequest) bool {
 	// 쥐고 있지 않을 때만 가능한데(core가 강제한다), 그 상태에서도 다른 lifecycle의
 	// mutation authority가 활성이면 훅이 이 명령을 unclassified로 막는다 — 사용자가
 	// 갇힌다(이슈 #167).
-	case "execution prepare", "execution claim", "execution release", "execution replace", "execution reconcile", "execution complete", "execution sync-base", "execution switch-mode":
+	// cleanup orphan도 같은 이유로 typed 등록이 필요하다. 그 명령의 대상은 정식
+	// phase를 밟지 못한 사이클의 자원이고, 그런 사이클은 정의상 mutation authority가
+	// 활성인 채로 남는다 — 즉 이 명령이 필요한 순간에 정확히 막혔다. cleanup
+	// abandon의 orca_residue_error가 그것을 안내하기까지 한다(이슈 #177).
+	//
+	// 안전은 그 명령의 fingerprint와 --apply --confirm 게이트가 본다. typed 등록은
+	// 훅의 mutation 가드 블록을 스킵시킬 뿐이고 lease·권위 검사는 core 책임이다(F14).
+	case "execution prepare", "execution claim", "execution release", "execution replace", "execution reconcile", "execution complete", "execution sync-base", "execution switch-mode",
+		"cleanup orphan":
 		id, ok := oneFlag(flags, "--id")
 		return ok && strings.TrimSpace(id) != ""
 	default:
