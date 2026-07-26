@@ -214,3 +214,5 @@ unrelated work throughout the sequence.
 - 다중 사이클 조망: `issueops list [--repo PATH] --json` — claimable/cleanup/unreflected 플래그와 scanned_records 비용을 함께 노출한다.
 - 하위 세션 publication(orca): `issueops implementation-review record --id ID --verdict pass --finding ... --evidence ... --reviewer-model <planner급>` 기록 후에만 `remote create-pr`가 통과한다. diff가 바뀌면 stale로 다시 막힌다.
 - 머지 후 정리(순서 고정): `cleanup status --merged` → `cleanup close-children --merged --confirm` → `remote reflect-completion --confirm` → `remote close-issue --confirm` → `cleanup finish --preview` → `cleanup finish --apply --confirm --fingerprint FP`. finish 재실행 전에는 preview로 fingerprint를 재발급한다.
+- Turing 리포트는 **PR 생성 이전에** 커밋한다. `execution complete`가 리포트를 요구하는 시점이 PR 머지 이후면 그 커밋이 어느 PR에도 실리지 못해 두 번째 PR이 필요해진다(#153에서 실측). #153이 그 상황을 회복 가능하게 고쳤지만(원격 tip이 base에 도달했으면 통과) 애초에 만들지 않는 편이 낫다.
+- 하네스 코드를 고친 뒤에는 **설치본을 재빌드한다**: `go build -o bin/agent-harness ./cmd/harness`. `~/.local/bin/agent-harness`는 그 경로를 가리키는 심볼릭 링크이므로 머지만 하고 재빌드를 빠뜨리면 고친 동작이 나오지 않는다 — #153 cleanup에서 로컬 `main`이 두 머지 뒤처져 #154의 진단 필드가 출력되지 않았고 원인을 찾는 데 시간이 들었다.
