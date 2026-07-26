@@ -139,6 +139,26 @@ any Orca resource is created; explicit `orca` fails with the same actionable
 code. `/issues/:iid` and `/work_items/:iid` are equivalent only when the exact
 authority (including port), project path, and IID all match.
 
+**GitHub + Orca 모드는 브랜치 생성 순서를 뒤집는다.** IssueOps 정식 순서는
+`gh issue develop`으로 linked branch를 먼저 만들지만, Orca `worktree create`는 언제나
+새 브랜치를 만들므로 이름이 겹쳐 `orca_branch_name_taken`으로 막힌다(#149·#152·#154).
+
+`createLinkedBranch`(= `gh issue develop`)는 `oid`에서 새 브랜치를 만들기 때문에 **원격에**
+같은 이름이 있으면 실패하지만 **로컬에만 있으면 성공한다**(#163 실측). Orca는 로컬
+워크트리와 로컬 브랜치만 만들고 push하지 않으므로 이 순서가 성립한다:
+
+```bash
+agent-harness issueops branch prepare --id ID --base-sha "$BASE_HEAD" ...   # 기록만, 브랜치 없음
+agent-harness issueops execution prepare --id ID --mode orca ... --confirm  # Orca가 로컬 브랜치 생성
+gh issue develop "$ISSUE_URL" --base "$BASE" --name "$BRANCH"               # 원격 생성 + 이슈 연결
+agent-harness issueops branch prepare --id ID ... --link-verified           # 추적 확인 후 갱신
+```
+
+`branch prepare`는 브랜치 존재를 검증하지 않고 이름 규칙과 레코드 일치만 보므로 1단계가
+성립한다. 이 순서로 **Orca 모드와 이슈-브랜치 추적을 둘 다 얻는다.** GitLab은 브랜치 이름
+규칙이 연결 수단이라 순서 주의가 필요 없지만, 애초에
+`gitlab_issue_metadata_unsupported`로 Orca보다 먼저 걸러진다.
+
 For Orca mode, follow `skills/issueops/references/execution.md`. Preparation
 seals the remote issue body, context packet, fully rendered owner prompt, and
 private claim-token file before launch. The fresh owner verifies both SHA-256
