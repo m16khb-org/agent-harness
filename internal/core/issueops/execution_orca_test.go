@@ -14,7 +14,7 @@ import (
 )
 
 func TestExecutionOrcaPersistsIntentBeforeExternalMutationAndCASReceipt(t *testing.T) {
-	stateRoot, record := executionPrepareRecord(t)
+	stateRoot, record := orcaPrepareRecord(t)
 	fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
 	fake.prepare = func(workspace port.ExecutionWorkspaceRequest, request port.ExecutionOrcaProbeRequest) (port.ExecutionOrcaWorkspaceReceipt, error) {
 		pending, err := ReadIssueOps(stateRoot, record.ID)
@@ -62,7 +62,7 @@ func TestExecutionOrcaPrepareAppliesHostImplementerDefaults(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.host, func(t *testing.T) {
-			stateRoot, record := executionPrepareRecord(t)
+			stateRoot, record := orcaPrepareRecord(t)
 			fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
 			fake.prepare = func(workspace port.ExecutionWorkspaceRequest, request port.ExecutionOrcaProbeRequest) (port.ExecutionOrcaWorkspaceReceipt, error) {
 				if request.Model != tc.wantModel || request.Effort != tc.wantEffort {
@@ -94,7 +94,7 @@ func TestExecutionGitLabOrcaCapabilityFailsBeforeProbeOrMutation(t *testing.T) {
 	for _, mode := range []string{ExecutionModeAuto, string(model.ExecutionModeOrca)} {
 		for _, confirm := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/confirm=%t", mode, confirm), func(t *testing.T) {
-				stateRoot, record := executionPrepareRecord(t)
+				stateRoot, record := orcaPrepareRecord(t)
 				record.BranchPrepare.Provider = "gitlab"
 				record.BranchPrepare.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/69"
 				if _, err := writeIssueOps(stateRoot, record); err != nil {
@@ -133,7 +133,7 @@ func TestExecutionGitLabOrcaCapabilityFailsBeforeProbeOrMutation(t *testing.T) {
 }
 
 func TestExecutionOrcaAmbiguityNeverFallsBackOrRepeatsExternalMutation(t *testing.T) {
-	stateRoot, record := executionPrepareRecord(t)
+	stateRoot, record := orcaPrepareRecord(t)
 	direct := &executionDirectCountingFake{}
 	fake := &executionOrcaFake{
 		probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true},
@@ -164,7 +164,7 @@ func TestExecutionOrcaAmbiguityNeverFallsBackOrRepeatsExternalMutation(t *testin
 }
 
 func TestExecutionConcurrentOrcaPrepareInvokesDriverOnce(t *testing.T) {
-	stateRoot, record := executionPrepareRecord(t)
+	stateRoot, record := orcaPrepareRecord(t)
 	entered, release := make(chan struct{}), make(chan struct{})
 	fake := &executionOrcaFake{
 		probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true},

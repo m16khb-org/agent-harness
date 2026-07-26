@@ -119,6 +119,14 @@ type IssueOpsDenyReason struct {
 	// 고쳐야 하는지 알 수 없어 추측 재시도만 반복한다(이슈 #90 발견 4).
 	IdentityMismatch string `json:"identity_mismatch,omitempty"`
 	ObservedActor    string `json:"observed_actor,omitempty"`
+	// Reason은 #90의 그 판단을 사유 자체에 적용한 것이다(이슈 #154). 가드는 왜
+	// 막았는지를 이미 문장으로 계산해두는데, 구조화된 deny에 담을 자리가 없어
+	// hookDenyReason이 JSON을 만드는 순간 그 문장이 사라졌다. 코드만 받은 owner는
+	// 명령을 조금씩 바꿔가며 재시도하게 된다.
+	//
+	// 담는 것은 분류 결과이지 명령 원문이 아니다. 인자에 토큰이 있을 수 있으므로
+	// 되비추지 않는다.
+	Reason string `json:"reason,omitempty"`
 }
 
 type LifecycleStopReminderResult struct {

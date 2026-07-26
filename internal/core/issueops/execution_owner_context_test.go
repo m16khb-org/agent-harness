@@ -17,7 +17,7 @@ import (
 )
 
 func TestExecutionOwnerLaunchSealsIssueContextAndFullPromptBeforeDispatch(t *testing.T) {
-	stateRoot, record := executionPrepareRecord(t)
+	stateRoot, record := orcaPrepareRecord(t)
 	issueBody := "## acceptance criteria\n\n- [ ] AC-01: first\n- [ ] AC-23: last\n\n## 검증 명령\n\n```bash\ngo test ./... -count=1\ngo vet ./...\n```\n"
 	readIssue := false
 	fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
@@ -77,7 +77,7 @@ func TestExecutionOwnerLaunchSealsIssueContextAndFullPromptBeforeDispatch(t *tes
 func TestExecutionInitialOrcaClaimRejectsIssueOrPacketDigestDrift(t *testing.T) {
 	for _, drift := range []string{"issue", "packet"} {
 		t.Run(drift, func(t *testing.T) {
-			stateRoot, record := executionPrepareRecord(t)
+			stateRoot, record := orcaPrepareRecord(t)
 			issueBody := "## acceptance criteria\n\n- [ ] AC-01: first\n\n## 검증 명령\n\n```bash\ngo test ./... -count=1\n```\n"
 			fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
 			fake.prepare = func(workspace port.ExecutionWorkspaceRequest, _ port.ExecutionOrcaProbeRequest) (port.ExecutionOrcaWorkspaceReceipt, error) {
@@ -125,7 +125,7 @@ func TestExecutionInitialOrcaClaimRejectsIssueOrPacketDigestDrift(t *testing.T) 
 // 검증 테스트가 같은 출발점을 공유해야 재봉인 전후를 비교할 수 있다.
 func sealedOrcaCycle(t *testing.T, issueBody string) (string, IssueOpsRecord, ExecutionPrepareResult, ExecutionIssueSnapshotReadFunc) {
 	t.Helper()
-	stateRoot, record := executionPrepareRecord(t)
+	stateRoot, record := orcaPrepareRecord(t)
 	fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
 	// reseed는 워크스페이스 스냅샷으로 Git top-level을 확인하므로 fake가 실제
 	// 워크트리를 만들어야 한다(디렉토리만 만들면 재봉인 경로에 닿지 못한다).
