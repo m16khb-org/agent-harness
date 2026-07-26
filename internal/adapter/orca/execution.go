@@ -352,18 +352,62 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 		}
 		return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner dispatch is absent")
 	}
+	// 거울상의 모순도 같은 ambiguity다. task 행이 완전 목록에서 사라졌는데
+	// dispatch 행이 남아 있으면 어느 쪽 인벤토리를 믿어야 하는지 알 수 없다.
+	// 예전에는 dispatch 상태가 비종결일 때만 우연히 막혔다 — 상태 어휘를 판정에서
+	// 뺀 뒤로는 행의 존재만으로 막는다. 이 검사는 어휘에 의존하지 않는다.
+	if !taskFound {
+		return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner task is absent while its dispatch row remains")
+	}
 	row := *dispatch.Dispatch
 	if row.RuntimeID != req.RuntimeID || row.ID != req.DispatchID || row.TaskID != req.TaskID {
 		return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner dispatch identity changed")
 	}
+	// dispatch 상태는 보고만 하고 liveness 판정에는 넣지 않는다(#147 결정 A).
+	//
+	// 어휘를 몰라서가 아니다. Orca가 공개 저장소이고 그 정의가 소스에 있다(#171):
+	//
+	//	src/main/runtime/orchestration/types.ts
+	//	export type DispatchStatus = 'pending' | 'dispatched' | 'completed' | 'failed' | 'circuit_broken'
+	//
+	//	src/main/runtime/orchestration/db.ts (dispatch_contexts 스키마)
+	//	CHECK(status IN ('pending', 'dispatched', 'completed', 'failed', 'circuit_broken'))
+	//
+	// core/operationalhealth는 그 어휘를 knownDispatchStatus·settledDispatchStatus로
+	// 쓴다. 여기서 쓰지 않는 것은 질문이 다르기 때문이다 — 그쪽은 "이 자원이
+	// 잔여물인가"를 묻고 여기는 "이 소유자가 살아 있는가"를 묻는다. 후자에는 아래
+	// 이유로 dispatch 상태가 정보를 더하지 않는다.
+	//
+	// (예전 주석은 "어휘를 확인할 방법이 없다"고 했다. #142 시점에는 CLI 응답만
+	// 봤기 때문이고, 그 진술은 #171의 소스 실측으로 무효가 됐다.)
+	//
+	// 뺀 근거는 손실의 크기다. 이 게이트가 막아야 할 해악은 worker가 아직 자원을
+	// 붙든 채로 레코드가 지워지는 것인데, 그 상태는 확인된 증거 셋이 이미 덮는다:
+	// 작업 중인 worker의 task 상태는 비종결이라 TaskLive가 잡고, terminal 행이
+	// 인벤토리에 있는 한 TerminalLive가 connected/writable 실관측으로 잡으며,
+	// 쓰기 권한 자체는 lease가 쥐고 abandon의 lease_terminal 게이트가 독립적으로
+	// 막는다. 따라서 dispatch 상태가 추가로 잡아내던 것은 task가 이미 종결되고
+	// terminal도 죽은 뒤 남은 장부 행뿐이다 — 잃을 소유자가 없는 잔여물이다.
+	//
+	// Orca 소스가 그 주장을 증명한다. db.ts의 failDispatch가 두 상태를 함께 움직인다:
+	//
+	//	const newStatus: DispatchStatus = newFailureCount >= 3 ? 'circuit_broken' : 'failed'
+	//	const taskStatus: TaskStatus = newStatus === 'circuit_broken' ? 'failed' : 'ready'
+	//
+	// circuit_broken이면 task는 failed(종결)이고, failed면 task는 ready(비종결)다.
+	// completed는 worker_done이 task와 dispatch를 함께 완료로 만든다. 즉 dispatch가
+	// 살아 있음을 말하는 모든 경우에 task도 비종결이므로 TaskLive가 이미 잡는다.
+	// dispatch 상태를 판정에 넣는 것은 같은 사실을 두 번 묻는 것이었다.
+	//
+	// TerminalLive의 경계는 분명히 해둔다: worktree 스코프 목록에 terminal 행이
+	// 없으면 이 값은 조용히 false다. 그 창은 이 변경 이전부터 있었다. 구 검사가
+	// 그것을 좁혀주지도 않았다 — 비종결 dispatch 상태에서만 우연히 막았고 종결값은
+	// 그때도 통과시켰다.
+	//
+	// 남기는 것과 빼는 것을 구분한다: 위의 identity/absence/모순 검사는 그대로 두어
+	// dispatch 조회 자체는 계속 fail-closed다. 판정에서 빠지는 것은 상태 어휘뿐이고,
+	// DispatchStatus는 진단용으로 계속 보고한다.
 	result.DispatchStatus = strings.ToLower(strings.TrimSpace(row.Status))
-	// dispatch 상태의 어휘는 확인되지 않았다 — Orca CLI에 dispatch 상태를
-	// 설정하는 명령이 없어 help로 물어볼 곳이 없고, 실측으로 dispatched와
-	// failed만 관측했다(#142). task 어휘를 빌려 쓰되 그 사실을 남긴다. 어휘를
-	// 추측해 넓히면 #136과 같은 오류를 반복한다(#145 비범위).
-	if !executionTerminalTaskStatus(result.DispatchStatus) {
-		result.TaskLive = true
-	}
 	return result, nil
 }
 

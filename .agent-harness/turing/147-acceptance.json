@@ -1,0 +1,141 @@
+{
+  "issue": "https://github.com/m16khb/agent-harness/issues/147",
+  "lifecycle": "io-b2d0c0f1daf2",
+  "mode": "orca",
+  "branch": "147-dispatch-vocabulary",
+  "decision": {
+    "chosen": "A — dispatch 상태를 TaskLive 판정에서 제외한다",
+    "rejected": {
+      "B": "유지하고 문서화만 한다 — 파괴 명령의 게이트에 확인 불가능한 어휘 차용이 남는다. 이 이슈가 기록하려던 문제 자체가 남는다.",
+      "C": "orca에 어휘 노출을 요청한다 — 통제 밖이며 이 저장소에서 완결할 수 없다. 노출되면 그때 재도입하면 된다."
+    },
+    "why": "이슈가 판단을 보류한 이유는 A의 검출력 손실 크기를 몰랐기 때문이다. 그 크기를 측정했다. 게이트가 막아야 할 해악은 worker가 자원을 붙든 채 레코드가 지워지는 것인데, 그 상태는 확인된 증거 셋이 이미 덮는다: 작업 중인 worker의 task 상태는 비종결이라 TaskLive가 잡고, terminal 행이 인벤토리에 있는 한 TerminalLive가 connected/writable 실관측으로 잡으며, 쓰기 권한 자체는 lease가 쥐고 abandon의 lease_terminal 게이트가 독립적으로 막는다. 셋 중 어느 것도 dispatch 어휘에 의존하지 않는다. 따라서 dispatch 상태가 추가로 잡아내던 것은 task가 이미 종결되고 terminal도 죽은 뒤 남은 장부 행뿐이며, 그것은 잃을 소유자가 없는 잔여물이다. 검출력 손실이 안전성 손실이 아님을 확인했으므로 확인 불가능한 의존을 제거하는 쪽을 택했다."
+  },
+  "vocabulary_evidence": [
+    "orca orchestration dispatch-show --help (2026-07-26 실행) — 옵션만 출력하고 status 값 목록이 없다. #145 이후에도 노출되지 않았음을 재확인.",
+    "orca orchestration dispatch-show --task task_78ecb873b9d7 --json (2026-07-26 실행, 실행 중인 자기 자신의 dispatch) — status=dispatched, completed_at=null. CLI 응답으로 관측되는 어휘는 dispatched와 failed 둘뿐이다(#142).",
+    "PLANNER 정정 (2026-07-26, #171): 어휘는 확정됐다. Orca가 공개 저장소이고 src/main/runtime/orchestration/types.ts의 DispatchStatus가 pending·dispatched·completed·failed·circuit_broken 다섯을 정의하며, db.ts의 dispatch_contexts 스키마가 같은 집합을 SQLite CHECK 제약으로 박는다. implementer는 이 사실을 planner 기록으로 알았으나 lifecycle guard가 worktree 밖 탐색을 차단해 직접 검증할 수 없었다(아래 design_conflict.premise_challenged가 그 한계를 정확히 기록했다). core/operationalhealth는 #171에서 그 어휘를 knownDispatchStatus·settledDispatchStatus로 반영했다."
+  ],
+  "acceptance": {
+    "AC-01": {
+      "statement": "dispatch 상태에 대한 의존의 처분이 결정된다 — 유지·제거·확인 중 하나.",
+      "verdict": "pass",
+      "evidence": "제거로 결정했다. InspectOwner에서 dispatch 상태를 TaskLive에 반영하던 분기를 삭제했다. 근거와 기각한 대안은 이 파일의 decision과 같은 함수의 주석에 있다."
+    },
+    "AC-02": {
+      "statement": "결정의 근거가 코드에 남는다. 다음 사람이 같은 조사를 반복하지 않아야 한다.",
+      "verdict": "pass",
+      "evidence": "internal/adapter/orca/execution.go의 InspectOwner 안 dispatch 구간 주석에 어휘를 확인할 수 없다는 사실, 조사한 경로(dispatch-show --help, 실측), 제거 근거(TaskLive·TerminalLive·lease 셋이 실제 해악을 이미 덮는다)와 TerminalLive의 경계, 그리고 identity/absence/모순 검사는 남긴다는 구분을 기록했다."
+    },
+    "AC-03": {
+      "statement": "어느 방향이든 orca_resources_absent 게이트의 fail-closed 성질이 유지된다.",
+      "verdict": "pass",
+      "test": "TestExecutionOwnerInventoryKeepsVerifiedLivenessSignals, TestExecutionOwnerInventoryKeepsDispatchObservationFailClosed",
+      "command": "go test ./internal/adapter/orca/... -count=1",
+      "result": "PASS — 살아 있는 terminal은 task와 dispatch가 모두 종결이어도 계속 막는다. 종결 어휘 밖의 task 상태(빈 문자열 포함)는 계속 live다. dispatch 행이 없거나 identity가 어긋나거나 task 행만 사라진 모순 상태는 계속 error로 fail-closed다.",
+      "note": "1차 구현은 이 기준을 한 경로에서 어겼다. brooks 리뷰가 잡았고 아래 review 항목에 수정 근거를 남겼다."
+    },
+    "AC-04": {
+      "statement": "RED 테스트가 선택한 방향의 계약을 실증한다.",
+      "verdict": "pass",
+      "test": "TestExecutionOwnerInventoryDoesNotDeriveLivenessFromDispatchStatus",
+      "red_command": "go test ./internal/adapter/orca/... -run TestExecutionOwnerInventoryDoesNotDeriveLivenessFromDispatchStatus -count=1",
+      "red_result": "FAIL 7/7 — task=completed, terminal 없음인데 dispatch 상태(dispatched, pending, ready, blocked, running, queued, 빈 문자열)마다 TaskLive=true였다. 예상한 RED 사유와 일치한다.",
+      "green_command": "go test ./internal/adapter/orca/... -count=1",
+      "green_result": "PASS"
+    }
+  },
+  "verification": [
+    {
+      "command": "go test ./internal/adapter/orca/... -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test ./... -count=1",
+      "result": "PASS — 전 패키지 통과. 다른 패키지가 dispatch 상태 기반 liveness에 의존하지 않았음이 함께 확인됐다."
+    },
+    {
+      "command": "go build -o bin/agent-harness ./cmd/harness",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    }
+  ],
+  "ai_slop_clean": {
+    "scope": "execution.go의 dispatch 판정 분기 9줄 삭제 + 모순 가드 3줄 추가 + 결정 근거 주석, 신규 테스트 1개 파일, 증거 파일 1개",
+    "checks": "중복 분기 없음. executionTerminalTaskStatus는 task 상태 호출자가 남아 dead code가 아니다. 새 abstraction·shim·compatibility 분기를 만들지 않았고, 리뷰의 비범위 지적 2건도 코드 확장 대신 기록으로 처리했다. 주석은 코드 번역이 아니라 확인 불가능한 어휘의 처분 근거다(AC-02가 요구).",
+    "result": "PASS",
+    "untouched": "execution.go의 기존 FieldsSeq lint 진단은 이번 변경과 무관한 인접 코드라 손대지 않았다."
+  },
+  "review": {
+    "reviewer": "brooks devil's-advocate, fresh sub-agent, claude-fable-5 (high)",
+    "round_1": {
+      "verdict": "stop",
+      "blocker": "task 행이 완전 목록에서 사라졌는데 dispatch 행이 남은 모순 상태가, 상태 어휘 제거로 차단에서 조용한 통과로 바뀌었다. 같은 함수가 거울상(task 있음 + dispatch 없음)은 error로 fail-closed 처리하는데 이 방향만 정온으로 반환했다.",
+      "verified": "리뷰어 주장을 코드로 직접 확인했다. InspectOwner의 task 루프는 미발견 시 taskFound=false로 남고, dispatch 행이 있으면 identity 검사만 통과한 뒤 TaskLive=false로 반환한다. 구 코드에서는 비종결 dispatch 상태가 우연히 이것을 막고 있었다.",
+      "fix": "행의 존재만으로 막는 검사를 추가했다 — taskFound가 false인데 dispatch 행이 있으면 error. 상태 어휘에 의존하지 않으므로 결정 A와 일관된다.",
+      "red_command": "go test ./internal/adapter/orca/... -run TestExecutionOwnerInventoryKeepsDispatchObservationFailClosed -count=1",
+      "red_result": "FAIL 4/4 — dispatch 상태 dispatched, completed, failed, 빈 문자열 전부에서 error 없이 정온 반환. completed와 failed도 실패했다는 것은 이 구멍의 일부가 이번 변경 이전부터 있었음을 뜻한다. 수정은 구 코드보다 넓게 막는다.",
+      "green_result": "PASS",
+      "major_finding": "TerminalLive가 '항상' worker를 잡는다는 주석의 과잉 주장. terminal 행이 worktree 스코프 인벤토리에 없으면 조용히 false다. 주석에 그 경계를 명시하고, 확인된 증거를 TaskLive·TerminalLive·lease 셋으로 나눠 다시 적었다.",
+      "not_a_defect": "두 번째 파괴적 소비자인 execution_lease의 replacement quiescence는 dispatch 상태 없이도 구 홀더 프로세스 dead, orca terminal/task liveness, 워크스페이스 FD 스캔, 워크트리 실존 snapshot의 4중 독립 증거를 유지한다. 이 경로에서는 안전성 손실이 없음을 리뷰어가 확인했다."
+    },
+    "round_2": {
+      "verdict": "pass",
+      "verified": "가드가 dispatch-nil 블록 뒤·identity 검사 앞이라 정당한 all-absent 정온 경로(task도 dispatch도 없음)를 건드리지 않고, 발화 조건이 정확히 모순 상태 하나임을 확인했다. 하네스는 task 행을 삭제하지 않으므로(SettleTask는 status 갱신만) 정상 흐름에서 도달 불가능한 상태이며, 도달하면 fail-closed가 계약상 옳다.",
+      "no_deadlock": "탈출 경로가 InspectOwner에 의존하지 않음을 확인했다. CleanupFinishDeps에는 OrcaOwner가 없고 orca 회수는 RemoveOrcaWorktree의 멱등 계약으로 처리되므로, 모순 상태 레코드도 cleanup finish로 항상 빠져나간다. abandon 게이트의 에러 메시지가 그 경로를 명시 안내한다.",
+      "minor_fixed": "주석 한 문장이 사실과 어긋났다 — 구 검사가 '모든 값을 무차별로 막았다'고 썼지만 실제로는 비종결 dispatch 상태에서만 우연히 막았고 종결값은 통과시켰다. 리뷰 지적을 받아 그 정밀도로 고쳤다."
+    }
+  },
+  "out_of_scope": [
+    "operationalhealth classifier가 dispatch 상태를 리터럴 dispatched 하나로만 판정하는 것(#142에서 failed도 실측됐다). 같은 어휘 가정이지만 TaskLive 게이트가 아니라 별도 snapshot finding 경로이며 #147의 대상이 아니다. 리뷰어 지적을 받아 비범위로 명시한다.",
+    "abandon 게이트 레벨에서 TerminalLive=true를 fake하는 core 테스트. core 테스트는 손으로 만든 inventory를 쓰므로 어댑터 의미 변화를 검출하지 못한다 — 계약은 어댑터 레벨에서 고정했다."
+  ],
+  "side_effects": [
+    "port.ExecutionOrcaOwnerInventory.TaskLive가 이제 이름 그대로 task liveness만 뜻한다. 이전에는 dispatch liveness가 같은 필드에 섞여 있어 execution_lease의 quiescence 에러가 task_live=true와 task_status=completed를 동시에 출력할 수 있었다."
+  ],
+  "not_tested": [
+    "dispatch 상태의 전체 집합을 CLI 응답으로 관측하는 것. 그 수단은 여전히 없다. 다만 집합 자체는 Orca 소스로 확정됐고(vocabulary_evidence의 planner 정정), 이번 변경은 그 집합에 의존하지 않으므로 판정의 정확성이 어휘 관측에 달려 있지 않다."
+  ],
+  "limitations": [
+    "CLI 응답으로 관측된 dispatch 상태는 dispatched와 failed 둘뿐이다. 전체 집합은 소스로 확정됐으므로(types.ts, db.ts CHECK 제약) 어휘 자체는 더 이상 미지가 아니다.",
+    "PLANNER 정정: dispatch 기반 검출을 재도입할 근거는 어휘 노출이 아니라 정보량이다. db.ts의 failDispatch가 dispatch와 task 상태를 함께 움직이므로(circuit_broken→task failed, failed→task ready) dispatch가 살아 있음을 말하는 모든 경우에 task도 비종결이다. 어휘가 노출되어도 판정에 더할 정보가 없다는 결론은 바뀌지 않는다."
+  ],
+  "blockers": {
+    "status": "구현과 검증은 끝났으나 publication을 진행하지 않았다. 커밋하지 않았고 worktree에 uncommitted 상태로 남겼다.",
+    "phase_gate": {
+      "observed": "issueops implementation-review record가 거부했다: 'implementation review can only be recorded from the implement phase onward (current: plan)'. issueops status가 phase=plan을 보고한다.",
+      "missing_for_implement": [
+        "branch_link_verified — branch_prepare.link_verified가 false다. Orca가 로컬 브랜치를 만들었고 gh issue develop 링크 검증이 수행되지 않았다.",
+        "compatibility_review — 기록되지 않았다.",
+        "plan_path — 계획 문서 커밋과 link-plan이 없다. packet에 artifact_manifest가 비어 있어 stage된 plan/spec 산출물도 없다."
+      ],
+      "why_not_self_resolved": "셋 다 planner 소유 게이트다. implementer가 계획 문서를 만들고 compatibility review를 자기 승인하고 브랜치 링크를 만드는 것은 범위 확장이며, dispatch 전에 완료됐어야 하는 선행 조건이다."
+    },
+    "design_conflict": {
+      "observed": "durable cycle record의 design_review(2026-07-26T07:17:10Z, approved=true)가 내가 구현한 것과 다른 설계를 지시한다. 그 design은 executionTerminalDispatchStatus를 새로 만들어 completed, failed, circuit_broken을 종결로 보고 dispatch 신호를 유지하라고 한다. 그리고 후보 A(dispatch를 판정에서 완전히 제외)를 명시적으로 기각한다.",
+      "premise_challenged": "내 구현의 중심 근거는 'dispatch 어휘를 확인할 방법이 없다'인데, planner는 orca 소스(types.ts의 DispatchStatus, db.ts의 SQLite CHECK 제약)에서 어휘를 확인했다고 기록했다. 이 세션에서 그 소스를 직접 검증하지 못했다 — lifecycle guard가 worktree 밖 탐색 명령을 차단한다.",
+      "corroborated_in_repo": "다만 저장소 안에 이미 dispatch 전용 어휘 판정이 실재함을 직접 확인했다: internal/core/issueops/reset_legacy_drain.go의 legacyResetOrcaTerminalDispatchStatus가 completed, failed, circuit_broken을 종결로 본다. 바로 위 412행의 task 판정과 집합이 다르다. circuit_broken은 task 어휘에 없다.",
+      "provenance_caveat": "planner 자신의 기록이 두 가지 한계를 남겼다. plan_prep은 그 in-repo 상수의 도입 커밋 Lore에 출처 근거가 없다고 적었고, domain_review의 open_uncertainties는 circuit_broken이라는 정확한 문자열을 실측하지 못했다고 적었다. 즉 in-repo 상수는 독립 검증이 아니라 같은 미확인 가정일 수 있다.",
+      "provenance_caveat_resolved": "PLANNER: 그 유보는 domain_review 기록 시점의 것이고 그 뒤 해소됐다. Orca 공개 저장소에서 types.ts의 DispatchStatus 타입 정의와 db.ts의 dispatch_contexts CHECK 제약을 직접 읽어 circuit_broken 문자열을 확인했다. in-repo 상수(legacyResetOrcaTerminalDispatchStatus)가 우연히 맞았던 것이 아니라 실제 어휘와 일치한다. implementer의 의심은 그 시점 정보로는 정당했다.",
+      "impact_analysis": "두 설계는 circuit_broken 케이스에서 같은 결과를 낸다. orca 문서상 circuit_broken이면 task가 failed이므로, planner 설계는 dispatch 축에서, 내 설계는 task 축에서 종결로 본다. 둘 다 구 코드의 오탐(circuit_broken dispatch가 abandon을 영구 차단)을 고친다. 갈리는 지점은 task가 종결이고 dispatch가 pending 또는 dispatched인 조합 하나뿐이다 — planner 설계는 막고 내 설계는 통과시킨다.",
+      "unaddressed_by_my_change": "durable intent의 AC-05(두 곳에 흩어진 dispatch 어휘 판정이 일관되거나 그 차이가 설명된다)는 원격 issue body에 없는 추가 기준이고, 내 구현은 그것을 다루지 않는다. legacyResetOrcaTerminalDispatchStatus는 그대로 남아 두 번째 dispatch 어휘로 존속한다.",
+      "PLANNER_RESOLUTION": {
+        "decision": "implementer의 후보 A를 채택한다. planner의 원래 design(어휘 확장)을 기각한다.",
+        "why": "implementer의 impact_analysis가 옳았다. 두 설계가 갈리는 지점은 'task 종결 + dispatch pending/dispatched' 조합 하나뿐인데, Orca 소스가 그 조합이 정상 흐름에서 나오지 않음을 보인다 — worker_done이 task와 dispatch를 함께 completed로 만들고 failDispatch가 둘을 함께 움직인다. 그리고 그 조합에서 task가 종결이면 worker는 이미 없으므로 planner 설계가 막는 것은 오탐이다. 어휘를 알게 된 뒤에도 후보 A가 맞다.",
+        "comment_corrected": "InspectOwner 주석의 근거를 '어휘를 확인할 방법이 없다'에서 '어휘를 알고 보니 dispatch가 task와 함께 움직여 정보를 더하지 않는다'로 바꿨다. db.ts의 failDispatch를 인용해 그 주장을 증명한다 — 추측이 아니다.",
+        "ac_05_resolved": "세 곳의 dispatch 어휘 관계를 계획 문서와 InspectOwner 주석에 표로 남겼다. core/issueops/reset_legacy_drain.go와 core/operationalhealth(#171)는 같은 질문('이 자원이 잔여물인가')을 하고 같은 집합을 쓴다. adapter/orca는 다른 질문('이 소유자가 살아 있는가')이고 task 축이 이미 그 정보를 담으므로 dispatch 어휘가 필요 없다. 차이가 설명됐다."
+      }
+    },
+    "issue_digest": "원격 issue body를 다시 읽어 packet과 대조했다. AC는 AC-01부터 AC-04까지 넷이고 후보는 A, B, C 셋이며 조사 표도 같다. AC-05도 circuit_broken도 원격 body에 없다. drift 없음.",
+    "PLANNER_RESOLUTION": {
+      "branch_link_verified": "gh issue develop 147 을 실행해 provider 링크를 붙이고 gh issue develop --list 147 로 확인한 뒤 branch prepare --link-verified 를 기록했다. #163이 정한 orca 순서(orca 준비 뒤 링크)가 실환경에서 처음 성공했다.",
+      "compatibility_review": "기록했다. 후보 A가 바꾸는 것과 남기는 것을 backward_compatibility·side_effects로 나눠 적었다.",
+      "plan_path": ".agent-harness/plans/147-dispatch-vocabulary.md 를 작성하고 link-plan 했다. orca 소유권 이전 타임라인과 세 곳의 어휘 관계를 담았다.",
+      "new_defect_found": "gh issue develop 이 lease 활성 중 canonical worktree에서 가드에 막힌다(unclassified shell command). source root에서만 실행된다. #163이 정한 orca 순서가 그 제약을 반영하지 않는다 — 후속 이슈로 낸다."
+    }
+  },
+  "status": "completed_by_planner_after_orca_handoff"
+}
