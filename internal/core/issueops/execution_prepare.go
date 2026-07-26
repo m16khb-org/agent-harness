@@ -191,15 +191,16 @@ func prepareDirectExecution(ctx context.Context, stateRoot string, record IssueO
 	return preparedExecutionResultWithModes(persisted, result.RequestedMode, result.FallbackCode), nil
 }
 
+// prepareOrcaExecution은 브랜치 이름이 비어 있음을 전제한다. 그 검사는
+// resolveExecutionPrepareMode가 Orca를 확정하기 전에 수행하므로 여기 도달했다는 것이
+// 곧 통과했다는 뜻이다 — 판정 지점을 하나로 두어 "어디서 막혔는지"가 갈리지 않게
+// 한다(이슈 #152).
 func prepareOrcaExecution(ctx context.Context, stateRoot string, record IssueOpsRecord, req ExecutionPrepareRequest, deps ExecutionPrepareDependencies, workspaceReq port.ExecutionWorkspaceRequest, probe port.ExecutionOrcaProbeRequest, result ExecutionPrepareResult) (ExecutionPrepareResult, error) {
 	if deps.Orca == nil {
 		return ExecutionPrepareResult{OK: false, ID: record.ID}, fmt.Errorf("Orca provisioner is unavailable")
 	}
 	if !req.Confirm {
 		return result, nil
-	}
-	if err := ensureOrcaBranchIsFree(record, workspaceReq.Branch); err != nil {
-		return ExecutionPrepareResult{OK: false, ID: record.ID}, err
 	}
 	actor, err := normalizeNativeActor(req.Actor)
 	if err != nil {
@@ -352,6 +353,24 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 			return "", "", probeReq, fmt.Errorf("Orca probe failed: %w", err)
 		}
 		return "", "", probeReq, fmt.Errorf("Orca probe failed: %s", code)
+	}
+	// Orca는 준비됐지만 브랜치 이름이 이미 쓰이고 있으면 이 경로는 실행할 수 없다.
+	// IssueOps 정식 순서(`gh issue develop` → `branch prepare`)를 따르면 항상 그렇게
+	// 되므로, auto가 여기서 Orca를 확정하면 사전 확인에 막힌 뒤 사용자가 손으로
+	// --mode direct를 다시 줘야 한다 — auto가 실행 가능한 모드를 고르지 못한 것이다
+	// (이슈 #152).
+	//
+	// 같은 함수를 재사용해 폴백 판정과 실제 차단 기준을 하나로 유지한다. 두 곳에
+	// 조건을 따로 쓰면 한쪽만 고쳐져 auto가 direct로 갔는데 direct도 막히거나 그
+	// 반대가 된다.
+	if err := ensureOrcaBranchIsFree(record, strings.TrimSpace(record.Branch)); err != nil {
+		const code = "orca_branch_name_taken"
+		if requested == ExecutionModeAuto {
+			return string(model.ExecutionModeDirect), code, probeReq, nil
+		}
+		// 명시적으로 Orca를 고른 사용자의 의도는 대신 바꾸지 않는다. 원인과 다음
+		// 행동을 담은 사전 확인 메시지를 그대로 전한다.
+		return "", "", probeReq, err
 	}
 	return string(model.ExecutionModeOrca), "", probeReq, nil
 }
