@@ -212,7 +212,11 @@ func TestCleanupAbandonLeaseAllowlistCoversEveryStatus(t *testing.T) {
 		ready bool
 	}{
 		{"released", WriteLease{Generation: 1, Status: model.LeaseStatusReleased}, true},
-		{"claimable", WriteLease{Generation: 1, Status: model.LeaseStatusClaimable, ClaimTokenSHA256: abandonIssueBodySHA}, false},
+		// claimable은 #140에서 통과로 바뀌었다. validateWriteLease가 홀더 부재를
+		// 강제하므로 released와 같은 성질이고, 거부하면 운영자가 claim→release로
+		// lease를 한 바퀴 돌리는 우회를 하게 된다(#139에서 실측). 자원 잔여는
+		// 게이트 ⑤·⑥·⑦·⑨가 각각 막는다.
+		{"claimable", WriteLease{Generation: 1, Status: model.LeaseStatusClaimable, ClaimTokenSHA256: abandonIssueBodySHA}, true},
 		{"active", WriteLease{Generation: 1, Status: model.LeaseStatusActive, Holder: holder, ClaimedAt: "2026-07-24T00:00:00Z"}, false},
 		{"revoking", WriteLease{Generation: 1, Status: model.LeaseStatusRevoking, Holder: holder}, false},
 	}

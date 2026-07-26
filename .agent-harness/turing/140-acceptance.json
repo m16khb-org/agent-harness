@@ -1,0 +1,48 @@
+{
+  "issue": "https://github.com/m16khb/agent-harness/issues/140",
+  "cycle": "io-f5e86f3d7a52",
+  "branch": "140-abandon-claimable-lease",
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "statement": "dispatch 단계 사이클의 정리 절차가 줄고 게이트 응답이 남은 절차를 지시한다.",
+      "verdict": "pass",
+      "evidence": "게이트 ③이 claimable을 허용해 claim→release 두 단계가 사라졌다(5→3). 게이트 ⑤의 차단 응답이 reconcile 완주와 orca 워크트리 회수를 함께 지시하며 TestAbandonPendingIntentBlockNamesTheFullPath가 그것을 고정한다."
+    },
+    {
+      "id": "AC-02",
+      "statement": "claimable 허용이 orca 자원 보호를 우회하지 않는다.",
+      "verdict": "pass",
+      "evidence": "TestAbandonClaimableStillRespectsOrcaResidueGate가 claimable lease에서도 orca 자원이 살아 있으면 orca_resources_absent로 막히고, lease 게이트 자체는 통과함을 고정한다."
+    },
+    {
+      "id": "AC-03",
+      "statement": "cleanup abandon의 아무것도 지우지 않는 계약이 유지된다.",
+      "verdict": "pass",
+      "evidence": "mutation을 추가하지 않았다. 게이트 조건식과 오류 메시지만 바꿨다."
+    },
+    {
+      "id": "AC-04",
+      "statement": "worktree_create 단계의 payload 불변식에 기대는 판단이 그대로 유효하다.",
+      "verdict": "pass",
+      "evidence": "게이트 ⑤의 kind allowlist를 건드리지 않았다. 이슈 본문의 후보 B를 그 근거로 기각했고 decision ledger에 기록했다."
+    },
+    {
+      "id": "AC-05",
+      "statement": "RED 테스트가 공백을 실증한 뒤 GREEN으로 전환된다.",
+      "verdict": "pass",
+      "evidence": "claimable 통과, orca 게이트 우회 방지, 게이트 ⑤ 메시지 세 지점에서 RED를 확인했다. released·active·revoking 케이스는 처음부터 통과해 회귀 고정 역할을 한다."
+    }
+  ],
+  "contract_changes": [
+    "TestCleanupAbandonLeaseAllowlistCoversEveryStatus의 claimable 기대값을 차단에서 통과로 바꿨다. 테스트 약화가 아니라 의도한 계약 변경이며 근거를 케이스 주석과 decision ledger 양쪽에 남겼다."
+  ],
+  "verification": [
+    "go test ./... -count=1 전체 통과",
+    "go build ./... 통과"
+  ],
+  "limitations": [
+    "이 변경의 실환경 도그푸드는 못 했다. 활성 orca 사이클이 없다. 대상 상황은 #139에서 실측했으며 그때의 다섯 단계가 셋으로 주는 것이 목표다.",
+    "저자와 검토자가 분리되지 않았다. 세션 정책상 sub-agent dispatch가 금지되어 메인 에이전트가 직접 검토했다."
+  ]
+}
