@@ -68,13 +68,18 @@ type CleanupRemoteBranchResult struct {
 	ArtifactHeadBranch  string   `json:"artifact_head_branch,omitempty"`
 	ArtifactHeadOID     string   `json:"artifact_head_oid,omitempty"`
 	RemoteBranchPresent bool     `json:"remote_branch_present"`
-	AlreadyAbsent       bool     `json:"already_absent,omitempty"`
-	Deleted             bool     `json:"deleted,omitempty"`
-	DeletedAt           string   `json:"deleted_at,omitempty"`
-	AuditReflected      bool     `json:"audit_reflected,omitempty"`
-	AuditError          string   `json:"audit_error,omitempty"`
-	FailedStep          string   `json:"failed_step,omitempty"`
-	NextCommand         string   `json:"next_command,omitempty"`
+	// RemoteTipReachedBase는 게이트 ⑩이 OID 일치가 아니라 ancestry로 통과했음을
+	// 밝힌다. 두 근거는 강도가 다르므로 무엇으로 통과했는지 남긴다 — OID 일치는
+	// "머지된 그 커밋 그대로"이고, ancestry는 "다른 커밋이지만 이미 base에 있다"다
+	// (이슈 #153).
+	RemoteTipReachedBase bool   `json:"remote_tip_reached_base,omitempty"`
+	AlreadyAbsent        bool   `json:"already_absent,omitempty"`
+	Deleted              bool   `json:"deleted,omitempty"`
+	DeletedAt            string `json:"deleted_at,omitempty"`
+	AuditReflected       bool   `json:"audit_reflected,omitempty"`
+	AuditError           string `json:"audit_error,omitempty"`
+	FailedStep           string `json:"failed_step,omitempty"`
+	NextCommand          string `json:"next_command,omitempty"`
 }
 
 // cleanupRemoteBranchInventory는 fingerprint 입력이 되는 현재 관측 상태다.
@@ -220,13 +225,50 @@ func cleanupRemoteBranchGates(ctx context.Context, record IssueOpsRecord, deps C
 		}
 	}
 	// ⑩ remote_tip_equals_merged_head — 관측 OID가 머지된 head와 다르면 머지
-	// 이후 push된 커밋이 있다는 뜻이다. ancestry 검사는 squash 머지에서
-	// 부적합하므로 OID CAS만 쓴다(brooks B3). 부재 경로에는 비교 대상이 없다.
-	if result.RemoteBranchPresent &&
-		(result.ArtifactHeadOID == "" || !strings.EqualFold(result.ArtifactHeadOID, inventory.RemoteOID)) {
-		missing = append(missing, "remote_tip_equals_merged_head")
+	// 이후 push된 커밋이 있다는 뜻이다. 부재 경로에는 비교 대상이 없다.
+	//
+	// 통과 경로가 둘이다. OID CAS가 첫 경로이고 squash 머지를 포함해 종전 그대로
+	// 동작한다. 그것이 실패하면 원격 tip이 이미 base에 도달했는지 본다 — 한
+	// 사이클이 PR을 두 개 낳으면 두 번째 PR의 커밋이 레코드의 단일 아티팩트에
+	// 담기지 않아 OID CAS만으로는 영구히 막혔고, lease released 탓에 아티팩트
+	// 갱신 경로도 닫혀 하네스 안에서 회복할 수 없었다(이슈 #153).
+	//
+	// ancestry를 OID CAS의 **대체**로 쓰지 않는다. squash 머지에서는 원본 커밋이
+	// base의 조상이 아니므로 대체하면 squash된 브랜치를 영구히 못 지운다 — 원래
+	// 주석의 brooks B3 기각이 지키려던 것이 그것이다. 추가 경로일 때만 성립한다.
+	if result.RemoteBranchPresent {
+		switch {
+		case result.ArtifactHeadOID != "" && strings.EqualFold(result.ArtifactHeadOID, inventory.RemoteOID):
+			// 머지된 그 커밋 그대로다.
+		case cleanupRemoteTipReachedBase(ctx, record, inventory, deps):
+			result.RemoteTipReachedBase = true
+		default:
+			missing = append(missing, "remote_tip_equals_merged_head")
+		}
 	}
 	return inventory, missing
+}
+
+// cleanupRemoteTipReachedBase는 원격 tip이 준비된 base의 remote-tracking ref의
+// 조상인지 확인한다. 조상이면 그 커밋은 이미 base에 있으므로 브랜치를 지워도
+// 잃을 것이 없다 — 게이트 ⑩이 막으려는 손해가 실재하지 않는 경우다.
+//
+// fail-closed다. base 이름을 모르거나 조회가 실패하면 false를 돌려주고 기존
+// 판정이 남는다. 관측하지 못한 것을 통과 근거로 쓰면 커밋을 잃는다.
+//
+// remote-tracking ref와 비교한다. 로컬 브랜치는 fetch 상태에 따라 원격과 어긋날
+// 수 있어 판정이 흔들린다. 낡은 ref는 ancestry를 성립시키지 못해 과잉 차단이
+// 되는데, 그 방향은 안전하다.
+func cleanupRemoteTipReachedBase(ctx context.Context, record IssueOpsRecord, inventory cleanupRemoteBranchInventory, deps CleanupRemoteBranchDeps) bool {
+	if record.BranchPrepare == nil || strings.TrimSpace(inventory.RemoteOID) == "" {
+		return false
+	}
+	base := strings.TrimSpace(record.BranchPrepare.BaseBranch)
+	if base == "" {
+		return false
+	}
+	code, _ := deps.Git(ctx, record.Repo, "merge-base", "--is-ancestor", inventory.RemoteOID, "refs/remotes/origin/"+base)
+	return code == 0
 }
 
 // cleanupRemoteBranchArtifactGates는 artifact 한 번의 readback에 의존하는
