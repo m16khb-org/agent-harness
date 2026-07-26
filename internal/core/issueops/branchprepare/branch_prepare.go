@@ -146,40 +146,93 @@ func isDecimalString(value string) bool {
 
 // Steps는 provider별 브랜치 생성 안내를 만든다.
 //
-// baseSHA는 GitHub 경로에서 linked branch의 base를 못박는 데 쓴다. 비어 있으면
-// 종전 `gh issue develop` 경로로 떨어진다 — 그 경우 GitHub이 base 브랜치의 그
-// 시점 HEAD를 쓰므로 orca가 봉인한 base와 갈릴 수 있다(#176).
+// baseSHA는 두 provider 모두에서 새 브랜치의 base를 못박는 데 쓴다. 비어 있으면
+// base 브랜치 이름으로 떨어지고, 그 경우 provider가 **그 시점** 브랜치 HEAD를
+// 쓰므로 orca가 봉인한 base와 갈릴 수 있다(#176 GitHub, #180 GitLab).
 func Steps(provider, issueURL, branch, baseBranch, baseSHA string) []model.IssueOpsBranchPrepareStep {
 	switch provider {
 	case "gitlab":
-		return []model.IssueOpsBranchPrepareStep{
-			{
-				Order:    1,
-				Strategy: "mcp",
-				Tool:     "mcp__glab.glab_api",
-				ToolArguments: map[string]any{
-					"endpoint": "projects/:fullpath/repository/branches",
-					"method":   "POST",
-					"field":    []string{"branch=" + branch, "ref=" + baseBranch},
-				},
-				Description: "Create the issue-prefixed branch through the GitLab MCP authenticated API tool.",
-			},
-			{
-				Order:       2,
-				Strategy:    "fallback_api",
-				Command:     []string{"glab", "api", "projects/:fullpath/repository/branches", "-X", "POST", "-f", "branch=" + branch, "-f", "ref=" + baseBranch},
-				Description: "Fallback to the GitLab API through glab when the MCP tool is unavailable or fails.",
-			},
-			{
-				Order:       3,
-				Strategy:    "fail",
-				Description: "Stop the IssueOps branch preparation if neither provider-linked creation path succeeds.",
-			},
-		}
+		return gitlabSteps(branch, baseBranch, baseSHA)
 	case "github":
 		return githubSteps(issueURL, branch, baseBranch, baseSHA)
 	default:
 		return nil
+	}
+}
+
+const gitlabBranchEndpoint = "projects/:fullpath/repository/branches"
+
+// gitlabSteps는 issue-prefixed 브랜치 생성 안내를 만든다.
+//
+// 세 가지가 상류 소스로 확정됐다(#180). `glab`이 로컬에 설치돼 있지 않은 것은 그
+// 계약을 확인할 수 없다는 뜻이 아니다 — gitlab-org/cli는 공개 저장소다.
+//
+// ① `ref`는 커밋 SHA를 받는다. GitLab의 Create repository branch API가 그것을
+// 명시한다: "ref — Branch name or commit SHA to create the branch from." 따라서
+// baseSHA가 있으면 그것을 넘겨 base 갈림을 원리적으로 없앤다. `#176`이 GitHub에서
+// `createLinkedBranch`의 `oid`로 한 것과 같은 조치다.
+//
+// ② `glab_api`의 input schema는 중첩이다. internal/commands/mcp/serve/server.go의
+// buildToolFromCommand가 모든 도구에 같은 네 키만 만든다:
+//
+//	inputSchema := map[string]any{"type": "object", "properties": map[string]any{
+//	    argsParam: ..., flagsParam: ..., limitParam: ..., offsetParam: ...}}
+//
+// 즉 `args`(문자열 배열), `flags`(객체), `limit`, `offset`뿐이다. endpoint는 위치
+// 인자라 `args`에 들어가고 나머지는 `flags` 안에 들어간다. `flags`의 키는
+// strings.ReplaceAll(flag.Name, "-", "_")로 만들어진다.
+//
+// ③ `field`와 `raw-field`는 별개 플래그다. internal/commands/api/api.go:
+//
+//	fl.StringArrayVarP(&opts.magicFields, "field", "F", nil, "Add a parameter of inferred type. ...")
+//	fl.StringArrayVarP(&opts.rawFields, "raw-field", "f", nil, "Add a string parameter.")
+//
+// 브랜치 이름과 ref는 문자열이므로 추론형 `field`가 아니라 `raw_field`가 맞고, CLI
+// 폴백의 `-f`와 같은 플래그를 가리킨다.
+//
+// 도구 이름은 `glab_api`다. `glab` MCP는 opt-in이라 어노테이션 없는 명령은 등록되지
+// 않지만(server.go의 mcpannotations.HasAnnotation 검사), `glab api`는
+// `mcp:destructive`를 달고 있어 통과하고 이름은 "glab_" + 명령 경로가 된다.
+func gitlabSteps(branch, baseBranch, baseSHA string) []model.IssueOpsBranchPrepareStep {
+	ref := baseSHA
+	base := "the sealed base " + baseSHA + "."
+	if ref == "" {
+		ref = baseBranch
+		base = "branch " + baseBranch + ", whose current HEAD GitLab resolves at call time. " +
+			"That can diverge from the base this cycle sealed; pass --base-sha to pin the exact commit (#180)."
+	}
+	rawFields := []string{"branch=" + branch, "ref=" + ref}
+
+	return []model.IssueOpsBranchPrepareStep{
+		{
+			Order:    1,
+			Strategy: "mcp",
+			Tool:     "mcp__glab.glab_api",
+			ToolArguments: map[string]any{
+				"args": []string{gitlabBranchEndpoint},
+				"flags": map[string]any{
+					"method":    "POST",
+					"raw_field": rawFields,
+				},
+			},
+			Description: "Create the issue-prefixed branch through the GitLab MCP authenticated API tool. " +
+				"The branch starts from " + base +
+				" glab_api takes the endpoint as a positional `args` entry and everything else inside " +
+				"`flags`; `raw_field` is glab's --raw-field string parameter, not the inferred-type --field.",
+		},
+		{
+			Order:    2,
+			Strategy: "fallback_api",
+			Command: []string{"glab", "api", gitlabBranchEndpoint, "-X", "POST",
+				"-f", rawFields[0], "-f", rawFields[1]},
+			Description: "Fallback to the GitLab API through glab when the MCP tool is unavailable or fails. " +
+				"-f is --raw-field, the same flag the MCP step names as raw_field.",
+		},
+		{
+			Order:       3,
+			Strategy:    "fail",
+			Description: "Stop the IssueOps branch preparation if neither provider-linked creation path succeeds.",
+		},
 	}
 }
 
