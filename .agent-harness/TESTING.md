@@ -155,6 +155,8 @@ Live 측정은 CI와 기본 self-verify에 포함하지 않는다. `HARNESS_TOOL
 - core policy와 adapter transport를 분리해서 테스트한다.
 - CLI/MCP/worker는 같은 core DTO를 쓰는지 contract test를 둔다. 설치 경로는 `core.InstallNative` + `port.HostInstaller` adapter 단위 테스트와 `internal/adapter/testdata/native_install_contract_matrix.golden.json` matrix fixture로 고정한다.
 - command execution은 실제 위험 명령 대신 fake runner로 검증한다.
+- fake는 대상 게이트와 **같은 fail-closed 규율**을 따른다. 모르는 입력에 성공을 돌려주는 fake는 새로 추가된 검사를 무흔적으로 통과시킨다 — #153에서 `fakeRemoteBranchGit`의 default가 exit 0을 반환해 신규 ancestry 검사가 조용히 통과했다. 게이트가 fail-closed인데 fake가 fail-open이면 테스트가 게이트를 무력화한다. 처리하지 않는 입력은 명시적으로 실패시킨다.
+- 픽스처가 **실환경 순서를 재현하는지** 확인한다. #149의 브랜치 충돌 사전 확인은 로컬 브랜치를 만드는 픽스처로 GREEN이 됐지만, IssueOps 정식 순서(`gh issue develop`)는 원격 브랜치만 만들기 때문에 실환경에서 그대로 뚫렸다. 픽스처가 만드는 상태가 사용자가 실제로 도달하는 상태와 같은지 물어야 한다 — 통과하는 테스트가 옳은 테스트를 뜻하지는 않는다.
 - filesystem test는 temporary directory를 사용하고, workspace root 밖 접근 거부를 검증한다.
 - secret redaction test는 token-like fixture가 로그/응답에 남지 않는지 확인한다.
 - daemon/proxy test는 socket path override, MCP stream, start/status/stop smoke, stale lock 복구를 포함한다.

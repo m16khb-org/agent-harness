@@ -240,6 +240,10 @@ SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을
 - 확실한 금지만 `block`한다. 예: secret-like path, test sleep, real external service in tests. 기존 코드 재사용 여부, snapshot 품질, production-only 변경처럼 의미 판단이 필요한 항목은 `warn` 또는 `review`로 보고한다.
 - 새 symbol/helper가 기존 symbol과 유사하면 `reuse-before-new` review finding을 낸다. 이 finding은 자동 실패가 아니라 기존 코드 탐색 증거 또는 새 구현 근거를 요구하는 신호다.
 - 언어별 AST/linter 통합은 optional adapter로 붙이고, core guard가 특정 언어 toolchain에 의존하지 않게 한다.
+- 차단은 **왜 막혔는지**를 함께 낸다. 게이트가 판정 과정에서 이미 관측한 것을 버리지 않는다 — 슬러그나 코드만 받은 owner는 명령을 조금씩 바꿔가며 추측 재시도를 반복한다(이슈 #90 발견 4, #154). 구조화된 deny가 사람이 읽을 사유를 대체하는 출력 경로라면 그 사유를 deny 안에 실어야 한다. 담는 것은 분류 결과와 이미 추출된 경로이며 명령 원문은 담지 않는다 — 인자에 토큰이 있을 수 있다.
+- 해소 경로가 **하나로 정해지는** 차단만 그 명령을 안내한다. 상황에 따라 갈리는 항목에는 붙이지 않는다. 틀린 안내는 안내가 없는 것보다 나쁘다.
+- **관측 불가와 조건 위반을 다른 슬러그로 구분한다.** 둘 다 fail-closed지만 다음 행동이 다르다 — 전자는 관측 도구를 고치고 후자는 상태를 고친다(#154의 `workspace_processes_observable` vs `workspace_processes_quiescent`).
+- preview는 **자기 근거의 강도를 밝힌다.** 외부 자원을 조회하지 않고 낸 결과가 관측 증거로 읽히면 오진단이 생긴다(#99의 잘못된 의혹이 그렇게 나왔다, #154). 아울러 실행 가능성 판정은 preview에서도 수행한다 — 실행할 수 없는 계획을 preview가 성공으로 보여주면 운영자는 confirm에서 처음 막히고, 모드 자동 선택에서는 preview가 보여준 모드와 실제 모드가 달라진다(#152).
 - `nondeterministic-context-serialization` rule은 immutable-prefix 결정성 계약에서 유래한 opt-in 규칙이다. agent가 stable cache prefix로 재사용하는 context를 만드는 파일은 `// harness:immutable-prefix` marker로 opt-in하고, 그 파일에서 `time.Now`/`rand`/`uuid` 같은 비결정 값을 도입하면 `warn`을 낸다. 의도된 volatile 값은 해당 줄에 `volatile-ok`를 달아 면제한다. volatile field 어휘와 stable projection은 `internal/core/contextregion/context_region.go`(`VolatileContextFields`, `StableProjection`, `Region*` 상수)가 source of truth이며, response-contract golden의 dynamic time key 정규화와 같은 집합을 공유한다.
 
 ## Policy tier 컨벤션
