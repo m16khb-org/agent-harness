@@ -139,25 +139,47 @@ any Orca resource is created; explicit `orca` fails with the same actionable
 code. `/issues/:iid` and `/work_items/:iid` are equivalent only when the exact
 authority (including port), project path, and IID all match.
 
-**GitHub + Orca 모드는 브랜치 생성 순서를 뒤집는다.** IssueOps 정식 순서는
-`gh issue develop`으로 linked branch를 먼저 만들지만, Orca `worktree create`는 언제나
-새 브랜치를 만들므로 이름이 겹쳐 `orca_branch_name_taken`으로 막힌다(#149·#152·#154).
+**GitHub + Orca 모드는 브랜치 생성 순서를 뒤집는다.** IssueOps 정식 순서는 linked branch를
+먼저 만들지만, Orca `worktree create`는 언제나 새 브랜치를 만들므로 이름이 겹쳐
+`orca_branch_name_taken`으로 막힌다(#149·#152·#154).
 
-`createLinkedBranch`(= `gh issue develop`)는 `oid`에서 새 브랜치를 만들기 때문에 **원격에**
-같은 이름이 있으면 실패하지만 **로컬에만 있으면 성공한다**(#163 실측). Orca는 로컬
-워크트리와 로컬 브랜치만 만들고 push하지 않으므로 이 순서가 성립한다:
+`createLinkedBranch`는 `oid`에서 새 브랜치를 만들기 때문에 **원격에** 같은 이름이 있으면
+실패하지만 **로컬에만 있으면 성공한다**(#163 실측). Orca는 로컬 워크트리와 로컬 브랜치만 만들고
+push하지 않으므로 이 순서가 성립한다. 실제 값은 앞 단계 출력에서 그대로 옮겨 적는다 — 아래
+꺾쇠 자리는 셸 변수가 아니다.
 
 ```bash
-agent-harness issueops branch prepare --id ID --base-sha "$BASE_HEAD" ...   # 기록만, 브랜치 없음
+agent-harness issueops branch prepare --id ID --base-sha <BASE_HEAD> ...    # 기록만, 브랜치 없음
 agent-harness issueops execution prepare --id ID --mode orca ... --confirm  # Orca가 로컬 브랜치 생성
-gh issue develop "$ISSUE_URL" --base "$BASE" --name "$BRANCH"               # 원격 생성 + 이슈 연결
+gh api repos/<OWNER>/<REPO>/issues/<NUMBER> --jq .node_id                   # 다음 단계의 issueId
+gh api graphql -f 'query=mutation($issueId:ID!,$oid:GitObjectID!,$name:String!){createLinkedBranch(input:{issueId:$issueId,oid:$oid,name:$name}){linkedBranch{ref{name target{oid}}}}}' -F issueId=<NODE_ID> -F oid=<BASE_HEAD> -F name=<BRANCH>
 agent-harness issueops branch prepare --id ID ... --link-verified           # 추적 확인 후 갱신
 ```
 
 `branch prepare`는 브랜치 존재를 검증하지 않고 이름 규칙과 레코드 일치만 보므로 1단계가
-성립한다. 이 순서로 **Orca 모드와 이슈-브랜치 추적을 둘 다 얻는다.** GitLab은 브랜치 이름
-규칙이 연결 수단이라 순서 주의가 필요 없지만, 애초에
-`gitlab_issue_metadata_unsupported`로 Orca보다 먼저 걸러진다.
+성립한다. 이 순서로 **Orca 모드와 이슈-브랜치 추적을 둘 다 얻는다.**
+
+**`gh issue develop`을 쓰지 않는 이유는 base가 갈리기 때문이다(#176).** 그 CLI의 `--base`는
+브랜치 이름만 받고 GitHub이 **그 시점** 브랜치 HEAD를 `oid`로 쓴다. Orca는 봉인된 base SHA에서
+로컬 브랜치를 만들므로, 그 사이 base 브랜치가 진행하면 push가 `non-fast-forward`로 거부되고
+봉인 가드가 `merge`를, 안전 훅이 force push를, `sync-base`가 completion 이전 실행을 막아 발행
+경로가 사라진다. `oid`는 `createLinkedBranch`의 필수 필드이므로 봉인 SHA를 직접 넘기면 그
+갈림이 원리적으로 생기지 않는다.
+
+두 가지 형태 제약이 있다:
+
+- **GraphQL 변수는 단일 인용해야 한다.** `$issueId` 같은 토큰이 인용 밖에 있으면 lifecycle
+  가드가 셸 파라미터 확장으로 판정해 명령을 거부한다. 같은 이유로 `oid`·`name`·`issueId` 값도
+  셸 변수로 넘기지 않고 리터럴로 적는다.
+- **node ID 조회는 별도 단계다.** 한 명령에 `$(...)`를 넣으면 가드가 정적으로 분류할 수 없다.
+  출력값을 그대로 옮겨 적는다.
+
+`branch prepare`가 이 두 명령을 실행 가능한 형태로 `Steps`에 렌더하므로 `--base-sha`를 준
+사이클은 그 출력을 그대로 따르면 된다. 문서와 `Steps`가 어긋나면 `Steps`가 원본이다.
+
+GitLab은 브랜치 이름 규칙이 연결 수단이라 순서 주의가 필요 없지만, 애초에
+`gitlab_issue_metadata_unsupported`로 Orca보다 먼저 걸러진다. 다만 GitLab의 `ref`도 커밋 SHA를
+받으므로 같은 base 갈림이 성립한다 — `#180`이 그것을 다룬다.
 
 For Orca mode, follow `skills/issueops/references/execution.md`. Preparation
 seals the remote issue body, context packet, fully rendered owner prompt, and
@@ -193,6 +215,23 @@ commits and pushes, or `--abort` withdraws. Mutating modes require the active
 holder (reseed and claim first on a released cycle); `execution reconcile
 --preview` output is a constant, not an inventory observation — do not cite it
 as residue evidence.
+
+`issueops execution switch-mode` changes a prepared cycle between `direct` and
+`orca` (#167). `prepare` seals the mode at first run and afterwards **rejects a
+different `--mode` instead of silently ignoring it**, so this is the only way to
+move a cycle that was prepared in the wrong mode. Run `--preview` for the gate
+report and fingerprint, then `--apply --confirm --fingerprint`. Gates require
+the mode to actually change, no writer to hold the lease, no pending external
+intent, a clean worktree with commits pushed, and — switching to `orca` — a free
+branch name, because the switch deletes the local branch Orca must recreate.
+
+Do not run `execution replace --revoke` against your own live lease. That leaves
+the cycle `revoking` with a live holder and closes every exit; `release
+--generation N` is the correct command and the guard now refuses the self-revoke
+with that instruction (#170). Note the actor identity too: `--session-id` is the
+host session identifier, not a value you compose — it survives a session restart
+while the PID changes, so `holder_identity_mismatch` after a restart means the
+wrong id was recorded, not that the holder died.
 
 ## Quick Smoke
 

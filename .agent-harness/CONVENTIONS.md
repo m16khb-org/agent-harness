@@ -244,6 +244,12 @@ SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을
 - 해소 경로가 **하나로 정해지는** 차단만 그 명령을 안내한다. 상황에 따라 갈리는 항목에는 붙이지 않는다. 틀린 안내는 안내가 없는 것보다 나쁘다.
 - **관측 불가와 조건 위반을 다른 슬러그로 구분한다.** 둘 다 fail-closed지만 다음 행동이 다르다 — 전자는 관측 도구를 고치고 후자는 상태를 고친다(#154의 `workspace_processes_observable` vs `workspace_processes_quiescent`).
 - preview는 **자기 근거의 강도를 밝힌다.** 외부 자원을 조회하지 않고 낸 결과가 관측 증거로 읽히면 오진단이 생긴다(#99의 잘못된 의혹이 그렇게 나왔다, #154). 아울러 실행 가능성 판정은 preview에서도 수행한다 — 실행할 수 없는 계획을 preview가 성공으로 보여주면 운영자는 confirm에서 처음 막히고, 모드 자동 선택에서는 preview가 보여준 모드와 실제 모드가 달라진다(#152).
+- **lifecycle execution guard의 allowlist는 세 층으로 분류한다**(#170·#177). 층을 잘못 고르면 진단이 막히거나 mutation이 새어 나간다.
+  - **읽기 허용**(`executionObservation`): 상태를 바꾸지 않는 조회. `--preview`/`--status`처럼 같은 명령의 읽기 변종도 여기 속한다 — 진단 표면을 mutation으로 분류하면 갇힌 상태를 관측할 방법이 사라진다(#170의 `reset-legacy --preview`).
+  - **typed control plane**(`executionTypedControlPlane`): harness 자신의 typed 명령. 실행 주체가 owner가 아니어도 되는 lifecycle 조작이 여기 온다(#177의 `cleanup orphan`).
+  - **owner mutation**(`exactIssueOpsOwnerMutation`): 활성 홀더만 할 수 있는 provider/워크트리 변경. 형태를 exact matcher로 고정한다.
+- **allowlist matcher는 형태를 고정하되 의미를 확인한다.** provider API를 여는 matcher는 플래그 위치·개수와 함께 본문의 특징 문자열까지 검사해 임의 호출이 통과하지 않게 한다(#176의 `exactProviderBranchLink`가 GraphQL 본문의 `createLinkedBranch`를 요구한다).
+- **정적 분류를 깨는 명령 형태를 안내에 넣지 않는다.** 파이프·`&&`·리다이렉트·`$(...)`는 가드가 분류할 수 없어 거부된다. 값 전달이 필요하면 단계를 나눠 출력을 옮겨 적게 안내한다. GraphQL 변수처럼 `$`가 불가피한 경우는 단일 인용으로 표기한다 — 파라미터 확장 검사는 단일 인용 안을 건너뛰므로(`internal/core/commandparse/tokens.go`) 가드를 약화하지 않고 통과한다.
 - `nondeterministic-context-serialization` rule은 immutable-prefix 결정성 계약에서 유래한 opt-in 규칙이다. agent가 stable cache prefix로 재사용하는 context를 만드는 파일은 `// harness:immutable-prefix` marker로 opt-in하고, 그 파일에서 `time.Now`/`rand`/`uuid` 같은 비결정 값을 도입하면 `warn`을 낸다. 의도된 volatile 값은 해당 줄에 `volatile-ok`를 달아 면제한다. volatile field 어휘와 stable projection은 `internal/core/contextregion/context_region.go`(`VolatileContextFields`, `StableProjection`, `Region*` 상수)가 source of truth이며, response-contract golden의 dynamic time key 정규화와 같은 집합을 공유한다.
 
 ## Policy tier 컨벤션
@@ -282,3 +288,5 @@ SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을
 - Timeout or transport error after invocation is ambiguous. Persist `recovery_required`; do not automatically repeat create/dispatch or switch to inline execution.
 - Native worker identity is `(host, session_id, agent_id)` plus exact canonical worktree root. Host adapters forward that identity; common core decides ownership.
 - CLI and MCP must use the same request/result DTOs. Keep the handoff MCP surface as one action-discriminated tool instead of multiplying near-identical lifecycle tools.
+- **외부 시스템의 어휘는 그 시스템의 정의에서 인용하고 출처를 코드에 남긴다**(#171·#147·#180). CLI 출력에서 관측한 값의 집합은 어휘가 아니라 표본이다 — 그것으로 열거를 채우면 관측되지 않은 값이 "미지"로 오분류된다. Orca는 공개 저장소이므로 `DispatchStatus`/`GateStatus` 같은 union 정의와 `CHECK` 제약을 직접 읽고, provider API는 공식 문서의 필드 설명을 근거로 쓴다(GitLab `ref`는 "Branch name or commit SHA"). 인용 문구를 주석에 그대로 남겨 다음 독자가 다시 추측하지 않게 한다.
+- **분류 축을 섞지 않는다.** dispatch 수명주기와 task 수명주기는 다른 열거이고 종료 조건이 다르다 — dispatch가 `failed`여도 task는 `ready`로 남아 재시도를 기다린다(`db.ts` failDispatch). 한 축의 상태로 다른 축의 생존을 판정하면 재시도 가능한 사이클이 죽은 것으로 보인다(#147).
