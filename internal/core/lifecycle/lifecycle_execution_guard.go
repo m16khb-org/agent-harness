@@ -132,7 +132,11 @@ func executionTypedControlPlane(req HookToolUseLifecycleRequest) bool {
 	// 표면이므로 typed 등록이 필요하다(설계 v2 F1 — "가드 무변경"은 오기).
 	// typed 등록은 훅의 mutation 가드 블록 전체를 스킵시키므로(F14) lease·권위
 	// 검사는 core(execution_sync_base.go)가 100% 책임진다.
-	case "execution prepare", "execution claim", "execution release", "execution replace", "execution reconcile", "execution complete", "execution sync-base":
+	// switch-mode도 같은 이유로 typed 등록이 필요하다. 전환은 lease가 writer를
+	// 쥐고 있지 않을 때만 가능한데(core가 강제한다), 그 상태에서도 다른 lifecycle의
+	// mutation authority가 활성이면 훅이 이 명령을 unclassified로 막는다 — 사용자가
+	// 갇힌다(이슈 #167).
+	case "execution prepare", "execution claim", "execution release", "execution replace", "execution reconcile", "execution complete", "execution sync-base", "execution switch-mode":
 		id, ok := oneFlag(flags, "--id")
 		return ok && strings.TrimSpace(id) != ""
 	default:

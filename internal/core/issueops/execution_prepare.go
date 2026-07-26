@@ -86,6 +86,21 @@ func PrepareExecution(ctx context.Context, stateRoot string, req ExecutionPrepar
 			result.NextCommand = executionReconcileCommand(record.ID, true)
 			return result, fmt.Errorf("IssueOps execution has a pending external intent; run %s", result.NextCommand)
 		}
+		// 준비된 실행을 다시 준비하지 않는 것은 멱등성이다. 그런데 다른 모드를
+		// 달라는 요청은 멱등 호출이 아니라 새 요구다. 이 둘을 구분하지 않던 동안
+		// `--mode orca`가 ok:true와 함께 direct를 돌려줬고, 폴백이 아니라 요청이
+		// 평가되지 않은 것이라 fallback_code조차 비어 있었다(이슈 #167).
+		//
+		// auto는 여기서 걸리지 않는다 — "실행 가능한 모드를 골라 달라"는 요청이고
+		// 준비된 실행이 곧 그 답이다.
+		if requested != ExecutionModeAuto && requested != string(record.Execution.Mode) {
+			result := preparedExecutionResult(record, requested)
+			result.OK = false
+			result.NextCommand = executionSwitchModeCommand(record.ID, requested)
+			return result, fmt.Errorf(
+				"IssueOps execution is already prepared as %s; switching to %s removes the canonical worktree, so run %s",
+				record.Execution.Mode, requested, result.NextCommand)
+		}
 		return preparedExecutionResult(record, requested), nil
 	}
 	workspaceReq, err := executionWorkspaceRequest(record, req.Confirm)

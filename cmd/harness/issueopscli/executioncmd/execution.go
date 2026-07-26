@@ -53,6 +53,7 @@ const Usage = `Usage:
   agent-harness issueops execution reconcile --id ID (--preview|--confirm) ACTOR_FLAGS [--json]
   agent-harness issueops execution complete --id ID --generation N --final-head SHA --turing-report PATH --remote-artifact-url URL --verification TEXT... ACTOR_FLAGS --confirm [--json]
   agent-harness issueops execution sync-base --id ID (--preview | --apply --confirm --fingerprint SHA256 | --finalize | --abort) ACTOR_FLAGS [--json]
+  agent-harness issueops execution switch-mode --id ID --mode direct|orca [--apply --confirm --fingerprint SHA256] ACTOR_FLAGS [--json]
 
 ACTOR_FLAGS: --host codex|claude --session-id ID [--agent-id ID] --session-pid PID --session-started-at RFC3339 --session-executable PATH --cwd PATH`
 
@@ -80,6 +81,8 @@ func Run(args []string, deps Deps) error {
 		return runComplete(args[1:], deps)
 	case "sync-base":
 		return runSyncBase(args[1:], deps)
+	case "switch-mode":
+		return runSwitchMode(args[1:], deps)
 	default:
 		return fmt.Errorf("unknown issueops execution subcommand %q", args[0])
 	}
@@ -320,6 +323,30 @@ func runSyncBase(args []string, deps Deps) error {
 	result, err := issueops.SyncExecutionBase(context.Background(), deps.StateRoot(), issueops.ExecutionSyncBaseRequest{
 		ID: *id, Mode: mode, Actor: actor.actor(), CWD: *actor.cwd, Confirm: *confirm, Fingerprint: *fingerprint,
 	}, issueops.ExecutionSyncBaseDeps{})
+	return output(result, *jsonOut, err, deps)
+}
+
+// runSwitchMode는 준비된 실행의 모드를 바꾼다. sync-base와 같은 이유로
+// ExecuteExecution을 거치지 않고 core를 직접 호출한다 — 이 표면은 lease writer가
+// 없을 때만 동작하므로 lease 권위 경로와 계약이 다르다(이슈 #167).
+func runSwitchMode(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops execution switch-mode", flag.ContinueOnError)
+	id := fs.String("id", "", "IssueOps id")
+	mode := fs.String("mode", "", "target mode: direct or orca")
+	fingerprint := fs.String("fingerprint", "", "fingerprint issued by the latest preview")
+	apply := fs.Bool("apply", false, "remove the canonical workspace and clear the execution record")
+	confirm := fs.Bool("confirm", false, "confirm the apply mutation")
+	actor, jsonOut := addActorFlags(fs), fs.Bool("json", false, "print JSON")
+	if done, err := parse(fs, args); done || err != nil {
+		return err
+	}
+	if deps.StateRoot == nil {
+		return output(nil, *jsonOut, fmt.Errorf("IssueOps state root is unavailable"), deps)
+	}
+	result, err := issueops.SwitchExecutionMode(context.Background(), deps.StateRoot(), issueops.ExecutionSwitchModeRequest{
+		ID: *id, Mode: *mode, CWD: *actor.cwd, Apply: *apply, Confirm: *confirm,
+		Fingerprint: *fingerprint, Actor: actor.actor(),
+	}, issueops.ExecutionSwitchModeDependencies{})
 	return output(result, *jsonOut, err, deps)
 }
 
