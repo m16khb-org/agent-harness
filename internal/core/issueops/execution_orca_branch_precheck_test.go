@@ -122,21 +122,28 @@ func TestOrcaPrepareBranchConflictExplainsTheCause(t *testing.T) {
 	}
 }
 
-// preview는 mutation이 아니므로 막지 않는다. 운영자가 무엇이 일어날지 볼 수
-// 있어야 하고, 그 시점에는 브랜치 충돌이 아직 손해를 만들지 않는다.
-func TestOrcaPreparePreviewSurvivesExistingBranch(t *testing.T) {
+// preview도 브랜치 충돌을 알린다.
+//
+// #149는 "preview는 mutation이 아니므로 막지 않는다"로 시작했다. mutation 관점에서는
+// 옳았지만 실행 가능성 관점에서는 아니다 — 실행할 수 없는 워크스페이스를 preview가
+// 설명하면 운영자는 confirm에서 처음 막히고, auto의 경우 preview가 보여준 모드와
+// 실제 모드가 달라진다(#152).
+//
+// 계약을 바꾼 근거는 preview의 목적이다. preview는 무엇이 일어날지 보여주는 것이고,
+// "이 모드로는 아무것도 일어날 수 없다"도 그 답이다.
+func TestOrcaPreparePreviewReportsTheBranchConflict(t *testing.T) {
 	stateRoot, record := executionPrepareRecord(t)
 	createLocalBranch(t, record.Repo, record.Branch)
 
-	result, err := PrepareExecution(context.Background(), stateRoot, ExecutionPrepareRequest{
+	_, err := PrepareExecution(context.Background(), stateRoot, ExecutionPrepareRequest{
 		ID: record.ID, Mode: "orca", CWD: record.Repo,
 		Actor: executionActor("codex", "precheck-session"), OwnerHost: "claude",
 	}, ExecutionPrepareDependencies{Orca: readyOrcaFake(), ReadIssue: executionIssueSnapshotReader})
-	if err != nil {
-		t.Fatalf("preview must still describe the planned workspace: %v", err)
+	if err == nil {
+		t.Fatal("실행할 수 없는 모드를 preview가 성공으로 보여주면 confirm에서 처음 막힌다")
 	}
-	if !result.Preview || result.ResolvedMode != "orca" {
-		t.Fatalf("unexpected preview result: %+v", result)
+	if !strings.Contains(err.Error(), record.Branch) {
+		t.Fatalf("preview 오류 %q도 충돌 브랜치를 지목해야 한다", err)
 	}
 }
 
