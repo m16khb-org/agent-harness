@@ -13,6 +13,7 @@ import (
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/pathutil"
 	issueremote "agent-harness/internal/core/issueops/remote"
+	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
 
@@ -197,6 +198,9 @@ func prepareOrcaExecution(ctx context.Context, stateRoot string, record IssueOps
 	if !req.Confirm {
 		return result, nil
 	}
+	if err := ensureOrcaBranchIsFree(record, workspaceReq.Branch); err != nil {
+		return ExecutionPrepareResult{OK: false, ID: record.ID}, err
+	}
 	actor, err := normalizeNativeActor(req.Actor)
 	if err != nil {
 		return ExecutionPrepareResult{OK: false, ID: record.ID}, err
@@ -230,6 +234,36 @@ func prepareOrcaExecution(ctx context.Context, stateRoot string, record IssueOps
 		result.OwnerPromptPath, result.OwnerPromptSHA256 = payload.Launch.PromptPath, payload.Launch.PromptSHA256
 	}
 	return result, nil
+}
+
+// ensureOrcaBranchIsFree는 Orca가 워크트리를 만들기 전에 대상 브랜치 이름이
+// 비어 있는지 확인한다.
+//
+// Orca `worktree create`는 언제나 새 브랜치를 만든다. 기존 브랜치를 체크아웃하는
+// 옵션이 없다(`--base-branch`는 시작 ref, `--name`이 새 브랜치 이름). 그래서 이름이
+// 이미 쓰이고 있으면 Orca가 `<branch>-2`처럼 접미사를 붙이고, 그 결과를
+// CanonicalizeWorktreeBranch가 `worktree_branch_mismatch`로 거부한다. 그 거부는
+// `Invoked: true`라 pending intent와 실제 Orca 워크트리를 남기며, 실측에서 그
+// 잔여물이 abandon까지 막았다(#149).
+//
+// IssueOps는 linked branch를 먼저 만들도록 요구하므로 정식 순서를 따를수록 이
+// 충돌이 확실해진다. mutation 이전에 막아 잔여물 자체를 없앤다.
+//
+// 로컬 refs만 본다. Orca가 원격 전용 브랜치에 어떻게 반응하는지는 확인하지
+// 못했고, 추측으로 정상 경로를 막지 않는다.
+func ensureOrcaBranchIsFree(record IssueOpsRecord, branch string) error {
+	branch = strings.TrimSpace(branch)
+	if branch == "" {
+		return fmt.Errorf("Orca prepare requires a branch name")
+	}
+	code, _, _ := preflight.GitCmd(record.Repo, "rev-parse", "--verify", "--quiet", "refs/heads/"+branch)
+	if code != 0 {
+		return nil
+	}
+	return fmt.Errorf(
+		"branch %q already exists, so Orca cannot prepare this execution: Orca always creates a new branch, so it would take a different name (observed: a numeric suffix) and fail as worktree_branch_mismatch only after the worktree exists; "+
+			"use --mode direct, which adopts the existing branch, or delete the local branch first if it holds no work",
+		branch)
 }
 
 func validateExecutionOrcaReceipt(workspace port.ExecutionWorkspaceRequest, receipt port.ExecutionOrcaReceipt) error {
