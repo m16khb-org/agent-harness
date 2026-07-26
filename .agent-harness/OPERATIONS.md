@@ -178,8 +178,15 @@ agent-harness issueops branch prepare --id ID ... --link-verified           # �
 사이클은 그 출력을 그대로 따르면 된다. 문서와 `Steps`가 어긋나면 `Steps`가 원본이다.
 
 GitLab은 브랜치 이름 규칙이 연결 수단이라 순서 주의가 필요 없지만, 애초에
-`gitlab_issue_metadata_unsupported`로 Orca보다 먼저 걸러진다. 다만 GitLab의 `ref`도 커밋 SHA를
-받으므로 같은 base 갈림이 성립한다 — `#180`이 그것을 다룬다.
+`gitlab_issue_metadata_unsupported`로 Orca보다 먼저 걸러진다. 그래도 base 못박기는 같은 계약이다 —
+GitLab의 `ref`는 커밋 SHA를 받으므로 `--base-sha`를 주면 `Steps`가 그 값을 `ref`로 안내한다
+(`#180`).
+
+GitLab MCP 단계의 인자는 `glab_api`의 중첩 스키마를 따른다 — endpoint는 `args` 배열의 위치 인자이고
+나머지는 `flags` 안에 온다. `flags.raw_field`는 `glab api`의 `--raw-field`(문자열 파라미터)이며
+`--field`(추론형)와 다른 플래그다. 이것은 `glab`의 공개 소스에서 확정했다: MCP 서버가 모든 도구에
+`args`·`flags`·`limit`·`offset` 네 키만 만들고, `flags` 키는 플래그 이름의 하이픈을 밑줄로 치환한
+것이다. 로컬에 `glab`이 없어도 상류 소스로 계약을 확정할 수 있다는 것이 이 이슈의 교훈이다.
 
 For Orca mode, follow `skills/issueops/references/execution.md`. Preparation
 seals the remote issue body, context packet, fully rendered owner prompt, and

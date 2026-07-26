@@ -85,8 +85,9 @@ func TestGitHubStepsWarnAboutQuotingTheQuery(t *testing.T) {
 	}
 }
 
-// GitLab은 일반 브랜치 API를 쓰고 이 문제의 대상이 아니다. 확인 없이 같은
-// 변경을 적용하면 #136의 추측 오류를 반복한다.
+// GitLab은 일반 브랜치 API를 쓴다. base 못박기는 `#180`이 같은 계약으로 맞췄지만
+// 수단이 다르다 — GraphQL mutation도 node id 조회도 쓰지 않고 `ref`에 SHA를 넘긴다.
+// 그 경로를 검증하는 것은 branch_prepare_gitlab_contract_test.go다.
 func TestGitLabStepsAreUntouchedByTheOIDChange(t *testing.T) {
 	steps := Steps("gitlab", "https://gitlab.example.com/acme/repo/-/issues/16", "16-demo", "main", "deadbeef")
 	for _, step := range steps {
