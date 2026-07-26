@@ -232,8 +232,8 @@ func validateIssueOpsIssueBranch(branch string) error {
 	return branchprepare.ValidateBranch(branch)
 }
 
-func issueOpsBranchPrepareSteps(provider, issueURL, branch, baseBranch string) []IssueOpsBranchPrepareStep {
-	return branchprepare.Steps(provider, issueURL, branch, baseBranch)
+func issueOpsBranchPrepareSteps(provider, issueURL, branch, baseBranch, baseSHA string) []IssueOpsBranchPrepareStep {
+	return branchprepare.Steps(provider, issueURL, branch, baseBranch, baseSHA)
 }
 
 func issueOpsBranchPrepareStore() branchprepare.Store {
