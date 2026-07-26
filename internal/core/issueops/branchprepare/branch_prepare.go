@@ -85,7 +85,7 @@ func Prepare(store Store, stateRoot, id string, req model.IssueOpsBranchPrepareR
 		BaseSHA:         strings.TrimSpace(req.BaseSHA),
 		RemoteBranchURL: strings.TrimSpace(req.RemoteBranchURL),
 		LinkVerified:    req.LinkVerified,
-		Steps:           Steps(provider, issueURL, branch, baseBranch),
+		Steps:           Steps(provider, issueURL, branch, baseBranch, strings.TrimSpace(req.BaseSHA)),
 		CreatedAt:       now,
 	}
 	return store.TouchWrite(stateRoot, record)
@@ -144,7 +144,12 @@ func isDecimalString(value string) bool {
 	return true
 }
 
-func Steps(provider, issueURL, branch, baseBranch string) []model.IssueOpsBranchPrepareStep {
+// Steps는 provider별 브랜치 생성 안내를 만든다.
+//
+// baseSHA는 GitHub 경로에서 linked branch의 base를 못박는 데 쓴다. 비어 있으면
+// 종전 `gh issue develop` 경로로 떨어진다 — 그 경우 GitHub이 base 브랜치의 그
+// 시점 HEAD를 쓰므로 orca가 봉인한 base와 갈릴 수 있다(#176).
+func Steps(provider, issueURL, branch, baseBranch, baseSHA string) []model.IssueOpsBranchPrepareStep {
 	switch provider {
 	case "gitlab":
 		return []model.IssueOpsBranchPrepareStep{
@@ -172,33 +177,98 @@ func Steps(provider, issueURL, branch, baseBranch string) []model.IssueOpsBranch
 			},
 		}
 	case "github":
-		return []model.IssueOpsBranchPrepareStep{
-			{
-				Order:       1,
-				Strategy:    "mcp_unavailable",
-				Description: "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
-			},
-			{
-				Order:    2,
-				Strategy: "fallback_api",
-				Command:  []string{"gh", "issue", "develop", issueURL, "--base", baseBranch, "--name", branch},
-				// Orca 모드에서는 이 단계를 execution prepare **이후**로 미룬다.
-				// `createLinkedBranch`는 `oid`에서 새 브랜치를 만들므로 이름이 원격에
-				// 이미 있으면 실패하지만, 로컬에만 있으면 성공한다(#163 실측). Orca는
-				// 로컬 워크트리와 로컬 브랜치만 만들고 push하지 않으므로, 먼저
-				// 실행하면 Orca가 이름 충돌로 막히고(#149·#152·#154) 나중에 실행하면
-				// linked branch 추적을 그대로 얻는다.
-				Description: "Create a GitHub linked development branch through gh issue develop. " +
-					"For Orca mode run this after `issueops execution prepare` instead: Orca creates the local branch " +
-					"without pushing, so the name is still free on the remote and the link still attaches.",
-			},
-			{
-				Order:       3,
-				Strategy:    "fail",
-				Description: "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
-			},
-		}
+		return githubSteps(issueURL, branch, baseBranch, baseSHA)
 	default:
 		return nil
 	}
+}
+
+// githubSteps는 linked branch 생성 안내를 만든다.
+//
+// `gh issue develop --base <branch>`는 GitHub이 **그 시점** 브랜치 HEAD를 조회해
+// `CreateLinkedBranchInput.oid`로 쓴다. Orca는 봉인된 base SHA에서 로컬 브랜치를
+// 만들므로, 링크를 붙이는 사이 base 브랜치가 진행하면 두 base가 갈리고 push가
+// non-fast-forward로 거부된다. 그때 봉인 가드가 merge를, 안전 훅이 force push를,
+// `sync-base`가 completion 이전 실행을 막으므로 발행 경로가 사라진다(#176, #147 실측).
+//
+// `oid`는 그 mutation의 필수 필드다(GraphQL 인트로스펙션 확인). `gh issue develop`이
+// 그것을 숨기고 브랜치 HEAD로 채우는 것뿐이므로, 봉인 SHA를 직접 넘기면 갈림이
+// 원리적으로 생기지 않는다 — 현재 base HEAD가 아닌 임의 SHA로 링크 브랜치가
+// 만들어지는 것을 실측했다.
+//
+// node ID 조회를 별도 단계로 두는 이유는 가드다. 한 명령에 셸 치환을 넣으면
+// 정적으로 분류할 수 없고 이 저장소는 그런 명령을 거부한다. `fallback_api`는
+// 지금도 사람이나 에이전트가 실행하는 안내이므로 값을 옮기는 것이 그 주체의 일이다.
+func githubSteps(issueURL, branch, baseBranch, baseSHA string) []model.IssueOpsBranchPrepareStep {
+	// Orca 모드에서는 링크 단계를 execution prepare **이후**로 미룬다.
+	// `createLinkedBranch`는 이름이 원격에 이미 있으면 실패하지만 로컬에만 있으면
+	// 성공한다(#163 실측). Orca는 로컬 워크트리와 로컬 브랜치만 만들고 push하지
+	// 않으므로, 먼저 실행하면 Orca가 이름 충돌로 막히고(#149·#152·#154) 나중에
+	// 실행하면 linked branch 추적을 그대로 얻는다.
+	const orcaOrder = "For Orca mode run this after `issueops execution prepare` instead: Orca creates the local branch " +
+		"without pushing, so the name is still free on the remote and the link still attaches."
+	steps := []model.IssueOpsBranchPrepareStep{{
+		Order:       1,
+		Strategy:    "mcp_unavailable",
+		Description: "No GitHub MCP branch-creation tool is currently exposed in this harness session; do not silently create a local branch.",
+	}}
+	if baseSHA == "" {
+		// base SHA 없이는 oid를 못박을 수 없다. 종전 경로로 떨어지되 그 사실을
+		// 밝힌다 — 조용히 브랜치 이름을 쓰면 #147의 base 갈림이 재발한다.
+		steps = append(steps, model.IssueOpsBranchPrepareStep{
+			Order:    2,
+			Strategy: "fallback_api",
+			Command:  []string{"gh", "issue", "develop", issueURL, "--base", baseBranch, "--name", branch},
+			Description: "Create a GitHub linked development branch through gh issue develop. " +
+				"Recorded base_sha is empty, so the linked branch takes whatever " + baseBranch +
+				" points at when this runs — it can diverge from a sealed Orca base (#176). " + orcaOrder,
+		})
+		return append(steps, model.IssueOpsBranchPrepareStep{
+			Order:       3,
+			Strategy:    "fail",
+			Description: "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
+		})
+	}
+	steps = append(steps,
+		model.IssueOpsBranchPrepareStep{
+			Order:    2,
+			Strategy: "resolve_issue_node",
+			Command:  []string{"gh", "api", githubIssueAPIPath(issueURL), "--jq", ".node_id"},
+			Description: "Read the issue's GraphQL node id. The next step needs it as createLinkedBranch's issueId; " +
+				"substitute the printed value literally instead of piping, because a command with shell substitution " +
+				"cannot be statically classified by the lifecycle guard.",
+		},
+		model.IssueOpsBranchPrepareStep{
+			Order:    3,
+			Strategy: "fallback_api",
+			Command: []string{"gh", "api", "graphql", "-f", "query=" + githubCreateLinkedBranchQuery,
+				"-F", "issueId=<node-id-from-previous-step>", "-F", "oid=" + baseSHA, "-F", "name=" + branch},
+			Description: "Create the linked development branch pinned to the sealed base " + baseSHA + ". " +
+				"gh issue develop cannot do this: its --base flag takes a branch name and GitHub resolves that " +
+				"branch's current HEAD, which diverges from the sealed base once " + baseBranch + " moves (#176). " +
+				"Single-quote the query argument in the shell — its GraphQL variables ($issueId, $oid, $name) are read " +
+				"as shell parameter expansion otherwise and the lifecycle guard rejects the command. " + orcaOrder,
+		},
+	)
+	return append(steps, model.IssueOpsBranchPrepareStep{
+		Order:       4,
+		Strategy:    "fail",
+		Description: "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
+	})
+}
+
+const githubCreateLinkedBranchQuery = "mutation($issueId:ID!,$oid:GitObjectID!,$name:String!)" +
+	"{createLinkedBranch(input:{issueId:$issueId,oid:$oid,name:$name}){linkedBranch{ref{name target{oid}}}}}"
+
+// githubIssueAPIPath는 이슈 URL을 REST 경로로 바꾼다. node id를 그 경로에서 읽는다.
+func githubIssueAPIPath(issueURL string) string {
+	trimmed := strings.TrimSuffix(strings.TrimSpace(issueURL), "/")
+	parts := strings.Split(trimmed, "/")
+	if len(parts) < 4 {
+		return "repos/OWNER/REPO/issues/NUMBER"
+	}
+	number := parts[len(parts)-1]
+	repo := parts[len(parts)-3]
+	owner := parts[len(parts)-4]
+	return "repos/" + owner + "/" + repo + "/issues/" + number
 }

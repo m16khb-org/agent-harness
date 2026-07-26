@@ -128,8 +128,17 @@ func exactProviderBranchLink(command string) bool {
 		return false
 	}
 	tokens := commandparse.SplitCommandTokens(command)
-	if len(tokens) < 4 || searchrouting.SearchTokenName(tokens[0]) != "gh" ||
-		tokens[1] != "issue" || tokens[2] != "develop" {
+	if len(tokens) < 4 || searchrouting.SearchTokenName(tokens[0]) != "gh" {
+		return false
+	}
+	// `gh api` 두 형태는 #176이 도입한 base-pinned 링크 경로다. `gh issue develop`은
+	// --base를 브랜치 이름으로만 받아 GitHub이 그 시점 HEAD를 oid로 쓰므로, 봉인된
+	// base에 못박으려면 createLinkedBranch를 직접 호출해야 한다. branch prepare가
+	// 그 두 명령을 안내하므로 여기서도 분류해야 안내와 실행 가능성이 맞는다.
+	if tokens[1] == "api" {
+		return exactGitHubIssueNodeRead(tokens) || exactGitHubLinkedBranchMutation(tokens)
+	}
+	if tokens[1] != "issue" || tokens[2] != "develop" {
 		return false
 	}
 	rest := tokens[3:]
@@ -155,6 +164,50 @@ func exactProviderBranchLink(command string) bool {
 func positiveIssueNumber(value string) bool {
 	number, err := strconv.Atoi(strings.TrimSpace(value))
 	return err == nil && number > 0
+}
+
+// exactGitHubIssueNodeRead는 node id 조회 한 형태만 인정한다:
+//
+//	gh api repos/<owner>/<repo>/issues/<number> --jq .node_id
+//
+// 읽기지만 ExactReadOnlyShellCommand의 gh 분기는 pr·run만 다루므로 여기서 함께
+// 판정한다 — 이 명령과 그 뒤 mutation이 하나의 안내를 이루기 때문이다(#176).
+func exactGitHubIssueNodeRead(tokens []string) bool {
+	if len(tokens) != 5 || tokens[3] != "--jq" || tokens[4] != ".node_id" {
+		return false
+	}
+	parts := strings.Split(tokens[2], "/")
+	if len(parts) != 5 || parts[0] != "repos" || parts[3] != "issues" {
+		return false
+	}
+	return strings.TrimSpace(parts[1]) != "" && strings.TrimSpace(parts[2]) != "" && positiveIssueNumber(parts[4])
+}
+
+// exactGitHubLinkedBranchMutation은 createLinkedBranch 호출 한 형태만 인정한다:
+//
+//	gh api graphql -f query=<mutation> -F issueId=<id> -F oid=<sha> -F name=<branch>
+//
+// query 본문이 그 mutation을 담고 있는지 확인하므로 임의 GraphQL이 통과하지
+// 않는다. 플래그 위치와 개수도 고정한다(#176).
+func exactGitHubLinkedBranchMutation(tokens []string) bool {
+	if len(tokens) != 11 || tokens[2] != "graphql" {
+		return false
+	}
+	if tokens[3] != "-f" || !strings.HasPrefix(tokens[4], "query=") ||
+		!strings.Contains(tokens[4], "createLinkedBranch") {
+		return false
+	}
+	for _, pair := range [][2]int{{5, 6}, {7, 8}, {9, 10}} {
+		if tokens[pair[0]] != "-F" {
+			return false
+		}
+		if strings.TrimSpace(tokens[pair[1]]) == "" || strings.HasPrefix(tokens[pair[1]], "-") {
+			return false
+		}
+	}
+	return strings.HasPrefix(tokens[6], "issueId=") &&
+		strings.HasPrefix(tokens[8], "oid=") &&
+		strings.HasPrefix(tokens[10], "name=")
 }
 
 func exactOrcaObservation(command string) bool {
