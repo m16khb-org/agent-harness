@@ -90,7 +90,7 @@ func TestIssueOpsCleanupStatusRequiresMergedCleanWorktreeAndDeletedRemoteBranch(
 		t.Fatalf("cleanup must not recommend deletion before readiness, got %+v", notMerged.Choices)
 	}
 	remoteBranchPresent := IssueOpsCleanupStatusForRecord(record, IssueOpsCleanupStatusRequest{Merged: true})
-	if remoteBranchPresent.Ready || !containsString(remoteBranchPresent.Missing, "remote_branch_present") {
+	if remoteBranchPresent.Ready || !containsString(remoteBranchPresent.Missing, "remote_branch_absent") {
 		t.Fatalf("cleanup should report remote source branch before local deletion, got %+v", remoteBranchPresent)
 	}
 	if len(remoteBranchPresent.Choices) != 3 || strings.Contains(remoteBranchPresent.Choices[0], "정리 진행") || !strings.Contains(remoteBranchPresent.Choices[0], "차단 해소") {
@@ -108,7 +108,7 @@ func TestIssueOpsCleanupStatusRequiresMergedCleanWorktreeAndDeletedRemoteBranch(
 	}
 	writeIssueOpsFile(t, worktree, "DIRTY.md", "dirty\n")
 	dirty := IssueOpsCleanupStatusForRecord(record, IssueOpsCleanupStatusRequest{Merged: true})
-	if dirty.Ready || !containsString(dirty.Missing, "worktree_dirty") {
+	if dirty.Ready || !containsString(dirty.Missing, "worktree_clean") {
 		t.Fatalf("dirty worktree should block cleanup, got %+v", dirty)
 	}
 }

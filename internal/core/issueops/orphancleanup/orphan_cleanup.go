@@ -204,7 +204,9 @@ func inspectInventory(result *Result, request Request, snapshot corehealth.Snaps
 			result.HeadSHA = strings.TrimSpace(worktree.Head)
 		}
 		if strings.TrimSpace(worktree.Branch) != request.Branch {
-			missing(result, "branch_mismatch")
+			// branch_match: `missing`은 충족되지 않은 요구의 목록이므로 요구형으로
+			// 적는다. cleanup status가 같은 조건에 쓰는 이름과 같아진다(#185).
+			missing(result, "branch_match")
 		}
 	}
 	if canonicalCount != 1 {
@@ -271,7 +273,9 @@ func inspectWorktreeCleanliness(result *Result, worktree string) {
 	}
 	result.TargetClean = strings.TrimSpace(out) == ""
 	if !result.TargetClean {
-		missing(result, "worktree_dirty")
+		// worktree_clean: 요구형 극성. `worktree_git_status`는 관측 실패라 별개
+		// 축이며 그대로 둔다(#154가 세운 구분).
+		missing(result, "worktree_clean")
 	}
 }
 

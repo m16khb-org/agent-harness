@@ -109,7 +109,7 @@ func TestForRecordCoversWorktreeAndGitBranches(t *testing.T) {
 		t.Fatal(err)
 	}
 	status = ForRecord(record, model.IssueOpsCleanupStatusRequest{Merged: true})
-	if !containsString(status.Missing, "worktree_dirty") {
+	if !containsString(status.Missing, "worktree_clean") {
 		t.Fatalf("dirty worktree status = %#v", status)
 	}
 
