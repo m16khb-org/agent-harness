@@ -307,6 +307,9 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 			if lease.Status != model.LeaseStatusActive || strings.TrimSpace(req.Reason) == "" {
 				return fmt.Errorf("revoke requires an active lease and a reason")
 			}
+			if err := refuseSelfRevoke(record.ID, *lease, req.Actor); err != nil {
+				return err
+			}
 			fingerprint, err := executionInventoryFingerprint(ctx, record, req.Actor, deps)
 			if err != nil {
 				return err
@@ -499,6 +502,36 @@ func normalizeNativeActor(actor model.NativeActor) (model.NativeActor, error) {
 		return actor, err
 	}
 	return actor, nil
+}
+
+// refuseSelfRevoke는 살아 있는 홀더가 자기 lease를 revoke하는 것을 막는다.
+//
+// revoke의 존재 이유는 응답 없는 홀더에게서 제3자가 lease를 뺏는 것이다. 그런데
+// 홀더 자신이 호출하면 나갈 문이 전부 막힌다: release는 active를, reseed는
+// released/claimable을, claim은 claimable을 요구하고, finalize는 이전 홀더가
+// dead여야 한다 — 그 홀더가 나 자신이므로 내가 죽어야만 풀린다(이슈 #170).
+//
+// 홀더가 원한 것은 lease 교체이고 release가 그것을 준다. 그래서 거부만 하지
+// 않고 그 명령을 안내한다.
+//
+// 생존 판정은 finalize가 쓰는 inspectNativeProcessReceipt와 같은 함수다. 두 곳이
+// 같은 기준을 봐야 한쪽은 revoke를 막는데 다른 쪽은 finalize를 막는 교착이
+// 생기지 않는다. 판정이 실패하거나 live가 아니면 통과시킨다 — 그것이 지금
+// 동작이고, 죽은 홀더 뺏기와 제3자 revoke를 막지 않는다.
+func refuseSelfRevoke(lifecycleID string, lease model.WriteLease, requester model.NativeActor) error {
+	holder := lease.Holder
+	if holder == nil || !sameNativeActorIdentity(holder, &requester) || holder.SessionProcess == nil {
+		return nil
+	}
+	status, _, err := inspectNativeProcessReceipt(*holder.SessionProcess)
+	if err != nil || status != NativeProcessStatusLive {
+		return nil
+	}
+	return fmt.Errorf(
+		"revoke takes a lease away from an unresponsive holder, but this session is the live holder: "+
+			"revoking your own lease leaves no exit because finalize requires the old holder to be dead. "+
+			"Run `agent-harness issueops execution release --id %s --generation %d` instead",
+		strings.TrimSpace(lifecycleID), lease.Generation)
 }
 
 func sameNativeActor(a, b *model.NativeActor) bool {

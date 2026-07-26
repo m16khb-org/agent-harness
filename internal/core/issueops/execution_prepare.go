@@ -101,6 +101,23 @@ func PrepareExecution(ctx context.Context, stateRoot string, req ExecutionPrepar
 				"IssueOps execution is already prepared as %s; switching to %s removes the canonical worktree, so run %s",
 				record.Execution.Mode, requested, result.NextCommand)
 		}
+		// 준비는 끝났지만 lease에 writer가 없으면 그것은 "실행할 준비가 됐다"가
+		// 아니다. ok:true를 주면 호출자는 lease를 잡았다고 믿고, 다음 mutation이
+		// write_lease_required로 막히고서야 드러난다(이슈 #170).
+		//
+		// prepare가 lease를 잡아 주지는 않는다 — 그것은 claim의 일이고, 두 책임을
+		// 섞으면 claim 토큰 계약이 흐려진다. 대신 writer가 없다는 사실과 그것을
+		// 푸는 명령을 준다.
+		//
+		// preview는 상태를 보여주는 조회이므로 검사하지 않는다. --confirm이
+		// "지금 실행을 준비한다"는 요청이고, 그때만 writer 유무가 결과의 참·거짓을
+		// 가른다.
+		if next, err := executionWriterAbsentNextCommand(record, req.Confirm); err != nil {
+			result := preparedExecutionResult(record, requested)
+			result.OK = false
+			result.NextCommand = next
+			return result, err
+		}
 		return preparedExecutionResult(record, requested), nil
 	}
 	workspaceReq, err := executionWorkspaceRequest(record, req.Confirm)
@@ -388,6 +405,46 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 		return "", "", probeReq, err
 	}
 	return string(model.ExecutionModeOrca), "", probeReq, nil
+}
+
+// executionWriterAbsentNextCommand는 준비된 실행에 lease writer가 없을 때 그
+// 사실과 해소 명령을 돌려준다. writer가 있으면 nil이다.
+//
+// 상태별로 다음 행동이 다르다. claimable은 토큰이 발급돼 있으므로 claim이
+// 바로 되고, released는 토큰이 없어 reseed로 재봉인해야 하며, revoking은 이전
+// 홀더가 죽어야 finalize할 수 있다. 하나의 문구로 뭉뚱그리면 사용자가 어느
+// 명령을 써야 할지 모른다(이슈 #170).
+func executionWriterAbsentNextCommand(record IssueOpsRecord, confirm bool) (string, error) {
+	if !confirm {
+		return "", nil
+	}
+	lease := record.Execution.Lease
+	generation := lease.Generation
+	switch lease.Status {
+	case model.LeaseStatusClaimable:
+		next := fmt.Sprintf(
+			"agent-harness issueops execution claim --id %s --generation %d --claim-token-file <token>",
+			record.ID, generation)
+		return next, fmt.Errorf(
+			"IssueOps execution is prepared but generation %d is claimable and has no writer; run %s",
+			generation, next)
+	case model.LeaseStatusReleased:
+		next := fmt.Sprintf(
+			"agent-harness issueops execution replace --id %s --expected-generation %d --reseed --confirm",
+			record.ID, generation)
+		return next, fmt.Errorf(
+			"IssueOps execution is prepared but generation %d was released and has no writer; reseal it with %s",
+			generation, next)
+	case model.LeaseStatusRevoking:
+		next := fmt.Sprintf(
+			"agent-harness issueops execution replace --id %s --expected-generation %d --finalize-preview",
+			record.ID, generation)
+		return next, fmt.Errorf(
+			"IssueOps execution generation %d is revoking and has no writer; finalize the revocation with %s",
+			generation, next)
+	default:
+		return "", nil
+	}
 }
 
 func executionWorkspaceRequest(record IssueOpsRecord, confirm bool) (port.ExecutionWorkspaceRequest, error) {
