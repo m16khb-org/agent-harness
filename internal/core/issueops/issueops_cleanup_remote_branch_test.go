@@ -61,8 +61,14 @@ func (g *fakeRemoteBranchGit) run(_ context.Context, _ string, args ...string) (
 		}
 		g.remoteOID = ""
 		return 0, ""
+	case "merge-base":
+		// 이 fake의 원격 tip은 base에 도달한 적이 없다. ancestry를 모르는 채
+		// 0을 돌려주면 게이트 ⑩의 두 번째 경로가 조용히 통과해버린다.
+		return 1, ""
 	}
-	return 0, ""
+	// 모르는 명령을 성공으로 돌려주면 새 게이트가 무흔적으로 통과한다.
+	// fail-closed가 게이트의 규율이므로 fake도 같은 규율을 따른다.
+	return 128, "fakeRemoteBranchGit: unhandled git command " + args[0]
 }
 
 func remoteBranchTestRecord(t *testing.T) (string, IssueOpsRecord) {
