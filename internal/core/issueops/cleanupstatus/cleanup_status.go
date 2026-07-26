@@ -80,7 +80,11 @@ func ForRecord(record model.IssueOpsRecord, req model.IssueOpsCleanupStatusReque
 			status.Warnings = append(status.Warnings, strings.TrimSpace(stderr))
 		}
 	} else if strings.TrimSpace(out) != "" {
-		status.Missing = append(status.Missing, "worktree_dirty")
+		// worktree_clean: `missing`은 충족되지 않은 요구의 목록이므로 상태 차단도
+		// 요구형으로 적는다. `worktree_dirty`처럼 차단 사실을 적으면 "dirty라는
+		// 요구가 미충족"으로 읽힌다(#185). cleanup finish와 switch-mode 게이트가
+		// 같은 극성을 쓴다.
+		status.Missing = append(status.Missing, "worktree_clean")
 	}
 	actualBranch := strings.TrimSpace(preflight.GitOut(worktree, "branch", "--show-current"))
 	if actualBranch == "" {
@@ -98,7 +102,14 @@ func ForRecord(record model.IssueOpsRecord, req model.IssueOpsCleanupStatusReque
 				status.Warnings = append(status.Warnings, strings.TrimSpace(stderr))
 			}
 		} else if strings.TrimSpace(out) != "" {
-			status.Missing = append(status.Missing, "remote_branch_present")
+			// remote_branch_absent: cleanup finish가 같은 상태에 쓰는 슬러그다.
+			// 여기서 `remote_branch_present`를 쓰면 두 명령이 같은 상태를 반대로
+			// 읽히게 보고하고, 운영자는 브랜치가 이미 없다고 판단해
+			// `cleanup remote-branch`를 건너뛴다(#185, #181 정리에서 실측).
+			//
+			// execution sync-base의 동명 슬러그는 브랜치가 **있어야** 한다는 진짜
+			// 요구이므로 별개다.
+			status.Missing = append(status.Missing, "remote_branch_absent")
 		}
 	}
 	return finishIssueOpsCleanupStatus(status)

@@ -32,7 +32,7 @@ func TestPreviewFailsClosedForUnsafeRecordlessTargets(t *testing.T) {
 				}
 				return snapshot
 			},
-			want: "worktree_dirty",
+			want: "worktree_clean",
 		},
 		{
 			name: "canonical main worktree",
@@ -56,7 +56,7 @@ func TestPreviewFailsClosedForUnsafeRecordlessTargets(t *testing.T) {
 			prepare: func(snapshot corehealth.Snapshot) corehealth.Snapshot {
 				return snapshot
 			},
-			want: "branch_mismatch",
+			want: "branch_match",
 		},
 		{
 			name: "duplicate target inventory",
