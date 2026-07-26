@@ -8,12 +8,17 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"agent-harness/internal/port"
 )
 
 type ExecutionProvisioner struct {
 	client executionClient
+	// terminalSettleBudget과 terminalSettleInterval이 0이면 기본 상수를 쓴다.
+	// 테스트가 대기 상한을 밀리초로 줄여 실제로 기다리지 않게 하는 지점이다.
+	terminalSettleBudget   time.Duration
+	terminalSettleInterval time.Duration
 }
 
 type executionClient interface {
@@ -426,6 +431,24 @@ func executionRemoteBranch(branch string) string {
 	return "refs/remotes/origin/" + strings.TrimSpace(branch)
 }
 
+// executionTerminalSettleBudget과 executionTerminalSettleInterval은 Orca가 만든
+// 터미널의 UI 상태가 반영될 때까지 다시 읽는 상한과 간격이다.
+//
+// Orca는 터미널을 만든 뒤 탭 제목을 비동기로 설정한다. 마커는 그 탭 제목에 있고
+// (터미널 제목은 에이전트가 자기 상태로 덮어쓴다), StableTabTitle은 visualLayouts
+// 응답에서 온다. 실측에서 생성 08:32:59.706 → 검증 실패 08:33:02.607로 3초 창에
+// 걸렸고, 그 창 때문에 `prepare --mode orca --confirm`이 실환경에서 한 번도
+// 완주하지 못했다(이슈 #169, #70·#71이 미검증으로 남긴 경로).
+//
+// 상한을 실측보다 넉넉하게 잡는 것은 비대칭 때문이다: 넘으면 종전과 같은
+// terminal_identity_mismatch로 떨어지므로 과하게 잡아도 손해가 없고, 부족하면
+// 지금과 같다. nativeProcessProbeTimeout(execution_process.go)이 같은 성격의
+// 상수 선례다.
+const (
+	executionTerminalSettleBudget   = 12 * time.Second
+	executionTerminalSettleInterval = 400 * time.Millisecond
+)
+
 func (p *ExecutionProvisioner) reconcileCreatedTerminal(ctx context.Context, created port.OrcaTerminal, prepared port.ExecutionOrcaWorkspaceReceipt, marker string) (port.OrcaTerminal, error) {
 	if err := validateExecutionIntentTerminal(created, prepared, marker); err == nil {
 		return created, nil
@@ -434,28 +457,73 @@ func (p *ExecutionProvisioner) reconcileCreatedTerminal(ctx context.Context, cre
 	if !ok || strings.TrimSpace(created.PTYID) == "" {
 		return port.OrcaTerminal{}, fmt.Errorf("Orca owner terminal does not match the sealed intent")
 	}
-	inventory, err := client.listTerminalsInventory(ctx, prepared.WorktreeID)
-	if err != nil {
-		return port.OrcaTerminal{}, err
+	// 반복하는 것은 조회다. CreateTerminal은 이미 한 번 실행됐고 다시 부르지
+	// 않는다 — 실패한 mutation을 재시도하면 #90의 잔여물 문제를 되풀이한다.
+	budget, interval := p.terminalSettleWindow()
+	deadline := time.Now().Add(budget)
+	attempts, lastErr := 0, error(nil)
+	for {
+		attempts++
+		inventory, err := client.listTerminalsInventory(ctx, prepared.WorktreeID)
+		if err != nil {
+			return port.OrcaTerminal{}, err
+		}
+		candidate, err := executionSoleTerminalByPTY(inventory.Rows, created.PTYID)
+		if err != nil {
+			// 모호함과 부재는 대기로 해소되지 않는다 — 그대로 알린다.
+			return port.OrcaTerminal{}, err
+		}
+		lastErr = validateExecutionIntentTerminal(*candidate, prepared, marker)
+		if lastErr == nil {
+			return *candidate, nil
+		}
+		if !time.Now().Add(interval).Before(deadline) {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return port.OrcaTerminal{}, ctx.Err()
+		case <-time.After(interval):
+		}
 	}
+	// 몇 번 얼마나 기다렸는지를 남긴다. 조용한 재시도는 다음 사람이 같은 타이밍
+	// 문제를 처음부터 다시 발견하게 만든다.
+	return port.OrcaTerminal{}, fmt.Errorf("%w (attempt %d over %s waiting for the Orca tab title to settle)",
+		lastErr, attempts, budget)
+}
+
+// terminalSettleWindow는 대기 상한과 간격을 돌려준다. 필드가 0이면 기본 상수를
+// 쓴다 — 테스트가 상한을 밀리초 단위로 줄여 12초를 실제로 기다리지 않게 하려고
+// 오버라이드 지점을 둔다.
+func (p *ExecutionProvisioner) terminalSettleWindow() (time.Duration, time.Duration) {
+	budget, interval := executionTerminalSettleBudget, executionTerminalSettleInterval
+	if p.terminalSettleBudget > 0 {
+		budget = p.terminalSettleBudget
+	}
+	if p.terminalSettleInterval > 0 {
+		interval = p.terminalSettleInterval
+	}
+	return budget, interval
+}
+
+// executionSoleTerminalByPTY는 PTY로 정확히 하나를 고른다. 대기 루프가 매번
+// 같은 판정을 하도록 분리했다 — 두 곳에 쓰면 한쪽만 고쳐질 수 있다.
+func executionSoleTerminalByPTY(rows []port.OrcaTerminal, ptyID string) (*port.OrcaTerminal, error) {
 	var candidate *port.OrcaTerminal
-	for index := range inventory.Rows {
-		row := inventory.Rows[index]
-		if row.PTYID != created.PTYID {
+	for index := range rows {
+		row := rows[index]
+		if row.PTYID != ptyID {
 			continue
 		}
 		if candidate != nil {
-			return port.OrcaTerminal{}, fmt.Errorf("Orca owner terminal inventory is ambiguous")
+			return nil, fmt.Errorf("Orca owner terminal inventory is ambiguous")
 		}
 		candidate = &row
 	}
 	if candidate == nil {
-		return port.OrcaTerminal{}, fmt.Errorf("Orca owner terminal is absent")
+		return nil, fmt.Errorf("Orca owner terminal is absent")
 	}
-	if err := validateExecutionIntentTerminal(*candidate, prepared, marker); err != nil {
-		return port.OrcaTerminal{}, err
-	}
-	return *candidate, nil
+	return candidate, nil
 }
 
 func (p *ExecutionProvisioner) intentInventoryClient() (executionInventoryClient, error) {
