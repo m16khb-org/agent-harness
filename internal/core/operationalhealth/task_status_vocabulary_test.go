@@ -2,41 +2,56 @@ package operationalhealth
 
 import "testing"
 
-// 게이트와 분류기가 같은 어휘를 써야 한다. abandon의 orca 자원 게이트는
-// adapter의 종결 판정(executionTerminalTaskStatus)에 기대는데, 분류기가 그중
-// 일부를 모르면 게이트가 통과시킨 task를 분류기가 계속 finding으로 보고한다
-// — 게이트의 목적이 잔여물 방지이므로 그 불일치는 게이트를 무의미하게 만든다(#136).
-func TestTaskStatusVocabularyMatchesTheOrcaTerminalSet(t *testing.T) {
-	// adapter의 executionTerminalTaskStatus가 종결로 보는 집합이다.
-	for _, status := range []string{"completed", "complete", "failed", "cancelled", "canceled", "closed"} {
+// 어휘의 출처는 orca CLI다.
+//
+//	$ orca orchestration task-update --help
+//	Notes:
+//	  Valid --status values: pending, ready, dispatched, completed, failed, blocked.
+//
+// #136은 이 목록을 adapter의 방어적 집합에 맞췄다가 틀렸다. 코드끼리 대조하면
+// 두 정의가 같아져도 둘 다 실제와 다를 수 있다(#145, #142에서 실측).
+func TestKnownTaskStatusCoversTheOrcaVocabulary(t *testing.T) {
+	for _, status := range []string{"pending", "ready", "dispatched", "completed", "failed", "blocked"} {
 		t.Run(status, func(t *testing.T) {
 			if !knownTaskStatus(status) {
-				t.Fatalf("%q is a status Orca can report; classifying it as unknown hides a settled task", status)
+				t.Fatalf("%q is a status Orca can report; classifying it as unknown hides a real inventory row", status)
 			}
+		})
+	}
+}
+
+// 종결은 dispatch될 수 없고 worker를 붙들지 않는 상태다. 나머지 넷은 아직
+// 실행되거나 실행을 기다리므로 소유자를 잃으면 진짜 잔여물이다.
+func TestOnlyFinishedTaskStatusesCountAsSettled(t *testing.T) {
+	for _, status := range []string{"completed", "failed"} {
+		t.Run("settled/"+status, func(t *testing.T) {
 			if !settledTaskStatus(status) {
 				t.Fatalf("%q cannot be dispatched and holds no worker; it must count as settled", status)
 			}
 		})
 	}
-}
-
-// 실행 중인 상태는 여전히 종결이 아니다. 넓히는 방향이 활성 task까지
-// 삼키면 실제 잔여물 검출력을 잃는다.
-func TestLiveTaskStatusesStayUnsettled(t *testing.T) {
-	for _, status := range []string{"ready", "dispatched"} {
-		t.Run(status, func(t *testing.T) {
-			if !knownTaskStatus(status) {
-				t.Fatalf("%q must stay a known status", status)
-			}
+	for _, status := range []string{"pending", "ready", "dispatched", "blocked"} {
+		t.Run("unsettled/"+status, func(t *testing.T) {
 			if settledTaskStatus(status) {
-				t.Fatalf("%q is still dispatchable and must not count as settled", status)
+				t.Fatalf("%q can still hold or acquire a worker; treating it as settled loses residue detection", status)
 			}
 		})
 	}
 }
 
-// 어휘 밖의 값은 여전히 unknown이다. 모르는 상태를 조용히 종결로 다루면
-// fail-open이 된다.
+// orca가 거부하는 값은 어휘에 없다. 관측될 수 없는 값을 종결로 인정하면 어휘의
+// 출처가 흐려지고, 방어도 되지 않는다 — 모르는 상태는 이미 unknown이다.
+func TestStatusesOrcaRejectsAreNotInTheVocabulary(t *testing.T) {
+	for _, status := range []string{"complete", "cancelled", "canceled", "closed"} {
+		t.Run(status, func(t *testing.T) {
+			if knownTaskStatus(status) {
+				t.Fatalf("Orca rejects %q on task-update; it must not appear in this vocabulary", status)
+			}
+		})
+	}
+}
+
+// 어휘 밖의 값은 여전히 unknown이다. 모르는 상태를 조용히 통과시키면 fail-open이 된다.
 func TestUnrecognisedTaskStatusStaysUnknown(t *testing.T) {
 	for _, status := range []string{"", "running", "paused", "archived"} {
 		if knownTaskStatus(status) {

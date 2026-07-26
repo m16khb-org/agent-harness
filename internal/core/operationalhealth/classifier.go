@@ -448,15 +448,21 @@ func hasOrcaIdentity(cycle Cycle) bool {
 		strings.TrimSpace(cycle.TaskID) != "" || strings.TrimSpace(cycle.DispatchID) != ""
 }
 
-// knownTaskStatus reports whether a status is part of the vocabulary Orca can
-// report. The settled half must match the adapter's terminal set exactly: the
-// abandon gate (#136) trusts that set to decide whether deleting a record would
-// strand a task, so a status the gate treats as settled but this classifier does
-// not recognise would pass the gate and then be reported here forever — under a
-// different finding name, but stranded all the same.
+// knownTaskStatus reports whether a status belongs to Orca's task vocabulary.
+//
+// The source is the Orca CLI itself, not another Go definition:
+//
+//	$ orca orchestration task-update --help
+//	Notes:
+//	  Valid --status values: pending, ready, dispatched, completed, failed, blocked.
+//
+// #136 matched this list against the adapter's defensive set instead, and both
+// definitions ended up wrong together (#145). The adapter's mirror of this
+// vocabulary lives in executionTerminalTaskStatus; the two must agree, and the
+// CLI decides which values they agree on.
 func knownTaskStatus(value string) bool {
 	switch value {
-	case "ready", "dispatched":
+	case "pending", "ready", "dispatched", "blocked":
 		return true
 	default:
 		return settledTaskStatus(value)
@@ -465,16 +471,16 @@ func knownTaskStatus(value string) bool {
 
 // settledTaskStatus reports whether a task reached a terminal state and can no
 // longer be dispatched or hold a worker.
-// The set mirrors the adapter's executionTerminalTaskStatus. Orca spells the
-// same outcome more than one way (complete/completed, cancelled/canceled), and
-// a cancelled or closed task is as unable to hold a worker as a completed one.
+//
+// Only these two of Orca's six statuses qualify. pending waits to be dispatched,
+// blocked waits on a dependency, ready can be dispatched, and dispatched is
+// running — all four can still hold or acquire a worker, so a task left in one
+// of them without an owner is genuine residue.
+//
+// #136 widened this to six by mirroring the adapter's defensive set, which
+// included values Orca rejects outright. #121's original pair was right (#145).
 func settledTaskStatus(value string) bool {
-	switch value {
-	case "completed", "complete", "failed", "cancelled", "canceled", "closed":
-		return true
-	default:
-		return false
-	}
+	return value == "completed" || value == "failed"
 }
 
 func knownGateStatus(value string) bool {
