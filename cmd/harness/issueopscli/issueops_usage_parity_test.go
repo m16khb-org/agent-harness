@@ -10,11 +10,16 @@ import (
 
 // usageCommandKey는 usage 라인에서 플래그 직전까지의 명령 경로를 뽑는다.
 // 양방향 parity 검사가 같은 파싱 규칙을 쓰도록 공유한다.
+//
+// 선택적 플래그는 `[--repo PATH]`처럼 대괄호로 감싸이고 배타 그룹은 `(--preview|...)`
+// 처럼 괄호로 감싸인다. 그 표기 문자로 시작하는 필드도 명령 경로의 끝이다 —
+// 끊지 않으면 `list [--repo`가 명령 경로가 되고, 그 키를 인자로 삼는 검사는
+// 명령을 실제로 실행해 버린다(#184에서 실측).
 func usageCommandKey(line string) string {
 	fields := strings.Fields(line)
 	limit := min(len(fields), 4)
 	for i, field := range fields[:limit] {
-		if strings.HasPrefix(field, "-") {
+		if strings.HasPrefix(field, "-") || strings.HasPrefix(field, "[") || strings.HasPrefix(field, "(") {
 			limit = i
 			break
 		}
