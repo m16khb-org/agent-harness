@@ -98,6 +98,7 @@ go build -o bin/agent-harness ./cmd/harness
 ### Operational-health and stability delegation
 
 - Pure classifier tests pin the 15-minute heartbeat boundary, invocation-only preserves, duplicate/incomplete inventory failure, and exact resource ownership.
+- External-vocabulary enumerations are pinned per axis, and each case cites the upstream definition rather than an observed sample. `knownDispatchStatus`/`settledDispatchStatus`/`knownGateStatus` must accept the full upstream union — including values a local run rarely produces (`circuit_broken`, `timeout`) — so an unobserved value is not classified as unknown (#171). When an upstream union grows, the test changes with the citation.
 - Stale-scan integration must prove `operational_dead_owner` is report-only (`needs-review`, `releasable=false`) for missing/stale heartbeat while existing confirmed worktree/remote evidence remains releasable after the locked fresh re-probe.
 - Stability audit unit tests must prove it calls the freshly built top-level `doctor`, forwards only a non-empty exact `ORCA_TERMINAL_HANDLE`, requires exit zero plus JSON `ok=true` and `healthy=true`, and stores only bounded issue code/summary failure details.
 - Final live reconciliation verification runs `python3 skills/stability-audit/scripts/e2e_stability_audit.py --cleanup-stale --json` only after the external recovery manifest/journal is sealed and cleanup readbacks are complete. Orca snapshot evidence is archival-only; reset ambiguity follows forward recovery, never an inferred rollback.
@@ -156,7 +157,8 @@ Live 측정은 CI와 기본 self-verify에 포함하지 않는다. `HARNESS_TOOL
 - CLI/MCP/worker는 같은 core DTO를 쓰는지 contract test를 둔다. 설치 경로는 `core.InstallNative` + `port.HostInstaller` adapter 단위 테스트와 `internal/adapter/testdata/native_install_contract_matrix.golden.json` matrix fixture로 고정한다.
 - command execution은 실제 위험 명령 대신 fake runner로 검증한다.
 - fake는 대상 게이트와 **같은 fail-closed 규율**을 따른다. 모르는 입력에 성공을 돌려주는 fake는 새로 추가된 검사를 무흔적으로 통과시킨다 — #153에서 `fakeRemoteBranchGit`의 default가 exit 0을 반환해 신규 ancestry 검사가 조용히 통과했다. 게이트가 fail-closed인데 fake가 fail-open이면 테스트가 게이트를 무력화한다. 처리하지 않는 입력은 명시적으로 실패시킨다.
-- 픽스처가 **실환경 순서를 재현하는지** 확인한다. #149의 브랜치 충돌 사전 확인은 로컬 브랜치를 만드는 픽스처로 GREEN이 됐지만, IssueOps 정식 순서(`gh issue develop`)는 원격 브랜치만 만들기 때문에 실환경에서 그대로 뚫렸다. 픽스처가 만드는 상태가 사용자가 실제로 도달하는 상태와 같은지 물어야 한다 — 통과하는 테스트가 옳은 테스트를 뜻하지는 않는다.
+- 픽스처가 **실환경 순서를 재현하는지** 확인한다. #149의 브랜치 충돌 사전 확인은 로컬 브랜치를 만드는 픽스처로 GREEN이 됐지만, 당시 IssueOps 정식 순서였던 `gh issue develop`은 원격 브랜치만 만들기 때문에 실환경에서 그대로 뚫렸다(#176이 그 단계를 `createLinkedBranch`로 대체했고, 원격만 만드는 성질은 같다). 픽스처가 만드는 상태가 사용자가 실제로 도달하는 상태와 같은지 물어야 한다 — 통과하는 테스트가 옳은 테스트를 뜻하지는 않는다.
+- **shape 불변식 테스트는 우연한 수치를 고정하지 않는다.** #176에서 `TestStepsKeepTheirExistingShape`가 "3단계"를 불변식으로 검사했지만, 실제 계약은 첫 단계가 MCP이고 마지막이 `fail`이며 사이에 provider CLI `fallback_api`가 오고 `Order`가 연속이라는 것이었다. 단계를 하나 늘리는 정당한 변경이 그 테스트를 깨뜨렸다. 이름이 "shape"인 테스트는 구조를 검사하고, 개수·인덱스는 그 구조가 요구할 때만 고정한다.
 - filesystem test는 temporary directory를 사용하고, workspace root 밖 접근 거부를 검증한다.
 - secret redaction test는 token-like fixture가 로그/응답에 남지 않는지 확인한다.
 - daemon/proxy test는 socket path override, MCP stream, start/status/stop smoke, stale lock 복구를 포함한다.

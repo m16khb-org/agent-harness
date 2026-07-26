@@ -3,9 +3,13 @@
 ## Branch And Canonical Worktree
 
 Create and verify the provider-linked issue branch before execution. GitLab
-branch names start with the issue/task number and a hyphen. GitHub uses its
-linked-branch API or `gh issue develop`. Record the exact base branch and base
-SHA; never infer a base from the source checkout's current HEAD.
+branch names start with the issue/task number and a hyphen. GitHub uses the
+`createLinkedBranch` GraphQL mutation with the sealed base SHA as `oid`, not
+`gh issue develop` — that CLI takes only a branch name and lets GitHub resolve
+its current HEAD, which diverges from the sealed base (#176). Run
+`issueops branch prepare` and follow the commands it renders. Record the exact
+base branch and base SHA; never infer a base from the source checkout's current
+HEAD.
 
 Execution v1 is the only owner of local workspace provisioning:
 
