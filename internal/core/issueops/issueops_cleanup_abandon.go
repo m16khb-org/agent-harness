@@ -181,10 +181,19 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record IssueOpsR
 	if record.Phase == IssueOpsPhaseDone {
 		missing = append(missing, "phase_not_done")
 	}
-	// ③ lease allowlist: Execution 부재 또는 released만 통과. claimable/active/
-	// revoking은 전부 거부한다 — 특히 revoking은 "해제된 상태"가 아니라 fenced
-	// holder를 여전히 보유한 상태다(model/execution.go:191-198, brooks F5).
-	if record.Execution != nil && record.Execution.Lease.Status != model.LeaseStatusReleased {
+	// ③ lease allowlist: 홀더가 없는 상태만 통과한다.
+	//
+	// 판정 기준은 상태 이름이 아니라 writer의 유무다. validateWriteLease가
+	// claimable에 홀더 부재를 강제하므로(model/execution.go) claimable과
+	// released는 같은 성질이고, 거부해야 할 것은 살아 있는 writer를 가진
+	// active와 fenced holder를 여전히 보유한 revoking이다(brooks F5).
+	//
+	// claimable을 함께 거부하던 것은 안전한 기본값이었지만 정리 경로를 막았다.
+	// 운영자는 claim→release로 lease를 한 바퀴 돌려야 했고 그 두 단계는
+	// 아무것도 정리하지 않았다(#140, #139에서 실측). claimable을 허용해도
+	// pending intent(⑤), 워크트리·브랜치 잔여(⑥·⑦), orca 자원 잔여(⑨)가
+	// 각각 막으므로 실제로 열리는 것은 홀더도 자원도 없는 레코드뿐이다.
+	if record.Execution != nil && cleanupAbandonLeaseHoldsWriter(record.Execution.Lease.Status) {
 		missing = append(missing, "lease_terminal")
 	}
 	// ④ 머지 증적을 가진 레코드의 정답은 reflect→finish다.
@@ -258,6 +267,18 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record IssueOpsR
 	return inventory, missing
 }
 
+// cleanupAbandonLeaseHoldsWriter는 lease가 아직 writer를 붙들고 있는지 본다.
+// 알 수 없는 상태는 writer 보유로 다룬다 — 모르는 상태를 통과시키면 게이트가
+// fail-open이 된다.
+func cleanupAbandonLeaseHoldsWriter(status model.LeaseStatus) bool {
+	switch status {
+	case model.LeaseStatusClaimable, model.LeaseStatusReleased:
+		return false
+	default:
+		return true
+	}
+}
+
 // cleanupAbandonOrcaResourcesAbsent는 레코드를 지워도 orca 자원이 소유자를 잃지
 // 않는지 판정한다.
 //
@@ -312,7 +333,11 @@ func cleanupAbandonPendingSafe(ctx context.Context, stateRoot string, record Iss
 	// (a) kind allowlist — 로컬 orca mutation 한정. remote PR/MR 계열 kind는
 	// 원격 고아 PR을 남길 수 있으므로 무조건 거부하고 reconcile로 보낸다.
 	if pending.Kind != string(port.ExecutionOrcaIntentWorktree) {
-		return fmt.Errorf("pending external intent kind %q is not local-only; run `agent-harness issueops execution reconcile --id %s --preview --json` first", pending.Kind, record.ID)
+		// reconcile을 지시하는 것만으로는 부족했다. 실측에서 운영자는 reconcile을
+		// 완주한 뒤 무엇을 해야 하는지 알 수 없었다(#139) — 남은 절차를 함께
+		// 알려야 게이트 응답이 탈출 경로가 된다(#140).
+		return fmt.Errorf("pending external intent kind %q is not local-only; run `agent-harness issueops execution reconcile --id %s --preview --json` until it settles, then reclaim the Orca worktree with `orca worktree remove` before retrying abandon",
+			pending.Kind, record.ID)
 	}
 	if record.Execution.Mode != model.ExecutionModeOrca {
 		return fmt.Errorf("worktree_create intent requires an Orca execution record")
