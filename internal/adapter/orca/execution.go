@@ -352,15 +352,35 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 		return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner dispatch identity changed")
 	}
 	result.DispatchStatus = strings.ToLower(strings.TrimSpace(row.Status))
+	// dispatch 상태의 어휘는 확인되지 않았다 — Orca CLI에 dispatch 상태를
+	// 설정하는 명령이 없어 help로 물어볼 곳이 없고, 실측으로 dispatched와
+	// failed만 관측했다(#142). task 어휘를 빌려 쓰되 그 사실을 남긴다. 어휘를
+	// 추측해 넓히면 #136과 같은 오류를 반복한다(#145 비범위).
 	if !executionTerminalTaskStatus(result.DispatchStatus) {
 		result.TaskLive = true
 	}
 	return result, nil
 }
 
+// executionTerminalTaskStatus reports whether a status means the work is over.
+//
+// The vocabulary comes from the Orca CLI, not from another Go definition:
+//
+//	$ orca orchestration task-update --help
+//	Notes:
+//	  Valid --status values: pending, ready, dispatched, completed, failed, blocked.
+//
+// Only completed and failed are terminal. The other four can still hold or
+// acquire a worker. This set used to also list complete/cancelled/canceled/
+// closed, which Orca rejects outright — carrying values that cannot be observed
+// obscured where the vocabulary comes from without defending against anything,
+// since an unrecognised status already falls through to "not terminal" (#145).
+//
+// core/operationalhealth mirrors this set in settledTaskStatus. The two must
+// agree, and the CLI decides on what.
 func executionTerminalTaskStatus(status string) bool {
 	switch strings.ToLower(strings.TrimSpace(status)) {
-	case "completed", "complete", "failed", "cancelled", "canceled", "closed":
+	case "completed", "failed":
 		return true
 	default:
 		return false
