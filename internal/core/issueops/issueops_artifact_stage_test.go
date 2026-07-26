@@ -91,7 +91,7 @@ func TestDeleteIssueOpsRollsBackStageWhenRecordDeleteFails(t *testing.T) {
 // AC-02: stage→prepare materialize(0o600)→manifest 봉인→claim 검증(drift), 빈
 // manifest 하위 호환.
 func TestExecutionOrcaPrepareSealsStagedArtifactManifest(t *testing.T) {
-	stateRoot, record := executionPrepareRecord(t)
+	stateRoot, record := orcaPrepareRecord(t)
 	if _, err := StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte("계획 본문")); err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestExecutionOrcaPrepareSealsStagedArtifactManifest(t *testing.T) {
 }
 
 func TestExecutionOrcaPrepareWithoutStagingSealsEmptyManifest(t *testing.T) {
-	stateRoot, record := executionPrepareRecord(t)
+	stateRoot, record := orcaPrepareRecord(t)
 	fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
 	fake.prepare = func(workspace port.ExecutionWorkspaceRequest, _ port.ExecutionOrcaProbeRequest) (port.ExecutionOrcaWorkspaceReceipt, error) {
 		if err := os.MkdirAll(workspace.Root, 0o755); err != nil {

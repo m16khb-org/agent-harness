@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -59,15 +60,30 @@ type CleanupFinishResult struct {
 	Branch          string   `json:"branch,omitempty"`
 	WorktreePresent bool     `json:"worktree_present"`
 	BranchPresent   bool     `json:"branch_present"`
-	OrcaWorktreeID  string   `json:"orca_worktree_id,omitempty"`
-	OrcaRemoved     bool     `json:"orca_removed,omitempty"`
-	WorktreeRemoved bool     `json:"worktree_removed,omitempty"`
-	BranchDeleted   bool     `json:"branch_deleted,omitempty"`
-	AuditReflected  bool     `json:"audit_reflected,omitempty"`
-	AuditError      string   `json:"audit_error,omitempty"`
-	RecordDeleted   bool     `json:"record_deleted,omitempty"`
-	FailedStep      string   `json:"failed_step,omitempty"`
-	NextCommand     string   `json:"next_command,omitempty"`
+	// WorkspaceProcesses는 workspace_processes_quiescent가 막았을 때 그 판정의
+	// 근거를 담는다. 게이트는 이미 PID와 명령명을 관측하는데 개수만 쓰고 버려서,
+	// 차단당한 사용자가 lsof를 직접 돌려야 했다 — 그 lsof마저 워크트리 경로를
+	// 인자로 주면 lifecycle 가드에 걸린다(이슈 #154).
+	WorkspaceProcesses []string `json:"workspace_processes,omitempty"`
+	OrcaWorktreeID     string   `json:"orca_worktree_id,omitempty"`
+	OrcaRemoved        bool     `json:"orca_removed,omitempty"`
+	WorktreeRemoved    bool     `json:"worktree_removed,omitempty"`
+	BranchDeleted      bool     `json:"branch_deleted,omitempty"`
+	AuditReflected     bool     `json:"audit_reflected,omitempty"`
+	AuditError         string   `json:"audit_error,omitempty"`
+	RecordDeleted      bool     `json:"record_deleted,omitempty"`
+	FailedStep         string   `json:"failed_step,omitempty"`
+	NextCommand        string   `json:"next_command,omitempty"`
+}
+
+// cleanupFinishRemedyCommand는 해소 경로가 하나로 정해지는 missing에만 그 명령을
+// 돌려준다. 상황에 따라 갈리는 항목(worktree_clean, remote_branch_absent 등)은
+// 담지 않는다 — 틀린 안내는 안내가 없는 것보다 나쁘다(이슈 #154).
+func cleanupFinishRemedyCommand(id string, missing []string) string {
+	if slices.Contains(missing, "completion_reflected") {
+		return fmt.Sprintf("agent-harness issueops remote reflect-completion --id %s --confirm --json", id)
+	}
+	return ""
 }
 
 // cleanupFinishInventory는 fingerprint 입력이 되는 현재 관측 상태다. 부분
@@ -118,6 +134,7 @@ func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishReque
 	result.Missing = missing
 	if len(missing) > 0 {
 		result.OK = false
+		result.NextCommand = cleanupFinishRemedyCommand(record.ID, missing)
 		return result, fmt.Errorf("cleanup finish is not ready: %s", strings.Join(missing, ", "))
 	}
 	fingerprint, err := cleanupFinishFingerprint(inventory)
@@ -275,8 +292,16 @@ func cleanupFinishGates(record IssueOpsRecord, req CleanupFinishRequest, deps Cl
 	// 부분 정리 상태는 정상 입력: 워크트리 부재 = clean 충족, 브랜치 부재 = ④ 생략.
 	if inventory.WorktreePresent {
 		if deps.InspectProcesses != nil {
-			if procs, err := deps.InspectProcesses(inventory.WorktreeRoot); err != nil || len(procs) > 0 {
+			// 관측 불가와 점유는 다음 행동이 다르다 — 전자는 관측 도구를 고쳐야
+			// 하고 후자는 프로세스를 종료해야 한다. 둘 다 fail-closed지만 같은
+			// 슬러그로 합치면 어느 쪽인지 알 수 없다(이슈 #154).
+			procs, err := deps.InspectProcesses(inventory.WorktreeRoot)
+			switch {
+			case err != nil:
+				missing = append(missing, "workspace_processes_observable")
+			case len(procs) > 0:
 				missing = append(missing, "workspace_processes_quiescent")
+				result.WorkspaceProcesses = procs
 			}
 		}
 		if code, out := deps.Git(inventory.WorktreeRoot, "status", "--porcelain=v1"); code != 0 || strings.TrimSpace(out) != "" {

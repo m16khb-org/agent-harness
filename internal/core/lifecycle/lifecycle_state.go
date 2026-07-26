@@ -41,6 +41,12 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 				result.Decision = "block"
 				result.Reason = executionReason
 			}
+			// 구조화된 deny는 host hook 출력에서 result.Reason을 대체한다
+			// (hookDenyReason). 사유를 deny 안에 함께 실어야 코드만 보고
+			// 추측 재시도하는 일이 없다(이슈 #154).
+			if result.Deny != nil && result.Deny.Reason == "" {
+				result.Deny.Reason = executionReason
+			}
 		}
 		if !executionHandled && result.Decision != "block" && req.EnforceWorktree {
 			if reason := worktreeGuardBlockReason(req); reason != "" {

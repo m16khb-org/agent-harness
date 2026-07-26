@@ -249,12 +249,19 @@ func assertIssueOpsDenyFields(t *testing.T, raw any, id, root string, generation
 		fields["current_generation"] != float64(generation) || !strings.Contains(fields["next_command"].(string), "--id "+id) {
 		t.Fatalf("unexpected structured deny fields: %+v", fields)
 	}
-	// identity 진단 필드는 holder 불일치 deny에서만 나타난다.
+	// reason은 모든 deny에 실린다(이슈 #154). 구조화된 deny가 host hook 출력에서
+	// result.Reason을 대체하므로, 여기에 없으면 사용자에게는 코드만 남고 왜 막혔는지
+	// 알 길이 사라진다 — 이 헬퍼가 예전에 세던 5개는 그 상태를 고정하고 있었다.
+	if reason, ok := fields["reason"].(string); !ok || strings.TrimSpace(reason) == "" {
+		t.Fatalf("deny must carry the blocking reason: %+v", fields)
+	}
+	// identity 진단 필드는 holder 불일치 deny에서만 나타난다. 진단을 더한다고
+	// 아무 필드나 늘리지 않는다는 계약은 그대로다.
 	wantIdentityEcho := code == "holder_identity_mismatch"
 	_, hasAxis := fields["identity_mismatch"]
 	_, hasObserved := fields["observed_actor"]
-	if wantLen := 5; wantIdentityEcho {
-		wantLen = 7
+	if wantLen := 6; wantIdentityEcho {
+		wantLen = 8
 		if len(fields) != wantLen || !hasAxis || !hasObserved {
 			t.Fatalf("identity mismatch deny must echo the observed actor: %+v", fields)
 		}

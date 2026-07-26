@@ -37,6 +37,14 @@ type ExecutionReconcileResult struct {
 	Code       string                `json:"code"`
 	Execution  model.Execution       `json:"execution"`
 	Pending    *model.ExternalIntent `json:"pending,omitempty"`
+	// ExternalStateInspected는 이 결과가 외부 자원을 실제로 조회하고 나온
+	// 것인지 밝힌다. preview는 pending kind만 보고 상수 코드를 돌려주므로
+	// false다 — 그 구분이 없으면 preview 출력이 "Orca 자원이 이런 상태다"라는
+	// 관측 증거로 오독된다(#99의 오진단이 그렇게 생겼다, 이슈 #154).
+	//
+	// omitempty를 쓰지 않는다. "조회하지 않았다"가 이 필드의 핵심 정보이므로
+	// false가 출력에서 사라지면 목적 자체가 무너진다.
+	ExternalStateInspected bool `json:"external_state_inspected"`
 }
 
 func ReconcileExecution(stateRoot string, req ExecutionReconcileRequest) (ExecutionReconcileResult, error) {
@@ -99,13 +107,19 @@ func ReconcileExecutionWithDependencies(ctx context.Context, stateRoot string, r
 	}
 }
 
-func reconcileOrcaExecutionIntent(ctx context.Context, stateRoot string, record IssueOpsRecord, deps ExecutionReconcileDependencies) (ExecutionReconcileResult, error) {
+func reconcileOrcaExecutionIntent(ctx context.Context, stateRoot string, record IssueOpsRecord, deps ExecutionReconcileDependencies) (result ExecutionReconcileResult, err error) {
+	inspected := false
+	defer func() { result.ExternalStateInspected = inspected }()
+
 	pending := record.Execution.Pending
 	payload, err := readExternalOrcaIntentPayload(stateRoot, pending.OperationID)
 	if err != nil {
 		return failedExecutionReconcileResult(record, "orca_intent_payload_invalid"), err
 	}
+	// 여기부터는 Orca 인벤토리를 실제로 조회한다. 실패하더라도 조회를 시도한
+	// 결과이므로 관측 증거로 인용할 수 있다 — payload 단계의 실패와 다르다.
 	updated, next, err := executeOrcaIntentStage(ctx, stateRoot, record, payload, deps.Orca, deps.ReadIssue, deps.Now)
+	inspected = true
 	if err != nil {
 		if latest, readErr := ReadIssueOps(stateRoot, record.ID); readErr == nil {
 			updated = latest
@@ -116,7 +130,7 @@ func reconcileOrcaExecutionIntent(ctx context.Context, stateRoot string, record 
 	if updated.Execution != nil && updated.Execution.Pending != nil {
 		code = "orca_reconcile_advanced_" + string(next.Stage)
 	}
-	result := executionReconcileResult(updated, false, code)
+	result = executionReconcileResult(updated, false, code)
 	result.Reconciled = true
 	return result, nil
 }
@@ -130,7 +144,12 @@ func pendingKindForOrcaStageFromKind(kind string) bool {
 	}
 }
 
-func reconcileRemotePullRequest(ctx context.Context, stateRoot string, record IssueOpsRecord, deps RemotePullRequestDependencies) (ExecutionReconcileResult, error) {
+func reconcileRemotePullRequest(ctx context.Context, stateRoot string, record IssueOpsRecord, deps RemotePullRequestDependencies) (result ExecutionReconcileResult, err error) {
+	// 반환 경로가 여러 갈래이므로 조회 여부를 한 곳에서 표시한다. 경로마다
+	// 따로 붙이면 하나를 빠뜨렸을 때 결과가 조용히 거짓말을 한다(이슈 #154).
+	inspected := false
+	defer func() { result.ExternalStateInspected = inspected }()
+
 	pending := record.Execution.Pending
 	payload, err := readExternalRemotePRPayload(stateRoot, pending.OperationID)
 	if err != nil {
@@ -140,6 +159,7 @@ func reconcileRemotePullRequest(ctx context.Context, stateRoot string, record Is
 		return failedExecutionReconcileResult(record, "remote_reconcile_unavailable"), fmt.Errorf("remote reconcile provider is unavailable")
 	}
 	inventory, err := deps.Reconcile(payload.Provider, remotePullRequestReconcileRequest(payload))
+	inspected = true
 	if err != nil {
 		_ = recordRemotePullRequestFailure(stateRoot, record.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, payload.KnownURL, err, deps.Now)
 		return failedExecutionReconcileResult(record, "remote_reconcile_ambiguous"), fmt.Errorf("remote reconcile transport is ambiguous; intent retained: %w", err)
@@ -207,7 +227,7 @@ func reconcileRemotePullRequest(ctx context.Context, stateRoot string, record Is
 	if err != nil {
 		return failedExecutionReconcileResult(record, "remote_reconcile_retry_receipt_failed"), err
 	}
-	result := executionReconcileResult(updated, false, "remote_reconcile_retry_succeeded")
+	result = executionReconcileResult(updated, false, "remote_reconcile_retry_succeeded")
 	result.Reconciled = true
 	return result, nil
 }

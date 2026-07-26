@@ -249,21 +249,37 @@ func prepareOrcaExecution(ctx context.Context, stateRoot string, record IssueOps
 // IssueOps는 linked branch를 먼저 만들도록 요구하므로 정식 순서를 따를수록 이
 // 충돌이 확실해진다. mutation 이전에 막아 잔여물 자체를 없앤다.
 //
-// 로컬 refs만 본다. Orca가 원격 전용 브랜치에 어떻게 반응하는지는 확인하지
-// 못했고, 추측으로 정상 경로를 막지 않는다.
+// 로컬과 원격을 모두 본다. #149는 로컬 refs만 봤는데, `gh issue develop`은 원격에만
+// 브랜치를 만들므로 정식 순서에서는 그 검사가 **언제나** 통과했다 — 실환경 dogfood가
+// 그 구멍으로 접미사 브랜치를 만들어냈다(#154). Orca가 원격 브랜치를 보고 이름을
+// 정하므로 사전 확인의 시야도 거기까지여야 한다.
+//
+// 원격은 remote-tracking ref로 판정한다. `git ls-remote`는 prepare를 네트워크에 묶어
+// 오프라인에서 정상 경로를 막는다. 대신 낡은 ref가 이미 삭제된 브랜치를 있다고
+// 보고할 수 있어 메시지가 fetch를 안내한다.
 func ensureOrcaBranchIsFree(record IssueOpsRecord, branch string) error {
 	branch = strings.TrimSpace(branch)
 	if branch == "" {
 		return fmt.Errorf("Orca prepare requires a branch name")
 	}
-	code, _, _ := preflight.GitCmd(record.Repo, "rev-parse", "--verify", "--quiet", "refs/heads/"+branch)
-	if code != 0 {
-		return nil
+	for _, scope := range []struct {
+		ref    string
+		where  string
+		remedy string
+	}{
+		{ref: "refs/heads/" + branch, where: "locally", remedy: "delete the local branch if it holds no work"},
+		{ref: "refs/remotes/origin/" + branch, where: "on origin",
+			remedy: "delete the remote branch if it holds no work, or run `git fetch --prune` if it is already gone"},
+	} {
+		if code, _, _ := preflight.GitCmd(record.Repo, "rev-parse", "--verify", "--quiet", scope.ref); code != 0 {
+			continue
+		}
+		return fmt.Errorf(
+			"branch %q already exists %s, so Orca cannot prepare this execution: Orca always creates a new branch, so it would take a different name (observed: a numeric suffix) and fail as worktree_branch_mismatch only after the worktree exists; "+
+				"use --mode direct, which adopts the existing branch, or %s",
+			branch, scope.where, scope.remedy)
 	}
-	return fmt.Errorf(
-		"branch %q already exists, so Orca cannot prepare this execution: Orca always creates a new branch, so it would take a different name (observed: a numeric suffix) and fail as worktree_branch_mismatch only after the worktree exists; "+
-			"use --mode direct, which adopts the existing branch, or delete the local branch first if it holds no work",
-		branch)
+	return nil
 }
 
 func validateExecutionOrcaReceipt(workspace port.ExecutionWorkspaceRequest, receipt port.ExecutionOrcaReceipt) error {

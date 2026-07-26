@@ -26,7 +26,7 @@ func TestExecutionOrcaCrashAfterMutationReconcilesExactlyOneCandidateWithoutDupl
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			stateRoot, record := executionPrepareRecord(t)
+			stateRoot, record := orcaPrepareRecord(t)
 			calls := map[port.ExecutionOrcaIntentStage]int{}
 			var crashedRequest port.ExecutionOrcaIntentRequest
 			fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
@@ -115,7 +115,7 @@ func TestExecutionOrcaReconcileZeroMultipleAndTransportAmbiguityNeverMutate(t *t
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			stateRoot, record := executionPrepareRecord(t)
+			stateRoot, record := orcaPrepareRecord(t)
 			invokeCalls := 0
 			fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
 			fake.invoke = func(request port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentReceipt, error) {
@@ -145,7 +145,7 @@ func TestExecutionOrcaReconcileZeroMultipleAndTransportAmbiguityNeverMutate(t *t
 }
 
 func TestExecutionOrcaReconcileRetriesOnlyProvenNotInvokedAndOnlyOnce(t *testing.T) {
-	stateRoot, record := executionPrepareRecord(t)
+	stateRoot, record := orcaPrepareRecord(t)
 	invokeCalls := 0
 	fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
 	fake.invoke = func(request port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentReceipt, error) {
@@ -184,7 +184,7 @@ func TestExecutionOrcaReconcileRetriesOnlyProvenNotInvokedAndOnlyOnce(t *testing
 }
 
 func TestExecutionOrcaReceiptCASRejectsConcurrentIntentChange(t *testing.T) {
-	stateRoot, record := executionPrepareRecord(t)
+	stateRoot, record := orcaPrepareRecord(t)
 	fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
 	fake.invoke = func(port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentReceipt, error) {
 		return port.ExecutionOrcaIntentReceipt{}, &port.OrcaError{Code: "timeout", Invoked: true}
