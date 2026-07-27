@@ -221,6 +221,29 @@ func TestExecutionHolderCannotMutateGitTopology(t *testing.T) {
 	}
 }
 
+func TestExecutionHolderCanSetMatchingOriginUpstream(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	branch := record.Execution.Workspace.Branch
+
+	req := executionRequest(record, worker, "claude", "owner-session",
+		"git branch --set-upstream-to=origin/"+branch+" "+branch)
+	req.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("현재 holder의 일치하는 origin upstream 설정은 허용해야 한다: %+v", got)
+	}
+
+	req.Command = "git branch --set-upstream-to=origin/other " + branch
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+		t.Fatalf("다른 원격 브랜치를 upstream으로 설정하면 계속 차단해야 한다: %+v", got)
+	}
+
+	req.Command = "git branch --set-upstream-to=origin/other other"
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+		t.Fatalf("현재 sealed branch가 아닌 로컬 브랜치의 tracking 변경은 차단해야 한다: %+v", got)
+	}
+}
+
 func TestExecutionDoesNotOwnUnregisteredSiblingWorktree(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source, record, _ := executionActiveLifecycleRecord(t)

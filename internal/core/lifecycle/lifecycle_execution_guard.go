@@ -472,7 +472,9 @@ func executionUnsafeMutationReason(req HookToolUseLifecycleRequest) string {
 	if commandparse.HasUnquotedBackgroundOperator(command) || executionDetachedShellCommand(command) {
 		return "background or detached mutation is blocked; run the command in the foreground and observe it to completion in the holder session"
 	}
-	if worktreeguard.SealedGitTopologyMutation(command) {
+	upstreamBranch, exactUpstream := worktreeguard.MatchingOriginUpstreamBranch(command)
+	if worktreeguard.SealedGitTopologyMutation(command) ||
+		(exactUpstream && upstreamBranch != gitBranchFromHead(req.CWD)) {
 		return "the IssueOps branch and worktree identity are sealed; direct switch/reset/rebase/merge/force-push/worktree mutation is blocked"
 	}
 	if commandparse.HasUnquotedControlOperator(command) || commandparse.HasActiveCommandSubstitution(command) ||

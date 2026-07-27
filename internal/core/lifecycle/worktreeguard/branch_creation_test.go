@@ -113,6 +113,56 @@ func TestLocalIssueOpsBranchSelection(t *testing.T) {
 	}
 }
 
+func TestSealedGitTopologyMutationAllowsOnlyMatchingOriginUpstream(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		command string
+		want    bool
+	}{
+		{
+			name:    "origin short form",
+			command: "git branch --set-upstream-to=origin/190-fitness 190-fitness",
+			want:    false,
+		},
+		{
+			name:    "origin full ref form",
+			command: "git branch --set-upstream-to refs/remotes/origin/190-fitness 190-fitness",
+			want:    false,
+		},
+		{
+			name:    "mismatched upstream branch",
+			command: "git branch --set-upstream-to=origin/other 190-fitness",
+			want:    true,
+		},
+		{
+			name:    "non origin remote",
+			command: "git branch --set-upstream-to=upstream/190-fitness 190-fitness",
+			want:    true,
+		},
+		{
+			name:    "implicit local branch",
+			command: "git branch --set-upstream-to=origin/190-fitness",
+			want:    true,
+		},
+		{
+			name:    "dynamic branch",
+			command: "git branch --set-upstream-to=origin/$BRANCH $BRANCH",
+			want:    true,
+		},
+		{
+			name:    "rename remains sealed",
+			command: "git branch -m renamed",
+			want:    true,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := SealedGitTopologyMutation(tt.command); got != tt.want {
+				t.Fatalf("SealedGitTopologyMutation(%q) = %v, want %v", tt.command, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestIssueOpsBranchCreationSourceReason(t *testing.T) {
 	reason := IssueOpsBranchCreationSourceReason("feature/foo")
 	if reason == "" {
