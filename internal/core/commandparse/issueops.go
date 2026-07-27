@@ -257,6 +257,8 @@ func ExactReadOnlyShellCommand(command string) bool {
 			return len(tokens) == i+2 && tokens[i+1] == "--show-current"
 		case "ls-remote":
 			return exactReadOnlyGitLSRemote(tokens[i+1:])
+		case "merge-base":
+			return exactReadOnlyGitMergeBase(tokens[i+1:])
 		}
 	case "gh":
 		return exactReadOnlyGHCommand(tokens)
@@ -564,6 +566,26 @@ func exactReadOnlyGitLSRemote(tokens []string) bool {
 	return true
 }
 
+func exactReadOnlyGitMergeBase(tokens []string) bool {
+	if len(tokens) == 3 && tokens[0] == "--is-ancestor" {
+		tokens = tokens[1:]
+	}
+	if len(tokens) != 2 {
+		return false
+	}
+	for _, token := range tokens {
+		if len(token) != 40 && len(token) != 64 {
+			return false
+		}
+		for _, r := range token {
+			if (r < '0' || r > '9') && (r < 'a' || r > 'f') && (r < 'A' || r > 'F') {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func exactReadOnlyGHCommand(tokens []string) bool {
 	if len(tokens) < 4 || tokens[0] != "gh" {
 		return false
@@ -581,7 +603,11 @@ func exactReadOnlyGHCommand(tokens []string) bool {
 }
 
 func exactReadOnlyGHIssueCommand(tokens []string) bool {
-	if tokens[2] != "view" {
+	switch tokens[2] {
+	case "develop":
+		return exactReadOnlyGHIssueDevelopCommand(tokens)
+	case "view":
+	default:
 		return false
 	}
 	number, err := strconv.Atoi(tokens[3])
@@ -604,6 +630,42 @@ func exactReadOnlyGHIssueCommand(tokens []string) bool {
 		return false
 	}
 	return true
+}
+
+func exactReadOnlyGHIssueDevelopCommand(tokens []string) bool {
+	listSeen := false
+	numberSeen := false
+	repoSeen := false
+	for i := 3; i < len(tokens); i++ {
+		token := tokens[i]
+		switch {
+		case token == "--list":
+			if listSeen {
+				return false
+			}
+			listSeen = true
+		case token == "--repo":
+			if repoSeen || i+1 >= len(tokens) || !safeGHRepository(tokens[i+1]) {
+				return false
+			}
+			repoSeen = true
+			i++
+		case strings.HasPrefix(token, "--repo="):
+			if repoSeen || !safeGHRepository(strings.TrimPrefix(token, "--repo=")) {
+				return false
+			}
+			repoSeen = true
+		case strings.HasPrefix(token, "-"):
+			return false
+		default:
+			number, err := strconv.Atoi(token)
+			if numberSeen || err != nil || number <= 0 {
+				return false
+			}
+			numberSeen = true
+		}
+	}
+	return listSeen && numberSeen
 }
 
 func exactReadOnlyGHPRCommand(tokens []string) bool {

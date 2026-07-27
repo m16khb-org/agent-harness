@@ -110,6 +110,8 @@ func TestExecutionShellReadersAreObservationFirst(t *testing.T) {
 		"file " + filepath.Join(repo, "README.md"),
 		"shasum -a 256 " + filepath.Join(worker, ".agent-harness", "state", "issueops-v1", "context.json"),
 		"gh issue view 190 --repo m16khb/agent-harness --json body",
+		"gh issue develop --list 190 --repo m16khb/agent-harness",
+		"git merge-base 5457e834d93a367f3fd5d200d40dfb813320679d eeb6241120cbf40d28df1b0b9483ab9dc7f1eaa1",
 		// claim identity bootstrap(이슈 #90 발견 3): owner는 자기 native
 		// receipt를 관측할 admitted 표면이 필요하다.
 		"agent-harness issueops execution whoami --json",
