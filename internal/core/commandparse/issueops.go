@@ -228,6 +228,10 @@ func ExactReadOnlyShellCommand(command string) bool {
 		return exactReadOnlyStat(tokens[1:])
 	case "file":
 		return exactReadOnlyFile(tokens[1:])
+	case "shasum":
+		return exactReadOnlyDigestCommand(tokens[1:], true)
+	case "sha256sum":
+		return exactReadOnlyDigestCommand(tokens[1:], false)
 	case "wc":
 		return exactReadOnlyWCCommand(tokens[1:])
 	case "sed":
@@ -261,6 +265,24 @@ func ExactReadOnlyShellCommand(command string) bool {
 			(len(tokens) == 4 && tokens[1] == "orchestration" && tokens[2] == "task-list" && tokens[3] == "--json")
 	}
 	return false
+}
+
+func exactReadOnlyDigestCommand(tokens []string, algorithmRequired bool) bool {
+	if algorithmRequired {
+		if len(tokens) < 3 || (tokens[0] != "-a" && tokens[0] != "--algorithm") || tokens[1] != "256" {
+			return false
+		}
+		tokens = tokens[2:]
+	}
+	if len(tokens) == 0 {
+		return false
+	}
+	for _, operand := range tokens {
+		if operand == "" || operand == "-" || strings.HasPrefix(operand, "-") {
+			return false
+		}
+	}
+	return true
 }
 
 func exactReadOnlyCat(tokens []string) bool {
@@ -545,11 +567,39 @@ func exactReadOnlyGHCommand(tokens []string) bool {
 	switch tokens[1] {
 	case "pr":
 		return exactReadOnlyGHPRCommand(tokens)
+	case "issue":
+		return exactReadOnlyGHIssueCommand(tokens)
 	case "run":
 		return exactReadOnlyGHRunCommand(tokens)
 	default:
 		return false
 	}
+}
+
+func exactReadOnlyGHIssueCommand(tokens []string) bool {
+	if tokens[2] != "view" {
+		return false
+	}
+	number, err := strconv.Atoi(tokens[3])
+	if err != nil || number <= 0 {
+		return false
+	}
+	flags, ok := ExactFlags(
+		ExactIssueOpsCommand{Tokens: tokens, Start: 4},
+		map[string]bool{"--json": true, "--repo": true},
+		map[string]bool{"--comments": true},
+		map[string]bool{},
+	)
+	if !ok {
+		return false
+	}
+	if fields, exists := flags["--json"]; exists && !safeGHJSONFields(fields[0]) {
+		return false
+	}
+	if repo, exists := flags["--repo"]; exists && !safeGHRepository(repo[0]) {
+		return false
+	}
+	return true
 }
 
 func exactReadOnlyGHPRCommand(tokens []string) bool {

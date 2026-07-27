@@ -473,6 +473,30 @@ func TestExecutionAllowsExactOrcaObservationsButNotMutationForObserver(t *testin
 	}
 }
 
+func TestExecutionAllowsOrcaWorkerDoneBeforeLeaseClaim(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	record.Execution.Lease = issueopsmodel.WriteLease{
+		Generation: 2, Status: issueopsmodel.LeaseStatusClaimable,
+		ClaimTokenSHA256: strings.Repeat("a", 64),
+	}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+
+	req := executionRequest(record, worker, "codex", "owner-session",
+		"orca orchestration send --to term-coordinator --type worker_done --subject paused"+
+			" --body safe-checkpoint --task-id task-1 --dispatch-id ctx-1 --json")
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("claim 전 owner도 자신의 dispatch 종료 메시지를 보낼 수 있어야 한다: %+v", got)
+	}
+
+	req.Command = "orca orchestration task-update --id task-1 --status completed --json"
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+		t.Fatalf("worker_done 이외의 orchestration mutation은 lease 없이 통과하면 안 된다: %+v", got)
+	}
+}
+
 func TestExecutionHolderCannotEscapeCanonicalRootThroughSymlinkTarget(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source, record, worker := executionActiveLifecycleRecord(t)

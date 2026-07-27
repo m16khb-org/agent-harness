@@ -26,6 +26,9 @@ func executionObservation(req HookToolUseLifecycleRequest) bool {
 	if exactOrcaObservation(req.Command) {
 		return true
 	}
+	if exactOrcaWorkerDone(req.Command) {
+		return true
+	}
 	// gh issue develop은 관측이 아니다 — provider에 브랜치를 만든다. 그런데 이
 	// 목록에 없어서 authority 활성 중 unclassified로 막혔고, #163이 정한 orca
 	// 순서(orca 준비 뒤 링크 부착)를 canonical worktree에서 실행할 수 없었다.
@@ -237,6 +240,47 @@ func exactOrcaObservation(command string) bool {
 	default:
 		return false
 	}
+}
+
+// exactOrcaWorkerDone은 claim 전에 발견한 blocker도 현재 dispatch의 완료로
+// 반환할 수 있게 한다. Orca runtime이 sender pane과 task/dispatch identity를
+// 다시 검증하므로, 훅은 이 정확한 제어면만 worktree mutation fence에서 제외한다.
+func exactOrcaWorkerDone(command string) bool {
+	if commandparse.HasUnquotedControlOperator(command) ||
+		commandparse.HasActiveCommandSubstitution(command) ||
+		commandparse.HasActiveInputRedirect(command) ||
+		commandparse.HasActiveOutputRedirect(command) ||
+		commandparse.HasActiveParameterOrTildeExpansion(command) ||
+		commandparse.HasActivePathnameExpansion(command) ||
+		commandparse.HasActiveShellSpecialQuoting(command) ||
+		commandparse.HasActiveZshEqualsExpansion(command) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(command)
+	if len(tokens) < 4 || searchrouting.SearchTokenName(tokens[0]) != "orca" ||
+		tokens[1] != "orchestration" || tokens[2] != "send" {
+		return false
+	}
+	flags, ok := commandparse.ExactFlags(
+		commandparse.ExactIssueOpsCommand{Tokens: tokens, Start: 3},
+		map[string]bool{
+			"--to": true, "--from": true, "--type": true, "--subject": true, "--body": true,
+			"--task-id": true, "--dispatch-id": true,
+		},
+		map[string]bool{"--json": true},
+		map[string]bool{},
+	)
+	if !ok {
+		return false
+	}
+	for _, name := range []string{"--to", "--type", "--subject", "--body", "--task-id", "--dispatch-id"} {
+		value, found := oneFlag(flags, name)
+		if !found || strings.TrimSpace(value) == "" {
+			return false
+		}
+	}
+	messageType, _ := oneFlag(flags, "--type")
+	return messageType == "worker_done"
 }
 
 func executionTypedControlPlane(req HookToolUseLifecycleRequest) bool {
