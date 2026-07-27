@@ -35,6 +35,66 @@ func TestLaunchOwnerWaitsForTheDelayedTabTitle(t *testing.T) {
 	}
 }
 
+// Orca terminal create can return before terminal list publishes the new PTY.
+// The live #190 run failed in about one second despite a 12-second title budget,
+// proving that an empty first inventory bypassed the settle loop.
+func TestLaunchOwnerWaitsForTheCreatedPTYToAppearInInventory(t *testing.T) {
+	prepared, launch := executionLaunchSealed(t)
+	fake := executionLaunchFake(t)
+	fake.terminalInventoryPresent = []bool{false, true}
+	fake.terminalInventoryTitles = []string{"", executionLaunchMarker}
+
+	provisioner := &ExecutionProvisioner{
+		client: fake, terminalSettleBudget: 30 * time.Millisecond, terminalSettleInterval: 5 * time.Millisecond,
+	}
+	if _, err := provisioner.LaunchOwner(context.Background(), prepared, executionLaunchProbe(), launch); err != nil {
+		t.Fatalf("a newly created PTY may appear after the first inventory read: %v", err)
+	}
+	if fake.inventoryCalls != 2 {
+		t.Fatalf("the PTY should settle through read-only inventory, got %d calls", fake.inventoryCalls)
+	}
+	if fake.terminalCreateCalls != 1 {
+		t.Fatalf("waiting must not repeat terminal creation: %d", fake.terminalCreateCalls)
+	}
+}
+
+func TestLaunchOwnerBoundsAPersistentlyAbsentPTY(t *testing.T) {
+	prepared, launch := executionLaunchSealed(t)
+	fake := executionLaunchFake(t)
+	fake.terminalInventoryPresent = []bool{false}
+
+	provisioner := &ExecutionProvisioner{
+		client: fake, terminalSettleBudget: 30 * time.Millisecond, terminalSettleInterval: 5 * time.Millisecond,
+	}
+	_, err := provisioner.LaunchOwner(context.Background(), prepared, executionLaunchProbe(), launch)
+	if err == nil {
+		t.Fatal("a PTY that never appears must remain a bounded identity failure")
+	}
+	var orcaErr *port.OrcaError
+	if !asOrcaError(err, &orcaErr) || !strings.Contains(orcaErr.Detail, "attempt") {
+		t.Fatalf("bounded absence must preserve attempt evidence: %v", err)
+	}
+	if fake.inventoryCalls < 2 {
+		t.Fatalf("persistent absence must consume the bounded settle window: %d", fake.inventoryCalls)
+	}
+}
+
+func TestLaunchOwnerDoesNotWaitOnAmbiguousPTYInventory(t *testing.T) {
+	prepared, launch := executionLaunchSealed(t)
+	fake := executionLaunchFake(t)
+	fake.terminalInventoryCopies = []int{2}
+
+	provisioner := &ExecutionProvisioner{
+		client: fake, terminalSettleBudget: 30 * time.Millisecond, terminalSettleInterval: 5 * time.Millisecond,
+	}
+	if _, err := provisioner.LaunchOwner(context.Background(), prepared, executionLaunchProbe(), launch); err == nil {
+		t.Fatal("duplicate PTY rows are ambiguity, not a settling delay")
+	}
+	if fake.inventoryCalls != 1 {
+		t.Fatalf("ambiguity must fail immediately instead of waiting: %d", fake.inventoryCalls)
+	}
+}
+
 // 마커가 끝내 나타나지 않으면 여전히 거부한다. 대기는 봉인 검증을 늦추는 것이지
 // 없애는 것이 아니다.
 func TestLaunchOwnerStillRefusesWhenTheMarkerNeverAppears(t *testing.T) {

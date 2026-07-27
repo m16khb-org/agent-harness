@@ -176,8 +176,7 @@ func (p *ExecutionProvisioner) InvokeIntent(ctx context.Context, req port.Execut
 	case port.ExecutionOrcaIntentWorktree:
 		created, err := p.client.CreateWorktree(ctx, port.OrcaCreateWorktreeRequest{
 			Repo: req.Workspace.SourceRoot, Name: req.Workspace.Branch, BaseBranch: req.Workspace.BaseHead,
-			UpstreamBranch: executionRemoteBranch(req.Workspace.Branch),
-			Provider:       req.Probe.Provider, Issue: req.Probe.Issue, Comment: req.Marker,
+			Provider: req.Probe.Provider, Issue: req.Probe.Issue, Comment: req.Marker,
 		})
 		if err != nil {
 			return port.ExecutionOrcaIntentReceipt{}, err
@@ -459,8 +458,7 @@ func (p *ExecutionProvisioner) prepareWorktree(ctx context.Context, workspace po
 	}
 	created, err := p.client.CreateWorktree(ctx, port.OrcaCreateWorktreeRequest{
 		Repo: workspace.SourceRoot, Name: workspace.Branch, BaseBranch: workspace.BaseHead,
-		UpstreamBranch: executionRemoteBranch(workspace.Branch),
-		Provider:       req.Provider, Issue: req.Issue, Comment: req.Marker,
+		Provider: req.Provider, Issue: req.Issue, Comment: req.Marker,
 	})
 	if err != nil {
 		return port.OrcaWorktree{}, err
@@ -469,10 +467,6 @@ func (p *ExecutionProvisioner) prepareWorktree(ctx context.Context, workspace po
 		return port.OrcaWorktree{}, err
 	}
 	return created, nil
-}
-
-func executionRemoteBranch(branch string) string {
-	return "refs/remotes/origin/" + strings.TrimSpace(branch)
 }
 
 // executionTerminalSettleBudget과 executionTerminalSettleInterval은 Orca가 만든
@@ -514,10 +508,19 @@ func (p *ExecutionProvisioner) reconcileCreatedTerminal(ctx context.Context, cre
 		}
 		candidate, err := executionSoleTerminalByPTY(inventory.Rows, created.PTYID)
 		if err != nil {
-			// 모호함과 부재는 대기로 해소되지 않는다 — 그대로 알린다.
+			// 같은 PTY가 둘 이상이면 어느 터미널을 봉인해야 하는지 알 수 없다.
+			// 시간으로 해소되는 상태가 아니므로 즉시 fail-closed한다.
 			return port.OrcaTerminal{}, err
 		}
-		lastErr = validateExecutionIntentTerminal(*candidate, prepared, marker)
+		if candidate == nil {
+			// create 응답과 terminal inventory 반영 사이에는 짧은 비동기 창이
+			// 있다. #190 실측에서 이 부재가 기존 12초 제목 대기를 건너뛰고
+			// 약 1초 만에 실패시켰다. mutation은 반복하지 않고 같은 bounded
+			// 조회 창에서 PTY가 나타나는지만 기다린다.
+			lastErr = fmt.Errorf("Orca owner terminal is absent")
+		} else {
+			lastErr = validateExecutionIntentTerminal(*candidate, prepared, marker)
+		}
 		if lastErr == nil {
 			return *candidate, nil
 		}
@@ -550,8 +553,9 @@ func (p *ExecutionProvisioner) terminalSettleWindow() (time.Duration, time.Durat
 	return budget, interval
 }
 
-// executionSoleTerminalByPTY는 PTY로 정확히 하나를 고른다. 대기 루프가 매번
-// 같은 판정을 하도록 분리했다 — 두 곳에 쓰면 한쪽만 고쳐질 수 있다.
+// executionSoleTerminalByPTY는 PTY로 최대 하나를 고른다. 부재는 생성 직후
+// inventory가 따라오는 동안 생길 수 있으므로 nil,nil이고, 중복은 identity
+// ambiguity라 즉시 오류다.
 func executionSoleTerminalByPTY(rows []port.OrcaTerminal, ptyID string) (*port.OrcaTerminal, error) {
 	var candidate *port.OrcaTerminal
 	for index := range rows {
@@ -563,9 +567,6 @@ func executionSoleTerminalByPTY(rows []port.OrcaTerminal, ptyID string) (*port.O
 			return nil, fmt.Errorf("Orca owner terminal inventory is ambiguous")
 		}
 		candidate = &row
-	}
-	if candidate == nil {
-		return nil, fmt.Errorf("Orca owner terminal is absent")
 	}
 	return candidate, nil
 }

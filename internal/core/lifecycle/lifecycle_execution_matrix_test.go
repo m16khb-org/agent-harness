@@ -81,8 +81,9 @@ func TestExecutionParallelCycleObservationsDoNotRequireOwnerSelection(t *testing
 	}
 
 	for name, command := range map[string]string{
-		"exact status": "agent-harness issueops status --id " + observer.ID + " --json",
-		"remote score": "agent-harness issueops remote score --input " + filepath.Join(worker, "score-input.json") + " --judge none --json",
+		"exact status":  "agent-harness issueops status --id " + observer.ID + " --json",
+		"remote score":  "agent-harness issueops remote score --input " + filepath.Join(worker, "score-input.json") + " --judge none --json",
+		"remote prompt": "agent-harness issueops remote score --input " + filepath.Join(worker, "score-input.json") + " --judge prompt --json",
 	} {
 		t.Run(name, func(t *testing.T) {
 			req := executionRequest(active, worker, "claude", "owner-session", "")

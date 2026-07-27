@@ -25,11 +25,13 @@ const (
 // 기존 executionFake를 확장하지 않고 별도로 두는 이유는 그 fake가 여러 테스트의
 // 공유 픽스처라 조회별 응답 변화를 넣으면 다른 테스트의 전제가 흔들린다는 것이다.
 type executionLaunchTimingFake struct {
-	calls                   []string
-	terminalCreateCalls     int
-	inventoryCalls          int
-	terminalInventoryTitles []string
-	createdTerminal         *port.OrcaTerminal
+	calls                    []string
+	terminalCreateCalls      int
+	inventoryCalls           int
+	terminalInventoryTitles  []string
+	terminalInventoryPresent []bool
+	terminalInventoryCopies  []int
+	createdTerminal          *port.OrcaTerminal
 }
 
 func executionLaunchFake(t *testing.T) *executionLaunchTimingFake {
@@ -132,18 +134,41 @@ func (f *executionLaunchTimingFake) ListTerminals(context.Context, string) ([]po
 
 func (f *executionLaunchTimingFake) listTerminalsInventory(context.Context, string) (executionTerminalInventory, error) {
 	f.calls = append(f.calls, "list-terminals-inventory")
+	index := f.inventoryCalls
 	title := ""
 	if len(f.terminalInventoryTitles) > 0 {
-		index := f.inventoryCalls
-		if index >= len(f.terminalInventoryTitles) {
-			index = len(f.terminalInventoryTitles) - 1
+		titleIndex := index
+		if titleIndex >= len(f.terminalInventoryTitles) {
+			titleIndex = len(f.terminalInventoryTitles) - 1
 		}
-		title = f.terminalInventoryTitles[index]
+		title = f.terminalInventoryTitles[titleIndex]
+	}
+	present := true
+	if len(f.terminalInventoryPresent) > 0 {
+		presentIndex := index
+		if presentIndex >= len(f.terminalInventoryPresent) {
+			presentIndex = len(f.terminalInventoryPresent) - 1
+		}
+		present = f.terminalInventoryPresent[presentIndex]
+	}
+	copies := 1
+	if len(f.terminalInventoryCopies) > 0 {
+		copiesIndex := index
+		if copiesIndex >= len(f.terminalInventoryCopies) {
+			copiesIndex = len(f.terminalInventoryCopies) - 1
+		}
+		copies = f.terminalInventoryCopies[copiesIndex]
 	}
 	f.inventoryCalls++
+	rows := make([]port.OrcaTerminal, 0, copies)
+	if present {
+		for range copies {
+			rows = append(rows, f.terminalWithTitle(title))
+		}
+	}
 	return executionTerminalInventory{
 		RuntimeID: executionLaunchRuntimeID,
-		Rows:      []port.OrcaTerminal{f.terminalWithTitle(title)},
+		Rows:      rows,
 	}, nil
 }
 

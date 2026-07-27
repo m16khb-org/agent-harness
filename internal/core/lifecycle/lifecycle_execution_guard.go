@@ -26,6 +26,9 @@ func executionObservation(req HookToolUseLifecycleRequest) bool {
 	if exactOrcaObservation(req.Command) {
 		return true
 	}
+	if exactOrcaOwnerControlPlane(req.Command) {
+		return true
+	}
 	// gh issue develop은 관측이 아니다 — provider에 브랜치를 만든다. 그런데 이
 	// 목록에 없어서 authority 활성 중 unclassified로 막혔고, #163이 정한 orca
 	// 순서(orca 준비 뒤 링크 부착)를 canonical worktree에서 실행할 수 없었다.
@@ -136,7 +139,7 @@ func exactProviderBranchLink(command string) bool {
 	// base에 못박으려면 createLinkedBranch를 직접 호출해야 한다. branch prepare가
 	// 그 두 명령을 안내하므로 여기서도 분류해야 안내와 실행 가능성이 맞는다.
 	if tokens[1] == "api" {
-		return exactGitHubIssueNodeRead(tokens) || exactGitHubLinkedBranchMutation(tokens)
+		return exactGitHubIssueProjectionRead(tokens) || exactGitHubLinkedBranchMutation(tokens)
 	}
 	if tokens[1] != "issue" || tokens[2] != "develop" {
 		return false
@@ -166,14 +169,18 @@ func positiveIssueNumber(value string) bool {
 	return err == nil && number > 0
 }
 
-// exactGitHubIssueNodeRead는 node id 조회 한 형태만 인정한다:
+// exactGitHubIssueProjectionRead는 IssueOps가 봉인과 링크에 사용하는 두
+// read-only projection만 인정한다:
 //
 //	gh api repos/<owner>/<repo>/issues/<number> --jq .node_id
+//	gh api repos/<owner>/<repo>/issues/<number> --jq .body
 //
-// 읽기지만 ExactReadOnlyShellCommand의 gh 분기는 pr·run만 다루므로 여기서 함께
-// 판정한다 — 이 명령과 그 뒤 mutation이 하나의 안내를 이루기 때문이다(#176).
-func exactGitHubIssueNodeRead(tokens []string) bool {
-	if len(tokens) != 5 || tokens[3] != "--jq" || tokens[4] != ".node_id" {
+// node id는 #176의 createLinkedBranch 입력이고 body는 owner가 봉인된 digest와
+// live SSOT를 대조하는 입력이다. 임의 jq projection과 다른 API path는 계속
+// 거부해 read-only라는 이유만으로 gh api 전체를 열지 않는다.
+func exactGitHubIssueProjectionRead(tokens []string) bool {
+	if len(tokens) != 5 || tokens[3] != "--jq" ||
+		(tokens[4] != ".node_id" && tokens[4] != ".body") {
 		return false
 	}
 	parts := strings.Split(tokens[2], "/")
@@ -237,6 +244,97 @@ func exactOrcaObservation(command string) bool {
 	default:
 		return false
 	}
+}
+
+// exactOrcaOwnerControlPlane는 injected worker contract가 요구하는 coordinator
+// message 표면만 인정한다. 이 명령들은 sealed Git worktree를 쓰지 않고 Orca의
+// orchestration ledger만 갱신한다. 그래서 lease claim 전에도 실행 가능해야 한다.
+//
+// 명령 이름만 보지 않고 모든 flag와 message type을 열거한다. 알 수 없는 flag,
+// shell expansion, redirect, detached composition은 fail-closed다.
+func exactOrcaOwnerControlPlane(command string) bool {
+	if commandparse.HasUnquotedControlOperator(command) ||
+		commandparse.HasActiveCommandSubstitution(command) ||
+		commandparse.HasActiveOutputRedirect(command) ||
+		commandparse.HasActiveInputRedirect(command) ||
+		commandparse.HasActiveParameterOrTildeExpansion(command) ||
+		commandparse.HasActivePathnameExpansion(command) ||
+		commandparse.HasActiveShellSpecialQuoting(command) ||
+		commandparse.HasActiveZshEqualsExpansion(command) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(command)
+	if len(tokens) < 4 || searchrouting.SearchTokenName(tokens[0]) != "orca" ||
+		tokens[1] != "orchestration" {
+		return false
+	}
+	exact := commandparse.ExactIssueOpsCommand{Path: "orca orchestration " + tokens[2], Tokens: tokens, Start: 3}
+	switch tokens[2] {
+	case "send":
+		values := exactFlagNames(
+			"--to", "--from", "--type", "--subject", "--body", "--task-id",
+			"--dispatch-id", "--files-modified", "--report-path", "--phase",
+		)
+		flags, ok := commandparse.ExactFlags(exact, values, nil, nil)
+		if !ok || !nonemptyExactFlags(flags, "--to", "--from", "--type", "--subject") {
+			return false
+		}
+		messageType, _ := oneFlag(flags, "--type")
+		switch messageType {
+		case "heartbeat":
+			return nonemptyExactFlags(flags, "--task-id", "--dispatch-id", "--phase")
+		case "worker_done":
+			return nonemptyExactFlags(flags, "--body", "--task-id", "--dispatch-id")
+		case "escalation":
+			return nonemptyExactFlags(flags, "--body", "--task-id")
+		case "decision_gate", "reply":
+			return nonemptyExactFlags(flags, "--body")
+		default:
+			return false
+		}
+	case "ask":
+		flags, ok := commandparse.ExactFlags(exact,
+			exactFlagNames("--to", "--from", "--question", "--options", "--timeout-ms"), nil, nil)
+		if !ok || !nonemptyExactFlags(flags, "--to", "--from", "--question") {
+			return false
+		}
+		timeout, hasTimeout := oneFlag(flags, "--timeout-ms")
+		return !hasTimeout || positiveMilliseconds(timeout)
+	case "check":
+		flags, ok := commandparse.ExactFlags(exact,
+			exactFlagNames("--terminal", "--timeout-ms"), exactFlagNames("--wait"), nil)
+		if !ok || !nonemptyExactFlags(flags, "--terminal") {
+			return false
+		}
+		timeout, hasTimeout := oneFlag(flags, "--timeout-ms")
+		_, wait := flags["--wait"]
+		return !hasTimeout || wait && positiveMilliseconds(timeout)
+	default:
+		return false
+	}
+}
+
+func exactFlagNames(names ...string) map[string]bool {
+	result := make(map[string]bool, len(names))
+	for _, name := range names {
+		result[name] = true
+	}
+	return result
+}
+
+func nonemptyExactFlags(flags map[string][]string, names ...string) bool {
+	for _, name := range names {
+		value, ok := oneFlag(flags, name)
+		if !ok || strings.TrimSpace(value) == "" {
+			return false
+		}
+	}
+	return true
+}
+
+func positiveMilliseconds(value string) bool {
+	milliseconds, err := strconv.Atoi(strings.TrimSpace(value))
+	return err == nil && milliseconds > 0
 }
 
 func executionTypedControlPlane(req HookToolUseLifecycleRequest) bool {
@@ -699,6 +797,8 @@ func exactRemoteScoreObservation(flags map[string][]string) bool {
 	}
 	switch judge {
 	case "none":
+		return !hasJudgeFile
+	case "prompt":
 		return !hasJudgeFile
 	case "file":
 		return hasJudgeFile && strings.TrimSpace(judgeFile) != ""

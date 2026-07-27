@@ -36,7 +36,7 @@ func TestExecutionProvisionerCreatesOneWorktreeAndLaunchesOneOwner(t *testing.T)
 	}
 	if client.worktreeRequest.Issue != 69 || client.worktreeRequest.Comment != request.Marker ||
 		client.worktreeRequest.BaseBranch != workspace.BaseHead ||
-		client.worktreeRequest.UpstreamBranch != "refs/remotes/origin/"+workspace.Branch {
+		client.worktreeRequest.UpstreamBranch != "" {
 		t.Fatalf("worktree create lost sealed identity: %#v", client.worktreeRequest)
 	}
 	if client.terminalRequest.Agent != "claude" || client.terminalRequest.Model != "caller-selected-model" || client.terminalRequest.ReasoningEffort != "high" {

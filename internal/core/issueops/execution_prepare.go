@@ -231,6 +231,13 @@ func prepareOrcaExecution(ctx context.Context, stateRoot string, record IssueOps
 	if deps.Orca == nil {
 		return ExecutionPrepareResult{OK: false, ID: record.ID}, fmt.Errorf("Orca provisioner is unavailable")
 	}
+	if !samePath(req.CWD, record.Repo) && !samePath(req.CWD, workspaceReq.Root) {
+		return ExecutionPrepareResult{OK: false, ID: record.ID}, fmt.Errorf("Orca prepare cwd must be source_root or the canonical worktree")
+	}
+	snapshot, err := readExecutionOwnerSnapshot(ctx, record, deps.ReadIssue)
+	if err != nil {
+		return ExecutionPrepareResult{OK: false, ID: record.ID}, err
+	}
 	if !req.Confirm {
 		return result, nil
 	}
@@ -239,13 +246,6 @@ func prepareOrcaExecution(ctx context.Context, stateRoot string, record IssueOps
 		return ExecutionPrepareResult{OK: false, ID: record.ID}, err
 	}
 	req.Actor = actor
-	if !samePath(req.CWD, record.Repo) && !samePath(req.CWD, workspaceReq.Root) {
-		return ExecutionPrepareResult{OK: false, ID: record.ID}, fmt.Errorf("Orca prepare cwd must be source_root or the canonical worktree")
-	}
-	snapshot, err := readExecutionOwnerSnapshot(ctx, record, deps.ReadIssue)
-	if err != nil {
-		return ExecutionPrepareResult{OK: false, ID: record.ID}, err
-	}
 	pending, payload, err := beginOrcaExecutionIntent(stateRoot, record, workspaceReq, probe, req, snapshot, deps.Now)
 	if err != nil {
 		return ExecutionPrepareResult{OK: false, ID: record.ID}, err
