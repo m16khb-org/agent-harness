@@ -7,10 +7,9 @@ import (
 	"agent-harness/internal/port"
 )
 
-// IssueOps seals BaseHead before Orca preparation and requires the target
-// branch name to be absent both locally and remotely. Passing the absent remote
-// ref as an upstream makes Orca canonicalization require the very ref that the
-// core just proved must not exist.
+// IssueOps는 Orca 준비 전에 BaseHead를 봉인하고 대상 브랜치가 로컬과 원격에
+// 모두 없음을 요구한다. 존재하지 않는 원격 ref를 upstream으로 넘기면
+// canonicalization이 core에서 부재를 증명한 바로 그 ref를 다시 요구하게 된다.
 func TestExecutionWorktreeCreationUsesTheSealedBaseWithoutAnAbsentUpstream(t *testing.T) {
 	for _, test := range []struct {
 		name string

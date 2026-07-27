@@ -497,17 +497,19 @@ func TestClientCanonicalizesFromExactSHAWithoutUsingSHAAsUpstream(t *testing.T) 
 	create := "orca worktree create --repo path:/repo --name 72-fix --base-branch " + baseSHA + " --no-parent --setup skip --comment marker --issue 72 --json"
 	runner.responses[create] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{"worktree":{"id":"wt-72","instanceId":"inst-72","repoId":"repo-1","path":"/repo.worktrees/72-fix","head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"refs/heads/alice/72-fix","comment":"marker","linkedIssue":72}},"_meta":{"runtimeId":"runtime-1"}}`)}
 	runner.responses["git branch -m 72-fix"] = CommandOutput{Invoked: true}
-	runner.responses["git branch --set-upstream-to refs/remotes/origin/72-fix 72-fix"] = CommandOutput{Invoked: true}
 
 	got, err := NewClient(runner).CreateWorktree(context.Background(), port.OrcaCreateWorktreeRequest{
 		Repo: "/repo", Name: "72-fix", BaseBranch: baseSHA,
-		UpstreamBranch: "refs/remotes/origin/72-fix", Provider: "github", Issue: 72, Comment: "marker",
+		Provider: "github", Issue: 72, Comment: "marker",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantLast := []string{"git", "branch", "--set-upstream-to", "refs/remotes/origin/72-fix", "72-fix"}
-	if got.Branch != "72-fix" || !reflect.DeepEqual(runner.calls[len(runner.calls)-1], wantLast) {
+	wantCalls := [][]string{
+		{"orca", "worktree", "create", "--repo", "path:/repo", "--name", "72-fix", "--base-branch", baseSHA, "--no-parent", "--setup", "skip", "--comment", "marker", "--issue", "72", "--json"},
+		{"git", "branch", "-m", "72-fix"},
+	}
+	if got.Branch != "72-fix" || !reflect.DeepEqual(runner.calls, wantCalls) {
 		t.Fatalf("exact base/upstream identities were conflated: worktree=%#v calls=%#v", got, runner.calls)
 	}
 }
