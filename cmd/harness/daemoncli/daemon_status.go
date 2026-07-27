@@ -158,7 +158,17 @@ func daemonIdentityMismatchStatus(status daemonStatus, message string) daemonSta
 }
 
 func daemonProcessIdentityMatches(instance daemonInstance, process daemonProcessIdentity) bool {
-	return instance.ProcessStartTime == process.StartTime && instance.Executable == process.Executable
+	if instance.ProcessStartTime != process.StartTime {
+		return false
+	}
+	// Linux의 /proc/<pid>/exe는 실행 중인 image를 가리키므로 executable 불일치는
+	// 다른 프로세스라는 안정된 증거다. Darwin과 그 밖의 플랫폼에서 ps comm은
+	// launcher 경로를 보존하고 EvalSymlinks는 관측 시점의 대상을 해석한다.
+	// 따라서 `ah update`가 구 daemon 실행 중 symlink를 새 binary로 옮겨도
+	// executable projection만 바뀔 수 있다. 위의 file/socket handshake가
+	// executable, nonce, build, protocol, generation을 봉인하고 start time이
+	// signal 직전 PID 재사용을 막는다.
+	return !process.ExecutablePathStable || instance.Executable == process.Executable
 }
 
 func daemonStatusIsReady(status daemonStatus) bool {

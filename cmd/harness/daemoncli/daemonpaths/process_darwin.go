@@ -29,5 +29,5 @@ func InspectProcess(pid int) (ProcessIdentity, error) {
 	if err != nil {
 		return ProcessIdentity{}, err
 	}
-	return ProcessIdentity{StartTime: start, Executable: executable}, nil
+	return ProcessIdentity{StartTime: start, Executable: executable, ExecutablePathStable: false}, nil
 }

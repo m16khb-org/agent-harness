@@ -88,8 +88,9 @@ func WriteInstance(path string, record InstanceRecord) error {
 }
 
 type ProcessIdentity struct {
-	StartTime  string
-	Executable string
+	StartTime            string
+	Executable           string
+	ExecutablePathStable bool
 }
 
 func canonicalExecutable(path string) (string, error) {

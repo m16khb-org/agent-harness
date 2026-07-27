@@ -37,5 +37,9 @@ func InspectProcess(pid int) (ProcessIdentity, error) {
 	if len(fields) <= startTimeIndex || fields[startTimeIndex] == "" {
 		return ProcessIdentity{}, fmt.Errorf("process stat start time is missing")
 	}
-	return ProcessIdentity{StartTime: "linux:" + fields[startTimeIndex], Executable: executable}, nil
+	return ProcessIdentity{
+		StartTime:            "linux:" + fields[startTimeIndex],
+		Executable:           executable,
+		ExecutablePathStable: true,
+	}, nil
 }
