@@ -569,6 +569,8 @@ func exactReadOnlyGHCommand(tokens []string) bool {
 		return false
 	}
 	switch tokens[1] {
+	case "issue":
+		return exactReadOnlyGHIssueCommand(tokens)
 	case "pr":
 		return exactReadOnlyGHPRCommand(tokens)
 	case "run":
@@ -576,6 +578,32 @@ func exactReadOnlyGHCommand(tokens []string) bool {
 	default:
 		return false
 	}
+}
+
+func exactReadOnlyGHIssueCommand(tokens []string) bool {
+	if tokens[2] != "view" {
+		return false
+	}
+	number, err := strconv.Atoi(tokens[3])
+	if err != nil || number <= 0 {
+		return false
+	}
+	flags, ok := ExactFlags(
+		ExactIssueOpsCommand{Tokens: tokens, Start: 4},
+		map[string]bool{"--json": true, "--repo": true},
+		map[string]bool{"--comments": true},
+		map[string]bool{},
+	)
+	if !ok {
+		return false
+	}
+	if fields, exists := flags["--json"]; exists && !safeGHJSONFields(fields[0]) {
+		return false
+	}
+	if repo, exists := flags["--repo"]; exists && !safeGHRepository(repo[0]) {
+		return false
+	}
+	return true
 }
 
 func exactReadOnlyGHPRCommand(tokens []string) bool {
