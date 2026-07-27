@@ -112,7 +112,7 @@ SQLite-backed IssueOps state.
 - [x] Build `bin/agent-harness`.
 - [x] Verify the source `main` dirty files are untouched.
 - [x] Create atomic commits with Conventional Commit subject and Lore body.
-- [ ] Push `117-hexagonal-architecture-migration`.
+- [x] Push `117-hexagonal-architecture-migration`.
 
 ### Task 8: Activate and prove installed surfaces
 
