@@ -276,7 +276,7 @@ unrelated work throughout the sequence.
 
 ## IssueOps 이원 구조 운영 (planner/implementer)
 
-- 스폰 준비: `issueops artifact stage --id ID --name plan|spec|turing-loop --file PATH` (prepare 전에만; 잘못 올렸으면 `artifact unstage`) → `issueops execution prepare --id ID --mode auto ...` (`--owner-model` 생략 시 host 기본값: codex `gpt-5.6-terra`/xhigh, claude `claude-opus-5`/high).
+- 스폰 준비: `issueops artifact stage --id ID --name plan|spec|turing-loop --file PATH` (prepare 전에만; 잘못 올렸으면 `artifact unstage`) → `issueops execution prepare --id ID --mode auto ...` (`--owner-model` 생략 시 host implementer 기본값: codex `gpt-5.6-terra`/xhigh, claude `claude-sonnet-5`/high; Claude planner/reviewer 기본값은 `claude-opus-5`/high이며 Fable 5는 명시적 수동 지정만 허용).
 - 다중 사이클 조망: `issueops list [--repo PATH] --json` — claimable/cleanup/unreflected 플래그와 scanned_records 비용을 함께 노출한다.
 - 하위 세션 publication(orca): `issueops implementation-review record --id ID --verdict pass --finding ... --evidence ... --reviewer-model <planner급>` 기록 후에만 `remote create-pr`가 통과한다. diff가 바뀌면 stale로 다시 막힌다.
 - 머지 후 정리(순서 고정): `cleanup status --merged` → `cleanup close-children --merged --confirm` → `remote reflect-completion --confirm` → `remote close-issue --confirm` → `cleanup finish --preview` → `cleanup finish --apply --confirm --fingerprint FP`. finish 재실행 전에는 preview로 fingerprint를 재발급한다.

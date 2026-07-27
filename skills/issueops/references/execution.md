@@ -164,11 +164,15 @@ worktree or branch. The owner returns the exact 14-field report defined in
 | host | implementer(하위 세션) | planner(리뷰 서브에이전트) |
 |---|---|---|
 | codex | `gpt-5.6-terra` / `xhigh` | `gpt-5.6-sol` / `xhigh` |
-| claude | `claude-opus-4-8` / `high` | `claude-fable-5` / `high` |
+| claude | `claude-sonnet-5` / `high` | `claude-opus-5` / `high` |
 
 planner 값은 owner 프롬프트의 `{REVIEWER_MODEL}`/`{REVIEWER_EFFORT}`로
 렌더되어, 하위 세션이 구현 diff의 brooks 적대 리뷰 서브에이전트를 planner급
 모델로 띄우는 실행 계약이 된다.
+
+Claude Code의 자동 실행 경로는 `Opus 5 → Sonnet 5`다. Fable 5는 자동
+기본값이나 폴백으로 사용하지 않으며, 필요한 경우에만
+`--owner-model claude-fable-5`로 명시해 수동 실행한다.
 
 ## Artifact Staging And Sealing
 

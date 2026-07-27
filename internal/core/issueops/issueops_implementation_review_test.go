@@ -120,13 +120,24 @@ func TestOwnerCommandsIncludeImplementationReviewWithPlannerModel(t *testing.T) 
 			Lease:     WriteLease{Generation: 1},
 		},
 	}
-	commands := executionOwnerCommandsFor(record, ExecutionPrepareRequest{OwnerHost: "codex"}, strings.Repeat("a", 64))
-	if !strings.Contains(commands.ImplementationReview, "implementation-review record") ||
-		!strings.Contains(commands.ImplementationReview, "gpt-5.6-sol") ||
-		!strings.Contains(commands.ImplementationReview, "--reviewer-effort 'xhigh'") {
-		t.Fatalf("owner command must pin the planner reviewer model: %s", commands.ImplementationReview)
-	}
-	if err := validateExecutionOwnerCatalog(commands); err != nil {
-		t.Fatalf("implementation review command must match the catalog: %v", err)
+	for _, tc := range []struct {
+		host   string
+		model  string
+		effort string
+	}{
+		{host: "codex", model: "gpt-5.6-sol", effort: "xhigh"},
+		{host: "claude", model: "claude-opus-5", effort: "high"},
+	} {
+		t.Run(tc.host, func(t *testing.T) {
+			commands := executionOwnerCommandsFor(record, ExecutionPrepareRequest{OwnerHost: tc.host}, strings.Repeat("a", 64))
+			if !strings.Contains(commands.ImplementationReview, "implementation-review record") ||
+				!strings.Contains(commands.ImplementationReview, tc.model) ||
+				!strings.Contains(commands.ImplementationReview, "--reviewer-effort '"+tc.effort+"'") {
+				t.Fatalf("owner command must pin the planner reviewer model: %s", commands.ImplementationReview)
+			}
+			if err := validateExecutionOwnerCatalog(commands); err != nil {
+				t.Fatalf("implementation review command must match the catalog: %v", err)
+			}
+		})
 	}
 }

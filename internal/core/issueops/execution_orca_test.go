@@ -35,7 +35,7 @@ func TestExecutionOrcaPersistsIntentBeforeExternalMutationAndCASReceipt(t *testi
 
 	got, err := PrepareExecution(context.Background(), stateRoot, ExecutionPrepareRequest{
 		ID: record.ID, Mode: "orca", CWD: record.Repo, Confirm: true,
-		Actor: executionActor("codex", "coordinator"), OwnerHost: "claude", OwnerModel: "caller-model", OwnerEffort: "high",
+		Actor: executionActor("codex", "coordinator"), OwnerHost: "claude", OwnerModel: "claude-fable-5", OwnerEffort: "high",
 	}, ExecutionPrepareDependencies{Orca: fake, ReadIssue: executionIssueSnapshotReader})
 	if err != nil {
 		t.Fatal(err)
@@ -46,7 +46,7 @@ func TestExecutionOrcaPersistsIntentBeforeExternalMutationAndCASReceipt(t *testi
 	if got.Execution.Lease.Status != model.LeaseStatusClaimable || got.ClaimTokenPath == "" {
 		t.Fatalf("verified dispatch must produce one claimable lease: %#v", got)
 	}
-	if got.Execution.Orca.OwnerModel != "caller-model" || got.Execution.Orca.OwnerEffort != "high" {
+	if got.Execution.Orca.OwnerModel != "claude-fable-5" || got.Execution.Orca.OwnerEffort != "high" {
 		t.Fatalf("caller owner profile was not preserved: %#v", got.Execution.Orca)
 	}
 }
@@ -58,7 +58,7 @@ func TestExecutionOrcaPrepareAppliesHostImplementerDefaults(t *testing.T) {
 		wantEffort string
 	}{
 		{host: "codex", wantModel: port.IssueOpsImplementerModelCodex, wantEffort: port.IssueOpsImplementerEffortCodex},
-		{host: "claude", wantModel: port.IssueOpsImplementerModelClaude, wantEffort: port.IssueOpsImplementerEffortClaude},
+		{host: "claude", wantModel: "claude-sonnet-5", wantEffort: port.IssueOpsImplementerEffortClaude},
 	}
 	for _, tc := range cases {
 		t.Run(tc.host, func(t *testing.T) {
