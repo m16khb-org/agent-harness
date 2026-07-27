@@ -95,6 +95,14 @@ go build -o bin/agent-harness ./cmd/harness
 
 작은 변경은 targeted test를 먼저 실행하고, 완료 전 영향 범위에 맞게 전체 테스트를 실행한다.
 
+### Architecture fitness ratchet
+
+```bash
+go test ./internal/architecture -count=1
+```
+
+이 test는 `go list -json ./...`의 direct production import inventory를 두 번 수집해 byte-stable 정렬을 확인한다. synthetic case는 rule name과 `importer -> imported` 진단을 고정하고, real graph는 unconditional layer rule과 sorted legacy baseline의 new/stale edge를 함께 검증한다.
+
 ### Operational-health and stability delegation
 
 - Pure classifier tests pin the 15-minute heartbeat boundary, invocation-only preserves, duplicate/incomplete inventory failure, and exact resource ownership.
