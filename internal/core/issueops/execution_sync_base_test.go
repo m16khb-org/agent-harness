@@ -221,6 +221,7 @@ func (f syncBaseFixture) rewrite(t *testing.T, mutate func(*IssueOpsRecord)) {
 
 // 게이트 10종 전수 거부. 설계 v2의 번호와 missing 토큰이 1:1로 대응한다.
 func TestExecutionSyncBaseGatesRejectEveryMissingPrecondition(t *testing.T) {
+	baseline := newSyncBaseFixture(t, "114-gates")
 	cases := []struct {
 		name    string
 		mode    string
@@ -260,7 +261,12 @@ func TestExecutionSyncBaseGatesRejectEveryMissingPrecondition(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			fixture := newSyncBaseFixture(t, "114-gate-"+strings.ReplaceAll(tc.name, " ", "-"))
+			fixture := baseline
+			gitState := *baseline.git
+			fixture.git = &gitState
+			if _, err := writeIssueOps(fixture.stateRoot, baseline.record); err != nil {
+				t.Fatal(err)
+			}
 			if tc.mutate != nil {
 				tc.mutate(t, &fixture)
 			}
@@ -280,7 +286,7 @@ func TestExecutionSyncBaseGatesRejectEveryMissingPrecondition(t *testing.T) {
 	}
 
 	t.Run("worktree present", func(t *testing.T) {
-		fixture := newSyncBaseFixture(t, "114-gate-worktree")
+		fixture := baseline
 		if err := os.RemoveAll(fixture.worktree); err != nil {
 			t.Fatal(err)
 		}
