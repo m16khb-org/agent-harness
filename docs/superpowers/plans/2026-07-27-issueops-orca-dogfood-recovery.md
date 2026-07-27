@@ -131,5 +131,5 @@ SQLite-backed IssueOps state.
 - [x] Move the #190 linked branch to the new sealed parent integration base
   without losing remote issue linkage.
 - [x] Reseed and dispatch a fresh Orca owner.
-- [ ] Confirm active claim and the first RED test before returning to the
+- [x] Confirm active claim and the first RED test before returning to the
   umbrella child DAG.
