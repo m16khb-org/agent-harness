@@ -240,8 +240,11 @@ func prepareOrcaExecution(ctx context.Context, stateRoot string, record IssueOps
 		return ExecutionPrepareResult{OK: false, ID: record.ID}, err
 	}
 	req.Actor = actor
-	if !samePath(req.CWD, record.Repo) && !samePath(req.CWD, workspaceReq.Root) {
-		return ExecutionPrepareResult{OK: false, ID: record.ID}, fmt.Errorf("Orca prepare cwd must be source_root or the canonical worktree")
+	// 위임된 child는 coordinator가 봉인된 부모 worktree에서 준비한다. 레코드에서
+	// 계산된 정확한 부모 경로만 추가로 허용하고, 빈 경로와 임의의 제3 경로는 막는다.
+	fromParentWorktree := strings.TrimSpace(workspaceReq.ParentWorktree) != "" && samePath(req.CWD, workspaceReq.ParentWorktree)
+	if !samePath(req.CWD, record.Repo) && !samePath(req.CWD, workspaceReq.Root) && !fromParentWorktree {
+		return ExecutionPrepareResult{OK: false, ID: record.ID}, fmt.Errorf("Orca prepare cwd must be source_root, the canonical worktree, or the sealed parent worktree")
 	}
 	snapshot, err := readExecutionOwnerSnapshot(ctx, record, deps.ReadIssue)
 	if err != nil {
