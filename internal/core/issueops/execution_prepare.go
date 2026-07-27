@@ -138,7 +138,8 @@ func PrepareExecution(ctx context.Context, stateRoot string, req ExecutionPrepar
 		RequestedMode: requested, ResolvedMode: resolved, FallbackCode: fallback,
 		Workspace: model.Workspace{
 			SourceRoot: workspaceReq.SourceRoot, Root: workspaceReq.Root, Branch: workspaceReq.Branch,
-			BaseHead: workspaceReq.BaseHead, Driver: map[string]string{"direct": "git", "orca": "orca"}[resolved],
+			BaseHead: workspaceReq.BaseHead, ParentWorktree: workspaceReq.ParentWorktree,
+			Driver: map[string]string{"direct": "git", "orca": "orca"}[resolved],
 		},
 	}
 	if resolved == string(model.ExecutionModeDirect) {
@@ -456,10 +457,18 @@ func executionWorkspaceRequest(record IssueOpsRecord, confirm bool) (port.Execut
 	if leaf == "" || leaf == "." || leaf == ".." {
 		return port.ExecutionWorkspaceRequest{}, fmt.Errorf("execution branch is invalid")
 	}
+	parentWorktree := ""
+	if record.Delegation != nil && strings.TrimSpace(record.Delegation.ParentCycleID) != "" {
+		parentLeaf := strings.ReplaceAll(strings.TrimSpace(record.BranchPrepare.BaseBranch), "/", "-")
+		if parentLeaf == "" || parentLeaf == "." || parentLeaf == ".." {
+			return port.ExecutionWorkspaceRequest{}, fmt.Errorf("delegated execution base branch is invalid")
+		}
+		parentWorktree = filepath.Join(record.Repo+".worktrees", parentLeaf)
+	}
 	return port.ExecutionWorkspaceRequest{
 		LifecycleID: record.ID, SourceRoot: record.Repo, Root: filepath.Join(record.Repo+".worktrees", leaf),
 		Branch: branch, BaseBranch: strings.TrimSpace(record.BranchPrepare.BaseBranch),
-		BaseHead: strings.TrimSpace(record.BranchPrepare.BaseSHA), Confirm: confirm,
+		BaseHead: strings.TrimSpace(record.BranchPrepare.BaseSHA), ParentWorktree: parentWorktree, Confirm: confirm,
 	}, nil
 }
 
@@ -580,7 +589,8 @@ func normalizeExecutionPrepareMode(mode string) (string, error) {
 func workspaceFromReceipt(receipt port.ExecutionWorkspaceReceipt, linkedAt string) model.Workspace {
 	return model.Workspace{
 		SourceRoot: receipt.SourceRoot, Root: receipt.Root, Branch: receipt.Branch,
-		BaseHead: receipt.BaseHead, Driver: receipt.Driver, LinkedAt: linkedAt,
+		BaseHead: receipt.BaseHead, ParentWorktree: receipt.ParentWorktree,
+		Driver: receipt.Driver, LinkedAt: linkedAt,
 	}
 }
 

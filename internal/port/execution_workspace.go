@@ -3,22 +3,24 @@ package port
 import "context"
 
 type ExecutionWorkspaceRequest struct {
-	LifecycleID string `json:"lifecycle_id"`
-	SourceRoot  string `json:"source_root"`
-	Root        string `json:"root"`
-	Branch      string `json:"branch"`
-	BaseBranch  string `json:"base_branch"`
-	BaseHead    string `json:"base_head"`
-	Confirm     bool   `json:"confirm,omitempty"`
+	LifecycleID    string `json:"lifecycle_id"`
+	SourceRoot     string `json:"source_root"`
+	Root           string `json:"root"`
+	Branch         string `json:"branch"`
+	BaseBranch     string `json:"base_branch"`
+	BaseHead       string `json:"base_head"`
+	ParentWorktree string `json:"parent_worktree,omitempty"`
+	Confirm        bool   `json:"confirm,omitempty"`
 }
 
 type ExecutionWorkspaceReceipt struct {
-	SourceRoot string `json:"source_root"`
-	Root       string `json:"root"`
-	Branch     string `json:"branch"`
-	BaseHead   string `json:"base_head"`
-	Driver     string `json:"driver"`
-	Exists     bool   `json:"exists,omitempty"`
+	SourceRoot     string `json:"source_root"`
+	Root           string `json:"root"`
+	Branch         string `json:"branch"`
+	BaseHead       string `json:"base_head"`
+	ParentWorktree string `json:"parent_worktree,omitempty"`
+	Driver         string `json:"driver"`
+	Exists         bool   `json:"exists,omitempty"`
 }
 
 type ExecutionWorkspaceProvisioner interface {

@@ -103,24 +103,28 @@ type OrcaRepo struct {
 }
 
 type OrcaWorktree struct {
-	RuntimeID   string `json:"runtime_id,omitempty"`
-	ID          string `json:"id"`
-	InstanceID  string `json:"instance_id,omitempty"`
-	RepoID      string `json:"repo_id,omitempty"`
-	Path        string `json:"path"`
-	Head        string `json:"head,omitempty"`
-	Branch      string `json:"branch,omitempty"`
-	Name        string `json:"name,omitempty"`
-	Comment     string `json:"comment,omitempty"`
-	BaseRef     string `json:"base_ref,omitempty"`
-	Issue       int    `json:"issue,omitempty"`
-	GitLabIssue *int   `json:"gitlab_issue,omitempty"`
+	RuntimeID         string `json:"runtime_id,omitempty"`
+	ID                string `json:"id"`
+	InstanceID        string `json:"instance_id,omitempty"`
+	RepoID            string `json:"repo_id,omitempty"`
+	Path              string `json:"path"`
+	Head              string `json:"head,omitempty"`
+	Branch            string `json:"branch,omitempty"`
+	Name              string `json:"name,omitempty"`
+	Comment           string `json:"comment,omitempty"`
+	BaseRef           string `json:"base_ref,omitempty"`
+	Issue             int    `json:"issue,omitempty"`
+	GitLabIssue       *int   `json:"gitlab_issue,omitempty"`
+	ParentWorktreeID  string `json:"parent_worktree_id,omitempty"`
+	LineageSource     string `json:"lineage_source,omitempty"`
+	LineageConfidence string `json:"lineage_confidence,omitempty"`
 }
 
 type OrcaCreateWorktreeRequest struct {
 	Repo           string `json:"repo"`
 	Name           string `json:"name"`
 	BaseBranch     string `json:"base_branch"`
+	ParentWorktree string `json:"parent_worktree,omitempty"`
 	UpstreamBranch string `json:"upstream_branch,omitempty"`
 	Provider       string `json:"provider,omitempty"`
 	Issue          int    `json:"issue,omitempty"`

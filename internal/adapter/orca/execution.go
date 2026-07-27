@@ -176,6 +176,7 @@ func (p *ExecutionProvisioner) InvokeIntent(ctx context.Context, req port.Execut
 	case port.ExecutionOrcaIntentWorktree:
 		created, err := p.client.CreateWorktree(ctx, port.OrcaCreateWorktreeRequest{
 			Repo: req.Workspace.SourceRoot, Name: req.Workspace.Branch, BaseBranch: req.Workspace.BaseHead,
+			ParentWorktree: req.Workspace.ParentWorktree,
 			UpstreamBranch: executionRemoteBranch(req.Workspace.Branch),
 			Provider:       req.Probe.Provider, Issue: req.Probe.Issue, Comment: req.Marker,
 		})
@@ -244,7 +245,8 @@ func (p *ExecutionProvisioner) PrepareWorkspace(ctx context.Context, workspace p
 	return port.ExecutionOrcaWorkspaceReceipt{
 		Workspace: port.ExecutionWorkspaceReceipt{
 			SourceRoot: workspace.SourceRoot, Root: filepath.Clean(worktree.Path), Branch: workspace.Branch,
-			BaseHead: workspace.BaseHead, Driver: "orca", Exists: true,
+			BaseHead: workspace.BaseHead, ParentWorktree: workspace.ParentWorktree,
+			Driver: "orca", Exists: true,
 		},
 		RuntimeID: worktree.RuntimeID, RepoID: worktree.RepoID, WorktreeID: worktree.ID,
 		WorktreeInstanceID: worktree.InstanceID,
@@ -459,6 +461,7 @@ func (p *ExecutionProvisioner) prepareWorktree(ctx context.Context, workspace po
 	}
 	created, err := p.client.CreateWorktree(ctx, port.OrcaCreateWorktreeRequest{
 		Repo: workspace.SourceRoot, Name: workspace.Branch, BaseBranch: workspace.BaseHead,
+		ParentWorktree: workspace.ParentWorktree,
 		UpstreamBranch: executionRemoteBranch(workspace.Branch),
 		Provider:       req.Provider, Issue: req.Issue, Comment: req.Marker,
 	})
@@ -614,7 +617,8 @@ func executionWorkspaceReceipt(workspace port.ExecutionWorkspaceRequest, worktre
 	return port.ExecutionOrcaWorkspaceReceipt{
 		Workspace: port.ExecutionWorkspaceReceipt{
 			SourceRoot: workspace.SourceRoot, Root: filepath.Clean(worktree.Path), Branch: workspace.Branch,
-			BaseHead: workspace.BaseHead, Driver: "orca", Exists: true,
+			BaseHead: workspace.BaseHead, ParentWorktree: workspace.ParentWorktree,
+			Driver: "orca", Exists: true,
 		},
 		RuntimeID: worktree.RuntimeID, RepoID: worktree.RepoID, WorktreeID: worktree.ID, WorktreeInstanceID: worktree.InstanceID,
 	}
@@ -731,6 +735,10 @@ func validateExecutionPrepare(workspace port.ExecutionWorkspaceRequest, req port
 	if req.Provider == "github" && req.Issue <= 0 {
 		return fmt.Errorf("Orca GitHub prepare requires a positive issue number")
 	}
+	if parent := strings.TrimSpace(workspace.ParentWorktree); parent != "" &&
+		(!filepath.IsAbs(parent) || samePath(parent, workspace.SourceRoot) || samePath(parent, workspace.Root)) {
+		return fmt.Errorf("Orca parent worktree must be an isolated absolute path")
+	}
 	return nil
 }
 
@@ -743,6 +751,10 @@ func validateExecutionWorktree(row port.OrcaWorktree, workspace port.ExecutionWo
 	}
 	if req.Provider == "gitlab" && (row.GitLabIssue == nil || *row.GitLabIssue != req.Issue) {
 		return fmt.Errorf("Orca worktree receipt does not match the linked GitLab issue")
+	}
+	if strings.TrimSpace(workspace.ParentWorktree) != "" &&
+		(strings.TrimSpace(row.ParentWorktreeID) == "" || row.LineageSource != "explicit-cli-flag" || row.LineageConfidence != "explicit") {
+		return fmt.Errorf("Orca worktree receipt does not prove explicit parent lineage")
 	}
 	return nil
 }

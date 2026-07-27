@@ -41,12 +41,13 @@ type Execution struct {
 }
 
 type Workspace struct {
-	SourceRoot string `json:"source_root"`
-	Root       string `json:"root"`
-	Branch     string `json:"branch"`
-	BaseHead   string `json:"base_head"`
-	Driver     string `json:"driver"`
-	LinkedAt   string `json:"linked_at"`
+	SourceRoot     string `json:"source_root"`
+	Root           string `json:"root"`
+	Branch         string `json:"branch"`
+	BaseHead       string `json:"base_head"`
+	ParentWorktree string `json:"parent_worktree,omitempty"`
+	Driver         string `json:"driver"`
+	LinkedAt       string `json:"linked_at"`
 }
 
 type WriteLease struct {

@@ -87,7 +87,8 @@ func beginOrcaExecutionIntent(stateRoot string, record IssueOpsRecord, workspace
 			Mode: model.ExecutionModeOrca,
 			Workspace: model.Workspace{
 				SourceRoot: workspace.SourceRoot, Root: workspace.Root, Branch: workspace.Branch,
-				BaseHead: workspace.BaseHead, Driver: "orca", LinkedAt: startedAt,
+				BaseHead: workspace.BaseHead, ParentWorktree: workspace.ParentWorktree,
+				Driver: "orca", LinkedAt: startedAt,
 			},
 			Lease: model.WriteLease{Generation: payload.Generation, Status: model.LeaseStatusReleased},
 			Pending: &model.ExternalIntent{
@@ -427,15 +428,25 @@ func validateOrcaIntentRecordIdentity(record IssueOpsRecord, payload externalOrc
 	if record.ID != payload.LifecycleID || record.Execution == nil || record.Execution.Mode != model.ExecutionModeOrca ||
 		!samePath(record.Execution.Workspace.SourceRoot, payload.Workspace.SourceRoot) || !samePath(record.Execution.Workspace.Root, payload.Workspace.Root) ||
 		record.Execution.Workspace.Branch != payload.Workspace.Branch || record.Execution.Workspace.BaseHead != payload.Workspace.BaseHead ||
+		!sameOptionalExecutionPath(record.Execution.Workspace.ParentWorktree, payload.Workspace.ParentWorktree) ||
 		record.Execution.Workspace.Driver != "orca" {
 		return fmt.Errorf("Orca intent record identity changed")
 	}
 	if payload.Prepared != nil && (!samePath(record.WorktreePath, payload.Prepared.Workspace.Root) ||
 		!samePath(record.Execution.Workspace.Root, payload.Prepared.Workspace.Root) || record.Execution.Workspace.Branch != payload.Prepared.Workspace.Branch ||
-		record.Execution.Workspace.BaseHead != payload.Prepared.Workspace.BaseHead) {
+		record.Execution.Workspace.BaseHead != payload.Prepared.Workspace.BaseHead ||
+		!sameOptionalExecutionPath(record.Execution.Workspace.ParentWorktree, payload.Prepared.Workspace.ParentWorktree)) {
 		return fmt.Errorf("Orca prepared workspace identity changed")
 	}
 	return nil
+}
+
+func sameOptionalExecutionPath(left, right string) bool {
+	left, right = strings.TrimSpace(left), strings.TrimSpace(right)
+	if left == "" || right == "" {
+		return left == right
+	}
+	return samePath(left, right)
 }
 
 func pendingKindForOrcaStage(stage port.ExecutionOrcaIntentStage) string {
