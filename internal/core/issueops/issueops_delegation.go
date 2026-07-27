@@ -268,7 +268,7 @@ func buildIssueOpsChildStatus(parent IssueOpsRecord, scanned map[string]IssueOps
 		if child, ok := scanned[ref.CycleID]; ok {
 			mergeChildStatusRecord(&entry, child)
 			entry.Scanned = true
-		} else {
+		} else if !issueOpsChildRefHasAcceptedCleanupReceipt(ref) {
 			entry.Orphaned = true
 			result.Orphaned = append(result.Orphaned, ref.CycleID)
 		}
@@ -401,7 +401,7 @@ func recordIssueOpsChildVerdict(stateRoot, parentID string, child IssueOpsRecord
 }
 
 func childStatusEntryFromRef(ref IssueOpsChildCycleRef) IssueOpsChildStatusEntry {
-	return IssueOpsChildStatusEntry{
+	entry := IssueOpsChildStatusEntry{
 		CycleID:            ref.CycleID,
 		Branch:             ref.Branch,
 		Title:              ref.Title,
@@ -411,6 +411,20 @@ func childStatusEntryFromRef(ref IssueOpsChildCycleRef) IssueOpsChildStatusEntry
 		ValidationEvidence: append([]string{}, ref.ValidationEvidence...),
 		ValidatedAt:        ref.ValidatedAt,
 	}
+	// accepted는 done child만 기록할 수 있으므로 parent receipt 자체가 cleanup
+	// 이후에도 terminal phase의 내구성 있는 증거다.
+	if strings.TrimSpace(ref.ValidationVerdict) == "accepted" && strings.TrimSpace(ref.ValidatedAt) != "" {
+		entry.Phase = IssueOpsPhaseDone
+	}
+	return entry
+}
+
+// issueOpsChildRefHasAcceptedCleanupReceipt는 done child에만 발급되는 accepted
+// parent receipt로 cleanup 이후의 정상 레코드 부재를 판정한다.
+func issueOpsChildRefHasAcceptedCleanupReceipt(ref IssueOpsChildCycleRef) bool {
+	return strings.TrimSpace(ref.ValidationVerdict) == "accepted" &&
+		strings.TrimSpace(ref.ValidatedAt) != "" &&
+		len(ref.ValidationEvidence) > 0
 }
 
 func childStatusEntryFromChild(child IssueOpsRecord) IssueOpsChildStatusEntry {
