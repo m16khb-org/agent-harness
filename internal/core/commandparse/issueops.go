@@ -228,6 +228,10 @@ func ExactReadOnlyShellCommand(command string) bool {
 		return exactReadOnlyStat(tokens[1:])
 	case "file":
 		return exactReadOnlyFile(tokens[1:])
+	case "shasum":
+		return exactReadOnlySHA256(tokens[1:], true)
+	case "sha256sum":
+		return exactReadOnlySHA256(tokens[1:], false)
 	case "wc":
 		return exactReadOnlyWCCommand(tokens[1:])
 	case "sed":
@@ -261,6 +265,28 @@ func ExactReadOnlyShellCommand(command string) bool {
 			(len(tokens) == 4 && tokens[1] == "orchestration" && tokens[2] == "task-list" && tokens[3] == "--json")
 	}
 	return false
+}
+
+// exactReadOnlySHA256은 봉인된 artifact를 검증하는 SHA-256 읽기만 인정한다.
+// shasum은 알고리즘을 256으로 명시해야 하고 sha256sum은 명령 자체가 알고리즘을
+// 고정한다. stdin과 option 형태는 다른 파일이나 동작을 간접 선택할 수 있으므로
+// literal operand만 허용한다.
+func exactReadOnlySHA256(tokens []string, requiresAlgorithm bool) bool {
+	if requiresAlgorithm {
+		if len(tokens) < 3 || tokens[0] != "-a" || tokens[1] != "256" {
+			return false
+		}
+		tokens = tokens[2:]
+	}
+	if len(tokens) == 0 {
+		return false
+	}
+	for _, token := range tokens {
+		if strings.TrimSpace(token) == "" || token == "-" || strings.HasPrefix(token, "-") {
+			return false
+		}
+	}
+	return true
 }
 
 func exactReadOnlyCat(tokens []string) bool {
