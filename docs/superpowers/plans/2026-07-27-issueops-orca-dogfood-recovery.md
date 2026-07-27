@@ -116,20 +116,20 @@ SQLite-backed IssueOps state.
 
 ### Task 8: Activate and prove installed surfaces
 
-- [ ] Run `ah update` from the parent canonical worktree.
-- [ ] Restart the daemon through the supported CLI.
-- [ ] Verify daemon status and installed CLI version/behavior.
-- [ ] Verify `codex mcp get agent_harness` and `claude mcp list`.
-- [ ] Start a fresh MCP process and exercise the corrected status/prepare
+- [x] Run `ah update` from the parent canonical worktree.
+- [x] Restart the daemon through the supported CLI.
+- [x] Verify daemon status and installed CLI version/behavior.
+- [x] Verify `codex mcp get agent_harness` and `claude mcp list`.
+- [x] Start a fresh MCP process and exercise the corrected status/prepare
   surface.
 
 ### Task 9: Recover and resume #190
 
-- [ ] Re-read lifecycle `io-17a57cc2b08b` and exact Orca inventory.
-- [ ] Quiesce/retire its task, dispatch, terminal, worktree, and generation
+- [x] Re-read lifecycle `io-17a57cc2b08b` and exact Orca inventory.
+- [x] Quiesce/retire its task, dispatch, terminal, worktree, and generation
   only through generation-fenced IssueOps/Orca recovery.
-- [ ] Move the #190 linked branch to the new sealed parent integration base
+- [x] Move the #190 linked branch to the new sealed parent integration base
   without losing remote issue linkage.
-- [ ] Reseed and dispatch a fresh Orca owner.
+- [x] Reseed and dispatch a fresh Orca owner.
 - [ ] Confirm active claim and the first RED test before returning to the
   umbrella child DAG.
