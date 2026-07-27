@@ -492,7 +492,7 @@ func (p *ExecutionProvisioner) reconcileCreatedTerminal(ctx context.Context, cre
 		return created, nil
 	}
 	client, ok := p.client.(executionInventoryClient)
-	if !ok || strings.TrimSpace(created.PTYID) == "" {
+	if !ok || (strings.TrimSpace(created.PTYID) == "" && strings.TrimSpace(created.Handle) == "") {
 		return port.OrcaTerminal{}, fmt.Errorf("Orca owner terminal does not match the sealed intent")
 	}
 	// 반복하는 것은 조회다. CreateTerminal은 이미 한 번 실행됐고 다시 부르지
@@ -506,17 +506,18 @@ func (p *ExecutionProvisioner) reconcileCreatedTerminal(ctx context.Context, cre
 		if err != nil {
 			return port.OrcaTerminal{}, err
 		}
-		candidate, err := executionSoleTerminalByPTY(inventory.Rows, created.PTYID)
+		candidate, err := executionSoleCreatedTerminal(inventory.Rows, created)
 		if err != nil {
-			// 같은 PTY가 둘 이상이면 어느 터미널을 봉인해야 하는지 알 수 없다.
-			// 시간으로 해소되는 상태가 아니므로 즉시 fail-closed한다.
+			// 같은 생성 identity를 가진 행이 둘 이상이면 어느 터미널을 봉인해야
+			// 하는지 알 수 없다. 시간으로 해소되는 상태가 아니므로 즉시
+			// fail-closed한다.
 			return port.OrcaTerminal{}, err
 		}
 		if candidate == nil {
 			// create 응답과 terminal inventory 반영 사이에는 짧은 비동기 창이
 			// 있다. #190 실측에서 이 부재가 기존 12초 제목 대기를 건너뛰고
 			// 약 1초 만에 실패시켰다. mutation은 반복하지 않고 같은 bounded
-			// 조회 창에서 PTY가 나타나는지만 기다린다.
+			// 조회 창에서 PTY 또는 handle 행이 나타나는지만 기다린다.
 			lastErr = fmt.Errorf("Orca owner terminal is absent")
 		} else {
 			lastErr = validateExecutionIntentTerminal(*candidate, prepared, marker)
@@ -553,14 +554,22 @@ func (p *ExecutionProvisioner) terminalSettleWindow() (time.Duration, time.Durat
 	return budget, interval
 }
 
-// executionSoleTerminalByPTY는 PTY로 최대 하나를 고른다. 부재는 생성 직후
+// executionSoleCreatedTerminal은 생성 응답의 PTY가 있으면 PTY를, 아직 없으면
+// handle을 써서 최대 한 행을 고른다. handle은 inventory에서 PTY를 회수하기
+// 위한 일시적 selector이며 durable receipt에는 남기지 않는다. 부재는 생성 직후
 // inventory가 따라오는 동안 생길 수 있으므로 nil,nil이고, 중복은 identity
 // ambiguity라 즉시 오류다.
-func executionSoleTerminalByPTY(rows []port.OrcaTerminal, ptyID string) (*port.OrcaTerminal, error) {
+func executionSoleCreatedTerminal(rows []port.OrcaTerminal, created port.OrcaTerminal) (*port.OrcaTerminal, error) {
+	ptyID := strings.TrimSpace(created.PTYID)
+	handle := strings.TrimSpace(created.Handle)
 	var candidate *port.OrcaTerminal
 	for index := range rows {
 		row := rows[index]
-		if row.PTYID != ptyID {
+		matches := ptyID != "" && strings.TrimSpace(row.PTYID) == ptyID
+		if ptyID == "" {
+			matches = handle != "" && strings.TrimSpace(row.Handle) == handle
+		}
+		if !matches {
 			continue
 		}
 		if candidate != nil {
