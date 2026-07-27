@@ -328,6 +328,41 @@ func TestCleanupFinishOrcaRemovalRunsFirstAndFailureKeepsRecord(t *testing.T) {
 	}
 }
 
+// Orca는 자체 메타데이터뿐 아니라 연결된 Git worktree도 함께 제거한다. 따라서
+// 성공 직후 사라진 경로에 git worktree remove를 다시 실행하면 정상 정리가
+// 실패로 기록된다.
+func TestCleanupFinishSkipsGitRemovalWhenOrcaAlreadyRemovedWorktree(t *testing.T) {
+	stateRoot, record, worktree := finishTestRecord(t, true)
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
+		rec.Execution.Mode = model.ExecutionModeOrca
+		rec.Execution.Workspace.Driver = "orca"
+		rec.Execution.Orca = &model.OrcaBinding{RuntimeID: "rt", RepoID: "repo", WorktreeID: "wt-1", OwnerHost: "codex", OwnerModel: "m", TaskID: "t", DispatchID: "d"}
+	})
+	git := &fakeFinishGit{branchOID: "abc123"}
+	deps := finishDeps(git)
+	deps.RemoveOrcaWorktree = func(_ context.Context, worktreeID string) error {
+		if worktreeID != "wt-1" {
+			t.Fatalf("unexpected worktree id: %s", worktreeID)
+		}
+		return os.RemoveAll(worktree)
+	}
+
+	preview, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, true, preview.Fingerprint), deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.OrcaRemoved || !result.WorktreeRemoved || !result.BranchDeleted || !result.RecordDeleted {
+		t.Fatalf("orca 제거 후 남은 단계까지 수렴해야 한다: %+v", result)
+	}
+	if git.removedWorktree {
+		t.Fatal("orca가 이미 제거한 worktree에 git worktree remove를 다시 실행하면 안 된다")
+	}
+}
+
 // AC-03: completion 미반영 + RemoteArtifact 보유 레코드는 prune되지 않는다.
 func TestPrunePreservesUnreflectedMergedRecords(t *testing.T) {
 	stateRoot, record, _ := finishTestRecord(t, false)

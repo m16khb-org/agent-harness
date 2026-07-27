@@ -176,10 +176,21 @@ func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishReque
 		}
 		result.OrcaRemoved = true
 	}
-	// ③ git worktree 제거(부재 = 성공).
-	if inventory.WorktreePresent {
+	// ③ git worktree 제거(부재 = 성공). Orca는 정상 제거 시 연결된 Git
+	// worktree까지 함께 없애므로, 성공 직후 경로를 다시 관측해 이중 삭제를
+	// 피한다. 직접 정리와 경합해 명령 도중 경로가 사라진 경우도 멱등 성공이다.
+	worktreePresent := inventory.WorktreePresent
+	if worktreePresent && result.OrcaRemoved {
+		if _, err := os.Lstat(inventory.WorktreeRoot); os.IsNotExist(err) {
+			worktreePresent = false
+			result.WorktreeRemoved = true
+		}
+	}
+	if worktreePresent {
 		if code, out := deps.Git(record.Repo, "worktree", "remove", inventory.WorktreeRoot); code != 0 {
-			return fail("worktree_remove", fmt.Errorf("git worktree remove: %s", out))
+			if _, err := os.Lstat(inventory.WorktreeRoot); !os.IsNotExist(err) {
+				return fail("worktree_remove", fmt.Errorf("git worktree remove: %s", out))
+			}
 		}
 		result.WorktreeRemoved = true
 	}
