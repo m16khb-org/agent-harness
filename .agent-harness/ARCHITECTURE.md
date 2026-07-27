@@ -107,6 +107,14 @@ Deterministic baseline과 live evidence는 advertised schema validity와 closed 
 
 기존 top-level `doctor`가 cross-system operational health의 유일한 공개 표면이다. `internal/adapter/operationalhealth`가 read-only inventory를 정규화하고, `internal/core/operationalhealth`가 deterministic finding을 만든다. IssueOps stale scan은 같은 cycle-authority 판정만 재사용하되 기존 strong-signal release policy와 locked re-probe를 유지한다. Stability audit는 ownership/residue 규칙을 다시 구현하지 않고 방금 빌드한 binary의 `doctor` 결과를 gate로 소비한다.
 
+### 4.3 Dependency fitness ratchet
+
+`internal/architecture`는 production import graph의 test-only fitness boundary다. `go list -json ./...`의 direct `Imports`만 정렬된 `importer -> imported` edge로 수집하며, test import와 transitive dependency는 graph에 포함하지 않는다.
+
+- `internal/core/... -> internal/adapter/...|cmd/...`, `internal/adapter/... -> cmd/...`, `internal/port -> internal/...`는 baseline 없이 즉시 실패한다.
+- legacy infrastructure·adapter-to-core·composition root 밖 concrete-adapter edge는 `internal/architecture/testdata/legacy_imports.txt`와 정확히 일치해야 한다. 신규·이동·삭제 후 남은 stale edge는 `legacy_baseline` rule과 edge를 함께 출력한다.
+- baseline을 줄이는 변경은 의도된 architecture 개선으로 같은 review에서만 허용한다. production package 이동이나 runtime wiring은 이 ratchet의 범위가 아니다.
+
 ---
 
 ## 5. Docs / state / config / logs
