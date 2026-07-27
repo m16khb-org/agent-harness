@@ -614,14 +614,23 @@ func executionQuiescenceFingerprint(ctx context.Context, record IssueOpsRecord, 
 	if orcaInventory.TerminalLive || orcaInventory.TaskLive {
 		return "", fmt.Errorf("Orca owner is not quiescent: terminal_live=%t task_live=%t task_status=%s dispatch_status=%s", orcaInventory.TerminalLive, orcaInventory.TaskLive, orcaInventory.TaskStatus, orcaInventory.DispatchStatus)
 	}
-	excluded := map[int]bool{os.Getpid(): true}
+	inventoryOwners := map[int]bool{os.Getpid(): true}
+	requesterOwners := map[int]bool{}
 	if requester.SessionProcess != nil {
-		excluded[requester.SessionProcess.PID] = true
+		inventoryOwners[requester.SessionProcess.PID] = true
+		requesterOwners[requester.SessionProcess.PID] = true
+	}
+	excluded := map[int]bool{}
+	for pid := range inventoryOwners {
+		for ancestor := range nativeProcessAncestryPIDs(pid) {
+			excluded[ancestor] = true
+		}
 	}
 	workspaceProcesses, err := inspectWorkspaceProcesses(record.Execution.Workspace.Root, excluded)
 	if err != nil {
 		return "", err
 	}
+	workspaceProcesses = dropRequesterOwnedProcesses(workspaceProcesses, requesterOwners)
 	if len(workspaceProcesses) > 0 {
 		process := workspaceProcesses[0]
 		return "", fmt.Errorf("workspace process is not quiescent: pid=%d command=%s fd=%s access=%s path=%s", process.PID, process.Command, process.FD, process.Access, process.Path)

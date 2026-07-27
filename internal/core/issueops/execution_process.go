@@ -249,10 +249,15 @@ func processField(pid int, field string) (string, error) {
 	return value, nil
 }
 
+// inspectWorkspaceProcesses는 워크트리를 점유한 프로세스를 관측한다. lsof에
+// "+D root"를 주면 트리 전체를 재귀 stat하므로 node_modules 같은 대형 워크트리에서는
+// probe 자체가 타임아웃한다(실측 6~8초). 경로 판정은 어차피
+// parseWorkspaceProcesses의 pathWithinResolved가 수행하므로, 전체 open file
+// 목록을 받아 Go에서 걸러 같은 결과를 훨씬 싸게 얻는다.
 func inspectWorkspaceProcesses(root string, excluded map[int]bool) ([]workspaceProcess, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), nativeProcessProbeTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "lsof", "-nP", "-Fpcfna", "+D", root)
+	cmd := exec.CommandContext(ctx, "lsof", "-nPw", "-Fpcfna")
 	cmd.Env = append(os.Environ(), "LC_ALL=C", "LANG=C")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
@@ -266,7 +271,73 @@ func inspectWorkspaceProcesses(root string, excluded map[int]bool) ([]workspaceP
 			return nil, fmt.Errorf("lsof workspace inventory: %s", strings.TrimSpace(stderr.String()))
 		}
 	}
+	// probe가 띄운 lsof는 호출자의 cwd를 상속하므로 워크트리 안에서 실행되면
+	// 자기 자신을 점유자로 보고한다. 이미 종료한 프로세스라 조상 관측으로는
+	// 걸러지지 않으므로 여기서 정확히 제외한다.
+	if cmd.Process != nil {
+		probeExcluded := make(map[int]bool, len(excluded)+1)
+		for pid := range excluded {
+			probeExcluded[pid] = true
+		}
+		probeExcluded[cmd.Process.Pid] = true
+		excluded = probeExcluded
+	}
 	return parseWorkspaceProcesses(stdout.String(), root, excluded)
+}
+
+// nativeProcessAncestryPIDs는 pid와 그 조상 PID 집합을 반환한다. quiescence
+// 판정에서 요청자 세션을 띄운 터미널 셸은 경쟁 writer가 아니라 요청자 자신의
+// 실행 컨텍스트다 — 그 셸의 cwd가 canonical worktree라는 이유로 finalize를
+// 막으면 direct 모드 승계가 구조적으로 불가능해진다. 관측에 실패하면 pid
+// 하나만 반환해 기존(조상 미제외) 동작으로 안전하게 축약한다.
+func nativeProcessAncestryPIDs(pid int) map[int]bool {
+	pids := map[int]bool{}
+	if pid <= 0 {
+		return pids
+	}
+	pids[pid] = true
+	ancestry, err := ObserveNativeProcessAncestry(pid)
+	if err != nil {
+		return pids
+	}
+	for _, receipt := range ancestry {
+		pids[receipt.PID] = true
+	}
+	return pids
+}
+
+// dropRequesterOwnedProcesses는 요청자 세션이 직접 띄운 자손 프로세스(MCP 서버,
+// 테스트 러너, 툴 셸 등)를 quiescence 후보에서 제외한다. 이들은 워크트리를 다투는
+// 다른 holder가 아니라 승계를 요청한 세션 자신의 실행 컨텍스트이므로, 이를 근거로
+// finalize를 막으면 direct 모드 승계가 성립하지 않는다. 외부 세션의 잔여
+// 프로세스는 요청자 조상에 걸리지 않으므로 원래의 fail-closed 계약은 유지된다.
+func dropRequesterOwnedProcesses(processes []workspaceProcess, owners map[int]bool) []workspaceProcess {
+	if len(processes) == 0 || len(owners) == 0 {
+		return processes
+	}
+	kept := make([]workspaceProcess, 0, len(processes))
+	for _, process := range processes {
+		if processHasAncestorIn(process.PID, owners) {
+			continue
+		}
+		kept = append(kept, process)
+	}
+	return kept
+}
+
+// processHasAncestorIn은 pid 자신 또는 그 조상이 owners에 속하는지 본다. 관측에
+// 실패하면 false를 반환해 판정을 fail-closed로 유지한다.
+func processHasAncestorIn(pid int, owners map[int]bool) bool {
+	ancestry, err := ObserveNativeProcessAncestry(pid)
+	if err != nil {
+		return false
+	}
+	for _, receipt := range ancestry {
+		if owners[receipt.PID] {
+			return true
+		}
+	}
+	return false
 }
 
 func parseWorkspaceProcesses(output, root string, excluded map[int]bool) ([]workspaceProcess, error) {
@@ -302,6 +373,13 @@ func parseWorkspaceProcesses(output, root string, excluded map[int]bool) ([]work
 			access = value
 		case 'n':
 			path := strings.TrimSuffix(value, " (deleted)")
+			// lsof의 name 필드는 파일 경로만이 아니라 소켓/파이프/kqueue 표기
+			// ("->0x...", "count=..." 등)도 담는다. 절대 경로가 아닌 값은 워크트리
+			// 점유 판정 대상이 아니다 — filepath.Abs가 그런 값을 probe 프로세스의
+			// cwd 기준으로 해석하면 무관한 프로세스가 워크트리 점유로 오판된다.
+			if !filepath.IsAbs(path) {
+				continue
+			}
 			if pid <= 0 || excluded[pid] || !pathWithinResolved(path, root) {
 				continue
 			}

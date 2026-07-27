@@ -132,6 +132,12 @@ repeat the identical request with `--confirm`. `auto` selects Orca only when
 readiness succeeds before mutation; otherwise it selects direct. The only
 first-party owner hosts are Codex and Claude.
 
+엄브렐라에서 위임된 자식 cycle은 preview의 `workspace.parent_worktree`가 부모
+통합 worktree를 가리키는지 확인한다. confirm은 Orca
+`worktree create --parent-worktree path:<부모>`를 사용하고 생성 lineage의
+`explicit-cli-flag`/`explicit` 영수증이 없으면 fail-closed한다. 독립 cycle은
+기존처럼 top-level worktree로 생성된다.
+
 The installed Orca CLI currently seals GitHub issue metadata but has no GitLab
 issue/work-item metadata mutation surface. For a GitLab-linked cycle, `auto`
 therefore reports `gitlab_issue_metadata_unsupported` and selects direct before
@@ -276,7 +282,7 @@ unrelated work throughout the sequence.
 
 ## IssueOps 이원 구조 운영 (planner/implementer)
 
-- 스폰 준비: `issueops artifact stage --id ID --name plan|spec|turing-loop --file PATH` (prepare 전에만; 잘못 올렸으면 `artifact unstage`) → `issueops execution prepare --id ID --mode auto ...` (`--owner-model` 생략 시 host 기본값: codex `gpt-5.6-terra`/xhigh, claude `claude-opus-5`/high).
+- 스폰 준비: `issueops artifact stage --id ID --name plan|spec|turing-loop --file PATH` (prepare 전에만; 잘못 올렸으면 `artifact unstage`) → `issueops execution prepare --id ID --mode auto ...` (`--owner-model` 생략 시 host implementer 기본값: codex `gpt-5.6-terra`/xhigh, claude `claude-sonnet-5`/high; Claude planner/reviewer 기본값은 `claude-opus-5`/high이며 Fable 5는 명시적 수동 지정만 허용).
 - 다중 사이클 조망: `issueops list [--repo PATH] --json` — claimable/cleanup/unreflected 플래그와 scanned_records 비용을 함께 노출한다.
 - 하위 세션 publication(orca): `issueops implementation-review record --id ID --verdict pass --finding ... --evidence ... --reviewer-model <planner급>` 기록 후에만 `remote create-pr`가 통과한다. diff가 바뀌면 stale로 다시 막힌다.
 - 머지 후 정리(순서 고정): `cleanup status --merged` → `cleanup close-children --merged --confirm` → `remote reflect-completion --confirm` → `remote close-issue --confirm` → `cleanup finish --preview` → `cleanup finish --apply --confirm --fingerprint FP`. finish 재실행 전에는 preview로 fingerprint를 재발급한다.

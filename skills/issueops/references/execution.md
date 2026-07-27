@@ -59,6 +59,14 @@ The provisioned path is the fixed sibling
 reuses only that exact branch/worktree pair and records its base SHA. Do not
 create or link another worktree manually.
 
+위임된 엄브렐라 자식은 `workspace.parent_worktree`에
+`${repo}.worktrees/<base-branch-with-slashes-replaced>`를 함께 봉인한다. Orca
+mode는 이 값을 `worktree create --parent-worktree path:<부모>`로 전달하고
+lineage의 `capture.source=explicit-cli-flag`,
+`capture.confidence=explicit`를 검증한다. 따라서 Orca UI에서도 자식 worktree가
+부모 통합 worktree 아래에 표시된다. delegation이 없는 독립 cycle만
+`--no-parent`를 유지한다.
+
 ## Status And Claim
 
 Status is the read-only orientation command for either mode:
@@ -164,11 +172,15 @@ worktree or branch. The owner returns the exact 14-field report defined in
 | host | implementer(하위 세션) | planner(리뷰 서브에이전트) |
 |---|---|---|
 | codex | `gpt-5.6-terra` / `xhigh` | `gpt-5.6-sol` / `xhigh` |
-| claude | `claude-opus-4-8` / `high` | `claude-fable-5` / `high` |
+| claude | `claude-sonnet-5` / `high` | `claude-opus-5` / `high` |
 
 planner 값은 owner 프롬프트의 `{REVIEWER_MODEL}`/`{REVIEWER_EFFORT}`로
 렌더되어, 하위 세션이 구현 diff의 brooks 적대 리뷰 서브에이전트를 planner급
 모델로 띄우는 실행 계약이 된다.
+
+Claude Code의 자동 실행 경로는 `Opus 5 → Sonnet 5`다. Fable 5는 자동
+기본값이나 폴백으로 사용하지 않으며, 필요한 경우에만
+`--owner-model claude-fable-5`로 명시해 수동 실행한다.
 
 ## Artifact Staging And Sealing
 

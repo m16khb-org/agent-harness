@@ -110,6 +110,24 @@ func TestAcceptIssueOpsChildRequiresDonePhaseAndEvidence(t *testing.T) {
 	if !ok || ref.ValidationVerdict != "accepted" || ref.ValidationReason != "" {
 		t.Fatalf("accepted verdict should persist on parent ref without reason, got %#v", ref)
 	}
+
+	// cleanup finish가 child 레코드를 삭제해도 accepted parent receipt는 완료
+	// 증거로 남아야 한다. 이를 orphan/incomplete로 되돌리면 parent PR gate가
+	// 이미 승인·정리한 child 때문에 영구적으로 막힌다.
+	if err := deleteIssueOps(stateRoot, child.ID); err != nil {
+		t.Fatal(err)
+	}
+	status, err := IssueOpsChildStatus(stateRoot, parent.ID, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	archived, ok := childStatusEntryByID(status.Children, child.ID)
+	if !ok || archived.Orphaned || archived.Phase != IssueOpsPhaseDone || len(status.Orphaned) != 0 {
+		t.Fatalf("accepted cleanup receipt must stay terminal without becoming orphaned, got %#v / %#v", archived, status.Orphaned)
+	}
+	if missing, notes := issueOpsChildPRGateMissing(stateRoot, parentAfter); len(missing) != 0 || len(notes) != 0 {
+		t.Fatalf("accepted cleanup receipt must not block the parent PR gate: missing=%v notes=%v", missing, notes)
+	}
 }
 
 func TestRejectIssueOpsChildRecordsVerdictOnValidReason(t *testing.T) {

@@ -385,7 +385,20 @@ func TestExecutionFinalizeRejectsWorkspaceCWDOrWritableFileProcess(t *testing.T)
 				_ = cmd.Process.Kill()
 				_ = cmd.Wait()
 			})
-			requester := executionActor("claude", "process-audit-requester-"+testCase.name)
+			requesterCmd := exec.Command("sleep", "30")
+			startExecutionProcessFixture(t, requesterCmd)
+			t.Cleanup(func() {
+				_ = requesterCmd.Process.Kill()
+				_ = requesterCmd.Wait()
+			})
+			requesterReceipt, err := ObserveNativeProcessReceipt(requesterCmd.Process.Pid)
+			if err != nil {
+				t.Fatal(err)
+			}
+			requester := model.NativeActor{
+				Host: "claude", SessionID: "process-audit-requester-" + testCase.name,
+				SessionProcess: &requesterReceipt, ProcessAncestry: []model.NativeProcessReceipt{requesterReceipt},
+			}
 			preview, err := ReplaceExecution(stateRoot, ExecutionReplaceRequest{
 				ID: fixture.record.ID, Action: ExecutionReplacePreview, ExpectedGeneration: 1, Actor: requester, CWD: fixture.record.Repo,
 			})

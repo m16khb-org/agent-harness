@@ -267,7 +267,13 @@ func (c *Client) CreateWorktree(ctx context.Context, req port.OrcaCreateWorktree
 	if !ok {
 		return port.OrcaWorktree{}, &port.OrcaError{Code: "unsupported_provider", Detail: strings.ToLower(strings.TrimSpace(req.Provider))}
 	}
-	argv := []string{"orca", "worktree", "create", "--repo", pathSelector(req.Repo), "--name", strings.TrimSpace(req.Name), "--base-branch", strings.TrimSpace(req.BaseBranch), "--no-parent", "--setup", "skip", "--comment", strings.TrimSpace(req.Comment), "--json"}
+	argv := []string{"orca", "worktree", "create", "--repo", pathSelector(req.Repo), "--name", strings.TrimSpace(req.Name), "--base-branch", strings.TrimSpace(req.BaseBranch)}
+	if parent := strings.TrimSpace(req.ParentWorktree); parent != "" {
+		argv = append(argv, "--parent-worktree", pathSelector(parent))
+	} else {
+		argv = append(argv, "--no-parent")
+	}
+	argv = append(argv, "--setup", "skip", "--comment", strings.TrimSpace(req.Comment), "--json")
 	if provider == "github" {
 		if req.Issue <= 0 {
 			return port.OrcaWorktree{}, &port.OrcaError{Code: "github_issue_required", Detail: "a positive linked GitHub issue number is required"}
@@ -799,11 +805,24 @@ type worktreePayload struct {
 	BaseRef           string `json:"baseRef"`
 	LinkedIssue       int    `json:"linkedIssue"`
 	LinkedGitLabIssue *int   `json:"linkedGitLabIssue"`
+	ParentWorktreeID  string `json:"parentWorktreeId"`
+	Lineage           struct {
+		Capture struct {
+			Source     string `json:"source"`
+			Confidence string `json:"confidence"`
+		} `json:"capture"`
+	} `json:"lineage"`
 }
 
 func (w worktreePayload) portValue() port.OrcaWorktree {
 	branch := strings.TrimPrefix(strings.TrimSpace(w.Branch), "refs/heads/")
-	return port.OrcaWorktree{ID: w.ID, InstanceID: w.InstanceID, RepoID: w.RepoID, Path: w.Path, Head: w.Head, Branch: branch, Name: w.DisplayName, Comment: w.Comment, BaseRef: w.BaseRef, Issue: w.LinkedIssue, GitLabIssue: w.LinkedGitLabIssue}
+	return port.OrcaWorktree{
+		ID: w.ID, InstanceID: w.InstanceID, RepoID: w.RepoID, Path: w.Path, Head: w.Head,
+		Branch: branch, Name: w.DisplayName, Comment: w.Comment, BaseRef: w.BaseRef,
+		Issue: w.LinkedIssue, GitLabIssue: w.LinkedGitLabIssue,
+		ParentWorktreeID: w.ParentWorktreeID,
+		LineageSource:    w.Lineage.Capture.Source, LineageConfidence: w.Lineage.Capture.Confidence,
+	}
 }
 
 type terminalPayload struct {

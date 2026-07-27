@@ -142,7 +142,12 @@ func SealedGitTopologyMutation(command string) bool {
 			continue
 		}
 		switch searchrouting.SearchTokenName(tokens[actionAt]) {
-		case "branch", "cherry-pick", "merge", "rebase", "reset", "revert":
+		case "branch":
+			if _, ok := exactMatchingOriginUpstream(tokens[actionAt+1:]); ok {
+				continue
+			}
+			return true
+		case "cherry-pick", "merge", "rebase", "reset", "revert":
 			return true
 		case "push":
 			for _, arg := range tokens[actionAt+1:] {
@@ -154,6 +159,52 @@ func SealedGitTopologyMutation(command string) bool {
 		}
 	}
 	return false
+}
+
+// MatchingOriginUpstreamBranch는 origin의 같은 이름 원격 브랜치를 명시적으로
+// tracking하는 한 가지 비파괴적 branch 설정에서 로컬 브랜치 이름을 돌려준다.
+func MatchingOriginUpstreamBranch(command string) (string, bool) {
+	tokens := commandparse.SplitCommandTokens(command)
+	for i, token := range tokens {
+		if searchrouting.SearchTokenName(token) != "git" {
+			continue
+		}
+		actionAt := commandparse.CommandAfterDirectoryOption(tokens, i+1)
+		if actionAt < 0 || actionAt >= len(tokens) || searchrouting.SearchTokenName(tokens[actionAt]) != "branch" {
+			continue
+		}
+		return exactMatchingOriginUpstream(tokens[actionAt+1:])
+	}
+	return "", false
+}
+
+func exactMatchingOriginUpstream(args []string) (string, bool) {
+	if len(args) < 2 {
+		return "", false
+	}
+	upstream, branch := "", ""
+	switch {
+	case len(args) == 2 && strings.HasPrefix(args[0], "--set-upstream-to="):
+		upstream = strings.TrimPrefix(args[0], "--set-upstream-to=")
+		branch = args[1]
+	case len(args) == 3 && args[0] == "--set-upstream-to":
+		upstream = args[1]
+		branch = args[2]
+	default:
+		return "", false
+	}
+	upstream = strings.TrimSpace(upstream)
+	branch = strings.TrimSpace(branch)
+	if upstream == "" || branch == "" || strings.HasPrefix(branch, "-") ||
+		ShellTokenLooksDynamic(upstream) || ShellTokenLooksDynamic(branch) {
+		return "", false
+	}
+	for _, prefix := range []string{"origin/", "refs/remotes/origin/"} {
+		if strings.HasPrefix(upstream, prefix) {
+			return branch, strings.TrimPrefix(upstream, prefix) == branch
+		}
+	}
+	return "", false
 }
 
 func localIssueOpsWorktreeBranchCreation(args []string) BranchCreation {

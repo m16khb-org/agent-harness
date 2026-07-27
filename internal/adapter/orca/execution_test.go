@@ -36,6 +36,7 @@ func TestExecutionProvisionerCreatesOneWorktreeAndLaunchesOneOwner(t *testing.T)
 	}
 	if client.worktreeRequest.Issue != 69 || client.worktreeRequest.Comment != request.Marker ||
 		client.worktreeRequest.BaseBranch != workspace.BaseHead ||
+		client.worktreeRequest.ParentWorktree != workspace.ParentWorktree ||
 		client.worktreeRequest.UpstreamBranch != "" {
 		t.Fatalf("worktree create lost sealed identity: %#v", client.worktreeRequest)
 	}
@@ -248,6 +249,16 @@ func TestExecutionProvisionerRejectsAmbiguousOrMismatchedWorktree(t *testing.T) 
 	for name, rows := range map[string][]port.OrcaWorktree{
 		"ambiguous":  {matching, matching},
 		"wrong head": {func() port.OrcaWorktree { row := matching; row.Head = strings.Repeat("b", 40); return row }()},
+		"missing parent": {func() port.OrcaWorktree {
+			row := matching
+			row.ParentWorktreeID = ""
+			return row
+		}()},
+		"inferred lineage": {func() port.OrcaWorktree {
+			row := matching
+			row.LineageSource = "cwd-inference"
+			return row
+		}()},
 	} {
 		t.Run(name, func(t *testing.T) {
 			client := &executionFake{workspace: workspace, probeRequest: request, worktrees: rows}
@@ -569,7 +580,9 @@ func executionFixture(t *testing.T) (port.ExecutionWorkspaceRequest, port.Execut
 	root := filepath.Join(t.TempDir(), "69-redesign")
 	workspace := port.ExecutionWorkspaceRequest{
 		LifecycleID: "io-69", SourceRoot: filepath.Dir(root), Root: root,
-		Branch: "69-redesign", BaseBranch: "main", BaseHead: strings.Repeat("a", 40), Confirm: true,
+		Branch: "69-redesign", BaseBranch: "68-umbrella", BaseHead: strings.Repeat("a", 40),
+		ParentWorktree: filepath.Join(filepath.Dir(root)+".worktrees", "68-umbrella"),
+		Confirm:        true,
 	}
 	request := port.ExecutionOrcaProbeRequest{
 		Repo: workspace.SourceRoot, Host: "claude", Model: "caller-selected-model", Effort: "high",
@@ -607,6 +620,8 @@ func executionWorktree(workspace port.ExecutionWorkspaceRequest, request port.Ex
 	return port.OrcaWorktree{
 		RuntimeID: "runtime-69", ID: "wt-69", InstanceID: "instance-69", RepoID: "repo-69",
 		Path: workspace.Root, Head: workspace.BaseHead, Branch: workspace.Branch, Comment: request.Marker, Issue: 69,
+		ParentWorktreeID: "repo-69::" + workspace.ParentWorktree,
+		LineageSource:    "explicit-cli-flag", LineageConfidence: "explicit",
 	}
 }
 

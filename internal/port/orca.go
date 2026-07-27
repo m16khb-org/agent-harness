@@ -12,10 +12,9 @@ const (
 	// execution prepare가 --owner-model/--owner-effort 미지정 호출에 적용한다.
 	IssueOpsImplementerModelCodex  = "gpt-5.6-terra"
 	IssueOpsImplementerEffortCodex = "xhigh"
-	// claude-opus-4-8은 설치된 claude CLI가 Opus 5로 폴백 해석해 봉인값과
-	// 실제 구동 모델이 불일치했다(#116 owner launch 실측, 2026-07-25) —
-	// 기본값을 유효 모델 ID로 갱신한다(#118).
-	IssueOpsImplementerModelClaude = "claude-opus-5"
+	// Claude Code 자동 체인은 Opus 5 planner가 계획·리뷰하고 Sonnet 5
+	// implementer가 실행한다. Fable 5는 명시적 수동 지정에만 사용한다.
+	IssueOpsImplementerModelClaude = "claude-sonnet-5"
 	// claude CLI의 --effort <level> 플래그 실지원을 확인함(2026-07-24).
 	// 플래그가 제거되면 ownerAgentCommand(adapter/orca/client.go)의 claude
 	// 분기에서 effort 인자를 조건부 생략으로 되돌린다.
@@ -25,7 +24,7 @@ const (
 	// diff의 brooks 적대 리뷰 서브에이전트를 띄울 때 사용한다(설계 v5 WS5).
 	IssueOpsPlannerModelCodex   = "gpt-5.6-sol"
 	IssueOpsPlannerEffortCodex  = "xhigh"
-	IssueOpsPlannerModelClaude  = "claude-fable-5"
+	IssueOpsPlannerModelClaude  = "claude-opus-5"
 	IssueOpsPlannerEffortClaude = "high"
 )
 
@@ -104,24 +103,28 @@ type OrcaRepo struct {
 }
 
 type OrcaWorktree struct {
-	RuntimeID   string `json:"runtime_id,omitempty"`
-	ID          string `json:"id"`
-	InstanceID  string `json:"instance_id,omitempty"`
-	RepoID      string `json:"repo_id,omitempty"`
-	Path        string `json:"path"`
-	Head        string `json:"head,omitempty"`
-	Branch      string `json:"branch,omitempty"`
-	Name        string `json:"name,omitempty"`
-	Comment     string `json:"comment,omitempty"`
-	BaseRef     string `json:"base_ref,omitempty"`
-	Issue       int    `json:"issue,omitempty"`
-	GitLabIssue *int   `json:"gitlab_issue,omitempty"`
+	RuntimeID         string `json:"runtime_id,omitempty"`
+	ID                string `json:"id"`
+	InstanceID        string `json:"instance_id,omitempty"`
+	RepoID            string `json:"repo_id,omitempty"`
+	Path              string `json:"path"`
+	Head              string `json:"head,omitempty"`
+	Branch            string `json:"branch,omitempty"`
+	Name              string `json:"name,omitempty"`
+	Comment           string `json:"comment,omitempty"`
+	BaseRef           string `json:"base_ref,omitempty"`
+	Issue             int    `json:"issue,omitempty"`
+	GitLabIssue       *int   `json:"gitlab_issue,omitempty"`
+	ParentWorktreeID  string `json:"parent_worktree_id,omitempty"`
+	LineageSource     string `json:"lineage_source,omitempty"`
+	LineageConfidence string `json:"lineage_confidence,omitempty"`
 }
 
 type OrcaCreateWorktreeRequest struct {
 	Repo           string `json:"repo"`
 	Name           string `json:"name"`
 	BaseBranch     string `json:"base_branch"`
+	ParentWorktree string `json:"parent_worktree,omitempty"`
 	UpstreamBranch string `json:"upstream_branch,omitempty"`
 	Provider       string `json:"provider,omitempty"`
 	Issue          int    `json:"issue,omitempty"`

@@ -451,18 +451,23 @@ func TestClientRejectsMalformedOrOversizedEnvelope(t *testing.T) {
 
 func TestClientBuildsSpikeVerifiedArgvWithoutShell(t *testing.T) {
 	runner := newFakeRunner(t)
-	runner.responses["orca worktree create --repo path:/repo --name 16-demo --base-branch refs/remotes/origin/16-demo --no-parent --setup skip --comment agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1 --issue 16 --json"] = fixtureOutput(t, "worktree_create.json")
+	runner.responses["orca worktree create --repo path:/repo --name 16-demo --base-branch refs/remotes/origin/16-demo --parent-worktree path:/repo.worktrees/15-umbrella --setup skip --comment agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1 --issue 16 --json"] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{"worktree":{"id":"worktree-1","instanceId":"instance-1","repoId":"repo-1","path":"/repo.worktrees/16-demo","head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"refs/heads/16-demo","comment":"agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1","baseRef":"refs/remotes/origin/16-demo","linkedIssue":16,"parentWorktreeId":"repo-1::/repo.worktrees/15-umbrella","lineage":{"capture":{"source":"explicit-cli-flag","confidence":"explicit"}}}},"_meta":{"runtimeId":"runtime-1"}}`)}
 	client := NewClient(runner)
 	result, err := client.CreateWorktree(context.Background(), port.OrcaCreateWorktreeRequest{
-		Repo: "/repo", Name: "16-demo", BaseBranch: "refs/remotes/origin/16-demo", Issue: 16, Comment: "agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1",
+		Repo: "/repo", Name: "16-demo", BaseBranch: "refs/remotes/origin/16-demo",
+		ParentWorktree: "/repo.worktrees/15-umbrella",
+		Issue:          16,
+		Comment:        "agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.ID != "worktree-1" || result.InstanceID != "instance-1" {
+	if result.ID != "worktree-1" || result.InstanceID != "instance-1" ||
+		result.ParentWorktreeID != "repo-1::/repo.worktrees/15-umbrella" ||
+		result.LineageSource != "explicit-cli-flag" || result.LineageConfidence != "explicit" {
 		t.Fatalf("created worktree = %#v", result)
 	}
-	want := []string{"orca", "worktree", "create", "--repo", "path:/repo", "--name", "16-demo", "--base-branch", "refs/remotes/origin/16-demo", "--no-parent", "--setup", "skip", "--comment", "agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1", "--issue", "16", "--json"}
+	want := []string{"orca", "worktree", "create", "--repo", "path:/repo", "--name", "16-demo", "--base-branch", "refs/remotes/origin/16-demo", "--parent-worktree", "path:/repo.worktrees/15-umbrella", "--setup", "skip", "--comment", "agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1", "--issue", "16", "--json"}
 	if len(runner.calls) != 1 || !reflect.DeepEqual(runner.calls[0], want) {
 		t.Fatalf("argv = %#v, want %#v", runner.calls, want)
 	}
