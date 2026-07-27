@@ -19,6 +19,9 @@ Repair the IssueOps and Orca regressions observed while starting child issue
    is claimable.
 5. IssueOps skill documentation still advertises the removed in-process
    `--judge llm --model` interface.
+6. `sqlstore.Open` permanently caches handles for deleted temporary state
+   roots, causing full IssueOps tests to accumulate thousands of SQLite
+   connection goroutines and exceed five minutes.
 
 ## Working boundary
 
@@ -80,13 +83,22 @@ Arbitrary `gh api`, arbitrary GraphQL, shell substitution, redirects,
 detachment, and unrelated Orca mutations remain blocked. These commands mutate
 only the coordinator control plane, not the sealed Git worktree.
 
+### Removed sqlstore roots
+
+Keep the existing per-root handle cache and in-process span identity for live
+state roots. Before opening another root, close and remove only cached handles
+whose directories no longer exist. Permission or inspection errors do not
+authorize eviction. This bounds ephemeral test and retired-state resources
+without weakening active-root locking.
+
 ### Remote score documentation
 
 Document the current two-stage contract:
 
 1. run deterministic `--judge none`;
-2. render the read-only host-agent judge prompt, obtain a fresh independent
-   result, and pass the resulting JSON through `--judge file --judge-file`.
+2. run `--judge prompt` to render the read-only host-agent judge prompt;
+3. obtain a fresh independent result and pass the resulting JSON through
+   `--judge file --judge-file`.
 
 Remove every active IssueOps instruction that tells an agent to invoke the
 removed `--judge llm` or `--model` flags.

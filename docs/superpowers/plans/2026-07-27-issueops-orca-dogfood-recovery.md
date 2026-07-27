@@ -22,14 +22,14 @@ SQLite-backed IssueOps state.
 - Modify: `internal/core/issueops/execution_prepare.go`
 - Test: `internal/core/issueops/execution_prepare_preview_contract_test.go`
 
-- [ ] Add a test where Orca preview uses a noncanonical CWD and prove current
+- [x] Add a test where Orca preview uses a noncanonical CWD and prove current
   preview succeeds while confirm rejects it.
-- [ ] Add a test where the remote issue omits acceptance IDs or the exact
+- [x] Add a test where the remote issue omits acceptance IDs or the exact
   verification block and prove current preview succeeds while confirm rejects
   it.
-- [ ] Run the focused tests and capture RED for the expected mismatch.
-- [ ] Move only the read-only checks before the preview return.
-- [ ] Re-run the focused tests and existing auto/branch preview suites GREEN.
+- [x] Run the focused tests and capture RED for the expected mismatch.
+- [x] Move only the read-only checks before the preview return.
+- [x] Re-run the focused tests and existing auto/branch preview suites GREEN.
 
 ### Task 2: Restore local-first Orca worktree creation
 
@@ -37,12 +37,12 @@ SQLite-backed IssueOps state.
 - Modify: `internal/adapter/orca/execution.go`
 - Test: `internal/adapter/orca/execution_worktree_upstream_test.go`
 
-- [ ] Add tests for both intent and legacy prepare paths asserting the create
+- [x] Add tests for both intent and legacy prepare paths asserting the create
   request uses sealed `BaseHead` and leaves `UpstreamBranch` empty.
-- [ ] Confirm RED because both paths currently inject
+- [x] Confirm RED because both paths currently inject
   `refs/remotes/origin/<branch>`.
-- [ ] Remove only the impossible upstream argument and its now-unused helper.
-- [ ] Re-run Orca adapter and IssueOps branch-precheck suites GREEN.
+- [x] Remove only the impossible upstream argument and its now-unused helper.
+- [x] Re-run Orca adapter and IssueOps branch-precheck suites GREEN.
 
 ### Task 3: Wait for terminal inventory appearance
 
@@ -50,13 +50,13 @@ SQLite-backed IssueOps state.
 - Modify: `internal/adapter/orca/execution.go`
 - Test: `internal/adapter/orca/execution_launch_timing_test.go`
 
-- [ ] Add an absent-then-present fixture that succeeds inside a millisecond
+- [x] Add an absent-then-present fixture that succeeds inside a millisecond
   test settle window.
-- [ ] Add a persistently absent fixture that returns bounded attempt/duration
+- [x] Add a persistently absent fixture that returns bounded attempt/duration
   evidence.
-- [ ] Confirm current immediate-absence behavior RED.
-- [ ] Retry only absence; keep duplicate PTY inventory immediately fatal.
-- [ ] Re-run timing, fixture, and full Orca adapter tests GREEN.
+- [x] Confirm current immediate-absence behavior RED.
+- [x] Retry only absence; keep duplicate PTY inventory immediately fatal.
+- [x] Re-run timing, fixture, and full Orca adapter tests GREEN.
 
 ### Task 4: Admit exact owner read/control commands
 
@@ -65,42 +65,56 @@ SQLite-backed IssueOps state.
 - Test: `internal/core/lifecycle/lifecycle_owner_control_plane_guard_test.go`
 - Verify: `cmd/harness/hookcli` tests
 
-- [ ] Add table-driven RED cases for a literal GitHub issue body read and
+- [x] Add table-driven RED cases for a literal GitHub issue body read and
   Orca `send`/`ask`/`check` commands from the canonical worker.
-- [ ] Add near-miss cases for DELETE, arbitrary GraphQL, unknown message
+- [x] Add near-miss cases for DELETE, arbitrary GraphQL, unknown message
   types/flags, substitution, redirect, and detached forms; these must remain
   blocked.
-- [ ] Implement exact token/flag classifiers without widening general shell
+- [x] Implement exact token/flag classifiers without widening general shell
   observation.
-- [ ] Re-run lifecycle and hook CLI suites GREEN.
+- [x] Re-run lifecycle and hook CLI suites GREEN.
 
 ### Task 5: Align remote-score documentation
 
 **Files:**
+- Modify: `cmd/harness/issueopscli/remotecmd/remote.go`
+- Test: `cmd/harness/issueopscli/issueops_remote_score_cli_test.go`
 - Modify: `skills/issueops/SKILL.md`
 - Modify: `skills/issueops/references/remote-issue.md`
 - Modify: `skills/issueops/references/cleanup-state.md`
 
-- [ ] Replace active `--judge llm --model` instructions with host-agent prompt
+- [x] Add a read-only `--judge prompt` envelope so the documented host-agent
+  handoff is executable.
+- [x] Replace active `--judge llm --model` instructions with host-agent prompt
   generation and `--judge file --judge-file`.
-- [ ] Preserve deterministic fallback and independent-review provenance.
-- [ ] Run `validate-skill.py` and search active IssueOps instructions for stale
+- [x] Preserve deterministic fallback and independent-review provenance.
+- [x] Run `validate-skill.py` and search active IssueOps instructions for stale
   command examples.
 
-### Task 6: Integrated verification and publication
+### Task 6: Bound removed sqlstore roots
 
-- [ ] Run `gofmt` on changed Go files.
-- [ ] Run `git diff --check`.
-- [ ] Run all focused packages.
-- [ ] Run `go test ./... -count=1`.
-- [ ] Run `go test -race ./... -count=1`.
-- [ ] Run response-contract golden tests.
-- [ ] Build `bin/agent-harness`.
-- [ ] Verify the source `main` dirty files are untouched.
-- [ ] Create atomic commits with Conventional Commit subject and Lore body.
+**Files:**
+- Modify: `internal/core/sqlstore/sqlstore.go`
+- Test: `internal/core/sqlstore/resource_test.go`
+
+- [x] Reproduce the deleted temporary root remaining in the global handle cache.
+- [x] Prune and close only handles whose roots no longer exist.
+- [x] Prove the IssueOps package no longer exceeds its five-minute test budget.
+
+### Task 7: Integrated verification and publication
+
+- [x] Run `gofmt` on changed Go files.
+- [x] Run `git diff --check`.
+- [x] Run all focused packages.
+- [x] Run `go test ./... -count=1`.
+- [x] Run `go test -race ./... -count=1`.
+- [x] Run response-contract golden tests.
+- [x] Build `bin/agent-harness`.
+- [x] Verify the source `main` dirty files are untouched.
+- [x] Create atomic commits with Conventional Commit subject and Lore body.
 - [ ] Push `117-hexagonal-architecture-migration`.
 
-### Task 7: Activate and prove installed surfaces
+### Task 8: Activate and prove installed surfaces
 
 - [ ] Run `ah update` from the parent canonical worktree.
 - [ ] Restart the daemon through the supported CLI.
@@ -109,7 +123,7 @@ SQLite-backed IssueOps state.
 - [ ] Start a fresh MCP process and exercise the corrected status/prepare
   surface.
 
-### Task 8: Recover and resume #190
+### Task 9: Recover and resume #190
 
 - [ ] Re-read lifecycle `io-17a57cc2b08b` and exact Orca inventory.
 - [ ] Quiesce/retire its task, dispatch, terminal, worktree, and generation
