@@ -177,7 +177,6 @@ func (p *ExecutionProvisioner) InvokeIntent(ctx context.Context, req port.Execut
 		created, err := p.client.CreateWorktree(ctx, port.OrcaCreateWorktreeRequest{
 			Repo: req.Workspace.SourceRoot, Name: req.Workspace.Branch, BaseBranch: req.Workspace.BaseHead,
 			ParentWorktree: req.Workspace.ParentWorktree,
-			UpstreamBranch: executionRemoteBranch(req.Workspace.Branch),
 			Provider:       req.Probe.Provider, Issue: req.Probe.Issue, Comment: req.Marker,
 		})
 		if err != nil {
@@ -462,7 +461,6 @@ func (p *ExecutionProvisioner) prepareWorktree(ctx context.Context, workspace po
 	created, err := p.client.CreateWorktree(ctx, port.OrcaCreateWorktreeRequest{
 		Repo: workspace.SourceRoot, Name: workspace.Branch, BaseBranch: workspace.BaseHead,
 		ParentWorktree: workspace.ParentWorktree,
-		UpstreamBranch: executionRemoteBranch(workspace.Branch),
 		Provider:       req.Provider, Issue: req.Issue, Comment: req.Marker,
 	})
 	if err != nil {
@@ -472,10 +470,6 @@ func (p *ExecutionProvisioner) prepareWorktree(ctx context.Context, workspace po
 		return port.OrcaWorktree{}, err
 	}
 	return created, nil
-}
-
-func executionRemoteBranch(branch string) string {
-	return "refs/remotes/origin/" + strings.TrimSpace(branch)
 }
 
 // executionTerminalSettleBudget과 executionTerminalSettleInterval은 Orca가 만든
