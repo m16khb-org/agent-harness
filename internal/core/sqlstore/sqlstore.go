@@ -103,7 +103,9 @@ var (
 
 // Open은 dir에 대한 캐시된 핸들을 반환하며, 디렉터리와 두 SQLite 파일이 없으면
 // 생성한다. 핸들은 절대 경로 디렉터리별로 캐시되므로 한 프로세스의 모든
-// 호출자가 같은 in-process span mutex를 공유한다.
+// 호출자가 같은 in-process span mutex를 공유한다. 이미 제거된 root의 핸들은
+// 다음 Open에서 닫고 축출해 임시 state root가 연결과 goroutine을 누적하지
+// 않게 한다.
 func Open(dir string) (*DB, error) {
 	abs, err := filepath.Abs(dir)
 	if err != nil {
@@ -111,6 +113,7 @@ func Open(dir string) (*DB, error) {
 	}
 	handlesMu.Lock()
 	defer handlesMu.Unlock()
+	pruneRemovedHandlesLocked()
 	if err := ensurePrivateRoot(abs); err != nil {
 		return nil, fmt.Errorf("sqlstore secure root %s: %w", abs, err)
 	}
@@ -126,6 +129,17 @@ func Open(dir string) (*DB, error) {
 	}
 	handles[abs] = d
 	return d, nil
+}
+
+func pruneRemovedHandlesLocked() {
+	for root, db := range handles {
+		if _, err := os.Stat(root); !errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		delete(handles, root)
+		_ = db.data.Close()
+		_ = db.span.Close()
+	}
 }
 
 // CloseRoot는 dir의 캐시된 핸들을 닫고 축출한다. 의도적으로 좁은 API다:
