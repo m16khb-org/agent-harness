@@ -20,7 +20,10 @@ const (
 	createTimeout = 2 * time.Minute
 )
 
-var concreteTerminalHandlePattern = regexp.MustCompile(`^term_[A-Za-z0-9_-]+$`)
+var (
+	concreteTerminalHandlePattern = regexp.MustCompile(`^term_[A-Za-z0-9_-]+$`)
+	exactGitObjectIDPattern       = regexp.MustCompile(`^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$`)
+)
 
 type Client struct {
 	runner Runner
@@ -291,29 +294,26 @@ func (c *Client) CreateWorktree(ctx context.Context, req port.OrcaCreateWorktree
 		return created, nil
 	}
 	upstream := strings.TrimSpace(req.UpstreamBranch)
-	if upstream == "" {
+	if upstream == "" && !exactGitObjectIDPattern.MatchString(strings.TrimSpace(req.BaseBranch)) {
 		upstream = strings.TrimSpace(req.BaseBranch)
 	}
 	return c.CanonicalizeWorktreeBranch(ctx, created, requestedBranch, upstream)
 }
 
-// CanonicalizeWorktreeBranch removes an Orca-configured username namespace
-// only when the returned branch is exactly <namespace>/<provider-branch>, then
-// restores the sealed provider upstream. It is shared by create and explicit
-// pre-dispatch workspace recovery; unrelated branch shapes fail closed.
+// CanonicalizeWorktreeBranch는 Orca가 만든 브랜치가 정확히
+// <namespace>/<provider-branch>일 때만 namespace를 제거한다. upstream이 명시된
+// 경우에만 tracking을 복구하며, exact base SHA는 upstream으로 사용하지 않는다.
 func (c *Client) CanonicalizeWorktreeBranch(ctx context.Context, created port.OrcaWorktree, requestedBranch, upstream string) (port.OrcaWorktree, error) {
 	requestedBranch = strings.TrimSpace(requestedBranch)
 	upstream = strings.TrimSpace(upstream)
 	if requestedBranch == "" || !strings.HasSuffix(created.Branch, "/"+requestedBranch) || strings.TrimSuffix(created.Branch, "/"+requestedBranch) == "" || !filepath.IsAbs(strings.TrimSpace(created.Path)) {
 		return created, &port.OrcaError{Code: "worktree_branch_mismatch", Detail: fmt.Sprintf("created branch %q does not match requested branch %q", created.Branch, requestedBranch), Invoked: true}
 	}
-	if upstream == "" {
-		return created, &port.OrcaError{Code: "worktree_upstream_missing", Detail: "sealed provider upstream is required", Invoked: true}
+	gitCommands := [][]string{{"git", "branch", "-m", requestedBranch}}
+	if upstream != "" {
+		gitCommands = append(gitCommands, []string{"git", "branch", "--set-upstream-to", upstream, requestedBranch})
 	}
-	for _, gitArgv := range [][]string{
-		{"git", "branch", "-m", requestedBranch},
-		{"git", "branch", "--set-upstream-to", upstream, requestedBranch},
-	} {
+	for _, gitArgv := range gitCommands {
 		if _, runErr := c.runner.Run(ctx, filepath.Clean(created.Path), createTimeout, gitArgv); runErr != nil {
 			return created, fmt.Errorf("canonicalize Orca worktree branch: %w", runErr)
 		}

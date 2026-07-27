@@ -517,6 +517,31 @@ func TestClientCanonicalizesFromExactSHAWithoutUsingSHAAsUpstream(t *testing.T) 
 	}
 }
 
+// IssueOps child의 원격 브랜치는 Orca 생성 시점에 아직 없어야 한다. 따라서 exact
+// base SHA만 전달된 경우 namespace 제거는 로컬 rename으로 끝나야 한다.
+func TestClientCanonicalizesFromExactSHAWithoutAnUpstream(t *testing.T) {
+	runner := newFakeRunner(t)
+	baseSHA := strings.Repeat("a", 40)
+	create := "orca worktree create --repo path:/repo --name 191-spike --base-branch " + baseSHA + " --no-parent --setup skip --comment marker --issue 191 --json"
+	runner.responses[create] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{"worktree":{"id":"wt-191","instanceId":"inst-191","repoId":"repo-1","path":"/repo.worktrees/191-spike","head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"refs/heads/alice/191-spike","comment":"marker","linkedIssue":191}},"_meta":{"runtimeId":"runtime-1"}}`)}
+	runner.responses["git branch -m 191-spike"] = CommandOutput{Invoked: true}
+
+	got, err := NewClient(runner).CreateWorktree(context.Background(), port.OrcaCreateWorktreeRequest{
+		Repo: "/repo", Name: "191-spike", BaseBranch: baseSHA,
+		Provider: "github", Issue: 191, Comment: "marker",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantCalls := [][]string{
+		{"orca", "worktree", "create", "--repo", "path:/repo", "--name", "191-spike", "--base-branch", baseSHA, "--no-parent", "--setup", "skip", "--comment", "marker", "--issue", "191", "--json"},
+		{"git", "branch", "-m", "191-spike"},
+	}
+	if got.Branch != "191-spike" || !reflect.DeepEqual(runner.calls, wantCalls) {
+		t.Fatalf("부재한 upstream을 설정했다: worktree=%#v calls=%#v", got, runner.calls)
+	}
+}
+
 func TestClientAdoptsExistingGitHubWorktreeWithIssueAndMarker(t *testing.T) {
 	runner := newFakeRunner(t)
 	command := "orca worktree set --worktree id:worktree-1 --comment agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1 --issue 16 --json"
