@@ -145,6 +145,7 @@ type gitlabMergeRequestProjection struct {
 	SourceBranch    string           `json:"source_branch"`
 	TargetBranch    string           `json:"target_branch"`
 	Draft           bool             `json:"draft"`
+	State           string           `json:"state"`
 	SHA             string           `json:"sha"`
 	Labels          []string         `json:"labels"`
 	Assignees       []gitlabAssignee `json:"assignees"`
@@ -237,7 +238,7 @@ func (Provider) ReconcilePullRequest(req port.IssueProviderReconcilePullRequestR
 		}
 		result.Candidates = append(result.Candidates, port.IssueProviderReconcilePullRequestCandidate{
 			URL: row.WebURL, ProjectKey: projectKey, SourceProjectKey: gitLabSourceProjectKey(projectKey, row), HeadBranch: row.SourceBranch, BaseBranch: row.TargetBranch,
-			HeadSHA: row.SHA, Title: strings.TrimSpace(row.Title), BodySHA256: gitLabBodySHA256(row.Description), Labels: append([]string(nil), row.Labels...), Assignees: gitlabAssigneeUsernames(row.Assignees), Draft: row.Draft,
+			HeadSHA: row.SHA, Title: strings.TrimSpace(row.Title), BodySHA256: gitLabBodySHA256(row.Description), Labels: append([]string(nil), row.Labels...), Assignees: gitlabAssigneeUsernames(row.Assignees), Draft: row.Draft, State: strings.TrimSpace(row.State),
 		})
 	}
 	return result, nil

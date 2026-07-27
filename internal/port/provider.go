@@ -82,6 +82,10 @@ type IssueProviderReconcilePullRequestCandidate struct {
 	Labels           []string
 	Assignees        []string
 	Draft            bool
+	// State는 provider가 보고한 아티팩트 수명 상태다(gitlab: opened/merged/closed,
+	// github: open/merged/closed). draft 판정은 수명 상태에 종속되므로 후보 검증이
+	// 이 값을 함께 본다.
+	State string
 }
 
 type IssueProviderReconcilePullRequestResult struct {

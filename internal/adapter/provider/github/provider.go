@@ -176,6 +176,7 @@ type githubPullRequestProjection struct {
 	HeadRefName    string           `json:"headRefName"`
 	BaseRefName    string           `json:"baseRefName"`
 	IsDraft        bool             `json:"isDraft"`
+	State          string           `json:"state"`
 	HeadRefOID     string           `json:"headRefOid"`
 	Labels         []githubLabel    `json:"labels"`
 	Assignees      []githubAssignee `json:"assignees"`
@@ -259,7 +260,7 @@ func (Provider) ReconcilePullRequest(req port.IssueProviderReconcilePullRequestR
 	if err != nil || selector == "" {
 		return port.IssueProviderReconcilePullRequestResult{}, fmt.Errorf("GitHub reconcile requires exact project authority")
 	}
-	args := []string{"pr", "list", "--repo", selector, "--head", strings.TrimSpace(req.HeadBranch), "--state", "all", "--limit", "2", "--json", "url,title,body,headRefName,baseRefName,isDraft,headRefOid,labels,assignees,headRepository"}
+	args := []string{"pr", "list", "--repo", selector, "--head", strings.TrimSpace(req.HeadBranch), "--state", "all", "--limit", "2", "--json", "url,title,body,headRefName,baseRefName,isDraft,headRefOid,labels,assignees,headRepository,state"}
 	out, err := providerutil.RunBoundedReadback(req.Repo, "gh", args...)
 	if err != nil {
 		return port.IssueProviderReconcilePullRequestResult{}, fmt.Errorf("list GitHub reconcile candidates: %w", err)
@@ -282,7 +283,7 @@ func (Provider) ReconcilePullRequest(req port.IssueProviderReconcilePullRequestR
 		}
 		result.Candidates = append(result.Candidates, port.IssueProviderReconcilePullRequestCandidate{
 			URL: row.URL, ProjectKey: githubPullRequestProjectKey(row.URL), SourceProjectKey: githubSourceProjectKey(selector, row), HeadBranch: row.HeadRefName, BaseBranch: row.BaseRefName,
-			HeadSHA: row.HeadRefOID, Title: strings.TrimSpace(row.Title), BodySHA256: providerBodySHA256(row.Body), Labels: labels, Assignees: githubAssigneeLogins(row.Assignees), Draft: row.IsDraft,
+			HeadSHA: row.HeadRefOID, Title: strings.TrimSpace(row.Title), BodySHA256: providerBodySHA256(row.Body), Labels: labels, Assignees: githubAssigneeLogins(row.Assignees), Draft: row.IsDraft, State: strings.TrimSpace(row.State),
 		})
 	}
 	return result, nil
