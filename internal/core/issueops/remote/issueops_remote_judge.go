@@ -21,6 +21,20 @@ func RenderIssueOpsRemoteLLMJudgePrompt(req IssueOpsRemoteLLMJudgeRequest) (stri
 	return prompt, nil
 }
 
+func RenderIssueOpsRemoteJudgePrompt(req IssueOpsRemoteLLMJudgeRequest) (IssueOpsRemoteJudgePromptResult, error) {
+	prompt, err := RenderIssueOpsRemoteLLMJudgePrompt(req)
+	if err != nil {
+		return IssueOpsRemoteJudgePromptResult{}, err
+	}
+	return IssueOpsRemoteJudgePromptResult{
+		OK:             true,
+		ExecutionClass: "background_join",
+		ReadOnly:       true,
+		JoinBefore:     "remote_artifact_write",
+		Prompt:         prompt,
+	}, nil
+}
+
 func DecodeIssueOpsRemoteJudgeJSON(out []byte) (IssueOpsRemoteScoringResult, error) {
 	result, err := decodeStrictIssueOpsRemoteScoringResult(out)
 	if err != nil {

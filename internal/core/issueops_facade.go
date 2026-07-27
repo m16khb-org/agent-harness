@@ -113,6 +113,7 @@ type IssueOpsRemoteScoringRequest = issueops.IssueOpsRemoteScoringRequest
 type IssueOpsRemoteScoredItem = issueops.IssueOpsRemoteScoredItem
 type IssueOpsRemoteScoringResult = issueops.IssueOpsRemoteScoringResult
 type IssueOpsRemoteLLMJudgeRequest = issueops.IssueOpsRemoteLLMJudgeRequest
+type IssueOpsRemoteJudgePromptResult = issueops.IssueOpsRemoteJudgePromptResult
 type IssueOpsArtifactKind = artifacttemplate.IssueOpsArtifactKind
 type IssueOpsTemplateKind = artifacttemplate.IssueOpsTemplateKind
 type IssueOpsTemplateInput = artifacttemplate.IssueOpsTemplateInput
@@ -705,6 +706,10 @@ func RunIssueOpsRemoteLLMJudge(req IssueOpsRemoteLLMJudgeRequest) (IssueOpsRemot
 
 func RenderIssueOpsRemoteLLMJudgePrompt(req IssueOpsRemoteLLMJudgeRequest) (string, error) {
 	return issueops.RenderIssueOpsRemoteLLMJudgePrompt(req)
+}
+
+func RenderIssueOpsRemoteJudgePrompt(req IssueOpsRemoteLLMJudgeRequest) (IssueOpsRemoteJudgePromptResult, error) {
+	return issueops.RenderIssueOpsRemoteJudgePrompt(req)
 }
 
 func DecodeIssueOpsRemoteJudgeJSON(out []byte) (IssueOpsRemoteScoringResult, error) {

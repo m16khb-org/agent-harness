@@ -99,3 +99,11 @@ type IssueOpsRemoteScoringResult struct {
 type IssueOpsRemoteLLMJudgeRequest struct {
 	Request IssueOpsRemoteScoringRequest
 }
+
+type IssueOpsRemoteJudgePromptResult struct {
+	OK             bool   `json:"ok"`
+	ExecutionClass string `json:"execution_class"`
+	ReadOnly       bool   `json:"read_only"`
+	JoinBefore     string `json:"join_before"`
+	Prompt         string `json:"prompt"`
+}

@@ -29,7 +29,7 @@ type Deps struct {
 func Run(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
 		fmt.Println("Usage:")
-		fmt.Println("  agent-harness issueops remote score --input PATH [--judge none|file] [--judge-file PATH] [--json]")
+		fmt.Println("  agent-harness issueops remote score --input PATH [--judge none|prompt|file] [--judge-file PATH] [--json]")
 		fmt.Println("  agent-harness issueops remote render-template --kind issue|child|pr --template KIND --title TEXT --provider github|gitlab --field key=value... [--score-file PATH] [--json]")
 		fmt.Println("  agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --target-branch BRANCH --label LABEL --assignee USER [--json]")
 		fmt.Println("  agent-harness issueops remote create-issue --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
@@ -50,7 +50,7 @@ func Run(args []string, deps Deps) error {
 	case "score":
 		fs := flag.NewFlagSet("issueops remote score", flag.ContinueOnError)
 		input := fs.String("input", "", "IssueOps remote scoring request JSON file")
-		judge := fs.String("judge", "none", "judge backend: none or file")
+		judge := fs.String("judge", "none", "judge backend: none, prompt, or file")
 		judgeFile := fs.String("judge-file", "", "host-agent remote score result JSON path for --judge file")
 		jsonOut := fs.Bool("json", false, "print JSON")
 		if help, err := parseFlags(fs, args[1:]); help || err != nil {
@@ -64,6 +64,22 @@ func Run(args []string, deps Deps) error {
 				}
 			}
 			return err
+		}
+		if *judge == "prompt" {
+			result, promptErr := core.RenderIssueOpsRemoteJudgePrompt(core.IssueOpsRemoteLLMJudgeRequest{Request: req})
+			if promptErr != nil {
+				if *jsonOut {
+					if printErr := deps.printError(promptErr); printErr != nil {
+						return printErr
+					}
+				}
+				return promptErr
+			}
+			if *jsonOut {
+				return deps.printJSON(result)
+			}
+			fmt.Println(result.Prompt)
+			return nil
 		}
 		var result core.IssueOpsRemoteScoringResult
 		switch *judge {
