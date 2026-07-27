@@ -495,7 +495,7 @@ func (p *ExecutionProvisioner) reconcileCreatedTerminal(ctx context.Context, cre
 		return created, nil
 	}
 	client, ok := p.client.(executionInventoryClient)
-	if !ok || strings.TrimSpace(created.PTYID) == "" {
+	if !ok || strings.TrimSpace(created.Handle) == "" {
 		return port.OrcaTerminal{}, fmt.Errorf("Orca owner terminal does not match the sealed intent")
 	}
 	// 반복하는 것은 조회다. CreateTerminal은 이미 한 번 실행됐고 다시 부르지
@@ -509,7 +509,7 @@ func (p *ExecutionProvisioner) reconcileCreatedTerminal(ctx context.Context, cre
 		if err != nil {
 			return port.OrcaTerminal{}, err
 		}
-		candidate, err := executionSoleTerminalByPTY(inventory.Rows, created.PTYID)
+		candidate, err := executionSoleCreatedTerminal(inventory.Rows, created)
 		if err != nil {
 			// 모호함과 부재는 대기로 해소되지 않는다 — 그대로 알린다.
 			return port.OrcaTerminal{}, err
@@ -547,13 +547,18 @@ func (p *ExecutionProvisioner) terminalSettleWindow() (time.Duration, time.Durat
 	return budget, interval
 }
 
-// executionSoleTerminalByPTY는 PTY로 정확히 하나를 고른다. 대기 루프가 매번
-// 같은 판정을 하도록 분리했다 — 두 곳에 쓰면 한쪽만 고쳐질 수 있다.
-func executionSoleTerminalByPTY(rows []port.OrcaTerminal, ptyID string) (*port.OrcaTerminal, error) {
+// executionSoleCreatedTerminal은 생성 응답의 PTY가 있으면 PTY를, 없으면 handle을
+// 사용해 정확히 하나를 고른다. Orca는 정상 생성 응답에서도 PTY를 생략할 수
+// 있으므로 authoritative inventory에서 완전한 identity를 복구한다.
+func executionSoleCreatedTerminal(rows []port.OrcaTerminal, created port.OrcaTerminal) (*port.OrcaTerminal, error) {
 	var candidate *port.OrcaTerminal
 	for index := range rows {
 		row := rows[index]
-		if row.PTYID != ptyID {
+		matches := strings.TrimSpace(created.PTYID) != "" && row.PTYID == created.PTYID
+		if strings.TrimSpace(created.PTYID) == "" {
+			matches = strings.TrimSpace(created.Handle) != "" && row.Handle == created.Handle
+		}
+		if !matches {
 			continue
 		}
 		if candidate != nil {

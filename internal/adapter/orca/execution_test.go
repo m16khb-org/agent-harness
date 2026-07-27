@@ -152,6 +152,39 @@ func TestExecutionIntentRefreshesTruncatedTerminalCreateReceipt(t *testing.T) {
 	}
 }
 
+func TestExecutionIntentRefreshesTerminalCreateReceiptWithoutPTY(t *testing.T) {
+	workspace, probe := executionFixture(t)
+	prepared := port.ExecutionOrcaWorkspaceReceipt{
+		Workspace: port.ExecutionWorkspaceReceipt{
+			SourceRoot: workspace.SourceRoot, Root: workspace.Root, Branch: workspace.Branch,
+			BaseHead: workspace.BaseHead, Driver: "orca", Exists: true,
+		},
+		RuntimeID: "runtime-69", RepoID: "repo-69", WorktreeID: "wt-69",
+	}
+	client := &executionFake{
+		workspace: workspace, probeRequest: probe,
+		createdTerminal: &port.OrcaTerminal{
+			RuntimeID: "runtime-69", Handle: "term-69",
+			WorktreeID: "wt-69", Title: probe.Marker, Connected: true, Writable: true,
+		},
+		terminals: []port.OrcaTerminal{{
+			RuntimeID: "runtime-69", Handle: "term-69", PTYID: "pty-69",
+			WorktreeID: "wt-69", Title: probe.Marker, Connected: true, Writable: true,
+		}},
+	}
+	launch := executionLaunchFixture(t, workspace.Root)
+	got, err := NewExecutionClient(client).InvokeIntent(context.Background(), port.ExecutionOrcaIntentRequest{
+		Stage: port.ExecutionOrcaIntentTerminal, Marker: probe.Marker, Workspace: workspace,
+		Probe: probe, Prepared: &prepared, Launch: &launch,
+	})
+	if err != nil || got.TerminalPTYID != "pty-69" {
+		t.Fatalf("PTY 없는 생성 응답을 authoritative inventory로 복구하지 못했다: receipt=%#v err=%v", got, err)
+	}
+	if !reflect.DeepEqual(client.calls, []string{"create-terminal", "list-terminals-inventory"}) {
+		t.Fatalf("unexpected terminal refresh sequence: %v", client.calls)
+	}
+}
+
 func TestExecutionIntentInventoryPreservesZeroOneManyAndRejectsMismatches(t *testing.T) {
 	workspace, probe := executionFixture(t)
 	prepared := port.ExecutionOrcaWorkspaceReceipt{Workspace: port.ExecutionWorkspaceReceipt{
