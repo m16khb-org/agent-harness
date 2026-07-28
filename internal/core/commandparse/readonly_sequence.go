@@ -2,8 +2,8 @@ package commandparse
 
 import "strings"
 
-// exactReadOnlyShellSequence는 read-only Git 조각과 선택적인 CodeGraph 존재
-// probe 하나로만 구성된 세미콜론·개행 시퀀스를 허용한다. 파이프·백그라운드·
+// exactReadOnlyShellSequence는 exact read-only 조각과 선택적인 CodeGraph
+// 존재 probe 하나로만 구성된 세미콜론·개행 시퀀스를 허용한다. 파이프·백그라운드·
 // 논리 연산자는 이 경로에 들어오지 못한다.
 func exactReadOnlyShellSequence(command string) bool {
 	parts, ok := splitReadOnlyShellSequence(command)
@@ -14,23 +14,17 @@ func exactReadOnlyShellSequence(command string) bool {
 	if consumed, matched := exactReadOnlyDirectoryProbe(parts); matched {
 		index = consumed
 	}
-	// probe만 실행하는 별도 shell 문법까지 넓히지 않는다. 이 경로는 여러 Git
+	// probe만 실행하는 별도 shell 문법까지 넓히지 않는다. 이 경로는 여러
 	// 관찰을 한 payload로 묶어 보내는 경우에만 필요하다.
 	if index >= len(parts) {
 		return false
 	}
 	for ; index < len(parts); index++ {
-		if !exactReadOnlyGitShellCommand(parts[index]) {
+		if !exactReadOnlySimpleShellCommand(parts[index]) {
 			return false
 		}
 	}
 	return true
-}
-
-func exactReadOnlyGitShellCommand(command string) bool {
-	tokens := SplitCommandTokens(strings.TrimSpace(command))
-	return len(tokens) > 0 && tokens[0] == "git" &&
-		exactReadOnlySimpleShellCommand(command)
 }
 
 // splitReadOnlyShellSequence는 quote 밖의 세미콜론과 LF만 분리하고 그 밖의

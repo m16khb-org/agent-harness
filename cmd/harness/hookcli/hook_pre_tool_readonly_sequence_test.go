@@ -18,24 +18,42 @@ func TestRunHookPreToolUseAllowsBoundedReadOnlySequence(t *testing.T) {
 	}
 	cycle := createLinkedIssueOpsWorktree(t, source, "75-readonly-sequence-hook")
 	_ = activateIssueOpsHookExecution(t, cycle.id)
-	command := `if [ -d .codegraph ]; then printf 'codegraph-present\n'; else printf 'codegraph-absent\n'; fi
+	commands := []struct {
+		name    string
+		command string
+	}{
+		{
+			name: "CodeGraph와 Git 관찰",
+			command: `if [ -d .codegraph ]; then printf 'codegraph-present\n'; else printf 'codegraph-absent\n'; fi
 git status --short
 git branch --show-current
 git rev-parse HEAD
 git diff --stat
-git diff --cached --stat`
-	raw, err := json.Marshal(map[string]any{
-		"cwd": cycle.path, "host": "codex", "session_id": "observer-session",
-		"tool_name": "Bash", "tool_input": map[string]any{"command": command},
-	})
-	if err != nil {
-		t.Fatal(err)
+git diff --cached --stat`,
+		},
+		{
+			name: "여러 파일 관찰",
+			command: `sed -n '1,126p' internal/core/issueops/testdata/leasevertical/application/release.go
+sed -n '1,130p' internal/core/issueops/testdata/leasevertical/domain/release.go
+sed -n '1,383p' internal/core/issueops/testdata/leasevertical/contract/record.go`,
+		},
 	}
 
-	got := runHookCapture(t, string(raw), func() error {
-		return runHookPreToolUse([]string{"--host", "codex", "--enforce-worktree", "--json"})
-	})
-	if got["decision"] != "allow" {
-		t.Fatalf("hook은 정적으로 판정 가능한 읽기 전용 시퀀스를 허용해야 한다: %+v", got)
+	for _, testCase := range commands {
+		t.Run(testCase.name, func(t *testing.T) {
+			raw, err := json.Marshal(map[string]any{
+				"cwd": cycle.path, "host": "codex", "session_id": "observer-session",
+				"tool_name": "Bash", "tool_input": map[string]any{"command": testCase.command},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := runHookCapture(t, string(raw), func() error {
+				return runHookPreToolUse([]string{"--host", "codex", "--enforce-worktree", "--json"})
+			})
+			if got["decision"] != "allow" {
+				t.Fatalf("hook은 정적으로 판정 가능한 읽기 전용 시퀀스를 허용해야 한다: %+v", got)
+			}
+		})
 	}
 }

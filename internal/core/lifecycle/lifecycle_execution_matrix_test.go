@@ -122,7 +122,7 @@ func TestExecutionShellReadersAreObservationFirst(t *testing.T) {
 	}
 }
 
-func TestExecutionBoundedCodeGraphProbeSequenceIsObservationFirst(t *testing.T) {
+func TestExecutionBoundedReadOnlySequenceIsObservationFirst(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	_, active, worker := executionActiveLifecycleRecord(t)
 	command := `if [ -d .codegraph ]; then printf 'codegraph-present\n'; else printf 'codegraph-absent\n'; fi
@@ -137,6 +137,13 @@ git diff --cached --stat`
 	got := BuildLifecyclePreToolUseDecision(req)
 	if got.Decision != "allow" {
 		t.Fatalf("정적으로 판정 가능한 읽기 전용 탐색 시퀀스는 활성 lease 중에도 허용해야 한다: %+v", got)
+	}
+
+	req.Command = `sed -n '1,126p' internal/core/issueops/testdata/leasevertical/application/release.go
+sed -n '1,130p' internal/core/issueops/testdata/leasevertical/domain/release.go`
+	got = BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "allow" {
+		t.Fatalf("각 조각이 exact reader인 multiline 시퀀스는 lifecycle에서도 관찰이어야 한다: %+v", got)
 	}
 
 	req.Command = strings.Replace(command, "printf 'codegraph-present\\n'", "printf '%n' PATH", 1)
