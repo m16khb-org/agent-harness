@@ -155,6 +155,54 @@ func TestExecutionIssueSnapshotEvidenceRejectsDriftBeforeFallback(t *testing.T) 
 	}
 }
 
+func TestExecutionIssueSnapshotEvidenceSealsFinalizeAndReplacementClaimWithoutFallback(t *testing.T) {
+	issueBody := "## acceptance criteria\n\n- [ ] AC-01: first\n\n## 검증 명령\n\n```bash\ngo test ./internal/core/issueops -count=1\n```\n"
+	fixture := newRevokingSealedOrcaCycle(t, issueBody)
+	current, err := ReadIssueOps(fixture.stateRoot, fixture.record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	current.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/16"
+	current.BranchPrepare.Provider = "gitlab"
+	current.BranchPrepare.IssueURL = current.IssueURL
+	if _, err := writeIssueOps(fixture.stateRoot, current); err != nil {
+		t.Fatal(err)
+	}
+	evidence := validGitLabExecutionSnapshotEvidence()
+
+	raw, err := ExecuteExecution(context.Background(), fixture.stateRoot, ExecutionActionRequest{
+		Action: ExecutionActionReplace, ID: fixture.record.ID,
+		ReplaceAction: ExecutionReplaceFinalize, ExpectedGeneration: 2,
+		QuiescenceFingerprint: fixture.preview.QuiescenceFingerprint,
+		Actor:                 fixture.requester, CWD: fixture.prepared.Workspace.Root, Confirm: true,
+		IssueSnapshot: evidence,
+	}, ExecutionActionDependencies{OrcaOwner: fixture.deps.OrcaOwner})
+	if err != nil {
+		t.Fatalf("주입된 GitLab snapshot으로 finalize하지 못했다: %v", err)
+	}
+	finalized, ok := raw.(ExecutionReplaceResult)
+	if !ok || finalized.IssueSnapshotSource != "glab_mcp" ||
+		strings.TrimSpace(finalized.ContextPacketSHA256) == "" ||
+		finalized.IssueBodySHA256 != digestOwnerFixture([]byte(evidence.Body)) {
+		t.Fatalf("finalize가 검증된 snapshot 봉인 증거를 반환하지 않았다: %#v", raw)
+	}
+
+	raw, err = ExecuteExecution(context.Background(), fixture.stateRoot, ExecutionActionRequest{
+		Action: ExecutionActionClaim, ID: fixture.record.ID, Generation: 2,
+		Actor: executionActor("claude", "gitlab-replacement-owner"),
+		CWD:   fixture.prepared.Workspace.Root, TokenFile: finalized.ClaimTokenPath,
+		IssueBodySHA256: finalized.IssueBodySHA256, ContextPacketSHA256: finalized.ContextPacketSHA256,
+		IssueSnapshot: evidence,
+	}, ExecutionActionDependencies{})
+	if err != nil {
+		t.Fatalf("finalize가 봉인한 GitLab snapshot으로 claim하지 못했다: %v", err)
+	}
+	claimed, ok := raw.(ExecutionResult)
+	if !ok || claimed.Execution.Lease.Status != model.LeaseStatusActive || claimed.IssueSnapshotSource != "glab_mcp" {
+		t.Fatalf("주입 snapshot claim 결과가 불완전하다: %#v", raw)
+	}
+}
+
 func TestExecutionIssueSnapshotEvidenceRejectsUnsupportedActions(t *testing.T) {
 	stateRoot, record := gitLabExecutionSnapshotRecord(t)
 	evidence := validGitLabExecutionSnapshotEvidence()

@@ -91,8 +91,8 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 			ID: req.ID, Action: req.ReplaceAction, ExpectedGeneration: req.ExpectedGeneration,
 			InventoryFingerprint: req.InventoryFingerprint, QuiescenceFingerprint: req.QuiescenceFingerprint,
 			Reason: req.Reason, Actor: req.Actor, CWD: req.CWD, Confirm: req.Confirm,
-			// reseed의 재봉인이 현재 이슈 본문을 다시 읽어야 하므로 prepare/claim과
-			// 같은 리더를 함께 넘긴다.
+			// finalize/reseed 재봉인이 현재 이슈 본문을 다시 읽어야 하므로
+			// prepare/claim과 같은 리더를 함께 넘긴다.
 		}, ExecutionReplaceDependencies{OrcaOwner: deps.OrcaOwner, ReadIssue: deps.ReadIssue})
 	case ExecutionActionReconcile:
 		return ReconcileExecutionWithDependencies(ctx, stateRoot, ExecutionReconcileRequest{

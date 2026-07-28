@@ -45,9 +45,10 @@ wrapper 이름은 capability identity가 아니며 packet이나 record에 저장
 MCP `issueops_execution`을 호출하면 이 객체를 `issue_snapshot`에 넣는다. host가
 GitLab MCP를 읽었지만 IssueOps는 CLI로 호출한다면 같은 JSON을 exact mode `0600`,
 non-symlink regular file에 쓰고 `--issue-snapshot-file PATH`를 prepare, claim,
-`replace --reseed`, pending `worktree_create`의 `reconcile --confirm`에 전달한다.
-Reconcile preview와 다른 pending stage에는 snapshot을 전달하지 않는다. file은
-1 MiB 이하이고 unknown field나 trailing JSON이 없어야 한다. core가
+`replace --finalize|--reseed`, pending `worktree_create`의
+`reconcile --confirm`에 전달한다. Reconcile preview와 다른 pending stage에는
+snapshot을 전달하지 않는다. file은 1 MiB 이하이고 unknown field나 trailing
+JSON이 없어야 한다. core가
 authority(명시 port 포함), project path, IID, non-empty body(512 KiB 이하),
 `opened|closed` state를 다시 검증한다.
 
@@ -156,8 +157,12 @@ Replacement is a fail-closed sequence. There is no unsafe override:
    proves the old process and Orca resource are quiescent and returns a
    quiescence fingerprint.
 4. `issueops execution replace --finalize --expected-generation N
-   --quiescence-fingerprint HEX --confirm` creates the next claimable
-   generation.
+   --quiescence-fingerprint HEX --confirm` reseals the generation-specific
+   owner packet/prompt and only then makes that generation claimable.
+5. Claim with the returned token path plus issue/packet digests. A reseal
+   failure preserves the previous durable lease and removes uncommitted
+   generation token/packet/prompt files. A retry first recovers exact
+   harness-owned residue for that still-uncommitted generation.
 
 Every mutating step also requires `ACTOR_FLAGS`. `--reseed` is limited to the
 documented holderless recovery case and still uses generation CAS and confirm.
@@ -241,7 +246,9 @@ agent-harness issueops artifact stage --id "$ISSUEOPS_ID" --name turing-loop --f
   owner claim 시 manifest가 검증되며 불일치는 drift로 read-only 잔류한다.
 - prepare 이후 stage/unstage는 명시적으로 거부된다(조용한 no-op 없음). 잘못
   스테이징했으면 prepare 전에 `issueops artifact unstage --id ID --name NAME`.
-- `execution replace --reseed`는 artifact를 재-materialize하지 않는다(digest 재검증만).
+- `execution replace --finalize|--reseed` 재봉인은 staged 원본을 다시 읽어
+  manifest를 만들지만, 기존 artifact 파일은 immutable writer로 동일 바이트만
+  허용한다. 내용이 달라진 재-materialize는 거부된다.
 - 이 디렉토리는 gitignore 대상이다 — 보존은 completion 섹션이 담당한다.
 
 ## Implementation Review Gate (orca mode)

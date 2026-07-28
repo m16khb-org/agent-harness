@@ -113,7 +113,7 @@ func validateExecutionIssueSnapshotAction(req ExecutionActionRequest) error {
 			return nil
 		}
 	case ExecutionActionReplace:
-		if req.ReplaceAction == ExecutionReplaceReseed {
+		if req.ReplaceAction == ExecutionReplaceFinalize || req.ReplaceAction == ExecutionReplaceReseed {
 			return nil
 		}
 	}

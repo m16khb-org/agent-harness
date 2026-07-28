@@ -212,6 +212,273 @@ func TestExecutionReseedResealsOwnerPacketForTheNewGeneration(t *testing.T) {
 	}
 }
 
+type revokingSealedOrcaCycle struct {
+	stateRoot string
+	record    IssueOpsRecord
+	prepared  ExecutionPrepareResult
+	reader    ExecutionIssueSnapshotReadFunc
+	requester model.NativeActor
+	deps      ExecutionReplaceDependencies
+	preview   ExecutionReplaceResult
+}
+
+func newRevokingSealedOrcaCycle(t *testing.T, issueBody string) revokingSealedOrcaCycle {
+	t.Helper()
+	stateRoot, record, prepared, reader := sealedOrcaCycle(t, issueBody)
+	current, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(prepared.ClaimTokenPath); err != nil {
+		t.Fatal(err)
+	}
+	// 중단된 이전 owner는 실제 프로세스가 사라졌지만 durable holder 기록은
+	// 남아 있는 상태다. replacement가 검증해야 하는 운영 상황을 그대로 만든다.
+	current.Execution.Lease = model.WriteLease{
+		Generation: 1, Status: model.LeaseStatusActive, ClaimedAt: "2026-07-28T00:00:00Z",
+		Holder: &model.NativeActor{
+			Host: "claude", SessionID: "dead-owner",
+			SessionProcess: &model.NativeProcessReceipt{
+				PID: 999999, StartedAt: "2026-07-28T00:00:00Z", Executable: "claude",
+			},
+		},
+	}
+	if _, err := writeIssueOps(stateRoot, current); err != nil {
+		t.Fatal(err)
+	}
+
+	requester := executionActor("codex", "replacement-requester")
+	deps := quiescentOrcaReplaceDeps(reader)
+	inventory, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplacePreview, ExpectedGeneration: 1,
+		Actor: requester, CWD: record.Repo,
+	}, deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplaceRevoke, ExpectedGeneration: 1,
+		InventoryFingerprint: inventory.InventoryFingerprint, Reason: "interrupted owner session",
+		Actor: requester, CWD: record.Repo, Confirm: true,
+	}, deps); err != nil {
+		t.Fatal(err)
+	}
+	preview, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplaceFinalizePreview, ExpectedGeneration: 2,
+		Actor: requester, CWD: prepared.Workspace.Root,
+	}, deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return revokingSealedOrcaCycle{
+		stateRoot: stateRoot, record: record, prepared: prepared, reader: reader,
+		requester: requester, deps: deps, preview: preview,
+	}
+}
+
+func TestExecutionFinalizeResealsOwnerPacketBeforeReplacementClaim(t *testing.T) {
+	issueBody := "## acceptance criteria\n\n- [ ] AC-01: first\n\n## 검증 명령\n\n```bash\ngo test ./internal/core/issueops -count=1\n```\n"
+	fixture := newRevokingSealedOrcaCycle(t, issueBody)
+
+	finalized, err := ReplaceExecutionWithDependencies(context.Background(), fixture.stateRoot, ExecutionReplaceRequest{
+		ID: fixture.record.ID, Action: ExecutionReplaceFinalize, ExpectedGeneration: 2,
+		QuiescenceFingerprint: fixture.preview.QuiescenceFingerprint,
+		Actor:                 fixture.requester, CWD: fixture.prepared.Workspace.Root, Confirm: true,
+	}, fixture.deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if finalized.Execution.Lease.Status != model.LeaseStatusClaimable ||
+		finalized.Execution.Lease.Generation != 2 ||
+		strings.TrimSpace(finalized.IssueBodySHA256) == "" ||
+		strings.TrimSpace(finalized.ContextPacketSHA256) == "" ||
+		strings.TrimSpace(finalized.OwnerPromptSHA256) == "" {
+		t.Fatalf("finalize가 claim 가능한 재봉인 증거를 반환하지 않았다: %#v", finalized)
+	}
+	if finalized.ContextPacketPath == fixture.prepared.ContextPacketPath {
+		t.Fatalf("finalize packet이 이전 세대 경로를 재사용했다: %q", finalized.ContextPacketPath)
+	}
+	packet := decodeOwnerPacketFile(t, finalized.ContextPacketPath)
+	if generation, _ := packet["lease_generation"].(float64); uint64(generation) != 2 {
+		t.Fatalf("finalize packet 세대가 교체 세대와 다르다: %#v", packet["lease_generation"])
+	}
+	if tokenFile, _ := packet["claim_token_file"].(string); tokenFile != finalized.ClaimTokenPath {
+		t.Fatalf("finalize packet의 token 경로가 새 token과 다르다: %q want %q", tokenFile, finalized.ClaimTokenPath)
+	}
+
+	claimed, err := ClaimExecutionWithDependencies(context.Background(), fixture.stateRoot, ExecutionClaimRequest{
+		ID: fixture.record.ID, Generation: 2, Actor: executionActor("claude", "replacement-owner"),
+		CWD: fixture.prepared.Workspace.Root, TokenFile: finalized.ClaimTokenPath,
+		IssueBodySHA256: finalized.IssueBodySHA256, ContextPacketSHA256: finalized.ContextPacketSHA256,
+	}, ExecutionClaimDependencies{ReadIssue: fixture.reader})
+	if err != nil || claimed.Execution.Lease.Status != model.LeaseStatusActive {
+		t.Fatalf("finalize가 만든 세대별 봉인으로 claim하지 못했다: result=%#v err=%v", claimed, err)
+	}
+}
+
+func TestExecutionFinalizeResealFailureKeepsRevokingStateAtomic(t *testing.T) {
+	issueBody := "## acceptance criteria\n\n- [ ] AC-01: first\n\n## 검증 명령\n\n```bash\ngo test ./internal/core/issueops -count=1\n```\n"
+	fixture := newRevokingSealedOrcaCycle(t, issueBody)
+	revoking, err := ReadIssueOps(fixture.stateRoot, fixture.record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tokenPath := claimTokenPath(revoking)
+
+	_, err = ReplaceExecutionWithDependencies(context.Background(), fixture.stateRoot, ExecutionReplaceRequest{
+		ID: fixture.record.ID, Action: ExecutionReplaceFinalize, ExpectedGeneration: 2,
+		QuiescenceFingerprint: fixture.preview.QuiescenceFingerprint,
+		Actor:                 fixture.requester, CWD: fixture.prepared.Workspace.Root, Confirm: true,
+	}, ExecutionReplaceDependencies{OrcaOwner: fixture.deps.OrcaOwner})
+	if err == nil || !strings.Contains(err.Error(), "remote issue reader") {
+		t.Fatalf("재봉인 의존성 없는 finalize가 claimable로 진행됐다: %v", err)
+	}
+	persisted, readErr := ReadIssueOps(fixture.stateRoot, fixture.record.ID)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if persisted.Execution.Lease.Status != model.LeaseStatusRevoking ||
+		persisted.Execution.Lease.Generation != 2 ||
+		persisted.Execution.Lease.Holder == nil {
+		t.Fatalf("재봉인 실패가 durable revoking 상태를 바꿨다: %#v", persisted.Execution.Lease)
+	}
+	if _, statErr := os.Lstat(tokenPath); !os.IsNotExist(statErr) {
+		t.Fatalf("재봉인 실패 후 새 claim token이 남았다: %v", statErr)
+	}
+}
+
+func TestExecutionReseedFailurePreservesCurrentClaimToken(t *testing.T) {
+	issueBody := "## acceptance criteria\n\n- [ ] AC-01: first\n\n## 검증 명령\n\n```bash\ngo test ./internal/core/issueops -count=1\n```\n"
+	stateRoot, record, prepared, reader := sealedOrcaCycle(t, issueBody)
+	requester := executionActor("codex", "failed-reseed-requester")
+	deps := quiescentOrcaReplaceDeps(reader)
+	preview, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplacePreview, ExpectedGeneration: 1,
+		Actor: requester, CWD: record.Repo,
+	}, deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
+		InventoryFingerprint: preview.InventoryFingerprint, Reason: "test reseal failure",
+		Actor: requester, CWD: record.Repo, Confirm: true,
+	}, ExecutionReplaceDependencies{OrcaOwner: deps.OrcaOwner})
+	if err == nil || !strings.Contains(err.Error(), "remote issue reader") {
+		t.Fatalf("reader 없는 reseed가 실패하지 않았다: %v", err)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.Execution.Lease.Status != model.LeaseStatusClaimable || persisted.Execution.Lease.Generation != 1 {
+		t.Fatalf("실패한 reseed가 durable 현재 세대를 바꿨다: %#v", persisted.Execution.Lease)
+	}
+	if _, err := os.Lstat(prepared.ClaimTokenPath); err != nil {
+		t.Fatalf("실패한 reseed가 현재 세대 token을 잃었다: %v", err)
+	}
+	if _, err := ClaimExecutionWithDependencies(context.Background(), stateRoot, ExecutionClaimRequest{
+		ID: record.ID, Generation: 1, Actor: executionActor("claude", "original-owner"),
+		CWD: prepared.Workspace.Root, TokenFile: prepared.ClaimTokenPath,
+		IssueBodySHA256: prepared.IssueBodySHA256, ContextPacketSHA256: prepared.ContextPacketSHA256,
+	}, ExecutionClaimDependencies{ReadIssue: reader}); err != nil {
+		t.Fatalf("실패한 reseed 뒤 원래 claim 경로가 복구되지 않았다: %v", err)
+	}
+}
+
+func TestExecutionFinalizeCleansPartialOwnerArtifactsBeforeRetry(t *testing.T) {
+	issueBody := "## acceptance criteria\n\n- [ ] AC-01: first\n\n## 검증 명령\n\n```bash\ngo test ./internal/core/issueops -count=1\n```\n"
+	fixture := newRevokingSealedOrcaCycle(t, issueBody)
+	revoking, err := ReadIssueOps(fixture.stateRoot, fixture.record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tokenPath := claimTokenPath(revoking)
+	packetPath, promptPath := executionOwnerArtifactPaths(revoking)
+	reader := func(ctx context.Context, provider string, req port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
+		if err := os.MkdirAll(filepath.Dir(promptPath), 0o700); err != nil {
+			return port.ExecutionIssueSnapshot{}, err
+		}
+		if err := os.WriteFile(promptPath, []byte("conflicting partial prompt\n"), 0o600); err != nil {
+			return port.ExecutionIssueSnapshot{}, err
+		}
+		return fixture.reader(ctx, provider, req)
+	}
+	deps := fixture.deps
+	deps.ReadIssue = reader
+
+	_, err = ReplaceExecutionWithDependencies(context.Background(), fixture.stateRoot, ExecutionReplaceRequest{
+		ID: fixture.record.ID, Action: ExecutionReplaceFinalize, ExpectedGeneration: 2,
+		QuiescenceFingerprint: fixture.preview.QuiescenceFingerprint,
+		Actor:                 fixture.requester, CWD: fixture.prepared.Workspace.Root, Confirm: true,
+	}, deps)
+	if err == nil || !strings.Contains(err.Error(), "immutable owner artifact") {
+		t.Fatalf("부분 owner artifact 충돌이 finalize를 멈추지 않았다: %v", err)
+	}
+	for _, path := range []string{tokenPath, packetPath, promptPath} {
+		if _, statErr := os.Lstat(path); !os.IsNotExist(statErr) {
+			t.Fatalf("실패한 finalize의 generation residue가 남았다: path=%q err=%v", path, statErr)
+		}
+	}
+	persisted, err := ReadIssueOps(fixture.stateRoot, fixture.record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.Execution.Lease.Status != model.LeaseStatusRevoking || persisted.Execution.Lease.Generation != 2 {
+		t.Fatalf("부분 파일 실패가 durable lease를 바꿨다: %#v", persisted.Execution.Lease)
+	}
+
+	if _, err := ReplaceExecutionWithDependencies(context.Background(), fixture.stateRoot, ExecutionReplaceRequest{
+		ID: fixture.record.ID, Action: ExecutionReplaceFinalize, ExpectedGeneration: 2,
+		QuiescenceFingerprint: fixture.preview.QuiescenceFingerprint,
+		Actor:                 fixture.requester, CWD: fixture.prepared.Workspace.Root, Confirm: true,
+	}, fixture.deps); err != nil {
+		t.Fatalf("부분 파일 정리 뒤 같은 세대 finalize 재시도가 실패했다: %v", err)
+	}
+}
+
+func TestExecutionFinalizeRecoversUncommittedGenerationResidue(t *testing.T) {
+	issueBody := "## acceptance criteria\n\n- [ ] AC-01: first\n\n## 검증 명령\n\n```bash\ngo test ./internal/core/issueops -count=1\n```\n"
+	fixture := newRevokingSealedOrcaCycle(t, issueBody)
+	revoking, err := ReadIssueOps(fixture.stateRoot, fixture.record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tokenPath := claimTokenPath(revoking)
+	packetPath, promptPath := executionOwnerArtifactPaths(revoking)
+	for _, path := range []string{tokenPath, packetPath, promptPath} {
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("uncommitted residue\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	preview, err := ReplaceExecutionWithDependencies(context.Background(), fixture.stateRoot, ExecutionReplaceRequest{
+		ID: fixture.record.ID, Action: ExecutionReplaceFinalizePreview, ExpectedGeneration: 2,
+		Actor: fixture.requester, CWD: fixture.prepared.Workspace.Root,
+	}, fixture.deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	finalized, err := ReplaceExecutionWithDependencies(context.Background(), fixture.stateRoot, ExecutionReplaceRequest{
+		ID: fixture.record.ID, Action: ExecutionReplaceFinalize, ExpectedGeneration: 2,
+		QuiescenceFingerprint: preview.QuiescenceFingerprint,
+		Actor:                 fixture.requester, CWD: fixture.prepared.Workspace.Root, Confirm: true,
+	}, fixture.deps)
+	if err != nil {
+		t.Fatalf("durable revoking 세대가 uncommitted residue를 회수하지 못했다: %v", err)
+	}
+	if finalized.Execution.Lease.Status != model.LeaseStatusClaimable ||
+		finalized.ClaimTokenPath != tokenPath ||
+		finalized.ContextPacketPath != packetPath ||
+		finalized.OwnerPromptPath != promptPath {
+		t.Fatalf("residue 회수 후 다른 세대/경로를 발급했다: %#v", finalized)
+	}
+}
+
 func TestExecutionReseedAdoptsQuiescentOrcaRuntimeRollover(t *testing.T) {
 	issueBody := "## acceptance criteria\n\n- [ ] AC-01: first\n\n## 검증 명령\n\n```bash\ngo test ./... -count=1\n```\n"
 	stateRoot, record, _, reader := sealedOrcaCycle(t, issueBody)
