@@ -122,6 +122,25 @@ func TestExecutionShellReadersAreObservationFirst(t *testing.T) {
 	}
 }
 
+func TestExecutionBoundedCodeGraphProbeSequenceIsObservationFirst(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, active, worker := executionActiveLifecycleRecord(t)
+	command := `if [ -d .codegraph ]; then printf 'codegraph-present\n'; else printf 'codegraph-absent\n'; fi; git status --short; git branch --show-current; git rev-parse HEAD; git diff --stat; git diff --cached --stat`
+
+	req := executionRequest(active, worker, "codex", "observer-session", command)
+	req.AgentID = ""
+	got := BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "allow" {
+		t.Fatalf("정적으로 판정 가능한 읽기 전용 탐색 시퀀스는 활성 lease 중에도 허용해야 한다: %+v", got)
+	}
+
+	req.Command = strings.Replace(command, "printf 'codegraph-present\\n'", "printf '%n' PATH", 1)
+	got = BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "block" || got.Deny == nil || got.Deny.Code != "unsafe_mutation" {
+		t.Fatalf("shell 변수를 쓰는 printf %%n 시퀀스는 읽기 전용으로 승격하면 안 된다: %+v", got)
+	}
+}
+
 func TestExecutionMutationClassCoversBuildGitFilesystemAndUnsafeShell(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source, record, worker := executionActiveLifecycleRecord(t)

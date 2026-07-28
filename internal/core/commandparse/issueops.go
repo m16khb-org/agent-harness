@@ -201,12 +201,20 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 
 // ExactReadOnlyShellCommand은 non-issueops shell 명령이 정확한 read-only
 // 관찰(pwd, safe rg, read-only git, read-only orca terminal/orchestration)인지
-// 보고한다. 활성 shell control/expansion을 담은 명령은 모두 거부한다. IssueOps의
+// 보고한다. exact read-only Git 조각과 고정 CodeGraph probe로만 구성된 제한된
+// 세미콜론 시퀀스 외의 활성 shell control/expansion은 거부한다. IssueOps의
 // read-only 권한은 record identity가 필요하므로 호출자가 처리한다.
 func ExactReadOnlyShellCommand(command string) bool {
-	if HasUnquotedControlOperator(command) || HasActiveCommandSubstitution(command) || HasActiveInputRedirect(command) || HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) || HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) || HasActiveZshEqualsExpansion(command) {
+	if HasActiveCommandSubstitution(command) || HasActiveInputRedirect(command) || HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) || HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) || HasActiveZshEqualsExpansion(command) {
 		return false
 	}
+	if HasUnquotedControlOperator(command) {
+		return exactReadOnlySemicolonSequence(command)
+	}
+	return exactReadOnlySimpleShellCommand(command)
+}
+
+func exactReadOnlySimpleShellCommand(command string) bool {
 	tokens := SplitCommandTokens(strings.TrimSpace(command))
 	if len(tokens) == 0 {
 		return false

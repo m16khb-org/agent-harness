@@ -1,6 +1,9 @@
 package commandparse
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // TestParseExactIssueOpsCommandCorpus is the accept/reject characterization
 // corpus for the exact IssueOps v1 command parser.
@@ -367,6 +370,38 @@ func TestExactReadOnlyShellCommandAllowsOnlyExactCodeGraphExplore(t *testing.T) 
 		if ExactReadOnlyShellCommand(command) {
 			t.Fatalf("expected inexact CodeGraph command deny: %q", command)
 		}
+	}
+}
+
+func TestExactReadOnlyShellCommandAllowsBoundedCodeGraphProbeSequence(t *testing.T) {
+	command := `if [ -d .codegraph ]; then printf 'codegraph-present\n'; else printf 'codegraph-absent\n'; fi; git status --short; git branch --show-current; git rev-parse HEAD; git diff --stat; git diff --cached --stat`
+	if !ExactReadOnlyShellCommand(command) {
+		t.Fatalf("정적으로 판정 가능한 CodeGraph 탐색 시퀀스는 읽기 전용이어야 한다: %q", command)
+	}
+	if !ExactReadOnlyShellCommand("git status --short; git diff --stat") {
+		t.Fatal("독립 판정 가능한 읽기 전용 명령의 세미콜론 시퀀스는 허용해야 한다")
+	}
+
+	for name, unsafe := range map[string]string{
+		"git topology mutation": strings.Replace(command, "git branch --show-current", "git switch other", 1),
+		"filesystem mutation":   command + "; rm -rf .codegraph",
+		"output redirect":       strings.Replace(command, "git diff --stat", "git diff --stat > /tmp/diff", 1),
+		"command substitution":  strings.Replace(command, ".codegraph", "$(printf .codegraph)", 1),
+		"pipeline":              strings.Replace(command, "git status --short", "git status --short | tee /tmp/status", 1),
+		"background":            strings.Replace(command, "git status --short", "git status --short &", 1),
+		"shell variable write":  strings.Replace(command, "then printf", "then printf -v probe", 1),
+		"printf percent-n":      strings.Replace(command, "printf 'codegraph-present\\n'", "printf '%n' PATH", 1),
+		"unquoted printf":       strings.Replace(command, "printf 'codegraph-present\\n'", "printf codegraph-present", 1),
+		"other directory probe": strings.Replace(command, ".codegraph", ".git", 1),
+		"other probe output":    strings.Replace(command, "codegraph-present", "arbitrary-output", 1),
+		"non-git sequence":      strings.Replace(command, "git status --short", "cat README.md", 1),
+		"mutating then branch":  strings.Replace(command, "then printf 'codegraph-present\\n'", "then rm -rf .codegraph", 1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if ExactReadOnlyShellCommand(unsafe) {
+				t.Fatalf("변이 또는 동적 shell 구문을 포함한 시퀀스는 거부해야 한다: %q", unsafe)
+			}
+		})
 	}
 }
 
