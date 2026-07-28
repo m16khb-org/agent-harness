@@ -5,6 +5,8 @@
 사용자가 승인한 구현 전 설계다. `glab-mcp-wrapper` 같은 개인용 실행 파일이나
 MCP server 이름을 계약으로 삼지 않고, host agent가 발견한 일반 `glab_api`
 capability와 일반 `glab api` CLI를 동일한 GitLab issue snapshot 경계에 연결한다.
+개인 wrapper가 이 capability를 노출하면 공식·일반 registration과 똑같이 지원하고
+우선 사용한다.
 
 ## 배경
 
@@ -30,6 +32,8 @@ provider/IID를 검증한다. Snapshot transport 실패를 Orca readiness 실패
 
 - Codex와 Claude Code가 server namespace나 실행 파일 이름과 무관하게 일반
   `glab_api` MCP capability를 우선 사용할 수 있게 한다.
+- 개인 wrapper가 `glab_api`를 노출하면 별도 설정이나 예외 코드 없이 같은 MCP
+  candidate로 발견하고 사용할 수 있게 한다.
 - MCP가 없거나 모든 read-only candidate가 인증·권한 문제로 실패할 때 일반
   `glab api` CLI를 fallback으로 사용한다.
 - MCP와 CLI 결과를 하나의 bounded snapshot validation 경계에서 검증한다.
@@ -49,6 +53,10 @@ provider/IID를 검증한다. Snapshot transport 실패를 Orca readiness 실패
 - GitLab issue snapshot transport로 Orca의 worktree/terminal/task 기능을
   복제하지 않는다.
 - Snapshot source를 lease authority나 remote mutation authority로 사용하지 않는다.
+
+여기서 개인 wrapper를 “특별 취급하지 않는다”는 것은 사용을 금지한다는 뜻이
+아니다. Wrapper 이름·경로·profile을 하드코딩하지 않을 뿐, wrapper가 노출한
+`glab_api`는 명시적인 지원 대상이다.
 
 ## 검토한 접근
 
@@ -72,7 +80,7 @@ Binary가 별도 MCP client와 process lifecycle, config discovery, credential
 selection을 소유해야 한다. Host가 이미 관리하는 MCP 연결을 중복하고, 사용자
 환경마다 다른 registration을 추측하게 되며 standalone install 불변식도 깨뜨린다.
 
-### 3. `glab-mcp-wrapper` 또는 server namespace를 직접 감지 — 기각
+### 3. `glab-mcp-wrapper` 이름 또는 server namespace를 직접 감지 — 기각
 
 현재 머신에서는 동작할 수 있지만 다른 사용자·다른 머신에서 재현되지 않는다.
 개인 path/profile/token naming이 public contract가 되고, 같은 `glab_api`
@@ -156,8 +164,9 @@ Host agent와 공용 IssueOps skill/hook hint는 다음 순서를 따른다.
    fallback을 사용한다.
 
 현재 환경에서 `glab-mcp-wrapper`가 등록한 tool이 이 조건을 만족하면 agent는
-자연스럽게 그 tool을 사용한다. 이것은 wrapper를 인식한 결과가 아니라 노출된
-`glab_api` capability와 live response identity가 맞았기 때문이다.
+지원 대상으로서 그 tool을 우선 사용할 수 있다. 이것은 wrapper 사용을 배제하는
+것이 아니라 노출된 `glab_api` capability와 live response identity로 portable하게
+선택하는 것이다.
 
 탐색은 host agent가 수행한다. `agent-harness` hook은 네트워크를 호출하지 않고
 GitLab 관련 prompt에 이 capability-first 순서를 bounded routing hint로 제공한다.
@@ -259,7 +268,9 @@ Snapshot을 소비한 action result에는 `issue_snapshot_source`를
    거부한다.
 8. GitLab prompt hook result가 `glab_api` capability discovery를 안내하고
    `glab-mcp-wrapper` 문자열이나 개인 path를 포함하지 않는다.
-9. 기존 GitHub snapshot, GitLab CLI snapshot, Orca marker/receipt, CLI/MCP
+9. 개인 wrapper를 포함한 임의 server namespace가 같은 `glab_api` leaf
+   capability를 노출하면 동일한 candidate 규칙으로 선택된다.
+10. 기존 GitHub snapshot, GitLab CLI snapshot, Orca marker/receipt, CLI/MCP
    response golden이 회귀하지 않는다.
 
 구현 후 검증:
@@ -286,6 +297,8 @@ evidence를 생략해 `issue_snapshot_source=glab_cli`를 확인한다.
 
 - Repo code, hook, 공용 skill 어디에도 `glab-mcp-wrapper` path/profile 의존성이
   없다.
+- 현재 등록된 개인 wrapper가 노출한 `glab_api`도 일반 capability와 동일하게
+  발견·호출할 수 있다.
 - 임의 namespace의 일반 `glab_api` MCP 결과를 IssueOps가 bounded evidence로
   소비한다.
 - MCP가 없는 환경에서는 일반 `glab api` CLI가 같은 snapshot contract를
