@@ -378,6 +378,15 @@ func TestExactReadOnlyShellCommandAllowsBoundedCodeGraphProbeSequence(t *testing
 	if !ExactReadOnlyShellCommand(command) {
 		t.Fatalf("정적으로 판정 가능한 CodeGraph 탐색 시퀀스는 읽기 전용이어야 한다: %q", command)
 	}
+	newlineCommand := `if [ -d .codegraph ]; then printf 'codegraph-present\n'; else printf 'codegraph-absent\n'; fi
+git status --short
+git branch --show-current
+git rev-parse HEAD
+git diff --stat
+git diff --cached --stat`
+	if !ExactReadOnlyShellCommand(newlineCommand) {
+		t.Fatalf("exec adapter가 전달하는 개행 구분 탐색 시퀀스도 읽기 전용이어야 한다: %q", newlineCommand)
+	}
 	if !ExactReadOnlyShellCommand("git status --short; git diff --stat") {
 		t.Fatal("독립 판정 가능한 읽기 전용 명령의 세미콜론 시퀀스는 허용해야 한다")
 	}
@@ -395,6 +404,8 @@ func TestExactReadOnlyShellCommandAllowsBoundedCodeGraphProbeSequence(t *testing
 		"other directory probe": strings.Replace(command, ".codegraph", ".git", 1),
 		"other probe output":    strings.Replace(command, "codegraph-present", "arbitrary-output", 1),
 		"non-git sequence":      strings.Replace(command, "git status --short", "cat README.md", 1),
+		"newline mutation":      newlineCommand + "\nrm -rf .codegraph",
+		"newline non-git":       strings.Replace(newlineCommand, "git status --short", "cat README.md", 1),
 		"mutating then branch":  strings.Replace(command, "then printf 'codegraph-present\\n'", "then rm -rf .codegraph", 1),
 	} {
 		t.Run(name, func(t *testing.T) {

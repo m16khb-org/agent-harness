@@ -18,7 +18,12 @@ func TestRunHookPreToolUseAllowsBoundedReadOnlySequence(t *testing.T) {
 	}
 	cycle := createLinkedIssueOpsWorktree(t, source, "75-readonly-sequence-hook")
 	_ = activateIssueOpsHookExecution(t, cycle.id)
-	command := `if [ -d .codegraph ]; then printf 'codegraph-present\n'; else printf 'codegraph-absent\n'; fi; git status --short; git branch --show-current; git rev-parse HEAD; git diff --stat; git diff --cached --stat`
+	command := `if [ -d .codegraph ]; then printf 'codegraph-present\n'; else printf 'codegraph-absent\n'; fi
+git status --short
+git branch --show-current
+git rev-parse HEAD
+git diff --stat
+git diff --cached --stat`
 	raw, err := json.Marshal(map[string]any{
 		"cwd": cycle.path, "host": "codex", "session_id": "observer-session",
 		"tool_name": "Bash", "tool_input": map[string]any{"command": command},

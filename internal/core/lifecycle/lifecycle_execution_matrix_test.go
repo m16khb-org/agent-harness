@@ -125,7 +125,12 @@ func TestExecutionShellReadersAreObservationFirst(t *testing.T) {
 func TestExecutionBoundedCodeGraphProbeSequenceIsObservationFirst(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	_, active, worker := executionActiveLifecycleRecord(t)
-	command := `if [ -d .codegraph ]; then printf 'codegraph-present\n'; else printf 'codegraph-absent\n'; fi; git status --short; git branch --show-current; git rev-parse HEAD; git diff --stat; git diff --cached --stat`
+	command := `if [ -d .codegraph ]; then printf 'codegraph-present\n'; else printf 'codegraph-absent\n'; fi
+git status --short
+git branch --show-current
+git rev-parse HEAD
+git diff --stat
+git diff --cached --stat`
 
 	req := executionRequest(active, worker, "codex", "observer-session", command)
 	req.AgentID = ""

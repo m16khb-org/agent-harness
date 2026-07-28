@@ -2,11 +2,11 @@ package commandparse
 
 import "strings"
 
-// exactReadOnlySemicolonSequence는 read-only Git 조각과 선택적인 CodeGraph
-// 존재 probe 하나로만 구성된 세미콜론 시퀀스를 허용한다. 파이프·백그라운드·
-// 논리 연산자·개행은 이 경로에 들어오지 못한다.
-func exactReadOnlySemicolonSequence(command string) bool {
-	parts, ok := splitReadOnlySemicolonSequence(command)
+// exactReadOnlyShellSequence는 read-only Git 조각과 선택적인 CodeGraph 존재
+// probe 하나로만 구성된 세미콜론·개행 시퀀스를 허용한다. 파이프·백그라운드·
+// 논리 연산자는 이 경로에 들어오지 못한다.
+func exactReadOnlyShellSequence(command string) bool {
+	parts, ok := splitReadOnlyShellSequence(command)
 	if !ok || len(parts) < 2 {
 		return false
 	}
@@ -33,10 +33,10 @@ func exactReadOnlyGitShellCommand(command string) bool {
 		exactReadOnlySimpleShellCommand(command)
 }
 
-// splitReadOnlySemicolonSequence는 quote 밖의 세미콜론만 분리하고 그 밖의 shell
-// 제어 연산자를 거부한다. quote를 보존해 각 조각이 기존 exact parser를 그대로
-// 통과하게 한다.
-func splitReadOnlySemicolonSequence(command string) ([]string, bool) {
+// splitReadOnlyShellSequence는 quote 밖의 세미콜론과 LF만 분리하고 그 밖의
+// shell 제어 연산자를 거부한다. quote를 보존해 각 조각이 기존 exact parser를
+// 그대로 통과하게 한다.
+func splitReadOnlyShellSequence(command string) ([]string, bool) {
 	parts := []string{}
 	var current strings.Builder
 	var quote rune
@@ -65,14 +65,14 @@ func splitReadOnlySemicolonSequence(command string) ([]string, bool) {
 			continue
 		}
 		switch character {
-		case ';':
+		case ';', '\n':
 			part := strings.TrimSpace(current.String())
 			if part == "" {
 				return nil, false
 			}
 			parts = append(parts, part)
 			current.Reset()
-		case '&', '|', '\n', '\r':
+		case '&', '|', '\r':
 			return nil, false
 		default:
 			current.WriteRune(character)

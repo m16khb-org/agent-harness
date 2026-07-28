@@ -209,7 +209,7 @@ func ExactReadOnlyShellCommand(command string) bool {
 		return false
 	}
 	if HasUnquotedControlOperator(command) {
-		return exactReadOnlySemicolonSequence(command)
+		return exactReadOnlyShellSequence(command)
 	}
 	return exactReadOnlySimpleShellCommand(command)
 }
