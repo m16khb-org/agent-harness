@@ -20,6 +20,49 @@ An absent or unready Orca resolves to direct without creating Orca state. Once
 an Orca mutation may have happened, ambiguity fails closed and must be
 reconciled; it never falls back to direct.
 
+## GitLab Issue Snapshot
+
+GitLab-linked cycle도 Orca를 사용할 수 있다. agent-harness가 요구하는 것은 특정
+MCP server나 wrapper가 아니라 linked issue와 identity가 같은 bounded snapshot이다.
+host agent는 먼저 선택 문서 `.agent-harness/VCS.md`를 읽고, 현재 등록 도구 중 실제
+schema가 호환되는 semantic leaf `glab_api`를 찾는다. server namespace와 개인
+wrapper 이름은 capability identity가 아니며 packet이나 record에 저장하지 않는다.
+
+`glab_api`로 `projects/<URL-escaped-project>/issues/<iid>`를 읽고, schema가
+지원하면 `flags.hostname`으로 target host를 명시한다. 응답의 `web_url`,
+`description`, `state`에서 다음 다섯 필드만 정규화한다:
+
+```json
+{
+  "provider": "gitlab",
+  "source": "glab_mcp",
+  "web_url": "https://gitlab.example.com/group/project/-/issues/69",
+  "body": "remote issue description",
+  "state": "opened"
+}
+```
+
+MCP `issueops_execution`을 호출하면 이 객체를 `issue_snapshot`에 넣는다. host가
+GitLab MCP를 읽었지만 IssueOps는 CLI로 호출한다면 같은 JSON을 exact mode `0600`,
+non-symlink regular file에 쓰고 `--issue-snapshot-file PATH`를 prepare, claim,
+`replace --reseed`, pending `worktree_create`의 `reconcile --confirm`에 전달한다.
+Reconcile preview와 다른 pending stage에는 snapshot을 전달하지 않는다. file은
+1 MiB 이하이고 unknown field나 trailing JSON이 없어야 한다. core가
+authority(명시 port 포함), project path, IID, non-empty body(512 KiB 이하),
+`opened|closed` state를 다시 검증한다.
+
+후보 부재나 auth/permission/transport/schema 호출 실패 뒤에도 successful exact-identity MCP evidence를 얻지 못했을 때만 snapshot 인자를 생략한다.
+provider adapter가 일반 `glab api` CLI로 같은 필드를 읽고 성공 결과의
+`issue_snapshot_source=glab_cli`를 기록한다.
+이미 공급한 invalid evidence는 CLI fallback하지 않고 fail-closed한다. MCP 성공은
+`issue_snapshot_source=glab_mcp`로 확인한다.
+
+성공한 provider read가 재사용 가능한 새 recipe라면 canonical worktree에서
+`project_docs_read`로 `.agent-harness/VCS.md`의 최신 SHA/content를 읽고,
+`project_docs_update` SHA-CAS로 tool leaf, 관찰한 schema, endpoint/필드, CLI
+fallback만 기록한다. secret, token, 개인 경로, server namespace는 기록하지
+않는다. 이 기록은 OpenWiki 자동 update를 실행하지 않는다.
+
 ## Prepare
 
 Run the preview first, inspect the selected mode, branch, base SHA, worktree,

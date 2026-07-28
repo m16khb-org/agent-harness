@@ -287,11 +287,15 @@ dependency or second scheduler. `issueops execution prepare --mode auto`
 probes readiness before mutation. `auto` resolves to direct only when Orca is
 absent or unready at that pre-mutation boundary. After a possible Orca mutation,
 the durable pending intent and explicit reconciliation path are authoritative.
-Provider capability is part of that boundary: GitLab-linked execution resolves
-to direct with `gitlab_issue_metadata_unsupported` until Orca exposes a sealed
-GitLab issue/work-item metadata surface. Exact base SHA and branch upstream are
-separate identities; the SHA creates the worktree and the remote issue branch
-is restored as upstream after namespace canonicalization.
+Provider capability is part of that boundary. GitLab-linked execution accepts
+one bounded, exact-identity issue snapshot observed through a host-configured
+`glab_api` capability, or reads the same fields through the generic `glab api`
+provider adapter when no MCP snapshot is supplied. MCP server namespace,
+personal wrapper identity, credential profile, and token remain outside core;
+only the normalized provider/source/URL/body/state DTO crosses the port. Exact
+base SHA and branch upstream are separate identities; the SHA creates the
+worktree and the remote issue branch is restored as upstream after namespace
+canonicalization.
 엄브렐라가 위임한 자식 cycle은 delegation과 `base_branch`에서 canonical 부모
 worktree 경로를 봉인한다. Orca adapter는 생성 시 그 경로를
 `--parent-worktree`로 명시하고, 응답의 lineage가

@@ -138,12 +138,14 @@ first-party owner hosts are Codex and Claude.
 `explicit-cli-flag`/`explicit` 영수증이 없으면 fail-closed한다. 독립 cycle은
 기존처럼 top-level worktree로 생성된다.
 
-The installed Orca CLI currently seals GitHub issue metadata but has no GitLab
-issue/work-item metadata mutation surface. For a GitLab-linked cycle, `auto`
-therefore reports `gitlab_issue_metadata_unsupported` and selects direct before
-any Orca resource is created; explicit `orca` fails with the same actionable
-code. `/issues/:iid` and `/work_items/:iid` are equivalent only when the exact
-authority (including port), project path, and IID all match.
+GitLab-linked cycle은 host가 관찰한 `issue_snapshot` 또는 provider adapter의 일반
+`glab api` read로 issue 본문을 봉인한 뒤 Orca를 사용할 수 있다. 특정 MCP server
+이름이나 개인 wrapper를 하네스에 고정하지 않는다. host agent는 semantic leaf
+`glab_api`와 실제 schema로 compatible tool을 찾고, 개인 wrapper도 같은
+capability를 노출하면 사용할 수 있다. MCP snapshot이 있으면 source는
+`glab_mcp`, 없으면 generic CLI fallback 결과는 `glab_cli`로 응답에 남는다.
+`/issues/:iid`와 `/work_items/:iid`는 exact authority(명시 port 포함), project
+path, IID가 모두 같을 때만 equivalent identity다.
 
 **GitHub + Orca 모드는 브랜치 생성 순서를 뒤집는다.** IssueOps 정식 순서는 linked branch를
 먼저 만들지만, Orca `worktree create`는 언제나 새 브랜치를 만들므로 이름이 겹쳐
@@ -183,16 +185,33 @@ agent-harness issueops branch prepare --id ID ... --link-verified           # �
 `branch prepare`가 이 두 명령을 실행 가능한 형태로 `Steps`에 렌더하므로 `--base-sha`를 준
 사이클은 그 출력을 그대로 따르면 된다. 문서와 `Steps`가 어긋나면 `Steps`가 원본이다.
 
-GitLab은 브랜치 이름 규칙이 연결 수단이라 순서 주의가 필요 없지만, 애초에
-`gitlab_issue_metadata_unsupported`로 Orca보다 먼저 걸러진다. 그래도 base 못박기는 같은 계약이다 —
-GitLab의 `ref`는 커밋 SHA를 받으므로 `--base-sha`를 주면 `Steps`가 그 값을 `ref`로 안내한다
-(`#180`).
+GitLab은 브랜치 이름 규칙이 연결 수단이라 GitHub linked-branch 순서 문제는 없다.
+그래도 base 못박기는 같은 계약이다. GitLab의 `ref`는 commit SHA를 받으므로
+`--base-sha`를 주면 `Steps`가 그 값을 `ref`로 안내한다(`#180`).
 
-GitLab MCP 단계의 인자는 `glab_api`의 중첩 스키마를 따른다 — endpoint는 `args` 배열의 위치 인자이고
-나머지는 `flags` 안에 온다. `flags.raw_field`는 `glab api`의 `--raw-field`(문자열 파라미터)이며
-`--field`(추론형)와 다른 플래그다. 이것은 `glab`의 공개 소스에서 확정했다: MCP 서버가 모든 도구에
-`args`·`flags`·`limit`·`offset` 네 키만 만들고, `flags` 키는 플래그 이름의 하이픈을 밑줄로 치환한
-것이다. 로컬에 `glab`이 없어도 상류 소스로 계약을 확정할 수 있다는 것이 이 이슈의 교훈이다.
+GitLab issue snapshot은 다음 순서로 준비한다.
+
+1. canonical worktree의 선택 문서 `.agent-harness/VCS.md`를 읽는다.
+2. 현재 host의 trusted tool 중 semantic leaf `glab_api`와 실제 input schema가
+   맞는 후보를 찾는다. server namespace는 capability identity가 아니다.
+3. `projects/<URL-escaped-project>/issues/<iid>`를 읽고, schema가 지원하면
+   `flags.hostname`으로 target host를 명시한다. 응답의 `web_url`,
+   `description`, `state`를 exact linked identity와 대조한다.
+4. MCP 호출이면 `issueops_execution.issue_snapshot`에 다섯 필드
+   (`provider=gitlab`, `source=glab_mcp`, `web_url`, `body`, `state`)만 넘긴다.
+   IssueOps CLI 호출이면 같은 객체를 mode `0600` private file에 쓰고
+   `--issue-snapshot-file`로 넘긴다.
+5. 후보 부재나 auth/permission/transport/schema 호출 실패 뒤에도 successful
+   exact-identity MCP evidence를 얻지 못했을 때만 snapshot을 생략한다. 이 경우
+   provider adapter가 일반 `glab api`를 사용한다. 이미 공급한 invalid evidence는
+   CLI fallback하지 않고 fail-closed한다.
+
+성공한 portable recipe는 canonical worktree에서 `project_docs_read` 후
+`project_docs_update` SHA-CAS로 `.agent-harness/VCS.md`에 기록한다. GitLab과
+GitHub가 함께 들어갈 수 있는 provider-neutral 문서이며, GitHub CLI recipe는
+검증된 `gh issue view <url> --json url,body,state`를 사용한다. 실제로 관찰하지
+않은 MCP 이름, 개인 wrapper 경로, token/profile/server namespace는 기록하지
+않고 OpenWiki 자동 update도 실행하지 않는다.
 
 For Orca mode, follow `skills/issueops/references/execution.md`. Preparation
 seals the remote issue body, context packet, fully rendered owner prompt, and

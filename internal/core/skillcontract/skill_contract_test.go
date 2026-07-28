@@ -175,6 +175,55 @@ func TestGitlabUsecaseSkillPinsAssigneeContract(t *testing.T) {
 	})
 }
 
+func TestGitLabSnapshotSkillsPinPortableVCSContract(t *testing.T) {
+	assertSkillContains(t, "gitlab-usecase", []string{
+		".agent-harness/VCS.md",
+		"glab_api",
+		"flags.hostname",
+		"server namespace",
+		"개인 wrapper",
+		"project_docs_read",
+		"project_docs_update",
+		"glab api",
+		"successful exact-identity MCP evidence를 얻지 못했을 때만",
+		"이미 공급한 invalid evidence는 CLI fallback하지 않고 fail-closed한다.",
+		"OpenWiki 자동 update",
+	})
+	execution := readRepoFileForTest(t, filepath.Join("skills", "issueops", "references", "execution.md"))
+	for _, want := range []string{
+		".agent-harness/VCS.md",
+		"glab_api",
+		"flags.hostname",
+		"issue_snapshot",
+		"--issue-snapshot-file",
+		"glab_mcp",
+		"glab_cli",
+		"project_docs_read",
+		"project_docs_update",
+		"glab api",
+		"successful exact-identity MCP evidence를 얻지 못했을 때만",
+		"이미 공급한 invalid evidence는 CLI fallback하지 않고 fail-closed한다.",
+		"OpenWiki 자동 update",
+	} {
+		if !strings.Contains(execution, want) {
+			t.Fatalf("IssueOps execution reference missing portable snapshot contract %q", want)
+		}
+	}
+	for _, relPath := range []string{
+		filepath.Join("skills", "gitlab-usecase", "SKILL.md"),
+		filepath.Join("skills", "issueops", "references", "execution.md"),
+		filepath.Join(".agent-harness", "OPERATIONS.md"),
+		filepath.Join(".agent-harness", "AGENT_WORKFLOW.md"),
+	} {
+		body := readRepoFileForTest(t, relPath)
+		for _, privateIdentity := range []string{"/Users/habin", "glab-mcp-wrapper"} {
+			if strings.Contains(body, privateIdentity) {
+				t.Fatalf("%s must not hardcode private VCS tool identity %q", relPath, privateIdentity)
+			}
+		}
+	}
+}
+
 func TestSelfVerifySkillPinsGateContract(t *testing.T) {
 	body := readSkillForTest(t, "self-verify")
 	for _, want := range []string{
