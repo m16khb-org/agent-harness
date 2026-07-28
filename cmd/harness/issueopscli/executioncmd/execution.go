@@ -44,13 +44,13 @@ func execute(req issueops.ExecutionActionRequest, deps Deps) (any, error) {
 }
 
 const Usage = `Usage:
-  agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude [--owner-model MODEL] [--owner-effort EFFORT] ACTOR_FLAGS [--confirm] [--json]
+  agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude [--owner-model MODEL] [--owner-effort EFFORT] [--issue-snapshot-file PATH] ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops execution status --id ID [--json]
   agent-harness issueops execution whoami [--json]
-  agent-harness issueops execution claim --id ID --generation N --claim-token-file PATH [--issue-body-sha256 HEX --context-packet-sha256 HEX] ACTOR_FLAGS [--json]
+  agent-harness issueops execution claim --id ID --generation N --claim-token-file PATH [--issue-body-sha256 HEX --context-packet-sha256 HEX] [--issue-snapshot-file PATH] ACTOR_FLAGS [--json]
   agent-harness issueops execution release --id ID --generation N ACTOR_FLAGS [--json]
-  agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [fingerprint/reason flags] ACTOR_FLAGS [--confirm] [--json]
-  agent-harness issueops execution reconcile --id ID (--preview|--confirm) ACTOR_FLAGS [--json]
+  agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [fingerprint/reason flags] [--issue-snapshot-file PATH] ACTOR_FLAGS [--confirm] [--json]
+  agent-harness issueops execution reconcile --id ID (--preview|--confirm) [--issue-snapshot-file PATH] ACTOR_FLAGS [--json]
   agent-harness issueops execution complete --id ID --generation N --final-head SHA --turing-report PATH --remote-artifact-url URL --verification TEXT... ACTOR_FLAGS --confirm [--json]
   agent-harness issueops execution sync-base --id ID (--preview | --apply --confirm --fingerprint SHA256 | --finalize | --abort) ACTOR_FLAGS [--json]
   agent-harness issueops execution switch-mode --id ID --mode direct|orca [--apply --confirm --fingerprint SHA256] ACTOR_FLAGS [--json]
@@ -119,14 +119,20 @@ func runPrepare(args []string, deps Deps) error {
 	id, mode := fs.String("id", "", "IssueOps id"), fs.String("mode", "auto", "auto, direct, orca")
 	ownerHost, ownerModel := fs.String("owner-host", "", "owner host"), fs.String("owner-model", "", "owner model")
 	ownerEffort := fs.String("owner-effort", "", "owner effort")
+	issueSnapshotFile := fs.String("issue-snapshot-file", "", "private GitLab issue snapshot JSON file")
 	actor := addActorFlags(fs)
 	confirm, jsonOut := fs.Bool("confirm", false, "confirm mutations"), fs.Bool("json", false, "print JSON")
 	if done, err := parse(fs, args); done || err != nil {
 		return err
 	}
+	issueSnapshot, err := readExecutionIssueSnapshotFile(*issueSnapshotFile)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
 	result, err := execute(issueops.ExecutionActionRequest{
 		Action: issueops.ExecutionActionPrepare, ID: *id, Mode: *mode, Actor: actor.actor(), CWD: *actor.cwd,
 		OwnerHost: *ownerHost, OwnerModel: *ownerModel, OwnerEffort: *ownerEffort, Confirm: *confirm,
+		IssueSnapshot: issueSnapshot,
 	}, deps)
 	return output(result, *jsonOut, err, deps)
 }
@@ -176,14 +182,20 @@ func runClaim(args []string, deps Deps) error {
 	claimTokenFile, actor := fs.String("claim-token-file", "", "one-time claim token file"), addActorFlags(fs)
 	issueDigest := fs.String("issue-body-sha256", "", "sealed remote issue body SHA-256")
 	packetDigest := fs.String("context-packet-sha256", "", "sealed owner context packet SHA-256")
+	issueSnapshotFile := fs.String("issue-snapshot-file", "", "private GitLab issue snapshot JSON file")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if done, err := parse(fs, args); done || err != nil {
 		return err
+	}
+	issueSnapshot, err := readExecutionIssueSnapshotFile(*issueSnapshotFile)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
 	}
 	result, err := execute(issueops.ExecutionActionRequest{
 		Action: issueops.ExecutionActionClaim, ID: *id, Generation: *generation,
 		Actor: actor.actor(), CWD: *actor.cwd, TokenFile: *claimTokenFile,
 		IssueBodySHA256: *issueDigest, ContextPacketSHA256: *packetDigest,
+		IssueSnapshot: issueSnapshot,
 	}, deps)
 	return output(result, *jsonOut, err, deps)
 }
@@ -211,9 +223,14 @@ func runReplace(args []string, deps Deps) error {
 	preview, revoke := fs.Bool("preview", false, "preview replacement"), fs.Bool("revoke", false, "revoke current generation")
 	finalizePreview, finalize := fs.Bool("finalize-preview", false, "preview finalization"), fs.Bool("finalize", false, "finalize replacement")
 	reseed, confirm := fs.Bool("reseed", false, "reseed a holderless lease"), fs.Bool("confirm", false, "confirm mutation")
+	issueSnapshotFile := fs.String("issue-snapshot-file", "", "private GitLab issue snapshot JSON file")
 	actor, jsonOut := addActorFlags(fs), fs.Bool("json", false, "print JSON")
 	if done, err := parse(fs, args); done || err != nil {
 		return err
+	}
+	issueSnapshot, err := readExecutionIssueSnapshotFile(*issueSnapshotFile)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
 	}
 	actions := map[string]bool{
 		issueops.ExecutionReplacePreview: *preview, issueops.ExecutionReplaceRevoke: *revoke,
@@ -236,6 +253,7 @@ func runReplace(args []string, deps Deps) error {
 		Action: issueops.ExecutionActionReplace, ID: *id, ReplaceAction: action, ExpectedGeneration: *generation,
 		InventoryFingerprint: *inventory, QuiescenceFingerprint: *quiescence, Reason: *reason,
 		Actor: actor.actor(), CWD: *actor.cwd, Confirm: *confirm,
+		IssueSnapshot: issueSnapshot,
 	}, deps)
 	return output(result, *jsonOut, err, deps)
 }
@@ -244,13 +262,18 @@ func runReconcile(args []string, deps Deps) error {
 	fs := flag.NewFlagSet("issueops execution reconcile", flag.ContinueOnError)
 	id := fs.String("id", "", "IssueOps id")
 	preview, confirm := fs.Bool("preview", false, "preview reconciliation"), fs.Bool("confirm", false, "confirm reconciliation")
+	issueSnapshotFile := fs.String("issue-snapshot-file", "", "private GitLab issue snapshot JSON file")
 	actor, jsonOut := addActorFlags(fs), fs.Bool("json", false, "print JSON")
 	if done, err := parse(fs, args); done || err != nil {
 		return err
 	}
+	issueSnapshot, err := readExecutionIssueSnapshotFile(*issueSnapshotFile)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
 	result, err := execute(issueops.ExecutionActionRequest{
 		Action: issueops.ExecutionActionReconcile, ID: *id, Preview: *preview, Confirm: *confirm,
-		Actor: actor.actor(), CWD: *actor.cwd,
+		Actor: actor.actor(), CWD: *actor.cwd, IssueSnapshot: issueSnapshot,
 	}, deps)
 	return output(result, *jsonOut, err, deps)
 }
