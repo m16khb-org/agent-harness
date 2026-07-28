@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/port"
 )
 
@@ -58,6 +59,31 @@ func TestExecutionIssueSnapshotEvidenceSealsPrepareAndClaimWithoutFallback(t *te
 	}
 	if fallbackCalls != 0 {
 		t.Fatalf("valid supplied evidence called fallback during claim: %d", fallbackCalls)
+	}
+}
+
+func TestExecutionIssueSnapshotEvidencePreviewReportsOnlyValidatedSource(t *testing.T) {
+	stateRoot, record := gitLabExecutionSnapshotRecord(t)
+	fallbackCalls := 0
+	gotAny, err := ExecuteExecution(context.Background(), stateRoot, ExecutionActionRequest{
+		Action: ExecutionActionPrepare, ID: record.ID, Mode: "orca", CWD: record.Repo,
+		OwnerHost: "claude", Confirm: false, IssueSnapshot: validGitLabExecutionSnapshotEvidence(),
+	}, ExecutionActionDependencies{
+		Orca: readyOrcaFake(),
+		ReadIssue: func(context.Context, string, port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
+			fallbackCalls++
+			return port.ExecutionIssueSnapshot{}, errors.New("must not run")
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := gotAny.(ExecutionPrepareResult)
+	if !got.Preview || got.IssueSnapshotSource != "glab_mcp" || got.IssueBodySHA256 != "" {
+		t.Fatalf("preview source/seal = %#v", got)
+	}
+	if fallbackCalls != 0 {
+		t.Fatalf("preview called fallback %d times", fallbackCalls)
 	}
 }
 
@@ -137,6 +163,8 @@ func TestExecutionIssueSnapshotEvidenceRejectsUnsupportedActions(t *testing.T) {
 		{Action: ExecutionActionRelease, ID: record.ID},
 		{Action: ExecutionActionComplete, ID: record.ID},
 		{Action: ExecutionActionReplace, ID: record.ID, ReplaceAction: ExecutionReplacePreview},
+		{Action: ExecutionActionReconcile, ID: record.ID, Preview: true},
+		{Action: ExecutionActionReconcile, ID: record.ID, Confirm: true},
 	} {
 		t.Run(req.Action+"/"+req.ReplaceAction, func(t *testing.T) {
 			req.IssueSnapshot = evidence
@@ -144,6 +172,27 @@ func TestExecutionIssueSnapshotEvidenceRejectsUnsupportedActions(t *testing.T) {
 				t.Fatalf("unsupported snapshot action was not rejected: %v", err)
 			}
 		})
+	}
+}
+
+func TestExecutionIssueSnapshotEvidenceAllowsOnlyWorktreeReconcileConfirm(t *testing.T) {
+	_, record := gitLabExecutionSnapshotRecord(t)
+	record.Execution = &model.Execution{
+		Mode:    model.ExecutionModeOrca,
+		Pending: &model.ExternalIntent{Kind: "worktree_create"},
+	}
+	req := ExecutionActionRequest{Action: ExecutionActionReconcile, Confirm: true}
+	if err := validateExecutionIssueSnapshotAction(req); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateExecutionIssueSnapshotRecord(req, record); err != nil {
+		t.Fatal(err)
+	}
+	for _, kind := range []string{"owner_launch", "dispatch"} {
+		record.Execution.Pending.Kind = kind
+		if err := validateExecutionIssueSnapshotRecord(req, record); err == nil {
+			t.Fatalf("reconcile stage %q accepted unused issue_snapshot", kind)
+		}
 	}
 }
 

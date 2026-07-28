@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unicode"
 
+	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/port"
 )
 
@@ -32,6 +33,9 @@ func executionIssueSnapshotReaderForAction(
 	}
 	record, err := ReadIssueOps(stateRoot, req.ID)
 	if err != nil {
+		return nil, nil, err
+	}
+	if err := validateExecutionIssueSnapshotRecord(req, record); err != nil {
 		return nil, nil, err
 	}
 	if record.BranchPrepare == nil || strings.TrimSpace(record.BranchPrepare.Provider) != "gitlab" {
@@ -102,14 +106,29 @@ func executionGitLabFallbackSnapshotReader(
 
 func validateExecutionIssueSnapshotAction(req ExecutionActionRequest) error {
 	switch req.Action {
-	case ExecutionActionPrepare, ExecutionActionClaim, ExecutionActionReconcile:
+	case ExecutionActionPrepare, ExecutionActionClaim:
 		return nil
+	case ExecutionActionReconcile:
+		if req.Confirm && !req.Preview {
+			return nil
+		}
 	case ExecutionActionReplace:
 		if req.ReplaceAction == ExecutionReplaceReseed {
 			return nil
 		}
 	}
 	return fmt.Errorf("issue_snapshot is not supported for execution action %q", req.Action)
+}
+
+func validateExecutionIssueSnapshotRecord(req ExecutionActionRequest, record IssueOpsRecord) error {
+	if req.Action != ExecutionActionReconcile {
+		return nil
+	}
+	if record.Execution == nil || record.Execution.Mode != model.ExecutionModeOrca ||
+		record.Execution.Pending == nil || record.Execution.Pending.Kind != "worktree_create" {
+		return fmt.Errorf("issue_snapshot is supported for execution reconcile only when confirm resumes a pending worktree_create intent")
+	}
+	return nil
 }
 
 func validateGitLabExecutionIssueSnapshot(linkedURL string, snapshot port.ExecutionIssueSnapshot) error {
