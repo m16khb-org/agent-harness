@@ -141,14 +141,16 @@ type ExecutionOrcaProvisioner interface {
 }
 
 type ExecutionOrcaOwnerInventoryRequest struct {
-	RuntimeID     string `json:"runtime_id"`
-	WorktreeID    string `json:"worktree_id"`
-	TaskID        string `json:"task_id"`
-	DispatchID    string `json:"dispatch_id"`
-	TerminalPTYID string `json:"terminal_pty_id,omitempty"`
+	RuntimeID            string `json:"runtime_id"`
+	WorktreeID           string `json:"worktree_id"`
+	TaskID               string `json:"task_id"`
+	DispatchID           string `json:"dispatch_id"`
+	TerminalPTYID        string `json:"terminal_pty_id,omitempty"`
+	AllowRuntimeRollover bool   `json:"allow_runtime_rollover,omitempty"`
 }
 
 type ExecutionOrcaOwnerInventory struct {
+	RuntimeID      string `json:"runtime_id,omitempty"`
 	TerminalLive   bool   `json:"terminal_live"`
 	TaskLive       bool   `json:"task_live"`
 	TerminalID     string `json:"terminal_id,omitempty"`

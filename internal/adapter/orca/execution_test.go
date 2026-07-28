@@ -405,6 +405,52 @@ func TestExecutionOwnerInventoryRejectsMissingOrChangedRuntime(t *testing.T) {
 	}
 }
 
+func TestExecutionOwnerInventoryAllowsExplicitRuntimeRolloverForSettledOwner(t *testing.T) {
+	currentRuntime := "runtime-70"
+	client := &executionFake{
+		tasks:                    []port.OrcaTask{{RuntimeID: currentRuntime, ID: "task-69", Status: "completed"}},
+		dispatch:                 port.OrcaDispatch{RuntimeID: currentRuntime, ID: "dispatch-69", TaskID: "task-69", Status: "failed"},
+		terminalInventoryRuntime: &currentRuntime,
+		taskInventoryRuntime:     &currentRuntime,
+		dispatchInventoryRuntime: &currentRuntime,
+	}
+	request := port.ExecutionOrcaOwnerInventoryRequest{
+		RuntimeID: "runtime-69", WorktreeID: "wt-69", TaskID: "task-69", DispatchID: "dispatch-69", TerminalPTYID: "pty-69",
+	}
+	if _, err := NewExecutionClient(client).InspectOwner(context.Background(), request); err == nil {
+		t.Fatal("명시적 허용이 없는 runtime rollover는 계속 거부해야 한다")
+	}
+
+	request.AllowRuntimeRollover = true
+	got, err := NewExecutionClient(client).InspectOwner(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.RuntimeID != currentRuntime || got.TerminalID != "" || got.TerminalLive || got.TaskLive ||
+		got.TaskStatus != "completed" || got.DispatchStatus != "failed" {
+		t.Fatalf("종결된 owner의 현재 runtime 인벤토리를 보존하지 못했다: %#v", got)
+	}
+}
+
+func TestExecutionOwnerInventoryRuntimeRolloverRequiresOneCurrentRuntime(t *testing.T) {
+	terminalRuntime := "runtime-70"
+	taskRuntime := "runtime-71"
+	dispatchRuntime := "runtime-70"
+	client := &executionFake{
+		tasks:                    []port.OrcaTask{{RuntimeID: taskRuntime, ID: "task-69", Status: "completed"}},
+		dispatch:                 port.OrcaDispatch{RuntimeID: dispatchRuntime, ID: "dispatch-69", TaskID: "task-69", Status: "failed"},
+		terminalInventoryRuntime: &terminalRuntime,
+		taskInventoryRuntime:     &taskRuntime,
+		dispatchInventoryRuntime: &dispatchRuntime,
+	}
+	if _, err := NewExecutionClient(client).InspectOwner(context.Background(), port.ExecutionOrcaOwnerInventoryRequest{
+		RuntimeID: "runtime-69", WorktreeID: "wt-69", TaskID: "task-69", DispatchID: "dispatch-69",
+		TerminalPTYID: "pty-69", AllowRuntimeRollover: true,
+	}); err == nil {
+		t.Fatal("서로 다른 current runtime을 보고한 인벤토리는 rollover로 수용하면 안 된다")
+	}
+}
+
 func TestExecutionIntentReResolvesRotatedTerminalHandle(t *testing.T) {
 	workspace, probe := executionFixture(t)
 	prepared := port.ExecutionOrcaWorkspaceReceipt{Workspace: port.ExecutionWorkspaceReceipt{

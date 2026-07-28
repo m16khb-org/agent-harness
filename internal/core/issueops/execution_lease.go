@@ -260,7 +260,7 @@ func previewExecutionReplacement(ctx context.Context, stateRoot string, req Exec
 	if err := validateExecutionReplacementCWD(record, req.CWD); err != nil {
 		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, err
 	}
-	fingerprint, err := executionInventoryFingerprint(ctx, record, req.Actor, deps)
+	fingerprint, _, err := executionInventoryFingerprint(ctx, record, req.Actor, deps)
 	if err != nil {
 		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, err
 	}
@@ -310,7 +310,7 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 			if err := refuseSelfRevoke(record.ID, *lease, req.Actor); err != nil {
 				return err
 			}
-			fingerprint, err := executionInventoryFingerprint(ctx, record, req.Actor, deps)
+			fingerprint, _, err := executionInventoryFingerprint(ctx, record, req.Actor, deps)
 			if err != nil {
 				return err
 			}
@@ -352,12 +352,15 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 			if lease.Status != model.LeaseStatusReleased && lease.Status != model.LeaseStatusClaimable {
 				return fmt.Errorf("reseed requires a released or claimable lease")
 			}
-			fingerprint, err := executionInventoryFingerprint(ctx, record, req.Actor, deps)
+			fingerprint, orcaInventory, err := executionInventoryFingerprint(ctx, record, req.Actor, deps)
 			if err != nil {
 				return err
 			}
 			if fingerprint != req.InventoryFingerprint {
 				return fmt.Errorf("stale replacement inventory fingerprint")
+			}
+			if record.Execution.Orca != nil && strings.TrimSpace(orcaInventory.RuntimeID) != "" {
+				record.Execution.Orca.RuntimeID = orcaInventory.RuntimeID
 			}
 			removeClaimTokenIfPresent(record)
 			lease.Generation++
@@ -570,14 +573,17 @@ func samePath(a, b string) bool {
 	return filepath.Clean(left) == filepath.Clean(right)
 }
 
-func executionInventoryFingerprint(ctx context.Context, record IssueOpsRecord, requester model.NativeActor, deps ExecutionReplaceDependencies) (string, error) {
+func executionInventoryFingerprint(ctx context.Context, record IssueOpsRecord, requester model.NativeActor, deps ExecutionReplaceDependencies) (string, port.ExecutionOrcaOwnerInventory, error) {
 	snapshot, err := workspaceSnapshot(record.Execution.Workspace)
 	if err != nil {
-		return "", err
+		return "", port.ExecutionOrcaOwnerInventory{}, err
 	}
 	processStatus, orcaInventory, err := executionOwnerInventory(ctx, record, deps)
 	if err != nil {
-		return "", err
+		return "", port.ExecutionOrcaOwnerInventory{}, err
+	}
+	if err := validateExecutionRuntimeRollover(record, orcaInventory); err != nil {
+		return "", port.ExecutionOrcaOwnerInventory{}, err
 	}
 	payload := struct {
 		ID         string                           `json:"id"`
@@ -589,7 +595,8 @@ func executionInventoryFingerprint(ctx context.Context, record IssueOpsRecord, r
 		Orca       port.ExecutionOrcaOwnerInventory `json:"orca"`
 		Snapshot   string                           `json:"snapshot"`
 	}{record.ID, record.Execution.Lease.Generation, record.Execution.Lease.Status, record.Execution.Lease.Holder, requester, processStatus, orcaInventory, snapshot}
-	return hashJSON(payload)
+	fingerprint, err := hashJSON(payload)
+	return fingerprint, orcaInventory, err
 }
 
 func executionQuiescenceFingerprint(ctx context.Context, record IssueOpsRecord, requester model.NativeActor, deps ExecutionReplaceDependencies) (string, error) {
@@ -670,8 +677,32 @@ func executionOwnerInventory(ctx context.Context, record IssueOpsRecord, deps Ex
 	inventory, err := deps.OrcaOwner.InspectOwner(ctx, port.ExecutionOrcaOwnerInventoryRequest{
 		RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, TaskID: binding.TaskID,
 		DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID,
+		AllowRuntimeRollover: record.Execution.Lease.Holder == nil &&
+			(record.Execution.Lease.Status == model.LeaseStatusReleased || record.Execution.Lease.Status == model.LeaseStatusClaimable),
 	})
 	return status, inventory, err
+}
+
+func validateExecutionRuntimeRollover(record IssueOpsRecord, inventory port.ExecutionOrcaOwnerInventory) error {
+	if record.Execution == nil || record.Execution.Mode != model.ExecutionModeOrca || record.Execution.Orca == nil {
+		return nil
+	}
+	sealed := strings.TrimSpace(record.Execution.Orca.RuntimeID)
+	observed := strings.TrimSpace(inventory.RuntimeID)
+	if observed == "" || observed == sealed {
+		return nil
+	}
+	lease := record.Execution.Lease
+	holderless := lease.Holder == nil && (lease.Status == model.LeaseStatusReleased || lease.Status == model.LeaseStatusClaimable)
+	taskSettled := inventory.TaskStatus == "completed" || inventory.TaskStatus == "failed"
+	dispatchSettled := inventory.DispatchStatus == "completed" || inventory.DispatchStatus == "failed" || inventory.DispatchStatus == "circuit_broken"
+	if !holderless || inventory.TerminalID != "" || inventory.TerminalLive || inventory.TaskLive || !taskSettled || !dispatchSettled {
+		return fmt.Errorf(
+			"Orca runtime rollover owner is not quiescent: terminal_id=%s terminal_live=%t task_live=%t task_status=%s dispatch_status=%s",
+			inventory.TerminalID, inventory.TerminalLive, inventory.TaskLive, inventory.TaskStatus, inventory.DispatchStatus,
+		)
+	}
+	return nil
 }
 
 func validateExecutionReplacementCWD(record IssueOpsRecord, cwd string) error {

@@ -301,10 +301,11 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 	if err != nil {
 		return port.ExecutionOrcaOwnerInventory{}, err
 	}
-	if err := validateExecutionInventoryRuntime(terminals.RuntimeID, req.RuntimeID); err != nil {
+	currentRuntime, err := executionOwnerInventoryRuntime(terminals.RuntimeID, req)
+	if err != nil {
 		return port.ExecutionOrcaOwnerInventory{}, err
 	}
-	result := port.ExecutionOrcaOwnerInventory{}
+	result := port.ExecutionOrcaOwnerInventory{RuntimeID: currentRuntime}
 	for _, terminal := range terminals.Rows {
 		if terminal.PTYID != req.TerminalPTYID {
 			continue
@@ -312,7 +313,7 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 		if result.TerminalID != "" {
 			return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner terminal inventory is ambiguous")
 		}
-		if strings.TrimSpace(req.RuntimeID) == "" || terminal.RuntimeID != req.RuntimeID {
+		if terminal.RuntimeID != currentRuntime {
 			return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner terminal runtime identity changed")
 		}
 		result.TerminalID = terminal.PTYID
@@ -322,7 +323,7 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 	if err != nil {
 		return port.ExecutionOrcaOwnerInventory{}, err
 	}
-	if err := validateExecutionInventoryRuntime(tasks.RuntimeID, req.RuntimeID); err != nil {
+	if err := validateExecutionInventoryRuntime(tasks.RuntimeID, currentRuntime); err != nil {
 		return port.ExecutionOrcaOwnerInventory{}, err
 	}
 	taskFound := false
@@ -334,7 +335,7 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 			return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner task inventory is ambiguous")
 		}
 		taskFound = true
-		if strings.TrimSpace(req.RuntimeID) == "" || task.RuntimeID != req.RuntimeID {
+		if task.RuntimeID != currentRuntime {
 			return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner task runtime identity changed")
 		}
 		result.TaskStatus = strings.ToLower(strings.TrimSpace(task.Status))
@@ -344,7 +345,7 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 	if err != nil {
 		return port.ExecutionOrcaOwnerInventory{}, err
 	}
-	if err := validateExecutionInventoryRuntime(dispatch.RuntimeID, req.RuntimeID); err != nil {
+	if err := validateExecutionInventoryRuntime(dispatch.RuntimeID, currentRuntime); err != nil {
 		return port.ExecutionOrcaOwnerInventory{}, err
 	}
 	if dispatch.Dispatch == nil {
@@ -361,7 +362,7 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 		return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner task is absent while its dispatch row remains")
 	}
 	row := *dispatch.Dispatch
-	if row.RuntimeID != req.RuntimeID || row.ID != req.DispatchID || row.TaskID != req.TaskID {
+	if row.RuntimeID != currentRuntime || row.ID != req.DispatchID || row.TaskID != req.TaskID {
 		return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner dispatch identity changed")
 	}
 	// dispatch 상태는 보고만 하고 liveness 판정에는 넣지 않는다(#147 결정 A).
@@ -410,6 +411,15 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 	// DispatchStatus는 진단용으로 계속 보고한다.
 	result.DispatchStatus = strings.ToLower(strings.TrimSpace(row.Status))
 	return result, nil
+}
+
+func executionOwnerInventoryRuntime(observed string, req port.ExecutionOrcaOwnerInventoryRequest) (string, error) {
+	observed = strings.TrimSpace(observed)
+	sealed := strings.TrimSpace(req.RuntimeID)
+	if observed == "" || sealed == "" || observed != sealed && !req.AllowRuntimeRollover {
+		return "", fmt.Errorf("Orca inventory runtime identity changed")
+	}
+	return observed, nil
 }
 
 // executionTerminalTaskStatus reports whether a status means the work is over.

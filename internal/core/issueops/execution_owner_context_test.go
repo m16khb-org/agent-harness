@@ -212,6 +212,95 @@ func TestExecutionReseedResealsOwnerPacketForTheNewGeneration(t *testing.T) {
 	}
 }
 
+func TestExecutionReseedAdoptsQuiescentOrcaRuntimeRollover(t *testing.T) {
+	issueBody := "## acceptance criteria\n\n- [ ] AC-01: first\n\n## 검증 명령\n\n```bash\ngo test ./... -count=1\n```\n"
+	stateRoot, record, _, reader := sealedOrcaCycle(t, issueBody)
+	inspector := &executionOrcaOwnerInspectorFake{inventory: port.ExecutionOrcaOwnerInventory{
+		RuntimeID: "runtime-2", TaskStatus: "completed", DispatchStatus: "failed",
+	}}
+	deps := ExecutionReplaceDependencies{OrcaOwner: inspector, ReadIssue: reader}
+	requester := executionActor("codex", "runtime-rollover-requester")
+
+	preview, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplacePreview, ExpectedGeneration: 1, Actor: requester, CWD: record.Repo,
+	}, deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !inspector.last.AllowRuntimeRollover {
+		t.Fatal("holderless reseed preview가 제한된 runtime rollover 관측을 요청하지 않았다")
+	}
+	reseeded, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
+		InventoryFingerprint: preview.InventoryFingerprint, Reason: "Orca runtime restarted after owner exit",
+		Actor: requester, CWD: record.Repo, Confirm: true,
+	}, deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reseeded.Execution.Orca == nil || reseeded.Execution.Orca.RuntimeID != "runtime-2" {
+		t.Fatalf("reseed 결과가 current runtime으로 재봉인되지 않았다: %#v", reseeded.Execution.Orca)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.Execution.Orca == nil || persisted.Execution.Orca.RuntimeID != "runtime-2" {
+		t.Fatalf("persisted Orca binding이 current runtime으로 교체되지 않았다: %#v", persisted.Execution.Orca)
+	}
+}
+
+func TestExecutionReseedRejectsRuntimeRolloverWithLiveOwner(t *testing.T) {
+	issueBody := "## acceptance criteria\n\n- [ ] AC-01: first\n\n## 검증 명령\n\n```bash\ngo test ./... -count=1\n```\n"
+	stateRoot, record, _, reader := sealedOrcaCycle(t, issueBody)
+	deps := ExecutionReplaceDependencies{
+		OrcaOwner: &executionOrcaOwnerInspectorFake{inventory: port.ExecutionOrcaOwnerInventory{
+			RuntimeID: "runtime-2", TaskLive: true, TaskStatus: "ready", DispatchStatus: "failed",
+		}},
+		ReadIssue: reader,
+	}
+	_, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplacePreview, ExpectedGeneration: 1,
+		Actor: executionActor("codex", "runtime-rollover-requester"), CWD: record.Repo,
+	}, deps)
+	if err == nil || !strings.Contains(err.Error(), "runtime rollover owner is not quiescent") {
+		t.Fatalf("살아 있는 owner를 동반한 runtime rollover가 preview를 통과했다: %v", err)
+	}
+}
+
+func TestExecutionReseedRuntimeRolloverHonorsInventoryCAS(t *testing.T) {
+	issueBody := "## acceptance criteria\n\n- [ ] AC-01: first\n\n## 검증 명령\n\n```bash\ngo test ./... -count=1\n```\n"
+	stateRoot, record, _, reader := sealedOrcaCycle(t, issueBody)
+	inspector := &executionOrcaOwnerInspectorFake{inventory: port.ExecutionOrcaOwnerInventory{
+		RuntimeID: "runtime-2", TaskStatus: "completed", DispatchStatus: "failed",
+	}}
+	deps := ExecutionReplaceDependencies{OrcaOwner: inspector, ReadIssue: reader}
+	requester := executionActor("codex", "runtime-rollover-requester")
+	preview, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplacePreview, ExpectedGeneration: 1, Actor: requester, CWD: record.Repo,
+	}, deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	inspector.inventory.RuntimeID = "runtime-3"
+	_, err = ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
+		InventoryFingerprint: preview.InventoryFingerprint, Reason: "Orca runtime restarted twice",
+		Actor: requester, CWD: record.Repo, Confirm: true,
+	}, deps)
+	if err == nil || !strings.Contains(err.Error(), "stale replacement inventory fingerprint") {
+		t.Fatalf("runtime이 다시 바뀐 stale preview가 reseed를 통과했다: %v", err)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.Execution.Lease.Generation != 1 || persisted.Execution.Orca == nil || persisted.Execution.Orca.RuntimeID != "runtime-1" {
+		t.Fatalf("실패한 CAS가 기존 generation/runtime 봉인을 변경했다: %#v", persisted.Execution)
+	}
+}
+
 // 봉인 이후 이슈 본문이 정당하게 개정되면 claim이 영구 거부됐다. reseed가
 // 현재 본문으로 재봉인하면 회복 경로가 생긴다.
 func TestExecutionReseedRecoversFromLegitimateIssueRevision(t *testing.T) {
