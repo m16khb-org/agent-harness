@@ -399,6 +399,10 @@ sed -n '1,194p' internal/core/issueops/testdata/leasevertical/adapter/sqlite.go`
 	if !ExactReadOnlyShellCommand("git status --short; git diff --stat") {
 		t.Fatal("독립 판정 가능한 읽기 전용 명령의 세미콜론 시퀀스는 허용해야 한다")
 	}
+	andSequence := "pwd && git status --short && git diff --cached --check"
+	if !ExactReadOnlyShellCommand(andSequence) {
+		t.Fatalf("각 조각이 exact reader인 && 시퀀스는 읽기 전용이어야 한다: %q", andSequence)
+	}
 
 	for name, unsafe := range map[string]string{
 		"git topology mutation": strings.Replace(command, "git branch --show-current", "git switch other", 1),
@@ -415,6 +419,10 @@ sed -n '1,194p' internal/core/issueops/testdata/leasevertical/adapter/sqlite.go`
 		"newline mutation":      newlineCommand + "\nrm -rf .codegraph",
 		"mutating sed":          strings.Replace(sedSequence, "sed -n '1,126p'", "sed -i '' 's/x/y/'", 1),
 		"mutating then branch":  strings.Replace(command, "then printf 'codegraph-present\\n'", "then rm -rf .codegraph", 1),
+		"or operator":           strings.Replace(andSequence, "&&", "||", 1),
+		"background operator":   strings.Replace(andSequence, "&&", "&", 1),
+		"and mutation":          strings.Replace(andSequence, "git status --short", "git add .", 1),
+		"trailing and":          andSequence + " &&",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if ExactReadOnlyShellCommand(unsafe) {

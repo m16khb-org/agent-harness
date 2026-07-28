@@ -3,8 +3,8 @@ package commandparse
 import "strings"
 
 // exactReadOnlyShellSequence는 exact read-only 조각과 선택적인 CodeGraph
-// 존재 probe 하나로만 구성된 세미콜론·개행 시퀀스를 허용한다. 파이프·백그라운드·
-// 논리 연산자는 이 경로에 들어오지 못한다.
+// 존재 probe 하나로만 구성된 세미콜론·개행·&& 시퀀스를 허용한다. 파이프·
+// 백그라운드·|| 연산자는 이 경로에 들어오지 못한다.
 func exactReadOnlyShellSequence(command string) bool {
 	parts, ok := splitReadOnlyShellSequence(command)
 	if !ok || len(parts) < 2 {
@@ -27,15 +27,17 @@ func exactReadOnlyShellSequence(command string) bool {
 	return true
 }
 
-// splitReadOnlyShellSequence는 quote 밖의 세미콜론과 LF만 분리하고 그 밖의
-// shell 제어 연산자를 거부한다. quote를 보존해 각 조각이 기존 exact parser를
-// 그대로 통과하게 한다.
+// splitReadOnlyShellSequence는 quote 밖의 세미콜론, LF, &&만 분리하고 그
+// 밖의 shell 제어 연산자를 거부한다. quote를 보존해 각 조각이 기존 exact
+// parser를 그대로 통과하게 한다.
 func splitReadOnlyShellSequence(command string) ([]string, bool) {
 	parts := []string{}
 	var current strings.Builder
 	var quote rune
 	escaped := false
-	for _, character := range command {
+	runes := []rune(command)
+	for index := 0; index < len(runes); index++ {
+		character := runes[index]
 		if escaped {
 			current.WriteRune(character)
 			escaped = false
@@ -66,7 +68,18 @@ func splitReadOnlyShellSequence(command string) ([]string, bool) {
 			}
 			parts = append(parts, part)
 			current.Reset()
-		case '&', '|', '\r':
+		case '&':
+			if index+1 >= len(runes) || runes[index+1] != '&' {
+				return nil, false
+			}
+			part := strings.TrimSpace(current.String())
+			if part == "" {
+				return nil, false
+			}
+			parts = append(parts, part)
+			current.Reset()
+			index++
+		case '|', '\r':
 			return nil, false
 		default:
 			current.WriteRune(character)
