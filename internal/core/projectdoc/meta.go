@@ -20,6 +20,7 @@ var docMetaDescriptions = map[string]string{
 	"OPERATIONS.md":     "Operations quick-start, reference map, and runtime procedures.",
 	"OPEN_API_SPEC.md":  "Endpoint, DTO, and OpenAPI documentation gate rules.",
 	"AGENT_WORKFLOW.md": "Agent start, execution, verification, and completion flow.",
+	"VCS.md":            "Verified VCS provider capabilities, request recipes, identity checks, and CLI fallbacks.",
 }
 
 // DocMetaDescription returns the canonical metadata description for a standard

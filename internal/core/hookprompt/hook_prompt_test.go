@@ -194,7 +194,17 @@ func TestBuildUserPromptMCPHintsRequiresGitLabUsecaseFromRepoProfile(t *testing.
 		t.Fatal(err)
 	}
 	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "이슈 만들고 MR까지 진행해줘", Repo: root})
-	for _, want := range []string{"required:", "gitlab-usecase", "profile:", "gitlab/self-hosted@gitlab.example.internal"} {
+	for _, want := range []string{
+		"required:",
+		"gitlab-usecase",
+		"profile:",
+		"gitlab/self-hosted@gitlab.example.internal",
+		"read .agent-harness/VCS.md when present",
+		"glab_api",
+		"server namespace",
+		"glab api fallback",
+		"record a successful exact-identity recipe with project_docs_read/project_docs_update",
+	} {
 		if !strings.Contains(got.AdditionalContext, want) {
 			t.Fatalf("GitLab repo profile hint missing %q:\n%s", want, got.AdditionalContext)
 		}

@@ -7,8 +7,9 @@ import (
 )
 
 func PrefixedProjectDocNames() []string {
-	out := make([]string, 0, len(projectDocNames))
-	for _, name := range projectDocNames {
+	names := ProjectDocNames()
+	out := make([]string, 0, len(names))
+	for _, name := range names {
 		out = append(out, filepath.ToSlash(filepath.Join(ProjectDocsDir, name)))
 	}
 	return out
@@ -23,12 +24,13 @@ func NormalizeRelPath(relPath string) (string, error) {
 	if strings.HasPrefix(rel, ProjectDocsDir+"/") {
 		rel = strings.TrimPrefix(rel, ProjectDocsDir+"/")
 	}
+	names := AllowedProjectDocNames()
 	allowed := map[string]bool{}
-	for _, name := range projectDocNames {
+	for _, name := range names {
 		allowed[name] = true
 	}
 	if !allowed[rel] {
-		return "", fmt.Errorf("unsupported project doc %q: use one of %s", relPath, strings.Join(projectDocNames, ", "))
+		return "", fmt.Errorf("unsupported project doc %q: use one of %s", relPath, strings.Join(names, ", "))
 	}
 	return filepath.ToSlash(filepath.Join(ProjectDocsDir, rel)), nil
 }

@@ -50,6 +50,12 @@ func routeDocsForTask(task string) []routeDoc {
 	p := func(name, reason string) routeDoc {
 		return routeDoc{filepath.ToSlash(filepath.Join(ProjectDocsDir, name)), reason}
 	}
+	if strings.Contains(task, "gitlab") || strings.Contains(task, "github") ||
+		strings.Contains(task, "glab") || strings.Contains(task, "gh issue") ||
+		strings.Contains(task, "vcs") || strings.Contains(task, "merge request") ||
+		strings.Contains(task, "pull request") || strings.Contains(task, "remote issue") {
+		return add(p("VCS.md", "verified VCS provider capabilities, exact request recipes, and CLI fallbacks"))
+	}
 	if strings.Contains(task, "conflict") || strings.Contains(task, "constitution") || strings.Contains(task, "principle") || strings.Contains(task, "instruction") || strings.Contains(task, "session") {
 		return add(p("CONSTITUTION.md", "SessionStart baseline and source-of-truth priority"), p("CAUTIONS.md", "risks that may affect the decision"))
 	}

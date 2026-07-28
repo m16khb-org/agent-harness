@@ -120,6 +120,35 @@ func TestReadUpdateRecordAndAgentsBlock(t *testing.T) {
 	}
 }
 
+func TestOptionalVCSProjectDocCanBeCreatedAndReadOnDemand(t *testing.T) {
+	root := t.TempDir()
+	created, err := UpdateProjectDoc(ProjectDocsUpdateRequest{
+		RepoRoot: root,
+		RelPath:  ".agent-harness/VCS.md",
+		Content:  "# VCS\n\n## GitHub\n",
+		Summary:  "record verified provider recipe",
+		Confirm:  true,
+	})
+	if err != nil || created.Action != "create" {
+		t.Fatalf("create optional VCS.md: result=%#v err=%v", created, err)
+	}
+	read, err := ReadProjectDoc(root, ".agent-harness/VCS.md")
+	if err != nil || !read.Exists || !strings.Contains(read.Content, "## GitHub") {
+		t.Fatalf("read optional VCS.md: result=%#v err=%v", read, err)
+	}
+}
+
+func TestRouteProjectDocsIncludesOptionalVCSForRemoteWork(t *testing.T) {
+	root := t.TempDir()
+	route, err := RouteProjectDocs(root, "GitHub issue와 GitLab MR remote 작업")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !routeContains(route.Docs, ".agent-harness/VCS.md") {
+		t.Fatalf("VCS route missing: %+v", route.Docs)
+	}
+}
+
 func TestProjectDocsHelpers(t *testing.T) {
 	if rel, err := normalizeProjectDocRelPath(filepath.ToSlash(filepath.Join(ProjectDocsDir, "ADR.md"))); err != nil || rel == "" {
 		t.Fatalf("normalize rel = %q, %v", rel, err)
