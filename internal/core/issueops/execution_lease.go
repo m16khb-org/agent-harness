@@ -35,9 +35,10 @@ type ExecutionResult struct {
 	// OrcaTaskSettled와 OrcaTaskError는 완료가 orca task를 terminal 상태로
 	// 옮겼는지를 보고한다. 종결은 best-effort이므로 실패해도 완료 자체는
 	// 성공이며, 침묵하면 진단이 불가능하므로 사유를 남긴다(#130).
-	OrcaTaskSettled bool   `json:"orca_task_settled,omitempty"`
-	OrcaTaskError   string `json:"orca_task_error,omitempty"`
-	NextCommand     string `json:"next_command,omitempty"`
+	OrcaTaskSettled     bool   `json:"orca_task_settled,omitempty"`
+	OrcaTaskError       string `json:"orca_task_error,omitempty"`
+	IssueSnapshotSource string `json:"issue_snapshot_source,omitempty"`
+	NextCommand         string `json:"next_command,omitempty"`
 }
 
 type ExecutionClaimRequest struct {
@@ -88,6 +89,7 @@ type ExecutionReplaceResult struct {
 	ContextPacketSHA256 string `json:"context_packet_sha256,omitempty"`
 	OwnerPromptPath     string `json:"owner_prompt_path,omitempty"`
 	OwnerPromptSHA256   string `json:"owner_prompt_sha256,omitempty"`
+	IssueSnapshotSource string `json:"issue_snapshot_source,omitempty"`
 	NextCommand         string `json:"next_command,omitempty"`
 }
 

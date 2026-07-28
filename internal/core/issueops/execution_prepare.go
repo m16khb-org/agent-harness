@@ -52,6 +52,7 @@ type ExecutionPrepareResult struct {
 	ContextPacketSHA256 string           `json:"context_packet_sha256,omitempty"`
 	OwnerPromptPath     string           `json:"owner_prompt_path,omitempty"`
 	OwnerPromptSHA256   string           `json:"owner_prompt_sha256,omitempty"`
+	IssueSnapshotSource string           `json:"issue_snapshot_source,omitempty"`
 	NextCommand         string           `json:"next_command,omitempty"`
 }
 

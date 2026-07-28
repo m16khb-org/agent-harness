@@ -40,7 +40,7 @@ func (Provider) ReadIssueSnapshot(ctx context.Context, req port.ExecutionIssueSn
 	if !sameGitLabIssueSnapshotIdentity(issueURL, payload.WebURL) {
 		return port.ExecutionIssueSnapshot{}, fmt.Errorf("glab issue snapshot URL does not match the linked issue")
 	}
-	return port.ExecutionIssueSnapshot{URL: issueURL, Body: payload.Description, State: payload.State}, nil
+	return port.ExecutionIssueSnapshot{URL: issueURL, Body: payload.Description, State: payload.State, Source: "glab_cli"}, nil
 }
 
 func sameGitLabIssueSnapshotIdentity(left, right string) bool {

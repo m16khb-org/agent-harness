@@ -43,9 +43,18 @@ type ExecutionIssueSnapshotRequest struct {
 }
 
 type ExecutionIssueSnapshot struct {
-	URL   string `json:"url"`
-	Body  string `json:"body"`
-	State string `json:"state,omitempty"`
+	URL    string `json:"url"`
+	Body   string `json:"body"`
+	State  string `json:"state,omitempty"`
+	Source string `json:"source,omitempty"`
+}
+
+type ExecutionIssueSnapshotEvidence struct {
+	Provider string `json:"provider"`
+	Source   string `json:"source"`
+	WebURL   string `json:"web_url"`
+	Body     string `json:"body"`
+	State    string `json:"state"`
 }
 
 type ExecutionIssueSnapshotReader interface {
