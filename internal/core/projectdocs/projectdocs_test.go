@@ -140,12 +140,19 @@ func TestOptionalVCSProjectDocCanBeCreatedAndReadOnDemand(t *testing.T) {
 
 func TestRouteProjectDocsIncludesOptionalVCSForRemoteWork(t *testing.T) {
 	root := t.TempDir()
-	route, err := RouteProjectDocs(root, "GitHub issue와 GitLab MR remote 작업")
+	route, err := RouteProjectDocs(root, "GitLab MR push")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !routeContains(route.Docs, ".agent-harness/VCS.md") {
-		t.Fatalf("VCS route missing: %+v", route.Docs)
+	for _, want := range []string{
+		".agent-harness/VCS.md",
+		".agent-harness/COMMIT_POLICY.md",
+		".agent-harness/TESTING.md",
+		".agent-harness/CAUTIONS.md",
+	} {
+		if !routeContains(route.Docs, want) {
+			t.Fatalf("combined VCS/commit route missing %s: %+v", want, route.Docs)
+		}
 	}
 }
 

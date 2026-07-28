@@ -46,15 +46,20 @@ func RouteProjectDocs(repoRoot, task string) (ProjectDocsRouteResult, error) {
 
 func routeDocsForTask(task string) []routeDoc {
 	base := []routeDoc{{"AGENTS.md", "repo-level agent entrypoint and document router"}}
-	add := func(names ...routeDoc) []routeDoc { return append(base, names...) }
 	p := func(name, reason string) routeDoc {
 		return routeDoc{filepath.ToSlash(filepath.Join(ProjectDocsDir, name)), reason}
 	}
+	extra := []routeDoc{}
 	if strings.Contains(task, "gitlab") || strings.Contains(task, "github") ||
 		strings.Contains(task, "glab") || strings.Contains(task, "gh issue") ||
 		strings.Contains(task, "vcs") || strings.Contains(task, "merge request") ||
 		strings.Contains(task, "pull request") || strings.Contains(task, "remote issue") {
-		return add(p("VCS.md", "verified VCS provider capabilities, exact request recipes, and CLI fallbacks"))
+		extra = append(extra, p("VCS.md", "verified VCS provider capabilities, exact request recipes, and CLI fallbacks"))
+	}
+	add := func(names ...routeDoc) []routeDoc {
+		result := append([]routeDoc(nil), base...)
+		result = append(result, extra...)
+		return append(result, names...)
 	}
 	if strings.Contains(task, "conflict") || strings.Contains(task, "constitution") || strings.Contains(task, "principle") || strings.Contains(task, "instruction") || strings.Contains(task, "session") {
 		return add(p("CONSTITUTION.md", "SessionStart baseline and source-of-truth priority"), p("CAUTIONS.md", "risks that may affect the decision"))
