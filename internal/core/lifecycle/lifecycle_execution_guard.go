@@ -26,7 +26,7 @@ func executionObservation(req HookToolUseLifecycleRequest) bool {
 	if exactOrcaObservation(req.Command) {
 		return true
 	}
-	if exactOrcaWorkerDone(req.Command) {
+	if exactOrcaOwnerControlPlane(req.Command) {
 		return true
 	}
 	// gh issue develop은 관측이 아니다 — provider에 브랜치를 만든다. 그런데 이
@@ -242,10 +242,13 @@ func exactOrcaObservation(command string) bool {
 	}
 }
 
-// exactOrcaWorkerDone은 claim 전에 발견한 blocker도 현재 dispatch의 완료로
-// 반환할 수 있게 한다. Orca runtime이 sender pane과 task/dispatch identity를
-// 다시 검증하므로, 훅은 이 정확한 제어면만 worktree mutation fence에서 제외한다.
-func exactOrcaWorkerDone(command string) bool {
+// exactOrcaOwnerControlPlane은 injected worker contract가 요구하는 coordinator
+// 제어면만 인정한다. 이 명령들은 sealed Git worktree가 아니라 Orca orchestration
+// ledger를 갱신하므로 lease 상태와 무관하게 실행 가능해야 한다.
+//
+// 모든 flag와 message type을 열거해 알 수 없는 mutation, shell expansion,
+// redirect, detached composition은 계속 fail-closed로 유지한다.
+func exactOrcaOwnerControlPlane(command string) bool {
 	if commandparse.HasUnquotedControlOperator(command) ||
 		commandparse.HasActiveCommandSubstitution(command) ||
 		commandparse.HasActiveInputRedirect(command) ||
@@ -258,29 +261,90 @@ func exactOrcaWorkerDone(command string) bool {
 	}
 	tokens := commandparse.SplitCommandTokens(command)
 	if len(tokens) < 4 || searchrouting.SearchTokenName(tokens[0]) != "orca" ||
-		tokens[1] != "orchestration" || tokens[2] != "send" {
+		tokens[1] != "orchestration" {
 		return false
 	}
-	flags, ok := commandparse.ExactFlags(
-		commandparse.ExactIssueOpsCommand{Tokens: tokens, Start: 3},
-		map[string]bool{
-			"--to": true, "--from": true, "--type": true, "--subject": true, "--body": true,
-			"--task-id": true, "--dispatch-id": true,
-		},
-		map[string]bool{"--json": true},
-		map[string]bool{},
-	)
-	if !ok {
+	exact := commandparse.ExactIssueOpsCommand{
+		Path: "orca orchestration " + tokens[2], Tokens: tokens, Start: 3,
+	}
+	switch tokens[2] {
+	case "send":
+		flags, ok := commandparse.ExactFlags(
+			exact,
+			exactFlagNames(
+				"--to", "--from", "--type", "--subject", "--body", "--task-id",
+				"--dispatch-id", "--files-modified", "--report-path", "--phase",
+			),
+			exactFlagNames("--json"),
+			nil,
+		)
+		if !ok || !nonemptyExactFlags(flags, "--to", "--type", "--subject") {
+			return false
+		}
+		messageType, _ := oneFlag(flags, "--type")
+		switch messageType {
+		case "heartbeat":
+			return nonemptyExactFlags(flags, "--task-id", "--dispatch-id", "--phase")
+		case "worker_done":
+			return nonemptyExactFlags(flags, "--body", "--task-id", "--dispatch-id")
+		case "escalation":
+			return nonemptyExactFlags(flags, "--body", "--task-id")
+		case "decision_gate", "reply":
+			return nonemptyExactFlags(flags, "--body")
+		default:
+			return false
+		}
+	case "ask":
+		flags, ok := commandparse.ExactFlags(
+			exact,
+			exactFlagNames("--to", "--from", "--question", "--options", "--timeout-ms"),
+			exactFlagNames("--json"),
+			nil,
+		)
+		if !ok || !nonemptyExactFlags(flags, "--to", "--from", "--question") {
+			return false
+		}
+		timeout, hasTimeout := oneFlag(flags, "--timeout-ms")
+		return !hasTimeout || positiveMilliseconds(timeout)
+	case "check":
+		flags, ok := commandparse.ExactFlags(
+			exact,
+			exactFlagNames("--terminal", "--timeout-ms"),
+			exactFlagNames("--wait", "--json"),
+			nil,
+		)
+		if !ok || !nonemptyExactFlags(flags, "--terminal") {
+			return false
+		}
+		timeout, hasTimeout := oneFlag(flags, "--timeout-ms")
+		_, wait := flags["--wait"]
+		return !hasTimeout || wait && positiveMilliseconds(timeout)
+	default:
 		return false
 	}
-	for _, name := range []string{"--to", "--type", "--subject", "--body", "--task-id", "--dispatch-id"} {
-		value, found := oneFlag(flags, name)
-		if !found || strings.TrimSpace(value) == "" {
+}
+
+func exactFlagNames(names ...string) map[string]bool {
+	result := make(map[string]bool, len(names))
+	for _, name := range names {
+		result[name] = true
+	}
+	return result
+}
+
+func nonemptyExactFlags(flags map[string][]string, names ...string) bool {
+	for _, name := range names {
+		value, ok := oneFlag(flags, name)
+		if !ok || strings.TrimSpace(value) == "" {
 			return false
 		}
 	}
-	messageType, _ := oneFlag(flags, "--type")
-	return messageType == "worker_done"
+	return true
+}
+
+func positiveMilliseconds(value string) bool {
+	milliseconds, err := strconv.Atoi(strings.TrimSpace(value))
+	return err == nil && milliseconds > 0
 }
 
 func executionTypedControlPlane(req HookToolUseLifecycleRequest) bool {
