@@ -244,6 +244,8 @@ func exactReadOnlySimpleShellCommand(command string) bool {
 		return exactReadOnlyWCCommand(tokens[1:])
 	case "sed":
 		return exactReadOnlySedCommand(tokens[1:])
+	case "jq":
+		return exactReadOnlyJQCommand(tokens[1:])
 	case "codegraph":
 		return len(tokens) == 3 && tokens[1] == "explore" && strings.TrimSpace(tokens[2]) != "" && !strings.HasPrefix(tokens[2], "-")
 	case "rg":
@@ -273,6 +275,17 @@ func exactReadOnlySimpleShellCommand(command string) bool {
 			(len(tokens) == 4 && tokens[1] == "orchestration" && tokens[2] == "task-list" && tokens[3] == "--json")
 	}
 	return false
+}
+
+func exactReadOnlyJQCommand(tokens []string) bool {
+	// Turing 증거 JSON의 구문 검증에 필요한 고정 filter와 .json 파일 하나만
+	// 허용한다. 추가 option/filter/stdin은 jq의 더 넓은 실행 표면을 열 수 있다.
+	return len(tokens) == 2 &&
+		tokens[0] == "empty" &&
+		tokens[1] != "" &&
+		tokens[1] != "-" &&
+		!strings.HasPrefix(tokens[1], "-") &&
+		strings.HasSuffix(tokens[1], ".json")
 }
 
 func exactReadOnlyDigestCommand(tokens []string, algorithmRequired bool) bool {
