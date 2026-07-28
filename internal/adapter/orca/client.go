@@ -267,6 +267,13 @@ func (c *Client) CreateWorktree(ctx context.Context, req port.OrcaCreateWorktree
 	if !ok {
 		return port.OrcaWorktree{}, &port.OrcaError{Code: "unsupported_provider", Detail: strings.ToLower(strings.TrimSpace(req.Provider))}
 	}
+	preparedRemote := ""
+	if provider == "gitlab" && exactGitObjectIDPattern.MatchString(strings.TrimSpace(req.BaseBranch)) {
+		candidate := "refs/remotes/origin/" + strings.TrimSpace(req.Name)
+		if c.gitRefMatches(ctx, req.Repo, candidate, req.BaseBranch) {
+			preparedRemote = candidate
+		}
+	}
 	argv := []string{"orca", "worktree", "create", "--repo", pathSelector(req.Repo), "--name", strings.TrimSpace(req.Name), "--base-branch", strings.TrimSpace(req.BaseBranch)}
 	if parent := strings.TrimSpace(req.ParentWorktree); parent != "" {
 		argv = append(argv, "--parent-worktree", pathSelector(parent))
@@ -294,19 +301,33 @@ func (c *Client) CreateWorktree(ctx context.Context, req port.OrcaCreateWorktree
 		return created, nil
 	}
 	upstream := strings.TrimSpace(req.UpstreamBranch)
+	allowNumericSuffix := false
+	if upstream == "" && preparedRemote != "" &&
+		strings.EqualFold(strings.TrimSpace(created.Head), strings.TrimSpace(req.BaseBranch)) &&
+		c.gitRefMatches(ctx, req.Repo, preparedRemote, req.BaseBranch) {
+		upstream = preparedRemote
+		allowNumericSuffix = true
+	}
 	if upstream == "" && !exactGitObjectIDPattern.MatchString(strings.TrimSpace(req.BaseBranch)) {
 		upstream = strings.TrimSpace(req.BaseBranch)
 	}
-	return c.CanonicalizeWorktreeBranch(ctx, created, requestedBranch, upstream)
+	return c.canonicalizeWorktreeBranch(ctx, created, requestedBranch, upstream, allowNumericSuffix)
 }
 
 // CanonicalizeWorktreeBranch는 Orca가 만든 브랜치가 정확히
-// <namespace>/<provider-branch>일 때만 namespace를 제거한다. upstream이 명시된
-// 경우에만 tracking을 복구하며, exact base SHA는 upstream으로 사용하지 않는다.
+// <namespace>/<provider-branch>일 때만 namespace를 제거한다. GitLab 예약
+// 브랜치의 숫자 접미사 허용은 내부 호출에서만 별도 증명한다.
 func (c *Client) CanonicalizeWorktreeBranch(ctx context.Context, created port.OrcaWorktree, requestedBranch, upstream string) (port.OrcaWorktree, error) {
+	return c.canonicalizeWorktreeBranch(ctx, created, requestedBranch, upstream, false)
+}
+
+func (c *Client) canonicalizeWorktreeBranch(ctx context.Context, created port.OrcaWorktree, requestedBranch, upstream string, allowNumericSuffix bool) (port.OrcaWorktree, error) {
 	requestedBranch = strings.TrimSpace(requestedBranch)
 	upstream = strings.TrimSpace(upstream)
-	if requestedBranch == "" || !strings.HasSuffix(created.Branch, "/"+requestedBranch) || strings.TrimSuffix(created.Branch, "/"+requestedBranch) == "" || !filepath.IsAbs(strings.TrimSpace(created.Path)) {
+	namespaced := strings.HasSuffix(created.Branch, "/"+requestedBranch) &&
+		strings.TrimSuffix(created.Branch, "/"+requestedBranch) != ""
+	numericSuffix := allowNumericSuffix && exactNumericBranchSuffix(created.Branch, requestedBranch)
+	if requestedBranch == "" || (!namespaced && !numericSuffix) || !filepath.IsAbs(strings.TrimSpace(created.Path)) {
 		return created, &port.OrcaError{Code: "worktree_branch_mismatch", Detail: fmt.Sprintf("created branch %q does not match requested branch %q", created.Branch, requestedBranch), Invoked: true}
 	}
 	gitCommands := [][]string{{"git", "branch", "-m", requestedBranch}}
@@ -320,6 +341,21 @@ func (c *Client) CanonicalizeWorktreeBranch(ctx context.Context, created port.Or
 	}
 	created.Branch = requestedBranch
 	return created, nil
+}
+
+func (c *Client) gitRefMatches(ctx context.Context, repo, ref, wantOID string) bool {
+	output, err := c.runner.Run(ctx, strings.TrimSpace(repo), readTimeout,
+		[]string{"git", "rev-parse", "--verify", "--quiet", strings.TrimSpace(ref)})
+	return err == nil && strings.EqualFold(strings.TrimSpace(string(output.Stdout)), strings.TrimSpace(wantOID))
+}
+
+func exactNumericBranchSuffix(observed, requested string) bool {
+	suffix, ok := strings.CutPrefix(strings.TrimSpace(observed), strings.TrimSpace(requested)+"-")
+	if !ok || suffix == "" {
+		return false
+	}
+	number, err := strconv.Atoi(suffix)
+	return err == nil && number >= 2 && strconv.Itoa(number) == suffix
 }
 
 func (c *Client) AdoptWorktree(ctx context.Context, req port.OrcaAdoptWorktreeRequest) (port.OrcaWorktree, error) {

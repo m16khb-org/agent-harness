@@ -308,7 +308,14 @@ func ensureOrcaBranchIsFree(record IssueOpsRecord, branch string) error {
 		{ref: "refs/remotes/origin/" + branch, where: "on origin",
 			remedy: "delete the remote branch if it holds no work, or run `git fetch --prune` if it is already gone"},
 	} {
-		if code, _, _ := preflight.GitCmd(record.Repo, "rev-parse", "--verify", "--quiet", scope.ref); code != 0 {
+		code, output, _ := preflight.GitCmd(record.Repo, "rev-parse", "--verify", "--quiet", scope.ref)
+		if code != 0 {
+			continue
+		}
+		// GitLab branch prepare가 봉인된 base에 빈 원격 브랜치를 먼저 만드는
+		// 순서를 보존한다. 로컬 브랜치나 다른 SHA의 원격 브랜치는 기존처럼
+		// 차단하고, 이 정확한 원격 ref만 adapter의 안전한 정규화에 맡긴다.
+		if scope.where == "on origin" && exactGitLabPreparedRemote(record, branch, output) {
 			continue
 		}
 		return fmt.Errorf(
@@ -317,6 +324,16 @@ func ensureOrcaBranchIsFree(record IssueOpsRecord, branch string) error {
 			branch, scope.where, scope.remedy)
 	}
 	return nil
+}
+
+func exactGitLabPreparedRemote(record IssueOpsRecord, branch, observedOID string) bool {
+	prepared := record.BranchPrepare
+	return prepared != nil &&
+		strings.EqualFold(strings.TrimSpace(prepared.Provider), "gitlab") &&
+		prepared.LinkVerified &&
+		strings.TrimSpace(prepared.Branch) == strings.TrimSpace(branch) &&
+		strings.TrimSpace(prepared.BaseSHA) != "" &&
+		strings.EqualFold(strings.TrimSpace(observedOID), strings.TrimSpace(prepared.BaseSHA))
 }
 
 func validateExecutionOrcaReceipt(workspace port.ExecutionWorkspaceRequest, receipt port.ExecutionOrcaReceipt) error {
@@ -349,7 +366,6 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 	probeReq := port.ExecutionOrcaProbeRequest{
 		Repo: record.Repo, Host: strings.ToLower(strings.TrimSpace(req.OwnerHost)),
 		Model: strings.TrimSpace(req.OwnerModel), Effort: strings.TrimSpace(req.OwnerEffort),
-		Marker: "agent-harness issueops-v1 lifecycle=" + record.ID,
 	}
 	if record.BranchPrepare != nil {
 		probeReq.Provider = strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider))
@@ -357,15 +373,12 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 			probeReq.Issue, _ = strconv.Atoi(value)
 		}
 	}
+	probeReq.Marker = executionOrcaMarker(record.ID, "", probeReq.Provider, probeReq.Issue)
 	if requested == string(model.ExecutionModeDirect) {
 		return requested, "", probeReq, nil
 	}
-	if probeReq.Provider == "gitlab" {
-		const code = "gitlab_issue_metadata_unsupported"
-		if requested == ExecutionModeAuto {
-			return string(model.ExecutionModeDirect), code, probeReq, nil
-		}
-		return "", "", probeReq, fmt.Errorf("%s: installed Orca cannot seal GitLab issue metadata before handoff", code)
+	if probeReq.Provider == "gitlab" && probeReq.Issue <= 0 {
+		return "", "", probeReq, fmt.Errorf("Orca GitLab prepare requires a positive issue IID")
 	}
 	if probeReq.Host != "codex" && probeReq.Host != "claude" {
 		return "", "", probeReq, fmt.Errorf("Orca owner_host must be codex or claude")
@@ -409,6 +422,17 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 		return "", "", probeReq, err
 	}
 	return string(model.ExecutionModeOrca), "", probeReq, nil
+}
+
+func executionOrcaMarker(lifecycleID, operationID, provider string, issue int) string {
+	marker := "agent-harness issueops-v1 lifecycle=" + strings.TrimSpace(lifecycleID)
+	if operationID = strings.TrimSpace(operationID); operationID != "" {
+		marker += " operation=" + operationID
+	}
+	if strings.EqualFold(strings.TrimSpace(provider), "gitlab") && issue > 0 {
+		marker += " provider=gitlab issue=" + strconv.Itoa(issue)
+	}
+	return marker
 }
 
 // executionWriterAbsentNextCommand는 준비된 실행에 lease writer가 없을 때 그

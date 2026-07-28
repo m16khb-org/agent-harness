@@ -54,7 +54,7 @@ func beginOrcaExecutionIntent(stateRoot string, record IssueOpsRecord, workspace
 		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
 	}
 	startedAt := executionNow(now)
-	marker := "agent-harness issueops-v1 lifecycle=" + record.ID + " operation=" + operationID
+	marker := executionOrcaMarker(record.ID, operationID, probe.Provider, probe.Issue)
 	probe.Marker = marker
 	payload := externalOrcaIntentPayload{
 		SchemaVersion: model.IssueOpsSchemaVersion, OperationID: operationID, LifecycleID: record.ID,

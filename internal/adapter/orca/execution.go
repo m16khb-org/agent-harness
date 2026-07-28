@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -744,6 +745,16 @@ func validateExecutionPrepare(workspace port.ExecutionWorkspaceRequest, req port
 	if req.Provider == "github" && req.Issue <= 0 {
 		return fmt.Errorf("Orca GitHub prepare requires a positive issue number")
 	}
+	if req.Provider == "gitlab" {
+		if req.Issue <= 0 {
+			return fmt.Errorf("Orca GitLab prepare requires a positive issue IID")
+		}
+		provider, providerOK := executionMarkerField(req.Marker, "provider")
+		issue, issueOK := executionMarkerField(req.Marker, "issue")
+		if !providerOK || provider != "gitlab" || !issueOK || issue != strconv.Itoa(req.Issue) {
+			return fmt.Errorf("Orca GitLab prepare marker does not seal the exact provider and issue IID")
+		}
+	}
 	if parent := strings.TrimSpace(workspace.ParentWorktree); parent != "" &&
 		(!filepath.IsAbs(parent) || samePath(parent, workspace.SourceRoot) || samePath(parent, workspace.Root)) {
 		return fmt.Errorf("Orca parent worktree must be an isolated absolute path")
@@ -758,7 +769,9 @@ func validateExecutionWorktree(row port.OrcaWorktree, workspace port.ExecutionWo
 	if req.Provider == "github" && row.Issue != req.Issue {
 		return fmt.Errorf("Orca worktree receipt does not match the linked GitHub issue")
 	}
-	if req.Provider == "gitlab" && (row.GitLabIssue == nil || *row.GitLabIssue != req.Issue) {
+	// 공개 Orca CLI에는 GitLab IID 쓰기 flag가 없다. 정확한 comment marker를
+	// 필수 봉인으로 사용하고, native 필드가 관찰되면 추가 교차검증한다.
+	if req.Provider == "gitlab" && row.GitLabIssue != nil && *row.GitLabIssue != req.Issue {
 		return fmt.Errorf("Orca worktree receipt does not match the linked GitLab issue")
 	}
 	if strings.TrimSpace(workspace.ParentWorktree) != "" &&
@@ -766,6 +779,26 @@ func validateExecutionWorktree(row port.OrcaWorktree, workspace port.ExecutionWo
 		return fmt.Errorf("Orca worktree receipt does not prove explicit parent lineage")
 	}
 	return nil
+}
+
+func executionMarkerField(marker, name string) (string, bool) {
+	prefix := name + "="
+	value := ""
+	seen := false
+	for _, field := range strings.Fields(marker) {
+		if !strings.HasPrefix(field, prefix) {
+			continue
+		}
+		if seen {
+			return "", false
+		}
+		seen = true
+		value = strings.TrimPrefix(field, prefix)
+		if value == "" {
+			return "", false
+		}
+	}
+	return value, seen
 }
 
 func validateExecutionLaunch(worktreeID string, terminal port.OrcaTerminal, task port.OrcaTask, dispatch port.OrcaDispatch) error {

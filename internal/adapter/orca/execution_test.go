@@ -54,6 +54,59 @@ func TestExecutionProvisionerCreatesOneWorktreeAndLaunchesOneOwner(t *testing.T)
 	}
 }
 
+func TestExecutionProvisionerAcceptsGitLabMarkerWithoutNativeMetadata(t *testing.T) {
+	workspace, request := executionFixture(t)
+	request.Provider = "gitlab"
+	request.Marker += " provider=gitlab issue=69"
+	client := &executionFake{workspace: workspace, probeRequest: request}
+
+	if _, err := NewExecutionClient(client).PrepareWorkspace(context.Background(), workspace, request); err != nil {
+		t.Fatalf("공개 Orca CLI가 native GitLab 필드를 쓰지 못해도 봉인 marker로 준비해야 한다: %v", err)
+	}
+	if client.worktreeRequest.Provider != "gitlab" || client.worktreeRequest.Issue != 69 ||
+		client.worktreeRequest.Comment != request.Marker {
+		t.Fatalf("GitLab IID 봉인이 worktree 요청에서 손실됐다: %#v", client.worktreeRequest)
+	}
+}
+
+func TestExecutionProvisionerRejectsMismatchedNativeGitLabMetadata(t *testing.T) {
+	workspace, request := executionFixture(t)
+	request.Provider = "gitlab"
+	request.Marker += " provider=gitlab issue=69"
+	row := executionWorktree(workspace, request)
+	wrong := 70
+	row.GitLabIssue = &wrong
+	client := &executionFake{workspace: workspace, probeRequest: request, worktrees: []port.OrcaWorktree{row}}
+
+	if _, err := NewExecutionClient(client).PrepareWorkspace(context.Background(), workspace, request); err == nil {
+		t.Fatal("Orca native GitLab IID가 봉인된 IID와 다르면 거부해야 한다")
+	}
+	if !reflect.DeepEqual(client.calls, []string{"list"}) {
+		t.Fatalf("불일치 receipt 뒤에 worktree mutation을 실행했다: %v", client.calls)
+	}
+}
+
+func TestExecutionProvisionerRequiresExactGitLabMarker(t *testing.T) {
+	workspace, request := executionFixture(t)
+	request.Provider = "gitlab"
+	for _, marker := range []string{
+		request.Marker,
+		request.Marker + " provider=github issue=69",
+		request.Marker + " provider=gitlab issue=70",
+	} {
+		t.Run(marker, func(t *testing.T) {
+			request.Marker = marker
+			client := &executionFake{workspace: workspace, probeRequest: request}
+			if _, err := NewExecutionClient(client).PrepareWorkspace(context.Background(), workspace, request); err == nil {
+				t.Fatal("GitLab provider와 IID가 정확히 봉인되지 않은 marker를 허용했다")
+			}
+			if len(client.calls) != 0 {
+				t.Fatalf("잘못된 marker가 Orca inventory에 도달했다: %v", client.calls)
+			}
+		})
+	}
+}
+
 func TestExecutionIntentStagesAreIndividuallyInspectableAndInvoked(t *testing.T) {
 	workspace, probe := executionFixture(t)
 	client := &executionFake{workspace: workspace, probeRequest: probe}

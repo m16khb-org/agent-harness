@@ -542,6 +542,57 @@ func TestClientCanonicalizesFromExactSHAWithoutAnUpstream(t *testing.T) {
 	}
 }
 
+func TestClientCanonicalizesGitLabNumericSuffixAgainstSealedRemoteBranch(t *testing.T) {
+	runner := newFakeRunner(t)
+	baseSHA := strings.Repeat("a", 40)
+	remoteRef := "refs/remotes/origin/2609-fix"
+	revParse := "git rev-parse --verify --quiet " + remoteRef
+	create := "orca worktree create --repo path:/repo --name 2609-fix --base-branch " + baseSHA + " --no-parent --setup skip --comment marker --json"
+	runner.responses[revParse] = CommandOutput{Invoked: true, Stdout: []byte(baseSHA + "\n")}
+	runner.responses[create] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{"worktree":{"id":"wt-2609","instanceId":"inst-2609","repoId":"repo-1","path":"/repo.worktrees/2609-fix","head":"` + baseSHA + `","branch":"refs/heads/2609-fix-2","comment":"marker","linkedGitLabIssue":null}},"_meta":{"runtimeId":"runtime-1"}}`)}
+	runner.responses["git branch -m 2609-fix"] = CommandOutput{Invoked: true}
+	runner.responses["git branch --set-upstream-to "+remoteRef+" 2609-fix"] = CommandOutput{Invoked: true}
+
+	got, err := NewClient(runner).CreateWorktree(context.Background(), port.OrcaCreateWorktreeRequest{
+		Repo: "/repo", Name: "2609-fix", BaseBranch: baseSHA,
+		Provider: "gitlab", Issue: 2609, Comment: "marker",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantCalls := [][]string{
+		{"git", "rev-parse", "--verify", "--quiet", remoteRef},
+		{"orca", "worktree", "create", "--repo", "path:/repo", "--name", "2609-fix", "--base-branch", baseSHA, "--no-parent", "--setup", "skip", "--comment", "marker", "--json"},
+		{"git", "rev-parse", "--verify", "--quiet", remoteRef},
+		{"git", "branch", "-m", "2609-fix"},
+		{"git", "branch", "--set-upstream-to", remoteRef, "2609-fix"},
+	}
+	if got.Branch != "2609-fix" || !reflect.DeepEqual(runner.calls, wantCalls) {
+		t.Fatalf("GitLab 예약 브랜치를 정규화하지 못했다: worktree=%#v calls=%#v", got, runner.calls)
+	}
+}
+
+func TestClientRejectsGitLabNumericSuffixWithoutExactSealedRemoteBranch(t *testing.T) {
+	runner := newFakeRunner(t)
+	baseSHA := strings.Repeat("a", 40)
+	otherSHA := strings.Repeat("b", 40)
+	remoteRef := "refs/remotes/origin/2609-fix"
+	revParse := "git rev-parse --verify --quiet " + remoteRef
+	create := "orca worktree create --repo path:/repo --name 2609-fix --base-branch " + baseSHA + " --no-parent --setup skip --comment marker --json"
+	runner.responses[revParse] = CommandOutput{Invoked: true, Stdout: []byte(otherSHA + "\n")}
+	runner.responses[create] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{"worktree":{"id":"wt-2609","instanceId":"inst-2609","repoId":"repo-1","path":"/repo.worktrees/2609-fix","head":"` + baseSHA + `","branch":"refs/heads/2609-fix-2","comment":"marker","linkedGitLabIssue":null}},"_meta":{"runtimeId":"runtime-1"}}`)}
+
+	if _, err := NewClient(runner).CreateWorktree(context.Background(), port.OrcaCreateWorktreeRequest{
+		Repo: "/repo", Name: "2609-fix", BaseBranch: baseSHA,
+		Provider: "gitlab", Issue: 2609, Comment: "marker",
+	}); err == nil {
+		t.Fatal("원격 브랜치 SHA가 봉인된 base와 다르면 숫자 접미사를 정규화하면 안 된다")
+	}
+	if len(runner.calls) != 2 {
+		t.Fatalf("불일치 뒤 rename이나 upstream mutation이 실행됐다: %#v", runner.calls)
+	}
+}
+
 func TestClientAdoptsExistingGitHubWorktreeWithIssueAndMarker(t *testing.T) {
 	runner := newFakeRunner(t)
 	command := "orca worktree set --worktree id:worktree-1 --comment agent-harness:cycle=io-demo;attempt=1;epoch=epoch-1 --issue 16 --json"
