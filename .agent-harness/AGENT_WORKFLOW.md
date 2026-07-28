@@ -125,4 +125,4 @@ merge and destructive cleanup require separate authority.
 
 ## 이원 구조 흐름 요약
 
-메인 세션(planner)은 조사→이슈→설계→artifact stage→execution prepare(orca)까지 수행하고 핸드오프하면 그 사이클에 대한 임무가 끝난다 — lease를 보유하지 않으므로 즉시 다른 사이클을 계획할 수 있다. 하위 세션(implementer)은 claim→artifact 기반 TDD→planner급 brooks 리뷰(implementation-review pass)→atomic-commit-push→governed create-pr→execution complete로 종료한다. 휴먼 머지 후 정리는 reflect-completion→close-issue→cleanup finish 순서를 지킨다(OPERATIONS.md 참조).
+메인 세션(planner)은 조사→이슈→설계→artifact stage→execution prepare(orca)까지 수행하고 핸드오프하면 그 사이클에 대한 임무가 끝난다 — lease를 보유하지 않으므로 즉시 다른 사이클을 계획할 수 있다. 하위 세션(implementer)은 claim→staged plan link→`phase=implement`→artifact 기반 TDD→AI-slop evidence→`phase=ai-slop-clean`→planner급 brooks 리뷰(implementation-review pass)→atomic-commit-push→`phase=pr`→governed create-pr→execution complete로 종료한다. 이 exact 명령은 sealed owner packet이 제공하며 owner가 추론해서 보충하지 않는다. 휴먼 머지 후 정리는 reflect-completion→close-issue→cleanup finish 순서를 지킨다(OPERATIONS.md 참조).

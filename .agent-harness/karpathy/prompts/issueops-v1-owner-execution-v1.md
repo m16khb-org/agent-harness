@@ -31,7 +31,12 @@ adapter는 아래 placeholder를 모두 결정적 문자열로 치환한 뒤 pro
 | `{OWNER_EFFORT}` | host-supported effort 또는 빈 문자열 |
 | `{REVIEWER_MODEL}` | 구현 diff brooks 리뷰 전용 planner급 모델(host별 기본값) |
 | `{REVIEWER_EFFORT}` | planner급 리뷰 effort 또는 빈 문자열 |
+| `{LINK_PLAN_COMMAND}` | staged plan을 lifecycle에 연결하는 exact governed command |
+| `{ENTER_IMPLEMENT_COMMAND}` | readiness 확인 뒤 implement phase로 전이하는 exact governed command |
+| `{AI_SLOP_CLEAN_RECORD_COMMAND}` | cleanup/verification evidence를 기록하는 exact governed command |
+| `{ENTER_AI_SLOP_CLEAN_COMMAND}` | 구현 fingerprint를 봉인하며 ai-slop-clean phase로 전이하는 exact governed command |
 | `{IMPLEMENTATION_REVIEW_COMMAND}` | verdict/findings/evidence를 기록하는 exact governed command |
+| `{ENTER_PR_COMMAND}` | clean/synced/reviewed 상태에서 pr phase로 전이하는 exact governed command |
 | `{REQUIRED_DOCS}` | newline-separated repository docs |
 | `{REQUIRED_SKILLS}` | newline-separated skill paths/names |
 | `{ACCEPTANCE_IDS}` | comma-separated SSOT acceptance IDs |
@@ -65,7 +70,8 @@ canonical isolated worktree만 구현한다. coordinator의 응답이나 생존�
    재시도하지 않는다. 상태가 맞지 않으면 status를 정확히 한 번 읽고, 응답의 exact next_command를
    최대 한 번 실행하거나 blocker를 보고하고 종료한다.
 7. TDD 순서를 지킨다: 새 요구를 재현하는 실패 테스트 → 예상 이유의 RED 확인 → 최소 구현 →
-   GREEN → 관련 회귀 → full verification. 테스트를 약화·삭제·skip해서 통과시키지 않는다.
+   GREEN → 관련 회귀 → 현재 사용자·repository instruction이 승인한 검증. 테스트를 약화·삭제·skip해서
+   통과시키지 않으며, 사용자가 자원 소모가 큰 전체 검증을 제한하면 targeted 검증과 생략 근거를 기록한다.
 8. scope 밖 refactor, compatibility shim, speculative abstraction, GJC/Reasonix 지원, 자동 merge,
    cleanup, force push를 추가하지 않는다. 기존 사용자 변경을 되돌리지 않는다.
 9. claim-token 원문이나 secret을 final report, log, commit, issue, PR/MR body에 출력하지 않는다.
@@ -118,6 +124,13 @@ Required skills:
    실제로 있을 때만 붙인다. token 원문은 출력하지 않는다:
    {CLAIM_COMMAND}
 6. claim/holder 확인 전 production mutation을 하지 않는다.
+7. packet의 artifact_manifest에 plan이 있고 status의 plan_path가 비어 있으면 아래 exact command로
+   materialized plan을 link한다. plan artifact와 기존 plan_path가 모두 없으면 임의 계획을 만들지 말고
+   blocker를 보고한다:
+   {LINK_PLAN_COMMAND}
+8. plan_path와 execution readiness를 확인한 뒤 다음 exact command로 implement phase에 진입한다.
+   이 전이가 성공하기 전에는 구현 파일을 수정하지 않는다:
+   {ENTER_IMPLEMENT_COMMAND}
 
 구현 절차:
 1. issue의 Task 순서를 지키고 각 Task의 Files/Contract/RED/GREEN을 벗어나지 않는다.
@@ -127,22 +140,34 @@ Required skills:
 4. 변경 뒤 AI-slop pass를 수행해 중복 branch, legacy shim, 불필요 abstraction, 주석 소음,
    dead code, 과도한 complexity를 제거하되 요청 밖 코드는 손대지 않는다.
 5. 아래 verification을 실제 실행하고 output을 근거로 기록한다. 추론만으로 PASS라고 하지 않는다.
+   최신 사용자 지시가 전체 검증을 제한하면 해당 명령은 실행하지 말고 생략 근거와 대체한 targeted
+   검증을 report에 기록한다.
 
 Verification commands:
 {VERIFICATION_COMMANDS}
 
 publication과 종료:
-1. 모든 acceptance와 verification이 PASS한 뒤, planner급 모델 {REVIEWER_MODEL}
+1. cleanup category와 다시 실행한 verification을 다음 command의 placeholder에 넣어 기록한다:
+   {AI_SLOP_CLEAN_RECORD_COMMAND}
+2. Turing report를 포함한 구현 diff를 더 이상 수정할 필요가 없는 상태로 만든 뒤 다음 exact command로
+   ai-slop-clean phase에 진입한다:
+   {ENTER_AI_SLOP_CLEAN_COMMAND}
+3. 모든 acceptance와 승인된 verification이 PASS한 뒤, planner급 모델 {REVIEWER_MODEL}
    ({REVIEWER_EFFORT})의 fresh 서브에이전트로 구현 diff에 대한 brooks 적대 리뷰를
-   수행한다. verdict pass와 findings/evidence를 다음 command로 기록하며, pass가
-   기록되기 전에는 commit/push/PR을 진행하지 않는다:
+   수행한다. 실제 verdict와 findings/evidence를 다음 command로 기록한다. verdict가 `revise`면
+   지적을 수정하고 cleanup 검증과 fresh 리뷰를 반복하며, verdict가 `stop`이면 blocker를 보고하고
+   종료한다. `pass`일 때만 commit/push/PR로 진행한다:
    {IMPLEMENTATION_REVIEW_COMMAND}
-2. exact governed command로 draft PR/MR을 만든다:
+4. 리뷰가 봉인한 diff를 더 수정하지 않고 atomic-commit-push 계약으로 commit/push한다. 변경이
+   필요해지면 cleanup 검증과 구현 리뷰를 새 fingerprint로 다시 수행한다.
+5. clean/synced branch를 확인한 뒤 다음 exact command로 pr phase에 진입한다:
+   {ENTER_PR_COMMAND}
+6. exact governed command로 draft PR/MR을 만든다:
    {REMOTE_CREATE_COMMAND}
-3. PR/MR URL, target branch, label, assignee, Korean body를 API/CLI로 다시 읽어 검증한다.
-4. final HEAD와 {TURING_REPORT_PATH}를 사용해 다음 command를 완성하고 한 번 실행한다:
+7. PR/MR URL, target branch, label, assignee, Korean body를 API/CLI로 다시 읽어 검증한다.
+8. final HEAD와 {TURING_REPORT_PATH}를 사용해 다음 command를 완성하고 한 번 실행한다:
    {COMPLETE_COMMAND}
-5. completion receipt가 lease를 release했는지 status로 한 번 확인한 뒤 종료한다. coordinator에게
+9. completion receipt가 lease를 release했는지 status로 한 번 확인한 뒤 종료한다. coordinator에게
    결과를 받으라고 기다리거나 worktree/branch를 cleanup하지 않는다.
 
 막힘 규칙:
@@ -174,7 +199,8 @@ publication과 종료:
 ## 출력 계약
 
 - owner의 final natural-language output은 위 14개 field를 순서와 이름까지 빠짐없이 포함한다.
-- `completed`는 draft PR/MR readback, full verification PASS, completion receipt가 모두 있을 때만 허용한다.
+- `completed`는 draft PR/MR readback, 현재 사용자·repository instruction이 요구한 검증 PASS,
+  completion receipt가 모두 있을 때만 허용한다.
 - `blocked`는 mutation 없이 또는 이미 수행한 안전한 worktree-local state를 보존한 채 반환한다.
 - chain-of-thought, claim token 원문, environment secret, raw transcript는 출력하지 않는다.
 

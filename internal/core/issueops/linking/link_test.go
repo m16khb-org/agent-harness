@@ -155,6 +155,42 @@ func TestLinkPlanValidatesReadinessAndPersistsAbsolutePath(t *testing.T) {
 	}
 }
 
+func TestLinkPlanIsIdempotentButRejectsPathReplacement(t *testing.T) {
+	repo, worktree := issueOpsRepoAndWorktreeFixture(t, "feature/plan-cas")
+	planDir := filepath.Join(worktree, "docs")
+	if err := os.MkdirAll(planDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	linkedPlan := filepath.Join(planDir, "linked.md")
+	replacementPlan := filepath.Join(planDir, "replacement.md")
+	for _, path := range []string{linkedPlan, replacementPlan} {
+		if err := os.WriteFile(path, []byte("# plan\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	record := model.IssueOpsRecord{
+		ID:           "io-link-plan-cas",
+		Repo:         repo,
+		Branch:       "feature/plan-cas",
+		Phase:        model.IssueOpsPhasePlan,
+		IssueURL:     "https://github.com/example/repo/issues/10",
+		WorktreePath: worktree,
+		PlanPath:     linkedPlan,
+	}
+	_, store := newLinkStoreForTest(record)
+
+	got, err := LinkPlan(store, t.TempDir(), record.ID, filepath.Join("docs", "linked.md"))
+	if err != nil {
+		t.Fatalf("같은 plan 재연결은 멱등이어야 한다: %v", err)
+	}
+	if got.PlanPath != linkedPlan {
+		t.Fatalf("멱등 재연결이 plan path를 바꿨다: %q", got.PlanPath)
+	}
+	if _, err := LinkPlan(store, t.TempDir(), record.ID, replacementPlan); err == nil || !strings.Contains(err.Error(), "already linked") {
+		t.Fatalf("다른 plan path로 교체하면 fail-closed해야 한다: %v", err)
+	}
+}
+
 func TestLinkPlanRejectsBoundaryViolations(t *testing.T) {
 	repo, worktree := issueOpsRepoAndWorktreeFixture(t, "feature/plan-boundary")
 	outsidePlanPath := filepath.Join(filepath.Dir(worktree), "outside-plan.md")

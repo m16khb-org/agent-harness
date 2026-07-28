@@ -286,7 +286,10 @@ provider branch + base SHA
 -> execution prepare preview/confirm
 -> sealed packet/prompt + native owner launch
 -> execution claim with token file and both digests
--> plan/TDD/verification in the canonical worktree
+-> staged plan link + phase=implement
+-> TDD/verification in the canonical worktree
+-> AI-slop evidence + phase=ai-slop-clean
+-> implementation review + atomic commit/push + phase=pr
 -> generation-fenced draft PR/MR + readback
 -> execution complete
 -> separate human merge and cleanup choice
@@ -297,7 +300,9 @@ terminal creation. Orca must expose `terminal create --command`; a launch shape
 that cannot carry the exact model contract is rejected. The write fence is the
 exact lifecycle ID, generation, native process receipt, canonical worktree, and
 persisted Orca identity. The source main worktree remains available for
-unrelated work throughout the sequence.
+unrelated work throughout the sequence. Plan 연결과 세 phase 전이는 sealed
+owner packet의 exact command를 사용한다. Owner가 phase를 추론해 건너뛰거나
+cleanup evidence 기록이 phase를 자동 전이한다고 가정하지 않는다.
 
 ## IssueOps 이원 구조 운영 (planner/implementer)
 

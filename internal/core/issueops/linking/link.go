@@ -71,6 +71,15 @@ func LinkPlan(store Store, stateRoot, id, planPath string) (model.IssueOpsRecord
 	if !store.PlanPathInsideWorktree(worktree, path) {
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("plan_path must be inside linked worktree: %s", worktree)
 	}
+	if linked := strings.TrimSpace(record.PlanPath); linked != "" {
+		if !filepath.IsAbs(linked) {
+			linked = filepath.Join(worktree, linked)
+		}
+		if filepath.Clean(linked) == filepath.Clean(path) {
+			return record, nil
+		}
+		return model.IssueOpsRecord{OK: false}, fmt.Errorf("plan_path is already linked; edit the linked plan in place instead of replacing its identity")
+	}
 	record.PlanPath = path
 	return store.TouchWrite(stateRoot, record)
 }

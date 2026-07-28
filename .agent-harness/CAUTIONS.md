@@ -747,3 +747,13 @@ Codex hook trust는 command 내용만이 아니라 `source:event:matcher-index:h
 - tracked와 untracked 변경을 이름 있는 `git stash push --include-untracked`로 보존하고 stash SHA를 기록한 뒤 fast-forward한다.
 - `git stash apply`를 사용해 복구 지점을 유지한 채 변경을 재적용하고, conflict marker·diff·focused/full tests와 두 번째 `git pull --ff-only`를 확인한 뒤에만 stash를 제거한다.
 - dirty `main`을 맞추기 위해 `reset --hard`, `clean`, 사용자 변경 폐기, 임시 worktree branch 삭제를 사용하지 않는다.
+
+## execution owner에게 lease 명령만 주고 lifecycle phase 전이를 추론시키지 말 것
+
+Orca owner가 active lease를 정상 claim하고 구현·대상 검증까지 마쳤지만 lifecycle은 `problem`에 남아 있었다. 기존 sealed prompt가 `link-plan`, `phase --to implement`, `ai-slop-clean record`, `phase --to ai-slop-clean`, `phase --to pr`의 순서와 exact command를 제공하지 않았기 때문이다. cleanup evidence만 기록해도 phase와 fingerprint는 자동으로 전이되지 않으므로 implementation review가 `implement phase` 이전이라고 거부했다.
+
+- sealed owner packet은 plan 연결부터 PR phase까지 필요한 lifecycle mutation을 exact command로 렌더하고 command catalog로 검증한다.
+- staged plan과 기존 `plan_path`가 모두 없으면 임의 계획이나 phase jump로 우회하지 않고 blocker를 보고한다. `link-plan`은 같은 canonical path만 멱등 허용하며 다른 path로의 교체는 fail-closed한다.
+- 구현 수정은 `phase=implement` readback 뒤에 시작하고, cleanup evidence 기록 뒤 `ai-slop-clean` 전이로 fingerprint를 봉인한다.
+- implementation review는 실제 `pass|revise|stop` verdict를 기록한다. `revise`는 수정·재검증·fresh 리뷰를 반복하고 `stop`은 publication을 중단한다. 리뷰 뒤 diff를 바꾸면 cleanup/review fingerprint를 다시 기록한다. clean/synced push 뒤 `phase=pr`을 통과한 다음에만 governed PR/MR 생성 명령을 실행한다.
+- 최신 사용자 지시가 전체 테스트를 제한하면 sealed issue의 오래된 full 명령을 강행하지 않고 targeted 검증과 생략 근거를 Turing report에 남긴다.
