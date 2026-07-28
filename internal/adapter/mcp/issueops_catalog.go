@@ -42,6 +42,18 @@ func issueOpsExecutionSchema() map[string]any {
 			"turing_report_path":     map[string]any{"type": "string"},
 			"verification":           map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 			"remote_artifact_url":    map[string]any{"type": "string"},
+			"issue_snapshot": map[string]any{
+				"type":                 "object",
+				"additionalProperties": false,
+				"required":             []string{"provider", "source", "web_url", "body", "state"},
+				"properties": map[string]any{
+					"provider": map[string]any{"type": "string", "enum": []string{"gitlab"}},
+					"source":   map[string]any{"type": "string", "enum": []string{"glab_mcp"}},
+					"web_url":  map[string]any{"type": "string"},
+					"body":     map[string]any{"type": "string", "maxLength": 524288},
+					"state":    map[string]any{"type": "string", "enum": []string{"opened", "closed"}},
+				},
+			},
 		},
 	}
 }

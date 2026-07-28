@@ -254,7 +254,7 @@
           "name": "version"
         }
       ],
-      "hash": "627568cb065be4e155edaedb4a654c45f65305bcc863b1572ab1f2995dc0546f",
+      "hash": "fe68f02c9f63fc34bb3d71cb85bdb85ced73da80a576ce8b6ca9529976a57b47",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -419,6 +419,7 @@
           "ok",
           "id",
           "execution",
+          "issue_snapshot_source",
           "next_command"
         ],
         "issueops_execution_prepare": [
@@ -436,6 +437,7 @@
           "context_packet_sha256",
           "owner_prompt_path",
           "owner_prompt_sha256",
+          "issue_snapshot_source",
           "next_command"
         ],
         "issueops_execution_reconcile": [
@@ -445,7 +447,8 @@
           "reconciled",
           "code",
           "execution",
-          "pending"
+          "pending",
+          "issue_snapshot_source"
         ],
         "issueops_execution_replace": [
           "ok",
@@ -455,6 +458,7 @@
           "inventory_fingerprint",
           "quiescence_fingerprint",
           "claim_token_path",
+          "issue_snapshot_source",
           "next_command"
         ],
         "issueops_pr_readiness": [
@@ -6463,7 +6467,7 @@
                 "name": "version"
               }
             ],
-            "hash": "627568cb065be4e155edaedb4a654c45f65305bcc863b1572ab1f2995dc0546f",
+            "hash": "fe68f02c9f63fc34bb3d71cb85bdb85ced73da80a576ce8b6ca9529976a57b47",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6628,6 +6632,7 @@
                 "ok",
                 "id",
                 "execution",
+                "issue_snapshot_source",
                 "next_command"
               ],
               "issueops_execution_prepare": [
@@ -6645,6 +6650,7 @@
                 "context_packet_sha256",
                 "owner_prompt_path",
                 "owner_prompt_sha256",
+                "issue_snapshot_source",
                 "next_command"
               ],
               "issueops_execution_reconcile": [
@@ -6654,7 +6660,8 @@
                 "reconciled",
                 "code",
                 "execution",
-                "pending"
+                "pending",
+                "issue_snapshot_source"
               ],
               "issueops_execution_replace": [
                 "ok",
@@ -6664,6 +6671,7 @@
                 "inventory_fingerprint",
                 "quiescence_fingerprint",
                 "claim_token_path",
+                "issue_snapshot_source",
                 "next_command"
               ],
               "issueops_pr_readiness": [

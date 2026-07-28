@@ -542,6 +542,45 @@
           "pattern": "^[0-9a-f]{64}$",
           "type": "string"
         },
+        "issue_snapshot": {
+          "additionalProperties": false,
+          "properties": {
+            "body": {
+              "maxLength": 524288,
+              "type": "string"
+            },
+            "provider": {
+              "enum": [
+                "gitlab"
+              ],
+              "type": "string"
+            },
+            "source": {
+              "enum": [
+                "glab_mcp"
+              ],
+              "type": "string"
+            },
+            "state": {
+              "enum": [
+                "opened",
+                "closed"
+              ],
+              "type": "string"
+            },
+            "web_url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "provider",
+            "source",
+            "web_url",
+            "body",
+            "state"
+          ],
+          "type": "object"
+        },
         "mode": {
           "enum": [
             "auto",

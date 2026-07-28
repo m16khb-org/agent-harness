@@ -132,6 +132,28 @@ func TestValidatorSupportsStringPatternWithoutEchoingRejectedValue(t *testing.T)
 	}
 }
 
+func TestValidatorSupportsStringMaxLength(t *testing.T) {
+	schema := map[string]any{"type": "object", "properties": map[string]any{
+		"body": map[string]any{"type": "string", "maxLength": 3},
+	}}
+	if diagnostics, err := Validate(ClosedProjection(schema), map[string]any{"body": "가나다"}); err != nil || len(diagnostics) != 0 {
+		t.Fatalf("valid maxLength diagnostics=%#v err=%v", diagnostics, err)
+	}
+	diagnostics, err := Validate(ClosedProjection(schema), map[string]any{"body": "가나다라"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Diagnostic{{Path: "/body", Code: "max_length_mismatch", Expected: "<= 3", Actual: "4"}}
+	if !reflect.DeepEqual(diagnostics, want) {
+		t.Fatalf("diagnostics=%#v want=%#v", diagnostics, want)
+	}
+	for _, invalid := range []any{-1, 1.5, "3"} {
+		if _, err := Validate(map[string]any{"type": "string", "maxLength": invalid}, "value"); err == nil {
+			t.Fatalf("invalid maxLength schema accepted: %#v", invalid)
+		}
+	}
+}
+
 func TestNestedObjectMismatchUsesWrongType(t *testing.T) {
 	schema := map[string]any{
 		"type": "object",

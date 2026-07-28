@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 func Classify(observation CallObservation, schema map[string]any, expected any) (CaseResult, error) {
@@ -182,7 +183,7 @@ func supported(schema map[string]any) error {
 	for _, key := range keys {
 		value := schema[key]
 		switch key {
-		case "type", "properties", "required", "items", "enum", "description", "additionalProperties", "minimum", "pattern":
+		case "type", "properties", "required", "items", "enum", "description", "additionalProperties", "minimum", "pattern", "maxLength":
 		default:
 			return fmt.Errorf("unsupported_schema_keyword: %s", key)
 		}
@@ -221,6 +222,11 @@ func supported(schema map[string]any) error {
 		case "minimum":
 			if _, ok := numericValue(value); !ok {
 				return fmt.Errorf("invalid_schema_keyword_shape: minimum")
+			}
+		case "maxLength":
+			maxLength, ok := numericValue(value)
+			if !ok || maxLength < 0 || maxLength != float64(int64(maxLength)) {
+				return fmt.Errorf("invalid_schema_keyword_shape: maxLength")
 			}
 		case "pattern":
 			pattern, ok := value.(string)
@@ -313,6 +319,19 @@ func validate(s map[string]any, v any, p string, out *[]Diagnostic) {
 		value, ok := v.(string)
 		if ok && !regexp.MustCompile(pattern).MatchString(value) {
 			*out = append(*out, Diagnostic{Path: p, Code: "pattern_mismatch", Expected: pattern, Actual: "string"})
+		}
+	}
+	if maximum, present := s["maxLength"]; present {
+		maximumValue, maximumOK := numericValue(maximum)
+		value, valueOK := v.(string)
+		if maximumOK && valueOK {
+			length := utf8.RuneCountInString(value)
+			if float64(length) > maximumValue {
+				*out = append(*out, Diagnostic{
+					Path: p, Code: "max_length_mismatch",
+					Expected: "<= " + formatNumericValue(maximumValue), Actual: strconv.Itoa(length),
+				})
+			}
 		}
 	}
 }
