@@ -854,6 +854,9 @@ func SafeRipgrepArgs(tokens []string) bool {
 		if boolOptions[name] {
 			continue
 		}
+		if exactRipgrepCompactNumericOption(token) {
+			continue
+		}
 		if valueOptions[name] {
 			if i+1 >= len(tokens) || strings.HasPrefix(tokens[i+1], "-") {
 				return false
@@ -864,6 +867,20 @@ func SafeRipgrepArgs(tokens []string) bool {
 		return false
 	}
 	return true
+}
+
+// exactRipgrepCompactNumericOption은 ripgrep가 허용하는 `-A5` 같은 결합형
+// 표기를 기존 숫자형 관찰 옵션과 제한된 값에만 허용한다.
+func exactRipgrepCompactNumericOption(token string) bool {
+	if len(token) < 3 {
+		return false
+	}
+	switch token[:2] {
+	case "-A", "-B", "-C", "-m":
+		return boundedLineCount(token[2:])
+	default:
+		return false
+	}
 }
 
 // CommandAfterDirectoryOption은 start부터 시작해 처음 나오는 non-`-C`(directory

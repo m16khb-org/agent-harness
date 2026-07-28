@@ -37,6 +37,10 @@ git diff --cached --stat`,
 sed -n '1,130p' internal/core/issueops/testdata/leasevertical/domain/release.go
 sed -n '1,383p' internal/core/issueops/testdata/leasevertical/contract/record.go`,
 		},
+		{
+			name:    "축약 context 옵션을 쓴 rg 관찰",
+			command: `rg -n -A5 'NewReleaseService\(' internal/core/issueops/execution_lease_differential_test.go internal/core/issueops/testdata/leasevertical/application/release.go`,
+		},
 	}
 
 	for _, testCase := range commands {

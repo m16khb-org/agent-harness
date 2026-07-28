@@ -265,6 +265,7 @@ func TestExactReadOnlyShellCommandCorpus(t *testing.T) {
 		"wc -l /Users/habin/.codex/skills/verification-before-completion/SKILL.md",
 		"sed -n '1,240p' /Users/habin/.codex/skills/verification-before-completion/SKILL.md",
 		"rg -n handoff internal",
+		"rg -n -A5 'NewReleaseService\\(' internal/core/issueops/execution_lease_differential_test.go internal/core/issueops/testdata/leasevertical/application/release.go",
 		"rg --files --hidden",
 		"git status --short",
 		"git -C /repo diff --stat",
@@ -426,6 +427,10 @@ sed -n '1,194p' internal/core/issueops/testdata/leasevertical/adapter/sqlite.go`
 func TestSafeRipgrepArgsCorpus(t *testing.T) {
 	safe := [][]string{
 		{"-n", "pattern"},
+		{"-n", "-A5", "pattern", "first.go", "second.go"},
+		{"-B4", "pattern"},
+		{"-C3", "pattern"},
+		{"-m20", "pattern"},
 		{"--glob", "*.go", "pattern"},
 		{"-C", "3", "pattern"},
 		{"--type=go", "pattern"},
@@ -437,6 +442,9 @@ func TestSafeRipgrepArgsCorpus(t *testing.T) {
 		{"--glob"},    // value flag missing its value
 		{"--unknown"}, // unknown flag
 		{"-g", "-x"},  // value flag followed by another flag
+		{"-Afoo", "pattern"},
+		{"-A10001", "pattern"},
+		{"-m-1", "pattern"},
 	}
 	for _, a := range safe {
 		if !SafeRipgrepArgs(a) {
