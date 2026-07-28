@@ -46,6 +46,10 @@ sed -n '1,383p' internal/core/issueops/testdata/leasevertical/contract/record.go
 			command: "jq empty .agent-harness/turing/issueops-v1-0d097a7cae7456be.json",
 		},
 		{
+			name:    "프로젝트 문서 전체 관찰",
+			command: `sed -n '1,$p' .agent-harness/CONVENTIONS.md`,
+		},
+		{
 			name:    "성공 조건으로 연결한 Git 관찰",
 			command: "pwd && git status --short && git diff --cached --check",
 		},

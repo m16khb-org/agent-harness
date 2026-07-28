@@ -1,6 +1,7 @@
 package commandparse
 
 import (
+	"path"
 	"strconv"
 	"strings"
 )
@@ -205,7 +206,7 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 // 세미콜론·개행·&& 시퀀스 외의 활성 shell control/expansion은 거부한다.
 // IssueOps의 read-only 권한은 record identity가 필요하므로 호출자가 처리한다.
 func ExactReadOnlyShellCommand(command string) bool {
-	if HasActiveCommandSubstitution(command) || HasActiveInputRedirect(command) || HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) || HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) || HasActiveZshEqualsExpansion(command) {
+	if HasActiveCommandSubstitution(command) || HasActiveInputRedirect(command) || HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) || HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) || HasActiveShellComment(command) || HasActiveZshEqualsExpansion(command) {
 		return false
 	}
 	if HasUnquotedControlOperator(command) {
@@ -761,24 +762,44 @@ func exactReadOnlyWCCommand(tokens []string) bool {
 }
 
 func exactReadOnlySedCommand(tokens []string) bool {
-	if len(tokens) < 3 || tokens[0] != "-n" || !numericSedPrintRange(tokens[1]) {
+	if len(tokens) < 3 || tokens[0] != "-n" || !boundedSedPrintRange(tokens[1]) {
 		return false
 	}
 	for _, operand := range tokens[2:] {
-		if operand == "" || operand == "-" || strings.HasPrefix(operand, "-") {
+		if operand == "" || operand == "-" || strings.HasPrefix(operand, "-") || knownStdinAlias(operand) {
 			return false
 		}
 	}
 	return true
 }
 
-func numericSedPrintRange(script string) bool {
+func knownStdinAlias(operand string) bool {
+	clean := path.Clean(operand)
+	if strings.HasSuffix(clean, "/dev/stdin") {
+		return true
+	}
+	const marker = "/fd/"
+	index := strings.LastIndex(clean, marker)
+	if index < 0 {
+		return false
+	}
+	fd, err := strconv.Atoi(clean[index+len(marker):])
+	return err == nil && fd == 0
+}
+
+func boundedSedPrintRange(script string) bool {
 	if !strings.HasSuffix(script, "p") {
 		return false
 	}
 	parts := strings.Split(strings.TrimSuffix(script, "p"), ",")
 	if len(parts) < 1 || len(parts) > 2 {
 		return false
+	}
+	// 문서 끝까지 읽는 `<positive-line>,$p`만 마지막 줄 표식 범위로 인정한다.
+	// `$p` 단독이나 다른 sed 명령은 기존처럼 fail closed로 둔다.
+	if len(parts) == 2 && parts[1] == "$" {
+		start, err := strconv.Atoi(parts[0])
+		return err == nil && start > 0
 	}
 	lines := make([]int, len(parts))
 	for i, part := range parts {

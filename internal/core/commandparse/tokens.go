@@ -92,6 +92,51 @@ func HasActiveShellSpecialQuoting(command string) bool {
 	return false
 }
 
+// HasActiveShellComment는 shell이 word 시작의 unquoted `#` 뒤 argv를 버리는
+// 경우를 보고한다. parser가 comment를 파일 operand로 오인하면 실제 명령은
+// stdin을 읽을 수 있으므로 exact reader에서는 거부한다.
+func HasActiveShellComment(command string) bool {
+	var quote rune
+	escaped := false
+	wordStart := true
+	for _, r := range command {
+		if escaped {
+			escaped = false
+			// backslash-newline은 shell에서 제거되므로 continuation 전의
+			// word-start 상태를 그대로 유지해야 한다.
+			if r != '\n' && r != '\r' {
+				wordStart = false
+			}
+			continue
+		}
+		if r == '\\' && quote != '\'' {
+			escaped = true
+			continue
+		}
+		if quote != 0 {
+			if r == quote {
+				quote = 0
+			}
+			wordStart = false
+			continue
+		}
+		if r == '\'' || r == '"' {
+			quote = r
+			wordStart = false
+			continue
+		}
+		if r == ' ' || r == '\t' || r == '\n' || r == '\r' {
+			wordStart = true
+			continue
+		}
+		if wordStart && r == '#' {
+			return true
+		}
+		wordStart = false
+	}
+	return false
+}
+
 // HasActiveZshEqualsExpansion은 zsh의 unquoted 단어 선두 =name command-path
 // expansion과 =(...) 임시 파일 process substitution을 보고한다. quote되거나
 // backslash로 escape된 등호와 평범한 NAME=value shell 대입은 이 검사에서

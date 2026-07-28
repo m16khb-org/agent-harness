@@ -148,6 +148,12 @@ sed -n '1,130p' internal/core/issueops/testdata/leasevertical/domain/release.go`
 		t.Fatalf("각 조각이 exact reader인 multiline 시퀀스는 lifecycle에서도 관찰이어야 한다: %+v", got)
 	}
 
+	req.Command = `sed -n '1,$p' .agent-harness/CONVENTIONS.md`
+	got = BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "allow" {
+		t.Fatalf("마지막 줄 표식을 쓴 exact sed reader는 lifecycle에서도 관찰이어야 한다: %+v", got)
+	}
+
 	req.Command = "pwd && git status --short && git diff --cached --check"
 	got = BuildLifecyclePreToolUseDecision(req)
 	if got.Decision != "allow" {
