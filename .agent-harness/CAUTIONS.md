@@ -762,3 +762,14 @@ Orca owner가 active lease를 정상 claim하고 구현·대상 검증까지 마
 - 구현 수정은 `phase=implement` readback 뒤에 시작하고, cleanup evidence 기록 뒤 `ai-slop-clean` 전이로 fingerprint를 봉인한다.
 - implementation review는 실제 `pass|revise|stop` verdict를 기록한다. `revise`는 수정·재검증·fresh 리뷰를 반복하고 `stop`은 publication을 중단한다. 리뷰 뒤 diff를 바꾸면 cleanup/review fingerprint를 다시 기록한다. clean/synced push 뒤 `phase=pr`을 통과한 다음에만 governed PR/MR 생성 명령을 실행한다.
 - 최신 사용자 지시가 전체 테스트를 제한하면 sealed issue의 오래된 full 명령을 강행하지 않고 targeted 검증과 생략 근거를 Turing report에 남긴다.
+
+## active lease에서 atomic 스킬의 Python gate를 일반 관찰로 열지 말 것
+
+`atomic-commit-push`의 필수 `git_preflight.py`가 읽기 전용이어도 Python 스크립트 실행은 정적 shell reader 목록에 없어서 `unsafe_mutation`으로 차단된 적이 있다. 반대로 파일 이름만 보고 observation으로 승격하면 저장소가 제공한 Python 코드가 non-holder에게도 열릴 수 있다.
+
+- `git_preflight.py`와 `api_doc_gate.py`의 정확한 단일 `python3` 호출만 current holder workflow로 인정한다.
+- 스크립트는 저장소 상대 경로와 사용자 홈의 설치·심볼릭 링크 경로를 모두 쓸 수 있으므로 사용자별 절대 경로를 하드코딩하지 않는다. 절대 경로는 명시적 expected worktree/source checkout, `HARNESS_ROOT`, `CODEX_HOME`, 사용자 홈의 Codex·Claude skill root처럼 설치기가 관리하는 base와 정확히 일치할 때만 허용한다. generic repo/cwd와 단순 `/skills/...` suffix 비교는 신뢰 근거로 쓰지 않는다.
+- 상대 `skills/...` 스크립트는 active lifecycle의 canonical worktree root에서만 실행한다. 하위 디렉터리에서는 같은 상대 경로가 `<subdir>/skills/...`를 가리키므로 holder라도 허용하지 않는다.
+- 선택적 repo 인자는 실제 shell 작업 디렉터리와 같은 canonical 경로만 허용한다. Codex `exec_command`는 `tool_input.workdir`, Claude Bash는 top-level `cwd`를 기준으로 삼고 해석이 모호한 상대 `workdir`는 거부한다.
+- 비-shell tool은 같은 command 문자열을 실어도 이 경로로 분류하지 않는다. 공백이 포함된 argv, 추가 인자, 다른 인터프리터, 다른 스크립트, 외부 repo 대상은 계속 fail-closed한다.
+- 이 경로는 일반 read-only observation이 아니다. 기존 native holder identity와 canonical worktree containment를 모두 통과한 뒤에만 실행한다.

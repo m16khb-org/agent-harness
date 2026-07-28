@@ -395,10 +395,12 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 	}
 	unsafeReason := executionUnsafeMutationReason(req)
 	resourceWaitRoot, exactResourceWait := exactOwnedResourceWait(req.Command)
+	atomicWorkflowRoot, exactAtomicWorkflow := exactAtomicCommitWorkflowScript(req)
+	atomicWorkflowRelativeScript := exactAtomicWorkflow && atomicCommitWorkflowUsesRelativeScript(req.Command)
 	mayMutate := toolUseMayMutateLifecycleFiles(req.Tool, req.Command)
 	if searchrouting.IsShellTool(req.Tool) && !mayMutate {
 		mayMutate = true
-		if unsafeReason == "" && !exactIssueOpsOwnerMutation(req.Command) && !exactResourceWait {
+		if unsafeReason == "" && !exactIssueOpsOwnerMutation(req.Command) && !exactResourceWait && !exactAtomicWorkflow {
 			unsafeReason = "unclassified shell command is blocked while IssueOps mutation authority is active; use an exact listed reader or a statically classified foreground mutation command"
 		}
 	}
@@ -409,9 +411,27 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 	if exactResourceWait {
 		targets = append(targets, resourceWaitRoot)
 	}
+	if exactAtomicWorkflow {
+		targets = []string{atomicWorkflowRoot}
+	}
 	records, err := executionGuardRecords(req, targets)
 	if err != nil {
 		return true, "IssueOps authority state could not be read (often transient state-store contention); retry once, and if it persists run `agent-harness doctor --repo " + cleanAbsPath(req.Repo) + " --json`", nil
+	}
+	if len(records) == 0 && exactAtomicWorkflow {
+		// 명시적 workdir가 외부를 가리킬 때 target만 조회하면 현재 lifecycle을
+		// 찾지 못해 일반 명령으로 빠질 수 있다. cwd/repo anchor는 허용 근거로
+		// 쓰지 않고, 활성 lifecycle에서 빠져나가는 misdirect 차단에만 쓴다.
+		anchors := []string{cleanAbsPath(req.CWD), cleanAbsPath(req.Repo)}
+		anchorRecords, anchorErr := executionGuardRecords(req, anchors)
+		if anchorErr != nil {
+			return true, "IssueOps authority state could not be read (often transient state-store contention); retry once, and if it persists run `agent-harness doctor --repo " + cleanAbsPath(req.Repo) + " --json`", nil
+		}
+		if len(anchorRecords) > 0 {
+			record := anchorRecords[0]
+			reason := "atomic commit workflow must run with an effective shell workdir equal to the canonical IssueOps worktree"
+			return true, reason, executionDeny(record, "unsafe_mutation", executionStatusCommand(record.ID))
+		}
 	}
 	if len(records) == 0 {
 		if exactResourceWait {
@@ -434,6 +454,10 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 		}
 		lease := record.Execution.Lease
 		root := record.Execution.Workspace.Root
+		if atomicWorkflowRelativeScript && !sameExecutionPath(atomicWorkflowRoot, root) {
+			reason := "relative atomic commit workflow scripts must run from the canonical IssueOps worktree root"
+			return true, reason, executionDeny(record, "unsafe_mutation", executionStatusCommand(record.ID))
+		}
 		if lease.Status == issueopsmodel.LeaseStatusActive && executionActorMatches(req, lease.Holder) &&
 			executionRequestTargetsStayInside(req, targets, root) {
 			return true, "", nil
@@ -537,6 +561,132 @@ func exactOwnedResourceWait(commandText string) (string, bool) {
 		return "", false
 	}
 	return cleanAbsPath(root), true
+}
+
+// exactAtomicCommitWorkflowScript는 atomic-commit-push 스킬이 필수로 실행하는
+// 두 Python gate만 현재 holder의 foreground workflow로 인정한다. 저장소가
+// 제공하거나 설치 경로에 연결된 Python 코드는 일반 관찰 권한으로 승격하지 않고,
+// 대상 저장소만 기존 canonical worktree fence로 다시 검증한다.
+func exactAtomicCommitWorkflowScript(req HookToolUseLifecycleRequest) (string, bool) {
+	if !searchrouting.IsShellTool(req.Tool) {
+		return "", false
+	}
+	commandText := strings.TrimSpace(req.Command)
+	if commandText == "" || commandparse.HasUnquotedControlOperator(commandText) ||
+		commandparse.HasActiveCommandSubstitution(commandText) ||
+		commandparse.HasActiveInputRedirect(commandText) ||
+		commandparse.HasActiveOutputRedirect(commandText) ||
+		commandparse.HasActiveParameterOrTildeExpansion(commandText) ||
+		commandparse.HasActivePathnameExpansion(commandText) ||
+		commandparse.HasActiveShellSpecialQuoting(commandText) ||
+		commandparse.HasActiveZshEqualsExpansion(commandText) {
+		return "", false
+	}
+	tokens := commandparse.SplitCommandTokens(commandText)
+	if (len(tokens) != 2 && len(tokens) != 3) || tokens[0] != "python3" ||
+		!losslessAtomicWorkflowToken(tokens[1]) ||
+		!atomicCommitWorkflowScriptPath(req, tokens[1]) {
+		return "", false
+	}
+	cwd, ok := atomicCommitWorkflowCWD(req)
+	if !ok {
+		return "", false
+	}
+	root := cwd
+	if len(tokens) == 3 {
+		if !losslessAtomicWorkflowToken(tokens[2]) || strings.HasPrefix(tokens[2], "-") {
+			return "", false
+		}
+		root = resolveHookTargetPath(cwd, tokens[2])
+	}
+	if root == "" || root != cwd {
+		return "", false
+	}
+	return root, true
+}
+
+// atomicCommitWorkflowCWD는 Codex exec_command가 실제로 사용하는 workdir와
+// Claude Bash가 전달하는 top-level cwd를 구분한다. exec_command의 명시적
+// workdir는 절대 경로일 때만 받아 host별 상대 경로 해석 차이를 열지 않는다.
+func atomicCommitWorkflowCWD(req HookToolUseLifecycleRequest) (string, bool) {
+	if strings.EqualFold(strings.TrimSpace(req.Tool), "exec_command") {
+		value, exists := req.ToolInput["workdir"]
+		if exists {
+			workdir, ok := value.(string)
+			if !ok || !losslessAtomicWorkflowToken(workdir) || !filepath.IsAbs(workdir) {
+				return "", false
+			}
+			root := cleanAbsPath(workdir)
+			return root, root != ""
+		}
+	}
+	root := cleanAbsPath(req.CWD)
+	return root, root != ""
+}
+
+func losslessAtomicWorkflowToken(token string) bool {
+	return token != "" && token == strings.TrimSpace(token)
+}
+
+func atomicCommitWorkflowScriptPath(req HookToolUseLifecycleRequest, path string) bool {
+	clean := filepath.Clean(path)
+	for _, relative := range []string{
+		"skills/atomic-commit-push/scripts/git_preflight.py",
+		"skills/atomic-commit-push/scripts/api_doc_gate.py",
+	} {
+		if !filepath.IsAbs(clean) && filepath.ToSlash(clean) == relative {
+			return true
+		}
+		if !filepath.IsAbs(clean) {
+			continue
+		}
+		target := cleanAbsPath(clean)
+		for _, base := range atomicCommitWorkflowInstallBases(req) {
+			if target == filepath.Join(base, filepath.FromSlash(relative)) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func atomicCommitWorkflowUsesRelativeScript(commandText string) bool {
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(commandText))
+	return len(tokens) >= 2 && !filepath.IsAbs(filepath.Clean(tokens[1]))
+}
+
+// atomicCommitWorkflowInstallBases는 하네스 설치기가 실제로 만드는 skill
+// root만 돌려준다. 임의의 `/tmp/.../skills` suffix는 이 목록에 들어오지 않는다.
+func atomicCommitWorkflowInstallBases(req HookToolUseLifecycleRequest) []string {
+	candidates := []string{
+		req.ExpectedWorktree,
+		req.SourceCheckout,
+		os.Getenv("HARNESS_ROOT"),
+		os.Getenv("CODEX_HOME"),
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		candidates = append(candidates, filepath.Join(home, ".codex"), filepath.Join(home, ".claude"))
+	}
+	for _, root := range []string{req.ExpectedWorktree, req.SourceCheckout} {
+		if filepath.IsAbs(strings.TrimSpace(root)) {
+			candidates = append(candidates, filepath.Join(root, ".claude"))
+		}
+	}
+
+	bases := make([]string, 0, len(candidates))
+	seen := map[string]bool{}
+	for _, candidate := range candidates {
+		if candidate != strings.TrimSpace(candidate) || !filepath.IsAbs(candidate) {
+			continue
+		}
+		base := cleanAbsPath(candidate)
+		if base == "" || seen[base] {
+			continue
+		}
+		seen[base] = true
+		bases = append(bases, base)
+	}
+	return bases
 }
 
 func positiveDuration(value string) bool {
