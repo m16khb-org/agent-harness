@@ -431,6 +431,13 @@ sed -n '1,194p' internal/core/issueops/testdata/leasevertical/adapter/sqlite.go`
 	if !ExactReadOnlyShellCommand(andSequence) {
 		t.Fatalf("각 조각이 exact reader인 && 시퀀스는 읽기 전용이어야 한다: %q", andSequence)
 	}
+	sealedSortPipeline := `find internal/core/issueops/testdata/leasevertical -maxdepth 2 -type f | sort && sed -n '1,260p' internal/core/issueops/testdata/leasevertical/contract/record.go && sed -n '1,320p' internal/core/issueops/testdata/leasevertical/contract/stable_v1.go && sed -n '1,340p' internal/core/issueops/testdata/leasevertical/domain/release.go`
+	if !ExactReadOnlyShellCommand(sealedSortPipeline) {
+		t.Fatalf("exact find 결과를 정렬한 뒤 exact reader를 잇는 시퀀스는 읽기 전용이어야 한다: %q", sealedSortPipeline)
+	}
+	if !ExactReadOnlyShellCommand(`find internal/core/issueops/testdata/leasevertical -maxdepth 2 -type f | sort`) {
+		t.Fatal("봉인된 find-sort 파이프 하나도 읽기 전용 관찰이어야 한다")
+	}
 	atomicStagedDiffSequence := `test -d .codegraph && echo present || echo absent
 git diff --cached --stat
 git diff --cached --name-only
@@ -445,6 +452,12 @@ git diff --cached --check`
 		"output redirect":       strings.Replace(command, "git diff --stat", "git diff --stat > /tmp/diff", 1),
 		"command substitution":  strings.Replace(command, ".codegraph", "$(printf .codegraph)", 1),
 		"pipeline":              strings.Replace(command, "git status --short", "git status --short | tee /tmp/status", 1),
+		"sort output mutation":  strings.Replace(sealedSortPipeline, "| sort", "| sort -o /tmp/leasevertical-files", 1),
+		"pipeline writer":       strings.Replace(sealedSortPipeline, "| sort", "| tee /tmp/leasevertical-files", 1),
+		"pipeline executable":   strings.Replace(sealedSortPipeline, "| sort", "| sh", 1),
+		"pipeline multi stage":  strings.Replace(sealedSortPipeline, "| sort", "| sort | sort", 1),
+		"pipeline double pipe":  strings.Replace(sealedSortPipeline, "| sort", "|| sort", 1),
+		"pipeline trailing":     strings.Replace(sealedSortPipeline, "| sort", "|", 1),
 		"background":            strings.Replace(command, "git status --short", "git status --short &", 1),
 		"shell variable write":  strings.Replace(command, "then printf", "then printf -v probe", 1),
 		"printf percent-n":      strings.Replace(command, "printf 'codegraph-present\\n'", "printf '%n' PATH", 1),

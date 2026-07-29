@@ -3,8 +3,8 @@ package commandparse
 import "strings"
 
 // exactReadOnlyShellSequence는 exact read-only 조각과 선택적인 CodeGraph
-// 존재 probe 하나로만 구성된 세미콜론·개행·&& 시퀀스를 허용한다. 파이프·
-// 백그라운드·일반 || 연산자는 이 경로에 들어오지 못한다.
+// 존재 probe 하나로만 구성된 세미콜론·개행·&& 시퀀스를 허용한다. 봉인된
+// stdout 정렬 파이프 밖의 파이프·백그라운드·일반 || 연산자는 거부한다.
 func exactReadOnlyShellSequence(command string) bool {
 	if tail, matched := exactReadOnlyShortCircuitDirectoryProbe(command); matched {
 		parts, ok := splitReadOnlyShellSequence(tail)
@@ -12,7 +12,7 @@ func exactReadOnlyShellSequence(command string) bool {
 			return false
 		}
 		for _, part := range parts {
-			if !exactReadOnlySimpleShellCommand(part) {
+			if !exactReadOnlySequencePart(part) {
 				return false
 			}
 		}
@@ -20,7 +20,7 @@ func exactReadOnlyShellSequence(command string) bool {
 	}
 
 	parts, ok := splitReadOnlyShellSequence(command)
-	if !ok || len(parts) < 2 {
+	if !ok || len(parts) == 0 {
 		return false
 	}
 	index := 0
@@ -33,11 +33,82 @@ func exactReadOnlyShellSequence(command string) bool {
 		return false
 	}
 	for ; index < len(parts); index++ {
-		if !exactReadOnlySimpleShellCommand(parts[index]) {
+		if !exactReadOnlySequencePart(parts[index]) {
 			return false
 		}
 	}
 	return true
+}
+
+func exactReadOnlySequencePart(part string) bool {
+	stages, ok := splitExactReadOnlyPipeline(part)
+	if !ok {
+		return false
+	}
+	if len(stages) == 1 {
+		return exactReadOnlySimpleShellCommand(stages[0])
+	}
+	if len(stages) != 2 || !exactReadOnlySimpleShellCommand(stages[0]) {
+		return false
+	}
+	tokens := SplitCommandTokens(stages[1])
+	// 임의 후속 프로세스나 sort의 파일 출력 옵션을 열지 않는다. exact reader의
+	// stdout 순서를 안정화하는 인자 없는 sort 한 단계만 허용한다.
+	return len(tokens) == 1 && tokens[0] == "sort"
+}
+
+func splitExactReadOnlyPipeline(part string) ([]string, bool) {
+	stages := []string{}
+	var current strings.Builder
+	var quote rune
+	escaped := false
+	runes := []rune(part)
+	for index := 0; index < len(runes); index++ {
+		character := runes[index]
+		if escaped {
+			current.WriteRune(character)
+			escaped = false
+			continue
+		}
+		if character == '\\' && quote != '\'' {
+			current.WriteRune(character)
+			escaped = true
+			continue
+		}
+		if quote != 0 {
+			current.WriteRune(character)
+			if character == quote {
+				quote = 0
+			}
+			continue
+		}
+		if character == '\'' || character == '"' {
+			current.WriteRune(character)
+			quote = character
+			continue
+		}
+		if character != '|' {
+			current.WriteRune(character)
+			continue
+		}
+		if index+1 < len(runes) && runes[index+1] == '|' {
+			return nil, false
+		}
+		stage := strings.TrimSpace(current.String())
+		if stage == "" {
+			return nil, false
+		}
+		stages = append(stages, stage)
+		current.Reset()
+	}
+	if quote != 0 || escaped {
+		return nil, false
+	}
+	last := strings.TrimSpace(current.String())
+	if last == "" {
+		return nil, false
+	}
+	return append(stages, last), true
 }
 
 // exactReadOnlyShortCircuitDirectoryProbe는 atomic publication이 사용하는
@@ -57,9 +128,9 @@ func exactReadOnlyShortCircuitDirectoryProbe(command string) (string, bool) {
 	return tail, tail != ""
 }
 
-// splitReadOnlyShellSequence는 quote 밖의 세미콜론, LF, &&만 분리하고 그
-// 밖의 shell 제어 연산자를 거부한다. quote를 보존해 각 조각이 기존 exact
-// parser를 그대로 통과하게 한다.
+// splitReadOnlyShellSequence는 quote 밖의 세미콜론, LF, &&만 시퀀스
+// 경계로 분리한다. 단일 파이프는 조각에 보존해 별도의 봉인된 파이프
+// 검증으로 넘기고, 그 밖의 shell 제어 연산자는 거부한다.
 func splitReadOnlyShellSequence(command string) ([]string, bool) {
 	parts := []string{}
 	var current strings.Builder
@@ -109,7 +180,12 @@ func splitReadOnlyShellSequence(command string) ([]string, bool) {
 			parts = append(parts, part)
 			current.Reset()
 			index++
-		case '|', '\r':
+		case '|':
+			if index+1 < len(runes) && runes[index+1] == '|' {
+				return nil, false
+			}
+			current.WriteRune(character)
+		case '\r':
 			return nil, false
 		default:
 			current.WriteRune(character)
