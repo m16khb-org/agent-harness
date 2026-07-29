@@ -715,16 +715,19 @@ func positiveDuration(value string) bool {
 func executionMutationTargets(req HookToolUseLifecycleRequest) []string {
 	targets := []string{}
 	base := hookRequestPathBase(req)
+	nonTargetPaths := exactIssueOpsOwnerNonTargetPaths(base, req.Command)
 	for _, path := range req.Paths {
 		if target := resolveHookTargetPath(base, path); target != "" {
+			if nonTargetPaths[target] {
+				continue
+			}
 			targets = append(targets, target)
 		}
 	}
 	if len(targets) == 0 && searchrouting.IsShellTool(req.Tool) {
-		receiptPaths := exactIssueOpsOwnerReceiptPaths(base, req.Command)
 		for _, path := range shellCommandWorktreeGuardPaths(base, req.Command) {
 			if target := resolveHookTargetPath(base, path); target != "" {
-				if receiptPaths[target] {
+				if nonTargetPaths[target] {
 					continue
 				}
 				targets = append(targets, target)
@@ -734,10 +737,11 @@ func executionMutationTargets(req HookToolUseLifecycleRequest) []string {
 	return targets
 }
 
-// exactIssueOpsOwnerReceiptPaths는 native process 영수증에 든 실행 파일 경로를
-// 변경 대상에서 제외한다. 이 값은 holder identity를 증명하는 관찰값이며 실제
-// 파일 접근 대상이 아니다. 나머지 절대 경로는 기존 canonical root fence가 본다.
-func exactIssueOpsOwnerReceiptPaths(base, commandText string) map[string]bool {
+// exactIssueOpsOwnerNonTargetPaths는 owner 명령이 기록만 하는 경로 메타데이터를
+// 변경 대상에서 제외한다. session executable은 holder identity 영수증이고,
+// branch prepare의 parent worktree는 Orca lineage이므로 실제 mutation root가
+// 아니다. 나머지 절대 경로는 기존 canonical root fence가 본다.
+func exactIssueOpsOwnerNonTargetPaths(base, commandText string) map[string]bool {
 	if !exactIssueOpsOwnerMutation(commandText) {
 		return nil
 	}
@@ -753,15 +757,24 @@ func exactIssueOpsOwnerReceiptPaths(base, commandText string) map[string]bool {
 	if !ok {
 		return nil
 	}
-	executable, ok := oneFlag(flags, "--session-executable")
-	if !ok {
+	names := []string{"--session-executable"}
+	if command.Path == "branch prepare" {
+		names = append(names, "--parent-worktree")
+	}
+	paths := map[string]bool{}
+	for _, name := range names {
+		value, found := oneFlag(flags, name)
+		if !found {
+			continue
+		}
+		if target := resolveHookTargetPath(base, value); target != "" {
+			paths[target] = true
+		}
+	}
+	if len(paths) == 0 {
 		return nil
 	}
-	target := resolveHookTargetPath(base, executable)
-	if target == "" {
-		return nil
-	}
-	return map[string]bool{target: true}
+	return paths
 }
 
 func executionRequestTargetsStayInside(req HookToolUseLifecycleRequest, targets []string, root string) bool {

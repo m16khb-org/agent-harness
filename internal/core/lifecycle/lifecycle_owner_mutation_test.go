@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	issueopsmodel "agent-harness/internal/core/issueops/model"
 )
 
 // AC-05: 하위 세션(owner)이 publication 전에 실행하는 implementation-review
@@ -36,6 +38,54 @@ func TestExactIssueOpsOwnerMutationAdmitsBranchPrepare(t *testing.T) {
 	}
 	if exactIssueOpsOwnerMutation(strings.Replace(command, "--session-id sess-1 ", "", 1)) {
 		t.Fatal("branch prepare without session-id must fail the 4-flag signature")
+	}
+}
+
+// 우산 worktree는 branch prepare가 기록할 lineage 메타데이터이며 현재 명령의
+// mutation root가 아니다. 이미 release된 우산 lifecycle과 연결돼 있어도 자식
+// holder가 자기 canonical root의 레코드를 갱신하는 작업을 가로채면 안 된다.
+func TestBranchPrepareParentWorktreeMetadataDoesNotSelectForeignLease(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source, child, childRoot := executionActiveLifecycleRecord(t)
+	parent := linkIssueOpsWorktreeForGuardTest(t, source, "117-parent")
+	parentRecord, err := ReadIssueOps(IssueOpsStateRoot(), parent.id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parentRecord.Execution = &issueopsmodel.Execution{
+		Mode: issueopsmodel.ExecutionModeDirect,
+		Workspace: issueopsmodel.Workspace{
+			SourceRoot: source, Root: parent.path, Branch: parentRecord.Branch,
+			BaseHead: "0123456789012345678901234567890123456789", Driver: "git", LinkedAt: "2026-07-22T00:00:00Z",
+		},
+		Lease: issueopsmodel.WriteLease{
+			Generation: 1, Status: issueopsmodel.LeaseStatusReleased, ReleasedAt: "2026-07-22T00:00:01Z",
+		},
+	}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), parentRecord); err != nil {
+		t.Fatal(err)
+	}
+
+	command := "agent-harness issueops branch prepare --id " + child.ID + " --provider github" +
+		" --issue-url '" + child.IssueURL + "' --branch " + child.Branch +
+		" --base-branch " + parentRecord.Branch +
+		" --base-sha 8235f30cac338b444a99c918ffe9e11991e37a8f" +
+		" --parent-worktree '" + parent.path + "' --link-verified" +
+		" --host claude --session-id owner-session --agent-id owner-agent" +
+		" --cwd '" + childRoot + "' --json"
+	req := executionRequest(child, childRoot, "claude", "owner-session", command)
+	req.AgentID = "owner-agent"
+	// host adapter가 명령 인자에서 추출한 경로를 함께 넘기는 형상도 동일하게
+	// metadata와 mutation root를 구분해야 한다.
+	req.Paths = []string{parent.path, childRoot}
+
+	for _, target := range executionMutationTargets(req) {
+		if sameExecutionPath(target, parent.path) {
+			t.Fatalf("parent-worktree metadata must not become a mutation target: %v", executionMutationTargets(req))
+		}
+	}
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("현재 child holder의 branch prepare가 foreign parent lease에 가로채였다: %+v", got)
 	}
 }
 
