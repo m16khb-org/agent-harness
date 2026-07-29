@@ -576,7 +576,8 @@ func extractExecutionOwnerVerification(body string) []string {
 		line := strings.TrimSpace(raw)
 		if strings.HasPrefix(line, "## ") {
 			heading := strings.ToLower(strings.TrimSpace(strings.TrimPrefix(line, "## ")))
-			inSection = heading == "검증 명령" || heading == "verification commands"
+			inSection = heading == "검증" || heading == "검증 명령" ||
+				heading == "verification" || heading == "verification commands"
 			inFence = false
 			continue
 		}
