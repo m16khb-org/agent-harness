@@ -318,10 +318,18 @@ func exactOrcaOwnerControlPlane(command string) bool {
 		flags, ok := commandparse.ExactFlags(
 			exact,
 			exactFlagNames("--terminal", "--timeout-ms"),
-			exactFlagNames("--wait", "--json"),
+			exactFlagNames("--wait", "--unread", "--inject", "--json"),
 			nil,
 		)
-		if !ok || !nonemptyExactFlags(flags, "--terminal") {
+		if !ok {
+			return false
+		}
+		terminal, hasTerminal := oneFlag(flags, "--terminal")
+		_, unread := flags["--unread"]
+		_, inject := flags["--inject"]
+		if (hasTerminal && strings.TrimSpace(terminal) == "") ||
+			(!hasTerminal && !unread) ||
+			(inject && !unread) {
 			return false
 		}
 		timeout, hasTimeout := oneFlag(flags, "--timeout-ms")
