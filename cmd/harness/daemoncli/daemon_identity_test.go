@@ -501,6 +501,58 @@ func TestStopDaemonRejectsLegacyPIDWithoutMutation(t *testing.T) {
 	}
 }
 
+func TestStopDaemonTreatsExitDuringForcedIdentityCheckAsStopped(t *testing.T) {
+	instance := daemonInstance{PID: 4242, ProcessStartTime: "start-a", Executable: "/tmp/agent-harness"}
+	proc := &fakeDaemonProcess{}
+	inspectCalls := 0
+	aliveChecks := 0
+	nowCalls := 0
+	removed := map[string]bool{}
+	status, err := stopDaemonWithDeps(daemonStopDeps{
+		checkStatus: func() daemonStatus {
+			return daemonStatus{
+				OK: true, Running: true, Reachable: true, IdentityVerified: true,
+				PID: instance.PID, Code: daemonStatusReady, Instance: &instance,
+				Paths: daemonPaths{Socket: "daemon.sock", PID: "daemon.pid"},
+			}
+		},
+		findProcess: func(int) (daemonProcess, error) { return proc, nil },
+		inspectProcess: func(int) (daemonProcessIdentity, error) {
+			inspectCalls++
+			if inspectCalls == 1 {
+				return daemonProcessIdentity{StartTime: instance.ProcessStartTime, Executable: instance.Executable}, nil
+			}
+			return daemonProcessIdentity{}, os.ErrNotExist
+		},
+		processAlive: func(int) bool {
+			aliveChecks++
+			return aliveChecks == 1
+		},
+		remove: func(path string) error {
+			removed[path] = true
+			return nil
+		},
+		now: func() time.Time {
+			nowCalls++
+			if nowCalls == 1 {
+				return time.Unix(100, 0)
+			}
+			return time.Unix(104, 0)
+		},
+		sleep: func(time.Duration) {},
+	})
+
+	if err != nil || status.Running || status.Code != daemonStatusStopped {
+		t.Fatalf("exit during forced identity check failed: status=%#v err=%v", status, err)
+	}
+	if !reflect.DeepEqual(proc.signals, []os.Signal{syscall.SIGTERM}) || proc.kills != 0 {
+		t.Fatalf("expected one TERM and no kill: signals=%v kills=%d", proc.signals, proc.kills)
+	}
+	if !removed["daemon.sock"] || !removed["daemon.pid"] {
+		t.Fatalf("stale daemon files were not removed: %#v", removed)
+	}
+}
+
 func TestStopDaemonSignalsOnlyVerifiedInstance(t *testing.T) {
 	instance := daemonInstance{PID: 4242, ProcessStartTime: "start-a", Executable: "/tmp/agent-harness"}
 	proc := &fakeDaemonProcess{}

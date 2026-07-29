@@ -282,6 +282,11 @@ func stopDaemonWithDeps(deps daemonStopDeps) (daemonStatus, error) {
 	}
 	processIdentity, err = deps.inspectProcess(instance.PID)
 	if err != nil || !daemonProcessIdentityMatches(instance, processIdentity) {
+		// TERM 처리 직후 종료된 프로세스를 PID 재사용으로 오인하지 않도록
+		// 강제 종료 직전의 생존 상태를 다시 확인한다.
+		if !deps.processAlive(instance.PID) {
+			return daemonStoppedStatus(status, instance.PID, deps.remove, "agent-harness daemon stopped"), nil
+		}
 		status = daemonIdentityMismatchStatus(status, "daemon OS process identity changed before forced stop")
 		return status, fmt.Errorf("refusing to kill unverified daemon process")
 	}
