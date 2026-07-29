@@ -405,6 +405,10 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 	resourceWaitRoot, exactResourceWait := exactOwnedResourceWait(req.Command)
 	atomicWorkflowRoot, exactAtomicWorkflow := exactAtomicCommitWorkflowScript(req)
 	atomicWorkflowRelativeScript := exactAtomicWorkflow && atomicCommitWorkflowUsesRelativeScript(req.Command)
+	temporaryBuildOutput, exactTemporaryBuild := "", false
+	if unsafeReason == "" {
+		temporaryBuildOutput, exactTemporaryBuild = exactTemporaryAgentHarnessBuildOutput(req.Command)
+	}
 	mayMutate := toolUseMayMutateLifecycleFiles(req.Tool, req.Command)
 	if searchrouting.IsShellTool(req.Tool) && !mayMutate {
 		mayMutate = true
@@ -421,6 +425,11 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 	}
 	if exactAtomicWorkflow {
 		targets = []string{atomicWorkflowRoot}
+	}
+	if exactTemporaryBuild {
+		// 출력 파일만 보면 active lifecycle을 찾을 수 없다. canonical cwd와
+		// command에서 봉인한 출력 경로를 함께 판정해 holder 검사를 유지한다.
+		targets = append(targets, temporaryBuildOutput, cleanAbsPath(req.CWD))
 	}
 	records, err := executionGuardRecords(req, targets)
 	if err != nil {
@@ -466,8 +475,12 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 			reason := "relative atomic commit workflow scripts must run from the canonical IssueOps worktree root"
 			return true, reason, executionDeny(record, "unsafe_mutation", executionStatusCommand(record.ID))
 		}
+		targetsAuthorized := executionRequestTargetsStayInside(req, targets, root)
+		if exactTemporaryBuild {
+			targetsAuthorized = executionTemporaryBuildTargetsAuthorized(req, targets, root, temporaryBuildOutput)
+		}
 		if lease.Status == issueopsmodel.LeaseStatusActive && executionActorMatches(req, lease.Holder) &&
-			executionRequestTargetsStayInside(req, targets, root) {
+			targetsAuthorized {
 			return true, "", nil
 		}
 		if lease.Status == issueopsmodel.LeaseStatusActive && lease.Holder != nil && !executionActorMatches(req, lease.Holder) {
@@ -735,6 +748,77 @@ func executionMutationTargets(req HookToolUseLifecycleRequest) []string {
 		}
 	}
 	return targets
+}
+
+func exactTemporaryAgentHarnessBuildOutput(commandText string) (string, bool) {
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(commandText))
+	if len(tokens) < 4 || tokens[0] != "go" || tokens[1] != "build" {
+		return "", false
+	}
+	output := ""
+	for index := 2; index < len(tokens); index++ {
+		switch {
+		case tokens[index] == "--":
+			index = len(tokens)
+		case tokens[index] == "-o" && index+1 < len(tokens):
+			if output != "" {
+				return "", false
+			}
+			index++
+			output = tokens[index]
+		case strings.HasPrefix(tokens[index], "-o="):
+			if output != "" {
+				return "", false
+			}
+			output = strings.TrimPrefix(tokens[index], "-o=")
+		}
+	}
+	if !filepath.IsAbs(output) {
+		return "", false
+	}
+	output = cleanAbsPath(output)
+	base := filepath.Base(output)
+	if !strings.HasPrefix(base, "agent-harness-") || base == "agent-harness-" {
+		return "", false
+	}
+	parent := filepath.Dir(output)
+	allowedParent := false
+	for _, root := range []string{os.TempDir(), "/tmp"} {
+		if sameExecutionPath(parent, root) {
+			allowedParent = true
+			break
+		}
+	}
+	if !allowedParent {
+		return "", false
+	}
+	info, err := os.Lstat(output)
+	switch {
+	case err == nil:
+		// 기존 symlink나 device를 따라 canonical 경계 밖 파일을 덮어쓰지 않는다.
+		return output, info.Mode().IsRegular()
+	case os.IsNotExist(err):
+		return output, true
+	default:
+		return "", false
+	}
+}
+
+func executionTemporaryBuildTargetsAuthorized(req HookToolUseLifecycleRequest, targets []string, root, output string) bool {
+	if !sameExecutionPath(req.CWD, root) {
+		return false
+	}
+	foundOutput := false
+	for _, target := range targets {
+		if cleanAbsPath(target) == output {
+			foundOutput = true
+			continue
+		}
+		if !executionResolvedTargetInside(target, root) {
+			return false
+		}
+	}
+	return foundOutput
 }
 
 // exactIssueOpsOwnerNonTargetPaths는 owner 명령이 기록만 하는 경로 메타데이터를

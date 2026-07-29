@@ -238,6 +238,57 @@ func TestExecutionMutationClassCoversBuildGitFilesystemAndUnsafeShell(t *testing
 		t.Fatalf("foreground test in the assigned holder root must be allowed: %+v", got)
 	}
 
+	holderBuild := executionRequest(record, worker, "claude", "owner-session", "go build -o /tmp/agent-harness-196 ./cmd/harness")
+	holderBuild.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(holderBuild); got.Decision != "allow" {
+		t.Fatalf("holder의 봉인된 임시 바이너리 빌드는 canonical source를 벗어난 권한으로 오인하면 안 된다: %+v", got)
+	}
+	inlineBuild := holderBuild
+	inlineBuild.Command = "go build -o=/tmp/agent-harness-196-inline ./cmd/harness"
+	if got := BuildLifecyclePreToolUseDecision(inlineBuild); got.Decision != "allow" {
+		t.Fatalf("inline -o를 쓴 봉인된 임시 바이너리 빌드도 동일하게 허용해야 한다: %+v", got)
+	}
+	foreignBuild := holderBuild
+	foreignBuild.SessionID = "foreign-session"
+	if got := BuildLifecyclePreToolUseDecision(foreignBuild); got.Decision != "block" ||
+		got.Deny == nil || got.Deny.Code != "holder_identity_mismatch" {
+		t.Fatalf("임시 바이너리 빌드도 active holder identity를 요구해야 한다: %+v", got)
+	}
+	for name, command := range map[string]string{
+		"unsealed name": "go build -o /tmp/harness-196 ./cmd/harness",
+		"nested path":   "go build -o /tmp/build/agent-harness-196 ./cmd/harness",
+		"other go verb": "go test -o /tmp/agent-harness-196 ./cmd/harness",
+		"duplicate out": "go build -o /tmp/agent-harness-196-a -o /tmp/agent-harness-196-b ./cmd/harness",
+	} {
+		t.Run(name+" temp output denied", func(t *testing.T) {
+			req := executionRequest(record, worker, "claude", "owner-session", command)
+			req.AgentID = "owner-agent"
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+				t.Fatalf("봉인된 임시 build 출력 밖의 외부 mutation은 거부해야 한다: %+v", got)
+			}
+		})
+	}
+	tempOutput, err := os.CreateTemp("", "agent-harness-guard-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tempOutputPath := tempOutput.Name()
+	if err := tempOutput.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(tempOutputPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(t.TempDir(), "outside-binary"), tempOutputPath); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Remove(tempOutputPath) })
+	symlinkBuild := executionRequest(record, worker, "claude", "owner-session", "go build -o "+tempOutputPath+" ./cmd/harness")
+	symlinkBuild.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(symlinkBuild); got.Decision != "block" {
+		t.Fatalf("임시 경로의 기존 symlink를 따라가는 build 출력은 거부해야 한다: %+v", got)
+	}
+
 	filesystemWrite := executionRequest(record, source, "claude", "owner-session", "")
 	filesystemWrite.Repo, filesystemWrite.AgentID = source, "owner-agent"
 	filesystemWrite.Tool = "mcp__filesystem__write_file"
