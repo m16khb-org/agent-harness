@@ -485,13 +485,25 @@ func executionWorkspaceRequest(record IssueOpsRecord, confirm bool) (port.Execut
 	if leaf == "" || leaf == "." || leaf == ".." {
 		return port.ExecutionWorkspaceRequest{}, fmt.Errorf("execution branch is invalid")
 	}
-	parentWorktree := ""
-	if record.Delegation != nil && strings.TrimSpace(record.Delegation.ParentCycleID) != "" {
+	parentWorktree := strings.TrimSpace(record.BranchPrepare.ParentWorktree)
+	hasDelegatedParent := record.Delegation != nil && strings.TrimSpace(record.Delegation.ParentCycleID) != ""
+	if parentWorktree != "" || hasDelegatedParent {
 		parentLeaf := strings.ReplaceAll(strings.TrimSpace(record.BranchPrepare.BaseBranch), "/", "-")
 		if parentLeaf == "" || parentLeaf == "." || parentLeaf == ".." {
-			return port.ExecutionWorkspaceRequest{}, fmt.Errorf("delegated execution base branch is invalid")
+			return port.ExecutionWorkspaceRequest{}, fmt.Errorf("parent execution base branch is invalid")
 		}
-		parentWorktree = filepath.Join(record.Repo+".worktrees", parentLeaf)
+		expectedParent := filepath.Join(record.Repo+".worktrees", parentLeaf)
+		if parentWorktree == "" {
+			parentWorktree = expectedParent
+		} else {
+			parentWorktree = filepath.Clean(parentWorktree)
+			if !samePath(parentWorktree, expectedParent) {
+				return port.ExecutionWorkspaceRequest{}, fmt.Errorf(
+					"parent_worktree %q does not match canonical parent worktree %q",
+					parentWorktree, expectedParent,
+				)
+			}
+		}
 	}
 	return port.ExecutionWorkspaceRequest{
 		LifecycleID: record.ID, SourceRoot: record.Repo, Root: filepath.Join(record.Repo+".worktrees", leaf),

@@ -2,6 +2,7 @@ package branchprepare
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -52,6 +53,13 @@ func Prepare(store Store, stateRoot, id string, req model.IssueOpsBranchPrepareR
 	if baseBranch == "" {
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("base_branch is required")
 	}
+	parentWorktree := strings.TrimSpace(req.ParentWorktree)
+	if parentWorktree != "" {
+		if !filepath.IsAbs(parentWorktree) {
+			return model.IssueOpsRecord{OK: false}, fmt.Errorf("parent_worktree must be an absolute path")
+		}
+		parentWorktree = filepath.Clean(parentWorktree)
+	}
 	if issueNumber := remote.IssueNumber(issueURL); issueNumber != "" {
 		if !strings.HasPrefix(branch, issueNumber+"-") {
 			return model.IssueOpsRecord{OK: false}, fmt.Errorf("issueops branch for issue %s must start with %s-; for example %s-fix-login", issueNumber, issueNumber, issueNumber)
@@ -83,6 +91,7 @@ func Prepare(store Store, stateRoot, id string, req model.IssueOpsBranchPrepareR
 		Branch:          branch,
 		BaseBranch:      baseBranch,
 		BaseSHA:         strings.TrimSpace(req.BaseSHA),
+		ParentWorktree:  parentWorktree,
 		RemoteBranchURL: strings.TrimSpace(req.RemoteBranchURL),
 		LinkVerified:    req.LinkVerified,
 		Steps:           Steps(provider, issueURL, branch, baseBranch, strings.TrimSpace(req.BaseSHA)),

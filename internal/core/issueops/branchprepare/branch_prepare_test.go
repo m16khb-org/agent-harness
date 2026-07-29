@@ -80,6 +80,51 @@ func TestPrepareUsesGitHubDevelopFallback(t *testing.T) {
 	}
 }
 
+func TestPreparePersistsExplicitParentWorktree(t *testing.T) {
+	store := newBranchPrepareTestStore(model.IssueOpsRecord{
+		ID:       "io-4",
+		OK:       true,
+		Repo:     "/repo/example",
+		Branch:   "456-provider-linked-branch",
+		IssueURL: "https://github.com/example/repo/issues/456",
+	})
+
+	record, err := Prepare(store.issueOpsStore(), t.TempDir(), "io-4", model.IssueOpsBranchPrepareRequest{
+		Provider:       "github",
+		IssueURL:       "https://github.com/example/repo/issues/456",
+		Branch:         "456-provider-linked-branch",
+		BaseBranch:     "117-umbrella",
+		ParentWorktree: "/repo/example.worktrees/117-umbrella",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := record.BranchPrepare.ParentWorktree; got != "/repo/example.worktrees/117-umbrella" {
+		t.Fatalf("parent worktree = %q", got)
+	}
+}
+
+func TestPrepareRejectsRelativeParentWorktree(t *testing.T) {
+	store := newBranchPrepareTestStore(model.IssueOpsRecord{
+		ID:       "io-5",
+		OK:       true,
+		Repo:     "/repo/example",
+		Branch:   "456-provider-linked-branch",
+		IssueURL: "https://github.com/example/repo/issues/456",
+	})
+
+	_, err := Prepare(store.issueOpsStore(), t.TempDir(), "io-5", model.IssueOpsBranchPrepareRequest{
+		Provider:       "github",
+		IssueURL:       "https://github.com/example/repo/issues/456",
+		Branch:         "456-provider-linked-branch",
+		BaseBranch:     "117-umbrella",
+		ParentWorktree: "../117-umbrella",
+	})
+	if err == nil || !strings.Contains(err.Error(), "absolute path") {
+		t.Fatalf("relative parent worktree must fail closed: %v", err)
+	}
+}
+
 func TestPrepareRejectsUnlinkedGitLabBranchName(t *testing.T) {
 	store := newBranchPrepareTestStore(model.IssueOpsRecord{
 		ID:       "io-3",

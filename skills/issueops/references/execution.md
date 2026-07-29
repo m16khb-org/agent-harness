@@ -103,13 +103,15 @@ The provisioned path is the fixed sibling
 reuses only that exact branch/worktree pair and records its base SHA. Do not
 create or link another worktree manually.
 
-위임된 엄브렐라 자식은 `workspace.parent_worktree`에
-`${repo}.worktrees/<base-branch-with-slashes-replaced>`를 함께 봉인한다. Orca
-mode는 이 값을 `worktree create --parent-worktree path:<부모>`로 전달하고
-lineage의 `capture.source=explicit-cli-flag`,
-`capture.confidence=explicit`를 검증한다. 따라서 Orca UI에서도 자식 worktree가
-부모 통합 worktree 아래에 표시된다. delegation이 없는 독립 cycle만
-`--no-parent`를 유지한다.
+엄브렐라 자식은 branch prepare에서
+`--parent-worktree ${repo}.worktrees/<base-branch-with-slashes-replaced>`를
+명시한다. IssueOps는 이를 `workspace.parent_worktree`에 함께 봉인하고 canonical
+부모 경로와 다르면 실행 전에 거부한다. 기존 delegation cycle은 이 값이 없어도
+같은 경로를 계산해 하위 호환된다. Orca mode는 봉인된 값을
+`worktree create --parent-worktree path:<부모>`로 전달하고 lineage의
+`capture.source=explicit-cli-flag`, `capture.confidence=explicit`를 검증한다.
+따라서 provider-native 엄브렐라 자식도 Orca UI에서 부모 통합 worktree 아래에
+표시된다. 독립 cycle은 `--parent-worktree`를 생략해 top-level을 유지한다.
 
 ## Status And Claim
 

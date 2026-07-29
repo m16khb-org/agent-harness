@@ -116,7 +116,7 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 	case "execution whoami":
 		return v(), b("--json"), r, true
 	case "branch prepare":
-		return v("--id", "--provider", "--issue-url", "--branch", "--base-branch", "--base-sha", "--remote-branch-url", "--host", "--session-id", "--agent-id", "--cwd"), b("--link-verified", "--json"), r, true
+		return v("--id", "--provider", "--issue-url", "--branch", "--base-branch", "--base-sha", "--parent-worktree", "--remote-branch-url", "--host", "--session-id", "--agent-id", "--cwd"), b("--link-verified", "--json"), r, true
 	case "intent record":
 		values := v("--id", "--raw-request", "--interpreted-intent", "--success-criteria", "--constraint", "--ambiguity", "--non-goal", "--intent-class", "--host", "--session-id", "--agent-id", "--cwd")
 		for _, name := range []string{"--success-criteria", "--constraint", "--ambiguity", "--non-goal"} {

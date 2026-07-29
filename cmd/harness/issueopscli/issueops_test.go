@@ -47,7 +47,7 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	}
 
 	branch := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"branch", "prepare", "--id", id, "--provider", "github", "--issue-url", "https://github.com/example/repo/issues/1", "--branch", "1-provider-linked-branch", "--base-branch", "main", "--link-verified", "--json"})
+		return runIssueOps([]string{"branch", "prepare", "--id", id, "--provider", "github", "--issue-url", "https://github.com/example/repo/issues/1", "--branch", "1-provider-linked-branch", "--base-branch", "main", "--parent-worktree", repo + ".worktrees/main", "--link-verified", "--json"})
 	})
 	var branchRecord map[string]any
 	if err := json.Unmarshal([]byte(branch), &branchRecord); err != nil {
@@ -56,6 +56,9 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	prepare, ok := branchRecord["branch_prepare"].(map[string]any)
 	if !ok || prepare["provider"] != "github" || prepare["branch"] != "1-provider-linked-branch" {
 		t.Fatalf("branch prepare should persist provider-linked contract: %#v", branchRecord)
+	}
+	if prepare["parent_worktree"] != repo+".worktrees/main" {
+		t.Fatalf("branch prepare should persist explicit parent worktree: %#v", prepare)
 	}
 	steps, ok := prepare["steps"].([]any)
 	if !ok || len(steps) != 3 {
