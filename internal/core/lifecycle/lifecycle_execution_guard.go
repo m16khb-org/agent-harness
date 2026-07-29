@@ -145,7 +145,7 @@ func exactProviderBranchLink(command string) bool {
 	// base에 못박으려면 createLinkedBranch를 직접 호출해야 한다. branch prepare가
 	// 그 두 명령을 안내하므로 여기서도 분류해야 안내와 실행 가능성이 맞는다.
 	if tokens[1] == "api" {
-		return exactGitHubIssueNodeRead(tokens) || exactGitHubLinkedBranchMutation(tokens)
+		return exactGitHubIssueRead(tokens) || exactGitHubLinkedBranchMutation(tokens)
 	}
 	if tokens[1] != "issue" || tokens[2] != "develop" {
 		return false
@@ -175,14 +175,16 @@ func positiveIssueNumber(value string) bool {
 	return err == nil && number > 0
 }
 
-// exactGitHubIssueNodeRead는 node id 조회 한 형태만 인정한다:
+// exactGitHubIssueRead는 IssueOps 실행에 필요한 두 조회 형태만 인정한다:
 //
 //	gh api repos/<owner>/<repo>/issues/<number> --jq .node_id
+//	gh api repos/<owner>/<repo>/issues/<number> --jq .body
 //
-// 읽기지만 ExactReadOnlyShellCommand의 gh 분기는 pr·run만 다루므로 여기서 함께
-// 판정한다 — 이 명령과 그 뒤 mutation이 하나의 안내를 이루기 때문이다(#176).
-func exactGitHubIssueNodeRead(tokens []string) bool {
-	if len(tokens) != 5 || tokens[3] != "--jq" || tokens[4] != ".node_id" {
+// node id는 linked branch 생성에, body는 봉인된 원격 digest 검증에 필요하다.
+// 정확한 GET 경로와 jq projection만 허용해 다른 gh api 표면은 계속 차단한다.
+func exactGitHubIssueRead(tokens []string) bool {
+	if len(tokens) != 5 || tokens[3] != "--jq" ||
+		(tokens[4] != ".node_id" && tokens[4] != ".body") {
 		return false
 	}
 	parts := strings.Split(tokens[2], "/")
