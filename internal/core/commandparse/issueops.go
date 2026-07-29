@@ -264,6 +264,8 @@ func exactReadOnlySimpleShellCommand(command string) bool {
 		return exactReadOnlySedCommand(tokens[1:])
 	case "jq":
 		return exactReadOnlyJQCommand(tokens[1:])
+	case "gofmt":
+		return exactReadOnlyGofmtDiff(tokens[1:])
 	case "codegraph":
 		return len(tokens) == 3 && tokens[1] == "explore" && strings.TrimSpace(tokens[2]) != "" && !strings.HasPrefix(tokens[2], "-")
 	case "rg":
@@ -299,6 +301,20 @@ func exactReadOnlySimpleShellCommand(command string) bool {
 			(len(tokens) == 4 && tokens[1] == "orchestration" && tokens[2] == "task-list" && tokens[3] == "--json")
 	}
 	return false
+}
+
+func exactReadOnlyGofmtDiff(tokens []string) bool {
+	// -d는 파일을 덮어쓰지 않고 stdout에 formatting diff만 출력한다.
+	// 쓰기·profile·rewrite 표면을 열지 않도록 명시적 .go 파일만 받는다.
+	if len(tokens) < 2 || tokens[0] != "-d" {
+		return false
+	}
+	for _, operand := range tokens[1:] {
+		if operand == "" || operand == "-" || strings.HasPrefix(operand, "-") || path.Ext(operand) != ".go" {
+			return false
+		}
+	}
+	return true
 }
 
 func exactReadOnlyJQCommand(tokens []string) bool {
