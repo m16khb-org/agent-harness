@@ -1,6 +1,7 @@
 package daemoncli
 
 import (
+	"context"
 	"errors"
 	"os"
 	"os/exec"
@@ -11,7 +12,12 @@ import (
 )
 
 func ensureDaemonRunning() (daemonStatus, error) {
+	return ensureDaemonRunningContext(context.Background())
+}
+
+func ensureDaemonRunningContext(ctx context.Context) (daemonStatus, error) {
 	return ensureDaemonRunningWithDeps(daemonStartDeps{
+		context:     ctx,
 		checkStatus: checkDaemonStatus,
 		paths:       currentDaemonPaths,
 		mkdirAll:    os.MkdirAll,
@@ -22,6 +28,7 @@ func ensureDaemonRunning() (daemonStatus, error) {
 		executable:  os.Executable,
 		startDaemon: startDaemonProcess,
 		wait:        waitForDaemon,
+		waitContext: waitForDaemonContext,
 	})
 }
 
@@ -30,6 +37,7 @@ type daemonStartLock interface {
 }
 
 type daemonStartDeps struct {
+	context     context.Context
 	checkStatus func() daemonStatus
 	paths       func() (daemonPaths, error)
 	mkdirAll    func(string, os.FileMode) error
@@ -38,9 +46,23 @@ type daemonStartDeps struct {
 	executable  func() (string, error)
 	startDaemon func(exe string, paths daemonPaths) error
 	wait        func(daemonPaths, time.Duration) (daemonStatus, error)
+	waitContext func(context.Context, daemonPaths, time.Duration) (daemonStatus, error)
 }
 
 func ensureDaemonRunningWithDeps(deps daemonStartDeps) (daemonStatus, error) {
+	ctx := deps.context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return daemonStatus{}, err
+	}
+	wait := func(paths daemonPaths, timeout time.Duration) (daemonStatus, error) {
+		if deps.waitContext != nil {
+			return deps.waitContext(ctx, paths, timeout)
+		}
+		return deps.wait(paths, timeout)
+	}
 	if status := deps.checkStatus(); daemonStatusIsReady(status) {
 		return status, nil
 	} else if daemonStatusBlocksStart(status) {
@@ -56,7 +78,7 @@ func ensureDaemonRunningWithDeps(deps daemonStartDeps) (daemonStatus, error) {
 	lock, err := deps.acquireLock(paths)
 	if err != nil {
 		// 다른 launcher가 시작 중일 수 있다. 잠시 기다린다.
-		if status, waitErr := deps.wait(paths, daemonReadyTimeout); waitErr == nil && daemonStatusIsReady(status) {
+		if status, waitErr := wait(paths, daemonReadyTimeout); waitErr == nil && daemonStatusIsReady(status) {
 			return status, nil
 		}
 		return daemonStatus{OK: false, Running: false, Paths: paths, Message: err.Error()}, err
@@ -70,6 +92,9 @@ func ensureDaemonRunningWithDeps(deps daemonStartDeps) (daemonStatus, error) {
 	} else if daemonStatusBlocksStart(status) {
 		return status, errors.New(status.Code + ": " + status.Message)
 	}
+	if err := ctx.Err(); err != nil {
+		return daemonStatus{}, err
+	}
 	exe, err := deps.executable()
 	if err != nil {
 		return daemonStatus{}, err
@@ -77,7 +102,7 @@ func ensureDaemonRunningWithDeps(deps daemonStartDeps) (daemonStatus, error) {
 	if err := deps.startDaemon(exe, paths); err != nil {
 		return daemonStatus{OK: false, Paths: paths, Message: err.Error()}, err
 	}
-	return deps.wait(paths, daemonReadyTimeout)
+	return wait(paths, daemonReadyTimeout)
 }
 
 func startDaemonProcess(exe string, paths daemonPaths) error {
@@ -100,6 +125,35 @@ func waitForDaemon(paths daemonPaths, timeout time.Duration) (daemonStatus, erro
 		sleep:       time.Sleep,
 		checkStatus: checkDaemonStatus,
 	})
+}
+
+func waitForDaemonContext(ctx context.Context, paths daemonPaths, timeout time.Duration) (daemonStatus, error) {
+	deadline := time.Now().Add(timeout)
+	var last daemonStatus
+	for time.Now().Before(deadline) {
+		if err := ctx.Err(); err != nil {
+			return last, err
+		}
+		last = checkDaemonStatus()
+		if daemonStatusIsReady(last) {
+			return last, nil
+		}
+		if daemonStatusBlocksStart(last) {
+			return last, errors.New(last.Code + ": " + last.Message)
+		}
+		timer := time.NewTimer(50 * time.Millisecond)
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			timer.Stop()
+			return last, ctx.Err()
+		}
+	}
+	if last.Paths.Dir == "" {
+		last.Paths = paths
+	}
+	last.Message = "daemon did not become ready before timeout"
+	return last, errors.New(last.Message)
 }
 
 type daemonWaitDeps struct {

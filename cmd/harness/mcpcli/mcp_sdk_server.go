@@ -19,15 +19,20 @@ func initSDKServer() *mcp.Server {
 	}
 	server := mcp.NewServer(
 		&mcp.Implementation{Name: "agent_harness", Version: Version},
-		&mcp.ServerOptions{
-			Instructions: "This MCP endpoint is a proxy to the shared agent-harness daemon. Use harness tools for shared Codex/Claude inspection, atomic commit preflight, state checkpoints, self-verification, self-augmentation, and commit policy context. External wiki or knowledge-base workflows belong to their own separately installed servers, not agent-harness.",
-			Logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
-		},
+		sdkServerOptions(),
 	)
 	registerAllTools(server)
 	registerAllResources(server)
 	sdkServer = server
 	return server
+}
+
+func sdkServerOptions() *mcp.ServerOptions {
+	return &mcp.ServerOptions{
+		Instructions: "This MCP endpoint is a proxy to the shared agent-harness daemon. Use harness tools for shared Codex/Claude inspection, atomic commit preflight, state checkpoints, self-verification, self-augmentation, and commit policy context. External wiki or knowledge-base workflows belong to their own separately installed servers, not agent-harness.",
+		Logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Capabilities: &mcp.ServerCapabilities{},
+	}
 }
 
 func sdkToolHandler(groupHandler func(MCPToolCall) MCPToolOutcome, toolName string) mcp.ToolHandler {

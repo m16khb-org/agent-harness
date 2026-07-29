@@ -73,3 +73,41 @@ func TestInitSDKServerIsIdempotent(t *testing.T) {
 		t.Fatalf("initSDKServer should reuse the registered SDK server")
 	}
 }
+
+func TestSDKServerOptionsDoNotAdvertiseUnusedLoggingState(t *testing.T) {
+	options := sdkServerOptions()
+	if options.Capabilities == nil {
+		t.Fatal("SDK server must use explicit capabilities instead of logging defaults")
+	}
+	if options.Capabilities.Logging != nil {
+		t.Fatalf("unused logging capability must remain disabled: %#v", options.Capabilities)
+	}
+}
+
+func TestSDKServerHandshakeOmitsLoggingAndKeepsCatalogCapabilities(t *testing.T) {
+	server := mcp.NewServer(
+		&mcp.Implementation{Name: "agent_harness_test", Version: "0"},
+		sdkServerOptions(),
+	)
+	registerAllTools(server)
+	registerAllResources(server)
+	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	serverSession, err := server.Connect(ctx, serverTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer serverSession.Close()
+	clientSession, err := client.Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clientSession.Close()
+
+	capabilities := clientSession.InitializeResult().Capabilities
+	if capabilities.Logging != nil || capabilities.Tools == nil || capabilities.Resources == nil {
+		t.Fatalf("SDK handshake capabilities = %#v", capabilities)
+	}
+}
