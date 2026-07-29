@@ -283,6 +283,12 @@ func exactReadOnlySimpleShellCommand(command string) bool {
 			return true
 		case "branch":
 			return len(tokens) == i+2 && tokens[i+1] == "--show-current"
+		case "ls-files":
+			// Shannon 측정이 Git이 추적하지 않는 파일 목록만 읽는 고정 형태다.
+			// 추가 exclude 파일이나 format 표면은 이 reader 계약에 열지 않는다.
+			return len(tokens) == i+3 &&
+				tokens[i+1] == "--others" &&
+				tokens[i+2] == "--exclude-standard"
 		case "ls-remote":
 			return exactReadOnlyGitLSRemote(tokens[i+1:])
 		}
