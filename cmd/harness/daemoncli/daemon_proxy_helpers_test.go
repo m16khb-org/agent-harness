@@ -1,6 +1,7 @@
 package daemoncli
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -39,16 +40,18 @@ func serveDaemonProxyTestSocket(t *testing.T, listener net.Listener, instance da
 		return
 	}
 	defer proxyConn.Close()
-	if _, err := proxyConn.Write([]byte("daemon response\n")); err != nil {
-		serverDone <- "write response: " + err.Error()
-		return
-	}
-	request, err := io.ReadAll(proxyConn)
+	reader := bufio.NewReader(proxyConn)
+	request, err := reader.ReadString('\n')
 	if err != nil {
 		serverDone <- "read request: " + err.Error()
 		return
 	}
-	serverDone <- string(request)
+	if _, err := proxyConn.Write([]byte("daemon response\n")); err != nil {
+		serverDone <- "write response: " + err.Error()
+		return
+	}
+	serverDone <- request
+	_, _ = io.Copy(io.Discard, reader)
 }
 
 type daemonProxyFakeConn struct {
@@ -57,6 +60,16 @@ type daemonProxyFakeConn struct {
 	writer    bytes.Buffer
 	closed    bool
 	writeDone chan struct{}
+}
+
+type daemonProxyGatedReader struct {
+	gate   <-chan struct{}
+	reader io.Reader
+}
+
+func (r *daemonProxyGatedReader) Read(p []byte) (int, error) {
+	<-r.gate
+	return r.reader.Read(p)
 }
 
 func (c *daemonProxyFakeConn) Read(p []byte) (int, error) {

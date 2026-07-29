@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -17,30 +18,65 @@ import (
 )
 
 func TestRunMCPProxyWithDepsCopiesDaemonAndStdinStreams(t *testing.T) {
+	requestWritten := make(chan struct{})
 	conn := &daemonProxyFakeConn{
-		reader: strings.NewReader("daemon response\n"),
+		reader: &daemonProxyGatedReader{
+			gate:   requestWritten,
+			reader: strings.NewReader("daemon response\n"),
+		},
+		writeDone: requestWritten,
 	}
-	var stdout bytes.Buffer
-
-	err := runMCPProxyWithDeps(daemonProxyDeps{
-		ensureDaemonRunning: func(context.Context) (daemonStatus, error) {
-			return daemonStatus{Paths: daemonPaths{Socket: "daemon.sock"}}, nil
-		},
-		dial: func(_ context.Context, network, address string) (io.ReadWriteCloser, error) {
-			if network != "unix" || address != "daemon.sock" {
-				t.Fatalf("unexpected dial target: %s %s", network, address)
-			}
-			return conn, nil
-		},
-		stdin:  strings.NewReader("client request\n"),
-		stdout: &stdout,
+	stdinReader, stdinWriter := io.Pipe()
+	stdoutReader, stdoutWriter := io.Pipe()
+	t.Cleanup(func() {
+		_ = stdinReader.Close()
+		_ = stdinWriter.Close()
+		_ = stdoutReader.Close()
+		_ = stdoutWriter.Close()
 	})
 
-	if err != nil {
-		t.Fatalf("expected proxy copy success, got %v", err)
+	done := make(chan error, 1)
+	go func() {
+		done <- runMCPProxyWithDeps(daemonProxyDeps{
+			ensureDaemonRunning: func(context.Context) (daemonStatus, error) {
+				return daemonStatus{Paths: daemonPaths{Socket: "daemon.sock"}}, nil
+			},
+			dial: func(_ context.Context, network, address string) (io.ReadWriteCloser, error) {
+				if network != "unix" || address != "daemon.sock" {
+					return nil, fmt.Errorf("unexpected dial target: %s %s", network, address)
+				}
+				return conn, nil
+			},
+			stdin:  stdinReader,
+			stdout: stdoutWriter,
+		})
+	}()
+	if _, err := io.WriteString(stdinWriter, "client request\n"); err != nil {
+		t.Fatal(err)
 	}
-	if stdout.String() != "daemon response\n" {
-		t.Fatalf("unexpected stdout: %q", stdout.String())
+	response := make(chan string, 1)
+	go func() {
+		line, _ := bufio.NewReader(stdoutReader).ReadString('\n')
+		response <- line
+	}()
+	select {
+	case line := <-response:
+		if line != "daemon response\n" {
+			t.Fatalf("unexpected stdout: %q", line)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("daemon response did not reach proxy stdout")
+	}
+	if err := stdinWriter.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("expected proxy copy success, got %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("proxy did not stop after host EOF")
 	}
 	conn.waitForWrite(t)
 	if got, closed := conn.writerString(), conn.isClosed(); got != "client request\n" || !closed {
@@ -252,7 +288,6 @@ func TestRunMCPProxyWithDepsReconnectsWithoutReplayingInterruptedRequest(t *test
 	if err := stdinWriter.Close(); err != nil {
 		t.Fatal(err)
 	}
-	_ = secondDaemon.Close()
 	select {
 	case err := <-done:
 		if err != nil {
@@ -364,26 +399,30 @@ func TestRunMCPProxyUsesExistingDaemonSocket(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	type readResult struct {
-		out []byte
-		err error
-	}
-	outDone := make(chan readResult, 1)
+	responseDone := make(chan string, 1)
 	go func() {
-		out, err := io.ReadAll(outR)
-		outDone <- readResult{out: out, err: err}
+		line, _ := bufio.NewReader(outR).ReadString('\n')
+		responseDone <- line
 	}()
 	os.Stdin = inR
 	os.Stdout = outW
+	go func() {
+		proxyDone <- runMCPProxyErrorString()
+	}()
 	if _, err := inW.WriteString("client request\n"); err != nil {
 		t.Fatal(err)
+	}
+	select {
+	case response := <-responseDone:
+		if response != "daemon response\n" {
+			t.Fatalf("unexpected proxy stdout: %q", response)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("daemon response did not reach proxy stdout")
 	}
 	if err := inW.Close(); err != nil {
 		t.Fatal(err)
 	}
-	go func() {
-		proxyDone <- runMCPProxyErrorString()
-	}()
 
 	select {
 	case got := <-proxyDone:
@@ -393,13 +432,6 @@ func TestRunMCPProxyUsesExistingDaemonSocket(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("runMCPProxy did not return")
-	}
-	read := <-outDone
-	if read.err != nil {
-		t.Fatal(read.err)
-	}
-	if string(read.out) != "daemon response\n" {
-		t.Fatalf("unexpected proxy stdout: %q", string(read.out))
 	}
 	select {
 	case got := <-serverDone:

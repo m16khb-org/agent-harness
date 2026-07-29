@@ -101,6 +101,10 @@ func runMCPProxyWithDeps(deps daemonProxyDeps) error {
 		if !ok || errors.Is(event.err, io.EOF) {
 			hostClosed = true
 			stdinEvents = nil
+			if !session.hasInFlight() {
+				_ = connection.conn.Close()
+				return true, nil
+			}
 			if closeWriter, ok := connection.conn.(interface{ CloseWrite() error }); ok {
 				_ = closeWriter.CloseWrite()
 			} else {
@@ -185,6 +189,9 @@ func runMCPProxyWithDeps(deps daemonProxyDeps) error {
 			}
 			if err := session.forwardDaemon(event.data, deps.stdout); err != nil {
 				return err
+			}
+			if hostClosed && !session.hasInFlight() {
+				return nil
 			}
 		}
 	}
@@ -412,6 +419,11 @@ type daemonProxySession struct {
 
 func newDaemonProxySession() *daemonProxySession {
 	return &daemonProxySession{pending: map[string]daemonProxyPending{}}
+}
+
+func (session *daemonProxySession) hasInFlight() bool {
+	return len(session.pending) > 0 ||
+		len(session.initializeRequest) > 0 && !session.initializeResponseForwarded
 }
 
 func (session *daemonProxySession) observeHost(line []byte) {
