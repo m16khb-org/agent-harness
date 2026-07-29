@@ -56,6 +56,10 @@ func ReflectIssueOpsDevilsAdvocateFindings(stateRoot, id string, confirm bool, p
 	return issueops.ReflectDevilsAdvocateFindings(stateRoot, id, confirm, prov)
 }
 
+func ReflectIssueOpsDevilsAdvocateFindingsWithActor(stateRoot, id string, confirm bool, prov IssueProvider, actor IssueOpsActor) (IssueOpsRecord, IssueProviderUpdateIssueBodySectionResult, error) {
+	return issueops.ReflectDevilsAdvocateFindingsWithActor(stateRoot, id, confirm, prov, actor)
+}
+
 // CreateRemotePullRequest opens a pull/merge request through the supplied
 // provider, resolved by the caller in the adapter layer.
 func CreateRemotePullRequest(req IssueProviderCreatePullRequestRequest, prov IssueProvider) (IssueProviderCreatePullRequestResult, error) {

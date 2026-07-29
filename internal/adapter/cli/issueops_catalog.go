@@ -75,6 +75,7 @@ const issueOpsUsageCatalog = `  agent-harness issueops start --repo PATH [--bran
   agent-harness issueops remote create-child --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]
   agent-harness issueops remote create-pr --id ID --expected-generation N --title TEXT --head BRANCH --base BRANCH [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --target-branch BRANCH --label LABEL --assignee USER RECORD_ACTOR_FLAGS [--json]
+  agent-harness issueops remote reflect-devils-advocate --id ID [--provider github|gitlab] RECORD_ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops remote reflect-completion --id ID [--provider github|gitlab] [--confirm] [--json]
   agent-harness issueops remote close-issue --id ID [--provider github|gitlab] [--confirm] [--json]
   agent-harness issueops benchmark run --fixtures PATH [--judge none|file] [--judge-file PATH] [--json]

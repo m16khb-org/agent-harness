@@ -499,8 +499,8 @@ func exactIssueOpsOwnerMutation(commandText string) bool {
 	// 않는다(이슈 #158).
 	case "link-plan", "compatibility review", "devils-advocate review", "phase",
 		"decision add", "ai-slop-clean record", "feedback mark-issue-updated", "feedback resolve",
-		"implementation-review record", "branch prepare",
-		"remote create-pr", "remote verify-artifact":
+		"implementation-review record", "branch prepare", "intent record", "domain-review record", "regress",
+		"remote create-pr", "remote verify-artifact", "remote reflect-devils-advocate":
 	default:
 		return false
 	}
@@ -710,13 +710,47 @@ func executionMutationTargets(req HookToolUseLifecycleRequest) []string {
 		}
 	}
 	if len(targets) == 0 && searchrouting.IsShellTool(req.Tool) {
+		receiptPaths := exactIssueOpsOwnerReceiptPaths(base, req.Command)
 		for _, path := range shellCommandWorktreeGuardPaths(base, req.Command) {
 			if target := resolveHookTargetPath(base, path); target != "" {
+				if receiptPaths[target] {
+					continue
+				}
 				targets = append(targets, target)
 			}
 		}
 	}
 	return targets
+}
+
+// exactIssueOpsOwnerReceiptPaths는 native process 영수증에 든 실행 파일 경로를
+// 변경 대상에서 제외한다. 이 값은 holder identity를 증명하는 관찰값이며 실제
+// 파일 접근 대상이 아니다. 나머지 절대 경로는 기존 canonical root fence가 본다.
+func exactIssueOpsOwnerReceiptPaths(base, commandText string) map[string]bool {
+	if !exactIssueOpsOwnerMutation(commandText) {
+		return nil
+	}
+	command, ok := commandparse.ParseExactIssueOpsCommand(commandText)
+	if !ok {
+		return nil
+	}
+	values, booleans, repeatable, ok := commandparse.IssueOpsCommandSpec(command.Path)
+	if !ok {
+		return nil
+	}
+	flags, ok := commandparse.ExactFlags(command, values, booleans, repeatable)
+	if !ok {
+		return nil
+	}
+	executable, ok := oneFlag(flags, "--session-executable")
+	if !ok {
+		return nil
+	}
+	target := resolveHookTargetPath(base, executable)
+	if target == "" {
+		return nil
+	}
+	return map[string]bool{target: true}
 }
 
 func executionRequestTargetsStayInside(req HookToolUseLifecycleRequest, targets []string, root string) bool {

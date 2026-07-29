@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -35,5 +36,72 @@ func TestExactIssueOpsOwnerMutationAdmitsBranchPrepare(t *testing.T) {
 	}
 	if exactIssueOpsOwnerMutation(strings.Replace(command, "--session-id sess-1 ", "", 1)) {
 		t.Fatal("branch prepare without session-id must fail the 4-flag signature")
+	}
+}
+
+// 현재 holder가 전달하는 session-executable은 native identity 영수증이지
+// 워크트리 변경 대상이 아니다. 설치된 Codex/Claude 실행 파일은 보통 워크트리
+// 밖에 있으므로 이 값을 경로 fence에 넣으면 정상 publication도 차단된다.
+func TestRemoteCreatePRAllowsCurrentHolderWithExternalSessionExecutable(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	executable := filepath.Join(t.TempDir(), "codex", "bin", "codex")
+	command := "agent-harness issueops remote create-pr --id " + record.ID +
+		" --expected-generation 1 --title 'IssueOps lease release differential vertical 검증'" +
+		" --head 191-issueops-lease-differential-spike --base 117-hexagonal-architecture-migration" +
+		" --body '현재 holder의 governed preview 검증' --label enhancement --assignee m16khb" +
+		" --host claude --session-id owner-session --session-pid 1234" +
+		" --session-started-at 2026-07-22T00:00:00Z --session-executable " + executable +
+		" --cwd " + worker + " --json"
+
+	holder := executionRequest(record, worker, "claude", "owner-session", command)
+	holder.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(holder); got.Decision != "allow" {
+		t.Fatalf("외부 session-executable 영수증을 가진 현재 holder의 create-pr preview가 차단됐다: %+v", got)
+	}
+
+	foreign := holder
+	foreign.SessionID = "other-session"
+	if got := BuildLifecyclePreToolUseDecision(foreign); got.Decision != "block" ||
+		got.Deny == nil || got.Deny.Code != "holder_identity_mismatch" {
+		t.Fatalf("같은 create-pr 명령을 실행한 비-holder는 identity fence에 차단돼야 한다: %+v", got)
+	}
+}
+
+// execution prepare 이후에도 grill 재진입과 계획 보강에 필요한 레코더는
+// 현재 holder가 사용할 수 있어야 한다. 각 명령은 등록된 플래그와 4-flag
+// identity 시그니처를 모두 만족할 때만 owner mutation으로 분류한다.
+func TestPlanningOwnerMutationsRemainAvailableAfterExecutionPrepare(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	actorFlags := " --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json"
+	commands := map[string]string{
+		"intent record": "agent-harness issueops intent record --id " + record.ID +
+			" --raw-request '관측성 보강' --interpreted-intent 'breaker 원인과 상태를 노출'" +
+			" --success-criteria '원인 분류를 검증'" + actorFlags,
+		"domain-review record": "agent-harness issueops domain-review record --id " + record.ID +
+			" --model-fit '기존 breaker 상태 모델을 유지' --terminology 'open state'" +
+			" --risk '고카디널리티 방지'" + actorFlags,
+		"regress": "agent-harness issueops regress --id " + record.ID +
+			" --reason 'Brooks revise 반영을 위해 grill로 복귀'" + actorFlags,
+		"remote reflect-devils-advocate": "agent-harness issueops remote reflect-devils-advocate --id " + record.ID +
+			" --provider gitlab --confirm" + actorFlags,
+	}
+
+	for name, command := range commands {
+		t.Run(name, func(t *testing.T) {
+			holder := executionRequest(record, worker, "claude", "owner-session", command)
+			holder.AgentID = "owner-agent"
+			if got := BuildLifecyclePreToolUseDecision(holder); got.Decision != "allow" {
+				t.Fatalf("현재 holder의 %s 명령이 차단됐다: %+v", name, got)
+			}
+
+			foreign := holder
+			foreign.SessionID = "other-session"
+			if got := BuildLifecyclePreToolUseDecision(foreign); got.Decision != "block" ||
+				got.Deny == nil || got.Deny.Code != "holder_identity_mismatch" {
+				t.Fatalf("비-holder의 %s 명령은 identity fence에 차단돼야 한다: %+v", name, got)
+			}
+		})
 	}
 }

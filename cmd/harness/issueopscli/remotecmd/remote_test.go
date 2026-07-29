@@ -317,6 +317,26 @@ func TestRemoteHelpersAndBoundaries(t *testing.T) {
 	}
 }
 
+func TestReflectDevilsAdvocateAcceptsHolderActorFlags(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	err := Run([]string{
+		"reflect-devils-advocate",
+		"--id", "io-missing",
+		"--provider", "gitlab",
+		"--host", "codex",
+		"--session-id", "session-1",
+		"--agent-id", "agent-1",
+		"--cwd", t.TempDir(),
+		"--confirm",
+	}, Deps{})
+	if err == nil {
+		t.Fatal("존재하지 않는 lifecycle은 실패해야 한다")
+	}
+	if strings.Contains(err.Error(), "flag provided but not defined") {
+		t.Fatalf("reflect-devils-advocate가 holder actor flag를 등록하지 않았다: %v", err)
+	}
+}
+
 func TestRemoteNativeActorIncludesCurrentProcessAncestry(t *testing.T) {
 	actor, err := (Deps{}).remoteNativeActor("codex", "session-1", "agent-1", 42, "2026-07-23T00:00:00Z", "/bin/codex", true)
 	if err != nil {

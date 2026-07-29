@@ -16,12 +16,23 @@ import (
 // the cycle re-plans. Without confirm it returns the provider's dry-run preview
 // and does not mutate state.
 func ReflectDevilsAdvocateFindings(stateRoot, id string, confirm bool, prov port.IssueProvider) (IssueOpsRecord, port.IssueProviderUpdateIssueBodySectionResult, error) {
+	return reflectDevilsAdvocateFindings(stateRoot, id, confirm, prov, nil)
+}
+
+func ReflectDevilsAdvocateFindingsWithActor(stateRoot, id string, confirm bool, prov port.IssueProvider, actor IssueOpsActor) (IssueOpsRecord, port.IssueProviderUpdateIssueBodySectionResult, error) {
+	return reflectDevilsAdvocateFindings(stateRoot, id, confirm, prov, &actor)
+}
+
+func reflectDevilsAdvocateFindings(stateRoot, id string, confirm bool, prov port.IssueProvider, actor *IssueOpsActor) (IssueOpsRecord, port.IssueProviderUpdateIssueBodySectionResult, error) {
 	if prov == nil {
 		return IssueOpsRecord{OK: false}, port.IssueProviderUpdateIssueBodySectionResult{}, fmt.Errorf("no issue provider configured")
 	}
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return record, port.IssueProviderUpdateIssueBodySectionResult{}, err
+	}
+	if err := validateExecutionMutation(record, actor); err != nil {
+		return IssueOpsRecord{OK: false}, port.IssueProviderUpdateIssueBodySectionResult{}, err
 	}
 	review := record.DevilsAdvocateReview
 	if review == nil || len(review.Findings) == 0 {
@@ -50,6 +61,9 @@ func ReflectDevilsAdvocateFindings(stateRoot, id string, confirm bool, prov port
 		}
 		if rec.DevilsAdvocateReview == nil {
 			return fmt.Errorf("devil's-advocate review disappeared before reflect stamp")
+		}
+		if err := validateExecutionMutation(rec, actor); err != nil {
+			return err
 		}
 		now := time.Now().UTC().Format(time.RFC3339Nano)
 		rec.DevilsAdvocateReview.IssueReflectedAt = now
