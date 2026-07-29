@@ -160,6 +160,15 @@ sed -n '1,130p' internal/core/issueops/testdata/leasevertical/domain/release.go`
 		t.Fatalf("각 조각이 exact reader인 && 시퀀스는 lifecycle에서도 관찰이어야 한다: %+v", got)
 	}
 
+	req.Command = `test -d .codegraph && echo present || echo absent
+git diff --cached --stat
+git diff --cached --name-only
+git diff --cached --check`
+	got = BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "allow" {
+		t.Fatalf("atomic publication의 고정 staged-diff reader는 lifecycle에서도 관찰이어야 한다: %+v", got)
+	}
+
 	req.Command = strings.Replace(command, "printf 'codegraph-present\\n'", "printf '%n' PATH", 1)
 	got = BuildLifecyclePreToolUseDecision(req)
 	if got.Decision != "block" || got.Deny == nil || got.Deny.Code != "unsafe_mutation" {

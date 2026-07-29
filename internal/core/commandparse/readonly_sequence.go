@@ -4,8 +4,21 @@ import "strings"
 
 // exactReadOnlyShellSequence는 exact read-only 조각과 선택적인 CodeGraph
 // 존재 probe 하나로만 구성된 세미콜론·개행·&& 시퀀스를 허용한다. 파이프·
-// 백그라운드·|| 연산자는 이 경로에 들어오지 못한다.
+// 백그라운드·일반 || 연산자는 이 경로에 들어오지 못한다.
 func exactReadOnlyShellSequence(command string) bool {
+	if tail, matched := exactReadOnlyShortCircuitDirectoryProbe(command); matched {
+		parts, ok := splitReadOnlyShellSequence(tail)
+		if !ok || len(parts) == 0 {
+			return false
+		}
+		for _, part := range parts {
+			if !exactReadOnlySimpleShellCommand(part) {
+				return false
+			}
+		}
+		return true
+	}
+
 	parts, ok := splitReadOnlyShellSequence(command)
 	if !ok || len(parts) < 2 {
 		return false
@@ -25,6 +38,23 @@ func exactReadOnlyShellSequence(command string) bool {
 		}
 	}
 	return true
+}
+
+// exactReadOnlyShortCircuitDirectoryProbe는 atomic publication이 사용하는
+// CodeGraph 존재 확인 한 형태만 허용하고, 뒤의 명령은 기존 exact reader로
+// 다시 검증하도록 나머지 payload를 반환한다. 일반적인 || 분기는 열지 않는다.
+func exactReadOnlyShortCircuitDirectoryProbe(command string) (string, bool) {
+	const probe = "test -d .codegraph && echo present || echo absent"
+	command = strings.TrimSpace(command)
+	if !strings.HasPrefix(command, probe) {
+		return "", false
+	}
+	tail := strings.TrimPrefix(command, probe)
+	if tail == "" || tail[0] != '\n' {
+		return "", false
+	}
+	tail = strings.TrimSpace(tail[1:])
+	return tail, tail != ""
 }
 
 // splitReadOnlyShellSequence는 quote 밖의 세미콜론, LF, &&만 분리하고 그

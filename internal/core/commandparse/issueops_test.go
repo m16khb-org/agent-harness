@@ -430,6 +430,13 @@ sed -n '1,194p' internal/core/issueops/testdata/leasevertical/adapter/sqlite.go`
 	if !ExactReadOnlyShellCommand(andSequence) {
 		t.Fatalf("각 조각이 exact reader인 && 시퀀스는 읽기 전용이어야 한다: %q", andSequence)
 	}
+	atomicStagedDiffSequence := `test -d .codegraph && echo present || echo absent
+git diff --cached --stat
+git diff --cached --name-only
+git diff --cached --check`
+	if !ExactReadOnlyShellCommand(atomicStagedDiffSequence) {
+		t.Fatalf("atomic publication의 고정 CodeGraph probe와 staged diff reader는 읽기 전용이어야 한다: %q", atomicStagedDiffSequence)
+	}
 
 	for name, unsafe := range map[string]string{
 		"git topology mutation": strings.Replace(command, "git branch --show-current", "git switch other", 1),
@@ -450,6 +457,8 @@ sed -n '1,194p' internal/core/issueops/testdata/leasevertical/adapter/sqlite.go`
 		"background operator":   strings.Replace(andSequence, "&&", "&", 1),
 		"and mutation":          strings.Replace(andSequence, "git status --short", "git add .", 1),
 		"trailing and":          andSequence + " &&",
+		"shorthand other path":  strings.Replace(atomicStagedDiffSequence, ".codegraph", ".git", 1),
+		"shorthand mutation":    atomicStagedDiffSequence + "\ngit add .",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if ExactReadOnlyShellCommand(unsafe) {

@@ -35,6 +35,37 @@ func TestRunHookPreToolUseAllowsAtomicPreflightForCurrentHolder(t *testing.T) {
 	}
 }
 
+func TestRunHookPreToolUseAllowsAtomicStagedDiffReaderForCurrentHolder(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	if err := os.MkdirAll(filepath.Join(source, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, ".git", "HEAD"), []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cycle := createLinkedIssueOpsWorktree(t, source, "191-atomic-staged-diff-hook")
+	actor := activateIssueOpsHookExecution(t, cycle.id)
+	command := `test -d .codegraph && echo present || echo absent
+git diff --cached --stat
+git diff --cached --name-only
+git diff --cached --check`
+
+	raw, err := json.Marshal(map[string]any{
+		"cwd": cycle.path, "host": actor.Host, "session_id": actor.SessionID, "agent_id": actor.AgentID,
+		"tool_name": "Bash", "tool_input": map[string]any{"command": command},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := runHookCapture(t, string(raw), func() error {
+		return runHookPreToolUse([]string{"--host", actor.Host, "--enforce-worktree", "--json"})
+	})
+	if got["decision"] != "allow" {
+		t.Fatalf("현재 holder의 고정 staged-diff reader는 hook 표면에서도 허용해야 한다: %+v", got)
+	}
+}
+
 func TestRunHookPreToolUseUsesCodexExecCommandWorkdir(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := filepath.Join(t.TempDir(), "agent-harness")
