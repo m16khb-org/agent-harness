@@ -124,6 +124,34 @@ func TestExecutionShellReadersAreObservationFirst(t *testing.T) {
 	}
 }
 
+func TestExecutionRemoteCreatePRHelpIsObservationFirst(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, active, worker := executionActiveLifecycleRecord(t)
+
+	for _, command := range []string{
+		"agent-harness issueops remote create-pr --help",
+		"./bin/agent-harness issueops remote create-pr -h",
+	} {
+		req := executionRequest(active, worker, "codex", "observer-session", command)
+		req.AgentID = ""
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("IssueOps remote create-pr의 help-only 호출은 관찰이어야 한다: %q -> %+v", command, got)
+		}
+	}
+
+	for _, command := range []string{
+		"agent-harness issueops remote create-pr --help --confirm",
+		"agent-harness issueops remote unknown --help",
+	} {
+		req := executionRequest(active, worker, "codex", "observer-session", command)
+		req.AgentID = ""
+		got := BuildLifecyclePreToolUseDecision(req)
+		if got.Decision != "block" || got.Deny == nil || got.Deny.Code != "unsafe_mutation" {
+			t.Fatalf("help-only exact 형태 밖 IssueOps 명령은 계속 차단해야 한다: %q -> %+v", command, got)
+		}
+	}
+}
+
 func TestExecutionBoundedReadOnlySequenceIsObservationFirst(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	_, active, worker := executionActiveLifecycleRecord(t)

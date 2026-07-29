@@ -49,6 +49,13 @@ func executionObservation(req HookToolUseLifecycleRequest) bool {
 	if !ok {
 		return false
 	}
+	// remote create-pr에 help flag 하나만 전달하면 확인한 Go flag parser가
+	// 실제 동작 전에 flag.ErrHelp로 종료한다. mutation 이름을 가졌더라도 이
+	// 정확한 형태는 상태를 읽거나 쓰지 않는 CLI 표면 조회다.
+	if command.Path == "remote create-pr" && len(command.Tokens) == command.Start+1 &&
+		(command.Tokens[command.Start] == "--help" || command.Tokens[command.Start] == "-h") {
+		return true
+	}
 	flags, ok := commandparse.ExactFlags(command, values, booleans, repeatable)
 	if !ok {
 		return false
