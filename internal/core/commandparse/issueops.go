@@ -346,10 +346,11 @@ func exactReadOnlyGoDoc(tokens []string) bool {
 }
 
 func exactReadOnlyJQCommand(tokens []string) bool {
-	// Turing 증거 JSON의 구문 검증에 필요한 고정 filter와 .json 파일 하나만
-	// 허용한다. 추가 option/filter/stdin은 jq의 더 넓은 실행 표면을 열 수 있다.
+	// Turing 증거 JSON의 구문 검증과 전체 관찰에 필요한 고정 filter 및 .json
+	// 파일 하나만 허용한다. 추가 option/filter/stdin은 jq의 더 넓은 실행 표면을
+	// 열 수 있다.
 	return len(tokens) == 2 &&
-		tokens[0] == "empty" &&
+		(tokens[0] == "empty" || tokens[0] == ".") &&
 		tokens[1] != "" &&
 		tokens[1] != "-" &&
 		!strings.HasPrefix(tokens[1], "-") &&

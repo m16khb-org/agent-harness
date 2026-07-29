@@ -46,6 +46,10 @@ sed -n '1,383p' internal/core/issueops/testdata/leasevertical/contract/record.go
 			command: "jq empty .agent-harness/turing/issueops-v1-0d097a7cae7456be.json",
 		},
 		{
+			name:    "Turing JSON 전체 관찰",
+			command: "jq '.' .agent-harness/turing/issueops-v1-c68e0b0f994c2705.json",
+		},
+		{
 			name:    "프로젝트 문서 전체 관찰",
 			command: `sed -n '1,$p' .agent-harness/CONVENTIONS.md`,
 		},
