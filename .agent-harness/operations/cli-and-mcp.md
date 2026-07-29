@@ -63,7 +63,11 @@ agent-harness daemon start --json
 agent-harness daemon status --json
 agent-harness daemon stop --json
 agent-harness mcp
+agent-harness mcp cleanup --json
+agent-harness mcp cleanup --apply --json
 ```
+
+`mcp cleanup`은 기본 dry-run이다. Darwin의 `--apply`만 현재 checkout의 exact `agent-harness mcp` 명령, `PPID=1`, 확인된 executable/start time을 모두 만족하고 signal 직전 동일 identity가 다시 확인된 고아를 종료한다. Linux 컨테이너처럼 `PPID=1`이 살아 있는 host일 수 있는 플랫폼은 `skip-unsupported-platform`으로 거부한다. 살아 있는 host proxy, 다른 checkout, 외부 MCP, identity 미확정 프로세스는 건드리지 않는다.
 
 MCP smoke:
 

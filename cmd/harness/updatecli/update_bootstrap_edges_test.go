@@ -19,16 +19,16 @@ func TestRunInstallScriptCommandRejectsUnexpectedArgsAndMissingScript(t *testing
 	}
 }
 
-func TestRefreshRunningMCPProxiesAfterInstallPropagatesListError(t *testing.T) {
-	want := errors.New("list failed")
+func TestRefreshRunningMCPProxiesAfterInstallDoesNotInspectProcesses(t *testing.T) {
 	restoreList := stubMCPProxyProcessLister(t, func() ([]mcpProxyProcess, error) {
-		return nil, want
+		t.Fatal("post-install refresh must not inspect MCP processes")
+		return nil, errors.New("unreachable")
 	})
 	defer restoreList()
 
 	count, err := refreshRunningMCPProxiesAfterInstall()
-	if count != 0 || !errors.Is(err, want) {
-		t.Fatalf("refreshRunningMCPProxiesAfterInstall count=%d err=%v, want error %v", count, err, want)
+	if count != 0 || err != nil {
+		t.Fatalf("refreshRunningMCPProxiesAfterInstall count=%d err=%v, want 0 nil", count, err)
 	}
 }
 

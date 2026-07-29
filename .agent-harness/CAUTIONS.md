@@ -480,7 +480,15 @@ Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents
 - Summary: 시스템 전체 파이프 fd가 폭증하면(관측: 14,402개, codex 호스트 1개가 3,112개) xnu의 전역 파이프 버퍼 풀이 고갈되어 **새 파이프가 512바이트 최소 버퍼로 강등**된다(정상 16,384 — 100/100 실측). 이때 "쓰기 완료 후 읽기" 방식의 stdout 캡처 테스트 헬퍼는 512B를 넘는 JSON 출력(예: loop record-attempt 579B)에서 write가 영구 블록되어 go test 타임아웃 FAIL이 된다. 코드 회귀처럼 보이지만 머신 상태 문제다(부모 커밋에서도 동일 재현).
 - Context: 증상은 간헐적이다 — KVA 압력이 변동하며 새 파이프가 16K↔512B를 오간다. 타임아웃/중단된 `go test` 실행을 `pkill -f 'go test'`로 죽이면 `.test` 바이너리가 고아로 살아남아 파이프 압력을 가중시킨다(양성 피드백). 6ee897d가 harnessapp response-contract 캡처는 동시 reader로 고쳤지만, 일부 CLI capture 헬퍼는 아직 write-then-read 패턴이다.
 - Triage: (1) `ps -axo pid,etime,ppid,command | rg '\.test'`로 고아 테스트 바이너리 확인·제거, (2) `lsof -n | rg -c PIPE`로 총량과 `awk '{print $1,$2}' | sort | uniq -c | sort -rn`으로 최다 점유 프로세스 확인, (3) 신규 파이프에 nonblocking write를 가득 채우는 프로브로 실효 버퍼 크기 측정 — 512B면 KVA 고갈 확정.
-- Resolution: 재발 방지는 완료됐다. stdout/stderr 캡처 테스트는 `internal/testsupport.CaptureStdout`, `CaptureStdoutAndError`, `CaptureStderrAndError`를 사용한다. 이 헬퍼들은 fn 실행 전에 reader goroutine을 시작하므로 파이프 버퍼 크기에 의존하지 않는다. `agent-harness doctor --json`은 `pipe_capacity_bytes`와 `pipe_capacity` 체크를 노출하고 8192B 미만이면 `pipe_capacity_degraded` warning을 낸다. 근본 완화는 여전히 파이프를 누수하는 장수 host 프로세스 재시작이다. `agent-harness mcp cleanup --apply`는 부모가 죽은 고아 프록시만 정리하므로 살아 있는 host의 누수에는 효과가 없다. `go test`를 죽일 때는 `pkill -f 'go test'`가 아니라 `.test` 바이너리까지 함께 정리한다.
+- Resolution: 재발 방지는 완료됐다. stdout/stderr 캡처 테스트는 `internal/testsupport.CaptureStdout`, `CaptureStdoutAndError`, `CaptureStderrAndError`를 사용한다. 이 헬퍼들은 fn 실행 전에 reader goroutine을 시작하므로 파이프 버퍼 크기에 의존하지 않는다. `agent-harness doctor --json`은 `pipe_capacity_bytes`와 `pipe_capacity` 체크를 노출하고 8192B 미만이면 `pipe_capacity_degraded` warning을 낸다. 근본 완화는 여전히 파이프를 누수하는 장수 host 프로세스 재시작이다. `agent-harness mcp cleanup --apply`는 Darwin에서 검증된 고아 프록시만 정리하므로 살아 있는 host의 누수에는 효과가 없다. `go test`를 죽일 때는 `pkill -f 'go test'`가 아니라 `.test` 바이너리까지 함께 정리한다.
+
+## 2026-07-28 — update의 MCP 수명은 host 소유이며 pending 요청은 자동 재생하지 않는다
+
+- Kind: `caution`
+- Source: `ah update` 중 Codex agent_harness MCP 연결 종료 재현과 Claude Code 2.1.220 `mcp list` 번들 확인
+- Summary: update는 host가 소유한 stdio MCP 프로세스나 외부 MCP를 열거·종료·접속하지 않는다. agent-harness proxy는 daemon generation 교체 뒤 초기 handshake의 protocol/capability projection이 동일할 때만 세션을 복구한다.
+- Resolution: 단일 요청과 구버전 NDJSON batch의 미완료 request ID는 자동 재실행하지 않고 `outcome=unknown`과 reconcile 요구를 반환한다. reconnect는 전체 20초 deadline과 host EOF cancellation을 공유한다. handshake projection이 달라지거나 initialize가 거부되면 proxy를 종료해 host 재연결을 유도한다. 사용하지 않는 SDK logging capability는 광고하지 않는다. GitLab MCP/personal wrapper 동기화는 `scripts/sync-glab-mcp.sh`를 수동 실행할 때만 수행한다.
+- Cleanup boundary: `mcp cleanup --apply`는 Darwin에서만 exact current-checkout `agent-harness mcp`, `PPID=1`, verified executable/start time, signal 직전 동일 identity를 모두 만족한 프로세스를 종료한다. Linux 컨테이너 등에서는 `PPID=1`이 살아 있는 host일 수 있으므로 `skip-unsupported-platform`으로 거부한다. live-parent proxy, PID reuse, 다른 checkout, DBHub/Context7/Kordoc/개인 wrapper도 fail-closed로 건너뛴다.
 
 ## 2026-07-07 — SQLite sqlstore span 규율: active-root chain, per-root 직렬화, fresh start
 

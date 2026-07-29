@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -88,8 +89,16 @@ func TestRunMCPCommandCleanupJSONUsesDryRunByDefaultAndApplyWhenRequested(t *tes
 		mcpProxyTerminator = previousTerminator
 		resetUpdateFacadeDeps()
 	})
+	binary := "/repo/bin/agent-harness"
 	mcpProxyProcessLister = func() ([]mcpProxyProcess, error) {
-		return []mcpProxyProcess{{PID: 44, Command: "agent-harness mcp"}}, nil
+		return []mcpProxyProcess{{
+			PID:              44,
+			ParentPID:        1,
+			Command:          binary + " mcp",
+			StartTime:        "orphan-start",
+			Executable:       binary,
+			IdentityVerified: true,
+		}}, nil
 	}
 	var terminated []int
 	mcpProxyTerminator = func(pid int) error {
@@ -107,7 +116,11 @@ func TestRunMCPCommandCleanupJSONUsesDryRunByDefaultAndApplyWhenRequested(t *tes
 	if err := runMCPCommand([]string{"cleanup", "--apply", "--json"}); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(terminated, []int{44}) {
+	expectedTerminated := []int(nil)
+	if runtime.GOOS == "darwin" {
+		expectedTerminated = []int{44}
+	}
+	if !reflect.DeepEqual(terminated, expectedTerminated) {
 		t.Fatalf("apply cleanup terminated = %#v", terminated)
 	}
 }
@@ -216,10 +229,16 @@ func TestUpdateAndAPIDocFacadeWrappers(t *testing.T) {
 		t.Fatalf("terminateStaleDaemonProcesses = %d err=%v", terminated, err)
 	}
 	binary := filepath.Join(root, "bin", "agent-harness")
+	if err := os.MkdirAll(filepath.Dir(binary), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(binary, []byte("fixture"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if parsed, ok := parseDaemonProcess("11 "+binary+" daemon --internal", binary); !ok || parsed.PID != 11 {
 		t.Fatalf("parseDaemonProcess = %#v %v", parsed, ok)
 	}
-	if refreshed, err := refreshRunningMCPProxiesAfterInstall(); err != nil || refreshed != 1 {
+	if refreshed, err := refreshRunningMCPProxiesAfterInstall(); err != nil || refreshed != 0 {
 		t.Fatalf("refreshRunningMCPProxiesAfterInstall = %d err=%v", refreshed, err)
 	}
 	if parsed, ok := parseMCPProxyProcess("22 "+binary+" mcp", binary); !ok || parsed.PID != 22 {

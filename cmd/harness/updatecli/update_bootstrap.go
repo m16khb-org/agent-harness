@@ -71,8 +71,7 @@ func runInstallScriptCommand(commandName string, args []string) error {
 	if _, err := postInstallDaemonRefresh(); err != nil {
 		return err
 	}
-	_, err := postInstallMCPProxyRefresh()
-	return err
+	return nil
 }
 
 func runInstallScriptExec(script string, args ...string) error {

@@ -182,19 +182,18 @@ func TestInstallNativeScriptDocumentsCommandShims(t *testing.T) {
 	}
 }
 
-func TestInstallNativeScriptSyncsGlabBeforeSealingActivation(t *testing.T) {
+func TestInstallNativeScriptLeavesGlabMCPSyncExplicit(t *testing.T) {
 	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
-	syncOffset := strings.Index(script, `bash "$ROOT/scripts/sync-glab-mcp.sh" || true`)
-	installOffset := strings.Index(script, `"$BIN" install-native "${HARNESS_ARGS[@]}"`)
-	binaryGateOffset := -1
-	if installOffset >= 0 {
-		binaryGateOffset = strings.LastIndex(script[:installOffset], `if [[ -x "$BIN" ]]; then`)
-	}
-	if binaryGateOffset < 0 || syncOffset < 0 || installOffset < 0 {
-		t.Fatalf("install-native.sh is missing the binary gate, glab sync, or native install invocation: gate=%d sync=%d install=%d", binaryGateOffset, syncOffset, installOffset)
-	}
-	if binaryGateOffset > syncOffset || syncOffset > installOffset {
-		t.Fatalf("glab MCP sync must run after the binary gate and before activation seal: gate=%d sync=%d install=%d", binaryGateOffset, syncOffset, installOffset)
+	for _, forbidden := range []string{
+		"sync-glab-mcp.sh",
+		"GLAB_MCP_WRAPPER",
+		"GLAB_MCP_PROFILES",
+		"claude mcp ",
+		"codex mcp ",
+	} {
+		if strings.Contains(script, forbidden) {
+			t.Fatalf("install-native.sh must not invoke or probe explicit glab MCP sync state: %q", forbidden)
+		}
 	}
 }
 
