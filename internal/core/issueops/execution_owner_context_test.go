@@ -322,6 +322,25 @@ func TestExecutionClaimDigestDriftErrorsCarryExpectedAndObserved(t *testing.T) {
 	}
 }
 
+func TestExtractExecutionOwnerVerificationAcceptsCanonicalIssueHeadings(t *testing.T) {
+	for _, heading := range []string{"검증", "Verification"} {
+		t.Run(heading, func(t *testing.T) {
+			body := "## " + heading + "\n\n```bash\ngo test ./internal/core/issueops -count=1\n```\n"
+			got := extractExecutionOwnerVerification(body)
+			if !reflect.DeepEqual(got, []string{"go test ./internal/core/issueops -count=1"}) {
+				t.Fatalf("canonical issue heading %q verification = %#v", heading, got)
+			}
+		})
+	}
+}
+
+func TestExtractExecutionOwnerVerificationRejectsUnfencedProse(t *testing.T) {
+	body := "## 검증\n\ngo test ./internal/core/issueops -count=1\n"
+	if got := extractExecutionOwnerVerification(body); len(got) != 0 {
+		t.Fatalf("unfenced verification prose must not become an executable command: %#v", got)
+	}
+}
+
 func assertSealedOwnerLaunch(t *testing.T, record IssueOpsRecord, issueBody string, prepared port.ExecutionOrcaWorkspaceReceipt, launch port.ExecutionOrcaLaunchRequest) {
 	t.Helper()
 	if !pathWithinRoot(prepared.Workspace.Root, launch.ContextPacketPath) || !pathWithinRoot(prepared.Workspace.Root, launch.PromptPath) {
