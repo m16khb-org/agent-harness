@@ -41,17 +41,17 @@ func configureMCPCLI() {
 
 func runMCP() error {
 	configureMCPCLI()
-	return mcpcli.RunMCP()
+	return mcpcli.RunMCPWithDependencies(mcpcli.MCPDependencies{Release: issueOpsReleaseHandler})
 }
 
 func serveMCPStream(input io.Reader, output io.Writer, diagnostics io.Writer) error {
 	configureMCPCLI()
-	return mcpcli.ServeMCPStream(input, output, diagnostics)
+	return mcpcli.ServeMCPStreamWithDependencies(input, output, diagnostics, mcpcli.MCPDependencies{Release: issueOpsReleaseHandler})
 }
 
 func serveMCPStreamContext(ctx context.Context, input io.Reader, output io.Writer, diagnostics io.Writer) error {
 	configureMCPCLI()
-	return mcpcli.ServeMCPStreamContext(ctx, input, output, diagnostics)
+	return mcpcli.ServeMCPStreamContextWithDependencies(ctx, input, output, diagnostics, mcpcli.MCPDependencies{Release: issueOpsReleaseHandler})
 }
 
 func mcpTools() []map[string]any {
@@ -66,7 +66,7 @@ func mcpResources() []map[string]any {
 
 func handleToolCall(params json.RawMessage) (any, *rpcError) {
 	configureMCPCLI()
-	return mcpcli.HandleToolCall(params)
+	return mcpcli.HandleToolCallWithDependencies(params, mcpcli.MCPDependencies{Release: issueOpsReleaseHandler})
 }
 
 func handleResourceRead(params json.RawMessage) (any, *rpcError) {
@@ -76,7 +76,7 @@ func handleResourceRead(params json.RawMessage) (any, *rpcError) {
 
 func handleRequest(req rpcRequest) (any, *rpcError) {
 	configureMCPCLI()
-	return mcpcli.HandleRequest(req)
+	return mcpcli.HandleRequestWithDependencies(req, mcpcli.MCPDependencies{Release: issueOpsReleaseHandler})
 }
 
 func textResult(text string) map[string]any {

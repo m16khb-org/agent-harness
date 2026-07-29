@@ -4,6 +4,7 @@ import (
 	"agent-harness/cmd/harness/issueopscli"
 	"agent-harness/cmd/harness/policycli"
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/issueops"
 )
 
 func wirePolicyCLIDeps() {
@@ -11,7 +12,7 @@ func wirePolicyCLIDeps() {
 }
 
 func runIssueOps(args []string) error {
-	return issueopscli.RunIssueOps(args)
+	return issueopscli.RunIssueOpsWithReleaseHandler(args, issueops.ExecutionReleaseHandler(issueOpsReleaseHandler))
 }
 
 func verifyIssueOpsChildIssueBeforeLink(childURL string) error {

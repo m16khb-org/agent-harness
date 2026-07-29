@@ -10,6 +10,10 @@ import (
 )
 
 func runIssueOpsExecution(args []string) error {
+	return runIssueOpsExecutionWithRelease(args, nil)
+}
+
+func runIssueOpsExecutionWithRelease(args []string, release issueops.ExecutionReleaseHandler) error {
 	return executioncmd.Run(args, executioncmd.Deps{
 		StateRoot: core.IssueOpsStateRoot,
 		Direct:    gitworktree.New(),
@@ -34,6 +38,7 @@ func runIssueOpsExecution(args []string) error {
 		},
 		// 완료가 orca task를 종결시킨다(#130).
 		SettleOrcaTask: orca.New().SettleTask,
+		Release:        release,
 		PrintJSON:      printJSON,
 		PrintError:     printIssueOpsErrorJSON,
 	})

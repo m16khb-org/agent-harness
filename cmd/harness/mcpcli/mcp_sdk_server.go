@@ -11,12 +11,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-var sdkServer *mcp.Server
-
-func initSDKServer() *mcp.Server {
-	if sdkServer != nil {
-		return sdkServer
-	}
+func initSDKServer(deps MCPDependencies) *mcp.Server {
 	server := mcp.NewServer(
 		&mcp.Implementation{Name: "agent_harness", Version: Version},
 		&mcp.ServerOptions{
@@ -24,9 +19,8 @@ func initSDKServer() *mcp.Server {
 			Logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
 		},
 	)
-	registerAllTools(server)
+	registerAllTools(server, deps)
 	registerAllResources(server)
-	sdkServer = server
 	return server
 }
 
@@ -72,16 +66,30 @@ func sdkToolHandler(groupHandler func(MCPToolCall) MCPToolOutcome, toolName stri
 	}
 }
 
-func registerAllTools(server *mcp.Server) {
+func registerAllTools(server *mcp.Server, deps MCPDependencies) {
 	for _, toolMap := range MCPTools() {
 		name, _ := toolMap["name"].(string)
 		desc, _ := toolMap["description"].(string)
 		inputSchema := toolMap["inputSchema"]
+		if name == "issueops_execution" {
+			server.AddTool(
+				&mcp.Tool{Name: name, Description: desc, InputSchema: inputSchema},
+				issueOpsExecutionSDKToolHandler(deps),
+			)
+			continue
+		}
+		handler := resolveHandlerGroup(name)
 		server.AddTool(
 			&mcp.Tool{Name: name, Description: desc, InputSchema: inputSchema},
-			sdkToolHandler(resolveHandlerGroup(name), name),
+			sdkToolHandler(handler, name),
 		)
 	}
+}
+
+func issueOpsExecutionSDKToolHandler(deps MCPDependencies) mcp.ToolHandler {
+	return sdkToolHandler(func(call MCPToolCall) MCPToolOutcome {
+		return handleIssueOpsMCPToolCallWithReleaseHandler(call, deps.Release)
+	}, "issueops_execution")
 }
 
 // handlerGroupLookup maps each dispatch group to its handler function.
@@ -163,8 +171,8 @@ func sdkReadResourceResult(content map[string]any) *mcp.ReadResourceResult {
 
 // serveMCPStreamSDK runs the MCP server using the official go-sdk IOTransport.
 // Used for bidirectional connections (net.Conn from daemon accept loop).
-func serveMCPStreamSDK(ctx context.Context, input io.Reader, output io.Writer) error {
-	server := initSDKServer()
+func serveMCPStreamSDK(ctx context.Context, input io.Reader, output io.Writer, deps MCPDependencies) error {
+	server := initSDKServer(deps)
 	rwc, ok := input.(io.ReadWriteCloser)
 	if !ok {
 		return server.Run(ctx, &mcp.IOTransport{

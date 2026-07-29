@@ -326,6 +326,12 @@ CLI/MCP DTO를 변경할 때는 `agent-harness contract check --json`과 golden 
 
 ## IssueOps v1 execution and optional Orca verification
 
+`execution release` production vertical은 `internal/core/issueops` differential
+test로 schema v1·missing/zero legacy schema·rich sidecar·holder index와 denial
+atomicity를 비교한다. 변경 시 core focused race, outbound focused race,
+architecture ratchet, CLI/MCP contract, golden, scoped vet와 build를 실행하며,
+전체 suite는 PR CI가 회귀 증거로 담당한다.
+
 Normal tests and self-verification must remain green without Orca. Use injected
 workspace, provider, process, and Orca adapters for the default suite. The
 current execution contract is `issueops_v1` with `schema_version=1`; legacy

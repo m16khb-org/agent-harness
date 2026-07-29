@@ -185,6 +185,12 @@ func ReleaseExecution(stateRoot string, req ExecutionReleaseRequest) (ExecutionR
 	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
 		return ExecutionResult{OK: false, ID: req.ID}, err
 	}
+	return releaseExecutionCompatibilityOracle(stateRoot, req)
+}
+
+// releaseExecutionCompatibilityOracle는 공개 two-argument facade가 유지해야 할
+// 기존 동작이다. production ExecuteExecution은 injected vertical로만 진입한다.
+func releaseExecutionCompatibilityOracle(stateRoot string, req ExecutionReleaseRequest) (ExecutionResult, error) {
 	actor, err := normalizeNativeActor(req.Actor)
 	if err != nil {
 		return ExecutionResult{OK: false, ID: req.ID}, err

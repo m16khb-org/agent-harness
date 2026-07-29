@@ -2,11 +2,16 @@ package mcpcli
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"testing"
+
+	"agent-harness/internal/core/issueops"
 )
 
 func TestRunMCPDirectUsesStreamTransport(t *testing.T) {
@@ -31,6 +36,84 @@ func TestRunMCPDirectUsesStreamTransport(t *testing.T) {
 	serverInfo := result["serverInfo"].(map[string]any)
 	if serverInfo["name"] != "agent_harness" {
 		t.Fatalf("unexpected server info: %#v", serverInfo)
+	}
+}
+
+func TestRunMCPWithDependenciesUsesItsReleaseHandlerOnDirectTransport(t *testing.T) {
+	t.Setenv("HARNESS_MCP_DIRECT", "1")
+	called := false
+	stdout, stderr, err := captureMCPStdio(t,
+		`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"issueops_execution","arguments":{"action":"release","id":"io-mcp-direct","generation":1}}}`+"\n",
+		func() error {
+			return RunMCPWithDependencies(MCPDependencies{Release: func(_ context.Context, _ string, request issueops.ExecutionReleaseRequest) (issueops.ExecutionResult, error) {
+				called = true
+				return issueops.ExecutionResult{OK: true, ID: request.ID}, nil
+			}})
+		},
+	)
+	if err != nil && !strings.Contains(err.Error(), "server is closing") && !strings.Contains(err.Error(), "EOF") {
+		t.Fatalf("RunMCPWithDependencies direct failed: %v\nstderr:\n%s", err, stderr)
+	}
+	if !called {
+		t.Fatal("direct MCP transport did not invoke its injected release handler")
+	}
+	var response struct {
+		Result struct {
+			Content []struct {
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &response); err != nil {
+		t.Fatalf("decode direct MCP response: %v\n%s", err, stdout)
+	}
+	if len(response.Result.Content) != 1 || !strings.Contains(response.Result.Content[0].Text, `"id": "io-mcp-direct"`) {
+		t.Fatalf("direct MCP response did not use injected handler result:\n%s", stdout)
+	}
+}
+
+func TestServeMCPStreamWithDependenciesKeepsConcurrentReleaseHandlersIsolated(t *testing.T) {
+	type testCase struct {
+		id string
+	}
+	cases := []testCase{{id: "io-mcp-first"}, {id: "io-mcp-second"}}
+	called := make(chan string, len(cases))
+	errs := make(chan error, len(cases))
+	var group sync.WaitGroup
+	for _, tc := range cases {
+		group.Add(1)
+		go func(tc testCase) {
+			defer group.Done()
+			input := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"issueops_execution","arguments":{"action":"release","id":"` + tc.id + `","generation":1}}}` + "\n"
+			var output bytes.Buffer
+			if err := ServeMCPStreamWithDependencies(strings.NewReader(input), &output, io.Discard, MCPDependencies{Release: func(_ context.Context, _ string, request issueops.ExecutionReleaseRequest) (issueops.ExecutionResult, error) {
+				called <- tc.id
+				return issueops.ExecutionResult{OK: true, ID: request.ID}, nil
+			}}); err != nil {
+				errs <- err
+				return
+			}
+			if !strings.Contains(output.String(), tc.id) {
+				errs <- fmt.Errorf("response did not contain %s", tc.id)
+			}
+		}(tc)
+	}
+	group.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	close(called)
+	seen := map[string]bool{}
+	for id := range called {
+		seen[id] = true
+	}
+	for _, tc := range cases {
+		if !seen[tc.id] {
+			t.Fatalf("release handler for %s was not invoked", tc.id)
+		}
 	}
 }
 

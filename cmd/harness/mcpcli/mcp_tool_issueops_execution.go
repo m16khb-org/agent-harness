@@ -15,9 +15,14 @@ import (
 )
 
 func handleMCPIssueOpsExecution(args map[string]any) MCPToolOutcome {
+	return handleMCPIssueOpsExecutionWithReleaseHandler(args, nil)
+}
+
+func handleMCPIssueOpsExecutionWithReleaseHandler(args map[string]any, release issueops.ExecutionReleaseHandler) MCPToolOutcome {
 	orcaExecution := orca.NewExecution()
 	result, err := issueops.ExecuteExecution(context.Background(), core.IssueOpsStateRoot(), executionActionRequestFromMCP(args), issueops.ExecutionActionDependencies{
 		Direct: gitworktree.New(), Orca: orcaExecution, OrcaOwner: orcaExecution, ReadIssue: provider.ReadExecutionIssueSnapshot,
+		Release: release,
 		// 완료가 orca task를 종결시킨다. CLI 경로와 같은 계약이다(#130).
 		SettleOrcaTask: orca.New().SettleTask,
 		RemotePR: issueops.RemotePullRequestDependencies{
