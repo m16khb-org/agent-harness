@@ -37,8 +37,10 @@ func TestGitHubIssuePublicationMetadataReadsAreAdmitted(t *testing.T) {
 	_, record, worker := executionActiveLifecycleRecord(t)
 
 	for name, command := range map[string]string{
-		"label":    "gh api repos/acme/repo/issues/176 --jq '.labels[].name'",
-		"assignee": "gh api repos/acme/repo/issues/176 --jq '.assignees[].login'",
+		"label":         "gh api repos/acme/repo/issues/176 --jq '.labels[].name'",
+		"assignee":      "gh api repos/acme/repo/issues/176 --jq '.assignees[].login'",
+		"PR API":        "gh api repos/acme/repo/pulls/203",
+		"canonical URL": "gh pr view https://github.com/acme/repo/pull/203 --json url,baseRefName,headRefName,isDraft,body,labels,assignees",
 	} {
 		t.Run(name, func(t *testing.T) {
 			req := executionRequest(record, worker, "claude", "owner-session", command)

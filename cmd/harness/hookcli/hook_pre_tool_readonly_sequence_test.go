@@ -69,6 +69,10 @@ sed -n '1,383p' internal/core/issueops/testdata/leasevertical/contract/record.go
 			name:    "GitHub PR 게시 메타데이터 관찰",
 			command: "gh api repos/m16khb/agent-harness/issues/196 --jq '.labels[].name'",
 		},
+		{
+			name:    "GitHub Draft PR API 관찰",
+			command: "gh pr view https://github.com/m16khb/agent-harness/pull/203 --json url,baseRefName,headRefName,isDraft,body,labels,assignees",
+		},
 	}
 
 	for _, testCase := range commands {

@@ -1,6 +1,7 @@
 package commandparse
 
 import (
+	"net/url"
 	"path"
 	"strconv"
 	"strings"
@@ -659,21 +660,44 @@ func exactReadOnlyGitLSRemote(tokens []string) bool {
 }
 
 func exactReadOnlyGHCommand(tokens []string) bool {
-	if len(tokens) < 4 || tokens[0] != "gh" {
+	if len(tokens) < 3 || tokens[0] != "gh" {
 		return false
 	}
 	switch tokens[1] {
 	case "pr":
+		if len(tokens) < 4 {
+			return false
+		}
 		return exactReadOnlyGHPRCommand(tokens)
 	case "issue":
+		if len(tokens) < 4 {
+			return false
+		}
 		return exactReadOnlyGHIssueCommand(tokens)
 	case "run":
+		if len(tokens) < 4 {
+			return false
+		}
 		return exactReadOnlyGHRunCommand(tokens)
 	case "api":
-		return exactReadOnlyGHAPIIssueMetadataCommand(tokens)
+		return exactReadOnlyGHAPICommand(tokens)
 	default:
 		return false
 	}
+}
+
+func exactReadOnlyGHAPICommand(tokens []string) bool {
+	if len(tokens) == 3 {
+		// Governed PR 생성 뒤 canonical artifact 전체를 독립적으로 재검증하는 GET이다.
+		parts := strings.Split(tokens[2], "/")
+		if len(parts) != 5 || parts[0] != "repos" || parts[3] != "pulls" ||
+			!safeGHRepository(parts[1]+"/"+parts[2]) {
+			return false
+		}
+		number, err := strconv.Atoi(parts[4])
+		return err == nil && number > 0
+	}
+	return exactReadOnlyGHAPIIssueMetadataCommand(tokens)
 }
 
 func exactReadOnlyGHAPIIssueMetadataCommand(tokens []string) bool {
@@ -719,8 +743,7 @@ func exactReadOnlyGHIssueCommand(tokens []string) bool {
 }
 
 func exactReadOnlyGHPRCommand(tokens []string) bool {
-	number, err := strconv.Atoi(tokens[3])
-	if err != nil || number <= 0 {
+	if !safeGHPRSelector(tokens[3]) {
 		return false
 	}
 	values := map[string]bool{"--json": true, "--repo": true}
@@ -744,6 +767,24 @@ func exactReadOnlyGHPRCommand(tokens []string) bool {
 		return false
 	}
 	return true
+}
+
+func safeGHPRSelector(value string) bool {
+	if number, err := strconv.Atoi(value); err == nil {
+		return number > 0
+	}
+	parsed, err := url.ParseRequestURI(value)
+	if err != nil || parsed.Scheme != "https" || parsed.Hostname() == "" || parsed.User != nil ||
+		parsed.RawPath != "" || parsed.RawQuery != "" || parsed.ForceQuery || parsed.Fragment != "" {
+		return false
+	}
+	parts := strings.Split(strings.TrimPrefix(parsed.Path, "/"), "/")
+	if len(parts) != 4 || parts[2] != "pull" || parsed.Path != "/"+strings.Join(parts, "/") ||
+		!safeGHRepository(parts[0]+"/"+parts[1]) {
+		return false
+	}
+	number, err := strconv.Atoi(parts[3])
+	return err == nil && number > 0
 }
 
 func exactReadOnlyGHRunCommand(tokens []string) bool {
