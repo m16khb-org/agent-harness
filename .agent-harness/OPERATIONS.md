@@ -132,8 +132,10 @@ repeat the identical request with `--confirm`. `auto` selects Orca only when
 readiness succeeds before mutation; otherwise it selects direct. The only
 first-party owner hosts are Codex and Claude.
 
-엄브렐라에서 위임된 자식 cycle은 preview의 `workspace.parent_worktree`가 부모
-통합 worktree를 가리키는지 확인한다. confirm은 Orca
+엄브렐라 자식 cycle은 `issueops branch prepare`에 canonical
+`--parent-worktree`를 기록하고 preview의 `workspace.parent_worktree`가 부모
+통합 worktree를 가리키는지 확인한다. 내부 delegation이 없는 provider-native
+자식도 같은 계약을 사용한다. confirm은 Orca
 `worktree create --parent-worktree path:<부모>`를 사용하고 생성 lineage의
 `explicit-cli-flag`/`explicit` 영수증이 없으면 fail-closed한다. 독립 cycle은
 기존처럼 top-level worktree로 생성된다.

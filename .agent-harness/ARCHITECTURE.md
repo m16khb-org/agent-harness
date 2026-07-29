@@ -300,8 +300,9 @@ to direct with `gitlab_issue_metadata_unsupported` until Orca exposes a sealed
 GitLab issue/work-item metadata surface. Exact base SHA and branch upstream are
 separate identities; the SHA creates the worktree and the remote issue branch
 is restored as upstream after namespace canonicalization.
-엄브렐라가 위임한 자식 cycle은 delegation과 `base_branch`에서 canonical 부모
-worktree 경로를 봉인한다. Orca adapter는 생성 시 그 경로를
+엄브렐라 자식 cycle은 branch prepare의 명시적 `parent_worktree`와
+`base_branch`에서 canonical 부모 worktree 경로를 봉인한다. 기존 delegation
+cycle은 명시값이 없을 때 같은 경로를 계산해 하위 호환한다. Orca adapter는 생성 시 그 경로를
 `--parent-worktree`로 명시하고, 응답의 lineage가
 `explicit-cli-flag`/`explicit`인지 검증한다. 독립 cycle만 `--no-parent`를
 사용하므로 Orca UI 계층과 IssueOps의 provider-native 부모 관계가 일치한다.

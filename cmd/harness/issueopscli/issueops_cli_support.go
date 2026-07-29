@@ -26,7 +26,7 @@ func issueOpsUsageText() string {
 		cliadapter.IssueOpsActorFlagLegend + "\n"
 }
 
-const issueOpsBranchPrepareUsage = "Usage: agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--remote-branch-url URL] [--link-verified] [--json]"
+const issueOpsBranchPrepareUsage = "Usage: agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--parent-worktree PATH] [--remote-branch-url URL] [--link-verified] [--json]"
 
 const issueOpsChildUsage = `Usage:
   agent-harness issueops child start --parent ID --branch BRANCH --title TEXT --scope TEXT --acceptance TEXT [--acceptance TEXT...] [--child-issue-url URL] [--json]
@@ -52,6 +52,7 @@ func runIssueOpsBranch(args []string) error {
 	branch := fs.String("branch", "", "provider-linked issue-number branch name")
 	baseBranch := fs.String("base-branch", "", "remote base branch or ref")
 	baseSHA := fs.String("base-sha", "", "optional resolved base commit SHA")
+	parentWorktree := fs.String("parent-worktree", "", "optional canonical parent worktree for Orca lineage")
 	remoteBranchURL := fs.String("remote-branch-url", "", "optional provider branch URL after creation")
 	linkVerified := fs.Bool("link-verified", false, "record that the provider issue shows the branch link")
 	jsonOut := fs.Bool("json", false, "print JSON")
@@ -64,6 +65,7 @@ func runIssueOpsBranch(args []string) error {
 		Branch:          *branch,
 		BaseBranch:      *baseBranch,
 		BaseSHA:         *baseSHA,
+		ParentWorktree:  *parentWorktree,
 		RemoteBranchURL: *remoteBranchURL,
 		LinkVerified:    *linkVerified,
 	}, actor.actor())

@@ -28,7 +28,7 @@ func TestExactIssueOpsOwnerMutationAdmitsImplementationReview(t *testing.T) {
 func TestExactIssueOpsOwnerMutationAdmitsBranchPrepare(t *testing.T) {
 	command := "agent-harness issueops branch prepare --id io-000000000089 --provider github" +
 		" --issue-url 'https://github.com/acme/repo/issues/89' --branch 89-atomic --base-branch main" +
-		" --base-sha 635303af758fae465d6e6fe30302fed9233180c5 --link-verified" +
+		" --base-sha 635303af758fae465d6e6fe30302fed9233180c5 --parent-worktree /tmp/repo.worktrees/main --link-verified" +
 		" --host codex --session-id sess-1 --cwd /tmp/wt --json"
 	if !exactIssueOpsOwnerMutation(command) {
 		t.Fatalf("well-formed branch prepare must pass the owner allowlist: %s", command)

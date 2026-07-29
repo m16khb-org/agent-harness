@@ -2,6 +2,7 @@ package issueops
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"agent-harness/internal/core/issueops/model"
@@ -36,6 +37,48 @@ func TestExecutionWorkspaceRequestBindsDelegatedChildToUmbrellaWorktree(t *testi
 	}
 	if persisted := workspaceFromReceipt(receipt, "2026-07-27T00:00:00Z"); persisted.ParentWorktree != wantParent {
 		t.Fatalf("persisted parent worktree = %q, want %q", persisted.ParentWorktree, wantParent)
+	}
+}
+
+func TestExecutionWorkspaceRequestBindsExplicitUmbrellaParentWithoutDelegation(t *testing.T) {
+	repo := t.TempDir()
+	wantParent := filepath.Join(repo+".worktrees", "117-umbrella")
+	record := IssueOpsRecord{
+		ID:     "io-provider-child",
+		Repo:   repo,
+		Branch: "196-provider-child",
+		BranchPrepare: &IssueOpsBranchPrepare{
+			BaseBranch:     "117-umbrella",
+			BaseSHA:        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			ParentWorktree: wantParent,
+		},
+	}
+
+	got, err := executionWorkspaceRequest(record, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ParentWorktree != wantParent {
+		t.Fatalf("parent worktree = %q, want %q", got.ParentWorktree, wantParent)
+	}
+}
+
+func TestExecutionWorkspaceRequestRejectsNonCanonicalExplicitParent(t *testing.T) {
+	repo := t.TempDir()
+	record := IssueOpsRecord{
+		ID:     "io-provider-child",
+		Repo:   repo,
+		Branch: "196-provider-child",
+		BranchPrepare: &IssueOpsBranchPrepare{
+			BaseBranch:     "117-umbrella",
+			BaseSHA:        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			ParentWorktree: filepath.Join(repo+".worktrees", "wrong-parent"),
+		},
+	}
+
+	_, err := executionWorkspaceRequest(record, false)
+	if err == nil || !strings.Contains(err.Error(), "canonical parent worktree") {
+		t.Fatalf("non-canonical explicit parent must fail closed: %v", err)
 	}
 }
 

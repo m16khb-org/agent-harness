@@ -42,6 +42,7 @@ type IssueOpsBranchPrepare struct {
 	Branch          string                      `json:"branch"`
 	BaseBranch      string                      `json:"base_branch"`
 	BaseSHA         string                      `json:"base_sha,omitempty"`
+	ParentWorktree  string                      `json:"parent_worktree,omitempty"`
 	RemoteBranchURL string                      `json:"remote_branch_url,omitempty"`
 	LinkVerified    bool                        `json:"link_verified"`
 	Steps           []IssueOpsBranchPrepareStep `json:"steps"`
@@ -54,6 +55,7 @@ type IssueOpsBranchPrepareRequest struct {
 	Branch          string `json:"branch"`
 	BaseBranch      string `json:"base_branch"`
 	BaseSHA         string `json:"base_sha,omitempty"`
+	ParentWorktree  string `json:"parent_worktree,omitempty"`
 	RemoteBranchURL string `json:"remote_branch_url,omitempty"`
 	LinkVerified    bool   `json:"link_verified,omitempty"`
 }
