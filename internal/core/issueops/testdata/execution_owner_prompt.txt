@@ -76,7 +76,11 @@ Required skills:
    materialized plan을 link한다. plan artifact와 기존 plan_path가 모두 없으면 임의 계획을 만들지 말고
    blocker를 보고한다:
    {LINK_PLAN_COMMAND}
-8. plan_path와 execution readiness를 확인한 뒤 다음 exact command로 implement phase에 진입한다.
+8. plan_path와 worktree_path를 확인한 뒤 issue, plan, 기존 공개 계약을 대조해 backward compatibility,
+   side effect, rollback, verification을 검토한다. blocker가 있으면 승인하지 말고 종료한다. blocker가
+   없을 때만 아래 placeholder를 검토 결과의 리터럴 값으로 채워 compatibility-review를 승인·기록한다:
+   {COMPATIBILITY_REVIEW_COMMAND}
+9. compatibility review와 execution readiness를 확인한 뒤 다음 exact command로 implement phase에 진입한다.
    이 전이가 성공하기 전에는 구현 파일을 수정하지 않는다:
    {ENTER_IMPLEMENT_COMMAND}
 

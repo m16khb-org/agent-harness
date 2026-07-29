@@ -47,6 +47,7 @@ func TestExecutionOwnerPacketUsesOnlyExecutionCommands(t *testing.T) {
 		"issueops execution status",
 		"issueops execution claim",
 		"issueops link-plan",
+		"issueops compatibility review",
 		"issueops phase --id",
 		"--to implement",
 		"issueops ai-slop-clean record",
@@ -71,6 +72,7 @@ func TestExecutionOwnerPromptOrdersLifecycleMutationsBeforePublication(t *testin
 	prompt := executionOwnerPromptFixture(t, record, req)
 	ordered := []string{
 		"issueops link-plan",
+		"issueops compatibility review",
 		"--to implement",
 		"issueops ai-slop-clean record",
 		"--to ai-slop-clean",
@@ -88,6 +90,22 @@ func TestExecutionOwnerPromptOrdersLifecycleMutationsBeforePublication(t *testin
 			t.Fatalf("owner prompt lifecycle command %q is out of order", command)
 		}
 		previous = current
+	}
+}
+
+func TestExecutionOwnerCompatibilityCommandRequiresExplicitApprovalEvidence(t *testing.T) {
+	record, req := ownerPacketFixture()
+	commands := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64))
+	for _, required := range []string{
+		"--backward-compatibility '<BACKWARD_COMPATIBILITY>'",
+		"--side-effect '<SIDE_EFFECT>'",
+		"--rollback-plan '<ROLLBACK_PLAN>'",
+		"--verification '<COMPATIBILITY_VERIFICATION>'",
+		"--approved",
+	} {
+		if !strings.Contains(commands.CompatibilityReview, required) {
+			t.Fatalf("compatibility review command is missing %q: %s", required, commands.CompatibilityReview)
+		}
 	}
 }
 

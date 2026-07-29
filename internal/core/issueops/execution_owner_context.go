@@ -42,6 +42,7 @@ type executionOwnerCommands struct {
 	LeaseStatus          string `json:"lease_status"`
 	Claim                string `json:"claim"`
 	LinkPlan             string `json:"link_plan"`
+	CompatibilityReview  string `json:"compatibility_review"`
 	EnterImplement       string `json:"enter_implement"`
 	AISlopCleanRecord    string `json:"ai_slop_clean_record"`
 	EnterAISlopClean     string `json:"enter_ai_slop_clean"`
@@ -316,6 +317,7 @@ func renderExecutionOwnerPrompt(packet executionOwnerContextPacket, packetPath, 
 		"OWNER_HOST": packet.OwnerHost, "OWNER_MODEL": packet.OwnerModel, "OWNER_EFFORT": packet.OwnerEffort,
 		"REVIEWER_MODEL": packet.ReviewerModel, "REVIEWER_EFFORT": packet.ReviewerEffort,
 		"LINK_PLAN_COMMAND":             packet.Commands.LinkPlan,
+		"COMPATIBILITY_REVIEW_COMMAND":  packet.Commands.CompatibilityReview,
 		"ENTER_IMPLEMENT_COMMAND":       packet.Commands.EnterImplement,
 		"AI_SLOP_CLEAN_RECORD_COMMAND":  packet.Commands.AISlopCleanRecord,
 		"ENTER_AI_SLOP_CLEAN_COMMAND":   packet.Commands.EnterAISlopClean,
@@ -354,7 +356,8 @@ func validateExecutionOwnerPromptInputs(packet executionOwnerContextPacket, pack
 		{"packet_path", packetPath}, {"packet_sha256", packetDigest}, {"owner_host", packet.OwnerHost},
 		{"owner_model", packet.OwnerModel}, {"owner_effort", packet.OwnerEffort}, {"turing_report_path", packet.TuringReportPath},
 		{"lease_status_command", packet.Commands.LeaseStatus}, {"claim_command", packet.Commands.Claim},
-		{"link_plan_command", packet.Commands.LinkPlan}, {"enter_implement_command", packet.Commands.EnterImplement},
+		{"link_plan_command", packet.Commands.LinkPlan}, {"compatibility_review_command", packet.Commands.CompatibilityReview},
+		{"enter_implement_command", packet.Commands.EnterImplement},
 		{"ai_slop_clean_record_command", packet.Commands.AISlopCleanRecord}, {"enter_ai_slop_clean_command", packet.Commands.EnterAISlopClean},
 		{"remote_create_command", packet.Commands.RemoteCreate}, {"complete_command", packet.Commands.Complete},
 		{"reviewer_model", packet.ReviewerModel}, {"reviewer_effort", packet.ReviewerEffort},
@@ -406,6 +409,12 @@ func executionOwnerCommandsFor(record IssueOpsRecord, req ExecutionPrepareReques
 		linkPlan = "agent-harness issueops link-plan --id " + quoteExecutionOwnerArg(record.ID) +
 			" --plan-path " + quoteExecutionOwnerArg(planPath) + " " + shortActor + " --json"
 	}
+	compatibilityReview := "agent-harness issueops compatibility review --id " + quoteExecutionOwnerArg(record.ID) +
+		" --backward-compatibility " + quoteExecutionOwnerArg("<BACKWARD_COMPATIBILITY>") +
+		" --side-effect " + quoteExecutionOwnerArg("<SIDE_EFFECT>") +
+		" --rollback-plan " + quoteExecutionOwnerArg("<ROLLBACK_PLAN>") +
+		" --verification " + quoteExecutionOwnerArg("<COMPATIBILITY_VERIFICATION>") + " --approved " +
+		shortActor + " --json"
 	enterImplement := "agent-harness issueops phase --id " + quoteExecutionOwnerArg(record.ID) +
 		" --to implement " + shortActor + " --json"
 	aiSlopCleanRecord := "agent-harness issueops ai-slop-clean record --id " + quoteExecutionOwnerArg(record.ID) +
@@ -434,7 +443,7 @@ func executionOwnerCommandsFor(record IssueOpsRecord, req ExecutionPrepareReques
 	enterPR := "agent-harness issueops phase --id " + quoteExecutionOwnerArg(record.ID) +
 		" --to pr " + shortActor + " --json"
 	return executionOwnerCommands{
-		LeaseStatus: status, Claim: claim, LinkPlan: linkPlan, EnterImplement: enterImplement,
+		LeaseStatus: status, Claim: claim, LinkPlan: linkPlan, CompatibilityReview: compatibilityReview, EnterImplement: enterImplement,
 		AISlopCleanRecord: aiSlopCleanRecord, EnterAISlopClean: enterAISlopClean,
 		ImplementationReview: implementationReview, EnterPR: enterPR,
 		RemoteCreate: remote, Complete: complete,
@@ -443,7 +452,7 @@ func executionOwnerCommandsFor(record IssueOpsRecord, req ExecutionPrepareReques
 
 func validateExecutionOwnerCatalog(commands executionOwnerCommands) error {
 	for _, path := range []string{
-		"execution status", "execution claim", "link-plan", "phase", "ai-slop-clean record",
+		"execution status", "execution claim", "link-plan", "compatibility review", "phase", "ai-slop-clean record",
 		"implementation-review record", "remote create-pr", "execution complete",
 	} {
 		if _, _, _, ok := commandparse.IssueOpsCommandSpec(path); !ok {
@@ -457,7 +466,8 @@ func validateExecutionOwnerCatalog(commands executionOwnerCommands) error {
 	}
 	checks := []struct{ command, path string }{
 		{commands.LeaseStatus, "execution status"}, {commands.Claim, "execution claim"},
-		{commands.LinkPlan, "link-plan"}, {commands.EnterImplement, "phase"},
+		{commands.LinkPlan, "link-plan"}, {commands.CompatibilityReview, "compatibility review"},
+		{commands.EnterImplement, "phase"},
 		{commands.AISlopCleanRecord, "ai-slop-clean record"}, {commands.EnterAISlopClean, "phase"},
 		{commands.ImplementationReview, "implementation-review record"}, {commands.EnterPR, "phase"},
 		{commands.RemoteCreate, "remote create-pr"}, {commands.Complete, "execution complete"},

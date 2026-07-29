@@ -32,6 +32,7 @@ adapter는 아래 placeholder를 모두 결정적 문자열로 치환한 뒤 pro
 | `{REVIEWER_MODEL}` | 구현 diff brooks 리뷰 전용 planner급 모델(host별 기본값) |
 | `{REVIEWER_EFFORT}` | planner급 리뷰 effort 또는 빈 문자열 |
 | `{LINK_PLAN_COMMAND}` | staged plan을 lifecycle에 연결하는 exact governed command |
+| `{COMPATIBILITY_REVIEW_COMMAND}` | 구현 전 backward compatibility, side effect, rollback, verification을 기록하는 exact governed command |
 | `{ENTER_IMPLEMENT_COMMAND}` | readiness 확인 뒤 implement phase로 전이하는 exact governed command |
 | `{AI_SLOP_CLEAN_RECORD_COMMAND}` | cleanup/verification evidence를 기록하는 exact governed command |
 | `{ENTER_AI_SLOP_CLEAN_COMMAND}` | 구현 fingerprint를 봉인하며 ai-slop-clean phase로 전이하는 exact governed command |
@@ -128,7 +129,11 @@ Required skills:
    materialized plan을 link한다. plan artifact와 기존 plan_path가 모두 없으면 임의 계획을 만들지 말고
    blocker를 보고한다:
    {LINK_PLAN_COMMAND}
-8. plan_path와 execution readiness를 확인한 뒤 다음 exact command로 implement phase에 진입한다.
+8. plan_path와 worktree_path를 확인한 뒤 issue, plan, 기존 공개 계약을 대조해 backward compatibility,
+   side effect, rollback, verification을 검토한다. blocker가 있으면 승인하지 말고 종료한다. blocker가
+   없을 때만 아래 placeholder를 검토 결과의 리터럴 값으로 채워 compatibility-review를 승인·기록한다:
+   {COMPATIBILITY_REVIEW_COMMAND}
+9. compatibility review와 execution readiness를 확인한 뒤 다음 exact command로 implement phase에 진입한다.
    이 전이가 성공하기 전에는 구현 파일을 수정하지 않는다:
    {ENTER_IMPLEMENT_COMMAND}
 
