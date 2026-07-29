@@ -364,7 +364,36 @@ func TestStopDaemonRechecksOSIdentityBeforeAnySignal(t *testing.T) {
 	}
 }
 
-func TestStopDaemonRejectsLivePIDWithoutSocketWithoutSignal(t *testing.T) {
+func TestStopDaemonSignalsVerifiedPIDWithoutSocket(t *testing.T) {
+	instance := daemonInstance{PID: 4242, ProcessStartTime: "start-a", Executable: "/tmp/agent-harness"}
+	proc := &fakeDaemonProcess{}
+	status, err := stopDaemonWithDeps(daemonStopDeps{
+		checkStatus: func() daemonStatus {
+			return daemonStatus{
+				OK: false, Running: true, Reachable: false, PID: instance.PID,
+				Code: daemonStatusSocketUnreachable, Instance: &instance,
+				Paths: daemonPaths{Socket: "daemon.sock", PID: "daemon.pid"},
+			}
+		},
+		findProcess: func(int) (daemonProcess, error) { return proc, nil },
+		inspectProcess: func(int) (daemonProcessIdentity, error) {
+			return daemonProcessIdentity{StartTime: instance.ProcessStartTime, Executable: instance.Executable}, nil
+		},
+		processAlive: func(int) bool { return false },
+		remove:       func(string) error { return nil },
+		now:          func() time.Time { return time.Unix(100, 0) },
+		sleep:        func(time.Duration) {},
+	})
+
+	if err != nil || status.Running || status.Code != daemonStatusStopped {
+		t.Fatalf("verified unreachable stop failed: status=%#v err=%v", status, err)
+	}
+	if !reflect.DeepEqual(proc.signals, []os.Signal{syscall.SIGTERM}) || proc.kills != 0 {
+		t.Fatalf("expected one TERM and no kill: signals=%v kills=%d", proc.signals, proc.kills)
+	}
+}
+
+func TestStopDaemonRejectsLivePIDWithoutSocketAndInstance(t *testing.T) {
 	mutated := false
 	status, err := stopDaemonWithDeps(daemonStopDeps{
 		checkStatus: func() daemonStatus {
@@ -376,11 +405,44 @@ func TestStopDaemonRejectsLivePIDWithoutSocketWithoutSignal(t *testing.T) {
 		},
 	})
 
-	if err == nil || status.Code != daemonStatusSocketUnreachable {
-		t.Fatalf("missing socket stop must fail closed: status=%#v err=%v", status, err)
+	if err == nil || status.Code != daemonStatusSocketUnreachable || mutated {
+		t.Fatalf("unverified unreachable stop = status %#v err %v mutated %v", status, err, mutated)
 	}
-	if mutated {
-		t.Fatal("missing socket stop must not signal a process")
+}
+
+func TestStopDaemonHoldsLauncherLockThroughCleanup(t *testing.T) {
+	paths := daemonPaths{Dir: t.TempDir(), Lock: "daemon.lock"}
+	lock := &daemonStartFakeLock{}
+	removedLock := false
+	status, err := stopDaemonCoordinatedWithDeps(daemonStopCoordinatorDeps{
+		paths: func() (daemonPaths, error) {
+			return paths, nil
+		},
+		mkdirAll: func(string, os.FileMode) error {
+			return nil
+		},
+		acquireLock: func(got daemonPaths) (daemonStartLock, error) {
+			if got != paths {
+				t.Fatalf("lock paths = %#v", got)
+			}
+			return lock, nil
+		},
+		remove: func(path string) error {
+			if path == paths.Lock {
+				removedLock = true
+			}
+			return nil
+		},
+		stop: func() (daemonStatus, error) {
+			if lock.closed || removedLock {
+				t.Fatal("launcher lock was released before daemon cleanup")
+			}
+			return daemonStatus{OK: true, Code: daemonStatusStopped}, nil
+		},
+	})
+
+	if err != nil || !status.OK || !lock.closed || !removedLock {
+		t.Fatalf("coordinated stop = status %#v err %v lockClosed %v removedLock %v", status, err, lock.closed, removedLock)
 	}
 }
 

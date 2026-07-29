@@ -191,17 +191,54 @@ type daemonStopDeps struct {
 }
 
 func stopDaemon() (daemonStatus, error) {
-	return stopDaemonWithDeps(daemonStopDeps{
-		checkStatus: checkDaemonStatus,
-		findProcess: func(pid int) (daemonProcess, error) {
-			return os.FindProcess(pid)
+	return stopDaemonCoordinatedWithDeps(daemonStopCoordinatorDeps{
+		paths:    currentDaemonPaths,
+		mkdirAll: os.MkdirAll,
+		acquireLock: func(paths daemonPaths) (daemonStartLock, error) {
+			return acquireDaemonLock(paths)
 		},
-		inspectProcess: daemonpaths.InspectProcess,
-		processAlive:   processAlive,
-		remove:         os.Remove,
-		now:            time.Now,
-		sleep:          time.Sleep,
+		remove: os.Remove,
+		stop: func() (daemonStatus, error) {
+			return stopDaemonWithDeps(daemonStopDeps{
+				checkStatus: checkDaemonStatus,
+				findProcess: func(pid int) (daemonProcess, error) {
+					return os.FindProcess(pid)
+				},
+				inspectProcess: daemonpaths.InspectProcess,
+				processAlive:   processAlive,
+				remove:         os.Remove,
+				now:            time.Now,
+				sleep:          time.Sleep,
+			})
+		},
 	})
+}
+
+type daemonStopCoordinatorDeps struct {
+	paths       func() (daemonPaths, error)
+	mkdirAll    func(string, os.FileMode) error
+	acquireLock func(daemonPaths) (daemonStartLock, error)
+	remove      func(string) error
+	stop        func() (daemonStatus, error)
+}
+
+func stopDaemonCoordinatedWithDeps(deps daemonStopCoordinatorDeps) (daemonStatus, error) {
+	paths, err := deps.paths()
+	if err != nil {
+		return daemonStatus{}, err
+	}
+	if err := deps.mkdirAll(paths.Dir, 0o700); err != nil {
+		return daemonStatus{}, err
+	}
+	lock, err := deps.acquireLock(paths)
+	if err != nil {
+		return daemonStatus{OK: false, Paths: paths, Message: err.Error()}, err
+	}
+	defer func() {
+		_ = lock.Close()
+		_ = deps.remove(paths.Lock)
+	}()
+	return deps.stop()
 }
 
 func stopDaemonWithDeps(deps daemonStopDeps) (daemonStatus, error) {
@@ -212,7 +249,7 @@ func stopDaemonWithDeps(deps daemonStopDeps) (daemonStatus, error) {
 		status.Message = "agent-harness daemon already stopped"
 		return status, nil
 	}
-	if !daemonStatusIsReady(status) {
+	if !daemonStatusCanStop(status) {
 		status.OK = false
 		return status, fmt.Errorf("refusing to stop unverified daemon: %s", status.Code)
 	}
@@ -254,6 +291,19 @@ func stopDaemonWithDeps(deps daemonStopDeps) (daemonStatus, error) {
 		return status, err
 	}
 	return daemonStoppedStatus(status, instance.PID, deps.remove, "agent-harness daemon killed after timeout"), nil
+}
+
+func daemonStatusCanStop(status daemonStatus) bool {
+	if daemonStatusIsReady(status) {
+		return true
+	}
+	return status.Code == daemonStatusSocketUnreachable &&
+		status.Running &&
+		!status.Reachable &&
+		!status.LegacyPID &&
+		status.Instance != nil &&
+		status.PID > 0 &&
+		status.PID == status.Instance.PID
 }
 
 func daemonStoppedStatus(status daemonStatus, pid int, remove func(string) error, message string) daemonStatus {
