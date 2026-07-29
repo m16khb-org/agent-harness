@@ -31,6 +31,7 @@ adapter는 아래 placeholder를 모두 결정적 문자열로 치환한 뒤 pro
 | `{OWNER_EFFORT}` | host-supported effort 또는 빈 문자열 |
 | `{REVIEWER_MODEL}` | 구현 diff brooks 리뷰 전용 planner급 모델(host별 기본값) |
 | `{REVIEWER_EFFORT}` | planner급 리뷰 effort 또는 빈 문자열 |
+| `{VERIFY_BRANCH_LINK_COMMAND}` | provider branch link 확인 후 봉인 topology를 보존하며 link_verified를 기록하는 exact governed command |
 | `{LINK_PLAN_COMMAND}` | staged plan을 lifecycle에 연결하는 exact governed command |
 | `{COMPATIBILITY_REVIEW_COMMAND}` | 구현 전 backward compatibility, side effect, rollback, verification을 기록하는 exact governed command |
 | `{ENTER_IMPLEMENT_COMMAND}` | readiness 확인 뒤 implement phase로 전이하는 exact governed command |
@@ -125,15 +126,19 @@ Required skills:
    실제로 있을 때만 붙인다. token 원문은 출력하지 않는다:
    {CLAIM_COMMAND}
 6. claim/holder 확인 전 production mutation을 하지 않는다.
-7. packet의 artifact_manifest에 plan이 있고 status의 plan_path가 비어 있으면 아래 exact command로
+7. branch_prepare.link_verified가 false면 provider CLI/MCP로 issue에 exact branch가 연결됐는지
+   읽어 검증한다. 연결이 확인된 경우에만 아래 exact command로 봉인된 branch/base/parent topology를
+   보존하며 link_verified를 기록한다. 이미 true면 command가 `none`이므로 실행하지 않는다:
+   {VERIFY_BRANCH_LINK_COMMAND}
+8. packet의 artifact_manifest에 plan이 있고 status의 plan_path가 비어 있으면 아래 exact command로
    materialized plan을 link한다. plan artifact와 기존 plan_path가 모두 없으면 임의 계획을 만들지 말고
    blocker를 보고한다:
    {LINK_PLAN_COMMAND}
-8. plan_path와 worktree_path를 확인한 뒤 issue, plan, 기존 공개 계약을 대조해 backward compatibility,
+9. plan_path와 worktree_path를 확인한 뒤 issue, plan, 기존 공개 계약을 대조해 backward compatibility,
    side effect, rollback, verification을 검토한다. blocker가 있으면 승인하지 말고 종료한다. blocker가
    없을 때만 아래 placeholder를 검토 결과의 리터럴 값으로 채워 compatibility-review를 승인·기록한다:
    {COMPATIBILITY_REVIEW_COMMAND}
-9. compatibility review와 execution readiness를 확인한 뒤 다음 exact command로 implement phase에 진입한다.
+10. compatibility review와 execution readiness를 확인한 뒤 다음 exact command로 implement phase에 진입한다.
    이 전이가 성공하기 전에는 구현 파일을 수정하지 않는다:
    {ENTER_IMPLEMENT_COMMAND}
 

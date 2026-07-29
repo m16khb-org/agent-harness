@@ -41,6 +41,7 @@ type executionOwnerIssue struct {
 type executionOwnerCommands struct {
 	LeaseStatus          string `json:"lease_status"`
 	Claim                string `json:"claim"`
+	VerifyBranchLink     string `json:"verify_branch_link"`
 	LinkPlan             string `json:"link_plan"`
 	CompatibilityReview  string `json:"compatibility_review"`
 	EnterImplement       string `json:"enter_implement"`
@@ -316,6 +317,7 @@ func renderExecutionOwnerPrompt(packet executionOwnerContextPacket, packetPath, 
 		"PACKET_PATH": packetPath, "PACKET_SHA256": packetDigest,
 		"OWNER_HOST": packet.OwnerHost, "OWNER_MODEL": packet.OwnerModel, "OWNER_EFFORT": packet.OwnerEffort,
 		"REVIEWER_MODEL": packet.ReviewerModel, "REVIEWER_EFFORT": packet.ReviewerEffort,
+		"VERIFY_BRANCH_LINK_COMMAND":    packet.Commands.VerifyBranchLink,
 		"LINK_PLAN_COMMAND":             packet.Commands.LinkPlan,
 		"COMPATIBILITY_REVIEW_COMMAND":  packet.Commands.CompatibilityReview,
 		"ENTER_IMPLEMENT_COMMAND":       packet.Commands.EnterImplement,
@@ -356,6 +358,7 @@ func validateExecutionOwnerPromptInputs(packet executionOwnerContextPacket, pack
 		{"packet_path", packetPath}, {"packet_sha256", packetDigest}, {"owner_host", packet.OwnerHost},
 		{"owner_model", packet.OwnerModel}, {"owner_effort", packet.OwnerEffort}, {"turing_report_path", packet.TuringReportPath},
 		{"lease_status_command", packet.Commands.LeaseStatus}, {"claim_command", packet.Commands.Claim},
+		{"verify_branch_link_command", packet.Commands.VerifyBranchLink},
 		{"link_plan_command", packet.Commands.LinkPlan}, {"compatibility_review_command", packet.Commands.CompatibilityReview},
 		{"enter_implement_command", packet.Commands.EnterImplement},
 		{"ai_slop_clean_record_command", packet.Commands.AISlopCleanRecord}, {"enter_ai_slop_clean_command", packet.Commands.EnterAISlopClean},
@@ -403,6 +406,24 @@ func executionOwnerCommandsFor(record IssueOpsRecord, req ExecutionPrepareReques
 		"--host", strings.ToLower(strings.TrimSpace(req.OwnerHost)), "--session-id", "<SESSION_ID>",
 		"--cwd", quoteExecutionOwnerArg(record.Execution.Workspace.Root),
 	}, " ")
+	verifyBranchLink := "none"
+	if prepared := record.BranchPrepare; prepared != nil && !prepared.LinkVerified {
+		verifyBranchLink = "agent-harness issueops branch prepare --id " + quoteExecutionOwnerArg(record.ID) +
+			" --provider " + quoteExecutionOwnerArg(strings.ToLower(strings.TrimSpace(prepared.Provider))) +
+			" --issue-url " + quoteExecutionOwnerArg(strings.TrimSpace(prepared.IssueURL)) +
+			" --branch " + quoteExecutionOwnerArg(strings.TrimSpace(prepared.Branch)) +
+			" --base-branch " + quoteExecutionOwnerArg(strings.TrimSpace(prepared.BaseBranch))
+		for _, optional := range []struct{ flag, value string }{
+			{"--base-sha", prepared.BaseSHA},
+			{"--parent-worktree", prepared.ParentWorktree},
+			{"--remote-branch-url", prepared.RemoteBranchURL},
+		} {
+			if value := strings.TrimSpace(optional.value); value != "" {
+				verifyBranchLink += " " + optional.flag + " " + quoteExecutionOwnerArg(value)
+			}
+		}
+		verifyBranchLink += " --link-verified " + shortActor + " --json"
+	}
 	planPath := filepath.Join(record.Execution.Workspace.Root, filepath.FromSlash(IssueOpsArtifactDir), "plan.md")
 	linkPlan := "none"
 	if strings.TrimSpace(record.PlanPath) == "" {
@@ -443,7 +464,8 @@ func executionOwnerCommandsFor(record IssueOpsRecord, req ExecutionPrepareReques
 	enterPR := "agent-harness issueops phase --id " + quoteExecutionOwnerArg(record.ID) +
 		" --to pr " + shortActor + " --json"
 	return executionOwnerCommands{
-		LeaseStatus: status, Claim: claim, LinkPlan: linkPlan, CompatibilityReview: compatibilityReview, EnterImplement: enterImplement,
+		LeaseStatus: status, Claim: claim, VerifyBranchLink: verifyBranchLink, LinkPlan: linkPlan,
+		CompatibilityReview: compatibilityReview, EnterImplement: enterImplement,
 		AISlopCleanRecord: aiSlopCleanRecord, EnterAISlopClean: enterAISlopClean,
 		ImplementationReview: implementationReview, EnterPR: enterPR,
 		RemoteCreate: remote, Complete: complete,
@@ -452,7 +474,7 @@ func executionOwnerCommandsFor(record IssueOpsRecord, req ExecutionPrepareReques
 
 func validateExecutionOwnerCatalog(commands executionOwnerCommands) error {
 	for _, path := range []string{
-		"execution status", "execution claim", "link-plan", "compatibility review", "phase", "ai-slop-clean record",
+		"execution status", "execution claim", "branch prepare", "link-plan", "compatibility review", "phase", "ai-slop-clean record",
 		"implementation-review record", "remote create-pr", "execution complete",
 	} {
 		if _, _, _, ok := commandparse.IssueOpsCommandSpec(path); !ok {
@@ -466,6 +488,7 @@ func validateExecutionOwnerCatalog(commands executionOwnerCommands) error {
 	}
 	checks := []struct{ command, path string }{
 		{commands.LeaseStatus, "execution status"}, {commands.Claim, "execution claim"},
+		{commands.VerifyBranchLink, "branch prepare"},
 		{commands.LinkPlan, "link-plan"}, {commands.CompatibilityReview, "compatibility review"},
 		{commands.EnterImplement, "phase"},
 		{commands.AISlopCleanRecord, "ai-slop-clean record"}, {commands.EnterAISlopClean, "phase"},

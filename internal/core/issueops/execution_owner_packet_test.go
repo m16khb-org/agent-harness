@@ -46,6 +46,7 @@ func TestExecutionOwnerPacketUsesOnlyExecutionCommands(t *testing.T) {
 	for _, required := range []string{
 		"issueops execution status",
 		"issueops execution claim",
+		"issueops branch prepare",
 		"issueops link-plan",
 		"issueops compatibility review",
 		"issueops phase --id",
@@ -71,6 +72,7 @@ func TestExecutionOwnerPromptOrdersLifecycleMutationsBeforePublication(t *testin
 	record, req := ownerPacketFixture()
 	prompt := executionOwnerPromptFixture(t, record, req)
 	ordered := []string{
+		"issueops branch prepare",
 		"issueops link-plan",
 		"issueops compatibility review",
 		"--to implement",
@@ -90,6 +92,32 @@ func TestExecutionOwnerPromptOrdersLifecycleMutationsBeforePublication(t *testin
 			t.Fatalf("owner prompt lifecycle command %q is out of order", command)
 		}
 		previous = current
+	}
+}
+
+func TestExecutionOwnerBranchLinkCommandPreservesSealedTopology(t *testing.T) {
+	record, req := ownerPacketFixture()
+	record.BranchPrepare.LinkVerified = false
+	record.BranchPrepare.ParentWorktree = "/repo/example.worktrees/117-umbrella"
+	commands := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64))
+	for _, required := range []string{
+		"issueops branch prepare",
+		"--provider 'github'",
+		"--issue-url 'https://github.com/example/agent-harness/issues/69'",
+		"--branch '69-issueops-v1'",
+		"--base-branch 'main'",
+		"--base-sha '0123456789012345678901234567890123456789'",
+		"--parent-worktree '/repo/example.worktrees/117-umbrella'",
+		"--link-verified",
+		"--session-id <SESSION_ID>",
+	} {
+		if !strings.Contains(commands.VerifyBranchLink, required) {
+			t.Fatalf("branch link command is missing %q: %s", required, commands.VerifyBranchLink)
+		}
+	}
+	record.BranchPrepare.LinkVerified = true
+	if got := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64)).VerifyBranchLink; got != "none" {
+		t.Fatalf("already verified branch link command = %q, want none", got)
 	}
 }
 
@@ -222,6 +250,11 @@ func ownerPacketFixture() (IssueOpsRecord, ExecutionPrepareRequest) {
 		Repo:          "/workspace/agent-harness",
 		Branch:        "69-issueops-v1",
 		IssueURL:      "https://github.com/example/agent-harness/issues/69",
+		BranchPrepare: &IssueOpsBranchPrepare{
+			Provider: "github", IssueURL: "https://github.com/example/agent-harness/issues/69",
+			Branch: "69-issueops-v1", BaseBranch: "main",
+			BaseSHA: "0123456789012345678901234567890123456789",
+		},
 		Execution: &model.Execution{
 			Mode: model.ExecutionModeOrca,
 			Workspace: model.Workspace{
