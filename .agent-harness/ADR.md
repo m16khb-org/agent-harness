@@ -767,3 +767,31 @@ Archived entries:
 - **후속**: deleteIssueOps 2-버킷 원자화, 워크트리 leaf 충돌, done 사이클
   base-branch 게이트 공백, GitLab orca 모드, PrepareWorkspace/LaunchOwner
   커버리지 계량, AC-11b 실제 orca 하위 세션 도그푸드.
+
+## 2026-07-28 — Lease differential contract owns stable v1 canonicalization
+
+- Kind: `adr`
+- Source: #191 decision gates `msg_09208c28b563` and `msg_bb413022b7ae`
+- Decision: The test-only leasevertical contract owns a stable v1 DTO that
+  reproduces the current durable JSON type shape and decode/re-marshal
+  canonicalization without importing `internal/core/issueops/model`.
+  `internal/architecture` rejects every leasevertical contract import of a
+  production IssueOps package. During release, application validates the
+  domain request inside repository `Update`, reads its clock immediately after
+  that validation, and then applies the transition.
+- Rationale: A differential prototype must compare the current persistence
+  contract without becoming coupled to its production DTO. Reading the clock
+  before the repository span makes rejected transitions observe time and lets
+  a blocked clock delay entry to the atomic update boundary.
+- Consequences: The prototype intentionally duplicates the stable v1 JSON
+  shape but remains test-only; rich sidecars and `null` normalization are
+  compared against current persisted bytes. The domain keeps semantic release
+  validation, while application owns the ordering of repository scope and its
+  injected clock.
+- Rejected: Importing production `model` from the test contract (couples the
+  ratchet subject to the system under comparison), preserving raw source JSON
+  bytes (diverges from current typed re-marshal), and calling `clock.Now`
+  before `Update` or before domain validation.
+- Verification: differential success/denial byte snapshots including rich
+  sidecars and `repo: null`, architecture import-ratchet tests, and blocking
+  clock tests for valid and rejected transitions.
