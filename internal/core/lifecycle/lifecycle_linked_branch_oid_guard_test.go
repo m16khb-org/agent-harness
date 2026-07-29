@@ -32,6 +32,24 @@ func TestLinkedBranchOIDPathIsAdmitted(t *testing.T) {
 	}
 }
 
+func TestGitHubIssuePublicationMetadataReadsAreAdmitted(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+
+	for name, command := range map[string]string{
+		"label":    "gh api repos/acme/repo/issues/176 --jq '.labels[].name'",
+		"assignee": "gh api repos/acme/repo/issues/176 --jq '.assignees[].login'",
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := executionRequest(record, worker, "claude", "owner-session", command)
+			req.AgentID = "owner-agent"
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+				t.Fatalf("PR 게시에 필요한 이슈 메타데이터 조회가 막히면 publication 계약을 완료할 수 없다: %+v", got)
+			}
+		})
+	}
+}
+
 // 임의 GraphQL과 임의 gh api는 계속 막힌다. createLinkedBranch 하나를 열면서
 // API 표면 전체가 열려서는 안 된다.
 func TestOtherGHAPICallsStayBlocked(t *testing.T) {

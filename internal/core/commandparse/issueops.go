@@ -669,9 +669,27 @@ func exactReadOnlyGHCommand(tokens []string) bool {
 		return exactReadOnlyGHIssueCommand(tokens)
 	case "run":
 		return exactReadOnlyGHRunCommand(tokens)
+	case "api":
+		return exactReadOnlyGHAPIIssueMetadataCommand(tokens)
 	default:
 		return false
 	}
+}
+
+func exactReadOnlyGHAPIIssueMetadataCommand(tokens []string) bool {
+	// PR 게시 시 원격 이슈의 label과 assignee를 그대로 이어받기 위한 두 projection만
+	// 허용한다. gh api의 다른 flag나 endpoint를 열지 않아 GET reader 경계를 유지한다.
+	if len(tokens) != 5 || tokens[3] != "--jq" ||
+		(tokens[4] != ".labels[].name" && tokens[4] != ".assignees[].login") {
+		return false
+	}
+	parts := strings.Split(tokens[2], "/")
+	if len(parts) != 5 || parts[0] != "repos" || parts[3] != "issues" ||
+		!safeGHRepository(parts[1]+"/"+parts[2]) {
+		return false
+	}
+	number, err := strconv.Atoi(parts[4])
+	return err == nil && number > 0
 }
 
 func exactReadOnlyGHIssueCommand(tokens []string) bool {

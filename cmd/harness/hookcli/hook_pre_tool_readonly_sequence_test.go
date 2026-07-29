@@ -65,6 +65,10 @@ sed -n '1,383p' internal/core/issueops/testdata/leasevertical/contract/record.go
 			name:    "Go SDK API 문서 관찰",
 			command: "go doc github.com/modelcontextprotocol/go-sdk/mcp.Server",
 		},
+		{
+			name:    "GitHub PR 게시 메타데이터 관찰",
+			command: "gh api repos/m16khb/agent-harness/issues/196 --jq '.labels[].name'",
+		},
 	}
 
 	for _, testCase := range commands {
