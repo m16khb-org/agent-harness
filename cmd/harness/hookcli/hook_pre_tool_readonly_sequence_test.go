@@ -57,6 +57,10 @@ sed -n '1,383p' internal/core/issueops/testdata/leasevertical/contract/record.go
 			name:    "rg 결과의 bounded head 관찰",
 			command: `rg -n 'ai-slop-clean|AISlopCleanCategories|category' cmd/harness/issueopscli internal/core/issueops | head -160`,
 		},
+		{
+			name:    "Go SDK API 문서 관찰",
+			command: "go doc github.com/modelcontextprotocol/go-sdk/mcp.Server",
+		},
 	}
 
 	for _, testCase := range commands {

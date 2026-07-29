@@ -203,6 +203,12 @@ sed -n '1,130p' internal/core/issueops/testdata/leasevertical/domain/release.go`
 		t.Fatalf("명시적 Go 파일의 gofmt diff readback은 lifecycle에서도 관찰이어야 한다: %+v", got)
 	}
 
+	req.Command = "go doc github.com/modelcontextprotocol/go-sdk/mcp.Server"
+	got = BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "allow" {
+		t.Fatalf("Go API 문서 조회는 lifecycle에서도 읽기 전용 관찰이어야 한다: %+v", got)
+	}
+
 	req.Command = `find internal/core/issueops/testdata/leasevertical -maxdepth 2 -type f | sort && sed -n '1,260p' internal/core/issueops/testdata/leasevertical/contract/record.go && sed -n '1,320p' internal/core/issueops/testdata/leasevertical/contract/stable_v1.go && sed -n '1,340p' internal/core/issueops/testdata/leasevertical/domain/release.go`
 	got = BuildLifecyclePreToolUseDecision(req)
 	if got.Decision != "allow" {

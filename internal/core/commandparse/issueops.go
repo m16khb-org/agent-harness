@@ -266,6 +266,8 @@ func exactReadOnlySimpleShellCommand(command string) bool {
 		return exactReadOnlyJQCommand(tokens[1:])
 	case "gofmt":
 		return exactReadOnlyGofmtDiff(tokens[1:])
+	case "go":
+		return exactReadOnlyGoDoc(tokens[1:])
 	case "codegraph":
 		return len(tokens) == 3 && tokens[1] == "explore" && strings.TrimSpace(tokens[2]) != "" && !strings.HasPrefix(tokens[2], "-")
 	case "rg":
@@ -311,6 +313,32 @@ func exactReadOnlyGofmtDiff(tokens []string) bool {
 	}
 	for _, operand := range tokens[1:] {
 		if operand == "" || operand == "-" || strings.HasPrefix(operand, "-") || path.Ext(operand) != ".go" {
+			return false
+		}
+	}
+	return true
+}
+
+func exactReadOnlyGoDoc(tokens []string) bool {
+	if len(tokens) == 0 || tokens[0] != "doc" {
+		return false
+	}
+	operands := 0
+	for _, token := range tokens[1:] {
+		if strings.HasPrefix(token, "-") {
+			switch token {
+			case "-all", "-c", "-cmd", "-short", "-src", "-u":
+				if operands != 0 {
+					return false
+				}
+				continue
+			default:
+				// -http는 서버를 열고 -C는 관찰 범위를 바꾸므로 승인하지 않는다.
+				return false
+			}
+		}
+		operands++
+		if operands > 2 {
 			return false
 		}
 	}
