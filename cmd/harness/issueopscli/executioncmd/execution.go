@@ -147,14 +147,50 @@ func runStatus(args []string, deps Deps) error {
 	return output(result, *jsonOut, err, deps)
 }
 
-// ExecutionWhoamiResult는 호출 프로세스의 native ancestry receipt를 노출한다.
-// owner가 claim identity를 shell 확장 없이 리터럴 값으로 채우기 위한 read-only
-// 표면이다(이슈 #90 발견 3 — 확장이 섞인 claim은 exact 파싱이 fail-closed로
-// 거부하므로, 관측 가능한 대체 경로가 없으면 부트스트랩이 교착한다).
+// ExecutionWhoamiResult는 호출 프로세스의 native host/session과 ancestry
+// receipt를 노출한다. owner가 claim identity를 shell 확장 없이 리터럴 값으로
+// 채우기 위한 read-only 표면이다(이슈 #90 발견 3 — 확장이 섞인 claim은 exact
+// 파싱이 fail-closed로 거부하므로, 관측 가능한 대체 경로가 없으면 부트스트랩이
+// 교착한다).
 type ExecutionWhoamiResult struct {
 	OK              bool                         `json:"ok"`
+	Host            string                       `json:"host"`
+	SessionID       string                       `json:"session_id"`
+	SessionIDSource string                       `json:"session_id_source"`
 	Ancestry        []model.NativeProcessReceipt `json:"ancestry"`
 	ClaimActorFlags []string                     `json:"claim_actor_flags"`
+}
+
+type nativeSessionIdentity struct {
+	Host      string
+	SessionID string
+	Source    string
+}
+
+func nativeSessionIdentityFromEnv(getenv func(string) string) (nativeSessionIdentity, error) {
+	codexSession := getenv("CODEX_THREAD_ID")
+	claudeSession := getenv("CLAUDE_CODE_SESSION_ID")
+	if codexSession != "" && claudeSession != "" {
+		return nativeSessionIdentity{}, fmt.Errorf("native host session identity is ambiguous")
+	}
+	identity := nativeSessionIdentity{}
+	switch {
+	case codexSession != "":
+		identity = nativeSessionIdentity{Host: "codex", SessionID: codexSession, Source: "CODEX_THREAD_ID"}
+	case claudeSession != "":
+		identity = nativeSessionIdentity{Host: "claude", SessionID: claudeSession, Source: "CLAUDE_CODE_SESSION_ID"}
+	default:
+		return nativeSessionIdentity{}, fmt.Errorf("native host session identity is unavailable")
+	}
+	if identity.SessionID != strings.TrimSpace(identity.SessionID) ||
+		strings.ContainsAny(identity.SessionID, "\r\n\x00") {
+		return nativeSessionIdentity{}, fmt.Errorf("native host session identity is not a literal single-line value")
+	}
+	return identity, nil
+}
+
+func shellQuoteClaimValue(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", `'"'"'`) + "'"
 }
 
 func runWhoami(args []string, deps Deps) error {
@@ -163,15 +199,23 @@ func runWhoami(args []string, deps Deps) error {
 	if done, err := parse(fs, args); done || err != nil {
 		return err
 	}
+	identity, err := nativeSessionIdentityFromEnv(os.Getenv)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
 	ancestry, err := issueops.ObserveNativeProcessAncestry(os.Getpid())
 	if err != nil {
 		return output(nil, *jsonOut, err, deps)
 	}
-	result := ExecutionWhoamiResult{OK: true, Ancestry: ancestry}
+	result := ExecutionWhoamiResult{
+		OK: true, Host: identity.Host, SessionID: identity.SessionID,
+		SessionIDSource: identity.Source, Ancestry: ancestry,
+	}
 	for _, receipt := range ancestry {
 		result.ClaimActorFlags = append(result.ClaimActorFlags, fmt.Sprintf(
-			"--session-pid %d --session-started-at %s --session-executable '%s'",
-			receipt.PID, receipt.StartedAt, receipt.Executable))
+			"--host %s --session-id %s --session-pid %d --session-started-at %s --session-executable %s",
+			identity.Host, shellQuoteClaimValue(identity.SessionID), receipt.PID,
+			shellQuoteClaimValue(receipt.StartedAt), shellQuoteClaimValue(receipt.Executable)))
 	}
 	return output(result, *jsonOut, nil, deps)
 }
