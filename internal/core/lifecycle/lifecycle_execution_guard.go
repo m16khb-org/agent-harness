@@ -49,11 +49,10 @@ func executionObservation(req HookToolUseLifecycleRequest) bool {
 	if !ok {
 		return false
 	}
-	// remote create-pr에 help flag 하나만 전달하면 확인한 Go flag parser가
+	// 원격 mutation 명령에 help flag 하나만 전달하면 확인한 Go flag parser가
 	// 실제 동작 전에 flag.ErrHelp로 종료한다. mutation 이름을 가졌더라도 이
 	// 정확한 형태는 상태를 읽거나 쓰지 않는 CLI 표면 조회다.
-	if command.Path == "remote create-pr" && len(command.Tokens) == command.Start+1 &&
-		(command.Tokens[command.Start] == "--help" || command.Tokens[command.Start] == "-h") {
+	if exactIssueOpsMutationHelpObservation(command.Path, command.Tokens, command.Start) {
 		return true
 	}
 	flags, ok := commandparse.ExactFlags(command, values, booleans, repeatable)
@@ -483,6 +482,16 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 		return true, reason, deny
 	}
 	return false, "", nil
+}
+
+func exactIssueOpsMutationHelpObservation(path string, tokens []string, start int) bool {
+	switch path {
+	case "remote create-pr", "remote verify-artifact":
+	default:
+		return false
+	}
+	return len(tokens) == start+1 &&
+		(tokens[start] == "--help" || tokens[start] == "-h")
 }
 
 func exactIssueOpsOwnerMutation(commandText string) bool {
