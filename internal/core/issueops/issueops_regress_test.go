@@ -166,3 +166,27 @@ func TestRegressIssueOpsForReplanRequiresReflectedStop(t *testing.T) {
 		t.Fatalf("regress before reflecting findings must be rejected, got %v", err)
 	}
 }
+
+func TestRegressIssueOpsForReplanExplainsReviseRecovery(t *testing.T) {
+	stateRoot, id := recordAtPhaseForRegressTest(t, IssueOpsPhaseCompatibilityReview)
+	rec, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec.DevilsAdvocateReview = &model.IssueOpsDevilsAdvocateReview{
+		Verdict:    "revise",
+		Findings:   []string{"probe 경합의 openUntil은 선택값이어야 한다"},
+		RecordedAt: "2026-07-29T00:00:00Z",
+	}
+	if _, err := touchAndWriteIssueOps(stateRoot, rec); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = RegressIssueOpsForReplan(stateRoot, id, "revise finding 반영")
+	if err == nil ||
+		!strings.Contains(err.Error(), "revise verdict must be resolved in place") ||
+		!strings.Contains(err.Error(), "record a fresh devil's-advocate review") ||
+		!strings.Contains(err.Error(), "only a stop verdict may regress") {
+		t.Fatalf("revise 거부는 제자리 계획 수정과 fresh review 절차를 안내해야 한다: %v", err)
+	}
+}

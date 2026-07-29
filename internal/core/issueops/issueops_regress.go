@@ -64,6 +64,10 @@ func regressIssueOpsForReplanLocked(stateRoot, id, reason string) (IssueOpsRecor
 	// A regress is the machine consequence of a devil's-advocate stop whose
 	// findings were reflected into the issue, so require both before rewinding.
 	review := record.DevilsAdvocateReview
+	if review != nil && review.Verdict == "revise" {
+		return IssueOpsRecord{OK: false}, fmt.Errorf(
+			"devil's-advocate revise verdict must be resolved in place: update the linked plan, run and record a fresh devil's-advocate review, and proceed only after it passes or is explicitly waived; only a stop verdict may regress after remote reflection")
+	}
 	if review == nil || review.Verdict != "stop" {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("regress requires a recorded devil's-advocate stop verdict")
 	}
