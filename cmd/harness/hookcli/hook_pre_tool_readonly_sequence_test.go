@@ -53,6 +53,10 @@ sed -n '1,383p' internal/core/issueops/testdata/leasevertical/contract/record.go
 			name:    "성공 조건으로 연결한 Git 관찰",
 			command: "pwd && git status --short && git diff --cached --check",
 		},
+		{
+			name:    "rg 결과의 bounded head 관찰",
+			command: `rg -n 'ai-slop-clean|AISlopCleanCategories|category' cmd/harness/issueopscli internal/core/issueops | head -160`,
+		},
 	}
 
 	for _, testCase := range commands {

@@ -451,6 +451,10 @@ sed -n '1,194p' internal/core/issueops/testdata/leasevertical/adapter/sqlite.go`
 	if !ExactReadOnlyShellCommand(`find internal/core/issueops/testdata/leasevertical -maxdepth 2 -type f | sort`) {
 		t.Fatal("봉인된 find-sort 파이프 하나도 읽기 전용 관찰이어야 한다")
 	}
+	boundedHeadPipeline := `rg -n 'ai-slop-clean|AISlopCleanCategories|category' cmd/harness/issueopscli internal/core/issueops | head -160`
+	if !ExactReadOnlyShellCommand(boundedHeadPipeline) {
+		t.Fatalf("exact reader의 bounded head 출력 제한은 읽기 전용 관찰이어야 한다: %q", boundedHeadPipeline)
+	}
 	atomicStagedDiffSequence := `test -d .codegraph && echo present || echo absent
 git diff --cached --stat
 git diff --cached --name-only
@@ -471,6 +475,12 @@ git diff --cached --check`
 		"pipeline multi stage":  strings.Replace(sealedSortPipeline, "| sort", "| sort | sort", 1),
 		"pipeline double pipe":  strings.Replace(sealedSortPipeline, "| sort", "|| sort", 1),
 		"pipeline trailing":     strings.Replace(sealedSortPipeline, "| sort", "|", 1),
+		"head file operand":     strings.Replace(boundedHeadPipeline, "head -160", "head -160 /tmp/other", 1),
+		"head oversized":        strings.Replace(boundedHeadPipeline, "head -160", "head -10001", 1),
+		"head byte mode":        strings.Replace(boundedHeadPipeline, "head -160", "head -c 160", 1),
+		"head plus mode":        strings.Replace(boundedHeadPipeline, "head -160", "head -+160", 1),
+		"head n plus mode":      strings.Replace(boundedHeadPipeline, "head -160", "head -n +160", 1),
+		"head multi stage":      boundedHeadPipeline + " | sort",
 		"background":            strings.Replace(command, "git status --short", "git status --short &", 1),
 		"shell variable write":  strings.Replace(command, "then printf", "then printf -v probe", 1),
 		"printf percent-n":      strings.Replace(command, "printf 'codegraph-present\\n'", "printf '%n' PATH", 1),

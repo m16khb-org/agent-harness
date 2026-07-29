@@ -209,6 +209,12 @@ sed -n '1,130p' internal/core/issueops/testdata/leasevertical/domain/release.go`
 		t.Fatalf("봉인된 find-sort 파이프와 exact reader 시퀀스는 lifecycle에서도 관찰이어야 한다: %+v", got)
 	}
 
+	req.Command = `rg -n 'ai-slop-clean|AISlopCleanCategories|category' cmd/harness/issueopscli internal/core/issueops | head -160`
+	got = BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "allow" {
+		t.Fatalf("exact rg 결과의 bounded head 출력 제한은 lifecycle에서도 관찰이어야 한다: %+v", got)
+	}
+
 	req.Command = `test -d .codegraph && echo present || echo absent
 git diff --cached --stat
 git diff --cached --name-only

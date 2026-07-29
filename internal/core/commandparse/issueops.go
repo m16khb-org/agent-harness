@@ -436,6 +436,14 @@ func exactReadOnlyHeadOrTail(tokens []string) bool {
 }
 
 func boundedLineCount(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, digit := range value {
+		if digit < '0' || digit > '9' {
+			return false
+		}
+	}
 	count, err := strconv.ParseUint(value, 10, 14)
 	return err == nil && count <= 10_000
 }

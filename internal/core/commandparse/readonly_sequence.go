@@ -4,7 +4,8 @@ import "strings"
 
 // exactReadOnlyShellSequence는 exact read-only 조각과 선택적인 CodeGraph
 // 존재 probe 하나로만 구성된 세미콜론·개행·&& 시퀀스를 허용한다. 봉인된
-// stdout 정렬 파이프 밖의 파이프·백그라운드·일반 || 연산자는 거부한다.
+// stdout 정렬·bounded head 파이프 밖의 파이프·백그라운드·일반 || 연산자는
+// 거부한다.
 func exactReadOnlyShellSequence(command string) bool {
 	if tail, matched := exactReadOnlyShortCircuitDirectoryProbe(command); matched {
 		parts, ok := splitReadOnlyShellSequence(tail)
@@ -52,9 +53,24 @@ func exactReadOnlySequencePart(part string) bool {
 		return false
 	}
 	tokens := SplitCommandTokens(stages[1])
-	// 임의 후속 프로세스나 sort의 파일 출력 옵션을 열지 않는다. exact reader의
-	// stdout 순서를 안정화하는 인자 없는 sort 한 단계만 허용한다.
-	return len(tokens) == 1 && tokens[0] == "sort"
+	// 임의 후속 프로세스나 파일 operand를 열지 않는다. exact reader의 stdout을
+	// 정렬하거나 앞부분으로 제한하는 고정 readback 한 단계만 허용한다.
+	return (len(tokens) == 1 && tokens[0] == "sort") || exactReadOnlyPipelineHead(tokens)
+}
+
+func exactReadOnlyPipelineHead(tokens []string) bool {
+	if len(tokens) == 2 && tokens[0] == "head" {
+		switch {
+		case strings.HasPrefix(tokens[1], "--lines="):
+			return boundedLineCount(strings.TrimPrefix(tokens[1], "--lines="))
+		case strings.HasPrefix(tokens[1], "-") && !strings.HasPrefix(tokens[1], "--"):
+			return boundedLineCount(strings.TrimPrefix(tokens[1], "-"))
+		}
+	}
+	return len(tokens) == 3 &&
+		tokens[0] == "head" &&
+		(tokens[1] == "-n" || tokens[1] == "--lines") &&
+		boundedLineCount(tokens[2])
 }
 
 func splitExactReadOnlyPipeline(part string) ([]string, bool) {
