@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"agent-harness/internal/port"
 	sqlite "modernc.org/sqlite"
 	sqlite3 "modernc.org/sqlite/lib"
 )
@@ -87,14 +88,10 @@ type ExistingLayout struct {
 	SpanSchema []SchemaObject
 }
 
-// Mutation은 Apply 트랜잭션 안의 row upsert 또는 delete 하나다.
-type Mutation struct {
-	Bucket        string
-	ID            string
-	Data          []byte
-	Delete        bool
-	RequireAbsent bool
-}
+// Mutation은 공개 source compatibility를 위한 port.RecordMutation 별칭이다.
+type Mutation = port.RecordMutation
+
+var _ port.TransactionalRecordStore = (*DB)(nil)
 
 var (
 	handles   = map[string]*DB{}

@@ -1,4 +1,4 @@
-package adapter
+package issueopslease
 
 import (
 	"path/filepath"

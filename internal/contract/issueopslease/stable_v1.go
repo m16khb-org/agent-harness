@@ -1,8 +1,7 @@
-package contract
+package issueopslease
 
-// stableV1Record은 prototype이 production IssueOps model에 의존하지 않고도
-// current v1의 JSON type shape와 decode/re-marshal canonicalization을 재현한다.
-// release 전이에 필요한 contract Record은 이 DTO에서만 투영한다.
+// stableV1Record은 core 모델에 의존하지 않고 persisted v1 JSON의 canonical
+// shape를 재현한다. release 전이에서는 lease만 교체하고 나머지 sidecar를 보존한다.
 type stableV1Record struct {
 	OK                      bool                           `json:"ok"`
 	SchemaVersion           int                            `json:"schema_version"`
@@ -51,7 +50,6 @@ type stableV1Feedback struct {
 	IssueUpdatedAt string `json:"issue_updated_at,omitempty"`
 	Resolution     string `json:"resolution,omitempty"`
 }
-
 type stableV1IssueLink struct {
 	Type            string `json:"type"`
 	URL             string `json:"url"`
@@ -62,7 +60,6 @@ type stableV1IssueLink struct {
 	CloseVerifiedAt string `json:"close_verified_at,omitempty"`
 	CloseReason     string `json:"close_reason,omitempty"`
 }
-
 type stableV1BranchPrepareStep struct {
 	Order         int            `json:"order"`
 	Strategy      string         `json:"strategy"`
@@ -71,19 +68,18 @@ type stableV1BranchPrepareStep struct {
 	Command       []string       `json:"command,omitempty"`
 	Description   string         `json:"description"`
 }
-
 type stableV1BranchPrepare struct {
 	Provider        string                      `json:"provider"`
 	IssueURL        string                      `json:"issue_url"`
 	Branch          string                      `json:"branch"`
 	BaseBranch      string                      `json:"base_branch"`
 	BaseSHA         string                      `json:"base_sha,omitempty"`
+	ParentWorktree  string                      `json:"parent_worktree,omitempty"`
 	RemoteBranchURL string                      `json:"remote_branch_url,omitempty"`
 	LinkVerified    bool                        `json:"link_verified"`
 	Steps           []stableV1BranchPrepareStep `json:"steps"`
 	CreatedAt       string                      `json:"created_at"`
 }
-
 type stableV1RemoteArtifact struct {
 	Provider     string   `json:"provider"`
 	Kind         string   `json:"kind"`
@@ -93,7 +89,6 @@ type stableV1RemoteArtifact struct {
 	VerifiedAt   string   `json:"verified_at"`
 	TargetBranch string   `json:"target_branch,omitempty"`
 }
-
 type stableV1Intent struct {
 	RawRequest        string   `json:"raw_request"`
 	InterpretedIntent string   `json:"interpreted_intent"`
@@ -104,7 +99,6 @@ type stableV1Intent struct {
 	IntentClass       string   `json:"intent_class,omitempty"`
 	RecordedAt        string   `json:"recorded_at"`
 }
-
 type stableV1DesignReview struct {
 	ProblemSummary string   `json:"problem_summary"`
 	ProposedDesign string   `json:"proposed_design"`
@@ -116,7 +110,6 @@ type stableV1DesignReview struct {
 	Approved       bool     `json:"approved"`
 	ReviewedAt     string   `json:"reviewed_at"`
 }
-
 type stableV1Decision struct {
 	Title              string   `json:"title"`
 	Body               string   `json:"body"`
@@ -127,13 +120,11 @@ type stableV1Decision struct {
 	AffectedArtifacts  []string `json:"affected_artifacts,omitempty"`
 	CreatedAt          string   `json:"created_at"`
 }
-
 type stableV1PlanPrepItem struct {
 	Status      string   `json:"status"`
 	Evidence    []string `json:"evidence,omitempty"`
 	WaiveReason string   `json:"waive_reason,omitempty"`
 }
-
 type stableV1PlanPrep struct {
 	PriorDecisions stableV1PlanPrepItem `json:"prior_decisions"`
 	RelatedIssues  stableV1PlanPrepItem `json:"related_issues"`
@@ -141,7 +132,6 @@ type stableV1PlanPrep struct {
 	CodebaseSurvey stableV1PlanPrepItem `json:"codebase_survey"`
 	RecordedAt     string               `json:"recorded_at"`
 }
-
 type stableV1CompatibilityReview struct {
 	BackwardCompatibility []string `json:"backward_compatibility"`
 	SideEffects           []string `json:"side_effects"`
@@ -151,7 +141,6 @@ type stableV1CompatibilityReview struct {
 	Approved              bool     `json:"approved"`
 	ReviewedAt            string   `json:"reviewed_at"`
 }
-
 type stableV1DevilsAdvocateReview struct {
 	Verdict          string   `json:"verdict"`
 	Findings         []string `json:"findings,omitempty"`
@@ -161,7 +150,6 @@ type stableV1DevilsAdvocateReview struct {
 	RecordedAt       string   `json:"recorded_at"`
 	IssueReflectedAt string   `json:"issue_reflected_at,omitempty"`
 }
-
 type stableV1DomainReview struct {
 	Terminology       []string `json:"terminology,omitempty"`
 	ModelFit          string   `json:"model_fit,omitempty"`
@@ -169,7 +157,6 @@ type stableV1DomainReview struct {
 	OpenUncertainties []string `json:"open_uncertainties,omitempty"`
 	ReviewedAt        string   `json:"reviewed_at"`
 }
-
 type stableV1LedgerEntry struct {
 	Phase       string   `json:"phase"`
 	EnteredAt   string   `json:"entered_at,omitempty"`
@@ -178,13 +165,11 @@ type stableV1LedgerEntry struct {
 	Missing     []string `json:"missing,omitempty"`
 	Notes       []string `json:"notes,omitempty"`
 }
-
 type stableV1RegressEvent struct {
 	Reason    string `json:"reason"`
 	FromPhase string `json:"from_phase"`
 	At        string `json:"at"`
 }
-
 type stableV1Delegation struct {
 	ParentCycleID      string   `json:"parent_cycle_id"`
 	TaskScope          string   `json:"task_scope"`
@@ -193,7 +178,6 @@ type stableV1Delegation struct {
 	ChildIssueURL      string   `json:"child_issue_url,omitempty"`
 	DelegatedAt        string   `json:"delegated_at"`
 }
-
 type stableV1ChildCycle struct {
 	CycleID            string   `json:"cycle_id"`
 	Branch             string   `json:"branch"`
@@ -205,7 +189,6 @@ type stableV1ChildCycle struct {
 	ValidationEvidence []string `json:"validation_evidence,omitempty"`
 	ValidatedAt        string   `json:"validated_at,omitempty"`
 }
-
 type stableV1Execution struct {
 	Mode           string                  `json:"mode"`
 	Workspace      stableV1Workspace       `json:"workspace"`
@@ -216,7 +199,6 @@ type stableV1Execution struct {
 	Failure        *stableV1Failure        `json:"failure,omitempty"`
 	SyncBaseEvents []stableV1SyncBaseEvent `json:"sync_base_events,omitempty"`
 }
-
 type stableV1Workspace struct {
 	SourceRoot     string `json:"source_root"`
 	Root           string `json:"root"`
@@ -226,7 +208,6 @@ type stableV1Workspace struct {
 	Driver         string `json:"driver"`
 	LinkedAt       string `json:"linked_at"`
 }
-
 type stableV1Lease struct {
 	Generation        uint64               `json:"generation"`
 	Status            string               `json:"status"`
@@ -237,20 +218,17 @@ type stableV1Lease struct {
 	ReplacedAt        string               `json:"replaced_at,omitempty"`
 	ReplacementReason string               `json:"replacement_reason,omitempty"`
 }
-
 type stableV1NativeActor struct {
 	Host           string                  `json:"host"`
 	SessionID      string                  `json:"session_id"`
 	AgentID        string                  `json:"agent_id,omitempty"`
 	SessionProcess *stableV1ProcessReceipt `json:"session_process,omitempty"`
 }
-
 type stableV1ProcessReceipt struct {
 	PID        int    `json:"pid"`
 	StartedAt  string `json:"started_at"`
 	Executable string `json:"executable"`
 }
-
 type stableV1OrcaBinding struct {
 	RuntimeID          string `json:"runtime_id"`
 	RepoID             string `json:"repo_id"`
@@ -263,14 +241,12 @@ type stableV1OrcaBinding struct {
 	DispatchID         string `json:"dispatch_id"`
 	TerminalPTYID      string `json:"terminal_pty_id,omitempty"`
 }
-
 type stableV1ExternalIntent struct {
 	OperationID string `json:"operation_id"`
 	Kind        string `json:"kind"`
 	Marker      string `json:"marker"`
 	StartedAt   string `json:"started_at"`
 }
-
 type stableV1Completion struct {
 	FinalHead         string   `json:"final_head"`
 	TuringReportPath  string   `json:"turing_report_path"`
@@ -278,14 +254,12 @@ type stableV1Completion struct {
 	RemoteArtifactURL string   `json:"remote_artifact_url"`
 	CompletedAt       string   `json:"completed_at"`
 }
-
 type stableV1Failure struct {
 	OperationID string `json:"operation_id,omitempty"`
 	Code        string `json:"code"`
 	Message     string `json:"message,omitempty"`
 	At          string `json:"at"`
 }
-
 type stableV1SyncBaseEvent struct {
 	Mode          string `json:"mode"`
 	BaseBranch    string `json:"base_branch"`
@@ -295,18 +269,15 @@ type stableV1SyncBaseEvent struct {
 	Actor         string `json:"actor"`
 	At            string `json:"at"`
 }
-
 type stableV1RemoteCompletion struct {
 	ReflectedAt   string `json:"reflected_at,omitempty"`
 	IssueClosedAt string `json:"issue_closed_at,omitempty"`
 }
-
 type stableV1CleanupFinishFailure struct {
 	Step    string `json:"step"`
 	Message string `json:"message"`
 	At      string `json:"at"`
 }
-
 type stableV1ImplementationReview struct {
 	Verdict             string   `json:"verdict"`
 	Findings            []string `json:"findings"`
@@ -317,7 +288,6 @@ type stableV1ImplementationReview struct {
 	ReviewerEffort      string   `json:"reviewer_effort,omitempty"`
 	RecordedAt          string   `json:"recorded_at"`
 }
-
 type stableV1SkillRouting struct {
 	Phase string `json:"phase"`
 	Skill string `json:"skill"`

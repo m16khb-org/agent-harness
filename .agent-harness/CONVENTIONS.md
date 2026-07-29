@@ -130,6 +130,7 @@ skills/
 - `internal/architecture/dependency_test.go`는 direct production import만 검사한다. edge 표기는 항상 `importer -> imported`이며 정렬 순서를 바꾸지 않는다.
 - unconditional layer rule 위반은 baseline에 추가하지 않는다. 기존 legacy edge는 `internal/architecture/testdata/legacy_imports.txt`에만 기록하고, 제거 시 baseline도 함께 줄인다.
 - composition root 예외는 `cmd/harness/harnessapp` 하나로 제한한다. 새 concrete-adapter import가 그 밖에 필요하다면 먼저 boundary를 재검토한다.
+- IssueOps 수직 마이그레이션은 capability별 contract/domain/application/inbound/outbound 패키지를 사용한다. domain은 JSON·filesystem·process·SQLite·clock을 import하지 않고, application port는 해당 capability가 실제로 쓰는 좁은 연산만 선언한다. persisted bytes가 공개 계약이면 legacy facade와 새 vertical의 differential 및 race evidence를 함께 유지한다.
 
 ---
 

@@ -3,9 +3,19 @@ package issueopscli
 import (
 	"agent-harness/cmd/harness/issueopscli/remoteverify"
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/issueops"
 )
 
 func RunIssueOps(args []string) error {
+	return runIssueOps(args)
+}
+
+// RunIssueOpsWithReleaseHandler is the composition-root entry point for the
+// production release vertical. Other IssueOps actions retain their existing facade.
+func RunIssueOpsWithReleaseHandler(args []string, release issueops.ExecutionReleaseHandler) error {
+	if len(args) > 0 && args[0] == "execution" {
+		return runIssueOpsExecutionWithRelease(args[1:], release)
+	}
 	return runIssueOps(args)
 }
 

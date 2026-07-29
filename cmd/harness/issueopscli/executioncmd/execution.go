@@ -18,6 +18,7 @@ type Deps struct {
 	Orca      port.ExecutionOrcaProvisioner
 	ReadIssue issueops.ExecutionIssueSnapshotReadFunc
 	RemotePR  issueops.RemotePullRequestDependencies
+	Release   issueops.ExecutionReleaseHandler
 	// SettleOrcaTask는 완료 시점의 orca task 종결 표면이다. nil이면 종결을
 	// 건너뛴다 — 종결 수단이 없다는 사실이 완료를 막아서는 안 된다(#130).
 	SettleOrcaTask func(ctx context.Context, taskID string) error
@@ -28,7 +29,7 @@ type Deps struct {
 func (deps Deps) actionDeps() issueops.ExecutionActionDependencies {
 	actionDeps := issueops.ExecutionActionDependencies{
 		Direct: deps.Direct, Orca: deps.Orca, ReadIssue: deps.ReadIssue,
-		RemotePR: deps.RemotePR, SettleOrcaTask: deps.SettleOrcaTask,
+		RemotePR: deps.RemotePR, Release: deps.Release, SettleOrcaTask: deps.SettleOrcaTask,
 	}
 	if inspector, ok := deps.Orca.(port.ExecutionOrcaOwnerInspector); ok {
 		actionDeps.OrcaOwner = inspector

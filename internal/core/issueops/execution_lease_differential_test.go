@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
+	leaseadapter "agent-harness/internal/adapter/outbound/issueopslease"
+	leaseapp "agent-harness/internal/application/issueopslease"
+	leasecontract "agent-harness/internal/contract/issueopslease"
 	"agent-harness/internal/core/issueops/model"
-	leaseadapter "agent-harness/internal/core/issueops/testdata/leasevertical/adapter"
-	leaseapp "agent-harness/internal/core/issueops/testdata/leasevertical/application"
-	leasecontract "agent-harness/internal/core/issueops/testdata/leasevertical/contract"
-	leasedomain "agent-harness/internal/core/issueops/testdata/leasevertical/domain"
 	"agent-harness/internal/core/sqlstore"
+	leasedomain "agent-harness/internal/domain/issueopslease"
 )
 
 const (
@@ -81,13 +81,13 @@ func TestExecutionLeaseReleaseDifferentialSuccess(t *testing.T) {
 				t.Fatalf("parse current released_at: %v", err)
 			}
 			service := leaseapp.NewReleaseService(
-				leaseadapter.NewSQLiteRepository(proposedRoot),
+				releaseDifferentialSQLite(t, proposedRoot),
 				releaseDifferentialClock{at: releasedAt},
 				releaseDifferentialProcessInspector,
 				leaseadapter.FilesystemPathMatcher{},
 			)
 			proposedResult, err := service.Release(context.Background(), leaseapp.ReleaseRequest{
-				ID: record.ID, Generation: 1, Actor: releaseDifferentialDomainActor(actor),
+				ID: record.ID, Generation: 1, Actor: releaseDifferentialDomainActor(actor), Ancestry: releaseDifferentialProcessAncestry(actor),
 				CWD: record.Execution.Workspace.Root,
 			})
 			if err != nil {
@@ -114,6 +114,11 @@ func TestExecutionLeaseReleaseDifferentialSuccess(t *testing.T) {
 
 func releaseDifferentialRichOrcaRecord(record IssueOpsRecord) IssueOpsRecord {
 	record.IssueURL = "https://github.com/m16khb/agent-harness/issues/191"
+	record.BranchPrepare = &model.IssueOpsBranchPrepare{
+		Provider: "github", IssueURL: record.IssueURL, Branch: "191-lease-release", BaseBranch: "117-hexagonal-architecture-migration",
+		BaseSHA: strings.Repeat("a", 40), ParentWorktree: "/worktrees/117-hexagonal-architecture-migration",
+		LinkVerified: true, CreatedAt: "2026-07-27T00:00:01Z",
+	}
 	record.Execution.Mode = model.ExecutionModeOrca
 	record.Execution.Workspace.Driver = "orca"
 	record.Execution.Orca = &model.OrcaBinding{
@@ -169,6 +174,48 @@ func TestExecutionLeaseReleaseDifferentialLegacyMissingSchema(t *testing.T) {
 	}
 }
 
+func TestExecutionLeaseReleaseProductionNormalizesLegacySchema(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		transform func([]byte) []byte
+	}{
+		{
+			name: "missing",
+			transform: func(data []byte) []byte {
+				return bytes.Replace(data, []byte("  \"schema_version\": 1,\n"), nil, 1)
+			},
+		},
+		{
+			name: "zero",
+			transform: func(data []byte) []byte {
+				return bytes.Replace(data, []byte("\"schema_version\": 1"), []byte("\"schema_version\": 0"), 1)
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			record, actor := releaseDifferentialActiveRecord(t, 1, "worker-7")
+			raw := tc.transform(releaseDifferentialRawRecord(t, record, func(data []byte) []byte { return data }))
+			releaseDifferentialSeedRaw(t, root, record.ID, leaseHolderIndexKey(actor), raw)
+			service := leaseapp.NewReleaseService(
+				releaseDifferentialSQLite(t, root),
+				releaseDifferentialClock{at: time.Date(2026, 7, 27, 1, 2, 3, 4, time.UTC)},
+				releaseDifferentialProcessInspector,
+				leaseadapter.FilesystemPathMatcher{},
+			)
+			if _, err := service.Release(context.Background(), leaseapp.ReleaseRequest{
+				ID: record.ID, Generation: 1, Actor: releaseDifferentialDomainActor(actor), Ancestry: releaseDifferentialProcessAncestry(actor), CWD: record.Execution.Workspace.Root,
+			}); err != nil {
+				t.Fatalf("production legacy release: %v", err)
+			}
+			persisted, _, indexExists := releaseDifferentialSnapshot(t, root, record.ID, leaseHolderIndexKey(actor))
+			if !bytes.Contains(persisted, []byte("\"schema_version\": 1")) || indexExists {
+				t.Fatalf("legacy normalization persistence mismatch: index=%t record=%s", indexExists, persisted)
+			}
+		})
+	}
+}
+
 func TestExecutionLeaseReleaseDifferentialMissingHolderIndex(t *testing.T) {
 	currentRoot := t.TempDir()
 	proposedRoot := t.TempDir()
@@ -182,13 +229,13 @@ func TestExecutionLeaseReleaseDifferentialMissingHolderIndex(t *testing.T) {
 		ID: record.ID, Generation: 1, Actor: actor, CWD: record.Execution.Workspace.Root,
 	})
 	service := leaseapp.NewReleaseService(
-		leaseadapter.NewSQLiteRepository(proposedRoot),
+		releaseDifferentialSQLite(t, proposedRoot),
 		releaseDifferentialClock{at: releaseDifferentialResultTime(t, currentResult, currentErr)},
 		releaseDifferentialProcessInspector,
 		leaseadapter.FilesystemPathMatcher{},
 	)
 	proposedResult, proposedErr := service.Release(context.Background(), leaseapp.ReleaseRequest{
-		ID: record.ID, Generation: 1, Actor: releaseDifferentialDomainActor(actor),
+		ID: record.ID, Generation: 1, Actor: releaseDifferentialDomainActor(actor), Ancestry: releaseDifferentialProcessAncestry(actor),
 		CWD: record.Execution.Workspace.Root,
 	})
 	if currentErr != nil || proposedErr != nil {
@@ -218,13 +265,13 @@ func TestExecutionLeaseReleaseDifferentialActorAuthority(t *testing.T) {
 			ID: record.ID, Generation: 1, Actor: requestActor, CWD: record.Execution.Workspace.Root,
 		})
 		service := leaseapp.NewReleaseService(
-			leaseadapter.NewSQLiteRepository(proposedRoot),
+			releaseDifferentialSQLite(t, proposedRoot),
 			releaseDifferentialClock{at: releaseDifferentialResultTime(t, currentResult, currentErr)},
 			releaseDifferentialProcessInspector,
 			leaseadapter.FilesystemPathMatcher{},
 		)
 		proposedResult, proposedErr := service.Release(context.Background(), leaseapp.ReleaseRequest{
-			ID: record.ID, Generation: 1, Actor: releaseDifferentialDomainActor(requestActor),
+			ID: record.ID, Generation: 1, Actor: releaseDifferentialDomainActor(requestActor), Ancestry: releaseDifferentialProcessAncestry(requestActor),
 			CWD: record.Execution.Workspace.Root,
 		})
 		if proposedErr != nil {
@@ -252,20 +299,19 @@ func TestExecutionLeaseReleaseDifferentialActorAuthority(t *testing.T) {
 			ID: record.ID, Generation: 1, Actor: actor, CWD: record.Execution.Workspace.Root,
 		})
 		service := leaseapp.NewReleaseService(
-			leaseadapter.NewSQLiteRepository(proposedRoot),
+			releaseDifferentialSQLite(t, proposedRoot),
 			releaseDifferentialClock{at: time.Date(2026, 7, 27, 1, 2, 3, 4, time.UTC)},
 			releaseDifferentialProcessInspector,
 			leaseadapter.FilesystemPathMatcher{},
 		)
 		proposedResult, proposedErr := service.Release(context.Background(), leaseapp.ReleaseRequest{
-			ID: record.ID, Generation: 1, Actor: releaseDifferentialDomainActor(actor),
+			ID: record.ID, Generation: 1, Actor: releaseDifferentialDomainActor(actor), Ancestry: releaseDifferentialProcessAncestry(actor),
 			CWD: record.Execution.Workspace.Root,
 		})
 		if currentErr == nil || proposedErr == nil {
 			t.Fatalf("fabricated receipt unexpectedly released: current=%v proposed=%v", currentErr, proposedErr)
 		}
-		if classifyCurrentReleaseDeny(currentErr) != leasedomain.DenyLeaseAuthority ||
-			leasedomain.DenyCodeOf(proposedErr) != leasedomain.DenyLeaseAuthority {
+		if currentErr.Error() != proposedErr.Error() {
 			t.Fatalf("fabricated receipt deny differs: current=%v proposed=%v", currentErr, proposedErr)
 		}
 		if currentResult.OK != proposedResult.OK || currentResult.ID != proposedResult.ID {
@@ -282,7 +328,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 	tests := []struct {
 		name       string
 		mutate     func(*IssueOpsRecord, *model.NativeActor, *uint64, *string)
-		expected   leasedomain.DenyCode
+		expected   string
 		rawRecord  func(*testing.T, IssueOpsRecord) []byte
 		staleIndex bool
 	}{
@@ -291,42 +337,50 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 			mutate: func(_ *IssueOpsRecord, _ *model.NativeActor, generation *uint64, _ *string) {
 				*generation = 2
 			},
-			expected: leasedomain.DenyLeaseAuthority,
+			expected: string(leasedomain.DenyLeaseAuthority),
 		},
 		{
 			name: "host-mismatch",
 			mutate: func(_ *IssueOpsRecord, actor *model.NativeActor, _ *uint64, _ *string) {
 				actor.Host = "claude"
 			},
-			expected: leasedomain.DenyLeaseAuthority,
+			expected: string(leasedomain.DenyLeaseAuthority),
 		},
 		{
 			name: "session-mismatch",
 			mutate: func(_ *IssueOpsRecord, actor *model.NativeActor, _ *uint64, _ *string) {
 				actor.SessionID = "another-session"
 			},
-			expected: leasedomain.DenyLeaseAuthority,
+			expected: string(leasedomain.DenyLeaseAuthority),
+		},
+		{
+			name: "session-mismatch-precedes-reverse-index-conflict",
+			mutate: func(_ *IssueOpsRecord, actor *model.NativeActor, _ *uint64, _ *string) {
+				actor.SessionID = "another-session"
+			},
+			expected:   string(leasedomain.DenyLeaseAuthority),
+			staleIndex: true,
 		},
 		{
 			name: "agent-mismatch",
 			mutate: func(_ *IssueOpsRecord, actor *model.NativeActor, _ *uint64, _ *string) {
 				actor.AgentID = "another-agent"
 			},
-			expected: leasedomain.DenyLeaseAuthority,
+			expected: string(leasedomain.DenyLeaseAuthority),
 		},
 		{
 			name: "process-ancestry-missing",
 			mutate: func(_ *IssueOpsRecord, actor *model.NativeActor, _ *uint64, _ *string) {
 				actor.ProcessAncestry = nil
 			},
-			expected: leasedomain.DenyLeaseAuthority,
+			expected: string(leasedomain.DenyLeaseAuthority),
 		},
 		{
 			name: "canonical-cwd-mismatch",
 			mutate: func(_ *IssueOpsRecord, _ *model.NativeActor, _ *uint64, cwd *string) {
 				*cwd += "-other"
 			},
-			expected: leasedomain.DenyCanonicalCWD,
+			expected: string(leasedomain.DenyCanonicalCWD),
 		},
 		{
 			name: "claimable-status",
@@ -337,7 +391,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					ClaimTokenSHA256: strings.Repeat("a", 64),
 				}
 			},
-			expected: leasedomain.DenyLeaseAuthority,
+			expected: string(leasedomain.DenyLeaseAuthority),
 		},
 		{
 			name: "released-status",
@@ -346,7 +400,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					Generation: 1, Status: model.LeaseStatusReleased, ReleasedAt: "2026-07-27T00:00:00Z",
 				}
 			},
-			expected: leasedomain.DenyLeaseAuthority,
+			expected: string(leasedomain.DenyLeaseAuthority),
 		},
 		{
 			name: "forbidden-legacy-authority",
@@ -355,7 +409,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					return bytes.Replace(data, []byte("\n}"), []byte(",\n  \"execution_handoff\": {\"legacy\": true}\n}"), 1)
 				})
 			},
-			expected: leasedomain.DenyPersistence,
+			expected: string(leasecontract.FailurePersistence),
 		},
 		{
 			name: "invalid-execution-mode",
@@ -364,7 +418,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					return bytes.Replace(data, []byte("\"mode\": \"direct\""), []byte("\"mode\": \"invalid\""), 1)
 				})
 			},
-			expected: leasedomain.DenyPersistence,
+			expected: string(leasecontract.FailurePersistence),
 		},
 		{
 			name: "active-lease-missing-claimed-at",
@@ -378,7 +432,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					)
 				})
 			},
-			expected: leasedomain.DenyPersistence,
+			expected: string(leasecontract.FailurePersistence),
 		},
 		{
 			name: "direct-mode-with-orca-binding",
@@ -389,7 +443,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					return bytes.Replace(data, []byte("\"driver\": \"orca\""), []byte("\"driver\": \"git\""), 1)
 				})
 			},
-			expected: leasedomain.DenyPersistence,
+			expected: string(leasecontract.FailurePersistence),
 		},
 		{
 			name: "malformed-pending-sidecar",
@@ -398,7 +452,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					execution["pending"] = json.RawMessage(`"not-an-object"`)
 				})
 			},
-			expected: leasedomain.DenyPersistence,
+			expected: string(leasecontract.FailurePersistence),
 		},
 		{
 			name: "malformed-completion-sidecar",
@@ -407,7 +461,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					execution["completion"] = json.RawMessage(`{"final_head":"short"}`)
 				})
 			},
-			expected: leasedomain.DenyPersistence,
+			expected: string(leasecontract.FailurePersistence),
 		},
 		{
 			name: "malformed-failure-sidecar",
@@ -416,7 +470,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					execution["failure"] = json.RawMessage(`{"at":"2026-07-27T00:00:04Z"}`)
 				})
 			},
-			expected: leasedomain.DenyPersistence,
+			expected: string(leasecontract.FailurePersistence),
 		},
 		{
 			name: "malformed-sync-base-events-sidecar",
@@ -425,39 +479,21 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					execution["sync_base_events"] = json.RawMessage(`{}`)
 				})
 			},
-			expected: leasedomain.DenyPersistence,
-		},
-		{
-			name: "legacy-missing-schema",
-			rawRecord: func(t *testing.T, record IssueOpsRecord) []byte {
-				return releaseDifferentialRawRecord(t, record, func(data []byte) []byte {
-					return bytes.Replace(data, []byte("  \"schema_version\": 1,\n"), nil, 1)
-				})
-			},
-			expected: leasedomain.DenyUnsupportedSchema,
-		},
-		{
-			name: "legacy-zero-schema",
-			rawRecord: func(t *testing.T, record IssueOpsRecord) []byte {
-				return releaseDifferentialRawRecord(t, record, func(data []byte) []byte {
-					return bytes.Replace(data, []byte("\"schema_version\": 1"), []byte("\"schema_version\": 0"), 1)
-				})
-			},
-			expected: leasedomain.DenyUnsupportedSchema,
+			expected: string(leasecontract.FailurePersistence),
 		},
 		{
 			name: "malformed-schema",
 			rawRecord: func(*testing.T, IssueOpsRecord) []byte {
 				return []byte(`{"schema_version":`)
 			},
-			expected: leasedomain.DenyMalformedSchema,
+			expected: string(leasecontract.FailureMalformedSchema),
 		},
 		{
 			name: "schema-version-type-mismatch",
 			rawRecord: func(*testing.T, IssueOpsRecord) []byte {
 				return []byte(`{"ok":true,"schema_version":"1","id":"io-d1ff3e3a7e01"}`)
 			},
-			expected: leasedomain.DenyPersistence,
+			expected: string(leasecontract.FailurePersistence),
 		},
 		{
 			name: "repo-type-mismatch",
@@ -471,18 +507,18 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					return replaced
 				})
 			},
-			expected: leasedomain.DenyPersistence,
+			expected: string(leasecontract.FailurePersistence),
 		},
 		{
 			name: "future-schema",
 			rawRecord: func(*testing.T, IssueOpsRecord) []byte {
 				return []byte(`{"ok":true,"schema_version":2,"id":"io-d1ff3e3a7e01"}`)
 			},
-			expected: leasedomain.DenyUnsupportedSchema,
+			expected: string(leasecontract.FailureUnsupportedSchema),
 		},
 		{
 			name:       "reverse-index-conflict",
-			expected:   leasedomain.DenyPersistence,
+			expected:   string(leasecontract.FailurePersistence),
 			staleIndex: true,
 		},
 	}
@@ -518,13 +554,13 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 				ID: record.ID, Generation: generation, Actor: requestActor, CWD: cwd,
 			})
 			service := leaseapp.NewReleaseService(
-				leaseadapter.NewSQLiteRepository(proposedRoot),
+				releaseDifferentialSQLite(t, proposedRoot),
 				releaseDifferentialClock{at: time.Date(2026, 7, 27, 1, 2, 3, 4, time.UTC)},
 				releaseDifferentialProcessInspector,
 				leaseadapter.FilesystemPathMatcher{},
 			)
 			proposedResult, proposedErr := service.Release(context.Background(), leaseapp.ReleaseRequest{
-				ID: record.ID, Generation: generation, Actor: releaseDifferentialDomainActor(requestActor), CWD: cwd,
+				ID: record.ID, Generation: generation, Actor: releaseDifferentialDomainActor(requestActor), Ancestry: releaseDifferentialProcessAncestry(requestActor), CWD: cwd,
 			})
 			if currentErr == nil || proposedErr == nil {
 				t.Fatalf("release unexpectedly succeeded: current=%v proposed=%v", currentErr, proposedErr)
@@ -532,7 +568,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 			if got := classifyCurrentReleaseDeny(currentErr); got != tc.expected {
 				t.Fatalf("current deny=%q want=%q: %v", got, tc.expected, currentErr)
 			}
-			if got := leasedomain.DenyCodeOf(proposedErr); got != tc.expected {
+			if got := classifyProposedReleaseDeny(proposedErr); got != tc.expected {
 				t.Fatalf("proposed deny=%q want=%q: %v", got, tc.expected, proposedErr)
 			}
 			if currentResult.OK != proposedResult.OK || currentResult.ID != proposedResult.ID {
@@ -607,7 +643,7 @@ func TestExecutionLeaseReleasePrototypeFailureInjectionIsAtomic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	repository, err := leaseadapter.NewFakeRepository(record.ID, raw)
+	repository, err := newReleaseFailureRepository(record.ID, raw)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -621,42 +657,179 @@ func TestExecutionLeaseReleasePrototypeFailureInjectionIsAtomic(t *testing.T) {
 	)
 
 	_, err = service.Release(context.Background(), leaseapp.ReleaseRequest{
-		ID: record.ID, Generation: 1, Actor: releaseDifferentialDomainActor(actor),
+		ID: record.ID, Generation: 1, Actor: releaseDifferentialDomainActor(actor), Ancestry: releaseDifferentialProcessAncestry(actor),
 		CWD: record.Execution.Workspace.Root,
 	})
-	if got := leasedomain.DenyCodeOf(err); got != leasedomain.DenyPersistence {
-		t.Fatalf("failure injection deny=%q want=%q: %v", got, leasedomain.DenyPersistence, err)
+	if got := classifyProposedReleaseDeny(err); got != string(leasecontract.FailurePersistence) {
+		t.Fatalf("failure injection deny=%q want=%q: %v", got, leasecontract.FailurePersistence, err)
 	}
 	if after := repository.StateBytes(); !bytes.Equal(before, after) {
 		t.Fatalf("failure injection changed persisted state\nbefore:\n%s\nafter:\n%s", before, after)
 	}
 }
 
+func TestExecutionLeaseReleaseDoesNotReadClockBeforeSQLiteIndexValidation(t *testing.T) {
+	root := t.TempDir()
+	record, actor := releaseDifferentialActiveRecord(t, 1, "worker-7")
+	releaseDifferentialSeedRecord(t, root, t.TempDir(), record)
+	releaseDifferentialOverwriteIndex(t, root, leaseHolderIndexKey(actor))
+	clock := &releaseCountingClock{at: time.Date(2026, 7, 29, 0, 0, 0, 0, time.UTC)}
+	service := leaseapp.NewReleaseService(
+		releaseDifferentialSQLite(t, root),
+		clock,
+		releaseDifferentialProcessInspector,
+		leaseadapter.FilesystemPathMatcher{},
+	)
+	_, err := service.Release(context.Background(), leaseapp.ReleaseRequest{
+		ID: record.ID, Generation: 1, Actor: releaseDifferentialDomainActor(actor), Ancestry: releaseDifferentialProcessAncestry(actor),
+		CWD: record.Execution.Workspace.Root,
+	})
+	if leasecontract.FailureCodeOf(err) != leasecontract.FailurePersistence {
+		t.Fatalf("index conflict error=%v", err)
+	}
+	if got, want := err.Error(), "persistence: refusing to delete another lifecycle's lease-holder index"; got != want {
+		t.Fatalf("index conflict text=%q want=%q", got, want)
+	}
+	if clock.calls != 0 {
+		t.Fatalf("clock was read before rejecting holder index conflict: calls=%d", clock.calls)
+	}
+}
+
+type releaseCountingClock struct {
+	at    time.Time
+	calls int
+}
+
+func (c *releaseCountingClock) Now() time.Time {
+	c.calls++
+	return c.at
+}
+
+type releaseFailureRepository struct {
+	id          string
+	state       []byte
+	nextSaveErr error
+}
+
+func newReleaseFailureRepository(id string, state []byte) (*releaseFailureRepository, error) {
+	if _, err := leasecontract.Decode(id, state); err != nil {
+		return nil, err
+	}
+	return &releaseFailureRepository{id: id, state: append([]byte(nil), state...)}, nil
+}
+
+func (r *releaseFailureRepository) Update(
+	_ context.Context,
+	id string,
+	validate leaseapp.RecordValidator,
+	transition leaseapp.RecordTransition,
+) (leaseapp.RepositoryResult, error) {
+	if id != r.id {
+		return leaseapp.RepositoryResult{}, leasecontract.Fail(leasecontract.FailurePersistence, errors.New("issueops record not found"))
+	}
+	record, err := leasecontract.Decode(id, r.state)
+	if err != nil {
+		return leaseapp.RepositoryResult{}, leasecontract.Fail(leasecontract.FailurePersistence, err)
+	}
+	if record.Execution == nil {
+		return leaseapp.RepositoryResult{}, leasecontract.Fail(leasecontract.FailurePersistence, leasecontract.ErrExecutionNotPrepared)
+	}
+	before := leaseapp.Record{ID: record.ID, CanonicalRoot: record.Execution.Workspace.Root, Lease: record.Execution.Lease}
+	if err := validate(before); err != nil {
+		return leaseapp.RepositoryResult{}, err
+	}
+	after, err := transition(before)
+	if err != nil {
+		return leaseapp.RepositoryResult{}, err
+	}
+	if r.nextSaveErr != nil {
+		err := r.nextSaveErr
+		r.nextSaveErr = nil
+		return leaseapp.RepositoryResult{}, leasecontract.Fail(leasecontract.FailurePersistence, err)
+	}
+	record.Execution.Lease = after.Lease
+	r.state, err = leasecontract.Encode(record)
+	if err != nil {
+		return leaseapp.RepositoryResult{}, leasecontract.Fail(leasecontract.FailurePersistence, err)
+	}
+	return leaseapp.RepositoryResult{Record: after, Execution: *record.Execution}, nil
+}
+
+func (r *releaseFailureRepository) FailNextSave(err error) { r.nextSaveErr = err }
+
+func (r *releaseFailureRepository) StateBytes() []byte { return append([]byte(nil), r.state...) }
+
 func TestExecutionLeaseReleasePrototypeProcessHelper(t *testing.T) {
 	mode := os.Getenv(releaseProcessHelperModeEnv)
 	if mode == "" {
 		t.Skip("subprocess helper only")
 	}
-	repository := leaseadapter.NewSQLiteRepository(os.Getenv(releaseProcessHelperRootEnv))
-	_, err := repository.Update(
-		context.Background(),
-		os.Getenv(releaseProcessHelperIDEnv),
-		func(record leasedomain.Record) (leasedomain.Record, error) {
-			if err := appendReleaseProcessMarker(os.Getenv(releaseProcessHelperMarkerEnv), mode+"-entered"); err != nil {
-				return leasedomain.Record{}, err
-			}
-			if mode == "holder" {
-				time.Sleep(1200 * time.Millisecond)
-				if err := appendReleaseProcessMarker(os.Getenv(releaseProcessHelperMarkerEnv), mode+"-leaving"); err != nil {
-					return leasedomain.Record{}, err
-				}
-			}
-			return leasedomain.Record{}, errors.New("stop before persistence")
-		},
-	)
-	if err == nil {
-		t.Fatal("process helper unexpectedly persisted")
+	stateRoot := os.Getenv(releaseProcessHelperRootEnv)
+	id := os.Getenv(releaseProcessHelperIDEnv)
+	record, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		t.Fatalf("read process helper record: %v", err)
 	}
+	if record.Execution == nil || record.Execution.Lease.Holder == nil {
+		t.Fatal("process helper requires an active holder")
+	}
+	if mode == "legacy" {
+		actor := *record.Execution.Lease.Holder
+		actor.ProcessAncestry = []model.NativeProcessReceipt{*actor.SessionProcess}
+		_, err := ReleaseExecution(stateRoot, ExecutionReleaseRequest{
+			ID: id, Generation: record.Execution.Lease.Generation, Actor: actor, CWD: record.Execution.Workspace.Root,
+		})
+		if err == nil || !strings.Contains(err.Error(), "only the current holder may release") {
+			t.Fatalf("legacy contender release error=%v", err)
+		}
+		if err := appendReleaseProcessMarker(os.Getenv(releaseProcessHelperMarkerEnv), "legacy-rejected"); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	service := leaseapp.NewReleaseService(
+		releaseDifferentialSQLite(t, stateRoot),
+		releaseProcessClock{mode: mode, marker: os.Getenv(releaseProcessHelperMarkerEnv)},
+		func(_ context.Context, receipt leasedomain.ProcessReceipt) (string, leasedomain.ProcessReceipt, error) {
+			return "live", receipt, nil
+		},
+		leaseadapter.FilesystemPathMatcher{},
+	)
+	_, err = service.Release(context.Background(), leaseapp.ReleaseRequest{
+		ID: id, Generation: record.Execution.Lease.Generation,
+		Actor:    releaseDifferentialDomainActor(*record.Execution.Lease.Holder),
+		Ancestry: releaseDifferentialHolderAncestry(*record.Execution.Lease.Holder),
+		CWD:      record.Execution.Workspace.Root,
+	})
+	if mode == "holder" && err != nil {
+		t.Fatalf("holder release commit: %v", err)
+	}
+	if mode != "holder" {
+		if leasedomain.DenyCodeOf(err) != leasedomain.DenyLeaseAuthority {
+			t.Fatalf("contender release error=%v", err)
+		}
+		if err := appendReleaseProcessMarker(os.Getenv(releaseProcessHelperMarkerEnv), "contender-rejected"); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+type releaseProcessClock struct {
+	mode   string
+	marker string
+}
+
+func (c releaseProcessClock) Now() time.Time {
+	if c.mode == "holder" {
+		if err := appendReleaseProcessMarker(c.marker, "holder-entered"); err != nil {
+			panic(err)
+		}
+		time.Sleep(1200 * time.Millisecond)
+		if err := appendReleaseProcessMarker(c.marker, "holder-leaving"); err != nil {
+			panic(err)
+		}
+	}
+	return time.Date(2026, 7, 29, 0, 0, 0, 0, time.UTC)
 }
 
 func TestExecutionLeaseReleasePrototypeSerializesAcrossProcesses(t *testing.T) {
@@ -681,7 +854,7 @@ func TestExecutionLeaseReleasePrototypeSerializesAcrossProcesses(t *testing.T) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	contender := startReleaseProcessHelper(t, "contender", proposedRoot, marker, record.ID)
+	contender := startReleaseProcessHelper(t, "legacy", proposedRoot, marker, record.ID)
 	if err := contender.Wait(); err != nil {
 		t.Fatalf("contender helper: %v", err)
 	}
@@ -690,7 +863,7 @@ func TestExecutionLeaseReleasePrototypeSerializesAcrossProcesses(t *testing.T) {
 	}
 
 	got := readReleaseProcessMarkers(marker)
-	want := []string{"holder-entered", "holder-leaving", "contender-entered"}
+	want := []string{"holder-entered", "holder-leaving", "legacy-rejected"}
 	if len(got) != len(want) {
 		t.Fatalf("unexpected release order: got=%v want=%v", got, want)
 	}
@@ -698,6 +871,14 @@ func TestExecutionLeaseReleasePrototypeSerializesAcrossProcesses(t *testing.T) {
 		if got[index] != want[index] {
 			t.Fatalf("release transition crossed process lock: got=%v want=%v", got, want)
 		}
+	}
+	persisted, _, indexExists := releaseDifferentialSnapshot(t, proposedRoot, record.ID, leaseHolderIndexKey(*record.Execution.Lease.Holder))
+	var released IssueOpsRecord
+	if err := json.Unmarshal(persisted, &released); err != nil {
+		t.Fatalf("decode raced release record: %v", err)
+	}
+	if released.Execution == nil || released.Execution.Lease.Status != model.LeaseStatusReleased || released.Execution.Lease.ReleasedAt != "2026-07-29T00:00:00Z" || indexExists {
+		t.Fatalf("exactly one release commit was not durable: execution=%#v index_exists=%t", released.Execution, indexExists)
 	}
 }
 
@@ -707,25 +888,15 @@ func TestExecutionLeaseReleaseDomainUsesResolvedCanonicalCWD(t *testing.T) {
 	}
 	actor := leasedomain.Actor{
 		Host: "codex", SessionID: "domain-session", Process: &process,
-		Ancestry: []leasedomain.ProcessReceipt{process},
 	}
-	record := leasedomain.Record{
-		ID: "io-d1ff3e3a7e01",
-		Execution: leasedomain.Execution{
-			Lease: leasedomain.Lease{
-				Generation: 1, Status: "active", Holder: &actor,
-				ClaimedAt: "2026-07-27T00:00:01Z",
-			},
-		},
-	}
-	after, err := leasedomain.Release(record, leasedomain.ReleaseRequest{
+	lease := leasedomain.Lease{Generation: 1, Status: "active", Holder: &actor}
+	if err := leasedomain.ValidateRelease(lease, leasedomain.ReleaseRequest{
 		Generation: 1, Actor: actor, AuthorityVerified: true, CanonicalCWD: true,
-	}, time.Date(2026, 7, 27, 1, 2, 3, 4, time.UTC))
-	if err != nil {
+	}); err != nil {
 		t.Fatalf("pure domain release: %v", err)
 	}
-	if after.Execution.Lease.Status != "released" {
-		t.Fatalf("domain lease status=%q want=released", after.Execution.Lease.Status)
+	if after := leasedomain.ApplyRelease(time.Date(2026, 7, 27, 1, 2, 3, 4, time.UTC)); after.Status != "released" {
+		t.Fatalf("domain lease status=%q want=released", after.Status)
 	}
 }
 
@@ -737,7 +908,7 @@ func TestExecutionLeaseReleaseCallsClockInsideValidatedRepositoryUpdate(t *testi
 		result := make(chan error, 1)
 		go func() {
 			_, err := service.Release(context.Background(), leaseapp.ReleaseRequest{
-				ID: "io-clock-ordering", Generation: 1, Actor: releaseClockOrderingActor(), CWD: "/worktree",
+				ID: "io-clock-ordering", Generation: 1, Actor: releaseClockOrderingActor(), Ancestry: releaseClockOrderingAncestry(), CWD: "/worktree",
 			})
 			result <- err
 		}()
@@ -747,12 +918,12 @@ func TestExecutionLeaseReleaseCallsClockInsideValidatedRepositoryUpdate(t *testi
 			select {
 			case <-repository.entered:
 				persisted := repository.Snapshot()
-				if got := persisted.Execution.Lease.Status; got != "active" {
+				if got := persisted.Lease.Status; got != "active" {
 					close(clock.release)
 					<-result
 					t.Fatalf("persisted status while clock blocks=%q want=active", got)
 				}
-				if got := persisted.Execution.Lease.ReleasedAt; got != "" {
+				if got := persisted.Lease.ReleasedAt; got != "" {
 					close(clock.release)
 					<-result
 					t.Fatalf("persisted released_at while clock blocks=%q want empty", got)
@@ -770,10 +941,10 @@ func TestExecutionLeaseReleaseCallsClockInsideValidatedRepositoryUpdate(t *testi
 			t.Fatalf("release: %v", err)
 		}
 		persisted := repository.Snapshot()
-		if got := persisted.Execution.Lease.Status; got != "released" {
+		if got := persisted.Lease.Status; got != "released" {
 			t.Fatalf("persisted status after clock release=%q want=released", got)
 		}
-		if got, want := persisted.Execution.Lease.ReleasedAt, clock.at.UTC().Format(time.RFC3339Nano); got != want {
+		if got, want := persisted.Lease.ReleasedAt, clock.at.UTC().Format(time.RFC3339Nano); got != want {
 			t.Fatalf("persisted released_at=%q want=%q", got, want)
 		}
 	})
@@ -785,7 +956,7 @@ func TestExecutionLeaseReleaseCallsClockInsideValidatedRepositoryUpdate(t *testi
 		result := make(chan error, 1)
 		go func() {
 			_, err := service.Release(context.Background(), leaseapp.ReleaseRequest{
-				ID: "io-clock-ordering", Generation: 1, Actor: releaseClockOrderingActor(), CWD: "/worktree",
+				ID: "io-clock-ordering", Generation: 1, Actor: releaseClockOrderingActor(), Ancestry: releaseClockOrderingAncestry(), CWD: "/worktree",
 			})
 			result <- err
 		}()
@@ -806,7 +977,7 @@ func TestExecutionLeaseReleaseCallsClockInsideValidatedRepositoryUpdate(t *testi
 }
 
 type releaseClockOrderingRepository struct {
-	record  leasedomain.Record
+	record  leaseapp.Record
 	entered chan struct{}
 }
 
@@ -820,18 +991,22 @@ func newReleaseClockOrderingRepository(status string) *releaseClockOrderingRepos
 func (r *releaseClockOrderingRepository) Update(
 	_ context.Context,
 	_ string,
-	transition func(leasedomain.Record) (leasedomain.Record, error),
-) (leasedomain.Record, error) {
+	validate leaseapp.RecordValidator,
+	transition leaseapp.RecordTransition,
+) (leaseapp.RepositoryResult, error) {
 	close(r.entered)
+	if err := validate(r.record); err != nil {
+		return leaseapp.RepositoryResult{}, err
+	}
 	after, err := transition(r.record)
 	if err != nil {
-		return leasedomain.Record{}, err
+		return leaseapp.RepositoryResult{}, err
 	}
 	r.record = after
-	return after, nil
+	return leaseapp.RepositoryResult{Record: after}, nil
 }
 
-func (r *releaseClockOrderingRepository) Snapshot() leasedomain.Record {
+func (r *releaseClockOrderingRepository) Snapshot() leaseapp.Record {
 	return r.record
 }
 
@@ -859,9 +1034,11 @@ func releaseClockOrderingActor() leasedomain.Actor {
 	process := leasedomain.ProcessReceipt{
 		PID: 1234, StartedAt: "2026-07-28T07:01:00Z", Executable: "/usr/bin/codex",
 	}
-	return leasedomain.Actor{
-		Host: "codex", SessionID: "clock-session", Process: &process, Ancestry: []leasedomain.ProcessReceipt{process},
-	}
+	return leasedomain.Actor{Host: "codex", SessionID: "clock-session", Process: &process}
+}
+
+func releaseClockOrderingAncestry() []leasedomain.ProcessReceipt {
+	return []leasedomain.ProcessReceipt{{PID: 1234, StartedAt: "2026-07-28T07:01:00Z", Executable: "/usr/bin/codex"}}
 }
 
 func releaseClockOrderingProcessInspector(
@@ -871,17 +1048,9 @@ func releaseClockOrderingProcessInspector(
 	return "live", receipt, nil
 }
 
-func releaseClockOrderingRecord(status string) leasedomain.Record {
+func releaseClockOrderingRecord(status string) leaseapp.Record {
 	actor := releaseClockOrderingActor()
-	return leasedomain.Record{
-		ID: "io-clock-ordering",
-		Execution: leasedomain.Execution{
-			Workspace: leasedomain.Workspace{Root: "/worktree"},
-			Lease: leasedomain.Lease{
-				Generation: 1, Status: status, Holder: &actor, ClaimedAt: "2026-07-28T07:01:00Z",
-			},
-		},
-	}
+	return leaseapp.Record{ID: "io-clock-ordering", CanonicalRoot: "/worktree", Lease: leasecontract.Lease{Generation: 1, Status: status, Holder: &leasecontract.Actor{Host: actor.Host, SessionID: actor.SessionID, AgentID: actor.AgentID, SessionProcess: &leasecontract.ProcessReceipt{PID: actor.Process.PID, StartedAt: actor.Process.StartedAt, Executable: actor.Process.Executable}}, ClaimedAt: "2026-07-28T07:01:00Z"}}
 }
 
 func startReleaseProcessHelper(t *testing.T, mode, root, marker, id string) *exec.Cmd {
@@ -961,7 +1130,7 @@ func releaseDifferentialActiveRecord(t *testing.T, schema int, agentID string) (
 			Mode: model.ExecutionModeDirect,
 			Workspace: model.Workspace{
 				SourceRoot: sourceRoot, Root: worktreeRoot, Branch: "191-release-differential",
-				BaseHead: strings.Repeat("b", 40), Driver: "git", LinkedAt: "2026-07-27T00:00:00Z",
+				BaseHead: strings.Repeat("b", 40), ParentWorktree: "/parent-worktree", Driver: "git", LinkedAt: "2026-07-27T00:00:00Z",
 			},
 			Lease: model.WriteLease{
 				Generation: 1, Status: model.LeaseStatusActive, Holder: &actor,
@@ -977,6 +1146,15 @@ func releaseDifferentialActiveRecord(t *testing.T, schema int, agentID string) (
 func releaseDifferentialSeedActive(t *testing.T, currentRoot, proposedRoot string, record IssueOpsRecord) IssueOpsRecord {
 	t.Helper()
 	return releaseDifferentialSeedRecord(t, currentRoot, proposedRoot, record)
+}
+
+func releaseDifferentialSQLite(t *testing.T, root string) *leaseadapter.SQLiteRepository {
+	t.Helper()
+	db, err := sqlstore.Open(root)
+	if err != nil {
+		t.Fatalf("open proposed SQLite store: %v", err)
+	}
+	return leaseadapter.NewSQLiteRepository(db)
 }
 
 func releaseDifferentialSeedRecord(t *testing.T, currentRoot, proposedRoot string, record IssueOpsRecord) IssueOpsRecord {
@@ -1091,12 +1269,22 @@ func releaseDifferentialDomainActor(actor model.NativeActor) leasedomain.Actor {
 			Executable: actor.SessionProcess.Executable,
 		}
 	}
-	for _, receipt := range actor.ProcessAncestry {
-		result.Ancestry = append(result.Ancestry, leasedomain.ProcessReceipt{
-			PID: receipt.PID, StartedAt: receipt.StartedAt, Executable: receipt.Executable,
-		})
-	}
 	return result
+}
+
+func releaseDifferentialProcessAncestry(actor model.NativeActor) []leasedomain.ProcessReceipt {
+	ancestry := make([]leasedomain.ProcessReceipt, 0, len(actor.ProcessAncestry))
+	for _, receipt := range actor.ProcessAncestry {
+		ancestry = append(ancestry, leasedomain.ProcessReceipt{PID: receipt.PID, StartedAt: receipt.StartedAt, Executable: receipt.Executable})
+	}
+	return ancestry
+}
+
+func releaseDifferentialHolderAncestry(actor model.NativeActor) []leasedomain.ProcessReceipt {
+	if actor.SessionProcess == nil {
+		return nil
+	}
+	return []leasedomain.ProcessReceipt{{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}}
 }
 
 func releaseDifferentialProcessInspector(
@@ -1127,7 +1315,7 @@ func assertReleaseDifferentialResult(t *testing.T, current ExecutionResult, prop
 	assertReleaseDifferentialLease(t, current.Execution.Lease, proposed.Execution.Lease)
 }
 
-func assertReleaseDifferentialLease(t *testing.T, current model.WriteLease, proposed leasedomain.Lease) {
+func assertReleaseDifferentialLease(t *testing.T, current model.WriteLease, proposed leasecontract.Lease) {
 	t.Helper()
 	if string(current.Status) != string(proposed.Status) ||
 		current.Generation != proposed.Generation ||
@@ -1141,29 +1329,39 @@ func assertReleaseDifferentialLease(t *testing.T, current model.WriteLease, prop
 	}
 }
 
-func classifyCurrentReleaseDeny(err error) leasedomain.DenyCode {
+func classifyCurrentReleaseDeny(err error) string {
 	switch message := err.Error(); {
 	case strings.Contains(message, "only the current holder may release"):
-		return leasedomain.DenyLeaseAuthority
+		return string(leasedomain.DenyLeaseAuthority)
 	case strings.Contains(message, "local process ancestry"):
-		return leasedomain.DenyLeaseAuthority
+		return string(leasedomain.DenyLeaseAuthority)
 	case strings.Contains(message, "native process identity"):
-		return leasedomain.DenyLeaseAuthority
+		return string(leasedomain.DenyLeaseAuthority)
 	case strings.Contains(message, "release cwd must be the canonical worktree"):
-		return leasedomain.DenyCanonicalCWD
+		return string(leasedomain.DenyCanonicalCWD)
 	case strings.Contains(message, "unsupported issueops schema_version"):
-		return leasedomain.DenyUnsupportedSchema
+		return string(leasecontract.FailureUnsupportedSchema)
 	case strings.Contains(message, "unexpected end of JSON input"):
-		return leasedomain.DenyMalformedSchema
+		return string(leasecontract.FailureMalformedSchema)
 	case strings.Contains(message, "refusing to delete another lifecycle"):
-		return leasedomain.DenyPersistence
+		return string(leasecontract.FailurePersistence)
 	default:
 		var syntaxError *json.SyntaxError
 		if errors.As(err, &syntaxError) {
-			return leasedomain.DenyMalformedSchema
+			return string(leasecontract.FailureMalformedSchema)
 		}
-		return leasedomain.DenyPersistence
+		return string(leasecontract.FailurePersistence)
 	}
+}
+
+func classifyProposedReleaseDeny(err error) string {
+	if code := leasedomain.DenyCodeOf(err); code != "" {
+		return string(code)
+	}
+	if message := err.Error(); strings.Contains(message, "local process ancestry") || strings.Contains(message, "native process identity") {
+		return string(leasedomain.DenyLeaseAuthority)
+	}
+	return string(leasecontract.FailureCodeOf(err))
 }
 
 type releaseDifferentialClock struct {

@@ -1,6 +1,10 @@
 package mcpcli
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"agent-harness/internal/core/issueops"
+)
 
 type MCPToolCall struct {
 	Name      string         `json:"name"`
@@ -14,6 +18,12 @@ type MCPToolOutcome struct {
 	Result  any
 	Payload any
 	Err     *RPCError
+}
+
+// MCPDependencies는 server 생성 시 고정된다. 요청 간 package-global dependency
+// cache를 두지 않아 서로 다른 MCP server의 release handler가 섞이지 않는다.
+type MCPDependencies struct {
+	Release issueops.ExecutionReleaseHandler
 }
 
 func mcpToolPayload(payload any) MCPToolOutcome {
@@ -38,6 +48,16 @@ func mcpToolFailure(err *RPCError) MCPToolOutcome {
 }
 
 func HandleToolCall(params json.RawMessage) (any, *RPCError) {
+	return HandleToolCallWithDependencies(params, MCPDependencies{})
+}
+
+// HandleToolCallWithReleaseHandler keeps the server dependency immutable per
+// call instead of caching a composition-root handler in package state.
+func HandleToolCallWithReleaseHandler(params json.RawMessage, release issueops.ExecutionReleaseHandler) (any, *RPCError) {
+	return HandleToolCallWithDependencies(params, MCPDependencies{Release: release})
+}
+
+func HandleToolCallWithDependencies(params json.RawMessage, deps MCPDependencies) (any, *RPCError) {
 	var call MCPToolCall
 	if err := json.Unmarshal(params, &call); err != nil {
 		return nil, &RPCError{Code: -32602, Message: "Invalid params", Data: err.Error()}
@@ -45,7 +65,9 @@ func HandleToolCall(params json.RawMessage) (any, *RPCError) {
 	for _, handler := range []func(MCPToolCall) MCPToolOutcome{
 		handleProjectMCPToolCall,
 		handlePolicyStateMCPToolCall,
-		handleIssueOpsMCPToolCall,
+		func(call MCPToolCall) MCPToolOutcome {
+			return handleIssueOpsMCPToolCallWithReleaseHandler(call, deps.Release)
+		},
 		handleLoopMCPToolCall,
 		handleAssistantWorkerMCPToolCall,
 		handleSelfLoopMCPToolCall,

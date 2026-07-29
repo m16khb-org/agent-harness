@@ -3,14 +3,11 @@ package architecture
 import (
 	"encoding/json"
 	"fmt"
-	"go/parser"
-	"go/token"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"sort"
-	"strconv"
 	"strings"
 	"testing"
 )
@@ -42,8 +39,8 @@ func TestEvaluateEdgesRejectsForbiddenDependencies(t *testing.T) {
 		{"domain sqlite", dependencyEdge{"internal/domain/session", "modernc.org/sqlite"}, "domain_must_not_import_implementation"},
 		{"domain contract root", dependencyEdge{"internal/domain/session", "internal/contract"}, "domain_must_not_import_implementation"},
 		{"application outbound adapter", dependencyEdge{"internal/application/run", "internal/adapter/provider"}, "application_must_not_import_implementation"},
-		{"leasevertical application filesystem", dependencyEdge{"internal/core/issueops/testdata/leasevertical/application", "path/filepath"}, "application_must_not_import_implementation"},
-		{"leasevertical contract production issueops", dependencyEdge{"internal/core/issueops/testdata/leasevertical/contract", "internal/core/issueops/model"}, "leasevertical_contract_must_not_import_production_issueops"},
+		{"release application filesystem", dependencyEdge{"internal/application/issueopslease", "path/filepath"}, "application_must_not_import_implementation"},
+		{"release contract production issueops", dependencyEdge{"internal/contract/issueopslease", "internal/core/issueops/model"}, "leasevertical_contract_must_not_import_production_issueops"},
 		{"application syscall", dependencyEdge{"internal/application/run", "syscall"}, "application_must_not_import_implementation"},
 		{"inbound adapter outbound adapter", dependencyEdge{"internal/adapter/inbound/http", "internal/adapter/outbound/github"}, "inbound_adapter_must_not_import_outbound_adapter"},
 	}
@@ -133,13 +130,6 @@ func TestProductionGraphMatchesBaseline(t *testing.T) {
 	}
 }
 
-func TestArchitectureRatchetIncludesLeaseVerticalPrototype(t *testing.T) {
-	edges := loadLeaseVerticalEdges(t)
-	if got := evaluateEdges(edges); len(got) != 0 {
-		t.Fatalf("leasevertical forbidden dependency violations:\n%s", formatViolations(got))
-	}
-}
-
 func evaluateEdges(edges []dependencyEdge) []violation {
 	var violations []violation
 	for _, edge := range edges {
@@ -223,32 +213,6 @@ func loadProductionEdges(t *testing.T) []dependencyEdge {
 	return sortedEdges(edges)
 }
 
-func loadLeaseVerticalEdges(t *testing.T) []dependencyEdge {
-	t.Helper()
-	root := filepath.Join(findRepoRoot(t), "internal", "core", "issueops", "testdata", "leasevertical")
-	var edges []dependencyEdge
-	for _, layer := range []string{"domain", "application", "contract", "adapter"} {
-		dir := filepath.Join(root, layer)
-		packages, err := parser.ParseDir(token.NewFileSet(), dir, nil, 0)
-		if err != nil {
-			t.Fatalf("parse leasevertical %s: %v", layer, err)
-		}
-		importer := "internal/core/issueops/testdata/leasevertical/" + layer
-		for _, pkg := range packages {
-			for _, file := range pkg.Files {
-				for _, imported := range file.Imports {
-					path, err := strconv.Unquote(imported.Path.Value)
-					if err != nil {
-						t.Fatalf("unquote leasevertical import %s: %v", imported.Path.Value, err)
-					}
-					edges = append(edges, dependencyEdge{importer: importer, imported: normalizeImport(path)})
-				}
-			}
-		}
-	}
-	return sortedEdges(edges)
-}
-
 func findRepoRoot(t *testing.T) string {
 	t.Helper()
 	dir, err := os.Getwd()
@@ -309,7 +273,7 @@ func legacyEdges(edges []dependencyEdge) []dependencyEdge {
 	var legacy []dependencyEdge
 	for _, edge := range edges {
 		if (isCore(edge.importer) && isLegacyInfrastructure(edge.imported)) ||
-			(isAdapter(edge.importer) && isCore(edge.imported)) ||
+			(isAdapter(edge.importer) && isCore(edge.imported) && !isReleaseInboundAdapter(edge.importer)) ||
 			(isConcreteAdapter(edge.imported) && !isCompositionRoot(edge.importer)) {
 			legacy = append(legacy, edge)
 		}
@@ -408,7 +372,11 @@ func isApplicationImplementation(path string) bool {
 }
 
 func isLeaseVerticalLayer(path, layer string) bool {
-	return path == "internal/core/issueops/testdata/leasevertical/"+layer
+	return path == "internal/"+layer+"/issueopslease"
+}
+
+func isReleaseInboundAdapter(path string) bool {
+	return path == "internal/adapter/inbound/issueopslease"
 }
 
 func isProductionIssueOps(path string) bool {
