@@ -67,3 +67,75 @@ func TestExecutionKeepsNearMissOrcaOwnerControlPlaneCommandsBlocked(t *testing.T
 		})
 	}
 }
+
+func TestExecutionAdmitsExactGenerationBoundResumeControlPlane(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	record.Execution.Mode = issueopsmodel.ExecutionModeOrca
+	record.Execution.Workspace.Driver = "orca"
+	record.Execution.Lease = issueopsmodel.WriteLease{
+		Generation: 3, Status: issueopsmodel.LeaseStatusClaimable,
+		ClaimTokenSHA256: strings.Repeat("a", 64),
+	}
+	record.Execution.Orca = &issueopsmodel.OrcaBinding{
+		RuntimeID: "runtime-1", RepoID: "repo-1", WorktreeID: "worktree-1",
+		LeaseGeneration: 2, OwnerHost: "codex", OwnerModel: "gpt-5.6-terra",
+		TaskID: "task-1", DispatchID: "dispatch-1", TerminalPTYID: "pty-1",
+	}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	command := "agent-harness issueops execution resume --id " + record.ID +
+		" --expected-generation 3 --host codex --session-id resume-session --session-pid 42" +
+		" --session-started-at 2026-07-30T00:00:00Z --session-executable /bin/codex" +
+		" --cwd " + worker + " --confirm --json"
+	req := executionRequest(record, worker, "codex", "resume-session", command)
+	if !executionTypedControlPlane(req) {
+		t.Fatal("exact resume did not reach the typed control plane")
+	}
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("exact resume was blocked by holderless authority: %+v", got)
+	}
+}
+
+func TestExecutionKeepsNearMissResumeControlPlaneCommandsBlocked(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	record.Execution.Mode = issueopsmodel.ExecutionModeOrca
+	record.Execution.Workspace.Driver = "orca"
+	record.Execution.Lease = issueopsmodel.WriteLease{
+		Generation: 3, Status: issueopsmodel.LeaseStatusClaimable,
+		ClaimTokenSHA256: strings.Repeat("a", 64),
+	}
+	record.Execution.Orca = &issueopsmodel.OrcaBinding{
+		RuntimeID: "runtime-1", RepoID: "repo-1", WorktreeID: "worktree-1",
+		LeaseGeneration: 2, OwnerHost: "codex", OwnerModel: "gpt-5.6-terra",
+		TaskID: "task-1", DispatchID: "dispatch-1", TerminalPTYID: "pty-1",
+	}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	base := "agent-harness issueops execution resume --id " + record.ID +
+		" --expected-generation 3 --host codex --session-id resume-session --session-pid 42" +
+		" --session-started-at 2026-07-30T00:00:00Z --session-executable /bin/codex" +
+		" --cwd " + worker
+	for name, command := range map[string]string{
+		"missing confirm":      base + " --json",
+		"missing generation":   strings.Replace(base, " --expected-generation 3", "", 1) + " --confirm --json",
+		"unknown snapshot":     base + " --issue-snapshot-file /tmp/issue.json --confirm --json",
+		"active substitution":  strings.Replace(base, "--expected-generation 3", "--expected-generation $(date +%s)", 1) + " --confirm --json",
+		"empty lifecycle id":   strings.Replace(base, "--id "+record.ID, "--id ''", 1) + " --confirm --json",
+		"duplicate generation": base + " --expected-generation 4 --confirm --json",
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := executionRequest(record, worker, "codex", "resume-session", command)
+			if executionTypedControlPlane(req) {
+				t.Fatalf("%s near miss reached the typed control plane", name)
+			}
+			got := BuildLifecyclePreToolUseDecision(req)
+			if got.Decision != "block" || got.Deny == nil || got.Deny.Code != "unsafe_mutation" {
+				t.Fatalf("%s near miss was not fail-closed: %+v", name, got)
+			}
+		})
+	}
+}

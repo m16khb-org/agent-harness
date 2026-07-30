@@ -396,6 +396,19 @@ func executionTypedControlPlane(req HookToolUseLifecycleRequest) bool {
 	//
 	// 안전은 그 명령의 fingerprint와 --apply --confirm 게이트가 본다. typed 등록은
 	// 훅의 mutation 가드 블록을 스킵시킬 뿐이고 lease·권위 검사는 core 책임이다(F14).
+	case "execution resume":
+		id, idOK := oneFlag(flags, "--id")
+		generation, generationOK := oneFlag(flags, "--expected-generation")
+		parsedGeneration, generationErr := strconv.ParseUint(strings.TrimSpace(generation), 10, 64)
+		_, confirm := flags["--confirm"]
+		for _, name := range []string{"--host", "--session-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"} {
+			value, found := oneFlag(flags, name)
+			if !found || strings.TrimSpace(value) == "" {
+				return false
+			}
+		}
+		return idOK && strings.TrimSpace(id) != "" && generationOK &&
+			generationErr == nil && parsedGeneration > 0 && confirm
 	case "execution prepare", "execution claim", "execution release", "execution replace", "execution reconcile", "execution complete", "execution sync-base", "execution switch-mode",
 		"cleanup orphan":
 		id, ok := oneFlag(flags, "--id")
@@ -410,6 +423,11 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 		return false, "", nil
 	}
 	unsafeReason := executionUnsafeMutationReason(req)
+	if unsafeReason == "" && searchrouting.IsShellTool(req.Tool) && !executionTypedControlPlane(req) {
+		if command, ok := commandparse.ParseExactIssueOpsCommand(req.Command); ok && command.Path == "execution resume" {
+			unsafeReason = "unclassified IssueOps execution resume command is blocked; use the exact generation-bound confirmed control-plane form"
+		}
+	}
 	resourceWaitRoot, exactResourceWait := exactOwnedResourceWait(req.Command)
 	atomicWorkflowRoot, exactAtomicWorkflow := exactAtomicCommitWorkflowScript(req)
 	atomicWorkflowRelativeScript := exactAtomicWorkflow && atomicCommitWorkflowUsesRelativeScript(req.Command)

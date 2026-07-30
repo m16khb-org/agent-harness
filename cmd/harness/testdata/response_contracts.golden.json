@@ -254,7 +254,7 @@
           "name": "version"
         }
       ],
-      "hash": "fe68f02c9f63fc34bb3d71cb85bdb85ced73da80a576ce8b6ca9529976a57b47",
+      "hash": "bef9b8eeb380337c6b4a2e5431e1c2bc08c4a5ccceee63260dff66d934390474",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -459,6 +459,18 @@
           "quiescence_fingerprint",
           "claim_token_path",
           "issue_snapshot_source",
+          "next_command"
+        ],
+        "issueops_execution_resume": [
+          "ok",
+          "id",
+          "execution",
+          "claim_token_path",
+          "issue_body_sha256",
+          "context_packet_path",
+          "context_packet_sha256",
+          "owner_prompt_path",
+          "owner_prompt_sha256",
           "next_command"
         ],
         "issueops_pr_readiness": [
@@ -6467,7 +6479,7 @@
                 "name": "version"
               }
             ],
-            "hash": "fe68f02c9f63fc34bb3d71cb85bdb85ced73da80a576ce8b6ca9529976a57b47",
+            "hash": "bef9b8eeb380337c6b4a2e5431e1c2bc08c4a5ccceee63260dff66d934390474",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6672,6 +6684,18 @@
                 "quiescence_fingerprint",
                 "claim_token_path",
                 "issue_snapshot_source",
+                "next_command"
+              ],
+              "issueops_execution_resume": [
+                "ok",
+                "id",
+                "execution",
+                "claim_token_path",
+                "issue_body_sha256",
+                "context_packet_path",
+                "context_packet_sha256",
+                "owner_prompt_path",
+                "owner_prompt_sha256",
                 "next_command"
               ],
               "issueops_pr_readiness": [

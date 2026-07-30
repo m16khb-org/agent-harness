@@ -136,6 +136,44 @@ func TestExecutionReconcileExactFlags(t *testing.T) {
 	}
 }
 
+func TestExecutionResumeExactFlags(t *testing.T) {
+	commandText := "agent-harness issueops execution resume --id io-1 --expected-generation 3 --host codex --session-id session-1 --agent-id agent-1 --session-pid 42 --session-started-at 2026-07-30T00:00:00Z --session-executable /bin/codex --cwd /repo.worktrees/resume --confirm --json"
+	command, ok := ParseExactIssueOpsCommand(commandText)
+	if !ok || command.Path != "execution resume" {
+		t.Fatalf("execution resume did not parse: %#v ok=%v", command, ok)
+	}
+	values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
+	if !ok {
+		t.Fatal("execution resume has no exact flag spec")
+	}
+	flags, ok := ExactFlags(command, values, booleans, repeatable)
+	if !ok || flags["--expected-generation"][0] != "3" || flags["--cwd"][0] != "/repo.worktrees/resume" || len(flags["--confirm"]) != 1 {
+		t.Fatalf("execution resume flags = %#v ok=%v", flags, ok)
+	}
+
+	for name, nearMiss := range map[string]string{
+		"unknown snapshot flag": commandText + " --issue-snapshot-file /tmp/issue.json",
+		"duplicate generation":  commandText + " --expected-generation 4",
+		"missing value":         "agent-harness issueops execution resume --id io-1 --expected-generation --confirm",
+	} {
+		t.Run(name, func(t *testing.T) {
+			parsed, parsedOK := ParseExactIssueOpsCommand(nearMiss)
+			if !parsedOK {
+				if name == "missing value" {
+					t.Fatal("missing value must reach exact flag validation")
+				}
+				return
+			}
+			if got, accepted := ExactFlags(parsed, values, booleans, repeatable); accepted || got != nil {
+				t.Fatalf("near miss was accepted: flags=%#v", got)
+			}
+		})
+	}
+	if _, ok := ParseExactIssueOpsCommand("agent-harness issueops execution resume --id io-1 --expected-generation $(date +%s) --confirm"); ok {
+		t.Fatal("active generation substitution was accepted")
+	}
+}
+
 func TestExecutionClaimUsesCanonicalClaimTokenFileFlag(t *testing.T) {
 	command, ok := ParseExactIssueOpsCommand("agent-harness issueops execution claim --id io-1 --generation 1 --claim-token-file /tmp/token --host codex --session-id session-1 --session-pid 42 --session-started-at 2026-07-22T00:00:00Z --session-executable /bin/codex --cwd /repo --json")
 	if !ok {

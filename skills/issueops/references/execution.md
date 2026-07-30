@@ -161,13 +161,31 @@ Replacement is a fail-closed sequence. There is no unsafe override:
 4. `issueops execution replace --finalize --expected-generation N
    --quiescence-fingerprint HEX --confirm` reseals the generation-specific
    owner packet/prompt and only then makes that generation claimable.
-5. Claim with the returned token path plus issue/packet digests. A reseal
+5. `issueops execution resume --expected-generation N --confirm` creates a
+   fresh Orca terminal/task/dispatch in the existing canonical worktree and
+   records `orca.lease_generation=N`.
+6. The new owner claims with the resume result's token path plus issue/packet
+   digests. A reseal
    failure preserves the previous durable lease and removes uncommitted
    generation token/packet/prompt files. A retry first recovers exact
    harness-owned residue for that still-uncommitted generation.
 
 Every mutating step also requires `ACTOR_FLAGS`. `--reseed` is limited to the
 documented holderless recovery case and still uses generation CAS and confirm.
+`replace --finalize|--reseed` therefore returns resume, not claim, as its next
+command:
+
+```bash
+agent-harness issueops execution resume \
+  --id "$ISSUEOPS_ID" --expected-generation "$GENERATION" \
+  $ACTOR_FLAGS --confirm --json
+```
+
+Resume never recreates or reparents the worktree. A same-generation live
+terminal/task pair is an idempotent success. A live old-generation task or
+terminal/task contradiction fails closed. Ambiguous terminal/task/dispatch
+mutation stays pending and must be completed with `execution reconcile`; do not
+repeat resume.
 
 When workspace provisioning or remote publication may have mutated external
 state but the result is ambiguous, inspect and then confirm the exact
