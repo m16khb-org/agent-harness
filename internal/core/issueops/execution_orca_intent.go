@@ -60,16 +60,18 @@ func beginOrcaExecutionIntent(stateRoot string, record IssueOpsRecord, workspace
 		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
 	}
 	startedAt := executionNow(now)
-	marker := executionOrcaMarker(record.ID, operationID, probe.Provider, probe.Issue)
-	probe.Marker = marker
 	payload := externalOrcaIntentPayload{
 		SchemaVersion: model.IssueOpsSchemaVersion, OperationID: operationID, LifecycleID: record.ID,
-		Generation: 1, Stage: port.ExecutionOrcaIntentWorktree, Marker: marker, StartedAt: startedAt,
+		Generation: 1, Stage: port.ExecutionOrcaIntentWorktree, StartedAt: startedAt,
 		Purpose: orcaIntentPurposePrepare, InvocationState: orcaIntentNotInvoked, Workspace: workspace, Probe: probe,
 		IssueBodySHA256: snapshot.issue.BodySHA256,
 	}
 	if strings.ToLower(strings.TrimSpace(req.OwnerHost)) != probe.Host || strings.TrimSpace(req.OwnerModel) != probe.Model || strings.TrimSpace(req.OwnerEffort) != probe.Effort {
 		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, fmt.Errorf("owner profile changed before Orca intent persistence")
+	}
+	payload, err = sealExternalOrcaIntentPayload(record, payload)
+	if err != nil {
+		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -83,6 +85,9 @@ func beginOrcaExecutionIntent(stateRoot string, record IssueOpsRecord, workspace
 		}
 		if current.Execution != nil {
 			return fmt.Errorf("IssueOps execution already exists; reconcile or inspect its current state")
+		}
+		if err := validateOrcaIntentIssueIdentity(current, payload); err != nil {
+			return err
 		}
 		// 위 검사는 자기 ID의 Execution만 본다 — 다른 레코드가 같은 canonical
 		// root를 주장하는 레코드 수준 레이스는 이 임계구역 재검사로만 봉합된다.
@@ -98,7 +103,7 @@ func beginOrcaExecutionIntent(stateRoot string, record IssueOpsRecord, workspace
 			},
 			Lease: model.WriteLease{Generation: payload.Generation, Status: model.LeaseStatusReleased},
 			Pending: &model.ExternalIntent{
-				OperationID: operationID, Kind: string(port.ExecutionOrcaIntentWorktree), Marker: marker, StartedAt: startedAt,
+				OperationID: operationID, Kind: string(port.ExecutionOrcaIntentWorktree), Marker: payload.Marker, StartedAt: startedAt,
 			},
 		}
 		persisted, err = persistExecutionTransitionWithMutations(stateRoot, current, nil, []sqlstore.Mutation{{
@@ -357,6 +362,17 @@ func readAndMatchOrcaIntent(stateRoot, id string, expected externalOrcaIntentPay
 }
 
 func readExternalOrcaIntentPayload(stateRoot, operationID string) (externalOrcaIntentPayload, error) {
+	payload, err := readExternalOrcaIntentPayloadShape(stateRoot, operationID)
+	if err != nil {
+		return externalOrcaIntentPayload{}, err
+	}
+	if err := validateExternalOrcaIntentPayload(payload, operationID); err != nil {
+		return externalOrcaIntentPayload{}, err
+	}
+	return payload, nil
+}
+
+func readExternalOrcaIntentPayloadShape(stateRoot, operationID string) (externalOrcaIntentPayload, error) {
 	db, err := sqlstore.Open(stateRoot)
 	if err != nil {
 		return externalOrcaIntentPayload{}, err
@@ -372,13 +388,137 @@ func readExternalOrcaIntentPayload(stateRoot, operationID string) (externalOrcaI
 	if err := json.Unmarshal(data, &payload); err != nil {
 		return externalOrcaIntentPayload{}, fmt.Errorf("decode Orca external intent payload: %w", err)
 	}
-	if err := validateExternalOrcaIntentPayload(payload, operationID); err != nil {
+	if err := validateExternalOrcaIntentPayloadShape(payload, operationID); err != nil {
 		return externalOrcaIntentPayload{}, err
 	}
 	return payload, nil
 }
 
+func reconcileCanonicalOrcaIntent(
+	stateRoot string,
+	expected IssueOpsRecord,
+) (IssueOpsRecord, externalOrcaIntentPayload, bool, error) {
+	if expected.Execution == nil || expected.Execution.Pending == nil {
+		return expected, externalOrcaIntentPayload{}, false, unsafeLegacyOrcaIntent("Orca pending intent is missing")
+	}
+	var (
+		persisted IssueOpsRecord
+		sealed    externalOrcaIntentPayload
+		migrated  bool
+	)
+	err := withIssueOpsLock(context.Background(), stateRoot, expected.ID, func(context.Context) error {
+		current, err := ReadIssueOps(stateRoot, expected.ID)
+		if err != nil {
+			return err
+		}
+		persisted = current
+		if current.Execution == nil || current.Execution.Pending == nil ||
+			!reflect.DeepEqual(current.Execution, expected.Execution) ||
+			current.IssueURL != expected.IssueURL ||
+			!reflect.DeepEqual(current.BranchPrepare, expected.BranchPrepare) {
+			return unsafeLegacyOrcaIntent("Orca intent authority changed before migration CAS")
+		}
+		pending := current.Execution.Pending
+		payload, err := readExternalOrcaIntentPayloadShape(stateRoot, pending.OperationID)
+		if err != nil {
+			return unsafeLegacyOrcaIntent(err.Error())
+		}
+		sealed = payload
+		if err := validateExternalOrcaIntentPayload(payload, pending.OperationID); err == nil {
+			if pending.Marker != payload.Marker ||
+				pending.Kind != pendingKindForOrcaStage(payload.Stage) ||
+				current.Execution.Lease.Generation != payload.Generation {
+				return unsafeLegacyOrcaIntent("canonical Orca intent does not match current pending authority")
+			}
+			if err := validateOrcaIntentRecordIdentity(current, payload); err != nil {
+				return unsafeLegacyOrcaIntent(err.Error())
+			}
+			return nil
+		}
+		if payload.InvocationState != orcaIntentNotInvoked {
+			return unsafeLegacyOrcaIntent("legacy Orca intent invocation was not proven absent")
+		}
+		legacy, err := parseLegacyOrcaIntentMarker(payload.Marker)
+		if err != nil {
+			return unsafeLegacyOrcaIntent("Orca intent marker is neither canonical nor exact legacy")
+		}
+		if legacy.Purpose != normalizedOrcaIntentPurpose(payload) ||
+			legacy.LifecycleID != payload.LifecycleID ||
+			legacy.LifecycleID != current.ID ||
+			legacy.Generation != payload.Generation ||
+			legacy.Generation != current.Execution.Lease.Generation ||
+			legacy.OperationID != payload.OperationID ||
+			legacy.OperationID != pending.OperationID ||
+			pending.Kind != pendingKindForOrcaStage(payload.Stage) ||
+			pending.Marker != payload.Marker ||
+			payload.Probe.Marker != payload.Marker {
+			return unsafeLegacyOrcaIntent("legacy Orca intent identity does not match current pending authority")
+		}
+		if current.Execution.Failure != nil &&
+			current.Execution.Failure.OperationID != payload.OperationID {
+			return unsafeLegacyOrcaIntent("legacy Orca intent failure receipt belongs to another operation")
+		}
+		issue, err := authoritativeOrcaIssueIdentity(current)
+		if err != nil {
+			return unsafeLegacyOrcaIntent(err.Error())
+		}
+		if payload.Probe.Provider != issue.Provider || payload.Probe.Issue != issue.Issue {
+			return unsafeLegacyOrcaIntent("legacy Orca probe identity does not match the verified issue")
+		}
+		sealed, err = sealExternalOrcaIntentPayload(current, payload)
+		if err != nil {
+			return unsafeLegacyOrcaIntent(err.Error())
+		}
+		if err := validateOrcaIntentRecordIdentity(current, sealed); err != nil {
+			return unsafeLegacyOrcaIntent(err.Error())
+		}
+		data, err := json.Marshal(sealed)
+		if err != nil {
+			return err
+		}
+		current.Execution.Pending.Marker = sealed.Marker
+		persisted, err = persistExecutionTransitionWithMutations(stateRoot, current, nil, []sqlstore.Mutation{{
+			Bucket: externalIntentBucket, ID: sealed.OperationID, Data: data,
+		}})
+		if err != nil {
+			return err
+		}
+		migrated = true
+		return nil
+	})
+	if err != nil {
+		return persisted, sealed, false, err
+	}
+	return persisted, sealed, migrated, nil
+}
+
+func unsafeLegacyOrcaIntent(detail string) error {
+	return newOrcaIntentContractError("legacy_intent_upgrade_unsafe", detail)
+}
+
 func validateExternalOrcaIntentPayload(payload externalOrcaIntentPayload, operationID string) error {
+	if err := validateExternalOrcaIntentPayloadShape(payload, operationID); err != nil {
+		return err
+	}
+	identity, err := parseOrcaIntentMarker(payload.Marker)
+	if err != nil {
+		return err
+	}
+	if identity.Purpose != normalizedOrcaIntentPurpose(payload) ||
+		identity.LifecycleID != payload.LifecycleID ||
+		identity.Generation != payload.Generation ||
+		identity.OperationID != payload.OperationID ||
+		identity.Provider != payload.Probe.Provider ||
+		identity.Issue != payload.Probe.Issue {
+		return newOrcaIntentContractError(
+			"intent_identity_mismatch",
+			"Orca intent marker does not match the sealed payload identity",
+		)
+	}
+	return nil
+}
+
+func validateExternalOrcaIntentPayloadShape(payload externalOrcaIntentPayload, operationID string) error {
 	purpose := normalizedOrcaIntentPurpose(payload)
 	if payload.SchemaVersion != model.IssueOpsSchemaVersion || payload.OperationID != operationID || payload.LifecycleID == "" || payload.Generation == 0 ||
 		payload.Marker == "" || payload.StartedAt == "" || payload.Workspace.LifecycleID != payload.LifecycleID || payload.Probe.Marker != payload.Marker ||
@@ -438,6 +578,34 @@ func normalizedOrcaIntentPurpose(payload externalOrcaIntentPayload) string {
 }
 
 func executionOrcaIntentRequest(record IssueOpsRecord, payload externalOrcaIntentPayload) (port.ExecutionOrcaIntentRequest, error) {
+	request, err := executionOrcaIntentInspectionRequest(record, payload)
+	if err != nil {
+		return port.ExecutionOrcaIntentRequest{}, err
+	}
+	if payload.Launch == nil {
+		return request, nil
+	}
+	token, err := readExecutionLeaseToken(record, claimTokenPath(record))
+	if err != nil || tokenSHA256(token) != payload.ClaimTokenSHA256 {
+		return port.ExecutionOrcaIntentRequest{}, fmt.Errorf("sealed claim token identity changed")
+	}
+	prompt, err := readExecutionOwnerArtifact(record.Execution.Workspace.Root, payload.Launch.PromptPath)
+	if err != nil || digestExecutionOwnerBytes(prompt) != payload.Launch.PromptSHA256 {
+		return port.ExecutionOrcaIntentRequest{}, fmt.Errorf("sealed owner prompt identity changed")
+	}
+	packet, err := readExecutionOwnerArtifact(record.Execution.Workspace.Root, payload.Launch.ContextPacketPath)
+	if err != nil || digestExecutionOwnerBytes(packet) != payload.Launch.ContextPacketSHA256 {
+		return port.ExecutionOrcaIntentRequest{}, fmt.Errorf("sealed context packet identity changed")
+	}
+	request.Launch.Prompt = string(prompt)
+	return request, nil
+}
+
+// executionOrcaIntentInspectionRequest는 persisted payload의 봉인 메타데이터만
+// 사용해 read-only Orca 인벤토리 요청을 만든다. 삭제된 worktree의 token과
+// artifact 파일은 mutation 재시도에만 필요하며, 이미 사라진 외부 자원을
+// 확인하는 조회의 전제 조건이 아니다.
+func executionOrcaIntentInspectionRequest(record IssueOpsRecord, payload externalOrcaIntentPayload) (port.ExecutionOrcaIntentRequest, error) {
 	if err := validateExternalOrcaIntentPayload(payload, payload.OperationID); err != nil {
 		return port.ExecutionOrcaIntentRequest{}, err
 	}
@@ -453,20 +621,8 @@ func executionOrcaIntentRequest(record IssueOpsRecord, payload externalOrcaInten
 		if !samePath(payload.Launch.PromptPath, expectedPromptPath) || !samePath(payload.Launch.ContextPacketPath, expectedPacketPath) {
 			return port.ExecutionOrcaIntentRequest{}, fmt.Errorf("sealed owner artifact path changed")
 		}
-		token, err := readExecutionLeaseToken(record, claimTokenPath(record))
-		if err != nil || tokenSHA256(token) != payload.ClaimTokenSHA256 {
-			return port.ExecutionOrcaIntentRequest{}, fmt.Errorf("sealed claim token identity changed")
-		}
-		prompt, err := readExecutionOwnerArtifact(record.Execution.Workspace.Root, payload.Launch.PromptPath)
-		if err != nil || digestExecutionOwnerBytes(prompt) != payload.Launch.PromptSHA256 {
-			return port.ExecutionOrcaIntentRequest{}, fmt.Errorf("sealed owner prompt identity changed")
-		}
-		packet, err := readExecutionOwnerArtifact(record.Execution.Workspace.Root, payload.Launch.ContextPacketPath)
-		if err != nil || digestExecutionOwnerBytes(packet) != payload.Launch.ContextPacketSHA256 {
-			return port.ExecutionOrcaIntentRequest{}, fmt.Errorf("sealed context packet identity changed")
-		}
 		request.Launch = &port.ExecutionOrcaLaunchRequest{
-			Prompt: string(prompt), PromptPath: payload.Launch.PromptPath, PromptSHA256: payload.Launch.PromptSHA256,
+			PromptPath: payload.Launch.PromptPath, PromptSHA256: payload.Launch.PromptSHA256,
 			ContextPacketPath: payload.Launch.ContextPacketPath, ContextPacketSHA256: payload.Launch.ContextPacketSHA256,
 		}
 	}
@@ -474,6 +630,9 @@ func executionOrcaIntentRequest(record IssueOpsRecord, payload externalOrcaInten
 }
 
 func validateOrcaIntentRecordIdentity(record IssueOpsRecord, payload externalOrcaIntentPayload) error {
+	if err := validateOrcaIntentIssueIdentity(record, payload); err != nil {
+		return err
+	}
 	if record.ID != payload.LifecycleID || record.Execution == nil || record.Execution.Mode != model.ExecutionModeOrca ||
 		!samePath(record.Execution.Workspace.SourceRoot, payload.Workspace.SourceRoot) || !samePath(record.Execution.Workspace.Root, payload.Workspace.Root) ||
 		record.Execution.Workspace.Branch != payload.Workspace.Branch || record.Execution.Workspace.BaseHead != payload.Workspace.BaseHead ||

@@ -319,20 +319,15 @@ func cleanupAbandonOrcaResourcesAbsent(ctx context.Context, record IssueOpsRecor
 // cleanupAbandonPendingSafe는 pending external intent를 가진 레코드를 삭제해도
 // 안전한지 판정한다. 기본값은 거부이고, 아래 조건 전부를 통과할 때만 허용한다.
 //
-// 경고 — stage 불변식 의존성(brooks C-1·C-2):
-// 이 게이트의 안전성은 전적으로 validateExternalOrcaIntentPayload
-// (execution_orca_intent.go:363-367)의 worktree 단계 불변식에 의존한다. 그
-// 검사는 stage == worktree_create인 payload에 Prepared·Launch·ClaimTokenSHA256·
-// TerminalPTYID·TaskID가 전부 공백임을 강제한다 — 즉 이 단계에서 존재할 수 있는
-// 유일한 산출물은 워크트리 디렉토리 하나뿐이다. kind allowlist를
-// worktree_create 밖으로 넓히는 순간 claim token·owner prompt·context packet·
-// terminal PTY·orca task가 함께 열리며, 이 게이트는 그것들의 부재를 검사하지
-// 않는다. 넓히려면 이 함수가 아니라 저 불변식부터 다시 설계해야 한다.
+// owner 단계는 현재 단계만 비어 있다고 충분하지 않다. 예를 들어 dispatch가
+// 없더라도 terminal/task가 남을 수 있다. 따라서 worktree부터 현재 단계까지
+// 봉인된 인벤토리를 모두 authoritative zero로 확인하고, 별도 게이트 ⑨에서
+// 이전 generation의 owner binding도 확인한다.
 func cleanupAbandonPendingSafe(ctx context.Context, stateRoot string, record IssueOpsRecord, inventory cleanupAbandonInventory, deps CleanupAbandonDeps) error {
 	pending := record.Execution.Pending
 	// (a) kind allowlist — 로컬 orca mutation 한정. remote PR/MR 계열 kind는
 	// 원격 고아 PR을 남길 수 있으므로 무조건 거부하고 reconcile로 보낸다.
-	if pending.Kind != string(port.ExecutionOrcaIntentWorktree) {
+	if !pendingKindForOrcaStageFromKind(pending.Kind) {
 		// reconcile을 지시하는 것만으로는 부족했다. 실측에서 운영자는 reconcile을
 		// 완주한 뒤 무엇을 해야 하는지 알 수 없었다(#139) — 남은 절차를 함께
 		// 알려야 게이트 응답이 탈출 경로가 된다(#140).
@@ -340,9 +335,9 @@ func cleanupAbandonPendingSafe(ctx context.Context, stateRoot string, record Iss
 			pending.Kind, record.ID)
 	}
 	if record.Execution.Mode != model.ExecutionModeOrca {
-		return fmt.Errorf("worktree_create intent requires an Orca execution record")
+		return fmt.Errorf("Orca intent requires an Orca execution record")
 	}
-	// (b) 그 단계의 유일한 산출물 위치가 디스크에 없어야 한다.
+	// (b) 기록된 canonical workspace가 디스크에 없어야 한다.
 	if inventory.WorktreePresent {
 		return fmt.Errorf("recorded workspace root still exists on disk")
 	}
@@ -351,27 +346,71 @@ func cleanupAbandonPendingSafe(ctx context.Context, stateRoot string, record Iss
 	if err != nil {
 		return err
 	}
-	if payload.LifecycleID != record.ID || payload.Marker != pending.Marker {
+	if payload.LifecycleID != record.ID || payload.Marker != pending.Marker ||
+		payload.Generation != record.Execution.Lease.Generation ||
+		pending.Kind != pendingKindForOrcaStage(payload.Stage) {
 		return fmt.Errorf("Orca external intent row does not belong to this lifecycle")
 	}
 	if deps.Orca == nil {
 		return fmt.Errorf("Orca intent inspector is not configured")
 	}
-	request, err := executionOrcaIntentRequest(record, payload)
+	requests, err := cleanupAbandonIntentInspectionRequests(record, payload)
 	if err != nil {
 		return err
 	}
-	inspected, err := deps.Orca.InspectIntent(ctx, request)
-	if err != nil {
-		return fmt.Errorf("Orca intent inventory is ambiguous; intent retained: %w", err)
-	}
-	if len(inspected.Candidates) != 0 {
-		return fmt.Errorf("Orca intent inventory found %d candidate(s); the mutation may have landed", len(inspected.Candidates))
-	}
-	if !inspected.AuthoritativeZero {
-		return fmt.Errorf("Orca intent inventory returned a non-authoritative zero")
+	for _, request := range requests {
+		inspected, inspectErr := deps.Orca.InspectIntent(ctx, request)
+		if inspectErr != nil {
+			return fmt.Errorf("Orca %s intent inventory is ambiguous; intent retained: %w", request.Stage, inspectErr)
+		}
+		if len(inspected.Candidates) != 0 {
+			return fmt.Errorf("Orca %s intent inventory found %d candidate(s); the mutation may have landed",
+				request.Stage, len(inspected.Candidates))
+		}
+		if !inspected.AuthoritativeZero {
+			return fmt.Errorf("Orca %s intent inventory returned a non-authoritative zero", request.Stage)
+		}
 	}
 	return nil
+}
+
+func cleanupAbandonIntentInspectionRequests(record IssueOpsRecord, payload externalOrcaIntentPayload) ([]port.ExecutionOrcaIntentRequest, error) {
+	current, err := executionOrcaIntentInspectionRequest(record, payload)
+	if err != nil {
+		return nil, err
+	}
+	requests := make([]port.ExecutionOrcaIntentRequest, 0, 4)
+	worktree := current
+	worktree.Stage = port.ExecutionOrcaIntentWorktree
+	worktree.Prepared = nil
+	worktree.Launch = nil
+	worktree.TerminalPTYID = ""
+	worktree.TaskID = ""
+	requests = append(requests, worktree)
+	if payload.Stage == port.ExecutionOrcaIntentWorktree {
+		return requests, nil
+	}
+
+	terminal := current
+	terminal.Stage = port.ExecutionOrcaIntentTerminal
+	terminal.TerminalPTYID = ""
+	terminal.TaskID = ""
+	requests = append(requests, terminal)
+	if payload.Stage == port.ExecutionOrcaIntentTerminal {
+		return requests, nil
+	}
+
+	task := current
+	task.Stage = port.ExecutionOrcaIntentTask
+	task.TaskID = ""
+	requests = append(requests, task)
+	if payload.Stage == port.ExecutionOrcaIntentTask {
+		return requests, nil
+	}
+	if payload.Stage != port.ExecutionOrcaIntentDispatch {
+		return nil, fmt.Errorf("unsupported Orca cleanup intent stage %q", payload.Stage)
+	}
+	return append(requests, current), nil
 }
 
 // cleanupAbandonIntentOperationIDs는 삭제 대상 external intent 행 키를

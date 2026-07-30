@@ -45,7 +45,7 @@ func ChangeFingerprint(record model.IssueOpsRecord) string {
 			}
 		}
 	}
-	status := preflight.GitOut(gitRoot, "status", "--porcelain=v1", "--untracked-files=all")
+	status := gitStatusPorcelain(gitRoot)
 	for _, line := range strings.Split(status, "\n") {
 		if path := cleanRelativePath(PorcelainPath(line)); path != "" {
 			paths[path] = true
@@ -111,7 +111,7 @@ func PathMatchesPlan(record model.IssueOpsRecord, worktree, path string) bool {
 }
 
 func gitStatusHasImplementationChange(record model.IssueOpsRecord, worktree string) bool {
-	out := preflight.GitOut(worktree, "status", "--porcelain=v1", "--untracked-files=all")
+	out := gitStatusPorcelain(worktree)
 	for _, line := range strings.Split(out, "\n") {
 		path := PorcelainPath(line)
 		if path == "" {
@@ -122,6 +122,14 @@ func gitStatusHasImplementationChange(record model.IssueOpsRecord, worktree stri
 		}
 	}
 	return false
+}
+
+func gitStatusPorcelain(worktree string) string {
+	code, out, _ := preflight.GitCmdRaw(worktree, "status", "--porcelain=v1", "--untracked-files=all")
+	if code != 0 {
+		return ""
+	}
+	return out
 }
 
 func gitHeadDiffersFromBase(record model.IssueOpsRecord, worktree string) bool {

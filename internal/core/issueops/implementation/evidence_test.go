@@ -220,6 +220,54 @@ func TestImplementationEvidenceUsesImmutableBranchPrepareBaseSHA(t *testing.T) {
 	}
 }
 
+func TestChangeFingerprintPreservesLeadingPorcelainStatusSpaceAcrossCommit(t *testing.T) {
+	repo := newImplementationGitRepo(t)
+	if err := os.WriteFile(filepath.Join(repo, "impl.go"), []byte("package impl\nconst Value = 1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, repo, "add", "impl.go")
+	runGit(t, repo, "commit", "-m", "add impl")
+	baseSHA := strings.TrimSpace(runGitOutput(t, repo, "rev-parse", "HEAD"))
+
+	if err := os.WriteFile(filepath.Join(repo, "impl.go"), []byte("package impl\nconst Value = 2\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	record := model.IssueOpsRecord{
+		WorktreePath: repo,
+		BranchPrepare: &model.IssueOpsBranchPrepare{
+			BaseBranch: "main",
+			BaseSHA:    baseSHA,
+		},
+	}
+	dirtyFingerprint := ChangeFingerprint(record)
+	if dirtyFingerprint == "" {
+		t.Fatal("tracked dirty change should produce a fingerprint")
+	}
+
+	runGit(t, repo, "add", "impl.go")
+	runGit(t, repo, "commit", "-m", "update impl")
+	if committedFingerprint := ChangeFingerprint(record); committedFingerprint != dirtyFingerprint {
+		t.Fatalf("same content changed fingerprint across commit: dirty=%q committed=%q", dirtyFingerprint, committedFingerprint)
+	}
+}
+
+func TestHasEvidenceIgnoresTrackedPlanAsFirstPorcelainEntry(t *testing.T) {
+	repo := newImplementationGitRepo(t)
+	record := model.IssueOpsRecord{
+		WorktreePath: repo,
+		PlanPath:     filepath.Join(repo, "plan.md"),
+		BranchPrepare: &model.IssueOpsBranchPrepare{
+			BaseBranch: "main",
+		},
+	}
+	if err := os.WriteFile(filepath.Join(repo, "plan.md"), []byte("updated plan"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if HasEvidence(record) {
+		t.Fatal("tracked plan-only change should not count as implementation evidence")
+	}
+}
+
 func newImplementationGitRepo(t *testing.T) string {
 	t.Helper()
 	repo := t.TempDir()

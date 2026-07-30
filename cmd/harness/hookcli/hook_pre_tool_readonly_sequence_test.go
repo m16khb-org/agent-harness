@@ -42,6 +42,14 @@ sed -n '1,383p' internal/core/issueops/testdata/leasevertical/contract/record.go
 			command: `rg -n -A5 'NewReleaseService\(' internal/core/issueops/execution_lease_differential_test.go internal/core/issueops/testdata/leasevertical/application/release.go`,
 		},
 		{
+			name:    "Shannon 주석 수 관찰",
+			command: `rg -c '^\s*//' internal/core/commandparse/issueops.go internal/core/lifecycle/lifecycle_execution_guard.go`,
+		},
+		{
+			name:    "Shannon 이전 checkpoint 관찰",
+			command: "agent-harness state read --key shannon-latest",
+		},
+		{
 			name:    "Turing JSON 구문 검증",
 			command: "jq empty .agent-harness/turing/issueops-v1-0d097a7cae7456be.json",
 		},

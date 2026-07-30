@@ -9,9 +9,8 @@ import (
 	"agent-harness/internal/port"
 )
 
-// Preview is the operator's evidence for whether confirm can start the sealed
-// Orca execution. It may skip mutation-only actor checks, but it must not call
-// a noncanonical CWD executable when confirm will reject that same request.
+// preview는 mutation 전용 actor 검사를 생략할 수 있지만, confirm이 거부할
+// 비정규 CWD를 성공으로 표시해서는 안 된다.
 func TestOrcaPreparePreviewRejectsTheSameNoncanonicalCWDAsConfirm(t *testing.T) {
 	stateRoot, record := orcaPrepareRecord(t)
 	badCWD := filepath.Join(record.Repo, "not-the-source-or-worktree")
@@ -27,9 +26,8 @@ func TestOrcaPreparePreviewRejectsTheSameNoncanonicalCWDAsConfirm(t *testing.T) 
 	}
 }
 
-// The owner prompt treats the remote issue as the implementation SSOT.
-// Showing a successful preview for a body that confirm cannot seal moves the
-// first failure behind the operator's explicit approval.
+// owner prompt는 원격 이슈를 구현 SSOT로 사용한다. confirm이 봉인할 수 없는
+// 본문을 preview에서 성공으로 표시하면 명시적 승인 뒤에야 첫 실패가 드러난다.
 func TestOrcaPreparePreviewValidatesTheRemoteIssueOwnerContract(t *testing.T) {
 	stateRoot, record := orcaPrepareRecord(t)
 	readCalls := 0

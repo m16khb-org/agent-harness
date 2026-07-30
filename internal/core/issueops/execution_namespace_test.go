@@ -36,7 +36,7 @@ func TestIssueOpsUsesOnlySchemaOneAndDedicatedNamespace(t *testing.T) {
 	}
 }
 
-func TestIssueOpsReaderIgnoresLegacyBucketAndFailsClosedOnOtherSchemas(t *testing.T) {
+func TestIssueOpsReaderIgnoresLegacyBucketAndFailsClosedOnUnsupportedSchemas(t *testing.T) {
 	stateRoot := t.TempDir()
 	db, err := sqlstore.Open(stateRoot)
 	if err != nil {
@@ -50,7 +50,7 @@ func TestIssueOpsReaderIgnoresLegacyBucketAndFailsClosedOnOtherSchemas(t *testin
 	if _, err := ReadIssueOps(stateRoot, legacyID); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("v1 reader must ignore legacy bucket, got %v", err)
 	}
-	for _, version := range []int{0, 2, 9} {
+	for _, version := range []int{2, 9} {
 		id := "io-schema-" + strings.Repeat("x", version+1)
 		raw, _ := json.Marshal(map[string]any{"schema_version": version, "id": id, "repo": "/repo", "phase": "problem"})
 		if err := db.Put("issueops_v1", id, raw); err != nil {
@@ -59,6 +59,56 @@ func TestIssueOpsReaderIgnoresLegacyBucketAndFailsClosedOnOtherSchemas(t *testin
 		if _, err := ReadIssueOps(stateRoot, id); err == nil || !strings.Contains(err.Error(), "schema_version") {
 			t.Fatalf("schema %d must fail closed, got %v", version, err)
 		}
+	}
+}
+
+func TestIssueOpsReaderTreatsMissingAndZeroSchemaAsCurrent(t *testing.T) {
+	for _, testCase := range []struct {
+		name          string
+		includeSchema bool
+	}{
+		{name: "missing"},
+		{name: "zero", includeSchema: true},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			stateRoot := t.TempDir()
+			record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: t.TempDir(), Branch: "901-legacy-schema-" + testCase.name})
+			if err != nil {
+				t.Fatal(err)
+			}
+			db, err := sqlstore.Open(stateRoot)
+			if err != nil {
+				t.Fatal(err)
+			}
+			raw, ok, err := db.Get("issueops_v1", record.ID)
+			if err != nil || !ok {
+				t.Fatalf("read seeded record: ok=%t err=%v", ok, err)
+			}
+			var payload map[string]any
+			if err := json.Unmarshal(raw, &payload); err != nil {
+				t.Fatal(err)
+			}
+			if testCase.includeSchema {
+				payload["schema_version"] = 0
+			} else {
+				delete(payload, "schema_version")
+			}
+			raw, err = json.Marshal(payload)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := db.Put("issueops_v1", record.ID, raw); err != nil {
+				t.Fatal(err)
+			}
+
+			got, err := ReadIssueOps(stateRoot, record.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.SchemaVersion != model.IssueOpsSchemaVersion {
+				t.Fatalf("schema=%d want %d", got.SchemaVersion, model.IssueOpsSchemaVersion)
+			}
+		})
 	}
 }
 

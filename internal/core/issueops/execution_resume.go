@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"agent-harness/internal/core/issueops/model"
-	issueremote "agent-harness/internal/core/issueops/remote"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
@@ -257,10 +256,6 @@ func beginOrcaExecutionResumeIntent(stateRoot string, record IssueOpsRecord, art
 		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, fmt.Errorf("execution resume workspace is not canonical")
 	}
 	startedAt := executionNow(now)
-	marker := fmt.Sprintf(
-		"agent-harness issueops-v1 resume lifecycle=%s generation=%d operation=%s",
-		record.ID, record.Execution.Lease.Generation, operationID,
-	)
 	binding := *record.Execution.Orca
 	lease := record.Execution.Lease
 	prepared := &port.ExecutionOrcaWorkspaceReceipt{
@@ -274,18 +269,12 @@ func beginOrcaExecutionResumeIntent(stateRoot string, record IssueOpsRecord, art
 	}
 	probe := port.ExecutionOrcaProbeRequest{
 		Repo: record.Repo, Host: binding.OwnerHost, Model: binding.OwnerModel,
-		Effort: binding.OwnerEffort, Marker: marker,
-	}
-	if record.BranchPrepare != nil {
-		probe.Provider = strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider))
-		if value := issueremote.IssueNumber(record.BranchPrepare.IssueURL); value != "" {
-			probe.Issue, _ = strconv.Atoi(value)
-		}
+		Effort: binding.OwnerEffort,
 	}
 	payload := externalOrcaIntentPayload{
 		SchemaVersion: model.IssueOpsSchemaVersion, Purpose: orcaIntentPurposeResume,
 		OperationID: operationID, LifecycleID: record.ID, Generation: lease.Generation,
-		Stage: port.ExecutionOrcaIntentTerminal, Marker: marker, StartedAt: startedAt,
+		Stage: port.ExecutionOrcaIntentTerminal, StartedAt: startedAt,
 		InvocationState: orcaIntentNotInvoked, Workspace: workspace, Probe: probe, Prepared: prepared,
 		Launch: &externalOrcaLaunchIdentity{
 			PromptPath: artifacts.promptPath, PromptSHA256: artifacts.promptSHA256,
@@ -293,6 +282,10 @@ func beginOrcaExecutionResumeIntent(stateRoot string, record IssueOpsRecord, art
 		},
 		IssueBodySHA256: artifacts.issueBodySHA256, ClaimTokenSHA256: lease.ClaimTokenSHA256,
 		PriorBinding: &binding, ResumeLease: &lease,
+	}
+	payload, err = sealExternalOrcaIntentPayload(record, payload)
+	if err != nil {
+		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -309,9 +302,12 @@ func beginOrcaExecutionResumeIntent(stateRoot string, record IssueOpsRecord, art
 			!reflect.DeepEqual(current.Execution.Orca, &binding) {
 			return fmt.Errorf("execution resume authority changed before intent persistence")
 		}
+		if err := validateOrcaIntentRecordIdentity(current, payload); err != nil {
+			return err
+		}
 		current.Execution.Pending = &model.ExternalIntent{
 			OperationID: operationID, Kind: pendingKindForOrcaStage(payload.Stage),
-			Marker: marker, StartedAt: startedAt,
+			Marker: payload.Marker, StartedAt: startedAt,
 		}
 		current.Execution.Failure = nil
 		persisted, err = persistExecutionTransitionWithMutations(stateRoot, current, nil, []sqlstore.Mutation{{

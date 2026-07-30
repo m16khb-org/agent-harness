@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"agent-harness/internal/core/issueops"
@@ -152,11 +153,11 @@ func runStatus(args []string, deps Deps) error {
 	return output(result, *jsonOut, err, deps)
 }
 
-// ExecutionWhoamiResult는 호출 프로세스의 native host/session과 ancestry
-// receipt를 노출한다. owner가 claim identity를 shell 확장 없이 리터럴 값으로
-// 채우기 위한 read-only 표면이다(이슈 #90 발견 3 — 확장이 섞인 claim은 exact
-// 파싱이 fail-closed로 거부하므로, 관측 가능한 대체 경로가 없으면 부트스트랩이
-// 교착한다).
+// ExecutionWhoamiResult는 호출 프로세스의 native host/session과 다음 명령에서도
+// 재사용 가능한 ancestry receipt를 노출한다. owner가 claim identity를 shell
+// 확장 없이 리터럴 값으로 채우기 위한 read-only 표면이다(이슈 #90 발견 3 —
+// 확장이 섞인 claim은 exact 파싱이 fail-closed로 거부하므로, 관측 가능한 대체
+// 경로가 없으면 부트스트랩이 교착한다).
 type ExecutionWhoamiResult struct {
 	OK              bool                         `json:"ok"`
 	Host            string                       `json:"host"`
@@ -198,6 +199,51 @@ func shellQuoteClaimValue(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", `'"'"'`) + "'"
 }
 
+func reusableNativeProcessAncestry(host string, currentPID int, ancestry []model.NativeProcessReceipt) ([]model.NativeProcessReceipt, error) {
+	for index, receipt := range ancestry {
+		if receipt.PID == currentPID || !nativeHostProcessExecutable(host, receipt.Executable) {
+			continue
+		}
+		return append([]model.NativeProcessReceipt(nil), ancestry[index:]...), nil
+	}
+	return nil, fmt.Errorf("reusable %s host process ancestry is unavailable", host)
+}
+
+func nativeHostProcessExecutable(host, executable string) bool {
+	normalized := strings.ToLower(filepath.ToSlash(strings.TrimSpace(executable)))
+	base := strings.TrimSuffix(filepath.Base(normalized), ".exe")
+	switch host {
+	case "codex":
+		return base == "codex"
+	case "claude":
+		return base == "claude" || strings.Contains(normalized, "/claude/versions/")
+	default:
+		return false
+	}
+}
+
+func executionWhoamiResult(
+	identity nativeSessionIdentity,
+	currentPID int,
+	ancestry []model.NativeProcessReceipt,
+) (ExecutionWhoamiResult, error) {
+	ancestry, err := reusableNativeProcessAncestry(identity.Host, currentPID, ancestry)
+	if err != nil {
+		return ExecutionWhoamiResult{}, err
+	}
+	result := ExecutionWhoamiResult{
+		OK: true, Host: identity.Host, SessionID: identity.SessionID,
+		SessionIDSource: identity.Source, Ancestry: ancestry,
+	}
+	for _, receipt := range ancestry {
+		result.ClaimActorFlags = append(result.ClaimActorFlags, fmt.Sprintf(
+			"--host %s --session-id %s --session-pid %d --session-started-at %s --session-executable %s",
+			identity.Host, shellQuoteClaimValue(identity.SessionID), receipt.PID,
+			shellQuoteClaimValue(receipt.StartedAt), shellQuoteClaimValue(receipt.Executable)))
+	}
+	return result, nil
+}
+
 func runWhoami(args []string, deps Deps) error {
 	fs := flag.NewFlagSet("issueops execution whoami", flag.ContinueOnError)
 	jsonOut := fs.Bool("json", false, "print JSON")
@@ -212,15 +258,9 @@ func runWhoami(args []string, deps Deps) error {
 	if err != nil {
 		return output(nil, *jsonOut, err, deps)
 	}
-	result := ExecutionWhoamiResult{
-		OK: true, Host: identity.Host, SessionID: identity.SessionID,
-		SessionIDSource: identity.Source, Ancestry: ancestry,
-	}
-	for _, receipt := range ancestry {
-		result.ClaimActorFlags = append(result.ClaimActorFlags, fmt.Sprintf(
-			"--host %s --session-id %s --session-pid %d --session-started-at %s --session-executable %s",
-			identity.Host, shellQuoteClaimValue(identity.SessionID), receipt.PID,
-			shellQuoteClaimValue(receipt.StartedAt), shellQuoteClaimValue(receipt.Executable)))
+	result, err := executionWhoamiResult(identity, os.Getpid(), ancestry)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
 	}
 	return output(result, *jsonOut, nil, deps)
 }
