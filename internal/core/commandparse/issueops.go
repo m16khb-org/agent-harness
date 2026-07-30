@@ -142,6 +142,8 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v("--id", "--mode", "--fingerprint", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--apply", "--confirm", "--json"), r, true
 	case "link-plan":
 		return v("--id", "--plan-path", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
+	case "link-worktree":
+		return v("--id", "--worktree-path", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
 	case "compatibility review":
 		values := v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--backward-compatibility", "--side-effect", "--rollback-plan", "--verification", "--blocker")
 		for _, name := range []string{"--backward-compatibility", "--side-effect", "--verification", "--blocker"} {

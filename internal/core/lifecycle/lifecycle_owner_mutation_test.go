@@ -126,6 +126,8 @@ func TestPlanningOwnerMutationsRemainAvailableAfterExecutionPrepare(t *testing.T
 	_, record, worker := executionActiveLifecycleRecord(t)
 	actorFlags := " --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json"
 	commands := map[string]string{
+		"link-worktree": "agent-harness issueops link-worktree --id " + record.ID +
+			" --worktree-path " + worker + actorFlags,
 		"intent record": "agent-harness issueops intent record --id " + record.ID +
 			" --raw-request '관측성 보강' --interpreted-intent 'breaker 원인과 상태를 노출'" +
 			" --success-criteria '원인 분류를 검증'" + actorFlags,

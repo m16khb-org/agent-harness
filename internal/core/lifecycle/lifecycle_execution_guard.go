@@ -529,7 +529,7 @@ func exactIssueOpsOwnerMutation(commandText string) bool {
 	// 있어, #152에서 preview 계약 변경 결정을 문서에만 남겨야 했다 — durable state에
 	// 담기지 않은 결정은 나중 사이클의 plan-prep prior-decisions 조회에 들어오지
 	// 않는다(이슈 #158).
-	case "link-plan", "compatibility review", "devils-advocate review", "phase",
+	case "link-plan", "link-worktree", "compatibility review", "devils-advocate review", "phase",
 		"decision add", "ai-slop-clean record", "feedback mark-issue-updated", "feedback resolve",
 		"implementation-review record", "branch prepare", "intent record", "domain-review record", "regress",
 		"remote create-pr", "remote verify-artifact", "remote reflect-devils-advocate":
