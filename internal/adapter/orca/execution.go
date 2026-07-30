@@ -668,7 +668,7 @@ func (p *ExecutionProvisioner) resolveIntentTerminal(ctx context.Context, req po
 	if candidate == nil {
 		return port.OrcaTerminal{}, fmt.Errorf("Orca owner terminal is absent")
 	}
-	if err := validateExecutionIntentTerminal(*candidate, *req.Prepared, req.Marker); err != nil {
+	if err := validateExecutionTerminalReceipt(*candidate, *req.Prepared); err != nil {
 		return port.OrcaTerminal{}, err
 	}
 	return *candidate, nil
@@ -819,9 +819,18 @@ func executionRequiredLaunch(req port.ExecutionOrcaIntentRequest) port.Execution
 }
 
 func validateExecutionIntentTerminal(terminal port.OrcaTerminal, prepared port.ExecutionOrcaWorkspaceReceipt, marker string) error {
+	if err := validateExecutionTerminalReceipt(terminal, prepared); err != nil {
+		return err
+	}
+	if strings.TrimSpace(terminal.Title) != marker && strings.TrimSpace(terminal.StableTabTitle) != marker {
+		return fmt.Errorf("Orca owner terminal does not match the sealed intent")
+	}
+	return nil
+}
+
+func validateExecutionTerminalReceipt(terminal port.OrcaTerminal, prepared port.ExecutionOrcaWorkspaceReceipt) error {
 	if strings.TrimSpace(terminal.Handle) == "" || strings.TrimSpace(terminal.PTYID) == "" || terminal.WorktreeID != prepared.WorktreeID ||
-		strings.TrimSpace(prepared.RuntimeID) == "" || terminal.RuntimeID != prepared.RuntimeID || !terminal.Connected || !terminal.Writable ||
-		(strings.TrimSpace(terminal.Title) != marker && strings.TrimSpace(terminal.StableTabTitle) != marker) {
+		strings.TrimSpace(prepared.RuntimeID) == "" || terminal.RuntimeID != prepared.RuntimeID || !terminal.Connected || !terminal.Writable {
 		return fmt.Errorf("Orca owner terminal does not match the sealed intent")
 	}
 	return nil

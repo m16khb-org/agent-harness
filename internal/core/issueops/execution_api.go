@@ -15,7 +15,7 @@ var (
 	ErrReseedHandlerUnavailable  = errors.New("issueops execution reseed handler is not configured")
 )
 
-type ExecutionClaimHandler func(context.Context, string, ExecutionClaimRequest) (ExecutionResult, error)
+type ExecutionClaimHandler func(context.Context, string, ExecutionClaimRequest, ExecutionClaimDependencies) (ExecutionResult, error)
 type ExecutionReleaseHandler func(context.Context, string, ExecutionReleaseRequest) (ExecutionResult, error)
 type ExecutionReseedHandler func(context.Context, string, ExecutionReseedRequest) (ExecutionReplaceResult, error)
 
@@ -102,8 +102,7 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 		return deps.Claim(ctx, stateRoot, ExecutionClaimRequest{
 			ID: req.ID, Generation: req.Generation, Actor: req.Actor, CWD: req.CWD, TokenFile: req.TokenFile,
 			IssueBodySHA256: req.IssueBodySHA256, ContextPacketSHA256: req.ContextPacketSHA256,
-			ReadIssue: deps.ReadIssue,
-		})
+		}, ExecutionClaimDependencies{ReadIssue: deps.ReadIssue})
 	case ExecutionActionRelease:
 		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
 			return ExecutionResult{OK: false, ID: req.ID}, err
