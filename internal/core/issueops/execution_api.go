@@ -9,8 +9,12 @@ import (
 	"agent-harness/internal/port"
 )
 
-var ErrReleaseHandlerUnavailable = errors.New("issueops execution release handler is not configured")
+var (
+	ErrClaimHandlerUnavailable   = errors.New("issueops execution claim handler is not configured")
+	ErrReleaseHandlerUnavailable = errors.New("issueops execution release handler is not configured")
+)
 
+type ExecutionClaimHandler func(context.Context, string, ExecutionClaimRequest) (ExecutionResult, error)
 type ExecutionReleaseHandler func(context.Context, string, ExecutionReleaseRequest) (ExecutionResult, error)
 
 const (
@@ -55,6 +59,7 @@ type ExecutionActionDependencies struct {
 	OrcaOwner port.ExecutionOrcaOwnerInspector
 	ReadIssue ExecutionIssueSnapshotReadFunc
 	RemotePR  RemotePullRequestDependencies
+	Claim     ExecutionClaimHandler
 	Release   ExecutionReleaseHandler
 	// SettleOrcaTask는 완료 시점의 orca task 종결 표면이다(#130).
 	SettleOrcaTask func(ctx context.Context, taskID string) error
@@ -70,10 +75,16 @@ func ExecuteExecution(ctx context.Context, stateRoot string, req ExecutionAction
 	case ExecutionActionStatus:
 		return StatusExecution(stateRoot, req.ID)
 	case ExecutionActionClaim:
-		return ClaimExecutionWithDependencies(ctx, stateRoot, ExecutionClaimRequest{
+		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
+			return ExecutionResult{OK: false, ID: req.ID}, err
+		}
+		if deps.Claim == nil {
+			return ExecutionResult{OK: false, ID: req.ID}, ErrClaimHandlerUnavailable
+		}
+		return deps.Claim(ctx, stateRoot, ExecutionClaimRequest{
 			ID: req.ID, Generation: req.Generation, Actor: req.Actor, CWD: req.CWD, TokenFile: req.TokenFile,
 			IssueBodySHA256: req.IssueBodySHA256, ContextPacketSHA256: req.ContextPacketSHA256,
-		}, ExecutionClaimDependencies{ReadIssue: deps.ReadIssue})
+		})
 	case ExecutionActionRelease:
 		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
 			return ExecutionResult{OK: false, ID: req.ID}, err

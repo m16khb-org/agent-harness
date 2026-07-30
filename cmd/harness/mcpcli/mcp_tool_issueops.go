@@ -9,12 +9,16 @@ var issueOpsMCPHandlers = map[string]func(map[string]any) MCPToolOutcome{
 }
 
 func handleIssueOpsMCPToolCall(call MCPToolCall) MCPToolOutcome {
-	return handleIssueOpsMCPToolCallWithReleaseHandler(call, nil)
+	return handleIssueOpsMCPToolCallWithHandlers(call, nil, nil)
 }
 
 func handleIssueOpsMCPToolCallWithReleaseHandler(call MCPToolCall, release issueops.ExecutionReleaseHandler) MCPToolOutcome {
+	return handleIssueOpsMCPToolCallWithHandlers(call, nil, release)
+}
+
+func handleIssueOpsMCPToolCallWithHandlers(call MCPToolCall, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler) MCPToolOutcome {
 	if call.Name == "issueops_execution" {
-		return handleMCPIssueOpsExecutionWithReleaseHandler(call.Arguments, release)
+		return handleMCPIssueOpsExecutionWithHandlers(call.Arguments, claim, release)
 	}
 	handler, ok := issueOpsMCPHandlers[call.Name]
 	if !ok {

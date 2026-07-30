@@ -165,7 +165,7 @@ func newSyncBaseFixture(t *testing.T, branch string) syncBaseFixture {
 	claimable := newClaimableExecutionFixture(t, stateRoot, branch)
 	prepareExecutionCompletionFixture(t, stateRoot, &claimable)
 	actor := executionActor("codex", "sync-base-"+branch)
-	if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: claimable.record.ID, Generation: 1, Actor: actor,
 		CWD: claimable.worktree, TokenFile: claimable.tokenPath,
 	}); err != nil {

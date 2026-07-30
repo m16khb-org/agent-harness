@@ -62,7 +62,7 @@ func TestExecutionOwnerLaunchSealsIssueContextAndFullPromptBeforeDispatch(t *tes
 	if got.Execution == nil || got.Execution.Lease.Status != model.LeaseStatusClaimable {
 		t.Fatalf("dispatch receipt did not become claimable: %#v", got.Execution)
 	}
-	claimed, err := ClaimExecutionWithDependencies(context.Background(), stateRoot, ExecutionClaimRequest{
+	claimed, err := claimViaVerticalWithDeps(context.Background(), stateRoot, ExecutionClaimRequest{
 		ID: record.ID, Generation: 1, Actor: executionActor("claude", "owner"), CWD: got.Workspace.Root,
 		TokenFile: got.ClaimTokenPath, IssueBodySHA256: got.IssueBodySHA256, ContextPacketSHA256: got.ContextPacketSHA256,
 	}, ExecutionClaimDependencies{ReadIssue: reader})
@@ -103,7 +103,7 @@ func TestExecutionInitialOrcaClaimRejectsIssueOrPacketDigestDrift(t *testing.T) 
 			} else if err := os.WriteFile(prepared.ContextPacketPath, []byte("{}\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			_, err = ClaimExecutionWithDependencies(context.Background(), stateRoot, ExecutionClaimRequest{
+			_, err = claimViaVerticalWithDeps(context.Background(), stateRoot, ExecutionClaimRequest{
 				ID: record.ID, Generation: 1, Actor: executionActor("claude", "owner"), CWD: prepared.Workspace.Root,
 				TokenFile: prepared.ClaimTokenPath, IssueBodySHA256: prepared.IssueBodySHA256, ContextPacketSHA256: prepared.ContextPacketSHA256,
 			}, ExecutionClaimDependencies{ReadIssue: reader})
@@ -221,7 +221,7 @@ func TestExecutionReseedRecoversFromLegitimateIssueRevision(t *testing.T) {
 	revisedReader := func(_ context.Context, _ string, _ port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
 		return port.ExecutionIssueSnapshot{URL: record.IssueURL, Body: revised}, nil
 	}
-	if _, err := ClaimExecutionWithDependencies(context.Background(), stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVerticalWithDeps(context.Background(), stateRoot, ExecutionClaimRequest{
 		ID: record.ID, Generation: 1, Actor: executionActor("claude", "owner"), CWD: prepared.Workspace.Root,
 		TokenFile: prepared.ClaimTokenPath, IssueBodySHA256: prepared.IssueBodySHA256, ContextPacketSHA256: prepared.ContextPacketSHA256,
 	}, ExecutionClaimDependencies{ReadIssue: revisedReader}); err == nil {
@@ -242,7 +242,7 @@ func TestExecutionReseedRecoversFromLegitimateIssueRevision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ClaimExecutionWithDependencies(context.Background(), stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVerticalWithDeps(context.Background(), stateRoot, ExecutionClaimRequest{
 		ID: record.ID, Generation: 2, Actor: executionActor("claude", "owner"), CWD: prepared.Workspace.Root,
 		TokenFile: reseeded.ClaimTokenPath, IssueBodySHA256: reseeded.IssueBodySHA256, ContextPacketSHA256: reseeded.ContextPacketSHA256,
 	}, ExecutionClaimDependencies{ReadIssue: revisedReader}); err != nil {
@@ -274,7 +274,7 @@ func TestExecutionClaimVerifiesSealedPacketBeyondTheFirstGeneration(t *testing.T
 	if err := os.WriteFile(reseeded.ContextPacketPath, []byte("{}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, err = ClaimExecutionWithDependencies(context.Background(), stateRoot, ExecutionClaimRequest{
+	_, err = claimViaVerticalWithDeps(context.Background(), stateRoot, ExecutionClaimRequest{
 		ID: record.ID, Generation: 2, Actor: executionActor("claude", "owner"), CWD: prepared.Workspace.Root,
 		TokenFile: reseeded.ClaimTokenPath, IssueBodySHA256: reseeded.IssueBodySHA256, ContextPacketSHA256: reseeded.ContextPacketSHA256,
 	}, ExecutionClaimDependencies{ReadIssue: reader})
@@ -304,7 +304,7 @@ func TestExecutionClaimDigestDriftErrorsCarryExpectedAndObserved(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			_, err := ClaimExecutionWithDependencies(context.Background(), stateRoot, ExecutionClaimRequest{
+			_, err := claimViaVerticalWithDeps(context.Background(), stateRoot, ExecutionClaimRequest{
 				ID: record.ID, Generation: 1, Actor: executionActor("claude", "owner"), CWD: prepared.Workspace.Root,
 				TokenFile: prepared.ClaimTokenPath, IssueBodySHA256: prepared.IssueBodySHA256, ContextPacketSHA256: prepared.ContextPacketSHA256,
 			}, ExecutionClaimDependencies{ReadIssue: reader})

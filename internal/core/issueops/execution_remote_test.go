@@ -25,7 +25,7 @@ func TestRemotePullRequestPersistsIntentBeforeSingleProviderCallWithActiveLease(
 		t.Fatal(err)
 	}
 	actor := executionActor("codex", "remote-intent-session")
-	if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: record.ID, Generation: 1, Actor: actor, CWD: fixture.worktree, TokenFile: fixture.tokenPath,
 	}); err != nil {
 		t.Fatal(err)
@@ -198,7 +198,7 @@ func TestRemotePullRequestBlocksGenerationReplacementWhileIntentIsPending(t *tes
 		t.Fatal(err)
 	}
 	owner := executionActor("codex", "remote-race-owner")
-	if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: record.ID, Generation: 1, Actor: owner, CWD: fixture.worktree, TokenFile: fixture.tokenPath,
 	}); err != nil {
 		t.Fatal(err)
@@ -259,7 +259,7 @@ func newRemoteExecutionFixture(t *testing.T, stateRoot, branch string) remoteExe
 		t.Fatal(err)
 	}
 	actor := executionActor("codex", branch+"-session")
-	if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: record.ID, Generation: 1, Actor: actor, CWD: fixture.worktree, TokenFile: fixture.tokenPath,
 	}); err != nil {
 		t.Fatal(err)

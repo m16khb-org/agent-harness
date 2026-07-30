@@ -88,7 +88,7 @@ func registerAllTools(server *mcp.Server, deps MCPDependencies) {
 
 func issueOpsExecutionSDKToolHandler(deps MCPDependencies) mcp.ToolHandler {
 	return sdkToolHandler(func(call MCPToolCall) MCPToolOutcome {
-		return handleIssueOpsMCPToolCallWithReleaseHandler(call, deps.Release)
+		return handleIssueOpsMCPToolCallWithHandlers(call, deps.Claim, deps.Release)
 	}, "issueops_execution")
 }
 

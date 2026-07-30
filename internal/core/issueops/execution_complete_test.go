@@ -15,7 +15,7 @@ func TestExecutionCompletePersistsReceiptAndReleasesLease(t *testing.T) {
 	fixture := newClaimableExecutionFixture(t, stateRoot, "69-complete")
 	prepareExecutionCompletionFixture(t, stateRoot, &fixture)
 	actor := executionActor("codex", "complete-session")
-	if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: fixture.record.ID, Generation: 1, Actor: actor,
 		CWD: fixture.worktree, TokenFile: fixture.tokenPath,
 	}); err != nil {
@@ -117,7 +117,7 @@ func TestExecutionCompleteRequiresVerifiedDurableRemoteArtifact(t *testing.T) {
 				}
 			}
 			holder := executionActor("codex", "complete-holder-"+test.name)
-			if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+			if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 				ID: fixture.record.ID, Generation: 1, Actor: holder,
 				CWD: fixture.worktree, TokenFile: fixture.tokenPath,
 			}); err != nil {
@@ -161,7 +161,7 @@ func TestExecutionCompleteRejectsNonHolderAndMismatchedHead(t *testing.T) {
 	fixture := newClaimableExecutionFixture(t, stateRoot, "69-complete-deny")
 	prepareExecutionCompletionFixture(t, stateRoot, &fixture)
 	holder := executionActor("codex", "complete-holder")
-	if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: fixture.record.ID, Generation: 1, Actor: holder,
 		CWD: fixture.worktree, TokenFile: fixture.tokenPath,
 	}); err != nil {
