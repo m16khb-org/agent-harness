@@ -362,6 +362,17 @@ func readAndMatchOrcaIntent(stateRoot, id string, expected externalOrcaIntentPay
 }
 
 func readExternalOrcaIntentPayload(stateRoot, operationID string) (externalOrcaIntentPayload, error) {
+	payload, err := readExternalOrcaIntentPayloadShape(stateRoot, operationID)
+	if err != nil {
+		return externalOrcaIntentPayload{}, err
+	}
+	if err := validateExternalOrcaIntentPayload(payload, operationID); err != nil {
+		return externalOrcaIntentPayload{}, err
+	}
+	return payload, nil
+}
+
+func readExternalOrcaIntentPayloadShape(stateRoot, operationID string) (externalOrcaIntentPayload, error) {
 	db, err := sqlstore.Open(stateRoot)
 	if err != nil {
 		return externalOrcaIntentPayload{}, err
@@ -377,10 +388,112 @@ func readExternalOrcaIntentPayload(stateRoot, operationID string) (externalOrcaI
 	if err := json.Unmarshal(data, &payload); err != nil {
 		return externalOrcaIntentPayload{}, fmt.Errorf("decode Orca external intent payload: %w", err)
 	}
-	if err := validateExternalOrcaIntentPayload(payload, operationID); err != nil {
+	if err := validateExternalOrcaIntentPayloadShape(payload, operationID); err != nil {
 		return externalOrcaIntentPayload{}, err
 	}
 	return payload, nil
+}
+
+func reconcileCanonicalOrcaIntent(
+	stateRoot string,
+	expected IssueOpsRecord,
+) (IssueOpsRecord, externalOrcaIntentPayload, bool, error) {
+	if expected.Execution == nil || expected.Execution.Pending == nil {
+		return expected, externalOrcaIntentPayload{}, false, unsafeLegacyOrcaIntent("Orca pending intent is missing")
+	}
+	var (
+		persisted IssueOpsRecord
+		sealed    externalOrcaIntentPayload
+		migrated  bool
+	)
+	err := withIssueOpsLock(context.Background(), stateRoot, expected.ID, func(context.Context) error {
+		current, err := ReadIssueOps(stateRoot, expected.ID)
+		if err != nil {
+			return err
+		}
+		persisted = current
+		if current.Execution == nil || current.Execution.Pending == nil ||
+			!reflect.DeepEqual(current.Execution, expected.Execution) ||
+			current.IssueURL != expected.IssueURL ||
+			!reflect.DeepEqual(current.BranchPrepare, expected.BranchPrepare) {
+			return unsafeLegacyOrcaIntent("Orca intent authority changed before migration CAS")
+		}
+		pending := current.Execution.Pending
+		payload, err := readExternalOrcaIntentPayloadShape(stateRoot, pending.OperationID)
+		if err != nil {
+			return unsafeLegacyOrcaIntent(err.Error())
+		}
+		sealed = payload
+		if err := validateExternalOrcaIntentPayload(payload, pending.OperationID); err == nil {
+			if pending.Marker != payload.Marker ||
+				pending.Kind != pendingKindForOrcaStage(payload.Stage) ||
+				current.Execution.Lease.Generation != payload.Generation {
+				return unsafeLegacyOrcaIntent("canonical Orca intent does not match current pending authority")
+			}
+			if err := validateOrcaIntentRecordIdentity(current, payload); err != nil {
+				return unsafeLegacyOrcaIntent(err.Error())
+			}
+			return nil
+		}
+		if payload.InvocationState != orcaIntentNotInvoked {
+			return unsafeLegacyOrcaIntent("legacy Orca intent invocation was not proven absent")
+		}
+		legacy, err := parseLegacyOrcaIntentMarker(payload.Marker)
+		if err != nil {
+			return unsafeLegacyOrcaIntent("Orca intent marker is neither canonical nor exact legacy")
+		}
+		if legacy.Purpose != normalizedOrcaIntentPurpose(payload) ||
+			legacy.LifecycleID != payload.LifecycleID ||
+			legacy.LifecycleID != current.ID ||
+			legacy.Generation != payload.Generation ||
+			legacy.Generation != current.Execution.Lease.Generation ||
+			legacy.OperationID != payload.OperationID ||
+			legacy.OperationID != pending.OperationID ||
+			pending.Kind != pendingKindForOrcaStage(payload.Stage) ||
+			pending.Marker != payload.Marker ||
+			payload.Probe.Marker != payload.Marker {
+			return unsafeLegacyOrcaIntent("legacy Orca intent identity does not match current pending authority")
+		}
+		if current.Execution.Failure != nil &&
+			current.Execution.Failure.OperationID != payload.OperationID {
+			return unsafeLegacyOrcaIntent("legacy Orca intent failure receipt belongs to another operation")
+		}
+		issue, err := authoritativeOrcaIssueIdentity(current)
+		if err != nil {
+			return unsafeLegacyOrcaIntent(err.Error())
+		}
+		if payload.Probe.Provider != issue.Provider || payload.Probe.Issue != issue.Issue {
+			return unsafeLegacyOrcaIntent("legacy Orca probe identity does not match the verified issue")
+		}
+		sealed, err = sealExternalOrcaIntentPayload(current, payload)
+		if err != nil {
+			return unsafeLegacyOrcaIntent(err.Error())
+		}
+		if err := validateOrcaIntentRecordIdentity(current, sealed); err != nil {
+			return unsafeLegacyOrcaIntent(err.Error())
+		}
+		data, err := json.Marshal(sealed)
+		if err != nil {
+			return err
+		}
+		current.Execution.Pending.Marker = sealed.Marker
+		persisted, err = persistExecutionTransitionWithMutations(stateRoot, current, nil, []sqlstore.Mutation{{
+			Bucket: externalIntentBucket, ID: sealed.OperationID, Data: data,
+		}})
+		if err != nil {
+			return err
+		}
+		migrated = true
+		return nil
+	})
+	if err != nil {
+		return persisted, sealed, false, err
+	}
+	return persisted, sealed, migrated, nil
+}
+
+func unsafeLegacyOrcaIntent(detail string) error {
+	return newOrcaIntentContractError("legacy_intent_upgrade_unsafe", detail)
 }
 
 func validateExternalOrcaIntentPayload(payload externalOrcaIntentPayload, operationID string) error {
