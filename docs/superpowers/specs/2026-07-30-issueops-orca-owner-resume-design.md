@@ -128,8 +128,9 @@ agent-harness issueops execution resume \
 - 성공 응답은 execution, artifact 경로/digest, claim token 경로와 exact claim
   next command를 포함한다. token 원문은 포함하지 않는다.
 
-CLI와 MCP는 하나의 core request/result DTO를 사용한다. MCP tool 이름은
-기존 규칙에 맞춰 `issueops_execution_resume`으로 둔다.
+CLI와 MCP는 하나의 core request/result DTO를 사용한다. MCP는 새 tool을
+추가하지 않고 기존 단일 `issueops_execution` tool의 `action=resume`을
+확장한다.
 
 ## 실행 흐름
 
@@ -222,7 +223,7 @@ resume은 prepare와 같은 external-intent payload를 사용하므로 기존
 ### CLI/MCP/composition
 
 - `issueops execution resume` flag parser와 harnessapp facade
-- `issueops_execution_resume` MCP schema/handler
+- 기존 `issueops_execution` MCP action enum과 handler mapping
 - response contract, usage, MCP golden 갱신
 
 ### Hook/guard
