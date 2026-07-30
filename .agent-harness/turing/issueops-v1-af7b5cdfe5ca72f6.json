@@ -33,14 +33,14 @@
     {"command": "go test -race ./internal/application/issueopslease ./internal/adapter/outbound/issueopslease ./internal/core/issueops -run 'Replace|Reseed|Differential|Lease' -count=1", "result": "PASS", "evidence": "current Shannon-remeasured fingerprint: application 1.538s; outbound 1.962s; core 62.993s."}
   ],
   "shannon_audit": {
-    "measurement_contract": "No prior checkpoint exists: `agent-harness state read --key shannon-latest` returned exit 1 because the state file is absent. The reproducible before/after scope is sealed base 9e1b92888719205a053944cd947e3d9634a63eb6 versus this worktree, with tracked and untracked inputs kept separate.",
-    "diff_inventory": "Base-to-current tracked inventory: 25 Go files, 408 additions and 96 deletions. Current untracked inventory: 22 Go files, 2449 lines; the separate Turing JSON is excluded from code metrics.",
-    "comment_classifier": "`rg -c '^\\s*//' --glob '*.go' cmd internal` completed successfully against the current source tree; its per-file counts are retained as the reproducible raw comment-line inventory rather than converted into an ungrounded behavioral SNR ratio.",
+    "measurement_contract": "No prior checkpoint exists: `agent-harness state read --key shannon-latest` returned exit 1 because the state file is absent. The reproducible measurement checkpoint is the pre-commit worktree compared with sealed base 9e1b92888719205a053944cd947e3d9634a63eb6, with tracked and untracked inputs kept separate.",
+    "diff_inventory": "Pre-commit checkpoint base-to-worktree tracked inventory: 25 Go files, 408 additions and 96 deletions. Pre-commit checkpoint untracked inventory: 22 Go files, 2449 lines; the separate Turing JSON is excluded from code metrics.",
+    "comment_classifier": "`rg -c '^\\s*//' --glob '*.go' cmd internal` completed successfully at the pre-commit measurement checkpoint; its per-file counts are retained as the reproducible raw comment-line inventory rather than converted into an ungrounded behavioral SNR ratio.",
     "snr": "NOT_DERIVED: Shannon's signal definition requires behavioral/dead-code classification, and the absent prior checkpoint cannot establish a pre-cleanup numerator or denominator. No estimated before/after SNR is reported.",
     "entropy": "NOT_DERIVED: no documented AST cyclomatic tool was added or inferred. Focused architecture AST routing tests and go vet passed separately.",
     "redundancy": "NOT_DERIVED: no documented AST duplicate-block result exists. The bounded adapter-local inventory duplicate is instead parity-locked by direct/Orca differential tests.",
-    "channel_overhead": "RAW_CURRENT_INVENTORY: 2449 lines across 22 untracked Go files; tracked base-to-current line delta is 408 additions and 96 deletions. No boilerplate percentage is inferred from these raw counts.",
+    "channel_overhead": "RAW_PRE_COMMIT_INVENTORY: 2449 lines across 22 untracked Go files; tracked base-to-pre-commit-worktree line delta is 408 additions and 96 deletions. No boilerplate percentage is inferred from these raw counts.",
     "gate": "MEASURED_BASE_TO_CURRENT_RAW_INVENTORY"
   },
-  "omissions": ["전체 go test ./... 및 전체 race는 Issue #192 contract에 따라 Draft PR CI에서 확인한다.", "Shannon pre/post numeric ratio는 checkpoint 부재와 user-approved no-estimation rule 때문에 기록하지 않았다. 대신 sealed-base-to-current tracked/untracked raw inventory와 successful reader outputs를 재현 가능한 evidence로 기록했다."]
+  "omissions": ["전체 go test ./... 및 전체 race는 Issue #192 contract에 따라 Draft PR CI에서 확인한다.", "Shannon pre/post numeric ratio는 checkpoint 부재와 user-approved no-estimation rule 때문에 기록하지 않았다. 대신 sealed-base-to-pre-commit-worktree tracked/untracked raw inventory와 successful reader outputs를 재현 가능한 evidence로 기록했다."]
 }
