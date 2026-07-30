@@ -60,7 +60,13 @@ func beginOrcaExecutionIntent(stateRoot string, record IssueOpsRecord, workspace
 		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
 	}
 	startedAt := executionNow(now)
-	marker := executionOrcaMarker(record.ID, operationID, probe.Provider, probe.Issue)
+	marker, err := renderOrcaIntentMarker(orcaIntentMarkerIdentity{
+		Purpose: orcaIntentPurposePrepare, LifecycleID: record.ID, Generation: 1,
+		OperationID: operationID, Provider: probe.Provider, Issue: probe.Issue,
+	})
+	if err != nil {
+		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
+	}
 	probe.Marker = marker
 	payload := externalOrcaIntentPayload{
 		SchemaVersion: model.IssueOpsSchemaVersion, OperationID: operationID, LifecycleID: record.ID,

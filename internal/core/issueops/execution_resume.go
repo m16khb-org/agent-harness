@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"agent-harness/internal/core/issueops/model"
-	issueremote "agent-harness/internal/core/issueops/remote"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
@@ -189,10 +188,18 @@ func beginOrcaExecutionResumeIntent(stateRoot string, record IssueOpsRecord, art
 		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, fmt.Errorf("execution resume workspace is not canonical")
 	}
 	startedAt := executionNow(now)
-	marker := fmt.Sprintf(
-		"agent-harness issueops-v1 resume lifecycle=%s generation=%d operation=%s",
-		record.ID, record.Execution.Lease.Generation, operationID,
-	)
+	issueIdentity, err := authoritativeOrcaIssueIdentity(record)
+	if err != nil {
+		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
+	}
+	marker, err := renderOrcaIntentMarker(orcaIntentMarkerIdentity{
+		Purpose: orcaIntentPurposeResume, LifecycleID: record.ID,
+		Generation: record.Execution.Lease.Generation, OperationID: operationID,
+		Provider: issueIdentity.Provider, Issue: issueIdentity.Issue,
+	})
+	if err != nil {
+		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
+	}
 	binding := *record.Execution.Orca
 	lease := record.Execution.Lease
 	prepared := &port.ExecutionOrcaWorkspaceReceipt{
@@ -207,12 +214,7 @@ func beginOrcaExecutionResumeIntent(stateRoot string, record IssueOpsRecord, art
 	probe := port.ExecutionOrcaProbeRequest{
 		Repo: record.Repo, Host: binding.OwnerHost, Model: binding.OwnerModel,
 		Effort: binding.OwnerEffort, Marker: marker,
-	}
-	if record.BranchPrepare != nil {
-		probe.Provider = strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider))
-		if value := issueremote.IssueNumber(record.BranchPrepare.IssueURL); value != "" {
-			probe.Issue, _ = strconv.Atoi(value)
-		}
+		Provider: issueIdentity.Provider, Issue: issueIdentity.Issue,
 	}
 	payload := externalOrcaIntentPayload{
 		SchemaVersion: model.IssueOpsSchemaVersion, Purpose: orcaIntentPurposeResume,

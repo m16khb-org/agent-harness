@@ -6,13 +6,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/pathutil"
-	issueremote "agent-harness/internal/core/issueops/remote"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
@@ -368,18 +366,8 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 		Repo: record.Repo, Host: strings.ToLower(strings.TrimSpace(req.OwnerHost)),
 		Model: strings.TrimSpace(req.OwnerModel), Effort: strings.TrimSpace(req.OwnerEffort),
 	}
-	if record.BranchPrepare != nil {
-		probeReq.Provider = strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider))
-		if value := issueremote.IssueNumber(record.BranchPrepare.IssueURL); value != "" {
-			probeReq.Issue, _ = strconv.Atoi(value)
-		}
-	}
-	probeReq.Marker = executionOrcaMarker(record.ID, "", probeReq.Provider, probeReq.Issue)
 	if requested == string(model.ExecutionModeDirect) {
 		return requested, "", probeReq, nil
-	}
-	if probeReq.Provider == "gitlab" && probeReq.Issue <= 0 {
-		return "", "", probeReq, fmt.Errorf("Orca GitLab prepare requires a positive issue IID")
 	}
 	if probeReq.Host != "codex" && probeReq.Host != "claude" {
 		return "", "", probeReq, fmt.Errorf("Orca owner_host must be codex or claude")
@@ -389,6 +377,16 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 			return string(model.ExecutionModeDirect), "orca_adapter_unavailable", probeReq, nil
 		}
 		return "", "", probeReq, fmt.Errorf("Orca provisioner is unavailable")
+	}
+	issueIdentity, err := authoritativeOrcaIssueIdentity(record)
+	if err != nil {
+		return "", "", probeReq, err
+	}
+	probeReq.Provider = issueIdentity.Provider
+	probeReq.Issue = issueIdentity.Issue
+	probeReq.Marker, err = renderOrcaReadinessMarker(record.ID, issueIdentity)
+	if err != nil {
+		return "", "", probeReq, err
 	}
 	probe, err := orca.Probe(ctx, probeReq)
 	if err != nil || !probe.Available || !probe.Ready {
@@ -423,17 +421,6 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 		return "", "", probeReq, err
 	}
 	return string(model.ExecutionModeOrca), "", probeReq, nil
-}
-
-func executionOrcaMarker(lifecycleID, operationID, provider string, issue int) string {
-	marker := "agent-harness issueops-v1 lifecycle=" + strings.TrimSpace(lifecycleID)
-	if operationID = strings.TrimSpace(operationID); operationID != "" {
-		marker += " operation=" + operationID
-	}
-	if strings.EqualFold(strings.TrimSpace(provider), "gitlab") && issue > 0 {
-		marker += " provider=gitlab issue=" + strconv.Itoa(issue)
-	}
-	return marker
 }
 
 // executionWriterAbsentNextCommand는 준비된 실행에 lease writer가 없을 때 그
