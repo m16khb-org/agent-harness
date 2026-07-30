@@ -1173,6 +1173,40 @@ func TestClientExecutionInventoryPreservesRuntimeForEmptyRows(t *testing.T) {
 	}
 }
 
+func TestClientShowTerminalInventoryPreservesPaneRuntimeEvidence(t *testing.T) {
+	for _, paneRuntimeID := range []int{1, -1} {
+		t.Run(fmt.Sprintf("pane-runtime-%d", paneRuntimeID), func(t *testing.T) {
+			runner := newFakeRunner(t)
+			command := "orca terminal show --terminal term_live --json"
+			runner.responses[command] = CommandOutput{Invoked: true, Stdout: []byte(fmt.Sprintf(`{
+				"ok": true,
+				"result": {"terminal": {
+					"handle": "term_live",
+					"ptyId": "repo::/worktree@@pane",
+					"worktreeId": "repo::/worktree",
+					"connected": true,
+					"writable": true,
+					"paneRuntimeId": %d
+				}},
+				"_meta": {"runtimeId": "runtime-1"}
+			}`, paneRuntimeID))}
+
+			got, err := NewClient(runner).showTerminalInventory(context.Background(), "term_live")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.RuntimeID != "runtime-1" || got.Terminal.RuntimeID != "runtime-1" ||
+				got.Terminal.PTYID != "repo::/worktree@@pane" || got.PaneRuntimeID == nil ||
+				*got.PaneRuntimeID != paneRuntimeID {
+				t.Fatalf("terminal 상세 증거가 손실됐다: %#v", got)
+			}
+			if len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != command {
+				t.Fatalf("terminal 상세 조회 argv가 다르다: %#v", runner.calls)
+			}
+		})
+	}
+}
+
 func TestClientShowDispatchFromRequestsOfficialPreambleForSealedCoordinator(t *testing.T) {
 	runner := newFakeRunner(t)
 	command := "orca orchestration dispatch-show --task task-1 --preamble --from term_coordinator --json"

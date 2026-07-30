@@ -37,9 +37,19 @@ type executionInventoryClient interface {
 	showDispatchInventory(context.Context, string) (executionDispatchInventory, error)
 }
 
+type executionTerminalDetailClient interface {
+	showTerminalInventory(context.Context, string) (executionTerminalDetailInventory, error)
+}
+
 type executionTerminalInventory struct {
 	RuntimeID string
 	Rows      []port.OrcaTerminal
+}
+
+type executionTerminalDetailInventory struct {
+	RuntimeID     string
+	Terminal      port.OrcaTerminal
+	PaneRuntimeID *int
 }
 
 type executionTaskInventory struct {
@@ -318,7 +328,29 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 			return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner terminal runtime identity changed")
 		}
 		result.TerminalID = terminal.PTYID
-		result.TerminalLive = terminal.Connected && terminal.Writable
+		detailClient, ok := p.client.(executionTerminalDetailClient)
+		if !ok {
+			return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner terminal detail inventory is unavailable")
+		}
+		detail, err := detailClient.showTerminalInventory(ctx, terminal.Handle)
+		if err != nil {
+			return port.ExecutionOrcaOwnerInventory{}, err
+		}
+		if err := validateExecutionInventoryRuntime(detail.RuntimeID, currentRuntime); err != nil {
+			return port.ExecutionOrcaOwnerInventory{}, err
+		}
+		if detail.Terminal.RuntimeID != currentRuntime ||
+			detail.Terminal.Handle != terminal.Handle ||
+			detail.Terminal.PTYID != terminal.PTYID ||
+			detail.Terminal.WorktreeID != req.WorktreeID {
+			return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner terminal detail identity changed")
+		}
+		if detail.PaneRuntimeID == nil {
+			return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner terminal pane runtime identity is unavailable")
+		}
+		// Orca 재시작 뒤 terminal list에는 connected/writable인 장부 행이 남을 수 있다.
+		// terminal show의 음수 paneRuntimeId는 현재 렌더러에 실제 pane이 없다는 증거다.
+		result.TerminalLive = detail.Terminal.Connected && detail.Terminal.Writable && *detail.PaneRuntimeID >= 0
 	}
 	tasks, err := client.listAllTasksInventory(ctx)
 	if err != nil {

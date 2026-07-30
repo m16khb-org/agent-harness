@@ -431,6 +431,25 @@ func (c *Client) listTerminalsInventory(ctx context.Context, worktreeID string) 
 	return executionTerminalInventory{RuntimeID: runtimeID, Rows: result}, nil
 }
 
+func (c *Client) showTerminalInventory(ctx context.Context, handle string) (executionTerminalDetailInventory, error) {
+	handle = strings.TrimSpace(handle)
+	if !concreteTerminalHandlePattern.MatchString(handle) {
+		return executionTerminalDetailInventory{}, &port.OrcaError{Code: "terminal_handle_invalid", Detail: "a concrete terminal handle is required"}
+	}
+	var payload struct {
+		Terminal terminalPayload `json:"terminal"`
+	}
+	runtimeID, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "terminal", "show", "--terminal", handle, "--json"}, &payload)
+	if err != nil {
+		return executionTerminalDetailInventory{}, err
+	}
+	terminal := payload.Terminal.portValue()
+	terminal.RuntimeID = runtimeID
+	return executionTerminalDetailInventory{
+		RuntimeID: runtimeID, Terminal: terminal, PaneRuntimeID: payload.Terminal.PaneRuntimeID,
+	}, nil
+}
+
 func (c *Client) CreateTerminal(ctx context.Context, req port.OrcaCreateTerminalRequest) (port.OrcaTerminal, error) {
 	command, ok := ownerAgentCommand(req.Agent, req.Model, req.ReasoningEffort, req.AllowCodexHookTrustBypass)
 	if !ok {
@@ -857,15 +876,16 @@ func (w worktreePayload) portValue() port.OrcaWorktree {
 }
 
 type terminalPayload struct {
-	Handle       string `json:"handle"`
-	PTYID        string `json:"ptyId"`
-	WorktreeID   string `json:"worktreeId"`
-	WorktreePath string `json:"worktreePath"`
-	TabID        string `json:"tabId"`
-	LeafID       string `json:"leafId"`
-	Title        string `json:"title"`
-	Connected    bool   `json:"connected"`
-	Writable     bool   `json:"writable"`
+	Handle        string `json:"handle"`
+	PTYID         string `json:"ptyId"`
+	WorktreeID    string `json:"worktreeId"`
+	WorktreePath  string `json:"worktreePath"`
+	TabID         string `json:"tabId"`
+	LeafID        string `json:"leafId"`
+	Title         string `json:"title"`
+	Connected     bool   `json:"connected"`
+	Writable      bool   `json:"writable"`
+	PaneRuntimeID *int   `json:"paneRuntimeId"`
 }
 
 type visualLayoutPayload struct {

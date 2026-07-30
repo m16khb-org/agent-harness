@@ -412,7 +412,7 @@ func TestExecutionProvisionerRejectsUnsealedOwnerLaunchBeforeTerminalMutation(t 
 
 func TestExecutionOwnerInventoryReportsExactTerminalAndTaskLiveness(t *testing.T) {
 	client := &executionFake{
-		terminals: []port.OrcaTerminal{{RuntimeID: "runtime-69", PTYID: "pty-69", WorktreeID: "wt-69", Connected: true, Writable: true}},
+		terminals: []port.OrcaTerminal{{RuntimeID: "runtime-69", Handle: "term-69", PTYID: "pty-69", WorktreeID: "wt-69", Connected: true, Writable: true}},
 		tasks:     []port.OrcaTask{{RuntimeID: "runtime-69", ID: "task-69", Status: "running"}},
 		dispatch:  port.OrcaDispatch{RuntimeID: "runtime-69", ID: "dispatch-69", TaskID: "task-69", Status: "running"},
 	}
@@ -434,6 +434,101 @@ func TestExecutionOwnerInventoryReportsExactTerminalAndTaskLiveness(t *testing.T
 	})
 	if err != nil || got.TerminalLive || got.TaskLive {
 		t.Fatalf("terminal task inventory should be quiescent: got=%#v err=%v", got, err)
+	}
+}
+
+func TestExecutionOwnerInventoryUsesCurrentPaneRuntimeForTerminalLiveness(t *testing.T) {
+	currentRuntime := "runtime-70"
+	paneLive := 1
+	paneGhost := -1
+	request := port.ExecutionOrcaOwnerInventoryRequest{
+		RuntimeID: "runtime-69", WorktreeID: "wt-69", TaskID: "task-69", DispatchID: "dispatch-69",
+		TerminalPTYID: "pty-69", AllowRuntimeRollover: true,
+	}
+
+	for _, tc := range []struct {
+		name     string
+		pane     *int
+		wantLive bool
+		wantErr  bool
+	}{
+		{name: "현재 pane", pane: &paneLive, wantLive: true},
+		{name: "runtime 재시작 뒤 남은 ghost 행", pane: &paneGhost},
+		{name: "pane runtime 증거 누락", pane: nil, wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			client := &executionFake{
+				terminals: []port.OrcaTerminal{{
+					RuntimeID: currentRuntime, Handle: "term-69", PTYID: "pty-69",
+					WorktreeID: "wt-69", Connected: true, Writable: true,
+				}},
+				tasks:                    []port.OrcaTask{{RuntimeID: currentRuntime, ID: "task-69", Status: "completed"}},
+				dispatch:                 port.OrcaDispatch{RuntimeID: currentRuntime, ID: "dispatch-69", TaskID: "task-69", Status: "completed"},
+				terminalInventoryRuntime: &currentRuntime,
+				taskInventoryRuntime:     &currentRuntime,
+				dispatchInventoryRuntime: &currentRuntime,
+				terminalDetail: &executionTerminalDetailInventory{
+					RuntimeID: currentRuntime,
+					Terminal: port.OrcaTerminal{
+						RuntimeID: currentRuntime, Handle: "term-69", PTYID: "pty-69", WorktreeID: "wt-69",
+						Connected: true, Writable: true,
+					},
+					PaneRuntimeID: tc.pane,
+				},
+			}
+			got, err := NewExecutionClient(client).InspectOwner(context.Background(), request)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("pane runtime 증거가 없는데 owner 교체를 허용했다: %#v", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.TerminalID != "pty-69" || got.TerminalLive != tc.wantLive {
+				t.Fatalf("pane runtime liveness 판정이 다르다: got=%#v want_live=%t", got, tc.wantLive)
+			}
+		})
+	}
+}
+
+func TestExecutionOwnerInventoryRejectsContradictoryTerminalDetail(t *testing.T) {
+	currentRuntime := "runtime-70"
+	paneLive := 1
+	client := &executionFake{
+		terminals: []port.OrcaTerminal{{
+			RuntimeID: currentRuntime, Handle: "term-69", PTYID: "pty-69",
+			WorktreeID: "wt-69", Connected: true, Writable: true,
+		}},
+		tasks:                    []port.OrcaTask{{RuntimeID: currentRuntime, ID: "task-69", Status: "completed"}},
+		dispatch:                 port.OrcaDispatch{RuntimeID: currentRuntime, ID: "dispatch-69", TaskID: "task-69", Status: "completed"},
+		terminalInventoryRuntime: &currentRuntime,
+		taskInventoryRuntime:     &currentRuntime,
+		dispatchInventoryRuntime: &currentRuntime,
+		terminalDetail: &executionTerminalDetailInventory{
+			RuntimeID: currentRuntime,
+			Terminal: port.OrcaTerminal{
+				RuntimeID: currentRuntime, Handle: "term-69", PTYID: "pty-other", WorktreeID: "wt-69",
+				Connected: true, Writable: true,
+			},
+			PaneRuntimeID: &paneLive,
+		},
+	}
+	if got, err := NewExecutionClient(client).InspectOwner(context.Background(), port.ExecutionOrcaOwnerInventoryRequest{
+		RuntimeID: "runtime-69", WorktreeID: "wt-69", TaskID: "task-69", DispatchID: "dispatch-69",
+		TerminalPTYID: "pty-69", AllowRuntimeRollover: true,
+	}); err == nil {
+		t.Fatalf("목록과 상세 조회의 terminal identity 모순을 허용했다: %#v", got)
+	}
+
+	client.terminalDetail = nil
+	client.terminalDetailErr = fmt.Errorf("terminal show failed")
+	if got, err := NewExecutionClient(client).InspectOwner(context.Background(), port.ExecutionOrcaOwnerInventoryRequest{
+		RuntimeID: "runtime-69", WorktreeID: "wt-69", TaskID: "task-69", DispatchID: "dispatch-69",
+		TerminalPTYID: "pty-69", AllowRuntimeRollover: true,
+	}); err == nil {
+		t.Fatalf("terminal 상세 조회 실패를 quiescent로 해석했다: %#v", got)
 	}
 }
 
@@ -797,6 +892,8 @@ type executionFake struct {
 	tasks                    []port.OrcaTask
 	dispatch                 port.OrcaDispatch
 	createdTask              *port.OrcaTask
+	terminalDetail           *executionTerminalDetailInventory
+	terminalDetailErr        error
 	terminalInventoryRuntime *string
 	taskInventoryRuntime     *string
 	dispatchInventoryRuntime *string
@@ -850,6 +947,27 @@ func (f *executionFake) ListTerminals(context.Context, string) ([]port.OrcaTermi
 func (f *executionFake) listTerminalsInventory(context.Context, string) (executionTerminalInventory, error) {
 	f.calls = append(f.calls, "list-terminals-inventory")
 	return executionTerminalInventory{RuntimeID: executionFakeRuntime(f.terminalInventoryRuntime), Rows: append([]port.OrcaTerminal(nil), f.terminals...)}, nil
+}
+
+func (f *executionFake) showTerminalInventory(_ context.Context, handle string) (executionTerminalDetailInventory, error) {
+	f.calls = append(f.calls, "show-terminal-inventory")
+	if f.terminalDetailErr != nil {
+		return executionTerminalDetailInventory{}, f.terminalDetailErr
+	}
+	if f.terminalDetail != nil {
+		return *f.terminalDetail, nil
+	}
+	for _, terminal := range f.terminals {
+		if terminal.Handle != handle {
+			continue
+		}
+		paneRuntimeID := 1
+		return executionTerminalDetailInventory{
+			RuntimeID: executionFakeRuntime(f.terminalInventoryRuntime),
+			Terminal:  terminal, PaneRuntimeID: &paneRuntimeID,
+		}, nil
+	}
+	return executionTerminalDetailInventory{}, fmt.Errorf("terminal detail not found")
 }
 
 func (f *executionFake) ListTasks(context.Context) ([]port.OrcaTask, error) {
