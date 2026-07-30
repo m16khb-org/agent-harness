@@ -231,14 +231,13 @@ func prepareOrcaExecution(ctx context.Context, stateRoot string, record IssueOps
 	if deps.Orca == nil {
 		return ExecutionPrepareResult{OK: false, ID: record.ID}, fmt.Errorf("Orca provisioner is unavailable")
 	}
-	if !req.Confirm {
-		return result, nil
+	if req.Confirm {
+		actor, err := normalizeNativeActor(req.Actor)
+		if err != nil {
+			return ExecutionPrepareResult{OK: false, ID: record.ID}, err
+		}
+		req.Actor = actor
 	}
-	actor, err := normalizeNativeActor(req.Actor)
-	if err != nil {
-		return ExecutionPrepareResult{OK: false, ID: record.ID}, err
-	}
-	req.Actor = actor
 	// 위임된 child는 coordinator가 봉인된 부모 worktree에서 준비한다. 레코드에서
 	// 계산된 정확한 부모 경로만 추가로 허용하고, 빈 경로와 임의의 제3 경로는 막는다.
 	fromParentWorktree := strings.TrimSpace(workspaceReq.ParentWorktree) != "" && samePath(req.CWD, workspaceReq.ParentWorktree)
@@ -248,6 +247,9 @@ func prepareOrcaExecution(ctx context.Context, stateRoot string, record IssueOps
 	snapshot, err := readExecutionOwnerSnapshot(ctx, record, deps.ReadIssue)
 	if err != nil {
 		return ExecutionPrepareResult{OK: false, ID: record.ID}, err
+	}
+	if !req.Confirm {
+		return result, nil
 	}
 	pending, payload, err := beginOrcaExecutionIntent(stateRoot, record, workspaceReq, probe, req, snapshot, deps.Now)
 	if err != nil {
