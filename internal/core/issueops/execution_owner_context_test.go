@@ -192,7 +192,7 @@ func TestExecutionReseedResealsOwnerPacketForTheNewGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reseeded, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+	reseeded, err := reseedExecutionCompatibilityOracle(context.Background(), stateRoot, ExecutionReplaceRequest{
 		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
 		InventoryFingerprint: preview.InventoryFingerprint, Reason: "owner terminal lost before claim",
 		Actor: requester, CWD: record.Repo, Confirm: true,
@@ -369,7 +369,7 @@ func TestExecutionReseedFailurePreservesCurrentClaimToken(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+	_, err = reseedExecutionCompatibilityOracle(context.Background(), stateRoot, ExecutionReplaceRequest{
 		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
 		InventoryFingerprint: preview.InventoryFingerprint, Reason: "test reseal failure",
 		Actor: requester, CWD: record.Repo, Confirm: true,
@@ -506,7 +506,7 @@ func TestExecutionReseedAdoptsQuiescentOrcaRuntimeRollover(t *testing.T) {
 	if !inspector.last.AllowRuntimeRollover {
 		t.Fatal("holderless reseed preview가 제한된 runtime rollover 관측을 요청하지 않았다")
 	}
-	reseeded, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+	reseeded, err := reseedExecutionCompatibilityOracle(context.Background(), stateRoot, ExecutionReplaceRequest{
 		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
 		InventoryFingerprint: preview.InventoryFingerprint, Reason: "Orca runtime restarted after owner exit",
 		Actor: requester, CWD: record.Repo, Confirm: true,
@@ -560,7 +560,7 @@ func TestExecutionReseedRuntimeRolloverHonorsInventoryCAS(t *testing.T) {
 	}
 
 	inspector.inventory.RuntimeID = "runtime-3"
-	_, err = ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+	_, err = reseedExecutionCompatibilityOracle(context.Background(), stateRoot, ExecutionReplaceRequest{
 		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
 		InventoryFingerprint: preview.InventoryFingerprint, Reason: "Orca runtime restarted twice",
 		Actor: requester, CWD: record.Repo, Confirm: true,
@@ -599,7 +599,7 @@ func TestExecutionReseedRecoversFromLegitimateIssueRevision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reseeded, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+	reseeded, err := reseedExecutionCompatibilityOracle(context.Background(), stateRoot, ExecutionReplaceRequest{
 		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
 		InventoryFingerprint: preview.InventoryFingerprint, Reason: "issue scope revised by the user",
 		Actor: requester, CWD: record.Repo, Confirm: true,
@@ -627,7 +627,7 @@ func TestExecutionClaimVerifiesSealedPacketBeyondTheFirstGeneration(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	reseeded, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+	reseeded, err := reseedExecutionCompatibilityOracle(context.Background(), stateRoot, ExecutionReplaceRequest{
 		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
 		InventoryFingerprint: preview.InventoryFingerprint, Reason: "owner terminal lost before claim",
 		Actor: requester, CWD: record.Repo, Confirm: true,

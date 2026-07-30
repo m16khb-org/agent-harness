@@ -27,7 +27,7 @@ func reseededOrcaCycle(t *testing.T) (string, IssueOpsRecord, ExecutionReplaceRe
 	if err != nil {
 		t.Fatal(err)
 	}
-	reseededResult, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+	reseededResult, err := reseedExecutionCompatibilityOracle(context.Background(), stateRoot, ExecutionReplaceRequest{
 		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: record.Execution.Lease.Generation,
 		InventoryFingerprint: preview.InventoryFingerprint, Reason: "resume test",
 		Actor: actor, CWD: record.Execution.Workspace.Root, Confirm: true,

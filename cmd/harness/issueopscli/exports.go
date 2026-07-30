@@ -17,8 +17,12 @@ func RunIssueOpsWithReleaseHandler(args []string, release issueops.ExecutionRele
 }
 
 func RunIssueOpsWithExecutionHandlers(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler) error {
+	return RunIssueOpsWithExecutionHandlersAndReseed(args, claim, release, nil)
+}
+
+func RunIssueOpsWithExecutionHandlersAndReseed(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler, reseed issueops.ExecutionReseedHandler) error {
 	if len(args) > 0 && args[0] == "execution" {
-		return runIssueOpsExecutionWithHandlers(args[1:], claim, release)
+		return runIssueOpsExecutionWithHandlersAndReseed(args[1:], claim, release, reseed)
 	}
 	return runIssueOps(args)
 }

@@ -3,6 +3,9 @@ package architecture
 import (
 	"encoding/json"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -128,6 +131,150 @@ func TestProductionGraphMatchesBaseline(t *testing.T) {
 	if err := compareBaseline(legacyEdges(edges), baseline); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestProductionReseedRoutingHasNoLegacyFallback(t *testing.T) {
+	violations, err := productionReseedRoutingViolations(findRepoRoot(t))
+	if err != nil {
+		t.Fatalf("inspect production reseed routing: %v", err)
+	}
+	if len(violations) != 0 {
+		t.Fatalf("production reseed routing violations: %s", strings.Join(violations, "; "))
+	}
+}
+
+func TestReseedOwnerArtifactPreparationDoesNotReapplyLeaseTransition(t *testing.T) {
+	path := filepath.Join(findRepoRoot(t), "internal", "core", "issueops", "execution_reseed_adapter.go")
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{
+		"record.Execution.Lease.Generation++",
+		"record.Execution.Lease.Status =",
+		"record.Execution.Lease.Holder =",
+		"record.Execution.Lease.ClaimTokenSHA256 =",
+	} {
+		if strings.Contains(string(contents), forbidden) {
+			t.Fatalf("owner artifact preparation must use the application transition, found %q", forbidden)
+		}
+	}
+}
+
+func TestProductionReseedWiringUsesOutboundInventory(t *testing.T) {
+	path := filepath.Join(findRepoRoot(t), "cmd", "harness", "harnessapp", "issueops_reseed_wiring.go")
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(contents), "ObserveExecutionReseed") || !strings.Contains(string(contents), "NewReseedInventory") {
+		t.Fatal("production reseed wiring must use the outbound inventory adapter")
+	}
+}
+
+func TestReseedRoutingViolationsRejectLegacyFallback(t *testing.T) {
+	file, err := parser.ParseFile(token.NewFileSet(), "router.go", `package issueops
+func route(req request, deps dependencies) {
+	if req.ReplaceAction == ExecutionReplaceReseed {
+		ReplaceExecutionWithDependencies()
+	}
+}
+`, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	violations := reseedRoutingViolations(file, true)
+	if len(violations) == 0 || !strings.Contains(strings.Join(violations, "; "), "does not invoke injected Reseed handler") || !strings.Contains(strings.Join(violations, "; "), "calls legacy ReplaceExecutionWithDependencies") {
+		t.Fatalf("legacy fallback violations=%v", violations)
+	}
+}
+
+func productionReseedRoutingViolations(repoRoot string) ([]string, error) {
+	dir := filepath.Join(repoRoot, "internal", "core", "issueops")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var violations []string
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		path := filepath.Join(dir, name)
+		contents, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), path, contents, 0)
+		if err != nil {
+			return nil, err
+		}
+		if sourceHasIdentifier(file, "reseedExecutionCompatibilityOracle") {
+			violations = append(violations, name+" retains the legacy reseed oracle")
+		}
+		violations = append(violations, reseedRoutingViolations(file, name == "execution_api.go")...)
+	}
+	sort.Strings(violations)
+	return violations, nil
+}
+
+func reseedRoutingViolations(file *ast.File, requireInjectedHandler bool) []string {
+	var violations []string
+	routes := 0
+	ast.Inspect(file, func(node ast.Node) bool {
+		branch, ok := node.(*ast.IfStmt)
+		if !ok || !sourceHasIdentifier(branch.Cond, "ExecutionReplaceReseed") {
+			return true
+		}
+		routes++
+		calls := sourceCallNames(branch.Body)
+		if requireInjectedHandler && !calls["Reseed"] {
+			violations = append(violations, "reseed route does not invoke injected Reseed handler")
+		}
+		if calls["ReplaceExecutionWithDependencies"] {
+			violations = append(violations, "reseed route calls legacy ReplaceExecutionWithDependencies")
+		}
+		if calls["reseedExecutionCompatibilityOracle"] {
+			violations = append(violations, "reseed route calls the legacy reseed oracle")
+		}
+		return true
+	})
+	if requireInjectedHandler && routes != 1 {
+		violations = append(violations, fmt.Sprintf("expected one production reseed route, found %d", routes))
+	}
+	return violations
+}
+
+func sourceHasIdentifier(node ast.Node, name string) bool {
+	found := false
+	ast.Inspect(node, func(node ast.Node) bool {
+		identifier, ok := node.(*ast.Ident)
+		if ok && identifier.Name == name {
+			found = true
+			return false
+		}
+		return !found
+	})
+	return found
+}
+
+func sourceCallNames(node ast.Node) map[string]bool {
+	calls := map[string]bool{}
+	ast.Inspect(node, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		switch function := call.Fun.(type) {
+		case *ast.Ident:
+			calls[function.Name] = true
+		case *ast.SelectorExpr:
+			calls[function.Sel.Name] = true
+		}
+		return true
+	})
+	return calls
 }
 
 func evaluateEdges(edges []dependencyEdge) []violation {

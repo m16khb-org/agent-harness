@@ -19,6 +19,10 @@ func issueOpsClaimHandler(ctx context.Context, stateRoot string, request issueop
 	if err != nil {
 		return issueops.ExecutionResult{ID: request.ID}, err
 	}
+	readIssue := request.ReadIssue
+	if readIssue == nil {
+		readIssue = provider.ReadExecutionIssueSnapshot
+	}
 	preflight := leaseoutbound.NewClaimContextPreflight(db, func(ctx context.Context, repo, issueURL string) (leaseoutbound.IssueSnapshot, error) {
 		record, err := issueops.ReadIssueOps(stateRoot, request.ID)
 		if err != nil {
@@ -28,7 +32,7 @@ func issueOpsClaimHandler(ctx context.Context, stateRoot string, request issueop
 		if err != nil {
 			return leaseoutbound.IssueSnapshot{}, err
 		}
-		snapshot, err := provider.ReadExecutionIssueSnapshot(ctx, providerName, port.ExecutionIssueSnapshotRequest{Repo: repo, URL: issueURL})
+		snapshot, err := readIssue(ctx, providerName, port.ExecutionIssueSnapshotRequest{Repo: repo, URL: issueURL})
 		if err != nil {
 			return leaseoutbound.IssueSnapshot{}, err
 		}
