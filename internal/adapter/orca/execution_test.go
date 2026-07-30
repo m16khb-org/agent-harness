@@ -3,6 +3,7 @@ package orca
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -56,8 +57,7 @@ func TestExecutionProvisionerCreatesOneWorktreeAndLaunchesOneOwner(t *testing.T)
 
 func TestExecutionProvisionerAcceptsGitLabMarkerWithoutNativeMetadata(t *testing.T) {
 	workspace, request := executionFixture(t)
-	request.Provider = "gitlab"
-	request.Marker += " provider=gitlab issue=69"
+	request = executionGitLabProbe(request)
 	client := &executionFake{workspace: workspace, probeRequest: request}
 
 	if _, err := NewExecutionClient(client).PrepareWorkspace(context.Background(), workspace, request); err != nil {
@@ -71,8 +71,7 @@ func TestExecutionProvisionerAcceptsGitLabMarkerWithoutNativeMetadata(t *testing
 
 func TestExecutionProvisionerRejectsMismatchedNativeGitLabMetadata(t *testing.T) {
 	workspace, request := executionFixture(t)
-	request.Provider = "gitlab"
-	request.Marker += " provider=gitlab issue=69"
+	request = executionGitLabProbe(request)
 	row := executionWorktree(workspace, request)
 	wrong := 70
 	row.GitLabIssue = &wrong
@@ -88,11 +87,11 @@ func TestExecutionProvisionerRejectsMismatchedNativeGitLabMetadata(t *testing.T)
 
 func TestExecutionProvisionerRequiresExactGitLabMarker(t *testing.T) {
 	workspace, request := executionFixture(t)
-	request.Provider = "gitlab"
+	request = executionGitLabProbe(request)
 	for _, marker := range []string{
-		request.Marker,
-		request.Marker + " provider=github issue=69",
-		request.Marker + " provider=gitlab issue=70",
+		strings.TrimSuffix(request.Marker, " provider=gitlab issue=69"),
+		strings.Replace(request.Marker, "provider=gitlab", "provider=github", 1),
+		strings.Replace(request.Marker, "issue=69", "issue=70", 1),
 	} {
 		t.Run(marker, func(t *testing.T) {
 			request.Marker = marker
@@ -104,6 +103,99 @@ func TestExecutionProvisionerRequiresExactGitLabMarker(t *testing.T) {
 				t.Fatalf("잘못된 marker가 Orca inventory에 도달했다: %v", client.calls)
 			}
 		})
+	}
+}
+
+func TestExecutionInvokeIntentPreflightFailureProvesNotInvoked(t *testing.T) {
+	workspace, github := executionFixture(t)
+	gitlab := executionGitLabProbe(github)
+	tests := []struct {
+		name  string
+		probe port.ExecutionOrcaProbeRequest
+	}{
+		{
+			name:  "github marker names gitlab",
+			probe: withExecutionMarker(github, strings.Replace(github.Marker, "provider=github", "provider=gitlab", 1)),
+		},
+		{
+			name:  "github marker has wrong issue",
+			probe: withExecutionMarker(github, strings.Replace(github.Marker, "issue=69", "issue=70", 1)),
+		},
+		{
+			name:  "gitlab marker names github",
+			probe: withExecutionMarker(gitlab, strings.Replace(gitlab.Marker, "provider=gitlab", "provider=github", 1)),
+		},
+		{
+			name:  "gitlab marker has wrong issue",
+			probe: withExecutionMarker(gitlab, strings.Replace(gitlab.Marker, "issue=69", "issue=70", 1)),
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			client := &executionFake{workspace: workspace, probeRequest: test.probe}
+			_, err := NewExecutionClient(client).InvokeIntent(context.Background(), port.ExecutionOrcaIntentRequest{
+				Stage: port.ExecutionOrcaIntentWorktree, Marker: test.probe.Marker,
+				Workspace: workspace, Probe: test.probe,
+			})
+			var typed *port.OrcaError
+			if !errors.As(err, &typed) || typed.Code != "intent_preflight_rejected" || typed.Invoked {
+				t.Fatalf("preflight error = %#v (%v)", typed, err)
+			}
+			if len(client.calls) != 0 {
+				t.Fatalf("preflight failure reached Orca client: %v", client.calls)
+			}
+		})
+	}
+}
+
+func TestExecutionInvokeIntentLocalFailuresRemainNotInvoked(t *testing.T) {
+	workspace, probe := executionFixture(t)
+	worktreeRequest := port.ExecutionOrcaIntentRequest{
+		Stage: port.ExecutionOrcaIntentWorktree, Marker: probe.Marker,
+		Workspace: workspace, Probe: probe,
+	}
+	t.Run("missing client", func(t *testing.T) {
+		_, err := (*ExecutionProvisioner)(nil).InvokeIntent(context.Background(), worktreeRequest)
+		assertExecutionPreflightError(t, err)
+	})
+	t.Run("unsupported stage", func(t *testing.T) {
+		client := &executionFake{workspace: workspace, probeRequest: probe}
+		request := worktreeRequest
+		request.Stage = port.ExecutionOrcaIntentStage("unknown")
+		_, err := NewExecutionClient(client).InvokeIntent(context.Background(), request)
+		assertExecutionPreflightError(t, err)
+		if len(client.calls) != 0 {
+			t.Fatalf("unsupported stage reached Orca client: %v", client.calls)
+		}
+	})
+	t.Run("dispatch terminal cannot be resolved", func(t *testing.T) {
+		client := &executionFake{}
+		launch := executionLaunchFixture(t, workspace.Root)
+		prepared := &port.ExecutionOrcaWorkspaceReceipt{
+			Workspace: port.ExecutionWorkspaceReceipt{
+				SourceRoot: workspace.SourceRoot, Root: workspace.Root, Branch: workspace.Branch,
+				BaseHead: workspace.BaseHead, ParentWorktree: workspace.ParentWorktree,
+				Driver: "orca", Exists: true,
+			},
+			RuntimeID: "runtime-69", RepoID: "repo-69", WorktreeID: "wt-69",
+		}
+		_, err := NewExecutionClient(client).InvokeIntent(context.Background(), port.ExecutionOrcaIntentRequest{
+			Stage: port.ExecutionOrcaIntentDispatch, Marker: probe.Marker,
+			Workspace: workspace, Probe: probe, Prepared: prepared, Launch: &launch,
+			TerminalPTYID: "pty-69", TaskID: "task-69",
+		})
+		assertExecutionPreflightError(t, err)
+		if !reflect.DeepEqual(client.calls, []string{"list-terminals-inventory"}) {
+			t.Fatalf("dispatch preflight performed a mutation: %v", client.calls)
+		}
+	})
+}
+
+func assertExecutionPreflightError(t *testing.T, err error) {
+	t.Helper()
+	var typed *port.OrcaError
+	if !errors.As(err, &typed) || typed.Code != "intent_preflight_rejected" || typed.Invoked {
+		t.Fatalf("preflight error = %#v (%v)", typed, err)
 	}
 }
 
@@ -280,7 +372,7 @@ func TestExecutionTaskTitleFitsOrcaAndBindsSealedIntent(t *testing.T) {
 
 func TestExecutionIntentInventoryRejectsLegacyOrcaTaskTitle(t *testing.T) {
 	workspace, probe := executionFixture(t)
-	probe.Marker = "agent-harness issueops-v1 lifecycle=io-c7e2d4e02b59 operation=c8b92dda09eaf3d"
+	probe.Marker = "agent-harness issueops-v1 lifecycle=io-c7e2d4e02b59 operation=c8b92dda09eaf3d provider=github issue=69"
 	prepared := port.ExecutionOrcaWorkspaceReceipt{Workspace: port.ExecutionWorkspaceReceipt{
 		SourceRoot: workspace.SourceRoot, Root: workspace.Root, Branch: workspace.Branch, BaseHead: workspace.BaseHead, Driver: "orca", Exists: true,
 	}, RuntimeID: "runtime-69", RepoID: "repo-69", WorktreeID: "wt-69"}
@@ -838,9 +930,21 @@ func executionFixture(t *testing.T) (port.ExecutionWorkspaceRequest, port.Execut
 	}
 	request := port.ExecutionOrcaProbeRequest{
 		Repo: workspace.SourceRoot, Host: "claude", Model: "caller-selected-model", Effort: "high",
-		Provider: "github", Issue: 69, Marker: "agent-harness issueops-v1 lifecycle=io-69",
+		Provider: "github", Issue: 69,
+		Marker: "agent-harness issueops-v1 lifecycle=io-69 operation=operation-69 provider=github issue=69",
 	}
 	return workspace, request
+}
+
+func executionGitLabProbe(request port.ExecutionOrcaProbeRequest) port.ExecutionOrcaProbeRequest {
+	request.Provider = "gitlab"
+	request.Marker = strings.Replace(request.Marker, "provider=github", "provider=gitlab", 1)
+	return request
+}
+
+func withExecutionMarker(request port.ExecutionOrcaProbeRequest, marker string) port.ExecutionOrcaProbeRequest {
+	request.Marker = marker
+	return request
 }
 
 func executionLaunchFixture(t *testing.T, root string) port.ExecutionOrcaLaunchRequest {
