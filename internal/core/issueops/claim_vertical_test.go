@@ -57,6 +57,10 @@ func claimViaVerticalWithDeps(ctx context.Context, stateRoot string, request Exe
 	return ExecutionResult{OK: result.OK, ID: result.ID, Execution: execution}, nil
 }
 
+func claimViaVerticalHandler(ctx context.Context, stateRoot string, request ExecutionClaimRequest, deps ExecutionClaimDependencies) (ExecutionResult, error) {
+	return claimViaVerticalWithDeps(ctx, stateRoot, request, deps)
+}
+
 func toVerticalActor(actor model.NativeActor) leasedomain.Actor {
 	result := leasedomain.Actor{Host: actor.Host, SessionID: actor.SessionID, AgentID: actor.AgentID}
 	if actor.SessionProcess != nil {

@@ -7,14 +7,13 @@ import (
 
 	leaseinbound "agent-harness/internal/adapter/inbound/issueopslease"
 	leaseoutbound "agent-harness/internal/adapter/outbound/issueopslease"
-	"agent-harness/internal/adapter/provider"
 	leaseapp "agent-harness/internal/application/issueopslease"
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
 
-func issueOpsClaimHandler(ctx context.Context, stateRoot string, request issueops.ExecutionClaimRequest) (issueops.ExecutionResult, error) {
+func issueOpsClaimHandler(ctx context.Context, stateRoot string, request issueops.ExecutionClaimRequest, deps issueops.ExecutionClaimDependencies) (issueops.ExecutionResult, error) {
 	db, err := sqlstore.Open(stateRoot)
 	if err != nil {
 		return issueops.ExecutionResult{ID: request.ID}, err
@@ -28,14 +27,17 @@ func issueOpsClaimHandler(ctx context.Context, stateRoot string, request issueop
 		if err != nil {
 			return leaseoutbound.IssueSnapshot{}, err
 		}
-		snapshot, err := provider.ReadExecutionIssueSnapshot(ctx, providerName, port.ExecutionIssueSnapshotRequest{Repo: repo, URL: issueURL})
+		if deps.ReadIssue == nil {
+			return leaseoutbound.IssueSnapshot{}, fmt.Errorf("remote issue snapshot reader is unavailable for the Orca claim")
+		}
+		snapshot, err := deps.ReadIssue(ctx, providerName, port.ExecutionIssueSnapshotRequest{Repo: repo, URL: issueURL})
 		if err != nil {
 			return leaseoutbound.IssueSnapshot{}, err
 		}
 		return leaseoutbound.IssueSnapshot{URL: snapshot.URL, Body: snapshot.Body}, nil
 	})
 	service := leaseapp.NewClaimService(leaseoutbound.NewSQLiteRepository(db), leaseoutbound.UTCClock{}, leaseoutbound.InspectNativeProcess, preflight)
-	return leaseinbound.NewClaimHandler(service)(ctx, stateRoot, request)
+	return leaseinbound.NewClaimHandler(service)(ctx, stateRoot, request, deps)
 }
 
 func issueOpsClaimProviderName(record issueops.IssueOpsRecord, issueURL string) (string, error) {

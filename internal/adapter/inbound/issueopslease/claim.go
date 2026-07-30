@@ -19,7 +19,7 @@ func NewClaimHandler(service *leaseapp.ClaimService) issueops.ExecutionClaimHand
 	return handler.Handle
 }
 
-func (h ClaimHandler) Handle(ctx context.Context, _ string, request issueops.ExecutionClaimRequest) (issueops.ExecutionResult, error) {
+func (h ClaimHandler) Handle(ctx context.Context, _ string, request issueops.ExecutionClaimRequest, _ issueops.ExecutionClaimDependencies) (issueops.ExecutionResult, error) {
 	if h.service == nil {
 		return issueops.ExecutionResult{ID: request.ID}, issueops.ErrClaimHandlerUnavailable
 	}

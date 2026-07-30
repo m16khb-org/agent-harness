@@ -9,7 +9,7 @@ import (
 )
 
 func TestHarnessAppClaimWiring(t *testing.T) {
-	_, err := issueOpsClaimHandler(context.Background(), t.TempDir(), issueops.ExecutionClaimRequest{ID: "io-claim-wiring"})
+	_, err := issueOpsClaimHandler(context.Background(), t.TempDir(), issueops.ExecutionClaimRequest{ID: "io-claim-wiring"}, issueops.ExecutionClaimDependencies{})
 	if err == nil || !strings.Contains(err.Error(), "issueops record io-claim-wiring not found") {
 		t.Fatalf("claim wiring error=%v", err)
 	}

@@ -46,7 +46,7 @@ func TestExecutionIssueSnapshotEvidenceSealsPrepareAndClaimWithoutFallback(t *te
 		Actor: executionActor("claude", "snapshot-owner"), CWD: prepared.Workspace.Root,
 		TokenFile: prepared.ClaimTokenPath, IssueBodySHA256: prepared.IssueBodySHA256,
 		ContextPacketSHA256: prepared.ContextPacketSHA256, IssueSnapshot: evidence,
-	}, ExecutionActionDependencies{ReadIssue: fallback})
+	}, ExecutionActionDependencies{ReadIssue: fallback, Claim: claimViaVerticalHandler})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +193,7 @@ func TestExecutionIssueSnapshotEvidenceSealsFinalizeAndReplacementClaimWithoutFa
 		CWD:   fixture.prepared.Workspace.Root, TokenFile: finalized.ClaimTokenPath,
 		IssueBodySHA256: finalized.IssueBodySHA256, ContextPacketSHA256: finalized.ContextPacketSHA256,
 		IssueSnapshot: evidence,
-	}, ExecutionActionDependencies{})
+	}, ExecutionActionDependencies{Claim: claimViaVerticalHandler})
 	if err != nil {
 		t.Fatalf("finalize가 봉인한 GitLab snapshot으로 claim하지 못했다: %v", err)
 	}

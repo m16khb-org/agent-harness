@@ -14,7 +14,7 @@ var (
 	ErrReleaseHandlerUnavailable = errors.New("issueops execution release handler is not configured")
 )
 
-type ExecutionClaimHandler func(context.Context, string, ExecutionClaimRequest) (ExecutionResult, error)
+type ExecutionClaimHandler func(context.Context, string, ExecutionClaimRequest, ExecutionClaimDependencies) (ExecutionResult, error)
 type ExecutionReleaseHandler func(context.Context, string, ExecutionReleaseRequest) (ExecutionResult, error)
 
 const (
@@ -99,7 +99,7 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 		return deps.Claim(ctx, stateRoot, ExecutionClaimRequest{
 			ID: req.ID, Generation: req.Generation, Actor: req.Actor, CWD: req.CWD, TokenFile: req.TokenFile,
 			IssueBodySHA256: req.IssueBodySHA256, ContextPacketSHA256: req.ContextPacketSHA256,
-		})
+		}, ExecutionClaimDependencies{ReadIssue: deps.ReadIssue})
 	case ExecutionActionRelease:
 		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
 			return ExecutionResult{OK: false, ID: req.ID}, err

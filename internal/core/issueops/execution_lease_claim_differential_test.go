@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/port"
 )
 
 func TestExecutionLeaseClaimDifferential(t *testing.T) {
@@ -146,20 +147,33 @@ func testExecuteExecutionClaimUsesInjectedHandler(t *testing.T) {
 	}
 
 	called := 0
+	readerCalled := 0
 	result, err := ExecuteExecution(context.Background(), t.TempDir(), ExecutionActionRequest{
 		Action: ExecutionActionClaim, ID: "io-claim-handler", Generation: 3, CWD: "/canonical/worktree", TokenFile: "/canonical/worktree/token",
-	}, ExecutionActionDependencies{Claim: func(_ context.Context, stateRoot string, request ExecutionClaimRequest) (ExecutionResult, error) {
-		called++
-		if stateRoot == "" || request.ID != "io-claim-handler" || request.Generation != 3 || request.CWD != "/canonical/worktree" || request.TokenFile != "/canonical/worktree/token" {
-			t.Fatalf("unexpected injected claim request: root=%q request=%+v", stateRoot, request)
-		}
-		return ExecutionResult{OK: true, ID: request.ID}, nil
-	}})
+	}, ExecutionActionDependencies{
+		ReadIssue: func(context.Context, string, port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
+			readerCalled++
+			return port.ExecutionIssueSnapshot{}, nil
+		},
+		Claim: func(ctx context.Context, stateRoot string, request ExecutionClaimRequest, deps ExecutionClaimDependencies) (ExecutionResult, error) {
+			called++
+			if stateRoot == "" || request.ID != "io-claim-handler" || request.Generation != 3 || request.CWD != "/canonical/worktree" || request.TokenFile != "/canonical/worktree/token" {
+				t.Fatalf("unexpected injected claim request: root=%q request=%+v", stateRoot, request)
+			}
+			if deps.ReadIssue == nil {
+				t.Fatal("validated issue snapshot reader was not injected")
+			}
+			if _, err := deps.ReadIssue(ctx, "github", port.ExecutionIssueSnapshotRequest{}); err != nil {
+				t.Fatalf("injected issue snapshot reader: %v", err)
+			}
+			return ExecutionResult{OK: true, ID: request.ID}, nil
+		},
+	})
 	if err != nil {
 		t.Fatalf("execute claim: %v", err)
 	}
 	got, ok := result.(ExecutionResult)
-	if !ok || !got.OK || got.ID != "io-claim-handler" || called != 1 {
-		t.Fatalf("result=%#v called=%d", result, called)
+	if !ok || !got.OK || got.ID != "io-claim-handler" || called != 1 || readerCalled != 1 {
+		t.Fatalf("result=%#v called=%d reader_called=%d", result, called, readerCalled)
 	}
 }
