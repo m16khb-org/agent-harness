@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "scenario": "direct-v1",
+  "lease": {
+    "status": "active",
+    "claim_token_sha256": "",
+    "released_at": ""
+  },
+  "side_effects": {
+    "holder_index": "created_with_record",
+    "token": "removed_after_apply"
+  }
+}

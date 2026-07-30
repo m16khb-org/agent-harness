@@ -19,7 +19,7 @@ func TestExecutionRevokeRefusesTheLiveHolderItself(t *testing.T) {
 	stateRoot := t.TempDir()
 	fixture := newClaimableExecutionFixture(t, stateRoot, "69-self-revoke")
 	holder := executionActor("claude", "self-revoke-session")
-	if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: fixture.record.ID, Generation: 1, Actor: holder,
 		CWD: fixture.worktree, TokenFile: fixture.tokenPath,
 	}); err != nil {
@@ -84,7 +84,7 @@ func TestExecutionRevokeStillTakesOverFromAnotherSession(t *testing.T) {
 	stateRoot := t.TempDir()
 	fixture := newClaimableExecutionFixture(t, stateRoot, "69-third-party")
 	holder := executionActor("codex", "unresponsive-session")
-	if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: fixture.record.ID, Generation: 1, Actor: holder,
 		CWD: fixture.worktree, TokenFile: fixture.tokenPath,
 	}); err != nil {

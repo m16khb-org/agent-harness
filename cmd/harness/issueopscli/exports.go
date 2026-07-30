@@ -13,8 +13,12 @@ func RunIssueOps(args []string) error {
 // RunIssueOpsWithReleaseHandler is the composition-root entry point for the
 // production release vertical. Other IssueOps actions retain their existing facade.
 func RunIssueOpsWithReleaseHandler(args []string, release issueops.ExecutionReleaseHandler) error {
+	return RunIssueOpsWithExecutionHandlers(args, nil, release)
+}
+
+func RunIssueOpsWithExecutionHandlers(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler) error {
 	if len(args) > 0 && args[0] == "execution" {
-		return runIssueOpsExecutionWithRelease(args[1:], release)
+		return runIssueOpsExecutionWithHandlers(args[1:], claim, release)
 	}
 	return runIssueOps(args)
 }

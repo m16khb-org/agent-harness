@@ -404,7 +404,7 @@ func executionOrcaIntentRequest(record IssueOpsRecord, payload externalOrcaInten
 		if !samePath(payload.Launch.PromptPath, expectedPromptPath) || !samePath(payload.Launch.ContextPacketPath, expectedPacketPath) {
 			return port.ExecutionOrcaIntentRequest{}, fmt.Errorf("sealed owner artifact path changed")
 		}
-		token, err := readClaimToken(record, claimTokenPath(record))
+		token, err := readExecutionLeaseToken(record, claimTokenPath(record))
 		if err != nil || tokenSHA256(token) != payload.ClaimTokenSHA256 {
 			return port.ExecutionOrcaIntentRequest{}, fmt.Errorf("sealed claim token identity changed")
 		}
@@ -470,7 +470,7 @@ func createOrAdoptClaimToken(record IssueOpsRecord) (string, error) {
 	if !errors.Is(err, os.ErrExist) {
 		return "", err
 	}
-	token, err = readClaimToken(record, claimTokenPath(record))
+	token, err = readExecutionLeaseToken(record, claimTokenPath(record))
 	if err != nil {
 		return "", fmt.Errorf("recover deterministic claim token: %w", err)
 	}

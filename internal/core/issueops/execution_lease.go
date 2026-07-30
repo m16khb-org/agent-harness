@@ -109,78 +109,6 @@ func StatusExecution(stateRoot, id string) (ExecutionResult, error) {
 	return executionResult(record), nil
 }
 
-func ClaimExecutionWithDependencies(ctx context.Context, stateRoot string, req ExecutionClaimRequest, deps ExecutionClaimDependencies) (ExecutionResult, error) {
-	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-		return ExecutionResult{OK: false, ID: req.ID}, err
-	}
-	validatePacket, err := validateExecutionClaimContext(ctx, stateRoot, req, deps)
-	if err != nil {
-		return ExecutionResult{OK: false, ID: req.ID}, err
-	}
-	return claimExecution(stateRoot, req, validatePacket)
-}
-
-func claimExecution(stateRoot string, req ExecutionClaimRequest, validatePacket ...func(IssueOpsRecord) error) (ExecutionResult, error) {
-	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-		return ExecutionResult{OK: false, ID: req.ID}, err
-	}
-	actor, err := normalizeNativeActor(req.Actor)
-	if err != nil {
-		return ExecutionResult{OK: false, ID: req.ID}, err
-	}
-	var persisted IssueOpsRecord
-	err = withIssueOpsLock(context.Background(), stateRoot, req.ID, func(context.Context) error {
-		record, err := ReadIssueOps(stateRoot, req.ID)
-		if err != nil {
-			return err
-		}
-		if record.Execution == nil {
-			return fmt.Errorf("IssueOps execution v1 is not prepared")
-		}
-		lease := &record.Execution.Lease
-		if lease.Status == model.LeaseStatusActive && lease.Generation == req.Generation && sameNativeActor(lease.Holder, &actor) {
-			persisted = record
-			return nil
-		}
-		if lease.Status != model.LeaseStatusClaimable || lease.Generation != req.Generation {
-			return fmt.Errorf("lease is not claimable at generation %d", req.Generation)
-		}
-		if !samePath(req.CWD, record.Execution.Workspace.Root) {
-			return fmt.Errorf("claim cwd must be the canonical worktree")
-		}
-		for _, validate := range validatePacket {
-			if validate != nil {
-				if err := validate(record); err != nil {
-					return err
-				}
-			}
-		}
-		token, err := readClaimToken(record, req.TokenFile)
-		if err != nil {
-			return err
-		}
-		if tokenSHA256(token) != lease.ClaimTokenSHA256 {
-			return fmt.Errorf("claim token does not match the current generation")
-		}
-		lease.Status = model.LeaseStatusActive
-		lease.Holder = &actor
-		lease.ClaimTokenSHA256 = ""
-		lease.ClaimedAt = time.Now().UTC().Format(time.RFC3339Nano)
-		lease.ReleasedAt = ""
-		persisted, err = persistExecutionTransition(stateRoot, record, nil)
-		if err != nil {
-			return err
-		}
-		// 상태가 active가 된 뒤 남은 파일은 hash가 비어 재사용할 수 없다.
-		_ = os.Remove(req.TokenFile)
-		return nil
-	})
-	if err != nil {
-		return ExecutionResult{OK: false, ID: req.ID}, err
-	}
-	return executionResult(persisted), nil
-}
-
 func ReleaseExecution(stateRoot string, req ExecutionReleaseRequest) (ExecutionResult, error) {
 	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
 		return ExecutionResult{OK: false, ID: req.ID}, err
@@ -828,7 +756,7 @@ func createClaimToken(record IssueOpsRecord) (string, string, error) {
 	return token, path, nil
 }
 
-func readClaimToken(record IssueOpsRecord, path string) (string, error) {
+func readExecutionLeaseToken(record IssueOpsRecord, path string) (string, error) {
 	expected := claimTokenPath(record)
 	if !samePath(path, expected) {
 		return "", fmt.Errorf("claim_token_file must be the deterministic current-generation path")

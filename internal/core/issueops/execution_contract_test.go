@@ -163,7 +163,7 @@ func TestExecutionFreshSessionReplacesExitedOwnerWithoutCoordinator(t *testing.T
 	if err != nil {
 		t.Fatalf("replace finalize without coordinator: %v", err)
 	}
-	claimed, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	claimed, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: record.ID, Generation: 2, Actor: fresh, CWD: worktree, TokenFile: finalized.ClaimTokenPath,
 	})
 	if err != nil {

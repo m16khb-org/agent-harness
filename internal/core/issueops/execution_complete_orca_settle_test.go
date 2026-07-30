@@ -83,7 +83,7 @@ func TestExecutionCompleteDoesNotSettleForDirectMode(t *testing.T) {
 	fixture := newClaimableExecutionFixture(t, stateRoot, "130-direct")
 	prepareExecutionCompletionFixture(t, stateRoot, &fixture)
 	actor := executionActor("codex", "direct-settle-session")
-	if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: fixture.record.ID, Generation: 1, Actor: actor,
 		CWD: fixture.worktree, TokenFile: fixture.tokenPath,
 	}); err != nil {
