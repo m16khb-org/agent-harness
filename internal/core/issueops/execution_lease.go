@@ -431,6 +431,10 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 	result.IssueBodySHA256 = resealed.issueBodySHA256
 	result.ContextPacketPath, result.ContextPacketSHA256 = resealed.packetPath, resealed.packetSHA256
 	result.OwnerPromptPath, result.OwnerPromptSHA256 = resealed.promptPath, resealed.promptSHA256
+	if persisted.Execution.Mode == model.ExecutionModeOrca &&
+		persisted.Execution.Lease.Status == model.LeaseStatusClaimable {
+		result.NextCommand = executionResumeCommand(persisted.ID, persisted.Execution.Lease.Generation)
+	}
 	return result, nil
 }
 
