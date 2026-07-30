@@ -31,6 +31,10 @@
 - 실제 generation 2 pending payload는 record/probe에 GitLab identity를
   유지하면서 marker에서만 그 suffix가 빠졌고, adapter가
   `external_operation_ambiguous`로 거부했다.
+- 같은 payload를 SQLite read-only로 확인한 결과 invocation state는
+  `not_invoked_proven`, invocation attempts는 0이다. 따라서 현재 결함은
+  오류 문자열을 해석하지 않고 durable non-invocation receipt만으로 복구할 수
+  있다.
 
 따라서 guard나 Orca의 문제로 분류하지 않는다. 생성 규칙의 분산, 저장 전 봉인
 검증 부재, preflight invocation receipt의 비정형성이 함께 드러난 core/adapter
@@ -77,8 +81,7 @@ probe와 marker가 달라도 통과시키면 다른 issue의 terminal/task를 �
 ### C. typed marker와 저장 전 검증, 안전한 reconcile migration
 
 모든 생성자를 공통 경계로 모으고 잘못된 intent가 durable state에 들어가기
-전에 차단한다. 이미 저장된 intent는 `not_invoked` receipt가 있거나, 과거
-producer의 mutation 전 실패를 versioned rule로 정확히 증명할 수 있을 때만 같은
+전에 차단한다. 이미 저장된 intent는 `not_invoked` receipt가 있을 때만 같은
 경계로 승격한다. 이 방안을 선택한다.
 
 ## 핵심 불변식
@@ -100,9 +103,8 @@ marker identity를 함께 대조한다.
 
 외부 mutation 전에는 canonical marker가 아니면 pending intent 자체를 저장하지
 않는다. 저장된 intent의 marker를 바꾸는 것은 외부 호출이 없었다고 durable
-payload로 증명되는 경우에만 허용한다. 과거 binary가 typed invocation receipt를
-남기지 못한 경우에는 source와 adapter call-count test로 mutation 전 오류임이
-입증된 versioned migration rule만 같은 증거로 인정한다.
+payload로 증명되는 경우에만 허용한다. 오류 문자열이나 producer version으로
+non-invocation을 추론하지 않는다.
 
 ## Typed marker
 
@@ -179,11 +181,7 @@ payload를 검사한다.
 - authoritative provider/issue identity를 현재 record에서 완전하게 복원할 수
   있다.
 - 현재 marker가 parser가 인정하는 exact legacy 형식이다.
-- invocation 안전성은 다음 중 하나로 증명된다.
-  - payload invocation state가 `not_invoked`다.
-  - versioned migration catalog가 현재 purpose, stage, marker 형식,
-    invocation attempts, failure message의 조합을 이미 검증된 mutation 전
-    오류로 정확히 분류한다.
+- payload invocation state가 `not_invoked`다.
 - failure가 없거나 현재 pending과 같은 operation을 가리킨다.
 - record와 payload가 읽은 뒤 변경되지 않았다는 CAS가 성립한다.
 
@@ -202,7 +200,7 @@ provider별 특별 분기는 두지 않는다.
 다음 상태는 원문을 보존하고 명시적 blocker를 반환한다.
 
 - `invoking` 또는 `invoked` invocation state
-- versioned migration catalog에 없는 unknown 또는 ambiguous invocation state
+- unknown 또는 ambiguous invocation state
 - marker가 exact legacy 형식이 아니라 임의로 변조된 경우
 - provider/issue identity가 없거나 record와 충돌하는 경우
 - operation, generation, purpose 또는 pending kind가 다른 경우
@@ -225,20 +223,9 @@ guard가 잘못 막은 것이 아니라 core가 잘못 봉인한 marker를 정�
 - core는 typed preflight rejection을 `not_invoked`로 저장하고, unknown
   transport 결과와 구분한다.
 
-과거 binary가 이미 generic `external_operation_ambiguous`를 기록한 경우를 위해
-작은 versioned migration catalog를 둔다. 각 rule은 lifecycle이나 issue 번호가
-아니라 producer defect의 구조적 signature를 식별한다. 현재 GitLab resume
-결함의 rule은 다음을 모두 요구한다.
-
-- purpose가 resume이고 stage가 owner terminal 생성이다.
-- provider/IID는 record와 probe에 완전하게 남아 있다.
-- marker는 provider/IID suffix만 빠진 exact legacy resume 형식이다.
-- failure는 기존 adapter의 exact GitLab marker preflight 오류다.
-- 해당 adapter test가 client/runner 호출 0회를 증명한다.
-
-rule에 없는 failure text나 부분 일치는 안전 증거로 사용하지 않는다. 이후 같은
-종류의 producer defect가 발견되면 재현 fixture, mutation 0회 증거와 함께 새
-versioned rule을 코드베이스에 추가한다.
+기존 payload가 generic `external_operation_ambiguous` failure를 함께 기록했더라도
+failure 문자열은 승격 근거로 사용하지 않는다. durable invocation state가
+`not_invoked`가 아니면 exact legacy marker여도 자동 승격하지 않는다.
 
 ## 오류 및 관측성
 
@@ -276,14 +263,14 @@ generation, operation ID, provider, issue number와 migration 여부만 진단
 ### Reconcile migration
 
 - 임의의 lifecycle/issue fixture에서 `not_invoked` legacy resume marker를 승격
-- 현재 producer defect와 같은 legacy `unknown` payload는 exact versioned
-  preflight rule로 승격
+- 현재 producer defect와 같은 `not_invoked` payload를 오류 문자열과 무관하게
+  승격
 - failure message나 marker가 한 글자라도 다른 unknown payload는 승격 거부
 - 승격과 payload/pending marker 갱신의 atomicity
 - 승격 후 기존 reconcile stage 실행
 - already-canonical intent의 멱등성
 - invoked/ambiguous, identity mismatch, CAS drift에서 mutation 0회
-- versioned migration rule마다 adapter mutation 0회 회귀 증거
+- adapter preflight rejection의 mutation 0회 회귀 증거
 
 ### Adapter 및 host parity
 
@@ -314,8 +301,7 @@ generation, operation ID, provider, issue number와 migration 여부만 진단
 - 신규 invalid marker는 durable pending을 만들지 않는다.
 - 모든 `not_invoked` exact legacy intent가 provider나 issue 번호 하드코딩 없이
   reconcile로 복구된다.
-- invoked intent와 versioned preflight rule로 안전성을 증명할 수 없는 ambiguous
-  intent는 자동으로 변경되지 않는다.
+- invoked 또는 ambiguous intent는 자동으로 변경되지 않는다.
 - GitHub/GitLab과 CLI/MCP/hook의 focused contract가 모두 통과한다.
 - 설치 갱신 후 현재 pending lifecycle이 안전한 reconcile 경로로 복구되거나,
   자동 복구 불가 이유가 durable 증거로 정확히 보고된다.
