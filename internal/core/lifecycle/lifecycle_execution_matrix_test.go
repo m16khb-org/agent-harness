@@ -110,6 +110,7 @@ func TestExecutionShellReadersAreObservationFirst(t *testing.T) {
 		"file " + filepath.Join(repo, "README.md"),
 		"jq empty .agent-harness/turing/issueops-v1-0d097a7cae7456be.json",
 		"jq '.' .agent-harness/turing/issueops-v1-c68e0b0f994c2705.json",
+		"jq -e . .agent-harness/turing/issueops-v1-c7e20cac5e6b2afb.json",
 		"rg -n -A5 'NewReleaseService\\(' internal/core/issueops/execution_lease_differential_test.go internal/core/issueops/testdata/leasevertical/application/release.go",
 		// claim identity bootstrap(이슈 #90 발견 3): owner는 자기 native
 		// receipt를 관측할 admitted 표면이 필요하다.
