@@ -24,6 +24,9 @@ func TestGitPreflightDetectsCommitStyleAndSecretLikePath(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(repo, ".env"), []byte("TOKEN=redacted\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(repo, "file.txt"), []byte("updated\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatal(err)
@@ -43,6 +46,12 @@ func TestGitPreflightDetectsCommitStyleAndSecretLikePath(t *testing.T) {
 	}
 	if !containsString(result.Warnings, "secret_like_paths_present") {
 		t.Fatalf("secret warning missing: %+v", result.Warnings)
+	}
+	if len(result.UnstagedFiles) != 1 || result.UnstagedFiles[0] != "file.txt" {
+		t.Fatalf("leading-space unstaged path was not preserved: %+v", result.UnstagedFiles)
+	}
+	if len(result.StagedFiles) != 0 {
+		t.Fatalf("unstaged path was misclassified as staged: %+v", result.StagedFiles)
 	}
 }
 

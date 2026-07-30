@@ -790,3 +790,12 @@ Shannon 측정 중 `rg -c`와 `agent-harness state read --key ...`가 active lea
 - state의 단일 row 조회는 `sqlstore.GetExisting`처럼 기존 store만 여는 경로를 사용하고, 없는 store에서 파일·디렉터리를 만들지 않는 회귀 테스트를 둔다.
 - 외부 reader의 long/short 동의어는 실제 사용하는 형태를 모두 characterization corpus에 넣되, 실행기·전처리·출력 파일처럼 mutation으로 확장되는 flag는 계속 거부한다.
 - 새 exact reader는 command parser, active lifecycle decision, 실제 hook CLI full payload를 함께 검증한다. parser 단위 테스트만 통과한 상태로 설치 바이너리를 갱신하지 않는다.
+
+## Git porcelain의 선행 공백을 일반 문자열처럼 자르지 말 것
+
+`git status --porcelain=v1`의 첫 행이 unstaged 변경이면 상태 코드는 선행 공백으로 시작한다. 전체 stdout에 `TrimSpace`를 적용하면 첫 경로의 첫 글자까지 상태 필드로 오인해, AI-slop-clean 지문이 같은 내용을 커밋한 뒤 달라지고 plan-only 변경도 구현 변경으로 오탐한다.
+
+- porcelain처럼 공백이 스키마인 출력은 `GitCmdRaw`로 읽고 행 단위 파서에 원문을 전달한다.
+- 사람이 읽는 단일 값에 쓰는 `GitCmd`/`GitOut`의 trim 계약을 structured Git 출력에 재사용하지 않는다.
+- 회귀 테스트는 첫 행이 ` M <path>`인 tracked 변경을 포함하고, dirty 상태와 동일 내용 commit의 지문 일치 및 tracked plan-only 변경 제외를 함께 검증한다.
+- 잘못 봉인된 기존 지문은 첫 파일 내용을 해시에 포함하지 않았으므로 호환 계산으로 통과시키지 않는다. 수정된 바이너리에서 committed diff를 다시 독립 검토하고 새 cleanup/review 지문을 기록한다.
