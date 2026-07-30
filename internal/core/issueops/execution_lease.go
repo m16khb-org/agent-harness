@@ -42,14 +42,13 @@ type ExecutionResult struct {
 }
 
 type ExecutionClaimRequest struct {
-	ID                  string                         `json:"id"`
-	Generation          uint64                         `json:"generation"`
-	Actor               model.NativeActor              `json:"actor"`
-	CWD                 string                         `json:"cwd"`
-	TokenFile           string                         `json:"claim_token_file"`
-	IssueBodySHA256     string                         `json:"issue_body_sha256,omitempty"`
-	ContextPacketSHA256 string                         `json:"context_packet_sha256,omitempty"`
-	ReadIssue           ExecutionIssueSnapshotReadFunc `json:"-"`
+	ID                  string            `json:"id"`
+	Generation          uint64            `json:"generation"`
+	Actor               model.NativeActor `json:"actor"`
+	CWD                 string            `json:"cwd"`
+	TokenFile           string            `json:"claim_token_file"`
+	IssueBodySHA256     string            `json:"issue_body_sha256,omitempty"`
+	ContextPacketSHA256 string            `json:"context_packet_sha256,omitempty"`
 }
 
 type ExecutionClaimDependencies struct {

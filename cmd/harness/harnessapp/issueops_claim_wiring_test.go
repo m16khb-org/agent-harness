@@ -27,9 +27,16 @@ func TestIssueOpsClaimProviderNameUsesBranchPrepareAuthority(t *testing.T) {
 	got, err := issueOpsClaimProviderName(issueops.IssueOpsRecord{
 		IssueURL:      "https://code.company.example/group/agent-harness/-/issues/197",
 		BranchPrepare: &issueops.IssueOpsBranchPrepare{Provider: "gitlab"},
-	}, "https://code.company.example/group/agent-harness/-/issues/197")
+	})
 	if err != nil || got != "gitlab" {
 		t.Fatalf("provider=%q err=%v", got, err)
+	}
+}
+
+func TestIssueOpsClaimProviderNameRejectsURLInferenceWithoutBranchAuthority(t *testing.T) {
+	_, err := issueOpsClaimProviderName(issueops.IssueOpsRecord{})
+	if err == nil || !strings.Contains(err.Error(), "linked issue provider is unavailable") {
+		t.Fatalf("URL inference must be rejected: %v", err)
 	}
 }
 
@@ -39,13 +46,13 @@ func TestIssueOpsClaimHandlerUsesResolvedSnapshotReader(t *testing.T) {
 	result, err := issueOpsClaimHandler(context.Background(), stateRoot, issueops.ExecutionClaimRequest{
 		ID: record.ID, Generation: 1, Actor: claimWiringActor(t), CWD: record.Execution.Workspace.Root,
 		TokenFile: token, IssueBodySHA256: issueDigest, ContextPacketSHA256: packetDigest,
-		ReadIssue: func(_ context.Context, providerName string, request port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
-			reads++
-			if providerName != "gitlab" || request.URL != record.IssueURL {
-				t.Fatalf("snapshot request provider=%q url=%q", providerName, request.URL)
-			}
-			return port.ExecutionIssueSnapshot{URL: request.URL, Body: claimWiringIssueBody()}, nil
-		},
+	}, issueops.ExecutionClaimDependencies{ReadIssue: func(_ context.Context, providerName string, request port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
+		reads++
+		if providerName != "gitlab" || request.URL != record.IssueURL {
+			t.Fatalf("snapshot request provider=%q url=%q", providerName, request.URL)
+		}
+		return port.ExecutionIssueSnapshot{URL: request.URL, Body: claimWiringIssueBody()}, nil
+	},
 	})
 	if err != nil {
 		t.Fatalf("claim with resolved snapshot reader: %v", err)

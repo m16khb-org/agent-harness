@@ -51,5 +51,26 @@
     "generation_3_raw_inventory": "git status --short and git ls-files --others --exclude-standard were empty after sync-base. git diff --stat pre-sync-base-to-merge showed 29 files, 3069 additions, 185 deletions; git diff --check passed. `rg -c '^\\s*//' --glob '*.go' cmd internal` completed successfully and remains raw comment-line inventory only.",
     "gate": "MEASURED_BASE_TO_CURRENT_RAW_INVENTORY"
   },
+  "generation_5": {
+    "sync_base": {"base_branch": "117-hexagonal-architecture-migration", "base_oid": "3ca8d67c08756aac8f5936e41f0f4980f8ed9f4e", "merge_commit": "f460b0eea873d1a2b41238f5642e1c12b5f0ad69", "fingerprint": "4540184c0ddc4a5b7f3dc73c4b8fd9581ee28603bf243d3ef6708aebd057487c", "result": "PASS"},
+    "claim_reader_boundary": {"red": "go test ./cmd/harness/harnessapp -run TestIssueOpsClaimHandlerUsesResolvedSnapshotReader -count=1 failed to compile because the handler requires four arguments while the test supplied three.", "green": "After moving ReadIssue from ExecutionClaimRequest to ExecutionClaimDependencies, the same unit passed in 1.045s; the exact claim-boundary request.ReadIssue search returned no matches.", "scope": "ExecutionReseedRequest.ReadIssue remains unchanged."},
+    "verification": [
+      {"command": "go test ./internal/domain/issueopslease ./internal/application/issueopslease ./internal/contract/issueopslease -count=1", "result": "PASS", "evidence": "domain 0.544s; application 1.007s; contract 1.371s"},
+      {"command": "go test ./internal/adapter/inbound/issueopslease ./internal/adapter/outbound/issueopslease -count=1", "result": "PASS", "evidence": "inbound 0.928s; outbound 0.640s"},
+      {"command": "go test ./internal/core/issueops -run 'Replace|Reseed|Differential|Lease' -count=1", "result": "PASS", "evidence": "exact command completed successfully; affected IssueSnapshot/ReseedDifferential focus rerun 24.350s"},
+      {"command": "go test -race ./internal/application/issueopslease ./internal/adapter/outbound/issueopslease ./internal/core/issueops -run 'Replace|Reseed|Differential|Lease' -count=1", "result": "PASS", "evidence": "exact command exited 0; application 1.346s; outbound 1.767s; isolated affected core claim differential race 6.278s"},
+      {"command": "go test ./internal/architecture -count=1", "result": "PASS", "evidence": "3.809s"},
+      {"command": "go test ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli ./cmd/harness/harnessapp -run 'Execution|Replace|Reseed|Contract|Wiring' -count=1", "result": "PASS", "evidence": "executioncmd 0.811s; mcpcli 1.064s; harnessapp 9.278s"},
+      {"command": "go test ./cmd/harness/contractgolden -run Golden -count=1", "result": "PASS", "evidence": "0.553s"},
+      {"command": "go vet ./internal/domain/issueopslease ./internal/application/issueopslease ./internal/adapter/inbound/issueopslease ./internal/adapter/outbound/issueopslease ./internal/core/issueops", "result": "PASS", "evidence": "no findings"},
+      {"command": "go build -o /tmp/agent-harness-192 ./cmd/harness", "result": "PASS", "evidence": "wrote /tmp/agent-harness-192"}
+    ],
+    "shannon_raw_inventory": "No prior state checkpoint exists: agent-harness state read --key shannon-latest reported the state file absent. The documented readers report sealed base 9e1b92888719205a053944cd947e3d9634a63eb6 to current worktree as 81 files, 6064 additions, 296 deletions; untracked inventory is empty; rg -c '^\\s*//' --glob '*.go' cmd internal completed as raw comment-line inventory. Numeric SNR was not derived."
+  },
+  "generation_5_post_review": {
+    "provider_authority": {"red": "go test ./cmd/harness/harnessapp -run TestIssueOpsClaimProviderNameRejectsURLInferenceWithoutBranchAuthority -count=1 failed because URL inference returned nil error.", "green": "The same test and TestIssueOpsClaimHandlerUsesResolvedSnapshotReader passed in 0.889s after URL fallback removal; BranchPrepare.Provider is the only authority."},
+    "verification": "PASS: domain/application/contract 0.424s/0.877s/1.241s; inbound/outbound 0.492s/1.078s; exact core focus passed; exact focused race exited 0 with application 1.603s and outbound 2.124s; verbose core claim/differential race passed in 18.839s including Direct/Orca x schema-v1/legacy x claimable/released; architecture 3.065s; executioncmd/mcpcli/harnessapp 0.657s/0.807s/8.301s; golden 0.547s; vet and build passed.",
+    "shannon_raw_inventory": "Current documented readers: sealed base 9e1b92888719205a053944cd947e3d9634a63eb6 to current worktree is 81 files, 6091 additions, 308 deletions; untracked inventory empty; rg -c '^\\s*//' --glob '*.go' cmd internal completed. state read shannon-latest again reported absent, so numeric SNR remains NOT_DERIVED."
+  },
   "omissions": ["전체 go test ./... 및 전체 race는 Issue #192 contract에 따라 Draft PR CI에서 확인한다.", "Shannon pre/post numeric ratio는 checkpoint 부재와 user-approved no-estimation rule 때문에 기록하지 않았다. 대신 sealed-base-to-pre-commit-worktree tracked/untracked raw inventory와 successful reader outputs를 재현 가능한 evidence로 기록했다."]
 }
