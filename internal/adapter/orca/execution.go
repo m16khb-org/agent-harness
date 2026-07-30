@@ -775,10 +775,27 @@ func validateExecutionWorktree(row port.OrcaWorktree, workspace port.ExecutionWo
 		return fmt.Errorf("Orca worktree receipt does not match the linked GitLab issue")
 	}
 	if strings.TrimSpace(workspace.ParentWorktree) != "" &&
-		(strings.TrimSpace(row.ParentWorktreeID) == "" || row.LineageSource != "explicit-cli-flag" || row.LineageConfidence != "explicit") {
+		!explicitExecutionParentLineage(row, workspace.ParentWorktree) {
 		return fmt.Errorf("Orca worktree receipt does not prove explicit parent lineage")
 	}
 	return nil
+}
+
+func explicitExecutionParentLineage(row port.OrcaWorktree, parentWorktree string) bool {
+	if strings.TrimSpace(row.LineageConfidence) != "explicit" {
+		return false
+	}
+	// create의 --parent-worktree는 explicit-cli-flag를, 이후 명시적 parent
+	// 갱신은 manual-action을 기록한다. 둘 다 정확한 parent ID가 일치할 때만
+	// 같은 명시적 lineage 증거로 인정한다.
+	switch strings.TrimSpace(row.LineageSource) {
+	case "explicit-cli-flag", "manual-action":
+	default:
+		return false
+	}
+	repoID, parentPath, ok := strings.Cut(strings.TrimSpace(row.ParentWorktreeID), "::")
+	return ok && strings.TrimSpace(repoID) == strings.TrimSpace(row.RepoID) &&
+		samePath(parentPath, parentWorktree)
 }
 
 func executionMarkerField(marker, name string) (string, bool) {

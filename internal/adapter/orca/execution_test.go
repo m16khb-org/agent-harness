@@ -329,6 +329,20 @@ func TestExecutionProvisionerAdoptsExactlyOneMatchingReceiptWithoutCreate(t *tes
 	}
 }
 
+func TestExecutionProvisionerAcceptsExplicitManualParentLineage(t *testing.T) {
+	workspace, request := executionFixture(t)
+	matching := executionWorktree(workspace, request)
+	matching.LineageSource = "manual-action"
+	client := &executionFake{workspace: workspace, probeRequest: request, worktrees: []port.OrcaWorktree{matching}}
+
+	if _, err := NewExecutionClient(client).PrepareWorkspace(context.Background(), workspace, request); err != nil {
+		t.Fatalf("명시적 수동 parent 영수증은 같은 canonical parent를 증명해야 한다: %v", err)
+	}
+	if !reflect.DeepEqual(client.calls, []string{"list"}) {
+		t.Fatalf("동등한 parent 영수증을 채택할 때 새 worktree를 만들면 안 된다: %v", client.calls)
+	}
+}
+
 func TestExecutionProvisionerRejectsAmbiguousOrMismatchedWorktree(t *testing.T) {
 	workspace, request := executionFixture(t)
 	matching := executionWorktree(workspace, request)
@@ -340,9 +354,20 @@ func TestExecutionProvisionerRejectsAmbiguousOrMismatchedWorktree(t *testing.T) 
 			row.ParentWorktreeID = ""
 			return row
 		}()},
+		"wrong parent": {func() port.OrcaWorktree {
+			row := matching
+			row.ParentWorktreeID = row.RepoID + "::" + filepath.Join(filepath.Dir(workspace.ParentWorktree), "67-other")
+			return row
+		}()},
 		"inferred lineage": {func() port.OrcaWorktree {
 			row := matching
-			row.LineageSource = "cwd-inference"
+			row.LineageSource = "cwd-context"
+			return row
+		}()},
+		"manual inference": {func() port.OrcaWorktree {
+			row := matching
+			row.LineageSource = "manual-action"
+			row.LineageConfidence = "inferred"
 			return row
 		}()},
 	} {
