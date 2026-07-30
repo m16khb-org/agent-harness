@@ -1,37 +1,74 @@
 package executioncmd
 
 import (
-	"os"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/core/issueops/model"
 )
 
-// 이슈 #90 발견 3: owner가 claim identity(pid/started-at/executable)를 shell
-// 확장($$, $(date), $SHELL) 없이 채울 수 있도록, 호출 프로세스의 native
-// ancestry receipt를 그대로 노출하는 read-only 표면이 필요하다.
-func TestExecutionWhoamiExposesCallerAncestryReceipts(t *testing.T) {
-	t.Setenv("CODEX_THREAD_ID", "019fabc8-1c66-73c0-89f5-d9b80914beef")
-	t.Setenv("CLAUDE_CODE_SESSION_ID", "")
-	var captured any
-	deps := Deps{PrintJSON: func(value any) error { captured = value; return nil }}
-	if err := Run([]string{"whoami", "--json"}, deps); err != nil {
-		t.Fatalf("whoami must not require state or provisioners: %v", err)
+func TestExecutionWhoamiResultAdvertisesTheReusableHostReceiptFirst(t *testing.T) {
+	identity := nativeSessionIdentity{
+		Host: "codex", SessionID: "019fabc8-1c66-73c0-89f5-d9b80914beef",
+		Source: "CODEX_THREAD_ID",
 	}
-	result, ok := captured.(ExecutionWhoamiResult)
-	if !ok || !result.OK || len(result.Ancestry) == 0 {
-		t.Fatalf("whoami must expose a non-empty ancestry: %#v", captured)
+	result, err := executionWhoamiResult(identity, 101, []model.NativeProcessReceipt{
+		{PID: 101, StartedAt: "2026-07-30T00:00:00Z", Executable: "agent-harness"},
+		{PID: 150, StartedAt: "2026-07-30T00:00:00Z", Executable: "/bin/zsh"},
+		{PID: 202, StartedAt: "2026-07-29T00:00:00Z", Executable: "/opt/codex"},
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
-	self := result.Ancestry[0]
-	if self.PID != os.Getpid() || self.StartedAt == "" || self.Executable == "" {
-		t.Fatalf("first receipt must be the calling process with full identity: %+v", self)
+	if !result.OK || result.Host != identity.Host || result.SessionID != identity.SessionID ||
+		len(result.Ancestry) != 1 || result.Ancestry[0].PID != 202 {
+		t.Fatalf("whoami result = %+v", result)
 	}
-	if result.Host != "codex" || result.SessionID != "019fabc8-1c66-73c0-89f5-d9b80914beef" || result.SessionIDSource != "CODEX_THREAD_ID" {
-		t.Fatalf("whoami must expose the verified Codex session identity: %+v", result)
-	}
-	if len(result.ClaimActorFlags) == 0 ||
-		!strings.Contains(result.ClaimActorFlags[0], "--host codex") ||
+	if len(result.ClaimActorFlags) != 1 ||
+		!strings.Contains(result.ClaimActorFlags[0], "--session-pid 202") ||
 		!strings.Contains(result.ClaimActorFlags[0], "--session-id '019fabc8-1c66-73c0-89f5-d9b80914beef'") {
-		t.Fatalf("whoami must render copy-pasteable claim actor flags: %+v", result.ClaimActorFlags)
+		t.Fatalf("whoami claim flags = %+v", result.ClaimActorFlags)
+	}
+}
+
+func TestReusableNativeProcessAncestryStartsAtTheCodexHost(t *testing.T) {
+	ancestry := []model.NativeProcessReceipt{
+		{PID: 101, StartedAt: "2026-07-30T00:00:00Z", Executable: "agent-harness"},
+		{PID: 150, StartedAt: "2026-07-30T00:00:00Z", Executable: "/bin/zsh"},
+		{PID: 202, StartedAt: "2026-07-29T00:00:00Z", Executable: "codex"},
+		{PID: 303, StartedAt: "2026-07-28T00:00:00Z", Executable: "node"},
+	}
+	got, err := reusableNativeProcessAncestry("codex", 101, ancestry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].PID != 202 || got[1].PID != 303 {
+		t.Fatalf("reusable ancestry = %+v", got)
+	}
+}
+
+func TestReusableNativeProcessAncestryRecognizesOfficialClaudeInstall(t *testing.T) {
+	ancestry := []model.NativeProcessReceipt{
+		{PID: 101, Executable: "agent-harness"},
+		{PID: 202, Executable: "/Users/test/.local/share/claude/versions/2.1.220"},
+		{PID: 303, Executable: "/bin/zsh"},
+	}
+	got, err := reusableNativeProcessAncestry("claude", 101, ancestry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].PID != 202 {
+		t.Fatalf("reusable Claude ancestry = %+v", got)
+	}
+}
+
+func TestReusableNativeProcessAncestryRejectsMissingNativeHost(t *testing.T) {
+	_, err := reusableNativeProcessAncestry("codex", 101, []model.NativeProcessReceipt{
+		{PID: 101, Executable: "agent-harness"},
+		{PID: 202, Executable: "/bin/zsh"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "codex") {
+		t.Fatalf("missing native host error = %v", err)
 	}
 }
 

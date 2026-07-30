@@ -147,20 +147,47 @@ func TestExecutionResumeRejectsLiveTaskWithoutLiveTerminal(t *testing.T) {
 	}
 }
 
-func TestExecutionResumeRejectsLiveTerminalWithoutLiveTask(t *testing.T) {
+func TestExecutionResumeReusesLiveTerminalWhenThePreviousTaskSettled(t *testing.T) {
 	stateRoot, record, _ := reseededOrcaCycle(t)
+	before := record.Execution.Lease
 	var stages []port.ExecutionOrcaIntentStage
-	_, err := ResumeExecutionWithDependencies(context.Background(), stateRoot, resumeRequest(record), ExecutionResumeDependencies{
+	resumed, err := ResumeExecutionWithDependencies(context.Background(), stateRoot, resumeRequest(record), ExecutionResumeDependencies{
 		Orca: resumeOrcaFake(t, &stages),
 		OrcaOwner: &executionOrcaOwnerInspectorFake{inventory: port.ExecutionOrcaOwnerInventory{
 			TerminalLive: true, TerminalID: record.Execution.Orca.TerminalPTYID,
 		}},
 	})
-	if err == nil || !strings.Contains(err.Error(), "live terminal without a live task") {
-		t.Fatalf("contradictory owner error = %v", err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resumed.Execution.Lease != before {
+		t.Fatalf("resume changed the sealed lease: before=%#v after=%#v", before, resumed.Execution.Lease)
+	}
+	if resumed.Execution.Orca.TerminalPTYID != record.Execution.Orca.TerminalPTYID ||
+		resumed.Execution.Orca.TaskID != "task-resume" ||
+		resumed.Execution.Orca.DispatchID != "dispatch-resume" ||
+		resumed.Execution.Orca.LeaseGeneration != before.Generation {
+		t.Fatalf("resumed owner binding = %#v", resumed.Execution.Orca)
+	}
+	if len(stages) != 2 || stages[0] != port.ExecutionOrcaIntentTask || stages[1] != port.ExecutionOrcaIntentDispatch {
+		t.Fatalf("resume stages = %v", stages)
+	}
+}
+
+func TestExecutionResumeRejectsLiveTerminalWithChangedIdentity(t *testing.T) {
+	stateRoot, record, _ := reseededOrcaCycle(t)
+	var stages []port.ExecutionOrcaIntentStage
+	_, err := ResumeExecutionWithDependencies(context.Background(), stateRoot, resumeRequest(record), ExecutionResumeDependencies{
+		Orca: resumeOrcaFake(t, &stages),
+		OrcaOwner: &executionOrcaOwnerInspectorFake{inventory: port.ExecutionOrcaOwnerInventory{
+			TerminalLive: true, TerminalID: "pty-other",
+		}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "terminal identity changed") {
+		t.Fatalf("changed terminal identity error = %v", err)
 	}
 	if len(stages) != 0 {
-		t.Fatalf("contradictory owner caused mutation: %v", stages)
+		t.Fatalf("changed terminal identity caused mutation: %v", stages)
 	}
 }
 

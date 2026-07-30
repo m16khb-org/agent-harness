@@ -781,3 +781,21 @@ Orca owner가 active lease를 정상 claim하고 구현·대상 검증까지 마
 - 선택적 repo 인자는 실제 shell 작업 디렉터리와 같은 canonical 경로만 허용한다. Codex `exec_command`는 `tool_input.workdir`, Claude Bash는 top-level `cwd`를 기준으로 삼고 해석이 모호한 상대 `workdir`는 거부한다.
 - 비-shell tool은 같은 command 문자열을 실어도 이 경로로 분류하지 않는다. 공백이 포함된 argv, 추가 인자, 다른 인터프리터, 다른 스크립트, 외부 repo 대상은 계속 fail-closed한다.
 - 이 경로는 일반 read-only observation이 아니다. 기존 native holder identity와 canonical worktree containment를 모두 통과한 뒤에만 실행한다.
+
+## exact reader를 열기 전에 실제 구현의 무변이성을 확인할 것
+
+Shannon 측정 중 `rg -c`와 `agent-harness state read --key ...`가 active lease에서 차단되었다. `rg --count`는 허용하면서 같은 read-only short flag `-c`를 빠뜨린 명세 누락이 있었고, 기존 `StateRead`는 이름과 달리 store가 없으면 SQLite 디렉터리를 생성했으므로 곧바로 observation으로 승격할 수 없었다.
+
+- CLI 이름만 보고 read-only로 분류하지 않는다. 파일·DB·네트워크 구현이 누락 상태에서도 데이터를 만들거나 복구하지 않는지 먼저 테스트한다.
+- state의 단일 row 조회는 `sqlstore.GetExisting`처럼 기존 store만 여는 경로를 사용하고, 없는 store에서 파일·디렉터리를 만들지 않는 회귀 테스트를 둔다.
+- 외부 reader의 long/short 동의어는 실제 사용하는 형태를 모두 characterization corpus에 넣되, 실행기·전처리·출력 파일처럼 mutation으로 확장되는 flag는 계속 거부한다.
+- 새 exact reader는 command parser, active lifecycle decision, 실제 hook CLI full payload를 함께 검증한다. parser 단위 테스트만 통과한 상태로 설치 바이너리를 갱신하지 않는다.
+
+## Git porcelain의 선행 공백을 일반 문자열처럼 자르지 말 것
+
+`git status --porcelain=v1`의 첫 행이 unstaged 변경이면 상태 코드는 선행 공백으로 시작한다. 전체 stdout에 `TrimSpace`를 적용하면 첫 경로의 첫 글자까지 상태 필드로 오인해, AI-slop-clean 지문이 같은 내용을 커밋한 뒤 달라지고 plan-only 변경도 구현 변경으로 오탐한다.
+
+- porcelain처럼 공백이 스키마인 출력은 `GitCmdRaw`로 읽고 행 단위 파서에 원문을 전달한다.
+- 사람이 읽는 단일 값에 쓰는 `GitCmd`/`GitOut`의 trim 계약을 structured Git 출력에 재사용하지 않는다.
+- 회귀 테스트는 첫 행이 ` M <path>`인 tracked 변경을 포함하고, dirty 상태와 동일 내용 commit의 지문 일치 및 tracked plan-only 변경 제외를 함께 검증한다.
+- 잘못 봉인된 기존 지문은 첫 파일 내용을 해시에 포함하지 않았으므로 호환 계산으로 통과시키지 않는다. 수정된 바이너리에서 committed diff를 다시 독립 검토하고 새 cleanup/review 지문을 기록한다.

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"agent-harness/internal/core/issueops/model"
-	issueremote "agent-harness/internal/core/issueops/remote"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
@@ -108,15 +107,19 @@ func ResumeExecutionWithDependencies(ctx context.Context, stateRoot string, req 
 		}
 		return executionResumeResult(record, artifacts), nil
 	}
+	reusedTerminalPTYID := ""
 	if inventory.TerminalLive {
-		return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("Orca owner inventory has a live terminal without a live task")
+		reusedTerminalPTYID = strings.TrimSpace(inventory.TerminalID)
+		if reusedTerminalPTYID == "" || reusedTerminalPTYID != strings.TrimSpace(binding.TerminalPTYID) {
+			return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("Orca owner terminal identity changed")
+		}
 	}
 
 	runtimeID := strings.TrimSpace(inventory.RuntimeID)
 	if runtimeID == "" {
 		runtimeID = binding.RuntimeID
 	}
-	persisted, payload, err := beginOrcaExecutionResumeIntent(stateRoot, record, artifacts, runtimeID, deps.Now)
+	persisted, payload, err := beginOrcaExecutionResumeIntent(stateRoot, record, artifacts, runtimeID, reusedTerminalPTYID, deps.Now)
 	if err != nil {
 		return ExecutionResumeResult{OK: false, ID: req.ID}, err
 	}
@@ -244,7 +247,7 @@ func validateExecutionResumePacket(record IssueOpsRecord, issueDigest, packetDig
 	return nil
 }
 
-func beginOrcaExecutionResumeIntent(stateRoot string, record IssueOpsRecord, artifacts executionResumeArtifacts, runtimeID string, now func() time.Time) (IssueOpsRecord, externalOrcaIntentPayload, error) {
+func beginOrcaExecutionResumeIntent(stateRoot string, record IssueOpsRecord, artifacts executionResumeArtifacts, runtimeID, terminalPTYID string, now func() time.Time) (IssueOpsRecord, externalOrcaIntentPayload, error) {
 	operationID, err := newExecutionOperationID()
 	if err != nil {
 		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
@@ -257,10 +260,6 @@ func beginOrcaExecutionResumeIntent(stateRoot string, record IssueOpsRecord, art
 		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, fmt.Errorf("execution resume workspace is not canonical")
 	}
 	startedAt := executionNow(now)
-	marker := fmt.Sprintf(
-		"agent-harness issueops-v1 resume lifecycle=%s generation=%d operation=%s",
-		record.ID, record.Execution.Lease.Generation, operationID,
-	)
 	binding := *record.Execution.Orca
 	lease := record.Execution.Lease
 	prepared := &port.ExecutionOrcaWorkspaceReceipt{
@@ -274,25 +273,28 @@ func beginOrcaExecutionResumeIntent(stateRoot string, record IssueOpsRecord, art
 	}
 	probe := port.ExecutionOrcaProbeRequest{
 		Repo: record.Repo, Host: binding.OwnerHost, Model: binding.OwnerModel,
-		Effort: binding.OwnerEffort, Marker: marker,
+		Effort: binding.OwnerEffort,
 	}
-	if record.BranchPrepare != nil {
-		probe.Provider = strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider))
-		if value := issueremote.IssueNumber(record.BranchPrepare.IssueURL); value != "" {
-			probe.Issue, _ = strconv.Atoi(value)
-		}
+	stage := port.ExecutionOrcaIntentTerminal
+	if terminalPTYID != "" {
+		stage = port.ExecutionOrcaIntentTask
 	}
 	payload := externalOrcaIntentPayload{
 		SchemaVersion: model.IssueOpsSchemaVersion, Purpose: orcaIntentPurposeResume,
 		OperationID: operationID, LifecycleID: record.ID, Generation: lease.Generation,
-		Stage: port.ExecutionOrcaIntentTerminal, Marker: marker, StartedAt: startedAt,
+		Stage: stage, StartedAt: startedAt,
 		InvocationState: orcaIntentNotInvoked, Workspace: workspace, Probe: probe, Prepared: prepared,
 		Launch: &externalOrcaLaunchIdentity{
 			PromptPath: artifacts.promptPath, PromptSHA256: artifacts.promptSHA256,
 			ContextPacketPath: artifacts.packetPath, ContextPacketSHA256: artifacts.packetSHA256,
 		},
 		IssueBodySHA256: artifacts.issueBodySHA256, ClaimTokenSHA256: lease.ClaimTokenSHA256,
-		PriorBinding: &binding, ResumeLease: &lease,
+		TerminalPTYID: strings.TrimSpace(terminalPTYID),
+		PriorBinding:  &binding, ResumeLease: &lease,
+	}
+	payload, err = sealExternalOrcaIntentPayload(record, payload)
+	if err != nil {
+		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -309,9 +311,12 @@ func beginOrcaExecutionResumeIntent(stateRoot string, record IssueOpsRecord, art
 			!reflect.DeepEqual(current.Execution.Orca, &binding) {
 			return fmt.Errorf("execution resume authority changed before intent persistence")
 		}
+		if err := validateOrcaIntentRecordIdentity(current, payload); err != nil {
+			return err
+		}
 		current.Execution.Pending = &model.ExternalIntent{
 			OperationID: operationID, Kind: pendingKindForOrcaStage(payload.Stage),
-			Marker: marker, StartedAt: startedAt,
+			Marker: payload.Marker, StartedAt: startedAt,
 		}
 		current.Execution.Failure = nil
 		persisted, err = persistExecutionTransitionWithMutations(stateRoot, current, nil, []sqlstore.Mutation{{

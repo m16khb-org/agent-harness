@@ -384,13 +384,6 @@ func TestCleanupAbandonPendingIntentGate(t *testing.T) {
 			t.Fatalf("rejection must point at execution reconcile: %q", result.PendingIntentError)
 		}
 	})
-	t.Run("later orca stage kind is not abandonable", func(t *testing.T) {
-		stateRoot, record, _, _ := abandonOrcaPendingRecord(t, "owner_launch", true)
-		result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), abandonDeps(&fakeAbandonGit{}, authoritativeZeroOrca()))
-		if err == nil || !containsString(result.Missing, "pending_intent_safe") {
-			t.Fatalf("owner_launch pending must block: %v %v", err, result.Missing)
-		}
-	})
 	t.Run("missing intent row is ambiguous", func(t *testing.T) {
 		stateRoot, record, _, _ := abandonOrcaPendingRecord(t, "worktree_create", false)
 		result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), abandonDeps(&fakeAbandonGit{}, authoritativeZeroOrca()))
@@ -446,6 +439,101 @@ func TestCleanupAbandonPendingIntentGate(t *testing.T) {
 			t.Fatalf("disk residue must be rejected before any Orca call: %d", orca.inspects)
 		}
 	})
+}
+
+// 이미 병합된 child 작업의 worktree와 Orca 자원이 외부에서 정리된 경우,
+// resume의 owner_launch/dispatch pending은 봉인된 모든 단계가 authoritative
+// zero일 때만 abandon할 수 있어야 한다.
+func TestCleanupAbandonAllowsStaleOwnerIntentAfterEveryOrcaStageIsAbsent(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		stage         port.ExecutionOrcaIntentStage
+		kind          string
+		wantInspects  int
+		terminalPTYID string
+		taskID        string
+	}{
+		{name: "owner launch", stage: port.ExecutionOrcaIntentTerminal, kind: "owner_launch", wantInspects: 2},
+		{name: "dispatch", stage: port.ExecutionOrcaIntentDispatch, kind: "dispatch", wantInspects: 4, terminalPTYID: "pty-current", taskID: "task-current"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			stateRoot, record, payload := legacyResumeIntentFixture(t, "gitlab", 2646)
+			payload.Stage = tc.stage
+			payload.TerminalPTYID = tc.terminalPTYID
+			payload.TaskID = tc.taskID
+			data, err := json.Marshal(payload)
+			if err != nil {
+				t.Fatal(err)
+			}
+			record.Execution.Pending.Kind = tc.kind
+			record, err = persistExecutionTransitionWithMutations(stateRoot, record, nil, []sqlstore.Mutation{{
+				Bucket: externalIntentBucket, ID: payload.OperationID, Data: data,
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.RemoveAll(record.Execution.Workspace.Root); err != nil {
+				t.Fatal(err)
+			}
+			orca := authoritativeZeroOrca()
+			owner := &fakeOwnerInspector{}
+			deps := CleanupAbandonDeps{Git: (&fakeAbandonGit{}).run, Orca: orca, OrcaOwner: owner}
+
+			result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), deps)
+			if err != nil {
+				t.Fatalf("모든 Orca 자원이 사라진 stale %s intent를 정리하지 못했다: %v (%+v)", tc.kind, err, result)
+			}
+			if orca.inspects != tc.wantInspects {
+				t.Fatalf("현재 단계까지의 모든 봉인 intent를 조회하지 않았다: got=%d want=%d", orca.inspects, tc.wantInspects)
+			}
+			if len(owner.calls) != 1 {
+				t.Fatalf("이전 generation의 owner 자원을 조회하지 않았다: %+v", owner.calls)
+			}
+		})
+	}
+}
+
+// 현재 pending 단계만 비어 있어도 이전 단계 자원이 남아 있으면 레코드를
+// 지우면 안 된다. terminal pending에서는 먼저 생성된 worktree를 함께 확인한다.
+func TestCleanupAbandonRejectsStaleOwnerIntentWithEarlierStageResidue(t *testing.T) {
+	stateRoot, record, _ := legacyResumeIntentFixture(t, "gitlab", 2646)
+	if err := os.RemoveAll(record.Execution.Workspace.Root); err != nil {
+		t.Fatal(err)
+	}
+	orca := &fakeAbandonOrca{inventory: port.ExecutionOrcaIntentInventory{
+		Candidates: []port.ExecutionOrcaIntentReceipt{{Workspace: &port.ExecutionOrcaWorkspaceReceipt{
+			WorktreeID: "worktree-still-present",
+		}}},
+	}}
+	result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), CleanupAbandonDeps{
+		Git: (&fakeAbandonGit{}).run, Orca: orca, OrcaOwner: &fakeOwnerInspector{},
+	})
+	if err == nil || !containsString(result.Missing, "pending_intent_safe") ||
+		!strings.Contains(result.PendingIntentError, "candidate") {
+		t.Fatalf("이전 단계 Orca 잔여를 허용했다: err=%v result=%+v", err, result)
+	}
+	if orca.inspects != 1 {
+		t.Fatalf("잔여를 찾은 단계에서 즉시 중단하지 않았다: %d", orca.inspects)
+	}
+}
+
+// 현재 generation의 intent가 비어도 이전 binding의 task/terminal이 살아 있으면
+// 별도 owner gate가 계속 fail-closed해야 한다.
+func TestCleanupAbandonRejectsStaleOwnerIntentWithPriorOwnerResidue(t *testing.T) {
+	stateRoot, record, _ := legacyResumeIntentFixture(t, "gitlab", 2646)
+	if err := os.RemoveAll(record.Execution.Workspace.Root); err != nil {
+		t.Fatal(err)
+	}
+	result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), CleanupAbandonDeps{
+		Git: (&fakeAbandonGit{}).run, Orca: authoritativeZeroOrca(),
+		OrcaOwner: &fakeOwnerInspector{inventory: port.ExecutionOrcaOwnerInventory{
+			TaskLive: true, TaskStatus: "running",
+		}},
+	})
+	if err == nil || containsString(result.Missing, "pending_intent_safe") ||
+		!containsString(result.Missing, "orca_resources_absent") {
+		t.Fatalf("이전 owner 잔여 판정이 분리되지 않았다: err=%v result=%+v", err, result)
+	}
 }
 
 // AC-01/AC-02 성공 경로: 실측 형태(worktree_create pending + ambiguous failure)가

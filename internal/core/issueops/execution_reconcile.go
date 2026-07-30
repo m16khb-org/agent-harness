@@ -45,7 +45,8 @@ type ExecutionReconcileResult struct {
 	//
 	// omitempty를 쓰지 않는다. "조회하지 않았다"가 이 필드의 핵심 정보이므로
 	// false가 출력에서 사라지면 목적 자체가 무너진다.
-	ExternalStateInspected bool `json:"external_state_inspected"`
+	ExternalStateInspected bool   `json:"external_state_inspected"`
+	IntentMigrationCode    string `json:"intent_migration_code,omitempty"`
 }
 
 func ReconcileExecution(stateRoot string, req ExecutionReconcileRequest) (ExecutionReconcileResult, error) {
@@ -112,10 +113,9 @@ func reconcileOrcaExecutionIntent(ctx context.Context, stateRoot string, record 
 	inspected := false
 	defer func() { result.ExternalStateInspected = inspected }()
 
-	pending := record.Execution.Pending
-	payload, err := readExternalOrcaIntentPayload(stateRoot, pending.OperationID)
+	record, payload, migrated, err := reconcileCanonicalOrcaIntent(stateRoot, record)
 	if err != nil {
-		return failedExecutionReconcileResult(record, "orca_intent_payload_invalid"), err
+		return failedExecutionReconcileResult(record, "legacy_intent_upgrade_unsafe"), err
 	}
 	// 여기부터는 Orca 인벤토리를 실제로 조회한다. 실패하더라도 조회를 시도한
 	// 결과이므로 관측 증거로 인용할 수 있다 — payload 단계의 실패와 다르다.
@@ -125,7 +125,11 @@ func reconcileOrcaExecutionIntent(ctx context.Context, stateRoot string, record 
 		if latest, readErr := ReadIssueOps(stateRoot, record.ID); readErr == nil {
 			updated = latest
 		}
-		return failedExecutionReconcileResult(updated, "orca_reconcile_ambiguous"), err
+		result = failedExecutionReconcileResult(updated, "orca_reconcile_ambiguous")
+		if migrated {
+			result.IntentMigrationCode = "legacy_intent_upgraded"
+		}
+		return result, err
 	}
 	code := "orca_reconcile_completed"
 	if updated.Execution != nil && updated.Execution.Pending != nil {
@@ -133,6 +137,9 @@ func reconcileOrcaExecutionIntent(ctx context.Context, stateRoot string, record 
 	}
 	result = executionReconcileResult(updated, false, code)
 	result.Reconciled = true
+	if migrated {
+		result.IntentMigrationCode = "legacy_intent_upgraded"
+	}
 	return result, nil
 }
 

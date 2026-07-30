@@ -3,6 +3,7 @@ package orca
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -82,7 +83,7 @@ func (p *ExecutionProvisioner) InspectIntent(ctx context.Context, req port.Execu
 	if p == nil || p.client == nil {
 		return port.ExecutionOrcaIntentInventory{}, fmt.Errorf("Orca client is unavailable")
 	}
-	if err := validateExecutionIntentRequest(req); err != nil {
+	if err := validateExecutionIntentInspectionRequest(req); err != nil {
 		return port.ExecutionOrcaIntentInventory{}, err
 	}
 	switch req.Stage {
@@ -178,10 +179,10 @@ func (p *ExecutionProvisioner) InspectIntent(ctx context.Context, req port.Execu
 
 func (p *ExecutionProvisioner) InvokeIntent(ctx context.Context, req port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentReceipt, error) {
 	if p == nil || p.client == nil {
-		return port.ExecutionOrcaIntentReceipt{}, fmt.Errorf("Orca client is unavailable")
+		return port.ExecutionOrcaIntentReceipt{}, executionPreflightError(fmt.Errorf("Orca client is unavailable"))
 	}
 	if err := validateExecutionIntentRequest(req); err != nil {
-		return port.ExecutionOrcaIntentReceipt{}, &port.OrcaError{Code: "execution_intent_invalid", Detail: err.Error()}
+		return port.ExecutionOrcaIntentReceipt{}, executionPreflightError(err)
 	}
 	switch req.Stage {
 	case port.ExecutionOrcaIntentWorktree:
@@ -226,7 +227,7 @@ func (p *ExecutionProvisioner) InvokeIntent(ctx context.Context, req port.Execut
 	case port.ExecutionOrcaIntentDispatch:
 		terminal, err := p.resolveIntentTerminal(ctx, req)
 		if err != nil {
-			return port.ExecutionOrcaIntentReceipt{}, &port.OrcaError{Code: "terminal_reconcile_failed", Detail: err.Error()}
+			return port.ExecutionOrcaIntentReceipt{}, executionPreflightError(err)
 		}
 		dispatch, err := p.client.Dispatch(ctx, port.OrcaDispatchRequest{TaskID: req.TaskID, ToHandle: terminal.Handle, Inject: true, ReturnPreamble: true})
 		if err != nil {
@@ -237,8 +238,15 @@ func (p *ExecutionProvisioner) InvokeIntent(ctx context.Context, req port.Execut
 		}
 		return port.ExecutionOrcaIntentReceipt{TaskID: dispatch.TaskID, DispatchID: dispatch.ID}, nil
 	default:
-		return port.ExecutionOrcaIntentReceipt{}, &port.OrcaError{Code: "execution_intent_invalid", Detail: fmt.Sprintf("unsupported stage %q", req.Stage)}
+		return port.ExecutionOrcaIntentReceipt{}, executionPreflightError(fmt.Errorf("unsupported stage %q", req.Stage))
 	}
+}
+
+func executionPreflightError(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &port.OrcaError{Code: "intent_preflight_rejected", Detail: err.Error(), Invoked: false}
 }
 
 func (p *ExecutionProvisioner) PrepareWorkspace(ctx context.Context, workspace port.ExecutionWorkspaceRequest, req port.ExecutionOrcaProbeRequest) (port.ExecutionOrcaWorkspaceReceipt, error) {
@@ -731,6 +739,78 @@ func validateExecutionIntentRequest(req port.ExecutionOrcaIntentRequest) error {
 	return nil
 }
 
+// validateExecutionIntentInspectionRequest는 외부 mutation 없이 Orca
+// 인벤토리만 조회할 때의 봉인 메타데이터를 검증한다. worktree가 이미 정리된
+// 복구 상황에서는 prompt/context 파일을 다시 읽을 수 없으므로 경로와 digest
+// 봉인만 확인한다. InvokeIntent는 계속 validateExecutionIntentRequest를 사용해
+// 실제 파일 내용까지 검증한다.
+func validateExecutionIntentInspectionRequest(req port.ExecutionOrcaIntentRequest) error {
+	if req.Marker == "" || req.Marker != req.Probe.Marker {
+		return fmt.Errorf("Orca intent marker does not match the sealed operation")
+	}
+	if err := validateExecutionPrepare(req.Workspace, req.Probe); err != nil {
+		return err
+	}
+	switch req.Stage {
+	case port.ExecutionOrcaIntentWorktree:
+		if req.Prepared != nil || req.Launch != nil || req.TerminalPTYID != "" || req.TaskID != "" {
+			return fmt.Errorf("worktree intent contains a later-stage receipt")
+		}
+	case port.ExecutionOrcaIntentTerminal, port.ExecutionOrcaIntentTask, port.ExecutionOrcaIntentDispatch:
+		if err := validateExecutionInspectionOwnerEnvelope(req); err != nil {
+			return err
+		}
+		if req.Stage == port.ExecutionOrcaIntentTerminal && (req.TerminalPTYID != "" || req.TaskID != "") {
+			return fmt.Errorf("terminal intent contains a later-stage receipt")
+		}
+		if req.Stage == port.ExecutionOrcaIntentTask && (req.TerminalPTYID == "" || req.TaskID != "") {
+			return fmt.Errorf("task intent requires exactly one terminal receipt")
+		}
+		if req.Stage == port.ExecutionOrcaIntentDispatch && (req.TerminalPTYID == "" || req.TaskID == "") {
+			return fmt.Errorf("dispatch intent requires terminal and task receipts")
+		}
+	default:
+		return fmt.Errorf("unsupported Orca execution intent stage %q", req.Stage)
+	}
+	return nil
+}
+
+func validateExecutionInspectionOwnerEnvelope(req port.ExecutionOrcaIntentRequest) error {
+	if req.Prepared == nil || req.Launch == nil {
+		return fmt.Errorf("owner intent requires sealed worktree and launch receipts")
+	}
+	prepared := req.Prepared
+	if strings.TrimSpace(prepared.WorktreeID) == "" || strings.TrimSpace(prepared.RuntimeID) == "" ||
+		strings.TrimSpace(prepared.RepoID) == "" {
+		return fmt.Errorf("owner intent worktree receipt is incomplete")
+	}
+	launch := req.Launch
+	if !validExecutionSHA256(launch.PromptSHA256) || !validExecutionSHA256(launch.ContextPacketSHA256) ||
+		!executionPathInsideRoot(req.Workspace.Root, launch.PromptPath) ||
+		!executionPathInsideRoot(req.Workspace.Root, launch.ContextPacketPath) {
+		return fmt.Errorf("owner intent launch receipt is incomplete")
+	}
+	return nil
+}
+
+func validExecutionSHA256(value string) bool {
+	value = strings.TrimSpace(value)
+	if len(value) != 64 {
+		return false
+	}
+	_, err := hex.DecodeString(value)
+	return err == nil
+}
+
+func executionPathInsideRoot(root, path string) bool {
+	root, path = filepath.Clean(strings.TrimSpace(root)), filepath.Clean(strings.TrimSpace(path))
+	if !filepath.IsAbs(root) || !filepath.IsAbs(path) {
+		return false
+	}
+	rel, err := filepath.Rel(root, path)
+	return err == nil && rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))
+}
+
 func executionRequiredLaunch(req port.ExecutionOrcaIntentRequest) port.ExecutionOrcaLaunchRequest {
 	if req.Launch == nil {
 		return port.ExecutionOrcaLaunchRequest{}
@@ -785,18 +865,17 @@ func validateExecutionPrepare(workspace port.ExecutionWorkspaceRequest, req port
 	if req.Host != "codex" && req.Host != "claude" || strings.TrimSpace(req.Model) == "" || strings.TrimSpace(req.Marker) == "" {
 		return fmt.Errorf("Orca prepare requires codex or claude with explicit model and marker")
 	}
-	if req.Provider == "github" && req.Issue <= 0 {
-		return fmt.Errorf("Orca GitHub prepare requires a positive issue number")
+	provider := strings.ToLower(strings.TrimSpace(req.Provider))
+	if provider != "github" && provider != "gitlab" {
+		return fmt.Errorf("Orca prepare requires github or gitlab issue identity")
 	}
-	if req.Provider == "gitlab" {
-		if req.Issue <= 0 {
-			return fmt.Errorf("Orca GitLab prepare requires a positive issue IID")
-		}
-		provider, providerOK := executionMarkerField(req.Marker, "provider")
-		issue, issueOK := executionMarkerField(req.Marker, "issue")
-		if !providerOK || provider != "gitlab" || !issueOK || issue != strconv.Itoa(req.Issue) {
-			return fmt.Errorf("Orca GitLab prepare marker does not seal the exact provider and issue IID")
-		}
+	if req.Issue <= 0 {
+		return fmt.Errorf("Orca %s prepare requires a positive issue number", provider)
+	}
+	markerProvider, providerOK := executionMarkerField(req.Marker, "provider")
+	markerIssue, issueOK := executionMarkerField(req.Marker, "issue")
+	if !providerOK || markerProvider != provider || !issueOK || markerIssue != strconv.Itoa(req.Issue) {
+		return fmt.Errorf("Orca %s prepare marker does not seal the exact provider and issue number", provider)
 	}
 	if parent := strings.TrimSpace(workspace.ParentWorktree); parent != "" &&
 		(!filepath.IsAbs(parent) || samePath(parent, workspace.SourceRoot) || samePath(parent, workspace.Root)) {
