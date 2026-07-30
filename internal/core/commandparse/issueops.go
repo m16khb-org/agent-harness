@@ -277,6 +277,8 @@ func exactReadOnlySimpleShellCommand(command string) bool {
 		return len(tokens) == 3 && tokens[1] == "explore" && strings.TrimSpace(tokens[2]) != "" && !strings.HasPrefix(tokens[2], "-")
 	case "rg":
 		return SafeRipgrepArgs(tokens[1:])
+	case "agent-harness", "bin/agent-harness", "./bin/agent-harness":
+		return exactReadOnlyStateRead(tokens[1:])
 	case "git":
 		i := CommandAfterDirectoryOption(tokens, 1)
 		if i < 0 || i >= len(tokens) {
@@ -308,6 +310,37 @@ func exactReadOnlySimpleShellCommand(command string) bool {
 			(len(tokens) == 4 && tokens[1] == "orchestration" && tokens[2] == "task-list" && tokens[3] == "--json")
 	}
 	return false
+}
+
+func exactReadOnlyStateRead(tokens []string) bool {
+	if len(tokens) < 3 || tokens[0] != "state" || tokens[1] != "read" {
+		return false
+	}
+	keySeen, jsonSeen := false, false
+	for i := 2; i < len(tokens); i++ {
+		token := tokens[i]
+		switch {
+		case token == "--key":
+			if keySeen || i+1 >= len(tokens) || strings.TrimSpace(tokens[i+1]) == "" || strings.HasPrefix(tokens[i+1], "--") {
+				return false
+			}
+			keySeen = true
+			i++
+		case strings.HasPrefix(token, "--key="):
+			if keySeen || strings.TrimSpace(strings.TrimPrefix(token, "--key=")) == "" {
+				return false
+			}
+			keySeen = true
+		case token == "--json":
+			if jsonSeen {
+				return false
+			}
+			jsonSeen = true
+		default:
+			return false
+		}
+	}
+	return keySeen
 }
 
 func exactReadOnlyGofmtDiff(tokens []string) bool {
@@ -1024,7 +1057,7 @@ func SafeRipgrepArgs(tokens []string) bool {
 	boolOptions := map[string]bool{
 		"-n": true, "--line-number": true, "--files": true, "--hidden": true, "--no-ignore": true,
 		"-F": true, "--fixed-strings": true, "--json": true, "-l": true, "--files-with-matches": true,
-		"--stats": true, "--pcre2": true, "-U": true, "--multiline": true, "--no-heading": true,
+		"-c": true, "--stats": true, "--pcre2": true, "-U": true, "--multiline": true, "--no-heading": true,
 		"--column": true, "--count": true, "--count-matches": true, "--no-messages": true,
 	}
 	for i := 0; i < len(tokens); i++ {

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -161,6 +163,23 @@ func TestStateRoundtrip(t *testing.T) {
 	}
 	if listed.Records[0].SchemaVersion != StateCurrentSchemaVersion {
 		t.Fatalf("SchemaVersion=%d want %d", listed.Records[0].SchemaVersion, StateCurrentSchemaVersion)
+	}
+}
+
+func TestStateReadMissingStoreDoesNotCreateFiles(t *testing.T) {
+	parent := t.TempDir()
+	dir := filepath.Join(parent, "missing")
+	t.Setenv("HARNESS_STATE_DIR", dir)
+
+	if _, err := StateRead("checkpoint"); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("StateRead missing store error=%v", err)
+	}
+	entries, err := os.ReadDir(parent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("StateRead created files or directories: %v", entries)
 	}
 }
 

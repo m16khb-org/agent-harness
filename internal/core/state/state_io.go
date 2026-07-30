@@ -72,11 +72,7 @@ func StateRead(key string) (StateResult, error) {
 	}
 	dir := StateDir()
 	path := statePath(dir, key)
-	db, err := openStateDB(dir)
-	if err != nil {
-		return StateResult{OK: false, StateDir: dir, Path: path}, err
-	}
-	b, ok, err := db.Get(stateBucket, key)
+	b, ok, err := sqlstore.GetExisting(dir, stateBucket, key)
 	if err != nil {
 		return StateResult{OK: false, StateDir: dir, Path: path}, err
 	}
