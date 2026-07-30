@@ -51,7 +51,7 @@ func TestRunContractSchemaPrintsTextAndJSON(t *testing.T) {
 	if !contract.OK || contract.Name != "agent_harness_cli_mcp_compatibility" || contract.Version != 3 || contract.Hash == "" {
 		t.Fatalf("unexpected contract schema: %#v", contract)
 	}
-	wantExecutionFields := []string{"ok", "id", "execution", "next_command"}
+	wantExecutionFields := []string{"ok", "id", "execution", "issue_snapshot_source", "next_command"}
 	if got := contract.ResponseFields["issueops_execution"]; strings.Join(got, ",") != strings.Join(wantExecutionFields, ",") {
 		t.Fatalf("issueops execution response fields = %v, want %v", got, wantExecutionFields)
 	}

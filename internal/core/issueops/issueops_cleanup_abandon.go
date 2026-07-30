@@ -255,7 +255,7 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record IssueOpsR
 	if record.Execution != nil && record.Execution.Pending != nil {
 		if err := cleanupAbandonPendingSafe(ctx, stateRoot, record, inventory, deps); err != nil {
 			missing = append(missing, "pending_intent_safe")
-			result.PendingIntentError = err.Error()
+			result.PendingIntentError = cleanupAbandonPendingRecovery(record.ID, err)
 		}
 	}
 	// ⑨ orca 자원 잔여. 게이트 ⑥은 로컬 디렉터리만 보므로 orca 레지스트리에
@@ -265,6 +265,17 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record IssueOpsR
 		result.OrcaResidueError = err.Error()
 	}
 	return inventory, missing
+}
+
+// cleanupAbandonPendingRecovery는 pending intent가 안전하다고 증명되지 않았을 때
+// reconcile부터 Orca worktree 회수까지 남은 운영 경로를 항상 함께 제시한다.
+func cleanupAbandonPendingRecovery(id string, cause error) string {
+	detail := cause.Error()
+	if strings.Contains(detail, "execution reconcile") && strings.Contains(detail, "worktree") {
+		return detail
+	}
+	return fmt.Sprintf("%s; run `agent-harness issueops execution reconcile --id %s --preview --json` until it settles, then reclaim the Orca worktree with `orca worktree remove` before retrying abandon",
+		detail, id)
 }
 
 // cleanupAbandonLeaseHoldsWriter는 lease가 아직 writer를 붙들고 있는지 본다.

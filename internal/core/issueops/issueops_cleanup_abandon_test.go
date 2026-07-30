@@ -127,7 +127,19 @@ func abandonOrcaPendingRecord(t *testing.T, kind string, writeRow bool) (string,
 	stateRoot, record := abandonTestRecord(t)
 	root := filepath.Join(t.TempDir(), "absent-worktree")
 	operationID := "op-abandon-worktree"
-	marker := "agent-harness issueops-v1 lifecycle=" + record.ID + " operation=" + operationID
+	issueURL := "https://github.com/m16khb/agent-harness/issues/106"
+	record.IssueURL = issueURL
+	record.BranchPrepare = &IssueOpsBranchPrepare{
+		Provider: "github", IssueURL: issueURL, Branch: "106-abandon",
+		BaseBranch: "main", BaseSHA: "deadbeef", LinkVerified: true,
+	}
+	marker, err := renderOrcaIntentMarker(orcaIntentMarkerIdentity{
+		Purpose: orcaIntentPurposePrepare, LifecycleID: record.ID,
+		Generation: 1, OperationID: operationID, Provider: "github", Issue: 106,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if writeRow {
 		writeAbandonIntentRow(t, stateRoot, operationID, externalOrcaIntentPayload{
 			SchemaVersion: model.IssueOpsSchemaVersion, OperationID: operationID, LifecycleID: record.ID,
@@ -139,11 +151,14 @@ func abandonOrcaPendingRecord(t *testing.T, kind string, writeRow bool) (string,
 			},
 			Probe: port.ExecutionOrcaProbeRequest{
 				Repo: record.Repo, Host: "codex", Model: "gpt-5.4", Marker: marker,
+				Provider: "github", Issue: 106,
 			},
 			IssueBodySHA256: abandonIssueBodySHA,
 		})
 	}
 	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
+		rec.IssueURL = record.IssueURL
+		rec.BranchPrepare = record.BranchPrepare
 		rec.Execution = abandonExecution(rec.Repo, root, WriteLease{Generation: 1, Status: model.LeaseStatusReleased})
 		rec.Execution.Pending = &model.ExternalIntent{
 			OperationID: operationID, Kind: kind, Marker: marker, StartedAt: "2026-07-24T00:00:00Z",
