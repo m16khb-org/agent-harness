@@ -83,6 +83,49 @@ func authoritativeOrcaIssueIdentity(record IssueOpsRecord) (orcaIssueIdentity, e
 	return orcaIssueIdentity{Provider: provider, Issue: issue}, nil
 }
 
+func sealExternalOrcaIntentPayload(record IssueOpsRecord, payload externalOrcaIntentPayload) (externalOrcaIntentPayload, error) {
+	issue, err := authoritativeOrcaIssueIdentity(record)
+	if err != nil {
+		return externalOrcaIntentPayload{}, err
+	}
+	if record.ID != payload.LifecycleID {
+		return externalOrcaIntentPayload{}, newOrcaIntentContractError(
+			"intent_identity_mismatch",
+			"Orca intent lifecycle does not match the verified record",
+		)
+	}
+	payload.Probe.Provider = issue.Provider
+	payload.Probe.Issue = issue.Issue
+	payload.Marker, err = renderOrcaIntentMarker(orcaIntentMarkerIdentity{
+		Purpose: normalizedOrcaIntentPurpose(payload), LifecycleID: payload.LifecycleID,
+		Generation: payload.Generation, OperationID: payload.OperationID,
+		Provider: issue.Provider, Issue: issue.Issue,
+	})
+	if err != nil {
+		return externalOrcaIntentPayload{}, err
+	}
+	payload.Probe.Marker = payload.Marker
+	if err := validateExternalOrcaIntentPayload(payload, payload.OperationID); err != nil {
+		return externalOrcaIntentPayload{}, err
+	}
+	return payload, nil
+}
+
+func validateOrcaIntentIssueIdentity(record IssueOpsRecord, payload externalOrcaIntentPayload) error {
+	issue, err := authoritativeOrcaIssueIdentity(record)
+	if err != nil {
+		return err
+	}
+	if record.ID != payload.LifecycleID ||
+		payload.Probe.Provider != issue.Provider || payload.Probe.Issue != issue.Issue {
+		return newOrcaIntentContractError(
+			"intent_identity_mismatch",
+			"Orca intent issue identity changed before persistence",
+		)
+	}
+	return nil
+}
+
 func renderOrcaIntentMarker(identity orcaIntentMarkerIdentity) (string, error) {
 	if err := validateOrcaMarkerIdentity(identity); err != nil {
 		return "", err

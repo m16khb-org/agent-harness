@@ -1,9 +1,12 @@
 package issueops
 
 import (
+	"strings"
 	"testing"
 
 	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/port"
 )
 
 func TestOrcaIntentMarkerRoundTripsProviderAndPurposeIdentity(t *testing.T) {
@@ -138,5 +141,114 @@ func TestOrcaIntentContractErrorExposesStableCodeWithoutDuplicatingDetail(t *tes
 	fields := err.IssueOpsErrorFields()
 	if fields["code"] != "intent_marker_invalid" || len(fields) != 1 {
 		t.Fatalf("error fields = %#v", fields)
+	}
+}
+
+func TestSealExternalOrcaIntentPayloadUsesTheVerifiedRecordIdentity(t *testing.T) {
+	_, record := executionPrepareRecord(t)
+	workspace, err := executionWorkspaceRequest(record, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := externalOrcaIntentPayload{
+		SchemaVersion:   model.IssueOpsSchemaVersion,
+		Purpose:         orcaIntentPurposePrepare,
+		OperationID:     strings.Repeat("b", 32),
+		LifecycleID:     record.ID,
+		Generation:      1,
+		Stage:           port.ExecutionOrcaIntentWorktree,
+		StartedAt:       "2026-07-30T00:00:00Z",
+		InvocationState: orcaIntentNotInvoked,
+		Workspace:       workspace,
+		Probe: port.ExecutionOrcaProbeRequest{
+			Repo: record.Repo, Host: "codex", Model: "gpt-5.6-terra", Effort: "xhigh",
+			Provider: "gitlab", Issue: 2646,
+		},
+		IssueBodySHA256: strings.Repeat("a", 64),
+	}
+
+	sealed, err := sealExternalOrcaIntentPayload(record, payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sealed.Probe.Provider != "github" || sealed.Probe.Issue != 16 {
+		t.Fatalf("sealed issue identity = %s#%d", sealed.Probe.Provider, sealed.Probe.Issue)
+	}
+	wantSuffix := " provider=github issue=16"
+	if !strings.HasSuffix(sealed.Marker, wantSuffix) || sealed.Probe.Marker != sealed.Marker {
+		t.Fatalf("sealed markers = payload:%q probe:%q", sealed.Marker, sealed.Probe.Marker)
+	}
+}
+
+func TestBeginOrcaExecutionResumeIntentSealsGitLabIdentity(t *testing.T) {
+	stateRoot, record, _ := reseededOrcaCycle(t)
+	record.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/2646"
+	record.BranchPrepare.Provider = "gitlab"
+	record.BranchPrepare.IssueURL = record.IssueURL
+	record, err := writeIssueOps(stateRoot, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifacts := executionResumeArtifacts{
+		claimTokenPath:  record.Execution.Workspace.Root + "/claim-token",
+		issueBodySHA256: strings.Repeat("a", 64),
+		packetPath:      record.Execution.Workspace.Root + "/context.json",
+		packetSHA256:    strings.Repeat("b", 64),
+		promptPath:      record.Execution.Workspace.Root + "/prompt.md",
+		promptSHA256:    strings.Repeat("c", 64),
+	}
+
+	persisted, payload, err := beginOrcaExecutionResumeIntent(
+		stateRoot, record, artifacts, record.Execution.Orca.RuntimeID, nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantSuffix := " provider=gitlab issue=2646"
+	if !strings.HasSuffix(payload.Marker, wantSuffix) || payload.Probe.Marker != payload.Marker {
+		t.Fatalf("resume markers = payload:%q probe:%q", payload.Marker, payload.Probe.Marker)
+	}
+	if persisted.Execution.Pending == nil || persisted.Execution.Pending.Marker != payload.Marker {
+		t.Fatalf("persisted pending = %#v", persisted.Execution.Pending)
+	}
+}
+
+func TestBeginOrcaExecutionIntentRejectsRecordIdentityDriftBeforePersistence(t *testing.T) {
+	stateRoot, record := orcaPrepareRecord(t)
+	workspace, err := executionWorkspaceRequest(record, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	passed := record
+	record.IssueURL = "https://github.com/acme/repo/issues/17"
+	record.BranchPrepare.IssueURL = record.IssueURL
+	if _, err := writeIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	probe := port.ExecutionOrcaProbeRequest{
+		Repo: record.Repo, Host: "codex", Model: "gpt-5.6-terra", Effort: "xhigh",
+		Provider: "github", Issue: 16,
+	}
+	snapshot := executionOwnerSnapshot{issue: executionOwnerIssue{BodySHA256: strings.Repeat("a", 64)}}
+
+	_, _, err = beginOrcaExecutionIntent(stateRoot, passed, workspace, probe, ExecutionPrepareRequest{
+		OwnerHost: "codex", OwnerModel: "gpt-5.6-terra", OwnerEffort: "xhigh",
+	}, snapshot, nil)
+	if err == nil || !strings.Contains(err.Error(), "identity") {
+		t.Fatalf("identity drift error = %v", err)
+	}
+	persisted, readErr := ReadIssueOps(stateRoot, record.ID)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if persisted.Execution != nil {
+		t.Fatalf("identity drift persisted execution: %#v", persisted.Execution)
+	}
+	rows, rowsErr := sqlstore.GetAllExisting(stateRoot, externalIntentBucket)
+	if rowsErr != nil {
+		t.Fatal(rowsErr)
+	}
+	if len(rows) != 0 {
+		t.Fatalf("identity drift persisted external intents: %#v", rows)
 	}
 }
