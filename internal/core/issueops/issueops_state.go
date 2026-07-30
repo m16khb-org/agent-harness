@@ -95,6 +95,9 @@ func decodeIssueOpsRecord(id string, b []byte) (IssueOpsRecord, error) {
 	if header.ID != id {
 		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops id mismatch: record has %q", header.ID)
 	}
+	if header.SchemaVersion == 0 {
+		header.SchemaVersion = model.IssueOpsSchemaVersion
+	}
 	if schemaErr := issueOpsSchemaVersionError(header.SchemaVersion); schemaErr != nil {
 		record, projectionErr := decodeInvalidIssueOpsProjection(b)
 		if projectionErr != nil {
@@ -121,6 +124,9 @@ func decodeIssueOpsRecord(id string, b []byte) (IssueOpsRecord, error) {
 	}
 	if record.ID != id {
 		return IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops id mismatch: record has %q", record.ID)
+	}
+	if record.SchemaVersion == 0 {
+		record.SchemaVersion = model.IssueOpsSchemaVersion
 	}
 	record.OK = true
 	return record, nil
