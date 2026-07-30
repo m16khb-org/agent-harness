@@ -62,6 +62,10 @@ sed -n '1,383p' internal/core/issueops/testdata/leasevertical/contract/record.go
 			command: `rg -n 'ai-slop-clean|AISlopCleanCategories|category' cmd/harness/issueopscli internal/core/issueops | head -160`,
 		},
 		{
+			name:    "tail 숫자 축약형 관찰",
+			command: "tail -80 internal/adapter/outbound/issueopslease/sqlite.go",
+		},
+		{
 			name:    "Go SDK API 문서 관찰",
 			command: "go doc github.com/modelcontextprotocol/go-sdk/mcp.Server",
 		},

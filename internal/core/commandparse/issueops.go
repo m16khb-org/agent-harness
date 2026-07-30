@@ -457,6 +457,15 @@ func exactReadOnlyHeadOrTail(tokens []string) bool {
 				limitSeen = true
 				continue
 			}
+			// head/tail이 지원하는 `-80` 숫자 축약형도 `-n 80`과 같은
+			// 상한으로 제한해 active IssueOps worktree의 안전한 판독을 허용한다.
+			if strings.HasPrefix(token, "-") && len(token) > 1 && boundedLineCount(strings.TrimPrefix(token, "-")) {
+				if limitSeen {
+					return false
+				}
+				limitSeen = true
+				continue
+			}
 			if strings.HasPrefix(token, "-") {
 				return false
 			}

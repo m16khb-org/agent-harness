@@ -103,6 +103,7 @@ func TestExecutionShellReadersAreObservationFirst(t *testing.T) {
 		"cat " + filepath.Join(repo, "README.md"),
 		"head -n 5 " + filepath.Join(repo, "README.md"),
 		"tail -n 5 " + filepath.Join(repo, "README.md"),
+		"tail -80 " + filepath.Join(worker, "README.md"),
 		"ls -la " + repo,
 		"find " + repo + " -maxdepth 1 -type f",
 		"stat " + filepath.Join(repo, "README.md"),
