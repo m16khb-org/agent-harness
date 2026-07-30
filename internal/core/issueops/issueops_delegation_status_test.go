@@ -130,6 +130,53 @@ func TestAcceptIssueOpsChildRequiresDonePhaseAndEvidence(t *testing.T) {
 	}
 }
 
+func TestAcceptIssueOpsChildAfterCleanupUsesIndexedParentRef(t *testing.T) {
+	stateRoot := t.TempDir()
+	parent := createDelegationReadyParentForTest(t, stateRoot)
+	started, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
+		ParentID:           parent.ID,
+		Branch:             "123-cleaned-child-accept",
+		Title:              "cleaned child accept",
+		TaskScope:          "validate cleaned child result",
+		AcceptanceCriteria: []string{"parent can accept verified cleaned child"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	child := started.Child
+	child.Phase = IssueOpsPhaseDone
+	writeIssueOpsRecordForDelegationTest(t, stateRoot, child)
+	if err := deleteIssueOps(stateRoot, child.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := acceptIssueOpsChildForTest(stateRoot, parent, child.ID, []string{"merged result verified after cleanup"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.ParentRef.ValidationVerdict != "accepted" || result.ParentRef.ValidatedAt == "" {
+		t.Fatalf("cleaned child acceptance should persist a parent receipt: %#v", result.ParentRef)
+	}
+	status, err := IssueOpsChildStatus(stateRoot, parent.ID, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	accepted, ok := childStatusEntryByID(status.Children, child.ID)
+	if !ok || accepted.Orphaned || accepted.Phase != IssueOpsPhaseDone {
+		t.Fatalf("accepted cleaned child should stay terminal without orphaning: %#v", accepted)
+	}
+}
+
+func TestAcceptIssueOpsChildAfterCleanupRejectsUnindexedID(t *testing.T) {
+	stateRoot := t.TempDir()
+	parent := createDelegationReadyParentForTest(t, stateRoot)
+
+	_, err := acceptIssueOpsChildForTest(stateRoot, parent, "io-deadbeefcafe", []string{"external evidence"})
+	if err == nil || !strings.Contains(err.Error(), "child_not_indexed") {
+		t.Fatalf("missing child without a parent ref must fail closed: %v", err)
+	}
+}
+
 func TestRejectIssueOpsChildRecordsVerdictOnValidReason(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
