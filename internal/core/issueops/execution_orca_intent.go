@@ -289,7 +289,7 @@ func advanceOrcaIntentReceipt(ctx context.Context, stateRoot string, record Issu
 			}
 			current.Execution.Orca = &model.OrcaBinding{
 				RuntimeID: expected.Prepared.RuntimeID, RepoID: expected.Prepared.RepoID, WorktreeID: expected.Prepared.WorktreeID,
-				WorktreeInstanceID: expected.Prepared.WorktreeInstanceID, OwnerHost: expected.Probe.Host,
+				WorktreeInstanceID: expected.Prepared.WorktreeInstanceID, LeaseGeneration: expected.Generation, OwnerHost: expected.Probe.Host,
 				OwnerModel: expected.Probe.Model, OwnerEffort: expected.Probe.Effort, TaskID: expected.TaskID,
 				DispatchID: receipt.DispatchID, TerminalPTYID: expected.TerminalPTYID,
 			}

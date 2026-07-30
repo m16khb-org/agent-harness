@@ -148,6 +148,15 @@ func sealedOrcaCycle(t *testing.T, issueBody string) (string, IssueOpsRecord, Ex
 	return stateRoot, record, prepared, reader
 }
 
+func TestExecutionOrcaPrepareRecordsBindingLeaseGeneration(t *testing.T) {
+	issueBody := "## acceptance criteria\n\n- [ ] AC-01: first\n\n## 검증 명령\n\n```bash\ngo test ./internal/core/issueops -count=1\n```\n"
+	_, _, prepared, _ := sealedOrcaCycle(t, issueBody)
+	if prepared.Execution.Orca == nil ||
+		prepared.Execution.Orca.LeaseGeneration != prepared.Execution.Lease.Generation {
+		t.Fatalf("prepare binding generation = %#v lease=%d", prepared.Execution.Orca, prepared.Execution.Lease.Generation)
+	}
+}
+
 // quiescentOrcaReplaceDeps는 owner가 이미 사라진 상태를 흉내내 reseed가 인벤토리
 // 게이트를 통과하게 한다. 재봉인 동작만 관찰하기 위한 최소 구성이다.
 func quiescentOrcaReplaceDeps(reader ExecutionIssueSnapshotReadFunc) ExecutionReplaceDependencies {
