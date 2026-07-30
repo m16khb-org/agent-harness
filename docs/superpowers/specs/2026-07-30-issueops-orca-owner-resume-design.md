@@ -109,11 +109,18 @@ generation별 packet/prompt가 private bounded regular file이며 digest 검증 
 agent-harness issueops execution resume \
   --id ID \
   --expected-generation N \
-  ACTOR_FLAGS \
+  --host HOST \
+  --session-id SESSION_ID \
+  --session-pid SESSION_PID \
+  --session-started-at SESSION_STARTED_AT \
+  --session-executable SESSION_EXECUTABLE \
+  --cwd CANONICAL_WORKTREE \
   --confirm \
   --json
 ```
 
+- Codex sub-agent처럼 native agent identity가 있으면 `--agent-id`도 함께
+  전달한다.
 - `--confirm` 없는 요청은 외부 mutation을 수행하지 않는다.
 - `--expected-generation`은 필수 CAS다.
 - mode가 direct이거나 lease가 active/released/revoking이면 fail-closed다.
@@ -127,6 +134,9 @@ agent-harness issueops execution resume \
 - 이전 generation binding이 settled됐거나 legacy zero이면 새 owner를 만든다.
 - 성공 응답은 execution, artifact 경로/digest, claim token 경로와 exact claim
   next command를 포함한다. token 원문은 포함하지 않는다.
+- Orca `replace --finalize|--reseed`가 claimable generation을 만들면 응답의
+  `next_command`는 claim이 아니라 현재 generation의 `execution resume`을
+  가리킨다.
 
 CLI와 MCP는 하나의 core request/result DTO를 사용한다. MCP는 새 tool을
 추가하지 않고 기존 단일 `issueops_execution` tool의 `action=resume`을
