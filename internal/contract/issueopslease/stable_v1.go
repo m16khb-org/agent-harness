@@ -234,6 +234,7 @@ type stableV1OrcaBinding struct {
 	RepoID             string `json:"repo_id"`
 	WorktreeID         string `json:"worktree_id"`
 	WorktreeInstanceID string `json:"worktree_instance_id,omitempty"`
+	LeaseGeneration    uint64 `json:"lease_generation,omitempty"`
 	OwnerHost          string `json:"owner_host"`
 	OwnerModel         string `json:"owner_model"`
 	OwnerEffort        string `json:"owner_effort,omitempty"`

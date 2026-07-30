@@ -219,7 +219,7 @@ func legacyResumeIntentFixture(t *testing.T, provider string, issue int) (string
 		}
 	}
 	persisted, payload, err := beginOrcaExecutionResumeIntent(
-		stateRoot, record, artifacts, record.Execution.Orca.RuntimeID, nil,
+		stateRoot, record, artifacts, record.Execution.Orca.RuntimeID, "", nil,
 	)
 	if err != nil {
 		t.Fatal(err)

@@ -107,15 +107,19 @@ func ResumeExecutionWithDependencies(ctx context.Context, stateRoot string, req 
 		}
 		return executionResumeResult(record, artifacts), nil
 	}
+	reusedTerminalPTYID := ""
 	if inventory.TerminalLive {
-		return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("Orca owner inventory has a live terminal without a live task")
+		reusedTerminalPTYID = strings.TrimSpace(inventory.TerminalID)
+		if reusedTerminalPTYID == "" || reusedTerminalPTYID != strings.TrimSpace(binding.TerminalPTYID) {
+			return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("Orca owner terminal identity changed")
+		}
 	}
 
 	runtimeID := strings.TrimSpace(inventory.RuntimeID)
 	if runtimeID == "" {
 		runtimeID = binding.RuntimeID
 	}
-	persisted, payload, err := beginOrcaExecutionResumeIntent(stateRoot, record, artifacts, runtimeID, deps.Now)
+	persisted, payload, err := beginOrcaExecutionResumeIntent(stateRoot, record, artifacts, runtimeID, reusedTerminalPTYID, deps.Now)
 	if err != nil {
 		return ExecutionResumeResult{OK: false, ID: req.ID}, err
 	}
@@ -243,7 +247,7 @@ func validateExecutionResumePacket(record IssueOpsRecord, issueDigest, packetDig
 	return nil
 }
 
-func beginOrcaExecutionResumeIntent(stateRoot string, record IssueOpsRecord, artifacts executionResumeArtifacts, runtimeID string, now func() time.Time) (IssueOpsRecord, externalOrcaIntentPayload, error) {
+func beginOrcaExecutionResumeIntent(stateRoot string, record IssueOpsRecord, artifacts executionResumeArtifacts, runtimeID, terminalPTYID string, now func() time.Time) (IssueOpsRecord, externalOrcaIntentPayload, error) {
 	operationID, err := newExecutionOperationID()
 	if err != nil {
 		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
@@ -271,17 +275,22 @@ func beginOrcaExecutionResumeIntent(stateRoot string, record IssueOpsRecord, art
 		Repo: record.Repo, Host: binding.OwnerHost, Model: binding.OwnerModel,
 		Effort: binding.OwnerEffort,
 	}
+	stage := port.ExecutionOrcaIntentTerminal
+	if terminalPTYID != "" {
+		stage = port.ExecutionOrcaIntentTask
+	}
 	payload := externalOrcaIntentPayload{
 		SchemaVersion: model.IssueOpsSchemaVersion, Purpose: orcaIntentPurposeResume,
 		OperationID: operationID, LifecycleID: record.ID, Generation: lease.Generation,
-		Stage: port.ExecutionOrcaIntentTerminal, StartedAt: startedAt,
+		Stage: stage, StartedAt: startedAt,
 		InvocationState: orcaIntentNotInvoked, Workspace: workspace, Probe: probe, Prepared: prepared,
 		Launch: &externalOrcaLaunchIdentity{
 			PromptPath: artifacts.promptPath, PromptSHA256: artifacts.promptSHA256,
 			ContextPacketPath: artifacts.packetPath, ContextPacketSHA256: artifacts.packetSHA256,
 		},
 		IssueBodySHA256: artifacts.issueBodySHA256, ClaimTokenSHA256: lease.ClaimTokenSHA256,
-		PriorBinding: &binding, ResumeLease: &lease,
+		TerminalPTYID: strings.TrimSpace(terminalPTYID),
+		PriorBinding:  &binding, ResumeLease: &lease,
 	}
 	payload, err = sealExternalOrcaIntentPayload(record, payload)
 	if err != nil {
