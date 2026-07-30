@@ -19,7 +19,7 @@ func TestIssueOpsAdvertisesOnlyExecutionActionTool(t *testing.T) {
 	if !ok {
 		t.Fatalf("action schema = %#v", properties["action"])
 	}
-	want := []string{"prepare", "status", "claim", "release", "replace", "reconcile", "complete"}
+	want := []string{"prepare", "status", "claim", "release", "replace", "resume", "reconcile", "complete"}
 	if got := action["enum"]; !reflect.DeepEqual(got, want) {
 		t.Fatalf("action enum = %#v, want %#v", got, want)
 	}

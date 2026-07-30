@@ -14,6 +14,7 @@ const (
 	ExecutionActionClaim     = "claim"
 	ExecutionActionRelease   = "release"
 	ExecutionActionReplace   = "replace"
+	ExecutionActionResume    = "resume"
 	ExecutionActionReconcile = "reconcile"
 	ExecutionActionComplete  = "complete"
 )
@@ -94,6 +95,11 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 			// finalize/reseed 재봉인이 현재 이슈 본문을 다시 읽어야 하므로
 			// prepare/claim과 같은 리더를 함께 넘긴다.
 		}, ExecutionReplaceDependencies{OrcaOwner: deps.OrcaOwner, ReadIssue: deps.ReadIssue})
+	case ExecutionActionResume:
+		return ResumeExecutionWithDependencies(ctx, stateRoot, ExecutionResumeRequest{
+			ID: req.ID, ExpectedGeneration: req.ExpectedGeneration,
+			Actor: req.Actor, CWD: req.CWD, Confirm: req.Confirm,
+		}, ExecutionResumeDependencies{Orca: deps.Orca, OrcaOwner: deps.OrcaOwner})
 	case ExecutionActionReconcile:
 		return ReconcileExecutionWithDependencies(ctx, stateRoot, ExecutionReconcileRequest{
 			ID: req.ID, Preview: req.Preview, Confirm: req.Confirm, Actor: req.Actor, CWD: req.CWD,

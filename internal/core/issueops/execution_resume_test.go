@@ -270,3 +270,24 @@ func TestExecutionResumeAmbiguousDispatchRemainsReconcileable(t *testing.T) {
 		t.Fatalf("reconciled resume = %#v", reconciled.Execution)
 	}
 }
+
+func TestExecuteExecutionRoutesResumeThroughSharedAction(t *testing.T) {
+	stateRoot, record, _ := reseededOrcaCycle(t)
+	var stages []port.ExecutionOrcaIntentStage
+	raw, err := ExecuteExecution(context.Background(), stateRoot, ExecutionActionRequest{
+		Action: ExecutionActionResume, ID: record.ID,
+		ExpectedGeneration: record.Execution.Lease.Generation,
+		Actor:              executionActor("codex", "resume-api"), CWD: record.Execution.Workspace.Root,
+		Confirm: true,
+	}, ExecutionActionDependencies{
+		Orca: resumeOrcaFake(t, &stages), OrcaOwner: &executionOrcaOwnerInspectorFake{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resumed, ok := raw.(ExecutionResumeResult)
+	if !ok || resumed.Execution.Orca.LeaseGeneration != record.Execution.Lease.Generation ||
+		len(stages) != 3 || stages[0] != port.ExecutionOrcaIntentTerminal {
+		t.Fatalf("shared resume route = %#v stages=%v", raw, stages)
+	}
+}

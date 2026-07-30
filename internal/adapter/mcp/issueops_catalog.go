@@ -4,7 +4,7 @@ package mcp
 func IssueOpsBasicTools() []Tool {
 	return []Tool{{
 		Name:        "issueops_execution",
-		Description: "Prepare, inspect, claim, release, replace, reconcile, or complete the single IssueOps v1 execution lease. The action selects one shared CLI/MCP DTO; mutations require the exact native actor, generation, canonical cwd, and explicit confirmation.",
+		Description: "Prepare, inspect, claim, release, replace, resume, reconcile, or complete the single IssueOps v1 execution lease. The action selects one shared CLI/MCP DTO; mutations require the exact native actor, generation, canonical cwd, and explicit confirmation.",
 		InputSchema: issueOpsExecutionSchema(),
 	}}
 }
@@ -14,7 +14,7 @@ func issueOpsExecutionSchema() map[string]any {
 		"type":     "object",
 		"required": []string{"action", "id"},
 		"properties": map[string]any{
-			"action":                 map[string]any{"type": "string", "enum": []string{"prepare", "status", "claim", "release", "replace", "reconcile", "complete"}},
+			"action":                 map[string]any{"type": "string", "enum": []string{"prepare", "status", "claim", "release", "replace", "resume", "reconcile", "complete"}},
 			"id":                     map[string]any{"type": "string"},
 			"mode":                   map[string]any{"type": "string", "enum": []string{"auto", "direct", "orca"}},
 			"host":                   map[string]any{"type": "string", "enum": []string{"codex", "claude"}},

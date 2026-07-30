@@ -50,6 +50,7 @@ const Usage = `Usage:
   agent-harness issueops execution claim --id ID --generation N --claim-token-file PATH [--issue-body-sha256 HEX --context-packet-sha256 HEX] [--issue-snapshot-file PATH] ACTOR_FLAGS [--json]
   agent-harness issueops execution release --id ID --generation N ACTOR_FLAGS [--json]
   agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [fingerprint/reason flags] [--issue-snapshot-file PATH] ACTOR_FLAGS [--confirm] [--json]
+  agent-harness issueops execution resume --id ID --expected-generation N ACTOR_FLAGS --confirm [--json]
   agent-harness issueops execution reconcile --id ID (--preview|--confirm) [--issue-snapshot-file PATH] ACTOR_FLAGS [--json]
   agent-harness issueops execution complete --id ID --generation N --final-head SHA --turing-report PATH --remote-artifact-url URL --verification TEXT... ACTOR_FLAGS --confirm [--json]
   agent-harness issueops execution sync-base --id ID (--preview | --apply --confirm --fingerprint SHA256 | --finalize | --abort) ACTOR_FLAGS [--json]
@@ -75,6 +76,8 @@ func Run(args []string, deps Deps) error {
 		return runRelease(args[1:], deps)
 	case "replace":
 		return runReplace(args[1:], deps)
+	case "resume":
+		return runResume(args[1:], deps)
 	case "reconcile":
 		return runReconcile(args[1:], deps)
 	case "complete":
@@ -298,6 +301,23 @@ func runReplace(args []string, deps Deps) error {
 		InventoryFingerprint: *inventory, QuiescenceFingerprint: *quiescence, Reason: *reason,
 		Actor: actor.actor(), CWD: *actor.cwd, Confirm: *confirm,
 		IssueSnapshot: issueSnapshot,
+	}, deps)
+	return output(result, *jsonOut, err, deps)
+}
+
+func runResume(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops execution resume", flag.ContinueOnError)
+	id := fs.String("id", "", "IssueOps id")
+	generation := fs.Uint64("expected-generation", 0, "expected lease generation")
+	actor := addActorFlags(fs)
+	confirm := fs.Bool("confirm", false, "confirm owner resume")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if done, err := parse(fs, args); done || err != nil {
+		return err
+	}
+	result, err := execute(issueops.ExecutionActionRequest{
+		Action: issueops.ExecutionActionResume, ID: *id, ExpectedGeneration: *generation,
+		Actor: actor.actor(), CWD: *actor.cwd, Confirm: *confirm,
 	}, deps)
 	return output(result, *jsonOut, err, deps)
 }

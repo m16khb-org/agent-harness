@@ -209,6 +209,7 @@ func TestExecutionIssueSnapshotEvidenceRejectsUnsupportedActions(t *testing.T) {
 	for _, req := range []ExecutionActionRequest{
 		{Action: ExecutionActionStatus, ID: record.ID},
 		{Action: ExecutionActionRelease, ID: record.ID},
+		{Action: ExecutionActionResume, ID: record.ID},
 		{Action: ExecutionActionComplete, ID: record.ID},
 		{Action: ExecutionActionReplace, ID: record.ID, ReplaceAction: ExecutionReplacePreview},
 		{Action: ExecutionActionReconcile, ID: record.ID, Preview: true},

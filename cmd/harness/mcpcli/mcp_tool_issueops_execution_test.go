@@ -26,6 +26,29 @@ func TestExecutionActionRequestFromMCPPreservesAutoMode(t *testing.T) {
 	}
 }
 
+func TestExecutionActionRequestFromMCPMapsResume(t *testing.T) {
+	req, err := executionActionRequestFromMCPWithAncestry(map[string]any{
+		"action": "resume", "id": "io-aaaaaaaaaaaa",
+		"expected_generation": float64(3),
+		"host":                "codex",
+		"session_id":          "session-resume",
+		"session_pid":         float64(42),
+		"session_started_at":  "2026-07-30T00:00:00Z",
+		"session_executable":  "/usr/local/bin/codex",
+		"cwd":                 "/repo.worktrees/resume",
+		"confirm":             true,
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if req.Action != "resume" || req.ID != "io-aaaaaaaaaaaa" || req.ExpectedGeneration != 3 ||
+		req.Actor.Host != "codex" || req.Actor.SessionID != "session-resume" ||
+		req.Actor.SessionProcess == nil || req.Actor.SessionProcess.PID != 42 ||
+		req.CWD != "/repo.worktrees/resume" || !req.Confirm || req.IssueSnapshot != nil {
+		t.Fatalf("MCP resume request drifted: %#v", req)
+	}
+}
+
 func TestExecutionActionRequestFromMCPIssueSnapshot(t *testing.T) {
 	req, err := executionActionRequestFromMCPWithAncestry(map[string]any{
 		"action": "prepare",
