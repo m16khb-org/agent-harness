@@ -173,6 +173,36 @@ func TestExecutionClaimAcceptsEmptyQuotedAgentID(t *testing.T) {
 	}
 }
 
+func TestExecutionSnapshotFileFlagMatchesCLIContract(t *testing.T) {
+	for path, commandText := range map[string]string{
+		"execution prepare":   "agent-harness issueops execution prepare --id io-1 --mode orca --issue-snapshot-file /tmp/issue.json --json",
+		"execution claim":     "agent-harness issueops execution claim --id io-1 --generation 2 --claim-token-file /tmp/token --issue-snapshot-file /tmp/issue.json --json",
+		"execution replace":   "agent-harness issueops execution replace --id io-1 --expected-generation 1 --preview --issue-snapshot-file /tmp/issue.json --json",
+		"execution reconcile": "agent-harness issueops execution reconcile --id io-1 --preview --issue-snapshot-file /tmp/issue.json --json",
+	} {
+		t.Run(path, func(t *testing.T) {
+			command, ok := ParseExactIssueOpsCommand(commandText)
+			if !ok || command.Path != path {
+				t.Fatalf("snapshot 명령이 exact IssueOps 경로로 파싱되지 않았다: %#v ok=%v", command, ok)
+			}
+			values, booleans, repeatable, ok := IssueOpsCommandSpec(path)
+			if !ok {
+				t.Fatalf("%s 명령 명세가 없다", path)
+			}
+			flags, ok := ExactFlags(command, values, booleans, repeatable)
+			if !ok || len(flags["--issue-snapshot-file"]) != 1 || flags["--issue-snapshot-file"][0] != "/tmp/issue.json" {
+				t.Fatalf("CLI snapshot 플래그가 exact 명세에서 손실됐다: flags=%#v ok=%v", flags, ok)
+			}
+		})
+	}
+
+	nearMiss, _ := ParseExactIssueOpsCommand("agent-harness issueops execution claim --id io-1 --issue-snapshot /tmp/issue.json")
+	values, booleans, repeatable, _ := IssueOpsCommandSpec(nearMiss.Path)
+	if flags, ok := ExactFlags(nearMiss, values, booleans, repeatable); ok || flags != nil {
+		t.Fatalf("등록하지 않은 snapshot 별칭을 허용했다: flags=%#v ok=%v", flags, ok)
+	}
+}
+
 func TestResetLegacyUsesExactSchemaFlags(t *testing.T) {
 	command, ok := ParseExactIssueOpsCommand("agent-harness issueops reset-legacy --target-schema 1 --confirm --expected-fingerprint abc --json")
 	if !ok || command.Path != "reset-legacy" {

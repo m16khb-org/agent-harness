@@ -547,6 +547,43 @@ func TestExecutionTypedClaimRemainsAvailableFromSourceCheckout(t *testing.T) {
 	}
 }
 
+func TestExecutionSnapshotFileCommandsReachTypedControlPlane(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	snapshot := filepath.Join(worker, ".agent-harness", "artifact", "issue-snapshot.json")
+	base := "agent-harness issueops execution "
+
+	for name, command := range map[string]string{
+		"prepare": base + "prepare --id " + record.ID + " --mode orca --issue-snapshot-file " + snapshot + " --json",
+		"claim": base + "claim --id " + record.ID + " --generation 2 --claim-token-file " + filepath.Join(worker, "lease-2.token") +
+			" --issue-snapshot-file " + snapshot + " --json",
+		"replace":   base + "replace --id " + record.ID + " --expected-generation 1 --preview --issue-snapshot-file " + snapshot + " --json",
+		"reconcile": base + "reconcile --id " + record.ID + " --preview --issue-snapshot-file " + snapshot + " --json",
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := executionRequest(record, worker, "claude", "foreign-session", command)
+			req.AgentID = "owner-agent"
+			if !executionTypedControlPlane(req) {
+				t.Fatalf("%s snapshot 명령이 typed control-plane에서 탈락했다", name)
+			}
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+				t.Fatalf("%s snapshot 명령이 active IssueOps authority에 막혔다: %+v", name, got)
+			}
+		})
+	}
+
+	req := executionRequest(record, worker, "claude", "foreign-session",
+		base+"claim --id "+record.ID+" --issue-snapshot "+snapshot+" --json")
+	req.AgentID = "owner-agent"
+	if executionTypedControlPlane(req) {
+		t.Fatal("등록하지 않은 snapshot 별칭이 typed control-plane을 넓혔다")
+	}
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" ||
+		got.Deny == nil || got.Deny.Code != "unsafe_mutation" {
+		t.Fatalf("등록하지 않은 snapshot 별칭은 계속 막혀야 한다: %+v", got)
+	}
+}
+
 func TestExecutionExactResourceWaitReachesCanonicalHolderFence(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source, record, worker := executionActiveLifecycleRecord(t)
