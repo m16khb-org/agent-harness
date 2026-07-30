@@ -52,7 +52,7 @@
     "gate": "MEASURED_BASE_TO_CURRENT_RAW_INVENTORY"
   },
   "generation_5": {
-    "sync_base": {"base_branch": "117-hexagonal-architecture-migration", "base_oid": "3ca8d67c08756aac8f5936e41f0f4980f8ed9f4e", "merge_commit": "f460b0eea873d1a2b41238f5642e1c12b5f0ad69", "fingerprint": "4540184c0ddc4a5b7f3dc73c4b8fd9581ee28603bf243d3ef6708aebd057487c", "result": "PASS"},
+    "sync_base": {"base_branch": "117-hexagonal-architecture-migration", "base_oid": "3ca8d67c08756aac8f5936e41f0f4980f8ed9f4e", "merge_commit": "f460b0eea873d1a2b41238f5642e1c12b5f0ad69", "fingerprint": "5a326f1fc78f56e9017bd1a75a0048f47513bb1cd22f30f857067e2ca9d38e63", "result": "PASS"},
     "claim_reader_boundary": {"red": "go test ./cmd/harness/harnessapp -run TestIssueOpsClaimHandlerUsesResolvedSnapshotReader -count=1 failed to compile because the handler requires four arguments while the test supplied three.", "green": "After moving ReadIssue from ExecutionClaimRequest to ExecutionClaimDependencies, the same unit passed in 1.045s; the exact claim-boundary request.ReadIssue search returned no matches.", "scope": "ExecutionReseedRequest.ReadIssue remains unchanged."},
     "verification": [
       {"command": "go test ./internal/domain/issueopslease ./internal/application/issueopslease ./internal/contract/issueopslease -count=1", "result": "PASS", "evidence": "domain 0.544s; application 1.007s; contract 1.371s"},
