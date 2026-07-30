@@ -578,6 +578,34 @@ func normalizedOrcaIntentPurpose(payload externalOrcaIntentPayload) string {
 }
 
 func executionOrcaIntentRequest(record IssueOpsRecord, payload externalOrcaIntentPayload) (port.ExecutionOrcaIntentRequest, error) {
+	request, err := executionOrcaIntentInspectionRequest(record, payload)
+	if err != nil {
+		return port.ExecutionOrcaIntentRequest{}, err
+	}
+	if payload.Launch == nil {
+		return request, nil
+	}
+	token, err := readClaimToken(record, claimTokenPath(record))
+	if err != nil || tokenSHA256(token) != payload.ClaimTokenSHA256 {
+		return port.ExecutionOrcaIntentRequest{}, fmt.Errorf("sealed claim token identity changed")
+	}
+	prompt, err := readExecutionOwnerArtifact(record.Execution.Workspace.Root, payload.Launch.PromptPath)
+	if err != nil || digestExecutionOwnerBytes(prompt) != payload.Launch.PromptSHA256 {
+		return port.ExecutionOrcaIntentRequest{}, fmt.Errorf("sealed owner prompt identity changed")
+	}
+	packet, err := readExecutionOwnerArtifact(record.Execution.Workspace.Root, payload.Launch.ContextPacketPath)
+	if err != nil || digestExecutionOwnerBytes(packet) != payload.Launch.ContextPacketSHA256 {
+		return port.ExecutionOrcaIntentRequest{}, fmt.Errorf("sealed context packet identity changed")
+	}
+	request.Launch.Prompt = string(prompt)
+	return request, nil
+}
+
+// executionOrcaIntentInspectionRequest는 persisted payload의 봉인 메타데이터만
+// 사용해 read-only Orca 인벤토리 요청을 만든다. 삭제된 worktree의 token과
+// artifact 파일은 mutation 재시도에만 필요하며, 이미 사라진 외부 자원을
+// 확인하는 조회의 전제 조건이 아니다.
+func executionOrcaIntentInspectionRequest(record IssueOpsRecord, payload externalOrcaIntentPayload) (port.ExecutionOrcaIntentRequest, error) {
 	if err := validateExternalOrcaIntentPayload(payload, payload.OperationID); err != nil {
 		return port.ExecutionOrcaIntentRequest{}, err
 	}
@@ -593,20 +621,8 @@ func executionOrcaIntentRequest(record IssueOpsRecord, payload externalOrcaInten
 		if !samePath(payload.Launch.PromptPath, expectedPromptPath) || !samePath(payload.Launch.ContextPacketPath, expectedPacketPath) {
 			return port.ExecutionOrcaIntentRequest{}, fmt.Errorf("sealed owner artifact path changed")
 		}
-		token, err := readClaimToken(record, claimTokenPath(record))
-		if err != nil || tokenSHA256(token) != payload.ClaimTokenSHA256 {
-			return port.ExecutionOrcaIntentRequest{}, fmt.Errorf("sealed claim token identity changed")
-		}
-		prompt, err := readExecutionOwnerArtifact(record.Execution.Workspace.Root, payload.Launch.PromptPath)
-		if err != nil || digestExecutionOwnerBytes(prompt) != payload.Launch.PromptSHA256 {
-			return port.ExecutionOrcaIntentRequest{}, fmt.Errorf("sealed owner prompt identity changed")
-		}
-		packet, err := readExecutionOwnerArtifact(record.Execution.Workspace.Root, payload.Launch.ContextPacketPath)
-		if err != nil || digestExecutionOwnerBytes(packet) != payload.Launch.ContextPacketSHA256 {
-			return port.ExecutionOrcaIntentRequest{}, fmt.Errorf("sealed context packet identity changed")
-		}
 		request.Launch = &port.ExecutionOrcaLaunchRequest{
-			Prompt: string(prompt), PromptPath: payload.Launch.PromptPath, PromptSHA256: payload.Launch.PromptSHA256,
+			PromptPath: payload.Launch.PromptPath, PromptSHA256: payload.Launch.PromptSHA256,
 			ContextPacketPath: payload.Launch.ContextPacketPath, ContextPacketSHA256: payload.Launch.ContextPacketSHA256,
 		}
 	}

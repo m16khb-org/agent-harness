@@ -354,6 +354,37 @@ func TestExecutionIntentInventoryPreservesZeroOneManyAndRejectsMismatches(t *tes
 	}
 }
 
+// 복구용 인벤토리 조회는 이미 삭제된 worktree의 prompt/context 파일을 다시
+// 요구하면 안 된다. 봉인 메타데이터로 조회만 허용하되, 실제 mutation은 기존
+// 파일 검증을 그대로 통과해야 한다.
+func TestExecutionIntentInspectionSurvivesDeletedWorkspaceWithoutWeakeningInvoke(t *testing.T) {
+	workspace, probe := executionFixture(t)
+	prepared := port.ExecutionOrcaWorkspaceReceipt{Workspace: port.ExecutionWorkspaceReceipt{
+		SourceRoot: workspace.SourceRoot, Root: workspace.Root, Branch: workspace.Branch,
+		BaseHead: workspace.BaseHead, Driver: "orca", Exists: true,
+	}, RuntimeID: "runtime-69", RepoID: "repo-69", WorktreeID: "wt-69"}
+	launch := executionLaunchFixture(t, workspace.Root)
+	request := port.ExecutionOrcaIntentRequest{
+		Stage: port.ExecutionOrcaIntentTerminal, Marker: probe.Marker, Workspace: workspace,
+		Probe: probe, Prepared: &prepared, Launch: &launch,
+	}
+	if err := os.RemoveAll(workspace.Root); err != nil {
+		t.Fatal(err)
+	}
+
+	client := &executionFake{}
+	inventory, err := NewExecutionClient(client).InspectIntent(context.Background(), request)
+	if err != nil || !inventory.AuthoritativeZero || len(inventory.Candidates) != 0 {
+		t.Fatalf("삭제된 workspace의 봉인 intent를 조회하지 못했다: inventory=%#v err=%v", inventory, err)
+	}
+
+	_, err = NewExecutionClient(client).InvokeIntent(context.Background(), request)
+	assertExecutionPreflightError(t, err)
+	if !reflect.DeepEqual(client.calls, []string{"list-terminals-inventory"}) {
+		t.Fatalf("파일 없는 invoke가 Orca mutation에 도달했다: %v", client.calls)
+	}
+}
+
 func TestExecutionTaskTitleFitsOrcaAndBindsSealedIntent(t *testing.T) {
 	marker := "agent-harness issueops-v1 lifecycle=io-c7e2d4e02b59 operation=c8b92dda09eaf3d"
 	promptSHA256 := strings.Repeat("a", 64)
