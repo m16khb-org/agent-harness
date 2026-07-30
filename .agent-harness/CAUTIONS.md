@@ -346,6 +346,7 @@ Cross-system residue must not acquire a second truth source in stale scan, statu
 - Orca absence is optional only when no durable cycle claims Orca resources. Never turn a missing or incomplete Orca inventory into an empty healthy list.
 - One-time global cleanup evidence lives in an external `0700` recovery bundle. Git/SQLite copies can be restore-tested, but Orca snapshot is archival-only: the public CLI has no conditional reset/import/restore and a last-moment external actor race remains. Stop on pre-reset digest drift; after reset, continue idempotently from the append-only journal instead of guessing rollback.
 - A destructive IssueOps replacement must not rely on a runner-side observation followed by an unfenced write: record and process state can change in that gap. Use expected generation plus inventory/quiescence fingerprint CAS and journal the locked before/after proof.
+- Replacement의 최초 `--preview`는 현재 generation을 찾는 읽기이므로 세대를 생략할 수 있지만, 이후 revoke/finalize/reseed는 preview가 돌려준 exact generation CAS를 요구한다. Orca finalize/reseed는 새 token을 만든 뒤 owner packet/prompt 재봉인까지 성공해야 durable claimable 상태를 기록한다. 실패하면 이전 durable 상태를 보존하고 아직 권한 없는 target generation의 token/packet/prompt residue를 정리하며, 다음 재시도도 같은 exact harness-owned 경로를 먼저 회수한다. GitLab MCP snapshot은 이 재봉인이 실제로 읽는 `replace --finalize|--reseed`에만 전달한다.
 - A sealed cleanup must also seal its authorities: invoke a bundle-private clean-HEAD executor by hash/VCS revision, override live state/root/daemon/worker environment paths, require singleton equal fetch/push authorities, and push to the sealed explicit URL. Fetch/prune readiness, mutation, and readback must share that URL plus a heads-only refspec, `--no-tags`, and `--no-write-fetch-head`; never reopen mutable `origin` refspec/tag authority. Ignored `bin/agent-harness`, inherited environment, and mutable remote names are not execution evidence.
 
 ## 24. IssueOps 도메인 어휘를 CLI 서브커맨드로 착각
@@ -479,7 +480,15 @@ Dated incident notes are preserved in `.agent-harness/archive/cautions-incidents
 - Summary: 시스템 전체 파이프 fd가 폭증하면(관측: 14,402개, codex 호스트 1개가 3,112개) xnu의 전역 파이프 버퍼 풀이 고갈되어 **새 파이프가 512바이트 최소 버퍼로 강등**된다(정상 16,384 — 100/100 실측). 이때 "쓰기 완료 후 읽기" 방식의 stdout 캡처 테스트 헬퍼는 512B를 넘는 JSON 출력(예: loop record-attempt 579B)에서 write가 영구 블록되어 go test 타임아웃 FAIL이 된다. 코드 회귀처럼 보이지만 머신 상태 문제다(부모 커밋에서도 동일 재현).
 - Context: 증상은 간헐적이다 — KVA 압력이 변동하며 새 파이프가 16K↔512B를 오간다. 타임아웃/중단된 `go test` 실행을 `pkill -f 'go test'`로 죽이면 `.test` 바이너리가 고아로 살아남아 파이프 압력을 가중시킨다(양성 피드백). 6ee897d가 harnessapp response-contract 캡처는 동시 reader로 고쳤지만, 일부 CLI capture 헬퍼는 아직 write-then-read 패턴이다.
 - Triage: (1) `ps -axo pid,etime,ppid,command | rg '\.test'`로 고아 테스트 바이너리 확인·제거, (2) `lsof -n | rg -c PIPE`로 총량과 `awk '{print $1,$2}' | sort | uniq -c | sort -rn`으로 최다 점유 프로세스 확인, (3) 신규 파이프에 nonblocking write를 가득 채우는 프로브로 실효 버퍼 크기 측정 — 512B면 KVA 고갈 확정.
-- Resolution: 재발 방지는 완료됐다. stdout/stderr 캡처 테스트는 `internal/testsupport.CaptureStdout`, `CaptureStdoutAndError`, `CaptureStderrAndError`를 사용한다. 이 헬퍼들은 fn 실행 전에 reader goroutine을 시작하므로 파이프 버퍼 크기에 의존하지 않는다. `agent-harness doctor --json`은 `pipe_capacity_bytes`와 `pipe_capacity` 체크를 노출하고 8192B 미만이면 `pipe_capacity_degraded` warning을 낸다. 근본 완화는 여전히 파이프를 누수하는 장수 host 프로세스 재시작이다. `agent-harness mcp cleanup --apply`는 부모가 죽은 고아 프록시만 정리하므로 살아 있는 host의 누수에는 효과가 없다. `go test`를 죽일 때는 `pkill -f 'go test'`가 아니라 `.test` 바이너리까지 함께 정리한다.
+- Resolution: 재발 방지는 완료됐다. stdout/stderr 캡처 테스트는 `internal/testsupport.CaptureStdout`, `CaptureStdoutAndError`, `CaptureStderrAndError`를 사용한다. 이 헬퍼들은 fn 실행 전에 reader goroutine을 시작하므로 파이프 버퍼 크기에 의존하지 않는다. `agent-harness doctor --json`은 `pipe_capacity_bytes`와 `pipe_capacity` 체크를 노출하고 8192B 미만이면 `pipe_capacity_degraded` warning을 낸다. 근본 완화는 여전히 파이프를 누수하는 장수 host 프로세스 재시작이다. `agent-harness mcp cleanup --apply`는 Darwin에서 검증된 고아 프록시만 정리하므로 살아 있는 host의 누수에는 효과가 없다. `go test`를 죽일 때는 `pkill -f 'go test'`가 아니라 `.test` 바이너리까지 함께 정리한다.
+
+## 2026-07-28 — update의 MCP 수명은 host 소유이며 pending 요청은 자동 재생하지 않는다
+
+- Kind: `caution`
+- Source: `ah update` 중 Codex agent_harness MCP 연결 종료 재현과 Claude Code 2.1.220 `mcp list` 번들 확인
+- Summary: update는 host가 소유한 stdio MCP 프로세스나 외부 MCP를 열거·종료·접속하지 않는다. agent-harness proxy는 daemon generation 교체 뒤 초기 handshake의 protocol/capability projection이 동일할 때만 세션을 복구한다.
+- Resolution: 단일 요청과 구버전 NDJSON batch의 미완료 request ID는 자동 재실행하지 않고 `outcome=unknown`과 reconcile 요구를 반환한다. reconnect는 전체 20초 deadline과 host EOF cancellation을 공유한다. handshake projection이 달라지거나 initialize가 거부되면 proxy를 종료해 host 재연결을 유도한다. 사용하지 않는 SDK logging capability는 광고하지 않는다. GitLab MCP/personal wrapper 동기화는 `scripts/sync-glab-mcp.sh`를 수동 실행할 때만 수행한다.
+- Cleanup boundary: `mcp cleanup --apply`는 Darwin에서만 exact current-checkout `agent-harness mcp`, `PPID=1`, verified executable/start time, signal 직전 동일 identity를 모두 만족한 프로세스를 종료한다. Linux 컨테이너 등에서는 `PPID=1`이 살아 있는 host일 수 있으므로 `skip-unsupported-platform`으로 거부한다. live-parent proxy, PID reuse, 다른 checkout, DBHub/Context7/Kordoc/개인 wrapper도 fail-closed로 건너뛴다.
 
 ## 2026-07-07 — SQLite sqlstore span 규율: active-root chain, per-root 직렬화, fresh start
 
@@ -539,6 +548,10 @@ Orca worktree/terminal/task create 또는 dispatch는 프로세스 timeout/error
 - Codex 0.144.1 공식 `rust-v0.144.1`(44918ea)은 session setup에서 hook을 초기화하지만 `refresh_runtime_config`가 hook을 다시 build/store하는 경로도 제공하고, `pre_tool_use.rs`는 현재 session id를 payload에 넣는다. 관측된 live worker에서는 install-native가 `~/.codex/hooks.json`을 교체해도 active session command가 갱신되지 않았다. 따라서 파일 readback만으로 runtime 적용을 주장하지 말고 current-session live probe를 권위로 삼는다. installer의 `--host codex`는 유지하고, retained command 호환은 payload host와 CLI `--host`가 모두 비었을 때만 Codex로 정규화한다. 이 경우에도 exact nonempty session, canonical cwd/repo, persisted fence, in-tree target 검사를 모두 유지하며 명시 host는 절대 덮어쓰지 않는다. binary 재설치 후 같은 worker에 허용하는 mutation 재시도는 정확히 한 번뿐이다.
 - Codex 0.144.1 PreToolUse payload는 repo 밖 rollout을 가리키는 top-level `transcript_path`를 항상 포함하고 subagent에서는 `agent_transcript_path`도 포함할 수 있다. 이를 일반 `*_path` edit target으로 재귀 수집하면 정상 in-tree patch가 외부 target으로 오판되어 block된다. 두 키는 `tool_input` 밖에서만 hook metadata로 제외하고, `tool_input` 안의 동일 키·file path·patch target은 계속 검사한다. 라이브 재시도 전 probe는 transcript metadata까지 포함한 full payload여야 하며, 이를 생략한 synthetic allow 결과만으로 성공을 주장하지 않는다.
 - Completion의 shell-quoted `--verification` 값 안 세미콜론은 evidence data일 수 있다. lifecycle guard는 quote-aware scan으로 quote 밖의 `;`, `&`, `|`, CR/LF만 차단하고 quoted punctuation은 허용한다. `SplitCommandTokens`가 quoted empty argument를 버리므로 `--agent-id ''`를 렌더하지 말고 flag 자체를 생략한다.
+- 관찰 명령을 세미콜론, 개행, 성공 조건 `&&`로 묶었다는 이유만으로 `unsafe_mutation` 처리하면 owner가 상태 확인조차 못 한다. 각 조각을 기존 exact read-only parser로 다시 검증하는 시퀀스와 고정된 `.codegraph` 존재/출력 probe만 정적으로 관찰로 인정한다. `&&`는 두 조각이 모두 exact reader일 때만 구분자로 허용하고, `||`·단독 `&`·파이프·리다이렉트·치환·미분류 명령·임의 분기 본문은 계속 fail-closed로 둔다.
+- `rg`의 `-A5`/`-B5`/`-C5`/`-m5`는 짧은 숫자 옵션과 값이 한 token에 붙은 정상 관찰 표기다. active lifecycle에서 이를 미분류 mutation으로 막지 말되, 기존에 허용한 네 옵션과 10,000 이하 숫자에만 한정하고 알 수 없는 결합형은 계속 fail-closed로 둔다.
+- Turing 증거 JSON의 구문 검증은 `jq empty <literal-json-file>` 한 파일 문법만 exact reader로 인정한다. stdin과 `/dev/stdin`·`/dev/fd/0` 같은 확장자 없는 alias, 여러 파일, 다른 filter, option, module/argument 주입, 리다이렉트는 이 좁은 검증 계약에 필요하지 않으므로 계속 fail-closed로 둔다.
+- 프로젝트 문서 전체 읽기에 쓰는 `sed -n '<positive-line>,$p' <literal-file>`은 exact reader로 인정한다. 마지막 줄 표식은 시작점이 양의 정수인 이 범위에서만 허용하고, `$p` 단독·다른 sed 명령·option operand·stdin·리다이렉트·활성 shell expansion·word 시작의 unquoted comment는 계속 fail-closed로 둔다.
 - Transferred ownership cycle에 관해서만 source checkout은 observation-only다: `git status/diff/log/show/rev-parse/ls-files`와 `rg` 같은 관찰은 가능하지만 그 cycle의 test/build/format/install/generate는 claimed worker root에서만 실행한다. 이 제약은 source main worktree의 unrelated work를 막지 않는다. 테스트 초기화와 fixture도 파일·프로세스·네트워크를 바꿀 수 있어 read-only로 분류하지 않는다.
 - 같은 source checkout에 supervised cycle이 여러 개면 proven observation은 record 선택 전에 분류해야 한다. owner가 필요 없는 hardened `pwd`/`rg`/read-only Git/명시적 read tool까지 먼저 exact record를 고르게 하면 복구 self-lock이 된다. 단, 이 선처리는 source-matching supervised record가 실제로 둘 이상인 경우에만 적용해 일반 linked-worktree MCP guard를 우회하지 않는다. exact lifecycle parser는 문서화된 `agent-harness`, `bin/agent-harness`, `./bin/agent-harness` 표기만 받고 shell control·unknown flag는 계속 거부한다. `handoff start` identity flags를 `handoff recover`에 추정으로 붙이지 말고 실제 subcommand help/spec을 확인한다. 상세 사건 기록은 `ISSUEOPS_ORCA_BLOCKERS_2026-07-16.md`를 참조한다.
 - response-contract golden에는 gitignored project-local host 설치 여부를 raw boolean으로 남기지 않는다. `.claude`와 `.codex` skill presence는 같은 placeholder로 정규화한다. 머신 상태 때문에 golden이 실패하면 user artifact를 삭제하거나 update 결과를 그대로 수용하지 말고 실제 diff가 contract인지 environment drift인지 먼저 분리한다.
@@ -747,3 +760,24 @@ Codex hook trust는 command 내용만이 아니라 `source:event:matcher-index:h
 - tracked와 untracked 변경을 이름 있는 `git stash push --include-untracked`로 보존하고 stash SHA를 기록한 뒤 fast-forward한다.
 - `git stash apply`를 사용해 복구 지점을 유지한 채 변경을 재적용하고, conflict marker·diff·focused/full tests와 두 번째 `git pull --ff-only`를 확인한 뒤에만 stash를 제거한다.
 - dirty `main`을 맞추기 위해 `reset --hard`, `clean`, 사용자 변경 폐기, 임시 worktree branch 삭제를 사용하지 않는다.
+
+## execution owner에게 lease 명령만 주고 lifecycle phase 전이를 추론시키지 말 것
+
+Orca owner가 active lease를 정상 claim하고 구현·대상 검증까지 마쳤지만 lifecycle은 `problem`에 남아 있었다. 기존 sealed prompt가 `link-plan`, `phase --to implement`, `ai-slop-clean record`, `phase --to ai-slop-clean`, `phase --to pr`의 순서와 exact command를 제공하지 않았기 때문이다. cleanup evidence만 기록해도 phase와 fingerprint는 자동으로 전이되지 않으므로 implementation review가 `implement phase` 이전이라고 거부했다.
+
+- sealed owner packet은 plan 연결부터 PR phase까지 필요한 lifecycle mutation을 exact command로 렌더하고 command catalog로 검증한다.
+- staged plan과 기존 `plan_path`가 모두 없으면 임의 계획이나 phase jump로 우회하지 않고 blocker를 보고한다. `link-plan`은 같은 canonical path만 멱등 허용하며 다른 path로의 교체는 fail-closed한다.
+- 구현 수정은 `phase=implement` readback 뒤에 시작하고, cleanup evidence 기록 뒤 `ai-slop-clean` 전이로 fingerprint를 봉인한다.
+- implementation review는 실제 `pass|revise|stop` verdict를 기록한다. `revise`는 수정·재검증·fresh 리뷰를 반복하고 `stop`은 publication을 중단한다. 리뷰 뒤 diff를 바꾸면 cleanup/review fingerprint를 다시 기록한다. clean/synced push 뒤 `phase=pr`을 통과한 다음에만 governed PR/MR 생성 명령을 실행한다.
+- 최신 사용자 지시가 전체 테스트를 제한하면 sealed issue의 오래된 full 명령을 강행하지 않고 targeted 검증과 생략 근거를 Turing report에 남긴다.
+
+## active lease에서 atomic 스킬의 Python gate를 일반 관찰로 열지 말 것
+
+`atomic-commit-push`의 필수 `git_preflight.py`가 읽기 전용이어도 Python 스크립트 실행은 정적 shell reader 목록에 없어서 `unsafe_mutation`으로 차단된 적이 있다. 반대로 파일 이름만 보고 observation으로 승격하면 저장소가 제공한 Python 코드가 non-holder에게도 열릴 수 있다.
+
+- `git_preflight.py`와 `api_doc_gate.py`의 정확한 단일 `python3` 호출만 current holder workflow로 인정한다.
+- 스크립트는 저장소 상대 경로와 사용자 홈의 설치·심볼릭 링크 경로를 모두 쓸 수 있으므로 사용자별 절대 경로를 하드코딩하지 않는다. 절대 경로는 명시적 expected worktree/source checkout, `HARNESS_ROOT`, `CODEX_HOME`, 사용자 홈의 Codex·Claude skill root처럼 설치기가 관리하는 base와 정확히 일치할 때만 허용한다. generic repo/cwd와 단순 `/skills/...` suffix 비교는 신뢰 근거로 쓰지 않는다.
+- 상대 `skills/...` 스크립트는 active lifecycle의 canonical worktree root에서만 실행한다. 하위 디렉터리에서는 같은 상대 경로가 `<subdir>/skills/...`를 가리키므로 holder라도 허용하지 않는다.
+- 선택적 repo 인자는 실제 shell 작업 디렉터리와 같은 canonical 경로만 허용한다. Codex `exec_command`는 `tool_input.workdir`, Claude Bash는 top-level `cwd`를 기준으로 삼고 해석이 모호한 상대 `workdir`는 거부한다.
+- 비-shell tool은 같은 command 문자열을 실어도 이 경로로 분류하지 않는다. 공백이 포함된 argv, 추가 인자, 다른 인터프리터, 다른 스크립트, 외부 repo 대상은 계속 fail-closed한다.
+- 이 경로는 일반 read-only observation이 아니다. 기존 native holder identity와 canonical worktree containment를 모두 통과한 뒤에만 실행한다.

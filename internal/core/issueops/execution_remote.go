@@ -361,12 +361,49 @@ func remotePullRequestReconcileRequest(payload externalRemotePRPayload) port.Iss
 	}
 }
 
+// remotePullRequestCandidateTitle는 provider가 draft 상태를 제목 접두사로 표현하는
+// 것을 되돌린다. GitLab은 draft MR의 제목을 "Draft: <title>"로 저장하고 목록 API도
+// 접두사를 포함해 반환하므로, 봉인된 의도의 제목과 그대로 비교하면 자기 자신이
+// 만든 draft MR조차 채택할 수 없다.
+func remotePullRequestCandidateTitle(candidate port.IssueProviderReconcilePullRequestCandidate) string {
+	title := strings.TrimSpace(candidate.Title)
+	if !candidate.Draft {
+		return title
+	}
+	for _, prefix := range []string{"Draft:", "WIP:"} {
+		if len(title) >= len(prefix) && strings.EqualFold(title[:len(prefix)], prefix) {
+			return strings.TrimSpace(title[len(prefix):])
+		}
+	}
+	return title
+}
+
+// remotePullRequestCandidateDraftMatches는 draft 의도와 관측된 draft 상태를 비교한다.
+// 이미 merged 또는 closed된 아티팩트는 draft일 수 없으므로, draft로 만들어 달라던
+// 의도와 "draft가 해제된 뒤 머지된" 관측은 모순이 아니다. 아직 열려 있는 아티팩트는
+// 기존대로 정확히 일치해야 한다.
+func remotePullRequestCandidateDraftMatches(candidate port.IssueProviderReconcilePullRequestCandidate, expectedDraft bool) bool {
+	if candidate.Draft == expectedDraft {
+		return true
+	}
+	if !expectedDraft || candidate.Draft {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(candidate.State)) {
+	case "merged", "closed":
+		return true
+	default:
+		return false
+	}
+}
+
 func validateRemotePullRequestCandidate(record IssueOpsRecord, payload externalRemotePRPayload, candidate port.IssueProviderReconcilePullRequestCandidate) error {
 	expected := remotePullRequestReconcileRequest(payload)
 	if strings.TrimSpace(candidate.ProjectKey) != expected.ProjectKey || strings.TrimSpace(candidate.SourceProjectKey) != expected.ProjectKey ||
 		strings.TrimSpace(candidate.HeadBranch) != expected.HeadBranch || strings.TrimSpace(candidate.BaseBranch) != expected.BaseBranch ||
-		strings.TrimSpace(candidate.HeadSHA) != expected.ExpectedHeadSHA || strings.TrimSpace(candidate.Title) != expected.Title ||
-		strings.TrimSpace(candidate.BodySHA256) != expected.BodySHA256 || candidate.Draft != expected.Draft ||
+		strings.TrimSpace(candidate.HeadSHA) != expected.ExpectedHeadSHA || remotePullRequestCandidateTitle(candidate) != expected.Title ||
+		strings.TrimSpace(candidate.BodySHA256) != expected.BodySHA256 ||
+		!remotePullRequestCandidateDraftMatches(candidate, expected.Draft) ||
 		!sameCanonicalRemoteSet(candidate.Labels, expected.Labels) || !sameCanonicalRemoteSet(candidate.Assignees, expected.Assignees) {
 		return fmt.Errorf("remote reconcile candidate does not match the exact durable intent")
 	}

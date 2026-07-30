@@ -15,8 +15,46 @@ Use this skill before GitLab work starts. It is a guardrail for repeated mistake
    - MR: `/merge_requests/:iid`
    - Native linked item: non-hierarchical relation such as `relates_to`, `blocks`, `is_blocked_by`
    - Child item: parent-child hierarchy, not a link relation
-2. Pick the authenticated surface whose credentials and scope match the target GitLab host and project before the first call: local `glab` CLI, or a configured GitLab MCP server. If one surface returns auth, permission, or project errors, switch to the other configured surface and verify the same fields there.
+2. Pick the authenticated surface whose credentials and scope match the target GitLab host and project before the first call: generic `glab` CLI, or a configured GitLab MCP tool discovered by capability.
 3. Do not report completion from local state alone. Re-read the remote issue/MR/work item after mutation.
+
+## Portable VCS Snapshot Discovery
+
+IssueOps execution이 GitLab issue 본문을 봉인해야 할 때는 다음 순서를 지킨다.
+
+1. canonical worktree가 있으면 먼저 선택 문서 `.agent-harness/VCS.md`를
+   `project_docs_read`로 읽는다. 문서가 없거나 해당 provider recipe가 없으면 현재
+   host에 등록된 trusted tool을 탐색한다.
+2. GitLab MCP는 서버 이름이 아니라 semantic leaf `glab_api`와 실제 input schema로
+   식별한다. server namespace는 등록 세부사항이지 capability identity가 아니다.
+   같은 leaf와 호환 schema를 노출하는 개인 wrapper도 지원한다. 특정 wrapper 이름,
+   설치 경로, profile, token을 코드나 공용 문서에 고정하지 않는다.
+3. 실제 schema에 맞춰 `projects/<URL-escaped-project>/issues/<iid>`를 읽고,
+   schema가 지원하면 `flags.hostname`으로 target host를 명시해 `web_url`,
+   `description`, `state`를 받는다. 여러 후보가 있으면 target host/project 권한과
+   schema가 맞는 후보만 사용한다.
+4. 응답의 HTTPS authority(명시 port 포함), project path, IID를 linked issue와 정확히
+   대조한다. `/issues/:iid`와 `/work_items/:iid`는 이 세 값이 모두 같을 때만 같은
+   identity다.
+5. 성공한 MCP 응답은
+   `provider=gitlab`, `source=glab_mcp`, `web_url`, `body=description`,
+   `state=opened|closed`의 host-neutral `issue_snapshot`으로 정규화한다. MCP
+   `issueops_execution`에는 이 객체를 직접 넘기고, CLI로 IssueOps를 호출할 때는
+   mode `0600` private JSON file과 `--issue-snapshot-file`을 사용한다.
+6. 후보 부재뿐 아니라 auth/permission/transport/schema 호출 실패 뒤에도
+   successful exact-identity MCP evidence를 얻지 못했을 때만 `issue_snapshot`을
+   생략한다. 그러면 agent-harness provider adapter가 일반 `glab api` CLI를
+   사용하고 결과에 `glab_cli`를 기록한다.
+   이미 공급한 invalid evidence는 CLI fallback하지 않고 fail-closed한다.
+7. 실제로 성공한 provider recipe는 canonical worktree에서 `project_docs_read`로
+   최신 content/SHA를 다시 읽고 `project_docs_update`의 SHA-CAS로
+   `.agent-harness/VCS.md`에 기록한다. tool leaf, 관찰한 schema, endpoint/필드,
+   CLI fallback만 남기고 secret과 개인 server namespace는 남기지 않는다.
+   canonical worktree가 아직 없으면 생성 뒤로 기록을 미룬다. OpenWiki 자동 update를
+   실행하지 않는다.
+8. `.agent-harness/VCS.md`는 provider-neutral하다. GitHub repo에서는 검증된
+   `gh issue view <url> --json url,body,state`를 기록하거나 실제로 관찰한 MCP
+   schema만 기록한다. 존재하지 않는 GitHub MCP 이름을 추측해서 만들지 않는다.
 
 ## Profile-Scoped glab MCP Servers (when configured)
 

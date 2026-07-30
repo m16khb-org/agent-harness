@@ -41,9 +41,16 @@ type executionOwnerIssue struct {
 type executionOwnerCommands struct {
 	LeaseStatus          string `json:"lease_status"`
 	Claim                string `json:"claim"`
+	VerifyBranchLink     string `json:"verify_branch_link"`
+	LinkPlan             string `json:"link_plan"`
+	CompatibilityReview  string `json:"compatibility_review"`
+	EnterImplement       string `json:"enter_implement"`
+	AISlopCleanRecord    string `json:"ai_slop_clean_record"`
+	EnterAISlopClean     string `json:"enter_ai_slop_clean"`
 	RemoteCreate         string `json:"remote_create"`
 	Complete             string `json:"complete"`
 	ImplementationReview string `json:"implementation_review"`
+	EnterPR              string `json:"enter_pr"`
 }
 
 type executionOwnerContextPacket struct {
@@ -136,7 +143,7 @@ func readExecutionOwnerSnapshot(ctx context.Context, record IssueOpsRecord, read
 	return executionOwnerSnapshot{
 		issue:                executionOwnerIssue{URL: strings.TrimSpace(snapshot.URL), Body: snapshot.Body, BodySHA256: digestExecutionOwnerBytes([]byte(snapshot.Body))},
 		requiredDocs:         executionOwnerRequiredDocs(record.Repo),
-		requiredSkills:       []string{"issueops", "turing"},
+		requiredSkills:       []string{"issueops", "turing", "atomic-commit-push"},
 		acceptanceIDs:        acceptance,
 		verificationCommands: verification,
 	}, nil
@@ -220,7 +227,14 @@ func renderExecutionOwnerPrompt(packet executionOwnerContextPacket, packetPath, 
 		"PACKET_PATH": packetPath, "PACKET_SHA256": packetDigest,
 		"OWNER_HOST": packet.OwnerHost, "OWNER_MODEL": packet.OwnerModel, "OWNER_EFFORT": packet.OwnerEffort,
 		"REVIEWER_MODEL": packet.ReviewerModel, "REVIEWER_EFFORT": packet.ReviewerEffort,
+		"VERIFY_BRANCH_LINK_COMMAND":    packet.Commands.VerifyBranchLink,
+		"LINK_PLAN_COMMAND":             packet.Commands.LinkPlan,
+		"COMPATIBILITY_REVIEW_COMMAND":  packet.Commands.CompatibilityReview,
+		"ENTER_IMPLEMENT_COMMAND":       packet.Commands.EnterImplement,
+		"AI_SLOP_CLEAN_RECORD_COMMAND":  packet.Commands.AISlopCleanRecord,
+		"ENTER_AI_SLOP_CLEAN_COMMAND":   packet.Commands.EnterAISlopClean,
 		"IMPLEMENTATION_REVIEW_COMMAND": packet.Commands.ImplementationReview,
+		"ENTER_PR_COMMAND":              packet.Commands.EnterPR,
 		"REQUIRED_DOCS":                 renderExecutionOwnerLines(packet.RequiredDocs), "REQUIRED_SKILLS": renderExecutionOwnerLines(packet.RequiredSkills),
 		"ACCEPTANCE_IDS": strings.Join(packet.AcceptanceIDs, ", "), "VERIFICATION_COMMANDS": renderExecutionOwnerLines(packet.Verification),
 		"TURING_REPORT_PATH": packet.TuringReportPath, "REMOTE_CREATE_COMMAND": packet.Commands.RemoteCreate, "COMPLETE_COMMAND": packet.Commands.Complete,
@@ -254,9 +268,13 @@ func validateExecutionOwnerPromptInputs(packet executionOwnerContextPacket, pack
 		{"packet_path", packetPath}, {"packet_sha256", packetDigest}, {"owner_host", packet.OwnerHost},
 		{"owner_model", packet.OwnerModel}, {"owner_effort", packet.OwnerEffort}, {"turing_report_path", packet.TuringReportPath},
 		{"lease_status_command", packet.Commands.LeaseStatus}, {"claim_command", packet.Commands.Claim},
+		{"verify_branch_link_command", packet.Commands.VerifyBranchLink},
+		{"link_plan_command", packet.Commands.LinkPlan}, {"compatibility_review_command", packet.Commands.CompatibilityReview},
+		{"enter_implement_command", packet.Commands.EnterImplement},
+		{"ai_slop_clean_record_command", packet.Commands.AISlopCleanRecord}, {"enter_ai_slop_clean_command", packet.Commands.EnterAISlopClean},
 		{"remote_create_command", packet.Commands.RemoteCreate}, {"complete_command", packet.Commands.Complete},
 		{"reviewer_model", packet.ReviewerModel}, {"reviewer_effort", packet.ReviewerEffort},
-		{"implementation_review_command", packet.Commands.ImplementationReview},
+		{"implementation_review_command", packet.Commands.ImplementationReview}, {"enter_pr_command", packet.Commands.EnterPR},
 	}
 	for _, scalar := range scalars {
 		if strings.ContainsAny(scalar.value, "\r\n") || executionPromptPlaceholder.MatchString(scalar.value) {
@@ -294,6 +312,46 @@ func executionOwnerCommandsFor(record IssueOpsRecord, req ExecutionPrepareReques
 			" --generation " + strconv.FormatUint(generation, 10) + " --claim-token-file " + quoteExecutionOwnerArg(claimTokenPath(record)) +
 			" --issue-body-sha256 " + strings.TrimSpace(issueBodySHA256) + " --context-packet-sha256 <PACKET_SHA256> " + actorFlags + " --json"
 	}
+	shortActor := strings.Join([]string{
+		"--host", strings.ToLower(strings.TrimSpace(req.OwnerHost)), "--session-id", "<SESSION_ID>",
+		"--cwd", quoteExecutionOwnerArg(record.Execution.Workspace.Root),
+	}, " ")
+	verifyBranchLink := "none"
+	if prepared := record.BranchPrepare; prepared != nil && !prepared.LinkVerified {
+		verifyBranchLink = "agent-harness issueops branch prepare --id " + quoteExecutionOwnerArg(record.ID) +
+			" --provider " + quoteExecutionOwnerArg(strings.ToLower(strings.TrimSpace(prepared.Provider))) +
+			" --issue-url " + quoteExecutionOwnerArg(strings.TrimSpace(prepared.IssueURL)) +
+			" --branch " + quoteExecutionOwnerArg(strings.TrimSpace(prepared.Branch)) +
+			" --base-branch " + quoteExecutionOwnerArg(strings.TrimSpace(prepared.BaseBranch))
+		for _, optional := range []struct{ flag, value string }{
+			{"--base-sha", prepared.BaseSHA},
+			{"--parent-worktree", prepared.ParentWorktree},
+			{"--remote-branch-url", prepared.RemoteBranchURL},
+		} {
+			if value := strings.TrimSpace(optional.value); value != "" {
+				verifyBranchLink += " " + optional.flag + " " + quoteExecutionOwnerArg(value)
+			}
+		}
+		verifyBranchLink += " --link-verified " + shortActor + " --json"
+	}
+	planPath := filepath.Join(record.Execution.Workspace.Root, filepath.FromSlash(IssueOpsArtifactDir), "plan.md")
+	linkPlan := "none"
+	if strings.TrimSpace(record.PlanPath) == "" {
+		linkPlan = "agent-harness issueops link-plan --id " + quoteExecutionOwnerArg(record.ID) +
+			" --plan-path " + quoteExecutionOwnerArg(planPath) + " " + shortActor + " --json"
+	}
+	compatibilityReview := "agent-harness issueops compatibility review --id " + quoteExecutionOwnerArg(record.ID) +
+		" --backward-compatibility " + quoteExecutionOwnerArg("<BACKWARD_COMPATIBILITY>") +
+		" --side-effect " + quoteExecutionOwnerArg("<SIDE_EFFECT>") +
+		" --rollback-plan " + quoteExecutionOwnerArg("<ROLLBACK_PLAN>") +
+		" --verification " + quoteExecutionOwnerArg("<COMPATIBILITY_VERIFICATION>") + " --approved " +
+		shortActor + " --json"
+	enterImplement := "agent-harness issueops phase --id " + quoteExecutionOwnerArg(record.ID) +
+		" --to implement " + shortActor + " --json"
+	aiSlopCleanRecord := "agent-harness issueops ai-slop-clean record --id " + quoteExecutionOwnerArg(record.ID) +
+		" --category <CLEANUP_CATEGORY> --verification <VERIFICATION_EVIDENCE> " + shortActor + " --json"
+	enterAISlopClean := "agent-harness issueops phase --id " + quoteExecutionOwnerArg(record.ID) +
+		" --to ai-slop-clean " + shortActor + " --json"
 	base := ""
 	if record.BranchPrepare != nil {
 		base = strings.TrimSpace(record.BranchPrepare.BaseBranch)
@@ -305,23 +363,30 @@ func executionOwnerCommandsFor(record IssueOpsRecord, req ExecutionPrepareReques
 	complete := "agent-harness issueops execution complete --id " + quoteExecutionOwnerArg(record.ID) +
 		" --generation " + strconv.FormatUint(generation, 10) + " --final-head <FINAL_HEAD> --turing-report " + quoteExecutionOwnerArg(executionOwnerTuringReportPath(record)) +
 		" --remote-artifact-url <DRAFT_PR_OR_MR_URL> --verification <VERIFICATION_EVIDENCE> " + actorFlags + " --confirm --json"
-	shortActor := strings.Join([]string{
-		"--host", strings.ToLower(strings.TrimSpace(req.OwnerHost)), "--session-id", "<SESSION_ID>",
-		"--cwd", quoteExecutionOwnerArg(record.Execution.Workspace.Root),
-	}, " ")
 	plannerModel, plannerEffort, _ := port.IssueOpsPlannerDefaults(strings.ToLower(strings.TrimSpace(req.OwnerHost)))
 	implementationReview := "agent-harness issueops implementation-review record --id " + quoteExecutionOwnerArg(record.ID) +
-		" --verdict pass --finding <FINDING> --evidence <EVIDENCE> --reviewer-host " + strings.ToLower(strings.TrimSpace(req.OwnerHost)) +
+		" --verdict <VERDICT> --finding <FINDING> --evidence <EVIDENCE> --reviewer-host " + strings.ToLower(strings.TrimSpace(req.OwnerHost)) +
 		" --reviewer-model " + quoteExecutionOwnerArg(plannerModel)
 	if strings.TrimSpace(plannerEffort) != "" {
 		implementationReview += " --reviewer-effort " + quoteExecutionOwnerArg(plannerEffort)
 	}
 	implementationReview += " " + shortActor + " --json"
-	return executionOwnerCommands{LeaseStatus: status, Claim: claim, RemoteCreate: remote, Complete: complete, ImplementationReview: implementationReview}
+	enterPR := "agent-harness issueops phase --id " + quoteExecutionOwnerArg(record.ID) +
+		" --to pr " + shortActor + " --json"
+	return executionOwnerCommands{
+		LeaseStatus: status, Claim: claim, VerifyBranchLink: verifyBranchLink, LinkPlan: linkPlan,
+		CompatibilityReview: compatibilityReview, EnterImplement: enterImplement,
+		AISlopCleanRecord: aiSlopCleanRecord, EnterAISlopClean: enterAISlopClean,
+		ImplementationReview: implementationReview, EnterPR: enterPR,
+		RemoteCreate: remote, Complete: complete,
+	}
 }
 
 func validateExecutionOwnerCatalog(commands executionOwnerCommands) error {
-	for _, path := range []string{"execution status", "execution claim", "execution complete", "remote create-pr", "implementation-review record"} {
+	for _, path := range []string{
+		"execution status", "execution claim", "branch prepare", "link-plan", "compatibility review", "phase", "ai-slop-clean record",
+		"implementation-review record", "remote create-pr", "execution complete",
+	} {
 		if _, _, _, ok := commandparse.IssueOpsCommandSpec(path); !ok {
 			return fmt.Errorf("IssueOps v1 command catalog is not ready: missing %s", path)
 		}
@@ -333,8 +398,12 @@ func validateExecutionOwnerCatalog(commands executionOwnerCommands) error {
 	}
 	checks := []struct{ command, path string }{
 		{commands.LeaseStatus, "execution status"}, {commands.Claim, "execution claim"},
+		{commands.VerifyBranchLink, "branch prepare"},
+		{commands.LinkPlan, "link-plan"}, {commands.CompatibilityReview, "compatibility review"},
+		{commands.EnterImplement, "phase"},
+		{commands.AISlopCleanRecord, "ai-slop-clean record"}, {commands.EnterAISlopClean, "phase"},
+		{commands.ImplementationReview, "implementation-review record"}, {commands.EnterPR, "phase"},
 		{commands.RemoteCreate, "remote create-pr"}, {commands.Complete, "execution complete"},
-		{commands.ImplementationReview, "implementation-review record"},
 	}
 	for _, check := range checks {
 		if check.command == "none" {

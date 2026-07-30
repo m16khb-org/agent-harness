@@ -1,8 +1,11 @@
 package lifecycle
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
+
+	issueopsmodel "agent-harness/internal/core/issueops/model"
 )
 
 // AC-05: 하위 세션(owner)이 publication 전에 실행하는 implementation-review
@@ -35,5 +38,122 @@ func TestExactIssueOpsOwnerMutationAdmitsBranchPrepare(t *testing.T) {
 	}
 	if exactIssueOpsOwnerMutation(strings.Replace(command, "--session-id sess-1 ", "", 1)) {
 		t.Fatal("branch prepare without session-id must fail the 4-flag signature")
+	}
+}
+
+// 우산 worktree는 branch prepare가 기록할 lineage 메타데이터이며 현재 명령의
+// mutation root가 아니다. 이미 release된 우산 lifecycle과 연결돼 있어도 자식
+// holder가 자기 canonical root의 레코드를 갱신하는 작업을 가로채면 안 된다.
+func TestBranchPrepareParentWorktreeMetadataDoesNotSelectForeignLease(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source, child, childRoot := executionActiveLifecycleRecord(t)
+	parent := linkIssueOpsWorktreeForGuardTest(t, source, "117-parent")
+	parentRecord, err := ReadIssueOps(IssueOpsStateRoot(), parent.id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parentRecord.Execution = &issueopsmodel.Execution{
+		Mode: issueopsmodel.ExecutionModeDirect,
+		Workspace: issueopsmodel.Workspace{
+			SourceRoot: source, Root: parent.path, Branch: parentRecord.Branch,
+			BaseHead: "0123456789012345678901234567890123456789", Driver: "git", LinkedAt: "2026-07-22T00:00:00Z",
+		},
+		Lease: issueopsmodel.WriteLease{
+			Generation: 1, Status: issueopsmodel.LeaseStatusReleased, ReleasedAt: "2026-07-22T00:00:01Z",
+		},
+	}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), parentRecord); err != nil {
+		t.Fatal(err)
+	}
+
+	command := "agent-harness issueops branch prepare --id " + child.ID + " --provider github" +
+		" --issue-url '" + child.IssueURL + "' --branch " + child.Branch +
+		" --base-branch " + parentRecord.Branch +
+		" --base-sha 8235f30cac338b444a99c918ffe9e11991e37a8f" +
+		" --parent-worktree '" + parent.path + "' --link-verified" +
+		" --host claude --session-id owner-session --agent-id owner-agent" +
+		" --cwd '" + childRoot + "' --json"
+	req := executionRequest(child, childRoot, "claude", "owner-session", command)
+	req.AgentID = "owner-agent"
+	// host adapter가 명령 인자에서 추출한 경로를 함께 넘기는 형상도 동일하게
+	// metadata와 mutation root를 구분해야 한다.
+	req.Paths = []string{parent.path, childRoot}
+
+	for _, target := range executionMutationTargets(req) {
+		if sameExecutionPath(target, parent.path) {
+			t.Fatalf("parent-worktree metadata must not become a mutation target: %v", executionMutationTargets(req))
+		}
+	}
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("현재 child holder의 branch prepare가 foreign parent lease에 가로채였다: %+v", got)
+	}
+}
+
+// 현재 holder가 전달하는 session-executable은 native identity 영수증이지
+// 워크트리 변경 대상이 아니다. 설치된 Codex/Claude 실행 파일은 보통 워크트리
+// 밖에 있으므로 이 값을 경로 fence에 넣으면 정상 publication도 차단된다.
+func TestRemoteCreatePRAllowsCurrentHolderWithExternalSessionExecutable(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	executable := filepath.Join(t.TempDir(), "codex", "bin", "codex")
+	command := "agent-harness issueops remote create-pr --id " + record.ID +
+		" --expected-generation 1 --title 'IssueOps lease release differential vertical 검증'" +
+		" --head 191-issueops-lease-differential-spike --base 117-hexagonal-architecture-migration" +
+		" --body '현재 holder의 governed preview 검증' --label enhancement --assignee m16khb" +
+		" --host claude --session-id owner-session --session-pid 1234" +
+		" --session-started-at 2026-07-22T00:00:00Z --session-executable " + executable +
+		" --cwd " + worker + " --json"
+
+	holder := executionRequest(record, worker, "claude", "owner-session", command)
+	holder.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(holder); got.Decision != "allow" {
+		t.Fatalf("외부 session-executable 영수증을 가진 현재 holder의 create-pr preview가 차단됐다: %+v", got)
+	}
+
+	foreign := holder
+	foreign.SessionID = "other-session"
+	if got := BuildLifecyclePreToolUseDecision(foreign); got.Decision != "block" ||
+		got.Deny == nil || got.Deny.Code != "holder_identity_mismatch" {
+		t.Fatalf("같은 create-pr 명령을 실행한 비-holder는 identity fence에 차단돼야 한다: %+v", got)
+	}
+}
+
+// execution prepare 이후에도 grill 재진입과 계획 보강에 필요한 레코더는
+// 현재 holder가 사용할 수 있어야 한다. 각 명령은 등록된 플래그와 4-flag
+// identity 시그니처를 모두 만족할 때만 owner mutation으로 분류한다.
+func TestPlanningOwnerMutationsRemainAvailableAfterExecutionPrepare(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	actorFlags := " --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json"
+	commands := map[string]string{
+		"link-worktree": "agent-harness issueops link-worktree --id " + record.ID +
+			" --worktree-path " + worker + actorFlags,
+		"intent record": "agent-harness issueops intent record --id " + record.ID +
+			" --raw-request '관측성 보강' --interpreted-intent 'breaker 원인과 상태를 노출'" +
+			" --success-criteria '원인 분류를 검증'" + actorFlags,
+		"domain-review record": "agent-harness issueops domain-review record --id " + record.ID +
+			" --model-fit '기존 breaker 상태 모델을 유지' --terminology 'open state'" +
+			" --risk '고카디널리티 방지'" + actorFlags,
+		"regress": "agent-harness issueops regress --id " + record.ID +
+			" --reason 'Brooks revise 반영을 위해 grill로 복귀'" + actorFlags,
+		"remote reflect-devils-advocate": "agent-harness issueops remote reflect-devils-advocate --id " + record.ID +
+			" --provider gitlab --confirm" + actorFlags,
+	}
+
+	for name, command := range commands {
+		t.Run(name, func(t *testing.T) {
+			holder := executionRequest(record, worker, "claude", "owner-session", command)
+			holder.AgentID = "owner-agent"
+			if got := BuildLifecyclePreToolUseDecision(holder); got.Decision != "allow" {
+				t.Fatalf("현재 holder의 %s 명령이 차단됐다: %+v", name, got)
+			}
+
+			foreign := holder
+			foreign.SessionID = "other-session"
+			if got := BuildLifecyclePreToolUseDecision(foreign); got.Decision != "block" ||
+				got.Deny == nil || got.Deny.Code != "holder_identity_mismatch" {
+				t.Fatalf("비-holder의 %s 명령은 identity fence에 차단돼야 한다: %+v", name, got)
+			}
+		})
 	}
 }

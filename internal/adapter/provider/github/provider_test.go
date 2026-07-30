@@ -143,16 +143,16 @@ func TestGitHubReconcileAcceptsNonemptyTitleBodyFromBoundedExactSelector(t *test
 	binDir, repo := t.TempDir(), t.TempDir()
 	writeFakeGh(t, binDir, `#!/bin/sh
 printf '%s\n' "$@" > "gh.$2.argv"
-if [ "$1 $2" = "pr list" ]; then printf '[{"url":"https://github.com/acme/repo/pull/16","title":"PR","body":"body","headRefName":"feat/x","baseRefName":"main","isDraft":true,"headRefOid":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","labels":[{"name":"bug"}],"assignees":[{"login":"octocat"}],"headRepository":{"nameWithOwner":"acme/repo"}}]'; exit 0; fi
+if [ "$1 $2" = "pr list" ]; then printf '[{"url":"https://github.com/acme/repo/pull/16","title":"PR","body":"body","headRefName":"feat/x","baseRefName":"main","isDraft":true,"state":"MERGED","headRefOid":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","labels":[{"name":"bug"}],"assignees":[{"login":"octocat"}],"headRepository":{"nameWithOwner":"acme/repo"}}]'; exit 0; fi
 exit 2
 `)
 	t.Setenv("PATH", binDir)
 	result, err := NewProvider().ReconcilePullRequest(port.IssueProviderReconcilePullRequestRequest{Repo: repo, ProjectKey: "github.com/acme/repo", Title: "PR", BodySHA256: providerBodySHA256("body"), HeadBranch: "feat/x", BaseBranch: "main", ExpectedHeadSHA: strings.Repeat("a", 40), Labels: []string{"bug"}, Assignees: []string{"octocat"}, Draft: true})
-	if err != nil || len(result.Candidates) != 1 || result.AuthoritativeZero {
+	if err != nil || len(result.Candidates) != 1 || result.AuthoritativeZero || result.Candidates[0].State != "MERGED" {
 		t.Fatalf("GitHub reconcile = %#v, %v", result, err)
 	}
 	listArgv, err := os.ReadFile(filepath.Join(repo, "gh.list.argv"))
-	wantList := "pr\nlist\n--repo\ngithub.com/acme/repo\n--head\nfeat/x\n--state\nall\n--limit\n2\n--json\nurl,title,body,headRefName,baseRefName,isDraft,headRefOid,labels,assignees,headRepository\n"
+	wantList := "pr\nlist\n--repo\ngithub.com/acme/repo\n--head\nfeat/x\n--state\nall\n--limit\n2\n--json\nurl,title,body,headRefName,baseRefName,isDraft,headRefOid,labels,assignees,headRepository,state\n"
 	if err != nil || string(listArgv) != wantList {
 		t.Fatalf("GitHub reconcile list argv = %q, want %q, err=%v", listArgv, wantList, err)
 	}

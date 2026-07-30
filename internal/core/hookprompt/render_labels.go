@@ -24,6 +24,9 @@ func compactHintLabel(h Hint) string {
 	case "project_docs_route":
 		return "use project docs only when repo-specific context matters"
 	case "project_docs_read/project_docs_update":
+		if strings.Contains(h.Reason, ".agent-harness/VCS.md") {
+			return "read .agent-harness/VCS.md when present; record a successful exact-identity recipe with project_docs_read/project_docs_update"
+		}
 		return "refresh project docs only if evidence changed"
 	case "project_docs_record":
 		if strings.Contains(h.Reason, "kind=caution") {
@@ -43,6 +46,8 @@ func compactHintLabel(h Hint) string {
 		return "VCS remote work: pick the authenticated surface matching the target host/project; on auth error switch to the other configured surface; do not print tokens"
 	case "gitlab-usecase":
 		return "use gitlab-usecase before GitLab work; distinguish linked items from child items and verify remote state"
+	case "glab_api":
+		return "discover glab_api by leaf, not server namespace; validate exact identity; use glab api fallback only without valid MCP evidence"
 	case "host-agent judgement":
 		return "host-agent prompt for second-pass review"
 	default:

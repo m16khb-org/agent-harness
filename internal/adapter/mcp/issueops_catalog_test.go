@@ -19,7 +19,7 @@ func TestIssueOpsAdvertisesOnlyExecutionActionTool(t *testing.T) {
 	if !ok {
 		t.Fatalf("action schema = %#v", properties["action"])
 	}
-	want := []string{"prepare", "status", "claim", "release", "replace", "reconcile", "complete"}
+	want := []string{"prepare", "status", "claim", "release", "replace", "resume", "reconcile", "complete"}
 	if got := action["enum"]; !reflect.DeepEqual(got, want) {
 		t.Fatalf("action enum = %#v, want %#v", got, want)
 	}
@@ -29,6 +29,35 @@ func TestIssueOpsAdvertisesOnlyExecutionActionTool(t *testing.T) {
 	}
 	if got, want := mode["enum"], []string{"auto", "direct", "orca"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("mode enum = %#v, want %#v", got, want)
+	}
+}
+
+func TestIssueOpsExecutionSnapshotSchemaIsClosedAndPortable(t *testing.T) {
+	tools := IssueOpsBasicTools()
+	properties := tools[0].InputSchema["properties"].(map[string]any)
+	snapshot, ok := properties["issue_snapshot"].(map[string]any)
+	if !ok {
+		t.Fatalf("issue_snapshot schema = %#v", properties["issue_snapshot"])
+	}
+	if got := snapshot["required"]; !reflect.DeepEqual(got, []string{"provider", "source", "web_url", "body", "state"}) {
+		t.Fatalf("issue_snapshot required = %#v", got)
+	}
+	if got := snapshot["additionalProperties"]; got != false {
+		t.Fatalf("issue_snapshot additionalProperties = %#v", got)
+	}
+	snapshotProperties, ok := snapshot["properties"].(map[string]any)
+	if !ok {
+		t.Fatalf("issue_snapshot properties = %#v", snapshot["properties"])
+	}
+	for _, field := range []string{"provider", "source", "web_url", "body", "state"} {
+		if _, ok := snapshotProperties[field]; !ok {
+			t.Fatalf("issue_snapshot is missing %q: %#v", field, snapshotProperties)
+		}
+	}
+	for _, forbidden := range []string{"server_namespace", "wrapper", "profile", "token", "config"} {
+		if _, ok := snapshotProperties[forbidden]; ok {
+			t.Fatalf("issue_snapshot exposes host-private field %q", forbidden)
+		}
 	}
 }
 

@@ -67,6 +67,12 @@ func TestHarnessDoctorHealthyBaseline(t *testing.T) {
 	if hasHarnessDoctorIssue(result.Issues, "repo_local_state_present") || hasHarnessDoctorIssue(result.Issues, "lifecycle_namespace_mismatch") {
 		t.Fatalf("unexpected serious project issue: %+v", result.Issues)
 	}
+	if _, err := os.Stat(filepath.Join(repo, ".agent-harness", "VCS.md")); !os.IsNotExist(err) {
+		t.Fatalf("bootstrap unexpectedly created optional VCS.md: %v", err)
+	}
+	if hasHarnessDoctorIssue(result.Issues, "project_docs_missing") {
+		t.Fatalf("doctor treated optional VCS.md as required: %+v", result.Issues)
+	}
 }
 
 func TestHarnessDoctorProjectsOperationalFinding(t *testing.T) {

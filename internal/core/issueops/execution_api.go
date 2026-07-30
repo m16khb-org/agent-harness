@@ -23,34 +23,36 @@ const (
 	ExecutionActionClaim     = "claim"
 	ExecutionActionRelease   = "release"
 	ExecutionActionReplace   = "replace"
+	ExecutionActionResume    = "resume"
 	ExecutionActionReconcile = "reconcile"
 	ExecutionActionComplete  = "complete"
 )
 
 type ExecutionActionRequest struct {
-	Action                string            `json:"action"`
-	ID                    string            `json:"id"`
-	Mode                  string            `json:"mode,omitempty"`
-	Actor                 model.NativeActor `json:"actor,omitempty"`
-	CWD                   string            `json:"cwd,omitempty"`
-	OwnerHost             string            `json:"owner_host,omitempty"`
-	OwnerModel            string            `json:"owner_model,omitempty"`
-	OwnerEffort           string            `json:"owner_effort,omitempty"`
-	Generation            uint64            `json:"generation,omitempty"`
-	ExpectedGeneration    uint64            `json:"expected_generation,omitempty"`
-	TokenFile             string            `json:"claim_token_file,omitempty"`
-	IssueBodySHA256       string            `json:"issue_body_sha256,omitempty"`
-	ContextPacketSHA256   string            `json:"context_packet_sha256,omitempty"`
-	ReplaceAction         string            `json:"replace_action,omitempty"`
-	InventoryFingerprint  string            `json:"inventory_fingerprint,omitempty"`
-	QuiescenceFingerprint string            `json:"quiescence_fingerprint,omitempty"`
-	Reason                string            `json:"reason,omitempty"`
-	Preview               bool              `json:"preview,omitempty"`
-	Confirm               bool              `json:"confirm,omitempty"`
-	FinalHead             string            `json:"final_head,omitempty"`
-	TuringReportPath      string            `json:"turing_report_path,omitempty"`
-	Verification          []string          `json:"verification,omitempty"`
-	RemoteArtifactURL     string            `json:"remote_artifact_url,omitempty"`
+	Action                string                               `json:"action"`
+	ID                    string                               `json:"id"`
+	Mode                  string                               `json:"mode,omitempty"`
+	Actor                 model.NativeActor                    `json:"actor,omitempty"`
+	CWD                   string                               `json:"cwd,omitempty"`
+	OwnerHost             string                               `json:"owner_host,omitempty"`
+	OwnerModel            string                               `json:"owner_model,omitempty"`
+	OwnerEffort           string                               `json:"owner_effort,omitempty"`
+	Generation            uint64                               `json:"generation,omitempty"`
+	ExpectedGeneration    uint64                               `json:"expected_generation,omitempty"`
+	TokenFile             string                               `json:"claim_token_file,omitempty"`
+	IssueBodySHA256       string                               `json:"issue_body_sha256,omitempty"`
+	ContextPacketSHA256   string                               `json:"context_packet_sha256,omitempty"`
+	ReplaceAction         string                               `json:"replace_action,omitempty"`
+	InventoryFingerprint  string                               `json:"inventory_fingerprint,omitempty"`
+	QuiescenceFingerprint string                               `json:"quiescence_fingerprint,omitempty"`
+	Reason                string                               `json:"reason,omitempty"`
+	Preview               bool                                 `json:"preview,omitempty"`
+	Confirm               bool                                 `json:"confirm,omitempty"`
+	FinalHead             string                               `json:"final_head,omitempty"`
+	TuringReportPath      string                               `json:"turing_report_path,omitempty"`
+	Verification          []string                             `json:"verification,omitempty"`
+	RemoteArtifactURL     string                               `json:"remote_artifact_url,omitempty"`
+	IssueSnapshot         *port.ExecutionIssueSnapshotEvidence `json:"issue_snapshot,omitempty"`
 }
 
 type ExecutionActionDependencies struct {
@@ -66,6 +68,19 @@ type ExecutionActionDependencies struct {
 }
 
 func ExecuteExecution(ctx context.Context, stateRoot string, req ExecutionActionRequest, deps ExecutionActionDependencies) (any, error) {
+	readIssue, snapshotSource, err := executionIssueSnapshotReaderForAction(stateRoot, req, deps.ReadIssue)
+	if err != nil {
+		return nil, err
+	}
+	deps.ReadIssue = readIssue
+	result, err := executeExecutionAction(ctx, stateRoot, req, deps)
+	if err != nil {
+		return result, err
+	}
+	return withExecutionIssueSnapshotSource(result, snapshotSource()), nil
+}
+
+func executeExecutionAction(ctx context.Context, stateRoot string, req ExecutionActionRequest, deps ExecutionActionDependencies) (any, error) {
 	switch req.Action {
 	case ExecutionActionPrepare:
 		return PrepareExecution(ctx, stateRoot, ExecutionPrepareRequest{
@@ -100,9 +115,14 @@ func ExecuteExecution(ctx context.Context, stateRoot string, req ExecutionAction
 			ID: req.ID, Action: req.ReplaceAction, ExpectedGeneration: req.ExpectedGeneration,
 			InventoryFingerprint: req.InventoryFingerprint, QuiescenceFingerprint: req.QuiescenceFingerprint,
 			Reason: req.Reason, Actor: req.Actor, CWD: req.CWD, Confirm: req.Confirm,
-			// reseed의 재봉인이 현재 이슈 본문을 다시 읽어야 하므로 prepare/claim과
-			// 같은 리더를 함께 넘긴다.
+			// finalize/reseed 재봉인이 현재 이슈 본문을 다시 읽어야 하므로
+			// prepare/claim과 같은 리더를 함께 넘긴다.
 		}, ExecutionReplaceDependencies{OrcaOwner: deps.OrcaOwner, ReadIssue: deps.ReadIssue})
+	case ExecutionActionResume:
+		return ResumeExecutionWithDependencies(ctx, stateRoot, ExecutionResumeRequest{
+			ID: req.ID, ExpectedGeneration: req.ExpectedGeneration,
+			Actor: req.Actor, CWD: req.CWD, Confirm: req.Confirm,
+		}, ExecutionResumeDependencies{Orca: deps.Orca, OrcaOwner: deps.OrcaOwner})
 	case ExecutionActionReconcile:
 		return ReconcileExecutionWithDependencies(ctx, stateRoot, ExecutionReconcileRequest{
 			ID: req.ID, Preview: req.Preview, Confirm: req.Confirm, Actor: req.Actor, CWD: req.CWD,

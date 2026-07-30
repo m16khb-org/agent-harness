@@ -43,6 +43,7 @@ func TestUsageIncludesIssueOpsExecutionActions(t *testing.T) {
 		"execution claim",
 		"execution release",
 		"execution replace",
+		"execution resume",
 		"execution reconcile",
 		"execution complete",
 		"reset-legacy",

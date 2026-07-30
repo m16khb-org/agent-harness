@@ -120,6 +120,42 @@ func TestReadUpdateRecordAndAgentsBlock(t *testing.T) {
 	}
 }
 
+func TestOptionalVCSProjectDocCanBeCreatedAndReadOnDemand(t *testing.T) {
+	root := t.TempDir()
+	created, err := UpdateProjectDoc(ProjectDocsUpdateRequest{
+		RepoRoot: root,
+		RelPath:  ".agent-harness/VCS.md",
+		Content:  "# VCS\n\n## GitHub\n",
+		Summary:  "record verified provider recipe",
+		Confirm:  true,
+	})
+	if err != nil || created.Action != "create" {
+		t.Fatalf("create optional VCS.md: result=%#v err=%v", created, err)
+	}
+	read, err := ReadProjectDoc(root, ".agent-harness/VCS.md")
+	if err != nil || !read.Exists || !strings.Contains(read.Content, "## GitHub") {
+		t.Fatalf("read optional VCS.md: result=%#v err=%v", read, err)
+	}
+}
+
+func TestRouteProjectDocsIncludesOptionalVCSForRemoteWork(t *testing.T) {
+	root := t.TempDir()
+	route, err := RouteProjectDocs(root, "GitLab MR push")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		".agent-harness/VCS.md",
+		".agent-harness/COMMIT_POLICY.md",
+		".agent-harness/TESTING.md",
+		".agent-harness/CAUTIONS.md",
+	} {
+		if !routeContains(route.Docs, want) {
+			t.Fatalf("combined VCS/commit route missing %s: %+v", want, route.Docs)
+		}
+	}
+}
+
 func TestProjectDocsHelpers(t *testing.T) {
 	if rel, err := normalizeProjectDocRelPath(filepath.ToSlash(filepath.Join(ProjectDocsDir, "ADR.md"))); err != nil || rel == "" {
 		t.Fatalf("normalize rel = %q, %v", rel, err)

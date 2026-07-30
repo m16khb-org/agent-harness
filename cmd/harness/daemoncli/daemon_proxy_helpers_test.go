@@ -1,7 +1,9 @@
 package daemoncli
 
 import (
+	"bufio"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"net"
@@ -38,16 +40,18 @@ func serveDaemonProxyTestSocket(t *testing.T, listener net.Listener, instance da
 		return
 	}
 	defer proxyConn.Close()
-	if _, err := proxyConn.Write([]byte("daemon response\n")); err != nil {
-		serverDone <- "write response: " + err.Error()
-		return
-	}
-	request, err := io.ReadAll(proxyConn)
+	reader := bufio.NewReader(proxyConn)
+	request, err := reader.ReadString('\n')
 	if err != nil {
 		serverDone <- "read request: " + err.Error()
 		return
 	}
-	serverDone <- string(request)
+	if _, err := proxyConn.Write([]byte("daemon response\n")); err != nil {
+		serverDone <- "write response: " + err.Error()
+		return
+	}
+	serverDone <- request
+	_, _ = io.Copy(io.Discard, reader)
 }
 
 type daemonProxyFakeConn struct {
@@ -56,6 +60,16 @@ type daemonProxyFakeConn struct {
 	writer    bytes.Buffer
 	closed    bool
 	writeDone chan struct{}
+}
+
+type daemonProxyGatedReader struct {
+	gate   <-chan struct{}
+	reader io.Reader
+}
+
+func (r *daemonProxyGatedReader) Read(p []byte) (int, error) {
+	<-r.gate
+	return r.reader.Read(p)
 }
 
 func (c *daemonProxyFakeConn) Read(p []byte) (int, error) {
@@ -111,19 +125,40 @@ func (c *daemonProxyFakeConn) waitForWrite(t *testing.T) {
 	}
 }
 
-type daemonProxyBlockingReader struct {
-	released chan struct{}
+func daemonProxyTestMethod(line string) string {
+	var envelope struct {
+		Method string `json:"method"`
+	}
+	_ = json.Unmarshal([]byte(line), &envelope)
+	return envelope.Method
 }
 
-func newDaemonProxyBlockingReader() *daemonProxyBlockingReader {
-	return &daemonProxyBlockingReader{released: make(chan struct{})}
+func daemonProxyTestID(line string) string {
+	var envelope struct {
+		ID json.RawMessage `json:"id"`
+	}
+	_ = json.Unmarshal([]byte(line), &envelope)
+	return string(envelope.ID)
 }
 
-func (r *daemonProxyBlockingReader) Read([]byte) (int, error) {
-	<-r.released
-	return 0, io.EOF
+func daemonProxyTestReceiveLine(t *testing.T, lines <-chan string) string {
+	t.Helper()
+	select {
+	case line := <-lines:
+		return line
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for proxy output")
+		return ""
+	}
 }
 
-func (r *daemonProxyBlockingReader) release() {
-	close(r.released)
+func daemonProxyTestReceiveError(t *testing.T, errors <-chan error) error {
+	t.Helper()
+	select {
+	case err := <-errors:
+		return err
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for proxy test stage")
+		return nil
+	}
 }

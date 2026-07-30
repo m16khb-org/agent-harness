@@ -30,13 +30,14 @@ type ExecutionReconcileDependencies struct {
 }
 
 type ExecutionReconcileResult struct {
-	OK         bool                  `json:"ok"`
-	ID         string                `json:"id"`
-	Preview    bool                  `json:"preview,omitempty"`
-	Reconciled bool                  `json:"reconciled"`
-	Code       string                `json:"code"`
-	Execution  model.Execution       `json:"execution"`
-	Pending    *model.ExternalIntent `json:"pending,omitempty"`
+	OK                  bool                  `json:"ok"`
+	ID                  string                `json:"id"`
+	Preview             bool                  `json:"preview,omitempty"`
+	Reconciled          bool                  `json:"reconciled"`
+	Code                string                `json:"code"`
+	Execution           model.Execution       `json:"execution"`
+	Pending             *model.ExternalIntent `json:"pending,omitempty"`
+	IssueSnapshotSource string                `json:"issue_snapshot_source,omitempty"`
 	// ExternalStateInspected는 이 결과가 외부 자원을 실제로 조회하고 나온
 	// 것인지 밝힌다. preview는 pending kind만 보고 상수 코드를 돌려주므로
 	// false다 — 그 구분이 없으면 preview 출력이 "Orca 자원이 이런 상태다"라는

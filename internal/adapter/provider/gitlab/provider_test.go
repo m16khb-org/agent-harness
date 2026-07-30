@@ -189,12 +189,12 @@ func TestGitLabReconcileAcceptsNonemptyTitleBodyFromSameNestedCustomPortSelector
 	writeFakeGlab(t, binDir, `#!/bin/sh
 if [ "$1" = "--version" ]; then printf 'glab 1.82.0\n'; exit 0; fi
 printf '%s\n' "$@" > "glab.$2.argv"
-if [ "$1 $2" = "mr list" ]; then printf '[{"web_url":"https://gitlab.example:8443/group/sub/repo/-/merge_requests/16","title":"MR","description":"body","source_branch":"feat/x","target_branch":"main","draft":true,"sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","labels":["bug"],"assignees":[{"username":"habin"}],"source_project_id":7,"target_project_id":7}]'; exit 0; fi
+if [ "$1 $2" = "mr list" ]; then printf '[{"web_url":"https://gitlab.example:8443/group/sub/repo/-/merge_requests/16","title":"MR","description":"body","source_branch":"feat/x","target_branch":"main","draft":true,"state":"merged","sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","labels":["bug"],"assignees":[{"username":"habin"}],"source_project_id":7,"target_project_id":7}]'; exit 0; fi
 exit 2
 `)
 	t.Setenv("PATH", binDir)
 	result, err := NewProvider().ReconcilePullRequest(port.IssueProviderReconcilePullRequestRequest{Repo: repo, ProjectKey: "gitlab.example:8443/group/sub/repo", Title: "MR", BodySHA256: gitLabBodySHA256("body"), HeadBranch: "feat/x", BaseBranch: "main", ExpectedHeadSHA: strings.Repeat("a", 40), Labels: []string{"bug"}, Assignees: []string{"habin"}, Draft: true})
-	if err != nil || len(result.Candidates) != 1 || result.AuthoritativeZero {
+	if err != nil || len(result.Candidates) != 1 || result.AuthoritativeZero || result.Candidates[0].State != "merged" {
 		t.Fatalf("GitLab reconcile = %#v, %v", result, err)
 	}
 	listArgv, err := os.ReadFile(filepath.Join(repo, "glab.list.argv"))

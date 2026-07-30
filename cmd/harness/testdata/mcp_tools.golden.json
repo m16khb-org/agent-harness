@@ -483,7 +483,7 @@
     "name": "state_migrate"
   },
   {
-    "description": "Prepare, inspect, claim, release, replace, reconcile, or complete the single IssueOps v1 execution lease. The action selects one shared CLI/MCP DTO; mutations require the exact native actor, generation, canonical cwd, and explicit confirmation.",
+    "description": "Prepare, inspect, claim, release, replace, resume, reconcile, or complete the single IssueOps v1 execution lease. The action selects one shared CLI/MCP DTO; mutations require the exact native actor, generation, canonical cwd, and explicit confirmation.",
     "inputSchema": {
       "properties": {
         "action": {
@@ -493,6 +493,7 @@
             "claim",
             "release",
             "replace",
+            "resume",
             "reconcile",
             "complete"
           ],
@@ -541,6 +542,45 @@
         "issue_body_sha256": {
           "pattern": "^[0-9a-f]{64}$",
           "type": "string"
+        },
+        "issue_snapshot": {
+          "additionalProperties": false,
+          "properties": {
+            "body": {
+              "maxLength": 524288,
+              "type": "string"
+            },
+            "provider": {
+              "enum": [
+                "gitlab"
+              ],
+              "type": "string"
+            },
+            "source": {
+              "enum": [
+                "glab_mcp"
+              ],
+              "type": "string"
+            },
+            "state": {
+              "enum": [
+                "opened",
+                "closed"
+              ],
+              "type": "string"
+            },
+            "web_url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "provider",
+            "source",
+            "web_url",
+            "body",
+            "state"
+          ],
+          "type": "object"
         },
         "mode": {
           "enum": [

@@ -1,12 +1,28 @@
 package daemoncli
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 )
+
+func TestEnsureDaemonRunningWithDepsStopsBeforeWorkWhenContextCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := ensureDaemonRunningWithDeps(daemonStartDeps{
+		context: ctx,
+		checkStatus: func() daemonStatus {
+			t.Fatal("canceled ensure must not inspect or start the daemon")
+			return daemonStatus{}
+		},
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled ensure error = %v", err)
+	}
+}
 
 func TestEnsureDaemonRunningWithDepsReturnsExistingStatus(t *testing.T) {
 	want := daemonStatus{OK: true, Running: true, Reachable: true, IdentityVerified: true, PID: 42, Code: daemonStatusReady, Instance: &daemonInstance{PID: 42}, Message: "daemon is reachable and identity verified"}

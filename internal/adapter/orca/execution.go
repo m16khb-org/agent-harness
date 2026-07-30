@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -36,9 +37,19 @@ type executionInventoryClient interface {
 	showDispatchInventory(context.Context, string) (executionDispatchInventory, error)
 }
 
+type executionTerminalDetailClient interface {
+	showTerminalInventory(context.Context, string) (executionTerminalDetailInventory, error)
+}
+
 type executionTerminalInventory struct {
 	RuntimeID string
 	Rows      []port.OrcaTerminal
+}
+
+type executionTerminalDetailInventory struct {
+	RuntimeID     string
+	Terminal      port.OrcaTerminal
+	PaneRuntimeID *int
 }
 
 type executionTaskInventory struct {
@@ -301,10 +312,11 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 	if err != nil {
 		return port.ExecutionOrcaOwnerInventory{}, err
 	}
-	if err := validateExecutionInventoryRuntime(terminals.RuntimeID, req.RuntimeID); err != nil {
+	currentRuntime, err := executionOwnerInventoryRuntime(terminals.RuntimeID, req)
+	if err != nil {
 		return port.ExecutionOrcaOwnerInventory{}, err
 	}
-	result := port.ExecutionOrcaOwnerInventory{}
+	result := port.ExecutionOrcaOwnerInventory{RuntimeID: currentRuntime}
 	for _, terminal := range terminals.Rows {
 		if terminal.PTYID != req.TerminalPTYID {
 			continue
@@ -312,17 +324,39 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 		if result.TerminalID != "" {
 			return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner terminal inventory is ambiguous")
 		}
-		if strings.TrimSpace(req.RuntimeID) == "" || terminal.RuntimeID != req.RuntimeID {
+		if terminal.RuntimeID != currentRuntime {
 			return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner terminal runtime identity changed")
 		}
 		result.TerminalID = terminal.PTYID
-		result.TerminalLive = terminal.Connected && terminal.Writable
+		detailClient, ok := p.client.(executionTerminalDetailClient)
+		if !ok {
+			return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner terminal detail inventory is unavailable")
+		}
+		detail, err := detailClient.showTerminalInventory(ctx, terminal.Handle)
+		if err != nil {
+			return port.ExecutionOrcaOwnerInventory{}, err
+		}
+		if err := validateExecutionInventoryRuntime(detail.RuntimeID, currentRuntime); err != nil {
+			return port.ExecutionOrcaOwnerInventory{}, err
+		}
+		if detail.Terminal.RuntimeID != currentRuntime ||
+			detail.Terminal.Handle != terminal.Handle ||
+			detail.Terminal.PTYID != terminal.PTYID ||
+			detail.Terminal.WorktreeID != req.WorktreeID {
+			return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner terminal detail identity changed")
+		}
+		if detail.PaneRuntimeID == nil {
+			return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner terminal pane runtime identity is unavailable")
+		}
+		// Orca 재시작 뒤 terminal list에는 connected/writable인 장부 행이 남을 수 있다.
+		// terminal show의 음수 paneRuntimeId는 현재 렌더러에 실제 pane이 없다는 증거다.
+		result.TerminalLive = detail.Terminal.Connected && detail.Terminal.Writable && *detail.PaneRuntimeID >= 0
 	}
 	tasks, err := client.listAllTasksInventory(ctx)
 	if err != nil {
 		return port.ExecutionOrcaOwnerInventory{}, err
 	}
-	if err := validateExecutionInventoryRuntime(tasks.RuntimeID, req.RuntimeID); err != nil {
+	if err := validateExecutionInventoryRuntime(tasks.RuntimeID, currentRuntime); err != nil {
 		return port.ExecutionOrcaOwnerInventory{}, err
 	}
 	taskFound := false
@@ -334,7 +368,7 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 			return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner task inventory is ambiguous")
 		}
 		taskFound = true
-		if strings.TrimSpace(req.RuntimeID) == "" || task.RuntimeID != req.RuntimeID {
+		if task.RuntimeID != currentRuntime {
 			return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner task runtime identity changed")
 		}
 		result.TaskStatus = strings.ToLower(strings.TrimSpace(task.Status))
@@ -344,7 +378,7 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 	if err != nil {
 		return port.ExecutionOrcaOwnerInventory{}, err
 	}
-	if err := validateExecutionInventoryRuntime(dispatch.RuntimeID, req.RuntimeID); err != nil {
+	if err := validateExecutionInventoryRuntime(dispatch.RuntimeID, currentRuntime); err != nil {
 		return port.ExecutionOrcaOwnerInventory{}, err
 	}
 	if dispatch.Dispatch == nil {
@@ -361,7 +395,7 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 		return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner task is absent while its dispatch row remains")
 	}
 	row := *dispatch.Dispatch
-	if row.RuntimeID != req.RuntimeID || row.ID != req.DispatchID || row.TaskID != req.TaskID {
+	if row.RuntimeID != currentRuntime || row.ID != req.DispatchID || row.TaskID != req.TaskID {
 		return port.ExecutionOrcaOwnerInventory{}, fmt.Errorf("Orca owner dispatch identity changed")
 	}
 	// dispatch 상태는 보고만 하고 liveness 판정에는 넣지 않는다(#147 결정 A).
@@ -410,6 +444,15 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 	// DispatchStatus는 진단용으로 계속 보고한다.
 	result.DispatchStatus = strings.ToLower(strings.TrimSpace(row.Status))
 	return result, nil
+}
+
+func executionOwnerInventoryRuntime(observed string, req port.ExecutionOrcaOwnerInventoryRequest) (string, error) {
+	observed = strings.TrimSpace(observed)
+	sealed := strings.TrimSpace(req.RuntimeID)
+	if observed == "" || sealed == "" || observed != sealed && !req.AllowRuntimeRollover {
+		return "", fmt.Errorf("Orca inventory runtime identity changed")
+	}
+	return observed, nil
 }
 
 // executionTerminalTaskStatus reports whether a status means the work is over.
@@ -745,6 +788,16 @@ func validateExecutionPrepare(workspace port.ExecutionWorkspaceRequest, req port
 	if req.Provider == "github" && req.Issue <= 0 {
 		return fmt.Errorf("Orca GitHub prepare requires a positive issue number")
 	}
+	if req.Provider == "gitlab" {
+		if req.Issue <= 0 {
+			return fmt.Errorf("Orca GitLab prepare requires a positive issue IID")
+		}
+		provider, providerOK := executionMarkerField(req.Marker, "provider")
+		issue, issueOK := executionMarkerField(req.Marker, "issue")
+		if !providerOK || provider != "gitlab" || !issueOK || issue != strconv.Itoa(req.Issue) {
+			return fmt.Errorf("Orca GitLab prepare marker does not seal the exact provider and issue IID")
+		}
+	}
 	if parent := strings.TrimSpace(workspace.ParentWorktree); parent != "" &&
 		(!filepath.IsAbs(parent) || samePath(parent, workspace.SourceRoot) || samePath(parent, workspace.Root)) {
 		return fmt.Errorf("Orca parent worktree must be an isolated absolute path")
@@ -759,14 +812,53 @@ func validateExecutionWorktree(row port.OrcaWorktree, workspace port.ExecutionWo
 	if req.Provider == "github" && row.Issue != req.Issue {
 		return fmt.Errorf("Orca worktree receipt does not match the linked GitHub issue")
 	}
-	if req.Provider == "gitlab" && (row.GitLabIssue == nil || *row.GitLabIssue != req.Issue) {
+	// 공개 Orca CLI에는 GitLab IID 쓰기 flag가 없다. 정확한 comment marker를
+	// 필수 봉인으로 사용하고, native 필드가 관찰되면 추가 교차검증한다.
+	if req.Provider == "gitlab" && row.GitLabIssue != nil && *row.GitLabIssue != req.Issue {
 		return fmt.Errorf("Orca worktree receipt does not match the linked GitLab issue")
 	}
 	if strings.TrimSpace(workspace.ParentWorktree) != "" &&
-		(strings.TrimSpace(row.ParentWorktreeID) == "" || row.LineageSource != "explicit-cli-flag" || row.LineageConfidence != "explicit") {
+		!explicitExecutionParentLineage(row, workspace.ParentWorktree) {
 		return fmt.Errorf("Orca worktree receipt does not prove explicit parent lineage")
 	}
 	return nil
+}
+
+func explicitExecutionParentLineage(row port.OrcaWorktree, parentWorktree string) bool {
+	if strings.TrimSpace(row.LineageConfidence) != "explicit" {
+		return false
+	}
+	// create의 --parent-worktree는 explicit-cli-flag를, 이후 명시적 parent
+	// 갱신은 manual-action을 기록한다. 둘 다 정확한 parent ID가 일치할 때만
+	// 같은 명시적 lineage 증거로 인정한다.
+	switch strings.TrimSpace(row.LineageSource) {
+	case "explicit-cli-flag", "manual-action":
+	default:
+		return false
+	}
+	repoID, parentPath, ok := strings.Cut(strings.TrimSpace(row.ParentWorktreeID), "::")
+	return ok && strings.TrimSpace(repoID) == strings.TrimSpace(row.RepoID) &&
+		samePath(parentPath, parentWorktree)
+}
+
+func executionMarkerField(marker, name string) (string, bool) {
+	prefix := name + "="
+	value := ""
+	seen := false
+	for _, field := range strings.Fields(marker) {
+		if !strings.HasPrefix(field, prefix) {
+			continue
+		}
+		if seen {
+			return "", false
+		}
+		seen = true
+		value = strings.TrimPrefix(field, prefix)
+		if value == "" {
+			return "", false
+		}
+	}
+	return value, seen
 }
 
 func validateExecutionLaunch(worktreeID string, terminal port.OrcaTerminal, task port.OrcaTask, dispatch port.OrcaDispatch) error {

@@ -22,7 +22,7 @@ const (
 
 var (
 	concreteTerminalHandlePattern = regexp.MustCompile(`^term_[A-Za-z0-9_-]+$`)
-	sealedGitObjectIDPattern      = regexp.MustCompile(`^(?:[0-9A-Fa-f]{40}|[0-9A-Fa-f]{64})$`)
+	exactGitObjectIDPattern       = regexp.MustCompile(`^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$`)
 )
 
 type Client struct {
@@ -267,6 +267,13 @@ func (c *Client) CreateWorktree(ctx context.Context, req port.OrcaCreateWorktree
 	if !ok {
 		return port.OrcaWorktree{}, &port.OrcaError{Code: "unsupported_provider", Detail: strings.ToLower(strings.TrimSpace(req.Provider))}
 	}
+	preparedRemote := ""
+	if provider == "gitlab" && exactGitObjectIDPattern.MatchString(strings.TrimSpace(req.BaseBranch)) {
+		candidate := "refs/remotes/origin/" + strings.TrimSpace(req.Name)
+		if c.gitRefMatches(ctx, req.Repo, candidate, req.BaseBranch) {
+			preparedRemote = candidate
+		}
+	}
 	argv := []string{"orca", "worktree", "create", "--repo", pathSelector(req.Repo), "--name", strings.TrimSpace(req.Name), "--base-branch", strings.TrimSpace(req.BaseBranch)}
 	if parent := strings.TrimSpace(req.ParentWorktree); parent != "" {
 		argv = append(argv, "--parent-worktree", pathSelector(parent))
@@ -294,37 +301,62 @@ func (c *Client) CreateWorktree(ctx context.Context, req port.OrcaCreateWorktree
 		return created, nil
 	}
 	upstream := strings.TrimSpace(req.UpstreamBranch)
-	if upstream == "" {
-		base := strings.TrimSpace(req.BaseBranch)
-		if !sealedGitObjectIDPattern.MatchString(base) {
-			upstream = base
-		}
+	allowNumericSuffix := false
+	if upstream == "" && preparedRemote != "" &&
+		strings.EqualFold(strings.TrimSpace(created.Head), strings.TrimSpace(req.BaseBranch)) &&
+		c.gitRefMatches(ctx, req.Repo, preparedRemote, req.BaseBranch) {
+		upstream = preparedRemote
+		allowNumericSuffix = true
 	}
-	return c.CanonicalizeWorktreeBranch(ctx, created, requestedBranch, upstream)
+	if upstream == "" && !exactGitObjectIDPattern.MatchString(strings.TrimSpace(req.BaseBranch)) {
+		upstream = strings.TrimSpace(req.BaseBranch)
+	}
+	return c.canonicalizeWorktreeBranch(ctx, created, requestedBranch, upstream, allowNumericSuffix)
 }
 
 // CanonicalizeWorktreeBranch는 Orca가 만든 브랜치가 정확히
-// <namespace>/<provider-branch> 모양일 때만 username namespace를 제거한다.
-// upstream은 원격 브랜치가 이미 검증된 호출에서만 복원한다. sealed SHA로
-// local-first 생성하는 IssueOps 경로는 원격 브랜치의 부재가 전제이므로 브랜치
-// 이름만 바로잡고 upstream을 만들지 않는다.
+// <namespace>/<provider-branch>일 때만 namespace를 제거한다. GitLab 예약
+// 브랜치의 숫자 접미사 허용과 upstream 복원은 내부 호출에서 원격 SHA까지
+// 증명한 경우에만 수행한다.
 func (c *Client) CanonicalizeWorktreeBranch(ctx context.Context, created port.OrcaWorktree, requestedBranch, upstream string) (port.OrcaWorktree, error) {
+	return c.canonicalizeWorktreeBranch(ctx, created, requestedBranch, upstream, false)
+}
+
+func (c *Client) canonicalizeWorktreeBranch(ctx context.Context, created port.OrcaWorktree, requestedBranch, upstream string, allowNumericSuffix bool) (port.OrcaWorktree, error) {
 	requestedBranch = strings.TrimSpace(requestedBranch)
 	upstream = strings.TrimSpace(upstream)
-	if requestedBranch == "" || !strings.HasSuffix(created.Branch, "/"+requestedBranch) || strings.TrimSuffix(created.Branch, "/"+requestedBranch) == "" || !filepath.IsAbs(strings.TrimSpace(created.Path)) {
+	namespaced := strings.HasSuffix(created.Branch, "/"+requestedBranch) &&
+		strings.TrimSuffix(created.Branch, "/"+requestedBranch) != ""
+	numericSuffix := allowNumericSuffix && exactNumericBranchSuffix(created.Branch, requestedBranch)
+	if requestedBranch == "" || (!namespaced && !numericSuffix) || !filepath.IsAbs(strings.TrimSpace(created.Path)) {
 		return created, &port.OrcaError{Code: "worktree_branch_mismatch", Detail: fmt.Sprintf("created branch %q does not match requested branch %q", created.Branch, requestedBranch), Invoked: true}
 	}
-	commands := [][]string{{"git", "branch", "-m", requestedBranch}}
+	gitCommands := [][]string{{"git", "branch", "-m", requestedBranch}}
 	if upstream != "" {
-		commands = append(commands, []string{"git", "branch", "--set-upstream-to", upstream, requestedBranch})
+		gitCommands = append(gitCommands, []string{"git", "branch", "--set-upstream-to", upstream, requestedBranch})
 	}
-	for _, gitArgv := range commands {
+	for _, gitArgv := range gitCommands {
 		if _, runErr := c.runner.Run(ctx, filepath.Clean(created.Path), createTimeout, gitArgv); runErr != nil {
 			return created, fmt.Errorf("canonicalize Orca worktree branch: %w", runErr)
 		}
 	}
 	created.Branch = requestedBranch
 	return created, nil
+}
+
+func (c *Client) gitRefMatches(ctx context.Context, repo, ref, wantOID string) bool {
+	output, err := c.runner.Run(ctx, strings.TrimSpace(repo), readTimeout,
+		[]string{"git", "rev-parse", "--verify", "--quiet", strings.TrimSpace(ref)})
+	return err == nil && strings.EqualFold(strings.TrimSpace(string(output.Stdout)), strings.TrimSpace(wantOID))
+}
+
+func exactNumericBranchSuffix(observed, requested string) bool {
+	suffix, ok := strings.CutPrefix(strings.TrimSpace(observed), strings.TrimSpace(requested)+"-")
+	if !ok || suffix == "" {
+		return false
+	}
+	number, err := strconv.Atoi(suffix)
+	return err == nil && number >= 2 && strconv.Itoa(number) == suffix
 }
 
 func (c *Client) AdoptWorktree(ctx context.Context, req port.OrcaAdoptWorktreeRequest) (port.OrcaWorktree, error) {
@@ -398,6 +430,25 @@ func (c *Client) listTerminalsInventory(ctx context.Context, worktreeID string) 
 		result = append(result, value)
 	}
 	return executionTerminalInventory{RuntimeID: runtimeID, Rows: result}, nil
+}
+
+func (c *Client) showTerminalInventory(ctx context.Context, handle string) (executionTerminalDetailInventory, error) {
+	handle = strings.TrimSpace(handle)
+	if !concreteTerminalHandlePattern.MatchString(handle) {
+		return executionTerminalDetailInventory{}, &port.OrcaError{Code: "terminal_handle_invalid", Detail: "a concrete terminal handle is required"}
+	}
+	var payload struct {
+		Terminal terminalPayload `json:"terminal"`
+	}
+	runtimeID, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "terminal", "show", "--terminal", handle, "--json"}, &payload)
+	if err != nil {
+		return executionTerminalDetailInventory{}, err
+	}
+	terminal := payload.Terminal.portValue()
+	terminal.RuntimeID = runtimeID
+	return executionTerminalDetailInventory{
+		RuntimeID: runtimeID, Terminal: terminal, PaneRuntimeID: payload.Terminal.PaneRuntimeID,
+	}, nil
 }
 
 func (c *Client) CreateTerminal(ctx context.Context, req port.OrcaCreateTerminalRequest) (port.OrcaTerminal, error) {
@@ -826,15 +877,16 @@ func (w worktreePayload) portValue() port.OrcaWorktree {
 }
 
 type terminalPayload struct {
-	Handle       string `json:"handle"`
-	PTYID        string `json:"ptyId"`
-	WorktreeID   string `json:"worktreeId"`
-	WorktreePath string `json:"worktreePath"`
-	TabID        string `json:"tabId"`
-	LeafID       string `json:"leafId"`
-	Title        string `json:"title"`
-	Connected    bool   `json:"connected"`
-	Writable     bool   `json:"writable"`
+	Handle        string `json:"handle"`
+	PTYID         string `json:"ptyId"`
+	WorktreeID    string `json:"worktreeId"`
+	WorktreePath  string `json:"worktreePath"`
+	TabID         string `json:"tabId"`
+	LeafID        string `json:"leafId"`
+	Title         string `json:"title"`
+	Connected     bool   `json:"connected"`
+	Writable      bool   `json:"writable"`
+	PaneRuntimeID *int   `json:"paneRuntimeId"`
 }
 
 type visualLayoutPayload struct {

@@ -116,6 +116,16 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 	}
 	if repoProfile != nil && strings.EqualFold(repoProfile.VCS.Provider, "gitlab") && promptLooksLikeVCSRemoteWork(prompt, lower) {
 		addPriority("gitlab-usecase", "Required for GitLab repo remote work; distinguish linked items from child items and verify body, labels, assignee, target branch, and review-thread state.", hintPriorityRequired)
+		addPriority(
+			"project_docs_read/project_docs_update",
+			"Read .agent-harness/VCS.md when present; after a successful exact-identity provider read, record only the portable recipe with SHA-CAS in the canonical worktree.",
+			hintPriorityAction,
+		)
+		addPriority(
+			"glab_api",
+			"Discover a trusted host tool by the glab_api leaf, never by server namespace; validate exact URL identity, then use glab api fallback only when no valid MCP evidence exists.",
+			hintPriorityAction,
+		)
 	}
 
 	// The stable project-doc catalog is no longer injected per turn here; it is

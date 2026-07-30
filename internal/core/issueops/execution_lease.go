@@ -35,9 +35,10 @@ type ExecutionResult struct {
 	// OrcaTaskSettled와 OrcaTaskError는 완료가 orca task를 terminal 상태로
 	// 옮겼는지를 보고한다. 종결은 best-effort이므로 실패해도 완료 자체는
 	// 성공이며, 침묵하면 진단이 불가능하므로 사유를 남긴다(#130).
-	OrcaTaskSettled bool   `json:"orca_task_settled,omitempty"`
-	OrcaTaskError   string `json:"orca_task_error,omitempty"`
-	NextCommand     string `json:"next_command,omitempty"`
+	OrcaTaskSettled     bool   `json:"orca_task_settled,omitempty"`
+	OrcaTaskError       string `json:"orca_task_error,omitempty"`
+	IssueSnapshotSource string `json:"issue_snapshot_source,omitempty"`
+	NextCommand         string `json:"next_command,omitempty"`
 }
 
 type ExecutionClaimRequest struct {
@@ -81,20 +82,21 @@ type ExecutionReplaceResult struct {
 	InventoryFingerprint  string          `json:"inventory_fingerprint,omitempty"`
 	QuiescenceFingerprint string          `json:"quiescence_fingerprint,omitempty"`
 	ClaimTokenPath        string          `json:"claim_token_path,omitempty"`
-	// 아래 네 값은 reseed가 새 generation으로 재봉인한 owner artifact의 정체다.
-	// owner는 이 digest들을 claim 명령에 그대로 넣어야 하므로 결과에 노출한다.
+	// 아래 값은 replacement가 새 generation으로 재봉인한 owner artifact의
+	// 정체다. owner는 digest들을 claim 명령에 그대로 넣어야 하므로 노출한다.
 	IssueBodySHA256     string `json:"issue_body_sha256,omitempty"`
 	ContextPacketPath   string `json:"context_packet_path,omitempty"`
 	ContextPacketSHA256 string `json:"context_packet_sha256,omitempty"`
 	OwnerPromptPath     string `json:"owner_prompt_path,omitempty"`
 	OwnerPromptSHA256   string `json:"owner_prompt_sha256,omitempty"`
+	IssueSnapshotSource string `json:"issue_snapshot_source,omitempty"`
 	NextCommand         string `json:"next_command,omitempty"`
 }
 
 type ExecutionReplaceDependencies struct {
 	OrcaOwner port.ExecutionOrcaOwnerInspector
-	// ReadIssue는 reseed의 재봉인이 현재 이슈 본문을 다시 읽는 경로다. orca
-	// 사이클에서 누락되면 재봉인이 fail-closed로 거부된다.
+	// ReadIssue는 finalize와 reseed의 재봉인이 현재 이슈 본문을 다시 읽는
+	// 경로다. orca 사이클에서 누락되면 재봉인이 fail-closed로 거부된다.
 	ReadIssue ExecutionIssueSnapshotReadFunc
 }
 
@@ -184,9 +186,21 @@ func ReplaceExecutionWithDependencies(ctx context.Context, stateRoot string, req
 }
 
 func previewExecutionReplacement(ctx context.Context, stateRoot string, req ExecutionReplaceRequest, deps ExecutionReplaceDependencies) (ExecutionReplaceResult, error) {
-	record, err := executionRecordAtGeneration(stateRoot, req.ID, req.ExpectedGeneration)
+	record, err := ReadIssueOps(stateRoot, req.ID)
 	if err != nil {
 		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, err
+	}
+	if record.Execution == nil {
+		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, fmt.Errorf("IssueOps execution v1 is not prepared")
+	}
+	// 최초 preview는 현재 세대를 알아내는 읽기 단계이므로 0을 허용한다.
+	// 호출자가 세대를 명시했다면 이후 mutation과 같은 CAS 기준으로 검증한다.
+	if req.ExpectedGeneration != 0 && record.Execution.Lease.Generation != req.ExpectedGeneration {
+		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, fmt.Errorf(
+			"stale lease generation: current=%d expected=%d",
+			record.Execution.Lease.Generation,
+			req.ExpectedGeneration,
+		)
 	}
 	if record.Execution.Lease.Status != model.LeaseStatusActive && record.Execution.Lease.Status != model.LeaseStatusReleased && record.Execution.Lease.Status != model.LeaseStatusClaimable {
 		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, fmt.Errorf("replace preview is unavailable from %s", record.Execution.Lease.Status)
@@ -194,7 +208,7 @@ func previewExecutionReplacement(ctx context.Context, stateRoot string, req Exec
 	if err := validateExecutionReplacementCWD(record, req.CWD); err != nil {
 		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, err
 	}
-	fingerprint, err := executionInventoryFingerprint(ctx, record, req.Actor, deps)
+	fingerprint, _, err := executionInventoryFingerprint(ctx, record, req.Actor, deps)
 	if err != nil {
 		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, err
 	}
@@ -244,7 +258,7 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 			if err := refuseSelfRevoke(record.ID, *lease, req.Actor); err != nil {
 				return err
 			}
-			fingerprint, err := executionInventoryFingerprint(ctx, record, req.Actor, deps)
+			fingerprint, _, err := executionInventoryFingerprint(ctx, record, req.Actor, deps)
 			if err != nil {
 				return err
 			}
@@ -269,35 +283,54 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 			if fingerprint != req.QuiescenceFingerprint {
 				return fmt.Errorf("stale quiescence fingerprint")
 			}
+			if err := cleanupReplacementGeneration(record); err != nil {
+				return err
+			}
 			token, path, err := createClaimToken(record)
 			if err != nil {
-				return err
+				return cleanupReplacementFailure(record, err)
 			}
 			tokenPath = path
 			lease.Status = model.LeaseStatusClaimable
 			lease.Holder = nil
 			lease.ClaimTokenSHA256 = tokenSHA256(token)
+			// revoking 세대의 durable 상태는 재봉인이 모두 성공한 뒤에만
+			// claimable로 바뀐다. 실패한 token은 즉시 지워 재시도 경로만 남긴다.
+			reseal, err := resealOwnerContextForReplacement(ctx, stateRoot, record, deps)
+			if err != nil {
+				return cleanupReplacementFailure(record, err)
+			}
+			resealed = reseal
 			persisted, err = persistExecutionTransition(stateRoot, record, nil)
 			if err != nil {
-				_ = os.Remove(path)
+				return cleanupReplacementFailure(record, err)
 			}
-			return err
+			return nil
 		case ExecutionReplaceReseed:
 			if lease.Status != model.LeaseStatusReleased && lease.Status != model.LeaseStatusClaimable {
 				return fmt.Errorf("reseed requires a released or claimable lease")
 			}
-			fingerprint, err := executionInventoryFingerprint(ctx, record, req.Actor, deps)
+			fingerprint, orcaInventory, err := executionInventoryFingerprint(ctx, record, req.Actor, deps)
 			if err != nil {
 				return err
 			}
 			if fingerprint != req.InventoryFingerprint {
 				return fmt.Errorf("stale replacement inventory fingerprint")
 			}
-			removeClaimTokenIfPresent(record)
+			if record.Execution.Orca != nil && strings.TrimSpace(orcaInventory.RuntimeID) != "" {
+				record.Execution.Orca.RuntimeID = orcaInventory.RuntimeID
+			}
+			supersededTokenPath := claimTokenPath(record)
 			lease.Generation++
+			// 직전 실패가 target generation 파일을 남겼더라도 durable 세대가
+			// 아직 이전 값이면 이 경로의 권한은 없다. exact harness-owned
+			// residue만 지운 뒤 새 token을 O_EXCL로 만든다.
+			if err := cleanupReplacementGeneration(record); err != nil {
+				return err
+			}
 			token, path, err := createClaimToken(record)
 			if err != nil {
-				return err
+				return cleanupReplacementFailure(record, err)
 			}
 			tokenPath = path
 			lease.Status = model.LeaseStatusClaimable
@@ -308,17 +341,20 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 			// 재봉인은 persist 이전에 수행한다: 실패하면 generation이 올라간
 			// 상태만 남고 packet이 없는 중간 상태가 생기므로, 새 token을
 			// 정리하고 아무것도 기록하지 않는다(brooks 반론 수용).
-			reseal, err := resealOwnerContextForReseed(ctx, stateRoot, record, deps)
+			reseal, err := resealOwnerContextForReplacement(ctx, stateRoot, record, deps)
 			if err != nil {
-				_ = os.Remove(path)
-				return err
+				return cleanupReplacementFailure(record, err)
 			}
 			resealed = reseal
 			persisted, err = persistExecutionTransition(stateRoot, record, nil)
 			if err != nil {
-				_ = os.Remove(path)
+				return cleanupReplacementFailure(record, err)
 			}
-			return err
+			// 새 generation이 durable해진 뒤 구 token은 generation/hash CAS상
+			// 권한이 없다. 삭제 실패가 새 세대 성공을 모호하게 만들지 않도록
+			// best-effort hygiene로만 정리한다.
+			_ = removeReplacementRuntimeFile(record.Execution.Workspace.Root, supersededTokenPath)
+			return nil
 		}
 		return fmt.Errorf("unsupported execution replace action %q", req.Action)
 	})
@@ -329,11 +365,15 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 	result.IssueBodySHA256 = resealed.issueBodySHA256
 	result.ContextPacketPath, result.ContextPacketSHA256 = resealed.packetPath, resealed.packetSHA256
 	result.OwnerPromptPath, result.OwnerPromptSHA256 = resealed.promptPath, resealed.promptSHA256
+	if persisted.Execution.Mode == model.ExecutionModeOrca &&
+		persisted.Execution.Lease.Status == model.LeaseStatusClaimable {
+		result.NextCommand = executionResumeCommand(persisted.ID, persisted.Execution.Lease.Generation)
+	}
 	return result, nil
 }
 
-// executionOwnerReseal은 reseed가 재봉인한 owner artifact의 정체다. direct 모드
-// 사이클에서는 모든 필드가 빈 값으로 남는다(재봉인 대상이 아니다).
+// executionOwnerReseal은 replacement가 재봉인한 owner artifact의 정체다.
+// direct 모드 사이클에서는 모든 필드가 빈 값으로 남는다(재봉인 대상이 아니다).
 type executionOwnerReseal struct {
 	issueBodySHA256 string
 	packetPath      string
@@ -342,27 +382,27 @@ type executionOwnerReseal struct {
 	promptSHA256    string
 }
 
-// resealOwnerContextForReseed는 새 generation과 새 claim token이 반영된 레코드를
-// 기준으로 owner packet과 prompt를 다시 봉인한다.
+// resealOwnerContextForReplacement는 replacement generation과 새 claim token이
+// 반영된 레코드를 기준으로 owner packet과 prompt를 다시 봉인한다.
 //
-// 봉인은 원래 prepare의 worktree 단계에서 단 1회 일어났고 reseed는 lease만
-// 회전시켰다. 그 결과 새 세대 owner가 lease_generation과 claim_token_file이
-// 어긋난 낡은 packet을 읽었고, 봉인 이후 이슈 본문이 정당하게 개정되면 재봉인
-// 수단이 없어 claim이 영구 거부됐다. 여기서 현재 이슈 본문을 다시 읽어 봉인하면
-// 두 문제가 함께 해소된다.
+// 봉인은 원래 prepare의 worktree 단계에서 단 1회 일어났고 finalize와 reseed는
+// lease만 회전시켰다. 그 결과 새 세대 owner가 lease_generation과
+// claim_token_file이 어긋난 낡은 packet을 읽었고, 봉인 이후 이슈 본문이
+// 정당하게 개정되면 재봉인 수단이 없어 claim이 영구 거부됐다. 여기서 현재
+// 이슈 본문을 다시 읽어 봉인하면 두 문제가 함께 해소된다.
 //
 // 원격 읽기 실패는 통과가 아니라 거부다: 낡은 packet으로 owner를 띄우는 것보다
-// reseed를 멈추는 편이 안전하고 재시도로 해소된다.
-func resealOwnerContextForReseed(ctx context.Context, stateRoot string, record IssueOpsRecord, deps ExecutionReplaceDependencies) (executionOwnerReseal, error) {
+// replacement를 멈추는 편이 안전하고 재시도로 해소된다.
+func resealOwnerContextForReplacement(ctx context.Context, stateRoot string, record IssueOpsRecord, deps ExecutionReplaceDependencies) (executionOwnerReseal, error) {
 	if record.Execution == nil || record.Execution.Mode != model.ExecutionModeOrca || record.Execution.Orca == nil {
 		return executionOwnerReseal{}, nil
 	}
 	if deps.ReadIssue == nil {
-		return executionOwnerReseal{}, fmt.Errorf("reseed cannot reseal the owner context without a remote issue reader")
+		return executionOwnerReseal{}, fmt.Errorf("replacement cannot reseal the owner context without a remote issue reader")
 	}
 	snapshot, err := readExecutionOwnerSnapshot(ctx, record, deps.ReadIssue)
 	if err != nil {
-		return executionOwnerReseal{}, fmt.Errorf("reseed stopped because the remote issue could not be read for resealing: %w", err)
+		return executionOwnerReseal{}, fmt.Errorf("replacement stopped because the remote issue could not be read for resealing: %w", err)
 	}
 	manifest, err := materializeStagedArtifacts(stateRoot, record)
 	if err != nil {
@@ -504,14 +544,17 @@ func samePath(a, b string) bool {
 	return filepath.Clean(left) == filepath.Clean(right)
 }
 
-func executionInventoryFingerprint(ctx context.Context, record IssueOpsRecord, requester model.NativeActor, deps ExecutionReplaceDependencies) (string, error) {
+func executionInventoryFingerprint(ctx context.Context, record IssueOpsRecord, requester model.NativeActor, deps ExecutionReplaceDependencies) (string, port.ExecutionOrcaOwnerInventory, error) {
 	snapshot, err := workspaceSnapshot(record.Execution.Workspace)
 	if err != nil {
-		return "", err
+		return "", port.ExecutionOrcaOwnerInventory{}, err
 	}
 	processStatus, orcaInventory, err := executionOwnerInventory(ctx, record, deps)
 	if err != nil {
-		return "", err
+		return "", port.ExecutionOrcaOwnerInventory{}, err
+	}
+	if err := validateExecutionRuntimeRollover(record, orcaInventory); err != nil {
+		return "", port.ExecutionOrcaOwnerInventory{}, err
 	}
 	payload := struct {
 		ID         string                           `json:"id"`
@@ -523,7 +566,8 @@ func executionInventoryFingerprint(ctx context.Context, record IssueOpsRecord, r
 		Orca       port.ExecutionOrcaOwnerInventory `json:"orca"`
 		Snapshot   string                           `json:"snapshot"`
 	}{record.ID, record.Execution.Lease.Generation, record.Execution.Lease.Status, record.Execution.Lease.Holder, requester, processStatus, orcaInventory, snapshot}
-	return hashJSON(payload)
+	fingerprint, err := hashJSON(payload)
+	return fingerprint, orcaInventory, err
 }
 
 func executionQuiescenceFingerprint(ctx context.Context, record IssueOpsRecord, requester model.NativeActor, deps ExecutionReplaceDependencies) (string, error) {
@@ -604,8 +648,32 @@ func executionOwnerInventory(ctx context.Context, record IssueOpsRecord, deps Ex
 	inventory, err := deps.OrcaOwner.InspectOwner(ctx, port.ExecutionOrcaOwnerInventoryRequest{
 		RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, TaskID: binding.TaskID,
 		DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID,
+		AllowRuntimeRollover: record.Execution.Lease.Holder == nil &&
+			(record.Execution.Lease.Status == model.LeaseStatusReleased || record.Execution.Lease.Status == model.LeaseStatusClaimable),
 	})
 	return status, inventory, err
+}
+
+func validateExecutionRuntimeRollover(record IssueOpsRecord, inventory port.ExecutionOrcaOwnerInventory) error {
+	if record.Execution == nil || record.Execution.Mode != model.ExecutionModeOrca || record.Execution.Orca == nil {
+		return nil
+	}
+	sealed := strings.TrimSpace(record.Execution.Orca.RuntimeID)
+	observed := strings.TrimSpace(inventory.RuntimeID)
+	if observed == "" || observed == sealed {
+		return nil
+	}
+	lease := record.Execution.Lease
+	holderless := lease.Holder == nil && (lease.Status == model.LeaseStatusReleased || lease.Status == model.LeaseStatusClaimable)
+	taskSettled := inventory.TaskStatus == "completed" || inventory.TaskStatus == "failed"
+	dispatchSettled := inventory.DispatchStatus == "completed" || inventory.DispatchStatus == "failed" || inventory.DispatchStatus == "circuit_broken"
+	if !holderless || inventory.TerminalID != "" || inventory.TerminalLive || inventory.TaskLive || !taskSettled || !dispatchSettled {
+		return fmt.Errorf(
+			"Orca runtime rollover owner is not quiescent: terminal_id=%s terminal_live=%t task_live=%t task_status=%s dispatch_status=%s",
+			inventory.TerminalID, inventory.TerminalLive, inventory.TaskLive, inventory.TaskStatus, inventory.DispatchStatus,
+		)
+	}
+	return nil
 }
 
 func validateExecutionReplacementCWD(record IssueOpsRecord, cwd string) error {
@@ -784,10 +852,51 @@ func tokenSHA256(token string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func removeClaimTokenIfPresent(record IssueOpsRecord) {
-	if record.Execution != nil {
-		_ = os.Remove(claimTokenPath(record))
+// cleanupReplacementGeneration은 durable lease가 아직 권한을 부여하지 않은
+// target generation의 harness-owned 파일만 지운다. finalize는 revoking 세대,
+// reseed는 아직 persist되지 않은 다음 세대이므로 재시도 전에 회수해도 된다.
+func cleanupReplacementGeneration(record IssueOpsRecord) error {
+	if record.Execution == nil {
+		return fmt.Errorf("cannot clean replacement residue without an execution")
 	}
+	paths := []string{claimTokenPath(record)}
+	if record.Execution.Mode == model.ExecutionModeOrca && record.Execution.Orca != nil {
+		packetPath, promptPath := executionOwnerArtifactPaths(record)
+		paths = append(paths, packetPath, promptPath)
+	}
+	for _, path := range paths {
+		if err := removeReplacementRuntimeFile(record.Execution.Workspace.Root, path); err != nil {
+			return fmt.Errorf("clean uncommitted replacement residue %s: %w", path, err)
+		}
+	}
+	return nil
+}
+
+func cleanupReplacementFailure(record IssueOpsRecord, cause error) error {
+	if cleanupErr := cleanupReplacementGeneration(record); cleanupErr != nil {
+		return fmt.Errorf("%w; replacement residue cleanup failed: %v", cause, cleanupErr)
+	}
+	return cause
+}
+
+func removeReplacementRuntimeFile(root, path string) error {
+	if err := secureMkdirAll(root, filepath.Dir(path)); err != nil {
+		return err
+	}
+	info, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return fmt.Errorf("replacement residue path is a directory")
+	}
+	if err := os.Remove(path); err != nil {
+		return err
+	}
+	return nil
 }
 
 func secureMkdirAll(root, target string) error {

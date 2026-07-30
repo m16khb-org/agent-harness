@@ -12,7 +12,7 @@ func TestReadIssueSnapshotUsesBoundedExactGitLabURL(t *testing.T) {
 	binDir, repo := t.TempDir(), t.TempDir()
 	writeFakeGlab(t, binDir, `#!/bin/sh
 if [ "$*" != "api projects/acme%2Frepo/issues/69 --hostname gitlab.example.com" ]; then exit 2; fi
-printf '%s' '{"web_url":"https://gitlab.example.com/acme/repo/-/issues/69","description":"AC-01"}'
+printf '%s' '{"web_url":"https://gitlab.example.com/acme/repo/-/issues/69","description":"AC-01","state":"opened"}'
 `)
 	t.Setenv("PATH", binDir+string(filepath.ListSeparator)+t.TempDir())
 	got, err := NewProvider().ReadIssueSnapshot(context.Background(), port.ExecutionIssueSnapshotRequest{
@@ -21,7 +21,7 @@ printf '%s' '{"web_url":"https://gitlab.example.com/acme/repo/-/issues/69","desc
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.URL != "https://gitlab.example.com/acme/repo/-/issues/69" || got.Body != "AC-01" {
+	if got.URL != "https://gitlab.example.com/acme/repo/-/issues/69" || got.Body != "AC-01" || got.State != "opened" || got.Source != "glab_cli" {
 		t.Fatalf("snapshot = %#v", got)
 	}
 }
@@ -30,7 +30,7 @@ func TestReadIssueSnapshotTreatsWorkItemAndIssueURLsAsSameIdentity(t *testing.T)
 	binDir, repo := t.TempDir(), t.TempDir()
 	writeFakeGlab(t, binDir, `#!/bin/sh
 if [ "$*" != "api projects/acme%2Frepo/issues/69 --hostname gitlab.example.com" ]; then exit 2; fi
-printf '%s' '{"web_url":"https://gitlab.example.com/acme/repo/-/issues/69","description":"AC-01"}'
+printf '%s' '{"web_url":"https://gitlab.example.com/acme/repo/-/issues/69","description":"AC-01","state":"opened"}'
 `)
 	t.Setenv("PATH", binDir+string(filepath.ListSeparator)+t.TempDir())
 	got, err := NewProvider().ReadIssueSnapshot(context.Background(), port.ExecutionIssueSnapshotRequest{
@@ -39,7 +39,7 @@ printf '%s' '{"web_url":"https://gitlab.example.com/acme/repo/-/issues/69","desc
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.URL != "https://gitlab.example.com/acme/repo/-/work_items/69" || got.Body != "AC-01" {
+	if got.URL != "https://gitlab.example.com/acme/repo/-/work_items/69" || got.Body != "AC-01" || got.Source != "glab_cli" {
 		t.Fatalf("snapshot = %#v", got)
 	}
 }

@@ -209,6 +209,28 @@ func TestHasActiveShellSpecialQuoting(t *testing.T) {
 	}
 }
 
+func TestHasActiveShellComment(t *testing.T) {
+	for _, command := range []string{
+		"sed -n '1,$p' # 파일 operand가 shell에서 사라진다",
+		"cat README.md\t# comment",
+		`sed -n '1,$p' \
+# line continuation 뒤에도 파일 operand가 사라진다`,
+	} {
+		if !HasActiveShellComment(command) {
+			t.Fatalf("word-start unquoted shell comment must be detected: %q", command)
+		}
+	}
+	for _, command := range []string{
+		"rg -n '# heading' README.md",
+		`cat README.md\#fragment`,
+		"cat README.md#fragment",
+	} {
+		if HasActiveShellComment(command) {
+			t.Fatalf("quoted, escaped, or embedded hash must remain data: %q", command)
+		}
+	}
+}
+
 func TestHasActiveZshEqualsExpansion(t *testing.T) {
 	for _, command := range []string{`=git push origin branch`, `tool --input =(print -r -- marker)`} {
 		if !HasActiveZshEqualsExpansion(command) {

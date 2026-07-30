@@ -3,6 +3,7 @@ package issueops
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"testing"
@@ -11,6 +12,57 @@ import (
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
+
+func TestExecutionOrcaReconcileAcceptsLegacyPrepareIntentWithoutPurpose(t *testing.T) {
+	stateRoot, record := orcaPrepareRecord(t)
+	fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
+	fake.invoke = func(request port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentReceipt, error) {
+		if request.Stage == port.ExecutionOrcaIntentTerminal {
+			return port.ExecutionOrcaIntentReceipt{}, &port.OrcaError{Code: "timeout", Invoked: true}
+		}
+		return successfulExecutionOrcaIntentReceipt(t, request), nil
+	}
+	if _, err := PrepareExecution(context.Background(), stateRoot, ExecutionPrepareRequest{
+		ID: record.ID, Mode: "orca", CWD: record.Repo, Confirm: true,
+		Actor: executionActor("codex", "coordinator"), OwnerHost: "claude", OwnerModel: "caller-model",
+	}, ExecutionPrepareDependencies{Orca: fake, ReadIssue: executionIssueSnapshotReader}); err == nil {
+		t.Fatal("fixture must retain the terminal intent")
+	}
+	pending, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := readExternalOrcaIntentPayload(stateRoot, pending.Execution.Pending.OperationID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload.Purpose = ""
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Put(externalIntentBucket, payload.OperationID, raw); err != nil {
+		t.Fatal(err)
+	}
+	fake.inspect = func(request port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentInventory, error) {
+		return port.ExecutionOrcaIntentInventory{Candidates: []port.ExecutionOrcaIntentReceipt{{
+			TerminalPTYID: "pty-legacy",
+		}}}, nil
+	}
+	reconciled, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
+		ID: record.ID, Confirm: true, Actor: executionActor("codex", "reconciler"), CWD: record.Repo,
+	}, ExecutionReconcileDependencies{Orca: fake, ReadIssue: executionIssueSnapshotReader})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reconciled.Pending == nil || reconciled.Pending.Kind != "owner_launch" {
+		t.Fatalf("legacy prepare intent did not advance: %#v", reconciled)
+	}
+}
 
 func TestExecutionOrcaCrashAfterMutationReconcilesExactlyOneCandidateWithoutDuplicate(t *testing.T) {
 	tests := []struct {

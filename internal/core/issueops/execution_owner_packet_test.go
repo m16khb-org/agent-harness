@@ -46,6 +46,15 @@ func TestExecutionOwnerPacketUsesOnlyExecutionCommands(t *testing.T) {
 	for _, required := range []string{
 		"issueops execution status",
 		"issueops execution claim",
+		"issueops branch prepare",
+		"issueops link-plan",
+		"issueops compatibility review",
+		"issueops phase --id",
+		"--to implement",
+		"issueops ai-slop-clean record",
+		"--to ai-slop-clean",
+		"issueops implementation-review record",
+		"--to pr",
 		"issueops execution complete",
 	} {
 		if !strings.Contains(packet, required) {
@@ -55,6 +64,101 @@ func TestExecutionOwnerPacketUsesOnlyExecutionCommands(t *testing.T) {
 	for _, label := range issueOpsOwnerReportLabels {
 		if count := strings.Count(packet, "- "+label+":"); count != 1 {
 			t.Fatalf("owner packet field %q count = %d, want 1", label, count)
+		}
+	}
+}
+
+func TestExecutionOwnerPromptOrdersLifecycleMutationsBeforePublication(t *testing.T) {
+	record, req := ownerPacketFixture()
+	prompt := executionOwnerPromptFixture(t, record, req)
+	ordered := []string{
+		"issueops branch prepare",
+		"issueops link-plan",
+		"issueops compatibility review",
+		"--to implement",
+		"issueops ai-slop-clean record",
+		"--to ai-slop-clean",
+		"issueops implementation-review record",
+		"--to pr",
+		"issueops remote create-pr",
+	}
+	previous := -1
+	for _, command := range ordered {
+		current := strings.Index(prompt, command)
+		if current < 0 {
+			t.Fatalf("owner prompt is missing lifecycle command %q", command)
+		}
+		if current <= previous {
+			t.Fatalf("owner prompt lifecycle command %q is out of order", command)
+		}
+		previous = current
+	}
+}
+
+func TestExecutionOwnerBranchLinkCommandPreservesSealedTopology(t *testing.T) {
+	record, req := ownerPacketFixture()
+	record.BranchPrepare.LinkVerified = false
+	record.BranchPrepare.ParentWorktree = "/repo/example.worktrees/117-umbrella"
+	commands := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64))
+	for _, required := range []string{
+		"issueops branch prepare",
+		"--provider 'github'",
+		"--issue-url 'https://github.com/example/agent-harness/issues/69'",
+		"--branch '69-issueops-v1'",
+		"--base-branch 'main'",
+		"--base-sha '0123456789012345678901234567890123456789'",
+		"--parent-worktree '/repo/example.worktrees/117-umbrella'",
+		"--link-verified",
+		"--session-id <SESSION_ID>",
+	} {
+		if !strings.Contains(commands.VerifyBranchLink, required) {
+			t.Fatalf("branch link command is missing %q: %s", required, commands.VerifyBranchLink)
+		}
+	}
+	record.BranchPrepare.LinkVerified = true
+	if got := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64)).VerifyBranchLink; got != "none" {
+		t.Fatalf("already verified branch link command = %q, want none", got)
+	}
+}
+
+func TestExecutionOwnerCompatibilityCommandRequiresExplicitApprovalEvidence(t *testing.T) {
+	record, req := ownerPacketFixture()
+	commands := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64))
+	for _, required := range []string{
+		"--backward-compatibility '<BACKWARD_COMPATIBILITY>'",
+		"--side-effect '<SIDE_EFFECT>'",
+		"--rollback-plan '<ROLLBACK_PLAN>'",
+		"--verification '<COMPATIBILITY_VERIFICATION>'",
+		"--approved",
+	} {
+		if !strings.Contains(commands.CompatibilityReview, required) {
+			t.Fatalf("compatibility review command is missing %q: %s", required, commands.CompatibilityReview)
+		}
+	}
+}
+
+func TestExecutionOwnerCommandsDoNotOverwriteLinkedPlan(t *testing.T) {
+	record, req := ownerPacketFixture()
+	record.PlanPath = filepath.Join(record.Execution.Workspace.Root, "plans", "linked.md")
+	commands := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64))
+	if commands.LinkPlan != "none" {
+		t.Fatalf("이미 연결된 plan을 owner command가 덮어쓰면 안 된다: %s", commands.LinkPlan)
+	}
+}
+
+func TestExecutionOwnerReviewCommandRecordsTheActualVerdict(t *testing.T) {
+	record, req := ownerPacketFixture()
+	commands := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64))
+	if !strings.Contains(commands.ImplementationReview, "--verdict <VERDICT>") {
+		t.Fatalf("구현 리뷰 command는 reviewer의 실제 verdict를 받아야 한다: %s", commands.ImplementationReview)
+	}
+	if strings.Contains(commands.ImplementationReview, "--verdict pass") {
+		t.Fatalf("구현 리뷰 command가 pass를 미리 결정하면 안 된다: %s", commands.ImplementationReview)
+	}
+	prompt := executionOwnerPromptFixture(t, record, req)
+	for _, required := range []string{"verdict가 `revise`", "verdict가 `stop`", "`pass`일 때만"} {
+		if !strings.Contains(prompt, required) {
+			t.Fatalf("owner prompt가 non-pass review 경로 %q를 설명하지 않는다", required)
 		}
 	}
 }
@@ -146,6 +250,11 @@ func ownerPacketFixture() (IssueOpsRecord, ExecutionPrepareRequest) {
 		Repo:          "/workspace/agent-harness",
 		Branch:        "69-issueops-v1",
 		IssueURL:      "https://github.com/example/agent-harness/issues/69",
+		BranchPrepare: &IssueOpsBranchPrepare{
+			Provider: "github", IssueURL: "https://github.com/example/agent-harness/issues/69",
+			Branch: "69-issueops-v1", BaseBranch: "main",
+			BaseSHA: "0123456789012345678901234567890123456789",
+		},
 		Execution: &model.Execution{
 			Mode: model.ExecutionModeOrca,
 			Workspace: model.Workspace{

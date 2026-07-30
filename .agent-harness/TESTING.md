@@ -125,6 +125,27 @@ go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -updat
 go test ./internal/adapter -run TestNativeInstallAdapterContractMatrix -update-adapter-contract -count=1
 ```
 
+### GitLab Issue Snapshot
+
+GitLab MCP/CLI snapshot 계약을 바꿀 때는 다음 bounded set을 먼저 실행한다.
+
+```bash
+go test ./internal/core/issueops ./internal/adapter/provider/gitlab -run 'IssueSnapshot|ExecutionIssueSnapshot' -count=1
+go test ./internal/adapter/mcp ./cmd/harness/mcpcli ./internal/core/toolconformance -count=1
+go test ./cmd/harness/issueopscli/executioncmd ./cmd/harness/issueopscli -run 'Snapshot|ExecutionCLI|Usage' -count=1
+go test ./internal/core/skillcontract -run TestGitLabSnapshotSkillsPinPortableVCSContract -count=1
+python3 scripts/validate-skill.py skills/gitlab-usecase
+python3 scripts/validate-skill.py skills/issueops
+go test ./cmd/harness/contractgolden -run Golden -count=1
+go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
+go build -o bin/agent-harness ./cmd/harness
+```
+
+설치 갱신 뒤에는 installed Codex/Claude MCP schema에 `issue_snapshot`의 exact
+다섯 필드만 있는지 확인하고, GitLab-linked lifecycle preview에서
+`resolved_mode=orca`와 `issue_snapshot_source=glab_mcp|glab_cli`를 확인한다.
+이 smoke는 worktree나 lease를 만들지 않는 preview로 제한한다.
+
 ### Cross-host tool contract conformance
 
 기본 self-verify에는 network/auth가 없는 다음 deterministic baseline이 포함된다.

@@ -46,13 +46,14 @@ func execute(req issueops.ExecutionActionRequest, deps Deps) (any, error) {
 }
 
 const Usage = `Usage:
-  agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude [--owner-model MODEL] [--owner-effort EFFORT] ACTOR_FLAGS [--confirm] [--json]
+  agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude [--owner-model MODEL] [--owner-effort EFFORT] [--issue-snapshot-file PATH] ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops execution status --id ID [--json]
   agent-harness issueops execution whoami [--json]
-  agent-harness issueops execution claim --id ID --generation N --claim-token-file PATH [--issue-body-sha256 HEX --context-packet-sha256 HEX] ACTOR_FLAGS [--json]
+  agent-harness issueops execution claim --id ID --generation N --claim-token-file PATH [--issue-body-sha256 HEX --context-packet-sha256 HEX] [--issue-snapshot-file PATH] ACTOR_FLAGS [--json]
   agent-harness issueops execution release --id ID --generation N ACTOR_FLAGS [--json]
-  agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [fingerprint/reason flags] ACTOR_FLAGS [--confirm] [--json]
-  agent-harness issueops execution reconcile --id ID (--preview|--confirm) ACTOR_FLAGS [--json]
+  agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [fingerprint/reason flags] [--issue-snapshot-file PATH] ACTOR_FLAGS [--confirm] [--json]
+  agent-harness issueops execution resume --id ID --expected-generation N ACTOR_FLAGS --confirm [--json]
+  agent-harness issueops execution reconcile --id ID (--preview|--confirm) [--issue-snapshot-file PATH] ACTOR_FLAGS [--json]
   agent-harness issueops execution complete --id ID --generation N --final-head SHA --turing-report PATH --remote-artifact-url URL --verification TEXT... ACTOR_FLAGS --confirm [--json]
   agent-harness issueops execution sync-base --id ID (--preview | --apply --confirm --fingerprint SHA256 | --finalize | --abort) ACTOR_FLAGS [--json]
   agent-harness issueops execution switch-mode --id ID --mode direct|orca [--apply --confirm --fingerprint SHA256] ACTOR_FLAGS [--json]
@@ -77,6 +78,8 @@ func Run(args []string, deps Deps) error {
 		return runRelease(args[1:], deps)
 	case "replace":
 		return runReplace(args[1:], deps)
+	case "resume":
+		return runResume(args[1:], deps)
 	case "reconcile":
 		return runReconcile(args[1:], deps)
 	case "complete":
@@ -121,14 +124,20 @@ func runPrepare(args []string, deps Deps) error {
 	id, mode := fs.String("id", "", "IssueOps id"), fs.String("mode", "auto", "auto, direct, orca")
 	ownerHost, ownerModel := fs.String("owner-host", "", "owner host"), fs.String("owner-model", "", "owner model")
 	ownerEffort := fs.String("owner-effort", "", "owner effort")
+	issueSnapshotFile := fs.String("issue-snapshot-file", "", "private GitLab issue snapshot JSON file")
 	actor := addActorFlags(fs)
 	confirm, jsonOut := fs.Bool("confirm", false, "confirm mutations"), fs.Bool("json", false, "print JSON")
 	if done, err := parse(fs, args); done || err != nil {
 		return err
 	}
+	issueSnapshot, err := readExecutionIssueSnapshotFile(*issueSnapshotFile)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
 	result, err := execute(issueops.ExecutionActionRequest{
 		Action: issueops.ExecutionActionPrepare, ID: *id, Mode: *mode, Actor: actor.actor(), CWD: *actor.cwd,
 		OwnerHost: *ownerHost, OwnerModel: *ownerModel, OwnerEffort: *ownerEffort, Confirm: *confirm,
+		IssueSnapshot: issueSnapshot,
 	}, deps)
 	return output(result, *jsonOut, err, deps)
 }
@@ -143,14 +152,50 @@ func runStatus(args []string, deps Deps) error {
 	return output(result, *jsonOut, err, deps)
 }
 
-// ExecutionWhoamiResult는 호출 프로세스의 native ancestry receipt를 노출한다.
-// owner가 claim identity를 shell 확장 없이 리터럴 값으로 채우기 위한 read-only
-// 표면이다(이슈 #90 발견 3 — 확장이 섞인 claim은 exact 파싱이 fail-closed로
-// 거부하므로, 관측 가능한 대체 경로가 없으면 부트스트랩이 교착한다).
+// ExecutionWhoamiResult는 호출 프로세스의 native host/session과 ancestry
+// receipt를 노출한다. owner가 claim identity를 shell 확장 없이 리터럴 값으로
+// 채우기 위한 read-only 표면이다(이슈 #90 발견 3 — 확장이 섞인 claim은 exact
+// 파싱이 fail-closed로 거부하므로, 관측 가능한 대체 경로가 없으면 부트스트랩이
+// 교착한다).
 type ExecutionWhoamiResult struct {
 	OK              bool                         `json:"ok"`
+	Host            string                       `json:"host"`
+	SessionID       string                       `json:"session_id"`
+	SessionIDSource string                       `json:"session_id_source"`
 	Ancestry        []model.NativeProcessReceipt `json:"ancestry"`
 	ClaimActorFlags []string                     `json:"claim_actor_flags"`
+}
+
+type nativeSessionIdentity struct {
+	Host      string
+	SessionID string
+	Source    string
+}
+
+func nativeSessionIdentityFromEnv(getenv func(string) string) (nativeSessionIdentity, error) {
+	codexSession := getenv("CODEX_THREAD_ID")
+	claudeSession := getenv("CLAUDE_CODE_SESSION_ID")
+	if codexSession != "" && claudeSession != "" {
+		return nativeSessionIdentity{}, fmt.Errorf("native host session identity is ambiguous")
+	}
+	identity := nativeSessionIdentity{}
+	switch {
+	case codexSession != "":
+		identity = nativeSessionIdentity{Host: "codex", SessionID: codexSession, Source: "CODEX_THREAD_ID"}
+	case claudeSession != "":
+		identity = nativeSessionIdentity{Host: "claude", SessionID: claudeSession, Source: "CLAUDE_CODE_SESSION_ID"}
+	default:
+		return nativeSessionIdentity{}, fmt.Errorf("native host session identity is unavailable")
+	}
+	if identity.SessionID != strings.TrimSpace(identity.SessionID) ||
+		strings.ContainsAny(identity.SessionID, "\r\n\x00") {
+		return nativeSessionIdentity{}, fmt.Errorf("native host session identity is not a literal single-line value")
+	}
+	return identity, nil
+}
+
+func shellQuoteClaimValue(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", `'"'"'`) + "'"
 }
 
 func runWhoami(args []string, deps Deps) error {
@@ -159,15 +204,23 @@ func runWhoami(args []string, deps Deps) error {
 	if done, err := parse(fs, args); done || err != nil {
 		return err
 	}
+	identity, err := nativeSessionIdentityFromEnv(os.Getenv)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
 	ancestry, err := issueops.ObserveNativeProcessAncestry(os.Getpid())
 	if err != nil {
 		return output(nil, *jsonOut, err, deps)
 	}
-	result := ExecutionWhoamiResult{OK: true, Ancestry: ancestry}
+	result := ExecutionWhoamiResult{
+		OK: true, Host: identity.Host, SessionID: identity.SessionID,
+		SessionIDSource: identity.Source, Ancestry: ancestry,
+	}
 	for _, receipt := range ancestry {
 		result.ClaimActorFlags = append(result.ClaimActorFlags, fmt.Sprintf(
-			"--session-pid %d --session-started-at %s --session-executable '%s'",
-			receipt.PID, receipt.StartedAt, receipt.Executable))
+			"--host %s --session-id %s --session-pid %d --session-started-at %s --session-executable %s",
+			identity.Host, shellQuoteClaimValue(identity.SessionID), receipt.PID,
+			shellQuoteClaimValue(receipt.StartedAt), shellQuoteClaimValue(receipt.Executable)))
 	}
 	return output(result, *jsonOut, nil, deps)
 }
@@ -178,14 +231,20 @@ func runClaim(args []string, deps Deps) error {
 	claimTokenFile, actor := fs.String("claim-token-file", "", "one-time claim token file"), addActorFlags(fs)
 	issueDigest := fs.String("issue-body-sha256", "", "sealed remote issue body SHA-256")
 	packetDigest := fs.String("context-packet-sha256", "", "sealed owner context packet SHA-256")
+	issueSnapshotFile := fs.String("issue-snapshot-file", "", "private GitLab issue snapshot JSON file")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if done, err := parse(fs, args); done || err != nil {
 		return err
+	}
+	issueSnapshot, err := readExecutionIssueSnapshotFile(*issueSnapshotFile)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
 	}
 	result, err := execute(issueops.ExecutionActionRequest{
 		Action: issueops.ExecutionActionClaim, ID: *id, Generation: *generation,
 		Actor: actor.actor(), CWD: *actor.cwd, TokenFile: *claimTokenFile,
 		IssueBodySHA256: *issueDigest, ContextPacketSHA256: *packetDigest,
+		IssueSnapshot: issueSnapshot,
 	}, deps)
 	return output(result, *jsonOut, err, deps)
 }
@@ -213,9 +272,14 @@ func runReplace(args []string, deps Deps) error {
 	preview, revoke := fs.Bool("preview", false, "preview replacement"), fs.Bool("revoke", false, "revoke current generation")
 	finalizePreview, finalize := fs.Bool("finalize-preview", false, "preview finalization"), fs.Bool("finalize", false, "finalize replacement")
 	reseed, confirm := fs.Bool("reseed", false, "reseed a holderless lease"), fs.Bool("confirm", false, "confirm mutation")
+	issueSnapshotFile := fs.String("issue-snapshot-file", "", "private GitLab issue snapshot JSON file")
 	actor, jsonOut := addActorFlags(fs), fs.Bool("json", false, "print JSON")
 	if done, err := parse(fs, args); done || err != nil {
 		return err
+	}
+	issueSnapshot, err := readExecutionIssueSnapshotFile(*issueSnapshotFile)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
 	}
 	actions := map[string]bool{
 		issueops.ExecutionReplacePreview: *preview, issueops.ExecutionReplaceRevoke: *revoke,
@@ -238,6 +302,24 @@ func runReplace(args []string, deps Deps) error {
 		Action: issueops.ExecutionActionReplace, ID: *id, ReplaceAction: action, ExpectedGeneration: *generation,
 		InventoryFingerprint: *inventory, QuiescenceFingerprint: *quiescence, Reason: *reason,
 		Actor: actor.actor(), CWD: *actor.cwd, Confirm: *confirm,
+		IssueSnapshot: issueSnapshot,
+	}, deps)
+	return output(result, *jsonOut, err, deps)
+}
+
+func runResume(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops execution resume", flag.ContinueOnError)
+	id := fs.String("id", "", "IssueOps id")
+	generation := fs.Uint64("expected-generation", 0, "expected lease generation")
+	actor := addActorFlags(fs)
+	confirm := fs.Bool("confirm", false, "confirm owner resume")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if done, err := parse(fs, args); done || err != nil {
+		return err
+	}
+	result, err := execute(issueops.ExecutionActionRequest{
+		Action: issueops.ExecutionActionResume, ID: *id, ExpectedGeneration: *generation,
+		Actor: actor.actor(), CWD: *actor.cwd, Confirm: *confirm,
 	}, deps)
 	return output(result, *jsonOut, err, deps)
 }
@@ -246,13 +328,18 @@ func runReconcile(args []string, deps Deps) error {
 	fs := flag.NewFlagSet("issueops execution reconcile", flag.ContinueOnError)
 	id := fs.String("id", "", "IssueOps id")
 	preview, confirm := fs.Bool("preview", false, "preview reconciliation"), fs.Bool("confirm", false, "confirm reconciliation")
+	issueSnapshotFile := fs.String("issue-snapshot-file", "", "private GitLab issue snapshot JSON file")
 	actor, jsonOut := addActorFlags(fs), fs.Bool("json", false, "print JSON")
 	if done, err := parse(fs, args); done || err != nil {
 		return err
 	}
+	issueSnapshot, err := readExecutionIssueSnapshotFile(*issueSnapshotFile)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
 	result, err := execute(issueops.ExecutionActionRequest{
 		Action: issueops.ExecutionActionReconcile, ID: *id, Preview: *preview, Confirm: *confirm,
-		Actor: actor.actor(), CWD: *actor.cwd,
+		Actor: actor.actor(), CWD: *actor.cwd, IssueSnapshot: issueSnapshot,
 	}, deps)
 	return output(result, *jsonOut, err, deps)
 }

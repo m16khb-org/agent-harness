@@ -207,6 +207,31 @@ func TestExecutionReseedInvalidatesPriorGenerationToken(t *testing.T) {
 	}
 }
 
+func TestExecutionReplacePreviewOrientsWithoutExpectedGeneration(t *testing.T) {
+	stateRoot := t.TempDir()
+	fixture := newClaimableExecutionFixture(t, stateRoot, "69-replace-preview")
+	requester := executionActor("claude", "replace-preview-requester")
+
+	preview, err := ReplaceExecution(stateRoot, ExecutionReplaceRequest{
+		ID: fixture.record.ID, Action: ExecutionReplacePreview,
+		Actor: requester, CWD: fixture.record.Repo,
+	})
+	if err != nil {
+		t.Fatalf("세대를 아직 모르는 preview가 현재 세대를 읽지 못했다: %v", err)
+	}
+	if preview.Execution.Lease.Generation != 1 || strings.TrimSpace(preview.InventoryFingerprint) == "" {
+		t.Fatalf("preview가 현재 세대와 인벤토리 증거를 반환하지 않았다: %#v", preview)
+	}
+
+	_, err = ReplaceExecution(stateRoot, ExecutionReplaceRequest{
+		ID: fixture.record.ID, Action: ExecutionReplacePreview, ExpectedGeneration: 2,
+		Actor: requester, CWD: fixture.record.Repo,
+	})
+	if err == nil || !strings.Contains(err.Error(), "current=1 expected=2") {
+		t.Fatalf("명시적으로 잘못된 세대를 preview가 허용했다: %v", err)
+	}
+}
+
 func TestExecutionRevokeRejectsStaleInventoryAndFencesOldGeneration(t *testing.T) {
 	stateRoot := t.TempDir()
 	fixture := newClaimableExecutionFixture(t, stateRoot, "69-revoke")

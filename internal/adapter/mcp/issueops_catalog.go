@@ -4,7 +4,7 @@ package mcp
 func IssueOpsBasicTools() []Tool {
 	return []Tool{{
 		Name:        "issueops_execution",
-		Description: "Prepare, inspect, claim, release, replace, reconcile, or complete the single IssueOps v1 execution lease. The action selects one shared CLI/MCP DTO; mutations require the exact native actor, generation, canonical cwd, and explicit confirmation.",
+		Description: "Prepare, inspect, claim, release, replace, resume, reconcile, or complete the single IssueOps v1 execution lease. The action selects one shared CLI/MCP DTO; mutations require the exact native actor, generation, canonical cwd, and explicit confirmation.",
 		InputSchema: issueOpsExecutionSchema(),
 	}}
 }
@@ -14,7 +14,7 @@ func issueOpsExecutionSchema() map[string]any {
 		"type":     "object",
 		"required": []string{"action", "id"},
 		"properties": map[string]any{
-			"action":                 map[string]any{"type": "string", "enum": []string{"prepare", "status", "claim", "release", "replace", "reconcile", "complete"}},
+			"action":                 map[string]any{"type": "string", "enum": []string{"prepare", "status", "claim", "release", "replace", "resume", "reconcile", "complete"}},
 			"id":                     map[string]any{"type": "string"},
 			"mode":                   map[string]any{"type": "string", "enum": []string{"auto", "direct", "orca"}},
 			"host":                   map[string]any{"type": "string", "enum": []string{"codex", "claude"}},
@@ -42,6 +42,18 @@ func issueOpsExecutionSchema() map[string]any {
 			"turing_report_path":     map[string]any{"type": "string"},
 			"verification":           map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 			"remote_artifact_url":    map[string]any{"type": "string"},
+			"issue_snapshot": map[string]any{
+				"type":                 "object",
+				"additionalProperties": false,
+				"required":             []string{"provider", "source", "web_url", "body", "state"},
+				"properties": map[string]any{
+					"provider": map[string]any{"type": "string", "enum": []string{"gitlab"}},
+					"source":   map[string]any{"type": "string", "enum": []string{"glab_mcp"}},
+					"web_url":  map[string]any{"type": "string"},
+					"body":     map[string]any{"type": "string", "maxLength": 524288},
+					"state":    map[string]any{"type": "string", "enum": []string{"opened", "closed"}},
+				},
+			},
 		},
 	}
 }

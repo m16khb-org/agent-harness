@@ -104,6 +104,7 @@ func TestExecutionShellReadersAreObservationFirst(t *testing.T) {
 		"cat " + filepath.Join(repo, "README.md"),
 		"head -n 5 " + filepath.Join(repo, "README.md"),
 		"tail -n 5 " + filepath.Join(repo, "README.md"),
+		"tail -80 " + filepath.Join(worker, "README.md"),
 		"ls -la " + repo,
 		"find " + repo + " -maxdepth 1 -type f",
 		"stat " + filepath.Join(repo, "README.md"),
@@ -112,6 +113,10 @@ func TestExecutionShellReadersAreObservationFirst(t *testing.T) {
 		"gh issue view 190 --repo m16khb/agent-harness --json body",
 		"gh issue develop --list 190 --repo m16khb/agent-harness",
 		"git merge-base 5457e834d93a367f3fd5d200d40dfb813320679d eeb6241120cbf40d28df1b0b9483ab9dc7f1eaa1",
+		"jq empty .agent-harness/turing/issueops-v1-0d097a7cae7456be.json",
+		"jq '.' .agent-harness/turing/issueops-v1-c68e0b0f994c2705.json",
+		"jq -e . .agent-harness/turing/issueops-v1-c7e20cac5e6b2afb.json",
+		"rg -n -A5 'NewReleaseService\\(' internal/core/issueops/execution_lease_differential_test.go internal/core/issueops/testdata/leasevertical/application/release.go",
 		// claim identity bootstrap(이슈 #90 발견 3): owner는 자기 native
 		// receipt를 관측할 admitted 표면이 필요하다.
 		"agent-harness issueops execution whoami --json",
@@ -124,6 +129,119 @@ func TestExecutionShellReadersAreObservationFirst(t *testing.T) {
 				t.Fatalf("bounded shell reader must be allowed before cycle selection: %+v", got)
 			}
 		})
+	}
+}
+
+func TestExecutionRemoteMutationHelpIsObservationFirst(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, active, worker := executionActiveLifecycleRecord(t)
+
+	for _, command := range []string{
+		"agent-harness issueops remote create-pr --help",
+		"./bin/agent-harness issueops remote create-pr -h",
+		"agent-harness issueops remote verify-artifact --help",
+		"./bin/agent-harness issueops remote verify-artifact -h",
+	} {
+		req := executionRequest(active, worker, "codex", "observer-session", command)
+		req.AgentID = ""
+		if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+			t.Fatalf("IssueOps remote mutation의 help-only 호출은 관찰이어야 한다: %q -> %+v", command, got)
+		}
+	}
+
+	for _, command := range []string{
+		"agent-harness issueops remote create-pr --help --confirm",
+		"agent-harness issueops remote verify-artifact --help --json",
+		"agent-harness issueops remote unknown --help",
+	} {
+		req := executionRequest(active, worker, "codex", "observer-session", command)
+		req.AgentID = ""
+		got := BuildLifecyclePreToolUseDecision(req)
+		if got.Decision != "block" || got.Deny == nil || got.Deny.Code != "unsafe_mutation" {
+			t.Fatalf("help-only exact 형태 밖 IssueOps 명령은 계속 차단해야 한다: %q -> %+v", command, got)
+		}
+	}
+}
+
+func TestExecutionBoundedReadOnlySequenceIsObservationFirst(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, active, worker := executionActiveLifecycleRecord(t)
+	command := `if [ -d .codegraph ]; then printf 'codegraph-present\n'; else printf 'codegraph-absent\n'; fi
+git status --short
+git branch --show-current
+git rev-parse HEAD
+git diff --stat
+git diff --cached --stat`
+
+	req := executionRequest(active, worker, "codex", "observer-session", command)
+	req.AgentID = ""
+	got := BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "allow" {
+		t.Fatalf("정적으로 판정 가능한 읽기 전용 탐색 시퀀스는 활성 lease 중에도 허용해야 한다: %+v", got)
+	}
+
+	req.Command = `sed -n '1,126p' internal/core/issueops/testdata/leasevertical/application/release.go
+sed -n '1,130p' internal/core/issueops/testdata/leasevertical/domain/release.go`
+	got = BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "allow" {
+		t.Fatalf("각 조각이 exact reader인 multiline 시퀀스는 lifecycle에서도 관찰이어야 한다: %+v", got)
+	}
+
+	req.Command = `sed -n '1,$p' .agent-harness/CONVENTIONS.md`
+	got = BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "allow" {
+		t.Fatalf("마지막 줄 표식을 쓴 exact sed reader는 lifecycle에서도 관찰이어야 한다: %+v", got)
+	}
+
+	req.Command = "pwd && git status --short && git diff --cached --check"
+	got = BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "allow" {
+		t.Fatalf("각 조각이 exact reader인 && 시퀀스는 lifecycle에서도 관찰이어야 한다: %+v", got)
+	}
+
+	req.Command = "git ls-files --others --exclude-standard"
+	got = BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "allow" {
+		t.Fatalf("Shannon이 쓰는 exact untracked-file reader는 lifecycle에서도 관찰이어야 한다: %+v", got)
+	}
+
+	req.Command = "gofmt -d internal/core/issueops/execution_lease.go internal/core/issueops/execution_api.go"
+	got = BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "allow" {
+		t.Fatalf("명시적 Go 파일의 gofmt diff readback은 lifecycle에서도 관찰이어야 한다: %+v", got)
+	}
+
+	req.Command = "go doc github.com/modelcontextprotocol/go-sdk/mcp.Server"
+	got = BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "allow" {
+		t.Fatalf("Go API 문서 조회는 lifecycle에서도 읽기 전용 관찰이어야 한다: %+v", got)
+	}
+
+	req.Command = `find internal/core/issueops/testdata/leasevertical -maxdepth 2 -type f | sort && sed -n '1,260p' internal/core/issueops/testdata/leasevertical/contract/record.go && sed -n '1,320p' internal/core/issueops/testdata/leasevertical/contract/stable_v1.go && sed -n '1,340p' internal/core/issueops/testdata/leasevertical/domain/release.go`
+	got = BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "allow" {
+		t.Fatalf("봉인된 find-sort 파이프와 exact reader 시퀀스는 lifecycle에서도 관찰이어야 한다: %+v", got)
+	}
+
+	req.Command = `rg -n 'ai-slop-clean|AISlopCleanCategories|category' cmd/harness/issueopscli internal/core/issueops | head -160`
+	got = BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "allow" {
+		t.Fatalf("exact rg 결과의 bounded head 출력 제한은 lifecycle에서도 관찰이어야 한다: %+v", got)
+	}
+
+	req.Command = `test -d .codegraph && echo present || echo absent
+git diff --cached --stat
+git diff --cached --name-only
+git diff --cached --check`
+	got = BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "allow" {
+		t.Fatalf("atomic publication의 고정 staged-diff reader는 lifecycle에서도 관찰이어야 한다: %+v", got)
+	}
+
+	req.Command = strings.Replace(command, "printf 'codegraph-present\\n'", "printf '%n' PATH", 1)
+	got = BuildLifecyclePreToolUseDecision(req)
+	if got.Decision != "block" || got.Deny == nil || got.Deny.Code != "unsafe_mutation" {
+		t.Fatalf("shell 변수를 쓰는 printf %%n 시퀀스는 읽기 전용으로 승격하면 안 된다: %+v", got)
 	}
 }
 
@@ -150,6 +268,57 @@ func TestExecutionMutationClassCoversBuildGitFilesystemAndUnsafeShell(t *testing
 	holderTest.AgentID = "owner-agent"
 	if got := BuildLifecyclePreToolUseDecision(holderTest); got.Decision != "allow" {
 		t.Fatalf("foreground test in the assigned holder root must be allowed: %+v", got)
+	}
+
+	holderBuild := executionRequest(record, worker, "claude", "owner-session", "go build -o /tmp/agent-harness-196 ./cmd/harness")
+	holderBuild.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(holderBuild); got.Decision != "allow" {
+		t.Fatalf("holder의 봉인된 임시 바이너리 빌드는 canonical source를 벗어난 권한으로 오인하면 안 된다: %+v", got)
+	}
+	inlineBuild := holderBuild
+	inlineBuild.Command = "go build -o=/tmp/agent-harness-196-inline ./cmd/harness"
+	if got := BuildLifecyclePreToolUseDecision(inlineBuild); got.Decision != "allow" {
+		t.Fatalf("inline -o를 쓴 봉인된 임시 바이너리 빌드도 동일하게 허용해야 한다: %+v", got)
+	}
+	foreignBuild := holderBuild
+	foreignBuild.SessionID = "foreign-session"
+	if got := BuildLifecyclePreToolUseDecision(foreignBuild); got.Decision != "block" ||
+		got.Deny == nil || got.Deny.Code != "holder_identity_mismatch" {
+		t.Fatalf("임시 바이너리 빌드도 active holder identity를 요구해야 한다: %+v", got)
+	}
+	for name, command := range map[string]string{
+		"unsealed name": "go build -o /tmp/harness-196 ./cmd/harness",
+		"nested path":   "go build -o /tmp/build/agent-harness-196 ./cmd/harness",
+		"other go verb": "go test -o /tmp/agent-harness-196 ./cmd/harness",
+		"duplicate out": "go build -o /tmp/agent-harness-196-a -o /tmp/agent-harness-196-b ./cmd/harness",
+	} {
+		t.Run(name+" temp output denied", func(t *testing.T) {
+			req := executionRequest(record, worker, "claude", "owner-session", command)
+			req.AgentID = "owner-agent"
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+				t.Fatalf("봉인된 임시 build 출력 밖의 외부 mutation은 거부해야 한다: %+v", got)
+			}
+		})
+	}
+	tempOutput, err := os.CreateTemp("", "agent-harness-guard-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tempOutputPath := tempOutput.Name()
+	if err := tempOutput.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(tempOutputPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(t.TempDir(), "outside-binary"), tempOutputPath); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Remove(tempOutputPath) })
+	symlinkBuild := executionRequest(record, worker, "claude", "owner-session", "go build -o "+tempOutputPath+" ./cmd/harness")
+	symlinkBuild.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(symlinkBuild); got.Decision != "block" {
+		t.Fatalf("임시 경로의 기존 symlink를 따라가는 build 출력은 거부해야 한다: %+v", got)
 	}
 
 	filesystemWrite := executionRequest(record, source, "claude", "owner-session", "")
@@ -385,6 +554,43 @@ func TestExecutionTypedClaimRemainsAvailableFromSourceCheckout(t *testing.T) {
 	}
 }
 
+func TestExecutionSnapshotFileCommandsReachTypedControlPlane(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	snapshot := filepath.Join(worker, ".agent-harness", "artifact", "issue-snapshot.json")
+	base := "agent-harness issueops execution "
+
+	for name, command := range map[string]string{
+		"prepare": base + "prepare --id " + record.ID + " --mode orca --issue-snapshot-file " + snapshot + " --json",
+		"claim": base + "claim --id " + record.ID + " --generation 2 --claim-token-file " + filepath.Join(worker, "lease-2.token") +
+			" --issue-snapshot-file " + snapshot + " --json",
+		"replace":   base + "replace --id " + record.ID + " --expected-generation 1 --preview --issue-snapshot-file " + snapshot + " --json",
+		"reconcile": base + "reconcile --id " + record.ID + " --preview --issue-snapshot-file " + snapshot + " --json",
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := executionRequest(record, worker, "claude", "foreign-session", command)
+			req.AgentID = "owner-agent"
+			if !executionTypedControlPlane(req) {
+				t.Fatalf("%s snapshot 명령이 typed control-plane에서 탈락했다", name)
+			}
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+				t.Fatalf("%s snapshot 명령이 active IssueOps authority에 막혔다: %+v", name, got)
+			}
+		})
+	}
+
+	req := executionRequest(record, worker, "claude", "foreign-session",
+		base+"claim --id "+record.ID+" --issue-snapshot "+snapshot+" --json")
+	req.AgentID = "owner-agent"
+	if executionTypedControlPlane(req) {
+		t.Fatal("등록하지 않은 snapshot 별칭이 typed control-plane을 넓혔다")
+	}
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" ||
+		got.Deny == nil || got.Deny.Code != "unsafe_mutation" {
+		t.Fatalf("등록하지 않은 snapshot 별칭은 계속 막혀야 한다: %+v", got)
+	}
+}
+
 func TestExecutionExactResourceWaitReachesCanonicalHolderFence(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source, record, worker := executionActiveLifecycleRecord(t)
@@ -475,6 +681,30 @@ func TestExecutionAllowsExactOrcaObservationsButNotMutationForObserver(t *testin
 	req := executionRequest(record, worker, "codex", "observer", "orca terminal create --worktree id:wt-1 --json")
 	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
 		t.Fatalf("Orca mutation must still require cycle authority: %+v", got)
+	}
+}
+
+func TestExecutionAllowsOrcaWorkerDoneBeforeLeaseClaim(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	record.Execution.Lease = issueopsmodel.WriteLease{
+		Generation: 2, Status: issueopsmodel.LeaseStatusClaimable,
+		ClaimTokenSHA256: strings.Repeat("a", 64),
+	}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+
+	req := executionRequest(record, worker, "codex", "owner-session",
+		"orca orchestration send --to term-coordinator --type worker_done --subject paused"+
+			" --body safe-checkpoint --task-id task-1 --dispatch-id ctx-1 --json")
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("claim 전 owner도 자신의 dispatch 종료 메시지를 보낼 수 있어야 한다: %+v", got)
+	}
+
+	req.Command = "orca orchestration task-update --id task-1 --status completed --json"
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+		t.Fatalf("worker_done 이외의 orchestration mutation은 lease 없이 통과하면 안 된다: %+v", got)
 	}
 }
 

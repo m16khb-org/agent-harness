@@ -90,42 +90,54 @@ func TestExecutionOrcaPrepareAppliesHostImplementerDefaults(t *testing.T) {
 	}
 }
 
-func TestExecutionGitLabOrcaCapabilityFailsBeforeProbeOrMutation(t *testing.T) {
+func TestExecutionGitLabOrcaSealsIssueMetadataAndUsesOrca(t *testing.T) {
 	for _, mode := range []string{ExecutionModeAuto, string(model.ExecutionModeOrca)} {
 		for _, confirm := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/confirm=%t", mode, confirm), func(t *testing.T) {
-				stateRoot, record := orcaPrepareRecord(t)
+				stateRoot, record := executionPrepareRecord(t)
 				record.BranchPrepare.Provider = "gitlab"
 				record.BranchPrepare.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/69"
 				if _, err := writeIssueOps(stateRoot, record); err != nil {
 					t.Fatal(err)
 				}
-				orca := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
+				orca := readyOrcaFake()
+				var marker string
+				prepare := orca.prepare
+				orca.prepare = func(workspace port.ExecutionWorkspaceRequest, request port.ExecutionOrcaProbeRequest) (port.ExecutionOrcaWorkspaceReceipt, error) {
+					marker = request.Marker
+					return prepare(workspace, request)
+				}
 				direct := &executionDirectCountingFake{}
 				got, err := PrepareExecution(context.Background(), stateRoot, ExecutionPrepareRequest{
 					ID: record.ID, Mode: mode, CWD: record.Repo, Confirm: confirm,
 					Actor: executionActor("codex", "coordinator"), OwnerHost: "claude", OwnerModel: "caller-model",
 				}, ExecutionPrepareDependencies{Direct: direct, Orca: orca, ReadIssue: executionIssueSnapshotReader})
-				if mode == ExecutionModeAuto {
-					if err != nil || got.ResolvedMode != "direct" || got.FallbackCode != "gitlab_issue_metadata_unsupported" {
-						t.Fatalf("auto GitLab readiness must fall back before Orca mutation: result=%#v err=%v", got, err)
-					}
-				} else if err == nil || !strings.Contains(err.Error(), "gitlab_issue_metadata_unsupported") {
-					t.Fatalf("explicit Orca must return the typed unsupported capability: result=%#v err=%v", got, err)
+				if err != nil || got.ResolvedMode != "orca" || got.FallbackCode != "" {
+					t.Fatalf("GitLab 준비는 Orca로 해석돼야 한다: result=%#v err=%v", got, err)
 				}
-				if orca.probeCalls != 0 || orca.prepareCalls != 0 || orca.launchCalls != 0 {
-					t.Fatalf("unsupported GitLab capability reached Orca: %#v", orca)
+				if orca.probeCalls != 1 || direct.calls != 0 {
+					t.Fatalf("GitLab Orca 판정은 probe 한 번만 사용하고 direct를 호출하지 않아야 한다: orca=%#v direct=%d", orca, direct.calls)
 				}
 				current, readErr := ReadIssueOps(stateRoot, record.ID)
 				if readErr != nil {
 					t.Fatal(readErr)
 				}
-				if mode == string(model.ExecutionModeOrca) || !confirm {
+				if !confirm {
 					if current.Execution != nil {
-						t.Fatalf("readiness-only path changed durable execution state: %#v", current.Execution)
+						t.Fatalf("preview가 durable execution을 바꿨다: %#v", current.Execution)
 					}
-				} else if current.Execution == nil || current.Execution.Mode != model.ExecutionModeDirect || direct.calls != 1 {
-					t.Fatalf("confirmed auto fallback did not create one direct execution: record=%#v calls=%d", current.Execution, direct.calls)
+					if orca.prepareCalls != 0 || orca.launchCalls != 0 {
+						t.Fatalf("preview가 Orca mutation을 실행했다: %#v", orca)
+					}
+					return
+				}
+				if current.Execution == nil || current.Execution.Mode != model.ExecutionModeOrca || current.Execution.Orca == nil {
+					t.Fatalf("confirm이 Orca execution을 봉인하지 못했다: %#v", current.Execution)
+				}
+				for _, want := range []string{"provider=gitlab", "issue=69"} {
+					if !strings.Contains(marker, want) {
+						t.Fatalf("GitLab IID marker %q에 %q가 없다", marker, want)
+					}
 				}
 			})
 		}

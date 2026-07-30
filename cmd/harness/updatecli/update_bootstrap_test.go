@@ -56,7 +56,7 @@ func stubMCPProxyTerminator(t *testing.T, fn func(int) error) func() {
 	return func() { mcpProxyTerminator = previous }
 }
 
-func TestRunInstallScriptCommandRefreshesRuntimeProcessesAfterUpdate(t *testing.T) {
+func TestRunInstallScriptCommandRefreshesDaemonWithoutTouchingMCPProcesses(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("HARNESS_ROOT", root)
 	if err := os.MkdirAll(filepath.Join(root, "scripts"), 0o755); err != nil {
@@ -80,15 +80,15 @@ func TestRunInstallScriptCommandRefreshesRuntimeProcessesAfterUpdate(t *testing.
 	})
 	defer restoreDaemon()
 	restoreMCPProxy := stubPostInstallMCPProxyRefresh(t, func() (int, error) {
-		commands = append(commands, "mcp-proxy-refresh")
-		return 2, nil
+		t.Fatal("update must preserve active Codex, Claude, and external MCP processes")
+		return 0, nil
 	})
 	defer restoreMCPProxy()
 
 	if err := runInstallScriptCommand("update", nil); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{filepath.Join(root, "scripts", "install-native.sh"), "daemon-refresh", "mcp-proxy-refresh"}
+	want := []string{filepath.Join(root, "scripts", "install-native.sh"), "daemon-refresh"}
 	if !reflect.DeepEqual(commands, want) {
 		t.Fatalf("unexpected command sequence:\n got: %#v\nwant: %#v", commands, want)
 	}
@@ -272,6 +272,12 @@ func TestExportedUpdateFacadesForwardToConfiguredDependencies(t *testing.T) {
 		t.Fatalf("ListDaemonProcesses err=%v", err)
 	}
 	binary := filepath.Join(root, "bin", "agent-harness")
+	if err := os.MkdirAll(filepath.Dir(binary), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(binary, []byte("fixture"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if parsed, ok := ParseDaemonProcess("11 "+binary+" daemon --internal", binary); !ok || parsed.PID != 11 {
 		t.Fatalf("ParseDaemonProcess = %#v ok=%v", parsed, ok)
 	}
@@ -286,7 +292,7 @@ func TestExportedUpdateFacadesForwardToConfiguredDependencies(t *testing.T) {
 		return nil
 	})
 	refreshed, err := RefreshRunningMCPProxiesAfterInstall()
-	if err != nil || refreshed != 1 {
+	if err != nil || refreshed != 0 {
 		t.Fatalf("RefreshRunningMCPProxiesAfterInstall = %d err=%v", refreshed, err)
 	}
 	if _, err := ListMCPProxyProcesses(); err != nil {
@@ -298,12 +304,36 @@ func TestExportedUpdateFacadesForwardToConfiguredDependencies(t *testing.T) {
 }
 
 func TestCleanupMCPProxiesDryRunAndApply(t *testing.T) {
+	previousSupport := mcpProxyOrphanTerminationSupported
+	mcpProxyOrphanTerminationSupported = func() bool { return true }
+	t.Cleanup(func() {
+		mcpProxyOrphanTerminationSupported = previousSupport
+	})
+	binary := "/repo/bin/agent-harness"
+	processes := []mcpProxyProcess{
+		{
+			PID: os.Getpid(), ParentPID: 1, Command: binary + " mcp",
+			StartTime: "current-start", Executable: binary, IdentityVerified: true,
+		},
+		{
+			PID: 22, ParentPID: 900, Command: binary + " mcp",
+			StartTime: "live-start", Executable: binary, IdentityVerified: true,
+		},
+		{
+			PID: 33, ParentPID: 1, Command: binary + " mcp",
+			StartTime: "orphan-start", Executable: binary, IdentityVerified: true,
+		},
+		{
+			PID: 44, ParentPID: 1, Command: binary + " mcp",
+			StartTime: "", Executable: "", IdentityVerified: false,
+		},
+		{
+			PID: 55, ParentPID: 1, Command: "npm exec @upstash/context7-mcp",
+			StartTime: "external-start", Executable: "/usr/local/bin/node", IdentityVerified: true,
+		},
+	}
 	restoreList := stubMCPProxyProcessLister(t, func() ([]mcpProxyProcess, error) {
-		return []mcpProxyProcess{
-			{PID: os.Getpid(), Command: "agent-harness mcp"},
-			{PID: 22, Command: "agent-harness mcp"},
-			{PID: 33, Command: "agent-harness mcp"},
-		}, nil
+		return append([]mcpProxyProcess(nil), processes...), nil
 	})
 	defer restoreList()
 
@@ -318,10 +348,11 @@ func TestCleanupMCPProxiesDryRunAndApply(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !dryRun.OK || !dryRun.DryRun || dryRun.Matched != 3 || dryRun.Terminated != 0 || len(terminated) != 0 {
+	if !dryRun.OK || !dryRun.DryRun || dryRun.Matched != 5 || dryRun.Terminated != 0 || len(terminated) != 0 {
 		t.Fatalf("dry-run cleanup = %#v terminated=%#v", dryRun, terminated)
 	}
-	if len(dryRun.Processes) != 3 || dryRun.Processes[0].Action != "skip-current" || dryRun.Processes[1].Action != "would-terminate" {
+	wantDryRunActions := []string{"skip-current", "skip-live-parent", "would-terminate", "skip-unverified", "skip-not-exact"}
+	if got := mcpCleanupActions(dryRun.Processes); !reflect.DeepEqual(got, wantDryRunActions) {
 		t.Fatalf("dry-run cleanup actions = %#v", dryRun.Processes)
 	}
 
@@ -329,14 +360,87 @@ func TestCleanupMCPProxiesDryRunAndApply(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !applied.OK || applied.DryRun || applied.Matched != 3 || applied.Terminated != 2 {
+	if !applied.OK || applied.DryRun || applied.Matched != 5 || applied.Terminated != 1 {
 		t.Fatalf("apply cleanup = %#v", applied)
 	}
-	if !reflect.DeepEqual(terminated, []int{22, 33}) {
+	if !reflect.DeepEqual(terminated, []int{33}) {
 		t.Fatalf("terminated = %#v", terminated)
 	}
-	if applied.Processes[0].Action != "skip-current" || applied.Processes[1].Action != "terminated" {
+	wantApplyActions := []string{"skip-current", "skip-live-parent", "terminated", "skip-unverified", "skip-not-exact"}
+	if got := mcpCleanupActions(applied.Processes); !reflect.DeepEqual(got, wantApplyActions) {
 		t.Fatalf("apply cleanup actions = %#v", applied.Processes)
+	}
+}
+
+func TestCleanupMCPProxiesSkipsIdentityChangedBeforeSignal(t *testing.T) {
+	previousSupport := mcpProxyOrphanTerminationSupported
+	mcpProxyOrphanTerminationSupported = func() bool { return true }
+	t.Cleanup(func() {
+		mcpProxyOrphanTerminationSupported = previousSupport
+	})
+	binary := "/repo/bin/agent-harness"
+	first := mcpProxyProcess{
+		PID: 33, ParentPID: 1, Command: binary + " mcp",
+		StartTime: "orphan-start", Executable: binary, IdentityVerified: true,
+	}
+	second := first
+	second.StartTime = "reused-pid-start"
+	listCalls := 0
+	restoreList := stubMCPProxyProcessLister(t, func() ([]mcpProxyProcess, error) {
+		listCalls++
+		if listCalls == 1 {
+			return []mcpProxyProcess{first}, nil
+		}
+		return []mcpProxyProcess{second}, nil
+	})
+	defer restoreList()
+	restoreTerm := stubMCPProxyTerminator(t, func(pid int) error {
+		t.Fatalf("identity-changed pid %d must not be signaled", pid)
+		return nil
+	})
+	defer restoreTerm()
+
+	result, err := CleanupMCPProxies(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.OK || result.Terminated != 0 || len(result.Processes) != 1 ||
+		result.Processes[0].Action != "skip-identity-changed" {
+		t.Fatalf("identity-changed cleanup = %#v", result)
+	}
+}
+
+func TestCleanupMCPProxiesSkipsOrphansOnUnsupportedPlatforms(t *testing.T) {
+	previousSupport := mcpProxyOrphanTerminationSupported
+	mcpProxyOrphanTerminationSupported = func() bool { return false }
+	t.Cleanup(func() {
+		mcpProxyOrphanTerminationSupported = previousSupport
+	})
+	binary := "/repo/bin/agent-harness"
+	restoreList := stubMCPProxyProcessLister(t, func() ([]mcpProxyProcess, error) {
+		return []mcpProxyProcess{{
+			PID:              33,
+			ParentPID:        1,
+			Command:          binary + " mcp",
+			StartTime:        "orphan-start",
+			Executable:       binary,
+			IdentityVerified: true,
+		}}, nil
+	})
+	defer restoreList()
+	restoreTerm := stubMCPProxyTerminator(t, func(pid int) error {
+		t.Fatalf("unsupported platform pid %d must not be signaled", pid)
+		return nil
+	})
+	defer restoreTerm()
+
+	result, err := CleanupMCPProxies(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.OK || result.Terminated != 0 || len(result.Processes) != 1 ||
+		result.Processes[0].Action != "skip-unsupported-platform" {
+		t.Fatalf("unsupported-platform cleanup = %#v", result)
 	}
 }
 
@@ -353,4 +457,12 @@ func TestCleanupMCPProxiesReturnsEmptyProcessListWhenNoMatches(t *testing.T) {
 	if !result.OK || result.Matched != 0 || result.Processes == nil || len(result.Processes) != 0 {
 		t.Fatalf("cleanup no matches = %#v", result)
 	}
+}
+
+func mcpCleanupActions(processes []MCPCleanupProcess) []string {
+	actions := make([]string, 0, len(processes))
+	for _, process := range processes {
+		actions = append(actions, process.Action)
+	}
+	return actions
 }

@@ -32,6 +32,9 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 	if len(dry.Files) != wantBootstrapFiles {
 		t.Fatalf("planned files=%d want %d", len(dry.Files), wantBootstrapFiles)
 	}
+	if projectPlanContainsRel(dry.Files, ".agent-harness/VCS.md") {
+		t.Fatalf("optional VCS.md must not be created by bootstrap: %+v", dry.Files)
+	}
 	for rel := range draftwiki.DraftWikiSeedFiles() {
 		if !projectPlanContainsRel(dry.Files, rel) {
 			t.Fatalf("dry-run plan missing draft-wiki seed %s: %+v", rel, dry.Files)
@@ -78,6 +81,9 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 		if _, err := os.Stat(path); err != nil {
 			t.Fatalf("expected generated %s: %v", name, err)
 		}
+	}
+	if _, err := os.Stat(filepath.Join(root, projectdoc.ProjectDocsDir, "VCS.md")); !os.IsNotExist(err) {
+		t.Fatalf("bootstrap unexpectedly created optional VCS.md: %v", err)
 	}
 	for rel := range draftwiki.DraftWikiSeedFiles() {
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); err != nil {

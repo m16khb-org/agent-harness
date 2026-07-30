@@ -19,6 +19,9 @@ const (
 	orcaIntentNotInvoked  = "not_invoked_proven"
 	orcaIntentUnknown     = "unknown"
 	maxOrcaIntentAttempts = 2
+
+	orcaIntentPurposePrepare = "prepare"
+	orcaIntentPurposeResume  = "resume"
 )
 
 type externalOrcaLaunchIdentity struct {
@@ -30,6 +33,7 @@ type externalOrcaLaunchIdentity struct {
 
 type externalOrcaIntentPayload struct {
 	SchemaVersion      int                                 `json:"schema_version"`
+	Purpose            string                              `json:"purpose,omitempty"`
 	OperationID        string                              `json:"operation_id"`
 	LifecycleID        string                              `json:"lifecycle_id"`
 	Generation         uint64                              `json:"generation"`
@@ -46,6 +50,8 @@ type externalOrcaIntentPayload struct {
 	ClaimTokenSHA256   string                              `json:"claim_token_sha256,omitempty"`
 	TerminalPTYID      string                              `json:"terminal_pty_id,omitempty"`
 	TaskID             string                              `json:"task_id,omitempty"`
+	PriorBinding       *model.OrcaBinding                  `json:"prior_binding,omitempty"`
+	ResumeLease        *model.WriteLease                   `json:"resume_lease,omitempty"`
 }
 
 func beginOrcaExecutionIntent(stateRoot string, record IssueOpsRecord, workspace port.ExecutionWorkspaceRequest, probe port.ExecutionOrcaProbeRequest, req ExecutionPrepareRequest, snapshot executionOwnerSnapshot, now func() time.Time) (IssueOpsRecord, externalOrcaIntentPayload, error) {
@@ -54,12 +60,12 @@ func beginOrcaExecutionIntent(stateRoot string, record IssueOpsRecord, workspace
 		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
 	}
 	startedAt := executionNow(now)
-	marker := "agent-harness issueops-v1 lifecycle=" + record.ID + " operation=" + operationID
+	marker := executionOrcaMarker(record.ID, operationID, probe.Provider, probe.Issue)
 	probe.Marker = marker
 	payload := externalOrcaIntentPayload{
 		SchemaVersion: model.IssueOpsSchemaVersion, OperationID: operationID, LifecycleID: record.ID,
 		Generation: 1, Stage: port.ExecutionOrcaIntentWorktree, Marker: marker, StartedAt: startedAt,
-		InvocationState: orcaIntentNotInvoked, Workspace: workspace, Probe: probe,
+		Purpose: orcaIntentPurposePrepare, InvocationState: orcaIntentNotInvoked, Workspace: workspace, Probe: probe,
 		IssueBodySHA256: snapshot.issue.BodySHA256,
 	}
 	if strings.ToLower(strings.TrimSpace(req.OwnerHost)) != probe.Host || strings.TrimSpace(req.OwnerModel) != probe.Model || strings.TrimSpace(req.OwnerEffort) != probe.Effort {
@@ -284,12 +290,18 @@ func advanceOrcaIntentReceipt(ctx context.Context, stateRoot string, record Issu
 			current.Execution.Workspace = workspaceFromReceipt(updated.Prepared.Workspace, expected.StartedAt)
 		}
 		if expected.Stage == port.ExecutionOrcaIntentDispatch {
-			current.Execution.Lease = model.WriteLease{
-				Generation: expected.Generation, Status: model.LeaseStatusClaimable, ClaimTokenSHA256: expected.ClaimTokenSHA256,
+			if normalizedOrcaIntentPurpose(expected) == orcaIntentPurposeResume {
+				if expected.ResumeLease == nil || !reflect.DeepEqual(current.Execution.Lease, *expected.ResumeLease) {
+					return fmt.Errorf("resume lease changed before dispatch receipt CAS")
+				}
+			} else {
+				current.Execution.Lease = model.WriteLease{
+					Generation: expected.Generation, Status: model.LeaseStatusClaimable, ClaimTokenSHA256: expected.ClaimTokenSHA256,
+				}
 			}
 			current.Execution.Orca = &model.OrcaBinding{
 				RuntimeID: expected.Prepared.RuntimeID, RepoID: expected.Prepared.RepoID, WorktreeID: expected.Prepared.WorktreeID,
-				WorktreeInstanceID: expected.Prepared.WorktreeInstanceID, OwnerHost: expected.Probe.Host,
+				WorktreeInstanceID: expected.Prepared.WorktreeInstanceID, LeaseGeneration: expected.Generation, OwnerHost: expected.Probe.Host,
 				OwnerModel: expected.Probe.Model, OwnerEffort: expected.Probe.Effort, TaskID: expected.TaskID,
 				DispatchID: receipt.DispatchID, TerminalPTYID: expected.TerminalPTYID,
 			}
@@ -320,8 +332,22 @@ func readAndMatchOrcaIntent(stateRoot, id string, expected externalOrcaIntentPay
 	}
 	if record.Execution == nil || record.Execution.Pending == nil || record.Execution.Pending.OperationID != expected.OperationID ||
 		record.Execution.Pending.Marker != expected.Marker || record.Execution.Pending.Kind != pendingKindForOrcaStage(expected.Stage) ||
-		record.Execution.Lease.Generation != expected.Generation || record.Execution.Lease.Status != model.LeaseStatusReleased || record.Execution.Orca != nil {
+		record.Execution.Lease.Generation != expected.Generation {
 		return record, externalOrcaIntentPayload{}, fmt.Errorf("Orca intent authority changed before CAS")
+	}
+	switch normalizedOrcaIntentPurpose(expected) {
+	case orcaIntentPurposePrepare:
+		if record.Execution.Lease.Status != model.LeaseStatusReleased || record.Execution.Orca != nil {
+			return record, externalOrcaIntentPayload{}, fmt.Errorf("Orca prepare intent authority changed before CAS")
+		}
+	case orcaIntentPurposeResume:
+		if expected.ResumeLease == nil || expected.PriorBinding == nil ||
+			!reflect.DeepEqual(record.Execution.Lease, *expected.ResumeLease) ||
+			!reflect.DeepEqual(record.Execution.Orca, expected.PriorBinding) {
+			return record, externalOrcaIntentPayload{}, fmt.Errorf("Orca resume intent authority changed before CAS")
+		}
+	default:
+		return record, externalOrcaIntentPayload{}, fmt.Errorf("unsupported Orca intent purpose")
 	}
 	if err := validateOrcaIntentRecordIdentity(record, expected); err != nil {
 		return record, externalOrcaIntentPayload{}, err
@@ -353,13 +379,29 @@ func readExternalOrcaIntentPayload(stateRoot, operationID string) (externalOrcaI
 }
 
 func validateExternalOrcaIntentPayload(payload externalOrcaIntentPayload, operationID string) error {
-	if payload.SchemaVersion != model.IssueOpsSchemaVersion || payload.OperationID != operationID || payload.LifecycleID == "" || payload.Generation != 1 ||
+	purpose := normalizedOrcaIntentPurpose(payload)
+	if payload.SchemaVersion != model.IssueOpsSchemaVersion || payload.OperationID != operationID || payload.LifecycleID == "" || payload.Generation == 0 ||
 		payload.Marker == "" || payload.StartedAt == "" || payload.Workspace.LifecycleID != payload.LifecycleID || payload.Probe.Marker != payload.Marker ||
 		!samePath(payload.Probe.Repo, payload.Workspace.SourceRoot) || strings.TrimSpace(payload.Probe.Model) == "" ||
 		(payload.Probe.Host != "codex" && payload.Probe.Host != "claude") ||
 		(payload.InvocationState != orcaIntentNotInvoked && payload.InvocationState != orcaIntentUnknown) ||
 		payload.InvocationAttempts < 0 || payload.InvocationAttempts > maxOrcaIntentAttempts || !executionSHA256.MatchString(payload.IssueBodySHA256) {
 		return fmt.Errorf("Orca external intent payload is invalid")
+	}
+	switch purpose {
+	case orcaIntentPurposePrepare:
+		if payload.Generation != 1 || payload.PriorBinding != nil || payload.ResumeLease != nil {
+			return fmt.Errorf("Orca prepare intent payload is invalid")
+		}
+	case orcaIntentPurposeResume:
+		if payload.Stage == port.ExecutionOrcaIntentWorktree || payload.PriorBinding == nil || payload.ResumeLease == nil ||
+			payload.ResumeLease.Generation != payload.Generation || payload.ResumeLease.Status != model.LeaseStatusClaimable ||
+			payload.ResumeLease.Holder != nil || payload.ResumeLease.ClaimTokenSHA256 != payload.ClaimTokenSHA256 ||
+			!executionSHA256.MatchString(payload.ResumeLease.ClaimTokenSHA256) {
+			return fmt.Errorf("Orca resume intent payload is invalid")
+		}
+	default:
+		return fmt.Errorf("unsupported Orca external intent purpose %q", payload.Purpose)
 	}
 	switch payload.Stage {
 	case port.ExecutionOrcaIntentWorktree:
@@ -386,6 +428,13 @@ func validateExternalOrcaIntentPayload(payload externalOrcaIntentPayload, operat
 		return fmt.Errorf("unsupported Orca external intent stage %q", payload.Stage)
 	}
 	return nil
+}
+
+func normalizedOrcaIntentPurpose(payload externalOrcaIntentPayload) string {
+	if strings.TrimSpace(payload.Purpose) == "" {
+		return orcaIntentPurposePrepare
+	}
+	return strings.TrimSpace(payload.Purpose)
 }
 
 func executionOrcaIntentRequest(record IssueOpsRecord, payload externalOrcaIntentPayload) (port.ExecutionOrcaIntentRequest, error) {

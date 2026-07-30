@@ -9,19 +9,12 @@ import (
 	"agent-harness/internal/core/preflight"
 )
 
-// GitLab 사이클이 Orca를 쓸 수 없는 이유는 `gitlab_issue_metadata_unsupported`다.
-// #152가 `orca_branch_name_taken` 폴백을 더했지만 그것은 GitLab보다 아래에 있으므로
-// 도달하지 않아야 한다 — **어느 코드로 폴백하는지가 사용자가 할 일을 정한다.** 전자는
-// Orca가 GitLab 메타데이터를 봉인하지 못하는 것이고 후자는 브랜치 이름을 비우면 되는
-// 것이다.
-//
-// 기존 `TestExecutionGitLabOrcaCapabilityFailsBeforeProbeOrMutation`은 브랜치 이름이
-// 비어 있는 조합을 본다(`orcaPrepareRecord`가 원격 ref를 지운다). IssueOps 정식 순서를
-// 따른 GitLab 사이클 — 브랜치가 원격에 이미 있는 상태 — 는 미검증이었다(#164).
-func TestGitLabCapabilityOutranksBranchConflictRegardlessOfBranchState(t *testing.T) {
+// GitLab branch prepare가 만든 원격 브랜치가 봉인된 base SHA 그대로면 새 작업이
+// 없는 예약 브랜치다. Orca adapter가 생성 후 그 이름으로 정규화할 수 있으므로
+// auto와 명시적 Orca 모두 같은 모드를 선택해야 한다.
+func TestGitLabPreparedRemoteBranchAtSealedBaseUsesOrca(t *testing.T) {
 	for _, mode := range []string{ExecutionModeAuto, "orca"} {
 		t.Run(mode, func(t *testing.T) {
-			// 기본 픽스처는 원격 브랜치를 만들어 둔다 — 정식 순서의 상태다.
 			stateRoot, record := executionPrepareRecord(t)
 			record.BranchPrepare.Provider = "gitlab"
 			record.BranchPrepare.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/69"
@@ -31,27 +24,15 @@ func TestGitLabCapabilityOutranksBranchConflictRegardlessOfBranchState(t *testin
 			orca := readyOrcaFake()
 
 			got, err := PrepareExecution(context.Background(), stateRoot, ExecutionPrepareRequest{
-				ID: record.ID, Mode: mode, CWD: record.Repo, Confirm: true,
+				ID: record.ID, Mode: mode, CWD: record.Repo,
 				Actor: executionActor("codex", "matrix-session"), OwnerHost: "claude",
 			}, ExecutionPrepareDependencies{Orca: orca, Direct: gitworktree.New(), ReadIssue: executionIssueSnapshotReader})
 
-			if mode == ExecutionModeAuto {
-				if err != nil {
-					t.Fatalf("auto는 GitLab에서 direct로 폴백해야 한다: %v", err)
-				}
-				if got.FallbackCode != "gitlab_issue_metadata_unsupported" {
-					t.Fatalf("브랜치가 있어도 GitLab 사유가 먼저다. 브랜치 충돌 코드가 나오면 사용자가 엉뚱한 조치를 한다: %q", got.FallbackCode)
-				}
-				return
+			if err != nil || got.ResolvedMode != "orca" || got.FallbackCode != "" {
+				t.Fatalf("GitLab 예약 브랜치는 Orca로 준비 가능해야 한다: result=%+v err=%v", got, err)
 			}
-			if err == nil {
-				t.Fatal("명시적 Orca는 GitLab에서 실패해야 한다")
-			}
-			if !strings.Contains(err.Error(), "gitlab_issue_metadata_unsupported") {
-				t.Fatalf("오류 %q가 GitLab 사유를 지목해야 한다. 브랜치 충돌로 보고하면 원인이 뒤바뀐다", err)
-			}
-			if orca.probeCalls != 0 {
-				t.Fatalf("GitLab은 Orca probe 이전에 막혀야 한다: probeCalls=%d", orca.probeCalls)
+			if orca.probeCalls != 1 || orca.prepareCalls != 0 {
+				t.Fatalf("preview는 probe만 한 번 실행해야 한다: probe=%d prepare=%d", orca.probeCalls, orca.prepareCalls)
 			}
 		})
 	}
@@ -144,30 +125,32 @@ func TestRemoteBranchAncestryIsProviderNeutral(t *testing.T) {
 	}
 }
 
-// GitLab 원격 브랜치 이름 규칙도 같은 검사를 받는다. `ensureOrcaBranchIsFree`가
-// remote-tracking ref를 보는데 그 ref 형태는 provider와 무관하다.
-func TestOrcaBranchPrecheckSeesRemoteRefRegardlessOfProvider(t *testing.T) {
-	for _, provider := range []string{"github", "gitlab"} {
-		t.Run(provider, func(t *testing.T) {
-			stateRoot, record := orcaPrepareRecord(t)
-			mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
-				rec.BranchPrepare.Provider = provider
-			})
-			head := strings.TrimSpace(preflight.GitOut(record.Repo, "rev-parse", "HEAD"))
-			if code, _, stderr := preflight.GitCmd(record.Repo, "update-ref",
-				"refs/remotes/origin/"+record.Branch, head); code != 0 {
-				t.Fatalf("원격 ref 픽스처: %s", stderr)
-			}
+// GitLab 예외는 정확히 봉인된 base의 예약 브랜치에만 적용한다. 다른 SHA면 이미
+// 작업이 들어간 브랜치일 수 있으므로 provider와 무관하게 fail-closed다.
+func TestOrcaBranchPrecheckOnlyAllowsExactGitLabPreparedRemote(t *testing.T) {
+	stateRoot, record := executionPrepareRecord(t)
+	record.BranchPrepare.Provider = "gitlab"
+	if _, err := writeIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	current, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ensureOrcaBranchIsFree(current, current.Branch); err != nil {
+		t.Fatalf("봉인된 base와 같은 GitLab 예약 브랜치는 허용해야 한다: %v", err)
+	}
 
-			current, err := ReadIssueOps(stateRoot, record.ID)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := ensureOrcaBranchIsFree(current, current.Branch); err == nil {
-				t.Fatalf("%s: 원격 전용 브랜치도 이름 충돌이다", provider)
-			} else if !strings.Contains(err.Error(), "on origin") {
-				t.Fatalf("%s: 오류 %q가 원격을 지목해야 한다", provider, err)
-			}
-		})
+	if code, _, stderr := preflight.GitCmd(record.Repo, "commit", "--allow-empty", "-m", "diverged"); code != 0 {
+		t.Fatalf("분기 SHA 픽스처: %s", stderr)
+	}
+	diverged := strings.TrimSpace(preflight.GitOut(record.Repo, "rev-parse", "HEAD"))
+	if code, _, stderr := preflight.GitCmd(record.Repo, "update-ref", "refs/remotes/origin/"+record.Branch, diverged); code != 0 {
+		t.Fatalf("분기 원격 ref 픽스처: %s", stderr)
+	}
+	if err := ensureOrcaBranchIsFree(current, current.Branch); err == nil {
+		t.Fatal("봉인된 base와 다른 GitLab 원격 브랜치는 차단해야 한다")
+	} else if !strings.Contains(err.Error(), "on origin") {
+		t.Fatalf("오류 %q가 원격 충돌을 지목해야 한다", err)
 	}
 }

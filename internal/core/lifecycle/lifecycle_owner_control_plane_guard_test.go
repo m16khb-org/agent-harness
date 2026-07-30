@@ -7,60 +7,134 @@ import (
 	issueopsmodel "agent-harness/internal/core/issueops/model"
 )
 
-func claimableExecutionGuardFixture(t *testing.T) (IssueOpsRecord, string) {
-	t.Helper()
-	_, record, worker := executionActiveLifecycleRecord(t)
-	record.Execution.Lease = issueopsmodel.WriteLease{
-		Generation: 1, Status: issueopsmodel.LeaseStatusClaimable,
-		ClaimTokenSHA256: strings.Repeat("a", 64),
-	}
-	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
-		t.Fatal(err)
-	}
-	return record, worker
-}
-
-// The injected Orca contract requires these messages before and after the
-// write lease is claimed. They mutate the Orca coordination ledger, not the
-// sealed Git worktree, so a claimable lease must not make the contract
-// impossible to follow.
-func TestClaimableExecutionAdmitsExactOrcaOwnerControlPlaneCommands(t *testing.T) {
-	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	record, worker := claimableExecutionGuardFixture(t)
-
-	for name, command := range map[string]string{
-		"heartbeat":   "orca orchestration send --to term-coordinator --from term-worker --type heartbeat --subject alive --task-id task-1 --dispatch-id ctx-1 --phase investigating",
-		"worker done": "orca orchestration send --to term-coordinator --from term-worker --type worker_done --subject 'Blocked safely' --body 'No bytes changed; exact blocker recorded; owner stopped.' --task-id task-1 --dispatch-id ctx-1 --files-modified ''",
-		"escalation":  "orca orchestration send --to term-coordinator --from term-worker --type escalation --subject 'Blocked: hook' --body 'The exact read was denied.' --task-id task-1",
-		"ask":         "orca orchestration ask --to term-coordinator --from term-worker --question 'Continue after repair?' --options yes,no --timeout-ms 600000",
-		"check":       "orca orchestration check --terminal term-worker --wait --timeout-ms 600000",
+func TestExecutionAdmitsExactOrcaOwnerControlPlaneCommands(t *testing.T) {
+	for _, leaseStatus := range []issueopsmodel.LeaseStatus{
+		issueopsmodel.LeaseStatusClaimable,
+		issueopsmodel.LeaseStatusActive,
 	} {
-		t.Run(name, func(t *testing.T) {
-			req := executionRequest(record, worker, "claude", "owner-session", command)
-			req.AgentID = "owner-agent"
-			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
-				t.Fatalf("the injected owner contract must remain executable before claim: %+v", got)
+		t.Run(string(leaseStatus), func(t *testing.T) {
+			t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+			_, record, worker := executionActiveLifecycleRecord(t)
+			if leaseStatus == issueopsmodel.LeaseStatusClaimable {
+				record.Execution.Lease = issueopsmodel.WriteLease{
+					Generation:       3,
+					Status:           issueopsmodel.LeaseStatusClaimable,
+					ClaimTokenSHA256: strings.Repeat("a", 64),
+				}
+				if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			for name, command := range map[string]string{
+				"heartbeat":    `orca orchestration send --to term-coordinator --from term-worker --type heartbeat --subject "alive" --task-id task-1 --dispatch-id ctx-1 --phase "reviewing"`,
+				"worker done":  "orca orchestration send --to term-coordinator --from term-worker --type worker_done --subject paused --body safe-checkpoint --task-id task-1 --dispatch-id ctx-1 --files-modified '' --json",
+				"escalation":   `orca orchestration send --to term-coordinator --from term-worker --type escalation --subject "Blocked: hook" --body "The exact read was denied." --task-id task-1 --dispatch-id ctx-1`,
+				"ask":          `orca orchestration ask --to term-coordinator --from term-worker --question "Continue after repair?" --options yes,no --timeout-ms 600000`,
+				"check":        "orca orchestration check --terminal term-worker --wait --timeout-ms 600000 --json",
+				"check unread": "orca orchestration check --unread --inject --json",
+			} {
+				t.Run(name, func(t *testing.T) {
+					req := executionRequest(record, worker, "codex", "owner-session", command)
+					req.AgentID = "owner-agent"
+					if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+						t.Fatalf("Orca owner 제어면은 %s lease에서도 실행 가능해야 한다: %+v", leaseStatus, got)
+					}
+				})
 			}
 		})
 	}
 }
 
-func TestClaimableExecutionKeepsNearMissOrcaControlCommandsBlocked(t *testing.T) {
+func TestExecutionKeepsNearMissOrcaOwnerControlPlaneCommandsBlocked(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	record, worker := claimableExecutionGuardFixture(t)
+	_, record, worker := executionActiveLifecycleRecord(t)
 
 	for name, command := range map[string]string{
-		"unknown message type":   "orca orchestration send --to term-coordinator --from term-worker --type delete --subject no --body no",
-		"unknown flag":           "orca orchestration send --to term-coordinator --from term-worker --type heartbeat --subject alive --task-id task-1 --dispatch-id ctx-1 --phase investigating --force",
-		"missing worker summary": "orca orchestration send --to term-coordinator --from term-worker --type worker_done --subject done --task-id task-1 --dispatch-id ctx-1",
-		"shell substitution":     "orca orchestration send --to term-coordinator --from term-worker --type heartbeat --subject $(whoami) --task-id task-1 --dispatch-id ctx-1 --phase investigating",
-		"unrelated mutation":     "orca orchestration task-update --id task-1 --status completed --json",
+		"unknown message type":    "orca orchestration send --to term-coordinator --from term-worker --type delete --subject no --body no",
+		"unknown flag":            "orca orchestration send --to term-coordinator --from term-worker --type heartbeat --subject alive --task-id task-1 --dispatch-id ctx-1 --phase reviewing --force",
+		"missing heartbeat phase": "orca orchestration send --to term-coordinator --from term-worker --type heartbeat --subject alive --task-id task-1 --dispatch-id ctx-1",
+		"shell substitution":      "orca orchestration send --to term-coordinator --from term-worker --type heartbeat --subject $(whoami) --task-id task-1 --dispatch-id ctx-1 --phase reviewing",
+		"inject without unread":   "orca orchestration check --inject --json",
+		"unrelated mutation":      "orca orchestration task-update --id task-1 --status completed --json",
 	} {
 		t.Run(name, func(t *testing.T) {
-			req := executionRequest(record, worker, "claude", "owner-session", command)
+			req := executionRequest(record, worker, "codex", "owner-session", command)
 			req.AgentID = "owner-agent"
 			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
-				t.Fatalf("%s must not widen the Orca mutation surface: %+v", name, got)
+				t.Fatalf("%s 명령이 Orca mutation 표면을 넓히면 안 된다: %+v", name, got)
+			}
+		})
+	}
+}
+
+func TestExecutionAdmitsExactGenerationBoundResumeControlPlane(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	record.Execution.Mode = issueopsmodel.ExecutionModeOrca
+	record.Execution.Workspace.Driver = "orca"
+	record.Execution.Lease = issueopsmodel.WriteLease{
+		Generation: 3, Status: issueopsmodel.LeaseStatusClaimable,
+		ClaimTokenSHA256: strings.Repeat("a", 64),
+	}
+	record.Execution.Orca = &issueopsmodel.OrcaBinding{
+		RuntimeID: "runtime-1", RepoID: "repo-1", WorktreeID: "worktree-1",
+		LeaseGeneration: 2, OwnerHost: "codex", OwnerModel: "gpt-5.6-terra",
+		TaskID: "task-1", DispatchID: "dispatch-1", TerminalPTYID: "pty-1",
+	}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	command := "agent-harness issueops execution resume --id " + record.ID +
+		" --expected-generation 3 --host codex --session-id resume-session --session-pid 42" +
+		" --session-started-at 2026-07-30T00:00:00Z --session-executable /bin/codex" +
+		" --cwd " + worker + " --confirm --json"
+	req := executionRequest(record, worker, "codex", "resume-session", command)
+	if !executionTypedControlPlane(req) {
+		t.Fatal("exact resume did not reach the typed control plane")
+	}
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("exact resume was blocked by holderless authority: %+v", got)
+	}
+}
+
+func TestExecutionKeepsNearMissResumeControlPlaneCommandsBlocked(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	record.Execution.Mode = issueopsmodel.ExecutionModeOrca
+	record.Execution.Workspace.Driver = "orca"
+	record.Execution.Lease = issueopsmodel.WriteLease{
+		Generation: 3, Status: issueopsmodel.LeaseStatusClaimable,
+		ClaimTokenSHA256: strings.Repeat("a", 64),
+	}
+	record.Execution.Orca = &issueopsmodel.OrcaBinding{
+		RuntimeID: "runtime-1", RepoID: "repo-1", WorktreeID: "worktree-1",
+		LeaseGeneration: 2, OwnerHost: "codex", OwnerModel: "gpt-5.6-terra",
+		TaskID: "task-1", DispatchID: "dispatch-1", TerminalPTYID: "pty-1",
+	}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	base := "agent-harness issueops execution resume --id " + record.ID +
+		" --expected-generation 3 --host codex --session-id resume-session --session-pid 42" +
+		" --session-started-at 2026-07-30T00:00:00Z --session-executable /bin/codex" +
+		" --cwd " + worker
+	for name, command := range map[string]string{
+		"missing confirm":      base + " --json",
+		"missing generation":   strings.Replace(base, " --expected-generation 3", "", 1) + " --confirm --json",
+		"unknown snapshot":     base + " --issue-snapshot-file /tmp/issue.json --confirm --json",
+		"active substitution":  strings.Replace(base, "--expected-generation 3", "--expected-generation $(date +%s)", 1) + " --confirm --json",
+		"empty lifecycle id":   strings.Replace(base, "--id "+record.ID, "--id ''", 1) + " --confirm --json",
+		"duplicate generation": base + " --expected-generation 4 --confirm --json",
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := executionRequest(record, worker, "codex", "resume-session", command)
+			if executionTypedControlPlane(req) {
+				t.Fatalf("%s near miss reached the typed control plane", name)
+			}
+			got := BuildLifecyclePreToolUseDecision(req)
+			if got.Decision != "block" || got.Deny == nil || got.Deny.Code != "unsafe_mutation" {
+				t.Fatalf("%s near miss was not fail-closed: %+v", name, got)
 			}
 		})
 	}

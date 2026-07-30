@@ -1,6 +1,8 @@
 package commandparse
 
 import (
+	"net/url"
+	"path"
 	"strconv"
 	"strings"
 )
@@ -30,7 +32,8 @@ func ParseExactIssueOpsCommand(command string) (ExactIssueOpsCommand, bool) {
 	start := 3
 	if len(tokens) > 3 {
 		switch tokens[2] {
-		case "compatibility", "execution", "devils-advocate", "feedback", "remote", "cleanup", "ai-slop-clean", "artifact", "implementation-review", "branch", "decision":
+		case "compatibility", "execution", "devils-advocate", "feedback", "remote", "cleanup", "ai-slop-clean", "artifact", "implementation-review", "branch", "decision",
+			"intent", "domain-review":
 			if strings.HasPrefix(tokens[3], "--") {
 				return ExactIssueOpsCommand{}, false
 			}
@@ -104,19 +107,35 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 	case "execution status":
 		return v("--id"), b("--json"), r, true
 	case "execution prepare":
-		return v("--id", "--mode", "--owner-host", "--owner-model", "--owner-effort", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--confirm", "--json"), r, true
+		return v("--id", "--mode", "--owner-host", "--owner-model", "--owner-effort", "--issue-snapshot-file", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--confirm", "--json"), r, true
 	case "execution claim":
-		return v("--id", "--generation", "--claim-token-file", "--issue-body-sha256", "--context-packet-sha256", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--json"), r, true
+		return v("--id", "--generation", "--claim-token-file", "--issue-body-sha256", "--context-packet-sha256", "--issue-snapshot-file", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--json"), r, true
 	case "execution release":
 		return v("--id", "--generation", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--json"), r, true
 	case "execution replace":
-		return v("--id", "--expected-generation", "--inventory-fingerprint", "--quiescence-fingerprint", "--reason", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--preview", "--revoke", "--finalize-preview", "--finalize", "--reseed", "--confirm", "--json"), r, true
+		return v("--id", "--expected-generation", "--inventory-fingerprint", "--quiescence-fingerprint", "--reason", "--issue-snapshot-file", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--preview", "--revoke", "--finalize-preview", "--finalize", "--reseed", "--confirm", "--json"), r, true
+	case "execution resume":
+		return v("--id", "--expected-generation", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--confirm", "--json"), r, true
 	case "execution whoami":
 		return v(), b("--json"), r, true
 	case "branch prepare":
 		return v("--id", "--provider", "--issue-url", "--branch", "--base-branch", "--base-sha", "--parent-worktree", "--remote-branch-url", "--host", "--session-id", "--agent-id", "--cwd"), b("--link-verified", "--json"), r, true
+	case "intent record":
+		values := v("--id", "--raw-request", "--interpreted-intent", "--success-criteria", "--constraint", "--ambiguity", "--non-goal", "--intent-class", "--host", "--session-id", "--agent-id", "--cwd")
+		for _, name := range []string{"--success-criteria", "--constraint", "--ambiguity", "--non-goal"} {
+			r[name] = true
+		}
+		return values, b("--json"), r, true
+	case "domain-review record":
+		values := v("--id", "--model-fit", "--terminology", "--risk", "--uncertainty", "--host", "--session-id", "--agent-id", "--cwd")
+		for _, name := range []string{"--terminology", "--risk", "--uncertainty"} {
+			r[name] = true
+		}
+		return values, b("--json"), r, true
+	case "regress":
+		return v("--id", "--reason", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
 	case "execution reconcile":
-		return v("--id", "--operation-id", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--preview", "--confirm", "--json"), r, true
+		return v("--id", "--operation-id", "--issue-snapshot-file", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--preview", "--confirm", "--json"), r, true
 	case "execution complete":
 		return v("--id", "--generation", "--final-head", "--turing-report", "--remote-artifact-url", "--verification", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--confirm", "--json"), map[string]bool{"--verification": true}, true
 	case "execution sync-base":
@@ -125,6 +144,8 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v("--id", "--mode", "--fingerprint", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--apply", "--confirm", "--json"), r, true
 	case "link-plan":
 		return v("--id", "--plan-path", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
+	case "link-worktree":
+		return v("--id", "--worktree-path", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
 	case "compatibility review":
 		values := v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--backward-compatibility", "--side-effect", "--rollback-plan", "--verification", "--blocker")
 		for _, name := range []string{"--backward-compatibility", "--side-effect", "--verification", "--blocker"} {
@@ -192,6 +213,8 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v("--id", "--reason", "--fingerprint"), b("--preview", "--apply", "--confirm", "--json"), r, true
 	case "remote reflect-completion":
 		return v("--id", "--provider"), b("--confirm", "--json"), r, true
+	case "remote reflect-devils-advocate":
+		return v("--id", "--provider", "--host", "--session-id", "--agent-id", "--cwd"), b("--confirm", "--json"), r, true
 	case "remote close-issue":
 		return v("--id", "--provider"), b("--confirm", "--json"), r, true
 	default:
@@ -201,12 +224,20 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 
 // ExactReadOnlyShellCommand은 non-issueops shell 명령이 정확한 read-only
 // 관찰(pwd, safe rg, read-only git, read-only orca terminal/orchestration)인지
-// 보고한다. 활성 shell control/expansion을 담은 명령은 모두 거부한다. IssueOps의
-// read-only 권한은 record identity가 필요하므로 호출자가 처리한다.
+// 보고한다. exact read-only 조각과 고정 CodeGraph probe로만 구성된 제한된
+// 세미콜론·개행·&& 시퀀스 외의 활성 shell control/expansion은 거부한다.
+// IssueOps의 read-only 권한은 record identity가 필요하므로 호출자가 처리한다.
 func ExactReadOnlyShellCommand(command string) bool {
-	if HasUnquotedControlOperator(command) || HasActiveCommandSubstitution(command) || HasActiveInputRedirect(command) || HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) || HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) || HasActiveZshEqualsExpansion(command) {
+	if HasActiveCommandSubstitution(command) || HasActiveInputRedirect(command) || HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) || HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) || HasActiveShellComment(command) || HasActiveZshEqualsExpansion(command) {
 		return false
 	}
+	if HasUnquotedControlOperator(command) {
+		return exactReadOnlyShellSequence(command)
+	}
+	return exactReadOnlySimpleShellCommand(command)
+}
+
+func exactReadOnlySimpleShellCommand(command string) bool {
 	tokens := SplitCommandTokens(strings.TrimSpace(command))
 	if len(tokens) == 0 {
 		return false
@@ -229,13 +260,19 @@ func ExactReadOnlyShellCommand(command string) bool {
 	case "file":
 		return exactReadOnlyFile(tokens[1:])
 	case "shasum":
-		return exactReadOnlySHA256(tokens[1:], true)
+		return exactReadOnlyDigestCommand(tokens[1:], true)
 	case "sha256sum":
-		return exactReadOnlySHA256(tokens[1:], false)
+		return exactReadOnlyDigestCommand(tokens[1:], false)
 	case "wc":
 		return exactReadOnlyWCCommand(tokens[1:])
 	case "sed":
 		return exactReadOnlySedCommand(tokens[1:])
+	case "jq":
+		return exactReadOnlyJQCommand(tokens[1:])
+	case "gofmt":
+		return exactReadOnlyGofmtDiff(tokens[1:])
+	case "go":
+		return exactReadOnlyGoDoc(tokens[1:])
 	case "codegraph":
 		return len(tokens) == 3 && tokens[1] == "explore" && strings.TrimSpace(tokens[2]) != "" && !strings.HasPrefix(tokens[2], "-")
 	case "rg":
@@ -255,6 +292,12 @@ func ExactReadOnlyShellCommand(command string) bool {
 			return true
 		case "branch":
 			return len(tokens) == i+2 && tokens[i+1] == "--show-current"
+		case "ls-files":
+			// Shannon 측정이 Git이 추적하지 않는 파일 목록만 읽는 고정 형태다.
+			// 추가 exclude 파일이나 format 표면은 이 reader 계약에 열지 않는다.
+			return len(tokens) == i+3 &&
+				tokens[i+1] == "--others" &&
+				tokens[i+2] == "--exclude-standard"
 		case "ls-remote":
 			return exactReadOnlyGitLSRemote(tokens[i+1:])
 		case "merge-base":
@@ -269,13 +312,68 @@ func ExactReadOnlyShellCommand(command string) bool {
 	return false
 }
 
-// exactReadOnlySHA256은 봉인된 artifact를 검증하는 SHA-256 읽기만 인정한다.
-// shasum은 알고리즘을 256으로 명시해야 하고 sha256sum은 명령 자체가 알고리즘을
-// 고정한다. stdin과 option 형태는 다른 파일이나 동작을 간접 선택할 수 있으므로
-// literal operand만 허용한다.
-func exactReadOnlySHA256(tokens []string, requiresAlgorithm bool) bool {
-	if requiresAlgorithm {
-		if len(tokens) < 3 || tokens[0] != "-a" || tokens[1] != "256" {
+func exactReadOnlyGofmtDiff(tokens []string) bool {
+	// -d는 파일을 덮어쓰지 않고 stdout에 formatting diff만 출력한다.
+	// 쓰기·profile·rewrite 표면을 열지 않도록 명시적 .go 파일만 받는다.
+	if len(tokens) < 2 || tokens[0] != "-d" {
+		return false
+	}
+	for _, operand := range tokens[1:] {
+		if operand == "" || operand == "-" || strings.HasPrefix(operand, "-") || path.Ext(operand) != ".go" {
+			return false
+		}
+	}
+	return true
+}
+
+func exactReadOnlyGoDoc(tokens []string) bool {
+	if len(tokens) == 0 || tokens[0] != "doc" {
+		return false
+	}
+	operands := 0
+	for _, token := range tokens[1:] {
+		if strings.HasPrefix(token, "-") {
+			switch token {
+			case "-all", "-c", "-cmd", "-short", "-src", "-u":
+				if operands != 0 {
+					return false
+				}
+				continue
+			default:
+				// -http는 서버를 열고 -C는 관찰 범위를 바꾸므로 승인하지 않는다.
+				return false
+			}
+		}
+		operands++
+		if operands > 2 {
+			return false
+		}
+	}
+	return true
+}
+
+func exactReadOnlyJQCommand(tokens []string) bool {
+	// Turing 증거 JSON의 구문 검증과 전체 관찰에 필요한 고정 filter 및 .json
+	// 파일 하나만 허용한다. -e는 전체 문서가 truthy인지 exit status로 확인하는
+	// 실제 dogfood 경로다. 그 밖의 option/filter/stdin은 넓은 표면을 열지 않는다.
+	if len(tokens) == 3 && tokens[0] == "-e" && tokens[1] == "." {
+		tokens = tokens[1:]
+	}
+	return len(tokens) == 2 &&
+		(tokens[0] == "empty" || tokens[0] == ".") &&
+		exactReadOnlyJSONOperand(tokens[1])
+}
+
+func exactReadOnlyJSONOperand(token string) bool {
+	return token != "" &&
+		token != "-" &&
+		!strings.HasPrefix(token, "-") &&
+		strings.HasSuffix(token, ".json")
+}
+
+func exactReadOnlyDigestCommand(tokens []string, algorithmRequired bool) bool {
+	if algorithmRequired {
+		if len(tokens) < 3 || (tokens[0] != "-a" && tokens[0] != "--algorithm") || tokens[1] != "256" {
 			return false
 		}
 		tokens = tokens[2:]
@@ -283,8 +381,8 @@ func exactReadOnlySHA256(tokens []string, requiresAlgorithm bool) bool {
 	if len(tokens) == 0 {
 		return false
 	}
-	for _, token := range tokens {
-		if strings.TrimSpace(token) == "" || token == "-" || strings.HasPrefix(token, "-") {
+	for _, operand := range tokens {
+		if operand == "" || operand == "-" || strings.HasPrefix(operand, "-") {
 			return false
 		}
 	}
@@ -368,6 +466,15 @@ func exactReadOnlyHeadOrTail(tokens []string) bool {
 				limitSeen = true
 				continue
 			}
+			// head/tail이 지원하는 `-80` 숫자 축약형도 `-n 80`과 같은
+			// 상한으로 제한해 active IssueOps worktree의 안전한 판독을 허용한다.
+			if strings.HasPrefix(token, "-") && len(token) > 1 && boundedLineCount(strings.TrimPrefix(token, "-")) {
+				if limitSeen {
+					return false
+				}
+				limitSeen = true
+				continue
+			}
 			if strings.HasPrefix(token, "-") {
 				return false
 			}
@@ -381,6 +488,14 @@ func exactReadOnlyHeadOrTail(tokens []string) bool {
 }
 
 func boundedLineCount(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, digit := range value {
+		if digit < '0' || digit > '9' {
+			return false
+		}
+	}
 	count, err := strconv.ParseUint(value, 10, 14)
 	return err == nil && count <= 10_000
 }
@@ -587,19 +702,60 @@ func exactReadOnlyGitMergeBase(tokens []string) bool {
 }
 
 func exactReadOnlyGHCommand(tokens []string) bool {
-	if len(tokens) < 4 || tokens[0] != "gh" {
+	if len(tokens) < 3 || tokens[0] != "gh" {
 		return false
 	}
 	switch tokens[1] {
 	case "issue":
+		if len(tokens) < 4 {
+			return false
+		}
 		return exactReadOnlyGHIssueCommand(tokens)
 	case "pr":
+		if len(tokens) < 4 {
+			return false
+		}
 		return exactReadOnlyGHPRCommand(tokens)
 	case "run":
+		if len(tokens) < 4 {
+			return false
+		}
 		return exactReadOnlyGHRunCommand(tokens)
+	case "api":
+		return exactReadOnlyGHAPICommand(tokens)
 	default:
 		return false
 	}
+}
+
+func exactReadOnlyGHAPICommand(tokens []string) bool {
+	if len(tokens) == 3 {
+		// Governed PR 생성 뒤 canonical artifact 전체를 독립적으로 재검증하는 GET이다.
+		parts := strings.Split(tokens[2], "/")
+		if len(parts) != 5 || parts[0] != "repos" || parts[3] != "pulls" ||
+			!safeGHRepository(parts[1]+"/"+parts[2]) {
+			return false
+		}
+		number, err := strconv.Atoi(parts[4])
+		return err == nil && number > 0
+	}
+	return exactReadOnlyGHAPIIssueMetadataCommand(tokens)
+}
+
+func exactReadOnlyGHAPIIssueMetadataCommand(tokens []string) bool {
+	// PR 게시 시 원격 이슈의 label과 assignee를 그대로 이어받기 위한 두 projection만
+	// 허용한다. gh api의 다른 flag나 endpoint를 열지 않아 GET reader 경계를 유지한다.
+	if len(tokens) != 5 || tokens[3] != "--jq" ||
+		(tokens[4] != ".labels[].name" && tokens[4] != ".assignees[].login") {
+		return false
+	}
+	parts := strings.Split(tokens[2], "/")
+	if len(parts) != 5 || parts[0] != "repos" || parts[3] != "issues" ||
+		!safeGHRepository(parts[1]+"/"+parts[2]) {
+		return false
+	}
+	number, err := strconv.Atoi(parts[4])
+	return err == nil && number > 0
 }
 
 func exactReadOnlyGHIssueCommand(tokens []string) bool {
@@ -669,8 +825,7 @@ func exactReadOnlyGHIssueDevelopCommand(tokens []string) bool {
 }
 
 func exactReadOnlyGHPRCommand(tokens []string) bool {
-	number, err := strconv.Atoi(tokens[3])
-	if err != nil || number <= 0 {
+	if !safeGHPRSelector(tokens[3]) {
 		return false
 	}
 	values := map[string]bool{"--json": true, "--repo": true}
@@ -694,6 +849,24 @@ func exactReadOnlyGHPRCommand(tokens []string) bool {
 		return false
 	}
 	return true
+}
+
+func safeGHPRSelector(value string) bool {
+	if number, err := strconv.Atoi(value); err == nil {
+		return number > 0
+	}
+	parsed, err := url.ParseRequestURI(value)
+	if err != nil || parsed.Scheme != "https" || parsed.Hostname() == "" || parsed.User != nil ||
+		parsed.RawPath != "" || parsed.RawQuery != "" || parsed.ForceQuery || parsed.Fragment != "" {
+		return false
+	}
+	parts := strings.Split(strings.TrimPrefix(parsed.Path, "/"), "/")
+	if len(parts) != 4 || parts[2] != "pull" || parsed.Path != "/"+strings.Join(parts, "/") ||
+		!safeGHRepository(parts[0]+"/"+parts[1]) {
+		return false
+	}
+	number, err := strconv.Atoi(parts[3])
+	return err == nil && number > 0
 }
 
 func exactReadOnlyGHRunCommand(tokens []string) bool {
@@ -806,24 +979,44 @@ func exactReadOnlyWCCommand(tokens []string) bool {
 }
 
 func exactReadOnlySedCommand(tokens []string) bool {
-	if len(tokens) < 3 || tokens[0] != "-n" || !numericSedPrintRange(tokens[1]) {
+	if len(tokens) < 3 || tokens[0] != "-n" || !boundedSedPrintRange(tokens[1]) {
 		return false
 	}
 	for _, operand := range tokens[2:] {
-		if operand == "" || operand == "-" || strings.HasPrefix(operand, "-") {
+		if operand == "" || operand == "-" || strings.HasPrefix(operand, "-") || knownStdinAlias(operand) {
 			return false
 		}
 	}
 	return true
 }
 
-func numericSedPrintRange(script string) bool {
+func knownStdinAlias(operand string) bool {
+	clean := path.Clean(operand)
+	if strings.HasSuffix(clean, "/dev/stdin") {
+		return true
+	}
+	const marker = "/fd/"
+	index := strings.LastIndex(clean, marker)
+	if index < 0 {
+		return false
+	}
+	fd, err := strconv.Atoi(clean[index+len(marker):])
+	return err == nil && fd == 0
+}
+
+func boundedSedPrintRange(script string) bool {
 	if !strings.HasSuffix(script, "p") {
 		return false
 	}
 	parts := strings.Split(strings.TrimSuffix(script, "p"), ",")
 	if len(parts) < 1 || len(parts) > 2 {
 		return false
+	}
+	// 문서 끝까지 읽는 `<positive-line>,$p`만 마지막 줄 표식 범위로 인정한다.
+	// `$p` 단독이나 다른 sed 명령은 기존처럼 fail closed로 둔다.
+	if len(parts) == 2 && parts[1] == "$" {
+		start, err := strconv.Atoi(parts[0])
+		return err == nil && start > 0
 	}
 	lines := make([]int, len(parts))
 	for i, part := range parts {
@@ -912,6 +1105,9 @@ func SafeRipgrepArgs(tokens []string) bool {
 		if boolOptions[name] {
 			continue
 		}
+		if exactRipgrepCompactNumericOption(token) {
+			continue
+		}
 		if valueOptions[name] {
 			if i+1 >= len(tokens) || strings.HasPrefix(tokens[i+1], "-") {
 				return false
@@ -922,6 +1118,20 @@ func SafeRipgrepArgs(tokens []string) bool {
 		return false
 	}
 	return true
+}
+
+// exactRipgrepCompactNumericOption은 ripgrep가 허용하는 `-A5` 같은 결합형
+// 표기를 기존 숫자형 관찰 옵션과 제한된 값에만 허용한다.
+func exactRipgrepCompactNumericOption(token string) bool {
+	if len(token) < 3 {
+		return false
+	}
+	switch token[:2] {
+	case "-A", "-B", "-C", "-m":
+		return boundedLineCount(token[2:])
+	default:
+		return false
+	}
 }
 
 // CommandAfterDirectoryOption은 start부터 시작해 처음 나오는 non-`-C`(directory

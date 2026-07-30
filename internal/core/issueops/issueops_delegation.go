@@ -1,7 +1,9 @@
 package issueops
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"sort"
 	"strings"
 	"time"
@@ -189,12 +191,48 @@ func acceptIssueOpsChild(stateRoot, parentID, childID string, evidence []string,
 	}
 	child, err := readIssueOpsChildForValidation(stateRoot, parentID, childID)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return acceptArchivedIssueOpsChild(stateRoot, parentID, childID, evidence, actor)
+		}
 		return IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: strings.TrimSpace(childID)}, err
 	}
 	if child.Phase != IssueOpsPhaseDone {
 		return IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: child.ID}, fmt.Errorf("child_not_done: %s", child.ID)
 	}
 	return recordIssueOpsChildVerdict(stateRoot, parentID, child, "accepted", "", evidence, actor)
+}
+
+func acceptArchivedIssueOpsChild(stateRoot, parentID, childID string, evidence []string, actor *IssueOpsActor) (IssueOpsChildValidationResult, error) {
+	parentID = strings.TrimSpace(parentID)
+	childID = strings.TrimSpace(childID)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	var updated IssueOpsChildCycleRef
+	err := withIssueOpsLock(context.Background(), stateRoot, parentID, func(context.Context) error {
+		parent, readErr := ReadIssueOps(stateRoot, parentID)
+		if readErr != nil {
+			return readErr
+		}
+		if actorErr := validateWorkspacePreparationMutation(parent, actor); actorErr != nil {
+			return actorErr
+		}
+		for i := range parent.ChildCycles {
+			if parent.ChildCycles[i].CycleID != childID {
+				continue
+			}
+			parent.ChildCycles[i].ValidationVerdict = "accepted"
+			parent.ChildCycles[i].ValidationReason = ""
+			parent.ChildCycles[i].ValidationEvidence = evidence
+			parent.ChildCycles[i].ValidatedAt = now
+			updated = parent.ChildCycles[i]
+			_, writeErr := touchAndWriteIssueOps(stateRoot, parent)
+			return writeErr
+		}
+		return fmt.Errorf("child_not_indexed: %s", childID)
+	})
+	if err != nil {
+		return IssueOpsChildValidationResult{OK: false, ParentID: parentID, ChildID: childID}, err
+	}
+	return IssueOpsChildValidationResult{OK: true, ParentID: parentID, ChildID: childID, ParentRef: updated}, nil
 }
 
 func RejectIssueOpsChild(stateRoot, parentID, childID, reason string, evidence []string) (IssueOpsChildValidationResult, error) {

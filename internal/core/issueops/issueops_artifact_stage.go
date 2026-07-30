@@ -160,8 +160,8 @@ func readStagedArtifacts(stateRoot, id string) (map[string]string, error) {
 // IssueOpsArtifactDir로 0600 파일로 옮기고 name→sha256 manifest를 돌려준다.
 // writeExecutionOwnerArtifact의 immutable 계약을 재사용하므로 재실행은
 // 동일 내용일 때만 통과한다. 스테이징이 없으면 빈 manifest다(하위 호환).
-// `execution replace --reseed` 경로는 packet을 재구축하지 않으므로 여기로
-// 다시 들어오지 않는다 — 재-materialize 없음이 구조적으로 보장된다.
+// replacement 재봉인도 이 경로로 같은 내용을 검증해 manifest를 다시 만든다.
+// 기존 파일을 바꾸는 재-materialize는 immutable writer가 거부한다.
 func materializeStagedArtifacts(stateRoot string, record IssueOpsRecord) (map[string]string, error) {
 	if record.Execution == nil || strings.TrimSpace(record.Execution.Workspace.Root) == "" {
 		return nil, fmt.Errorf("cannot materialize artifacts without a canonical worktree")

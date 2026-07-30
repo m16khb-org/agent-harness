@@ -209,3 +209,13 @@ go build -o bin/agent-harness ./cmd/harness
 - 기본 검사는 git 변경분의 API candidate files로 제한하고, 기존 레거시 전체 Swagger 부채를 이번 변경의 실패 원인으로 삼지 않는다.
 
 - API 문서 검사는 decorator/comment 존재 여부만 보지 말고 변경 endpoint가 호출하는 business logic의 public error contract(404/403/409 등)도 OpenAPI 응답에 반영됐는지 확인한다.
+
+<!-- OPENWIKI:START -->
+
+## OpenWiki
+
+This repository uses OpenWiki for code documentation. Start with `openwiki/quickstart.md`, then follow its links to architecture, workflows, domain concepts, operations, integrations, testing guidance, and source maps.
+
+OpenWiki 갱신은 자동으로 실행하지 않는다. 필요할 때 사용자가 `openwiki code --update --print`를 수동으로 실행하고 변경 diff를 검토한다. 명시적 요청 없이 생성된 OpenWiki 페이지를 직접 수정하지 않는다.
+
+<!-- OPENWIKI:END -->

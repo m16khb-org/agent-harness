@@ -32,7 +32,11 @@ agent-harness project bootstrap --repo /path/to/repo --sync
 
 `agent-harness` remains the canonical command identity. `ah` is a command symlink, not a shell alias or wrapper. If `~/.local/bin/ah` is a regular file, directory, or points elsewhere, install/update refuses to overwrite it and requires manual resolution.
 
-`bootstrap` and `update` use the current `agent-harness` checkout. They build `bin/agent-harness`, refresh both command shims through the same installer path, run native host installation, refresh MCP registration, and restart the shared daemon when it is already running so the MCP backend uses the rebuilt binary. They do not run `git pull`. Executable symlinks are resolved back to the checkout, so `ah update` works outside the repository directory.
+`bootstrap` and `update` use the current `agent-harness` checkout. They build `bin/agent-harness`, refresh both command shims through the same installer path, run native host installation, refresh agent-harness MCP registration, and restart the shared daemon when it is already running so the MCP backend uses the rebuilt binary. They do not run `git pull`. Executable symlinks are resolved back to the checkout, so `ah update` works outside the repository directory.
+
+`ah update`는 host가 소유한 stdio MCP 프로세스를 열거하거나 종료하지 않는다. 살아 있는 agent-harness proxy는 daemon generation 교체를 감지해 동일한 protocol/capability 계약으로 다시 초기화한다. 교체 시점에 완료 여부를 확정할 수 없는 요청은 자동 재실행하지 않고 `daemon_generation_changed`, `outcome=unknown`, `reconcile_required=true` 오류로 끝낸다. 새 daemon의 handshake 계약이 달라지면 proxy를 종료해 host가 새 세션으로 다시 연결하게 한다.
+
+외부 GitLab MCP와 개인 wrapper 등록은 update에 포함되지 않는다. 필요할 때만 `scripts/sync-glab-mcp.sh --dry-run`으로 확인한 뒤 `scripts/sync-glab-mcp.sh`를 명시적으로 실행한다.
 
 Default user-level install updates:
 

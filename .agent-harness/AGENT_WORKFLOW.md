@@ -19,6 +19,7 @@ description: Agent start, execution, verification, and completion flow.
 - 기존 사용자 변경을 덮어쓰지 않는다.
 - 새 dependency, 배포, destructive action은 명시 지시나 강한 근거가 있을 때만 진행한다.
 - 문서가 현재 코드/사용자 컨센서스와 어긋나면 MCP `project_docs_read`로 현재 SHA를 확인하고 `project_docs_update`로 한 문서씩 갱신한다.
+- remote VCS 작업은 canonical worktree의 선택 문서 `.agent-harness/VCS.md`를 먼저 읽는다. 문서에 없는 provider recipe를 실제로 성공시켰다면 같은 worktree에서 `project_docs_read` 후 `project_docs_update` SHA-CAS로 갱신한다. GitLab/GitHub 모두 기록할 수 있지만 secret, 개인 tool 경로, server namespace, 추측한 MCP 이름은 남기지 않으며 OpenWiki 자동 update를 실행하지 않는다.
 - 구조 선택이나 대안 기각 사유가 생기면 MCP `project_docs_record(kind=adr)`로 `.agent-harness/ADR.md`에 남긴다.
 - 반복 실패, false case, 위험한 운영 주의는 MCP `project_docs_record(kind=caution)`으로 `.agent-harness/CAUTIONS.md`에 남긴다.
 
@@ -106,6 +107,16 @@ The active holder performs planning, implementation, publication, and
 completion from the canonical worktree. The source main worktree remains
 available before, during, and after execution for unrelated work.
 
+GitLab-linked execution은 특정 MCP server 이름이 아니라 semantic leaf
+`glab_api`와 실제 schema로 snapshot capability를 찾는다. 개인 wrapper도 같은
+leaf와 compatible schema를 노출하면 후보가 된다. `web_url`, `description`,
+`state`를 linked authority/project/IID와 대조한 뒤 MCP에는 host-neutral
+`issue_snapshot`을, CLI에는 exact mode `0600` file과
+`--issue-snapshot-file`을 넘긴다. 후보 부재나 호출 실패 뒤 successful
+exact-identity MCP evidence가 없을 때만 인자를 생략해 generic `glab api`
+fallback을 사용한다. 이미 공급한 invalid evidence는 fallback하지 않는다. 성공 결과의
+`issue_snapshot_source`가 `glab_mcp` 또는 `glab_cli`인지 확인한다.
+
 Do not use source CWD or a generic session binding as a fence. Select the exact
 lifecycle ID, generation, native process receipt, canonical worktree, and
 persisted Orca resource. One active execution exists per record, so unrelated
@@ -114,4 +125,4 @@ merge and destructive cleanup require separate authority.
 
 ## 이원 구조 흐름 요약
 
-메인 세션(planner)은 조사→이슈→설계→artifact stage→execution prepare(orca)까지 수행하고 핸드오프하면 그 사이클에 대한 임무가 끝난다 — lease를 보유하지 않으므로 즉시 다른 사이클을 계획할 수 있다. 하위 세션(implementer)은 claim→artifact 기반 TDD→planner급 brooks 리뷰(implementation-review pass)→atomic-commit-push→governed create-pr→execution complete로 종료한다. 휴먼 머지 후 정리는 reflect-completion→close-issue→cleanup finish 순서를 지킨다(OPERATIONS.md 참조).
+메인 세션(planner)은 조사→이슈→설계→artifact stage→execution prepare(orca)까지 수행하고 핸드오프하면 그 사이클에 대한 임무가 끝난다 — lease를 보유하지 않으므로 즉시 다른 사이클을 계획할 수 있다. 하위 세션(implementer)은 claim→staged plan link→`phase=implement`→artifact 기반 TDD→AI-slop evidence→`phase=ai-slop-clean`→planner급 brooks 리뷰(implementation-review pass)→atomic-commit-push→`phase=pr`→governed create-pr→execution complete로 종료한다. 이 exact 명령은 sealed owner packet이 제공하며 owner가 추론해서 보충하지 않는다. 휴먼 머지 후 정리는 reflect-completion→close-issue→cleanup finish 순서를 지킨다(OPERATIONS.md 참조).

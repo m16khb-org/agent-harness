@@ -82,6 +82,7 @@ type OrcaBinding struct {
 	RepoID             string `json:"repo_id"`
 	WorktreeID         string `json:"worktree_id"`
 	WorktreeInstanceID string `json:"worktree_instance_id,omitempty"`
+	LeaseGeneration    uint64 `json:"lease_generation,omitempty"`
 	OwnerHost          string `json:"owner_host"`
 	OwnerModel         string `json:"owner_model"`
 	OwnerEffort        string `json:"owner_effort,omitempty"`
@@ -145,6 +146,9 @@ func ValidateExecution(execution Execution) error {
 	if execution.Orca != nil {
 		if err := validateOrcaBinding(*execution.Orca); err != nil {
 			return err
+		}
+		if execution.Orca.LeaseGeneration > execution.Lease.Generation {
+			return fmt.Errorf("Orca binding lease_generation exceeds the lease generation")
 		}
 	}
 	if execution.Pending != nil {

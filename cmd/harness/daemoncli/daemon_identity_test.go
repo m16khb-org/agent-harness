@@ -392,7 +392,36 @@ func TestStopDaemonRechecksOSIdentityBeforeAnySignal(t *testing.T) {
 	}
 }
 
-func TestStopDaemonRejectsLivePIDWithoutSocketWithoutSignal(t *testing.T) {
+func TestStopDaemonSignalsVerifiedPIDWithoutSocket(t *testing.T) {
+	instance := daemonInstance{PID: 4242, ProcessStartTime: "start-a", Executable: "/tmp/agent-harness"}
+	proc := &fakeDaemonProcess{}
+	status, err := stopDaemonWithDeps(daemonStopDeps{
+		checkStatus: func() daemonStatus {
+			return daemonStatus{
+				OK: false, Running: true, Reachable: false, PID: instance.PID,
+				Code: daemonStatusSocketUnreachable, Instance: &instance,
+				Paths: daemonPaths{Socket: "daemon.sock", PID: "daemon.pid"},
+			}
+		},
+		findProcess: func(int) (daemonProcess, error) { return proc, nil },
+		inspectProcess: func(int) (daemonProcessIdentity, error) {
+			return daemonProcessIdentity{StartTime: instance.ProcessStartTime, Executable: instance.Executable}, nil
+		},
+		processAlive: func(int) bool { return false },
+		remove:       func(string) error { return nil },
+		now:          func() time.Time { return time.Unix(100, 0) },
+		sleep:        func(time.Duration) {},
+	})
+
+	if err != nil || status.Running || status.Code != daemonStatusStopped {
+		t.Fatalf("verified unreachable stop failed: status=%#v err=%v", status, err)
+	}
+	if !reflect.DeepEqual(proc.signals, []os.Signal{syscall.SIGTERM}) || proc.kills != 0 {
+		t.Fatalf("expected one TERM and no kill: signals=%v kills=%d", proc.signals, proc.kills)
+	}
+}
+
+func TestStopDaemonRejectsLivePIDWithoutSocketAndInstance(t *testing.T) {
 	mutated := false
 	status, err := stopDaemonWithDeps(daemonStopDeps{
 		checkStatus: func() daemonStatus {
@@ -404,11 +433,44 @@ func TestStopDaemonRejectsLivePIDWithoutSocketWithoutSignal(t *testing.T) {
 		},
 	})
 
-	if err == nil || status.Code != daemonStatusSocketUnreachable {
-		t.Fatalf("missing socket stop must fail closed: status=%#v err=%v", status, err)
+	if err == nil || status.Code != daemonStatusSocketUnreachable || mutated {
+		t.Fatalf("unverified unreachable stop = status %#v err %v mutated %v", status, err, mutated)
 	}
-	if mutated {
-		t.Fatal("missing socket stop must not signal a process")
+}
+
+func TestStopDaemonHoldsLauncherLockThroughCleanup(t *testing.T) {
+	paths := daemonPaths{Dir: t.TempDir(), Lock: "daemon.lock"}
+	lock := &daemonStartFakeLock{}
+	removedLock := false
+	status, err := stopDaemonCoordinatedWithDeps(daemonStopCoordinatorDeps{
+		paths: func() (daemonPaths, error) {
+			return paths, nil
+		},
+		mkdirAll: func(string, os.FileMode) error {
+			return nil
+		},
+		acquireLock: func(got daemonPaths) (daemonStartLock, error) {
+			if got != paths {
+				t.Fatalf("lock paths = %#v", got)
+			}
+			return lock, nil
+		},
+		remove: func(path string) error {
+			if path == paths.Lock {
+				removedLock = true
+			}
+			return nil
+		},
+		stop: func() (daemonStatus, error) {
+			if lock.closed || removedLock {
+				t.Fatal("launcher lock was released before daemon cleanup")
+			}
+			return daemonStatus{OK: true, Code: daemonStatusStopped}, nil
+		},
+	})
+
+	if err != nil || !status.OK || !lock.closed || !removedLock {
+		t.Fatalf("coordinated stop = status %#v err %v lockClosed %v removedLock %v", status, err, lock.closed, removedLock)
 	}
 }
 
@@ -464,6 +526,58 @@ func TestStopDaemonRejectsLegacyPIDWithoutMutation(t *testing.T) {
 	}
 	if mutated {
 		t.Fatal("legacy stop must not signal processes or remove state")
+	}
+}
+
+func TestStopDaemonTreatsExitDuringForcedIdentityCheckAsStopped(t *testing.T) {
+	instance := daemonInstance{PID: 4242, ProcessStartTime: "start-a", Executable: "/tmp/agent-harness"}
+	proc := &fakeDaemonProcess{}
+	inspectCalls := 0
+	aliveChecks := 0
+	nowCalls := 0
+	removed := map[string]bool{}
+	status, err := stopDaemonWithDeps(daemonStopDeps{
+		checkStatus: func() daemonStatus {
+			return daemonStatus{
+				OK: true, Running: true, Reachable: true, IdentityVerified: true,
+				PID: instance.PID, Code: daemonStatusReady, Instance: &instance,
+				Paths: daemonPaths{Socket: "daemon.sock", PID: "daemon.pid"},
+			}
+		},
+		findProcess: func(int) (daemonProcess, error) { return proc, nil },
+		inspectProcess: func(int) (daemonProcessIdentity, error) {
+			inspectCalls++
+			if inspectCalls == 1 {
+				return daemonProcessIdentity{StartTime: instance.ProcessStartTime, Executable: instance.Executable}, nil
+			}
+			return daemonProcessIdentity{}, os.ErrNotExist
+		},
+		processAlive: func(int) bool {
+			aliveChecks++
+			return aliveChecks == 1
+		},
+		remove: func(path string) error {
+			removed[path] = true
+			return nil
+		},
+		now: func() time.Time {
+			nowCalls++
+			if nowCalls == 1 {
+				return time.Unix(100, 0)
+			}
+			return time.Unix(104, 0)
+		},
+		sleep: func(time.Duration) {},
+	})
+
+	if err != nil || status.Running || status.Code != daemonStatusStopped {
+		t.Fatalf("exit during forced identity check failed: status=%#v err=%v", status, err)
+	}
+	if !reflect.DeepEqual(proc.signals, []os.Signal{syscall.SIGTERM}) || proc.kills != 0 {
+		t.Fatalf("expected one TERM and no kill: signals=%v kills=%d", proc.signals, proc.kills)
+	}
+	if !removed["daemon.sock"] || !removed["daemon.pid"] {
+		t.Fatalf("stale daemon files were not removed: %#v", removed)
 	}
 }
 

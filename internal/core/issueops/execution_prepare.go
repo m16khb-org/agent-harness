@@ -52,6 +52,7 @@ type ExecutionPrepareResult struct {
 	ContextPacketSHA256 string           `json:"context_packet_sha256,omitempty"`
 	OwnerPromptPath     string           `json:"owner_prompt_path,omitempty"`
 	OwnerPromptSHA256   string           `json:"owner_prompt_sha256,omitempty"`
+	IssueSnapshotSource string           `json:"issue_snapshot_source,omitempty"`
 	NextCommand         string           `json:"next_command,omitempty"`
 }
 
@@ -232,13 +233,6 @@ func prepareOrcaExecution(ctx context.Context, stateRoot string, record IssueOps
 	if deps.Orca == nil {
 		return ExecutionPrepareResult{OK: false, ID: record.ID}, fmt.Errorf("Orca provisioner is unavailable")
 	}
-	if !samePath(req.CWD, record.Repo) && !samePath(req.CWD, workspaceReq.Root) {
-		return ExecutionPrepareResult{OK: false, ID: record.ID}, fmt.Errorf("Orca prepare cwd must be source_root or the canonical worktree")
-	}
-	snapshot, err := readExecutionOwnerSnapshot(ctx, record, deps.ReadIssue)
-	if err != nil {
-		return ExecutionPrepareResult{OK: false, ID: record.ID}, err
-	}
 	if !req.Confirm {
 		return result, nil
 	}
@@ -247,6 +241,16 @@ func prepareOrcaExecution(ctx context.Context, stateRoot string, record IssueOps
 		return ExecutionPrepareResult{OK: false, ID: record.ID}, err
 	}
 	req.Actor = actor
+	// 위임된 child는 coordinator가 봉인된 부모 worktree에서 준비한다. 레코드에서
+	// 계산된 정확한 부모 경로만 추가로 허용하고, 빈 경로와 임의의 제3 경로는 막는다.
+	fromParentWorktree := strings.TrimSpace(workspaceReq.ParentWorktree) != "" && samePath(req.CWD, workspaceReq.ParentWorktree)
+	if !samePath(req.CWD, record.Repo) && !samePath(req.CWD, workspaceReq.Root) && !fromParentWorktree {
+		return ExecutionPrepareResult{OK: false, ID: record.ID}, fmt.Errorf("Orca prepare cwd must be source_root, the canonical worktree, or the sealed parent worktree")
+	}
+	snapshot, err := readExecutionOwnerSnapshot(ctx, record, deps.ReadIssue)
+	if err != nil {
+		return ExecutionPrepareResult{OK: false, ID: record.ID}, err
+	}
 	pending, payload, err := beginOrcaExecutionIntent(stateRoot, record, workspaceReq, probe, req, snapshot, deps.Now)
 	if err != nil {
 		return ExecutionPrepareResult{OK: false, ID: record.ID}, err
@@ -305,7 +309,14 @@ func ensureOrcaBranchIsFree(record IssueOpsRecord, branch string) error {
 		{ref: "refs/remotes/origin/" + branch, where: "on origin",
 			remedy: "delete the remote branch if it holds no work, or run `git fetch --prune` if it is already gone"},
 	} {
-		if code, _, _ := preflight.GitCmd(record.Repo, "rev-parse", "--verify", "--quiet", scope.ref); code != 0 {
+		code, output, _ := preflight.GitCmd(record.Repo, "rev-parse", "--verify", "--quiet", scope.ref)
+		if code != 0 {
+			continue
+		}
+		// GitLab branch prepare가 봉인된 base에 빈 원격 브랜치를 먼저 만드는
+		// 순서를 보존한다. 로컬 브랜치나 다른 SHA의 원격 브랜치는 기존처럼
+		// 차단하고, 이 정확한 원격 ref만 adapter의 안전한 정규화에 맡긴다.
+		if scope.where == "on origin" && exactGitLabPreparedRemote(record, branch, output) {
 			continue
 		}
 		return fmt.Errorf(
@@ -314,6 +325,16 @@ func ensureOrcaBranchIsFree(record IssueOpsRecord, branch string) error {
 			branch, scope.where, scope.remedy)
 	}
 	return nil
+}
+
+func exactGitLabPreparedRemote(record IssueOpsRecord, branch, observedOID string) bool {
+	prepared := record.BranchPrepare
+	return prepared != nil &&
+		strings.EqualFold(strings.TrimSpace(prepared.Provider), "gitlab") &&
+		prepared.LinkVerified &&
+		strings.TrimSpace(prepared.Branch) == strings.TrimSpace(branch) &&
+		strings.TrimSpace(prepared.BaseSHA) != "" &&
+		strings.EqualFold(strings.TrimSpace(observedOID), strings.TrimSpace(prepared.BaseSHA))
 }
 
 func validateExecutionOrcaReceipt(workspace port.ExecutionWorkspaceRequest, receipt port.ExecutionOrcaReceipt) error {
@@ -346,7 +367,6 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 	probeReq := port.ExecutionOrcaProbeRequest{
 		Repo: record.Repo, Host: strings.ToLower(strings.TrimSpace(req.OwnerHost)),
 		Model: strings.TrimSpace(req.OwnerModel), Effort: strings.TrimSpace(req.OwnerEffort),
-		Marker: "agent-harness issueops-v1 lifecycle=" + record.ID,
 	}
 	if record.BranchPrepare != nil {
 		probeReq.Provider = strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider))
@@ -354,15 +374,12 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 			probeReq.Issue, _ = strconv.Atoi(value)
 		}
 	}
+	probeReq.Marker = executionOrcaMarker(record.ID, "", probeReq.Provider, probeReq.Issue)
 	if requested == string(model.ExecutionModeDirect) {
 		return requested, "", probeReq, nil
 	}
-	if probeReq.Provider == "gitlab" {
-		const code = "gitlab_issue_metadata_unsupported"
-		if requested == ExecutionModeAuto {
-			return string(model.ExecutionModeDirect), code, probeReq, nil
-		}
-		return "", "", probeReq, fmt.Errorf("%s: installed Orca cannot seal GitLab issue metadata before handoff", code)
+	if probeReq.Provider == "gitlab" && probeReq.Issue <= 0 {
+		return "", "", probeReq, fmt.Errorf("Orca GitLab prepare requires a positive issue IID")
 	}
 	if probeReq.Host != "codex" && probeReq.Host != "claude" {
 		return "", "", probeReq, fmt.Errorf("Orca owner_host must be codex or claude")
@@ -408,6 +425,17 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 	return string(model.ExecutionModeOrca), "", probeReq, nil
 }
 
+func executionOrcaMarker(lifecycleID, operationID, provider string, issue int) string {
+	marker := "agent-harness issueops-v1 lifecycle=" + strings.TrimSpace(lifecycleID)
+	if operationID = strings.TrimSpace(operationID); operationID != "" {
+		marker += " operation=" + operationID
+	}
+	if strings.EqualFold(strings.TrimSpace(provider), "gitlab") && issue > 0 {
+		marker += " provider=gitlab issue=" + strconv.Itoa(issue)
+	}
+	return marker
+}
+
 // executionWriterAbsentNextCommand는 준비된 실행에 lease writer가 없을 때 그
 // 사실과 해소 명령을 돌려준다. writer가 있으면 nil이다.
 //
@@ -423,6 +451,13 @@ func executionWriterAbsentNextCommand(record IssueOpsRecord, confirm bool) (stri
 	generation := lease.Generation
 	switch lease.Status {
 	case model.LeaseStatusClaimable:
+		if record.Execution.Mode == model.ExecutionModeOrca &&
+			(record.Execution.Orca == nil || record.Execution.Orca.LeaseGeneration != generation) {
+			next := executionResumeCommand(record.ID, generation)
+			return next, fmt.Errorf(
+				"IssueOps execution is prepared but Orca generation %d has no current owner; run %s",
+				generation, next)
+		}
 		next := fmt.Sprintf(
 			"agent-harness issueops execution claim --id %s --generation %d --claim-token-file <token>",
 			record.ID, generation)

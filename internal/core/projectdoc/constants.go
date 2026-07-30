@@ -2,7 +2,7 @@ package projectdoc
 
 const ProjectDocsDir = ".agent-harness"
 
-var projectDocNames = []string{
+var requiredProjectDocNames = []string{
 	"ARCHITECTURE.md",
 	"CAUTIONS.md",
 	"COMMIT_POLICY.md",
@@ -15,6 +15,8 @@ var projectDocNames = []string{
 	"OPERATIONS.md",
 	"AGENT_WORKFLOW.md",
 }
+
+var optionalProjectDocNames = []string{"VCS.md"}
 
 const AgentsStartMarker = "<!-- AGENT_HARNESS:START -->"
 
@@ -113,6 +115,14 @@ Apply SOLID, YAGNI, and KISS together. SOLID does not mean adding interfaces and
 `
 
 func ProjectDocNames() []string {
-	out := append([]string(nil), projectDocNames...)
-	return out
+	return append([]string(nil), requiredProjectDocNames...)
+}
+
+func OptionalProjectDocNames() []string {
+	return append([]string(nil), optionalProjectDocNames...)
+}
+
+func AllowedProjectDocNames() []string {
+	out := ProjectDocNames()
+	return append(out, optionalProjectDocNames...)
 }

@@ -48,7 +48,7 @@ func TestExecutionOwnerInventoryDoesNotDeriveLivenessFromDispatchStatus(t *testi
 func TestExecutionOwnerInventoryKeepsVerifiedLivenessSignals(t *testing.T) {
 	t.Run("live terminal blocks even when task and dispatch are terminal", func(t *testing.T) {
 		client := &executionFake{
-			terminals: []port.OrcaTerminal{{RuntimeID: "runtime-69", PTYID: "pty-69", WorktreeID: "wt-69", Connected: true, Writable: true}},
+			terminals: []port.OrcaTerminal{{RuntimeID: "runtime-69", Handle: "term-69", PTYID: "pty-69", WorktreeID: "wt-69", Connected: true, Writable: true}},
 			tasks:     []port.OrcaTask{{RuntimeID: "runtime-69", ID: "task-69", Status: "completed"}},
 			dispatch:  port.OrcaDispatch{RuntimeID: "runtime-69", ID: "dispatch-69", TaskID: "task-69", Status: "completed"},
 		}

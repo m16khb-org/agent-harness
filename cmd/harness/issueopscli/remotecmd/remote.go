@@ -36,6 +36,7 @@ func Run(args []string, deps Deps) error {
 		fmt.Println("  agent-harness issueops remote create-child --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote create-pr --id ID --expected-generation N --title TEXT --head BRANCH --base BRANCH [--body TEXT] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... --host codex|claude --session-id SESSION [--agent-id ID] --session-pid PID --session-started-at RFC3339 --session-executable PATH --cwd WORKER_PATH [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote sync-graph --id ID [--confirm] [--json]")
+		fmt.Println("  agent-harness issueops remote reflect-devils-advocate --id ID [--provider github|gitlab] --host codex|claude --session-id SESSION [--agent-id ID] --cwd WORKER_PATH [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote reflect-completion --id ID [--provider github|gitlab] [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote close-issue --id ID [--provider github|gitlab] [--confirm] [--json]")
 		return nil
@@ -178,6 +179,10 @@ func runRemoteReflectDevilsAdvocate(args []string, deps Deps) error {
 	fs := flag.NewFlagSet("issueops remote reflect-devils-advocate", flag.ContinueOnError)
 	id := fs.String("id", "", "IssueOps id")
 	providerOverride := fs.String("provider", "", "remote provider override: github or gitlab")
+	host := fs.String("host", "", "native holder host")
+	sessionID := fs.String("session-id", "", "native holder session id")
+	agentID := fs.String("agent-id", "", "optional native holder agent id")
+	cwd := fs.String("cwd", "", "canonical holder worktree cwd")
 	confirm := fs.Bool("confirm", false, "write to the remote issue; without this, dry-run preview only")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := parseFlags(fs, args); help || err != nil {
@@ -196,7 +201,13 @@ func runRemoteReflectDevilsAdvocate(args []string, deps Deps) error {
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	_, result, err := core.ReflectIssueOpsDevilsAdvocateFindings(core.IssueOpsStateRoot(), *id, *confirm, prov)
+	ancestry, err := deps.observeNativeProcessAncestry()
+	if err != nil {
+		return deps.printErrorResult(*jsonOut, err)
+	}
+	_, result, err := core.ReflectIssueOpsDevilsAdvocateFindingsWithActor(core.IssueOpsStateRoot(), *id, *confirm, prov, core.IssueOpsActor{
+		Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd, NativeProcessAncestry: ancestry,
+	})
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}

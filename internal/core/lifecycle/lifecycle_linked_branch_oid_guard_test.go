@@ -32,6 +32,26 @@ func TestLinkedBranchOIDPathIsAdmitted(t *testing.T) {
 	}
 }
 
+func TestGitHubIssuePublicationMetadataReadsAreAdmitted(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+
+	for name, command := range map[string]string{
+		"label":         "gh api repos/acme/repo/issues/176 --jq '.labels[].name'",
+		"assignee":      "gh api repos/acme/repo/issues/176 --jq '.assignees[].login'",
+		"PR API":        "gh api repos/acme/repo/pulls/203",
+		"canonical URL": "gh pr view https://github.com/acme/repo/pull/203 --json url,baseRefName,headRefName,isDraft,body,labels,assignees",
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := executionRequest(record, worker, "claude", "owner-session", command)
+			req.AgentID = "owner-agent"
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+				t.Fatalf("PR 게시에 필요한 이슈 메타데이터 조회가 막히면 publication 계약을 완료할 수 없다: %+v", got)
+			}
+		})
+	}
+}
+
 // 임의 GraphQL과 임의 gh api는 계속 막힌다. createLinkedBranch 하나를 열면서
 // API 표면 전체가 열려서는 안 된다.
 func TestOtherGHAPICallsStayBlocked(t *testing.T) {
@@ -39,11 +59,13 @@ func TestOtherGHAPICallsStayBlocked(t *testing.T) {
 	_, record, worker := executionActiveLifecycleRecord(t)
 
 	for name, command := range map[string]string{
-		"arbitrary graphql":  "gh api graphql -f query=mutation{deleteIssue(input:{issueId:x}){clientMutationId}} -F a=1 -F b=2 -F c=3",
-		"repo delete":        "gh api -X DELETE repos/acme/repo",
-		"ref delete":         "gh api -X DELETE repos/acme/repo/git/refs/heads/176-demo",
-		"issue field read":   "gh api repos/acme/repo/issues/176 --jq .author",
-		"node id wrong path": "gh api repos/acme/repo/pulls/176 --jq .node_id",
+		"arbitrary graphql":     "gh api graphql -f query=mutation{deleteIssue(input:{issueId:x}){clientMutationId}} -F a=1 -F b=2 -F c=3",
+		"repo delete":           "gh api -X DELETE repos/acme/repo",
+		"ref delete":            "gh api -X DELETE repos/acme/repo/git/refs/heads/176-demo",
+		"issue field read":      "gh api repos/acme/repo/issues/176 --jq .author",
+		"issue body wrong path": "gh api repos/acme/repo/pulls/176 --jq .body",
+		"issue body extra flag": "gh api repos/acme/repo/issues/176 --jq .body --paginate",
+		"node id wrong path":    "gh api repos/acme/repo/pulls/176 --jq .node_id",
 		"mutation extra flag": "gh api graphql -f " + linkedBranchMutation +
 			" -F issueId=I_kwDOabc -F oid=2a56f2cc -F name=176-demo -F extra=1",
 	} {

@@ -49,6 +49,12 @@ func executionObservation(req HookToolUseLifecycleRequest) bool {
 	if !ok {
 		return false
 	}
+	// 원격 mutation 명령에 help flag 하나만 전달하면 확인한 Go flag parser가
+	// 실제 동작 전에 flag.ErrHelp로 종료한다. mutation 이름을 가졌더라도 이
+	// 정확한 형태는 상태를 읽거나 쓰지 않는 CLI 표면 조회다.
+	if exactIssueOpsMutationHelpObservation(command.Path, command.Tokens, command.Start) {
+		return true
+	}
 	flags, ok := commandparse.ExactFlags(command, values, booleans, repeatable)
 	if !ok {
 		return false
@@ -139,7 +145,7 @@ func exactProviderBranchLink(command string) bool {
 	// base에 못박으려면 createLinkedBranch를 직접 호출해야 한다. branch prepare가
 	// 그 두 명령을 안내하므로 여기서도 분류해야 안내와 실행 가능성이 맞는다.
 	if tokens[1] == "api" {
-		return exactGitHubIssueProjectionRead(tokens) || exactGitHubLinkedBranchMutation(tokens)
+		return exactGitHubIssueRead(tokens) || exactGitHubLinkedBranchMutation(tokens)
 	}
 	if tokens[1] != "issue" || tokens[2] != "develop" {
 		return false
@@ -169,16 +175,14 @@ func positiveIssueNumber(value string) bool {
 	return err == nil && number > 0
 }
 
-// exactGitHubIssueProjectionRead는 IssueOps가 봉인과 링크에 사용하는 두
-// read-only projection만 인정한다:
+// exactGitHubIssueRead는 IssueOps 실행에 필요한 두 조회 형태만 인정한다:
 //
 //	gh api repos/<owner>/<repo>/issues/<number> --jq .node_id
 //	gh api repos/<owner>/<repo>/issues/<number> --jq .body
 //
-// node id는 #176의 createLinkedBranch 입력이고 body는 owner가 봉인된 digest와
-// live SSOT를 대조하는 입력이다. 임의 jq projection과 다른 API path는 계속
-// 거부해 read-only라는 이유만으로 gh api 전체를 열지 않는다.
-func exactGitHubIssueProjectionRead(tokens []string) bool {
+// node id는 linked branch 생성에, body는 봉인된 원격 digest 검증에 필요하다.
+// 정확한 GET 경로와 jq projection만 허용해 다른 gh api 표면은 계속 차단한다.
+func exactGitHubIssueRead(tokens []string) bool {
 	if len(tokens) != 5 || tokens[3] != "--jq" ||
 		(tokens[4] != ".node_id" && tokens[4] != ".body") {
 		return false
@@ -246,17 +250,17 @@ func exactOrcaObservation(command string) bool {
 	}
 }
 
-// exactOrcaOwnerControlPlane는 injected worker contract가 요구하는 coordinator
-// message 표면만 인정한다. 이 명령들은 sealed Git worktree를 쓰지 않고 Orca의
-// orchestration ledger만 갱신한다. 그래서 lease claim 전에도 실행 가능해야 한다.
+// exactOrcaOwnerControlPlane은 injected worker contract가 요구하는 coordinator
+// 제어면만 인정한다. 이 명령들은 sealed Git worktree가 아니라 Orca orchestration
+// ledger를 갱신하므로 lease 상태와 무관하게 실행 가능해야 한다.
 //
-// 명령 이름만 보지 않고 모든 flag와 message type을 열거한다. 알 수 없는 flag,
-// shell expansion, redirect, detached composition은 fail-closed다.
+// 모든 flag와 message type을 열거해 알 수 없는 mutation, shell expansion,
+// redirect, detached composition은 계속 fail-closed로 유지한다.
 func exactOrcaOwnerControlPlane(command string) bool {
 	if commandparse.HasUnquotedControlOperator(command) ||
 		commandparse.HasActiveCommandSubstitution(command) ||
-		commandparse.HasActiveOutputRedirect(command) ||
 		commandparse.HasActiveInputRedirect(command) ||
+		commandparse.HasActiveOutputRedirect(command) ||
 		commandparse.HasActiveParameterOrTildeExpansion(command) ||
 		commandparse.HasActivePathnameExpansion(command) ||
 		commandparse.HasActiveShellSpecialQuoting(command) ||
@@ -268,15 +272,21 @@ func exactOrcaOwnerControlPlane(command string) bool {
 		tokens[1] != "orchestration" {
 		return false
 	}
-	exact := commandparse.ExactIssueOpsCommand{Path: "orca orchestration " + tokens[2], Tokens: tokens, Start: 3}
+	exact := commandparse.ExactIssueOpsCommand{
+		Path: "orca orchestration " + tokens[2], Tokens: tokens, Start: 3,
+	}
 	switch tokens[2] {
 	case "send":
-		values := exactFlagNames(
-			"--to", "--from", "--type", "--subject", "--body", "--task-id",
-			"--dispatch-id", "--files-modified", "--report-path", "--phase",
+		flags, ok := commandparse.ExactFlags(
+			exact,
+			exactFlagNames(
+				"--to", "--from", "--type", "--subject", "--body", "--task-id",
+				"--dispatch-id", "--files-modified", "--report-path", "--phase",
+			),
+			exactFlagNames("--json"),
+			nil,
 		)
-		flags, ok := commandparse.ExactFlags(exact, values, nil, nil)
-		if !ok || !nonemptyExactFlags(flags, "--to", "--from", "--type", "--subject") {
+		if !ok || !nonemptyExactFlags(flags, "--to", "--type", "--subject") {
 			return false
 		}
 		messageType, _ := oneFlag(flags, "--type")
@@ -293,17 +303,33 @@ func exactOrcaOwnerControlPlane(command string) bool {
 			return false
 		}
 	case "ask":
-		flags, ok := commandparse.ExactFlags(exact,
-			exactFlagNames("--to", "--from", "--question", "--options", "--timeout-ms"), nil, nil)
+		flags, ok := commandparse.ExactFlags(
+			exact,
+			exactFlagNames("--to", "--from", "--question", "--options", "--timeout-ms"),
+			exactFlagNames("--json"),
+			nil,
+		)
 		if !ok || !nonemptyExactFlags(flags, "--to", "--from", "--question") {
 			return false
 		}
 		timeout, hasTimeout := oneFlag(flags, "--timeout-ms")
 		return !hasTimeout || positiveMilliseconds(timeout)
 	case "check":
-		flags, ok := commandparse.ExactFlags(exact,
-			exactFlagNames("--terminal", "--timeout-ms"), exactFlagNames("--wait"), nil)
-		if !ok || !nonemptyExactFlags(flags, "--terminal") {
+		flags, ok := commandparse.ExactFlags(
+			exact,
+			exactFlagNames("--terminal", "--timeout-ms"),
+			exactFlagNames("--wait", "--unread", "--inject", "--json"),
+			nil,
+		)
+		if !ok {
+			return false
+		}
+		terminal, hasTerminal := oneFlag(flags, "--terminal")
+		_, unread := flags["--unread"]
+		_, inject := flags["--inject"]
+		if (hasTerminal && strings.TrimSpace(terminal) == "") ||
+			(!hasTerminal && !unread) ||
+			(inject && !unread) {
 			return false
 		}
 		timeout, hasTimeout := oneFlag(flags, "--timeout-ms")
@@ -370,6 +396,19 @@ func executionTypedControlPlane(req HookToolUseLifecycleRequest) bool {
 	//
 	// 안전은 그 명령의 fingerprint와 --apply --confirm 게이트가 본다. typed 등록은
 	// 훅의 mutation 가드 블록을 스킵시킬 뿐이고 lease·권위 검사는 core 책임이다(F14).
+	case "execution resume":
+		id, idOK := oneFlag(flags, "--id")
+		generation, generationOK := oneFlag(flags, "--expected-generation")
+		parsedGeneration, generationErr := strconv.ParseUint(strings.TrimSpace(generation), 10, 64)
+		_, confirm := flags["--confirm"]
+		for _, name := range []string{"--host", "--session-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"} {
+			value, found := oneFlag(flags, name)
+			if !found || strings.TrimSpace(value) == "" {
+				return false
+			}
+		}
+		return idOK && strings.TrimSpace(id) != "" && generationOK &&
+			generationErr == nil && parsedGeneration > 0 && confirm
 	case "execution prepare", "execution claim", "execution release", "execution replace", "execution reconcile", "execution complete", "execution sync-base", "execution switch-mode",
 		"cleanup orphan":
 		id, ok := oneFlag(flags, "--id")
@@ -384,11 +423,22 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 		return false, "", nil
 	}
 	unsafeReason := executionUnsafeMutationReason(req)
+	if unsafeReason == "" && searchrouting.IsShellTool(req.Tool) && !executionTypedControlPlane(req) {
+		if command, ok := commandparse.ParseExactIssueOpsCommand(req.Command); ok && command.Path == "execution resume" {
+			unsafeReason = "unclassified IssueOps execution resume command is blocked; use the exact generation-bound confirmed control-plane form"
+		}
+	}
 	resourceWaitRoot, exactResourceWait := exactOwnedResourceWait(req.Command)
+	atomicWorkflowRoot, exactAtomicWorkflow := exactAtomicCommitWorkflowScript(req)
+	atomicWorkflowRelativeScript := exactAtomicWorkflow && atomicCommitWorkflowUsesRelativeScript(req.Command)
+	temporaryBuildOutput, exactTemporaryBuild := "", false
+	if unsafeReason == "" {
+		temporaryBuildOutput, exactTemporaryBuild = exactTemporaryAgentHarnessBuildOutput(req.Command)
+	}
 	mayMutate := toolUseMayMutateLifecycleFiles(req.Tool, req.Command)
 	if searchrouting.IsShellTool(req.Tool) && !mayMutate {
 		mayMutate = true
-		if unsafeReason == "" && !exactIssueOpsOwnerMutation(req.Command) && !exactResourceWait {
+		if unsafeReason == "" && !exactIssueOpsOwnerMutation(req.Command) && !exactResourceWait && !exactAtomicWorkflow {
 			unsafeReason = "unclassified shell command is blocked while IssueOps mutation authority is active; use an exact listed reader or a statically classified foreground mutation command"
 		}
 	}
@@ -399,9 +449,32 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 	if exactResourceWait {
 		targets = append(targets, resourceWaitRoot)
 	}
+	if exactAtomicWorkflow {
+		targets = []string{atomicWorkflowRoot}
+	}
+	if exactTemporaryBuild {
+		// 출력 파일만 보면 active lifecycle을 찾을 수 없다. canonical cwd와
+		// command에서 봉인한 출력 경로를 함께 판정해 holder 검사를 유지한다.
+		targets = append(targets, temporaryBuildOutput, cleanAbsPath(req.CWD))
+	}
 	records, err := executionGuardRecords(req, targets)
 	if err != nil {
 		return true, "IssueOps authority state could not be read (often transient state-store contention); retry once, and if it persists run `agent-harness doctor --repo " + cleanAbsPath(req.Repo) + " --json`", nil
+	}
+	if len(records) == 0 && exactAtomicWorkflow {
+		// 명시적 workdir가 외부를 가리킬 때 target만 조회하면 현재 lifecycle을
+		// 찾지 못해 일반 명령으로 빠질 수 있다. cwd/repo anchor는 허용 근거로
+		// 쓰지 않고, 활성 lifecycle에서 빠져나가는 misdirect 차단에만 쓴다.
+		anchors := []string{cleanAbsPath(req.CWD), cleanAbsPath(req.Repo)}
+		anchorRecords, anchorErr := executionGuardRecords(req, anchors)
+		if anchorErr != nil {
+			return true, "IssueOps authority state could not be read (often transient state-store contention); retry once, and if it persists run `agent-harness doctor --repo " + cleanAbsPath(req.Repo) + " --json`", nil
+		}
+		if len(anchorRecords) > 0 {
+			record := anchorRecords[0]
+			reason := "atomic commit workflow must run with an effective shell workdir equal to the canonical IssueOps worktree"
+			return true, reason, executionDeny(record, "unsafe_mutation", executionStatusCommand(record.ID))
+		}
 	}
 	if len(records) == 0 {
 		if exactResourceWait {
@@ -424,8 +497,16 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 		}
 		lease := record.Execution.Lease
 		root := record.Execution.Workspace.Root
+		if atomicWorkflowRelativeScript && !sameExecutionPath(atomicWorkflowRoot, root) {
+			reason := "relative atomic commit workflow scripts must run from the canonical IssueOps worktree root"
+			return true, reason, executionDeny(record, "unsafe_mutation", executionStatusCommand(record.ID))
+		}
+		targetsAuthorized := executionRequestTargetsStayInside(req, targets, root)
+		if exactTemporaryBuild {
+			targetsAuthorized = executionTemporaryBuildTargetsAuthorized(req, targets, root, temporaryBuildOutput)
+		}
 		if lease.Status == issueopsmodel.LeaseStatusActive && executionActorMatches(req, lease.Holder) &&
-			executionRequestTargetsStayInside(req, targets, root) {
+			targetsAuthorized {
 			return true, "", nil
 		}
 		if lease.Status == issueopsmodel.LeaseStatusActive && lease.Holder != nil && !executionActorMatches(req, lease.Holder) {
@@ -444,6 +525,16 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 	return false, "", nil
 }
 
+func exactIssueOpsMutationHelpObservation(path string, tokens []string, start int) bool {
+	switch path {
+	case "remote create-pr", "remote verify-artifact":
+	default:
+		return false
+	}
+	return len(tokens) == start+1 &&
+		(tokens[start] == "--help" || tokens[start] == "-h")
+}
+
 func exactIssueOpsOwnerMutation(commandText string) bool {
 	command, ok := commandparse.ParseExactIssueOpsCommand(commandText)
 	if !ok {
@@ -456,10 +547,10 @@ func exactIssueOpsOwnerMutation(commandText string) bool {
 	// 있어, #152에서 preview 계약 변경 결정을 문서에만 남겨야 했다 — durable state에
 	// 담기지 않은 결정은 나중 사이클의 plan-prep prior-decisions 조회에 들어오지
 	// 않는다(이슈 #158).
-	case "link-plan", "compatibility review", "devils-advocate review", "phase",
+	case "link-plan", "link-worktree", "compatibility review", "devils-advocate review", "phase",
 		"decision add", "ai-slop-clean record", "feedback mark-issue-updated", "feedback resolve",
-		"implementation-review record", "branch prepare",
-		"remote create-pr", "remote verify-artifact":
+		"implementation-review record", "branch prepare", "intent record", "domain-review record", "regress",
+		"remote create-pr", "remote verify-artifact", "remote reflect-devils-advocate":
 	default:
 		return false
 	}
@@ -529,6 +620,132 @@ func exactOwnedResourceWait(commandText string) (string, bool) {
 	return cleanAbsPath(root), true
 }
 
+// exactAtomicCommitWorkflowScript는 atomic-commit-push 스킬이 필수로 실행하는
+// 두 Python gate만 현재 holder의 foreground workflow로 인정한다. 저장소가
+// 제공하거나 설치 경로에 연결된 Python 코드는 일반 관찰 권한으로 승격하지 않고,
+// 대상 저장소만 기존 canonical worktree fence로 다시 검증한다.
+func exactAtomicCommitWorkflowScript(req HookToolUseLifecycleRequest) (string, bool) {
+	if !searchrouting.IsShellTool(req.Tool) {
+		return "", false
+	}
+	commandText := strings.TrimSpace(req.Command)
+	if commandText == "" || commandparse.HasUnquotedControlOperator(commandText) ||
+		commandparse.HasActiveCommandSubstitution(commandText) ||
+		commandparse.HasActiveInputRedirect(commandText) ||
+		commandparse.HasActiveOutputRedirect(commandText) ||
+		commandparse.HasActiveParameterOrTildeExpansion(commandText) ||
+		commandparse.HasActivePathnameExpansion(commandText) ||
+		commandparse.HasActiveShellSpecialQuoting(commandText) ||
+		commandparse.HasActiveZshEqualsExpansion(commandText) {
+		return "", false
+	}
+	tokens := commandparse.SplitCommandTokens(commandText)
+	if (len(tokens) != 2 && len(tokens) != 3) || tokens[0] != "python3" ||
+		!losslessAtomicWorkflowToken(tokens[1]) ||
+		!atomicCommitWorkflowScriptPath(req, tokens[1]) {
+		return "", false
+	}
+	cwd, ok := atomicCommitWorkflowCWD(req)
+	if !ok {
+		return "", false
+	}
+	root := cwd
+	if len(tokens) == 3 {
+		if !losslessAtomicWorkflowToken(tokens[2]) || strings.HasPrefix(tokens[2], "-") {
+			return "", false
+		}
+		root = resolveHookTargetPath(cwd, tokens[2])
+	}
+	if root == "" || root != cwd {
+		return "", false
+	}
+	return root, true
+}
+
+// atomicCommitWorkflowCWD는 Codex exec_command가 실제로 사용하는 workdir와
+// Claude Bash가 전달하는 top-level cwd를 구분한다. exec_command의 명시적
+// workdir는 절대 경로일 때만 받아 host별 상대 경로 해석 차이를 열지 않는다.
+func atomicCommitWorkflowCWD(req HookToolUseLifecycleRequest) (string, bool) {
+	if strings.EqualFold(strings.TrimSpace(req.Tool), "exec_command") {
+		value, exists := req.ToolInput["workdir"]
+		if exists {
+			workdir, ok := value.(string)
+			if !ok || !losslessAtomicWorkflowToken(workdir) || !filepath.IsAbs(workdir) {
+				return "", false
+			}
+			root := cleanAbsPath(workdir)
+			return root, root != ""
+		}
+	}
+	root := cleanAbsPath(req.CWD)
+	return root, root != ""
+}
+
+func losslessAtomicWorkflowToken(token string) bool {
+	return token != "" && token == strings.TrimSpace(token)
+}
+
+func atomicCommitWorkflowScriptPath(req HookToolUseLifecycleRequest, path string) bool {
+	clean := filepath.Clean(path)
+	for _, relative := range []string{
+		"skills/atomic-commit-push/scripts/git_preflight.py",
+		"skills/atomic-commit-push/scripts/api_doc_gate.py",
+	} {
+		if !filepath.IsAbs(clean) && filepath.ToSlash(clean) == relative {
+			return true
+		}
+		if !filepath.IsAbs(clean) {
+			continue
+		}
+		target := cleanAbsPath(clean)
+		for _, base := range atomicCommitWorkflowInstallBases(req) {
+			if target == filepath.Join(base, filepath.FromSlash(relative)) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func atomicCommitWorkflowUsesRelativeScript(commandText string) bool {
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(commandText))
+	return len(tokens) >= 2 && !filepath.IsAbs(filepath.Clean(tokens[1]))
+}
+
+// atomicCommitWorkflowInstallBases는 하네스 설치기가 실제로 만드는 skill
+// root만 돌려준다. 임의의 `/tmp/.../skills` suffix는 이 목록에 들어오지 않는다.
+func atomicCommitWorkflowInstallBases(req HookToolUseLifecycleRequest) []string {
+	candidates := []string{
+		req.ExpectedWorktree,
+		req.SourceCheckout,
+		os.Getenv("HARNESS_ROOT"),
+		os.Getenv("CODEX_HOME"),
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		candidates = append(candidates, filepath.Join(home, ".codex"), filepath.Join(home, ".claude"))
+	}
+	for _, root := range []string{req.ExpectedWorktree, req.SourceCheckout} {
+		if filepath.IsAbs(strings.TrimSpace(root)) {
+			candidates = append(candidates, filepath.Join(root, ".claude"))
+		}
+	}
+
+	bases := make([]string, 0, len(candidates))
+	seen := map[string]bool{}
+	for _, candidate := range candidates {
+		if candidate != strings.TrimSpace(candidate) || !filepath.IsAbs(candidate) {
+			continue
+		}
+		base := cleanAbsPath(candidate)
+		if base == "" || seen[base] {
+			continue
+		}
+		seen[base] = true
+		bases = append(bases, base)
+	}
+	return bases
+}
+
 func positiveDuration(value string) bool {
 	duration, err := time.ParseDuration(value)
 	return err == nil && duration > 0
@@ -537,19 +754,137 @@ func positiveDuration(value string) bool {
 func executionMutationTargets(req HookToolUseLifecycleRequest) []string {
 	targets := []string{}
 	base := hookRequestPathBase(req)
+	nonTargetPaths := exactIssueOpsOwnerNonTargetPaths(base, req.Command)
 	for _, path := range req.Paths {
 		if target := resolveHookTargetPath(base, path); target != "" {
+			if nonTargetPaths[target] {
+				continue
+			}
 			targets = append(targets, target)
 		}
 	}
 	if len(targets) == 0 && searchrouting.IsShellTool(req.Tool) {
 		for _, path := range shellCommandWorktreeGuardPaths(base, req.Command) {
 			if target := resolveHookTargetPath(base, path); target != "" {
+				if nonTargetPaths[target] {
+					continue
+				}
 				targets = append(targets, target)
 			}
 		}
 	}
 	return targets
+}
+
+func exactTemporaryAgentHarnessBuildOutput(commandText string) (string, bool) {
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(commandText))
+	if len(tokens) < 4 || tokens[0] != "go" || tokens[1] != "build" {
+		return "", false
+	}
+	output := ""
+	for index := 2; index < len(tokens); index++ {
+		switch {
+		case tokens[index] == "--":
+			index = len(tokens)
+		case tokens[index] == "-o" && index+1 < len(tokens):
+			if output != "" {
+				return "", false
+			}
+			index++
+			output = tokens[index]
+		case strings.HasPrefix(tokens[index], "-o="):
+			if output != "" {
+				return "", false
+			}
+			output = strings.TrimPrefix(tokens[index], "-o=")
+		}
+	}
+	if !filepath.IsAbs(output) {
+		return "", false
+	}
+	output = cleanAbsPath(output)
+	base := filepath.Base(output)
+	if !strings.HasPrefix(base, "agent-harness-") || base == "agent-harness-" {
+		return "", false
+	}
+	parent := filepath.Dir(output)
+	allowedParent := false
+	for _, root := range []string{os.TempDir(), "/tmp"} {
+		if sameExecutionPath(parent, root) {
+			allowedParent = true
+			break
+		}
+	}
+	if !allowedParent {
+		return "", false
+	}
+	info, err := os.Lstat(output)
+	switch {
+	case err == nil:
+		// 기존 symlink나 device를 따라 canonical 경계 밖 파일을 덮어쓰지 않는다.
+		return output, info.Mode().IsRegular()
+	case os.IsNotExist(err):
+		return output, true
+	default:
+		return "", false
+	}
+}
+
+func executionTemporaryBuildTargetsAuthorized(req HookToolUseLifecycleRequest, targets []string, root, output string) bool {
+	if !sameExecutionPath(req.CWD, root) {
+		return false
+	}
+	foundOutput := false
+	for _, target := range targets {
+		if cleanAbsPath(target) == output {
+			foundOutput = true
+			continue
+		}
+		if !executionResolvedTargetInside(target, root) {
+			return false
+		}
+	}
+	return foundOutput
+}
+
+// exactIssueOpsOwnerNonTargetPaths는 owner 명령이 기록만 하는 경로 메타데이터를
+// 변경 대상에서 제외한다. session executable은 holder identity 영수증이고,
+// branch prepare의 parent worktree는 Orca lineage이므로 실제 mutation root가
+// 아니다. 나머지 절대 경로는 기존 canonical root fence가 본다.
+func exactIssueOpsOwnerNonTargetPaths(base, commandText string) map[string]bool {
+	if !exactIssueOpsOwnerMutation(commandText) {
+		return nil
+	}
+	command, ok := commandparse.ParseExactIssueOpsCommand(commandText)
+	if !ok {
+		return nil
+	}
+	values, booleans, repeatable, ok := commandparse.IssueOpsCommandSpec(command.Path)
+	if !ok {
+		return nil
+	}
+	flags, ok := commandparse.ExactFlags(command, values, booleans, repeatable)
+	if !ok {
+		return nil
+	}
+	names := []string{"--session-executable"}
+	if command.Path == "branch prepare" {
+		names = append(names, "--parent-worktree")
+	}
+	paths := map[string]bool{}
+	for _, name := range names {
+		value, found := oneFlag(flags, name)
+		if !found {
+			continue
+		}
+		if target := resolveHookTargetPath(base, value); target != "" {
+			paths[target] = true
+		}
+	}
+	if len(paths) == 0 {
+		return nil
+	}
+	return paths
 }
 
 func executionRequestTargetsStayInside(req HookToolUseLifecycleRequest, targets []string, root string) bool {
