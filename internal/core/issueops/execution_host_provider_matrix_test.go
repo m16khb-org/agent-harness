@@ -18,6 +18,7 @@ func TestGitLabPreparedRemoteBranchAtSealedBaseUsesOrca(t *testing.T) {
 			stateRoot, record := executionPrepareRecord(t)
 			record.BranchPrepare.Provider = "gitlab"
 			record.BranchPrepare.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/69"
+			record.IssueURL = record.BranchPrepare.IssueURL
 			if _, err := writeIssueOps(stateRoot, record); err != nil {
 				t.Fatal(err)
 			}

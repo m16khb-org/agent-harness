@@ -780,6 +780,29 @@ func TestExecutionIntentReResolvesRotatedTerminalHandle(t *testing.T) {
 	}
 }
 
+func TestExecutionIntentDispatchReusesTheSealedTerminalAcrossResumeMarkers(t *testing.T) {
+	workspace, probe := executionFixture(t)
+	prepared := port.ExecutionOrcaWorkspaceReceipt{Workspace: port.ExecutionWorkspaceReceipt{
+		SourceRoot: workspace.SourceRoot, Root: workspace.Root, Branch: workspace.Branch, BaseHead: workspace.BaseHead, Driver: "orca", Exists: true,
+	}, RuntimeID: "runtime-69", RepoID: "repo-69", WorktreeID: "wt-69"}
+	launch := executionLaunchFixture(t, workspace.Root)
+	request := port.ExecutionOrcaIntentRequest{
+		Stage: port.ExecutionOrcaIntentDispatch, Marker: probe.Marker, Workspace: workspace, Probe: probe,
+		Prepared: &prepared, Launch: &launch, TerminalPTYID: "pty-69", TaskID: "task-69",
+	}
+	client := &executionFake{terminals: []port.OrcaTerminal{{
+		RuntimeID: "runtime-69", Handle: "term-69", PTYID: "pty-69", WorktreeID: "wt-69",
+		Title: "agent-harness issueops-v1 prior-operation", Connected: true, Writable: true,
+	}}}
+	receipt, err := NewExecutionClient(client).InvokeIntent(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if receipt.DispatchID != "dispatch-69" || client.dispatchRequest.ToHandle != "term-69" {
+		t.Fatalf("dispatch did not reuse the exact sealed terminal: receipt=%#v request=%#v", receipt, client.dispatchRequest)
+	}
+}
+
 func TestExecutionIntentEmptyInventoryRequiresSealedRuntimeEnvelope(t *testing.T) {
 	workspace, probe := executionFixture(t)
 	prepared := port.ExecutionOrcaWorkspaceReceipt{Workspace: port.ExecutionWorkspaceReceipt{
