@@ -36,9 +36,11 @@ agent-harness issueops plan-prep record --id "$ISSUEOPS_ID" \
 
 ## Issue, Branch, And Design
 
-Link the remote issue, create its provider-visible branch, and pin the exact
-base SHA before execution preparation. The approved design has no open
-questions:
+Link the remote issue and pin the exact base SHA before execution preparation.
+Direct mode and GitLab create and verify the provider-visible branch first.
+GitHub Orca records the matching issue identity and base SHA first but delays
+the linked branch until Orca has created its local-only branch. The approved
+design has no open questions:
 
 ```bash
 agent-harness issueops link-issue --id "$ISSUEOPS_ID" --issue-url "$ISSUE_URL" --json
@@ -56,8 +58,16 @@ agent-harness issueops design review --id "$ISSUEOPS_ID" \
   --approved --json
 ```
 
-`branch prepare` must persist `base_sha`. If provider linkage or the base SHA
-cannot be verified, stop before creating a local workspace.
+`branch prepare` must persist `base_sha`. Except for the GitHub Orca ordering
+below, if provider linkage or the base SHA cannot be verified, stop before
+creating a local workspace.
+
+For GitHub Orca, omit `--link-verified` from the first `branch prepare` call.
+After `execution prepare` creates the local-only branch and the owner claims the
+lease, create the GitHub linked branch at the sealed base SHA and run the exact
+`VerifyBranchLink` command from the owner packet. That command repeats
+`branch prepare` with `--link-verified` and the current owner actor flags.
+`link-plan` and implementation remain blocked until this update succeeds.
 
 ## Execution v1
 

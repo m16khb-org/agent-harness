@@ -51,6 +51,75 @@ func TestExecutionOrcaPersistsIntentBeforeExternalMutationAndCASReceipt(t *testi
 	}
 }
 
+func TestExecutionOrcaPrepareAllowsGitHubLinkVerificationAfterLocalBranchCreation(t *testing.T) {
+	for _, mode := range []string{ExecutionModeAuto, string(model.ExecutionModeOrca)} {
+		for _, confirm := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/confirm=%t", mode, confirm), func(t *testing.T) {
+				stateRoot, record := orcaPrepareRecord(t)
+				record.BranchPrepare.LinkVerified = false
+				if _, err := writeIssueOps(stateRoot, record); err != nil {
+					t.Fatal(err)
+				}
+				fake := readyOrcaFake()
+
+				got, err := PrepareExecution(context.Background(), stateRoot, ExecutionPrepareRequest{
+					ID: record.ID, Mode: mode, CWD: record.Repo, Confirm: confirm,
+					Actor: executionActor("codex", "coordinator"), OwnerHost: "codex",
+				}, ExecutionPrepareDependencies{Orca: fake, ReadIssue: executionIssueSnapshotReader})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got.ResolvedMode != string(model.ExecutionModeOrca) {
+					t.Fatalf("resolved mode = %q, want orca", got.ResolvedMode)
+				}
+				if !confirm {
+					if got.Execution != nil || fake.prepareCalls != 0 || fake.launchCalls != 0 {
+						t.Fatalf("preview가 execution 또는 Orca mutation을 만들었다: %#v", got)
+					}
+					return
+				}
+				if got.Execution == nil || got.Execution.Orca == nil || got.Execution.Pending != nil {
+					t.Fatalf("GitHub linked branch 생성 전 Orca prepare가 완료돼야 한다: %#v", got.Execution)
+				}
+				if fake.prepareCalls != 1 || fake.launchCalls != 1 {
+					t.Fatalf("Orca stage calls = prepare:%d launch:%d, want 1/1", fake.prepareCalls, fake.launchCalls)
+				}
+				prompt, readErr := os.ReadFile(got.OwnerPromptPath)
+				if readErr != nil {
+					t.Fatal(readErr)
+				}
+				for _, want := range []string{"issueops branch prepare", "--link-verified"} {
+					if !strings.Contains(string(prompt), want) {
+						t.Fatalf("owner prompt가 branch link 후속 명령 %q을 포함하지 않는다", want)
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestExecutionOrcaPrepareRejectsUnverifiedGitLabBranch(t *testing.T) {
+	stateRoot, record := orcaPrepareRecord(t)
+	record.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/16"
+	record.BranchPrepare.Provider = "gitlab"
+	record.BranchPrepare.IssueURL = record.IssueURL
+	record.BranchPrepare.LinkVerified = false
+	if _, err := writeIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	fake := readyOrcaFake()
+
+	_, err := PrepareExecution(context.Background(), stateRoot, ExecutionPrepareRequest{
+		ID: record.ID, Mode: "orca", CWD: record.Repo, OwnerHost: "codex",
+	}, ExecutionPrepareDependencies{Orca: fake, ReadIssue: executionIssueSnapshotReader})
+	if err == nil || !strings.Contains(err.Error(), "verified branch issue identity") {
+		t.Fatalf("미검증 GitLab prepare error = %v", err)
+	}
+	if fake.prepareCalls != 0 || fake.launchCalls != 0 {
+		t.Fatalf("거부된 GitLab prepare가 Orca mutation을 실행했다: %#v", fake)
+	}
+}
+
 func TestExecutionOrcaPrepareAppliesHostImplementerDefaults(t *testing.T) {
 	cases := []struct {
 		host       string

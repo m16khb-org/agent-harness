@@ -69,7 +69,7 @@ func beginOrcaExecutionIntent(stateRoot string, record IssueOpsRecord, workspace
 	if strings.ToLower(strings.TrimSpace(req.OwnerHost)) != probe.Host || strings.TrimSpace(req.OwnerModel) != probe.Model || strings.TrimSpace(req.OwnerEffort) != probe.Effort {
 		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, fmt.Errorf("owner profile changed before Orca intent persistence")
 	}
-	payload, err = sealExternalOrcaIntentPayload(record, payload)
+	payload, err = sealExternalOrcaPrepareIntentPayload(record, payload)
 	if err != nil {
 		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
 	}

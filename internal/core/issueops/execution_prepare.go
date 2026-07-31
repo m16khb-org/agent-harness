@@ -380,7 +380,7 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 		}
 		return "", "", probeReq, fmt.Errorf("Orca provisioner is unavailable")
 	}
-	issueIdentity, err := authoritativeOrcaIssueIdentity(record)
+	issueIdentity, err := orcaPrepareIssueIdentity(record)
 	if err != nil {
 		return "", "", probeReq, err
 	}

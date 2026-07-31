@@ -100,9 +100,12 @@ Endpoint/controller/DTO/schema/OpenAPI 변경 시 `.agent-harness/OPEN_API_SPEC.
 ## Execution v1 workflow
 
 After the provider-linked branch and exact base SHA are recorded, preview and
-confirm `issueops execution prepare --mode auto`. Direct mode grants the
-calling native session generation 1; Orca mode launches one owner that verifies
-the sealed issue/context digests and consumes the private claim-token file.
+confirm `issueops execution prepare --mode auto`. GitHub Orca is the exception:
+record the matching provider/issue identity and exact base SHA first, prepare
+the local-only Orca branch, then create and record the linked branch before
+plan linkage and implementation. Direct mode grants the calling native session
+generation 1; Orca mode launches one owner that verifies the sealed
+issue/context digests and consumes the private claim-token file.
 The active holder performs planning, implementation, publication, and
 completion from the canonical worktree. The source main worktree remains
 available before, during, and after execution for unrelated work.

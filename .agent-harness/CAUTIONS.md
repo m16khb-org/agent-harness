@@ -100,6 +100,10 @@ IssueOps 이슈 브랜치를 `git worktree add -b`로 바로 만들면 GitHub/Gi
 
 주의:
 - 이슈 기반 worktree를 만들기 전에 provider-linked branch를 먼저 생성한다.
+- 단, GitHub Orca는 원격 이름 충돌을 피하려고 branch prepare 기록과 Orca
+  `execution prepare`를 먼저 수행한 뒤 linked branch를 생성하고
+  `--link-verified`로 갱신한다. marker identity는 provider/issue 일치로 봉인하며
+  아직 생성할 수 없는 linked branch 확인을 Orca prepare 전제로 삼지 않는다.
 - IssueOps branch는 GitLab Development 섹션에 자동 연결되도록 issue/task number와 hyphen으로 시작한다. 예: `2386-remove-dmm-ranking-ranktype`, `2387-fix-grpc-ai-dmm-tag-replication-lag`.
 - `feature/`, `hotfix/` 같은 branch prefix를 이슈 번호 앞에 붙이면 GitLab native branch linking이 동작하지 않는다.
 - GitHub는 linked development branch 생성을 위해 `gh issue develop` 또는 노출된 GitHub MCP linked-branch tool을 사용한다.
