@@ -1,9 +1,11 @@
 package updatecli
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -19,6 +21,13 @@ func stubPostInstallDaemonRefresh(t *testing.T, fn func() (bool, error)) func() 
 	previous := postInstallDaemonRefresh
 	postInstallDaemonRefresh = fn
 	return func() { postInstallDaemonRefresh = previous }
+}
+
+func stubInstalledDaemonCommandRunner(t *testing.T, fn func(string, ...string) error) func() {
+	t.Helper()
+	previous := installedDaemonCommandRunner
+	installedDaemonCommandRunner = fn
+	return func() { installedDaemonCommandRunner = previous }
 }
 
 func stubPostInstallMCPProxyRefresh(t *testing.T, fn func() (int, error)) func() {
@@ -91,6 +100,66 @@ func TestRunInstallScriptCommandRefreshesDaemonWithoutTouchingMCPProcesses(t *te
 	want := []string{filepath.Join(root, "scripts", "install-native.sh"), "daemon-refresh"}
 	if !reflect.DeepEqual(commands, want) {
 		t.Fatalf("unexpected command sequence:\n got: %#v\nwant: %#v", commands, want)
+	}
+}
+
+func TestRefreshRunningDaemonAfterInstallUsesInstalledBinaryLifecycle(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("HARNESS_ROOT", root)
+	t.Setenv("HARNESS_DAEMON_DIR", t.TempDir())
+
+	var commands [][]string
+	restoreRunner := stubInstalledDaemonCommandRunner(t, func(name string, args ...string) error {
+		commands = append(commands, append([]string{name}, args...))
+		return nil
+	})
+	defer restoreRunner()
+	restoreList := stubDaemonProcessLister(t, func() ([]daemonProcess, error) {
+		return nil, nil
+	})
+	defer restoreList()
+
+	refreshed, err := refreshRunningDaemonAfterInstall()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !refreshed {
+		t.Fatal("expected daemon lifecycle refresh")
+	}
+	binary := filepath.Join(root, "bin", "agent-harness")
+	want := [][]string{
+		{binary, "daemon", "stop", "--json"},
+		{binary, "daemon", "start", "--json"},
+	}
+	if !reflect.DeepEqual(commands, want) {
+		t.Fatalf("unexpected installed daemon command sequence:\n got: %#v\nwant: %#v", commands, want)
+	}
+}
+
+func TestRefreshRunningDaemonAfterInstallStopsOnInstalledStopFailure(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("HARNESS_ROOT", root)
+
+	var commands [][]string
+	restoreRunner := stubInstalledDaemonCommandRunner(t, func(name string, args ...string) error {
+		commands = append(commands, append([]string{name}, args...))
+		return errors.New("stop rejected")
+	})
+	defer restoreRunner()
+	restoreList := stubDaemonProcessLister(t, func() ([]daemonProcess, error) {
+		t.Fatal("stale process cleanup must not run after a rejected verified stop")
+		return nil, nil
+	})
+	defer restoreList()
+
+	refreshed, err := refreshRunningDaemonAfterInstall()
+	if !refreshed || err == nil || !strings.Contains(err.Error(), "stop rejected") {
+		t.Fatalf("expected installed stop failure, refreshed=%v err=%v", refreshed, err)
+	}
+	binary := filepath.Join(root, "bin", "agent-harness")
+	want := [][]string{{binary, "daemon", "stop", "--json"}}
+	if !reflect.DeepEqual(commands, want) {
+		t.Fatalf("unexpected command sequence after stop failure:\n got: %#v\nwant: %#v", commands, want)
 	}
 }
 

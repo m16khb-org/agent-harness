@@ -1,19 +1,21 @@
 package updatecli
 
 import (
+	"bytes"
+	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
-
-	"agent-harness/cmd/harness/daemoncli"
 )
 
 var postInstallDaemonRefresh = refreshRunningDaemonAfterInstall
 var daemonProcessLister = listDaemonProcesses
 var daemonProcessTerminator = terminateDaemonProcess
+var installedDaemonCommandRunner = runInstalledDaemonCommand
 
 type daemonProcess struct {
 	PID     int
@@ -21,27 +23,34 @@ type daemonProcess struct {
 }
 
 func refreshRunningDaemonAfterInstall() (bool, error) {
-	status := daemoncli.CheckDaemonStatus()
-	if !status.Running {
-		// Best-effort cleanup of stale daemon processes, then start.
-		if _, err := terminateStaleDaemonProcesses(); err != nil {
-			return false, err
-		}
-		if _, err := daemoncli.EnsureDaemonRunning(); err != nil {
-			return true, err
-		}
-		return true, nil
-	}
-	if _, err := daemoncli.StopDaemon(); err != nil {
+	binary := filepath.Join(deps.HarnessRoot(), "bin", "agent-harness")
+	if err := installedDaemonCommandRunner(binary, "daemon", "stop", "--json"); err != nil {
 		return true, err
 	}
 	if _, err := terminateStaleDaemonProcesses(); err != nil {
 		return true, err
 	}
-	if _, err := daemoncli.EnsureDaemonRunning(); err != nil {
+	if err := installedDaemonCommandRunner(binary, "daemon", "start", "--json"); err != nil {
 		return true, err
 	}
 	return true, nil
+}
+
+func runInstalledDaemonCommand(binary string, args ...string) error {
+	cmd := exec.Command(binary, args...)
+	cmd.Dir = deps.HarnessRoot()
+	cmd.Stdout = io.Discard
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		command := strings.Join(args, " ")
+		detail := strings.TrimSpace(stderr.String())
+		if detail == "" {
+			return fmt.Errorf("run installed daemon command %q: %w", command, err)
+		}
+		return fmt.Errorf("run installed daemon command %q: %w: %s", command, err, detail)
+	}
+	return nil
 }
 
 func terminateStaleDaemonProcesses() (int, error) {
