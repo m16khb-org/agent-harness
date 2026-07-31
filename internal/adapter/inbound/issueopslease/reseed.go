@@ -34,9 +34,9 @@ func (h ReseedHandler) Handle(ctx context.Context, _ string, request issueops.Ex
 		ContextPacketPath: result.Receipt.ContextPacketPath, ContextPacketSHA256: result.Receipt.ContextPacketSHA256,
 		OwnerPromptPath: result.Receipt.OwnerPromptPath, OwnerPromptSHA256: result.Receipt.OwnerPromptSHA256,
 	}
-	if result.Execution.Mode == "orca" {
-		response.NextCommand = issueops.ExecutionReseedNextCommand(result.ID, result.Execution.Lease.Generation)
-	}
+	response.NextCommand = issueops.ExecutionReseedNextCommand(
+		result.ID, result.Execution.Lease.Generation, result.Execution.Mode, result.Receipt.ClaimTokenPath,
+	)
 	return response, nil
 }
 

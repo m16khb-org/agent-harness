@@ -34,6 +34,13 @@ type ExecutionReseedArtifacts struct {
 	OwnerPromptSHA256   string
 }
 
-func ExecutionReseedNextCommand(id string, generation uint64) string {
-	return executionResumeCommand(id, generation)
+func ExecutionReseedNextCommand(id string, generation uint64, mode, claimTokenPath string) string {
+	switch model.ExecutionMode(mode) {
+	case model.ExecutionModeOrca:
+		return executionResumeCommand(id, generation)
+	case model.ExecutionModeDirect:
+		return executionDirectClaimCommand(id, generation, claimTokenPath)
+	default:
+		return ""
+	}
 }

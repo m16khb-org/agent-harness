@@ -3,6 +3,7 @@ package issueops
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -41,5 +42,21 @@ func TestExecuteExecutionReseedUsesInjectedHandlerOnce(t *testing.T) {
 	got, ok := result.(ExecutionReplaceResult)
 	if !ok || !got.OK || got.ID != "io-reseed-handler" || called != 1 {
 		t.Fatalf("result=%#v called=%d", result, called)
+	}
+}
+
+func TestExecutionReseedNextCommandRendersModeSpecificRecovery(t *testing.T) {
+	direct := ExecutionReseedNextCommand("io-direct", 2, "direct", "/tmp/lease-2.token")
+	for _, want := range []string{"execution claim", "--generation 2", "/tmp/lease-2.token"} {
+		if !strings.Contains(direct, want) {
+			t.Fatalf("direct reseed next command %q does not contain %q", direct, want)
+		}
+	}
+	orca := ExecutionReseedNextCommand("io-orca", 3, "orca", "/tmp/ignored.token")
+	if !strings.Contains(orca, "execution resume") || strings.Contains(orca, "/tmp/ignored.token") {
+		t.Fatalf("Orca reseed next command = %q", orca)
+	}
+	if got := ExecutionReseedNextCommand("io-unknown", 1, "unknown", "/tmp/token"); got != "" {
+		t.Fatalf("unknown mode next command = %q, want empty", got)
 	}
 }
