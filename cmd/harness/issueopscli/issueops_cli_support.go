@@ -28,13 +28,21 @@ func issueOpsUsageText() string {
 
 const issueOpsBranchPrepareUsage = "Usage: agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--parent-worktree PATH] [--remote-branch-url URL] [--link-verified] [--json]"
 
-const issueOpsChildUsage = `Usage:
-  agent-harness issueops child start --parent ID --branch BRANCH --title TEXT --scope TEXT --acceptance TEXT [--acceptance TEXT...] [--child-issue-url URL] [--json]
-  agent-harness issueops child status --parent ID [--repair] [--json]
-  agent-harness issueops child list --parent ID [--json]
-  agent-harness issueops child accept --parent ID --child ID --evidence TEXT [--evidence TEXT...] [--json]
-  agent-harness issueops child reject --parent ID --child ID --reason REASON [--json]
-  agent-harness issueops child drop --parent ID --child ID --reason REASON [--json]`
+// issueOpsChildUsageText는 canonical catalog에서 child 하위 명령만 골라 렌더한다.
+// usage 문장을 다시 적지 않아 parser/help 계약의 별도 drift를 막는다(#207).
+func issueOpsChildUsageText() string {
+	var lines []string
+	for _, line := range cliadapter.IssueOpsUsageLines() {
+		switch cliadapter.IssueOpsUsageKey(line) {
+		case "child start", "child status", "child list",
+			"child accept", "child reject", "child drop":
+			lines = append(lines, line)
+		}
+	}
+	return "Usage:\n" +
+		strings.Join(lines, "\n") + "\n\n" +
+		cliadapter.IssueOpsActorFlagLegend
+}
 
 func runIssueOpsBranch(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {

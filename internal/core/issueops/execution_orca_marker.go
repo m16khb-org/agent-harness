@@ -52,6 +52,17 @@ func authoritativeOrcaIssueIdentity(record IssueOpsRecord) (orcaIssueIdentity, e
 			"Orca intent requires verified branch issue identity",
 		)
 	}
+	return preparedOrcaIssueIdentity(record)
+}
+
+func preparedOrcaIssueIdentity(record IssueOpsRecord) (orcaIssueIdentity, error) {
+	prepared := record.BranchPrepare
+	if prepared == nil {
+		return orcaIssueIdentity{}, newOrcaIntentContractError(
+			"intent_identity_mismatch",
+			"Orca intent requires prepared branch issue identity",
+		)
+	}
 	provider := strings.ToLower(strings.TrimSpace(prepared.Provider))
 	if provider != "github" && provider != "gitlab" {
 		return orcaIssueIdentity{}, newOrcaIntentContractError(
@@ -83,11 +94,36 @@ func authoritativeOrcaIssueIdentity(record IssueOpsRecord) (orcaIssueIdentity, e
 	return orcaIssueIdentity{Provider: provider, Issue: issue}, nil
 }
 
+// GitHub의 최초 prepare만 로컬 브랜치 생성 뒤 linked branch를 붙이는 순서를
+// 사용한다. resume와 GitLab은 기존 verified-link 전제를 그대로 유지한다.
+func orcaPrepareIssueIdentity(record IssueOpsRecord) (orcaIssueIdentity, error) {
+	issue, err := preparedOrcaIssueIdentity(record)
+	if err != nil {
+		return orcaIssueIdentity{}, err
+	}
+	if issue.Provider != "github" {
+		return authoritativeOrcaIssueIdentity(record)
+	}
+	return issue, nil
+}
+
 func sealExternalOrcaIntentPayload(record IssueOpsRecord, payload externalOrcaIntentPayload) (externalOrcaIntentPayload, error) {
 	issue, err := authoritativeOrcaIssueIdentity(record)
 	if err != nil {
 		return externalOrcaIntentPayload{}, err
 	}
+	return sealExternalOrcaIntentPayloadWithIdentity(record, payload, issue)
+}
+
+func sealExternalOrcaPrepareIntentPayload(record IssueOpsRecord, payload externalOrcaIntentPayload) (externalOrcaIntentPayload, error) {
+	issue, err := orcaPrepareIssueIdentity(record)
+	if err != nil {
+		return externalOrcaIntentPayload{}, err
+	}
+	return sealExternalOrcaIntentPayloadWithIdentity(record, payload, issue)
+}
+
+func sealExternalOrcaIntentPayloadWithIdentity(record IssueOpsRecord, payload externalOrcaIntentPayload, issue orcaIssueIdentity) (externalOrcaIntentPayload, error) {
 	if record.ID != payload.LifecycleID {
 		return externalOrcaIntentPayload{}, newOrcaIntentContractError(
 			"intent_identity_mismatch",
@@ -96,7 +132,7 @@ func sealExternalOrcaIntentPayload(record IssueOpsRecord, payload externalOrcaIn
 	}
 	payload.Probe.Provider = issue.Provider
 	payload.Probe.Issue = issue.Issue
-	payload.Marker, err = renderOrcaIntentMarker(orcaIntentMarkerIdentity{
+	marker, err := renderOrcaIntentMarker(orcaIntentMarkerIdentity{
 		Purpose: normalizedOrcaIntentPurpose(payload), LifecycleID: payload.LifecycleID,
 		Generation: payload.Generation, OperationID: payload.OperationID,
 		Provider: issue.Provider, Issue: issue.Issue,
@@ -104,6 +140,7 @@ func sealExternalOrcaIntentPayload(record IssueOpsRecord, payload externalOrcaIn
 	if err != nil {
 		return externalOrcaIntentPayload{}, err
 	}
+	payload.Marker = marker
 	payload.Probe.Marker = payload.Marker
 	if err := validateExternalOrcaIntentPayload(payload, payload.OperationID); err != nil {
 		return externalOrcaIntentPayload{}, err
@@ -112,7 +149,15 @@ func sealExternalOrcaIntentPayload(record IssueOpsRecord, payload externalOrcaIn
 }
 
 func validateOrcaIntentIssueIdentity(record IssueOpsRecord, payload externalOrcaIntentPayload) error {
-	issue, err := authoritativeOrcaIssueIdentity(record)
+	var (
+		issue orcaIssueIdentity
+		err   error
+	)
+	if normalizedOrcaIntentPurpose(payload) == orcaIntentPurposePrepare {
+		issue, err = orcaPrepareIssueIdentity(record)
+	} else {
+		issue, err = authoritativeOrcaIssueIdentity(record)
+	}
 	if err != nil {
 		return err
 	}

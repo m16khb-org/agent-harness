@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"testing"
 )
@@ -48,10 +49,39 @@ func TestResponseContractsGolden(t *testing.T) {
 		"cli": buildCLIResponseContractSnapshot(t, replacements, stateDir, workspaceDir, gitRepoDir),
 		"mcp": buildMCPResponseContractSnapshot(t, replacements, workspaceDir, gitRepoDir),
 	}
-	assertJSONGolden(t, "response_contracts.golden.json", normalizeDocsCountsForGolden(snapshot))
+	normalized := normalizeDocsCountsForGolden(snapshot)
+	assertJSONGolden(t, "response_contracts.golden.json", normalizeIssueOpsStateKeysForGolden(normalized))
 }
 
 const docsCountGoldenPlaceholder = "$DOCS_COUNT"
+const issueOpsStateKeyGoldenPlaceholder = "$ISSUEOPS_STATE_KEY"
+
+var issueOpsStateKeyPattern = regexp.MustCompile(`/issueops-v1/[0-9a-f]{16}/`)
+
+// IssueOps lifecycle ID에서 파생한 state key는 fixture마다 달라지므로 경로의
+// 구조만 golden에 남긴다. 실제 CLI 응답은 치환하지 않는다.
+func normalizeIssueOpsStateKeysForGolden(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(typed))
+		for key, child := range typed {
+			out[key] = normalizeIssueOpsStateKeysForGolden(child)
+		}
+		return out
+	case []any:
+		out := make([]any, 0, len(typed))
+		for _, child := range typed {
+			out = append(out, normalizeIssueOpsStateKeysForGolden(child))
+		}
+		return out
+	case string:
+		return issueOpsStateKeyPattern.ReplaceAllStringFunc(typed, func(string) string {
+			return "/issueops-v1/" + issueOpsStateKeyGoldenPlaceholder + "/"
+		})
+	default:
+		return value
+	}
+}
 
 // normalizeDocsCountsForGolden은 tracked markdown 계수를 placeholder로 치환해
 // golden이 "오늘 저장소에 문서가 몇 개인가"가 아니라 응답의 형태를 기록하게

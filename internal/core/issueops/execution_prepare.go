@@ -380,7 +380,7 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 		}
 		return "", "", probeReq, fmt.Errorf("Orca provisioner is unavailable")
 	}
-	issueIdentity, err := authoritativeOrcaIssueIdentity(record)
+	issueIdentity, err := orcaPrepareIssueIdentity(record)
 	if err != nil {
 		return "", "", probeReq, err
 	}
@@ -447,23 +447,17 @@ func executionWriterAbsentNextCommand(record IssueOpsRecord, confirm bool) (stri
 				"IssueOps execution is prepared but Orca generation %d has no current owner; run %s",
 				generation, next)
 		}
-		next := fmt.Sprintf(
-			"agent-harness issueops execution claim --id %s --generation %d --claim-token-file <token>",
-			record.ID, generation)
+		next := executionWriterAbsentRecoveryCommand(record)
 		return next, fmt.Errorf(
 			"IssueOps execution is prepared but generation %d is claimable and has no writer; run %s",
 			generation, next)
 	case model.LeaseStatusReleased:
-		next := fmt.Sprintf(
-			"agent-harness issueops execution replace --id %s --expected-generation %d --reseed --confirm",
-			record.ID, generation)
+		next := executionWriterAbsentRecoveryCommand(record)
 		return next, fmt.Errorf(
-			"IssueOps execution is prepared but generation %d was released and has no writer; reseal it with %s",
+			"IssueOps execution is prepared but generation %d was released and has no writer; preview resealing with %s",
 			generation, next)
 	case model.LeaseStatusRevoking:
-		next := fmt.Sprintf(
-			"agent-harness issueops execution replace --id %s --expected-generation %d --finalize-preview",
-			record.ID, generation)
+		next := executionWriterAbsentRecoveryCommand(record)
 		return next, fmt.Errorf(
 			"IssueOps execution generation %d is revoking and has no writer; finalize the revocation with %s",
 			generation, next)

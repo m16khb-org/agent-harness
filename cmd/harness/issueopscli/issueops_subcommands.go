@@ -110,7 +110,7 @@ func runIssueOpsLinkRelated(args []string) error {
 
 func runIssueOpsChild(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println(issueOpsChildUsage)
+		fmt.Println(issueOpsChildUsageText())
 		return nil
 	}
 	switch args[0] {

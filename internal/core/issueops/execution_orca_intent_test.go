@@ -138,6 +138,18 @@ func TestReconcileLegacyOrcaMarkerRejectsUnsafeEvidenceBeforeInspection(t *testi
 	}
 }
 
+func TestReconcileLegacyOrcaMarkerRejectsUnverifiedBranchLink(t *testing.T) {
+	stateRoot, record, payload := legacyPrepareIntentFixture(t)
+	record, payload = writeLegacyNotInvokedIntent(t, stateRoot, record, payload, func(record *IssueOpsRecord, _ *externalOrcaIntentPayload) {
+		record.BranchPrepare.LinkVerified = false
+	})
+
+	_, _, migrated, err := reconcileCanonicalOrcaIntent(stateRoot, record)
+	if err == nil || migrated || !strings.Contains(err.Error(), "legacy_intent_upgrade_unsafe") {
+		t.Fatalf("legacy unverified reconcile = migrated:%t err:%v", migrated, err)
+	}
+}
+
 func TestReconcileLegacyOrcaMarkerReportsMigrationBeforeInventory(t *testing.T) {
 	stateRoot, record, payload := legacyResumeIntentFixture(t, "github", 16)
 	record, _ = writeLegacyNotInvokedIntent(t, stateRoot, record, payload, nil)

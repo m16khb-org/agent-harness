@@ -113,6 +113,25 @@ func TestExecutionReseedAndWriterAbsentPointToResume(t *testing.T) {
 	}
 }
 
+func TestExecutionWriterAbsentCurrentOrcaGenerationStillPointsToResume(t *testing.T) {
+	stateRoot, record, _ := reseededOrcaCycle(t)
+	record.Execution.Orca.LeaseGeneration = record.Execution.Lease.Generation
+	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	want := executionResumeCommand(record.ID, record.Execution.Lease.Generation)
+	prepared, err := PrepareExecution(context.Background(), stateRoot, ExecutionPrepareRequest{
+		ID: record.ID, Mode: "orca", CWD: record.Execution.Workspace.Root, Confirm: true,
+		Actor: executionActor("codex", "resume-coordinator"), OwnerHost: record.Execution.Orca.OwnerHost,
+	}, ExecutionPrepareDependencies{})
+	if err == nil {
+		t.Fatalf("claimable Orca generation must not report prepare success: %#v", prepared)
+	}
+	if prepared.NextCommand != want || !strings.Contains(err.Error(), want) {
+		t.Fatalf("current Orca generation next command = %q error=%v", prepared.NextCommand, err)
+	}
+}
+
 func TestExecutionResumeRejectsPreviousLiveTaskFromAnotherGeneration(t *testing.T) {
 	stateRoot, record, _ := reseededOrcaCycle(t)
 	var stages []port.ExecutionOrcaIntentStage
