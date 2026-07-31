@@ -3,6 +3,8 @@ package issueops
 import (
 	"strings"
 	"testing"
+
+	"agent-harness/internal/core/preflight"
 )
 
 func TestIssueOpsStartRequiresIssueBranch(t *testing.T) {
@@ -76,6 +78,66 @@ func TestIssueOpsBranchPrepareRequiresLinkedIssue(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "issue must be linked") {
 		t.Fatalf("branch prepare before link-issue should fail, got %v", err)
+	}
+}
+
+func TestIssueOpsBranchPrepareRequiresResolvableLocalBaseCommit(t *testing.T) {
+	repo := t.TempDir()
+	if code, _, stderr := preflight.GitCmd(repo, "init", "-q"); code != 0 {
+		t.Fatalf("git init: %s", stderr)
+	}
+	if code, _, stderr := preflight.GitCmd(
+		repo,
+		"-c",
+		"user.name=IssueOps Test",
+		"-c",
+		"user.email=issueops@example.invalid",
+		"commit",
+		"--allow-empty",
+		"-q",
+		"-m",
+		"initial",
+	); code != 0 {
+		t.Fatalf("git commit: %s", stderr)
+	}
+	head := preflight.GitOut(repo, "rev-parse", "HEAD")
+	stateRoot := t.TempDir()
+	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "194-base-commit"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/194")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+		Provider:   "github",
+		IssueURL:   record.IssueURL,
+		Branch:     record.Branch,
+		BaseBranch: "main",
+		BaseSHA:    strings.Repeat("f", 40),
+	})
+	if err == nil || !strings.Contains(err.Error(), "does not resolve to a local commit") {
+		t.Fatalf("unknown base commit must fail closed: %v", err)
+	}
+	unchanged, readErr := ReadIssueOps(stateRoot, record.ID)
+	if readErr != nil || unchanged.BranchPrepare != nil {
+		t.Fatalf("failed prepare must not persist branch metadata: record=%+v err=%v", unchanged.BranchPrepare, readErr)
+	}
+
+	prepared, err := PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+		Provider:   "github",
+		IssueURL:   record.IssueURL,
+		Branch:     record.Branch,
+		BaseBranch: "main",
+		BaseSHA:    head[:12],
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prepared.BranchPrepare == nil || prepared.BranchPrepare.BaseSHA != head {
+		t.Fatalf("base commit must be canonicalized: got=%+v want=%s", prepared.BranchPrepare, head)
 	}
 }
 

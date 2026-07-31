@@ -14,6 +14,9 @@ type Store struct {
 	Read             func(stateRoot, id string) (model.IssueOpsRecord, error)
 	TouchWrite       func(stateRoot string, record model.IssueOpsRecord) (model.IssueOpsRecord, error)
 	ValidateIssueURL func(issueURL string) error
+	// ResolveBaseCommit은 요청된 base_sha가 이 레포에서 실제 commit으로
+	// 해석되는지 확인하고 provider 명령에 쓸 canonical OID를 돌려준다.
+	ResolveBaseCommit func(repo, revision string) (string, error)
 	// UmbrellaForChildIssue는 이 이슈를 자식으로 링크한 우산 사이클을 돌려준다.
 	// 자식은 우산 브랜치에서 분기해 우산 브랜치로 합류해야 하므로 base_branch를
 	// 그 브랜치와 대조하는 데 쓴다(#129).
@@ -84,17 +87,31 @@ func Prepare(store Store, stateRoot, id string, req model.IssueOpsBranchPrepareR
 	if reason := umbrellaBaseBranchMismatch(store, record, branch, baseBranch); reason != "" {
 		return model.IssueOpsRecord{OK: false}, fmt.Errorf("%s", reason)
 	}
+	baseSHA := strings.TrimSpace(req.BaseSHA)
+	if baseSHA != "" {
+		if store.ResolveBaseCommit == nil {
+			return model.IssueOpsRecord{OK: false}, fmt.Errorf("base_sha validation is unavailable")
+		}
+		resolved, resolveErr := store.ResolveBaseCommit(record.Repo, baseSHA)
+		if resolveErr != nil {
+			return model.IssueOpsRecord{OK: false}, fmt.Errorf("base_sha %q does not resolve to a local commit: %w", baseSHA, resolveErr)
+		}
+		baseSHA = strings.TrimSpace(resolved)
+		if baseSHA == "" {
+			return model.IssueOpsRecord{OK: false}, fmt.Errorf("base_sha %q resolved to an empty commit OID", strings.TrimSpace(req.BaseSHA))
+		}
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	record.BranchPrepare = &model.IssueOpsBranchPrepare{
 		Provider:        provider,
 		IssueURL:        issueURL,
 		Branch:          branch,
 		BaseBranch:      baseBranch,
-		BaseSHA:         strings.TrimSpace(req.BaseSHA),
+		BaseSHA:         baseSHA,
 		ParentWorktree:  parentWorktree,
 		RemoteBranchURL: strings.TrimSpace(req.RemoteBranchURL),
 		LinkVerified:    req.LinkVerified,
-		Steps:           Steps(provider, issueURL, branch, baseBranch, strings.TrimSpace(req.BaseSHA)),
+		Steps:           Steps(provider, issueURL, branch, baseBranch, baseSHA),
 		CreatedAt:       now,
 	}
 	return store.TouchWrite(stateRoot, record)

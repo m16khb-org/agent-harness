@@ -505,6 +505,24 @@ func TestStopDaemonLeavesUnrelatedLiveProcessAlive(t *testing.T) {
 	}
 }
 
+func TestDaemonProcessIdentityMatchesLegacyLocalizedStartTime(t *testing.T) {
+	instance := daemonInstance{
+		ProcessStartTime: "2026년  7월 31일 금요일 16시 14분 57초",
+		Executable:       "/tmp/agent-harness",
+	}
+	process := daemonProcessIdentity{
+		StartTime:  "2026-07-31T07:14:57Z",
+		Executable: "/tmp/agent-harness",
+	}
+	if !daemonProcessIdentityMatches(instance, process) {
+		t.Fatalf("equivalent legacy and canonical identities must match: instance=%#v process=%#v", instance, process)
+	}
+	process.StartTime = "2026-07-31T07:14:58Z"
+	if daemonProcessIdentityMatches(instance, process) {
+		t.Fatal("different process start identities must not match")
+	}
+}
+
 func TestStopDaemonRejectsLegacyPIDWithoutMutation(t *testing.T) {
 	mutated := false
 	status, err := stopDaemonWithDeps(daemonStopDeps{

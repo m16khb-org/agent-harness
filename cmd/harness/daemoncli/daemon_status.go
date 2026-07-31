@@ -158,7 +158,7 @@ func daemonIdentityMismatchStatus(status daemonStatus, message string) daemonSta
 }
 
 func daemonProcessIdentityMatches(instance daemonInstance, process daemonProcessIdentity) bool {
-	if instance.ProcessStartTime != process.StartTime {
+	if !daemonpaths.ProcessStartTimeEqual(instance.ProcessStartTime, process.StartTime) {
 		return false
 	}
 	// Linux의 /proc/<pid>/exe는 실행 중인 image를 가리키므로 executable 불일치는

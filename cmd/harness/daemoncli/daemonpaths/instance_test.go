@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestReadInstanceSupportsAdditiveJSONAndLegacyPID(t *testing.T) {
@@ -48,5 +49,19 @@ func TestInspectProcessReturnsStableCurrentIdentity(t *testing.T) {
 	}
 	if first.StartTime == "" || first.Executable == "" || first != second {
 		t.Fatalf("expected stable current process identity, first=%#v second=%#v", first, second)
+	}
+	if _, err := time.Parse(time.RFC3339, first.StartTime); err != nil {
+		t.Fatalf("expected locale-independent start identity, got=%q err=%v", first.StartTime, err)
+	}
+}
+
+func TestProcessStartTimeEqualSupportsLegacyKoreanReceipt(t *testing.T) {
+	recorded := "2026년  7월 31일 금요일 16시 14분 57초"
+	observed := "Fri Jul 31 16:14:57 2026"
+	if !ProcessStartTimeEqual(recorded, observed) {
+		t.Fatalf("expected equivalent localized start identities: recorded=%q observed=%q", recorded, observed)
+	}
+	if ProcessStartTimeEqual(recorded, "Fri Jul 31 16:14:58 2026") {
+		t.Fatal("different process start seconds must not match")
 	}
 }
