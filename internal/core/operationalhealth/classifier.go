@@ -119,7 +119,7 @@ func Classify(snapshot Snapshot, opts Options) Result {
 	instanceCounts := countBy(snapshot.OrcaWorktrees, func(worktree OrcaWorktree) string { return strings.TrimSpace(worktree.InstanceID) })
 	terminalCounts := countBy(snapshot.Terminals, func(terminal OrcaTerminal) string { return strings.TrimSpace(terminal.Handle) })
 	ptyCounts := countBy(snapshot.Terminals, func(terminal OrcaTerminal) string { return strings.TrimSpace(terminal.PTYID) })
-	taskCounts := countBy(snapshot.Tasks, func(task OrcaTask) string { return strings.TrimSpace(task.ID) })
+	taskCounts := countBy(snapshot.Tasks, func(task OrcaTask) string { return orcaTaskKey(task.RunID, task.ID) })
 	dispatchCounts := countBy(snapshot.Dispatches, func(dispatch OrcaDispatch) string { return strings.TrimSpace(dispatch.ID) })
 	gateCounts := countBy(snapshot.Gates, func(gate OrcaGate) string { return strings.TrimSpace(gate.ID) })
 	gitPathCounts := countBy(snapshot.GitWorktrees, func(worktree GitWorktree) string { return clean(worktree.Path) })
@@ -159,6 +159,7 @@ func Classify(snapshot Snapshot, opts Options) Result {
 	for _, cycle := range snapshot.Cycles {
 		authority := authorities[strings.TrimSpace(cycle.ID)]
 		if authority == AuthorityLive || authority == AuthorityPreserved {
+			cycle = resolveLegacyCycleRun(cycle, snapshot.Tasks)
 			activeCycles = append(activeCycles, cycle)
 			if clean(cycle.Repo) == clean(snapshot.RepoRoot) {
 				activeRepoCycles = append(activeRepoCycles, cycle)
@@ -174,7 +175,7 @@ func Classify(snapshot Snapshot, opts Options) Result {
 	for handle := range terminalOwners {
 		sort.Strings(terminalOwners[handle])
 	}
-	taskOwners := ownerIndex(activeCycles, func(cycle Cycle) string { return strings.TrimSpace(cycle.TaskID) })
+	taskOwners := ownerIndex(activeCycles, func(cycle Cycle) string { return orcaTaskKey(cycle.RunID, cycle.TaskID) })
 	dispatchOwners := ownerIndex(activeCycles, func(cycle Cycle) string { return strings.TrimSpace(cycle.DispatchID) })
 	gitPathOwners := ownerIndex(activeRepoCycles, func(cycle Cycle) string { return clean(cycle.WorktreePath) })
 	for kind, owners := range map[string]map[string][]string{
@@ -245,6 +246,7 @@ func Classify(snapshot Snapshot, opts Options) Result {
 	}
 	for _, task := range snapshot.Tasks {
 		id := strings.TrimSpace(task.ID)
+		key := orcaTaskKey(task.RunID, task.ID)
 		status := strings.TrimSpace(task.Status)
 		if !knownTaskStatus(status) {
 			builder.add(FindingInventoryUnknown, "task", id, "task status is unsupported: "+status, "")
@@ -262,7 +264,7 @@ func Classify(snapshot Snapshot, opts Options) Result {
 		if settledTaskStatus(status) {
 			continue
 		}
-		if len(taskOwners[id]) != 1 {
+		if len(taskOwners[key]) != 1 {
 			builder.add(FindingTaskResidue, "task", id, "task has no live or invocation-preserved owner", "")
 		}
 	}
@@ -597,7 +599,8 @@ func validateCycleResources(builder *findingBuilder, snapshot Snapshot, cycle Cy
 	if isOrca || strings.TrimSpace(cycle.DispatchID) != "" {
 		dispatch, dispatchOK = uniqueBy(snapshot.Dispatches, cycle.DispatchID, func(value OrcaDispatch) string { return value.ID })
 		statusMismatch := authority == AuthorityLive && strings.TrimSpace(dispatch.Status) != "dispatched"
-		if !dispatchOK || dispatchCounts[cycle.DispatchID] != 1 || strings.TrimSpace(dispatch.RuntimeID) != strings.TrimSpace(cycle.OrcaRuntimeID) || strings.TrimSpace(dispatch.TaskID) != strings.TrimSpace(cycle.TaskID) || statusMismatch {
+		if !dispatchOK || dispatchCounts[cycle.DispatchID] != 1 || strings.TrimSpace(dispatch.RuntimeID) != strings.TrimSpace(cycle.OrcaRuntimeID) ||
+			orcaTaskKey(dispatch.RunID, dispatch.TaskID) != orcaTaskKey(cycle.RunID, cycle.TaskID) || statusMismatch {
 			builder.add(FindingInventoryUnknown, "dispatch", cycle.DispatchID, "cycle dispatch identity does not match exactly one expected dispatch", "")
 		}
 	}
@@ -619,11 +622,40 @@ func validateCycleResources(builder *findingBuilder, snapshot Snapshot, cycle Cy
 		}
 	}
 	if isOrca || strings.TrimSpace(cycle.TaskID) != "" {
-		task, ok := uniqueBy(snapshot.Tasks, cycle.TaskID, func(value OrcaTask) string { return value.ID })
-		if !ok || taskCounts[cycle.TaskID] != 1 || strings.TrimSpace(task.RuntimeID) != strings.TrimSpace(cycle.OrcaRuntimeID) || (authority == AuthorityLive && strings.TrimSpace(task.Status) != "dispatched") || (strings.TrimSpace(task.DispatchID) != "" && strings.TrimSpace(task.DispatchID) != strings.TrimSpace(cycle.DispatchID)) {
+		taskKey := orcaTaskKey(cycle.RunID, cycle.TaskID)
+		task, ok := uniqueBy(snapshot.Tasks, taskKey, func(value OrcaTask) string { return orcaTaskKey(value.RunID, value.ID) })
+		if !ok || taskCounts[taskKey] != 1 || strings.TrimSpace(task.RuntimeID) != strings.TrimSpace(cycle.OrcaRuntimeID) || (authority == AuthorityLive && strings.TrimSpace(task.Status) != "dispatched") || (strings.TrimSpace(task.DispatchID) != "" && strings.TrimSpace(task.DispatchID) != strings.TrimSpace(cycle.DispatchID)) {
 			builder.add(FindingInventoryUnknown, "task", cycle.TaskID, "cycle task identity or status does not match exactly one task", "")
 		}
 	}
+}
+
+func orcaTaskKey(runID, taskID string) string {
+	runID, taskID = strings.TrimSpace(runID), strings.TrimSpace(taskID)
+	if taskID == "" {
+		return ""
+	}
+	return runID + "\x00" + taskID
+}
+
+func resolveLegacyCycleRun(cycle Cycle, tasks []OrcaTask) Cycle {
+	if strings.TrimSpace(cycle.RunID) != "" || strings.TrimSpace(cycle.TaskID) == "" {
+		return cycle
+	}
+	var candidate *OrcaTask
+	for index := range tasks {
+		if strings.TrimSpace(tasks[index].ID) != strings.TrimSpace(cycle.TaskID) {
+			continue
+		}
+		if candidate != nil {
+			return cycle
+		}
+		candidate = &tasks[index]
+	}
+	if candidate != nil {
+		cycle.RunID = strings.TrimSpace(candidate.RunID)
+	}
+	return cycle
 }
 
 func validateLeaseHolderIndexes(builder *findingBuilder, cycles []Cycle, indexes []LeaseHolderIndex) {

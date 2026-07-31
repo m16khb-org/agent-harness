@@ -51,7 +51,7 @@ func ResumeExecutionWithDependencies(ctx context.Context, stateRoot string, req 
 		return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("execution resume requires Orca mutation and owner inventory adapters")
 	}
 	binding := record.Execution.Orca
-	inventory, err := deps.OrcaOwner.InspectOwner(ctx, port.ExecutionOrcaOwnerInventoryRequest{RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, TaskID: binding.TaskID, DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID, AllowRuntimeRollover: true})
+	inventory, err := deps.OrcaOwner.InspectOwner(ctx, port.ExecutionOrcaOwnerInventoryRequest{RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, RunID: binding.RunID, TaskID: binding.TaskID, DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID, AllowRuntimeRollover: true})
 	if err != nil {
 		return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("inspect previous Orca owner: %w", err)
 	}
@@ -89,7 +89,7 @@ func ResumeExecutionWithDependencies(ctx context.Context, stateRoot string, req 
 	if err != nil {
 		return ExecutionResumeResult{OK: false, ID: req.ID}, err
 	}
-	for attempt := 0; attempt < 3 && persisted.Execution.Pending != nil; attempt++ {
+	for attempt := 0; attempt < 5 && persisted.Execution.Pending != nil; attempt++ {
 		persisted, payload, err = executeOrcaIntentStage(ctx, stateRoot, persisted, payload, deps.Orca, nil, deps.Now)
 		if err != nil {
 			return ExecutionResumeResult{OK: false, ID: req.ID}, err

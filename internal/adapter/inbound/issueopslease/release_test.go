@@ -25,7 +25,7 @@ func TestReleaseHandlerReturnsCommittedProjectionWithoutStatusReadback(t *testin
 			Mode:           "orca",
 			Workspace:      leasecontract.Workspace{SourceRoot: "/source", Root: "/canonical", Branch: "196-release", BaseHead: strings.Repeat("a", 40), Driver: "orca", LinkedAt: "2026-07-29T00:00:00Z"},
 			Lease:          leasecontract.Lease{Generation: 1, Status: "active", Holder: &actor, ClaimedAt: "2026-07-29T00:00:01Z"},
-			Orca:           &leasecontract.OrcaBinding{RuntimeID: "runtime", RepoID: "repo", WorktreeID: "worktree", OwnerHost: "codex", OwnerModel: "gpt-5.6-terra", TaskID: "task", DispatchID: "dispatch"},
+			Orca:           &leasecontract.OrcaBinding{RuntimeID: "runtime", RepoID: "repo", WorktreeID: "worktree", RunID: "run", OwnerHost: "codex", OwnerModel: "gpt-5.6-terra", TaskID: "task", DispatchID: "dispatch"},
 			Pending:        &leasecontract.ExternalIntent{OperationID: "pending", Kind: "pr_create", Marker: "marker", StartedAt: "2026-07-29T00:00:02Z"},
 			Completion:     &leasecontract.Completion{FinalHead: strings.Repeat("b", 40), TuringReportPath: ".agent-harness/turing/196.json", Verification: []string{"focused"}, RemoteArtifactURL: "https://example.test/pull/196", CompletedAt: "2026-07-29T00:00:03Z"},
 			Failure:        &leasecontract.FailureDetail{OperationID: "failed-operation", Code: "transient", Message: "retry", At: "2026-07-29T00:00:04Z"},
@@ -58,6 +58,9 @@ func TestReleaseHandlerReturnsCommittedProjectionWithoutStatusReadback(t *testin
 	}
 	if !result.OK || result.Execution.Lease.Status != "released" || result.Execution.Orca == nil || result.Execution.Pending == nil || result.Execution.Completion == nil || result.Execution.Failure == nil || len(result.Execution.SyncBaseEvents) != 1 {
 		t.Fatalf("handler did not return committed execution projection: %#v", result)
+	}
+	if result.Execution.Orca.RunID != "run" {
+		t.Fatalf("handler lost Orca Run projection: %#v", result.Execution.Orca)
 	}
 }
 

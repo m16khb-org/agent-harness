@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -150,12 +151,16 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 		{argv: []string{"orca", "worktree", "list", "--help"}, want: []string{"--repo", "--limit", "--json"}},
 		{argv: []string{"orca", "terminal", "create", "--help"}, want: []string{"--worktree", "--command", "--title", "--json"}},
 		{argv: []string{"orca", "terminal", "list", "--help"}, want: []string{"--worktree", "--limit", "--json"}},
-		{argv: []string{"orca", "orchestration", "task-create", "--help"}, want: []string{"--spec", "--task-title", "--display-name", "--json"}},
-		{argv: []string{"orca", "orchestration", "task-list", "--help"}, want: []string{"--ready", "--status", "--json"}},
-		{argv: []string{"orca", "orchestration", "task-update", "--help"}, want: []string{"--id", "--status", "--result", "--json"}},
-		{argv: []string{"orca", "orchestration", "dispatch", "--help"}, want: []string{"--task", "--to", "--from", "--inject", "--return-preamble", "--json"}},
+		{argv: []string{"orca", "orchestration", "run-create", "--help"}, want: []string{"--objective", "--from", "--json"}},
+		{argv: []string{"orca", "orchestration", "run-list", "--help"}, want: []string{"--json"}},
+		{argv: []string{"orca", "orchestration", "run-current", "--help"}, want: []string{"--from", "--json"}},
+		{argv: []string{"orca", "orchestration", "run-use", "--help"}, want: []string{"--id", "--from", "--json"}},
+		{argv: []string{"orca", "orchestration", "task-create", "--help"}, want: []string{"--spec", "--task-title", "--display-name", "--run", "--from", "--json"}},
+		{argv: []string{"orca", "orchestration", "task-list", "--help"}, want: []string{"--ready", "--status", "--run", "--json"}},
+		{argv: []string{"orca", "orchestration", "task-update", "--help"}, want: []string{"--id", "--status", "--result", "--run", "--from", "--json"}},
+		{argv: []string{"orca", "orchestration", "dispatch", "--help"}, want: []string{"--task", "--to", "--run", "--from", "--inject", "--return-preamble", "--json"}},
 		{argv: []string{"orca", "orchestration", "dispatch-show", "--help"}, want: []string{"--task", "--preamble", "--from", "--json"}},
-		{argv: []string{"orca", "orchestration", "send", "--help"}, want: []string{"--to", "--from", "--type", "--subject", "--body", "--task-id", "--dispatch-id", "--files-modified", "--report-path", "--json"}},
+		{argv: []string{"orca", "orchestration", "send", "--help"}, want: []string{"--run", "--to", "--from", "--type", "--subject", "--body", "--task-id", "--dispatch-id", "--outcome", "--files-modified", "--report-path", "--json"}},
 		{argv: []string{"orca", "worktree", "rm", "--help"}, want: []string{"--worktree", "--force", "--json"}},
 	} {
 		text, err := c.runText(ctx, "", readTimeout, capability.argv)
@@ -190,7 +195,20 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 			return result, nil
 		}
 	}
-	if _, err := c.ListTasks(ctx); err != nil {
+	currentRun, err := c.currentRunInventory(ctx)
+	if err == nil {
+		err = validateExecutionInventoryRuntime(currentRun.RuntimeID, status.RuntimeID)
+	}
+	if err != nil {
+		result.Code = "orchestration_unready"
+		result.Detail = boundedDiagnostic(err.Error())
+		return result, nil
+	}
+	runs, err := c.listRunsInventory(ctx)
+	if err == nil {
+		err = validateExecutionInventoryRuntime(runs.RuntimeID, status.RuntimeID)
+	}
+	if err != nil {
 		result.Code = "orchestration_unready"
 		result.Detail = boundedDiagnostic(err.Error())
 		return result, nil
@@ -533,32 +551,198 @@ func (c *Client) RefreshTerminal(ctx context.Context, worktreeID, ptyID string) 
 	return port.OrcaTerminal{}, &port.OrcaError{Code: "terminal_not_found"}
 }
 
-func (c *Client) ListTasks(ctx context.Context) ([]port.OrcaTask, error) {
-	return c.listTasks(ctx, []string{"orca", "orchestration", "task-list", "--ready", "--json"})
-}
-
-func (c *Client) ListDispatchedTasks(ctx context.Context) ([]port.OrcaTask, error) {
-	return c.listTasks(ctx, []string{"orca", "orchestration", "task-list", "--status", "dispatched", "--json"})
-}
-
-func (c *Client) ListAllTasks(ctx context.Context) ([]port.OrcaTask, error) {
-	return c.listTasks(ctx, []string{"orca", "orchestration", "task-list", "--brief", "--json"})
-}
-
-func (c *Client) listAllTasksInventory(ctx context.Context) (executionTaskInventory, error) {
-	return c.listTasksInventory(ctx, []string{"orca", "orchestration", "task-list", "--brief", "--json"})
-}
-
-func (c *Client) ListFailedTasks(ctx context.Context) ([]port.OrcaTask, error) {
-	return c.listTasks(ctx, []string{"orca", "orchestration", "task-list", "--status", "failed", "--json"})
-}
-
-func (c *Client) listTasks(ctx context.Context, argv []string) ([]port.OrcaTask, error) {
-	inventory, err := c.listTasksInventory(ctx, argv)
+func (c *Client) ListRuns(ctx context.Context) ([]port.OrcaRun, error) {
+	inventory, err := c.listRunsInventory(ctx)
 	return inventory.Rows, err
 }
 
-func (c *Client) listTasksInventory(ctx context.Context, argv []string) (executionTaskInventory, error) {
+func (c *Client) listRunsInventory(ctx context.Context) (executionRunInventory, error) {
+	var payload struct {
+		Runs *[]runPayload `json:"runs"`
+	}
+	runtimeID, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "orchestration", "run-list", "--json"}, &payload)
+	if err != nil {
+		return executionRunInventory{}, err
+	}
+	if payload.Runs == nil {
+		return executionRunInventory{}, &port.OrcaError{Code: "incomplete_list", Detail: "Orca Run list completeness metadata is missing", Invoked: true}
+	}
+	result := make([]port.OrcaRun, 0, len(*payload.Runs))
+	seen := make(map[string]struct{}, len(*payload.Runs))
+	for _, row := range *payload.Runs {
+		value, err := row.portValue(runtimeID)
+		if err != nil {
+			return executionRunInventory{}, err
+		}
+		if _, duplicate := seen[value.ID]; duplicate {
+			return executionRunInventory{}, &port.OrcaError{Code: "run_inventory_ambiguous", Detail: "Orca returned a duplicate Run identity", Invoked: true}
+		}
+		seen[value.ID] = struct{}{}
+		result = append(result, value)
+	}
+	slices.SortFunc(result, func(left, right port.OrcaRun) int {
+		return strings.Compare(left.ID, right.ID)
+	})
+	return executionRunInventory{RuntimeID: runtimeID, Rows: result}, nil
+}
+
+func (c *Client) CreateRun(ctx context.Context, req port.OrcaCreateRunRequest) (port.OrcaRun, error) {
+	objective := strings.TrimSpace(req.Objective)
+	if objective == "" || objective != req.Objective || len(objective) > 4096 || strings.ContainsRune(objective, 0) {
+		return port.OrcaRun{}, &port.OrcaError{Code: "run_objective_invalid"}
+	}
+	fromHandle, err := currentCoordinatorHandle()
+	if err != nil {
+		return port.OrcaRun{}, err
+	}
+	return c.runMutation(ctx, []string{"orca", "orchestration", "run-create", "--objective", objective, "--from", fromHandle, "--json"})
+}
+
+func (c *Client) CurrentRun(ctx context.Context) (*port.OrcaRun, error) {
+	inventory, err := c.currentRunInventory(ctx)
+	return inventory.Run, err
+}
+
+func (c *Client) currentRunInventory(ctx context.Context) (executionCurrentRunInventory, error) {
+	fromHandle, err := currentCoordinatorHandle()
+	if err != nil {
+		return executionCurrentRunInventory{}, err
+	}
+	var payload struct {
+		Run json.RawMessage `json:"run"`
+	}
+	runtimeID, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "orchestration", "run-current", "--from", fromHandle, "--json"}, &payload)
+	if err != nil {
+		return executionCurrentRunInventory{RuntimeID: runtimeID}, err
+	}
+	projection := strings.TrimSpace(string(payload.Run))
+	if projection == "" {
+		return executionCurrentRunInventory{RuntimeID: runtimeID}, &port.OrcaError{Code: "incomplete_run_current", Detail: "Orca current Run projection is missing", Invoked: true}
+	}
+	if projection == "null" {
+		return executionCurrentRunInventory{RuntimeID: runtimeID}, nil
+	}
+	var row runPayload
+	if err := json.Unmarshal(payload.Run, &row); err != nil {
+		return executionCurrentRunInventory{RuntimeID: runtimeID}, &port.OrcaError{Code: "run_identity_invalid", Detail: "Orca current Run projection is malformed", Invoked: true}
+	}
+	value, err := row.portValue(runtimeID)
+	if err != nil {
+		return executionCurrentRunInventory{}, err
+	}
+	return executionCurrentRunInventory{RuntimeID: runtimeID, Run: &value}, nil
+}
+
+func (c *Client) UseRun(ctx context.Context, runID string) (port.OrcaRun, error) {
+	runID, err := validateRunID(runID)
+	if err != nil {
+		return port.OrcaRun{}, err
+	}
+	fromHandle, err := currentCoordinatorHandle()
+	if err != nil {
+		return port.OrcaRun{}, err
+	}
+	used, err := c.runMutation(ctx, []string{"orca", "orchestration", "run-use", "--id", runID, "--from", fromHandle, "--json"})
+	if err == nil && (used.ID != runID || used.Legacy) {
+		return port.OrcaRun{}, &port.OrcaError{Code: "run_binding_mismatch", Detail: "Orca bound a different or legacy Run", Invoked: true}
+	}
+	return used, err
+}
+
+func (c *Client) runMutation(ctx context.Context, argv []string) (port.OrcaRun, error) {
+	var payload struct {
+		Run runPayload `json:"run"`
+	}
+	runtimeID, err := c.runJSON(ctx, "", createTimeout, argv, &payload)
+	if err != nil {
+		return port.OrcaRun{}, err
+	}
+	return payload.Run.portValue(runtimeID)
+}
+
+func currentCoordinatorHandle() (string, error) {
+	raw := os.Getenv("ORCA_TERMINAL_HANDLE")
+	handle := strings.TrimSpace(raw)
+	if raw != handle || !concreteTerminalHandlePattern.MatchString(handle) || len(handle) > 256 {
+		return "", &port.OrcaError{Code: "coordinator_identity_unavailable", Detail: "ORCA_TERMINAL_HANDLE must identify the current concrete coordinator terminal"}
+	}
+	return handle, nil
+}
+
+func validateRunID(runID string) (string, error) {
+	raw := runID
+	runID = strings.TrimSpace(raw)
+	if raw != runID || runID == "" || len(runID) > 1024 || strings.ContainsRune(runID, 0) || runID == "run_legacy_local" {
+		return "", &port.OrcaError{Code: "run_identity_invalid"}
+	}
+	return runID, nil
+}
+
+func (c *Client) ListTasks(ctx context.Context) ([]port.OrcaTask, error) {
+	return c.listTasksAcrossRuns(ctx, "--ready")
+}
+
+func (c *Client) ListDispatchedTasks(ctx context.Context) ([]port.OrcaTask, error) {
+	return c.listTasksAcrossRuns(ctx, "--status", "dispatched")
+}
+
+func (c *Client) ListAllTasks(ctx context.Context) ([]port.OrcaTask, error) {
+	return c.listTasksAcrossRuns(ctx, "--brief")
+}
+
+func (c *Client) listAllTasksInventory(ctx context.Context) (executionTaskInventory, error) {
+	return c.listTasksAcrossRunsInventory(ctx, "--brief")
+}
+
+func (c *Client) ListFailedTasks(ctx context.Context) ([]port.OrcaTask, error) {
+	return c.listTasksAcrossRuns(ctx, "--status", "failed")
+}
+
+func (c *Client) listTasksAcrossRuns(ctx context.Context, flags ...string) ([]port.OrcaTask, error) {
+	inventory, err := c.listTasksAcrossRunsInventory(ctx, flags...)
+	return inventory.Rows, err
+}
+
+func (c *Client) listTasksAcrossRunsInventory(ctx context.Context, flags ...string) (executionTaskInventory, error) {
+	runs, err := c.ListRuns(ctx)
+	if err != nil {
+		return executionTaskInventory{}, err
+	}
+	result := executionTaskInventory{}
+	seen := make(map[string]struct{})
+	for _, run := range runs {
+		if run.Legacy {
+			continue
+		}
+		inventory, err := c.listRunTasksInventory(ctx, run.ID, flags...)
+		if err != nil {
+			return executionTaskInventory{}, err
+		}
+		if result.RuntimeID == "" {
+			result.RuntimeID = run.RuntimeID
+		}
+		if err := validateExecutionInventoryRuntime(inventory.RuntimeID, run.RuntimeID); err != nil {
+			return executionTaskInventory{}, err
+		}
+		for _, task := range inventory.Rows {
+			key := task.RunID + "\x00" + task.ID
+			if _, duplicate := seen[key]; duplicate {
+				return executionTaskInventory{}, &port.OrcaError{Code: "task_inventory_ambiguous", Detail: "Orca returned a duplicate task identity in one Run", Invoked: true}
+			}
+			seen[key] = struct{}{}
+			result.Rows = append(result.Rows, task)
+		}
+	}
+	return result, nil
+}
+
+func (c *Client) listRunTasksInventory(ctx context.Context, runID string, flags ...string) (executionTaskInventory, error) {
+	runID, err := validateRunID(runID)
+	if err != nil {
+		return executionTaskInventory{}, err
+	}
+	argv := append([]string{"orca", "orchestration", "task-list"}, flags...)
+	argv = append(argv, "--run", runID, "--json")
 	var payload struct {
 		Tasks []taskPayload `json:"tasks"`
 		Count *int          `json:"count"`
@@ -577,6 +761,10 @@ func (c *Client) listTasksInventory(ctx context.Context, argv []string) (executi
 		}
 		value := task.portValue()
 		value.RuntimeID = runtimeID
+		if value.RunID != "" && value.RunID != runID {
+			return executionTaskInventory{}, &port.OrcaError{Code: "task_run_mismatch", Detail: "Orca returned a task from a different Run", Invoked: true}
+		}
+		value.RunID = runID
 		result = append(result, value)
 	}
 	return executionTaskInventory{RuntimeID: runtimeID, Rows: result}, nil
@@ -626,13 +814,25 @@ func (c *Client) InboxPresence(ctx context.Context) (port.OrcaInboxPresence, err
 }
 
 func (c *Client) CreateTask(ctx context.Context, req port.OrcaCreateTaskRequest) (port.OrcaTask, error) {
-	argv := []string{"orca", "orchestration", "task-create", "--spec", req.Spec, "--task-title", req.Title, "--display-name", req.DisplayName, "--json"}
+	runID, err := validateRunID(req.RunID)
+	if err != nil {
+		return port.OrcaTask{}, err
+	}
+	fromHandle, err := currentCoordinatorHandle()
+	if err != nil {
+		return port.OrcaTask{}, err
+	}
+	argv := []string{"orca", "orchestration", "task-create", "--spec", req.Spec, "--task-title", req.Title, "--display-name", req.DisplayName, "--run", runID, "--from", fromHandle, "--json"}
 	var payload struct {
 		Task taskPayload `json:"task"`
 	}
 	runtimeID, err := c.runJSON(ctx, "", createTimeout, argv, &payload)
 	created := payload.Task.portValue()
 	created.RuntimeID = runtimeID
+	if err == nil && created.RunID != "" && created.RunID != runID {
+		return port.OrcaTask{}, &port.OrcaError{Code: "task_run_mismatch", Invoked: true}
+	}
+	created.RunID = runID
 	return created, err
 }
 
@@ -644,8 +844,40 @@ const taskStatusCompleted = "completed"
 //
 // 이 메서드가 별도로 있는 이유는 어떤 status가 종결인지가 Orca 쪽 지식이기
 // 때문이다. 호출자는 "종결시켜라"만 말하고 값은 알 필요가 없다.
-func (c *Client) SettleTask(ctx context.Context, id string) error {
-	return c.UpdateTask(ctx, id, taskStatusCompleted, "")
+func (c *Client) SettleTask(ctx context.Context, runID, id string) error {
+	if strings.TrimSpace(runID) == "" {
+		resolved, err := c.resolveUniqueTaskRunID(ctx, id)
+		if err != nil {
+			return err
+		}
+		runID = resolved
+	}
+	return c.UpdateTask(ctx, runID, id, taskStatusCompleted, "")
+}
+
+func (c *Client) resolveUniqueTaskRunID(ctx context.Context, taskID string) (string, error) {
+	taskID = strings.TrimSpace(taskID)
+	if taskID == "" {
+		return "", &port.OrcaError{Code: "task_identity_invalid"}
+	}
+	tasks, err := c.ListAllTasks(ctx)
+	if err != nil {
+		return "", err
+	}
+	runID := ""
+	for _, task := range tasks {
+		if task.ID != taskID {
+			continue
+		}
+		if runID != "" {
+			return "", &port.OrcaError{Code: "legacy_task_run_ambiguous", Detail: "legacy task identity exists in more than one explicit Run", Invoked: true}
+		}
+		runID = task.RunID
+	}
+	if runID == "" {
+		return "", &port.OrcaError{Code: "legacy_task_run_unresolved", Detail: "legacy task identity is absent from explicit Runs", Invoked: true}
+	}
+	return runID, nil
 }
 
 // UpdateTask는 execution complete가 orca 모드 사이클의 task를 종결시키는 경로다
@@ -654,21 +886,34 @@ func (c *Client) SettleTask(ctx context.Context, id string) error {
 // #121이 이 명령을 residue 해법으로 기각했던 근거("상태를 바꿔도 소유자 조회가
 // 0건이라 분류기가 잔여물로 보고한다")는 #121 자신의 수정으로 사라졌다. 그
 // 수정이 종결된 task를 면제하게 만들었으므로 이제 상태 변경이 곧 해법이다.
-func (c *Client) UpdateTask(ctx context.Context, id, status, result string) error {
+func (c *Client) UpdateTask(ctx context.Context, runID, id, status, result string) error {
+	runID, err := validateRunID(runID)
+	if err != nil {
+		return err
+	}
+	fromHandle, err := currentCoordinatorHandle()
+	if err != nil {
+		return err
+	}
 	argv := []string{"orca", "orchestration", "task-update", "--id", id, "--status", status}
 	if result != "" {
 		argv = append(argv, "--result", result)
 	}
-	argv = append(argv, "--json")
-	_, err := c.runJSON(ctx, "", readTimeout, argv, &struct{}{})
+	argv = append(argv, "--run", runID, "--from", fromHandle, "--json")
+	_, err = c.runJSON(ctx, "", readTimeout, argv, &struct{}{})
 	return err
 }
 
 func (c *Client) Dispatch(ctx context.Context, req port.OrcaDispatchRequest) (port.OrcaDispatch, error) {
-	argv := []string{"orca", "orchestration", "dispatch", "--task", req.TaskID, "--to", req.ToHandle}
-	if req.FromHandle != "" {
-		argv = append(argv, "--from", req.FromHandle)
+	runID, err := validateRunID(req.RunID)
+	if err != nil {
+		return port.OrcaDispatch{}, err
 	}
+	fromHandle, err := currentCoordinatorHandle()
+	if err != nil {
+		return port.OrcaDispatch{}, err
+	}
+	argv := []string{"orca", "orchestration", "dispatch", "--task", req.TaskID, "--to", req.ToHandle, "--run", runID, "--from", fromHandle}
 	if req.Inject {
 		argv = append(argv, "--inject")
 	}
@@ -703,6 +948,7 @@ func (c *Client) SendWorkerDone(ctx context.Context, req port.OrcaWorkerDoneRequ
 	}
 	argv := []string{
 		"orca", "orchestration", "send",
+		"--run", req.RunID,
 		"--to", req.ToHandle,
 		"--from", req.FromHandle,
 		"--type", "worker_done",
@@ -710,6 +956,7 @@ func (c *Client) SendWorkerDone(ctx context.Context, req port.OrcaWorkerDoneRequ
 		"--body", req.Body,
 		"--task-id", req.TaskID,
 		"--dispatch-id", req.DispatchID,
+		"--outcome", req.Outcome,
 	}
 	if len(req.ChangedFiles) > 0 {
 		argv = append(argv, "--files-modified", strings.Join(req.ChangedFiles, ","))
@@ -741,16 +988,20 @@ func (c *Client) SendWorkerDone(ctx context.Context, req port.OrcaWorkerDoneRequ
 	var evidence struct {
 		TaskID        string   `json:"taskId"`
 		DispatchID    string   `json:"dispatchId"`
+		Outcome       string   `json:"outcome"`
 		FilesModified []string `json:"filesModified"`
 		ReportPath    string   `json:"reportPath"`
 	}
-	if len(message.Payload) > 64*1024 || json.Unmarshal([]byte(message.Payload), &evidence) != nil || evidence.TaskID != req.TaskID || evidence.DispatchID != req.DispatchID || !slices.Equal(evidence.FilesModified, req.ChangedFiles) || evidence.ReportPath != req.ReportPath {
+	if len(message.Payload) > 64*1024 || json.Unmarshal([]byte(message.Payload), &evidence) != nil || evidence.TaskID != req.TaskID || evidence.DispatchID != req.DispatchID || evidence.Outcome != req.Outcome || !slices.Equal(evidence.FilesModified, req.ChangedFiles) || evidence.ReportPath != req.ReportPath {
 		return port.OrcaWorkerDoneResult{}, &port.OrcaError{Code: "worker_done_response_mismatch", Detail: "Orca message payload does not match the requested projection", Invoked: true}
 	}
 	return port.OrcaWorkerDoneResult{MessageID: message.ID, Sequence: message.Sequence}, nil
 }
 
 func validateWorkerDoneRequest(req port.OrcaWorkerDoneRequest) error {
+	if _, err := validateRunID(req.RunID); err != nil {
+		return fmt.Errorf("worker_done requires a concrete non-legacy Run identity")
+	}
 	if !concreteTerminalHandlePattern.MatchString(req.FromHandle) || !concreteTerminalHandlePattern.MatchString(req.ToHandle) || req.FromHandle == req.ToHandle || len(req.FromHandle) > 256 || len(req.ToHandle) > 256 {
 		return fmt.Errorf("worker_done requires distinct concrete bounded Orca terminal handles")
 	}
@@ -763,6 +1014,9 @@ func validateWorkerDoneRequest(req port.OrcaWorkerDoneRequest) error {
 		if strings.TrimSpace(value.value) == "" || value.value != strings.TrimSpace(value.value) || len(value.value) > value.limit || strings.ContainsRune(value.value, 0) {
 			return fmt.Errorf("worker_done %s is missing, non-canonical, or unbounded", name)
 		}
+	}
+	if req.Outcome != "succeeded" && req.Outcome != "failed" {
+		return fmt.Errorf("worker_done outcome must be succeeded or failed")
 	}
 	if len(req.ChangedFiles) > 512 {
 		return fmt.Errorf("worker_done changed files are unbounded")
@@ -901,6 +1155,7 @@ type visualLayoutPayload struct {
 
 type taskPayload struct {
 	ID          string          `json:"id"`
+	RunID       string          `json:"run_id"`
 	TaskTitle   string          `json:"task_title"`
 	DisplayName string          `json:"display_name"`
 	Status      string          `json:"status"`
@@ -909,7 +1164,21 @@ type taskPayload struct {
 }
 
 func (t taskPayload) portValue() port.OrcaTask {
-	return port.OrcaTask{ID: t.ID, Title: t.TaskTitle, DisplayName: t.DisplayName, Status: t.Status, CompletedAt: t.CompletedAt, HasResult: hasJSONValue(t.Result)}
+	return port.OrcaTask{RunID: t.RunID, ID: t.ID, Title: t.TaskTitle, DisplayName: t.DisplayName, Status: t.Status, CompletedAt: t.CompletedAt, HasResult: hasJSONValue(t.Result)}
+}
+
+type runPayload struct {
+	ID        string `json:"id"`
+	Objective string `json:"objective"`
+	Legacy    int    `json:"legacy"`
+}
+
+func (r runPayload) portValue(runtimeID string) (port.OrcaRun, error) {
+	if strings.TrimSpace(r.ID) == "" || r.ID != strings.TrimSpace(r.ID) ||
+		strings.TrimSpace(r.Objective) == "" || r.Objective != strings.TrimSpace(r.Objective) {
+		return port.OrcaRun{}, &port.OrcaError{Code: "run_identity_incomplete", Invoked: true}
+	}
+	return port.OrcaRun{RuntimeID: runtimeID, ID: r.ID, Objective: r.Objective, Legacy: r.Legacy != 0}, nil
 }
 
 func hasJSONValue(raw json.RawMessage) bool {

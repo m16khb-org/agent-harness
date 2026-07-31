@@ -667,7 +667,7 @@ func executionOwnerInventory(ctx context.Context, record IssueOpsRecord, deps Ex
 	}
 	binding := record.Execution.Orca
 	inventory, err := deps.OrcaOwner.InspectOwner(ctx, port.ExecutionOrcaOwnerInventoryRequest{
-		RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, TaskID: binding.TaskID,
+		RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, RunID: binding.RunID, TaskID: binding.TaskID,
 		DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID,
 		AllowRuntimeRollover: record.Execution.Lease.Holder == nil &&
 			(record.Execution.Lease.Status == model.LeaseStatusReleased || record.Execution.Lease.Status == model.LeaseStatusClaimable),

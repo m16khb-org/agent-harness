@@ -323,6 +323,10 @@ func (f *executionOrcaFake) InvokeIntent(_ context.Context, request port.Executi
 		return port.ExecutionOrcaIntentReceipt{Workspace: &prepared}, nil
 	case port.ExecutionOrcaIntentTerminal:
 		return port.ExecutionOrcaIntentReceipt{TerminalPTYID: "pty-1", TerminalHandle: "terminal-1"}, nil
+	case port.ExecutionOrcaIntentRun:
+		return port.ExecutionOrcaIntentReceipt{RunID: "run-1"}, nil
+	case port.ExecutionOrcaIntentRunBind:
+		return port.ExecutionOrcaIntentReceipt{RunID: request.RunID, RunBound: true}, nil
 	case port.ExecutionOrcaIntentTask:
 		return port.ExecutionOrcaIntentReceipt{TaskID: "task-1"}, nil
 	case port.ExecutionOrcaIntentDispatch:

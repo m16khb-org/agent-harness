@@ -129,8 +129,8 @@ func TestClassifyAcceptsOrcaOptionalInstanceAndPTY(t *testing.T) {
 		{RuntimeID: "runtime", RepoID: "repo-id", ID: "worktree-id", InstanceID: "observed-instance", Repo: "/repo", Path: cycle.WorktreePath, Branch: cycle.Branch, Head: snapshot.SourceHead},
 	}
 	snapshot.Terminals = []OrcaTerminal{{RuntimeID: "runtime", Handle: "terminal", PTYID: "observed-pty", WorktreeID: "worktree-id", WorktreePath: cycle.WorktreePath, Connected: true, Writable: true}}
-	snapshot.Tasks = []OrcaTask{{RuntimeID: "runtime", ID: "task-id", Status: "dispatched", DispatchID: "dispatch-id"}}
-	snapshot.Dispatches = []OrcaDispatch{{RuntimeID: "runtime", ID: "dispatch-id", TaskID: "task-id", AssigneeHandle: "terminal", Status: "dispatched"}}
+	snapshot.Tasks = []OrcaTask{{RuntimeID: "runtime", RunID: "run-explicit", ID: "task-id", Status: "dispatched", DispatchID: "dispatch-id"}}
+	snapshot.Dispatches = []OrcaDispatch{{RuntimeID: "runtime", RunID: "run-explicit", ID: "dispatch-id", TaskID: "task-id", AssigneeHandle: "terminal", Status: "dispatched"}}
 	snapshot.Messages = MessagePresence{RuntimeID: "runtime", Empty: true, CompleteAbsence: true}
 	if result := Classify(snapshot, Options{Now: time.Now()}); !result.Healthy {
 		t.Fatalf("optional Orca identities should be healthy: %#v", result.Findings)

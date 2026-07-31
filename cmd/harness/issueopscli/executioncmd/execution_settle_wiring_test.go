@@ -11,8 +11,8 @@ import (
 func TestActionDepsCarriesTheOrcaTaskSettler(t *testing.T) {
 	var settled []string
 	deps := Deps{
-		SettleOrcaTask: func(_ context.Context, taskID string) error {
-			settled = append(settled, taskID)
+		SettleOrcaTask: func(_ context.Context, runID, taskID string) error {
+			settled = append(settled, runID+"/"+taskID)
 			return nil
 		},
 	}
@@ -21,10 +21,10 @@ func TestActionDepsCarriesTheOrcaTaskSettler(t *testing.T) {
 	if action.SettleOrcaTask == nil {
 		t.Fatal("execution action dependencies must carry the orca task settler")
 	}
-	if err := action.SettleOrcaTask(context.Background(), "task-130"); err != nil {
+	if err := action.SettleOrcaTask(context.Background(), "run-130", "task-130"); err != nil {
 		t.Fatal(err)
 	}
-	if len(settled) != 1 || settled[0] != "task-130" {
+	if len(settled) != 1 || settled[0] != "run-130/task-130" {
 		t.Fatalf("the settler must reach the injected surface unchanged: %+v", settled)
 	}
 }

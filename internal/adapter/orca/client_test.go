@@ -18,12 +18,13 @@ import (
 func TestClientProjectsWorkerDoneThroughDedicatedSafeArgvMethod(t *testing.T) {
 	runner := newFakeRunner(t)
 	req := port.OrcaWorkerDoneRequest{
+		RunID:      "run_issueops_1",
 		FromHandle: "term_worker", ToHandle: "term_coordinator", Subject: "Completed issue io-demo",
 		Body:   "Implementation completed at abcdef. Verification evidence is persisted. The coordinator may inspect the submitted record.",
-		TaskID: "task-1", DispatchID: "dispatch-1", ChangedFiles: []string{"a.go", "report.md"}, ReportPath: "/repo/report.md",
+		TaskID: "task-1", DispatchID: "dispatch-1", Outcome: "succeeded", ChangedFiles: []string{"a.go", "report.md"}, ReportPath: "/repo/report.md",
 	}
-	argv := []string{"orca", "orchestration", "send", "--to", req.ToHandle, "--from", req.FromHandle, "--type", "worker_done", "--subject", req.Subject, "--body", req.Body, "--task-id", req.TaskID, "--dispatch-id", req.DispatchID, "--files-modified", "a.go,report.md", "--report-path", req.ReportPath, "--json"}
-	runner.responses[strings.Join(argv, " ")] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{"message":{"id":"msg-1","from_handle":"term_worker","to_handle":"term_coordinator","type":"worker_done","subject":"Completed issue io-demo","body":"Implementation completed at abcdef. Verification evidence is persisted. The coordinator may inspect the submitted record.","payload":"{\"taskId\":\"task-1\",\"dispatchId\":\"dispatch-1\",\"filesModified\":[\"a.go\",\"report.md\"],\"reportPath\":\"/repo/report.md\"}","sequence":42}}}`)}
+	argv := []string{"orca", "orchestration", "send", "--run", req.RunID, "--to", req.ToHandle, "--from", req.FromHandle, "--type", "worker_done", "--subject", req.Subject, "--body", req.Body, "--task-id", req.TaskID, "--dispatch-id", req.DispatchID, "--outcome", req.Outcome, "--files-modified", "a.go,report.md", "--report-path", req.ReportPath, "--json"}
+	runner.responses[strings.Join(argv, " ")] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{"message":{"id":"msg-1","from_handle":"term_worker","to_handle":"term_coordinator","type":"worker_done","subject":"Completed issue io-demo","body":"Implementation completed at abcdef. Verification evidence is persisted. The coordinator may inspect the submitted record.","payload":"{\"taskId\":\"task-1\",\"dispatchId\":\"dispatch-1\",\"outcome\":\"succeeded\",\"filesModified\":[\"a.go\",\"report.md\"],\"reportPath\":\"/repo/report.md\"}","sequence":42}}}`)}
 	got, err := NewClient(runner).SendWorkerDone(context.Background(), req)
 	if err != nil {
 		t.Fatal(err)
@@ -36,12 +37,13 @@ func TestClientProjectsWorkerDoneThroughDedicatedSafeArgvMethod(t *testing.T) {
 func TestClientProjectsNoChangeWorkerDoneWithoutFilesModifiedFlag(t *testing.T) {
 	runner := newFakeRunner(t)
 	req := port.OrcaWorkerDoneRequest{
+		RunID:      "run_issueops_1",
 		FromHandle: "term_worker", ToHandle: "term_coordinator", Subject: "Completed no-change issue io-demo",
 		Body:   "Verification evidence is persisted and no files changed.",
-		TaskID: "task-1", DispatchID: "dispatch-1", ReportPath: "/repo/report.md",
+		TaskID: "task-1", DispatchID: "dispatch-1", Outcome: "succeeded", ReportPath: "/repo/report.md",
 	}
-	argv := []string{"orca", "orchestration", "send", "--to", req.ToHandle, "--from", req.FromHandle, "--type", "worker_done", "--subject", req.Subject, "--body", req.Body, "--task-id", req.TaskID, "--dispatch-id", req.DispatchID, "--report-path", req.ReportPath, "--json"}
-	runner.responses[strings.Join(argv, " ")] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{"message":{"id":"msg-clean","from_handle":"term_worker","to_handle":"term_coordinator","type":"worker_done","subject":"Completed no-change issue io-demo","body":"Verification evidence is persisted and no files changed.","payload":"{\"taskId\":\"task-1\",\"dispatchId\":\"dispatch-1\",\"filesModified\":[],\"reportPath\":\"/repo/report.md\"}","sequence":43}}}`)}
+	argv := []string{"orca", "orchestration", "send", "--run", req.RunID, "--to", req.ToHandle, "--from", req.FromHandle, "--type", "worker_done", "--subject", req.Subject, "--body", req.Body, "--task-id", req.TaskID, "--dispatch-id", req.DispatchID, "--outcome", req.Outcome, "--report-path", req.ReportPath, "--json"}
+	runner.responses[strings.Join(argv, " ")] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{"message":{"id":"msg-clean","from_handle":"term_worker","to_handle":"term_coordinator","type":"worker_done","subject":"Completed no-change issue io-demo","body":"Verification evidence is persisted and no files changed.","payload":"{\"taskId\":\"task-1\",\"dispatchId\":\"dispatch-1\",\"outcome\":\"succeeded\",\"filesModified\":[],\"reportPath\":\"/repo/report.md\"}","sequence":43}}}`)}
 
 	got, err := NewClient(runner).SendWorkerDone(context.Background(), req)
 	if err != nil {
@@ -54,11 +56,12 @@ func TestClientProjectsNoChangeWorkerDoneWithoutFilesModifiedFlag(t *testing.T) 
 
 func TestClientWorkerDonePreconditionAndAmbiguityCallCounts(t *testing.T) {
 	valid := port.OrcaWorkerDoneRequest{
+		RunID:      "run_issueops_1",
 		FromHandle: "term_worker", ToHandle: "term_coordinator", Subject: "Completed issue io-demo",
 		Body:   "Implementation completed. Verification evidence persisted. Coordinator inspection is ready.",
-		TaskID: "task-1", DispatchID: "dispatch-1", ChangedFiles: []string{"a.go"}, ReportPath: "/repo/report.md",
+		TaskID: "task-1", DispatchID: "dispatch-1", Outcome: "succeeded", ChangedFiles: []string{"a.go"}, ReportPath: "/repo/report.md",
 	}
-	argv := []string{"orca", "orchestration", "send", "--to", valid.ToHandle, "--from", valid.FromHandle, "--type", "worker_done", "--subject", valid.Subject, "--body", valid.Body, "--task-id", valid.TaskID, "--dispatch-id", valid.DispatchID, "--files-modified", "a.go", "--report-path", valid.ReportPath, "--json"}
+	argv := []string{"orca", "orchestration", "send", "--run", valid.RunID, "--to", valid.ToHandle, "--from", valid.FromHandle, "--type", "worker_done", "--subject", valid.Subject, "--body", valid.Body, "--task-id", valid.TaskID, "--dispatch-id", valid.DispatchID, "--outcome", valid.Outcome, "--files-modified", "a.go", "--report-path", valid.ReportPath, "--json"}
 	command := strings.Join(argv, " ")
 
 	t.Run("invalid precondition", func(t *testing.T) {
@@ -86,7 +89,7 @@ func TestClientWorkerDonePreconditionAndAmbiguityCallCounts(t *testing.T) {
 		name, stdout, code string
 	}{
 		{name: "malformed", stdout: `not-json secret=top-secret`, code: "worker_done_response_malformed"},
-		{name: "mismatch", stdout: `{"ok":true,"result":{"message":{"id":"msg-1","from_handle":"term_worker","to_handle":"term_coordinator","type":"worker_done","subject":"Completed issue io-demo","body":"Implementation completed. Verification evidence persisted. Coordinator inspection is ready.","payload":"{\"taskId\":\"task-other\",\"dispatchId\":\"dispatch-1\",\"filesModified\":[\"a.go\"],\"reportPath\":\"/repo/report.md\"}","sequence":42}}}`, code: "worker_done_response_mismatch"},
+		{name: "mismatch", stdout: `{"ok":true,"result":{"message":{"id":"msg-1","from_handle":"term_worker","to_handle":"term_coordinator","type":"worker_done","subject":"Completed issue io-demo","body":"Implementation completed. Verification evidence persisted. Coordinator inspection is ready.","payload":"{\"taskId\":\"task-other\",\"dispatchId\":\"dispatch-1\",\"outcome\":\"succeeded\",\"filesModified\":[\"a.go\"],\"reportPath\":\"/repo/report.md\"}","sequence":42}}}`, code: "worker_done_response_mismatch"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			runner := newFakeRunner(t)
@@ -321,7 +324,7 @@ func TestProbeRequiresLiveCompleteOrchestrationReadinessBeforeMutation(t *testin
 			runner.responses["orca status --json"] = fixtureOutput(t, "status_ready.json")
 			runner.responses["orca repo show --repo path:/repo --json"] = fixtureOutput(t, "repo_show.json")
 			addCompleteProbeLeafHelp(runner)
-			runner.responses["orca orchestration task-list --ready --json"] = tt.output
+			runner.responses["orca orchestration run-list --json"] = tt.output
 			result, err := NewClient(runner).Probe(context.Background(), port.OrcaProbeRequest{Repo: "/repo", Agent: "codex"})
 			if err != nil {
 				t.Fatal(err)
@@ -902,7 +905,7 @@ func TestClientCreateTerminalRejectsIncompleteRuntimeIdentity(t *testing.T) {
 
 func TestClientListAllTasksProjectsCompletionSemanticsWithoutRawResult(t *testing.T) {
 	runner := newFakeRunner(t)
-	command := "orca orchestration task-list --brief --json"
+	command := "orca orchestration task-list --brief --run run_issueops_1 --json"
 	runner.responses[command] = fixtureOutput(t, "task_list_all.json")
 
 	got, err := NewClient(runner).ListAllTasks(context.Background())
@@ -916,14 +919,14 @@ func TestClientListAllTasksProjectsCompletionSemanticsWithoutRawResult(t *testin
 	if strings.Contains(projected, "raw-spec-must-not-escape") || strings.Contains(projected, "raw-result-must-not-escape") {
 		t.Fatalf("all-task projection retained raw content: %s", projected)
 	}
-	if len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != command {
+	if len(runner.calls) != 2 || strings.Join(runner.calls[1], " ") != command {
 		t.Fatalf("all-task command = %#v", runner.calls)
 	}
 }
 
 func TestClientListAllTasksRejectsCountMismatch(t *testing.T) {
 	runner := newFakeRunner(t)
-	command := "orca orchestration task-list --brief --json"
+	command := "orca orchestration task-list --brief --run run_issueops_1 --json"
 	runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"tasks":[{"id":"task-1","status":"ready"}],"count":2}}`)}
 
 	_, err := NewClient(runner).ListAllTasks(context.Background())
@@ -935,7 +938,7 @@ func TestClientListAllTasksRejectsCountMismatch(t *testing.T) {
 
 func TestClientListFailedTasksUsesStatusFilter(t *testing.T) {
 	runner := newFakeRunner(t)
-	command := "orca orchestration task-list --status failed --json"
+	command := "orca orchestration task-list --status failed --run run_issueops_1 --json"
 	runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"tasks":[{"id":"task-failed","status":"failed"}],"count":1},"_meta":{"runtimeId":"runtime-1"}}`)}
 
 	got, err := NewClient(runner).ListFailedTasks(context.Background())
@@ -945,7 +948,7 @@ func TestClientListFailedTasksUsesStatusFilter(t *testing.T) {
 	if len(got) != 1 || got[0].ID != "task-failed" || got[0].Status != "failed" || got[0].RuntimeID != "runtime-1" {
 		t.Fatalf("failed-task projection = %#v", got)
 	}
-	if len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != command {
+	if len(runner.calls) != 2 || strings.Join(runner.calls[1], " ") != command {
 		t.Fatalf("failed-task command = %#v", runner.calls)
 	}
 }
@@ -989,7 +992,7 @@ func TestClientOperationalInventoryRejectsMalformedIdentity(t *testing.T) {
 	}{
 		{
 			name:    "task id",
-			command: "orca orchestration task-list --brief --json",
+			command: "orca orchestration task-list --brief --run run_issueops_1 --json",
 			result:  `{"tasks":[{"id":"","status":"ready"}],"count":1}`,
 			call:    func(client *Client) error { _, err := client.ListAllTasks(context.Background()); return err },
 		},
@@ -1088,8 +1091,8 @@ func TestClientAvailableUsesPathLookupOnly(t *testing.T) {
 
 func TestClientCreateTaskDecodesOfficialSnakeCaseShape(t *testing.T) {
 	runner := newFakeRunner(t)
-	runner.responses["orca orchestration task-create --spec spec --task-title agent-harness marker --display-name 16-demo --json"] = fixtureOutput(t, "task_create.json")
-	got, err := NewClient(runner).CreateTask(context.Background(), port.OrcaCreateTaskRequest{Spec: "spec", Title: "agent-harness marker", DisplayName: "16-demo"})
+	runner.responses["orca orchestration task-create --spec spec --task-title agent-harness marker --display-name 16-demo --run run_issueops_1 --from term_coordinator --json"] = fixtureOutput(t, "task_create.json")
+	got, err := NewClient(runner).CreateTask(context.Background(), port.OrcaCreateTaskRequest{RunID: "run_issueops_1", Spec: "spec", Title: "agent-harness marker", DisplayName: "16-demo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1100,7 +1103,7 @@ func TestClientCreateTaskDecodesOfficialSnakeCaseShape(t *testing.T) {
 
 func TestClientListTasksUsesInstalledCountContract(t *testing.T) {
 	runner := newFakeRunner(t)
-	runner.responses["orca orchestration task-list --ready --json"] = fixtureOutput(t, "task_list.json")
+	runner.responses["orca orchestration task-list --ready --run run_issueops_1 --json"] = fixtureOutput(t, "task_list.json")
 	got, err := NewClient(runner).ListTasks(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -1112,7 +1115,7 @@ func TestClientListTasksUsesInstalledCountContract(t *testing.T) {
 
 func TestClientListDispatchedTasksUsesServerFilteredCompleteInventory(t *testing.T) {
 	runner := newFakeRunner(t)
-	runner.responses["orca orchestration task-list --status dispatched --json"] = CommandOutput{Stdout: []byte(`{
+	runner.responses["orca orchestration task-list --status dispatched --run run_issueops_1 --json"] = CommandOutput{Stdout: []byte(`{
 		"ok": true,
 		"result": {"tasks": [{"id": "task-dispatched", "task_title": "writer", "status": "dispatched"}], "count": 1},
 		"_meta": {"runtimeId": "runtime-1"}
@@ -1124,7 +1127,7 @@ func TestClientListDispatchedTasksUsesServerFilteredCompleteInventory(t *testing
 	if len(got) != 1 || got[0].RuntimeID != "runtime-1" || got[0].ID != "task-dispatched" || got[0].Status != "dispatched" {
 		t.Fatalf("dispatched task projection = %#v", got)
 	}
-	if len(runner.calls) != 1 || strings.Join(runner.calls[0], " ") != "orca orchestration task-list --status dispatched --json" {
+	if len(runner.calls) != 2 || strings.Join(runner.calls[1], " ") != "orca orchestration task-list --status dispatched --run run_issueops_1 --json" {
 		t.Fatalf("dispatched task inventory was not server filtered: %#v", runner.calls)
 	}
 }
@@ -1157,7 +1160,7 @@ func TestClientShowDispatchNullReturnsNotFound(t *testing.T) {
 func TestClientExecutionInventoryPreservesRuntimeForEmptyRows(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca terminal list --worktree id:wt-1 --limit 512 --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"terminals":[],"visualLayouts":[],"totalCount":0,"truncated":false},"_meta":{"runtimeId":"runtime-1"}}`)}
-	runner.responses["orca orchestration task-list --brief --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"tasks":[],"count":0},"_meta":{"runtimeId":"runtime-1"}}`)}
+	runner.responses["orca orchestration task-list --brief --run run_issueops_1 --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"tasks":[],"count":0},"_meta":{"runtimeId":"runtime-1"}}`)}
 	runner.responses["orca orchestration dispatch-show --task task-1 --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"dispatch":null},"_meta":{"runtimeId":"runtime-1"}}`)}
 	client := NewClient(runner)
 
@@ -1229,7 +1232,7 @@ func TestClientRejectsIncompleteExternalLists(t *testing.T) {
 	}{
 		{name: "worktree truncated", command: "orca worktree list --repo path:/repo --limit 512 --json", field: "worktrees", call: func(c *Client) error { _, err := c.ListWorktrees(context.Background(), "/repo"); return err }},
 		{name: "terminal total mismatch", command: "orca terminal list --worktree id:wt-1 --limit 512 --json", field: "terminals", call: func(c *Client) error { _, err := c.ListTerminals(context.Background(), "wt-1"); return err }},
-		{name: "task missing metadata", command: "orca orchestration task-list --ready --json", field: "tasks", call: func(c *Client) error { _, err := c.ListTasks(context.Background()); return err }},
+		{name: "task missing metadata", command: "orca orchestration task-list --ready --run run_issueops_1 --json", field: "tasks", call: func(c *Client) error { _, err := c.ListTasks(context.Background()); return err }},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			runner := newFakeRunner(t)
@@ -1256,7 +1259,13 @@ type fakeRunner struct {
 }
 
 func newFakeRunner(t *testing.T) *fakeRunner {
-	return &fakeRunner{t: t, lookPaths: map[string]string{}, responses: map[string]CommandOutput{}, errors: map[string]error{}}
+	t.Setenv("ORCA_TERMINAL_HANDLE", "term_coordinator")
+	return &fakeRunner{
+		t:         t,
+		lookPaths: map[string]string{},
+		responses: map[string]CommandOutput{"orca orchestration run-list --json": fixtureOutput(t, "run_list.json")},
+		errors:    map[string]error{},
+	}
 }
 
 func (f *fakeRunner) LookPath(file string) (string, error) {
@@ -1297,17 +1306,22 @@ func addCompleteProbeLeafHelp(runner *fakeRunner) {
 		"orca worktree list --help":               "--repo --limit --json",
 		"orca terminal create --help":             "--worktree --command --title --json",
 		"orca terminal list --help":               "--worktree --limit --json",
-		"orca orchestration task-create --help":   "--spec --task-title --display-name --json",
-		"orca orchestration task-list --help":     "--ready --status --json",
-		"orca orchestration task-update --help":   "--id --status --result --json",
-		"orca orchestration dispatch --help":      "--task --to --from --inject --return-preamble --json",
+		"orca orchestration run-create --help":    "--objective --from --json",
+		"orca orchestration run-list --help":      "--json",
+		"orca orchestration run-current --help":   "--from --json",
+		"orca orchestration run-use --help":       "--id --from --json",
+		"orca orchestration task-create --help":   "--spec --task-title --display-name --run --from --json",
+		"orca orchestration task-list --help":     "--ready --status --run --json",
+		"orca orchestration task-update --help":   "--id --status --result --run --from --json",
+		"orca orchestration dispatch --help":      "--task --to --run --from --inject --return-preamble --json",
 		"orca orchestration dispatch-show --help": "--task --preamble --from --json",
-		"orca orchestration send --help":          "--to --from --type --subject --body --task-id --dispatch-id --files-modified --report-path --json",
+		"orca orchestration send --help":          "--run --to --from --type --subject --body --task-id --dispatch-id --outcome --files-modified --report-path --json",
 		"orca worktree rm --help":                 "--worktree --force --json",
 	} {
 		runner.responses[command] = CommandOutput{Stdout: []byte(flags)}
 	}
-	runner.responses["orca orchestration task-list --ready --json"] = fixtureOutput(runner.t, "task_list.json")
+	runner.responses["orca orchestration run-current --from term_coordinator --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"run":null},"_meta":{"runtimeId":"runtime-1"}}`)}
+	runner.responses["orca orchestration run-list --json"] = fixtureOutput(runner.t, "run_list.json")
 	runner.responses["codex --help"] = CommandOutput{Stdout: []byte("--model --config --dangerously-bypass-hook-trust")}
 	runner.responses["claude --help"] = CommandOutput{Stdout: []byte("--model")}
 }

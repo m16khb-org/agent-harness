@@ -58,7 +58,7 @@ func TestResumeVerticalDifferential(t *testing.T) {
 			record.Execution.Orca.LeaseGeneration = record.Execution.Lease.Generation
 		}, owner: port.ExecutionOrcaOwnerInventory{TerminalLive: true, TaskLive: true}},
 		{name: "reuse_live_terminal", owner: port.ExecutionOrcaOwnerInventory{TerminalLive: true}},
-		{name: "fresh_terminal_task_dispatch"},
+		{name: "fresh_terminal_run_task_dispatch"},
 		{name: "task_without_terminal", owner: port.ExecutionOrcaOwnerInventory{TaskLive: true}},
 		{name: "other_generation_live_task", owner: port.ExecutionOrcaOwnerInventory{TerminalLive: true, TaskLive: true}},
 		{name: "runtime_rollover_rejected", owner: port.ExecutionOrcaOwnerInventory{RuntimeID: "other-runtime"}},
@@ -88,6 +88,8 @@ func TestResumeVerticalDifferential(t *testing.T) {
 		{name: "inspect_error", inspectErr: errors.New("inventory unavailable")},
 		{name: "non_authoritative_zero", inventory: &port.ExecutionOrcaIntentInventory{}},
 		{name: "terminal_invoked_unknown_ambiguous", failureStage: port.ExecutionOrcaIntentTerminal},
+		{name: "run_invoked_unknown_ambiguous", failureStage: port.ExecutionOrcaIntentRun},
+		{name: "run_bind_invoked_unknown_ambiguous", failureStage: port.ExecutionOrcaIntentRunBind},
 		{name: "task_invoked_unknown_ambiguous", failureStage: port.ExecutionOrcaIntentTask},
 		{name: "dispatch_invoked_unknown_ambiguous", failureStage: port.ExecutionOrcaIntentDispatch},
 		{name: "terminal_not_invoked_error", failureStage: port.ExecutionOrcaIntentTerminal, invokeErr: &port.OrcaError{Code: "transport", Invoked: false}},
@@ -122,7 +124,7 @@ func TestResumeVerticalDifferential(t *testing.T) {
 					t.Fatalf("inventory failure invoked a mutation: legacy=%s vertical=%s", resumeDifferentialSummary(legacy), resumeDifferentialSummary(vertical))
 				}
 			}
-			if tt.name == "fresh_terminal_task_dispatch" {
+			if tt.name == "fresh_terminal_run_task_dispatch" {
 				assertResumeDifferentialStageCheckpoints(t, legacy)
 				assertResumeDifferentialStageCheckpoints(t, vertical)
 			}
@@ -300,6 +302,10 @@ func runVerticalResumeDifferential(t *testing.T, stateRoot, id string, request E
 				switch stage {
 				case port.ExecutionOrcaIntentTerminal:
 					return leasecontract.ResumeStageReceipt{TerminalPTYID: "pty-resume"}, nil
+				case port.ExecutionOrcaIntentRun:
+					return leasecontract.ResumeStageReceipt{RunID: "run-resume"}, nil
+				case port.ExecutionOrcaIntentRunBind:
+					return leasecontract.ResumeStageReceipt{RunID: "run-resume", RunBound: true}, nil
 				case port.ExecutionOrcaIntentTask:
 					return leasecontract.ResumeStageReceipt{TaskID: "task-resume"}, nil
 				case port.ExecutionOrcaIntentDispatch:
@@ -401,7 +407,13 @@ func resumeDifferentialCheckpointsEqual(left, right []resumeDifferentialCheckpoi
 
 func assertResumeDifferentialStageCheckpoints(t *testing.T, observation resumeDifferentialObservation) {
 	t.Helper()
-	want := []port.ExecutionOrcaIntentStage{port.ExecutionOrcaIntentTerminal, port.ExecutionOrcaIntentTask, port.ExecutionOrcaIntentDispatch}
+	want := []port.ExecutionOrcaIntentStage{
+		port.ExecutionOrcaIntentTerminal,
+		port.ExecutionOrcaIntentRun,
+		port.ExecutionOrcaIntentRunBind,
+		port.ExecutionOrcaIntentTask,
+		port.ExecutionOrcaIntentDispatch,
+	}
 	if len(observation.Checkpoints) != len(want) {
 		t.Fatalf("stage checkpoints=%d observation=%s", len(observation.Checkpoints), resumeDifferentialSummary(observation))
 	}
@@ -496,6 +508,10 @@ func (e resumeDifferentialEffects) ApplyReceipt(ctx context.Context, state lease
 	switch coreState.Stage {
 	case port.ExecutionOrcaIntentTerminal:
 		portReceipt.TerminalPTYID = receipt.TerminalPTYID
+	case port.ExecutionOrcaIntentRun:
+		portReceipt.RunID = receipt.RunID
+	case port.ExecutionOrcaIntentRunBind:
+		portReceipt.RunID, portReceipt.RunBound = receipt.RunID, receipt.RunBound
 	case port.ExecutionOrcaIntentTask:
 		portReceipt.TaskID = receipt.TaskID
 	case port.ExecutionOrcaIntentDispatch:

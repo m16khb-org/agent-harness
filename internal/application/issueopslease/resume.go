@@ -87,7 +87,7 @@ func (s *ResumeService) Resume(ctx context.Context, request ResumeRequest) (Resu
 		if err != nil {
 			return err
 		}
-		for attempts := 0; attempts < 3 && progress.Pending; attempts++ {
+		for attempts := 0; attempts < 5 && progress.Pending; attempts++ {
 			intent, err := s.repository.LoadIntent(fenceCtx, progress)
 			if err != nil {
 				return err

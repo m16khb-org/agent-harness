@@ -46,7 +46,7 @@ func TestResumeRejectsBeforeArtifactsAndInventory(t *testing.T) {
 	}
 }
 
-func TestResumeCreatesTerminalTaskDispatchInApplicationOrder(t *testing.T) {
+func TestResumeCreatesTerminalRunTaskDispatchInApplicationOrder(t *testing.T) {
 	trace := []string{}
 	record := resumeApplicationTestRecord(4)
 	repository := &resumeTraceRepository{record: record, trace: &trace}
@@ -79,7 +79,14 @@ func TestResumeCreatesTerminalTaskDispatchInApplicationOrder(t *testing.T) {
 	if !result.OK || result.Receipt.Execution.Pending != nil {
 		t.Fatalf("result=%+v", result)
 	}
-	want := []string{"fence", "actor", "snapshot", "artifacts", "owners", "operation_id", "begin", "load_terminal", "inspect_terminal", "mark_terminal", "invoke_terminal", "apply_terminal", "load_task", "inspect_task", "mark_task", "invoke_task", "apply_task", "load_dispatch", "inspect_dispatch", "mark_dispatch", "invoke_dispatch", "apply_dispatch"}
+	want := []string{
+		"fence", "actor", "snapshot", "artifacts", "owners", "operation_id", "begin",
+		"load_terminal_create", "inspect_terminal_create", "mark_terminal_create", "invoke_terminal_create", "apply_terminal_create",
+		"load_run_create", "inspect_run_create", "mark_run_create", "invoke_run_create", "apply_run_create",
+		"load_run_bind", "inspect_run_bind", "mark_run_bind", "invoke_run_bind", "apply_run_bind",
+		"load_task_create", "inspect_task_create", "mark_task_create", "invoke_task_create", "apply_task_create",
+		"load_dispatch", "inspect_dispatch", "mark_dispatch", "invoke_dispatch", "apply_dispatch",
+	}
 	if !slices.Equal(trace, want) {
 		t.Fatalf("trace=%v\nwant=%v", trace, want)
 	}
@@ -224,7 +231,7 @@ func (r *resumeTraceRepository) BeginIntent(context.Context, ResumeSnapshot, lea
 	return r.progress(true), nil
 }
 func (r *resumeTraceRepository) LoadIntent(context.Context, ResumeProgress) (ResumeIntentState, error) {
-	stage := []string{"terminal", "task", "dispatch"}[r.index]
+	stage := []string{"terminal_create", "run_create", "run_bind", "task_create", "dispatch"}[r.index]
 	*r.trace = append(*r.trace, "load_"+stage)
 	invocationState := r.invocationState
 	if invocationState == "" {
@@ -243,7 +250,7 @@ func (r *resumeTraceRepository) RecordFailure(context.Context, ResumeIntentState
 func (r *resumeTraceRepository) ApplyReceipt(_ context.Context, intent ResumeIntentState, _ leasecontract.ResumeStageReceipt) (ResumeProgress, error) {
 	*r.trace = append(*r.trace, "apply_"+intent.Stage)
 	r.index++
-	return r.progress(r.index < 3), nil
+	return r.progress(r.index < 5), nil
 }
 func (r *resumeTraceRepository) progress(pending bool) ResumeProgress {
 	execution := *r.record.Stable.Execution
@@ -274,9 +281,13 @@ func (s resumeTraceStages) Invoke(_ context.Context, intent ResumeIntentState) (
 		*s.trace = append(*s.trace, "invoke_"+intent.Stage)
 	}
 	switch intent.Stage {
-	case "terminal":
+	case "terminal_create":
 		return leasecontract.ResumeStageReceipt{TerminalPTYID: "pty"}, nil
-	case "task":
+	case "run_create":
+		return leasecontract.ResumeStageReceipt{RunID: "run"}, nil
+	case "run_bind":
+		return leasecontract.ResumeStageReceipt{RunID: "run", RunBound: true}, nil
+	case "task_create":
 		return leasecontract.ResumeStageReceipt{TaskID: "task"}, nil
 	default:
 		return leasecontract.ResumeStageReceipt{TaskID: "task", DispatchID: "dispatch"}, nil

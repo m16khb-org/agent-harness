@@ -37,6 +37,31 @@ func TestValidateExecutionAcceptsLegacyOrcaBindingWithoutLeaseGeneration(t *test
 	}
 }
 
+func TestValidateExecutionAcceptsLegacyOrcaBindingWithoutRunID(t *testing.T) {
+	execution := validOrcaExecutionForTest()
+	execution.Orca.RunID = ""
+	if err := ValidateExecution(execution); err != nil {
+		t.Fatalf("legacy Orca binding must remain readable: %v", err)
+	}
+}
+
+func TestValidateExecutionAcceptsSealedOrcaRunID(t *testing.T) {
+	execution := validOrcaExecutionForTest()
+	execution.Orca.RunID = "run_issueops_1"
+	if err := ValidateExecution(execution); err != nil {
+		t.Fatalf("sealed Orca run id must be valid: %v", err)
+	}
+}
+
+func TestValidateExecutionRejectsLegacyPseudoRunID(t *testing.T) {
+	execution := validOrcaExecutionForTest()
+	execution.Orca.RunID = "run_legacy_local"
+
+	if err := ValidateExecution(execution); err == nil {
+		t.Fatal("legacy pseudo Run must not be sealed as an explicit Run identity")
+	}
+}
+
 func TestValidateExecutionRejectsBindingFromFutureLeaseGeneration(t *testing.T) {
 	execution := validOrcaExecutionForTest()
 	execution.Orca.LeaseGeneration = 3

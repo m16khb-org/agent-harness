@@ -33,3 +33,18 @@ func TestResumeReceiptJSONKeepsOnlySealedArtifactReferences(t *testing.T) {
 		t.Fatalf("resume receipt leaked a claim token: %s", data)
 	}
 }
+
+func TestResumeStageReceiptJSONPreservesRunIdentity(t *testing.T) {
+	want := ResumeStageReceipt{RunID: "run-resume", RunBound: true}
+	data, err := json.Marshal(want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got ResumeStageReceipt
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Fatalf("Run stage receipt round-trip=%#v want=%#v", got, want)
+	}
+}

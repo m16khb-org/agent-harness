@@ -1,0 +1,16 @@
+{
+  "id": "request-dispatch-create",
+  "ok": true,
+  "result": {
+    "dispatch": {
+      "id": "dispatch-1",
+      "task_id": "task-1",
+      "assignee_handle": "term_worker",
+      "status": "dispatched"
+    },
+    "injected": true
+  },
+  "_meta": {
+    "runtimeId": "runtime-1"
+  }
+}

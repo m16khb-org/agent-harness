@@ -129,7 +129,7 @@ func (e *coreResumeEffects) observeOwner(ctx context.Context, record leasecontra
 		return leasedomain.ResumeInventory{}, false, fmt.Errorf("resume owner inspector is required")
 	}
 	binding := record.Execution.Orca
-	inventory, err := e.owner.InspectOwner(ctx, port.ExecutionOrcaOwnerInventoryRequest{RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, TaskID: binding.TaskID, DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID, AllowRuntimeRollover: true})
+	inventory, err := e.owner.InspectOwner(ctx, port.ExecutionOrcaOwnerInventoryRequest{RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, RunID: binding.RunID, TaskID: binding.TaskID, DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID, AllowRuntimeRollover: true})
 	if err != nil {
 		return leasedomain.ResumeInventory{}, false, fmt.Errorf("inspect previous Orca owner: %w", err)
 	}
@@ -161,7 +161,7 @@ func (e *coreResumeEffects) inspectStage(ctx context.Context, intent leaseapp.Re
 	}
 	result := leasecontract.ResumeStageInventory{AuthoritativeZero: inventory.AuthoritativeZero}
 	for _, candidate := range inventory.Candidates {
-		result.Candidates = append(result.Candidates, leasecontract.ResumeStageReceipt{TerminalPTYID: candidate.TerminalPTYID, TaskID: candidate.TaskID, DispatchID: candidate.DispatchID})
+		result.Candidates = append(result.Candidates, leasecontract.ResumeStageReceipt{TerminalPTYID: candidate.TerminalPTYID, RunID: candidate.RunID, RunBound: candidate.RunBound, TaskID: candidate.TaskID, DispatchID: candidate.DispatchID})
 	}
 	return result, nil
 }
@@ -182,7 +182,7 @@ func (e *coreResumeEffects) invokeStage(ctx context.Context, intent leaseapp.Res
 	if err != nil {
 		return leasecontract.ResumeStageReceipt{}, err
 	}
-	return leasecontract.ResumeStageReceipt{TerminalPTYID: receipt.TerminalPTYID, TaskID: receipt.TaskID, DispatchID: receipt.DispatchID}, nil
+	return leasecontract.ResumeStageReceipt{TerminalPTYID: receipt.TerminalPTYID, RunID: receipt.RunID, RunBound: receipt.RunBound, TaskID: receipt.TaskID, DispatchID: receipt.DispatchID}, nil
 }
 
 func resumeCoreRecord(record leasecontract.Record) (issueops.IssueOpsRecord, error) {
@@ -230,6 +230,10 @@ func resumePortReceipt(stage string, receipt leasecontract.ResumeStageReceipt) p
 	switch port.ExecutionOrcaIntentStage(stage) {
 	case port.ExecutionOrcaIntentTerminal:
 		result.TerminalPTYID = receipt.TerminalPTYID
+	case port.ExecutionOrcaIntentRun:
+		result.RunID = receipt.RunID
+	case port.ExecutionOrcaIntentRunBind:
+		result.RunID, result.RunBound = receipt.RunID, receipt.RunBound
 	case port.ExecutionOrcaIntentTask:
 		result.TaskID = receipt.TaskID
 	case port.ExecutionOrcaIntentDispatch:

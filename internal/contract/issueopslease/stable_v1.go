@@ -238,6 +238,7 @@ type stableV1OrcaBinding struct {
 	OwnerHost          string `json:"owner_host"`
 	OwnerModel         string `json:"owner_model"`
 	OwnerEffort        string `json:"owner_effort,omitempty"`
+	RunID              string `json:"run_id,omitempty"`
 	TaskID             string `json:"task_id"`
 	DispatchID         string `json:"dispatch_id"`
 	TerminalPTYID      string `json:"terminal_pty_id,omitempty"`

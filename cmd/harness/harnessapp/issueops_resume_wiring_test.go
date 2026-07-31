@@ -12,6 +12,7 @@ import (
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/sqlstore"
 	leasedomain "agent-harness/internal/domain/issueopslease"
+	"agent-harness/internal/port"
 )
 
 const (
@@ -90,6 +91,17 @@ func TestCoreResumeEffectsRejectsRawSnapshotDriftWithoutAdditionalMutation(t *te
 			effects := &coreResumeEffects{stateRoot: stateRoot, now: func() time.Time { return time.Date(2026, time.July, 31, 2, 20, 0, 0, time.UTC) }}
 			tt.run(t, stateRoot, effects, record, raw, artifacts)
 		})
+	}
+}
+
+func TestResumePortReceiptPreservesRunStages(t *testing.T) {
+	created := resumePortReceipt(string(port.ExecutionOrcaIntentRun), leasecontract.ResumeStageReceipt{RunID: "run-resume"})
+	if created.RunID != "run-resume" || created.RunBound {
+		t.Fatalf("Run create receipt=%#v", created)
+	}
+	bound := resumePortReceipt(string(port.ExecutionOrcaIntentRunBind), leasecontract.ResumeStageReceipt{RunID: "run-resume", RunBound: true})
+	if bound.RunID != "run-resume" || !bound.RunBound {
+		t.Fatalf("Run bind receipt=%#v", bound)
 	}
 }
 

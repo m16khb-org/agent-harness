@@ -102,6 +102,17 @@ type OrcaRepo struct {
 	WorktreeBasePath string `json:"worktree_base_path,omitempty"`
 }
 
+type OrcaRun struct {
+	RuntimeID string `json:"-"`
+	ID        string `json:"id"`
+	Objective string `json:"objective"`
+	Legacy    bool   `json:"legacy,omitempty"`
+}
+
+type OrcaCreateRunRequest struct {
+	Objective string `json:"objective"`
+}
+
 type OrcaWorktree struct {
 	RuntimeID         string `json:"runtime_id,omitempty"`
 	ID                string `json:"id"`
@@ -174,6 +185,7 @@ type OrcaBootstrapTerminalAgentRequest struct {
 
 type OrcaTask struct {
 	RuntimeID   string `json:"-"`
+	RunID       string `json:"run_id,omitempty"`
 	ID          string `json:"id"`
 	Title       string `json:"title,omitempty"`
 	DisplayName string `json:"display_name,omitempty"`
@@ -197,12 +209,14 @@ type OrcaInboxPresence struct {
 }
 
 type OrcaCreateTaskRequest struct {
+	RunID       string `json:"run_id"`
 	Spec        string `json:"spec"`
 	Title       string `json:"title"`
 	DisplayName string `json:"display_name"`
 }
 
 type OrcaDispatchRequest struct {
+	RunID          string `json:"run_id"`
 	TaskID         string `json:"task_id"`
 	ToHandle       string `json:"to_handle"`
 	FromHandle     string `json:"from_handle,omitempty"`
@@ -231,12 +245,14 @@ type OrcaMessage struct {
 }
 
 type OrcaWorkerDoneRequest struct {
+	RunID        string   `json:"run_id"`
 	FromHandle   string   `json:"from_handle"`
 	ToHandle     string   `json:"to_handle"`
 	Subject      string   `json:"subject"`
 	Body         string   `json:"body"`
 	TaskID       string   `json:"task_id"`
 	DispatchID   string   `json:"dispatch_id"`
+	Outcome      string   `json:"outcome"`
 	ChangedFiles []string `json:"changed_files"`
 	ReportPath   string   `json:"report_path"`
 }
@@ -270,6 +286,10 @@ type OrcaWorkerDoneClient interface {
 
 type OrcaClient interface {
 	Probe(context.Context, OrcaProbeRequest) (OrcaProbeResult, error)
+	ListRuns(context.Context) ([]OrcaRun, error)
+	CreateRun(context.Context, OrcaCreateRunRequest) (OrcaRun, error)
+	CurrentRun(context.Context) (*OrcaRun, error)
+	UseRun(context.Context, string) (OrcaRun, error)
 	ListWorktrees(context.Context, string) ([]OrcaWorktree, error)
 	ShowWorktree(context.Context, string) (OrcaWorktree, error)
 	CreateWorktree(context.Context, OrcaCreateWorktreeRequest) (OrcaWorktree, error)
@@ -281,7 +301,7 @@ type OrcaClient interface {
 	ListTasks(context.Context) ([]OrcaTask, error)
 	ListDispatchedTasks(context.Context) ([]OrcaTask, error)
 	CreateTask(context.Context, OrcaCreateTaskRequest) (OrcaTask, error)
-	UpdateTask(context.Context, string, string, string) error
+	UpdateTask(context.Context, string, string, string, string) error
 	Dispatch(context.Context, OrcaDispatchRequest) (OrcaDispatch, error)
 	ShowDispatch(context.Context, string) (OrcaDispatch, error)
 	ShowDispatchFrom(context.Context, string, string) (OrcaDispatch, error)

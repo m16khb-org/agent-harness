@@ -37,14 +37,16 @@ type fakeAbandonOrca struct {
 	inventory port.ExecutionOrcaIntentInventory
 	err       error
 	inspects  int
+	stages    []port.ExecutionOrcaIntentStage
 }
 
 func (o *fakeAbandonOrca) Probe(context.Context, port.ExecutionOrcaProbeRequest) (port.ExecutionOrcaProbeResult, error) {
 	return port.ExecutionOrcaProbeResult{Available: true, Ready: true}, nil
 }
 
-func (o *fakeAbandonOrca) InspectIntent(context.Context, port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentInventory, error) {
+func (o *fakeAbandonOrca) InspectIntent(_ context.Context, req port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentInventory, error) {
 	o.inspects++
+	o.stages = append(o.stages, req.Stage)
 	return o.inventory, o.err
 }
 
@@ -466,15 +468,22 @@ func TestCleanupAbandonAllowsStaleOwnerIntentAfterEveryOrcaStageIsAbsent(t *test
 		kind          string
 		wantInspects  int
 		terminalPTYID string
+		runID         string
+		runBound      bool
 		taskID        string
 	}{
 		{name: "owner launch", stage: port.ExecutionOrcaIntentTerminal, kind: "owner_launch", wantInspects: 2},
-		{name: "dispatch", stage: port.ExecutionOrcaIntentDispatch, kind: "dispatch", wantInspects: 4, terminalPTYID: "pty-current", taskID: "task-current"},
+		{name: "Run create", stage: port.ExecutionOrcaIntentRun, kind: "owner_launch", wantInspects: 2, terminalPTYID: "pty-current"},
+		{name: "Run bind", stage: port.ExecutionOrcaIntentRunBind, kind: "owner_launch", wantInspects: 2, terminalPTYID: "pty-current", runID: "run-current"},
+		{name: "task", stage: port.ExecutionOrcaIntentTask, kind: "owner_launch", wantInspects: 3, terminalPTYID: "pty-current", runID: "run-current", runBound: true},
+		{name: "dispatch", stage: port.ExecutionOrcaIntentDispatch, kind: "dispatch", wantInspects: 4, terminalPTYID: "pty-current", runID: "run-current", runBound: true, taskID: "task-current"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			stateRoot, record, payload := legacyResumeIntentFixture(t, "gitlab", 2646)
 			payload.Stage = tc.stage
 			payload.TerminalPTYID = tc.terminalPTYID
+			payload.RunID = tc.runID
+			payload.RunBound = tc.runBound
 			payload.TaskID = tc.taskID
 			data, err := json.Marshal(payload)
 			if err != nil {
@@ -500,6 +509,11 @@ func TestCleanupAbandonAllowsStaleOwnerIntentAfterEveryOrcaStageIsAbsent(t *test
 			}
 			if orca.inspects != tc.wantInspects {
 				t.Fatalf("현재 단계까지의 모든 봉인 intent를 조회하지 않았다: got=%d want=%d", orca.inspects, tc.wantInspects)
+			}
+			for _, stage := range orca.stages {
+				if stage == port.ExecutionOrcaIntentRun || stage == port.ExecutionOrcaIntentRunBind {
+					t.Fatalf("삭제할 수 없는 Run을 cleanup residue로 조회했다: %+v", orca.stages)
+				}
 			}
 			if len(owner.calls) != 1 {
 				t.Fatalf("이전 generation의 owner 자원을 조회하지 않았다: %+v", owner.calls)

@@ -12,6 +12,7 @@ import (
 )
 
 type settleCall struct {
+	runID  string
 	taskID string
 }
 
@@ -20,8 +21,8 @@ type fakeTaskSettler struct {
 	err   error
 }
 
-func (f *fakeTaskSettler) settle(_ context.Context, taskID string) error {
-	f.calls = append(f.calls, settleCall{taskID: taskID})
+func (f *fakeTaskSettler) settle(_ context.Context, runID, taskID string) error {
+	f.calls = append(f.calls, settleCall{runID: runID, taskID: taskID})
 	return f.err
 }
 
@@ -39,7 +40,7 @@ func TestExecutionCompleteSettlesOrcaTask(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(settler.calls) != 1 || settler.calls[0].taskID != "task-130" {
+	if len(settler.calls) != 1 || settler.calls[0].runID != "run-130" || settler.calls[0].taskID != "task-130" {
 		t.Fatalf("completion must settle the bound orca task exactly once: %+v", settler.calls)
 	}
 	if !completed.OrcaTaskSettled || completed.OrcaTaskError != "" {
@@ -176,7 +177,7 @@ func newOrcaCompletionFixture(t *testing.T, stateRoot, branch string) claimableE
 		RuntimeID: "runtime-130", RepoID: "repo-130",
 		WorktreeID: "worktree-130", TerminalPTYID: "pty-130",
 		OwnerHost: "claude", OwnerModel: "claude-opus-5",
-		TaskID: "task-130", DispatchID: "dispatch-130",
+		RunID: "run-130", TaskID: "task-130", DispatchID: "dispatch-130",
 	}
 	record.Execution.Lease = model.WriteLease{
 		Generation: 1, Status: model.LeaseStatusActive,

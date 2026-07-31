@@ -822,3 +822,22 @@ Shannon 측정 중 `rg -c`와 `agent-harness state read --key ...`가 active lea
   - fingerprint 없이 reseed를 수동 실행하는 우회는 generation-CAS 계약을 깨므로 기각
   - status에 token placeholder만 남기는 방식은 durable resume 시 실제 claim 경로를 다시 추론해야 하므로 기각
   - Orca current-generation claimable에서 직접 claim을 안내하는 방식은 resume가 제공하는 sealed digest handoff를 건너뛰므로 기각
+
+## 2026-07-31 — Orca task mutation은 explicit Run과 coordinator consumer를 함께 봉인해야 한다
+
+- Kind: `caution`
+- Source: Orca 1.4.162 IssueOps #194 dogfood
+- Summary: `task-list`를 전역 호출하거나 `--run`만 추가하면 `legacy_read_only` 또는 `consumer_fenced`로 막힌다.
+- Context: Orca 1.4.162는 task create/update/dispatch를 Run 단위로 격리하고, mutation을 실행하는 coordinator terminal이 그 Run의 current consumer인지 확인한다. CLI가 설치되어 있고 worktree/terminal 기능이 정상이어도 전역 task readiness probe 때문에 `mode=auto`가 direct로 내려갈 수 있었다.
+- Resolution:
+  - readiness는 `run-current --from "$ORCA_TERMINAL_HANDLE"`와 완전한 `run-list`로 확인하고 mutation을 실행하지 않는다.
+  - prepare/resume는 `run_create`와 `run_bind`를 별도 journal stage로 기록한다.
+  - coordinator mutation에는 환경에서 읽은 exact concrete terminal handle을 `--from`으로 전달하고 focus/cwd로 추론하지 않는다.
+  - task 인벤토리는 모든 explicit Run의 `task-list --run`을 합치며 Run ID와 runtime ID를 함께 검증한다.
+  - Run 도입 전 binding은 같은 task ID가 정확히 한 explicit Run에 있을 때만 읽기·완료 처리를 복구한다.
+- Evidence:
+  - internal/adapter/orca/client.go
+  - internal/adapter/orca/execution.go
+  - internal/core/issueops/execution_orca_intent.go
+  - TestExecutionOrcaRunBindCanConvergeAfterUnknownOutcome
+  - TestClientTaskInventoryKeepsSameTaskIDDistinctAcrossRuns

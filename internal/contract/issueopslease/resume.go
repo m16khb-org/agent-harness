@@ -22,6 +22,8 @@ type ResumeReceipt struct {
 
 type ResumeStageReceipt struct {
 	TerminalPTYID string `json:"terminal_pty_id,omitempty"`
+	RunID         string `json:"run_id,omitempty"`
+	RunBound      bool   `json:"run_bound,omitempty"`
 	TaskID        string `json:"task_id,omitempty"`
 	DispatchID    string `json:"dispatch_id,omitempty"`
 }

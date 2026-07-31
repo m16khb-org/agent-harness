@@ -28,6 +28,10 @@ type executionClient interface {
 	ListWorktrees(context.Context, string) ([]port.OrcaWorktree, error)
 	CreateWorktree(context.Context, port.OrcaCreateWorktreeRequest) (port.OrcaWorktree, error)
 	CreateTerminal(context.Context, port.OrcaCreateTerminalRequest) (port.OrcaTerminal, error)
+	ListRuns(context.Context) ([]port.OrcaRun, error)
+	CreateRun(context.Context, port.OrcaCreateRunRequest) (port.OrcaRun, error)
+	CurrentRun(context.Context) (*port.OrcaRun, error)
+	UseRun(context.Context, string) (port.OrcaRun, error)
 	CreateTask(context.Context, port.OrcaCreateTaskRequest) (port.OrcaTask, error)
 	Dispatch(context.Context, port.OrcaDispatchRequest) (port.OrcaDispatch, error)
 }
@@ -35,7 +39,13 @@ type executionClient interface {
 type executionInventoryClient interface {
 	listTerminalsInventory(context.Context, string) (executionTerminalInventory, error)
 	listAllTasksInventory(context.Context) (executionTaskInventory, error)
+	listRunTasksInventory(context.Context, string, ...string) (executionTaskInventory, error)
 	showDispatchInventory(context.Context, string) (executionDispatchInventory, error)
+}
+
+type executionRunInventoryClient interface {
+	listRunsInventory(context.Context) (executionRunInventory, error)
+	currentRunInventory(context.Context) (executionCurrentRunInventory, error)
 }
 
 type executionTerminalDetailClient interface {
@@ -56,6 +66,16 @@ type executionTerminalDetailInventory struct {
 type executionTaskInventory struct {
 	RuntimeID string
 	Rows      []port.OrcaTask
+}
+
+type executionRunInventory struct {
+	RuntimeID string
+	Rows      []port.OrcaRun
+}
+
+type executionCurrentRunInventory struct {
+	RuntimeID string
+	Run       *port.OrcaRun
 }
 
 type executionDispatchInventory struct {
@@ -127,12 +147,54 @@ func (p *ExecutionProvisioner) InspectIntent(ctx context.Context, req port.Execu
 			candidates = append(candidates, port.ExecutionOrcaIntentReceipt{TerminalPTYID: row.PTYID})
 		}
 		return executionIntentInventory(candidates), nil
+	case port.ExecutionOrcaIntentRun:
+		client, err := p.runInventoryClient()
+		if err != nil {
+			return port.ExecutionOrcaIntentInventory{}, err
+		}
+		inventory, err := client.listRunsInventory(ctx)
+		if err != nil {
+			return port.ExecutionOrcaIntentInventory{}, err
+		}
+		if err := validateExecutionInventoryRuntime(inventory.RuntimeID, req.Prepared.RuntimeID); err != nil {
+			return port.ExecutionOrcaIntentInventory{}, err
+		}
+		candidates := make([]port.ExecutionOrcaIntentReceipt, 0, 1)
+		for _, row := range inventory.Rows {
+			if strings.TrimSpace(row.Objective) != req.Marker {
+				continue
+			}
+			if err := validateExecutionIntentRun(row, *req.Prepared, req.Marker); err != nil {
+				return port.ExecutionOrcaIntentInventory{}, err
+			}
+			candidates = append(candidates, port.ExecutionOrcaIntentReceipt{RunID: row.ID})
+		}
+		return executionIntentInventory(candidates), nil
+	case port.ExecutionOrcaIntentRunBind:
+		client, err := p.runInventoryClient()
+		if err != nil {
+			return port.ExecutionOrcaIntentInventory{}, err
+		}
+		inventory, err := client.currentRunInventory(ctx)
+		if err != nil {
+			return port.ExecutionOrcaIntentInventory{}, err
+		}
+		if err := validateExecutionInventoryRuntime(inventory.RuntimeID, req.Prepared.RuntimeID); err != nil {
+			return port.ExecutionOrcaIntentInventory{}, err
+		}
+		if inventory.Run == nil || inventory.Run.ID != req.RunID {
+			return executionIntentInventory(nil), nil
+		}
+		if err := validateExecutionIntentRun(*inventory.Run, *req.Prepared, req.Marker); err != nil {
+			return port.ExecutionOrcaIntentInventory{}, err
+		}
+		return executionIntentInventory([]port.ExecutionOrcaIntentReceipt{{RunID: inventory.Run.ID, RunBound: true}}), nil
 	case port.ExecutionOrcaIntentTask:
 		client, err := p.intentInventoryClient()
 		if err != nil {
 			return port.ExecutionOrcaIntentInventory{}, err
 		}
-		inventory, err := client.listAllTasksInventory(ctx)
+		inventory, err := client.listRunTasksInventory(ctx, req.RunID, "--brief")
 		if err != nil {
 			return port.ExecutionOrcaIntentInventory{}, err
 		}
@@ -146,7 +208,7 @@ func (p *ExecutionProvisioner) InspectIntent(ctx context.Context, req port.Execu
 			if candidateTitle != title {
 				continue
 			}
-			if err := validateExecutionIntentTask(row, *req.Prepared, candidateTitle, req.Workspace.Branch); err != nil {
+			if err := validateExecutionIntentTask(row, *req.Prepared, req.RunID, candidateTitle, req.Workspace.Branch); err != nil {
 				return port.ExecutionOrcaIntentInventory{}, fmt.Errorf("Orca owner task candidate does not match the sealed intent")
 			}
 			candidates = append(candidates, port.ExecutionOrcaIntentReceipt{TaskID: row.ID})
@@ -212,15 +274,40 @@ func (p *ExecutionProvisioner) InvokeIntent(ctx context.Context, req port.Execut
 			return port.ExecutionOrcaIntentReceipt{}, &port.OrcaError{Code: "terminal_identity_mismatch", Detail: err.Error(), Invoked: true}
 		}
 		return port.ExecutionOrcaIntentReceipt{TerminalPTYID: created.PTYID}, nil
+	case port.ExecutionOrcaIntentRun:
+		created, err := p.client.CreateRun(ctx, port.OrcaCreateRunRequest{Objective: req.Marker})
+		if err != nil {
+			return port.ExecutionOrcaIntentReceipt{}, err
+		}
+		if err := validateExecutionIntentRun(created, *req.Prepared, req.Marker); err != nil {
+			return port.ExecutionOrcaIntentReceipt{}, &port.OrcaError{Code: "run_identity_mismatch", Detail: err.Error(), Invoked: true}
+		}
+		return port.ExecutionOrcaIntentReceipt{RunID: created.ID}, nil
+	case port.ExecutionOrcaIntentRunBind:
+		current, err := p.client.CurrentRun(ctx)
+		if err != nil {
+			return port.ExecutionOrcaIntentReceipt{}, err
+		}
+		if current == nil || current.ID != req.RunID {
+			used, err := p.client.UseRun(ctx, req.RunID)
+			if err != nil {
+				return port.ExecutionOrcaIntentReceipt{}, err
+			}
+			current = &used
+		}
+		if err := validateExecutionIntentRun(*current, *req.Prepared, req.Marker); err != nil {
+			return port.ExecutionOrcaIntentReceipt{}, &port.OrcaError{Code: "run_binding_mismatch", Detail: err.Error(), Invoked: current != nil}
+		}
+		return port.ExecutionOrcaIntentReceipt{RunID: current.ID, RunBound: true}, nil
 	case port.ExecutionOrcaIntentTask:
 		created, err := p.client.CreateTask(ctx, port.OrcaCreateTaskRequest{
-			Spec: req.Launch.Prompt, Title: executionTaskTitle(req.Marker, req.Launch.PromptSHA256), DisplayName: req.Workspace.Branch,
+			RunID: req.RunID, Spec: req.Launch.Prompt, Title: executionTaskTitle(req.Marker, req.Launch.PromptSHA256), DisplayName: req.Workspace.Branch,
 		})
 		if err != nil {
 			return port.ExecutionOrcaIntentReceipt{}, err
 		}
 		title := executionTaskTitle(req.Marker, req.Launch.PromptSHA256)
-		if err := validateExecutionIntentTask(created, *req.Prepared, title, req.Workspace.Branch); err != nil {
+		if err := validateExecutionIntentTask(created, *req.Prepared, req.RunID, title, req.Workspace.Branch); err != nil {
 			return port.ExecutionOrcaIntentReceipt{}, &port.OrcaError{Code: "task_identity_mismatch", Detail: err.Error(), Invoked: true}
 		}
 		return port.ExecutionOrcaIntentReceipt{TaskID: created.ID}, nil
@@ -229,7 +316,7 @@ func (p *ExecutionProvisioner) InvokeIntent(ctx context.Context, req port.Execut
 		if err != nil {
 			return port.ExecutionOrcaIntentReceipt{}, executionPreflightError(err)
 		}
-		dispatch, err := p.client.Dispatch(ctx, port.OrcaDispatchRequest{TaskID: req.TaskID, ToHandle: terminal.Handle, Inject: true, ReturnPreamble: true})
+		dispatch, err := p.client.Dispatch(ctx, port.OrcaDispatchRequest{RunID: req.RunID, TaskID: req.TaskID, ToHandle: terminal.Handle, Inject: true, ReturnPreamble: true})
 		if err != nil {
 			return port.ExecutionOrcaIntentReceipt{}, err
 		}
@@ -289,25 +376,39 @@ func (p *ExecutionProvisioner) LaunchOwner(ctx context.Context, prepared port.Ex
 	if err != nil {
 		return port.ExecutionOrcaReceipt{}, &port.OrcaError{Code: "terminal_identity_mismatch", Detail: err.Error(), Invoked: true}
 	}
+	run, err := p.client.CreateRun(ctx, port.OrcaCreateRunRequest{Objective: req.Marker})
+	if err != nil {
+		return port.ExecutionOrcaReceipt{}, err
+	}
+	if err := validateExecutionIntentRun(run, prepared, req.Marker); err != nil {
+		return port.ExecutionOrcaReceipt{}, err
+	}
+	used, err := p.client.UseRun(ctx, run.ID)
+	if err != nil {
+		return port.ExecutionOrcaReceipt{}, err
+	}
+	if err := validateExecutionIntentRun(used, prepared, req.Marker); err != nil {
+		return port.ExecutionOrcaReceipt{}, err
+	}
 	task, err := p.client.CreateTask(ctx, port.OrcaCreateTaskRequest{
-		Spec: launch.Prompt, Title: executionTaskTitle(req.Marker, launch.PromptSHA256), DisplayName: prepared.Workspace.Branch,
+		RunID: run.ID, Spec: launch.Prompt, Title: executionTaskTitle(req.Marker, launch.PromptSHA256), DisplayName: prepared.Workspace.Branch,
 	})
 	if err != nil {
 		return port.ExecutionOrcaReceipt{}, err
 	}
 	dispatch, err := p.client.Dispatch(ctx, port.OrcaDispatchRequest{
-		TaskID: task.ID, ToHandle: terminal.Handle, Inject: true, ReturnPreamble: true,
+		RunID: run.ID, TaskID: task.ID, ToHandle: terminal.Handle, Inject: true, ReturnPreamble: true,
 	})
 	if err != nil {
 		return port.ExecutionOrcaReceipt{}, err
 	}
-	if err := validateExecutionLaunch(prepared.WorktreeID, terminal, task, dispatch); err != nil {
+	if err := validateExecutionLaunch(prepared.WorktreeID, run.ID, terminal, task, dispatch); err != nil {
 		return port.ExecutionOrcaReceipt{}, err
 	}
 	return port.ExecutionOrcaReceipt{
 		Workspace: prepared.Workspace,
 		RuntimeID: prepared.RuntimeID, RepoID: prepared.RepoID, WorktreeID: prepared.WorktreeID,
-		WorktreeInstanceID: prepared.WorktreeInstanceID, TaskID: task.ID, DispatchID: dispatch.ID, TerminalPTYID: terminal.PTYID,
+		WorktreeInstanceID: prepared.WorktreeInstanceID, RunID: run.ID, TaskID: task.ID, DispatchID: dispatch.ID, TerminalPTYID: terminal.PTYID,
 	}, nil
 }
 
@@ -360,7 +461,14 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 		// terminal show의 음수 paneRuntimeId는 현재 렌더러에 실제 pane이 없다는 증거다.
 		result.TerminalLive = detail.Terminal.Connected && detail.Terminal.Writable && *detail.PaneRuntimeID >= 0
 	}
-	tasks, err := client.listAllTasksInventory(ctx)
+	var tasks executionTaskInventory
+	if strings.TrimSpace(req.RunID) == "" {
+		// Run 도입 전 binding은 task ID만 봉인했다. 전역 current Run을
+		// 추론하지 않고 모든 명시적 Run의 완전 목록에서 유일한 task만 찾는다.
+		tasks, err = client.listAllTasksInventory(ctx)
+	} else {
+		tasks, err = client.listRunTasksInventory(ctx, req.RunID, "--brief")
+	}
 	if err != nil {
 		return port.ExecutionOrcaOwnerInventory{}, err
 	}
@@ -642,6 +750,14 @@ func (p *ExecutionProvisioner) intentInventoryClient() (executionInventoryClient
 	return client, nil
 }
 
+func (p *ExecutionProvisioner) runInventoryClient() (executionRunInventoryClient, error) {
+	client, ok := p.client.(executionRunInventoryClient)
+	if !ok {
+		return nil, fmt.Errorf("Orca Run inventory is unavailable")
+	}
+	return client, nil
+}
+
 func (p *ExecutionProvisioner) resolveIntentTerminal(ctx context.Context, req port.ExecutionOrcaIntentRequest) (port.OrcaTerminal, error) {
 	client, err := p.intentInventoryClient()
 	if err != nil {
@@ -714,24 +830,30 @@ func validateExecutionIntentRequest(req port.ExecutionOrcaIntentRequest) error {
 	}
 	switch req.Stage {
 	case port.ExecutionOrcaIntentWorktree:
-		if req.Prepared != nil || req.Launch != nil || req.TerminalPTYID != "" || req.TaskID != "" {
+		if req.Prepared != nil || req.Launch != nil || req.TerminalPTYID != "" || req.RunID != "" || req.RunBound || req.TaskID != "" {
 			return fmt.Errorf("worktree intent contains a later-stage receipt")
 		}
-	case port.ExecutionOrcaIntentTerminal, port.ExecutionOrcaIntentTask, port.ExecutionOrcaIntentDispatch:
+	case port.ExecutionOrcaIntentTerminal, port.ExecutionOrcaIntentRun, port.ExecutionOrcaIntentRunBind, port.ExecutionOrcaIntentTask, port.ExecutionOrcaIntentDispatch:
 		if req.Prepared == nil {
 			return fmt.Errorf("owner intent requires a sealed worktree receipt")
 		}
 		if err := validateExecutionOwnerLaunch(*req.Prepared, req.Probe, executionRequiredLaunch(req)); err != nil {
 			return err
 		}
-		if req.Stage == port.ExecutionOrcaIntentTerminal && (req.TerminalPTYID != "" || req.TaskID != "") {
+		if req.Stage == port.ExecutionOrcaIntentTerminal && (req.TerminalPTYID != "" || req.RunID != "" || req.RunBound || req.TaskID != "") {
 			return fmt.Errorf("terminal intent contains a later-stage receipt")
 		}
-		if req.Stage == port.ExecutionOrcaIntentTask && (req.TerminalPTYID == "" || req.TaskID != "") {
-			return fmt.Errorf("task intent requires exactly one terminal receipt")
+		if req.Stage == port.ExecutionOrcaIntentRun && (req.TerminalPTYID == "" || req.RunID != "" || req.RunBound || req.TaskID != "") {
+			return fmt.Errorf("Run intent requires exactly one terminal receipt")
 		}
-		if req.Stage == port.ExecutionOrcaIntentDispatch && (req.TerminalPTYID == "" || req.TaskID == "") {
-			return fmt.Errorf("dispatch intent requires terminal and task receipts")
+		if req.Stage == port.ExecutionOrcaIntentRunBind && (req.TerminalPTYID == "" || req.RunID == "" || req.RunBound || req.TaskID != "") {
+			return fmt.Errorf("Run bind intent requires terminal and Run receipts")
+		}
+		if req.Stage == port.ExecutionOrcaIntentTask && (req.TerminalPTYID == "" || req.RunID == "" || !req.RunBound || req.TaskID != "") {
+			return fmt.Errorf("task intent requires terminal and bound Run receipts")
+		}
+		if req.Stage == port.ExecutionOrcaIntentDispatch && (req.TerminalPTYID == "" || req.RunID == "" || !req.RunBound || req.TaskID == "") {
+			return fmt.Errorf("dispatch intent requires terminal, bound Run, and task receipts")
 		}
 	default:
 		return fmt.Errorf("unsupported Orca execution intent stage %q", req.Stage)
@@ -753,21 +875,27 @@ func validateExecutionIntentInspectionRequest(req port.ExecutionOrcaIntentReques
 	}
 	switch req.Stage {
 	case port.ExecutionOrcaIntentWorktree:
-		if req.Prepared != nil || req.Launch != nil || req.TerminalPTYID != "" || req.TaskID != "" {
+		if req.Prepared != nil || req.Launch != nil || req.TerminalPTYID != "" || req.RunID != "" || req.RunBound || req.TaskID != "" {
 			return fmt.Errorf("worktree intent contains a later-stage receipt")
 		}
-	case port.ExecutionOrcaIntentTerminal, port.ExecutionOrcaIntentTask, port.ExecutionOrcaIntentDispatch:
+	case port.ExecutionOrcaIntentTerminal, port.ExecutionOrcaIntentRun, port.ExecutionOrcaIntentRunBind, port.ExecutionOrcaIntentTask, port.ExecutionOrcaIntentDispatch:
 		if err := validateExecutionInspectionOwnerEnvelope(req); err != nil {
 			return err
 		}
-		if req.Stage == port.ExecutionOrcaIntentTerminal && (req.TerminalPTYID != "" || req.TaskID != "") {
+		if req.Stage == port.ExecutionOrcaIntentTerminal && (req.TerminalPTYID != "" || req.RunID != "" || req.RunBound || req.TaskID != "") {
 			return fmt.Errorf("terminal intent contains a later-stage receipt")
 		}
-		if req.Stage == port.ExecutionOrcaIntentTask && (req.TerminalPTYID == "" || req.TaskID != "") {
-			return fmt.Errorf("task intent requires exactly one terminal receipt")
+		if req.Stage == port.ExecutionOrcaIntentRun && (req.TerminalPTYID == "" || req.RunID != "" || req.RunBound || req.TaskID != "") {
+			return fmt.Errorf("Run intent requires exactly one terminal receipt")
 		}
-		if req.Stage == port.ExecutionOrcaIntentDispatch && (req.TerminalPTYID == "" || req.TaskID == "") {
-			return fmt.Errorf("dispatch intent requires terminal and task receipts")
+		if req.Stage == port.ExecutionOrcaIntentRunBind && (req.TerminalPTYID == "" || req.RunID == "" || req.RunBound || req.TaskID != "") {
+			return fmt.Errorf("Run bind intent requires terminal and Run receipts")
+		}
+		if req.Stage == port.ExecutionOrcaIntentTask && (req.TerminalPTYID == "" || req.RunID == "" || !req.RunBound || req.TaskID != "") {
+			return fmt.Errorf("task intent requires terminal and bound Run receipts")
+		}
+		if req.Stage == port.ExecutionOrcaIntentDispatch && (req.TerminalPTYID == "" || req.RunID == "" || !req.RunBound || req.TaskID == "") {
+			return fmt.Errorf("dispatch intent requires terminal, bound Run, and task receipts")
 		}
 	default:
 		return fmt.Errorf("unsupported Orca execution intent stage %q", req.Stage)
@@ -836,8 +964,17 @@ func validateExecutionTerminalReceipt(terminal port.OrcaTerminal, prepared port.
 	return nil
 }
 
-func validateExecutionIntentTask(task port.OrcaTask, prepared port.ExecutionOrcaWorkspaceReceipt, title, displayName string) error {
+func validateExecutionIntentRun(run port.OrcaRun, prepared port.ExecutionOrcaWorkspaceReceipt, objective string) error {
+	if strings.TrimSpace(run.ID) == "" || run.Legacy || strings.TrimSpace(prepared.RuntimeID) == "" ||
+		run.RuntimeID != prepared.RuntimeID || strings.TrimSpace(run.Objective) != strings.TrimSpace(objective) {
+		return fmt.Errorf("Orca Run does not match the sealed runtime and intent")
+	}
+	return nil
+}
+
+func validateExecutionIntentTask(task port.OrcaTask, prepared port.ExecutionOrcaWorkspaceReceipt, runID, title, displayName string) error {
 	if strings.TrimSpace(task.ID) == "" || strings.TrimSpace(prepared.RuntimeID) == "" || task.RuntimeID != prepared.RuntimeID ||
+		task.RunID != strings.TrimSpace(runID) ||
 		strings.TrimSpace(task.Title) != strings.TrimSpace(title) || strings.TrimSpace(task.DisplayName) != strings.TrimSpace(displayName) {
 		return fmt.Errorf("Orca owner task does not match the sealed runtime and launch identity")
 	}
@@ -949,11 +1086,12 @@ func executionMarkerField(marker, name string) (string, bool) {
 	return value, seen
 }
 
-func validateExecutionLaunch(worktreeID string, terminal port.OrcaTerminal, task port.OrcaTask, dispatch port.OrcaDispatch) error {
+func validateExecutionLaunch(worktreeID, runID string, terminal port.OrcaTerminal, task port.OrcaTask, dispatch port.OrcaDispatch) error {
 	if strings.TrimSpace(terminal.Handle) == "" || terminal.WorktreeID != worktreeID || !terminal.Connected || !terminal.Writable {
 		return fmt.Errorf("Orca owner terminal receipt is incomplete")
 	}
-	if strings.TrimSpace(task.ID) == "" || strings.TrimSpace(dispatch.ID) == "" || dispatch.TaskID != task.ID || dispatch.AssigneeHandle != terminal.Handle || !dispatch.Injected {
+	if strings.TrimSpace(runID) == "" || task.RunID != runID || strings.TrimSpace(task.ID) == "" ||
+		strings.TrimSpace(dispatch.ID) == "" || dispatch.TaskID != task.ID || dispatch.AssigneeHandle != terminal.Handle || !dispatch.Injected {
 		return fmt.Errorf("Orca task or dispatch receipt is incomplete")
 	}
 	return nil

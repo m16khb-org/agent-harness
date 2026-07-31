@@ -195,7 +195,7 @@ func beginOrcaExecutionResumeIntentWithExpectedRaw(stateRoot string, record Issu
 	}
 	stage := port.ExecutionOrcaIntentTerminal
 	if terminalPTYID != "" {
-		stage = port.ExecutionOrcaIntentTask
+		stage = port.ExecutionOrcaIntentRun
 	}
 	payload := externalOrcaIntentPayload{
 		SchemaVersion: model.IssueOpsSchemaVersion, Purpose: orcaIntentPurposeResume,

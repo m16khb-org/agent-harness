@@ -83,6 +83,8 @@ func TestResumeIntentSpikeBridgePendingIsConsumedByLegacyReconcile(t *testing.T)
 	beforeLease := record.Execution.Lease
 	state := beginResumeBridgeIntent(t, stateRoot, record, artifacts, strings.Repeat("e", 32))
 	state = advanceResumeBridgeStage(t, stateRoot, state, port.ExecutionOrcaIntentReceipt{TerminalPTYID: "pty-resume"})
+	state = advanceResumeBridgeStage(t, stateRoot, state, port.ExecutionOrcaIntentReceipt{RunID: "run-resume"})
+	state = advanceResumeBridgeStage(t, stateRoot, state, port.ExecutionOrcaIntentReceipt{RunID: "run-resume", RunBound: true})
 	state = advanceResumeBridgeStage(t, stateRoot, state, port.ExecutionOrcaIntentReceipt{TaskID: "task-resume"})
 	state, err = MarkExecutionResumeIntentInvoking(stateRoot, state)
 	if err != nil {

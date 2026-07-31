@@ -47,7 +47,7 @@ type ExecutionCompleteDeps struct {
 	//
 	// nil이면 종결을 건너뛴다. 종결 수단이 없다는 사실이 완료를 막아서는 안
 	// 된다 — Orca 상태 갱신은 durable state의 전제 조건이 아니다(#130).
-	SettleOrcaTask func(ctx context.Context, taskID string) error
+	SettleOrcaTask func(ctx context.Context, runID, taskID string) error
 }
 
 func CompleteExecution(stateRoot string, req ExecutionCompleteRequest, deps ExecutionCompleteDeps) (ExecutionResult, error) {
@@ -144,11 +144,12 @@ func settleExecutionOrcaTask(record IssueOpsRecord, deps ExecutionCompleteDeps, 
 		record.Execution.Mode != model.ExecutionModeOrca || record.Execution.Orca == nil {
 		return
 	}
+	runID := strings.TrimSpace(record.Execution.Orca.RunID)
 	taskID := strings.TrimSpace(record.Execution.Orca.TaskID)
 	if taskID == "" {
 		return
 	}
-	if err := deps.SettleOrcaTask(context.Background(), taskID); err != nil {
+	if err := deps.SettleOrcaTask(context.Background(), runID, taskID); err != nil {
 		result.OrcaTaskError = err.Error()
 		return
 	}

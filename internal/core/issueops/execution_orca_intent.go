@@ -49,6 +49,8 @@ type externalOrcaIntentPayload struct {
 	IssueBodySHA256    string                              `json:"issue_body_sha256"`
 	ClaimTokenSHA256   string                              `json:"claim_token_sha256,omitempty"`
 	TerminalPTYID      string                              `json:"terminal_pty_id,omitempty"`
+	RunID              string                              `json:"run_id,omitempty"`
+	RunBound           bool                                `json:"run_bound,omitempty"`
 	TaskID             string                              `json:"task_id,omitempty"`
 	PriorBinding       *model.OrcaBinding                  `json:"prior_binding,omitempty"`
 	ResumeLease        *model.WriteLease                   `json:"resume_lease,omitempty"`
@@ -144,7 +146,7 @@ func executeOrcaIntentStage(ctx context.Context, stateRoot string, record IssueO
 		_ = recordOrcaIntentFailure(stateRoot, record.ID, payload, payload.InvocationState, err, now)
 		return record, payload, err
 	}
-	if payload.InvocationState != orcaIntentNotInvoked {
+	if payload.InvocationState != orcaIntentNotInvoked && payload.Stage != port.ExecutionOrcaIntentRunBind {
 		err := fmt.Errorf("authoritative zero cannot retry an Orca mutation whose absence was not proven; intent retained")
 		_ = recordOrcaIntentFailure(stateRoot, record.ID, payload, payload.InvocationState, err, now)
 		return record, payload, err
@@ -313,6 +315,18 @@ func advanceOrcaIntentReceiptWithExpectedRaw(ctx context.Context, stateRoot stri
 			return record, expected, fmt.Errorf("Orca terminal candidate is incomplete")
 		}
 		updated.TerminalPTYID = strings.TrimSpace(receipt.TerminalPTYID)
+		updated.Stage = port.ExecutionOrcaIntentRun
+	case port.ExecutionOrcaIntentRun:
+		if strings.TrimSpace(receipt.RunID) == "" {
+			return record, expected, fmt.Errorf("Orca Run candidate is incomplete")
+		}
+		updated.RunID = strings.TrimSpace(receipt.RunID)
+		updated.Stage = port.ExecutionOrcaIntentRunBind
+	case port.ExecutionOrcaIntentRunBind:
+		if strings.TrimSpace(receipt.RunID) != expected.RunID || !receipt.RunBound {
+			return record, expected, fmt.Errorf("Orca Run binding candidate is incomplete")
+		}
+		updated.RunBound = true
 		updated.Stage = port.ExecutionOrcaIntentTask
 	case port.ExecutionOrcaIntentTask:
 		if strings.TrimSpace(receipt.TaskID) == "" {
@@ -360,7 +374,7 @@ func advanceOrcaIntentReceiptWithExpectedRaw(ctx context.Context, stateRoot stri
 			current.Execution.Orca = &model.OrcaBinding{
 				RuntimeID: expected.Prepared.RuntimeID, RepoID: expected.Prepared.RepoID, WorktreeID: expected.Prepared.WorktreeID,
 				WorktreeInstanceID: expected.Prepared.WorktreeInstanceID, LeaseGeneration: expected.Generation, OwnerHost: expected.Probe.Host,
-				OwnerModel: expected.Probe.Model, OwnerEffort: expected.Probe.Effort, TaskID: expected.TaskID,
+				OwnerModel: expected.Probe.Model, OwnerEffort: expected.Probe.Effort, RunID: expected.RunID, TaskID: expected.TaskID,
 				DispatchID: receipt.DispatchID, TerminalPTYID: expected.TerminalPTYID,
 			}
 			current.Execution.Pending = nil
@@ -618,23 +632,29 @@ func validateExternalOrcaIntentPayloadShape(payload externalOrcaIntentPayload, o
 	}
 	switch payload.Stage {
 	case port.ExecutionOrcaIntentWorktree:
-		if payload.Prepared != nil || payload.Launch != nil || payload.ClaimTokenSHA256 != "" || payload.TerminalPTYID != "" || payload.TaskID != "" {
+		if payload.Prepared != nil || payload.Launch != nil || payload.ClaimTokenSHA256 != "" || payload.TerminalPTYID != "" || payload.RunID != "" || payload.RunBound || payload.TaskID != "" {
 			return fmt.Errorf("Orca worktree intent payload contains later-stage receipts")
 		}
-	case port.ExecutionOrcaIntentTerminal, port.ExecutionOrcaIntentTask, port.ExecutionOrcaIntentDispatch:
+	case port.ExecutionOrcaIntentTerminal, port.ExecutionOrcaIntentRun, port.ExecutionOrcaIntentRunBind, port.ExecutionOrcaIntentTask, port.ExecutionOrcaIntentDispatch:
 		if payload.Prepared == nil || payload.Launch == nil || !executionSHA256.MatchString(payload.ClaimTokenSHA256) ||
 			!executionSHA256.MatchString(payload.Launch.PromptSHA256) || !executionSHA256.MatchString(payload.Launch.ContextPacketSHA256) ||
 			strings.TrimSpace(payload.Launch.PromptPath) == "" || strings.TrimSpace(payload.Launch.ContextPacketPath) == "" ||
 			validateExecutionOrcaWorkspaceReceipt(payload.Workspace, *payload.Prepared) != nil {
 			return fmt.Errorf("Orca owner intent payload is missing sealed launch receipts")
 		}
-		if payload.Stage == port.ExecutionOrcaIntentTerminal && (payload.TerminalPTYID != "" || payload.TaskID != "") {
+		if payload.Stage == port.ExecutionOrcaIntentTerminal && (payload.TerminalPTYID != "" || payload.RunID != "" || payload.RunBound || payload.TaskID != "") {
 			return fmt.Errorf("Orca terminal intent payload contains later-stage receipts")
 		}
-		if payload.Stage == port.ExecutionOrcaIntentTask && (payload.TerminalPTYID == "" || payload.TaskID != "") {
+		if payload.Stage == port.ExecutionOrcaIntentRun && (payload.TerminalPTYID == "" || payload.RunID != "" || payload.RunBound || payload.TaskID != "") {
+			return fmt.Errorf("Orca Run intent payload is incomplete")
+		}
+		if payload.Stage == port.ExecutionOrcaIntentRunBind && (payload.TerminalPTYID == "" || payload.RunID == "" || payload.RunBound || payload.TaskID != "") {
+			return fmt.Errorf("Orca Run bind intent payload is incomplete")
+		}
+		if payload.Stage == port.ExecutionOrcaIntentTask && (payload.TerminalPTYID == "" || payload.RunID == "" || !payload.RunBound || payload.TaskID != "") {
 			return fmt.Errorf("Orca task intent payload is incomplete")
 		}
-		if payload.Stage == port.ExecutionOrcaIntentDispatch && (payload.TerminalPTYID == "" || payload.TaskID == "") {
+		if payload.Stage == port.ExecutionOrcaIntentDispatch && (payload.TerminalPTYID == "" || payload.RunID == "" || !payload.RunBound || payload.TaskID == "") {
 			return fmt.Errorf("Orca dispatch intent payload is incomplete")
 		}
 	default:
@@ -687,7 +707,8 @@ func executionOrcaIntentInspectionRequest(record IssueOpsRecord, payload externa
 	}
 	request := port.ExecutionOrcaIntentRequest{
 		Stage: payload.Stage, Marker: payload.Marker, Workspace: payload.Workspace, Probe: payload.Probe,
-		Prepared: payload.Prepared, TerminalPTYID: payload.TerminalPTYID, TaskID: payload.TaskID,
+		Prepared: payload.Prepared, TerminalPTYID: payload.TerminalPTYID,
+		RunID: payload.RunID, RunBound: payload.RunBound, TaskID: payload.TaskID,
 	}
 	if payload.Launch != nil {
 		expectedPacketPath, expectedPromptPath := executionOwnerArtifactPaths(record)
@@ -734,7 +755,7 @@ func pendingKindForOrcaStage(stage port.ExecutionOrcaIntentStage) string {
 	switch stage {
 	case port.ExecutionOrcaIntentWorktree:
 		return "worktree_create"
-	case port.ExecutionOrcaIntentTerminal, port.ExecutionOrcaIntentTask:
+	case port.ExecutionOrcaIntentTerminal, port.ExecutionOrcaIntentRun, port.ExecutionOrcaIntentRunBind, port.ExecutionOrcaIntentTask:
 		return "owner_launch"
 	case port.ExecutionOrcaIntentDispatch:
 		return "dispatch"
