@@ -158,7 +158,8 @@ func daemonIdentityMismatchStatus(status daemonStatus, message string) daemonSta
 }
 
 func daemonProcessIdentityMatches(instance daemonInstance, process daemonProcessIdentity) bool {
-	return instance.ProcessStartTime == process.StartTime && instance.Executable == process.Executable
+	return daemonpaths.ProcessStartTimeEqual(instance.ProcessStartTime, process.StartTime) &&
+		instance.Executable == process.Executable
 }
 
 func daemonStatusIsReady(status daemonStatus) bool {
