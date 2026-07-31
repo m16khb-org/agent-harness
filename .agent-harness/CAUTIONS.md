@@ -799,3 +799,22 @@ Shannon 측정 중 `rg -c`와 `agent-harness state read --key ...`가 active lea
 - 사람이 읽는 단일 값에 쓰는 `GitCmd`/`GitOut`의 trim 계약을 structured Git 출력에 재사용하지 않는다.
 - 회귀 테스트는 첫 행이 ` M <path>`인 tracked 변경을 포함하고, dirty 상태와 동일 내용 commit의 지문 일치 및 tracked plan-only 변경 제외를 함께 검증한다.
 - 잘못 봉인된 기존 지문은 첫 파일 내용을 해시에 포함하지 않았으므로 호환 계산으로 통과시키지 않는다. 수정된 바이너리에서 committed diff를 다시 독립 검토하고 새 cleanup/review 지문을 기록한다.
+
+## 2026-07-31 — released direct lease 복구는 유한한 next_command 체인을 제공해야 한다
+
+- Kind: `caution`
+- Source: IssueOps direct lease dogfood
+- Summary: released direct execution의 status와 replacement 결과가 다음 명령을 누락하거나 fingerprint 없는 reseed를 안내하면 write lease 복구가 중간에서 막힌다.
+- Context: 부모 #117 generation 9가 released인 상태에서 child accept가 active write lease 가드에 거부됐고, execution status는 next_command를 반환하지 않았다. 기존 prepare 안내도 inventory fingerprint 없이 reseed를 지시했다.
+- Resolution: StatusExecution은 완료되지 않은 writerless execution에 상태별 next_command를 반환하고, released는 replacement preview부터 시작한다. preview는 generation과 inventory fingerprint가 포함된 reseed를, direct reseed/finalize는 current token path가 포함된 claim을 반환한다. Orca claimable은 generation 상태와 관계없이 멱등 resume로 안내한다.
+- Evidence:
+  - internal/core/issueops/execution_lease.go
+  - internal/core/issueops/execution_prepare.go
+  - TestReleasedDirectRecoveryRendersFiniteCommandChain RED 후 PASS
+  - TestExecutionWriterAbsentCurrentOrcaGenerationStillPointsToResume RED 후 PASS
+  - focused race PASS
+  - CLI/MCP response golden 두 번 연속 PASS
+- Alternatives / rejected options:
+  - fingerprint 없이 reseed를 수동 실행하는 우회는 generation-CAS 계약을 깨므로 기각
+  - status에 token placeholder만 남기는 방식은 durable resume 시 실제 claim 경로를 다시 추론해야 하므로 기각
+  - Orca current-generation claimable에서 직접 claim을 안내하는 방식은 resume가 제공하는 sealed digest handoff를 건너뛰므로 기각

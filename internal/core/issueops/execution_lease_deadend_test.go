@@ -132,6 +132,74 @@ func TestPrepareDoesNotReportSuccessWithoutAWriter(t *testing.T) {
 	}
 }
 
+func TestReleasedDirectRecoveryRendersFiniteCommandChain(t *testing.T) {
+	stateRoot, record := executionPrepareRecord(t)
+	actor := executionActor("codex", "released-direct-recovery")
+	prepared, err := PrepareExecution(context.Background(), stateRoot, ExecutionPrepareRequest{
+		ID: record.ID, Mode: "direct", CWD: record.Repo, Confirm: true,
+		Actor: actor, OwnerHost: "codex",
+	}, ExecutionPrepareDependencies{Direct: gitworktree.New(), ReadIssue: executionIssueSnapshotReader})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ReleaseExecution(stateRoot, ExecutionReleaseRequest{
+		ID: record.ID, Generation: prepared.Execution.Lease.Generation,
+		Actor: actor, CWD: prepared.Execution.Workspace.Root,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	status, err := StatusExecution(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(status.NextCommand, "execution replace") ||
+		!strings.Contains(status.NextCommand, "--preview") {
+		t.Fatalf("released status must start recovery with a replacement preview: %q", status.NextCommand)
+	}
+
+	preview, err := ReplaceExecution(stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplacePreview,
+		ExpectedGeneration: prepared.Execution.Lease.Generation,
+		Actor:              actor, CWD: record.Repo,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, fragment := range []string{
+		"--reseed",
+		"--expected-generation 1",
+		"--inventory-fingerprint " + preview.InventoryFingerprint,
+		"--confirm",
+	} {
+		if !strings.Contains(preview.NextCommand, fragment) {
+			t.Fatalf("replacement preview next command %q does not contain %q", preview.NextCommand, fragment)
+		}
+	}
+
+	reseeded, err := ReplaceExecution(stateRoot, ExecutionReplaceRequest{
+		ID: record.ID, Action: ExecutionReplaceReseed,
+		ExpectedGeneration:   prepared.Execution.Lease.Generation,
+		InventoryFingerprint: preview.InventoryFingerprint,
+		Reason:               "released direct holder recovery",
+		Actor:                actor, CWD: record.Repo, Confirm: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(reseeded.NextCommand, "execution claim") ||
+		!strings.Contains(reseeded.NextCommand, reseeded.ClaimTokenPath) {
+		t.Fatalf("reseed must hand over the exact claim command: %q", reseeded.NextCommand)
+	}
+	if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+		ID: record.ID, Generation: reseeded.Execution.Lease.Generation,
+		Actor: actor, CWD: prepared.Execution.Workspace.Root,
+		TokenFile: reseeded.ClaimTokenPath,
+	}); err != nil {
+		t.Fatalf("rendered recovery chain did not restore the writer: %v", err)
+	}
+}
+
 // 홀더가 요청자와 같으면 지금처럼 멱등 성공한다. lease 검사가 그 경로까지
 // 막으면 정상 재호출이 실패로 바뀐다.
 func TestPrepareStaysIdempotentForTheActiveHolder(t *testing.T) {

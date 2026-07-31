@@ -58,6 +58,20 @@ func TestNormalizeDocsCountsForGoldenKeepsNonNumericDocsCounters(t *testing.T) {
 	}
 }
 
+func TestNormalizeIssueOpsStateKeysForGoldenKeepsPathShape(t *testing.T) {
+	got := normalizeIssueOpsStateKeysForGolden(map[string]any{
+		"next_command": "agent-harness issueops execution claim --claim-token-file /repo/.agent-harness/state/issueops-v1/b6d8a06c9683e6d9/lease-1.token",
+		"unrelated":    "/repo/0123456789abcdef/file",
+	})
+	want := map[string]any{
+		"next_command": "agent-harness issueops execution claim --claim-token-file /repo/.agent-harness/state/issueops-v1/$ISSUEOPS_STATE_KEY/lease-1.token",
+		"unrelated":    "/repo/0123456789abcdef/file",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("normalizeIssueOpsStateKeysForGolden = %#v, want %#v", got, want)
+	}
+}
+
 func TestResponseContractsGoldenUsesDocsCountPlaceholder(t *testing.T) {
 	path := filepath.Join("..", "testdata", "response_contracts.golden.json")
 	raw, err := os.ReadFile(path)

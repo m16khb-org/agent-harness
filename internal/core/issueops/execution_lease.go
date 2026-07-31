@@ -108,7 +108,11 @@ func StatusExecution(stateRoot, id string) (ExecutionResult, error) {
 	if record.Execution == nil {
 		return ExecutionResult{OK: false, ID: id}, fmt.Errorf("IssueOps execution v1 is not prepared")
 	}
-	return executionResult(record), nil
+	result := executionResult(record)
+	if record.Execution.Completion == nil {
+		result.NextCommand = executionWriterAbsentRecoveryCommand(record)
+	}
+	return result, nil
 }
 
 func ClaimExecutionWithDependencies(ctx context.Context, stateRoot string, req ExecutionClaimRequest, deps ExecutionClaimDependencies) (ExecutionResult, error) {
@@ -278,7 +282,16 @@ func previewExecutionReplacement(ctx context.Context, stateRoot string, req Exec
 	if err != nil {
 		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, err
 	}
-	return replaceResult(record, req.Action, fingerprint, "", ""), nil
+	result := replaceResult(record, req.Action, fingerprint, "", "")
+	if record.Execution.Lease.Status == model.LeaseStatusReleased ||
+		record.Execution.Lease.Status == model.LeaseStatusClaimable {
+		result.NextCommand = executionReseedCommand(
+			record.ID,
+			record.Execution.Lease.Generation,
+			fingerprint,
+		)
+	}
+	return result, nil
 }
 
 func previewExecutionFinalization(ctx context.Context, stateRoot string, req ExecutionReplaceRequest, deps ExecutionReplaceDependencies) (ExecutionReplaceResult, error) {
@@ -431,11 +444,57 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 	result.IssueBodySHA256 = resealed.issueBodySHA256
 	result.ContextPacketPath, result.ContextPacketSHA256 = resealed.packetPath, resealed.packetSHA256
 	result.OwnerPromptPath, result.OwnerPromptSHA256 = resealed.promptPath, resealed.promptSHA256
-	if persisted.Execution.Mode == model.ExecutionModeOrca &&
-		persisted.Execution.Lease.Status == model.LeaseStatusClaimable {
-		result.NextCommand = executionResumeCommand(persisted.ID, persisted.Execution.Lease.Generation)
+	if persisted.Execution.Lease.Status == model.LeaseStatusClaimable {
+		switch persisted.Execution.Mode {
+		case model.ExecutionModeOrca:
+			result.NextCommand = executionResumeCommand(persisted.ID, persisted.Execution.Lease.Generation)
+		case model.ExecutionModeDirect:
+			result.NextCommand = executionDirectClaimCommand(
+				persisted.ID,
+				persisted.Execution.Lease.Generation,
+				tokenPath,
+			)
+		}
 	}
 	return result, nil
+}
+
+// direct replacement는 새 owner를 띄우지 않으므로 반환된 token으로 현재
+// 세대를 바로 claim해야 한다. 이 명령이 없으면 holderless 복구가 중간에서
+// 멈추고 다음 durable mutation이 write-lease 가드에 막힌다.
+func executionDirectClaimCommand(id string, generation uint64, tokenPath string) string {
+	return "agent-harness issueops execution claim --id " + quoteExecutionOwnerArg(id) +
+		" --generation " + strconv.FormatUint(generation, 10) +
+		" --claim-token-file " + quoteExecutionOwnerArg(tokenPath)
+}
+
+func executionReseedCommand(id string, generation uint64, fingerprint string) string {
+	return "agent-harness issueops execution replace --id " + quoteExecutionOwnerArg(id) +
+		" --expected-generation " + strconv.FormatUint(generation, 10) +
+		" --reseed --inventory-fingerprint " + fingerprint + " --confirm"
+}
+
+func executionWriterAbsentRecoveryCommand(record IssueOpsRecord) string {
+	if record.Execution == nil {
+		return ""
+	}
+	lease := record.Execution.Lease
+	switch lease.Status {
+	case model.LeaseStatusClaimable:
+		if record.Execution.Mode == model.ExecutionModeOrca {
+			return executionResumeCommand(record.ID, lease.Generation)
+		}
+		if record.Execution.Mode == model.ExecutionModeDirect {
+			return executionDirectClaimCommand(record.ID, lease.Generation, claimTokenPath(record))
+		}
+	case model.LeaseStatusReleased:
+		return "agent-harness issueops execution replace --id " + quoteExecutionOwnerArg(record.ID) +
+			" --expected-generation " + strconv.FormatUint(lease.Generation, 10) + " --preview"
+	case model.LeaseStatusRevoking:
+		return "agent-harness issueops execution replace --id " + quoteExecutionOwnerArg(record.ID) +
+			" --expected-generation " + strconv.FormatUint(lease.Generation, 10) + " --finalize-preview"
+	}
+	return ""
 }
 
 // executionOwnerReseal은 replacement가 재봉인한 owner artifact의 정체다.

@@ -121,9 +121,12 @@ Status is the read-only orientation command for either mode:
 agent-harness issueops execution status --id "$ISSUEOPS_ID" --json
 ```
 
-A direct holder does not claim again. An Orca owner reads the private rendered
-prompt and context packet, verifies the issue and packet SHA-256 values, then
-runs the exact claim command rendered by preparation/status:
+A direct holder does not claim again after normal preparation. Holderless
+direct recovery is the exception: `replace --reseed|--finalize` returns an exact
+`claim` command for the new claimable generation. An Orca owner reads the
+private rendered prompt and context packet, verifies the issue and packet
+SHA-256 values, then runs the exact claim command rendered by
+preparation/status:
 
 ```bash
 agent-harness issueops execution claim \
@@ -172,7 +175,7 @@ Replacement is a fail-closed sequence. There is no unsafe override:
 
 Every mutating step also requires `ACTOR_FLAGS`. `--reseed` is limited to the
 documented holderless recovery case and still uses generation CAS and confirm.
-`replace --finalize|--reseed` therefore returns resume, not claim, as its next
+For Orca, `replace --finalize|--reseed` returns resume, not claim, as its next
 command:
 
 ```bash
@@ -186,6 +189,29 @@ terminal/task pair is an idempotent success. A live old-generation task or
 terminal/task contradiction fails closed. Ambiguous terminal/task/dispatch
 mutation stays pending and must be completed with `execution reconcile`; do not
 repeat resume.
+
+For direct mode, the same replacement result returns the exact token-backed
+claim command instead:
+
+```bash
+agent-harness issueops execution claim \
+  --id "$ISSUEOPS_ID" --generation "$GENERATION" \
+  --claim-token-file "$CLAIM_TOKEN_FILE" \
+  $ACTOR_FLAGS --json
+```
+
+A released direct cycle is recovered through the finite `next_command` chain
+returned by each read/mutation result:
+
+```text
+execution status
+  -> execution replace --preview
+  -> execution replace --reseed --inventory-fingerprint <preview fingerprint> --confirm
+  -> execution claim --claim-token-file <current generation token>
+```
+
+Do not skip the preview or invent the fingerprint. A completed cycle does not
+render this recovery chain.
 
 When workspace provisioning or remote publication may have mutated external
 state but the result is ambiguous, inspect and then confirm the exact
