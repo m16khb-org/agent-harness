@@ -121,6 +121,41 @@ func persistExecutionTransitionWithMutations(stateRoot string, record IssueOpsRe
 	return encoded, nil
 }
 
+// persistExecutionTransitionWithRawCAS는 resume stage가 읽은 record와 intent를
+// 같은 SQLite transaction에서 다시 대조한 뒤 저장한다. resume lease는
+// holderless claimable 상태를 유지하므로 lease-holder reverse index transition을
+// 여기로 옮기지 않는다.
+func persistExecutionTransitionWithRawCAS(stateRoot string, record IssueOpsRecord, expected []sqlstore.ExpectedRecord, extra []sqlstore.Mutation) (IssueOpsRecord, error) {
+	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
+		return IssueOpsRecord{OK: false, ID: record.ID}, err
+	}
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		return IssueOpsRecord{OK: false, ID: record.ID}, err
+	}
+	var encoded IssueOpsRecord
+	if err := db.CompareAndApplyFunc(context.Background(), expected, func() ([]sqlstore.Mutation, error) {
+		var data []byte
+		var encodeErr error
+		encoded, data, encodeErr = encodeIssueOpsRecord(record)
+		if encodeErr != nil {
+			return nil, encodeErr
+		}
+		mutations := append([]sqlstore.Mutation{{Bucket: issueOpsBucket, ID: encoded.ID, Data: data}}, extra...)
+		return mutations, nil
+	}); err != nil {
+		var stale *sqlstore.RawCASError
+		if errors.As(err, &stale) {
+			if stale.Bucket == issueOpsBucket {
+				return IssueOpsRecord{OK: false, ID: record.ID}, fmt.Errorf("stale raw record snapshot")
+			}
+			return IssueOpsRecord{OK: false, ID: record.ID}, fmt.Errorf("stale raw intent snapshot")
+		}
+		return IssueOpsRecord{OK: false, ID: record.ID}, err
+	}
+	return encoded, nil
+}
+
 func requireLeaseIndexAvailable(db *sqlstore.DB, lifecycleID string, generation uint64, actor model.NativeActor) (bool, error) {
 	data, ok, err := db.Get(leaseHolderBucket, leaseHolderIndexKey(actor))
 	if err != nil {

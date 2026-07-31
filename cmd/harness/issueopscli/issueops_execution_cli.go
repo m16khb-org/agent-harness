@@ -10,18 +10,18 @@ import (
 )
 
 func runIssueOpsExecution(args []string) error {
-	return runIssueOpsExecutionWithHandlersAndReseed(args, nil, nil, nil)
+	return runIssueOpsExecutionWithHandlersAndReseed(args, nil, nil, nil, nil)
 }
 
 func runIssueOpsExecutionWithRelease(args []string, release issueops.ExecutionReleaseHandler) error {
-	return runIssueOpsExecutionWithHandlersAndReseed(args, nil, release, nil)
+	return runIssueOpsExecutionWithHandlersAndReseed(args, nil, release, nil, nil)
 }
 
 func runIssueOpsExecutionWithHandlers(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler) error {
-	return runIssueOpsExecutionWithHandlersAndReseed(args, claim, release, nil)
+	return runIssueOpsExecutionWithHandlersAndReseed(args, claim, release, nil, nil)
 }
 
-func runIssueOpsExecutionWithHandlersAndReseed(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler, reseed issueops.ExecutionReseedHandler) error {
+func runIssueOpsExecutionWithHandlersAndReseed(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler, reseed issueops.ExecutionReseedHandler, resume issueops.ExecutionResumeHandler) error {
 	return executioncmd.Run(args, executioncmd.Deps{
 		StateRoot: core.IssueOpsStateRoot,
 		Direct:    gitworktree.New(),
@@ -49,6 +49,7 @@ func runIssueOpsExecutionWithHandlersAndReseed(args []string, claim issueops.Exe
 		Claim:          claim,
 		Release:        release,
 		Reseed:         reseed,
+		Resume:         resume,
 		PrintJSON:      printJSON,
 		PrintError:     printIssueOpsErrorJSON,
 	})

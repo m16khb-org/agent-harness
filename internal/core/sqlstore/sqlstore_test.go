@@ -236,6 +236,60 @@ func TestPutGetDeleteRoundtrip(t *testing.T) {
 	}
 }
 
+func TestCompareAndApplyCommitsExpectedRawRowsAtomically(t *testing.T) {
+	db := openTestDB(t)
+	if err := db.Apply(context.Background(), []Mutation{{Bucket: "resume", ID: "record", Data: []byte("before")}, {Bucket: "resume", ID: "intent", Data: []byte("pending")}}); err != nil {
+		t.Fatal(err)
+	}
+	err := db.CompareAndApply(context.Background(), []ExpectedRecord{{Bucket: "resume", ID: "record", Data: []byte("before")}, {Bucket: "resume", ID: "intent", Data: []byte("pending")}}, []Mutation{{Bucket: "resume", ID: "record", Data: []byte("after")}, {Bucket: "resume", ID: "intent", Delete: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record, ok, err := db.Get("resume", "record"); err != nil || !ok || string(record) != "after" {
+		t.Fatalf("record=%q ok=%t err=%v", record, ok, err)
+	}
+	if _, ok, err := db.Get("resume", "intent"); err != nil || ok {
+		t.Fatalf("intent ok=%t err=%v", ok, err)
+	}
+}
+
+func TestCompareAndApplyRollsBackOnRawMismatch(t *testing.T) {
+	db := openTestDB(t)
+	if err := db.Apply(context.Background(), []Mutation{{Bucket: "resume", ID: "record", Data: []byte("before")}, {Bucket: "resume", ID: "intent", Data: []byte("pending")}}); err != nil {
+		t.Fatal(err)
+	}
+	err := db.CompareAndApply(context.Background(), []ExpectedRecord{{Bucket: "resume", ID: "record", Data: []byte("different")}, {Bucket: "resume", ID: "intent", Data: []byte("pending")}}, []Mutation{{Bucket: "resume", ID: "record", Data: []byte("after")}, {Bucket: "resume", ID: "intent", Delete: true}})
+	var stale *RawCASError
+	if !errors.As(err, &stale) || stale.Bucket != "resume" || stale.ID != "record" {
+		t.Fatalf("compare error=%v", err)
+	}
+	if record, ok, err := db.Get("resume", "record"); err != nil || !ok || string(record) != "before" {
+		t.Fatalf("record=%q ok=%t err=%v", record, ok, err)
+	}
+	if intent, ok, err := db.Get("resume", "intent"); err != nil || !ok || string(intent) != "pending" {
+		t.Fatalf("intent=%q ok=%t err=%v", intent, ok, err)
+	}
+}
+
+func TestCompareAndApplyFuncSkipsEncoderOnRawMismatch(t *testing.T) {
+	db := openTestDB(t)
+	if err := db.Apply(context.Background(), []Mutation{{Bucket: "resume", ID: "record", Data: []byte("before")}}); err != nil {
+		t.Fatal(err)
+	}
+	encoded := false
+	err := db.CompareAndApplyFunc(context.Background(), []ExpectedRecord{{Bucket: "resume", ID: "record", Data: []byte("different")}}, func() ([]Mutation, error) {
+		encoded = true
+		return []Mutation{{Bucket: "resume", ID: "record", Data: []byte("after")}}, nil
+	})
+	var stale *RawCASError
+	if !errors.As(err, &stale) || encoded {
+		t.Fatalf("compare error=%v encoded=%t", err, encoded)
+	}
+	if record, ok, err := db.Get("resume", "record"); err != nil || !ok || string(record) != "before" {
+		t.Fatalf("record=%q ok=%t err=%v", record, ok, err)
+	}
+}
+
 func TestBucketsAreIsolatedAndListSorted(t *testing.T) {
 	d := openTestDB(t)
 	for _, id := range []string{"c", "a", "b"} {

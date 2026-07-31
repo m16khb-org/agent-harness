@@ -1,10 +1,14 @@
 package mcpcli
 
 import (
+	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/issueops/model"
 )
 
@@ -46,6 +50,38 @@ func TestExecutionActionRequestFromMCPMapsResume(t *testing.T) {
 		req.Actor.SessionProcess == nil || req.Actor.SessionProcess.PID != 42 ||
 		req.CWD != "/repo.worktrees/resume" || !req.Confirm || req.IssueSnapshot != nil {
 		t.Fatalf("MCP resume request drifted: %#v", req)
+	}
+}
+
+func TestHandleToolCallWithDependenciesRoutesResumeToInjectedHandler(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	params, err := json.Marshal(MCPToolCall{Name: "issueops_execution", Arguments: map[string]any{
+		"action": "resume", "id": "io-aaaaaaaaaaaa", "expected_generation": float64(3),
+		"host": "codex", "session_id": "session-resume", "session_pid": float64(42),
+		"session_started_at": "2026-07-31T00:00:00Z", "session_executable": "/usr/local/bin/codex",
+		"cwd": "/repo.worktrees/resume", "confirm": true,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	response, rpcErr := HandleToolCallWithDependencies(params, MCPDependencies{Resume: func(_ context.Context, stateRoot string, request issueops.ExecutionResumeRequest) (issueops.ExecutionResumeResult, error) {
+		calls++
+		if stateRoot == "" || request.ID != "io-aaaaaaaaaaaa" || request.ExpectedGeneration != 3 || request.CWD != "/repo.worktrees/resume" || !request.Confirm {
+			t.Fatalf("resume handler request=%+v state_root=%q", request, stateRoot)
+		}
+		return issueops.ExecutionResumeResult{OK: true, ID: request.ID}, nil
+	}})
+	if rpcErr != nil || calls != 1 {
+		t.Fatalf("resume MCP rpc_err=%v calls=%d", rpcErr, calls)
+	}
+	payload, ok := response.(map[string]any)
+	if !ok {
+		t.Fatalf("resume MCP response type=%T", response)
+	}
+	content, ok := payload["content"].([]map[string]any)
+	if !ok || len(content) != 1 || !strings.Contains(content[0]["text"].(string), `"id": "io-aaaaaaaaaaaa"`) {
+		t.Fatalf("resume MCP response=%#v", response)
 	}
 }
 

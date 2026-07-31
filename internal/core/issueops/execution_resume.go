@@ -23,12 +23,6 @@ type ExecutionResumeRequest struct {
 	Confirm            bool              `json:"confirm"`
 }
 
-type ExecutionResumeDependencies struct {
-	Orca      port.ExecutionOrcaProvisioner
-	OrcaOwner port.ExecutionOrcaOwnerInspector
-	Now       func() time.Time
-}
-
 type ExecutionResumeResult struct {
 	OK                  bool            `json:"ok"`
 	ID                  string          `json:"id"`
@@ -49,90 +43,6 @@ type executionResumeArtifacts struct {
 	packetSHA256    string
 	promptPath      string
 	promptSHA256    string
-}
-
-func ResumeExecutionWithDependencies(ctx context.Context, stateRoot string, req ExecutionResumeRequest, deps ExecutionResumeDependencies) (ExecutionResumeResult, error) {
-	if !req.Confirm {
-		return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("execution resume requires confirm")
-	}
-	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-		return ExecutionResumeResult{OK: false, ID: req.ID}, err
-	}
-	if _, err := normalizeNativeActor(req.Actor); err != nil {
-		return ExecutionResumeResult{OK: false, ID: req.ID}, err
-	}
-	record, err := executionRecordAtGeneration(stateRoot, req.ID, req.ExpectedGeneration)
-	if err != nil {
-		return ExecutionResumeResult{OK: false, ID: req.ID}, err
-	}
-	if record.Execution.Mode != model.ExecutionModeOrca || record.Execution.Orca == nil {
-		return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("execution resume requires an existing Orca binding")
-	}
-	if record.Execution.Pending != nil {
-		return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("execution resume is blocked by a pending external intent; run execution reconcile")
-	}
-	if record.Execution.Lease.Status != model.LeaseStatusClaimable ||
-		record.Execution.Lease.Holder != nil ||
-		!executionSHA256.MatchString(record.Execution.Lease.ClaimTokenSHA256) {
-		return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("execution resume requires a holderless claimable lease")
-	}
-	if !samePath(req.CWD, record.Execution.Workspace.Root) {
-		return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("execution resume cwd must be the canonical worktree")
-	}
-	artifacts, err := readExecutionResumeArtifacts(record)
-	if err != nil {
-		return ExecutionResumeResult{OK: false, ID: req.ID}, err
-	}
-	if deps.Orca == nil || deps.OrcaOwner == nil {
-		return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("execution resume requires Orca mutation and owner inventory adapters")
-	}
-	binding := record.Execution.Orca
-	inventory, err := deps.OrcaOwner.InspectOwner(ctx, port.ExecutionOrcaOwnerInventoryRequest{
-		RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, TaskID: binding.TaskID,
-		DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID, AllowRuntimeRollover: true,
-	})
-	if err != nil {
-		return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("inspect previous Orca owner: %w", err)
-	}
-	if err := validateExecutionRuntimeRollover(record, inventory); err != nil {
-		return ExecutionResumeResult{OK: false, ID: req.ID}, err
-	}
-	sameGeneration := binding.LeaseGeneration == record.Execution.Lease.Generation
-	if inventory.TaskLive && !inventory.TerminalLive {
-		return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("Orca owner inventory has a live task without a live terminal")
-	}
-	if inventory.TaskLive {
-		if !sameGeneration {
-			return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("previous Orca owner task is still live")
-		}
-		return executionResumeResult(record, artifacts), nil
-	}
-	reusedTerminalPTYID := ""
-	if inventory.TerminalLive {
-		reusedTerminalPTYID = strings.TrimSpace(inventory.TerminalID)
-		if reusedTerminalPTYID == "" || reusedTerminalPTYID != strings.TrimSpace(binding.TerminalPTYID) {
-			return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("Orca owner terminal identity changed")
-		}
-	}
-
-	runtimeID := strings.TrimSpace(inventory.RuntimeID)
-	if runtimeID == "" {
-		runtimeID = binding.RuntimeID
-	}
-	persisted, payload, err := beginOrcaExecutionResumeIntent(stateRoot, record, artifacts, runtimeID, reusedTerminalPTYID, deps.Now)
-	if err != nil {
-		return ExecutionResumeResult{OK: false, ID: req.ID}, err
-	}
-	for attempt := 0; attempt < 3 && persisted.Execution.Pending != nil; attempt++ {
-		persisted, payload, err = executeOrcaIntentStage(ctx, stateRoot, persisted, payload, deps.Orca, nil, deps.Now)
-		if err != nil {
-			return ExecutionResumeResult{OK: false, ID: req.ID}, err
-		}
-	}
-	if persisted.Execution.Pending != nil {
-		return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("execution resume did not complete the owner launch stages")
-	}
-	return executionResumeResult(persisted, artifacts), nil
 }
 
 func readExecutionResumeArtifacts(record IssueOpsRecord) (executionResumeArtifacts, error) {
@@ -252,6 +162,14 @@ func beginOrcaExecutionResumeIntent(stateRoot string, record IssueOpsRecord, art
 	if err != nil {
 		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
 	}
+	return beginOrcaExecutionResumeIntentWithID(stateRoot, record, artifacts, runtimeID, terminalPTYID, operationID, now)
+}
+
+func beginOrcaExecutionResumeIntentWithID(stateRoot string, record IssueOpsRecord, artifacts executionResumeArtifacts, runtimeID, terminalPTYID, operationID string, now func() time.Time) (IssueOpsRecord, externalOrcaIntentPayload, error) {
+	return beginOrcaExecutionResumeIntentWithExpectedRaw(stateRoot, record, nil, artifacts, runtimeID, terminalPTYID, operationID, now)
+}
+
+func beginOrcaExecutionResumeIntentWithExpectedRaw(stateRoot string, record IssueOpsRecord, expectedRecordRaw []byte, artifacts executionResumeArtifacts, runtimeID, terminalPTYID, operationID string, now func() time.Time) (IssueOpsRecord, externalOrcaIntentPayload, error) {
 	workspace, err := executionWorkspaceRequest(record, true)
 	if err != nil {
 		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
@@ -319,9 +237,12 @@ func beginOrcaExecutionResumeIntent(stateRoot string, record IssueOpsRecord, art
 			Marker: payload.Marker, StartedAt: startedAt,
 		}
 		current.Execution.Failure = nil
-		persisted, err = persistExecutionTransitionWithMutations(stateRoot, current, nil, []sqlstore.Mutation{{
-			Bucket: externalIntentBucket, ID: operationID, Data: data, RequireAbsent: true,
-		}})
+		mutations := []sqlstore.Mutation{{Bucket: externalIntentBucket, ID: operationID, Data: data, RequireAbsent: true}}
+		if expectedRecordRaw != nil {
+			persisted, err = persistExecutionTransitionWithRawCAS(stateRoot, current, []sqlstore.ExpectedRecord{{Bucket: issueOpsBucket, ID: record.ID, Data: expectedRecordRaw}}, mutations)
+			return err
+		}
+		persisted, err = persistExecutionTransitionWithMutations(stateRoot, current, nil, mutations)
 		return err
 	})
 	return persisted, payload, err
@@ -329,11 +250,7 @@ func beginOrcaExecutionResumeIntent(stateRoot string, record IssueOpsRecord, art
 
 func executionResumeResult(record IssueOpsRecord, artifacts executionResumeArtifacts) ExecutionResumeResult {
 	generation := record.Execution.Lease.Generation
-	next := "agent-harness issueops execution claim --id " + quoteExecutionOwnerArg(record.ID) +
-		" --generation " + strconv.FormatUint(generation, 10) +
-		" --claim-token-file " + quoteExecutionOwnerArg(artifacts.claimTokenPath) +
-		" --issue-body-sha256 " + artifacts.issueBodySHA256 +
-		" --context-packet-sha256 " + artifacts.packetSHA256
+	next := ExecutionResumeNextCommand(record.ID, generation, artifacts.claimTokenPath, artifacts.issueBodySHA256, artifacts.packetSHA256)
 	return ExecutionResumeResult{
 		OK: true, ID: record.ID, Execution: *record.Execution,
 		ClaimTokenPath: artifacts.claimTokenPath, IssueBodySHA256: artifacts.issueBodySHA256,
@@ -341,6 +258,14 @@ func executionResumeResult(record IssueOpsRecord, artifacts executionResumeArtif
 		OwnerPromptPath: artifacts.promptPath, OwnerPromptSHA256: artifacts.promptSHA256,
 		NextCommand: next,
 	}
+}
+
+func ExecutionResumeNextCommand(id string, generation uint64, claimTokenPath, issueBodySHA256, contextPacketSHA256 string) string {
+	return "agent-harness issueops execution claim --id " + quoteExecutionOwnerArg(id) +
+		" --generation " + strconv.FormatUint(generation, 10) +
+		" --claim-token-file " + quoteExecutionOwnerArg(claimTokenPath) +
+		" --issue-body-sha256 " + issueBodySHA256 +
+		" --context-packet-sha256 " + contextPacketSHA256
 }
 
 func executionResumeCommand(id string, generation uint64) string {

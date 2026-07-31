@@ -124,8 +124,17 @@ func TestExecutionInitialOrcaClaimRejectsIssueOrPacketDigestDrift(t *testing.T) 
 // sealedOrcaCycle는 봉인이 끝난 claimable orca 사이클을 만든다. reseed와 세대
 // 검증 테스트가 같은 출발점을 공유해야 재봉인 전후를 비교할 수 있다.
 func sealedOrcaCycle(t *testing.T, issueBody string) (string, IssueOpsRecord, ExecutionPrepareResult, ExecutionIssueSnapshotReadFunc) {
+	return sealedOrcaCycleWithArtifacts(t, issueBody, nil)
+}
+
+func sealedOrcaCycleWithArtifacts(t *testing.T, issueBody string, artifacts map[string]string) (string, IssueOpsRecord, ExecutionPrepareResult, ExecutionIssueSnapshotReadFunc) {
 	t.Helper()
 	stateRoot, record := orcaPrepareRecord(t)
+	for name, content := range artifacts {
+		if _, err := StageIssueOpsArtifact(stateRoot, record.ID, name, []byte(content)); err != nil {
+			t.Fatal(err)
+		}
+	}
 	fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
 	// reseed는 워크스페이스 스냅샷으로 Git top-level을 확인하므로 fake가 실제
 	// 워크트리를 만들어야 한다(디렉토리만 만들면 재봉인 경로에 닿지 못한다).
