@@ -24,6 +24,13 @@ Orca 실행 전체가 중단된다.
 - `run-create`는 lightweight namespace를 만들며 worker를 배치하지 않는다.
 - `task-create`, `task-list`, `task-update`, `dispatch`, `send`는 `--run`을
   공식 지원한다.
+- 설치 번들의 `resolveRunScope(... requireCurrentConsumer: true)`는
+  `task-create`, `task-update`, `dispatch`가 explicit Run ID뿐 아니라 호출
+  terminal의 current coordinator binding도 요구하고, 불일치하면
+  `consumer_fenced`로 거부한다.
+- `run-create`는 Run을 만들면서 호출 coordinator terminal에 bind하고,
+  `run-use`는 ordinary Run을 다른 current coordinator terminal에 다시 bind할
+  수 있다.
 - `dispatch-show`, `gate-list`, `inbox`는 현재 버전에서 Run 플래그를 제공하지
   않는다.
 
@@ -35,7 +42,11 @@ task/dispatch가 다시 legacy coordinator에 도달하는 부분 통합이 되�
 - 신규 IssueOps Orca lifecycle은 각각 고유한 Orca Run을 소유한다.
 - Run 생성도 worktree, terminal, task, dispatch와 같은 durable external
   intent로 기록하고 unknown-result reconcile을 지원한다.
+- Run bind를 Run 생성과 분리된 durable external intent로 기록해 다른
+  coordinator session에서도 reconcile을 계속할 수 있게 한다.
 - task 생성·조회·갱신과 dispatch는 봉인된 exact Run ID를 사용한다.
+- coordinator mutation은 focus나 cwd가 아니라 현재 process에 주입된 exact
+  `ORCA_TERMINAL_HANDLE`을 `--from`으로 전달한다.
 - Probe는 legacy coordinator의 상태가 아니라 Run API의 readiness와 필요한
   `--run` capability를 검증한다.
 - resume, replace, reconcile, completion, cleanup, operational inventory가
@@ -49,6 +60,7 @@ task/dispatch가 다시 legacy coordinator에 도달하는 부분 통합이 되�
 - Orca의 scheduler, worker placement 또는 Run 저장소를 agent-harness에 복제
 - 기존 recovered Run을 신규 lifecycle의 공유 namespace로 재사용
 - `run-use --takeover-legacy`로 사용자의 coordinator terminal 소유권 변경
+- owner worker terminal을 coordinator로 bind해 두 역할의 authority를 합침
 - SQLite 직접 수정이나 현재 process memory 기반 Run 선택
 - Orca에 존재하지 않는 Run 삭제 기능을 추측해 cleanup에 추가
 - OpenWiki 자동 갱신
@@ -88,7 +100,12 @@ IssueOps lifecycle + generation + operation marker
 - task/dispatch mutation은 durable payload에 봉인된 Run ID가 없으면
   호출하지 않는다.
 - Run 생성과 task 생성을 한 intent stage에서 연속 실행하지 않는다.
+- Run 생성과 coordinator bind도 서로 다른 intent stage로 둔다.
 - current Run, recovered Run, terminal-local binding은 authority가 아니다.
+- coordinator handle은 현재 호출을 인증하는 transient identity이며 durable
+  record에 저장하지 않는다. 호출마다 `ORCA_TERMINAL_HANDLE`에서 다시 읽는다.
+- coordinator handle이 없거나 concrete terminal 형식이 아니면 focus/cwd
+  fallback 없이 mutation 전에 거부한다.
 - Run inventory에서 marker가 같은 후보가 0개면 authoritative zero, 1개면
   reconcile 후보, 2개 이상이면 ambiguous로 거부한다.
 - Run ID가 있는 record는 task ID가 같은 다른 Run을 절대 채택하지 않는다.
@@ -107,12 +124,13 @@ IssueOps lifecycle + generation + operation marker
 - `model.OrcaBinding`
 - cleanup과 operational-health에서 사용하는 Orca authority projection
 
-신규 intent stage `run_create`를 추가한다. 순서는 다음과 같다.
+신규 intent stage `run_create`와 `run_bind`를 추가한다. 순서는 다음과 같다.
 
 ```text
 worktree_create
 terminal_create
 run_create
+run_bind
 task_create
 dispatch
 ```
@@ -134,6 +152,9 @@ Orca port에 다음 최소 기능을 둔다.
 - `ListRuns`: complete Run inventory를 읽는다.
 - `CreateRun(objective)`: 고유 objective로 Run을 생성하고 ID/objective를
   검증한다.
+- `CurrentRun(from)`: 현재 coordinator terminal에 bind된 Run을 읽는다.
+- `UseRun(runID, from)`: current coordinator terminal을 exact ordinary Run에
+  bind한다.
 - `ListTasks(runID, filter)`: 항상 `--run`을 전달한다.
 
 Run list 응답은 ID, objective, legacy 여부를 보존한다. 빈 ID/objective,
@@ -146,8 +167,11 @@ Probe는 다음을 확인한다.
 1. runtime과 graph ready
 2. repository identity
 3. `run-create`, `run-list` capability
-4. task create/list/update, dispatch, send의 `--run` capability
-5. `run-list --json`의 정상 응답과 runtime identity
+4. `run-use`, `run-current` capability
+5. task create/list/update, dispatch, send의 `--run` capability
+6. `ORCA_TERMINAL_HANDLE`의 concrete identity와
+   `run-current --from <handle> --json` readback
+7. `run-list --json`의 정상 응답과 runtime identity
 
 Probe는 전역 `task-list`를 호출하지 않는다. 사용자의 coordinator terminal에
 Run을 bind하거나 Run을 생성하지도 않는다.
@@ -157,6 +181,9 @@ Run을 bind하거나 Run을 생성하지도 않는다.
 - `CreateTask` request는 non-empty Run ID를 요구하고 `--run`을 전달한다.
 - `Dispatch` request도 같은 Run ID를 요구한다.
 - `UpdateTask`와 worker-done `send`는 binding의 Run ID를 전달한다.
+- `CreateRun`, `UseRun`, `CreateTask`, `UpdateTask`, `Dispatch`는 adapter가
+  현재 environment에서 검증한 coordinator handle을 exact `--from`으로
+  전달한다. CLI의 implicit focus/cwd resolution은 사용하지 않는다.
 - Run ID가 없는 mutation request는 runner 호출 전에 typed
   `Invoked=false` 오류로 거부한다.
 - `dispatch-show`, `gate-list`, `inbox`는 설치된 CLI가 Run 플래그를 제공하지
@@ -167,12 +194,19 @@ Run을 bind하거나 Run을 생성하지도 않는다.
 terminal receipt가 저장되면 다음 pending stage는 `run_create`다.
 
 1. core가 lifecycle/generation/operation marker를 Run objective로 봉인한다.
-2. adapter가 `run-create --objective <marker> --json`을 한 번 호출한다.
+2. adapter가
+   `run-create --objective <marker> --from <current-coordinator> --json`을 한 번
+   호출한다.
 3. 정상 응답의 Run ID/objective/runtime을 검증한다.
-4. receipt CAS에서 Run ID를 payload에 기록하고 stage를 `task_create`로
+4. receipt CAS에서 Run ID를 payload에 기록하고 stage를 `run_bind`로
    전진한다.
-5. task와 dispatch stage는 같은 Run ID만 사용한다.
-6. dispatch receipt를 저장할 때 최종 `OrcaBinding.RunID`도 함께 기록한다.
+5. `run_bind`는 `run-current --from <current-coordinator>`가 같은 Run을
+   가리키는지 읽고, 아니면
+   `run-use --id <run_id> --from <current-coordinator> --json`을 한 번 호출한다.
+6. bind receipt CAS 뒤 stage를 `task_create`로 전진한다.
+7. task와 dispatch stage는 같은 Run ID와 current coordinator handle만
+   사용한다.
+8. dispatch receipt를 저장할 때 최종 `OrcaBinding.RunID`도 함께 기록한다.
 
 Run 생성 결과가 timeout 또는 unknown이면 재호출하지 않는다. reconcile은
 `run-list`에서 exact objective 후보를 조회한다.
@@ -181,10 +215,19 @@ Run 생성 결과가 timeout 또는 unknown이면 재호출하지 않는다. rec
 - 1개: receipt로 채택하고 다음 stage로 전진
 - 2개 이상: ambiguous external mutation으로 중단
 
+`run_bind` 결과가 unknown이면 fresh reconciler는 자신의 exact coordinator
+handle로 `run-current`를 조회한다. 이미 target Run이면 receipt로 채택한다.
+아니면 `run_bind`에 한해 exact target으로 수렴하는 bounded `run-use` 재bind를
+허용한다. Run은 추가 생성되지 않고 current consumer만 target Run으로
+교체되므로 resource-creating stage의 unknown-result 재실행 금지와 구분한다.
+기존 intent attempt 상한을 넘기지 않으며, ordinary Run의 정상 재bind만
+사용하고 `--takeover-legacy`는 사용하지 않는다.
+
 payload validation은 stage별 later-stage receipt를 제한한다. `run_create`
 진입에는 terminal receipt가 필요하고 Run ID/task ID는 없어야 한다.
-`task_create`에는 Run ID가 필요하고 task ID는 없어야 한다. `dispatch`에는
-Run ID와 task ID가 모두 필요하다.
+`run_bind`에는 Run ID가 필요하고 bind receipt/task ID는 없어야 한다.
+`task_create`에는 bind receipt와 Run ID가 필요하고 task ID는 없어야 한다.
+`dispatch`에는 Run ID와 task ID가 모두 필요하다.
 
 ## Legacy record 호환성
 
@@ -209,7 +252,13 @@ CAS transition이 필요하며, 이번 변경에서는 읽기 결과를 임의 �
 ## Completion 및 cleanup
 
 - owner inspection은 binding Run ID가 있으면 해당 Run 하나만 조회한다.
-- task settle은 exact Run ID와 task ID를 함께 전달한다.
+- task settle은 exact Run ID와 task ID를 함께 전달하되, 현재 caller가 Run
+  coordinator임이 증명될 때만 `task-update`를 호출한다.
+- owner worker가 보내는 valid `worker_done`은 Orca가 task/dispatch를
+  자동 종결하므로 정상 완료의 우선 경로다. owner terminal에서 coordinator
+  권한을 얻기 위해 `run-use`를 호출하지 않는다.
+- completion의 기존 best-effort settle이 coordinator가 아닌 caller에서
+  거부되면 완료 state를 되돌리지 않고 typed 오류를 계속 표면화한다.
 - legacy binding은 위 resolver가 유일한 Run을 증명했을 때만 settle한다.
 - Run 자체는 Orca 1.4.162에 delete 명령이 없고 lightweight namespace이므로
   cleanup에서 추측성 삭제를 하지 않는다.
@@ -225,6 +274,8 @@ CAS transition이 필요하며, 이번 변경에서는 읽기 결과를 임의 �
 - `run_capability_missing`: 필요한 Run CLI 계약 부재
 - `run_identity_invalid`: Run 응답의 ID/objective가 불완전
 - `run_identity_mismatch`: 응답 objective가 sealed marker와 다름
+- `coordinator_identity_unavailable`: exact `ORCA_TERMINAL_HANDLE` 부재
+- `run_binding_mismatch`: current coordinator가 target Run에 bind되지 않음
 - `run_required`: 신규 task/dispatch mutation에 Run ID 누락
 - `run_inventory_ambiguous`: marker 또는 legacy task가 여러 Run에 존재
 - `run_inventory_incomplete`: 모든 Run/task 후보를 증명하지 못함
@@ -240,16 +291,21 @@ prompt, claim token, 사용자 대화 원문은 오류나 inventory log에 넣�
 
 - Probe가 `run-list`를 사용하고 전역 `task-list`를 호출하지 않음
 - 필요한 help에 `--run`이 없으면 capability failure
+- coordinator handle 부재/invalid/stale에서 mutation 0회
 - CreateRun 응답의 ID/objective/runtime 검증
+- CurrentRun과 UseRun의 exact `--from`, Run ID, runtime 검증
 - task-create/task-list/task-update/dispatch/send의 exact `--run`
+- coordinator mutation의 exact `--from`
 - Run ID 누락 시 runner 호출 0회
 - 여러 Run task inventory의 completeness와 deduplication
 - legacy task resolver의 0/1/N 후보
 
 ### IssueOps intent
 
-- stage 순서가 worktree/terminal/run/task/dispatch임
+- stage 순서가 worktree/terminal/run-create/run-bind/task/dispatch임
 - Run 생성 unknown-result에서 재호출 금지
+- Run bind unknown-result를 current Run readback으로 reconcile
+- fresh coordinator session이 ordinary Run을 재bind한 뒤 task stage로 진행
 - exact objective 1개만 reconcile
 - 0개 authoritative zero와 2개 ambiguous 분기
 - stage별 RunID/TaskID receipt validation
@@ -271,8 +327,8 @@ prompt, claim token, 사용자 대화 원문은 오류나 inventory log에 넣�
 3. `ah update` 후 daemon/MCP binary identity를 readback한다.
 4. 실제 `#194` prepare preview가 mutation 없이 Orca mode로 resolve되는지
    확인한다.
-5. confirm에서 lifecycle 전용 Run, child worktree, Terra/xhigh terminal,
-   task, dispatch를 순서대로 생성한다.
+5. confirm에서 child worktree, Terra/xhigh terminal, lifecycle 전용 Run,
+   explicit coordinator bind, task, dispatch를 순서대로 생성한다.
 6. binding의 Run ID와 각 Orca inventory의 Run ID를 대조한다.
 7. claim, resume/reconcile preview, task settle, cleanup의 Run 경로를
    단계별로 확인한다.
@@ -281,6 +337,8 @@ prompt, claim token, 사용자 대화 원문은 오류나 inventory log에 넣�
 
 - 신규 Orca 실행마다 lifecycle 전용 Run ID가 binding에 봉인된다.
 - Probe와 모든 task/dispatch mutation이 legacy/current Run에 의존하지 않는다.
+- fresh reconcile coordinator가 durable `run_bind` stage로 target Run의 current
+  consumer가 된다.
 - external mutation 하나당 durable intent stage 하나가 유지된다.
 - Run 생성 unknown-result를 0/1/N inventory로 안전하게 reconcile한다.
 - 기존 Run ID 없는 binding은 exact unique task 증거가 있을 때만 읽기/종결된다.

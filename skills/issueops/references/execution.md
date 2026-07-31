@@ -20,6 +20,25 @@ An absent or unready Orca resolves to direct without creating Orca state. Once
 an Orca mutation may have happened, ambiguity fails closed and must be
 reconciled; it never falls back to direct.
 
+Orca 1.4.162 이상에서는 모든 task mutation이 명시적 Run과 그 Run의 current
+consumer인 coordinator terminal을 함께 요구한다. IssueOps는 이를 다음의 독립
+intent 단계로 기록한다:
+
+```text
+worktree_create -> terminal_create -> run_create -> run_bind -> task_create -> dispatch
+```
+
+`run_create`는 lifecycle·generation·operation marker를 objective로 가진 새 Run을
+만들고, `run_bind`는 현재 coordinator의 정확한 `ORCA_TERMINAL_HANDLE`을
+`run-current --from`/`run-use --id <run> --from`에 전달한다. focus, cwd, 전역 current Run을
+권한으로 추론하지 않는다. `run_bind`만 수렴 가능한 재바인딩이므로 불명확한 결과
+뒤에도 동일 Run으로 유한 재시도할 수 있고, 자원을 만드는 다른 단계는 종전처럼
+불명확한 mutation을 반복하지 않는다.
+
+Run 도입 전 binding의 빈 `run_id`는 읽을 수 있다. 이 경우 task 소유권과 완료
+처리는 모든 명시적 Run의 `task-list --run` 결과에서 정확히 하나가 일치할 때만
+복구한다. `run_legacy_local`이나 여러 Run의 동명 task는 권한으로 채택하지 않는다.
+
 ## GitLab Issue Snapshot
 
 GitLab-linked cycle도 Orca를 사용할 수 있다. agent-harness가 요구하는 것은 특정
@@ -165,7 +184,7 @@ Replacement is a fail-closed sequence. There is no unsafe override:
    --quiescence-fingerprint HEX --confirm` reseals the generation-specific
    owner packet/prompt and only then makes that generation claimable.
 5. `issueops execution resume --expected-generation N --confirm` creates a
-   fresh Orca terminal/task/dispatch in the existing canonical worktree and
+   fresh Orca terminal/Run/task/dispatch in the existing canonical worktree and
    records `orca.lease_generation=N`.
 6. The new owner claims with the resume result's token path plus issue/packet
    digests. A reseal
@@ -185,7 +204,9 @@ agent-harness issueops execution resume \
 ```
 
 Resume never recreates or reparents the worktree. A same-generation live
-terminal/task pair is an idempotent success. A live old-generation task or
+terminal/task pair is an idempotent success. 재실행이 필요하면 기존 terminal을
+재사용할 수 있어도 새 generation-specific Run을 만들고 coordinator를 그 Run에
+명시적으로 바인딩한 뒤 task/dispatch를 만든다. A live old-generation task or
 terminal/task contradiction fails closed. Ambiguous terminal/task/dispatch
 mutation stays pending and must be completed with `execution reconcile`; do not
 repeat resume.

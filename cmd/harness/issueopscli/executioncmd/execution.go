@@ -21,7 +21,7 @@ type Deps struct {
 	RemotePR  issueops.RemotePullRequestDependencies
 	// SettleOrcaTask는 완료 시점의 orca task 종결 표면이다. nil이면 종결을
 	// 건너뛴다 — 종결 수단이 없다는 사실이 완료를 막아서는 안 된다(#130).
-	SettleOrcaTask func(ctx context.Context, taskID string) error
+	SettleOrcaTask func(ctx context.Context, runID, taskID string) error
 	PrintJSON      func(any) error
 	PrintError     func(error) error
 }

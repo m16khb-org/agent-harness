@@ -31,7 +31,7 @@ func TestExecutionProvisionerCreatesOneWorktreeAndLaunchesOneOwner(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantCalls := []string{"list", "create-worktree", "create-terminal", "create-task", "dispatch"}
+	wantCalls := []string{"list", "create-worktree", "create-terminal", "create-run", "use-run", "create-task", "dispatch"}
 	if !reflect.DeepEqual(client.calls, wantCalls) {
 		t.Fatalf("unexpected one-shot Orca sequence: got %v want %v", client.calls, wantCalls)
 	}
@@ -44,10 +44,12 @@ func TestExecutionProvisionerCreatesOneWorktreeAndLaunchesOneOwner(t *testing.T)
 	if client.terminalRequest.Agent != "claude" || client.terminalRequest.Model != "caller-selected-model" || client.terminalRequest.ReasoningEffort != "high" {
 		t.Fatalf("owner profile must be caller supplied: %#v", client.terminalRequest)
 	}
-	if client.taskRequest.Spec != launch.Prompt || !client.dispatchRequest.Inject || !client.dispatchRequest.ReturnPreamble {
+	if client.runRequest.Objective != request.Marker || client.taskRequest.RunID != "run-69" ||
+		client.dispatchRequest.RunID != "run-69" || client.taskRequest.Spec != launch.Prompt ||
+		!client.dispatchRequest.Inject || !client.dispatchRequest.ReturnPreamble {
 		t.Fatalf("owner packet/dispatch contract lost: task=%#v dispatch=%#v", client.taskRequest, client.dispatchRequest)
 	}
-	if got.WorktreeID != "wt-69" || got.TaskID != "task-69" || got.DispatchID != "dispatch-69" || got.TerminalPTYID != "pty-69" {
+	if got.WorktreeID != "wt-69" || got.RunID != "run-69" || got.TaskID != "task-69" || got.DispatchID != "dispatch-69" || got.TerminalPTYID != "pty-69" {
 		t.Fatalf("receipt did not preserve durable Orca locators: %#v", got)
 	}
 	if strings.Contains(strings.Join([]string{got.RuntimeID, got.RepoID, got.WorktreeID, got.TaskID, got.DispatchID, got.TerminalPTYID}, "\n"), "term-69") {
@@ -182,7 +184,7 @@ func TestExecutionInvokeIntentLocalFailuresRemainNotInvoked(t *testing.T) {
 		_, err := NewExecutionClient(client).InvokeIntent(context.Background(), port.ExecutionOrcaIntentRequest{
 			Stage: port.ExecutionOrcaIntentDispatch, Marker: probe.Marker,
 			Workspace: workspace, Probe: probe, Prepared: prepared, Launch: &launch,
-			TerminalPTYID: "pty-69", TaskID: "task-69",
+			TerminalPTYID: "pty-69", RunID: "run-69", RunBound: true, TaskID: "task-69",
 		})
 		assertExecutionPreflightError(t, err)
 		if !reflect.DeepEqual(client.calls, []string{"list-terminals-inventory"}) {
@@ -231,16 +233,36 @@ func TestExecutionIntentStagesAreIndividuallyInspectableAndInvoked(t *testing.T)
 	}}
 	assertExecutionIntentOne(t, provisioner, terminalRequest)
 
-	taskRequest := terminalRequest
+	runRequest := terminalRequest
+	runRequest.Stage = port.ExecutionOrcaIntentRun
+	runRequest.TerminalPTYID = terminalReceipt.TerminalPTYID
+	assertExecutionIntentZero(t, provisioner, runRequest)
+	runReceipt, err := provisioner.InvokeIntent(context.Background(), runRequest)
+	if err != nil || runReceipt.RunID != "run-69" {
+		t.Fatalf("invoke Run intent: receipt=%#v err=%v", runReceipt, err)
+	}
+	assertExecutionIntentOne(t, provisioner, runRequest)
+
+	bindRequest := runRequest
+	bindRequest.Stage = port.ExecutionOrcaIntentRunBind
+	bindRequest.RunID = runReceipt.RunID
+	assertExecutionIntentZero(t, provisioner, bindRequest)
+	bindReceipt, err := provisioner.InvokeIntent(context.Background(), bindRequest)
+	if err != nil || bindReceipt.RunID != "run-69" || !bindReceipt.RunBound {
+		t.Fatalf("invoke Run bind intent: receipt=%#v err=%v", bindReceipt, err)
+	}
+	assertExecutionIntentOne(t, provisioner, bindRequest)
+
+	taskRequest := bindRequest
 	taskRequest.Stage = port.ExecutionOrcaIntentTask
-	taskRequest.TerminalPTYID = terminalReceipt.TerminalPTYID
+	taskRequest.RunBound = true
 	taskRequest.TerminalHandle = terminalReceipt.TerminalHandle
 	assertExecutionIntentZero(t, provisioner, taskRequest)
 	taskReceipt, err := provisioner.InvokeIntent(context.Background(), taskRequest)
 	if err != nil || taskReceipt.TaskID != "task-69" {
 		t.Fatalf("invoke task intent: receipt=%#v err=%v", taskReceipt, err)
 	}
-	client.tasks = []port.OrcaTask{{RuntimeID: "runtime-69", ID: taskReceipt.TaskID, Title: executionTaskTitle(probe.Marker, launch.PromptSHA256), DisplayName: workspace.Branch, Status: "ready"}}
+	client.tasks = []port.OrcaTask{{RuntimeID: "runtime-69", RunID: runReceipt.RunID, ID: taskReceipt.TaskID, Title: executionTaskTitle(probe.Marker, launch.PromptSHA256), DisplayName: workspace.Branch, Status: "ready"}}
 	assertExecutionIntentOne(t, provisioner, taskRequest)
 
 	dispatchRequest := taskRequest
@@ -256,7 +278,8 @@ func TestExecutionIntentStagesAreIndividuallyInspectableAndInvoked(t *testing.T)
 
 	wantCalls := []string{
 		"list", "create-worktree", "list", "list-terminals-inventory", "create-terminal", "list-terminals-inventory",
-		"list-all-tasks-inventory", "create-task", "list-all-tasks-inventory", "show-dispatch-inventory",
+		"list-runs", "create-run", "list-runs", "current-run", "current-run", "use-run", "current-run",
+		"list-run-tasks-inventory", "create-task", "list-run-tasks-inventory", "show-dispatch-inventory",
 		"list-terminals-inventory", "dispatch", "show-dispatch-inventory",
 	}
 	if !reflect.DeepEqual(client.calls, wantCalls) {
@@ -347,6 +370,9 @@ func TestExecutionIntentInventoryPreservesZeroOneManyAndRejectsMismatches(t *tes
 	}
 
 	request.Stage = port.ExecutionOrcaIntentTask
+	request.TerminalPTYID = "pty-69"
+	request.RunID = "run-69"
+	request.RunBound = true
 	client.terminals = nil
 	client.tasks = []port.OrcaTask{{RuntimeID: "runtime-69", ID: "task-69", Title: executionTaskTitle(probe.Marker, launch.PromptSHA256), DisplayName: "wrong", Status: "ready"}}
 	if _, err := NewExecutionClient(client).InspectIntent(context.Background(), request); err == nil {
@@ -411,6 +437,7 @@ func TestExecutionIntentInventoryRejectsLegacyOrcaTaskTitle(t *testing.T) {
 	request := port.ExecutionOrcaIntentRequest{
 		Stage: port.ExecutionOrcaIntentTask, Marker: probe.Marker, Workspace: workspace, Probe: probe,
 		Prepared: &prepared, Launch: &launch, TerminalPTYID: "pty-69", TerminalHandle: "term-stale",
+		RunID: "run-69", RunBound: true,
 	}
 	legacyTitle := probe.Marker + " prompt=" + strings.ToLower(launch.PromptSHA256[:16])
 	legacyTitle = legacyTitle[:77] + "..."
@@ -540,7 +567,7 @@ func TestExecutionOwnerInventoryReportsExactTerminalAndTaskLiveness(t *testing.T
 		dispatch:  port.OrcaDispatch{RuntimeID: "runtime-69", ID: "dispatch-69", TaskID: "task-69", Status: "running"},
 	}
 	got, err := NewExecutionClient(client).InspectOwner(context.Background(), port.ExecutionOrcaOwnerInventoryRequest{
-		RuntimeID: "runtime-69", WorktreeID: "wt-69", TaskID: "task-69", DispatchID: "dispatch-69", TerminalPTYID: "pty-69",
+		RuntimeID: "runtime-69", WorktreeID: "wt-69", RunID: "run-69", TaskID: "task-69", DispatchID: "dispatch-69", TerminalPTYID: "pty-69",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -662,7 +689,7 @@ func TestExecutionOwnerInventoryUsesCompleteTaskAndDispatchInventory(t *testing.
 		dispatch:   port.OrcaDispatch{RuntimeID: "runtime-69", ID: "dispatch-69", TaskID: "task-69", Status: "running"},
 	}
 	got, err := NewExecutionClient(client).InspectOwner(context.Background(), port.ExecutionOrcaOwnerInventoryRequest{
-		RuntimeID: "runtime-69", WorktreeID: "wt-69", TaskID: "task-69", DispatchID: "dispatch-69", TerminalPTYID: "pty-69",
+		RuntimeID: "runtime-69", WorktreeID: "wt-69", RunID: "run-69", TaskID: "task-69", DispatchID: "dispatch-69", TerminalPTYID: "pty-69",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -670,7 +697,7 @@ func TestExecutionOwnerInventoryUsesCompleteTaskAndDispatchInventory(t *testing.
 	if !got.TaskLive || got.TaskStatus != "dispatched" || got.DispatchStatus != "running" {
 		t.Fatalf("dispatched owner missing from ready inventory must remain live: %#v", got)
 	}
-	if !reflect.DeepEqual(client.calls, []string{"list-terminals-inventory", "list-all-tasks-inventory", "show-dispatch-inventory"}) {
+	if !reflect.DeepEqual(client.calls, []string{"list-terminals-inventory", "list-run-tasks-inventory", "show-dispatch-inventory"}) {
 		t.Fatalf("owner inventory did not use complete task and dispatch views: %v", client.calls)
 	}
 }
@@ -755,7 +782,8 @@ func TestExecutionIntentReResolvesRotatedTerminalHandle(t *testing.T) {
 	launch := executionLaunchFixture(t, workspace.Root)
 	request := port.ExecutionOrcaIntentRequest{
 		Stage: port.ExecutionOrcaIntentDispatch, Marker: probe.Marker, Workspace: workspace, Probe: probe,
-		Prepared: &prepared, Launch: &launch, TerminalPTYID: "pty-69", TerminalHandle: "term-stale", TaskID: "task-69",
+		Prepared: &prepared, Launch: &launch, TerminalPTYID: "pty-69", TerminalHandle: "term-stale",
+		RunID: "run-69", RunBound: true, TaskID: "task-69",
 	}
 	client := &executionFake{terminals: []port.OrcaTerminal{{
 		RuntimeID: "runtime-69", Handle: "term-current", PTYID: "pty-69", WorktreeID: "wt-69", Title: probe.Marker, Connected: true, Writable: true,
@@ -788,7 +816,8 @@ func TestExecutionIntentDispatchReusesTheSealedTerminalAcrossResumeMarkers(t *te
 	launch := executionLaunchFixture(t, workspace.Root)
 	request := port.ExecutionOrcaIntentRequest{
 		Stage: port.ExecutionOrcaIntentDispatch, Marker: probe.Marker, Workspace: workspace, Probe: probe,
-		Prepared: &prepared, Launch: &launch, TerminalPTYID: "pty-69", TaskID: "task-69",
+		Prepared: &prepared, Launch: &launch, TerminalPTYID: "pty-69",
+		RunID: "run-69", RunBound: true, TaskID: "task-69",
 	}
 	client := &executionFake{terminals: []port.OrcaTerminal{{
 		RuntimeID: "runtime-69", Handle: "term-69", PTYID: "pty-69", WorktreeID: "wt-69",
@@ -837,6 +866,8 @@ func TestExecutionIntentEmptyInventoryRequiresSealedRuntimeEnvelope(t *testing.T
 			}
 			if tc.stage == port.ExecutionOrcaIntentTask || tc.stage == port.ExecutionOrcaIntentDispatch {
 				request.TerminalPTYID = "pty-69"
+				request.RunID = "run-69"
+				request.RunBound = true
 			}
 			if tc.stage == port.ExecutionOrcaIntentDispatch {
 				request.TaskID = "task-69"
@@ -855,6 +886,47 @@ func TestExecutionIntentEmptyInventoryRequiresSealedRuntimeEnvelope(t *testing.T
 			}
 			if err != nil || !inventory.AuthoritativeZero || len(inventory.Candidates) != 0 {
 				t.Fatalf("same-runtime empty inventory must be authoritative zero: inventory=%#v err=%v", inventory, err)
+			}
+		})
+	}
+}
+
+func TestExecutionRunEmptyInventoryRequiresSealedRuntimeEnvelope(t *testing.T) {
+	workspace, probe := executionFixture(t)
+	prepared := port.ExecutionOrcaWorkspaceReceipt{Workspace: port.ExecutionWorkspaceReceipt{
+		SourceRoot: workspace.SourceRoot, Root: workspace.Root, Branch: workspace.Branch, BaseHead: workspace.BaseHead, Driver: "orca", Exists: true,
+	}, RuntimeID: "runtime-69", RepoID: "repo-69", WorktreeID: "wt-69"}
+	launch := executionLaunchFixture(t, workspace.Root)
+	for _, tc := range []struct {
+		name    string
+		stage   port.ExecutionOrcaIntentStage
+		command string
+		payload string
+	}{
+		{
+			name:  "Run create",
+			stage: port.ExecutionOrcaIntentRun, command: "orca orchestration run-list --json",
+			payload: `{"ok":true,"result":{"runs":[]},"_meta":{"runtimeId":"runtime-other"}}`,
+		},
+		{
+			name:  "Run bind",
+			stage: port.ExecutionOrcaIntentRunBind, command: "orca orchestration run-current --from term_coordinator --json",
+			payload: `{"ok":true,"result":{"run":null},"_meta":{"runtimeId":"runtime-other"}}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runner := newFakeRunner(t)
+			runner.responses[tc.command] = CommandOutput{Stdout: []byte(tc.payload)}
+			request := port.ExecutionOrcaIntentRequest{
+				Stage: tc.stage, Marker: probe.Marker, Workspace: workspace, Probe: probe,
+				Prepared: &prepared, Launch: &launch, TerminalPTYID: "pty-69",
+			}
+			if tc.stage == port.ExecutionOrcaIntentRunBind {
+				request.RunID = "run-69"
+			}
+			inventory, err := NewExecutionClient(NewClient(runner)).InspectIntent(context.Background(), request)
+			if err == nil {
+				t.Fatalf("다른 runtime의 빈 Run inventory를 authoritative zero로 승인했다: %#v", inventory)
 			}
 		})
 	}
@@ -929,6 +1001,8 @@ func TestExecutionIntentRejectsUnsealedRuntimeReceipts(t *testing.T) {
 			if tc.stage == port.ExecutionOrcaIntentTask || tc.stage == port.ExecutionOrcaIntentDispatch {
 				request.TerminalPTYID = "pty-69"
 				request.TerminalHandle = "term-stale"
+				request.RunID = "run-69"
+				request.RunBound = true
 			}
 			if tc.stage == port.ExecutionOrcaIntentDispatch {
 				request.TaskID = "task-69"
@@ -962,6 +1036,7 @@ func TestExecutionTaskCreateValidatesTheSealedReceipt(t *testing.T) {
 			request := port.ExecutionOrcaIntentRequest{
 				Stage: port.ExecutionOrcaIntentTask, Marker: probe.Marker, Workspace: workspace, Probe: probe,
 				Prepared: &prepared, Launch: &launch, TerminalPTYID: "pty-69", TerminalHandle: "term-stale",
+				RunID: "run-69", RunBound: true,
 			}
 			if _, err := NewExecutionClient(client).InvokeIntent(context.Background(), request); err == nil {
 				t.Fatal("task create receipt that differs from the sealed intent must fail")
@@ -1043,6 +1118,9 @@ type executionFake struct {
 	worktreeRequest          port.OrcaCreateWorktreeRequest
 	terminalRequest          port.OrcaCreateTerminalRequest
 	createdTerminal          *port.OrcaTerminal
+	runs                     []port.OrcaRun
+	currentRun               *port.OrcaRun
+	runRequest               port.OrcaCreateRunRequest
 	taskRequest              port.OrcaCreateTaskRequest
 	dispatchRequest          port.OrcaDispatchRequest
 	terminals                []port.OrcaTerminal
@@ -1082,13 +1160,57 @@ func (f *executionFake) CreateTerminal(_ context.Context, req port.OrcaCreateTer
 	return port.OrcaTerminal{RuntimeID: "runtime-69", Handle: "term-69", PTYID: "pty-69", WorktreeID: "wt-69", Title: req.Title, Connected: true, Writable: true}, nil
 }
 
+func (f *executionFake) ListRuns(context.Context) ([]port.OrcaRun, error) {
+	inventory, err := f.listRunsInventory(context.Background())
+	return inventory.Rows, err
+}
+
+func (f *executionFake) listRunsInventory(context.Context) (executionRunInventory, error) {
+	f.calls = append(f.calls, "list-runs")
+	return executionRunInventory{RuntimeID: "runtime-69", Rows: append([]port.OrcaRun(nil), f.runs...)}, nil
+}
+
+func (f *executionFake) CreateRun(_ context.Context, req port.OrcaCreateRunRequest) (port.OrcaRun, error) {
+	f.calls = append(f.calls, "create-run")
+	f.runRequest = req
+	run := port.OrcaRun{RuntimeID: "runtime-69", ID: "run-69", Objective: req.Objective}
+	f.runs = append(f.runs, run)
+	return run, nil
+}
+
+func (f *executionFake) CurrentRun(context.Context) (*port.OrcaRun, error) {
+	inventory, err := f.currentRunInventory(context.Background())
+	return inventory.Run, err
+}
+
+func (f *executionFake) currentRunInventory(context.Context) (executionCurrentRunInventory, error) {
+	f.calls = append(f.calls, "current-run")
+	if f.currentRun == nil {
+		return executionCurrentRunInventory{RuntimeID: "runtime-69"}, nil
+	}
+	current := *f.currentRun
+	return executionCurrentRunInventory{RuntimeID: "runtime-69", Run: &current}, nil
+}
+
+func (f *executionFake) UseRun(_ context.Context, runID string) (port.OrcaRun, error) {
+	f.calls = append(f.calls, "use-run")
+	for _, run := range f.runs {
+		if run.ID == runID {
+			current := run
+			f.currentRun = &current
+			return current, nil
+		}
+	}
+	return port.OrcaRun{}, fmt.Errorf("run not found")
+}
+
 func (f *executionFake) CreateTask(_ context.Context, req port.OrcaCreateTaskRequest) (port.OrcaTask, error) {
 	f.calls = append(f.calls, "create-task")
 	f.taskRequest = req
 	if f.createdTask != nil {
 		return *f.createdTask, nil
 	}
-	return port.OrcaTask{RuntimeID: "runtime-69", ID: "task-69", Title: req.Title, DisplayName: req.DisplayName, Status: "ready"}, nil
+	return port.OrcaTask{RuntimeID: "runtime-69", RunID: req.RunID, ID: "task-69", Title: req.Title, DisplayName: req.DisplayName, Status: "ready"}, nil
 }
 
 func (f *executionFake) Dispatch(_ context.Context, req port.OrcaDispatchRequest) (port.OrcaDispatch, error) {
@@ -1141,6 +1263,17 @@ func (f *executionFake) ListAllTasks(context.Context) ([]port.OrcaTask, error) {
 func (f *executionFake) listAllTasksInventory(context.Context) (executionTaskInventory, error) {
 	f.calls = append(f.calls, "list-all-tasks-inventory")
 	return executionTaskInventory{RuntimeID: executionFakeRuntime(f.taskInventoryRuntime), Rows: append([]port.OrcaTask(nil), f.tasks...)}, nil
+}
+
+func (f *executionFake) listRunTasksInventory(_ context.Context, runID string, _ ...string) (executionTaskInventory, error) {
+	f.calls = append(f.calls, "list-run-tasks-inventory")
+	rows := append([]port.OrcaTask(nil), f.tasks...)
+	for index := range rows {
+		if rows[index].RunID == "" {
+			rows[index].RunID = runID
+		}
+	}
+	return executionTaskInventory{RuntimeID: executionFakeRuntime(f.taskInventoryRuntime), Rows: rows}, nil
 }
 
 func (f *executionFake) ShowDispatch(context.Context, string) (port.OrcaDispatch, error) {

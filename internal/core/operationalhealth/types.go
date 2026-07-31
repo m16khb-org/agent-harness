@@ -44,6 +44,7 @@ type Cycle struct {
 	OrcaWorktreeInstanceID string
 	OrcaOwnerHost          string
 	TerminalPTYID          string
+	RunID                  string
 	TaskID                 string
 	DispatchID             string
 }
@@ -97,6 +98,7 @@ type OrcaTerminal struct {
 
 type OrcaTask struct {
 	RuntimeID   string
+	RunID       string
 	ID          string
 	Status      string
 	DispatchID  string
@@ -106,6 +108,7 @@ type OrcaTask struct {
 
 type OrcaDispatch struct {
 	RuntimeID      string
+	RunID          string
 	ID             string
 	TaskID         string
 	AssigneeHandle string

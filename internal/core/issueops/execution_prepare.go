@@ -256,7 +256,7 @@ func prepareOrcaExecution(ctx context.Context, stateRoot string, record IssueOps
 		return ExecutionPrepareResult{OK: false, ID: record.ID}, err
 	}
 	for step := 0; pending.Execution != nil && pending.Execution.Pending != nil; step++ {
-		if step >= 4 {
+		if step >= 6 {
 			return ExecutionPrepareResult{OK: false, ID: record.ID}, fmt.Errorf("Orca prepare exceeded the fixed external intent stage count")
 		}
 		pending, payload, err = executeOrcaIntentStage(ctx, stateRoot, pending, payload, deps.Orca, deps.ReadIssue, deps.Now)

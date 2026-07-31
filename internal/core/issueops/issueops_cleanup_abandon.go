@@ -314,7 +314,7 @@ func cleanupAbandonOrcaResourcesAbsent(ctx context.Context, record IssueOpsRecor
 		return fmt.Errorf("Orca owner inspector is not configured; resolve this cycle with `agent-harness issueops cleanup finish` or `agent-harness issueops cleanup orphan`")
 	}
 	inventory, err := deps.OrcaOwner.InspectOwner(ctx, port.ExecutionOrcaOwnerInventoryRequest{
-		RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, TaskID: binding.TaskID,
+		RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, RunID: binding.RunID, TaskID: binding.TaskID,
 		DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID,
 	})
 	if err != nil {
@@ -396,6 +396,8 @@ func cleanupAbandonIntentInspectionRequests(record IssueOpsRecord, payload exter
 	worktree.Prepared = nil
 	worktree.Launch = nil
 	worktree.TerminalPTYID = ""
+	worktree.RunID = ""
+	worktree.RunBound = false
 	worktree.TaskID = ""
 	requests = append(requests, worktree)
 	if payload.Stage == port.ExecutionOrcaIntentWorktree {
@@ -405,14 +407,21 @@ func cleanupAbandonIntentInspectionRequests(record IssueOpsRecord, payload exter
 	terminal := current
 	terminal.Stage = port.ExecutionOrcaIntentTerminal
 	terminal.TerminalPTYID = ""
+	terminal.RunID = ""
+	terminal.RunBound = false
 	terminal.TaskID = ""
 	requests = append(requests, terminal)
-	if payload.Stage == port.ExecutionOrcaIntentTerminal {
+	if payload.Stage == port.ExecutionOrcaIntentTerminal ||
+		payload.Stage == port.ExecutionOrcaIntentRun ||
+		payload.Stage == port.ExecutionOrcaIntentRunBind {
 		return requests, nil
 	}
 
+	// Run은 삭제 수단이 없는 경량 namespace라 cleanup residue가 아니다.
+	// 생성·바인딩 후보는 무시하고, 실제 실행 자원인 task부터 다시 검사한다.
 	task := current
 	task.Stage = port.ExecutionOrcaIntentTask
+	task.RunBound = true
 	task.TaskID = ""
 	requests = append(requests, task)
 	if payload.Stage == port.ExecutionOrcaIntentTask {

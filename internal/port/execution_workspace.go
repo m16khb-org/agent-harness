@@ -83,6 +83,7 @@ type ExecutionOrcaReceipt struct {
 	RepoID             string                    `json:"repo_id"`
 	WorktreeID         string                    `json:"worktree_id"`
 	WorktreeInstanceID string                    `json:"worktree_instance_id,omitempty"`
+	RunID              string                    `json:"run_id,omitempty"`
 	TaskID             string                    `json:"task_id"`
 	DispatchID         string                    `json:"dispatch_id"`
 	TerminalPTYID      string                    `json:"terminal_pty_id,omitempty"`
@@ -109,6 +110,8 @@ type ExecutionOrcaIntentStage string
 const (
 	ExecutionOrcaIntentWorktree ExecutionOrcaIntentStage = "worktree_create"
 	ExecutionOrcaIntentTerminal ExecutionOrcaIntentStage = "terminal_create"
+	ExecutionOrcaIntentRun      ExecutionOrcaIntentStage = "run_create"
+	ExecutionOrcaIntentRunBind  ExecutionOrcaIntentStage = "run_bind"
 	ExecutionOrcaIntentTask     ExecutionOrcaIntentStage = "task_create"
 	ExecutionOrcaIntentDispatch ExecutionOrcaIntentStage = "dispatch"
 )
@@ -127,6 +130,8 @@ type ExecutionOrcaIntentRequest struct {
 	// the current handle from Prepared.WorktreeID + TerminalPTYID and must not
 	// use this value as authority. The core never persists it.
 	TerminalHandle string `json:"terminal_handle,omitempty"`
+	RunID          string `json:"run_id,omitempty"`
+	RunBound       bool   `json:"run_bound,omitempty"`
 	TaskID         string `json:"task_id,omitempty"`
 }
 
@@ -134,6 +139,8 @@ type ExecutionOrcaIntentReceipt struct {
 	Workspace      *ExecutionOrcaWorkspaceReceipt `json:"workspace,omitempty"`
 	TerminalPTYID  string                         `json:"terminal_pty_id,omitempty"`
 	TerminalHandle string                         `json:"terminal_handle,omitempty"`
+	RunID          string                         `json:"run_id,omitempty"`
+	RunBound       bool                           `json:"run_bound,omitempty"`
 	TaskID         string                         `json:"task_id,omitempty"`
 	DispatchID     string                         `json:"dispatch_id,omitempty"`
 }
@@ -152,6 +159,7 @@ type ExecutionOrcaProvisioner interface {
 type ExecutionOrcaOwnerInventoryRequest struct {
 	RuntimeID            string `json:"runtime_id"`
 	WorktreeID           string `json:"worktree_id"`
+	RunID                string `json:"run_id,omitempty"`
 	TaskID               string `json:"task_id"`
 	DispatchID           string `json:"dispatch_id"`
 	TerminalPTYID        string `json:"terminal_pty_id,omitempty"`

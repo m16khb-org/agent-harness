@@ -58,6 +58,10 @@ func resumeOrcaFake(t *testing.T, stages *[]port.ExecutionOrcaIntentStage) *exec
 		switch request.Stage {
 		case port.ExecutionOrcaIntentTerminal:
 			return port.ExecutionOrcaIntentReceipt{TerminalPTYID: "pty-resume"}, nil
+		case port.ExecutionOrcaIntentRun:
+			return port.ExecutionOrcaIntentReceipt{RunID: "run-resume"}, nil
+		case port.ExecutionOrcaIntentRunBind:
+			return port.ExecutionOrcaIntentReceipt{RunID: request.RunID, RunBound: true}, nil
 		case port.ExecutionOrcaIntentTask:
 			return port.ExecutionOrcaIntentReceipt{TaskID: "task-resume"}, nil
 		case port.ExecutionOrcaIntentDispatch:
@@ -183,12 +187,16 @@ func TestExecutionResumeReusesLiveTerminalWhenThePreviousTaskSettled(t *testing.
 		t.Fatalf("resume changed the sealed lease: before=%#v after=%#v", before, resumed.Execution.Lease)
 	}
 	if resumed.Execution.Orca.TerminalPTYID != record.Execution.Orca.TerminalPTYID ||
+		resumed.Execution.Orca.RunID != "run-resume" ||
 		resumed.Execution.Orca.TaskID != "task-resume" ||
 		resumed.Execution.Orca.DispatchID != "dispatch-resume" ||
 		resumed.Execution.Orca.LeaseGeneration != before.Generation {
 		t.Fatalf("resumed owner binding = %#v", resumed.Execution.Orca)
 	}
-	if len(stages) != 2 || stages[0] != port.ExecutionOrcaIntentTask || stages[1] != port.ExecutionOrcaIntentDispatch {
+	if len(stages) != 4 || stages[0] != port.ExecutionOrcaIntentRun ||
+		stages[1] != port.ExecutionOrcaIntentRunBind ||
+		stages[2] != port.ExecutionOrcaIntentTask ||
+		stages[3] != port.ExecutionOrcaIntentDispatch {
 		t.Fatalf("resume stages = %v", stages)
 	}
 }
@@ -245,12 +253,15 @@ func TestExecutionResumeCreatesFreshBindingAndPreservesLeaseAudit(t *testing.T) 
 		t.Fatalf("resume changed the sealed lease: before=%#v after=%#v", before, resumed.Execution.Lease)
 	}
 	if resumed.Execution.Orca.LeaseGeneration != before.Generation ||
+		resumed.Execution.Orca.RunID != "run-resume" ||
 		resumed.Execution.Orca.TaskID != "task-resume" ||
 		resumed.Execution.Orca.DispatchID != "dispatch-resume" ||
 		resumed.Execution.Orca.TerminalPTYID != "pty-resume" {
 		t.Fatalf("resume binding = %#v", resumed.Execution.Orca)
 	}
-	if len(stages) != 3 || stages[0] != port.ExecutionOrcaIntentTerminal {
+	if len(stages) != 5 || stages[0] != port.ExecutionOrcaIntentTerminal ||
+		stages[1] != port.ExecutionOrcaIntentRun ||
+		stages[2] != port.ExecutionOrcaIntentRunBind {
 		t.Fatalf("resume stages = %v", stages)
 	}
 }
@@ -333,7 +344,10 @@ func TestExecuteExecutionRoutesResumeThroughSharedAction(t *testing.T) {
 	}
 	resumed, ok := raw.(ExecutionResumeResult)
 	if !ok || resumed.Execution.Orca.LeaseGeneration != record.Execution.Lease.Generation ||
-		len(stages) != 3 || stages[0] != port.ExecutionOrcaIntentTerminal {
+		resumed.Execution.Orca.RunID != "run-resume" ||
+		len(stages) != 5 || stages[0] != port.ExecutionOrcaIntentTerminal ||
+		stages[1] != port.ExecutionOrcaIntentRun ||
+		stages[2] != port.ExecutionOrcaIntentRunBind {
 		t.Fatalf("shared resume route = %#v stages=%v", raw, stages)
 	}
 }

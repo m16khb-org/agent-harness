@@ -362,6 +362,8 @@ func TestExecutionOrcaCrashAfterMutationReconcilesExactlyOneCandidateWithoutDupl
 	}{
 		{name: "worktree", stage: port.ExecutionOrcaIntentWorktree, nextKind: "owner_launch"},
 		{name: "terminal", stage: port.ExecutionOrcaIntentTerminal, nextKind: "owner_launch"},
+		{name: "Run", stage: port.ExecutionOrcaIntentRun, nextKind: "owner_launch"},
+		{name: "Run bind", stage: port.ExecutionOrcaIntentRunBind, nextKind: "owner_launch"},
 		{name: "task", stage: port.ExecutionOrcaIntentTask, nextKind: "dispatch"},
 		{name: "dispatch", stage: port.ExecutionOrcaIntentDispatch, completed: true},
 	}
@@ -524,6 +526,44 @@ func TestExecutionOrcaReconcileRetriesOnlyProvenNotInvokedAndOnlyOnce(t *testing
 	}
 }
 
+func TestExecutionOrcaRunBindCanConvergeAfterUnknownOutcome(t *testing.T) {
+	stateRoot, record := orcaPrepareRecord(t)
+	bindCalls := 0
+	fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
+	fake.invoke = func(request port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentReceipt, error) {
+		if request.Stage != port.ExecutionOrcaIntentRunBind {
+			return successfulExecutionOrcaIntentReceipt(t, request), nil
+		}
+		bindCalls++
+		if bindCalls == 1 {
+			return port.ExecutionOrcaIntentReceipt{}, &port.OrcaError{Code: "transport", Invoked: true}
+		}
+		return port.ExecutionOrcaIntentReceipt{RunID: request.RunID, RunBound: true}, nil
+	}
+	_, err := PrepareExecution(context.Background(), stateRoot, ExecutionPrepareRequest{
+		ID: record.ID, Mode: "orca", CWD: record.Repo, Confirm: true,
+		Actor: executionActor("codex", "coordinator"), OwnerHost: "claude", OwnerModel: "caller-model",
+	}, ExecutionPrepareDependencies{Orca: fake, ReadIssue: executionIssueSnapshotReader})
+	if err == nil {
+		t.Fatal("첫 Run bind의 불명확한 결과는 reconcile을 요구해야 한다")
+	}
+	fake.inspect = func(request port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentInventory, error) {
+		if request.Stage != port.ExecutionOrcaIntentRunBind {
+			t.Fatalf("reconcile stage = %s", request.Stage)
+		}
+		return port.ExecutionOrcaIntentInventory{Candidates: []port.ExecutionOrcaIntentReceipt{}, AuthoritativeZero: true}, nil
+	}
+	result, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
+		ID: record.ID, Confirm: true, Actor: executionActor("codex", "reconciler"), CWD: record.Repo,
+	}, ExecutionReconcileDependencies{Orca: fake, ReadIssue: executionIssueSnapshotReader})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bindCalls != 2 || result.Pending == nil || result.Pending.Kind != "owner_launch" {
+		t.Fatalf("Run bind did not converge within the bounded retry: calls=%d result=%#v", bindCalls, result)
+	}
+}
+
 func TestExecutionOrcaReceiptCASRejectsConcurrentIntentChange(t *testing.T) {
 	stateRoot, record := orcaPrepareRecord(t)
 	fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
@@ -572,6 +612,10 @@ func successfulExecutionOrcaIntentReceipt(t *testing.T, request port.ExecutionOr
 		return port.ExecutionOrcaIntentReceipt{Workspace: &prepared}
 	case port.ExecutionOrcaIntentTerminal:
 		return port.ExecutionOrcaIntentReceipt{TerminalPTYID: "pty-1", TerminalHandle: "terminal-1"}
+	case port.ExecutionOrcaIntentRun:
+		return port.ExecutionOrcaIntentReceipt{RunID: "run-1"}
+	case port.ExecutionOrcaIntentRunBind:
+		return port.ExecutionOrcaIntentReceipt{RunID: request.RunID, RunBound: true}
 	case port.ExecutionOrcaIntentTask:
 		return port.ExecutionOrcaIntentReceipt{TaskID: "task-1"}
 	case port.ExecutionOrcaIntentDispatch:

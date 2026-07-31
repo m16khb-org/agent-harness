@@ -53,7 +53,7 @@ type ExecutionActionDependencies struct {
 	ReadIssue ExecutionIssueSnapshotReadFunc
 	RemotePR  RemotePullRequestDependencies
 	// SettleOrcaTask는 완료 시점의 orca task 종결 표면이다(#130).
-	SettleOrcaTask func(ctx context.Context, taskID string) error
+	SettleOrcaTask func(ctx context.Context, runID, taskID string) error
 }
 
 func ExecuteExecution(ctx context.Context, stateRoot string, req ExecutionActionRequest, deps ExecutionActionDependencies) (any, error) {

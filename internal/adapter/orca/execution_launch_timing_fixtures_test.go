@@ -109,10 +109,28 @@ func (f *executionLaunchTimingFake) CreateTerminal(_ context.Context, req port.O
 	return f.terminalWithTitle(""), nil
 }
 
+func (f *executionLaunchTimingFake) ListRuns(context.Context) ([]port.OrcaRun, error) {
+	return nil, nil
+}
+
+func (f *executionLaunchTimingFake) CreateRun(_ context.Context, req port.OrcaCreateRunRequest) (port.OrcaRun, error) {
+	f.calls = append(f.calls, "create-run")
+	return port.OrcaRun{RuntimeID: executionLaunchRuntimeID, ID: "run-timing", Objective: req.Objective}, nil
+}
+
+func (f *executionLaunchTimingFake) CurrentRun(context.Context) (*port.OrcaRun, error) {
+	return nil, nil
+}
+
+func (f *executionLaunchTimingFake) UseRun(context.Context, string) (port.OrcaRun, error) {
+	f.calls = append(f.calls, "use-run")
+	return port.OrcaRun{RuntimeID: executionLaunchRuntimeID, ID: "run-timing", Objective: executionLaunchMarker}, nil
+}
+
 func (f *executionLaunchTimingFake) CreateTask(_ context.Context, req port.OrcaCreateTaskRequest) (port.OrcaTask, error) {
 	f.calls = append(f.calls, "create-task")
 	return port.OrcaTask{
-		RuntimeID: executionLaunchRuntimeID, ID: "task-timing",
+		RuntimeID: executionLaunchRuntimeID, RunID: req.RunID, ID: "task-timing",
 		Title: req.Title, DisplayName: req.DisplayName, Status: "ready",
 	}, nil
 }
@@ -156,6 +174,10 @@ func (f *executionLaunchTimingFake) ListAllTasks(context.Context) ([]port.OrcaTa
 }
 
 func (f *executionLaunchTimingFake) listAllTasksInventory(context.Context) (executionTaskInventory, error) {
+	return executionTaskInventory{RuntimeID: executionLaunchRuntimeID}, nil
+}
+
+func (f *executionLaunchTimingFake) listRunTasksInventory(context.Context, string, ...string) (executionTaskInventory, error) {
 	return executionTaskInventory{RuntimeID: executionLaunchRuntimeID}, nil
 }
 

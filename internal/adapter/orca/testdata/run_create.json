@@ -1,0 +1,14 @@
+{
+  "id": "request-run-create",
+  "ok": true,
+  "result": {
+    "run": {
+      "id": "run_issueops_1",
+      "objective": "agent-harness issueops-v1 lifecycle=io-test generation=1 intent=op-test",
+      "legacy": 0
+    }
+  },
+  "_meta": {
+    "runtimeId": "runtime-1"
+  }
+}

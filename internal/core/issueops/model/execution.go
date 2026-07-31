@@ -81,6 +81,7 @@ type OrcaBinding struct {
 	RuntimeID          string `json:"runtime_id"`
 	RepoID             string `json:"repo_id"`
 	WorktreeID         string `json:"worktree_id"`
+	RunID              string `json:"run_id,omitempty"`
 	WorktreeInstanceID string `json:"worktree_instance_id,omitempty"`
 	LeaseGeneration    uint64 `json:"lease_generation,omitempty"`
 	OwnerHost          string `json:"owner_host"`
@@ -284,6 +285,9 @@ func validateOrcaBinding(binding OrcaBinding) error {
 	}
 	if binding.OwnerHost != "codex" && binding.OwnerHost != "claude" {
 		return fmt.Errorf("Orca owner_host must be codex or claude")
+	}
+	if binding.RunID != "" && (binding.RunID != strings.TrimSpace(binding.RunID) || len(binding.RunID) > 1024 || binding.RunID == "run_legacy_local") {
+		return fmt.Errorf("Orca binding run_id must be one canonical explicit Run identity")
 	}
 	return nil
 }
