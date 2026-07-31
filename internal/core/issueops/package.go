@@ -1,6 +1,8 @@
 package issueops
 
 import (
+	"context"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -16,8 +18,8 @@ import (
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/start"
 	"agent-harness/internal/core/issueops/stringlist"
+	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
-	"context"
 )
 
 type IssueOpsStartRequest = model.IssueOpsStartRequest
@@ -241,6 +243,23 @@ func issueOpsBranchPrepareStore() branchprepare.Store {
 		Read:             ReadIssueOps,
 		TouchWrite:       touchAndWriteIssueOps,
 		ValidateIssueURL: linking.ValidateIssueURL,
+		ResolveBaseCommit: func(repo, revision string) (string, error) {
+			code, stdout, stderr := preflight.GitCmd(
+				repo,
+				"rev-parse",
+				"--verify",
+				"--end-of-options",
+				strings.TrimSpace(revision)+"^{commit}",
+			)
+			if code != 0 {
+				return "", fmt.Errorf("git rev-parse failed: %s", strings.TrimSpace(stderr))
+			}
+			resolved := strings.TrimSpace(stdout)
+			if resolved == "" {
+				return "", fmt.Errorf("git rev-parse returned an empty commit OID")
+			}
+			return resolved, nil
+		},
 		UmbrellaForChildIssue: func(repo, childIssueURL string) (IssueOpsRecord, bool) {
 			return active.UmbrellaCycleForChildIssue(issueOpsActiveStore(), repo, childIssueURL)
 		},

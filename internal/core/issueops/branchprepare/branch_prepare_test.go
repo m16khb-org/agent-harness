@@ -145,6 +145,37 @@ func TestPrepareRejectsUnlinkedGitLabBranchName(t *testing.T) {
 	}
 }
 
+func TestPrepareRejectsBaseSHAThatDoesNotResolveToCommit(t *testing.T) {
+	store := newBranchPrepareTestStore(model.IssueOpsRecord{
+		ID:       "io-invalid-base",
+		OK:       true,
+		Repo:     "/repo/example",
+		Branch:   "123-invalid-base",
+		IssueURL: "https://github.com/example/repo/issues/123",
+	})
+	deps := store.issueOpsStore()
+	deps.ResolveBaseCommit = func(repo, revision string) (string, error) {
+		if repo != "/repo/example" || revision != "deadbeef" {
+			t.Fatalf("unexpected base resolution request: repo=%q revision=%q", repo, revision)
+		}
+		return "", fmt.Errorf("commit does not exist")
+	}
+
+	_, err := Prepare(deps, t.TempDir(), "io-invalid-base", model.IssueOpsBranchPrepareRequest{
+		Provider:   "github",
+		IssueURL:   "https://github.com/example/repo/issues/123",
+		Branch:     "123-invalid-base",
+		BaseBranch: "main",
+		BaseSHA:    "deadbeef",
+	})
+	if err == nil || !strings.Contains(err.Error(), "base_sha") || !strings.Contains(err.Error(), "commit does not exist") {
+		t.Fatalf("unresolvable base_sha must fail closed: %v", err)
+	}
+	if store.record.BranchPrepare != nil {
+		t.Fatalf("failed base resolution must not mutate the record: %+v", store.record.BranchPrepare)
+	}
+}
+
 type branchPrepareTestStore struct {
 	record model.IssueOpsRecord
 }
@@ -167,6 +198,9 @@ func (s *branchPrepareTestStore) issueOpsStore() Store {
 				return fmt.Errorf("issue_url is required")
 			}
 			return nil
+		},
+		ResolveBaseCommit: func(_ string, revision string) (string, error) {
+			return revision, nil
 		},
 	}
 }
