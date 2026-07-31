@@ -143,6 +143,34 @@ func TestProductionReseedRoutingHasNoLegacyFallback(t *testing.T) {
 	}
 }
 
+func TestProductionResumeRoutingHasNoLegacyFallback(t *testing.T) {
+	violations, err := productionResumeRoutingViolations(findRepoRoot(t))
+	if err != nil {
+		t.Fatalf("inspect production resume routing: %v", err)
+	}
+	if len(violations) != 0 {
+		t.Fatalf("production resume routing violations: %s", strings.Join(violations, "; "))
+	}
+}
+
+func TestResumeRoutingViolationsRejectLegacyFallback(t *testing.T) {
+	file, err := parser.ParseFile(token.NewFileSet(), "router.go", `package issueops
+func route(req request, deps dependencies) {
+	switch req.Action {
+	case ExecutionActionResume:
+		ResumeExecutionWithDependencies()
+	}
+}
+`, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	violations := resumeRoutingViolations(file, true)
+	if len(violations) == 0 || !strings.Contains(strings.Join(violations, "; "), "does not invoke injected Resume handler") || !strings.Contains(strings.Join(violations, "; "), "calls legacy ResumeExecutionWithDependencies") {
+		t.Fatalf("legacy fallback violations=%v", violations)
+	}
+}
+
 func TestReseedOwnerArtifactPreparationDoesNotReapplyLeaseTransition(t *testing.T) {
 	path := filepath.Join(findRepoRoot(t), "internal", "core", "issueops", "execution_reseed_adapter.go")
 	contents, err := os.ReadFile(path)
@@ -219,6 +247,55 @@ func productionReseedRoutingViolations(repoRoot string) ([]string, error) {
 	return violations, nil
 }
 
+func productionResumeRoutingViolations(repoRoot string) ([]string, error) {
+	dir := filepath.Join(repoRoot, "internal", "core", "issueops")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var violations []string
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		path := filepath.Join(dir, name)
+		contents, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), path, contents, 0)
+		if err != nil {
+			return nil, err
+		}
+		if sourceHasIdentifier(file, "ResumeExecutionWithDependencies") {
+			violations = append(violations, name+" retains legacy resume orchestration")
+		}
+		violations = append(violations, resumeRoutingViolations(file, name == "execution_api.go")...)
+	}
+	outboundDir := filepath.Join(repoRoot, "internal", "adapter", "outbound", "issueopslease")
+	entries, err = os.ReadDir(outboundDir)
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
+			continue
+		}
+		contents, err := os.ReadFile(filepath.Join(outboundDir, entry.Name()))
+		if err != nil {
+			return nil, err
+		}
+		for _, forbidden := range []string{"executeOrcaIntentStage", "ResumeExecutionWithDependencies"} {
+			if strings.Contains(string(contents), forbidden) {
+				violations = append(violations, entry.Name()+" calls "+forbidden)
+			}
+		}
+	}
+	sort.Strings(violations)
+	return violations, nil
+}
+
 func reseedRoutingViolations(file *ast.File, requireInjectedHandler bool) []string {
 	var violations []string
 	routes := 0
@@ -242,6 +319,30 @@ func reseedRoutingViolations(file *ast.File, requireInjectedHandler bool) []stri
 	})
 	if requireInjectedHandler && routes != 1 {
 		violations = append(violations, fmt.Sprintf("expected one production reseed route, found %d", routes))
+	}
+	return violations
+}
+
+func resumeRoutingViolations(file *ast.File, requireInjectedHandler bool) []string {
+	var violations []string
+	routes := 0
+	ast.Inspect(file, func(node ast.Node) bool {
+		branch, ok := node.(*ast.CaseClause)
+		if !ok || !sourceHasIdentifier(branch, "ExecutionActionResume") {
+			return true
+		}
+		routes++
+		calls := sourceCallCounts(branch)
+		if requireInjectedHandler && calls["Resume"] != 1 {
+			violations = append(violations, "resume route does not invoke injected Resume handler exactly once")
+		}
+		if calls["ResumeExecutionWithDependencies"] != 0 {
+			violations = append(violations, "resume route calls legacy ResumeExecutionWithDependencies")
+		}
+		return true
+	})
+	if requireInjectedHandler && routes != 1 {
+		violations = append(violations, fmt.Sprintf("expected one production resume route, found %d", routes))
 	}
 	return violations
 }
@@ -275,6 +376,24 @@ func sourceCallNames(node ast.Node) map[string]bool {
 		return true
 	})
 	return calls
+}
+
+func sourceCallCounts(node ast.Node) map[string]int {
+	counts := map[string]int{}
+	ast.Inspect(node, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		switch function := call.Fun.(type) {
+		case *ast.Ident:
+			counts[function.Name]++
+		case *ast.SelectorExpr:
+			counts[function.Sel.Name]++
+		}
+		return true
+	})
+	return counts
 }
 
 func evaluateEdges(edges []dependencyEdge) []violation {

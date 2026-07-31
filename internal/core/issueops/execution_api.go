@@ -13,11 +13,13 @@ var (
 	ErrClaimHandlerUnavailable   = errors.New("issueops execution claim handler is not configured")
 	ErrReleaseHandlerUnavailable = errors.New("issueops execution release handler is not configured")
 	ErrReseedHandlerUnavailable  = errors.New("issueops execution reseed handler is not configured")
+	ErrResumeHandlerUnavailable  = errors.New("issueops execution resume handler is not configured")
 )
 
 type ExecutionClaimHandler func(context.Context, string, ExecutionClaimRequest, ExecutionClaimDependencies) (ExecutionResult, error)
 type ExecutionReleaseHandler func(context.Context, string, ExecutionReleaseRequest) (ExecutionResult, error)
 type ExecutionReseedHandler func(context.Context, string, ExecutionReseedRequest) (ExecutionReplaceResult, error)
+type ExecutionResumeHandler func(context.Context, string, ExecutionResumeRequest) (ExecutionResumeResult, error)
 
 const (
 	ExecutionActionPrepare   = "prepare"
@@ -66,6 +68,7 @@ type ExecutionActionDependencies struct {
 	Claim     ExecutionClaimHandler
 	Release   ExecutionReleaseHandler
 	Reseed    ExecutionReseedHandler
+	Resume    ExecutionResumeHandler
 	// SettleOrcaTask는 완료 시점의 orca task 종결 표면이다(#130).
 	SettleOrcaTask func(ctx context.Context, taskID string) error
 }
@@ -135,10 +138,19 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 			// prepare/claim과 같은 리더를 함께 넘긴다.
 		}, ExecutionReplaceDependencies{OrcaOwner: deps.OrcaOwner, ReadIssue: deps.ReadIssue})
 	case ExecutionActionResume:
-		return ResumeExecutionWithDependencies(ctx, stateRoot, ExecutionResumeRequest{
+		if !req.Confirm {
+			return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("execution resume requires confirm")
+		}
+		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
+			return ExecutionResumeResult{OK: false, ID: req.ID}, err
+		}
+		if deps.Resume == nil {
+			return ExecutionResumeResult{OK: false, ID: req.ID}, ErrResumeHandlerUnavailable
+		}
+		return deps.Resume(ctx, stateRoot, ExecutionResumeRequest{
 			ID: req.ID, ExpectedGeneration: req.ExpectedGeneration,
 			Actor: req.Actor, CWD: req.CWD, Confirm: req.Confirm,
-		}, ExecutionResumeDependencies{Orca: deps.Orca, OrcaOwner: deps.OrcaOwner})
+		})
 	case ExecutionActionReconcile:
 		return ReconcileExecutionWithDependencies(ctx, stateRoot, ExecutionReconcileRequest{
 			ID: req.ID, Preview: req.Preview, Confirm: req.Confirm, Actor: req.Actor, CWD: req.CWD,

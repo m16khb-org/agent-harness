@@ -26,6 +26,7 @@ type MCPDependencies struct {
 	Claim   issueops.ExecutionClaimHandler
 	Release issueops.ExecutionReleaseHandler
 	Reseed  issueops.ExecutionReseedHandler
+	Resume  issueops.ExecutionResumeHandler
 }
 
 func mcpToolPayload(payload any) MCPToolOutcome {
@@ -68,7 +69,7 @@ func HandleToolCallWithDependencies(params json.RawMessage, deps MCPDependencies
 		handleProjectMCPToolCall,
 		handlePolicyStateMCPToolCall,
 		func(call MCPToolCall) MCPToolOutcome {
-			return handleIssueOpsMCPToolCallWithHandlers(call, deps.Claim, deps.Release, deps.Reseed)
+			return handleIssueOpsMCPToolCallWithHandlers(call, deps.Claim, deps.Release, deps.Reseed, deps.Resume)
 		},
 		handleLoopMCPToolCall,
 		handleAssistantWorkerMCPToolCall,

@@ -1,0 +1,201 @@
+{
+  "lifecycle_id": "io-794b522786e7",
+  "schema_version": 1,
+  "mode": "orca",
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "evidence": [
+        {
+          "test": "TestExecutionActionResumeFailsClosedWithoutHandler",
+	          "command": "go test ./internal/core/issueops -run '^TestExecutionActionResume(FailsClosedWithoutHandler|PrioritizesConfirmBeforeMissingHandler|PrioritizesConfirmBeforeMutationGuardAndInvalidActor)$' -count=1 -v",
+	          "result": "PASS; Confirm:true reaches the handler-only fail-closed error"
+	        },
+	        {
+	          "test": "TestExecutionActionResumePrioritizesConfirmBeforeMissingHandler",
+	          "command": "go test ./internal/core/issueops -run '^TestExecutionActionResume(FailsClosedWithoutHandler|PrioritizesConfirmBeforeMissingHandler|PrioritizesConfirmBeforeMutationGuardAndInvalidActor)$' -count=1 -v",
+	          "result": "PASS; missing confirm takes precedence over an unavailable handler"
+        },
+        {
+          "test": "TestExecutionActionResumeUsesInjectedHandlerExactlyOnce",
+          "command": "go test ./internal/core/issueops ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli -run 'TestExecutionActionResume(UsesInjectedHandlerExactlyOnce|FailsClosedWithoutHandler)|TestExecutionResumeCLI(ParsesOnlyTheExactFlagSurface|InvokesInjectedHandler)|TestExecutionActionRequestFromMCPMapsResume|TestHandleToolCallWithDependenciesRoutesResumeToInjectedHandler' -count=1 -v",
+          "result": "PASS"
+        },
+        {
+          "test": "TestExecutionResumeCLIParsesOnlyTheExactFlagSurface",
+          "command": "go test ./internal/core/issueops ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli -run 'TestExecutionActionResume(UsesInjectedHandlerExactlyOnce|FailsClosedWithoutHandler)|TestExecutionResumeCLI(ParsesOnlyTheExactFlagSurface|InvokesInjectedHandler)|TestExecutionActionRequestFromMCPMapsResume|TestHandleToolCallWithDependenciesRoutesResumeToInjectedHandler' -count=1 -v",
+          "result": "PASS; issue-snapshot-file is rejected as undefined"
+        },
+        {
+          "test": "TestExecutionResumeCLIInvokesInjectedHandler",
+          "command": "go test ./internal/core/issueops ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli -run 'TestExecutionActionResume(UsesInjectedHandlerExactlyOnce|FailsClosedWithoutHandler)|TestExecutionResumeCLI(ParsesOnlyTheExactFlagSurface|InvokesInjectedHandler)|TestExecutionActionRequestFromMCPMapsResume|TestHandleToolCallWithDependenciesRoutesResumeToInjectedHandler' -count=1 -v",
+          "result": "PASS; public CLI forwards the exact request and result once"
+        },
+        {
+          "test": "TestExecutionActionRequestFromMCPMapsResume",
+          "command": "go test ./internal/core/issueops ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli -run 'TestExecutionActionResume(UsesInjectedHandlerExactlyOnce|FailsClosedWithoutHandler)|TestExecutionResumeCLI(ParsesOnlyTheExactFlagSurface|InvokesInjectedHandler)|TestExecutionActionRequestFromMCPMapsResume|TestHandleToolCallWithDependenciesRoutesResumeToInjectedHandler' -count=1 -v",
+          "result": "PASS"
+        },
+        {
+          "test": "TestHandleToolCallWithDependenciesRoutesResumeToInjectedHandler",
+          "command": "go test ./internal/core/issueops ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli -run 'TestExecutionActionResume(UsesInjectedHandlerExactlyOnce|FailsClosedWithoutHandler)|TestExecutionResumeCLI(ParsesOnlyTheExactFlagSurface|InvokesInjectedHandler)|TestExecutionActionRequestFromMCPMapsResume|TestHandleToolCallWithDependenciesRoutesResumeToInjectedHandler' -count=1 -v",
+          "result": "PASS; public MCP tool forwards the exact request and result once"
+        }
+      ]
+    },
+    {
+      "id": "AC-02",
+      "evidence": [
+        {
+          "test": "TestResumeRejectsBeforeArtifactsAndInventory",
+          "command": "go test ./internal/application/issueopslease -run '^TestResume(RejectsBeforeArtifactsAndInventory|CreatesTerminalTaskDispatchInApplicationOrder|PreservesLegacyInspectionAndReconcileErrors)$' -count=1 -v",
+          "result": "PASS"
+        },
+        {
+          "test": "TestResumeIntentBridgeCASRejectsBeginMarkAndReceiptDriftWithoutMutation",
+          "command": "go test ./internal/core/issueops -run '^(TestResumeIntentSpikeBridgeMatchesLegacyBeginRawBytes|TestResumeIntentBridgeCASRejectsBeginMarkAndReceiptDriftWithoutMutation|TestResumeVerticalDifferential|TestResumeVerticalDifferentialLegacyReconcileCompletesVerticalPending|TestResumeVerticalDifferentialReceiptCASDrift)$' -count=1 -v",
+          "result": "PASS; begin, mark, and receipt drift each retain raw record and intent bytes"
+        },
+        {
+          "test": "TestCoreResumeEffectsRejectsRawSnapshotDriftWithoutAdditionalMutation",
+          "command": "go test ./cmd/harness/harnessapp -run '^(TestCoreResumeEffectsRejectsRawSnapshotDriftWithoutAdditionalMutation|TestResponseContractsGolden)$' -count=1 -v",
+          "result": "PASS; begin-record, mark-intent, and apply-record drift have zero additional mutation"
+        }
+      ]
+    },
+    {
+      "id": "AC-03",
+      "evidence": [
+        {
+          "test": "TestPlanResumeDecisionTable",
+          "command": "go test ./internal/domain/issueopslease -run Resume -count=1",
+          "result": "PASS"
+        },
+        {
+          "test": "TestPlanResumeStageDecisionTable",
+          "command": "go test ./internal/domain/issueopslease -run Resume -count=1",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "AC-04",
+      "evidence": [
+        {
+          "test": "TestCompareAndApplyCommitsExpectedRawRowsAtomically",
+          "command": "go test ./internal/core/sqlstore -run '^TestCompareAndApply(CommitsExpectedRawRowsAtomically|RollsBackOnRawMismatch|FuncSkipsEncoderOnRawMismatch)$' -count=1 -v",
+          "result": "PASS"
+        },
+        {
+          "test": "TestCompareAndApplyRollsBackOnRawMismatch",
+          "command": "go test ./internal/core/sqlstore -run '^TestCompareAndApply(CommitsExpectedRawRowsAtomically|RollsBackOnRawMismatch|FuncSkipsEncoderOnRawMismatch)$' -count=1 -v",
+          "result": "PASS; transaction rollback retains both rows"
+        },
+        {
+          "test": "TestCompareAndApplyFuncSkipsEncoderOnRawMismatch",
+          "command": "go test ./internal/core/sqlstore -run '^TestCompareAndApply(CommitsExpectedRawRowsAtomically|RollsBackOnRawMismatch|FuncSkipsEncoderOnRawMismatch)$' -count=1 -v",
+          "result": "PASS; encoder is not called after a raw CAS mismatch"
+        },
+        {
+          "test": "TestResumeIntentSpikeBridgeMatchesLegacyBeginRawBytes",
+          "command": "go test ./internal/core/issueops -run '^(TestResumeIntentSpikeBridgeMatchesLegacyBeginRawBytes|TestResumeIntentBridgeCASRejectsBeginMarkAndReceiptDriftWithoutMutation|TestResumeVerticalDifferential|TestResumeVerticalDifferentialLegacyReconcileCompletesVerticalPending|TestResumeVerticalDifferentialReceiptCASDrift)$' -count=1 -v",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "AC-05",
+      "evidence": [
+        {
+          "test": "TestResumeVerticalDifferential",
+	          "command": "go test ./internal/core/issueops -run '^(TestExecutionActionResumePrioritizesConfirmBeforeMutationGuardAndInvalidActor|TestResumeVerticalDifferential)$' -count=1 -v",
+	          "result": "PASS; result JSON, exact public errors including confirm-before-invalid-actor, final raw rows, and terminal/task/dispatch checkpoint raw rows match legacy"
+	        },
+        {
+          "test": "TestExecutionActionResumePrioritizesConfirmBeforeMutationGuardAndInvalidActor",
+	          "command": "go test ./internal/core/issueops -run '^TestExecutionActionResume(FailsClosedWithoutHandler|PrioritizesConfirmBeforeMissingHandler|PrioritizesConfirmBeforeMutationGuardAndInvalidActor)$' -count=1 -v",
+	          "result": "PASS; public router rejects missing confirm before reset mutation guard, actor validation, or handler invocation"
+        },
+        {
+          "test": "TestResumeVerticalDifferentialLegacyReconcileCompletesVerticalPending",
+          "command": "go test ./internal/core/issueops -run '^(TestResumeIntentSpikeBridgeMatchesLegacyBeginRawBytes|TestResumeIntentBridgeCASRejectsBeginMarkAndReceiptDriftWithoutMutation|TestResumeVerticalDifferential|TestResumeVerticalDifferentialLegacyReconcileCompletesVerticalPending|TestResumeVerticalDifferentialReceiptCASDrift)$' -count=1 -v",
+          "result": "PASS"
+        },
+        {
+          "test": "TestResumeVerticalDifferentialReceiptCASDrift",
+          "command": "go test ./internal/core/issueops -run '^(TestResumeIntentSpikeBridgeMatchesLegacyBeginRawBytes|TestResumeIntentBridgeCASRejectsBeginMarkAndReceiptDriftWithoutMutation|TestResumeVerticalDifferential|TestResumeVerticalDifferentialLegacyReconcileCompletesVerticalPending|TestResumeVerticalDifferentialReceiptCASDrift)$' -count=1 -v",
+          "result": "PASS; stale raw record error leaves record and external intent unchanged"
+        }
+      ]
+    },
+    {
+      "id": "AC-06",
+      "evidence": [
+        {
+          "test": "TestExecutionActionResumeFailsClosedWithoutHandler",
+          "command": "go test ./internal/core/issueops ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli -run 'TestExecutionActionResume(UsesInjectedHandlerExactlyOnce|FailsClosedWithoutHandler)|TestExecutionResumeCLI(ParsesOnlyTheExactFlagSurface|InvokesInjectedHandler)|TestExecutionActionRequestFromMCPMapsResume|TestHandleToolCallWithDependenciesRoutesResumeToInjectedHandler' -count=1 -v",
+          "result": "PASS"
+        },
+        {
+          "test": "TestExecutionActionResumeUsesInjectedHandlerExactlyOnce",
+          "command": "go test ./internal/core/issueops ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli -run 'TestExecutionActionResume(UsesInjectedHandlerExactlyOnce|FailsClosedWithoutHandler)|TestExecutionResumeCLI(ParsesOnlyTheExactFlagSurface|InvokesInjectedHandler)|TestExecutionActionRequestFromMCPMapsResume|TestHandleToolCallWithDependenciesRoutesResumeToInjectedHandler' -count=1 -v",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "id": "AC-07",
+      "evidence": [
+        {
+          "test": "TestProductionResumeRoutingHasNoLegacyFallback",
+          "command": "go test ./internal/architecture -run 'Resume|Dependency' -count=1",
+          "result": "PASS"
+        },
+        {
+          "test": "TestResumeRoutingViolationsRejectLegacyFallback",
+          "command": "go test ./internal/architecture -run 'Resume|Dependency' -count=1",
+          "result": "PASS"
+        },
+        {
+          "test": "production call-site scan",
+          "command": "rg -n 'ResumeExecutionWithDependencies\\(' --glob '*.go' internal cmd",
+          "result": "PASS; non-test production callers are zero"
+        }
+      ]
+    },
+    {
+      "id": "AC-08",
+      "evidence": [
+        {
+          "test": "TestResponseContractsGolden",
+          "command": "go test ./cmd/harness/harnessapp -run '^(TestCoreResumeEffectsRejectsRawSnapshotDriftWithoutAdditionalMutation|TestResponseContractsGolden)$' -count=1 -v",
+          "result": "PASS"
+        }
+      ]
+    }
+  ],
+  "local_scope": "canonical isolated worktree only",
+  "verification": [
+    {
+      "command": "go test ./internal/contract/issueopslease ./internal/domain/issueopslease ./internal/application/issueopslease ./internal/adapter/inbound/issueopslease ./internal/adapter/outbound/issueopslease ./internal/core/issueops ./internal/architecture ./cmd/harness/issueopscli ./cmd/harness/mcpcli ./cmd/harness/harnessapp -run 'Resume|ExecutionHandler|Dependency' -count=1",
+      "result": "PASS after the missing-handler contract correction"
+    },
+    {
+      "command": "go test -race ./internal/application/issueopslease ./internal/adapter/outbound/issueopslease ./internal/core/issueops -run Resume -count=1",
+      "result": "PASS after the missing-handler contract correction; core handler cases were also confirmed with -race"
+    },
+    {
+      "command": "go vet ./internal/contract/issueopslease ./internal/domain/issueopslease ./internal/application/issueopslease ./internal/adapter/inbound/issueopslease ./internal/adapter/outbound/issueopslease ./internal/core/issueops ./internal/architecture ./cmd/harness/issueopscli ./cmd/harness/mcpcli ./cmd/harness/harnessapp",
+      "result": "PASS after the missing-handler contract correction"
+    },
+    {
+      "command": "go build -o bin/agent-harness ./cmd/harness",
+      "result": "PASS after the missing-handler contract correction"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS after the missing-handler contract correction"
+    }
+  ],
+  "full_suite": "not run locally by explicit user instruction; remote CI for the final committed and pushed HEAD is pending"
+}

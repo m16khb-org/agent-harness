@@ -93,3 +93,54 @@ type ReseedArtifacts interface {
 	Rollback(context.Context, ReseedArtifactReceipt) error
 	CleanupSuperseded(context.Context, leasecontract.Record) error
 }
+
+type ResumeFence interface {
+	Within(context.Context, string, func(context.Context) error) error
+}
+
+type ResumeSnapshot struct {
+	Record Record
+	Raw    []byte
+}
+
+type ResumeProgress struct {
+	Record    Record
+	Execution leasecontract.Execution
+	Pending   bool
+}
+
+type ResumeIntentState struct {
+	Progress           ResumeProgress
+	OperationID        string
+	Stage              string
+	InvocationState    string
+	InvocationAttempts int
+	RecordRaw          []byte
+	IntentRaw          []byte
+}
+
+type ResumeRepository interface {
+	LoadSnapshot(context.Context, string, uint64) (ResumeSnapshot, error)
+	BeginIntent(context.Context, ResumeSnapshot, leasecontract.ResumeArtifacts, issueopslease.ResumePlan, string) (ResumeProgress, error)
+	LoadIntent(context.Context, ResumeProgress) (ResumeIntentState, error)
+	MarkInvoking(context.Context, ResumeIntentState) (ResumeIntentState, error)
+	RecordFailure(context.Context, ResumeIntentState, string, error) error
+	ApplyReceipt(context.Context, ResumeIntentState, leasecontract.ResumeStageReceipt) (ResumeProgress, error)
+}
+
+type ResumeArtifacts interface {
+	ReadAndVerify(context.Context, leasecontract.Record) (leasecontract.ResumeArtifacts, error)
+}
+
+type ResumeOwnerInventory interface {
+	Observe(context.Context, leasecontract.Record) (issueopslease.ResumeInventory, bool, error)
+}
+
+type ResumeStageExecutor interface {
+	Inspect(context.Context, ResumeIntentState) (leasecontract.ResumeStageInventory, error)
+	Invoke(context.Context, ResumeIntentState) (leasecontract.ResumeStageReceipt, error)
+}
+
+type ResumeOperationIDs interface {
+	New() (string, error)
+}
