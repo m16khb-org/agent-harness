@@ -4,7 +4,7 @@
 
 **Goal:** Orca 1.4.162에서 각 IssueOps execution generation이 고유한 durable Run을 만들고 모든 task/dispatch 경로가 봉인된 Run ID를 사용하게 한다.
 
-**Architecture:** `run_create`와 `run_bind`를 기존 external-intent state machine의 독립 stage로 추가하고, 생성·bind된 Run ID를 task·dispatch receipt와 최종 `OrcaBinding`까지 전달한다. Orca adapter는 현재 process의 exact `ORCA_TERMINAL_HANDLE`을 coordinator mutation의 `--from`으로 사용하며, Run ID가 없는 기존 binding은 모든 명시적 Run의 read-only task inventory에서 exact task가 하나일 때만 해석한다.
+**Architecture:** `run_create`와 `run_bind`를 기존 external-intent state machine의 독립 stage로 추가하고, 생성·bind된 Run ID를 task·dispatch receipt와 최종 `OrcaBinding`까지 전달한다. Orca adapter는 현재 process의 exact `ORCA_TERMINAL_HANDLE`을 fail-closed gate로 검증하되 현재 coordinator mutation에서는 `--from`을 생략해 Orca의 process authority를 보존하며, Run ID가 없는 기존 binding은 모든 명시적 Run의 read-only task inventory에서 exact task가 하나일 때만 해석한다.
 
 **Tech Stack:** Go 1.26.3, 표준 `context`/`encoding/json`/`sort`/`strings`, Orca 1.4.162 CLI JSON 계약, IssueOps SQLite external-intent CAS
 
@@ -228,15 +228,15 @@ git commit -m "feat(issueops): model Orca Run identity" \
 
 - `ListRuns`가 `orca orchestration run-list --json`을 호출하고 runtime/ID/objective를 투영
 - `CreateRun`이
-  `run-create --objective <exact> --from term_coordinator --json`을 호출
+  `run-create --objective <exact> --json`을 호출
 - `CurrentRun`이
-  `run-current --from term_coordinator --json`을 호출하고 null을 보존
+  `run-current --json`을 호출하고 null을 보존
 - `UseRun`이
-  `run-use --id run_issueops_1 --from term_coordinator --json`을 호출
+  `run-use --id run_issueops_1 --json`을 호출
 - create 응답 objective가 요청과 다르면 `run_identity_mismatch`
 - 빈 Run ID/objective 응답은 `run_identity_invalid`
-- `CreateTask`, `Dispatch`, `UpdateTask`가 exact `--run run_issueops_1`과
-  `--from term_coordinator`를 포함
+- `CreateTask`, `Dispatch`, `UpdateTask`가 exact `--run run_issueops_1`을
+  포함하고 현재 terminal을 대리하는 `--from`은 생략
 - worker-done `send`는 sealed Run ID와 worker의 exact FromHandle을 사용
 - Run ID가 비면 runner call count 0과 `run_required`
 - `ORCA_TERMINAL_HANDLE`이 empty/invalid면 coordinator mutation call count 0과
@@ -295,7 +295,9 @@ func currentCoordinatorHandle() (string, error) {
 ```
 
 `CreateRun`, `CurrentRun`, `UseRun`, `CreateTask`, `UpdateTask`, `Dispatch`는
-이 helper가 반환한 handle을 exact `--from`으로 전달한다. `CurrentRun`은
+이 helper로 현재 Orca terminal 안에서 호출됐는지 검증하되 `--from`은 전달하지
+않는다. Orca가 호출 process의 terminal authority를 직접 인증해야 하며,
+`--from`은 다른 terminal을 명시적으로 대리할 때만 쓴다. `CurrentRun`은
 `result.run:null`을 오류가 아닌 unbound observation으로 반환한다.
 `UseRun`은 ordinary Run에만 exact ID로 bind하며 `--takeover-legacy`를 절대
 추가하지 않는다.
@@ -326,8 +328,9 @@ func (c *Client) SettleTask(ctx context.Context, runID, id string) error
 
 `CreateTask`, `Dispatch`, `UpdateTask`, `SendWorkerDone`은 non-empty Run ID를
 runner 호출 전에 검증하고 exact `--run`을 전달한다. coordinator mutation은
-위 helper의 `--from`을 사용하고, worker-done은 request의 exact worker
-FromHandle을 사용한다. empty Run ID legacy settle은 unique read-only resolver로
+위 helper를 fail-closed gate로만 사용하고 현재 process RPC에서는 `--from`을
+생략한다. worker-done은 request의 exact worker FromHandle을 사용한다. empty
+Run ID legacy settle은 unique read-only resolver로
 Run을 찾더라도 current caller가 그 Run의 coordinator가 아니면 `task-update`
 오류를 그대로 반환하며 implicit `run-use`로 authority를 빼앗지 않는다.
 

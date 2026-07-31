@@ -1089,7 +1089,7 @@ func TestClientAvailableUsesPathLookupOnly(t *testing.T) {
 
 func TestClientCreateTaskDecodesOfficialSnakeCaseShape(t *testing.T) {
 	runner := newFakeRunner(t)
-	runner.responses["orca orchestration task-create --spec spec --task-title agent-harness marker --display-name 16-demo --run run_issueops_1 --from term_coordinator --json"] = fixtureOutput(t, "task_create.json")
+	runner.responses["orca orchestration task-create --spec spec --task-title agent-harness marker --display-name 16-demo --run run_issueops_1 --json"] = fixtureOutput(t, "task_create.json")
 	got, err := NewClient(runner).CreateTask(context.Background(), port.OrcaCreateTaskRequest{RunID: "run_issueops_1", Spec: "spec", Title: "agent-harness marker", DisplayName: "16-demo"})
 	if err != nil {
 		t.Fatal(err)
@@ -1318,7 +1318,7 @@ func addCompleteProbeLeafHelp(runner *fakeRunner) {
 	} {
 		runner.responses[command] = CommandOutput{Stdout: []byte(flags)}
 	}
-	runner.responses["orca orchestration run-current --from term_coordinator --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"run":null},"_meta":{"runtimeId":"runtime-1"}}`)}
+	runner.responses["orca orchestration run-current --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"run":null},"_meta":{"runtimeId":"runtime-1"}}`)}
 	runner.responses["orca orchestration run-list --json"] = fixtureOutput(runner.t, "run_list.json")
 	runner.responses["codex --help"] = CommandOutput{Stdout: []byte("--model --config --dangerously-bypass-hook-trust")}
 	runner.responses["claude --help"] = CommandOutput{Stdout: []byte("--model")}

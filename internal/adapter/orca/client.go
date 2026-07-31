@@ -590,11 +590,10 @@ func (c *Client) CreateRun(ctx context.Context, req port.OrcaCreateRunRequest) (
 	if objective == "" || objective != req.Objective || len(objective) > 4096 || strings.ContainsRune(objective, 0) {
 		return port.OrcaRun{}, &port.OrcaError{Code: "run_objective_invalid"}
 	}
-	fromHandle, err := currentCoordinatorHandle()
-	if err != nil {
+	if _, err := currentCoordinatorHandle(); err != nil {
 		return port.OrcaRun{}, err
 	}
-	return c.runMutation(ctx, []string{"orca", "orchestration", "run-create", "--objective", objective, "--from", fromHandle, "--json"})
+	return c.runMutation(ctx, []string{"orca", "orchestration", "run-create", "--objective", objective, "--json"})
 }
 
 func (c *Client) CurrentRun(ctx context.Context) (*port.OrcaRun, error) {
@@ -603,14 +602,13 @@ func (c *Client) CurrentRun(ctx context.Context) (*port.OrcaRun, error) {
 }
 
 func (c *Client) currentRunInventory(ctx context.Context) (executionCurrentRunInventory, error) {
-	fromHandle, err := currentCoordinatorHandle()
-	if err != nil {
+	if _, err := currentCoordinatorHandle(); err != nil {
 		return executionCurrentRunInventory{}, err
 	}
 	var payload struct {
 		Run json.RawMessage `json:"run"`
 	}
-	runtimeID, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "orchestration", "run-current", "--from", fromHandle, "--json"}, &payload)
+	runtimeID, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "orchestration", "run-current", "--json"}, &payload)
 	if err != nil {
 		return executionCurrentRunInventory{RuntimeID: runtimeID}, err
 	}
@@ -637,11 +635,10 @@ func (c *Client) UseRun(ctx context.Context, runID string) (port.OrcaRun, error)
 	if err != nil {
 		return port.OrcaRun{}, err
 	}
-	fromHandle, err := currentCoordinatorHandle()
-	if err != nil {
+	if _, err := currentCoordinatorHandle(); err != nil {
 		return port.OrcaRun{}, err
 	}
-	used, err := c.runMutation(ctx, []string{"orca", "orchestration", "run-use", "--id", runID, "--from", fromHandle, "--json"})
+	used, err := c.runMutation(ctx, []string{"orca", "orchestration", "run-use", "--id", runID, "--json"})
 	if err == nil && (used.ID != runID || used.Legacy) {
 		return port.OrcaRun{}, &port.OrcaError{Code: "run_binding_mismatch", Detail: "Orca bound a different or legacy Run", Invoked: true}
 	}
@@ -817,11 +814,10 @@ func (c *Client) CreateTask(ctx context.Context, req port.OrcaCreateTaskRequest)
 	if err != nil {
 		return port.OrcaTask{}, err
 	}
-	fromHandle, err := currentCoordinatorHandle()
-	if err != nil {
+	if _, err := currentCoordinatorHandle(); err != nil {
 		return port.OrcaTask{}, err
 	}
-	argv := []string{"orca", "orchestration", "task-create", "--spec", req.Spec, "--task-title", req.Title, "--display-name", req.DisplayName, "--run", runID, "--from", fromHandle, "--json"}
+	argv := []string{"orca", "orchestration", "task-create", "--spec", req.Spec, "--task-title", req.Title, "--display-name", req.DisplayName, "--run", runID, "--json"}
 	var payload struct {
 		Task taskPayload `json:"task"`
 	}
@@ -890,15 +886,14 @@ func (c *Client) UpdateTask(ctx context.Context, runID, id, status, result strin
 	if err != nil {
 		return err
 	}
-	fromHandle, err := currentCoordinatorHandle()
-	if err != nil {
+	if _, err := currentCoordinatorHandle(); err != nil {
 		return err
 	}
 	argv := []string{"orca", "orchestration", "task-update", "--id", id, "--status", status}
 	if result != "" {
 		argv = append(argv, "--result", result)
 	}
-	argv = append(argv, "--run", runID, "--from", fromHandle, "--json")
+	argv = append(argv, "--run", runID, "--json")
 	_, err = c.runJSON(ctx, "", readTimeout, argv, &struct{}{})
 	return err
 }
@@ -908,11 +903,10 @@ func (c *Client) Dispatch(ctx context.Context, req port.OrcaDispatchRequest) (po
 	if err != nil {
 		return port.OrcaDispatch{}, err
 	}
-	fromHandle, err := currentCoordinatorHandle()
-	if err != nil {
+	if _, err := currentCoordinatorHandle(); err != nil {
 		return port.OrcaDispatch{}, err
 	}
-	argv := []string{"orca", "orchestration", "dispatch", "--task", req.TaskID, "--to", req.ToHandle, "--run", runID, "--from", fromHandle}
+	argv := []string{"orca", "orchestration", "dispatch", "--task", req.TaskID, "--to", req.ToHandle, "--run", runID}
 	if req.Inject {
 		argv = append(argv, "--inject")
 	}

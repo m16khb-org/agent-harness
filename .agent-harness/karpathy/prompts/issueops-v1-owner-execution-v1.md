@@ -125,9 +125,12 @@ Required skills:
    있을 때만 붙인다. token 원문은 출력하지 않는다:
    {CLAIM_COMMAND}
 6. claim/holder 확인 전 production mutation을 하지 않는다.
-7. branch_prepare.link_verified가 false면 provider CLI/MCP로 issue에 exact branch가 연결됐는지
-   읽어 검증한다. 연결이 확인된 경우에만 아래 exact command로 봉인된 branch/base/parent topology를
-   보존하며 link_verified를 기록한다. 이미 true면 command가 `none`이므로 실행하지 않는다:
+7. branch_prepare.link_verified가 false면 아래 exact reader를 한 번 실행해 issue에 exact branch가
+   연결됐는지 검증한다. 대체 GraphQL이나 다른 reader를 만들지 않는다. reader가 `none`이면 임의
+   provider 명령을 만들지 말고 blocker를 보고한다:
+   {VERIFY_BRANCH_LINK_READ_COMMAND}
+   연결이 확인된 경우에만 아래 exact command로 봉인된 branch/base/parent topology를 보존하며
+   link_verified를 기록한다. 이미 true면 두 command가 `none`이므로 실행하지 않는다:
    {VERIFY_BRANCH_LINK_COMMAND}
 8. packet의 artifact_manifest에 plan이 있고 status의 plan_path가 비어 있으면 아래 exact command로
    materialized plan을 link한다. plan artifact와 기존 plan_path가 모두 없으면 임의 계획을 만들지 말고

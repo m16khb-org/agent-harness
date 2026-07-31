@@ -15,6 +15,7 @@ import (
 
 	"agent-harness/internal/core/commandparse"
 	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/core/issueops/remote"
 	"agent-harness/internal/port"
 )
 
@@ -41,6 +42,7 @@ type executionOwnerIssue struct {
 type executionOwnerCommands struct {
 	LeaseStatus          string `json:"lease_status"`
 	Claim                string `json:"claim"`
+	VerifyBranchLinkRead string `json:"verify_branch_link_read"`
 	VerifyBranchLink     string `json:"verify_branch_link"`
 	LinkPlan             string `json:"link_plan"`
 	CompatibilityReview  string `json:"compatibility_review"`
@@ -317,15 +319,16 @@ func renderExecutionOwnerPrompt(packet executionOwnerContextPacket, packetPath, 
 		"PACKET_PATH": packetPath, "PACKET_SHA256": packetDigest,
 		"OWNER_HOST": packet.OwnerHost, "OWNER_MODEL": packet.OwnerModel, "OWNER_EFFORT": packet.OwnerEffort,
 		"REVIEWER_MODEL": packet.ReviewerModel, "REVIEWER_EFFORT": packet.ReviewerEffort,
-		"VERIFY_BRANCH_LINK_COMMAND":    packet.Commands.VerifyBranchLink,
-		"LINK_PLAN_COMMAND":             packet.Commands.LinkPlan,
-		"COMPATIBILITY_REVIEW_COMMAND":  packet.Commands.CompatibilityReview,
-		"ENTER_IMPLEMENT_COMMAND":       packet.Commands.EnterImplement,
-		"AI_SLOP_CLEAN_RECORD_COMMAND":  packet.Commands.AISlopCleanRecord,
-		"ENTER_AI_SLOP_CLEAN_COMMAND":   packet.Commands.EnterAISlopClean,
-		"IMPLEMENTATION_REVIEW_COMMAND": packet.Commands.ImplementationReview,
-		"ENTER_PR_COMMAND":              packet.Commands.EnterPR,
-		"REQUIRED_DOCS":                 renderExecutionOwnerLines(packet.RequiredDocs), "REQUIRED_SKILLS": renderExecutionOwnerLines(packet.RequiredSkills),
+		"VERIFY_BRANCH_LINK_READ_COMMAND": packet.Commands.VerifyBranchLinkRead,
+		"VERIFY_BRANCH_LINK_COMMAND":      packet.Commands.VerifyBranchLink,
+		"LINK_PLAN_COMMAND":               packet.Commands.LinkPlan,
+		"COMPATIBILITY_REVIEW_COMMAND":    packet.Commands.CompatibilityReview,
+		"ENTER_IMPLEMENT_COMMAND":         packet.Commands.EnterImplement,
+		"AI_SLOP_CLEAN_RECORD_COMMAND":    packet.Commands.AISlopCleanRecord,
+		"ENTER_AI_SLOP_CLEAN_COMMAND":     packet.Commands.EnterAISlopClean,
+		"IMPLEMENTATION_REVIEW_COMMAND":   packet.Commands.ImplementationReview,
+		"ENTER_PR_COMMAND":                packet.Commands.EnterPR,
+		"REQUIRED_DOCS":                   renderExecutionOwnerLines(packet.RequiredDocs), "REQUIRED_SKILLS": renderExecutionOwnerLines(packet.RequiredSkills),
 		"ACCEPTANCE_IDS": strings.Join(packet.AcceptanceIDs, ", "), "VERIFICATION_COMMANDS": renderExecutionOwnerLines(packet.Verification),
 		"TURING_REPORT_PATH": packet.TuringReportPath, "REMOTE_CREATE_COMMAND": packet.Commands.RemoteCreate, "COMPLETE_COMMAND": packet.Commands.Complete,
 	}
@@ -358,6 +361,7 @@ func validateExecutionOwnerPromptInputs(packet executionOwnerContextPacket, pack
 		{"packet_path", packetPath}, {"packet_sha256", packetDigest}, {"owner_host", packet.OwnerHost},
 		{"owner_model", packet.OwnerModel}, {"owner_effort", packet.OwnerEffort}, {"turing_report_path", packet.TuringReportPath},
 		{"lease_status_command", packet.Commands.LeaseStatus}, {"claim_command", packet.Commands.Claim},
+		{"verify_branch_link_read_command", packet.Commands.VerifyBranchLinkRead},
 		{"verify_branch_link_command", packet.Commands.VerifyBranchLink},
 		{"link_plan_command", packet.Commands.LinkPlan}, {"compatibility_review_command", packet.Commands.CompatibilityReview},
 		{"enter_implement_command", packet.Commands.EnterImplement},
@@ -406,8 +410,18 @@ func executionOwnerCommandsFor(record IssueOpsRecord, req ExecutionPrepareReques
 		"--host", strings.ToLower(strings.TrimSpace(req.OwnerHost)), "--session-id", "<SESSION_ID>",
 		"--cwd", quoteExecutionOwnerArg(record.Execution.Workspace.Root),
 	}, " ")
+	verifyBranchLinkRead := "none"
 	verifyBranchLink := "none"
 	if prepared := record.BranchPrepare; prepared != nil && !prepared.LinkVerified {
+		if strings.EqualFold(strings.TrimSpace(prepared.Provider), "github") {
+			projectKey := remote.ProjectKey(prepared.IssueURL, "github", "issue")
+			issueNumber := remote.IssueNumber(prepared.IssueURL)
+			repoSlug := strings.TrimPrefix(projectKey, "github.com/")
+			if projectKey != "" && repoSlug != projectKey && issueNumber != "" {
+				verifyBranchLinkRead = "gh issue develop --list " + issueNumber +
+					" --repo " + quoteExecutionOwnerArg(repoSlug)
+			}
+		}
 		verifyBranchLink = "agent-harness issueops branch prepare --id " + quoteExecutionOwnerArg(record.ID) +
 			" --provider " + quoteExecutionOwnerArg(strings.ToLower(strings.TrimSpace(prepared.Provider))) +
 			" --issue-url " + quoteExecutionOwnerArg(strings.TrimSpace(prepared.IssueURL)) +
@@ -464,7 +478,8 @@ func executionOwnerCommandsFor(record IssueOpsRecord, req ExecutionPrepareReques
 	enterPR := "agent-harness issueops phase --id " + quoteExecutionOwnerArg(record.ID) +
 		" --to pr " + shortActor + " --json"
 	return executionOwnerCommands{
-		LeaseStatus: status, Claim: claim, VerifyBranchLink: verifyBranchLink, LinkPlan: linkPlan,
+		LeaseStatus: status, Claim: claim, VerifyBranchLinkRead: verifyBranchLinkRead,
+		VerifyBranchLink: verifyBranchLink, LinkPlan: linkPlan,
 		CompatibilityReview: compatibilityReview, EnterImplement: enterImplement,
 		AISlopCleanRecord: aiSlopCleanRecord, EnterAISlopClean: enterAISlopClean,
 		ImplementationReview: implementationReview, EnterPR: enterPR,
