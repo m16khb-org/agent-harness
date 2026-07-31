@@ -12,7 +12,7 @@ func wirePolicyCLIDeps() {
 }
 
 func runIssueOps(args []string) error {
-	return issueopscli.RunIssueOpsWithExecutionHandlers(args, issueops.ExecutionClaimHandler(issueOpsClaimHandler), issueops.ExecutionReleaseHandler(issueOpsReleaseHandler))
+	return issueopscli.RunIssueOpsWithExecutionHandlersAndReseed(args, issueops.ExecutionClaimHandler(issueOpsClaimHandler), issueops.ExecutionReleaseHandler(issueOpsReleaseHandler), issueops.ExecutionReseedHandler(issueOpsReseedHandler))
 }
 
 func verifyIssueOpsChildIssueBeforeLink(childURL string) error {

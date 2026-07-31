@@ -181,11 +181,11 @@ func TestExecutionReseedInvalidatesPriorGenerationToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reseeded, err := ReplaceExecution(stateRoot, ExecutionReplaceRequest{
+	reseeded, err := reseedExecutionCompatibilityOracle(context.Background(), stateRoot, ExecutionReplaceRequest{
 		ID: fixture.record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
 		InventoryFingerprint: preview.InventoryFingerprint, Reason: "lost unclaimed terminal",
 		Actor: requester, CWD: fixture.record.Repo, Confirm: true,
-	})
+	}, ExecutionReplaceDependencies{})
 	if err != nil {
 		t.Fatal(err)
 	}

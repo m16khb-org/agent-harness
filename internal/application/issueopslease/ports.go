@@ -42,6 +42,7 @@ type RecordTransition func(Record) (Record, error)
 
 type Record struct {
 	ID            string
+	SourceRoot    string
 	CanonicalRoot string
 	Lease         leasecontract.Lease
 	Stable        leasecontract.Record
@@ -57,3 +58,38 @@ type RepositoryResult struct {
 type Clock interface{ Now() time.Time }
 type ProcessInspector func(context.Context, issueopslease.ProcessReceipt) (string, issueopslease.ProcessReceipt, error)
 type CanonicalPathMatcher interface{ Matches(string, string) bool }
+
+type ReseedFence interface {
+	Within(context.Context, string, func(context.Context) error) error
+}
+
+type ReseedSnapshot struct {
+	Record Record
+	Raw    []byte
+}
+
+type ReseedRepository interface {
+	LoadSnapshot(context.Context, string) (ReseedSnapshot, error)
+	CommitReseed(context.Context, ReseedSnapshot, Record) (RepositoryResult, error)
+}
+
+type ReseedInventoryReceipt struct {
+	Fingerprint string
+	RuntimeID   string
+}
+
+type ReseedInventory interface {
+	Observe(context.Context, leasecontract.Record, issueopslease.Actor) (ReseedInventoryReceipt, error)
+}
+
+type ReseedArtifactReceipt struct {
+	TokenSHA256 string
+	Receipt     leasecontract.ReseedReceipt
+	TargetPaths []string
+}
+
+type ReseedArtifacts interface {
+	Prepare(context.Context, leasecontract.Record) (ReseedArtifactReceipt, error)
+	Rollback(context.Context, ReseedArtifactReceipt) error
+	CleanupSuperseded(context.Context, leasecontract.Record) error
+}

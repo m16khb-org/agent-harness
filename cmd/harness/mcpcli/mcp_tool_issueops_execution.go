@@ -17,14 +17,14 @@ import (
 )
 
 func handleMCPIssueOpsExecution(args map[string]any) MCPToolOutcome {
-	return handleMCPIssueOpsExecutionWithHandlers(args, nil, nil)
+	return handleMCPIssueOpsExecutionWithHandlers(args, nil, nil, nil)
 }
 
 func handleMCPIssueOpsExecutionWithReleaseHandler(args map[string]any, release issueops.ExecutionReleaseHandler) MCPToolOutcome {
-	return handleMCPIssueOpsExecutionWithHandlers(args, nil, release)
+	return handleMCPIssueOpsExecutionWithHandlers(args, nil, release, nil)
 }
 
-func handleMCPIssueOpsExecutionWithHandlers(args map[string]any, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler) MCPToolOutcome {
+func handleMCPIssueOpsExecutionWithHandlers(args map[string]any, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler, reseed issueops.ExecutionReseedHandler) MCPToolOutcome {
 	orcaExecution := orca.NewExecution()
 	req, err := executionActionRequestFromMCP(args)
 	if err != nil {
@@ -32,7 +32,7 @@ func handleMCPIssueOpsExecutionWithHandlers(args map[string]any, claim issueops.
 	}
 	result, err := issueops.ExecuteExecution(context.Background(), core.IssueOpsStateRoot(), req, issueops.ExecutionActionDependencies{
 		Direct: gitworktree.New(), Orca: orcaExecution, OrcaOwner: orcaExecution, ReadIssue: provider.ReadExecutionIssueSnapshot,
-		Claim: claim, Release: release,
+		Claim: claim, Release: release, Reseed: reseed,
 		// 완료가 orca task를 종결시킨다. CLI 경로와 같은 계약이다(#130).
 		SettleOrcaTask: orca.New().SettleTask,
 		RemotePR: issueops.RemotePullRequestDependencies{

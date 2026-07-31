@@ -10,14 +10,18 @@ import (
 )
 
 func runIssueOpsExecution(args []string) error {
-	return runIssueOpsExecutionWithHandlers(args, nil, nil)
+	return runIssueOpsExecutionWithHandlersAndReseed(args, nil, nil, nil)
 }
 
 func runIssueOpsExecutionWithRelease(args []string, release issueops.ExecutionReleaseHandler) error {
-	return runIssueOpsExecutionWithHandlers(args, nil, release)
+	return runIssueOpsExecutionWithHandlersAndReseed(args, nil, release, nil)
 }
 
 func runIssueOpsExecutionWithHandlers(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler) error {
+	return runIssueOpsExecutionWithHandlersAndReseed(args, claim, release, nil)
+}
+
+func runIssueOpsExecutionWithHandlersAndReseed(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler, reseed issueops.ExecutionReseedHandler) error {
 	return executioncmd.Run(args, executioncmd.Deps{
 		StateRoot: core.IssueOpsStateRoot,
 		Direct:    gitworktree.New(),
@@ -44,6 +48,7 @@ func runIssueOpsExecutionWithHandlers(args []string, claim issueops.ExecutionCla
 		SettleOrcaTask: orca.New().SettleTask,
 		Claim:          claim,
 		Release:        release,
+		Reseed:         reseed,
 		PrintJSON:      printJSON,
 		PrintError:     printIssueOpsErrorJSON,
 	})

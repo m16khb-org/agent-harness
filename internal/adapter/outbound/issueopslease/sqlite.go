@@ -229,7 +229,7 @@ func holderIndexKey(actor leasecontract.Actor) string {
 	return "lease-holder-" + hex.EncodeToString(sum[:])
 }
 func toApplicationRecord(record leasecontract.Record) leaseapp.Record {
-	return leaseapp.Record{ID: record.ID, CanonicalRoot: record.Execution.Workspace.Root, Lease: record.Execution.Lease, Stable: record}
+	return leaseapp.Record{ID: record.ID, SourceRoot: record.Execution.Workspace.SourceRoot, CanonicalRoot: record.Execution.Workspace.Root, Lease: record.Execution.Lease, Stable: record}
 }
 
 func decodeLeaseRecord(id string, data []byte) (leasecontract.Record, error) {

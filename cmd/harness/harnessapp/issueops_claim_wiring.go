@@ -23,7 +23,7 @@ func issueOpsClaimHandler(ctx context.Context, stateRoot string, request issueop
 		if err != nil {
 			return leaseoutbound.IssueSnapshot{}, err
 		}
-		providerName, err := issueOpsClaimProviderName(record, issueURL)
+		providerName, err := issueOpsClaimProviderName(record)
 		if err != nil {
 			return leaseoutbound.IssueSnapshot{}, err
 		}
@@ -40,20 +40,12 @@ func issueOpsClaimHandler(ctx context.Context, stateRoot string, request issueop
 	return leaseinbound.NewClaimHandler(service)(ctx, stateRoot, request, deps)
 }
 
-func issueOpsClaimProviderName(record issueops.IssueOpsRecord, issueURL string) (string, error) {
+func issueOpsClaimProviderName(record issueops.IssueOpsRecord) (string, error) {
 	if record.BranchPrepare != nil {
 		switch providerName := strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider)); providerName {
 		case "github", "gitlab":
 			return providerName, nil
 		}
 	}
-	url := strings.ToLower(strings.TrimSpace(issueURL))
-	switch {
-	case strings.Contains(url, "github"):
-		return "github", nil
-	case strings.Contains(url, "gitlab"):
-		return "gitlab", nil
-	default:
-		return "", fmt.Errorf("linked issue provider is unavailable")
-	}
+	return "", fmt.Errorf("linked issue provider is unavailable")
 }

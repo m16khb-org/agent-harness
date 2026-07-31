@@ -58,7 +58,7 @@ func (s *ReleaseService) Release(ctx context.Context, request ReleaseRequest) (R
 }
 
 func toDomainLease(lease leasecontract.Lease) issueopslease.Lease {
-	result := issueopslease.Lease{Generation: lease.Generation, Status: lease.Status}
+	result := issueopslease.Lease{Generation: lease.Generation, Status: lease.Status, ClaimTokenSHA256: lease.ClaimTokenSHA256}
 	if lease.Holder != nil {
 		result.Holder = &issueopslease.Actor{Host: lease.Holder.Host, SessionID: lease.Holder.SessionID, AgentID: lease.Holder.AgentID}
 		if lease.Holder.SessionProcess != nil {

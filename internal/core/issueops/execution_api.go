@@ -12,10 +12,12 @@ import (
 var (
 	ErrClaimHandlerUnavailable   = errors.New("issueops execution claim handler is not configured")
 	ErrReleaseHandlerUnavailable = errors.New("issueops execution release handler is not configured")
+	ErrReseedHandlerUnavailable  = errors.New("issueops execution reseed handler is not configured")
 )
 
 type ExecutionClaimHandler func(context.Context, string, ExecutionClaimRequest, ExecutionClaimDependencies) (ExecutionResult, error)
 type ExecutionReleaseHandler func(context.Context, string, ExecutionReleaseRequest) (ExecutionResult, error)
+type ExecutionReseedHandler func(context.Context, string, ExecutionReseedRequest) (ExecutionReplaceResult, error)
 
 const (
 	ExecutionActionPrepare   = "prepare"
@@ -63,6 +65,7 @@ type ExecutionActionDependencies struct {
 	RemotePR  RemotePullRequestDependencies
 	Claim     ExecutionClaimHandler
 	Release   ExecutionReleaseHandler
+	Reseed    ExecutionReseedHandler
 	// SettleOrcaTask는 완료 시점의 orca task 종결 표면이다(#130).
 	SettleOrcaTask func(ctx context.Context, taskID string) error
 }
@@ -111,6 +114,19 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 			ID: req.ID, Generation: req.Generation, Actor: req.Actor, CWD: req.CWD,
 		})
 	case ExecutionActionReplace:
+		if req.ReplaceAction == ExecutionReplaceReseed {
+			if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
+				return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.ReplaceAction}, err
+			}
+			if deps.Reseed == nil {
+				return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.ReplaceAction}, ErrReseedHandlerUnavailable
+			}
+			return deps.Reseed(ctx, stateRoot, ExecutionReseedRequest{
+				ID: req.ID, ExpectedGeneration: req.ExpectedGeneration, InventoryFingerprint: req.InventoryFingerprint,
+				Reason: req.Reason, Actor: req.Actor, CWD: req.CWD, Confirm: req.Confirm,
+				ReadIssue: deps.ReadIssue,
+			})
+		}
 		return ReplaceExecutionWithDependencies(ctx, stateRoot, ExecutionReplaceRequest{
 			ID: req.ID, Action: req.ReplaceAction, ExpectedGeneration: req.ExpectedGeneration,
 			InventoryFingerprint: req.InventoryFingerprint, QuiescenceFingerprint: req.QuiescenceFingerprint,

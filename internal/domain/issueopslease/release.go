@@ -32,9 +32,10 @@ func DenyCodeOf(err error) DenyCode {
 }
 
 type Lease struct {
-	Generation uint64
-	Status     string
-	Holder     *Actor
+	Generation       uint64
+	Status           string
+	Holder           *Actor
+	ClaimTokenSHA256 string
 }
 type Actor struct {
 	Host      string
