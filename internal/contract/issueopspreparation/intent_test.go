@@ -112,6 +112,34 @@ func TestIntentCodecCanonicalizeLegacyGitLabWorkItem(t *testing.T) {
 	}
 }
 
+func TestPrepareIssueIdentityAndReadinessMarker(t *testing.T) {
+	record := leasecontract.Record{
+		ID: "io-prepare", IssueURL: "https://github.com/example/repo/issues/199",
+		BranchPrepare: []byte(`{"provider":"github","issue_url":"https://github.com/example/repo/issues/199","link_verified":false}`),
+	}
+	codec := IntentCodec{}
+	issue, err := codec.PrepareIssueIdentity(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if issue.Provider != "github" || issue.Issue != 199 {
+		t.Fatalf("issue=%+v", issue)
+	}
+	marker, err := codec.RenderReadinessMarker(record.ID, issue)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if marker != "agent-harness issueops-v1 lifecycle=io-prepare provider=github issue=199" {
+		t.Fatalf("marker=%q", marker)
+	}
+
+	record.IssueURL = "https://gitlab.com/example/repo/-/work_items/199"
+	record.BranchPrepare = []byte(`{"provider":"gitlab","issue_url":"https://gitlab.com/example/repo/-/work_items/199","link_verified":false}`)
+	if _, err := codec.PrepareIssueIdentity(record); err == nil {
+		t.Fatal("GitLab preparation identity accepted without a verified link")
+	}
+}
+
 func legacyPrepareIntentBytes(t *testing.T) []byte {
 	t.Helper()
 	canonical := "agent-harness issueops-v1 lifecycle=io-codec-prepare operation=" + prepareOperationID + " provider=github issue=199"

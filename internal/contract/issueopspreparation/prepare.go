@@ -106,6 +106,8 @@ type OwnerEvidence struct {
 	IssueBody  string
 	BodySHA256 string
 	Source     string
+	Provider   string
+	Issue      int
 }
 
 type OwnerArtifacts struct {

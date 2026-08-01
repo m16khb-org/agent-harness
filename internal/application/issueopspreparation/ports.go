@@ -61,10 +61,14 @@ type OrcaBegin struct {
 }
 
 type IntentState struct {
-	Snapshot  preparationcontract.Snapshot
-	Intent    preparationcontract.Intent
-	IntentRaw []byte
-	Pending   bool
+	Snapshot       preparationcontract.Snapshot
+	Command        preparationcontract.Command
+	Intent         preparationcontract.Intent
+	IntentRaw      []byte
+	Owner          preparationcontract.OwnerEvidence
+	OwnerArtifacts preparationcontract.OwnerArtifacts
+	FailureAt      string
+	Pending        bool
 }
 
 type IntentProgress struct {

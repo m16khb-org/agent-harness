@@ -91,11 +91,7 @@ type Mutation = port.RecordMutation
 
 // ExpectedRecord은 caller가 읽은 raw bytes를 write와 결속한다. CAS 권한을
 // 소비한 모든 row를 받아 data.sqlite의 같은 transaction 안에서 검증한다.
-type ExpectedRecord struct {
-	Bucket string
-	ID     string
-	Data   []byte
-}
+type ExpectedRecord = port.ExpectedRecord
 
 type RawCASError struct {
 	Bucket string

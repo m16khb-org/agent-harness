@@ -17,9 +17,20 @@ type RecordInventoryStore interface {
 	GetAll(string) ([]RecordRow, error)
 }
 
+type RecordCASStore interface {
+	RecordInventoryStore
+	CompareAndApply(context.Context, []ExpectedRecord, []RecordMutation) error
+}
+
 type RecordRow struct {
 	ID   string
 	Data []byte
+}
+
+type ExpectedRecord struct {
+	Bucket string
+	ID     string
+	Data   []byte
 }
 
 type RecordMutation struct {

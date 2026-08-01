@@ -131,6 +131,7 @@ func repositoryRecord(id, repo, branch string) leasecontract.Record {
 type preparationStore struct {
 	rows    map[string]map[string][]byte
 	spans   int
+	cas     int
 	applies [][]port.RecordMutation
 }
 
@@ -179,6 +180,20 @@ func (store *preparationStore) Apply(_ context.Context, mutations []port.RecordM
 		store.rows[mutation.Bucket][mutation.ID] = append([]byte(nil), mutation.Data...)
 	}
 	return nil
+}
+
+func (store *preparationStore) CompareAndApply(ctx context.Context, expected []port.ExpectedRecord, mutations []port.RecordMutation) error {
+	store.cas++
+	for _, item := range expected {
+		data, ok, err := store.Get(item.Bucket, item.ID)
+		if err != nil {
+			return err
+		}
+		if !ok || !reflect.DeepEqual(data, item.Data) {
+			return errors.New("stale raw record snapshot")
+		}
+	}
+	return store.Apply(ctx, mutations)
 }
 
 func (store *preparationStore) seedRecord(t *testing.T, record leasecontract.Record) {

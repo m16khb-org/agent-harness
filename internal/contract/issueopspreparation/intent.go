@@ -70,13 +70,14 @@ type WorkspaceReceipt struct {
 }
 
 type ProbeRequest struct {
-	Repo     string `json:"repo"`
-	Host     string `json:"host"`
-	Model    string `json:"model"`
-	Effort   string `json:"effort,omitempty"`
-	Provider string `json:"provider,omitempty"`
-	Issue    int    `json:"issue,omitempty"`
-	Marker   string `json:"marker"`
+	Repo      string           `json:"repo"`
+	Host      string           `json:"host"`
+	Model     string           `json:"model"`
+	Effort    string           `json:"effort,omitempty"`
+	Provider  string           `json:"provider,omitempty"`
+	Issue     int              `json:"issue,omitempty"`
+	Marker    string           `json:"marker"`
+	Workspace WorkspaceRequest `json:"-"`
 }
 
 type OrcaWorkspaceReceipt struct {
@@ -122,6 +123,14 @@ type IntentInventory struct {
 	Candidates        []IntentReceipt `json:"candidates"`
 	AuthoritativeZero bool            `json:"authoritative_zero,omitempty"`
 }
+
+type InvocationError struct {
+	State string
+	Cause error
+}
+
+func (err *InvocationError) Error() string { return err.Cause.Error() }
+func (err *InvocationError) Unwrap() error { return err.Cause }
 
 // Intent is the only persisted JSON shape for Orca prepare and resume work.
 type Intent struct {
@@ -196,6 +205,13 @@ func (IntentCodec) DecodeShape(operationID string, raw []byte) (Intent, error) {
 
 func (IntentCodec) Validate(intent Intent, operationID string) error {
 	return validateIntent(intent, operationID)
+}
+
+func (IntentCodec) ValidateRecord(record leasecontract.Record, intent Intent) error {
+	if err := validateIntent(intent, intent.OperationID); err != nil {
+		return err
+	}
+	return validateRecordAuthority(record, intent)
 }
 
 func (IntentCodec) ValidateShape(intent Intent, operationID string) error {
@@ -408,15 +424,26 @@ func validateRecordAuthority(record leasecontract.Record, intent Intent) error {
 }
 
 func issueIdentity(record leasecontract.Record) (IssueIdentity, error) {
+	return parseIssueIdentity(record, false)
+}
+
+func (IntentCodec) PrepareIssueIdentity(record leasecontract.Record) (IssueIdentity, error) {
+	return parseIssueIdentity(record, true)
+}
+
+func parseIssueIdentity(record leasecontract.Record, allowUnverifiedGitHub bool) (IssueIdentity, error) {
 	var prepared struct {
 		Provider     string `json:"provider"`
 		IssueURL     string `json:"issue_url"`
 		LinkVerified bool   `json:"link_verified"`
 	}
-	if len(record.BranchPrepare) == 0 || json.Unmarshal(record.BranchPrepare, &prepared) != nil || !prepared.LinkVerified {
+	if len(record.BranchPrepare) == 0 || json.Unmarshal(record.BranchPrepare, &prepared) != nil {
 		return IssueIdentity{}, contractError("intent_identity_mismatch", "Orca intent requires verified branch issue identity")
 	}
 	provider := strings.ToLower(strings.TrimSpace(prepared.Provider))
+	if !prepared.LinkVerified && !(allowUnverifiedGitHub && provider == "github") {
+		return IssueIdentity{}, contractError("intent_identity_mismatch", "Orca intent requires verified branch issue identity")
+	}
 	if !validProvider(provider) || strings.TrimSpace(prepared.IssueURL) == "" || strings.TrimSpace(record.IssueURL) != strings.TrimSpace(prepared.IssueURL) {
 		return IssueIdentity{}, contractError("intent_identity_mismatch", "Orca intent issue URL does not match the verified branch identity")
 	}
@@ -443,6 +470,16 @@ type MarkerIdentity struct {
 
 func (codec IntentCodec) RenderMarker(identity MarkerIdentity) (string, error) {
 	return renderMarker(identity)
+}
+
+func (IntentCodec) RenderReadinessMarker(lifecycleID string, issue IssueIdentity) (string, error) {
+	if !validToken(lifecycleID) || !validProvider(issue.Provider) || issue.Issue <= 0 {
+		return "", contractError("intent_marker_invalid", "Orca readiness marker identity is invalid")
+	}
+	return strings.Join([]string{
+		markerPrefix, "lifecycle=" + lifecycleID,
+		"provider=" + issue.Provider, "issue=" + strconv.Itoa(issue.Issue),
+	}, " "), nil
 }
 
 func (codec IntentCodec) ParseMarker(marker string) (MarkerIdentity, error) {

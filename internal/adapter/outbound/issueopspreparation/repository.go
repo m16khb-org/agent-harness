@@ -18,17 +18,24 @@ import (
 const (
 	recordBucket = "issueops_v1"
 	holderBucket = "lease_holder_v1"
+	intentBucket = "external_intent_v1"
 )
 
 type MutationGate func(context.Context) error
+type DiagnosticRedactor func(string) string
 
 type SQLiteRepository struct {
-	store port.RecordInventoryStore
-	gate  MutationGate
+	store  port.RecordInventoryStore
+	gate   MutationGate
+	redact DiagnosticRedactor
 }
 
 func NewSQLiteRepository(store port.RecordInventoryStore, gate MutationGate) *SQLiteRepository {
-	return &SQLiteRepository{store: store, gate: gate}
+	return NewSQLiteRepositoryWithDiagnosticRedactor(store, gate, nil)
+}
+
+func NewSQLiteRepositoryWithDiagnosticRedactor(store port.RecordInventoryStore, gate MutationGate, redact DiagnosticRedactor) *SQLiteRepository {
+	return &SQLiteRepository{store: store, gate: gate, redact: redact}
 }
 
 func (repository *SQLiteRepository) RequireMutationAllowed(ctx context.Context) error {
@@ -125,20 +132,288 @@ func (repository *SQLiteRepository) CommitDirect(ctx context.Context, commit pre
 	return result, nil
 }
 
-func (*SQLiteRepository) BeginIntent(context.Context, preparationapp.OrcaBegin) (preparationapp.IntentState, error) {
-	return preparationapp.IntentState{}, fmt.Errorf("Orca preparation intent repository is unavailable")
+func (repository *SQLiteRepository) BeginIntent(ctx context.Context, begin preparationapp.OrcaBegin) (preparationapp.IntentState, error) {
+	if repository.store == nil {
+		return preparationapp.IntentState{}, fmt.Errorf("preparation record store is unavailable")
+	}
+	var state preparationapp.IntentState
+	err := repository.store.WithSpan(ctx, func(spanCtx context.Context) error {
+		current, err := repository.Load(spanCtx, begin.Snapshot.Record.ID)
+		if err != nil {
+			return err
+		}
+		if current.Record.Execution != nil {
+			return fmt.Errorf("IssueOps execution already exists; reconcile or inspect its current state")
+		}
+		if err := ensureRootUnclaimed(repository.store, current.Record.ID, begin.Workspace.Root); err != nil {
+			return err
+		}
+		codec := preparationcontract.IntentCodec{}
+		issue, err := codec.PrepareIssueIdentity(current.Record)
+		if err != nil {
+			return err
+		}
+		if begin.Owner.Provider != issue.Provider || begin.Owner.Issue != issue.Issue || begin.Probe.Provider != issue.Provider || begin.Probe.Issue != issue.Issue {
+			return fmt.Errorf("owner issue identity changed before Orca intent persistence")
+		}
+		if begin.Command.OwnerHost != begin.Probe.Host || begin.Command.OwnerModel != begin.Probe.Model || begin.Command.OwnerEffort != begin.Probe.Effort {
+			return fmt.Errorf("owner profile changed before Orca intent persistence")
+		}
+		intent := preparationcontract.Intent{
+			SchemaVersion: leasecontract.SchemaVersion, Purpose: preparationcontract.PurposePrepare,
+			OperationID: begin.OperationID, LifecycleID: current.Record.ID, Generation: 1,
+			Stage: preparationcontract.IntentStageWorktree, StartedAt: begin.StartedAt,
+			InvocationState: preparationcontract.InvocationNotInvoked,
+			Workspace:       begin.Workspace, Probe: begin.Probe, IssueBodySHA256: begin.Owner.BodySHA256,
+		}
+		intent, err = codec.Seal(intent, issue)
+		if err != nil {
+			return err
+		}
+		intentData, err := codec.Encode(intent)
+		if err != nil {
+			return err
+		}
+		record := current.Record
+		record.Execution = &leasecontract.Execution{
+			Mode: preparationcontract.ModeOrca,
+			Workspace: leasecontract.Workspace{
+				SourceRoot: begin.Workspace.SourceRoot, Root: begin.Workspace.Root,
+				Branch: begin.Workspace.Branch, BaseHead: begin.Workspace.BaseHead,
+				ParentWorktree: begin.Workspace.ParentWorktree, Driver: "orca", LinkedAt: begin.StartedAt,
+			},
+			Lease: leasecontract.Lease{Generation: 1, Status: "released"},
+			Pending: &leasecontract.ExternalIntent{
+				OperationID: begin.OperationID, Kind: pendingKind(intent.Stage), Marker: intent.Marker, StartedAt: begin.StartedAt,
+			},
+		}
+		recordData, err := leasecontract.Encode(record)
+		if err != nil {
+			return err
+		}
+		if err := repository.store.Apply(spanCtx, []port.RecordMutation{
+			{Bucket: recordBucket, ID: record.ID, Data: recordData},
+			{Bucket: intentBucket, ID: intent.OperationID, Data: intentData, RequireAbsent: true},
+		}); err != nil {
+			return err
+		}
+		state = preparationapp.IntentState{
+			Snapshot: preparationcontract.Snapshot{Record: record, RecordRaw: recordData},
+			Command:  begin.Command.Clone(), Intent: intent, IntentRaw: intentData,
+			Owner: begin.Owner, Pending: true,
+		}
+		return nil
+	})
+	return state, err
 }
 
-func (*SQLiteRepository) MarkInvoking(context.Context, preparationapp.IntentState) (preparationapp.IntentState, error) {
-	return preparationapp.IntentState{}, fmt.Errorf("Orca preparation intent repository is unavailable")
+func (repository *SQLiteRepository) MarkInvoking(ctx context.Context, state preparationapp.IntentState) (preparationapp.IntentState, error) {
+	if err := validateIntentState(state); err != nil {
+		return state, err
+	}
+	updated := state.Intent
+	updated.InvocationState = preparationcontract.InvocationUnknown
+	updated.InvocationAttempts++
+	data, err := (preparationcontract.IntentCodec{}).Encode(updated)
+	if err != nil {
+		return state, err
+	}
+	if err := repository.compareAndApply(ctx, state, []port.RecordMutation{{Bucket: intentBucket, ID: updated.OperationID, Data: data}}); err != nil {
+		return state, err
+	}
+	state.Intent, state.IntentRaw = updated, data
+	return state, nil
 }
 
-func (*SQLiteRepository) RecordFailure(context.Context, preparationapp.IntentState, string, error) error {
-	return fmt.Errorf("Orca preparation intent repository is unavailable")
+func (repository *SQLiteRepository) RecordFailure(ctx context.Context, state preparationapp.IntentState, invocation string, cause error) error {
+	if err := validateIntentState(state); err != nil {
+		return err
+	}
+	if strings.TrimSpace(state.FailureAt) == "" {
+		return fmt.Errorf("Orca intent failure timestamp is required")
+	}
+	intent := state.Intent
+	intent.InvocationState = invocation
+	intentData, err := (preparationcontract.IntentCodec{}).Encode(intent)
+	if err != nil {
+		return err
+	}
+	record := state.Snapshot.Record
+	record.Execution.Failure = &leasecontract.FailureDetail{
+		OperationID: intent.OperationID, Code: "external_operation_ambiguous",
+		Message: repository.boundedDiagnostic(cause), At: state.FailureAt,
+	}
+	recordData, err := leasecontract.Encode(record)
+	if err != nil {
+		return err
+	}
+	return repository.compareAndApply(ctx, state, []port.RecordMutation{
+		{Bucket: recordBucket, ID: record.ID, Data: recordData},
+		{Bucket: intentBucket, ID: intent.OperationID, Data: intentData},
+	})
 }
 
-func (*SQLiteRepository) ApplyReceipt(context.Context, preparationapp.IntentState, preparationcontract.IntentReceipt) (preparationapp.IntentProgress, error) {
-	return preparationapp.IntentProgress{}, fmt.Errorf("Orca preparation intent repository is unavailable")
+func (repository *SQLiteRepository) ApplyReceipt(ctx context.Context, state preparationapp.IntentState, receipt preparationcontract.IntentReceipt) (preparationapp.IntentProgress, error) {
+	if err := validateIntentState(state); err != nil {
+		return preparationapp.IntentProgress{State: state, Pending: true}, err
+	}
+	intent := state.Intent
+	intent.InvocationState = preparationcontract.InvocationNotInvoked
+	intent.InvocationAttempts = 0
+	record := state.Snapshot.Record
+	switch state.Intent.Stage {
+	case preparationcontract.IntentStageWorktree:
+		if receipt.Workspace == nil {
+			return preparationapp.IntentProgress{State: state, Pending: true}, fmt.Errorf("Orca worktree candidate does not match the sealed intent")
+		}
+		prepared := *receipt.Workspace
+		intent.Prepared = &prepared
+		intent.Launch = &preparationcontract.LaunchIdentity{
+			PromptPath: state.OwnerArtifacts.OwnerPromptPath, PromptSHA256: state.OwnerArtifacts.OwnerPromptSHA256,
+			ContextPacketPath: state.OwnerArtifacts.ContextPacketPath, ContextPacketSHA256: state.OwnerArtifacts.ContextPacketSHA256,
+		}
+		intent.ClaimTokenSHA256 = state.OwnerArtifacts.ClaimTokenSHA256
+		intent.Stage = preparationcontract.IntentStageTerminal
+		record.WorktreePath = prepared.Workspace.Root
+		record.Execution.Workspace = leasecontract.Workspace{
+			SourceRoot: prepared.Workspace.SourceRoot, Root: prepared.Workspace.Root,
+			Branch: prepared.Workspace.Branch, BaseHead: prepared.Workspace.BaseHead,
+			ParentWorktree: prepared.Workspace.ParentWorktree, Driver: prepared.Workspace.Driver,
+			LinkedAt: state.Intent.StartedAt,
+		}
+	case preparationcontract.IntentStageTerminal:
+		if strings.TrimSpace(receipt.TerminalPTYID) == "" {
+			return preparationapp.IntentProgress{State: state, Pending: true}, fmt.Errorf("Orca terminal candidate is incomplete")
+		}
+		intent.TerminalPTYID = strings.TrimSpace(receipt.TerminalPTYID)
+		intent.Stage = preparationcontract.IntentStageRun
+	case preparationcontract.IntentStageRun:
+		if strings.TrimSpace(receipt.RunID) == "" {
+			return preparationapp.IntentProgress{State: state, Pending: true}, fmt.Errorf("Orca Run candidate is incomplete")
+		}
+		intent.RunID = strings.TrimSpace(receipt.RunID)
+		intent.Stage = preparationcontract.IntentStageRunBind
+	case preparationcontract.IntentStageRunBind:
+		if strings.TrimSpace(receipt.RunID) != state.Intent.RunID || !receipt.RunBound {
+			return preparationapp.IntentProgress{State: state, Pending: true}, fmt.Errorf("Orca Run binding candidate is incomplete")
+		}
+		intent.RunBound = true
+		intent.Stage = preparationcontract.IntentStageTask
+	case preparationcontract.IntentStageTask:
+		if strings.TrimSpace(receipt.TaskID) == "" {
+			return preparationapp.IntentProgress{State: state, Pending: true}, fmt.Errorf("Orca task candidate is incomplete")
+		}
+		intent.TaskID = strings.TrimSpace(receipt.TaskID)
+		intent.Stage = preparationcontract.IntentStageDispatch
+	case preparationcontract.IntentStageDispatch:
+		if strings.TrimSpace(receipt.TaskID) != state.Intent.TaskID || strings.TrimSpace(receipt.DispatchID) == "" {
+			return preparationapp.IntentProgress{State: state, Pending: true}, fmt.Errorf("Orca dispatch candidate is incomplete")
+		}
+		if state.Intent.Prepared == nil {
+			return preparationapp.IntentProgress{State: state, Pending: true}, fmt.Errorf("Orca prepared workspace receipt is missing")
+		}
+		record.Execution.Lease = leasecontract.Lease{
+			Generation: state.Intent.Generation, Status: "claimable", ClaimTokenSHA256: state.Intent.ClaimTokenSHA256,
+		}
+		record.Execution.Orca = &leasecontract.OrcaBinding{
+			RuntimeID: state.Intent.Prepared.RuntimeID, RepoID: state.Intent.Prepared.RepoID,
+			WorktreeID: state.Intent.Prepared.WorktreeID, WorktreeInstanceID: state.Intent.Prepared.WorktreeInstanceID,
+			LeaseGeneration: state.Intent.Generation, OwnerHost: state.Intent.Probe.Host,
+			OwnerModel: state.Intent.Probe.Model, OwnerEffort: state.Intent.Probe.Effort,
+			RunID: state.Intent.RunID, TaskID: state.Intent.TaskID, DispatchID: strings.TrimSpace(receipt.DispatchID),
+			TerminalPTYID: state.Intent.TerminalPTYID,
+		}
+		record.Execution.Pending = nil
+		record.Execution.Failure = nil
+		recordData, err := leasecontract.Encode(record)
+		if err != nil {
+			return preparationapp.IntentProgress{State: state, Pending: true}, err
+		}
+		if err := repository.compareAndApply(ctx, state, []port.RecordMutation{
+			{Bucket: recordBucket, ID: record.ID, Data: recordData},
+			{Bucket: intentBucket, ID: state.Intent.OperationID, Delete: true},
+		}); err != nil {
+			return preparationapp.IntentProgress{State: state, Pending: true}, err
+		}
+		state.Snapshot = preparationcontract.Snapshot{Record: record, RecordRaw: recordData, ClaimTokenPath: state.OwnerArtifacts.ClaimTokenPath}
+		state.Pending = false
+		result := preparationcontract.Result{
+			OK: true, ID: record.ID, ResolvedMode: preparationcontract.ModeOrca,
+			Workspace: record.Execution.Workspace, Execution: record.Execution,
+			ClaimTokenPath: state.OwnerArtifacts.ClaimTokenPath, IssueBodySHA256: state.Intent.IssueBodySHA256,
+			ContextPacketPath: state.OwnerArtifacts.ContextPacketPath, ContextPacketSHA256: state.OwnerArtifacts.ContextPacketSHA256,
+			OwnerPromptPath: state.OwnerArtifacts.OwnerPromptPath, OwnerPromptSHA256: state.OwnerArtifacts.OwnerPromptSHA256,
+			IssueSnapshotSource: state.Owner.Source,
+		}
+		return preparationapp.IntentProgress{State: state, Result: result}, nil
+	default:
+		return preparationapp.IntentProgress{State: state, Pending: true}, fmt.Errorf("unsupported Orca intent stage %q", state.Intent.Stage)
+	}
+	intentData, err := (preparationcontract.IntentCodec{}).Encode(intent)
+	if err != nil {
+		return preparationapp.IntentProgress{State: state, Pending: true}, err
+	}
+	record.Execution.Pending.Kind = pendingKind(intent.Stage)
+	record.Execution.Failure = nil
+	recordData, err := leasecontract.Encode(record)
+	if err != nil {
+		return preparationapp.IntentProgress{State: state, Pending: true}, err
+	}
+	if err := repository.compareAndApply(ctx, state, []port.RecordMutation{
+		{Bucket: recordBucket, ID: record.ID, Data: recordData},
+		{Bucket: intentBucket, ID: intent.OperationID, Data: intentData},
+	}); err != nil {
+		return preparationapp.IntentProgress{State: state, Pending: true}, err
+	}
+	state.Intent, state.IntentRaw = intent, intentData
+	state.Snapshot = preparationcontract.Snapshot{Record: record, RecordRaw: recordData, ClaimTokenPath: state.OwnerArtifacts.ClaimTokenPath}
+	state.Pending = true
+	return preparationapp.IntentProgress{State: state, Pending: true}, nil
+}
+
+func (repository *SQLiteRepository) compareAndApply(ctx context.Context, state preparationapp.IntentState, mutations []port.RecordMutation) error {
+	store, ok := repository.store.(port.RecordCASStore)
+	if !ok {
+		return fmt.Errorf("preparation record store does not support raw CAS")
+	}
+	return store.CompareAndApply(ctx, []port.ExpectedRecord{
+		{Bucket: recordBucket, ID: state.Snapshot.Record.ID, Data: state.Snapshot.RecordRaw},
+		{Bucket: intentBucket, ID: state.Intent.OperationID, Data: state.IntentRaw},
+	}, mutations)
+}
+
+func validateIntentState(state preparationapp.IntentState) error {
+	if len(state.Snapshot.RecordRaw) == 0 || len(state.IntentRaw) == 0 {
+		return fmt.Errorf("Orca intent raw CAS evidence is required")
+	}
+	return (preparationcontract.IntentCodec{}).ValidateRecord(state.Snapshot.Record, state.Intent)
+}
+
+func pendingKind(stage preparationcontract.IntentStage) string {
+	switch stage {
+	case preparationcontract.IntentStageWorktree:
+		return "worktree_create"
+	case preparationcontract.IntentStageTerminal, preparationcontract.IntentStageRun, preparationcontract.IntentStageRunBind, preparationcontract.IntentStageTask:
+		return "owner_launch"
+	case preparationcontract.IntentStageDispatch:
+		return "dispatch"
+	default:
+		return ""
+	}
+}
+
+func (repository *SQLiteRepository) boundedDiagnostic(cause error) string {
+	message := "external operation failed"
+	if repository.redact != nil && cause != nil {
+		message = strings.TrimSpace(repository.redact(cause.Error()))
+		if message == "" {
+			message = "external operation failed"
+		}
+	}
+	if len(message) > 4096 {
+		message = message[:4096]
+	}
+	return message
 }
 
 func ensureRootUnclaimed(store port.RecordInventoryStore, selfID, root string) error {

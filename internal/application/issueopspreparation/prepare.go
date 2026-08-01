@@ -63,18 +63,36 @@ func (service *Service) Prepare(ctx context.Context, command preparationcontract
 		return preparationcontract.Result{ID: command.ID, RequestedMode: requested}, err
 	}
 	readiness := preparationdomain.OrcaReadiness{}
+	probeRequest := preparationcontract.ProbeRequest{}
 	if requested != preparationcontract.ModeDirect {
 		if service.orca == nil {
 			readiness.Code = "orca_adapter_unavailable"
 		} else {
-			probe, probeErr := service.orca.Probe(ctx, preparationcontract.ProbeRequest{
+			if command.OwnerHost != "codex" && command.OwnerHost != "claude" {
+				return failedResult(command.ID), fmt.Errorf("Orca owner_host must be codex or claude")
+			}
+			codec := preparationcontract.IntentCodec{}
+			issue, issueErr := codec.PrepareIssueIdentity(snapshot.Record)
+			if issueErr != nil {
+				return failedResult(command.ID), issueErr
+			}
+			marker, markerErr := codec.RenderReadinessMarker(snapshot.Record.ID, issue)
+			if markerErr != nil {
+				return failedResult(command.ID), markerErr
+			}
+			probeRequest = preparationcontract.ProbeRequest{
 				Repo: snapshot.Record.Repo, Host: strings.ToLower(strings.TrimSpace(command.OwnerHost)),
 				Model: strings.TrimSpace(command.OwnerModel), Effort: strings.TrimSpace(command.OwnerEffort),
-			})
+				Provider: issue.Provider, Issue: issue.Issue, Marker: marker, Workspace: workspace,
+			}
+			probe, probeErr := service.orca.Probe(ctx, probeRequest)
 			readiness.Ready = probeErr == nil && probe.Available && probe.Ready
 			readiness.Code = strings.TrimSpace(probe.Code)
 			if probeErr != nil && readiness.Code == "" {
 				readiness.Code = "orca_probe_failed"
+			}
+			if probeErr != nil && requested == preparationcontract.ModeOrca {
+				return failedResult(command.ID), probeErr
 			}
 		}
 	}
@@ -83,9 +101,172 @@ func (service *Service) Prepare(ctx context.Context, command preparationcontract
 		return preparationcontract.Result{ID: command.ID, RequestedMode: requested}, err
 	}
 	if decision.ResolvedMode == preparationcontract.ModeOrca {
-		return failedResult(command.ID), fmt.Errorf("Orca preparation is not implemented")
+		return service.prepareOrca(ctx, snapshot, command, workspace, probeRequest, decision)
 	}
 	return service.prepareDirect(ctx, snapshot, command, workspace, decision)
+}
+
+func (service *Service) prepareOrca(
+	ctx context.Context,
+	snapshot preparationcontract.Snapshot,
+	command preparationcontract.Command,
+	workspace preparationcontract.WorkspaceRequest,
+	probe preparationcontract.ProbeRequest,
+	decision preparationdomain.Decision,
+) (preparationcontract.Result, error) {
+	if service.orca == nil {
+		return failedResult(command.ID), fmt.Errorf("Orca provisioner is unavailable")
+	}
+	workspace.CWD = command.CWD
+	probe.Workspace = workspace
+	if command.Confirm {
+		actor, err := normalizeActor(command.Actor)
+		if err != nil {
+			return failedResult(command.ID), err
+		}
+		command.Actor = actor
+	}
+	owner, err := service.evidence.ReadOwner(ctx, snapshot, command)
+	if err != nil {
+		return failedResult(command.ID), err
+	}
+	if owner.Provider == "" {
+		owner.Provider = probe.Provider
+	}
+	if owner.Issue == 0 {
+		owner.Issue = probe.Issue
+	}
+	if owner.Provider != probe.Provider || owner.Issue != probe.Issue {
+		return failedResult(command.ID), fmt.Errorf("owner issue identity changed before Orca intent persistence")
+	}
+	preview := preparationcontract.Result{
+		OK: true, ID: command.ID, Preview: !command.Confirm,
+		RequestedMode: decision.RequestedMode, ResolvedMode: preparationcontract.ModeOrca,
+		FallbackCode: decision.FallbackCode, Workspace: workspaceResult(workspace, "orca", ""),
+	}
+	if !command.Confirm {
+		return preview, nil
+	}
+	if service.operation == nil {
+		return failedResult(command.ID), fmt.Errorf("preparation operation ID generator is unavailable")
+	}
+	operationID, err := service.operation.New()
+	if err != nil {
+		return failedResult(command.ID), err
+	}
+	if service.clock == nil {
+		return failedResult(command.ID), fmt.Errorf("preparation clock is unavailable")
+	}
+	state, err := service.repository.BeginIntent(ctx, OrcaBegin{
+		Snapshot: snapshot, Command: command, Workspace: workspace, Probe: probe,
+		Owner: owner, OperationID: operationID, StartedAt: formatTime(service.clock.Now()),
+	})
+	if err != nil {
+		return failedResult(command.ID), err
+	}
+	state.Command, state.Owner, state.Pending = command.Clone(), owner, true
+	progress := IntentProgress{State: state, Pending: state.Pending}
+	for step := 0; progress.Pending; step++ {
+		if step >= 6 {
+			return failedResult(command.ID), fmt.Errorf("Orca prepare exceeded the fixed external intent stage count")
+		}
+		progress, err = service.advanceOrca(ctx, progress.State)
+		if err != nil {
+			return failedResult(command.ID), err
+		}
+	}
+	result := progress.Result.Clone()
+	result.RequestedMode = decision.RequestedMode
+	result.ResolvedMode = preparationcontract.ModeOrca
+	result.FallbackCode = decision.FallbackCode
+	return result, nil
+}
+
+func (service *Service) advanceOrca(ctx context.Context, state IntentState) (IntentProgress, error) {
+	request := intentRequest(state.Intent)
+	inventory, err := service.orca.Inspect(ctx, request)
+	if err != nil {
+		_ = service.recordOrcaFailure(ctx, state, state.Intent.InvocationState, err)
+		return IntentProgress{State: state, Pending: true}, fmt.Errorf("Orca intent inventory is ambiguous; intent retained: %w", err)
+	}
+	if len(inventory.Candidates) > 1 {
+		cause := fmt.Errorf("Orca intent inventory found multiple candidates; intent retained")
+		_ = service.recordOrcaFailure(ctx, state, state.Intent.InvocationState, cause)
+		return IntentProgress{State: state, Pending: true}, cause
+	}
+	if len(inventory.Candidates) == 1 {
+		return service.applyOrcaReceipt(ctx, state, inventory.Candidates[0])
+	}
+	if !inventory.AuthoritativeZero {
+		cause := fmt.Errorf("Orca intent inventory returned a non-authoritative zero; intent retained")
+		_ = service.recordOrcaFailure(ctx, state, state.Intent.InvocationState, cause)
+		return IntentProgress{State: state, Pending: true}, cause
+	}
+	if state.Intent.InvocationState != preparationcontract.InvocationNotInvoked && state.Intent.Stage != preparationcontract.IntentStageRunBind {
+		cause := fmt.Errorf("authoritative zero cannot retry an Orca mutation whose absence was not proven; intent retained")
+		_ = service.recordOrcaFailure(ctx, state, state.Intent.InvocationState, cause)
+		return IntentProgress{State: state, Pending: true}, cause
+	}
+	if state.Intent.InvocationAttempts >= preparationcontract.MaxInvocationAttempts {
+		cause := fmt.Errorf("Orca intent retry is exhausted; intent retained")
+		_ = service.recordOrcaFailure(ctx, state, state.Intent.InvocationState, cause)
+		return IntentProgress{State: state, Pending: true}, cause
+	}
+	marked, err := service.repository.MarkInvoking(ctx, state)
+	if err != nil {
+		return IntentProgress{State: state, Pending: true}, err
+	}
+	receipt, err := service.orca.Invoke(ctx, request)
+	if err != nil {
+		invocation := preparationcontract.InvocationUnknown
+		var typed *preparationcontract.InvocationError
+		if errors.As(err, &typed) && typed.State != "" {
+			invocation = typed.State
+		}
+		_ = service.recordOrcaFailure(ctx, marked, invocation, err)
+		return IntentProgress{State: marked, Pending: true}, fmt.Errorf("Orca mutation outcome requires execution reconcile; mutation was not repeated: %w", err)
+	}
+	return service.applyOrcaReceipt(ctx, marked, receipt)
+}
+
+func (service *Service) applyOrcaReceipt(ctx context.Context, state IntentState, receipt preparationcontract.IntentReceipt) (IntentProgress, error) {
+	if state.Intent.Stage == preparationcontract.IntentStageWorktree {
+		artifacts, err := service.evidence.PrepareOwner(ctx, state.Snapshot, state.Command, state.Intent, receipt)
+		if err != nil {
+			_ = service.recordOrcaFailure(ctx, state, preparationcontract.InvocationUnknown, err)
+			return IntentProgress{State: state, Pending: true}, err
+		}
+		state.OwnerArtifacts = artifacts
+	}
+	progress, err := service.repository.ApplyReceipt(ctx, state, receipt)
+	if err != nil {
+		_ = service.recordOrcaFailure(ctx, state, preparationcontract.InvocationUnknown, err)
+		return IntentProgress{State: state, Pending: true}, err
+	}
+	return progress, nil
+}
+
+func (service *Service) recordOrcaFailure(ctx context.Context, state IntentState, invocation string, cause error) error {
+	if service.clock == nil {
+		return fmt.Errorf("preparation clock is unavailable")
+	}
+	state.FailureAt = formatTime(service.clock.Now())
+	return service.repository.RecordFailure(ctx, state, invocation, cause)
+}
+
+func intentRequest(intent preparationcontract.Intent) preparationcontract.IntentRequest {
+	request := preparationcontract.IntentRequest{
+		Stage: intent.Stage, Marker: intent.Marker, Workspace: intent.Workspace,
+		Probe: intent.Probe, Prepared: intent.Prepared, TerminalPTYID: intent.TerminalPTYID,
+		RunID: intent.RunID, RunBound: intent.RunBound, TaskID: intent.TaskID,
+	}
+	if intent.Launch != nil {
+		request.Launch = &preparationcontract.LaunchRequest{
+			PromptPath: intent.Launch.PromptPath, PromptSHA256: intent.Launch.PromptSHA256,
+			ContextPacketPath: intent.Launch.ContextPacketPath, ContextPacketSHA256: intent.Launch.ContextPacketSHA256,
+		}
+	}
+	return request
 }
 
 func (service *Service) prepareDirect(ctx context.Context, snapshot preparationcontract.Snapshot, command preparationcontract.Command, workspace preparationcontract.WorkspaceRequest, decision preparationdomain.Decision) (preparationcontract.Result, error) {
