@@ -2,6 +2,7 @@ package issueops
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +14,25 @@ import (
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
+
+func TestInvokeExecutionPrepareHandlerFailsClosed(t *testing.T) {
+	got, err := invokeExecutionPrepareHandler(context.Background(), t.TempDir(), ExecutionPrepareRequest{ID: "io-prepare"}, nil)
+	if !errors.Is(err, ErrPrepareHandlerUnavailable) || got.ID != "io-prepare" || got.OK {
+		t.Fatalf("result=%+v err=%v", got, err)
+	}
+}
+
+func TestInvokeExecutionPrepareHandlerCallsOnce(t *testing.T) {
+	calls := 0
+	handler := func(_ context.Context, _ string, request ExecutionPrepareRequest) (ExecutionPrepareResult, error) {
+		calls++
+		return ExecutionPrepareResult{OK: true, ID: request.ID, ResolvedMode: "direct"}, nil
+	}
+	got, err := invokeExecutionPrepareHandler(context.Background(), "/state", ExecutionPrepareRequest{ID: "io-prepare"}, handler)
+	if err != nil || calls != 1 || !got.OK || got.ID != "io-prepare" {
+		t.Fatalf("result=%+v calls=%d err=%v", got, calls, err)
+	}
+}
 
 func TestExecutionAutoFallbackCreatesAndLinksDirectWorkspace(t *testing.T) {
 	stateRoot, record := executionPrepareRecord(t)

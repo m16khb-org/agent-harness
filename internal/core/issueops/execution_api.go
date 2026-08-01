@@ -10,6 +10,7 @@ import (
 )
 
 var (
+	ErrPrepareHandlerUnavailable                    = errors.New("issueops execution prepare handler is not configured")
 	ErrClaimHandlerUnavailable                      = errors.New("issueops execution claim handler is not configured")
 	ErrReleaseHandlerUnavailable                    = errors.New("issueops execution release handler is not configured")
 	ErrReseedHandlerUnavailable                     = errors.New("issueops execution reseed handler is not configured")
@@ -20,6 +21,7 @@ var (
 	ErrRemotePullRequestReconcileHandlerUnavailable = errors.New("remote reconcile provider is unavailable")
 )
 
+type ExecutionPrepareHandler func(context.Context, string, ExecutionPrepareRequest) (ExecutionPrepareResult, error)
 type ExecutionClaimHandler func(context.Context, string, ExecutionClaimRequest, ExecutionClaimDependencies) (ExecutionResult, error)
 type ExecutionReleaseHandler func(context.Context, string, ExecutionReleaseRequest) (ExecutionResult, error)
 type ExecutionReseedHandler func(context.Context, string, ExecutionReseedRequest) (ExecutionReplaceResult, error)
@@ -33,6 +35,13 @@ type RemotePullRequestReconcileHandler func(context.Context, string, ExecutionRe
 type RemotePublicationHandlers struct {
 	Create    RemotePullRequestCreateHandler
 	Reconcile RemotePullRequestReconcileHandler
+}
+
+func invokeExecutionPrepareHandler(ctx context.Context, stateRoot string, request ExecutionPrepareRequest, handler ExecutionPrepareHandler) (ExecutionPrepareResult, error) {
+	if handler == nil {
+		return ExecutionPrepareResult{ID: request.ID}, ErrPrepareHandlerUnavailable
+	}
+	return handler(ctx, stateRoot, request)
 }
 
 const (
