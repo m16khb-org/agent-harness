@@ -49,7 +49,7 @@ func TestReconcilePreviewDeclaresItDidNotInspectOrca(t *testing.T) {
 	result, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 		ID: record.ID, Preview: true, CWD: record.Repo,
 		Actor: executionActor("codex", "disclosure-session"),
-	}, ExecutionReconcileDependencies{Orca: fake, ReadIssue: executionIssueSnapshotReader})
+	}, ExecutionReconcileDependencies{Handler: legacyReconcileTestHandler, Orca: fake, ReadIssue: executionIssueSnapshotReader})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestReconcileConfirmDeclaresItInspectedOrca(t *testing.T) {
 	result, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 		ID: record.ID, Confirm: true, CWD: record.Repo,
 		Actor: executionActor("codex", "disclosure-session"),
-	}, ExecutionReconcileDependencies{Orca: fake, ReadIssue: executionIssueSnapshotReader})
+	}, ExecutionReconcileDependencies{Handler: legacyReconcileTestHandler, Orca: fake, ReadIssue: executionIssueSnapshotReader})
 	if err != nil {
 		t.Fatal(err)
 	}

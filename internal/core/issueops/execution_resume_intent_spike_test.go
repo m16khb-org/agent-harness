@@ -106,7 +106,7 @@ func TestResumeIntentSpikeBridgePendingIsConsumedByLegacyReconcile(t *testing.T)
 		}
 		return port.ExecutionOrcaIntentInventory{Candidates: []port.ExecutionOrcaIntentReceipt{{TaskID: request.TaskID, DispatchID: "dispatch-resume"}}}, nil
 	}}
-	reconciled, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{ID: record.ID, Confirm: true, Actor: executionActor("codex", "resume-reconciler"), CWD: record.Execution.Workspace.Root}, ExecutionReconcileDependencies{Orca: fake})
+	reconciled, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{ID: record.ID, Confirm: true, Actor: executionActor("codex", "resume-reconciler"), CWD: record.Execution.Workspace.Root}, ExecutionReconcileDependencies{Handler: legacyReconcileTestHandler, Orca: fake})
 	if err != nil {
 		t.Fatal(err)
 	}

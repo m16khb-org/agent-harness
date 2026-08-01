@@ -23,10 +23,11 @@ type MCPToolOutcome struct {
 // MCPDependencies는 server 생성 시 고정된다. 요청 간 package-global dependency
 // cache를 두지 않아 서로 다른 MCP server의 release handler가 섞이지 않는다.
 type MCPDependencies struct {
-	Claim   issueops.ExecutionClaimHandler
-	Release issueops.ExecutionReleaseHandler
-	Reseed  issueops.ExecutionReseedHandler
-	Resume  issueops.ExecutionResumeHandler
+	Claim     issueops.ExecutionClaimHandler
+	Release   issueops.ExecutionReleaseHandler
+	Reseed    issueops.ExecutionReseedHandler
+	Resume    issueops.ExecutionResumeHandler
+	Reconcile issueops.ExecutionReconcileHandler
 }
 
 func mcpToolPayload(payload any) MCPToolOutcome {
@@ -69,7 +70,7 @@ func HandleToolCallWithDependencies(params json.RawMessage, deps MCPDependencies
 		handleProjectMCPToolCall,
 		handlePolicyStateMCPToolCall,
 		func(call MCPToolCall) MCPToolOutcome {
-			return handleIssueOpsMCPToolCallWithHandlers(call, deps.Claim, deps.Release, deps.Reseed, deps.Resume)
+			return handleIssueOpsMCPToolCallWithHandlers(call, deps.Claim, deps.Release, deps.Reseed, deps.Resume, deps.Reconcile)
 		},
 		handleLoopMCPToolCall,
 		handleAssistantWorkerMCPToolCall,

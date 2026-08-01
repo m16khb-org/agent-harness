@@ -15,11 +15,12 @@ import (
 )
 
 type ExecutionReconcileRequest struct {
-	ID      string            `json:"id"`
-	Preview bool              `json:"preview,omitempty"`
-	Confirm bool              `json:"confirm,omitempty"`
-	Actor   model.NativeActor `json:"actor"`
-	CWD     string            `json:"cwd"`
+	ID       string            `json:"id"`
+	Preview  bool              `json:"preview,omitempty"`
+	Confirm  bool              `json:"confirm,omitempty"`
+	Actor    model.NativeActor `json:"actor"`
+	CWD      string            `json:"cwd"`
+	Snapshot *IssueOpsRecord   `json:"-"`
 }
 
 type ExecutionReconcileDependencies struct {
@@ -27,6 +28,7 @@ type ExecutionReconcileDependencies struct {
 	ReadIssue ExecutionIssueSnapshotReadFunc
 	RemotePR  RemotePullRequestDependencies
 	Now       func() time.Time
+	Handler   ExecutionReconcileHandler
 }
 
 type ExecutionReconcileResult struct {
@@ -101,46 +103,16 @@ func ReconcileExecutionWithDependencies(ctx context.Context, stateRoot string, r
 	case externalIntentRemotePR:
 		return reconcileRemotePullRequest(ctx, stateRoot, record, deps.RemotePR)
 	case "worktree_create", "owner_launch", "dispatch":
-		return reconcileOrcaExecutionIntent(ctx, stateRoot, record, deps)
+		if deps.Handler == nil {
+			return failedExecutionReconcileResult(record, "orca_reconcile_ambiguous"), ErrReconcileHandlerUnavailable
+		}
+		req.Snapshot = &record
+		return deps.Handler(ctx, stateRoot, req, deps)
 	default:
 		result.OK = false
 		result.Code = "unsupported_external_intent"
 		return result, fmt.Errorf("unsupported pending external intent kind %q", record.Execution.Pending.Kind)
 	}
-}
-
-func reconcileOrcaExecutionIntent(ctx context.Context, stateRoot string, record IssueOpsRecord, deps ExecutionReconcileDependencies) (result ExecutionReconcileResult, err error) {
-	inspected := false
-	defer func() { result.ExternalStateInspected = inspected }()
-
-	record, payload, migrated, err := reconcileCanonicalOrcaIntent(stateRoot, record)
-	if err != nil {
-		return failedExecutionReconcileResult(record, "legacy_intent_upgrade_unsafe"), err
-	}
-	// 여기부터는 Orca 인벤토리를 실제로 조회한다. 실패하더라도 조회를 시도한
-	// 결과이므로 관측 증거로 인용할 수 있다 — payload 단계의 실패와 다르다.
-	updated, next, err := executeOrcaIntentStage(ctx, stateRoot, record, payload, deps.Orca, deps.ReadIssue, deps.Now)
-	inspected = true
-	if err != nil {
-		if latest, readErr := ReadIssueOps(stateRoot, record.ID); readErr == nil {
-			updated = latest
-		}
-		result = failedExecutionReconcileResult(updated, "orca_reconcile_ambiguous")
-		if migrated {
-			result.IntentMigrationCode = "legacy_intent_upgraded"
-		}
-		return result, err
-	}
-	code := "orca_reconcile_completed"
-	if updated.Execution != nil && updated.Execution.Pending != nil {
-		code = "orca_reconcile_advanced_" + string(next.Stage)
-	}
-	result = executionReconcileResult(updated, false, code)
-	result.Reconciled = true
-	if migrated {
-		result.IntentMigrationCode = "legacy_intent_upgraded"
-	}
-	return result, nil
 }
 
 func pendingKindForOrcaStageFromKind(kind string) bool {

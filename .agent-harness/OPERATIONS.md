@@ -248,7 +248,9 @@ merge-in-progress for the active lease holder to resolve, then `--finalize`
 commits and pushes, or `--abort` withdraws. Mutating modes require the active
 holder (reseed and claim first on a released cycle); `execution reconcile
 --preview` output is a constant, not an inventory observation — do not cite it
-as residue evidence.
+as residue evidence. Confirm reports `external_state_inspected=true` only after
+the Orca inventory transport was actually attempted; local marker/request
+validation failures remain false.
 
 `issueops execution switch-mode` changes a prepared cycle between `direct` and
 `orca` (#167). `prepare` seals the mode at first run and afterwards **rejects a

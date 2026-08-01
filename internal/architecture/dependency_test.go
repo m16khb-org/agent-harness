@@ -153,6 +153,32 @@ func TestProductionResumeRoutingHasNoLegacyFallback(t *testing.T) {
 	}
 }
 
+func TestDependencyProductionReconcileRoutingHasNoLegacyFallback(t *testing.T) {
+	violations, err := productionReconcileRoutingViolations(findRepoRoot(t))
+	if err != nil {
+		t.Fatalf("inspect production reconcile routing: %v", err)
+	}
+	if len(violations) != 0 {
+		t.Fatalf("production reconcile routing violations: %s", strings.Join(violations, "; "))
+	}
+}
+
+func TestDependencyReconcileRoutingViolationsRejectLegacyFallback(t *testing.T) {
+	file, err := parser.ParseFile(token.NewFileSet(), "router.go", `package issueops
+func route(deps dependencies) {
+	reconcileOrcaExecutionIntent()
+}
+`, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	violations := reconcileRoutingViolations(file, true)
+	joined := strings.Join(violations, "; ")
+	if !strings.Contains(joined, "does not invoke injected Handler") || !strings.Contains(joined, "calls legacy reconcileOrcaExecutionIntent") {
+		t.Fatalf("legacy fallback violations=%v", violations)
+	}
+}
+
 func TestResumeRoutingViolationsRejectLegacyFallback(t *testing.T) {
 	file, err := parser.ParseFile(token.NewFileSet(), "router.go", `package issueops
 func route(req request, deps dependencies) {
@@ -296,6 +322,72 @@ func productionResumeRoutingViolations(repoRoot string) ([]string, error) {
 	return violations, nil
 }
 
+func productionReconcileRoutingViolations(repoRoot string) ([]string, error) {
+	coreDir := filepath.Join(repoRoot, "internal", "core", "issueops")
+	entries, err := os.ReadDir(coreDir)
+	if err != nil {
+		return nil, err
+	}
+	var violations []string
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		path := filepath.Join(coreDir, name)
+		contents, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), path, contents, 0)
+		if err != nil {
+			return nil, err
+		}
+		if sourceHasIdentifier(file, "reconcileOrcaExecutionIntent") {
+			violations = append(violations, name+" retains legacy Orca reconcile orchestration")
+		}
+		if name == "execution_reconcile.go" {
+			violations = append(violations, reconcileRoutingViolations(file, true)...)
+		}
+	}
+	wiringViolations, err := reconcileWiringForbiddenCalls(repoRoot)
+	if err != nil {
+		return nil, err
+	}
+	violations = append(violations, wiringViolations...)
+	sort.Strings(violations)
+	return violations, nil
+}
+
+func reconcileWiringForbiddenCalls(repoRoot string) ([]string, error) {
+	var violations []string
+	for _, relative := range []string{
+		filepath.Join("internal", "adapter", "outbound", "issueopslease"),
+		filepath.Join("cmd", "harness", "harnessapp"),
+	} {
+		dir := filepath.Join(repoRoot, relative)
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			return nil, err
+		}
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
+				continue
+			}
+			contents, err := os.ReadFile(filepath.Join(dir, entry.Name()))
+			if err != nil {
+				return nil, err
+			}
+			for _, forbidden := range []string{"reconcileOrcaExecutionIntent", "executeOrcaIntentStage"} {
+				if strings.Contains(string(contents), forbidden) {
+					violations = append(violations, entry.Name()+" calls "+forbidden)
+				}
+			}
+		}
+	}
+	return violations, nil
+}
+
 func reseedRoutingViolations(file *ast.File, requireInjectedHandler bool) []string {
 	var violations []string
 	routes := 0
@@ -343,6 +435,18 @@ func resumeRoutingViolations(file *ast.File, requireInjectedHandler bool) []stri
 	})
 	if requireInjectedHandler && routes != 1 {
 		violations = append(violations, fmt.Sprintf("expected one production resume route, found %d", routes))
+	}
+	return violations
+}
+
+func reconcileRoutingViolations(file *ast.File, requireInjectedHandler bool) []string {
+	counts := sourceCallCounts(file)
+	var violations []string
+	if requireInjectedHandler && counts["Handler"] != 1 {
+		violations = append(violations, "reconcile route does not invoke injected Handler exactly once")
+	}
+	if counts["reconcileOrcaExecutionIntent"] != 0 {
+		violations = append(violations, "reconcile route calls legacy reconcileOrcaExecutionIntent")
 	}
 	return violations
 }

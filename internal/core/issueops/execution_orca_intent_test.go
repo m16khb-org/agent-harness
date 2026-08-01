@@ -120,7 +120,7 @@ func TestReconcileLegacyOrcaMarkerRejectsUnsafeEvidenceBeforeInspection(t *testi
 
 			result, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 				ID: record.ID, Confirm: true, Actor: executionActor("codex", "legacy-reconciler"), CWD: record.Repo,
-			}, ExecutionReconcileDependencies{Orca: fake, ReadIssue: executionIssueSnapshotReader})
+			}, ExecutionReconcileDependencies{Handler: legacyReconcileTestHandler, Orca: fake, ReadIssue: executionIssueSnapshotReader})
 			if err == nil || result.Code != "legacy_intent_upgrade_unsafe" {
 				t.Fatalf("unsafe migration result = %#v err=%v", result, err)
 			}
@@ -163,7 +163,7 @@ func TestReconcileLegacyOrcaMarkerReportsMigrationBeforeInventory(t *testing.T) 
 
 	result, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 		ID: record.ID, Confirm: true, Actor: executionActor("codex", "legacy-reconciler"), CWD: record.Repo,
-	}, ExecutionReconcileDependencies{Orca: fake})
+	}, ExecutionReconcileDependencies{Handler: legacyReconcileTestHandler, Orca: fake})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -344,7 +344,7 @@ func TestExecutionOrcaReconcileAcceptsLegacyPrepareIntentWithoutPurpose(t *testi
 	}
 	reconciled, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 		ID: record.ID, Confirm: true, Actor: executionActor("codex", "reconciler"), CWD: record.Repo,
-	}, ExecutionReconcileDependencies{Orca: fake, ReadIssue: executionIssueSnapshotReader})
+	}, ExecutionReconcileDependencies{Handler: legacyReconcileTestHandler, Orca: fake, ReadIssue: executionIssueSnapshotReader})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -420,7 +420,7 @@ func TestExecutionOrcaCrashAfterMutationReconcilesExactlyOneCandidateWithoutDupl
 			}
 			result, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 				ID: record.ID, Confirm: true, Actor: executionActor("codex", "fresh-reconciler"), CWD: record.Repo,
-			}, ExecutionReconcileDependencies{Orca: fake, ReadIssue: executionIssueSnapshotReader})
+			}, ExecutionReconcileDependencies{Handler: legacyReconcileTestHandler, Orca: fake, ReadIssue: executionIssueSnapshotReader})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -473,7 +473,7 @@ func TestExecutionOrcaReconcileZeroMultipleAndTransportAmbiguityNeverMutate(t *t
 			fake.inspect = test.inspect
 			if _, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 				ID: record.ID, Confirm: true, Actor: executionActor("claude", "fresh"), CWD: record.Repo,
-			}, ExecutionReconcileDependencies{Orca: fake, ReadIssue: executionIssueSnapshotReader}); err == nil {
+			}, ExecutionReconcileDependencies{Handler: legacyReconcileTestHandler, Orca: fake, ReadIssue: executionIssueSnapshotReader}); err == nil {
 				t.Fatal("ambiguous inventory must retain the intent")
 			}
 			if invokeCalls != 1 {
@@ -509,7 +509,7 @@ func TestExecutionOrcaReconcileRetriesOnlyProvenNotInvokedAndOnlyOnce(t *testing
 	reconcile := func() error {
 		_, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 			ID: record.ID, Confirm: true, Actor: executionActor("codex", "fresh"), CWD: record.Repo,
-		}, ExecutionReconcileDependencies{Orca: fake, ReadIssue: executionIssueSnapshotReader})
+		}, ExecutionReconcileDependencies{Handler: legacyReconcileTestHandler, Orca: fake, ReadIssue: executionIssueSnapshotReader})
 		return err
 	}
 	if err := reconcile(); err == nil {
@@ -555,7 +555,7 @@ func TestExecutionOrcaRunBindCanConvergeAfterUnknownOutcome(t *testing.T) {
 	}
 	result, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 		ID: record.ID, Confirm: true, Actor: executionActor("codex", "reconciler"), CWD: record.Repo,
-	}, ExecutionReconcileDependencies{Orca: fake, ReadIssue: executionIssueSnapshotReader})
+	}, ExecutionReconcileDependencies{Handler: legacyReconcileTestHandler, Orca: fake, ReadIssue: executionIssueSnapshotReader})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -592,7 +592,7 @@ func TestExecutionOrcaReceiptCASRejectsConcurrentIntentChange(t *testing.T) {
 	}
 	if _, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 		ID: record.ID, Confirm: true, Actor: executionActor("claude", "fresh"), CWD: record.Repo,
-	}, ExecutionReconcileDependencies{Orca: fake, ReadIssue: executionIssueSnapshotReader}); err == nil {
+	}, ExecutionReconcileDependencies{Handler: legacyReconcileTestHandler, Orca: fake, ReadIssue: executionIssueSnapshotReader}); err == nil {
 		t.Fatal("receipt CAS must reject a concurrent intent identity change")
 	}
 	current, err := ReadIssueOps(stateRoot, record.ID)
