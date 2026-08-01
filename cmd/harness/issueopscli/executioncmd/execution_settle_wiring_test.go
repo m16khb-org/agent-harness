@@ -3,35 +3,37 @@ package executioncmd
 import (
 	"context"
 	"testing"
+
+	"agent-harness/internal/core/issueops"
 )
 
 // 판정은 core가 하지만, CLI가 종결 표면을 실제로 넘기는지는 이 층에서만
 // 확인된다. 주입이 빠지면 orca 모드 사이클의 task가 영원히 dispatched로
 // 남는다(#130).
-func TestActionDepsCarriesTheOrcaTaskSettler(t *testing.T) {
-	var settled []string
+func TestActionDepsCarriesTheCompletionHandler(t *testing.T) {
+	called := false
 	deps := Deps{
-		SettleOrcaTask: func(_ context.Context, runID, taskID string) error {
-			settled = append(settled, runID+"/"+taskID)
-			return nil
+		Complete: func(_ context.Context, _ string, request issueops.ExecutionCompleteRequest) (issueops.ExecutionResult, error) {
+			called = true
+			return issueops.ExecutionResult{OK: true, ID: request.ID}, nil
 		},
 	}
 
 	action := deps.actionDeps()
-	if action.SettleOrcaTask == nil {
-		t.Fatal("execution action dependencies must carry the orca task settler")
+	if action.Complete == nil {
+		t.Fatal("execution action dependencies must carry the completion handler")
 	}
-	if err := action.SettleOrcaTask(context.Background(), "run-130", "task-130"); err != nil {
+	if _, err := action.Complete(context.Background(), t.TempDir(), issueops.ExecutionCompleteRequest{ID: "io-198"}); err != nil {
 		t.Fatal(err)
 	}
-	if len(settled) != 1 || settled[0] != "run-130/task-130" {
-		t.Fatalf("the settler must reach the injected surface unchanged: %+v", settled)
+	if !called {
+		t.Fatal("the completion handler must reach the injected surface unchanged")
 	}
 }
 
 // 주입되지 않은 호출자는 종전대로 동작한다.
-func TestActionDepsWithoutSettlerLeavesItNil(t *testing.T) {
-	if deps := (Deps{}).actionDeps(); deps.SettleOrcaTask != nil {
-		t.Fatal("an uninjected settler must stay nil so completion skips settlement")
+func TestActionDepsWithoutCompletionHandlerLeavesItNil(t *testing.T) {
+	if deps := (Deps{}).actionDeps(); deps.Complete != nil {
+		t.Fatal("an uninjected completion handler must stay nil so routing fails closed")
 	}
 }

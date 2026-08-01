@@ -35,6 +35,21 @@ func TestIssueOpsExecutionDepsPropagatePublicationReconcileWithoutInvocation(t *
 	}
 }
 
+func TestIssueOpsExecutionDepsPropagateCompletionWithoutInvocation(t *testing.T) {
+	invoked := 0
+	handler := issueopscore.ExecutionCompleteHandler(func(context.Context, string, issueopscore.ExecutionCompleteRequest) (issueopscore.ExecutionResult, error) {
+		invoked++
+		return issueopscore.ExecutionResult{}, nil
+	})
+	deps := issueOpsExecutionDeps(Dependencies{Complete: handler})
+	if deps.Complete == nil || reflect.ValueOf(deps.Complete).Pointer() != reflect.ValueOf(handler).Pointer() {
+		t.Fatal("completion handler was not propagated unchanged")
+	}
+	if invoked != 0 {
+		t.Fatalf("completion handler invoked during propagation: %d", invoked)
+	}
+}
+
 func TestIssueOpsExecutionCLIPrepareAndStatusShareSchemaProjection(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo, id, actorFlags := executionCLIRecord(t)

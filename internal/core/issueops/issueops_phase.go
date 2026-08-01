@@ -138,8 +138,12 @@ func validateIssueOpsPhaseTransition(stateRoot string, record IssueOpsRecord, ph
 }
 
 func applyIssueOpsPhaseTransition(record IssueOpsRecord, phase IssueOpsPhase) IssueOpsRecord {
-	prevPhase := record.Phase
 	now := time.Now().UTC().Format(time.RFC3339Nano)
+	return applyIssueOpsPhaseTransitionAt(record, phase, now)
+}
+
+func applyIssueOpsPhaseTransitionAt(record IssueOpsRecord, phase IssueOpsPhase, now string) IssueOpsRecord {
+	prevPhase := record.Phase
 	record.Phase = phase
 	if phase == IssueOpsPhaseAISlopClean && strings.TrimSpace(record.AISlopCleanAt) == "" {
 		record.AISlopCleanAt = now

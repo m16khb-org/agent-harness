@@ -15,6 +15,7 @@ var (
 	ErrReseedHandlerUnavailable                     = errors.New("issueops execution reseed handler is not configured")
 	ErrResumeHandlerUnavailable                     = errors.New("issueops execution resume handler is not configured")
 	ErrReconcileHandlerUnavailable                  = errors.New("issueops execution reconcile handler is not configured")
+	ErrCompleteHandlerUnavailable                   = errors.New("issueops execution complete handler is not configured")
 	ErrRemotePullRequestCreateHandlerUnavailable    = errors.New("remote pull request provider is unavailable")
 	ErrRemotePullRequestReconcileHandlerUnavailable = errors.New("remote reconcile provider is unavailable")
 )
@@ -24,6 +25,7 @@ type ExecutionReleaseHandler func(context.Context, string, ExecutionReleaseReque
 type ExecutionReseedHandler func(context.Context, string, ExecutionReseedRequest) (ExecutionReplaceResult, error)
 type ExecutionResumeHandler func(context.Context, string, ExecutionResumeRequest) (ExecutionResumeResult, error)
 type ExecutionReconcileHandler func(context.Context, string, ExecutionReconcileRequest, ExecutionReconcileDependencies) (ExecutionReconcileResult, error)
+type ExecutionCompleteHandler func(context.Context, string, ExecutionCompleteRequest) (ExecutionResult, error)
 
 type RemotePullRequestCreateHandler func(context.Context, string, RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error)
 type RemotePullRequestReconcileHandler func(context.Context, string, ExecutionReconcileRequest) (ExecutionReconcileResult, error)
@@ -81,11 +83,10 @@ type ExecutionActionDependencies struct {
 	Reseed    ExecutionReseedHandler
 	Resume    ExecutionResumeHandler
 	Reconcile ExecutionReconcileHandler
+	Complete  ExecutionCompleteHandler
 	// RemoteReconcile handles remote_pr_create recovery independently of the
 	// Orca-specific Reconcile handler.
 	RemoteReconcile RemotePullRequestReconcileHandler
-	// SettleOrcaTask는 완료 시점의 orca task 종결 표면이다(#130).
-	SettleOrcaTask func(ctx context.Context, runID, taskID string) error
 }
 
 func ExecuteExecution(ctx context.Context, stateRoot string, req ExecutionActionRequest, deps ExecutionActionDependencies) (any, error) {
@@ -174,11 +175,17 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 			Handler: deps.Reconcile, RemoteReconcile: deps.RemoteReconcile,
 		})
 	case ExecutionActionComplete:
-		return CompleteExecution(stateRoot, ExecutionCompleteRequest{
+		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
+			return ExecutionResult{OK: false, ID: req.ID}, err
+		}
+		if deps.Complete == nil {
+			return ExecutionResult{OK: false, ID: req.ID}, ErrCompleteHandlerUnavailable
+		}
+		return deps.Complete(ctx, stateRoot, ExecutionCompleteRequest{
 			ID: req.ID, Generation: req.Generation, Actor: req.Actor, CWD: req.CWD,
 			FinalHead: req.FinalHead, TuringReportPath: req.TuringReportPath,
 			Verification: req.Verification, RemoteArtifactURL: req.RemoteArtifactURL, Confirm: req.Confirm,
-		}, ExecutionCompleteDeps{SettleOrcaTask: deps.SettleOrcaTask})
+		})
 	default:
 		return nil, fmt.Errorf("unsupported issueops execution action %q", req.Action)
 	}

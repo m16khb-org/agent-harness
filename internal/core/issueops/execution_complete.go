@@ -51,6 +51,13 @@ type ExecutionCompleteDeps struct {
 }
 
 func CompleteExecution(stateRoot string, req ExecutionCompleteRequest, deps ExecutionCompleteDeps) (ExecutionResult, error) {
+	return completeExecutionWithClock(stateRoot, req, deps, time.Now)
+}
+
+// completeExecutionWithClock는 legacy/new persisted-byte differential이 두
+// completion timestamp를 결정적으로 고정할 수 있게 한다. production은 위
+// facade에서 time.Now를 주입하므로 기존 wall-clock 의미를 유지한다.
+func completeExecutionWithClock(stateRoot string, req ExecutionCompleteRequest, deps ExecutionCompleteDeps, now func() time.Time) (ExecutionResult, error) {
 	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
 		return ExecutionResult{OK: false, ID: req.ID}, err
 	}
@@ -109,19 +116,19 @@ func CompleteExecution(stateRoot string, req ExecutionCompleteRequest, deps Exec
 			return err
 		}
 		previous := *lease.Holder
-		now := time.Now().UTC().Format(time.RFC3339Nano)
+		completedAt := now().UTC().Format(time.RFC3339Nano)
 		record.Execution.Completion = &model.ExecutionCompletion{
 			FinalHead: strings.ToLower(strings.TrimSpace(req.FinalHead)), TuringReportPath: reportPath,
-			Verification: verification, RemoteArtifactURL: strings.TrimSpace(req.RemoteArtifactURL), CompletedAt: now,
+			Verification: verification, RemoteArtifactURL: strings.TrimSpace(req.RemoteArtifactURL), CompletedAt: completedAt,
 		}
 		lease.Status = model.LeaseStatusReleased
 		lease.Holder = nil
 		lease.ClaimTokenSHA256 = ""
-		lease.ReleasedAt = now
+		lease.ReleasedAt = completedAt
 		if err := validateIssueOpsPhaseTransition(stateRoot, record, IssueOpsPhaseDone); err != nil {
 			return err
 		}
-		record = applyIssueOpsPhaseTransition(record, IssueOpsPhaseDone)
+		record = applyIssueOpsPhaseTransitionAt(record, IssueOpsPhaseDone, now().UTC().Format(time.RFC3339Nano))
 		persisted, err = persistExecutionTransition(stateRoot, record, &previous)
 		return err
 	})
@@ -205,6 +212,13 @@ func validateExecutionCompletionArtifact(record IssueOpsRecord, requestedURL str
 		return fmt.Errorf("completion remote_artifact_url must match the durable verified artifact")
 	}
 	return nil
+}
+
+// ValidateExecutionCompletionArtifact is the shared compatibility validator
+// used by the migrated completion composition root. It exposes validation
+// only; legacy orchestration remains a test oracle.
+func ValidateExecutionCompletionArtifact(record IssueOpsRecord, requestedURL string) error {
+	return validateExecutionCompletionArtifact(record, requestedURL)
 }
 
 func normalizeExecutionVerification(values []string) ([]string, error) {

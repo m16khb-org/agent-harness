@@ -39,10 +39,8 @@ func issueOpsExecutionActionDependencies(deps MCPDependencies) issueops.Executio
 	orcaExecution := orca.NewExecution()
 	return issueops.ExecutionActionDependencies{
 		Direct: gitworktree.New(), Orca: orcaExecution, OrcaOwner: orcaExecution, ReadIssue: provider.ReadExecutionIssueSnapshot,
-		Claim: deps.Claim, Release: deps.Release, Reseed: deps.Reseed, Resume: deps.Resume, Reconcile: deps.Reconcile,
+		Claim: deps.Claim, Release: deps.Release, Reseed: deps.Reseed, Resume: deps.Resume, Reconcile: deps.Reconcile, Complete: deps.Complete,
 		RemoteReconcile: deps.Publication.Reconcile,
-		// 완료가 orca task를 종결시킨다. CLI 경로와 같은 계약이다(#130).
-		SettleOrcaTask: orca.New().SettleTask,
 	}
 }
 

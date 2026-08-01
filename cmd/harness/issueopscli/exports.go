@@ -16,6 +16,7 @@ type Dependencies struct {
 	Reseed      issueops.ExecutionReseedHandler
 	Resume      issueops.ExecutionResumeHandler
 	Reconcile   issueops.ExecutionReconcileHandler
+	Complete    issueops.ExecutionCompleteHandler
 	Publication issueops.RemotePublicationHandlers
 }
 

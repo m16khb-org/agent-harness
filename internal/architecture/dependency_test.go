@@ -49,6 +49,10 @@ func TestEvaluateEdgesRejectsForbiddenDependencies(t *testing.T) {
 		{"publication domain port", dependencyEdge{"internal/domain/issueopspublication", "internal/port"}, "publication_domain_must_only_import_contract"},
 		{"publication application port", dependencyEdge{"internal/application/issueopspublication", "internal/port"}, "publication_application_must_only_import_domain_or_contract"},
 		{"publication outbound core", dependencyEdge{"internal/adapter/outbound/issueopspublication", "internal/core/issueops"}, "publication_outbound_adapter_must_not_import_core"},
+		{"completion contract core", dependencyEdge{"internal/contract/issueopscompletion", "internal/core/issueops"}, "completion_contract_must_only_import_stable_contract"},
+		{"completion domain port", dependencyEdge{"internal/domain/issueopscompletion", "internal/port"}, "completion_domain_must_only_import_contract"},
+		{"completion application port", dependencyEdge{"internal/application/issueopscompletion", "internal/port"}, "completion_application_must_only_import_domain_or_contract"},
+		{"completion outbound core", dependencyEdge{"internal/adapter/outbound/issueopscompletion", "internal/core/issueops"}, "completion_outbound_adapter_must_not_import_core"},
 		{"application syscall", dependencyEdge{"internal/application/run", "syscall"}, "application_must_not_import_implementation"},
 		{"inbound adapter outbound adapter", dependencyEdge{"internal/adapter/inbound/http", "internal/adapter/outbound/github"}, "inbound_adapter_must_not_import_outbound_adapter"},
 	}
@@ -73,6 +77,17 @@ func TestEvaluateEdgesAllowsPublicationDomainContract(t *testing.T) {
 	}
 }
 
+func TestEvaluateEdgesAllowsCompletionVerticalContracts(t *testing.T) {
+	for _, edge := range []dependencyEdge{
+		{"internal/domain/issueopscompletion", "internal/contract/issueopscompletion"},
+		{"internal/contract/issueopscompletion", "internal/contract/issueopslease"},
+	} {
+		if violations := evaluateEdges([]dependencyEdge{edge}); len(violations) != 0 {
+			t.Fatalf("completion vertical contract edge must be allowed, got %v", violations)
+		}
+	}
+}
+
 func TestLegacyEdgesClassifyConcreteAdapterOutsideCompositionRoot(t *testing.T) {
 	edge := dependencyEdge{"cmd/harness/issueopscli", "internal/adapter/provider"}
 	if got := legacyEdges([]dependencyEdge{edge}); !reflect.DeepEqual(got, []dependencyEdge{edge}) {
@@ -89,7 +104,7 @@ func TestLegacyEdgesClassifyConcreteAdapterOutsideCompositionRoot(t *testing.T) 
 }
 
 func TestLegacyEdgesExcludeMigratedInboundAdapters(t *testing.T) {
-	for _, importer := range []string{"internal/adapter/inbound/issueopslease", "internal/adapter/inbound/issueopspublication"} {
+	for _, importer := range []string{"internal/adapter/inbound/issueopslease", "internal/adapter/inbound/issueopspublication", "internal/adapter/inbound/issueopscompletion"} {
 		edge := dependencyEdge{importer, "internal/core/issueops"}
 		if got := legacyEdges([]dependencyEdge{edge}); len(got) != 0 {
 			t.Fatalf("migrated inbound edge %s must stay outside the legacy baseline, got %v", formatEdge(edge), got)
@@ -702,7 +717,7 @@ func evaluateEdges(edges []dependencyEdge) []violation {
 		if isPort(edge.importer) && strings.HasPrefix(edge.imported, "internal/") {
 			violations = append(violations, violation{"port_must_not_import_internal", edge})
 		}
-		if isDomain(edge.importer) && isDomainImplementation(edge.imported) && !isPublicationDomainContract(edge) {
+		if isDomain(edge.importer) && isDomainImplementation(edge.imported) && !isAllowedDomainContract(edge) {
 			violations = append(violations, violation{"domain_must_not_import_implementation", edge})
 		}
 		if isApplication(edge.importer) && isApplicationImplementation(edge.imported) {
@@ -720,6 +735,18 @@ func evaluateEdges(edges []dependencyEdge) []violation {
 		if isPublicationOutboundAdapter(edge.importer) && isCore(edge.imported) {
 			violations = append(violations, violation{"publication_outbound_adapter_must_not_import_core", edge})
 		}
+		if isCompletionContract(edge.importer) && strings.HasPrefix(edge.imported, "internal/") && edge.imported != "internal/contract/issueopslease" {
+			violations = append(violations, violation{"completion_contract_must_only_import_stable_contract", edge})
+		}
+		if isCompletionDomain(edge.importer) && strings.HasPrefix(edge.imported, "internal/") && !isCompletionContract(edge.imported) {
+			violations = append(violations, violation{"completion_domain_must_only_import_contract", edge})
+		}
+		if isCompletionApplication(edge.importer) && strings.HasPrefix(edge.imported, "internal/") && !isCompletionDomain(edge.imported) && !isCompletionContract(edge.imported) {
+			violations = append(violations, violation{"completion_application_must_only_import_domain_or_contract", edge})
+		}
+		if isCompletionOutboundAdapter(edge.importer) && isCore(edge.imported) {
+			violations = append(violations, violation{"completion_outbound_adapter_must_not_import_core", edge})
+		}
 		if isLeaseVerticalLayer(edge.importer, "contract") && isProductionIssueOps(edge.imported) {
 			violations = append(violations, violation{"leasevertical_contract_must_not_import_production_issueops", edge})
 		}
@@ -732,6 +759,11 @@ func evaluateEdges(edges []dependencyEdge) []violation {
 
 func isPublicationDomainContract(edge dependencyEdge) bool {
 	return edge.importer == "internal/domain/issueopspublication" && edge.imported == "internal/contract/issueopspublication"
+}
+
+func isAllowedDomainContract(edge dependencyEdge) bool {
+	return isPublicationDomainContract(edge) ||
+		edge.importer == "internal/domain/issueopscompletion" && edge.imported == "internal/contract/issueopscompletion"
 }
 
 func isPublicationContract(path string) bool {
@@ -748,6 +780,22 @@ func isPublicationApplication(path string) bool {
 
 func isPublicationOutboundAdapter(path string) bool {
 	return path == "internal/adapter/outbound/issueopspublication" || strings.HasPrefix(path, "internal/adapter/outbound/issueopspublication/")
+}
+
+func isCompletionContract(path string) bool {
+	return path == "internal/contract/issueopscompletion" || strings.HasPrefix(path, "internal/contract/issueopscompletion/")
+}
+
+func isCompletionDomain(path string) bool {
+	return path == "internal/domain/issueopscompletion" || strings.HasPrefix(path, "internal/domain/issueopscompletion/")
+}
+
+func isCompletionApplication(path string) bool {
+	return path == "internal/application/issueopscompletion" || strings.HasPrefix(path, "internal/application/issueopscompletion/")
+}
+
+func isCompletionOutboundAdapter(path string) bool {
+	return path == "internal/adapter/outbound/issueopscompletion" || strings.HasPrefix(path, "internal/adapter/outbound/issueopscompletion/")
 }
 
 func compareBaseline(observed, baseline []dependencyEdge) error {
@@ -968,7 +1016,7 @@ func isLeaseVerticalLayer(path, layer string) bool {
 }
 
 func isMigratedInboundAdapter(path string) bool {
-	return path == "internal/adapter/inbound/issueopslease" || path == "internal/adapter/inbound/issueopspublication"
+	return path == "internal/adapter/inbound/issueopslease" || path == "internal/adapter/inbound/issueopspublication" || path == "internal/adapter/inbound/issueopscompletion"
 }
 
 func isProductionIssueOps(path string) bool {

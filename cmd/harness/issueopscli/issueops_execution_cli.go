@@ -27,19 +27,18 @@ func runIssueOpsExecutionWithDependencies(args []string, deps Dependencies) erro
 
 func issueOpsExecutionDeps(deps Dependencies) executioncmd.Deps {
 	return executioncmd.Deps{
-		StateRoot: core.IssueOpsStateRoot,
-		Direct:    gitworktree.New(),
-		Orca:      orca.NewExecution(),
-		ReadIssue: provider.ReadExecutionIssueSnapshot,
-		// 완료가 orca task를 종결시킨다(#130).
-		SettleOrcaTask: orca.New().SettleTask,
-		Claim:          deps.Claim,
-		Release:        deps.Release,
-		Reseed:         deps.Reseed,
-		Resume:         deps.Resume,
-		Reconcile:      deps.Reconcile,
-		Publication:    deps.Publication,
-		PrintJSON:      printJSON,
-		PrintError:     printIssueOpsErrorJSON,
+		StateRoot:   core.IssueOpsStateRoot,
+		Direct:      gitworktree.New(),
+		Orca:        orca.NewExecution(),
+		ReadIssue:   provider.ReadExecutionIssueSnapshot,
+		Claim:       deps.Claim,
+		Release:     deps.Release,
+		Reseed:      deps.Reseed,
+		Resume:      deps.Resume,
+		Reconcile:   deps.Reconcile,
+		Complete:    deps.Complete,
+		Publication: deps.Publication,
+		PrintJSON:   printJSON,
+		PrintError:  printIssueOpsErrorJSON,
 	}
 }

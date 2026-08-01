@@ -83,7 +83,7 @@ func handleRequest(req rpcRequest) (any, *rpcError) {
 func issueOpsMCPDependencies() mcpcli.MCPDependencies {
 	return mcpcli.MCPDependencies{
 		Claim: issueOpsClaimHandler, Release: issueOpsReleaseHandler, Reseed: issueOpsReseedHandler,
-		Resume: issueOpsResumeHandler, Reconcile: issueOpsReconcileHandler,
+		Resume: issueOpsResumeHandler, Reconcile: issueOpsReconcileHandler, Complete: issueOpsCompleteHandler,
 		Publication: issueops.RemotePublicationHandlers{
 			Create: issueOpsPublicationCreateHandler, Reconcile: issueOpsPublicationReconcileHandler,
 		},
