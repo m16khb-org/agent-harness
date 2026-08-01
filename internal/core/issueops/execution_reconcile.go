@@ -3,7 +3,6 @@ package issueops
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -24,11 +23,11 @@ type ExecutionReconcileRequest struct {
 }
 
 type ExecutionReconcileDependencies struct {
-	Orca      port.ExecutionOrcaProvisioner
-	ReadIssue ExecutionIssueSnapshotReadFunc
-	RemotePR  RemotePullRequestDependencies
-	Now       func() time.Time
-	Handler   ExecutionReconcileHandler
+	Orca            port.ExecutionOrcaProvisioner
+	ReadIssue       ExecutionIssueSnapshotReadFunc
+	RemoteReconcile RemotePullRequestReconcileHandler
+	Now             func() time.Time
+	Handler         ExecutionReconcileHandler
 }
 
 type ExecutionReconcileResult struct {
@@ -101,7 +100,11 @@ func ReconcileExecutionWithDependencies(ctx context.Context, stateRoot string, r
 	}
 	switch record.Execution.Pending.Kind {
 	case externalIntentRemotePR:
-		return reconcileRemotePullRequest(ctx, stateRoot, record, deps.RemotePR)
+		if deps.RemoteReconcile == nil {
+			return failedExecutionReconcileResult(record, "remote_reconcile_unavailable"), ErrRemotePullRequestReconcileHandlerUnavailable
+		}
+		req.Snapshot = &record
+		return deps.RemoteReconcile(ctx, stateRoot, req)
 	case "worktree_create", "owner_launch", "dispatch":
 		if deps.Handler == nil {
 			return failedExecutionReconcileResult(record, "orca_reconcile_ambiguous"), ErrReconcileHandlerUnavailable
@@ -122,94 +125,6 @@ func pendingKindForOrcaStageFromKind(kind string) bool {
 	default:
 		return false
 	}
-}
-
-func reconcileRemotePullRequest(ctx context.Context, stateRoot string, record IssueOpsRecord, deps RemotePullRequestDependencies) (result ExecutionReconcileResult, err error) {
-	// 반환 경로가 여러 갈래이므로 조회 여부를 한 곳에서 표시한다. 경로마다
-	// 따로 붙이면 하나를 빠뜨렸을 때 결과가 조용히 거짓말을 한다(이슈 #154).
-	inspected := false
-	defer func() { result.ExternalStateInspected = inspected }()
-
-	pending := record.Execution.Pending
-	payload, err := readExternalRemotePRPayload(stateRoot, pending.OperationID)
-	if err != nil {
-		return failedExecutionReconcileResult(record, "external_intent_payload_invalid"), err
-	}
-	if deps.Reconcile == nil {
-		return failedExecutionReconcileResult(record, "remote_reconcile_unavailable"), fmt.Errorf("remote reconcile provider is unavailable")
-	}
-	inventory, err := deps.Reconcile(payload.Provider, remotePullRequestReconcileRequest(payload))
-	inspected = true
-	if err != nil {
-		_ = recordRemotePullRequestFailure(stateRoot, record.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, payload.KnownURL, err, deps.Now)
-		return failedExecutionReconcileResult(record, "remote_reconcile_ambiguous"), fmt.Errorf("remote reconcile transport is ambiguous; intent retained: %w", err)
-	}
-	if len(inventory.Candidates) > 1 {
-		err := fmt.Errorf("remote reconcile found multiple candidates; intent retained")
-		_ = recordRemotePullRequestFailure(stateRoot, record.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, payload.KnownURL, err, deps.Now)
-		return failedExecutionReconcileResult(record, "remote_reconcile_multiple"), err
-	}
-	if len(inventory.Candidates) == 1 {
-		candidate := inventory.Candidates[0]
-		if err := validateRemotePullRequestCandidate(record, payload, candidate); err != nil {
-			_ = recordRemotePullRequestFailure(stateRoot, record.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, payload.KnownURL, err, deps.Now)
-			return failedExecutionReconcileResult(record, "remote_reconcile_candidate_mismatch"), err
-		}
-		if err := verifyRemotePullRequestResult(record, payload, candidate.URL, deps.Verify); err != nil {
-			_ = recordRemotePullRequestFailure(stateRoot, record.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, candidate.URL, err, deps.Now)
-			return failedExecutionReconcileResult(record, "remote_reconcile_verification_failed"), err
-		}
-		updated, err := finishRemotePullRequestIntent(stateRoot, record.ID, payload, candidate.URL, false, deps.Now)
-		if err != nil {
-			return failedExecutionReconcileResult(record, "remote_reconcile_receipt_failed"), err
-		}
-		result := executionReconcileResult(updated, false, "remote_reconcile_adopted")
-		result.Reconciled = true
-		return result, nil
-	}
-	if !inventory.AuthoritativeZero {
-		err := fmt.Errorf("remote reconcile returned a non-authoritative zero candidate result; intent retained")
-		_ = recordRemotePullRequestFailure(stateRoot, record.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, payload.KnownURL, err, deps.Now)
-		return failedExecutionReconcileResult(record, "remote_reconcile_zero_ambiguous"), err
-	}
-	if payload.InvocationState != remoteInvocationNotInvoked {
-		err := fmt.Errorf("authoritative zero cannot clear an invocation whose absence was not proven; intent retained")
-		return failedExecutionReconcileResult(record, "remote_reconcile_zero_unproven"), err
-	}
-	if payload.RetryCount != 0 || deps.Create == nil {
-		err := fmt.Errorf("remote create pre-invocation retry is unavailable or already consumed")
-		return failedExecutionReconcileResult(record, "remote_reconcile_retry_exhausted"), err
-	}
-	payload, err = markRemotePullRequestRetry(stateRoot, record.ID, payload)
-	if err != nil {
-		return failedExecutionReconcileResult(record, "remote_reconcile_retry_cas_failed"), err
-	}
-	created, createErr := deps.Create(payload.Provider, payload.Request)
-	if createErr != nil {
-		var typed *port.IssueProviderCreateError
-		if errors.As(createErr, &typed) && !typed.Invoked {
-			updated, finishErr := finishRemotePullRequestPreInvocationFailure(stateRoot, record.ID, payload, createErr, deps.Now)
-			if finishErr != nil {
-				return failedExecutionReconcileResult(record, "remote_reconcile_retry_receipt_failed"), finishErr
-			}
-			result := executionReconcileResult(updated, false, "remote_reconcile_retry_not_invoked")
-			result.Reconciled = true
-			return result, createErr
-		}
-		_ = recordRemotePullRequestFailure(stateRoot, record.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, created.URL, createErr, deps.Now)
-		return failedExecutionReconcileResult(record, "remote_reconcile_retry_ambiguous"), fmt.Errorf("remote retry outcome is ambiguous; creation was not retried again: %w", createErr)
-	}
-	if err := verifyRemotePullRequestResult(record, payload, created.URL, deps.Verify); err != nil {
-		_ = recordRemotePullRequestFailure(stateRoot, record.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, created.URL, err, deps.Now)
-		return failedExecutionReconcileResult(record, "remote_reconcile_retry_verification_failed"), err
-	}
-	updated, err := finishRemotePullRequestIntent(stateRoot, record.ID, payload, created.URL, false, deps.Now)
-	if err != nil {
-		return failedExecutionReconcileResult(record, "remote_reconcile_retry_receipt_failed"), err
-	}
-	result = executionReconcileResult(updated, false, "remote_reconcile_retry_succeeded")
-	result.Reconciled = true
-	return result, nil
 }
 
 func markRemotePullRequestRetry(stateRoot, id string, expected externalRemotePRPayload) (externalRemotePRPayload, error) {

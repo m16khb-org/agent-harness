@@ -34,6 +34,7 @@ type IssueOpsRemotePullRequestRequest = issueops.RemotePullRequestRequest
 type IssueOpsRemotePullRequestDependencies = issueops.RemotePullRequestDependencies
 type IssueOpsRemotePullRequestCreateFunc = issueops.RemotePullRequestCreateFunc
 type IssueOpsRemotePullRequestReconcileFunc = issueops.RemotePullRequestReconcileFunc
+type IssueOpsRemotePullRequestCreateHandler = issueops.RemotePullRequestCreateHandler
 
 func SyncRemoteIssueGraph(record IssueOpsRecord) (map[string]any, error) {
 	return issueops.SyncRemoteIssueGraph(record)
@@ -77,8 +78,8 @@ func ReconcileRemotePullRequest(req IssueProviderReconcilePullRequestRequest, pr
 	return reconciler.ReconcilePullRequest(req)
 }
 
-func CreateIssueOpsRemotePullRequest(ctx context.Context, stateRoot string, req IssueOpsRemotePullRequestRequest, deps IssueOpsRemotePullRequestDependencies) (IssueProviderCreatePullRequestResult, error) {
-	return issueops.CreateRemotePullRequest(ctx, stateRoot, req, deps)
+func CreateIssueOpsRemotePullRequest(ctx context.Context, stateRoot string, req IssueOpsRemotePullRequestRequest, handler IssueOpsRemotePullRequestCreateHandler) (IssueProviderCreatePullRequestResult, error) {
+	return issueops.CreateRemotePullRequest(ctx, stateRoot, req, issueops.RemotePullRequestDependencies{Handler: handler})
 }
 
 // CreateRemoteChild creates and verifies a provider-native child work item

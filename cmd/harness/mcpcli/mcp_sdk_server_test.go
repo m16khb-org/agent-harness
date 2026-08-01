@@ -73,6 +73,22 @@ func TestInitSDKServerKeepsDependenciesPerServer(t *testing.T) {
 	}
 }
 
+func TestInitSDKServerAcceptsPublicationReconcileWithoutInvokingIt(t *testing.T) {
+	invoked := 0
+	handler := issueops.RemotePullRequestReconcileHandler(func(context.Context, string, issueops.ExecutionReconcileRequest) (issueops.ExecutionReconcileResult, error) {
+		invoked++
+		return issueops.ExecutionReconcileResult{}, nil
+	})
+
+	server := initSDKServer(MCPDependencies{Publication: issueops.RemotePublicationHandlers{Reconcile: handler}})
+	if server == nil {
+		t.Fatal("initSDKServer returned nil")
+	}
+	if invoked != 0 {
+		t.Fatalf("SDK registration invoked publication reconcile handler: %d", invoked)
+	}
+}
+
 func TestInitSDKServerDispatchesConcurrentReleaseWithIsolatedDependencies(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	ids := []string{"io-sdk-first", "io-sdk-second"}

@@ -42,7 +42,7 @@ func TestRunHookPreToolUseAllowsRemoteMutationHelpDuringActiveLease(t *testing.T
 	}
 }
 
-func TestRunHookPreToolUseAllowsRemoteCreatePRForCurrentHolderWithExternalExecutable(t *testing.T) {
+func TestRunHookPreToolUseAllowsRemoteCreatePRWithExplicitWorkdirAndExternalExecutable(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := filepath.Join(t.TempDir(), "agent-harness")
 	if err := os.MkdirAll(filepath.Join(source, ".git"), 0o755); err != nil {
@@ -58,7 +58,7 @@ func TestRunHookPreToolUseAllowsRemoteCreatePRForCurrentHolderWithExternalExecut
 		"agent-harness issueops remote create-pr --id %s --expected-generation 1"+
 			" --title 'IssueOps lease release differential vertical 검증'"+
 			" --head 191-issueops-lease-differential-spike --base 117-hexagonal-architecture-migration"+
-			" --body '현재 holder의 governed preview 검증' --label enhancement --assignee m16khb"+
+			" --body '현재 holder의 CLI/MCP governed preview 검증' --label enhancement --assignee m16khb"+
 			" --host %s --session-id %s --session-pid %d --session-started-at %s"+
 			" --session-executable %s --cwd %s --json",
 		cycle.id, actor.Host, actor.SessionID, receipt.PID, receipt.StartedAt,
@@ -66,8 +66,8 @@ func TestRunHookPreToolUseAllowsRemoteCreatePRForCurrentHolderWithExternalExecut
 	)
 
 	raw, err := json.Marshal(map[string]any{
-		"cwd": cycle.path, "host": actor.Host, "session_id": actor.SessionID, "agent_id": actor.AgentID,
-		"tool_name": "Bash", "tool_input": map[string]any{"command": command},
+		"cwd": source, "host": actor.Host, "session_id": actor.SessionID, "agent_id": actor.AgentID,
+		"tool_name": "Bash", "tool_input": map[string]any{"command": command, "workdir": cycle.path},
 	})
 	if err != nil {
 		t.Fatal(err)

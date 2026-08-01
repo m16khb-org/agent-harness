@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/port"
@@ -13,6 +14,30 @@ import (
 type remoteExecutionFixture struct {
 	claimableExecutionFixture
 	actor model.NativeActor
+}
+
+func TestRemotePullRequestPublicCreateUsesHandlerWithoutLegacyFallback(t *testing.T) {
+	handlerCalls := 0
+	request := RemotePullRequestRequest{ID: "io-handler", Provider: "github", Title: "preview", Confirm: false}
+	result, err := CreateRemotePullRequest(context.Background(), t.TempDir(), request, RemotePullRequestDependencies{
+		Handler: func(_ context.Context, _ string, got RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
+			handlerCalls++
+			if got.ID != request.ID || got.Provider != request.Provider || got.Title != request.Title || got.Confirm {
+				t.Fatalf("request=%#v", got)
+			}
+			return port.IssueProviderCreatePullRequestResult{OK: true, Preview: "would create pull request"}, nil
+		},
+	})
+	if err != nil || result.Preview != "would create pull request" || handlerCalls != 1 {
+		t.Fatalf("result=%#v handlerCalls=%d err=%v", result, handlerCalls, err)
+	}
+}
+
+func TestRemotePullRequestPublicCreateFailsClosedWithoutHandler(t *testing.T) {
+	_, err := CreateRemotePullRequest(context.Background(), t.TempDir(), RemotePullRequestRequest{ID: "io-handler", Provider: "github"}, RemotePullRequestDependencies{})
+	if !errors.Is(err, ErrRemotePullRequestCreateHandlerUnavailable) {
+		t.Fatalf("err=%v", err)
+	}
 }
 
 func TestRemotePullRequestPersistsIntentBeforeSingleProviderCallWithActiveLease(t *testing.T) {
@@ -34,11 +59,11 @@ func TestRemotePullRequestPersistsIntentBeforeSingleProviderCallWithActiveLease(
 	wantTitle := "IssueOps v1 검증"
 	wantBody := "## 요약\n\nIssueOps v1 구현과 검증 결과를 기록합니다."
 	providerCalls := 0
-	result, err := CreateRemotePullRequest(context.Background(), stateRoot, RemotePullRequestRequest{
+	result, err := createRemotePullRequestLegacy(context.Background(), stateRoot, RemotePullRequestRequest{
 		ID: record.ID, Provider: "github", Title: wantTitle, Body: wantBody, Head: record.Branch, Base: "main",
 		Labels: []string{"enhancement"}, Assignees: []string{"maintainer"}, Confirm: true,
 		ExpectedGeneration: 1, Actor: actor, CWD: fixture.worktree,
-	}, RemotePullRequestDependencies{Create: func(provider string, request port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
+	}, legacyRemotePullRequestDependencies{Create: func(provider string, request port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 		providerCalls++
 		pending, readErr := ReadIssueOps(stateRoot, record.ID)
 		if readErr != nil {
@@ -75,7 +100,7 @@ func TestRemotePullRequestAuthoritativeZeroRetriesOnlyProvenNotInvokedOnce(t *te
 	stateRoot := t.TempDir()
 	fixture := newRemoteExecutionFixture(t, stateRoot, "69-remote-zero-retry")
 	initialCalls := 0
-	_, err := CreateRemotePullRequest(context.Background(), stateRoot, fixture.request("retry once"), RemotePullRequestDependencies{
+	_, err := createRemotePullRequestLegacy(context.Background(), stateRoot, fixture.request("retry once"), legacyRemotePullRequestDependencies{
 		Create: func(string, port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 			initialCalls++
 			return port.IssueProviderCreatePullRequestResult{}, &port.IssueProviderCreateError{Invoked: false, Err: errors.New("preflight rejected")}
@@ -88,7 +113,7 @@ func TestRemotePullRequestAuthoritativeZeroRetriesOnlyProvenNotInvokedOnce(t *te
 	retryCalls := 0
 	result, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 		ID: fixture.record.ID, Confirm: true, Actor: fixture.actor, CWD: fixture.worktree,
-	}, ExecutionReconcileDependencies{RemotePR: RemotePullRequestDependencies{
+	}, ExecutionReconcileDependencies{RemoteReconcile: legacyRemoteReconcileHandler(legacyRemotePullRequestDependencies{
 		Reconcile: func(string, port.IssueProviderReconcilePullRequestRequest) (port.IssueProviderReconcilePullRequestResult, error) {
 			return port.IssueProviderReconcilePullRequestResult{AuthoritativeZero: true}, nil
 		},
@@ -96,7 +121,7 @@ func TestRemotePullRequestAuthoritativeZeroRetriesOnlyProvenNotInvokedOnce(t *te
 			retryCalls++
 			return port.IssueProviderCreatePullRequestResult{OK: true, URL: "https://github.com/example/agent-harness/pull/3", Number: "3"}, nil
 		},
-	}})
+	})})
 	if err != nil {
 		t.Fatalf("reconcile proven zero: %v", err)
 	}
@@ -120,7 +145,7 @@ func TestRemotePullRequestZeroUnprovenAndMultipleCandidatesRetainIntentWithoutRe
 		t.Run(tc.name, func(t *testing.T) {
 			stateRoot := t.TempDir()
 			fixture := newRemoteExecutionFixture(t, stateRoot, "69-remote-"+tc.name)
-			_, err := CreateRemotePullRequest(context.Background(), stateRoot, fixture.request(tc.name), RemotePullRequestDependencies{
+			_, err := createRemotePullRequestLegacy(context.Background(), stateRoot, fixture.request(tc.name), legacyRemotePullRequestDependencies{
 				Create: func(string, port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 					return port.IssueProviderCreatePullRequestResult{}, errors.New("ambiguous transport")
 				},
@@ -131,7 +156,7 @@ func TestRemotePullRequestZeroUnprovenAndMultipleCandidatesRetainIntentWithoutRe
 			retryCalls := 0
 			result, reconcileErr := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 				ID: fixture.record.ID, Confirm: true, Actor: fixture.actor, CWD: fixture.worktree,
-			}, ExecutionReconcileDependencies{RemotePR: RemotePullRequestDependencies{
+			}, ExecutionReconcileDependencies{RemoteReconcile: legacyRemoteReconcileHandler(legacyRemotePullRequestDependencies{
 				Reconcile: func(string, port.IssueProviderReconcilePullRequestRequest) (port.IssueProviderReconcilePullRequestResult, error) {
 					return tc.inventory, nil
 				},
@@ -139,7 +164,7 @@ func TestRemotePullRequestZeroUnprovenAndMultipleCandidatesRetainIntentWithoutRe
 					retryCalls++
 					return port.IssueProviderCreatePullRequestResult{}, nil
 				},
-			}})
+			})})
 			if reconcileErr == nil || result.Code != tc.wantCode || retryCalls != 0 {
 				t.Fatalf("result=%#v err=%v retryCalls=%d", result, reconcileErr, retryCalls)
 			}
@@ -154,7 +179,7 @@ func TestRemotePullRequestZeroUnprovenAndMultipleCandidatesRetainIntentWithoutRe
 func TestRemotePullRequestOneExactCandidateIsAdopted(t *testing.T) {
 	stateRoot := t.TempDir()
 	fixture := newRemoteExecutionFixture(t, stateRoot, "69-remote-adopt")
-	_, err := CreateRemotePullRequest(context.Background(), stateRoot, fixture.request("adopt exact"), RemotePullRequestDependencies{
+	_, err := createRemotePullRequestLegacy(context.Background(), stateRoot, fixture.request("adopt exact"), legacyRemotePullRequestDependencies{
 		Create: func(string, port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 			return port.IssueProviderCreatePullRequestResult{}, errors.New("ambiguous transport")
 		},
@@ -178,17 +203,17 @@ func TestRemotePullRequestOneExactCandidateIsAdopted(t *testing.T) {
 	}
 	result, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 		ID: fixture.record.ID, Confirm: true, Actor: fixture.actor, CWD: fixture.worktree,
-	}, ExecutionReconcileDependencies{RemotePR: RemotePullRequestDependencies{
+	}, ExecutionReconcileDependencies{RemoteReconcile: legacyRemoteReconcileHandler(legacyRemotePullRequestDependencies{
 		Reconcile: func(string, port.IssueProviderReconcilePullRequestRequest) (port.IssueProviderReconcilePullRequestResult, error) {
 			return port.IssueProviderReconcilePullRequestResult{Candidates: []port.IssueProviderReconcilePullRequestCandidate{candidate}}, nil
 		},
-	}})
+	})})
 	if err != nil || !result.Reconciled || result.Code != "remote_reconcile_adopted" {
 		t.Fatalf("result=%#v err=%v", result, err)
 	}
 }
 
-func TestRemotePullRequestBlocksGenerationReplacementWhileIntentIsPending(t *testing.T) {
+func TestRemotePullRequestReleasesLockDuringProviderCallAndBlocksReplacement(t *testing.T) {
 	stateRoot := t.TempDir()
 	fixture := newClaimableExecutionFixture(t, stateRoot, "69-remote-race")
 	record := fixture.record
@@ -208,11 +233,11 @@ func TestRemotePullRequestBlocksGenerationReplacementWhileIntentIsPending(t *tes
 	providerReturn := make(chan struct{})
 	createErr := make(chan error, 1)
 	go func() {
-		_, err := CreateRemotePullRequest(context.Background(), stateRoot, RemotePullRequestRequest{
+		_, err := createRemotePullRequestLegacy(context.Background(), stateRoot, RemotePullRequestRequest{
 			ID: record.ID, Provider: "github", Title: "IssueOps v1 race", Head: record.Branch, Base: "main",
 			Labels: []string{"enhancement"}, Assignees: []string{"maintainer"}, Confirm: true,
 			ExpectedGeneration: 1, Actor: owner, CWD: fixture.worktree,
-		}, RemotePullRequestDependencies{Create: func(string, port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
+		}, legacyRemotePullRequestDependencies{Create: func(string, port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 			close(providerEntered)
 			<-providerReturn
 			return port.IssueProviderCreatePullRequestResult{OK: true, URL: "https://github.com/example/agent-harness/pull/2", Number: "2"}, nil
@@ -222,15 +247,33 @@ func TestRemotePullRequestBlocksGenerationReplacementWhileIntentIsPending(t *tes
 	<-providerEntered
 
 	replacer := executionActor("claude", "remote-race-replacer")
-	preview, err := ReplaceExecution(stateRoot, ExecutionReplaceRequest{
-		ID: record.ID, Action: ExecutionReplacePreview, ExpectedGeneration: 1, Actor: replacer, CWD: record.Repo,
-	})
-	if err != nil {
-		t.Fatalf("read-only replacement preview should remain available: %v", err)
+	type readResult struct {
+		preview ExecutionReplaceResult
+		err     error
 	}
-	_, err = ReplaceExecution(stateRoot, ExecutionReplaceRequest{
+	readDone := make(chan readResult, 1)
+	go func() {
+		if _, err := StatusExecution(stateRoot, record.ID); err != nil {
+			readDone <- readResult{err: err}
+			return
+		}
+		preview, err := ReplaceExecution(stateRoot, ExecutionReplaceRequest{
+			ID: record.ID, Action: ExecutionReplacePreview, ExpectedGeneration: 1, Actor: replacer, CWD: record.Repo,
+		})
+		readDone <- readResult{preview: preview, err: err}
+	}()
+	var read readResult
+	select {
+	case read = <-readDone:
+		if read.err != nil {
+			t.Fatalf("read-only status and replacement preview should remain available: %v", read.err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("read-only status and replacement preview blocked during provider call")
+	}
+	_, err := ReplaceExecution(stateRoot, ExecutionReplaceRequest{
 		ID: record.ID, Action: ExecutionReplaceRevoke, ExpectedGeneration: 1,
-		InventoryFingerprint: preview.InventoryFingerprint, Reason: "owner became unavailable",
+		InventoryFingerprint: read.preview.InventoryFingerprint, Reason: "owner became unavailable",
 		Actor: replacer, CWD: record.Repo, Confirm: true,
 	})
 	if err == nil || !strings.Contains(err.Error(), "pending external intent") {
@@ -273,5 +316,15 @@ func (fixture remoteExecutionFixture) request(title string) RemotePullRequestReq
 		ID: fixture.record.ID, Provider: "github", Title: title, Head: fixture.record.Branch, Base: "main",
 		Labels: []string{"enhancement"}, Assignees: []string{"maintainer"}, ExpectedGeneration: 1,
 		Actor: fixture.actor, CWD: fixture.worktree, Confirm: true,
+	}
+}
+
+func legacyRemoteReconcileHandler(deps legacyRemotePullRequestDependencies) RemotePullRequestReconcileHandler {
+	return func(ctx context.Context, stateRoot string, request ExecutionReconcileRequest) (ExecutionReconcileResult, error) {
+		record, err := ReadIssueOps(stateRoot, request.ID)
+		if err != nil {
+			return ExecutionReconcileResult{OK: false, ID: request.ID}, err
+		}
+		return legacyReconcileRemotePullRequest(ctx, stateRoot, record, deps)
 	}
 }

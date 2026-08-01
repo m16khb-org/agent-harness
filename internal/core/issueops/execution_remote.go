@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -48,10 +47,7 @@ type RemotePullRequestRequest struct {
 }
 
 type RemotePullRequestDependencies struct {
-	Create    RemotePullRequestCreateFunc
-	Reconcile RemotePullRequestReconcileFunc
-	Verify    RemoteArtifactVerifyFunc
-	Now       func() time.Time
+	Handler RemotePullRequestCreateHandler
 }
 
 type externalRemotePRPayload struct {
@@ -75,8 +71,8 @@ func CreateRemotePullRequest(ctx context.Context, stateRoot string, req RemotePu
 			return port.IssueProviderCreatePullRequestResult{}, err
 		}
 	}
-	if deps.Create == nil {
-		return port.IssueProviderCreatePullRequestResult{}, fmt.Errorf("remote pull request provider is unavailable")
+	if deps.Handler == nil {
+		return port.IssueProviderCreatePullRequestResult{}, ErrRemotePullRequestCreateHandlerUnavailable
 	}
 	if req.Confirm {
 		actor, err := normalizeNativeActor(req.Actor)
@@ -85,41 +81,7 @@ func CreateRemotePullRequest(ctx context.Context, stateRoot string, req RemotePu
 		}
 		req.Actor = actor
 	}
-	record, providerReq, kind, err := prepareRemotePullRequest(stateRoot, req)
-	if err != nil {
-		return port.IssueProviderCreatePullRequestResult{}, err
-	}
-	if !req.Confirm {
-		return deps.Create(strings.ToLower(strings.TrimSpace(req.Provider)), providerReq)
-	}
-	pending, payload, err := beginRemotePullRequestIntent(stateRoot, record, req.Actor, req.CWD, req.ExpectedGeneration, providerReq, req.Provider, kind, deps.Now)
-	if err != nil {
-		return port.IssueProviderCreatePullRequestResult{}, err
-	}
-	result, callErr := deps.Create(payload.Provider, payload.Request)
-	if callErr != nil {
-		invocation := remoteInvocationUnknown
-		var typed *port.IssueProviderCreateError
-		if errors.As(callErr, &typed) && !typed.Invoked {
-			invocation = remoteInvocationNotInvoked
-		}
-		_ = recordRemotePullRequestFailure(stateRoot, pending.ID, payload.OperationID, invocation, payload.RetryCount, result.URL, callErr, deps.Now)
-		return result, fmt.Errorf("remote create outcome requires execution reconcile; creation was not retried: %w", callErr)
-	}
-	if strings.TrimSpace(result.URL) == "" {
-		err = fmt.Errorf("provider create returned no canonical URL")
-		_ = recordRemotePullRequestFailure(stateRoot, pending.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, "", err, deps.Now)
-		return result, err
-	}
-	if err := verifyRemotePullRequestResult(record, payload, result.URL, deps.Verify); err != nil {
-		_ = recordRemotePullRequestFailure(stateRoot, pending.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, result.URL, err, deps.Now)
-		return result, fmt.Errorf("provider returned a URL but durable verification requires execution reconcile: %w", err)
-	}
-	if _, err := finishRemotePullRequestIntent(stateRoot, pending.ID, payload, result.URL, true, deps.Now); err != nil {
-		_ = recordRemotePullRequestFailure(stateRoot, pending.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, result.URL, err, deps.Now)
-		return result, fmt.Errorf("provider succeeded but durable receipt requires execution reconcile: %w", err)
-	}
-	return result, nil
+	return deps.Handler(ctx, stateRoot, req)
 }
 
 func prepareRemotePullRequest(stateRoot string, req RemotePullRequestRequest) (IssueOpsRecord, port.IssueProviderCreatePullRequestRequest, string, error) {
@@ -218,6 +180,13 @@ func beginRemotePullRequestIntent(stateRoot string, expected IssueOpsRecord, act
 	if err != nil {
 		return IssueOpsRecord{}, externalRemotePRPayload{}, err
 	}
+	return beginRemotePullRequestIntentWithOperationID(stateRoot, expected, actor, cwd, expectedGeneration, providerReq, provider, kind, operationID, now)
+}
+
+func beginRemotePullRequestIntentWithOperationID(stateRoot string, expected IssueOpsRecord, actor model.NativeActor, cwd string, expectedGeneration uint64, providerReq port.IssueProviderCreatePullRequestRequest, provider, kind, operationID string, now func() time.Time) (IssueOpsRecord, externalRemotePRPayload, error) {
+	if !validRemotePullRequestOperationID(operationID) {
+		return IssueOpsRecord{}, externalRemotePRPayload{}, fmt.Errorf("remote operation ID must be exactly 32 lowercase hexadecimal characters")
+	}
 	marker := "<!-- agent-harness:issueops-v1 operation=" + operationID + " -->"
 	providerReq.Body = strings.TrimSpace(providerReq.Body) + "\n\n" + marker
 	payload := externalRemotePRPayload{
@@ -225,7 +194,7 @@ func beginRemotePullRequestIntent(stateRoot string, expected IssueOpsRecord, act
 		Request: providerReq, InvocationState: remoteInvocationUnknown,
 	}
 	var persisted IssueOpsRecord
-	err = withIssueOpsLock(context.Background(), stateRoot, expected.ID, func(context.Context) error {
+	err := withIssueOpsLock(context.Background(), stateRoot, expected.ID, func(context.Context) error {
 		current, err := ReadIssueOps(stateRoot, expected.ID)
 		if err != nil {
 			return err
@@ -256,6 +225,18 @@ func beginRemotePullRequestIntent(stateRoot string, expected IssueOpsRecord, act
 		return err
 	})
 	return persisted, payload, err
+}
+
+func validRemotePullRequestOperationID(operationID string) bool {
+	if len(operationID) != 32 {
+		return false
+	}
+	for _, char := range []byte(operationID) {
+		if (char < '0' || char > '9') && (char < 'a' || char > 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 func recordRemotePullRequestFailure(stateRoot, id, operationID, invocation string, retryCount int, knownURL string, cause error, now func() time.Time) error {
