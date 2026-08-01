@@ -5,12 +5,32 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/issueops/model"
 )
+
+func TestMCPExecutionDependenciesPropagatePublicationReconcileWithoutInvocation(t *testing.T) {
+	invoked := 0
+	handler := issueops.RemotePullRequestReconcileHandler(func(context.Context, string, issueops.ExecutionReconcileRequest) (issueops.ExecutionReconcileResult, error) {
+		invoked++
+		return issueops.ExecutionReconcileResult{}, nil
+	})
+
+	deps := issueOpsExecutionActionDependencies(MCPDependencies{Publication: issueops.RemotePublicationHandlers{Reconcile: handler}})
+	if deps.RemoteReconcile == nil {
+		t.Fatal("publication reconcile handler was not propagated")
+	}
+	if reflect.ValueOf(deps.RemoteReconcile).Pointer() != reflect.ValueOf(handler).Pointer() {
+		t.Fatal("publication reconcile handler changed during MCP dependency mapping")
+	}
+	if invoked != 0 {
+		t.Fatalf("publication reconcile handler invoked during propagation: %d", invoked)
+	}
+}
 
 func TestExecutionActionRequestFromMCPPreservesAutoMode(t *testing.T) {
 	wantAncestry := []model.NativeProcessReceipt{{

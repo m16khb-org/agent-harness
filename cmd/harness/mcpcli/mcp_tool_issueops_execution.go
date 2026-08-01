@@ -17,22 +17,31 @@ import (
 )
 
 func handleMCPIssueOpsExecution(args map[string]any) MCPToolOutcome {
-	return handleMCPIssueOpsExecutionWithHandlers(args, nil, nil, nil, nil, nil)
+	return handleMCPIssueOpsExecutionWithDependencies(args, MCPDependencies{})
 }
 
 func handleMCPIssueOpsExecutionWithReleaseHandler(args map[string]any, release issueops.ExecutionReleaseHandler) MCPToolOutcome {
-	return handleMCPIssueOpsExecutionWithHandlers(args, nil, release, nil, nil, nil)
+	return handleMCPIssueOpsExecutionWithDependencies(args, MCPDependencies{Release: release})
 }
 
-func handleMCPIssueOpsExecutionWithHandlers(args map[string]any, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler, reseed issueops.ExecutionReseedHandler, resume issueops.ExecutionResumeHandler, reconcile issueops.ExecutionReconcileHandler) MCPToolOutcome {
-	orcaExecution := orca.NewExecution()
+func handleMCPIssueOpsExecutionWithDependencies(args map[string]any, deps MCPDependencies) MCPToolOutcome {
 	req, err := executionActionRequestFromMCP(args)
 	if err != nil {
 		return mcpToolErrorPayload(issueOpsMCPErrorPayload(err))
 	}
-	result, err := issueops.ExecuteExecution(context.Background(), core.IssueOpsStateRoot(), req, issueops.ExecutionActionDependencies{
+	result, err := issueops.ExecuteExecution(context.Background(), core.IssueOpsStateRoot(), req, issueOpsExecutionActionDependencies(deps))
+	if err != nil {
+		return mcpToolErrorPayload(issueOpsMCPErrorPayload(err))
+	}
+	return mcpToolPayload(result)
+}
+
+func issueOpsExecutionActionDependencies(deps MCPDependencies) issueops.ExecutionActionDependencies {
+	orcaExecution := orca.NewExecution()
+	return issueops.ExecutionActionDependencies{
 		Direct: gitworktree.New(), Orca: orcaExecution, OrcaOwner: orcaExecution, ReadIssue: provider.ReadExecutionIssueSnapshot,
-		Claim: claim, Release: release, Reseed: reseed, Resume: resume, Reconcile: reconcile,
+		Claim: deps.Claim, Release: deps.Release, Reseed: deps.Reseed, Resume: deps.Resume, Reconcile: deps.Reconcile,
+		RemoteReconcile: deps.Publication.Reconcile,
 		// 완료가 orca task를 종결시킨다. CLI 경로와 같은 계약이다(#130).
 		SettleOrcaTask: orca.New().SettleTask,
 		RemotePR: issueops.RemotePullRequestDependencies{
@@ -52,11 +61,7 @@ func handleMCPIssueOpsExecutionWithHandlers(args map[string]any, claim issueops.
 			},
 			Verify: remoteverify.VerifyRemoteArtifactLive,
 		},
-	})
-	if err != nil {
-		return mcpToolErrorPayload(issueOpsMCPErrorPayload(err))
 	}
-	return mcpToolPayload(result)
 }
 
 func issueOpsMCPErrorPayload(err error) map[string]any {

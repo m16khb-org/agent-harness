@@ -8,6 +8,7 @@ import (
 
 	"agent-harness/cmd/harness/mcpcli"
 	"agent-harness/cmd/harness/selfworkflow"
+	"agent-harness/internal/core/issueops"
 )
 
 type rpcRequest = mcpcli.RPCRequest
@@ -41,17 +42,17 @@ func configureMCPCLI() {
 
 func runMCP() error {
 	configureMCPCLI()
-	return mcpcli.RunMCPWithDependencies(mcpcli.MCPDependencies{Claim: issueOpsClaimHandler, Release: issueOpsReleaseHandler, Reseed: issueOpsReseedHandler, Resume: issueOpsResumeHandler, Reconcile: issueOpsReconcileHandler})
+	return mcpcli.RunMCPWithDependencies(issueOpsMCPDependencies())
 }
 
 func serveMCPStream(input io.Reader, output io.Writer, diagnostics io.Writer) error {
 	configureMCPCLI()
-	return mcpcli.ServeMCPStreamWithDependencies(input, output, diagnostics, mcpcli.MCPDependencies{Claim: issueOpsClaimHandler, Release: issueOpsReleaseHandler, Reseed: issueOpsReseedHandler, Resume: issueOpsResumeHandler, Reconcile: issueOpsReconcileHandler})
+	return mcpcli.ServeMCPStreamWithDependencies(input, output, diagnostics, issueOpsMCPDependencies())
 }
 
 func serveMCPStreamContext(ctx context.Context, input io.Reader, output io.Writer, diagnostics io.Writer) error {
 	configureMCPCLI()
-	return mcpcli.ServeMCPStreamContextWithDependencies(ctx, input, output, diagnostics, mcpcli.MCPDependencies{Claim: issueOpsClaimHandler, Release: issueOpsReleaseHandler, Reseed: issueOpsReseedHandler, Resume: issueOpsResumeHandler, Reconcile: issueOpsReconcileHandler})
+	return mcpcli.ServeMCPStreamContextWithDependencies(ctx, input, output, diagnostics, issueOpsMCPDependencies())
 }
 
 func mcpTools() []map[string]any {
@@ -66,7 +67,7 @@ func mcpResources() []map[string]any {
 
 func handleToolCall(params json.RawMessage) (any, *rpcError) {
 	configureMCPCLI()
-	return mcpcli.HandleToolCallWithDependencies(params, mcpcli.MCPDependencies{Claim: issueOpsClaimHandler, Release: issueOpsReleaseHandler, Reseed: issueOpsReseedHandler, Resume: issueOpsResumeHandler, Reconcile: issueOpsReconcileHandler})
+	return mcpcli.HandleToolCallWithDependencies(params, issueOpsMCPDependencies())
 }
 
 func handleResourceRead(params json.RawMessage) (any, *rpcError) {
@@ -76,7 +77,17 @@ func handleResourceRead(params json.RawMessage) (any, *rpcError) {
 
 func handleRequest(req rpcRequest) (any, *rpcError) {
 	configureMCPCLI()
-	return mcpcli.HandleRequestWithDependencies(req, mcpcli.MCPDependencies{Claim: issueOpsClaimHandler, Release: issueOpsReleaseHandler, Reseed: issueOpsReseedHandler, Resume: issueOpsResumeHandler, Reconcile: issueOpsReconcileHandler})
+	return mcpcli.HandleRequestWithDependencies(req, issueOpsMCPDependencies())
+}
+
+func issueOpsMCPDependencies() mcpcli.MCPDependencies {
+	return mcpcli.MCPDependencies{
+		Claim: issueOpsClaimHandler, Release: issueOpsReleaseHandler, Reseed: issueOpsReseedHandler,
+		Resume: issueOpsResumeHandler, Reconcile: issueOpsReconcileHandler,
+		Publication: issueops.RemotePublicationHandlers{
+			Create: issueOpsPublicationCreateHandler, Reconcile: issueOpsPublicationReconcileHandler,
+		},
+	}
 }
 
 func textResult(text string) map[string]any {

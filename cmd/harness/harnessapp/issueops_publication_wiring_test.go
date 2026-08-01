@@ -94,3 +94,10 @@ func TestIssueOpsPublicationCompositionBuildsBothServicesAndCreatesPreview(t *te
 		t.Fatalf("provider request=%#v", fake.request)
 	}
 }
+
+func TestIssueOpsMCPDependenciesIncludeBothPublicationHandlers(t *testing.T) {
+	deps := issueOpsMCPDependencies()
+	if deps.Publication.Create == nil || deps.Publication.Reconcile == nil {
+		t.Fatalf("publication handlers were not composed for MCP: %#v", deps.Publication)
+	}
+}
