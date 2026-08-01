@@ -137,7 +137,7 @@ func executionReconcileIntentStateFromPayload(stateRoot string, record IssueOpsR
 func executionReconcileIntentState(record IssueOpsRecord, recordRaw []byte, payload externalOrcaIntentPayload, intentRaw []byte) ExecutionReconcileIntentState {
 	return ExecutionReconcileIntentState{
 		Record: record, RecordRaw: append([]byte(nil), recordRaw...), IntentRaw: append([]byte(nil), intentRaw...),
-		OperationID: payload.OperationID, Stage: payload.Stage, InvocationState: payload.InvocationState,
+		OperationID: payload.OperationID, Stage: intentPortStage(payload.Stage), InvocationState: payload.InvocationState,
 		InvocationAttempts: payload.InvocationAttempts, Pending: record.Execution != nil && record.Execution.Pending != nil,
 	}
 }

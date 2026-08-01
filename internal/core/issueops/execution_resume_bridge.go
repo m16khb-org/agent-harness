@@ -2,7 +2,6 @@ package issueops
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -126,7 +125,7 @@ func executionResumeIntentStateFromPayload(stateRoot string, record IssueOpsReco
 	if err != nil {
 		return ExecutionResumeIntentState{}, err
 	}
-	intentRaw, err := json.Marshal(payload)
+	intentRaw, err := preparationIntentCodec.Encode(payload)
 	if err != nil {
 		return ExecutionResumeIntentState{}, err
 	}
@@ -134,18 +133,11 @@ func executionResumeIntentStateFromPayload(stateRoot string, record IssueOpsReco
 }
 
 func executionResumeIntentState(record IssueOpsRecord, recordRaw []byte, payload externalOrcaIntentPayload, intentRaw []byte) ExecutionResumeIntentState {
-	return ExecutionResumeIntentState{Record: record, RecordRaw: append([]byte(nil), recordRaw...), IntentRaw: append([]byte(nil), intentRaw...), OperationID: payload.OperationID, Stage: payload.Stage, InvocationState: payload.InvocationState, InvocationAttempts: payload.InvocationAttempts, Pending: record.Execution != nil && record.Execution.Pending != nil}
+	return ExecutionResumeIntentState{Record: record, RecordRaw: append([]byte(nil), recordRaw...), IntentRaw: append([]byte(nil), intentRaw...), OperationID: payload.OperationID, Stage: intentPortStage(payload.Stage), InvocationState: payload.InvocationState, InvocationAttempts: payload.InvocationAttempts, Pending: record.Execution != nil && record.Execution.Pending != nil}
 }
 
 func executionResumeIntentPayload(expected ExecutionResumeIntentState) (externalOrcaIntentPayload, error) {
-	var payload externalOrcaIntentPayload
-	if err := json.Unmarshal(expected.IntentRaw, &payload); err != nil {
-		return externalOrcaIntentPayload{}, fmt.Errorf("decode Orca external intent payload: %w", err)
-	}
-	if err := validateExternalOrcaIntentPayload(payload, expected.OperationID); err != nil {
-		return externalOrcaIntentPayload{}, err
-	}
-	return payload, nil
+	return preparationIntentCodec.Decode(expected.OperationID, expected.IntentRaw)
 }
 
 func readExecutionResumeRecordRaw(stateRoot, id string) (IssueOpsRecord, []byte, error) {
@@ -190,11 +182,8 @@ func readExecutionResumeIntentRaw(stateRoot, operationID string) (externalOrcaIn
 	if !ok {
 		return externalOrcaIntentPayload{}, nil, fmt.Errorf("Orca external intent payload is missing")
 	}
-	var payload externalOrcaIntentPayload
-	if err := json.Unmarshal(raw, &payload); err != nil {
-		return externalOrcaIntentPayload{}, nil, fmt.Errorf("decode Orca external intent payload: %w", err)
-	}
-	if err := validateExternalOrcaIntentPayload(payload, operationID); err != nil {
+	payload, err := preparationIntentCodec.Decode(operationID, raw)
+	if err != nil {
 		return externalOrcaIntentPayload{}, nil, err
 	}
 	return payload, raw, nil

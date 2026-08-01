@@ -166,7 +166,7 @@ func TestOrcaIntentIssueIdentityRequiresVerifiedLinkForResume(t *testing.T) {
 	}
 	payload := externalOrcaIntentPayload{
 		Purpose: orcaIntentPurposeResume, LifecycleID: record.ID,
-		Probe: port.ExecutionOrcaProbeRequest{Provider: "github", Issue: 194},
+		Probe: intentContractProbeRequest(port.ExecutionOrcaProbeRequest{Provider: "github", Issue: 194}),
 	}
 	if err := validateOrcaIntentIssueIdentity(record, payload); err == nil {
 		t.Fatal("미검증 branch link로 resume intent identity가 허용됐다")
@@ -196,14 +196,14 @@ func TestSealExternalOrcaIntentPayloadUsesTheVerifiedRecordIdentity(t *testing.T
 		OperationID:     strings.Repeat("b", 32),
 		LifecycleID:     record.ID,
 		Generation:      1,
-		Stage:           port.ExecutionOrcaIntentWorktree,
+		Stage:           intentContractStage(port.ExecutionOrcaIntentWorktree),
 		StartedAt:       "2026-07-30T00:00:00Z",
 		InvocationState: orcaIntentNotInvoked,
-		Workspace:       workspace,
-		Probe: port.ExecutionOrcaProbeRequest{
+		Workspace:       intentContractWorkspaceRequest(workspace),
+		Probe: intentContractProbeRequest(port.ExecutionOrcaProbeRequest{
 			Repo: record.Repo, Host: "codex", Model: "gpt-5.6-terra", Effort: "xhigh",
 			Provider: "gitlab", Issue: 2646,
-		},
+		}),
 		IssueBodySHA256: strings.Repeat("a", 64),
 	}
 

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	preparationcontract "agent-harness/internal/contract/issueopspreparation"
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/pathutil"
 	"agent-harness/internal/core/preflight"
@@ -400,7 +401,7 @@ func cleanupAbandonIntentInspectionRequests(record IssueOpsRecord, payload exter
 	worktree.RunBound = false
 	worktree.TaskID = ""
 	requests = append(requests, worktree)
-	if payload.Stage == port.ExecutionOrcaIntentWorktree {
+	if payload.Stage == preparationcontract.IntentStageWorktree {
 		return requests, nil
 	}
 
@@ -411,9 +412,9 @@ func cleanupAbandonIntentInspectionRequests(record IssueOpsRecord, payload exter
 	terminal.RunBound = false
 	terminal.TaskID = ""
 	requests = append(requests, terminal)
-	if payload.Stage == port.ExecutionOrcaIntentTerminal ||
-		payload.Stage == port.ExecutionOrcaIntentRun ||
-		payload.Stage == port.ExecutionOrcaIntentRunBind {
+	if payload.Stage == preparationcontract.IntentStageTerminal ||
+		payload.Stage == preparationcontract.IntentStageRun ||
+		payload.Stage == preparationcontract.IntentStageRunBind {
 		return requests, nil
 	}
 
@@ -424,10 +425,10 @@ func cleanupAbandonIntentInspectionRequests(record IssueOpsRecord, payload exter
 	task.RunBound = true
 	task.TaskID = ""
 	requests = append(requests, task)
-	if payload.Stage == port.ExecutionOrcaIntentTask {
+	if payload.Stage == preparationcontract.IntentStageTask {
 		return requests, nil
 	}
-	if payload.Stage != port.ExecutionOrcaIntentDispatch {
+	if payload.Stage != preparationcontract.IntentStageDispatch {
 		return nil, fmt.Errorf("unsupported Orca cleanup intent stage %q", payload.Stage)
 	}
 	return append(requests, current), nil

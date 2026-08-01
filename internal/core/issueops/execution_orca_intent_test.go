@@ -396,7 +396,7 @@ func TestExecutionOrcaCrashAfterMutationReconcilesExactlyOneCandidateWithoutDupl
 			if err != nil {
 				t.Fatal(err)
 			}
-			if payload.Stage != test.stage || payload.InvocationState != orcaIntentUnknown || calls[test.stage] != 1 {
+			if intentPortStage(payload.Stage) != test.stage || payload.InvocationState != orcaIntentUnknown || calls[test.stage] != 1 {
 				t.Fatalf("crash receipt was not fenced at %s: payload=%#v calls=%v", test.stage, payload, calls)
 			}
 			db, err := sqlstore.Open(stateRoot)
