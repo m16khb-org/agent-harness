@@ -171,19 +171,14 @@ func TestRunRemoteCreatePRDryRunRejectsSecretLikeContentBeforeProviderCall(t *te
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record := remoteIssueOpsRecord(t)
 	secret := "api_key=opaque-token password=opaque-password Authorization: Bearer opaque-bearer /tmp/secret.pem"
-	providerCalls := 0
 	deps := Deps{
 		Publication: issueopscore.RemotePublicationHandlers{Create: func(context.Context, string, issueopscore.RemotePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
 			return core.IssueProviderCreatePullRequestResult{}, errors.New("remote create title or body contains secret-like content")
 		}},
-		CreatePullRequest: func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
-			providerCalls++
-			return core.IssueProviderCreatePullRequestResult{}, nil
-		},
 	}
 	err := Run([]string{"create-pr", "--id", record.ID, "--provider", "github", "--title", "PR", "--body", secret, "--head", record.Branch, "--base", "main", "--json"}, deps)
-	if err == nil || !strings.Contains(err.Error(), "secret-like") || providerCalls != 0 {
-		t.Fatalf("error=%v providerCalls=%d", err, providerCalls)
+	if err == nil || !strings.Contains(err.Error(), "secret-like") {
+		t.Fatalf("error=%v", err)
 	}
 }
 
@@ -205,7 +200,6 @@ func TestRunRemoteCreatePRUsesPublicationHandlerForPreviewAndConfirm(t *testing.
 		t.Fatalf("current process receipt missing from ancestry: %#v", ancestry)
 	}
 	handlerCalls := 0
-	legacyCalls := 0
 	var printed []any
 	deps := Deps{
 		Publication: issueopscore.RemotePublicationHandlers{Create: func(_ context.Context, stateRoot string, request issueopscore.RemotePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
@@ -218,10 +212,6 @@ func TestRunRemoteCreatePRUsesPublicationHandlerForPreviewAndConfirm(t *testing.
 			}
 			return core.IssueProviderCreatePullRequestResult{OK: true, Preview: "would create pull request"}, nil
 		}},
-		CreatePullRequest: func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
-			legacyCalls++
-			return core.IssueProviderCreatePullRequestResult{}, nil
-		},
 		ObserveProcessAncestry: func(int) ([]model.NativeProcessReceipt, error) {
 			return append([]model.NativeProcessReceipt(nil), ancestry...), nil
 		},
@@ -245,8 +235,8 @@ func TestRunRemoteCreatePRUsesPublicationHandlerForPreviewAndConfirm(t *testing.
 	if err := Run(confirmArgs, deps); err != nil {
 		t.Fatal(err)
 	}
-	if handlerCalls != 2 || legacyCalls != 0 || len(printed) != 2 {
-		t.Fatalf("handlerCalls=%d legacyCalls=%d printed=%#v", handlerCalls, legacyCalls, printed)
+	if handlerCalls != 2 || len(printed) != 2 {
+		t.Fatalf("handlerCalls=%d printed=%#v", handlerCalls, printed)
 	}
 	preview := printed[0].(core.IssueProviderCreatePullRequestResult)
 	created := printed[1].(core.IssueProviderCreatePullRequestResult)
@@ -276,9 +266,6 @@ func TestRunRemoteCreatePRObservesAncestryOnlyForConfirmedMutation(t *testing.T)
 		ObserveProcessAncestry: func(int) ([]model.NativeProcessReceipt, error) {
 			observeCalls++
 			return nil, errors.New("ps unavailable")
-		},
-		CreatePullRequest: func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
-			return core.IssueProviderCreatePullRequestResult{}, nil
 		},
 		Publication: issueopscore.RemotePublicationHandlers{Create: func(context.Context, string, issueopscore.RemotePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
 			providerCalls++

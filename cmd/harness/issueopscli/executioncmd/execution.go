@@ -18,7 +18,6 @@ type Deps struct {
 	Direct      port.ExecutionWorkspaceProvisioner
 	Orca        port.ExecutionOrcaProvisioner
 	ReadIssue   issueops.ExecutionIssueSnapshotReadFunc
-	RemotePR    issueops.RemotePullRequestDependencies
 	Claim       issueops.ExecutionClaimHandler
 	Release     issueops.ExecutionReleaseHandler
 	Reseed      issueops.ExecutionReseedHandler
@@ -35,7 +34,7 @@ type Deps struct {
 func (deps Deps) actionDeps() issueops.ExecutionActionDependencies {
 	actionDeps := issueops.ExecutionActionDependencies{
 		Direct: deps.Direct, Orca: deps.Orca, ReadIssue: deps.ReadIssue,
-		RemotePR: deps.RemotePR, Claim: deps.Claim, Release: deps.Release, Reseed: deps.Reseed, Resume: deps.Resume, Reconcile: deps.Reconcile,
+		Claim: deps.Claim, Release: deps.Release, Reseed: deps.Reseed, Resume: deps.Resume, Reconcile: deps.Reconcile,
 		RemoteReconcile: deps.Publication.Reconcile, SettleOrcaTask: deps.SettleOrcaTask,
 	}
 	if inspector, ok := deps.Orca.(port.ExecutionOrcaOwnerInspector); ok {

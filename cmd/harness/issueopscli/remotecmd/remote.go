@@ -21,8 +21,6 @@ type Deps struct {
 	PrintError             func(error) error
 	VerifyLive             func(core.IssueOpsRemoteArtifactVerificationRequest) error
 	VerifyMerged           func(core.IssueOpsRemoteArtifactVerification) error
-	CreatePullRequest      func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error)
-	ReconcilePullRequest   func(string, core.IssueProviderReconcilePullRequestRequest) (core.IssueProviderReconcilePullRequestResult, error)
 	ObserveProcessAncestry func(int) ([]model.NativeProcessReceipt, error)
 	Publication            issueopscore.RemotePublicationHandlers
 }
@@ -757,28 +755,6 @@ func (deps Deps) observeNativeProcessAncestry() ([]model.NativeProcessReceipt, e
 		return nil, fmt.Errorf("observe native process ancestry: no process receipts returned")
 	}
 	return ancestry, nil
-}
-
-func (deps Deps) createPullRequest(providerName string, req core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
-	if deps.CreatePullRequest != nil {
-		return deps.CreatePullRequest(providerName, req)
-	}
-	prov, err := provider.Resolve(providerName)
-	if err != nil {
-		return core.IssueProviderCreatePullRequestResult{OK: false}, err
-	}
-	return core.CreateRemotePullRequest(req, prov)
-}
-
-func (deps Deps) reconcilePullRequest(providerName string, req core.IssueProviderReconcilePullRequestRequest) (core.IssueProviderReconcilePullRequestResult, error) {
-	if deps.ReconcilePullRequest != nil {
-		return deps.ReconcilePullRequest(providerName, req)
-	}
-	prov, err := provider.Resolve(providerName)
-	if err != nil {
-		return core.IssueProviderReconcilePullRequestResult{}, err
-	}
-	return core.ReconcileRemotePullRequest(req, prov)
 }
 
 func validateCreateChildInputs(title string, labels, assignees []string) error {
