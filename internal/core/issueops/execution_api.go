@@ -10,11 +10,13 @@ import (
 )
 
 var (
-	ErrClaimHandlerUnavailable     = errors.New("issueops execution claim handler is not configured")
-	ErrReleaseHandlerUnavailable   = errors.New("issueops execution release handler is not configured")
-	ErrReseedHandlerUnavailable    = errors.New("issueops execution reseed handler is not configured")
-	ErrResumeHandlerUnavailable    = errors.New("issueops execution resume handler is not configured")
-	ErrReconcileHandlerUnavailable = errors.New("issueops execution reconcile handler is not configured")
+	ErrClaimHandlerUnavailable                      = errors.New("issueops execution claim handler is not configured")
+	ErrReleaseHandlerUnavailable                    = errors.New("issueops execution release handler is not configured")
+	ErrReseedHandlerUnavailable                     = errors.New("issueops execution reseed handler is not configured")
+	ErrResumeHandlerUnavailable                     = errors.New("issueops execution resume handler is not configured")
+	ErrReconcileHandlerUnavailable                  = errors.New("issueops execution reconcile handler is not configured")
+	ErrRemotePullRequestCreateHandlerUnavailable    = errors.New("remote pull request provider is unavailable")
+	ErrRemotePullRequestReconcileHandlerUnavailable = errors.New("remote reconcile provider is unavailable")
 )
 
 type ExecutionClaimHandler func(context.Context, string, ExecutionClaimRequest, ExecutionClaimDependencies) (ExecutionResult, error)
@@ -22,6 +24,14 @@ type ExecutionReleaseHandler func(context.Context, string, ExecutionReleaseReque
 type ExecutionReseedHandler func(context.Context, string, ExecutionReseedRequest) (ExecutionReplaceResult, error)
 type ExecutionResumeHandler func(context.Context, string, ExecutionResumeRequest) (ExecutionResumeResult, error)
 type ExecutionReconcileHandler func(context.Context, string, ExecutionReconcileRequest, ExecutionReconcileDependencies) (ExecutionReconcileResult, error)
+
+type RemotePullRequestCreateHandler func(context.Context, string, RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error)
+type RemotePullRequestReconcileHandler func(context.Context, string, ExecutionReconcileRequest) (ExecutionReconcileResult, error)
+
+type RemotePublicationHandlers struct {
+	Create    RemotePullRequestCreateHandler
+	Reconcile RemotePullRequestReconcileHandler
+}
 
 const (
 	ExecutionActionPrepare   = "prepare"
