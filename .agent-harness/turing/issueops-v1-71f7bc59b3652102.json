@@ -1,0 +1,84 @@
+{
+  "lifecycle_id": "io-3cec83770d84",
+  "issue_url": "https://github.com/m16khb/agent-harness/issues/198",
+  "branch": "198-issueops-execution-completion-vertical",
+  "base_branch": "117-hexagonal-architecture-migration",
+  "sealed_base": "990ec6051fa13660e9a6f0c64a5249baa2915ad6",
+  "worktree_root": "/Users/m16khb/Workspace/agent-harness.worktrees/198-issueops-execution-completion-vertical",
+  "owner": {
+    "host": "codex",
+    "mode": "direct",
+    "lease_generation": 1
+  },
+  "goal": "IssueOps execution complete 전이를 공개·persisted contract 변화 없이 capability-local hexagonal vertical로 이전하고 hook 활성 환경의 exact-holder/canonical-worktree 경계를 보존한다.",
+  "implementation_head": "커밋 전 sealed base 990ec6051 및 이 보고서와 함께 봉인되는 working-tree diff",
+  "remote_artifact_url": "draft PR 생성 후 IssueOps durable artifact와 completion receipt에 기록",
+  "acceptance": [
+    {
+      "id": "AC-198-01",
+      "statement": "legacy와 새 vertical의 result, error, schema v1 bytes, holder index와 phase ledger가 동일하다.",
+      "result": "PASS",
+      "evidence": [
+        "TestExecutionCompletionVerticalDifferentialSuccessAndRetry",
+        "TestExecutionCompletionVerticalDifferentialDenialMatrix",
+        "성공·동일 evidence retry·12개 denial에서 raw record bytes와 holder index를 비교했고 두 번의 clock read를 결정적으로 고정했다."
+      ],
+      "cleanup_receipt": "테스트 임시 state/worktree/report는 testing.T TempDir가 종료 시 제거; 상주 프로세스·tmux·컨테이너 없음"
+    },
+    {
+      "id": "AC-198-02",
+      "statement": "CLI/MCP production complete routing은 injected handler만 사용하고 legacy fallback이 없다.",
+      "result": "PASS",
+      "evidence": [
+        "TestExecuteExecutionCompleteRequiresHandler",
+        "TestIssueOpsExecutionDepsPropagateCompletionWithoutInvocation",
+        "TestMCPExecutionDependenciesPropagateCompletionWithoutInvocation",
+        "rg CompleteExecution은 legacy oracle/tests와 정의만 반환하고 production caller는 0이다."
+      ],
+      "cleanup_receipt": "runtime state 없음"
+    },
+    {
+      "id": "AC-198-03",
+      "statement": "hook 활성 환경의 exact holder, PID reuse-safe process identity와 canonical worktree mutation 경계를 보존한다.",
+      "result": "PASS",
+      "evidence": [
+        "go test ./internal/core/lifecycle ./cmd/harness/hookcli -run 'AtomicPreflight|Canonical|Workdir|OwnerMutation' -count=1",
+        "completion composition은 기존 InspectNativeProcessReceipt와 shared artifact validator를 주입하고 lifecycle hook 의미를 변경하지 않는다."
+      ],
+      "cleanup_receipt": "hook fixture 임시 state는 테스트 종료 시 제거; 실제 generation-1 lease는 completion까지 유지"
+    }
+  ],
+  "verification": [
+    "go test ./... -count=1 => PASS (sequential)",
+    "go test -race ./... -count=1 => PASS (sequential)",
+    "go test ./internal/core/lifecycle ./cmd/harness/hookcli -run 'AtomicPreflight|Canonical|Workdir|OwnerMutation' -count=1 => PASS",
+    "go vet ./internal/contract/issueopscompletion ./internal/domain/issueopscompletion ./internal/application/issueopscompletion ./internal/adapter/inbound/issueopscompletion ./internal/adapter/outbound/issueopscompletion ./internal/core/issueops ./cmd/harness/harnessapp ./cmd/harness/issueopscli/... ./cmd/harness/mcpcli => PASS",
+    "go test ./cmd/harness/contractgolden -run Golden -count=1 => PASS",
+    "go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1 => PASS",
+    "go build -o bin/agent-harness ./cmd/harness => PASS",
+    "git diff --check => PASS"
+  ],
+  "ai_slop_clean": [
+    "사용되지 않는 denial code를 제거했다.",
+    "process observer와 artifact validation을 복제하지 않고 authoritative core validation-only seam을 composition root에서 주입했다.",
+    "concrete Orca settlement를 CLI/MCP에서 제거하고 completion composition root 하나로 제한했다.",
+    "요청 밖 OpenWiki·schema·public DTO 변경은 하지 않았다."
+  ],
+  "implementation_review": {
+    "verdict": "pass",
+    "findings": [
+      "legacy 오류 순서·timestamp precision·atomic apply·post-commit settlement parity가 differential과 trace로 고정된다.",
+      "handler 누락은 fail-closed하고 production dual routing이 없다.",
+      "hook canonical CWD와 live native process authority를 기존 source of truth로 검증한다."
+    ],
+    "reviewed_fingerprint_before_report": "cb2b46bc541129f1d1c2270a97da86fc779af3a359661698d102614c4ecc2150",
+    "post_report_review": "이 보고서 추가 후 동일 검증·cleanup·fingerprint review를 다시 봉인한다."
+  },
+  "verification_mode": "full local unit/race plus focused hook, architecture, golden, vet and build",
+  "skipped_checks": [],
+  "deviations": [
+    "최초 full unit과 full race를 동시에 실행했을 때 webfetch black-box comparator 1건이 5초 timeout으로 killed됐다. 변경 diff에 webfetch가 없음을 확인하고 해당 테스트 단독 1회·10회 반복 PASS 뒤 full unit과 full race를 순차 재실행해 모두 PASS했다.",
+    "현재 세션에서 hooks는 사용자가 임시 비활성화했지만, 구현과 publication은 hook 활성 계약의 exact holder·canonical CWD를 사용하고 focused hook regression을 별도 통과했다."
+  ],
+  "cleanup_receipt": "검증이 만든 테스트 임시 경로는 테스트 런너가 제거했고 상주 QA 프로세스·tmux·컨테이너·포트는 생성하지 않았다. IssueOps worktree와 generation-1 lease는 PR merge 및 completion 전까지 의도적으로 유지한다."
+}

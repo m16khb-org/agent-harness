@@ -95,9 +95,12 @@ func TestIssueOpsPublicationCompositionBuildsBothServicesAndCreatesPreview(t *te
 	}
 }
 
-func TestIssueOpsMCPDependenciesIncludeBothPublicationHandlers(t *testing.T) {
+func TestIssueOpsMCPDependenciesIncludePublicationAndCompletionHandlers(t *testing.T) {
 	deps := issueOpsMCPDependencies()
 	if deps.Publication.Create == nil || deps.Publication.Reconcile == nil {
 		t.Fatalf("publication handlers were not composed for MCP: %#v", deps.Publication)
+	}
+	if deps.Complete == nil {
+		t.Fatal("completion handler was not composed for MCP")
 	}
 }

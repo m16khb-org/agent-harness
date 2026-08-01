@@ -33,6 +33,21 @@ func TestMCPExecutionDependenciesPropagatePublicationReconcileWithoutInvocation(
 	}
 }
 
+func TestMCPExecutionDependenciesPropagateCompletionWithoutInvocation(t *testing.T) {
+	invoked := 0
+	handler := issueops.ExecutionCompleteHandler(func(context.Context, string, issueops.ExecutionCompleteRequest) (issueops.ExecutionResult, error) {
+		invoked++
+		return issueops.ExecutionResult{}, nil
+	})
+	deps := issueOpsExecutionActionDependencies(MCPDependencies{Complete: handler})
+	if deps.Complete == nil || reflect.ValueOf(deps.Complete).Pointer() != reflect.ValueOf(handler).Pointer() {
+		t.Fatal("completion handler was not propagated unchanged")
+	}
+	if invoked != 0 {
+		t.Fatalf("completion handler invoked during propagation: %d", invoked)
+	}
+}
+
 func TestMCPPublicationReconcilePreservesToolErrorClassification(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record, receipt := publicationReconcileMCPRecord(t, issueops.IssueOpsStateRoot())

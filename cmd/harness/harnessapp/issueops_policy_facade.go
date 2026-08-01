@@ -15,7 +15,7 @@ func runIssueOps(args []string) error {
 	return issueopscli.RunIssueOpsWithDependencies(args, issueopscli.Dependencies{
 		Claim: issueops.ExecutionClaimHandler(issueOpsClaimHandler), Release: issueops.ExecutionReleaseHandler(issueOpsReleaseHandler),
 		Reseed: issueops.ExecutionReseedHandler(issueOpsReseedHandler), Resume: issueops.ExecutionResumeHandler(issueOpsResumeHandler),
-		Reconcile: issueops.ExecutionReconcileHandler(issueOpsReconcileHandler),
+		Reconcile: issueops.ExecutionReconcileHandler(issueOpsReconcileHandler), Complete: issueops.ExecutionCompleteHandler(issueOpsCompleteHandler),
 		Publication: issueops.RemotePublicationHandlers{
 			Create:    issueops.RemotePullRequestCreateHandler(issueOpsPublicationCreateHandler),
 			Reconcile: issueops.RemotePullRequestReconcileHandler(issueOpsPublicationReconcileHandler),
