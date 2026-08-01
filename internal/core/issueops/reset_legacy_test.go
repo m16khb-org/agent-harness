@@ -1353,7 +1353,7 @@ func TestIssueOpsMutationBarrierRunsBeforeExternalDependencies(t *testing.T) {
 	}
 
 	providerCalls := 0
-	_, remoteErr := CreateRemotePullRequest(context.Background(), schemaRoot, RemotePullRequestRequest{
+	_, remoteErr := createRemotePullRequestLegacy(context.Background(), schemaRoot, RemotePullRequestRequest{
 		ID: "io-bbbbbbbbbbbb", Confirm: true,
 	}, RemotePullRequestDependencies{Create: func(string, port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 		providerCalls++

@@ -7,7 +7,20 @@ import (
 )
 
 func RunIssueOps(args []string) error {
-	return runIssueOps(args)
+	return RunIssueOpsWithDependencies(args, Dependencies{})
+}
+
+type Dependencies struct {
+	Claim       issueops.ExecutionClaimHandler
+	Release     issueops.ExecutionReleaseHandler
+	Reseed      issueops.ExecutionReseedHandler
+	Resume      issueops.ExecutionResumeHandler
+	Reconcile   issueops.ExecutionReconcileHandler
+	Publication issueops.RemotePublicationHandlers
+}
+
+func RunIssueOpsWithDependencies(args []string, deps Dependencies) error {
+	return runIssueOpsWithDependencies(args, deps)
 }
 
 // RunIssueOpsWithReleaseHandler is the composition-root entry point for the
@@ -29,10 +42,9 @@ func RunIssueOpsWithExecutionHandlersAndReseedAndResume(args []string, claim iss
 }
 
 func RunIssueOpsWithExecutionHandlersAndReseedResumeAndReconcile(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler, reseed issueops.ExecutionReseedHandler, resume issueops.ExecutionResumeHandler, reconcile issueops.ExecutionReconcileHandler) error {
-	if len(args) > 0 && args[0] == "execution" {
-		return runIssueOpsExecutionWithHandlersAndReseed(args[1:], claim, release, reseed, resume, reconcile)
-	}
-	return runIssueOps(args)
+	return RunIssueOpsWithDependencies(args, Dependencies{
+		Claim: claim, Release: release, Reseed: reseed, Resume: resume, Reconcile: reconcile,
+	})
 }
 
 func VerifyChildIssueBeforeLink(childURL string) error {

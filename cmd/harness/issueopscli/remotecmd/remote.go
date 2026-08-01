@@ -24,6 +24,7 @@ type Deps struct {
 	CreatePullRequest      func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error)
 	ReconcilePullRequest   func(string, core.IssueProviderReconcilePullRequestRequest) (core.IssueProviderReconcilePullRequestResult, error)
 	ObserveProcessAncestry func(int) ([]model.NativeProcessReceipt, error)
+	Publication            issueopscore.RemotePublicationHandlers
 }
 
 func Run(args []string, deps Deps) error {
@@ -712,13 +713,7 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 		ExpectedGeneration: *expectedGeneration,
 		Actor:              actor,
 		CWD:                *cwd, Confirm: *confirm,
-	}, core.IssueOpsRemotePullRequestDependencies{
-		Create:    deps.createPullRequest,
-		Reconcile: deps.reconcilePullRequest,
-		Verify: func(req core.IssueOpsRemoteArtifactVerificationRequest) error {
-			return deps.verifyLive(req)
-		},
-	})
+	}, deps.Publication.Create)
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}

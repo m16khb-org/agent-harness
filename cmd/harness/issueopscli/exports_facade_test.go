@@ -1,11 +1,14 @@
 package issueopscli
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
 
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/port"
 )
 
 func TestExportedIssueOpsFacades(t *testing.T) {
@@ -24,6 +27,36 @@ func TestExportedIssueOpsFacades(t *testing.T) {
 	defer SetChildIssueVerifier(previous)
 	if err := VerifyChildIssueBeforeLink("https://github.com/acme/repo/issues/1"); !errors.Is(err, sentinel) {
 		t.Fatalf("stubbed child verifier err=%v", err)
+	}
+}
+
+func TestIssueOpsPublicationCreateRequiresComposedDependencies(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{Repo: t.TempDir(), Branch: "195-publication-wrapper"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err = core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), record.ID, "https://github.com/acme/repo/issues/195")
+	if err != nil {
+		t.Fatal(err)
+	}
+	args := []string{
+		"remote", "create-pr", "--id", record.ID, "--provider", "github", "--title", "PR", "--body", "Body",
+		"--head", record.Branch, "--base", "main", "--label", "bug", "--assignee", "maintainer",
+	}
+	if err := RunIssueOps(args); !errors.Is(err, issueops.ErrRemotePullRequestCreateHandlerUnavailable) {
+		t.Fatalf("zero dependency wrapper err=%v", err)
+	}
+	handlerCalls := 0
+	err = RunIssueOpsWithDependencies(args, Dependencies{Publication: issueops.RemotePublicationHandlers{Create: func(_ context.Context, _ string, request issueops.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
+		handlerCalls++
+		if request.ID != record.ID || request.Confirm {
+			t.Fatalf("request=%#v", request)
+		}
+		return port.IssueProviderCreatePullRequestResult{OK: true, Preview: "would create pull request"}, nil
+	}}})
+	if err != nil || handlerCalls != 1 {
+		t.Fatalf("handlerCalls=%d err=%v", handlerCalls, err)
 	}
 }
 

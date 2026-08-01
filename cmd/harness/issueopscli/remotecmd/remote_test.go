@@ -1,13 +1,16 @@
 package remotecmd
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
 	"agent-harness/internal/core"
+	issueopscore "agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/issueops/model"
 )
 
@@ -71,6 +74,9 @@ func TestRunVerifyArtifactAndRemoteCreateDryRuns(t *testing.T) {
 			}
 			return nil
 		},
+		Publication: issueopscore.RemotePublicationHandlers{Create: func(context.Context, string, issueopscore.RemotePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
+			return core.IssueProviderCreatePullRequestResult{OK: true, Preview: "would create pull request"}, nil
+		}},
 	}
 	if err := Run([]string{"create-issue", "--id", record.ID, "--title", "Title", "--body", "Body", "--label", "bug", "--json"}, deps); err != nil {
 		t.Fatalf("create-issue dry-run returned error: %v", err)
@@ -166,13 +172,98 @@ func TestRunRemoteCreatePRDryRunRejectsSecretLikeContentBeforeProviderCall(t *te
 	record := remoteIssueOpsRecord(t)
 	secret := "api_key=opaque-token password=opaque-password Authorization: Bearer opaque-bearer /tmp/secret.pem"
 	providerCalls := 0
-	deps := Deps{CreatePullRequest: func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
-		providerCalls++
-		return core.IssueProviderCreatePullRequestResult{}, nil
-	}}
+	deps := Deps{
+		Publication: issueopscore.RemotePublicationHandlers{Create: func(context.Context, string, issueopscore.RemotePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
+			return core.IssueProviderCreatePullRequestResult{}, errors.New("remote create title or body contains secret-like content")
+		}},
+		CreatePullRequest: func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
+			providerCalls++
+			return core.IssueProviderCreatePullRequestResult{}, nil
+		},
+	}
 	err := Run([]string{"create-pr", "--id", record.ID, "--provider", "github", "--title", "PR", "--body", secret, "--head", record.Branch, "--base", "main", "--json"}, deps)
 	if err == nil || !strings.Contains(err.Error(), "secret-like") || providerCalls != 0 {
 		t.Fatalf("error=%v providerCalls=%d", err, providerCalls)
+	}
+}
+
+func TestRunRemoteCreatePRUsesPublicationHandlerForPreviewAndConfirm(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecord(t)
+	ancestry, err := issueopscore.ObserveNativeProcessAncestry(os.Getpid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var process model.NativeProcessReceipt
+	for _, receipt := range ancestry {
+		if receipt.PID == os.Getpid() {
+			process = receipt
+			break
+		}
+	}
+	if process.PID == 0 {
+		t.Fatalf("current process receipt missing from ancestry: %#v", ancestry)
+	}
+	handlerCalls := 0
+	legacyCalls := 0
+	var printed []any
+	deps := Deps{
+		Publication: issueopscore.RemotePublicationHandlers{Create: func(_ context.Context, stateRoot string, request issueopscore.RemotePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
+			handlerCalls++
+			if stateRoot != core.IssueOpsStateRoot() || request.ID != record.ID || request.Provider != "github" || request.Title != "PR" {
+				t.Fatalf("stateRoot=%q request=%#v", stateRoot, request)
+			}
+			if request.Confirm {
+				return core.IssueProviderCreatePullRequestResult{OK: true, URL: "https://github.com/acme/repo/pull/195", Number: "195"}, nil
+			}
+			return core.IssueProviderCreatePullRequestResult{OK: true, Preview: "would create pull request"}, nil
+		}},
+		CreatePullRequest: func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
+			legacyCalls++
+			return core.IssueProviderCreatePullRequestResult{}, nil
+		},
+		ObserveProcessAncestry: func(int) ([]model.NativeProcessReceipt, error) {
+			return append([]model.NativeProcessReceipt(nil), ancestry...), nil
+		},
+		PrintJSON: func(value any) error {
+			printed = append(printed, value)
+			return nil
+		},
+	}
+	baseArgs := []string{
+		"create-pr", "--id", record.ID, "--provider", "github", "--title", "PR", "--body", "Body",
+		"--head", record.Branch, "--base", "main", "--label", "bug", "--assignee", "octocat", "--json",
+	}
+	if err := Run(baseArgs, deps); err != nil {
+		t.Fatal(err)
+	}
+	confirmArgs := append(append([]string{}, baseArgs...),
+		"--host", "codex", "--session-id", "session-195", "--session-pid", strconv.Itoa(process.PID),
+		"--session-started-at", process.StartedAt, "--session-executable", process.Executable,
+		"--cwd", record.Repo, "--confirm",
+	)
+	if err := Run(confirmArgs, deps); err != nil {
+		t.Fatal(err)
+	}
+	if handlerCalls != 2 || legacyCalls != 0 || len(printed) != 2 {
+		t.Fatalf("handlerCalls=%d legacyCalls=%d printed=%#v", handlerCalls, legacyCalls, printed)
+	}
+	preview := printed[0].(core.IssueProviderCreatePullRequestResult)
+	created := printed[1].(core.IssueProviderCreatePullRequestResult)
+	if preview.Preview != "would create pull request" || created.URL != "https://github.com/acme/repo/pull/195" {
+		t.Fatalf("preview=%#v created=%#v", preview, created)
+	}
+}
+
+func TestRunRemoteCreatePRFailsClosedWithoutPublicationHandler(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecord(t)
+	err := Run([]string{
+		"create-pr", "--id", record.ID, "--provider", "github", "--title", "PR", "--body", "Body",
+		"--head", record.Branch, "--base", "main", "--label", "bug", "--assignee", "octocat",
+	}, Deps{})
+	if !errors.Is(err, issueopscore.ErrRemotePullRequestCreateHandlerUnavailable) {
+		t.Fatalf("err=%v", err)
 	}
 }
 
@@ -187,9 +278,12 @@ func TestRunRemoteCreatePRObservesAncestryOnlyForConfirmedMutation(t *testing.T)
 			return nil, errors.New("ps unavailable")
 		},
 		CreatePullRequest: func(string, core.IssueProviderCreatePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
-			providerCalls++
 			return core.IssueProviderCreatePullRequestResult{}, nil
 		},
+		Publication: issueopscore.RemotePublicationHandlers{Create: func(context.Context, string, issueopscore.RemotePullRequestRequest) (core.IssueProviderCreatePullRequestResult, error) {
+			providerCalls++
+			return core.IssueProviderCreatePullRequestResult{OK: true, Preview: "would create pull request"}, nil
+		}},
 	}
 	baseArgs := []string{
 		"create-pr", "--id", record.ID, "--provider", "github", "--title", "PR", "--body", "Body",

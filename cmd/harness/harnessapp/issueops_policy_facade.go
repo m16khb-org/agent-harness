@@ -12,7 +12,15 @@ func wirePolicyCLIDeps() {
 }
 
 func runIssueOps(args []string) error {
-	return issueopscli.RunIssueOpsWithExecutionHandlersAndReseedResumeAndReconcile(args, issueops.ExecutionClaimHandler(issueOpsClaimHandler), issueops.ExecutionReleaseHandler(issueOpsReleaseHandler), issueops.ExecutionReseedHandler(issueOpsReseedHandler), issueops.ExecutionResumeHandler(issueOpsResumeHandler), issueops.ExecutionReconcileHandler(issueOpsReconcileHandler))
+	return issueopscli.RunIssueOpsWithDependencies(args, issueopscli.Dependencies{
+		Claim: issueops.ExecutionClaimHandler(issueOpsClaimHandler), Release: issueops.ExecutionReleaseHandler(issueOpsReleaseHandler),
+		Reseed: issueops.ExecutionReseedHandler(issueOpsReseedHandler), Resume: issueops.ExecutionResumeHandler(issueOpsResumeHandler),
+		Reconcile: issueops.ExecutionReconcileHandler(issueOpsReconcileHandler),
+		Publication: issueops.RemotePublicationHandlers{
+			Create:    issueops.RemotePullRequestCreateHandler(issueOpsPublicationCreateHandler),
+			Reconcile: issueops.RemotePullRequestReconcileHandler(issueOpsPublicationReconcileHandler),
+		},
+	})
 }
 
 func verifyIssueOpsChildIssueBeforeLink(childURL string) error {
