@@ -218,6 +218,13 @@ func beginRemotePullRequestIntent(stateRoot string, expected IssueOpsRecord, act
 	if err != nil {
 		return IssueOpsRecord{}, externalRemotePRPayload{}, err
 	}
+	return beginRemotePullRequestIntentWithOperationID(stateRoot, expected, actor, cwd, expectedGeneration, providerReq, provider, kind, operationID, now)
+}
+
+func beginRemotePullRequestIntentWithOperationID(stateRoot string, expected IssueOpsRecord, actor model.NativeActor, cwd string, expectedGeneration uint64, providerReq port.IssueProviderCreatePullRequestRequest, provider, kind, operationID string, now func() time.Time) (IssueOpsRecord, externalRemotePRPayload, error) {
+	if !validRemotePullRequestOperationID(operationID) {
+		return IssueOpsRecord{}, externalRemotePRPayload{}, fmt.Errorf("remote operation ID must be exactly 32 lowercase hexadecimal characters")
+	}
 	marker := "<!-- agent-harness:issueops-v1 operation=" + operationID + " -->"
 	providerReq.Body = strings.TrimSpace(providerReq.Body) + "\n\n" + marker
 	payload := externalRemotePRPayload{
@@ -225,7 +232,7 @@ func beginRemotePullRequestIntent(stateRoot string, expected IssueOpsRecord, act
 		Request: providerReq, InvocationState: remoteInvocationUnknown,
 	}
 	var persisted IssueOpsRecord
-	err = withIssueOpsLock(context.Background(), stateRoot, expected.ID, func(context.Context) error {
+	err := withIssueOpsLock(context.Background(), stateRoot, expected.ID, func(context.Context) error {
 		current, err := ReadIssueOps(stateRoot, expected.ID)
 		if err != nil {
 			return err
@@ -256,6 +263,18 @@ func beginRemotePullRequestIntent(stateRoot string, expected IssueOpsRecord, act
 		return err
 	})
 	return persisted, payload, err
+}
+
+func validRemotePullRequestOperationID(operationID string) bool {
+	if len(operationID) != 32 {
+		return false
+	}
+	for _, char := range []byte(operationID) {
+		if (char < '0' || char > '9') && (char < 'a' || char > 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 func recordRemotePullRequestFailure(stateRoot, id, operationID, invocation string, retryCount int, knownURL string, cause error, now func() time.Time) error {
