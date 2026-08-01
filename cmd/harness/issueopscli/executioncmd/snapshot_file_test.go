@@ -43,7 +43,7 @@ func TestExecutionSnapshotFileFlagMapsToPrepareRequest(t *testing.T) {
 		"--cwd", repo, "--json",
 	}, Deps{
 		StateRoot: func() string { return stateRoot },
-		Prepare: func(_ context.Context, _ string, request issueops.ExecutionPrepareRequest) (issueops.ExecutionPrepareResult, error) {
+		Prepare: func(_ context.Context, _ string, request issueops.ExecutionPrepareRequest, _ issueops.ExecutionPrepareInvocation) (issueops.ExecutionPrepareResult, error) {
 			return issueops.ExecutionPrepareResult{
 				OK: true, ID: request.ID, RequestedMode: request.Mode, ResolvedMode: "direct",
 			}, nil

@@ -23,7 +23,7 @@ func NewHandler(service service) issueops.ExecutionPrepareHandler {
 	return Handler{service: service}.Handle
 }
 
-func (handler Handler) Handle(ctx context.Context, _ string, request issueops.ExecutionPrepareRequest) (issueops.ExecutionPrepareResult, error) {
+func (handler Handler) Handle(ctx context.Context, _ string, request issueops.ExecutionPrepareRequest, _ issueops.ExecutionPrepareInvocation) (issueops.ExecutionPrepareResult, error) {
 	if handler.service == nil {
 		return issueops.ExecutionPrepareResult{ID: request.ID}, issueops.ErrPrepareHandlerUnavailable
 	}

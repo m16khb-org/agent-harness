@@ -17,7 +17,7 @@ import (
 )
 
 func TestInvokeExecutionPrepareHandlerFailsClosed(t *testing.T) {
-	got, err := invokeExecutionPrepareHandler(context.Background(), t.TempDir(), ExecutionPrepareRequest{ID: "io-prepare"}, nil)
+	got, err := invokeExecutionPrepareHandler(context.Background(), t.TempDir(), ExecutionPrepareRequest{ID: "io-prepare"}, ExecutionPrepareInvocation{}, nil)
 	if !errors.Is(err, ErrPrepareHandlerUnavailable) || got.ID != "io-prepare" || got.OK {
 		t.Fatalf("result=%+v err=%v", got, err)
 	}
@@ -25,11 +25,11 @@ func TestInvokeExecutionPrepareHandlerFailsClosed(t *testing.T) {
 
 func TestInvokeExecutionPrepareHandlerCallsOnce(t *testing.T) {
 	calls := 0
-	handler := func(_ context.Context, _ string, request ExecutionPrepareRequest) (ExecutionPrepareResult, error) {
+	handler := func(_ context.Context, _ string, request ExecutionPrepareRequest, _ ExecutionPrepareInvocation) (ExecutionPrepareResult, error) {
 		calls++
 		return ExecutionPrepareResult{OK: true, ID: request.ID, ResolvedMode: "direct"}, nil
 	}
-	got, err := invokeExecutionPrepareHandler(context.Background(), "/state", ExecutionPrepareRequest{ID: "io-prepare"}, handler)
+	got, err := invokeExecutionPrepareHandler(context.Background(), "/state", ExecutionPrepareRequest{ID: "io-prepare"}, ExecutionPrepareInvocation{}, handler)
 	if err != nil || calls != 1 || !got.OK || got.ID != "io-prepare" {
 		t.Fatalf("result=%+v calls=%d err=%v", got, calls, err)
 	}
@@ -41,10 +41,21 @@ func TestExecutionAPIPrepareCallsInjectedHandlerOnce(t *testing.T) {
 		ID: "io-api-prepare", Mode: "orca", Actor: executionActor("codex", "api-prepare"),
 		CWD: "/repo", OwnerHost: "claude", OwnerModel: "claude-sonnet-5", OwnerEffort: "high", Confirm: true,
 	}
-	handler := func(_ context.Context, stateRoot string, request ExecutionPrepareRequest) (ExecutionPrepareResult, error) {
+	readerCalls := 0
+	reader := func(context.Context, string, port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
+		readerCalls++
+		return port.ExecutionIssueSnapshot{}, nil
+	}
+	handler := func(ctx context.Context, stateRoot string, request ExecutionPrepareRequest, invocation ExecutionPrepareInvocation) (ExecutionPrepareResult, error) {
 		calls++
 		if stateRoot != "/state" || !reflect.DeepEqual(request, want) {
 			t.Fatalf("stateRoot=%q request=%#v want=%#v", stateRoot, request, want)
+		}
+		if invocation.ReadIssue == nil {
+			t.Fatal("request-scoped issue reader was not propagated")
+		}
+		if _, err := invocation.ReadIssue(ctx, "github", port.ExecutionIssueSnapshotRequest{}); err != nil {
+			t.Fatal(err)
 		}
 		return ExecutionPrepareResult{OK: true, ID: request.ID, RequestedMode: request.Mode, ResolvedMode: "orca"}, nil
 	}
@@ -52,9 +63,9 @@ func TestExecutionAPIPrepareCallsInjectedHandlerOnce(t *testing.T) {
 	got, err := ExecuteExecution(context.Background(), "/state", ExecutionActionRequest{
 		Action: ExecutionActionPrepare, ID: want.ID, Mode: want.Mode, Actor: want.Actor, CWD: want.CWD,
 		OwnerHost: want.OwnerHost, OwnerModel: want.OwnerModel, OwnerEffort: want.OwnerEffort, Confirm: want.Confirm,
-	}, ExecutionActionDependencies{Prepare: handler})
-	if err != nil || calls != 1 {
-		t.Fatalf("result=%#v calls=%d err=%v", got, calls, err)
+	}, ExecutionActionDependencies{Prepare: handler, ReadIssue: reader})
+	if err != nil || calls != 1 || readerCalls != 1 {
+		t.Fatalf("result=%#v calls=%d readerCalls=%d err=%v", got, calls, readerCalls, err)
 	}
 	result, ok := got.(ExecutionPrepareResult)
 	if !ok || !result.OK || result.ID != want.ID || result.ResolvedMode != "orca" {

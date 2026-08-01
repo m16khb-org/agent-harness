@@ -21,7 +21,11 @@ var (
 	ErrRemotePullRequestReconcileHandlerUnavailable = errors.New("remote reconcile provider is unavailable")
 )
 
-type ExecutionPrepareHandler func(context.Context, string, ExecutionPrepareRequest) (ExecutionPrepareResult, error)
+type ExecutionPrepareInvocation struct {
+	ReadIssue ExecutionIssueSnapshotReadFunc
+}
+
+type ExecutionPrepareHandler func(context.Context, string, ExecutionPrepareRequest, ExecutionPrepareInvocation) (ExecutionPrepareResult, error)
 type ExecutionClaimHandler func(context.Context, string, ExecutionClaimRequest, ExecutionClaimDependencies) (ExecutionResult, error)
 type ExecutionReleaseHandler func(context.Context, string, ExecutionReleaseRequest) (ExecutionResult, error)
 type ExecutionReseedHandler func(context.Context, string, ExecutionReseedRequest) (ExecutionReplaceResult, error)
@@ -37,11 +41,11 @@ type RemotePublicationHandlers struct {
 	Reconcile RemotePullRequestReconcileHandler
 }
 
-func invokeExecutionPrepareHandler(ctx context.Context, stateRoot string, request ExecutionPrepareRequest, handler ExecutionPrepareHandler) (ExecutionPrepareResult, error) {
+func invokeExecutionPrepareHandler(ctx context.Context, stateRoot string, request ExecutionPrepareRequest, invocation ExecutionPrepareInvocation, handler ExecutionPrepareHandler) (ExecutionPrepareResult, error) {
 	if handler == nil {
 		return ExecutionPrepareResult{ID: request.ID}, ErrPrepareHandlerUnavailable
 	}
-	return handler(ctx, stateRoot, request)
+	return handler(ctx, stateRoot, request, invocation)
 }
 
 const (
@@ -117,7 +121,7 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 		return invokeExecutionPrepareHandler(ctx, stateRoot, ExecutionPrepareRequest{
 			ID: req.ID, Mode: req.Mode, Actor: req.Actor, CWD: req.CWD,
 			OwnerHost: req.OwnerHost, OwnerModel: req.OwnerModel, OwnerEffort: req.OwnerEffort, Confirm: req.Confirm,
-		}, deps.Prepare)
+		}, ExecutionPrepareInvocation{ReadIssue: deps.ReadIssue}, deps.Prepare)
 	case ExecutionActionStatus:
 		return StatusExecution(stateRoot, req.ID)
 	case ExecutionActionClaim:

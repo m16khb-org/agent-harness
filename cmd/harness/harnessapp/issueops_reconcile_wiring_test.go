@@ -202,7 +202,7 @@ func reconcilePendingFixture(t *testing.T, failStage port.ExecutionOrcaIntentSta
 	})
 	_, err := prepare(context.Background(), stateRoot, issueops.ExecutionPrepareRequest{
 		ID: record.ID, Mode: "orca", Actor: claimWiringActor(t), CWD: repo, OwnerHost: "codex", OwnerModel: "model", Confirm: true,
-	})
+	}, issueops.ExecutionPrepareInvocation{})
 	if err == nil {
 		t.Fatal("fixture must stop on an ambiguous terminal mutation")
 	}

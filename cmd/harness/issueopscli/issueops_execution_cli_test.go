@@ -161,7 +161,7 @@ func TestIssueOpsExecutionPrepareCLIFailsClosedWithoutHandler(t *testing.T) {
 
 func executionCLIPrepareHandler(t *testing.T) issueopscore.ExecutionPrepareHandler {
 	t.Helper()
-	return func(_ context.Context, stateRoot string, request issueopscore.ExecutionPrepareRequest) (issueopscore.ExecutionPrepareResult, error) {
+	return func(_ context.Context, stateRoot string, request issueopscore.ExecutionPrepareRequest, _ issueopscore.ExecutionPrepareInvocation) (issueopscore.ExecutionPrepareResult, error) {
 		record, err := issueopscore.ReadIssueOps(stateRoot, request.ID)
 		if err != nil {
 			return issueopscore.ExecutionPrepareResult{ID: request.ID}, err

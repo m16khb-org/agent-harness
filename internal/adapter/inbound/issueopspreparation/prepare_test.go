@@ -28,7 +28,7 @@ func TestHandlerMapsEveryRequestAndResultField(t *testing.T) {
 		IssueSnapshotSource: "provider", NextCommand: "agent-harness next",
 	}}
 
-	got, err := NewHandler(service)(context.Background(), "/state", request)
+	got, err := NewHandler(service)(context.Background(), "/state", request, issueops.ExecutionPrepareInvocation{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,14 +64,14 @@ func TestHandlerPreservesResultWithServiceError(t *testing.T) {
 	cause := errors.New("pending external intent")
 	service := &serviceFake{result: preparationcontract.Result{ID: "io-199", RequestedMode: "orca", NextCommand: "reconcile"}, err: cause}
 
-	got, err := NewHandler(service)(context.Background(), "/state", issueops.ExecutionPrepareRequest{ID: "io-199"})
+	got, err := NewHandler(service)(context.Background(), "/state", issueops.ExecutionPrepareRequest{ID: "io-199"}, issueops.ExecutionPrepareInvocation{})
 	if err != cause || got.ID != "io-199" || got.RequestedMode != "orca" || got.NextCommand != "reconcile" {
 		t.Fatalf("result=%#v err=%v", got, err)
 	}
 }
 
 func TestHandlerFailsClosedWithoutService(t *testing.T) {
-	got, err := NewHandler(nil)(context.Background(), "/state", issueops.ExecutionPrepareRequest{ID: "io-199"})
+	got, err := NewHandler(nil)(context.Background(), "/state", issueops.ExecutionPrepareRequest{ID: "io-199"}, issueops.ExecutionPrepareInvocation{})
 	if !errors.Is(err, issueops.ErrPrepareHandlerUnavailable) || got != (issueops.ExecutionPrepareResult{ID: "io-199"}) {
 		t.Fatalf("result=%#v err=%v", got, err)
 	}

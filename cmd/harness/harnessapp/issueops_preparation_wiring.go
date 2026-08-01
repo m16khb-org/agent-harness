@@ -44,12 +44,16 @@ func productionIssueOpsExecutionDependencies() issueOpsExecutionCompositionDeps 
 }
 
 func newIssueOpsPreparationHandler(deps issueOpsPreparationCompositionDeps) issueops.ExecutionPrepareHandler {
-	return func(ctx context.Context, stateRoot string, request issueops.ExecutionPrepareRequest) (issueops.ExecutionPrepareResult, error) {
-		service, err := newIssueOpsPreparationService(stateRoot, request.ID, deps)
+	return func(ctx context.Context, stateRoot string, request issueops.ExecutionPrepareRequest, invocation issueops.ExecutionPrepareInvocation) (issueops.ExecutionPrepareResult, error) {
+		requestDeps := deps
+		if invocation.ReadIssue != nil {
+			requestDeps.ReadIssue = invocation.ReadIssue
+		}
+		service, err := newIssueOpsPreparationService(stateRoot, request.ID, requestDeps)
 		if err != nil {
 			return issueops.ExecutionPrepareResult{ID: request.ID}, err
 		}
-		return preparationinbound.NewHandler(service)(ctx, stateRoot, request)
+		return preparationinbound.NewHandler(service)(ctx, stateRoot, request, invocation)
 	}
 }
 

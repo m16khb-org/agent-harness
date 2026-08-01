@@ -258,7 +258,7 @@ func TestHandleMCPIssueOpsExecutionPreservesResetRequiredFields(t *testing.T) {
 	}
 	outcome := handleMCPIssueOpsExecutionWithDependencies(map[string]any{
 		"action": "prepare", "id": "io-aaaaaaaaaaaa", "mode": "auto", "confirm": true,
-	}, MCPDependencies{Prepare: func(_ context.Context, stateRoot string, request issueops.ExecutionPrepareRequest) (issueops.ExecutionPrepareResult, error) {
+	}, MCPDependencies{Prepare: func(_ context.Context, stateRoot string, request issueops.ExecutionPrepareRequest, _ issueops.ExecutionPrepareInvocation) (issueops.ExecutionPrepareResult, error) {
 		return issueops.ExecutionPrepareResult{ID: request.ID}, issueops.RequireIssueOpsMutationAllowed(stateRoot)
 	}})
 	if !outcome.Handled || !outcome.IsError {

@@ -159,7 +159,7 @@ func prepareHookExecutionFixture(t *testing.T, mode, host string) (string, issue
 	result, err := handler(context.Background(), stateRoot, issueops.ExecutionPrepareRequest{
 		ID: record.ID, Mode: mode, Actor: actor, CWD: repo,
 		OwnerHost: host, OwnerModel: "test-model", OwnerEffort: "high", Confirm: true,
-	})
+	}, issueops.ExecutionPrepareInvocation{})
 	if err != nil {
 		t.Fatal(err)
 	}
