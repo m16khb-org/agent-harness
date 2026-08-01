@@ -353,6 +353,14 @@ atomicity를 비교한다. 변경 시 core focused race, outbound focused race,
 architecture ratchet, CLI/MCP contract, golden, scoped vet와 build를 실행하며,
 전체 suite는 PR CI가 회귀 증거로 담당한다.
 
+`issueopspublication` vertical은 fixed operation ID와 fixed clock을 쓰는 frozen
+legacy oracle/new vertical differential로 create·reconcile의 result JSON, error
+text, record row, `external_intent_v1` row를 byte-for-byte 비교한다. Provider
+create·inventory·live verification 중에는 cycle lock이 해제되어 동시 read와
+replacement preview가 완료되어야 한다. CLI text, MCP `isError`, production
+provider resolver caller-zero, non-test legacy full-flow 부재를 각각 adapter 및
+AST ratchet 테스트로 고정한다.
+
 Normal tests and self-verification must remain green without Orca. Use injected
 workspace, provider, process, and Orca adapters for the default suite. The
 current execution contract is `issueops_v1` with `schema_version=1`; legacy

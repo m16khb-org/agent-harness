@@ -28,24 +28,28 @@ func (h ReconcileHandler) Handle(ctx context.Context, _ string, request issueops
 	}
 	result, serviceErr := h.service.Reconcile(ctx, request.ID)
 	public := issueops.ExecutionReconcileResult{
-		OK: serviceErr == nil, ID: request.ID, Reconciled: result.Reconciled, Code: result.Code,
+		OK: serviceErr == nil || result.Reconciled, ID: request.ID, Reconciled: result.Reconciled, Code: result.Code,
 		ExternalStateInspected: result.ExternalStateInspected,
 	}
 	if result.Record.ID != "" {
 		public.ID = result.Record.ID
 	}
-	if len(result.Record.Raw) == 0 {
-		if serviceErr != nil {
-			return public, serviceErr
-		}
-		return public, fmt.Errorf("decode publication record snapshot: raw record is required")
-	}
 	var record issueops.IssueOpsRecord
-	if err := json.Unmarshal(result.Record.Raw, &record); err != nil {
-		if serviceErr != nil {
-			return public, serviceErr
+	if serviceErr != nil && !result.Reconciled && request.Snapshot != nil {
+		record = *request.Snapshot
+	} else {
+		if len(result.Record.Raw) == 0 {
+			if serviceErr != nil {
+				return public, serviceErr
+			}
+			return public, fmt.Errorf("decode publication record snapshot: raw record is required")
 		}
-		return public, fmt.Errorf("decode publication record snapshot: %w", err)
+		if err := json.Unmarshal(result.Record.Raw, &record); err != nil {
+			if serviceErr != nil {
+				return public, serviceErr
+			}
+			return public, fmt.Errorf("decode publication record snapshot: %w", err)
+		}
 	}
 	if record.Execution != nil {
 		public.Execution = *record.Execution

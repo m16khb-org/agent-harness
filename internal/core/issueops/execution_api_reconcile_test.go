@@ -42,7 +42,6 @@ func TestExecutionActionReconcileUsesInjectedHandlerExactlyOnce(t *testing.T) {
 func TestExecutionActionRemoteReconcileUsesPublicationHandlerWithoutLegacyOrOrcaFallback(t *testing.T) {
 	stateRoot, fixture := pendingRemoteReconcileActionFixture(t)
 	publicationCalls := 0
-	legacyCalls := 0
 	orcaCalls := 0
 	want := ExecutionReconcileResult{OK: true, ID: fixture.record.ID, Reconciled: true, Code: "publication_vertical"}
 
@@ -52,22 +51,18 @@ func TestExecutionActionRemoteReconcileUsesPublicationHandlerWithoutLegacyOrOrca
 	}, ExecutionActionDependencies{
 		RemoteReconcile: func(_ context.Context, gotRoot string, request ExecutionReconcileRequest) (ExecutionReconcileResult, error) {
 			publicationCalls++
-			if gotRoot != stateRoot || request.ID != fixture.record.ID || !request.Confirm || request.Preview || request.Snapshot != nil {
+			if gotRoot != stateRoot || request.ID != fixture.record.ID || !request.Confirm || request.Preview || request.Snapshot == nil || request.Snapshot.ID != fixture.record.ID {
 				t.Fatalf("root=%q request=%+v", gotRoot, request)
 			}
 			return want, nil
 		},
-		RemotePR: RemotePullRequestDependencies{Reconcile: func(string, port.IssueProviderReconcilePullRequestRequest) (port.IssueProviderReconcilePullRequestResult, error) {
-			legacyCalls++
-			return port.IssueProviderReconcilePullRequestResult{}, errors.New("legacy fallback invoked")
-		}},
 		Reconcile: func(context.Context, string, ExecutionReconcileRequest, ExecutionReconcileDependencies) (ExecutionReconcileResult, error) {
 			orcaCalls++
 			return ExecutionReconcileResult{}, errors.New("Orca fallback invoked")
 		},
 	})
-	if err != nil || publicationCalls != 1 || legacyCalls != 0 || orcaCalls != 0 {
-		t.Fatalf("result=%#v publication=%d legacy=%d orca=%d err=%v", raw, publicationCalls, legacyCalls, orcaCalls, err)
+	if err != nil || publicationCalls != 1 || orcaCalls != 0 {
+		t.Fatalf("result=%#v publication=%d orca=%d err=%v", raw, publicationCalls, orcaCalls, err)
 	}
 	if got, ok := raw.(ExecutionReconcileResult); !ok || !reflect.DeepEqual(got, want) {
 		t.Fatalf("result=%#v", raw)
@@ -76,26 +71,19 @@ func TestExecutionActionRemoteReconcileUsesPublicationHandlerWithoutLegacyOrOrca
 
 func TestExecutionActionRemoteReconcileFailsClosedWithoutPublicationHandler(t *testing.T) {
 	stateRoot, fixture := pendingRemoteReconcileActionFixture(t)
-	legacyCalls := 0
 	raw, err := ExecuteExecution(context.Background(), stateRoot, ExecutionActionRequest{
 		Action: ExecutionActionReconcile, ID: fixture.record.ID, Confirm: true,
 		Actor: fixture.actor, CWD: fixture.worktree,
-	}, ExecutionActionDependencies{RemotePR: RemotePullRequestDependencies{
-		Reconcile: func(string, port.IssueProviderReconcilePullRequestRequest) (port.IssueProviderReconcilePullRequestResult, error) {
-			legacyCalls++
-			return port.IssueProviderReconcilePullRequestResult{AuthoritativeZero: true}, nil
-		},
-	}})
+	}, ExecutionActionDependencies{})
 	result, ok := raw.(ExecutionReconcileResult)
-	if !ok || result.Code != "remote_reconcile_unavailable" || !errors.Is(err, ErrRemotePullRequestReconcileHandlerUnavailable) || legacyCalls != 0 {
-		t.Fatalf("result=%#v legacyCalls=%d err=%v", raw, legacyCalls, err)
+	if !ok || result.Code != "remote_reconcile_unavailable" || !errors.Is(err, ErrRemotePullRequestReconcileHandlerUnavailable) {
+		t.Fatalf("result=%#v err=%v", raw, err)
 	}
 }
 
 func TestExecutionActionRemoteReconcilePreviewDoesNotCallAnyHandler(t *testing.T) {
 	stateRoot, fixture := pendingRemoteReconcileActionFixture(t)
 	publicationCalls := 0
-	legacyCalls := 0
 	orcaCalls := 0
 	result, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 		ID: fixture.record.ID, Preview: true, Actor: fixture.actor, CWD: fixture.worktree,
@@ -104,17 +92,13 @@ func TestExecutionActionRemoteReconcilePreviewDoesNotCallAnyHandler(t *testing.T
 			publicationCalls++
 			return ExecutionReconcileResult{}, nil
 		},
-		RemotePR: RemotePullRequestDependencies{Reconcile: func(string, port.IssueProviderReconcilePullRequestRequest) (port.IssueProviderReconcilePullRequestResult, error) {
-			legacyCalls++
-			return port.IssueProviderReconcilePullRequestResult{}, nil
-		}},
 		Handler: func(context.Context, string, ExecutionReconcileRequest, ExecutionReconcileDependencies) (ExecutionReconcileResult, error) {
 			orcaCalls++
 			return ExecutionReconcileResult{}, nil
 		},
 	})
-	if err != nil || result.Code != "remote_reconcile_required" || result.ExternalStateInspected || publicationCalls != 0 || legacyCalls != 0 || orcaCalls != 0 {
-		t.Fatalf("result=%#v publication=%d legacy=%d orca=%d err=%v", result, publicationCalls, legacyCalls, orcaCalls, err)
+	if err != nil || result.Code != "remote_reconcile_required" || result.ExternalStateInspected || publicationCalls != 0 || orcaCalls != 0 {
+		t.Fatalf("result=%#v publication=%d orca=%d err=%v", result, publicationCalls, orcaCalls, err)
 	}
 }
 
@@ -122,7 +106,7 @@ func pendingRemoteReconcileActionFixture(t *testing.T) (string, remoteExecutionF
 	t.Helper()
 	stateRoot := t.TempDir()
 	fixture := newRemoteExecutionFixture(t, stateRoot, "195-remote-action-reconcile")
-	_, err := createRemotePullRequestLegacy(context.Background(), stateRoot, fixture.request("publication reconcile routing"), RemotePullRequestDependencies{
+	_, err := createRemotePullRequestLegacy(context.Background(), stateRoot, fixture.request("publication reconcile routing"), legacyRemotePullRequestDependencies{
 		Create: func(string, port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 			return port.IssueProviderCreatePullRequestResult{}, errors.New("ambiguous provider outcome")
 		},

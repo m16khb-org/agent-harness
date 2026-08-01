@@ -5,6 +5,7 @@ package issueops
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -19,6 +20,66 @@ import (
 )
 
 const legacyPublicationOperationID = "0123456789abcdef0123456789abcdef"
+
+type legacyRemotePullRequestDependencies struct {
+	Create    RemotePullRequestCreateFunc
+	Reconcile RemotePullRequestReconcileFunc
+	Verify    RemoteArtifactVerifyFunc
+	Now       func() time.Time
+}
+
+func createRemotePullRequestLegacy(ctx context.Context, stateRoot string, req RemotePullRequestRequest, deps legacyRemotePullRequestDependencies) (port.IssueProviderCreatePullRequestResult, error) {
+	if req.Confirm {
+		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
+			return port.IssueProviderCreatePullRequestResult{}, err
+		}
+	}
+	if deps.Create == nil {
+		return port.IssueProviderCreatePullRequestResult{}, fmt.Errorf("remote pull request provider is unavailable")
+	}
+	if req.Confirm {
+		actor, err := normalizeNativeActor(req.Actor)
+		if err != nil {
+			return port.IssueProviderCreatePullRequestResult{}, err
+		}
+		req.Actor = actor
+	}
+	record, providerReq, kind, err := prepareRemotePullRequest(stateRoot, req)
+	if err != nil {
+		return port.IssueProviderCreatePullRequestResult{}, err
+	}
+	if !req.Confirm {
+		return deps.Create(strings.ToLower(strings.TrimSpace(req.Provider)), providerReq)
+	}
+	pending, payload, err := beginRemotePullRequestIntent(stateRoot, record, req.Actor, req.CWD, req.ExpectedGeneration, providerReq, req.Provider, kind, deps.Now)
+	if err != nil {
+		return port.IssueProviderCreatePullRequestResult{}, err
+	}
+	result, callErr := deps.Create(payload.Provider, payload.Request)
+	if callErr != nil {
+		invocation := remoteInvocationUnknown
+		var typed *port.IssueProviderCreateError
+		if errors.As(callErr, &typed) && !typed.Invoked {
+			invocation = remoteInvocationNotInvoked
+		}
+		_ = recordRemotePullRequestFailure(stateRoot, pending.ID, payload.OperationID, invocation, payload.RetryCount, result.URL, callErr, deps.Now)
+		return result, fmt.Errorf("remote create outcome requires execution reconcile; creation was not retried: %w", callErr)
+	}
+	if strings.TrimSpace(result.URL) == "" {
+		err = fmt.Errorf("provider create returned no canonical URL")
+		_ = recordRemotePullRequestFailure(stateRoot, pending.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, "", err, deps.Now)
+		return result, err
+	}
+	if err := verifyRemotePullRequestResult(record, payload, result.URL, deps.Verify); err != nil {
+		_ = recordRemotePullRequestFailure(stateRoot, pending.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, result.URL, err, deps.Now)
+		return result, fmt.Errorf("provider returned a URL but durable verification requires execution reconcile: %w", err)
+	}
+	if _, err := finishRemotePullRequestIntent(stateRoot, pending.ID, payload, result.URL, true, deps.Now); err != nil {
+		_ = recordRemotePullRequestFailure(stateRoot, pending.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, result.URL, err, deps.Now)
+		return result, fmt.Errorf("provider succeeded but durable receipt requires execution reconcile: %w", err)
+	}
+	return result, nil
+}
 
 func TestBeginRemotePullRequestIntentWithOperationIDRejectsNonCanonicalID(t *testing.T) {
 	tests := []struct {
@@ -68,7 +129,7 @@ func TestLegacyRemotePublicationV1Goldens(t *testing.T) {
 		"github",
 		"pr",
 		legacyPublicationOperationID,
-		RemotePullRequestDependencies{
+		legacyRemotePullRequestDependencies{
 			Create: func(string, port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 				intentRaw = readLegacyPublicationRawRow(t, stateRoot, externalIntentBucket, legacyPublicationOperationID)
 				return port.IssueProviderCreatePullRequestResult{}, errors.New("provider outcome is ambiguous")
@@ -98,7 +159,7 @@ func legacyCreateRemotePullRequestWithOperationID(
 	provider string,
 	kind string,
 	operationID string,
-	deps RemotePullRequestDependencies,
+	deps legacyRemotePullRequestDependencies,
 ) (port.IssueProviderCreatePullRequestResult, error) {
 	pending, payload, err := beginRemotePullRequestIntentWithOperationID(
 		stateRoot,
@@ -138,6 +199,92 @@ func legacyCreateRemotePullRequestWithOperationID(
 		_ = recordRemotePullRequestFailure(stateRoot, pending.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, result.URL, err, deps.Now)
 		return result, fmt.Errorf("provider succeeded but durable receipt requires execution reconcile: %w", err)
 	}
+	return result, nil
+}
+
+func legacyReconcileRemotePullRequest(ctx context.Context, stateRoot string, record IssueOpsRecord, deps legacyRemotePullRequestDependencies) (result ExecutionReconcileResult, err error) {
+	inspected := false
+	defer func() { result.ExternalStateInspected = inspected }()
+
+	pending := record.Execution.Pending
+	payload, err := readExternalRemotePRPayload(stateRoot, pending.OperationID)
+	if err != nil {
+		return failedExecutionReconcileResult(record, "external_intent_payload_invalid"), err
+	}
+	if deps.Reconcile == nil {
+		return failedExecutionReconcileResult(record, "remote_reconcile_unavailable"), fmt.Errorf("remote reconcile provider is unavailable")
+	}
+	inventory, err := deps.Reconcile(payload.Provider, remotePullRequestReconcileRequest(payload))
+	inspected = true
+	if err != nil {
+		_ = recordRemotePullRequestFailure(stateRoot, record.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, payload.KnownURL, err, deps.Now)
+		return failedExecutionReconcileResult(record, "remote_reconcile_ambiguous"), fmt.Errorf("remote reconcile transport is ambiguous; intent retained: %w", err)
+	}
+	if len(inventory.Candidates) > 1 {
+		err := fmt.Errorf("remote reconcile found multiple candidates; intent retained")
+		_ = recordRemotePullRequestFailure(stateRoot, record.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, payload.KnownURL, err, deps.Now)
+		return failedExecutionReconcileResult(record, "remote_reconcile_multiple"), err
+	}
+	if len(inventory.Candidates) == 1 {
+		candidate := inventory.Candidates[0]
+		if err := validateRemotePullRequestCandidate(record, payload, candidate); err != nil {
+			_ = recordRemotePullRequestFailure(stateRoot, record.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, payload.KnownURL, err, deps.Now)
+			return failedExecutionReconcileResult(record, "remote_reconcile_candidate_mismatch"), err
+		}
+		if err := verifyRemotePullRequestResult(record, payload, candidate.URL, deps.Verify); err != nil {
+			_ = recordRemotePullRequestFailure(stateRoot, record.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, candidate.URL, err, deps.Now)
+			return failedExecutionReconcileResult(record, "remote_reconcile_verification_failed"), err
+		}
+		updated, err := finishRemotePullRequestIntent(stateRoot, record.ID, payload, candidate.URL, false, deps.Now)
+		if err != nil {
+			return failedExecutionReconcileResult(record, "remote_reconcile_receipt_failed"), err
+		}
+		result := executionReconcileResult(updated, false, "remote_reconcile_adopted")
+		result.Reconciled = true
+		return result, nil
+	}
+	if !inventory.AuthoritativeZero {
+		err := fmt.Errorf("remote reconcile returned a non-authoritative zero candidate result; intent retained")
+		_ = recordRemotePullRequestFailure(stateRoot, record.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, payload.KnownURL, err, deps.Now)
+		return failedExecutionReconcileResult(record, "remote_reconcile_zero_ambiguous"), err
+	}
+	if payload.InvocationState != remoteInvocationNotInvoked {
+		err := fmt.Errorf("authoritative zero cannot clear an invocation whose absence was not proven; intent retained")
+		return failedExecutionReconcileResult(record, "remote_reconcile_zero_unproven"), err
+	}
+	if payload.RetryCount != 0 || deps.Create == nil {
+		err := fmt.Errorf("remote create pre-invocation retry is unavailable or already consumed")
+		return failedExecutionReconcileResult(record, "remote_reconcile_retry_exhausted"), err
+	}
+	payload, err = markRemotePullRequestRetry(stateRoot, record.ID, payload)
+	if err != nil {
+		return failedExecutionReconcileResult(record, "remote_reconcile_retry_cas_failed"), err
+	}
+	created, createErr := deps.Create(payload.Provider, payload.Request)
+	if createErr != nil {
+		var typed *port.IssueProviderCreateError
+		if errors.As(createErr, &typed) && !typed.Invoked {
+			updated, finishErr := finishRemotePullRequestPreInvocationFailure(stateRoot, record.ID, payload, createErr, deps.Now)
+			if finishErr != nil {
+				return failedExecutionReconcileResult(record, "remote_reconcile_retry_receipt_failed"), finishErr
+			}
+			result := executionReconcileResult(updated, false, "remote_reconcile_retry_not_invoked")
+			result.Reconciled = true
+			return result, createErr
+		}
+		_ = recordRemotePullRequestFailure(stateRoot, record.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, created.URL, createErr, deps.Now)
+		return failedExecutionReconcileResult(record, "remote_reconcile_retry_ambiguous"), fmt.Errorf("remote retry outcome is ambiguous; creation was not retried again: %w", createErr)
+	}
+	if err := verifyRemotePullRequestResult(record, payload, created.URL, deps.Verify); err != nil {
+		_ = recordRemotePullRequestFailure(stateRoot, record.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, created.URL, err, deps.Now)
+		return failedExecutionReconcileResult(record, "remote_reconcile_retry_verification_failed"), err
+	}
+	updated, err := finishRemotePullRequestIntent(stateRoot, record.ID, payload, created.URL, false, deps.Now)
+	if err != nil {
+		return failedExecutionReconcileResult(record, "remote_reconcile_retry_receipt_failed"), err
+	}
+	result = executionReconcileResult(updated, false, "remote_reconcile_retry_succeeded")
+	result.Reconciled = true
 	return result, nil
 }
 

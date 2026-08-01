@@ -3,6 +3,7 @@ package mcpcli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -30,6 +31,88 @@ func TestMCPExecutionDependenciesPropagatePublicationReconcileWithoutInvocation(
 	if invoked != 0 {
 		t.Fatalf("publication reconcile handler invoked during propagation: %d", invoked)
 	}
+}
+
+func TestMCPPublicationReconcilePreservesToolErrorClassification(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record, receipt := publicationReconcileMCPRecord(t, issueops.IssueOpsStateRoot())
+	for _, test := range []struct {
+		name        string
+		handlerErr  error
+		wantIsError bool
+	}{
+		{name: "success"},
+		{name: "structured failure", handlerErr: errors.New("remote reconcile found multiple candidates; intent retained"), wantIsError: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			calls := 0
+			code := "remote_reconcile_adopted"
+			if test.handlerErr != nil {
+				code = "remote_reconcile_multiple"
+			}
+			outcome := handleMCPIssueOpsExecutionWithDependencies(map[string]any{
+				"action": "reconcile", "id": record.ID, "confirm": true,
+				"host": "codex", "session_id": "publication-mcp-session",
+				"session_pid": float64(receipt.PID), "session_started_at": receipt.StartedAt,
+				"session_executable": receipt.Executable, "cwd": record.Execution.Workspace.Root,
+			}, MCPDependencies{Publication: issueops.RemotePublicationHandlers{Reconcile: func(_ context.Context, _ string, request issueops.ExecutionReconcileRequest) (issueops.ExecutionReconcileResult, error) {
+				calls++
+				if request.Snapshot == nil || request.Snapshot.ID != record.ID {
+					t.Fatalf("publication reconcile snapshot=%#v", request.Snapshot)
+				}
+				return issueops.ExecutionReconcileResult{OK: test.handlerErr == nil, ID: record.ID, Code: code}, test.handlerErr
+			}}})
+			if calls != 1 || !outcome.Handled || outcome.IsError != test.wantIsError || outcome.Err != nil {
+				t.Fatalf("calls=%d outcome=%#v", calls, outcome)
+			}
+			if test.wantIsError {
+				payload, ok := outcome.Payload.(map[string]any)
+				if !ok || payload["ok"] != false || payload["error"] != test.handlerErr.Error() {
+					t.Fatalf("error payload=%#v", outcome.Payload)
+				}
+			} else if result, ok := outcome.Payload.(issueops.ExecutionReconcileResult); !ok || !result.OK || result.ID != record.ID {
+				t.Fatalf("success payload=%#v", outcome.Payload)
+			}
+		})
+	}
+}
+
+func publicationReconcileMCPRecord(t *testing.T, stateRoot string) (issueops.IssueOpsRecord, model.NativeProcessReceipt) {
+	t.Helper()
+	ancestry, err := issueops.ObserveNativeProcessAncestry(os.Getpid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var receipt model.NativeProcessReceipt
+	for _, candidate := range ancestry {
+		if candidate.PID == os.Getpid() {
+			receipt = candidate
+			break
+		}
+	}
+	if receipt.PID == 0 {
+		t.Fatalf("current process receipt missing from ancestry: %#v", ancestry)
+	}
+	repo, worktree := t.TempDir(), t.TempDir()
+	actor := model.NativeActor{Host: "codex", SessionID: "publication-mcp-session", SessionProcess: &receipt}
+	record := issueops.IssueOpsRecord{
+		OK: true, SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
+		ID: issueops.NewIssueOpsID(repo, "195-publication-mcp"), Repo: repo, Branch: "195-publication-mcp",
+		Phase: issueops.IssueOpsPhasePR, WorktreePath: worktree,
+		Execution: &model.Execution{
+			Mode:      model.ExecutionModeDirect,
+			Workspace: model.Workspace{SourceRoot: repo, Root: worktree, Branch: "195-publication-mcp", BaseHead: strings.Repeat("a", 40), Driver: "git", LinkedAt: "2026-08-01T00:00:00Z"},
+			Lease:     model.WriteLease{Generation: 1, Status: model.LeaseStatusActive, Holder: &actor, ClaimedAt: "2026-08-01T00:00:00Z"},
+			Pending:   &model.ExternalIntent{OperationID: "0123456789abcdef0123456789abcdef", Kind: "remote_pr_create", Marker: "<!-- agent-harness:issueops-v1 operation=0123456789abcdef0123456789abcdef -->", StartedAt: "2026-08-01T00:00:00Z"},
+		},
+		CreatedAt: "2026-08-01T00:00:00Z",
+		UpdatedAt: "2026-08-01T00:00:00Z",
+	}
+	written, err := issueops.WriteIssueOps(stateRoot, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return written, receipt
 }
 
 func TestExecutionActionRequestFromMCPPreservesAutoMode(t *testing.T) {

@@ -76,7 +76,6 @@ type ExecutionActionDependencies struct {
 	Orca      port.ExecutionOrcaProvisioner
 	OrcaOwner port.ExecutionOrcaOwnerInspector
 	ReadIssue ExecutionIssueSnapshotReadFunc
-	RemotePR  RemotePullRequestDependencies
 	Claim     ExecutionClaimHandler
 	Release   ExecutionReleaseHandler
 	Reseed    ExecutionReseedHandler
@@ -171,7 +170,7 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 		return ReconcileExecutionWithDependencies(ctx, stateRoot, ExecutionReconcileRequest{
 			ID: req.ID, Preview: req.Preview, Confirm: req.Confirm, Actor: req.Actor, CWD: req.CWD,
 		}, ExecutionReconcileDependencies{
-			Orca: deps.Orca, ReadIssue: deps.ReadIssue, RemotePR: deps.RemotePR,
+			Orca: deps.Orca, ReadIssue: deps.ReadIssue,
 			Handler: deps.Reconcile, RemoteReconcile: deps.RemoteReconcile,
 		})
 	case ExecutionActionComplete:

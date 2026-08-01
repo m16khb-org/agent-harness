@@ -44,6 +44,11 @@ func TestEvaluateEdgesRejectsForbiddenDependencies(t *testing.T) {
 		{"application outbound adapter", dependencyEdge{"internal/application/run", "internal/adapter/provider"}, "application_must_not_import_implementation"},
 		{"release application filesystem", dependencyEdge{"internal/application/issueopslease", "path/filepath"}, "application_must_not_import_implementation"},
 		{"release contract production issueops", dependencyEdge{"internal/contract/issueopslease", "internal/core/issueops/model"}, "leasevertical_contract_must_not_import_production_issueops"},
+		{"publication contract core", dependencyEdge{"internal/contract/issueopspublication", "internal/core/issueops"}, "publication_contract_must_not_import_internal"},
+		{"publication contract database", dependencyEdge{"internal/contract/issueopspublication", "database/sql"}, "publication_contract_must_not_import_internal"},
+		{"publication domain port", dependencyEdge{"internal/domain/issueopspublication", "internal/port"}, "publication_domain_must_only_import_contract"},
+		{"publication application port", dependencyEdge{"internal/application/issueopspublication", "internal/port"}, "publication_application_must_only_import_domain_or_contract"},
+		{"publication outbound core", dependencyEdge{"internal/adapter/outbound/issueopspublication", "internal/core/issueops"}, "publication_outbound_adapter_must_not_import_core"},
 		{"application syscall", dependencyEdge{"internal/application/run", "syscall"}, "application_must_not_import_implementation"},
 		{"inbound adapter outbound adapter", dependencyEdge{"internal/adapter/inbound/http", "internal/adapter/outbound/github"}, "inbound_adapter_must_not_import_outbound_adapter"},
 	}
@@ -179,7 +184,7 @@ func TestDependencyProductionReconcileRoutingHasNoLegacyFallback(t *testing.T) {
 	}
 }
 
-func TestProductionPublicationCallersHaveNoConcreteProviderResolver(t *testing.T) {
+func TestDependencyProductionPublicationCallersHaveNoConcreteProviderResolver(t *testing.T) {
 	violations, err := productionPublicationCallerViolations(findRepoRoot(t))
 	if err != nil {
 		t.Fatalf("inspect production publication callers: %v", err)
@@ -189,7 +194,32 @@ func TestProductionPublicationCallersHaveNoConcreteProviderResolver(t *testing.T
 	}
 }
 
-func TestPublicationCallerViolationsIgnoreUnrelatedRemoteOperations(t *testing.T) {
+func TestDependencyProductionPublicationCoreHasNoLegacyOrchestration(t *testing.T) {
+	violations, err := productionPublicationLegacyOrchestrationViolations(findRepoRoot(t))
+	if err != nil {
+		t.Fatalf("inspect production publication orchestration: %v", err)
+	}
+	if len(violations) != 0 {
+		t.Fatalf("production publication orchestration violations: %s", strings.Join(violations, "; "))
+	}
+}
+
+func TestDependencyPublicationLegacyOrchestrationViolationsRejectDefinitionsAndCalls(t *testing.T) {
+	file, err := parser.ParseFile(token.NewFileSet(), "remote.go", `package issueops
+func createRemotePullRequestLegacy() {}
+func route() { reconcileRemotePullRequest() }
+`, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	violations := publicationLegacyOrchestrationViolations(file, "remote.go")
+	joined := strings.Join(violations, "; ")
+	if !strings.Contains(joined, "createRemotePullRequestLegacy") || !strings.Contains(joined, "reconcileRemotePullRequest") {
+		t.Fatalf("publication legacy orchestration violations=%v", violations)
+	}
+}
+
+func TestDependencyPublicationCallerViolationsIgnoreUnrelatedRemoteOperations(t *testing.T) {
 	file, err := parser.ParseFile(token.NewFileSet(), "remote.go", `package caller
 import "agent-harness/internal/adapter/provider"
 func createIssue() { provider.Resolve("github") }
@@ -434,6 +464,43 @@ func productionPublicationCallerViolations(repoRoot string) ([]string, error) {
 	return violations, nil
 }
 
+func productionPublicationLegacyOrchestrationViolations(repoRoot string) ([]string, error) {
+	coreDir := filepath.Join(repoRoot, "internal", "core", "issueops")
+	entries, err := os.ReadDir(coreDir)
+	if err != nil {
+		return nil, err
+	}
+	var violations []string
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		path := filepath.Join(coreDir, name)
+		contents, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), path, contents, 0)
+		if err != nil {
+			return nil, err
+		}
+		violations = append(violations, publicationLegacyOrchestrationViolations(file, name)...)
+	}
+	sort.Strings(violations)
+	return violations, nil
+}
+
+func publicationLegacyOrchestrationViolations(file *ast.File, name string) []string {
+	var violations []string
+	for _, identifier := range []string{"createRemotePullRequestLegacy", "reconcileRemotePullRequest"} {
+		if sourceHasIdentifier(file, identifier) {
+			violations = append(violations, name+" retains legacy publication orchestration "+identifier)
+		}
+	}
+	return violations
+}
+
 func publicationCallerViolations(file *ast.File, name string) []string {
 	var violations []string
 	for _, declaration := range file.Decls {
@@ -641,6 +708,18 @@ func evaluateEdges(edges []dependencyEdge) []violation {
 		if isApplication(edge.importer) && isApplicationImplementation(edge.imported) {
 			violations = append(violations, violation{"application_must_not_import_implementation", edge})
 		}
+		if isPublicationContract(edge.importer) && (strings.HasPrefix(edge.imported, "internal/") || edge.imported == "database/sql") {
+			violations = append(violations, violation{"publication_contract_must_not_import_internal", edge})
+		}
+		if isPublicationDomain(edge.importer) && strings.HasPrefix(edge.imported, "internal/") && !isPublicationContract(edge.imported) {
+			violations = append(violations, violation{"publication_domain_must_only_import_contract", edge})
+		}
+		if isPublicationApplication(edge.importer) && strings.HasPrefix(edge.imported, "internal/") && !isPublicationDomain(edge.imported) && !isPublicationContract(edge.imported) {
+			violations = append(violations, violation{"publication_application_must_only_import_domain_or_contract", edge})
+		}
+		if isPublicationOutboundAdapter(edge.importer) && isCore(edge.imported) {
+			violations = append(violations, violation{"publication_outbound_adapter_must_not_import_core", edge})
+		}
 		if isLeaseVerticalLayer(edge.importer, "contract") && isProductionIssueOps(edge.imported) {
 			violations = append(violations, violation{"leasevertical_contract_must_not_import_production_issueops", edge})
 		}
@@ -653,6 +732,22 @@ func evaluateEdges(edges []dependencyEdge) []violation {
 
 func isPublicationDomainContract(edge dependencyEdge) bool {
 	return edge.importer == "internal/domain/issueopspublication" && edge.imported == "internal/contract/issueopspublication"
+}
+
+func isPublicationContract(path string) bool {
+	return path == "internal/contract/issueopspublication" || strings.HasPrefix(path, "internal/contract/issueopspublication/")
+}
+
+func isPublicationDomain(path string) bool {
+	return path == "internal/domain/issueopspublication" || strings.HasPrefix(path, "internal/domain/issueopspublication/")
+}
+
+func isPublicationApplication(path string) bool {
+	return path == "internal/application/issueopspublication" || strings.HasPrefix(path, "internal/application/issueopspublication/")
+}
+
+func isPublicationOutboundAdapter(path string) bool {
+	return path == "internal/adapter/outbound/issueopspublication" || strings.HasPrefix(path, "internal/adapter/outbound/issueopspublication/")
 }
 
 func compareBaseline(observed, baseline []dependencyEdge) error {
