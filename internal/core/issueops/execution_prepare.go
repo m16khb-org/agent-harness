@@ -33,6 +33,9 @@ type ExecutionPrepareDependencies struct {
 	Orca      port.ExecutionOrcaProvisioner
 	ReadIssue ExecutionIssueSnapshotReadFunc
 	Now       func() time.Time
+	// OperationID is a deterministic predecessor-oracle seam. Production leaves
+	// it empty and uses the CSPRNG-backed operation ID generator.
+	OperationID string
 }
 
 type ExecutionPrepareResult struct {
@@ -251,7 +254,7 @@ func prepareOrcaExecution(ctx context.Context, stateRoot string, record IssueOps
 	if !req.Confirm {
 		return result, nil
 	}
-	pending, payload, err := beginOrcaExecutionIntent(stateRoot, record, workspaceReq, probe, req, snapshot, deps.Now)
+	pending, payload, err := beginOrcaExecutionIntentWithID(stateRoot, record, workspaceReq, probe, req, snapshot, deps.OperationID, deps.Now)
 	if err != nil {
 		return ExecutionPrepareResult{OK: false, ID: record.ID}, err
 	}

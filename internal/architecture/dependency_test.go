@@ -111,7 +111,7 @@ func TestLegacyEdgesClassifyConcreteAdapterOutsideCompositionRoot(t *testing.T) 
 }
 
 func TestLegacyEdgesExcludeMigratedInboundAdapters(t *testing.T) {
-	for _, importer := range []string{"internal/adapter/inbound/issueopslease", "internal/adapter/inbound/issueopspublication", "internal/adapter/inbound/issueopscompletion"} {
+	for _, importer := range []string{"internal/adapter/inbound/issueopslease", "internal/adapter/inbound/issueopspublication", "internal/adapter/inbound/issueopscompletion", "internal/adapter/inbound/issueopspreparation"} {
 		edge := dependencyEdge{importer, "internal/core/issueops"}
 		if got := legacyEdges([]dependencyEdge{edge}); len(got) != 0 {
 			t.Fatalf("migrated inbound edge %s must stay outside the legacy baseline, got %v", formatEdge(edge), got)
@@ -1024,7 +1024,7 @@ func isLeaseVerticalLayer(path, layer string) bool {
 }
 
 func isMigratedInboundAdapter(path string) bool {
-	return path == "internal/adapter/inbound/issueopslease" || path == "internal/adapter/inbound/issueopspublication" || path == "internal/adapter/inbound/issueopscompletion"
+	return path == "internal/adapter/inbound/issueopslease" || path == "internal/adapter/inbound/issueopspublication" || path == "internal/adapter/inbound/issueopscompletion" || path == "internal/adapter/inbound/issueopspreparation"
 }
 
 func isProductionIssueOps(path string) bool {

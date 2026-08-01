@@ -92,7 +92,7 @@ func (service *Service) Prepare(ctx context.Context, command preparationcontract
 				readiness.Code = "orca_probe_failed"
 			}
 			if probeErr != nil && requested == preparationcontract.ModeOrca {
-				return failedResult(command.ID), probeErr
+				return preparationcontract.Result{ID: command.ID, RequestedMode: requested}, probeErr
 			}
 		}
 	}

@@ -134,28 +134,46 @@ func (err *InvocationError) Unwrap() error { return err.Cause }
 
 // Intent is the only persisted JSON shape for Orca prepare and resume work.
 type Intent struct {
-	SchemaVersion      int                        `json:"schema_version"`
-	Purpose            string                     `json:"purpose,omitempty"`
-	OperationID        string                     `json:"operation_id"`
-	LifecycleID        string                     `json:"lifecycle_id"`
-	Generation         uint64                     `json:"generation"`
-	Stage              IntentStage                `json:"stage"`
-	Marker             string                     `json:"marker"`
-	StartedAt          string                     `json:"started_at"`
-	InvocationState    string                     `json:"invocation_state"`
-	InvocationAttempts int                        `json:"invocation_attempts"`
-	Workspace          WorkspaceRequest           `json:"workspace"`
-	Probe              ProbeRequest               `json:"probe"`
-	Prepared           *OrcaWorkspaceReceipt      `json:"prepared,omitempty"`
-	Launch             *LaunchIdentity            `json:"launch,omitempty"`
-	IssueBodySHA256    string                     `json:"issue_body_sha256"`
-	ClaimTokenSHA256   string                     `json:"claim_token_sha256,omitempty"`
-	TerminalPTYID      string                     `json:"terminal_pty_id,omitempty"`
-	RunID              string                     `json:"run_id,omitempty"`
-	RunBound           bool                       `json:"run_bound,omitempty"`
-	TaskID             string                     `json:"task_id,omitempty"`
-	PriorBinding       *leasecontract.OrcaBinding `json:"prior_binding,omitempty"`
-	ResumeLease        *leasecontract.Lease       `json:"resume_lease,omitempty"`
+	SchemaVersion      int                   `json:"schema_version"`
+	Purpose            string                `json:"purpose,omitempty"`
+	OperationID        string                `json:"operation_id"`
+	LifecycleID        string                `json:"lifecycle_id"`
+	Generation         uint64                `json:"generation"`
+	Stage              IntentStage           `json:"stage"`
+	Marker             string                `json:"marker"`
+	StartedAt          string                `json:"started_at"`
+	InvocationState    string                `json:"invocation_state"`
+	InvocationAttempts int                   `json:"invocation_attempts"`
+	Workspace          WorkspaceRequest      `json:"workspace"`
+	Probe              ProbeRequest          `json:"probe"`
+	Prepared           *OrcaWorkspaceReceipt `json:"prepared,omitempty"`
+	Launch             *LaunchIdentity       `json:"launch,omitempty"`
+	IssueBodySHA256    string                `json:"issue_body_sha256"`
+	ClaimTokenSHA256   string                `json:"claim_token_sha256,omitempty"`
+	TerminalPTYID      string                `json:"terminal_pty_id,omitempty"`
+	RunID              string                `json:"run_id,omitempty"`
+	RunBound           bool                  `json:"run_bound,omitempty"`
+	TaskID             string                `json:"task_id,omitempty"`
+	PriorBinding       *ResumeBinding        `json:"prior_binding,omitempty"`
+	ResumeLease        *leasecontract.Lease  `json:"resume_lease,omitempty"`
+}
+
+// ResumeBinding preserves the predecessor resume-intent byte order. Persisted
+// issueops_v1 records use leasecontract.OrcaBinding, whose legacy byte order is
+// different, so the two stable wire contracts cannot share one struct.
+type ResumeBinding struct {
+	RuntimeID          string `json:"runtime_id"`
+	RepoID             string `json:"repo_id"`
+	WorktreeID         string `json:"worktree_id"`
+	WorktreeInstanceID string `json:"worktree_instance_id,omitempty"`
+	LeaseGeneration    uint64 `json:"lease_generation,omitempty"`
+	OwnerHost          string `json:"owner_host"`
+	OwnerModel         string `json:"owner_model"`
+	OwnerEffort        string `json:"owner_effort,omitempty"`
+	RunID              string `json:"run_id,omitempty"`
+	TaskID             string `json:"task_id"`
+	DispatchID         string `json:"dispatch_id"`
+	TerminalPTYID      string `json:"terminal_pty_id,omitempty"`
 }
 
 type IssueIdentity struct {
@@ -643,10 +661,14 @@ func leasesEqual(left, right leasecontract.Lease) bool {
 	return bytes.Equal(leftRaw, rightRaw)
 }
 
-func bindingsEqual(left, right *leasecontract.OrcaBinding) bool {
-	leftRaw, _ := json.Marshal(left)
-	rightRaw, _ := json.Marshal(right)
-	return bytes.Equal(leftRaw, rightRaw)
+func bindingsEqual(left *leasecontract.OrcaBinding, right *ResumeBinding) bool {
+	if left == nil || right == nil {
+		return left == nil && right == nil
+	}
+	return left.RuntimeID == right.RuntimeID && left.RepoID == right.RepoID && left.WorktreeID == right.WorktreeID &&
+		left.WorktreeInstanceID == right.WorktreeInstanceID && left.LeaseGeneration == right.LeaseGeneration &&
+		left.OwnerHost == right.OwnerHost && left.OwnerModel == right.OwnerModel && left.OwnerEffort == right.OwnerEffort &&
+		left.RunID == right.RunID && left.TaskID == right.TaskID && left.DispatchID == right.DispatchID && left.TerminalPTYID == right.TerminalPTYID
 }
 
 func validToken(value string) bool {

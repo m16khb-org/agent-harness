@@ -32,9 +32,16 @@ type externalOrcaIntentPayload = preparationcontract.Intent
 var preparationIntentCodec preparationcontract.IntentCodec
 
 func beginOrcaExecutionIntent(stateRoot string, record IssueOpsRecord, workspace port.ExecutionWorkspaceRequest, probe port.ExecutionOrcaProbeRequest, req ExecutionPrepareRequest, snapshot executionOwnerSnapshot, now func() time.Time) (IssueOpsRecord, externalOrcaIntentPayload, error) {
-	operationID, err := newExecutionOperationID()
-	if err != nil {
-		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
+	return beginOrcaExecutionIntentWithID(stateRoot, record, workspace, probe, req, snapshot, "", now)
+}
+
+func beginOrcaExecutionIntentWithID(stateRoot string, record IssueOpsRecord, workspace port.ExecutionWorkspaceRequest, probe port.ExecutionOrcaProbeRequest, req ExecutionPrepareRequest, snapshot executionOwnerSnapshot, operationID string, now func() time.Time) (IssueOpsRecord, externalOrcaIntentPayload, error) {
+	var err error
+	if strings.TrimSpace(operationID) == "" {
+		operationID, err = newExecutionOperationID()
+		if err != nil {
+			return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
+		}
 	}
 	startedAt := executionNow(now)
 	payload := externalOrcaIntentPayload{
@@ -671,8 +678,8 @@ func intentContractLease(lease model.WriteLease) leasecontract.Lease {
 	return result
 }
 
-func intentContractBinding(binding model.OrcaBinding) leasecontract.OrcaBinding {
-	return leasecontract.OrcaBinding{
+func intentContractBinding(binding model.OrcaBinding) preparationcontract.ResumeBinding {
+	return preparationcontract.ResumeBinding{
 		RuntimeID: binding.RuntimeID, RepoID: binding.RepoID, WorktreeID: binding.WorktreeID,
 		WorktreeInstanceID: binding.WorktreeInstanceID, LeaseGeneration: binding.LeaseGeneration,
 		OwnerHost: binding.OwnerHost, OwnerModel: binding.OwnerModel, OwnerEffort: binding.OwnerEffort,
@@ -680,7 +687,7 @@ func intentContractBinding(binding model.OrcaBinding) leasecontract.OrcaBinding 
 	}
 }
 
-func intentContractBindingPointer(binding *model.OrcaBinding) *leasecontract.OrcaBinding {
+func intentContractBindingPointer(binding *model.OrcaBinding) *preparationcontract.ResumeBinding {
 	if binding == nil {
 		return nil
 	}
