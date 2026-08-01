@@ -27,9 +27,9 @@ func TestClientListRunsProjectsInstalledShape(t *testing.T) {
 	}
 }
 
-func TestClientCreateRunUsesExactCoordinatorHandle(t *testing.T) {
+func TestClientCreateRunUsesAuthenticatedCurrentCoordinator(t *testing.T) {
 	runner := newFakeRunner(t)
-	argv := []string{"orca", "orchestration", "run-create", "--objective", "agent-harness issueops-v1 lifecycle=io-test generation=1 intent=op-test", "--from", "term_coordinator", "--json"}
+	argv := []string{"orca", "orchestration", "run-create", "--objective", "agent-harness issueops-v1 lifecycle=io-test generation=1 intent=op-test", "--json"}
 	runner.responses[strings.Join(argv, " ")] = fixtureOutput(t, "run_create.json")
 
 	got, err := NewClient(runner).CreateRun(context.Background(), port.OrcaCreateRunRequest{Objective: "agent-harness issueops-v1 lifecycle=io-test generation=1 intent=op-test"})
@@ -41,10 +41,10 @@ func TestClientCreateRunUsesExactCoordinatorHandle(t *testing.T) {
 	}
 }
 
-func TestClientCurrentRunAndUseRunUseExactCoordinatorHandle(t *testing.T) {
+func TestClientCurrentRunAndUseRunUseAuthenticatedCurrentCoordinator(t *testing.T) {
 	runner := newFakeRunner(t)
-	currentArgv := []string{"orca", "orchestration", "run-current", "--from", "term_coordinator", "--json"}
-	useArgv := []string{"orca", "orchestration", "run-use", "--id", "run_issueops_1", "--from", "term_coordinator", "--json"}
+	currentArgv := []string{"orca", "orchestration", "run-current", "--json"}
+	useArgv := []string{"orca", "orchestration", "run-use", "--id", "run_issueops_1", "--json"}
 	runner.responses[strings.Join(currentArgv, " ")] = fixtureOutput(t, "run_current.json")
 	runner.responses[strings.Join(useArgv, " ")] = fixtureOutput(t, "run_use.json")
 	client := NewClient(runner)
@@ -69,7 +69,7 @@ func TestClientProbeRejectsRunInventoryFromAnotherRuntime(t *testing.T) {
 	runner.responses["orca status --json"] = fixtureOutput(t, "status_ready.json")
 	runner.responses["orca repo show --repo path:/repo --json"] = fixtureOutput(t, "repo_show.json")
 	addCompleteProbeLeafHelp(runner)
-	runner.responses["orca orchestration run-current --from term_coordinator --json"] = CommandOutput{Stdout: []byte(`{
+	runner.responses["orca orchestration run-current --json"] = CommandOutput{Stdout: []byte(`{
 		"ok":true,
 		"result":{"run":null},
 		"_meta":{"runtimeId":"runtime-other"}
@@ -86,7 +86,7 @@ func TestClientProbeRejectsRunInventoryFromAnotherRuntime(t *testing.T) {
 
 func TestClientCurrentRunRejectsMissingProjection(t *testing.T) {
 	runner := newFakeRunner(t)
-	runner.responses["orca orchestration run-current --from term_coordinator --json"] = CommandOutput{Stdout: []byte(`{
+	runner.responses["orca orchestration run-current --json"] = CommandOutput{Stdout: []byte(`{
 		"ok":true,
 		"result":{},
 		"_meta":{"runtimeId":"runtime-1"}
@@ -109,10 +109,10 @@ func TestClientCoordinatorMutationRejectsMissingHandleBeforeInvocation(t *testin
 	}
 }
 
-func TestClientRunScopedTaskMutationUsesRunAndCoordinator(t *testing.T) {
+func TestClientRunScopedTaskMutationUsesRunAndAuthenticatedCoordinator(t *testing.T) {
 	runner := newFakeRunner(t)
-	createArgv := []string{"orca", "orchestration", "task-create", "--spec", "spec", "--task-title", "agent-harness marker", "--display-name", "16-demo", "--run", "run_issueops_1", "--from", "term_coordinator", "--json"}
-	dispatchArgv := []string{"orca", "orchestration", "dispatch", "--task", "task-1", "--to", "term_worker", "--run", "run_issueops_1", "--from", "term_coordinator", "--inject", "--json"}
+	createArgv := []string{"orca", "orchestration", "task-create", "--spec", "spec", "--task-title", "agent-harness marker", "--display-name", "16-demo", "--run", "run_issueops_1", "--json"}
+	dispatchArgv := []string{"orca", "orchestration", "dispatch", "--task", "task-1", "--to", "term_worker", "--run", "run_issueops_1", "--inject", "--json"}
 	runner.responses[strings.Join(createArgv, " ")] = fixtureOutput(t, "task_create.json")
 	runner.responses[strings.Join(dispatchArgv, " ")] = fixtureOutput(t, "dispatch_create.json")
 	client := NewClient(runner)

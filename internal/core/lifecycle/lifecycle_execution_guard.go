@@ -281,35 +281,46 @@ func exactOrcaOwnerControlPlane(command string) bool {
 			exact,
 			exactFlagNames(
 				"--to", "--from", "--type", "--subject", "--body", "--task-id",
-				"--dispatch-id", "--files-modified", "--report-path", "--phase",
+				"--dispatch-id", "--dispatch-capability", "--outcome",
+				"--files-modified", "--report-path", "--phase",
 			),
 			exactFlagNames("--json"),
 			nil,
 		)
-		if !ok || !nonemptyExactFlags(flags, "--to", "--type", "--subject") {
+		if !ok || !nonemptyExactFlags(flags, "--type", "--subject") ||
+			!exactOrcaOwnerRecipient(flags) {
 			return false
 		}
 		messageType, _ := oneFlag(flags, "--type")
+		outcome, hasOutcome := oneFlag(flags, "--outcome")
 		switch messageType {
 		case "heartbeat":
-			return nonemptyExactFlags(flags, "--task-id", "--dispatch-id", "--phase")
+			return !hasOutcome && nonemptyExactFlags(flags, "--task-id", "--dispatch-id", "--phase")
 		case "worker_done":
-			return nonemptyExactFlags(flags, "--body", "--task-id", "--dispatch-id")
+			if !nonemptyExactFlags(flags, "--body", "--task-id", "--dispatch-id") {
+				return false
+			}
+			_, capabilityRoute := flags["--dispatch-capability"]
+			if !capabilityRoute {
+				return !hasOutcome || outcome == "succeeded" || outcome == "failed"
+			}
+			return hasOutcome && (outcome == "succeeded" || outcome == "failed")
 		case "escalation":
-			return nonemptyExactFlags(flags, "--body", "--task-id")
+			return !hasOutcome && nonemptyExactFlags(flags, "--body", "--task-id")
 		case "decision_gate", "reply":
-			return nonemptyExactFlags(flags, "--body")
+			return !hasOutcome && nonemptyExactFlags(flags, "--body")
 		default:
 			return false
 		}
 	case "ask":
 		flags, ok := commandparse.ExactFlags(
 			exact,
-			exactFlagNames("--to", "--from", "--question", "--options", "--timeout-ms"),
+			exactFlagNames("--to", "--from", "--dispatch-capability", "--question", "--options", "--timeout-ms"),
 			exactFlagNames("--json"),
 			nil,
 		)
-		if !ok || !nonemptyExactFlags(flags, "--to", "--from", "--question") {
+		if !ok || !nonemptyExactFlags(flags, "--from", "--question") ||
+			!exactOrcaOwnerRecipient(flags) {
 			return false
 		}
 		timeout, hasTimeout := oneFlag(flags, "--timeout-ms")
@@ -338,6 +349,21 @@ func exactOrcaOwnerControlPlane(command string) bool {
 	default:
 		return false
 	}
+}
+
+// exactOrcaOwnerRecipient는 예전 terminal 주소와 현재 Dispatch capability 중
+// 정확히 하나만 허용한다. capability는 bearer authority이므로 발신 terminal도
+// 함께 있어야 하며, 값의 원문은 이 계층에서 기록하지 않는다.
+func exactOrcaOwnerRecipient(flags map[string][]string) bool {
+	to, hasTo := oneFlag(flags, "--to")
+	capability, hasCapability := oneFlag(flags, "--dispatch-capability")
+	if hasTo == hasCapability {
+		return false
+	}
+	if hasTo {
+		return strings.TrimSpace(to) != ""
+	}
+	return strings.TrimSpace(capability) != "" && nonemptyExactFlags(flags, "--from")
 }
 
 func exactFlagNames(names ...string) map[string]bool {
@@ -549,7 +575,7 @@ func exactIssueOpsOwnerMutation(commandText string) bool {
 	// 않는다(이슈 #158).
 	case "link-plan", "link-worktree", "compatibility review", "devils-advocate review", "phase",
 		"decision add", "ai-slop-clean record", "feedback mark-issue-updated", "feedback resolve",
-		"implementation-review record", "branch prepare", "intent record", "domain-review record", "regress",
+		"implementation-review record", "branch prepare", "intent record", "domain-review record", "design review", "regress",
 		"remote create-pr", "remote verify-artifact", "remote reflect-devils-advocate":
 	default:
 		return false
