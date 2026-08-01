@@ -381,12 +381,13 @@ Execution tests must cover:
   transition are one atomic write. An identical retry is idempotent only when
   all terminal invariants still hold.
 
-Orca external-intent tests treat worktree, terminal, task, and dispatch as four
-separate durable stages. For every stage, exercise authoritative 0, exact 1,
+Orca external-intent tests treat worktree, terminal, Run create, Run bind, task,
+and dispatch as six separate durable stages. For every stage, exercise authoritative 0, exact 1,
 multiple candidates, transport failure, post-mutation crash, and CAS identity
 change. Zero may invoke only with durable `not_invoked_proven` evidence and at
-most one proven-not-invoked retry; exact one adopts; every ambiguous outcome
-retains the intent without fallback or duplicate mutation.
+most one proven-not-invoked retry. The idempotent Run-bind stage may converge an
+unknown outcome within the same two-attempt bound. Exact one adopts; every
+ambiguous create outcome retains the intent without fallback or duplicate mutation.
 
 The prepared runtime ID is mandatory on every terminal/task/dispatch receipt
 and inventory row. Task title/display name and dispatch assignee/injection must

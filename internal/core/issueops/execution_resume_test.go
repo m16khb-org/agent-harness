@@ -322,7 +322,7 @@ func TestExecutionResumeAmbiguousDispatchRemainsReconcileable(t *testing.T) {
 	reconciled, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 		ID: record.ID, Confirm: true, Actor: executionActor("codex", "resume-reconciler"),
 		CWD: record.Execution.Workspace.Root,
-	}, ExecutionReconcileDependencies{Orca: fake})
+	}, ExecutionReconcileDependencies{Handler: legacyReconcileTestHandler, Orca: fake})
 	if err != nil {
 		t.Fatal(err)
 	}

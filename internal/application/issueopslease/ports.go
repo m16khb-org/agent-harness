@@ -144,3 +144,33 @@ type ResumeStageExecutor interface {
 type ResumeOperationIDs interface {
 	New() (string, error)
 }
+
+type ReconcileProgress struct {
+	Record    leasecontract.Record
+	Pending   bool
+	NextStage string
+}
+
+type ReconcileIntentState struct {
+	Progress           ReconcileProgress
+	OperationID        string
+	Stage              string
+	InvocationState    string
+	InvocationAttempts int
+	RecordRaw          []byte
+	IntentRaw          []byte
+	Migrated           bool
+}
+
+type ReconcileRepository interface {
+	Canonicalize(context.Context, string) (ReconcileIntentState, error)
+	MarkInvoking(context.Context, ReconcileIntentState) (ReconcileIntentState, error)
+	RecordFailure(context.Context, ReconcileIntentState, string, error) error
+	ApplyReceipt(context.Context, ReconcileIntentState, leasecontract.ReconcileStageReceipt) (ReconcileProgress, error)
+	Latest(context.Context, string) (leasecontract.Record, error)
+}
+
+type ReconcileStageExecutor interface {
+	Inspect(context.Context, ReconcileIntentState) (leasecontract.ReconcileStageInventory, bool, error)
+	Invoke(context.Context, ReconcileIntentState) (leasecontract.ReconcileStageReceipt, string, error)
+}

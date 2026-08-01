@@ -10,16 +10,18 @@ import (
 )
 
 var (
-	ErrClaimHandlerUnavailable   = errors.New("issueops execution claim handler is not configured")
-	ErrReleaseHandlerUnavailable = errors.New("issueops execution release handler is not configured")
-	ErrReseedHandlerUnavailable  = errors.New("issueops execution reseed handler is not configured")
-	ErrResumeHandlerUnavailable  = errors.New("issueops execution resume handler is not configured")
+	ErrClaimHandlerUnavailable     = errors.New("issueops execution claim handler is not configured")
+	ErrReleaseHandlerUnavailable   = errors.New("issueops execution release handler is not configured")
+	ErrReseedHandlerUnavailable    = errors.New("issueops execution reseed handler is not configured")
+	ErrResumeHandlerUnavailable    = errors.New("issueops execution resume handler is not configured")
+	ErrReconcileHandlerUnavailable = errors.New("issueops execution reconcile handler is not configured")
 )
 
 type ExecutionClaimHandler func(context.Context, string, ExecutionClaimRequest, ExecutionClaimDependencies) (ExecutionResult, error)
 type ExecutionReleaseHandler func(context.Context, string, ExecutionReleaseRequest) (ExecutionResult, error)
 type ExecutionReseedHandler func(context.Context, string, ExecutionReseedRequest) (ExecutionReplaceResult, error)
 type ExecutionResumeHandler func(context.Context, string, ExecutionResumeRequest) (ExecutionResumeResult, error)
+type ExecutionReconcileHandler func(context.Context, string, ExecutionReconcileRequest, ExecutionReconcileDependencies) (ExecutionReconcileResult, error)
 
 const (
 	ExecutionActionPrepare   = "prepare"
@@ -69,6 +71,7 @@ type ExecutionActionDependencies struct {
 	Release   ExecutionReleaseHandler
 	Reseed    ExecutionReseedHandler
 	Resume    ExecutionResumeHandler
+	Reconcile ExecutionReconcileHandler
 	// SettleOrcaTask는 완료 시점의 orca task 종결 표면이다(#130).
 	SettleOrcaTask func(ctx context.Context, runID, taskID string) error
 }
@@ -154,7 +157,7 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 	case ExecutionActionReconcile:
 		return ReconcileExecutionWithDependencies(ctx, stateRoot, ExecutionReconcileRequest{
 			ID: req.ID, Preview: req.Preview, Confirm: req.Confirm, Actor: req.Actor, CWD: req.CWD,
-		}, ExecutionReconcileDependencies{Orca: deps.Orca, ReadIssue: deps.ReadIssue, RemotePR: deps.RemotePR})
+		}, ExecutionReconcileDependencies{Orca: deps.Orca, ReadIssue: deps.ReadIssue, RemotePR: deps.RemotePR, Handler: deps.Reconcile})
 	case ExecutionActionComplete:
 		return CompleteExecution(stateRoot, ExecutionCompleteRequest{
 			ID: req.ID, Generation: req.Generation, Actor: req.Actor, CWD: req.CWD,

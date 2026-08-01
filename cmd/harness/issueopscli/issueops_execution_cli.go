@@ -10,18 +10,18 @@ import (
 )
 
 func runIssueOpsExecution(args []string) error {
-	return runIssueOpsExecutionWithHandlersAndReseed(args, nil, nil, nil, nil)
+	return runIssueOpsExecutionWithHandlersAndReseed(args, nil, nil, nil, nil, nil)
 }
 
 func runIssueOpsExecutionWithRelease(args []string, release issueops.ExecutionReleaseHandler) error {
-	return runIssueOpsExecutionWithHandlersAndReseed(args, nil, release, nil, nil)
+	return runIssueOpsExecutionWithHandlersAndReseed(args, nil, release, nil, nil, nil)
 }
 
 func runIssueOpsExecutionWithHandlers(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler) error {
-	return runIssueOpsExecutionWithHandlersAndReseed(args, claim, release, nil, nil)
+	return runIssueOpsExecutionWithHandlersAndReseed(args, claim, release, nil, nil, nil)
 }
 
-func runIssueOpsExecutionWithHandlersAndReseed(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler, reseed issueops.ExecutionReseedHandler, resume issueops.ExecutionResumeHandler) error {
+func runIssueOpsExecutionWithHandlersAndReseed(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler, reseed issueops.ExecutionReseedHandler, resume issueops.ExecutionResumeHandler, reconcile issueops.ExecutionReconcileHandler) error {
 	return executioncmd.Run(args, executioncmd.Deps{
 		StateRoot: core.IssueOpsStateRoot,
 		Direct:    gitworktree.New(),
@@ -50,6 +50,7 @@ func runIssueOpsExecutionWithHandlersAndReseed(args []string, claim issueops.Exe
 		Release:        release,
 		Reseed:         reseed,
 		Resume:         resume,
+		Reconcile:      reconcile,
 		PrintJSON:      printJSON,
 		PrintError:     printIssueOpsErrorJSON,
 	})

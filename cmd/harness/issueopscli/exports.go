@@ -25,8 +25,12 @@ func RunIssueOpsWithExecutionHandlersAndReseed(args []string, claim issueops.Exe
 }
 
 func RunIssueOpsWithExecutionHandlersAndReseedAndResume(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler, reseed issueops.ExecutionReseedHandler, resume issueops.ExecutionResumeHandler) error {
+	return RunIssueOpsWithExecutionHandlersAndReseedResumeAndReconcile(args, claim, release, reseed, resume, nil)
+}
+
+func RunIssueOpsWithExecutionHandlersAndReseedResumeAndReconcile(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler, reseed issueops.ExecutionReseedHandler, resume issueops.ExecutionResumeHandler, reconcile issueops.ExecutionReconcileHandler) error {
 	if len(args) > 0 && args[0] == "execution" {
-		return runIssueOpsExecutionWithHandlersAndReseed(args[1:], claim, release, reseed, resume)
+		return runIssueOpsExecutionWithHandlersAndReseed(args[1:], claim, release, reseed, resume, reconcile)
 	}
 	return runIssueOps(args)
 }
