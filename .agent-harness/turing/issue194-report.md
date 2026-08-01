@@ -33,8 +33,8 @@ unsupported kind는 기존 경로를 유지한다.
 RED 테스트를 먼저 추가한 뒤 typed/raw drift를 fail-closed하고, migration 뒤
 canonicalization 실패에서도 partial migration disclosure를 보존하며, 주입된 clock을
 failure receipt까지 전달하도록 최소 수정했다. 재리뷰는 blocker, important, minor
-finding 없이 PASS했다. 부모 동기화 뒤 동일 reviewer가 현재 42-file PR diff를 다시
-검토해 동작과 범위가 유지됐음을 확인했다.
+finding 없이 PASS했다. 부모 동기화 뒤 동일 reviewer가 검증 헤드 `813f71df`의
+42-file implementation diff를 다시 검토해 동작과 범위가 유지됐음을 확인했다.
 
 ## 로컬 최종 gate
 
@@ -74,8 +74,9 @@ GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go test -c -o /dev/null ./cmd/harness/daem
 RFC3339Nano process start identity를 포함하지 않아 발생한 두 daemon identity
 회귀 테스트였다. 부모 동기화 PR #215에서 `main`의 start identity와 부모의
 `ExecutablePathStable: true`를 함께 보존했고, 두 CI 실행을 통과한 뒤 부모에
-merge했다. #214는 새 부모를 merge한 뒤에도 부모 대비 정확히 42개의 #194 파일만
-남았다.
+merge했다. 검증 헤드 `813f71df`에서 #214는 부모 대비 정확히 42개의 #194
+implementation 파일만 남았고, 현재 PR은 이 42파일과 evidence report 1파일로
+구성된다.
 
 부모 동기화 후 #214 원격 검증:
 
