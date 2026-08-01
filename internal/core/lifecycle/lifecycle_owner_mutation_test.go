@@ -134,6 +134,10 @@ func TestPlanningOwnerMutationsRemainAvailableAfterExecutionPrepare(t *testing.T
 		"domain-review record": "agent-harness issueops domain-review record --id " + record.ID +
 			" --model-fit '기존 breaker 상태 모델을 유지' --terminology 'open state'" +
 			" --risk '고카디널리티 방지'" + actorFlags,
+		"design review": "agent-harness issueops design review --id " + record.ID +
+			" --problem-summary '분류 누락' --proposed-design 'exact command 정합화'" +
+			" --refactor-plan '기존 guard 경계 유지' --alternative 'bypass 거절'" +
+			" --risk '권한 표면 확장' --verification '설계 검토 완료: 대안과 위험 확인' --approved" + actorFlags,
 		"regress": "agent-harness issueops regress --id " + record.ID +
 			" --reason 'Brooks revise 반영을 위해 grill로 복귀'" + actorFlags,
 		"remote reflect-devils-advocate": "agent-harness issueops remote reflect-devils-advocate --id " + record.ID +

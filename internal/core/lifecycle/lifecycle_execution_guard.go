@@ -575,7 +575,7 @@ func exactIssueOpsOwnerMutation(commandText string) bool {
 	// 않는다(이슈 #158).
 	case "link-plan", "link-worktree", "compatibility review", "devils-advocate review", "phase",
 		"decision add", "ai-slop-clean record", "feedback mark-issue-updated", "feedback resolve",
-		"implementation-review record", "branch prepare", "intent record", "domain-review record", "regress",
+		"implementation-review record", "branch prepare", "intent record", "domain-review record", "design review", "regress",
 		"remote create-pr", "remote verify-artifact", "remote reflect-devils-advocate":
 	default:
 		return false
