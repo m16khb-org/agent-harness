@@ -14,10 +14,120 @@ The production-only Go import graph contradicts that assumption:
 
 | Compatibility boundary | Production importers |
 | --- | ---: |
-| `internal/core` | 39 |
-| `internal/core/issueops` | 14 |
+| `internal/core` | 41 |
+| `internal/core/issueops` | 15 |
 | `internal/port` | 28 |
 | `cmd/harness/issueopscli` | 1 |
+
+The normalized inventory digest is
+`bf3e95dded1a56286d43cb2b39aaf0607f0fd959053a3fb3c380e53cbe9fa2a1`
+for both captures. The complete reverse-import paths are part of the deletion
+decision, not an optional summary:
+
+<details><summary><code>internal/core</code> importers (41)</summary>
+
+- `cmd/harness/apidoc/reviewfiles`
+- `cmd/harness/apidoc/reviewprompt`
+- `cmd/harness/basiccli`
+- `cmd/harness/draftwikicli`
+- `cmd/harness/harnessapp`
+- `cmd/harness/hookcli`
+- `cmd/harness/hookcli/hookcatalog`
+- `cmd/harness/hookcli/hookfailure`
+- `cmd/harness/installcli`
+- `cmd/harness/issueopscli`
+- `cmd/harness/issueopscli/benchmarkartifact`
+- `cmd/harness/issueopscli/benchmarkcmd`
+- `cmd/harness/issueopscli/feedbackcleanup`
+- `cmd/harness/issueopscli/remotecmd`
+- `cmd/harness/issueopscli/remoteverify`
+- `cmd/harness/loopcli`
+- `cmd/harness/mcpcli`
+- `cmd/harness/mcpcli/resources`
+- `cmd/harness/pathutil`
+- `cmd/harness/policycli`
+- `cmd/harness/projectcli`
+- `cmd/harness/qualitycli`
+- `cmd/harness/selfworkflow/augmentcatalog`
+- `cmd/harness/selfworkflow/augmentlesson`
+- `cmd/harness/selfworkflow/augmentplan`
+- `cmd/harness/selfworkflow/candidateexport`
+- `cmd/harness/selfworkflow/historycompare`
+- `cmd/harness/selfworkflow/llmeval`
+- `cmd/harness/selfworkflow/stateio`
+- `cmd/harness/statecli`
+- `cmd/harness/statuscli`
+- `cmd/harness/validationcli/candidateexport`
+- `cmd/harness/validationcli/commandpolicy`
+- `cmd/harness/validationcli/contractauditworker`
+- `cmd/harness/validationcli/nativeintegration`
+- `cmd/harness/validationcli/parallelisolation`
+- `cmd/harness/validationcli/preflightfuzz`
+- `cmd/harness/validationcli/qagate`
+- `cmd/harness/validationcli/smoke`
+- `cmd/harness/validationcli/stateroundtrip`
+- `cmd/harness/workercli`
+
+</details>
+
+<details><summary><code>internal/core/issueops</code> importers (15)</summary>
+
+- `cmd/harness/harnessapp`
+- `cmd/harness/hookcli`
+- `cmd/harness/issueopscli`
+- `cmd/harness/issueopscli/executioncmd`
+- `cmd/harness/issueopscli/feedbackcleanup`
+- `cmd/harness/issueopscli/remotecmd`
+- `cmd/harness/mcpcli`
+- `internal/adapter/inbound/issueopscompletion`
+- `internal/adapter/inbound/issueopslease`
+- `internal/adapter/inbound/issueopspreparation`
+- `internal/adapter/inbound/issueopspublication`
+- `internal/adapter/operationalhealth`
+- `internal/core`
+- `internal/core/hookprompt`
+- `internal/core/lifecycle`
+
+</details>
+
+<details><summary><code>internal/port</code> importers (28)</summary>
+
+- `cmd/harness/harnessapp`
+- `cmd/harness/installcli`
+- `cmd/harness/issueopscli`
+- `cmd/harness/issueopscli/executioncmd`
+- `cmd/harness/mcpcli`
+- `internal/adapter/claude`
+- `internal/adapter/codex`
+- `internal/adapter/gitworktree`
+- `internal/adapter/hostprobe`
+- `internal/adapter/inbound/issueopspublication`
+- `internal/adapter/installutil`
+- `internal/adapter/operationalhealth`
+- `internal/adapter/orca`
+- `internal/adapter/outbound/issueopscompletion`
+- `internal/adapter/outbound/issueopslease`
+- `internal/adapter/outbound/issueopspreparation`
+- `internal/adapter/outbound/issueopspublication`
+- `internal/adapter/provider`
+- `internal/adapter/provider/github`
+- `internal/adapter/provider/gitlab`
+- `internal/adapter/provider/issuebody`
+- `internal/application/issueopslease`
+- `internal/core`
+- `internal/core/install`
+- `internal/core/issueops`
+- `internal/core/issueops/cleanupchildren`
+- `internal/core/sqlstore`
+- `internal/core/toolconformance`
+
+</details>
+
+<details><summary><code>cmd/harness/issueopscli</code> importers (1)</summary>
+
+- `cmd/harness/harnessapp`
+
+</details>
 
 Deleting any of these packages would remove active production dependencies and
 could break public Go surfaces, persisted-state compatibility, or rollback
@@ -46,14 +156,27 @@ and preparation capability ratchets must all remain green.
 
 ## Hook-enabled acceptance
 
-Hook validation runs in isolated state with repository-provided Codex and
-Claude hook configurations enabled. It exercises native host payloads against
-the built binary:
+Hook acceptance has two independent proof layers against the built child
+binary:
 
-- the exact generation holder in the canonical child worktree is admitted;
-- a foreign session, process receipt, or cwd is rejected;
-- Codex returns its native blocking result and Claude returns its native deny
-  result with the same underlying IssueOps error classification.
+1. A direct CLI matrix uses isolated fixture state and complete native Codex
+   and Claude payloads, including transcript metadata. The exact generation
+   holder in the canonical child worktree must be admitted; changing the
+   session, process receipt, or cwd one field at a time must return the native
+   Codex block or Claude deny with the same underlying IssueOps classification.
+2. Fresh host processes use the default IssueOps state so their hook child
+   processes can observe the real active lease. Codex loads the exact ignored
+   project `.codex/hooks.json` copied from `configs/codex/hooks.json`, reports
+   the discovered hook through `hooks/list`, and runs with `--enable hooks`
+   plus explicit non-interactive trust. Claude loads
+   `configs/claude/hooks.settings.json` through `--settings` and emits hook
+   lifecycle events with `--include-hook-events`. Each fresh foreign host is
+   instructed to attempt one mutation-shaped sentinel command; the hook must
+   be observed and the sentinel must remain absent.
+
+No host-runtime probe uses an isolated `HARNESS_STATE_DIR`: native hook child
+processes do not inherit such state unless explicitly propagated. No probe uses
+`--disable hooks`, Claude `--safe-mode`, or Claude `--bare`.
 
 The current `--disable hooks` process and absence of an observed stop hook are
 never cited as evidence.
@@ -70,7 +193,8 @@ and baseline. Rollback is the child PR revert; there is no data migration.
 The gate consists of focused architecture and capability tests, focused race,
 contract and response golden tests, full unit and race suites, `go vet`, a
 binary build, deterministic ten-iteration self-verification at target score 95,
-isolated hook-enabled Codex/Claude smoke, and final-head GitHub Actions. Any
+direct native-payload smoke, fresh configured-host Codex/Claude smoke, and
+final-head GitHub Actions. Any
 failure blocks the child merge.
 
 ## Completion boundary

@@ -41,7 +41,7 @@
 
 - [ ] **Step 3: Enumerate candidate importers**
 
-  Use `jq -s` over the `go list` stream to list production importers of the four compatibility boundaries. Expected at the sealed base: counts `39`, `14`, `28`, and `1` respectively.
+  Use `jq` over the normalized inventory to list every production importer of the four compatibility boundaries. Expected at the sealed base: counts `41`, `15`, `28`, and `1` respectively. Record the complete path lists, not only the counts.
 
 - [ ] **Step 4: Decide the removal set**
 
@@ -86,28 +86,28 @@
 - Update later: `.agent-harness/turing/issue200-report.md`
 
 **Interfaces:**
-- Consumes: canonical worktree, active generation-1 holder receipt, built child binary, and repository hook configs.
-- Produces: isolated allow/deny receipts for both host payload schemas.
+- Consumes: canonical worktree, active generation-1 holder receipt, built child binary, default IssueOps state, and repository hook configs.
+- Produces: direct full-payload allow/deny receipts plus fresh configured-host invocation and blocking evidence for both hosts.
 
-- [ ] **Step 1: Create isolated hook state**
+- [ ] **Step 1: Build the exact child binary and prepare bounded sentinels**
 
-  Create an exact temporary directory with `mktemp -d`, install or copy only the child binary and repository hook configs, and point `HARNESS_STATE_DIR` to an isolated state copy representing the active #200 lifecycle.
+  Build `./bin/agent-harness` at the reviewed child HEAD. Allocate exact `/tmp` result and sentinel paths with `mktemp` and record them before either host probe. The sentinel command must be harmless, scoped to its exact temporary path, and attempted once.
 
-- [ ] **Step 2: Exercise exact-holder payloads**
+- [ ] **Step 2: Exercise the direct full-payload matrix in isolated fixture state**
 
-  Send native Codex and Claude pre-tool payloads for a harmless mutation-shaped command in the canonical worktree using the exact session/process/generation holder. Expected: both allow.
+  Create isolated fixture state representing the active #200 lifecycle. Send complete native Codex and Claude pre-tool payloads, including external transcript metadata, for the exact holder and canonical cwd. Then change session, process receipt, and cwd one field at a time. Expected: exact holder allow; Codex native block and Claude native deny for every foreign case with the matching IssueOps classification.
 
-- [ ] **Step 3: Exercise foreign-holder payloads**
+- [ ] **Step 3: Prove Codex configuration discovery and live invocation**
 
-  Change one identity field at a time for session, process receipt, and cwd. Expected: Codex native block and Claude native deny with underlying `holder_identity_mismatch` or exact canonical-worktree denial.
+  Verify `.codex/` is ignored and absent, then copy the exact `configs/codex/hooks.json` bytes to `.codex/hooks.json`. From the canonical worktree, launch a fresh Codex app-server with hooks enabled and require `hooks/list` to report the repository `PreToolUse` command. Launch a separate `codex exec --enable hooks --dangerously-bypass-hook-trust --ephemeral -C <canonical-worktree> --json` session and instruct it to attempt the one exact sentinel command. Use default IssueOps state; do not set `HARNESS_STATE_DIR`. Expected: the foreign-session hook block is present in output and the sentinel does not exist.
 
-- [ ] **Step 4: Verify disabled-host exclusion**
+- [ ] **Step 4: Prove Claude configuration loading and live invocation**
 
-  Record that the parent Codex process was launched with hooks disabled and that none of its missing hook events are evidence.
+  Launch a fresh UUID Claude process from the canonical worktree with `--settings configs/claude/hooks.settings.json --setting-sources local --include-hook-events --output-format stream-json --permission-mode bypassPermissions`. Instruct it to attempt the one exact Claude sentinel command. Use default IssueOps state and do not use `--safe-mode` or `--bare`. Expected: the stream contains the configured `PreToolUse` command/event and native deny, and the sentinel does not exist.
 
-- [ ] **Step 5: Remove isolated resources**
+- [ ] **Step 5: Verify disabled-host exclusion and clean up**
 
-  Move the exact temporary directory to Trash and record the recoverable cleanup path.
+  Record that the parent Codex process was launched with hooks disabled and contributes no acceptance evidence. Remove only the temporary `.codex/hooks.json`/empty `.codex` directory and move exact temporary probe resources to Trash, recording recoverable paths. Recheck `git status --short` for an unchanged tracked tree.
 
 ### Task 4: Run final verification and publish the child
 
