@@ -81,7 +81,9 @@ func handleRequest(req rpcRequest) (any, *rpcError) {
 }
 
 func issueOpsMCPDependencies() mcpcli.MCPDependencies {
+	execution := productionIssueOpsExecutionDependencies()
 	return mcpcli.MCPDependencies{
+		Prepare: execution.Prepare, Orca: execution.Orca, OrcaOwner: execution.OrcaOwner, ReadIssue: execution.ReadIssue,
 		Claim: issueOpsClaimHandler, Release: issueOpsReleaseHandler, Reseed: issueOpsReseedHandler,
 		Resume: issueOpsResumeHandler, Reconcile: issueOpsReconcileHandler, Complete: issueOpsCompleteHandler,
 		Publication: issueops.RemotePublicationHandlers{

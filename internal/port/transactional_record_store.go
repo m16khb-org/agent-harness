@@ -10,6 +10,29 @@ type TransactionalRecordStore interface {
 	Apply(context.Context, []RecordMutation) error
 }
 
+// RecordInventoryStore extends the transactional record surface only for
+// capabilities that must fail closed while scanning a complete bucket.
+type RecordInventoryStore interface {
+	TransactionalRecordStore
+	GetAll(string) ([]RecordRow, error)
+}
+
+type RecordCASStore interface {
+	RecordInventoryStore
+	CompareAndApply(context.Context, []ExpectedRecord, []RecordMutation) error
+}
+
+type RecordRow struct {
+	ID   string
+	Data []byte
+}
+
+type ExpectedRecord struct {
+	Bucket string
+	ID     string
+	Data   []byte
+}
+
 type RecordMutation struct {
 	Bucket        string
 	ID            string

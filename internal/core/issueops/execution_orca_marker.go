@@ -5,6 +5,7 @@ import (
 	"strings"
 	"unicode"
 
+	preparationcontract "agent-harness/internal/contract/issueopspreparation"
 	"agent-harness/internal/core/issueops/remote"
 )
 
@@ -130,22 +131,7 @@ func sealExternalOrcaIntentPayloadWithIdentity(record IssueOpsRecord, payload ex
 			"Orca intent lifecycle does not match the verified record",
 		)
 	}
-	payload.Probe.Provider = issue.Provider
-	payload.Probe.Issue = issue.Issue
-	marker, err := renderOrcaIntentMarker(orcaIntentMarkerIdentity{
-		Purpose: normalizedOrcaIntentPurpose(payload), LifecycleID: payload.LifecycleID,
-		Generation: payload.Generation, OperationID: payload.OperationID,
-		Provider: issue.Provider, Issue: issue.Issue,
-	})
-	if err != nil {
-		return externalOrcaIntentPayload{}, err
-	}
-	payload.Marker = marker
-	payload.Probe.Marker = payload.Marker
-	if err := validateExternalOrcaIntentPayload(payload, payload.OperationID); err != nil {
-		return externalOrcaIntentPayload{}, err
-	}
-	return payload, nil
+	return preparationIntentCodec.Seal(payload, preparationcontract.IssueIdentity{Provider: issue.Provider, Issue: issue.Issue})
 }
 
 func validateOrcaIntentIssueIdentity(record IssueOpsRecord, payload externalOrcaIntentPayload) error {
@@ -172,23 +158,10 @@ func validateOrcaIntentIssueIdentity(record IssueOpsRecord, payload externalOrca
 }
 
 func renderOrcaIntentMarker(identity orcaIntentMarkerIdentity) (string, error) {
-	if err := validateOrcaMarkerIdentity(identity); err != nil {
-		return "", err
-	}
-	fields := []string{orcaIntentMarkerPrefix}
-	if identity.Purpose == orcaIntentPurposeResume {
-		fields = append(fields, "resume")
-	}
-	fields = append(fields, "lifecycle="+identity.LifecycleID)
-	if identity.Purpose == orcaIntentPurposeResume {
-		fields = append(fields, "generation="+strconv.FormatUint(identity.Generation, 10))
-	}
-	fields = append(fields,
-		"operation="+identity.OperationID,
-		"provider="+identity.Provider,
-		"issue="+strconv.Itoa(identity.Issue),
-	)
-	return strings.Join(fields, " "), nil
+	return preparationIntentCodec.RenderMarker(preparationcontract.MarkerIdentity{
+		Purpose: identity.Purpose, LifecycleID: identity.LifecycleID, Generation: identity.Generation,
+		OperationID: identity.OperationID, Provider: identity.Provider, Issue: identity.Issue,
+	})
 }
 
 func renderOrcaReadinessMarker(lifecycleID string, issue orcaIssueIdentity) (string, error) {
@@ -207,107 +180,25 @@ func renderOrcaReadinessMarker(lifecycleID string, issue orcaIssueIdentity) (str
 }
 
 func parseOrcaIntentMarker(marker string) (orcaIntentMarkerIdentity, error) {
-	fields := strings.Fields(marker)
-	var identity orcaIntentMarkerIdentity
-	switch {
-	case len(fields) == 6 && fields[0] == "agent-harness" && fields[1] == "issueops-v1":
-		identity.Purpose = orcaIntentPurposePrepare
-		identity.Generation = 1
-		var err error
-		if identity.LifecycleID, err = orcaMarkerField(fields[2], "lifecycle"); err != nil {
-			return orcaIntentMarkerIdentity{}, err
-		}
-		if identity.OperationID, err = orcaMarkerField(fields[3], "operation"); err != nil {
-			return orcaIntentMarkerIdentity{}, err
-		}
-		if identity.Provider, err = orcaMarkerField(fields[4], "provider"); err != nil {
-			return orcaIntentMarkerIdentity{}, err
-		}
-		rawIssue, err := orcaMarkerField(fields[5], "issue")
-		if err != nil {
-			return orcaIntentMarkerIdentity{}, err
-		}
-		identity.Issue, err = strconv.Atoi(rawIssue)
-		if err != nil {
-			return orcaIntentMarkerIdentity{}, invalidOrcaMarker()
-		}
-	case len(fields) == 8 && fields[0] == "agent-harness" && fields[1] == "issueops-v1" && fields[2] == "resume":
-		identity.Purpose = orcaIntentPurposeResume
-		var err error
-		if identity.LifecycleID, err = orcaMarkerField(fields[3], "lifecycle"); err != nil {
-			return orcaIntentMarkerIdentity{}, err
-		}
-		rawGeneration, err := orcaMarkerField(fields[4], "generation")
-		if err != nil {
-			return orcaIntentMarkerIdentity{}, err
-		}
-		identity.Generation, err = strconv.ParseUint(rawGeneration, 10, 64)
-		if err != nil {
-			return orcaIntentMarkerIdentity{}, invalidOrcaMarker()
-		}
-		if identity.OperationID, err = orcaMarkerField(fields[5], "operation"); err != nil {
-			return orcaIntentMarkerIdentity{}, err
-		}
-		if identity.Provider, err = orcaMarkerField(fields[6], "provider"); err != nil {
-			return orcaIntentMarkerIdentity{}, err
-		}
-		rawIssue, err := orcaMarkerField(fields[7], "issue")
-		if err != nil {
-			return orcaIntentMarkerIdentity{}, err
-		}
-		identity.Issue, err = strconv.Atoi(rawIssue)
-		if err != nil {
-			return orcaIntentMarkerIdentity{}, invalidOrcaMarker()
-		}
-	default:
-		return orcaIntentMarkerIdentity{}, invalidOrcaMarker()
+	identity, err := preparationIntentCodec.ParseMarker(marker)
+	if err != nil {
+		return orcaIntentMarkerIdentity{}, err
 	}
-	rendered, err := renderOrcaIntentMarker(identity)
-	if err != nil || rendered != marker {
-		return orcaIntentMarkerIdentity{}, invalidOrcaMarker()
-	}
-	return identity, nil
+	return orcaIntentMarkerIdentity{
+		Purpose: identity.Purpose, LifecycleID: identity.LifecycleID, Generation: identity.Generation,
+		OperationID: identity.OperationID, Provider: identity.Provider, Issue: identity.Issue,
+	}, nil
 }
 
 func parseLegacyOrcaIntentMarker(marker string) (orcaIntentMarkerIdentity, error) {
-	fields := strings.Fields(marker)
-	var identity orcaIntentMarkerIdentity
-	switch {
-	case len(fields) == 4 && fields[0] == "agent-harness" && fields[1] == "issueops-v1":
-		identity.Purpose = orcaIntentPurposePrepare
-		identity.Generation = 1
-		var err error
-		if identity.LifecycleID, err = orcaMarkerField(fields[2], "lifecycle"); err != nil {
-			return orcaIntentMarkerIdentity{}, err
-		}
-		if identity.OperationID, err = orcaMarkerField(fields[3], "operation"); err != nil {
-			return orcaIntentMarkerIdentity{}, err
-		}
-	case len(fields) == 6 && fields[0] == "agent-harness" && fields[1] == "issueops-v1" && fields[2] == "resume":
-		identity.Purpose = orcaIntentPurposeResume
-		var err error
-		if identity.LifecycleID, err = orcaMarkerField(fields[3], "lifecycle"); err != nil {
-			return orcaIntentMarkerIdentity{}, err
-		}
-		rawGeneration, err := orcaMarkerField(fields[4], "generation")
-		if err != nil {
-			return orcaIntentMarkerIdentity{}, err
-		}
-		identity.Generation, err = strconv.ParseUint(rawGeneration, 10, 64)
-		if err != nil {
-			return orcaIntentMarkerIdentity{}, invalidOrcaMarker()
-		}
-		if identity.OperationID, err = orcaMarkerField(fields[5], "operation"); err != nil {
-			return orcaIntentMarkerIdentity{}, err
-		}
-	default:
-		return orcaIntentMarkerIdentity{}, invalidOrcaMarker()
+	identity, err := preparationIntentCodec.ParseLegacyMarker(marker)
+	if err != nil {
+		return orcaIntentMarkerIdentity{}, err
 	}
-	rendered, err := renderLegacyOrcaIntentMarker(identity)
-	if err != nil || rendered != marker {
-		return orcaIntentMarkerIdentity{}, invalidOrcaMarker()
-	}
-	return identity, nil
+	return orcaIntentMarkerIdentity{
+		Purpose: identity.Purpose, LifecycleID: identity.LifecycleID, Generation: identity.Generation,
+		OperationID: identity.OperationID, Provider: identity.Provider, Issue: identity.Issue,
+	}, nil
 }
 
 func renderLegacyOrcaIntentMarker(identity orcaIntentMarkerIdentity) (string, error) {

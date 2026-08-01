@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -53,6 +54,10 @@ func TestEvaluateEdgesRejectsForbiddenDependencies(t *testing.T) {
 		{"completion domain port", dependencyEdge{"internal/domain/issueopscompletion", "internal/port"}, "completion_domain_must_only_import_contract"},
 		{"completion application port", dependencyEdge{"internal/application/issueopscompletion", "internal/port"}, "completion_application_must_only_import_domain_or_contract"},
 		{"completion outbound core", dependencyEdge{"internal/adapter/outbound/issueopscompletion", "internal/core/issueops"}, "completion_outbound_adapter_must_not_import_core"},
+		{"preparation contract core", dependencyEdge{"internal/contract/issueopspreparation", "internal/core/issueops"}, "preparation_contract_must_only_import_lease_contract"},
+		{"preparation domain port", dependencyEdge{"internal/domain/issueopspreparation", "internal/port"}, "preparation_domain_must_only_import_contract"},
+		{"preparation application port", dependencyEdge{"internal/application/issueopspreparation", "internal/port"}, "preparation_application_must_only_import_domain_or_contract"},
+		{"preparation outbound core", dependencyEdge{"internal/adapter/outbound/issueopspreparation", "internal/core/issueops"}, "preparation_outbound_adapter_must_not_import_core"},
 		{"application syscall", dependencyEdge{"internal/application/run", "syscall"}, "application_must_not_import_implementation"},
 		{"inbound adapter outbound adapter", dependencyEdge{"internal/adapter/inbound/http", "internal/adapter/outbound/github"}, "inbound_adapter_must_not_import_outbound_adapter"},
 	}
@@ -88,6 +93,13 @@ func TestEvaluateEdgesAllowsCompletionVerticalContracts(t *testing.T) {
 	}
 }
 
+func TestEvaluateEdgesAllowsPreparationDomainContract(t *testing.T) {
+	edge := dependencyEdge{"internal/domain/issueopspreparation", "internal/contract/issueopspreparation"}
+	if violations := evaluateEdges([]dependencyEdge{edge}); len(violations) != 0 {
+		t.Fatalf("preparation domain contract edge must be allowed, got %v", violations)
+	}
+}
+
 func TestLegacyEdgesClassifyConcreteAdapterOutsideCompositionRoot(t *testing.T) {
 	edge := dependencyEdge{"cmd/harness/issueopscli", "internal/adapter/provider"}
 	if got := legacyEdges([]dependencyEdge{edge}); !reflect.DeepEqual(got, []dependencyEdge{edge}) {
@@ -104,7 +116,7 @@ func TestLegacyEdgesClassifyConcreteAdapterOutsideCompositionRoot(t *testing.T) 
 }
 
 func TestLegacyEdgesExcludeMigratedInboundAdapters(t *testing.T) {
-	for _, importer := range []string{"internal/adapter/inbound/issueopslease", "internal/adapter/inbound/issueopspublication", "internal/adapter/inbound/issueopscompletion"} {
+	for _, importer := range []string{"internal/adapter/inbound/issueopslease", "internal/adapter/inbound/issueopspublication", "internal/adapter/inbound/issueopscompletion", "internal/adapter/inbound/issueopspreparation"} {
 		edge := dependencyEdge{importer, "internal/core/issueops"}
 		if got := legacyEdges([]dependencyEdge{edge}); len(got) != 0 {
 			t.Fatalf("migrated inbound edge %s must stay outside the legacy baseline, got %v", formatEdge(edge), got)
@@ -216,6 +228,55 @@ func TestDependencyProductionPublicationCoreHasNoLegacyOrchestration(t *testing.
 	}
 	if len(violations) != 0 {
 		t.Fatalf("production publication orchestration violations: %s", strings.Join(violations, "; "))
+	}
+}
+
+func TestDependencyProductionPreparationHasNoLegacyFallbackOrConcreteCaller(t *testing.T) {
+	violations, err := productionPreparationRoutingViolations(findRepoRoot(t))
+	if err != nil {
+		t.Fatalf("inspect production preparation routing: %v", err)
+	}
+	if len(violations) != 0 {
+		t.Fatalf("production preparation routing violations: %s", strings.Join(violations, "; "))
+	}
+}
+
+func TestDependencyPreparationRoutingViolationsRejectLegacyFallback(t *testing.T) {
+	file, err := parser.ParseFile(token.NewFileSet(), "router.go", `package issueops
+func route(req request, deps dependencies) {
+	switch req.Action {
+	case ExecutionActionPrepare:
+		invokeExecutionPrepareHandler()
+		invokeExecutionPrepareHandler()
+		PrepareExecution()
+	}
+}
+`, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	violations := preparationRoutingViolations(file, true)
+	joined := strings.Join(violations, "; ")
+	if !strings.Contains(joined, "does not invoke injected prepare handler exactly once") || !strings.Contains(joined, "calls legacy PrepareExecution") {
+		t.Fatalf("legacy preparation fallback violations=%v", violations)
+	}
+}
+
+func TestDependencyPreparationCallerViolationsRejectConcreteConstruction(t *testing.T) {
+	file, err := parser.ParseFile(token.NewFileSet(), "caller.go", `package caller
+import (
+	wt "agent-harness/internal/adapter/gitworktree"
+	"agent-harness/internal/adapter/orca"
+)
+func issueOpsExecutionDeps() { _ = wt.New(); _ = orca.NewExecution() }
+func unrelatedCleanup() { _ = orca.NewExecution() }
+`, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	violations := preparationCallerViolations(file, "caller.go")
+	if len(violations) != 2 || strings.Contains(strings.Join(violations, "; "), "unrelatedCleanup") {
+		t.Fatalf("preparation caller violations=%v", violations)
 	}
 }
 
@@ -477,6 +538,168 @@ func productionPublicationCallerViolations(repoRoot string) ([]string, error) {
 	}
 	sort.Strings(violations)
 	return violations, nil
+}
+
+func productionPreparationRoutingViolations(repoRoot string) ([]string, error) {
+	var violations []string
+	coreDir := filepath.Join(repoRoot, "internal", "core", "issueops")
+	entries, err := os.ReadDir(coreDir)
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		path := filepath.Join(coreDir, name)
+		file, err := parseProductionFile(path)
+		if err != nil {
+			return nil, err
+		}
+		for _, identifier := range []string{"PrepareExecution", "prepareDirectExecution", "prepareOrcaExecution", "ExecutionPrepareDependencies"} {
+			if sourceHasIdentifier(file, identifier) {
+				violations = append(violations, name+" retains legacy preparation orchestration "+identifier)
+			}
+		}
+		violations = append(violations, preparationRoutingViolations(file, name == "execution_api.go")...)
+	}
+
+	for _, relative := range []string{filepath.Join("cmd", "harness", "issueopscli"), filepath.Join("cmd", "harness", "mcpcli")} {
+		dir := filepath.Join(repoRoot, relative)
+		err := filepath.Walk(dir, func(path string, info os.FileInfo, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if info.IsDir() || !strings.HasSuffix(info.Name(), ".go") || strings.HasSuffix(info.Name(), "_test.go") {
+				return nil
+			}
+			file, err := parseProductionFile(path)
+			if err != nil {
+				return err
+			}
+			name, err := filepath.Rel(repoRoot, path)
+			if err != nil {
+				return err
+			}
+			violations = append(violations, preparationCallerViolations(file, filepath.ToSlash(name))...)
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for _, wiring := range []struct {
+		path     string
+		function string
+	}{
+		{path: filepath.Join("cmd", "harness", "harnessapp", "issueops_policy_facade.go"), function: "runIssueOps"},
+		{path: filepath.Join("cmd", "harness", "harnessapp", "mcp_facade.go"), function: "issueOpsMCPDependencies"},
+	} {
+		file, err := parseProductionFile(filepath.Join(repoRoot, wiring.path))
+		if err != nil {
+			return nil, err
+		}
+		if count := functionCallCount(file, wiring.function, "productionIssueOpsExecutionDependencies"); count != 1 {
+			violations = append(violations, fmt.Sprintf("%s:%s must call the shared execution composition constructor exactly once, found %d", filepath.ToSlash(wiring.path), wiring.function, count))
+		}
+	}
+	sort.Strings(violations)
+	return violations, nil
+}
+
+func parseProductionFile(path string) (*ast.File, error) {
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return parser.ParseFile(token.NewFileSet(), path, contents, 0)
+}
+
+func preparationRoutingViolations(file *ast.File, requireInjectedHandler bool) []string {
+	var violations []string
+	routes := 0
+	ast.Inspect(file, func(node ast.Node) bool {
+		branch, ok := node.(*ast.CaseClause)
+		if !ok || !sourceHasIdentifier(branch, "ExecutionActionPrepare") {
+			return true
+		}
+		routes++
+		calls := sourceCallCounts(branch)
+		if requireInjectedHandler && calls["invokeExecutionPrepareHandler"] != 1 {
+			violations = append(violations, "prepare route does not invoke injected prepare handler exactly once")
+		}
+		for _, legacy := range []string{"PrepareExecution", "prepareDirectExecution", "prepareOrcaExecution"} {
+			if calls[legacy] != 0 {
+				violations = append(violations, "prepare route calls legacy "+legacy)
+			}
+		}
+		return true
+	})
+	if requireInjectedHandler && routes != 1 {
+		violations = append(violations, fmt.Sprintf("expected one production prepare route, found %d", routes))
+	}
+	return violations
+}
+
+func preparationCallerViolations(file *ast.File, name string) []string {
+	aliases := concretePreparationImportAliases(file)
+	if len(aliases) == 0 {
+		return nil
+	}
+	var violations []string
+	for _, declaration := range file.Decls {
+		function, ok := declaration.(*ast.FuncDecl)
+		if !ok || function.Body == nil || !preparationCallerFunction(function) {
+			continue
+		}
+		for alias, imported := range aliases {
+			if sourceHasIdentifier(function.Body, alias) {
+				violations = append(violations, name+":"+function.Name.Name+" uses concrete "+imported)
+			}
+		}
+	}
+	sort.Strings(violations)
+	return violations
+}
+
+func preparationCallerFunction(function *ast.FuncDecl) bool {
+	name := strings.ToLower(function.Name.Name)
+	return strings.Contains(name, "preparation") || strings.Contains(name, "prepare") ||
+		(strings.Contains(name, "execution") && (strings.Contains(name, "dep") || sourceHasIdentifier(function, "Prepare"))) ||
+		sourceHasIdentifier(function, "ExecutionActionPrepare")
+}
+
+func concretePreparationImportAliases(file *ast.File) map[string]string {
+	aliases := map[string]string{}
+	for _, imported := range file.Imports {
+		path, err := strconv.Unquote(imported.Path.Value)
+		if err != nil {
+			continue
+		}
+		if path != "agent-harness/internal/adapter/gitworktree" && path != "agent-harness/internal/adapter/orca" && path != "agent-harness/internal/adapter/provider" {
+			continue
+		}
+		alias := filepath.Base(path)
+		if imported.Name != nil {
+			alias = imported.Name.Name
+		}
+		if alias != "_" && alias != "." {
+			aliases[alias] = strings.TrimPrefix(path, "agent-harness/")
+		}
+	}
+	return aliases
+}
+
+func functionCallCount(file *ast.File, functionName, callName string) int {
+	for _, declaration := range file.Decls {
+		function, ok := declaration.(*ast.FuncDecl)
+		if ok && function.Name.Name == functionName && function.Body != nil {
+			return sourceCallCounts(function.Body)[callName]
+		}
+	}
+	return 0
 }
 
 func productionPublicationLegacyOrchestrationViolations(repoRoot string) ([]string, error) {
@@ -747,6 +970,18 @@ func evaluateEdges(edges []dependencyEdge) []violation {
 		if isCompletionOutboundAdapter(edge.importer) && isCore(edge.imported) {
 			violations = append(violations, violation{"completion_outbound_adapter_must_not_import_core", edge})
 		}
+		if isPreparationContract(edge.importer) && strings.HasPrefix(edge.imported, "internal/") && edge.imported != "internal/contract/issueopslease" {
+			violations = append(violations, violation{"preparation_contract_must_only_import_lease_contract", edge})
+		}
+		if isPreparationDomain(edge.importer) && strings.HasPrefix(edge.imported, "internal/") && !isPreparationContract(edge.imported) && !isLeaseContract(edge.imported) {
+			violations = append(violations, violation{"preparation_domain_must_only_import_contract", edge})
+		}
+		if isPreparationApplication(edge.importer) && strings.HasPrefix(edge.imported, "internal/") && !isPreparationDomain(edge.imported) && !isPreparationContract(edge.imported) && !isLeaseContract(edge.imported) {
+			violations = append(violations, violation{"preparation_application_must_only_import_domain_or_contract", edge})
+		}
+		if isPreparationOutboundAdapter(edge.importer) && isCore(edge.imported) {
+			violations = append(violations, violation{"preparation_outbound_adapter_must_not_import_core", edge})
+		}
 		if isLeaseVerticalLayer(edge.importer, "contract") && isProductionIssueOps(edge.imported) {
 			violations = append(violations, violation{"leasevertical_contract_must_not_import_production_issueops", edge})
 		}
@@ -763,7 +998,8 @@ func isPublicationDomainContract(edge dependencyEdge) bool {
 
 func isAllowedDomainContract(edge dependencyEdge) bool {
 	return isPublicationDomainContract(edge) ||
-		edge.importer == "internal/domain/issueopscompletion" && edge.imported == "internal/contract/issueopscompletion"
+		edge.importer == "internal/domain/issueopscompletion" && edge.imported == "internal/contract/issueopscompletion" ||
+		edge.importer == "internal/domain/issueopspreparation" && edge.imported == "internal/contract/issueopspreparation"
 }
 
 func isPublicationContract(path string) bool {
@@ -796,6 +1032,26 @@ func isCompletionApplication(path string) bool {
 
 func isCompletionOutboundAdapter(path string) bool {
 	return path == "internal/adapter/outbound/issueopscompletion" || strings.HasPrefix(path, "internal/adapter/outbound/issueopscompletion/")
+}
+
+func isPreparationContract(path string) bool {
+	return path == "internal/contract/issueopspreparation" || strings.HasPrefix(path, "internal/contract/issueopspreparation/")
+}
+
+func isLeaseContract(path string) bool {
+	return path == "internal/contract/issueopslease" || strings.HasPrefix(path, "internal/contract/issueopslease/")
+}
+
+func isPreparationDomain(path string) bool {
+	return path == "internal/domain/issueopspreparation" || strings.HasPrefix(path, "internal/domain/issueopspreparation/")
+}
+
+func isPreparationApplication(path string) bool {
+	return path == "internal/application/issueopspreparation" || strings.HasPrefix(path, "internal/application/issueopspreparation/")
+}
+
+func isPreparationOutboundAdapter(path string) bool {
+	return path == "internal/adapter/outbound/issueopspreparation" || strings.HasPrefix(path, "internal/adapter/outbound/issueopspreparation/")
 }
 
 func compareBaseline(observed, baseline []dependencyEdge) error {
@@ -1016,7 +1272,7 @@ func isLeaseVerticalLayer(path, layer string) bool {
 }
 
 func isMigratedInboundAdapter(path string) bool {
-	return path == "internal/adapter/inbound/issueopslease" || path == "internal/adapter/inbound/issueopspublication" || path == "internal/adapter/inbound/issueopscompletion"
+	return path == "internal/adapter/inbound/issueopslease" || path == "internal/adapter/inbound/issueopspublication" || path == "internal/adapter/inbound/issueopscompletion" || path == "internal/adapter/inbound/issueopspreparation"
 }
 
 func isProductionIssueOps(path string) bool {

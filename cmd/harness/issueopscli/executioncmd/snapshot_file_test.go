@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/port"
 )
 
 func TestReadExecutionIssueSnapshotFileAcceptsPrivateBoundedJSON(t *testing.T) {
@@ -44,7 +43,11 @@ func TestExecutionSnapshotFileFlagMapsToPrepareRequest(t *testing.T) {
 		"--cwd", repo, "--json",
 	}, Deps{
 		StateRoot: func() string { return stateRoot },
-		Direct:    snapshotFileDirectFake{},
+		Prepare: func(_ context.Context, _ string, request issueops.ExecutionPrepareRequest, _ issueops.ExecutionPrepareInvocation) (issueops.ExecutionPrepareResult, error) {
+			return issueops.ExecutionPrepareResult{
+				OK: true, ID: request.ID, RequestedMode: request.Mode, ResolvedMode: "direct",
+			}, nil
+		},
 		PrintJSON: func(value any) error {
 			output = value
 			return nil
@@ -112,18 +115,6 @@ func writeExecutionSnapshotTestFile(t *testing.T, content string, mode os.FileMo
 
 func validExecutionSnapshotJSON() string {
 	return `{"provider":"gitlab","source":"glab_mcp","web_url":"https://gitlab.example.com/acme/repo/-/issues/69","body":"AC-69","state":"opened"}`
-}
-
-type snapshotFileDirectFake struct{}
-
-func (snapshotFileDirectFake) Prepare(_ context.Context, req port.ExecutionWorkspaceRequest) (port.ExecutionWorkspaceReceipt, error) {
-	return port.ExecutionWorkspaceReceipt{
-		SourceRoot: req.SourceRoot,
-		Root:       req.Root,
-		Branch:     req.Branch,
-		BaseHead:   req.BaseHead,
-		Driver:     "git",
-	}, nil
 }
 
 func executionSnapshotCLIRecord(t *testing.T) (string, string, string) {

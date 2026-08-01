@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	preparationcontract "agent-harness/internal/contract/issueopspreparation"
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/sqlstore"
-	"agent-harness/internal/port"
 )
 
 type ExecutionResumeRequest struct {
@@ -180,8 +180,8 @@ func beginOrcaExecutionResumeIntentWithExpectedRaw(stateRoot string, record Issu
 	startedAt := executionNow(now)
 	binding := *record.Execution.Orca
 	lease := record.Execution.Lease
-	prepared := &port.ExecutionOrcaWorkspaceReceipt{
-		Workspace: port.ExecutionWorkspaceReceipt{
+	prepared := &preparationcontract.OrcaWorkspaceReceipt{
+		Workspace: preparationcontract.WorkspaceReceipt{
 			SourceRoot: record.Execution.Workspace.SourceRoot, Root: record.Execution.Workspace.Root,
 			Branch: record.Execution.Workspace.Branch, BaseHead: record.Execution.Workspace.BaseHead,
 			ParentWorktree: record.Execution.Workspace.ParentWorktree, Driver: "orca", Exists: true,
@@ -189,32 +189,34 @@ func beginOrcaExecutionResumeIntentWithExpectedRaw(stateRoot string, record Issu
 		RuntimeID: runtimeID, RepoID: binding.RepoID, WorktreeID: binding.WorktreeID,
 		WorktreeInstanceID: binding.WorktreeInstanceID,
 	}
-	probe := port.ExecutionOrcaProbeRequest{
+	probe := preparationcontract.ProbeRequest{
 		Repo: record.Repo, Host: binding.OwnerHost, Model: binding.OwnerModel,
 		Effort: binding.OwnerEffort,
 	}
-	stage := port.ExecutionOrcaIntentTerminal
+	stage := preparationcontract.IntentStageTerminal
 	if terminalPTYID != "" {
-		stage = port.ExecutionOrcaIntentRun
+		stage = preparationcontract.IntentStageRun
 	}
+	priorBinding := intentContractBinding(binding)
+	resumeLease := intentContractLease(lease)
 	payload := externalOrcaIntentPayload{
 		SchemaVersion: model.IssueOpsSchemaVersion, Purpose: orcaIntentPurposeResume,
 		OperationID: operationID, LifecycleID: record.ID, Generation: lease.Generation,
 		Stage: stage, StartedAt: startedAt,
-		InvocationState: orcaIntentNotInvoked, Workspace: workspace, Probe: probe, Prepared: prepared,
+		InvocationState: orcaIntentNotInvoked, Workspace: intentContractWorkspaceRequest(workspace), Probe: probe, Prepared: prepared,
 		Launch: &externalOrcaLaunchIdentity{
 			PromptPath: artifacts.promptPath, PromptSHA256: artifacts.promptSHA256,
 			ContextPacketPath: artifacts.packetPath, ContextPacketSHA256: artifacts.packetSHA256,
 		},
 		IssueBodySHA256: artifacts.issueBodySHA256, ClaimTokenSHA256: lease.ClaimTokenSHA256,
 		TerminalPTYID: strings.TrimSpace(terminalPTYID),
-		PriorBinding:  &binding, ResumeLease: &lease,
+		PriorBinding:  &priorBinding, ResumeLease: &resumeLease,
 	}
 	payload, err = sealExternalOrcaIntentPayload(record, payload)
 	if err != nil {
 		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
 	}
-	data, err := json.Marshal(payload)
+	data, err := preparationIntentCodec.Encode(payload)
 	if err != nil {
 		return IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
 	}

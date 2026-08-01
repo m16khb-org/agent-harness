@@ -10,6 +10,7 @@ import (
 )
 
 var (
+	ErrPrepareHandlerUnavailable                    = errors.New("issueops execution prepare handler is not configured")
 	ErrClaimHandlerUnavailable                      = errors.New("issueops execution claim handler is not configured")
 	ErrReleaseHandlerUnavailable                    = errors.New("issueops execution release handler is not configured")
 	ErrReseedHandlerUnavailable                     = errors.New("issueops execution reseed handler is not configured")
@@ -20,6 +21,11 @@ var (
 	ErrRemotePullRequestReconcileHandlerUnavailable = errors.New("remote reconcile provider is unavailable")
 )
 
+type ExecutionPrepareInvocation struct {
+	ReadIssue ExecutionIssueSnapshotReadFunc
+}
+
+type ExecutionPrepareHandler func(context.Context, string, ExecutionPrepareRequest, ExecutionPrepareInvocation) (ExecutionPrepareResult, error)
 type ExecutionClaimHandler func(context.Context, string, ExecutionClaimRequest, ExecutionClaimDependencies) (ExecutionResult, error)
 type ExecutionReleaseHandler func(context.Context, string, ExecutionReleaseRequest) (ExecutionResult, error)
 type ExecutionReseedHandler func(context.Context, string, ExecutionReseedRequest) (ExecutionReplaceResult, error)
@@ -33,6 +39,13 @@ type RemotePullRequestReconcileHandler func(context.Context, string, ExecutionRe
 type RemotePublicationHandlers struct {
 	Create    RemotePullRequestCreateHandler
 	Reconcile RemotePullRequestReconcileHandler
+}
+
+func invokeExecutionPrepareHandler(ctx context.Context, stateRoot string, request ExecutionPrepareRequest, invocation ExecutionPrepareInvocation, handler ExecutionPrepareHandler) (ExecutionPrepareResult, error) {
+	if handler == nil {
+		return ExecutionPrepareResult{ID: request.ID}, ErrPrepareHandlerUnavailable
+	}
+	return handler(ctx, stateRoot, request, invocation)
 }
 
 const (
@@ -74,7 +87,7 @@ type ExecutionActionRequest struct {
 }
 
 type ExecutionActionDependencies struct {
-	Direct    port.ExecutionWorkspaceProvisioner
+	Prepare   ExecutionPrepareHandler
 	Orca      port.ExecutionOrcaProvisioner
 	OrcaOwner port.ExecutionOrcaOwnerInspector
 	ReadIssue ExecutionIssueSnapshotReadFunc
@@ -105,10 +118,10 @@ func ExecuteExecution(ctx context.Context, stateRoot string, req ExecutionAction
 func executeExecutionAction(ctx context.Context, stateRoot string, req ExecutionActionRequest, deps ExecutionActionDependencies) (any, error) {
 	switch req.Action {
 	case ExecutionActionPrepare:
-		return PrepareExecution(ctx, stateRoot, ExecutionPrepareRequest{
+		return invokeExecutionPrepareHandler(ctx, stateRoot, ExecutionPrepareRequest{
 			ID: req.ID, Mode: req.Mode, Actor: req.Actor, CWD: req.CWD,
 			OwnerHost: req.OwnerHost, OwnerModel: req.OwnerModel, OwnerEffort: req.OwnerEffort, Confirm: req.Confirm,
-		}, ExecutionPrepareDependencies{Direct: deps.Direct, Orca: deps.Orca, ReadIssue: deps.ReadIssue})
+		}, ExecutionPrepareInvocation{ReadIssue: deps.ReadIssue}, deps.Prepare)
 	case ExecutionActionStatus:
 		return StatusExecution(stateRoot, req.ID)
 	case ExecutionActionClaim:

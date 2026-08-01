@@ -233,12 +233,12 @@ type stableV1OrcaBinding struct {
 	RuntimeID          string `json:"runtime_id"`
 	RepoID             string `json:"repo_id"`
 	WorktreeID         string `json:"worktree_id"`
+	RunID              string `json:"run_id,omitempty"`
 	WorktreeInstanceID string `json:"worktree_instance_id,omitempty"`
 	LeaseGeneration    uint64 `json:"lease_generation,omitempty"`
 	OwnerHost          string `json:"owner_host"`
 	OwnerModel         string `json:"owner_model"`
 	OwnerEffort        string `json:"owner_effort,omitempty"`
-	RunID              string `json:"run_id,omitempty"`
 	TaskID             string `json:"task_id"`
 	DispatchID         string `json:"dispatch_id"`
 	TerminalPTYID      string `json:"terminal_pty_id,omitempty"`

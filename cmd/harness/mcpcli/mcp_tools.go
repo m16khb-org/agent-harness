@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/port"
 )
 
 type MCPToolCall struct {
@@ -23,6 +24,10 @@ type MCPToolOutcome struct {
 // MCPDependencies는 server 생성 시 고정된다. 요청 간 package-global dependency
 // cache를 두지 않아 서로 다른 MCP server의 handler가 섞이지 않는다.
 type MCPDependencies struct {
+	Prepare     issueops.ExecutionPrepareHandler
+	Orca        port.ExecutionOrcaProvisioner
+	OrcaOwner   port.ExecutionOrcaOwnerInspector
+	ReadIssue   issueops.ExecutionIssueSnapshotReadFunc
 	Claim       issueops.ExecutionClaimHandler
 	Release     issueops.ExecutionReleaseHandler
 	Reseed      issueops.ExecutionReseedHandler

@@ -4,6 +4,7 @@ import (
 	"agent-harness/cmd/harness/issueopscli/remoteverify"
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/port"
 )
 
 func RunIssueOps(args []string) error {
@@ -11,6 +12,10 @@ func RunIssueOps(args []string) error {
 }
 
 type Dependencies struct {
+	Prepare     issueops.ExecutionPrepareHandler
+	Orca        port.ExecutionOrcaProvisioner
+	OrcaOwner   port.ExecutionOrcaOwnerInspector
+	ReadIssue   issueops.ExecutionIssueSnapshotReadFunc
 	Claim       issueops.ExecutionClaimHandler
 	Release     issueops.ExecutionReleaseHandler
 	Reseed      issueops.ExecutionReseedHandler
