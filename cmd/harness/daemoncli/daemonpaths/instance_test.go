@@ -65,3 +65,11 @@ func TestProcessStartTimeEqualSupportsLegacyKoreanReceipt(t *testing.T) {
 		t.Fatal("different process start seconds must not match")
 	}
 }
+
+func TestProcessStartTimeEqualPreservesFractionalIdentity(t *testing.T) {
+	recorded := "2026-07-31T07:14:57.50Z"
+	observed := "2026-07-31T07:14:57.51Z"
+	if ProcessStartTimeEqual(recorded, observed) {
+		t.Fatalf("different process start ticks must not match: recorded=%q observed=%q", recorded, observed)
+	}
+}

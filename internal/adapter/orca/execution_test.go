@@ -910,7 +910,7 @@ func TestExecutionRunEmptyInventoryRequiresSealedRuntimeEnvelope(t *testing.T) {
 		},
 		{
 			name:  "Run bind",
-			stage: port.ExecutionOrcaIntentRunBind, command: "orca orchestration run-current --from term_coordinator --json",
+			stage: port.ExecutionOrcaIntentRunBind, command: "orca orchestration run-current --json",
 			payload: `{"ok":true,"result":{"run":null},"_meta":{"runtimeId":"runtime-other"}}`,
 		},
 	} {

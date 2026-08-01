@@ -45,8 +45,9 @@ task/dispatch가 다시 legacy coordinator에 도달하는 부분 통합이 되�
 - Run bind를 Run 생성과 분리된 durable external intent로 기록해 다른
   coordinator session에서도 reconcile을 계속할 수 있게 한다.
 - task 생성·조회·갱신과 dispatch는 봉인된 exact Run ID를 사용한다.
-- coordinator mutation은 focus나 cwd가 아니라 현재 process에 주입된 exact
-  `ORCA_TERMINAL_HANDLE`을 `--from`으로 전달한다.
+- coordinator mutation은 현재 process에 주입된 exact
+  `ORCA_TERMINAL_HANDLE`을 fail-closed gate로 검증하되 `--from`은 생략해
+  Orca가 process authority를 직접 인증하게 한다.
 - Probe는 legacy coordinator의 상태가 아니라 Run API의 readiness와 필요한
   `--run` capability를 검증한다.
 - resume, replace, reconcile, completion, cleanup, operational inventory가
@@ -169,8 +170,8 @@ Probe는 다음을 확인한다.
 3. `run-create`, `run-list` capability
 4. `run-use`, `run-current` capability
 5. task create/list/update, dispatch, send의 `--run` capability
-6. `ORCA_TERMINAL_HANDLE`의 concrete identity와
-   `run-current --from <handle> --json` readback
+6. `ORCA_TERMINAL_HANDLE`의 concrete identity와 현재 process에서 실행한
+   `run-current --json` readback
 7. `run-list --json`의 정상 응답과 runtime identity
 
 Probe는 전역 `task-list`를 호출하지 않는다. 사용자의 coordinator terminal에
@@ -182,8 +183,9 @@ Run을 bind하거나 Run을 생성하지도 않는다.
 - `Dispatch` request도 같은 Run ID를 요구한다.
 - `UpdateTask`와 worker-done `send`는 binding의 Run ID를 전달한다.
 - `CreateRun`, `UseRun`, `CreateTask`, `UpdateTask`, `Dispatch`는 adapter가
-  현재 environment에서 검증한 coordinator handle을 exact `--from`으로
-  전달한다. CLI의 implicit focus/cwd resolution은 사용하지 않는다.
+  현재 environment의 coordinator handle 형식을 검증하되 `--from`은 생략한다.
+  Orca가 호출 process의 terminal authority를 직접 인증하며, focus/cwd를
+  권한으로 사용하지 않는다.
 - Run ID가 없는 mutation request는 runner 호출 전에 typed
   `Invoked=false` 오류로 거부한다.
 - `dispatch-show`, `gate-list`, `inbox`는 설치된 CLI가 Run 플래그를 제공하지
@@ -194,18 +196,16 @@ Run을 bind하거나 Run을 생성하지도 않는다.
 terminal receipt가 저장되면 다음 pending stage는 `run_create`다.
 
 1. core가 lifecycle/generation/operation marker를 Run objective로 봉인한다.
-2. adapter가
-   `run-create --objective <marker> --from <current-coordinator> --json`을 한 번
-   호출한다.
+2. adapter가 현재 coordinator process에서
+   `run-create --objective <marker> --json`을 한 번 호출한다.
 3. 정상 응답의 Run ID/objective/runtime을 검증한다.
 4. receipt CAS에서 Run ID를 payload에 기록하고 stage를 `run_bind`로
    전진한다.
-5. `run_bind`는 `run-current --from <current-coordinator>`가 같은 Run을
-   가리키는지 읽고, 아니면
-   `run-use --id <run_id> --from <current-coordinator> --json`을 한 번 호출한다.
+5. `run_bind`는 현재 process의 `run-current`가 같은 Run을 가리키는지 읽고,
+   아니면 `run-use --id <run_id> --json`을 한 번 호출한다.
 6. bind receipt CAS 뒤 stage를 `task_create`로 전진한다.
-7. task와 dispatch stage는 같은 Run ID와 current coordinator handle만
-   사용한다.
+7. task와 dispatch stage는 같은 Run ID와 현재 coordinator process
+   authority만 사용한다.
 8. dispatch receipt를 저장할 때 최종 `OrcaBinding.RunID`도 함께 기록한다.
 
 Run 생성 결과가 timeout 또는 unknown이면 재호출하지 않는다. reconcile은
@@ -293,9 +293,9 @@ prompt, claim token, 사용자 대화 원문은 오류나 inventory log에 넣�
 - 필요한 help에 `--run`이 없으면 capability failure
 - coordinator handle 부재/invalid/stale에서 mutation 0회
 - CreateRun 응답의 ID/objective/runtime 검증
-- CurrentRun과 UseRun의 exact `--from`, Run ID, runtime 검증
+- CurrentRun과 UseRun의 current-process authority, Run ID, runtime 검증
 - task-create/task-list/task-update/dispatch/send의 exact `--run`
-- coordinator mutation의 exact `--from`
+- coordinator mutation의 `--from` 생략과 환경 handle gate
 - Run ID 누락 시 runner 호출 0회
 - 여러 Run task inventory의 completeness와 deduplication
 - legacy task resolver의 0/1/N 후보

@@ -29,11 +29,13 @@ worktree_create -> terminal_create -> run_create -> run_bind -> task_create -> d
 ```
 
 `run_create`는 lifecycle·generation·operation marker를 objective로 가진 새 Run을
-만들고, `run_bind`는 현재 coordinator의 정확한 `ORCA_TERMINAL_HANDLE`을
-`run-current --from`/`run-use --id <run> --from`에 전달한다. focus, cwd, 전역 current Run을
-권한으로 추론하지 않는다. `run_bind`만 수렴 가능한 재바인딩이므로 불명확한 결과
-뒤에도 동일 Run으로 유한 재시도할 수 있고, 자원을 만드는 다른 단계는 종전처럼
-불명확한 mutation을 반복하지 않는다.
+만들고, `run_bind`는 현재 coordinator의 정확한 `ORCA_TERMINAL_HANDLE` 형식을
+fail-closed gate로 검증한 뒤 `run-current`/`run-use --id <run>`를 현재 process에서
+호출한다. 현재 terminal RPC에 `--from`을 붙이면 Orca가 이를 명시적 대리 호출로
+해석해 process authority를 보존하지 못할 수 있으므로 생략한다. focus, cwd, 전역
+current Run을 권한으로 추론하지 않는다. `run_bind`만 수렴 가능한 재바인딩이므로
+불명확한 결과 뒤에도 동일 Run으로 유한 재시도할 수 있고, 자원을 만드는 다른
+단계는 종전처럼 불명확한 mutation을 반복하지 않는다.
 
 Run 도입 전 binding의 빈 `run_id`는 읽을 수 있다. 이 경우 task 소유권과 완료
 처리는 모든 명시적 Run의 `task-list --run` 결과에서 정확히 하나가 일치할 때만
@@ -278,6 +280,18 @@ Successful completion records the receipt, moves the lifecycle to `done`, and
 releases the lease atomically. It does not merge the PR/MR or delete the
 worktree or branch. The owner returns the exact 14-field report defined in
 `.agent-harness/karpathy/prompts/issueops-v1-owner-execution-v1.md`.
+
+GitHub의 `branch_prepare.link_verified`가 false이면 sealed owner packet이
+`gh issue develop --list <issue> --repo <owner/repo>` exact reader와 branch
+prepare recorder를 함께 제공한다. owner는 이 reader를 한 번 실행해 exact branch
+연결을 확인한 뒤에만 recorder를 실행하며, 대체 GraphQL이나 다른 provider reader를
+추론하지 않는다.
+
+Orca가 worker prompt에 주입하는 현재 제어 명령은 legacy `--to` 대신
+`--dispatch-capability`를 사용할 수 있다. capability 경로는 exact `--from`을 함께
+전달하고, `worker_done`은 `--outcome succeeded|failed`를 반드시 포함한다. hook은
+legacy recipient와 capability recipient 중 정확히 하나만 admit하며 둘을 섞거나
+알 수 없는 flag·outcome을 붙인 명령은 fail-closed한다.
 
 ## Host-Aware Owner Model Defaults
 

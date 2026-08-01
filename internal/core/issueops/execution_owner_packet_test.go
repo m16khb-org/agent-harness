@@ -101,6 +101,7 @@ func TestExecutionOwnerBranchLinkCommandPreservesSealedTopology(t *testing.T) {
 	record.BranchPrepare.ParentWorktree = "/repo/example.worktrees/117-umbrella"
 	commands := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64))
 	for _, required := range []string{
+		"gh issue develop --list 69 --repo 'example/agent-harness'",
 		"issueops branch prepare",
 		"--provider 'github'",
 		"--issue-url 'https://github.com/example/agent-harness/issues/69'",
@@ -111,13 +112,32 @@ func TestExecutionOwnerBranchLinkCommandPreservesSealedTopology(t *testing.T) {
 		"--link-verified",
 		"--session-id <SESSION_ID>",
 	} {
-		if !strings.Contains(commands.VerifyBranchLink, required) {
-			t.Fatalf("branch link command is missing %q: %s", required, commands.VerifyBranchLink)
+		combined := commands.VerifyBranchLinkRead + "\n" + commands.VerifyBranchLink
+		if !strings.Contains(combined, required) {
+			t.Fatalf("branch link commands are missing %q:\n%s", required, combined)
 		}
 	}
+	if strings.Contains(commands.VerifyBranchLinkRead, "graphql") {
+		t.Fatalf("owner가 임의 GraphQL reader를 만들게 하면 안 된다: %s", commands.VerifyBranchLinkRead)
+	}
 	record.BranchPrepare.LinkVerified = true
-	if got := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64)).VerifyBranchLink; got != "none" {
-		t.Fatalf("already verified branch link command = %q, want none", got)
+	verified := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64))
+	if verified.VerifyBranchLinkRead != "none" || verified.VerifyBranchLink != "none" {
+		t.Fatalf("already verified branch link commands = read %q / record %q, want none", verified.VerifyBranchLinkRead, verified.VerifyBranchLink)
+	}
+}
+
+func TestExecutionOwnerPromptUsesOnlyTheGeneratedBranchLinkReader(t *testing.T) {
+	record, req := ownerPacketFixture()
+	record.BranchPrepare.LinkVerified = false
+	prompt := executionOwnerPromptFixture(t, record, req)
+	for _, required := range []string{
+		"gh issue develop --list 69 --repo 'example/agent-harness'",
+		"대체 GraphQL이나 다른 reader를 만들지 않는다",
+	} {
+		if !strings.Contains(prompt, required) {
+			t.Fatalf("owner prompt가 exact branch reader 계약 %q을 포함하지 않는다:\n%s", required, prompt)
+		}
 	}
 }
 
