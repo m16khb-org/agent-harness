@@ -82,6 +82,9 @@ type ExecutionActionDependencies struct {
 	Reseed    ExecutionReseedHandler
 	Resume    ExecutionResumeHandler
 	Reconcile ExecutionReconcileHandler
+	// RemoteReconcile handles remote_pr_create recovery independently of the
+	// Orca-specific Reconcile handler.
+	RemoteReconcile RemotePullRequestReconcileHandler
 	// SettleOrcaTask는 완료 시점의 orca task 종결 표면이다(#130).
 	SettleOrcaTask func(ctx context.Context, runID, taskID string) error
 }

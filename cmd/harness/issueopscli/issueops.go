@@ -75,7 +75,7 @@ func runIssueOpsWithDependencies(args []string, deps Dependencies) error {
 	if len(args) > 0 {
 		switch args[0] {
 		case "execution":
-			return runIssueOpsExecutionWithHandlersAndReseed(args[1:], deps.Claim, deps.Release, deps.Reseed, deps.Resume, deps.Reconcile)
+			return runIssueOpsExecutionWithDependencies(args[1:], deps)
 		case "remote":
 			return remotecmd.Run(args[1:], issueOpsRemoteDepsWithPublication(deps.Publication))
 		case "remote-score":

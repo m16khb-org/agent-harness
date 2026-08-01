@@ -10,19 +10,23 @@ import (
 )
 
 func runIssueOpsExecution(args []string) error {
-	return runIssueOpsExecutionWithHandlersAndReseed(args, nil, nil, nil, nil, nil)
+	return runIssueOpsExecutionWithDependencies(args, Dependencies{})
 }
 
 func runIssueOpsExecutionWithRelease(args []string, release issueops.ExecutionReleaseHandler) error {
-	return runIssueOpsExecutionWithHandlersAndReseed(args, nil, release, nil, nil, nil)
+	return runIssueOpsExecutionWithDependencies(args, Dependencies{Release: release})
 }
 
 func runIssueOpsExecutionWithHandlers(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler) error {
-	return runIssueOpsExecutionWithHandlersAndReseed(args, claim, release, nil, nil, nil)
+	return runIssueOpsExecutionWithDependencies(args, Dependencies{Claim: claim, Release: release})
 }
 
-func runIssueOpsExecutionWithHandlersAndReseed(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler, reseed issueops.ExecutionReseedHandler, resume issueops.ExecutionResumeHandler, reconcile issueops.ExecutionReconcileHandler) error {
-	return executioncmd.Run(args, executioncmd.Deps{
+func runIssueOpsExecutionWithDependencies(args []string, deps Dependencies) error {
+	return executioncmd.Run(args, issueOpsExecutionDeps(deps))
+}
+
+func issueOpsExecutionDeps(deps Dependencies) executioncmd.Deps {
+	return executioncmd.Deps{
 		StateRoot: core.IssueOpsStateRoot,
 		Direct:    gitworktree.New(),
 		Orca:      orca.NewExecution(),
@@ -46,12 +50,13 @@ func runIssueOpsExecutionWithHandlersAndReseed(args []string, claim issueops.Exe
 		},
 		// 완료가 orca task를 종결시킨다(#130).
 		SettleOrcaTask: orca.New().SettleTask,
-		Claim:          claim,
-		Release:        release,
-		Reseed:         reseed,
-		Resume:         resume,
-		Reconcile:      reconcile,
+		Claim:          deps.Claim,
+		Release:        deps.Release,
+		Reseed:         deps.Reseed,
+		Resume:         deps.Resume,
+		Reconcile:      deps.Reconcile,
+		Publication:    deps.Publication,
 		PrintJSON:      printJSON,
 		PrintError:     printIssueOpsErrorJSON,
-	})
+	}
 }

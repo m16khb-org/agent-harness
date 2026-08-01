@@ -1,6 +1,7 @@
 package issueopscli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -14,6 +15,25 @@ import (
 	issueopscore "agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/preflight"
 )
+
+func TestIssueOpsExecutionDepsPropagatePublicationReconcileWithoutInvocation(t *testing.T) {
+	invoked := 0
+	handler := issueopscore.RemotePullRequestReconcileHandler(func(context.Context, string, issueopscore.ExecutionReconcileRequest) (issueopscore.ExecutionReconcileResult, error) {
+		invoked++
+		return issueopscore.ExecutionReconcileResult{}, nil
+	})
+
+	deps := issueOpsExecutionDeps(Dependencies{Publication: issueopscore.RemotePublicationHandlers{Reconcile: handler}})
+	if deps.Publication.Reconcile == nil {
+		t.Fatal("publication reconcile handler was not propagated")
+	}
+	if reflect.ValueOf(deps.Publication.Reconcile).Pointer() != reflect.ValueOf(handler).Pointer() {
+		t.Fatal("publication reconcile handler changed during CLI composition")
+	}
+	if invoked != 0 {
+		t.Fatalf("publication reconcile handler invoked during propagation: %d", invoked)
+	}
+}
 
 func TestIssueOpsExecutionCLIPrepareAndStatusShareSchemaProjection(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
