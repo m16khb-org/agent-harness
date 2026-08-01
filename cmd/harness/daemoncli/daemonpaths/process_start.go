@@ -33,7 +33,7 @@ func canonicalProcessStartTime(value string) (string, error) {
 		return value, nil
 	}
 	if parsed, err := time.Parse(time.RFC3339, value); err == nil {
-		return parsed.UTC().Format(time.RFC3339), nil
+		return parsed.UTC().Format(time.RFC3339Nano), nil
 	}
 	for _, layout := range []string{"Mon Jan _2 15:04:05 2006", "Mon Jan 2 15:04:05 2006"} {
 		if parsed, err := time.ParseInLocation(layout, value, time.Local); err == nil {
