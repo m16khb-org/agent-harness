@@ -2,9 +2,6 @@ package issueopscli
 
 import (
 	"agent-harness/cmd/harness/issueopscli/executioncmd"
-	"agent-harness/internal/adapter/gitworktree"
-	"agent-harness/internal/adapter/orca"
-	"agent-harness/internal/adapter/provider"
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/issueops"
 )
@@ -28,9 +25,10 @@ func runIssueOpsExecutionWithDependencies(args []string, deps Dependencies) erro
 func issueOpsExecutionDeps(deps Dependencies) executioncmd.Deps {
 	return executioncmd.Deps{
 		StateRoot:   core.IssueOpsStateRoot,
-		Direct:      gitworktree.New(),
-		Orca:        orca.NewExecution(),
-		ReadIssue:   provider.ReadExecutionIssueSnapshot,
+		Prepare:     deps.Prepare,
+		Orca:        deps.Orca,
+		OrcaOwner:   deps.OrcaOwner,
+		ReadIssue:   deps.ReadIssue,
 		Claim:       deps.Claim,
 		Release:     deps.Release,
 		Reseed:      deps.Reseed,

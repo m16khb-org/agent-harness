@@ -15,8 +15,9 @@ import (
 
 type Deps struct {
 	StateRoot   func() string
-	Direct      port.ExecutionWorkspaceProvisioner
+	Prepare     issueops.ExecutionPrepareHandler
 	Orca        port.ExecutionOrcaProvisioner
+	OrcaOwner   port.ExecutionOrcaOwnerInspector
 	ReadIssue   issueops.ExecutionIssueSnapshotReadFunc
 	Claim       issueops.ExecutionClaimHandler
 	Release     issueops.ExecutionReleaseHandler
@@ -31,12 +32,15 @@ type Deps struct {
 
 func (deps Deps) actionDeps() issueops.ExecutionActionDependencies {
 	actionDeps := issueops.ExecutionActionDependencies{
-		Direct: deps.Direct, Orca: deps.Orca, ReadIssue: deps.ReadIssue,
+		Prepare: deps.Prepare, Orca: deps.Orca, OrcaOwner: deps.OrcaOwner, ReadIssue: deps.ReadIssue,
 		Claim: deps.Claim, Release: deps.Release, Reseed: deps.Reseed, Resume: deps.Resume, Reconcile: deps.Reconcile, Complete: deps.Complete,
 		RemoteReconcile: deps.Publication.Reconcile,
 	}
-	if inspector, ok := deps.Orca.(port.ExecutionOrcaOwnerInspector); ok {
-		actionDeps.OrcaOwner = inspector
+	if actionDeps.OrcaOwner == nil {
+		inspector, ok := deps.Orca.(port.ExecutionOrcaOwnerInspector)
+		if ok {
+			actionDeps.OrcaOwner = inspector
+		}
 	}
 	return actionDeps
 }

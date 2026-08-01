@@ -4,10 +4,25 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/port"
 )
+
+type ExecutionPrepareDependencies struct {
+	Direct      port.ExecutionWorkspaceProvisioner
+	Orca        port.ExecutionOrcaProvisioner
+	ReadIssue   ExecutionIssueSnapshotReadFunc
+	Now         func() time.Time
+	OperationID string
+}
+
+// PrepareExecution remains test-only so the predecessor characterization suite
+// cannot become a production routing path again.
+func PrepareExecution(ctx context.Context, stateRoot string, request ExecutionPrepareRequest, dependencies ExecutionPrepareDependencies) (ExecutionPrepareResult, error) {
+	return prepareExecutionCompatibilityOracle(ctx, stateRoot, request, dependencies)
+}
 
 // These three functions freeze the predecessor orchestration for deterministic
 // differential tests. They intentionally call only granular compatibility

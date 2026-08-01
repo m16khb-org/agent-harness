@@ -6,9 +6,6 @@ import (
 	"os"
 
 	"agent-harness/cmd/harness/mcpcli/argmap"
-	"agent-harness/internal/adapter/gitworktree"
-	"agent-harness/internal/adapter/orca"
-	"agent-harness/internal/adapter/provider"
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/issueops/model"
@@ -36,9 +33,8 @@ func handleMCPIssueOpsExecutionWithDependencies(args map[string]any, deps MCPDep
 }
 
 func issueOpsExecutionActionDependencies(deps MCPDependencies) issueops.ExecutionActionDependencies {
-	orcaExecution := orca.NewExecution()
 	return issueops.ExecutionActionDependencies{
-		Direct: gitworktree.New(), Orca: orcaExecution, OrcaOwner: orcaExecution, ReadIssue: provider.ReadExecutionIssueSnapshot,
+		Prepare: deps.Prepare, Orca: deps.Orca, OrcaOwner: deps.OrcaOwner, ReadIssue: deps.ReadIssue,
 		Claim: deps.Claim, Release: deps.Release, Reseed: deps.Reseed, Resume: deps.Resume, Reconcile: deps.Reconcile, Complete: deps.Complete,
 		RemoteReconcile: deps.Publication.Reconcile,
 	}

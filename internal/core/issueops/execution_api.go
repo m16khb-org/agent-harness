@@ -83,7 +83,7 @@ type ExecutionActionRequest struct {
 }
 
 type ExecutionActionDependencies struct {
-	Direct    port.ExecutionWorkspaceProvisioner
+	Prepare   ExecutionPrepareHandler
 	Orca      port.ExecutionOrcaProvisioner
 	OrcaOwner port.ExecutionOrcaOwnerInspector
 	ReadIssue ExecutionIssueSnapshotReadFunc
@@ -114,10 +114,10 @@ func ExecuteExecution(ctx context.Context, stateRoot string, req ExecutionAction
 func executeExecutionAction(ctx context.Context, stateRoot string, req ExecutionActionRequest, deps ExecutionActionDependencies) (any, error) {
 	switch req.Action {
 	case ExecutionActionPrepare:
-		return PrepareExecution(ctx, stateRoot, ExecutionPrepareRequest{
+		return invokeExecutionPrepareHandler(ctx, stateRoot, ExecutionPrepareRequest{
 			ID: req.ID, Mode: req.Mode, Actor: req.Actor, CWD: req.CWD,
 			OwnerHost: req.OwnerHost, OwnerModel: req.OwnerModel, OwnerEffort: req.OwnerEffort, Confirm: req.Confirm,
-		}, ExecutionPrepareDependencies{Direct: deps.Direct, Orca: deps.Orca, ReadIssue: deps.ReadIssue})
+		}, deps.Prepare)
 	case ExecutionActionStatus:
 		return StatusExecution(stateRoot, req.ID)
 	case ExecutionActionClaim:

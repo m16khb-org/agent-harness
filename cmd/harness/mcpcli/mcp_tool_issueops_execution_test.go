@@ -256,9 +256,11 @@ func TestHandleMCPIssueOpsExecutionPreservesResetRequiredFields(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(stateDir, "issueops"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	outcome := handleMCPIssueOpsExecution(map[string]any{
+	outcome := handleMCPIssueOpsExecutionWithDependencies(map[string]any{
 		"action": "prepare", "id": "io-aaaaaaaaaaaa", "mode": "auto", "confirm": true,
-	})
+	}, MCPDependencies{Prepare: func(_ context.Context, stateRoot string, request issueops.ExecutionPrepareRequest) (issueops.ExecutionPrepareResult, error) {
+		return issueops.ExecutionPrepareResult{ID: request.ID}, issueops.RequireIssueOpsMutationAllowed(stateRoot)
+	}})
 	if !outcome.Handled || !outcome.IsError {
 		t.Fatalf("reset-required MCP mutation outcome = %#v", outcome)
 	}

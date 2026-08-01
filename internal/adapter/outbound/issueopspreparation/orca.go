@@ -32,7 +32,10 @@ func (adapter *OrcaGatewayAdapter) Probe(ctx context.Context, request preparatio
 		Provider: request.Provider, Issue: request.Issue, Marker: request.Marker,
 	})
 	mapped := preparationcontract.ProbeResult{Available: result.Available, Ready: result.Ready, Code: result.Code}
-	if err != nil || !result.Available || !result.Ready {
+	if err != nil {
+		return mapped, fmt.Errorf("Orca probe failed: %w", err)
+	}
+	if !result.Available || !result.Ready {
 		return mapped, err
 	}
 	if adapter.dependencies.ValidateProbe == nil {

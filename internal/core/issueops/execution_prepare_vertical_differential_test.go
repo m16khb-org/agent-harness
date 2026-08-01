@@ -172,6 +172,7 @@ func TestPreparationDifferentialOrcaMatrix(t *testing.T) {
 		mode       string
 		confirm    bool
 		probe      port.ExecutionOrcaProbeResult
+		probeErr   error
 		failStage  port.ExecutionOrcaIntentStage
 		invokeErr  error
 		inspection *port.ExecutionOrcaIntentInventory
@@ -180,6 +181,8 @@ func TestPreparationDifferentialOrcaMatrix(t *testing.T) {
 		{name: "success", mode: "orca", confirm: true, probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}},
 		{name: "auto ready", mode: "auto", confirm: true, probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}},
 		{name: "explicit unavailable", mode: "orca", probe: port.ExecutionOrcaProbeResult{Code: "orca_unavailable"}},
+		{name: "explicit probe error", mode: "orca", probeErr: errors.New("probe transport failed")},
+		{name: "auto probe error", mode: "auto", confirm: true, probeErr: errors.New("probe transport failed")},
 		{name: "dispatch unknown", mode: "orca", confirm: true, probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}, failStage: port.ExecutionOrcaIntentDispatch, invokeErr: &port.OrcaError{Code: "transport", Invoked: true}},
 		{name: "terminal not invoked", mode: "orca", confirm: true, probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}, failStage: port.ExecutionOrcaIntentTerminal, invokeErr: &port.OrcaError{Code: "transport", Invoked: false}},
 		{name: "non authoritative zero", mode: "orca", confirm: true, probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}, inspection: &port.ExecutionOrcaIntentInventory{}},
@@ -191,8 +194,8 @@ func TestPreparationDifferentialOrcaMatrix(t *testing.T) {
 			verticalRoot := clonePreparationDifferentialState(t, legacyRoot, record.ID)
 			request := preparationDifferentialRequest(record, test.mode, test.confirm)
 			legacyTrace, verticalTrace := []string{}, []string{}
-			legacyProvider := &preparationDifferentialOrca{probe: test.probe, failStage: test.failStage, invokeErr: test.invokeErr, inspection: test.inspection, trace: &legacyTrace}
-			verticalProvider := &preparationDifferentialOrca{probe: test.probe, failStage: test.failStage, invokeErr: test.invokeErr, inspection: test.inspection, trace: &verticalTrace}
+			legacyProvider := &preparationDifferentialOrca{probe: test.probe, probeErr: test.probeErr, failStage: test.failStage, invokeErr: test.invokeErr, inspection: test.inspection, trace: &legacyTrace}
+			verticalProvider := &preparationDifferentialOrca{probe: test.probe, probeErr: test.probeErr, failStage: test.failStage, invokeErr: test.invokeErr, inspection: test.inspection, trace: &verticalTrace}
 
 			legacy := runLegacyOrcaPreparationDifferential(t, legacyRoot, record.ID, request, legacyProvider, &legacyTrace)
 			vertical := runVerticalOrcaPreparationDifferential(t, verticalRoot, record.ID, request, verticalProvider, &verticalTrace)
@@ -419,6 +422,7 @@ type preparationDifferentialDirect struct {
 
 type preparationDifferentialOrca struct {
 	probe      port.ExecutionOrcaProbeResult
+	probeErr   error
 	failStage  port.ExecutionOrcaIntentStage
 	invokeErr  error
 	inspection *port.ExecutionOrcaIntentInventory
@@ -427,7 +431,7 @@ type preparationDifferentialOrca struct {
 
 func (orca *preparationDifferentialOrca) Probe(_ context.Context, _ port.ExecutionOrcaProbeRequest) (port.ExecutionOrcaProbeResult, error) {
 	*orca.trace = append(*orca.trace, "orca.probe")
-	return orca.probe, nil
+	return orca.probe, orca.probeErr
 }
 
 func (orca *preparationDifferentialOrca) InspectIntent(_ context.Context, request port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentInventory, error) {
