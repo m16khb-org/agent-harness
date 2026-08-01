@@ -3,8 +3,9 @@
 - 이슈: https://github.com/m16khb/agent-harness/issues/195
 - 대상 브랜치: `117-hexagonal-architecture-migration`
 - sealed base: `667e5d15b0773e2550cfbf5bc2780506e9eb2896`
-- 로컬 검증 기준 HEAD: `21cd4ae59bd70218bc6b6a300223871ccf4aca51`와 아래 Task 7 working-tree diff
-- PR 및 원격 CI: 실제 생성 후 URL과 최종 결과를 이 문서에 추가한다.
+- 구현·원격 CI 검증 기준 HEAD: `b0ff5abe5e01b9a0cd34f4807a0979898d512125`
+- PR: [#216](https://github.com/m16khb/agent-harness/pull/216)
+- 원격 CI: [push run 30709143814](https://github.com/m16khb/agent-harness/actions/runs/30709143814), [pull_request run 30709170374](https://github.com/m16khb/agent-harness/actions/runs/30709170374) 모두 성공
 
 ## 결과
 
@@ -21,7 +22,7 @@ slot은 제거했으며 schema v1 payload와 공개 command/MCP response contrac
 | AC-195-02 | PASS | 기존 byte-preserving core bridge만 persistence를 수행하고 application provider 호출은 intent/retry CAS 뒤 lock 밖에서 실행된다. Focused core race/동시 read·replacement-preview 회귀가 통과했다. |
 | AC-195-03 | PASS | exact candidate, mismatch, multiple, authoritative/non-authoritative zero, known URL verification failure, bounded retry 성공·terminal-not-invoked·ambiguous·exhausted 차등 행이 기존 결과와 동일하다. |
 | AC-195-04 | PASS | AST ratchet이 publication caller의 concrete `provider.Resolve`와 non-test core의 legacy full-flow symbol을 거부한다. Public create/reconcile은 nil handler에서 fail closed하고 production fallback field가 없다. |
-| AC-195-05 | LOCAL PASS / CI PENDING | focused unit/race, provider, CLI/MCP, architecture, golden, scoped vet, build, contract check, diff check가 모두 exit 0이다. Full test/full race는 PR CI에서 실행한다. |
+| AC-195-05 | PASS | focused unit/race, provider, CLI/MCP, architecture, golden, scoped vet, build, contract check, diff check가 모두 exit 0이고, push·pull_request CI에서 전체 test·race와 deterministic self-verify gate가 통과했다. |
 
 공개 contract hash는
 `bef9b8eeb380337c6b4a2e5431e1c2bc08c4a5ccceee63260dff66d934390474`다.
@@ -82,6 +83,12 @@ go build -o bin/agent-harness ./cmd/harness
   (2026-08-01T16:32:11Z, final recheck, build exit 0, contract ok:true, warnings:[])
 git diff --check
   (2026-08-01T16:32:18Z, final recheck, no diagnostics)
+go test ./internal/core/lifecycle ./cmd/harness/hookcli -count=1
+go test -race ./internal/core/lifecycle ./cmd/harness/hookcli -count=1
+go vet ./internal/core/lifecycle ./cmd/harness/hookcli
+  (2026-08-01T16:52Z, Codex structured workdir hook regression 포함, 모두 exit 0)
+./bin/agent-harness hook pre-tool-use --host codex --enforce-worktree --json
+  (2026-08-01T16:49Z, 실제 source cwd + canonical tool_input.workdir + active lease payload decision=allow)
 ```
 
 ## 문서와 범위
@@ -96,5 +103,6 @@ git diff --check
   consumer-owned port 규칙이 #195를 이미 포괄하므로 편집하지 않았다.
 - OpenWiki 자동 갱신, schema migration, public DTO 확장, unrelated provider
   operation 변경은 하지 않았다.
-- 프로젝트 계약에 따라 local full `go test ./...`와 full race는 실행하지 않는다.
-  PR CI의 full test/full race 결과를 실제 URL과 함께 후속 기록한다.
+- 프로젝트 계약에 따라 local full `go test ./...`와 full race는 실행하지 않았다.
+  PR #216의 push·pull_request CI가 전체 test, 전체 race, deterministic self-verify를
+  모두 통과했으며 위 원격 run URL로 결과를 고정했다.
