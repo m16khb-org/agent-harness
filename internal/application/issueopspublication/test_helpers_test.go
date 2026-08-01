@@ -84,13 +84,16 @@ func (f *fakeRepository) Latest(ctx context.Context, id string) (contract.Record
 }
 
 type fakeProvider struct {
-	t       *testing.T
-	create  func(context.Context, string, contract.ProviderCreateRequest) (contract.ProviderCreateResult, contract.InvocationState, error)
-	inspect func(context.Context, contract.Intent) (contract.Inventory, bool, error)
+	t            *testing.T
+	createCalls  int
+	inspectCalls int
+	create       func(context.Context, string, contract.ProviderCreateRequest) (contract.ProviderCreateResult, contract.InvocationState, error)
+	inspect      func(context.Context, contract.Intent) (contract.Inventory, bool, error)
 }
 
 func (f *fakeProvider) Create(ctx context.Context, provider string, request contract.ProviderCreateRequest) (contract.ProviderCreateResult, contract.InvocationState, error) {
 	f.t.Helper()
+	f.createCalls++
 	if f.create == nil {
 		f.t.Fatalf("unexpected Provider.Create call")
 	}
@@ -99,6 +102,7 @@ func (f *fakeProvider) Create(ctx context.Context, provider string, request cont
 
 func (f *fakeProvider) Inspect(ctx context.Context, intent contract.Intent) (contract.Inventory, bool, error) {
 	f.t.Helper()
+	f.inspectCalls++
 	if f.inspect == nil {
 		f.t.Fatalf("unexpected Provider.Inspect call")
 	}
