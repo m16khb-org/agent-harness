@@ -66,10 +66,7 @@ func (e *NestedSpanError) Error() string {
 }
 
 // Row는 GetAll이 반환하는 record 하나다.
-type Row struct {
-	ID   string
-	Data []byte
-}
+type Row = port.RecordRow
 
 // SchemaObject는 기존 store의 non-internal SQLite schema object 하나다.
 // maintenance 호출자는 state를 삭제하기 전에 이해하지 못하는 레이아웃을

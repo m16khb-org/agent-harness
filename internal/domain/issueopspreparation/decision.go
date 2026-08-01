@@ -67,7 +67,7 @@ func DenialReasonOf(err error) DenialReason {
 }
 
 func Decide(input DecisionInput) (Decision, error) {
-	requested, err := normalizeMode(input.Command.Mode)
+	requested, err := NormalizeMode(input.Command.Mode)
 	if err != nil {
 		return Decision{}, &Denial{Reason: DenialInvalidMode, Cause: err}
 	}
@@ -119,7 +119,7 @@ func Decide(input DecisionInput) (Decision, error) {
 	return decision, &Denial{Reason: DenialOrcaUnavailable, Code: code, Cause: errors.New(message)}
 }
 
-func normalizeMode(mode string) (string, error) {
+func NormalizeMode(mode string) (string, error) {
 	switch normalized := strings.ToLower(strings.TrimSpace(mode)); normalized {
 	case "", preparationcontract.ModeAuto:
 		return preparationcontract.ModeAuto, nil

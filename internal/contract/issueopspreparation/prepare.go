@@ -10,17 +10,38 @@ const (
 	ModeAuto   = "auto"
 	ModeDirect = "direct"
 	ModeOrca   = "orca"
+
+	ImplementerModelCodex   = "gpt-5.6-terra"
+	ImplementerEffortCodex  = "xhigh"
+	ImplementerModelClaude  = "claude-sonnet-5"
+	ImplementerEffortClaude = "high"
 )
 
+type Actor = leasecontract.Actor
+type Record = leasecontract.Record
+type Execution = leasecontract.Execution
+type Workspace = leasecontract.Workspace
+
+func ImplementerDefaults(host string) (model string, effort string, ok bool) {
+	switch host {
+	case "codex":
+		return ImplementerModelCodex, ImplementerEffortCodex, true
+	case "claude":
+		return ImplementerModelClaude, ImplementerEffortClaude, true
+	default:
+		return "", "", false
+	}
+}
+
 type Command struct {
-	ID          string              `json:"id"`
-	Mode        string              `json:"mode"`
-	Actor       leasecontract.Actor `json:"actor"`
-	CWD         string              `json:"cwd"`
-	OwnerHost   string              `json:"owner_host,omitempty"`
-	OwnerModel  string              `json:"owner_model,omitempty"`
-	OwnerEffort string              `json:"owner_effort,omitempty"`
-	Confirm     bool                `json:"confirm,omitempty"`
+	ID          string `json:"id"`
+	Mode        string `json:"mode"`
+	Actor       Actor  `json:"actor"`
+	CWD         string `json:"cwd"`
+	OwnerHost   string `json:"owner_host,omitempty"`
+	OwnerModel  string `json:"owner_model,omitempty"`
+	OwnerEffort string `json:"owner_effort,omitempty"`
+	Confirm     bool   `json:"confirm,omitempty"`
 }
 
 func (command Command) Clone() Command {
@@ -36,7 +57,7 @@ type Result struct {
 	RequestedMode       string                   `json:"requested_mode"`
 	ResolvedMode        string                   `json:"resolved_mode"`
 	FallbackCode        string                   `json:"fallback_code,omitempty"`
-	Workspace           leasecontract.Workspace  `json:"workspace"`
+	Workspace           Workspace                `json:"workspace"`
 	Execution           *leasecontract.Execution `json:"execution,omitempty"`
 	ClaimTokenPath      string                   `json:"claim_token_path,omitempty"`
 	IssueBodySHA256     string                   `json:"issue_body_sha256,omitempty"`
@@ -61,10 +82,39 @@ type RootClaim struct {
 }
 
 type Snapshot struct {
-	Record        leasecontract.Record
-	RecordRaw     []byte
-	CanonicalRoot string
-	RootConflict  *RootClaim
+	Record         leasecontract.Record
+	RecordRaw      []byte
+	CanonicalRoot  string
+	ClaimTokenPath string
+	RootConflict   *RootClaim
+}
+
+type AccessResult struct {
+	Allowed         bool   `json:"allowed"`
+	Code            string `json:"code,omitempty"`
+	RelaunchCommand string `json:"relaunch_command,omitempty"`
+}
+
+type ProbeResult struct {
+	Available bool   `json:"available"`
+	Ready     bool   `json:"ready"`
+	Code      string `json:"code,omitempty"`
+}
+
+type OwnerEvidence struct {
+	IssueURL   string
+	IssueBody  string
+	BodySHA256 string
+	Source     string
+}
+
+type OwnerArtifacts struct {
+	ClaimTokenPath      string
+	ClaimTokenSHA256    string
+	ContextPacketPath   string
+	ContextPacketSHA256 string
+	OwnerPromptPath     string
+	OwnerPromptSHA256   string
 }
 
 func (snapshot Snapshot) Clone() Snapshot {

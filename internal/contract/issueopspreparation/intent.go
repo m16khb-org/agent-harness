@@ -56,6 +56,7 @@ type WorkspaceRequest struct {
 	BaseHead       string `json:"base_head"`
 	ParentWorktree string `json:"parent_worktree,omitempty"`
 	Confirm        bool   `json:"confirm,omitempty"`
+	CWD            string `json:"-"`
 }
 
 type WorkspaceReceipt struct {
@@ -84,6 +85,42 @@ type OrcaWorkspaceReceipt struct {
 	RepoID             string           `json:"repo_id"`
 	WorktreeID         string           `json:"worktree_id"`
 	WorktreeInstanceID string           `json:"worktree_instance_id,omitempty"`
+}
+
+type LaunchRequest struct {
+	Prompt              string `json:"prompt"`
+	PromptPath          string `json:"prompt_path"`
+	PromptSHA256        string `json:"prompt_sha256"`
+	ContextPacketPath   string `json:"context_packet_path"`
+	ContextPacketSHA256 string `json:"context_packet_sha256"`
+}
+
+type IntentRequest struct {
+	Stage         IntentStage           `json:"stage"`
+	Marker        string                `json:"marker"`
+	Workspace     WorkspaceRequest      `json:"workspace"`
+	Probe         ProbeRequest          `json:"probe"`
+	Prepared      *OrcaWorkspaceReceipt `json:"prepared,omitempty"`
+	Launch        *LaunchRequest        `json:"launch,omitempty"`
+	TerminalPTYID string                `json:"terminal_pty_id,omitempty"`
+	RunID         string                `json:"run_id,omitempty"`
+	RunBound      bool                  `json:"run_bound,omitempty"`
+	TaskID        string                `json:"task_id,omitempty"`
+}
+
+type IntentReceipt struct {
+	Workspace      *OrcaWorkspaceReceipt `json:"workspace,omitempty"`
+	TerminalPTYID  string                `json:"terminal_pty_id,omitempty"`
+	TerminalHandle string                `json:"terminal_handle,omitempty"`
+	RunID          string                `json:"run_id,omitempty"`
+	RunBound       bool                  `json:"run_bound,omitempty"`
+	TaskID         string                `json:"task_id,omitempty"`
+	DispatchID     string                `json:"dispatch_id,omitempty"`
+}
+
+type IntentInventory struct {
+	Candidates        []IntentReceipt `json:"candidates"`
+	AuthoritativeZero bool            `json:"authoritative_zero,omitempty"`
 }
 
 // Intent is the only persisted JSON shape for Orca prepare and resume work.

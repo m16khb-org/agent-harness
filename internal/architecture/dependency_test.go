@@ -88,6 +88,13 @@ func TestEvaluateEdgesAllowsCompletionVerticalContracts(t *testing.T) {
 	}
 }
 
+func TestEvaluateEdgesAllowsPreparationDomainContract(t *testing.T) {
+	edge := dependencyEdge{"internal/domain/issueopspreparation", "internal/contract/issueopspreparation"}
+	if violations := evaluateEdges([]dependencyEdge{edge}); len(violations) != 0 {
+		t.Fatalf("preparation domain contract edge must be allowed, got %v", violations)
+	}
+}
+
 func TestLegacyEdgesClassifyConcreteAdapterOutsideCompositionRoot(t *testing.T) {
 	edge := dependencyEdge{"cmd/harness/issueopscli", "internal/adapter/provider"}
 	if got := legacyEdges([]dependencyEdge{edge}); !reflect.DeepEqual(got, []dependencyEdge{edge}) {
@@ -763,7 +770,8 @@ func isPublicationDomainContract(edge dependencyEdge) bool {
 
 func isAllowedDomainContract(edge dependencyEdge) bool {
 	return isPublicationDomainContract(edge) ||
-		edge.importer == "internal/domain/issueopscompletion" && edge.imported == "internal/contract/issueopscompletion"
+		edge.importer == "internal/domain/issueopscompletion" && edge.imported == "internal/contract/issueopscompletion" ||
+		edge.importer == "internal/domain/issueopspreparation" && edge.imported == "internal/contract/issueopspreparation"
 }
 
 func isPublicationContract(path string) bool {
