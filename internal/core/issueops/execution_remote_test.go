@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/port"
@@ -188,7 +189,7 @@ func TestRemotePullRequestOneExactCandidateIsAdopted(t *testing.T) {
 	}
 }
 
-func TestRemotePullRequestBlocksGenerationReplacementWhileIntentIsPending(t *testing.T) {
+func TestRemotePullRequestReleasesLockDuringProviderCallAndBlocksReplacement(t *testing.T) {
 	stateRoot := t.TempDir()
 	fixture := newClaimableExecutionFixture(t, stateRoot, "69-remote-race")
 	record := fixture.record
@@ -222,15 +223,33 @@ func TestRemotePullRequestBlocksGenerationReplacementWhileIntentIsPending(t *tes
 	<-providerEntered
 
 	replacer := executionActor("claude", "remote-race-replacer")
-	preview, err := ReplaceExecution(stateRoot, ExecutionReplaceRequest{
-		ID: record.ID, Action: ExecutionReplacePreview, ExpectedGeneration: 1, Actor: replacer, CWD: record.Repo,
-	})
-	if err != nil {
-		t.Fatalf("read-only replacement preview should remain available: %v", err)
+	type readResult struct {
+		preview ExecutionReplaceResult
+		err     error
 	}
-	_, err = ReplaceExecution(stateRoot, ExecutionReplaceRequest{
+	readDone := make(chan readResult, 1)
+	go func() {
+		if _, err := StatusExecution(stateRoot, record.ID); err != nil {
+			readDone <- readResult{err: err}
+			return
+		}
+		preview, err := ReplaceExecution(stateRoot, ExecutionReplaceRequest{
+			ID: record.ID, Action: ExecutionReplacePreview, ExpectedGeneration: 1, Actor: replacer, CWD: record.Repo,
+		})
+		readDone <- readResult{preview: preview, err: err}
+	}()
+	var read readResult
+	select {
+	case read = <-readDone:
+		if read.err != nil {
+			t.Fatalf("read-only status and replacement preview should remain available: %v", read.err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("read-only status and replacement preview blocked during provider call")
+	}
+	_, err := ReplaceExecution(stateRoot, ExecutionReplaceRequest{
 		ID: record.ID, Action: ExecutionReplaceRevoke, ExpectedGeneration: 1,
-		InventoryFingerprint: preview.InventoryFingerprint, Reason: "owner became unavailable",
+		InventoryFingerprint: read.preview.InventoryFingerprint, Reason: "owner became unavailable",
 		Actor: replacer, CWD: record.Repo, Confirm: true,
 	})
 	if err == nil || !strings.Contains(err.Error(), "pending external intent") {

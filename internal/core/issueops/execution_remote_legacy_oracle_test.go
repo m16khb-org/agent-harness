@@ -233,3 +233,86 @@ func assertLegacyPublicationGolden(t *testing.T, name string, got []byte) {
 		t.Errorf("%s byte drift\nwant=%x\ngot=%x", name, want, got)
 	}
 }
+
+type legacyRemotePublicationTransition struct {
+	recordRaw []byte
+	intentRaw []byte
+	record    IssueOpsRecord
+}
+
+func runLegacyRemotePublicationTransition(t *testing.T, transition string) legacyRemotePublicationTransition {
+	t.Helper()
+	stateRoot, record, actor, providerReq := legacyRemotePublicationV1Fixture(t)
+	if transition == "adopt" {
+		record.IssueURL = "https://github.com/example/agent-harness/issues/195"
+	}
+	var err error
+	record, err = writeIssueOps(stateRoot, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixedNow := func() time.Time { return time.Date(2026, time.August, 1, 0, 0, 0, 0, time.UTC) }
+	pending, payload, err := beginRemotePullRequestIntentWithOperationID(
+		stateRoot, record, actor, record.Execution.Workspace.Root, record.Execution.Lease.Generation,
+		providerReq, "github", "pr", legacyPublicationOperationID, fixedNow,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	switch transition {
+	case "begin":
+	case "failure":
+		err = recordRemotePullRequestFailure(stateRoot, pending.ID, payload.OperationID, remoteInvocationUnknown, payload.RetryCount, "", errors.New("provider outcome is ambiguous"), fixedNow)
+	case "retry":
+		if err = recordRemotePullRequestFailure(stateRoot, pending.ID, payload.OperationID, remoteInvocationNotInvoked, payload.RetryCount, "", errors.New("provider was not invoked"), fixedNow); err == nil {
+			payload, err = readExternalRemotePRPayload(stateRoot, payload.OperationID)
+		}
+		if err == nil {
+			_, err = markRemotePullRequestRetry(stateRoot, pending.ID, payload)
+		}
+	case "adopt":
+		_, err = finishRemotePullRequestIntent(stateRoot, pending.ID, payload, "https://github.com/example/agent-harness/pull/7", false, fixedNow)
+	case "terminal-not-invoked":
+		if err = recordRemotePullRequestFailure(stateRoot, pending.ID, payload.OperationID, remoteInvocationNotInvoked, payload.RetryCount, "", errors.New("provider was not invoked"), fixedNow); err == nil {
+			payload, err = readExternalRemotePRPayload(stateRoot, payload.OperationID)
+		}
+		if err == nil {
+			payload, err = markRemotePullRequestRetry(stateRoot, pending.ID, payload)
+		}
+		if err == nil {
+			_, err = finishRemotePullRequestPreInvocationFailure(stateRoot, pending.ID, payload, errors.New("provider retry was not invoked"), fixedNow)
+		}
+	default:
+		t.Fatalf("unknown legacy transition %q", transition)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	latest, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return legacyRemotePublicationTransition{
+		recordRaw: readLegacyPublicationRawRow(t, stateRoot, issueOpsBucket, record.ID),
+		intentRaw: readLegacyPublicationRawRowIfPresent(t, stateRoot, externalIntentBucket, legacyPublicationOperationID),
+		record:    latest,
+	}
+}
+
+func readLegacyPublicationRawRowIfPresent(t *testing.T, stateRoot, bucket, id string) []byte {
+	t.Helper()
+	db, err := sqlstore.Open(stateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, ok, err := db.Get(bucket, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		return nil
+	}
+	return append([]byte(nil), raw...)
+}
