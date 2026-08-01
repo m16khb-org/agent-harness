@@ -24,11 +24,12 @@ type ExecutionReconcileRequest struct {
 }
 
 type ExecutionReconcileDependencies struct {
-	Orca      port.ExecutionOrcaProvisioner
-	ReadIssue ExecutionIssueSnapshotReadFunc
-	RemotePR  RemotePullRequestDependencies
-	Now       func() time.Time
-	Handler   ExecutionReconcileHandler
+	Orca            port.ExecutionOrcaProvisioner
+	ReadIssue       ExecutionIssueSnapshotReadFunc
+	RemotePR        RemotePullRequestDependencies
+	RemoteReconcile RemotePullRequestReconcileHandler
+	Now             func() time.Time
+	Handler         ExecutionReconcileHandler
 }
 
 type ExecutionReconcileResult struct {
@@ -101,7 +102,10 @@ func ReconcileExecutionWithDependencies(ctx context.Context, stateRoot string, r
 	}
 	switch record.Execution.Pending.Kind {
 	case externalIntentRemotePR:
-		return reconcileRemotePullRequest(ctx, stateRoot, record, deps.RemotePR)
+		if deps.RemoteReconcile == nil {
+			return failedExecutionReconcileResult(record, "remote_reconcile_unavailable"), ErrRemotePullRequestReconcileHandlerUnavailable
+		}
+		return deps.RemoteReconcile(ctx, stateRoot, req)
 	case "worktree_create", "owner_launch", "dispatch":
 		if deps.Handler == nil {
 			return failedExecutionReconcileResult(record, "orca_reconcile_ambiguous"), ErrReconcileHandlerUnavailable

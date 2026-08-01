@@ -170,7 +170,10 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 	case ExecutionActionReconcile:
 		return ReconcileExecutionWithDependencies(ctx, stateRoot, ExecutionReconcileRequest{
 			ID: req.ID, Preview: req.Preview, Confirm: req.Confirm, Actor: req.Actor, CWD: req.CWD,
-		}, ExecutionReconcileDependencies{Orca: deps.Orca, ReadIssue: deps.ReadIssue, RemotePR: deps.RemotePR, Handler: deps.Reconcile})
+		}, ExecutionReconcileDependencies{
+			Orca: deps.Orca, ReadIssue: deps.ReadIssue, RemotePR: deps.RemotePR,
+			Handler: deps.Reconcile, RemoteReconcile: deps.RemoteReconcile,
+		})
 	case ExecutionActionComplete:
 		return CompleteExecution(stateRoot, ExecutionCompleteRequest{
 			ID: req.ID, Generation: req.Generation, Actor: req.Actor, CWD: req.CWD,

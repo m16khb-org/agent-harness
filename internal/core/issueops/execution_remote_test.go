@@ -124,7 +124,7 @@ func TestRemotePullRequestAuthoritativeZeroRetriesOnlyProvenNotInvokedOnce(t *te
 	retryCalls := 0
 	result, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 		ID: fixture.record.ID, Confirm: true, Actor: fixture.actor, CWD: fixture.worktree,
-	}, ExecutionReconcileDependencies{RemotePR: RemotePullRequestDependencies{
+	}, ExecutionReconcileDependencies{RemoteReconcile: legacyRemoteReconcileHandler(RemotePullRequestDependencies{
 		Reconcile: func(string, port.IssueProviderReconcilePullRequestRequest) (port.IssueProviderReconcilePullRequestResult, error) {
 			return port.IssueProviderReconcilePullRequestResult{AuthoritativeZero: true}, nil
 		},
@@ -132,7 +132,7 @@ func TestRemotePullRequestAuthoritativeZeroRetriesOnlyProvenNotInvokedOnce(t *te
 			retryCalls++
 			return port.IssueProviderCreatePullRequestResult{OK: true, URL: "https://github.com/example/agent-harness/pull/3", Number: "3"}, nil
 		},
-	}})
+	})})
 	if err != nil {
 		t.Fatalf("reconcile proven zero: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestRemotePullRequestZeroUnprovenAndMultipleCandidatesRetainIntentWithoutRe
 			retryCalls := 0
 			result, reconcileErr := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 				ID: fixture.record.ID, Confirm: true, Actor: fixture.actor, CWD: fixture.worktree,
-			}, ExecutionReconcileDependencies{RemotePR: RemotePullRequestDependencies{
+			}, ExecutionReconcileDependencies{RemoteReconcile: legacyRemoteReconcileHandler(RemotePullRequestDependencies{
 				Reconcile: func(string, port.IssueProviderReconcilePullRequestRequest) (port.IssueProviderReconcilePullRequestResult, error) {
 					return tc.inventory, nil
 				},
@@ -175,7 +175,7 @@ func TestRemotePullRequestZeroUnprovenAndMultipleCandidatesRetainIntentWithoutRe
 					retryCalls++
 					return port.IssueProviderCreatePullRequestResult{}, nil
 				},
-			}})
+			})})
 			if reconcileErr == nil || result.Code != tc.wantCode || retryCalls != 0 {
 				t.Fatalf("result=%#v err=%v retryCalls=%d", result, reconcileErr, retryCalls)
 			}
@@ -214,11 +214,11 @@ func TestRemotePullRequestOneExactCandidateIsAdopted(t *testing.T) {
 	}
 	result, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 		ID: fixture.record.ID, Confirm: true, Actor: fixture.actor, CWD: fixture.worktree,
-	}, ExecutionReconcileDependencies{RemotePR: RemotePullRequestDependencies{
+	}, ExecutionReconcileDependencies{RemoteReconcile: legacyRemoteReconcileHandler(RemotePullRequestDependencies{
 		Reconcile: func(string, port.IssueProviderReconcilePullRequestRequest) (port.IssueProviderReconcilePullRequestResult, error) {
 			return port.IssueProviderReconcilePullRequestResult{Candidates: []port.IssueProviderReconcilePullRequestCandidate{candidate}}, nil
 		},
-	}})
+	})})
 	if err != nil || !result.Reconciled || result.Code != "remote_reconcile_adopted" {
 		t.Fatalf("result=%#v err=%v", result, err)
 	}
@@ -327,5 +327,15 @@ func (fixture remoteExecutionFixture) request(title string) RemotePullRequestReq
 		ID: fixture.record.ID, Provider: "github", Title: title, Head: fixture.record.Branch, Base: "main",
 		Labels: []string{"enhancement"}, Assignees: []string{"maintainer"}, ExpectedGeneration: 1,
 		Actor: fixture.actor, CWD: fixture.worktree, Confirm: true,
+	}
+}
+
+func legacyRemoteReconcileHandler(deps RemotePullRequestDependencies) RemotePullRequestReconcileHandler {
+	return func(ctx context.Context, stateRoot string, request ExecutionReconcileRequest) (ExecutionReconcileResult, error) {
+		record, err := ReadIssueOps(stateRoot, request.ID)
+		if err != nil {
+			return ExecutionReconcileResult{OK: false, ID: request.ID}, err
+		}
+		return reconcileRemotePullRequest(ctx, stateRoot, record, deps)
 	}
 }

@@ -61,7 +61,9 @@ func TestIssueOpsReconcileVerticalAdoptsExactlyOneStage(t *testing.T) {
 	raw, err := issueops.ExecuteExecution(context.Background(), stateRoot, issueops.ExecutionActionRequest{
 		Action: issueops.ExecutionActionReconcile, ID: record.ID, Confirm: true,
 		Actor: claimWiringActor(t), CWD: record.Execution.Workspace.SourceRoot,
-	}, issueops.ExecutionActionDependencies{Orca: fake, Reconcile: issueOpsReconcileHandler})
+	}, issueops.ExecutionActionDependencies{
+		Orca: fake, Reconcile: issueOpsReconcileHandler, RemoteReconcile: issueOpsPublicationReconcileHandler,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
