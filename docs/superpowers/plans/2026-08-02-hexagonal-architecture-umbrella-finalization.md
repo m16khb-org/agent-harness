@@ -13,11 +13,14 @@
 
 - `main`: `6894d946aa69460e40ea7b3392bb1499e0e6eaab`
 - child #200 병합 뒤 parent HEAD: `eb4e498241c8ef2bf7959f8c313590268621ade1`
+- initial finalization plan commit: `1a64c5b496f42cc01324cb9b94b4b95369d69342`
 - parent는 `main`을 포함하며 `origin/main...HEAD`는 `0/92`이다.
 - GitHub sub-issue 11개는 모두 `CLOSED`다.
 - #200의 caller inventory는 `internal/core=41`, `internal/core/issueops=15`,
   `internal/port=28`, `cmd/harness/issueopscli=1`이고 삭제 후보는 0개다.
 - `legacy_imports.txt`와 public/persisted/runtime contract는 유지한다.
+- `eb4e4982...final HEAD`는 umbrella 최종화 문서·보고서만 포함하는 delta로,
+  `origin/main...final HEAD`는 11개 child 전체 migration delta로 각각 검증한다.
 
 ## 성공 기준
 
@@ -41,6 +44,9 @@
   범위로 교체한다.
 - #117 본문을 all-child-complete 상태와 최종 gate로 갱신한다.
 - 이 계획을 lifecycle에 연결한다.
+- `phase --to compatibility-review`로 plan completion을 고정하고, compatibility와
+  devil's-advocate `pass` receipt가 모두 기록된 뒤에만 `phase --to implement`로
+  전이한다.
 
 검증:
 
@@ -58,6 +64,15 @@ gh issue view 117 --repo m16khb/agent-harness --json state,subIssues,body
 - isolated `CODEX_HOME`에 repository Codex hook config를 byte-identical 복사하고
   `hooks/list` 및 fresh `codex exec --enable hooks`로 foreign sentinel mutation
   차단과 sentinel 미생성을 확인한다.
+- isolated home에는 credential secret을 복사하지 않는다. 권한이 `0600`인 기존
+  `~/.codex/auth.json`을 임시 home에서 제한된 symlink로 읽게 하고, symlink target과
+  원본 권한을 검증한다. proof 종료 시 symlink만 제거하며 secret 사본은 남기지 않는다.
+- fresh Codex에는 `--dangerously-bypass-hook-trust`를 명시한다. `hooks/list`의
+  source path, `enabled=true`, command hash와 `hook/started`·`hook/completed` 또는
+  exec JSONL의 동등 native event, `holder_identity_mismatch` axis를 함께 보존한다.
+- mutation probe는 canonical parent worktree 내부의 ignored sentinel 하나만 정확히
+  표적으로 삼는다. repo 밖 임시 파일이나 `.` 같은 추가 인자가 있는 명령은
+  worktree write-lease 증거로 인정하지 않는다.
 - fresh Claude를 repository `configs/claude/hooks.settings.json`,
   `--include-hook-events`, `--permission-mode bypassPermissions`로 실행해 native
   PreToolUse deny와 sentinel 미생성을 확인한다.
@@ -71,7 +86,8 @@ sentinel 부재와 함께 기록한다.
 다음 명령은 전체 unit과 race를 동시에 돌리지 않고 순차 실행한다.
 
 ```bash
-gofmt -l $(git ls-files '*.go')
+go fmt ./...
+git diff --exit-code
 go test ./internal/architecture -count=1
 go test ./cmd/harness/contractgolden -run Golden -count=1
 go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1
@@ -87,10 +103,16 @@ git diff --check origin/main...HEAD
 
 - `.agent-harness/turing/issue117-report.md`에 child inventory, 활성 훅 proof, local
   gate, 변경 범위와 pending remote boundary를 기록한다.
-- Shannon no-input guard를 적용해 production delta와 finalization docs delta를
-  분리한다.
+- Shannon no-input guard는 `eb4e4982...final HEAD`의 finalization-only delta에
+  적용한다. `origin/main...final HEAD`의 11-child production delta는 각 child
+  PR/Turing evidence와 architecture·contract·full regression gate에 매핑한다.
 - 독립 reviewer가 exact final diff와 완료 주장 경계를 검토한다.
 - AI-slop fingerprint와 implementation-review receipt를 final HEAD에 묶는다.
+- lifecycle은 `phase --to implement` readback 뒤 검증을 수행하고,
+  `ai-slop-clean record` → `phase --to ai-slop-clean` → implementation review
+  `pass` → `phase --to pr` 순서로 전이한다. 외부 review feedback이 실제로 생긴
+  경우에만 `feedback` 단계로 들어간다. 각 전이 뒤 status를 읽어 다음 단계의
+  required artifact를 확인한다.
 - Korean remote artifact gate와 label scorer 뒤 draft PR을 `main` 대상으로 만든다.
 
 ### Task 5 — CI, merge, close, cleanup
