@@ -57,6 +57,13 @@ func TestCoordinatorChildHostSmokeAdmitsExactCommandWithoutExplicitSourceCheckou
 	if err := os.WriteFile(script, []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	sourceScript := filepath.Join(source, "scripts", "verify-child-host-smoke.sh")
+	if err := os.MkdirAll(filepath.Dir(sourceScript), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sourceScript, []byte("#!/usr/bin/env bash\nexit 19\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	outputDir := filepath.Join(t.TempDir(), "private")
 	if err := os.Mkdir(outputDir, 0o700); err != nil {
 		t.Fatal(err)
@@ -75,7 +82,7 @@ func TestCoordinatorChildHostSmokeAdmitsExactCommandWithoutExplicitSourceCheckou
 	req := lifecyclecontract.HookToolUseLifecycleRequest{
 		CWD:  sourceArg,
 		Tool: "exec_command", Command: command,
-		ToolInput:       map[string]any{"command": command},
+		ToolInput:       map[string]any{"command": command, "workdir": coordinatorArg},
 		EnforceWorktree: true,
 	}
 
@@ -84,6 +91,11 @@ func TestCoordinatorChildHostSmokeAdmitsExactCommandWithoutExplicitSourceCheckou
 	}
 	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
 		t.Fatalf("exact coordinator smoke must bypass the released child mutation fence: %+v", got)
+	}
+	sourceExecution := req
+	sourceExecution.ToolInput = map[string]any{"command": command}
+	if exactCoordinatorChildHostSmoke(sourceExecution) {
+		t.Fatal("source-root CWD must not be trusted when the admitted relative command validates the coordinator script")
 	}
 	sourceRepo := req
 	sourceRepo.Repo = sourceArg

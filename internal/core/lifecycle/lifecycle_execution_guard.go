@@ -176,7 +176,7 @@ func exactCoordinatorChildHostSmoke(req lifecyclecontract.HookToolUseLifecycleRe
 		}
 	}
 	requestBase := hookRequestPathBase(req)
-	if !sameExecutionPath(requestBase, sourceRoot) && !sameExecutionPath(requestBase, coordinatorRoot) {
+	if !sameExecutionPath(requestBase, coordinatorRoot) {
 		return false
 	}
 	if repo := strings.TrimSpace(req.Repo); repo != "" &&

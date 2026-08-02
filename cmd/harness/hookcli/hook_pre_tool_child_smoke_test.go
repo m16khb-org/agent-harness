@@ -72,8 +72,8 @@ func TestRunHookPreToolUseAdmitsChildSmokeFromInstalledHookArguments(t *testing.
 		filepath.Join(outputDir, "receipt.json"),
 	)
 	payload, err := json.Marshal(map[string]any{
-		"cwd": source, "tool_name": "Bash",
-		"tool_input": map[string]any{"command": command},
+		"cwd": source, "tool_name": "exec_command",
+		"tool_input": map[string]any{"command": command, "workdir": coordinator.path},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -85,6 +85,21 @@ func TestRunHookPreToolUseAdmitsChildSmokeFromInstalledHookArguments(t *testing.
 	})
 	if got["decision"] != "allow" {
 		t.Fatalf("installed hook arguments must admit the exact coordinator child smoke: %+v", got)
+	}
+	unsafePayload, err := json.Marshal(map[string]any{
+		"cwd": source, "tool_name": "exec_command",
+		"tool_input": map[string]any{"command": command},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocked := runHookCapture(t, string(unsafePayload), func() error {
+		return runHookPreToolUse([]string{
+			"--host", "codex", "--enforce-worktree", "--json",
+		})
+	})
+	if blocked["decision"] != "block" {
+		t.Fatalf("source-root execution must not be admitted from coordinator script authority: %+v", blocked)
 	}
 }
 
