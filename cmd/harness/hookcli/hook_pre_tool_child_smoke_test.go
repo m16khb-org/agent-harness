@@ -51,7 +51,7 @@ func TestRunHookPreToolUseAdmitsChildSmokeFromInstalledHookArguments(t *testing.
 		filepath.Join(outputDir, "receipt.json"),
 	)
 	payload, err := json.Marshal(map[string]any{
-		"cwd": source, "host": "codex", "tool_name": "exec_command",
+		"cwd": coordinator.path, "host": "codex", "tool_name": "exec_command",
 		"tool_input": map[string]any{"cmd": command, "workdir": coordinator.path},
 	})
 	if err != nil {

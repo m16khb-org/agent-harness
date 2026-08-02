@@ -65,7 +65,7 @@ func TestCoordinatorChildHostSmokeAdmitsExactCommandWithoutExplicitSourceCheckou
 		filepath.Join(outputDirArg, "receipt.json"),
 	)
 	req := lifecyclecontract.HookToolUseLifecycleRequest{
-		Repo: sourceArg, CWD: sourceArg,
+		Repo: coordinatorArg, CWD: coordinatorArg,
 		Tool: "exec_command", Command: command,
 		ToolInput:       map[string]any{"workdir": coordinatorArg},
 		EnforceWorktree: true,
@@ -76,6 +76,18 @@ func TestCoordinatorChildHostSmokeAdmitsExactCommandWithoutExplicitSourceCheckou
 	}
 	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
 		t.Fatalf("exact coordinator smoke must bypass the released child mutation fence: %+v", got)
+	}
+	sourceRepo := req
+	sourceRepo.Repo = sourceArg
+	sourceRepo.CWD = sourceArg
+	if !exactCoordinatorChildHostSmoke(sourceRepo) {
+		t.Fatal("source repo fallback must remain valid for installed hook payloads")
+	}
+	explicitSource := req
+	explicitSource.SourceCheckout = sourceArg
+	explicitSource.Repo = childArg
+	if !exactCoordinatorChildHostSmoke(explicitSource) {
+		t.Fatal("explicit source checkout must remain the highest-priority authority")
 	}
 }
 
@@ -125,7 +137,7 @@ func TestCoordinatorChildHostSmokeRejectsNearMisses(t *testing.T) {
 		output,
 	)
 	base := lifecyclecontract.HookToolUseLifecycleRequest{
-		Repo: sourceArg, CWD: sourceArg,
+		Repo: coordinatorArg, CWD: coordinatorArg,
 		Tool: "exec_command", ToolInput: map[string]any{"workdir": coordinatorArg},
 		EnforceWorktree: true,
 	}
@@ -193,12 +205,21 @@ func TestCoordinatorChildHostSmokeRejectsNearMisses(t *testing.T) {
 		}
 	})
 
-	t.Run("repo source mismatch", func(t *testing.T) {
+	t.Run("child repo is not coordinator authority", func(t *testing.T) {
 		req := base
 		req.Command = exact
 		req.Repo = childArg
 		if exactCoordinatorChildHostSmoke(req) {
-			t.Fatal("repo source mismatch was classified without an explicit source checkout")
+			t.Fatal("child repo was classified as coordinator authority")
+		}
+	})
+
+	t.Run("unrelated repo is not coordinator authority", func(t *testing.T) {
+		req := base
+		req.Command = exact
+		req.Repo = canonicalSmokeTestPath(t, t.TempDir())
+		if exactCoordinatorChildHostSmoke(req) {
+			t.Fatal("unrelated repo was classified as coordinator authority")
 		}
 	})
 }

@@ -179,17 +179,19 @@ func exactCoordinatorChildHostSmoke(req lifecyclecontract.HookToolUseLifecycleRe
 		!canonicalAbsolutePath(jsonOut) || sameExecutionPath(sourceRoot, childRoot) {
 		return false
 	}
+	coordinatorRoot := hookRequestPathBase(req)
 	sourceAuthority := strings.TrimSpace(req.SourceCheckout)
-	if sourceAuthority == "" {
-		// 기본 설치 훅은 --source-checkout을 전달하지 않는다. hook adapter가
-		// stdin의 repo/cwd에서 확정한 Repo만 fallback으로 사용한다. 반대로
+	if sourceAuthority != "" {
 		// 명시적 SourceCheckout이 있으면 불일치를 Repo로 우회하지 않는다.
-		sourceAuthority = strings.TrimSpace(req.Repo)
-	}
-	if !sameExecutionPath(sourceRoot, sourceAuthority) {
+		if !sameExecutionPath(sourceRoot, sourceAuthority) {
+			return false
+		}
+	} else if !sameExecutionPath(sourceRoot, req.Repo) &&
+		!sameExecutionPath(coordinatorRoot, req.Repo) {
+		// 기본 설치 훅은 --source-checkout을 전달하지 않는다. 실제 tool payload의
+		// repo/cwd는 명령을 실행하는 coordinator worktree를 가리킬 수 있다.
 		return false
 	}
-	coordinatorRoot := hookRequestPathBase(req)
 	if !trustedIssueOpsCheckout(coordinatorRoot, sourceRoot) ||
 		!trustedIssueOpsCheckout(childRoot, sourceRoot) || sameExecutionPath(coordinatorRoot, childRoot) {
 		return false
