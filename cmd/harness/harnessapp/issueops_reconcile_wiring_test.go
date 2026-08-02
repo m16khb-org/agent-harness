@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/port"
 )
 
@@ -172,7 +172,7 @@ func TestIssueOpsReconcileVerticalUsesInjectedClockForFailureReceipt(t *testing.
 	}
 }
 
-func reconcilePendingFixture(t *testing.T, failStage port.ExecutionOrcaIntentStage) (string, issueops.IssueOpsRecord, *reconcileProvisionerFake) {
+func reconcilePendingFixture(t *testing.T, failStage port.ExecutionOrcaIntentStage) (string, issueopscontract.IssueOpsRecord, *reconcileProvisionerFake) {
 	t.Helper()
 	stateRoot := t.TempDir()
 	repo := filepath.Join(t.TempDir(), "source")
@@ -184,11 +184,11 @@ func reconcilePendingFixture(t *testing.T, failStage port.ExecutionOrcaIntentSta
 	claimWiringGit(t, repo, "-c", "user.name=IssueOps Test", "-c", "user.email=issueops@example.invalid", "commit", "-q", "-m", "test: reconcile fixture")
 	baseHead := strings.TrimSpace(claimWiringGit(t, repo, "rev-parse", "HEAD"))
 	const branch = "194-reconcile"
-	record := issueops.IssueOpsRecord{
+	record := issueopscontract.IssueOpsRecord{
 		OK: true, SchemaVersion: issueops.IssueOpsCurrentSchemaVersion, ID: issueops.NewIssueOpsID(repo, branch),
 		Repo: repo, Branch: branch, Phase: issueops.IssueOpsPhasePlan, IssueURL: "https://github.com/acme/repo/issues/194",
-		DesignReview:  &issueops.IssueOpsDesignReview{Approved: true, ReviewedAt: "2026-08-01T00:00:00Z"},
-		BranchPrepare: &issueops.IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/acme/repo/issues/194", Branch: branch, BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true, CreatedAt: "2026-08-01T00:00:00Z"},
+		DesignReview:  &issueopscontract.IssueOpsDesignReview{Approved: true, ReviewedAt: "2026-08-01T00:00:00Z"},
+		BranchPrepare: &issueopscontract.IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/acme/repo/issues/194", Branch: branch, BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true, CreatedAt: "2026-08-01T00:00:00Z"},
 		CreatedAt:     "2026-08-01T00:00:00Z", UpdatedAt: "2026-08-01T00:00:00Z",
 	}
 	if _, err := issueops.WriteIssueOps(stateRoot, record); err != nil {
@@ -214,7 +214,7 @@ func reconcilePendingFixture(t *testing.T, failStage port.ExecutionOrcaIntentSta
 	if failStage == port.ExecutionOrcaIntentWorktree {
 		wantKind = "worktree_create"
 	}
-	if pending.Execution == nil || pending.Execution.Pending == nil || pending.Execution.Pending.Kind != wantKind || pending.Execution.Mode != model.ExecutionModeOrca {
+	if pending.Execution == nil || pending.Execution.Pending == nil || pending.Execution.Pending.Kind != wantKind || pending.Execution.Mode != issueopscontract.ExecutionModeOrca {
 		t.Fatalf("pending fixture=%#v", pending.Execution)
 	}
 	return stateRoot, pending, fake

@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 )
 
-func PrepareExecutionReseedOwnerArtifacts(ctx context.Context, stateRoot, id string, execution model.Execution, readIssue ExecutionIssueSnapshotReadFunc) (ExecutionReseedArtifacts, error) {
+func PrepareExecutionReseedOwnerArtifacts(ctx context.Context, stateRoot, id string, execution issueops.Execution, readIssue ExecutionIssueSnapshotReadFunc) (ExecutionReseedArtifacts, error) {
 	if execution.Lease.Generation < 2 {
 		return ExecutionReseedArtifacts{}, fmt.Errorf("reseed owner artifacts require a replacement generation")
 	}
@@ -15,7 +15,7 @@ func PrepareExecutionReseedOwnerArtifacts(ctx context.Context, stateRoot, id str
 	if err != nil {
 		return ExecutionReseedArtifacts{}, err
 	}
-	if record.Execution.Mode != model.ExecutionModeOrca || record.Execution.Orca == nil || execution.Mode != model.ExecutionModeOrca || execution.Orca == nil {
+	if record.Execution.Mode != issueops.ExecutionModeOrca || record.Execution.Orca == nil || execution.Mode != issueops.ExecutionModeOrca || execution.Orca == nil {
 		return ExecutionReseedArtifacts{}, fmt.Errorf("reseed owner artifacts require an Orca execution")
 	}
 	record.Execution = &execution
@@ -35,10 +35,10 @@ type ExecutionReseedArtifacts struct {
 }
 
 func ExecutionReseedNextCommand(id string, generation uint64, mode, claimTokenPath string) string {
-	switch model.ExecutionMode(mode) {
-	case model.ExecutionModeOrca:
+	switch issueops.ExecutionMode(mode) {
+	case issueops.ExecutionModeOrca:
 		return executionResumeCommand(id, generation)
-	case model.ExecutionModeDirect:
+	case issueops.ExecutionModeDirect:
 		return executionDirectClaimCommand(id, generation, claimTokenPath)
 	default:
 		return ""

@@ -17,17 +17,17 @@ import (
 	"strings"
 	"syscall"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/sqlstore"
 )
 
-// 현재 schema namespace 이름들은 model.IssueOpsSchemaVersion에서 파생된다.
+// 현재 schema namespace 이름들은 issueops.IssueOpsSchemaVersion에서 파생된다.
 // 값은 온디스크 계약이므로 파생 결과가 기존 이름과 동일해야 한다.
 var (
 	issueOpsDirectory      = issueOpsBucket
-	issueOpsResetDirectory = fmt.Sprintf("issueops_reset_v%d", model.IssueOpsSchemaVersion)
-	issueOpsResetBucket    = fmt.Sprintf("issueops_reset_v%d", model.IssueOpsSchemaVersion)
-	issueOpsMetaBucket     = fmt.Sprintf("issueops_meta_v%d", model.IssueOpsSchemaVersion)
+	issueOpsResetDirectory = fmt.Sprintf("issueops_reset_v%d", issueops.IssueOpsSchemaVersion)
+	issueOpsResetBucket    = fmt.Sprintf("issueops_reset_v%d", issueops.IssueOpsSchemaVersion)
+	issueOpsMetaBucket     = fmt.Sprintf("issueops_meta_v%d", issueops.IssueOpsSchemaVersion)
 )
 
 const (

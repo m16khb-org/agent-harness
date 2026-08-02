@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/adapter/gitworktree"
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
@@ -160,26 +160,26 @@ func TestExecutionFreshSessionReplacesExitedOwnerWithoutCoordinator(t *testing.T
 		t.Fatalf("git worktree add: %s", stderr)
 	}
 	baseHead := strings.TrimSpace(preflight.GitOut(worktree, "rev-parse", "HEAD"))
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
 	record.WorktreePath = worktree
-	record.BranchPrepare = &IssueOpsBranchPrepare{
+	record.BranchPrepare = &issueops.IssueOpsBranchPrepare{
 		Provider: "github", IssueURL: "https://github.com/example/agent-harness/issues/69",
 		Branch: branch, BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true,
 	}
-	record.Execution = &model.Execution{
-		Mode: model.ExecutionModeDirect,
-		Workspace: model.Workspace{
+	record.Execution = &issueops.Execution{
+		Mode: issueops.ExecutionModeDirect,
+		Workspace: issueops.Workspace{
 			SourceRoot: repo, Root: worktree, Branch: branch, BaseHead: baseHead,
 			Driver: "git", LinkedAt: "2026-07-22T00:00:00Z",
 		},
-		Lease: model.WriteLease{
-			Generation: 1, Status: model.LeaseStatusActive,
-			Holder: &model.NativeActor{
+		Lease: issueops.WriteLease{
+			Generation: 1, Status: issueops.LeaseStatusActive,
+			Holder: &issueops.NativeActor{
 				Host: "codex", SessionID: "exited-owner",
-				SessionProcess: &model.NativeProcessReceipt{PID: 999999, StartedAt: "2026-07-22T00:00:00Z", Executable: "codex"},
+				SessionProcess: &issueops.NativeProcessReceipt{PID: 999999, StartedAt: "2026-07-22T00:00:00Z", Executable: "codex"},
 			},
 			ClaimedAt: "2026-07-22T00:00:00Z",
 		},
@@ -214,7 +214,7 @@ func TestExecutionFreshSessionReplacesExitedOwnerWithoutCoordinator(t *testing.T
 	if err != nil {
 		t.Fatalf("replace revoke without coordinator: %v", err)
 	}
-	if revoked.Execution.Lease.Status != model.LeaseStatusRevoking || revoked.Execution.Lease.Generation != 2 {
+	if revoked.Execution.Lease.Status != issueops.LeaseStatusRevoking || revoked.Execution.Lease.Generation != 2 {
 		t.Fatalf("revoke did not fence generation 1: %#v", revoked.Execution.Lease)
 	}
 	finalPreview, err := ReplaceExecution(stateRoot, ExecutionReplaceRequest{

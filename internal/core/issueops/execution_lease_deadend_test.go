@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/adapter/gitworktree"
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 )
 
 // revoke는 응답 없는 홀더에게서 제3자가 lease를 뺏는 경로다. 그런데 요청자가
@@ -73,7 +73,7 @@ func TestExecutionRevokeStillTakesOverADeadHolder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("죽은 홀더를 뺏는 경로가 막히면 crash 복구가 불가능해진다: %v", err)
 	}
-	if result.Execution.Lease.Status != model.LeaseStatusRevoking {
+	if result.Execution.Lease.Status != issueops.LeaseStatusRevoking {
 		t.Fatalf("revoke는 revoking으로 전이해야 한다: %+v", result.Execution)
 	}
 }
@@ -112,7 +112,7 @@ func TestExecutionRevokeStillTakesOverFromAnotherSession(t *testing.T) {
 // lease를 잡았다고 믿고, 다음 mutation이 write_lease_required로 막히고서야
 // 드러난다(이슈 #170).
 func TestPrepareDoesNotReportSuccessWithoutAWriter(t *testing.T) {
-	for _, status := range []model.LeaseStatus{model.LeaseStatusReleased, model.LeaseStatusClaimable} {
+	for _, status := range []issueops.LeaseStatus{issueops.LeaseStatusReleased, issueops.LeaseStatusClaimable} {
 		t.Run(string(status), func(t *testing.T) {
 			stateRoot, record := preparedExecutionWithLeaseStatus(t, status)
 			result, err := PrepareExecution(context.Background(), stateRoot, ExecutionPrepareRequest{
@@ -250,7 +250,7 @@ func TestPrepareStaysAvailableWhileAnotherSessionHolds(t *testing.T) {
 // preview는 상태 조회다. writer가 없어도 무엇이 준비돼 있는지 보여줘야 한다 —
 // 그러지 않으면 갇힌 상태를 진단할 수단이 사라진다.
 func TestPreparePreviewStaysAvailableWithoutAWriter(t *testing.T) {
-	stateRoot, record := preparedExecutionWithLeaseStatus(t, model.LeaseStatusReleased)
+	stateRoot, record := preparedExecutionWithLeaseStatus(t, issueops.LeaseStatusReleased)
 	result, err := PrepareExecution(context.Background(), stateRoot, ExecutionPrepareRequest{
 		ID: record.ID, Mode: "direct", CWD: record.Repo, Confirm: false,
 		Actor: executionActor("claude", "preview-session"), OwnerHost: "claude",
@@ -262,7 +262,7 @@ func TestPreparePreviewStaysAvailableWithoutAWriter(t *testing.T) {
 
 // preparedExecutionWithLeaseStatus는 direct로 준비를 마친 뒤 lease만 지정한
 // writer-없음 상태로 바꾼다. release나 reseed 뒤의 실제 상태다.
-func preparedExecutionWithLeaseStatus(t *testing.T, status model.LeaseStatus) (string, IssueOpsRecord) {
+func preparedExecutionWithLeaseStatus(t *testing.T, status issueops.LeaseStatus) (string, issueops.IssueOpsRecord) {
 	t.Helper()
 	stateRoot, record := executionPrepareRecord(t)
 	if _, err := PrepareExecution(context.Background(), stateRoot, ExecutionPrepareRequest{
@@ -277,7 +277,7 @@ func preparedExecutionWithLeaseStatus(t *testing.T, status model.LeaseStatus) (s
 	}
 	prepared.Execution.Lease.Status = status
 	prepared.Execution.Lease.Holder = nil
-	if status == model.LeaseStatusClaimable {
+	if status == issueops.LeaseStatusClaimable {
 		// validateWriteLease가 claimable에 토큰 해시를 강제한다. reseed가 실제로
 		// 만드는 모양이다.
 		prepared.Execution.Lease.ClaimTokenSHA256 = strings.Repeat("a", 64)

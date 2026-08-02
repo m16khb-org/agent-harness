@@ -3,7 +3,7 @@ package issueops
 import (
 	"strings"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops/stringlist"
 )
 
@@ -12,8 +12,8 @@ import (
 // 꾸며내지 않고 host와 run 사이에서 byte-deterministic하도록 의도적으로 비운다.
 const issueOpsLedgerDerivedSentinel = ""
 
-func issueOpsReadinessFrom(record IssueOpsRecord, missing []string) IssueOpsReadiness {
-	return IssueOpsReadiness{
+func issueOpsReadinessFrom(record issueops.IssueOpsRecord, missing []string) issueops.IssueOpsReadiness {
+	return issueops.IssueOpsReadiness{
 		OK:           true,
 		Ready:        len(missing) == 0,
 		Missing:      stringlist.UniqueSorted(missing),
@@ -28,7 +28,7 @@ func issueOpsReadinessFrom(record IssueOpsRecord, missing []string) IssueOpsRead
 // intent contract만 요구하도록 의도적으로 최소화한다. remote issue나 branch가
 // 생기기 전의 자유로운 problem -> grill 전이와 초기 탐색을 보존하기 위해서다.
 // issue_url/branch는 grill artifact다.
-func IssueOpsProblemReadiness(record IssueOpsRecord) IssueOpsReadiness {
+func IssueOpsProblemReadiness(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
 	return issueOpsReadinessFrom(record, issueOpsIntentMissing(record))
 }
 
@@ -36,7 +36,7 @@ func IssueOpsProblemReadiness(record IssueOpsRecord) IssueOpsReadiness {
 // issue_url + branch + plan_prep(적용 시) + split_decision + domain_review다.
 // 이는 create-issue-after-grill workflow와 현재 plan-entry gate에 맞춰 plan
 // 진입을 막는다.
-func IssueOpsGrillReadiness(record IssueOpsRecord) IssueOpsReadiness {
+func IssueOpsGrillReadiness(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
 	missing := []string{}
 	if strings.TrimSpace(record.IssueURL) == "" {
 		missing = append(missing, "issue_url")
@@ -55,7 +55,7 @@ func IssueOpsGrillReadiness(record IssueOpsRecord) IssueOpsReadiness {
 // issueOpsSplitDecisionMissing는 기존 필드에서 split_decision을 파생한다. child/
 // splits-from issue link는 분할이 일어났음을, scope decision은 분할하지 않은
 // 근거를 뜻한다. 전용 필드는 필요 없다.
-func issueOpsSplitDecisionMissing(record IssueOpsRecord) []string {
+func issueOpsSplitDecisionMissing(record issueops.IssueOpsRecord) []string {
 	for _, link := range record.IssueLinks {
 		switch strings.ToLower(strings.TrimSpace(link.Type)) {
 		case "child", "splits-from":
@@ -70,30 +70,30 @@ func issueOpsSplitDecisionMissing(record IssueOpsRecord) []string {
 	return []string{"split_decision"}
 }
 
-func issueOpsDomainReviewMissing(record IssueOpsRecord) []string {
+func issueOpsDomainReviewMissing(record issueops.IssueOpsRecord) []string {
 	if record.DomainReview == nil || strings.TrimSpace(record.DomainReview.ReviewedAt) == "" {
 		return []string{"domain_review"}
 	}
 	return nil
 }
 
-func issueOpsPlanCompletion(record IssueOpsRecord) IssueOpsReadiness {
+func issueOpsPlanCompletion(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
 	// plan 완료(branch_prepare + worktree + plan + design_review)는 현재
 	// "compatibility-review 진입 준비 완료" gate와 정확히 같다.
 	return IssueOpsCompatibilityReviewReadiness(record)
 }
 
-func issueOpsCompatibilityReviewCompletion(record IssueOpsRecord) IssueOpsReadiness {
+func issueOpsCompatibilityReviewCompletion(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
 	return issueOpsReadinessFrom(record, issueOpsCompatibilityReviewMissing(record))
 }
 
-func issueOpsImplementCompletion(record IssueOpsRecord) IssueOpsReadiness {
+func issueOpsImplementCompletion(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
 	// implement 완료는 implement-entry readiness에 종료 artifact인
 	// implementation_changes를 더한다. 이는 현재 ai-slop-clean entry gate와 같다.
 	return IssueOpsAISlopCleanReadiness(record)
 }
 
-func issueOpsAISlopCleanCompletion(record IssueOpsRecord) IssueOpsReadiness {
+func issueOpsAISlopCleanCompletion(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
 	missing := []string{}
 	if strings.TrimSpace(record.AISlopCleanAt) == "" {
 		missing = append(missing, "ai_slop_clean_at")
@@ -113,7 +113,7 @@ func issueOpsAISlopCleanCompletion(record IssueOpsRecord) IssueOpsReadiness {
 	return issueOpsReadinessFrom(record, missing)
 }
 
-func issueOpsFeedbackCompletion(record IssueOpsRecord) IssueOpsReadiness {
+func issueOpsFeedbackCompletion(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
 	missing := []string{}
 	for _, item := range record.Feedback {
 		if strings.TrimSpace(item.Classification) == "" {
@@ -133,7 +133,7 @@ func issueOpsFeedbackCompletion(record IssueOpsRecord) IssueOpsReadiness {
 	return issueOpsReadinessFrom(record, missing)
 }
 
-func issueOpsPRCompletion(record IssueOpsRecord) IssueOpsReadiness {
+func issueOpsPRCompletion(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
 	// 완료/파생에는 git fetch를 하지 않는 non-strict readiness를 사용한다. network
 	// 부수효과 없이 status 표시용 ledger를 파생하기 위해서다. 실제 pr-phase entry
 	// gate는 계속 IssueOpsStrictPRReadiness를 사용한다.
@@ -152,7 +152,7 @@ func issueOpsPRCompletion(record IssueOpsRecord) IssueOpsReadiness {
 // branch_prepare.base_branch와 다를 때 target_branch_match를 보고한다. 비교 입력을
 // 아직 확보하지 못했으면 remote_artifact가 부재를 다루므로 조용히 넘어가며, pr
 // 진입을 교착시키지 않는다.
-func issueOpsTargetBranchMatchMissing(record IssueOpsRecord) []string {
+func issueOpsTargetBranchMatchMissing(record issueops.IssueOpsRecord) []string {
 	if record.RemoteArtifact == nil || record.BranchPrepare == nil {
 		return nil
 	}
@@ -166,7 +166,7 @@ func issueOpsTargetBranchMatchMissing(record IssueOpsRecord) []string {
 	return nil
 }
 
-func issueOpsDoneCompletion(record IssueOpsRecord) IssueOpsReadiness {
+func issueOpsDoneCompletion(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
 	missing := []string{}
 	if issueOpsPhaseRank(record.Phase) < issueOpsPhaseRank(IssueOpsPhasePR) {
 		missing = append(missing, "prior_phase_pr")
@@ -178,7 +178,7 @@ func issueOpsDoneCompletion(record IssueOpsRecord) IssueOpsReadiness {
 // IssueOpsPhaseCompletion은 기존 source-of-truth 필드에서 phase 완료 여부를
 // 계산해 ready/artifacts(missing)를 반환한다. 기존 readiness 함수를 색인할 뿐,
 // 스스로 source of truth가 되지는 않는다.
-func IssueOpsPhaseCompletion(record IssueOpsRecord, phase IssueOpsPhase) IssueOpsReadiness {
+func IssueOpsPhaseCompletion(record issueops.IssueOpsRecord, phase issueops.IssueOpsPhase) issueops.IssueOpsReadiness {
 	switch phase {
 	case IssueOpsPhaseProblem:
 		return IssueOpsProblemReadiness(record)
@@ -199,13 +199,13 @@ func IssueOpsPhaseCompletion(record IssueOpsRecord, phase IssueOpsPhase) IssueOp
 	case IssueOpsPhaseDone:
 		return issueOpsDoneCompletion(record)
 	default:
-		return IssueOpsReadiness{OK: true, Ready: false, Missing: []string{"unknown_phase"}}
+		return issueops.IssueOpsReadiness{OK: true, Ready: false, Missing: []string{"unknown_phase"}}
 	}
 }
 
 // issueOpsPhaseArtifactKeys는 완료된 ledger entry의 Artifacts에 기록할 phase별
 // matrix 완료 집합이다.
-func issueOpsPhaseArtifactKeys(phase IssueOpsPhase) []string {
+func issueOpsPhaseArtifactKeys(phase issueops.IssueOpsPhase) []string {
 	switch phase {
 	case IssueOpsPhaseProblem:
 		return []string{"intent_contract"}
@@ -234,11 +234,11 @@ func issueOpsPhaseArtifactKeys(phase IssueOpsPhase) []string {
 // 만든다. timestamp에는 wall-clock 대신 derived sentinel을 써 출력이
 // byte-deterministic하게 유지된다. 각 entry는 derived로 표시하며, 완료 phase는
 // artifact와 빈 missing key를, 미완료 phase는 missing key를 기록한다.
-func DeriveIssueOpsPhaseLedger(record IssueOpsRecord) IssueOpsPhaseLedger {
-	ledger := IssueOpsPhaseLedger{}
+func DeriveIssueOpsPhaseLedger(record issueops.IssueOpsRecord) issueops.IssueOpsPhaseLedger {
+	ledger := issueops.IssueOpsPhaseLedger{}
 	currentRank := issueOpsPhaseRank(record.Phase)
-	for _, phase := range model.IssueOpsPhases {
-		entry := IssueOpsPhaseLedgerEntry{Phase: phase, Notes: []string{"derived"}}
+	for _, phase := range issueops.IssueOpsPhases {
+		entry := issueops.IssueOpsPhaseLedgerEntry{Phase: phase, Notes: []string{"derived"}}
 		if issueOpsPhaseRank(phase) <= currentRank {
 			entry.EnteredAt = issueOpsLedgerDerivedSentinel
 		}
@@ -258,7 +258,7 @@ func DeriveIssueOpsPhaseLedger(record IssueOpsRecord) IssueOpsPhaseLedger {
 // stamp되지 않았을 때(legacy record 또는 전이 없이 artifact만 기록한 cycle)는
 // deterministic derived ledger를 채워 status가 항상 phase 진행 상황을 보이게 한다.
 // 이는 read-only이며 derived ledger는 저장하지 않는다.
-func IssueOpsStatus(stateRoot, id string) (IssueOpsRecord, error) {
+func IssueOpsStatus(stateRoot, id string) (issueops.IssueOpsRecord, error) {
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return record, err
@@ -287,9 +287,9 @@ func IssueOpsStatus(stateRoot, id string) (IssueOpsRecord, error) {
 // 실제 entered_at을 쓴다. timestamp는 derived sentinel이 아니라 관찰한 `now`다.
 // 실제 phase-change 지점에서만 호출하므로 artifact만 기록한 record에 ledger를 추가해
 // golden을 흔들지 않는다.
-func stampIssueOpsForwardTransition(ledger IssueOpsPhaseLedger, prevPhase, newPhase IssueOpsPhase, now string) IssueOpsPhaseLedger {
+func stampIssueOpsForwardTransition(ledger issueops.IssueOpsPhaseLedger, prevPhase, newPhase issueops.IssueOpsPhase, now string) issueops.IssueOpsPhaseLedger {
 	if ledger == nil {
-		ledger = IssueOpsPhaseLedger{}
+		ledger = issueops.IssueOpsPhaseLedger{}
 	}
 	prev := ledger[prevPhase]
 	prev.Phase = prevPhase

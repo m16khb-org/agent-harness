@@ -2,7 +2,7 @@ package issueopscli
 
 import (
 	"agent-harness/cmd/harness/issueopscli/remoteverify"
-	"agent-harness/internal/core"
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
 )
@@ -61,7 +61,7 @@ func CleanupMerged(id string, requested bool) bool {
 	return issueOpsCleanupMerged(id, requested)
 }
 
-func VerifyRemoteArtifactLive(req core.IssueOpsRemoteArtifactVerificationRequest) error {
+func VerifyRemoteArtifactLive(req issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error {
 	return verifyIssueOpsRemoteArtifactLive(req)
 }
 

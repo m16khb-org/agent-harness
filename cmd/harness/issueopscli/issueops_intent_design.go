@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/internal/core"
 )
 
@@ -33,7 +35,7 @@ func runIssueOpsIntent(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsIntentWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsIntentRecordRequest{
+	record, err := core.RecordIssueOpsIntentWithActor(core.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsIntentRecordRequest{
 		RawRequest:        *rawRequest,
 		InterpretedIntent: *interpretedIntent,
 		SuccessCriteria:   []string(successCriteria),
@@ -76,7 +78,7 @@ func runIssueOpsDesign(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsDesignReviewWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsDesignReviewRequest{
+	record, err := core.RecordIssueOpsDesignReviewWithActor(core.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsDesignReviewRequest{
 		ProblemSummary: *problemSummary,
 		ProposedDesign: *proposedDesign,
 		RefactorPlan:   *refactorPlan,

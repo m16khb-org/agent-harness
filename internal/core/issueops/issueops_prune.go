@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 )
 
 // IssueOpsPruneResult reports one prune preview or confirmed prune pass over
@@ -62,11 +62,11 @@ func PruneIssueOps(stateRoot string, maxAge time.Duration, confirm bool) (IssueO
 	return result, nil
 }
 
-func issueOpsRecordPrunable(record IssueOpsRecord, cutoff time.Time) bool {
+func issueOpsRecordPrunable(record issueops.IssueOpsRecord, cutoff time.Time) bool {
 	if record.Phase != IssueOpsPhaseDone {
 		return false
 	}
-	if record.Execution != nil && record.Execution.Lease.Status != model.LeaseStatusReleased {
+	if record.Execution != nil && record.Execution.Lease.Status != issueops.LeaseStatusReleased {
 		return false
 	}
 	// 보존 불변식(설계 v5 WS3): 머지 증적(RemoteArtifact)이 있는 레코드는

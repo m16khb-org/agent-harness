@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
 func TestActiveIssueOpsCycleForBranchIsDeterministicAndReleasesOnDone(t *testing.T) {
@@ -12,12 +14,12 @@ func TestActiveIssueOpsCycleForBranchIsDeterministicAndReleasesOnDone(t *testing
 	if _, ok := ActiveIssueOpsCycleForBranch(repo, "1-main"); ok {
 		t.Fatalf("no cycle yet")
 	}
-	first, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "1-main"})
+	first, err := StartIssueOps(IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: "1-main"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Re-starting the same (repo, branch) must resume the same record, not duplicate.
-	second, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "1-main"})
+	second, err := StartIssueOps(IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: "1-main"})
 	if err != nil {
 		t.Fatal(err)
 	}

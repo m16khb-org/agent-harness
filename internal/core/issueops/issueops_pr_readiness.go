@@ -3,10 +3,11 @@ package issueops
 import (
 	"strings"
 
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops/stringlist"
 )
 
-func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
+func IssueOpsPRReadiness(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
 	missing := issueOpsBaseImplementationMissing(record)
 	if strings.TrimSpace(record.WorktreePath) == "" {
 		missing = append(missing, "worktree_path")
@@ -44,8 +45,8 @@ func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	if !hasNonChildLink && len(record.IssueLinks) == 0 {
 		iddWarnings = append(iddWarnings, "no_issue_graph_links")
 	}
-	cleanup := IssueOpsCleanupStatusForRecord(record, IssueOpsCleanupStatusRequest{Merged: false})
-	return IssueOpsReadiness{
+	cleanup := IssueOpsCleanupStatusForRecord(record, issueops.IssueOpsCleanupStatusRequest{Merged: false})
+	return issueops.IssueOpsReadiness{
 		OK:             true,
 		Ready:          len(missing) == 0,
 		Missing:        missing,
@@ -59,7 +60,7 @@ func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	}
 }
 
-func issueOpsHasUnresolvedContractFeedback(record IssueOpsRecord) bool {
+func issueOpsHasUnresolvedContractFeedback(record issueops.IssueOpsRecord) bool {
 	for _, item := range record.Feedback {
 		if issueOpsFeedbackRequiresIssueUpdate(item) {
 			return true
@@ -68,12 +69,12 @@ func issueOpsHasUnresolvedContractFeedback(record IssueOpsRecord) bool {
 	return false
 }
 
-func issueOpsFeedbackRequiresIssueUpdate(item IssueOpsFeedbackItem) bool {
+func issueOpsFeedbackRequiresIssueUpdate(item issueops.IssueOpsFeedbackItem) bool {
 	return strings.EqualFold(strings.TrimSpace(item.Classification), "contract_change") &&
 		strings.TrimSpace(item.IssueUpdatedAt) == ""
 }
 
-func issueOpsBaseImplementationMissing(record IssueOpsRecord) []string {
+func issueOpsBaseImplementationMissing(record issueops.IssueOpsRecord) []string {
 	missing := issueOpsBranchEvidenceMissing(record)
 	missing = append(missing, issueOpsIntentMissing(record)...)
 	missing = append(missing, issueOpsDesignReviewMissing(record)...)
@@ -83,14 +84,14 @@ func issueOpsBaseImplementationMissing(record IssueOpsRecord) []string {
 	return missing
 }
 
-func issueOpsPlanExistenceRoot(record IssueOpsRecord) string {
+func issueOpsPlanExistenceRoot(record issueops.IssueOpsRecord) string {
 	if worktree := strings.TrimSpace(record.WorktreePath); worktree != "" {
 		return worktree
 	}
 	return strings.TrimSpace(record.Repo)
 }
 
-func issueOpsBranchEvidenceMissing(record IssueOpsRecord) []string {
+func issueOpsBranchEvidenceMissing(record issueops.IssueOpsRecord) []string {
 	missing := []string{}
 	if strings.TrimSpace(record.IssueURL) == "" {
 		missing = append(missing, "issue_url")

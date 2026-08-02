@@ -1,4 +1,4 @@
-package model
+package issueops
 
 import (
 	"fmt"

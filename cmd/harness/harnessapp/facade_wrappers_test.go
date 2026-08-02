@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/cmd/harness/qualitycli"
 	"agent-harness/internal/core"
 	"agent-harness/internal/port"
@@ -408,7 +410,7 @@ func TestRiskMCPAndIssueOpsPolicyFacadeWrappers(t *testing.T) {
 	if issueOpsCleanupMerged("", false) {
 		t.Fatal("empty cleanup should not be merged")
 	}
-	if err := verifyIssueOpsRemoteArtifactLive(core.IssueOpsRemoteArtifactVerificationRequest{Provider: "github", Kind: "pr", URL: "not-a-url"}); err == nil {
+	if err := verifyIssueOpsRemoteArtifactLive(issueopscontract.IssueOpsRemoteArtifactVerificationRequest{Provider: "github", Kind: "pr", URL: "not-a-url"}); err == nil {
 		t.Fatal("invalid remote artifact URL should fail")
 	}
 	if _, _, err := parseCommandPolicyFlags("policy", []string{"--workspace-root", root, "--cwd", root, "--", "git", "status"}); err != nil {

@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	leaseadapter "agent-harness/internal/adapter/outbound/issueopslease"
 	leaseapp "agent-harness/internal/application/issueopslease"
 	leasecontract "agent-harness/internal/contract/issueopslease"
@@ -51,7 +53,7 @@ func TestReleaseHandlerReturnsCommittedProjectionWithoutStatusReadback(t *testin
 	handler := NewReleaseHandler(service)
 	result, err := handler(context.Background(), "/state-root-that-must-not-be-read", issueops.ExecutionReleaseRequest{
 		ID: record.ID, Generation: 1, CWD: "/canonical",
-		Actor: issueops.NativeActor{Host: actor.Host, SessionID: actor.SessionID, SessionProcess: &issueops.NativeProcessReceipt{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}, ProcessAncestry: []issueops.NativeProcessReceipt{{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}}},
+		Actor: issueopscontract.NativeActor{Host: actor.Host, SessionID: actor.SessionID, SessionProcess: &issueopscontract.NativeProcessReceipt{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}, ProcessAncestry: []issueopscontract.NativeProcessReceipt{{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}}},
 	})
 	if err != nil {
 		t.Fatalf("release handler: %v", err)
@@ -108,7 +110,7 @@ func TestReleaseHandlerPreservesNotPreparedCompatibilityText(t *testing.T) {
 	)
 	_, err = NewReleaseHandler(service)(context.Background(), "/unused", issueops.ExecutionReleaseRequest{
 		ID: record.ID, Generation: 1, CWD: "/canonical",
-		Actor: issueops.NativeActor{Host: actor.Host, SessionID: actor.SessionID, SessionProcess: &issueops.NativeProcessReceipt{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}, ProcessAncestry: []issueops.NativeProcessReceipt{{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}}},
+		Actor: issueopscontract.NativeActor{Host: actor.Host, SessionID: actor.SessionID, SessionProcess: &issueopscontract.NativeProcessReceipt{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}, ProcessAncestry: []issueopscontract.NativeProcessReceipt{{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}}},
 	})
 	if err == nil || err.Error() != "IssueOps execution v1 is not prepared" {
 		t.Fatalf("not prepared error=%v", err)
@@ -119,12 +121,12 @@ func TestReleaseHandlerPreservesLegacyNativeActorValidationText(t *testing.T) {
 	handler := NewReleaseHandler(leaseapp.NewReleaseService(nil, nil, nil, nil))
 	for _, tc := range []struct {
 		name  string
-		actor issueops.NativeActor
+		actor issueopscontract.NativeActor
 		want  string
 	}{
-		{name: "invalid host", actor: issueops.NativeActor{Host: "other"}, want: "native actor host must be codex or claude"},
-		{name: "missing session", actor: issueops.NativeActor{Host: "codex"}, want: "native actor session_id is required"},
-		{name: "missing receipt", actor: issueops.NativeActor{Host: "codex", SessionID: "missing-receipt"}, want: "native actor requires a PID reuse-safe session_process receipt"},
+		{name: "invalid host", actor: issueopscontract.NativeActor{Host: "other"}, want: "native actor host must be codex or claude"},
+		{name: "missing session", actor: issueopscontract.NativeActor{Host: "codex"}, want: "native actor session_id is required"},
+		{name: "missing receipt", actor: issueopscontract.NativeActor{Host: "codex", SessionID: "missing-receipt"}, want: "native actor requires a PID reuse-safe session_process receipt"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := handler(context.Background(), "/unused", issueops.ExecutionReleaseRequest{ID: "io-native-actor", Generation: 1, Actor: tc.actor})
@@ -136,13 +138,13 @@ func TestReleaseHandlerPreservesLegacyNativeActorValidationText(t *testing.T) {
 }
 
 func TestReleaseHandlerPreservesLegacyContractAndPersistenceText(t *testing.T) {
-	actor := issueops.NativeActor{
+	actor := issueopscontract.NativeActor{
 		Host:      "codex",
 		SessionID: "public-error-session",
-		SessionProcess: &issueops.NativeProcessReceipt{
+		SessionProcess: &issueopscontract.NativeProcessReceipt{
 			PID: 1234, StartedAt: "2026-07-29T00:00:00Z", Executable: "/usr/bin/codex",
 		},
-		ProcessAncestry: []issueops.NativeProcessReceipt{{
+		ProcessAncestry: []issueopscontract.NativeProcessReceipt{{
 			PID: 1234, StartedAt: "2026-07-29T00:00:00Z", Executable: "/usr/bin/codex",
 		}},
 	}

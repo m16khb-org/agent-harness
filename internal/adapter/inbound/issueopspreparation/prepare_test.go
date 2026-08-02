@@ -6,10 +6,10 @@ import (
 	"reflect"
 	"testing"
 
+	model "agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
 )
 
 func TestHandlerMapsEveryRequestAndResultField(t *testing.T) {

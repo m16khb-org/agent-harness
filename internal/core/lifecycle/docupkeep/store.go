@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/core/lifecycle/model"
 	"agent-harness/internal/core/projectdoc"
 	corestate "agent-harness/internal/core/state"
@@ -23,7 +24,7 @@ type Store struct {
 	Init     func(repoRoot string, confirm bool) (model.ProjectLifecycleStatePlan, error)
 }
 
-func Append(store Store, repoRoot string, event model.DocUpkeepEvent) (model.DocUpkeepAppendResult, error) {
+func Append(store Store, repoRoot string, event lifecyclecontract.DocUpkeepEvent) (model.DocUpkeepAppendResult, error) {
 	plan, err := store.Validate(repoRoot)
 	if err != nil {
 		return model.DocUpkeepAppendResult{OK: false}, err
@@ -75,12 +76,12 @@ func Append(store Store, repoRoot string, event model.DocUpkeepEvent) (model.Doc
 	return model.DocUpkeepAppendResult{OK: true, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath, Event: event}, nil
 }
 
-func ReadPending(store Store, repoRoot string, limit int) ([]model.DocUpkeepEvent, model.ProjectLifecycleStatePlan, error) {
+func ReadPending(store Store, repoRoot string, limit int) ([]lifecyclecontract.DocUpkeepEvent, model.ProjectLifecycleStatePlan, error) {
 	plan, err := store.Validate(repoRoot)
 	if err != nil || !plan.Exists || !plan.NamespaceValid {
-		return []model.DocUpkeepEvent{}, plan, err
+		return []lifecyclecontract.DocUpkeepEvent{}, plan, err
 	}
-	events := []model.DocUpkeepEvent{}
+	events := []lifecyclecontract.DocUpkeepEvent{}
 	if err := corestate.WithKeyLock(context.Background(), plan.ProjectStateDir, "doc-upkeep", func(context.Context) error {
 		f, err := os.Open(plan.QueuePath)
 		if os.IsNotExist(err) {
@@ -94,7 +95,7 @@ func ReadPending(store Store, repoRoot string, limit int) ([]model.DocUpkeepEven
 		malformedCount := 0
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
-			var event model.DocUpkeepEvent
+			var event lifecyclecontract.DocUpkeepEvent
 			if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
 				malformedCount++
 				continue
@@ -143,12 +144,12 @@ func NormalizeTargetDocs(docs []string) []string {
 	return out
 }
 
-func docUpkeepEventID(repoID string, event model.DocUpkeepEvent, at string) string {
+func docUpkeepEventID(repoID string, event lifecyclecontract.DocUpkeepEvent, at string) string {
 	sum := sha256.Sum256([]byte(repoID + "\x00" + event.Kind + "\x00" + event.Summary + "\x00" + strings.Join(event.TargetDocs, ",") + "\x00" + at))
 	return hex.EncodeToString(sum[:])[:24]
 }
 
-func rewriteDocUpkeepQueue(path string, events []model.DocUpkeepEvent) error {
+func rewriteDocUpkeepQueue(path string, events []lifecyclecontract.DocUpkeepEvent) error {
 	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+"-*.tmp")
 	if err != nil {
 		return err

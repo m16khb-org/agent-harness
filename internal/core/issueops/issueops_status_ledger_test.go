@@ -2,6 +2,8 @@ package issueops
 
 import (
 	"testing"
+
+	"agent-harness/internal/contract/issueops"
 )
 
 // Status display fills in a derived phase ledger when none was stamped, so old
@@ -9,7 +11,7 @@ import (
 func TestIssueOpsStatusDerivesLedgerWhenAbsent(t *testing.T) {
 	stateRoot := t.TempDir()
 	repo := initIssueOpsRepo(t)
-	rec, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "1-status"})
+	rec, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "1-status"})
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}

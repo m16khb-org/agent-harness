@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	leaseinbound "agent-harness/internal/adapter/inbound/issueopslease"
 	leaseoutbound "agent-harness/internal/adapter/outbound/issueopslease"
 	leaseapp "agent-harness/internal/application/issueopslease"
@@ -40,7 +42,7 @@ func issueOpsClaimHandler(ctx context.Context, stateRoot string, request issueop
 	return leaseinbound.NewClaimHandler(service)(ctx, stateRoot, request, deps)
 }
 
-func issueOpsClaimProviderName(record issueops.IssueOpsRecord) (string, error) {
+func issueOpsClaimProviderName(record issueopscontract.IssueOpsRecord) (string, error) {
 	if record.BranchPrepare != nil {
 		switch providerName := strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider)); providerName {
 		case "github", "gitlab":

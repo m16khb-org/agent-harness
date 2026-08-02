@@ -4,13 +4,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 )
 
-func baseIntentRecord(class string) IssueOpsRecord {
-	return IssueOpsRecord{
+func baseIntentRecord(class string) issueops.IssueOpsRecord {
+	return issueops.IssueOpsRecord{
 		IssueURL: "https://github.com/o/r/issues/1",
-		Intent: &model.IssueOpsIntentContract{
+		Intent: &issueops.IssueOpsIntentContract{
 			RawRequest:        "raw user ask",
 			InterpretedIntent: "agent reframed interpretation that differs",
 			SuccessCriteria:   []string{"gate works"},
@@ -49,11 +49,11 @@ func TestPlanReadinessSkipsPlanPrepForTrivial(t *testing.T) {
 
 func TestPlanReadinessAcceptsEvidenceAndWaive(t *testing.T) {
 	rec := baseIntentRecord("standard")
-	rec.PlanPrep = &model.IssueOpsPlanPrep{
-		PriorDecisions: model.IssueOpsPlanPrepItem{Status: "evidence", Evidence: []string{".agent-harness/ADR.md#gate"}},
-		RelatedIssues:  model.IssueOpsPlanPrepItem{Status: "evidence", Evidence: []string{"remote score: selected=#12(0.81), threshold=0.70"}},
-		WebResearch:    model.IssueOpsPlanPrepItem{Status: "waived", WaiveReason: "순수 내부 리팩토링이라 외부 근거 불필요"},
-		CodebaseSurvey: model.IssueOpsPlanPrepItem{Status: "evidence", Evidence: []string{"rg PlanPrep: internal/core/issueops/issueops_readiness.go, model/types.go, intentdesign/plan_prep.go"}},
+	rec.PlanPrep = &issueops.IssueOpsPlanPrep{
+		PriorDecisions: issueops.IssueOpsPlanPrepItem{Status: "evidence", Evidence: []string{".agent-harness/ADR.md#gate"}},
+		RelatedIssues:  issueops.IssueOpsPlanPrepItem{Status: "evidence", Evidence: []string{"remote score: selected=#12(0.81), threshold=0.70"}},
+		WebResearch:    issueops.IssueOpsPlanPrepItem{Status: "waived", WaiveReason: "순수 내부 리팩토링이라 외부 근거 불필요"},
+		CodebaseSurvey: issueops.IssueOpsPlanPrepItem{Status: "evidence", Evidence: []string{"rg PlanPrep: internal/core/issueops/issueops_readiness.go, model/types.go, intentdesign/plan_prep.go"}},
 	}
 	ready := IssueOpsPlanReadiness(rec)
 	if !ready.Ready {
@@ -63,10 +63,10 @@ func TestPlanReadinessAcceptsEvidenceAndWaive(t *testing.T) {
 
 func TestPlanReadinessRequiresCodebaseSurvey(t *testing.T) {
 	rec := baseIntentRecord("standard")
-	rec.PlanPrep = &model.IssueOpsPlanPrep{
-		PriorDecisions: model.IssueOpsPlanPrepItem{Status: "evidence", Evidence: []string{"adr"}},
-		RelatedIssues:  model.IssueOpsPlanPrepItem{Status: "waived", WaiveReason: "n/a"},
-		WebResearch:    model.IssueOpsPlanPrepItem{Status: "waived", WaiveReason: "n/a"},
+	rec.PlanPrep = &issueops.IssueOpsPlanPrep{
+		PriorDecisions: issueops.IssueOpsPlanPrepItem{Status: "evidence", Evidence: []string{"adr"}},
+		RelatedIssues:  issueops.IssueOpsPlanPrepItem{Status: "waived", WaiveReason: "n/a"},
+		WebResearch:    issueops.IssueOpsPlanPrepItem{Status: "waived", WaiveReason: "n/a"},
 	}
 	ready := IssueOpsPlanReadiness(rec)
 	if !planPrepHasMissing(ready.Missing, "plan_prep_codebase_survey") {
@@ -76,10 +76,10 @@ func TestPlanReadinessRequiresCodebaseSurvey(t *testing.T) {
 
 func TestPlanReadinessRejectsEmptyStatusItem(t *testing.T) {
 	rec := baseIntentRecord("standard")
-	rec.PlanPrep = &model.IssueOpsPlanPrep{
-		PriorDecisions: model.IssueOpsPlanPrepItem{Status: "evidence", Evidence: []string{"adr"}},
-		RelatedIssues:  model.IssueOpsPlanPrepItem{Status: "waived", WaiveReason: "n/a"},
-		WebResearch:    model.IssueOpsPlanPrepItem{Status: "evidence"}, // evidence missing
+	rec.PlanPrep = &issueops.IssueOpsPlanPrep{
+		PriorDecisions: issueops.IssueOpsPlanPrepItem{Status: "evidence", Evidence: []string{"adr"}},
+		RelatedIssues:  issueops.IssueOpsPlanPrepItem{Status: "waived", WaiveReason: "n/a"},
+		WebResearch:    issueops.IssueOpsPlanPrepItem{Status: "evidence"}, // evidence missing
 	}
 	ready := IssueOpsPlanReadiness(rec)
 	if !planPrepHasMissing(ready.Missing, "plan_prep_web_research") {
@@ -99,14 +99,14 @@ func TestImplementationReadinessRequiresExecutionLease(t *testing.T) {
 	rec := baseIntentRecord("trivial")
 	rec.Repo = repo
 	rec.Branch = "1-demo"
-	rec.BranchPrepare = &model.IssueOpsBranchPrepare{
+	rec.BranchPrepare = &issueops.IssueOpsBranchPrepare{
 		Provider:     "github",
 		IssueURL:     rec.IssueURL,
 		Branch:       "1-demo",
 		BaseBranch:   "main",
 		LinkVerified: true,
 	}
-	rec.DesignReview = &model.IssueOpsDesignReview{
+	rec.DesignReview = &issueops.IssueOpsDesignReview{
 		ProblemSummary: "prepare worktree tools",
 		ProposedDesign: "record worktree tool preparation before implementation",
 		RefactorPlan:   "durable gate only",

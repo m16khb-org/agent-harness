@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/issueops/orphancleanup"
 )
@@ -13,10 +15,10 @@ import (
 func TestRunFeedbackAddAndMarkIssueUpdated(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record := feedbackCleanupIssueOpsRecord(t)
-	var printed []core.IssueOpsRecord
+	var printed []issueopscontract.IssueOpsRecord
 	deps := Deps{
 		ParseFlags: parseFeedbackCleanupFlags,
-		PrintResult: func(record core.IssueOpsRecord, jsonOut bool, err error) error {
+		PrintResult: func(record issueopscontract.IssueOpsRecord, jsonOut bool, err error) error {
 			if err != nil {
 				return err
 			}
@@ -56,7 +58,7 @@ func TestRunCleanupStatusAndJSONError(t *testing.T) {
 			printedErrors = append(printedErrors, err)
 			return nil
 		},
-		VerifyMerged: func(core.IssueOpsRemoteArtifactVerification) error {
+		VerifyMerged: func(issueopscontract.IssueOpsRemoteArtifactVerification) error {
 			return nil
 		},
 	}
@@ -80,8 +82,8 @@ func TestCleanupMergedAndCommandBoundaries(t *testing.T) {
 	verified := 0
 	deps := Deps{
 		ParseFlags:  parseFeedbackCleanupFlags,
-		PrintResult: func(core.IssueOpsRecord, bool, error) error { return nil },
-		VerifyMerged: func(core.IssueOpsRemoteArtifactVerification) error {
+		PrintResult: func(issueopscontract.IssueOpsRecord, bool, error) error { return nil },
+		VerifyMerged: func(issueopscontract.IssueOpsRemoteArtifactVerification) error {
 			verified++
 			return nil
 		},
@@ -160,9 +162,9 @@ func TestRunCleanupOrphanDefaultsToPreviewAndGatesApply(t *testing.T) {
 	}
 }
 
-func feedbackCleanupIssueOpsRecord(t *testing.T) core.IssueOpsRecord {
+func feedbackCleanupIssueOpsRecord(t *testing.T) issueopscontract.IssueOpsRecord {
 	t.Helper()
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{Repo: t.TempDir(), Branch: "1234-feedback-cleanup"})
+	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: t.TempDir(), Branch: "1234-feedback-cleanup"})
 	if err != nil {
 		t.Fatalf("StartIssueOps: %v", err)
 	}

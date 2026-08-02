@@ -1,7 +1,11 @@
 package state
 
 import (
+	"encoding/json"
 	"sort"
+
+	statecontract "agent-harness/internal/contract/state"
+	"agent-harness/internal/core/sqlstore"
 )
 
 func StateMigrate(confirm bool) (StateMigrateResult, error) {
@@ -30,7 +34,7 @@ func StateMigrate(confirm bool) (StateMigrateResult, error) {
 		}
 	}
 	for _, entry := range doctor.Valid {
-		read, err := StateRead(entry.Key)
+		data, ok, err := sqlstore.GetExisting(dir, stateBucket, entry.Key)
 		if err != nil {
 			result.Issues = append(result.Issues, StateDoctorIssue{
 				Path:     statePath(dir, entry.Key),
@@ -41,7 +45,28 @@ func StateMigrate(confirm bool) (StateMigrateResult, error) {
 			})
 			continue
 		}
-		if read.Record.SchemaVersion != 0 {
+		if !ok {
+			result.Issues = append(result.Issues, StateDoctorIssue{
+				Path:     statePath(dir, entry.Key),
+				Key:      entry.Key,
+				Severity: "error",
+				Code:     "read_error",
+				Message:  "state record disappeared during migration",
+			})
+			continue
+		}
+		var record statecontract.RecordEnvelope
+		if err := json.Unmarshal(data, &record); err != nil {
+			result.Issues = append(result.Issues, StateDoctorIssue{
+				Path:     statePath(dir, entry.Key),
+				Key:      entry.Key,
+				Severity: "error",
+				Code:     "read_error",
+				Message:  err.Error(),
+			})
+			continue
+		}
+		if record.SchemaVersion != 0 {
 			result.Skipped = append(result.Skipped, entry)
 			result.SkippedKeys = append(result.SkippedKeys, entry.Key)
 			continue
@@ -51,7 +76,7 @@ func StateMigrate(confirm bool) (StateMigrateResult, error) {
 		if !confirm {
 			continue
 		}
-		migrated := read.Record
+		migrated := record
 		migrated.SchemaVersion = StateCurrentSchemaVersion
 		if _, err := writeStateRecord(dir, migrated.Key, migrated); err != nil {
 			result.Issues = append(result.Issues, StateDoctorIssue{

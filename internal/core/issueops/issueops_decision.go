@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"agent-harness/internal/contract/issueops"
 )
 
 var secretPatterns = []*regexp.Regexp{
@@ -44,18 +46,18 @@ var validDecisionArtifacts = map[string]bool{
 	"follow-up":      true,
 }
 
-func AddIssueOpsDecision(stateRoot, id string, req IssueOpsDecisionRecordRequest) (IssueOpsRecord, error) {
+func AddIssueOpsDecision(stateRoot, id string, req issueops.IssueOpsDecisionRecordRequest) (issueops.IssueOpsRecord, error) {
 	return addIssueOpsDecision(stateRoot, id, req, nil)
 }
 
 // AddIssueOpsDecisionWithActor records a durable decision from the sealed
 // preparation session when an execution workspace is present.
-func AddIssueOpsDecisionWithActor(stateRoot, id string, req IssueOpsDecisionRecordRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+func AddIssueOpsDecisionWithActor(stateRoot, id string, req issueops.IssueOpsDecisionRecordRequest, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return addIssueOpsDecision(stateRoot, id, req, &actor)
 }
 
-func addIssueOpsDecision(stateRoot, id string, req IssueOpsDecisionRecordRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func addIssueOpsDecision(stateRoot, id string, req issueops.IssueOpsDecisionRecordRequest, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
@@ -71,31 +73,31 @@ func addIssueOpsDecision(stateRoot, id string, req IssueOpsDecisionRecordRequest
 	return rec, err
 }
 
-func addIssueOpsDecisionLocked(stateRoot, id string, req IssueOpsDecisionRecordRequest) (IssueOpsRecord, error) {
+func addIssueOpsDecisionLocked(stateRoot, id string, req issueops.IssueOpsDecisionRecordRequest) (issueops.IssueOpsRecord, error) {
 	kind := strings.TrimSpace(req.Kind)
 	if !validDecisionKinds[kind] {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("invalid decision kind %q; must be one of: product, architecture, implementation, test, review, scope, follow-up", kind)
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("invalid decision kind %q; must be one of: product, architecture, implementation, test, review, scope, follow-up", kind)
 	}
 	title := strings.TrimSpace(req.Title)
 	if title == "" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("decision title is required")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("decision title is required")
 	}
 	if len(title) > 512 {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("decision title must not exceed 512 bytes")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("decision title must not exceed 512 bytes")
 	}
 	body := strings.TrimSpace(req.Body)
 	if body == "" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("decision body is required")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("decision body is required")
 	}
 	if len(body) > 65536 {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("decision body must not exceed 64 KiB")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("decision body must not exceed 64 KiB")
 	}
 	if containsSecretPattern(body) {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("decision body appears to contain secrets or credentials; redact them before storing")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("decision body appears to contain secrets or credentials; redact them before storing")
 	}
 	for _, art := range req.AffectedArtifacts {
 		if !validDecisionArtifacts[art] {
-			return IssueOpsRecord{OK: false}, fmt.Errorf("invalid affected artifact %q", art)
+			return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("invalid affected artifact %q", art)
 		}
 	}
 	record, err := ReadIssueOps(stateRoot, id)
@@ -114,7 +116,7 @@ func addIssueOpsDecisionLocked(stateRoot, id string, req IssueOpsDecisionRecordR
 	if arts == nil {
 		arts = []string{}
 	}
-	record.Decisions = append(record.Decisions, IssueOpsDecision{
+	record.Decisions = append(record.Decisions, issueops.IssueOpsDecision{
 		Title:              title,
 		Body:               body,
 		Kind:               kind,

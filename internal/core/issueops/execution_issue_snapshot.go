@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -120,11 +120,11 @@ func validateExecutionIssueSnapshotAction(req ExecutionActionRequest) error {
 	return fmt.Errorf("issue_snapshot is not supported for execution action %q", req.Action)
 }
 
-func validateExecutionIssueSnapshotRecord(req ExecutionActionRequest, record IssueOpsRecord) error {
+func validateExecutionIssueSnapshotRecord(req ExecutionActionRequest, record issueops.IssueOpsRecord) error {
 	if req.Action != ExecutionActionReconcile {
 		return nil
 	}
-	if record.Execution == nil || record.Execution.Mode != model.ExecutionModeOrca ||
+	if record.Execution == nil || record.Execution.Mode != issueops.ExecutionModeOrca ||
 		record.Execution.Pending == nil || record.Execution.Pending.Kind != "worktree_create" {
 		return fmt.Errorf("issue_snapshot is supported for execution reconcile only when confirm resumes a pending worktree_create intent")
 	}

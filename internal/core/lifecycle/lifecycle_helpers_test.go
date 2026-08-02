@@ -3,10 +3,12 @@ package lifecycle
 import (
 	"path/filepath"
 	"testing"
+
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 )
 
 func TestUniqueDocUpkeepEventsDeduplicatesByDocsAndSummary(t *testing.T) {
-	events := []DocUpkeepEvent{
+	events := []lifecyclecontract.DocUpkeepEvent{
 		{ID: "a", TargetDocs: []string{"OPERATIONS.md", "CONVENTIONS.md"}, Summary: "sync install docs", Source: "first"},
 		{ID: "b", TargetDocs: []string{"CONVENTIONS.md", "OPERATIONS.md"}, Summary: " sync install docs ", Source: "duplicate"},
 		{ID: "c", TargetDocs: []string{"TESTING.md"}, Summary: "sync install docs", Source: "distinct docs"},
@@ -26,7 +28,7 @@ func TestWorktreeGuardEditTargetsResolvesExplicitPaths(t *testing.T) {
 	repo := t.TempDir()
 	absPath := filepath.Join(repo, "absolute.go")
 
-	got := worktreeGuardEditTargets(HookToolUseLifecycleRequest{
+	got := worktreeGuardEditTargets(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:  repo,
 		Paths: []string{"relative.go", absPath, "   "},
 	})
@@ -51,12 +53,12 @@ func TestWorktreeGuardEditTargetsFallsBackToBase(t *testing.T) {
 	repo := t.TempDir()
 	cwd := t.TempDir()
 
-	got := worktreeGuardEditTargets(HookToolUseLifecycleRequest{Repo: repo, CWD: cwd})
+	got := worktreeGuardEditTargets(lifecyclecontract.HookToolUseLifecycleRequest{Repo: repo, CWD: cwd})
 	if len(got) != 1 || got[0] != filepath.Clean(cwd) {
 		t.Fatalf("empty paths must fall back to cwd: %#v", got)
 	}
 
-	got = worktreeGuardEditTargets(HookToolUseLifecycleRequest{
+	got = worktreeGuardEditTargets(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo: repo, Tool: "Bash", Command: "echo hello",
 	})
 	if len(got) != 1 || got[0] != filepath.Clean(repo) {

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/core/lifecycle/model"
 	"agent-harness/internal/core/nextaction"
 )
@@ -20,9 +21,9 @@ type Store struct {
 	WriteJSON func(path string, value any, perm os.FileMode) error
 }
 
-func Record(store Store, repoRoot string, trigger nextaction.NextActionJudgementTriggerResult) model.StopNextActionRelayResult {
+func Record(store Store, repoRoot string, trigger nextaction.NextActionJudgementTriggerResult) lifecyclecontract.StopNextActionRelayResult {
 	fingerprint := fingerprint(trigger)
-	result := model.StopNextActionRelayResult{OK: true, Fingerprint: fingerprint}
+	result := lifecyclecontract.StopNextActionRelayResult{OK: true, Fingerprint: fingerprint}
 	if strings.TrimSpace(fingerprint) == "" {
 		result.Reason = "no_next_action_fingerprint"
 		return result
@@ -45,7 +46,7 @@ func Record(store Store, repoRoot string, trigger nextaction.NextActionJudgement
 	}
 	path := filepath.Join(plan.ProjectStateDir, model.StopNextActionRelayFile)
 	result.Path = path
-	var previous model.StopNextActionRelayRecord
+	var previous lifecyclecontract.StopNextActionRelayRecord
 	if b, err := os.ReadFile(path); err == nil {
 		if err := json.Unmarshal(b, &previous); err == nil && previous.SchemaVersion == model.ProjectLifecycleSchemaVersion && previous.Fingerprint != "" {
 			result.ShouldRelay = false
@@ -73,16 +74,16 @@ func Record(store Store, repoRoot string, trigger nextaction.NextActionJudgement
 	return result
 }
 
-func buildRelayRecord(fingerprint string, trigger nextaction.NextActionJudgementTriggerResult) model.StopNextActionRelayRecord {
-	candidates := make([]model.StopNextActionRelayCandidate, 0, len(trigger.Candidates))
+func buildRelayRecord(fingerprint string, trigger nextaction.NextActionJudgementTriggerResult) lifecyclecontract.StopNextActionRelayRecord {
+	candidates := make([]lifecyclecontract.StopNextActionRelayCandidate, 0, len(trigger.Candidates))
 	for _, candidate := range trigger.Candidates {
-		candidates = append(candidates, model.StopNextActionRelayCandidate{
+		candidates = append(candidates, lifecyclecontract.StopNextActionRelayCandidate{
 			Index:       candidate.Index,
 			Recommended: candidate.Recommended,
 			Text:        strings.TrimSpace(candidate.Text),
 		})
 	}
-	return model.StopNextActionRelayRecord{
+	return lifecyclecontract.StopNextActionRelayRecord{
 		SchemaVersion:    model.ProjectLifecycleSchemaVersion,
 		Fingerprint:      fingerprint,
 		RecommendedIndex: trigger.RecommendedIndex,
@@ -95,8 +96,8 @@ func buildRelayRecord(fingerprint string, trigger nextaction.NextActionJudgement
 // Read returns the pending relay record so the next user prompt can expand a
 // bare choice reply ("1", "2번") back into the chosen option's full text. It
 // never mutates state; Clear still owns record removal.
-func Read(store Store, repoRoot string) (model.StopNextActionRelayRecord, bool) {
-	var record model.StopNextActionRelayRecord
+func Read(store Store, repoRoot string) (lifecyclecontract.StopNextActionRelayRecord, bool) {
+	var record lifecyclecontract.StopNextActionRelayRecord
 	plan, err := store.Validate(repoRoot)
 	if err != nil || !plan.Exists || !plan.NamespaceValid {
 		return record, false
@@ -108,13 +109,13 @@ func Read(store Store, repoRoot string) (model.StopNextActionRelayRecord, bool) 
 	if err := json.Unmarshal(b, &record); err != nil ||
 		record.SchemaVersion != model.ProjectLifecycleSchemaVersion ||
 		strings.TrimSpace(record.Fingerprint) == "" {
-		return model.StopNextActionRelayRecord{}, false
+		return lifecyclecontract.StopNextActionRelayRecord{}, false
 	}
 	return record, true
 }
 
-func Clear(store Store, repoRoot string) model.StopNextActionRelayResult {
-	result := model.StopNextActionRelayResult{OK: true}
+func Clear(store Store, repoRoot string) lifecyclecontract.StopNextActionRelayResult {
+	result := lifecyclecontract.StopNextActionRelayResult{OK: true}
 	plan, err := store.Validate(repoRoot)
 	if err != nil || !plan.Exists || !plan.NamespaceValid {
 		return result

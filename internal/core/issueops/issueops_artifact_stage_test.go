@@ -9,13 +9,14 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
 
 func TestStageIssueOpsArtifactRejections(t *testing.T) {
 	stateRoot := filepath.Join(t.TempDir(), "issueops")
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: t.TempDir(), Branch: "82-artifact"})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: t.TempDir(), Branch: "82-artifact"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,11 +40,11 @@ func TestStageIssueOpsArtifactRejections(t *testing.T) {
 
 	// prepare 이후(Execution 존재) 스테이징은 조용한 no-op이 아니라 명시 실패.
 	worktree := filepath.Join(t.TempDir(), "82-artifact")
-	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
-		rec.Execution = &Execution{
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
+		rec.Execution = &issueops.Execution{
 			Mode:      "direct",
-			Workspace: Workspace{SourceRoot: rec.Repo, Root: worktree, Branch: "82-artifact", BaseHead: "deadbeef", Driver: "git", LinkedAt: "2026-07-24T00:00:00Z"},
-			Lease:     WriteLease{Generation: 1, Status: "released"},
+			Workspace: issueops.Workspace{SourceRoot: rec.Repo, Root: worktree, Branch: "82-artifact", BaseHead: "deadbeef", Driver: "git", LinkedAt: "2026-07-24T00:00:00Z"},
+			Lease:     issueops.WriteLease{Generation: 1, Status: "released"},
 		}
 	})
 	if _, err := StageIssueOpsArtifact(stateRoot, record.ID, "spec", []byte("늦은 스펙")); err == nil || !strings.Contains(err.Error(), "before execution prepare") {
@@ -53,7 +54,7 @@ func TestStageIssueOpsArtifactRejections(t *testing.T) {
 
 func TestDeleteIssueOpsRollsBackStageWhenRecordDeleteFails(t *testing.T) {
 	stateRoot := filepath.Join(t.TempDir(), "issueops")
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: t.TempDir(), Branch: "89-atomic-delete"})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: t.TempDir(), Branch: "89-atomic-delete"})
 	if err != nil {
 		t.Fatal(err)
 	}

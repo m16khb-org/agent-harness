@@ -8,14 +8,14 @@ import (
 
 	leaseoutbound "agent-harness/internal/adapter/outbound/issueopslease"
 	leaseapp "agent-harness/internal/application/issueopslease"
+	"agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/sqlstore"
 	leasedomain "agent-harness/internal/domain/issueopslease"
 	"agent-harness/internal/port"
 )
 
-func claimViaVertical(stateRoot string, request ExecutionClaimRequest, _ ...func(IssueOpsRecord) error) (ExecutionResult, error) {
+func claimViaVertical(stateRoot string, request ExecutionClaimRequest, _ ...func(issueops.IssueOpsRecord) error) (ExecutionResult, error) {
 	return claimViaVerticalWithDeps(context.Background(), stateRoot, request, ExecutionClaimDependencies{})
 }
 
@@ -46,7 +46,7 @@ func claimViaVerticalWithDeps(ctx context.Context, stateRoot string, request Exe
 	if err != nil {
 		return ExecutionResult{ID: request.ID}, publicVerticalClaimError(err, request.Generation)
 	}
-	var execution model.Execution
+	var execution issueops.Execution
 	data, err := json.Marshal(result.Execution)
 	if err != nil {
 		return ExecutionResult{ID: request.ID}, err
@@ -61,7 +61,7 @@ func claimViaVerticalHandler(ctx context.Context, stateRoot string, request Exec
 	return claimViaVerticalWithDeps(ctx, stateRoot, request, deps)
 }
 
-func toVerticalActor(actor model.NativeActor) leasedomain.Actor {
+func toVerticalActor(actor issueops.NativeActor) leasedomain.Actor {
 	result := leasedomain.Actor{Host: actor.Host, SessionID: actor.SessionID, AgentID: actor.AgentID}
 	if actor.SessionProcess != nil {
 		result.Process = &leasedomain.ProcessReceipt{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}
@@ -69,7 +69,7 @@ func toVerticalActor(actor model.NativeActor) leasedomain.Actor {
 	return result
 }
 
-func toVerticalAncestry(actor model.NativeActor) []leasedomain.ProcessReceipt {
+func toVerticalAncestry(actor issueops.NativeActor) []leasedomain.ProcessReceipt {
 	result := make([]leasedomain.ProcessReceipt, 0, len(actor.ProcessAncestry))
 	for _, receipt := range actor.ProcessAncestry {
 		result = append(result, leasedomain.ProcessReceipt{PID: receipt.PID, StartedAt: receipt.StartedAt, Executable: receipt.Executable})

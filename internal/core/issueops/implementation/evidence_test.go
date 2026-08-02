@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	model "agent-harness/internal/contract/issueops"
 )
 
 func TestPorcelainPath(t *testing.T) {

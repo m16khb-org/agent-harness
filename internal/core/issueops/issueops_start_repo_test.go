@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"agent-harness/internal/contract/issueops"
 )
 
 func TestStartIssueOpsStoresAbsoluteRepoWhenRelativePathProvided(t *testing.T) {
@@ -14,7 +16,7 @@ func TestStartIssueOpsStoresAbsoluteRepoWhenRelativePathProvided(t *testing.T) {
 	}
 	t.Chdir(repo)
 
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: ".", Branch: "12-demo"})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: ".", Branch: "12-demo"})
 	if err != nil {
 		t.Fatal(err)
 	}

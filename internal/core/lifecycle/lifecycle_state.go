@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
+
 	"agent-harness/internal/core/commandguard"
 	"agent-harness/internal/core/lifecycle/liveapproval"
 	"agent-harness/internal/core/lifecycle/nextactionrelay"
@@ -11,12 +13,12 @@ import (
 	"agent-harness/internal/core/remoteartifact"
 )
 
-func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreToolUseDecisionResult {
+func BuildLifecyclePreToolUseDecision(req lifecyclecontract.HookToolUseLifecycleRequest) lifecyclecontract.HookPreToolUseDecisionResult {
 	source := strings.TrimSpace(req.Source)
 	if source == "" {
 		source = "pre-tool-use"
 	}
-	result := HookPreToolUseDecisionResult{
+	result := lifecyclecontract.HookPreToolUseDecisionResult{
 		OK:       true,
 		Decision: "allow",
 		Tool:     strings.TrimSpace(req.Tool),
@@ -125,7 +127,7 @@ func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreTo
 	return result
 }
 
-func directBranchCreationBlockReason(req HookToolUseLifecycleRequest) string {
+func directBranchCreationBlockReason(req lifecyclecontract.HookToolUseLifecycleRequest) string {
 	creation := worktreeguard.LocalIssueOpsBranchCreation(req.Command)
 	if strings.TrimSpace(creation.Branch) != "" {
 		if strings.TrimSpace(creation.SourceRef) == "" {
@@ -139,7 +141,7 @@ func directBranchCreationBlockReason(req HookToolUseLifecycleRequest) string {
 	return ""
 }
 
-func applyCodexLiveApproval(result *HookPreToolUseDecisionResult, approval liveapproval.Result) {
+func applyCodexLiveApproval(result *lifecyclecontract.HookPreToolUseDecisionResult, approval liveapproval.Result) {
 	switch {
 	case approval.Allowed:
 		result.Decision = "allow"
@@ -162,15 +164,15 @@ func ApproveCodexKubectlLiveAccess(repo, host, sessionID, prompt string) liveapp
 	})
 }
 
-func RecordStopNextActionRelay(repoRoot string, trigger NextActionJudgementTriggerResult) StopNextActionRelayResult {
+func RecordStopNextActionRelay(repoRoot string, trigger NextActionJudgementTriggerResult) lifecyclecontract.StopNextActionRelayResult {
 	return nextactionrelay.Record(stopNextActionRelayStore(), repoRoot, trigger)
 }
 
-func ReadStopNextActionRelay(repoRoot string) (StopNextActionRelayRecord, bool) {
+func ReadStopNextActionRelay(repoRoot string) (lifecyclecontract.StopNextActionRelayRecord, bool) {
 	return nextactionrelay.Read(stopNextActionRelayStore(), repoRoot)
 }
 
-func ClearStopNextActionRelay(repoRoot string) StopNextActionRelayResult {
+func ClearStopNextActionRelay(repoRoot string) lifecyclecontract.StopNextActionRelayResult {
 	return nextactionrelay.Clear(stopNextActionRelayStore(), repoRoot)
 }
 

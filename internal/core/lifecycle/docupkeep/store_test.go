@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/core/lifecycle/model"
 	corestate "agent-harness/internal/core/state"
 )
@@ -30,7 +31,7 @@ func TestAppendWritesJSONL(t *testing.T) {
 		Init:     func(string, bool) (model.ProjectLifecycleStatePlan, error) { return plan, nil },
 	}
 
-	result, err := Append(store, plan.RepoRoot, model.DocUpkeepEvent{
+	result, err := Append(store, plan.RepoRoot, lifecyclecontract.DocUpkeepEvent{
 		Kind:       "operation_change",
 		TargetDocs: []string{"OPERATIONS.md"},
 		Summary:    "Hook behavior changed.",
@@ -53,7 +54,7 @@ func TestAppendWritesJSONL(t *testing.T) {
 	if !scanner.Scan() {
 		t.Fatal("expected one jsonl record")
 	}
-	var got model.DocUpkeepEvent
+	var got lifecyclecontract.DocUpkeepEvent
 	if err := json.Unmarshal(scanner.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +143,7 @@ func TestAppendWaitsForDocUpkeepLock(t *testing.T) {
 	if err := corestate.WithKeyLock(context.Background(), plan.ProjectStateDir, "doc-upkeep", func(context.Context) error {
 		go func() {
 			close(started)
-			_, err := Append(store, plan.RepoRoot, model.DocUpkeepEvent{
+			_, err := Append(store, plan.RepoRoot, lifecyclecontract.DocUpkeepEvent{
 				Kind:    "operation_change",
 				Summary: "Hook behavior changed.",
 				Source:  "test",

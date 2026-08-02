@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"strings"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
+
 	"agent-harness/internal/core/remoteartifact"
 )
 
-func issueOpsPRTargetBranchBlockReason(req HookToolUseLifecycleRequest) string {
+func issueOpsPRTargetBranchBlockReason(req lifecyclecontract.HookToolUseLifecycleRequest) string {
 	branches, ok := remoteartifact.PullRequestBranchInfoFromCommand(req.Tool, req.Command, req.Repo)
 	if !ok {
 		return ""
@@ -30,10 +33,10 @@ func issueOpsPRTargetBranchBlockReason(req HookToolUseLifecycleRequest) string {
 	return ""
 }
 
-func issueOpsRecordForPRTargetGuard(req HookToolUseLifecycleRequest, headBranch string) (IssueOpsRecord, bool) {
+func issueOpsRecordForPRTargetGuard(req lifecyclecontract.HookToolUseLifecycleRequest, headBranch string) (issueopscontract.IssueOpsRecord, bool) {
 	repo := strings.TrimSpace(req.Repo)
 	if repo == "" {
-		return IssueOpsRecord{}, false
+		return issueopscontract.IssueOpsRecord{}, false
 	}
 	headBranch = strings.TrimSpace(headBranch)
 	if headBranch != "" {
@@ -53,5 +56,5 @@ func issueOpsRecordForPRTargetGuard(req HookToolUseLifecycleRequest, headBranch 
 			return record, true
 		}
 	}
-	return IssueOpsRecord{}, false
+	return issueopscontract.IssueOpsRecord{}, false
 }

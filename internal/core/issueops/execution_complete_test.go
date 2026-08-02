@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/preflight"
 )
 
@@ -42,7 +42,7 @@ func TestExecutionCompletePersistsReceiptAndReleasesLease(t *testing.T) {
 	if completed.Execution.Completion == nil || completed.Execution.Completion.FinalHead != head {
 		t.Fatalf("completion receipt missing: %#v", completed.Execution)
 	}
-	if completed.Execution.Lease.Status != model.LeaseStatusReleased || completed.Execution.Lease.Holder != nil {
+	if completed.Execution.Lease.Status != issueops.LeaseStatusReleased || completed.Execution.Lease.Holder != nil {
 		t.Fatalf("completion did not release the lease: %#v", completed.Execution.Lease)
 	}
 	persisted, err := ReadIssueOps(stateRoot, fixture.record.ID)
@@ -148,7 +148,7 @@ func TestExecutionCompleteRequiresVerifiedDurableRemoteArtifact(t *testing.T) {
 				t.Fatal(readErr)
 			}
 			if after.Phase != before.Phase || after.Execution.Completion != nil ||
-				after.Execution.Lease.Status != model.LeaseStatusActive ||
+				after.Execution.Lease.Status != issueops.LeaseStatusActive ||
 				!sameNativeActor(after.Execution.Lease.Holder, &holder) {
 				t.Fatalf("rejected completion mutated state:\nbefore=%#v\nafter=%#v", before, after)
 			}
@@ -190,7 +190,7 @@ func prepareExecutionCompletionFixture(t *testing.T, stateRoot string, fixture *
 	t.Helper()
 	fixture.record.Phase = IssueOpsPhasePR
 	fixture.record.IssueURL = "https://github.com/example/agent-harness/issues/69"
-	fixture.record.RemoteArtifact = &IssueOpsRemoteArtifactVerification{
+	fixture.record.RemoteArtifact = &issueops.IssueOpsRemoteArtifactVerification{
 		Provider: "github", Kind: "pr", URL: "https://github.com/example/agent-harness/pull/69",
 		Labels: []string{"enhancement"}, Assignees: []string{"maintainer"},
 		VerifiedAt: "2026-07-22T00:00:00Z", TargetBranch: "main",

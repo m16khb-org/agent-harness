@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -63,21 +63,21 @@ func (g *fakeFinishGit) run(dir string, args ...string) (int, string) {
 	return 0, ""
 }
 
-func finishTestRecord(t *testing.T, withWorktree bool) (string, IssueOpsRecord, string) {
+func finishTestRecord(t *testing.T, withWorktree bool) (string, issueops.IssueOpsRecord, string) {
 	t.Helper()
 	stateRoot := filepath.Join(t.TempDir(), "issueops")
 	repo := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "80-finish"})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "80-finish"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	worktree := ""
 	record.Phase = IssueOpsPhaseDone
 	record.IssueURL = "https://github.com/acme/repo/issues/80"
-	record.RemoteArtifact = &IssueOpsRemoteArtifactVerification{Provider: "github", Kind: "pr", URL: "https://github.com/acme/repo/pull/90"}
+	record.RemoteArtifact = &issueops.IssueOpsRemoteArtifactVerification{Provider: "github", Kind: "pr", URL: "https://github.com/acme/repo/pull/90"}
 	// execution complete가 base_branch 없는 done 전이를 거부하므로 done 레코드는
 	// 항상 준비된 base를 갖는다.
-	record.BranchPrepare = &model.IssueOpsBranchPrepare{
+	record.BranchPrepare = &issueops.IssueOpsBranchPrepare{
 		Provider: "github", IssueURL: record.IssueURL, Branch: "80-finish",
 		BaseBranch: "main", BaseSHA: "deadbeef", LinkVerified: true,
 	}
@@ -86,10 +86,10 @@ func finishTestRecord(t *testing.T, withWorktree bool) (string, IssueOpsRecord, 
 		if err := os.MkdirAll(worktree, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		record.Execution = &Execution{
-			Mode:      model.ExecutionModeDirect,
-			Workspace: Workspace{SourceRoot: repo, Root: worktree, Branch: "80-finish", BaseHead: "deadbeef", Driver: "git", LinkedAt: "2026-07-24T00:00:00Z"},
-			Lease:     WriteLease{Generation: 1, Status: model.LeaseStatusReleased},
+		record.Execution = &issueops.Execution{
+			Mode:      issueops.ExecutionModeDirect,
+			Workspace: issueops.Workspace{SourceRoot: repo, Root: worktree, Branch: "80-finish", BaseHead: "deadbeef", Driver: "git", LinkedAt: "2026-07-24T00:00:00Z"},
+			Lease:     issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusReleased},
 		}
 	}
 	if err := withIssueOpsLock(context.Background(), stateRoot, record.ID, func(context.Context) error {
@@ -158,14 +158,14 @@ func TestCleanupFinishPreviewGatesRejectMissingEvidence(t *testing.T) {
 		}
 	})
 	t.Run("unclosed child", func(t *testing.T) {
-		mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
-			rec.IssueLinks = append(rec.IssueLinks, IssueOpsIssueLink{Type: "child", URL: "https://github.com/acme/repo/issues/91"})
+		mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
+			rec.IssueLinks = append(rec.IssueLinks, issueops.IssueOpsIssueLink{Type: "child", URL: "https://github.com/acme/repo/issues/91"})
 		})
 		result, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), finishDeps(git))
 		if err == nil || !containsString(result.Missing, "child_tasks_closed") {
 			t.Fatalf("unclosed child must block: %v %v", err, result.Missing)
 		}
-		mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
+		mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
 			rec.IssueLinks[len(rec.IssueLinks)-1].CloseVerifiedAt = "t"
 		})
 	})
@@ -286,7 +286,7 @@ func TestCleanupFinishResumableConvergesAndRecordDeleted(t *testing.T) {
 	}
 
 	// 레코드 삭제 후 동일 (repo, branch) start → 새 problem-phase 사이클.
-	fresh, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: record.Repo, Branch: "80-finish"})
+	fresh, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: record.Repo, Branch: "80-finish"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -297,10 +297,10 @@ func TestCleanupFinishResumableConvergesAndRecordDeleted(t *testing.T) {
 
 func TestCleanupFinishOrcaRemovalRunsFirstAndFailureKeepsRecord(t *testing.T) {
 	stateRoot, record, _ := finishTestRecord(t, true)
-	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
-		rec.Execution.Mode = model.ExecutionModeOrca
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
+		rec.Execution.Mode = issueops.ExecutionModeOrca
 		rec.Execution.Workspace.Driver = "orca"
-		rec.Execution.Orca = &model.OrcaBinding{RuntimeID: "rt", RepoID: "repo", WorktreeID: "wt-1", OwnerHost: "codex", OwnerModel: "m", TaskID: "t", DispatchID: "d"}
+		rec.Execution.Orca = &issueops.OrcaBinding{RuntimeID: "rt", RepoID: "repo", WorktreeID: "wt-1", OwnerHost: "codex", OwnerModel: "m", TaskID: "t", DispatchID: "d"}
 	})
 	git := &fakeFinishGit{branchOID: "abc123"}
 	deps := finishDeps(git)
@@ -333,10 +333,10 @@ func TestCleanupFinishOrcaRemovalRunsFirstAndFailureKeepsRecord(t *testing.T) {
 // 실패로 기록된다.
 func TestCleanupFinishSkipsGitRemovalWhenOrcaAlreadyRemovedWorktree(t *testing.T) {
 	stateRoot, record, worktree := finishTestRecord(t, true)
-	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
-		rec.Execution.Mode = model.ExecutionModeOrca
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
+		rec.Execution.Mode = issueops.ExecutionModeOrca
 		rec.Execution.Workspace.Driver = "orca"
-		rec.Execution.Orca = &model.OrcaBinding{RuntimeID: "rt", RepoID: "repo", WorktreeID: "wt-1", OwnerHost: "codex", OwnerModel: "m", TaskID: "t", DispatchID: "d"}
+		rec.Execution.Orca = &issueops.OrcaBinding{RuntimeID: "rt", RepoID: "repo", WorktreeID: "wt-1", OwnerHost: "codex", OwnerModel: "m", TaskID: "t", DispatchID: "d"}
 	})
 	git := &fakeFinishGit{branchOID: "abc123"}
 	deps := finishDeps(git)
@@ -367,7 +367,7 @@ func TestCleanupFinishSkipsGitRemovalWhenOrcaAlreadyRemovedWorktree(t *testing.T
 func TestPrunePreservesUnreflectedMergedRecords(t *testing.T) {
 	stateRoot, record, _ := finishTestRecord(t, false)
 	old := time.Now().UTC().Add(-90 * 24 * time.Hour).Format(time.RFC3339Nano)
-	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) { rec.UpdatedAt = old })
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) { rec.UpdatedAt = old })
 
 	result, err := PruneIssueOps(stateRoot, 30*24*time.Hour, true)
 	if err != nil {
@@ -377,8 +377,8 @@ func TestPrunePreservesUnreflectedMergedRecords(t *testing.T) {
 		t.Fatalf("unreflected merged record must be kept: %+v", result)
 	}
 
-	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
-		rec.RemoteCompletion = &IssueOpsRemoteCompletion{ReflectedAt: "t"}
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
+		rec.RemoteCompletion = &issueops.IssueOpsRemoteCompletion{ReflectedAt: "t"}
 		rec.UpdatedAt = old
 	})
 	result, err = PruneIssueOps(stateRoot, 30*24*time.Hour, true)
@@ -419,17 +419,17 @@ func TestCleanupFinishBranchDeleteFailureAndGates(t *testing.T) {
 	}
 
 	// phase/lease 게이트.
-	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) { rec.Phase = IssueOpsPhasePR })
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) { rec.Phase = IssueOpsPhasePR })
 	if result, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), deps); err == nil || !containsString(result.Missing, "phase_done") {
 		t.Fatalf("non-done phase must block: %v %v", err, result.Missing)
 	}
-	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
 		rec.Phase = IssueOpsPhaseDone
 		rec.Execution.Lease.Status = "active"
 		rec.Execution.Lease.ClaimedAt = "2026-07-24T00:00:00Z"
-		rec.Execution.Lease.Holder = &NativeActor{
+		rec.Execution.Lease.Holder = &issueops.NativeActor{
 			Host: "codex", SessionID: "s",
-			SessionProcess: &NativeProcessReceipt{PID: 1234, StartedAt: "2026-07-24T00:00:00Z", Executable: "/usr/bin/codex"},
+			SessionProcess: &issueops.NativeProcessReceipt{PID: 1234, StartedAt: "2026-07-24T00:00:00Z", Executable: "/usr/bin/codex"},
 		}
 	})
 	if result, err := CleanupFinish(context.Background(), stateRoot, finishRequest(record.ID, false, ""), deps); err == nil || !containsString(result.Missing, "lease_released") {
@@ -454,7 +454,7 @@ func TestCleanupFinishAuditUsesPreDestructionSnapshot(t *testing.T) {
 		completion string
 		audit      string
 	}
-	deps.ReflectAudit = func(_ IssueOpsRecord, completion portCompletionSection, audit string) error {
+	deps.ReflectAudit = func(_ issueops.IssueOpsRecord, completion portCompletionSection, audit string) error {
 		audited = &struct {
 			completion string
 			audit      string
@@ -484,7 +484,7 @@ func TestCleanupFinishAuditUsesPreDestructionSnapshot(t *testing.T) {
 	stateRoot2, record2, _ := finishTestRecord(t, true)
 	git2 := &fakeFinishGit{branchOID: "abc123"}
 	deps2 := finishDeps(git2)
-	deps2.ReflectAudit = func(IssueOpsRecord, portCompletionSection, string) error {
+	deps2.ReflectAudit = func(issueops.IssueOpsRecord, portCompletionSection, string) error {
 		return fmt.Errorf("provider unavailable")
 	}
 	preview2, err := CleanupFinish(context.Background(), stateRoot2, finishRequest(record2.ID, false, ""), deps2)
@@ -516,7 +516,7 @@ func TestCleanupFinishBlocksWhileRemoteBranchStillExists(t *testing.T) {
 	}
 }
 
-func mutateFinishRecord(t *testing.T, stateRoot, id string, mutate func(*IssueOpsRecord)) {
+func mutateFinishRecord(t *testing.T, stateRoot, id string, mutate func(*issueops.IssueOpsRecord)) {
 	t.Helper()
 	if err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		rec, err := ReadIssueOps(stateRoot, id)

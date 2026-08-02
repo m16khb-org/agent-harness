@@ -1,4 +1,4 @@
-package model
+package issueops
 
 type IssueOpsStartRequest struct {
 	Repo   string `json:"repo"`

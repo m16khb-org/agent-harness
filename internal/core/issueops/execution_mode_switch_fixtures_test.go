@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/adapter/gitworktree"
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/preflight"
 )
 
@@ -17,7 +17,7 @@ import (
 //
 // leaseStatus는 게이트가 상태 이름이 아니라 writer 유무로 판정하는지 보기 위해
 // 호출자가 정한다.
-func preparedDirectExecutionRecord(t *testing.T, leaseStatus model.LeaseStatus) (string, IssueOpsRecord) {
+func preparedDirectExecutionRecord(t *testing.T, leaseStatus issueops.LeaseStatus) (string, issueops.IssueOpsRecord) {
 	t.Helper()
 	stateRoot, record := executionPrepareRecord(t)
 
@@ -34,12 +34,12 @@ func preparedDirectExecutionRecord(t *testing.T, leaseStatus model.LeaseStatus) 
 	}
 	prepared.Execution.Lease.Status = leaseStatus
 	switch leaseStatus {
-	case model.LeaseStatusClaimable:
+	case issueops.LeaseStatusClaimable:
 		// validateWriteLease는 claimable에 홀더 부재와 토큰 해시 하나를 강제한다.
 		// replace --reseed가 실제로 만드는 모양이다.
 		prepared.Execution.Lease.Holder = nil
 		prepared.Execution.Lease.ClaimTokenSHA256 = strings.Repeat("a", 64)
-	case model.LeaseStatusReleased:
+	case issueops.LeaseStatusReleased:
 		prepared.Execution.Lease.Holder = nil
 		prepared.Execution.Lease.ClaimTokenSHA256 = ""
 	}

@@ -1,10 +1,12 @@
 package issueops
 
 import (
-	"agent-harness/internal/core/preflight"
 	"context"
 	"path/filepath"
 	"testing"
+
+	"agent-harness/internal/contract/issueops"
+	"agent-harness/internal/core/preflight"
 )
 
 // cleanup 진단의 `missing`은 **충족되지 않은 요구**의 목록이다. 그 안에 상태 차단을
@@ -88,7 +90,7 @@ func cleanupStatusMissingWithSurvivingRemoteBranch(t *testing.T) []string {
 	if code, _, stderr := preflight.GitCmd(repo, "worktree", "add", "-q", worktree, branch); code != 0 {
 		t.Fatalf("git worktree add failed: %s", stderr)
 	}
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +98,7 @@ func cleanupStatusMissingWithSurvivingRemoteBranch(t *testing.T) []string {
 	if record, err = LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/2"); err != nil {
 		t.Fatal(err)
 	}
-	if record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+	if record, err = PrepareIssueOpsBranch(stateRoot, record.ID, issueops.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     record.IssueURL,
 		Branch:       branch,
@@ -130,7 +132,7 @@ func cleanupStatusMissingWithSurvivingRemoteBranch(t *testing.T) []string {
 	if record, err = AdvanceIssueOpsPhaseWithActor(stateRoot, record.ID, string(IssueOpsPhasePR), issueOpsActorForTest(worktree)); err != nil {
 		t.Fatal(err)
 	}
-	if record, err = VerifyIssueOpsRemoteArtifactWithActor(stateRoot, record.ID, IssueOpsRemoteArtifactVerificationRequest{
+	if record, err = VerifyIssueOpsRemoteArtifactWithActor(stateRoot, record.ID, issueops.IssueOpsRemoteArtifactVerificationRequest{
 		Provider:  "github",
 		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/2",
@@ -141,7 +143,7 @@ func cleanupStatusMissingWithSurvivingRemoteBranch(t *testing.T) []string {
 	}
 
 	// 원격 브랜치를 지우지 않은 상태다. 그것이 유일한 차단 사유여야 한다.
-	status := IssueOpsCleanupStatusForRecord(record, IssueOpsCleanupStatusRequest{Merged: true})
+	status := IssueOpsCleanupStatusForRecord(record, issueops.IssueOpsCleanupStatusRequest{Merged: true})
 	if status.Ready {
 		t.Fatal("surviving remote branch must block cleanup status")
 	}

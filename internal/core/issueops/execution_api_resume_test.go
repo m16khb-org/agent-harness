@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 )
 
 func TestExecutionActionResumeFailsClosedWithoutHandler(t *testing.T) {
@@ -53,7 +53,7 @@ func TestExecutionActionResumePrioritizesConfirmBeforeMutationGuardAndInvalidAct
 	result, err := ExecuteExecution(context.Background(), stateRoot, ExecutionActionRequest{
 		Action: ExecutionActionResume,
 		ID:     "io-resume",
-		Actor:  model.NativeActor{},
+		Actor:  issueops.NativeActor{},
 	}, ExecutionActionDependencies{Resume: func(context.Context, string, ExecutionResumeRequest) (ExecutionResumeResult, error) {
 		calls++
 		return ExecutionResumeResult{}, fmt.Errorf("handler must not run")

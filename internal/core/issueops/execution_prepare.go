@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops/pathutil"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
@@ -18,33 +18,33 @@ import (
 const ExecutionModeAuto = "auto"
 
 type ExecutionPrepareRequest struct {
-	ID          string            `json:"id"`
-	Mode        string            `json:"mode"`
-	Actor       model.NativeActor `json:"actor"`
-	CWD         string            `json:"cwd"`
-	OwnerHost   string            `json:"owner_host,omitempty"`
-	OwnerModel  string            `json:"owner_model,omitempty"`
-	OwnerEffort string            `json:"owner_effort,omitempty"`
-	Confirm     bool              `json:"confirm,omitempty"`
+	ID          string               `json:"id"`
+	Mode        string               `json:"mode"`
+	Actor       issueops.NativeActor `json:"actor"`
+	CWD         string               `json:"cwd"`
+	OwnerHost   string               `json:"owner_host,omitempty"`
+	OwnerModel  string               `json:"owner_model,omitempty"`
+	OwnerEffort string               `json:"owner_effort,omitempty"`
+	Confirm     bool                 `json:"confirm,omitempty"`
 }
 
 type ExecutionPrepareResult struct {
-	OK                  bool             `json:"ok"`
-	ID                  string           `json:"id"`
-	Preview             bool             `json:"preview,omitempty"`
-	RequestedMode       string           `json:"requested_mode"`
-	ResolvedMode        string           `json:"resolved_mode"`
-	FallbackCode        string           `json:"fallback_code,omitempty"`
-	Workspace           model.Workspace  `json:"workspace"`
-	Execution           *model.Execution `json:"execution,omitempty"`
-	ClaimTokenPath      string           `json:"claim_token_path,omitempty"`
-	IssueBodySHA256     string           `json:"issue_body_sha256,omitempty"`
-	ContextPacketPath   string           `json:"context_packet_path,omitempty"`
-	ContextPacketSHA256 string           `json:"context_packet_sha256,omitempty"`
-	OwnerPromptPath     string           `json:"owner_prompt_path,omitempty"`
-	OwnerPromptSHA256   string           `json:"owner_prompt_sha256,omitempty"`
-	IssueSnapshotSource string           `json:"issue_snapshot_source,omitempty"`
-	NextCommand         string           `json:"next_command,omitempty"`
+	OK                  bool                `json:"ok"`
+	ID                  string              `json:"id"`
+	Preview             bool                `json:"preview,omitempty"`
+	RequestedMode       string              `json:"requested_mode"`
+	ResolvedMode        string              `json:"resolved_mode"`
+	FallbackCode        string              `json:"fallback_code,omitempty"`
+	Workspace           issueops.Workspace  `json:"workspace"`
+	Execution           *issueops.Execution `json:"execution,omitempty"`
+	ClaimTokenPath      string              `json:"claim_token_path,omitempty"`
+	IssueBodySHA256     string              `json:"issue_body_sha256,omitempty"`
+	ContextPacketPath   string              `json:"context_packet_path,omitempty"`
+	ContextPacketSHA256 string              `json:"context_packet_sha256,omitempty"`
+	OwnerPromptPath     string              `json:"owner_prompt_path,omitempty"`
+	OwnerPromptSHA256   string              `json:"owner_prompt_sha256,omitempty"`
+	IssueSnapshotSource string              `json:"issue_snapshot_source,omitempty"`
+	NextCommand         string              `json:"next_command,omitempty"`
 }
 
 // ensureOrcaBranchIsFree는 Orca가 워크트리를 만들기 전에 대상 브랜치 이름이
@@ -68,7 +68,7 @@ type ExecutionPrepareResult struct {
 // 원격은 remote-tracking ref로 판정한다. `git ls-remote`는 prepare를 네트워크에 묶어
 // 오프라인에서 정상 경로를 막는다. 대신 낡은 ref가 이미 삭제된 브랜치를 있다고
 // 보고할 수 있어 메시지가 fetch를 안내한다.
-func ensureOrcaBranchIsFree(record IssueOpsRecord, branch string) error {
+func ensureOrcaBranchIsFree(record issueops.IssueOpsRecord, branch string) error {
 	branch = strings.TrimSpace(branch)
 	if branch == "" {
 		return fmt.Errorf("Orca prepare requires a branch name")
@@ -100,7 +100,7 @@ func ensureOrcaBranchIsFree(record IssueOpsRecord, branch string) error {
 	return nil
 }
 
-func exactGitLabPreparedRemote(record IssueOpsRecord, branch, observedOID string) bool {
+func exactGitLabPreparedRemote(record issueops.IssueOpsRecord, branch, observedOID string) bool {
 	prepared := record.BranchPrepare
 	return prepared != nil &&
 		strings.EqualFold(strings.TrimSpace(prepared.Provider), "gitlab") &&
@@ -136,12 +136,12 @@ func newExecutionOperationID() (string, error) {
 	return hex.EncodeToString(raw[:]), nil
 }
 
-func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req ExecutionPrepareRequest, requested string, orca port.ExecutionOrcaProvisioner) (string, string, port.ExecutionOrcaProbeRequest, error) {
+func resolveExecutionPrepareMode(ctx context.Context, record issueops.IssueOpsRecord, req ExecutionPrepareRequest, requested string, orca port.ExecutionOrcaProvisioner) (string, string, port.ExecutionOrcaProbeRequest, error) {
 	probeReq := port.ExecutionOrcaProbeRequest{
 		Repo: record.Repo, Host: strings.ToLower(strings.TrimSpace(req.OwnerHost)),
 		Model: strings.TrimSpace(req.OwnerModel), Effort: strings.TrimSpace(req.OwnerEffort),
 	}
-	if requested == string(model.ExecutionModeDirect) {
+	if requested == string(issueops.ExecutionModeDirect) {
 		return requested, "", probeReq, nil
 	}
 	if probeReq.Host != "codex" && probeReq.Host != "claude" {
@@ -149,7 +149,7 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 	}
 	if orca == nil {
 		if requested == ExecutionModeAuto {
-			return string(model.ExecutionModeDirect), "orca_adapter_unavailable", probeReq, nil
+			return string(issueops.ExecutionModeDirect), "orca_adapter_unavailable", probeReq, nil
 		}
 		return "", "", probeReq, fmt.Errorf("Orca provisioner is unavailable")
 	}
@@ -170,7 +170,7 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 			code = "orca_probe_failed"
 		}
 		if requested == ExecutionModeAuto {
-			return string(model.ExecutionModeDirect), code, probeReq, nil
+			return string(issueops.ExecutionModeDirect), code, probeReq, nil
 		}
 		if err != nil {
 			return "", "", probeReq, fmt.Errorf("Orca probe failed: %w", err)
@@ -189,13 +189,13 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 	if err := ensureOrcaBranchIsFree(record, strings.TrimSpace(record.Branch)); err != nil {
 		const code = "orca_branch_name_taken"
 		if requested == ExecutionModeAuto {
-			return string(model.ExecutionModeDirect), code, probeReq, nil
+			return string(issueops.ExecutionModeDirect), code, probeReq, nil
 		}
 		// 명시적으로 Orca를 고른 사용자의 의도는 대신 바꾸지 않는다. 원인과 다음
 		// 행동을 담은 사전 확인 메시지를 그대로 전한다.
 		return "", "", probeReq, err
 	}
-	return string(model.ExecutionModeOrca), "", probeReq, nil
+	return string(issueops.ExecutionModeOrca), "", probeReq, nil
 }
 
 // executionWriterAbsentNextCommand는 준비된 실행에 lease writer가 없을 때 그
@@ -205,15 +205,15 @@ func resolveExecutionPrepareMode(ctx context.Context, record IssueOpsRecord, req
 // 바로 되고, released는 토큰이 없어 reseed로 재봉인해야 하며, revoking은 이전
 // 홀더가 죽어야 finalize할 수 있다. 하나의 문구로 뭉뚱그리면 사용자가 어느
 // 명령을 써야 할지 모른다(이슈 #170).
-func executionWriterAbsentNextCommand(record IssueOpsRecord, confirm bool) (string, error) {
+func executionWriterAbsentNextCommand(record issueops.IssueOpsRecord, confirm bool) (string, error) {
 	if !confirm {
 		return "", nil
 	}
 	lease := record.Execution.Lease
 	generation := lease.Generation
 	switch lease.Status {
-	case model.LeaseStatusClaimable:
-		if record.Execution.Mode == model.ExecutionModeOrca &&
+	case issueops.LeaseStatusClaimable:
+		if record.Execution.Mode == issueops.ExecutionModeOrca &&
 			(record.Execution.Orca == nil || record.Execution.Orca.LeaseGeneration != generation) {
 			next := executionResumeCommand(record.ID, generation)
 			return next, fmt.Errorf(
@@ -224,12 +224,12 @@ func executionWriterAbsentNextCommand(record IssueOpsRecord, confirm bool) (stri
 		return next, fmt.Errorf(
 			"IssueOps execution is prepared but generation %d is claimable and has no writer; run %s",
 			generation, next)
-	case model.LeaseStatusReleased:
+	case issueops.LeaseStatusReleased:
 		next := executionWriterAbsentRecoveryCommand(record)
 		return next, fmt.Errorf(
 			"IssueOps execution is prepared but generation %d was released and has no writer; preview resealing with %s",
 			generation, next)
-	case model.LeaseStatusRevoking:
+	case issueops.LeaseStatusRevoking:
 		next := executionWriterAbsentRecoveryCommand(record)
 		return next, fmt.Errorf(
 			"IssueOps execution generation %d is revoking and has no writer; finalize the revocation with %s",
@@ -239,7 +239,7 @@ func executionWriterAbsentNextCommand(record IssueOpsRecord, confirm bool) (stri
 	}
 }
 
-func executionWorkspaceRequest(record IssueOpsRecord, confirm bool) (port.ExecutionWorkspaceRequest, error) {
+func executionWorkspaceRequest(record issueops.IssueOpsRecord, confirm bool) (port.ExecutionWorkspaceRequest, error) {
 	if record.BranchPrepare == nil || strings.TrimSpace(record.BranchPrepare.BaseSHA) == "" {
 		return port.ExecutionWorkspaceRequest{}, fmt.Errorf("verified branch preparation with base_sha is required")
 	}
@@ -318,7 +318,7 @@ func ensureExecutionRootUnclaimed(stateRoot, selfID, root string) error {
 	return nil
 }
 
-func executionRecordWorkspaceRoot(record IssueOpsRecord) string {
+func executionRecordWorkspaceRoot(record issueops.IssueOpsRecord) string {
 	if record.Execution == nil {
 		return ""
 	}
@@ -342,7 +342,7 @@ var issueOpsOwnerReportLabels = []string{
 	"Blockers",
 }
 
-func renderExecutionOwnerReportContract(record IssueOpsRecord, req ExecutionPrepareRequest) string {
+func renderExecutionOwnerReportContract(record issueops.IssueOpsRecord, req ExecutionPrepareRequest) string {
 	mode := strings.ToLower(strings.TrimSpace(req.Mode))
 	if record.Execution != nil {
 		mode = string(record.Execution.Mode)
@@ -382,26 +382,26 @@ func normalizeExecutionPrepareMode(mode string) (string, error) {
 	switch normalized := strings.ToLower(strings.TrimSpace(mode)); normalized {
 	case "", ExecutionModeAuto:
 		return ExecutionModeAuto, nil
-	case string(model.ExecutionModeDirect), string(model.ExecutionModeOrca):
+	case string(issueops.ExecutionModeDirect), string(issueops.ExecutionModeOrca):
 		return normalized, nil
 	default:
 		return "", fmt.Errorf("execution mode must be auto, direct, or orca")
 	}
 }
 
-func workspaceFromReceipt(receipt port.ExecutionWorkspaceReceipt, linkedAt string) model.Workspace {
-	return model.Workspace{
+func workspaceFromReceipt(receipt port.ExecutionWorkspaceReceipt, linkedAt string) issueops.Workspace {
+	return issueops.Workspace{
 		SourceRoot: receipt.SourceRoot, Root: receipt.Root, Branch: receipt.Branch,
 		BaseHead: receipt.BaseHead, ParentWorktree: receipt.ParentWorktree,
 		Driver: receipt.Driver, LinkedAt: linkedAt,
 	}
 }
 
-func preparedExecutionResult(record IssueOpsRecord, requested string) ExecutionPrepareResult {
+func preparedExecutionResult(record issueops.IssueOpsRecord, requested string) ExecutionPrepareResult {
 	return preparedExecutionResultWithModes(record, requested, "")
 }
 
-func preparedExecutionResultWithModes(record IssueOpsRecord, requested, fallback string) ExecutionPrepareResult {
+func preparedExecutionResultWithModes(record issueops.IssueOpsRecord, requested, fallback string) ExecutionPrepareResult {
 	return ExecutionPrepareResult{
 		OK: true, ID: record.ID, RequestedMode: requested, ResolvedMode: string(record.Execution.Mode),
 		FallbackCode: fallback, Workspace: record.Execution.Workspace, Execution: record.Execution,

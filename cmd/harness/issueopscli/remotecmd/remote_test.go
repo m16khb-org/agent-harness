@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core"
 	issueopscore "agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
 )
 
 func TestRunScoreWithJudgeNoneAndErrorPaths(t *testing.T) {
@@ -54,21 +54,21 @@ func TestRunScoreWithJudgeNoneAndErrorPaths(t *testing.T) {
 func TestRunVerifyArtifactAndRemoteCreateDryRuns(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record := remoteIssueOpsRecord(t)
-	var records []core.IssueOpsRecord
+	var records []issueopscontract.IssueOpsRecord
 	var printed []any
 	deps := Deps{
 		PrintJSON: func(value any) error {
 			printed = append(printed, value)
 			return nil
 		},
-		PrintResult: func(record core.IssueOpsRecord, jsonOut bool, err error) error {
+		PrintResult: func(record issueopscontract.IssueOpsRecord, jsonOut bool, err error) error {
 			if err != nil {
 				return err
 			}
 			records = append(records, record)
 			return nil
 		},
-		VerifyLive: func(req core.IssueOpsRemoteArtifactVerificationRequest) error {
+		VerifyLive: func(req issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error {
 			if req.Provider == "" || req.URL == "" {
 				return errors.New("bad request")
 			}
@@ -189,7 +189,7 @@ func TestRunRemoteCreatePRUsesPublicationHandlerForPreviewAndConfirm(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	var process model.NativeProcessReceipt
+	var process issueopscontract.NativeProcessReceipt
 	for _, receipt := range ancestry {
 		if receipt.PID == os.Getpid() {
 			process = receipt
@@ -212,8 +212,8 @@ func TestRunRemoteCreatePRUsesPublicationHandlerForPreviewAndConfirm(t *testing.
 			}
 			return core.IssueProviderCreatePullRequestResult{OK: true, Preview: "would create pull request"}, nil
 		}},
-		ObserveProcessAncestry: func(int) ([]model.NativeProcessReceipt, error) {
-			return append([]model.NativeProcessReceipt(nil), ancestry...), nil
+		ObserveProcessAncestry: func(int) ([]issueopscontract.NativeProcessReceipt, error) {
+			return append([]issueopscontract.NativeProcessReceipt(nil), ancestry...), nil
 		},
 		PrintJSON: func(value any) error {
 			printed = append(printed, value)
@@ -263,7 +263,7 @@ func TestRunRemoteCreatePRObservesAncestryOnlyForConfirmedMutation(t *testing.T)
 	observeCalls := 0
 	providerCalls := 0
 	deps := Deps{
-		ObserveProcessAncestry: func(int) ([]model.NativeProcessReceipt, error) {
+		ObserveProcessAncestry: func(int) ([]issueopscontract.NativeProcessReceipt, error) {
 			observeCalls++
 			return nil, errors.New("ps unavailable")
 		},
@@ -341,7 +341,7 @@ func TestRunRemoteCreateChildConfirmUsesActiveLeaseActor(t *testing.T) {
 		"--session-id", "session-1", "--cwd", worktree, "--confirm", "--json",
 	}, Deps{
 		PrintError: func(error) error { return nil },
-		ObserveProcessAncestry: func(int) ([]model.NativeProcessReceipt, error) {
+		ObserveProcessAncestry: func(int) ([]issueopscontract.NativeProcessReceipt, error) {
 			return ancestry, nil
 		},
 	})
@@ -369,7 +369,7 @@ func TestRunRemoteCreateChildRejectsWrongActorBeforeProviderCall(t *testing.T) {
 		"--session-id", "wrong-session", "--cwd", worktree, "--confirm", "--json",
 	}, Deps{
 		PrintError: func(error) error { return nil },
-		ObserveProcessAncestry: func(int) ([]model.NativeProcessReceipt, error) {
+		ObserveProcessAncestry: func(int) ([]issueopscontract.NativeProcessReceipt, error) {
 			return ancestry, nil
 		},
 	})
@@ -400,10 +400,10 @@ func TestRemoteHelpersAndBoundaries(t *testing.T) {
 	if err := deps.printError(errors.New("x")); err == nil {
 		t.Fatal("default printError should return input error")
 	}
-	if err := deps.printResult(core.IssueOpsRecord{}, false, errors.New("x")); err == nil {
+	if err := deps.printResult(issueopscontract.IssueOpsRecord{}, false, errors.New("x")); err == nil {
 		t.Fatal("default printResult should return input error")
 	}
-	if err := deps.verifyLive(core.IssueOpsRemoteArtifactVerificationRequest{}); err != nil {
+	if err := deps.verifyLive(issueopscontract.IssueOpsRemoteArtifactVerificationRequest{}); err != nil {
 		t.Fatalf("default verifyLive should allow: %v", err)
 	}
 	var flags repeatedFlag
@@ -432,13 +432,13 @@ func TestRemoteHelpersAndBoundaries(t *testing.T) {
 	if _, err := readIssueOpsRemoteScoringRequestFile(bad); err == nil {
 		t.Fatal("bad scoring JSON should fail")
 	}
-	if core.ResolveRecordProvider(core.IssueOpsRecord{BranchPrepare: &core.IssueOpsBranchPrepare{Provider: "gitlab"}}) != "gitlab" {
+	if core.ResolveRecordProvider(issueopscontract.IssueOpsRecord{BranchPrepare: &issueopscontract.IssueOpsBranchPrepare{Provider: "gitlab"}}) != "gitlab" {
 		t.Fatal("branch prepare provider should win")
 	}
-	if core.ResolveRecordProvider(core.IssueOpsRecord{RemoteArtifact: &core.IssueOpsRemoteArtifactVerification{Provider: "github"}}) != "github" {
+	if core.ResolveRecordProvider(issueopscontract.IssueOpsRecord{RemoteArtifact: &issueopscontract.IssueOpsRemoteArtifactVerification{Provider: "github"}}) != "github" {
 		t.Fatal("remote artifact provider should be used")
 	}
-	if core.ResolveRecordProvider(core.IssueOpsRecord{IssueURL: "https://gitlab.com/acme/repo/-/issues/1"}) != "gitlab" {
+	if core.ResolveRecordProvider(issueopscontract.IssueOpsRecord{IssueURL: "https://gitlab.com/acme/repo/-/issues/1"}) != "gitlab" {
 		t.Fatal("gitlab issue URL should infer provider")
 	}
 	if err := Run(nil, deps); err != nil {
@@ -485,7 +485,7 @@ func TestRemoteNativeActorIncludesCurrentProcessAncestry(t *testing.T) {
 	}
 }
 
-func remoteIssueOpsRecord(t *testing.T) core.IssueOpsRecord {
+func remoteIssueOpsRecord(t *testing.T) issueopscontract.IssueOpsRecord {
 	t.Helper()
 	record := remoteIssueOpsRecordWithoutChild(t)
 	var err error
@@ -501,10 +501,10 @@ func remoteIssueOpsRecord(t *testing.T) core.IssueOpsRecord {
 	return record
 }
 
-func remoteIssueOpsRecordWithoutChild(t *testing.T) core.IssueOpsRecord {
+func remoteIssueOpsRecordWithoutChild(t *testing.T) issueopscontract.IssueOpsRecord {
 	t.Helper()
 	repo := t.TempDir()
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{Repo: repo, Branch: "1234-remote-cmd"})
+	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: "1234-remote-cmd"})
 	if err != nil {
 		t.Fatalf("StartIssueOps: %v", err)
 	}
@@ -512,7 +512,7 @@ func remoteIssueOpsRecordWithoutChild(t *testing.T) core.IssueOpsRecord {
 	if err != nil {
 		t.Fatalf("LinkIssueOpsIssue: %v", err)
 	}
-	record, err = core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), record.ID, core.IssueOpsBranchPrepareRequest{
+	record, err = core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     "https://github.com/acme/repo/issues/1234",
 		Branch:       record.Branch,
@@ -525,13 +525,13 @@ func remoteIssueOpsRecordWithoutChild(t *testing.T) core.IssueOpsRecord {
 	return record
 }
 
-func activateRemoteIssueOpsRecordForCurrentProcess(t *testing.T, record *core.IssueOpsRecord) (string, []model.NativeProcessReceipt) {
+func activateRemoteIssueOpsRecordForCurrentProcess(t *testing.T, record *issueopscontract.IssueOpsRecord) (string, []issueopscontract.NativeProcessReceipt) {
 	t.Helper()
 	ancestry, err := issueopscore.ObserveNativeProcessAncestry(os.Getpid())
 	if err != nil {
 		t.Fatal(err)
 	}
-	var process model.NativeProcessReceipt
+	var process issueopscontract.NativeProcessReceipt
 	for _, receipt := range ancestry {
 		if receipt.PID == os.Getpid() {
 			process = receipt
@@ -543,15 +543,15 @@ func activateRemoteIssueOpsRecordForCurrentProcess(t *testing.T, record *core.Is
 	}
 	worktree := filepath.Join(record.Repo, "worktree")
 	record.WorktreePath = worktree
-	record.Execution = &model.Execution{
-		Mode: model.ExecutionModeDirect,
-		Workspace: model.Workspace{
+	record.Execution = &issueopscontract.Execution{
+		Mode: issueopscontract.ExecutionModeDirect,
+		Workspace: issueopscontract.Workspace{
 			SourceRoot: record.Repo, Root: worktree, Branch: record.Branch,
 			BaseHead: strings.Repeat("a", 40), Driver: "git", LinkedAt: "2026-08-02T00:00:00Z",
 		},
-		Lease: model.WriteLease{
-			Generation: 1, Status: model.LeaseStatusActive, ClaimedAt: "2026-08-02T00:00:00Z",
-			Holder: &model.NativeActor{Host: "codex", SessionID: "session-1", SessionProcess: &process},
+		Lease: issueopscontract.WriteLease{
+			Generation: 1, Status: issueopscontract.LeaseStatusActive, ClaimedAt: "2026-08-02T00:00:00Z",
+			Holder: &issueopscontract.NativeActor{Host: "codex", SessionID: "session-1", SessionProcess: &process},
 		},
 	}
 	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), *record); err != nil {
@@ -595,11 +595,11 @@ func TestRunRemoteCreateIssueConfirmVerifiesLiveIssue(t *testing.T) {
 	writeFakeGhForCreateIssue(t, binDir)
 	t.Setenv("PATH", binDir)
 
-	var verified []core.IssueOpsRemoteArtifactVerificationRequest
+	var verified []issueopscontract.IssueOpsRemoteArtifactVerificationRequest
 	deps := Deps{
 		PrintJSON:  func(any) error { return nil },
 		PrintError: func(error) error { return nil },
-		VerifyLive: func(req core.IssueOpsRemoteArtifactVerificationRequest) error {
+		VerifyLive: func(req issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error {
 			verified = append(verified, req)
 			return nil
 		},
@@ -628,7 +628,7 @@ func TestRunRemoteCreateIssueConfirmFailsWhenLiveVerificationFails(t *testing.T)
 
 	deps := Deps{
 		PrintError: func(error) error { return nil },
-		VerifyLive: func(core.IssueOpsRemoteArtifactVerificationRequest) error {
+		VerifyLive: func(issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error {
 			return errors.New("remote artifact missing verified label(s): bug")
 		},
 	}

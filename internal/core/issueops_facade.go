@@ -6,47 +6,14 @@ import (
 	"strings"
 	"time"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/issueops/artifacttemplate"
 	"agent-harness/internal/core/looprun"
 )
 
-type IssueOpsStartRequest = issueops.IssueOpsStartRequest
-type IssueOpsFeedbackItem = issueops.IssueOpsFeedbackItem
-type IssueOpsIssueLink = issueops.IssueOpsIssueLink
-type IssueOpsBranchPrepareStep = issueops.IssueOpsBranchPrepareStep
-type IssueOpsBranchPrepare = issueops.IssueOpsBranchPrepare
-type IssueOpsBranchPrepareRequest = issueops.IssueOpsBranchPrepareRequest
-type IssueOpsRemoteArtifactVerification = issueops.IssueOpsRemoteArtifactVerification
-type IssueOpsRemoteArtifactVerificationRequest = issueops.IssueOpsRemoteArtifactVerificationRequest
-type IssueOpsIntentContract = issueops.IssueOpsIntentContract
-type IssueOpsIntentRecordRequest = issueops.IssueOpsIntentRecordRequest
-type IssueOpsDesignReview = issueops.IssueOpsDesignReview
-type IssueOpsDesignReviewRequest = issueops.IssueOpsDesignReviewRequest
-type IssueOpsDecision = issueops.IssueOpsDecision
-type IssueOpsDecisionRecordRequest = issueops.IssueOpsDecisionRecordRequest
-type IssueOpsCompatibilityReview = issueops.IssueOpsCompatibilityReview
-type IssueOpsCompatibilityReviewRequest = issueops.IssueOpsCompatibilityReviewRequest
-type IssueOpsDevilsAdvocateReviewRequest = issueops.IssueOpsDevilsAdvocateReviewRequest
-type IssueOpsDomainReview = issueops.IssueOpsDomainReview
-type IssueOpsDomainReviewRequest = issueops.IssueOpsDomainReviewRequest
-type IssueOpsPlanPrepRequest = issueops.IssueOpsPlanPrepRequest
-type IssueOpsPlanPrepItemRequest = issueops.IssueOpsPlanPrepItemRequest
 type IssueOpsActor = issueops.IssueOpsActor
-type IssueOpsRecord = issueops.IssueOpsRecord
-type IssueOpsDelegationContract = issueops.IssueOpsDelegationContract
-type IssueOpsChildCycleRef = issueops.IssueOpsChildCycleRef
-type IssueOpsChildStartRequest = issueops.IssueOpsChildStartRequest
-type IssueOpsChildStartResult = issueops.IssueOpsChildStartResult
-type IssueOpsChildStatusEntry = issueops.IssueOpsChildStatusEntry
-type IssueOpsChildStatusResult = issueops.IssueOpsChildStatusResult
-type IssueOpsChildValidationResult = issueops.IssueOpsChildValidationResult
-type IssueOpsReadiness = issueops.IssueOpsReadiness
-type IssueOpsCleanupStatusRequest = issueops.IssueOpsCleanupStatusRequest
-type IssueOpsCleanupStatus = issueops.IssueOpsCleanupStatus
-type IssueOpsCloseChildrenRequest = issueops.IssueOpsCloseChildrenRequest
-type IssueOpsCloseChildResult = issueops.IssueOpsCloseChildResult
-type IssueOpsCloseChildrenResult = issueops.IssueOpsCloseChildrenResult
 type LegacyResetRowCounts = issueops.LegacyResetRowCounts
 type LegacyRemoteCreateClaim = issueops.LegacyRemoteCreateClaim
 type LegacyOrcaTask = issueops.LegacyOrcaTask
@@ -65,8 +32,6 @@ type LegacyResetActivationBeginRequest = issueops.LegacyResetActivationBeginRequ
 type LegacyResetActivationSealRequest = issueops.LegacyResetActivationSealRequest
 type LegacyResetActivationResult = issueops.LegacyResetActivationResult
 type ResetRequiredError = issueops.ResetRequiredError
-
-type IssueOpsPhase = issueops.IssueOpsPhase
 
 const (
 	IssueOpsCurrentSchemaVersion     = issueops.IssueOpsCurrentSchemaVersion
@@ -145,63 +110,63 @@ func ParseIssueOpsTemplateFields(values []string) (map[string]string, error) {
 	return artifacttemplate.ParseFieldAssignments(values)
 }
 
-func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, error) {
+func StartIssueOps(stateRoot string, req issueopscontract.IssueOpsStartRequest) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.StartIssueOps(stateRoot, req)
 }
 
-func StartIssueOpsChild(stateRoot string, req IssueOpsChildStartRequest) (IssueOpsChildStartResult, error) {
+func StartIssueOpsChild(stateRoot string, req issueopscontract.IssueOpsChildStartRequest) (issueopscontract.IssueOpsChildStartResult, error) {
 	return issueops.StartIssueOpsChild(stateRoot, req)
 }
 
-func StartIssueOpsChildWithActor(stateRoot string, req IssueOpsChildStartRequest, actor IssueOpsActor) (IssueOpsChildStartResult, error) {
+func StartIssueOpsChildWithActor(stateRoot string, req issueopscontract.IssueOpsChildStartRequest, actor IssueOpsActor) (issueopscontract.IssueOpsChildStartResult, error) {
 	return issueops.StartIssueOpsChildWithActor(stateRoot, req, actor)
 }
 
-func IssueOpsChildStatus(stateRoot, parentID string, repair bool) (IssueOpsChildStatusResult, error) {
+func IssueOpsChildStatus(stateRoot, parentID string, repair bool) (issueopscontract.IssueOpsChildStatusResult, error) {
 	return issueops.IssueOpsChildStatus(stateRoot, parentID, repair)
 }
 
-func IssueOpsChildStatusWithActor(stateRoot, parentID string, repair bool, actor IssueOpsActor) (IssueOpsChildStatusResult, error) {
+func IssueOpsChildStatusWithActor(stateRoot, parentID string, repair bool, actor IssueOpsActor) (issueopscontract.IssueOpsChildStatusResult, error) {
 	return issueops.IssueOpsChildStatusWithActor(stateRoot, parentID, repair, actor)
 }
 
-func AcceptIssueOpsChild(stateRoot, parentID, childID string, evidence []string) (IssueOpsChildValidationResult, error) {
+func AcceptIssueOpsChild(stateRoot, parentID, childID string, evidence []string) (issueopscontract.IssueOpsChildValidationResult, error) {
 	return issueops.AcceptIssueOpsChild(stateRoot, parentID, childID, evidence)
 }
 
-func AcceptIssueOpsChildWithActor(stateRoot, parentID, childID string, evidence []string, actor IssueOpsActor) (IssueOpsChildValidationResult, error) {
+func AcceptIssueOpsChildWithActor(stateRoot, parentID, childID string, evidence []string, actor IssueOpsActor) (issueopscontract.IssueOpsChildValidationResult, error) {
 	return issueops.AcceptIssueOpsChildWithActor(stateRoot, parentID, childID, evidence, actor)
 }
 
-func RejectIssueOpsChild(stateRoot, parentID, childID, reason string, evidence []string) (IssueOpsChildValidationResult, error) {
+func RejectIssueOpsChild(stateRoot, parentID, childID, reason string, evidence []string) (issueopscontract.IssueOpsChildValidationResult, error) {
 	return issueops.RejectIssueOpsChild(stateRoot, parentID, childID, reason, evidence)
 }
 
-func RejectIssueOpsChildWithActor(stateRoot, parentID, childID, reason string, evidence []string, actor IssueOpsActor) (IssueOpsChildValidationResult, error) {
+func RejectIssueOpsChildWithActor(stateRoot, parentID, childID, reason string, evidence []string, actor IssueOpsActor) (issueopscontract.IssueOpsChildValidationResult, error) {
 	return issueops.RejectIssueOpsChildWithActor(stateRoot, parentID, childID, reason, evidence, actor)
 }
 
-func DropIssueOpsChild(stateRoot, parentID, childID, reason string) (IssueOpsChildValidationResult, error) {
+func DropIssueOpsChild(stateRoot, parentID, childID, reason string) (issueopscontract.IssueOpsChildValidationResult, error) {
 	return issueops.DropIssueOpsChild(stateRoot, parentID, childID, reason)
 }
 
-func DropIssueOpsChildWithActor(stateRoot, parentID, childID, reason string, actor IssueOpsActor) (IssueOpsChildValidationResult, error) {
+func DropIssueOpsChildWithActor(stateRoot, parentID, childID, reason string, actor IssueOpsActor) (issueopscontract.IssueOpsChildValidationResult, error) {
 	return issueops.DropIssueOpsChildWithActor(stateRoot, parentID, childID, reason, actor)
 }
 
-func IssueOpsStatus(stateRoot, id string) (IssueOpsRecord, error) {
+func IssueOpsStatus(stateRoot, id string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.IssueOpsStatus(stateRoot, id)
 }
 
-func ResolveRecordProvider(record IssueOpsRecord) string {
+func ResolveRecordProvider(record issueopscontract.IssueOpsRecord) string {
 	return issueops.ResolveRecordProvider(record)
 }
 
-func UmbrellaBranchGateReason(record IssueOpsRecord) string {
+func UmbrellaBranchGateReason(record issueopscontract.IssueOpsRecord) string {
 	return issueops.UmbrellaBranchGateReason(record)
 }
 
-func StageIssueOpsArtifact(stateRoot, id, name string, content []byte) (IssueOpsRecord, error) {
+func StageIssueOpsArtifact(stateRoot, id, name string, content []byte) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.StageIssueOpsArtifact(stateRoot, id, name, content)
 }
 
@@ -209,13 +174,13 @@ func StagedIssueOpsArtifactNames(stateRoot, id string) ([]string, error) {
 	return issueops.StagedIssueOpsArtifactNames(stateRoot, id)
 }
 
-func UnstageIssueOpsArtifact(stateRoot, id, name string) (IssueOpsRecord, error) {
+func UnstageIssueOpsArtifact(stateRoot, id, name string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.UnstageIssueOpsArtifact(stateRoot, id, name)
 }
 
 type IssueOpsImplementationReviewRequest = issueops.IssueOpsImplementationReviewRequest
 
-func RecordIssueOpsImplementationReview(stateRoot, id string, req IssueOpsImplementationReviewRequest) (IssueOpsRecord, error) {
+func RecordIssueOpsImplementationReview(stateRoot, id string, req IssueOpsImplementationReviewRequest) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsImplementationReview(stateRoot, id, req)
 }
 
@@ -262,23 +227,23 @@ func IssueOpsCleanupRemoteBranch(ctx context.Context, stateRoot string, req Issu
 	return issueops.CleanupRemoteBranch(ctx, stateRoot, req, deps)
 }
 
-func ReflectIssueOpsCleanupAudit(stateRoot string, record IssueOpsRecord, completion IssueProviderCompletionSection, audit string, prov IssueProvider) error {
+func ReflectIssueOpsCleanupAudit(stateRoot string, record issueopscontract.IssueOpsRecord, completion IssueProviderCompletionSection, audit string, prov IssueProvider) error {
 	return issueops.ReflectCleanupAudit(stateRoot, record, completion, audit, prov)
 }
 
-func ReadIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
+func ReadIssueOps(stateRoot, id string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.ReadIssueOps(stateRoot, id)
 }
 
-func RecordIssueOpsIntent(stateRoot, id string, req IssueOpsIntentRecordRequest) (IssueOpsRecord, error) {
+func RecordIssueOpsIntent(stateRoot, id string, req issueopscontract.IssueOpsIntentRecordRequest) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsIntent(stateRoot, id, req)
 }
 
-func RecordIssueOpsIntentWithActor(stateRoot, id string, req IssueOpsIntentRecordRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+func RecordIssueOpsIntentWithActor(stateRoot, id string, req issueopscontract.IssueOpsIntentRecordRequest, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsIntentWithActor(stateRoot, id, req, actor)
 }
 
-func RecordIssueOpsPlanPrep(stateRoot, id string, req IssueOpsPlanPrepRequest) (IssueOpsRecord, error) {
+func RecordIssueOpsPlanPrep(stateRoot, id string, req issueopscontract.IssueOpsPlanPrepRequest) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsPlanPrep(stateRoot, id, req)
 }
 
@@ -288,63 +253,63 @@ func PruneIssueOps(stateRoot string, maxAge time.Duration, confirm bool) (IssueO
 	return issueops.PruneIssueOps(stateRoot, maxAge, confirm)
 }
 
-func RecordIssueOpsPlanPrepWithActor(stateRoot, id string, req IssueOpsPlanPrepRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+func RecordIssueOpsPlanPrepWithActor(stateRoot, id string, req issueopscontract.IssueOpsPlanPrepRequest, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsPlanPrepWithActor(stateRoot, id, req, actor)
 }
 
-func RecordIssueOpsDesignReview(stateRoot, id string, req IssueOpsDesignReviewRequest) (IssueOpsRecord, error) {
+func RecordIssueOpsDesignReview(stateRoot, id string, req issueopscontract.IssueOpsDesignReviewRequest) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsDesignReview(stateRoot, id, req)
 }
 
-func RecordIssueOpsDesignReviewWithActor(stateRoot, id string, req IssueOpsDesignReviewRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+func RecordIssueOpsDesignReviewWithActor(stateRoot, id string, req issueopscontract.IssueOpsDesignReviewRequest, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsDesignReviewWithActor(stateRoot, id, req, actor)
 }
 
-func RecordIssueOpsCompatibilityReview(stateRoot, id string, req IssueOpsCompatibilityReviewRequest) (IssueOpsRecord, error) {
+func RecordIssueOpsCompatibilityReview(stateRoot, id string, req issueopscontract.IssueOpsCompatibilityReviewRequest) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsCompatibilityReview(stateRoot, id, req)
 }
 
-func RecordIssueOpsCompatibilityReviewWithActor(stateRoot, id string, req IssueOpsCompatibilityReviewRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+func RecordIssueOpsCompatibilityReviewWithActor(stateRoot, id string, req issueopscontract.IssueOpsCompatibilityReviewRequest, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsCompatibilityReviewWithActor(stateRoot, id, req, actor)
 }
 
-func RecordIssueOpsDevilsAdvocateReview(stateRoot, id string, req IssueOpsDevilsAdvocateReviewRequest) (IssueOpsRecord, error) {
+func RecordIssueOpsDevilsAdvocateReview(stateRoot, id string, req issueopscontract.IssueOpsDevilsAdvocateReviewRequest) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsDevilsAdvocateReview(stateRoot, id, req)
 }
 
-func RecordIssueOpsDevilsAdvocateReviewWithActor(stateRoot, id string, req IssueOpsDevilsAdvocateReviewRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+func RecordIssueOpsDevilsAdvocateReviewWithActor(stateRoot, id string, req issueopscontract.IssueOpsDevilsAdvocateReviewRequest, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsDevilsAdvocateReviewWithActor(stateRoot, id, req, actor)
 }
 
-func RecordIssueOpsDomainReview(stateRoot, id string, req IssueOpsDomainReviewRequest) (IssueOpsRecord, error) {
+func RecordIssueOpsDomainReview(stateRoot, id string, req issueopscontract.IssueOpsDomainReviewRequest) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsDomainReview(stateRoot, id, req)
 }
 
-func RecordIssueOpsDomainReviewWithActor(stateRoot, id string, req IssueOpsDomainReviewRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+func RecordIssueOpsDomainReviewWithActor(stateRoot, id string, req issueopscontract.IssueOpsDomainReviewRequest, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsDomainReviewWithActor(stateRoot, id, req, actor)
 }
 
-func RecordIssueOpsAISlopCleanEvidence(stateRoot, id string, categories, verification []string) (IssueOpsRecord, error) {
+func RecordIssueOpsAISlopCleanEvidence(stateRoot, id string, categories, verification []string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsAISlopCleanEvidence(stateRoot, id, categories, verification)
 }
 
-func RecordIssueOpsAISlopCleanEvidenceWithActor(stateRoot, id string, categories, verification []string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func RecordIssueOpsAISlopCleanEvidenceWithActor(stateRoot, id string, categories, verification []string, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsAISlopCleanEvidenceWithActor(stateRoot, id, categories, verification, actor)
 }
 
-func ResolveIssueOpsFeedback(stateRoot, id string, index int, resolution string) (IssueOpsRecord, error) {
+func ResolveIssueOpsFeedback(stateRoot, id string, index int, resolution string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.ResolveIssueOpsFeedback(stateRoot, id, index, resolution)
 }
 
-func ResolveIssueOpsFeedbackWithActor(stateRoot, id string, index int, resolution string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func ResolveIssueOpsFeedbackWithActor(stateRoot, id string, index int, resolution string, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.ResolveIssueOpsFeedbackWithActor(stateRoot, id, index, resolution, actor)
 }
 
-func RegressIssueOpsForReplan(stateRoot, id, reason string) (IssueOpsRecord, error) {
+func RegressIssueOpsForReplan(stateRoot, id, reason string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RegressIssueOpsForReplan(stateRoot, id, reason)
 }
 
-func RegressIssueOpsForReplanWithActor(stateRoot, id, reason string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func RegressIssueOpsForReplanWithActor(stateRoot, id, reason string, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RegressIssueOpsForReplanWithActor(stateRoot, id, reason, actor)
 }
 
@@ -404,59 +369,59 @@ func newIssueOpsID(repo, branch string) string {
 	return issueops.NewIssueOpsID(repo, branch)
 }
 
-func WriteIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, error) {
+func WriteIssueOps(stateRoot string, record issueopscontract.IssueOpsRecord) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.WriteIssueOps(stateRoot, record)
 }
 
-func writeIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, error) {
+func writeIssueOps(stateRoot string, record issueopscontract.IssueOpsRecord) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.WriteIssueOps(stateRoot, record)
 }
 
-func LinkIssueOpsIssue(stateRoot, id, issueURL string) (IssueOpsRecord, error) {
+func LinkIssueOpsIssue(stateRoot, id, issueURL string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsIssue(stateRoot, id, issueURL)
 }
 
-func LinkIssueOpsIssueWithActor(stateRoot, id, issueURL string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func LinkIssueOpsIssueWithActor(stateRoot, id, issueURL string, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsIssueWithActor(stateRoot, id, issueURL, actor)
 }
 
-func LinkIssueOpsPlan(stateRoot, id, planPath string) (IssueOpsRecord, error) {
+func LinkIssueOpsPlan(stateRoot, id, planPath string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsPlan(stateRoot, id, planPath)
 }
 
-func LinkIssueOpsPlanWithActor(stateRoot, id, planPath string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func LinkIssueOpsPlanWithActor(stateRoot, id, planPath string, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsPlanWithActor(stateRoot, id, planPath, actor)
 }
 
-func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, error) {
+func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsWorktree(stateRoot, id, worktreePath)
 }
 
-func LinkIssueOpsWorktreeWithActor(stateRoot, id, worktreePath string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func LinkIssueOpsWorktreeWithActor(stateRoot, id, worktreePath string, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsWorktreeWithActor(stateRoot, id, worktreePath, actor)
 }
 
-func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, error) {
+func LinkIssueOpsChild(stateRoot, id, childURL, title string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsChild(stateRoot, id, childURL, title)
 }
 
-func LinkIssueOpsChildWithActor(stateRoot, id, childURL, title string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func LinkIssueOpsChildWithActor(stateRoot, id, childURL, title string, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsChildWithActor(stateRoot, id, childURL, title, actor)
 }
 
-func LinkIssueOpsRelated(stateRoot, id, linkType, relatedURL, title string) (IssueOpsRecord, error) {
+func LinkIssueOpsRelated(stateRoot, id, linkType, relatedURL, title string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsRelated(stateRoot, id, linkType, relatedURL, title)
 }
 
-func LinkIssueOpsRelatedWithActor(stateRoot, id, linkType, relatedURL, title string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func LinkIssueOpsRelatedWithActor(stateRoot, id, linkType, relatedURL, title string, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsRelatedWithActor(stateRoot, id, linkType, relatedURL, title, actor)
 }
 
-func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareRequest) (IssueOpsRecord, error) {
+func PrepareIssueOpsBranch(stateRoot, id string, req issueopscontract.IssueOpsBranchPrepareRequest) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.PrepareIssueOpsBranch(stateRoot, id, req)
 }
 
-func PrepareIssueOpsBranchWithActor(stateRoot, id string, req IssueOpsBranchPrepareRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+func PrepareIssueOpsBranchWithActor(stateRoot, id string, req issueopscontract.IssueOpsBranchPrepareRequest, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.PrepareIssueOpsBranchWithActor(stateRoot, id, req, actor)
 }
 
@@ -464,77 +429,77 @@ func validateIssueOpsIssueBranch(branch string) error {
 	return issueops.ValidateIssueOpsIssueBranch(branch)
 }
 
-func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (IssueOpsRecord, error) {
+func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.AddIssueOpsFeedback(stateRoot, id, source, body, classification)
 }
 
-func AddIssueOpsFeedbackWithActor(stateRoot, id, source, body, classification string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func AddIssueOpsFeedbackWithActor(stateRoot, id, source, body, classification string, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.AddIssueOpsFeedbackWithActor(stateRoot, id, source, body, classification, actor)
 }
 
-func MarkIssueOpsContractFeedbackIssueUpdated(stateRoot, id string) (IssueOpsRecord, error) {
+func MarkIssueOpsContractFeedbackIssueUpdated(stateRoot, id string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.MarkIssueOpsContractFeedbackIssueUpdated(stateRoot, id)
 }
 
-func MarkIssueOpsContractFeedbackIssueUpdatedWithActor(stateRoot, id string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func MarkIssueOpsContractFeedbackIssueUpdatedWithActor(stateRoot, id string, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.MarkIssueOpsContractFeedbackIssueUpdatedWithActor(stateRoot, id, actor)
 }
 
-func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
-	if IssueOpsPhase(strings.TrimSpace(to)) == IssueOpsPhasePR {
+func AdvanceIssueOpsPhase(stateRoot, id, to string) (issueopscontract.IssueOpsRecord, error) {
+	if issueopscontract.IssueOpsPhase(strings.TrimSpace(to)) == IssueOpsPhasePR {
 		record, err := issueops.ReadIssueOps(stateRoot, id)
 		if err != nil {
 			return record, err
 		}
 		if record.Phase != IssueOpsPhasePR {
 			if ready := IssueOpsStrictPRReadiness(record); !ready.Ready {
-				return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter pr phase: missing %s", strings.Join(ready.Missing, ", "))
+				return issueopscontract.IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter pr phase: missing %s", strings.Join(ready.Missing, ", "))
 			}
 		}
 	}
 	return issueops.AdvanceIssueOpsPhase(stateRoot, id, to)
 }
 
-func AdvanceIssueOpsPhaseWithActor(stateRoot, id, to string, actor IssueOpsActor) (IssueOpsRecord, error) {
-	if IssueOpsPhase(strings.TrimSpace(to)) == IssueOpsPhasePR {
+func AdvanceIssueOpsPhaseWithActor(stateRoot, id, to string, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
+	if issueopscontract.IssueOpsPhase(strings.TrimSpace(to)) == IssueOpsPhasePR {
 		record, err := issueops.ReadIssueOps(stateRoot, id)
 		if err != nil {
 			return record, err
 		}
 		if record.Phase != IssueOpsPhasePR {
 			if ready := IssueOpsStrictPRReadiness(record); !ready.Ready {
-				return IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter pr phase: missing %s", strings.Join(ready.Missing, ", "))
+				return issueopscontract.IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter pr phase: missing %s", strings.Join(ready.Missing, ", "))
 			}
 		}
 	}
 	return issueops.AdvanceIssueOpsPhaseWithActor(stateRoot, id, to, actor)
 }
 
-func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
+func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req issueopscontract.IssueOpsRemoteArtifactVerificationRequest) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.VerifyIssueOpsRemoteArtifact(stateRoot, id, req)
 }
 
-func VerifyIssueOpsRemoteArtifactWithActor(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+func VerifyIssueOpsRemoteArtifactWithActor(stateRoot, id string, req issueopscontract.IssueOpsRemoteArtifactVerificationRequest, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.VerifyIssueOpsRemoteArtifactWithActor(stateRoot, id, req, actor)
 }
 
-func ValidateIssueOpsRemoteArtifactVerification(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
+func ValidateIssueOpsRemoteArtifactVerification(stateRoot, id string, req issueopscontract.IssueOpsRemoteArtifactVerificationRequest) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.ValidateIssueOpsRemoteArtifactVerification(stateRoot, id, req)
 }
 
-func IssueOpsPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
+func IssueOpsPRReadiness(record issueopscontract.IssueOpsRecord) issueopscontract.IssueOpsReadiness {
 	return issueops.IssueOpsPRReadiness(record)
 }
 
-func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
+func IssueOpsStrictPRReadiness(record issueopscontract.IssueOpsRecord) issueopscontract.IssueOpsReadiness {
 	return issueOpsStrictPRReadinessWithLoopGate(issueops.IssueOpsStrictPRReadiness(record), record.Repo)
 }
 
-func IssueOpsStrictPRReadinessWithState(stateRoot string, record IssueOpsRecord) IssueOpsReadiness {
+func IssueOpsStrictPRReadinessWithState(stateRoot string, record issueopscontract.IssueOpsRecord) issueopscontract.IssueOpsReadiness {
 	return issueOpsStrictPRReadinessWithLoopGate(issueops.IssueOpsStrictPRReadinessWithState(stateRoot, record), record.Repo)
 }
 
-func issueOpsStrictPRReadinessWithLoopGate(ready IssueOpsReadiness, repo string) IssueOpsReadiness {
+func issueOpsStrictPRReadinessWithLoopGate(ready issueopscontract.IssueOpsReadiness, repo string) issueopscontract.IssueOpsReadiness {
 	missing, warnings := looprun.RepoGateMissing(repo)
 	if len(missing) == 0 && len(warnings) == 0 {
 		return ready
@@ -545,61 +510,59 @@ func issueOpsStrictPRReadinessWithLoopGate(ready IssueOpsReadiness, repo string)
 	return ready
 }
 
-func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
+func IssueOpsImplementationReadiness(record issueopscontract.IssueOpsRecord) issueopscontract.IssueOpsReadiness {
 	return issueops.IssueOpsImplementationReadiness(record)
 }
 
-func IssueOpsCompatibilityReviewReadiness(record IssueOpsRecord) IssueOpsReadiness {
+func IssueOpsCompatibilityReviewReadiness(record issueopscontract.IssueOpsRecord) issueopscontract.IssueOpsReadiness {
 	return issueops.IssueOpsCompatibilityReviewReadiness(record)
 }
 
-func IssueOpsPlanReadiness(record IssueOpsRecord) IssueOpsReadiness {
+func IssueOpsPlanReadiness(record issueopscontract.IssueOpsRecord) issueopscontract.IssueOpsReadiness {
 	return issueops.IssueOpsPlanReadiness(record)
 }
 
-func IssueOpsAISlopCleanReadiness(record IssueOpsRecord) IssueOpsReadiness {
+func IssueOpsAISlopCleanReadiness(record issueopscontract.IssueOpsRecord) issueopscontract.IssueOpsReadiness {
 	return issueops.IssueOpsAISlopCleanReadiness(record)
 }
 
-func IssueOpsPhaseExpectsWorktree(phase IssueOpsPhase) bool {
+func IssueOpsPhaseExpectsWorktree(phase issueopscontract.IssueOpsPhase) bool {
 	return issueops.IssueOpsPhaseExpectsWorktree(phase)
 }
 
-func IssueOpsCleanupStatusByID(stateRoot, id string, req IssueOpsCleanupStatusRequest) (IssueOpsCleanupStatus, error) {
+func IssueOpsCleanupStatusByID(stateRoot, id string, req issueopscontract.IssueOpsCleanupStatusRequest) (issueopscontract.IssueOpsCleanupStatus, error) {
 	return issueops.IssueOpsCleanupStatusByID(stateRoot, id, req)
 }
 
-func IssueOpsCleanupStatusForRecord(record IssueOpsRecord, req IssueOpsCleanupStatusRequest) IssueOpsCleanupStatus {
+func IssueOpsCleanupStatusForRecord(record issueopscontract.IssueOpsRecord, req issueopscontract.IssueOpsCleanupStatusRequest) issueopscontract.IssueOpsCleanupStatus {
 	return issueops.IssueOpsCleanupStatusForRecord(record, req)
 }
 
-func CloseIssueOpsChildren(stateRoot, id string, req IssueOpsCloseChildrenRequest, provider func(string) (IssueProvider, error)) (IssueOpsCloseChildrenResult, error) {
+func CloseIssueOpsChildren(stateRoot, id string, req issueopscontract.IssueOpsCloseChildrenRequest, provider func(string) (IssueProvider, error)) (issueopscontract.IssueOpsCloseChildrenResult, error) {
 	return issueops.CloseIssueOpsChildren(stateRoot, id, req, provider)
 }
 
-func AddIssueOpsDecision(stateRoot, id string, req IssueOpsDecisionRecordRequest) (IssueOpsRecord, error) {
+func AddIssueOpsDecision(stateRoot, id string, req issueopscontract.IssueOpsDecisionRecordRequest) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.AddIssueOpsDecision(stateRoot, id, req)
 }
 
-func AddIssueOpsDecisionWithActor(stateRoot, id string, req IssueOpsDecisionRecordRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+func AddIssueOpsDecisionWithActor(stateRoot, id string, req issueopscontract.IssueOpsDecisionRecordRequest, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.AddIssueOpsDecisionWithActor(stateRoot, id, req, actor)
 }
 
-type SkillRoutingEntry = issueops.SkillRoutingEntry
-
 // RecordIssueOpsRouting captures a live (phase, skill) routing pairing on the
 // cycle record so skill_routing_fidelity can score real activation.
-func RecordIssueOpsRouting(stateRoot, id, phase, skill string) (IssueOpsRecord, error) {
+func RecordIssueOpsRouting(stateRoot, id, phase, skill string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsRouting(stateRoot, id, phase, skill)
 }
 
-func RecordIssueOpsRoutingWithActor(stateRoot, id, phase, skill string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func RecordIssueOpsRoutingWithActor(stateRoot, id, phase, skill string, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsRoutingWithActor(stateRoot, id, phase, skill, actor)
 }
 
 // RoutingTraceAsSkillRouting projects a cycle's live routing trace onto the
 // benchmark SkillRouting shape for scoring against a real run.
-func RoutingTraceAsSkillRouting(record IssueOpsRecord) []SkillRouting {
+func RoutingTraceAsSkillRouting(record issueopscontract.IssueOpsRecord) []SkillRouting {
 	return issueops.RoutingTraceAsSkillRouting(record)
 }
 
@@ -608,19 +571,19 @@ type RoutingFidelityResult = issueops.RoutingFidelityResult
 // ScoreLiveRoutingFidelity scores a cycle's recorded live routing trace against
 // expected (phase, skill) pairings, replacing the benchmark's synthesized trace
 // with real observed activation.
-func ScoreLiveRoutingFidelity(record IssueOpsRecord, expected []SkillRouting) RoutingFidelityResult {
+func ScoreLiveRoutingFidelity(record issueopscontract.IssueOpsRecord, expected []SkillRouting) RoutingFidelityResult {
 	return issueops.ScoreLiveRoutingFidelity(record, expected)
 }
 
-func ActiveIssueOpsCycleForBranch(repo, branch string) (IssueOpsRecord, bool) {
+func ActiveIssueOpsCycleForBranch(repo, branch string) (issueopscontract.IssueOpsRecord, bool) {
 	return issueops.ActiveIssueOpsCycleForBranch(repo, branch)
 }
 
-func ActiveIssueOpsLinkedWorktreeCycleForRepo(repo string) (IssueOpsRecord, bool) {
+func ActiveIssueOpsLinkedWorktreeCycleForRepo(repo string) (issueopscontract.IssueOpsRecord, bool) {
 	return issueops.ActiveIssueOpsLinkedWorktreeCycleForRepo(repo)
 }
 
-func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []IssueOpsRecord {
+func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []issueopscontract.IssueOpsRecord {
 	return issueops.ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo)
 }
 
@@ -720,6 +683,6 @@ func DecodeIssueOpsRemoteJudgeJSON(out []byte) (IssueOpsRemoteScoringResult, err
 	return issueops.DecodeIssueOpsRemoteJudgeJSON(out)
 }
 
-func IssueOpsLastActiveAt(record IssueOpsRecord) string {
+func IssueOpsLastActiveAt(record issueopscontract.IssueOpsRecord) string {
 	return issueops.LastActiveAt(record)
 }

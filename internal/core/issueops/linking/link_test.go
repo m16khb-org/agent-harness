@@ -7,7 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	model "agent-harness/internal/contract/issueops"
+	issueopsdomain "agent-harness/internal/domain/issueops"
 )
 
 type linkStoreForTest struct {
@@ -25,7 +26,7 @@ func newLinkStoreForTest(records ...model.IssueOpsRecord) (*linkStoreForTest, St
 		Read:                   store.read,
 		TouchWrite:             store.touchWrite,
 		PlanReadiness:          store.planReadiness,
-		PhaseRank:              model.IssueOpsPhaseRank,
+		PhaseRank:              issueopsdomain.IssueOpsPhaseRank,
 		BranchEvidenceMissing:  store.branchEvidenceMissingFor,
 		DesignReviewMissing:    store.designReviewMissingFor,
 		PlanPathExists:         store.planPathExists,

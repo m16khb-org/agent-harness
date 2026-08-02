@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"agent-harness/internal/contract/issueops"
 )
 
 const (
@@ -126,12 +128,12 @@ func TestIssueOpsDelegationStartProcessHelper(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	child, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: parent.Repo, Branch: branch})
+	child, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: parent.Repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	child, err = stampIssueOpsChildDelegation(stateRoot, parent, child.ID, IssueOpsChildStartRequest{
+	child, err = stampIssueOpsChildDelegation(stateRoot, parent, child.ID, issueops.IssueOpsChildStartRequest{
 		ParentID:           parentID,
 		Branch:             branch,
 		Title:              title,
@@ -146,7 +148,7 @@ func TestIssueOpsDelegationStartProcessHelper(t *testing.T) {
 	}
 	waitForChildStartGate(t, gate)
 
-	ref, err := appendIssueOpsChildRef(stateRoot, parentID, child, IssueOpsChildStartRequest{
+	ref, err := appendIssueOpsChildRef(stateRoot, parentID, child, issueops.IssueOpsChildStartRequest{
 		ParentID:           parentID,
 		Branch:             branch,
 		Title:              title,
@@ -154,7 +156,7 @@ func TestIssueOpsDelegationStartProcessHelper(t *testing.T) {
 		AcceptanceCriteria: []string{"every process sibling persists"},
 	}, now, &IssueOpsActor{
 		Host: "codex", SessionID: "test-session", AgentID: "test-agent", CWD: parentWorktree,
-		NativeProcessAncestry: []NativeProcessReceipt{{
+		NativeProcessAncestry: []issueops.NativeProcessReceipt{{
 			PID: 1, StartedAt: "2026-07-22T00:00:00Z", Executable: "/usr/bin/codex",
 		}},
 	})
@@ -205,12 +207,12 @@ func waitForChildStartGate(t *testing.T, gate string) {
 	t.Fatalf("timed out waiting for child start gate %s", gate)
 }
 
-func seedChildStartParentRefsForTest(t *testing.T, stateRoot string, parent IssueOpsRecord, count int) IssueOpsRecord {
+func seedChildStartParentRefsForTest(t *testing.T, stateRoot string, parent issueops.IssueOpsRecord, count int) issueops.IssueOpsRecord {
 	t.Helper()
-	parent.ChildCycles = make([]IssueOpsChildCycleRef, 0, count)
+	parent.ChildCycles = make([]issueops.IssueOpsChildCycleRef, 0, count)
 	for i := 0; i < count; i++ {
 		branch := fmt.Sprintf("90%d-existing-child-ref", i)
-		parent.ChildCycles = append(parent.ChildCycles, IssueOpsChildCycleRef{
+		parent.ChildCycles = append(parent.ChildCycles, issueops.IssueOpsChildCycleRef{
 			CycleID:   NewIssueOpsID(parent.Repo, branch),
 			Branch:    branch,
 			Title:     fmt.Sprintf("existing child ref %d", i),

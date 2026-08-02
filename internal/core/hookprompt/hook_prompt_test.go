@@ -1,12 +1,14 @@
 package hookprompt_test
 
 import (
-	core "agent-harness/internal/core"
-	"agent-harness/internal/core/hookprompt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
+	core "agent-harness/internal/core"
+	"agent-harness/internal/core/hookprompt"
 )
 
 func TestBuildUserPromptMCPHintsInjectsConciseNextActionReminder(t *testing.T) {
@@ -249,7 +251,7 @@ func TestBuildUserPromptMCPHintsIncludesPendingUpkeep(t *testing.T) {
 	if _, err := core.InitProjectLifecycleState(root, true); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.AppendDocUpkeepEvent(root, core.DocUpkeepEvent{
+	if _, err := core.AppendDocUpkeepEvent(root, lifecyclecontract.DocUpkeepEvent{
 		Kind:       "operation_change",
 		TargetDocs: []string{"OPERATIONS.md"},
 		Summary:    "Hook behavior changed.",

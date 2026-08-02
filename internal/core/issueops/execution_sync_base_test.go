@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 )
 
 const (
@@ -150,10 +150,10 @@ func (g *fakeSyncBaseGit) callWith(verb string) []string {
 
 type syncBaseFixture struct {
 	stateRoot string
-	record    IssueOpsRecord
+	record    issueops.IssueOpsRecord
 	worktree  string
 	branch    string
-	actor     model.NativeActor
+	actor     issueops.NativeActor
 	git       *fakeSyncBaseGit
 }
 
@@ -175,7 +175,7 @@ func newSyncBaseFixture(t *testing.T, branch string) syncBaseFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record.Execution.Completion = &model.ExecutionCompletion{
+	record.Execution.Completion = &issueops.ExecutionCompletion{
 		FinalHead:         syncBaseFinalHead,
 		TuringReportPath:  filepath.Join(claimable.worktree, "turing-report.json"),
 		Verification:      []string{"go test ./... -count=1"},
@@ -207,7 +207,7 @@ func (f syncBaseFixture) run(t *testing.T, req ExecutionSyncBaseRequest) (Execut
 	return SyncExecutionBase(context.Background(), f.stateRoot, req, ExecutionSyncBaseDeps{Git: f.git.run})
 }
 
-func (f syncBaseFixture) rewrite(t *testing.T, mutate func(*IssueOpsRecord)) {
+func (f syncBaseFixture) rewrite(t *testing.T, mutate func(*issueops.IssueOpsRecord)) {
 	t.Helper()
 	record, err := ReadIssueOps(f.stateRoot, f.record.ID)
 	if err != nil {
@@ -229,17 +229,17 @@ func TestExecutionSyncBaseGatesRejectEveryMissingPrecondition(t *testing.T) {
 		missing string
 	}{
 		{"completion", ExecutionSyncBasePreview, func(t *testing.T, f *syncBaseFixture) {
-			f.rewrite(t, func(r *IssueOpsRecord) { r.Execution.Completion = nil })
+			f.rewrite(t, func(r *issueops.IssueOpsRecord) { r.Execution.Completion = nil })
 		}, "completion_present"},
 		{"remote artifact", ExecutionSyncBasePreview, func(t *testing.T, f *syncBaseFixture) {
-			f.rewrite(t, func(r *IssueOpsRecord) { r.RemoteArtifact = nil })
+			f.rewrite(t, func(r *issueops.IssueOpsRecord) { r.RemoteArtifact = nil })
 		}, "remote_artifact_present"},
 		{"remote branch", ExecutionSyncBasePreview, func(_ *testing.T, f *syncBaseFixture) {
 			f.git.remoteRef = ""
 		}, "remote_branch_present"},
 		{"pending intent", ExecutionSyncBasePreview, func(t *testing.T, f *syncBaseFixture) {
-			f.rewrite(t, func(r *IssueOpsRecord) {
-				r.Execution.Pending = &model.ExternalIntent{
+			f.rewrite(t, func(r *issueops.IssueOpsRecord) {
+				r.Execution.Pending = &issueops.ExternalIntent{
 					OperationID: "op-1", Kind: "orca", Marker: "m", StartedAt: "2026-07-25T00:00:00Z",
 				}
 			})
@@ -301,8 +301,8 @@ func TestExecutionSyncBaseGatesRejectEveryMissingPrecondition(t *testing.T) {
 // 파일과 fingerprint를 함께 발급해야 한다.
 func TestExecutionSyncBasePreviewReportsConflictsAndIssuesFingerprint(t *testing.T) {
 	fixture := newSyncBaseFixture(t, "114-preview")
-	fixture.rewrite(t, func(r *IssueOpsRecord) {
-		r.Execution.Lease.Status = model.LeaseStatusReleased
+	fixture.rewrite(t, func(r *issueops.IssueOpsRecord) {
+		r.Execution.Lease.Status = issueops.LeaseStatusReleased
 		r.Execution.Lease.Holder = nil
 		r.Execution.Lease.ReleasedAt = "2026-07-25T00:00:00Z"
 	})
@@ -310,7 +310,7 @@ func TestExecutionSyncBasePreviewReportsConflictsAndIssuesFingerprint(t *testing
 	fixture.git.mergeTreeOut = "treeoid\x00internal/a.go\x00internal/b.go\x00\x00CONFLICT (content)\n"
 
 	req := fixture.request(ExecutionSyncBasePreview)
-	req.Actor = model.NativeActor{}
+	req.Actor = issueops.NativeActor{}
 	result, err := fixture.run(t, req)
 	if err != nil {
 		t.Fatalf("released preview must stay open as a diagnosis channel: %v", err)
@@ -477,7 +477,7 @@ func TestExecutionSyncBaseRecordsDurableEventAndKeepsFinalHeadImmutable(t *testi
 		t.Fatalf("apply must append exactly one durable event: %#v", events)
 	}
 	event := events[0]
-	if event.Mode != model.ExecutionSyncBaseEventApply || event.BaseOID != syncBaseBaseOID ||
+	if event.Mode != issueops.ExecutionSyncBaseEventApply || event.BaseOID != syncBaseBaseOID ||
 		event.MergeCommit != syncBaseMergeOID || event.BaseBranch != "main" ||
 		!strings.Contains(event.Actor, "sync-base-114-durable") || strings.TrimSpace(event.At) == "" {
 		t.Fatalf("durable event is not the merge receipt: %#v", event)
@@ -530,7 +530,7 @@ func TestExecutionSyncBaseFinalizeRejectsUnresolvedConflictsAndMarkers(t *testin
 			t.Fatal(err)
 		}
 		if len(persisted.Execution.SyncBaseEvents) != 1 ||
-			persisted.Execution.SyncBaseEvents[0].Mode != model.ExecutionSyncBaseEventFinalize {
+			persisted.Execution.SyncBaseEvents[0].Mode != issueops.ExecutionSyncBaseEventFinalize {
 			t.Fatalf("finalize must record its own durable event: %#v", persisted.Execution.SyncBaseEvents)
 		}
 	})
@@ -604,8 +604,8 @@ func TestExecutionSyncBaseMutatingModesRequireTheActiveHolder(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			fixture := newSyncBaseFixture(t, "114-holder-"+mode)
 			fixture.git.mergeHead = true
-			fixture.rewrite(t, func(r *IssueOpsRecord) {
-				r.Execution.Lease.Status = model.LeaseStatusReleased
+			fixture.rewrite(t, func(r *issueops.IssueOpsRecord) {
+				r.Execution.Lease.Status = issueops.LeaseStatusReleased
 				r.Execution.Lease.Holder = nil
 				r.Execution.Lease.ReleasedAt = "2026-07-25T00:00:00Z"
 			})

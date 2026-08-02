@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -19,7 +20,7 @@ func TestReflectDevilsAdvocateFindingsRequiresCurrentHolderBeforeProviderCall(t 
 	if err := os.MkdirAll(worktree, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{
 		Repo: repo, Branch: "2626-vertex-breaker-observability",
 	})
 	if err != nil {
@@ -27,7 +28,7 @@ func TestReflectDevilsAdvocateFindingsRequiresCurrentHolderBeforeProviderCall(t 
 	}
 	record.WorktreePath = worktree
 	record.IssueURL = "https://gitlab.example.com/group/repo/-/issues/2626"
-	record.DevilsAdvocateReview = &IssueOpsDevilsAdvocateReview{
+	record.DevilsAdvocateReview = &issueops.IssueOpsDevilsAdvocateReview{
 		Verdict: "stop", Findings: []string{"breaker 상태 전이 관측 근거가 부족하다"},
 		ReviewerPattern: "devils-advocate-review", RecordedAt: "2026-07-29T00:00:00Z",
 	}

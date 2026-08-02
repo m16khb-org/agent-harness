@@ -5,33 +5,36 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/issueops/implementation"
-	"agent-harness/internal/core/issueops/model"
 	"context"
+
+	"agent-harness/internal/contract/issueops"
+	issueopscontract "agent-harness/internal/contract/issueops"
+	"agent-harness/internal/core/issueops/implementation"
+	issueopsdomain "agent-harness/internal/domain/issueops"
 )
 
-func knownIssueOpsPhase(phase IssueOpsPhase) bool {
-	return model.KnownIssueOpsPhase(phase)
+func knownIssueOpsPhase(phase issueops.IssueOpsPhase) bool {
+	return issueopsdomain.KnownIssueOpsPhase(phase)
 }
 
-func issueOpsPhaseRank(phase IssueOpsPhase) int {
-	return model.IssueOpsPhaseRank(phase)
+func issueOpsPhaseRank(phase issueops.IssueOpsPhase) int {
+	return issueopsdomain.IssueOpsPhaseRank(phase)
 }
 
-func IssueOpsPhaseExpectsWorktree(phase IssueOpsPhase) bool {
-	return model.IssueOpsPhaseExpectsWorktree(phase)
+func IssueOpsPhaseExpectsWorktree(phase issueops.IssueOpsPhase) bool {
+	return issueopsdomain.IssueOpsPhaseExpectsWorktree(phase)
 }
 
-func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
+func AdvanceIssueOpsPhase(stateRoot, id, to string) (issueops.IssueOpsRecord, error) {
 	return advanceIssueOpsPhaseWithActor(stateRoot, id, to, nil)
 }
 
-func AdvanceIssueOpsPhaseWithActor(stateRoot, id, to string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func AdvanceIssueOpsPhaseWithActor(stateRoot, id, to string, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return advanceIssueOpsPhaseWithActor(stateRoot, id, to, &actor)
 }
 
-func advanceIssueOpsPhaseWithActor(stateRoot, id, to string, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func advanceIssueOpsPhaseWithActor(stateRoot, id, to string, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
@@ -47,10 +50,10 @@ func advanceIssueOpsPhaseWithActor(stateRoot, id, to string, actor *IssueOpsActo
 	return rec, err
 }
 
-func advanceIssueOpsPhaseLocked(stateRoot, id, to string) (IssueOpsRecord, error) {
-	phase := IssueOpsPhase(strings.TrimSpace(to))
+func advanceIssueOpsPhaseLocked(stateRoot, id, to string) (issueops.IssueOpsRecord, error) {
+	phase := issueops.IssueOpsPhase(strings.TrimSpace(to))
 	if !knownIssueOpsPhase(phase) {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("unknown issueops phase %q", to)
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("unknown issueops phase %q", to)
 	}
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
@@ -66,13 +69,13 @@ func advanceIssueOpsPhaseLocked(stateRoot, id, to string) (IssueOpsRecord, error
 		return refreshIssueOpsAISlopClean(stateRoot, record)
 	}
 	if err := validateIssueOpsPhaseTransition(stateRoot, record, phase); err != nil {
-		return IssueOpsRecord{OK: false}, err
+		return issueops.IssueOpsRecord{OK: false}, err
 	}
 	record = applyIssueOpsPhaseTransition(record, phase)
 	return touchAndWriteIssueOps(stateRoot, record)
 }
 
-func validateIssueOpsPhaseTransition(stateRoot string, record IssueOpsRecord, phase IssueOpsPhase) error {
+func validateIssueOpsPhaseTransition(stateRoot string, record issueops.IssueOpsRecord, phase issueops.IssueOpsPhase) error {
 	if record.Phase == IssueOpsPhaseDone {
 		return fmt.Errorf("cannot leave done phase")
 	}
@@ -130,19 +133,19 @@ func validateIssueOpsPhaseTransition(stateRoot string, record IssueOpsRecord, ph
 		if missing := issueOpsRemoteArtifactMissing(record); len(missing) > 0 {
 			return fmt.Errorf("cannot enter done phase before remote artifact verification: missing %s", strings.Join(missing, ", "))
 		}
-		if record.Execution == nil || record.Execution.Completion == nil || record.Execution.Lease.Status != model.LeaseStatusReleased {
+		if record.Execution == nil || record.Execution.Completion == nil || record.Execution.Lease.Status != issueopscontract.LeaseStatusReleased {
 			return fmt.Errorf("cannot enter done phase before issueops execution completion")
 		}
 	}
 	return nil
 }
 
-func applyIssueOpsPhaseTransition(record IssueOpsRecord, phase IssueOpsPhase) IssueOpsRecord {
+func applyIssueOpsPhaseTransition(record issueops.IssueOpsRecord, phase issueops.IssueOpsPhase) issueops.IssueOpsRecord {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	return applyIssueOpsPhaseTransitionAt(record, phase, now)
 }
 
-func applyIssueOpsPhaseTransitionAt(record IssueOpsRecord, phase IssueOpsPhase, now string) IssueOpsRecord {
+func applyIssueOpsPhaseTransitionAt(record issueops.IssueOpsRecord, phase issueops.IssueOpsPhase, now string) issueops.IssueOpsRecord {
 	prevPhase := record.Phase
 	record.Phase = phase
 	if phase == IssueOpsPhaseAISlopClean && strings.TrimSpace(record.AISlopCleanAt) == "" {

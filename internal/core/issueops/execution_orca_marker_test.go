@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
@@ -93,9 +93,9 @@ func TestLegacyOrcaIntentMarkerParserNeverInventsIssueIdentity(t *testing.T) {
 }
 
 func TestAuthoritativeOrcaIssueIdentityRequiresVerifiedMatchingRecord(t *testing.T) {
-	valid := IssueOpsRecord{
+	valid := issueops.IssueOpsRecord{
 		IssueURL: "https://gitlab.example.com/acme/repo/-/work_items/2646",
-		BranchPrepare: &model.IssueOpsBranchPrepare{
+		BranchPrepare: &issueops.IssueOpsBranchPrepare{
 			Provider: "gitlab", IssueURL: "https://gitlab.example.com/acme/repo/-/work_items/2646",
 			LinkVerified: true,
 		},
@@ -107,15 +107,15 @@ func TestAuthoritativeOrcaIssueIdentityRequiresVerifiedMatchingRecord(t *testing
 
 	tests := []struct {
 		name   string
-		mutate func(*IssueOpsRecord)
+		mutate func(*issueops.IssueOpsRecord)
 	}{
-		{name: "missing branch prepare", mutate: func(record *IssueOpsRecord) { record.BranchPrepare = nil }},
-		{name: "unverified link", mutate: func(record *IssueOpsRecord) { record.BranchPrepare.LinkVerified = false }},
-		{name: "provider URL mismatch", mutate: func(record *IssueOpsRecord) { record.BranchPrepare.Provider = "github" }},
-		{name: "record URL drift", mutate: func(record *IssueOpsRecord) {
+		{name: "missing branch prepare", mutate: func(record *issueops.IssueOpsRecord) { record.BranchPrepare = nil }},
+		{name: "unverified link", mutate: func(record *issueops.IssueOpsRecord) { record.BranchPrepare.LinkVerified = false }},
+		{name: "provider URL mismatch", mutate: func(record *issueops.IssueOpsRecord) { record.BranchPrepare.Provider = "github" }},
+		{name: "record URL drift", mutate: func(record *issueops.IssueOpsRecord) {
 			record.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/2647"
 		}},
-		{name: "non-positive issue", mutate: func(record *IssueOpsRecord) {
+		{name: "non-positive issue", mutate: func(record *issueops.IssueOpsRecord) {
 			record.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/0"
 			record.BranchPrepare.IssueURL = record.IssueURL
 		}},
@@ -134,9 +134,9 @@ func TestAuthoritativeOrcaIssueIdentityRequiresVerifiedMatchingRecord(t *testing
 }
 
 func TestOrcaPrepareIssueIdentityAllowsOnlyUnverifiedGitHub(t *testing.T) {
-	github := IssueOpsRecord{
+	github := issueops.IssueOpsRecord{
 		IssueURL: "https://github.com/acme/repo/issues/194",
-		BranchPrepare: &model.IssueOpsBranchPrepare{
+		BranchPrepare: &issueops.IssueOpsBranchPrepare{
 			Provider: "github", IssueURL: "https://github.com/acme/repo/issues/194",
 		},
 	}
@@ -157,10 +157,10 @@ func TestOrcaPrepareIssueIdentityAllowsOnlyUnverifiedGitHub(t *testing.T) {
 }
 
 func TestOrcaIntentIssueIdentityRequiresVerifiedLinkForResume(t *testing.T) {
-	record := IssueOpsRecord{
+	record := issueops.IssueOpsRecord{
 		ID:       "io-aaaaaaaaaaaa",
 		IssueURL: "https://github.com/acme/repo/issues/194",
-		BranchPrepare: &model.IssueOpsBranchPrepare{
+		BranchPrepare: &issueops.IssueOpsBranchPrepare{
 			Provider: "github", IssueURL: "https://github.com/acme/repo/issues/194",
 		},
 	}
@@ -191,7 +191,7 @@ func TestSealExternalOrcaIntentPayloadUsesTheVerifiedRecordIdentity(t *testing.T
 		t.Fatal(err)
 	}
 	payload := externalOrcaIntentPayload{
-		SchemaVersion:   model.IssueOpsSchemaVersion,
+		SchemaVersion:   issueops.IssueOpsSchemaVersion,
 		Purpose:         orcaIntentPurposePrepare,
 		OperationID:     strings.Repeat("b", 32),
 		LifecycleID:     record.ID,

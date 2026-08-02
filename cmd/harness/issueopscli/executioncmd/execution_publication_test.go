@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"testing"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
 )
 
 func TestActionDepsPropagatePublicationReconcileWithoutInvocation(t *testing.T) {
@@ -60,13 +60,13 @@ func TestRunPublicationReconcilePreservesCLITextProjection(t *testing.T) {
 	}
 }
 
-func publicationReconcileCLIRecord(t *testing.T) (string, issueops.IssueOpsRecord, model.NativeProcessReceipt) {
+func publicationReconcileCLIRecord(t *testing.T) (string, issueopscontract.IssueOpsRecord, issueopscontract.NativeProcessReceipt) {
 	t.Helper()
 	ancestry, err := issueops.ObserveNativeProcessAncestry(os.Getpid())
 	if err != nil {
 		t.Fatal(err)
 	}
-	var receipt model.NativeProcessReceipt
+	var receipt issueopscontract.NativeProcessReceipt
 	for _, candidate := range ancestry {
 		if candidate.PID == os.Getpid() {
 			receipt = candidate
@@ -77,16 +77,16 @@ func publicationReconcileCLIRecord(t *testing.T) (string, issueops.IssueOpsRecor
 		t.Fatalf("current process receipt missing from ancestry: %#v", ancestry)
 	}
 	stateRoot, repo, worktree := t.TempDir(), t.TempDir(), t.TempDir()
-	actor := model.NativeActor{Host: "codex", SessionID: "publication-cli-session", SessionProcess: &receipt}
-	record := issueops.IssueOpsRecord{
+	actor := issueopscontract.NativeActor{Host: "codex", SessionID: "publication-cli-session", SessionProcess: &receipt}
+	record := issueopscontract.IssueOpsRecord{
 		OK: true, SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
 		ID: issueops.NewIssueOpsID(repo, "195-publication-cli"), Repo: repo, Branch: "195-publication-cli",
 		Phase: issueops.IssueOpsPhasePR, WorktreePath: worktree,
-		Execution: &model.Execution{
-			Mode:      model.ExecutionModeDirect,
-			Workspace: model.Workspace{SourceRoot: repo, Root: worktree, Branch: "195-publication-cli", BaseHead: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Driver: "git", LinkedAt: "2026-08-01T00:00:00Z"},
-			Lease:     model.WriteLease{Generation: 1, Status: model.LeaseStatusActive, Holder: &actor, ClaimedAt: "2026-08-01T00:00:00Z"},
-			Pending:   &model.ExternalIntent{OperationID: "0123456789abcdef0123456789abcdef", Kind: "remote_pr_create", Marker: "<!-- agent-harness:issueops-v1 operation=0123456789abcdef0123456789abcdef -->", StartedAt: "2026-08-01T00:00:00Z"},
+		Execution: &issueopscontract.Execution{
+			Mode:      issueopscontract.ExecutionModeDirect,
+			Workspace: issueopscontract.Workspace{SourceRoot: repo, Root: worktree, Branch: "195-publication-cli", BaseHead: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Driver: "git", LinkedAt: "2026-08-01T00:00:00Z"},
+			Lease:     issueopscontract.WriteLease{Generation: 1, Status: issueopscontract.LeaseStatusActive, Holder: &actor, ClaimedAt: "2026-08-01T00:00:00Z"},
+			Pending:   &issueopscontract.ExternalIntent{OperationID: "0123456789abcdef0123456789abcdef", Kind: "remote_pr_create", Marker: "<!-- agent-harness:issueops-v1 operation=0123456789abcdef0123456789abcdef -->", StartedAt: "2026-08-01T00:00:00Z"},
 		},
 		CreatedAt: "2026-08-01T00:00:00Z",
 		UpdatedAt: "2026-08-01T00:00:00Z",

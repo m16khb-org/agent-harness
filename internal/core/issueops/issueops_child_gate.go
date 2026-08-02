@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"agent-harness/internal/contract/issueops"
 )
 
-func issueOpsChildPRGateMissing(stateRoot string, parent IssueOpsRecord) ([]string, []string) {
+func issueOpsChildPRGateMissing(stateRoot string, parent issueops.IssueOpsRecord) ([]string, []string) {
 	stateRoot = strings.TrimSpace(stateRoot)
 	if stateRoot == "" {
 		return nil, nil
@@ -24,7 +26,7 @@ func issueOpsChildPRGateMissing(stateRoot string, parent IssueOpsRecord) ([]stri
 	return missing, nil
 }
 
-func issueOpsActiveChildIDs(stateRoot string, parent IssueOpsRecord) ([]string, error) {
+func issueOpsActiveChildIDs(stateRoot string, parent issueops.IssueOpsRecord) ([]string, error) {
 	stateRoot = strings.TrimSpace(stateRoot)
 	if stateRoot == "" {
 		return nil, nil
@@ -46,15 +48,15 @@ func issueOpsActiveChildIDs(stateRoot string, parent IssueOpsRecord) ([]string, 
 	return ids, nil
 }
 
-func issueOpsChildStatusWithoutParentLock(stateRoot string, parent IssueOpsRecord) (IssueOpsChildStatusResult, map[string]IssueOpsRecord, error) {
+func issueOpsChildStatusWithoutParentLock(stateRoot string, parent issueops.IssueOpsRecord) (issueops.IssueOpsChildStatusResult, map[string]issueops.IssueOpsRecord, error) {
 	scanned, err := scanIssueOpsChildrenForParent(stateRoot, parent)
 	if err != nil {
-		return IssueOpsChildStatusResult{OK: false, ParentID: parent.ID}, nil, err
+		return issueops.IssueOpsChildStatusResult{OK: false, ParentID: parent.ID}, nil, err
 	}
 	return buildIssueOpsChildStatus(parent, scanned), scanned, nil
 }
 
-func issueOpsChildPRGateKey(entry IssueOpsChildStatusEntry, child IssueOpsRecord) string {
+func issueOpsChildPRGateKey(entry issueops.IssueOpsChildStatusEntry, child issueops.IssueOpsRecord) string {
 	if issueOpsChildDropped(entry) {
 		return ""
 	}
@@ -71,11 +73,11 @@ func issueOpsChildPRGateKey(entry IssueOpsChildStatusEntry, child IssueOpsRecord
 	}
 }
 
-func issueOpsChildTerminal(entry IssueOpsChildStatusEntry, _ IssueOpsRecord) bool {
+func issueOpsChildTerminal(entry issueops.IssueOpsChildStatusEntry, _ issueops.IssueOpsRecord) bool {
 	return entry.Phase == IssueOpsPhaseDone
 }
 
-func issueOpsChildDropped(entry IssueOpsChildStatusEntry) bool {
+func issueOpsChildDropped(entry issueops.IssueOpsChildStatusEntry) bool {
 	return strings.TrimSpace(entry.ValidationVerdict) == "dropped"
 }
 

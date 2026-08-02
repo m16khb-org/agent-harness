@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 )
 
 const nativeProcessProbeTimeout = 3 * time.Second
@@ -36,40 +36,40 @@ type workspaceProcess struct {
 
 type nativeProcessSnapshotEntry struct {
 	ParentPID int
-	Receipt   model.NativeProcessReceipt
+	Receipt   issueops.NativeProcessReceipt
 }
 
 // ObserveNativeProcessReceipt는 PID 재사용을 방지하는 데 쓰는 운영체제
 // identity를 읽는다. 호출자는 자체 보고한 시간이 아니라 이 receipt를
 // 그대로 영속화한다.
-func ObserveNativeProcessReceipt(pid int) (model.NativeProcessReceipt, error) {
+func ObserveNativeProcessReceipt(pid int) (issueops.NativeProcessReceipt, error) {
 	if pid <= 0 {
-		return model.NativeProcessReceipt{}, fmt.Errorf("native process pid must be positive")
+		return issueops.NativeProcessReceipt{}, fmt.Errorf("native process pid must be positive")
 	}
 	alive, err := nativePIDAlive(pid)
 	if err != nil {
-		return model.NativeProcessReceipt{}, err
+		return issueops.NativeProcessReceipt{}, err
 	}
 	if !alive {
-		return model.NativeProcessReceipt{}, fmt.Errorf("native process pid %d is not live", pid)
+		return issueops.NativeProcessReceipt{}, fmt.Errorf("native process pid %d is not live", pid)
 	}
 	startedRaw, err := processField(pid, "lstart=")
 	if err != nil {
-		return model.NativeProcessReceipt{}, fmt.Errorf("read native process start identity: %w", err)
+		return issueops.NativeProcessReceipt{}, fmt.Errorf("read native process start identity: %w", err)
 	}
 	started, err := parseNativeProcessStart(startedRaw)
 	if err != nil {
-		return model.NativeProcessReceipt{}, fmt.Errorf("parse native process start identity: %w", err)
+		return issueops.NativeProcessReceipt{}, fmt.Errorf("parse native process start identity: %w", err)
 	}
 	executable, err := processField(pid, "comm=")
 	if err != nil {
-		return model.NativeProcessReceipt{}, fmt.Errorf("read native process executable identity: %w", err)
+		return issueops.NativeProcessReceipt{}, fmt.Errorf("read native process executable identity: %w", err)
 	}
 	executable = strings.TrimSpace(executable)
 	if executable == "" {
-		return model.NativeProcessReceipt{}, fmt.Errorf("native process executable identity is empty")
+		return issueops.NativeProcessReceipt{}, fmt.Errorf("native process executable identity is empty")
 	}
-	return model.NativeProcessReceipt{
+	return issueops.NativeProcessReceipt{
 		PID: pid, StartedAt: started.UTC().Format(time.RFC3339), Executable: executable,
 	}, nil
 }
@@ -78,7 +78,7 @@ func ObserveNativeProcessReceipt(pid int) (model.NativeProcessReceipt, error) {
 // 캡처해 pid와 그 뒤로 각 부모를 반환한다. 단일 snapshot은 hook이 durable
 // lease holder의 자손인지 판단하는 동안 PID/start/executable tuple을 내부적으로
 // 일관되게 유지한다.
-func ObserveNativeProcessAncestry(pid int) ([]model.NativeProcessReceipt, error) {
+func ObserveNativeProcessAncestry(pid int) ([]issueops.NativeProcessReceipt, error) {
 	if pid <= 0 {
 		return nil, fmt.Errorf("native process pid must be positive")
 	}
@@ -129,7 +129,7 @@ func parseNativeProcessSnapshot(output string) (map[int]nativeProcessSnapshotEnt
 		}
 		snapshot[pid] = nativeProcessSnapshotEntry{
 			ParentPID: parentPID,
-			Receipt: model.NativeProcessReceipt{
+			Receipt: issueops.NativeProcessReceipt{
 				PID: pid, StartedAt: started.UTC().Format(time.RFC3339), Executable: executable,
 			},
 		}
@@ -140,9 +140,9 @@ func parseNativeProcessSnapshot(output string) (map[int]nativeProcessSnapshotEnt
 	return snapshot, nil
 }
 
-func nativeProcessAncestryFromSnapshot(snapshot map[int]nativeProcessSnapshotEntry, pid int) ([]model.NativeProcessReceipt, error) {
+func nativeProcessAncestryFromSnapshot(snapshot map[int]nativeProcessSnapshotEntry, pid int) ([]issueops.NativeProcessReceipt, error) {
 	const maxNativeProcessAncestry = 128
-	ancestry := make([]model.NativeProcessReceipt, 0, 8)
+	ancestry := make([]issueops.NativeProcessReceipt, 0, 8)
 	seen := make(map[int]bool)
 	for len(ancestry) < maxNativeProcessAncestry {
 		if seen[pid] {
@@ -172,7 +172,7 @@ func parseNativeProcessStart(value string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("invalid process start identity %q", value)
 }
 
-func requireExactLiveNativeProcessReceipt(receipt model.NativeProcessReceipt) error {
+func requireExactLiveNativeProcessReceipt(receipt issueops.NativeProcessReceipt) error {
 	status, observed, err := inspectNativeProcessReceipt(receipt)
 	if err != nil {
 		return err
@@ -188,25 +188,25 @@ func requireExactLiveNativeProcessReceipt(receipt model.NativeProcessReceipt) er
 
 // InspectNativeProcessReceipt는 lease replacement이 쓰는 것과 동일한 PID
 // 재사용에 안전한 read-only 관측을 운영 inventory 수집기에 노출한다.
-func InspectNativeProcessReceipt(receipt model.NativeProcessReceipt) (string, model.NativeProcessReceipt, error) {
+func InspectNativeProcessReceipt(receipt issueops.NativeProcessReceipt) (string, issueops.NativeProcessReceipt, error) {
 	return inspectNativeProcessReceipt(receipt)
 }
 
-func inspectNativeProcessReceipt(receipt model.NativeProcessReceipt) (string, model.NativeProcessReceipt, error) {
+func inspectNativeProcessReceipt(receipt issueops.NativeProcessReceipt) (string, issueops.NativeProcessReceipt, error) {
 	alive, err := nativePIDAlive(receipt.PID)
 	if err != nil {
-		return NativeProcessStatusUnknown, model.NativeProcessReceipt{}, fmt.Errorf("inspect native process identity: %w", err)
+		return NativeProcessStatusUnknown, issueops.NativeProcessReceipt{}, fmt.Errorf("inspect native process identity: %w", err)
 	}
 	if !alive {
-		return NativeProcessStatusDead, model.NativeProcessReceipt{}, nil
+		return NativeProcessStatusDead, issueops.NativeProcessReceipt{}, nil
 	}
 	observed, err := ObserveNativeProcessReceipt(receipt.PID)
 	if err != nil {
 		alive, retryErr := nativePIDAlive(receipt.PID)
 		if retryErr == nil && !alive {
-			return NativeProcessStatusDead, model.NativeProcessReceipt{}, nil
+			return NativeProcessStatusDead, issueops.NativeProcessReceipt{}, nil
 		}
-		return NativeProcessStatusUnknown, model.NativeProcessReceipt{}, fmt.Errorf("inspect live native process identity: %w", err)
+		return NativeProcessStatusUnknown, issueops.NativeProcessReceipt{}, fmt.Errorf("inspect live native process identity: %w", err)
 	}
 	if observed.StartedAt != receipt.StartedAt || observed.Executable != receipt.Executable {
 		return NativeProcessStatusIdentityMismatch, observed, nil

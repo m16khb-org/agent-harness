@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
@@ -18,7 +20,7 @@ func TestExportedIssueOpsFacades(t *testing.T) {
 	if CleanupMerged("", false) {
 		t.Fatal("cleanup without id and request should not be treated as merged")
 	}
-	if err := VerifyRemoteArtifactLive(core.IssueOpsRemoteArtifactVerificationRequest{Provider: "github", Kind: "pr", URL: "not-a-url"}); err == nil {
+	if err := VerifyRemoteArtifactLive(issueopscontract.IssueOpsRemoteArtifactVerificationRequest{Provider: "github", Kind: "pr", URL: "not-a-url"}); err == nil {
 		t.Fatal("invalid remote artifact URL should fail before provider inspection")
 	}
 
@@ -32,7 +34,7 @@ func TestExportedIssueOpsFacades(t *testing.T) {
 
 func TestIssueOpsPublicationCreateRequiresComposedDependencies(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{Repo: t.TempDir(), Branch: "195-publication-wrapper"})
+	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: t.TempDir(), Branch: "195-publication-wrapper"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +84,7 @@ func TestIssueOpsBenchmarkArtifactFacades(t *testing.T) {
 
 func TestIssueOpsDecisionAndCleanupCLIBranches(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{Repo: t.TempDir(), Branch: "123-decision"})
+	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: t.TempDir(), Branch: "123-decision"})
 	if err != nil {
 		t.Fatal(err)
 	}

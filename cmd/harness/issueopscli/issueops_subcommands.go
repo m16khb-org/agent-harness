@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/internal/core"
 )
 
@@ -22,7 +24,7 @@ func runIssueOpsStart(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{Repo: *repo, Branch: *branch})
+	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: *repo, Branch: *branch})
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -87,7 +89,7 @@ func runIssueOpsLinkChild(args []string) error {
 		return err
 	}
 	if err := verifyIssueOpsChildIssueBeforeLink(*childURL); err != nil {
-		return printIssueOpsResult(core.IssueOpsRecord{OK: false}, *jsonOut, err)
+		return printIssueOpsResult(issueopscontract.IssueOpsRecord{OK: false}, *jsonOut, err)
 	}
 	record, err := core.LinkIssueOpsChildWithActor(core.IssueOpsStateRoot(), *id, *childURL, *title, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
@@ -145,7 +147,7 @@ func runIssueOpsChildStart(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	result, err := core.StartIssueOpsChildWithActor(core.IssueOpsStateRoot(), core.IssueOpsChildStartRequest{
+	result, err := core.StartIssueOpsChildWithActor(core.IssueOpsStateRoot(), issueopscontract.IssueOpsChildStartRequest{
 		ParentID:           *parentID,
 		Branch:             *branch,
 		Title:              *title,

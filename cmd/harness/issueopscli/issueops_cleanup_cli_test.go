@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/internal/core"
 )
 
@@ -107,19 +109,19 @@ func TestRunIssueOpsCleanupCloseChildrenRequiresMergedAndConfirmRecordsState(t *
 	bin := t.TempDir()
 	writeFakeGhForCloseChildren(t, bin)
 	t.Setenv("PATH", bin)
-	record := core.IssueOpsRecord{
+	record := issueopscontract.IssueOpsRecord{
 		ID:       core.NewIssueOpsID(repo, "12-child-cleanup"),
 		Repo:     repo,
 		Branch:   "12-child-cleanup",
 		Phase:    core.IssueOpsPhasePR,
 		IssueURL: "https://github.com/acme/repo/issues/12",
-		IssueLinks: []core.IssueOpsIssueLink{{
+		IssueLinks: []issueopscontract.IssueOpsIssueLink{{
 			Type:     "child",
 			URL:      "https://github.com/acme/repo/issues/34",
 			Provider: "github",
 		}},
 	}
-	record.RemoteArtifact = &core.IssueOpsRemoteArtifactVerification{
+	record.RemoteArtifact = &issueopscontract.IssueOpsRemoteArtifactVerification{
 		Provider:  "github",
 		Kind:      "pr",
 		URL:       "https://github.com/acme/repo/pull/55",

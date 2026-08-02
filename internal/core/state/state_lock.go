@@ -3,6 +3,8 @@ package state
 import (
 	"context"
 	"os"
+
+	statecontract "agent-harness/internal/contract/state"
 )
 
 // StateUpdate reads the current state record for key, passes it to the transform
@@ -10,9 +12,9 @@ import (
 // directory's sqlstore span (in-process token gate + cross-process sqlite write
 // lock) so concurrent callers across processes cannot lose updates.
 //
-// When the key does not exist, transform receives an empty StateRecord with
-// OK=false. Return an empty StateRecord from transform to skip the write.
-func StateUpdate(key string, transform func(StateRecord) (StateRecord, error)) (StateResult, error) {
+// When the key does not exist, transform receives an empty record. Return an
+// empty record from transform to skip the write.
+func StateUpdate(key string, transform func(statecontract.RecordEnvelope) (statecontract.RecordEnvelope, error)) (StateResult, error) {
 	key, err := NormalizeStateKey(key)
 	if err != nil {
 		return StateResult{OK: false, StateDir: StateDir()}, err

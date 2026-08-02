@@ -1,10 +1,12 @@
 package issueops
 
 import (
-	"agent-harness/internal/core/preflight"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/contract/issueops"
+	"agent-harness/internal/core/preflight"
 )
 
 func TestIssueOpsAISlopCleanRejectsUntrackedPlanWithoutImplementation(t *testing.T) {
@@ -24,7 +26,7 @@ func TestIssueOpsAISlopCleanRejectsUntrackedPlanWithoutImplementation(t *testing
 	if code, _, stderr := preflight.GitCmd(repo, "worktree", "add", "-q", worktree, branch); code != 0 {
 		t.Fatalf("git worktree add failed: %s", stderr)
 	}
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +35,7 @@ func TestIssueOpsAISlopCleanRejectsUntrackedPlanWithoutImplementation(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, issueops.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     record.IssueURL,
 		Branch:       branch,

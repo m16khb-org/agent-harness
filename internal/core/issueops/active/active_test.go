@@ -7,7 +7,7 @@ import (
 	"sort"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	model "agent-harness/internal/contract/issueops"
 )
 
 func TestLinkedWorktreeCycleForRepoReturnsFirstActiveRecord(t *testing.T) {

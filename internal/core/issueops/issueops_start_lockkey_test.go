@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"agent-harness/internal/contract/issueops"
 )
 
 // TestStartIssueOpsLockIDMatchesAbsRecordID guards LK-01: the lock id that
@@ -65,11 +67,11 @@ func TestStartIssueOpsRelativeThenAbsoluteShareOneRecordAndLock(t *testing.T) {
 	t.Chdir(repo)
 
 	branch := "12-demo"
-	first, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: ".", Branch: branch})
+	first, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: ".", Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
+	second, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}

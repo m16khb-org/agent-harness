@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	model "agent-harness/internal/contract/issueops"
 )
 
 func TestStableV1ShapeCoversEveryPersistedCoreField(t *testing.T) {

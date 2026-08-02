@@ -1,11 +1,15 @@
 package issueops
 
-import "testing"
+import (
+	"testing"
+
+	"agent-harness/internal/contract/issueops"
+)
 
 func TestIssueOpsStrictPRReadinessBlocksIncompleteChildren(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	started, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
+	started, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-pr-incomplete",
 		Title:              "incomplete child",
@@ -45,7 +49,7 @@ func TestIssueOpsStrictPRReadinessBlocksIncompleteChildren(t *testing.T) {
 func TestIssueOpsStrictPRReadinessRejectedAndDroppedVerdicts(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	started, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
+	started, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-pr-rejected",
 		Title:              "rejected child",

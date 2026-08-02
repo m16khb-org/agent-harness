@@ -4,13 +4,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/core/commandparse"
 	"agent-harness/internal/core/lifecycle/docupkeep"
-	"agent-harness/internal/core/lifecycle/model"
 	"agent-harness/internal/core/searchrouting"
 )
 
-func ForToolUse(req model.HookToolUseLifecycleRequest) []string {
+func ForToolUse(req lifecyclecontract.HookToolUseLifecycleRequest) []string {
 	if !ToolUseMayMutateLifecycleFiles(req.Tool, req.Command) {
 		return nil
 	}
@@ -196,8 +196,8 @@ func docTargetsForLifecyclePath(path string) []string {
 	return out
 }
 
-func UniqueEvents(events []model.DocUpkeepEvent) []model.DocUpkeepEvent {
-	unique := make([]model.DocUpkeepEvent, 0, len(events))
+func UniqueEvents(events []lifecyclecontract.DocUpkeepEvent) []lifecyclecontract.DocUpkeepEvent {
+	unique := make([]lifecyclecontract.DocUpkeepEvent, 0, len(events))
 	seen := map[string]bool{}
 	for _, event := range events {
 		key := strings.Join(docupkeep.NormalizeTargetDocs(event.TargetDocs), ",") + "\x00" + strings.TrimSpace(event.Summary)

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
@@ -18,13 +18,13 @@ import (
 func TestExecutionOrcaLegacyMarkerMigrationSupportsPrepareAndResumeProviders(t *testing.T) {
 	tests := []struct {
 		name    string
-		fixture func(*testing.T) (string, IssueOpsRecord, externalOrcaIntentPayload)
+		fixture func(*testing.T) (string, issueops.IssueOpsRecord, externalOrcaIntentPayload)
 	}{
 		{name: "github prepare", fixture: legacyPrepareIntentFixture},
-		{name: "github resume", fixture: func(t *testing.T) (string, IssueOpsRecord, externalOrcaIntentPayload) {
+		{name: "github resume", fixture: func(t *testing.T) (string, issueops.IssueOpsRecord, externalOrcaIntentPayload) {
 			return legacyResumeIntentFixture(t, "github", 16)
 		}},
-		{name: "gitlab resume", fixture: func(t *testing.T) (string, IssueOpsRecord, externalOrcaIntentPayload) {
+		{name: "gitlab resume", fixture: func(t *testing.T) (string, issueops.IssueOpsRecord, externalOrcaIntentPayload) {
 			return legacyResumeIntentFixture(t, "gitlab", 2646)
 		}},
 	}
@@ -69,34 +69,34 @@ func TestExecutionOrcaLegacyMarkerMigrationSupportsPrepareAndResumeProviders(t *
 func TestReconcileLegacyOrcaMarkerRejectsUnsafeEvidenceBeforeInspection(t *testing.T) {
 	tests := []struct {
 		name   string
-		mutate func(*IssueOpsRecord, *externalOrcaIntentPayload)
+		mutate func(*issueops.IssueOpsRecord, *externalOrcaIntentPayload)
 	}{
-		{name: "unknown invocation", mutate: func(_ *IssueOpsRecord, payload *externalOrcaIntentPayload) {
+		{name: "unknown invocation", mutate: func(_ *issueops.IssueOpsRecord, payload *externalOrcaIntentPayload) {
 			payload.InvocationState = orcaIntentUnknown
 		}},
-		{name: "changed operation marker", mutate: func(record *IssueOpsRecord, payload *externalOrcaIntentPayload) {
+		{name: "changed operation marker", mutate: func(record *issueops.IssueOpsRecord, payload *externalOrcaIntentPayload) {
 			changed := strings.Replace(payload.Marker, "operation=", "operation=x", 1)
 			payload.Marker = changed
 			payload.Probe.Marker = changed
 			record.Execution.Pending.Marker = changed
 		}},
-		{name: "probe identity mismatch", mutate: func(_ *IssueOpsRecord, payload *externalOrcaIntentPayload) {
+		{name: "probe identity mismatch", mutate: func(_ *issueops.IssueOpsRecord, payload *externalOrcaIntentPayload) {
 			payload.Probe.Provider = "gitlab"
 			payload.Probe.Issue = 2646
 		}},
-		{name: "pending marker mismatch", mutate: func(record *IssueOpsRecord, _ *externalOrcaIntentPayload) {
+		{name: "pending marker mismatch", mutate: func(record *issueops.IssueOpsRecord, _ *externalOrcaIntentPayload) {
 			record.Execution.Pending.Marker += "x"
 		}},
-		{name: "pending kind mismatch", mutate: func(record *IssueOpsRecord, _ *externalOrcaIntentPayload) {
+		{name: "pending kind mismatch", mutate: func(record *issueops.IssueOpsRecord, _ *externalOrcaIntentPayload) {
 			record.Execution.Pending.Kind = "dispatch"
 		}},
-		{name: "pending operation mismatch", mutate: func(record *IssueOpsRecord, _ *externalOrcaIntentPayload) {
+		{name: "pending operation mismatch", mutate: func(record *issueops.IssueOpsRecord, _ *externalOrcaIntentPayload) {
 			record.Execution.Pending.OperationID = strings.Repeat("e", 32)
 		}},
-		{name: "lease generation mismatch", mutate: func(record *IssueOpsRecord, _ *externalOrcaIntentPayload) {
+		{name: "lease generation mismatch", mutate: func(record *issueops.IssueOpsRecord, _ *externalOrcaIntentPayload) {
 			record.Execution.Lease.Generation++
 		}},
-		{name: "failure operation mismatch", mutate: func(record *IssueOpsRecord, _ *externalOrcaIntentPayload) {
+		{name: "failure operation mismatch", mutate: func(record *issueops.IssueOpsRecord, _ *externalOrcaIntentPayload) {
 			record.Execution.Failure.OperationID = strings.Repeat("f", 32)
 		}},
 	}
@@ -140,7 +140,7 @@ func TestReconcileLegacyOrcaMarkerRejectsUnsafeEvidenceBeforeInspection(t *testi
 
 func TestReconcileLegacyOrcaMarkerRejectsUnverifiedBranchLink(t *testing.T) {
 	stateRoot, record, payload := legacyPrepareIntentFixture(t)
-	record, payload = writeLegacyNotInvokedIntent(t, stateRoot, record, payload, func(record *IssueOpsRecord, _ *externalOrcaIntentPayload) {
+	record, payload = writeLegacyNotInvokedIntent(t, stateRoot, record, payload, func(record *issueops.IssueOpsRecord, _ *externalOrcaIntentPayload) {
 		record.BranchPrepare.LinkVerified = false
 	})
 
@@ -193,7 +193,7 @@ func TestReconcileLegacyOrcaMarkerLeavesCanonicalPayloadByteExact(t *testing.T) 
 	}
 }
 
-func legacyPrepareIntentFixture(t *testing.T) (string, IssueOpsRecord, externalOrcaIntentPayload) {
+func legacyPrepareIntentFixture(t *testing.T) (string, issueops.IssueOpsRecord, externalOrcaIntentPayload) {
 	t.Helper()
 	stateRoot, record := orcaPrepareRecord(t)
 	workspace, err := executionWorkspaceRequest(record, true)
@@ -214,7 +214,7 @@ func legacyPrepareIntentFixture(t *testing.T) (string, IssueOpsRecord, externalO
 	return stateRoot, persisted, payload
 }
 
-func legacyResumeIntentFixture(t *testing.T, provider string, issue int) (string, IssueOpsRecord, externalOrcaIntentPayload) {
+func legacyResumeIntentFixture(t *testing.T, provider string, issue int) (string, issueops.IssueOpsRecord, externalOrcaIntentPayload) {
 	t.Helper()
 	stateRoot, record, _ := reseededOrcaCycle(t)
 	artifacts, err := readExecutionResumeArtifacts(record)
@@ -242,10 +242,10 @@ func legacyResumeIntentFixture(t *testing.T, provider string, issue int) (string
 func writeLegacyNotInvokedIntent(
 	t *testing.T,
 	stateRoot string,
-	record IssueOpsRecord,
+	record issueops.IssueOpsRecord,
 	payload externalOrcaIntentPayload,
-	mutate func(*IssueOpsRecord, *externalOrcaIntentPayload),
-) (IssueOpsRecord, externalOrcaIntentPayload) {
+	mutate func(*issueops.IssueOpsRecord, *externalOrcaIntentPayload),
+) (issueops.IssueOpsRecord, externalOrcaIntentPayload) {
 	t.Helper()
 	legacy, err := renderLegacyOrcaIntentMarker(orcaIntentMarkerIdentity{
 		Purpose: normalizedOrcaIntentPurpose(payload), LifecycleID: payload.LifecycleID,
@@ -259,7 +259,7 @@ func writeLegacyNotInvokedIntent(
 	payload.InvocationState = orcaIntentNotInvoked
 	payload.InvocationAttempts = 0
 	record.Execution.Pending.Marker = legacy
-	record.Execution.Failure = &model.ExecutionFailure{
+	record.Execution.Failure = &issueops.ExecutionFailure{
 		OperationID: payload.OperationID, Code: "external_operation_ambiguous",
 		Message: "fixture text is not migration authority", At: "2026-07-30T00:00:00Z",
 	}
@@ -428,7 +428,7 @@ func TestExecutionOrcaCrashAfterMutationReconcilesExactlyOneCandidateWithoutDupl
 				t.Fatalf("reconcile repeated the external mutation: result=%#v calls=%v", result, calls)
 			}
 			if test.completed {
-				if result.Pending != nil || result.Execution.Lease.Status != model.LeaseStatusClaimable || result.Execution.Orca == nil {
+				if result.Pending != nil || result.Execution.Lease.Status != issueops.LeaseStatusClaimable || result.Execution.Orca == nil {
 					t.Fatalf("dispatch adoption did not finalize claimable authority: %#v", result)
 				}
 				if _, err := readExternalOrcaIntentPayload(stateRoot, payload.OperationID); err == nil {
@@ -480,7 +480,7 @@ func TestExecutionOrcaReconcileZeroMultipleAndTransportAmbiguityNeverMutate(t *t
 				t.Fatalf("ambiguous reconcile repeated external mutation: calls=%d", invokeCalls)
 			}
 			current, err := ReadIssueOps(stateRoot, record.ID)
-			if err != nil || current.Execution.Pending == nil || current.Execution.Lease.Status != model.LeaseStatusReleased {
+			if err != nil || current.Execution.Pending == nil || current.Execution.Lease.Status != issueops.LeaseStatusReleased {
 				t.Fatalf("ambiguous reconcile changed authority: record=%#v err=%v", current.Execution, err)
 			}
 		})
@@ -596,7 +596,7 @@ func TestExecutionOrcaReceiptCASRejectsConcurrentIntentChange(t *testing.T) {
 		t.Fatal("receipt CAS must reject a concurrent intent identity change")
 	}
 	current, err := ReadIssueOps(stateRoot, record.ID)
-	if err != nil || current.Execution.Pending == nil || current.Execution.Lease.Status != model.LeaseStatusReleased {
+	if err != nil || current.Execution.Pending == nil || current.Execution.Lease.Status != issueops.LeaseStatusReleased {
 		t.Fatalf("failed CAS changed writer authority: record=%#v err=%v", current.Execution, err)
 	}
 }

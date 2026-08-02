@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 )
 
 var liveApprovalTokenPattern = regexp.MustCompile(`AH-[A-HJ-NP-Z2-9]{6}`)
@@ -13,7 +15,7 @@ var liveApprovalTokenPattern = regexp.MustCompile(`AH-[A-HJ-NP-Z2-9]{6}`)
 func TestCodexKubectlReadOnlyExecApprovalAllowsSameScopeRepeatedly(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
-	req := HookToolUseLifecycleRequest{
+	req := lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:                 repo,
 		CWD:                  repo,
 		Host:                 "codex",
@@ -52,7 +54,7 @@ func TestCodexKubectlReadOnlyExecApprovalAllowsSameScopeRepeatedly(t *testing.T)
 func TestCodexKubectlReadOnlyExecScopeChangeRequiresApproval(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
-	req := HookToolUseLifecycleRequest{
+	req := lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo: repo, CWD: repo, Host: "codex", SessionID: "session-1", Tool: "Bash",
 		Command:              "kubectl --context bc-stgdev -n stg exec deploy/gateway -- getent hosts grpc-user",
 		EnforceGitOpsKubectl: true,
@@ -83,7 +85,7 @@ func TestCodexKubectlUnsafeExecBlocksWithoutApprovalState(t *testing.T) {
 			stateRoot := t.TempDir()
 			t.Setenv("HARNESS_STATE_DIR", stateRoot)
 			repo := t.TempDir()
-			got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 				Repo: repo, CWD: repo, Host: "codex", SessionID: "session-1", Tool: "Bash", Command: command,
 				EnforceGitOpsKubectl: true,
 			})
@@ -100,7 +102,7 @@ func TestCodexKubectlUnsafeExecBlocksWithoutApprovalState(t *testing.T) {
 func TestCodexKubectlPortForwardApprovalRemainsOneShot(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
-	req := HookToolUseLifecycleRequest{
+	req := lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo: repo, CWD: repo, Host: "codex", SessionID: "session-1", Tool: "Bash",
 		Command:              "kubectl --context bc-stgdev -n stg port-forward svc/api 8080:80",
 		EnforceGitOpsKubectl: true,
@@ -123,7 +125,7 @@ func TestCodexKubectlPortForwardApprovalRemainsOneShot(t *testing.T) {
 func TestCodexKubectlLiveApprovalFailsClosedWithoutSession(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
-	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+	got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:                 repo,
 		CWD:                  repo,
 		Host:                 "codex",
@@ -140,7 +142,7 @@ func TestClaudeKubectlLiveAccessKeepsNativeAskWithoutApprovalState(t *testing.T)
 	stateRoot := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateRoot)
 	repo := t.TempDir()
-	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+	got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:                 repo,
 		CWD:                  repo,
 		Host:                 "claude",

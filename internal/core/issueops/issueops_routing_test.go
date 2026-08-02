@@ -1,11 +1,15 @@
 package issueops
 
-import "testing"
+import (
+	"testing"
+
+	"agent-harness/internal/contract/issueops"
+)
 
 func TestRecordIssueOpsRouting(t *testing.T) {
 	stateRoot := t.TempDir()
 	repo := initIssueOpsRepo(t)
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "1-routing"})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "1-routing"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +50,7 @@ func TestRecordIssueOpsRouting(t *testing.T) {
 func TestScoreLiveRoutingFidelity(t *testing.T) {
 	stateRoot := t.TempDir()
 	repo := initIssueOpsRepo(t)
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "2-score"})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "2-score"})
 	if err != nil {
 		t.Fatal(err)
 	}

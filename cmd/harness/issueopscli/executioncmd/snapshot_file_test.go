@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/internal/core/issueops"
 )
 
@@ -122,7 +124,7 @@ func executionSnapshotCLIRecord(t *testing.T) (string, string, string) {
 	stateRoot, repo := t.TempDir(), t.TempDir()
 	branch := "69-snapshot-cli"
 	issueURL := "https://gitlab.example.com/acme/repo/-/work_items/69"
-	record := issueops.IssueOpsRecord{
+	record := issueopscontract.IssueOpsRecord{
 		OK:            true,
 		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
 		ID:            issueops.NewIssueOpsID(repo, branch),
@@ -130,8 +132,8 @@ func executionSnapshotCLIRecord(t *testing.T) (string, string, string) {
 		Branch:        branch,
 		Phase:         issueops.IssueOpsPhasePlan,
 		IssueURL:      issueURL,
-		DesignReview:  &issueops.IssueOpsDesignReview{Approved: true, ReviewedAt: "2026-07-28T00:00:00Z"},
-		BranchPrepare: &issueops.IssueOpsBranchPrepare{
+		DesignReview:  &issueopscontract.IssueOpsDesignReview{Approved: true, ReviewedAt: "2026-07-28T00:00:00Z"},
+		BranchPrepare: &issueopscontract.IssueOpsBranchPrepare{
 			Provider: "gitlab", IssueURL: issueURL, Branch: branch,
 			BaseBranch: "main", BaseSHA: strings.Repeat("a", 40), LinkVerified: true,
 			CreatedAt: "2026-07-28T00:00:00Z",

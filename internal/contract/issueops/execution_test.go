@@ -1,4 +1,4 @@
-package model
+package issueops
 
 import (
 	"strings"
@@ -29,19 +29,19 @@ func validOrcaExecutionForTest() Execution {
 	}
 }
 
-func TestValidateExecutionAcceptsLegacyOrcaBindingWithoutLeaseGeneration(t *testing.T) {
+func TestValidateExecutionAcceptsOptionalOrcaLeaseGeneration(t *testing.T) {
 	execution := validOrcaExecutionForTest()
 	execution.Orca.LeaseGeneration = 0
 	if err := ValidateExecution(execution); err != nil {
-		t.Fatalf("legacy Orca binding must remain readable: %v", err)
+		t.Fatalf("optional Orca lease generation must remain valid: %v", err)
 	}
 }
 
-func TestValidateExecutionAcceptsLegacyOrcaBindingWithoutRunID(t *testing.T) {
+func TestValidateExecutionAcceptsOptionalOrcaRunID(t *testing.T) {
 	execution := validOrcaExecutionForTest()
 	execution.Orca.RunID = ""
 	if err := ValidateExecution(execution); err != nil {
-		t.Fatalf("legacy Orca binding must remain readable: %v", err)
+		t.Fatalf("optional Orca run id must remain valid: %v", err)
 	}
 }
 

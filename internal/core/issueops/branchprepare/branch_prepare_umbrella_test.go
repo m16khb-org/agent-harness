@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	model "agent-harness/internal/contract/issueops"
 )
 
 // umbrellaStore는 자식 사이클 하나와 그 부모 우산 사이클 하나를 갖는 최소 스토어다.

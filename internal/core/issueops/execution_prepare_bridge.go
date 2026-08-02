@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"agent-harness/internal/contract/issueops"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
@@ -67,9 +67,9 @@ func MaterializeExecutionPreparationDirect(stateRoot string, snapshot preparatio
 		return err
 	}
 	record.WorktreePath = receipt.Root
-	record.Execution = &model.Execution{
-		Mode: model.ExecutionModeDirect,
-		Workspace: model.Workspace{
+	record.Execution = &issueops.Execution{
+		Mode: issueops.ExecutionModeDirect,
+		Workspace: issueops.Workspace{
 			SourceRoot: receipt.SourceRoot, Root: receipt.Root, Branch: receipt.Branch,
 			BaseHead: receipt.BaseHead, ParentWorktree: receipt.ParentWorktree, Driver: receipt.Driver,
 		},
@@ -183,13 +183,13 @@ func HydrateExecutionPreparationLaunch(stateRoot, id string, request preparation
 
 func NewExecutionPreparationOperationID() (string, error) { return newExecutionOperationID() }
 
-func executionPreparationCoreRecord(snapshot preparationcontract.Snapshot) (IssueOpsRecord, error) {
+func executionPreparationCoreRecord(snapshot preparationcontract.Snapshot) (issueops.IssueOpsRecord, error) {
 	if len(snapshot.RecordRaw) == 0 {
-		return IssueOpsRecord{}, fmt.Errorf("preparation raw record snapshot is required")
+		return issueops.IssueOpsRecord{}, fmt.Errorf("preparation raw record snapshot is required")
 	}
-	var record IssueOpsRecord
+	var record issueops.IssueOpsRecord
 	if err := json.Unmarshal(snapshot.RecordRaw, &record); err != nil {
-		return IssueOpsRecord{}, err
+		return issueops.IssueOpsRecord{}, err
 	}
 	return record, nil
 }

@@ -1,5 +1,7 @@
 package policy
 
+import policydomain "agent-harness/internal/domain/policy"
+
 func CommandPolicySummary() map[string]any {
 	return map[string]any{
 		"ok":                    true,
@@ -23,9 +25,9 @@ func CommandPolicySummary() map[string]any {
 
 func commandPolicyTiers() []map[string]any {
 	return []map[string]any{
-		{"name": PolicyTierReadOnly, "requires": []string{}, "rationale": policyTierRationale(PolicyTierReadOnly)},
-		{"name": PolicyTierWorkspaceWrite, "requires": []string{"write_allowed"}, "rationale": policyTierRationale(PolicyTierWorkspaceWrite)},
-		{"name": PolicyTierNetworkAccess, "requires": []string{"network_allowed"}, "rationale": policyTierRationale(PolicyTierNetworkAccess)},
-		{"name": PolicyTierShellException, "requires": []string{"shell_allowed", "shell_reason"}, "rationale": policyTierRationale(PolicyTierShellException)},
+		{"name": PolicyTierReadOnly, "requires": []string{}, "rationale": policydomain.Rationale(PolicyTierReadOnly)},
+		{"name": PolicyTierWorkspaceWrite, "requires": []string{"write_allowed"}, "rationale": policydomain.Rationale(PolicyTierWorkspaceWrite)},
+		{"name": PolicyTierNetworkAccess, "requires": []string{"network_allowed"}, "rationale": policydomain.Rationale(PolicyTierNetworkAccess)},
+		{"name": PolicyTierShellException, "requires": []string{"shell_allowed", "shell_reason"}, "rationale": policydomain.Rationale(PolicyTierShellException)},
 	}
 }

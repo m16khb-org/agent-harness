@@ -3,7 +3,7 @@ package delegation
 import (
 	"strings"
 
-	"agent-harness/internal/core/issueops/model"
+	model "agent-harness/internal/contract/issueops"
 )
 
 func MissingPreconditions(parent model.IssueOpsRecord, req model.IssueOpsChildStartRequest) []string {

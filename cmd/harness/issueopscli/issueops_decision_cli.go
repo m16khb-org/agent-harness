@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/internal/core"
 )
 
@@ -32,7 +34,7 @@ func runIssueOpsDecision(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.AddIssueOpsDecisionWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsDecisionRecordRequest{
+	record, err := core.AddIssueOpsDecisionWithActor(core.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsDecisionRecordRequest{
 		Title:              *title,
 		Body:               *body,
 		Kind:               *kind,

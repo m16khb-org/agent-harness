@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -14,7 +14,7 @@ import (
 // 운영자는 claim→release로 lease를 한 바퀴 돌리는 우회를 하게 되는데, 그 두
 // 단계는 아무것도 정리하지 않는다(#140).
 func TestAbandonAllowsHolderlessLease(t *testing.T) {
-	for _, status := range []model.LeaseStatus{model.LeaseStatusClaimable, model.LeaseStatusReleased} {
+	for _, status := range []issueops.LeaseStatus{issueops.LeaseStatusClaimable, issueops.LeaseStatusReleased} {
 		t.Run(string(status), func(t *testing.T) {
 			stateRoot, record := abandonLeaseRecord(t, status)
 
@@ -33,7 +33,7 @@ func TestAbandonAllowsHolderlessLease(t *testing.T) {
 // 홀더를 가진 상태는 계속 거부한다. active는 살아 있는 writer가 있고,
 // revoking은 해제된 상태가 아니라 fenced holder를 여전히 보유한다.
 func TestAbandonRejectsLeaseWithHolder(t *testing.T) {
-	for _, status := range []model.LeaseStatus{model.LeaseStatusActive, model.LeaseStatusRevoking} {
+	for _, status := range []issueops.LeaseStatus{issueops.LeaseStatusActive, issueops.LeaseStatusRevoking} {
 		t.Run(string(status), func(t *testing.T) {
 			stateRoot, record := abandonLeaseRecord(t, status)
 
@@ -49,10 +49,10 @@ func TestAbandonRejectsLeaseWithHolder(t *testing.T) {
 // claimable 허용이 다른 게이트의 보호를 우회하지 않는다. orca 자원이 살아
 // 있으면 lease가 claimable이어도 막힌다.
 func TestAbandonClaimableStillRespectsOrcaResidueGate(t *testing.T) {
-	stateRoot, record := abandonLeaseRecord(t, model.LeaseStatusClaimable)
-	record.Execution.Mode = model.ExecutionModeOrca
+	stateRoot, record := abandonLeaseRecord(t, issueops.LeaseStatusClaimable)
+	record.Execution.Mode = issueops.ExecutionModeOrca
 	record.Execution.Workspace.Driver = "orca"
-	record.Execution.Orca = &model.OrcaBinding{
+	record.Execution.Orca = &issueops.OrcaBinding{
 		RuntimeID: "runtime-140", RepoID: "repo-140", WorktreeID: "worktree-140",
 		OwnerHost: "claude", OwnerModel: "claude-opus-5", TerminalPTYID: "pty-140",
 		TaskID: "task-140", DispatchID: "dispatch-140",
@@ -90,23 +90,23 @@ func TestAbandonPendingIntentBlockNamesTheFullPath(t *testing.T) {
 	}
 }
 
-func abandonLeaseRecord(t *testing.T, status model.LeaseStatus) (string, IssueOpsRecord) {
+func abandonLeaseRecord(t *testing.T, status issueops.LeaseStatus) (string, issueops.IssueOpsRecord) {
 	t.Helper()
 	stateRoot, record := abandonTestRecord(t)
-	lease := model.WriteLease{Generation: 1, Status: status}
+	lease := issueops.WriteLease{Generation: 1, Status: status}
 	switch status {
-	case model.LeaseStatusClaimable:
+	case issueops.LeaseStatusClaimable:
 		lease.ClaimTokenSHA256 = strings.Repeat("a", 64)
-	case model.LeaseStatusActive, model.LeaseStatusRevoking:
+	case issueops.LeaseStatusActive, issueops.LeaseStatusRevoking:
 		holder := executionActor("claude", "abandon-lease-session")
 		lease.Holder = &holder
 		lease.ClaimedAt = "2026-07-26T00:00:00Z"
-	case model.LeaseStatusReleased:
+	case issueops.LeaseStatusReleased:
 		lease.ReleasedAt = "2026-07-26T00:00:02Z"
 	}
-	record.Execution = &model.Execution{
-		Mode: model.ExecutionModeDirect,
-		Workspace: model.Workspace{
+	record.Execution = &issueops.Execution{
+		Mode: issueops.ExecutionModeDirect,
+		Workspace: issueops.Workspace{
 			SourceRoot: record.Repo, Root: record.Repo + ".worktrees/deleted-140",
 			Branch: record.Branch, BaseHead: "0000000000000000000000000000000000000000",
 			Driver: "git", LinkedAt: "2026-07-26T00:00:00Z",

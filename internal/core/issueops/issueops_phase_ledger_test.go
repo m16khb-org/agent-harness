@@ -4,11 +4,11 @@ import (
 	"reflect"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 )
 
-func fullIntentForLedger() *model.IssueOpsIntentContract {
-	return &model.IssueOpsIntentContract{
+func fullIntentForLedger() *issueops.IssueOpsIntentContract {
+	return &issueops.IssueOpsIntentContract{
 		RawRequest:        "do x",
 		InterpretedIntent: "implement x",
 		SuccessCriteria:   []string{"x works"},
@@ -17,25 +17,25 @@ func fullIntentForLedger() *model.IssueOpsIntentContract {
 	}
 }
 
-func waivedPlanPrep() *model.IssueOpsPlanPrep {
-	item := model.IssueOpsPlanPrepItem{Status: "waived", WaiveReason: "n/a for this small change"}
-	return &model.IssueOpsPlanPrep{PriorDecisions: item, RelatedIssues: item, WebResearch: item, CodebaseSurvey: item, RecordedAt: "2026-06-29T00:00:00Z"}
+func waivedPlanPrep() *issueops.IssueOpsPlanPrep {
+	item := issueops.IssueOpsPlanPrepItem{Status: "waived", WaiveReason: "n/a for this small change"}
+	return &issueops.IssueOpsPlanPrep{PriorDecisions: item, RelatedIssues: item, WebResearch: item, CodebaseSurvey: item, RecordedAt: "2026-06-29T00:00:00Z"}
 }
 
 func TestIssueOpsProblemReadinessNeedsOnlyIntent(t *testing.T) {
-	if r := IssueOpsProblemReadiness(IssueOpsRecord{}); r.Ready {
+	if r := IssueOpsProblemReadiness(issueops.IssueOpsRecord{}); r.Ready {
 		t.Fatalf("empty record should not complete problem: %#v", r)
 	} else if !containsLedgerKey(r.Missing, "intent_contract") {
 		t.Fatalf("expected intent_contract missing, got %#v", r.Missing)
 	}
-	rec := IssueOpsRecord{Intent: fullIntentForLedger()}
+	rec := issueops.IssueOpsRecord{Intent: fullIntentForLedger()}
 	if r := IssueOpsProblemReadiness(rec); !r.Ready {
 		t.Fatalf("intent-complete record should complete problem regardless of issue_url/branch: %#v", r)
 	}
 }
 
 func TestIssueOpsGrillReadinessRequiresArtifacts(t *testing.T) {
-	rec := IssueOpsRecord{Intent: fullIntentForLedger()}
+	rec := issueops.IssueOpsRecord{Intent: fullIntentForLedger()}
 	r := IssueOpsGrillReadiness(rec)
 	if r.Ready {
 		t.Fatalf("bare grill should not be ready: %#v", r)
@@ -46,13 +46,13 @@ func TestIssueOpsGrillReadinessRequiresArtifacts(t *testing.T) {
 		}
 	}
 
-	complete := IssueOpsRecord{
+	complete := issueops.IssueOpsRecord{
 		Intent:    fullIntentForLedger(),
 		IssueURL:  "https://example/issues/1",
 		Branch:    "1-x",
 		PlanPrep:  waivedPlanPrep(),
-		Decisions: []model.IssueOpsDecision{{Title: "no split", Kind: "scope", CreatedAt: "2026-06-29T00:00:00Z"}},
-		DomainReview: &model.IssueOpsDomainReview{
+		Decisions: []issueops.IssueOpsDecision{{Title: "no split", Kind: "scope", CreatedAt: "2026-06-29T00:00:00Z"}},
+		DomainReview: &issueops.IssueOpsDomainReview{
 			ModelFit:   "fits",
 			ReviewedAt: "2026-06-29T00:00:00Z",
 		},
@@ -63,13 +63,13 @@ func TestIssueOpsGrillReadinessRequiresArtifacts(t *testing.T) {
 }
 
 func TestIssueOpsGrillSplitDecisionAcceptsChildLink(t *testing.T) {
-	rec := IssueOpsRecord{
+	rec := issueops.IssueOpsRecord{
 		Intent:       fullIntentForLedger(),
 		IssueURL:     "https://example/issues/1",
 		Branch:       "1-x",
 		PlanPrep:     waivedPlanPrep(),
-		IssueLinks:   []model.IssueOpsIssueLink{{Type: "child", URL: "https://example/issues/2", CreatedAt: "2026-06-29T00:00:00Z"}},
-		DomainReview: &model.IssueOpsDomainReview{ModelFit: "fits", ReviewedAt: "2026-06-29T00:00:00Z"},
+		IssueLinks:   []issueops.IssueOpsIssueLink{{Type: "child", URL: "https://example/issues/2", CreatedAt: "2026-06-29T00:00:00Z"}},
+		DomainReview: &issueops.IssueOpsDomainReview{ModelFit: "fits", ReviewedAt: "2026-06-29T00:00:00Z"},
 	}
 	if r := IssueOpsGrillReadiness(rec); !r.Ready {
 		t.Fatalf("child issue link should satisfy split_decision, missing %#v", r.Missing)
@@ -77,7 +77,7 @@ func TestIssueOpsGrillSplitDecisionAcceptsChildLink(t *testing.T) {
 }
 
 func TestIssueOpsPhaseCompletionDispatches(t *testing.T) {
-	rec := IssueOpsRecord{Intent: fullIntentForLedger()}
+	rec := issueops.IssueOpsRecord{Intent: fullIntentForLedger()}
 	if r := IssueOpsPhaseCompletion(rec, IssueOpsPhaseProblem); !r.Ready {
 		t.Fatalf("problem completion should be ready for intent-only record: %#v", r)
 	}
@@ -87,7 +87,7 @@ func TestIssueOpsPhaseCompletionDispatches(t *testing.T) {
 }
 
 func TestDeriveIssueOpsPhaseLedgerIsDeterministicAndSentinel(t *testing.T) {
-	rec := IssueOpsRecord{Phase: IssueOpsPhaseGrill, Intent: fullIntentForLedger()}
+	rec := issueops.IssueOpsRecord{Phase: IssueOpsPhaseGrill, Intent: fullIntentForLedger()}
 	a := DeriveIssueOpsPhaseLedger(rec)
 	b := DeriveIssueOpsPhaseLedger(rec)
 	if !reflect.DeepEqual(a, b) {

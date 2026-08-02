@@ -3,15 +3,15 @@ package issueops
 import (
 	"strings"
 
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops/implementation"
 	"agent-harness/internal/core/issueops/intentdesign"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/readinesspaths"
 	"agent-harness/internal/core/issueops/stringlist"
 	"agent-harness/internal/core/preflight"
 )
 
-func IssueOpsPlanReadiness(record IssueOpsRecord) IssueOpsReadiness {
+func IssueOpsPlanReadiness(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
 	missing := issueOpsIntentMissing(record)
 	if strings.TrimSpace(record.IssueURL) == "" {
 		missing = append(missing, "issue_url")
@@ -19,7 +19,7 @@ func IssueOpsPlanReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	if planPrepGateApplies(record) {
 		missing = append(missing, planPrepMissing(record.PlanPrep)...)
 	}
-	return IssueOpsReadiness{
+	return issueops.IssueOpsReadiness{
 		OK:           true,
 		Ready:        len(missing) == 0,
 		Missing:      stringlist.UniqueSorted(missing),
@@ -33,14 +33,14 @@ func IssueOpsPlanReadiness(record IssueOpsRecord) IssueOpsReadiness {
 // planPrepGateApplies reports whether the plan-prep evidence gate is active.
 // It activates only once an intent contract exists (so intent_contract is the
 // first missing key for an empty cycle) and the intent class is not trivial.
-func planPrepGateApplies(record IssueOpsRecord) bool {
+func planPrepGateApplies(record issueops.IssueOpsRecord) bool {
 	if record.Intent == nil {
 		return false
 	}
 	return !strings.EqualFold(strings.TrimSpace(record.Intent.IntentClass), "trivial")
 }
 
-func planPrepMissing(pp *model.IssueOpsPlanPrep) []string {
+func planPrepMissing(pp *issueops.IssueOpsPlanPrep) []string {
 	if pp == nil {
 		return []string{"plan_prep_decisions", "plan_prep_related_issues", "plan_prep_web_research", "plan_prep_codebase_survey"}
 	}
@@ -60,7 +60,7 @@ func planPrepMissing(pp *model.IssueOpsPlanPrep) []string {
 	return missing
 }
 
-func planPrepItemValid(item model.IssueOpsPlanPrepItem) bool {
+func planPrepItemValid(item issueops.IssueOpsPlanPrepItem) bool {
 	switch strings.TrimSpace(item.Status) {
 	case "evidence":
 		return len(cleanIssueOpsTextValues(item.Evidence)) > 0
@@ -71,7 +71,7 @@ func planPrepItemValid(item model.IssueOpsPlanPrepItem) bool {
 	}
 }
 
-func IssueOpsAISlopCleanReadiness(record IssueOpsRecord) IssueOpsReadiness {
+func IssueOpsAISlopCleanReadiness(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
 	ready := IssueOpsImplementationReadiness(record)
 	missing := append([]string{}, ready.Missing...)
 	if !implementation.HasEvidence(record) {
@@ -83,7 +83,7 @@ func IssueOpsAISlopCleanReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	return ready
 }
 
-func IssueOpsCompatibilityReviewReadiness(record IssueOpsRecord) IssueOpsReadiness {
+func IssueOpsCompatibilityReviewReadiness(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
 	missing := issueOpsBaseImplementationMissing(record)
 	if path := strings.TrimSpace(record.WorktreePath); path == "" {
 		missing = append(missing, "worktree_path")
@@ -96,7 +96,7 @@ func IssueOpsCompatibilityReviewReadiness(record IssueOpsRecord) IssueOpsReadine
 	if !issueOpsPlanInLinkedWorktree(record) {
 		missing = append(missing, "plan_in_worktree")
 	}
-	return IssueOpsReadiness{
+	return issueops.IssueOpsReadiness{
 		OK:           true,
 		Ready:        len(missing) == 0,
 		Missing:      stringlist.UniqueSorted(missing),
@@ -107,7 +107,7 @@ func IssueOpsCompatibilityReviewReadiness(record IssueOpsRecord) IssueOpsReadine
 	}
 }
 
-func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
+func IssueOpsImplementationReadiness(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
 	missing := issueOpsBaseImplementationMissing(record)
 	if path := strings.TrimSpace(record.WorktreePath); path == "" {
 		missing = append(missing, "worktree_path")
@@ -125,17 +125,17 @@ func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	if record.Execution == nil {
 		missing = append(missing, "execution")
 	} else {
-		if err := model.ValidateExecution(*record.Execution); err != nil {
+		if err := issueops.ValidateExecution(*record.Execution); err != nil {
 			missing = append(missing, "execution_valid")
 		}
 		if !samePath(record.WorktreePath, record.Execution.Workspace.Root) {
 			missing = append(missing, "execution_worktree_match")
 		}
-		if record.Execution.Lease.Status != model.LeaseStatusActive || record.Execution.Lease.Holder == nil {
+		if record.Execution.Lease.Status != issueops.LeaseStatusActive || record.Execution.Lease.Holder == nil {
 			missing = append(missing, "execution_write_lease")
 		}
 	}
-	return IssueOpsReadiness{
+	return issueops.IssueOpsReadiness{
 		OK:           true,
 		Ready:        len(missing) == 0,
 		Missing:      stringlist.UniqueSorted(missing),
@@ -149,7 +149,7 @@ func IssueOpsImplementationReadiness(record IssueOpsRecord) IssueOpsReadiness {
 // issueOpsDevilsAdvocateReviewMissing is the fail-closed implement-entry gate for
 // the brooks devil's advocate: a review must be recorded, and a stop/revise
 // verdict must be explicitly waived, before implementation can begin.
-func issueOpsDevilsAdvocateReviewMissing(record IssueOpsRecord) []string {
+func issueOpsDevilsAdvocateReviewMissing(record issueops.IssueOpsRecord) []string {
 	review := record.DevilsAdvocateReview
 	if review == nil || strings.TrimSpace(review.RecordedAt) == "" {
 		return []string{"devils_advocate_review"}
@@ -160,7 +160,7 @@ func issueOpsDevilsAdvocateReviewMissing(record IssueOpsRecord) []string {
 	return nil
 }
 
-func issueOpsCompatibilityReviewMissing(record IssueOpsRecord) []string {
+func issueOpsCompatibilityReviewMissing(record issueops.IssueOpsRecord) []string {
 	review := record.CompatibilityReview
 	if review == nil {
 		return []string{"compatibility_review"}
@@ -187,7 +187,7 @@ func issueOpsCompatibilityReviewMissing(record IssueOpsRecord) []string {
 	return missing
 }
 
-func issueOpsStrictGitRoot(record IssueOpsRecord) string {
+func issueOpsStrictGitRoot(record issueops.IssueOpsRecord) string {
 	return readinesspaths.StrictGitRoot(record)
 }
 
@@ -199,7 +199,7 @@ func issueOpsPlanPathExists(repo, path string) bool {
 	return readinesspaths.PlanPathExists(repo, path)
 }
 
-func issueOpsPlanInLinkedWorktree(record IssueOpsRecord) bool {
+func issueOpsPlanInLinkedWorktree(record issueops.IssueOpsRecord) bool {
 	return readinesspaths.PlanInLinkedWorktree(record)
 }
 
@@ -207,7 +207,7 @@ func issueOpsPlanPathInsideWorktree(worktree, planPath string) bool {
 	return readinesspaths.PlanPathInsideWorktree(worktree, planPath)
 }
 
-func issueOpsIntentMissing(record IssueOpsRecord) []string {
+func issueOpsIntentMissing(record issueops.IssueOpsRecord) []string {
 	if record.Intent == nil {
 		return []string{"intent_contract"}
 	}
@@ -224,7 +224,7 @@ func issueOpsIntentMissing(record IssueOpsRecord) []string {
 	return missing
 }
 
-func issueOpsDesignReviewMissing(record IssueOpsRecord) []string {
+func issueOpsDesignReviewMissing(record issueops.IssueOpsRecord) []string {
 	if record.DesignReview == nil {
 		return []string{"design_review"}
 	}
@@ -259,7 +259,7 @@ func issueOpsDesignReviewMissing(record IssueOpsRecord) []string {
 	return missing
 }
 
-func issueOpsCurrentHead(record IssueOpsRecord) string {
+func issueOpsCurrentHead(record issueops.IssueOpsRecord) string {
 	gitRoot := issueOpsStrictGitRoot(record)
 	if gitRoot == "" {
 		return ""

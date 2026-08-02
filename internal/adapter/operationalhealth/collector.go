@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/pathutil"
 	corehealth "agent-harness/internal/core/operationalhealth"
 	"agent-harness/internal/port"
@@ -36,7 +36,7 @@ type GitRunner interface {
 	Run(context.Context, string, ...string) ([]byte, error)
 }
 
-type NativeProcessInspector func(model.NativeProcessReceipt) (string, model.NativeProcessReceipt, error)
+type NativeProcessInspector func(issueopscontract.NativeProcessReceipt) (string, issueopscontract.NativeProcessReceipt, error)
 
 const gitInventoryCommandTimeout = 15 * time.Second
 
@@ -200,14 +200,14 @@ func (collector Collector) collectGit(ctx context.Context, snapshot *corehealth.
 	}
 }
 
-func (collector Collector) collectIssueOps(snapshot *corehealth.Snapshot) ([]issueops.IssueOpsRecord, bool) {
+func (collector Collector) collectIssueOps(snapshot *corehealth.Snapshot) ([]issueopscontract.IssueOpsRecord, bool) {
 	stateRoot := issueops.IssueOpsStateRoot()
 	ids, err := issueops.ListIssueOpsIDs(stateRoot)
 	if err != nil {
 		addProblem(snapshot, "issueops", "issueops_list_failed", "IssueOps ID inventory failed")
 		return nil, false
 	}
-	records := make([]issueops.IssueOpsRecord, 0, len(ids))
+	records := make([]issueopscontract.IssueOpsRecord, 0, len(ids))
 	orcaOwned := false
 	for _, id := range ids {
 		record, err := issueops.ReadIssueOpsExisting(stateRoot, id)
@@ -405,7 +405,7 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 	}
 }
 
-func cycleFromRecord(record issueops.IssueOpsRecord, inspect NativeProcessInspector) (corehealth.Cycle, []corehealth.InventoryProblem) {
+func cycleFromRecord(record issueopscontract.IssueOpsRecord, inspect NativeProcessInspector) (corehealth.Cycle, []corehealth.InventoryProblem) {
 	cycle := corehealth.Cycle{
 		ID: strings.TrimSpace(record.ID), Repo: canonicalInventoryPath(record.Repo), Branch: strings.TrimSpace(record.Branch),
 		Phase: string(record.Phase),
@@ -445,7 +445,7 @@ func cycleFromRecord(record issueops.IssueOpsRecord, inspect NativeProcessInspec
 			cycle.HolderPID = receipt.PID
 			cycle.HolderStartedAt = strings.TrimSpace(receipt.StartedAt)
 			cycle.HolderExecutable = strings.TrimSpace(receipt.Executable)
-			if inspect != nil && execution.Lease.Status == model.LeaseStatusActive {
+			if inspect != nil && execution.Lease.Status == issueopscontract.LeaseStatusActive {
 				status, _, err := inspect(receipt)
 				cycle.HolderProcessStatus = strings.TrimSpace(status)
 				if err != nil {
@@ -469,8 +469,8 @@ func cycleFromRecord(record issueops.IssueOpsRecord, inspect NativeProcessInspec
 	return cycle, problems
 }
 
-func recordOwnsOrca(record issueops.IssueOpsRecord) bool {
-	return record.Execution != nil && record.Execution.Mode == model.ExecutionModeOrca
+func recordOwnsOrca(record issueopscontract.IssueOpsRecord) bool {
+	return record.Execution != nil && record.Execution.Mode == issueopscontract.ExecutionModeOrca
 }
 
 func parseWorktrees(output []byte, repo string) ([]corehealth.GitWorktree, error) {

@@ -24,7 +24,6 @@ internal/adapter/hostprobe -> internal/core/toolconformance
 internal/adapter/mcp -> internal/core/policy
 internal/adapter/mcp -> internal/core/toolconformance
 internal/adapter/operationalhealth -> internal/core/issueops
-internal/adapter/operationalhealth -> internal/core/issueops/model
 internal/adapter/operationalhealth -> internal/core/issueops/pathutil
 internal/adapter/operationalhealth -> internal/core/operationalhealth
 internal/adapter/orca -> internal/core/policy

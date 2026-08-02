@@ -12,6 +12,7 @@ import (
 
 	completionoutbound "agent-harness/internal/adapter/outbound/issueopscompletion"
 	completionapp "agent-harness/internal/application/issueopscompletion"
+	"agent-harness/internal/contract/issueops"
 	completioncontract "agent-harness/internal/contract/issueopscompletion"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/core/sqlstore"
@@ -80,16 +81,16 @@ func TestExecutionCompletionVerticalDifferentialSuccessAndRetry(t *testing.T) {
 func TestExecutionCompletionVerticalDifferentialDenialMatrix(t *testing.T) {
 	tests := []struct {
 		name          string
-		mutateRecord  func(*IssueOpsRecord)
+		mutateRecord  func(*issueops.IssueOpsRecord)
 		mutateRequest func(*ExecutionCompleteRequest, *testing.T)
 	}{
 		{name: "confirmation", mutateRequest: func(request *ExecutionCompleteRequest, _ *testing.T) { request.Confirm = false }},
 		{name: "verification", mutateRequest: func(request *ExecutionCompleteRequest, _ *testing.T) { request.Verification = nil }},
 		{name: "remote url", mutateRequest: func(request *ExecutionCompleteRequest, _ *testing.T) { request.RemoteArtifactURL = "http://invalid" }},
-		{name: "phase", mutateRecord: func(record *IssueOpsRecord) { record.Phase = IssueOpsPhaseFeedback }},
-		{name: "artifact", mutateRecord: func(record *IssueOpsRecord) { record.RemoteArtifact = nil }},
-		{name: "artifact canonicality", mutateRecord: func(record *IssueOpsRecord) { record.RemoteArtifact.Provider = " GitHub " }},
-		{name: "target branch", mutateRecord: func(record *IssueOpsRecord) { record.RemoteArtifact.TargetBranch = "release" }},
+		{name: "phase", mutateRecord: func(record *issueops.IssueOpsRecord) { record.Phase = IssueOpsPhaseFeedback }},
+		{name: "artifact", mutateRecord: func(record *issueops.IssueOpsRecord) { record.RemoteArtifact = nil }},
+		{name: "artifact canonicality", mutateRecord: func(record *issueops.IssueOpsRecord) { record.RemoteArtifact.Provider = " GitHub " }},
+		{name: "target branch", mutateRecord: func(record *issueops.IssueOpsRecord) { record.RemoteArtifact.TargetBranch = "release" }},
 		{name: "holder", mutateRequest: func(request *ExecutionCompleteRequest, _ *testing.T) { request.Actor.SessionID = "foreign-session" }},
 		{name: "generation", mutateRequest: func(request *ExecutionCompleteRequest, _ *testing.T) { request.Generation = 2 }},
 		{name: "cwd", mutateRequest: func(request *ExecutionCompleteRequest, t *testing.T) { request.CWD = t.TempDir() }},
@@ -147,7 +148,7 @@ func TestExecutionCompletionVerticalDifferentialDenialMatrix(t *testing.T) {
 	}
 }
 
-func copyCompletionState(t *testing.T, sourceRoot, targetRoot, id string, actor NativeActor) {
+func copyCompletionState(t *testing.T, sourceRoot, targetRoot, id string, actor issueops.NativeActor) {
 	t.Helper()
 	record, index, indexExists := releaseDifferentialSnapshot(t, sourceRoot, id, leaseHolderIndexKey(actor))
 	target, err := sqlstore.Open(targetRoot)
@@ -177,12 +178,12 @@ func differentialCompletionRequest(request ExecutionCompleteRequest) completiona
 }
 
 func differentialArtifactVerifier(record completioncontract.RecordSnapshot, requestedURL string) error {
-	coreRecord := IssueOpsRecord{
-		Phase: IssueOpsPhase(record.Phase), IssueURL: record.IssueURL,
-		BranchPrepare: &IssueOpsBranchPrepare{BaseBranch: record.BaseBranch},
+	coreRecord := issueops.IssueOpsRecord{
+		Phase: issueops.IssueOpsPhase(record.Phase), IssueURL: record.IssueURL,
+		BranchPrepare: &issueops.IssueOpsBranchPrepare{BaseBranch: record.BaseBranch},
 	}
 	if record.Artifact != nil {
-		coreRecord.RemoteArtifact = &IssueOpsRemoteArtifactVerification{
+		coreRecord.RemoteArtifact = &issueops.IssueOpsRemoteArtifactVerification{
 			Provider: record.Artifact.Provider, Kind: record.Artifact.Kind, URL: record.Artifact.URL,
 			Labels: append([]string(nil), record.Artifact.Labels...), Assignees: append([]string(nil), record.Artifact.Assignees...),
 			VerifiedAt: record.Artifact.VerifiedAt, TargetBranch: record.Artifact.TargetBranch,
@@ -192,11 +193,11 @@ func differentialArtifactVerifier(record completioncontract.RecordSnapshot, requ
 }
 
 func differentialProcessInspector(_ context.Context, receipt completioncontract.ProcessReceipt) (string, completioncontract.ProcessReceipt, error) {
-	status, observed, err := InspectNativeProcessReceipt(NativeProcessReceipt{PID: receipt.PID, StartedAt: receipt.StartedAt, Executable: receipt.Executable})
+	status, observed, err := InspectNativeProcessReceipt(issueops.NativeProcessReceipt{PID: receipt.PID, StartedAt: receipt.StartedAt, Executable: receipt.Executable})
 	return status, completioncontract.ProcessReceipt{PID: observed.PID, StartedAt: observed.StartedAt, Executable: observed.Executable}, err
 }
 
-func assertCompletionDifferential(t *testing.T, legacyRoot, verticalRoot, id string, actor NativeActor, legacy ExecutionResult, vertical completionapp.Result) {
+func assertCompletionDifferential(t *testing.T, legacyRoot, verticalRoot, id string, actor issueops.NativeActor, legacy ExecutionResult, vertical completionapp.Result) {
 	t.Helper()
 	legacyRecord, _, legacyIndex := releaseDifferentialSnapshot(t, legacyRoot, id, leaseHolderIndexKey(actor))
 	verticalRecord, _, verticalIndex := releaseDifferentialSnapshot(t, verticalRoot, id, leaseHolderIndexKey(actor))

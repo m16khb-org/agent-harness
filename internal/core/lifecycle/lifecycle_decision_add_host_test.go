@@ -3,7 +3,7 @@ package lifecycle
 import (
 	"testing"
 
-	issueopsmodel "agent-harness/internal/core/issueops/model"
+	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
 // #158이 `decision add`를 owner mutation allowlist에 넣었지만 그 테스트는 claude
@@ -20,17 +20,17 @@ func TestDecisionAddReachesHolderFenceForCodexHost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record.Execution = &issueopsmodel.Execution{
-		Mode: issueopsmodel.ExecutionModeDirect,
-		Workspace: issueopsmodel.Workspace{
+	record.Execution = &issueopscontract.Execution{
+		Mode: issueopscontract.ExecutionModeDirect,
+		Workspace: issueopscontract.Workspace{
 			SourceRoot: repo, Root: linked.path, Branch: record.Branch,
 			BaseHead: "0123456789012345678901234567890123456789", Driver: "git", LinkedAt: "2026-07-26T00:00:00Z",
 		},
-		Lease: issueopsmodel.WriteLease{
-			Generation: 1, Status: issueopsmodel.LeaseStatusActive, ClaimedAt: "2026-07-26T00:00:00Z",
-			Holder: &issueopsmodel.NativeActor{
+		Lease: issueopscontract.WriteLease{
+			Generation: 1, Status: issueopscontract.LeaseStatusActive, ClaimedAt: "2026-07-26T00:00:00Z",
+			Holder: &issueopscontract.NativeActor{
 				Host: "codex", SessionID: "codex-session", AgentID: "codex-agent",
-				SessionProcess: &issueopsmodel.NativeProcessReceipt{PID: 4321, StartedAt: "2026-07-26T00:00:00Z", Executable: "codex"},
+				SessionProcess: &issueopscontract.NativeProcessReceipt{PID: 4321, StartedAt: "2026-07-26T00:00:00Z", Executable: "codex"},
 			},
 		},
 	}
@@ -59,17 +59,17 @@ func TestDecisionAddFromNonHolderStaysBlockedForCodexHost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record.Execution = &issueopsmodel.Execution{
-		Mode: issueopsmodel.ExecutionModeDirect,
-		Workspace: issueopsmodel.Workspace{
+	record.Execution = &issueopscontract.Execution{
+		Mode: issueopscontract.ExecutionModeDirect,
+		Workspace: issueopscontract.Workspace{
 			SourceRoot: repo, Root: linked.path, Branch: record.Branch,
 			BaseHead: "0123456789012345678901234567890123456789", Driver: "git", LinkedAt: "2026-07-26T00:00:00Z",
 		},
-		Lease: issueopsmodel.WriteLease{
-			Generation: 1, Status: issueopsmodel.LeaseStatusActive, ClaimedAt: "2026-07-26T00:00:00Z",
-			Holder: &issueopsmodel.NativeActor{
+		Lease: issueopscontract.WriteLease{
+			Generation: 1, Status: issueopscontract.LeaseStatusActive, ClaimedAt: "2026-07-26T00:00:00Z",
+			Holder: &issueopscontract.NativeActor{
 				Host: "codex", SessionID: "codex-session", AgentID: "codex-agent",
-				SessionProcess: &issueopsmodel.NativeProcessReceipt{PID: 4321, StartedAt: "2026-07-26T00:00:00Z", Executable: "codex"},
+				SessionProcess: &issueopscontract.NativeProcessReceipt{PID: 4321, StartedAt: "2026-07-26T00:00:00Z", Executable: "codex"},
 			},
 		},
 	}

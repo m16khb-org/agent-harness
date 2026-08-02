@@ -5,8 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/port"
 	"context"
+
+	"agent-harness/internal/contract/issueops"
+	"agent-harness/internal/port"
 )
 
 // ReflectDevilsAdvocateFindings writes the recorded devil's-advocate findings
@@ -15,31 +17,31 @@ import (
 // the regress precondition requires so a stop's findings reach the issue before
 // the cycle re-plans. Without confirm it returns the provider's dry-run preview
 // and does not mutate state.
-func ReflectDevilsAdvocateFindings(stateRoot, id string, confirm bool, prov port.IssueProvider) (IssueOpsRecord, port.IssueProviderUpdateIssueBodySectionResult, error) {
+func ReflectDevilsAdvocateFindings(stateRoot, id string, confirm bool, prov port.IssueProvider) (issueops.IssueOpsRecord, port.IssueProviderUpdateIssueBodySectionResult, error) {
 	return reflectDevilsAdvocateFindings(stateRoot, id, confirm, prov, nil)
 }
 
-func ReflectDevilsAdvocateFindingsWithActor(stateRoot, id string, confirm bool, prov port.IssueProvider, actor IssueOpsActor) (IssueOpsRecord, port.IssueProviderUpdateIssueBodySectionResult, error) {
+func ReflectDevilsAdvocateFindingsWithActor(stateRoot, id string, confirm bool, prov port.IssueProvider, actor IssueOpsActor) (issueops.IssueOpsRecord, port.IssueProviderUpdateIssueBodySectionResult, error) {
 	return reflectDevilsAdvocateFindings(stateRoot, id, confirm, prov, &actor)
 }
 
-func reflectDevilsAdvocateFindings(stateRoot, id string, confirm bool, prov port.IssueProvider, actor *IssueOpsActor) (IssueOpsRecord, port.IssueProviderUpdateIssueBodySectionResult, error) {
+func reflectDevilsAdvocateFindings(stateRoot, id string, confirm bool, prov port.IssueProvider, actor *IssueOpsActor) (issueops.IssueOpsRecord, port.IssueProviderUpdateIssueBodySectionResult, error) {
 	if prov == nil {
-		return IssueOpsRecord{OK: false}, port.IssueProviderUpdateIssueBodySectionResult{}, fmt.Errorf("no issue provider configured")
+		return issueops.IssueOpsRecord{OK: false}, port.IssueProviderUpdateIssueBodySectionResult{}, fmt.Errorf("no issue provider configured")
 	}
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return record, port.IssueProviderUpdateIssueBodySectionResult{}, err
 	}
 	if err := validateExecutionMutation(record, actor); err != nil {
-		return IssueOpsRecord{OK: false}, port.IssueProviderUpdateIssueBodySectionResult{}, err
+		return issueops.IssueOpsRecord{OK: false}, port.IssueProviderUpdateIssueBodySectionResult{}, err
 	}
 	review := record.DevilsAdvocateReview
 	if review == nil || len(review.Findings) == 0 {
-		return IssueOpsRecord{OK: false}, port.IssueProviderUpdateIssueBodySectionResult{}, fmt.Errorf("no devil's-advocate findings to reflect")
+		return issueops.IssueOpsRecord{OK: false}, port.IssueProviderUpdateIssueBodySectionResult{}, fmt.Errorf("no devil's-advocate findings to reflect")
 	}
 	if strings.TrimSpace(record.IssueURL) == "" {
-		return IssueOpsRecord{OK: false}, port.IssueProviderUpdateIssueBodySectionResult{}, fmt.Errorf("cannot reflect findings before a linked issue")
+		return issueops.IssueOpsRecord{OK: false}, port.IssueProviderUpdateIssueBodySectionResult{}, fmt.Errorf("cannot reflect findings before a linked issue")
 	}
 	result, err := prov.UpdateIssueBodySection(port.IssueProviderUpdateIssueBodySectionRequest{
 		Repo:     record.Repo,
@@ -49,7 +51,7 @@ func reflectDevilsAdvocateFindings(stateRoot, id string, confirm bool, prov port
 		Confirm:  confirm,
 	})
 	if err != nil {
-		return IssueOpsRecord{OK: false}, result, err
+		return issueops.IssueOpsRecord{OK: false}, result, err
 	}
 	if !confirm || !result.Updated {
 		return record, result, nil
@@ -72,7 +74,7 @@ func reflectDevilsAdvocateFindings(stateRoot, id string, confirm bool, prov port
 		return e
 	})
 	if lockErr != nil {
-		return IssueOpsRecord{OK: false}, result, lockErr
+		return issueops.IssueOpsRecord{OK: false}, result, lockErr
 	}
 	return record, result, nil
 }

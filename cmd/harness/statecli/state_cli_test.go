@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	statecontract "agent-harness/internal/contract/state"
+
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/testsupport"
@@ -117,7 +119,7 @@ func TestRunStatePruneDoctorAndMigrateTextBranches(t *testing.T) {
 
 	migrateDir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", migrateDir)
-	legacy := core.StateRecord{Key: "legacy", Content: "legacy content", UpdatedAt: "2000-01-01T00:00:00Z", Bytes: len([]byte("legacy content"))}
+	legacy := statecontract.RecordEnvelope{Key: "legacy", Content: "legacy content", UpdatedAt: "2000-01-01T00:00:00Z", Bytes: len([]byte("legacy content"))}
 	writeStateCLIRecord(t, migrateDir, "legacy", legacy)
 	dryMigrate := captureStatusVerifyStdout(t, func() error {
 		return runState([]string{"migrate"})
@@ -133,7 +135,7 @@ func TestRunStatePruneDoctorAndMigrateTextBranches(t *testing.T) {
 	}
 }
 
-func writeStateCLIRecord(t *testing.T, dir, key string, record core.StateRecord) {
+func writeStateCLIRecord(t *testing.T, dir, key string, record statecontract.RecordEnvelope) {
 	t.Helper()
 	b, err := json.MarshalIndent(record, "", "  ")
 	if err != nil {

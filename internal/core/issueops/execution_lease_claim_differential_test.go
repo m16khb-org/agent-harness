@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -70,11 +70,11 @@ func TestExecutionLeaseClaimDifferential(t *testing.T) {
 }
 
 type claimGolden struct {
-	SchemaVersion int               `json:"schema_version"`
-	Scenario      string            `json:"scenario"`
-	Lease         model.WriteLease  `json:"lease"`
-	SideEffects   map[string]string `json:"side_effects"`
-	Errors        []string          `json:"errors"`
+	SchemaVersion int                 `json:"schema_version"`
+	Scenario      string              `json:"scenario"`
+	Lease         issueops.WriteLease `json:"lease"`
+	SideEffects   map[string]string   `json:"side_effects"`
+	Errors        []string            `json:"errors"`
 }
 
 func readClaimGolden(t *testing.T, name string) claimGolden {

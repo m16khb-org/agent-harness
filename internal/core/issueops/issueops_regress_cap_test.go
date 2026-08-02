@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 )
 
 func TestRegressIssueOpsForReplanRecordsRegressEvent(t *testing.T) {
@@ -78,7 +78,7 @@ func seedRegressEvents(t *testing.T, count int) (string, string) {
 		t.Fatal(err)
 	}
 	for range count {
-		rec.RegressEvents = append(rec.RegressEvents, model.IssueOpsRegressEvent{
+		rec.RegressEvents = append(rec.RegressEvents, issueops.IssueOpsRegressEvent{
 			Reason:    "earlier stop",
 			FromPhase: IssueOpsPhasePlan,
 			At:        "2026-07-02T00:00:00Z",

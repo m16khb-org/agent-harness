@@ -4,12 +4,14 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/contract/issueops"
 )
 
 func TestIssueOpsImplementationReadinessRequiresCompatibilityReview(t *testing.T) {
 	repo := filepath.Join(t.TempDir(), "example")
 	worktree := makeIssueOpsWorktreeDirForTest(t, repo, "1-demo")
-	record := IssueOpsRecord{
+	record := issueops.IssueOpsRecord{
 		OK:            true,
 		Repo:          repo,
 		Branch:        "1-demo",
@@ -18,7 +20,7 @@ func TestIssueOpsImplementationReadinessRequiresCompatibilityReview(t *testing.T
 		WorktreePath:  worktree,
 		Intent:        issueOpsIntentContractForTest(),
 		DesignReview:  issueOpsDesignReviewForTest(),
-		BranchPrepare: &IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/example/repo/issues/1", Branch: "1-demo", BaseBranch: "main", LinkVerified: true},
+		BranchPrepare: &issueops.IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/example/repo/issues/1", Branch: "1-demo", BaseBranch: "main", LinkVerified: true},
 		Execution:     issueOpsExecutionForTest(repo, worktree, "1-demo"),
 	}
 	writeIssueOpsFile(t, worktree, "plans/demo.md", "plan\n")
@@ -45,7 +47,7 @@ func TestIssueOpsPhaseImplementRequiresCompatibilityReviewPhase(t *testing.T) {
 	branch := "123-compatibility-review"
 	worktree := makeIssueOpsWorktreeDirForTest(t, repo, branch)
 
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +56,7 @@ func TestIssueOpsPhaseImplementRequiresCompatibilityReviewPhase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{Provider: "github", IssueURL: record.IssueURL, Branch: branch, BaseBranch: "main", LinkVerified: true})
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, issueops.IssueOpsBranchPrepareRequest{Provider: "github", IssueURL: record.IssueURL, Branch: branch, BaseBranch: "main", LinkVerified: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +73,7 @@ func TestIssueOpsPhaseImplementRequiresCompatibilityReviewPhase(t *testing.T) {
 	if _, err := AdvanceIssueOpsPhase(stateRoot, record.ID, string(IssueOpsPhaseImplement)); err == nil || !strings.Contains(err.Error(), "compatibility_review") {
 		t.Fatalf("implement phase should require compatibility_review, got %v", err)
 	}
-	record, err = RecordIssueOpsCompatibilityReview(stateRoot, record.ID, IssueOpsCompatibilityReviewRequest{
+	record, err = RecordIssueOpsCompatibilityReview(stateRoot, record.ID, issueops.IssueOpsCompatibilityReviewRequest{
 		BackwardCompatibility: []string{"existing IssueOps JSON records remain readable"},
 		SideEffects:           []string{"phase order changes are limited to IssueOps lifecycle transitions"},
 		RollbackPlan:          "Revert the phase and readiness gate if host integration breaks.",
@@ -84,7 +86,7 @@ func TestIssueOpsPhaseImplementRequiresCompatibilityReviewPhase(t *testing.T) {
 	if record.Phase != IssueOpsPhaseCompatibilityReview {
 		t.Fatalf("compatibility review should persist the compatibility-review phase, got %+v", record)
 	}
-	if _, err := RecordIssueOpsDevilsAdvocateReview(stateRoot, record.ID, IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
+	if _, err := RecordIssueOpsDevilsAdvocateReview(stateRoot, record.ID, issueops.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
 		t.Fatal(err)
 	}
 	record = recordIssueOpsPreparedExecutionForTest(t, stateRoot, record.ID, worktree)

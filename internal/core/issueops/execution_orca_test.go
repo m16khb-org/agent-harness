@@ -9,7 +9,7 @@ import (
 	"sync"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -43,7 +43,7 @@ func TestExecutionOrcaPersistsIntentBeforeExternalMutationAndCASReceipt(t *testi
 	if fake.prepareCalls != 1 || got.Execution == nil || got.Execution.Pending != nil || got.Execution.Orca == nil {
 		t.Fatalf("Orca receipt was not CAS-persisted exactly once: calls=%d result=%#v", fake.prepareCalls, got)
 	}
-	if got.Execution.Lease.Status != model.LeaseStatusClaimable || got.ClaimTokenPath == "" {
+	if got.Execution.Lease.Status != issueops.LeaseStatusClaimable || got.ClaimTokenPath == "" {
 		t.Fatalf("verified dispatch must produce one claimable lease: %#v", got)
 	}
 	if got.Execution.Orca.OwnerModel != "claude-fable-5" || got.Execution.Orca.OwnerEffort != "high" {
@@ -52,7 +52,7 @@ func TestExecutionOrcaPersistsIntentBeforeExternalMutationAndCASReceipt(t *testi
 }
 
 func TestExecutionOrcaPrepareAllowsGitHubLinkVerificationAfterLocalBranchCreation(t *testing.T) {
-	for _, mode := range []string{ExecutionModeAuto, string(model.ExecutionModeOrca)} {
+	for _, mode := range []string{ExecutionModeAuto, string(issueops.ExecutionModeOrca)} {
 		for _, confirm := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/confirm=%t", mode, confirm), func(t *testing.T) {
 				stateRoot, record := orcaPrepareRecord(t)
@@ -69,7 +69,7 @@ func TestExecutionOrcaPrepareAllowsGitHubLinkVerificationAfterLocalBranchCreatio
 				if err != nil {
 					t.Fatal(err)
 				}
-				if got.ResolvedMode != string(model.ExecutionModeOrca) {
+				if got.ResolvedMode != string(issueops.ExecutionModeOrca) {
 					t.Fatalf("resolved mode = %q, want orca", got.ResolvedMode)
 				}
 				if !confirm {
@@ -160,7 +160,7 @@ func TestExecutionOrcaPrepareAppliesHostImplementerDefaults(t *testing.T) {
 }
 
 func TestExecutionGitLabOrcaSealsIssueMetadataAndUsesOrca(t *testing.T) {
-	for _, mode := range []string{ExecutionModeAuto, string(model.ExecutionModeOrca)} {
+	for _, mode := range []string{ExecutionModeAuto, string(issueops.ExecutionModeOrca)} {
 		for _, confirm := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/confirm=%t", mode, confirm), func(t *testing.T) {
 				stateRoot, record := executionPrepareRecord(t)
@@ -201,7 +201,7 @@ func TestExecutionGitLabOrcaSealsIssueMetadataAndUsesOrca(t *testing.T) {
 					}
 					return
 				}
-				if current.Execution == nil || current.Execution.Mode != model.ExecutionModeOrca || current.Execution.Orca == nil {
+				if current.Execution == nil || current.Execution.Mode != issueops.ExecutionModeOrca || current.Execution.Orca == nil {
 					t.Fatalf("confirm이 Orca execution을 봉인하지 못했다: %#v", current.Execution)
 				}
 				for _, want := range []string{"provider=gitlab", "issue=69"} {
@@ -234,7 +234,7 @@ func TestExecutionOrcaAmbiguityNeverFallsBackOrRepeatsExternalMutation(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	if pending.Execution == nil || pending.Execution.Mode != model.ExecutionModeOrca || pending.Execution.Pending == nil {
+	if pending.Execution == nil || pending.Execution.Mode != issueops.ExecutionModeOrca || pending.Execution.Pending == nil {
 		t.Fatalf("ambiguous outcome must remain Orca with a durable pending intent: %#v", pending.Execution)
 	}
 	if _, err := PrepareExecution(context.Background(), stateRoot, req, ExecutionPrepareDependencies{Direct: direct, Orca: fake, ReadIssue: executionIssueSnapshotReader}); err == nil {

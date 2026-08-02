@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/internal/core"
 	"agent-harness/internal/testsupport"
 )
@@ -81,7 +83,7 @@ type linkedIssueOpsWorktree struct {
 
 func createLinkedIssueOpsWorktree(t *testing.T, source, branch string) linkedIssueOpsWorktree {
 	t.Helper()
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{Repo: source, Branch: branch})
+	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: source, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +92,7 @@ func createLinkedIssueOpsWorktree(t *testing.T, source, branch string) linkedIss
 	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), record.ID, issueURL); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), record.ID, core.IssueOpsBranchPrepareRequest{
+	if _, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     issueURL,
 		Branch:       branch,
@@ -120,7 +122,7 @@ func createLinkedIssueOpsWorktree(t *testing.T, source, branch string) linkedIss
 	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), record.ID, planPath); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.RecordIssueOpsCompatibilityReview(core.IssueOpsStateRoot(), record.ID, core.IssueOpsCompatibilityReviewRequest{
+	if _, err := core.RecordIssueOpsCompatibilityReview(core.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsCompatibilityReviewRequest{
 		BackwardCompatibility: []string{"hook fixture preserves linked worktree behavior"},
 		SideEffects:           []string{"worktree MCP guard still blocks source-root-bound tools from linked worktree cwd"},
 		RollbackPlan:          "remove fixture IssueOps state and rerun hook tests",
@@ -129,7 +131,7 @@ func createLinkedIssueOpsWorktree(t *testing.T, source, branch string) linkedIss
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.RecordIssueOpsDevilsAdvocateReview(core.IssueOpsStateRoot(), record.ID, core.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
+	if _, err := core.RecordIssueOpsDevilsAdvocateReview(core.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
 		t.Fatal(err)
 	}
 	return linkedIssueOpsWorktree{id: record.ID, path: worktree}

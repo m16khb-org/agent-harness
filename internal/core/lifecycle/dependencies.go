@@ -1,6 +1,8 @@
 package lifecycle
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/lifecycle/compact"
 	"agent-harness/internal/core/lifecycle/docupkeep"
@@ -25,29 +27,14 @@ type ProjectProfile = projectdocs.ProjectProfile
 type ProjectFingerprint = model.ProjectFingerprint
 type ProjectLifecycleProfile = model.ProjectLifecycleProfile
 type ProjectLifecycleStatePlan = model.ProjectLifecycleStatePlan
-type DocUpkeepEvent = model.DocUpkeepEvent
 type DocUpkeepAppendResult = model.DocUpkeepAppendResult
-type HookToolUseLifecycleRequest = model.HookToolUseLifecycleRequest
-type HookToolUseLifecycleResult = model.HookToolUseLifecycleResult
-type HookPreToolUseDecisionResult = model.HookPreToolUseDecisionResult
-type IssueOpsDenyReason = model.IssueOpsDenyReason
 type LifecycleStopReminderResult = model.LifecycleStopReminderResult
-type StopNextActionRelayRecord = model.StopNextActionRelayRecord
-type StopNextActionRelayResult = model.StopNextActionRelayResult
 type LifecycleCompactCapsule = model.LifecycleCompactCapsule
 type LifecycleCompactResult = model.LifecycleCompactResult
 type NextActionJudgementTriggerResult = nextaction.NextActionJudgementTriggerResult
 type NumberedNextActionsDecisionResult = nextaction.NumberedNextActionsDecisionResult
 type NextActionCandidate = nextaction.NextActionCandidate
 type NextActionAutoProceedResult = nextaction.NextActionAutoProceedResult
-
-type IssueOpsRecord = issueops.IssueOpsRecord
-type IssueOpsStartRequest = issueops.IssueOpsStartRequest
-type IssueOpsIntentRecordRequest = issueops.IssueOpsIntentRecordRequest
-type IssueOpsDesignReviewRequest = issueops.IssueOpsDesignReviewRequest
-type IssueOpsBranchPrepareRequest = issueops.IssueOpsBranchPrepareRequest
-type IssueOpsRemoteArtifactVerification = issueops.IssueOpsRemoteArtifactVerification
-type IssueOpsPhase = issueops.IssueOpsPhase
 
 const (
 	IssueOpsPhaseProblem     = issueops.IssueOpsPhaseProblem
@@ -87,55 +74,55 @@ func IssueOpsStateRoot() string {
 	return issueops.IssueOpsStateRoot()
 }
 
-func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, error) {
+func StartIssueOps(stateRoot string, req issueopscontract.IssueOpsStartRequest) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.StartIssueOps(stateRoot, req)
 }
 
-func ReadIssueOps(stateRoot, id string) (IssueOpsRecord, error) {
+func ReadIssueOps(stateRoot, id string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.ReadIssueOps(stateRoot, id)
 }
 
-func RecordIssueOpsIntent(stateRoot, id string, req IssueOpsIntentRecordRequest) (IssueOpsRecord, error) {
+func RecordIssueOpsIntent(stateRoot, id string, req issueopscontract.IssueOpsIntentRecordRequest) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsIntent(stateRoot, id, req)
 }
 
-func RecordIssueOpsDesignReview(stateRoot, id string, req IssueOpsDesignReviewRequest) (IssueOpsRecord, error) {
+func RecordIssueOpsDesignReview(stateRoot, id string, req issueopscontract.IssueOpsDesignReviewRequest) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.RecordIssueOpsDesignReview(stateRoot, id, req)
 }
 
-func LinkIssueOpsIssue(stateRoot, id, issueURL string) (IssueOpsRecord, error) {
+func LinkIssueOpsIssue(stateRoot, id, issueURL string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsIssue(stateRoot, id, issueURL)
 }
 
-func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareRequest) (IssueOpsRecord, error) {
+func PrepareIssueOpsBranch(stateRoot, id string, req issueopscontract.IssueOpsBranchPrepareRequest) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.PrepareIssueOpsBranch(stateRoot, id, req)
 }
 
-func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, error) {
+func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsWorktree(stateRoot, id, worktreePath)
 }
 
-func LinkIssueOpsPlan(stateRoot, id, planPath string) (IssueOpsRecord, error) {
+func LinkIssueOpsPlan(stateRoot, id, planPath string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.LinkIssueOpsPlan(stateRoot, id, planPath)
 }
 
-func AdvanceIssueOpsPhase(stateRoot, id, to string) (IssueOpsRecord, error) {
+func AdvanceIssueOpsPhase(stateRoot, id, to string) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.AdvanceIssueOpsPhase(stateRoot, id, to)
 }
 
-func ActiveIssueOpsCycleForBranch(repo, branch string) (IssueOpsRecord, bool) {
+func ActiveIssueOpsCycleForBranch(repo, branch string) (issueopscontract.IssueOpsRecord, bool) {
 	return issueops.ActiveIssueOpsCycleForBranch(repo, branch)
 }
 
-func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []IssueOpsRecord {
+func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []issueopscontract.IssueOpsRecord {
 	return issueops.ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo)
 }
 
-func IssueOpsPhaseExpectsWorktree(phase IssueOpsPhase) bool {
+func IssueOpsPhaseExpectsWorktree(phase issueopscontract.IssueOpsPhase) bool {
 	return issueops.IssueOpsPhaseExpectsWorktree(phase)
 }
 
-func issueOpsCycleWorktreeMissing(record IssueOpsRecord) bool {
+func issueOpsCycleWorktreeMissing(record issueopscontract.IssueOpsRecord) bool {
 	return issueops.IssueOpsCycleWorktreeMissing(record)
 }
 
@@ -147,15 +134,15 @@ func newIssueOpsID(repo, branch string) string {
 	return issueops.NewIssueOpsID(repo, branch)
 }
 
-func writeIssueOps(stateRoot string, record IssueOpsRecord) (IssueOpsRecord, error) {
+func writeIssueOps(stateRoot string, record issueopscontract.IssueOpsRecord) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.WriteIssueOps(stateRoot, record)
 }
 
-func AppendDocUpkeepEvent(repoRoot string, event DocUpkeepEvent) (DocUpkeepAppendResult, error) {
+func AppendDocUpkeepEvent(repoRoot string, event lifecyclecontract.DocUpkeepEvent) (DocUpkeepAppendResult, error) {
 	return docupkeep.Append(docUpkeepStore(), repoRoot, event)
 }
 
-func ReadPendingDocUpkeepEvents(repoRoot string, limit int) ([]DocUpkeepEvent, ProjectLifecycleStatePlan, error) {
+func ReadPendingDocUpkeepEvents(repoRoot string, limit int) ([]lifecyclecontract.DocUpkeepEvent, ProjectLifecycleStatePlan, error) {
 	return docupkeep.ReadPending(docUpkeepStore(), repoRoot, limit)
 }
 
@@ -211,7 +198,7 @@ func normalizeTargetDocs(docs []string) []string {
 	return docupkeep.NormalizeTargetDocs(docs)
 }
 
-func worktreeGuardEditTargets(req HookToolUseLifecycleRequest) []string {
+func worktreeGuardEditTargets(req lifecyclecontract.HookToolUseLifecycleRequest) []string {
 	targets := []string{}
 	base := hookRequestPathBase(req)
 	for _, path := range req.Paths {
@@ -234,7 +221,7 @@ func worktreeGuardEditTargets(req HookToolUseLifecycleRequest) []string {
 	return targets
 }
 
-func hookRequestPathBase(req HookToolUseLifecycleRequest) string {
+func hookRequestPathBase(req lifecyclecontract.HookToolUseLifecycleRequest) string {
 	if searchrouting.IsShellTool(req.Tool) {
 		if workdir, ok := req.ToolInput["workdir"].(string); ok {
 			if root := resolveHookTargetPath(req.CWD, workdir); root != "" {

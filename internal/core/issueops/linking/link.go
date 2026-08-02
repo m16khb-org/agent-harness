@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	model "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops/remote"
 )
 

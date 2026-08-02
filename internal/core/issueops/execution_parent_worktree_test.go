@@ -7,14 +7,14 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
 func TestPrepareExecutionAllowsDelegatedChildFromSealedParentWorktree(t *testing.T) {
 	stateRoot, record := orcaPrepareRecord(t)
 	record.BranchPrepare.BaseBranch = "117-umbrella"
-	record.Delegation = &IssueOpsDelegationContract{ParentCycleID: "io-parent"}
+	record.Delegation = &issueops.IssueOpsDelegationContract{ParentCycleID: "io-parent"}
 	record, err := writeIssueOps(stateRoot, record)
 	if err != nil {
 		t.Fatal(err)
@@ -52,7 +52,7 @@ func TestPrepareExecutionAllowsDelegatedChildFromSealedParentWorktree(t *testing
 func TestPrepareExecutionRejectsForeignCWDForDelegatedChild(t *testing.T) {
 	stateRoot, record := orcaPrepareRecord(t)
 	record.BranchPrepare.BaseBranch = "117-umbrella"
-	record.Delegation = &IssueOpsDelegationContract{ParentCycleID: "io-parent"}
+	record.Delegation = &issueops.IssueOpsDelegationContract{ParentCycleID: "io-parent"}
 	record, err := writeIssueOps(stateRoot, record)
 	if err != nil {
 		t.Fatal(err)
@@ -73,15 +73,15 @@ func TestPrepareExecutionRejectsForeignCWDForDelegatedChild(t *testing.T) {
 
 func TestExecutionWorkspaceRequestBindsDelegatedChildToUmbrellaWorktree(t *testing.T) {
 	repo := t.TempDir()
-	record := IssueOpsRecord{
+	record := issueops.IssueOpsRecord{
 		ID:     "io-child",
 		Repo:   repo,
 		Branch: "190-child",
-		BranchPrepare: &IssueOpsBranchPrepare{
+		BranchPrepare: &issueops.IssueOpsBranchPrepare{
 			BaseBranch: "117-umbrella",
 			BaseSHA:    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		},
-		Delegation: &IssueOpsDelegationContract{ParentCycleID: "io-parent"},
+		Delegation: &issueops.IssueOpsDelegationContract{ParentCycleID: "io-parent"},
 	}
 
 	got, err := executionWorkspaceRequest(record, true)
@@ -105,11 +105,11 @@ func TestExecutionWorkspaceRequestBindsDelegatedChildToUmbrellaWorktree(t *testi
 func TestExecutionWorkspaceRequestBindsExplicitUmbrellaParentWithoutDelegation(t *testing.T) {
 	repo := t.TempDir()
 	wantParent := filepath.Join(repo+".worktrees", "117-umbrella")
-	record := IssueOpsRecord{
+	record := issueops.IssueOpsRecord{
 		ID:     "io-provider-child",
 		Repo:   repo,
 		Branch: "196-provider-child",
-		BranchPrepare: &IssueOpsBranchPrepare{
+		BranchPrepare: &issueops.IssueOpsBranchPrepare{
 			BaseBranch:     "117-umbrella",
 			BaseSHA:        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			ParentWorktree: wantParent,
@@ -127,11 +127,11 @@ func TestExecutionWorkspaceRequestBindsExplicitUmbrellaParentWithoutDelegation(t
 
 func TestExecutionWorkspaceRequestRejectsNonCanonicalExplicitParent(t *testing.T) {
 	repo := t.TempDir()
-	record := IssueOpsRecord{
+	record := issueops.IssueOpsRecord{
 		ID:     "io-provider-child",
 		Repo:   repo,
 		Branch: "196-provider-child",
-		BranchPrepare: &IssueOpsBranchPrepare{
+		BranchPrepare: &issueops.IssueOpsBranchPrepare{
 			BaseBranch:     "117-umbrella",
 			BaseSHA:        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			ParentWorktree: filepath.Join(repo+".worktrees", "wrong-parent"),
@@ -145,11 +145,11 @@ func TestExecutionWorkspaceRequestRejectsNonCanonicalExplicitParent(t *testing.T
 }
 
 func TestExecutionWorkspaceRequestKeepsIndependentWorktreeTopLevel(t *testing.T) {
-	record := IssueOpsRecord{
+	record := issueops.IssueOpsRecord{
 		ID:     "io-independent",
 		Repo:   t.TempDir(),
 		Branch: "190-independent",
-		BranchPrepare: &model.IssueOpsBranchPrepare{
+		BranchPrepare: &issueops.IssueOpsBranchPrepare{
 			BaseBranch: "main",
 			BaseSHA:    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		},

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"agent-harness/internal/contract/issueops"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/pathutil"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/core/sqlstore"
@@ -91,7 +91,7 @@ type CleanupAbandonResult struct {
 	// Record는 삭제 대상 레코드 전문이다. C2-F6 예외의 유일한 보존 채널이므로
 	// preview와 apply 양쪽 결과에 담는다 — preview에만 담으면 preview 이후
 	// apply 직전까지의 변경분이 어디에도 남지 않는다.
-	Record *IssueOpsRecord `json:"record,omitempty"`
+	Record *issueops.IssueOpsRecord `json:"record,omitempty"`
 }
 
 // cleanupAbandonInventory는 fingerprint 입력이 되는 현재 관측 상태다.
@@ -170,7 +170,7 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 
 // cleanupAbandonGates는 게이트 8종을 전부 평가하고 missing을 나열한다(첫 실패에
 // 멈추지 않는다 — 운영자가 한 번의 preview로 모든 결격 사유를 본다).
-func cleanupAbandonGates(ctx context.Context, stateRoot string, record IssueOpsRecord, req CleanupAbandonRequest, deps CleanupAbandonDeps, result *CleanupAbandonResult) (cleanupAbandonInventory, []string) {
+func cleanupAbandonGates(ctx context.Context, stateRoot string, record issueops.IssueOpsRecord, req CleanupAbandonRequest, deps CleanupAbandonDeps, result *CleanupAbandonResult) (cleanupAbandonInventory, []string) {
 	missing := []string{}
 	// ① 사유 필수. 삭제 근거 없는 수명 종료는 감사 불가능하다.
 	if err := validateCleanupAbandonReason(req.Reason); err != nil {
@@ -282,9 +282,9 @@ func cleanupAbandonPendingRecovery(id string, cause error) string {
 // cleanupAbandonLeaseHoldsWriter는 lease가 아직 writer를 붙들고 있는지 본다.
 // 알 수 없는 상태는 writer 보유로 다룬다 — 모르는 상태를 통과시키면 게이트가
 // fail-open이 된다.
-func cleanupAbandonLeaseHoldsWriter(status model.LeaseStatus) bool {
+func cleanupAbandonLeaseHoldsWriter(status issueops.LeaseStatus) bool {
 	switch status {
-	case model.LeaseStatusClaimable, model.LeaseStatusReleased:
+	case issueops.LeaseStatusClaimable, issueops.LeaseStatusReleased:
 		return false
 	default:
 		return true
@@ -303,8 +303,8 @@ func cleanupAbandonLeaseHoldsWriter(status model.LeaseStatus) bool {
 // 이미 정리된 사이클까지 차단해 중도 포기 경로가 사라진다.
 //
 // 조회할 수 없으면 통과가 아니라 거부다(#106 pending_intent_safe와 같은 계약).
-func cleanupAbandonOrcaResourcesAbsent(ctx context.Context, record IssueOpsRecord, deps CleanupAbandonDeps) error {
-	if record.Execution == nil || record.Execution.Mode != model.ExecutionModeOrca || record.Execution.Orca == nil {
+func cleanupAbandonOrcaResourcesAbsent(ctx context.Context, record issueops.IssueOpsRecord, deps CleanupAbandonDeps) error {
+	if record.Execution == nil || record.Execution.Mode != issueops.ExecutionModeOrca || record.Execution.Orca == nil {
 		return nil
 	}
 	binding := *record.Execution.Orca
@@ -335,7 +335,7 @@ func cleanupAbandonOrcaResourcesAbsent(ctx context.Context, record IssueOpsRecor
 // 없더라도 terminal/task가 남을 수 있다. 따라서 worktree부터 현재 단계까지
 // 봉인된 인벤토리를 모두 authoritative zero로 확인하고, 별도 게이트 ⑨에서
 // 이전 generation의 owner binding도 확인한다.
-func cleanupAbandonPendingSafe(ctx context.Context, stateRoot string, record IssueOpsRecord, inventory cleanupAbandonInventory, deps CleanupAbandonDeps) error {
+func cleanupAbandonPendingSafe(ctx context.Context, stateRoot string, record issueops.IssueOpsRecord, inventory cleanupAbandonInventory, deps CleanupAbandonDeps) error {
 	pending := record.Execution.Pending
 	// (a) kind allowlist — 로컬 orca mutation 한정. remote PR/MR 계열 kind는
 	// 원격 고아 PR을 남길 수 있으므로 무조건 거부하고 reconcile로 보낸다.
@@ -346,7 +346,7 @@ func cleanupAbandonPendingSafe(ctx context.Context, stateRoot string, record Iss
 		return fmt.Errorf("pending external intent kind %q is not local-only; run `agent-harness issueops execution reconcile --id %s --preview --json` until it settles, then reclaim the Orca worktree with `orca worktree remove` before retrying abandon",
 			pending.Kind, record.ID)
 	}
-	if record.Execution.Mode != model.ExecutionModeOrca {
+	if record.Execution.Mode != issueops.ExecutionModeOrca {
 		return fmt.Errorf("Orca intent requires an Orca execution record")
 	}
 	// (b) 기록된 canonical workspace가 디스크에 없어야 한다.
@@ -386,7 +386,7 @@ func cleanupAbandonPendingSafe(ctx context.Context, stateRoot string, record Iss
 	return nil
 }
 
-func cleanupAbandonIntentInspectionRequests(record IssueOpsRecord, payload externalOrcaIntentPayload) ([]port.ExecutionOrcaIntentRequest, error) {
+func cleanupAbandonIntentInspectionRequests(record issueops.IssueOpsRecord, payload externalOrcaIntentPayload) ([]port.ExecutionOrcaIntentRequest, error) {
 	current, err := executionOrcaIntentInspectionRequest(record, payload)
 	if err != nil {
 		return nil, err
@@ -438,7 +438,7 @@ func cleanupAbandonIntentInspectionRequests(record IssueOpsRecord, payload exter
 // {Pending.OperationID} ∪ {Failure.OperationID}로 모은다(공백·중복 제거).
 // Failure는 Pending과 같은 operation을 가리키는 것이 보통이지만, 실패 접수 후
 // pending이 정리된 레코드에서는 Failure만 행을 참조할 수 있다.
-func cleanupAbandonIntentOperationIDs(record IssueOpsRecord) []string {
+func cleanupAbandonIntentOperationIDs(record issueops.IssueOpsRecord) []string {
 	if record.Execution == nil {
 		return nil
 	}
@@ -470,7 +470,7 @@ func cleanupAbandonIntentOperationIDs(record IssueOpsRecord) []string {
 // 소유자 가드는 lease 인덱스 규율(execution_state.go:150-159)을 준용한다:
 // 행이 없으면 성공(멱등 — normalizeOrcaRemoveWorktreeErr 계약 동형), 있는데
 // 소유자가 다르거나 소유자를 읽을 수 없으면 하드 에러.
-func deleteAbandonedIssueOps(ctx context.Context, stateRoot string, record IssueOpsRecord, operationIDs []string) ([]string, error) {
+func deleteAbandonedIssueOps(ctx context.Context, stateRoot string, record issueops.IssueOpsRecord, operationIDs []string) ([]string, error) {
 	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
 		return nil, err
 	}
@@ -537,7 +537,7 @@ func deleteAbandonedIssueOps(ctx context.Context, stateRoot string, record Issue
 	return deleted, nil
 }
 
-func cleanupAbandonHasChildren(record IssueOpsRecord) bool {
+func cleanupAbandonHasChildren(record issueops.IssueOpsRecord) bool {
 	if len(record.ChildCycles) > 0 {
 		return true
 	}

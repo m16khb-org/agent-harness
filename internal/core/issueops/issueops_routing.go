@@ -5,8 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/issueops/benchmark"
 	"context"
+
+	"agent-harness/internal/contract/issueops"
+	"agent-harness/internal/core/issueops/benchmark"
 )
 
 // RoutingFidelityResult reports whether a cycle's live routing covered every
@@ -17,7 +19,7 @@ type RoutingFidelityResult = benchmark.RoutingFidelityResult
 // the expected (phase, skill) pairings using the same logic as the benchmark
 // skill_routing_fidelity dimension — but on observed activation rather than a
 // synthesized trace, so the score reflects what really happened in the run.
-func ScoreLiveRoutingFidelity(record IssueOpsRecord, expected []SkillRouting) RoutingFidelityResult {
+func ScoreLiveRoutingFidelity(record issueops.IssueOpsRecord, expected []SkillRouting) RoutingFidelityResult {
 	return benchmark.RoutingFidelity(expected, RoutingTraceAsSkillRouting(record))
 }
 
@@ -30,16 +32,16 @@ const maxRoutingTraceEntries = 500
 // during a real run. Unlike the benchmark fixture's synthesized trace, this is
 // observed activation, so skill_routing_fidelity can be scored against real
 // behavior rather than a tautology. It is idempotent per (phase, skill).
-func RecordIssueOpsRouting(stateRoot, id, phase, skill string) (IssueOpsRecord, error) {
+func RecordIssueOpsRouting(stateRoot, id, phase, skill string) (issueops.IssueOpsRecord, error) {
 	return recordIssueOpsRouting(stateRoot, id, phase, skill, nil)
 }
 
-func RecordIssueOpsRoutingWithActor(stateRoot, id, phase, skill string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func RecordIssueOpsRoutingWithActor(stateRoot, id, phase, skill string, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return recordIssueOpsRouting(stateRoot, id, phase, skill, &actor)
 }
 
-func recordIssueOpsRouting(stateRoot, id, phase, skill string, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func recordIssueOpsRouting(stateRoot, id, phase, skill string, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
@@ -55,17 +57,17 @@ func recordIssueOpsRouting(stateRoot, id, phase, skill string, actor *IssueOpsAc
 	return rec, err
 }
 
-func recordIssueOpsRoutingLocked(stateRoot, id, phase, skill string) (IssueOpsRecord, error) {
+func recordIssueOpsRoutingLocked(stateRoot, id, phase, skill string) (issueops.IssueOpsRecord, error) {
 	phase = strings.TrimSpace(phase)
 	skill = strings.TrimSpace(skill)
 	if phase == "" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("routing phase is required")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("routing phase is required")
 	}
 	if skill == "" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("routing skill is required")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("routing skill is required")
 	}
 	if len(phase) > 64 || len(skill) > 64 {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("routing phase and skill must not exceed 64 bytes each")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("routing phase and skill must not exceed 64 bytes each")
 	}
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
@@ -78,9 +80,9 @@ func recordIssueOpsRoutingLocked(stateRoot, id, phase, skill string) (IssueOpsRe
 		}
 	}
 	if len(record.RoutingTrace) >= maxRoutingTraceEntries {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("routing trace is full (%d entries)", maxRoutingTraceEntries)
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("routing trace is full (%d entries)", maxRoutingTraceEntries)
 	}
-	record.RoutingTrace = append(record.RoutingTrace, SkillRoutingEntry{
+	record.RoutingTrace = append(record.RoutingTrace, issueops.SkillRoutingEntry{
 		Phase: phase,
 		Skill: skill,
 		At:    time.Now().UTC().Format(time.RFC3339Nano),
@@ -91,7 +93,7 @@ func recordIssueOpsRoutingLocked(stateRoot, id, phase, skill string) (IssueOpsRe
 // RoutingTraceAsSkillRouting projects a cycle's live RoutingTrace onto the
 // benchmark SkillRouting shape so skill_routing_fidelity can score a real run's
 // trace instead of the synthesized one.
-func RoutingTraceAsSkillRouting(record IssueOpsRecord) []SkillRouting {
+func RoutingTraceAsSkillRouting(record issueops.IssueOpsRecord) []SkillRouting {
 	out := make([]SkillRouting, 0, len(record.RoutingTrace))
 	for _, e := range record.RoutingTrace {
 		out = append(out, SkillRouting{Phase: e.Phase, Skill: e.Skill})

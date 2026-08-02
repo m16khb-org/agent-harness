@@ -3,7 +3,7 @@ package intentdesign
 import (
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	model "agent-harness/internal/contract/issueops"
 )
 
 func TestCleanTextValues(t *testing.T) {

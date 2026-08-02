@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"agent-harness/internal/contract/issueops"
 )
 
 // RegressIssueOpsForReplan takes the IssueOps feedback loop backward when the
@@ -23,20 +25,20 @@ import (
 // the cycle escalates to a human decision instead of another automatic re-plan.
 const issueOpsRegressCap = 3
 
-func RegressIssueOpsForReplan(stateRoot, id, reason string) (IssueOpsRecord, error) {
+func RegressIssueOpsForReplan(stateRoot, id, reason string) (issueops.IssueOpsRecord, error) {
 	return regressIssueOpsForReplan(stateRoot, id, reason, nil)
 }
 
-func RegressIssueOpsForReplanWithActor(stateRoot, id, reason string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func RegressIssueOpsForReplanWithActor(stateRoot, id, reason string, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return regressIssueOpsForReplan(stateRoot, id, reason, &actor)
 }
 
-func regressIssueOpsForReplan(stateRoot, id, reason string, actor *IssueOpsActor) (IssueOpsRecord, error) {
+func regressIssueOpsForReplan(stateRoot, id, reason string, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	reason = strings.TrimSpace(reason)
 	if reason == "" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("regression reason is required (the Brooks stop verdict)")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("regression reason is required (the Brooks stop verdict)")
 	}
-	var rec IssueOpsRecord
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
@@ -52,52 +54,52 @@ func regressIssueOpsForReplan(stateRoot, id, reason string, actor *IssueOpsActor
 	return rec, err
 }
 
-func regressIssueOpsForReplanLocked(stateRoot, id, reason string) (IssueOpsRecord, error) {
+func regressIssueOpsForReplanLocked(stateRoot, id, reason string) (issueops.IssueOpsRecord, error) {
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return record, err
 	}
 	rank := issueOpsPhaseRank(record.Phase)
 	if rank < issueOpsPhaseRank(IssueOpsPhasePlan) || rank > issueOpsPhaseRank(IssueOpsPhaseCompatibilityReview) {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("brooks regression only applies from plan or compatibility-review phase, not %s", record.Phase)
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("brooks regression only applies from plan or compatibility-review phase, not %s", record.Phase)
 	}
 	// A regress is the machine consequence of a devil's-advocate stop whose
 	// findings were reflected into the issue, so require both before rewinding.
 	review := record.DevilsAdvocateReview
 	if review != nil && review.Verdict == "revise" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf(
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf(
 			"devil's-advocate revise verdict must be resolved in place: update the linked plan, run and record a fresh devil's-advocate review, and proceed only after it passes or is explicitly waived; only a stop verdict may regress after remote reflection")
 	}
 	if review == nil || review.Verdict != "stop" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("regress requires a recorded devil's-advocate stop verdict")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("regress requires a recorded devil's-advocate stop verdict")
 	}
 	if strings.TrimSpace(review.IssueReflectedAt) == "" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("reflect the devil's-advocate findings to the issue before regressing (issueops remote reflect-devils-advocate --confirm)")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("reflect the devil's-advocate findings to the issue before regressing (issueops remote reflect-devils-advocate --confirm)")
 	}
 	if len(record.RegressEvents) >= issueOpsRegressCap {
-		return IssueOpsRecord{OK: false}, fmt.Errorf(
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf(
 			"regress cap reached: cycle %s already went through %d stop→re-plan rounds, so the plan is thrashing rather than converging; a human decision is required before any further automatic re-plan",
 			id, len(record.RegressEvents))
 	}
 	activeChildren, err := issueOpsActiveChildIDs(stateRoot, record)
 	if err != nil {
-		return IssueOpsRecord{OK: false}, err
+		return issueops.IssueOpsRecord{OK: false}, err
 	}
 	if len(activeChildren) > 0 {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("children_active: %s", strings.Join(activeChildren, ", "))
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("children_active: %s", strings.Join(activeChildren, ", "))
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	priorPhase := record.Phase
 
 	// Audit trail backing the cap: one event per successful regression.
-	record.RegressEvents = append(record.RegressEvents, IssueOpsRegressEvent{
+	record.RegressEvents = append(record.RegressEvents, issueops.IssueOpsRegressEvent{
 		Reason:    reason,
 		FromPhase: priorPhase,
 		At:        now,
 	})
 
 	// Audit: record the devil's-advocate stop as a scope decision.
-	record.Decisions = append(record.Decisions, IssueOpsDecision{
+	record.Decisions = append(record.Decisions, issueops.IssueOpsDecision{
 		Title:     "brooks devil's-advocate stop",
 		Body:      reason,
 		Kind:      "scope",
@@ -133,9 +135,9 @@ func regressIssueOpsForReplanLocked(stateRoot, id, reason string) (IssueOpsRecor
 // markIssueOpsLedgerStale marks the given phases' ledger entries stale: their
 // completion is cleared and a stale note is appended, while the entry is kept
 // for audit. It is safe on a nil/empty ledger.
-func markIssueOpsLedgerStale(ledger IssueOpsPhaseLedger, reason string, phases ...IssueOpsPhase) IssueOpsPhaseLedger {
+func markIssueOpsLedgerStale(ledger issueops.IssueOpsPhaseLedger, reason string, phases ...issueops.IssueOpsPhase) issueops.IssueOpsPhaseLedger {
 	if ledger == nil {
-		ledger = IssueOpsPhaseLedger{}
+		ledger = issueops.IssueOpsPhaseLedger{}
 	}
 	note := "stale: brooks regression (" + reason + ")"
 	for _, phase := range phases {

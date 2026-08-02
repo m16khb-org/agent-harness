@@ -1,8 +1,12 @@
 package lifecycle
 
-import "fmt"
+import (
+	"fmt"
 
-func SourceCheckoutMisdirectWarning(req HookToolUseLifecycleRequest) (string, string) {
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
+)
+
+func SourceCheckoutMisdirectWarning(req lifecyclecontract.HookToolUseLifecycleRequest) (string, string) {
 	if !toolUseMayMutateLifecycleFiles(req.Tool, req.Command) {
 		return "", ""
 	}

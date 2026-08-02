@@ -6,13 +6,15 @@ import (
 	"strings"
 	"testing"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/internal/core"
 )
 
 func TestRunIssueOpsRemoteVerifyArtifactValidationErrors(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := makeIssueOpsCLIGitRepoForRemoteVerifyTest(t)
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{
+	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{
 		Repo:   repo,
 		Branch: "75-remote-verify-cli",
 	})
@@ -57,13 +59,13 @@ func TestRunIssueOpsRemoteVerifyArtifactValidationErrors(t *testing.T) {
 	}
 }
 
-func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) (core.IssueOpsRecord, core.IssueOpsActor) {
+func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) (issueopscontract.IssueOpsRecord, core.IssueOpsActor) {
 	t.Helper()
 	recordIssueOpsCoreIntentForCLITest(t, id)
 	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), id, "https://github.com/example/repo/issues/75"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), id, core.IssueOpsBranchPrepareRequest{
+	if _, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), id, issueopscontract.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     "https://github.com/example/repo/issues/75",
 		Branch:       "75-remote-verify-cli",
@@ -94,7 +96,7 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) (core.Is
 	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), id, planPath); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.RecordIssueOpsCompatibilityReview(core.IssueOpsStateRoot(), id, core.IssueOpsCompatibilityReviewRequest{
+	if _, err := core.RecordIssueOpsCompatibilityReview(core.IssueOpsStateRoot(), id, issueopscontract.IssueOpsCompatibilityReviewRequest{
 		BackwardCompatibility: []string{"existing IssueOps JSON records remain readable"},
 		SideEffects:           []string{"phase ordering changes are limited to IssueOps lifecycle gates"},
 		RollbackPlan:          "Revert compatibility-review phase and readiness gate.",
@@ -103,7 +105,7 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) (core.Is
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.RecordIssueOpsDevilsAdvocateReview(core.IssueOpsStateRoot(), id, core.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
+	if _, err := core.RecordIssueOpsDevilsAdvocateReview(core.IssueOpsStateRoot(), id, issueopscontract.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
 		t.Fatal(err)
 	}
 	writeIssueOpsCLIFileForTest(t, worktree, "internal/demo.go", "package demo\n")

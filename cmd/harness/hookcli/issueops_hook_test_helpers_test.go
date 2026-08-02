@@ -5,14 +5,14 @@ import (
 	"strings"
 	"testing"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core"
 	issueopscore "agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
 )
 
 func recordIssueOpsHookIntentForTest(t *testing.T, id string) {
 	t.Helper()
-	if _, err := core.RecordIssueOpsIntent(core.IssueOpsStateRoot(), id, core.IssueOpsIntentRecordRequest{
+	if _, err := core.RecordIssueOpsIntent(core.IssueOpsStateRoot(), id, issueopscontract.IssueOpsIntentRecordRequest{
 		RawRequest:        "refactor issueops flow",
 		InterpretedIntent: "keep intent and design evidence before implementation",
 		SuccessCriteria:   []string{"intent is recorded", "design is reviewed"},
@@ -23,7 +23,7 @@ func recordIssueOpsHookIntentForTest(t *testing.T, id string) {
 
 func recordIssueOpsHookDesignForTest(t *testing.T, id string) {
 	t.Helper()
-	if _, err := core.RecordIssueOpsDesignReview(core.IssueOpsStateRoot(), id, core.IssueOpsDesignReviewRequest{
+	if _, err := core.RecordIssueOpsDesignReview(core.IssueOpsStateRoot(), id, issueopscontract.IssueOpsDesignReviewRequest{
 		ProblemSummary: "IssueOps must preserve the work contract",
 		ProposedDesign: "Gate implementation on a reviewed design contract",
 		RefactorPlan:   "Keep hook guard behavior aligned with IssueOps cycle state",
@@ -52,16 +52,16 @@ func activateIssueOpsHookExecution(t *testing.T, id string) core.IssueOpsActor {
 	if err != nil {
 		t.Fatal(err)
 	}
-	actor.NativeProcessAncestry = []model.NativeProcessReceipt{receipt}
-	record.Execution = &model.Execution{
-		Mode: model.ExecutionModeDirect,
-		Workspace: model.Workspace{
+	actor.NativeProcessAncestry = []issueopscontract.NativeProcessReceipt{receipt}
+	record.Execution = &issueopscontract.Execution{
+		Mode: issueopscontract.ExecutionModeDirect,
+		Workspace: issueopscontract.Workspace{
 			SourceRoot: record.Repo, Root: record.WorktreePath, Branch: record.Branch,
 			BaseHead: baseHead, Driver: "git", LinkedAt: now,
 		},
-		Lease: model.WriteLease{
-			Generation: 1, Status: model.LeaseStatusActive, ClaimedAt: now,
-			Holder: &model.NativeActor{
+		Lease: issueopscontract.WriteLease{
+			Generation: 1, Status: issueopscontract.LeaseStatusActive, ClaimedAt: now,
+			Holder: &issueopscontract.NativeActor{
 				Host: actor.Host, SessionID: actor.SessionID, AgentID: actor.AgentID,
 				SessionProcess: &receipt,
 			},

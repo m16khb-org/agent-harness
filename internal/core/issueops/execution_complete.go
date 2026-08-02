@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops/artifactverify"
-	"agent-harness/internal/core/issueops/model"
 )
 
 func validFullCommitSHA(value string) bool {
@@ -25,15 +25,15 @@ func validFullCommitSHA(value string) bool {
 }
 
 type ExecutionCompleteRequest struct {
-	ID                string            `json:"id"`
-	Generation        uint64            `json:"generation"`
-	Actor             model.NativeActor `json:"actor"`
-	CWD               string            `json:"cwd"`
-	FinalHead         string            `json:"final_head"`
-	TuringReportPath  string            `json:"turing_report_path"`
-	Verification      []string          `json:"verification"`
-	RemoteArtifactURL string            `json:"remote_artifact_url"`
-	Confirm           bool              `json:"confirm"`
+	ID                string               `json:"id"`
+	Generation        uint64               `json:"generation"`
+	Actor             issueops.NativeActor `json:"actor"`
+	CWD               string               `json:"cwd"`
+	FinalHead         string               `json:"final_head"`
+	TuringReportPath  string               `json:"turing_report_path"`
+	Verification      []string             `json:"verification"`
+	RemoteArtifactURL string               `json:"remote_artifact_url"`
+	Confirm           bool                 `json:"confirm"`
 }
 
 // ExecutionCompleteDeps는 완료 시점의 외부 표면 주입점이다.
@@ -75,7 +75,7 @@ func completeExecutionWithClock(stateRoot string, req ExecutionCompleteRequest, 
 	if err := validateExecutionRemoteArtifactURL(req.RemoteArtifactURL); err != nil {
 		return ExecutionResult{OK: false, ID: req.ID}, err
 	}
-	var persisted IssueOpsRecord
+	var persisted issueops.IssueOpsRecord
 	err = withIssueOpsLock(context.Background(), stateRoot, req.ID, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, req.ID)
 		if err != nil {
@@ -98,7 +98,7 @@ func completeExecutionWithClock(stateRoot string, req ExecutionCompleteRequest, 
 			return err
 		}
 		lease := &record.Execution.Lease
-		if lease.Status != model.LeaseStatusActive || lease.Generation != req.Generation || !sameNativeActor(lease.Holder, &actor) {
+		if lease.Status != issueops.LeaseStatusActive || lease.Generation != req.Generation || !sameNativeActor(lease.Holder, &actor) {
 			return fmt.Errorf("only the current holder may complete generation %d", req.Generation)
 		}
 		if !samePath(req.CWD, record.Execution.Workspace.Root) {
@@ -117,11 +117,11 @@ func completeExecutionWithClock(stateRoot string, req ExecutionCompleteRequest, 
 		}
 		previous := *lease.Holder
 		completedAt := now().UTC().Format(time.RFC3339Nano)
-		record.Execution.Completion = &model.ExecutionCompletion{
+		record.Execution.Completion = &issueops.ExecutionCompletion{
 			FinalHead: strings.ToLower(strings.TrimSpace(req.FinalHead)), TuringReportPath: reportPath,
 			Verification: verification, RemoteArtifactURL: strings.TrimSpace(req.RemoteArtifactURL), CompletedAt: completedAt,
 		}
-		lease.Status = model.LeaseStatusReleased
+		lease.Status = issueops.LeaseStatusReleased
 		lease.Holder = nil
 		lease.ClaimTokenSHA256 = ""
 		lease.ReleasedAt = completedAt
@@ -146,9 +146,9 @@ func completeExecutionWithClock(stateRoot string, req ExecutionCompleteRequest, 
 // 그 결과를 표면화한다. best-effort다: 실패는 이미 커밋된 완료를 되돌리지 않고
 // 오류 사유만 결과에 남긴다(cleanup remote-branch의 audit 반영과 같은 계약).
 // 침묵하면 진단이 불가능하므로 실패를 삼키지는 않는다.
-func settleExecutionOrcaTask(record IssueOpsRecord, deps ExecutionCompleteDeps, result *ExecutionResult) {
+func settleExecutionOrcaTask(record issueops.IssueOpsRecord, deps ExecutionCompleteDeps, result *ExecutionResult) {
 	if deps.SettleOrcaTask == nil || record.Execution == nil ||
-		record.Execution.Mode != model.ExecutionModeOrca || record.Execution.Orca == nil {
+		record.Execution.Mode != issueops.ExecutionModeOrca || record.Execution.Orca == nil {
 		return
 	}
 	runID := strings.TrimSpace(record.Execution.Orca.RunID)
@@ -163,12 +163,12 @@ func settleExecutionOrcaTask(record IssueOpsRecord, deps ExecutionCompleteDeps, 
 	result.OrcaTaskSettled = true
 }
 
-func validateTerminalExecutionCompletion(record IssueOpsRecord, req ExecutionCompleteRequest, verification []string) error {
+func validateTerminalExecutionCompletion(record issueops.IssueOpsRecord, req ExecutionCompleteRequest, verification []string) error {
 	if record.Execution == nil || record.Execution.Completion == nil || record.Phase != IssueOpsPhaseDone {
 		return fmt.Errorf("execution completion is not fully terminal")
 	}
 	lease := record.Execution.Lease
-	if lease.Generation != req.Generation || lease.Status != model.LeaseStatusReleased || lease.Holder != nil ||
+	if lease.Generation != req.Generation || lease.Status != issueops.LeaseStatusReleased || lease.Holder != nil ||
 		lease.ClaimTokenSHA256 != "" || strings.TrimSpace(lease.ReleasedAt) == "" {
 		return fmt.Errorf("execution completion lease is not fully released")
 	}
@@ -179,7 +179,7 @@ func validateTerminalExecutionCompletion(record IssueOpsRecord, req ExecutionCom
 	return validateExecutionCompletionArtifact(record, req.RemoteArtifactURL)
 }
 
-func validateExecutionCompletionArtifact(record IssueOpsRecord, requestedURL string) error {
+func validateExecutionCompletionArtifact(record issueops.IssueOpsRecord, requestedURL string) error {
 	artifact := record.RemoteArtifact
 	if artifact == nil {
 		return fmt.Errorf("execution completion requires a durable verified remote artifact")
@@ -196,7 +196,7 @@ func validateExecutionCompletionArtifact(record IssueOpsRecord, requestedURL str
 	}
 	projectionRecord := record
 	projectionRecord.Phase = IssueOpsPhasePR
-	projection, err := artifactverify.Projection(projectionRecord, model.IssueOpsRemoteArtifactVerificationRequest{
+	projection, err := artifactverify.Projection(projectionRecord, issueops.IssueOpsRemoteArtifactVerificationRequest{
 		Provider: artifact.Provider, Kind: artifact.Kind, URL: artifact.URL,
 		Labels: artifact.Labels, Assignees: artifact.Assignees, TargetBranch: artifact.TargetBranch,
 	})
@@ -217,7 +217,7 @@ func validateExecutionCompletionArtifact(record IssueOpsRecord, requestedURL str
 // ValidateExecutionCompletionArtifact is the shared compatibility validator
 // used by the migrated completion composition root. It exposes validation
 // only; legacy orchestration remains a test oracle.
-func ValidateExecutionCompletionArtifact(record IssueOpsRecord, requestedURL string) error {
+func ValidateExecutionCompletionArtifact(record issueops.IssueOpsRecord, requestedURL string) error {
 	return validateExecutionCompletionArtifact(record, requestedURL)
 }
 
@@ -271,7 +271,7 @@ func validateExecutionReportPath(root, path string) (string, error) {
 	return resolved, nil
 }
 
-func executionCompletionMatches(completion model.ExecutionCompletion, req ExecutionCompleteRequest, verification []string) bool {
+func executionCompletionMatches(completion issueops.ExecutionCompletion, req ExecutionCompleteRequest, verification []string) bool {
 	return strings.EqualFold(completion.FinalHead, strings.TrimSpace(req.FinalHead)) &&
 		samePath(completion.TuringReportPath, req.TuringReportPath) && slices.Equal(completion.Verification, verification) &&
 		completion.RemoteArtifactURL == strings.TrimSpace(req.RemoteArtifactURL)

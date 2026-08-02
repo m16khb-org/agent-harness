@@ -1,10 +1,12 @@
 package issueops
 
 import (
-	"agent-harness/internal/core/preflight"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/contract/issueops"
+	"agent-harness/internal/core/preflight"
 )
 
 func TestIssueOpsCleanupStatusRequiresMergedCleanWorktreeAndDeletedRemoteBranch(t *testing.T) {
@@ -24,7 +26,7 @@ func TestIssueOpsCleanupStatusRequiresMergedCleanWorktreeAndDeletedRemoteBranch(
 	if code, _, stderr := preflight.GitCmd(repo, "worktree", "add", "-q", worktree, branch); code != 0 {
 		t.Fatalf("git worktree add failed: %s", stderr)
 	}
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +35,7 @@ func TestIssueOpsCleanupStatusRequiresMergedCleanWorktreeAndDeletedRemoteBranch(
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, issueops.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     record.IssueURL,
 		Branch:       branch,
@@ -72,7 +74,7 @@ func TestIssueOpsCleanupStatusRequiresMergedCleanWorktreeAndDeletedRemoteBranch(
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err = VerifyIssueOpsRemoteArtifactWithActor(stateRoot, record.ID, IssueOpsRemoteArtifactVerificationRequest{
+	record, err = VerifyIssueOpsRemoteArtifactWithActor(stateRoot, record.ID, issueops.IssueOpsRemoteArtifactVerificationRequest{
 		Provider:  "github",
 		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/2",
@@ -82,14 +84,14 @@ func TestIssueOpsCleanupStatusRequiresMergedCleanWorktreeAndDeletedRemoteBranch(
 	if err != nil {
 		t.Fatal(err)
 	}
-	notMerged := IssueOpsCleanupStatusForRecord(record, IssueOpsCleanupStatusRequest{})
+	notMerged := IssueOpsCleanupStatusForRecord(record, issueops.IssueOpsCleanupStatusRequest{})
 	if notMerged.Ready || !containsString(notMerged.Missing, "remote_artifact_merged") {
 		t.Fatalf("cleanup should require explicit merged evidence, got %+v", notMerged)
 	}
 	if len(notMerged.Choices) != 3 || strings.Contains(notMerged.Choices[0], "정리 진행") || !strings.Contains(notMerged.Choices[0], "차단 해소") {
 		t.Fatalf("cleanup must not recommend deletion before readiness, got %+v", notMerged.Choices)
 	}
-	remoteBranchPresent := IssueOpsCleanupStatusForRecord(record, IssueOpsCleanupStatusRequest{Merged: true})
+	remoteBranchPresent := IssueOpsCleanupStatusForRecord(record, issueops.IssueOpsCleanupStatusRequest{Merged: true})
 	if remoteBranchPresent.Ready || !containsString(remoteBranchPresent.Missing, "remote_branch_absent") {
 		t.Fatalf("cleanup should report remote source branch before local deletion, got %+v", remoteBranchPresent)
 	}
@@ -99,7 +101,7 @@ func TestIssueOpsCleanupStatusRequiresMergedCleanWorktreeAndDeletedRemoteBranch(
 	if code, _, stderr := preflight.GitCmd(worktree, "push", "-q", "origin", "--delete", branch); code != 0 {
 		t.Fatalf("git push delete branch failed: %s", stderr)
 	}
-	ready := IssueOpsCleanupStatusForRecord(record, IssueOpsCleanupStatusRequest{Merged: true})
+	ready := IssueOpsCleanupStatusForRecord(record, issueops.IssueOpsCleanupStatusRequest{Merged: true})
 	if !ready.Ready || len(ready.Missing) != 0 || len(ready.Choices) != 3 {
 		t.Fatalf("clean merged worktree with deleted remote branch should be cleanup-ready, got %+v", ready)
 	}
@@ -107,7 +109,7 @@ func TestIssueOpsCleanupStatusRequiresMergedCleanWorktreeAndDeletedRemoteBranch(
 		t.Fatalf("cleanup-ready status should recommend cleanup, got %+v", ready.Choices)
 	}
 	writeIssueOpsFile(t, worktree, "DIRTY.md", "dirty\n")
-	dirty := IssueOpsCleanupStatusForRecord(record, IssueOpsCleanupStatusRequest{Merged: true})
+	dirty := IssueOpsCleanupStatusForRecord(record, issueops.IssueOpsCleanupStatusRequest{Merged: true})
 	if dirty.Ready || !containsString(dirty.Missing, "worktree_clean") {
 		t.Fatalf("dirty worktree should block cleanup, got %+v", dirty)
 	}
@@ -129,12 +131,12 @@ func TestIssueOpsCleanupStatusBlocksWhenRemoteBranchCheckUnavailable(t *testing.
 	if code, _, stderr := preflight.GitCmd(worktree, "remote", "remove", "origin"); code != 0 {
 		t.Fatalf("git remote remove failed: %s", stderr)
 	}
-	record := IssueOpsRecord{
+	record := issueops.IssueOpsRecord{
 		ID:           "io-cleanup",
 		Branch:       branch,
 		Phase:        IssueOpsPhasePR,
 		WorktreePath: worktree,
-		RemoteArtifact: &IssueOpsRemoteArtifactVerification{
+		RemoteArtifact: &issueops.IssueOpsRemoteArtifactVerification{
 			Provider:  "github",
 			Kind:      "pr",
 			URL:       "https://github.com/example/repo/pull/2",
@@ -142,7 +144,7 @@ func TestIssueOpsCleanupStatusBlocksWhenRemoteBranchCheckUnavailable(t *testing.
 			Assignees: []string{"habin"},
 		},
 	}
-	status := IssueOpsCleanupStatusForRecord(record, IssueOpsCleanupStatusRequest{Merged: true})
+	status := IssueOpsCleanupStatusForRecord(record, issueops.IssueOpsCleanupStatusRequest{Merged: true})
 	if status.Ready || !containsString(status.Missing, "remote_branch_check_unavailable") {
 		t.Fatalf("cleanup should block when remote branch check is unavailable, got %+v", status)
 	}

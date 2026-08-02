@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	statecontract "agent-harness/internal/contract/state"
+
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/failurecause"
 )
@@ -48,7 +50,7 @@ func WriteSelfAugmentSnapshotRecord(dir, key string, snapshot SelfAugmentStateSn
 	if err != nil {
 		return err
 	}
-	record := core.StateRecord{
+	record := statecontract.RecordEnvelope{
 		SchemaVersion: core.StateCurrentSchemaVersion,
 		Key:           key,
 		Content:       string(content),

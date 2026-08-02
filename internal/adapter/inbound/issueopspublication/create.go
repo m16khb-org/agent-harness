@@ -3,6 +3,8 @@ package issueopspublication
 import (
 	"context"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	publicationapp "agent-harness/internal/application/issueopspublication"
 	publicationcontract "agent-harness/internal/contract/issueopspublication"
 	"agent-harness/internal/core/issueops"
@@ -37,7 +39,7 @@ func (h CreateHandler) Handle(ctx context.Context, _ string, request issueops.Re
 	}, err
 }
 
-func publicationActor(actor issueops.NativeActor) publicationcontract.Actor {
+func publicationActor(actor issueopscontract.NativeActor) publicationcontract.Actor {
 	result := publicationcontract.Actor{Host: actor.Host, SessionID: actor.SessionID, AgentID: actor.AgentID}
 	if actor.SessionProcess != nil {
 		result.SessionProcess = &publicationcontract.ProcessReceipt{

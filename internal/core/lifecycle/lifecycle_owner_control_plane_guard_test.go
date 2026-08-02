@@ -4,21 +4,21 @@ import (
 	"strings"
 	"testing"
 
-	issueopsmodel "agent-harness/internal/core/issueops/model"
+	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
 func TestExecutionAdmitsExactOrcaOwnerControlPlaneCommands(t *testing.T) {
-	for _, leaseStatus := range []issueopsmodel.LeaseStatus{
-		issueopsmodel.LeaseStatusClaimable,
-		issueopsmodel.LeaseStatusActive,
+	for _, leaseStatus := range []issueopscontract.LeaseStatus{
+		issueopscontract.LeaseStatusClaimable,
+		issueopscontract.LeaseStatusActive,
 	} {
 		t.Run(string(leaseStatus), func(t *testing.T) {
 			t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 			_, record, worker := executionActiveLifecycleRecord(t)
-			if leaseStatus == issueopsmodel.LeaseStatusClaimable {
-				record.Execution.Lease = issueopsmodel.WriteLease{
+			if leaseStatus == issueopscontract.LeaseStatusClaimable {
+				record.Execution.Lease = issueopscontract.WriteLease{
 					Generation:       3,
-					Status:           issueopsmodel.LeaseStatusClaimable,
+					Status:           issueopscontract.LeaseStatusClaimable,
 					ClaimTokenSHA256: strings.Repeat("a", 64),
 				}
 				if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
@@ -82,13 +82,13 @@ func TestExecutionKeepsNearMissOrcaOwnerControlPlaneCommandsBlocked(t *testing.T
 func TestExecutionAdmitsExactGenerationBoundResumeControlPlane(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	_, record, worker := executionActiveLifecycleRecord(t)
-	record.Execution.Mode = issueopsmodel.ExecutionModeOrca
+	record.Execution.Mode = issueopscontract.ExecutionModeOrca
 	record.Execution.Workspace.Driver = "orca"
-	record.Execution.Lease = issueopsmodel.WriteLease{
-		Generation: 3, Status: issueopsmodel.LeaseStatusClaimable,
+	record.Execution.Lease = issueopscontract.WriteLease{
+		Generation: 3, Status: issueopscontract.LeaseStatusClaimable,
 		ClaimTokenSHA256: strings.Repeat("a", 64),
 	}
-	record.Execution.Orca = &issueopsmodel.OrcaBinding{
+	record.Execution.Orca = &issueopscontract.OrcaBinding{
 		RuntimeID: "runtime-1", RepoID: "repo-1", WorktreeID: "worktree-1",
 		LeaseGeneration: 2, OwnerHost: "codex", OwnerModel: "gpt-5.6-terra",
 		TaskID: "task-1", DispatchID: "dispatch-1", TerminalPTYID: "pty-1",
@@ -112,13 +112,13 @@ func TestExecutionAdmitsExactGenerationBoundResumeControlPlane(t *testing.T) {
 func TestExecutionKeepsNearMissResumeControlPlaneCommandsBlocked(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	_, record, worker := executionActiveLifecycleRecord(t)
-	record.Execution.Mode = issueopsmodel.ExecutionModeOrca
+	record.Execution.Mode = issueopscontract.ExecutionModeOrca
 	record.Execution.Workspace.Driver = "orca"
-	record.Execution.Lease = issueopsmodel.WriteLease{
-		Generation: 3, Status: issueopsmodel.LeaseStatusClaimable,
+	record.Execution.Lease = issueopscontract.WriteLease{
+		Generation: 3, Status: issueopscontract.LeaseStatusClaimable,
 		ClaimTokenSHA256: strings.Repeat("a", 64),
 	}
-	record.Execution.Orca = &issueopsmodel.OrcaBinding{
+	record.Execution.Orca = &issueopscontract.OrcaBinding{
 		RuntimeID: "runtime-1", RepoID: "repo-1", WorktreeID: "worktree-1",
 		LeaseGeneration: 2, OwnerHost: "codex", OwnerModel: "gpt-5.6-terra",
 		TaskID: "task-1", DispatchID: "dispatch-1", TerminalPTYID: "pty-1",

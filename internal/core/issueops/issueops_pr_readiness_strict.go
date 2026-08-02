@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"strings"
 
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops/implementation"
 	"agent-harness/internal/core/issueops/stringlist"
 	"agent-harness/internal/core/preflight"
 )
 
-func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
+func IssueOpsStrictPRReadiness(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
 	ready := IssueOpsPRReadiness(record)
 	ready.Strict = true
 	missing := append([]string{}, ready.Missing...)
@@ -94,7 +95,7 @@ func IssueOpsStrictPRReadiness(record IssueOpsRecord) IssueOpsReadiness {
 	return ready
 }
 
-func issueOpsStrictPRReadinessWithState(stateRoot string, record IssueOpsRecord) IssueOpsReadiness {
+func issueOpsStrictPRReadinessWithState(stateRoot string, record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
 	ready := IssueOpsStrictPRReadiness(record)
 	childMissing, childWarnings := issueOpsChildPRGateMissing(stateRoot, record)
 	if len(childMissing) == 0 && len(childWarnings) == 0 {
@@ -106,6 +107,6 @@ func issueOpsStrictPRReadinessWithState(stateRoot string, record IssueOpsRecord)
 	return ready
 }
 
-func IssueOpsStrictPRReadinessWithState(stateRoot string, record IssueOpsRecord) IssueOpsReadiness {
+func IssueOpsStrictPRReadinessWithState(stateRoot string, record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {
 	return issueOpsStrictPRReadinessWithState(stateRoot, record)
 }

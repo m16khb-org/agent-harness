@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 )
 
 func TestNativeProcessAncestryFromSnapshotWalksExactParentChain(t *testing.T) {
@@ -56,9 +56,9 @@ func TestNormalizeNativeActorRequiresReceiptInLocalProcessAncestry(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	actor := model.NativeActor{
+	actor := issueops.NativeActor{
 		Host: "codex", SessionID: "session", SessionProcess: &receipt,
-		ProcessAncestry: []model.NativeProcessReceipt{receipt},
+		ProcessAncestry: []issueops.NativeProcessReceipt{receipt},
 	}
 	if _, err := normalizeNativeActor(actor); err != nil {
 		t.Fatalf("exact locally observed process receipt rejected: %v", err)
@@ -68,7 +68,7 @@ func TestNormalizeNativeActorRequiresReceiptInLocalProcessAncestry(t *testing.T)
 	if _, err := normalizeNativeActor(actor); err == nil {
 		t.Fatal("payload receipt without local process ancestry was accepted")
 	}
-	actor.ProcessAncestry = []model.NativeProcessReceipt{{
+	actor.ProcessAncestry = []issueops.NativeProcessReceipt{{
 		PID: receipt.PID, StartedAt: "1970-01-01T00:00:00Z", Executable: receipt.Executable,
 	}}
 	if _, err := normalizeNativeActor(actor); err == nil {

@@ -13,9 +13,9 @@ import (
 
 	preparationoutbound "agent-harness/internal/adapter/outbound/issueopspreparation"
 	preparationapp "agent-harness/internal/application/issueopspreparation"
+	"agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/policy"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
@@ -35,26 +35,26 @@ type preparationDifferentialObservation struct {
 func TestPreparationDifferentialDirectMatrix(t *testing.T) {
 	cases := []struct {
 		name    string
-		request func(IssueOpsRecord) ExecutionPrepareRequest
+		request func(issueops.IssueOpsRecord) ExecutionPrepareRequest
 		access  port.ExecutionWorkspaceAccessResult
 		err     error
 	}{
-		{name: "preview", request: func(record IssueOpsRecord) ExecutionPrepareRequest {
+		{name: "preview", request: func(record issueops.IssueOpsRecord) ExecutionPrepareRequest {
 			return preparationDifferentialRequest(record, "direct", false)
 		}, access: port.ExecutionWorkspaceAccessResult{Allowed: true}},
-		{name: "success", request: func(record IssueOpsRecord) ExecutionPrepareRequest {
+		{name: "success", request: func(record issueops.IssueOpsRecord) ExecutionPrepareRequest {
 			return preparationDifferentialRequest(record, "direct", true)
 		}, access: port.ExecutionWorkspaceAccessResult{Allowed: true}},
-		{name: "auto fallback", request: func(record IssueOpsRecord) ExecutionPrepareRequest {
+		{name: "auto fallback", request: func(record issueops.IssueOpsRecord) ExecutionPrepareRequest {
 			return preparationDifferentialRequest(record, "auto", true)
 		}, access: port.ExecutionWorkspaceAccessResult{Allowed: true}},
-		{name: "access denial", request: func(record IssueOpsRecord) ExecutionPrepareRequest {
+		{name: "access denial", request: func(record issueops.IssueOpsRecord) ExecutionPrepareRequest {
 			return preparationDifferentialRequest(record, "direct", true)
 		}, access: port.ExecutionWorkspaceAccessResult{Code: "canonical_worktree_base_inaccessible", RelaunchCommand: "codex relaunch"}},
-		{name: "provision failure", request: func(record IssueOpsRecord) ExecutionPrepareRequest {
+		{name: "provision failure", request: func(record issueops.IssueOpsRecord) ExecutionPrepareRequest {
 			return preparationDifferentialRequest(record, "direct", true)
 		}, access: port.ExecutionWorkspaceAccessResult{Allowed: true}, err: errors.New("prepare failed")},
-		{name: "cwd denial", request: func(record IssueOpsRecord) ExecutionPrepareRequest {
+		{name: "cwd denial", request: func(record issueops.IssueOpsRecord) ExecutionPrepareRequest {
 			request := preparationDifferentialRequest(record, "direct", true)
 			request.CWD = "/foreign"
 			return request
@@ -81,26 +81,26 @@ func TestPreparationDifferentialExistingExecutionMatrix(t *testing.T) {
 		name    string
 		mode    string
 		confirm bool
-		mutate  func(*IssueOpsRecord)
+		mutate  func(*issueops.IssueOpsRecord)
 	}{
 		{name: "idempotent", mode: "direct", confirm: true},
 		{name: "idempotent auto", mode: "auto", confirm: true},
-		{name: "preview writerless", mode: "direct", confirm: false, mutate: func(record *IssueOpsRecord) {
-			record.Execution.Lease = model.WriteLease{Generation: 1, Status: model.LeaseStatusClaimable, ClaimTokenSHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+		{name: "preview writerless", mode: "direct", confirm: false, mutate: func(record *issueops.IssueOpsRecord) {
+			record.Execution.Lease = issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusClaimable, ClaimTokenSHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
 		}},
-		{name: "pending", mode: "direct", confirm: true, mutate: func(record *IssueOpsRecord) {
-			record.Execution.Pending = &model.ExternalIntent{OperationID: preparationDifferentialOperation, Kind: "dispatch", Marker: "marker", StartedAt: "2026-08-02T00:00:00Z"}
+		{name: "pending", mode: "direct", confirm: true, mutate: func(record *issueops.IssueOpsRecord) {
+			record.Execution.Pending = &issueops.ExternalIntent{OperationID: preparationDifferentialOperation, Kind: "dispatch", Marker: "marker", StartedAt: "2026-08-02T00:00:00Z"}
 		}},
 		{name: "mode mismatch", mode: "orca", confirm: true},
-		{name: "claimable writerless", mode: "direct", confirm: true, mutate: func(record *IssueOpsRecord) {
-			record.Execution.Lease = model.WriteLease{Generation: 1, Status: model.LeaseStatusClaimable, ClaimTokenSHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+		{name: "claimable writerless", mode: "direct", confirm: true, mutate: func(record *issueops.IssueOpsRecord) {
+			record.Execution.Lease = issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusClaimable, ClaimTokenSHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
 		}},
-		{name: "released writerless", mode: "direct", confirm: true, mutate: func(record *IssueOpsRecord) {
-			record.Execution.Lease = model.WriteLease{Generation: 2, Status: model.LeaseStatusReleased}
+		{name: "released writerless", mode: "direct", confirm: true, mutate: func(record *issueops.IssueOpsRecord) {
+			record.Execution.Lease = issueops.WriteLease{Generation: 2, Status: issueops.LeaseStatusReleased}
 		}},
-		{name: "revoking writerless", mode: "direct", confirm: true, mutate: func(record *IssueOpsRecord) {
+		{name: "revoking writerless", mode: "direct", confirm: true, mutate: func(record *issueops.IssueOpsRecord) {
 			record.Execution.Lease.Generation = 3
-			record.Execution.Lease.Status = model.LeaseStatusRevoking
+			record.Execution.Lease.Status = issueops.LeaseStatusRevoking
 			record.Execution.Lease.ClaimTokenSHA256 = ""
 		}},
 	}
@@ -113,13 +113,13 @@ func TestPreparationDifferentialExistingExecutionMatrix(t *testing.T) {
 			}
 			actor := executionActor("codex", "preparation-differential")
 			record.WorktreePath = workspace.Root
-			record.Execution = &model.Execution{
-				Mode: model.ExecutionModeDirect,
-				Workspace: model.Workspace{
+			record.Execution = &issueops.Execution{
+				Mode: issueops.ExecutionModeDirect,
+				Workspace: issueops.Workspace{
 					SourceRoot: workspace.SourceRoot, Root: workspace.Root, Branch: workspace.Branch,
 					BaseHead: workspace.BaseHead, ParentWorktree: workspace.ParentWorktree, Driver: "git", LinkedAt: "2026-08-02T00:00:00Z",
 				},
-				Lease: model.WriteLease{Generation: 1, Status: model.LeaseStatusActive, Holder: &actor, ClaimedAt: "2026-08-02T00:00:00Z"},
+				Lease: issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusActive, Holder: &actor, ClaimedAt: "2026-08-02T00:00:00Z"},
 			}
 			if test.mutate != nil {
 				test.mutate(&record)
@@ -221,7 +221,7 @@ func TestPreparationDifferentialOrcaBranchCollision(t *testing.T) {
 func TestPreparationDifferentialParentWorktree(t *testing.T) {
 	legacyRoot, record := orcaPrepareRecord(t)
 	record.BranchPrepare.BaseBranch = "117-umbrella"
-	record.Delegation = &IssueOpsDelegationContract{ParentCycleID: "io-parent"}
+	record.Delegation = &issueops.IssueOpsDelegationContract{ParentCycleID: "io-parent"}
 	if _, err := writeIssueOps(legacyRoot, record); err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +242,7 @@ func TestPreparationDifferentialParentWorktree(t *testing.T) {
 	assertPreparationDifferentialEqual(t, legacy, vertical)
 }
 
-func preparationDifferentialRequest(record IssueOpsRecord, mode string, confirm bool) ExecutionPrepareRequest {
+func preparationDifferentialRequest(record issueops.IssueOpsRecord, mode string, confirm bool) ExecutionPrepareRequest {
 	return ExecutionPrepareRequest{
 		ID: record.ID, Mode: mode, Actor: executionActor("codex", "preparation-differential"),
 		CWD: record.Repo, OwnerHost: "codex", OwnerModel: "gpt-5.6-terra", OwnerEffort: "xhigh", Confirm: confirm,
@@ -327,7 +327,7 @@ func preparationDifferentialPublicResult(t *testing.T, result preparationcontrac
 	return public
 }
 
-func observePreparationDifferential(t *testing.T, stateRoot, id string, actor NativeActor, result any, err error, trace []string) preparationDifferentialObservation {
+func observePreparationDifferential(t *testing.T, stateRoot, id string, actor issueops.NativeActor, result any, err error, trace []string) preparationDifferentialObservation {
 	t.Helper()
 	resultJSON, marshalErr := json.Marshal(result)
 	if marshalErr != nil {
@@ -539,9 +539,9 @@ func (evidence preparationDifferentialEvidence) MaterializeDirect(_ context.Cont
 		return err
 	}
 	record.WorktreePath = receipt.Root
-	record.Execution = &model.Execution{
-		Mode:      model.ExecutionModeDirect,
-		Workspace: model.Workspace{SourceRoot: receipt.SourceRoot, Root: receipt.Root, Branch: receipt.Branch, BaseHead: receipt.BaseHead, ParentWorktree: receipt.ParentWorktree, Driver: receipt.Driver},
+	record.Execution = &issueops.Execution{
+		Mode:      issueops.ExecutionModeDirect,
+		Workspace: issueops.Workspace{SourceRoot: receipt.SourceRoot, Root: receipt.Root, Branch: receipt.Branch, BaseHead: receipt.BaseHead, ParentWorktree: receipt.ParentWorktree, Driver: receipt.Driver},
 	}
 	_, err = materializeStagedArtifacts(evidence.stateRoot, record)
 	return err
@@ -557,7 +557,7 @@ func (evidence preparationDifferentialEvidence) PrepareOwner(ctx context.Context
 	}
 	workspace := receipt.Workspace.Workspace
 	record.WorktreePath = workspace.Root
-	record.Execution.Workspace = model.Workspace{
+	record.Execution.Workspace = issueops.Workspace{
 		SourceRoot: workspace.SourceRoot, Root: workspace.Root, Branch: workspace.Branch,
 		BaseHead: workspace.BaseHead, ParentWorktree: workspace.ParentWorktree, Driver: workspace.Driver, LinkedAt: intent.StartedAt,
 	}
@@ -623,8 +623,8 @@ func hydratePreparationDifferentialLaunch(stateRoot, id string, request preparat
 	return request, nil
 }
 
-func preparationDifferentialCoreRecord(snapshot preparationcontract.Snapshot) (IssueOpsRecord, error) {
-	var record IssueOpsRecord
+func preparationDifferentialCoreRecord(snapshot preparationcontract.Snapshot) (issueops.IssueOpsRecord, error) {
+	var record issueops.IssueOpsRecord
 	err := json.Unmarshal(snapshot.RecordRaw, &record)
 	return record, err
 }

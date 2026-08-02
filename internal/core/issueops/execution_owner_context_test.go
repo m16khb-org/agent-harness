@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
@@ -59,14 +59,14 @@ func TestExecutionOwnerLaunchSealsIssueContextAndFullPromptBeforeDispatch(t *tes
 	if fake.prepareCalls != 1 || fake.launchCalls != 1 || got.ContextPacketPath == "" || got.ContextPacketSHA256 == "" || got.OwnerPromptPath == "" || got.OwnerPromptSHA256 == "" {
 		t.Fatalf("sealed owner launch receipt is incomplete: prepare=%d launch=%d result=%#v", fake.prepareCalls, fake.launchCalls, got)
 	}
-	if got.Execution == nil || got.Execution.Lease.Status != model.LeaseStatusClaimable {
+	if got.Execution == nil || got.Execution.Lease.Status != issueops.LeaseStatusClaimable {
 		t.Fatalf("dispatch receipt did not become claimable: %#v", got.Execution)
 	}
 	claimed, err := claimViaVerticalWithDeps(context.Background(), stateRoot, ExecutionClaimRequest{
 		ID: record.ID, Generation: 1, Actor: executionActor("claude", "owner"), CWD: got.Workspace.Root,
 		TokenFile: got.ClaimTokenPath, IssueBodySHA256: got.IssueBodySHA256, ContextPacketSHA256: got.ContextPacketSHA256,
 	}, ExecutionClaimDependencies{ReadIssue: reader})
-	if err != nil || claimed.Execution.Lease.Status != model.LeaseStatusActive {
+	if err != nil || claimed.Execution.Lease.Status != issueops.LeaseStatusActive {
 		t.Fatalf("verified issue and packet digests must permit one claim: result=%#v err=%v", claimed, err)
 	}
 	if _, err := os.Stat(got.ClaimTokenPath); !os.IsNotExist(err) {
@@ -114,7 +114,7 @@ func TestExecutionInitialOrcaClaimRejectsIssueOrPacketDigestDrift(t *testing.T) 
 			if readErr != nil {
 				t.Fatal(readErr)
 			}
-			if current.Execution.Lease.Status != model.LeaseStatusClaimable {
+			if current.Execution.Lease.Status != issueops.LeaseStatusClaimable {
 				t.Fatalf("digest drift changed lease authority: %#v", current.Execution.Lease)
 			}
 		})
@@ -123,11 +123,11 @@ func TestExecutionInitialOrcaClaimRejectsIssueOrPacketDigestDrift(t *testing.T) 
 
 // sealedOrcaCycle는 봉인이 끝난 claimable orca 사이클을 만든다. reseed와 세대
 // 검증 테스트가 같은 출발점을 공유해야 재봉인 전후를 비교할 수 있다.
-func sealedOrcaCycle(t *testing.T, issueBody string) (string, IssueOpsRecord, ExecutionPrepareResult, ExecutionIssueSnapshotReadFunc) {
+func sealedOrcaCycle(t *testing.T, issueBody string) (string, issueops.IssueOpsRecord, ExecutionPrepareResult, ExecutionIssueSnapshotReadFunc) {
 	return sealedOrcaCycleWithArtifacts(t, issueBody, nil)
 }
 
-func sealedOrcaCycleWithArtifacts(t *testing.T, issueBody string, artifacts map[string]string) (string, IssueOpsRecord, ExecutionPrepareResult, ExecutionIssueSnapshotReadFunc) {
+func sealedOrcaCycleWithArtifacts(t *testing.T, issueBody string, artifacts map[string]string) (string, issueops.IssueOpsRecord, ExecutionPrepareResult, ExecutionIssueSnapshotReadFunc) {
 	t.Helper()
 	stateRoot, record := orcaPrepareRecord(t)
 	for name, content := range artifacts {
@@ -232,10 +232,10 @@ func TestExecutionReseedResealsOwnerPacketForTheNewGeneration(t *testing.T) {
 
 type revokingSealedOrcaCycle struct {
 	stateRoot string
-	record    IssueOpsRecord
+	record    issueops.IssueOpsRecord
 	prepared  ExecutionPrepareResult
 	reader    ExecutionIssueSnapshotReadFunc
-	requester model.NativeActor
+	requester issueops.NativeActor
 	deps      ExecutionReplaceDependencies
 	preview   ExecutionReplaceResult
 }
@@ -252,11 +252,11 @@ func newRevokingSealedOrcaCycle(t *testing.T, issueBody string) revokingSealedOr
 	}
 	// 중단된 이전 owner는 실제 프로세스가 사라졌지만 durable holder 기록은
 	// 남아 있는 상태다. replacement가 검증해야 하는 운영 상황을 그대로 만든다.
-	current.Execution.Lease = model.WriteLease{
-		Generation: 1, Status: model.LeaseStatusActive, ClaimedAt: "2026-07-28T00:00:00Z",
-		Holder: &model.NativeActor{
+	current.Execution.Lease = issueops.WriteLease{
+		Generation: 1, Status: issueops.LeaseStatusActive, ClaimedAt: "2026-07-28T00:00:00Z",
+		Holder: &issueops.NativeActor{
 			Host: "claude", SessionID: "dead-owner",
-			SessionProcess: &model.NativeProcessReceipt{
+			SessionProcess: &issueops.NativeProcessReceipt{
 				PID: 999999, StartedAt: "2026-07-28T00:00:00Z", Executable: "claude",
 			},
 		},
@@ -306,7 +306,7 @@ func TestExecutionFinalizeResealsOwnerPacketBeforeReplacementClaim(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if finalized.Execution.Lease.Status != model.LeaseStatusClaimable ||
+	if finalized.Execution.Lease.Status != issueops.LeaseStatusClaimable ||
 		finalized.Execution.Lease.Generation != 2 ||
 		strings.TrimSpace(finalized.IssueBodySHA256) == "" ||
 		strings.TrimSpace(finalized.ContextPacketSHA256) == "" ||
@@ -329,7 +329,7 @@ func TestExecutionFinalizeResealsOwnerPacketBeforeReplacementClaim(t *testing.T)
 		CWD: fixture.prepared.Workspace.Root, TokenFile: finalized.ClaimTokenPath,
 		IssueBodySHA256: finalized.IssueBodySHA256, ContextPacketSHA256: finalized.ContextPacketSHA256,
 	}, ExecutionClaimDependencies{ReadIssue: fixture.reader})
-	if err != nil || claimed.Execution.Lease.Status != model.LeaseStatusActive {
+	if err != nil || claimed.Execution.Lease.Status != issueops.LeaseStatusActive {
 		t.Fatalf("finalize가 만든 세대별 봉인으로 claim하지 못했다: result=%#v err=%v", claimed, err)
 	}
 }
@@ -355,7 +355,7 @@ func TestExecutionFinalizeResealFailureKeepsRevokingStateAtomic(t *testing.T) {
 	if readErr != nil {
 		t.Fatal(readErr)
 	}
-	if persisted.Execution.Lease.Status != model.LeaseStatusRevoking ||
+	if persisted.Execution.Lease.Status != issueops.LeaseStatusRevoking ||
 		persisted.Execution.Lease.Generation != 2 ||
 		persisted.Execution.Lease.Holder == nil {
 		t.Fatalf("재봉인 실패가 durable revoking 상태를 바꿨다: %#v", persisted.Execution.Lease)
@@ -390,7 +390,7 @@ func TestExecutionReseedFailurePreservesCurrentClaimToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if persisted.Execution.Lease.Status != model.LeaseStatusClaimable || persisted.Execution.Lease.Generation != 1 {
+	if persisted.Execution.Lease.Status != issueops.LeaseStatusClaimable || persisted.Execution.Lease.Generation != 1 {
 		t.Fatalf("실패한 reseed가 durable 현재 세대를 바꿨다: %#v", persisted.Execution.Lease)
 	}
 	if _, err := os.Lstat(prepared.ClaimTokenPath); err != nil {
@@ -443,7 +443,7 @@ func TestExecutionFinalizeCleansPartialOwnerArtifactsBeforeRetry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if persisted.Execution.Lease.Status != model.LeaseStatusRevoking || persisted.Execution.Lease.Generation != 2 {
+	if persisted.Execution.Lease.Status != issueops.LeaseStatusRevoking || persisted.Execution.Lease.Generation != 2 {
 		t.Fatalf("부분 파일 실패가 durable lease를 바꿨다: %#v", persisted.Execution.Lease)
 	}
 
@@ -489,7 +489,7 @@ func TestExecutionFinalizeRecoversUncommittedGenerationResidue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("durable revoking 세대가 uncommitted residue를 회수하지 못했다: %v", err)
 	}
-	if finalized.Execution.Lease.Status != model.LeaseStatusClaimable ||
+	if finalized.Execution.Lease.Status != issueops.LeaseStatusClaimable ||
 		finalized.ClaimTokenPath != tokenPath ||
 		finalized.ContextPacketPath != packetPath ||
 		finalized.OwnerPromptPath != promptPath {
@@ -715,7 +715,7 @@ func TestExtractExecutionOwnerVerificationRejectsUnfencedProse(t *testing.T) {
 	}
 }
 
-func assertSealedOwnerLaunch(t *testing.T, record IssueOpsRecord, issueBody string, prepared port.ExecutionOrcaWorkspaceReceipt, launch port.ExecutionOrcaLaunchRequest) {
+func assertSealedOwnerLaunch(t *testing.T, record issueops.IssueOpsRecord, issueBody string, prepared port.ExecutionOrcaWorkspaceReceipt, launch port.ExecutionOrcaLaunchRequest) {
 	t.Helper()
 	if !pathWithinRoot(prepared.Workspace.Root, launch.ContextPacketPath) || !pathWithinRoot(prepared.Workspace.Root, launch.PromptPath) {
 		t.Fatalf("owner artifacts escaped the canonical worktree: %#v", launch)

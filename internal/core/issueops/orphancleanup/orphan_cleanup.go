@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"agent-harness/internal/core/issueops/model"
+	model "agent-harness/internal/contract/issueops"
 	corehealth "agent-harness/internal/core/operationalhealth"
 	"agent-harness/internal/core/preflight"
 )

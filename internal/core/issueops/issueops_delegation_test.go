@@ -7,19 +7,21 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"agent-harness/internal/contract/issueops"
 )
 
 func TestStartIssueOpsChildFailClosedPreconditions(t *testing.T) {
 	cases := []struct {
 		name        string
 		childBranch string
-		mutate      func(*testing.T, string, IssueOpsRecord) IssueOpsRecord
+		mutate      func(*testing.T, string, issueops.IssueOpsRecord) issueops.IssueOpsRecord
 		missing     string
 	}{
 		{
 			name:        "parent in plan phase",
 			childBranch: "124-child-plan",
-			mutate: func(t *testing.T, stateRoot string, parent IssueOpsRecord) IssueOpsRecord {
+			mutate: func(t *testing.T, stateRoot string, parent issueops.IssueOpsRecord) issueops.IssueOpsRecord {
 				t.Helper()
 				parent.Phase = IssueOpsPhasePlan
 				return writeIssueOpsRecordForDelegationTest(t, stateRoot, parent)
@@ -29,7 +31,7 @@ func TestStartIssueOpsChildFailClosedPreconditions(t *testing.T) {
 		{
 			name:        "unapproved design review",
 			childBranch: "124-child-design",
-			mutate: func(t *testing.T, stateRoot string, parent IssueOpsRecord) IssueOpsRecord {
+			mutate: func(t *testing.T, stateRoot string, parent issueops.IssueOpsRecord) issueops.IssueOpsRecord {
 				t.Helper()
 				parent.DesignReview.Approved = false
 				return writeIssueOpsRecordForDelegationTest(t, stateRoot, parent)
@@ -39,7 +41,7 @@ func TestStartIssueOpsChildFailClosedPreconditions(t *testing.T) {
 		{
 			name:        "blocked compatibility review",
 			childBranch: "124-child-compat",
-			mutate: func(t *testing.T, stateRoot string, parent IssueOpsRecord) IssueOpsRecord {
+			mutate: func(t *testing.T, stateRoot string, parent issueops.IssueOpsRecord) issueops.IssueOpsRecord {
 				t.Helper()
 				parent.CompatibilityReview.Approved = false
 				parent.CompatibilityReview.Blockers = []string{"open compatibility blocker"}
@@ -50,7 +52,7 @@ func TestStartIssueOpsChildFailClosedPreconditions(t *testing.T) {
 		{
 			name:        "missing devils advocate review",
 			childBranch: "124-child-da",
-			mutate: func(t *testing.T, stateRoot string, parent IssueOpsRecord) IssueOpsRecord {
+			mutate: func(t *testing.T, stateRoot string, parent issueops.IssueOpsRecord) issueops.IssueOpsRecord {
 				t.Helper()
 				parent.DevilsAdvocateReview = nil
 				return writeIssueOpsRecordForDelegationTest(t, stateRoot, parent)
@@ -60,9 +62,9 @@ func TestStartIssueOpsChildFailClosedPreconditions(t *testing.T) {
 		{
 			name:        "parent already delegated child",
 			childBranch: "124-child-depth",
-			mutate: func(t *testing.T, stateRoot string, parent IssueOpsRecord) IssueOpsRecord {
+			mutate: func(t *testing.T, stateRoot string, parent issueops.IssueOpsRecord) issueops.IssueOpsRecord {
 				t.Helper()
-				parent.Delegation = &IssueOpsDelegationContract{ParentCycleID: "io-root", TaskScope: "nested", DelegatedAt: "2026-07-07T00:00:00Z"}
+				parent.Delegation = &issueops.IssueOpsDelegationContract{ParentCycleID: "io-root", TaskScope: "nested", DelegatedAt: "2026-07-07T00:00:00Z"}
 				return writeIssueOpsRecordForDelegationTest(t, stateRoot, parent)
 			},
 			missing: "delegation_depth_exceeded",
@@ -70,8 +72,10 @@ func TestStartIssueOpsChildFailClosedPreconditions(t *testing.T) {
 		{
 			name:        "child branch equals parent",
 			childBranch: "123-parent",
-			mutate:      func(t *testing.T, stateRoot string, parent IssueOpsRecord) IssueOpsRecord { return parent },
-			missing:     "child_branch_equals_parent",
+			mutate: func(t *testing.T, stateRoot string, parent issueops.IssueOpsRecord) issueops.IssueOpsRecord {
+				return parent
+			},
+			missing: "child_branch_equals_parent",
 		},
 	}
 
@@ -80,7 +84,7 @@ func TestStartIssueOpsChildFailClosedPreconditions(t *testing.T) {
 			stateRoot := t.TempDir()
 			parent := createDelegationReadyParentForTest(t, stateRoot)
 			parent = tc.mutate(t, stateRoot, parent)
-			_, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
+			_, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
 				ParentID:           parent.ID,
 				Branch:             tc.childBranch,
 				Title:              "delegated child",
@@ -103,7 +107,7 @@ func TestStartIssueOpsChildFailClosedPreconditions(t *testing.T) {
 func TestStartIssueOpsChildCreatesDelegatedProfile(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	result, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
+	result, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-profile",
 		Title:              "child profile",
@@ -154,7 +158,7 @@ func TestStartIssueOpsChildCreatesDelegatedProfile(t *testing.T) {
 	}
 
 	childWorktree := makeIssueOpsWorktreeDirForTest(t, parent.Repo, "123-child-profile")
-	if _, err := PrepareIssueOpsBranch(stateRoot, child.ID, IssueOpsBranchPrepareRequest{Provider: "github", IssueURL: child.IssueURL, Branch: child.Branch, BaseBranch: parent.Branch, LinkVerified: true}); err != nil {
+	if _, err := PrepareIssueOpsBranch(stateRoot, child.ID, issueops.IssueOpsBranchPrepareRequest{Provider: "github", IssueURL: child.IssueURL, Branch: child.Branch, BaseBranch: parent.Branch, LinkVerified: true}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := LinkIssueOpsWorktree(stateRoot, child.ID, childWorktree); err != nil {
@@ -177,19 +181,19 @@ func TestStartIssueOpsChildPerConditionRemedy(t *testing.T) {
 		name          string
 		childBranch   string
 		missing       string
-		breakParent   func(IssueOpsRecord) IssueOpsRecord
-		remedy        func(IssueOpsRecord, *IssueOpsChildStartRequest) IssueOpsRecord
+		breakParent   func(issueops.IssueOpsRecord) issueops.IssueOpsRecord
+		remedy        func(issueops.IssueOpsRecord, *issueops.IssueOpsChildStartRequest) issueops.IssueOpsRecord
 		remedyMessage string
 	}{
 		{
 			name:        "parent phase",
 			childBranch: "123-child-remedy-phase",
 			missing:     "parent_phase_not_implement",
-			breakParent: func(parent IssueOpsRecord) IssueOpsRecord {
+			breakParent: func(parent issueops.IssueOpsRecord) issueops.IssueOpsRecord {
 				parent.Phase = IssueOpsPhasePlan
 				return parent
 			},
-			remedy: func(parent IssueOpsRecord, req *IssueOpsChildStartRequest) IssueOpsRecord {
+			remedy: func(parent issueops.IssueOpsRecord, req *issueops.IssueOpsChildStartRequest) issueops.IssueOpsRecord {
 				parent.Phase = IssueOpsPhaseImplement
 				return parent
 			},
@@ -199,11 +203,11 @@ func TestStartIssueOpsChildPerConditionRemedy(t *testing.T) {
 			name:        "design review",
 			childBranch: "123-child-remedy-design",
 			missing:     "parent_design_review_unapproved",
-			breakParent: func(parent IssueOpsRecord) IssueOpsRecord {
+			breakParent: func(parent issueops.IssueOpsRecord) issueops.IssueOpsRecord {
 				parent.DesignReview.Approved = false
 				return parent
 			},
-			remedy: func(parent IssueOpsRecord, req *IssueOpsChildStartRequest) IssueOpsRecord {
+			remedy: func(parent issueops.IssueOpsRecord, req *issueops.IssueOpsChildStartRequest) issueops.IssueOpsRecord {
 				parent.DesignReview.Approved = true
 				return parent
 			},
@@ -213,12 +217,12 @@ func TestStartIssueOpsChildPerConditionRemedy(t *testing.T) {
 			name:        "compatibility review",
 			childBranch: "123-child-remedy-compat",
 			missing:     "parent_compatibility_unapproved",
-			breakParent: func(parent IssueOpsRecord) IssueOpsRecord {
+			breakParent: func(parent issueops.IssueOpsRecord) issueops.IssueOpsRecord {
 				parent.CompatibilityReview.Approved = false
 				parent.CompatibilityReview.Blockers = []string{"open compatibility blocker"}
 				return parent
 			},
-			remedy: func(parent IssueOpsRecord, req *IssueOpsChildStartRequest) IssueOpsRecord {
+			remedy: func(parent issueops.IssueOpsRecord, req *issueops.IssueOpsChildStartRequest) issueops.IssueOpsRecord {
 				parent.CompatibilityReview.Approved = true
 				parent.CompatibilityReview.Blockers = nil
 				return parent
@@ -229,12 +233,12 @@ func TestStartIssueOpsChildPerConditionRemedy(t *testing.T) {
 			name:        "devils advocate review",
 			childBranch: "123-child-remedy-da",
 			missing:     "parent_devils_advocate_missing",
-			breakParent: func(parent IssueOpsRecord) IssueOpsRecord {
+			breakParent: func(parent issueops.IssueOpsRecord) issueops.IssueOpsRecord {
 				parent.DevilsAdvocateReview = nil
 				return parent
 			},
-			remedy: func(parent IssueOpsRecord, req *IssueOpsChildStartRequest) IssueOpsRecord {
-				parent.DevilsAdvocateReview = &IssueOpsDevilsAdvocateReview{Verdict: "pass", RecordedAt: "2026-07-07T00:00:00Z"}
+			remedy: func(parent issueops.IssueOpsRecord, req *issueops.IssueOpsChildStartRequest) issueops.IssueOpsRecord {
+				parent.DevilsAdvocateReview = &issueops.IssueOpsDevilsAdvocateReview{Verdict: "pass", RecordedAt: "2026-07-07T00:00:00Z"}
 				return parent
 			},
 			remedyMessage: "fixing only devil's-advocate review",
@@ -243,11 +247,11 @@ func TestStartIssueOpsChildPerConditionRemedy(t *testing.T) {
 			name:        "delegation depth",
 			childBranch: "123-child-remedy-depth",
 			missing:     "delegation_depth_exceeded",
-			breakParent: func(parent IssueOpsRecord) IssueOpsRecord {
-				parent.Delegation = &IssueOpsDelegationContract{ParentCycleID: "io-root", TaskScope: "nested", DelegatedAt: "2026-07-07T00:00:00Z"}
+			breakParent: func(parent issueops.IssueOpsRecord) issueops.IssueOpsRecord {
+				parent.Delegation = &issueops.IssueOpsDelegationContract{ParentCycleID: "io-root", TaskScope: "nested", DelegatedAt: "2026-07-07T00:00:00Z"}
 				return parent
 			},
-			remedy: func(parent IssueOpsRecord, req *IssueOpsChildStartRequest) IssueOpsRecord {
+			remedy: func(parent issueops.IssueOpsRecord, req *issueops.IssueOpsChildStartRequest) issueops.IssueOpsRecord {
 				parent.Delegation = nil
 				return parent
 			},
@@ -257,10 +261,10 @@ func TestStartIssueOpsChildPerConditionRemedy(t *testing.T) {
 			name:        "child branch",
 			childBranch: "123-parent",
 			missing:     "child_branch_equals_parent",
-			breakParent: func(parent IssueOpsRecord) IssueOpsRecord {
+			breakParent: func(parent issueops.IssueOpsRecord) issueops.IssueOpsRecord {
 				return parent
 			},
-			remedy: func(parent IssueOpsRecord, req *IssueOpsChildStartRequest) IssueOpsRecord {
+			remedy: func(parent issueops.IssueOpsRecord, req *issueops.IssueOpsChildStartRequest) issueops.IssueOpsRecord {
 				req.Branch = "123-child-remedy-branch"
 				return parent
 			},
@@ -272,7 +276,7 @@ func TestStartIssueOpsChildPerConditionRemedy(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			stateRoot := t.TempDir()
 			parent := createDelegationReadyParentForTest(t, stateRoot)
-			req := IssueOpsChildStartRequest{
+			req := issueops.IssueOpsChildStartRequest{
 				ParentID:           parent.ID,
 				Branch:             tc.childBranch,
 				Title:              "child remedy",
@@ -300,7 +304,7 @@ func TestStartIssueOpsChildPerConditionRemedy(t *testing.T) {
 func TestStartIssueOpsChildLinkFailureReturnsWarning(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	result, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
+	result, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "124-child-cross-project",
 		Title:              "cross project child",
@@ -329,7 +333,7 @@ func TestStartIssueOpsChildLinkFailureReturnsWarning(t *testing.T) {
 func TestStaleResetPreservesDelegationGraph(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	result, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
+	result, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-stale",
 		Title:              "stale child",
@@ -347,7 +351,7 @@ func TestStaleResetPreservesDelegationGraph(t *testing.T) {
 	if err := os.RemoveAll(parentWorktree); err != nil {
 		t.Fatal(err)
 	}
-	resetParent, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: parent.Repo, Branch: parent.Branch})
+	resetParent, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: parent.Repo, Branch: parent.Branch})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -363,7 +367,7 @@ func TestStaleResetPreservesDelegationGraph(t *testing.T) {
 	if err := os.RemoveAll(childWorktree); err != nil {
 		t.Fatal(err)
 	}
-	resetChild, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: child.Repo, Branch: child.Branch})
+	resetChild, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: child.Repo, Branch: child.Branch})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -375,7 +379,7 @@ func TestStaleResetPreservesDelegationGraph(t *testing.T) {
 func TestStartIssueOpsChildAppendsParentRef(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	req := IssueOpsChildStartRequest{
+	req := issueops.IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "124-child-link",
 		Title:              "linked child",
@@ -419,7 +423,7 @@ func TestStartIssueOpsChildConcurrentSameBranch(t *testing.T) {
 	var wg sync.WaitGroup
 	type outcome struct {
 		title  string
-		result IssueOpsChildStartResult
+		result issueops.IssueOpsChildStartResult
 		err    error
 	}
 	outcomes := make(chan outcome, workers)
@@ -428,7 +432,7 @@ func TestStartIssueOpsChildConcurrentSameBranch(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			title := fmt.Sprintf("same child %d", i)
-			result, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
+			result, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
 				ParentID:           parent.ID,
 				Branch:             "123-child-same",
 				Title:              title,
@@ -483,7 +487,7 @@ func TestStartIssueOpsChildConcurrentSiblings(t *testing.T) {
 			defer wg.Done()
 			branch := fmt.Sprintf("12%d-child-sibling", i)
 			title := fmt.Sprintf("sibling %d", i)
-			result, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
+			result, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
 				ParentID:           parent.ID,
 				Branch:             branch,
 				Title:              title,
@@ -528,12 +532,12 @@ func TestStartIssueOpsChildConcurrentSiblings(t *testing.T) {
 	}
 }
 
-func createDelegationReadyParentForTest(t *testing.T, stateRoot string) IssueOpsRecord {
+func createDelegationReadyParentForTest(t *testing.T, stateRoot string) issueops.IssueOpsRecord {
 	t.Helper()
 	repo := initIssueOpsRepo(t)
 	branch := "123-parent"
 	worktree := makeIssueOpsWorktreeDirForTest(t, repo, branch)
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -542,7 +546,7 @@ func createDelegationReadyParentForTest(t *testing.T, stateRoot string) IssueOps
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{Provider: "github", IssueURL: record.IssueURL, Branch: branch, BaseBranch: "main", LinkVerified: true})
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, issueops.IssueOpsBranchPrepareRequest{Provider: "github", IssueURL: record.IssueURL, Branch: branch, BaseBranch: "main", LinkVerified: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -560,7 +564,7 @@ func createDelegationReadyParentForTest(t *testing.T, stateRoot string) IssueOps
 	return record
 }
 
-func writeIssueOpsRecordForDelegationTest(t *testing.T, stateRoot string, record IssueOpsRecord) IssueOpsRecord {
+func writeIssueOpsRecordForDelegationTest(t *testing.T, stateRoot string, record issueops.IssueOpsRecord) issueops.IssueOpsRecord {
 	t.Helper()
 	written, err := writeIssueOps(stateRoot, record)
 	if err != nil {
@@ -569,20 +573,20 @@ func writeIssueOpsRecordForDelegationTest(t *testing.T, stateRoot string, record
 	return written
 }
 
-func hasChildRef(refs []IssueOpsChildCycleRef, childID string) bool {
+func hasChildRef(refs []issueops.IssueOpsChildCycleRef, childID string) bool {
 	return countChildRefs(refs, childID) > 0
 }
 
-func childRefByID(refs []IssueOpsChildCycleRef, childID string) (IssueOpsChildCycleRef, bool) {
+func childRefByID(refs []issueops.IssueOpsChildCycleRef, childID string) (issueops.IssueOpsChildCycleRef, bool) {
 	for _, ref := range refs {
 		if ref.CycleID == childID {
 			return ref, true
 		}
 	}
-	return IssueOpsChildCycleRef{}, false
+	return issueops.IssueOpsChildCycleRef{}, false
 }
 
-func countChildRefs(refs []IssueOpsChildCycleRef, childID string) int {
+func countChildRefs(refs []issueops.IssueOpsChildCycleRef, childID string) int {
 	count := 0
 	for _, ref := range refs {
 		if ref.CycleID == childID {

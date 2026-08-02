@@ -3,6 +3,7 @@ package harnessapp
 import (
 	"agent-harness/cmd/harness/issueopscli"
 	"agent-harness/cmd/harness/policycli"
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/issueops"
 )
@@ -33,7 +34,7 @@ func issueOpsCleanupMerged(id string, requested bool) bool {
 	return issueopscli.CleanupMerged(id, requested)
 }
 
-func verifyIssueOpsRemoteArtifactLive(req core.IssueOpsRemoteArtifactVerificationRequest) error {
+func verifyIssueOpsRemoteArtifactLive(req issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error {
 	return issueopscli.VerifyRemoteArtifactLive(req)
 }
 

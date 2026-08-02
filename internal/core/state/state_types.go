@@ -1,20 +1,14 @@
 package state
 
-const StateCurrentSchemaVersion = 1
+import statecontract "agent-harness/internal/contract/state"
 
-type StateRecord struct {
-	SchemaVersion int    `json:"schema_version,omitempty"`
-	Key           string `json:"key"`
-	Content       string `json:"content"`
-	UpdatedAt     string `json:"updated_at"`
-	Bytes         int    `json:"bytes"`
-}
+const StateCurrentSchemaVersion = statecontract.SchemaVersion
 
 type StateResult struct {
-	OK       bool        `json:"ok"`
-	StateDir string      `json:"state_dir"`
-	Path     string      `json:"path,omitempty"`
-	Record   StateRecord `json:"record"`
+	OK       bool                         `json:"ok"`
+	StateDir string                       `json:"state_dir"`
+	Path     string                       `json:"path,omitempty"`
+	Record   statecontract.RecordEnvelope `json:"record"`
 }
 
 type StateListEntry struct {

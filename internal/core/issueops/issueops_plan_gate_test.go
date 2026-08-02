@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/preflight"
 )
 
@@ -31,7 +32,7 @@ func TestAdvanceToImplementGatesOnDesignApproval(t *testing.T) {
 		t.Fatalf("git worktree add failed: %s", stderr)
 	}
 
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +43,7 @@ func TestAdvanceToImplementGatesOnDesignApproval(t *testing.T) {
 	if _, err := LinkIssueOpsIssue(stateRoot, record.ID, "https://github.com/example/repo/issues/1"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+	if _, err := PrepareIssueOpsBranch(stateRoot, record.ID, issueops.IssueOpsBranchPrepareRequest{
 		Provider: "github", IssueURL: "https://github.com/example/repo/issues/1",
 		Branch: branch, BaseBranch: "main", LinkVerified: true,
 	}); err != nil {
@@ -62,7 +63,7 @@ func TestAdvanceToImplementGatesOnDesignApproval(t *testing.T) {
 	// An UNAPPROVED design review: implement entry must be blocked SPECIFICALLY on
 	// design_approval (the plan-before-execute gate — a plan exists/was reviewed
 	// but not approved).
-	if _, err := RecordIssueOpsDesignReview(stateRoot, record.ID, IssueOpsDesignReviewRequest{
+	if _, err := RecordIssueOpsDesignReview(stateRoot, record.ID, issueops.IssueOpsDesignReviewRequest{
 		ProblemSummary: "IssueOps must preserve the work contract",
 		ProposedDesign: "Gate implementation on a reviewed design contract",
 		Verification:   []string{"design review checked alternatives and risks"},

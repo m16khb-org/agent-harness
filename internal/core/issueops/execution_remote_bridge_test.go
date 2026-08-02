@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -45,7 +45,7 @@ func TestRemotePublicationBridgePreservesLegacyTransitionBytes(t *testing.T) {
 func TestPrepareRemotePublicationPreservesPreview(t *testing.T) {
 	stateRoot, record, _, _ := legacyRemotePublicationV1Fixture(t)
 	record.IssueURL = "https://github.com/example/agent-harness/issues/195"
-	record.BranchPrepare = &IssueOpsBranchPrepare{
+	record.BranchPrepare = &issueops.IssueOpsBranchPrepare{
 		Provider: "github", IssueURL: record.IssueURL, Branch: record.Branch,
 		BaseBranch: "117-hexagonal-architecture-migration", LinkVerified: true,
 	}
@@ -112,17 +112,17 @@ func TestRemotePublicationBridgeVerificationUsesDurableIntent(t *testing.T) {
 		t.Fatalf("mismatched candidate error = %v", err)
 	}
 
-	var verified model.IssueOpsRemoteArtifactVerificationRequest
+	var verified issueops.IssueOpsRemoteArtifactVerificationRequest
 	if err := VerifyRemotePublicationLive(
 		context.Background(), stateRoot, state, "https://github.com/example/agent-harness/pull/7",
-		func(request model.IssueOpsRemoteArtifactVerificationRequest) error {
+		func(request issueops.IssueOpsRemoteArtifactVerificationRequest) error {
 			verified = request
 			return nil
 		},
 	); err != nil {
 		t.Fatal(err)
 	}
-	wantVerification := model.IssueOpsRemoteArtifactVerificationRequest{
+	wantVerification := issueops.IssueOpsRemoteArtifactVerificationRequest{
 		Provider: "github", Kind: "pr", URL: "https://github.com/example/agent-harness/pull/7",
 		Labels: providerReq.Labels, Assignees: providerReq.Assignees, TargetBranch: providerReq.BaseBranch,
 	}

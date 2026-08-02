@@ -6,7 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	issueopsmodel "agent-harness/internal/core/issueops/model"
+	issueopscontract "agent-harness/internal/contract/issueops"
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/core/sqlstore"
 )
 
@@ -16,7 +17,7 @@ func TestExecutionMatrixKeepsSourceAndForeignWorkIndependent(t *testing.T) {
 	ownerA := linkIssueOpsWorktreeForGuardTest(t, source, "1-owner-a")
 	ownerB := linkIssueOpsWorktreeForGuardTest(t, source, "2-owner-b")
 
-	base := HookToolUseLifecycleRequest{
+	base := lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:             ownerA.path,
 		CWD:              ownerA.path,
 		Host:             "codex",
@@ -57,7 +58,7 @@ func TestExecutionUnpreparedCycleDoesNotOwnSourceCheckout(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := guardRepoWithCycle(t, "69-direct", IssueOpsPhaseImplement)
 
-	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+	got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:            source,
 		CWD:             source,
 		Host:            "codex",
@@ -75,7 +76,7 @@ func TestExecutionUnpreparedCycleDoesNotOwnSourceCheckout(t *testing.T) {
 func TestExecutionParallelCycleObservationsDoNotRequireOwnerSelection(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo, active, worker := executionActiveLifecycleRecord(t)
-	observer, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "70-observer"})
+	observer, err := StartIssueOps(IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: "70-observer"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -472,7 +473,7 @@ func TestExecutionMutationTargetsSelectAuthorityFromUnrelatedHookCWD(t *testing.
 		"sibling":   {filepath.Join(sibling, "absolute-foreign.go"), "allow"},
 	} {
 		t.Run(name+" mutation", func(t *testing.T) {
-			req := HookToolUseLifecycleRequest{
+			req := lifecyclecontract.HookToolUseLifecycleRequest{
 				Repo: unrelated, CWD: unrelated, Host: "codex", SessionID: "unrelated-session",
 				Tool: "apply_patch", Paths: []string{tc.target}, EnforceWorktree: true,
 			}
@@ -482,7 +483,7 @@ func TestExecutionMutationTargetsSelectAuthorityFromUnrelatedHookCWD(t *testing.
 		})
 	}
 
-	read := HookToolUseLifecycleRequest{
+	read := lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo: unrelated, CWD: unrelated, Tool: "Read", Paths: []string{filepath.Join(source, "README.md")}, EnforceWorktree: true,
 	}
 	if got := BuildLifecyclePreToolUseDecision(read); got.Decision != "allow" {
@@ -689,8 +690,8 @@ func TestExecutionAllowsExactOrcaObservationsButNotMutationForObserver(t *testin
 func TestExecutionAllowsOrcaWorkerDoneBeforeLeaseClaim(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	_, record, worker := executionActiveLifecycleRecord(t)
-	record.Execution.Lease = issueopsmodel.WriteLease{
-		Generation: 2, Status: issueopsmodel.LeaseStatusClaimable,
+	record.Execution.Lease = issueopscontract.WriteLease{
+		Generation: 2, Status: issueopscontract.LeaseStatusClaimable,
 		ClaimTokenSHA256: strings.Repeat("a", 64),
 	}
 	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
@@ -828,23 +829,23 @@ func TestExecutionSyncBaseTypedControlPlaneAdmitsFourModes(t *testing.T) {
 	}
 }
 
-func executionRequest(record IssueOpsRecord, cwd, host, sessionID, command string) HookToolUseLifecycleRequest {
+func executionRequest(record issueopscontract.IssueOpsRecord, cwd, host, sessionID, command string) lifecyclecontract.HookToolUseLifecycleRequest {
 	repo := record.Repo
-	var processAncestry []issueopsmodel.NativeProcessReceipt
+	var processAncestry []lifecyclecontract.NativeProcessReceipt
 	if record.Execution != nil {
 		repo = record.Execution.Workspace.Root
 		if holder := record.Execution.Lease.Holder; holder != nil && holder.SessionProcess != nil {
-			processAncestry = []issueopsmodel.NativeProcessReceipt{*holder.SessionProcess}
+			processAncestry = []lifecyclecontract.NativeProcessReceipt{{PID: holder.SessionProcess.PID, StartedAt: holder.SessionProcess.StartedAt, Executable: holder.SessionProcess.Executable}}
 		}
 	}
-	return HookToolUseLifecycleRequest{
+	return lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo: repo, CWD: cwd, SourceCheckout: record.Repo,
 		Host: host, SessionID: sessionID, Tool: "Bash", Command: command,
 		EnforceWorktree: true, NativeProcessAncestry: processAncestry,
 	}
 }
 
-func executionActiveLifecycleRecord(t *testing.T) (string, IssueOpsRecord, string) {
+func executionActiveLifecycleRecord(t *testing.T) (string, issueopscontract.IssueOpsRecord, string) {
 	t.Helper()
 	repo := guardRepoWithCycle(t, "69-v1-observation", IssueOpsPhasePlan)
 	linked := linkIssueOpsWorktreeForGuardTest(t, repo, "69-v1-observation")
@@ -852,17 +853,17 @@ func executionActiveLifecycleRecord(t *testing.T) (string, IssueOpsRecord, strin
 	if err != nil {
 		t.Fatal(err)
 	}
-	record.Execution = &issueopsmodel.Execution{
-		Mode: issueopsmodel.ExecutionModeDirect,
-		Workspace: issueopsmodel.Workspace{
+	record.Execution = &issueopscontract.Execution{
+		Mode: issueopscontract.ExecutionModeDirect,
+		Workspace: issueopscontract.Workspace{
 			SourceRoot: repo, Root: linked.path, Branch: record.Branch,
 			BaseHead: "0123456789012345678901234567890123456789", Driver: "git", LinkedAt: "2026-07-22T00:00:00Z",
 		},
-		Lease: issueopsmodel.WriteLease{
-			Generation: 1, Status: issueopsmodel.LeaseStatusActive, ClaimedAt: "2026-07-22T00:00:00Z",
-			Holder: &issueopsmodel.NativeActor{
+		Lease: issueopscontract.WriteLease{
+			Generation: 1, Status: issueopscontract.LeaseStatusActive, ClaimedAt: "2026-07-22T00:00:00Z",
+			Holder: &issueopscontract.NativeActor{
 				Host: "claude", SessionID: "owner-session", AgentID: "owner-agent",
-				SessionProcess: &issueopsmodel.NativeProcessReceipt{PID: 1234, StartedAt: "2026-07-22T00:00:00Z", Executable: "claude"},
+				SessionProcess: &issueopscontract.NativeProcessReceipt{PID: 1234, StartedAt: "2026-07-22T00:00:00Z", Executable: "claude"},
 			},
 		},
 	}
@@ -880,17 +881,17 @@ func TestExecutionLeaseAllowsOnlyCurrentHolderInCanonicalRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record.Execution = &issueopsmodel.Execution{
-		Mode: issueopsmodel.ExecutionModeDirect,
-		Workspace: issueopsmodel.Workspace{
+	record.Execution = &issueopscontract.Execution{
+		Mode: issueopscontract.ExecutionModeDirect,
+		Workspace: issueopscontract.Workspace{
 			SourceRoot: source, Root: linked.path, Branch: record.Branch,
 			BaseHead: "0123456789012345678901234567890123456789", Driver: "git", LinkedAt: "2026-07-22T00:00:00Z",
 		},
-		Lease: issueopsmodel.WriteLease{
-			Generation: 4, Status: issueopsmodel.LeaseStatusActive, ClaimedAt: "2026-07-22T00:00:00Z",
-			Holder: &issueopsmodel.NativeActor{
+		Lease: issueopscontract.WriteLease{
+			Generation: 4, Status: issueopscontract.LeaseStatusActive, ClaimedAt: "2026-07-22T00:00:00Z",
+			Holder: &issueopscontract.NativeActor{
 				Host: "codex", SessionID: "holder-session", AgentID: "holder-agent",
-				SessionProcess: &issueopsmodel.NativeProcessReceipt{PID: 1234, StartedAt: "2026-07-22T00:00:00Z", Executable: "codex"},
+				SessionProcess: &issueopscontract.NativeProcessReceipt{PID: 1234, StartedAt: "2026-07-22T00:00:00Z", Executable: "codex"},
 			},
 		},
 	}
@@ -898,12 +899,12 @@ func TestExecutionLeaseAllowsOnlyCurrentHolderInCanonicalRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	holder := HookToolUseLifecycleRequest{
+	holder := lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo: linked.path, CWD: linked.path, SourceCheckout: source,
 		Host: "codex", SessionID: "holder-session", AgentID: "holder-agent",
 		Tool: "apply_patch", Paths: []string{filepath.Join(linked.path, "internal", "v1.go")},
 		EnforceWorktree:       true,
-		NativeProcessAncestry: []issueopsmodel.NativeProcessReceipt{*record.Execution.Lease.Holder.SessionProcess},
+		NativeProcessAncestry: []lifecyclecontract.NativeProcessReceipt{{PID: record.Execution.Lease.Holder.SessionProcess.PID, StartedAt: record.Execution.Lease.Holder.SessionProcess.StartedAt, Executable: record.Execution.Lease.Holder.SessionProcess.Executable}},
 	}
 	if got := BuildLifecyclePreToolUseDecision(holder); got.Decision != "allow" {
 		t.Fatalf("current holder mutation in canonical root was denied: %+v", got)
@@ -920,7 +921,7 @@ func TestExecutionLeaseAllowsOnlyCurrentHolderInCanonicalRoot(t *testing.T) {
 	}
 
 	reusedSession := holder
-	reusedSession.NativeProcessAncestry = []issueopsmodel.NativeProcessReceipt{{
+	reusedSession.NativeProcessAncestry = []lifecyclecontract.NativeProcessReceipt{{
 		PID: 1234, StartedAt: "2026-07-22T00:00:01Z", Executable: "codex",
 	}}
 	if got := BuildLifecyclePreToolUseDecision(reusedSession); got.Decision != "block" || !strings.Contains(got.Reason, "different native identity") {
@@ -949,24 +950,24 @@ func TestExecutionRevokingLeaseDeniesOldHolderWithFiniteNextCommand(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	record.Execution = &issueopsmodel.Execution{
-		Mode: issueopsmodel.ExecutionModeDirect,
-		Workspace: issueopsmodel.Workspace{
+	record.Execution = &issueopscontract.Execution{
+		Mode: issueopscontract.ExecutionModeDirect,
+		Workspace: issueopscontract.Workspace{
 			SourceRoot: source, Root: linked.path, Branch: record.Branch,
 			BaseHead: "0123456789012345678901234567890123456789", Driver: "git", LinkedAt: "2026-07-22T00:00:00Z",
 		},
-		Lease: issueopsmodel.WriteLease{
-			Generation: 5, Status: issueopsmodel.LeaseStatusRevoking,
-			Holder: &issueopsmodel.NativeActor{
+		Lease: issueopscontract.WriteLease{
+			Generation: 5, Status: issueopscontract.LeaseStatusRevoking,
+			Holder: &issueopscontract.NativeActor{
 				Host: "codex", SessionID: "old-session",
-				SessionProcess: &issueopsmodel.NativeProcessReceipt{PID: 999999, StartedAt: "2026-07-22T00:00:00Z", Executable: "codex"},
+				SessionProcess: &issueopscontract.NativeProcessReceipt{PID: 999999, StartedAt: "2026-07-22T00:00:00Z", Executable: "codex"},
 			},
 		},
 	}
 	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
-	req := HookToolUseLifecycleRequest{
+	req := lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo: linked.path, CWD: linked.path, SourceCheckout: source,
 		Host: "codex", SessionID: "old-session", Tool: "apply_patch",
 		Paths: []string{filepath.Join(linked.path, "internal", "late.go")}, EnforceWorktree: true,
@@ -993,11 +994,11 @@ func TestExecutionRevokingLeaseDeniesOldHolderWithFiniteNextCommand(t *testing.T
 
 func TestExecutionClaimableAndReleasedLeaseGuidanceUsesActorFreeStatus(t *testing.T) {
 	for _, tc := range []struct {
-		status issueopsmodel.LeaseStatus
+		status issueopscontract.LeaseStatus
 		code   string
 	}{
-		{status: issueopsmodel.LeaseStatusClaimable, code: "lease_claimable"},
-		{status: issueopsmodel.LeaseStatusReleased, code: "lease_released"},
+		{status: issueopscontract.LeaseStatusClaimable, code: "lease_claimable"},
+		{status: issueopscontract.LeaseStatusReleased, code: "lease_released"},
 	} {
 		t.Run(string(tc.status), func(t *testing.T) {
 			t.Setenv("HARNESS_STATE_DIR", t.TempDir())
@@ -1007,15 +1008,15 @@ func TestExecutionClaimableAndReleasedLeaseGuidanceUsesActorFreeStatus(t *testin
 			if err != nil {
 				t.Fatal(err)
 			}
-			lease := issueopsmodel.WriteLease{Generation: 7, Status: tc.status}
-			if tc.status == issueopsmodel.LeaseStatusClaimable {
+			lease := issueopscontract.WriteLease{Generation: 7, Status: tc.status}
+			if tc.status == issueopscontract.LeaseStatusClaimable {
 				lease.ClaimTokenSHA256 = strings.Repeat("a", 64)
 			} else {
 				lease.ReleasedAt = "2026-07-22T00:00:00Z"
 			}
-			record.Execution = &issueopsmodel.Execution{
-				Mode: issueopsmodel.ExecutionModeDirect,
-				Workspace: issueopsmodel.Workspace{
+			record.Execution = &issueopscontract.Execution{
+				Mode: issueopscontract.ExecutionModeDirect,
+				Workspace: issueopscontract.Workspace{
 					SourceRoot: source, Root: linked.path, Branch: record.Branch,
 					BaseHead: "0123456789012345678901234567890123456789", Driver: "git", LinkedAt: "2026-07-22T00:00:00Z",
 				},
@@ -1024,7 +1025,7 @@ func TestExecutionClaimableAndReleasedLeaseGuidanceUsesActorFreeStatus(t *testin
 			if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
 				t.Fatal(err)
 			}
-			got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 				Repo: linked.path, CWD: linked.path, SourceCheckout: source,
 				Host: "codex", SessionID: "observer-session", Tool: "apply_patch",
 				Paths: []string{filepath.Join(linked.path, "internal", "late.go")}, EnforceWorktree: true,

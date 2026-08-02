@@ -3,13 +3,15 @@ package issueops
 import (
 	"strings"
 	"testing"
+
+	"agent-harness/internal/contract/issueops"
 )
 
 // plan entry now enforces grill completion: split_decision + domain_review on
 // top of the existing intent/issue_url/plan_prep readiness.
 func issueOpsGrillGateBaseRecord(t *testing.T, stateRoot, repo, branch string) string {
 	t.Helper()
-	rec, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
+	rec, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}
@@ -29,13 +31,13 @@ func TestEnterPlanRequiresDomainReview(t *testing.T) {
 	repo := initIssueOpsRepo(t)
 	id := issueOpsGrillGateBaseRecord(t, stateRoot, repo, "1-gate")
 	// split_decision satisfied via a scope decision, but no domain review yet.
-	if _, err := AddIssueOpsDecision(stateRoot, id, IssueOpsDecisionRecordRequest{Title: "no split", Body: "single work item", Kind: "scope"}); err != nil {
+	if _, err := AddIssueOpsDecision(stateRoot, id, issueops.IssueOpsDecisionRecordRequest{Title: "no split", Body: "single work item", Kind: "scope"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := AdvanceIssueOpsPhase(stateRoot, id, string(IssueOpsPhasePlan)); err == nil || !strings.Contains(err.Error(), "domain_review") {
 		t.Fatalf("plan entry must require domain_review, got %v", err)
 	}
-	if _, err := RecordIssueOpsDomainReview(stateRoot, id, IssueOpsDomainReviewRequest{ModelFit: "fits the model"}); err != nil {
+	if _, err := RecordIssueOpsDomainReview(stateRoot, id, issueops.IssueOpsDomainReviewRequest{ModelFit: "fits the model"}); err != nil {
 		t.Fatal(err)
 	}
 	rec, err := AdvanceIssueOpsPhase(stateRoot, id, string(IssueOpsPhasePlan))
@@ -49,13 +51,13 @@ func TestEnterPlanRequiresSplitDecision(t *testing.T) {
 	repo := initIssueOpsRepo(t)
 	id := issueOpsGrillGateBaseRecord(t, stateRoot, repo, "2-gate")
 	// domain review present, but no split decision (no child link, no scope decision).
-	if _, err := RecordIssueOpsDomainReview(stateRoot, id, IssueOpsDomainReviewRequest{ModelFit: "fits the model"}); err != nil {
+	if _, err := RecordIssueOpsDomainReview(stateRoot, id, issueops.IssueOpsDomainReviewRequest{ModelFit: "fits the model"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := AdvanceIssueOpsPhase(stateRoot, id, string(IssueOpsPhasePlan)); err == nil || !strings.Contains(err.Error(), "split_decision") {
 		t.Fatalf("plan entry must require split_decision, got %v", err)
 	}
-	if _, err := AddIssueOpsDecision(stateRoot, id, IssueOpsDecisionRecordRequest{Title: "no split", Body: "single work item", Kind: "scope"}); err != nil {
+	if _, err := AddIssueOpsDecision(stateRoot, id, issueops.IssueOpsDecisionRecordRequest{Title: "no split", Body: "single work item", Kind: "scope"}); err != nil {
 		t.Fatal(err)
 	}
 	rec, err := AdvanceIssueOpsPhase(stateRoot, id, string(IssueOpsPhasePlan))

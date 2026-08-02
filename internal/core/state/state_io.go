@@ -1,15 +1,19 @@
 package state
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"sort"
 	"time"
 
+	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/core/state/statepath"
+	statedomain "agent-harness/internal/domain/state"
 )
 
 // stateBucket is the sqlstore bucket holding one row per state key.
@@ -43,7 +47,7 @@ func StateWrite(key, content string) (StateResult, error) {
 	dir := StateDir()
 	var result StateResult
 	err = withStateLock(context.Background(), dir, key, func(context.Context) error {
-		record := StateRecord{
+		record := statecontract.RecordEnvelope{
 			SchemaVersion: StateCurrentSchemaVersion,
 			Key:           key,
 			Content:       content,
@@ -81,18 +85,18 @@ func StateRead(key string) (StateResult, error) {
 		// missing-key tolerance) alongside errors.Is(err, fs.ErrNotExist).
 		return StateResult{OK: false, StateDir: dir, Path: path}, &fs.PathError{Op: "read", Path: path, Err: fs.ErrNotExist}
 	}
-	var record StateRecord
-	if err := json.Unmarshal(b, &record); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(b))
+	decoder.DisallowUnknownFields()
+	var record statecontract.RecordEnvelope
+	if err := decoder.Decode(&record); err != nil {
+		return StateResult{OK: false, StateDir: dir, Path: path}, statecontract.Invalid("malformed_json")
+	}
+	var trailing json.RawMessage
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		return StateResult{OK: false, StateDir: dir, Path: path}, statecontract.Invalid("malformed_json")
+	}
+	if err := statedomain.ValidateRecord(key, record); err != nil {
 		return StateResult{OK: false, StateDir: dir, Path: path}, err
-	}
-	if record.Key != key {
-		return StateResult{OK: false, StateDir: dir, Path: path}, fmt.Errorf("state key mismatch: record has %q", record.Key)
-	}
-	if record.Bytes != len([]byte(record.Content)) {
-		return StateResult{OK: false, StateDir: dir, Path: path}, fmt.Errorf("state byte count mismatch for %q", key)
-	}
-	if record.SchemaVersion < 0 || record.SchemaVersion > StateCurrentSchemaVersion {
-		return StateResult{OK: false, StateDir: dir, Path: path}, fmt.Errorf("unsupported state schema version %d for %q", record.SchemaVersion, key)
 	}
 	return StateResult{OK: true, StateDir: dir, Path: path, Record: record}, nil
 }
@@ -132,10 +136,10 @@ func StateList() (StateListResult, error) {
 }
 
 // WriteStateRecord persists record under key in dir's state database, under
-// the per-directory span lock, for callers that must write a StateRecord to a
+// the per-directory span lock, for callers that must write a record to a
 // dir other than StateDir() (e.g. the self-augment snapshot writer). It is the
 // locked equivalent of a raw writeStateRecord to that directory.
-func WriteStateRecord(dir, key string, record StateRecord) (string, error) {
+func WriteStateRecord(dir, key string, record statecontract.RecordEnvelope) (string, error) {
 	key, err := NormalizeStateKey(key)
 	if err != nil {
 		return "", err
@@ -155,8 +159,11 @@ func WriteStateRecord(dir, key string, record StateRecord) (string, error) {
 	return path, err
 }
 
-func writeStateRecord(dir, key string, record StateRecord) (string, error) {
+func writeStateRecord(dir, key string, record statecontract.RecordEnvelope) (string, error) {
 	path := statePath(dir, key)
+	if err := statedomain.ValidateRecord(key, record); err != nil {
+		return path, err
+	}
 	db, err := openStateDB(dir)
 	if err != nil {
 		return path, err

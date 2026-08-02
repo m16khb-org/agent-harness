@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	completionapp "agent-harness/internal/application/issueopscompletion"
+	model "agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
 )
 
 func TestHandlerMapsCoreRequestAndResult(t *testing.T) {

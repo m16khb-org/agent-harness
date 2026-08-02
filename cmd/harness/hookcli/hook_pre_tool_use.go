@@ -9,6 +9,8 @@ import (
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	hookadapter "agent-harness/internal/adapter/hook"
+	issueopscontract "agent-harness/internal/contract/issueops"
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/core"
 	issueopscore "agent-harness/internal/core/issueops"
 )
@@ -43,7 +45,7 @@ func runHookPreToolUse(args []string) error {
 		nativeHost = string(hookadapter.HostCodex)
 	}
 	processAncestry, _ := issueopscore.ObserveNativeProcessAncestry(os.Getpid())
-	result := core.BuildLifecyclePreToolUseDecision(core.HookToolUseLifecycleRequest{
+	result := core.BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:                  parsedRepo,
 		CWD:                   hookinput.CWDFromHookInput(stdin),
 		Host:                  nativeHost,
@@ -54,7 +56,7 @@ func runHookPreToolUse(args []string) error {
 		Paths:                 hookinput.PathsFromHookInput(stdin),
 		Command:               hookinput.CommandFromHookInput(stdin),
 		ProjectPath:           hookinput.ProjectPathFromHookInput(stdin),
-		NativeProcessAncestry: processAncestry,
+		NativeProcessAncestry: lifecycleProcessReceipts(processAncestry),
 		Source:                "pre-tool-use",
 		EnforceWorktree:       *enforceWorktree,
 		EnforceKoreanRemote:   *enforceKoreanRemote,
@@ -88,7 +90,7 @@ func runHookPreToolUse(args []string) error {
 	return printJSON(ho.FormatNoop())
 }
 
-func hookDenyReason(result core.HookPreToolUseDecisionResult) string {
+func hookDenyReason(result lifecyclecontract.HookPreToolUseDecisionResult) string {
 	if result.Deny == nil {
 		return result.Reason
 	}
@@ -106,6 +108,16 @@ func firstNonEmptyHookValue(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func lifecycleProcessReceipts(receipts []issueopscontract.NativeProcessReceipt) []lifecyclecontract.NativeProcessReceipt {
+	converted := make([]lifecyclecontract.NativeProcessReceipt, 0, len(receipts))
+	for _, receipt := range receipts {
+		converted = append(converted, lifecyclecontract.NativeProcessReceipt{
+			PID: receipt.PID, StartedAt: receipt.StartedAt, Executable: receipt.Executable,
+		})
+	}
+	return converted
 }
 
 // resolveExpectedWorktree는 명시적으로 제공된 expected worktree(flag 또는

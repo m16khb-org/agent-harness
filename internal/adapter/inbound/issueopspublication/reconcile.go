@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	publicationapp "agent-harness/internal/application/issueopspublication"
 	publicationcontract "agent-harness/internal/contract/issueopspublication"
 	"agent-harness/internal/core/issueops"
@@ -34,7 +36,7 @@ func (h ReconcileHandler) Handle(ctx context.Context, _ string, request issueops
 	if result.Record.ID != "" {
 		public.ID = result.Record.ID
 	}
-	var record issueops.IssueOpsRecord
+	var record issueopscontract.IssueOpsRecord
 	if serviceErr != nil && !result.Reconciled && request.Snapshot != nil {
 		record = *request.Snapshot
 	} else {

@@ -6,8 +6,10 @@ import (
 	"strings"
 	"testing"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
+
 	issueopscore "agent-harness/internal/core/issueops"
-	issueopsmodel "agent-harness/internal/core/issueops/model"
 )
 
 const sealedIssueEditURL = "https://github.com/example/repo/issues/77"
@@ -25,24 +27,24 @@ func sealedOrcaCycleRepo(t *testing.T, sealPacket bool) (string, string) {
 	if err := os.MkdirAll(worktree, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	record, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "77-sealed"})
+	record, err := StartIssueOps(IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: "77-sealed"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	record.IssueURL = sealedIssueEditURL
 	record.WorktreePath = worktree
-	record.Execution = &issueopsmodel.Execution{
-		Mode: issueopsmodel.ExecutionModeOrca,
-		Workspace: issueopsmodel.Workspace{
+	record.Execution = &issueopscontract.Execution{
+		Mode: issueopscontract.ExecutionModeOrca,
+		Workspace: issueopscontract.Workspace{
 			SourceRoot: repo, Root: worktree, Branch: "77-sealed",
 			BaseHead: "0123456789abcdef0123456789abcdef01234567", Driver: "orca",
 			LinkedAt: "2026-07-25T00:00:00Z",
 		},
-		Lease: issueopsmodel.WriteLease{
-			Generation: 1, Status: issueopsmodel.LeaseStatusClaimable,
+		Lease: issueopscontract.WriteLease{
+			Generation: 1, Status: issueopscontract.LeaseStatusClaimable,
 			ClaimTokenSHA256: strings.Repeat("a", 64),
 		},
-		Orca: &issueopsmodel.OrcaBinding{
+		Orca: &issueopscontract.OrcaBinding{
 			RuntimeID: "runtime-1", RepoID: "repo-1", WorktreeID: "worktree-1",
 			OwnerHost: "claude", OwnerModel: "model-1", TaskID: "task-1", DispatchID: "dispatch-1",
 		},
@@ -68,7 +70,7 @@ func sealedOrcaCycleRepo(t *testing.T, sealPacket bool) (string, string) {
 func TestPreToolUseBlocksEditingASealedIssueBody(t *testing.T) {
 	repo, id := sealedOrcaCycleRepo(t, true)
 
-	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+	got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:              repo,
 		Tool:              "bash",
 		Command:           `gh issue edit ` + sealedIssueEditURL + ` --body "봉인된 이슈의 본문을 개정하려는 시도입니다."`,
@@ -86,7 +88,7 @@ func TestPreToolUseBlocksEditingASealedIssueBody(t *testing.T) {
 func TestPreToolUseBlocksSealedIssueEditByNumber(t *testing.T) {
 	repo, _ := sealedOrcaCycleRepo(t, true)
 
-	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+	got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:              repo,
 		Tool:              "bash",
 		Command:           `gh issue edit 77 --body "봉인된 이슈의 본문을 번호로 개정하려는 시도입니다."`,
@@ -130,7 +132,7 @@ func TestPreToolUseAllowsIssueEditsThatDoNotTouchSealedContext(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+			got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 				Repo: tc.repo, Tool: "bash", Command: tc.command, EnforceVCSLinking: true,
 			})
 			if got.Decision == "block" && strings.Contains(got.Reason, "--reseed") {
@@ -146,14 +148,14 @@ func TestPreToolUseAllowsSealedIssueEditAfterTheCycleIsReleased(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record.Execution.Lease.Status = issueopsmodel.LeaseStatusReleased
+	record.Execution.Lease.Status = issueopscontract.LeaseStatusReleased
 	record.Execution.Lease.ClaimTokenSHA256 = ""
 	record.Execution.Lease.ReleasedAt = "2026-07-25T01:00:00Z"
 	if _, err := issueopscore.WriteIssueOps(IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
 
-	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+	got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:              repo,
 		Tool:              "bash",
 		Command:           `gh issue edit ` + sealedIssueEditURL + ` --body "완료된 사이클의 이슈 본문은 자유롭게 고칠 수 있습니다."`,

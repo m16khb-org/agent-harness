@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -42,16 +43,16 @@ func (p *fakeCompletionProvider) UpdateIssueBodySection(req port.IssueProviderUp
 	return p.updateRes, p.updateErr
 }
 
-func completionTestRecord(t *testing.T) (string, IssueOpsRecord) {
+func completionTestRecord(t *testing.T) (string, issueops.IssueOpsRecord) {
 	t.Helper()
 	stateRoot := filepath.Join(t.TempDir(), "issueops")
 	repo := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "81-completion"})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "81-completion"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	record.IssueURL = "https://github.com/acme/repo/issues/81"
-	record.RemoteArtifact = &IssueOpsRemoteArtifactVerification{
+	record.RemoteArtifact = &issueops.IssueOpsRemoteArtifactVerification{
 		Provider: "github", Kind: "pr", URL: "https://github.com/acme/repo/pull/85",
 	}
 	if err := withIssueOpsLock(context.Background(), stateRoot, record.ID, func(context.Context) error {

@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 )
 
 func TestPreToolUseGitOpsKubectlBlocksMutatingCommands(t *testing.T) {
@@ -13,7 +15,7 @@ func TestPreToolUseGitOpsKubectlBlocksMutatingCommands(t *testing.T) {
 		`/usr/local/bin/kubectl delete pod api-0 -n prod`,
 		`kubectl get pods && kubectl rollout restart deployment/api -n prod`,
 	} {
-		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 			Tool:                 "bash",
 			Command:              command,
 			EnforceGitOpsKubectl: true,
@@ -30,7 +32,7 @@ func TestPreToolUseGitOpsKubectlAsksForLiveAccessCommands(t *testing.T) {
 		`kubectl port-forward svc/api 8080:80 -n prod`,
 		`kubectl get pods && kubectl exec deployment/api -- env`,
 	} {
-		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 			Tool:                 "bash",
 			Command:              command,
 			EnforceGitOpsKubectl: true,
@@ -50,7 +52,7 @@ func TestPreToolUseGitOpsKubectlAllowsReadOnlyCommands(t *testing.T) {
 		`kubectl apply --dry-run=server -f k8s/deployment.yaml`,
 		`kubectl apply --dry-run server -f k8s/deployment.yaml`,
 	} {
-		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 			Tool:                 "bash",
 			Command:              command,
 			EnforceGitOpsKubectl: true,
@@ -71,7 +73,7 @@ func TestPreToolUseStagedChecksAsksForBroadBiomeCommands(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(repo, "package.json"), []byte(`{"scripts":{"lint:check":"biome check apps libs"}}`), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 			Repo:                repo,
 			Tool:                "bash",
 			Command:             command,
@@ -94,7 +96,7 @@ func TestPreToolUseStagedChecksAllowsScopedBiomeCommands(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(repo, "package.json"), []byte(`{"scripts":{"lint:check":"biome check --staged --no-errors-on-unmatched"}}`), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 			Repo:                repo,
 			Tool:                "bash",
 			Command:             command,

@@ -13,8 +13,8 @@ import (
 
 	leaseadapter "agent-harness/internal/adapter/outbound/issueopslease"
 	leaseapp "agent-harness/internal/application/issueopslease"
+	"agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/sqlstore"
 	leasedomain "agent-harness/internal/domain/issueopslease"
 )
@@ -32,7 +32,7 @@ func TestExecutionLeaseReleaseDifferentialSuccess(t *testing.T) {
 		agentID   string
 		schema    int
 		rich      bool
-		rawRecord func(*testing.T, IssueOpsRecord) []byte
+		rawRecord func(*testing.T, issueops.IssueOpsRecord) []byte
 	}{
 		{name: "schema-v1-without-agent", schema: 1},
 		{name: "schema-v1-with-agent", schema: 1, agentID: "worker-7"},
@@ -41,7 +41,7 @@ func TestExecutionLeaseReleaseDifferentialSuccess(t *testing.T) {
 			name:    "schema-v1-null-repo",
 			schema:  1,
 			agentID: "worker-7",
-			rawRecord: func(t *testing.T, record IssueOpsRecord) []byte {
+			rawRecord: func(t *testing.T, record issueops.IssueOpsRecord) []byte {
 				return releaseDifferentialRawRecord(t, record, func(data []byte) []byte {
 					original := []byte(`"repo": "` + record.Repo + `"`)
 					replaced := bytes.Replace(data, original, []byte(`"repo": null`), 1)
@@ -112,34 +112,34 @@ func TestExecutionLeaseReleaseDifferentialSuccess(t *testing.T) {
 	}
 }
 
-func releaseDifferentialRichOrcaRecord(record IssueOpsRecord) IssueOpsRecord {
+func releaseDifferentialRichOrcaRecord(record issueops.IssueOpsRecord) issueops.IssueOpsRecord {
 	record.IssueURL = "https://github.com/m16khb/agent-harness/issues/191"
-	record.BranchPrepare = &model.IssueOpsBranchPrepare{
+	record.BranchPrepare = &issueops.IssueOpsBranchPrepare{
 		Provider: "github", IssueURL: record.IssueURL, Branch: "191-lease-release", BaseBranch: "117-hexagonal-architecture-migration",
 		BaseSHA: strings.Repeat("a", 40), ParentWorktree: "/worktrees/117-hexagonal-architecture-migration",
 		LinkVerified: true, CreatedAt: "2026-07-27T00:00:01Z",
 	}
-	record.Execution.Mode = model.ExecutionModeOrca
+	record.Execution.Mode = issueops.ExecutionModeOrca
 	record.Execution.Workspace.Driver = "orca"
-	record.Execution.Orca = &model.OrcaBinding{
+	record.Execution.Orca = &issueops.OrcaBinding{
 		RuntimeID: "runtime-191", RepoID: "repo-191", WorktreeID: "worktree-191",
 		WorktreeInstanceID: "instance-191", OwnerHost: "codex", OwnerModel: "gpt-5.6-sol",
 		OwnerEffort: "xhigh", TaskID: "task-191", DispatchID: "dispatch-191",
 		TerminalPTYID: "terminal-191",
 	}
-	record.Execution.Pending = &model.ExternalIntent{
+	record.Execution.Pending = &issueops.ExternalIntent{
 		OperationID: "pending-191", Kind: "pr_create", Marker: "marker-191", StartedAt: "2026-07-27T00:00:02Z",
 	}
-	record.Execution.Completion = &model.ExecutionCompletion{
+	record.Execution.Completion = &issueops.ExecutionCompletion{
 		FinalHead: strings.Repeat("c", 40), TuringReportPath: ".agent-harness/turing/issueops-v1-191.json",
 		Verification:      []string{"go test ./internal/core/issueops -run Differential"},
 		RemoteArtifactURL: "https://github.com/m16khb/agent-harness/pull/191", CompletedAt: "2026-07-27T00:00:03Z",
 	}
-	record.Execution.Failure = &model.ExecutionFailure{
+	record.Execution.Failure = &issueops.ExecutionFailure{
 		OperationID: "failure-191", Code: "transient", Message: "retryable", At: "2026-07-27T00:00:04Z",
 	}
-	record.Execution.SyncBaseEvents = []model.ExecutionSyncBaseEvent{{
-		Mode: model.ExecutionSyncBaseEventApply, BaseBranch: "117-hexagonal-architecture-migration",
+	record.Execution.SyncBaseEvents = []issueops.ExecutionSyncBaseEvent{{
+		Mode: issueops.ExecutionSyncBaseEventApply, BaseBranch: "117-hexagonal-architecture-migration",
 		BaseOID: strings.Repeat("d", 40), MergeCommit: strings.Repeat("e", 40), Actor: "codex", At: "2026-07-27T00:00:05Z",
 	}}
 	return record
@@ -153,7 +153,7 @@ func TestExecutionLeaseReleaseDifferentialLegacyMissingSchema(t *testing.T) {
 	}
 	legacyBytes := bytes.Replace(currentBytes, []byte("  \"schema_version\": 1,\n"), nil, 1)
 
-	var currentLegacy IssueOpsRecord
+	var currentLegacy issueops.IssueOpsRecord
 	if err := json.Unmarshal(legacyBytes, &currentLegacy); err != nil {
 		t.Fatal(err)
 	}
@@ -284,11 +284,11 @@ func TestExecutionLeaseReleaseDifferentialActorAuthority(t *testing.T) {
 		currentRoot := t.TempDir()
 		proposedRoot := t.TempDir()
 		record, actor := releaseDifferentialActiveRecord(t, 1, "worker-7")
-		fabricated := model.NativeProcessReceipt{
+		fabricated := issueops.NativeProcessReceipt{
 			PID: 2147483647, StartedAt: "2026-07-27T00:00:00Z", Executable: "/missing/codex",
 		}
 		actor.SessionProcess = &fabricated
-		actor.ProcessAncestry = []model.NativeProcessReceipt{fabricated}
+		actor.ProcessAncestry = []issueops.NativeProcessReceipt{fabricated}
 		record.Execution.Lease.Holder = &actor
 		record = releaseDifferentialSeedActive(t, currentRoot, proposedRoot, record)
 		indexKey := leaseHolderIndexKey(actor)
@@ -327,35 +327,35 @@ func TestExecutionLeaseReleaseDifferentialActorAuthority(t *testing.T) {
 func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 	tests := []struct {
 		name       string
-		mutate     func(*IssueOpsRecord, *model.NativeActor, *uint64, *string)
+		mutate     func(*issueops.IssueOpsRecord, *issueops.NativeActor, *uint64, *string)
 		expected   string
-		rawRecord  func(*testing.T, IssueOpsRecord) []byte
+		rawRecord  func(*testing.T, issueops.IssueOpsRecord) []byte
 		staleIndex bool
 	}{
 		{
 			name: "generation-mismatch",
-			mutate: func(_ *IssueOpsRecord, _ *model.NativeActor, generation *uint64, _ *string) {
+			mutate: func(_ *issueops.IssueOpsRecord, _ *issueops.NativeActor, generation *uint64, _ *string) {
 				*generation = 2
 			},
 			expected: string(leasedomain.DenyLeaseAuthority),
 		},
 		{
 			name: "host-mismatch",
-			mutate: func(_ *IssueOpsRecord, actor *model.NativeActor, _ *uint64, _ *string) {
+			mutate: func(_ *issueops.IssueOpsRecord, actor *issueops.NativeActor, _ *uint64, _ *string) {
 				actor.Host = "claude"
 			},
 			expected: string(leasedomain.DenyLeaseAuthority),
 		},
 		{
 			name: "session-mismatch",
-			mutate: func(_ *IssueOpsRecord, actor *model.NativeActor, _ *uint64, _ *string) {
+			mutate: func(_ *issueops.IssueOpsRecord, actor *issueops.NativeActor, _ *uint64, _ *string) {
 				actor.SessionID = "another-session"
 			},
 			expected: string(leasedomain.DenyLeaseAuthority),
 		},
 		{
 			name: "session-mismatch-precedes-reverse-index-conflict",
-			mutate: func(_ *IssueOpsRecord, actor *model.NativeActor, _ *uint64, _ *string) {
+			mutate: func(_ *issueops.IssueOpsRecord, actor *issueops.NativeActor, _ *uint64, _ *string) {
 				actor.SessionID = "another-session"
 			},
 			expected:   string(leasedomain.DenyLeaseAuthority),
@@ -363,31 +363,31 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 		},
 		{
 			name: "agent-mismatch",
-			mutate: func(_ *IssueOpsRecord, actor *model.NativeActor, _ *uint64, _ *string) {
+			mutate: func(_ *issueops.IssueOpsRecord, actor *issueops.NativeActor, _ *uint64, _ *string) {
 				actor.AgentID = "another-agent"
 			},
 			expected: string(leasedomain.DenyLeaseAuthority),
 		},
 		{
 			name: "process-ancestry-missing",
-			mutate: func(_ *IssueOpsRecord, actor *model.NativeActor, _ *uint64, _ *string) {
+			mutate: func(_ *issueops.IssueOpsRecord, actor *issueops.NativeActor, _ *uint64, _ *string) {
 				actor.ProcessAncestry = nil
 			},
 			expected: string(leasedomain.DenyLeaseAuthority),
 		},
 		{
 			name: "canonical-cwd-mismatch",
-			mutate: func(_ *IssueOpsRecord, _ *model.NativeActor, _ *uint64, cwd *string) {
+			mutate: func(_ *issueops.IssueOpsRecord, _ *issueops.NativeActor, _ *uint64, cwd *string) {
 				*cwd += "-other"
 			},
 			expected: string(leasedomain.DenyCanonicalCWD),
 		},
 		{
 			name: "claimable-status",
-			mutate: func(record *IssueOpsRecord, _ *model.NativeActor, _ *uint64, _ *string) {
-				record.Execution.Lease = model.WriteLease{
+			mutate: func(record *issueops.IssueOpsRecord, _ *issueops.NativeActor, _ *uint64, _ *string) {
+				record.Execution.Lease = issueops.WriteLease{
 					Generation:       1,
-					Status:           model.LeaseStatusClaimable,
+					Status:           issueops.LeaseStatusClaimable,
 					ClaimTokenSHA256: strings.Repeat("a", 64),
 				}
 			},
@@ -395,16 +395,16 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 		},
 		{
 			name: "released-status",
-			mutate: func(record *IssueOpsRecord, _ *model.NativeActor, _ *uint64, _ *string) {
-				record.Execution.Lease = model.WriteLease{
-					Generation: 1, Status: model.LeaseStatusReleased, ReleasedAt: "2026-07-27T00:00:00Z",
+			mutate: func(record *issueops.IssueOpsRecord, _ *issueops.NativeActor, _ *uint64, _ *string) {
+				record.Execution.Lease = issueops.WriteLease{
+					Generation: 1, Status: issueops.LeaseStatusReleased, ReleasedAt: "2026-07-27T00:00:00Z",
 				}
 			},
 			expected: string(leasedomain.DenyLeaseAuthority),
 		},
 		{
 			name: "forbidden-legacy-authority",
-			rawRecord: func(t *testing.T, record IssueOpsRecord) []byte {
+			rawRecord: func(t *testing.T, record issueops.IssueOpsRecord) []byte {
 				return releaseDifferentialRawRecord(t, record, func(data []byte) []byte {
 					return bytes.Replace(data, []byte("\n}"), []byte(",\n  \"execution_handoff\": {\"legacy\": true}\n}"), 1)
 				})
@@ -413,7 +413,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 		},
 		{
 			name: "invalid-execution-mode",
-			rawRecord: func(t *testing.T, record IssueOpsRecord) []byte {
+			rawRecord: func(t *testing.T, record issueops.IssueOpsRecord) []byte {
 				return releaseDifferentialRawRecord(t, record, func(data []byte) []byte {
 					return bytes.Replace(data, []byte("\"mode\": \"direct\""), []byte("\"mode\": \"invalid\""), 1)
 				})
@@ -422,7 +422,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 		},
 		{
 			name: "active-lease-missing-claimed-at",
-			rawRecord: func(t *testing.T, record IssueOpsRecord) []byte {
+			rawRecord: func(t *testing.T, record issueops.IssueOpsRecord) []byte {
 				return releaseDifferentialRawRecord(t, record, func(data []byte) []byte {
 					return bytes.Replace(
 						data,
@@ -436,7 +436,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 		},
 		{
 			name: "direct-mode-with-orca-binding",
-			rawRecord: func(t *testing.T, record IssueOpsRecord) []byte {
+			rawRecord: func(t *testing.T, record issueops.IssueOpsRecord) []byte {
 				record = releaseDifferentialRichOrcaRecord(record)
 				return releaseDifferentialRawRecord(t, record, func(data []byte) []byte {
 					data = bytes.Replace(data, []byte("\"mode\": \"orca\""), []byte("\"mode\": \"direct\""), 1)
@@ -447,7 +447,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 		},
 		{
 			name: "malformed-pending-sidecar",
-			rawRecord: func(t *testing.T, record IssueOpsRecord) []byte {
+			rawRecord: func(t *testing.T, record issueops.IssueOpsRecord) []byte {
 				return releaseDifferentialMalformedRichRecord(t, record, func(execution map[string]json.RawMessage) {
 					execution["pending"] = json.RawMessage(`"not-an-object"`)
 				})
@@ -456,7 +456,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 		},
 		{
 			name: "malformed-completion-sidecar",
-			rawRecord: func(t *testing.T, record IssueOpsRecord) []byte {
+			rawRecord: func(t *testing.T, record issueops.IssueOpsRecord) []byte {
 				return releaseDifferentialMalformedRichRecord(t, record, func(execution map[string]json.RawMessage) {
 					execution["completion"] = json.RawMessage(`{"final_head":"short"}`)
 				})
@@ -465,7 +465,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 		},
 		{
 			name: "malformed-failure-sidecar",
-			rawRecord: func(t *testing.T, record IssueOpsRecord) []byte {
+			rawRecord: func(t *testing.T, record issueops.IssueOpsRecord) []byte {
 				return releaseDifferentialMalformedRichRecord(t, record, func(execution map[string]json.RawMessage) {
 					execution["failure"] = json.RawMessage(`{"at":"2026-07-27T00:00:04Z"}`)
 				})
@@ -474,7 +474,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 		},
 		{
 			name: "malformed-sync-base-events-sidecar",
-			rawRecord: func(t *testing.T, record IssueOpsRecord) []byte {
+			rawRecord: func(t *testing.T, record issueops.IssueOpsRecord) []byte {
 				return releaseDifferentialMalformedRichRecord(t, record, func(execution map[string]json.RawMessage) {
 					execution["sync_base_events"] = json.RawMessage(`{}`)
 				})
@@ -483,21 +483,21 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 		},
 		{
 			name: "malformed-schema",
-			rawRecord: func(*testing.T, IssueOpsRecord) []byte {
+			rawRecord: func(*testing.T, issueops.IssueOpsRecord) []byte {
 				return []byte(`{"schema_version":`)
 			},
 			expected: string(leasecontract.FailureMalformedSchema),
 		},
 		{
 			name: "schema-version-type-mismatch",
-			rawRecord: func(*testing.T, IssueOpsRecord) []byte {
+			rawRecord: func(*testing.T, issueops.IssueOpsRecord) []byte {
 				return []byte(`{"ok":true,"schema_version":"1","id":"io-d1ff3e3a7e01"}`)
 			},
 			expected: string(leasecontract.FailurePersistence),
 		},
 		{
 			name: "repo-type-mismatch",
-			rawRecord: func(t *testing.T, record IssueOpsRecord) []byte {
+			rawRecord: func(t *testing.T, record issueops.IssueOpsRecord) []byte {
 				return releaseDifferentialRawRecord(t, record, func(data []byte) []byte {
 					original := []byte(`"repo": "` + record.Repo + `"`)
 					replaced := bytes.Replace(data, original, []byte(`"repo": {}`), 1)
@@ -511,7 +511,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 		},
 		{
 			name: "future-schema",
-			rawRecord: func(*testing.T, IssueOpsRecord) []byte {
+			rawRecord: func(*testing.T, issueops.IssueOpsRecord) []byte {
 				return []byte(`{"ok":true,"schema_version":2,"id":"io-d1ff3e3a7e01"}`)
 			},
 			expected: string(leasecontract.FailureUnsupportedSchema),
@@ -598,7 +598,7 @@ func releaseDifferentialResultTime(t *testing.T, result ExecutionResult, err err
 	return releasedAt
 }
 
-func releaseDifferentialRawRecord(t *testing.T, record IssueOpsRecord, transform func([]byte) []byte) []byte {
+func releaseDifferentialRawRecord(t *testing.T, record issueops.IssueOpsRecord, transform func([]byte) []byte) []byte {
 	t.Helper()
 	_, data, err := encodeIssueOpsRecord(record)
 	if err != nil {
@@ -609,7 +609,7 @@ func releaseDifferentialRawRecord(t *testing.T, record IssueOpsRecord, transform
 
 func releaseDifferentialMalformedRichRecord(
 	t *testing.T,
-	record IssueOpsRecord,
+	record issueops.IssueOpsRecord,
 	mutate func(map[string]json.RawMessage),
 ) []byte {
 	t.Helper()
@@ -775,7 +775,7 @@ func TestExecutionLeaseReleasePrototypeProcessHelper(t *testing.T) {
 	}
 	if mode == "legacy" {
 		actor := *record.Execution.Lease.Holder
-		actor.ProcessAncestry = []model.NativeProcessReceipt{*actor.SessionProcess}
+		actor.ProcessAncestry = []issueops.NativeProcessReceipt{*actor.SessionProcess}
 		_, err := ReleaseExecution(stateRoot, ExecutionReleaseRequest{
 			ID: id, Generation: record.Execution.Lease.Generation, Actor: actor, CWD: record.Execution.Workspace.Root,
 		})
@@ -873,11 +873,11 @@ func TestExecutionLeaseReleasePrototypeSerializesAcrossProcesses(t *testing.T) {
 		}
 	}
 	persisted, _, indexExists := releaseDifferentialSnapshot(t, proposedRoot, record.ID, leaseHolderIndexKey(*record.Execution.Lease.Holder))
-	var released IssueOpsRecord
+	var released issueops.IssueOpsRecord
 	if err := json.Unmarshal(persisted, &released); err != nil {
 		t.Fatalf("decode raced release record: %v", err)
 	}
-	if released.Execution == nil || released.Execution.Lease.Status != model.LeaseStatusReleased || released.Execution.Lease.ReleasedAt != "2026-07-29T00:00:00Z" || indexExists {
+	if released.Execution == nil || released.Execution.Lease.Status != issueops.LeaseStatusReleased || released.Execution.Lease.ReleasedAt != "2026-07-29T00:00:00Z" || indexExists {
 		t.Fatalf("exactly one release commit was not durable: execution=%#v index_exists=%t", released.Execution, indexExists)
 	}
 }
@@ -1106,7 +1106,7 @@ func readReleaseProcessMarkers(path string) []string {
 	return lines
 }
 
-func releaseDifferentialActiveRecord(t *testing.T, schema int, agentID string) (IssueOpsRecord, model.NativeActor) {
+func releaseDifferentialActiveRecord(t *testing.T, schema int, agentID string) (issueops.IssueOpsRecord, issueops.NativeActor) {
 	t.Helper()
 	receipt, err := ObserveNativeProcessReceipt(1)
 	if err != nil {
@@ -1116,24 +1116,24 @@ func releaseDifferentialActiveRecord(t *testing.T, schema int, agentID string) (
 		actor := executionActor("codex", "differential-session")
 		receipt = *actor.SessionProcess
 	}
-	actor := model.NativeActor{
+	actor := issueops.NativeActor{
 		Host: "codex", SessionID: "differential-session", AgentID: agentID,
-		SessionProcess: &receipt, ProcessAncestry: []model.NativeProcessReceipt{receipt},
+		SessionProcess: &receipt, ProcessAncestry: []issueops.NativeProcessReceipt{receipt},
 	}
 	sourceRoot := t.TempDir()
 	worktreeRoot := t.TempDir()
-	record := IssueOpsRecord{
+	record := issueops.IssueOpsRecord{
 		OK: true, SchemaVersion: schema, ID: "io-d1ff3e3a7e01", Repo: sourceRoot,
-		Branch: "191-release-differential", Phase: model.IssueOpsPhaseImplement,
+		Branch: "191-release-differential", Phase: issueops.IssueOpsPhaseImplement,
 		WorktreePath: worktreeRoot,
-		Execution: &model.Execution{
-			Mode: model.ExecutionModeDirect,
-			Workspace: model.Workspace{
+		Execution: &issueops.Execution{
+			Mode: issueops.ExecutionModeDirect,
+			Workspace: issueops.Workspace{
 				SourceRoot: sourceRoot, Root: worktreeRoot, Branch: "191-release-differential",
 				BaseHead: strings.Repeat("b", 40), ParentWorktree: "/parent-worktree", Driver: "git", LinkedAt: "2026-07-27T00:00:00Z",
 			},
-			Lease: model.WriteLease{
-				Generation: 1, Status: model.LeaseStatusActive, Holder: &actor,
+			Lease: issueops.WriteLease{
+				Generation: 1, Status: issueops.LeaseStatusActive, Holder: &actor,
 				ClaimedAt: "2026-07-27T00:00:01Z",
 			},
 		},
@@ -1143,7 +1143,7 @@ func releaseDifferentialActiveRecord(t *testing.T, schema int, agentID string) (
 	return record, actor
 }
 
-func releaseDifferentialSeedActive(t *testing.T, currentRoot, proposedRoot string, record IssueOpsRecord) IssueOpsRecord {
+func releaseDifferentialSeedActive(t *testing.T, currentRoot, proposedRoot string, record issueops.IssueOpsRecord) issueops.IssueOpsRecord {
 	t.Helper()
 	return releaseDifferentialSeedRecord(t, currentRoot, proposedRoot, record)
 }
@@ -1157,7 +1157,7 @@ func releaseDifferentialSQLite(t *testing.T, root string) *leaseadapter.SQLiteRe
 	return leaseadapter.NewSQLiteRepository(db)
 }
 
-func releaseDifferentialSeedRecord(t *testing.T, currentRoot, proposedRoot string, record IssueOpsRecord) IssueOpsRecord {
+func releaseDifferentialSeedRecord(t *testing.T, currentRoot, proposedRoot string, record issueops.IssueOpsRecord) issueops.IssueOpsRecord {
 	t.Helper()
 	encoded, err := persistExecutionTransition(currentRoot, record, nil)
 	if err != nil {
@@ -1259,7 +1259,7 @@ func releaseDifferentialMustSnapshot(t *testing.T, stateRoot, id, indexKey strin
 	return string(record) + "\x00" + string(index) + "\x00" + string(rune(map[bool]int{false: 0, true: 1}[indexExists]))
 }
 
-func releaseDifferentialDomainActor(actor model.NativeActor) leasedomain.Actor {
+func releaseDifferentialDomainActor(actor issueops.NativeActor) leasedomain.Actor {
 	result := leasedomain.Actor{
 		Host: actor.Host, SessionID: actor.SessionID, AgentID: actor.AgentID,
 	}
@@ -1272,7 +1272,7 @@ func releaseDifferentialDomainActor(actor model.NativeActor) leasedomain.Actor {
 	return result
 }
 
-func releaseDifferentialProcessAncestry(actor model.NativeActor) []leasedomain.ProcessReceipt {
+func releaseDifferentialProcessAncestry(actor issueops.NativeActor) []leasedomain.ProcessReceipt {
 	ancestry := make([]leasedomain.ProcessReceipt, 0, len(actor.ProcessAncestry))
 	for _, receipt := range actor.ProcessAncestry {
 		ancestry = append(ancestry, leasedomain.ProcessReceipt{PID: receipt.PID, StartedAt: receipt.StartedAt, Executable: receipt.Executable})
@@ -1280,7 +1280,7 @@ func releaseDifferentialProcessAncestry(actor model.NativeActor) []leasedomain.P
 	return ancestry
 }
 
-func releaseDifferentialHolderAncestry(actor model.NativeActor) []leasedomain.ProcessReceipt {
+func releaseDifferentialHolderAncestry(actor issueops.NativeActor) []leasedomain.ProcessReceipt {
 	if actor.SessionProcess == nil {
 		return nil
 	}
@@ -1291,7 +1291,7 @@ func releaseDifferentialProcessInspector(
 	_ context.Context,
 	receipt leasedomain.ProcessReceipt,
 ) (string, leasedomain.ProcessReceipt, error) {
-	status, observed, err := InspectNativeProcessReceipt(model.NativeProcessReceipt{
+	status, observed, err := InspectNativeProcessReceipt(issueops.NativeProcessReceipt{
 		PID: receipt.PID, StartedAt: receipt.StartedAt, Executable: receipt.Executable,
 	})
 	return status, leasedomain.ProcessReceipt{
@@ -1315,7 +1315,7 @@ func assertReleaseDifferentialResult(t *testing.T, current ExecutionResult, prop
 	assertReleaseDifferentialLease(t, current.Execution.Lease, proposed.Execution.Lease)
 }
 
-func assertReleaseDifferentialLease(t *testing.T, current model.WriteLease, proposed leasecontract.Lease) {
+func assertReleaseDifferentialLease(t *testing.T, current issueops.WriteLease, proposed leasecontract.Lease) {
 	t.Helper()
 	if string(current.Status) != string(proposed.Status) ||
 		current.Generation != proposed.Generation ||

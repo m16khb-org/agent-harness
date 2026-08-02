@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/core/issueops/model"
+	model "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops/pathutil"
 )
 

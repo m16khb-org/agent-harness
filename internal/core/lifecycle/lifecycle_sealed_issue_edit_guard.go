@@ -5,8 +5,10 @@ import (
 	"os"
 	"strings"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
+
 	issueopscore "agent-harness/internal/core/issueops"
-	issueopsmodel "agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/remote"
 	"agent-harness/internal/core/remoteartifact"
 )
@@ -22,7 +24,7 @@ import (
 // 한다. 대상 식별자를 해석할 수 없으면 통과시킨다 — 이 가드의 목적은 봉인
 // 보호이며, 미지의 명령 형태를 fail-closed로 막으면 봉인과 무관한 일상 작업이
 // 깨진다.
-func sealedIssueEditBlockReason(req HookToolUseLifecycleRequest) string {
+func sealedIssueEditBlockReason(req lifecyclecontract.HookToolUseLifecycleRequest) string {
 	target, ok := remoteartifact.IssueEditTargetFromCommand(req.Tool, req.Command, req.Repo)
 	if !ok {
 		return ""
@@ -53,12 +55,12 @@ func sealedIssueEditBlockReason(req HookToolUseLifecycleRequest) string {
 // 세대이고, 그 세대의 packet 파일이 실제로 존재하며, 연결된 이슈가 편집 대상과
 // 같다. packet 실존을 요구하는 이유는 봉인 전 단계의 orca 사이클에서 편집이
 // 막히지 않게 하기 위함이다.
-func sealedIssueEditRecordProtects(record IssueOpsRecord, target string) bool {
-	if record.Execution == nil || record.Execution.Mode != issueopsmodel.ExecutionModeOrca {
+func sealedIssueEditRecordProtects(record issueopscontract.IssueOpsRecord, target string) bool {
+	if record.Execution == nil || record.Execution.Mode != issueopscontract.ExecutionModeOrca {
 		return false
 	}
 	switch record.Execution.Lease.Status {
-	case issueopsmodel.LeaseStatusClaimable, issueopsmodel.LeaseStatusActive, issueopsmodel.LeaseStatusRevoking:
+	case issueopscontract.LeaseStatusClaimable, issueopscontract.LeaseStatusActive, issueopscontract.LeaseStatusRevoking:
 	default:
 		return false
 	}

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/internal/core"
 )
 
@@ -22,7 +24,7 @@ type liveRemoteArtifact struct {
 	BaseRefName string
 }
 
-func VerifyRemoteArtifactLive(req core.IssueOpsRemoteArtifactVerificationRequest) error {
+func VerifyRemoteArtifactLive(req issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error {
 	provider := strings.ToLower(strings.TrimSpace(req.Provider))
 	kind := strings.ToLower(strings.TrimSpace(req.Kind))
 	switch kind {
@@ -57,7 +59,7 @@ func VerifyRemoteArtifactLive(req core.IssueOpsRemoteArtifactVerificationRequest
 	return nil
 }
 
-func VerifyRemoteArtifactMergedLive(artifact core.IssueOpsRemoteArtifactVerification) error {
+func VerifyRemoteArtifactMergedLive(artifact issueopscontract.IssueOpsRemoteArtifactVerification) error {
 	_, err := VerifyRemoteArtifactMergedHeadLive(artifact)
 	return err
 }
@@ -65,7 +67,7 @@ func VerifyRemoteArtifactMergedLive(artifact core.IssueOpsRemoteArtifactVerifica
 // VerifyRemoteArtifactMergedHeadLive는 머지 검증과 head ref 관측을 한 번의
 // readback으로 수행한다. 두 값이 다른 시점의 관측이면 cleanup remote-branch의
 // OID CAS가 무의미해지므로 분리된 조회 표면을 두지 않는다(#116).
-func VerifyRemoteArtifactMergedHeadLive(artifact core.IssueOpsRemoteArtifactVerification) (core.IssueOpsCleanupRemoteBranchArtifactHead, error) {
+func VerifyRemoteArtifactMergedHeadLive(artifact issueopscontract.IssueOpsRemoteArtifactVerification) (core.IssueOpsCleanupRemoteBranchArtifactHead, error) {
 	provider := strings.ToLower(strings.TrimSpace(artifact.Provider))
 	kind := strings.ToLower(strings.TrimSpace(artifact.Kind))
 	switch kind {

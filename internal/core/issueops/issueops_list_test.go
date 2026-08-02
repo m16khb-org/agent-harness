@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 )
 
 // AC-06: list가 다중 사이클을 span lock 없이 집계하고 비용을 노출한다.
@@ -14,24 +14,24 @@ func TestListIssueOpsCyclesAggregatesWithCost(t *testing.T) {
 	repo := t.TempDir()
 	otherRepo := t.TempDir()
 
-	planning, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "84-planning"})
+	planning, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "84-planning"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	claimable, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "84-claimable"})
+	claimable, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "84-claimable"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	done, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "84-done"})
+	done, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "84-done"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: otherRepo, Branch: "84-elsewhere"}); err != nil {
+	if _, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: otherRepo, Branch: "84-elsewhere"}); err != nil {
 		t.Fatal(err)
 	}
 
 	worktree := filepath.Join(t.TempDir(), "84-claimable")
-	mutate := func(id string, apply func(*IssueOpsRecord)) {
+	mutate := func(id string, apply func(*issueops.IssueOpsRecord)) {
 		t.Helper()
 		if err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 			rec, e := ReadIssueOps(stateRoot, id)
@@ -45,20 +45,20 @@ func TestListIssueOpsCyclesAggregatesWithCost(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	mutate(claimable.ID, func(rec *IssueOpsRecord) {
-		rec.Execution = &Execution{
-			Mode:      model.ExecutionModeOrca,
-			Workspace: Workspace{SourceRoot: repo, Root: worktree, Branch: "84-claimable", BaseHead: "deadbeef", Driver: "orca", LinkedAt: "t"},
-			Lease:     WriteLease{Generation: 1, Status: model.LeaseStatusClaimable, ClaimTokenSHA256: sha64ForListTest()},
-			Orca: &model.OrcaBinding{
+	mutate(claimable.ID, func(rec *issueops.IssueOpsRecord) {
+		rec.Execution = &issueops.Execution{
+			Mode:      issueops.ExecutionModeOrca,
+			Workspace: issueops.Workspace{SourceRoot: repo, Root: worktree, Branch: "84-claimable", BaseHead: "deadbeef", Driver: "orca", LinkedAt: "t"},
+			Lease:     issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusClaimable, ClaimTokenSHA256: sha64ForListTest()},
+			Orca: &issueops.OrcaBinding{
 				RuntimeID: "rt", RepoID: "r", WorktreeID: "wt", OwnerHost: "codex",
 				OwnerModel: "gpt-5.6-terra", TaskID: "task", DispatchID: "d",
 			},
 		}
 	})
-	mutate(done.ID, func(rec *IssueOpsRecord) {
-		rec.Phase = model.IssueOpsPhaseDone
-		rec.RemoteArtifact = &IssueOpsRemoteArtifactVerification{Provider: "github", Kind: "pr", URL: "https://github.com/acme/repo/pull/1"}
+	mutate(done.ID, func(rec *issueops.IssueOpsRecord) {
+		rec.Phase = issueops.IssueOpsPhaseDone
+		rec.RemoteArtifact = &issueops.IssueOpsRemoteArtifactVerification{Provider: "github", Kind: "pr", URL: "https://github.com/acme/repo/pull/1"}
 	})
 
 	result, err := ListIssueOpsCycles(stateRoot, repo)
@@ -88,7 +88,7 @@ func TestListIssueOpsCyclesAggregatesWithCost(t *testing.T) {
 
 func TestIncrementIssueOpsSourceMisdirectAccumulates(t *testing.T) {
 	stateRoot := filepath.Join(t.TempDir(), "issueops")
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: t.TempDir(), Branch: "84-misdirect"})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: t.TempDir(), Branch: "84-misdirect"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func sha64ForListTest() string {
 	return string(out)
 }
 
-func mustReadForListTest(t *testing.T, stateRoot, id string) IssueOpsRecord {
+func mustReadForListTest(t *testing.T, stateRoot, id string) issueops.IssueOpsRecord {
 	t.Helper()
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {

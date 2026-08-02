@@ -11,8 +11,8 @@ import (
 	"time"
 
 	publicationapp "agent-harness/internal/application/issueopspublication"
+	"agent-harness/internal/contract/issueops"
 	publicationcontract "agent-harness/internal/contract/issueopspublication"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
@@ -44,7 +44,7 @@ func TestRemotePublicationCreateVerticalMatchesLegacy(t *testing.T) {
 			request.Confirm = test.confirm
 			if !test.confirm {
 				request.ExpectedGeneration = 0
-				request.Actor = model.NativeActor{}
+				request.Actor = issueops.NativeActor{}
 				request.CWD = ""
 			}
 			legacyRoot := clonePublicationRecord(t, seedRoot, fixture.record.ID)
@@ -125,7 +125,7 @@ func observeLegacyPublicationCreate(t *testing.T, stateRoot string, request Remo
 		Create: func(string, port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 			return result, createErr
 		},
-		Verify: func(model.IssueOpsRemoteArtifactVerificationRequest) error { return verifyErr },
+		Verify: func(issueops.IssueOpsRemoteArtifactVerificationRequest) error { return verifyErr },
 		Now:    publicationDifferentialClock,
 	}
 	var got port.IssueProviderCreatePullRequestResult
@@ -166,7 +166,7 @@ func observeLegacyPublicationReconcile(t *testing.T, stateRoot, id string, inven
 		Create: func(string, port.IssueProviderCreatePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 			return createResult, createErr
 		},
-		Verify: func(model.IssueOpsRemoteArtifactVerificationRequest) error { return verifyErr },
+		Verify: func(issueops.IssueOpsRemoteArtifactVerificationRequest) error { return verifyErr },
 		Now:    publicationDifferentialClock,
 	})
 	return observePublicationState(t, stateRoot, id, result, reconcileErr)
@@ -337,7 +337,7 @@ func (v *publicationDifferentialVerifier) VerifyLive(ctx context.Context, intent
 	if err != nil {
 		return err
 	}
-	return VerifyRemotePublicationLive(ctx, v.stateRoot, state, url, func(model.IssueOpsRemoteArtifactVerificationRequest) error { return v.liveErr })
+	return VerifyRemotePublicationLive(ctx, v.stateRoot, state, url, func(issueops.IssueOpsRemoteArtifactVerificationRequest) error { return v.liveErr })
 }
 
 func publicationCreateCommand(request RemotePullRequestRequest) publicationcontract.CreateCommand {
@@ -361,13 +361,13 @@ func publicationCoreRequest(command publicationcontract.CreateCommand) RemotePul
 		ID: command.ID, Provider: command.Provider, Title: command.Title, Body: command.Body,
 		Head: command.Head, Base: command.Base, Labels: append([]string(nil), command.Labels...), Assignees: append([]string(nil), command.Assignees...),
 		ExpectedGeneration: command.ExpectedGeneration, CWD: command.CWD, Confirm: command.Confirm,
-		Actor: model.NativeActor{Host: command.Actor.Host, SessionID: command.Actor.SessionID, AgentID: command.Actor.AgentID},
+		Actor: issueops.NativeActor{Host: command.Actor.Host, SessionID: command.Actor.SessionID, AgentID: command.Actor.AgentID},
 	}
 	if command.Actor.SessionProcess != nil {
-		request.Actor.SessionProcess = &model.NativeProcessReceipt{PID: command.Actor.SessionProcess.PID, StartedAt: command.Actor.SessionProcess.StartedAt, Executable: command.Actor.SessionProcess.Executable}
+		request.Actor.SessionProcess = &issueops.NativeProcessReceipt{PID: command.Actor.SessionProcess.PID, StartedAt: command.Actor.SessionProcess.StartedAt, Executable: command.Actor.SessionProcess.Executable}
 	}
 	for _, receipt := range command.Actor.ProcessAncestry {
-		request.Actor.ProcessAncestry = append(request.Actor.ProcessAncestry, model.NativeProcessReceipt{PID: receipt.PID, StartedAt: receipt.StartedAt, Executable: receipt.Executable})
+		request.Actor.ProcessAncestry = append(request.Actor.ProcessAncestry, issueops.NativeProcessReceipt{PID: receipt.PID, StartedAt: receipt.StartedAt, Executable: receipt.Executable})
 	}
 	return request
 }
@@ -376,8 +376,8 @@ func publicationCreateEligibility(prepared RemotePublicationPreparedState) publi
 	record := prepared.Record
 	return publicationcontract.CreateEligibility{
 		Provider: prepared.Provider, Kind: prepared.Kind, Confirm: prepared.Request.Confirm,
-		PhasePR:         record.Phase == model.IssueOpsPhasePR,
-		ExecutionActive: record.Execution != nil && record.Execution.Lease.Status == model.LeaseStatusActive,
+		PhasePR:         record.Phase == issueops.IssueOpsPhasePR,
+		ExecutionActive: record.Execution != nil && record.Execution.Lease.Status == issueops.LeaseStatusActive,
 		NoPending:       record.Execution == nil || record.Execution.Pending == nil,
 		NoArtifact:      record.RemoteArtifact == nil, BranchAuthority: true,
 		CanonicalLabelsAssignees: len(prepared.Request.Labels) > 0 && len(prepared.Request.Assignees) > 0,
@@ -394,7 +394,7 @@ func publicationContractIntent(state RemotePublicationIntentState, eligibility p
 }
 
 func publicationCoreIntent(intent publicationcontract.Intent) (RemotePublicationIntentState, error) {
-	var record IssueOpsRecord
+	var record issueops.IssueOpsRecord
 	if err := json.Unmarshal(intent.Record.Raw, &record); err != nil {
 		return RemotePublicationIntentState{}, err
 	}
@@ -450,10 +450,10 @@ func publicationPortCandidate(candidate publicationcontract.Candidate) port.Issu
 	}
 }
 
-func publicationPublicReconcileResult(t *testing.T, id string, snapshot IssueOpsRecord, result publicationcontract.ReconcileResult, serviceErr error) ExecutionReconcileResult {
+func publicationPublicReconcileResult(t *testing.T, id string, snapshot issueops.IssueOpsRecord, result publicationcontract.ReconcileResult, serviceErr error) ExecutionReconcileResult {
 	t.Helper()
 	public := ExecutionReconcileResult{OK: serviceErr == nil || result.Reconciled, ID: id, Reconciled: result.Reconciled, Code: result.Code, ExternalStateInspected: result.ExternalStateInspected}
-	var record IssueOpsRecord
+	var record issueops.IssueOpsRecord
 	if serviceErr == nil || result.Reconciled {
 		if len(result.Record.Raw) == 0 {
 			return public

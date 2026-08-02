@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 )
 
 func TestResolveProjectLifecycleNamespaceIsProjectScoped(t *testing.T) {
@@ -102,7 +104,7 @@ func TestRecordLifecycleToolUseQueuesRelevantDocUpkeep(t *testing.T) {
 	if _, err := InitProjectLifecycleState(repo, true); err != nil {
 		t.Fatal(err)
 	}
-	result, err := RecordLifecycleToolUse(HookToolUseLifecycleRequest{
+	result, err := RecordLifecycleToolUse(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:   repo,
 		Tool:   "apply_patch",
 		Paths:  []string{"internal/core/hook_prompt.go", "internal/core/hook_prompt_test.go"},
@@ -125,7 +127,7 @@ func TestBuildLifecycleStopReminderIncludesPendingUpkeep(t *testing.T) {
 	if _, err := InitProjectLifecycleState(repo, true); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := AppendDocUpkeepEvent(repo, DocUpkeepEvent{Kind: "code_change", TargetDocs: []string{"OPERATIONS.md"}, Summary: "Hook behavior changed.", Source: "test"}); err != nil {
+	if _, err := AppendDocUpkeepEvent(repo, lifecyclecontract.DocUpkeepEvent{Kind: "code_change", TargetDocs: []string{"OPERATIONS.md"}, Summary: "Hook behavior changed.", Source: "test"}); err != nil {
 		t.Fatal(err)
 	}
 	reminder := BuildLifecycleStopReminder(repo)
@@ -140,7 +142,7 @@ func TestLifecycleCompactReminderDeduplicatesRepeatedUpkeep(t *testing.T) {
 	if _, err := InitProjectLifecycleState(repo, true); err != nil {
 		t.Fatal(err)
 	}
-	event := DocUpkeepEvent{
+	event := lifecyclecontract.DocUpkeepEvent{
 		Kind:       "code_change",
 		TargetDocs: []string{"OPEN_API_SPEC.md"},
 		Summary:    "Bash touched harness lifecycle-relevant files; shared project docs may need review.",

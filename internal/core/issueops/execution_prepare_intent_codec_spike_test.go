@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"agent-harness/internal/contract/issueops"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
@@ -17,10 +18,10 @@ func TestIntentCodecSpikeRoundTripsAndRecoversPrepareAndResume(t *testing.T) {
 	const issueBody = "## acceptance criteria\n\n- [ ] AC-01: first\n- [ ] AC-23: last\n\n## 검증 명령\n\n```bash\ngo test ./... -count=1\ngo vet ./...\n```\n"
 	tests := []struct {
 		name    string
-		fixture func(*testing.T) (string, IssueOpsRecord, externalOrcaIntentPayload)
+		fixture func(*testing.T) (string, issueops.IssueOpsRecord, externalOrcaIntentPayload)
 	}{
 		{name: "prepare", fixture: legacyPrepareIntentFixture},
-		{name: "resume", fixture: func(t *testing.T) (string, IssueOpsRecord, externalOrcaIntentPayload) {
+		{name: "resume", fixture: func(t *testing.T) (string, issueops.IssueOpsRecord, externalOrcaIntentPayload) {
 			return legacyResumeIntentFixture(t, "github", 16)
 		}},
 	}
@@ -28,7 +29,7 @@ func TestIntentCodecSpikeRoundTripsAndRecoversPrepareAndResume(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			stateRoot, record, payload := test.fixture(t)
 			assertIntentCodecSpikeRoundTrip(t, payload.OperationID, rawExternalIntentRow(t, stateRoot, payload.OperationID))
-			record, payload = writeLegacyNotInvokedIntent(t, stateRoot, record, payload, func(_ *IssueOpsRecord, intent *externalOrcaIntentPayload) {
+			record, payload = writeLegacyNotInvokedIntent(t, stateRoot, record, payload, func(_ *issueops.IssueOpsRecord, intent *externalOrcaIntentPayload) {
 				if normalizedOrcaIntentPurpose(*intent) == orcaIntentPurposePrepare {
 					intent.IssueBodySHA256 = digestExecutionOwnerBytes([]byte(issueBody))
 				}

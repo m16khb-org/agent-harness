@@ -12,9 +12,9 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/mcpcli"
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core"
 	issueopscore "agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/preflight"
 )
 
@@ -168,7 +168,7 @@ func executionCLIPrepareHandler(t *testing.T) issueopscore.ExecutionPrepareHandl
 		}
 		actor := request.Actor
 		actor.ProcessAncestry = nil
-		workspace := model.Workspace{
+		workspace := issueopscontract.Workspace{
 			SourceRoot: record.Repo,
 			Root:       filepath.Join(record.Repo+".worktrees", record.Branch),
 			Branch:     record.Branch,
@@ -176,12 +176,12 @@ func executionCLIPrepareHandler(t *testing.T) issueopscore.ExecutionPrepareHandl
 			Driver:     "git",
 			LinkedAt:   "2026-08-02T00:00:00Z",
 		}
-		execution := &model.Execution{
-			Mode:      model.ExecutionModeDirect,
+		execution := &issueopscontract.Execution{
+			Mode:      issueopscontract.ExecutionModeDirect,
 			Workspace: workspace,
-			Lease: model.WriteLease{
+			Lease: issueopscontract.WriteLease{
 				Generation: 1,
-				Status:     model.LeaseStatusActive,
+				Status:     issueopscontract.LeaseStatusActive,
 				Holder:     &actor,
 				ClaimedAt:  workspace.LinkedAt,
 			},
@@ -250,12 +250,12 @@ func executionCLIRecord(t *testing.T) (string, string, []string) {
 	}
 	baseHead := preflight.GitOut(repo, "rev-parse", "HEAD")
 	branch := "69-execution-cli"
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
 	record.IssueURL = "https://github.com/example/agent-harness/issues/69"
-	record.BranchPrepare = &core.IssueOpsBranchPrepare{
+	record.BranchPrepare = &issueopscontract.IssueOpsBranchPrepare{
 		Provider: "github", IssueURL: record.IssueURL, Branch: branch,
 		BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true,
 	}

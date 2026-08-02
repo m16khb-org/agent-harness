@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/contract/issueops"
 )
 
 // ancestryRemoteBranchGit은 base 조상 관계까지 흉내낸다. 실제 게이트는
@@ -128,7 +130,7 @@ func TestRemoteBranchDeleteKeepsOIDPathIndependentOfAncestry(t *testing.T) {
 // 남긴다.
 func TestRemoteBranchDeleteSkipsAncestryWithoutPreparedBase(t *testing.T) {
 	stateRoot, record := remoteBranchTestRecord(t)
-	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
 		rec.BranchPrepare.BaseBranch = ""
 	})
 	git := ancestryGit()

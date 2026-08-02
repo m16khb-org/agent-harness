@@ -5,20 +5,20 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 )
 
-func writePrunableIssueOpsRecord(t *testing.T, stateRoot, id, phase, updatedAt string, lease *model.WriteLease) {
+func writePrunableIssueOpsRecord(t *testing.T, stateRoot, id, phase, updatedAt string, lease *issueops.WriteLease) {
 	t.Helper()
-	record := IssueOpsRecord{
+	record := issueops.IssueOpsRecord{
 		OK: true, SchemaVersion: 1, ID: id,
-		Repo: "/repo", Branch: "1-demo", Phase: model.IssueOpsPhase(phase),
+		Repo: "/repo", Branch: "1-demo", Phase: issueops.IssueOpsPhase(phase),
 		UpdatedAt: updatedAt,
 	}
 	if lease != nil {
-		record.Execution = &model.Execution{
-			Mode: model.ExecutionModeDirect,
-			Workspace: model.Workspace{
+		record.Execution = &issueops.Execution{
+			Mode: issueops.ExecutionModeDirect,
+			Workspace: issueops.Workspace{
 				SourceRoot: "/repo", Root: "/repo.worktrees/1-demo", Branch: "1-demo",
 				BaseHead: "0123456789abcdef0123456789abcdef01234567", Driver: "git",
 				LinkedAt: "2026-07-01T00:00:00Z",
@@ -35,13 +35,13 @@ func TestPruneIssueOpsRemovesOnlyOldReleasedDoneCycles(t *testing.T) {
 	stateRoot := filepath.Join(t.TempDir(), "issueops_v1")
 	old := time.Now().UTC().Add(-60 * 24 * time.Hour).Format(time.RFC3339Nano)
 	recent := time.Now().UTC().Format(time.RFC3339Nano)
-	released := &model.WriteLease{Generation: 1, Status: model.LeaseStatusReleased}
-	active := &model.WriteLease{
-		Generation: 1, Status: model.LeaseStatusActive,
+	released := &issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusReleased}
+	active := &issueops.WriteLease{
+		Generation: 1, Status: issueops.LeaseStatusActive,
 		ClaimedAt: "2026-07-01T00:00:00Z",
-		Holder: &model.NativeActor{
+		Holder: &issueops.NativeActor{
 			Host: "codex", SessionID: "session",
-			SessionProcess: &model.NativeProcessReceipt{PID: 123, StartedAt: "2026-07-01T00:00:00Z", Executable: "/opt/codex"},
+			SessionProcess: &issueops.NativeProcessReceipt{PID: 123, StartedAt: "2026-07-01T00:00:00Z", Executable: "/opt/codex"},
 		},
 	}
 

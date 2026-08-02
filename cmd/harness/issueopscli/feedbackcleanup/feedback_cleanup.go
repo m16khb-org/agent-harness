@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/internal/core"
 	issueopscore "agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/issueops/orphancleanup"
@@ -14,13 +16,13 @@ import (
 
 type Deps struct {
 	ParseFlags   func(fs *flag.FlagSet, args []string) (bool, error)
-	PrintResult  func(record core.IssueOpsRecord, jsonOut bool, err error) error
+	PrintResult  func(record issueopscontract.IssueOpsRecord, jsonOut bool, err error) error
 	PrintJSON    func(value any) error
 	PrintError   func(err error) error
-	VerifyMerged func(core.IssueOpsRemoteArtifactVerification) error
+	VerifyMerged func(issueopscontract.IssueOpsRemoteArtifactVerification) error
 	// VerifyMergedHead는 cleanup remote-branch 전용이다. 게이트 ⑧·⑨·⑩이
 	// 같은 readback을 공유해야 하므로 머지 여부와 head ref 정체를 함께 받는다.
-	VerifyMergedHead func(core.IssueOpsRemoteArtifactVerification) (core.IssueOpsCleanupRemoteBranchArtifactHead, error)
+	VerifyMergedHead func(issueopscontract.IssueOpsRemoteArtifactVerification) (core.IssueOpsCleanupRemoteBranchArtifactHead, error)
 	Provider         func(provider string) (core.IssueProvider, error)
 	OrphanPreview    func(context.Context, orphancleanup.Request) (orphancleanup.Result, error)
 	OrphanApply      func(context.Context, orphancleanup.Request, orphancleanup.ApplyRequest) (orphancleanup.Result, error)
@@ -100,7 +102,7 @@ func RunCleanup(args []string, deps Deps) error {
 			return err
 		}
 		verifiedMerged := CleanupMerged(*id, *merged, deps)
-		status, err := core.IssueOpsCleanupStatusByID(core.IssueOpsStateRoot(), *id, core.IssueOpsCleanupStatusRequest{Merged: verifiedMerged})
+		status, err := core.IssueOpsCleanupStatusByID(core.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsCleanupStatusRequest{Merged: verifiedMerged})
 		if err != nil {
 			if *jsonOut {
 				if printErr := deps.PrintError(err); printErr != nil {
@@ -142,7 +144,7 @@ func RunCleanup(args []string, deps Deps) error {
 		// 요청 여부와 검증 결과를 함께 넘긴다. 위상 규약 이전의 우산 레코드는
 		// 자체 PR이 없어 verifiedMerged가 항상 false가 되는데, 그 구간에서만
 		// core가 자식의 원격 closed 상태를 대체 증거로 조회한다(#129).
-		result, err := core.CloseIssueOpsChildren(core.IssueOpsStateRoot(), *id, core.IssueOpsCloseChildrenRequest{
+		result, err := core.CloseIssueOpsChildren(core.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsCloseChildrenRequest{
 			Merged:                 verifiedMerged,
 			MergeEvidenceRequested: *merged,
 			Confirm:                *confirm,
@@ -201,7 +203,7 @@ func runOrphanCleanup(args []string, deps Deps) error {
 		RepoRoot:     *repo,
 		WorktreePath: *worktree,
 		Branch:       *branch,
-		Artifact: core.IssueOpsRemoteArtifactVerification{
+		Artifact: issueopscontract.IssueOpsRemoteArtifactVerification{
 			Provider: *provider,
 			Kind:     *kind,
 			URL:      *artifactURL,
@@ -330,7 +332,7 @@ func runCleanupFinish(args []string, deps Deps) error {
 	}
 	result, err := core.IssueOpsCleanupFinish(context.Background(), core.IssueOpsStateRoot(), req, core.IssueOpsCleanupFinishDeps{
 		RemoveOrcaWorktree: deps.RemoveOrcaWorktree,
-		ReflectAudit: func(rec core.IssueOpsRecord, completion core.IssueProviderCompletionSection, audit string) error {
+		ReflectAudit: func(rec issueopscontract.IssueOpsRecord, completion core.IssueProviderCompletionSection, audit string) error {
 			return core.ReflectIssueOpsCleanupAudit(core.IssueOpsStateRoot(), rec, completion, audit, prov)
 		},
 	})
@@ -399,7 +401,7 @@ func runCleanupRemoteBranch(args []string, deps Deps) error {
 		Fingerprint: *fingerprint,
 	}, core.IssueOpsCleanupRemoteBranchDeps{
 		VerifyMergedArtifact: deps.VerifyMergedHead,
-		ReflectAudit: func(rec core.IssueOpsRecord, completion core.IssueProviderCompletionSection, audit string) error {
+		ReflectAudit: func(rec issueopscontract.IssueOpsRecord, completion core.IssueProviderCompletionSection, audit string) error {
 			return core.ReflectIssueOpsCleanupAudit(core.IssueOpsStateRoot(), rec, completion, audit, prov)
 		},
 	})

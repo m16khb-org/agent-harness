@@ -6,8 +6,9 @@ import (
 	"sort"
 	"strings"
 
-	"agent-harness/internal/core/issueops/model"
+	model "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops/pathutil"
+	issueopsdomain "agent-harness/internal/domain/issueops"
 )
 
 type Store struct {
@@ -45,7 +46,7 @@ func CycleForBranch(store Store, repo, branch string) (model.IssueOpsRecord, boo
 // edits on its branch). An empty worktree path is a distinct, legitimate
 // not-yet-linked state and is left untouched.
 func WorktreePhaseHasMissingWorktree(record model.IssueOpsRecord) bool {
-	if !model.IssueOpsPhaseExpectsWorktree(record.Phase) {
+	if !issueopsdomain.IssueOpsPhaseExpectsWorktree(record.Phase) {
 		return false
 	}
 	worktree := strings.TrimSpace(record.WorktreePath)

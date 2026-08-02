@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/internal/core/looprun"
 	"agent-harness/internal/core/sqlstore"
 )
@@ -119,10 +121,10 @@ func startCoreLoopGateLoop(t *testing.T, repo, name string, maxAttempts int) loo
 	return loop
 }
 
-func readyIssueOpsRecordForLoopGateTest(t *testing.T) IssueOpsRecord {
+func readyIssueOpsRecordForLoopGateTest(t *testing.T) issueopscontract.IssueOpsRecord {
 	t.Helper()
 	repo := initCoreLoopGateRepo(t)
-	record := IssueOpsRecord{
+	record := issueopscontract.IssueOpsRecord{
 		OK:            true,
 		SchemaVersion: IssueOpsCurrentSchemaVersion,
 		ID:            NewIssueOpsID(repo, "main"),
@@ -131,13 +133,13 @@ func readyIssueOpsRecordForLoopGateTest(t *testing.T) IssueOpsRecord {
 		IssueURL:      "https://github.com/acme/repo/issues/11",
 		PlanPath:      "plans/demo.md",
 		WorktreePath:  repo,
-		Intent: &IssueOpsIntentContract{
+		Intent: &issueopscontract.IssueOpsIntentContract{
 			RawRequest:        "ship task 11",
 			InterpretedIntent: "ship task 11",
 			SuccessCriteria:   []string{"loop gate works"},
 			RecordedAt:        "2026-07-07T00:00:00Z",
 		},
-		DesignReview: &IssueOpsDesignReview{
+		DesignReview: &issueopscontract.IssueOpsDesignReview{
 			ProblemSummary: "durable loop readiness",
 			ProposedDesign: "check loops for the target repository",
 			RefactorPlan:   "apply the loop gate",
@@ -147,7 +149,7 @@ func readyIssueOpsRecordForLoopGateTest(t *testing.T) IssueOpsRecord {
 			Approved:       true,
 			ReviewedAt:     "2026-07-07T00:00:00Z",
 		},
-		BranchPrepare: &IssueOpsBranchPrepare{
+		BranchPrepare: &issueopscontract.IssueOpsBranchPrepare{
 			Provider:     "github",
 			IssueURL:     "https://github.com/acme/repo/issues/11",
 			Branch:       "main",

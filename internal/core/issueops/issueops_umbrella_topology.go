@@ -3,6 +3,8 @@ package issueops
 import (
 	"fmt"
 	"strings"
+
+	"agent-harness/internal/contract/issueops"
 )
 
 // UmbrellaBranchGateReason은 우산 사이클이 provider-native 자식 작업 항목을 만들
@@ -15,7 +17,7 @@ import (
 // close-children / finish 세 정리 경로가 순환 차단됐다(#129).
 //
 // 판정을 CLI가 아니라 core에 두는 이유는 계약을 테스트로 고정하기 위해서다.
-func UmbrellaBranchGateReason(record IssueOpsRecord) string {
+func UmbrellaBranchGateReason(record issueops.IssueOpsRecord) string {
 	branch := strings.TrimSpace(record.Branch)
 	if branch == "" {
 		return "IssueOps 우산 사이클은 자체 브랜치를 가져야 자식 작업 항목을 만들 수 있다; " +

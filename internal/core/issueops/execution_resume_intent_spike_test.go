@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
@@ -118,11 +119,11 @@ func TestResumeIntentSpikeBridgePendingIsConsumedByLegacyReconcile(t *testing.T)
 func TestResumeIntentBridgeCASRejectsBeginMarkAndReceiptDriftWithoutMutation(t *testing.T) {
 	tests := []struct {
 		name string
-		run  func(t *testing.T, stateRoot string, record IssueOpsRecord, artifacts ExecutionResumeArtifactsReceipt)
+		run  func(t *testing.T, stateRoot string, record issueops.IssueOpsRecord, artifacts ExecutionResumeArtifactsReceipt)
 	}{
 		{
 			name: "begin",
-			run: func(t *testing.T, stateRoot string, record IssueOpsRecord, artifacts ExecutionResumeArtifactsReceipt) {
+			run: func(t *testing.T, stateRoot string, record issueops.IssueOpsRecord, artifacts ExecutionResumeArtifactsReceipt) {
 				raw := rawIssueOpsRow(t, stateRoot, record.ID)
 				writeResumeBridgeDrift(t, stateRoot, record)
 				beforeRecord, beforeIntent := rawIssueOpsRow(t, stateRoot, record.ID), []byte(nil)
@@ -135,7 +136,7 @@ func TestResumeIntentBridgeCASRejectsBeginMarkAndReceiptDriftWithoutMutation(t *
 		},
 		{
 			name: "mark",
-			run: func(t *testing.T, stateRoot string, record IssueOpsRecord, artifacts ExecutionResumeArtifactsReceipt) {
+			run: func(t *testing.T, stateRoot string, record issueops.IssueOpsRecord, artifacts ExecutionResumeArtifactsReceipt) {
 				intent := beginResumeBridgeIntent(t, stateRoot, record, artifacts, strings.Repeat("b", 32))
 				writeResumeBridgeIntentDrift(t, stateRoot, intent.OperationID)
 				beforeRecord, beforeIntent := rawIssueOpsRow(t, stateRoot, record.ID), rawExternalIntentRow(t, stateRoot, intent.OperationID)
@@ -148,7 +149,7 @@ func TestResumeIntentBridgeCASRejectsBeginMarkAndReceiptDriftWithoutMutation(t *
 		},
 		{
 			name: "receipt",
-			run: func(t *testing.T, stateRoot string, record IssueOpsRecord, artifacts ExecutionResumeArtifactsReceipt) {
+			run: func(t *testing.T, stateRoot string, record issueops.IssueOpsRecord, artifacts ExecutionResumeArtifactsReceipt) {
 				intent := beginResumeBridgeIntent(t, stateRoot, record, artifacts, strings.Repeat("c", 32))
 				writeResumeBridgeDrift(t, stateRoot, record)
 				beforeRecord, beforeIntent := rawIssueOpsRow(t, stateRoot, record.ID), rawExternalIntentRow(t, stateRoot, intent.OperationID)
@@ -174,7 +175,7 @@ func TestResumeIntentBridgeCASRejectsBeginMarkAndReceiptDriftWithoutMutation(t *
 
 var fixedResumeIntentClock = func() time.Time { return time.Date(2026, time.July, 31, 2, 20, 0, 0, time.UTC) }
 
-func beginResumeBridgeIntent(t *testing.T, stateRoot string, record IssueOpsRecord, artifacts ExecutionResumeArtifactsReceipt, operationID string) ExecutionResumeIntentState {
+func beginResumeBridgeIntent(t *testing.T, stateRoot string, record issueops.IssueOpsRecord, artifacts ExecutionResumeArtifactsReceipt, operationID string) ExecutionResumeIntentState {
 	t.Helper()
 	state, err := BeginExecutionResumeIntent(stateRoot, record, rawIssueOpsRow(t, stateRoot, record.ID), artifacts, record.Execution.Orca.RuntimeID, "", operationID, fixedResumeIntentClock)
 	if err != nil {
@@ -196,7 +197,7 @@ func advanceResumeBridgeStage(t *testing.T, stateRoot string, state ExecutionRes
 	return next
 }
 
-func writeResumeBridgeDrift(t *testing.T, stateRoot string, record IssueOpsRecord) {
+func writeResumeBridgeDrift(t *testing.T, stateRoot string, record issueops.IssueOpsRecord) {
 	t.Helper()
 	current, err := ReadIssueOps(stateRoot, record.ID)
 	if err != nil {

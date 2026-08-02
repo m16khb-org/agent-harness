@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/internal/core"
 )
 
@@ -29,7 +31,7 @@ func runIssueOpsDomainReview(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsDomainReviewWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsDomainReviewRequest{
+	record, err := core.RecordIssueOpsDomainReviewWithActor(core.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsDomainReviewRequest{
 		Terminology:       terminology,
 		ModelFit:          *modelFit,
 		Risks:             risks,

@@ -8,13 +8,14 @@ import (
 	"sync"
 	"testing"
 
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/core/lifecycle/model"
 )
 
 func TestPreAndPostCompactPreservePendingUpkeep(t *testing.T) {
 	stateDir := t.TempDir()
 	plan := compactPlanForTest(t, stateDir)
-	store := compactStoreForTest(plan, []model.DocUpkeepEvent{{
+	store := compactStoreForTest(plan, []lifecyclecontract.DocUpkeepEvent{{
 		Kind:       "code_change",
 		TargetDocs: []string{"OPERATIONS.md", "TESTING.md"},
 		Summary:    "Hook and tests changed.",
@@ -64,7 +65,7 @@ func TestDoublePreCompactMergesPendingDocUpkeep(t *testing.T) {
 	plan := compactPlanForTest(t, stateDir)
 
 	// First call: write initial capsule with one event.
-	store1 := compactStoreForTest(plan, []model.DocUpkeepEvent{{
+	store1 := compactStoreForTest(plan, []lifecyclecontract.DocUpkeepEvent{{
 		Kind:       "code_change",
 		TargetDocs: []string{"OPERATIONS.md"},
 		Summary:    "First hook change.",
@@ -77,7 +78,7 @@ func TestDoublePreCompactMergesPendingDocUpkeep(t *testing.T) {
 
 	// Second call (double PreCompact without PostCompact): read pending returns a
 	// second event. The capsule file still exists from the first call.
-	store2 := compactStoreForTest(plan, []model.DocUpkeepEvent{{
+	store2 := compactStoreForTest(plan, []lifecyclecontract.DocUpkeepEvent{{
 		Kind:       "doc_update",
 		TargetDocs: []string{"TESTING.md"},
 		Summary:    "Second hook change.",
@@ -114,7 +115,7 @@ func TestDoublePreCompactDeduplicatesByTarget(t *testing.T) {
 	plan := compactPlanForTest(t, stateDir)
 
 	// First call with one event.
-	store1 := compactStoreForTest(plan, []model.DocUpkeepEvent{{
+	store1 := compactStoreForTest(plan, []lifecyclecontract.DocUpkeepEvent{{
 		Kind:       "code_change",
 		TargetDocs: []string{"OPERATIONS.md", "TESTING.md"},
 		Summary:    "Hook changed.",
@@ -126,7 +127,7 @@ func TestDoublePreCompactDeduplicatesByTarget(t *testing.T) {
 	}
 
 	// Second call with a duplicate event (same target + summary).
-	store2 := compactStoreForTest(plan, []model.DocUpkeepEvent{{
+	store2 := compactStoreForTest(plan, []lifecyclecontract.DocUpkeepEvent{{
 		Kind:       "code_change",
 		TargetDocs: []string{"OPERATIONS.md", "TESTING.md"},
 		Summary:    "Hook changed.",
@@ -163,7 +164,7 @@ func TestConsumeCompactCapsuleRespectsInterleavingWrite(t *testing.T) {
 			SchemaVersion:    model.ProjectLifecycleSchemaVersion,
 			RepoID:           "repo-1",
 			CreatedAt:        stamp,
-			PendingDocUpkeep: []model.DocUpkeepEvent{{Kind: "code_change", TargetDocs: []string{"OPERATIONS.md"}, Summary: summary}},
+			PendingDocUpkeep: []lifecyclecontract.DocUpkeepEvent{{Kind: "code_change", TargetDocs: []string{"OPERATIONS.md"}, Summary: summary}},
 		}
 	}
 
@@ -204,7 +205,7 @@ func TestConsumeCompactCapsuleNonceDisambiguatesSameTimestamp(t *testing.T) {
 		RepoID:           "repo-1",
 		CreatedAt:        stamp,
 		Nonce:            "nonce-A",
-		PendingDocUpkeep: []model.DocUpkeepEvent{{Kind: "code_change", TargetDocs: []string{"A.md"}, Summary: "first"}},
+		PendingDocUpkeep: []lifecyclecontract.DocUpkeepEvent{{Kind: "code_change", TargetDocs: []string{"A.md"}, Summary: "first"}},
 	}
 	if err := writeJSONForTest(path, first, 0o600); err != nil {
 		t.Fatalf("write first: %v", err)
@@ -212,7 +213,7 @@ func TestConsumeCompactCapsuleNonceDisambiguatesSameTimestamp(t *testing.T) {
 	// Interleave: a newer capsule with the SAME CreatedAt but a DIFFERENT nonce.
 	second := first
 	second.Nonce = "nonce-B"
-	second.PendingDocUpkeep = []model.DocUpkeepEvent{{Kind: "doc_update", TargetDocs: []string{"B.md"}, Summary: "second"}}
+	second.PendingDocUpkeep = []lifecyclecontract.DocUpkeepEvent{{Kind: "doc_update", TargetDocs: []string{"B.md"}, Summary: "second"}}
 	if err := writeJSONForTest(path, second, 0o600); err != nil {
 		t.Fatalf("write second: %v", err)
 	}
@@ -233,8 +234,8 @@ func TestPreCompactConcurrentMergeNoLostUpdate(t *testing.T) {
 	plan := compactPlanForTest(t, stateDir)
 	// Two PreCompacts with DISJOINT pending events race against the same per-repo
 	// capsule. The WithKeyLock-serialized read->merge->write must keep BOTH.
-	storeA := compactStoreForTest(plan, []model.DocUpkeepEvent{{Kind: "code_change", TargetDocs: []string{"A.md"}, Summary: "A"}})
-	storeB := compactStoreForTest(plan, []model.DocUpkeepEvent{{Kind: "code_change", TargetDocs: []string{"B.md"}, Summary: "B"}})
+	storeA := compactStoreForTest(plan, []lifecyclecontract.DocUpkeepEvent{{Kind: "code_change", TargetDocs: []string{"A.md"}, Summary: "A"}})
+	storeB := compactStoreForTest(plan, []lifecyclecontract.DocUpkeepEvent{{Kind: "code_change", TargetDocs: []string{"B.md"}, Summary: "B"}})
 
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -270,9 +271,9 @@ func compactPlanForTest(t *testing.T, stateDir string) model.ProjectLifecycleSta
 	}
 }
 
-func compactStoreForTest(plan model.ProjectLifecycleStatePlan, events []model.DocUpkeepEvent) Store {
+func compactStoreForTest(plan model.ProjectLifecycleStatePlan, events []lifecyclecontract.DocUpkeepEvent) Store {
 	return Store{
-		ReadPending: func(string, int) ([]model.DocUpkeepEvent, model.ProjectLifecycleStatePlan, error) {
+		ReadPending: func(string, int) ([]lifecyclecontract.DocUpkeepEvent, model.ProjectLifecycleStatePlan, error) {
 			return events, plan, nil
 		},
 		Validate: func(string) (model.ProjectLifecycleStatePlan, error) {

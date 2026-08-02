@@ -3,7 +3,7 @@ package issueops
 import (
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops/pathutil"
 )
 
@@ -11,22 +11,22 @@ import (
 // 사이클을 한 번에 파악하는 read-only 표면으로, lease를 잡거나 repair를
 // 수행하지 않는다(설계 v5 WS6).
 type IssueOpsListEntry struct {
-	ID                    string              `json:"id"`
-	Repo                  string              `json:"repo"`
-	Branch                string              `json:"branch,omitempty"`
-	Phase                 model.IssueOpsPhase `json:"phase"`
-	Mode                  string              `json:"mode,omitempty"`
-	LeaseStatus           string              `json:"lease_status,omitempty"`
-	HolderHost            string              `json:"holder_host,omitempty"`
-	HolderSession         string              `json:"holder_session,omitempty"`
-	OwnerModel            string              `json:"owner_model,omitempty"`
-	WorkspaceRoot         string              `json:"workspace_root,omitempty"`
-	RemoteArtifactURL     string              `json:"remote_artifact_url,omitempty"`
-	UpdatedAt             string              `json:"updated_at,omitempty"`
-	Claimable             bool                `json:"claimable,omitempty"`
-	CleanupCandidate      bool                `json:"cleanup_candidate,omitempty"`
-	CompletionUnreflected bool                `json:"completion_unreflected,omitempty"`
-	Invalid               bool                `json:"invalid,omitempty"`
+	ID                    string                 `json:"id"`
+	Repo                  string                 `json:"repo"`
+	Branch                string                 `json:"branch,omitempty"`
+	Phase                 issueops.IssueOpsPhase `json:"phase"`
+	Mode                  string                 `json:"mode,omitempty"`
+	LeaseStatus           string                 `json:"lease_status,omitempty"`
+	HolderHost            string                 `json:"holder_host,omitempty"`
+	HolderSession         string                 `json:"holder_session,omitempty"`
+	OwnerModel            string                 `json:"owner_model,omitempty"`
+	WorkspaceRoot         string                 `json:"workspace_root,omitempty"`
+	RemoteArtifactURL     string                 `json:"remote_artifact_url,omitempty"`
+	UpdatedAt             string                 `json:"updated_at,omitempty"`
+	Claimable             bool                   `json:"claimable,omitempty"`
+	CleanupCandidate      bool                   `json:"cleanup_candidate,omitempty"`
+	CompletionUnreflected bool                   `json:"completion_unreflected,omitempty"`
+	Invalid               bool                   `json:"invalid,omitempty"`
 }
 
 // IssueOpsListResult는 집계와 그 비용을 함께 노출한다 — scanned_records가
@@ -82,11 +82,11 @@ func ListIssueOpsCycles(stateRoot, repo string) (IssueOpsListResult, error) {
 			if record.Execution.Orca != nil {
 				entry.OwnerModel = record.Execution.Orca.OwnerModel
 			}
-			entry.Claimable = record.Execution.Lease.Status == model.LeaseStatusClaimable
+			entry.Claimable = record.Execution.Lease.Status == issueops.LeaseStatusClaimable
 		}
 		// 완전 정리(cleanup finish)는 레코드를 삭제하므로, 잔존하는 done
 		// 레코드는 전부 정리 후보다.
-		entry.CleanupCandidate = record.Phase == model.IssueOpsPhaseDone
+		entry.CleanupCandidate = record.Phase == issueops.IssueOpsPhaseDone
 		result.Entries = append(result.Entries, entry)
 	}
 	return result, nil

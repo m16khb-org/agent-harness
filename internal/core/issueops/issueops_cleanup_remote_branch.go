@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops/remote"
 	"agent-harness/internal/port"
 )
@@ -48,11 +48,11 @@ type CleanupRemoteBranchArtifactHead struct {
 // 같은 응답에서 나와야 한다.
 type CleanupRemoteBranchDeps struct {
 	Git                  func(ctx context.Context, dir string, args ...string) (int, string)
-	VerifyMergedArtifact func(artifact IssueOpsRemoteArtifactVerification) (CleanupRemoteBranchArtifactHead, error)
+	VerifyMergedArtifact func(artifact issueops.IssueOpsRemoteArtifactVerification) (CleanupRemoteBranchArtifactHead, error)
 	// ReflectAudit는 삭제 성공 사실을 이슈 본문 completion 섹션에 멱등 병합한다
 	// (finish ④'의 CleanupAudit 병합 선례). best-effort이며 실패해도 이미 끝난
 	// 원격 삭제를 되돌리지 않는다.
-	ReflectAudit func(record IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string) error
+	ReflectAudit func(record issueops.IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string) error
 }
 
 type CleanupRemoteBranchResult struct {
@@ -169,7 +169,7 @@ func CleanupRemoteBranch(ctx context.Context, stateRoot string, req CleanupRemot
 
 // cleanupRemoteBranchGates는 게이트 12종을 전부 평가하고 missing을 나열한다
 // (첫 실패에 멈추지 않는다 — 한 번의 preview로 모든 결격 사유를 본다).
-func cleanupRemoteBranchGates(ctx context.Context, record IssueOpsRecord, deps CleanupRemoteBranchDeps, result *CleanupRemoteBranchResult) (cleanupRemoteBranchInventory, []string) {
+func cleanupRemoteBranchGates(ctx context.Context, record issueops.IssueOpsRecord, deps CleanupRemoteBranchDeps, result *CleanupRemoteBranchResult) (cleanupRemoteBranchInventory, []string) {
 	missing := []string{}
 	inventory := cleanupRemoteBranchInventory{ID: record.ID, Repo: record.Repo, Branch: strings.TrimSpace(record.Branch)}
 	if record.Execution != nil {
@@ -196,7 +196,7 @@ func cleanupRemoteBranchGates(ctx context.Context, record IssueOpsRecord, deps C
 	}
 	// ⑤ lease_released — active lease 사이클의 브랜치를 지우면 sync-base가
 	// 영구히 막힌다.
-	if record.Execution != nil && record.Execution.Lease.Status != model.LeaseStatusReleased {
+	if record.Execution != nil && record.Execution.Lease.Status != issueops.LeaseStatusReleased {
 		missing = append(missing, "lease_released")
 	}
 	// ⑥ child_tasks_closed.
@@ -259,7 +259,7 @@ func cleanupRemoteBranchGates(ctx context.Context, record IssueOpsRecord, deps C
 // remote-tracking ref와 비교한다. 로컬 브랜치는 fetch 상태에 따라 원격과 어긋날
 // 수 있어 판정이 흔들린다. 낡은 ref는 ancestry를 성립시키지 못해 과잉 차단이
 // 되는데, 그 방향은 안전하다.
-func cleanupRemoteTipReachedBase(ctx context.Context, record IssueOpsRecord, inventory cleanupRemoteBranchInventory, deps CleanupRemoteBranchDeps) bool {
+func cleanupRemoteTipReachedBase(ctx context.Context, record issueops.IssueOpsRecord, inventory cleanupRemoteBranchInventory, deps CleanupRemoteBranchDeps) bool {
 	if record.BranchPrepare == nil || strings.TrimSpace(inventory.RemoteOID) == "" {
 		return false
 	}
@@ -273,7 +273,7 @@ func cleanupRemoteTipReachedBase(ctx context.Context, record IssueOpsRecord, inv
 
 // cleanupRemoteBranchArtifactGates는 artifact 한 번의 readback에 의존하는
 // 게이트 ⑧·⑨와 origin 정체 게이트 ⑪을 평가한다.
-func cleanupRemoteBranchArtifactGates(ctx context.Context, record IssueOpsRecord, inventory cleanupRemoteBranchInventory,
+func cleanupRemoteBranchArtifactGates(ctx context.Context, record issueops.IssueOpsRecord, inventory cleanupRemoteBranchInventory,
 	deps CleanupRemoteBranchDeps, result *CleanupRemoteBranchResult) []string {
 	missing := []string{}
 	// ⑧ remote_artifact_merged — 미머지와 readback 실패 모두 거부다(finish 동형).
@@ -301,7 +301,7 @@ func cleanupRemoteBranchArtifactGates(ctx context.Context, record IssueOpsRecord
 	return missing
 }
 
-func cleanupRemoteBranchIdentityMatch(ctx context.Context, record IssueOpsRecord, deps CleanupRemoteBranchDeps) error {
+func cleanupRemoteBranchIdentityMatch(ctx context.Context, record issueops.IssueOpsRecord, deps CleanupRemoteBranchDeps) error {
 	artifact := record.RemoteArtifact
 	provider := strings.ToLower(strings.TrimSpace(artifact.Provider))
 	artifactKey := remote.ProjectKey(strings.TrimSpace(artifact.URL), provider, cleanupRemoteBranchArtifactKind(artifact.Kind))

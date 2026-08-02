@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/adapter/gitworktree"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/preflight"
 )
 
@@ -97,7 +98,7 @@ func TestRemoteBranchAncestryIsProviderNeutral(t *testing.T) {
 	for _, provider := range []string{"github", "gitlab"} {
 		t.Run(provider, func(t *testing.T) {
 			stateRoot, record := remoteBranchTestRecord(t)
-			mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
+			mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
 				rec.BranchPrepare.Provider = provider
 				rec.RemoteArtifact.Provider = provider
 				if provider == "gitlab" {

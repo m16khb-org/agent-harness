@@ -8,20 +8,20 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/sqlstore"
 )
 
 func TestIssueOpsUsesOnlySchemaOneAndDedicatedNamespace(t *testing.T) {
 	stateRoot := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: t.TempDir(), Branch: "69-v1-namespace"})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: t.TempDir(), Branch: "69-v1-namespace"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if model.IssueOpsSchemaVersion != 1 {
-		t.Fatalf("model schema constant=%d want 1", model.IssueOpsSchemaVersion)
+	if issueops.IssueOpsSchemaVersion != 1 {
+		t.Fatalf("model schema constant=%d want 1", issueops.IssueOpsSchemaVersion)
 	}
-	if record.SchemaVersion != model.IssueOpsSchemaVersion {
+	if record.SchemaVersion != issueops.IssueOpsSchemaVersion {
 		t.Fatalf("new record schema=%d want 1", record.SchemaVersion)
 	}
 	db, err := sqlstore.Open(stateRoot)
@@ -72,7 +72,7 @@ func TestIssueOpsReaderTreatsMissingAndZeroSchemaAsCurrent(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			stateRoot := t.TempDir()
-			record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: t.TempDir(), Branch: "901-legacy-schema-" + testCase.name})
+			record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: t.TempDir(), Branch: "901-legacy-schema-" + testCase.name})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -105,8 +105,8 @@ func TestIssueOpsReaderTreatsMissingAndZeroSchemaAsCurrent(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.SchemaVersion != model.IssueOpsSchemaVersion {
-				t.Fatalf("schema=%d want %d", got.SchemaVersion, model.IssueOpsSchemaVersion)
+			if got.SchemaVersion != issueops.IssueOpsSchemaVersion {
+				t.Fatalf("schema=%d want %d", got.SchemaVersion, issueops.IssueOpsSchemaVersion)
 			}
 		})
 	}

@@ -1,12 +1,13 @@
 package issueops
 
 import (
-	"agent-harness/internal/core/issueops/model"
-	"agent-harness/internal/core/preflight"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/contract/issueops"
+	"agent-harness/internal/core/preflight"
 )
 
 func initIssueOpsRepo(t *testing.T) string {
@@ -71,7 +72,7 @@ func writeIssueOpsFile(t *testing.T, repo, rel, content string) {
 
 func recordIssueOpsIntentForTest(t *testing.T, stateRoot, id string) {
 	t.Helper()
-	if _, err := RecordIssueOpsIntent(stateRoot, id, IssueOpsIntentRecordRequest{
+	if _, err := RecordIssueOpsIntent(stateRoot, id, issueops.IssueOpsIntentRecordRequest{
 		RawRequest:        "refactor issueops flow",
 		InterpretedIntent: "keep intent and design evidence before implementation",
 		SuccessCriteria:   []string{"intent is recorded", "design is reviewed"},
@@ -86,8 +87,8 @@ func setIssueOpsPlanPrepForTest(t *testing.T, stateRoot, id string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	waived := model.IssueOpsPlanPrepItem{Status: "waived", WaiveReason: "legacy lifecycle test"}
-	rec.PlanPrep = &model.IssueOpsPlanPrep{
+	waived := issueops.IssueOpsPlanPrepItem{Status: "waived", WaiveReason: "legacy lifecycle test"}
+	rec.PlanPrep = &issueops.IssueOpsPlanPrep{
 		PriorDecisions: waived,
 		RelatedIssues:  waived,
 		WebResearch:    waived,
@@ -103,14 +104,14 @@ func setIssueOpsPlanPrepForTest(t *testing.T, stateRoot, id string) {
 // grill->plan boundary. split_decision is recorded as a no-split scope decision.
 func recordIssueOpsGrillArtifactsForTest(t *testing.T, stateRoot, id string) {
 	t.Helper()
-	if _, err := AddIssueOpsDecision(stateRoot, id, IssueOpsDecisionRecordRequest{
+	if _, err := AddIssueOpsDecision(stateRoot, id, issueops.IssueOpsDecisionRecordRequest{
 		Title: "no split",
 		Body:  "single focused work item; no provider-native child tasks needed",
 		Kind:  "scope",
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := RecordIssueOpsDomainReview(stateRoot, id, IssueOpsDomainReviewRequest{
+	if _, err := RecordIssueOpsDomainReview(stateRoot, id, issueops.IssueOpsDomainReviewRequest{
 		ModelFit:          "change fits the existing IssueOps phase model",
 		Terminology:       []string{"phase ledger", "completion gate"},
 		OpenUncertainties: []string{"none blocking"},
@@ -123,7 +124,7 @@ func recordIssueOpsApprovedDesignForTest(t *testing.T, stateRoot, id string) {
 	t.Helper()
 	recordIssueOpsGrillArtifactsForTest(t, stateRoot, id)
 	setIssueOpsPlanPrepForTest(t, stateRoot, id)
-	if _, err := RecordIssueOpsDesignReview(stateRoot, id, IssueOpsDesignReviewRequest{
+	if _, err := RecordIssueOpsDesignReview(stateRoot, id, issueops.IssueOpsDesignReviewRequest{
 		ProblemSummary: "IssueOps must preserve the work contract",
 		ProposedDesign: "Gate implementation on a reviewed design contract",
 		RefactorPlan:   "Keep IssueOps state and adapter changes scoped to the active cycle",
@@ -136,7 +137,7 @@ func recordIssueOpsApprovedDesignForTest(t *testing.T, stateRoot, id string) {
 	}
 }
 
-func recordIssueOpsPreparedExecutionForTest(t *testing.T, stateRoot, id, worktree string) IssueOpsRecord {
+func recordIssueOpsPreparedExecutionForTest(t *testing.T, stateRoot, id, worktree string) issueops.IssueOpsRecord {
 	t.Helper()
 	recordIssueOpsCompatibilityReviewForTest(t, stateRoot, id)
 	record, err := ReadIssueOps(stateRoot, id)
@@ -157,7 +158,7 @@ func recordIssueOpsPreparedExecutionForTest(t *testing.T, stateRoot, id, worktre
 
 func recordIssueOpsCompatibilityReviewForTest(t *testing.T, stateRoot, id string) {
 	t.Helper()
-	if _, err := RecordIssueOpsCompatibilityReview(stateRoot, id, IssueOpsCompatibilityReviewRequest{
+	if _, err := RecordIssueOpsCompatibilityReview(stateRoot, id, issueops.IssueOpsCompatibilityReviewRequest{
 		BackwardCompatibility: []string{"existing IssueOps state records remain readable"},
 		SideEffects:           []string{"phase order changes are limited to IssueOps lifecycle readiness"},
 		RollbackPlan:          "Revert the compatibility-review phase and readiness gate.",
@@ -168,13 +169,13 @@ func recordIssueOpsCompatibilityReviewForTest(t *testing.T, stateRoot, id string
 	}
 	// The devil's-advocate verdict is a fail-closed implement-entry gate, so bring
 	// the cycle to implement-readiness with a pass verdict alongside compatibility.
-	if _, err := RecordIssueOpsDevilsAdvocateReview(stateRoot, id, IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
+	if _, err := RecordIssueOpsDevilsAdvocateReview(stateRoot, id, issueops.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func issueOpsIntentContractForTest() *IssueOpsIntentContract {
-	return &IssueOpsIntentContract{
+func issueOpsIntentContractForTest() *issueops.IssueOpsIntentContract {
+	return &issueops.IssueOpsIntentContract{
 		RawRequest:        "refactor issueops flow",
 		InterpretedIntent: "keep intent and design evidence before implementation",
 		SuccessCriteria:   []string{"intent is recorded", "design is reviewed"},
@@ -182,8 +183,8 @@ func issueOpsIntentContractForTest() *IssueOpsIntentContract {
 	}
 }
 
-func issueOpsCompatibilityReviewForTest() *IssueOpsCompatibilityReview {
-	return &IssueOpsCompatibilityReview{
+func issueOpsCompatibilityReviewForTest() *issueops.IssueOpsCompatibilityReview {
+	return &issueops.IssueOpsCompatibilityReview{
 		BackwardCompatibility: []string{"existing IssueOps state records remain readable"},
 		SideEffects:           []string{"phase order changes are limited to IssueOps lifecycle readiness"},
 		RollbackPlan:          "Revert the compatibility-review phase and readiness gate.",
@@ -193,18 +194,18 @@ func issueOpsCompatibilityReviewForTest() *IssueOpsCompatibilityReview {
 	}
 }
 
-func issueOpsDevilsAdvocateReviewForTest() *IssueOpsDevilsAdvocateReview {
-	return &IssueOpsDevilsAdvocateReview{
+func issueOpsDevilsAdvocateReviewForTest() *issueops.IssueOpsDevilsAdvocateReview {
+	return &issueops.IssueOpsDevilsAdvocateReview{
 		Verdict:         "pass",
 		ReviewerPattern: "devils-advocate-review",
 		RecordedAt:      "2026-06-29T00:00:00Z",
 	}
 }
 
-func issueOpsExecutionForTest(repo, worktree, branch string) *Execution {
-	return &Execution{
-		Mode: model.ExecutionModeDirect,
-		Workspace: Workspace{
+func issueOpsExecutionForTest(repo, worktree, branch string) *issueops.Execution {
+	return &issueops.Execution{
+		Mode: issueops.ExecutionModeDirect,
+		Workspace: issueops.Workspace{
 			SourceRoot: repo,
 			Root:       worktree,
 			Branch:     branch,
@@ -212,14 +213,14 @@ func issueOpsExecutionForTest(repo, worktree, branch string) *Execution {
 			Driver:     "git",
 			LinkedAt:   "2026-07-22T00:00:00Z",
 		},
-		Lease: WriteLease{
+		Lease: issueops.WriteLease{
 			Generation: 1,
-			Status:     model.LeaseStatusActive,
-			Holder: &NativeActor{
+			Status:     issueops.LeaseStatusActive,
+			Holder: &issueops.NativeActor{
 				Host:      "codex",
 				SessionID: "test-session",
 				AgentID:   "test-agent",
-				SessionProcess: &NativeProcessReceipt{
+				SessionProcess: &issueops.NativeProcessReceipt{
 					PID:        1,
 					StartedAt:  "2026-07-22T00:00:00Z",
 					Executable: "/usr/bin/codex",
@@ -233,29 +234,29 @@ func issueOpsExecutionForTest(repo, worktree, branch string) *Execution {
 func issueOpsActorForTest(worktree string) IssueOpsActor {
 	return IssueOpsActor{
 		Host: "codex", SessionID: "test-session", AgentID: "test-agent", CWD: worktree,
-		NativeProcessAncestry: []NativeProcessReceipt{{
+		NativeProcessAncestry: []issueops.NativeProcessReceipt{{
 			PID: 1, StartedAt: "2026-07-22T00:00:00Z", Executable: "/usr/bin/codex",
 		}},
 	}
 }
 
-func startIssueOpsChildForTest(stateRoot string, parent IssueOpsRecord, req IssueOpsChildStartRequest) (IssueOpsChildStartResult, error) {
+func startIssueOpsChildForTest(stateRoot string, parent issueops.IssueOpsRecord, req issueops.IssueOpsChildStartRequest) (issueops.IssueOpsChildStartResult, error) {
 	return StartIssueOpsChildWithActor(stateRoot, req, issueOpsActorForTest(parent.WorktreePath))
 }
 
-func acceptIssueOpsChildForTest(stateRoot string, parent IssueOpsRecord, childID string, evidence []string) (IssueOpsChildValidationResult, error) {
+func acceptIssueOpsChildForTest(stateRoot string, parent issueops.IssueOpsRecord, childID string, evidence []string) (issueops.IssueOpsChildValidationResult, error) {
 	return AcceptIssueOpsChildWithActor(stateRoot, parent.ID, childID, evidence, issueOpsActorForTest(parent.WorktreePath))
 }
 
-func rejectIssueOpsChildForTest(stateRoot string, parent IssueOpsRecord, childID, reason string, evidence []string) (IssueOpsChildValidationResult, error) {
+func rejectIssueOpsChildForTest(stateRoot string, parent issueops.IssueOpsRecord, childID, reason string, evidence []string) (issueops.IssueOpsChildValidationResult, error) {
 	return RejectIssueOpsChildWithActor(stateRoot, parent.ID, childID, reason, evidence, issueOpsActorForTest(parent.WorktreePath))
 }
 
-func dropIssueOpsChildForTest(stateRoot string, parent IssueOpsRecord, childID, reason string) (IssueOpsChildValidationResult, error) {
+func dropIssueOpsChildForTest(stateRoot string, parent issueops.IssueOpsRecord, childID, reason string) (issueops.IssueOpsChildValidationResult, error) {
 	return DropIssueOpsChildWithActor(stateRoot, parent.ID, childID, reason, issueOpsActorForTest(parent.WorktreePath))
 }
 
-func executionPrepareRecord(t *testing.T) (string, IssueOpsRecord) {
+func executionPrepareRecord(t *testing.T) (string, issueops.IssueOpsRecord) {
 	t.Helper()
 	stateRoot := t.TempDir()
 	repo := initIssueOpsRepo(t)
@@ -264,12 +265,12 @@ func executionPrepareRecord(t *testing.T) (string, IssueOpsRecord) {
 	if code, _, stderr := preflight.GitCmd(repo, "update-ref", "refs/remotes/origin/"+branch, baseHead); code != 0 {
 		t.Fatalf("create remote branch fixture: %s", stderr)
 	}
-	record := IssueOpsRecord{
+	record := issueops.IssueOpsRecord{
 		OK: true, SchemaVersion: IssueOpsCurrentSchemaVersion,
 		ID: NewIssueOpsID(repo, branch), Repo: repo, Branch: branch, Phase: IssueOpsPhasePlan,
 		IssueURL:     "https://github.com/acme/repo/issues/16",
-		DesignReview: &IssueOpsDesignReview{Approved: true, ReviewedAt: "2026-07-11T00:00:00Z"},
-		BranchPrepare: &IssueOpsBranchPrepare{
+		DesignReview: &issueops.IssueOpsDesignReview{Approved: true, ReviewedAt: "2026-07-11T00:00:00Z"},
+		BranchPrepare: &issueops.IssueOpsBranchPrepare{
 			Provider: "github", IssueURL: "https://github.com/acme/repo/issues/16", Branch: branch,
 			BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true, CreatedAt: "2026-07-11T00:00:00Z",
 		},
@@ -282,8 +283,8 @@ func executionPrepareRecord(t *testing.T) (string, IssueOpsRecord) {
 	return stateRoot, written
 }
 
-func issueOpsDesignReviewForTest() *IssueOpsDesignReview {
-	return &IssueOpsDesignReview{
+func issueOpsDesignReviewForTest() *issueops.IssueOpsDesignReview {
+	return &issueops.IssueOpsDesignReview{
 		ProblemSummary: "IssueOps must preserve the work contract",
 		ProposedDesign: "Gate implementation on a reviewed design contract",
 		RefactorPlan:   "Keep IssueOps state and adapter changes scoped to the active cycle",
@@ -295,8 +296,8 @@ func issueOpsDesignReviewForTest() *IssueOpsDesignReview {
 	}
 }
 
-func issueOpsWeakApprovedDesignReviewForTest() *IssueOpsDesignReview {
-	return &IssueOpsDesignReview{
+func issueOpsWeakApprovedDesignReviewForTest() *issueops.IssueOpsDesignReview {
+	return &issueops.IssueOpsDesignReview{
 		ProblemSummary: "IssueOps must preserve the work contract",
 		ProposedDesign: "Gate implementation on a reviewed design contract",
 		Verification:   []string{"go test ./internal/core/issueops"},

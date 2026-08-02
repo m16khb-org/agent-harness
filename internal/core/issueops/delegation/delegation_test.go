@@ -3,7 +3,7 @@ package delegation
 import (
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	model "agent-harness/internal/contract/issueops"
 )
 
 func TestMissingPreconditionsAcceptsReviewedParent(t *testing.T) {

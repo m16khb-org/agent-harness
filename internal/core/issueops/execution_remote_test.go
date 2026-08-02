@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
 type remoteExecutionFixture struct {
 	claimableExecutionFixture
-	actor model.NativeActor
+	actor issueops.NativeActor
 }
 
 func TestRemotePullRequestPublicCreateUsesHandlerWithoutLegacyFallback(t *testing.T) {
@@ -45,7 +45,7 @@ func TestRemotePullRequestPersistsIntentBeforeSingleProviderCallWithActiveLease(
 	fixture := newClaimableExecutionFixture(t, stateRoot, "69-remote-intent")
 	record := fixture.record
 	record.IssueURL = "https://github.com/example/agent-harness/issues/69"
-	record.Phase = model.IssueOpsPhasePR
+	record.Phase = issueops.IssueOpsPhasePR
 	if _, err := writeIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +218,7 @@ func TestRemotePullRequestReleasesLockDuringProviderCallAndBlocksReplacement(t *
 	fixture := newClaimableExecutionFixture(t, stateRoot, "69-remote-race")
 	record := fixture.record
 	record.IssueURL = "https://github.com/example/agent-harness/issues/69"
-	record.Phase = model.IssueOpsPhasePR
+	record.Phase = issueops.IssueOpsPhasePR
 	if _, err := writeIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}
@@ -287,7 +287,7 @@ func TestRemotePullRequestReleasesLockDuringProviderCallAndBlocksReplacement(t *
 	if err != nil {
 		t.Fatal(err)
 	}
-	if persisted.RemoteArtifact == nil || persisted.Execution.Pending != nil || persisted.Execution.Lease.Generation != 1 || persisted.Execution.Lease.Status != model.LeaseStatusActive {
+	if persisted.RemoteArtifact == nil || persisted.Execution.Pending != nil || persisted.Execution.Lease.Generation != 1 || persisted.Execution.Lease.Status != issueops.LeaseStatusActive {
 		t.Fatalf("pending replacement changed or lost the same-generation receipt: %#v", persisted)
 	}
 }
@@ -297,7 +297,7 @@ func newRemoteExecutionFixture(t *testing.T, stateRoot, branch string) remoteExe
 	fixture := newClaimableExecutionFixture(t, stateRoot, branch)
 	record := fixture.record
 	record.IssueURL = "https://github.com/example/agent-harness/issues/69"
-	record.Phase = model.IssueOpsPhasePR
+	record.Phase = issueops.IssueOpsPhasePR
 	if _, err := writeIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}

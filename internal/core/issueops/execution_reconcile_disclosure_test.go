@@ -4,12 +4,13 @@ import (
 	"context"
 	"testing"
 
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
 // pendingOrcaIntentFixture는 외부 mutation이 모호하게 끝나 pending intent가 남은
 // 상태를 만든다. Invoked:true인 실패가 그 상태의 정식 입구다.
-func pendingOrcaIntentFixture(t *testing.T) (string, IssueOpsRecord, *executionOrcaFake) {
+func pendingOrcaIntentFixture(t *testing.T) (string, issueops.IssueOpsRecord, *executionOrcaFake) {
 	t.Helper()
 	stateRoot, record := orcaPrepareRecord(t)
 	fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}

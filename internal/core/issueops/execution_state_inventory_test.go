@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/sqlstore"
 )
 
@@ -15,7 +15,7 @@ func TestListLeaseHolderIndexesReadsAndValidatesExistingRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	actor := model.NativeActor{Host: "codex", SessionID: "session-v1", AgentID: "agent-v1"}
+	actor := issueops.NativeActor{Host: "codex", SessionID: "session-v1", AgentID: "agent-v1"}
 	index := leaseHolderIndex{SchemaVersion: 1, LifecycleID: "io-0123456789ab", Generation: 3, Host: actor.Host, SessionID: actor.SessionID, AgentID: actor.AgentID}
 	data, err := json.Marshal(index)
 	if err != nil {
@@ -49,7 +49,7 @@ func TestListLeaseHolderIndexesRejectsMalformedOrMismatchedRows(t *testing.T) {
 	}{
 		{name: "malformed", key: "bad", data: []byte("{")},
 		{name: "wrong key", key: "wrong", data: mustMarshalLeaseHolderIndex(t, leaseHolderIndex{SchemaVersion: 1, LifecycleID: "io-0123456789ab", Generation: 1, Host: "codex", SessionID: "session"})},
-		{name: "wrong schema", key: leaseHolderIndexKey(model.NativeActor{Host: "codex", SessionID: "session"}), data: mustMarshalLeaseHolderIndex(t, leaseHolderIndex{SchemaVersion: 2, LifecycleID: "io-0123456789ab", Generation: 1, Host: "codex", SessionID: "session"})},
+		{name: "wrong schema", key: leaseHolderIndexKey(issueops.NativeActor{Host: "codex", SessionID: "session"}), data: mustMarshalLeaseHolderIndex(t, leaseHolderIndex{SchemaVersion: 2, LifecycleID: "io-0123456789ab", Generation: 1, Host: "codex", SessionID: "session"})},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

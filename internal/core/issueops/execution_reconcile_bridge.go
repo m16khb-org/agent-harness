@@ -6,13 +6,14 @@ import (
 	"reflect"
 	"time"
 
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
 // ExecutionReconcileIntentState는 새 reconcile vertical이 기존 durable CAS
 // primitive를 호출할 때 필요한 최소 호환 상태다.
 type ExecutionReconcileIntentState struct {
-	Record             IssueOpsRecord
+	Record             issueops.IssueOpsRecord
 	RecordRaw          []byte
 	IntentRaw          []byte
 	OperationID        string
@@ -23,13 +24,13 @@ type ExecutionReconcileIntentState struct {
 	Migrated           bool
 }
 
-func CanonicalizeExecutionReconcileIntent(stateRoot, id string, snapshot *IssueOpsRecord) (ExecutionReconcileIntentState, error) {
-	var record IssueOpsRecord
+func CanonicalizeExecutionReconcileIntent(stateRoot, id string, snapshot *issueops.IssueOpsRecord) (ExecutionReconcileIntentState, error) {
+	var record issueops.IssueOpsRecord
 	if snapshot == nil {
 		var err error
 		record, err = ReadIssueOps(stateRoot, id)
 		if err != nil {
-			return ExecutionReconcileIntentState{Record: IssueOpsRecord{ID: id}}, err
+			return ExecutionReconcileIntentState{Record: issueops.IssueOpsRecord{ID: id}}, err
 		}
 	} else {
 		record = *snapshot
@@ -99,7 +100,7 @@ func ApplyExecutionReconcileIntentReceipt(ctx context.Context, stateRoot string,
 	return next, err
 }
 
-func ReadExecutionReconcileRecord(stateRoot, id string) (IssueOpsRecord, error) {
+func ReadExecutionReconcileRecord(stateRoot, id string) (issueops.IssueOpsRecord, error) {
 	return ReadIssueOps(stateRoot, id)
 }
 
@@ -115,7 +116,7 @@ func readExecutionReconcileIntent(stateRoot, id, operationID string) (ExecutionR
 	return executionReconcileIntentState(record, recordRaw, payload, intentRaw), nil
 }
 
-func executionReconcileIntentStateFromPayload(stateRoot string, record IssueOpsRecord, payload externalOrcaIntentPayload) (ExecutionReconcileIntentState, error) {
+func executionReconcileIntentStateFromPayload(stateRoot string, record issueops.IssueOpsRecord, payload externalOrcaIntentPayload) (ExecutionReconcileIntentState, error) {
 	partial := executionReconcileIntentState(record, nil, payload, nil)
 	currentRecord, recordRaw, err := readExecutionResumeRecordRaw(stateRoot, record.ID)
 	if err != nil {
@@ -134,7 +135,7 @@ func executionReconcileIntentStateFromPayload(stateRoot string, record IssueOpsR
 	return executionReconcileIntentState(record, recordRaw, payload, intentRaw), nil
 }
 
-func executionReconcileIntentState(record IssueOpsRecord, recordRaw []byte, payload externalOrcaIntentPayload, intentRaw []byte) ExecutionReconcileIntentState {
+func executionReconcileIntentState(record issueops.IssueOpsRecord, recordRaw []byte, payload externalOrcaIntentPayload, intentRaw []byte) ExecutionReconcileIntentState {
 	return ExecutionReconcileIntentState{
 		Record: record, RecordRaw: append([]byte(nil), recordRaw...), IntentRaw: append([]byte(nil), intentRaw...),
 		OperationID: payload.OperationID, Stage: intentPortStage(payload.Stage), InvocationState: payload.InvocationState,

@@ -3,6 +3,8 @@ package hookprompt
 import (
 	"strings"
 	"time"
+
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 )
 
 type HookUserPromptRequest struct {
@@ -103,7 +105,7 @@ func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
 		}
 	}
 
-	pendingUpkeep := []DocUpkeepEvent{}
+	pendingUpkeep := []lifecyclecontract.DocUpkeepEvent{}
 	var repoProfile *ProjectProfile
 	if strings.TrimSpace(req.Repo) != "" {
 		if state, err := ResolveProjectLifecycleState(req.Repo); err == nil && state.Exists && state.NamespaceValid && state.Profile != nil {

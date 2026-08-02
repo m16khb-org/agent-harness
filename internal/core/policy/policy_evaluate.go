@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	policydomain "agent-harness/internal/domain/policy"
+
 	"agent-harness/internal/core/policy/auditid"
 )
 
@@ -35,10 +37,12 @@ func EvaluateCommandPolicy(req CommandPolicyRequest) CommandPolicyEvaluation {
 		WriteAllowed:   req.WriteAllowed,
 		ShellAllowed:   req.ShellAllowed,
 		ShellReason:    redactFreeform(req.ShellReason),
-		Tier:           resolvePolicyTier(req),
-		DenyReasons:    []string{},
-		Warnings:       append([]string{}, catalog.warnings...),
-		GeneratedAt:    time.Now().UTC().Format(time.RFC3339),
+		Tier: policydomain.ResolveTier(policydomain.Request{
+			WriteAllowed: req.WriteAllowed, NetworkAllowed: req.NetworkAllowed, ShellAllowed: req.ShellAllowed,
+		}),
+		DenyReasons: []string{},
+		Warnings:    append([]string{}, catalog.warnings...),
+		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 	}
 	addDeny := func(reason string) {
 		result.DenyReasons = append(result.DenyReasons, reason)

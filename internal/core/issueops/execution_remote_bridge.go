@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
@@ -17,8 +17,8 @@ type RemotePublicationBridgeDependencies struct {
 }
 
 type RemotePublicationPreparedState struct {
-	Record             IssueOpsRecord
-	Actor              model.NativeActor
+	Record             issueops.IssueOpsRecord
+	Actor              issueops.NativeActor
 	CWD                string
 	ExpectedGeneration uint64
 	Provider           string
@@ -27,7 +27,7 @@ type RemotePublicationPreparedState struct {
 }
 
 type RemotePublicationIntentState struct {
-	Record      IssueOpsRecord
+	Record      issueops.IssueOpsRecord
 	RecordRaw   []byte
 	IntentRaw   []byte
 	OperationID string
@@ -72,8 +72,8 @@ func BeginPreparedRemotePublicationIntent(ctx context.Context, stateRoot string,
 func BeginRemotePublicationIntent(
 	_ context.Context,
 	stateRoot string,
-	expected IssueOpsRecord,
-	actor model.NativeActor,
+	expected issueops.IssueOpsRecord,
+	actor issueops.NativeActor,
 	cwd string,
 	expectedGeneration uint64,
 	providerReq port.IssueProviderCreatePullRequestRequest,
@@ -197,7 +197,7 @@ func VerifyRemotePublicationLive(_ context.Context, stateRoot string, state Remo
 	return verifyRemotePullRequestResult(record, payload, url, verify)
 }
 
-func loadRemotePublicationState(stateRoot string, record IssueOpsRecord, payload externalRemotePRPayload) (RemotePublicationIntentState, error) {
+func loadRemotePublicationState(stateRoot string, record issueops.IssueOpsRecord, payload externalRemotePRPayload) (RemotePublicationIntentState, error) {
 	recordRaw, err := readRemotePublicationRaw(stateRoot, issueOpsBucket, record.ID)
 	if err != nil {
 		return RemotePublicationIntentState{}, err
@@ -209,7 +209,7 @@ func loadRemotePublicationState(stateRoot string, record IssueOpsRecord, payload
 	return remotePublicationState(record, recordRaw, intentRaw, payload), nil
 }
 
-func loadCompletedRemotePublicationState(stateRoot string, record IssueOpsRecord, payload externalRemotePRPayload) (RemotePublicationIntentState, error) {
+func loadCompletedRemotePublicationState(stateRoot string, record issueops.IssueOpsRecord, payload externalRemotePRPayload) (RemotePublicationIntentState, error) {
 	recordRaw, err := readRemotePublicationRaw(stateRoot, issueOpsBucket, record.ID)
 	if err != nil {
 		return RemotePublicationIntentState{}, err
@@ -217,7 +217,7 @@ func loadCompletedRemotePublicationState(stateRoot string, record IssueOpsRecord
 	return remotePublicationState(record, recordRaw, nil, payload), nil
 }
 
-func remotePublicationState(record IssueOpsRecord, recordRaw, intentRaw []byte, payload externalRemotePRPayload) RemotePublicationIntentState {
+func remotePublicationState(record issueops.IssueOpsRecord, recordRaw, intentRaw []byte, payload externalRemotePRPayload) RemotePublicationIntentState {
 	return RemotePublicationIntentState{
 		Record: record, RecordRaw: append([]byte(nil), recordRaw...), IntentRaw: append([]byte(nil), intentRaw...),
 		OperationID: payload.OperationID, Generation: payload.Generation, Provider: payload.Provider, Kind: payload.Kind,
@@ -234,7 +234,7 @@ func remotePublicationPayload(state RemotePublicationIntentState) (externalRemot
 	if err := json.Unmarshal(state.IntentRaw, &payload); err != nil {
 		return externalRemotePRPayload{}, fmt.Errorf("decode remote publication intent: %w", err)
 	}
-	if payload.SchemaVersion != model.IssueOpsSchemaVersion || payload.OperationID == "" || payload.OperationID != state.OperationID || payload.Generation == 0 {
+	if payload.SchemaVersion != issueops.IssueOpsSchemaVersion || payload.OperationID == "" || payload.OperationID != state.OperationID || payload.Generation == 0 {
 		return externalRemotePRPayload{}, fmt.Errorf("remote publication intent state is invalid")
 	}
 	return payload, nil

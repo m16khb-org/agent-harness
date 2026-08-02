@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
@@ -938,7 +938,7 @@ func TestReconcileLegacyRemoteClaimRequiresExactlyOneVerifiedCandidate(t *testin
 					}
 					return tc.result, tc.reconcileErr
 				},
-				Verify: func(req model.IssueOpsRemoteArtifactVerificationRequest) error {
+				Verify: func(req issueops.IssueOpsRemoteArtifactVerificationRequest) error {
 					verifyCalls++
 					if req.URL != "https://github.com/acme/repo/pull/7" || req.TargetBranch != "main" {
 						t.Fatalf("verify request = %#v", req)
@@ -1330,7 +1330,7 @@ func TestIssueOpsMutationBarrierReturnsResetRequired(t *testing.T) {
 	if !errors.As(err, &resetErr) || resetErr.Code != "reset_required" || resetErr.TargetSchema != 1 || resetErr.Fingerprint == "" {
 		t.Fatalf("reset-required error = %#v (%v)", resetErr, err)
 	}
-	if _, err := WriteIssueOps(schemaRoot, IssueOpsRecord{SchemaVersion: 1, ID: "io-bbbbbbbbbbbb"}); !errors.As(err, &resetErr) {
+	if _, err := WriteIssueOps(schemaRoot, issueops.IssueOpsRecord{SchemaVersion: 1, ID: "io-bbbbbbbbbbbb"}); !errors.As(err, &resetErr) {
 		t.Fatalf("write barrier error = %v", err)
 	}
 	if _, err := os.Stat(schemaRoot); !os.IsNotExist(err) {
@@ -1364,7 +1364,7 @@ func TestIssueOpsMutationBarrierRunsBeforeExternalDependencies(t *testing.T) {
 	}
 
 	_, reconcileErr := ReconcileExecutionWithDependencies(context.Background(), schemaRoot, ExecutionReconcileRequest{
-		ID: "io-bbbbbbbbbbbb", Confirm: true, Actor: model.NativeActor{},
+		ID: "io-bbbbbbbbbbbb", Confirm: true, Actor: issueops.NativeActor{},
 	}, ExecutionReconcileDependencies{})
 	if !errors.As(reconcileErr, &resetErr) {
 		t.Fatalf("reconcile barrier error = %v", reconcileErr)
@@ -1402,7 +1402,7 @@ func TestIssueOpsMutationBarrierStaysClosedDuringCrashResume(t *testing.T) {
 	}
 
 	schemaRoot := filepath.Join(stateDir, "issueops_v1")
-	_, err = WriteIssueOps(schemaRoot, IssueOpsRecord{SchemaVersion: 1, ID: "io-bbbbbbbbbbbb"})
+	_, err = WriteIssueOps(schemaRoot, issueops.IssueOpsRecord{SchemaVersion: 1, ID: "io-bbbbbbbbbbbb"})
 	var resetErr *ResetRequiredError
 	if !errors.As(err, &resetErr) || !strings.Contains(resetErr.NextCommand, "--status") {
 		t.Fatalf("in-progress reset barrier error = %#v (%v)", resetErr, err)

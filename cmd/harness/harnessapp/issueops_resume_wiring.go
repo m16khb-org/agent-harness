@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	leaseinbound "agent-harness/internal/adapter/inbound/issueopslease"
 	"agent-harness/internal/adapter/orca"
 	leaseoutbound "agent-harness/internal/adapter/outbound/issueopslease"
@@ -185,14 +187,14 @@ func (e *coreResumeEffects) invokeStage(ctx context.Context, intent leaseapp.Res
 	return leasecontract.ResumeStageReceipt{TerminalPTYID: receipt.TerminalPTYID, RunID: receipt.RunID, RunBound: receipt.RunBound, TaskID: receipt.TaskID, DispatchID: receipt.DispatchID}, nil
 }
 
-func resumeCoreRecord(record leasecontract.Record) (issueops.IssueOpsRecord, error) {
+func resumeCoreRecord(record leasecontract.Record) (issueopscontract.IssueOpsRecord, error) {
 	data, err := json.Marshal(record)
 	if err != nil {
-		return issueops.IssueOpsRecord{}, err
+		return issueopscontract.IssueOpsRecord{}, err
 	}
-	var result issueops.IssueOpsRecord
+	var result issueopscontract.IssueOpsRecord
 	if err := json.Unmarshal(data, &result); err != nil {
-		return issueops.IssueOpsRecord{}, err
+		return issueopscontract.IssueOpsRecord{}, err
 	}
 	return result, nil
 }

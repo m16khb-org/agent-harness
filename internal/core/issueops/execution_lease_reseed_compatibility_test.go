@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 )
 
 func reseedExecutionCompatibilityOracle(ctx context.Context, stateRoot string, req ExecutionReplaceRequest, deps ExecutionReplaceDependencies) (ExecutionReplaceResult, error) {
@@ -23,7 +23,7 @@ func reseedExecutionCompatibilityOracle(ctx context.Context, stateRoot string, r
 	if !req.Confirm {
 		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, fmt.Errorf("reseed requires confirm")
 	}
-	var persisted IssueOpsRecord
+	var persisted issueops.IssueOpsRecord
 	var tokenPath string
 	var resealed executionOwnerReseal
 	err = withIssueOpsLock(ctx, stateRoot, req.ID, func(context.Context) error {
@@ -38,7 +38,7 @@ func reseedExecutionCompatibilityOracle(ctx context.Context, stateRoot string, r
 			return err
 		}
 		lease := &record.Execution.Lease
-		if lease.Status != model.LeaseStatusReleased && lease.Status != model.LeaseStatusClaimable {
+		if lease.Status != issueops.LeaseStatusReleased && lease.Status != issueops.LeaseStatusClaimable {
 			return fmt.Errorf("reseed requires a released or claimable lease")
 		}
 		fingerprint, orcaInventory, err := executionInventoryFingerprint(ctx, record, actor, deps)
@@ -61,7 +61,7 @@ func reseedExecutionCompatibilityOracle(ctx context.Context, stateRoot string, r
 			return cleanupReplacementFailure(record, err)
 		}
 		tokenPath = path
-		lease.Status = model.LeaseStatusClaimable
+		lease.Status = issueops.LeaseStatusClaimable
 		lease.Holder = nil
 		lease.ClaimTokenSHA256 = tokenSHA256(token)
 		lease.ReplacedAt = time.Now().UTC().Format(time.RFC3339Nano)
@@ -85,7 +85,7 @@ func reseedExecutionCompatibilityOracle(ctx context.Context, stateRoot string, r
 	result.IssueBodySHA256 = resealed.issueBodySHA256
 	result.ContextPacketPath, result.ContextPacketSHA256 = resealed.packetPath, resealed.packetSHA256
 	result.OwnerPromptPath, result.OwnerPromptSHA256 = resealed.promptPath, resealed.promptSHA256
-	if persisted.Execution.Lease.Status == model.LeaseStatusClaimable {
+	if persisted.Execution.Lease.Status == issueops.LeaseStatusClaimable {
 		result.NextCommand = ExecutionReseedNextCommand(
 			persisted.ID, persisted.Execution.Lease.Generation, string(persisted.Execution.Mode), tokenPath,
 		)

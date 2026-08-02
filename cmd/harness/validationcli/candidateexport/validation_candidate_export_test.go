@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	statecontract "agent-harness/internal/contract/state"
+
 	"agent-harness/internal/core"
 )
 
@@ -51,7 +53,7 @@ func TestValidateCandidateExportWithDepsCoversSuccessAndCommandFailure(t *testin
 			case "candidate export":
 				return StepResult{Label: label, Command: calls[len(calls)-1], OK: true, Stdout: mustMarshalCandidateExportTest(t, export)}
 			case "candidate export state read":
-				return StepResult{Label: label, Command: calls[len(calls)-1], OK: true, Stdout: mustMarshalCandidateExportTest(t, core.StateResult{OK: true, Record: core.StateRecord{Content: mustMarshalCandidateExportTest(t, snapshot)}})}
+				return StepResult{Label: label, Command: calls[len(calls)-1], OK: true, Stdout: mustMarshalCandidateExportTest(t, core.StateResult{OK: true, Record: statecontract.RecordEnvelope{Content: mustMarshalCandidateExportTest(t, snapshot)}})}
 			default:
 				t.Fatalf("unexpected label: %s", label)
 			}
@@ -105,7 +107,7 @@ func TestValidateCandidateExportWithDepsCoversParseAndContractFailures(t *testin
 		if label == "candidate export" {
 			return StepResult{Label: label, Command: "export", OK: true, Stdout: mustMarshalCandidateExportTest(t, export)}
 		}
-		return StepResult{Label: label, Command: "read", OK: true, Stdout: mustMarshalCandidateExportTest(t, core.StateResult{OK: true, Record: core.StateRecord{Content: "{"}})}
+		return StepResult{Label: label, Command: "read", OK: true, Stdout: mustMarshalCandidateExportTest(t, core.StateResult{OK: true, Record: statecontract.RecordEnvelope{Content: "{"}})}
 	}
 	badSnapshot := ValidateSelfVerifyCandidateExportWithDeps("bin", root, 5, deps)
 	if badSnapshot.OK || !strings.Contains(badSnapshot.Error, "candidate export state snapshot parse") {
@@ -118,7 +120,7 @@ func TestValidateCandidateExportWithDepsCoversParseAndContractFailures(t *testin
 		if label == "candidate export" {
 			return StepResult{Label: label, Command: "export", OK: true, Stdout: mustMarshalCandidateExportTest(t, invalidExport)}
 		}
-		return StepResult{Label: label, Command: "read", OK: true, Stdout: mustMarshalCandidateExportTest(t, core.StateResult{OK: true, Record: core.StateRecord{Content: mustMarshalCandidateExportTest(t, validCandidateExportSnapshot(export))}})}
+		return StepResult{Label: label, Command: "read", OK: true, Stdout: mustMarshalCandidateExportTest(t, core.StateResult{OK: true, Record: statecontract.RecordEnvelope{Content: mustMarshalCandidateExportTest(t, validCandidateExportSnapshot(export))}})}
 	}
 	contractFailure := ValidateSelfVerifyCandidateExportWithDeps("bin", root, 5, deps)
 	if contractFailure.OK || !strings.Contains(contractFailure.Error, "candidate export did not include the candidate curriculum") {
@@ -173,7 +175,7 @@ func writeCandidateExportFakeBinary(t *testing.T, dir, key string) string {
 	path := filepath.Join(dir, "fake-harness")
 	export := validCandidateExportResult(key)
 	snapshot := validCandidateExportSnapshot(export)
-	state := core.StateResult{OK: true, Record: core.StateRecord{Content: mustMarshalCandidateExportTest(t, snapshot)}}
+	state := core.StateResult{OK: true, Record: statecontract.RecordEnvelope{Content: mustMarshalCandidateExportTest(t, snapshot)}}
 	body := "#!/bin/sh\nset -eu\ncase \"$*\" in\n" +
 		"  \"self-verify candidates --save-state --state-key " + key + " --json\") printf '%s\\n' '" + mustMarshalCandidateExportTest(t, export) + "' ;;\n" +
 		"  \"state read --key " + key + " --json\") printf '%s\\n' '" + mustMarshalCandidateExportTest(t, state) + "' ;;\n" +

@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/preflight"
 )
 
@@ -24,7 +24,7 @@ type ExecutionSwitchModeRequest struct {
 	Apply       bool
 	Confirm     bool
 	Fingerprint string
-	Actor       model.NativeActor
+	Actor       issueops.NativeActor
 }
 
 // ExecutionSwitchModeDependencies는 게이트 평가와 정리의 외부 표면이다.
@@ -155,7 +155,7 @@ func SwitchExecutionMode(ctx context.Context, stateRoot string, req ExecutionSwi
 
 // switchModeGates는 게이트 전부를 평가하고 missing을 나열한다(첫 실패에 멈추지
 // 않는다 — 운영자가 한 번의 preview로 모든 결격 사유를 본다).
-func switchModeGates(record IssueOpsRecord, requested string, deps ExecutionSwitchModeDependencies, result *ExecutionSwitchModeResult) (switchModeInventory, []string) {
+func switchModeGates(record issueops.IssueOpsRecord, requested string, deps ExecutionSwitchModeDependencies, result *ExecutionSwitchModeResult) (switchModeInventory, []string) {
 	missing := []string{}
 	execution := record.Execution
 	inventory := switchModeInventory{
@@ -227,7 +227,7 @@ func switchModeGates(record IssueOpsRecord, requested string, deps ExecutionSwit
 	// 원격 브랜치는 provider가 이슈에 연결한 것이므로 switch-mode가 지우지
 	// 않는다. #163이 정한 순서대로 orca 준비 뒤에 `gh issue develop`을 다시
 	// 붙이는 것이 이 상태를 푸는 경로다.
-	if requested == string(model.ExecutionModeOrca) && inventory.Branch != "" {
+	if requested == string(issueops.ExecutionModeOrca) && inventory.Branch != "" {
 		if code, _ := deps.Git(record.Repo, "rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+inventory.Branch); code == 0 {
 			missing = append(missing, "orca_branch_name_free")
 			result.BranchFreeError = fmt.Sprintf(
@@ -243,7 +243,7 @@ func switchModeGates(record IssueOpsRecord, requested string, deps ExecutionSwit
 // removeSwitchModeWorkspace는 워크트리와 로컬 브랜치를 지운다. 원격은 건드리지
 // 않는다 — provider-linked 브랜치는 이슈 연결을 담고 있고, 새 모드의 준비가 그
 // 이름을 다시 쓴다.
-func removeSwitchModeWorkspace(record IssueOpsRecord, inventory switchModeInventory, deps ExecutionSwitchModeDependencies) error {
+func removeSwitchModeWorkspace(record issueops.IssueOpsRecord, inventory switchModeInventory, deps ExecutionSwitchModeDependencies) error {
 	if inventory.WorktreePresent {
 		if code, out := deps.Git(record.Repo, "worktree", "remove", "--force", inventory.WorktreeRoot); code != 0 {
 			return fmt.Errorf("switch-mode could not remove the canonical worktree (record preserved): %s", strings.TrimSpace(out))
@@ -259,10 +259,10 @@ func removeSwitchModeWorkspace(record IssueOpsRecord, inventory switchModeInvent
 
 func normalizeExecutionSwitchMode(value string) (string, error) {
 	switch strings.ToLower(strings.TrimSpace(value)) {
-	case string(model.ExecutionModeDirect):
-		return string(model.ExecutionModeDirect), nil
-	case string(model.ExecutionModeOrca):
-		return string(model.ExecutionModeOrca), nil
+	case string(issueops.ExecutionModeDirect):
+		return string(issueops.ExecutionModeDirect), nil
+	case string(issueops.ExecutionModeOrca):
+		return string(issueops.ExecutionModeOrca), nil
 	default:
 		// auto는 "실행 가능한 모드를 골라 달라"는 요청이지 전환 대상이 아니다.
 		// 파괴 조작의 목표를 harness가 고르게 두지 않는다.

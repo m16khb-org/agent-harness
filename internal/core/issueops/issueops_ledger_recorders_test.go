@@ -3,13 +3,15 @@ package issueops
 import (
 	"strings"
 	"testing"
+
+	"agent-harness/internal/contract/issueops"
 )
 
 func newLedgerRecorderRecord(t *testing.T) (string, string) {
 	t.Helper()
 	stateRoot := t.TempDir()
 	repo := initIssueOpsRepo(t)
-	rec, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "1-ledger"})
+	rec, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "1-ledger"})
 	if err != nil {
 		t.Fatalf("start issueops: %v", err)
 	}
@@ -19,11 +21,11 @@ func newLedgerRecorderRecord(t *testing.T) (string, string) {
 func TestRecordIssueOpsDomainReview(t *testing.T) {
 	stateRoot, id := newLedgerRecorderRecord(t)
 
-	if _, err := RecordIssueOpsDomainReview(stateRoot, id, IssueOpsDomainReviewRequest{}); err == nil {
+	if _, err := RecordIssueOpsDomainReview(stateRoot, id, issueops.IssueOpsDomainReviewRequest{}); err == nil {
 		t.Fatal("empty domain review request should be rejected")
 	}
 
-	rec, err := RecordIssueOpsDomainReview(stateRoot, id, IssueOpsDomainReviewRequest{
+	rec, err := RecordIssueOpsDomainReview(stateRoot, id, issueops.IssueOpsDomainReviewRequest{
 		Terminology:       []string{"ledger"},
 		ModelFit:          "fits the phase model",
 		Risks:             []string{"deadlock"},
@@ -43,7 +45,7 @@ func TestRecordIssueOpsDomainReview(t *testing.T) {
 	}
 }
 
-func issueOpsDomainReviewMissingForTest(r IssueOpsReadiness) bool {
+func issueOpsDomainReviewMissingForTest(r issueops.IssueOpsReadiness) bool {
 	for _, m := range r.Missing {
 		if m == "domain_review" {
 			return true

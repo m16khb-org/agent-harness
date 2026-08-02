@@ -15,8 +15,8 @@ import (
 
 	leaseoutbound "agent-harness/internal/adapter/outbound/issueopslease"
 	leaseapp "agent-harness/internal/application/issueopslease"
+	"agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/sqlstore"
 	leasedomain "agent-harness/internal/domain/issueopslease"
 	"agent-harness/internal/port"
@@ -43,9 +43,9 @@ type resumeDifferentialCase struct {
 	name         string
 	owner        port.ExecutionOrcaOwnerInventory
 	request      func(ExecutionResumeRequest) ExecutionResumeRequest
-	mutateRecord func(*IssueOpsRecord)
-	mutateFiles  func(t *testing.T, record IssueOpsRecord)
-	fixture      func(t *testing.T, mutate func(*IssueOpsRecord)) (string, IssueOpsRecord)
+	mutateRecord func(*issueops.IssueOpsRecord)
+	mutateFiles  func(t *testing.T, record issueops.IssueOpsRecord)
+	fixture      func(t *testing.T, mutate func(*issueops.IssueOpsRecord)) (string, issueops.IssueOpsRecord)
 	inspectErr   error
 	inventory    *port.ExecutionOrcaIntentInventory
 	failureStage port.ExecutionOrcaIntentStage
@@ -54,7 +54,7 @@ type resumeDifferentialCase struct {
 
 func TestResumeVerticalDifferential(t *testing.T) {
 	cases := []resumeDifferentialCase{
-		{name: "same_generation_live_task", mutateRecord: func(record *IssueOpsRecord) {
+		{name: "same_generation_live_task", mutateRecord: func(record *issueops.IssueOpsRecord) {
 			record.Execution.Orca.LeaseGeneration = record.Execution.Lease.Generation
 		}, owner: port.ExecutionOrcaOwnerInventory{TerminalLive: true, TaskLive: true}},
 		{name: "reuse_live_terminal", owner: port.ExecutionOrcaOwnerInventory{TerminalLive: true}},
@@ -66,7 +66,7 @@ func TestResumeVerticalDifferential(t *testing.T) {
 		{name: "confirm_actor_cwd_generation_lease_denials/confirm", request: func(request ExecutionResumeRequest) ExecutionResumeRequest { request.Confirm = false; return request }},
 		{name: "confirm_actor_cwd_generation_lease_denials/confirm_before_invalid_actor", request: func(request ExecutionResumeRequest) ExecutionResumeRequest {
 			request.Confirm = false
-			request.Actor = model.NativeActor{}
+			request.Actor = issueops.NativeActor{}
 			return request
 		}},
 		{name: "confirm_actor_cwd_generation_lease_denials/cwd", request: func(request ExecutionResumeRequest) ExecutionResumeRequest {
@@ -77,8 +77,8 @@ func TestResumeVerticalDifferential(t *testing.T) {
 			request.ExpectedGeneration++
 			return request
 		}},
-		{name: "confirm_actor_cwd_generation_lease_denials/lease", mutateRecord: func(record *IssueOpsRecord) {
-			record.Execution.Lease.Status = model.LeaseStatusReleased
+		{name: "confirm_actor_cwd_generation_lease_denials/lease", mutateRecord: func(record *issueops.IssueOpsRecord) {
+			record.Execution.Lease.Status = issueops.LeaseStatusReleased
 			record.Execution.Lease.ClaimTokenSHA256 = ""
 		}},
 		{name: "token_packet_prompt_manifest_tamper/token", mutateFiles: resumeDifferentialTamperToken},
@@ -188,7 +188,7 @@ func TestResumeVerticalDifferentialReceiptCASDrift(t *testing.T) {
 	}
 }
 
-func resumeDifferentialFixture(t *testing.T, mutate func(*IssueOpsRecord)) (string, IssueOpsRecord) {
+func resumeDifferentialFixture(t *testing.T, mutate func(*issueops.IssueOpsRecord)) (string, issueops.IssueOpsRecord) {
 	t.Helper()
 	stateRoot, record, _ := reseededOrcaCycle(t)
 	if mutate != nil {
@@ -200,7 +200,7 @@ func resumeDifferentialFixture(t *testing.T, mutate func(*IssueOpsRecord)) (stri
 	return stateRoot, record
 }
 
-func resumeDifferentialManifestFixture(t *testing.T, mutate func(*IssueOpsRecord)) (string, IssueOpsRecord) {
+func resumeDifferentialManifestFixture(t *testing.T, mutate func(*issueops.IssueOpsRecord)) (string, issueops.IssueOpsRecord) {
 	t.Helper()
 	stateRoot, record, _ := reseededOrcaCycleWithArtifacts(t, map[string]string{"plan": "# sealed plan\n"})
 	if mutate != nil {
@@ -225,7 +225,7 @@ func resumeDifferentialClone(t *testing.T, sourceRoot, id string) string {
 	return stateRoot
 }
 
-func runLegacyResumeDifferential(t *testing.T, stateRoot string, record IssueOpsRecord, request ExecutionResumeRequest, owner port.ExecutionOrcaOwnerInventory, testCase resumeDifferentialCase) resumeDifferentialObservation {
+func runLegacyResumeDifferential(t *testing.T, stateRoot string, record issueops.IssueOpsRecord, request ExecutionResumeRequest, owner port.ExecutionOrcaOwnerInventory, testCase resumeDifferentialCase) resumeDifferentialObservation {
 	t.Helper()
 	var stages []port.ExecutionOrcaIntentStage
 	var checkpoints []resumeDifferentialCheckpoint
@@ -330,7 +330,7 @@ func runVerticalResumeDifferential(t *testing.T, stateRoot, id string, request E
 	if marshalErr != nil {
 		t.Fatal(marshalErr)
 	}
-	var execution model.Execution
+	var execution issueops.Execution
 	if unmarshalErr := json.Unmarshal(data, &execution); unmarshalErr != nil {
 		t.Fatal(unmarshalErr)
 	}
@@ -524,14 +524,14 @@ func (e resumeDifferentialEffects) ApplyReceipt(ctx context.Context, state lease
 	return resumeDifferentialEffectState(next)
 }
 
-func resumeDifferentialCoreRecord(record leasecontract.Record) (IssueOpsRecord, error) {
+func resumeDifferentialCoreRecord(record leasecontract.Record) (issueops.IssueOpsRecord, error) {
 	data, err := json.Marshal(record)
 	if err != nil {
-		return IssueOpsRecord{}, err
+		return issueops.IssueOpsRecord{}, err
 	}
-	var coreRecord IssueOpsRecord
+	var coreRecord issueops.IssueOpsRecord
 	if err := json.Unmarshal(data, &coreRecord); err != nil {
-		return IssueOpsRecord{}, err
+		return issueops.IssueOpsRecord{}, err
 	}
 	return coreRecord, nil
 }
@@ -572,14 +572,14 @@ func (resumeDifferentialPathMatcher) Matches(left, right string) bool { return l
 
 var resumeDifferentialClock = func() time.Time { return time.Date(2026, time.July, 31, 2, 20, 0, 0, time.UTC) }
 
-func resumeDifferentialTamperToken(t *testing.T, record IssueOpsRecord) {
+func resumeDifferentialTamperToken(t *testing.T, record issueops.IssueOpsRecord) {
 	t.Helper()
 	if err := os.WriteFile(claimTokenPath(record), []byte("tampered\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func resumeDifferentialTamperPacket(t *testing.T, record IssueOpsRecord) {
+func resumeDifferentialTamperPacket(t *testing.T, record issueops.IssueOpsRecord) {
 	t.Helper()
 	path, _ := executionOwnerArtifactPaths(record)
 	if err := os.WriteFile(path, []byte("{}"), 0o600); err != nil {
@@ -587,7 +587,7 @@ func resumeDifferentialTamperPacket(t *testing.T, record IssueOpsRecord) {
 	}
 }
 
-func resumeDifferentialTamperPrompt(t *testing.T, record IssueOpsRecord) {
+func resumeDifferentialTamperPrompt(t *testing.T, record issueops.IssueOpsRecord) {
 	t.Helper()
 	_, path := executionOwnerArtifactPaths(record)
 	if err := os.WriteFile(path, []byte("tampered"), 0o600); err != nil {
@@ -595,7 +595,7 @@ func resumeDifferentialTamperPrompt(t *testing.T, record IssueOpsRecord) {
 	}
 }
 
-func resumeDifferentialTamperManifest(t *testing.T, record IssueOpsRecord) {
+func resumeDifferentialTamperManifest(t *testing.T, record issueops.IssueOpsRecord) {
 	t.Helper()
 	path := filepath.Join(record.Execution.Workspace.Root, IssueOpsArtifactDir, "plan.md")
 	if err := os.WriteFile(path, []byte("tampered plan\n"), 0o600); err != nil {

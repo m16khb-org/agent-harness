@@ -1,8 +1,12 @@
 package hookprompt
 
-import "strings"
+import (
+	"strings"
 
-func renderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpkeepEvent, profile *ProjectProfile, catalog string) string {
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
+)
+
+func renderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []lifecyclecontract.DocUpkeepEvent, profile *ProjectProfile, catalog string) string {
 	groups := map[string][]HookUserPromptHint{}
 	for _, h := range hints {
 		priority := h.Priority
@@ -35,7 +39,7 @@ func appendCompactWorktreeReminder(parts *[]string, repo string) {
 	}
 }
 
-func RenderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []DocUpkeepEvent, profile *ProjectProfile, catalog string) string {
+func RenderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []lifecyclecontract.DocUpkeepEvent, profile *ProjectProfile, catalog string) string {
 	return renderHookMCPHintContext(hints, pendingUpkeep, profile, catalog)
 }
 
@@ -63,7 +67,7 @@ func appendSecondaryHints(parts *[]string, hints []HookUserPromptHint) {
 	appendCompactHintGroup(parts, "secondary", hints)
 }
 
-func appendCompactPendingUpkeep(parts *[]string, events []DocUpkeepEvent) {
+func appendCompactPendingUpkeep(parts *[]string, events []lifecyclecontract.DocUpkeepEvent) {
 	if len(events) == 0 {
 		return
 	}
@@ -86,7 +90,7 @@ func appendCompactPendingUpkeep(parts *[]string, events []DocUpkeepEvent) {
 	appendContextLine(parts, "pending upkeep", strings.Join(items, "; "))
 }
 
-func AppendCompactPendingUpkeep(parts *[]string, events []DocUpkeepEvent) {
+func AppendCompactPendingUpkeep(parts *[]string, events []lifecyclecontract.DocUpkeepEvent) {
 	appendCompactPendingUpkeep(parts, events)
 }
 

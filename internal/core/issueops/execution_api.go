@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -63,7 +63,7 @@ type ExecutionActionRequest struct {
 	Action                string                               `json:"action"`
 	ID                    string                               `json:"id"`
 	Mode                  string                               `json:"mode,omitempty"`
-	Actor                 model.NativeActor                    `json:"actor,omitempty"`
+	Actor                 issueops.NativeActor                 `json:"actor,omitempty"`
 	CWD                   string                               `json:"cwd,omitempty"`
 	OwnerHost             string                               `json:"owner_host,omitempty"`
 	OwnerModel            string                               `json:"owner_model,omitempty"`

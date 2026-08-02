@@ -1,12 +1,14 @@
 package cleanupstatus
 
 import (
-	"agent-harness/internal/core/issueops/model"
+	"os"
+	"strings"
+
+	model "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops/remote"
 	"agent-harness/internal/core/issueops/stringlist"
 	"agent-harness/internal/core/preflight"
-	"os"
-	"strings"
+	issueopsdomain "agent-harness/internal/domain/issueops"
 )
 
 type Store struct {
@@ -55,7 +57,7 @@ func ForRecord(record model.IssueOpsRecord, req model.IssueOpsCleanupStatusReque
 	if record.RemoteArtifact != nil {
 		status.RemoteArtifactURL = strings.TrimSpace(record.RemoteArtifact.URL)
 	}
-	if model.IssueOpsPhaseRank(record.Phase) < model.IssueOpsPhaseRank(model.IssueOpsPhasePR) {
+	if issueopsdomain.IssueOpsPhaseRank(record.Phase) < issueopsdomain.IssueOpsPhaseRank(model.IssueOpsPhasePR) {
 		status.Missing = append(status.Missing, "pr_phase")
 	}
 	status.Missing = append(status.Missing, RemoteArtifactMissing(record)...)

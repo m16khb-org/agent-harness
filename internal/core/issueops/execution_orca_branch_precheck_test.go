@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/adapter/gitworktree"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
@@ -42,7 +43,7 @@ func createLocalBranch(t *testing.T, repo, branch string) {
 //
 // 그 충돌 자체는 #152가 다룬다. Orca 경로의 다른 계약(intent 봉인, CAS, reconcile)을
 // 검증하는 테스트는 이름이 비어 있는 상태를 전제해야 하므로 여기서 그 ref를 지운다.
-func orcaPrepareRecord(t *testing.T) (string, IssueOpsRecord) {
+func orcaPrepareRecord(t *testing.T) (string, issueops.IssueOpsRecord) {
 	t.Helper()
 	stateRoot, record := executionPrepareRecord(t)
 	if code, _, stderr := preflight.GitCmd(record.Repo, "update-ref", "-d", "refs/remotes/origin/"+record.Branch); code != 0 {

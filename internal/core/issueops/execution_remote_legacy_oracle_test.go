@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
@@ -151,8 +151,8 @@ func TestLegacyRemotePublicationV1Goldens(t *testing.T) {
 // publication vertical.
 func legacyCreateRemotePullRequestWithOperationID(
 	stateRoot string,
-	record IssueOpsRecord,
-	actor model.NativeActor,
+	record issueops.IssueOpsRecord,
+	actor issueops.NativeActor,
 	cwd string,
 	expectedGeneration uint64,
 	providerReq port.IssueProviderCreatePullRequestRequest,
@@ -202,7 +202,7 @@ func legacyCreateRemotePullRequestWithOperationID(
 	return result, nil
 }
 
-func legacyReconcileRemotePullRequest(ctx context.Context, stateRoot string, record IssueOpsRecord, deps legacyRemotePullRequestDependencies) (result ExecutionReconcileResult, err error) {
+func legacyReconcileRemotePullRequest(ctx context.Context, stateRoot string, record issueops.IssueOpsRecord, deps legacyRemotePullRequestDependencies) (result ExecutionReconcileResult, err error) {
 	inspected := false
 	defer func() { result.ExternalStateInspected = inspected }()
 
@@ -288,31 +288,31 @@ func legacyReconcileRemotePullRequest(ctx context.Context, stateRoot string, rec
 	return result, nil
 }
 
-func legacyRemotePublicationV1Fixture(t *testing.T) (string, IssueOpsRecord, model.NativeActor, port.IssueProviderCreatePullRequestRequest) {
+func legacyRemotePublicationV1Fixture(t *testing.T) (string, issueops.IssueOpsRecord, issueops.NativeActor, port.IssueProviderCreatePullRequestRequest) {
 	t.Helper()
 	stateRoot := t.TempDir()
-	process := model.NativeProcessReceipt{
+	process := issueops.NativeProcessReceipt{
 		PID:        4242,
 		StartedAt:  "2026-08-01T00:00:00Z",
 		Executable: "/usr/local/bin/codex",
 	}
-	actor := model.NativeActor{
+	actor := issueops.NativeActor{
 		Host:            "codex",
 		SessionID:       "publication-oracle-session",
 		AgentID:         "publication-oracle-agent",
 		SessionProcess:  &process,
-		ProcessAncestry: []model.NativeProcessReceipt{process},
+		ProcessAncestry: []issueops.NativeProcessReceipt{process},
 	}
-	record := IssueOpsRecord{
-		SchemaVersion: model.IssueOpsSchemaVersion,
+	record := issueops.IssueOpsRecord{
+		SchemaVersion: issueops.IssueOpsSchemaVersion,
 		ID:            "io-publication-oracle",
 		Repo:          "/fixture/agent-harness",
 		Branch:        "195-publication-oracle",
-		Phase:         model.IssueOpsPhasePR,
+		Phase:         issueops.IssueOpsPhasePR,
 		WorktreePath:  "/fixture/agent-harness.worktrees/195-publication-oracle",
-		Execution: &model.Execution{
-			Mode: model.ExecutionModeDirect,
-			Workspace: model.Workspace{
+		Execution: &issueops.Execution{
+			Mode: issueops.ExecutionModeDirect,
+			Workspace: issueops.Workspace{
 				SourceRoot: "/fixture/agent-harness",
 				Root:       "/fixture/agent-harness.worktrees/195-publication-oracle",
 				Branch:     "195-publication-oracle",
@@ -320,9 +320,9 @@ func legacyRemotePublicationV1Fixture(t *testing.T) (string, IssueOpsRecord, mod
 				Driver:     "git",
 				LinkedAt:   "2026-08-01T00:00:00Z",
 			},
-			Lease: model.WriteLease{
+			Lease: issueops.WriteLease{
 				Generation: 1,
-				Status:     model.LeaseStatusActive,
+				Status:     issueops.LeaseStatusActive,
 				Holder:     &actor,
 				ClaimedAt:  "2026-08-01T00:00:00Z",
 			},
@@ -384,7 +384,7 @@ func assertLegacyPublicationGolden(t *testing.T, name string, got []byte) {
 type legacyRemotePublicationTransition struct {
 	recordRaw []byte
 	intentRaw []byte
-	record    IssueOpsRecord
+	record    issueops.IssueOpsRecord
 }
 
 func runLegacyRemotePublicationTransition(t *testing.T, transition string) legacyRemotePublicationTransition {

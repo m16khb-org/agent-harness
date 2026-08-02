@@ -10,13 +10,13 @@ import (
 	"sync"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
 
 type claimableExecutionFixture struct {
-	record    IssueOpsRecord
+	record    issueops.IssueOpsRecord
 	worktree  string
 	tokenPath string
 }
@@ -62,7 +62,7 @@ func TestExecutionConcurrentClaimsChooseOneLifecyclePerSession(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if record.Execution.Lease.Status == model.LeaseStatusActive {
+		if record.Execution.Lease.Status == issueops.LeaseStatusActive {
 			active++
 		}
 	}
@@ -76,7 +76,7 @@ func TestExecutionCompetingClaimsChooseOneHolder(t *testing.T) {
 	fixture := newClaimableExecutionFixture(t, stateRoot, "69-competing")
 	start := make(chan struct{})
 	errs := make(chan error, 2)
-	for _, actor := range []model.NativeActor{
+	for _, actor := range []issueops.NativeActor{
 		executionActor("codex", "session-a"),
 		executionActor("claude", "session-b"),
 	} {
@@ -104,7 +104,7 @@ func TestExecutionCompetingClaimsChooseOneHolder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if record.Execution.Lease.Status != model.LeaseStatusActive || record.Execution.Lease.Holder == nil {
+	if record.Execution.Lease.Status != issueops.LeaseStatusActive || record.Execution.Lease.Holder == nil {
 		t.Fatalf("claim winner was not persisted: %#v", record.Execution.Lease)
 	}
 }
@@ -420,9 +420,9 @@ func TestExecutionFinalizeRejectsWorkspaceCWDOrWritableFileProcess(t *testing.T)
 			if err != nil {
 				t.Fatal(err)
 			}
-			requester := model.NativeActor{
+			requester := issueops.NativeActor{
 				Host: "claude", SessionID: "process-audit-requester-" + testCase.name,
-				SessionProcess: &requesterReceipt, ProcessAncestry: []model.NativeProcessReceipt{requesterReceipt},
+				SessionProcess: &requesterReceipt, ProcessAncestry: []issueops.NativeProcessReceipt{requesterReceipt},
 			}
 			preview, err := ReplaceExecution(stateRoot, ExecutionReplaceRequest{
 				ID: fixture.record.ID, Action: ExecutionReplacePreview, ExpectedGeneration: 1, Actor: requester, CWD: fixture.record.Repo,
@@ -454,9 +454,9 @@ func TestExecutionOrcaFinalizeRequiresTerminalAndTaskQuiescence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record.Execution.Mode = model.ExecutionModeOrca
+	record.Execution.Mode = issueops.ExecutionModeOrca
 	record.Execution.Workspace.Driver = "orca"
-	record.Execution.Orca = &model.OrcaBinding{
+	record.Execution.Orca = &issueops.OrcaBinding{
 		RuntimeID: "runtime-1", RepoID: "repo-1", WorktreeID: "worktree-1", OwnerHost: "claude", OwnerModel: "model-1",
 		TaskID: "task-1", DispatchID: "dispatch-1", TerminalPTYID: "pty-1",
 	}
@@ -508,22 +508,22 @@ func newClaimableExecutionFixture(t *testing.T, stateRoot, branch string) claima
 		t.Fatalf("git worktree add: %s", stderr)
 	}
 	baseHead := strings.TrimSpace(preflight.GitOut(worktree, "rev-parse", "HEAD"))
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
 	record.WorktreePath = worktree
-	record.BranchPrepare = &IssueOpsBranchPrepare{
+	record.BranchPrepare = &issueops.IssueOpsBranchPrepare{
 		Provider: "github", IssueURL: "https://github.com/example/agent-harness/issues/69",
 		Branch: branch, BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true,
 	}
-	record.Execution = &model.Execution{
-		Mode: model.ExecutionModeDirect,
-		Workspace: model.Workspace{
+	record.Execution = &issueops.Execution{
+		Mode: issueops.ExecutionModeDirect,
+		Workspace: issueops.Workspace{
 			SourceRoot: repo, Root: worktree, Branch: branch, BaseHead: baseHead,
 			Driver: "git", LinkedAt: "2026-07-22T00:00:00Z",
 		},
-		Lease: model.WriteLease{Generation: 1, Status: model.LeaseStatusClaimable},
+		Lease: issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusClaimable},
 	}
 	token, tokenPath, err := createClaimToken(record)
 	if err != nil {
@@ -536,26 +536,26 @@ func newClaimableExecutionFixture(t *testing.T, stateRoot, branch string) claima
 	return claimableExecutionFixture{record: record, worktree: worktree, tokenPath: tokenPath}
 }
 
-func executionActor(host, sessionID string) model.NativeActor {
+func executionActor(host, sessionID string) issueops.NativeActor {
 	receipt, err := ObserveNativeProcessReceipt(os.Getpid())
 	if err != nil {
 		panic(err)
 	}
-	return model.NativeActor{
+	return issueops.NativeActor{
 		Host: host, SessionID: sessionID,
 		SessionProcess:  &receipt,
-		ProcessAncestry: []model.NativeProcessReceipt{receipt},
+		ProcessAncestry: []issueops.NativeProcessReceipt{receipt},
 	}
 }
 
 func activateExecutionFixtureWithDeadHolder(t *testing.T, stateRoot string, fixture *claimableExecutionFixture) {
 	t.Helper()
 	_ = os.Remove(fixture.tokenPath)
-	fixture.record.Execution.Lease = model.WriteLease{
-		Generation: 1, Status: model.LeaseStatusActive, ClaimedAt: "2026-07-22T00:00:00Z",
-		Holder: &model.NativeActor{
+	fixture.record.Execution.Lease = issueops.WriteLease{
+		Generation: 1, Status: issueops.LeaseStatusActive, ClaimedAt: "2026-07-22T00:00:00Z",
+		Holder: &issueops.NativeActor{
 			Host: "codex", SessionID: "dead-session",
-			SessionProcess: &model.NativeProcessReceipt{
+			SessionProcess: &issueops.NativeProcessReceipt{
 				PID: 999999, StartedAt: "2026-07-22T00:00:00Z", Executable: "codex",
 			},
 		},

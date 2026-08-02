@@ -8,22 +8,24 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/issueops/delegation"
 	"context"
+
+	"agent-harness/internal/contract/issueops"
+	"agent-harness/internal/core/issueops/delegation"
 )
 
-func StartIssueOpsChild(stateRoot string, req IssueOpsChildStartRequest) (IssueOpsChildStartResult, error) {
+func StartIssueOpsChild(stateRoot string, req issueops.IssueOpsChildStartRequest) (issueops.IssueOpsChildStartResult, error) {
 	return startIssueOpsChild(stateRoot, req, nil)
 }
 
-func StartIssueOpsChildWithActor(stateRoot string, req IssueOpsChildStartRequest, actor IssueOpsActor) (IssueOpsChildStartResult, error) {
+func StartIssueOpsChildWithActor(stateRoot string, req issueops.IssueOpsChildStartRequest, actor IssueOpsActor) (issueops.IssueOpsChildStartResult, error) {
 	return startIssueOpsChild(stateRoot, req, &actor)
 }
 
-func startIssueOpsChild(stateRoot string, req IssueOpsChildStartRequest, actor *IssueOpsActor) (IssueOpsChildStartResult, error) {
+func startIssueOpsChild(stateRoot string, req issueops.IssueOpsChildStartRequest, actor *IssueOpsActor) (issueops.IssueOpsChildStartResult, error) {
 	parentID := strings.TrimSpace(req.ParentID)
 	if parentID == "" {
-		return IssueOpsChildStartResult{OK: false}, fmt.Errorf("parent_id is required")
+		return issueops.IssueOpsChildStartResult{OK: false}, fmt.Errorf("parent_id is required")
 	}
 	req.ParentID = parentID
 	req.Branch = strings.TrimSpace(req.Branch)
@@ -32,33 +34,33 @@ func startIssueOpsChild(stateRoot string, req IssueOpsChildStartRequest, actor *
 	req.ParentPlanPath = strings.TrimSpace(req.ParentPlanPath)
 	req.ChildIssueURL = strings.TrimSpace(req.ChildIssueURL)
 	if req.Branch == "" {
-		return IssueOpsChildStartResult{OK: false}, fmt.Errorf("branch is required")
+		return issueops.IssueOpsChildStartResult{OK: false}, fmt.Errorf("branch is required")
 	}
 	if req.TaskScope == "" {
-		return IssueOpsChildStartResult{OK: false}, fmt.Errorf("task_scope is required")
+		return issueops.IssueOpsChildStartResult{OK: false}, fmt.Errorf("task_scope is required")
 	}
 	if len(cleanIssueOpsTextValues(req.AcceptanceCriteria)) == 0 {
-		return IssueOpsChildStartResult{OK: false}, fmt.Errorf("acceptance_criteria requires at least one entry")
+		return issueops.IssueOpsChildStartResult{OK: false}, fmt.Errorf("acceptance_criteria requires at least one entry")
 	}
 
 	parent, err := readIssueOpsChildParentForStart(stateRoot, req, actor)
 	if err != nil {
-		return IssueOpsChildStartResult{OK: false}, err
+		return issueops.IssueOpsChildStartResult{OK: false}, err
 	}
-	child, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: parent.Repo, Branch: req.Branch})
+	child, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: parent.Repo, Branch: req.Branch})
 	if err != nil {
-		return IssueOpsChildStartResult{OK: false}, err
+		return issueops.IssueOpsChildStartResult{OK: false}, err
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	child, err = stampIssueOpsChildDelegation(stateRoot, parent, child.ID, req, now)
 	if err != nil {
-		return IssueOpsChildStartResult{OK: false}, err
+		return issueops.IssueOpsChildStartResult{OK: false}, err
 	}
 	ref, err := appendIssueOpsChildRef(stateRoot, parent.ID, child, req, now, actor)
 	if err != nil {
-		return IssueOpsChildStartResult{OK: false}, err
+		return issueops.IssueOpsChildStartResult{OK: false}, err
 	}
-	result := IssueOpsChildStartResult{
+	result := issueops.IssueOpsChildStartResult{
 		OK:        true,
 		ParentID:  parent.ID,
 		Child:     child,
@@ -79,8 +81,8 @@ func startIssueOpsChild(stateRoot string, req IssueOpsChildStartRequest, actor *
 	return result, nil
 }
 
-func readIssueOpsChildParentForStart(stateRoot string, req IssueOpsChildStartRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var parent IssueOpsRecord
+func readIssueOpsChildParentForStart(stateRoot string, req issueops.IssueOpsChildStartRequest, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var parent issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, req.ParentID, func(context.Context) error {
 		var readErr error
 		parent, readErr = ReadIssueOps(stateRoot, req.ParentID)
@@ -98,8 +100,8 @@ func readIssueOpsChildParentForStart(stateRoot string, req IssueOpsChildStartReq
 	return parent, err
 }
 
-func stampIssueOpsChildDelegation(stateRoot string, parent IssueOpsRecord, childID string, req IssueOpsChildStartRequest, now string) (IssueOpsRecord, error) {
-	var child IssueOpsRecord
+func stampIssueOpsChildDelegation(stateRoot string, parent issueops.IssueOpsRecord, childID string, req issueops.IssueOpsChildStartRequest, now string) (issueops.IssueOpsRecord, error) {
+	var child issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, childID, func(context.Context) error {
 		var readErr error
 		child, readErr = ReadIssueOps(stateRoot, childID)
@@ -114,7 +116,7 @@ func stampIssueOpsChildDelegation(stateRoot string, parent IssueOpsRecord, child
 	return child, err
 }
 
-func appendIssueOpsChildRef(stateRoot, parentID string, child IssueOpsRecord, req IssueOpsChildStartRequest, now string, actor *IssueOpsActor) (IssueOpsChildCycleRef, error) {
+func appendIssueOpsChildRef(stateRoot, parentID string, child issueops.IssueOpsRecord, req issueops.IssueOpsChildStartRequest, now string, actor *IssueOpsActor) (issueops.IssueOpsChildCycleRef, error) {
 	ref := delegation.ParentRef(child, req, now)
 	err := withIssueOpsLock(context.Background(), stateRoot, parentID, func(context.Context) error {
 		parent, readErr := ReadIssueOps(stateRoot, parentID)
@@ -137,32 +139,32 @@ func appendIssueOpsChildRef(stateRoot, parentID string, child IssueOpsRecord, re
 	return ref, err
 }
 
-func IssueOpsChildStatus(stateRoot, parentID string, repair bool) (IssueOpsChildStatusResult, error) {
+func IssueOpsChildStatus(stateRoot, parentID string, repair bool) (issueops.IssueOpsChildStatusResult, error) {
 	return issueOpsChildStatus(stateRoot, parentID, repair, nil)
 }
 
-func IssueOpsChildStatusWithActor(stateRoot, parentID string, repair bool, actor IssueOpsActor) (IssueOpsChildStatusResult, error) {
+func IssueOpsChildStatusWithActor(stateRoot, parentID string, repair bool, actor IssueOpsActor) (issueops.IssueOpsChildStatusResult, error) {
 	return issueOpsChildStatus(stateRoot, parentID, repair, &actor)
 }
 
-func issueOpsChildStatus(stateRoot, parentID string, repair bool, actor *IssueOpsActor) (IssueOpsChildStatusResult, error) {
+func issueOpsChildStatus(stateRoot, parentID string, repair bool, actor *IssueOpsActor) (issueops.IssueOpsChildStatusResult, error) {
 	parentID = strings.TrimSpace(parentID)
 	if parentID == "" {
-		return IssueOpsChildStatusResult{OK: false}, fmt.Errorf("parent_id is required")
+		return issueops.IssueOpsChildStatusResult{OK: false}, fmt.Errorf("parent_id is required")
 	}
-	var parent IssueOpsRecord
+	var parent issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, parentID, func(context.Context) error {
 		var readErr error
 		parent, readErr = ReadIssueOps(stateRoot, parentID)
 		return readErr
 	})
 	if err != nil {
-		return IssueOpsChildStatusResult{OK: false, ParentID: parentID}, err
+		return issueops.IssueOpsChildStatusResult{OK: false, ParentID: parentID}, err
 	}
 
 	scanned, err := scanIssueOpsChildrenForParent(stateRoot, parent)
 	if err != nil {
-		return IssueOpsChildStatusResult{OK: false, ParentID: parent.ID}, err
+		return issueops.IssueOpsChildStatusResult{OK: false, ParentID: parent.ID}, err
 	}
 	result := buildIssueOpsChildStatus(parent, scanned)
 	if repair {
@@ -176,37 +178,37 @@ func issueOpsChildStatus(stateRoot, parentID string, repair bool, actor *IssueOp
 	return result, nil
 }
 
-func AcceptIssueOpsChild(stateRoot, parentID, childID string, evidence []string) (IssueOpsChildValidationResult, error) {
+func AcceptIssueOpsChild(stateRoot, parentID, childID string, evidence []string) (issueops.IssueOpsChildValidationResult, error) {
 	return acceptIssueOpsChild(stateRoot, parentID, childID, evidence, nil)
 }
 
-func AcceptIssueOpsChildWithActor(stateRoot, parentID, childID string, evidence []string, actor IssueOpsActor) (IssueOpsChildValidationResult, error) {
+func AcceptIssueOpsChildWithActor(stateRoot, parentID, childID string, evidence []string, actor IssueOpsActor) (issueops.IssueOpsChildValidationResult, error) {
 	return acceptIssueOpsChild(stateRoot, parentID, childID, evidence, &actor)
 }
 
-func acceptIssueOpsChild(stateRoot, parentID, childID string, evidence []string, actor *IssueOpsActor) (IssueOpsChildValidationResult, error) {
+func acceptIssueOpsChild(stateRoot, parentID, childID string, evidence []string, actor *IssueOpsActor) (issueops.IssueOpsChildValidationResult, error) {
 	evidence = cleanIssueOpsTextValues(evidence)
 	if len(evidence) == 0 {
-		return IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: strings.TrimSpace(childID)}, fmt.Errorf("validation_evidence is required")
+		return issueops.IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: strings.TrimSpace(childID)}, fmt.Errorf("validation_evidence is required")
 	}
 	child, err := readIssueOpsChildForValidation(stateRoot, parentID, childID)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return acceptArchivedIssueOpsChild(stateRoot, parentID, childID, evidence, actor)
 		}
-		return IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: strings.TrimSpace(childID)}, err
+		return issueops.IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: strings.TrimSpace(childID)}, err
 	}
 	if child.Phase != IssueOpsPhaseDone {
-		return IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: child.ID}, fmt.Errorf("child_not_done: %s", child.ID)
+		return issueops.IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: child.ID}, fmt.Errorf("child_not_done: %s", child.ID)
 	}
 	return recordIssueOpsChildVerdict(stateRoot, parentID, child, "accepted", "", evidence, actor)
 }
 
-func acceptArchivedIssueOpsChild(stateRoot, parentID, childID string, evidence []string, actor *IssueOpsActor) (IssueOpsChildValidationResult, error) {
+func acceptArchivedIssueOpsChild(stateRoot, parentID, childID string, evidence []string, actor *IssueOpsActor) (issueops.IssueOpsChildValidationResult, error) {
 	parentID = strings.TrimSpace(parentID)
 	childID = strings.TrimSpace(childID)
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	var updated IssueOpsChildCycleRef
+	var updated issueops.IssueOpsChildCycleRef
 	err := withIssueOpsLock(context.Background(), stateRoot, parentID, func(context.Context) error {
 		parent, readErr := ReadIssueOps(stateRoot, parentID)
 		if readErr != nil {
@@ -230,57 +232,57 @@ func acceptArchivedIssueOpsChild(stateRoot, parentID, childID string, evidence [
 		return fmt.Errorf("child_not_indexed: %s", childID)
 	})
 	if err != nil {
-		return IssueOpsChildValidationResult{OK: false, ParentID: parentID, ChildID: childID}, err
+		return issueops.IssueOpsChildValidationResult{OK: false, ParentID: parentID, ChildID: childID}, err
 	}
-	return IssueOpsChildValidationResult{OK: true, ParentID: parentID, ChildID: childID, ParentRef: updated}, nil
+	return issueops.IssueOpsChildValidationResult{OK: true, ParentID: parentID, ChildID: childID, ParentRef: updated}, nil
 }
 
-func RejectIssueOpsChild(stateRoot, parentID, childID, reason string, evidence []string) (IssueOpsChildValidationResult, error) {
+func RejectIssueOpsChild(stateRoot, parentID, childID, reason string, evidence []string) (issueops.IssueOpsChildValidationResult, error) {
 	return rejectIssueOpsChild(stateRoot, parentID, childID, reason, evidence, nil)
 }
 
-func RejectIssueOpsChildWithActor(stateRoot, parentID, childID, reason string, evidence []string, actor IssueOpsActor) (IssueOpsChildValidationResult, error) {
+func RejectIssueOpsChildWithActor(stateRoot, parentID, childID, reason string, evidence []string, actor IssueOpsActor) (issueops.IssueOpsChildValidationResult, error) {
 	return rejectIssueOpsChild(stateRoot, parentID, childID, reason, evidence, &actor)
 }
 
-func rejectIssueOpsChild(stateRoot, parentID, childID, reason string, evidence []string, actor *IssueOpsActor) (IssueOpsChildValidationResult, error) {
+func rejectIssueOpsChild(stateRoot, parentID, childID, reason string, evidence []string, actor *IssueOpsActor) (issueops.IssueOpsChildValidationResult, error) {
 	reason = strings.TrimSpace(reason)
 	if len(reason) < 10 {
-		return IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: strings.TrimSpace(childID)}, fmt.Errorf("reason must be at least 10 characters")
+		return issueops.IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: strings.TrimSpace(childID)}, fmt.Errorf("reason must be at least 10 characters")
 	}
 	child, err := readIssueOpsChildForValidation(stateRoot, parentID, childID)
 	if err != nil {
-		return IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: strings.TrimSpace(childID)}, err
+		return issueops.IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: strings.TrimSpace(childID)}, err
 	}
 	return recordIssueOpsChildVerdict(stateRoot, parentID, child, "rejected", reason, cleanIssueOpsTextValues(evidence), actor)
 }
 
-func DropIssueOpsChild(stateRoot, parentID, childID, reason string) (IssueOpsChildValidationResult, error) {
+func DropIssueOpsChild(stateRoot, parentID, childID, reason string) (issueops.IssueOpsChildValidationResult, error) {
 	return dropIssueOpsChild(stateRoot, parentID, childID, reason, nil)
 }
 
-func DropIssueOpsChildWithActor(stateRoot, parentID, childID, reason string, actor IssueOpsActor) (IssueOpsChildValidationResult, error) {
+func DropIssueOpsChildWithActor(stateRoot, parentID, childID, reason string, actor IssueOpsActor) (issueops.IssueOpsChildValidationResult, error) {
 	return dropIssueOpsChild(stateRoot, parentID, childID, reason, &actor)
 }
 
-func dropIssueOpsChild(stateRoot, parentID, childID, reason string, actor *IssueOpsActor) (IssueOpsChildValidationResult, error) {
+func dropIssueOpsChild(stateRoot, parentID, childID, reason string, actor *IssueOpsActor) (issueops.IssueOpsChildValidationResult, error) {
 	reason = strings.TrimSpace(reason)
 	if len(reason) < 10 {
-		return IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: strings.TrimSpace(childID)}, fmt.Errorf("reason must be at least 10 characters")
+		return issueops.IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: strings.TrimSpace(childID)}, fmt.Errorf("reason must be at least 10 characters")
 	}
 	child, err := readIssueOpsChildForValidation(stateRoot, parentID, childID)
 	if err != nil {
-		return IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: strings.TrimSpace(childID)}, err
+		return issueops.IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: strings.TrimSpace(childID)}, err
 	}
 	return recordIssueOpsChildVerdict(stateRoot, parentID, child, "dropped", reason, nil, actor)
 }
 
-func scanIssueOpsChildrenForParent(stateRoot string, parent IssueOpsRecord) (map[string]IssueOpsRecord, error) {
+func scanIssueOpsChildrenForParent(stateRoot string, parent issueops.IssueOpsRecord) (map[string]issueops.IssueOpsRecord, error) {
 	ids, err := ListIssueOpsIDs(stateRoot)
 	if err != nil {
 		return nil, err
 	}
-	children := map[string]IssueOpsRecord{}
+	children := map[string]issueops.IssueOpsRecord{}
 	for _, id := range ids {
 		child, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
@@ -297,8 +299,8 @@ func scanIssueOpsChildrenForParent(stateRoot string, parent IssueOpsRecord) (map
 	return children, nil
 }
 
-func buildIssueOpsChildStatus(parent IssueOpsRecord, scanned map[string]IssueOpsRecord) IssueOpsChildStatusResult {
-	result := IssueOpsChildStatusResult{OK: true, ParentID: parent.ID}
+func buildIssueOpsChildStatus(parent issueops.IssueOpsRecord, scanned map[string]issueops.IssueOpsRecord) issueops.IssueOpsChildStatusResult {
+	result := issueops.IssueOpsChildStatusResult{OK: true, ParentID: parent.ID}
 	seen := map[string]bool{}
 	for _, ref := range parent.ChildCycles {
 		entry := childStatusEntryFromRef(ref)
@@ -335,7 +337,7 @@ func buildIssueOpsChildStatus(parent IssueOpsRecord, scanned map[string]IssueOps
 	return result
 }
 
-func repairIssueOpsChildIndex(stateRoot, parentID string, scanned map[string]IssueOpsRecord, actor *IssueOpsActor) ([]string, error) {
+func repairIssueOpsChildIndex(stateRoot, parentID string, scanned map[string]issueops.IssueOpsRecord, actor *IssueOpsActor) ([]string, error) {
 	appended := []string{}
 	err := withIssueOpsLock(context.Background(), stateRoot, parentID, func(context.Context) error {
 		parent, readErr := ReadIssueOps(stateRoot, parentID)
@@ -370,23 +372,23 @@ func repairIssueOpsChildIndex(stateRoot, parentID string, scanned map[string]Iss
 	return appended, err
 }
 
-func readIssueOpsChildForValidation(stateRoot, parentID, childID string) (IssueOpsRecord, error) {
+func readIssueOpsChildForValidation(stateRoot, parentID, childID string) (issueops.IssueOpsRecord, error) {
 	parentID = strings.TrimSpace(parentID)
 	childID = strings.TrimSpace(childID)
 	if parentID == "" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("parent_id is required")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("parent_id is required")
 	}
 	if childID == "" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("child_id is required")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("child_id is required")
 	}
-	var child IssueOpsRecord
+	var child issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, childID, func(context.Context) error {
 		var readErr error
 		child, readErr = ReadIssueOps(stateRoot, childID)
 		return readErr
 	})
 	if err != nil {
-		return IssueOpsRecord{OK: false, ID: childID}, err
+		return issueops.IssueOpsRecord{OK: false, ID: childID}, err
 	}
 	if child.Delegation == nil || strings.TrimSpace(child.Delegation.ParentCycleID) != parentID {
 		return child, fmt.Errorf("child_parent_mismatch: %s", childID)
@@ -394,9 +396,9 @@ func readIssueOpsChildForValidation(stateRoot, parentID, childID string) (IssueO
 	return child, nil
 }
 
-func recordIssueOpsChildVerdict(stateRoot, parentID string, child IssueOpsRecord, verdict, reason string, evidence []string, actor *IssueOpsActor) (IssueOpsChildValidationResult, error) {
+func recordIssueOpsChildVerdict(stateRoot, parentID string, child issueops.IssueOpsRecord, verdict, reason string, evidence []string, actor *IssueOpsActor) (issueops.IssueOpsChildValidationResult, error) {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	var updated IssueOpsChildCycleRef
+	var updated issueops.IssueOpsChildCycleRef
 	err := withIssueOpsLock(context.Background(), stateRoot, strings.TrimSpace(parentID), func(context.Context) error {
 		parent, readErr := ReadIssueOps(stateRoot, parentID)
 		if readErr != nil {
@@ -433,13 +435,13 @@ func recordIssueOpsChildVerdict(stateRoot, parentID string, child IssueOpsRecord
 		return writeErr
 	})
 	if err != nil {
-		return IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: child.ID}, err
+		return issueops.IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: child.ID}, err
 	}
-	return IssueOpsChildValidationResult{OK: true, ParentID: strings.TrimSpace(parentID), ChildID: child.ID, ParentRef: updated}, nil
+	return issueops.IssueOpsChildValidationResult{OK: true, ParentID: strings.TrimSpace(parentID), ChildID: child.ID, ParentRef: updated}, nil
 }
 
-func childStatusEntryFromRef(ref IssueOpsChildCycleRef) IssueOpsChildStatusEntry {
-	entry := IssueOpsChildStatusEntry{
+func childStatusEntryFromRef(ref issueops.IssueOpsChildCycleRef) issueops.IssueOpsChildStatusEntry {
+	entry := issueops.IssueOpsChildStatusEntry{
 		CycleID:            ref.CycleID,
 		Branch:             ref.Branch,
 		Title:              ref.Title,
@@ -459,19 +461,19 @@ func childStatusEntryFromRef(ref IssueOpsChildCycleRef) IssueOpsChildStatusEntry
 
 // issueOpsChildRefHasAcceptedCleanupReceipt는 done child에만 발급되는 accepted
 // parent receipt로 cleanup 이후의 정상 레코드 부재를 판정한다.
-func issueOpsChildRefHasAcceptedCleanupReceipt(ref IssueOpsChildCycleRef) bool {
+func issueOpsChildRefHasAcceptedCleanupReceipt(ref issueops.IssueOpsChildCycleRef) bool {
 	return strings.TrimSpace(ref.ValidationVerdict) == "accepted" &&
 		strings.TrimSpace(ref.ValidatedAt) != "" &&
 		len(ref.ValidationEvidence) > 0
 }
 
-func childStatusEntryFromChild(child IssueOpsRecord) IssueOpsChildStatusEntry {
-	entry := IssueOpsChildStatusEntry{CycleID: child.ID}
+func childStatusEntryFromChild(child issueops.IssueOpsRecord) issueops.IssueOpsChildStatusEntry {
+	entry := issueops.IssueOpsChildStatusEntry{CycleID: child.ID}
 	mergeChildStatusRecord(&entry, child)
 	return entry
 }
 
-func mergeChildStatusRecord(entry *IssueOpsChildStatusEntry, child IssueOpsRecord) {
+func mergeChildStatusRecord(entry *issueops.IssueOpsChildStatusEntry, child issueops.IssueOpsRecord) {
 	entry.CycleID = child.ID
 	entry.Branch = child.Branch
 	entry.Phase = child.Phase
@@ -482,8 +484,8 @@ func mergeChildStatusRecord(entry *IssueOpsChildStatusEntry, child IssueOpsRecor
 	}
 }
 
-func parentRefFromChild(child IssueOpsRecord) IssueOpsChildCycleRef {
-	ref := IssueOpsChildCycleRef{
+func parentRefFromChild(child issueops.IssueOpsRecord) issueops.IssueOpsChildCycleRef {
+	ref := issueops.IssueOpsChildCycleRef{
 		CycleID:   child.ID,
 		Branch:    child.Branch,
 		Title:     child.Branch,

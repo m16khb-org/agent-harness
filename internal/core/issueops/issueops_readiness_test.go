@@ -6,13 +6,14 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops/implementation"
 	"agent-harness/internal/core/preflight"
 )
 
 func TestIssueOpsDoneRequiresPRPhase(t *testing.T) {
 	stateRoot := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "1-demo"})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: "/repo/example", Branch: "1-demo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,7 +23,7 @@ func TestIssueOpsDoneRequiresPRPhase(t *testing.T) {
 }
 
 func TestIssueOpsImplementationReadinessRejectsPersistedWeakDesignReview(t *testing.T) {
-	record := IssueOpsRecord{
+	record := issueops.IssueOpsRecord{
 		OK:            true,
 		Repo:          "/repo/example",
 		Branch:        "1-demo",
@@ -31,7 +32,7 @@ func TestIssueOpsImplementationReadinessRejectsPersistedWeakDesignReview(t *test
 		WorktreePath:  "/repo/example.worktrees/1-demo",
 		Intent:        issueOpsIntentContractForTest(),
 		DesignReview:  issueOpsWeakApprovedDesignReviewForTest(),
-		BranchPrepare: &IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/example/repo/issues/1", Branch: "1-demo", BaseBranch: "main", LinkVerified: true},
+		BranchPrepare: &issueops.IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/example/repo/issues/1", Branch: "1-demo", BaseBranch: "main", LinkVerified: true},
 	}
 
 	ready := IssueOpsImplementationReadiness(record)
@@ -52,7 +53,7 @@ func TestImplementGateDoesNotRequireCodeGraph(t *testing.T) {
 	planPath := filepath.Join(worktree, "plans/demo.md")
 	writeIssueOpsFile(t, worktree, "plans/demo.md", "plan\n")
 
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "1-demo"})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "1-demo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +62,7 @@ func TestImplementGateDoesNotRequireCodeGraph(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, issueops.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     record.IssueURL,
 		Branch:       record.Branch,
@@ -101,7 +102,7 @@ func TestImplementGateDoesNotRequireCodeGraph(t *testing.T) {
 
 func TestIssueOpsStrictPRReadinessRequiresCleanSyncedRepo(t *testing.T) {
 	repo := initIssueOpsRepo(t)
-	record := IssueOpsRecord{
+	record := issueops.IssueOpsRecord{
 		OK:            true,
 		Repo:          repo,
 		Branch:        "main",
@@ -110,7 +111,7 @@ func TestIssueOpsStrictPRReadinessRequiresCleanSyncedRepo(t *testing.T) {
 		WorktreePath:  repo,
 		Intent:        issueOpsIntentContractForTest(),
 		DesignReview:  issueOpsDesignReviewForTest(),
-		BranchPrepare: &IssueOpsBranchPrepare{Provider: "gitlab", IssueURL: "https://gitlab.example/group/project/-/issues/1", Branch: "main", BaseBranch: "main", LinkVerified: true},
+		BranchPrepare: &issueops.IssueOpsBranchPrepare{Provider: "gitlab", IssueURL: "https://gitlab.example/group/project/-/issues/1", Branch: "main", BaseBranch: "main", LinkVerified: true},
 		AISlopCleanAt: "2026-06-05T00:00:00Z",
 	}
 
@@ -147,7 +148,7 @@ func TestIssueOpsStrictPRReadinessUsesLinkedWorktree(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(repo, "source-dirty.txt"), []byte("dirty source\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	record := IssueOpsRecord{
+	record := issueops.IssueOpsRecord{
 		OK:            true,
 		Repo:          repo,
 		Branch:        branch,
@@ -156,7 +157,7 @@ func TestIssueOpsStrictPRReadinessUsesLinkedWorktree(t *testing.T) {
 		WorktreePath:  worktree,
 		Intent:        issueOpsIntentContractForTest(),
 		DesignReview:  issueOpsDesignReviewForTest(),
-		BranchPrepare: &IssueOpsBranchPrepare{Provider: "gitlab", IssueURL: "https://gitlab.example/group/project/-/issues/2", Branch: branch, BaseBranch: "main", LinkVerified: true},
+		BranchPrepare: &issueops.IssueOpsBranchPrepare{Provider: "gitlab", IssueURL: "https://gitlab.example/group/project/-/issues/2", Branch: branch, BaseBranch: "main", LinkVerified: true},
 		AISlopCleanAt: "2026-06-05T00:00:00Z",
 	}
 
@@ -183,7 +184,7 @@ func TestIssueOpsStrictPRReadinessDetectsStaleAISlopCleanAfterImplementationChan
 	if code, _, stderr := preflight.GitCmd(repo, "worktree", "add", "-q", worktree, branch); code != 0 {
 		t.Fatalf("git worktree add failed: %s", stderr)
 	}
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +193,7 @@ func TestIssueOpsStrictPRReadinessDetectsStaleAISlopCleanAfterImplementationChan
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, issueops.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     record.IssueURL,
 		Branch:       branch,
@@ -252,7 +253,7 @@ func TestIssueOpsStrictPRReadinessDetectsStaleAISlopCleanAfterImplementationChan
 func TestIssueOpsImplementationEvidenceHelpersParsePorcelainAndIgnorePlanPath(t *testing.T) {
 	worktree := t.TempDir()
 	plan := filepath.Join(worktree, "plans", "demo.md")
-	record := IssueOpsRecord{PlanPath: plan}
+	record := issueops.IssueOpsRecord{PlanPath: plan}
 
 	for line, want := range map[string]string{
 		" M internal/demo.go":                    "internal/demo.go",
@@ -268,7 +269,7 @@ func TestIssueOpsImplementationEvidenceHelpersParsePorcelainAndIgnorePlanPath(t 
 	if !implementation.PathMatchesPlan(record, worktree, plan) {
 		t.Fatalf("absolute plan path should match itself")
 	}
-	if !implementation.PathMatchesPlan(IssueOpsRecord{PlanPath: "plans/demo.md"}, worktree, "plans/demo.md") {
+	if !implementation.PathMatchesPlan(issueops.IssueOpsRecord{PlanPath: "plans/demo.md"}, worktree, "plans/demo.md") {
 		t.Fatalf("relative plan path should match relative porcelain path")
 	}
 	if implementation.PathMatchesPlan(record, worktree, filepath.Join(worktree, "internal", "demo.go")) {

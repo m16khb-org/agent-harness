@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/adapter/gitworktree"
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 )
 
 // decision add를 owner mutation allowlist에 넣는 근거는 그것이 append-only라는 것이다
@@ -19,7 +19,7 @@ func TestDecisionAddTouchesOnlyTheDecisionList(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	after, err := AddIssueOpsDecision(stateRoot, record.ID, IssueOpsDecisionRecordRequest{
+	after, err := AddIssueOpsDecision(stateRoot, record.ID, issueops.IssueOpsDecisionRecordRequest{
 		Title: "계약 변경", Body: "근거", Kind: "architecture",
 	})
 	if err != nil {
@@ -54,7 +54,7 @@ func TestDecisionAddKeepsActiveLeaseUntouched(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if prepared.Execution == nil || prepared.Execution.Lease.Status != model.LeaseStatusActive {
+	if prepared.Execution == nil || prepared.Execution.Lease.Status != issueops.LeaseStatusActive {
 		t.Fatalf("픽스처가 active lease를 가져야 한다: %#v", prepared.Execution)
 	}
 	before, err := ReadIssueOps(stateRoot, record.ID)
@@ -64,12 +64,12 @@ func TestDecisionAddKeepsActiveLeaseUntouched(t *testing.T) {
 
 	// lease가 active면 actor가 필수다 — allowlist가 요구하는 규율과 같다.
 	holder := prepared.Execution.Lease.Holder
-	after, err := AddIssueOpsDecisionWithActor(stateRoot, record.ID, IssueOpsDecisionRecordRequest{
+	after, err := AddIssueOpsDecisionWithActor(stateRoot, record.ID, issueops.IssueOpsDecisionRecordRequest{
 		Title: "구현 중 결정", Body: "근거", Kind: "implementation",
 	}, IssueOpsActor{
 		Host: holder.Host, SessionID: holder.SessionID, AgentID: holder.AgentID,
 		CWD:                   prepared.Execution.Workspace.Root,
-		NativeProcessAncestry: []model.NativeProcessReceipt{*holder.SessionProcess},
+		NativeProcessAncestry: []issueops.NativeProcessReceipt{*holder.SessionProcess},
 	})
 	if err != nil {
 		t.Fatal(err)

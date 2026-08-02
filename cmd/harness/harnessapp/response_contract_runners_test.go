@@ -6,6 +6,8 @@ import (
 	"os"
 	"testing"
 
+	statecontract "agent-harness/internal/contract/state"
+
 	"agent-harness/cmd/harness/harnessapp/responsecontract"
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/sqlstore"
@@ -94,7 +96,7 @@ func mustStateReadForContract(t *testing.T, key string) core.StateResult {
 	return result
 }
 
-func mustWriteStateRecordForContract(t *testing.T, stateDir, key string, record core.StateRecord) {
+func mustWriteStateRecordForContract(t *testing.T, stateDir, key string, record statecontract.RecordEnvelope) {
 	t.Helper()
 	b, err := json.MarshalIndent(record, "", "  ")
 	if err != nil {

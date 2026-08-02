@@ -1,10 +1,14 @@
 package lifecycle
 
-import "testing"
+import (
+	"testing"
+
+	issueopscontract "agent-harness/internal/contract/issueops"
+)
 
 func recordIssueOpsLifecycleIntentForTest(t *testing.T, id string) {
 	t.Helper()
-	if _, err := RecordIssueOpsIntent(IssueOpsStateRoot(), id, IssueOpsIntentRecordRequest{
+	if _, err := RecordIssueOpsIntent(IssueOpsStateRoot(), id, issueopscontract.IssueOpsIntentRecordRequest{
 		RawRequest:        "refactor issueops flow",
 		InterpretedIntent: "keep intent and design evidence before implementation",
 		SuccessCriteria:   []string{"intent is recorded", "design is reviewed"},
@@ -15,7 +19,7 @@ func recordIssueOpsLifecycleIntentForTest(t *testing.T, id string) {
 
 func recordIssueOpsLifecycleDesignForTest(t *testing.T, id string) {
 	t.Helper()
-	if _, err := RecordIssueOpsDesignReview(IssueOpsStateRoot(), id, IssueOpsDesignReviewRequest{
+	if _, err := RecordIssueOpsDesignReview(IssueOpsStateRoot(), id, issueopscontract.IssueOpsDesignReviewRequest{
 		ProblemSummary: "IssueOps must preserve the work contract",
 		ProposedDesign: "Gate implementation on a reviewed design contract",
 		RefactorPlan:   "Keep lifecycle guard behavior aligned with IssueOps cycle state",

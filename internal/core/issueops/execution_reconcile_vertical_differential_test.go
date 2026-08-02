@@ -10,6 +10,7 @@ import (
 
 	leaseoutbound "agent-harness/internal/adapter/outbound/issueopslease"
 	leaseapp "agent-harness/internal/application/issueopslease"
+	"agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
@@ -71,7 +72,7 @@ func TestReconcileVerticalPreservesLegacyMigrationDisclosure(t *testing.T) {
 
 func TestReconcileVerticalRejectsUnsafeLegacyMarkerBeforeInspection(t *testing.T) {
 	stateRoot, record, payload := legacyPrepareIntentFixture(t)
-	record, _ = writeLegacyNotInvokedIntent(t, stateRoot, record, payload, func(_ *IssueOpsRecord, payload *externalOrcaIntentPayload) {
+	record, _ = writeLegacyNotInvokedIntent(t, stateRoot, record, payload, func(_ *issueops.IssueOpsRecord, payload *externalOrcaIntentPayload) {
 		payload.InvocationState = orcaIntentUnknown
 	})
 	inspectCalls := 0
@@ -283,7 +284,7 @@ func reconcileDifferentialCoreState(state leaseoutbound.ReconcileEffectState) (E
 	}, nil
 }
 
-func reconcileDifferentialContractRecord(record IssueOpsRecord) (leasecontract.Record, error) {
+func reconcileDifferentialContractRecord(record issueops.IssueOpsRecord) (leasecontract.Record, error) {
 	data, err := json.Marshal(record)
 	if err != nil {
 		return leasecontract.Record{}, err

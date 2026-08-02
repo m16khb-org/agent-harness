@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	issueopsmodel "agent-harness/internal/core/issueops/model"
+	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
 // AC-05: 하위 세션(owner)이 publication 전에 실행하는 implementation-review
@@ -110,14 +110,14 @@ func TestBranchPrepareParentWorktreeMetadataDoesNotSelectForeignLease(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	parentRecord.Execution = &issueopsmodel.Execution{
-		Mode: issueopsmodel.ExecutionModeDirect,
-		Workspace: issueopsmodel.Workspace{
+	parentRecord.Execution = &issueopscontract.Execution{
+		Mode: issueopscontract.ExecutionModeDirect,
+		Workspace: issueopscontract.Workspace{
 			SourceRoot: source, Root: parent.path, Branch: parentRecord.Branch,
 			BaseHead: "0123456789012345678901234567890123456789", Driver: "git", LinkedAt: "2026-07-22T00:00:00Z",
 		},
-		Lease: issueopsmodel.WriteLease{
-			Generation: 1, Status: issueopsmodel.LeaseStatusReleased, ReleasedAt: "2026-07-22T00:00:01Z",
+		Lease: issueopscontract.WriteLease{
+			Generation: 1, Status: issueopscontract.LeaseStatusReleased, ReleasedAt: "2026-07-22T00:00:01Z",
 		},
 	}
 	if _, err := writeIssueOps(IssueOpsStateRoot(), parentRecord); err != nil {

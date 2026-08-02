@@ -8,18 +8,18 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
 
 type ExecutionReconcileRequest struct {
-	ID       string            `json:"id"`
-	Preview  bool              `json:"preview,omitempty"`
-	Confirm  bool              `json:"confirm,omitempty"`
-	Actor    model.NativeActor `json:"actor"`
-	CWD      string            `json:"cwd"`
-	Snapshot *IssueOpsRecord   `json:"-"`
+	ID       string                   `json:"id"`
+	Preview  bool                     `json:"preview,omitempty"`
+	Confirm  bool                     `json:"confirm,omitempty"`
+	Actor    issueops.NativeActor     `json:"actor"`
+	CWD      string                   `json:"cwd"`
+	Snapshot *issueops.IssueOpsRecord `json:"-"`
 }
 
 type ExecutionReconcileDependencies struct {
@@ -31,14 +31,14 @@ type ExecutionReconcileDependencies struct {
 }
 
 type ExecutionReconcileResult struct {
-	OK                  bool                  `json:"ok"`
-	ID                  string                `json:"id"`
-	Preview             bool                  `json:"preview,omitempty"`
-	Reconciled          bool                  `json:"reconciled"`
-	Code                string                `json:"code"`
-	Execution           model.Execution       `json:"execution"`
-	Pending             *model.ExternalIntent `json:"pending,omitempty"`
-	IssueSnapshotSource string                `json:"issue_snapshot_source,omitempty"`
+	OK                  bool                     `json:"ok"`
+	ID                  string                   `json:"id"`
+	Preview             bool                     `json:"preview,omitempty"`
+	Reconciled          bool                     `json:"reconciled"`
+	Code                string                   `json:"code"`
+	Execution           issueops.Execution       `json:"execution"`
+	Pending             *issueops.ExternalIntent `json:"pending,omitempty"`
+	IssueSnapshotSource string                   `json:"issue_snapshot_source,omitempty"`
 	// ExternalStateInspected는 이 결과가 외부 자원을 실제로 조회하고 나온
 	// 것인지 밝힌다. preview는 pending kind만 보고 상수 코드를 돌려주므로
 	// false다 — 그 구분이 없으면 preview 출력이 "Orca 자원이 이런 상태다"라는
@@ -78,7 +78,7 @@ func ReconcileExecutionWithDependencies(ctx context.Context, stateRoot string, r
 	if !samePath(req.CWD, record.Execution.Workspace.SourceRoot) && !samePath(req.CWD, record.Execution.Workspace.Root) {
 		return ExecutionReconcileResult{OK: false, ID: req.ID}, fmt.Errorf("execution reconcile cwd must be source_root or the canonical worktree")
 	}
-	isOrcaPending := record.Execution.Pending != nil && record.Execution.Mode == model.ExecutionModeOrca && pendingKindForOrcaStageFromKind(record.Execution.Pending.Kind)
+	isOrcaPending := record.Execution.Pending != nil && record.Execution.Mode == issueops.ExecutionModeOrca && pendingKindForOrcaStageFromKind(record.Execution.Pending.Kind)
 	if req.Confirm && !isOrcaPending {
 		mutationActor := IssueOpsActor{
 			Host: actor.Host, SessionID: actor.SessionID, AgentID: actor.AgentID, CWD: req.CWD,
@@ -156,8 +156,8 @@ func markRemotePullRequestRetry(stateRoot, id string, expected externalRemotePRP
 	return updated, err
 }
 
-func finishRemotePullRequestPreInvocationFailure(stateRoot, id string, payload externalRemotePRPayload, cause error, now func() time.Time) (IssueOpsRecord, error) {
-	var persisted IssueOpsRecord
+func finishRemotePullRequestPreInvocationFailure(stateRoot, id string, payload externalRemotePRPayload, cause error, now func() time.Time) (issueops.IssueOpsRecord, error) {
+	var persisted issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, id)
 		if err != nil {
@@ -174,7 +174,7 @@ func finishRemotePullRequestPreInvocationFailure(stateRoot, id string, payload e
 			return fmt.Errorf("external intent payload changed before terminal pre-invocation receipt")
 		}
 		record.Execution.Pending = nil
-		record.Execution.Failure = &model.ExecutionFailure{
+		record.Execution.Failure = &issueops.ExecutionFailure{
 			OperationID: payload.OperationID, Code: "external_operation_not_invoked", Message: boundedExecutionRemoteDiagnostic(cause), At: executionNow(now),
 		}
 		persisted, err = persistExecutionTransitionWithMutations(stateRoot, record, nil, []sqlstore.Mutation{{Bucket: externalIntentBucket, ID: payload.OperationID, Delete: true}})
@@ -183,7 +183,7 @@ func finishRemotePullRequestPreInvocationFailure(stateRoot, id string, payload e
 	return persisted, err
 }
 
-func executionReconcileResult(record IssueOpsRecord, preview bool, code string) ExecutionReconcileResult {
+func executionReconcileResult(record issueops.IssueOpsRecord, preview bool, code string) ExecutionReconcileResult {
 	result := ExecutionReconcileResult{OK: true, ID: record.ID, Preview: preview, Code: code}
 	if record.Execution != nil {
 		result.Execution = *record.Execution
@@ -192,7 +192,7 @@ func executionReconcileResult(record IssueOpsRecord, preview bool, code string) 
 	return result
 }
 
-func failedExecutionReconcileResult(record IssueOpsRecord, code string) ExecutionReconcileResult {
+func failedExecutionReconcileResult(record issueops.IssueOpsRecord, code string) ExecutionReconcileResult {
 	result := executionReconcileResult(record, false, code)
 	result.OK = false
 	return result

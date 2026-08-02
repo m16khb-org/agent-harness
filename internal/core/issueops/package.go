@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops/active"
 	"agent-harness/internal/core/issueops/artifactverify"
 	"agent-harness/internal/core/issueops/branchprepare"
@@ -15,64 +16,11 @@ import (
 	"agent-harness/internal/core/issueops/devilsadvocate"
 	"agent-harness/internal/core/issueops/intentdesign"
 	"agent-harness/internal/core/issueops/linking"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/start"
 	"agent-harness/internal/core/issueops/stringlist"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
-
-type IssueOpsStartRequest = model.IssueOpsStartRequest
-type IssueOpsFeedbackItem = model.IssueOpsFeedbackItem
-type SkillRoutingEntry = model.SkillRoutingEntry
-type IssueOpsIssueLink = model.IssueOpsIssueLink
-type IssueOpsBranchPrepareStep = model.IssueOpsBranchPrepareStep
-type IssueOpsBranchPrepare = model.IssueOpsBranchPrepare
-type IssueOpsBranchPrepareRequest = model.IssueOpsBranchPrepareRequest
-type Execution = model.Execution
-type Workspace = model.Workspace
-type WriteLease = model.WriteLease
-type NativeActor = model.NativeActor
-type NativeProcessReceipt = model.NativeProcessReceipt
-type IssueOpsRemoteArtifactVerification = model.IssueOpsRemoteArtifactVerification
-type IssueOpsRemoteArtifactVerificationRequest = model.IssueOpsRemoteArtifactVerificationRequest
-type IssueOpsIntentContract = model.IssueOpsIntentContract
-type IssueOpsIntentRecordRequest = model.IssueOpsIntentRecordRequest
-type IssueOpsDesignReview = model.IssueOpsDesignReview
-type IssueOpsDesignReviewRequest = model.IssueOpsDesignReviewRequest
-type IssueOpsDecision = model.IssueOpsDecision
-type IssueOpsDecisionRecordRequest = model.IssueOpsDecisionRecordRequest
-type IssueOpsCompatibilityReview = model.IssueOpsCompatibilityReview
-type IssueOpsDevilsAdvocateReview = model.IssueOpsDevilsAdvocateReview
-type IssueOpsCompatibilityReviewRequest = model.IssueOpsCompatibilityReviewRequest
-type IssueOpsDevilsAdvocateReviewRequest = model.IssueOpsDevilsAdvocateReviewRequest
-type IssueOpsPlanPrep = model.IssueOpsPlanPrep
-type IssueOpsPlanPrepItem = model.IssueOpsPlanPrepItem
-type IssueOpsPlanPrepRequest = model.IssueOpsPlanPrepRequest
-type IssueOpsPlanPrepItemRequest = model.IssueOpsPlanPrepItemRequest
-type IssueOpsRecord = model.IssueOpsRecord
-type IssueOpsRemoteCompletion = model.IssueOpsRemoteCompletion
-type IssueOpsCleanupFinishFailure = model.IssueOpsCleanupFinishFailure
-type IssueOpsImplementationReview = model.IssueOpsImplementationReview
-type IssueOpsRegressEvent = model.IssueOpsRegressEvent
-type IssueOpsDelegationContract = model.IssueOpsDelegationContract
-type IssueOpsChildCycleRef = model.IssueOpsChildCycleRef
-type IssueOpsChildStartRequest = model.IssueOpsChildStartRequest
-type IssueOpsChildStartResult = model.IssueOpsChildStartResult
-type IssueOpsChildStatusEntry = model.IssueOpsChildStatusEntry
-type IssueOpsChildStatusResult = model.IssueOpsChildStatusResult
-type IssueOpsChildValidationResult = model.IssueOpsChildValidationResult
-type IssueOpsReadiness = model.IssueOpsReadiness
-type IssueOpsDomainReview = model.IssueOpsDomainReview
-type IssueOpsDomainReviewRequest = model.IssueOpsDomainReviewRequest
-type IssueOpsPhaseLedger = model.IssueOpsPhaseLedger
-type IssueOpsPhaseLedgerEntry = model.IssueOpsPhaseLedgerEntry
-type IssueOpsCleanupStatusRequest = model.IssueOpsCleanupStatusRequest
-type IssueOpsCleanupStatus = model.IssueOpsCleanupStatus
-type IssueOpsCloseChildrenRequest = model.IssueOpsCloseChildrenRequest
-type IssueOpsCloseChildResult = model.IssueOpsCloseChildResult
-type IssueOpsCloseChildrenResult = model.IssueOpsCloseChildrenResult
-type IssueOpsPhase = model.IssueOpsPhase
 
 // ExecutionOrcaProvisioner는 core facade가 port를 직접 import하지 않고도
 // cleanup abandon의 orca 인벤토리 실조회 표면을 주입받게 하는 alias다.
@@ -80,32 +28,32 @@ type ExecutionOrcaProvisioner = port.ExecutionOrcaProvisioner
 type ExecutionOrcaOwnerInspector = port.ExecutionOrcaOwnerInspector
 
 const (
-	IssueOpsCurrentSchemaVersion     = model.IssueOpsCurrentSchemaVersion
-	IssueOpsPhaseProblem             = model.IssueOpsPhaseProblem
-	IssueOpsPhaseGrill               = model.IssueOpsPhaseGrill
-	IssueOpsPhasePlan                = model.IssueOpsPhasePlan
-	IssueOpsPhaseCompatibilityReview = model.IssueOpsPhaseCompatibilityReview
-	IssueOpsPhaseImplement           = model.IssueOpsPhaseImplement
-	IssueOpsPhaseAISlopClean         = model.IssueOpsPhaseAISlopClean
-	IssueOpsPhaseFeedback            = model.IssueOpsPhaseFeedback
-	IssueOpsPhasePR                  = model.IssueOpsPhasePR
-	IssueOpsPhaseDone                = model.IssueOpsPhaseDone
+	IssueOpsCurrentSchemaVersion     = issueops.IssueOpsCurrentSchemaVersion
+	IssueOpsPhaseProblem             = issueops.IssueOpsPhaseProblem
+	IssueOpsPhaseGrill               = issueops.IssueOpsPhaseGrill
+	IssueOpsPhasePlan                = issueops.IssueOpsPhasePlan
+	IssueOpsPhaseCompatibilityReview = issueops.IssueOpsPhaseCompatibilityReview
+	IssueOpsPhaseImplement           = issueops.IssueOpsPhaseImplement
+	IssueOpsPhaseAISlopClean         = issueops.IssueOpsPhaseAISlopClean
+	IssueOpsPhaseFeedback            = issueops.IssueOpsPhaseFeedback
+	IssueOpsPhasePR                  = issueops.IssueOpsPhasePR
+	IssueOpsPhaseDone                = issueops.IssueOpsPhaseDone
 )
 
-var IssueOpsPhases = model.IssueOpsPhases
+var IssueOpsPhases = issueops.IssueOpsPhases
 
 const IssueOpsDesignReviewEvidenceExample = intentdesign.DesignReviewEvidenceExample
 
-func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
+func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req issueops.IssueOpsRemoteArtifactVerificationRequest) (issueops.IssueOpsRecord, error) {
 	return verifyIssueOpsRemoteArtifact(stateRoot, id, req, nil)
 }
 
-func VerifyIssueOpsRemoteArtifactWithActor(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+func VerifyIssueOpsRemoteArtifactWithActor(stateRoot, id string, req issueops.IssueOpsRemoteArtifactVerificationRequest, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return verifyIssueOpsRemoteArtifact(stateRoot, id, req, &actor)
 }
 
-func verifyIssueOpsRemoteArtifact(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func verifyIssueOpsRemoteArtifact(stateRoot, id string, req issueops.IssueOpsRemoteArtifactVerificationRequest, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
@@ -121,8 +69,8 @@ func verifyIssueOpsRemoteArtifact(stateRoot, id string, req IssueOpsRemoteArtifa
 	return rec, err
 }
 
-func ValidateIssueOpsRemoteArtifactVerification(stateRoot, id string, req IssueOpsRemoteArtifactVerificationRequest) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func ValidateIssueOpsRemoteArtifactVerification(stateRoot, id string, req issueops.IssueOpsRemoteArtifactVerificationRequest) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = artifactverify.Validate(issueOpsArtifactStore(), stateRoot, id, req)
@@ -138,22 +86,22 @@ func issueOpsArtifactStore() artifactverify.Store {
 	}
 }
 
-func ActiveIssueOpsCycleForBranch(repo, branch string) (IssueOpsRecord, bool) {
+func ActiveIssueOpsCycleForBranch(repo, branch string) (issueops.IssueOpsRecord, bool) {
 	return active.CycleForBranch(issueOpsActiveStore(), repo, branch)
 }
 
-func ActiveIssueOpsLinkedWorktreeCycleForRepo(repo string) (IssueOpsRecord, bool) {
+func ActiveIssueOpsLinkedWorktreeCycleForRepo(repo string) (issueops.IssueOpsRecord, bool) {
 	return active.LinkedWorktreeCycleForRepo(issueOpsActiveStore(), repo)
 }
 
-func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []IssueOpsRecord {
+func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []issueops.IssueOpsRecord {
 	return active.LinkedWorktreeCyclesForRepo(issueOpsActiveStore(), repo)
 }
 
 // IssueOpsCycleWorktreeMissing reports whether a record is a worktree-phase
 // cycle whose linked worktree directory has been deleted (a stale cycle that
 // must not retain guard authority over the source checkout).
-func IssueOpsCycleWorktreeMissing(record IssueOpsRecord) bool {
+func IssueOpsCycleWorktreeMissing(record issueops.IssueOpsRecord) bool {
 	return active.WorktreePhaseHasMissingWorktree(record)
 }
 
@@ -169,16 +117,16 @@ func issueOpsActiveStore() active.Store {
 	}
 }
 
-func IssueOpsCleanupStatusByID(stateRoot, id string, req IssueOpsCleanupStatusRequest) (IssueOpsCleanupStatus, error) {
+func IssueOpsCleanupStatusByID(stateRoot, id string, req issueops.IssueOpsCleanupStatusRequest) (issueops.IssueOpsCleanupStatus, error) {
 	return cleanupstatus.ByID(issueOpsCleanupStatusStore(), stateRoot, id, req)
 }
 
-func IssueOpsCleanupStatusForRecord(record IssueOpsRecord, req IssueOpsCleanupStatusRequest) IssueOpsCleanupStatus {
+func IssueOpsCleanupStatusForRecord(record issueops.IssueOpsRecord, req issueops.IssueOpsCleanupStatusRequest) issueops.IssueOpsCleanupStatus {
 	return cleanupstatus.ForRecord(record, req)
 }
 
-func CloseIssueOpsChildren(stateRoot, id string, req IssueOpsCloseChildrenRequest, provider func(string) (port.IssueProvider, error)) (IssueOpsCloseChildrenResult, error) {
-	var result IssueOpsCloseChildrenResult
+func CloseIssueOpsChildren(stateRoot, id string, req issueops.IssueOpsCloseChildrenRequest, provider func(string) (port.IssueProvider, error)) (issueops.IssueOpsCloseChildrenResult, error) {
+	var result issueops.IssueOpsCloseChildrenResult
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		result, e = cleanupchildren.ByID(cleanupchildren.Store{
@@ -191,7 +139,7 @@ func CloseIssueOpsChildren(stateRoot, id string, req IssueOpsCloseChildrenReques
 	return result, err
 }
 
-func issueOpsRemoteArtifactMissing(record IssueOpsRecord) []string {
+func issueOpsRemoteArtifactMissing(record issueops.IssueOpsRecord) []string {
 	return cleanupstatus.RemoteArtifactMissing(record)
 }
 
@@ -201,16 +149,16 @@ func issueOpsCleanupStatusStore() cleanupstatus.Store {
 	}
 }
 
-func PrepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareRequest) (IssueOpsRecord, error) {
+func PrepareIssueOpsBranch(stateRoot, id string, req issueops.IssueOpsBranchPrepareRequest) (issueops.IssueOpsRecord, error) {
 	return prepareIssueOpsBranch(stateRoot, id, req, nil)
 }
 
-func PrepareIssueOpsBranchWithActor(stateRoot, id string, req IssueOpsBranchPrepareRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+func PrepareIssueOpsBranchWithActor(stateRoot, id string, req issueops.IssueOpsBranchPrepareRequest, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return prepareIssueOpsBranch(stateRoot, id, req, &actor)
 }
 
-func prepareIssueOpsBranch(stateRoot, id string, req IssueOpsBranchPrepareRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func prepareIssueOpsBranch(stateRoot, id string, req issueops.IssueOpsBranchPrepareRequest, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
@@ -234,7 +182,7 @@ func validateIssueOpsIssueBranch(branch string) error {
 	return branchprepare.ValidateBranch(branch)
 }
 
-func issueOpsBranchPrepareSteps(provider, issueURL, branch, baseBranch, baseSHA string) []IssueOpsBranchPrepareStep {
+func issueOpsBranchPrepareSteps(provider, issueURL, branch, baseBranch, baseSHA string) []issueops.IssueOpsBranchPrepareStep {
 	return branchprepare.Steps(provider, issueURL, branch, baseBranch, baseSHA)
 }
 
@@ -260,7 +208,7 @@ func issueOpsBranchPrepareStore() branchprepare.Store {
 			}
 			return resolved, nil
 		},
-		UmbrellaForChildIssue: func(repo, childIssueURL string) (IssueOpsRecord, bool) {
+		UmbrellaForChildIssue: func(repo, childIssueURL string) (issueops.IssueOpsRecord, bool) {
 			return active.UmbrellaCycleForChildIssue(issueOpsActiveStore(), repo, childIssueURL)
 		},
 	}
@@ -281,9 +229,9 @@ func issueOpsStartLockID(repo, branch string) string {
 	return newIssueOpsID(repo, strings.TrimSpace(branch))
 }
 
-func StartIssueOps(stateRoot string, req IssueOpsStartRequest) (IssueOpsRecord, error) {
+func StartIssueOps(stateRoot string, req issueops.IssueOpsStartRequest) (issueops.IssueOpsRecord, error) {
 	id := issueOpsStartLockID(req.Repo, req.Branch)
-	var rec IssueOpsRecord
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		var e error
 		rec, e = start.Start(issueOpsStartStore(), stateRoot, req)
@@ -301,16 +249,16 @@ func issueOpsStartStore() start.Store {
 	}
 }
 
-func RecordIssueOpsIntent(stateRoot, id string, req IssueOpsIntentRecordRequest) (IssueOpsRecord, error) {
+func RecordIssueOpsIntent(stateRoot, id string, req issueops.IssueOpsIntentRecordRequest) (issueops.IssueOpsRecord, error) {
 	return recordIssueOpsIntent(stateRoot, id, req, nil)
 }
 
-func RecordIssueOpsIntentWithActor(stateRoot, id string, req IssueOpsIntentRecordRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+func RecordIssueOpsIntentWithActor(stateRoot, id string, req issueops.IssueOpsIntentRecordRequest, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return recordIssueOpsIntent(stateRoot, id, req, &actor)
 }
 
-func recordIssueOpsIntent(stateRoot, id string, req IssueOpsIntentRecordRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func recordIssueOpsIntent(stateRoot, id string, req issueops.IssueOpsIntentRecordRequest, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
@@ -326,16 +274,16 @@ func recordIssueOpsIntent(stateRoot, id string, req IssueOpsIntentRecordRequest,
 	return rec, err
 }
 
-func RecordIssueOpsPlanPrep(stateRoot, id string, req IssueOpsPlanPrepRequest) (IssueOpsRecord, error) {
+func RecordIssueOpsPlanPrep(stateRoot, id string, req issueops.IssueOpsPlanPrepRequest) (issueops.IssueOpsRecord, error) {
 	return recordIssueOpsPlanPrep(stateRoot, id, req, nil)
 }
 
-func RecordIssueOpsPlanPrepWithActor(stateRoot, id string, req IssueOpsPlanPrepRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+func RecordIssueOpsPlanPrepWithActor(stateRoot, id string, req issueops.IssueOpsPlanPrepRequest, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return recordIssueOpsPlanPrep(stateRoot, id, req, &actor)
 }
 
-func recordIssueOpsPlanPrep(stateRoot, id string, req IssueOpsPlanPrepRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func recordIssueOpsPlanPrep(stateRoot, id string, req issueops.IssueOpsPlanPrepRequest, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
@@ -351,16 +299,16 @@ func recordIssueOpsPlanPrep(stateRoot, id string, req IssueOpsPlanPrepRequest, a
 	return rec, err
 }
 
-func RecordIssueOpsDesignReview(stateRoot, id string, req IssueOpsDesignReviewRequest) (IssueOpsRecord, error) {
+func RecordIssueOpsDesignReview(stateRoot, id string, req issueops.IssueOpsDesignReviewRequest) (issueops.IssueOpsRecord, error) {
 	return recordIssueOpsDesignReview(stateRoot, id, req, nil)
 }
 
-func RecordIssueOpsDesignReviewWithActor(stateRoot, id string, req IssueOpsDesignReviewRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+func RecordIssueOpsDesignReviewWithActor(stateRoot, id string, req issueops.IssueOpsDesignReviewRequest, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return recordIssueOpsDesignReview(stateRoot, id, req, &actor)
 }
 
-func recordIssueOpsDesignReview(stateRoot, id string, req IssueOpsDesignReviewRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func recordIssueOpsDesignReview(stateRoot, id string, req issueops.IssueOpsDesignReviewRequest, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
@@ -388,16 +336,16 @@ func issueOpsIntentDesignStore() intentdesign.Store {
 	}
 }
 
-func LinkIssueOpsIssue(stateRoot, id, issueURL string) (IssueOpsRecord, error) {
+func LinkIssueOpsIssue(stateRoot, id, issueURL string) (issueops.IssueOpsRecord, error) {
 	return linkIssueOpsIssue(stateRoot, id, issueURL, nil)
 }
 
-func LinkIssueOpsIssueWithActor(stateRoot, id, issueURL string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func LinkIssueOpsIssueWithActor(stateRoot, id, issueURL string, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return linkIssueOpsIssue(stateRoot, id, issueURL, &actor)
 }
 
-func linkIssueOpsIssue(stateRoot, id, issueURL string, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func linkIssueOpsIssue(stateRoot, id, issueURL string, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
@@ -413,16 +361,16 @@ func linkIssueOpsIssue(stateRoot, id, issueURL string, actor *IssueOpsActor) (Is
 	return rec, err
 }
 
-func LinkIssueOpsPlan(stateRoot, id, planPath string) (IssueOpsRecord, error) {
+func LinkIssueOpsPlan(stateRoot, id, planPath string) (issueops.IssueOpsRecord, error) {
 	return linkIssueOpsPlan(stateRoot, id, planPath, nil)
 }
 
-func LinkIssueOpsPlanWithActor(stateRoot, id, planPath string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func LinkIssueOpsPlanWithActor(stateRoot, id, planPath string, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return linkIssueOpsPlan(stateRoot, id, planPath, &actor)
 }
 
-func linkIssueOpsPlan(stateRoot, id, planPath string, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func linkIssueOpsPlan(stateRoot, id, planPath string, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
@@ -438,16 +386,16 @@ func linkIssueOpsPlan(stateRoot, id, planPath string, actor *IssueOpsActor) (Iss
 	return rec, err
 }
 
-func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (IssueOpsRecord, error) {
+func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (issueops.IssueOpsRecord, error) {
 	return linkIssueOpsWorktree(stateRoot, id, worktreePath, nil)
 }
 
-func LinkIssueOpsWorktreeWithActor(stateRoot, id, worktreePath string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func LinkIssueOpsWorktreeWithActor(stateRoot, id, worktreePath string, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return linkIssueOpsWorktree(stateRoot, id, worktreePath, &actor)
 }
 
-func linkIssueOpsWorktree(stateRoot, id, worktreePath string, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func linkIssueOpsWorktree(stateRoot, id, worktreePath string, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
@@ -463,16 +411,16 @@ func linkIssueOpsWorktree(stateRoot, id, worktreePath string, actor *IssueOpsAct
 	return rec, err
 }
 
-func RecordIssueOpsCompatibilityReview(stateRoot, id string, req IssueOpsCompatibilityReviewRequest) (IssueOpsRecord, error) {
+func RecordIssueOpsCompatibilityReview(stateRoot, id string, req issueops.IssueOpsCompatibilityReviewRequest) (issueops.IssueOpsRecord, error) {
 	return recordIssueOpsCompatibilityReview(stateRoot, id, req, nil)
 }
 
-func RecordIssueOpsCompatibilityReviewWithActor(stateRoot, id string, req IssueOpsCompatibilityReviewRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+func RecordIssueOpsCompatibilityReviewWithActor(stateRoot, id string, req issueops.IssueOpsCompatibilityReviewRequest, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return recordIssueOpsCompatibilityReview(stateRoot, id, req, &actor)
 }
 
-func recordIssueOpsCompatibilityReview(stateRoot, id string, req IssueOpsCompatibilityReviewRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func recordIssueOpsCompatibilityReview(stateRoot, id string, req issueops.IssueOpsCompatibilityReviewRequest, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
@@ -497,16 +445,16 @@ func issueOpsCompatibilityReviewStore() compatibilityreview.Store {
 	}
 }
 
-func RecordIssueOpsDevilsAdvocateReview(stateRoot, id string, req IssueOpsDevilsAdvocateReviewRequest) (IssueOpsRecord, error) {
+func RecordIssueOpsDevilsAdvocateReview(stateRoot, id string, req issueops.IssueOpsDevilsAdvocateReviewRequest) (issueops.IssueOpsRecord, error) {
 	return recordIssueOpsDevilsAdvocateReview(stateRoot, id, req, nil)
 }
 
-func RecordIssueOpsDevilsAdvocateReviewWithActor(stateRoot, id string, req IssueOpsDevilsAdvocateReviewRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+func RecordIssueOpsDevilsAdvocateReviewWithActor(stateRoot, id string, req issueops.IssueOpsDevilsAdvocateReviewRequest, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return recordIssueOpsDevilsAdvocateReview(stateRoot, id, req, &actor)
 }
 
-func recordIssueOpsDevilsAdvocateReview(stateRoot, id string, req IssueOpsDevilsAdvocateReviewRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func recordIssueOpsDevilsAdvocateReview(stateRoot, id string, req issueops.IssueOpsDevilsAdvocateReviewRequest, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
@@ -522,16 +470,16 @@ func recordIssueOpsDevilsAdvocateReview(stateRoot, id string, req IssueOpsDevils
 	return rec, err
 }
 
-func LinkIssueOpsChild(stateRoot, id, childURL, title string) (IssueOpsRecord, error) {
+func LinkIssueOpsChild(stateRoot, id, childURL, title string) (issueops.IssueOpsRecord, error) {
 	return linkIssueOpsChild(stateRoot, id, childURL, title, nil)
 }
 
-func LinkIssueOpsChildWithActor(stateRoot, id, childURL, title string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func LinkIssueOpsChildWithActor(stateRoot, id, childURL, title string, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return linkIssueOpsChild(stateRoot, id, childURL, title, &actor)
 }
 
-func linkIssueOpsChild(stateRoot, id, childURL, title string, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func linkIssueOpsChild(stateRoot, id, childURL, title string, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
@@ -547,16 +495,16 @@ func linkIssueOpsChild(stateRoot, id, childURL, title string, actor *IssueOpsAct
 	return rec, err
 }
 
-func LinkIssueOpsRelated(stateRoot, id, linkType, relatedURL, title string) (IssueOpsRecord, error) {
+func LinkIssueOpsRelated(stateRoot, id, linkType, relatedURL, title string) (issueops.IssueOpsRecord, error) {
 	return linkIssueOpsRelated(stateRoot, id, linkType, relatedURL, title, nil)
 }
 
-func LinkIssueOpsRelatedWithActor(stateRoot, id, linkType, relatedURL, title string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func LinkIssueOpsRelatedWithActor(stateRoot, id, linkType, relatedURL, title string, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return linkIssueOpsRelated(stateRoot, id, linkType, relatedURL, title, &actor)
 }
 
-func linkIssueOpsRelated(stateRoot, id, linkType, relatedURL, title string, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func linkIssueOpsRelated(stateRoot, id, linkType, relatedURL, title string, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
@@ -588,7 +536,7 @@ func issueOpsLinkingStore() linking.Store {
 }
 
 // LastActiveAt returns the latest durable lifecycle timestamp.
-func LastActiveAt(record IssueOpsRecord) string {
+func LastActiveAt(record issueops.IssueOpsRecord) string {
 	if strings.TrimSpace(record.UpdatedAt) != "" {
 		return record.UpdatedAt
 	}

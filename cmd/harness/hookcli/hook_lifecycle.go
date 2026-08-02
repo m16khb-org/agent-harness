@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
+
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	hookadapter "agent-harness/internal/adapter/hook"
 	"agent-harness/internal/core"
@@ -32,7 +34,7 @@ func runHookPostToolUse(args []string) error {
 	tool := hookinput.ToolNameFromHookInput(stdin)
 	paths := hookinput.PathsFromHookInput(stdin)
 	command := hookinput.CommandFromHookInput(stdin)
-	req := core.HookToolUseLifecycleRequest{
+	req := lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:    parsedRepo,
 		Tool:    tool,
 		Paths:   paths,
@@ -41,7 +43,7 @@ func runHookPostToolUse(args []string) error {
 	}
 	result, err := core.RecordLifecycleToolUse(req)
 	if err != nil {
-		result = core.HookToolUseLifecycleResult{OK: false, Warnings: []string{"lifecycle_record_error:" + err.Error()}}
+		result = lifecyclecontract.HookToolUseLifecycleResult{OK: false, Warnings: []string{"lifecycle_record_error:" + err.Error()}}
 	}
 	misdirectWarning, misdirectRecordID := core.SourceCheckoutMisdirectWarning(req)
 	if misdirectWarning != "" && misdirectRecordID != "" {

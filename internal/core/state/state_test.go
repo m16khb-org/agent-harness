@@ -13,8 +13,35 @@ import (
 	"testing"
 	"time"
 
+	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/core/sqlstore"
 )
+
+func TestStateReadUsesGenericInvalidStateAndPreservesAbsent(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", dir)
+	for name, raw := range map[string]string{
+		"malformed":      `{`,
+		"missing-schema": `{"key":"missing-schema","content":"x","bytes":1}`,
+		"future-schema":  `{"schema_version":2,"key":"future-schema","content":"x","bytes":1}`,
+		"key-mismatch":   `{"schema_version":1,"key":"other","content":"x","bytes":1}`,
+		"byte-mismatch":  `{"schema_version":1,"key":"byte-mismatch","content":"x","bytes":2}`,
+		"legacy-field":   `{"schema_version":1,"key":"legacy-field","content":"x","updated_at":"2000-01-01T00:00:00Z","bytes":1,"legacy_field":"x"}`,
+		"trailing-json":  `{"schema_version":1,"key":"trailing-json","content":"x","updated_at":"2000-01-01T00:00:00Z","bytes":1}{}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			writeRawStateRow(t, dir, name, raw)
+			_, err := StateRead(name)
+			if !errors.Is(err, statecontract.ErrInvalidState) || err.Error() != "invalid state" {
+				t.Fatalf("error=%v", err)
+			}
+		})
+	}
+	_, err := StateRead("absent")
+	if !errors.Is(err, fs.ErrNotExist) || errors.Is(err, statecontract.ErrInvalidState) {
+		t.Fatalf("absent state identity drift: %v", err)
+	}
+}
 
 func TestWithKeyLockPropagatesActiveRoot(t *testing.T) {
 	dir := t.TempDir()
@@ -36,11 +63,11 @@ func TestWriteStateRecordRejectsKeyMismatch(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", dir)
 	// A caller-built record whose Key diverges from the write key would persist a
 	// record StateRead later rejects; WriteStateRecord must reject it up front.
-	if _, err := WriteStateRecord(dir, "foo", StateRecord{Key: "bar", SchemaVersion: StateCurrentSchemaVersion, Content: "x", Bytes: 1}); err == nil || !strings.Contains(err.Error(), "does not match") {
+	if _, err := WriteStateRecord(dir, "foo", statecontract.RecordEnvelope{Key: "bar", SchemaVersion: StateCurrentSchemaVersion, Content: "x", Bytes: 1}); err == nil || !strings.Contains(err.Error(), "does not match") {
 		t.Fatalf("expected key-mismatch error, got %v", err)
 	}
 	// Matching key (or empty Key) is accepted and round-trips.
-	if _, err := WriteStateRecord(dir, "foo", StateRecord{Key: "foo", SchemaVersion: StateCurrentSchemaVersion, Content: "x", Bytes: 1}); err != nil {
+	if _, err := WriteStateRecord(dir, "foo", statecontract.RecordEnvelope{Key: "foo", SchemaVersion: StateCurrentSchemaVersion, Content: "x", Bytes: 1}); err != nil {
 		t.Fatalf("matching key should write: %v", err)
 	}
 	if read, err := StateRead("foo"); err != nil || read.Record.Content != "x" {
@@ -54,12 +81,12 @@ func TestStateUpdateLockedReadModifyWrite(t *testing.T) {
 
 	// rec builds a valid persistable record; StateUpdate delegates record
 	// construction (incl. Bytes, which StateRead validates) to the transform.
-	rec := func(content string) StateRecord {
-		return StateRecord{Key: "counter", SchemaVersion: StateCurrentSchemaVersion, Content: content, Bytes: len([]byte(content))}
+	rec := func(content string) statecontract.RecordEnvelope {
+		return statecontract.RecordEnvelope{Key: "counter", SchemaVersion: StateCurrentSchemaVersion, Content: content, Bytes: len([]byte(content))}
 	}
 
 	// Create-from-absent: transform receives an empty record.
-	res, err := StateUpdate("counter", func(cur StateRecord) (StateRecord, error) {
+	res, err := StateUpdate("counter", func(cur statecontract.RecordEnvelope) (statecontract.RecordEnvelope, error) {
 		if cur.Content != "" {
 			t.Fatalf("expected absent record, got %q", cur.Content)
 		}
@@ -73,7 +100,7 @@ func TestStateUpdateLockedReadModifyWrite(t *testing.T) {
 	}
 
 	// Real transform mutates + persists.
-	if _, err := StateUpdate("counter", func(cur StateRecord) (StateRecord, error) {
+	if _, err := StateUpdate("counter", func(cur statecontract.RecordEnvelope) (statecontract.RecordEnvelope, error) {
 		return rec(cur.Content + "2"), nil
 	}); err != nil {
 		t.Fatalf("update mutate: %v", err)
@@ -83,8 +110,8 @@ func TestStateUpdateLockedReadModifyWrite(t *testing.T) {
 	}
 
 	// Skip-write sentinel: an empty record returned by transform must NOT write.
-	if res, err := StateUpdate("counter", func(cur StateRecord) (StateRecord, error) {
-		return StateRecord{}, nil
+	if res, err := StateUpdate("counter", func(cur statecontract.RecordEnvelope) (statecontract.RecordEnvelope, error) {
+		return statecontract.RecordEnvelope{}, nil
 	}); err != nil || !res.OK {
 		t.Fatalf("update skip: ok=%v err=%v", res.OK, err)
 	}
@@ -99,13 +126,13 @@ func TestStateUpdateLockedReadModifyWrite(t *testing.T) {
 	for range n {
 		go func() {
 			defer wg.Done()
-			_, _ = StateUpdate("ctr2", func(cur StateRecord) (StateRecord, error) {
+			_, _ = StateUpdate("ctr2", func(cur statecontract.RecordEnvelope) (statecontract.RecordEnvelope, error) {
 				v := 0
 				if cur.Content != "" {
 					fmt.Sscanf(cur.Content, "%d", &v)
 				}
 				content := fmt.Sprintf("%d", v+1)
-				return StateRecord{Key: "ctr2", SchemaVersion: StateCurrentSchemaVersion, Content: content, Bytes: len([]byte(content))}, nil
+				return statecontract.RecordEnvelope{Key: "ctr2", SchemaVersion: StateCurrentSchemaVersion, Content: content, Bytes: len([]byte(content))}, nil
 			})
 		}()
 	}

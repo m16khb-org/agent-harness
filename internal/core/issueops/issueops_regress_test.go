@@ -4,26 +4,26 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 )
 
 // recordAtPhaseForRegressTest persists a started cycle at the given phase with a
 // completed plan-phase ledger entry, so a Brooks regression has something to
 // invalidate.
-func recordAtPhaseForRegressTest(t *testing.T, phase IssueOpsPhase) (string, string) {
+func recordAtPhaseForRegressTest(t *testing.T, phase issueops.IssueOpsPhase) (string, string) {
 	t.Helper()
 	stateRoot := t.TempDir()
 	repo := initIssueOpsRepo(t)
-	rec, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "1-brooks"})
+	rec, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "1-brooks"})
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}
 	rec.Phase = phase
-	rec.DesignReview = &model.IssueOpsDesignReview{ProblemSummary: "s", ProposedDesign: "d", Verification: []string{"v"}, Approved: true, ReviewedAt: "2026-06-29T00:00:00Z"}
-	rec.DevilsAdvocateReview = &model.IssueOpsDevilsAdvocateReview{Verdict: "stop", Findings: []string{"gold-plating"}, RecordedAt: "2026-06-29T00:00:00Z", IssueReflectedAt: "2026-06-29T00:02:00Z"}
+	rec.DesignReview = &issueops.IssueOpsDesignReview{ProblemSummary: "s", ProposedDesign: "d", Verification: []string{"v"}, Approved: true, ReviewedAt: "2026-06-29T00:00:00Z"}
+	rec.DevilsAdvocateReview = &issueops.IssueOpsDevilsAdvocateReview{Verdict: "stop", Findings: []string{"gold-plating"}, RecordedAt: "2026-06-29T00:00:00Z", IssueReflectedAt: "2026-06-29T00:02:00Z"}
 	rec.PlanPath = "/repo/plans/x.md"
-	rec.PhaseLedger = IssueOpsPhaseLedger{
-		IssueOpsPhasePlan: IssueOpsPhaseLedgerEntry{Phase: IssueOpsPhasePlan, CompletedAt: "2026-06-29T00:01:00Z", Artifacts: []string{"plan_path"}},
+	rec.PhaseLedger = issueops.IssueOpsPhaseLedger{
+		IssueOpsPhasePlan: issueops.IssueOpsPhaseLedgerEntry{Phase: IssueOpsPhasePlan, CompletedAt: "2026-06-29T00:01:00Z", Artifacts: []string{"plan_path"}},
 	}
 	if _, err := touchAndWriteIssueOps(stateRoot, rec); err != nil {
 		t.Fatalf("seed write: %v", err)
@@ -87,7 +87,7 @@ func TestRegressIssueOpsForReplanRejectedOutsidePlanCompat(t *testing.T) {
 func TestRegressRefusedForImplementPhaseParentWithChildren(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	if _, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
+	if _, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-regress-implement",
 		Title:              "regress implement child",
@@ -104,7 +104,7 @@ func TestRegressRefusedForImplementPhaseParentWithChildren(t *testing.T) {
 func TestRegressIssueOpsForReplanBlockedByActiveChildren(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	started, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
+	started, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-regress-active",
 		Title:              "regress active child",
@@ -119,7 +119,7 @@ func TestRegressIssueOpsForReplanBlockedByActiveChildren(t *testing.T) {
 		t.Fatal(err)
 	}
 	rec.Phase = IssueOpsPhasePlan
-	rec.DevilsAdvocateReview = &model.IssueOpsDevilsAdvocateReview{Verdict: "stop", Findings: []string{"scope drift"}, RecordedAt: "2026-07-07T00:00:00Z", IssueReflectedAt: "2026-07-07T00:01:00Z"}
+	rec.DevilsAdvocateReview = &issueops.IssueOpsDevilsAdvocateReview{Verdict: "stop", Findings: []string{"scope drift"}, RecordedAt: "2026-07-07T00:00:00Z", IssueReflectedAt: "2026-07-07T00:01:00Z"}
 	writeIssueOpsRecordForDelegationTest(t, stateRoot, rec)
 
 	if _, err := RegressIssueOpsForReplanWithActor(stateRoot, parent.ID, "active child still owns delegated work", issueOpsActorForTest(parent.WorktreePath)); err == nil || !strings.Contains(err.Error(), "children_active") {
@@ -173,7 +173,7 @@ func TestRegressIssueOpsForReplanExplainsReviseRecovery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rec.DevilsAdvocateReview = &model.IssueOpsDevilsAdvocateReview{
+	rec.DevilsAdvocateReview = &issueops.IssueOpsDevilsAdvocateReview{
 		Verdict:    "revise",
 		Findings:   []string{"probe 경합의 openUntil은 선택값이어야 한다"},
 		RecordedAt: "2026-07-29T00:00:00Z",

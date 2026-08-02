@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 
+	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/core/state/statepath"
 )
 
 type stateDoctorRecordInspection struct {
 	Valid  bool
-	Record StateRecord
+	Record statecontract.RecordEnvelope
 	Issues []StateDoctorIssue
 }
 
@@ -26,7 +27,7 @@ func inspectStateDoctorRecord(path, key string, data []byte) stateDoctorRecordIn
 			Message:  err.Error(),
 		}}}
 	}
-	var record StateRecord
+	var record statecontract.RecordEnvelope
 	if err := json.Unmarshal(data, &record); err != nil {
 		return stateDoctorRecordInspection{Issues: []StateDoctorIssue{{
 			Path:     path,
@@ -39,7 +40,7 @@ func inspectStateDoctorRecord(path, key string, data []byte) stateDoctorRecordIn
 	return validateStateDoctorRecord(path, key, record)
 }
 
-func validateStateDoctorRecord(path, key string, record StateRecord) stateDoctorRecordInspection {
+func validateStateDoctorRecord(path, key string, record statecontract.RecordEnvelope) stateDoctorRecordInspection {
 	fatalIssues := []StateDoctorIssue{}
 	warnings := []StateDoctorIssue{}
 	if record.Key != key {

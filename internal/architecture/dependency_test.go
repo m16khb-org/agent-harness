@@ -992,14 +992,98 @@ func evaluateEdges(edges []dependencyEdge) []violation {
 	return violations
 }
 
+func evaluateOwnershipEdges(edges []dependencyEdge) []violation {
+	var violations []violation
+	for _, edge := range edges {
+		if isCore(edge.importer) || isCore(edge.imported) {
+			violations = append(violations, violation{"ownership_forbids_core_package", edge})
+			continue
+		}
+		if isContract(edge.importer) && strings.HasPrefix(edge.imported, "internal/") {
+			violations = append(violations, violation{"contract_must_not_import_internal", edge})
+		}
+		if isDomain(edge.importer) && strings.HasPrefix(edge.imported, "internal/") && !isContract(edge.imported) {
+			violations = append(violations, violation{"domain_must_only_import_contract", edge})
+		}
+		if isApplication(edge.importer) && (isAdapter(edge.imported) || isCommand(edge.imported)) {
+			violations = append(violations, violation{"application_must_not_import_adapter_or_cmd", edge})
+		}
+		if isPort(edge.importer) && strings.HasPrefix(edge.imported, "internal/") {
+			violations = append(violations, violation{"port_must_not_import_internal", edge})
+		}
+	}
+	return violations
+}
+
+func foundationOwnershipViolations(edges []dependencyEdge) []violation {
+	var violations []violation
+	for _, edge := range edges {
+		if isCoreIssueOpsModel(edge.importer) || isCoreIssueOpsModel(edge.imported) {
+			violations = append(violations, violation{"ownership_forbids_core_package", edge})
+			continue
+		}
+		if isFoundationOwner(edge.importer) {
+			violations = append(violations, evaluateOwnershipEdges([]dependencyEdge{edge})...)
+		}
+	}
+	return violations
+}
+
+func foundationPackageViolations(packages []string) []string {
+	var violations []string
+	for _, path := range packages {
+		if isCoreIssueOpsModel(path) {
+			violations = append(violations, "ownership_forbids_core_package: "+path)
+		}
+	}
+	sort.Strings(violations)
+	return violations
+}
+
+func isCoreIssueOpsModel(path string) bool {
+	const prefix = "internal/core/issueops/model"
+	return path == prefix || strings.HasPrefix(path, prefix+"/")
+}
+
+func isFoundationOwner(path string) bool {
+	for _, prefix := range []string{
+		"internal/application/nativeactivation",
+		"internal/contract/issueops",
+		"internal/contract/lifecycle",
+		"internal/contract/nativeactivation",
+		"internal/contract/state",
+		"internal/domain/issueops",
+		"internal/domain/lifecycle",
+		"internal/domain/policy",
+		"internal/domain/state",
+		"internal/port/nativeactivation",
+		"internal/port/policy",
+		"internal/port/state",
+	} {
+		if path == prefix || strings.HasPrefix(path, prefix+"/") {
+			return true
+		}
+	}
+	return false
+}
+
 func isPublicationDomainContract(edge dependencyEdge) bool {
 	return edge.importer == "internal/domain/issueopspublication" && edge.imported == "internal/contract/issueopspublication"
 }
 
 func isAllowedDomainContract(edge dependencyEdge) bool {
-	return isPublicationDomainContract(edge) ||
+	return isSameCapabilityContract(edge) || isPublicationDomainContract(edge) ||
 		edge.importer == "internal/domain/issueopscompletion" && edge.imported == "internal/contract/issueopscompletion" ||
 		edge.importer == "internal/domain/issueopspreparation" && edge.imported == "internal/contract/issueopspreparation"
+}
+
+func isSameCapabilityContract(edge dependencyEdge) bool {
+	const domainPrefix = "internal/domain/"
+	const contractPrefix = "internal/contract/"
+	if !strings.HasPrefix(edge.importer, domainPrefix) || !strings.HasPrefix(edge.imported, contractPrefix) {
+		return false
+	}
+	return strings.TrimPrefix(edge.importer, domainPrefix) == strings.TrimPrefix(edge.imported, contractPrefix)
 }
 
 func isPublicationContract(path string) bool {
@@ -1107,6 +1191,33 @@ func loadProductionEdges(t *testing.T) []dependencyEdge {
 		}
 	}
 	return sortedEdges(edges)
+}
+
+func loadProductionPackages(t *testing.T) []string {
+	t.Helper()
+	repoRoot := findRepoRoot(t)
+	command := exec.Command("go", "list", "-json", "./...")
+	command.Dir = repoRoot
+	output, err := command.Output()
+	if err != nil {
+		t.Fatalf("go list -json ./...: %v", err)
+	}
+
+	decoder := json.NewDecoder(strings.NewReader(string(output)))
+	var packages []string
+	for decoder.More() {
+		var pkg struct {
+			ImportPath string
+		}
+		if err := decoder.Decode(&pkg); err != nil {
+			t.Fatalf("decode go list package: %v", err)
+		}
+		if strings.HasPrefix(pkg.ImportPath, "agent-harness/") {
+			packages = append(packages, normalizeImport(pkg.ImportPath))
+		}
+	}
+	sort.Strings(packages)
+	return packages
 }
 
 func findRepoRoot(t *testing.T) string {

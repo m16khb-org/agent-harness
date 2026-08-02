@@ -1,11 +1,13 @@
 package issueops
 
 import (
-	"agent-harness/internal/core/preflight"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/contract/issueops"
+	"agent-harness/internal/core/preflight"
 )
 
 func TestIssueOpsLinkPlanResolvesRelativePathInsideLinkedWorktree(t *testing.T) {
@@ -15,7 +17,7 @@ func TestIssueOpsLinkPlanResolvesRelativePathInsideLinkedWorktree(t *testing.T) 
 		t.Fatal(err)
 	}
 	writeIssueOpsFile(t, repo, "docs/plans/source-only.md", "source plan\n")
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "1-demo"})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "1-demo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,7 +26,7 @@ func TestIssueOpsLinkPlanResolvesRelativePathInsideLinkedWorktree(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, issueops.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     record.IssueURL,
 		Branch:       "1-demo",
@@ -70,7 +72,7 @@ func TestIssueOpsLinkPlanResolvesRelativePathInsideLinkedWorktree(t *testing.T) 
 
 func TestIssueOpsWorktreeLinkRequiresExistingDirectory(t *testing.T) {
 	stateRoot := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: "/repo/example", Branch: "1-demo"})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: "/repo/example", Branch: "1-demo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +80,7 @@ func TestIssueOpsWorktreeLinkRequiresExistingDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, issueops.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     record.IssueURL,
 		Branch:       "1-demo",
@@ -100,7 +102,7 @@ func TestIssueOpsWorktreeLinkRequiresSiblingIsolation(t *testing.T) {
 	if err := os.MkdirAll(repo, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "1-demo"})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "1-demo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +110,7 @@ func TestIssueOpsWorktreeLinkRequiresSiblingIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, issueops.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     record.IssueURL,
 		Branch:       "1-demo",
@@ -162,7 +164,7 @@ func TestIssueOpsWorktreeLinkRequiresIssueBranch(t *testing.T) {
 	if code, _, stderr := preflight.GitCmd(repo, "worktree", "add", "-q", wrongWorktree, otherBranch); code != 0 {
 		t.Fatalf("git worktree add failed: %s", stderr)
 	}
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +172,7 @@ func TestIssueOpsWorktreeLinkRequiresIssueBranch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, issueops.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     record.IssueURL,
 		Branch:       branch,
@@ -202,7 +204,7 @@ func TestIssueOpsPlanMustStayInsideLinkedWorktree(t *testing.T) {
 	if code, _, stderr := preflight.GitCmd(repo, "worktree", "add", "-q", worktree, branch); code != 0 {
 		t.Fatalf("git worktree add failed: %s", stderr)
 	}
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +213,7 @@ func TestIssueOpsPlanMustStayInsideLinkedWorktree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, IssueOpsBranchPrepareRequest{
+	record, err = PrepareIssueOpsBranch(stateRoot, record.ID, issueops.IssueOpsBranchPrepareRequest{
 		Provider:     "gitlab",
 		IssueURL:     record.IssueURL,
 		Branch:       branch,

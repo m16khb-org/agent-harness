@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -123,23 +123,23 @@ func abandonOrcaDeps(git *fakeAbandonGit, inspector port.ExecutionOrcaOwnerInspe
 // abandonSettledOrcaRecord는 prepare가 끝난 orca 사이클을 만든다. 워크트리
 // 디렉터리는 존재하지 않으므로 게이트 ⑥은 통과하고 orca 자원만 남는다 —
 // 이 이슈가 다루는 정확한 조건이다.
-func abandonSettledOrcaRecord(t *testing.T, taskStatus string) (string, IssueOpsRecord) {
+func abandonSettledOrcaRecord(t *testing.T, taskStatus string) (string, issueops.IssueOpsRecord) {
 	t.Helper()
 	stateRoot, record := abandonTestRecord(t)
-	record.Execution = &model.Execution{
-		Mode: model.ExecutionModeOrca,
-		Workspace: model.Workspace{
+	record.Execution = &issueops.Execution{
+		Mode: issueops.ExecutionModeOrca,
+		Workspace: issueops.Workspace{
 			SourceRoot: record.Repo, Root: record.Repo + ".worktrees/deleted-136",
 			Branch: record.Branch, BaseHead: "0000000000000000000000000000000000000000",
 			Driver: "orca", LinkedAt: "2026-07-25T00:00:00Z",
 		},
-		Orca: &model.OrcaBinding{
+		Orca: &issueops.OrcaBinding{
 			RuntimeID: "runtime-136", RepoID: "repo-136", WorktreeID: "worktree-136",
 			OwnerHost: "claude", OwnerModel: "claude-opus-5", TerminalPTYID: "pty-136",
 			TaskID: "task-136", DispatchID: "dispatch-136",
 		},
-		Lease: model.WriteLease{
-			Generation: 1, Status: model.LeaseStatusReleased, ReleasedAt: "2026-07-25T00:00:01Z",
+		Lease: issueops.WriteLease{
+			Generation: 1, Status: issueops.LeaseStatusReleased, ReleasedAt: "2026-07-25T00:00:01Z",
 		},
 	}
 	written, err := writeIssueOps(stateRoot, record)

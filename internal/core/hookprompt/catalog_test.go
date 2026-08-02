@@ -1,18 +1,21 @@
 package hookprompt
 
 import (
-	"agent-harness/internal/core/issueops"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	issueopscontract "agent-harness/internal/contract/issueops"
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
+	"agent-harness/internal/core/issueops"
 
 	"agent-harness/internal/core/projectdoc"
 )
 
 func linkedWorktreeCycleForHookPromptTest(t *testing.T, repo, branch string) string {
 	t.Helper()
-	record, err := issueops.StartIssueOps(issueops.IssueOpsStateRoot(), issueops.IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := issueops.StartIssueOps(issueops.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,7 +23,7 @@ func linkedWorktreeCycleForHookPromptTest(t *testing.T, repo, branch string) str
 	if _, err := issueops.LinkIssueOpsIssue(issueops.IssueOpsStateRoot(), record.ID, issueURL); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := issueops.PrepareIssueOpsBranch(issueops.IssueOpsStateRoot(), record.ID, issueops.IssueOpsBranchPrepareRequest{
+	if _, err := issueops.PrepareIssueOpsBranch(issueops.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     issueURL,
 		Branch:       branch,
@@ -160,7 +163,7 @@ func TestRenderUserPromptCodexContextPreservesFullCatalogForAgent(t *testing.T) 
 
 func TestAppendCompactPendingUpkeepDeduplicatesEvents(t *testing.T) {
 	parts := []string{}
-	events := []DocUpkeepEvent{
+	events := []lifecyclecontract.DocUpkeepEvent{
 		{TargetDocs: []string{"ARCHITECTURE.md", "OPERATIONS.md"}, Summary: "Bash touched harness lifecycle-relevant files; shared project docs may need review."},
 		{TargetDocs: []string{"ARCHITECTURE.md", "OPERATIONS.md"}, Summary: "Bash touched harness lifecycle-relevant files; shared project docs may need review."},
 	}

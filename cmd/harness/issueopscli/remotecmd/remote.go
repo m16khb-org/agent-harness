@@ -9,19 +9,19 @@ import (
 	"strings"
 
 	"agent-harness/internal/adapter/provider"
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core"
 	issueopscore "agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/remote"
 )
 
 type Deps struct {
 	PrintJSON              func(any) error
-	PrintResult            func(core.IssueOpsRecord, bool, error) error
+	PrintResult            func(issueopscontract.IssueOpsRecord, bool, error) error
 	PrintError             func(error) error
-	VerifyLive             func(core.IssueOpsRemoteArtifactVerificationRequest) error
-	VerifyMerged           func(core.IssueOpsRemoteArtifactVerification) error
-	ObserveProcessAncestry func(int) ([]model.NativeProcessReceipt, error)
+	VerifyLive             func(issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error
+	VerifyMerged           func(issueopscontract.IssueOpsRemoteArtifactVerification) error
+	ObserveProcessAncestry func(int) ([]issueopscontract.NativeProcessReceipt, error)
 	Publication            issueopscore.RemotePublicationHandlers
 }
 
@@ -130,7 +130,7 @@ func Run(args []string, deps Deps) error {
 		if help, err := parseFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
-		req := core.IssueOpsRemoteArtifactVerificationRequest{
+		req := issueopscontract.IssueOpsRemoteArtifactVerificationRequest{
 			Provider:     *provider,
 			Kind:         *kind,
 			URL:          *url,
@@ -139,12 +139,12 @@ func Run(args []string, deps Deps) error {
 			Assignees:    assignees,
 		}
 		_, err := core.ValidateIssueOpsRemoteArtifactVerification(core.IssueOpsStateRoot(), *id, req)
-		var record core.IssueOpsRecord
+		var record issueopscontract.IssueOpsRecord
 		if err == nil {
 			err = deps.verifyLive(req)
 		}
 		if err == nil {
-			var ancestry []model.NativeProcessReceipt
+			var ancestry []issueopscontract.NativeProcessReceipt
 			ancestry, err = deps.observeNativeProcessAncestry()
 			if err == nil {
 				record, err = core.VerifyIssueOpsRemoteArtifactWithActor(core.IssueOpsStateRoot(), *id, req, core.IssueOpsActor{
@@ -224,27 +224,27 @@ func runRemoteReflectDevilsAdvocate(args []string, deps Deps) error {
 // resolveRemoteCompletionInputs는 completion 계열 명령의 공통 전제(레코드,
 // provider, provider readback 머지 검증)를 fail-closed로 해석한다. readback
 // 실패는 "판정 불가"이며 강등 없이 에러다(설계 v5 WS3).
-func resolveRemoteCompletionInputs(deps Deps, id, providerOverride string) (core.IssueOpsRecord, core.IssueProvider, error) {
+func resolveRemoteCompletionInputs(deps Deps, id, providerOverride string) (issueopscontract.IssueOpsRecord, core.IssueProvider, error) {
 	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), id)
 	if err != nil {
-		return core.IssueOpsRecord{}, nil, err
+		return issueopscontract.IssueOpsRecord{}, nil, err
 	}
 	providerName := firstNonEmptyMain(providerOverride, core.ResolveRecordProvider(record))
 	if providerName == "" {
-		return core.IssueOpsRecord{}, nil, fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
+		return issueopscontract.IssueOpsRecord{}, nil, fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
 	}
 	prov, err := provider.Resolve(providerName)
 	if err != nil {
-		return core.IssueOpsRecord{}, nil, err
+		return issueopscontract.IssueOpsRecord{}, nil, err
 	}
 	if record.RemoteArtifact == nil {
-		return core.IssueOpsRecord{}, nil, fmt.Errorf("cannot verify merge evidence before a verified remote artifact")
+		return issueopscontract.IssueOpsRecord{}, nil, fmt.Errorf("cannot verify merge evidence before a verified remote artifact")
 	}
 	if deps.VerifyMerged == nil {
-		return core.IssueOpsRecord{}, nil, fmt.Errorf("merge verification is not configured")
+		return issueopscontract.IssueOpsRecord{}, nil, fmt.Errorf("merge verification is not configured")
 	}
 	if err := deps.VerifyMerged(*record.RemoteArtifact); err != nil {
-		return core.IssueOpsRecord{}, nil, fmt.Errorf("merge evidence readback failed (refusing to continue): %w", err)
+		return issueopscontract.IssueOpsRecord{}, nil, fmt.Errorf("merge evidence readback failed (refusing to continue): %w", err)
 	}
 	return record, prov, nil
 }
@@ -321,7 +321,7 @@ func (deps Deps) printError(err error) error {
 	return err
 }
 
-func (deps Deps) printResult(record core.IssueOpsRecord, jsonOut bool, err error) error {
+func (deps Deps) printResult(record issueopscontract.IssueOpsRecord, jsonOut bool, err error) error {
 	if deps.PrintResult != nil {
 		return deps.PrintResult(record, jsonOut, err)
 	}
@@ -340,7 +340,7 @@ func (deps Deps) printErrorResult(jsonOut bool, err error) error {
 	return err
 }
 
-func (deps Deps) verifyLive(req core.IssueOpsRemoteArtifactVerificationRequest) error {
+func (deps Deps) verifyLive(req issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error {
 	if deps.VerifyLive != nil {
 		return deps.VerifyLive(req)
 	}
@@ -529,7 +529,7 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 	// confirm the live issue carries the requested labels/assignees before the
 	// command reports success. Without --confirm this is a dry-run preview only.
 	if *confirm && strings.TrimSpace(result.URL) != "" {
-		if err := deps.verifyLive(core.IssueOpsRemoteArtifactVerificationRequest{
+		if err := deps.verifyLive(issueopscontract.IssueOpsRemoteArtifactVerificationRequest{
 			Provider:  providerName,
 			Kind:      "issue",
 			URL:       result.URL,
@@ -743,23 +743,23 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	return nil
 }
 
-func (deps Deps) remoteNativeActor(host, sessionID, agentID string, sessionPID int, sessionStartedAt, sessionExecutable string, observe bool) (model.NativeActor, error) {
-	actor := model.NativeActor{
+func (deps Deps) remoteNativeActor(host, sessionID, agentID string, sessionPID int, sessionStartedAt, sessionExecutable string, observe bool) (issueopscontract.NativeActor, error) {
+	actor := issueopscontract.NativeActor{
 		Host: host, SessionID: sessionID, AgentID: agentID,
-		SessionProcess: &model.NativeProcessReceipt{PID: sessionPID, StartedAt: sessionStartedAt, Executable: sessionExecutable},
+		SessionProcess: &issueopscontract.NativeProcessReceipt{PID: sessionPID, StartedAt: sessionStartedAt, Executable: sessionExecutable},
 	}
 	if !observe {
 		return actor, nil
 	}
 	ancestry, err := deps.observeNativeProcessAncestry()
 	if err != nil {
-		return model.NativeActor{}, err
+		return issueopscontract.NativeActor{}, err
 	}
 	actor.ProcessAncestry = ancestry
 	return actor, nil
 }
 
-func (deps Deps) observeNativeProcessAncestry() ([]model.NativeProcessReceipt, error) {
+func (deps Deps) observeNativeProcessAncestry() ([]issueopscontract.NativeProcessReceipt, error) {
 	observe := deps.ObserveProcessAncestry
 	if observe == nil {
 		observe = issueopscore.ObserveNativeProcessAncestry

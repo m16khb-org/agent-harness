@@ -10,13 +10,14 @@ import (
 	"strings"
 	"time"
 
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/core/lifecycle/docupkeep"
 	"agent-harness/internal/core/lifecycle/model"
 	"agent-harness/internal/core/state"
 )
 
 type Store struct {
-	ReadPending func(repoRoot string, limit int) ([]model.DocUpkeepEvent, model.ProjectLifecycleStatePlan, error)
+	ReadPending func(repoRoot string, limit int) ([]lifecyclecontract.DocUpkeepEvent, model.ProjectLifecycleStatePlan, error)
 	Validate    func(repoRoot string) (model.ProjectLifecycleStatePlan, error)
 	WriteJSON   func(path string, value any, perm os.FileMode) error
 }
@@ -101,9 +102,9 @@ func readCompactCapsule(path string) (model.LifecycleCompactCapsule, bool) {
 
 // mergeDocUpkeepEvents merges existing and incoming DocUpkeepEvent slices,
 // appending incoming events and deduplicating by target.
-func mergeDocUpkeepEvents(existing, incoming []model.DocUpkeepEvent) []model.DocUpkeepEvent {
+func mergeDocUpkeepEvents(existing, incoming []lifecyclecontract.DocUpkeepEvent) []lifecyclecontract.DocUpkeepEvent {
 	seen := map[string]bool{}
-	out := make([]model.DocUpkeepEvent, 0, len(existing)+len(incoming))
+	out := make([]lifecyclecontract.DocUpkeepEvent, 0, len(existing)+len(incoming))
 	for _, event := range existing {
 		key := strings.Join(docupkeep.NormalizeTargetDocs(event.TargetDocs), ",") + "\x00" + strings.TrimSpace(event.Summary)
 		if seen[key] {
@@ -177,7 +178,7 @@ func consumeCompactCapsule(path string, consumed model.LifecycleCompactCapsule) 
 	}
 }
 
-func docsFromDocUpkeepEvents(events []model.DocUpkeepEvent) []string {
+func docsFromDocUpkeepEvents(events []lifecyclecontract.DocUpkeepEvent) []string {
 	docs := []string{}
 	for _, event := range events {
 		docs = append(docs, event.TargetDocs...)

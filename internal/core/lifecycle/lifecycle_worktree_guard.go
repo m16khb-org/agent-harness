@@ -1,6 +1,8 @@
 package lifecycle
 
-func worktreeGuardBlockReason(req HookToolUseLifecycleRequest) string {
+import lifecyclecontract "agent-harness/internal/contract/lifecycle"
+
+func worktreeGuardBlockReason(req lifecyclecontract.HookToolUseLifecycleRequest) string {
 	if !toolUseMayMutateLifecycleFiles(req.Tool, req.Command) {
 		return ""
 	}

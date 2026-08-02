@@ -8,15 +8,17 @@ import (
 	"strings"
 	"time"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
+
 	"agent-harness/internal/core/commandparse"
 	issueopscore "agent-harness/internal/core/issueops"
-	issueopsmodel "agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/lifecycle/worktreeguard"
 	"agent-harness/internal/core/searchrouting"
 )
 
 // 관찰 권한은 동시 execution 중 owner를 먼저 고르는 절차에 의존하지 않는다.
-func executionObservation(req HookToolUseLifecycleRequest) bool {
+func executionObservation(req lifecyclecontract.HookToolUseLifecycleRequest) bool {
 	if !searchrouting.IsShellTool(req.Tool) {
 		return explicitIssueOpsReadOnlyTool(req.Tool)
 	}
@@ -396,7 +398,7 @@ func positiveMilliseconds(value string) bool {
 	return err == nil && milliseconds > 0
 }
 
-func executionTypedControlPlane(req HookToolUseLifecycleRequest) bool {
+func executionTypedControlPlane(req lifecyclecontract.HookToolUseLifecycleRequest) bool {
 	if !searchrouting.IsShellTool(req.Tool) {
 		tool := strings.TrimSpace(req.Tool)
 		return (tool == "issueops_execution" || tool == "mcp__agent_harness__issueops_execution") && req.ToolInput != nil
@@ -451,7 +453,7 @@ func executionTypedControlPlane(req HookToolUseLifecycleRequest) bool {
 	}
 }
 
-func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *IssueOpsDenyReason) {
+func executionMutationDecision(req lifecyclecontract.HookToolUseLifecycleRequest) (bool, string, *lifecyclecontract.IssueOpsDenyReason) {
 	if !req.EnforceWorktree {
 		return false, "", nil
 	}
@@ -525,7 +527,7 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 		if unsafeReason != "" {
 			return true, unsafeReason, executionDeny(record, "unsafe_mutation", executionStatusCommand(record.ID))
 		}
-		if err := issueopsmodel.ValidateExecution(*record.Execution); err != nil {
+		if err := issueopscontract.ValidateExecution(*record.Execution); err != nil {
 			return true, "invalid IssueOps execution v1 record: " + err.Error(), nil
 		}
 		lease := record.Execution.Lease
@@ -538,11 +540,11 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 		if exactTemporaryBuild {
 			targetsAuthorized = executionTemporaryBuildTargetsAuthorized(req, targets, root, temporaryBuildOutput)
 		}
-		if lease.Status == issueopsmodel.LeaseStatusActive && executionActorMatches(req, lease.Holder) &&
+		if lease.Status == issueopscontract.LeaseStatusActive && executionActorMatches(req, lease.Holder) &&
 			targetsAuthorized {
 			return true, "", nil
 		}
-		if lease.Status == issueopsmodel.LeaseStatusActive && lease.Holder != nil && !executionActorMatches(req, lease.Holder) {
+		if lease.Status == issueopscontract.LeaseStatusActive && lease.Holder != nil && !executionActorMatches(req, lease.Holder) {
 			axis := executionActorMismatchAxis(req, lease.Holder)
 			deny := executionDeny(record, "holder_identity_mismatch", executionStatusCommand(record.ID))
 			deny.IdentityMismatch = axis
@@ -667,7 +669,7 @@ func exactOwnedResourceWait(commandText string) (string, bool) {
 // 두 Python gate만 현재 holder의 foreground workflow로 인정한다. 저장소가
 // 제공하거나 설치 경로에 연결된 Python 코드는 일반 관찰 권한으로 승격하지 않고,
 // 대상 저장소만 기존 canonical worktree fence로 다시 검증한다.
-func exactAtomicCommitWorkflowScript(req HookToolUseLifecycleRequest) (string, bool) {
+func exactAtomicCommitWorkflowScript(req lifecyclecontract.HookToolUseLifecycleRequest) (string, bool) {
 	if !searchrouting.IsShellTool(req.Tool) {
 		return "", false
 	}
@@ -708,7 +710,7 @@ func exactAtomicCommitWorkflowScript(req HookToolUseLifecycleRequest) (string, b
 // atomicCommitWorkflowCWD는 Codex exec_command가 실제로 사용하는 workdir와
 // Claude Bash가 전달하는 top-level cwd를 구분한다. exec_command의 명시적
 // workdir는 절대 경로일 때만 받아 host별 상대 경로 해석 차이를 열지 않는다.
-func atomicCommitWorkflowCWD(req HookToolUseLifecycleRequest) (string, bool) {
+func atomicCommitWorkflowCWD(req lifecyclecontract.HookToolUseLifecycleRequest) (string, bool) {
 	if strings.EqualFold(strings.TrimSpace(req.Tool), "exec_command") {
 		value, exists := req.ToolInput["workdir"]
 		if exists {
@@ -728,7 +730,7 @@ func losslessAtomicWorkflowToken(token string) bool {
 	return token != "" && token == strings.TrimSpace(token)
 }
 
-func atomicCommitWorkflowScriptPath(req HookToolUseLifecycleRequest, path string) bool {
+func atomicCommitWorkflowScriptPath(req lifecyclecontract.HookToolUseLifecycleRequest, path string) bool {
 	clean := filepath.Clean(path)
 	for _, relative := range []string{
 		"skills/atomic-commit-push/scripts/git_preflight.py",
@@ -757,7 +759,7 @@ func atomicCommitWorkflowUsesRelativeScript(commandText string) bool {
 
 // atomicCommitWorkflowInstallBases는 하네스 설치기가 실제로 만드는 skill
 // root만 돌려준다. 임의의 `/tmp/.../skills` suffix는 이 목록에 들어오지 않는다.
-func atomicCommitWorkflowInstallBases(req HookToolUseLifecycleRequest) []string {
+func atomicCommitWorkflowInstallBases(req lifecyclecontract.HookToolUseLifecycleRequest) []string {
 	candidates := []string{
 		req.ExpectedWorktree,
 		req.SourceCheckout,
@@ -794,7 +796,7 @@ func positiveDuration(value string) bool {
 	return err == nil && duration > 0
 }
 
-func executionMutationTargets(req HookToolUseLifecycleRequest) []string {
+func executionMutationTargets(req lifecyclecontract.HookToolUseLifecycleRequest) []string {
 	targets := []string{}
 	base := hookRequestPathBase(req)
 	nonTargetPaths := exactIssueOpsOwnerNonTargetPaths(base, req.Command)
@@ -873,7 +875,7 @@ func exactTemporaryAgentHarnessBuildOutput(commandText string) (string, bool) {
 	}
 }
 
-func executionTemporaryBuildTargetsAuthorized(req HookToolUseLifecycleRequest, targets []string, root, output string) bool {
+func executionTemporaryBuildTargetsAuthorized(req lifecyclecontract.HookToolUseLifecycleRequest, targets []string, root, output string) bool {
 	if !sameExecutionPath(req.CWD, root) {
 		return false
 	}
@@ -930,14 +932,14 @@ func exactIssueOpsOwnerNonTargetPaths(base, commandText string) map[string]bool 
 	return paths
 }
 
-func executionRequestTargetsStayInside(req HookToolUseLifecycleRequest, targets []string, root string) bool {
+func executionRequestTargetsStayInside(req lifecyclecontract.HookToolUseLifecycleRequest, targets []string, root string) bool {
 	if len(targets) == 0 {
 		return sameExecutionPath(req.CWD, root)
 	}
 	return allExecutionTargetsInside(targets, root)
 }
 
-func executionUnsafeMutationReason(req HookToolUseLifecycleRequest) string {
+func executionUnsafeMutationReason(req lifecyclecontract.HookToolUseLifecycleRequest) string {
 	if !searchrouting.IsShellTool(req.Tool) {
 		if toolUseMayMutateLifecycleFiles(req.Tool, req.Command) && len(req.Paths) == 0 {
 			return "filesystem mutation target is unresolved; provide one exact path inside the canonical IssueOps worktree"
@@ -1010,8 +1012,8 @@ func containsExecutionToken(tokens []string, want string) bool {
 	return false
 }
 
-func executionGuardRecords(req HookToolUseLifecycleRequest, targets []string) ([]IssueOpsRecord, error) {
-	records := []IssueOpsRecord{}
+func executionGuardRecords(req lifecyclecontract.HookToolUseLifecycleRequest, targets []string) ([]issueopscontract.IssueOpsRecord, error) {
+	records := []issueopscontract.IssueOpsRecord{}
 	ids, err := issueopscore.ListIssueOpsIDs(IssueOpsStateRoot())
 	if err != nil {
 		return nil, err
@@ -1028,14 +1030,14 @@ func executionGuardRecords(req HookToolUseLifecycleRequest, targets []string) ([
 	return records, nil
 }
 
-func executionRecordTouchesRequest(record IssueOpsRecord, req HookToolUseLifecycleRequest, targets []string) bool {
+func executionRecordTouchesRequest(record issueopscontract.IssueOpsRecord, req lifecyclecontract.HookToolUseLifecycleRequest, targets []string) bool {
 	if record.Execution == nil {
 		return false
 	}
 	return requestTouchesExecution(req, targets, *record.Execution)
 }
 
-func requestTouchesExecution(req HookToolUseLifecycleRequest, targets []string, execution issueopsmodel.Execution) bool {
+func requestTouchesExecution(req lifecyclecontract.HookToolUseLifecycleRequest, targets []string, execution issueopscontract.Execution) bool {
 	root := cleanAbsPath(execution.Workspace.Root)
 	for _, path := range targets {
 		if pathWithin(cleanAbsPath(path), root) {
@@ -1047,7 +1049,7 @@ func requestTouchesExecution(req HookToolUseLifecycleRequest, targets []string, 
 
 // executionActorMismatchAxis는 훅 관측 identity와 holder가 처음 어긋난 축을
 // 보고한다. executionActorMatches의 비교 순서와 동일해야 진단이 정확하다.
-func executionActorMismatchAxis(req HookToolUseLifecycleRequest, holder *issueopsmodel.NativeActor) string {
+func executionActorMismatchAxis(req lifecyclecontract.HookToolUseLifecycleRequest, holder *issueopscontract.NativeActor) string {
 	switch {
 	case holder.SessionProcess == nil:
 		return "holder_session_process_missing"
@@ -1062,14 +1064,16 @@ func executionActorMismatchAxis(req HookToolUseLifecycleRequest, holder *issueop
 	}
 }
 
-func executionActorMatches(req HookToolUseLifecycleRequest, holder *issueopsmodel.NativeActor) bool {
+func executionActorMatches(req lifecyclecontract.HookToolUseLifecycleRequest, holder *issueopscontract.NativeActor) bool {
 	if holder == nil || holder.SessionProcess == nil || !strings.EqualFold(strings.TrimSpace(req.Host), holder.Host) ||
 		strings.TrimSpace(req.SessionID) == "" || strings.TrimSpace(req.SessionID) != holder.SessionID ||
 		strings.TrimSpace(req.AgentID) != holder.AgentID {
 		return false
 	}
 	for _, observed := range req.NativeProcessAncestry {
-		if observed == *holder.SessionProcess {
+		if observed.PID == holder.SessionProcess.PID &&
+			observed.StartedAt == holder.SessionProcess.StartedAt &&
+			observed.Executable == holder.SessionProcess.Executable {
 			return true
 		}
 	}
@@ -1134,18 +1138,18 @@ func sameExecutionPath(left, right string) bool {
 	return left != "" && left == right
 }
 
-func executionMutationDenyReason(record IssueOpsRecord) (string, *IssueOpsDenyReason) {
+func executionMutationDenyReason(record issueopscontract.IssueOpsRecord) (string, *lifecyclecontract.IssueOpsDenyReason) {
 	execution := record.Execution
 	root := execution.Workspace.Root
 	generation := execution.Lease.Generation
 	switch execution.Lease.Status {
-	case issueopsmodel.LeaseStatusRevoking:
+	case issueopscontract.LeaseStatusRevoking:
 		next := executionStatusCommand(record.ID)
 		return fmt.Sprintf("IssueOps execution %s generation %d is revoking and has no writer; inspect with `%s`", record.ID, generation, next), executionDeny(record, "lease_revoking", next)
-	case issueopsmodel.LeaseStatusClaimable:
+	case issueopscontract.LeaseStatusClaimable:
 		next := executionStatusCommand(record.ID)
 		return fmt.Sprintf("IssueOps execution %s generation %d is claimable and has no writer; inspect with `%s`", record.ID, generation, next), executionDeny(record, "lease_claimable", next)
-	case issueopsmodel.LeaseStatusReleased:
+	case issueopscontract.LeaseStatusReleased:
 		next := executionStatusCommand(record.ID)
 		return fmt.Sprintf("IssueOps execution %s generation %d is released and has no writer; inspect with `%s`", record.ID, generation, next), executionDeny(record, "lease_released", next)
 	default:
@@ -1154,8 +1158,8 @@ func executionMutationDenyReason(record IssueOpsRecord) (string, *IssueOpsDenyRe
 	}
 }
 
-func executionDeny(record IssueOpsRecord, code, nextCommand string) *IssueOpsDenyReason {
-	return &IssueOpsDenyReason{
+func executionDeny(record issueopscontract.IssueOpsRecord, code, nextCommand string) *lifecyclecontract.IssueOpsDenyReason {
+	return &lifecyclecontract.IssueOpsDenyReason{
 		Code: code, LifecycleID: record.ID, ExpectedRoot: record.Execution.Workspace.Root,
 		CurrentGeneration: record.Execution.Lease.Generation, NextCommand: nextCommand,
 	}

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	leaseinbound "agent-harness/internal/adapter/inbound/issueopslease"
 	leaseoutbound "agent-harness/internal/adapter/outbound/issueopslease"
 	leaseapp "agent-harness/internal/application/issueopslease"
@@ -20,7 +22,7 @@ func issueOpsReconcileHandler(ctx context.Context, stateRoot string, request iss
 	return leaseinbound.NewReconcileHandler(service)(ctx, stateRoot, request, deps)
 }
 
-func newIssueOpsReconcileService(stateRoot string, provisioner port.ExecutionOrcaProvisioner, readIssue issueops.ExecutionIssueSnapshotReadFunc, snapshot *issueops.IssueOpsRecord, now func() time.Time) *leaseapp.ReconcileService {
+func newIssueOpsReconcileService(stateRoot string, provisioner port.ExecutionOrcaProvisioner, readIssue issueops.ExecutionIssueSnapshotReadFunc, snapshot *issueopscontract.IssueOpsRecord, now func() time.Time) *leaseapp.ReconcileService {
 	effects := &coreReconcileEffects{stateRoot: stateRoot, provisioner: provisioner, readIssue: readIssue, snapshot: snapshot, now: now}
 	return leaseapp.NewReconcileService(
 		leaseoutbound.NewReconcileRepository(effects),
@@ -32,7 +34,7 @@ type coreReconcileEffects struct {
 	stateRoot   string
 	provisioner port.ExecutionOrcaProvisioner
 	readIssue   issueops.ExecutionIssueSnapshotReadFunc
-	snapshot    *issueops.IssueOpsRecord
+	snapshot    *issueopscontract.IssueOpsRecord
 	now         func() time.Time
 }
 
@@ -169,7 +171,7 @@ func reconcileCoreIntentState(state leaseoutbound.ReconcileEffectState) (issueop
 	}, nil
 }
 
-func reconcileContractRecord(record issueops.IssueOpsRecord) (leasecontract.Record, error) {
+func reconcileContractRecord(record issueopscontract.IssueOpsRecord) (leasecontract.Record, error) {
 	data, err := json.Marshal(record)
 	if err != nil {
 		return leasecontract.Record{}, err

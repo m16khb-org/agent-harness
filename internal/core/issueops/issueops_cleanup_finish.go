@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops/pathutil"
 	"agent-harness/internal/port"
 )
@@ -46,7 +46,7 @@ type CleanupFinishDeps struct {
 	// ReflectAudit는 ②(파괴 시작) 이전에 스냅샷한 completion payload에 감사
 	// 라인을 더해 멱등 병합한다 — 삭제된 워크트리를 다시 읽어 보존 본문을
 	// 빈 값으로 덮어쓰는 사고를 구조적으로 차단한다(C2-F1 (c)).
-	ReflectAudit     func(record IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string) error
+	ReflectAudit     func(record issueops.IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string) error
 	InspectProcesses func(root string) ([]string, error)
 }
 
@@ -221,12 +221,12 @@ func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishReque
 	return result, nil
 }
 
-func cleanupFinishGates(record IssueOpsRecord, req CleanupFinishRequest, deps CleanupFinishDeps, result *CleanupFinishResult) (cleanupFinishInventory, []string) {
+func cleanupFinishGates(record issueops.IssueOpsRecord, req CleanupFinishRequest, deps CleanupFinishDeps, result *CleanupFinishResult) (cleanupFinishInventory, []string) {
 	missing := []string{}
 	if record.Phase != IssueOpsPhaseDone {
 		missing = append(missing, "phase_done")
 	}
-	if record.Execution != nil && record.Execution.Lease.Status != model.LeaseStatusReleased {
+	if record.Execution != nil && record.Execution.Lease.Status != issueops.LeaseStatusReleased {
 		missing = append(missing, "lease_released")
 	}
 	if !req.Merged {
@@ -340,7 +340,7 @@ func cleanupFinishGates(record IssueOpsRecord, req CleanupFinishRequest, deps Cl
 // 없다는 뜻이며(레거시 레코드), 그 경우 게이트는 적용되지 않는다. execution
 // complete가 base_branch 없는 done 전이를 거부하므로 현재 계약을 지나온
 // 사이클에서는 항상 값이 있다.
-func preparedBaseBranch(record IssueOpsRecord) string {
+func preparedBaseBranch(record issueops.IssueOpsRecord) string {
 	if record.BranchPrepare == nil {
 		return ""
 	}
@@ -365,7 +365,7 @@ func recordCleanupFinishFailure(stateRoot, id, step string, stepErr error) {
 			return err
 		}
 		now := time.Now().UTC().Format(time.RFC3339Nano)
-		rec.CleanupFinishFailure = &IssueOpsCleanupFinishFailure{Step: step, Message: stepErr.Error(), At: now}
+		rec.CleanupFinishFailure = &issueops.IssueOpsCleanupFinishFailure{Step: step, Message: stepErr.Error(), At: now}
 		rec.UpdatedAt = now
 		_, err = writeIssueOps(stateRoot, rec)
 		return err
@@ -387,7 +387,7 @@ func orNone(v string) string {
 // 쓴다. 따라서 성공하면 ReflectIssueCompletion과 같은 효과이며 로컬 캐시도 함께
 // 채워야 한다 — 그러지 않으면 레코드를 유지하는 cleanup remote-branch 직후
 // issueops list가 원격에 반영된 사이클을 거짓으로 미반영이라 보고한다(#128).
-func ReflectCleanupAudit(stateRoot string, record IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string, prov port.IssueProvider) error {
+func ReflectCleanupAudit(stateRoot string, record issueops.IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string, prov port.IssueProvider) error {
 	if prov == nil {
 		return fmt.Errorf("no issue provider configured")
 	}
@@ -409,7 +409,7 @@ func ReflectCleanupAudit(stateRoot string, record IssueOpsRecord, completion por
 	// 원격보다 낙관적으로 만들어서는 안 된다. finish 경로에서는 직후 레코드가
 	// 삭제되어 무해하고, 파괴 단계가 중간 실패해 레코드가 잔존하면 오히려
 	// 정확해진다.
-	_, err = stampRemoteCompletion(stateRoot, record.ID, func(rc *IssueOpsRemoteCompletion, now string) {
+	_, err = stampRemoteCompletion(stateRoot, record.ID, func(rc *issueops.IssueOpsRemoteCompletion, now string) {
 		rc.ReflectedAt = now
 	})
 	return err

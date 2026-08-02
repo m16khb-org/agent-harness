@@ -7,10 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
 )
 
 type service interface {
@@ -34,7 +34,7 @@ func (handler Handler) Handle(ctx context.Context, _ string, request issueops.Ex
 	return coreResult(result), publicError(err)
 }
 
-func preparationActor(actor issueops.NativeActor) preparationcontract.Actor {
+func preparationActor(actor issueopscontract.NativeActor) preparationcontract.Actor {
 	result := preparationcontract.Actor{Host: actor.Host, SessionID: actor.SessionID, AgentID: actor.AgentID}
 	if actor.SessionProcess != nil {
 		result.SessionProcess = &leasecontract.ProcessReceipt{
@@ -56,37 +56,37 @@ func coreResult(result preparationcontract.Result) issueops.ExecutionPrepareResu
 	}
 }
 
-func coreWorkspace(workspace preparationcontract.Workspace) model.Workspace {
-	return model.Workspace{
+func coreWorkspace(workspace preparationcontract.Workspace) issueopscontract.Workspace {
+	return issueopscontract.Workspace{
 		SourceRoot: workspace.SourceRoot, Root: workspace.Root, Branch: workspace.Branch,
 		BaseHead: workspace.BaseHead, ParentWorktree: workspace.ParentWorktree, Driver: workspace.Driver, LinkedAt: workspace.LinkedAt,
 	}
 }
 
-func coreExecution(execution *leasecontract.Execution) *model.Execution {
+func coreExecution(execution *leasecontract.Execution) *issueopscontract.Execution {
 	if execution == nil {
 		return nil
 	}
-	result := &model.Execution{
-		Mode: model.ExecutionMode(execution.Mode), Workspace: coreWorkspace(execution.Workspace),
-		Lease: model.WriteLease{
-			Generation: execution.Lease.Generation, Status: model.LeaseStatus(execution.Lease.Status),
+	result := &issueopscontract.Execution{
+		Mode: issueopscontract.ExecutionMode(execution.Mode), Workspace: coreWorkspace(execution.Workspace),
+		Lease: issueopscontract.WriteLease{
+			Generation: execution.Lease.Generation, Status: issueopscontract.LeaseStatus(execution.Lease.Status),
 			ClaimTokenSHA256: execution.Lease.ClaimTokenSHA256, ClaimedAt: execution.Lease.ClaimedAt,
 			ReleasedAt: execution.Lease.ReleasedAt, ReplacedAt: execution.Lease.ReplacedAt, ReplacementReason: execution.Lease.ReplacementReason,
 		},
 	}
 	if execution.Lease.Holder != nil {
 		holder := execution.Lease.Holder
-		result.Lease.Holder = &model.NativeActor{Host: holder.Host, SessionID: holder.SessionID, AgentID: holder.AgentID}
+		result.Lease.Holder = &issueopscontract.NativeActor{Host: holder.Host, SessionID: holder.SessionID, AgentID: holder.AgentID}
 		if holder.SessionProcess != nil {
-			result.Lease.Holder.SessionProcess = &model.NativeProcessReceipt{
+			result.Lease.Holder.SessionProcess = &issueopscontract.NativeProcessReceipt{
 				PID: holder.SessionProcess.PID, StartedAt: holder.SessionProcess.StartedAt, Executable: holder.SessionProcess.Executable,
 			}
 		}
 	}
 	if execution.Orca != nil {
 		binding := execution.Orca
-		result.Orca = &model.OrcaBinding{
+		result.Orca = &issueopscontract.OrcaBinding{
 			RuntimeID: binding.RuntimeID, RepoID: binding.RepoID, WorktreeID: binding.WorktreeID,
 			RunID: binding.RunID, WorktreeInstanceID: binding.WorktreeInstanceID, LeaseGeneration: binding.LeaseGeneration,
 			OwnerHost: binding.OwnerHost, OwnerModel: binding.OwnerModel, OwnerEffort: binding.OwnerEffort,
@@ -95,23 +95,23 @@ func coreExecution(execution *leasecontract.Execution) *model.Execution {
 	}
 	if execution.Pending != nil {
 		pending := execution.Pending
-		result.Pending = &model.ExternalIntent{OperationID: pending.OperationID, Kind: pending.Kind, Marker: pending.Marker, StartedAt: pending.StartedAt}
+		result.Pending = &issueopscontract.ExternalIntent{OperationID: pending.OperationID, Kind: pending.Kind, Marker: pending.Marker, StartedAt: pending.StartedAt}
 	}
 	if execution.Completion != nil {
 		completion := execution.Completion
-		result.Completion = &model.ExecutionCompletion{
+		result.Completion = &issueopscontract.ExecutionCompletion{
 			FinalHead: completion.FinalHead, TuringReportPath: completion.TuringReportPath,
 			Verification: cloneStrings(completion.Verification), RemoteArtifactURL: completion.RemoteArtifactURL, CompletedAt: completion.CompletedAt,
 		}
 	}
 	if execution.Failure != nil {
 		failure := execution.Failure
-		result.Failure = &model.ExecutionFailure{OperationID: failure.OperationID, Code: failure.Code, Message: failure.Message, At: failure.At}
+		result.Failure = &issueopscontract.ExecutionFailure{OperationID: failure.OperationID, Code: failure.Code, Message: failure.Message, At: failure.At}
 	}
 	if execution.SyncBaseEvents != nil {
-		result.SyncBaseEvents = make([]model.ExecutionSyncBaseEvent, len(execution.SyncBaseEvents))
+		result.SyncBaseEvents = make([]issueopscontract.ExecutionSyncBaseEvent, len(execution.SyncBaseEvents))
 		for index, event := range execution.SyncBaseEvents {
-			result.SyncBaseEvents[index] = model.ExecutionSyncBaseEvent{
+			result.SyncBaseEvents[index] = issueopscontract.ExecutionSyncBaseEvent{
 				Mode: event.Mode, BaseBranch: event.BaseBranch, BaseOID: event.BaseOID, MergeCommit: event.MergeCommit,
 				ConflictFiles: event.ConflictFiles, Actor: event.Actor, At: event.At,
 			}

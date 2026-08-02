@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
@@ -29,9 +29,9 @@ const (
 )
 
 type ExecutionResult struct {
-	OK        bool            `json:"ok"`
-	ID        string          `json:"id"`
-	Execution model.Execution `json:"execution"`
+	OK        bool               `json:"ok"`
+	ID        string             `json:"id"`
+	Execution issueops.Execution `json:"execution"`
 	// OrcaTaskSettled와 OrcaTaskError는 완료가 orca task를 terminal 상태로
 	// 옮겼는지를 보고한다. 종결은 best-effort이므로 실패해도 완료 자체는
 	// 성공이며, 침묵하면 진단이 불가능하므로 사유를 남긴다(#130).
@@ -42,13 +42,13 @@ type ExecutionResult struct {
 }
 
 type ExecutionClaimRequest struct {
-	ID                  string            `json:"id"`
-	Generation          uint64            `json:"generation"`
-	Actor               model.NativeActor `json:"actor"`
-	CWD                 string            `json:"cwd"`
-	TokenFile           string            `json:"claim_token_file"`
-	IssueBodySHA256     string            `json:"issue_body_sha256,omitempty"`
-	ContextPacketSHA256 string            `json:"context_packet_sha256,omitempty"`
+	ID                  string               `json:"id"`
+	Generation          uint64               `json:"generation"`
+	Actor               issueops.NativeActor `json:"actor"`
+	CWD                 string               `json:"cwd"`
+	TokenFile           string               `json:"claim_token_file"`
+	IssueBodySHA256     string               `json:"issue_body_sha256,omitempty"`
+	ContextPacketSHA256 string               `json:"context_packet_sha256,omitempty"`
 }
 
 type ExecutionClaimDependencies struct {
@@ -56,22 +56,22 @@ type ExecutionClaimDependencies struct {
 }
 
 type ExecutionReleaseRequest struct {
-	ID         string            `json:"id"`
-	Generation uint64            `json:"generation"`
-	Actor      model.NativeActor `json:"actor"`
-	CWD        string            `json:"cwd"`
+	ID         string               `json:"id"`
+	Generation uint64               `json:"generation"`
+	Actor      issueops.NativeActor `json:"actor"`
+	CWD        string               `json:"cwd"`
 }
 
 type ExecutionReplaceRequest struct {
-	ID                    string            `json:"id"`
-	Action                string            `json:"action"`
-	ExpectedGeneration    uint64            `json:"expected_generation"`
-	InventoryFingerprint  string            `json:"inventory_fingerprint,omitempty"`
-	QuiescenceFingerprint string            `json:"quiescence_fingerprint,omitempty"`
-	Reason                string            `json:"reason,omitempty"`
-	Actor                 model.NativeActor `json:"actor"`
-	CWD                   string            `json:"cwd"`
-	Confirm               bool              `json:"confirm,omitempty"`
+	ID                    string               `json:"id"`
+	Action                string               `json:"action"`
+	ExpectedGeneration    uint64               `json:"expected_generation"`
+	InventoryFingerprint  string               `json:"inventory_fingerprint,omitempty"`
+	QuiescenceFingerprint string               `json:"quiescence_fingerprint,omitempty"`
+	Reason                string               `json:"reason,omitempty"`
+	Actor                 issueops.NativeActor `json:"actor"`
+	CWD                   string               `json:"cwd"`
+	Confirm               bool                 `json:"confirm,omitempty"`
 }
 
 type ExecutionReseedRequest struct {
@@ -79,20 +79,20 @@ type ExecutionReseedRequest struct {
 	ExpectedGeneration   uint64                         `json:"expected_generation"`
 	InventoryFingerprint string                         `json:"inventory_fingerprint,omitempty"`
 	Reason               string                         `json:"reason,omitempty"`
-	Actor                model.NativeActor              `json:"actor"`
+	Actor                issueops.NativeActor           `json:"actor"`
 	CWD                  string                         `json:"cwd"`
 	Confirm              bool                           `json:"confirm,omitempty"`
 	ReadIssue            ExecutionIssueSnapshotReadFunc `json:"-"`
 }
 
 type ExecutionReplaceResult struct {
-	OK                    bool            `json:"ok"`
-	ID                    string          `json:"id"`
-	Action                string          `json:"action"`
-	Execution             model.Execution `json:"execution"`
-	InventoryFingerprint  string          `json:"inventory_fingerprint,omitempty"`
-	QuiescenceFingerprint string          `json:"quiescence_fingerprint,omitempty"`
-	ClaimTokenPath        string          `json:"claim_token_path,omitempty"`
+	OK                    bool               `json:"ok"`
+	ID                    string             `json:"id"`
+	Action                string             `json:"action"`
+	Execution             issueops.Execution `json:"execution"`
+	InventoryFingerprint  string             `json:"inventory_fingerprint,omitempty"`
+	QuiescenceFingerprint string             `json:"quiescence_fingerprint,omitempty"`
+	ClaimTokenPath        string             `json:"claim_token_path,omitempty"`
 	// 아래 값은 replacement가 새 generation으로 재봉인한 owner artifact의
 	// 정체다. owner는 digest들을 claim 명령에 그대로 넣어야 하므로 노출한다.
 	IssueBodySHA256     string `json:"issue_body_sha256,omitempty"`
@@ -140,7 +140,7 @@ func releaseExecutionCompatibilityOracle(stateRoot string, req ExecutionReleaseR
 	if err != nil {
 		return ExecutionResult{OK: false, ID: req.ID}, err
 	}
-	var persisted IssueOpsRecord
+	var persisted issueops.IssueOpsRecord
 	err = withIssueOpsLock(context.Background(), stateRoot, req.ID, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, req.ID)
 		if err != nil {
@@ -150,14 +150,14 @@ func releaseExecutionCompatibilityOracle(stateRoot string, req ExecutionReleaseR
 			return fmt.Errorf("IssueOps execution v1 is not prepared")
 		}
 		lease := &record.Execution.Lease
-		if lease.Status != model.LeaseStatusActive || lease.Generation != req.Generation || !sameNativeActor(lease.Holder, &actor) {
+		if lease.Status != issueops.LeaseStatusActive || lease.Generation != req.Generation || !sameNativeActor(lease.Holder, &actor) {
 			return fmt.Errorf("only the current holder may release generation %d", req.Generation)
 		}
 		if !samePath(req.CWD, record.Execution.Workspace.Root) {
 			return fmt.Errorf("release cwd must be the canonical worktree")
 		}
 		previous := *lease.Holder
-		lease.Status = model.LeaseStatusReleased
+		lease.Status = issueops.LeaseStatusReleased
 		lease.Holder = nil
 		lease.ClaimTokenSHA256 = ""
 		lease.ReleasedAt = time.Now().UTC().Format(time.RFC3339Nano)
@@ -217,7 +217,7 @@ func previewExecutionReplacement(ctx context.Context, stateRoot string, req Exec
 			req.ExpectedGeneration,
 		)
 	}
-	if record.Execution.Lease.Status != model.LeaseStatusActive && record.Execution.Lease.Status != model.LeaseStatusReleased && record.Execution.Lease.Status != model.LeaseStatusClaimable {
+	if record.Execution.Lease.Status != issueops.LeaseStatusActive && record.Execution.Lease.Status != issueops.LeaseStatusReleased && record.Execution.Lease.Status != issueops.LeaseStatusClaimable {
 		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, fmt.Errorf("replace preview is unavailable from %s", record.Execution.Lease.Status)
 	}
 	if err := validateExecutionReplacementCWD(record, req.CWD); err != nil {
@@ -228,8 +228,8 @@ func previewExecutionReplacement(ctx context.Context, stateRoot string, req Exec
 		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, err
 	}
 	result := replaceResult(record, req.Action, fingerprint, "", "")
-	if record.Execution.Lease.Status == model.LeaseStatusReleased ||
-		record.Execution.Lease.Status == model.LeaseStatusClaimable {
+	if record.Execution.Lease.Status == issueops.LeaseStatusReleased ||
+		record.Execution.Lease.Status == issueops.LeaseStatusClaimable {
 		result.NextCommand = executionReseedCommand(
 			record.ID,
 			record.Execution.Lease.Generation,
@@ -244,7 +244,7 @@ func previewExecutionFinalization(ctx context.Context, stateRoot string, req Exe
 	if err != nil {
 		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, err
 	}
-	if record.Execution.Lease.Status != model.LeaseStatusRevoking {
+	if record.Execution.Lease.Status != issueops.LeaseStatusRevoking {
 		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, fmt.Errorf("finalize preview requires a revoking lease")
 	}
 	if err := validateExecutionReplacementCWD(record, req.CWD); err != nil {
@@ -258,7 +258,7 @@ func previewExecutionFinalization(ctx context.Context, stateRoot string, req Exe
 }
 
 func mutateExecutionReplacement(ctx context.Context, stateRoot string, req ExecutionReplaceRequest, deps ExecutionReplaceDependencies) (ExecutionReplaceResult, error) {
-	var persisted IssueOpsRecord
+	var persisted issueops.IssueOpsRecord
 	var tokenPath string
 	var resealed executionOwnerReseal
 	err := withIssueOpsLock(ctx, stateRoot, req.ID, func(context.Context) error {
@@ -276,7 +276,7 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 		now := time.Now().UTC().Format(time.RFC3339Nano)
 		switch req.Action {
 		case ExecutionReplaceRevoke:
-			if lease.Status != model.LeaseStatusActive || strings.TrimSpace(req.Reason) == "" {
+			if lease.Status != issueops.LeaseStatusActive || strings.TrimSpace(req.Reason) == "" {
 				return fmt.Errorf("revoke requires an active lease and a reason")
 			}
 			if err := refuseSelfRevoke(record.ID, *lease, req.Actor); err != nil {
@@ -291,13 +291,13 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 			}
 			previous := *lease.Holder
 			lease.Generation++
-			lease.Status = model.LeaseStatusRevoking
+			lease.Status = issueops.LeaseStatusRevoking
 			lease.ReplacedAt = now
 			lease.ReplacementReason = strings.TrimSpace(req.Reason)
 			persisted, err = persistExecutionTransition(stateRoot, record, &previous)
 			return err
 		case ExecutionReplaceFinalize:
-			if lease.Status != model.LeaseStatusRevoking {
+			if lease.Status != issueops.LeaseStatusRevoking {
 				return fmt.Errorf("finalize requires a revoking lease")
 			}
 			fingerprint, err := executionQuiescenceFingerprint(ctx, record, req.Actor, deps)
@@ -315,7 +315,7 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 				return cleanupReplacementFailure(record, err)
 			}
 			tokenPath = path
-			lease.Status = model.LeaseStatusClaimable
+			lease.Status = issueops.LeaseStatusClaimable
 			lease.Holder = nil
 			lease.ClaimTokenSHA256 = tokenSHA256(token)
 			// revoking 세대의 durable 상태는 재봉인이 모두 성공한 뒤에만
@@ -340,11 +340,11 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 	result.IssueBodySHA256 = resealed.issueBodySHA256
 	result.ContextPacketPath, result.ContextPacketSHA256 = resealed.packetPath, resealed.packetSHA256
 	result.OwnerPromptPath, result.OwnerPromptSHA256 = resealed.promptPath, resealed.promptSHA256
-	if persisted.Execution.Lease.Status == model.LeaseStatusClaimable {
+	if persisted.Execution.Lease.Status == issueops.LeaseStatusClaimable {
 		switch persisted.Execution.Mode {
-		case model.ExecutionModeOrca:
+		case issueops.ExecutionModeOrca:
 			result.NextCommand = executionResumeCommand(persisted.ID, persisted.Execution.Lease.Generation)
-		case model.ExecutionModeDirect:
+		case issueops.ExecutionModeDirect:
 			result.NextCommand = executionDirectClaimCommand(
 				persisted.ID,
 				persisted.Execution.Lease.Generation,
@@ -370,23 +370,23 @@ func executionReseedCommand(id string, generation uint64, fingerprint string) st
 		" --reseed --inventory-fingerprint " + fingerprint + " --confirm"
 }
 
-func executionWriterAbsentRecoveryCommand(record IssueOpsRecord) string {
+func executionWriterAbsentRecoveryCommand(record issueops.IssueOpsRecord) string {
 	if record.Execution == nil {
 		return ""
 	}
 	lease := record.Execution.Lease
 	switch lease.Status {
-	case model.LeaseStatusClaimable:
-		if record.Execution.Mode == model.ExecutionModeOrca {
+	case issueops.LeaseStatusClaimable:
+		if record.Execution.Mode == issueops.ExecutionModeOrca {
 			return executionResumeCommand(record.ID, lease.Generation)
 		}
-		if record.Execution.Mode == model.ExecutionModeDirect {
+		if record.Execution.Mode == issueops.ExecutionModeDirect {
 			return executionDirectClaimCommand(record.ID, lease.Generation, claimTokenPath(record))
 		}
-	case model.LeaseStatusReleased:
+	case issueops.LeaseStatusReleased:
 		return "agent-harness issueops execution replace --id " + quoteExecutionOwnerArg(record.ID) +
 			" --expected-generation " + strconv.FormatUint(lease.Generation, 10) + " --preview"
-	case model.LeaseStatusRevoking:
+	case issueops.LeaseStatusRevoking:
 		return "agent-harness issueops execution replace --id " + quoteExecutionOwnerArg(record.ID) +
 			" --expected-generation " + strconv.FormatUint(lease.Generation, 10) + " --finalize-preview"
 	}
@@ -414,8 +414,8 @@ type executionOwnerReseal struct {
 //
 // 원격 읽기 실패는 통과가 아니라 거부다: 낡은 packet으로 owner를 띄우는 것보다
 // replacement를 멈추는 편이 안전하고 재시도로 해소된다.
-func resealOwnerContextForReplacement(ctx context.Context, stateRoot string, record IssueOpsRecord, deps ExecutionReplaceDependencies) (executionOwnerReseal, error) {
-	if record.Execution == nil || record.Execution.Mode != model.ExecutionModeOrca || record.Execution.Orca == nil {
+func resealOwnerContextForReplacement(ctx context.Context, stateRoot string, record issueops.IssueOpsRecord, deps ExecutionReplaceDependencies) (executionOwnerReseal, error) {
+	if record.Execution == nil || record.Execution.Mode != issueops.ExecutionModeOrca || record.Execution.Orca == nil {
 		return executionOwnerReseal{}, nil
 	}
 	if deps.ReadIssue == nil {
@@ -431,7 +431,7 @@ func resealOwnerContextForReplacement(ctx context.Context, stateRoot string, rec
 	}
 	binding := record.Execution.Orca
 	artifacts, err := buildExecutionOwnerArtifacts(record, ExecutionPrepareRequest{
-		ID: record.ID, Mode: string(model.ExecutionModeOrca), OwnerHost: binding.OwnerHost,
+		ID: record.ID, Mode: string(issueops.ExecutionModeOrca), OwnerHost: binding.OwnerHost,
 		OwnerModel: binding.OwnerModel, OwnerEffort: binding.OwnerEffort,
 	}, snapshot, manifest)
 	if err != nil {
@@ -444,7 +444,7 @@ func resealOwnerContextForReplacement(ctx context.Context, stateRoot string, rec
 	}, nil
 }
 
-func executionRecordAtGeneration(stateRoot, id string, generation uint64) (IssueOpsRecord, error) {
+func executionRecordAtGeneration(stateRoot, id string, generation uint64) (issueops.IssueOpsRecord, error) {
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return record, err
@@ -458,18 +458,18 @@ func executionRecordAtGeneration(stateRoot, id string, generation uint64) (Issue
 	return record, nil
 }
 
-func executionResult(record IssueOpsRecord) ExecutionResult {
+func executionResult(record issueops.IssueOpsRecord) ExecutionResult {
 	return ExecutionResult{OK: true, ID: record.ID, Execution: *record.Execution}
 }
 
-func replaceResult(record IssueOpsRecord, action, inventory, quiescence, tokenPath string) ExecutionReplaceResult {
+func replaceResult(record issueops.IssueOpsRecord, action, inventory, quiescence, tokenPath string) ExecutionReplaceResult {
 	return ExecutionReplaceResult{
 		OK: true, ID: record.ID, Action: action, Execution: *record.Execution,
 		InventoryFingerprint: inventory, QuiescenceFingerprint: quiescence, ClaimTokenPath: tokenPath,
 	}
 }
 
-func normalizeNativeActor(actor model.NativeActor) (model.NativeActor, error) {
+func normalizeNativeActor(actor issueops.NativeActor) (issueops.NativeActor, error) {
 	actor.Host = strings.ToLower(strings.TrimSpace(actor.Host))
 	actor.SessionID = strings.TrimSpace(actor.SessionID)
 	actor.AgentID = strings.TrimSpace(actor.AgentID)
@@ -479,8 +479,8 @@ func normalizeNativeActor(actor model.NativeActor) (model.NativeActor, error) {
 		receipt.Executable = strings.TrimSpace(receipt.Executable)
 		actor.SessionProcess = &receipt
 	}
-	actor.ProcessAncestry = append([]model.NativeProcessReceipt(nil), actor.ProcessAncestry...)
-	if err := model.ValidateNativeActor(actor); err != nil {
+	actor.ProcessAncestry = append([]issueops.NativeProcessReceipt(nil), actor.ProcessAncestry...)
+	if err := issueops.ValidateNativeActor(actor); err != nil {
 		return actor, err
 	}
 	locallyObserved := false
@@ -513,7 +513,7 @@ func normalizeNativeActor(actor model.NativeActor) (model.NativeActor, error) {
 // 같은 기준을 봐야 한쪽은 revoke를 막는데 다른 쪽은 finalize를 막는 교착이
 // 생기지 않는다. 판정이 실패하거나 live가 아니면 통과시킨다 — 그것이 지금
 // 동작이고, 죽은 홀더 뺏기와 제3자 revoke를 막지 않는다.
-func refuseSelfRevoke(lifecycleID string, lease model.WriteLease, requester model.NativeActor) error {
+func refuseSelfRevoke(lifecycleID string, lease issueops.WriteLease, requester issueops.NativeActor) error {
 	holder := lease.Holder
 	if holder == nil || !sameNativeActorIdentity(holder, &requester) || holder.SessionProcess == nil {
 		return nil
@@ -529,18 +529,18 @@ func refuseSelfRevoke(lifecycleID string, lease model.WriteLease, requester mode
 		strings.TrimSpace(lifecycleID), lease.Generation)
 }
 
-func sameNativeActor(a, b *model.NativeActor) bool {
+func sameNativeActor(a, b *issueops.NativeActor) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil
 	}
 	return sameNativeActorIdentity(a, b) && sameNativeProcessReceipt(a.SessionProcess, b.SessionProcess)
 }
 
-func sameNativeActorIdentity(a, b *model.NativeActor) bool {
+func sameNativeActorIdentity(a, b *issueops.NativeActor) bool {
 	return a != nil && b != nil && strings.EqualFold(a.Host, b.Host) && a.SessionID == b.SessionID && a.AgentID == b.AgentID
 }
 
-func sameNativeProcessReceipt(a, b *model.NativeProcessReceipt) bool {
+func sameNativeProcessReceipt(a, b *issueops.NativeProcessReceipt) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil
 	}
@@ -565,7 +565,7 @@ func samePath(a, b string) bool {
 	return filepath.Clean(left) == filepath.Clean(right)
 }
 
-func executionInventoryFingerprint(ctx context.Context, record IssueOpsRecord, requester model.NativeActor, deps ExecutionReplaceDependencies) (string, port.ExecutionOrcaOwnerInventory, error) {
+func executionInventoryFingerprint(ctx context.Context, record issueops.IssueOpsRecord, requester issueops.NativeActor, deps ExecutionReplaceDependencies) (string, port.ExecutionOrcaOwnerInventory, error) {
 	snapshot, err := workspaceSnapshot(record.Execution.Workspace)
 	if err != nil {
 		return "", port.ExecutionOrcaOwnerInventory{}, err
@@ -580,9 +580,9 @@ func executionInventoryFingerprint(ctx context.Context, record IssueOpsRecord, r
 	payload := struct {
 		ID         string                           `json:"id"`
 		Generation uint64                           `json:"generation"`
-		Status     model.LeaseStatus                `json:"status"`
-		Holder     *model.NativeActor               `json:"holder,omitempty"`
-		Requester  model.NativeActor                `json:"requester"`
+		Status     issueops.LeaseStatus             `json:"status"`
+		Holder     *issueops.NativeActor            `json:"holder,omitempty"`
+		Requester  issueops.NativeActor             `json:"requester"`
 		Process    string                           `json:"process_status"`
 		Orca       port.ExecutionOrcaOwnerInventory `json:"orca"`
 		Snapshot   string                           `json:"snapshot"`
@@ -591,7 +591,7 @@ func executionInventoryFingerprint(ctx context.Context, record IssueOpsRecord, r
 	return fingerprint, orcaInventory, err
 }
 
-func executionQuiescenceFingerprint(ctx context.Context, record IssueOpsRecord, requester model.NativeActor, deps ExecutionReplaceDependencies) (string, error) {
+func executionQuiescenceFingerprint(ctx context.Context, record issueops.IssueOpsRecord, requester issueops.NativeActor, deps ExecutionReplaceDependencies) (string, error) {
 	holder := record.Execution.Lease.Holder
 	if holder == nil || holder.SessionProcess == nil {
 		return "", fmt.Errorf("revoking lease is missing its old process receipt")
@@ -641,16 +641,16 @@ func executionQuiescenceFingerprint(ctx context.Context, record IssueOpsRecord, 
 	payload := struct {
 		ID         string                           `json:"id"`
 		Generation uint64                           `json:"generation"`
-		Holder     model.NativeActor                `json:"holder"`
-		Requester  model.NativeActor                `json:"requester"`
-		Process    model.NativeProcessReceipt       `json:"process"`
+		Holder     issueops.NativeActor             `json:"holder"`
+		Requester  issueops.NativeActor             `json:"requester"`
+		Process    issueops.NativeProcessReceipt    `json:"process"`
 		Orca       port.ExecutionOrcaOwnerInventory `json:"orca"`
 		Snapshot   string                           `json:"snapshot"`
 	}{record.ID, record.Execution.Lease.Generation, *holder, requester, *holder.SessionProcess, orcaInventory, snapshot}
 	return hashJSON(payload)
 }
 
-func executionOwnerInventory(ctx context.Context, record IssueOpsRecord, deps ExecutionReplaceDependencies) (string, port.ExecutionOrcaOwnerInventory, error) {
+func executionOwnerInventory(ctx context.Context, record issueops.IssueOpsRecord, deps ExecutionReplaceDependencies) (string, port.ExecutionOrcaOwnerInventory, error) {
 	status := "none"
 	if holder := record.Execution.Lease.Holder; holder != nil && holder.SessionProcess != nil {
 		var err error
@@ -659,7 +659,7 @@ func executionOwnerInventory(ctx context.Context, record IssueOpsRecord, deps Ex
 			return "", port.ExecutionOrcaOwnerInventory{}, err
 		}
 	}
-	if record.Execution.Mode != model.ExecutionModeOrca {
+	if record.Execution.Mode != issueops.ExecutionModeOrca {
 		return status, port.ExecutionOrcaOwnerInventory{}, nil
 	}
 	if record.Execution.Orca == nil || deps.OrcaOwner == nil {
@@ -670,13 +670,13 @@ func executionOwnerInventory(ctx context.Context, record IssueOpsRecord, deps Ex
 		RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, RunID: binding.RunID, TaskID: binding.TaskID,
 		DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID,
 		AllowRuntimeRollover: record.Execution.Lease.Holder == nil &&
-			(record.Execution.Lease.Status == model.LeaseStatusReleased || record.Execution.Lease.Status == model.LeaseStatusClaimable),
+			(record.Execution.Lease.Status == issueops.LeaseStatusReleased || record.Execution.Lease.Status == issueops.LeaseStatusClaimable),
 	})
 	return status, inventory, err
 }
 
-func validateExecutionRuntimeRollover(record IssueOpsRecord, inventory port.ExecutionOrcaOwnerInventory) error {
-	if record.Execution == nil || record.Execution.Mode != model.ExecutionModeOrca || record.Execution.Orca == nil {
+func validateExecutionRuntimeRollover(record issueops.IssueOpsRecord, inventory port.ExecutionOrcaOwnerInventory) error {
+	if record.Execution == nil || record.Execution.Mode != issueops.ExecutionModeOrca || record.Execution.Orca == nil {
 		return nil
 	}
 	sealed := strings.TrimSpace(record.Execution.Orca.RuntimeID)
@@ -685,7 +685,7 @@ func validateExecutionRuntimeRollover(record IssueOpsRecord, inventory port.Exec
 		return nil
 	}
 	lease := record.Execution.Lease
-	holderless := lease.Holder == nil && (lease.Status == model.LeaseStatusReleased || lease.Status == model.LeaseStatusClaimable)
+	holderless := lease.Holder == nil && (lease.Status == issueops.LeaseStatusReleased || lease.Status == issueops.LeaseStatusClaimable)
 	taskSettled := inventory.TaskStatus == "completed" || inventory.TaskStatus == "failed"
 	dispatchSettled := inventory.DispatchStatus == "completed" || inventory.DispatchStatus == "failed" || inventory.DispatchStatus == "circuit_broken"
 	if !holderless || inventory.TerminalID != "" || inventory.TerminalLive || inventory.TaskLive || !taskSettled || !dispatchSettled {
@@ -697,7 +697,7 @@ func validateExecutionRuntimeRollover(record IssueOpsRecord, inventory port.Exec
 	return nil
 }
 
-func validateExecutionReplacementCWD(record IssueOpsRecord, cwd string) error {
+func validateExecutionReplacementCWD(record issueops.IssueOpsRecord, cwd string) error {
 	workspace := record.Execution.Workspace
 	if !samePath(cwd, workspace.SourceRoot) && !samePath(cwd, workspace.Root) {
 		return fmt.Errorf("execution replace cwd must be source_root or the canonical worktree")
@@ -705,7 +705,7 @@ func validateExecutionReplacementCWD(record IssueOpsRecord, cwd string) error {
 	return nil
 }
 
-func workspaceSnapshot(workspace model.Workspace) (string, error) {
+func workspaceSnapshot(workspace issueops.Workspace) (string, error) {
 	info, err := os.Lstat(workspace.Root)
 	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
 		return "", fmt.Errorf("canonical worktree must be a real directory")
@@ -814,12 +814,12 @@ func hashJSON(value any) (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
-func claimTokenPath(record IssueOpsRecord) string {
+func claimTokenPath(record issueops.IssueOpsRecord) string {
 	key := tokenSHA256(record.ID)[:16]
 	return filepath.Join(record.Execution.Workspace.Root, ".agent-harness", "state", "issueops-v1", key, fmt.Sprintf("lease-%d.token", record.Execution.Lease.Generation))
 }
 
-func createClaimToken(record IssueOpsRecord) (string, string, error) {
+func createClaimToken(record issueops.IssueOpsRecord) (string, string, error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
 		return "", "", err
@@ -845,7 +845,7 @@ func createClaimToken(record IssueOpsRecord) (string, string, error) {
 	return token, path, nil
 }
 
-func readExecutionLeaseToken(record IssueOpsRecord, path string) (string, error) {
+func readExecutionLeaseToken(record issueops.IssueOpsRecord, path string) (string, error) {
 	expected := claimTokenPath(record)
 	if !samePath(path, expected) {
 		return "", fmt.Errorf("claim_token_file must be the deterministic current-generation path")
@@ -876,12 +876,12 @@ func tokenSHA256(token string) string {
 // cleanupReplacementGeneration은 durable lease가 아직 권한을 부여하지 않은
 // target generation의 harness-owned 파일만 지운다. finalize는 revoking 세대,
 // reseed는 아직 persist되지 않은 다음 세대이므로 재시도 전에 회수해도 된다.
-func cleanupReplacementGeneration(record IssueOpsRecord) error {
+func cleanupReplacementGeneration(record issueops.IssueOpsRecord) error {
 	if record.Execution == nil {
 		return fmt.Errorf("cannot clean replacement residue without an execution")
 	}
 	paths := []string{claimTokenPath(record)}
-	if record.Execution.Mode == model.ExecutionModeOrca && record.Execution.Orca != nil {
+	if record.Execution.Mode == issueops.ExecutionModeOrca && record.Execution.Orca != nil {
 		packetPath, promptPath := executionOwnerArtifactPaths(record)
 		paths = append(paths, packetPath, promptPath)
 	}
@@ -893,7 +893,7 @@ func cleanupReplacementGeneration(record IssueOpsRecord) error {
 	return nil
 }
 
-func cleanupReplacementFailure(record IssueOpsRecord, cause error) error {
+func cleanupReplacementFailure(record issueops.IssueOpsRecord, cause error) error {
 	if cleanupErr := cleanupReplacementGeneration(record); cleanupErr != nil {
 		return fmt.Errorf("%w; replacement residue cleanup failed: %v", cause, cleanupErr)
 	}

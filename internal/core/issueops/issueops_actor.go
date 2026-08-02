@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 )
 
 // IssueOpsActor identifies the native host session that is authorized to make
@@ -12,31 +12,31 @@ import (
 // request identity: a valid session in the source checkout is not authority
 // for the isolated workspace, and vice versa.
 type IssueOpsActor struct {
-	Host                  string                       `json:"host"`
-	SessionID             string                       `json:"session_id"`
-	AgentID               string                       `json:"agent_id,omitempty"`
-	CWD                   string                       `json:"cwd"`
-	NativeProcessAncestry []model.NativeProcessReceipt `json:"-"`
+	Host                  string                          `json:"host"`
+	SessionID             string                          `json:"session_id"`
+	AgentID               string                          `json:"agent_id,omitempty"`
+	CWD                   string                          `json:"cwd"`
+	NativeProcessAncestry []issueops.NativeProcessReceipt `json:"-"`
 }
 
 // validateExecutionMutation binds every durable IssueOps mutation to the
 // current write lease once execution has been prepared. Planning mutations are
 // intentionally actor-optional until the execution record exists.
-func validateExecutionMutation(record IssueOpsRecord, actor *IssueOpsActor) error {
+func validateExecutionMutation(record issueops.IssueOpsRecord, actor *IssueOpsActor) error {
 	if record.Execution == nil {
 		return nil
 	}
-	if err := model.ValidateExecution(*record.Execution); err != nil {
+	if err := issueops.ValidateExecution(*record.Execution); err != nil {
 		return fmt.Errorf("invalid IssueOps execution v1 record: %w", err)
 	}
 	lease := record.Execution.Lease
-	if lease.Status != model.LeaseStatusActive || lease.Holder == nil {
+	if lease.Status != issueops.LeaseStatusActive || lease.Holder == nil {
 		return fmt.Errorf("IssueOps execution generation %d has no active write lease", lease.Generation)
 	}
 	if actor == nil {
 		return fmt.Errorf("IssueOps execution mutation requires the current write lease holder")
 	}
-	candidate := &model.NativeActor{
+	candidate := &issueops.NativeActor{
 		Host:      strings.ToLower(strings.TrimSpace(actor.Host)),
 		SessionID: strings.TrimSpace(actor.SessionID),
 		AgentID:   strings.TrimSpace(actor.AgentID),
@@ -59,7 +59,7 @@ func validateExecutionMutation(record IssueOpsRecord, actor *IssueOpsActor) erro
 	}
 	return nil
 }
-func validateWorkspacePreparationMutation(record IssueOpsRecord, actor *IssueOpsActor) error {
+func validateWorkspacePreparationMutation(record issueops.IssueOpsRecord, actor *IssueOpsActor) error {
 	return validateExecutionMutation(record, actor)
 }
 
@@ -74,6 +74,6 @@ func ValidateIssueOpsMutationActor(stateRoot, id string, actor IssueOpsActor) er
 // validatePostTransferMutation keeps current-contract durable writes bound to the
 // owner even when callers bypass lifecycle hooks through a direct CLI or MCP
 // request. Legacy cycles retain their existing actor-optional behavior.
-func validatePostTransferMutation(record IssueOpsRecord, actor *IssueOpsActor) error {
+func validatePostTransferMutation(record issueops.IssueOpsRecord, actor *IssueOpsActor) error {
 	return validateExecutionMutation(record, actor)
 }

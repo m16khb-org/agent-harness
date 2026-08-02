@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"agent-harness/internal/contract/issueops"
 )
 
 const (
@@ -32,7 +34,7 @@ func TestAcceptIssueOpsChildrenConcurrentlyAcrossProcesses(t *testing.T) {
 	childIDs := make([]string, workers)
 	evidenceByChild := make(map[string]string, workers)
 	for i := 0; i < workers; i++ {
-		started, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
+		started, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
 			ParentID:           parent.ID,
 			Branch:             fmt.Sprintf("124-child-accept-%d", i),
 			Title:              fmt.Sprintf("accepted child %d", i),

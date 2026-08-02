@@ -5,18 +5,20 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"agent-harness/internal/contract/issueops"
 )
 
-func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (IssueOpsRecord, error) {
+func AddIssueOpsFeedback(stateRoot, id, source, body, classification string) (issueops.IssueOpsRecord, error) {
 	return addIssueOpsFeedback(stateRoot, id, source, body, classification, nil)
 }
 
-func AddIssueOpsFeedbackWithActor(stateRoot, id, source, body, classification string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func AddIssueOpsFeedbackWithActor(stateRoot, id, source, body, classification string, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return addIssueOpsFeedback(stateRoot, id, source, body, classification, &actor)
 }
 
-func addIssueOpsFeedback(stateRoot, id, source, body, classification string, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func addIssueOpsFeedback(stateRoot, id, source, body, classification string, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, id)
 		if err != nil {
@@ -32,28 +34,28 @@ func addIssueOpsFeedback(stateRoot, id, source, body, classification string, act
 	return rec, err
 }
 
-func addIssueOpsFeedbackLocked(stateRoot, id, source, body, classification string) (IssueOpsRecord, error) {
+func addIssueOpsFeedbackLocked(stateRoot, id, source, body, classification string) (issueops.IssueOpsRecord, error) {
 	source = strings.TrimSpace(source)
 	body = strings.TrimSpace(body)
 	classification = strings.ToLower(strings.TrimSpace(classification))
 	if source == "" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("feedback source is required")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("feedback source is required")
 	}
 	if body == "" {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("feedback body is required")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("feedback body is required")
 	}
 	if !knownIssueOpsFeedbackClassification(classification) {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("unknown issueops feedback classification %q; use contract_change, defect, question, noise, valid_review, stale_review, rollout_evidence_missing, or environment_debt", classification)
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("unknown issueops feedback classification %q; use contract_change, defect, question, noise, valid_review, stale_review, rollout_evidence_missing, or environment_debt", classification)
 	}
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return record, err
 	}
 	if record.Phase == IssueOpsPhaseDone {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("cannot add feedback after %s phase", record.Phase)
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("cannot add feedback after %s phase", record.Phase)
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	record.Feedback = append(record.Feedback, IssueOpsFeedbackItem{Source: source, Body: body, Classification: classification, CreatedAt: now})
+	record.Feedback = append(record.Feedback, issueops.IssueOpsFeedbackItem{Source: source, Body: body, Classification: classification, CreatedAt: now})
 	if strings.TrimSpace(record.AISlopCleanAt) != "" {
 		record.Phase = IssueOpsPhaseFeedback
 	}
@@ -70,16 +72,16 @@ func knownIssueOpsFeedbackClassification(classification string) bool {
 	}
 }
 
-func MarkIssueOpsContractFeedbackIssueUpdated(stateRoot, id string) (IssueOpsRecord, error) {
+func MarkIssueOpsContractFeedbackIssueUpdated(stateRoot, id string) (issueops.IssueOpsRecord, error) {
 	return markIssueOpsContractFeedbackIssueUpdated(stateRoot, id, nil)
 }
 
-func MarkIssueOpsContractFeedbackIssueUpdatedWithActor(stateRoot, id string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func MarkIssueOpsContractFeedbackIssueUpdatedWithActor(stateRoot, id string, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return markIssueOpsContractFeedbackIssueUpdated(stateRoot, id, &actor)
 }
 
-func markIssueOpsContractFeedbackIssueUpdated(stateRoot, id string, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func markIssueOpsContractFeedbackIssueUpdated(stateRoot, id string, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, id)
 		if err != nil {
@@ -95,7 +97,7 @@ func markIssueOpsContractFeedbackIssueUpdated(stateRoot, id string, actor *Issue
 	return rec, err
 }
 
-func markIssueOpsContractFeedbackIssueUpdatedLocked(stateRoot, id string) (IssueOpsRecord, error) {
+func markIssueOpsContractFeedbackIssueUpdatedLocked(stateRoot, id string) (issueops.IssueOpsRecord, error) {
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return record, err
@@ -109,7 +111,7 @@ func markIssueOpsContractFeedbackIssueUpdatedLocked(stateRoot, id string) (Issue
 		}
 	}
 	if !marked {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("no unresolved contract_change feedback requires a remote issue update")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("no unresolved contract_change feedback requires a remote issue update")
 	}
 	record.UpdatedAt = now
 	return writeIssueOps(stateRoot, record)

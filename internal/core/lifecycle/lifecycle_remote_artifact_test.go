@@ -5,10 +5,12 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 )
 
 func TestPreToolUseKoreanRemoteArtifactGateBlocksEnglishPR(t *testing.T) {
-	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+	got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:                t.TempDir(),
 		Tool:                "bash",
 		Command:             `gh pr create --title "Document split and IssueOps guardrails" --body "Summary Changes Verification Risk"`,
@@ -25,7 +27,7 @@ func TestPreToolUseKoreanRemoteArtifactGateAllowsKoreanPRBodyFile(t *testing.T) 
 	if err := os.WriteFile(filepath.Join(repo, "pr-body.md"), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+	got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:                repo,
 		Tool:                "bash",
 		Command:             `gh pr create --title "문서 분할과 IssueOps guardrail 추가" --body-file pr-body.md`,
@@ -37,7 +39,7 @@ func TestPreToolUseKoreanRemoteArtifactGateAllowsKoreanPRBodyFile(t *testing.T) 
 }
 
 func TestPreToolUseKoreanRemoteArtifactGateAllowsInlineHereDocBodyFile(t *testing.T) {
-	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+	got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo: t.TempDir(),
 		Tool: "bash",
 		Command: `body=$(mktemp)
@@ -54,7 +56,7 @@ gh pr create --title "IssueOps 라이프사이클 감사용 임시 PR" --body-fi
 }
 
 func TestPreToolUseKoreanRemoteArtifactGateBlocksEnglishInlineHereDocBodyFile(t *testing.T) {
-	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+	got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo: t.TempDir(),
 		Tool: "bash",
 		Command: `body=$(mktemp)
@@ -77,7 +79,7 @@ func TestPreToolUseRemoteArtifactGateAllowsHelpCommands(t *testing.T) {
 		`glab issue create --help`,
 		`glab mr create -h`,
 	} {
-		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 			Repo:                t.TempDir(),
 			Tool:                "bash",
 			Command:             command,
@@ -91,7 +93,7 @@ func TestPreToolUseRemoteArtifactGateAllowsHelpCommands(t *testing.T) {
 }
 
 func TestPreToolUseRemoteArtifactGateIgnoresCodeGraphQueryText(t *testing.T) {
-	got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+	got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:                t.TempDir(),
 		Tool:                "mcp__codegraph__codegraph_explore",
 		Command:             `glab mr create --title "IssueOps 담당자 검증" --description "라벨과 담당자 누락을 설명하는 탐색 문자열"`,
@@ -108,7 +110,7 @@ func TestPreToolUseKoreanRemoteArtifactGateAllowsGitLabIssueBasedMR(t *testing.T
 		`glab mr for 2385 --with-labels --assignee 100`,
 		`glab mr create --related-issue 2385 --copy-issue-labels --assignee-id 100`,
 	} {
-		got := BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{
+		got := BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 			Repo:                t.TempDir(),
 			Tool:                "bash",
 			Command:             command,

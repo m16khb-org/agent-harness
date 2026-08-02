@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"strings"
 
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/commandparse"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/issueops/remote"
 	"agent-harness/internal/port"
 )
@@ -58,7 +58,7 @@ type executionOwnerCommands struct {
 type executionOwnerContextPacket struct {
 	SchemaVersion    int                    `json:"schema_version"`
 	LifecycleID      string                 `json:"lifecycle_id"`
-	Mode             model.ExecutionMode    `json:"mode"`
+	Mode             issueops.ExecutionMode `json:"mode"`
 	SourceRoot       string                 `json:"source_root"`
 	WorktreeRoot     string                 `json:"worktree_root"`
 	WorktreeBase     string                 `json:"worktree_base"`
@@ -122,7 +122,7 @@ func readExecutionOwnerArtifact(root, path string) ([]byte, error) {
 	return os.ReadFile(path)
 }
 
-func readExecutionOwnerSnapshot(ctx context.Context, record IssueOpsRecord, read ExecutionIssueSnapshotReadFunc) (executionOwnerSnapshot, error) {
+func readExecutionOwnerSnapshot(ctx context.Context, record issueops.IssueOpsRecord, read ExecutionIssueSnapshotReadFunc) (executionOwnerSnapshot, error) {
 	if read == nil {
 		return executionOwnerSnapshot{}, fmt.Errorf("remote issue snapshot reader is unavailable")
 	}
@@ -151,7 +151,7 @@ func readExecutionOwnerSnapshot(ctx context.Context, record IssueOpsRecord, read
 	}, nil
 }
 
-func executionOwnerIssueProvider(record IssueOpsRecord) string {
+func executionOwnerIssueProvider(record issueops.IssueOpsRecord) string {
 	if record.BranchPrepare != nil {
 		provider := strings.ToLower(strings.TrimSpace(record.BranchPrepare.Provider))
 		if provider == "github" || provider == "gitlab" {
@@ -167,7 +167,7 @@ func executionOwnerIssueProvider(record IssueOpsRecord) string {
 	return ""
 }
 
-func buildExecutionOwnerArtifacts(record IssueOpsRecord, req ExecutionPrepareRequest, snapshot executionOwnerSnapshot, artifactManifest map[string]string) (executionOwnerArtifacts, error) {
+func buildExecutionOwnerArtifacts(record issueops.IssueOpsRecord, req ExecutionPrepareRequest, snapshot executionOwnerSnapshot, artifactManifest map[string]string) (executionOwnerArtifacts, error) {
 	if record.Execution == nil || record.Execution.Lease.Generation == 0 {
 		return executionOwnerArtifacts{}, fmt.Errorf("execution identity is unavailable for owner packet")
 	}
@@ -177,7 +177,7 @@ func buildExecutionOwnerArtifacts(record IssueOpsRecord, req ExecutionPrepareReq
 	reviewerModel, reviewerEffort, _ := port.IssueOpsPlannerDefaults(strings.ToLower(strings.TrimSpace(req.OwnerHost)))
 	commands := executionOwnerCommandsFor(record, req, snapshot.issue.BodySHA256)
 	packet := executionOwnerContextPacket{
-		SchemaVersion: model.IssueOpsSchemaVersion, LifecycleID: record.ID, Mode: record.Execution.Mode,
+		SchemaVersion: issueops.IssueOpsSchemaVersion, LifecycleID: record.ID, Mode: record.Execution.Mode,
 		SourceRoot: record.Execution.Workspace.SourceRoot, WorktreeRoot: record.Execution.Workspace.Root,
 		WorktreeBase: filepath.Dir(record.Execution.Workspace.Root), Branch: record.Execution.Workspace.Branch,
 		BaseHead: record.Execution.Workspace.BaseHead, CurrentHead: record.Execution.Workspace.BaseHead,
@@ -302,7 +302,7 @@ func validateExecutionOwnerPromptInputs(packet executionOwnerContextPacket, pack
 	return nil
 }
 
-func executionOwnerCommandsFor(record IssueOpsRecord, req ExecutionPrepareRequest, issueBodySHA256 string) executionOwnerCommands {
+func executionOwnerCommandsFor(record issueops.IssueOpsRecord, req ExecutionPrepareRequest, issueBodySHA256 string) executionOwnerCommands {
 	generation := record.Execution.Lease.Generation
 	actorFlags := strings.Join([]string{
 		"--host", strings.ToLower(strings.TrimSpace(req.OwnerHost)), "--session-id", "<SESSION_ID>",
@@ -311,7 +311,7 @@ func executionOwnerCommandsFor(record IssueOpsRecord, req ExecutionPrepareReques
 	}, " ")
 	status := "agent-harness issueops execution status --id " + quoteExecutionOwnerArg(record.ID) + " --json"
 	claim := "none"
-	if record.Execution.Mode == model.ExecutionModeOrca {
+	if record.Execution.Mode == issueops.ExecutionModeOrca {
 		claim = "agent-harness issueops execution claim --id " + quoteExecutionOwnerArg(record.ID) +
 			" --generation " + strconv.FormatUint(generation, 10) + " --claim-token-file " + quoteExecutionOwnerArg(claimTokenPath(record)) +
 			" --issue-body-sha256 " + strings.TrimSpace(issueBodySHA256) + " --context-packet-sha256 <PACKET_SHA256> " + actorFlags + " --json"
@@ -440,7 +440,7 @@ func validateExecutionOwnerCatalog(commands executionOwnerCommands) error {
 // SealedOwnerContextPacketPath는 현재 세대 봉인 packet의 경로를 돌려준다.
 // 훅 가드가 봉인 실존을 확인하는 유일한 경로다 — 경로 규칙을 다른 계층에
 // 복제하지 않기 위해 노출한다. execution이 없으면 빈 문자열이다.
-func SealedOwnerContextPacketPath(record IssueOpsRecord) string {
+func SealedOwnerContextPacketPath(record issueops.IssueOpsRecord) string {
 	if record.Execution == nil {
 		return ""
 	}
@@ -448,13 +448,13 @@ func SealedOwnerContextPacketPath(record IssueOpsRecord) string {
 	return packetPath
 }
 
-func executionOwnerArtifactPaths(record IssueOpsRecord) (string, string) {
+func executionOwnerArtifactPaths(record issueops.IssueOpsRecord) (string, string) {
 	key := digestExecutionOwnerBytes([]byte(record.ID))[:16]
 	base := filepath.Join(record.Execution.Workspace.Root, ".agent-harness", "state", "issueops-v1", key, "generation-"+strconv.FormatUint(record.Execution.Lease.Generation, 10))
 	return filepath.Join(base, "context.json"), filepath.Join(base, "owner-prompt.txt")
 }
 
-func executionOwnerTuringReportPath(record IssueOpsRecord) string {
+func executionOwnerTuringReportPath(record issueops.IssueOpsRecord) string {
 	key := digestExecutionOwnerBytes([]byte(record.ID))[:16]
 	return filepath.Join(record.Execution.Workspace.Root, ".agent-harness", "turing", "issueops-v1-"+key+".json")
 }

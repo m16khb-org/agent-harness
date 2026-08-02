@@ -8,7 +8,6 @@ import (
 )
 
 type CommandPolicyRequest = policy.CommandPolicyRequest
-type PolicyTier = policy.PolicyTier
 type CommandPolicyEvaluation = policy.CommandPolicyEvaluation
 type CommandFakeRunResult = policy.CommandFakeRunResult
 type CommandRunResult = policy.CommandRunResult

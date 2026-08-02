@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -86,19 +86,19 @@ func prepareExecutionCompatibilityOracle(ctx context.Context, stateRoot string, 
 	result := ExecutionPrepareResult{
 		OK: true, ID: record.ID, Preview: !req.Confirm,
 		RequestedMode: requested, ResolvedMode: resolved, FallbackCode: fallback,
-		Workspace: model.Workspace{
+		Workspace: issueops.Workspace{
 			SourceRoot: workspaceReq.SourceRoot, Root: workspaceReq.Root, Branch: workspaceReq.Branch,
 			BaseHead: workspaceReq.BaseHead, ParentWorktree: workspaceReq.ParentWorktree,
 			Driver: map[string]string{"direct": "git", "orca": "orca"}[resolved],
 		},
 	}
-	if resolved == string(model.ExecutionModeDirect) {
+	if resolved == string(issueops.ExecutionModeDirect) {
 		return prepareDirectExecutionCompatibilityOracle(ctx, stateRoot, record, req, deps, workspaceReq, result)
 	}
 	return prepareOrcaExecutionCompatibilityOracle(ctx, stateRoot, record, req, deps, workspaceReq, probe, result)
 }
 
-func prepareDirectExecutionCompatibilityOracle(ctx context.Context, stateRoot string, record IssueOpsRecord, req ExecutionPrepareRequest, deps ExecutionPrepareDependencies, workspaceReq port.ExecutionWorkspaceRequest, result ExecutionPrepareResult) (ExecutionPrepareResult, error) {
+func prepareDirectExecutionCompatibilityOracle(ctx context.Context, stateRoot string, record issueops.IssueOpsRecord, req ExecutionPrepareRequest, deps ExecutionPrepareDependencies, workspaceReq port.ExecutionWorkspaceRequest, result ExecutionPrepareResult) (ExecutionPrepareResult, error) {
 	if deps.Direct == nil {
 		return ExecutionPrepareResult{OK: false, ID: record.ID}, fmt.Errorf("direct Git worktree provisioner is unavailable")
 	}
@@ -134,14 +134,14 @@ func prepareDirectExecutionCompatibilityOracle(ctx context.Context, stateRoot st
 		return result, nil
 	}
 	record.WorktreePath = receipt.Root
-	record.Execution = &model.Execution{
-		Mode: model.ExecutionModeDirect, Workspace: result.Workspace,
-		Lease: model.WriteLease{Generation: 1, Status: model.LeaseStatusActive, Holder: &actor, ClaimedAt: executionNow(deps.Now)},
+	record.Execution = &issueops.Execution{
+		Mode: issueops.ExecutionModeDirect, Workspace: result.Workspace,
+		Lease: issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusActive, Holder: &actor, ClaimedAt: executionNow(deps.Now)},
 	}
 	if _, err := materializeStagedArtifacts(stateRoot, record); err != nil {
 		return ExecutionPrepareResult{OK: false, ID: record.ID}, err
 	}
-	var persisted IssueOpsRecord
+	var persisted issueops.IssueOpsRecord
 	err = withIssueOpsLock(context.Background(), stateRoot, record.ID, func(context.Context) error {
 		current, err := ReadIssueOps(stateRoot, record.ID)
 		if err != nil {
@@ -165,7 +165,7 @@ func prepareDirectExecutionCompatibilityOracle(ctx context.Context, stateRoot st
 	return preparedExecutionResultWithModes(persisted, result.RequestedMode, result.FallbackCode), nil
 }
 
-func prepareOrcaExecutionCompatibilityOracle(ctx context.Context, stateRoot string, record IssueOpsRecord, req ExecutionPrepareRequest, deps ExecutionPrepareDependencies, workspaceReq port.ExecutionWorkspaceRequest, probe port.ExecutionOrcaProbeRequest, result ExecutionPrepareResult) (ExecutionPrepareResult, error) {
+func prepareOrcaExecutionCompatibilityOracle(ctx context.Context, stateRoot string, record issueops.IssueOpsRecord, req ExecutionPrepareRequest, deps ExecutionPrepareDependencies, workspaceReq port.ExecutionWorkspaceRequest, probe port.ExecutionOrcaProbeRequest, result ExecutionPrepareResult) (ExecutionPrepareResult, error) {
 	if deps.Orca == nil {
 		return ExecutionPrepareResult{OK: false, ID: record.ID}, fmt.Errorf("Orca provisioner is unavailable")
 	}

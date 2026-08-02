@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/adapter/gitworktree"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/core/sqlstore"
 )
@@ -26,15 +27,15 @@ func executionRootCollisionFixture(t *testing.T) (string, string, string) {
 	return stateRoot, repo, baseHead
 }
 
-func executionRootCollisionRecord(t *testing.T, stateRoot, repo, baseHead, branch string) IssueOpsRecord {
+func executionRootCollisionRecord(t *testing.T, stateRoot, repo, baseHead, branch string) issueops.IssueOpsRecord {
 	t.Helper()
 	issueURL := "https://github.com/acme/repo/issues/72"
-	record := IssueOpsRecord{
+	record := issueops.IssueOpsRecord{
 		OK: true, SchemaVersion: IssueOpsCurrentSchemaVersion,
 		ID: NewIssueOpsID(repo, branch), Repo: repo, Branch: branch, Phase: IssueOpsPhasePlan,
 		IssueURL:     issueURL,
-		DesignReview: &IssueOpsDesignReview{Approved: true, ReviewedAt: "2026-07-24T00:00:00Z"},
-		BranchPrepare: &IssueOpsBranchPrepare{
+		DesignReview: &issueops.IssueOpsDesignReview{Approved: true, ReviewedAt: "2026-07-24T00:00:00Z"},
+		BranchPrepare: &issueops.IssueOpsBranchPrepare{
 			Provider: "github", IssueURL: issueURL, Branch: branch,
 			BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true, CreatedAt: "2026-07-24T00:00:00Z",
 		},
@@ -50,7 +51,7 @@ func executionRootCollisionRecord(t *testing.T, stateRoot, repo, baseHead, branc
 // executionRootClaimingRecord는 branch에서 파생된 canonical root를 소유하는
 // 레코드를 영속한다 — withExecution=false는 linking만 끝난(Execution 부재)
 // 레코드도 root를 점유한다는 사실을 고정한다.
-func executionRootClaimingRecord(t *testing.T, stateRoot, repo, baseHead, branch string, withExecution bool) (IssueOpsRecord, string) {
+func executionRootClaimingRecord(t *testing.T, stateRoot, repo, baseHead, branch string, withExecution bool) (issueops.IssueOpsRecord, string) {
 	t.Helper()
 	record := executionRootCollisionRecord(t, stateRoot, repo, baseHead, branch)
 	root := issueOpsWorktreePathForTest(repo, strings.ReplaceAll(branch, "/", "-"))

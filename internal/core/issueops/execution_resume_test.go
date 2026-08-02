@@ -5,17 +5,17 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
 const resumeIssueBody = "## acceptance criteria\n\n- [ ] AC-01: resume owner\n\n## 검증 명령\n\n```bash\ngo test ./internal/core/issueops -count=1\n```\n"
 
-func reseededOrcaCycle(t *testing.T) (string, IssueOpsRecord, ExecutionReplaceResult) {
+func reseededOrcaCycle(t *testing.T) (string, issueops.IssueOpsRecord, ExecutionReplaceResult) {
 	return reseededOrcaCycleWithArtifacts(t, nil)
 }
 
-func reseededOrcaCycleWithArtifacts(t *testing.T, artifacts map[string]string) (string, IssueOpsRecord, ExecutionReplaceResult) {
+func reseededOrcaCycleWithArtifacts(t *testing.T, artifacts map[string]string) (string, issueops.IssueOpsRecord, ExecutionReplaceResult) {
 	t.Helper()
 	stateRoot, original, _, reader := sealedOrcaCycleWithArtifacts(t, resumeIssueBody, artifacts)
 	record, err := ReadIssueOps(stateRoot, original.ID)
@@ -46,7 +46,7 @@ func reseededOrcaCycleWithArtifacts(t *testing.T, artifacts map[string]string) (
 	return stateRoot, reseeded, reseededResult
 }
 
-func resumeRequest(record IssueOpsRecord) ExecutionResumeRequest {
+func resumeRequest(record issueops.IssueOpsRecord) ExecutionResumeRequest {
 	return ExecutionResumeRequest{
 		ID: record.ID, ExpectedGeneration: record.Execution.Lease.Generation,
 		Actor: executionActor("codex", "resume-coordinator"),
@@ -80,9 +80,9 @@ func resumeOrcaFake(t *testing.T, stages *[]port.ExecutionOrcaIntentStage) *exec
 
 func TestExecutionResumeRejectsReleasedLeaseBeforeExternalMutation(t *testing.T) {
 	stateRoot, record, _ := reseededOrcaCycle(t)
-	record.Execution.Lease = model.WriteLease{
+	record.Execution.Lease = issueops.WriteLease{
 		Generation: record.Execution.Lease.Generation,
-		Status:     model.LeaseStatusReleased,
+		Status:     issueops.LeaseStatusReleased,
 	}
 	if _, err := writeIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)

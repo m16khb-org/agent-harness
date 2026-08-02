@@ -3,6 +3,7 @@ package core
 import (
 	"time"
 
+	statecontract "agent-harness/internal/contract/state"
 	corepreflight "agent-harness/internal/core/preflight"
 	corestate "agent-harness/internal/core/state"
 	coretrace "agent-harness/internal/core/trace"
@@ -10,7 +11,6 @@ import (
 
 const StateCurrentSchemaVersion = corestate.StateCurrentSchemaVersion
 
-type StateRecord = corestate.StateRecord
 type StateResult = corestate.StateResult
 type StateListEntry = corestate.StateListEntry
 type StateListResult = corestate.StateListResult
@@ -31,7 +31,7 @@ func StateWrite(key, content string) (StateResult, error) {
 	return corestate.StateWrite(key, content)
 }
 
-func WriteStateRecord(dir, key string, record StateRecord) (string, error) {
+func WriteStateRecord(dir, key string, record statecontract.RecordEnvelope) (string, error) {
 	return corestate.WriteStateRecord(dir, key, record)
 }
 

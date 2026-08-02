@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -28,22 +29,22 @@ const completionTuringSummaryLimit = 4 * 1024
 // (the same discipline as cleanup close-children); without it the write is
 // rejected. On a confirmed successful update it stamps
 // RemoteCompletion.ReflectedAt as a local cache of the remote state.
-func ReflectIssueCompletion(stateRoot, id string, merged, confirm bool, prov port.IssueProvider) (IssueOpsRecord, port.IssueProviderUpdateIssueBodySectionResult, error) {
+func ReflectIssueCompletion(stateRoot, id string, merged, confirm bool, prov port.IssueProvider) (issueops.IssueOpsRecord, port.IssueProviderUpdateIssueBodySectionResult, error) {
 	if prov == nil {
-		return IssueOpsRecord{OK: false}, port.IssueProviderUpdateIssueBodySectionResult{}, fmt.Errorf("no issue provider configured")
+		return issueops.IssueOpsRecord{OK: false}, port.IssueProviderUpdateIssueBodySectionResult{}, fmt.Errorf("no issue provider configured")
 	}
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return record, port.IssueProviderUpdateIssueBodySectionResult{}, err
 	}
 	if strings.TrimSpace(record.IssueURL) == "" {
-		return IssueOpsRecord{OK: false}, port.IssueProviderUpdateIssueBodySectionResult{}, fmt.Errorf("cannot reflect completion before a linked issue")
+		return issueops.IssueOpsRecord{OK: false}, port.IssueProviderUpdateIssueBodySectionResult{}, fmt.Errorf("cannot reflect completion before a linked issue")
 	}
 	if record.RemoteArtifact == nil {
-		return IssueOpsRecord{OK: false}, port.IssueProviderUpdateIssueBodySectionResult{}, fmt.Errorf("cannot reflect completion before a verified remote artifact")
+		return issueops.IssueOpsRecord{OK: false}, port.IssueProviderUpdateIssueBodySectionResult{}, fmt.Errorf("cannot reflect completion before a verified remote artifact")
 	}
 	if !merged {
-		return IssueOpsRecord{OK: false}, port.IssueProviderUpdateIssueBodySectionResult{}, fmt.Errorf("cannot reflect completion without provider-verified merge evidence")
+		return issueops.IssueOpsRecord{OK: false}, port.IssueProviderUpdateIssueBodySectionResult{}, fmt.Errorf("cannot reflect completion without provider-verified merge evidence")
 	}
 	completion := gatherCompletionSection(record)
 	result, err := prov.UpdateIssueBodySection(port.IssueProviderUpdateIssueBodySectionRequest{
@@ -54,12 +55,12 @@ func ReflectIssueCompletion(stateRoot, id string, merged, confirm bool, prov por
 		Confirm:    confirm,
 	})
 	if err != nil {
-		return IssueOpsRecord{OK: false}, result, err
+		return issueops.IssueOpsRecord{OK: false}, result, err
 	}
 	if !confirm || !result.Updated {
 		return record, result, nil
 	}
-	record, err = stampRemoteCompletion(stateRoot, id, func(rc *IssueOpsRemoteCompletion, now string) {
+	record, err = stampRemoteCompletion(stateRoot, id, func(rc *issueops.IssueOpsRemoteCompletion, now string) {
 		rc.ReflectedAt = now
 	})
 	return record, result, err
@@ -68,19 +69,19 @@ func ReflectIssueCompletion(stateRoot, id string, merged, confirm bool, prov por
 // CloseIssueOpsRemoteIssue closes the linked parent issue after the caller
 // verified merge evidence by provider readback. On a confirmed verified close
 // it stamps RemoteCompletion.IssueClosedAt as a local cache.
-func CloseIssueOpsRemoteIssue(stateRoot, id string, merged, confirm bool, prov port.IssueProvider) (IssueOpsRecord, port.IssueProviderCloseIssueResult, error) {
+func CloseIssueOpsRemoteIssue(stateRoot, id string, merged, confirm bool, prov port.IssueProvider) (issueops.IssueOpsRecord, port.IssueProviderCloseIssueResult, error) {
 	if prov == nil {
-		return IssueOpsRecord{OK: false}, port.IssueProviderCloseIssueResult{}, fmt.Errorf("no issue provider configured")
+		return issueops.IssueOpsRecord{OK: false}, port.IssueProviderCloseIssueResult{}, fmt.Errorf("no issue provider configured")
 	}
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return record, port.IssueProviderCloseIssueResult{}, err
 	}
 	if strings.TrimSpace(record.IssueURL) == "" {
-		return IssueOpsRecord{OK: false}, port.IssueProviderCloseIssueResult{}, fmt.Errorf("cannot close before a linked issue")
+		return issueops.IssueOpsRecord{OK: false}, port.IssueProviderCloseIssueResult{}, fmt.Errorf("cannot close before a linked issue")
 	}
 	if !merged {
-		return IssueOpsRecord{OK: false}, port.IssueProviderCloseIssueResult{}, fmt.Errorf("cannot close the issue without provider-verified merge evidence")
+		return issueops.IssueOpsRecord{OK: false}, port.IssueProviderCloseIssueResult{}, fmt.Errorf("cannot close the issue without provider-verified merge evidence")
 	}
 	result, err := prov.CloseIssue(port.IssueProviderCloseIssueRequest{
 		Repo:     record.Repo,
@@ -88,12 +89,12 @@ func CloseIssueOpsRemoteIssue(stateRoot, id string, merged, confirm bool, prov p
 		Confirm:  confirm,
 	})
 	if err != nil {
-		return IssueOpsRecord{OK: false}, result, err
+		return issueops.IssueOpsRecord{OK: false}, result, err
 	}
 	if !confirm || !result.Closed {
 		return record, result, nil
 	}
-	record, err = stampRemoteCompletion(stateRoot, id, func(rc *IssueOpsRemoteCompletion, now string) {
+	record, err = stampRemoteCompletion(stateRoot, id, func(rc *issueops.IssueOpsRemoteCompletion, now string) {
 		// AlreadyClosed 재실행이 최초 close 시각을 덮지 않게 멱등으로 둔다(C3-F8).
 		if rc.IssueClosedAt == "" {
 			rc.IssueClosedAt = now
@@ -102,15 +103,15 @@ func CloseIssueOpsRemoteIssue(stateRoot, id string, merged, confirm bool, prov p
 	return record, result, err
 }
 
-func stampRemoteCompletion(stateRoot, id string, apply func(*IssueOpsRemoteCompletion, string)) (IssueOpsRecord, error) {
-	var record IssueOpsRecord
+func stampRemoteCompletion(stateRoot, id string, apply func(*issueops.IssueOpsRemoteCompletion, string)) (issueops.IssueOpsRecord, error) {
+	var record issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		rec, e := ReadIssueOps(stateRoot, id)
 		if e != nil {
 			return e
 		}
 		if rec.RemoteCompletion == nil {
-			rec.RemoteCompletion = &IssueOpsRemoteCompletion{}
+			rec.RemoteCompletion = &issueops.IssueOpsRemoteCompletion{}
 		}
 		now := time.Now().UTC().Format(time.RFC3339Nano)
 		apply(rec.RemoteCompletion, now)
@@ -119,7 +120,7 @@ func stampRemoteCompletion(stateRoot, id string, apply func(*IssueOpsRemoteCompl
 		return e
 	})
 	if err != nil {
-		return IssueOpsRecord{OK: false}, err
+		return issueops.IssueOpsRecord{OK: false}, err
 	}
 	return record, nil
 }
@@ -127,7 +128,7 @@ func stampRemoteCompletion(stateRoot, id string, apply func(*IssueOpsRemoteCompl
 // gatherCompletionSection assembles the completion payload from durable record
 // evidence and the on-disk artifact directory. 파일 부재는 에러가 아니라 빈
 // 블록이다 — 섹션의 블록 헤딩 7종은 렌더러가 placeholder로 보존한다.
-func gatherCompletionSection(record IssueOpsRecord) port.IssueProviderCompletionSection {
+func gatherCompletionSection(record issueops.IssueOpsRecord) port.IssueProviderCompletionSection {
 	completion := port.IssueProviderCompletionSection{}
 	if record.RemoteArtifact != nil {
 		completion.RemoteArtifactURL = record.RemoteArtifact.URL

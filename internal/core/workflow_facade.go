@@ -3,6 +3,8 @@ package core
 import (
 	"time"
 
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
+
 	"agent-harness/internal/core/hookprompt"
 	"agent-harness/internal/core/lifecycle"
 	"agent-harness/internal/core/nextaction"
@@ -50,26 +52,20 @@ const ProjectLifecycleSchemaVersion = lifecycle.ProjectLifecycleSchemaVersion
 type ProjectFingerprint = lifecycle.ProjectFingerprint
 type ProjectLifecycleProfile = lifecycle.ProjectLifecycleProfile
 type ProjectLifecycleStatePlan = lifecycle.ProjectLifecycleStatePlan
-type DocUpkeepEvent = lifecycle.DocUpkeepEvent
 type DocUpkeepAppendResult = lifecycle.DocUpkeepAppendResult
-type HookToolUseLifecycleRequest = lifecycle.HookToolUseLifecycleRequest
-type HookToolUseLifecycleResult = lifecycle.HookToolUseLifecycleResult
-type HookPreToolUseDecisionResult = lifecycle.HookPreToolUseDecisionResult
 type LifecycleStopReminderResult = lifecycle.LifecycleStopReminderResult
-type StopNextActionRelayRecord = lifecycle.StopNextActionRelayRecord
-type StopNextActionRelayResult = lifecycle.StopNextActionRelayResult
 type LifecycleCompactCapsule = lifecycle.LifecycleCompactCapsule
 type LifecycleCompactResult = lifecycle.LifecycleCompactResult
 
-func BuildLifecyclePreToolUseDecision(req HookToolUseLifecycleRequest) HookPreToolUseDecisionResult {
+func BuildLifecyclePreToolUseDecision(req lifecyclecontract.HookToolUseLifecycleRequest) lifecyclecontract.HookPreToolUseDecisionResult {
 	return lifecycle.BuildLifecyclePreToolUseDecision(req)
 }
 
-func RecordLifecycleToolUse(req HookToolUseLifecycleRequest) (HookToolUseLifecycleResult, error) {
+func RecordLifecycleToolUse(req lifecyclecontract.HookToolUseLifecycleRequest) (lifecyclecontract.HookToolUseLifecycleResult, error) {
 	return lifecycle.RecordLifecycleToolUse(req)
 }
 
-func SourceCheckoutMisdirectWarning(req HookToolUseLifecycleRequest) (string, string) {
+func SourceCheckoutMisdirectWarning(req lifecyclecontract.HookToolUseLifecycleRequest) (string, string) {
 	return lifecycle.SourceCheckoutMisdirectWarning(req)
 }
 
@@ -97,19 +93,19 @@ func ValidateProjectLifecycleState(repoRoot string) (ProjectLifecycleStatePlan, 
 	return lifecycle.ValidateProjectLifecycleState(repoRoot)
 }
 
-func AppendDocUpkeepEvent(repoRoot string, event DocUpkeepEvent) (DocUpkeepAppendResult, error) {
+func AppendDocUpkeepEvent(repoRoot string, event lifecyclecontract.DocUpkeepEvent) (DocUpkeepAppendResult, error) {
 	return lifecycle.AppendDocUpkeepEvent(repoRoot, event)
 }
 
-func ReadPendingDocUpkeepEvents(repoRoot string, limit int) ([]DocUpkeepEvent, ProjectLifecycleStatePlan, error) {
+func ReadPendingDocUpkeepEvents(repoRoot string, limit int) ([]lifecyclecontract.DocUpkeepEvent, ProjectLifecycleStatePlan, error) {
 	return lifecycle.ReadPendingDocUpkeepEvents(repoRoot, limit)
 }
 
-func RecordStopNextActionRelay(repoRoot string, trigger NextActionJudgementTriggerResult) StopNextActionRelayResult {
+func RecordStopNextActionRelay(repoRoot string, trigger NextActionJudgementTriggerResult) lifecyclecontract.StopNextActionRelayResult {
 	return lifecycle.RecordStopNextActionRelay(repoRoot, trigger)
 }
 
-func ClearStopNextActionRelay(repoRoot string) StopNextActionRelayResult {
+func ClearStopNextActionRelay(repoRoot string) lifecyclecontract.StopNextActionRelayResult {
 	return lifecycle.ClearStopNextActionRelay(repoRoot)
 }
 

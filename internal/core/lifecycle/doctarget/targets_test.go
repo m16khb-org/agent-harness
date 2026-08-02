@@ -3,11 +3,11 @@ package doctarget
 import (
 	"testing"
 
-	"agent-harness/internal/core/lifecycle/model"
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 )
 
 func TestForToolUseSkipsReadOnlyBashOutputPaths(t *testing.T) {
-	targets := ForToolUse(model.HookToolUseLifecycleRequest{
+	targets := ForToolUse(lifecyclecontract.HookToolUseLifecycleRequest{
 		Tool:    "Bash",
 		Command: "rg -n \"PostCompact|OPEN_API_SPEC\" .",
 		Paths:   []string{"cmd/harness/hook_user_prompt.go", ".agent-harness/OPEN_API_SPEC.md"},
@@ -19,7 +19,7 @@ func TestForToolUseSkipsReadOnlyBashOutputPaths(t *testing.T) {
 }
 
 func TestForToolUseSkipsQuotedRedirectInReadOnlyBash(t *testing.T) {
-	targets := ForToolUse(model.HookToolUseLifecycleRequest{
+	targets := ForToolUse(lifecyclecontract.HookToolUseLifecycleRequest{
 		Tool:    "Bash",
 		Command: "rg -n 'a > b' internal/core/hook_prompt.go",
 		Paths:   []string{"internal/core/hook_prompt.go"},
@@ -31,7 +31,7 @@ func TestForToolUseSkipsQuotedRedirectInReadOnlyBash(t *testing.T) {
 }
 
 func TestForToolUseAllowsMutatingBashCommand(t *testing.T) {
-	targets := ForToolUse(model.HookToolUseLifecycleRequest{
+	targets := ForToolUse(lifecyclecontract.HookToolUseLifecycleRequest{
 		Tool:    "Bash",
 		Command: "gofmt -w internal/core/lifecycle_state.go",
 		Source:  "test",

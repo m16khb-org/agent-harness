@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops"
-	issueopsmodel "agent-harness/internal/core/issueops/model"
 )
 
 func TestOrchestrationReminderRendersChildrenOnly(t *testing.T) {
@@ -40,13 +40,13 @@ func TestOrchestrationReminderIgnoresDroppedChild(t *testing.T) {
 	repo := t.TempDir()
 	now := "2026-07-16T00:00:00Z"
 	childID := issueops.NewIssueOpsID(repo, "dropped-child")
-	parent := issueops.IssueOpsRecord{
+	parent := issueopscontract.IssueOpsRecord{
 		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
 		ID:            issueops.NewIssueOpsID(repo, "parent-with-dropped-child"),
 		Repo:          repo,
 		Branch:        "parent-with-dropped-child",
 		Phase:         issueops.IssueOpsPhasePR,
-		ChildCycles: []issueops.IssueOpsChildCycleRef{{
+		ChildCycles: []issueopscontract.IssueOpsChildCycleRef{{
 			CycleID: childID, Branch: "dropped-child", Title: "Dropped child", CreatedAt: now,
 			ValidationVerdict: "dropped", ValidationReason: "parent already contains the verified change", ValidatedAt: now,
 		}},
@@ -54,7 +54,7 @@ func TestOrchestrationReminderIgnoresDroppedChild(t *testing.T) {
 		UpdatedAt: now,
 	}
 	writeIssueOpsRecordForReminderTest(t, parent)
-	writeIssueOpsRecordForReminderTest(t, issueops.IssueOpsRecord{
+	writeIssueOpsRecordForReminderTest(t, issueopscontract.IssueOpsRecord{
 		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
 		ID:            childID,
 		Repo:          repo,
@@ -78,18 +78,18 @@ func TestOrchestrationReminderIgnoresDoneBoundCycle(t *testing.T) {
 	repo := t.TempDir()
 	now := "2026-07-16T00:00:00Z"
 	childID := issueops.NewIssueOpsID(repo, "stale-active-child")
-	parent := issueops.IssueOpsRecord{
+	parent := issueopscontract.IssueOpsRecord{
 		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
 		ID:            issueops.NewIssueOpsID(repo, "done-parent"),
 		Repo:          repo,
 		Branch:        "done-parent",
 		Phase:         issueops.IssueOpsPhaseDone,
-		ChildCycles:   []issueops.IssueOpsChildCycleRef{{CycleID: childID, Branch: "stale-active-child", CreatedAt: now}},
+		ChildCycles:   []issueopscontract.IssueOpsChildCycleRef{{CycleID: childID, Branch: "stale-active-child", CreatedAt: now}},
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
 	writeIssueOpsRecordForReminderTest(t, parent)
-	writeIssueOpsRecordForReminderTest(t, issueops.IssueOpsRecord{
+	writeIssueOpsRecordForReminderTest(t, issueopscontract.IssueOpsRecord{
 		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
 		ID:            childID,
 		Repo:          repo,
@@ -112,16 +112,16 @@ func TestOrchestrationRelayBoundCountsNonDroppedChildren(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	now := "2026-07-16T00:00:00Z"
-	refs := make([]issueops.IssueOpsChildCycleRef, 0, orchestrationChildReadLimit+1)
+	refs := make([]issueopscontract.IssueOpsChildCycleRef, 0, orchestrationChildReadLimit+1)
 	for i := 0; i < orchestrationChildReadLimit; i++ {
-		refs = append(refs, issueops.IssueOpsChildCycleRef{
+		refs = append(refs, issueopscontract.IssueOpsChildCycleRef{
 			CycleID: issueops.NewIssueOpsID(repo, "dropped-child-"+string(rune('a'+i))),
 			Branch:  "dropped-child", CreatedAt: now, ValidationVerdict: "dropped", ValidatedAt: now,
 		})
 	}
 	activeID := issueops.NewIssueOpsID(repo, "active-child-after-dropped-prefix")
-	refs = append(refs, issueops.IssueOpsChildCycleRef{CycleID: activeID, Branch: "active-child", CreatedAt: now})
-	parent := issueops.IssueOpsRecord{
+	refs = append(refs, issueopscontract.IssueOpsChildCycleRef{CycleID: activeID, Branch: "active-child", CreatedAt: now})
+	parent := issueopscontract.IssueOpsRecord{
 		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
 		ID:            issueops.NewIssueOpsID(repo, "parent-with-bounded-dropped-prefix"),
 		Repo:          repo,
@@ -132,7 +132,7 @@ func TestOrchestrationRelayBoundCountsNonDroppedChildren(t *testing.T) {
 		UpdatedAt:     now,
 	}
 	writeIssueOpsRecordForReminderTest(t, parent)
-	writeIssueOpsRecordForReminderTest(t, issueops.IssueOpsRecord{
+	writeIssueOpsRecordForReminderTest(t, issueopscontract.IssueOpsRecord{
 		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
 		ID:            activeID,
 		Repo:          repo,
@@ -162,7 +162,7 @@ func TestUserPromptHintsIncludeOrchestrationReminder(t *testing.T) {
 	}
 }
 
-func seedOrchestrationReminderFixture(t *testing.T) (string, issueops.IssueOpsRecord) {
+func seedOrchestrationReminderFixture(t *testing.T) (string, issueopscontract.IssueOpsRecord) {
 	t.Helper()
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
@@ -171,14 +171,14 @@ func seedOrchestrationReminderFixture(t *testing.T) (string, issueops.IssueOpsRe
 	childDoneID := issueops.NewIssueOpsID(repo, "child-done")
 	childActiveID := issueops.NewIssueOpsID(repo, "child-active")
 	childAcceptedID := issueops.NewIssueOpsID(repo, "child-accepted")
-	parent := issueops.IssueOpsRecord{
+	parent := issueopscontract.IssueOpsRecord{
 		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
 		ID:            parentID,
 		Repo:          repo,
 		Branch:        "orchestrate-parent",
 		Phase:         issueops.IssueOpsPhaseImplement,
 		WorktreePath:  repo,
-		ChildCycles: []issueops.IssueOpsChildCycleRef{
+		ChildCycles: []issueopscontract.IssueOpsChildCycleRef{
 			{CycleID: childDoneID, Branch: "child-done", Title: "Done child", CreatedAt: now},
 			{CycleID: childActiveID, Branch: "child-active", Title: "Active child", CreatedAt: now},
 			{CycleID: childAcceptedID, Branch: "child-accepted", Title: "Accepted child", CreatedAt: now, ValidationVerdict: "accepted"},
@@ -187,7 +187,7 @@ func seedOrchestrationReminderFixture(t *testing.T) (string, issueops.IssueOpsRe
 		UpdatedAt: now,
 	}
 	writeIssueOpsRecordForReminderTest(t, parent)
-	writeIssueOpsRecordForReminderTest(t, issueops.IssueOpsRecord{
+	writeIssueOpsRecordForReminderTest(t, issueopscontract.IssueOpsRecord{
 		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
 		ID:            childDoneID,
 		Repo:          repo,
@@ -196,7 +196,7 @@ func seedOrchestrationReminderFixture(t *testing.T) (string, issueops.IssueOpsRe
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	})
-	writeIssueOpsRecordForReminderTest(t, issueops.IssueOpsRecord{
+	writeIssueOpsRecordForReminderTest(t, issueopscontract.IssueOpsRecord{
 		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
 		ID:            childActiveID,
 		Repo:          repo,
@@ -205,7 +205,7 @@ func seedOrchestrationReminderFixture(t *testing.T) (string, issueops.IssueOpsRe
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	})
-	writeIssueOpsRecordForReminderTest(t, issueops.IssueOpsRecord{
+	writeIssueOpsRecordForReminderTest(t, issueopscontract.IssueOpsRecord{
 		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
 		ID:            childAcceptedID,
 		Repo:          repo,
@@ -219,7 +219,7 @@ func seedOrchestrationReminderFixture(t *testing.T) (string, issueops.IssueOpsRe
 	return repo, parent
 }
 
-func writeIssueOpsRecordForReminderTest(t *testing.T, record issueops.IssueOpsRecord) {
+func writeIssueOpsRecordForReminderTest(t *testing.T, record issueopscontract.IssueOpsRecord) {
 	t.Helper()
 	if _, err := issueops.WriteIssueOps(issueops.IssueOpsStateRoot(), record); err != nil {
 		t.Fatalf("write issueops record %s: %v", record.ID, err)
@@ -234,17 +234,17 @@ func activateOrchestrationExecutionForTest(t *testing.T, id, repo string) {
 	}
 	root := filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees", record.Branch)
 	record.WorktreePath = root
-	record.Execution = &issueopsmodel.Execution{
-		Mode: issueopsmodel.ExecutionModeDirect,
-		Workspace: issueopsmodel.Workspace{
+	record.Execution = &issueopscontract.Execution{
+		Mode: issueopscontract.ExecutionModeDirect,
+		Workspace: issueopscontract.Workspace{
 			SourceRoot: repo, Root: root, Branch: record.Branch,
 			BaseHead: "0123456789012345678901234567890123456789", Driver: "git", LinkedAt: "2026-07-22T00:00:00Z",
 		},
-		Lease: issueopsmodel.WriteLease{
-			Generation: 1, Status: issueopsmodel.LeaseStatusActive, ClaimedAt: "2026-07-22T00:00:00Z",
-			Holder: &issueopsmodel.NativeActor{
+		Lease: issueopscontract.WriteLease{
+			Generation: 1, Status: issueopscontract.LeaseStatusActive, ClaimedAt: "2026-07-22T00:00:00Z",
+			Holder: &issueopscontract.NativeActor{
 				Host: "codex", SessionID: "reminder-session",
-				SessionProcess: &issueopsmodel.NativeProcessReceipt{PID: 1, StartedAt: "2026-07-22T00:00:00Z", Executable: "/usr/bin/codex"},
+				SessionProcess: &issueopscontract.NativeProcessReceipt{PID: 1, StartedAt: "2026-07-22T00:00:00Z", Executable: "/usr/bin/codex"},
 			},
 		},
 	}

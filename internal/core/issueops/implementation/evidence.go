@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"agent-harness/internal/core/issueops/model"
+	model "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops/pathutil"
 	"agent-harness/internal/core/issueops/readinesspaths"
 	"agent-harness/internal/core/preflight"

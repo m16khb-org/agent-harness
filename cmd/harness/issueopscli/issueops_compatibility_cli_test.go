@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/internal/core"
 )
 
@@ -23,7 +25,7 @@ func TestIssueOpsCompatibilityReviewCLIRecordsReview(t *testing.T) {
 	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), id, "https://github.com/example/repo/issues/123"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), id, core.IssueOpsBranchPrepareRequest{
+	if _, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), id, issueopscontract.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     "https://github.com/example/repo/issues/123",
 		Branch:       "123-compatibility-review",

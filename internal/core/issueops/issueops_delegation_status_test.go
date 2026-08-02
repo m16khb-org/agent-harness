@@ -3,12 +3,14 @@ package issueops
 import (
 	"strings"
 	"testing"
+
+	"agent-harness/internal/contract/issueops"
 )
 
 func TestIssueOpsChildStatusAggregatesAndRepairs(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	first, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
+	first, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-status-a",
 		Title:              "status child a",
@@ -18,7 +20,7 @@ func TestIssueOpsChildStatusAggregatesAndRepairs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
+	second, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-status-b",
 		Title:              "status child b",
@@ -32,7 +34,7 @@ func TestIssueOpsChildStatusAggregatesAndRepairs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parentAfter.ChildCycles = []IssueOpsChildCycleRef{
+	parentAfter.ChildCycles = []issueops.IssueOpsChildCycleRef{
 		first.ParentRef,
 		{CycleID: "io-deadbeefcafe", Branch: "999-orphan-child", Title: "orphan child", CreatedAt: "2026-07-07T00:00:00Z"},
 	}
@@ -76,7 +78,7 @@ func TestIssueOpsChildStatusAggregatesAndRepairs(t *testing.T) {
 func TestAcceptIssueOpsChildRequiresDonePhaseAndEvidence(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	started, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
+	started, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-accept",
 		Title:              "accept child",
@@ -133,7 +135,7 @@ func TestAcceptIssueOpsChildRequiresDonePhaseAndEvidence(t *testing.T) {
 func TestAcceptIssueOpsChildAfterCleanupUsesIndexedParentRef(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	started, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
+	started, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-cleaned-child-accept",
 		Title:              "cleaned child accept",
@@ -180,7 +182,7 @@ func TestAcceptIssueOpsChildAfterCleanupRejectsUnindexedID(t *testing.T) {
 func TestRejectIssueOpsChildRecordsVerdictOnValidReason(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	started, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
+	started, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-reject",
 		Title:              "reject child",
@@ -205,7 +207,7 @@ func TestRejectIssueOpsChildRecordsVerdictOnValidReason(t *testing.T) {
 func TestDropIssueOpsChildRecordsAuditTrail(t *testing.T) {
 	stateRoot := t.TempDir()
 	parent := createDelegationReadyParentForTest(t, stateRoot)
-	started, err := startIssueOpsChildForTest(stateRoot, parent, IssueOpsChildStartRequest{
+	started, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
 		ParentID:           parent.ID,
 		Branch:             "123-child-drop",
 		Title:              "drop child",
@@ -227,11 +229,11 @@ func TestDropIssueOpsChildRecordsAuditTrail(t *testing.T) {
 	}
 }
 
-func childStatusEntryByID(entries []IssueOpsChildStatusEntry, childID string) (IssueOpsChildStatusEntry, bool) {
+func childStatusEntryByID(entries []issueops.IssueOpsChildStatusEntry, childID string) (issueops.IssueOpsChildStatusEntry, bool) {
 	for _, entry := range entries {
 		if entry.CycleID == childID {
 			return entry, true
 		}
 	}
-	return IssueOpsChildStatusEntry{}, false
+	return issueops.IssueOpsChildStatusEntry{}, false
 }

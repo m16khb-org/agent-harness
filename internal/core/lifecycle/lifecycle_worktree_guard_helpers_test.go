@@ -5,9 +5,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
-func guardRepoWithCycle(t *testing.T, branch string, phase IssueOpsPhase) string {
+func guardRepoWithCycle(t *testing.T, branch string, phase issueopscontract.IssueOpsPhase) string {
 	t.Helper()
 	repo := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o755); err != nil {
@@ -16,7 +18,7 @@ func guardRepoWithCycle(t *testing.T, branch string, phase IssueOpsPhase) string
 	if err := os.WriteFile(filepath.Join(repo, ".git", "HEAD"), []byte("ref: refs/heads/"+branch+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: branch}); err != nil {
+	if _, err := StartIssueOps(IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: branch}); err != nil {
 		t.Fatal(err)
 	}
 	if phase != IssueOpsPhaseProblem {
@@ -25,7 +27,7 @@ func guardRepoWithCycle(t *testing.T, branch string, phase IssueOpsPhase) string
 	return repo
 }
 
-func setIssueOpsPhaseForTest(t *testing.T, repo, branch string, phase IssueOpsPhase) {
+func setIssueOpsPhaseForTest(t *testing.T, repo, branch string, phase issueopscontract.IssueOpsPhase) {
 	t.Helper()
 	id := newIssueOpsID(repo, branch)
 	record, err := ReadIssueOps(IssueOpsStateRoot(), id)
@@ -49,7 +51,7 @@ func linkIssueOpsBranchEvidenceForTest(t *testing.T, repo, branch string) {
 	if _, err := LinkIssueOpsIssue(IssueOpsStateRoot(), id, issueURL); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := PrepareIssueOpsBranch(IssueOpsStateRoot(), id, IssueOpsBranchPrepareRequest{
+	if _, err := PrepareIssueOpsBranch(IssueOpsStateRoot(), id, issueopscontract.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     issueURL,
 		Branch:       issueOpsProviderBranchForTest(branch),
@@ -95,7 +97,7 @@ func markIssueOpsPRPhaseForTest(t *testing.T, repo, branch string) {
 		t.Fatal(err)
 	}
 	record.Phase = IssueOpsPhasePR
-	record.RemoteArtifact = &IssueOpsRemoteArtifactVerification{
+	record.RemoteArtifact = &issueopscontract.IssueOpsRemoteArtifactVerification{
 		Provider:   "github",
 		Kind:       "pr",
 		URL:        "https://github.com/example/repo/pull/1",
@@ -142,7 +144,7 @@ type linkedIssueOpsWorktreeForTest struct {
 
 func linkIssueOpsWorktreeForGuardTest(t *testing.T, repo, branch string) linkedIssueOpsWorktreeForTest {
 	t.Helper()
-	record, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := StartIssueOps(IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +152,7 @@ func linkIssueOpsWorktreeForGuardTest(t *testing.T, repo, branch string) linkedI
 	if _, err := LinkIssueOpsIssue(IssueOpsStateRoot(), record.ID, issueURL); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := PrepareIssueOpsBranch(IssueOpsStateRoot(), record.ID, IssueOpsBranchPrepareRequest{
+	if _, err := PrepareIssueOpsBranch(IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     issueURL,
 		Branch:       branch,

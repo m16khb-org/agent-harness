@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
@@ -54,11 +54,11 @@ func (o *fakeAbandonOrca) InvokeIntent(context.Context, port.ExecutionOrcaIntent
 	return port.ExecutionOrcaIntentReceipt{}, fmt.Errorf("cleanup abandon must never invoke an Orca mutation")
 }
 
-func abandonTestRecord(t *testing.T) (string, IssueOpsRecord) {
+func abandonTestRecord(t *testing.T) (string, issueops.IssueOpsRecord) {
 	t.Helper()
 	stateRoot := filepath.Join(t.TempDir(), "issueops")
 	repo := t.TempDir()
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "106-abandon"})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "106-abandon"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,10 +110,10 @@ func abandonIntentRowExists(t *testing.T, stateRoot, operationID string) bool {
 
 // abandonExecution은 지정한 lease로 released-가능한 orca 실행 블록을 만든다.
 // root는 부모만 존재하고 자기 자신은 없는 경로다(worktree_absent 충족).
-func abandonExecution(repo, root string, lease WriteLease) *Execution {
-	return &Execution{
-		Mode: model.ExecutionModeOrca,
-		Workspace: Workspace{
+func abandonExecution(repo, root string, lease issueops.WriteLease) *issueops.Execution {
+	return &issueops.Execution{
+		Mode: issueops.ExecutionModeOrca,
+		Workspace: issueops.Workspace{
 			SourceRoot: repo, Root: root, Branch: "106-abandon",
 			BaseHead: "deadbeef", Driver: "orca", LinkedAt: "2026-07-24T00:00:00Z",
 		},
@@ -124,14 +124,14 @@ func abandonExecution(repo, root string, lease WriteLease) *Execution {
 // abandonOrcaPendingRecord는 실측 io-ff5300b4aa0b 형태를 재현한다: released
 // lease + worktree_create pending + external_operation_ambiguous failure +
 // 디스크에 없는 workspace root.
-func abandonOrcaPendingRecord(t *testing.T, kind string, writeRow bool) (string, IssueOpsRecord, string, string) {
+func abandonOrcaPendingRecord(t *testing.T, kind string, writeRow bool) (string, issueops.IssueOpsRecord, string, string) {
 	t.Helper()
 	stateRoot, record := abandonTestRecord(t)
 	root := filepath.Join(t.TempDir(), "absent-worktree")
 	operationID := "op-abandon-worktree"
 	issueURL := "https://github.com/m16khb/agent-harness/issues/106"
 	record.IssueURL = issueURL
-	record.BranchPrepare = &IssueOpsBranchPrepare{
+	record.BranchPrepare = &issueops.IssueOpsBranchPrepare{
 		Provider: "github", IssueURL: issueURL, Branch: "106-abandon",
 		BaseBranch: "main", BaseSHA: "deadbeef", LinkVerified: true,
 	}
@@ -144,7 +144,7 @@ func abandonOrcaPendingRecord(t *testing.T, kind string, writeRow bool) (string,
 	}
 	if writeRow {
 		writeAbandonIntentRow(t, stateRoot, operationID, externalOrcaIntentPayload{
-			SchemaVersion: model.IssueOpsSchemaVersion, OperationID: operationID, LifecycleID: record.ID,
+			SchemaVersion: issueops.IssueOpsSchemaVersion, OperationID: operationID, LifecycleID: record.ID,
 			Generation: 1, Stage: intentContractStage(port.ExecutionOrcaIntentWorktree), Marker: marker,
 			StartedAt: "2026-07-24T00:00:00Z", InvocationState: orcaIntentNotInvoked,
 			Workspace: intentContractWorkspaceRequest(port.ExecutionWorkspaceRequest{
@@ -158,14 +158,14 @@ func abandonOrcaPendingRecord(t *testing.T, kind string, writeRow bool) (string,
 			IssueBodySHA256: abandonIssueBodySHA,
 		})
 	}
-	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
 		rec.IssueURL = record.IssueURL
 		rec.BranchPrepare = record.BranchPrepare
-		rec.Execution = abandonExecution(rec.Repo, root, WriteLease{Generation: 1, Status: model.LeaseStatusReleased})
-		rec.Execution.Pending = &model.ExternalIntent{
+		rec.Execution = abandonExecution(rec.Repo, root, issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusReleased})
+		rec.Execution.Pending = &issueops.ExternalIntent{
 			OperationID: operationID, Kind: kind, Marker: marker, StartedAt: "2026-07-24T00:00:00Z",
 		}
-		rec.Execution.Failure = &model.ExecutionFailure{
+		rec.Execution.Failure = &issueops.ExecutionFailure{
 			OperationID: operationID, Code: "external_operation_ambiguous", At: "2026-07-24T00:00:00Z",
 		}
 	})
@@ -207,7 +207,7 @@ func TestCleanupAbandonPreviewThenApplyDeletesRecord(t *testing.T) {
 	if _, err := ReadIssueOps(stateRoot, record.ID); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("record must be gone after abandon: %v", err)
 	}
-	fresh, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: record.Repo, Branch: "106-abandon"})
+	fresh, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: record.Repo, Branch: "106-abandon"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,29 +219,29 @@ func TestCleanupAbandonPreviewThenApplyDeletesRecord(t *testing.T) {
 // AC-02: LeaseStatus 4값 전수 테이블. released만 통과하고 revoking을 포함한
 // 나머지는 전부 lease_terminal로 거부된다(brooks F5).
 func TestCleanupAbandonLeaseAllowlistCoversEveryStatus(t *testing.T) {
-	holder := &NativeActor{
+	holder := &issueops.NativeActor{
 		Host: "codex", SessionID: "s-1",
-		SessionProcess: &NativeProcessReceipt{PID: 4321, StartedAt: "2026-07-24T00:00:00Z", Executable: "/usr/bin/codex"},
+		SessionProcess: &issueops.NativeProcessReceipt{PID: 4321, StartedAt: "2026-07-24T00:00:00Z", Executable: "/usr/bin/codex"},
 	}
 	cases := []struct {
 		name  string
-		lease WriteLease
+		lease issueops.WriteLease
 		ready bool
 	}{
-		{"released", WriteLease{Generation: 1, Status: model.LeaseStatusReleased}, true},
+		{"released", issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusReleased}, true},
 		// claimable은 #140에서 통과로 바뀌었다. validateWriteLease가 홀더 부재를
 		// 강제하므로 released와 같은 성질이고, 거부하면 운영자가 claim→release로
 		// lease를 한 바퀴 돌리는 우회를 하게 된다(#139에서 실측). 자원 잔여는
 		// 게이트 ⑤·⑥·⑦·⑨가 각각 막는다.
-		{"claimable", WriteLease{Generation: 1, Status: model.LeaseStatusClaimable, ClaimTokenSHA256: abandonIssueBodySHA}, true},
-		{"active", WriteLease{Generation: 1, Status: model.LeaseStatusActive, Holder: holder, ClaimedAt: "2026-07-24T00:00:00Z"}, false},
-		{"revoking", WriteLease{Generation: 1, Status: model.LeaseStatusRevoking, Holder: holder}, false},
+		{"claimable", issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusClaimable, ClaimTokenSHA256: abandonIssueBodySHA}, true},
+		{"active", issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusActive, Holder: holder, ClaimedAt: "2026-07-24T00:00:00Z"}, false},
+		{"revoking", issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusRevoking, Holder: holder}, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			stateRoot, record := abandonTestRecord(t)
 			root := filepath.Join(t.TempDir(), "absent-worktree")
-			mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
+			mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
 				rec.Execution = abandonExecution(rec.Repo, root, tc.lease)
 			})
 			deps := abandonDeps(&fakeAbandonGit{}, authoritativeZeroOrca())
@@ -263,19 +263,19 @@ func TestCleanupAbandonLeaseAllowlistCoversEveryStatus(t *testing.T) {
 func TestCleanupAbandonRecordGatesRejectUnsafeRecords(t *testing.T) {
 	cases := []struct {
 		name    string
-		mutate  func(*IssueOpsRecord)
+		mutate  func(*issueops.IssueOpsRecord)
 		request func(id string) CleanupAbandonRequest
 		missing string
 	}{
 		{
 			name:    "done phase belongs to finish",
-			mutate:  func(rec *IssueOpsRecord) { rec.Phase = IssueOpsPhaseDone },
+			mutate:  func(rec *issueops.IssueOpsRecord) { rec.Phase = IssueOpsPhaseDone },
 			missing: "phase_not_done",
 		},
 		{
 			name: "remote artifact belongs to reflect then finish",
-			mutate: func(rec *IssueOpsRecord) {
-				rec.RemoteArtifact = &IssueOpsRemoteArtifactVerification{
+			mutate: func(rec *issueops.IssueOpsRecord) {
+				rec.RemoteArtifact = &issueops.IssueOpsRemoteArtifactVerification{
 					Provider: "github", Kind: "pr", URL: "https://github.com/acme/repo/pull/9",
 				}
 			},
@@ -283,15 +283,15 @@ func TestCleanupAbandonRecordGatesRejectUnsafeRecords(t *testing.T) {
 		},
 		{
 			name: "child cycles would be orphaned",
-			mutate: func(rec *IssueOpsRecord) {
-				rec.ChildCycles = append(rec.ChildCycles, IssueOpsChildCycleRef{CycleID: "io-child000000", Branch: "child"})
+			mutate: func(rec *issueops.IssueOpsRecord) {
+				rec.ChildCycles = append(rec.ChildCycles, issueops.IssueOpsChildCycleRef{CycleID: "io-child000000", Branch: "child"})
 			},
 			missing: "no_children",
 		},
 		{
 			name: "unclosed child issue link",
-			mutate: func(rec *IssueOpsRecord) {
-				rec.IssueLinks = append(rec.IssueLinks, IssueOpsIssueLink{Type: "child", URL: "https://github.com/acme/repo/issues/91"})
+			mutate: func(rec *issueops.IssueOpsRecord) {
+				rec.IssueLinks = append(rec.IssueLinks, issueops.IssueOpsIssueLink{Type: "child", URL: "https://github.com/acme/repo/issues/91"})
 			},
 			missing: "no_children",
 		},
@@ -349,9 +349,9 @@ func TestCleanupAbandonRecordGatesRejectUnsafeRecords(t *testing.T) {
 
 func TestCleanupAbandonIgnoresSelfChildIssueLink(t *testing.T) {
 	stateRoot, record := abandonTestRecord(t)
-	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
 		rec.IssueURL = "https://github.com/acme/repo/issues/91"
-		rec.IssueLinks = append(rec.IssueLinks, IssueOpsIssueLink{
+		rec.IssueLinks = append(rec.IssueLinks, issueops.IssueOpsIssueLink{
 			Type: "child",
 			URL:  rec.IssueURL,
 		})
@@ -380,8 +380,8 @@ func TestCleanupAbandonRejectsLocalResidue(t *testing.T) {
 		if err := os.MkdirAll(root, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
-			rec.Execution = abandonExecution(rec.Repo, root, WriteLease{Generation: 1, Status: model.LeaseStatusReleased})
+		mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
+			rec.Execution = abandonExecution(rec.Repo, root, issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusReleased})
 		})
 		result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), abandonDeps(&fakeAbandonGit{}, authoritativeZeroOrca()))
 		if err == nil || !containsString(result.Missing, "worktree_absent") {
@@ -398,8 +398,8 @@ func TestCleanupAbandonRejectsLocalResidue(t *testing.T) {
 	t.Run("worktree identity conflict", func(t *testing.T) {
 		stateRoot, record := abandonTestRecord(t)
 		root := filepath.Join(t.TempDir(), "absent-worktree")
-		mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
-			rec.Execution = abandonExecution(rec.Repo, root, WriteLease{Generation: 1, Status: model.LeaseStatusReleased})
+		mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
+			rec.Execution = abandonExecution(rec.Repo, root, issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusReleased})
 			rec.WorktreePath = filepath.Join(t.TempDir(), "other-worktree")
 		})
 		result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), abandonDeps(&fakeAbandonGit{}, authoritativeZeroOrca()))
@@ -627,9 +627,9 @@ func TestCleanupAbandonDeletesRecordAndIntentRowAtomically(t *testing.T) {
 func TestCleanupAbandonTreatsAbsentIntentRowAsSuccess(t *testing.T) {
 	stateRoot, record := abandonTestRecord(t)
 	root := filepath.Join(t.TempDir(), "absent-worktree")
-	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
-		rec.Execution = abandonExecution(rec.Repo, root, WriteLease{Generation: 1, Status: model.LeaseStatusReleased})
-		rec.Execution.Failure = &model.ExecutionFailure{
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
+		rec.Execution = abandonExecution(rec.Repo, root, issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusReleased})
+		rec.Execution.Failure = &issueops.ExecutionFailure{
 			OperationID: "op-already-collected", Code: "external_operation_ambiguous", At: "2026-07-24T00:00:00Z",
 		}
 	})
@@ -653,7 +653,7 @@ func TestCleanupAbandonRefusesToDeleteAnotherLifecyclesIntentRow(t *testing.T) {
 	stateRoot, record, operationID, root := abandonOrcaPendingRecord(t, "worktree_create", true)
 	foreign := "op-foreign-row"
 	writeAbandonIntentRow(t, stateRoot, foreign, externalOrcaIntentPayload{
-		SchemaVersion: model.IssueOpsSchemaVersion, OperationID: foreign, LifecycleID: "io-someoneelse",
+		SchemaVersion: issueops.IssueOpsSchemaVersion, OperationID: foreign, LifecycleID: "io-someoneelse",
 		Generation: 1, Stage: intentContractStage(port.ExecutionOrcaIntentWorktree), Marker: "m",
 		StartedAt: "2026-07-24T00:00:00Z", InvocationState: orcaIntentNotInvoked,
 		Workspace: intentContractWorkspaceRequest(port.ExecutionWorkspaceRequest{
@@ -663,7 +663,7 @@ func TestCleanupAbandonRefusesToDeleteAnotherLifecyclesIntentRow(t *testing.T) {
 		Probe:           intentContractProbeRequest(port.ExecutionOrcaProbeRequest{Repo: record.Repo, Host: "codex", Model: "gpt-5.4", Marker: "m"}),
 		IssueBodySHA256: abandonIssueBodySHA,
 	})
-	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
 		rec.Execution.Failure.OperationID = foreign
 	})
 	deps := abandonDeps(&fakeAbandonGit{}, authoritativeZeroOrca())
@@ -698,7 +698,7 @@ func TestCleanupAbandonApplyRejectsStaleFingerprintAndMissingConfirm(t *testing.
 		t.Fatalf("apply without confirm must be rejected: %v", err)
 	}
 	// phase 이동은 게이트를 통과하지만 fingerprint 입력을 바꾼다.
-	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) { rec.Phase = IssueOpsPhasePlan })
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) { rec.Phase = IssueOpsPhasePlan })
 	if _, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, true, preview.Fingerprint), deps); err == nil ||
 		!strings.Contains(err.Error(), "stale cleanup fingerprint") {
 		t.Fatalf("stale fingerprint must be rejected: %v", err)

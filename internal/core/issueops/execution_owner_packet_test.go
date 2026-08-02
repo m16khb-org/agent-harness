@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 )
 
 func TestExecutionOwnerReportContractGolden(t *testing.T) {
@@ -185,8 +185,8 @@ func TestExecutionOwnerReviewCommandRecordsTheActualVerdict(t *testing.T) {
 
 func TestExecutionDirectOwnerPromptUsesNoClaimCommand(t *testing.T) {
 	record, req := ownerPacketFixture()
-	record.Execution.Mode = model.ExecutionModeDirect
-	record.Execution.Lease = model.WriteLease{Generation: 1, Status: model.LeaseStatusActive, Holder: &model.NativeActor{Host: "codex", SessionID: "direct"}}
+	record.Execution.Mode = issueops.ExecutionModeDirect
+	record.Execution.Lease = issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusActive, Holder: &issueops.NativeActor{Host: "codex", SessionID: "direct"}}
 	req.Mode = "direct"
 	prompt := executionOwnerPromptFixture(t, record, req)
 	if !strings.Contains(prompt, "claim command가 `none`") || !strings.Contains(prompt, "\n   none\n") || strings.Contains(prompt, "issueops execution claim --id") {
@@ -241,7 +241,7 @@ func TestExecutionOwnerPromptRenderingRejectsPlaceholderAndLineInjectionDetermin
 	}
 }
 
-func executionOwnerPromptFixture(t *testing.T, record IssueOpsRecord, req ExecutionPrepareRequest) string {
+func executionOwnerPromptFixture(t *testing.T, record issueops.IssueOpsRecord, req ExecutionPrepareRequest) string {
 	t.Helper()
 	commands := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64))
 	packet := executionOwnerContextPacket{
@@ -263,21 +263,21 @@ func executionOwnerPromptFixture(t *testing.T, record IssueOpsRecord, req Execut
 	return prompt
 }
 
-func ownerPacketFixture() (IssueOpsRecord, ExecutionPrepareRequest) {
-	record := IssueOpsRecord{
+func ownerPacketFixture() (issueops.IssueOpsRecord, ExecutionPrepareRequest) {
+	record := issueops.IssueOpsRecord{
 		SchemaVersion: 1,
 		ID:            "io-69",
 		Repo:          "/workspace/agent-harness",
 		Branch:        "69-issueops-v1",
 		IssueURL:      "https://github.com/example/agent-harness/issues/69",
-		BranchPrepare: &IssueOpsBranchPrepare{
+		BranchPrepare: &issueops.IssueOpsBranchPrepare{
 			Provider: "github", IssueURL: "https://github.com/example/agent-harness/issues/69",
 			Branch: "69-issueops-v1", BaseBranch: "main",
 			BaseSHA: "0123456789012345678901234567890123456789",
 		},
-		Execution: &model.Execution{
-			Mode: model.ExecutionModeOrca,
-			Workspace: model.Workspace{
+		Execution: &issueops.Execution{
+			Mode: issueops.ExecutionModeOrca,
+			Workspace: issueops.Workspace{
 				SourceRoot: "/workspace/agent-harness",
 				Root:       "/workspace/agent-harness.worktrees/69-issueops-v1",
 				Branch:     "69-issueops-v1",
@@ -285,7 +285,7 @@ func ownerPacketFixture() (IssueOpsRecord, ExecutionPrepareRequest) {
 				Driver:     "orca",
 				LinkedAt:   "2026-07-22T00:00:00Z",
 			},
-			Lease: model.WriteLease{Generation: 1, Status: model.LeaseStatusClaimable},
+			Lease: issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusClaimable},
 		},
 	}
 	req := ExecutionPrepareRequest{

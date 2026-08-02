@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
 )
@@ -36,7 +38,7 @@ type IssueOpsRemotePullRequestCreateFunc = issueops.RemotePullRequestCreateFunc
 type IssueOpsRemotePullRequestReconcileFunc = issueops.RemotePullRequestReconcileFunc
 type IssueOpsRemotePullRequestCreateHandler = issueops.RemotePullRequestCreateHandler
 
-func SyncRemoteIssueGraph(record IssueOpsRecord) (map[string]any, error) {
+func SyncRemoteIssueGraph(record issueopscontract.IssueOpsRecord) (map[string]any, error) {
 	return issueops.SyncRemoteIssueGraph(record)
 }
 
@@ -53,11 +55,11 @@ func CreateRemoteIssue(req IssueProviderCreateIssueRequest, prov IssueProvider) 
 // ReflectIssueOpsDevilsAdvocateFindings reflects the recorded devil's-advocate
 // findings into the linked issue body through the supplied provider, stamping
 // IssueReflectedAt on a confirmed success. The caller resolves the provider.
-func ReflectIssueOpsDevilsAdvocateFindings(stateRoot, id string, confirm bool, prov IssueProvider) (IssueOpsRecord, IssueProviderUpdateIssueBodySectionResult, error) {
+func ReflectIssueOpsDevilsAdvocateFindings(stateRoot, id string, confirm bool, prov IssueProvider) (issueopscontract.IssueOpsRecord, IssueProviderUpdateIssueBodySectionResult, error) {
 	return issueops.ReflectDevilsAdvocateFindings(stateRoot, id, confirm, prov)
 }
 
-func ReflectIssueOpsDevilsAdvocateFindingsWithActor(stateRoot, id string, confirm bool, prov IssueProvider, actor IssueOpsActor) (IssueOpsRecord, IssueProviderUpdateIssueBodySectionResult, error) {
+func ReflectIssueOpsDevilsAdvocateFindingsWithActor(stateRoot, id string, confirm bool, prov IssueProvider, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, IssueProviderUpdateIssueBodySectionResult, error) {
 	return issueops.ReflectDevilsAdvocateFindingsWithActor(stateRoot, id, confirm, prov, actor)
 }
 
@@ -119,12 +121,12 @@ func ReadRemoteIssueSnapshot(ctx context.Context, prov IssueProvider, req Execut
 
 // ReflectIssueOpsCompletion writes the completion section into the linked
 // issue body. merged must carry caller-verified provider merge readback.
-func ReflectIssueOpsCompletion(stateRoot, id string, merged, confirm bool, prov IssueProvider) (IssueOpsRecord, IssueProviderUpdateIssueBodySectionResult, error) {
+func ReflectIssueOpsCompletion(stateRoot, id string, merged, confirm bool, prov IssueProvider) (issueopscontract.IssueOpsRecord, IssueProviderUpdateIssueBodySectionResult, error) {
 	return issueops.ReflectIssueCompletion(stateRoot, id, merged, confirm, prov)
 }
 
 // CloseIssueOpsRemoteIssue closes the linked parent issue after caller-verified
 // merge evidence, stamping the local completion cache on verified success.
-func CloseIssueOpsRemoteIssue(stateRoot, id string, merged, confirm bool, prov IssueProvider) (IssueOpsRecord, IssueProviderCloseIssueResult, error) {
+func CloseIssueOpsRemoteIssue(stateRoot, id string, merged, confirm bool, prov IssueProvider) (issueopscontract.IssueOpsRecord, IssueProviderCloseIssueResult, error) {
 	return issueops.CloseIssueOpsRemoteIssue(stateRoot, id, merged, confirm, prov)
 }

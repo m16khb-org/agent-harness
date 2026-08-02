@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/preflight"
 )
 
@@ -17,7 +17,7 @@ func preflightGitForReviewTest(dir string, args ...string) (int, string, string)
 func TestRecordIssueOpsImplementationReviewValidation(t *testing.T) {
 	stateRoot := filepath.Join(t.TempDir(), "issueops")
 	repo := gitInitedRepoForReviewTest(t)
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: "83-review"})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "83-review"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func TestRecordIssueOpsImplementationReviewValidation(t *testing.T) {
 	if _, err := RecordIssueOpsImplementationReview(stateRoot, record.ID, valid); err == nil || !strings.Contains(err.Error(), "implement phase") {
 		t.Fatalf("pre-implement recording must be rejected: %v", err)
 	}
-	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) { rec.Phase = IssueOpsPhaseImplement })
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) { rec.Phase = IssueOpsPhaseImplement })
 	got, err := RecordIssueOpsImplementationReview(stateRoot, record.ID, valid)
 	if err != nil {
 		t.Fatal(err)
@@ -69,19 +69,19 @@ func gitInitedRepoForReviewTest(t *testing.T) string {
 
 // AC-05: orca 모드에만 fail-closed로 적용되고 direct 모드는 게이트 대상이 아니다.
 func TestImplementationReviewMissingScopedToOrcaMode(t *testing.T) {
-	record := IssueOpsRecord{}
+	record := issueops.IssueOpsRecord{}
 	if got := implementationReviewMissing(record, ""); got != "" {
 		t.Fatalf("record without execution must not be gated: %q", got)
 	}
-	record.Execution = &Execution{Mode: model.ExecutionModeDirect}
+	record.Execution = &issueops.Execution{Mode: issueops.ExecutionModeDirect}
 	if got := implementationReviewMissing(record, ""); got != "" {
 		t.Fatalf("direct mode must not be gated: %q", got)
 	}
-	record.Execution.Mode = model.ExecutionModeOrca
+	record.Execution.Mode = issueops.ExecutionModeOrca
 	if got := implementationReviewMissing(record, ""); got != "implementation_review" {
 		t.Fatalf("orca mode without review must be gated: %q", got)
 	}
-	record.ImplementationReview = &model.IssueOpsImplementationReview{Verdict: "revise"}
+	record.ImplementationReview = &issueops.IssueOpsImplementationReview{Verdict: "revise"}
 	if got := implementationReviewMissing(record, ""); got != "implementation_review_verdict_revise" {
 		t.Fatalf("non-pass verdict must be gated with its verdict: %q", got)
 	}
@@ -101,7 +101,7 @@ func TestImplementationReviewMissingScopedToOrcaMode(t *testing.T) {
 }
 
 func TestStrictPRReadinessSurfacesImplementationReview(t *testing.T) {
-	record := IssueOpsRecord{Execution: &Execution{Mode: model.ExecutionModeOrca}}
+	record := issueops.IssueOpsRecord{Execution: &issueops.Execution{Mode: issueops.ExecutionModeOrca}}
 	ready := IssueOpsPRReadiness(record)
 	if !containsString(ready.Missing, "implementation_review") {
 		t.Fatalf("strict readiness must surface the implementation review gate: %+v", ready.Missing)
@@ -111,13 +111,13 @@ func TestStrictPRReadinessSurfacesImplementationReview(t *testing.T) {
 func TestOwnerCommandsIncludeImplementationReviewWithPlannerModel(t *testing.T) {
 	repo := t.TempDir()
 	worktree := filepath.Join(t.TempDir(), "83-review")
-	record := IssueOpsRecord{
+	record := issueops.IssueOpsRecord{
 		ID: "io-000000000083", Repo: repo,
-		BranchPrepare: &IssueOpsBranchPrepare{Provider: "github", BaseBranch: "main"},
-		Execution: &Execution{
-			Mode:      model.ExecutionModeOrca,
-			Workspace: Workspace{SourceRoot: repo, Root: worktree, Branch: "83-review", BaseHead: "deadbeef"},
-			Lease:     WriteLease{Generation: 1},
+		BranchPrepare: &issueops.IssueOpsBranchPrepare{Provider: "github", BaseBranch: "main"},
+		Execution: &issueops.Execution{
+			Mode:      issueops.ExecutionModeOrca,
+			Workspace: issueops.Workspace{SourceRoot: repo, Root: worktree, Branch: "83-review", BaseHead: "deadbeef"},
+			Lease:     issueops.WriteLease{Generation: 1},
 		},
 	}
 	for _, tc := range []struct {

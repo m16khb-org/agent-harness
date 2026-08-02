@@ -2,13 +2,16 @@ package state
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
+
+	statecontract "agent-harness/internal/contract/state"
 )
 
 func TestStateMigrateDryRunAndConfirm(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", dir)
-	legacy := StateRecord{
+	legacy := statecontract.RecordEnvelope{
 		Key:       "legacy",
 		Content:   "legacy content",
 		UpdatedAt: "2000-01-01T00:00:00Z",
@@ -38,12 +41,8 @@ func TestStateMigrateDryRunAndConfirm(t *testing.T) {
 	if !dry.OK || !dry.DryRun || dry.Confirm || !containsString(dry.CandidateKeys, "legacy") || len(dry.MigratedKeys) != 0 || !containsString(dry.SkippedKeys, "current") {
 		t.Fatalf("unexpected dry-run migrate result: %+v", dry)
 	}
-	readLegacy, err := StateRead("legacy")
-	if err != nil {
-		t.Fatalf("StateRead legacy after dry-run: %v", err)
-	}
-	if readLegacy.Record.SchemaVersion != 0 {
-		t.Fatalf("dry-run changed schema version to %d", readLegacy.Record.SchemaVersion)
+	if _, err := StateRead("legacy"); !errors.Is(err, statecontract.ErrInvalidState) {
+		t.Fatalf("legacy state must remain invalid after dry-run: %v", err)
 	}
 
 	confirmed, err := StateMigrate(true)
@@ -72,7 +71,7 @@ func TestStateMigrateDryRunAndConfirm(t *testing.T) {
 func TestStateReadRejectsUnsupportedSchema(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", dir)
-	record := StateRecord{
+	record := statecontract.RecordEnvelope{
 		SchemaVersion: StateCurrentSchemaVersion + 1,
 		Key:           "future",
 		Content:       "future",

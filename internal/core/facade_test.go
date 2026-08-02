@@ -7,6 +7,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	issueopscontract "agent-harness/internal/contract/issueops"
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 )
 
 func TestPolicyStateUtilityAndProjectDocFacades(t *testing.T) {
@@ -130,7 +133,7 @@ func TestIssueOpsDraftWikiWorkflowAndWorkerFacades(t *testing.T) {
 	repo := t.TempDir()
 	writeCoreTestFile(t, repo, "go.mod", "module example.com/repo\n")
 
-	record, err := StartIssueOps(IssueOpsStateRoot(), IssueOpsStartRequest{Repo: repo, Branch: "1234-feature-test"})
+	record, err := StartIssueOps(IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: "1234-feature-test"})
 	if err != nil {
 		t.Fatalf("StartIssueOps: %v", err)
 	}
@@ -140,7 +143,7 @@ func TestIssueOpsDraftWikiWorkflowAndWorkerFacades(t *testing.T) {
 	if newIssueOpsID(repo, "1234-feature-test") == "" || !IssueOpsPhaseExpectsWorktree(IssueOpsPhaseImplement) {
 		t.Fatal("issueops phase helpers should work")
 	}
-	record.Intent = &IssueOpsIntentContract{RawRequest: "raw", InterpretedIntent: "intent", SuccessCriteria: []string{"done"}}
+	record.Intent = &issueopscontract.IssueOpsIntentContract{RawRequest: "raw", InterpretedIntent: "intent", SuccessCriteria: []string{"done"}}
 	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
 		t.Fatalf("writeIssueOps: %v", err)
 	}
@@ -162,7 +165,7 @@ func TestIssueOpsDraftWikiWorkflowAndWorkerFacades(t *testing.T) {
 	if _, err := AddIssueOpsFeedback(IssueOpsStateRoot(), record.ID, "review", "body", "defect"); err != nil {
 		t.Fatalf("AddIssueOpsFeedback: %v", err)
 	}
-	if _, err := AddIssueOpsDecision(IssueOpsStateRoot(), record.ID, IssueOpsDecisionRecordRequest{Title: "decision", Body: "body", Kind: "implementation"}); err != nil {
+	if _, err := AddIssueOpsDecision(IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsDecisionRecordRequest{Title: "decision", Body: "body", Kind: "implementation"}); err != nil {
 		t.Fatalf("AddIssueOpsDecision: %v", err)
 	}
 	record, _ = ReadIssueOps(IssueOpsStateRoot(), record.ID)
@@ -172,8 +175,8 @@ func TestIssueOpsDraftWikiWorkflowAndWorkerFacades(t *testing.T) {
 	_ = IssueOpsImplementationReadiness(record)
 	_ = IssueOpsPlanReadiness(record)
 	_ = IssueOpsAISlopCleanReadiness(record)
-	_ = IssueOpsCleanupStatusForRecord(record, IssueOpsCleanupStatusRequest{})
-	_, _ = IssueOpsCleanupStatusByID(IssueOpsStateRoot(), record.ID, IssueOpsCleanupStatusRequest{})
+	_ = IssueOpsCleanupStatusForRecord(record, issueopscontract.IssueOpsCleanupStatusRequest{})
+	_, _ = IssueOpsCleanupStatusByID(IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsCleanupStatusRequest{})
 	if _, err := DecodeIssueOpsBenchmarkJudgeJSON([]byte(`{"ok":true,"fixture_id":"f1","average_score":90,"minimum_score":80,"dimension_scores":[{"dimension":"intent_understanding","score":90,"evidence":"ok"}],"passed":true}`)); err != nil {
 		t.Fatalf("DecodeIssueOpsBenchmarkJudgeJSON: %v", err)
 	}
@@ -265,7 +268,7 @@ func TestHookAndLifecycleFacades(t *testing.T) {
 	if len(result.Hints) == 0 || result.AdditionalContext == "" {
 		t.Fatalf("unexpected hook prompt result: %#v", result)
 	}
-	if BuildLifecyclePreToolUseDecision(HookToolUseLifecycleRequest{Repo: repo}).OK == false {
+	if BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{Repo: repo}).OK == false {
 		t.Fatal("pre tool use decision should return result")
 	}
 	_ = BuildLifecycleStopReminder(repo)
@@ -280,7 +283,7 @@ func TestHookAndLifecycleFacades(t *testing.T) {
 	if _, err := ValidateProjectLifecycleState(repo); err != nil {
 		t.Fatalf("ValidateProjectLifecycleState: %v", err)
 	}
-	if _, err := AppendDocUpkeepEvent(repo, DocUpkeepEvent{Kind: "test", TargetDocs: []string{"TESTING.md"}, Summary: "update", Status: "pending"}); err != nil {
+	if _, err := AppendDocUpkeepEvent(repo, lifecyclecontract.DocUpkeepEvent{Kind: "test", TargetDocs: []string{"TESTING.md"}, Summary: "update", Status: "pending"}); err != nil {
 		t.Fatalf("AppendDocUpkeepEvent: %v", err)
 	}
 	if events, _, err := ReadPendingDocUpkeepEvents(repo, 10); err != nil || len(events) == 0 {

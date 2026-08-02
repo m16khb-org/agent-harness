@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -20,7 +20,7 @@ import (
 func TestDualStructurePipelineEndToEnd(t *testing.T) {
 	stateRoot := filepath.Join(t.TempDir(), "issueops")
 
-	prepareOrcaCycle := func(branch string) IssueOpsRecord {
+	prepareOrcaCycle := func(branch string) issueops.IssueOpsRecord {
 		t.Helper()
 		record := executionPrepareRecordForBranch(t, stateRoot, branch)
 		fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
@@ -37,7 +37,7 @@ func TestDualStructurePipelineEndToEnd(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got.Execution.Lease.Status != model.LeaseStatusClaimable || got.Execution.Lease.Holder != nil {
+		if got.Execution.Lease.Status != issueops.LeaseStatusClaimable || got.Execution.Lease.Holder != nil {
 			t.Fatalf("handoff must leave a claimable lease with no planner holder: %+v", got.Execution.Lease)
 		}
 		if got.Execution.Orca.OwnerModel != port.IssueOpsImplementerModelClaude {
@@ -59,11 +59,11 @@ func TestDualStructurePipelineEndToEnd(t *testing.T) {
 
 	// 2) 두 사이클이 claimable인 동안에도 메인 세션은 세 번째 계획을 자유롭게
 	// 시작한다 — planner는 lease를 보유하지 않으므로 어떤 것에도 묶이지 않는다.
-	third, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: cycleA.Repo, Branch: "103-parallel-c"})
+	third, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: cycleA.Repo, Branch: "103-parallel-c"})
 	if err != nil {
 		t.Fatalf("planner must stay free to plan while handoffs are claimable: %v", err)
 	}
-	if _, err := RecordIssueOpsIntent(stateRoot, third.ID, IssueOpsIntentRecordRequest{
+	if _, err := RecordIssueOpsIntent(stateRoot, third.ID, issueops.IssueOpsIntentRecordRequest{
 		RawRequest: "세 번째 계획", InterpretedIntent: "병렬 계획 자유 검증", SuccessCriteria: []string{"list가 3사이클을 조망"},
 	}); err != nil {
 		t.Fatal(err)
@@ -78,10 +78,10 @@ func TestDualStructurePipelineEndToEnd(t *testing.T) {
 	// 4) 사이클 A의 머지 후 정리: 하위 세션 종료(released) 상태를 만들고
 	// finish가 레코드를 삭제한다. 게이트 입력은 CLI가 원격 readback으로
 	// 검증하는 값이므로 여기서는 검증 완료 상태를 주입한다.
-	mutateFinishRecord(t, stateRoot, cycleA.ID, func(rec *IssueOpsRecord) {
-		rec.Phase = model.IssueOpsPhaseDone
-		rec.RemoteArtifact = &IssueOpsRemoteArtifactVerification{Provider: "github", Kind: "pr", URL: "https://github.com/acme/repo/pull/101"}
-		rec.Execution.Lease = WriteLease{Generation: 1, Status: model.LeaseStatusReleased}
+	mutateFinishRecord(t, stateRoot, cycleA.ID, func(rec *issueops.IssueOpsRecord) {
+		rec.Phase = issueops.IssueOpsPhaseDone
+		rec.RemoteArtifact = &issueops.IssueOpsRemoteArtifactVerification{Provider: "github", Kind: "pr", URL: "https://github.com/acme/repo/pull/101"}
+		rec.Execution.Lease = issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusReleased}
 	})
 	git := &fakeFinishGit{branchOID: "abc123"}
 	deps := finishDeps(git)
@@ -98,30 +98,30 @@ func TestDualStructurePipelineEndToEnd(t *testing.T) {
 
 	// 5) 사이클 B는 영향 없이 claimable로 남고, A의 브랜치는 새 사이클로 열린다.
 	remaining, err := ReadIssueOps(stateRoot, cycleB.ID)
-	if err != nil || remaining.Execution.Lease.Status != model.LeaseStatusClaimable {
+	if err != nil || remaining.Execution.Lease.Status != issueops.LeaseStatusClaimable {
 		t.Fatalf("parallel cycle B must stay untouched: %v %+v", err, remaining.Execution)
 	}
-	reborn, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: cycleA.Repo, Branch: "101-parallel-a"})
-	if err != nil || reborn.Phase != model.IssueOpsPhaseProblem || reborn.Execution != nil {
+	reborn, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: cycleA.Repo, Branch: "101-parallel-a"})
+	if err != nil || reborn.Phase != issueops.IssueOpsPhaseProblem || reborn.Execution != nil {
 		t.Fatalf("finish must unlock same-branch rework: %v %+v", err, reborn)
 	}
 }
 
 // executionPrepareRecordForBranch는 executionPrepareRecord와 같은 준비 상태를
 // 임의 브랜치·공유 state root로 만든다(E2E에서 사이클 3개가 한 저장소를 공유).
-func executionPrepareRecordForBranch(t *testing.T, stateRoot, branch string) IssueOpsRecord {
+func executionPrepareRecordForBranch(t *testing.T, stateRoot, branch string) issueops.IssueOpsRecord {
 	t.Helper()
 	base := executionPrepareRecord
 	_ = base
 	repo := sharedDualE2ERepo(t)
-	record, err := StartIssueOps(stateRoot, IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
 	issueURL := "https://github.com/acme/repo/issues/" + strings.SplitN(branch, "-", 2)[0]
-	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *issueops.IssueOpsRecord) {
 		rec.IssueURL = issueURL
-		rec.BranchPrepare = &IssueOpsBranchPrepare{
+		rec.BranchPrepare = &issueops.IssueOpsBranchPrepare{
 			Provider: "github", IssueURL: issueURL, Branch: branch,
 			BaseBranch: "main", BaseSHA: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef", LinkVerified: true,
 			CreatedAt: "2026-07-24T00:00:00Z",

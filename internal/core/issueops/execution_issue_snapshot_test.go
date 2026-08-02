@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -200,7 +200,7 @@ func TestExecutionIssueSnapshotEvidenceSealsFinalizeAndReplacementClaimWithoutFa
 		t.Fatalf("finalize가 봉인한 GitLab snapshot으로 claim하지 못했다: %v", err)
 	}
 	claimed, ok := raw.(ExecutionResult)
-	if !ok || claimed.Execution.Lease.Status != model.LeaseStatusActive || claimed.IssueSnapshotSource != "glab_mcp" {
+	if !ok || claimed.Execution.Lease.Status != issueops.LeaseStatusActive || claimed.IssueSnapshotSource != "glab_mcp" {
 		t.Fatalf("주입 snapshot claim 결과가 불완전하다: %#v", raw)
 	}
 }
@@ -228,9 +228,9 @@ func TestExecutionIssueSnapshotEvidenceRejectsUnsupportedActions(t *testing.T) {
 
 func TestExecutionIssueSnapshotEvidenceAllowsOnlyWorktreeReconcileConfirm(t *testing.T) {
 	_, record := gitLabExecutionSnapshotRecord(t)
-	record.Execution = &model.Execution{
-		Mode:    model.ExecutionModeOrca,
-		Pending: &model.ExternalIntent{Kind: "worktree_create"},
+	record.Execution = &issueops.Execution{
+		Mode:    issueops.ExecutionModeOrca,
+		Pending: &issueops.ExternalIntent{Kind: "worktree_create"},
 	}
 	req := ExecutionActionRequest{Action: ExecutionActionReconcile, Confirm: true}
 	if err := validateExecutionIssueSnapshotAction(req); err != nil {
@@ -319,7 +319,7 @@ func TestWithExecutionIssueSnapshotSourceCoversEveryExecutionResult(t *testing.T
 	}
 }
 
-func gitLabExecutionSnapshotRecord(t *testing.T) (string, IssueOpsRecord) {
+func gitLabExecutionSnapshotRecord(t *testing.T) (string, issueops.IssueOpsRecord) {
 	t.Helper()
 	stateRoot, record := orcaPrepareRecord(t)
 	record.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/16"

@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	cliadapter "agent-harness/internal/adapter/cli"
 	"agent-harness/internal/core"
 )
@@ -67,7 +69,7 @@ func runIssueOpsBranch(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.PrepareIssueOpsBranchWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsBranchPrepareRequest{
+	record, err := core.PrepareIssueOpsBranchWithActor(core.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsBranchPrepareRequest{
 		Provider:        *provider,
 		IssueURL:        *issueURL,
 		Branch:          *branch,
@@ -80,7 +82,7 @@ func runIssueOpsBranch(args []string) error {
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
-func printIssueOpsResult(record core.IssueOpsRecord, jsonOut bool, err error) error {
+func printIssueOpsResult(record issueopscontract.IssueOpsRecord, jsonOut bool, err error) error {
 	if err != nil {
 		if jsonOut {
 			if printErr := printIssueOpsErrorJSON(err); printErr != nil {

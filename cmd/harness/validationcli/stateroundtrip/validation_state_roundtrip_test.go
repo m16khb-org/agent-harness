@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	statecontract "agent-harness/internal/contract/state"
+
 	"agent-harness/internal/core"
 )
 
@@ -38,7 +40,7 @@ func TestValidateStateRoundtripWithDepsCoversSuccessAndSetupFailure(t *testing.T
 	}
 
 	step := validateStateRoundtripWithDeps("bin/agent-harness", root, 123, deps)
-	if !step.OK || step.Label != "state roundtrip" || len(calls) != 21 || !strings.Contains(step.Command, "state write") || !strings.Contains(step.Command, "self-verify history") {
+	if !step.OK || step.Label != "state roundtrip" || len(calls) != 17 || !strings.Contains(step.Command, "state write") || !strings.Contains(step.Command, "self-verify history") {
 		t.Fatalf("unexpected success step: %#v calls=%v", step, calls)
 	}
 	if !strings.Contains(step.Command, "self-verify promote --from-key self-verify-123-compare-candidate --baseline-key self-verify-123-promoted-baseline --allow-failed-source --confirm --json") {
@@ -162,36 +164,28 @@ func stateRoundtripStep(t *testing.T, label string, command []string, payload an
 
 func validStateRoundtripPayload(t *testing.T, label string, seed int64) any {
 	t.Helper()
+	const updatedAt = "2026-08-02T00:00:00Z"
 	key := fmt.Sprintf("self-verify-%d", seed)
 	content := fmt.Sprintf("seed=%d\nLore: state roundtrip\n", seed)
 	oldKey := key + "-old"
-	legacyKey := key + "-legacy"
 	baseKey := key + "-compare-base"
 	candidateKey := key + "-compare-candidate"
 	promotedKey := key + "-promoted-baseline"
 	switch label {
 	case "state write":
-		return core.StateResult{OK: true, Path: "/tmp/" + key + ".json", Record: core.StateRecord{Key: key, Content: content, Bytes: len([]byte(content))}}
+		return core.StateResult{OK: true, Path: "/tmp/" + key + ".json", Record: statecontract.RecordEnvelope{SchemaVersion: statecontract.SchemaVersion, Key: key, Content: content, UpdatedAt: updatedAt, Bytes: len([]byte(content))}}
 	case "state read":
-		return core.StateResult{OK: true, Record: core.StateRecord{Key: key, Content: content, Bytes: len([]byte(content))}}
+		return core.StateResult{OK: true, Record: statecontract.RecordEnvelope{SchemaVersion: statecontract.SchemaVersion, Key: key, Content: content, UpdatedAt: updatedAt, Bytes: len([]byte(content))}}
 	case "state list":
 		return core.StateListResult{OK: true, Keys: []string{key, oldKey}}
 	case "state old write":
-		return core.StateResult{OK: true, Path: "/tmp/" + oldKey + ".json", Record: core.StateRecord{Key: oldKey, Content: "old state", Bytes: len([]byte("old state"))}}
+		return core.StateResult{OK: true, Path: "/tmp/" + oldKey + ".json", Record: statecontract.RecordEnvelope{SchemaVersion: statecontract.SchemaVersion, Key: oldKey, Content: "old state", UpdatedAt: updatedAt, Bytes: len([]byte("old state"))}}
 	case "state prune dry-run":
 		return core.StatePruneResult{OK: true, DryRun: true, DeletedKeys: []string{oldKey}, KeptKeys: []string{key}}
 	case "state prune confirm":
 		return core.StatePruneResult{OK: true, Confirm: true, DeletedKeys: []string{oldKey}}
 	case "state list after prune":
 		return core.StateListResult{OK: true, Keys: []string{key}}
-	case "state migrate dry-run":
-		return core.StateMigrateResult{OK: true, DryRun: true, CandidateKeys: []string{legacyKey}, MigratedKeys: []string{}}
-	case "state migrate confirm":
-		return core.StateMigrateResult{OK: true, Confirm: true, MigratedKeys: []string{legacyKey}}
-	case "state migrated read":
-		return core.StateResult{OK: true, Record: core.StateRecord{Key: legacyKey, Content: "legacy state", Bytes: len([]byte("legacy state")), SchemaVersion: core.StateCurrentSchemaVersion}}
-	case "state doctor after migrate":
-		return core.StateDoctorResult{OK: true, Healthy: true}
 	case "self verify compare ok":
 		return SelfAugmentCompareResult{OK: true, ElapsedDeltaMS: 100}
 	case "self verify compare regression":

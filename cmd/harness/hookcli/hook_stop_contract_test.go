@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/lifecycle"
 )
 
@@ -306,23 +306,23 @@ func TestRunHookUserPromptConsumesRelayAfterExpansion(t *testing.T) {
 	}
 }
 
-func seedStopRelayOrchestrationFixture(t *testing.T) (string, issueops.IssueOpsRecord) {
+func seedStopRelayOrchestrationFixture(t *testing.T) (string, issueopscontract.IssueOpsRecord) {
 	t.Helper()
 	repo := t.TempDir()
 	now := "2026-07-07T00:00:00Z"
 	parentID := issueops.NewIssueOpsID(repo, "relay-parent")
 	childDoneID := issueops.NewIssueOpsID(repo, "relay-child-done")
 	childActiveID := issueops.NewIssueOpsID(repo, "relay-child-active")
-	parent := issueops.IssueOpsRecord{
+	parent := issueopscontract.IssueOpsRecord{
 		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
 		ID:            parentID,
 		Repo:          repo,
 		Branch:        "relay-parent",
 		Phase:         issueops.IssueOpsPhaseImplement,
 		WorktreePath:  repo,
-		Execution: &model.Execution{
-			Mode: model.ExecutionModeDirect,
-			Workspace: model.Workspace{
+		Execution: &issueopscontract.Execution{
+			Mode: issueopscontract.ExecutionModeDirect,
+			Workspace: issueopscontract.Workspace{
 				SourceRoot: repo,
 				Root:       filepath.Join(repo, "relay-parent-worktree"),
 				Branch:     "relay-parent",
@@ -330,13 +330,13 @@ func seedStopRelayOrchestrationFixture(t *testing.T) (string, issueops.IssueOpsR
 				Driver:     "git",
 				LinkedAt:   now,
 			},
-			Lease: model.WriteLease{
+			Lease: issueopscontract.WriteLease{
 				Generation:       1,
-				Status:           model.LeaseStatusClaimable,
+				Status:           issueopscontract.LeaseStatusClaimable,
 				ClaimTokenSHA256: strings.Repeat("b", 64),
 			},
 		},
-		ChildCycles: []issueops.IssueOpsChildCycleRef{
+		ChildCycles: []issueopscontract.IssueOpsChildCycleRef{
 			{CycleID: childDoneID, Branch: "relay-child-done", CreatedAt: now},
 			{CycleID: childActiveID, Branch: "relay-child-active", CreatedAt: now},
 		},
@@ -344,7 +344,7 @@ func seedStopRelayOrchestrationFixture(t *testing.T) (string, issueops.IssueOpsR
 		UpdatedAt: now,
 	}
 	writeStopRelayIssueOpsRecord(t, parent)
-	writeStopRelayIssueOpsRecord(t, issueops.IssueOpsRecord{
+	writeStopRelayIssueOpsRecord(t, issueopscontract.IssueOpsRecord{
 		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
 		ID:            childDoneID,
 		Repo:          repo,
@@ -353,7 +353,7 @@ func seedStopRelayOrchestrationFixture(t *testing.T) (string, issueops.IssueOpsR
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	})
-	writeStopRelayIssueOpsRecord(t, issueops.IssueOpsRecord{
+	writeStopRelayIssueOpsRecord(t, issueopscontract.IssueOpsRecord{
 		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
 		ID:            childActiveID,
 		Repo:          repo,
@@ -381,7 +381,7 @@ func seedStopRelayStalePoolEntry(t *testing.T, parentID, id string) {
 	}
 }
 
-func writeStopRelayIssueOpsRecord(t *testing.T, record issueops.IssueOpsRecord) {
+func writeStopRelayIssueOpsRecord(t *testing.T, record issueopscontract.IssueOpsRecord) {
 	t.Helper()
 	if _, err := issueops.WriteIssueOps(issueops.IssueOpsStateRoot(), record); err != nil {
 		t.Fatalf("write issueops record %s: %v", record.ID, err)

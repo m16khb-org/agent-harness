@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/preflight"
 )
 
@@ -143,7 +143,7 @@ func orcaCompletionRequest(t *testing.T, fixture claimableExecutionFixture) Exec
 	}
 }
 
-func orcaCompletionActor() model.NativeActor {
+func orcaCompletionActor() issueops.NativeActor {
 	return executionActor("claude", "orca-settle-session")
 }
 
@@ -171,16 +171,16 @@ func newOrcaCompletionFixture(t *testing.T, stateRoot, branch string) claimableE
 		t.Fatal(err)
 	}
 	actor := orcaCompletionActor()
-	record.Execution.Mode = model.ExecutionModeOrca
+	record.Execution.Mode = issueops.ExecutionModeOrca
 	record.Execution.Workspace.Driver = "orca"
-	record.Execution.Orca = &model.OrcaBinding{
+	record.Execution.Orca = &issueops.OrcaBinding{
 		RuntimeID: "runtime-130", RepoID: "repo-130",
 		WorktreeID: "worktree-130", TerminalPTYID: "pty-130",
 		OwnerHost: "claude", OwnerModel: "claude-opus-5",
 		RunID: "run-130", TaskID: "task-130", DispatchID: "dispatch-130",
 	}
-	record.Execution.Lease = model.WriteLease{
-		Generation: 1, Status: model.LeaseStatusActive,
+	record.Execution.Lease = issueops.WriteLease{
+		Generation: 1, Status: issueops.LeaseStatusActive,
 		Holder:    &actor,
 		ClaimedAt: "2026-07-25T00:00:00Z",
 	}

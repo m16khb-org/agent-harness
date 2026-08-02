@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
@@ -20,12 +20,12 @@ func TestIssueOpsPrepareWiringRunsRealDirectPreviewWithoutPersistence(t *testing
 	claimWiringGit(t, repo, "config", "user.email", "issueops@example.invalid")
 	claimWiringGit(t, repo, "commit", "--allow-empty", "-q", "-m", "initial")
 	baseHead := strings.TrimSpace(preflight.GitOut(repo, "rev-parse", "HEAD"))
-	record, err := issueops.StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "199-preparation-wiring"})
+	record, err := issueops.StartIssueOps(stateRoot, issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: "199-preparation-wiring"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	record.IssueURL = "https://github.com/acme/repo/issues/199"
-	record.BranchPrepare = &issueops.IssueOpsBranchPrepare{
+	record.BranchPrepare = &issueopscontract.IssueOpsBranchPrepare{
 		Provider: "github", IssueURL: record.IssueURL, Branch: record.Branch,
 		BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true,
 	}
@@ -37,10 +37,10 @@ func TestIssueOpsPrepareWiringRunsRealDirectPreviewWithoutPersistence(t *testing
 		Direct: direct, Now: func() time.Time { return time.Date(2026, 8, 2, 4, 5, 6, 7, time.UTC) },
 		NewOperationID: func() (string, error) { return "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", nil },
 	})
-	process := &model.NativeProcessReceipt{PID: 199, StartedAt: "2026-08-02T00:00:00Z", Executable: "/usr/local/bin/codex"}
+	process := &issueopscontract.NativeProcessReceipt{PID: 199, StartedAt: "2026-08-02T00:00:00Z", Executable: "/usr/local/bin/codex"}
 
 	result, err := handler(context.Background(), stateRoot, issueops.ExecutionPrepareRequest{
-		ID: record.ID, Mode: "direct", Actor: model.NativeActor{Host: "codex", SessionID: "session", SessionProcess: process},
+		ID: record.ID, Mode: "direct", Actor: issueopscontract.NativeActor{Host: "codex", SessionID: "session", SessionProcess: process},
 		CWD: repo, Confirm: false,
 	}, issueops.ExecutionPrepareInvocation{})
 	if err != nil {
@@ -64,12 +64,12 @@ func TestIssueOpsPrepareWiringUsesRequestScopedIssueSnapshot(t *testing.T) {
 	claimWiringGit(t, repo, "init", "-q", "-b", "main")
 	claimWiringGit(t, repo, "-c", "user.name=IssueOps Test", "-c", "user.email=issueops@example.invalid", "commit", "--allow-empty", "-q", "-m", "initial")
 	baseHead := strings.TrimSpace(preflight.GitOut(repo, "rev-parse", "HEAD"))
-	record, err := issueops.StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: "199-preparation-snapshot"})
+	record, err := issueops.StartIssueOps(stateRoot, issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: "199-preparation-snapshot"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	record.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/199"
-	record.BranchPrepare = &issueops.IssueOpsBranchPrepare{
+	record.BranchPrepare = &issueopscontract.IssueOpsBranchPrepare{
 		Provider: "gitlab", IssueURL: record.IssueURL, Branch: record.Branch,
 		BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true,
 	}

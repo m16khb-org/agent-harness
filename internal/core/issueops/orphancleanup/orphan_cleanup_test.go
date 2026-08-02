@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	model "agent-harness/internal/contract/issueops"
 	coreissueops "agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
 	corehealth "agent-harness/internal/core/operationalhealth"
 )
 

@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/internal/core"
 )
 
@@ -17,7 +19,7 @@ func TestRunStateMaintainReportsRoots(t *testing.T) {
 	if _, err := core.StateWrite("maintain-smoke", "content"); err != nil {
 		t.Fatalf("seed state: %v", err)
 	}
-	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), core.IssueOpsRecord{
+	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsRecord{
 		ID:    core.NewIssueOpsID("/repo/maintain", "1-maintain"),
 		Repo:  "/repo/maintain",
 		Phase: core.IssueOpsPhaseProblem,

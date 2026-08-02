@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -31,13 +31,13 @@ func ResumeExecutionWithDependencies(ctx context.Context, stateRoot string, req 
 	if err != nil {
 		return ExecutionResumeResult{OK: false, ID: req.ID}, err
 	}
-	if record.Execution.Mode != model.ExecutionModeOrca || record.Execution.Orca == nil {
+	if record.Execution.Mode != issueops.ExecutionModeOrca || record.Execution.Orca == nil {
 		return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("execution resume requires an existing Orca binding")
 	}
 	if record.Execution.Pending != nil {
 		return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("execution resume is blocked by a pending external intent; run execution reconcile")
 	}
-	if record.Execution.Lease.Status != model.LeaseStatusClaimable || record.Execution.Lease.Holder != nil || !executionSHA256.MatchString(record.Execution.Lease.ClaimTokenSHA256) {
+	if record.Execution.Lease.Status != issueops.LeaseStatusClaimable || record.Execution.Lease.Holder != nil || !executionSHA256.MatchString(record.Execution.Lease.ClaimTokenSHA256) {
 		return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("execution resume requires a holderless claimable lease")
 	}
 	if !samePath(req.CWD, record.Execution.Workspace.Root) {
@@ -79,7 +79,7 @@ func ResumeExecutionWithDependencies(ctx context.Context, stateRoot string, req 
 	if runtimeID == "" {
 		runtimeID = binding.RuntimeID
 	}
-	var persisted IssueOpsRecord
+	var persisted issueops.IssueOpsRecord
 	var payload externalOrcaIntentPayload
 	if deps.OperationID == "" {
 		persisted, payload, err = beginOrcaExecutionResumeIntent(stateRoot, record, artifacts, runtimeID, reusedTerminalPTYID, deps.Now)

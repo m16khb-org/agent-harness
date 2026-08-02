@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/sqlstore"
 )
 
@@ -25,22 +26,22 @@ var issueOpsArtifactNames = map[string]bool{"plan": true, "spec": true, "turing-
 // StageIssueOpsArtifact는 plan|spec|turing-loop artifact를 스테이징한다.
 // prepare 이후(Execution 존재)에는 조용한 no-op 대신 명시적으로 실패한다 —
 // materialize와 manifest 봉인이 이미 끝났으므로 재스테이징은 반영되지 않는다.
-func StageIssueOpsArtifact(stateRoot, id, name string, content []byte) (IssueOpsRecord, error) {
+func StageIssueOpsArtifact(stateRoot, id, name string, content []byte) (issueops.IssueOpsRecord, error) {
 	name = strings.TrimSpace(name)
 	if !issueOpsArtifactNames[name] {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("artifact name must be plan|spec|turing-loop")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("artifact name must be plan|spec|turing-loop")
 	}
 	if len(content) == 0 {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("artifact content is empty")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("artifact content is empty")
 	}
 	if len(content) > executionOwnerArtifactLimit {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("artifact exceeds %d bytes", executionOwnerArtifactLimit)
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("artifact exceeds %d bytes", executionOwnerArtifactLimit)
 	}
 	// 거부형 redaction: 스크럽은 사람이 쓴 문서를 훼손하므로 반려한다.
 	if err := rejectSecretLikeContent(string(content)); err != nil {
-		return IssueOpsRecord{OK: false}, err
+		return issueops.IssueOpsRecord{OK: false}, err
 	}
-	var record IssueOpsRecord
+	var record issueops.IssueOpsRecord
 	// read-modify-write이므로 다른 레코드 변형과 동일하게 사이클 락 안에서
 	// 수행한다 — 동시 stage가 서로를 덮어쓰지 않는다(C4a-F2).
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
@@ -71,19 +72,19 @@ func StageIssueOpsArtifact(stateRoot, id, name string, content []byte) (IssueOps
 		return nil
 	})
 	if err != nil {
-		return IssueOpsRecord{OK: false}, err
+		return issueops.IssueOpsRecord{OK: false}, err
 	}
 	return record, nil
 }
 
 // UnstageIssueOpsArtifact는 스테이징된 artifact 하나를 되돌린다. prepare
 // 이전에만 의미가 있으며, 없는 이름의 unstage는 no-op 성공이다(C4a-F4).
-func UnstageIssueOpsArtifact(stateRoot, id, name string) (IssueOpsRecord, error) {
+func UnstageIssueOpsArtifact(stateRoot, id, name string) (issueops.IssueOpsRecord, error) {
 	name = strings.TrimSpace(name)
 	if !issueOpsArtifactNames[name] {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("artifact name must be plan|spec|turing-loop")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("artifact name must be plan|spec|turing-loop")
 	}
-	var record IssueOpsRecord
+	var record issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		rec, e := ReadIssueOps(stateRoot, id)
 		if e != nil {
@@ -118,7 +119,7 @@ func UnstageIssueOpsArtifact(stateRoot, id, name string) (IssueOpsRecord, error)
 		return nil
 	})
 	if err != nil {
-		return IssueOpsRecord{OK: false}, err
+		return issueops.IssueOpsRecord{OK: false}, err
 	}
 	return record, nil
 }
@@ -162,7 +163,7 @@ func readStagedArtifacts(stateRoot, id string) (map[string]string, error) {
 // 동일 내용일 때만 통과한다. 스테이징이 없으면 빈 manifest다(하위 호환).
 // replacement 재봉인도 이 경로로 같은 내용을 검증해 manifest를 다시 만든다.
 // 기존 파일을 바꾸는 재-materialize는 immutable writer가 거부한다.
-func materializeStagedArtifacts(stateRoot string, record IssueOpsRecord) (map[string]string, error) {
+func materializeStagedArtifacts(stateRoot string, record issueops.IssueOpsRecord) (map[string]string, error) {
 	if record.Execution == nil || strings.TrimSpace(record.Execution.Workspace.Root) == "" {
 		return nil, fmt.Errorf("cannot materialize artifacts without a canonical worktree")
 	}

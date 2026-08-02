@@ -3,16 +3,18 @@ package lifecycle
 import (
 	"fmt"
 	"strings"
+
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 )
 
-func RecordLifecycleToolUse(req HookToolUseLifecycleRequest) (HookToolUseLifecycleResult, error) {
+func RecordLifecycleToolUse(req lifecyclecontract.HookToolUseLifecycleRequest) (lifecyclecontract.HookToolUseLifecycleResult, error) {
 	repo := strings.TrimSpace(req.Repo)
 	if repo == "" {
-		return HookToolUseLifecycleResult{OK: true, Warnings: []string{"repo_missing"}}, nil
+		return lifecyclecontract.HookToolUseLifecycleResult{OK: true, Warnings: []string{"repo_missing"}}, nil
 	}
 	targets := lifecycleDocTargetsForToolUse(req)
 	if len(targets) == 0 {
-		return HookToolUseLifecycleResult{OK: true}, nil
+		return lifecyclecontract.HookToolUseLifecycleResult{OK: true}, nil
 	}
 	source := strings.TrimSpace(req.Source)
 	if source == "" {
@@ -22,7 +24,7 @@ func RecordLifecycleToolUse(req HookToolUseLifecycleRequest) (HookToolUseLifecyc
 	if req.Tool != "" {
 		summary = fmt.Sprintf("%s touched harness lifecycle-relevant files; shared project docs may need review.", req.Tool)
 	}
-	appendResult, err := AppendDocUpkeepEvent(repo, DocUpkeepEvent{
+	appendResult, err := AppendDocUpkeepEvent(repo, lifecyclecontract.DocUpkeepEvent{
 		Kind:       "code_change",
 		TargetDocs: targets,
 		Summary:    summary,
@@ -30,9 +32,9 @@ func RecordLifecycleToolUse(req HookToolUseLifecycleRequest) (HookToolUseLifecyc
 		Source:     source,
 	})
 	if err != nil {
-		return HookToolUseLifecycleResult{OK: false}, err
+		return lifecyclecontract.HookToolUseLifecycleResult{OK: false}, err
 	}
-	return HookToolUseLifecycleResult{OK: true, Recorded: true, Event: appendResult.Event}, nil
+	return lifecyclecontract.HookToolUseLifecycleResult{OK: true, Recorded: true, Event: appendResult.Event}, nil
 }
 
 func BuildLifecycleStopReminder(repo string) LifecycleStopReminderResult {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
@@ -19,7 +20,7 @@ type ExecutionResumeArtifactsReceipt struct {
 }
 
 type ExecutionResumeIntentState struct {
-	Record             IssueOpsRecord
+	Record             issueops.IssueOpsRecord
 	RecordRaw          []byte
 	IntentRaw          []byte
 	OperationID        string
@@ -29,7 +30,7 @@ type ExecutionResumeIntentState struct {
 	Pending            bool
 }
 
-func ReadExecutionResumeArtifacts(record IssueOpsRecord) (ExecutionResumeArtifactsReceipt, error) {
+func ReadExecutionResumeArtifacts(record issueops.IssueOpsRecord) (ExecutionResumeArtifactsReceipt, error) {
 	artifacts, err := readExecutionResumeArtifacts(record)
 	if err != nil {
 		return ExecutionResumeArtifactsReceipt{}, err
@@ -39,7 +40,7 @@ func ReadExecutionResumeArtifacts(record IssueOpsRecord) (ExecutionResumeArtifac
 
 func NewExecutionResumeOperationID() (string, error) { return newExecutionOperationID() }
 
-func ValidateExecutionResumeOwner(record IssueOpsRecord, inventory port.ExecutionOrcaOwnerInventory) error {
+func ValidateExecutionResumeOwner(record issueops.IssueOpsRecord, inventory port.ExecutionOrcaOwnerInventory) error {
 	return validateExecutionRuntimeRollover(record, inventory)
 }
 
@@ -54,7 +55,7 @@ func ExecutionResumeIntentRequest(expected ExecutionResumeIntentState) (port.Exe
 	return executionOrcaIntentRequest(expected.Record, payload)
 }
 
-func BeginExecutionResumeIntent(stateRoot string, record IssueOpsRecord, expectedRecordRaw []byte, artifacts ExecutionResumeArtifactsReceipt, runtimeID, reusedTerminalPTYID, operationID string, now func() time.Time) (ExecutionResumeIntentState, error) {
+func BeginExecutionResumeIntent(stateRoot string, record issueops.IssueOpsRecord, expectedRecordRaw []byte, artifacts ExecutionResumeArtifactsReceipt, runtimeID, reusedTerminalPTYID, operationID string, now func() time.Time) (ExecutionResumeIntentState, error) {
 	persisted, payload, err := beginOrcaExecutionResumeIntentWithExpectedRaw(stateRoot, record, expectedRecordRaw, executionResumeArtifactsFromReceipt(artifacts), runtimeID, reusedTerminalPTYID, operationID, now)
 	if err != nil {
 		return ExecutionResumeIntentState{}, err
@@ -120,7 +121,7 @@ func executionResumeArtifactsFromReceipt(artifacts ExecutionResumeArtifactsRecei
 	return executionResumeArtifacts{claimTokenPath: artifacts.ClaimTokenPath, issueBodySHA256: artifacts.IssueBodySHA256, packetPath: artifacts.ContextPacketPath, packetSHA256: artifacts.ContextPacketSHA256, promptPath: artifacts.OwnerPromptPath, promptSHA256: artifacts.OwnerPromptSHA256}
 }
 
-func executionResumeIntentStateFromPayload(stateRoot string, record IssueOpsRecord, payload externalOrcaIntentPayload) (ExecutionResumeIntentState, error) {
+func executionResumeIntentStateFromPayload(stateRoot string, record issueops.IssueOpsRecord, payload externalOrcaIntentPayload) (ExecutionResumeIntentState, error) {
 	raw, err := readExecutionResumeRecordRawOnly(stateRoot, record.ID)
 	if err != nil {
 		return ExecutionResumeIntentState{}, err
@@ -132,7 +133,7 @@ func executionResumeIntentStateFromPayload(stateRoot string, record IssueOpsReco
 	return executionResumeIntentState(record, raw, payload, intentRaw), nil
 }
 
-func executionResumeIntentState(record IssueOpsRecord, recordRaw []byte, payload externalOrcaIntentPayload, intentRaw []byte) ExecutionResumeIntentState {
+func executionResumeIntentState(record issueops.IssueOpsRecord, recordRaw []byte, payload externalOrcaIntentPayload, intentRaw []byte) ExecutionResumeIntentState {
 	return ExecutionResumeIntentState{Record: record, RecordRaw: append([]byte(nil), recordRaw...), IntentRaw: append([]byte(nil), intentRaw...), OperationID: payload.OperationID, Stage: intentPortStage(payload.Stage), InvocationState: payload.InvocationState, InvocationAttempts: payload.InvocationAttempts, Pending: record.Execution != nil && record.Execution.Pending != nil}
 }
 
@@ -140,17 +141,17 @@ func executionResumeIntentPayload(expected ExecutionResumeIntentState) (external
 	return preparationIntentCodec.Decode(expected.OperationID, expected.IntentRaw)
 }
 
-func readExecutionResumeRecordRaw(stateRoot, id string) (IssueOpsRecord, []byte, error) {
+func readExecutionResumeRecordRaw(stateRoot, id string) (issueops.IssueOpsRecord, []byte, error) {
 	raw, err := readExecutionResumeRecordRawOnly(stateRoot, id)
 	if err != nil {
-		return IssueOpsRecord{}, nil, err
+		return issueops.IssueOpsRecord{}, nil, err
 	}
 	record, err := decodeIssueOpsRecord(id, raw)
 	if err != nil {
-		return IssueOpsRecord{}, nil, err
+		return issueops.IssueOpsRecord{}, nil, err
 	}
 	if err := validateIssueOpsRecord(record); err != nil {
-		return IssueOpsRecord{}, nil, err
+		return issueops.IssueOpsRecord{}, nil, err
 	}
 	return record, raw, nil
 }

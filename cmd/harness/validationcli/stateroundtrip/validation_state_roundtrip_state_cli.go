@@ -38,9 +38,6 @@ func validateStateRoundtripStateCLI(input validateStateRoundtripStateInput) vali
 	if step := session.validatePrune(); !step.OK {
 		return session.result(step)
 	}
-	if step := session.validateMigrateAndDoctor(); !step.OK {
-		return session.result(step)
-	}
 	return session.result(StepResult{OK: true})
 }
 

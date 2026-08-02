@@ -1,4 +1,4 @@
-package model
+package issueops
 
 import (
 	"encoding/json"
@@ -30,7 +30,7 @@ func TestIssueOpsRecordDelegationRoundTrip(t *testing.T) {
 				ChildIssueURL:      "https://github.com/example/repo/issues/124",
 				CreatedAt:          "2026-07-07T00:01:00Z",
 				ValidationVerdict:  "accepted",
-				ValidationEvidence: []string{"go test ./internal/core/issueops/model"},
+				ValidationEvidence: []string{"go test ./internal/contract/issueops"},
 				ValidatedAt:        "2026-07-07T00:02:00Z",
 			},
 			{
@@ -65,7 +65,7 @@ func TestIssueOpsRecordDelegationRoundTrip(t *testing.T) {
 	if len(got.ChildCycles) != 2 {
 		t.Fatalf("child cycles did not round-trip: %#v", got.ChildCycles)
 	}
-	if got.ChildCycles[0].ValidationVerdict != "accepted" || got.ChildCycles[0].ValidationEvidence[0] != "go test ./internal/core/issueops/model" {
+	if got.ChildCycles[0].ValidationVerdict != "accepted" || got.ChildCycles[0].ValidationEvidence[0] != "go test ./internal/contract/issueops" {
 		t.Fatalf("validation verdict/evidence did not round-trip: %#v", got.ChildCycles[0])
 	}
 	if got.ChildCycles[1].CycleID != "io-child-b" || got.ChildCycles[1].Branch != "125-child-b" {

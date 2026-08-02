@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/contract/issueops"
 	issueremote "agent-harness/internal/core/issueops/remote"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
@@ -35,7 +35,7 @@ type LegacyResetRemoteReconcileRequest struct {
 
 type LegacyResetRemoteDependencies struct {
 	Reconcile func(string, port.IssueProviderReconcilePullRequestRequest) (port.IssueProviderReconcilePullRequestResult, error)
-	Verify    func(model.IssueOpsRemoteArtifactVerificationRequest) error
+	Verify    func(issueops.IssueOpsRemoteArtifactVerificationRequest) error
 	Now       func() time.Time
 }
 
@@ -161,7 +161,7 @@ func ReconcileLegacyRemoteClaim(ctx context.Context, stateDir string, req Legacy
 	if err := validateLegacyResetRemoteCandidate(record, claim, candidate); err != nil {
 		return LegacyResetRemoteReconcileResult{}, err
 	}
-	if err := deps.Verify(model.IssueOpsRemoteArtifactVerificationRequest{
+	if err := deps.Verify(issueops.IssueOpsRemoteArtifactVerificationRequest{
 		Provider: claim.Provider, Kind: claim.Kind, URL: candidate.URL,
 		Labels: append([]string(nil), claim.Labels...), Assignees: append([]string(nil), claim.Assignees...), TargetBranch: claim.Base,
 	}); err != nil {

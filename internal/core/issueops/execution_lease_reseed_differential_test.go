@@ -15,9 +15,9 @@ import (
 	leaseinbound "agent-harness/internal/adapter/inbound/issueopslease"
 	leaseoutbound "agent-harness/internal/adapter/outbound/issueopslease"
 	leaseapp "agent-harness/internal/application/issueopslease"
+	issueopscontract "agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
@@ -25,16 +25,16 @@ import (
 func TestReseedDifferentialClonedDirectStateInvokesRealVertical(t *testing.T) {
 	for _, testCase := range []struct {
 		name         string
-		status       model.LeaseStatus
+		status       issueopscontract.LeaseStatus
 		legacyRecord bool
 	}{
-		{name: "schema-v1-claimable", status: model.LeaseStatusClaimable},
-		{name: "schema-v1-released", status: model.LeaseStatusReleased},
-		{name: "legacy-claimable", status: model.LeaseStatusClaimable, legacyRecord: true},
-		{name: "legacy-released", status: model.LeaseStatusReleased, legacyRecord: true},
+		{name: "schema-v1-claimable", status: issueopscontract.LeaseStatusClaimable},
+		{name: "schema-v1-released", status: issueopscontract.LeaseStatusReleased},
+		{name: "legacy-claimable", status: issueopscontract.LeaseStatusClaimable, legacyRecord: true},
+		{name: "legacy-released", status: issueopscontract.LeaseStatusReleased, legacyRecord: true},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			legacy := newDifferentialFixture(t, testCase.name, testCase.status, model.ExecutionModeDirect, testCase.legacyRecord)
+			legacy := newDifferentialFixture(t, testCase.name, testCase.status, issueopscontract.ExecutionModeDirect, testCase.legacyRecord)
 			vertical := cloneDifferentialFixture(t, legacy)
 			assertDifferentialRawClone(t, legacy, vertical)
 			if testCase.legacyRecord {
@@ -78,16 +78,16 @@ func TestReseedDifferentialClonedDirectStateInvokesRealVertical(t *testing.T) {
 func TestReseedDifferentialClonedOrcaStateInvokesRealVertical(t *testing.T) {
 	for _, testCase := range []struct {
 		name         string
-		status       model.LeaseStatus
+		status       issueopscontract.LeaseStatus
 		legacyRecord bool
 	}{
-		{name: "schema-v1-claimable", status: model.LeaseStatusClaimable},
-		{name: "schema-v1-released", status: model.LeaseStatusReleased},
-		{name: "legacy-claimable", status: model.LeaseStatusClaimable, legacyRecord: true},
-		{name: "legacy-released", status: model.LeaseStatusReleased, legacyRecord: true},
+		{name: "schema-v1-claimable", status: issueopscontract.LeaseStatusClaimable},
+		{name: "schema-v1-released", status: issueopscontract.LeaseStatusReleased},
+		{name: "legacy-claimable", status: issueopscontract.LeaseStatusClaimable, legacyRecord: true},
+		{name: "legacy-released", status: issueopscontract.LeaseStatusReleased, legacyRecord: true},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			legacy := newDifferentialFixture(t, "orca-"+testCase.name, testCase.status, model.ExecutionModeOrca, testCase.legacyRecord)
+			legacy := newDifferentialFixture(t, "orca-"+testCase.name, testCase.status, issueopscontract.ExecutionModeOrca, testCase.legacyRecord)
 			vertical := cloneDifferentialFixture(t, legacy)
 			assertDifferentialRawClone(t, legacy, vertical)
 			if testCase.legacyRecord {
@@ -124,7 +124,7 @@ func TestReseedDifferentialClonedOrcaStateInvokesRealVertical(t *testing.T) {
 }
 
 func TestReseedDifferentialOrcaSnapshotEvidenceReachesRealVerticalWithoutFallback(t *testing.T) {
-	fixture := newDifferentialFixture(t, "orca-snapshot", model.LeaseStatusClaimable, model.ExecutionModeOrca, false)
+	fixture := newDifferentialFixture(t, "orca-snapshot", issueopscontract.LeaseStatusClaimable, issueopscontract.ExecutionModeOrca, false)
 	record, err := issueops.ReadIssueOps(fixture.stateRoot, fixture.id)
 	if err != nil {
 		t.Fatal(err)
@@ -172,7 +172,7 @@ type differentialFixture struct {
 	worktree  string
 }
 
-func newDifferentialFixture(t *testing.T, branch string, status model.LeaseStatus, mode model.ExecutionMode, legacyRecord bool) differentialFixture {
+func newDifferentialFixture(t *testing.T, branch string, status issueopscontract.LeaseStatus, mode issueopscontract.ExecutionMode, legacyRecord bool) differentialFixture {
 	t.Helper()
 	branch = "192-" + branch
 	stateRoot := t.TempDir()
@@ -186,26 +186,26 @@ func newDifferentialFixture(t *testing.T, branch string, status model.LeaseStatu
 	runDifferentialGit(t, repo, "-c", "user.name=IssueOps Test", "-c", "user.email=issueops@example.invalid", "commit", "-q", "-m", "test: seed differential fixture")
 	runDifferentialGit(t, repo, "worktree", "add", "-q", "-b", branch, worktree, "main")
 	baseHead := strings.TrimSpace(runDifferentialGit(t, worktree, "rev-parse", "HEAD"))
-	record, err := issueops.StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := issueops.StartIssueOps(stateRoot, issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
 	record.WorktreePath = worktree
 	record.Phase = issueops.IssueOpsPhaseImplement
 	record.IssueURL = "https://github.com/example/agent-harness/issues/192"
-	record.BranchPrepare = &issueops.IssueOpsBranchPrepare{Provider: "github", IssueURL: record.IssueURL, Branch: branch, BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true}
+	record.BranchPrepare = &issueopscontract.IssueOpsBranchPrepare{Provider: "github", IssueURL: record.IssueURL, Branch: branch, BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true}
 	driver := "git"
-	if mode == model.ExecutionModeOrca {
+	if mode == issueopscontract.ExecutionModeOrca {
 		driver = "orca"
 	}
-	record.Execution = &model.Execution{Mode: mode, Workspace: model.Workspace{SourceRoot: repo, Root: worktree, Branch: branch, BaseHead: baseHead, Driver: driver, LinkedAt: "2026-07-30T09:00:00Z"}, Lease: model.WriteLease{Generation: 1, Status: status}}
-	if mode == model.ExecutionModeOrca {
-		record.Execution.Orca = &model.OrcaBinding{RuntimeID: "runtime-1", RepoID: "repo-1", WorktreeID: "worktree-1", LeaseGeneration: 1, OwnerHost: "codex", OwnerModel: "model", TaskID: "task-1", DispatchID: "dispatch-1", TerminalPTYID: "pty-1"}
+	record.Execution = &issueopscontract.Execution{Mode: mode, Workspace: issueopscontract.Workspace{SourceRoot: repo, Root: worktree, Branch: branch, BaseHead: baseHead, Driver: driver, LinkedAt: "2026-07-30T09:00:00Z"}, Lease: issueopscontract.WriteLease{Generation: 1, Status: status}}
+	if mode == issueopscontract.ExecutionModeOrca {
+		record.Execution.Orca = &issueopscontract.OrcaBinding{RuntimeID: "runtime-1", RepoID: "repo-1", WorktreeID: "worktree-1", LeaseGeneration: 1, OwnerHost: "codex", OwnerModel: "model", TaskID: "task-1", DispatchID: "dispatch-1", TerminalPTYID: "pty-1"}
 	}
-	if status == model.LeaseStatusClaimable {
+	if status == issueopscontract.LeaseStatusClaimable {
 		record.Execution.Lease.ClaimTokenSHA256 = strings.Repeat("a", 64)
 	}
-	if status == model.LeaseStatusReleased {
+	if status == issueopscontract.LeaseStatusReleased {
 		record.Execution.Lease.ReleasedAt = "2026-07-30T09:00:00Z"
 	}
 	if _, err := issueops.WriteIssueOps(stateRoot, record); err != nil {
@@ -285,7 +285,7 @@ func assertDifferentialLegacySeed(t *testing.T, fixture differentialFixture) {
 	}
 }
 
-func differentialPreview(t *testing.T, fixture differentialFixture, actor model.NativeActor, deps issueops.ExecutionReplaceDependencies) issueops.ExecutionReplaceResult {
+func differentialPreview(t *testing.T, fixture differentialFixture, actor issueopscontract.NativeActor, deps issueops.ExecutionReplaceDependencies) issueops.ExecutionReplaceResult {
 	t.Helper()
 	preview, err := issueops.ReplaceExecutionWithDependencies(context.Background(), fixture.stateRoot, issueops.ExecutionReplaceRequest{ID: fixture.id, Action: issueops.ExecutionReplacePreview, ExpectedGeneration: 1, Actor: actor, CWD: fixture.worktree}, deps)
 	if err != nil {
@@ -329,25 +329,25 @@ func realVerticalReseedHandler(t *testing.T, owner port.ExecutionOrcaOwnerInspec
 	}
 }
 
-func differentialReseedExecution(record leasecontract.Record) (model.Execution, error) {
+func differentialReseedExecution(record leasecontract.Record) (issueopscontract.Execution, error) {
 	data, err := json.Marshal(record.Execution)
 	if err != nil {
-		return model.Execution{}, err
+		return issueopscontract.Execution{}, err
 	}
-	var execution model.Execution
+	var execution issueopscontract.Execution
 	if err := json.Unmarshal(data, &execution); err != nil {
-		return model.Execution{}, err
+		return issueopscontract.Execution{}, err
 	}
 	return execution, nil
 }
 
-func differentialActor(t *testing.T) model.NativeActor {
+func differentialActor(t *testing.T) issueopscontract.NativeActor {
 	t.Helper()
 	receipt, err := issueops.ObserveNativeProcessReceipt(os.Getpid())
 	if err != nil {
 		t.Fatal(err)
 	}
-	return model.NativeActor{Host: "codex", SessionID: "reseed-differential", SessionProcess: &receipt, ProcessAncestry: []model.NativeProcessReceipt{receipt}}
+	return issueopscontract.NativeActor{Host: "codex", SessionID: "reseed-differential", SessionProcess: &receipt, ProcessAncestry: []issueopscontract.NativeProcessReceipt{receipt}}
 }
 
 type differentialOrcaOwner struct{}

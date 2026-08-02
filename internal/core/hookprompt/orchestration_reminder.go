@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/internal/core/issueops"
 )
 
@@ -35,16 +37,16 @@ func StopOrchestrationRelayFacts(repo string) string {
 	return "bound_cycle:" + record.ID + "; missing: " + strings.Join(facts, ", ")
 }
 
-func boundOrchestrationCycle(repo string) (issueops.IssueOpsRecord, bool) {
+func boundOrchestrationCycle(repo string) (issueopscontract.IssueOpsRecord, bool) {
 	repo = cleanOrchestrationPath(repo)
 	if repo == "" {
-		return issueops.IssueOpsRecord{}, false
+		return issueopscontract.IssueOpsRecord{}, false
 	}
 	ids, err := issueops.ListIssueOpsIDs(issueops.IssueOpsStateRoot())
 	if err != nil {
-		return issueops.IssueOpsRecord{}, false
+		return issueopscontract.IssueOpsRecord{}, false
 	}
-	var match issueops.IssueOpsRecord
+	var match issueopscontract.IssueOpsRecord
 	for _, id := range ids {
 		record, readErr := issueops.ReadIssueOps(issueops.IssueOpsStateRoot(), id)
 		if readErr != nil || !record.OK || record.Phase == issueops.IssueOpsPhaseDone || record.Execution == nil {
@@ -55,7 +57,7 @@ func boundOrchestrationCycle(repo string) (issueops.IssueOpsRecord, bool) {
 			continue
 		}
 		if match.ID != "" {
-			return issueops.IssueOpsRecord{}, false
+			return issueopscontract.IssueOpsRecord{}, false
 		}
 		match = record
 	}
@@ -74,7 +76,7 @@ func cleanOrchestrationPath(path string) string {
 	return filepath.Clean(abs)
 }
 
-func orchestrationChildrenReminder(record issueops.IssueOpsRecord) string {
+func orchestrationChildrenReminder(record issueopscontract.IssueOpsRecord) string {
 	bounded, total := boundedOrchestrationChildren(record)
 	if total == 0 {
 		return ""
@@ -94,7 +96,7 @@ func orchestrationChildrenReminder(record issueops.IssueOpsRecord) string {
 	return "children: " + itoa(done) + "/" + itoa(total) + " done, " + itoa(unvalidated) + " unvalidated - issueops child status --parent " + record.ID
 }
 
-func orchestrationChildMissingKeys(record issueops.IssueOpsRecord) []string {
+func orchestrationChildMissingKeys(record issueopscontract.IssueOpsRecord) []string {
 	missing := []string{}
 	bounded, _ := boundedOrchestrationChildren(record)
 	for _, ref := range bounded {
@@ -114,13 +116,13 @@ func orchestrationChildMissingKeys(record issueops.IssueOpsRecord) []string {
 	return missing
 }
 
-func orchestrationChildDropped(ref issueops.IssueOpsChildCycleRef) bool {
+func orchestrationChildDropped(ref issueopscontract.IssueOpsChildCycleRef) bool {
 	return strings.TrimSpace(ref.ValidationVerdict) == "dropped"
 }
 
-func boundedOrchestrationChildren(record issueops.IssueOpsRecord) ([]issueops.IssueOpsChildCycleRef, int) {
+func boundedOrchestrationChildren(record issueopscontract.IssueOpsRecord) ([]issueopscontract.IssueOpsChildCycleRef, int) {
 	total := 0
-	bounded := make([]issueops.IssueOpsChildCycleRef, 0, orchestrationChildReadLimit)
+	bounded := make([]issueopscontract.IssueOpsChildCycleRef, 0, orchestrationChildReadLimit)
 	for _, ref := range record.ChildCycles {
 		if orchestrationChildDropped(ref) {
 			continue
@@ -133,14 +135,14 @@ func boundedOrchestrationChildren(record issueops.IssueOpsRecord) ([]issueops.Is
 	return bounded, total
 }
 
-func readBoundChild(id string) (issueops.IssueOpsRecord, bool) {
+func readBoundChild(id string) (issueopscontract.IssueOpsRecord, bool) {
 	id = strings.TrimSpace(id)
 	if id == "" {
-		return issueops.IssueOpsRecord{}, false
+		return issueopscontract.IssueOpsRecord{}, false
 	}
 	child, err := issueops.ReadIssueOps(issueops.IssueOpsStateRoot(), id)
 	if err != nil || !child.OK {
-		return issueops.IssueOpsRecord{}, false
+		return issueopscontract.IssueOpsRecord{}, false
 	}
 	return child, true
 }

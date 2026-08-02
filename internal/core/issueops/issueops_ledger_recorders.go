@@ -5,8 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/issueops/model"
 	"context"
+
+	"agent-harness/internal/contract/issueops"
 )
 
 // validIssueOpsFeedbackResolutions are the recognised feedback resolution
@@ -20,16 +21,16 @@ var validIssueOpsFeedbackResolutions = map[string]bool{
 // RecordIssueOpsDomainReview persists the grill-phase domain review
 // (terminology, model fit, risks, uncertainties) — the source of truth backing
 // the grill domain_review artifact.
-func RecordIssueOpsDomainReview(stateRoot, id string, req IssueOpsDomainReviewRequest) (IssueOpsRecord, error) {
+func RecordIssueOpsDomainReview(stateRoot, id string, req issueops.IssueOpsDomainReviewRequest) (issueops.IssueOpsRecord, error) {
 	return recordIssueOpsDomainReview(stateRoot, id, req, nil)
 }
 
-func RecordIssueOpsDomainReviewWithActor(stateRoot, id string, req IssueOpsDomainReviewRequest, actor IssueOpsActor) (IssueOpsRecord, error) {
+func RecordIssueOpsDomainReviewWithActor(stateRoot, id string, req issueops.IssueOpsDomainReviewRequest, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return recordIssueOpsDomainReview(stateRoot, id, req, &actor)
 }
 
-func recordIssueOpsDomainReview(stateRoot, id string, req IssueOpsDomainReviewRequest, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func recordIssueOpsDomainReview(stateRoot, id string, req issueops.IssueOpsDomainReviewRequest, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, readErr := ReadIssueOps(stateRoot, id)
 		if readErr != nil {
@@ -45,18 +46,18 @@ func recordIssueOpsDomainReview(stateRoot, id string, req IssueOpsDomainReviewRe
 	return rec, err
 }
 
-func recordIssueOpsDomainReviewLocked(stateRoot, id string, req IssueOpsDomainReviewRequest) (IssueOpsRecord, error) {
+func recordIssueOpsDomainReviewLocked(stateRoot, id string, req issueops.IssueOpsDomainReviewRequest) (issueops.IssueOpsRecord, error) {
 	modelFit := strings.TrimSpace(req.ModelFit)
 	terminology := cleanIssueOpsTextValues(req.Terminology)
 	if modelFit == "" && len(terminology) == 0 {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("domain review requires model_fit or terminology")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("domain review requires model_fit or terminology")
 	}
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return record, err
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	record.DomainReview = &model.IssueOpsDomainReview{
+	record.DomainReview = &issueops.IssueOpsDomainReview{
 		Terminology:       terminology,
 		ModelFit:          modelFit,
 		Risks:             cleanIssueOpsTextValues(req.Risks),
@@ -70,16 +71,16 @@ func recordIssueOpsDomainReviewLocked(stateRoot, id string, req IssueOpsDomainRe
 // RecordIssueOpsAISlopCleanEvidence persists which cleanup categories were
 // checked/cleaned and which verifications were rerun — the source of truth
 // backing the ai-slop-clean cleanup_evidence and verification_evidence artifacts.
-func RecordIssueOpsAISlopCleanEvidence(stateRoot, id string, categories, verification []string) (IssueOpsRecord, error) {
+func RecordIssueOpsAISlopCleanEvidence(stateRoot, id string, categories, verification []string) (issueops.IssueOpsRecord, error) {
 	return recordIssueOpsAISlopCleanEvidence(stateRoot, id, categories, verification, nil)
 }
 
-func RecordIssueOpsAISlopCleanEvidenceWithActor(stateRoot, id string, categories, verification []string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func RecordIssueOpsAISlopCleanEvidenceWithActor(stateRoot, id string, categories, verification []string, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return recordIssueOpsAISlopCleanEvidence(stateRoot, id, categories, verification, &actor)
 }
 
-func recordIssueOpsAISlopCleanEvidence(stateRoot, id string, categories, verification []string, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func recordIssueOpsAISlopCleanEvidence(stateRoot, id string, categories, verification []string, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, id)
 		if err != nil {
@@ -95,14 +96,14 @@ func recordIssueOpsAISlopCleanEvidence(stateRoot, id string, categories, verific
 	return rec, err
 }
 
-func recordIssueOpsAISlopCleanEvidenceLocked(stateRoot, id string, categories, verification []string) (IssueOpsRecord, error) {
+func recordIssueOpsAISlopCleanEvidenceLocked(stateRoot, id string, categories, verification []string) (issueops.IssueOpsRecord, error) {
 	cats := cleanIssueOpsTextValues(categories)
 	ver := cleanIssueOpsTextValues(verification)
 	if len(cats) == 0 {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("ai-slop-clean evidence requires at least one cleanup category")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("ai-slop-clean evidence requires at least one cleanup category")
 	}
 	if len(ver) == 0 {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("ai-slop-clean evidence requires at least one verification entry")
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("ai-slop-clean evidence requires at least one verification entry")
 	}
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
@@ -120,16 +121,16 @@ func recordIssueOpsAISlopCleanEvidenceLocked(stateRoot, id string, categories, v
 
 // ResolveIssueOpsFeedback records the outcome of a feedback item by index — the
 // source of truth backing the feedback feedback_resolution artifact.
-func ResolveIssueOpsFeedback(stateRoot, id string, index int, resolution string) (IssueOpsRecord, error) {
+func ResolveIssueOpsFeedback(stateRoot, id string, index int, resolution string) (issueops.IssueOpsRecord, error) {
 	return resolveIssueOpsFeedback(stateRoot, id, index, resolution, nil)
 }
 
-func ResolveIssueOpsFeedbackWithActor(stateRoot, id string, index int, resolution string, actor IssueOpsActor) (IssueOpsRecord, error) {
+func ResolveIssueOpsFeedbackWithActor(stateRoot, id string, index int, resolution string, actor IssueOpsActor) (issueops.IssueOpsRecord, error) {
 	return resolveIssueOpsFeedback(stateRoot, id, index, resolution, &actor)
 }
 
-func resolveIssueOpsFeedback(stateRoot, id string, index int, resolution string, actor *IssueOpsActor) (IssueOpsRecord, error) {
-	var rec IssueOpsRecord
+func resolveIssueOpsFeedback(stateRoot, id string, index int, resolution string, actor *IssueOpsActor) (issueops.IssueOpsRecord, error) {
+	var rec issueops.IssueOpsRecord
 	err := withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
 		record, err := ReadIssueOps(stateRoot, id)
 		if err != nil {
@@ -145,17 +146,17 @@ func resolveIssueOpsFeedback(stateRoot, id string, index int, resolution string,
 	return rec, err
 }
 
-func resolveIssueOpsFeedbackLocked(stateRoot, id string, index int, resolution string) (IssueOpsRecord, error) {
+func resolveIssueOpsFeedbackLocked(stateRoot, id string, index int, resolution string) (issueops.IssueOpsRecord, error) {
 	resolution = strings.ToLower(strings.TrimSpace(resolution))
 	if !validIssueOpsFeedbackResolutions[resolution] {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("unknown feedback resolution %q; use valid-defect, question-answered, or noise-dismissed", resolution)
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("unknown feedback resolution %q; use valid-defect, question-answered, or noise-dismissed", resolution)
 	}
 	record, err := ReadIssueOps(stateRoot, id)
 	if err != nil {
 		return record, err
 	}
 	if index < 0 || index >= len(record.Feedback) {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("feedback index %d out of range (have %d items)", index, len(record.Feedback))
+		return issueops.IssueOpsRecord{OK: false}, fmt.Errorf("feedback index %d out of range (have %d items)", index, len(record.Feedback))
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	record.Feedback[index].Resolution = resolution

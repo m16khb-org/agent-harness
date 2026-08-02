@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/issueopscli/executioncmd"
+	model "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/port"
 )
 
