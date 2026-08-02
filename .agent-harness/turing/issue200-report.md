@@ -7,6 +7,8 @@
 - sealed base: `9883f534f50fb628ac2fa754a3bf8f80d4734989`
 - local gate execution HEAD: `f1d347df9c5a1c8bd6a5766b11f34aa32e139772`
 - first evidence-report review HEAD: `413d8c41a73d342d3b4c84875a7e5a5b0e59f4fb`
+- corrected evidence-report review HEAD: `a0302afdea631efc0559955e5bd0ca46b715715a`
+- draft PR: https://github.com/m16khb/agent-harness/pull/219
 - 설계: `docs/superpowers/specs/2026-08-02-final-architecture-gate-design.md`
 - 계획: `docs/superpowers/plans/2026-08-02-final-architecture-gate.md`
 
@@ -45,8 +47,8 @@ persisted schema를 변경하지 않았다.
 | AC-200-05 | PASS | release, claim, reseed, resume, reconcile, publication, completion, preparation을 포함한 architecture ratchet과 focused unit/race가 통과했다. |
 | AC-200-06 | PASS | 현재 hook-disabled 부모 세션을 제외했다. Host별 full native payload matrix와 별도 fresh Codex/Claude configured runtime이 native block/deny 및 sentinel 미생성을 증명했다. Exact holder의 source-CWD compatibility도 유지했다. |
 | AC-200-07 | PASS | Production/runtime/schema 변경은 0건이다. Contract golden과 response golden이 통과했고 baseline bytes도 동일하다. |
-| AC-200-08 | LOCAL PASS / REMOTE PENDING | focused unit/race, architecture, golden, full unit/race, vet, build와 deterministic self-verify 250/250이 통과했다. PR final-head GitHub CI는 publication 뒤 이 문서에 추가한다. |
-| AC-200-09 | PENDING | child PR을 `117-hexagonal-architecture-migration`에 만든 뒤 CI/merge/close/cleanup receipt를 추가한다. Parent #117은 유지한다. |
+| AC-200-08 | LOCAL PASS / FINAL CI GATED | focused unit/race, architecture, golden, full unit/race, vet, build와 deterministic self-verify 250/250이 통과했다. PR #219의 exact final-head GitHub CI 성공은 generation-fenced completion receipt와 원격 issue completion section에 기록한다. |
+| AC-200-09 | PR CREATED / MERGE GATED | draft PR #219의 target은 `117-hexagonal-architecture-migration`이고 head SHA readback은 `a0302afd`였다. Final report commit CI 성공 뒤 merge/close/cleanup receipt를 기록하며 parent #117은 유지한다. |
 
 ## 활성형 훅 환경 검증
 
@@ -143,7 +145,23 @@ base diff를 읽기 전용으로 검토했다. 동작·architecture·hook accept
 표현해 report commit을 포함한 reviewed HEAD와 혼동될 수 있다는 것이었다.
 따라서 위 metadata를 `local gate execution HEAD`와
 `first evidence-report review HEAD`로 분리했다. 이 correction의 follow-up
-unconditional verdict는 publication 전에 IssueOps review evidence로 기록한다.
+unconditional verdict는 `a0302afd`에서 PASS였고 IssueOps review evidence로
+기록했다.
+
+## 원격 publication checkpoint
+
+IssueOps deterministic scorer는 threshold `0.70`에서 부모 #117(`0.99`)과
+`enhancement`(`0.99`)를 선택하고 `documentation`(`0.55`), `bug`(`0.10`)를
+거절했다. 한국어 remote artifact gate를 통과한 뒤 generation 1 holder가 draft
+PR #219를 만들었다. 원격 readback은 base
+`117-hexagonal-architecture-migration`, head `200-final-architecture-gate`, head SHA
+`a0302afd`, draft=true, label `enhancement`, assignee `m16khb`와 일치했다.
+
+이 보고서의 최종 commit은 자기 자신의 GitHub CI 결과를 본문에 포함할 수 없다.
+따라서 exact final-head CI 성공, merge SHA, issue close와 cleanup은 PR #219의
+provider readback, generation-fenced `execution complete` receipt와 원격 issue의
+completion section을 권위 있는 종료 증거로 사용한다. CI 성공 전에는 ready 전환,
+completion 또는 merge를 수행하지 않는다.
 
 ## 로컬 최종 검증
 
@@ -180,6 +198,7 @@ legacy baseline 변경은 없다.
 f45ee479 docs(architecture): preserve source-cwd hook contract
 f1d347df test(hookmetrics): avoid time-bound prune fixtures
 413d8c41 docs(architecture): record final gate evidence
+a0302afd docs(architecture): distinguish gate and report heads
 ```
 
 OpenWiki, public API/schema, runtime behavior, compatibility package와 unrelated
@@ -187,8 +206,9 @@ legacy entry는 수정하지 않았다.
 
 ## Turing evidence block
 
-Success criteria: AC-200-01부터 AC-200-07은 PASS, AC-200-08은 local PASS,
-AC-200-09는 publication/CI/merge receipt 전까지 PENDING이다.
+Success criteria: AC-200-01부터 AC-200-07은 PASS, AC-200-08은 local PASS이며
+final-head CI gate가 남았다. AC-200-09는 PR 생성·metadata readback까지 완료했고
+CI/merge/close/cleanup receipt가 남았다.
 
 Evidence artifact: `.agent-harness/turing/issue200-report.md`, final architecture
 design/plan, normalized import digest, full native payload matrix, fresh configured
@@ -205,5 +225,6 @@ Codex/Claude direct payload와 fresh configured runtime, local deterministic
 self-verify 10회를 실행했다.
 
 Skipped checks: local 필수 check는 없다. `llm-eval=false`는 issue가 요구한
-결정적 self-verify mode다. Final-head GitHub CI와 child cleanup은 PR publication
-뒤 수행한다.
+결정적 self-verify mode다. Final-head GitHub CI와 child cleanup은 이 보고서의
+final commit을 push한 뒤 수행하고, 그 결과는 completion receipt와 원격 issue에
+반영한다.
