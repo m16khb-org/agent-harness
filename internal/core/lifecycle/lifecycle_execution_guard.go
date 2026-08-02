@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -23,6 +24,14 @@ func executionObservation(req lifecyclecontract.HookToolUseLifecycleRequest) boo
 		return explicitIssueOpsReadOnlyTool(req.Tool)
 	}
 	if commandparse.ExactReadOnlyShellCommand(req.Command) {
+		return true
+	}
+	// child host smoke는 관찰 명령은 아니지만, 완료된 child의 lease를 release한
+	// 뒤 merge 전에 실행해야 한다. 일반 mutation fence를 적용하면 그 정상
+	// 순서에서는 writer가 존재할 수 없어 명령이 영구 차단된다. provider linked
+	// branch 생성과 같은 이유로 정확한 coordinator form만 여기서 admit하고,
+	// HEAD/ref 일치와 user-scope 활성화·복구는 runner가 fail-closed로 검증한다.
+	if exactCoordinatorChildHostSmoke(req) {
 		return true
 	}
 	if exactOrcaObservation(req.Command) {
@@ -125,6 +134,226 @@ func executionObservation(req lifecyclecontract.HookToolUseLifecycleRequest) boo
 	default:
 		return false
 	}
+}
+
+func exactCoordinatorChildHostSmoke(req lifecyclecontract.HookToolUseLifecycleRequest) bool {
+	commandText := strings.TrimSpace(req.Command)
+	if commandText == "" || commandparse.HasUnquotedControlOperator(commandText) ||
+		commandparse.HasActiveCommandSubstitution(commandText) ||
+		commandparse.HasActiveInputRedirect(commandText) ||
+		commandparse.HasActiveOutputRedirect(commandText) ||
+		commandparse.HasActiveParameterOrTildeExpansion(commandText) ||
+		commandparse.HasActivePathnameExpansion(commandText) ||
+		commandparse.HasActiveShellSpecialQuoting(commandText) ||
+		commandparse.HasActiveZshEqualsExpansion(commandText) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(commandText)
+	if len(tokens) < 2 || tokens[0] != "scripts/verify-child-host-smoke.sh" {
+		return false
+	}
+	flags, ok := commandparse.ExactFlags(
+		commandparse.ExactIssueOpsCommand{Path: "child host smoke", Tokens: tokens, Start: 1},
+		map[string]bool{
+			"--issue": true, "--source-root": true, "--child-root": true,
+			"--head": true, "--remote-ref": true, "--json-out": true,
+		},
+		map[string]bool{"--confirm-user-activation": true},
+		map[string]bool{},
+	)
+	if !ok {
+		return false
+	}
+	issue, issueOK := oneFlag(flags, "--issue")
+	sourceRoot, sourceOK := oneFlag(flags, "--source-root")
+	childRoot, childOK := oneFlag(flags, "--child-root")
+	head, headOK := oneFlag(flags, "--head")
+	remoteRef, refOK := oneFlag(flags, "--remote-ref")
+	jsonOut, outputOK := oneFlag(flags, "--json-out")
+	_, confirmed := flags["--confirm-user-activation"]
+	if !issueOK || !positiveIssueNumber(issue) || !sourceOK || !childOK || !headOK ||
+		!refOK || !outputOK || !confirmed {
+		return false
+	}
+	if !canonicalRealDirectory(sourceRoot) || !canonicalRealDirectory(childRoot) ||
+		!canonicalAbsolutePath(jsonOut) || sameExecutionPath(sourceRoot, childRoot) {
+		return false
+	}
+	coordinatorRoot, ok := delegatedChildSmokeCoordinator(sourceRoot, childRoot, issue)
+	if !ok {
+		return false
+	}
+	sourceAuthority := strings.TrimSpace(req.SourceCheckout)
+	if sourceAuthority != "" {
+		// 명시적 SourceCheckout이 있으면 불일치를 Repo로 우회하지 않는다.
+		if !sameExecutionPath(sourceRoot, sourceAuthority) {
+			return false
+		}
+	}
+	requestBase := hookRequestPathBase(req)
+	if !sameExecutionPath(requestBase, sourceRoot) && !sameExecutionPath(requestBase, coordinatorRoot) {
+		return false
+	}
+	if repo := strings.TrimSpace(req.Repo); repo != "" &&
+		!sameExecutionPath(repo, sourceRoot) && !sameExecutionPath(repo, coordinatorRoot) {
+		return false
+	}
+	if !trustedIssueOpsCheckout(coordinatorRoot, sourceRoot) ||
+		!trustedIssueOpsCheckout(childRoot, sourceRoot) || sameExecutionPath(coordinatorRoot, childRoot) {
+		return false
+	}
+	scriptInfo, err := os.Lstat(filepath.Join(coordinatorRoot, "scripts", "verify-child-host-smoke.sh"))
+	if err != nil || !scriptInfo.Mode().IsRegular() || scriptInfo.Mode()&0o111 == 0 {
+		return false
+	}
+	if len(head) != 40 || head != strings.ToLower(head) {
+		return false
+	}
+	if _, err := hex.DecodeString(head); err != nil {
+		return false
+	}
+	branch := strings.TrimPrefix(remoteRef, "refs/heads/")
+	if branch == remoteRef || branch == "" || branch != filepath.Base(childRoot) ||
+		!strings.HasPrefix(branch, issue+"-") || !validFlatSmokeBranch(branch) {
+		return false
+	}
+	outputParent := filepath.Dir(jsonOut)
+	parentInfo, err := os.Lstat(outputParent)
+	if err != nil || !parentInfo.IsDir() || parentInfo.Mode()&os.ModeSymlink != 0 || parentInfo.Mode().Perm() != 0o700 {
+		return false
+	}
+	if resolvedParent, err := filepath.EvalSymlinks(outputParent); err != nil || resolvedParent != outputParent {
+		return false
+	}
+	if outputInfo, err := os.Lstat(jsonOut); err == nil {
+		if !outputInfo.Mode().IsRegular() || outputInfo.Mode().Perm() != 0o600 {
+			return false
+		}
+	} else if !os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
+func childHostSmokeInvocation(req lifecyclecontract.HookToolUseLifecycleRequest) bool {
+	if !searchrouting.IsShellTool(req.Tool) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	if len(tokens) == 0 {
+		return false
+	}
+	if tokens[0] == "scripts/verify-child-host-smoke.sh" {
+		return true
+	}
+	if len(tokens) < 2 || tokens[1] != "scripts/verify-child-host-smoke.sh" {
+		return false
+	}
+	switch searchrouting.SearchTokenName(tokens[0]) {
+	case "bash", "sh", "zsh":
+		return true
+	default:
+		return false
+	}
+}
+
+func delegatedChildSmokeCoordinator(sourceRoot, childRoot, issue string) (string, bool) {
+	ids, err := issueopscore.ListIssueOpsIDs(IssueOpsStateRoot())
+	if err != nil {
+		return "", false
+	}
+	var child *issueopscontract.IssueOpsRecord
+	for _, id := range ids {
+		record, err := ReadIssueOps(IssueOpsStateRoot(), id)
+		if err != nil {
+			return "", false
+		}
+		if record.Execution == nil || !sameExecutionPath(record.Execution.Workspace.Root, childRoot) {
+			continue
+		}
+		if child != nil {
+			return "", false
+		}
+		candidate := record
+		child = &candidate
+	}
+	if child == nil || child.Execution == nil || child.Delegation == nil ||
+		strings.TrimSpace(child.Delegation.ParentCycleID) == "" ||
+		child.Execution.Lease.Status != issueopscontract.LeaseStatusReleased ||
+		!sameExecutionPath(child.Repo, sourceRoot) ||
+		!sameExecutionPath(child.Execution.Workspace.SourceRoot, sourceRoot) ||
+		filepath.Base(strings.TrimRight(child.IssueURL, "/")) != issue {
+		return "", false
+	}
+	if err := issueopscontract.ValidateExecution(*child.Execution); err != nil {
+		return "", false
+	}
+	parent, err := ReadIssueOps(IssueOpsStateRoot(), child.Delegation.ParentCycleID)
+	if err != nil || parent.Execution == nil ||
+		parent.Execution.Lease.Status != issueopscontract.LeaseStatusReleased ||
+		!sameExecutionPath(parent.Repo, sourceRoot) ||
+		!sameExecutionPath(parent.Execution.Workspace.SourceRoot, sourceRoot) {
+		return "", false
+	}
+	if err := issueopscontract.ValidateExecution(*parent.Execution); err != nil {
+		return "", false
+	}
+	linked := false
+	for _, ref := range parent.ChildCycles {
+		if ref.CycleID == child.ID && ref.Branch == child.Branch &&
+			(ref.ChildIssueURL == "" || ref.ChildIssueURL == child.IssueURL) {
+			linked = true
+			break
+		}
+	}
+	coordinatorRoot := parent.Execution.Workspace.Root
+	if !linked || !trustedIssueOpsCheckout(coordinatorRoot, sourceRoot) ||
+		!trustedIssueOpsCheckout(childRoot, sourceRoot) || sameExecutionPath(coordinatorRoot, childRoot) {
+		return "", false
+	}
+	return coordinatorRoot, true
+}
+
+func canonicalAbsolutePath(path string) bool {
+	return path != "" && path == strings.TrimSpace(path) && filepath.IsAbs(path) && filepath.Clean(path) == path
+}
+
+func canonicalRealDirectory(path string) bool {
+	if !canonicalAbsolutePath(path) {
+		return false
+	}
+	info, err := os.Lstat(path)
+	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return false
+	}
+	resolved, err := filepath.EvalSymlinks(path)
+	return err == nil && resolved == path
+}
+
+func validFlatSmokeBranch(branch string) bool {
+	if branch == "" || strings.Contains(branch, "..") {
+		return false
+	}
+	for _, char := range branch {
+		if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') ||
+			(char >= '0' && char <= '9') || char == '.' || char == '_' || char == '-' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func trustedIssueOpsCheckout(root, sourceRoot string) bool {
+	root, sourceRoot = cleanAbsPath(root), cleanAbsPath(sourceRoot)
+	if !canonicalRealDirectory(root) || !canonicalRealDirectory(sourceRoot) {
+		return false
+	}
+	if !sameExecutionPath(root, sourceRoot) && filepath.Dir(root) != sourceRoot+".worktrees" {
+		return false
+	}
+	gitInfo, err := os.Lstat(filepath.Join(root, ".git"))
+	return err == nil && gitInfo.Mode()&os.ModeSymlink == 0 && (gitInfo.IsDir() || gitInfo.Mode().IsRegular())
 }
 
 // exactProviderBranchLink는 `gh issue develop`의 정확한 두 형태만 인정한다.
