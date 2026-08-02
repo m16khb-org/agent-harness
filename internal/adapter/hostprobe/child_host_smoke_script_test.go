@@ -544,13 +544,14 @@ func runChildHostSmokeFixture(t *testing.T, fixture childSmokeFixture) childSmok
 		args = append(args, "--confirm-user-activation")
 	}
 	command := exec.Command("/bin/bash", args...)
-	command.Dir = childRoot
+	command.Dir = sourceRoot
 	command.Env = append(os.Environ(),
 		"PATH="+fakeBin+":"+os.Getenv("PATH"),
 		"HOME="+home,
 		"CODEX_HOME="+codexHome,
 		"HARNESS_STATE_DIR="+stateRoot,
 		"FAKE_CHILD_BINARY_TEMPLATE="+template,
+		"FAKE_CHILD_ROOT="+childRoot,
 		"FAKE_HEAD="+localHead,
 		"FAKE_REMOTE_HEAD="+remoteHead,
 		"FAKE_SCENARIO="+fixture.scenario,
@@ -827,6 +828,7 @@ case "${1:-}" in
     printf '{"ok":true,"root":"%s","dry_run":true,"project_local":true,"hosts":[{"host":"codex","ok":true,"dry_run":true},{"host":"claude","ok":true,"dry_run":true}],"files":[],"links":[]}\n' "$HARNESS_ROOT"
     ;;
   contract)
+    [[ "$PWD" == "$FAKE_CHILD_ROOT" ]] || exit 23
     host=""
     previous=""
     for arg in "$@"; do

@@ -853,17 +853,20 @@ PY
 evidence_dir="$child_root/.agent-harness/evidence/child-host-smoke"
 for host in codex claude; do
   observation="$temporary_root/$host-observation.json"
-  HARNESS_TOOL_CONFORMANCE_LIVE=1 \
-  HARNESS_CHILD_SMOKE_HOOKS=1 \
-  HARNESS_CHILD_SMOKE_OBSERVATION_FILE="$observation" \
-    "$child_binary" contract conformance live \
-      --hosts "$host" \
-      --only "$host:empty_object" \
-      --profile clean \
-      --target-completed 1 \
-      --max-attempts-per-case 1 \
-      --evidence-dir "$evidence_dir" \
-      --json >"$temporary_root/$host-live.json" || fail_after_mutation "$host live session failed"
+  (
+    cd "$child_root"
+    HARNESS_TOOL_CONFORMANCE_LIVE=1 \
+    HARNESS_CHILD_SMOKE_HOOKS=1 \
+    HARNESS_CHILD_SMOKE_OBSERVATION_FILE="$observation" \
+      "$child_binary" contract conformance live \
+        --hosts "$host" \
+        --only "$host:empty_object" \
+        --profile clean \
+        --target-completed 1 \
+        --max-attempts-per-case 1 \
+        --evidence-dir "$evidence_dir" \
+        --json
+  ) >"$temporary_root/$host-live.json" || fail_after_mutation "$host live session failed"
   validate_observation "$observation" || fail_after_mutation "$host native event observation failed"
 done
 
