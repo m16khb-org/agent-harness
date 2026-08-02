@@ -32,7 +32,7 @@ func ParseExactIssueOpsCommand(command string) (ExactIssueOpsCommand, bool) {
 	start := 3
 	if len(tokens) > 3 {
 		switch tokens[2] {
-		case "compatibility", "execution", "devils-advocate", "feedback", "remote", "cleanup", "ai-slop-clean", "artifact", "implementation-review", "branch", "decision",
+		case "compatibility", "execution", "devils-advocate", "feedback", "remote", "cleanup", "ai-slop-clean", "artifact", "implementation-review", "branch", "decision", "child",
 			"intent", "domain-review", "design":
 			if strings.HasPrefix(tokens[3], "--") {
 				return ExactIssueOpsCommand{}, false
@@ -120,6 +120,20 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v(), b("--json"), r, true
 	case "branch prepare":
 		return v("--id", "--provider", "--issue-url", "--branch", "--base-branch", "--base-sha", "--parent-worktree", "--remote-branch-url", "--host", "--session-id", "--agent-id", "--cwd"), b("--link-verified", "--json"), r, true
+	case "child start":
+		values := v("--parent", "--branch", "--title", "--scope", "--acceptance", "--child-issue-url", "--host", "--session-id", "--agent-id", "--cwd")
+		r["--acceptance"] = true
+		return values, b("--json"), r, true
+	case "child status":
+		return v("--parent", "--host", "--session-id", "--agent-id", "--cwd"), b("--repair", "--json"), r, true
+	case "child list":
+		return v("--parent", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
+	case "child accept":
+		values := v("--parent", "--child", "--evidence", "--host", "--session-id", "--agent-id", "--cwd")
+		r["--evidence"] = true
+		return values, b("--json"), r, true
+	case "child reject", "child drop":
+		return v("--parent", "--child", "--reason", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
 	case "intent record":
 		values := v("--id", "--raw-request", "--interpreted-intent", "--success-criteria", "--constraint", "--ambiguity", "--non-goal", "--intent-class", "--host", "--session-id", "--agent-id", "--cwd")
 		for _, name := range []string{"--success-criteria", "--constraint", "--ambiguity", "--non-goal"} {
@@ -152,6 +166,8 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v("--id", "--plan-path", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
 	case "link-worktree":
 		return v("--id", "--worktree-path", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
+	case "link-child":
+		return v("--id", "--child-url", "--title", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
 	case "compatibility review":
 		values := v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--backward-compatibility", "--side-effect", "--rollback-plan", "--verification", "--blocker")
 		for _, name := range []string{"--backward-compatibility", "--side-effect", "--verification", "--blocker"} {
@@ -181,6 +197,12 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--index", "--resolution"), b("--json"), r, true
 	case "remote create-pr":
 		values := v("--id", "--expected-generation", "--title", "--body", "--body-file", "--template", "--provider", "--score-file", "--head", "--base", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd", "--label", "--assignee", "--field")
+		for _, name := range []string{"--label", "--assignee", "--field"} {
+			r[name] = true
+		}
+		return values, b("--confirm", "--json"), r, true
+	case "remote create-child":
+		values := v("--id", "--title", "--body", "--body-file", "--template", "--provider", "--score-file", "--host", "--session-id", "--agent-id", "--cwd", "--label", "--assignee", "--field")
 		for _, name := range []string{"--label", "--assignee", "--field"} {
 			r[name] = true
 		}

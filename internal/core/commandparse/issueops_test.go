@@ -93,6 +93,52 @@ func TestExactFlagsCorpus(t *testing.T) {
 	}
 }
 
+func TestDelegationCommandsHaveExactSpecs(t *testing.T) {
+	tests := []struct {
+		name    string
+		command string
+		path    string
+		flag    string
+		count   int
+	}{
+		{
+			name: "child start",
+			command: "agent-harness issueops child start --parent io-parent --branch 222-child --title child --scope regression " +
+				"--acceptance barrier --acceptance mutation --child-issue-url https://github.com/acme/repo/issues/222 " +
+				"--host codex --session-id s1 --cwd /repo.worktrees/parent --json",
+			path: "child start", flag: "--acceptance", count: 2,
+		},
+		{
+			name: "link child",
+			command: "agent-harness issueops link-child --id io-parent --child-url https://github.com/acme/repo/issues/222 " +
+				"--title child --host codex --session-id s1 --cwd /repo.worktrees/parent --json",
+			path: "link-child", flag: "--child-url", count: 1,
+		},
+		{
+			name: "remote create child",
+			command: "agent-harness issueops remote create-child --id io-parent --title child --body body --label enhancement " +
+				"--label documentation --assignee octocat --host codex --session-id s1 --cwd /repo.worktrees/parent --confirm --json",
+			path: "remote create-child", flag: "--label", count: 2,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			command, ok := ParseExactIssueOpsCommand(test.command)
+			if !ok || command.Path != test.path {
+				t.Fatalf("command path=%q ok=%v want=%q", command.Path, ok, test.path)
+			}
+			values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
+			if !ok {
+				t.Fatalf("missing exact spec for %q", command.Path)
+			}
+			flags, ok := ExactFlags(command, values, booleans, repeatable)
+			if !ok || len(flags[test.flag]) != test.count {
+				t.Fatalf("flags=%#v ok=%v; %s count=%d want=%d", flags, ok, test.flag, len(flags[test.flag]), test.count)
+			}
+		})
+	}
+}
+
 // 이슈 #114: sync-base의 4모드 플래그와 fingerprint가 exact spec에 등록되어야
 // lifecycle guard의 typed control plane이 이 명령을 인식한다. 미등록 플래그는
 // 계속 거부되어야 가드 정책이 이름만으로 열리지 않는다.

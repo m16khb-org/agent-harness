@@ -72,6 +72,13 @@ func executionObservation(req HookToolUseLifecycleRequest) bool {
 		// 선례가 있다.
 		id, ok := oneFlag(flags, "--id")
 		return ok && strings.TrimSpace(id) != ""
+	case "child status":
+		parent, ok := oneFlag(flags, "--parent")
+		_, repair := flags["--repair"]
+		return ok && strings.TrimSpace(parent) != "" && !repair
+	case "child list":
+		parent, ok := oneFlag(flags, "--parent")
+		return ok && strings.TrimSpace(parent) != ""
 	case "list":
 		// 다중 사이클을 훑는 read-only 집계다. --id를 받지 않으므로 식별자
 		// 검사가 없고, --repo는 선택이다.
@@ -553,7 +560,7 @@ func executionMutationDecision(req HookToolUseLifecycleRequest) (bool, string, *
 
 func exactIssueOpsMutationHelpObservation(path string, tokens []string, start int) bool {
 	switch path {
-	case "remote create-pr", "remote verify-artifact":
+	case "remote create-child", "remote create-pr", "remote verify-artifact":
 	default:
 		return false
 	}
@@ -576,7 +583,8 @@ func exactIssueOpsOwnerMutation(commandText string) bool {
 	case "link-plan", "link-worktree", "compatibility review", "devils-advocate review", "phase",
 		"decision add", "ai-slop-clean record", "feedback mark-issue-updated", "feedback resolve",
 		"implementation-review record", "branch prepare", "intent record", "domain-review record", "design review", "regress",
-		"remote create-pr", "remote verify-artifact", "remote reflect-devils-advocate":
+		"link-child", "child start", "child status", "child accept", "child reject", "child drop",
+		"remote create-child", "remote create-pr", "remote verify-artifact", "remote reflect-devils-advocate":
 	default:
 		return false
 	}
@@ -588,7 +596,16 @@ func exactIssueOpsOwnerMutation(commandText string) bool {
 	if !ok {
 		return false
 	}
-	for _, name := range []string{"--id", "--host", "--session-id", "--cwd"} {
+	if command.Path == "child status" {
+		if _, repair := flags["--repair"]; !repair {
+			return false
+		}
+	}
+	idFlag := "--id"
+	if strings.HasPrefix(command.Path, "child ") {
+		idFlag = "--parent"
+	}
+	for _, name := range []string{idFlag, "--host", "--session-id", "--cwd"} {
 		value, found := oneFlag(flags, name)
 		if !found || strings.TrimSpace(value) == "" {
 			return false

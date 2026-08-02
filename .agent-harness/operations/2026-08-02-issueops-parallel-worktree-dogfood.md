@@ -69,12 +69,14 @@ GitHub 이슈 생성부터 provider-native child 분할, 서로 다른 direct ex
 - `2026-08-02T03:35Z`: parent plan commit `2bac6a59` push, plan/compatibility/DA reflection, implement phase 기록.
 - `2026-08-02T03:37Z`: child A confirm이 provider에서 #222를 생성·계층화한 뒤 actor 없는 local link에서 실패. readback으로 #222 존재를 확인해 중복 생성을 중단했다.
 - `2026-08-02T03:40Z`: root cause는 create-child actor flag 부재와 provider side effect 후 lease validation 순서로 격리. active actor success와 wrong actor pre-provider rejection 테스트를 RED에서 GREEN으로 전환했다.
+- `2026-08-02T03:49Z`: #222 reconcile을 위한 `child start`와 `link-child`가 hook exact classifier에서 둘 다 실행 전 차단. parser/spec/owner allowlist의 delegation path 누락을 RED 테스트로 재현했다.
 
 ## 관찰된 문제와 교정
 
 | ID | 증상 | 원인 | 교정 | 상태 |
 | --- | --- | --- | --- | --- |
-| D1 | create-child confirm이 error를 반환했지만 #222는 원격에 생성됨 | CLI가 actor를 전달하지 않고 provider 호출 뒤 non-actor local link에서 lease를 검증 | actor/cwd flags, provider 전 actor validation, actor-bound link, 두 회귀 테스트 | focused GREEN, package/full pending |
+| D1 | create-child confirm이 error를 반환했지만 #222는 원격에 생성됨 | CLI가 actor를 전달하지 않고 provider 호출 뒤 non-actor local link에서 lease를 검증 | actor/cwd flags, provider 전 actor validation, actor-bound link, 두 회귀 테스트 | focused/package/full GREEN, fresh review 0 findings |
+| D2 | active parent holder의 child start/link-child가 hook에서 unclassified 차단 | exact parser가 `child`를 두 단어 path로 파싱하지 않고 delegation command spec과 owner allowlist가 없음 | child/link/remote-create exact specs, `--parent` owner identity, read-only status/list와 repair mutation 분리, guard 회귀 테스트 | focused/package/hook/full GREEN, re-review 0 findings |
 
 ## Regression plane evidence
 

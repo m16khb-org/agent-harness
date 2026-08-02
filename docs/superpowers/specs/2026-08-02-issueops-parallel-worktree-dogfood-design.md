@@ -25,7 +25,7 @@ IssueOps는 record별 execution lease, canonical worktree, parent/child delegati
 - child A 전용: `internal/core/issueops/issueops_delegation_start_process_test.go`, `.agent-harness/operations/2026-08-02-issueops-parallel-worktree-child-start.md`
 - child B 전용: `internal/core/issueops/issueops_delegation_accept_process_test.go`, `.agent-harness/operations/2026-08-02-issueops-parallel-worktree-child-accept.md`
 - parent 전용: 설계 문서, 구현 계획, `.agent-harness/operations/2026-08-02-issueops-parallel-worktree-dogfood.md`
-- parent lifecycle unblocker 전용: `cmd/harness/issueopscli/remotecmd/remote.go`, `cmd/harness/issueopscli/remotecmd/remote_test.go`, `internal/core/issueops/issueops_actor.go`, `internal/core/issueops_facade.go`, `internal/adapter/cli/issueops_catalog.go`, `cmd/harness/testdata/usage.golden.txt`
+- parent lifecycle unblocker 전용: `cmd/harness/issueopscli/remotecmd/remote.go`, `cmd/harness/issueopscli/remotecmd/remote_test.go`, `internal/core/issueops/issueops_actor.go`, `internal/core/issueops_facade.go`, `internal/adapter/cli/issueops_catalog.go`, `cmd/harness/testdata/usage.golden.txt`, `internal/core/commandparse/issueops.go`, `internal/core/commandparse/issueops_test.go`, `internal/core/lifecycle/lifecycle_execution_guard.go`, `internal/core/lifecycle/lifecycle_owner_mutation_test.go`
 - production `issueops_delegation.go`는 새 테스트가 현 코드에서 실패하고 원인이 확정될 때만 parent가 범위를 다시 기록한 후 최소 수정한다.
 
 ### Cross-process test shape
@@ -46,6 +46,8 @@ Regression plane 실패는 code/test defect다. Lifecycle plane 실패는 regres
 ### 관찰된 lifecycle unblocker
 
 첫 child confirm은 provider에서 #222를 실제 생성·계층화한 뒤 로컬 `LinkIssueOpsChild`가 active parent lease의 actor 부재로 실패했다. `remote create-child`가 actor flags를 노출하지 않고 provider side effect 뒤에야 lease를 검증하는 것이 원인이다. parent는 actor flags를 추가하고 provider 호출 전에 current holder/canonical cwd를 검증하며, 성공한 provider 호출 뒤에는 같은 actor로 child link를 기록한다. #222는 의도한 child A로 reconcile하고 중복 생성하지 않는다. 이 fix commit 뒤의 parent HEAD를 두 child branch의 새 공통 sealed base로 사용한다.
+
+그 다음 `issueops child start`와 `link-child`는 CLI core가 actor를 검증할 수 있음에도 PreToolUse exact parser가 `child`를 두 단어 subcommand로 파싱하지 않고, command spec/owner-mutation allowlist에도 delegation 명령이 없어 active lease에서 실행 전에 차단됐다. parent는 child start/status/list/accept/reject/drop, link-child, remote create-child의 exact flag spec을 등록하고, parent 식별 flag가 `--parent`인 child mutation을 owner allowlist가 해석하도록 보정한다. `child status`/`list`는 read-only observation, `child status --repair`만 actor-bound mutation으로 분리하며 unknown flag와 actor 누락은 계속 fail-closed다.
 
 ### Integration
 

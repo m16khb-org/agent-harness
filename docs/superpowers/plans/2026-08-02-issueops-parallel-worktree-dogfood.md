@@ -82,6 +82,15 @@ Run exact actor flags from the active parent holder. Expected: parent readiness�
 
 active holder confirm 성공과 wrong actor가 provider 호출 전에 실패하는 두 테스트를 먼저 RED로 확인한다. create-child에 holder/canonical cwd flags를 추가하고, provider 호출 전 actor validation과 provider 성공 후 actor-bound link를 적용한다. focused/package/full 검증 뒤 별도 atomic fix commit을 push한다. #222는 readback/reconcile하며 중복 생성하지 않고, fix commit의 exact HEAD를 두 child sealed base로 다시 고정한다.
 
+실제 reconcile에서 `child start`와 `link-child`가 hook exact classifier에서 다시 막히면 아래 네 파일에 delegation command spec과 owner-mutation 분류를 TDD로 추가한다.
+
+- `internal/core/commandparse/issueops.go`
+- `internal/core/commandparse/issueops_test.go`
+- `internal/core/lifecycle/lifecycle_execution_guard.go`
+- `internal/core/lifecycle/lifecycle_owner_mutation_test.go`
+
+`child` 두 단어 path, child start/status/list/accept/reject/drop, link-child, remote create-child의 exact flags를 고정하고, child mutation만 `--parent`를 lifecycle 식별자로 사용한다. status/list는 observation, status `--repair`는 current holder mutation으로 나누며 actor signature 또는 알려지지 않은 flag가 빠지면 계속 차단되어야 한다.
+
 - [ ] **Step 5: 두 `[p]` GitHub sub-issue와 child lifecycle을 만든다**
 
 Child A goal: cross-process concurrent child start parent-ref preservation.
