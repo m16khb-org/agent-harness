@@ -669,7 +669,7 @@ func currentCoordinatorHandle() (string, error) {
 func validateRunID(runID string) (string, error) {
 	raw := runID
 	runID = strings.TrimSpace(raw)
-	if raw != runID || runID == "" || len(runID) > 1024 || strings.ContainsRune(runID, 0) || runID == "run_legacy_local" {
+	if raw != runID || runID == "" || len(runID) > 1024 || strings.ContainsRune(runID, 0) {
 		return "", &port.OrcaError{Code: "run_identity_invalid"}
 	}
 	return runID, nil

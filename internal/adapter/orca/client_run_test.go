@@ -84,6 +84,30 @@ func TestClientProbeRejectsRunInventoryFromAnotherRuntime(t *testing.T) {
 	}
 }
 
+func TestClientProbeTreatsUnrelatedOpaqueRunAsValidInventory(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.lookPaths["orca"] = "/usr/local/bin/orca"
+	runner.lookPaths["codex"] = "/usr/local/bin/codex"
+	runner.responses["orca status --json"] = fixtureOutput(t, "status_ready.json")
+	runner.responses["orca repo show --repo path:/repo --json"] = fixtureOutput(t, "repo_show.json")
+	addCompleteProbeLeafHelp(runner)
+	runner.responses["orca orchestration run-list --json"] = CommandOutput{Stdout: []byte(`{
+		"ok":true,
+		"result":{"runs":[
+			{"id":"run_legacy_local","objective":"Legacy orchestration state (inspect only)","legacy":1}
+		]},
+		"_meta":{"runtimeId":"runtime-1"}
+	}`)}
+
+	got, err := NewClient(runner).Probe(context.Background(), port.OrcaProbeRequest{Repo: "/repo", Agent: "codex", Provider: "github"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Ready || got.Code != "" {
+		t.Fatalf("syntactically valid unrelated Run blocked Orca readiness: %#v", got)
+	}
+}
+
 func TestClientCurrentRunRejectsMissingProjection(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca orchestration run-current --json"] = CommandOutput{Stdout: []byte(`{
@@ -158,7 +182,7 @@ func TestClientTaskInventoryKeepsSameTaskIDDistinctAcrossRuns(t *testing.T) {
 	}
 }
 
-func TestClientTaskInventoryRejectsRetiredRunIdentity(t *testing.T) {
+func TestClientTaskInventoryReadsOpaqueRunRowsUniformly(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca orchestration run-list --json"] = CommandOutput{Stdout: []byte(`{
 		"ok":true,
@@ -168,9 +192,17 @@ func TestClientTaskInventoryRejectsRetiredRunIdentity(t *testing.T) {
 		]},
 		"_meta":{"runtimeId":"runtime-1"}
 	}`)}
+	for _, runID := range []string{"run_a", "run_legacy_local"} {
+		command := "orca orchestration task-list --brief --run " + runID + " --json"
+		runner.responses[command] = CommandOutput{Stdout: []byte(`{
+			"ok":true,
+			"result":{"tasks":[],"count":0},
+			"_meta":{"runtimeId":"runtime-1"}
+		}`)}
+	}
+
 	got, err := NewClient(runner).ListAllTasks(context.Background())
-	var typed *port.OrcaError
-	if !errors.As(err, &typed) || typed.Code != "run_identity_incomplete" || len(got) != 0 || len(runner.calls) != 1 {
-		t.Fatalf("retired Run identity was accepted: got=%#v err=%v calls=%#v", got, err, runner.calls)
+	if err != nil || len(got) != 0 || len(runner.calls) != 3 {
+		t.Fatalf("opaque read-only Run inventory: got=%#v err=%v calls=%#v", got, err, runner.calls)
 	}
 }
