@@ -63,6 +63,14 @@ func validateWorkspacePreparationMutation(record IssueOpsRecord, actor *IssueOps
 	return validateExecutionMutation(record, actor)
 }
 
+func ValidateIssueOpsMutationActor(stateRoot, id string, actor IssueOpsActor) error {
+	record, err := ReadIssueOps(stateRoot, id)
+	if err != nil {
+		return err
+	}
+	return validateWorkspacePreparationMutation(record, &actor)
+}
+
 // validatePostTransferMutation keeps current-contract durable writes bound to the
 // owner even when callers bypass lifecycle hooks through a direct CLI or MCP
 // request. Legacy cycles retain their existing actor-optional behavior.

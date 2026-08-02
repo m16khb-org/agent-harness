@@ -352,6 +352,10 @@ func IssueOpsStateRoot() string {
 	return issueops.IssueOpsStateRoot()
 }
 
+func ValidateIssueOpsMutationActor(stateRoot, id string, actor IssueOpsActor) error {
+	return issueops.ValidateIssueOpsMutationActor(stateRoot, id, actor)
+}
+
 func PreviewLegacyReset(stateDir string, targetSchema int) (LegacyResetPreview, error) {
 	return issueops.PreviewLegacyReset(stateDir, targetSchema)
 }

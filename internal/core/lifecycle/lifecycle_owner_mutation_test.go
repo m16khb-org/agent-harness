@@ -41,6 +41,64 @@ func TestExactIssueOpsOwnerMutationAdmitsBranchPrepare(t *testing.T) {
 	}
 }
 
+func TestExactIssueOpsOwnerMutationAdmitsDelegationCommands(t *testing.T) {
+	actor := " --host codex --session-id sess-1 --cwd /tmp/parent-worktree --json"
+	commands := []string{
+		"agent-harness issueops child start --parent io-parent --branch 222-child --title child --scope regression" +
+			" --acceptance barrier --acceptance mutation" + actor,
+		"agent-harness issueops child status --parent io-parent --repair" + actor,
+		"agent-harness issueops link-child --id io-parent --child-url https://github.com/acme/repo/issues/222 --title child" + actor,
+		"agent-harness issueops remote create-child --id io-parent --title child --body body --label enhancement" +
+			" --assignee octocat --confirm" + actor,
+	}
+	for _, command := range commands {
+		if !exactIssueOpsOwnerMutation(command) {
+			t.Errorf("delegation owner mutation was not admitted: %s", command)
+		}
+	}
+}
+
+func TestChildStartAllowsOnlyCurrentParentHolder(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	command := "agent-harness issueops child start --parent " + record.ID +
+		" --branch 222-child --title child --scope regression --acceptance barrier" +
+		" --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json"
+	holder := executionRequest(record, worker, "claude", "owner-session", command)
+	holder.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(holder); got.Decision != "allow" {
+		t.Fatalf("current parent holder child start was blocked: %+v", got)
+	}
+	foreign := executionRequest(record, worker, "claude", "other-session", command)
+	foreign.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(foreign); got.Decision != "block" || got.Deny == nil || got.Deny.Code != "holder_identity_mismatch" {
+		t.Fatalf("foreign child start must fail the parent holder fence: %+v", got)
+	}
+}
+
+func TestChildStatusSeparatesObservationFromRepairMutation(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	actor := " --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json"
+	status := "agent-harness issueops child status --parent " + record.ID + actor
+	observer := executionRequest(record, worker, "claude", "observer-session", status)
+	if got := BuildLifecyclePreToolUseDecision(observer); got.Decision != "allow" {
+		t.Fatalf("read-only child status was blocked: %+v", got)
+	}
+
+	repair := "agent-harness issueops child status --parent " + record.ID + " --repair" + actor
+	holder := executionRequest(record, worker, "claude", "owner-session", repair)
+	holder.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(holder); got.Decision != "allow" {
+		t.Fatalf("current holder child status --repair was blocked: %+v", got)
+	}
+	foreign := executionRequest(record, worker, "claude", "other-session", repair)
+	foreign.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(foreign); got.Decision != "block" || got.Deny == nil || got.Deny.Code != "holder_identity_mismatch" {
+		t.Fatalf("foreign child status --repair must fail the holder fence: %+v", got)
+	}
+}
+
 // 우산 worktree는 branch prepare가 기록할 lineage 메타데이터이며 현재 명령의
 // mutation root가 아니다. 이미 release된 우산 lifecycle과 연결돼 있어도 자식
 // holder가 자기 canonical root의 레코드를 갱신하는 작업을 가로채면 안 된다.

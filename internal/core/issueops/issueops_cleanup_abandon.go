@@ -541,8 +541,10 @@ func cleanupAbandonHasChildren(record IssueOpsRecord) bool {
 	if len(record.ChildCycles) > 0 {
 		return true
 	}
+	issueURL := strings.TrimSpace(record.IssueURL)
 	for _, link := range record.IssueLinks {
-		if link.Type == "child" && strings.TrimSpace(link.CloseVerifiedAt) == "" {
+		if link.Type == "child" && strings.TrimSpace(link.CloseVerifiedAt) == "" &&
+			(issueURL == "" || strings.TrimSpace(link.URL) != issueURL) {
 			return true
 		}
 	}

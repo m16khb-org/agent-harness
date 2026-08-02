@@ -327,6 +327,57 @@ func TestRunRemoteCreateChildConfirmRecordsChildLink(t *testing.T) {
 	}
 }
 
+func TestRunRemoteCreateChildConfirmUsesActiveLeaseActor(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecordWithoutChild(t)
+	worktree, ancestry := activateRemoteIssueOpsRecordForCurrentProcess(t, &record)
+
+	binDir := t.TempDir()
+	writeFakeGhForCreateChild(t, binDir)
+	t.Setenv("PATH", binDir)
+	err := Run([]string{
+		"create-child", "--id", record.ID, "--title", "Child", "--body", "Body",
+		"--label", "bug", "--assignee", "octocat", "--host", "codex",
+		"--session-id", "session-1", "--cwd", worktree, "--confirm", "--json",
+	}, Deps{
+		PrintError: func(error) error { return nil },
+		ObserveProcessAncestry: func(int) ([]model.NativeProcessReceipt, error) {
+			return ancestry, nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("create-child confirm with current lease actor returned error: %v", err)
+	}
+	updated, err := core.ReadIssueOps(core.IssueOpsStateRoot(), record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(updated.IssueLinks) != 1 || updated.IssueLinks[0].URL != "https://github.com/acme/repo/issues/34" {
+		t.Fatalf("child link not recorded with active lease: %+v", updated.IssueLinks)
+	}
+}
+
+func TestRunRemoteCreateChildRejectsWrongActorBeforeProviderCall(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	record := remoteIssueOpsRecordWithoutChild(t)
+	worktree, ancestry := activateRemoteIssueOpsRecordForCurrentProcess(t, &record)
+	t.Setenv("PATH", t.TempDir())
+
+	err := Run([]string{
+		"create-child", "--id", record.ID, "--title", "Child", "--body", "Body",
+		"--label", "bug", "--assignee", "octocat", "--host", "codex",
+		"--session-id", "wrong-session", "--cwd", worktree, "--confirm", "--json",
+	}, Deps{
+		PrintError: func(error) error { return nil },
+		ObserveProcessAncestry: func(int) ([]model.NativeProcessReceipt, error) {
+			return ancestry, nil
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "current write lease holder") {
+		t.Fatalf("wrong actor must fail before provider execution, got %v", err)
+	}
+}
+
 func TestRunRemoteCreateChildRequiresParentLabelsAndAssignees(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	record := remoteIssueOpsRecordWithoutChild(t)
@@ -472,6 +523,41 @@ func remoteIssueOpsRecordWithoutChild(t *testing.T) core.IssueOpsRecord {
 		t.Fatalf("PrepareIssueOpsBranch: %v", err)
 	}
 	return record
+}
+
+func activateRemoteIssueOpsRecordForCurrentProcess(t *testing.T, record *core.IssueOpsRecord) (string, []model.NativeProcessReceipt) {
+	t.Helper()
+	ancestry, err := issueopscore.ObserveNativeProcessAncestry(os.Getpid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var process model.NativeProcessReceipt
+	for _, receipt := range ancestry {
+		if receipt.PID == os.Getpid() {
+			process = receipt
+			break
+		}
+	}
+	if process.PID == 0 {
+		t.Fatalf("current process receipt missing from ancestry: %#v", ancestry)
+	}
+	worktree := filepath.Join(record.Repo, "worktree")
+	record.WorktreePath = worktree
+	record.Execution = &model.Execution{
+		Mode: model.ExecutionModeDirect,
+		Workspace: model.Workspace{
+			SourceRoot: record.Repo, Root: worktree, Branch: record.Branch,
+			BaseHead: strings.Repeat("a", 40), Driver: "git", LinkedAt: "2026-08-02T00:00:00Z",
+		},
+		Lease: model.WriteLease{
+			Generation: 1, Status: model.LeaseStatusActive, ClaimedAt: "2026-08-02T00:00:00Z",
+			Holder: &model.NativeActor{Host: "codex", SessionID: "session-1", SessionProcess: &process},
+		},
+	}
+	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), *record); err != nil {
+		t.Fatal(err)
+	}
+	return worktree, ancestry
 }
 
 func writeFakeGhForCreateChild(t *testing.T, binDir string) {
