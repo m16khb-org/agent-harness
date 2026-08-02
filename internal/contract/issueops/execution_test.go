@@ -53,12 +53,12 @@ func TestValidateExecutionAcceptsSealedOrcaRunID(t *testing.T) {
 	}
 }
 
-func TestValidateExecutionRejectsLegacyPseudoRunID(t *testing.T) {
+func TestValidateExecutionAcceptsOpaqueOrcaRunID(t *testing.T) {
 	execution := validOrcaExecutionForTest()
 	execution.Orca.RunID = "run_legacy_local"
 
-	if err := ValidateExecution(execution); err == nil {
-		t.Fatal("legacy pseudo Run must not be sealed as an explicit Run identity")
+	if err := ValidateExecution(execution); err != nil {
+		t.Fatalf("syntactically valid opaque Orca Run identity must be valid: %v", err)
 	}
 }
 
