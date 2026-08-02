@@ -503,7 +503,7 @@ func TestCleanupAbandonAllowsStaleOwnerIntentAfterEveryOrcaStageIsAbsent(t *test
 		{name: "dispatch", stage: port.ExecutionOrcaIntentDispatch, kind: "dispatch", wantInspects: 4, terminalPTYID: "pty-current", runID: "run-current", runBound: true, taskID: "task-current"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			stateRoot, record, payload := legacyResumeIntentFixture(t, "gitlab", 2646)
+			stateRoot, record, payload := resumeIntentFixture(t, "gitlab", 2646)
 			payload.Stage = intentContractStage(tc.stage)
 			payload.TerminalPTYID = tc.terminalPTYID
 			payload.RunID = tc.runID
@@ -549,7 +549,7 @@ func TestCleanupAbandonAllowsStaleOwnerIntentAfterEveryOrcaStageIsAbsent(t *test
 // 현재 pending 단계만 비어 있어도 이전 단계 자원이 남아 있으면 레코드를
 // 지우면 안 된다. terminal pending에서는 먼저 생성된 worktree를 함께 확인한다.
 func TestCleanupAbandonRejectsStaleOwnerIntentWithEarlierStageResidue(t *testing.T) {
-	stateRoot, record, _ := legacyResumeIntentFixture(t, "gitlab", 2646)
+	stateRoot, record, _ := resumeIntentFixture(t, "gitlab", 2646)
 	if err := os.RemoveAll(record.Execution.Workspace.Root); err != nil {
 		t.Fatal(err)
 	}
@@ -573,7 +573,7 @@ func TestCleanupAbandonRejectsStaleOwnerIntentWithEarlierStageResidue(t *testing
 // 현재 generation의 intent가 비어도 이전 binding의 task/terminal이 살아 있으면
 // 별도 owner gate가 계속 fail-closed해야 한다.
 func TestCleanupAbandonRejectsStaleOwnerIntentWithPriorOwnerResidue(t *testing.T) {
-	stateRoot, record, _ := legacyResumeIntentFixture(t, "gitlab", 2646)
+	stateRoot, record, _ := resumeIntentFixture(t, "gitlab", 2646)
 	if err := os.RemoveAll(record.Execution.Workspace.Root); err != nil {
 		t.Fatal(err)
 	}

@@ -427,7 +427,7 @@ func TestExecutionTaskTitleFitsOrcaAndBindsSealedIntent(t *testing.T) {
 	}
 }
 
-func TestExecutionIntentInventoryRejectsLegacyOrcaTaskTitle(t *testing.T) {
+func TestExecutionIntentInventoryRejectsRetiredTaskTitle(t *testing.T) {
 	workspace, probe := executionFixture(t)
 	probe.Marker = "agent-harness issueops-v1 lifecycle=io-c7e2d4e02b59 operation=c8b92dda09eaf3d provider=github issue=69"
 	prepared := port.ExecutionOrcaWorkspaceReceipt{Workspace: port.ExecutionWorkspaceReceipt{
@@ -439,15 +439,15 @@ func TestExecutionIntentInventoryRejectsLegacyOrcaTaskTitle(t *testing.T) {
 		Prepared: &prepared, Launch: &launch, TerminalPTYID: "pty-69", TerminalHandle: "term-stale",
 		RunID: "run-69", RunBound: true,
 	}
-	legacyTitle := probe.Marker + " prompt=" + strings.ToLower(launch.PromptSHA256[:16])
-	legacyTitle = legacyTitle[:77] + "..."
+	retiredTitle := probe.Marker + " prompt=" + strings.ToLower(launch.PromptSHA256[:16])
+	retiredTitle = retiredTitle[:77] + "..."
 	client := &executionFake{tasks: []port.OrcaTask{{
-		RuntimeID: "runtime-69", ID: "task-legacy", Title: legacyTitle, DisplayName: workspace.Branch, Status: "ready",
+		RuntimeID: "runtime-69", ID: "task-retired", Title: retiredTitle, DisplayName: workspace.Branch, Status: "ready",
 	}}}
 
 	inventory, err := NewExecutionClient(client).InspectIntent(context.Background(), request)
 	if err != nil || len(inventory.Candidates) != 0 || !inventory.AuthoritativeZero {
-		t.Fatalf("legacy Orca title must be ignored: inventory=%#v err=%v", inventory, err)
+		t.Fatalf("retired Orca title must be ignored: inventory=%#v err=%v", inventory, err)
 	}
 }
 

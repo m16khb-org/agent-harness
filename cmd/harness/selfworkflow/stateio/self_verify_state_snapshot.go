@@ -20,7 +20,7 @@ func ReadSelfAugmentStateSnapshot(key string) (SelfAugmentStateSnapshot, error) 
 	if err := json.Unmarshal([]byte(state.Record.Content), &snapshot); err != nil {
 		return SelfAugmentStateSnapshot{}, err
 	}
-	if !IsSelfVerificationSummaryKind(snapshot.Kind) {
+	if snapshot.Kind != selfVerificationSummaryKind {
 		return SelfAugmentStateSnapshot{}, fmt.Errorf("state key %q contains kind %q, want %s", key, snapshot.Kind, selfVerificationSummaryKind)
 	}
 	if snapshot.SchemaVersion != 1 {
@@ -31,8 +31,9 @@ func ReadSelfAugmentStateSnapshot(key string) (SelfAugmentStateSnapshot, error) 
 }
 
 func IsSelfVerificationSummaryKind(kind string) bool {
-	return kind == selfVerificationSummaryKind || kind == legacySelfAugmentSummaryKind
+	return kind == selfVerificationSummaryKind
 }
+
 func NormalizeSelfAugmentSnapshotFailureCause(snapshot *SelfAugmentStateSnapshot) {
 	classified := failurecause.Classify(snapshot.Summary.FailedSteps > 0, snapshot.Summary.FailureCauseEvidence)
 	snapshot.Summary.FailureCause = classified.Cause

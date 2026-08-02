@@ -22,9 +22,6 @@ func (h ReconcileHandler) Handle(ctx context.Context, _ string, request issueops
 		OK: result.OK, ID: result.ID, Reconciled: result.Reconciled, Code: result.Code,
 		ExternalStateInspected: result.ExternalStateInspected,
 	}
-	if result.IntentMigrated {
-		public.IntentMigrationCode = "legacy_intent_upgraded"
-	}
 	if result.Record.Execution != nil {
 		public.Execution = toCoreExecution(*result.Record.Execution)
 		public.Pending = public.Execution.Pending

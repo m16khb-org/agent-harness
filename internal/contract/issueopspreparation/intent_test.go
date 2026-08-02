@@ -82,33 +82,29 @@ func TestIntentCodecRejectsNonCanonicalMarkerTokensAndPrepareGeneration(t *testi
 	}
 }
 
-func TestIntentCodecCanonicalizeLegacyRequiresAuthoritativeProbeIdentity(t *testing.T) {
+func TestIntentCodecCanonicalizeRejectsRetiredMarkerWithoutMutation(t *testing.T) {
 	codec := IntentCodec{}
-	raw := legacyPrepareIntentBytes(t)
+	raw := retiredPrepareIntentBytes(t)
 	record := prepareIntentRecord(t, "github", "https://github.com/m16khb/agent-harness/issues/199", raw)
-	raw = bytes.Replace(raw, []byte(`"provider":"github","issue":199`), []byte(`"provider":"gitlab","issue":2646`), 1)
-
-	_, _, migrated, err := codec.Canonicalize(record, raw)
-	if err == nil || migrated || !strings.Contains(err.Error(), "legacy_intent_upgrade_unsafe") ||
-		!strings.Contains(err.Error(), "probe identity") {
-		t.Fatalf("canonicalize = migrated:%t err:%v", migrated, err)
-	}
-}
-
-func TestIntentCodecCanonicalizeLegacyGitLabWorkItem(t *testing.T) {
-	codec := IntentCodec{}
-	raw := legacyPrepareIntentBytes(t)
-	raw = bytes.ReplaceAll(raw, []byte("github"), []byte("gitlab"))
-	raw = bytes.ReplaceAll(raw, []byte("199"), []byte("2646"))
-	record := prepareIntentRecord(t, "gitlab", "https://gitlab.example.com/acme/repo/-/work_items/2646", raw)
-
-	sealed, encoded, migrated, err := codec.Canonicalize(record, raw)
+	beforeRaw := append([]byte(nil), raw...)
+	beforeRecord, err := json.Marshal(record)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !migrated || sealed.Probe.Provider != "gitlab" || sealed.Probe.Issue != 2646 ||
-		!bytes.Contains(encoded, []byte("provider=gitlab issue=2646")) {
-		t.Fatalf("sealed=%+v migrated=%t encoded=%s", sealed, migrated, encoded)
+
+	_, encoded, err := codec.Canonicalize(record, raw)
+	if err == nil || encoded != nil || !strings.Contains(err.Error(), "intent_marker_invalid") {
+		t.Fatalf("canonicalize = encoded:%s err:%v", encoded, err)
+	}
+	if !bytes.Equal(raw, beforeRaw) {
+		t.Fatal("retired marker rejection mutated the input bytes")
+	}
+	afterRecord, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(afterRecord, beforeRecord) {
+		t.Fatal("retired marker rejection mutated the record")
 	}
 }
 
@@ -140,11 +136,11 @@ func TestPrepareIssueIdentityAndReadinessMarker(t *testing.T) {
 	}
 }
 
-func legacyPrepareIntentBytes(t *testing.T) []byte {
+func retiredPrepareIntentBytes(t *testing.T) []byte {
 	t.Helper()
 	canonical := "agent-harness issueops-v1 lifecycle=io-codec-prepare operation=" + prepareOperationID + " provider=github issue=199"
-	legacy := "agent-harness issueops-v1 lifecycle=io-codec-prepare operation=" + prepareOperationID
-	return []byte(strings.ReplaceAll(prepareIntentJSON, canonical, legacy))
+	retired := "agent-harness issueops-v1 lifecycle=io-codec-prepare operation=" + prepareOperationID
+	return []byte(strings.ReplaceAll(prepareIntentJSON, canonical, retired))
 }
 
 func prepareIntentRecord(t *testing.T, provider, issueURL string, raw []byte) leasecontract.Record {

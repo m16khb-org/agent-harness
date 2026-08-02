@@ -9,21 +9,15 @@ import (
 	"strings"
 
 	completioncontract "agent-harness/internal/contract/issueopscompletion"
+	completiondomain "agent-harness/internal/domain/issueopscompletion"
 )
 
-type ArtifactVerifier func(completioncontract.RecordSnapshot, string) error
+type Environment struct{}
 
-type Environment struct{ verifyArtifact ArtifactVerifier }
+func NewEnvironment() Environment { return Environment{} }
 
-func NewEnvironment(verifyArtifact ArtifactVerifier) Environment {
-	return Environment{verifyArtifact: verifyArtifact}
-}
-
-func (e Environment) VerifyArtifact(record completioncontract.RecordSnapshot, requestedURL string) error {
-	if e.verifyArtifact == nil {
-		return fmt.Errorf("completion artifact verifier is required")
-	}
-	return e.verifyArtifact(record.Clone(), requestedURL)
+func (Environment) VerifyArtifact(record completioncontract.RecordSnapshot, requestedURL string) error {
+	return completiondomain.ValidateArtifact(record.Clone(), requestedURL)
 }
 
 func (Environment) PathsMatch(left, right string) bool {

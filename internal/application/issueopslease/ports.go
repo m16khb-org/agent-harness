@@ -159,7 +159,6 @@ type ReconcileIntentState struct {
 	InvocationAttempts int
 	RecordRaw          []byte
 	IntentRaw          []byte
-	Migrated           bool
 }
 
 type ReconcileRepository interface {

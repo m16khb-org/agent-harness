@@ -76,7 +76,7 @@ func Apply(snapshot Snapshot, command Command, resolvedReport string, now time.T
 	return ApplyAt(snapshot, command, resolvedReport, now, now)
 }
 
-// ApplyAt preserves the legacy completion contract: the durable completion
+// ApplyAt preserves the established completion contract: the durable completion
 // receipt/released lease and the phase-ledger transition observe consecutive
 // clock reads rather than sharing a synthesized timestamp.
 func ApplyAt(snapshot Snapshot, command Command, resolvedReport string, completedAt, transitionedAt time.Time) Outcome {

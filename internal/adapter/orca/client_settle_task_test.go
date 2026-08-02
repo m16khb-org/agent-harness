@@ -2,9 +2,12 @@ package orca
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strings"
 	"testing"
+
+	"agent-harness/internal/port"
 )
 
 // SettleTask는 완료된 사이클의 task를 terminal 상태로 옮긴다. 어떤 status가
@@ -23,17 +26,11 @@ func TestClientSettleTaskSendsTheCompletedStatus(t *testing.T) {
 	}
 }
 
-func TestClientSettleTaskResolvesLegacyBindingFromOneExplicitRun(t *testing.T) {
+func TestClientSettleTaskRejectsMissingRunIdentityBeforeInvocation(t *testing.T) {
 	runner := newFakeRunner(t)
-	list := []string{"orca", "orchestration", "task-list", "--brief", "--run", "run_issueops_1", "--json"}
-	update := []string{"orca", "orchestration", "task-update", "--id", "task-130", "--status", "completed", "--run", "run_issueops_1", "--json"}
-	runner.responses[strings.Join(list, " ")] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"tasks":[{"id":"task-130","status":"completed"}],"count":1},"_meta":{"runtimeId":"runtime-1"}}`)}
-	runner.responses[strings.Join(update, " ")] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{}}`)}
-
-	if err := NewClient(runner).SettleTask(context.Background(), "", "task-130"); err != nil {
-		t.Fatal(err)
-	}
-	if len(runner.calls) != 3 || !slices.Equal(runner.calls[1], list) || !slices.Equal(runner.calls[2], update) {
-		t.Fatalf("legacy task Run resolution calls = %#v", runner.calls)
+	err := NewClient(runner).SettleTask(context.Background(), "", "task-130")
+	var typed *port.OrcaError
+	if !errors.As(err, &typed) || typed.Code != "run_identity_invalid" || typed.Invoked || len(runner.calls) != 0 {
+		t.Fatalf("missing Run identity error=%v calls=%#v", err, runner.calls)
 	}
 }

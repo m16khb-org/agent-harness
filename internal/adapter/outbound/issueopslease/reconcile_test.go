@@ -34,13 +34,13 @@ func TestReconcileRepositoryPreservesRawCASState(t *testing.T) {
 	effects := &reconcileEffectsFake{state: ReconcileEffectState{
 		Record:    leasecontract.Record{ID: "io-1", Execution: &leasecontract.Execution{}},
 		RecordRaw: []byte("record-raw"), IntentRaw: []byte("intent-raw"), OperationID: "op-1",
-		Stage: "run_bind", InvocationState: "unknown", InvocationAttempts: 1, Pending: true, Migrated: true,
+		Stage: "run_bind", InvocationState: "unknown", InvocationAttempts: 1, Pending: true,
 	}}
 	state, err := NewReconcileRepository(effects).Canonicalize(context.Background(), "io-1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(state.RecordRaw, effects.state.RecordRaw) || !bytes.Equal(state.IntentRaw, effects.state.IntentRaw) || !state.Migrated {
+	if !bytes.Equal(state.RecordRaw, effects.state.RecordRaw) || !bytes.Equal(state.IntentRaw, effects.state.IntentRaw) {
 		t.Fatalf("state = %#v", state)
 	}
 }

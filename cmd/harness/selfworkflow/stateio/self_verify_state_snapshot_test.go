@@ -53,7 +53,7 @@ func TestWriteSelfAugmentSnapshotRecordIsLockedAndAtomic(t *testing.T) {
 	}
 }
 
-func TestReadSelfAugmentStateSnapshotRejectsBadKindAndSchemaAndAcceptsLegacyKind(t *testing.T) {
+func TestReadSelfAugmentStateSnapshotRejectsBadSchemaAndRetiredKinds(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", dir)
 	summary := model.SelfAugmentSummary{TotalRuns: 1, TotalSteps: 1, PassedSteps: 1}
@@ -80,15 +80,15 @@ func TestReadSelfAugmentStateSnapshotRejectsBadKindAndSchemaAndAcceptsLegacyKind
 		t.Fatalf("expected bad schema error, got %v", err)
 	}
 
-	if err := WriteSelfAugmentSnapshotRecord(dir, "legacy", SelfAugmentStateSnapshot{
+	if err := WriteSelfAugmentSnapshotRecord(dir, "retired-kind", SelfAugmentStateSnapshot{
 		SchemaVersion: 1,
-		Kind:          model.LegacySelfAugmentSummaryKind,
+		Kind:          "self_augment_summary",
 		Summary:       summary,
 	}); err != nil {
-		t.Fatalf("write legacy kind: %v", err)
+		t.Fatalf("write retired kind: %v", err)
 	}
-	if snapshot, err := ReadSelfAugmentStateSnapshot("legacy"); err != nil || snapshot.Kind != model.LegacySelfAugmentSummaryKind {
-		t.Fatalf("expected legacy kind to read, snapshot=%+v err=%v", snapshot, err)
+	if _, err := ReadSelfAugmentStateSnapshot("retired-kind"); err == nil || !strings.Contains(err.Error(), "contains kind") {
+		t.Fatalf("expected retired kind rejection, got %v", err)
 	}
 }
 func TestReadSelfAugmentStateSnapshotNormalizesLegacyFailureCause(t *testing.T) {

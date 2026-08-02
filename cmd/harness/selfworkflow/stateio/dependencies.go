@@ -6,7 +6,6 @@ import (
 )
 
 const (
-	legacySelfAugmentSummaryKind        = model.LegacySelfAugmentSummaryKind
 	selfAugmentCandidateStatusOpen      = augmentcatalog.SelfAugmentCandidateStatusOpen
 	selfAugmentCandidateStatusSatisfied = augmentcatalog.SelfAugmentCandidateStatusSatisfied
 	selfAugmentationPlanKind            = model.SelfAugmentationPlanKind

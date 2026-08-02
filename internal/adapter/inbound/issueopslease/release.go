@@ -1,4 +1,4 @@
-// Package issueopslease maps the legacy execution facade to the release use case.
+// Package issueopslease maps execution requests to the release use case.
 package issueopslease
 
 import (

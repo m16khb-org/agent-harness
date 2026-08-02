@@ -965,7 +965,7 @@ func validateExecutionTerminalReceipt(terminal port.OrcaTerminal, prepared port.
 }
 
 func validateExecutionIntentRun(run port.OrcaRun, prepared port.ExecutionOrcaWorkspaceReceipt, objective string) error {
-	if strings.TrimSpace(run.ID) == "" || run.Legacy || strings.TrimSpace(prepared.RuntimeID) == "" ||
+	if strings.TrimSpace(run.ID) == "" || strings.TrimSpace(prepared.RuntimeID) == "" ||
 		run.RuntimeID != prepared.RuntimeID || strings.TrimSpace(run.Objective) != strings.TrimSpace(objective) {
 		return fmt.Errorf("Orca Run does not match the sealed runtime and intent")
 	}

@@ -15,7 +15,6 @@ const (
 	SelfAugmentationPlanKind            = model.SelfAugmentationPlanKind
 	SelfVerificationKoreanName          = model.SelfVerificationKoreanName
 	SelfVerificationSummaryKind         = model.SelfVerificationSummaryKind
-	LegacySelfAugmentSummaryKind        = model.LegacySelfAugmentSummaryKind
 	SelfAugmentCandidateStatusOpen      = selfAugmentCandidateStatusOpen
 	SelfAugmentCandidateStatusSatisfied = selfAugmentCandidateStatusSatisfied
 )
@@ -27,7 +26,6 @@ const (
 	selfAugmentationPlanKind        = model.SelfAugmentationPlanKind
 	selfVerificationKoreanName      = model.SelfVerificationKoreanName
 	selfVerificationSummaryKind     = model.SelfVerificationSummaryKind
-	legacySelfAugmentSummaryKind    = model.LegacySelfAugmentSummaryKind
 )
 
 const selfVerifyStepBudgetMinRegressionMS int64 = 25
