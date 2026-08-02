@@ -30,6 +30,9 @@ func ValidateArtifact(record completioncontract.RecordSnapshot, requestedURL str
 	if (artifact.Provider == "github" && artifact.Kind != "pr") || (artifact.Provider == "gitlab" && artifact.Kind != "mr") {
 		return fmt.Errorf("remote artifact kind must match its provider")
 	}
+	if linkedProvider := recognizableIssueProvider(record.IssueURL); linkedProvider != "" && linkedProvider != artifact.Provider {
+		return fmt.Errorf("remote artifact provider must match linked issue provider")
+	}
 	if err := validateArtifactURL(artifact.URL, artifact.Provider, artifact.Kind); err != nil {
 		return err
 	}
@@ -54,6 +57,22 @@ func ValidateArtifact(record completioncontract.RecordSnapshot, requestedURL str
 	return nil
 }
 
+func recognizableIssueProvider(raw string) string {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return ""
+	}
+	host := strings.ToLower(parsed.Hostname())
+	path := strings.ToLower(parsed.Path)
+	if host == "github.com" && strings.Contains(path, "/issues/") {
+		return "github"
+	}
+	if strings.Contains(host, "gitlab") || strings.Contains(path, "/-/issues/") || strings.Contains(path, "/-/work_items/") {
+		return "gitlab"
+	}
+	return ""
+}
+
 func validateArtifactURL(raw, provider, kind string) error {
 	if raw == "" || strings.ContainsAny(raw, "\x00\r\n\t ") {
 		return fmt.Errorf("remote artifact url must be a canonical HTTPS URL")
@@ -65,7 +84,7 @@ func validateArtifactURL(raw, provider, kind string) error {
 	parts := splitPath(parsed.EscapedPath())
 	switch provider + ":" + kind {
 	case "github:pr":
-		if strings.ToLower(parsed.Hostname()) != "github.com" || len(parts) != 4 || parts[2] != "pull" || !decimal(parts[3]) {
+		if len(parts) != 4 || parts[2] != "pull" || !decimal(parts[3]) {
 			return fmt.Errorf("remote artifact url must be a GitHub pull request URL")
 		}
 	case "gitlab:mr":
@@ -79,17 +98,18 @@ func validateArtifactURL(raw, provider, kind string) error {
 }
 
 func artifactProjectKey(raw, provider, kind string) string {
-	parsed, err := url.Parse(raw)
-	if err != nil || parsed.Scheme != "https" || parsed.Hostname() == "" {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
 		return ""
 	}
 	parts := splitPath(parsed.EscapedPath())
+	host := normalizedWebHost(parsed)
 	switch provider {
 	case "github":
 		if len(parts) != 4 || (kind == "issue" && parts[2] != "issues") || (kind == "pr" && parts[2] != "pull") || !decimal(parts[3]) {
 			return ""
 		}
-		return strings.ToLower(parsed.Host + "/" + parts[0] + "/" + parts[1])
+		return host + "/" + parts[0] + "/" + parts[1]
 	case "gitlab":
 		separator := slices.Index(parts, "-")
 		if separator < 2 || separator != len(parts)-3 || !decimal(parts[len(parts)-1]) ||
@@ -97,10 +117,25 @@ func artifactProjectKey(raw, provider, kind string) string {
 			(kind == "mr" && parts[len(parts)-2] != "merge_requests") {
 			return ""
 		}
-		return strings.ToLower(parsed.Host + "/" + strings.Join(parts[:separator], "/"))
+		return host + "/" + strings.Join(parts[:separator], "/")
 	default:
 		return ""
 	}
+}
+
+func normalizedWebHost(parsed *url.URL) string {
+	host := strings.ToLower(parsed.Hostname())
+	port := parsed.Port()
+	if port != "" && port != "443" {
+		if strings.Contains(host, ":") {
+			return "[" + host + "]:" + port
+		}
+		return host + ":" + port
+	}
+	if strings.Contains(host, ":") {
+		return "[" + host + "]"
+	}
+	return host
 }
 
 func canonicalValues(values []string) []string {

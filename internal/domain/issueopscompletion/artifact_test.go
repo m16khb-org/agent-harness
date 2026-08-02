@@ -13,6 +13,12 @@ func TestValidateArtifactAcceptsCanonicalCurrentArtifact(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	record.IssueURL = "https://github.enterprise:443/acme/repo/issues/232"
+	record.Artifact.URL = "https://github.enterprise/acme/repo/pull/7"
+	if err := ValidateArtifact(record, record.Artifact.URL); err != nil {
+		t.Fatalf("GitHub Enterprise artifact: %v", err)
+	}
+
 	record.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/232"
 	record.Artifact.Provider = "gitlab"
 	record.Artifact.Kind = "mr"
@@ -32,6 +38,16 @@ func TestValidateArtifactRejectsNonCanonicalOrMismatchedEvidence(t *testing.T) {
 		{name: "missing artifact", mutate: func(r *completioncontract.RecordSnapshot) { r.Artifact = nil }, want: "durable verified"},
 		{name: "target", mutate: func(r *completioncontract.RecordSnapshot) { r.Artifact.TargetBranch = "release" }, want: "target branch"},
 		{name: "project", mutate: func(r *completioncontract.RecordSnapshot) { r.Artifact.URL = "https://github.com/other/repo/pull/7" }, url: "https://github.com/other/repo/pull/7", want: "linked issue project"},
+		{name: "project port", mutate: func(r *completioncontract.RecordSnapshot) {
+			r.IssueURL = "https://github.com:8443/acme/repo/issues/232"
+		}, want: "linked issue project"},
+		{name: "linked provider", mutate: func(r *completioncontract.RecordSnapshot) {
+			r.IssueURL = "https://gitlab.example.com/acme/repo/issues/232"
+			r.Artifact.URL = "https://gitlab.example.com/acme/repo/pull/7"
+		}, url: "https://gitlab.example.com/acme/repo/pull/7", want: "linked issue provider"},
+		{name: "linked issue authority", mutate: func(r *completioncontract.RecordSnapshot) {
+			r.IssueURL = "https://github.com/acme/repo/issues/232?redirect=other"
+		}, want: "linked issue project"},
 		{name: "labels", mutate: func(r *completioncontract.RecordSnapshot) { r.Artifact.Labels = []string{" issueops "} }, want: "labels are not canonical"},
 		{name: "assignee placeholder", mutate: func(r *completioncontract.RecordSnapshot) { r.Artifact.Assignees = []string{"self"} }, want: "verified provider user"},
 		{name: "requested url", url: "https://github.com/acme/repo/pull/8", want: "must match the durable"},
