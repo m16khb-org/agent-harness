@@ -95,7 +95,7 @@
 
 - [ ] **Step 2: Exercise the direct full-payload matrix in isolated fixture state**
 
-  Create isolated fixture state representing the active #200 lifecycle. Send complete native Codex and Claude pre-tool payloads, including external transcript metadata, for the exact holder and canonical cwd. Then change session, process receipt, and cwd one field at a time. Expected: exact holder allow; Codex native block and Claude native deny for every foreign case with the matching IssueOps classification.
+  Create one isolated fixture per host representing the same active #200 generation with the holder host projected to Codex or Claude respectively. Send complete native pre-tool payloads, including external transcript metadata, for the exact holder and canonical cwd. Change session and process receipt one field at a time. Also send an unrelated-cwd payload without the exact holder identity whose explicit filesystem target is inside the canonical worktree. Expected: per-host exact holder allow; Codex native block and Claude native deny for every foreign identity/process case. Preserve the existing source-cwd compatibility: an exact holder with an explicit canonical target is allowed from the source checkout and is not mislabeled as a foreign-cwd failure.
 
 - [ ] **Step 3: Prove Codex configuration discovery and live invocation**
 

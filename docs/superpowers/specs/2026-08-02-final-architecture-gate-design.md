@@ -159,11 +159,16 @@ and preparation capability ratchets must all remain green.
 Hook acceptance has two independent proof layers against the built child
 binary:
 
-1. A direct CLI matrix uses isolated fixture state and complete native Codex
-   and Claude payloads, including transcript metadata. The exact generation
-   holder in the canonical child worktree must be admitted; changing the
-   session, process receipt, or cwd one field at a time must return the native
-   Codex block or Claude deny with the same underlying IssueOps classification.
+1. A direct CLI matrix uses one isolated fixture per host and complete native
+   Codex and Claude payloads, including transcript metadata. Each fixture
+   projects the same generation holder under the payload's native host. The
+   exact holder in the canonical child worktree must be admitted; changing the
+   session or process receipt one field at a time must return the native Codex
+   block or Claude deny with the same underlying IssueOps classification. An
+   unrelated cwd without the exact holder identity is also denied when it
+   targets the canonical worktree. The existing source-cwd compatibility stays
+   intact: the exact holder may name an explicit canonical target while the
+   host session cwd is the source checkout.
 2. Fresh host processes use the default IssueOps state so their hook child
    processes can observe the real active lease. Codex loads the exact ignored
    project `.codex/hooks.json` copied from `configs/codex/hooks.json`, reports
