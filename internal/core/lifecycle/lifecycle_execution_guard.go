@@ -134,7 +134,7 @@ func exactCoordinatorChildHostSmoke(req lifecyclecontract.HookToolUseLifecycleRe
 		return false
 	}
 	tokens := commandparse.SplitCommandTokens(commandText)
-	if len(tokens) < 2 || tokens[0] != "scripts/verify-child-host-smoke.sh" {
+	if len(tokens) < 2 || !filepath.IsAbs(tokens[0]) {
 		return false
 	}
 	flags, ok := commandparse.ExactFlags(
@@ -168,6 +168,10 @@ func exactCoordinatorChildHostSmoke(req lifecyclecontract.HookToolUseLifecycleRe
 	if !ok {
 		return false
 	}
+	scriptPath := filepath.Join(coordinatorRoot, "scripts", "verify-child-host-smoke.sh")
+	if tokens[0] != scriptPath {
+		return false
+	}
 	sourceAuthority := strings.TrimSpace(req.SourceCheckout)
 	if sourceAuthority != "" {
 		// 명시적 SourceCheckout이 있으면 불일치를 Repo로 우회하지 않는다.
@@ -176,7 +180,7 @@ func exactCoordinatorChildHostSmoke(req lifecyclecontract.HookToolUseLifecycleRe
 		}
 	}
 	requestBase := hookRequestPathBase(req)
-	if !sameExecutionPath(requestBase, coordinatorRoot) {
+	if !sameExecutionPath(requestBase, sourceRoot) && !sameExecutionPath(requestBase, coordinatorRoot) {
 		return false
 	}
 	if repo := strings.TrimSpace(req.Repo); repo != "" &&
@@ -187,7 +191,7 @@ func exactCoordinatorChildHostSmoke(req lifecyclecontract.HookToolUseLifecycleRe
 		!trustedIssueOpsCheckout(childRoot, sourceRoot) || sameExecutionPath(coordinatorRoot, childRoot) {
 		return false
 	}
-	scriptInfo, err := os.Lstat(filepath.Join(coordinatorRoot, "scripts", "verify-child-host-smoke.sh"))
+	scriptInfo, err := os.Lstat(scriptPath)
 	if err != nil || !scriptInfo.Mode().IsRegular() || scriptInfo.Mode()&0o111 == 0 {
 		return false
 	}
@@ -228,10 +232,10 @@ func childHostSmokeInvocation(req lifecyclecontract.HookToolUseLifecycleRequest)
 	if len(tokens) == 0 {
 		return false
 	}
-	if tokens[0] == "scripts/verify-child-host-smoke.sh" {
+	if childHostSmokeScriptToken(tokens[0]) {
 		return true
 	}
-	if len(tokens) < 2 || tokens[1] != "scripts/verify-child-host-smoke.sh" {
+	if len(tokens) < 2 || !childHostSmokeScriptToken(tokens[1]) {
 		return false
 	}
 	switch searchrouting.SearchTokenName(tokens[0]) {
@@ -240,6 +244,15 @@ func childHostSmokeInvocation(req lifecyclecontract.HookToolUseLifecycleRequest)
 	default:
 		return false
 	}
+}
+
+func childHostSmokeScriptToken(token string) bool {
+	if token == "scripts/verify-child-host-smoke.sh" {
+		return true
+	}
+	cleaned := filepath.Clean(token)
+	return filepath.IsAbs(cleaned) && filepath.Base(cleaned) == "verify-child-host-smoke.sh" &&
+		filepath.Base(filepath.Dir(cleaned)) == "scripts"
 }
 
 func delegatedChildSmokeCoordinator(sourceRoot, childRoot, issue string) (string, bool) {
