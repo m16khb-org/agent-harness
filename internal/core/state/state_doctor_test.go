@@ -30,9 +30,9 @@ func TestStateDoctorDetectsCorruptRecords(t *testing.T) {
 	if !containsString(result.ValidKeys, "good") {
 		t.Fatalf("good key missing from valid keys: %+v", result)
 	}
-	for _, code := range []string{"invalid_json", "byte_count_mismatch", "invalid_timestamp"} {
-		if !stateDoctorHasIssue(result.Issues, code) {
-			t.Fatalf("missing issue %s: %+v", code, result.Issues)
+	for _, issue := range result.Issues {
+		if issue.Code != "invalid_state" || issue.Message != "invalid state" {
+			t.Fatalf("unexpected issue: %+v", issue)
 		}
 	}
 }
@@ -48,13 +48,37 @@ func TestStateDoctorEmptyDirIsHealthy(t *testing.T) {
 	}
 }
 
-func TestStateDoctorAcceptsIssueOpsResetReceiptDirectory(t *testing.T) {
+func TestStateDoctorProjectsInvalidExistingRecords(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", dir)
-	for _, owned := range []string{"issueops_reset_v1", "issueops_v1"} {
-		if err := os.MkdirAll(filepath.Join(dir, owned), 0o755); err != nil {
-			t.Fatal(err)
+	for name, raw := range map[string]string{
+		"missing": `{"key":"missing","content":"x","updated_at":"2000-01-01T00:00:00Z","bytes":1}`,
+		"zero":    `{"schema_version":0,"key":"zero","content":"x","updated_at":"2000-01-01T00:00:00Z","bytes":1}`,
+		"future":  `{"schema_version":2,"key":"future","content":"x","updated_at":"2000-01-01T00:00:00Z","bytes":1}`,
+		"broken":  `{`,
+		"legacy":  `{"schema_version":1,"key":"legacy","content":"x","updated_at":"2000-01-01T00:00:00Z","bytes":1,"legacy_authority":"x"}`,
+	} {
+		writeRawStateRow(t, dir, name, raw)
+	}
+	result, err := StateDoctor()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Healthy || result.Checked != 5 || len(result.Issues) != 5 {
+		t.Fatalf("result=%+v", result)
+	}
+	for _, issue := range result.Issues {
+		if issue.Code != "invalid_state" || issue.Message != "invalid state" {
+			t.Fatalf("issue=%+v", issue)
 		}
+	}
+}
+
+func TestStateDoctorAcceptsCurrentIssueOpsDirectory(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HARNESS_STATE_DIR", dir)
+	if err := os.MkdirAll(filepath.Join(dir, "issueops_v1"), 0o755); err != nil {
+		t.Fatal(err)
 	}
 
 	result, err := StateDoctor()
@@ -62,10 +86,10 @@ func TestStateDoctorAcceptsIssueOpsResetReceiptDirectory(t *testing.T) {
 		t.Fatalf("StateDoctor: %v", err)
 	}
 	if !result.OK || !result.Healthy {
-		t.Fatalf("issueops v1 reset receipt and namespace directories should be harness-owned: %+v", result)
+		t.Fatalf("current issueops namespace should be harness-owned: %+v", result)
 	}
 	if len(result.Issues) != 0 {
-		t.Fatalf("issueops v1 reset receipt and namespace directories should not warn: %+v", result.Issues)
+		t.Fatalf("current issueops namespace should not warn: %+v", result.Issues)
 	}
 }
 
@@ -102,7 +126,7 @@ func TestStateDoctorAllowsHarnessOwnedAuxiliaryState(t *testing.T) {
 		t.Fatalf("unknown auxiliary state should still keep doctor unhealthy: %+v", result)
 	}
 	for _, issue := range result.Issues {
-		if strings.Contains(issue.Path, "hook-failures.jsonl") || strings.Contains(issue.Path, ".state-lock") || strings.Contains(issue.Path, "issueops-benchmarks") || strings.Contains(issue.Path, "audit") {
+		if strings.Contains(issue.Path, "hook-failures.jsonl") || strings.Contains(issue.Path, "issueops-benchmarks") || strings.Contains(issue.Path, "audit") {
 			t.Fatalf("harness-owned auxiliary state should not warn: %+v", result.Issues)
 		}
 	}

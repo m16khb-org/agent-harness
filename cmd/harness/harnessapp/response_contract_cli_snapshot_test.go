@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	statecontract "agent-harness/internal/contract/state"
-
 	"agent-harness/cmd/harness/harnessapp/responsecontract"
 	"agent-harness/internal/core/sqlstore"
 )
@@ -194,19 +192,6 @@ func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]stri
 		return runState([]string{"prune", "--max-age", "1h", "--confirm", "--json"})
 	})
 
-	legacy := statecontract.RecordEnvelope{
-		Key:       "legacy",
-		Content:   "legacy content",
-		UpdatedAt: "2000-01-01T00:00:00Z",
-		Bytes:     len([]byte("legacy content")),
-	}
-	mustWriteStateRecordForContract(t, stateDir, "legacy", legacy)
-	cliSnapshot["state_migrate_dry_run"] = runCLIJSONContract(t, replacements, func() error {
-		return runState([]string{"migrate", "--json"})
-	})
-	cliSnapshot["state_migrate_confirm"] = runCLIJSONContract(t, replacements, func() error {
-		return runState([]string{"migrate", "--confirm", "--json"})
-	})
 	cliSnapshot["state_doctor_healthy"] = runCLIJSONContract(t, replacements, func() error {
 		return runState([]string{"doctor", "--json"})
 	})

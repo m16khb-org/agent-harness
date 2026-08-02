@@ -37,12 +37,12 @@ func TestValidateMCPWithDepsCoversSuccessAndResponseFailures(t *testing.T) {
 		return StepResult{Label: "MCP smoke", OK: true, Stdout: `{"jsonrpc":"2.0","id":1,"result":{}}` + "\n"}
 	}
 	wrongCount := ValidateMCPWithDeps("harness", root, deps)
-	if wrongCount.OK || !strings.Contains(wrongCount.Error, "expected 12 MCP responses, got 1") {
+	if wrongCount.OK || !strings.Contains(wrongCount.Error, "expected 11 MCP responses, got 1") {
 		t.Fatalf("expected response count failure, got %+v", wrongCount)
 	}
 
 	deps.RunCommandStepEnvWithBudget = func(string, string, time.Duration, string, []string, int, string, ...string) StepResult {
-		return StepResult{Label: "MCP smoke", OK: true, Stdout: strings.Repeat("not-json\n", 12)}
+		return StepResult{Label: "MCP smoke", OK: true, Stdout: strings.Repeat("not-json\n", 11)}
 	}
 	badJSON := ValidateMCPWithDeps("harness", root, deps)
 	if badJSON.OK || !strings.Contains(badJSON.Error, "response 1 is invalid JSON") {
@@ -50,7 +50,7 @@ func TestValidateMCPWithDepsCoversSuccessAndResponseFailures(t *testing.T) {
 	}
 
 	deps.RunCommandStepEnvWithBudget = func(string, string, time.Duration, string, []string, int, string, ...string) StepResult {
-		return StepResult{Label: "MCP smoke", OK: true, Stdout: strings.Repeat(`{"jsonrpc":"2.0","id":1,"error":{"code":-1}}`+"\n", 12)}
+		return StepResult{Label: "MCP smoke", OK: true, Stdout: strings.Repeat(`{"jsonrpc":"2.0","id":1,"error":{"code":-1}}`+"\n", 11)}
 	}
 	missingResult := ValidateMCPWithDeps("harness", root, deps)
 	if missingResult.OK || !strings.Contains(missingResult.Error, "response 1 has no result") {
@@ -58,7 +58,7 @@ func TestValidateMCPWithDepsCoversSuccessAndResponseFailures(t *testing.T) {
 	}
 
 	deps.RunCommandStepEnvWithBudget = func(string, string, time.Duration, string, []string, int, string, ...string) StepResult {
-		return StepResult{Label: "MCP smoke", OK: true, Stdout: strings.Repeat(`{"jsonrpc":"2.0","id":1,"result":{}}`+"\n", 12)}
+		return StepResult{Label: "MCP smoke", OK: true, Stdout: strings.Repeat(`{"jsonrpc":"2.0","id":1,"result":{}}`+"\n", 11)}
 	}
 	missingTool := ValidateMCPWithDeps("harness", root, deps)
 	if missingTool.OK || missingTool.Error != "MCP smoke did not expose expected tool/resource" {
@@ -106,11 +106,11 @@ func validMCPResponses() string {
 	payload := strings.Join([]string{
 		"atomic_commit_preflight", "docs_index", "project_docs_route", "project_docs_read", "project_docs_update", "project_docs_record",
 		"api_doc_static_check", "api_doc_review", "harness://project-docs", "harness://project-doc-upkeep", "command_policy_check", "state_write",
-		"state_prune", "state_doctor", "state_migrate", "self_augment", "self_augment_lesson", "self_verify", "self_verify_candidates",
-		"self_verify_history", "self_verify_compare", "self_verify_promote", "dry_run", "healthy", "to_schema", "Lore:",
+		"state_prune", "state_doctor", "self_augment", "self_augment_lesson", "self_verify", "self_verify_candidates",
+		"self_verify_history", "self_verify_compare", "self_verify_promote", "dry_run", "healthy", "Lore:",
 	}, " ")
-	lines := make([]string, 0, 12)
-	for id := 1; id <= 12; id++ {
+	lines := make([]string, 0, 11)
+	for id := 1; id <= 11; id++ {
 		body, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": id, "result": map[string]any{"text": payload}})
 		lines = append(lines, string(body))
 	}

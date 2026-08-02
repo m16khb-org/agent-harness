@@ -77,7 +77,7 @@ func (s *stateRoundtripSelfVerifySession) validateHistoryAndRetention(baselineCo
 	if err := json.Unmarshal([]byte(doctor.Stdout), &doctorResult); err != nil {
 		return s.fail(err.Error())
 	}
-	if !doctorResult.OK || doctorResult.Healthy || !containsString(doctorResult.ValidKeys, key) || !stateDoctorHasIssueCode(doctorResult.Issues, "invalid_json") {
+	if !doctorResult.OK || doctorResult.Healthy || !containsString(doctorResult.ValidKeys, key) || !stateDoctorHasIssueCode(doctorResult.Issues, "invalid_state") {
 		return s.fail("state doctor did not report corrupt fixture and preserve valid key")
 	}
 	return StepResult{OK: true}

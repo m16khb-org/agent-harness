@@ -4,20 +4,14 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"io"
 	"strings"
+
+	statecontract "agent-harness/internal/contract/state"
 )
 
 const SchemaVersion = 1
-
-var ErrMalformedSchema = errors.New("malformed issueops schema")
-
-type UnsupportedSchemaError struct{ Version int }
-
-func (e UnsupportedSchemaError) Error() string {
-	return fmt.Sprintf("unsupported issueops schema_version %d; current is %d", e.Version, SchemaVersion)
-}
 
 // Record은 release가 변경하지 않는 v1 sidecar를 canonical DTO로 보존한다.
 type Record struct {
@@ -109,74 +103,43 @@ type ProcessReceipt struct {
 }
 
 func Decode(id string, data []byte) (Record, error) {
-	var header struct {
-		SchemaVersion int    `json:"schema_version"`
-		ID            string `json:"id"`
-	}
-	if err := json.Unmarshal(data, &header); err != nil {
-		return Record{}, schemaDecodeError(err)
-	}
-	if header.SchemaVersion == 0 {
-		header.SchemaVersion = SchemaVersion
-	}
-	if header.SchemaVersion != SchemaVersion {
-		return Record{}, UnsupportedSchemaError{Version: header.SchemaVersion}
-	}
-	if header.ID != id {
-		return Record{}, fmt.Errorf("issueops id mismatch: record has %q", header.ID)
-	}
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return Record{}, schemaDecodeError(err)
-	}
-	for _, name := range []string{"execution_handoff", "execution_workspace", "ownership", "remote_create_claim"} {
-		raw := bytes.TrimSpace(fields[name])
-		if len(raw) > 0 && !bytes.Equal(raw, []byte("null")) {
-			return Record{}, fmt.Errorf("legacy execution authority %s is forbidden", name)
-		}
-	}
 	var shape stableV1Record
-	if err := json.Unmarshal(data, &shape); err != nil {
-		return Record{}, schemaDecodeError(err)
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&shape); err != nil {
+		return Record{}, statecontract.Invalid("")
 	}
-	if shape.SchemaVersion == 0 {
-		shape.SchemaVersion = SchemaVersion
+	var trailing json.RawMessage
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		return Record{}, statecontract.Invalid("")
+	}
+	if shape.SchemaVersion != SchemaVersion || shape.ID != id {
+		return Record{}, statecontract.Invalid("")
 	}
 	canonical, err := json.Marshal(shape)
 	if err != nil {
-		return Record{}, err
+		return Record{}, statecontract.Invalid("")
 	}
 	var record Record
 	if err := json.Unmarshal(canonical, &record); err != nil {
-		return Record{}, schemaDecodeError(err)
+		return Record{}, statecontract.Invalid("")
 	}
 	record.OK = true
 	if err := validateRecord(record); err != nil {
-		return Record{}, err
+		return Record{}, statecontract.Invalid("")
 	}
 	return record, nil
 }
 
 func Encode(record Record) ([]byte, error) {
 	record.OK = true
-	if record.SchemaVersion == 0 {
-		record.SchemaVersion = SchemaVersion
-	}
 	if record.SchemaVersion != SchemaVersion {
-		return nil, UnsupportedSchemaError{Version: record.SchemaVersion}
+		return nil, statecontract.Invalid("")
 	}
 	if err := validateRecord(record); err != nil {
 		return nil, err
 	}
 	return json.MarshalIndent(record, "", "  ")
-}
-
-func schemaDecodeError(err error) error {
-	var typeError *json.UnmarshalTypeError
-	if errors.As(err, &typeError) {
-		return err
-	}
-	return fmt.Errorf("%w: %w", ErrMalformedSchema, err)
 }
 
 func validateRecord(record Record) error {

@@ -293,8 +293,7 @@ def temp_state_worker_policy(report: dict[str, Any]) -> None:
         env_state = {"HARNESS_STATE_DIR": state}
         env_worker = {"HARNESS_WORKER_DIR": worker}
         commands = [
-            ("state_migrate", [str(BIN), "state", "migrate", "--json"], env_state),
-            ("state_write", [str(BIN), "state", "write", "--key", "stability-audit", "--value", "ok", "--json"], env_state),
+            ("state_write", [str(BIN), "state", "write", "--key", "stability-audit", "--value", "current-v1", "--json"], env_state),
             ("state_read", [str(BIN), "state", "read", "--key", "stability-audit", "--json"], env_state),
             ("state_doctor", [str(BIN), "state", "doctor", "--json"], env_state),
             ("policy_check", [str(BIN), "policy", "check", "--workspace-root", str(ROOT), "--cwd", str(ROOT), "--json", "--", "git", "status", "--short"], None),
@@ -312,6 +311,16 @@ def temp_state_worker_policy(report: dict[str, Any]) -> None:
                 try:
                     parsed = parse_json_output(res["stdout"])
                     step_ok = bool(parsed.get("ok", True))
+                    if name == "state_read":
+                        record = parsed.get("record", {})
+                        expected = {
+                            "schema_version": 1,
+                            "key": "stability-audit",
+                            "content": "current-v1",
+                        }
+                        if any(record.get(field) != value for field, value in expected.items()):
+                            step_ok = False
+                            parsed["validation_error"] = "unexpected_current_state_record"
                 except Exception as exc:
                     step_ok = False
                     parsed = {"parse_error": str(exc)}

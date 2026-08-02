@@ -52,7 +52,6 @@ func TestExecutionLeaseReleaseDifferentialSuccess(t *testing.T) {
 				})
 			},
 		},
-		{name: "legacy-zero-schema", schema: 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			currentRoot := t.TempDir()
@@ -143,77 +142,6 @@ func releaseDifferentialRichOrcaRecord(record issueops.IssueOpsRecord) issueops.
 		BaseOID: strings.Repeat("d", 40), MergeCommit: strings.Repeat("e", 40), Actor: "codex", At: "2026-07-27T00:00:05Z",
 	}}
 	return record
-}
-
-func TestExecutionLeaseReleaseDifferentialLegacyMissingSchema(t *testing.T) {
-	record, _ := releaseDifferentialActiveRecord(t, 1, "")
-	_, currentBytes, err := encodeIssueOpsRecord(record)
-	if err != nil {
-		t.Fatal(err)
-	}
-	legacyBytes := bytes.Replace(currentBytes, []byte("  \"schema_version\": 1,\n"), nil, 1)
-
-	var currentLegacy issueops.IssueOpsRecord
-	if err := json.Unmarshal(legacyBytes, &currentLegacy); err != nil {
-		t.Fatal(err)
-	}
-	_, normalizedCurrent, err := encodeIssueOpsRecord(currentLegacy)
-	if err != nil {
-		t.Fatalf("current legacy normalization: %v", err)
-	}
-	var proposedLegacy leasecontract.Record
-	if err := json.Unmarshal(legacyBytes, &proposedLegacy); err != nil {
-		t.Fatalf("proposed legacy unmarshal: %v", err)
-	}
-	normalizedProposed, err := leasecontract.Encode(proposedLegacy)
-	if err != nil {
-		t.Fatalf("proposed legacy normalization: %v", err)
-	}
-	if !bytes.Equal(normalizedCurrent, normalizedProposed) {
-		t.Fatalf("legacy normalization differs\ncurrent:\n%s\nproposed:\n%s", normalizedCurrent, normalizedProposed)
-	}
-}
-
-func TestExecutionLeaseReleaseProductionNormalizesLegacySchema(t *testing.T) {
-	for _, tc := range []struct {
-		name      string
-		transform func([]byte) []byte
-	}{
-		{
-			name: "missing",
-			transform: func(data []byte) []byte {
-				return bytes.Replace(data, []byte("  \"schema_version\": 1,\n"), nil, 1)
-			},
-		},
-		{
-			name: "zero",
-			transform: func(data []byte) []byte {
-				return bytes.Replace(data, []byte("\"schema_version\": 1"), []byte("\"schema_version\": 0"), 1)
-			},
-		},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root := t.TempDir()
-			record, actor := releaseDifferentialActiveRecord(t, 1, "worker-7")
-			raw := tc.transform(releaseDifferentialRawRecord(t, record, func(data []byte) []byte { return data }))
-			releaseDifferentialSeedRaw(t, root, record.ID, leaseHolderIndexKey(actor), raw)
-			service := leaseapp.NewReleaseService(
-				releaseDifferentialSQLite(t, root),
-				releaseDifferentialClock{at: time.Date(2026, 7, 27, 1, 2, 3, 4, time.UTC)},
-				releaseDifferentialProcessInspector,
-				leaseadapter.FilesystemPathMatcher{},
-			)
-			if _, err := service.Release(context.Background(), leaseapp.ReleaseRequest{
-				ID: record.ID, Generation: 1, Actor: releaseDifferentialDomainActor(actor), Ancestry: releaseDifferentialProcessAncestry(actor), CWD: record.Execution.Workspace.Root,
-			}); err != nil {
-				t.Fatalf("production legacy release: %v", err)
-			}
-			persisted, _, indexExists := releaseDifferentialSnapshot(t, root, record.ID, leaseHolderIndexKey(actor))
-			if !bytes.Contains(persisted, []byte("\"schema_version\": 1")) || indexExists {
-				t.Fatalf("legacy normalization persistence mismatch: index=%t record=%s", indexExists, persisted)
-			}
-		})
-	}
 }
 
 func TestExecutionLeaseReleaseDifferentialMissingHolderIndex(t *testing.T) {
@@ -409,7 +337,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					return bytes.Replace(data, []byte("\n}"), []byte(",\n  \"execution_handoff\": {\"legacy\": true}\n}"), 1)
 				})
 			},
-			expected: string(leasecontract.FailurePersistence),
+			expected: string(leasecontract.FailureInvalidState),
 		},
 		{
 			name: "invalid-execution-mode",
@@ -418,7 +346,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					return bytes.Replace(data, []byte("\"mode\": \"direct\""), []byte("\"mode\": \"invalid\""), 1)
 				})
 			},
-			expected: string(leasecontract.FailurePersistence),
+			expected: string(leasecontract.FailureInvalidState),
 		},
 		{
 			name: "active-lease-missing-claimed-at",
@@ -432,7 +360,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					)
 				})
 			},
-			expected: string(leasecontract.FailurePersistence),
+			expected: string(leasecontract.FailureInvalidState),
 		},
 		{
 			name: "direct-mode-with-orca-binding",
@@ -443,7 +371,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					return bytes.Replace(data, []byte("\"driver\": \"orca\""), []byte("\"driver\": \"git\""), 1)
 				})
 			},
-			expected: string(leasecontract.FailurePersistence),
+			expected: string(leasecontract.FailureInvalidState),
 		},
 		{
 			name: "malformed-pending-sidecar",
@@ -452,7 +380,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					execution["pending"] = json.RawMessage(`"not-an-object"`)
 				})
 			},
-			expected: string(leasecontract.FailurePersistence),
+			expected: string(leasecontract.FailureInvalidState),
 		},
 		{
 			name: "malformed-completion-sidecar",
@@ -461,7 +389,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					execution["completion"] = json.RawMessage(`{"final_head":"short"}`)
 				})
 			},
-			expected: string(leasecontract.FailurePersistence),
+			expected: string(leasecontract.FailureInvalidState),
 		},
 		{
 			name: "malformed-failure-sidecar",
@@ -470,7 +398,7 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					execution["failure"] = json.RawMessage(`{"at":"2026-07-27T00:00:04Z"}`)
 				})
 			},
-			expected: string(leasecontract.FailurePersistence),
+			expected: string(leasecontract.FailureInvalidState),
 		},
 		{
 			name: "malformed-sync-base-events-sidecar",
@@ -479,21 +407,21 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					execution["sync_base_events"] = json.RawMessage(`{}`)
 				})
 			},
-			expected: string(leasecontract.FailurePersistence),
+			expected: string(leasecontract.FailureInvalidState),
 		},
 		{
 			name: "malformed-schema",
 			rawRecord: func(*testing.T, issueops.IssueOpsRecord) []byte {
 				return []byte(`{"schema_version":`)
 			},
-			expected: string(leasecontract.FailureMalformedSchema),
+			expected: string(leasecontract.FailureInvalidState),
 		},
 		{
 			name: "schema-version-type-mismatch",
 			rawRecord: func(*testing.T, issueops.IssueOpsRecord) []byte {
 				return []byte(`{"ok":true,"schema_version":"1","id":"io-d1ff3e3a7e01"}`)
 			},
-			expected: string(leasecontract.FailurePersistence),
+			expected: string(leasecontract.FailureInvalidState),
 		},
 		{
 			name: "repo-type-mismatch",
@@ -507,14 +435,14 @@ func TestExecutionLeaseReleaseDifferentialDenialsAreAtomic(t *testing.T) {
 					return replaced
 				})
 			},
-			expected: string(leasecontract.FailurePersistence),
+			expected: string(leasecontract.FailureInvalidState),
 		},
 		{
 			name: "future-schema",
 			rawRecord: func(*testing.T, issueops.IssueOpsRecord) []byte {
 				return []byte(`{"ok":true,"schema_version":2,"id":"io-d1ff3e3a7e01"}`)
 			},
-			expected: string(leasecontract.FailureUnsupportedSchema),
+			expected: string(leasecontract.FailureInvalidState),
 		},
 		{
 			name:       "reverse-index-conflict",
@@ -1339,17 +1267,11 @@ func classifyCurrentReleaseDeny(err error) string {
 		return string(leasedomain.DenyLeaseAuthority)
 	case strings.Contains(message, "release cwd must be the canonical worktree"):
 		return string(leasedomain.DenyCanonicalCWD)
-	case strings.Contains(message, "unsupported issueops schema_version"):
-		return string(leasecontract.FailureUnsupportedSchema)
-	case strings.Contains(message, "unexpected end of JSON input"):
-		return string(leasecontract.FailureMalformedSchema)
+	case strings.Contains(message, "invalid state"):
+		return string(leasecontract.FailureInvalidState)
 	case strings.Contains(message, "refusing to delete another lifecycle"):
 		return string(leasecontract.FailurePersistence)
 	default:
-		var syntaxError *json.SyntaxError
-		if errors.As(err, &syntaxError) {
-			return string(leasecontract.FailureMalformedSchema)
-		}
 		return string(leasecontract.FailurePersistence)
 	}
 }

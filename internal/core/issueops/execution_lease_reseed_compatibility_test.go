@@ -10,9 +10,6 @@ import (
 )
 
 func reseedExecutionCompatibilityOracle(ctx context.Context, stateRoot string, req ExecutionReplaceRequest, deps ExecutionReplaceDependencies) (ExecutionReplaceResult, error) {
-	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, err
-	}
 	actor, err := normalizeNativeActor(req.Actor)
 	if err != nil {
 		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, err

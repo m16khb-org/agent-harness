@@ -3,7 +3,6 @@ package issueopslease
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -79,12 +78,6 @@ func publicReleaseError(err error, generation uint64) error {
 	var failure *leasecontract.Failure
 	if !errors.As(err, &failure) {
 		return err
-	}
-	if failure.Code == leasecontract.FailureMalformedSchema {
-		var syntax *json.SyntaxError
-		if errors.As(failure, &syntax) {
-			return syntax
-		}
 	}
 	return failure.Cause
 }

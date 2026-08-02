@@ -107,11 +107,6 @@ func SyncExecutionBase(ctx context.Context, stateRoot string, req ExecutionSyncB
 			fmt.Errorf("execution sync-base requires exactly one mode: --preview, --apply, --finalize, or --abort")
 	}
 	mutating := mode != ExecutionSyncBasePreview
-	if mutating {
-		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-			return ExecutionSyncBaseResult{OK: false, ID: req.ID, Mode: mode}, err
-		}
-	}
 	record, err := ReadIssueOps(stateRoot, req.ID)
 	if err != nil {
 		return ExecutionSyncBaseResult{OK: false, ID: req.ID, Mode: mode}, err

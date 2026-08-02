@@ -46,10 +46,21 @@ func TestUsageIncludesIssueOpsExecutionActions(t *testing.T) {
 		"execution resume",
 		"execution reconcile",
 		"execution complete",
-		"reset-legacy",
 	} {
 		if !strings.Contains(usage, action) {
 			t.Fatalf("usage missing IssueOps v1 action %q\n%s", action, usage)
+		}
+	}
+}
+
+func TestUsageOmitsRetiredStateAndIssueOpsMigration(t *testing.T) {
+	usage := Usage("test")
+	for _, retired := range []string{
+		strings.Join([]string{"state", "migrate"}, " "),
+		strings.Join([]string{"reset", "legacy"}, "-"),
+	} {
+		if strings.Contains(usage, retired) {
+			t.Fatalf("usage still advertises retired surface %q", retired)
 		}
 	}
 }

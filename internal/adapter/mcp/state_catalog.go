@@ -40,12 +40,5 @@ func StateTools() []Tool {
 			Description: "Run sqlite store maintenance on every existing harness store root: truncate the WAL via wal_checkpoint(TRUNCATE) and re-assert private 0600 file modes. Roots without a store are skipped, never created.",
 			InputSchema: map[string]any{"type": "object", "properties": map[string]any{}},
 		},
-		{
-			Name:        "state_migrate",
-			Description: "Migrate valid legacy state checkpoints to the current schema. Defaults to dry-run; pass confirm=true to rewrite eligible records.",
-			InputSchema: map[string]any{"type": "object", "properties": map[string]any{
-				"confirm": map[string]any{"type": "boolean", "description": "When true, rewrite legacy records; false or omitted performs a dry-run."},
-			}},
-		},
 	}
 }

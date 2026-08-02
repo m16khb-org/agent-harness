@@ -12,6 +12,7 @@ import (
 	leaseadapter "agent-harness/internal/adapter/outbound/issueopslease"
 	leaseapp "agent-harness/internal/application/issueopslease"
 	leasecontract "agent-harness/internal/contract/issueopslease"
+	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/core/issueops"
 	leasedomain "agent-harness/internal/domain/issueopslease"
 )
@@ -74,7 +75,7 @@ func TestPublicReleaseErrorRetainsCompatibilityText(t *testing.T) {
 	}{
 		{name: "holder", err: leasedomain.Deny(leasedomain.DenyLeaseAuthority, errors.New("internal")), want: "only the current holder may release generation 7"},
 		{name: "cwd", err: leasedomain.Deny(leasedomain.DenyCanonicalCWD, errors.New("internal")), want: "release cwd must be the canonical worktree"},
-		{name: "unsupported", err: leasecontract.Fail(leasecontract.FailureUnsupportedSchema, leasecontract.UnsupportedSchemaError{Version: 2}), want: "unsupported issueops schema_version 2; current is 1"},
+		{name: "invalid state", err: leasecontract.Fail(leasecontract.FailureInvalidState, statecontract.ErrInvalidState), want: "invalid state"},
 		{name: "persistence", err: leasecontract.Fail(leasecontract.FailurePersistence, errors.New("holder index is unavailable")), want: "holder index is unavailable"},
 	}
 	for _, tc := range cases {
@@ -154,9 +155,9 @@ func TestReleaseHandlerPreservesLegacyContractAndPersistenceText(t *testing.T) {
 		want string
 	}{
 		{
-			name: "future schema",
-			err:  leasecontract.Fail(leasecontract.FailureUnsupportedSchema, leasecontract.UnsupportedSchemaError{Version: 2}),
-			want: "unsupported issueops schema_version 2; current is 1",
+			name: "invalid state",
+			err:  leasecontract.Fail(leasecontract.FailureInvalidState, statecontract.ErrInvalidState),
+			want: "invalid state",
 		},
 		{
 			name: "conflicting holder index",

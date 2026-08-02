@@ -13,10 +13,8 @@ type stateDoctorEntryInspection struct {
 }
 
 // inspectStateDoctorEntry flags foreign files in the state directory. State
-// records live as database rows, so the only files the harness owns here are
-// the sqlite databases (and their sidecars), the hook failure log, and legacy
-// leftovers from the pre-sqlite layout (*.json records and lock files), which
-// are ignored rather than flagged.
+// records live as database rows, so only current sqlite stores and current
+// harness-owned auxiliary state are accepted here.
 func inspectStateDoctorEntry(dir string, entry os.DirEntry) stateDoctorEntryInspection {
 	name := entry.Name()
 	path := filepath.Join(dir, name)
@@ -44,7 +42,7 @@ func inspectStateDoctorEntry(dir string, entry os.DirEntry) stateDoctorEntryInsp
 
 func isHarnessOwnedStateDirectory(name string) bool {
 	switch name {
-	case "projects", "daemon", "worker", "loop", "issueops", "issueops-benchmarks", "issueops_v1", "issueops_reset_v1", "audit":
+	case "projects", "daemon", "worker", "loop", "issueops-benchmarks", "issueops_v1", "native-activation", "audit":
 		return true
 	default:
 		return false
@@ -57,12 +55,6 @@ func isHarnessOwnedStateFile(name string) bool {
 		if name == base || strings.HasPrefix(name, base+"-") {
 			return true
 		}
-	}
-	// Legacy pre-sqlite layout leftovers: JSON record files and advisory lock
-	// files. They are inert after the fresh-start migration and not worth a
-	// warning per file.
-	if strings.HasSuffix(name, ".json") || strings.HasSuffix(name, ".state-lock") || strings.HasSuffix(name, ".lock") {
-		return true
 	}
 	switch name {
 	case HookFailureLogFile, "hook-metrics.jsonl", storeMaintainSentinel:

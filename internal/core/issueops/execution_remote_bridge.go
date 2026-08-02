@@ -43,9 +43,6 @@ type RemotePublicationIntentState struct {
 
 func PrepareRemotePublication(_ context.Context, stateRoot string, req RemotePullRequestRequest) (RemotePublicationPreparedState, error) {
 	if req.Confirm {
-		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-			return RemotePublicationPreparedState{}, err
-		}
 		actor, err := normalizeNativeActor(req.Actor)
 		if err != nil {
 			return RemotePublicationPreparedState{}, err

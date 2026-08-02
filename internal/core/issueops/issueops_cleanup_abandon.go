@@ -471,9 +471,6 @@ func cleanupAbandonIntentOperationIDs(record issueops.IssueOpsRecord) []string {
 // 행이 없으면 성공(멱등 — normalizeOrcaRemoveWorktreeErr 계약 동형), 있는데
 // 소유자가 다르거나 소유자를 읽을 수 없으면 하드 에러.
 func deleteAbandonedIssueOps(ctx context.Context, stateRoot string, record issueops.IssueOpsRecord, operationIDs []string) ([]string, error) {
-	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-		return nil, err
-	}
 	id, err := normalizeIssueOpsID(record.ID)
 	if err != nil {
 		return nil, err

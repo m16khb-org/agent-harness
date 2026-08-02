@@ -287,21 +287,6 @@ func TestExecutionSnapshotFileFlagMatchesCLIContract(t *testing.T) {
 	}
 }
 
-func TestResetLegacyUsesExactSchemaFlags(t *testing.T) {
-	command, ok := ParseExactIssueOpsCommand("agent-harness issueops reset-legacy --target-schema 1 --confirm --expected-fingerprint abc --json")
-	if !ok || command.Path != "reset-legacy" {
-		t.Fatalf("reset command did not parse: %#v ok=%v", command, ok)
-	}
-	values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
-	if !ok {
-		t.Fatal("reset-legacy command has no exact flag spec")
-	}
-	flags, ok := ExactFlags(command, values, booleans, repeatable)
-	if !ok || flags["--target-schema"][0] != "1" || flags["--expected-fingerprint"][0] != "abc" {
-		t.Fatalf("reset flags = %#v ok=%v", flags, ok)
-	}
-}
-
 func TestRemovedExecutionCommandsHaveNoFlagSpecs(t *testing.T) {
 	for _, path := range []string{"resume", "execution decide", "worktree prepare", "worktree prepare-tools", "worktree reconcile", "heartbeat"} {
 		if _, _, _, ok := IssueOpsCommandSpec(path); ok {

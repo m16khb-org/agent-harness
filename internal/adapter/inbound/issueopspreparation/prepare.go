@@ -4,12 +4,12 @@ package issueopspreparation
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
+	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/core/issueops"
 )
 
@@ -128,15 +128,8 @@ func cloneStrings(values []string) []string {
 }
 
 func publicError(err error) error {
-	if errors.Is(err, leasecontract.ErrMalformedSchema) {
-		var syntax *json.SyntaxError
-		if errors.As(err, &syntax) {
-			return syntax
-		}
-	}
-	var unsupported leasecontract.UnsupportedSchemaError
-	if errors.As(err, &unsupported) {
-		return unsupported
+	if errors.Is(err, statecontract.ErrInvalidState) {
+		return statecontract.ErrInvalidState
 	}
 	return err
 }

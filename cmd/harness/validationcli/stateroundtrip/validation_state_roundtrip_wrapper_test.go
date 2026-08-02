@@ -71,7 +71,7 @@ case "$*" in
     printf '{"ok":true,"confirm":true,"deleted_keys":["%s"]}\n' "$old_key"
     ;;
   state\ doctor\ --json)
-	printf '{"ok":true,"healthy":false,"valid_keys":["%s"],"issues":[{"code":"invalid_json"}]}\n' "$key"
+	printf '{"ok":true,"healthy":false,"valid_keys":["%s"],"issues":[{"code":"invalid_state"}]}\n' "$key"
     ;;
   self-verify\ compare*)
     case "$*" in

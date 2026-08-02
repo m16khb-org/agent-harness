@@ -516,8 +516,6 @@ func TestCLIFacadeWrappers(t *testing.T) {
 	_ = runStateList([]string{"--json"})
 	_ = runStatePrune([]string{"--dry-run", "--json"})
 	_ = runStateDoctor([]string{"--json"})
-	_ = runStateMigrate([]string{"--json"})
-
 	_ = runStatus([]string{"--repo", root, "--json"})
 	_ = buildHarnessStatus(root)
 	_ = runVerifyWork([]string{"--repo", root, "--json"})

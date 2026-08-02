@@ -38,7 +38,7 @@ func wireBasicCLIDeps() {
 		CheckDaemonStatus:        checkDaemonStatus,
 		CollectOperationalHealth: operationalCollector.Collect,
 	})
-	installcli.Configure(installcli.Deps{HarnessRoot: harnessRoot})
+	installcli.Configure(installcli.Deps{HarnessRoot: harnessRoot, ActivationBackend: nativeActivationBackend()})
 	qualitycli.Configure(qualitycli.Deps{
 		HarnessRoot: harnessRoot,
 		Version:     version,
@@ -196,10 +196,6 @@ func runStatePrune(args []string) error {
 
 func runStateDoctor(args []string) error {
 	return statecli.RunDoctor(args)
-}
-
-func runStateMigrate(args []string) error {
-	return statecli.RunMigrate(args)
 }
 
 func runStatus(args []string) error {

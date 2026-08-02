@@ -17,7 +17,6 @@ type StateListResult = corestate.StateListResult
 type StatePruneResult = corestate.StatePruneResult
 type StateDoctorIssue = corestate.StateDoctorIssue
 type StateDoctorResult = corestate.StateDoctorResult
-type StateMigrateResult = corestate.StateMigrateResult
 
 func StateDir() string {
 	return corestate.StateDir()
@@ -53,10 +52,6 @@ func StatePrune(maxAge time.Duration, confirm bool) (StatePruneResult, error) {
 
 func StatePrunePrefix(prefix string, maxAge time.Duration, maxRecords int, confirm bool) (StatePruneResult, error) {
 	return corestate.StatePrunePrefix(prefix, maxAge, maxRecords, confirm)
-}
-
-func StateMigrate(confirm bool) (StateMigrateResult, error) {
-	return corestate.StateMigrate(confirm)
 }
 
 func StateDelete(key string) error {

@@ -217,10 +217,6 @@ type orcaApplicationRepositoryFake struct {
 	beginIndex        int
 }
 
-func (fake *orcaApplicationRepositoryFake) RequireMutationAllowed(context.Context) error {
-	*fake.trace = append(*fake.trace, "gate")
-	return nil
-}
 func (fake *orcaApplicationRepositoryFake) Load(context.Context, string) (preparationcontract.Snapshot, error) {
 	*fake.trace = append(*fake.trace, "load")
 	return fake.snapshot.Clone(), nil

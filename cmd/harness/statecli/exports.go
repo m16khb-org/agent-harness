@@ -23,7 +23,3 @@ func RunPrune(args []string) error {
 func RunDoctor(args []string) error {
 	return runStateDoctor(args)
 }
-
-func RunMigrate(args []string) error {
-	return runStateMigrate(args)
-}

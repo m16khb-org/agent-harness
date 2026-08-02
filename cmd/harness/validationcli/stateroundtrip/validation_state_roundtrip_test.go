@@ -205,7 +205,7 @@ func validStateRoundtripPayload(t *testing.T, label string, seed int64) any {
 	case "self verify history after retention":
 		return SelfAugmentHistoryResult{OK: true, TotalMatches: 1}
 	case "state doctor":
-		return core.StateDoctorResult{OK: true, Healthy: false, ValidKeys: []string{key}, Issues: []core.StateDoctorIssue{{Code: "invalid_json"}}}
+		return core.StateDoctorResult{OK: true, Healthy: false, ValidKeys: []string{key}, Issues: []core.StateDoctorIssue{{Code: "invalid_state"}}}
 	default:
 		t.Fatalf("unexpected state roundtrip label %q", label)
 		return nil

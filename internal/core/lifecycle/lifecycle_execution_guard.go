@@ -107,21 +107,6 @@ func executionObservation(req lifecyclecontract.HookToolUseLifecycleRequest) boo
 		_, confirm := flags["--confirm"]
 		id, idOK := oneFlag(flags, "--id")
 		return idOK && strings.TrimSpace(id) != "" && preview && !confirm
-	case "reset-legacy":
-		// --preview와 --status는 schema 상태를 읽기만 한다. 그것이 가드 어디에도
-		// 없어서 mutation authority가 활성인 동안 unclassified로 막혔고, 상태를
-		// 진단할 수단이 하나 사라져 있었다(이슈 #170).
-		//
-		// mutation 경로(--confirm, --drain-cycle, --reconcile-remote)는 넣지
-		// 않는다. 그것들은 schema v0 사이클을 다루는 마이그레이션 조작이고, v1
-		// lease가 갇힌 상태를 풀지 못한다 — 열어 줄 이유가 없다.
-		schema, schemaOK := oneFlag(flags, "--target-schema")
-		_, preview := flags["--preview"]
-		_, status := flags["--status"]
-		_, confirm := flags["--confirm"]
-		_, drain := flags["--drain-cycle"]
-		_, reconcile := flags["--reconcile-remote"]
-		return schemaOK && strings.TrimSpace(schema) != "" && (preview != status) && !confirm && !drain && !reconcile
 	default:
 		return false
 	}

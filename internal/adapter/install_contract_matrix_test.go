@@ -170,6 +170,29 @@ func TestInstallNativeScriptDoesNotWireCompanionTools(t *testing.T) {
 	}
 }
 
+func TestInstallNativeScriptBindsStagedCandidateBeforeReplacement(t *testing.T) {
+	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
+	begin := strings.Index(script, "HARNESS_NATIVE_ACTIVATION_STEP=begin")
+	replace := strings.Index(script, "os.replace(source, target)")
+	seal := strings.Index(script, "HARNESS_NATIVE_ACTIVATION_STEP=seal")
+	if begin < 0 || replace < 0 || seal < 0 || !(begin < replace && replace < seal) {
+		t.Fatalf("native activation order must be staged begin -> atomic replace -> canonical seal: begin=%d replace=%d seal=%d", begin, replace, seal)
+	}
+}
+
+func TestReleaseReproSmokeUsesCurrentStateRoundTrip(t *testing.T) {
+	script := readFile(t, filepath.Join("..", "..", "scripts", "release-repro-smoke.sh"))
+	retired := strings.Join([]string{"state", "migrate"}, " ")
+	if strings.Contains(script, retired) {
+		t.Fatalf("release smoke still invokes retired state command %q", retired)
+	}
+	for _, want := range []string{"state write", "state read"} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("release smoke does not exercise current %q path", want)
+		}
+	}
+}
+
 func TestInstallNativeScriptDocumentsCommandShims(t *testing.T) {
 	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
 	for _, want := range []string{

@@ -89,7 +89,8 @@ fi
 install_json="$tmp/install-native-dry-run.json"
 inspect_json="$tmp/inspect.json"
 docs_json="$tmp/docs.json"
-state_json="$tmp/state-migrate.json"
+state_write_json="$tmp/state-write.json"
+state_read_json="$tmp/state-read.json"
 
 log "checking project-local install dry-run in temp HOME/CODEX_HOME/HARNESS_ROOT"
 HOME="$home" \
@@ -137,9 +138,11 @@ HOME="$home" CODEX_HOME="$home/.codex" HARNESS_STATE_DIR="$state" \
 HOME="$home" CODEX_HOME="$home/.codex" HARNESS_STATE_DIR="$state" \
   "$BIN" docs --json > "$docs_json"
 HOME="$home" CODEX_HOME="$home/.codex" HARNESS_STATE_DIR="$state" \
-  "$BIN" state migrate --json > "$state_json"
+  "$BIN" state write --key release-repro-smoke --value current-v1 --json > "$state_write_json"
+HOME="$home" CODEX_HOME="$home/.codex" HARNESS_STATE_DIR="$state" \
+  "$BIN" state read --key release-repro-smoke --json > "$state_read_json"
 
-python3 - "$inspect_json" "$docs_json" "$state_json" <<'PY'
+python3 - "$inspect_json" "$docs_json" "$state_write_json" "$state_read_json" <<'PY'
 import json
 import sys
 
@@ -147,6 +150,11 @@ for path in sys.argv[1:]:
     data = json.load(open(path))
     if not data.get("ok"):
         raise SystemExit(f"{path} reported ok=false")
+
+state_read = json.load(open(sys.argv[4]))
+record = state_read.get("record", {})
+if record.get("schema_version") != 1 or record.get("key") != "release-repro-smoke" or record.get("content") != "current-v1":
+    raise SystemExit(f"state read did not return the exact current-v1 record: {record}")
 PY
 
 log "release reproducibility smoke passed"

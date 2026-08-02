@@ -56,7 +56,6 @@ var issueOpsSubcommands = map[string]func([]string) error{
 	"pr-readiness": runIssueOpsPRReadiness,
 	"decision":     runIssueOpsDecision,
 	"execution":    runIssueOpsExecution,
-	"reset-legacy": runIssueOpsResetLegacy,
 }
 
 func runIssueOps(args []string) error {

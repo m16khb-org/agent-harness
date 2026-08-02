@@ -74,7 +74,6 @@ Usage:
   agent-harness state list [--json]
   agent-harness state prune --max-age DURATION [--confirm] [--json]
   agent-harness state doctor [--json]
-  agent-harness state migrate [--confirm] [--json]
 %s
   agent-harness api-doc check|static-check|review [--repo PATH] [--all] [--json] [--] [FILES...]
   agent-harness hook user-prompt|pre-tool-use|post-tool-use|pre-compact|post-compact|session-start|stop [--json]

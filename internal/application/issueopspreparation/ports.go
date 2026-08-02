@@ -8,7 +8,6 @@ import (
 )
 
 type Repository interface {
-	RequireMutationAllowed(context.Context) error
 	Load(context.Context, string) (preparationcontract.Snapshot, error)
 	EnsureRootUnclaimed(context.Context, string, string) error
 	CommitDirect(context.Context, DirectCommit) (preparationcontract.Result, error)

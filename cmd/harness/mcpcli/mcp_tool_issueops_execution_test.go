@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -247,28 +246,5 @@ func TestExecutionActionRequestFromMCPRejectsMalformedIssueSnapshot(t *testing.T
 				t.Fatal("malformed issue_snapshot was silently accepted")
 			}
 		})
-	}
-}
-
-func TestHandleMCPIssueOpsExecutionPreservesResetRequiredFields(t *testing.T) {
-	stateDir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", stateDir)
-	if err := os.MkdirAll(filepath.Join(stateDir, "issueops"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	outcome := handleMCPIssueOpsExecutionWithDependencies(map[string]any{
-		"action": "prepare", "id": "io-aaaaaaaaaaaa", "mode": "auto", "confirm": true,
-	}, MCPDependencies{Prepare: func(_ context.Context, stateRoot string, request issueops.ExecutionPrepareRequest, _ issueops.ExecutionPrepareInvocation) (issueops.ExecutionPrepareResult, error) {
-		return issueops.ExecutionPrepareResult{ID: request.ID}, issueops.RequireIssueOpsMutationAllowed(stateRoot)
-	}})
-	if !outcome.Handled || !outcome.IsError {
-		t.Fatalf("reset-required MCP mutation outcome = %#v", outcome)
-	}
-	payload, ok := outcome.Payload.(map[string]any)
-	if !ok {
-		t.Fatalf("reset-required MCP payload type = %T", outcome.Payload)
-	}
-	if payload["code"] != "reset_required" || payload["target_schema"] != 1 || payload["state_root"] != stateDir || payload["next_command"] == "" {
-		t.Fatalf("reset-required MCP payload lost CLI parity fields: %#v", payload)
 	}
 }

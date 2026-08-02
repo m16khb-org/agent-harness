@@ -36,11 +36,6 @@ func prepareExecutionCompatibilityOracle(ctx context.Context, stateRoot string, 
 			req.OwnerEffort = defaultEffort
 		}
 	}
-	if req.Confirm {
-		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-			return ExecutionPrepareResult{OK: false, ID: req.ID}, err
-		}
-	}
 	record, err := ReadIssueOps(stateRoot, req.ID)
 	if err != nil {
 		return ExecutionPrepareResult{OK: false, ID: req.ID}, err

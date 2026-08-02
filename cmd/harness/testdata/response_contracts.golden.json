@@ -254,7 +254,7 @@
           "name": "version"
         }
       ],
-      "hash": "bef9b8eeb380337c6b4a2e5431e1c2bc08c4a5ccceee63260dff66d934390474",
+      "hash": "feb50933f50f896f5084e152cb20faba8db21e8c0fe033ca8d92e03ea58dc309",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -291,7 +291,6 @@
         "state_doctor",
         "state_list",
         "state_maintain",
-        "state_migrate",
         "state_prune",
         "state_read",
         "state_write",
@@ -5718,13 +5717,13 @@
       }
     },
     "state_doctor_corrupt": {
-      "checked": 3,
+      "checked": 2,
       "healthy": false,
       "issues": [
         {
-          "code": "invalid_json",
+          "code": "invalid_state",
           "key": "corrupt",
-          "message": "invalid character 'n' looking for beginning of object key string",
+          "message": "invalid state",
           "path": "$STATE_DIR/corrupt.json",
           "severity": "error"
         }
@@ -5737,21 +5736,14 @@
           "key": "current",
           "schema_version": 1,
           "updated_at": "$TIMESTAMP"
-        },
-        {
-          "bytes": 14,
-          "key": "legacy",
-          "schema_version": 1,
-          "updated_at": "$TIMESTAMP"
         }
       ],
       "valid_keys": [
-        "current",
-        "legacy"
+        "current"
       ]
     },
     "state_doctor_healthy": {
-      "checked": 2,
+      "checked": 1,
       "healthy": true,
       "issues": [],
       "ok": true,
@@ -5762,17 +5754,10 @@
           "key": "current",
           "schema_version": 1,
           "updated_at": "$TIMESTAMP"
-        },
-        {
-          "bytes": 14,
-          "key": "legacy",
-          "schema_version": 1,
-          "updated_at": "$TIMESTAMP"
         }
       ],
       "valid_keys": [
-        "current",
-        "legacy"
+        "current"
       ]
     },
     "state_list": {
@@ -5789,72 +5774,6 @@
         }
       ],
       "state_dir": "$STATE_DIR"
-    },
-    "state_migrate_confirm": {
-      "candidate_keys": [
-        "legacy"
-      ],
-      "candidates": [
-        {
-          "bytes": 14,
-          "key": "legacy",
-          "schema_version": 0,
-          "updated_at": "$TIMESTAMP"
-        }
-      ],
-      "confirm": true,
-      "dry_run": false,
-      "from_schema": 0,
-      "issues": [],
-      "migrated_keys": [
-        "legacy"
-      ],
-      "ok": true,
-      "skipped": [
-        {
-          "bytes": 15,
-          "key": "current",
-          "schema_version": 1,
-          "updated_at": "$TIMESTAMP"
-        }
-      ],
-      "skipped_keys": [
-        "current"
-      ],
-      "state_dir": "$STATE_DIR",
-      "to_schema": 1
-    },
-    "state_migrate_dry_run": {
-      "candidate_keys": [
-        "legacy"
-      ],
-      "candidates": [
-        {
-          "bytes": 14,
-          "key": "legacy",
-          "schema_version": 0,
-          "updated_at": "$TIMESTAMP"
-        }
-      ],
-      "confirm": false,
-      "dry_run": true,
-      "from_schema": 0,
-      "issues": [],
-      "migrated_keys": [],
-      "ok": true,
-      "skipped": [
-        {
-          "bytes": 15,
-          "key": "current",
-          "schema_version": 1,
-          "updated_at": "$TIMESTAMP"
-        }
-      ],
-      "skipped_keys": [
-        "current"
-      ],
-      "state_dir": "$STATE_DIR",
-      "to_schema": 1
     },
     "state_prune_confirm": {
       "confirm": true,
@@ -6480,7 +6399,7 @@
                 "name": "version"
               }
             ],
-            "hash": "bef9b8eeb380337c6b4a2e5431e1c2bc08c4a5ccceee63260dff66d934390474",
+            "hash": "feb50933f50f896f5084e152cb20faba8db21e8c0fe033ca8d92e03ea58dc309",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6517,7 +6436,6 @@
               "state_doctor",
               "state_list",
               "state_maintain",
-              "state_migrate",
               "state_prune",
               "state_read",
               "state_write",
@@ -8801,13 +8719,13 @@
       "content": [
         {
           "json": {
-            "checked": 7,
+            "checked": 6,
             "healthy": false,
             "issues": [
               {
-                "code": "invalid_json",
+                "code": "invalid_state",
                 "key": "corrupt",
-                "message": "invalid character 'n' looking for beginning of object key string",
+                "message": "invalid state",
                 "path": "$STATE_DIR/corrupt.json",
                 "severity": "error"
               }
@@ -8818,12 +8736,6 @@
               {
                 "bytes": 15,
                 "key": "current",
-                "schema_version": 1,
-                "updated_at": "$TIMESTAMP"
-              },
-              {
-                "bytes": 14,
-                "key": "legacy",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
@@ -8854,85 +8766,11 @@
             ],
             "valid_keys": [
               "current",
-              "legacy",
               "self-augment-lesson-contract",
               "self-verify-baseline",
               "self-verify-candidate",
               "self-verify-candidates-contract"
             ]
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "state_migrate": {
-      "content": [
-        {
-          "json": {
-            "candidate_keys": [],
-            "candidates": [],
-            "confirm": false,
-            "dry_run": true,
-            "from_schema": 0,
-            "issues": [
-              {
-                "code": "invalid_json",
-                "key": "corrupt",
-                "message": "invalid character 'n' looking for beginning of object key string",
-                "path": "$STATE_DIR/corrupt.json",
-                "severity": "error"
-              }
-            ],
-            "migrated_keys": [],
-            "ok": true,
-            "skipped": [
-              {
-                "bytes": 15,
-                "key": "current",
-                "schema_version": 1,
-                "updated_at": "$TIMESTAMP"
-              },
-              {
-                "bytes": 14,
-                "key": "legacy",
-                "schema_version": 1,
-                "updated_at": "$TIMESTAMP"
-              },
-              {
-                "bytes": "$STATE_RECORD_BYTES",
-                "key": "self-augment-lesson-contract",
-                "schema_version": 1,
-                "updated_at": "$TIMESTAMP"
-              },
-              {
-                "bytes": "$STATE_RECORD_BYTES",
-                "key": "self-verify-baseline",
-                "schema_version": 1,
-                "updated_at": "$TIMESTAMP"
-              },
-              {
-                "bytes": "$STATE_RECORD_BYTES",
-                "key": "self-verify-candidate",
-                "schema_version": 1,
-                "updated_at": "$TIMESTAMP"
-              },
-              {
-                "bytes": "$STATE_RECORD_BYTES",
-                "key": "self-verify-candidates-contract",
-                "schema_version": 1,
-                "updated_at": "$TIMESTAMP"
-              }
-            ],
-            "skipped_keys": [
-              "current",
-              "legacy",
-              "self-augment-lesson-contract",
-              "self-verify-baseline",
-              "self-verify-candidate",
-              "self-verify-candidates-contract"
-            ],
-            "state_dir": "$STATE_DIR",
-            "to_schema": 1
           },
           "type": "text"
         }
@@ -8944,9 +8782,7 @@
           "json": {
             "confirm": false,
             "cutoff": "$TIMESTAMP",
-            "deleted_keys": [
-              "legacy"
-            ],
+            "deleted_keys": [],
             "dry_run": true,
             "kept": [
               {
@@ -8989,14 +8825,7 @@
             ],
             "max_age": "1h0m0s",
             "ok": true,
-            "pruned": [
-              {
-                "bytes": 14,
-                "key": "legacy",
-                "schema_version": 1,
-                "updated_at": "$TIMESTAMP"
-              }
-            ],
+            "pruned": [],
             "state_dir": "$STATE_DIR"
           },
           "type": "text"

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/contract/issueops"
+	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/core/sqlstore"
 )
 
@@ -36,7 +37,7 @@ func TestIssueOpsUsesOnlySchemaOneAndDedicatedNamespace(t *testing.T) {
 	}
 }
 
-func TestIssueOpsReaderIgnoresLegacyBucketAndFailsClosedOnUnsupportedSchemas(t *testing.T) {
+func TestIssueOpsReaderIgnoresRetiredBucketAndRejectsNonCurrentSchemas(t *testing.T) {
 	stateRoot := t.TempDir()
 	db, err := sqlstore.Open(stateRoot)
 	if err != nil {
@@ -56,13 +57,13 @@ func TestIssueOpsReaderIgnoresLegacyBucketAndFailsClosedOnUnsupportedSchemas(t *
 		if err := db.Put("issueops_v1", id, raw); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := ReadIssueOps(stateRoot, id); err == nil || !strings.Contains(err.Error(), "schema_version") {
+		if _, err := ReadIssueOps(stateRoot, id); !errors.Is(err, statecontract.ErrInvalidState) || err.Error() != "invalid state" {
 			t.Fatalf("schema %d must fail closed, got %v", version, err)
 		}
 	}
 }
 
-func TestIssueOpsReaderTreatsMissingAndZeroSchemaAsCurrent(t *testing.T) {
+func TestIssueOpsReaderRejectsMissingAndZeroSchema(t *testing.T) {
 	for _, testCase := range []struct {
 		name          string
 		includeSchema bool
@@ -101,12 +102,8 @@ func TestIssueOpsReaderTreatsMissingAndZeroSchemaAsCurrent(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			got, err := ReadIssueOps(stateRoot, record.ID)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got.SchemaVersion != issueops.IssueOpsSchemaVersion {
-				t.Fatalf("schema=%d want %d", got.SchemaVersion, issueops.IssueOpsSchemaVersion)
+			if _, err := ReadIssueOps(stateRoot, record.ID); !errors.Is(err, statecontract.ErrInvalidState) || err.Error() != "invalid state" {
+				t.Fatalf("non-current schema must be generic invalid state, got %v", err)
 			}
 		})
 	}
@@ -126,7 +123,7 @@ func TestIssueOpsRejectsLegacyExecutionAuthorityPayload(t *testing.T) {
 		if err := db.Put("issueops_v1", id, raw); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := ReadIssueOps(stateRoot, id); err == nil || !strings.Contains(err.Error(), "legacy execution authority") {
+		if _, err := ReadIssueOps(stateRoot, id); !errors.Is(err, statecontract.ErrInvalidState) || err.Error() != "invalid state" {
 			t.Fatalf("legacy field %s must fail closed, got %v", field, err)
 		}
 	}

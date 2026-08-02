@@ -24,23 +24,16 @@ import (
 
 func TestReseedDifferentialClonedDirectStateInvokesRealVertical(t *testing.T) {
 	for _, testCase := range []struct {
-		name         string
-		status       issueopscontract.LeaseStatus
-		legacyRecord bool
+		name   string
+		status issueopscontract.LeaseStatus
 	}{
 		{name: "schema-v1-claimable", status: issueopscontract.LeaseStatusClaimable},
 		{name: "schema-v1-released", status: issueopscontract.LeaseStatusReleased},
-		{name: "legacy-claimable", status: issueopscontract.LeaseStatusClaimable, legacyRecord: true},
-		{name: "legacy-released", status: issueopscontract.LeaseStatusReleased, legacyRecord: true},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			legacy := newDifferentialFixture(t, testCase.name, testCase.status, issueopscontract.ExecutionModeDirect, testCase.legacyRecord)
+			legacy := newDifferentialFixture(t, testCase.name, testCase.status, issueopscontract.ExecutionModeDirect)
 			vertical := cloneDifferentialFixture(t, legacy)
 			assertDifferentialRawClone(t, legacy, vertical)
-			if testCase.legacyRecord {
-				assertDifferentialLegacySeed(t, legacy)
-				assertDifferentialLegacySeed(t, vertical)
-			}
 			actor := differentialActor(t)
 			legacyPreview := differentialPreview(t, legacy, actor, issueops.ExecutionReplaceDependencies{})
 			verticalPreview := differentialPreview(t, vertical, actor, issueops.ExecutionReplaceDependencies{})
@@ -77,23 +70,16 @@ func TestReseedDifferentialClonedDirectStateInvokesRealVertical(t *testing.T) {
 
 func TestReseedDifferentialClonedOrcaStateInvokesRealVertical(t *testing.T) {
 	for _, testCase := range []struct {
-		name         string
-		status       issueopscontract.LeaseStatus
-		legacyRecord bool
+		name   string
+		status issueopscontract.LeaseStatus
 	}{
 		{name: "schema-v1-claimable", status: issueopscontract.LeaseStatusClaimable},
 		{name: "schema-v1-released", status: issueopscontract.LeaseStatusReleased},
-		{name: "legacy-claimable", status: issueopscontract.LeaseStatusClaimable, legacyRecord: true},
-		{name: "legacy-released", status: issueopscontract.LeaseStatusReleased, legacyRecord: true},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			legacy := newDifferentialFixture(t, "orca-"+testCase.name, testCase.status, issueopscontract.ExecutionModeOrca, testCase.legacyRecord)
+			legacy := newDifferentialFixture(t, "orca-"+testCase.name, testCase.status, issueopscontract.ExecutionModeOrca)
 			vertical := cloneDifferentialFixture(t, legacy)
 			assertDifferentialRawClone(t, legacy, vertical)
-			if testCase.legacyRecord {
-				assertDifferentialLegacySeed(t, legacy)
-				assertDifferentialLegacySeed(t, vertical)
-			}
 			actor := differentialActor(t)
 			owner := differentialOrcaOwner{}
 			reader := differentialIssueReader
@@ -124,7 +110,7 @@ func TestReseedDifferentialClonedOrcaStateInvokesRealVertical(t *testing.T) {
 }
 
 func TestReseedDifferentialOrcaSnapshotEvidenceReachesRealVerticalWithoutFallback(t *testing.T) {
-	fixture := newDifferentialFixture(t, "orca-snapshot", issueopscontract.LeaseStatusClaimable, issueopscontract.ExecutionModeOrca, false)
+	fixture := newDifferentialFixture(t, "orca-snapshot", issueopscontract.LeaseStatusClaimable, issueopscontract.ExecutionModeOrca)
 	record, err := issueops.ReadIssueOps(fixture.stateRoot, fixture.id)
 	if err != nil {
 		t.Fatal(err)
@@ -172,7 +158,7 @@ type differentialFixture struct {
 	worktree  string
 }
 
-func newDifferentialFixture(t *testing.T, branch string, status issueopscontract.LeaseStatus, mode issueopscontract.ExecutionMode, legacyRecord bool) differentialFixture {
+func newDifferentialFixture(t *testing.T, branch string, status issueopscontract.LeaseStatus, mode issueopscontract.ExecutionMode) differentialFixture {
 	t.Helper()
 	branch = "192-" + branch
 	stateRoot := t.TempDir()
@@ -211,9 +197,6 @@ func newDifferentialFixture(t *testing.T, branch string, status issueopscontract
 	if _, err := issueops.WriteIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}
-	if legacyRecord {
-		seedDifferentialLegacyRecord(t, stateRoot, record.ID)
-	}
 	return differentialFixture{stateRoot: stateRoot, id: record.ID, worktree: worktree}
 }
 
@@ -248,40 +231,6 @@ func assertDifferentialRawClone(t *testing.T, source, clone differentialFixture)
 	t.Helper()
 	if !bytes.Equal(differentialRawRecord(t, source), differentialRawRecord(t, clone)) {
 		t.Fatal("oracle and vertical fixtures must begin from identical raw record bytes")
-	}
-}
-
-func seedDifferentialLegacyRecord(t *testing.T, stateRoot, id string) {
-	t.Helper()
-	db, err := sqlstore.Open(stateRoot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	raw, ok, err := db.Get("issueops_v1", id)
-	if err != nil || !ok {
-		t.Fatalf("read v1 fixture record ok=%t err=%v", ok, err)
-	}
-	legacy := bytes.Replace(raw, []byte("  \"schema_version\": 1,\n"), nil, 1)
-	if bytes.Equal(legacy, raw) {
-		t.Fatal("fixture did not contain schema_version=1")
-	}
-	if err := db.Put("issueops_v1", id, legacy); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func assertDifferentialLegacySeed(t *testing.T, fixture differentialFixture) {
-	t.Helper()
-	db, err := sqlstore.Open(fixture.stateRoot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	raw, ok, err := db.Get("issueops_v1", fixture.id)
-	if err != nil || !ok {
-		t.Fatalf("read legacy fixture record ok=%t err=%v", ok, err)
-	}
-	if bytes.Contains(raw, []byte("\"schema_version\": 1")) {
-		t.Fatalf("legacy fixture retained schema v1: %s", raw)
 	}
 }
 

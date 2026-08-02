@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	claudeadapter "agent-harness/internal/adapter/claude"
 	codexadapter "agent-harness/internal/adapter/codex"
@@ -66,10 +67,25 @@ func runInstallCommand(commandName string, args []string) error {
 	req.DryRun = *dryRun
 	stateDir := filepath.Dir(core.IssueOpsStateRoot())
 	activationRequest := activationcontract.Request{StateRoot: stateDir, HarnessRoot: req.Root, TargetBinary: req.BinPath}
-	activationService := activationapp.NewService(coreActivationBackend{}, hostActivationReadback{request: req})
-	if !req.DryRun {
-		if _, err := activationService.Begin(context.Background(), activationRequest); err != nil {
+	if !req.DryRun && deps.ActivationBackend == nil {
+		return fmt.Errorf("native activation backend is unavailable")
+	}
+	activationStep, err := nativeActivationStep(req.DryRun, os.Getenv("HARNESS_NATIVE_ACTIVATION_STEP"))
+	if err != nil {
+		return err
+	}
+	activationService := activationapp.NewService(deps.ActivationBackend, hostActivationReadback{request: req})
+	if !req.DryRun && activationStep != "seal" {
+		pending, err := activationService.Begin(context.Background(), activationRequest)
+		if err != nil {
 			return fmt.Errorf("begin native activation: %w", err)
+		}
+		if activationStep == "begin" {
+			if *jsonOut {
+				return printJSON(pending)
+			}
+			fmt.Printf("native activation candidate %s is pending\n", pending.BinarySHA256)
+			return nil
 		}
 	}
 	result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
@@ -97,31 +113,17 @@ func runInstallCommand(commandName string, args []string) error {
 	return err
 }
 
-type coreActivationBackend struct{}
-
-func (coreActivationBackend) Begin(_ context.Context, request activationport.BeginRequest) (activationport.Result, error) {
-	result, err := core.BeginLegacyResetActivation(request.StateRoot, core.LegacyResetActivationBeginRequest{
-		TargetSchema: 1, HarnessRoot: request.HarnessRoot, TargetBinary: request.TargetBinary,
-	})
-	return mapActivationResult(result), err
-}
-
-func (coreActivationBackend) Seal(_ context.Context, request activationport.SealRequest) (activationport.Result, error) {
-	evidence := make([]port.NativeActivationEvidence, 0, len(request.Evidence))
-	for _, item := range request.Evidence {
-		evidence = append(evidence, port.NativeActivationEvidence{
-			Host: item.Host, Surface: item.Surface, Path: item.Path, SemanticSHA256: item.SemanticSHA256,
-			SHA256: item.SHA256, Mode: item.Mode, Size: item.Size, Device: item.Device, Inode: item.Inode,
-		})
+func nativeActivationStep(dryRun bool, raw string) (string, error) {
+	step := strings.TrimSpace(raw)
+	if dryRun && step != "" {
+		return "", fmt.Errorf("native activation step is not valid during dry-run")
 	}
-	result, err := core.SealLegacyResetActivation(request.StateRoot, core.LegacyResetActivationSealRequest{
-		TargetSchema: 1, HarnessRoot: request.HarnessRoot, TargetBinary: request.TargetBinary,
-		CatalogSHA256: request.CatalogSHA256, Evidence: evidence,
-	})
-	if err != nil {
-		return activationport.Result{}, fmt.Errorf("seal native activation: %w", err)
+	switch step {
+	case "", "begin", "seal":
+		return step, nil
+	default:
+		return "", fmt.Errorf("invalid native activation step %q", step)
 	}
-	return mapActivationResult(result), nil
 }
 
 type hostActivationReadback struct{ request port.NativeInstallRequest }
@@ -155,13 +157,6 @@ func (readback hostActivationReadback) Verify(_ context.Context, harnessRoot, ta
 		})
 	}
 	return activationport.Readback{CatalogSHA256: catalogSHA, Evidence: result}, nil
-}
-
-func mapActivationResult(result core.LegacyResetActivationResult) activationport.Result {
-	return activationport.Result{
-		StateRoot: result.StateRoot, HarnessRoot: result.HarnessRoot, TargetBinary: result.TargetBinary,
-		BinarySHA256: result.BinarySHA256, Pending: result.Pending, Sealed: result.Sealed, UpdatedAt: result.UpdatedAt,
-	}
 }
 
 func installUserHomeDir() (string, error) {

@@ -76,7 +76,7 @@ func TestReseedRepositoryRejectsStaleRawSnapshot(t *testing.T) {
 }
 
 func reseedRepositoryRecord() leasecontract.Record {
-	return leasecontract.Record{ID: "io-reseed-repository", Execution: &leasecontract.Execution{Mode: "direct", Workspace: leasecontract.Workspace{SourceRoot: "/source", Root: "/worktree", Branch: "branch", BaseHead: "base", Driver: "git", LinkedAt: "2026-07-30T09:00:00Z"}, Lease: leasecontract.Lease{Generation: 1, Status: "released"}}}
+	return leasecontract.Record{SchemaVersion: leasecontract.SchemaVersion, ID: "io-reseed-repository", Execution: &leasecontract.Execution{Mode: "direct", Workspace: leasecontract.Workspace{SourceRoot: "/source", Root: "/worktree", Branch: "branch", BaseHead: "base", Driver: "git", LinkedAt: "2026-07-30T09:00:00Z"}, Lease: leasecontract.Lease{Generation: 1, Status: "released"}}}
 }
 
 var _ leaseapp.ReseedRepository = (*ReseedRepository)(nil)
