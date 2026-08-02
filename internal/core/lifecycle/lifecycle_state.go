@@ -27,6 +27,13 @@ func BuildLifecyclePreToolUseDecision(req lifecyclecontract.HookToolUseLifecycle
 		Source:   source,
 	}
 	observation := executionObservation(req)
+	if !observation && childHostSmokeInvocation(req) {
+		reason := "child host smoke command does not match the exact released delegation contract"
+		result.Decision = "block"
+		result.Reason = reason
+		result.Deny = &lifecyclecontract.IssueOpsDenyReason{Code: "unsafe_mutation", Reason: reason}
+		return result
+	}
 	typedExecutionControl := executionTypedControlPlane(req)
 	if !observation && !typedExecutionControl {
 		if req.EnforceWorktree {

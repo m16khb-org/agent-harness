@@ -29,6 +29,27 @@ func TestRunHookPreToolUseAdmitsChildSmokeFromInstalledHookArguments(t *testing.
 	coordinator := createLinkedIssueOpsWorktree(t, source, "228-coordinator")
 	setReleasedHookExecution(t, child, source)
 	setReleasedHookExecution(t, coordinator, source)
+	childRecord, err := core.ReadIssueOps(core.IssueOpsStateRoot(), child.id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	childRecord.IssueURL = "https://github.com/acme/repo/issues/69"
+	childRecord.Delegation = &issueopscontract.IssueOpsDelegationContract{
+		ParentCycleID: coordinator.id, TaskScope: "exact child smoke", DelegatedAt: "2026-08-02T00:00:00Z",
+	}
+	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), childRecord); err != nil {
+		t.Fatal(err)
+	}
+	coordinatorRecord, err := core.ReadIssueOps(core.IssueOpsStateRoot(), coordinator.id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	coordinatorRecord.ChildCycles = []issueopscontract.IssueOpsChildCycleRef{{
+		CycleID: child.id, Branch: childRecord.Branch, ChildIssueURL: childRecord.IssueURL,
+	}}
+	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), coordinatorRecord); err != nil {
+		t.Fatal(err)
+	}
 
 	script := filepath.Join(coordinator.path, "scripts", "verify-child-host-smoke.sh")
 	if err := os.MkdirAll(filepath.Dir(script), 0o755); err != nil {
@@ -51,8 +72,8 @@ func TestRunHookPreToolUseAdmitsChildSmokeFromInstalledHookArguments(t *testing.
 		filepath.Join(outputDir, "receipt.json"),
 	)
 	payload, err := json.Marshal(map[string]any{
-		"cwd": coordinator.path, "host": "codex", "tool_name": "exec_command",
-		"tool_input": map[string]any{"cmd": command, "workdir": coordinator.path},
+		"cwd": source, "tool_name": "Bash",
+		"tool_input": map[string]any{"command": command},
 	})
 	if err != nil {
 		t.Fatal(err)

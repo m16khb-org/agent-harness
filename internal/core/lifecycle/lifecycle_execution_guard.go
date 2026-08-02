@@ -179,17 +179,23 @@ func exactCoordinatorChildHostSmoke(req lifecyclecontract.HookToolUseLifecycleRe
 		!canonicalAbsolutePath(jsonOut) || sameExecutionPath(sourceRoot, childRoot) {
 		return false
 	}
-	coordinatorRoot := hookRequestPathBase(req)
+	coordinatorRoot, ok := delegatedChildSmokeCoordinator(sourceRoot, childRoot, issue)
+	if !ok {
+		return false
+	}
 	sourceAuthority := strings.TrimSpace(req.SourceCheckout)
 	if sourceAuthority != "" {
 		// 명시적 SourceCheckout이 있으면 불일치를 Repo로 우회하지 않는다.
 		if !sameExecutionPath(sourceRoot, sourceAuthority) {
 			return false
 		}
-	} else if !sameExecutionPath(sourceRoot, req.Repo) &&
-		!sameExecutionPath(coordinatorRoot, req.Repo) {
-		// 기본 설치 훅은 --source-checkout을 전달하지 않는다. 실제 tool payload의
-		// repo/cwd는 명령을 실행하는 coordinator worktree를 가리킬 수 있다.
+	}
+	requestBase := hookRequestPathBase(req)
+	if !sameExecutionPath(requestBase, sourceRoot) && !sameExecutionPath(requestBase, coordinatorRoot) {
+		return false
+	}
+	if repo := strings.TrimSpace(req.Repo); repo != "" &&
+		!sameExecutionPath(repo, sourceRoot) && !sameExecutionPath(repo, coordinatorRoot) {
 		return false
 	}
 	if !trustedIssueOpsCheckout(coordinatorRoot, sourceRoot) ||
@@ -227,6 +233,85 @@ func exactCoordinatorChildHostSmoke(req lifecyclecontract.HookToolUseLifecycleRe
 		return false
 	}
 	return true
+}
+
+func childHostSmokeInvocation(req lifecyclecontract.HookToolUseLifecycleRequest) bool {
+	if !searchrouting.IsShellTool(req.Tool) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	if len(tokens) == 0 {
+		return false
+	}
+	if tokens[0] == "scripts/verify-child-host-smoke.sh" {
+		return true
+	}
+	if len(tokens) < 2 || tokens[1] != "scripts/verify-child-host-smoke.sh" {
+		return false
+	}
+	switch searchrouting.SearchTokenName(tokens[0]) {
+	case "bash", "sh", "zsh":
+		return true
+	default:
+		return false
+	}
+}
+
+func delegatedChildSmokeCoordinator(sourceRoot, childRoot, issue string) (string, bool) {
+	ids, err := issueopscore.ListIssueOpsIDs(IssueOpsStateRoot())
+	if err != nil {
+		return "", false
+	}
+	var child *issueopscontract.IssueOpsRecord
+	for _, id := range ids {
+		record, err := ReadIssueOps(IssueOpsStateRoot(), id)
+		if err != nil {
+			return "", false
+		}
+		if record.Execution == nil || !sameExecutionPath(record.Execution.Workspace.Root, childRoot) {
+			continue
+		}
+		if child != nil {
+			return "", false
+		}
+		candidate := record
+		child = &candidate
+	}
+	if child == nil || child.Execution == nil || child.Delegation == nil ||
+		strings.TrimSpace(child.Delegation.ParentCycleID) == "" ||
+		child.Execution.Lease.Status != issueopscontract.LeaseStatusReleased ||
+		!sameExecutionPath(child.Repo, sourceRoot) ||
+		!sameExecutionPath(child.Execution.Workspace.SourceRoot, sourceRoot) ||
+		filepath.Base(strings.TrimRight(child.IssueURL, "/")) != issue {
+		return "", false
+	}
+	if err := issueopscontract.ValidateExecution(*child.Execution); err != nil {
+		return "", false
+	}
+	parent, err := ReadIssueOps(IssueOpsStateRoot(), child.Delegation.ParentCycleID)
+	if err != nil || parent.Execution == nil ||
+		parent.Execution.Lease.Status != issueopscontract.LeaseStatusReleased ||
+		!sameExecutionPath(parent.Repo, sourceRoot) ||
+		!sameExecutionPath(parent.Execution.Workspace.SourceRoot, sourceRoot) {
+		return "", false
+	}
+	if err := issueopscontract.ValidateExecution(*parent.Execution); err != nil {
+		return "", false
+	}
+	linked := false
+	for _, ref := range parent.ChildCycles {
+		if ref.CycleID == child.ID && ref.Branch == child.Branch &&
+			(ref.ChildIssueURL == "" || ref.ChildIssueURL == child.IssueURL) {
+			linked = true
+			break
+		}
+	}
+	coordinatorRoot := parent.Execution.Workspace.Root
+	if !linked || !trustedIssueOpsCheckout(coordinatorRoot, sourceRoot) ||
+		!trustedIssueOpsCheckout(childRoot, sourceRoot) || sameExecutionPath(coordinatorRoot, childRoot) {
+		return "", false
+	}
+	return coordinatorRoot, true
 }
 
 func canonicalAbsolutePath(path string) bool {

@@ -15,12 +15,10 @@ func TestCoordinatorChildHostSmokeAdmitsExactCommandWithoutExplicitSourceCheckou
 	useCanonicalSmokeTempDir(t)
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source, record, childRoot := executionActiveLifecycleRecord(t)
+	activeChildLease := record.Execution.Lease
 	record.Execution.Lease.Status = issueopscontract.LeaseStatusReleased
 	record.Execution.Lease.Holder = nil
 	record.Execution.Lease.ReleasedAt = "2026-08-02T00:00:00Z"
-	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
-		t.Fatal(err)
-	}
 
 	coordinator := linkIssueOpsWorktreeForGuardTest(t, source, "228-coordinator")
 	coordinatorRoot := coordinator.path
@@ -38,6 +36,16 @@ func TestCoordinatorChildHostSmokeAdmitsExactCommandWithoutExplicitSourceCheckou
 			Generation: 1, Status: issueopscontract.LeaseStatusReleased,
 			ReleasedAt: "2026-08-02T00:00:00Z",
 		},
+	}
+	record.IssueURL = "https://github.com/acme/repo/issues/69"
+	record.Delegation = &issueopscontract.IssueOpsDelegationContract{
+		ParentCycleID: coordinator.id, TaskScope: "exact child smoke", DelegatedAt: "2026-08-02T00:00:00Z",
+	}
+	coordinatorRecord.ChildCycles = []issueopscontract.IssueOpsChildCycleRef{{
+		CycleID: record.ID, Branch: record.Branch, ChildIssueURL: record.IssueURL,
+	}}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
 	}
 	if _, err := writeIssueOps(IssueOpsStateRoot(), coordinatorRecord); err != nil {
 		t.Fatal(err)
@@ -65,9 +73,9 @@ func TestCoordinatorChildHostSmokeAdmitsExactCommandWithoutExplicitSourceCheckou
 		filepath.Join(outputDirArg, "receipt.json"),
 	)
 	req := lifecyclecontract.HookToolUseLifecycleRequest{
-		Repo: coordinatorArg, CWD: coordinatorArg,
+		CWD:  sourceArg,
 		Tool: "exec_command", Command: command,
-		ToolInput:       map[string]any{"workdir": coordinatorArg},
+		ToolInput:       map[string]any{"command": command},
 		EnforceWorktree: true,
 	}
 
@@ -79,22 +87,37 @@ func TestCoordinatorChildHostSmokeAdmitsExactCommandWithoutExplicitSourceCheckou
 	}
 	sourceRepo := req
 	sourceRepo.Repo = sourceArg
-	sourceRepo.CWD = sourceArg
 	if !exactCoordinatorChildHostSmoke(sourceRepo) {
 		t.Fatal("source repo fallback must remain valid for installed hook payloads")
 	}
+	coordinatorRepo := req
+	coordinatorRepo.Repo = coordinatorArg
+	coordinatorRepo.CWD = coordinatorArg
+	if !exactCoordinatorChildHostSmoke(coordinatorRepo) {
+		t.Fatal("coordinator repo fallback must remain valid when a host provides it")
+	}
 	explicitSource := req
 	explicitSource.SourceCheckout = sourceArg
-	explicitSource.Repo = childArg
 	if !exactCoordinatorChildHostSmoke(explicitSource) {
 		t.Fatal("explicit source checkout must remain the highest-priority authority")
+	}
+	activeChild := record
+	activeChild.Execution.Lease = activeChildLease
+	if _, err := writeIssueOps(IssueOpsStateRoot(), activeChild); err != nil {
+		t.Fatal(err)
+	}
+	if exactCoordinatorChildHostSmoke(req) {
+		t.Fatal("active child lease must keep coordinator smoke fail-closed")
 	}
 }
 
 func TestCoordinatorChildHostSmokeRejectsNearMisses(t *testing.T) {
 	useCanonicalSmokeTempDir(t)
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	source, _, childRoot := executionActiveLifecycleRecord(t)
+	source, childRecord, childRoot := executionActiveLifecycleRecord(t)
+	childRecord.Execution.Lease.Status = issueopscontract.LeaseStatusReleased
+	childRecord.Execution.Lease.Holder = nil
+	childRecord.Execution.Lease.ReleasedAt = "2026-08-02T00:00:00Z"
 	coordinator := linkIssueOpsWorktreeForGuardTest(t, source, "228-coordinator")
 	coordinatorRoot := coordinator.path
 	coordinatorRecord, err := ReadIssueOps(IssueOpsStateRoot(), coordinator.id)
@@ -112,6 +135,16 @@ func TestCoordinatorChildHostSmokeRejectsNearMisses(t *testing.T) {
 			ReleasedAt: "2026-08-02T00:00:00Z",
 		},
 	}
+	childRecord.IssueURL = "https://github.com/acme/repo/issues/69"
+	childRecord.Delegation = &issueopscontract.IssueOpsDelegationContract{
+		ParentCycleID: coordinator.id, TaskScope: "exact child smoke", DelegatedAt: "2026-08-02T00:00:00Z",
+	}
+	coordinatorRecord.ChildCycles = []issueopscontract.IssueOpsChildCycleRef{{
+		CycleID: childRecord.ID, Branch: childRecord.Branch, ChildIssueURL: childRecord.IssueURL,
+	}}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), childRecord); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := writeIssueOps(IssueOpsStateRoot(), coordinatorRecord); err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +161,6 @@ func TestCoordinatorChildHostSmokeRejectsNearMisses(t *testing.T) {
 	}
 	sourceArg := canonicalSmokeTestPath(t, source)
 	childArg := canonicalSmokeTestPath(t, childRoot)
-	coordinatorArg := canonicalSmokeTestPath(t, coordinatorRoot)
 	output := filepath.Join(canonicalSmokeTestPath(t, outputDir), "receipt.json")
 	exact := fmt.Sprintf(
 		"scripts/verify-child-host-smoke.sh --issue 69 --source-root %s --child-root %s --head 0123456789012345678901234567890123456789 --remote-ref refs/heads/69-v1-observation --json-out %s --confirm-user-activation",
@@ -137,8 +169,8 @@ func TestCoordinatorChildHostSmokeRejectsNearMisses(t *testing.T) {
 		output,
 	)
 	base := lifecyclecontract.HookToolUseLifecycleRequest{
-		Repo: coordinatorArg, CWD: coordinatorArg,
-		Tool: "exec_command", ToolInput: map[string]any{"workdir": coordinatorArg},
+		CWD:  sourceArg,
+		Tool: "Bash", ToolInput: map[string]any{"command": exact},
 		EnforceWorktree: true,
 	}
 
@@ -178,7 +210,7 @@ func TestCoordinatorChildHostSmokeRejectsNearMisses(t *testing.T) {
 		if err := os.WriteFile(otherScript, []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		req.ToolInput = map[string]any{"workdir": other}
+		req.CWD = other
 		if exactCoordinatorChildHostSmoke(req) {
 			t.Fatal("arbitrary workdir was classified as coordinator-owned")
 		}
@@ -220,6 +252,38 @@ func TestCoordinatorChildHostSmokeRejectsNearMisses(t *testing.T) {
 		req.Repo = canonicalSmokeTestPath(t, t.TempDir())
 		if exactCoordinatorChildHostSmoke(req) {
 			t.Fatal("unrelated repo was classified as coordinator authority")
+		}
+	})
+
+	t.Run("missing delegation", func(t *testing.T) {
+		req := base
+		req.Command = exact
+		withoutDelegation := childRecord
+		withoutDelegation.Delegation = nil
+		if _, err := writeIssueOps(IssueOpsStateRoot(), withoutDelegation); err != nil {
+			t.Fatal(err)
+		}
+		if exactCoordinatorChildHostSmoke(req) {
+			t.Fatal("child without durable delegation was classified")
+		}
+		if _, err := writeIssueOps(IssueOpsStateRoot(), childRecord); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("missing reverse child ref", func(t *testing.T) {
+		req := base
+		req.Command = exact
+		withoutChild := coordinatorRecord
+		withoutChild.ChildCycles = nil
+		if _, err := writeIssueOps(IssueOpsStateRoot(), withoutChild); err != nil {
+			t.Fatal(err)
+		}
+		if exactCoordinatorChildHostSmoke(req) {
+			t.Fatal("parent without reverse child ref was classified")
+		}
+		if _, err := writeIssueOps(IssueOpsStateRoot(), coordinatorRecord); err != nil {
+			t.Fatal(err)
 		}
 	})
 }
