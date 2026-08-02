@@ -53,6 +53,8 @@ type childSmokeReceipt struct {
 	Codex                 childSmokeHostEvidence     `json:"codex"`
 	Claude                childSmokeHostEvidence     `json:"claude"`
 	Restore               childSmokeActivationDigest `json:"restore"`
+	RestoreSignal         int                        `json:"restore_signal"`
+	RestoreSignalPhase    string                     `json:"restore_signal_phase"`
 	Verdict               string                     `json:"verdict"`
 }
 
@@ -391,7 +393,7 @@ func assertChildSmokeObservation(t *testing.T, result port.HostProbeResult, path
 
 func TestChildHostSmokeCompleteFakeTwoHostPass(t *testing.T) {
 	result := runChildHostSmokeFixture(t, childSmokeFixture{confirm: true})
-	if result.ExitCode != 0 || result.Receipt.Verdict != "pass" || result.RestoreCalls != 1 || result.AfterMutationCalls != 0 || result.LockExists {
+	if result.ExitCode != 0 || result.Receipt.SchemaVersion != 2 || result.Receipt.RestoreSignal != 0 || result.Receipt.RestoreSignalPhase != "" || result.Receipt.Verdict != "pass" || result.RestoreCalls != 1 || result.AfterMutationCalls != 0 || result.LockExists {
 		t.Fatalf("result=%+v output=%s", result, result.Output)
 	}
 	if result.ReceiptMode.Perm() != 0o600 || !reflect.DeepEqual(result.Receipt.Before, result.Receipt.Restore) {
@@ -432,7 +434,7 @@ func TestChildHostSmokeReportsRestoreStageStatuses(t *testing.T) {
 func TestChildHostSmokeReportsPendingRestoreSignal(t *testing.T) {
 	result := runChildHostSmokeFixture(t, childSmokeFixture{scenario: "signal-during-restore", confirm: true})
 	want := "pending signal during restore: 143 phase=install"
-	if !strings.Contains(result.Output, want) {
+	if result.Receipt.RestoreSignal != 143 || result.Receipt.RestoreSignalPhase != "install" || !strings.Contains(result.Output, want) {
 		t.Fatalf("missing bounded restore signal diagnostic %q: result=%+v output=%s", want, result, result.Output)
 	}
 }

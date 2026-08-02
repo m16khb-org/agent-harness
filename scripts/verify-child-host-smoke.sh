@@ -129,6 +129,7 @@ finalized=0
 lock_held=0
 restoring=0
 pending_signal=0
+pending_signal_phase=""
 restore_phase=""
 state_root="${HARNESS_STATE_DIR:-${HOME:?}/.local/state/agent-harness}"
 lock_path="$state_root/child-host-smoke.lock"
@@ -618,7 +619,7 @@ PY
 
 emit_receipt() {
   local verdict="$1"
-  python3 - "$json_out" "$issue" "$local_head" "$remote_head" "$child_binary_sha256" "$before_file" "$activated_file" "$codex_observation" "$claude_observation" "$restore_file" "$codex_version" "$claude_version" "$verdict" <<'PY'
+  python3 - "$json_out" "$issue" "$local_head" "$remote_head" "$child_binary_sha256" "$before_file" "$activated_file" "$codex_observation" "$claude_observation" "$restore_file" "$codex_version" "$claude_version" "$verdict" "$pending_signal" "$pending_signal_phase" <<'PY'
 import json
 import os
 import re
@@ -626,7 +627,15 @@ import tempfile
 import sys
 
 (output, issue, local_head, remote_head, child_binary, before_path, activated_path,
- codex_path, claude_path, restore_path, codex_version, claude_version, verdict) = sys.argv[1:]
+ codex_path, claude_path, restore_path, codex_version, claude_version, verdict,
+ restore_signal_raw, restore_signal_phase) = sys.argv[1:]
+
+restore_signal = int(restore_signal_raw)
+allowed_restore_signal_phases = {"install", "snapshot", "identity", "mcp", "digest", "contract", "exact", "lock", "receipt", "cleanup"}
+if restore_signal == 0:
+    restore_signal_phase = ""
+elif restore_signal not in {130, 143} or restore_signal_phase not in allowed_restore_signal_phases:
+    raise SystemExit(1)
 
 empty_digest = {"root_sha256": "", "binary_sha256": "", "surfaces": []}
 empty_host = {
@@ -672,7 +681,7 @@ claude = load_host(claude_path)
 codex["version"] = codex_version
 claude["version"] = claude_version
 receipt = {
-    "schema_version": 1,
+    "schema_version": 2,
     "issue": int(issue),
     "local_head": local_head,
     "remote_head": remote_head,
@@ -684,6 +693,8 @@ receipt = {
     "codex": codex,
     "claude": claude,
     "restore": restore,
+    "restore_signal": restore_signal,
+    "restore_signal_phase": restore_signal_phase,
     "verdict": verdict,
 }
 parent = os.path.dirname(output)
@@ -794,7 +805,8 @@ on_signal() {
   if ((restoring == 1)); then
     if ((pending_signal == 0)); then
       pending_signal="$signal_status"
-      printf 'child-host-smoke: pending signal during restore: %d phase=%s\n' "$pending_signal" "$restore_phase" >&2
+      pending_signal_phase="$restore_phase"
+      printf 'child-host-smoke: pending signal during restore: %d phase=%s\n' "$pending_signal" "$pending_signal_phase" >&2
     fi
     return
   fi

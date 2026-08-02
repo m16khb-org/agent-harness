@@ -215,6 +215,8 @@ type ChildHostSmokeReceipt struct {
     Codex             HostSmokeEvidence `json:"codex"`
     Claude            HostSmokeEvidence `json:"claude"`
     Restore           ActivationDigest  `json:"restore"`
+    RestoreSignal     int               `json:"restore_signal"`
+    RestoreSignalPhase string            `json:"restore_signal_phase"`
     Verdict           string            `json:"verdict"`
 }
 
@@ -229,7 +231,7 @@ type HostSmokeEvidence struct {
 }
 ```
 
-`verdict=pass` requires exact local/remote HEAD equality, `activated_binary_sha256 == child_binary_sha256`, activated semantic/raw readback matching the expected child-managed surfaces, one MCP call per host, both hook observations, zero exit codes, and `before == restore` for semantic and raw managed surfaces. `activated_root_sha256` identifies the activated root without emitting its absolute path. The strict validator rejects a missing/zero activated digest or identity. The output excludes command transcripts, credentials, prompt text, private reasoning, and user-home paths.
+`verdict=pass` requires schema version 2, exact local/remote HEAD equality, `activated_binary_sha256 == child_binary_sha256`, activated semantic/raw readback matching the expected child-managed surfaces, one MCP call per host, both hook observations, zero exit codes, `before == restore` for semantic and raw managed surfaces, and `restore_signal=0` with an empty `restore_signal_phase`. A failed receipt records only signal 130/143 and an allowlisted restore phase; it never includes command output. `activated_root_sha256` identifies the activated root without emitting its absolute path. The strict validator rejects a missing/zero activated digest or identity. The output excludes command transcripts, credentials, prompt text, private reasoning, and user-home paths.
 
 ## Verification Strategy
 
