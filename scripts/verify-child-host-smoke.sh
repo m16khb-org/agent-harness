@@ -112,7 +112,7 @@ else:
         raise SystemExit(1)
 PY
 
-[[ -x "$source_root/scripts/install-native.sh" && -x "$source_root/bin/agent-harness" ]] || fail_before_mutation 'source installer and binary must exist'
+[[ -x "$source_root/bin/agent-harness" ]] || fail_before_mutation 'source binary must exist'
 [[ -x "$child_root/scripts/install-native.sh" ]] || fail_before_mutation 'child installer must exist'
 
 temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/agent-harness-child-smoke.XXXXXX")"
@@ -714,7 +714,7 @@ finish() {
   local verdict="$requested_verdict"
   restoring=1
   set +e
-  HARNESS_ROOT="$source_root" "$source_root/scripts/install-native.sh" --skip-build --path-mode=skip --json >"$temporary_root/restore-install.json" 2>"$temporary_root/restore-install.err"
+  HARNESS_ROOT="$source_root" "$child_root/scripts/install-native.sh" --skip-build --path-mode=skip --json >"$temporary_root/restore-install.json" 2>"$temporary_root/restore-install.err"
   local restore_install_status=$?
   restore_activation_snapshot "$activation_snapshot"
   local restore_snapshot_status=$?
