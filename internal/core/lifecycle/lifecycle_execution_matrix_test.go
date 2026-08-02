@@ -81,8 +81,9 @@ func TestExecutionParallelCycleObservationsDoNotRequireOwnerSelection(t *testing
 	}
 
 	for name, command := range map[string]string{
-		"exact status": "agent-harness issueops status --id " + observer.ID + " --json",
-		"remote score": "agent-harness issueops remote score --input " + filepath.Join(worker, "score-input.json") + " --judge none --json",
+		"exact status":  "agent-harness issueops status --id " + observer.ID + " --json",
+		"remote score":  "agent-harness issueops remote score --input " + filepath.Join(worker, "score-input.json") + " --judge none --json",
+		"remote prompt": "agent-harness issueops remote score --input " + filepath.Join(worker, "score-input.json") + " --judge prompt --json",
 	} {
 		t.Run(name, func(t *testing.T) {
 			req := executionRequest(active, worker, "claude", "owner-session", "")
@@ -108,6 +109,10 @@ func TestExecutionShellReadersAreObservationFirst(t *testing.T) {
 		"find " + repo + " -maxdepth 1 -type f",
 		"stat " + filepath.Join(repo, "README.md"),
 		"file " + filepath.Join(repo, "README.md"),
+		"shasum -a 256 " + filepath.Join(worker, ".agent-harness", "state", "issueops-v1", "context.json"),
+		"gh issue view 190 --repo m16khb/agent-harness --json body",
+		"gh issue develop --list 190 --repo m16khb/agent-harness",
+		"git merge-base 5457e834d93a367f3fd5d200d40dfb813320679d eeb6241120cbf40d28df1b0b9483ab9dc7f1eaa1",
 		"jq empty .agent-harness/turing/issueops-v1-0d097a7cae7456be.json",
 		"jq '.' .agent-harness/turing/issueops-v1-c68e0b0f994c2705.json",
 		"jq -e . .agent-harness/turing/issueops-v1-c7e20cac5e6b2afb.json",

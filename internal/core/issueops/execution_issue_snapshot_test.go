@@ -18,12 +18,13 @@ func TestExecutionIssueSnapshotEvidenceSealsPrepareAndClaimWithoutFallback(t *te
 		fallbackCalls++
 		return port.ExecutionIssueSnapshot{}, errors.New("must not run")
 	}
+	orca := readyOrcaFake()
 
 	preparedAny, err := ExecuteExecution(context.Background(), stateRoot, ExecutionActionRequest{
 		Action: ExecutionActionPrepare, ID: record.ID, Mode: "orca", CWD: record.Repo,
 		Actor: executionActor("codex", "snapshot-coordinator"), OwnerHost: "claude", OwnerModel: "caller-model",
 		Confirm: true, IssueSnapshot: evidence,
-	}, ExecutionActionDependencies{Orca: readyOrcaFake(), ReadIssue: fallback})
+	}, ExecutionActionDependencies{Prepare: executionSnapshotPrepareHandler(orca), Orca: orca, ReadIssue: fallback})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +47,7 @@ func TestExecutionIssueSnapshotEvidenceSealsPrepareAndClaimWithoutFallback(t *te
 		Actor: executionActor("claude", "snapshot-owner"), CWD: prepared.Workspace.Root,
 		TokenFile: prepared.ClaimTokenPath, IssueBodySHA256: prepared.IssueBodySHA256,
 		ContextPacketSHA256: prepared.ContextPacketSHA256, IssueSnapshot: evidence,
-	}, ExecutionActionDependencies{ReadIssue: fallback})
+	}, ExecutionActionDependencies{ReadIssue: fallback, Claim: claimViaVerticalHandler})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,11 +66,12 @@ func TestExecutionIssueSnapshotEvidenceSealsPrepareAndClaimWithoutFallback(t *te
 func TestExecutionIssueSnapshotEvidencePreviewReportsOnlyValidatedSource(t *testing.T) {
 	stateRoot, record := gitLabExecutionSnapshotRecord(t)
 	fallbackCalls := 0
+	orca := readyOrcaFake()
 	gotAny, err := ExecuteExecution(context.Background(), stateRoot, ExecutionActionRequest{
 		Action: ExecutionActionPrepare, ID: record.ID, Mode: "orca", CWD: record.Repo,
 		OwnerHost: "claude", Confirm: false, IssueSnapshot: validGitLabExecutionSnapshotEvidence(),
 	}, ExecutionActionDependencies{
-		Orca: readyOrcaFake(),
+		Prepare: executionSnapshotPrepareHandler(orca), Orca: orca,
 		ReadIssue: func(context.Context, string, port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
 			fallbackCalls++
 			return port.ExecutionIssueSnapshot{}, errors.New("must not run")
@@ -193,7 +195,7 @@ func TestExecutionIssueSnapshotEvidenceSealsFinalizeAndReplacementClaimWithoutFa
 		CWD:   fixture.prepared.Workspace.Root, TokenFile: finalized.ClaimTokenPath,
 		IssueBodySHA256: finalized.IssueBodySHA256, ContextPacketSHA256: finalized.ContextPacketSHA256,
 		IssueSnapshot: evidence,
-	}, ExecutionActionDependencies{})
+	}, ExecutionActionDependencies{Claim: claimViaVerticalHandler})
 	if err != nil {
 		t.Fatalf("finalize가 봉인한 GitLab snapshot으로 claim하지 못했다: %v", err)
 	}
@@ -249,11 +251,12 @@ func TestExecutionIssueSnapshotFallbackIsValidatedAndObserved(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		stateRoot, record := gitLabExecutionSnapshotRecord(t)
 		fallbackCalls := 0
+		orca := readyOrcaFake()
 		gotAny, err := ExecuteExecution(context.Background(), stateRoot, ExecutionActionRequest{
 			Action: ExecutionActionPrepare, ID: record.ID, Mode: "orca", CWD: record.Repo,
 			Actor: executionActor("codex", "cli-coordinator"), OwnerHost: "claude", OwnerModel: "caller-model", Confirm: true,
 		}, ExecutionActionDependencies{
-			Orca: readyOrcaFake(),
+			Prepare: executionSnapshotPrepareHandler(orca), Orca: orca,
 			ReadIssue: func(context.Context, string, port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
 				fallbackCalls++
 				return port.ExecutionIssueSnapshot{
@@ -279,7 +282,7 @@ func TestExecutionIssueSnapshotFallbackIsValidatedAndObserved(t *testing.T) {
 			Action: ExecutionActionPrepare, ID: record.ID, Mode: "orca", CWD: record.Repo,
 			Actor: executionActor("codex", "cli-error"), OwnerHost: "claude", Confirm: true,
 		}, ExecutionActionDependencies{
-			Orca: orca,
+			Prepare: executionSnapshotPrepareHandler(orca), Orca: orca,
 			ReadIssue: func(context.Context, string, port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
 				return port.ExecutionIssueSnapshot{}, errors.New("credential unavailable")
 			},
@@ -291,6 +294,14 @@ func TestExecutionIssueSnapshotFallbackIsValidatedAndObserved(t *testing.T) {
 			t.Fatalf("snapshot transport failure happened after Orca mutation: %d", orca.prepareCalls)
 		}
 	})
+}
+
+func executionSnapshotPrepareHandler(orca port.ExecutionOrcaProvisioner) ExecutionPrepareHandler {
+	return func(ctx context.Context, stateRoot string, request ExecutionPrepareRequest, invocation ExecutionPrepareInvocation) (ExecutionPrepareResult, error) {
+		return prepareExecutionCompatibilityOracle(ctx, stateRoot, request, ExecutionPrepareDependencies{
+			Orca: orca, ReadIssue: invocation.ReadIssue,
+		})
+	}
 }
 
 func TestWithExecutionIssueSnapshotSourceCoversEveryExecutionResult(t *testing.T) {

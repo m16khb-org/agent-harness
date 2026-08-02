@@ -738,6 +738,14 @@ Archived entries:
 - Decision: Removed the bounded task-pool feature. It did not enforce host spawning; native Codex concurrency owns thread bounds, and IssueOps child cycles/execution v1 own durable delegation.
 - Consequences: Existing `~/.local/state/agent-harness/workpool` bytes are deliberately left inert and are not deleted.
 
+## 2026-07-27 — Architecture dependency fitness ratchet
+
+- Kind: `adr`
+- Decision: `internal/architecture`에서 direct production import edge를 결정적으로 수집하고, unconditional layer rule은 즉시 차단하며 기존 infrastructure·adapter coupling은 정렬된 baseline으로만 허용한다.
+- Rationale: 기존 import graph를 한 번에 이동하지 않고도 새 boundary regression과 baseline stale entry를 정확한 `importer -> imported` 진단으로 막는다.
+- Rejected: 전체 transitive dependency graph 비교는 구현 세부사항 변화에 과민하고, lint rule만 사용하는 방식은 baseline new/stale edge의 reviewable contract를 제공하지 못한다.
+- Consequences: legacy edge를 제거한 변경은 같은 review에서 baseline도 줄여야 하며, production runtime·CLI·MCP 계약은 이 test-only ratchet의 범위 밖이다.
+
 ## IssueOps 이원 구조 최적화 (planner/implementer, 2026-07-24, 이슈 #78)
 
 - **결정**: 메인 세션은 계획 전용(planner급 모델), 구현은 병렬 격리 워크트리의
@@ -759,3 +767,49 @@ Archived entries:
 - **후속**: deleteIssueOps 2-버킷 원자화, 워크트리 leaf 충돌, done 사이클
   base-branch 게이트 공백, GitLab orca 모드, PrepareWorkspace/LaunchOwner
   커버리지 계량, AC-11b 실제 orca 하위 세션 도그푸드.
+
+## 2026-07-28 — Lease differential contract owns stable v1 canonicalization
+
+- Kind: `adr`
+- Source: #191 decision gates `msg_09208c28b563` and `msg_bb413022b7ae`
+- Decision: The test-only leasevertical contract owns a stable v1 DTO that
+  reproduces the current durable JSON type shape and decode/re-marshal
+  canonicalization without importing `internal/core/issueops/model`.
+  `internal/architecture` rejects every leasevertical contract import of a
+  production IssueOps package. During release, application validates the
+  domain request inside repository `Update`, reads its clock immediately after
+  that validation, and then applies the transition.
+- Rationale: A differential prototype must compare the current persistence
+  contract without becoming coupled to its production DTO. Reading the clock
+  before the repository span makes rejected transitions observe time and lets
+  a blocked clock delay entry to the atomic update boundary.
+- Consequences: The prototype intentionally duplicates the stable v1 JSON
+  shape but remains test-only; rich sidecars and `null` normalization are
+  compared against current persisted bytes. The domain keeps semantic release
+  validation, while application owns the ordering of repository scope and its
+  injected clock.
+
+## 2026-07-29 — Release vertical replaces the lease prototype
+
+- Kind: `adr`
+- Source: GitHub #196
+- Decision: Promote the stable v1 contract and release use case into
+  `internal/contract`, `internal/domain`, `internal/application`, and
+  `internal/adapter` production packages. Production CLI/MCP release invokes
+  a typed handler injected by `cmd/harness/harnessapp`; it does not silently
+  fall back to the legacy implementation. The legacy two-argument facade is
+  retained only for source compatibility and byte-differential evidence.
+- Rationale: Release needs a narrow transaction, process, path, and clock
+  capability without moving unrelated execution actions or changing v1 bytes.
+  Keeping composition in the harness app makes two MCP server instances and
+  CLI calls own their handler dependency explicitly.
+- Rejected alternative: A package-global release service or generic repository
+  registry would conceal handler ownership and make dependency capture leak
+  across transports.
+- Rejected: Importing production `model` from the test contract (couples the
+  ratchet subject to the system under comparison), preserving raw source JSON
+  bytes (diverges from current typed re-marshal), and calling `clock.Now`
+  before `Update` or before domain validation.
+- Verification: differential success/denial byte snapshots including rich
+  sidecars and `repo: null`, architecture import-ratchet tests, and blocking
+  clock tests for valid and rejected transitions.

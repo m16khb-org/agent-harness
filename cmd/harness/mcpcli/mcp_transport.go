@@ -13,8 +13,12 @@ import (
 )
 
 func RunMCP() error {
+	return RunMCPWithDependencies(MCPDependencies{})
+}
+
+func RunMCPWithDependencies(deps MCPDependencies) error {
 	if os.Getenv("HARNESS_MCP_DIRECT") == "1" {
-		return ServeMCPStream(os.Stdin, os.Stdout, os.Stderr)
+		return ServeMCPStreamWithDependencies(os.Stdin, os.Stdout, os.Stderr, deps)
 	}
 	return RunMCPProxy()
 }
@@ -24,14 +28,22 @@ func RunMCP() error {
 // official go-sdk IOTransport. Otherwise, it falls back to the hand-rolled
 // JSON-RPC parser for backward compatibility with existing tests.
 func ServeMCPStream(input io.Reader, output io.Writer, diagnostics io.Writer) error {
-	return ServeMCPStreamContext(context.Background(), input, output, diagnostics)
+	return ServeMCPStreamWithDependencies(input, output, diagnostics, MCPDependencies{})
+}
+
+func ServeMCPStreamWithDependencies(input io.Reader, output io.Writer, diagnostics io.Writer, deps MCPDependencies) error {
+	return ServeMCPStreamContextWithDependencies(context.Background(), input, output, diagnostics, deps)
 }
 
 func ServeMCPStreamContext(ctx context.Context, input io.Reader, output io.Writer, diagnostics io.Writer) error {
+	return ServeMCPStreamContextWithDependencies(ctx, input, output, diagnostics, MCPDependencies{})
+}
+
+func ServeMCPStreamContextWithDependencies(ctx context.Context, input io.Reader, output io.Writer, diagnostics io.Writer, deps MCPDependencies) error {
 	if canUseSDKTransport(input, output) {
-		return serveMCPStreamSDK(ctx, input, output)
+		return serveMCPStreamSDK(ctx, input, output, deps)
 	}
-	return serveMCPStreamLegacy(input, output, diagnostics)
+	return serveMCPStreamLegacy(input, output, diagnostics, deps)
 }
 
 // canUseSDKTransport returns true when input and output point to the same
@@ -51,7 +63,7 @@ func canUseSDKTransport(input io.Reader, output io.Writer) bool {
 // serveMCPStreamLegacy is the original hand-rolled JSON-RPC implementation.
 // It is kept for backward compatibility with tests that pipe separate
 // readers/writers (strings.NewReader + bytes.Buffer, os.Pipe pairs, etc.).
-func serveMCPStreamLegacy(input io.Reader, output io.Writer, diagnostics io.Writer) error {
+func serveMCPStreamLegacy(input io.Reader, output io.Writer, diagnostics io.Writer, deps MCPDependencies) error {
 	scanner := bufio.NewScanner(input)
 	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
 	for scanner.Scan() {
@@ -68,7 +80,7 @@ func serveMCPStreamLegacy(input io.Reader, output io.Writer, diagnostics io.Writ
 			handleNotificationTo(diagnostics, req)
 			continue
 		}
-		result, rpcErr := HandleRequest(req)
+		result, rpcErr := HandleRequestWithDependencies(req, deps)
 		if rpcErr != nil {
 			writeRPCErrorTo(output, req.ID, rpcErr.Code, rpcErr.Message, rpcErr.Data)
 			continue
@@ -108,6 +120,10 @@ func handleNotificationTo(w io.Writer, req RPCRequest) {
 }
 
 func HandleRequest(req RPCRequest) (any, *RPCError) {
+	return HandleRequestWithDependencies(req, MCPDependencies{})
+}
+
+func HandleRequestWithDependencies(req RPCRequest, deps MCPDependencies) (any, *RPCError) {
 	switch req.Method {
 	case "initialize":
 		return map[string]any{
@@ -119,7 +135,7 @@ func HandleRequest(req RPCRequest) (any, *RPCError) {
 	case "tools/list":
 		return map[string]any{"tools": MCPTools()}, nil
 	case "tools/call":
-		return HandleToolCall(req.Params)
+		return HandleToolCallWithDependencies(req.Params, deps)
 	case "resources/list":
 		return map[string]any{"resources": MCPResources()}, nil
 	case "resources/read":

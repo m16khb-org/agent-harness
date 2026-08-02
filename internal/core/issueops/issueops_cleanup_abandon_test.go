@@ -145,16 +145,16 @@ func abandonOrcaPendingRecord(t *testing.T, kind string, writeRow bool) (string,
 	if writeRow {
 		writeAbandonIntentRow(t, stateRoot, operationID, externalOrcaIntentPayload{
 			SchemaVersion: model.IssueOpsSchemaVersion, OperationID: operationID, LifecycleID: record.ID,
-			Generation: 1, Stage: port.ExecutionOrcaIntentWorktree, Marker: marker,
+			Generation: 1, Stage: intentContractStage(port.ExecutionOrcaIntentWorktree), Marker: marker,
 			StartedAt: "2026-07-24T00:00:00Z", InvocationState: orcaIntentNotInvoked,
-			Workspace: port.ExecutionWorkspaceRequest{
+			Workspace: intentContractWorkspaceRequest(port.ExecutionWorkspaceRequest{
 				LifecycleID: record.ID, SourceRoot: record.Repo, Root: root,
 				Branch: "106-abandon", BaseBranch: "main", BaseHead: "deadbeef",
-			},
-			Probe: port.ExecutionOrcaProbeRequest{
+			}),
+			Probe: intentContractProbeRequest(port.ExecutionOrcaProbeRequest{
 				Repo: record.Repo, Host: "codex", Model: "gpt-5.4", Marker: marker,
 				Provider: "github", Issue: 106,
-			},
+			}),
 			IssueBodySHA256: abandonIssueBodySHA,
 		})
 	}
@@ -480,7 +480,7 @@ func TestCleanupAbandonAllowsStaleOwnerIntentAfterEveryOrcaStageIsAbsent(t *test
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			stateRoot, record, payload := legacyResumeIntentFixture(t, "gitlab", 2646)
-			payload.Stage = tc.stage
+			payload.Stage = intentContractStage(tc.stage)
 			payload.TerminalPTYID = tc.terminalPTYID
 			payload.RunID = tc.runID
 			payload.RunBound = tc.runBound
@@ -630,13 +630,13 @@ func TestCleanupAbandonRefusesToDeleteAnotherLifecyclesIntentRow(t *testing.T) {
 	foreign := "op-foreign-row"
 	writeAbandonIntentRow(t, stateRoot, foreign, externalOrcaIntentPayload{
 		SchemaVersion: model.IssueOpsSchemaVersion, OperationID: foreign, LifecycleID: "io-someoneelse",
-		Generation: 1, Stage: port.ExecutionOrcaIntentWorktree, Marker: "m",
+		Generation: 1, Stage: intentContractStage(port.ExecutionOrcaIntentWorktree), Marker: "m",
 		StartedAt: "2026-07-24T00:00:00Z", InvocationState: orcaIntentNotInvoked,
-		Workspace: port.ExecutionWorkspaceRequest{
+		Workspace: intentContractWorkspaceRequest(port.ExecutionWorkspaceRequest{
 			LifecycleID: "io-someoneelse", SourceRoot: record.Repo, Root: root,
 			Branch: "other", BaseBranch: "main", BaseHead: "deadbeef",
-		},
-		Probe:           port.ExecutionOrcaProbeRequest{Repo: record.Repo, Host: "codex", Model: "gpt-5.4", Marker: "m"},
+		}),
+		Probe:           intentContractProbeRequest(port.ExecutionOrcaProbeRequest{Repo: record.Repo, Host: "codex", Model: "gpt-5.4", Marker: "m"}),
 		IssueBodySHA256: abandonIssueBodySHA,
 	})
 	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {

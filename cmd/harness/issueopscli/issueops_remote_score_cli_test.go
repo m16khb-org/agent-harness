@@ -113,6 +113,33 @@ func TestRunIssueOpsRemoteScoreCLIUsesJudgeFile(t *testing.T) {
 	}
 }
 
+func TestRunIssueOpsRemoteScoreCLIRendersHostAgentPrompt(t *testing.T) {
+	input := writeIssueOpsRemoteScoreRequestForCLITest(t, core.IssueOpsRemoteScoringRequest{
+		Provider: "github",
+		Issue:    core.IssueOpsRemoteArtifact{Title: "IssueOps host-agent scoring prompt"},
+	})
+	out := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"remote", "score", "--input", input, "--judge", "prompt", "--json"})
+	})
+	var result struct {
+		OK             bool   `json:"ok"`
+		ExecutionClass string `json:"execution_class"`
+		ReadOnly       bool   `json:"read_only"`
+		JoinBefore     string `json:"join_before"`
+		Prompt         string `json:"prompt"`
+	}
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("remote prompt should return JSON: %v\n%s", err, out)
+	}
+	if !result.OK || result.ExecutionClass != "background_join" || !result.ReadOnly || result.JoinBefore != "remote_artifact_write" {
+		t.Fatalf("expected read-only background prompt envelope: %+v", result)
+	}
+	if !strings.Contains(result.Prompt, "IssueOps host-agent scoring prompt") ||
+		!strings.Contains(result.Prompt, "selected_related_issues") {
+		t.Fatalf("prompt should contain the request and output contract:\n%s", result.Prompt)
+	}
+}
+
 func TestRunIssueOpsRemoteScoreCLITextShowsIssueTitleWithReference(t *testing.T) {
 	input := writeIssueOpsRemoteScoreRequestForCLITest(t, core.IssueOpsRemoteScoringRequest{
 		Provider:  "github",

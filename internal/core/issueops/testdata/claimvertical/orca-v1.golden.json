@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "scenario": "orca-v1",
+  "preflight_order": ["packet", "remote_issue", "actor", "repository"],
+  "lease": {
+    "status": "active",
+    "claim_token_sha256": ""
+  },
+  "side_effects": {
+    "local_packet_recheck": "inside_repository",
+    "token": "removed_after_apply"
+  }
+}

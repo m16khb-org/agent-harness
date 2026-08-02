@@ -14,25 +14,33 @@ import (
 )
 
 type Deps struct {
-	StateRoot func() string
-	Direct    port.ExecutionWorkspaceProvisioner
-	Orca      port.ExecutionOrcaProvisioner
-	ReadIssue issueops.ExecutionIssueSnapshotReadFunc
-	RemotePR  issueops.RemotePullRequestDependencies
-	// SettleOrcaTask는 완료 시점의 orca task 종결 표면이다. nil이면 종결을
-	// 건너뛴다 — 종결 수단이 없다는 사실이 완료를 막아서는 안 된다(#130).
-	SettleOrcaTask func(ctx context.Context, runID, taskID string) error
-	PrintJSON      func(any) error
-	PrintError     func(error) error
+	StateRoot   func() string
+	Prepare     issueops.ExecutionPrepareHandler
+	Orca        port.ExecutionOrcaProvisioner
+	OrcaOwner   port.ExecutionOrcaOwnerInspector
+	ReadIssue   issueops.ExecutionIssueSnapshotReadFunc
+	Claim       issueops.ExecutionClaimHandler
+	Release     issueops.ExecutionReleaseHandler
+	Reseed      issueops.ExecutionReseedHandler
+	Resume      issueops.ExecutionResumeHandler
+	Reconcile   issueops.ExecutionReconcileHandler
+	Complete    issueops.ExecutionCompleteHandler
+	Publication issueops.RemotePublicationHandlers
+	PrintJSON   func(any) error
+	PrintError  func(error) error
 }
 
 func (deps Deps) actionDeps() issueops.ExecutionActionDependencies {
 	actionDeps := issueops.ExecutionActionDependencies{
-		Direct: deps.Direct, Orca: deps.Orca, ReadIssue: deps.ReadIssue,
-		RemotePR: deps.RemotePR, SettleOrcaTask: deps.SettleOrcaTask,
+		Prepare: deps.Prepare, Orca: deps.Orca, OrcaOwner: deps.OrcaOwner, ReadIssue: deps.ReadIssue,
+		Claim: deps.Claim, Release: deps.Release, Reseed: deps.Reseed, Resume: deps.Resume, Reconcile: deps.Reconcile, Complete: deps.Complete,
+		RemoteReconcile: deps.Publication.Reconcile,
 	}
-	if inspector, ok := deps.Orca.(port.ExecutionOrcaOwnerInspector); ok {
-		actionDeps.OrcaOwner = inspector
+	if actionDeps.OrcaOwner == nil {
+		inspector, ok := deps.Orca.(port.ExecutionOrcaOwnerInspector)
+		if ok {
+			actionDeps.OrcaOwner = inspector
+		}
 	}
 	return actionDeps
 }

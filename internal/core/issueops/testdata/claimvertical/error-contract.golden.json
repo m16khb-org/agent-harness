@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "scenario": "error-contract",
+  "errors": [
+    "lease is not claimable at generation N",
+    "claim cwd must be the canonical worktree",
+    "claim token does not match the current generation",
+    "Orca claim requires sealed issue and context packet digests"
+  ]
+}

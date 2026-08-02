@@ -4,6 +4,7 @@ import (
 	"agent-harness/cmd/harness/issueopscli"
 	"agent-harness/cmd/harness/policycli"
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/issueops"
 )
 
 func wirePolicyCLIDeps() {
@@ -11,7 +12,17 @@ func wirePolicyCLIDeps() {
 }
 
 func runIssueOps(args []string) error {
-	return issueopscli.RunIssueOps(args)
+	execution := productionIssueOpsExecutionDependencies()
+	return issueopscli.RunIssueOpsWithDependencies(args, issueopscli.Dependencies{
+		Prepare: execution.Prepare, Orca: execution.Orca, OrcaOwner: execution.OrcaOwner, ReadIssue: execution.ReadIssue,
+		Claim: issueops.ExecutionClaimHandler(issueOpsClaimHandler), Release: issueops.ExecutionReleaseHandler(issueOpsReleaseHandler),
+		Reseed: issueops.ExecutionReseedHandler(issueOpsReseedHandler), Resume: issueops.ExecutionResumeHandler(issueOpsResumeHandler),
+		Reconcile: issueops.ExecutionReconcileHandler(issueOpsReconcileHandler), Complete: issueops.ExecutionCompleteHandler(issueOpsCompleteHandler),
+		Publication: issueops.RemotePublicationHandlers{
+			Create:    issueops.RemotePullRequestCreateHandler(issueOpsPublicationCreateHandler),
+			Reconcile: issueops.RemotePullRequestReconcileHandler(issueOpsPublicationReconcileHandler),
+		},
+	})
 }
 
 func verifyIssueOpsChildIssueBeforeLink(childURL string) error {

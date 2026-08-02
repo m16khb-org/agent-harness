@@ -18,7 +18,7 @@ func TestLinkedBranchOIDPathIsAdmitted(t *testing.T) {
 
 	for name, command := range map[string]string{
 		"node id read":    "gh api repos/acme/repo/issues/176 --jq .node_id",
-		"issue body read": "gh api repos/acme/repo/issues/176 --jq '.body'",
+		"issue body read": "gh api repos/acme/repo/issues/176 --jq .body",
 		"mutation": "gh api graphql -f " + linkedBranchMutation +
 			" -F issueId=I_kwDOabc -F oid=2a56f2cc4d2e6b7b4fa99e3cdd71e3673ae060d2 -F name=176-demo",
 	} {
@@ -62,6 +62,7 @@ func TestOtherGHAPICallsStayBlocked(t *testing.T) {
 		"arbitrary graphql":     "gh api graphql -f query=mutation{deleteIssue(input:{issueId:x}){clientMutationId}} -F a=1 -F b=2 -F c=3",
 		"repo delete":           "gh api -X DELETE repos/acme/repo",
 		"ref delete":            "gh api -X DELETE repos/acme/repo/git/refs/heads/176-demo",
+		"issue field read":      "gh api repos/acme/repo/issues/176 --jq .author",
 		"issue body wrong path": "gh api repos/acme/repo/pulls/176 --jq .body",
 		"issue body extra flag": "gh api repos/acme/repo/issues/176 --jq .body --paginate",
 		"node id wrong path":    "gh api repos/acme/repo/pulls/176 --jq .node_id",

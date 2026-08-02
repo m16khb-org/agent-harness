@@ -334,7 +334,8 @@ func (c *Client) CreateWorktree(ctx context.Context, req port.OrcaCreateWorktree
 
 // CanonicalizeWorktreeBranch는 Orca가 만든 브랜치가 정확히
 // <namespace>/<provider-branch>일 때만 namespace를 제거한다. GitLab 예약
-// 브랜치의 숫자 접미사 허용은 내부 호출에서만 별도 증명한다.
+// 브랜치의 숫자 접미사 허용과 upstream 복원은 내부 호출에서 원격 SHA까지
+// 증명한 경우에만 수행한다.
 func (c *Client) CanonicalizeWorktreeBranch(ctx context.Context, created port.OrcaWorktree, requestedBranch, upstream string) (port.OrcaWorktree, error) {
 	return c.canonicalizeWorktreeBranch(ctx, created, requestedBranch, upstream, false)
 }

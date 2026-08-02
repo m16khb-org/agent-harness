@@ -92,20 +92,21 @@ func TestBranchPrepareParentWorktreeMetadataDoesNotSelectForeignLease(t *testing
 // 현재 holder가 전달하는 session-executable은 native identity 영수증이지
 // 워크트리 변경 대상이 아니다. 설치된 Codex/Claude 실행 파일은 보통 워크트리
 // 밖에 있으므로 이 값을 경로 fence에 넣으면 정상 publication도 차단된다.
-func TestRemoteCreatePRAllowsCurrentHolderWithExternalSessionExecutable(t *testing.T) {
+func TestRemoteCreatePRAllowsCurrentHolderWithExplicitWorkdirAndExternalSessionExecutable(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	_, record, worker := executionActiveLifecycleRecord(t)
+	source, record, worker := executionActiveLifecycleRecord(t)
 	executable := filepath.Join(t.TempDir(), "codex", "bin", "codex")
 	command := "agent-harness issueops remote create-pr --id " + record.ID +
 		" --expected-generation 1 --title 'IssueOps lease release differential vertical 검증'" +
 		" --head 191-issueops-lease-differential-spike --base 117-hexagonal-architecture-migration" +
-		" --body '현재 holder의 governed preview 검증' --label enhancement --assignee m16khb" +
+		" --body '현재 holder의 CLI/MCP governed preview 검증' --label enhancement --assignee m16khb" +
 		" --host claude --session-id owner-session --session-pid 1234" +
 		" --session-started-at 2026-07-22T00:00:00Z --session-executable " + executable +
 		" --cwd " + worker + " --json"
 
-	holder := executionRequest(record, worker, "claude", "owner-session", command)
+	holder := executionRequest(record, source, "claude", "owner-session", command)
 	holder.AgentID = "owner-agent"
+	holder.ToolInput = map[string]any{"workdir": worker, "cmd": command}
 	if got := BuildLifecyclePreToolUseDecision(holder); got.Decision != "allow" {
 		t.Fatalf("외부 session-executable 영수증을 가진 현재 holder의 create-pr preview가 차단됐다: %+v", got)
 	}

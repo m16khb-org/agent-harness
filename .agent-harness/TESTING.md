@@ -95,6 +95,14 @@ go build -o bin/agent-harness ./cmd/harness
 
 작은 변경은 targeted test를 먼저 실행하고, 완료 전 영향 범위에 맞게 전체 테스트를 실행한다.
 
+### Architecture fitness ratchet
+
+```bash
+go test ./internal/architecture -count=1
+```
+
+이 test는 `go list -json ./...`의 direct production import inventory를 두 번 수집해 byte-stable 정렬을 확인한다. synthetic case는 rule name과 `importer -> imported` 진단을 고정하고, real graph는 unconditional layer rule과 sorted legacy baseline의 new/stale edge를 함께 검증한다.
+
 ### Operational-health and stability delegation
 
 - Pure classifier tests pin the 15-minute heartbeat boundary, invocation-only preserves, duplicate/incomplete inventory failure, and exact resource ownership.
@@ -339,6 +347,20 @@ CLI/MCP DTO를 변경할 때는 `agent-harness contract check --json`과 golden 
 
 ## IssueOps v1 execution and optional Orca verification
 
+`execution release` production vertical은 `internal/core/issueops` differential
+test로 schema v1·missing/zero legacy schema·rich sidecar·holder index와 denial
+atomicity를 비교한다. 변경 시 core focused race, outbound focused race,
+architecture ratchet, CLI/MCP contract, golden, scoped vet와 build를 실행하며,
+전체 suite는 PR CI가 회귀 증거로 담당한다.
+
+`issueopspublication` vertical은 fixed operation ID와 fixed clock을 쓰는 frozen
+legacy oracle/new vertical differential로 create·reconcile의 result JSON, error
+text, record row, `external_intent_v1` row를 byte-for-byte 비교한다. Provider
+create·inventory·live verification 중에는 cycle lock이 해제되어 동시 read와
+replacement preview가 완료되어야 한다. CLI text, MCP `isError`, production
+provider resolver caller-zero, non-test legacy full-flow 부재를 각각 adapter 및
+AST ratchet 테스트로 고정한다.
+
 Normal tests and self-verification must remain green without Orca. Use injected
 workspace, provider, process, and Orca adapters for the default suite. The
 current execution contract is `issueops_v1` with `schema_version=1`; legacy
@@ -367,12 +389,13 @@ Execution tests must cover:
   transition are one atomic write. An identical retry is idempotent only when
   all terminal invariants still hold.
 
-Orca external-intent tests treat worktree, terminal, task, and dispatch as four
-separate durable stages. For every stage, exercise authoritative 0, exact 1,
+Orca external-intent tests treat worktree, terminal, Run create, Run bind, task,
+and dispatch as six separate durable stages. For every stage, exercise authoritative 0, exact 1,
 multiple candidates, transport failure, post-mutation crash, and CAS identity
 change. Zero may invoke only with durable `not_invoked_proven` evidence and at
-most one proven-not-invoked retry; exact one adopts; every ambiguous outcome
-retains the intent without fallback or duplicate mutation.
+most one proven-not-invoked retry. The idempotent Run-bind stage may converge an
+unknown outcome within the same two-attempt bound. Exact one adopts; every
+ambiguous create outcome retains the intent without fallback or duplicate mutation.
 
 The prepared runtime ID is mandatory on every terminal/task/dispatch receipt
 and inventory row. Task title/display name and dispatch assignee/injection must

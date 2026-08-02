@@ -74,6 +74,17 @@ type ExecutionReplaceRequest struct {
 	Confirm               bool              `json:"confirm,omitempty"`
 }
 
+type ExecutionReseedRequest struct {
+	ID                   string                         `json:"id"`
+	ExpectedGeneration   uint64                         `json:"expected_generation"`
+	InventoryFingerprint string                         `json:"inventory_fingerprint,omitempty"`
+	Reason               string                         `json:"reason,omitempty"`
+	Actor                model.NativeActor              `json:"actor"`
+	CWD                  string                         `json:"cwd"`
+	Confirm              bool                           `json:"confirm,omitempty"`
+	ReadIssue            ExecutionIssueSnapshotReadFunc `json:"-"`
+}
+
 type ExecutionReplaceResult struct {
 	OK                    bool            `json:"ok"`
 	ID                    string          `json:"id"`
@@ -115,82 +126,16 @@ func StatusExecution(stateRoot, id string) (ExecutionResult, error) {
 	return result, nil
 }
 
-func ClaimExecutionWithDependencies(ctx context.Context, stateRoot string, req ExecutionClaimRequest, deps ExecutionClaimDependencies) (ExecutionResult, error) {
-	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-		return ExecutionResult{OK: false, ID: req.ID}, err
-	}
-	validatePacket, err := validateExecutionClaimContext(ctx, stateRoot, req, deps)
-	if err != nil {
-		return ExecutionResult{OK: false, ID: req.ID}, err
-	}
-	return claimExecution(stateRoot, req, validatePacket)
-}
-
-func claimExecution(stateRoot string, req ExecutionClaimRequest, validatePacket ...func(IssueOpsRecord) error) (ExecutionResult, error) {
-	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-		return ExecutionResult{OK: false, ID: req.ID}, err
-	}
-	actor, err := normalizeNativeActor(req.Actor)
-	if err != nil {
-		return ExecutionResult{OK: false, ID: req.ID}, err
-	}
-	var persisted IssueOpsRecord
-	err = withIssueOpsLock(context.Background(), stateRoot, req.ID, func(context.Context) error {
-		record, err := ReadIssueOps(stateRoot, req.ID)
-		if err != nil {
-			return err
-		}
-		if record.Execution == nil {
-			return fmt.Errorf("IssueOps execution v1 is not prepared")
-		}
-		lease := &record.Execution.Lease
-		if lease.Status == model.LeaseStatusActive && lease.Generation == req.Generation && sameNativeActor(lease.Holder, &actor) {
-			persisted = record
-			return nil
-		}
-		if lease.Status != model.LeaseStatusClaimable || lease.Generation != req.Generation {
-			return fmt.Errorf("lease is not claimable at generation %d", req.Generation)
-		}
-		if !samePath(req.CWD, record.Execution.Workspace.Root) {
-			return fmt.Errorf("claim cwd must be the canonical worktree")
-		}
-		for _, validate := range validatePacket {
-			if validate != nil {
-				if err := validate(record); err != nil {
-					return err
-				}
-			}
-		}
-		token, err := readClaimToken(record, req.TokenFile)
-		if err != nil {
-			return err
-		}
-		if tokenSHA256(token) != lease.ClaimTokenSHA256 {
-			return fmt.Errorf("claim token does not match the current generation")
-		}
-		lease.Status = model.LeaseStatusActive
-		lease.Holder = &actor
-		lease.ClaimTokenSHA256 = ""
-		lease.ClaimedAt = time.Now().UTC().Format(time.RFC3339Nano)
-		lease.ReleasedAt = ""
-		persisted, err = persistExecutionTransition(stateRoot, record, nil)
-		if err != nil {
-			return err
-		}
-		// 상태가 active가 된 뒤 남은 파일은 hash가 비어 재사용할 수 없다.
-		_ = os.Remove(req.TokenFile)
-		return nil
-	})
-	if err != nil {
-		return ExecutionResult{OK: false, ID: req.ID}, err
-	}
-	return executionResult(persisted), nil
-}
-
 func ReleaseExecution(stateRoot string, req ExecutionReleaseRequest) (ExecutionResult, error) {
 	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
 		return ExecutionResult{OK: false, ID: req.ID}, err
 	}
+	return releaseExecutionCompatibilityOracle(stateRoot, req)
+}
+
+// releaseExecutionCompatibilityOracle는 공개 two-argument facade가 유지해야 할
+// 기존 동작이다. production ExecuteExecution은 injected vertical로만 진입한다.
+func releaseExecutionCompatibilityOracle(stateRoot string, req ExecutionReleaseRequest) (ExecutionResult, error) {
 	actor, err := normalizeNativeActor(req.Actor)
 	if err != nil {
 		return ExecutionResult{OK: false, ID: req.ID}, err
@@ -230,7 +175,7 @@ func ReplaceExecution(stateRoot string, req ExecutionReplaceRequest) (ExecutionR
 }
 
 func ReplaceExecutionWithDependencies(ctx context.Context, stateRoot string, req ExecutionReplaceRequest, deps ExecutionReplaceDependencies) (ExecutionReplaceResult, error) {
-	if req.Action == ExecutionReplaceRevoke || req.Action == ExecutionReplaceFinalize || req.Action == ExecutionReplaceReseed {
+	if req.Action == ExecutionReplaceRevoke || req.Action == ExecutionReplaceFinalize {
 		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
 			return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, err
 		}
@@ -245,7 +190,7 @@ func ReplaceExecutionWithDependencies(ctx context.Context, stateRoot string, req
 		return previewExecutionReplacement(ctx, stateRoot, req, deps)
 	case ExecutionReplaceFinalizePreview:
 		return previewExecutionFinalization(ctx, stateRoot, req, deps)
-	case ExecutionReplaceRevoke, ExecutionReplaceFinalize, ExecutionReplaceReseed:
+	case ExecutionReplaceRevoke, ExecutionReplaceFinalize:
 		if !req.Confirm {
 			return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, fmt.Errorf("%s requires confirm", req.Action)
 		}
@@ -384,55 +329,6 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 			if err != nil {
 				return cleanupReplacementFailure(record, err)
 			}
-			return nil
-		case ExecutionReplaceReseed:
-			if lease.Status != model.LeaseStatusReleased && lease.Status != model.LeaseStatusClaimable {
-				return fmt.Errorf("reseed requires a released or claimable lease")
-			}
-			fingerprint, orcaInventory, err := executionInventoryFingerprint(ctx, record, req.Actor, deps)
-			if err != nil {
-				return err
-			}
-			if fingerprint != req.InventoryFingerprint {
-				return fmt.Errorf("stale replacement inventory fingerprint")
-			}
-			if record.Execution.Orca != nil && strings.TrimSpace(orcaInventory.RuntimeID) != "" {
-				record.Execution.Orca.RuntimeID = orcaInventory.RuntimeID
-			}
-			supersededTokenPath := claimTokenPath(record)
-			lease.Generation++
-			// 직전 실패가 target generation 파일을 남겼더라도 durable 세대가
-			// 아직 이전 값이면 이 경로의 권한은 없다. exact harness-owned
-			// residue만 지운 뒤 새 token을 O_EXCL로 만든다.
-			if err := cleanupReplacementGeneration(record); err != nil {
-				return err
-			}
-			token, path, err := createClaimToken(record)
-			if err != nil {
-				return cleanupReplacementFailure(record, err)
-			}
-			tokenPath = path
-			lease.Status = model.LeaseStatusClaimable
-			lease.Holder = nil
-			lease.ClaimTokenSHA256 = tokenSHA256(token)
-			lease.ReplacedAt = now
-			lease.ReplacementReason = strings.TrimSpace(req.Reason)
-			// 재봉인은 persist 이전에 수행한다: 실패하면 generation이 올라간
-			// 상태만 남고 packet이 없는 중간 상태가 생기므로, 새 token을
-			// 정리하고 아무것도 기록하지 않는다(brooks 반론 수용).
-			reseal, err := resealOwnerContextForReplacement(ctx, stateRoot, record, deps)
-			if err != nil {
-				return cleanupReplacementFailure(record, err)
-			}
-			resealed = reseal
-			persisted, err = persistExecutionTransition(stateRoot, record, nil)
-			if err != nil {
-				return cleanupReplacementFailure(record, err)
-			}
-			// 새 generation이 durable해진 뒤 구 token은 generation/hash CAS상
-			// 권한이 없다. 삭제 실패가 새 세대 성공을 모호하게 만들지 않도록
-			// best-effort hygiene로만 정리한다.
-			_ = removeReplacementRuntimeFile(record.Execution.Workspace.Root, supersededTokenPath)
 			return nil
 		}
 		return fmt.Errorf("unsupported execution replace action %q", req.Action)
@@ -949,7 +845,7 @@ func createClaimToken(record IssueOpsRecord) (string, string, error) {
 	return token, path, nil
 }
 
-func readClaimToken(record IssueOpsRecord, path string) (string, error) {
+func readExecutionLeaseToken(record IssueOpsRecord, path string) (string, error) {
 	expected := claimTokenPath(record)
 	if !samePath(path, expected) {
 		return "", fmt.Errorf("claim_token_file must be the deterministic current-generation path")

@@ -15,17 +15,27 @@ Provider candidate gathering:
 
 Always inspect the current issue list and label list before deciding whether to create a new issue, link an existing issue, or create/update labels. If an existing issue already matches the requested work, link or update that issue instead of creating a duplicate. If the scoring gate selects a label that does not exist on the provider, create the missing label before issue creation or issue edit, then apply it. Do not create labels that were not selected by the scoring gate.
 
-Run the scoring gate with the external LLM judge when available:
-
-```bash
-agent-harness issueops remote score --input issueops-remote-score.json --judge llm --model glm-5-turbo --json
-```
-
-Use deterministic fallback only when the external LLM is unavailable or intentionally disabled:
+Run the deterministic score first:
 
 ```bash
 agent-harness issueops remote score --input issueops-remote-score.json --judge none --json
 ```
+
+For semantic judgment, render the read-only `background_join` prompt:
+
+```bash
+agent-harness issueops remote score --input issueops-remote-score.json --judge prompt --json
+```
+
+Give the returned `prompt` field to a fresh independent host agent. Save only
+that agent's result JSON, then strict-decode it before any remote artifact write:
+
+```bash
+agent-harness issueops remote score --input issueops-remote-score.json --judge file --judge-file issueops-remote-judge.json --json
+```
+
+If an independent host agent is unavailable or intentionally disabled, use the
+deterministic result as the final scoring evidence and record that choice.
 
 Default threshold is `0.70` unless the repo or user sets a stronger threshold. Attach selected related issues with the provider-native mechanism described in "Provider-Specific Linking And Hierarchy" below (GitHub body references vs GitLab linked items) — do not reuse one provider's style for the other. Include a compact scoring summary when it helps future reviewers understand why those links and labels were chosen, and apply selected labels with provider CLI/API commands. Do not apply rejected labels, create rejected labels, or link rejected issues. If label candidates existed but none met threshold, do not create an unlabeled remote artifact; stop before remote writes and either rerun scoring with corrected candidates or choose an explicit manual label with the reason recorded in IssueOps feedback.
 
@@ -34,7 +44,7 @@ The scoring summary is the **threshold-based label decision**. It must name sele
 The agent must propose the operational choice instead of leaving the user to invent it. Example:
 
 ```text
-관련 이슈/라벨 후보를 점수화하고 threshold 이상만 이슈 본문과 라벨에 반영하겠습니다. 기본은 Z.AI `glm-5-turbo` LLM judge, 실패 시 deterministic fallback으로 진행합니다.
+관련 이슈/라벨 후보를 먼저 deterministic scorer로 점검하고, read-only prompt를 fresh host agent가 독립 평가한 결과만 `file` backend로 검증해 threshold 이상을 반영하겠습니다.
 ```
 
 Only prepare a local issue draft instead of creating a remote issue when credentials, target provider, ownership, or branch target are unclear, or when the user explicitly asks not to create a remote issue.

@@ -35,6 +35,93 @@ func TestLaunchOwnerWaitsForTheDelayedTabTitle(t *testing.T) {
 	}
 }
 
+// Orca terminal create는 terminal list에 새 PTY가 나타나기 전에 반환할 수 있다.
+// live #190 실행은 12초 제목 대기 상한이 있는데도 약 1초 만에 실패했다. 첫
+// inventory에 PTY가 없을 때 settle loop를 건너뛰던 경로를 재현한다.
+func TestLaunchOwnerWaitsForTheCreatedPTYToAppearInInventory(t *testing.T) {
+	prepared, launch := executionLaunchSealed(t)
+	fake := executionLaunchFake(t)
+	fake.terminalInventoryPresent = []bool{false, true}
+	fake.terminalInventoryTitles = []string{"", executionLaunchMarker}
+
+	provisioner := &ExecutionProvisioner{
+		client: fake, terminalSettleBudget: 30 * time.Millisecond, terminalSettleInterval: 5 * time.Millisecond,
+	}
+	if _, err := provisioner.LaunchOwner(context.Background(), prepared, executionLaunchProbe(), launch); err != nil {
+		t.Fatalf("a newly created PTY may appear after the first inventory read: %v", err)
+	}
+	if fake.inventoryCalls != 2 {
+		t.Fatalf("the PTY should settle through read-only inventory, got %d calls", fake.inventoryCalls)
+	}
+	if fake.terminalCreateCalls != 1 {
+		t.Fatalf("waiting must not repeat terminal creation: %d", fake.terminalCreateCalls)
+	}
+}
+
+// live #190에서 terminal create 응답은 handle과 worktree만 주고 ptyId는 비어
+// 있었다. 같은 handle의 단일 terminal이 inventory에 나타나면 그 행에서 PTY를
+// 회수해야 한다. 생성 mutation은 이미 끝났으므로 재실행하지 않는다.
+func TestLaunchOwnerRecoversPTYOmittedFromCreateReceiptByHandle(t *testing.T) {
+	prepared, launch := executionLaunchSealed(t)
+	fake := executionLaunchFake(t)
+	fake.createdTerminal = &port.OrcaTerminal{
+		RuntimeID: executionLaunchRuntimeID, Handle: "term-timing",
+		WorktreeID: executionLaunchWorktreeID, Connected: true, Writable: true,
+	}
+	fake.terminalInventoryTitles = []string{executionLaunchMarker}
+
+	provisioner := &ExecutionProvisioner{
+		client: fake, terminalSettleBudget: 30 * time.Millisecond, terminalSettleInterval: 5 * time.Millisecond,
+	}
+	receipt, err := provisioner.LaunchOwner(context.Background(), prepared, executionLaunchProbe(), launch)
+	if err != nil {
+		t.Fatalf("create 응답에서 빠진 PTY를 단일 handle 행으로 회수해야 한다: %v", err)
+	}
+	if receipt.TerminalPTYID != "pty-timing" {
+		t.Fatalf("inventory의 PTY가 durable receipt에 남아야 한다: %+v", receipt)
+	}
+	if fake.inventoryCalls != 1 || fake.terminalCreateCalls != 1 {
+		t.Fatalf("조회 1회와 생성 1회만 허용한다: inventory=%d create=%d", fake.inventoryCalls, fake.terminalCreateCalls)
+	}
+}
+
+func TestLaunchOwnerBoundsAPersistentlyAbsentPTY(t *testing.T) {
+	prepared, launch := executionLaunchSealed(t)
+	fake := executionLaunchFake(t)
+	fake.terminalInventoryPresent = []bool{false}
+
+	provisioner := &ExecutionProvisioner{
+		client: fake, terminalSettleBudget: 30 * time.Millisecond, terminalSettleInterval: 5 * time.Millisecond,
+	}
+	_, err := provisioner.LaunchOwner(context.Background(), prepared, executionLaunchProbe(), launch)
+	if err == nil {
+		t.Fatal("a PTY that never appears must remain a bounded identity failure")
+	}
+	var orcaErr *port.OrcaError
+	if !asOrcaError(err, &orcaErr) || !strings.Contains(orcaErr.Detail, "attempt") {
+		t.Fatalf("bounded absence must preserve attempt evidence: %v", err)
+	}
+	if fake.inventoryCalls < 2 {
+		t.Fatalf("persistent absence must consume the bounded settle window: %d", fake.inventoryCalls)
+	}
+}
+
+func TestLaunchOwnerDoesNotWaitOnAmbiguousPTYInventory(t *testing.T) {
+	prepared, launch := executionLaunchSealed(t)
+	fake := executionLaunchFake(t)
+	fake.terminalInventoryCopies = []int{2}
+
+	provisioner := &ExecutionProvisioner{
+		client: fake, terminalSettleBudget: 30 * time.Millisecond, terminalSettleInterval: 5 * time.Millisecond,
+	}
+	if _, err := provisioner.LaunchOwner(context.Background(), prepared, executionLaunchProbe(), launch); err == nil {
+		t.Fatal("duplicate PTY rows are ambiguity, not a settling delay")
+	}
+	if fake.inventoryCalls != 1 {
+		t.Fatalf("ambiguity must fail immediately instead of waiting: %d", fake.inventoryCalls)
+	}
+}
+
 // 마커가 끝내 나타나지 않으면 여전히 거부한다. 대기는 봉인 검증을 늦추는 것이지
 // 없애는 것이 아니다.
 func TestLaunchOwnerStillRefusesWhenTheMarkerNeverAppears(t *testing.T) {

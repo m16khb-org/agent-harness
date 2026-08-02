@@ -332,7 +332,7 @@ Load from other skill directories when the phase involves specialized work:
 - Torvalds commit protocol: every commit must be atomic (one intent per commit). Use Conventional Commit + Lore body format per `.agent-harness/COMMIT_POLICY.md`. Never force-push shared branches. Always create a backup branch before history rewrite.
 - Berners-Lee research protocol: during grill and issue phases, external claims must cite sources with retrieval dates. Claims without ≥2 independent sources are flagged as single-sourced. Research reports are committed to `.agent-harness/research/`.
 - Completion hygiene: before reporting done, verify the final diff, target branch, remote issue/PR/MR prose freshness, single-commit or declared commit policy, and cleanup/worktree status.
-- External LLM wrapper: all IssueOps LLM judging must go through the shared harness external LLM wrapper, defaulting to Z.AI `glm-5-turbo`, and remain read-only judgment.
+- Host-agent judge boundary: IssueOps never calls an external LLM service in-process. Render a read-only prompt, dispatch it to a fresh independent host agent, and validate the returned JSON through the `file` backend before any remote artifact write.
 
 ## Gate Quick Reference
 
@@ -404,7 +404,7 @@ IssueOps must leave an auditable decision trail for labels, large issue breakdow
 Use this remote issue scoring choice shape before creating or editing an issue:
 
 ```text
-관련 이슈/라벨 후보를 점수화하고 threshold 이상만 이슈 본문과 라벨에 반영하겠습니다. 기본은 Z.AI `glm-5-turbo` LLM judge, 실패 시 deterministic fallback으로 진행합니다.
+관련 이슈/라벨 후보를 먼저 deterministic scorer로 점검하고, read-only prompt를 fresh host agent가 독립 평가한 결과만 `file` backend로 검증해 threshold 이상을 반영하겠습니다.
 ```
 
 Use this review thread reply shape:
@@ -450,17 +450,17 @@ Remote scoring is a `background_join` LLM gate. It may run while local planning 
 
 Do not put polling or waiting in lifecycle hooks. Hooks may surface a status hint only. Completion is decided by the main loop at the join point by checking the stored job/result status and requiring success before the remote write.
 
-External LLM judges are read-only evaluators. Their prompts must forbid workspace inspection, tool execution, file changes, git actions, issue/label/PR/MR mutation, comments, assignment, closing/reopening, or state changes. They may only return judgment JSON that the main loop applies after validation.
+Host-agent judges are read-only evaluators. Their prompts must forbid workspace inspection, tool execution, file changes, git actions, issue/label/PR/MR mutation, comments, assignment, closing/reopening, or state changes. They may only return judgment JSON that the main loop applies after validation.
 
-### Benchmark Judge Protocol (subagent-first)
+### Benchmark Judge Protocol (independent host-agent)
 
-When an issueops benchmark needs an LLM judge, use the Z.AI `glm-5-turbo` backend or a fresh-context sub-agent for independent review:
+When an IssueOps benchmark needs a semantic judge, use a fresh-context host agent that did not author the artifacts:
 
 1. Run the deterministic pass first: `agent-harness issueops benchmark run --fixtures <dir> --judge none --json`.
 2. The main agent dispatches a **fresh-context** sub-agent (no inherited conversation context, never the author of the artifacts being judged — no self-scoring) with a deterministic input packet: ① the rubric dimension list with one-line definitions, ② the artifact fields to judge, ③ the required output: a `{"<fixtureID>": <IssueOpsBenchmarkScore>}` map as JSON only, no preamble.
 3. Feed the returned map through `agent-harness issueops benchmark run --fixtures <dir> --judge file --judge-file <map.json> --json`. The CLI strict-decodes each score and fails closed on missing/unknown fixture keys.
 
-`--judge llm` uses the shared Z.AI external-LLM wrapper. Honesty note: the no-self-approval constraint is a documented orchestration protocol — the Go `--judge file` layer only sees bytes and cannot verify who produced the judgment; enforcement lives in the main agent's dispatch discipline.
+The no-self-approval constraint is a documented orchestration protocol: the Go `--judge file` layer only sees bytes and cannot verify who produced the judgment, so enforcement lives in the coordinator's dispatch discipline.
 
 ## Operational Start
 

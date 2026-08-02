@@ -235,6 +235,13 @@ func worktreeGuardEditTargets(req HookToolUseLifecycleRequest) []string {
 }
 
 func hookRequestPathBase(req HookToolUseLifecycleRequest) string {
+	if searchrouting.IsShellTool(req.Tool) {
+		if workdir, ok := req.ToolInput["workdir"].(string); ok {
+			if root := resolveHookTargetPath(req.CWD, workdir); root != "" {
+				return root
+			}
+		}
+	}
 	if cwd := cleanAbsPath(req.CWD); cwd != "" {
 		return cwd
 	}

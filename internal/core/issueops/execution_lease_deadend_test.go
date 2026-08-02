@@ -19,7 +19,7 @@ func TestExecutionRevokeRefusesTheLiveHolderItself(t *testing.T) {
 	stateRoot := t.TempDir()
 	fixture := newClaimableExecutionFixture(t, stateRoot, "69-self-revoke")
 	holder := executionActor("claude", "self-revoke-session")
-	if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: fixture.record.ID, Generation: 1, Actor: holder,
 		CWD: fixture.worktree, TokenFile: fixture.tokenPath,
 	}); err != nil {
@@ -84,7 +84,7 @@ func TestExecutionRevokeStillTakesOverFromAnotherSession(t *testing.T) {
 	stateRoot := t.TempDir()
 	fixture := newClaimableExecutionFixture(t, stateRoot, "69-third-party")
 	holder := executionActor("codex", "unresponsive-session")
-	if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: fixture.record.ID, Generation: 1, Actor: holder,
 		CWD: fixture.worktree, TokenFile: fixture.tokenPath,
 	}); err != nil {
@@ -177,13 +177,13 @@ func TestReleasedDirectRecoveryRendersFiniteCommandChain(t *testing.T) {
 		}
 	}
 
-	reseeded, err := ReplaceExecution(stateRoot, ExecutionReplaceRequest{
+	reseeded, err := reseedExecutionCompatibilityOracle(context.Background(), stateRoot, ExecutionReplaceRequest{
 		ID: record.ID, Action: ExecutionReplaceReseed,
 		ExpectedGeneration:   prepared.Execution.Lease.Generation,
 		InventoryFingerprint: preview.InventoryFingerprint,
 		Reason:               "released direct holder recovery",
 		Actor:                actor, CWD: record.Repo, Confirm: true,
-	})
+	}, ExecutionReplaceDependencies{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +191,7 @@ func TestReleasedDirectRecoveryRendersFiniteCommandChain(t *testing.T) {
 		!strings.Contains(reseeded.NextCommand, reseeded.ClaimTokenPath) {
 		t.Fatalf("reseed must hand over the exact claim command: %q", reseeded.NextCommand)
 	}
-	if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: record.ID, Generation: reseeded.Execution.Lease.Generation,
 		Actor: actor, CWD: prepared.Execution.Workspace.Root,
 		TokenFile: reseeded.ClaimTokenPath,

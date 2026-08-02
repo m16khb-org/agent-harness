@@ -107,6 +107,14 @@ Deterministic baseline과 live evidence는 advertised schema validity와 closed 
 
 기존 top-level `doctor`가 cross-system operational health의 유일한 공개 표면이다. `internal/adapter/operationalhealth`가 read-only inventory를 정규화하고, `internal/core/operationalhealth`가 deterministic finding을 만든다. IssueOps stale scan은 같은 cycle-authority 판정만 재사용하되 기존 strong-signal release policy와 locked re-probe를 유지한다. Stability audit는 ownership/residue 규칙을 다시 구현하지 않고 방금 빌드한 binary의 `doctor` 결과를 gate로 소비한다.
 
+### 4.3 Dependency fitness ratchet
+
+`internal/architecture`는 production import graph의 test-only fitness boundary다. `go list -json ./...`의 direct `Imports`만 정렬된 `importer -> imported` edge로 수집하며, test import와 transitive dependency는 graph에 포함하지 않는다.
+
+- `internal/core/... -> internal/adapter/...|cmd/...`, `internal/adapter/... -> cmd/...`, `internal/port -> internal/...`는 baseline 없이 즉시 실패한다.
+- legacy infrastructure·adapter-to-core·composition root 밖 concrete-adapter edge는 `internal/architecture/testdata/legacy_imports.txt`와 정확히 일치해야 한다. 신규·이동·삭제 후 남은 stale edge는 `legacy_baseline` rule과 edge를 함께 출력한다.
+- baseline을 줄이는 변경은 의도된 architecture 개선으로 같은 review에서만 허용한다. production package 이동이나 runtime wiring은 이 ratchet의 범위가 아니다.
+
 ---
 
 ## 5. Docs / state / config / logs
@@ -139,6 +147,9 @@ Draft wiki staging:
 - project lifecycle 위치: `~/.local/state/agent-harness/projects/<repo-id>/project.json` 및 `doc-upkeep-queue.jsonl`; `<repo-id>`는 repo fingerprint hash라 같은 머신의 여러 repo가 섞이지 않는다.
 - IssueOps 위치: `~/.local/state/agent-harness/issueops_v1/harness.db`, bucket `issueops_v1`. 한 row는 lifecycle evidence와 정확히 하나의 `Execution`을 저장한다. Execution은 canonical workspace, direct/Orca mode, generation-fenced lease, native process receipt, pending external intent, Orca resource identity, sealed owner artifacts, completion receipt를 가진다. 사용자 요청과 설계 검토 같은 freeform 값은 secret-like 패턴을 redaction한 뒤 저장한다.
 - IssueOps v1의 현재 쓰기 버전은 `schema_version=1`이다. Missing/zero v1 row는 1로 정규화하지만 legacy write-authority key, mixed schema, 또는 future schema는 byte-identical fail-closed다. Legacy namespace와 row/file은 자동 변환하지 않는다. `issueops reset-legacy preview/status/confirm`의 fingerprint-CAS, live-process barrier, staged-binary binding, exact file manifest를 통과한 명시적 destructive reset 뒤에만 v1 mutation이 열린다.
+- `execution release`는 첫 production vertical이다. CLI/MCP transport facade는 injected release handler만 호출하고, `internal/contract/issueopslease`의 stable v1 canonicalization → pure `internal/domain/issueopslease` → capability-local `internal/application/issueopslease` → inbound/outbound adapter 순서로 흐른다. `cmd/harness/harnessapp`만 SQLite store, process observation, clock, filesystem path matcher를 조립하며, 기존 two-argument `ReleaseExecution`은 외부 Go surface와 differential oracle을 위한 compatibility facade로만 남는다.
+- `execution reconcile`의 Orca `worktree_create`·`owner_launch`·`dispatch` confirm도 같은 vertical 경계를 사용한다. kind-local router가 injected handler로 보내고, application은 호출당 현재 durable stage 하나만 inventory/adopt 또는 bounded retry/CAS한다. preview와 no-pending은 side effect가 없는 compatibility router에 남는다.
+- 원격 PR/MR 생성과 `remote_pr_create` 복구는 `issueopspublication` capability vertical이다. `internal/contract/issueopspublication`의 stable mapping → pure domain decision → shared `CreateService`/`ReconcileService` → inbound/outbound adapter 순서로 흐르며, `cmd/harness/harnessapp`만 provider, raw schema v1 CAS bridge, live verifier를 조립한다. CLI create와 CLI/MCP reconcile은 같은 request-scoped handler pair를 사용하고, handler가 없으면 legacy full-flow로 우회하지 않고 fail closed한다.
 - Loop 위치: `~/.local/state/agent-harness/loop/<loop-id>.json`. CLI `loop start/record-attempt/status/stop`와 MCP `loop_start/loop_record_attempt/loop_status/loop_stop`가 같은 state machine을 사용한다. 같은 repo+name의 active loop는 resume되고 terminal loop는 새 name이 필요하다. strict PR readiness는 같은 repo의 `active`/`exhausted` loop를 `loop_incomplete:<loop-id>`로 막고, `stopped`/`succeeded` loop는 통과한다.
 - Actor model: main agent는 safety/reversibility/user-intent judgement와 child result acceptance를 소유한다. IssueOps의 active native holder는 exact lifecycle ID, generation, process receipt, canonical cwd 안에서만 쓴다. Hook은 관찰·차단·relay만 담당하고, phase 진행·workspace 준비·테스트·publication·merge·cleanup을 대신 실행하지 않는다.
 - override: `HARNESS_STATE_DIR`

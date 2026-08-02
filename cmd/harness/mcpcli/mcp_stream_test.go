@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"agent-harness/internal/core/issueops"
 )
 
 func TestServeMCPStreamContextCancelsIdleSDKSession(t *testing.T) {
@@ -75,5 +77,30 @@ func TestServeMCPStreamListsHarnessTools(t *testing.T) {
 	}
 	if !hasInit || !hasTools || !hasResource {
 		t.Fatalf("missing responses (init=%v tools=%v resource=%v):\n%s", hasInit, hasTools, hasResource, output)
+	}
+}
+
+func TestServeMCPStreamCarriesPublicationReconcileWithoutInvokingOnHandshake(t *testing.T) {
+	invoked := 0
+	input := strings.Join([]string{
+		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`,
+		`{"jsonrpc":"2.0","method":"notifications/initialized"}`,
+		`{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`,
+	}, "\n") + "\n"
+	var output bytes.Buffer
+	err := ServeMCPStreamWithDependencies(strings.NewReader(input), &output, io.Discard, MCPDependencies{
+		Publication: issueops.RemotePublicationHandlers{Reconcile: func(context.Context, string, issueops.ExecutionReconcileRequest) (issueops.ExecutionReconcileResult, error) {
+			invoked++
+			return issueops.ExecutionReconcileResult{}, nil
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if invoked != 0 {
+		t.Fatalf("stream handshake invoked publication reconcile handler: %d", invoked)
+	}
+	if !strings.Contains(output.String(), `"serverInfo"`) || !strings.Contains(output.String(), `"tools"`) {
+		t.Fatalf("stream did not complete handshake and tool listing: %s", output.String())
 	}
 }

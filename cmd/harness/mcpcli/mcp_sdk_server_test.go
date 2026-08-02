@@ -3,9 +3,12 @@ package mcpcli
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
+	"sync"
 	"testing"
 
+	"agent-harness/internal/core/issueops"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -58,19 +61,94 @@ func TestSDKResourceHandlerReadsHarnessResource(t *testing.T) {
 	}
 }
 
-func TestInitSDKServerIsIdempotent(t *testing.T) {
-	oldServer := sdkServer
-	defer func() { sdkServer = oldServer }()
-	sdkServer = nil
-
-	first := initSDKServer()
-	second := initSDKServer()
+func TestInitSDKServerKeepsDependenciesPerServer(t *testing.T) {
+	first := initSDKServer(MCPDependencies{})
+	second := initSDKServer(MCPDependencies{})
 
 	if first == nil || second == nil {
 		t.Fatalf("initSDKServer returned nil: first=%v second=%v", first, second)
 	}
-	if first != second {
-		t.Fatalf("initSDKServer should reuse the registered SDK server")
+	if first == second {
+		t.Fatal("initSDKServer must not cache a package-global server")
+	}
+}
+
+func TestInitSDKServerAcceptsPublicationReconcileWithoutInvokingIt(t *testing.T) {
+	invoked := 0
+	handler := issueops.RemotePullRequestReconcileHandler(func(context.Context, string, issueops.ExecutionReconcileRequest) (issueops.ExecutionReconcileResult, error) {
+		invoked++
+		return issueops.ExecutionReconcileResult{}, nil
+	})
+
+	server := initSDKServer(MCPDependencies{Publication: issueops.RemotePublicationHandlers{Reconcile: handler}})
+	if server == nil {
+		t.Fatal("initSDKServer returned nil")
+	}
+	if invoked != 0 {
+		t.Fatalf("SDK registration invoked publication reconcile handler: %d", invoked)
+	}
+}
+
+func TestInitSDKServerDispatchesConcurrentReleaseWithIsolatedDependencies(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	ids := []string{"io-sdk-first", "io-sdk-second"}
+	called := make(chan string, len(ids))
+	errs := make(chan error, len(ids))
+	var group sync.WaitGroup
+	for _, id := range ids {
+		group.Add(1)
+		go func(id string) {
+			defer group.Done()
+			server := initSDKServer(MCPDependencies{Release: func(_ context.Context, _ string, request issueops.ExecutionReleaseRequest) (issueops.ExecutionResult, error) {
+				token := id + "::" + request.ID
+				called <- token
+				return issueops.ExecutionResult{OK: true, ID: token}, nil
+			}})
+			clientTransport, serverTransport := mcp.NewInMemoryTransports()
+			serverSession, err := server.Connect(context.Background(), serverTransport, nil)
+			if err != nil {
+				errs <- err
+				return
+			}
+			defer serverSession.Close()
+			client := mcp.NewClient(&mcp.Implementation{Name: "issueops-sdk-test", Version: "1"}, nil)
+			clientSession, err := client.Connect(context.Background(), clientTransport, nil)
+			if err != nil {
+				errs <- err
+				return
+			}
+			defer clientSession.Close()
+			result, err := clientSession.CallTool(context.Background(), &mcp.CallToolParams{Name: "issueops_execution", Arguments: map[string]any{"action": "release", "id": id, "generation": 1}})
+			if err != nil {
+				errs <- err
+				return
+			}
+			if result == nil || len(result.Content) != 1 {
+				errs <- fmt.Errorf("SDK release handler returned no content for %s", id)
+				return
+			}
+			text, ok := result.Content[0].(*mcp.TextContent)
+			if !ok || !strings.Contains(text.Text, id+"::"+id) {
+				errs <- fmt.Errorf("SDK release response did not bind handler and request for %s: %#v", id, result.Content[0])
+			}
+		}(id)
+	}
+	group.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	close(called)
+	seen := map[string]bool{}
+	for token := range called {
+		seen[token] = true
+	}
+	for _, id := range ids {
+		if !seen[id+"::"+id] {
+			t.Fatalf("SDK release handler/request binding for %s was not observed", id)
+		}
 	}
 }
 
@@ -89,7 +167,7 @@ func TestSDKServerHandshakeOmitsLoggingAndKeepsCatalogCapabilities(t *testing.T)
 		&mcp.Implementation{Name: "agent_harness_test", Version: "0"},
 		sdkServerOptions(),
 	)
-	registerAllTools(server)
+	registerAllTools(server, MCPDependencies{})
 	registerAllResources(server)
 	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil)
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()

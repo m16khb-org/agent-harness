@@ -1,7 +1,9 @@
 package issueopscli
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,17 +14,53 @@ import (
 	"agent-harness/cmd/harness/mcpcli"
 	"agent-harness/internal/core"
 	issueopscore "agent-harness/internal/core/issueops"
+	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/core/preflight"
 )
 
-func TestIssueOpsExecutionCLIPrepareAndStatusShareSchemaProjection(t *testing.T) {
+func TestIssueOpsExecutionDepsPropagatePublicationReconcileWithoutInvocation(t *testing.T) {
+	invoked := 0
+	handler := issueopscore.RemotePullRequestReconcileHandler(func(context.Context, string, issueopscore.ExecutionReconcileRequest) (issueopscore.ExecutionReconcileResult, error) {
+		invoked++
+		return issueopscore.ExecutionReconcileResult{}, nil
+	})
+
+	deps := issueOpsExecutionDeps(Dependencies{Publication: issueopscore.RemotePublicationHandlers{Reconcile: handler}})
+	if deps.Publication.Reconcile == nil {
+		t.Fatal("publication reconcile handler was not propagated")
+	}
+	if reflect.ValueOf(deps.Publication.Reconcile).Pointer() != reflect.ValueOf(handler).Pointer() {
+		t.Fatal("publication reconcile handler changed during CLI composition")
+	}
+	if invoked != 0 {
+		t.Fatalf("publication reconcile handler invoked during propagation: %d", invoked)
+	}
+}
+
+func TestIssueOpsExecutionDepsPropagateCompletionWithoutInvocation(t *testing.T) {
+	invoked := 0
+	handler := issueopscore.ExecutionCompleteHandler(func(context.Context, string, issueopscore.ExecutionCompleteRequest) (issueopscore.ExecutionResult, error) {
+		invoked++
+		return issueopscore.ExecutionResult{}, nil
+	})
+	deps := issueOpsExecutionDeps(Dependencies{Complete: handler})
+	if deps.Complete == nil || reflect.ValueOf(deps.Complete).Pointer() != reflect.ValueOf(handler).Pointer() {
+		t.Fatal("completion handler was not propagated unchanged")
+	}
+	if invoked != 0 {
+		t.Fatalf("completion handler invoked during propagation: %d", invoked)
+	}
+}
+
+func TestIssueOpsExecutionPrepareCLIAndStatusShareSchemaProjection(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo, id, actorFlags := executionCLIRecord(t)
+	deps := Dependencies{Prepare: executionCLIPrepareHandler(t)}
 
 	preparedJSON := captureStdoutForContract(t, func() error {
-		return runIssueOps(append([]string{
+		return runIssueOpsWithDependencies(append([]string{
 			"execution", "prepare", "--id", id, "--mode", "direct", "--cwd", repo, "--confirm", "--json",
-		}, actorFlags...))
+		}, actorFlags...), deps)
 	})
 	var prepared issueopscore.ExecutionPrepareResult
 	if err := json.Unmarshal([]byte(preparedJSON), &prepared); err != nil {
@@ -33,9 +71,6 @@ func TestIssueOpsExecutionCLIPrepareAndStatusShareSchemaProjection(t *testing.T)
 	}
 	if prepared.Workspace.Root == repo || !strings.HasPrefix(prepared.Workspace.Root, repo+".worktrees"+string(filepath.Separator)) {
 		t.Fatalf("prepare did not select the canonical sibling worktree: %#v", prepared.Workspace)
-	}
-	if top := preflight.GitOut(prepared.Workspace.Root, "rev-parse", "--show-toplevel"); !sameExecutionCLIPath(top, prepared.Workspace.Root) {
-		t.Fatalf("prepare did not create a real linked worktree: top=%q", top)
 	}
 
 	statusJSON := captureStdoutForContract(t, func() error {
@@ -69,11 +104,14 @@ func TestIssueOpsExecutionCLIRejectsLegacyDecideAndAmbiguousReplace(t *testing.T
 	}
 }
 
-func TestIssueOpsExecutionCLIAndMCPStatusAndErrorsAreIdentical(t *testing.T) {
+func TestIssueOpsExecutionPrepareCLIAndMCPStatusAndErrorsAreIdentical(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo, id, actorFlags := executionCLIRecord(t)
 	_ = captureStdoutForContract(t, func() error {
-		return runIssueOps(append([]string{"execution", "prepare", "--id", id, "--mode", "direct", "--cwd", repo, "--confirm", "--json"}, actorFlags...))
+		return runIssueOpsWithDependencies(
+			append([]string{"execution", "prepare", "--id", id, "--mode", "direct", "--cwd", repo, "--confirm", "--json"}, actorFlags...),
+			Dependencies{Prepare: executionCLIPrepareHandler(t)},
+		)
 	})
 
 	cliJSON := captureStdoutForContract(t, func() error {
@@ -104,6 +142,60 @@ func TestIssueOpsExecutionCLIAndMCPStatusAndErrorsAreIdentical(t *testing.T) {
 	}
 	if !reflect.DeepEqual(cliFailure, mcpFailure) {
 		t.Fatalf("CLI and MCP error contracts diverged: cli=%#v mcp=%#v", cliFailure, mcpFailure)
+	}
+}
+
+func TestIssueOpsExecutionPrepareCLIFailsClosedWithoutHandler(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo, id, actorFlags := executionCLIRecord(t)
+	_, err := captureStdoutAndErrorForIssueOps(t, func() error {
+		return runIssueOpsWithDependencies(
+			append([]string{"execution", "prepare", "--id", id, "--mode", "direct", "--cwd", repo, "--json"}, actorFlags...),
+			Dependencies{},
+		)
+	})
+	if !errors.Is(err, issueopscore.ErrPrepareHandlerUnavailable) {
+		t.Fatalf("prepare without handler error = %v", err)
+	}
+}
+
+func executionCLIPrepareHandler(t *testing.T) issueopscore.ExecutionPrepareHandler {
+	t.Helper()
+	return func(_ context.Context, stateRoot string, request issueopscore.ExecutionPrepareRequest, _ issueopscore.ExecutionPrepareInvocation) (issueopscore.ExecutionPrepareResult, error) {
+		record, err := issueopscore.ReadIssueOps(stateRoot, request.ID)
+		if err != nil {
+			return issueopscore.ExecutionPrepareResult{ID: request.ID}, err
+		}
+		actor := request.Actor
+		actor.ProcessAncestry = nil
+		workspace := model.Workspace{
+			SourceRoot: record.Repo,
+			Root:       filepath.Join(record.Repo+".worktrees", record.Branch),
+			Branch:     record.Branch,
+			BaseHead:   record.BranchPrepare.BaseSHA,
+			Driver:     "git",
+			LinkedAt:   "2026-08-02T00:00:00Z",
+		}
+		execution := &model.Execution{
+			Mode:      model.ExecutionModeDirect,
+			Workspace: workspace,
+			Lease: model.WriteLease{
+				Generation: 1,
+				Status:     model.LeaseStatusActive,
+				Holder:     &actor,
+				ClaimedAt:  workspace.LinkedAt,
+			},
+		}
+		record.WorktreePath = workspace.Root
+		record.Execution = execution
+		written, err := issueopscore.WriteIssueOps(stateRoot, record)
+		if err != nil {
+			return issueopscore.ExecutionPrepareResult{ID: request.ID}, err
+		}
+		return issueopscore.ExecutionPrepareResult{
+			OK: true, ID: request.ID, RequestedMode: request.Mode, ResolvedMode: "direct",
+			Workspace: workspace, Execution: written.Execution,
+		}, nil
 	}
 }
 

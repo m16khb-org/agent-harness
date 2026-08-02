@@ -230,6 +230,13 @@ possible Orca mutation. Failed-holder recovery uses the ordered generation-CAS
 replacement sequence and proves the prior process/resource is quiescent before
 creating a new claimable generation.
 
+`issueops remote create-pr`와 `issueops execution reconcile`의
+`remote_pr_create` 경로는 같은 publication capability handler를 사용한다.
+초기 생성은 CLI에만 있고, 복구는 CLI와 MCP `issueops_execution` 양쪽에서 같은
+reconcile handler로 흐른다. Handler가 조립되지 않은 compatibility/test wrapper는
+provider를 직접 resolve하거나 legacy create/reconcile로 우회하지 않고 기존
+provider-unavailable 계약으로 fail closed한다.
+
 `issueops execution complete` requires phase `pr`, the exact active generation,
 final HEAD, committed Turing report, verification evidence, and the verified
 durable remote artifact URL. It records `done` and releases the lease
@@ -248,7 +255,9 @@ merge-in-progress for the active lease holder to resolve, then `--finalize`
 commits and pushes, or `--abort` withdraws. Mutating modes require the active
 holder (reseed and claim first on a released cycle); `execution reconcile
 --preview` output is a constant, not an inventory observation — do not cite it
-as residue evidence.
+as residue evidence. Confirm reports `external_state_inspected=true` only after
+the Orca inventory transport was actually attempted; local marker/request
+validation failures remain false.
 
 `issueops execution switch-mode` changes a prepared cycle between `direct` and
 `orca` (#167). `prepare` seals the mode at first run and afterwards **rejects a

@@ -7,6 +7,7 @@ import (
 	"agent-harness/internal/adapter/operationalhealth"
 	"agent-harness/internal/adapter/orca"
 	"agent-harness/internal/adapter/provider"
+	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/issueops/orphancleanup"
 	corehealth "agent-harness/internal/core/operationalhealth"
 	"agent-harness/internal/port"
@@ -70,6 +71,20 @@ func runIssueOps(args []string) error {
 	return handler(args[1:])
 }
 
+func runIssueOpsWithDependencies(args []string, deps Dependencies) error {
+	if len(args) > 0 {
+		switch args[0] {
+		case "execution":
+			return runIssueOpsExecutionWithDependencies(args[1:], deps)
+		case "remote":
+			return remotecmd.Run(args[1:], issueOpsRemoteDepsWithPublication(deps.Publication))
+		case "remote-score":
+			return remotecmd.Run(append([]string{"score"}, args[1:]...), issueOpsRemoteDepsWithPublication(deps.Publication))
+		}
+	}
+	return runIssueOps(args)
+}
+
 // issueOpsConceptHints는 에이전트가 CLI subcommand으로 자주 오인하는 IssueOps
 // 도메인 어휘(lifecycle phase 이름, 결정 동사, ledger artifact 이름)를 매핑한다.
 // skill 문서는 생생한 명사(grill, split, domain)를 쓰지만 CLI는 일반 동사(phase,
@@ -102,12 +117,17 @@ func suggestIssueOpsSubcommand(input string) string {
 }
 
 func issueOpsRemoteDeps() remotecmd.Deps {
+	return issueOpsRemoteDepsWithPublication(issueops.RemotePublicationHandlers{})
+}
+
+func issueOpsRemoteDepsWithPublication(publication issueops.RemotePublicationHandlers) remotecmd.Deps {
 	return remotecmd.Deps{
 		PrintJSON:    printJSON,
 		PrintResult:  printIssueOpsResult,
 		PrintError:   printIssueOpsErrorJSON,
 		VerifyLive:   verifyIssueOpsRemoteArtifactLive,
 		VerifyMerged: verifyIssueOpsRemoteArtifactMergedLive,
+		Publication:  publication,
 	}
 }
 

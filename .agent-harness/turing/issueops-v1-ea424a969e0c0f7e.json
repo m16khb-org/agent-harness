@@ -1,0 +1,63 @@
+{
+  "lifecycle_id": "io-17a57cc2b08b",
+  "generation": 1,
+  "worktree": "/Users/habin/workspace/agent-harness.worktrees/190-architecture-fitness-ratchet",
+  "branch": "190-architecture-fitness-ratchet",
+  "success_criteria": [
+    {
+      "id": "AC-01",
+      "test": "TestEvaluateEdgesRejectsForbiddenDependencies; TestProductionGraphMatchesBaseline",
+      "command": "go test ./internal/architecture -count=1",
+      "result": "PASS: unconditional core, adapter, port, domain, application, and inbound/outbound rules produced no production violations; each synthetic failure pins the exact rule and importer -> imported diagnostic."
+    },
+    {
+      "id": "AC-02",
+      "test": "TestCompareBaselineRejectsNewAndStaleEdges; TestParseBaselineRejectsUnsortedAndDuplicateEdges; TestLegacyInfrastructureIncludesNetAndSyscall; TestProductionGraphMatchesBaseline",
+      "command": "go test ./internal/architecture -count=1",
+      "result": "PASS: baseline parser accepts an empty reduced baseline and rejects unsorted or duplicate entries; net/syscall infrastructure classifier and six observed core edges plus nine adapter-to-adapter subset edges are sorted baseline entries; the baseline contains 31 total concrete-adapter imports; sorted baseline matched twice-collected inventory; synthetic new and stale errors include legacy_baseline and exact edges."
+    },
+    {
+      "id": "AC-03",
+      "test": "TestEvaluateEdgesRejectsForbiddenDependencies; TestLegacyEdgesClassifyConcreteAdapterOutsideCompositionRoot; TestLegacyInfrastructureIncludesNetAndSyscall",
+      "command": "go test ./internal/architecture -count=1",
+      "result": "PASS: synthetic domain root-contract, application, inbound/outbound adapter, non-composition concrete-adapter baseline, composition-root exemption, and baseline cases ran."
+    },
+    {
+      "id": "AC-04",
+      "test": "sealed execution context and plan artifact",
+      "command": "gh issue develop --list 190 --repo m16khb/agent-harness; git ls-remote --heads origin refs/heads/190-architecture-fitness-ratchet; agent-harness issueops branch prepare --id io-17a57cc2b08b --provider github --link-verified --json; agent-harness issueops link-plan --id io-17a57cc2b08b --plan-path .agent-harness/artifact/plan.md --json",
+      "result": "PASS: GitHub linked development branch URL과 원격 ref SHA eeb6241120cbf40d28df1b0b9483ab9dc7f1eaa1를 readback했고, durable execution base_head 5457e834d93a367f3fd5d200d40dfb813320679d는 별도 lifecycle identity로 보존했다. 두 SHA가 동일하다고 주장하지 않으며, branch_prepare와 canonical plan link는 parent target 117-hexagonal-architecture-migration으로 기록됐다."
+    }
+  ],
+  "verification": [
+    {
+      "command": "go test ./internal/architecture -run 'TestEvaluateEdgesRejectsForbiddenDependencies|TestLegacyInfrastructureIncludesNetAndSyscall' -count=1",
+      "result": "RED then GREEN: net/syscall synthetic cases first failed because the classifiers omitted them, then passed after the minimum classifier change."
+    },
+    {
+      "command": "go test ./internal/architecture -run 'TestEvaluateEdgesRejectsForbiddenDependencies|TestLegacyEdgesClassifyConcreteAdapterOutsideCompositionRoot' -count=1",
+      "result": "RED then GREEN: domain SQLite and non-composition adapter-to-adapter cases first failed, then passed after the minimum classifier and baseline-classification changes."
+    },
+    {
+      "command": "go test ./internal/architecture -run 'TestEvaluateEdgesRejectsForbiddenDependencies|TestParseBaselineRejectsUnsortedAndDuplicateEdges' -count=1",
+      "result": "RED then GREEN: domain root-contract and empty baseline cases first failed, then passed after the minimum classifier and parser changes."
+    },
+    {
+      "command": "go test ./internal/architecture -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test ./... -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    },
+    {
+      "command": "git status --short",
+      "result": "PASS: only planned documentation and internal/architecture paths changed before report creation."
+    }
+  ],
+  "cleanup_receipt": "none spawned"
+}

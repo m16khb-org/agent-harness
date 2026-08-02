@@ -1161,6 +1161,8 @@ func exactRemoteScoreObservation(flags map[string][]string) bool {
 	switch judge {
 	case "none":
 		return !hasJudgeFile
+	case "prompt":
+		return !hasJudgeFile
 	case "file":
 		return hasJudgeFile && strings.TrimSpace(judgeFile) != ""
 	default:

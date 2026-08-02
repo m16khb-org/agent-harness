@@ -134,25 +134,6 @@ func TestExecutionOrcaPrepareSealsStagedArtifactManifest(t *testing.T) {
 		t.Fatalf("packet must seal the artifact manifest: %+v", packet.ArtifactManifest)
 	}
 
-	// claim 검증: 봉인 그대로면 통과, 파일 변조 시 drift 거부.
-	rec, err := ReadIssueOps(stateRoot, record.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	issueDigest := got.IssueBodySHA256
-	packetDigest := got.ContextPacketSHA256
-	if err := validateExecutionClaimPacket(rec, issueDigest, packetDigest); err != nil {
-		t.Fatalf("untampered artifacts must pass claim validation: %v", err)
-	}
-	if err := os.Chmod(planPath, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(planPath, []byte("변조된 계획"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := validateExecutionClaimPacket(rec, issueDigest, packetDigest); err == nil || !strings.Contains(err.Error(), "artifact plan digest mismatch") {
-		t.Fatalf("tampered artifact must be rejected as drift: %v", err)
-	}
 }
 
 func TestExecutionOrcaPrepareWithoutStagingSealsEmptyManifest(t *testing.T) {

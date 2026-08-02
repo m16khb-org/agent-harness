@@ -48,7 +48,7 @@ func InspectProcess(pid int) (ProcessIdentity, error) {
 	if err != nil {
 		return ProcessIdentity{}, fmt.Errorf("read process start time: %w", err)
 	}
-	return ProcessIdentity{StartTime: startTime, Executable: executable}, nil
+	return ProcessIdentity{StartTime: startTime, Executable: executable, ExecutablePathStable: true}, nil
 }
 
 func linuxProcessStartTime(stat, systemStat, auxv []byte) (string, error) {

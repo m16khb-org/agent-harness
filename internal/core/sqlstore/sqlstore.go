@@ -12,6 +12,7 @@
 package sqlstore
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -22,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"agent-harness/internal/port"
 	sqlite "modernc.org/sqlite"
 	sqlite3 "modernc.org/sqlite/lib"
 )
@@ -64,10 +66,7 @@ func (e *NestedSpanError) Error() string {
 }
 
 // Row는 GetAll이 반환하는 record 하나다.
-type Row struct {
-	ID   string
-	Data []byte
-}
+type Row = port.RecordRow
 
 // SchemaObject는 기존 store의 non-internal SQLite schema object 하나다.
 // maintenance 호출자는 state를 삭제하기 전에 이해하지 못하는 레이아웃을
@@ -87,14 +86,23 @@ type ExistingLayout struct {
 	SpanSchema []SchemaObject
 }
 
-// Mutation은 Apply 트랜잭션 안의 row upsert 또는 delete 하나다.
-type Mutation struct {
-	Bucket        string
-	ID            string
-	Data          []byte
-	Delete        bool
-	RequireAbsent bool
+// Mutation은 공개 source compatibility를 위한 port.RecordMutation 별칭이다.
+type Mutation = port.RecordMutation
+
+// ExpectedRecord은 caller가 읽은 raw bytes를 write와 결속한다. CAS 권한을
+// 소비한 모든 row를 받아 data.sqlite의 같은 transaction 안에서 검증한다.
+type ExpectedRecord = port.ExpectedRecord
+
+type RawCASError struct {
+	Bucket string
+	ID     string
 }
+
+func (e *RawCASError) Error() string {
+	return fmt.Sprintf("sqlstore raw CAS failed for row %s/%s", e.Bucket, e.ID)
+}
+
+var _ port.TransactionalRecordStore = (*DB)(nil)
 
 var (
 	handles   = map[string]*DB{}
@@ -103,7 +111,9 @@ var (
 
 // Open은 dir에 대한 캐시된 핸들을 반환하며, 디렉터리와 두 SQLite 파일이 없으면
 // 생성한다. 핸들은 절대 경로 디렉터리별로 캐시되므로 한 프로세스의 모든
-// 호출자가 같은 in-process span mutex를 공유한다.
+// 호출자가 같은 in-process span mutex를 공유한다. 이미 제거된 root의 핸들은
+// 다음 Open에서 닫고 축출해 임시 state root가 연결과 goroutine을 누적하지
+// 않게 한다.
 func Open(dir string) (*DB, error) {
 	abs, err := filepath.Abs(dir)
 	if err != nil {
@@ -111,6 +121,7 @@ func Open(dir string) (*DB, error) {
 	}
 	handlesMu.Lock()
 	defer handlesMu.Unlock()
+	pruneRemovedHandlesLocked()
 	if err := ensurePrivateRoot(abs); err != nil {
 		return nil, fmt.Errorf("sqlstore secure root %s: %w", abs, err)
 	}
@@ -126,6 +137,17 @@ func Open(dir string) (*DB, error) {
 	}
 	handles[abs] = d
 	return d, nil
+}
+
+func pruneRemovedHandlesLocked() {
+	for root, db := range handles {
+		if _, err := os.Stat(root); !errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		delete(handles, root)
+		_ = db.data.Close()
+		_ = db.span.Close()
+	}
 }
 
 // CloseRoot는 dir의 캐시된 핸들을 닫고 축출한다. 의도적으로 좁은 API다:
@@ -570,6 +592,75 @@ func (d *DB) Apply(ctx context.Context, mutations []Mutation) error {
 	if len(mutations) == 0 {
 		return nil
 	}
+	if err := validateMutations(mutations); err != nil {
+		return err
+	}
+	tx, err := d.data.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := applyMutationsTx(ctx, tx, mutations); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// CompareAndApply는 raw-byte 비교와 write를 하나의 data.sqlite transaction으로
+// 묶는다. 권한 CAS는 앞선 Get으로 비교를 분리하면 안 된다.
+func (d *DB) CompareAndApply(ctx context.Context, expected []ExpectedRecord, mutations []Mutation) error {
+	if len(mutations) == 0 {
+		return nil
+	}
+	if err := validateMutations(mutations); err != nil {
+		return err
+	}
+	return d.CompareAndApplyFunc(ctx, expected, func() ([]Mutation, error) { return mutations, nil })
+}
+
+// CompareAndApplyFunc는 raw CAS가 성공한 뒤에만 encoder가 mutation을 만들게 해,
+// stale snapshot에서 만든 payload가 transaction 밖으로 새지 않게 한다.
+func (d *DB) CompareAndApplyFunc(ctx context.Context, expected []ExpectedRecord, build func() ([]Mutation, error)) error {
+	if build == nil {
+		return fmt.Errorf("sqlstore compare-and-apply mutation builder is required")
+	}
+	for _, item := range expected {
+		if item.Bucket == "" || item.ID == "" || item.Data == nil {
+			return fmt.Errorf("sqlstore expected record bucket, id, and data are required")
+		}
+	}
+	tx, err := d.data.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, item := range expected {
+		var current []byte
+		err := tx.QueryRowContext(ctx, `SELECT data FROM records WHERE bucket = ? AND id = ?`, item.Bucket, item.ID).Scan(&current)
+		if errors.Is(err, sql.ErrNoRows) || (err == nil && !bytes.Equal(current, item.Data)) {
+			return &RawCASError{Bucket: item.Bucket, ID: item.ID}
+		}
+		if err != nil {
+			return err
+		}
+	}
+	mutations, err := build()
+	if err != nil {
+		return err
+	}
+	if len(mutations) == 0 {
+		return nil
+	}
+	if err := validateMutations(mutations); err != nil {
+		return err
+	}
+	if err := applyMutationsTx(ctx, tx, mutations); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func validateMutations(mutations []Mutation) error {
 	for _, mutation := range mutations {
 		if mutation.Delete && mutation.RequireAbsent {
 			return fmt.Errorf("sqlstore delete mutation cannot require an absent row")
@@ -578,11 +669,10 @@ func (d *DB) Apply(ctx context.Context, mutations []Mutation) error {
 			return fmt.Errorf("sqlstore mutation bucket and id are required")
 		}
 	}
-	tx, err := d.data.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
+	return nil
+}
+
+func applyMutationsTx(ctx context.Context, tx *sql.Tx, mutations []Mutation) error {
 	for _, mutation := range mutations {
 		if mutation.RequireAbsent {
 			var present int
@@ -605,7 +695,7 @@ func (d *DB) Apply(ctx context.Context, mutations []Mutation) error {
 			return err
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 // Delete는 (bucket, id)의 record를 제거한다. 없는 record를 삭제해도 오류가

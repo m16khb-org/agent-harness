@@ -8,6 +8,7 @@ import (
 
 	"agent-harness/cmd/harness/mcpcli"
 	"agent-harness/cmd/harness/selfworkflow"
+	"agent-harness/internal/core/issueops"
 )
 
 type rpcRequest = mcpcli.RPCRequest
@@ -41,17 +42,17 @@ func configureMCPCLI() {
 
 func runMCP() error {
 	configureMCPCLI()
-	return mcpcli.RunMCP()
+	return mcpcli.RunMCPWithDependencies(issueOpsMCPDependencies())
 }
 
 func serveMCPStream(input io.Reader, output io.Writer, diagnostics io.Writer) error {
 	configureMCPCLI()
-	return mcpcli.ServeMCPStream(input, output, diagnostics)
+	return mcpcli.ServeMCPStreamWithDependencies(input, output, diagnostics, issueOpsMCPDependencies())
 }
 
 func serveMCPStreamContext(ctx context.Context, input io.Reader, output io.Writer, diagnostics io.Writer) error {
 	configureMCPCLI()
-	return mcpcli.ServeMCPStreamContext(ctx, input, output, diagnostics)
+	return mcpcli.ServeMCPStreamContextWithDependencies(ctx, input, output, diagnostics, issueOpsMCPDependencies())
 }
 
 func mcpTools() []map[string]any {
@@ -66,7 +67,7 @@ func mcpResources() []map[string]any {
 
 func handleToolCall(params json.RawMessage) (any, *rpcError) {
 	configureMCPCLI()
-	return mcpcli.HandleToolCall(params)
+	return mcpcli.HandleToolCallWithDependencies(params, issueOpsMCPDependencies())
 }
 
 func handleResourceRead(params json.RawMessage) (any, *rpcError) {
@@ -76,7 +77,19 @@ func handleResourceRead(params json.RawMessage) (any, *rpcError) {
 
 func handleRequest(req rpcRequest) (any, *rpcError) {
 	configureMCPCLI()
-	return mcpcli.HandleRequest(req)
+	return mcpcli.HandleRequestWithDependencies(req, issueOpsMCPDependencies())
+}
+
+func issueOpsMCPDependencies() mcpcli.MCPDependencies {
+	execution := productionIssueOpsExecutionDependencies()
+	return mcpcli.MCPDependencies{
+		Prepare: execution.Prepare, Orca: execution.Orca, OrcaOwner: execution.OrcaOwner, ReadIssue: execution.ReadIssue,
+		Claim: issueOpsClaimHandler, Release: issueOpsReleaseHandler, Reseed: issueOpsReseedHandler,
+		Resume: issueOpsResumeHandler, Reconcile: issueOpsReconcileHandler, Complete: issueOpsCompleteHandler,
+		Publication: issueops.RemotePublicationHandlers{
+			Create: issueOpsPublicationCreateHandler, Reconcile: issueOpsPublicationReconcileHandler,
+		},
+	}
 }
 
 func textResult(text string) map[string]any {

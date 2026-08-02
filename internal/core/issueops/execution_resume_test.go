@@ -12,8 +12,12 @@ import (
 const resumeIssueBody = "## acceptance criteria\n\n- [ ] AC-01: resume owner\n\n## 검증 명령\n\n```bash\ngo test ./internal/core/issueops -count=1\n```\n"
 
 func reseededOrcaCycle(t *testing.T) (string, IssueOpsRecord, ExecutionReplaceResult) {
+	return reseededOrcaCycleWithArtifacts(t, nil)
+}
+
+func reseededOrcaCycleWithArtifacts(t *testing.T, artifacts map[string]string) (string, IssueOpsRecord, ExecutionReplaceResult) {
 	t.Helper()
-	stateRoot, original, _, reader := sealedOrcaCycle(t, resumeIssueBody)
+	stateRoot, original, _, reader := sealedOrcaCycleWithArtifacts(t, resumeIssueBody, artifacts)
 	record, err := ReadIssueOps(stateRoot, original.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -27,7 +31,7 @@ func reseededOrcaCycle(t *testing.T) (string, IssueOpsRecord, ExecutionReplaceRe
 	if err != nil {
 		t.Fatal(err)
 	}
-	reseededResult, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+	reseededResult, err := reseedExecutionCompatibilityOracle(context.Background(), stateRoot, ExecutionReplaceRequest{
 		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: record.Execution.Lease.Generation,
 		InventoryFingerprint: preview.InventoryFingerprint, Reason: "resume test",
 		Actor: actor, CWD: record.Execution.Workspace.Root, Confirm: true,
@@ -318,7 +322,7 @@ func TestExecutionResumeAmbiguousDispatchRemainsReconcileable(t *testing.T) {
 	reconciled, err := ReconcileExecutionWithDependencies(context.Background(), stateRoot, ExecutionReconcileRequest{
 		ID: record.ID, Confirm: true, Actor: executionActor("codex", "resume-reconciler"),
 		CWD: record.Execution.Workspace.Root,
-	}, ExecutionReconcileDependencies{Orca: fake})
+	}, ExecutionReconcileDependencies{Handler: legacyReconcileTestHandler, Orca: fake})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -330,24 +334,19 @@ func TestExecutionResumeAmbiguousDispatchRemainsReconcileable(t *testing.T) {
 
 func TestExecuteExecutionRoutesResumeThroughSharedAction(t *testing.T) {
 	stateRoot, record, _ := reseededOrcaCycle(t)
-	var stages []port.ExecutionOrcaIntentStage
-	raw, err := ExecuteExecution(context.Background(), stateRoot, ExecutionActionRequest{
-		Action: ExecutionActionResume, ID: record.ID,
-		ExpectedGeneration: record.Execution.Lease.Generation,
-		Actor:              executionActor("codex", "resume-api"), CWD: record.Execution.Workspace.Root,
-		Confirm: true,
-	}, ExecutionActionDependencies{
-		Orca: resumeOrcaFake(t, &stages), OrcaOwner: &executionOrcaOwnerInspectorFake{},
-	})
+	calls := 0
+	raw, err := ExecuteExecution(context.Background(), stateRoot, ExecutionActionRequest{Action: ExecutionActionResume, ID: record.ID, ExpectedGeneration: record.Execution.Lease.Generation, Actor: executionActor("codex", "resume-api"), CWD: record.Execution.Workspace.Root, Confirm: true}, ExecutionActionDependencies{Resume: func(_ context.Context, gotRoot string, request ExecutionResumeRequest) (ExecutionResumeResult, error) {
+		calls++
+		if gotRoot != stateRoot || request.ID != record.ID || request.ExpectedGeneration != record.Execution.Lease.Generation || request.CWD != record.Execution.Workspace.Root || !request.Confirm {
+			t.Fatalf("resume handler request=%+v root=%q", request, gotRoot)
+		}
+		return executionResumeResult(record, executionResumeArtifacts{}), nil
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	resumed, ok := raw.(ExecutionResumeResult)
-	if !ok || resumed.Execution.Orca.LeaseGeneration != record.Execution.Lease.Generation ||
-		resumed.Execution.Orca.RunID != "run-resume" ||
-		len(stages) != 5 || stages[0] != port.ExecutionOrcaIntentTerminal ||
-		stages[1] != port.ExecutionOrcaIntentRun ||
-		stages[2] != port.ExecutionOrcaIntentRunBind {
-		t.Fatalf("shared resume route = %#v stages=%v", raw, stages)
+	if !ok || resumed.ID != record.ID || calls != 1 {
+		t.Fatalf("shared resume route = %#v calls=%d", raw, calls)
 	}
 }

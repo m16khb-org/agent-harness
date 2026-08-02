@@ -40,7 +40,7 @@ func TestExecutionConcurrentClaimsChooseOneLifecyclePerSession(t *testing.T) {
 		go func() {
 			ready.Done()
 			<-start
-			_, err := claimExecution(stateRoot, request)
+			_, err := claimViaVertical(stateRoot, request)
 			errs <- err
 		}()
 	}
@@ -83,7 +83,7 @@ func TestExecutionCompetingClaimsChooseOneHolder(t *testing.T) {
 		actor := actor
 		go func() {
 			<-start
-			_, err := claimExecution(stateRoot, ExecutionClaimRequest{
+			_, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 				ID: fixture.record.ID, Generation: 1, Actor: actor,
 				CWD: fixture.worktree, TokenFile: fixture.tokenPath,
 			})
@@ -117,13 +117,13 @@ func TestExecutionClaimRetryIsIdempotentAfterTokenConsumption(t *testing.T) {
 		ID: fixture.record.ID, Generation: 1, Actor: actor,
 		CWD: fixture.worktree, TokenFile: fixture.tokenPath,
 	}
-	if _, err := claimExecution(stateRoot, request); err != nil {
+	if _, err := claimViaVertical(stateRoot, request); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(fixture.tokenPath); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("claim token remains after successful claim: %v", err)
 	}
-	if _, err := claimExecution(stateRoot, request); err != nil {
+	if _, err := claimViaVertical(stateRoot, request); err != nil {
 		t.Fatalf("same holder retry must be idempotent after token removal: %v", err)
 	}
 }
@@ -159,7 +159,7 @@ func TestExecutionClaimRejectsInsecureOrSymlinkToken(t *testing.T) {
 			stateRoot := t.TempDir()
 			fixture := newClaimableExecutionFixture(t, stateRoot, "69-token-"+testCase.name)
 			testCase.mutate(t, fixture.tokenPath)
-			_, err := claimExecution(stateRoot, ExecutionClaimRequest{
+			_, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 				ID: fixture.record.ID, Generation: 1,
 				Actor: executionActor("codex", "token-session"),
 				CWD:   fixture.worktree, TokenFile: fixture.tokenPath,
@@ -181,11 +181,11 @@ func TestExecutionReseedInvalidatesPriorGenerationToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reseeded, err := ReplaceExecution(stateRoot, ExecutionReplaceRequest{
+	reseeded, err := reseedExecutionCompatibilityOracle(context.Background(), stateRoot, ExecutionReplaceRequest{
 		ID: fixture.record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
 		InventoryFingerprint: preview.InventoryFingerprint, Reason: "lost unclaimed terminal",
 		Actor: requester, CWD: fixture.record.Repo, Confirm: true,
-	})
+	}, ExecutionReplaceDependencies{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,13 +193,13 @@ func TestExecutionReseedInvalidatesPriorGenerationToken(t *testing.T) {
 		t.Fatalf("reseed did not rotate generation/token path: %#v", reseeded)
 	}
 	actor := executionActor("claude", "reseed-session")
-	if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: fixture.record.ID, Generation: 2, Actor: actor,
 		CWD: fixture.worktree, TokenFile: fixture.tokenPath,
 	}); err == nil {
 		t.Fatal("prior-generation token path was accepted")
 	}
-	if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: fixture.record.ID, Generation: 2, Actor: actor,
 		CWD: fixture.worktree, TokenFile: reseeded.ClaimTokenPath,
 	}); err != nil {
@@ -236,7 +236,7 @@ func TestExecutionRevokeRejectsStaleInventoryAndFencesOldGeneration(t *testing.T
 	stateRoot := t.TempDir()
 	fixture := newClaimableExecutionFixture(t, stateRoot, "69-revoke")
 	old := executionActor("codex", "old-session")
-	if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: fixture.record.ID, Generation: 1, Actor: old,
 		CWD: fixture.worktree, TokenFile: fixture.tokenPath,
 	}); err != nil {
@@ -282,7 +282,7 @@ func TestExecutionFinalizeRejectsLiveOwnerProcess(t *testing.T) {
 	stateRoot := t.TempDir()
 	fixture := newClaimableExecutionFixture(t, stateRoot, "69-live")
 	old := executionActor("codex", "live-session")
-	if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: fixture.record.ID, Generation: 1, Actor: old,
 		CWD: fixture.worktree, TokenFile: fixture.tokenPath,
 	}); err != nil {
@@ -314,7 +314,7 @@ func TestExecutionClaimRejectsForgedLiveProcessIdentity(t *testing.T) {
 	fixture := newClaimableExecutionFixture(t, stateRoot, "69-forged-process")
 	actor := executionActor("codex", "forged-process-session")
 	actor.SessionProcess.StartedAt = "1970-01-01T00:00:00Z"
-	_, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	_, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: fixture.record.ID, Generation: 1, Actor: actor,
 		CWD: fixture.worktree, TokenFile: fixture.tokenPath,
 	})
@@ -347,7 +347,7 @@ func TestExecutionFinalizeRejectsPIDReuseIdentityMismatch(t *testing.T) {
 	stateRoot := t.TempDir()
 	fixture := newClaimableExecutionFixture(t, stateRoot, "69-pid-reuse")
 	actor := executionActor("codex", "pid-reuse-session")
-	if _, err := claimExecution(stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
 		ID: fixture.record.ID, Generation: 1, Actor: actor,
 		CWD: fixture.worktree, TokenFile: fixture.tokenPath,
 	}); err != nil {

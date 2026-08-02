@@ -62,7 +62,7 @@ func TestExecutionOwnerLaunchSealsIssueContextAndFullPromptBeforeDispatch(t *tes
 	if got.Execution == nil || got.Execution.Lease.Status != model.LeaseStatusClaimable {
 		t.Fatalf("dispatch receipt did not become claimable: %#v", got.Execution)
 	}
-	claimed, err := ClaimExecutionWithDependencies(context.Background(), stateRoot, ExecutionClaimRequest{
+	claimed, err := claimViaVerticalWithDeps(context.Background(), stateRoot, ExecutionClaimRequest{
 		ID: record.ID, Generation: 1, Actor: executionActor("claude", "owner"), CWD: got.Workspace.Root,
 		TokenFile: got.ClaimTokenPath, IssueBodySHA256: got.IssueBodySHA256, ContextPacketSHA256: got.ContextPacketSHA256,
 	}, ExecutionClaimDependencies{ReadIssue: reader})
@@ -103,7 +103,7 @@ func TestExecutionInitialOrcaClaimRejectsIssueOrPacketDigestDrift(t *testing.T) 
 			} else if err := os.WriteFile(prepared.ContextPacketPath, []byte("{}\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			_, err = ClaimExecutionWithDependencies(context.Background(), stateRoot, ExecutionClaimRequest{
+			_, err = claimViaVerticalWithDeps(context.Background(), stateRoot, ExecutionClaimRequest{
 				ID: record.ID, Generation: 1, Actor: executionActor("claude", "owner"), CWD: prepared.Workspace.Root,
 				TokenFile: prepared.ClaimTokenPath, IssueBodySHA256: prepared.IssueBodySHA256, ContextPacketSHA256: prepared.ContextPacketSHA256,
 			}, ExecutionClaimDependencies{ReadIssue: reader})
@@ -124,8 +124,17 @@ func TestExecutionInitialOrcaClaimRejectsIssueOrPacketDigestDrift(t *testing.T) 
 // sealedOrcaCycle는 봉인이 끝난 claimable orca 사이클을 만든다. reseed와 세대
 // 검증 테스트가 같은 출발점을 공유해야 재봉인 전후를 비교할 수 있다.
 func sealedOrcaCycle(t *testing.T, issueBody string) (string, IssueOpsRecord, ExecutionPrepareResult, ExecutionIssueSnapshotReadFunc) {
+	return sealedOrcaCycleWithArtifacts(t, issueBody, nil)
+}
+
+func sealedOrcaCycleWithArtifacts(t *testing.T, issueBody string, artifacts map[string]string) (string, IssueOpsRecord, ExecutionPrepareResult, ExecutionIssueSnapshotReadFunc) {
 	t.Helper()
 	stateRoot, record := orcaPrepareRecord(t)
+	for name, content := range artifacts {
+		if _, err := StageIssueOpsArtifact(stateRoot, record.ID, name, []byte(content)); err != nil {
+			t.Fatal(err)
+		}
+	}
 	fake := &executionOrcaFake{probe: port.ExecutionOrcaProbeResult{Available: true, Ready: true}}
 	// reseed는 워크스페이스 스냅샷으로 Git top-level을 확인하므로 fake가 실제
 	// 워크트리를 만들어야 한다(디렉토리만 만들면 재봉인 경로에 닿지 못한다).
@@ -192,7 +201,7 @@ func TestExecutionReseedResealsOwnerPacketForTheNewGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reseeded, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+	reseeded, err := reseedExecutionCompatibilityOracle(context.Background(), stateRoot, ExecutionReplaceRequest{
 		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
 		InventoryFingerprint: preview.InventoryFingerprint, Reason: "owner terminal lost before claim",
 		Actor: requester, CWD: record.Repo, Confirm: true,
@@ -315,7 +324,7 @@ func TestExecutionFinalizeResealsOwnerPacketBeforeReplacementClaim(t *testing.T)
 		t.Fatalf("finalize packet의 token 경로가 새 token과 다르다: %q want %q", tokenFile, finalized.ClaimTokenPath)
 	}
 
-	claimed, err := ClaimExecutionWithDependencies(context.Background(), fixture.stateRoot, ExecutionClaimRequest{
+	claimed, err := claimViaVerticalWithDeps(context.Background(), fixture.stateRoot, ExecutionClaimRequest{
 		ID: fixture.record.ID, Generation: 2, Actor: executionActor("claude", "replacement-owner"),
 		CWD: fixture.prepared.Workspace.Root, TokenFile: finalized.ClaimTokenPath,
 		IssueBodySHA256: finalized.IssueBodySHA256, ContextPacketSHA256: finalized.ContextPacketSHA256,
@@ -369,7 +378,7 @@ func TestExecutionReseedFailurePreservesCurrentClaimToken(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+	_, err = reseedExecutionCompatibilityOracle(context.Background(), stateRoot, ExecutionReplaceRequest{
 		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
 		InventoryFingerprint: preview.InventoryFingerprint, Reason: "test reseal failure",
 		Actor: requester, CWD: record.Repo, Confirm: true,
@@ -387,7 +396,7 @@ func TestExecutionReseedFailurePreservesCurrentClaimToken(t *testing.T) {
 	if _, err := os.Lstat(prepared.ClaimTokenPath); err != nil {
 		t.Fatalf("실패한 reseed가 현재 세대 token을 잃었다: %v", err)
 	}
-	if _, err := ClaimExecutionWithDependencies(context.Background(), stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVerticalWithDeps(context.Background(), stateRoot, ExecutionClaimRequest{
 		ID: record.ID, Generation: 1, Actor: executionActor("claude", "original-owner"),
 		CWD: prepared.Workspace.Root, TokenFile: prepared.ClaimTokenPath,
 		IssueBodySHA256: prepared.IssueBodySHA256, ContextPacketSHA256: prepared.ContextPacketSHA256,
@@ -506,7 +515,7 @@ func TestExecutionReseedAdoptsQuiescentOrcaRuntimeRollover(t *testing.T) {
 	if !inspector.last.AllowRuntimeRollover {
 		t.Fatal("holderless reseed preview가 제한된 runtime rollover 관측을 요청하지 않았다")
 	}
-	reseeded, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+	reseeded, err := reseedExecutionCompatibilityOracle(context.Background(), stateRoot, ExecutionReplaceRequest{
 		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
 		InventoryFingerprint: preview.InventoryFingerprint, Reason: "Orca runtime restarted after owner exit",
 		Actor: requester, CWD: record.Repo, Confirm: true,
@@ -560,7 +569,7 @@ func TestExecutionReseedRuntimeRolloverHonorsInventoryCAS(t *testing.T) {
 	}
 
 	inspector.inventory.RuntimeID = "runtime-3"
-	_, err = ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+	_, err = reseedExecutionCompatibilityOracle(context.Background(), stateRoot, ExecutionReplaceRequest{
 		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
 		InventoryFingerprint: preview.InventoryFingerprint, Reason: "Orca runtime restarted twice",
 		Actor: requester, CWD: record.Repo, Confirm: true,
@@ -586,7 +595,7 @@ func TestExecutionReseedRecoversFromLegitimateIssueRevision(t *testing.T) {
 	revisedReader := func(_ context.Context, _ string, _ port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
 		return port.ExecutionIssueSnapshot{URL: record.IssueURL, Body: revised}, nil
 	}
-	if _, err := ClaimExecutionWithDependencies(context.Background(), stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVerticalWithDeps(context.Background(), stateRoot, ExecutionClaimRequest{
 		ID: record.ID, Generation: 1, Actor: executionActor("claude", "owner"), CWD: prepared.Workspace.Root,
 		TokenFile: prepared.ClaimTokenPath, IssueBodySHA256: prepared.IssueBodySHA256, ContextPacketSHA256: prepared.ContextPacketSHA256,
 	}, ExecutionClaimDependencies{ReadIssue: revisedReader}); err == nil {
@@ -599,7 +608,7 @@ func TestExecutionReseedRecoversFromLegitimateIssueRevision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reseeded, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+	reseeded, err := reseedExecutionCompatibilityOracle(context.Background(), stateRoot, ExecutionReplaceRequest{
 		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
 		InventoryFingerprint: preview.InventoryFingerprint, Reason: "issue scope revised by the user",
 		Actor: requester, CWD: record.Repo, Confirm: true,
@@ -607,7 +616,7 @@ func TestExecutionReseedRecoversFromLegitimateIssueRevision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ClaimExecutionWithDependencies(context.Background(), stateRoot, ExecutionClaimRequest{
+	if _, err := claimViaVerticalWithDeps(context.Background(), stateRoot, ExecutionClaimRequest{
 		ID: record.ID, Generation: 2, Actor: executionActor("claude", "owner"), CWD: prepared.Workspace.Root,
 		TokenFile: reseeded.ClaimTokenPath, IssueBodySHA256: reseeded.IssueBodySHA256, ContextPacketSHA256: reseeded.ContextPacketSHA256,
 	}, ExecutionClaimDependencies{ReadIssue: revisedReader}); err != nil {
@@ -627,7 +636,7 @@ func TestExecutionClaimVerifiesSealedPacketBeyondTheFirstGeneration(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	reseeded, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+	reseeded, err := reseedExecutionCompatibilityOracle(context.Background(), stateRoot, ExecutionReplaceRequest{
 		ID: record.ID, Action: ExecutionReplaceReseed, ExpectedGeneration: 1,
 		InventoryFingerprint: preview.InventoryFingerprint, Reason: "owner terminal lost before claim",
 		Actor: requester, CWD: record.Repo, Confirm: true,
@@ -639,7 +648,7 @@ func TestExecutionClaimVerifiesSealedPacketBeyondTheFirstGeneration(t *testing.T
 	if err := os.WriteFile(reseeded.ContextPacketPath, []byte("{}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, err = ClaimExecutionWithDependencies(context.Background(), stateRoot, ExecutionClaimRequest{
+	_, err = claimViaVerticalWithDeps(context.Background(), stateRoot, ExecutionClaimRequest{
 		ID: record.ID, Generation: 2, Actor: executionActor("claude", "owner"), CWD: prepared.Workspace.Root,
 		TokenFile: reseeded.ClaimTokenPath, IssueBodySHA256: reseeded.IssueBodySHA256, ContextPacketSHA256: reseeded.ContextPacketSHA256,
 	}, ExecutionClaimDependencies{ReadIssue: reader})
@@ -669,7 +678,7 @@ func TestExecutionClaimDigestDriftErrorsCarryExpectedAndObserved(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			_, err := ClaimExecutionWithDependencies(context.Background(), stateRoot, ExecutionClaimRequest{
+			_, err := claimViaVerticalWithDeps(context.Background(), stateRoot, ExecutionClaimRequest{
 				ID: record.ID, Generation: 1, Actor: executionActor("claude", "owner"), CWD: prepared.Workspace.Root,
 				TokenFile: prepared.ClaimTokenPath, IssueBodySHA256: prepared.IssueBodySHA256, ContextPacketSHA256: prepared.ContextPacketSHA256,
 			}, ExecutionClaimDependencies{ReadIssue: reader})

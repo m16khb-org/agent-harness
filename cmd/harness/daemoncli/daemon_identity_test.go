@@ -153,6 +153,34 @@ func TestCheckDaemonStatusReportsHandshakeIdentityMismatch(t *testing.T) {
 	}
 }
 
+func TestCheckDaemonStatusAcceptsExecutableProjectionDriftAfterSymlinkUpdate(t *testing.T) {
+	instance := daemonInstance{
+		PID:              4242,
+		ProcessStartTime: "start-a",
+		Executable:       "/repo-before/bin/agent-harness",
+		InstanceNonce:    "nonce-a",
+		BuildSHA:         "build-a",
+		ProtocolVersion:  daemonProtocolVersion,
+		Generation:       "generation-a",
+	}
+	status := checkDaemonStatusWithDeps(daemonStatusDeps{
+		paths:         func() (daemonPaths, error) { return daemonPaths{Socket: "daemon.sock", PID: "daemon.pid"}, nil },
+		readInstance:  func(string) (daemonInstance, bool, error) { return instance, false, nil },
+		probeIdentity: func(string) (daemonInstance, error) { return instance, nil },
+		processAlive:  func(int) bool { return true },
+		inspectProcess: func(int) (daemonProcessIdentity, error) {
+			return daemonProcessIdentity{
+				StartTime:  instance.ProcessStartTime,
+				Executable: "/repo-after/bin/agent-harness",
+			}, nil
+		},
+	})
+
+	if !status.OK || !status.IdentityVerified || status.Code != daemonStatusReady {
+		t.Fatalf("same process and handshake must survive launcher symlink retargeting: %#v", status)
+	}
+}
+
 func TestCheckDaemonStatusTreatsLegacyPIDAsStatusOnly(t *testing.T) {
 	status := checkDaemonStatusWithDeps(daemonStatusDeps{
 		paths:         func() (daemonPaths, error) { return daemonPaths{Socket: "daemon.sock", PID: "daemon.pid"}, nil },
@@ -340,7 +368,7 @@ func TestStopDaemonRechecksOSIdentityBeforeAnySignal(t *testing.T) {
 	instance := daemonInstance{PID: 4242, ProcessStartTime: "start-a", Executable: "/tmp/agent-harness"}
 	tests := map[string]daemonProcessIdentity{
 		"pid reuse":           {StartTime: "reused-pid", Executable: instance.Executable},
-		"executable mismatch": {StartTime: instance.ProcessStartTime, Executable: "/tmp/other"},
+		"executable mismatch": {StartTime: instance.ProcessStartTime, Executable: "/tmp/other", ExecutablePathStable: true},
 	}
 	for name, processIdentity := range tests {
 		t.Run(name, func(t *testing.T) {
