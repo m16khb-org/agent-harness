@@ -105,18 +105,56 @@ func TestChildHostSmokeModePersistsOnlyBoundedCodexObservation(t *testing.T) {
 		t.Fatal(err)
 	}
 	observationPath := filepath.Join(root, "codex-observation.json")
+	sourceCodexHome := filepath.Join(root, "source-codex-home")
+	if err := os.Mkdir(sourceCodexHome, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	coResidentSentinel := filepath.Join(root, "co-resident-executed")
+	harnessBinary, err := filepath.Abs("harness")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceHooks := codexSmokeHookDocument{Hooks: map[string][]codexSmokeHookGroup{
+		"SessionStart": {
+			{Hooks: []codexSmokeHook{{Type: "command", Command: testCodexManagedHookCommand(harnessBinary, "SessionStart"), Timeout: 5}}},
+			{Hooks: []codexSmokeHook{{Type: "command", Command: "touch " + coResidentSentinel, Timeout: 5}}},
+		},
+		"PreToolUse": {{Hooks: []codexSmokeHook{{Type: "command", Command: testCodexManagedHookCommand(harnessBinary, "PreToolUse"), Timeout: 5}}}},
+	}}
+	sourceHookBytes, err := json.Marshal(sourceHooks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sourceCodexHome, "hooks.json"), append(sourceHookBytes, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	stream, err := os.ReadFile(filepath.Join("testdata", "child-host-smoke", "codex-stream.jsonl"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	process := &codexFakeProcess{run: func(_ context.Context, request CommandRequest) (CommandOutput, error) {
+		bypassHookTrust := false
 		for _, arg := range request.Argv {
 			if arg == "--ignore-user-config" {
 				t.Fatalf("child smoke suppressed user hooks: %q", request.Argv)
 			}
+			if arg == "--dangerously-bypass-hook-trust" {
+				bypassHookTrust = true
+			}
+		}
+		if !bypassHookTrust {
+			t.Fatalf("child smoke did not enable invocation-scoped hook trust: %q", request.Argv)
+		}
+		runtimeCodexHome := environmentValue(t, request.Env, "CODEX_HOME")
+		if runtimeCodexHome == sourceCodexHome || runtimeCodexHome != filepath.Join(request.Cwd, "codex-home") {
+			t.Fatalf("runtime CODEX_HOME=%q source=%q", runtimeCodexHome, sourceCodexHome)
+		}
+		assertProjectedCodexSmokeHooks(t, filepath.Join(runtimeCodexHome, "hooks.json"), observationPath, harnessBinary)
+		if _, err := os.Stat(coResidentSentinel); err == nil || !os.IsNotExist(err) {
+			t.Fatalf("co-resident user hook executed: %v", err)
 		}
 		wantEnv := []string{
-			"CODEX_HOME=/private/codex",
+			"CODEX_HOME=" + runtimeCodexHome,
 			"HARNESS_CHILD_SMOKE_HOOKS=1",
 			"HARNESS_CHILD_SMOKE_OBSERVATION_FILE=" + observationPath,
 			"PATH=/opt/bin",
@@ -131,17 +169,110 @@ func TestChildHostSmokeModePersistsOnlyBoundedCodexObservation(t *testing.T) {
 	environment := map[string]string{
 		"HARNESS_CHILD_SMOKE_HOOKS":            "1",
 		"HARNESS_CHILD_SMOKE_OBSERVATION_FILE": observationPath,
+		"CODEX_HOME":                           sourceCodexHome,
+		"HOME":                                 root,
 	}
 	runner := NewCodexRunner("harness", Dependencies{
 		Process:  process,
 		LookPath: func(string) (string, error) { return "/opt/bin/codex", nil },
 		Getenv:   func(name string) string { return environment[name] },
 		Environ: func() []string {
-			return []string{"PATH=/opt/bin", "CODEX_HOME=/private/codex", "HARNESS_CHILD_SMOKE_HOOKS=1", "HARNESS_CHILD_SMOKE_OBSERVATION_FILE=" + observationPath, "SECRET=redacted"}
+			return []string{"PATH=/opt/bin", "CODEX_HOME=" + sourceCodexHome, "HARNESS_CHILD_SMOKE_HOOKS=1", "HARNESS_CHILD_SMOKE_OBSERVATION_FILE=" + observationPath, "SECRET=redacted"}
 		},
 	})
 	result := runner.Run(context.Background(), codexRequest("default"))
 	assertChildSmokeObservation(t, result, observationPath)
+}
+
+func environmentValue(t *testing.T, environment []string, name string) string {
+	t.Helper()
+	prefix := name + "="
+	for _, entry := range environment {
+		if strings.HasPrefix(entry, prefix) {
+			return strings.TrimPrefix(entry, prefix)
+		}
+	}
+	t.Fatalf("environment %s missing from %q", name, environment)
+	return ""
+}
+
+func assertProjectedCodexSmokeHooks(t *testing.T, path, observationPath, harnessBinary string) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document struct {
+		Hooks map[string][]struct {
+			Hooks []struct {
+				Type    string `json:"type"`
+				Command string `json:"command"`
+				Timeout int    `json:"timeout"`
+			} `json:"hooks"`
+		} `json:"hooks"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&document); err != nil {
+		t.Fatal(err)
+	}
+	if len(document.Hooks) != 2 {
+		t.Fatalf("projected hook events=%v", document.Hooks)
+	}
+	for _, event := range []string{"SessionStart", "PreToolUse"} {
+		groups := document.Hooks[event]
+		if len(groups) != 1 || len(groups[0].Hooks) != 1 {
+			t.Fatalf("%s groups=%+v", event, groups)
+		}
+		hook := groups[0].Hooks[0]
+		if hook.Type != "command" || hook.Timeout != 5 || !strings.Contains(hook.Command, "HARNESS_CHILD_SMOKE_HOOKS=1") || !strings.Contains(hook.Command, observationPath) || !strings.HasSuffix(hook.Command, testCodexManagedHookCommand(harnessBinary, event)) {
+			t.Fatalf("%s hook=%+v", event, hook)
+		}
+	}
+	if strings.Contains(string(data), "touch") || strings.Contains(string(data), "co-resident") {
+		t.Fatalf("projected hooks retained co-resident source: %s", data)
+	}
+}
+
+func TestPrepareCodexSmokeHomeRejectsActivatedCodexHookCommandDrift(t *testing.T) {
+	root := t.TempDir()
+	sourceCodexHome := filepath.Join(root, "source-codex-home")
+	if err := os.Mkdir(sourceCodexHome, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	harnessBinary := filepath.Join(root, "bin", "agent-harness")
+	document := codexSmokeHookDocument{Hooks: map[string][]codexSmokeHookGroup{
+		"SessionStart": {{Hooks: []codexSmokeHook{{Type: "command", Command: testCodexManagedHookCommand(harnessBinary, "SessionStart"), Timeout: 5}}}},
+		"PreToolUse":   {{Hooks: []codexSmokeHook{{Type: "command", Command: testCodexManagedHookCommand(harnessBinary, "PreToolUse") + " && printf drift", Timeout: 5}}}},
+	}}
+	data, err := json.Marshal(document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sourceCodexHome, "hooks.json"), append(data, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	deps := normalizeDependencies(Dependencies{Getenv: func(name string) string {
+		if name == "CODEX_HOME" {
+			return sourceCodexHome
+		}
+		return ""
+	}})
+	episodeRoot := filepath.Join(root, "episode")
+	if err := os.Mkdir(episodeRoot, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := prepareCodexSmokeHome(episodeRoot, harnessBinary, filepath.Join(root, "observation.json"), deps); err == nil {
+		t.Fatal("drifted activated Codex PreToolUse command was projected")
+	}
+}
+
+func testCodexManagedHookCommand(harnessBinary, event string) string {
+	base := shellSingleQuote(harnessBinary) + " hook "
+	if event == "SessionStart" {
+		return base + "session-start --host codex"
+	}
+	return base + "pre-tool-use --host codex --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl"
 }
 
 func TestChildHostSmokeModePersistsOnlyBoundedClaudeObservation(t *testing.T) {
@@ -295,6 +426,7 @@ func TestChildHostSmokeFailsClosedOnPostActivationDrift(t *testing.T) {
 		"claude-mcp-readback-mismatch",
 		"codex-mcp-output-over-limit",
 		"codex-observation-extra-field",
+		"activated-codex-hook-drift",
 		"activated-digest-missing",
 		"activated-digest-blank",
 		"activated-binary-mismatch",
@@ -493,12 +625,12 @@ func writeManagedSurfaceFixture(t *testing.T, home, codexHome, root string) {
 	binary := filepath.Join(root, "bin", "agent-harness")
 	files := map[string]string{
 		filepath.Join(codexHome, "config.toml"): fmt.Sprintf("[mcp_servers.agent_harness]\ncommand = %q\nargs = [\"mcp\"]\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = %q\n", binary, root),
-		filepath.Join(codexHome, "hooks.json"): fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"command":%q}]}],"PreToolUse":[{"hooks":[{"command":%q}]}]}}
-`, "'"+binary+"' hook session-start", "'"+binary+"' hook pre-tool-use"),
+		filepath.Join(codexHome, "hooks.json"): fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":%q,"timeout":5}]}],"PreToolUse":[{"hooks":[{"type":"command","command":%q,"timeout":5}]}]}}
+`, "'"+binary+"' hook session-start --host codex", "'"+binary+"' hook pre-tool-use --host codex --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl"),
 		filepath.Join(home, ".claude.json"): fmt.Sprintf(`{"mcpServers":{"agent_harness":{"type":"stdio","command":%q,"args":["mcp"],"env":{"HARNESS_ROOT":%q}}}}
 `, binary, root),
-		filepath.Join(home, ".claude", "settings.json"): fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"command":%q}]}],"PreToolUse":[{"matcher":"*","hooks":[{"command":%q}]}]}}
-`, "'"+binary+"' hook session-start", "'"+binary+"' hook pre-tool-use"),
+		filepath.Join(home, ".claude", "settings.json"): fmt.Sprintf(`{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":%q,"timeout":5}]}],"PreToolUse":[{"matcher":"*","hooks":[{"type":"command","command":%q,"timeout":5}]}]}}
+`, "'"+binary+"' hook session-start", "'"+binary+"' hook pre-tool-use --host claude --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl"),
 	}
 	for path, content := range files {
 		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
@@ -540,8 +672,8 @@ binary = os.path.join(root, "bin", "agent-harness")
 with open(os.path.join(codex_home, "config.toml"), "w", encoding="utf-8") as handle:
     handle.write(f'[mcp_servers.agent_harness]\ncommand = "{binary}"\nargs = ["mcp"]\n[mcp_servers.agent_harness.env]\nHARNESS_ROOT = "{root}"\n')
 hooks = {"hooks": {
-    "SessionStart": [{"hooks": [{"command": f"'{binary}' hook session-start"}]}],
-    "PreToolUse": [{"hooks": [{"command": f"'{binary}' hook pre-tool-use"}]}],
+    "SessionStart": [{"hooks": [{"type": "command", "command": f"'{binary}' hook session-start --host codex", "timeout": 5}]}],
+    "PreToolUse": [{"hooks": [{"type": "command", "command": f"'{binary}' hook pre-tool-use --host codex --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl", "timeout": 5}]}],
 }}
 with open(os.path.join(codex_home, "hooks.json"), "w", encoding="utf-8") as handle:
     json.dump(hooks, handle, separators=(",", ":"))
@@ -550,13 +682,27 @@ with open(os.path.join(home, ".claude.json"), "w", encoding="utf-8") as handle:
     json.dump({"mcpServers": {"agent_harness": {"type": "stdio", "command": binary, "args": ["mcp"], "env": {"HARNESS_ROOT": root}}}}, handle, separators=(",", ":"))
     handle.write("\n")
 claude_hooks = {"hooks": {
-    "SessionStart": [{"hooks": [{"command": f"'{binary}' hook session-start"}]}],
-    "PreToolUse": [{"matcher": "*", "hooks": [{"command": f"'{binary}' hook pre-tool-use"}]}],
+    "SessionStart": [{"hooks": [{"type": "command", "command": f"'{binary}' hook session-start", "timeout": 5}]}],
+    "PreToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": f"'{binary}' hook pre-tool-use --host claude --enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl", "timeout": 5}]}],
 }}
 with open(os.path.join(home, ".claude", "settings.json"), "w", encoding="utf-8") as handle:
     json.dump(claude_hooks, handle, separators=(",", ":"))
     handle.write("\n")
 PY
+if [[ %q == child && "${FAKE_SCENARIO:-}" == activated-codex-hook-drift ]]; then
+  "$REAL_PYTHON" - "$CODEX_HOME/hooks.json" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+with open(path, encoding="utf-8") as handle:
+    document = json.load(handle)
+document["hooks"]["PreToolUse"][0]["hooks"][0]["command"] += " && printf drift"
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(document, handle, separators=(",", ":"))
+    handle.write("\n")
+PY
+fi
 chmod 0600 "$CODEX_HOME/config.toml" "$CODEX_HOME/hooks.json" "$HOME/.claude.json" "$HOME/.claude/settings.json"
 if [[ %q == source && "${FAKE_SCENARIO:-}" == restore-missing-file ]]; then
   rm "$CODEX_HOME/hooks.json"
@@ -572,7 +718,7 @@ if [[ %q == child && "${FAKE_SCENARIO:-}" == activated-binary-mismatch ]]; then
   printf 'drift\n' >>"$HARNESS_ROOT/bin/agent-harness"
 fi
 printf '{"ok":true}\n'
-`, identity, identity, identity, identity, identity, identity)
+`, identity, identity, identity, identity, identity, identity, identity)
 }
 
 func fakeHostScript(host string) string {
@@ -688,13 +834,11 @@ case "${1:-}" in
       previous="$arg"
     done
     [[ -n "$host" && -n "${HARNESS_CHILD_SMOKE_OBSERVATION_FILE:-}" ]]
-    if [[ "$host" == codex ]]; then
-      hook_config="$CODEX_HOME/hooks.json"
-    else
+    if [[ "$host" == claude ]]; then
       hook_config="$HOME/.claude/settings.json"
+      grep -Fq 'HARNESS_CHILD_SMOKE_HOOKS=1' "$hook_config"
+      grep -Fq "$HARNESS_CHILD_SMOKE_OBSERVATION_FILE" "$hook_config"
     fi
-    grep -Fq 'HARNESS_CHILD_SMOKE_HOOKS=1' "$hook_config"
-    grep -Fq "$HARNESS_CHILD_SMOKE_OBSERVATION_FILE" "$hook_config"
     [[ "${FAKE_SCENARIO:-}" != "$host-session-failure" ]] || exit 9
     if [[ "${FAKE_SCENARIO:-}" == signal-during-codex && "$host" == codex ]]; then
       kill -TERM "$PPID"

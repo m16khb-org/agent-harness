@@ -316,8 +316,8 @@ for item in records:
 PY
 }
 
-instrument_child_smoke_hooks() {
-  python3 - "$1" "$2" "$3" "${HOME:?}" "${CODEX_HOME:-${HOME:?}/.codex}" <<'PY'
+instrument_claude_child_smoke_hooks() {
+  python3 - "$1" "$2" "${HOME:?}" <<'PY'
 import json
 import os
 import shlex
@@ -325,7 +325,7 @@ import stat
 import sys
 import tempfile
 
-root, codex_observation, claude_observation, home, codex_home = sys.argv[1:]
+root, claude_observation, home = sys.argv[1:]
 binary = os.path.join(root, "bin", "agent-harness")
 
 def instrument(path, observation):
@@ -374,7 +374,6 @@ def instrument(path, observation):
         except FileNotFoundError:
             pass
 
-instrument(os.path.join(codex_home, "hooks.json"), codex_observation)
 instrument(os.path.join(home, ".claude", "settings.json"), claude_observation)
 PY
 }
@@ -403,21 +402,39 @@ for server in (codex_mcp, claude_mcp):
         raise SystemExit(1)
 
 def event_commands(document, event):
-    commands = []
+    hooks = []
     for group in document.get("hooks", {}).get(event, []):
         for hook in group.get("hooks", []):
-            command = hook.get("command")
-            if isinstance(command, str):
-                commands.append(command)
-    return commands
+            if isinstance(hook, dict):
+                hooks.append(hook)
+    return hooks
 
-for document in (codex_hooks, claude_hooks):
-    for event, subcommand in (("SessionStart", "session-start"), ("PreToolUse", "pre-tool-use")):
-        commands = event_commands(document, event)
-        expected = f"'{binary}' hook {subcommand}"
-        if not any(command.startswith(expected) for command in commands):
+enforcement = "--enforce-worktree --enforce-korean-remote-artifacts --enforce-vcs-issue-linking --enforce-staged-checks --enforce-gitops-kubectl"
+contracts = (
+    (codex_hooks, {
+        "SessionStart": f"'{binary}' hook session-start --host codex",
+        "PreToolUse": f"'{binary}' hook pre-tool-use --host codex {enforcement}",
+    }),
+    (claude_hooks, {
+        "SessionStart": f"'{binary}' hook session-start",
+        "PreToolUse": f"'{binary}' hook pre-tool-use --host claude {enforcement}",
+    }),
+)
+for document, expected_by_event in contracts:
+    for event, expected in expected_by_event.items():
+        subcommand = "session-start" if event == "SessionStart" else "pre-tool-use"
+        managed_prefix = f"'{binary}' hook {subcommand}"
+        managed = []
+        for hook in event_commands(document, event):
+            command = hook.get("command")
+            if isinstance(command, str) and "/bin/agent-harness' hook" in command and not command.startswith(f"'{binary}' hook"):
+                raise SystemExit(1)
+            if isinstance(command, str) and command.startswith(managed_prefix):
+                managed.append(hook)
+        if len(managed) != 1:
             raise SystemExit(1)
-        if any("/bin/agent-harness' hook" in command and not command.startswith(f"'{binary}' hook") for command in commands):
+        hook = managed[0]
+        if set(hook) != {"type", "command", "timeout"} or hook.get("type") != "command" or hook.get("command") != expected or hook.get("timeout") != 5:
             raise SystemExit(1)
 PY
 }
@@ -818,7 +835,7 @@ mutation_started=1
 HARNESS_ROOT="$child_root" "$child_root/scripts/install-native.sh" --skip-build --path-mode=skip --json >"$temporary_root/activate.json" 2>"$temporary_root/activate.err" || fail_after_mutation 'child activation failed'
 validate_managed_activation_identity "$child_root" || fail_after_mutation 'activated managed identity drifted'
 host_mcp_readback "$child_root" activated || fail_after_mutation 'activated host-native MCP readback failed'
-instrument_child_smoke_hooks "$child_root" "$codex_observation" "$claude_observation" || fail_after_mutation 'child smoke hook instrumentation failed'
+instrument_claude_child_smoke_hooks "$child_root" "$claude_observation" || fail_after_mutation 'Claude child smoke hook instrumentation failed'
 activation_digest "$child_root" "$activated_file" || fail_after_mutation 'activated surface digest failed'
 validate_activation_digest "$activated_file" "$child_root" || fail_after_mutation 'activated surface digest contract failed'
 activated_binary_sha256="$(python3 - "$activated_file" <<'PY'
