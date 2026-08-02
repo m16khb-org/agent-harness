@@ -129,6 +129,7 @@ finalized=0
 lock_held=0
 restoring=0
 pending_signal=0
+restore_phase=""
 state_root="${HARNESS_STATE_DIR:-${HOME:?}/.local/state/agent-harness}"
 lock_path="$state_root/child-host-smoke.lock"
 local_head=""
@@ -713,19 +714,26 @@ finish() {
   local return_code="$2"
   local verdict="$requested_verdict"
   restoring=1
+  restore_phase="install"
   set +e
   HARNESS_ROOT="$source_root" "$child_root/scripts/install-native.sh" --skip-build --path-mode=skip --json >"$temporary_root/restore-install.json" 2>"$temporary_root/restore-install.err"
   local restore_install_status=$?
+  restore_phase="snapshot"
   restore_activation_snapshot "$activation_snapshot"
   local restore_snapshot_status=$?
+  restore_phase="identity"
   validate_managed_activation_identity "$source_root"
   local restore_identity_status=$?
+  restore_phase="mcp"
   host_mcp_readback "$source_root" restore
   local restore_mcp_status=$?
+  restore_phase="digest"
   activation_digest "$source_root" "$restore_file"
   local restore_digest_status=$?
+  restore_phase="contract"
   validate_activation_digest "$restore_file" "$source_root" >/dev/null 2>&1
   local restore_digest_contract_status=$?
+  restore_phase="exact"
   local exact_restore_status=0
   cmp -s "$before_file" "$restore_file" || exact_restore_status=$?
   if ((restore_install_status != 0 || restore_snapshot_status != 0 || restore_identity_status != 0 || restore_mcp_status != 0 || restore_digest_status != 0 || restore_digest_contract_status != 0 || exact_restore_status != 0)); then
@@ -736,10 +744,10 @@ finish() {
     return_code=1
   fi
   if ((pending_signal != 0)); then
-    printf 'child-host-smoke: pending signal during restore: %d\n' "$pending_signal" >&2
     verdict="fail"
     return_code="$pending_signal"
   fi
+  restore_phase="lock"
   if rmdir "$lock_path" 2>/dev/null; then
     lock_held=0
   else
@@ -747,6 +755,7 @@ finish() {
     verdict="fail"
     return_code=1
   fi
+  restore_phase="receipt"
   emit_receipt "$verdict"
   if (($? != 0)); then
     return_code=1
@@ -757,6 +766,7 @@ finish() {
     emit_receipt "$verdict" >/dev/null 2>&1 || return_code=1
   fi
   finalized=1
+  restore_phase="cleanup"
   cleanup || return_code=1
   if ((pending_signal != 0)); then
     return_code="$pending_signal"
@@ -784,6 +794,7 @@ on_signal() {
   if ((restoring == 1)); then
     if ((pending_signal == 0)); then
       pending_signal="$signal_status"
+      printf 'child-host-smoke: pending signal during restore: %d phase=%s\n' "$pending_signal" "$restore_phase" >&2
     fi
     return
   fi
