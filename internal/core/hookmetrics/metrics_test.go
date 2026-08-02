@@ -113,7 +113,7 @@ func TestPruneHookMetricsLogDropsOldEntries(t *testing.T) {
 
 func TestPruneHookMetricsLogKeepsNewestEntriesWithinLineLimit(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	base := time.Date(2026, 7, 3, 0, 0, 0, 0, time.UTC)
+	base := time.Now().UTC().Add(-time.Hour)
 	for i := 0; i < 5; i++ {
 		if _, err := RecordHookMetricEvent(HookMetricEvent{
 			Timestamp:  base.Add(time.Duration(i) * time.Second).Format(time.RFC3339Nano),
@@ -142,7 +142,7 @@ func TestPruneHookMetricsLogKeepsNewestEntriesWithinLineLimit(t *testing.T) {
 
 func TestPruneHookMetricsLogKeepsNewestEntriesWithinByteLimit(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	base := time.Date(2026, 7, 3, 0, 0, 0, 0, time.UTC)
+	base := time.Now().UTC().Add(-time.Hour)
 	events := []HookMetricEvent{
 		{Timestamp: base.Format(time.RFC3339Nano), Hook: "session-start", Host: "old", DurationMS: 10},
 		{Timestamp: base.Add(time.Second).Format(time.RFC3339Nano), Hook: "session-start", Host: "newer", DurationMS: 20},
