@@ -160,6 +160,8 @@ Live 측정은 CI와 기본 self-verify에 포함하지 않는다. `HARNESS_TOOL
 
 환경 실패율 5%는 조사 warning일 뿐 pass/fail threshold가 아니다. context-pressure profile과 10/20 reproduction batch는 clean initial matrix와 denominator를 합치지 않고 별도 승인·비용 경계로 실행한다. evidence는 `.agent-harness/evidence/tool-conformance/`에 mode 0600/0700으로 저장하고 git에 추가하지 않는다.
 
+Reversible child-host smoke는 일반 live matrix와 별도다. `scripts/verify-child-host-smoke.sh`는 literal `--confirm-user-activation`, clean local HEAD, exact singleton remote ref가 모두 일치할 때만 user-scope integration을 잠시 활성화한다. Codex `exec --json`은 hook lifecycle notification을 JSONL에 투영하지 않으므로, 명시적인 `HARNESS_CHILD_SMOKE_HOOKS=1` 세션에서 실제 child hook process가 private append-only marker에 `SessionStart`/`PreToolUse` 이름만 기록한다. Host runner는 이 marker와 native MCP result를 boolean/count/SHA-256/exit/duration projection으로 합친 뒤 원문 stream과 marker를 폐기한다. 어떤 post-activation 실패도 source installer 1회 복원과 before/restore digest equality를 통과하지 못하면 `verdict=pass`가 될 수 없다.
+
 ---
 
 ## 3. 테스트 작성 기준

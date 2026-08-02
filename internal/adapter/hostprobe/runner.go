@@ -201,6 +201,208 @@ type episodeCapture struct {
 	Diagnostics        []toolconformance.Diagnostic   `json:"diagnostics"`
 }
 
+type hostStreamObservation struct {
+	SessionStartObserved bool   `json:"session_start_observed"`
+	PreToolUseObserved   bool   `json:"pre_tool_use_observed"`
+	MCPCallCount         int    `json:"mcp_call_count"`
+	ResponseSHA256       string `json:"response_sha256"`
+	ExitCode             int    `json:"exit_code"`
+	DurationMS           int64  `json:"duration_ms"`
+}
+
+func observeHostStream(data []byte) (hostStreamObservation, error) {
+	if len(data) == 0 || len(data) > MaxOutputBytes {
+		return hostStreamObservation{}, fmt.Errorf("host_stream_invalid")
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	observation := hostStreamObservation{}
+	results := make([]any, 0, 1)
+	claudeProbeCalls := map[string]bool{}
+	events := 0
+	for {
+		var event any
+		if err := decoder.Decode(&event); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return hostStreamObservation{}, fmt.Errorf("host_stream_invalid")
+		}
+		events++
+		observeHookEvent(event, &observation)
+		observeClaudeProbeCalls(event, claudeProbeCalls)
+		for _, result := range observedClaudeProbeResults(event, claudeProbeCalls) {
+			observation.MCPCallCount++
+			results = append(results, result)
+		}
+		if result, ok := observedMCPResult(event); ok {
+			observation.MCPCallCount++
+			results = append(results, result)
+		}
+	}
+	if events == 0 {
+		return hostStreamObservation{}, fmt.Errorf("host_stream_invalid")
+	}
+	if len(results) > 0 {
+		canonical, err := json.Marshal(results)
+		if err != nil {
+			return hostStreamObservation{}, fmt.Errorf("host_stream_invalid")
+		}
+		digest := sha256.Sum256(canonical)
+		observation.ResponseSHA256 = hex.EncodeToString(digest[:])
+	}
+	return observation, nil
+}
+
+func observeClaudeProbeCalls(value any, calls map[string]bool) {
+	event, ok := value.(map[string]any)
+	if !ok || event["type"] != "assistant" {
+		return
+	}
+	message, _ := event["message"].(map[string]any)
+	content, _ := message["content"].([]any)
+	for _, rawBlock := range content {
+		block, _ := rawBlock.(map[string]any)
+		name, _ := block["name"].(string)
+		id, _ := block["id"].(string)
+		if block["type"] == "tool_use" && id != "" && strings.Contains(name, "agent_harness_probe") {
+			calls[id] = true
+		}
+	}
+}
+
+func observedClaudeProbeResults(value any, calls map[string]bool) []any {
+	event, ok := value.(map[string]any)
+	if !ok || event["type"] != "user" {
+		return nil
+	}
+	message, _ := event["message"].(map[string]any)
+	content, _ := message["content"].([]any)
+	results := make([]any, 0, 1)
+	for _, rawBlock := range content {
+		block, _ := rawBlock.(map[string]any)
+		id, _ := block["tool_use_id"].(string)
+		if block["type"] != "tool_result" || !calls[id] {
+			continue
+		}
+		delete(calls, id)
+		if result, exists := event["tool_use_result"]; exists && result != nil {
+			results = append(results, result)
+		} else {
+			results = append(results, block)
+		}
+	}
+	return results
+}
+
+func observeHookEvent(value any, observation *hostStreamObservation) {
+	event, ok := value.(map[string]any)
+	if !ok {
+		return
+	}
+	var name string
+	switch event["type"] {
+	case "hook.completed":
+		hook, _ := event["hook"].(map[string]any)
+		name, _ = hook["event_name"].(string)
+	case "system":
+		if event["subtype"] == "hook_response" {
+			name, _ = event["hook_event"].(string)
+		}
+	}
+	switch strings.ToLower(strings.ReplaceAll(name, "_", "")) {
+	case "sessionstart":
+		observation.SessionStartObserved = true
+	case "pretooluse":
+		observation.PreToolUseObserved = true
+	}
+}
+
+func observedMCPResult(value any) (any, bool) {
+	event, ok := value.(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	typeName, _ := event["type"].(string)
+	switch typeName {
+	case "item.completed":
+		item, _ := event["item"].(map[string]any)
+		server, _ := item["server"].(string)
+		status, _ := item["status"].(string)
+		if item["type"] != "mcp_tool_call" || !strings.Contains(server, "agent_harness_probe") || status != "completed" {
+			return nil, false
+		}
+		result, exists := item["result"]
+		return result, exists && result != nil
+	case "tool_result":
+		tool, _ := event["tool"].(map[string]any)
+		name, _ := tool["name"].(string)
+		if !strings.Contains(name, "agent_harness_probe") {
+			return nil, false
+		}
+		result, exists := event["result"]
+		return result, exists && result != nil
+	default:
+		return nil, false
+	}
+}
+
+func observeRecordedHookEvents(deps Dependencies) (hostStreamObservation, error) {
+	observationPath := strings.TrimSpace(deps.Getenv("HARNESS_CHILD_SMOKE_OBSERVATION_FILE"))
+	if !filepath.IsAbs(observationPath) {
+		return hostStreamObservation{}, fmt.Errorf("hook_observation_invalid")
+	}
+	markerPath := observationPath + ".hooks"
+	info, err := os.Lstat(markerPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return hostStreamObservation{}, nil
+		}
+		return hostStreamObservation{}, fmt.Errorf("hook_observation_invalid")
+	}
+	if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm() != 0o600 {
+		return hostStreamObservation{}, fmt.Errorf("hook_observation_invalid")
+	}
+	data, err := readBoundedEvidenceFile(markerPath)
+	if err != nil {
+		return hostStreamObservation{}, fmt.Errorf("hook_observation_invalid")
+	}
+	defer func() { _ = os.Remove(markerPath) }()
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	observation := hostStreamObservation{}
+	events := 0
+	for {
+		var marker struct {
+			Event string `json:"event"`
+		}
+		if err := decoder.Decode(&marker); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return hostStreamObservation{}, fmt.Errorf("hook_observation_invalid")
+		}
+		events++
+		switch marker.Event {
+		case "SessionStart":
+			observation.SessionStartObserved = true
+		case "PreToolUse":
+			observation.PreToolUseObserved = true
+		default:
+			return hostStreamObservation{}, fmt.Errorf("hook_observation_invalid")
+		}
+	}
+	if events == 0 {
+		return hostStreamObservation{}, fmt.Errorf("hook_observation_invalid")
+	}
+	return observation, nil
+}
+
+func mergeHookObservation(observation *hostStreamObservation, recorded hostStreamObservation) {
+	observation.SessionStartObserved = observation.SessionStartObserved || recorded.SessionStartObserved
+	observation.PreToolUseObserved = observation.PreToolUseObserved || recorded.PreToolUseObserved
+}
+
 func newEpisodeRoot(deps Dependencies, host string) (string, error) {
 	root, err := deps.TempDir("", "agent-harness-conformance-"+host+"-")
 	if err != nil {
@@ -335,6 +537,62 @@ func completedResult(host, version string, request port.HostProbeRequest, starte
 		CanonicalValid:         capture.CanonicalValid,
 		DiagnosticsJSON:        string(diagnostics),
 	}
+}
+
+func applyHostStreamObservation(result *port.HostProbeResult, observation hostStreamObservation, exitCode int) {
+	result.SessionStartObserved = observation.SessionStartObserved
+	result.PreToolUseObserved = observation.PreToolUseObserved
+	result.ResponseSHA256 = observation.ResponseSHA256
+	result.ExitCode = exitCode
+}
+
+func persistChildSmokeObservation(deps Dependencies, result port.HostProbeResult, mcpCallCount int) error {
+	path := strings.TrimSpace(deps.Getenv("HARNESS_CHILD_SMOKE_OBSERVATION_FILE"))
+	if path == "" {
+		return nil
+	}
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("child_smoke_observation_path_invalid")
+	}
+	parentInfo, err := os.Lstat(filepath.Dir(path))
+	if err != nil || !parentInfo.IsDir() || parentInfo.Mode()&os.ModeSymlink != 0 || parentInfo.Mode().Perm() != 0o700 {
+		return fmt.Errorf("child_smoke_observation_path_invalid")
+	}
+	if _, err := os.Lstat(path); !os.IsNotExist(err) {
+		return fmt.Errorf("child_smoke_observation_path_invalid")
+	}
+	observation := hostStreamObservation{
+		SessionStartObserved: result.SessionStartObserved,
+		PreToolUseObserved:   result.PreToolUseObserved,
+		MCPCallCount:         mcpCallCount,
+		ResponseSHA256:       result.ResponseSHA256,
+		ExitCode:             result.ExitCode,
+		DurationMS:           result.DurationMS,
+	}
+	data, err := json.Marshal(observation)
+	if err != nil {
+		return fmt.Errorf("child_smoke_observation_encode_failed")
+	}
+	data = append(data, '\n')
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return fmt.Errorf("child_smoke_observation_write_failed")
+	}
+	if _, err := file.Write(data); err != nil {
+		_ = file.Close()
+		_ = os.Remove(path)
+		return fmt.Errorf("child_smoke_observation_write_failed")
+	}
+	if err := file.Sync(); err != nil {
+		_ = file.Close()
+		_ = os.Remove(path)
+		return fmt.Errorf("child_smoke_observation_write_failed")
+	}
+	if err := file.Close(); err != nil {
+		_ = os.Remove(path)
+		return fmt.Errorf("child_smoke_observation_write_failed")
+	}
+	return nil
 }
 
 func failedResult(host, version string, request port.HostProbeRequest, started time.Time, deps Dependencies, cause, code string) port.HostProbeResult {

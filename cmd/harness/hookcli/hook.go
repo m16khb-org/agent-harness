@@ -21,6 +21,9 @@ func runHook(args []string) error {
 	}
 	started := time.Now()
 	err := runHookDispatch(args)
+	if err == nil && len(args) > 0 {
+		err = recordChildSmokeHookEvent(args[0])
+	}
 	if err != nil {
 		hookfailure.Record(args, stdin, err)
 	}

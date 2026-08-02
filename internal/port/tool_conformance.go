@@ -41,8 +41,12 @@ type HostProbeResult struct {
 	Profile                string
 	Attempt                int
 	DurationMS             int64
+	SessionStartObserved   bool
+	PreToolUseObserved     bool
 	AmbientToolCount       int
 	CallCount              int
+	ResponseSHA256         string
+	ExitCode               int
 	RawArgumentsSHA256     string
 	CanonicalArgumentsJSON string
 	EvidenceID             string

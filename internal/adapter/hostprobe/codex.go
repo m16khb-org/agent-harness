@@ -54,13 +54,19 @@ func (r CodexRunner) Run(ctx context.Context, request port.HostProbeRequest) por
 	defer func() { _ = os.RemoveAll(root) }()
 
 	resultPath := filepath.Join(root, "result.json")
-	argv := codexArgv(executable, root, request, resultPath)
-	if _, err := r.deps.Process.Run(ctx, CommandRequest{
+	hookSmoke := r.deps.Getenv("HARNESS_CHILD_SMOKE_HOOKS") == "1"
+	argv := codexArgvMode(executable, root, request, resultPath, hookSmoke)
+	envNames := []string{"CODEX_HOME"}
+	if hookSmoke {
+		envNames = append(envNames, "HARNESS_CHILD_SMOKE_HOOKS", "HARNESS_CHILD_SMOKE_OBSERVATION_FILE")
+	}
+	output, err := r.deps.Process.Run(ctx, CommandRequest{
 		Cwd:     root,
 		Argv:    argv,
-		Env:     isolatedHostEnv(r.deps, "CODEX_HOME"),
+		Env:     isolatedHostEnv(r.deps, envNames...),
 		Timeout: EpisodeTimeout,
-	}); err != nil {
+	})
+	if err != nil {
 		cause, code := codexProcessFailure(err)
 		return failedResult(r.Name(), "", request, started, r.deps, cause, code)
 	}
@@ -69,27 +75,51 @@ func (r CodexRunner) Run(ctx context.Context, request port.HostProbeRequest) por
 		cause, code := codexCaptureFailure(err)
 		return failedResult(r.Name(), "", request, started, r.deps, cause, code)
 	}
-	return completedResult(r.Name(), "", request, started, r.deps, capture)
+	result := completedResult(r.Name(), "", request, started, r.deps, capture)
+	if hookSmoke {
+		observation, err := observeHostStream(output.Stdout)
+		if err != nil {
+			return failedResult(r.Name(), "", request, started, r.deps, "transport", "host_stream_invalid")
+		}
+		recorded, err := observeRecordedHookEvents(r.deps)
+		if err != nil {
+			return failedResult(r.Name(), "", request, started, r.deps, "transport", err.Error())
+		}
+		mergeHookObservation(&observation, recorded)
+		applyHostStreamObservation(&result, observation, output.ExitCode)
+		if err := persistChildSmokeObservation(r.deps, result, observation.MCPCallCount); err != nil {
+			return failedResult(r.Name(), "", request, started, r.deps, "transport", err.Error())
+		}
+	}
+	return result
 }
 
 func codexArgv(executable, root string, request port.HostProbeRequest, resultPath string) []string {
+	return codexArgvMode(executable, root, request, resultPath, false)
+}
+
+func codexArgvMode(executable, root string, request port.HostProbeRequest, resultPath string, hookSmoke bool) []string {
 	serve := serveArgv(request, resultPath)
 	args, _ := json.Marshal(serve[1:])
 	argv := []string{
 		executable,
 		"exec",
-		"--ignore-user-config",
+	}
+	if !hookSmoke {
+		argv = append(argv, "--ignore-user-config")
+	}
+	argv = append(argv,
 		"--ignore-rules",
 		"--ephemeral",
 		"--json",
 		"--sandbox", "read-only",
 		"--skip-git-repo-check",
 		"-C", root,
-		"-c", "approval_policy=" + jsonString("never"),
-		"-c", "mcp_servers." + codexProbeServer + ".command=" + jsonString(serve[0]),
-		"-c", "mcp_servers." + codexProbeServer + ".args=" + string(args),
-		"-c", "mcp_servers." + codexProbeServer + ".default_tools_approval_mode=" + jsonString("approve"),
-	}
+		"-c", "approval_policy="+jsonString("never"),
+		"-c", "mcp_servers."+codexProbeServer+".command="+jsonString(serve[0]),
+		"-c", "mcp_servers."+codexProbeServer+".args="+string(args),
+		"-c", "mcp_servers."+codexProbeServer+".default_tools_approval_mode="+jsonString("approve"),
+	)
 	if request.Model != "" && request.Model != "default" {
 		argv = append(argv, "--model", request.Model)
 	}
