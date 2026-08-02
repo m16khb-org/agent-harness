@@ -52,16 +52,16 @@
       "id": "G228-F2",
       "title": "Build reversible child host smoke",
       "objective": "Complete plan Task 2 with a strict coordinator-only exact-head Codex and Claude smoke runner whose deterministic tests prove activation readback and exact restoration.",
-      "status": "pending",
+      "status": "pass",
       "successCriteria": [
         {
           "id": "G228-F2-C1",
           "scenario": "Run fake git, install, Codex, Claude, MCP, activation, signal, and restore scenarios; require named RED then GREEN and fail-closed receipts for version drift, call-count drift, activated identity mismatch, and restore mismatch.",
           "channel": "cli",
           "expectedEvidence": ".agent-harness/turing/evidence/issue228-G228-F2-C1-runner.txt",
-          "status": "pending",
-          "capturedEvidence": null,
-          "cleanupReceipt": null,
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/issue228-G228-F2-C1-runner.txt",
+          "cleanupReceipt": "Fake host TempDir fixtures self-cleaned; live activation restored all four source files byte-for-byte; no smoke lock remained",
           "ultraqaClasses": ["malformed_input", "hung_command", "repeated_interruption", "misleading_success"]
         },
         {
@@ -69,9 +69,9 @@
           "scenario": "Run the exact child runner against deterministic fixtures and canonical install dry-run roots; require no user-scope write without the literal confirmation flag and exact private receipt permissions.",
           "channel": "cli",
           "expectedEvidence": ".agent-harness/turing/evidence/issue228-G228-F2-C2-dry-run.txt",
-          "status": "pending",
-          "capturedEvidence": null,
-          "cleanupReceipt": null,
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/issue228-G228-F2-C2-dry-run.txt",
+          "cleanupReceipt": "Unconfirmed and authority-drift fixtures performed zero restore calls because mutation never began; confirmed live run restored exact pre-activation hashes and modes",
           "ultraqaClasses": ["permission_boundary", "dirty_worktree", "stale_state"]
         },
         {
@@ -79,18 +79,18 @@
           "scenario": "Run Task 2 focused, race, bash syntax, host adapter, MCP, API-candidate, diff, and fresh implementation-review gates; create and push the atomic Task 2 commit only with zero Critical/Important findings and exact remote readback.",
           "channel": "cli",
           "expectedEvidence": ".agent-harness/turing/evidence/issue228-G228-F2-C3-final.txt",
-          "status": "pending",
-          "capturedEvidence": null,
-          "cleanupReceipt": null,
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/issue228-G228-F2-C3-final.txt",
+          "cleanupReceipt": "No persistent child host process or lock remained; source and child worktrees were clean; local and remote refs matched exactly",
           "ultraqaClasses": ["flaky_test", "misleading_success", "repeated_interruption"]
         }
       ]
     }
   ],
   "metrics": {
-    "evidenceCoverage": 0.571429,
-    "reworkRate": 0.857143,
-    "cycleEfficiency": 0.444444,
+    "evidenceCoverage": 1.0,
+    "reworkRate": 1.857143,
+    "cycleEfficiency": 0.368421,
     "parallelizationRatio": 1.0,
     "cleanupCompliance": 1.0
   }
