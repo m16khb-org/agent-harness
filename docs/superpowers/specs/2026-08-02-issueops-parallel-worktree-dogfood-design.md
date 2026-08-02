@@ -25,6 +25,7 @@ IssueOps는 record별 execution lease, canonical worktree, parent/child delegati
 - child A 전용: `internal/core/issueops/issueops_delegation_start_process_test.go`, `.agent-harness/operations/2026-08-02-issueops-parallel-worktree-child-start.md`
 - child B 전용: `internal/core/issueops/issueops_delegation_accept_process_test.go`, `.agent-harness/operations/2026-08-02-issueops-parallel-worktree-child-accept.md`
 - parent 전용: 설계 문서, 구현 계획, `.agent-harness/operations/2026-08-02-issueops-parallel-worktree-dogfood.md`
+- parent lifecycle unblocker 전용: `cmd/harness/issueopscli/remotecmd/remote.go`, `cmd/harness/issueopscli/remotecmd/remote_test.go`, `internal/core/issueops/issueops_actor.go`, `internal/core/issueops_facade.go`, `internal/adapter/cli/issueops_catalog.go`, `cmd/harness/testdata/usage.golden.txt`
 - production `issueops_delegation.go`는 새 테스트가 현 코드에서 실패하고 원인이 확정될 때만 parent가 범위를 다시 기록한 후 최소 수정한다.
 
 ### Cross-process test shape
@@ -41,6 +42,10 @@ start 테스트는 네 process의 모든 child ID/branch/title이 parent `ChildC
 - Lifecycle plane: provider hierarchy, 서로 다른 actor/generation/worktree, parent accept/integration, PR merge, cleanup residue 0이 운영 도그푸드를 증명한다.
 
 Regression plane 실패는 code/test defect다. Lifecycle plane 실패는 regression 결과를 보존하되 사용자 목표가 미완료이므로 해당 lifecycle만 recover하고 전체 cleanup까지 계속한다. 어느 평면의 실패도 다른 평면의 성공으로 덮지 않는다.
+
+### 관찰된 lifecycle unblocker
+
+첫 child confirm은 provider에서 #222를 실제 생성·계층화한 뒤 로컬 `LinkIssueOpsChild`가 active parent lease의 actor 부재로 실패했다. `remote create-child`가 actor flags를 노출하지 않고 provider side effect 뒤에야 lease를 검증하는 것이 원인이다. parent는 actor flags를 추가하고 provider 호출 전에 current holder/canonical cwd를 검증하며, 성공한 provider 호출 뒤에는 같은 actor로 child link를 기록한다. #222는 의도한 child A로 reconcile하고 중복 생성하지 않는다. 이 fix commit 뒤의 parent HEAD를 두 child branch의 새 공통 sealed base로 사용한다.
 
 ### Integration
 

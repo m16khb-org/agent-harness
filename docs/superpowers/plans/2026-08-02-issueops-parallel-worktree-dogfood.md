@@ -18,7 +18,7 @@
 - `git add .`, `git commit -a`, force push, raw destructive cleanup을 사용하지 않는다.
 - test helper subprocess 실패는 `CombinedOutput`으로 stdout/stderr와 exit error를 함께 보존한다.
 - Regression plane과 lifecycle plane을 별도 판정하며 한쪽 성공으로 다른 쪽 실패를 덮지 않는다.
-- 계획 commit 직후 standalone `git rev-parse HEAD`의 literal SHA가 두 child의 동일 sealed base다.
+- 계획 commit 또는 실제 lifecycle unblocker fix 직후 standalone `git rev-parse HEAD`의 literal SHA가 두 child의 동일 sealed base다.
 
 ---
 
@@ -68,6 +68,19 @@ Expected: Conventional Commit subject와 Lore body를 가진 계획 commit 하�
 - [ ] **Step 4: Plan link, compatibility, Brooks verdict, implement phase를 기록**
 
 Run exact actor flags from the active parent holder. Expected: parent readiness에서 design, plan, compatibility, devil's advocate 누락이 사라진다.
+
+- [ ] **Step 4a: Provider side effect 전 actor validation 결함을 TDD로 교정**
+
+첫 child confirm에서 #222가 실제 생성된 뒤 local child link가 active lease actor 부재로 실패했다. 아래 parent-only 파일만 수정한다.
+
+- `cmd/harness/issueopscli/remotecmd/remote.go`
+- `cmd/harness/issueopscli/remotecmd/remote_test.go`
+- `internal/core/issueops/issueops_actor.go`
+- `internal/core/issueops_facade.go`
+- `internal/adapter/cli/issueops_catalog.go`
+- `cmd/harness/testdata/usage.golden.txt`
+
+active holder confirm 성공과 wrong actor가 provider 호출 전에 실패하는 두 테스트를 먼저 RED로 확인한다. create-child에 holder/canonical cwd flags를 추가하고, provider 호출 전 actor validation과 provider 성공 후 actor-bound link를 적용한다. focused/package/full 검증 뒤 별도 atomic fix commit을 push한다. #222는 readback/reconcile하며 중복 생성하지 않고, fix commit의 exact HEAD를 두 child sealed base로 다시 고정한다.
 
 - [ ] **Step 5: 두 `[p]` GitHub sub-issue와 child lifecycle을 만든다**
 

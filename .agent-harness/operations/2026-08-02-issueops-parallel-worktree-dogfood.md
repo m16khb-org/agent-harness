@@ -23,7 +23,8 @@ GitHub 이슈 생성부터 provider-native child 분할, 서로 다른 direct ex
 - Related score threshold: `0.70`
 - Selected related issues: `#65=0.95`, `#47=0.86`, `#129=0.80`
 - Rejected related issue: `#59=0.18`
-- Child issues: 생성 전
+- Child A issue: [#222](https://github.com/m16khb/agent-harness/issues/222), provider hierarchy 생성됨·local link reconcile 대기
+- Child B issue: 생성 전
 - Pull request: 생성 전
 
 ## Parent lifecycle
@@ -34,13 +35,14 @@ GitHub 이슈 생성부터 provider-native child 분할, 서로 다른 direct ex
 - Mode/generation: `direct` / `1`
 - Canonical worktree: `/Users/m16khb/Workspace/agent-harness.worktrees/221-issueops-parallel-worktree-dogfood`
 - Holder host/session/process: `codex` / `019fc065-25e9-7613-9de3-86c8b61b502c` / PID `56675` start `2026-08-02T02:54:41Z`
-- Post-plan parent HEAD: 계획 commit 뒤 기록
+- Plan commit HEAD: `2bac6a590abc1234bc7720752329143415b1271e`
+- Child sealed base: lifecycle unblocker fix commit 뒤 기록
 
 ## Parallel execution matrix
 
 | Child | Issue | Lifecycle | Branch | Generation | Worktree | Agent/session | Base SHA | State |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| A: cross-process start | 생성 전 | 생성 전 | 생성 전 | 생성 전 | 생성 전 | 생성 전 | 생성 전 | pending |
+| A: cross-process start | #222 | 생성 전 | 생성 전 | 생성 전 | 생성 전 | 생성 전 | fix 뒤 봉인 | provider-created, reconcile pending |
 | B: cross-process accept | 생성 전 | 생성 전 | 생성 전 | 생성 전 | 생성 전 | 생성 전 | 생성 전 | pending |
 
 ## Success criteria
@@ -64,6 +66,15 @@ GitHub 이슈 생성부터 provider-native child 분할, 서로 다른 direct ex
 - `2026-08-02T03:20Z`: plan phase와 approved design review 기록.
 - `2026-08-02T03:27Z`: independent Brooks 최초 `revise` 반영 후 same reviewer `proceed`. ready/gate barrier, mutation RED, exact post-plan base, evidence-plane 분리를 추가.
 - `2026-08-02T03:29:05Z`: parent direct execution generation 1 confirm. source와 canonical worktree 모두 clean.
+- `2026-08-02T03:35Z`: parent plan commit `2bac6a59` push, plan/compatibility/DA reflection, implement phase 기록.
+- `2026-08-02T03:37Z`: child A confirm이 provider에서 #222를 생성·계층화한 뒤 actor 없는 local link에서 실패. readback으로 #222 존재를 확인해 중복 생성을 중단했다.
+- `2026-08-02T03:40Z`: root cause는 create-child actor flag 부재와 provider side effect 후 lease validation 순서로 격리. active actor success와 wrong actor pre-provider rejection 테스트를 RED에서 GREEN으로 전환했다.
+
+## 관찰된 문제와 교정
+
+| ID | 증상 | 원인 | 교정 | 상태 |
+| --- | --- | --- | --- | --- |
+| D1 | create-child confirm이 error를 반환했지만 #222는 원격에 생성됨 | CLI가 actor를 전달하지 않고 provider 호출 뒤 non-actor local link에서 lease를 검증 | actor/cwd flags, provider 전 actor validation, actor-bound link, 두 회귀 테스트 | focused GREEN, package/full pending |
 
 ## Regression plane evidence
 

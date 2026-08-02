@@ -32,7 +32,7 @@ func Run(args []string, deps Deps) error {
 		fmt.Println("  agent-harness issueops remote render-template --kind issue|child|pr --template KIND --title TEXT --provider github|gitlab --field key=value... [--score-file PATH] [--json]")
 		fmt.Println("  agent-harness issueops remote verify-artifact --id ID --provider github|gitlab --kind pr|mr --url URL --target-branch BRANCH --label LABEL --assignee USER [--json]")
 		fmt.Println("  agent-harness issueops remote create-issue --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
-		fmt.Println("  agent-harness issueops remote create-child --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... [--confirm] [--json]")
+		fmt.Println("  agent-harness issueops remote create-child --id ID --title TEXT [--body TEXT|--body-file PATH] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... --host codex|claude --session-id SESSION [--agent-id ID] --cwd WORKER_PATH [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote create-pr --id ID --expected-generation N --title TEXT --head BRANCH --base BRANCH [--body TEXT] [--template KIND --field key=value...] [--label LABEL]... [--assignee USER]... --host codex|claude --session-id SESSION [--agent-id ID] --session-pid PID --session-started-at RFC3339 --session-executable PATH --cwd WORKER_PATH [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote sync-graph --id ID [--confirm] [--json]")
 		fmt.Println("  agent-harness issueops remote reflect-devils-advocate --id ID [--provider github|gitlab] --host codex|claude --session-id SESSION [--agent-id ID] --cwd WORKER_PATH [--confirm] [--json]")
@@ -559,6 +559,10 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 	template := fs.String("template", "", "template kind")
 	providerOverride := fs.String("provider", "", "remote provider override: github or gitlab")
 	scoreFile := fs.String("score-file", "", "IssueOps remote score result JSON")
+	host := fs.String("host", "", "native holder host")
+	sessionID := fs.String("session-id", "", "native holder session id")
+	agentID := fs.String("agent-id", "", "optional native holder agent id")
+	cwd := fs.String("cwd", "", "canonical holder worktree cwd")
 	confirm := fs.Bool("confirm", false, "execute creation; without this, dry-run preview only")
 	var labels repeatedFlag
 	var assignees repeatedFlag
@@ -609,6 +613,19 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
+	var actor core.IssueOpsActor
+	if *confirm && record.Execution != nil {
+		ancestry, observeErr := deps.observeNativeProcessAncestry()
+		if observeErr != nil {
+			return deps.printErrorResult(*jsonOut, observeErr)
+		}
+		actor = core.IssueOpsActor{
+			Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd, NativeProcessAncestry: ancestry,
+		}
+		if validateErr := core.ValidateIssueOpsMutationActor(core.IssueOpsStateRoot(), record.ID, actor); validateErr != nil {
+			return deps.printErrorResult(*jsonOut, validateErr)
+		}
+	}
 	result, err := core.CreateRemoteChild(core.IssueProviderCreateChildRequest{
 		Repo:           record.Repo,
 		ParentIssueURL: record.IssueURL,
@@ -626,7 +643,7 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 			err := fmt.Errorf("provider did not verify child hierarchy")
 			return deps.printErrorResult(*jsonOut, err)
 		}
-		if _, err := core.LinkIssueOpsChild(core.IssueOpsStateRoot(), record.ID, result.ChildURL, *title); err != nil {
+		if _, err := core.LinkIssueOpsChildWithActor(core.IssueOpsStateRoot(), record.ID, result.ChildURL, *title, actor); err != nil {
 			return deps.printErrorResult(*jsonOut, err)
 		}
 	}
