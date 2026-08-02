@@ -203,7 +203,7 @@ def operational_doctor(report: dict[str, Any], preserve_terminal: str | None = N
 def install_checks(report: dict[str, Any], full_install: bool) -> None:
     for name, cmd in [
         ("bootstrap_dry_json", [str(BIN), "bootstrap", "--dry-run", "--json"]),
-        ("install_native_dry_json", [str(BIN), "install-native", "--dry-run", "--json"]),
+        ("install_dry_json", [str(BIN), "install", "--dry-run", "--json"]),
     ]:
         res = run(cmd, timeout=120)
         ok = res["returncode"] == 0
@@ -217,7 +217,7 @@ def install_checks(report: dict[str, Any], full_install: bool) -> None:
                 parsed = {"parse_error": str(exc)}
         add_step(report, name, ok, parsed=parsed, stderr=res["stderr"][-1000:])
     if full_install:
-        res = run([str(BIN), "install-native", "--json"], timeout=120)
+        res = run([str(BIN), "install", "--json"], timeout=120)
         parsed = None
         ok = res["returncode"] == 0
         if ok:
@@ -227,7 +227,7 @@ def install_checks(report: dict[str, Any], full_install: bool) -> None:
             except Exception as exc:
                 ok = False
                 parsed = {"parse_error": str(exc)}
-        add_step(report, "install_native_real_json", ok, parsed=parsed, stderr=res["stderr"][-1000:])
+        add_step(report, "install_real_json", ok, parsed=parsed, stderr=res["stderr"][-1000:])
 
 
 def hook_smoke(report: dict[str, Any]) -> None:
@@ -512,7 +512,7 @@ def regression(report: dict[str, Any], race: bool, self_verify: bool) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run agent-harness E2E stability audit")
-    parser.add_argument("--full-install", action="store_true", help="run real install-native after dry-run checks")
+    parser.add_argument("--full-install", action="store_true", help="run the canonical install command after dry-run checks")
     parser.add_argument("--cleanup-stale", action="store_true", help="terminate confirmed legacy/temp harness-owned stale processes")
     parser.add_argument(
         "--preserve-terminal",

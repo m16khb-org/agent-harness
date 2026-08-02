@@ -243,7 +243,7 @@ class StabilityAuditScriptTest(unittest.TestCase):
                 for action in actions:
                     action.assert_not_called()
 
-    def test_install_checks_use_only_current_bootstrap_flags(self) -> None:
+    def test_install_checks_use_canonical_install_command(self) -> None:
         audit = load_audit_module()
         calls: list[list[str]] = []
 
@@ -259,13 +259,21 @@ class StabilityAuditScriptTest(unittest.TestCase):
 
         report = {"steps": [], "failures": []}
         with mock.patch.object(audit, "run", side_effect=fake_run):
-            audit.install_checks(report, full_install=False)
+            audit.install_checks(report, full_install=True)
 
         self.assertEqual(
             [step["name"] for step in report["steps"]],
-            ["bootstrap_dry_json", "install_native_dry_json"],
+            ["bootstrap_dry_json", "install_dry_json", "install_real_json"],
         )
-        self.assertNotIn("--sync", [arg for call in calls for arg in call])
+        self.assertEqual(
+            [call[1:] for call in calls],
+            [
+                ["bootstrap", "--dry-run", "--json"],
+                ["install", "--dry-run", "--json"],
+                ["install", "--json"],
+            ],
+        )
+        self.assertNotIn("install-native", [arg for call in calls for arg in call])
 
     def test_temp_state_worker_policy_uses_current_state_commands(self) -> None:
         audit = load_audit_module()
