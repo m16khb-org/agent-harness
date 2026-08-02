@@ -90,11 +90,6 @@ func SwitchExecutionMode(ctx context.Context, stateRoot string, req ExecutionSwi
 	if err != nil {
 		return ExecutionSwitchModeResult{OK: false, ID: req.ID}, err
 	}
-	if req.Apply {
-		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-			return ExecutionSwitchModeResult{OK: false, ID: req.ID}, err
-		}
-	}
 	record, err := ReadIssueOps(stateRoot, req.ID)
 	if err != nil {
 		return ExecutionSwitchModeResult{OK: false, ID: req.ID}, err

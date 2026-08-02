@@ -66,9 +66,6 @@ func persistExecutionTransition(stateRoot string, record issueops.IssueOpsRecord
 }
 
 func persistExecutionTransitionWithMutations(stateRoot string, record issueops.IssueOpsRecord, previousHolder *issueops.NativeActor, extra []sqlstore.Mutation) (issueops.IssueOpsRecord, error) {
-	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-		return issueops.IssueOpsRecord{OK: false, ID: record.ID}, err
-	}
 	encoded, data, err := encodeIssueOpsRecord(record)
 	if err != nil {
 		return encoded, err
@@ -126,9 +123,6 @@ func persistExecutionTransitionWithMutations(stateRoot string, record issueops.I
 // holderless claimable 상태를 유지하므로 lease-holder reverse index transition을
 // 여기로 옮기지 않는다.
 func persistExecutionTransitionWithRawCAS(stateRoot string, record issueops.IssueOpsRecord, expected []sqlstore.ExpectedRecord, extra []sqlstore.Mutation) (issueops.IssueOpsRecord, error) {
-	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-		return issueops.IssueOpsRecord{OK: false, ID: record.ID}, err
-	}
 	db, err := sqlstore.Open(stateRoot)
 	if err != nil {
 		return issueops.IssueOpsRecord{OK: false, ID: record.ID}, err

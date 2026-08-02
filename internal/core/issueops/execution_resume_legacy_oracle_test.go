@@ -21,9 +21,6 @@ func ResumeExecutionWithDependencies(ctx context.Context, stateRoot string, req 
 	if !req.Confirm {
 		return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("execution resume requires confirm")
 	}
-	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-		return ExecutionResumeResult{OK: false, ID: req.ID}, err
-	}
 	if _, err := normalizeNativeActor(req.Actor); err != nil {
 		return ExecutionResumeResult{OK: false, ID: req.ID}, err
 	}

@@ -1,11 +1,14 @@
 package mcp
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestStateToolsExposeStableDescriptors(t *testing.T) {
 	tools := StateTools()
-	if len(tools) != 7 {
-		t.Fatalf("expected seven state tools, got %d", len(tools))
+	if len(tools) != 6 {
+		t.Fatalf("expected six current state tools, got %d", len(tools))
 	}
 
 	byName := toolsByName(tools)
@@ -42,11 +45,8 @@ func TestStateToolsExposeStableDescriptors(t *testing.T) {
 		t.Fatalf("state_doctor description drifted: %s", doctor.Description)
 	}
 
-	migrate, ok := byName["state_migrate"]
-	if !ok {
-		t.Fatal("missing state_migrate descriptor")
-	}
-	if !schemaHasProperty(migrate.InputSchema, "confirm") {
-		t.Fatalf("state_migrate schema missing confirm: %#v", migrate.InputSchema)
+	retired := strings.Join([]string{"state", "migrate"}, "_")
+	if _, ok := byName[retired]; ok {
+		t.Fatalf("retired state migration descriptor remains advertised")
 	}
 }

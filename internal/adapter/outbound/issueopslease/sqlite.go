@@ -12,6 +12,7 @@ import (
 
 	leaseapp "agent-harness/internal/application/issueopslease"
 	leasecontract "agent-harness/internal/contract/issueopslease"
+	statecontract "agent-harness/internal/contract/state"
 	leasedomain "agent-harness/internal/domain/issueopslease"
 	"agent-harness/internal/port"
 )
@@ -237,15 +238,10 @@ func decodeLeaseRecord(id string, data []byte) (leasecontract.Record, error) {
 	if err == nil {
 		return record, nil
 	}
-	var unsupported leasecontract.UnsupportedSchemaError
-	switch {
-	case errors.Is(err, leasecontract.ErrMalformedSchema):
-		return leasecontract.Record{}, leasecontract.Fail(leasecontract.FailureMalformedSchema, err)
-	case errors.As(err, &unsupported):
-		return leasecontract.Record{}, leasecontract.Fail(leasecontract.FailureUnsupportedSchema, err)
-	default:
-		return leasecontract.Record{}, leasecontract.Fail(leasecontract.FailurePersistence, err)
+	if errors.Is(err, statecontract.ErrInvalidState) {
+		return leasecontract.Record{}, leasecontract.Fail(leasecontract.FailureInvalidState, err)
 	}
+	return leasecontract.Record{}, leasecontract.Fail(leasecontract.FailurePersistence, err)
 }
 
 func toDomainLease(lease leasecontract.Lease) leasedomain.Lease {

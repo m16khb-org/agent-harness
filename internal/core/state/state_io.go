@@ -85,20 +85,28 @@ func StateRead(key string) (StateResult, error) {
 		// missing-key tolerance) alongside errors.Is(err, fs.ErrNotExist).
 		return StateResult{OK: false, StateDir: dir, Path: path}, &fs.PathError{Op: "read", Path: path, Err: fs.ErrNotExist}
 	}
-	decoder := json.NewDecoder(bytes.NewReader(b))
-	decoder.DisallowUnknownFields()
-	var record statecontract.RecordEnvelope
-	if err := decoder.Decode(&record); err != nil {
-		return StateResult{OK: false, StateDir: dir, Path: path}, statecontract.Invalid("malformed_json")
-	}
-	var trailing json.RawMessage
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		return StateResult{OK: false, StateDir: dir, Path: path}, statecontract.Invalid("malformed_json")
-	}
-	if err := statedomain.ValidateRecord(key, record); err != nil {
+	record, err := decodeStateRecord(key, b)
+	if err != nil {
 		return StateResult{OK: false, StateDir: dir, Path: path}, err
 	}
 	return StateResult{OK: true, StateDir: dir, Path: path, Record: record}, nil
+}
+
+func decodeStateRecord(key string, data []byte) (statecontract.RecordEnvelope, error) {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	var record statecontract.RecordEnvelope
+	if err := decoder.Decode(&record); err != nil {
+		return statecontract.RecordEnvelope{}, statecontract.Invalid("")
+	}
+	var trailing json.RawMessage
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		return statecontract.RecordEnvelope{}, statecontract.Invalid("")
+	}
+	if err := statedomain.ValidateRecord(key, record); err != nil {
+		return statecontract.RecordEnvelope{}, statecontract.Invalid("")
+	}
+	return record, nil
 }
 
 func StateList() (StateListResult, error) {

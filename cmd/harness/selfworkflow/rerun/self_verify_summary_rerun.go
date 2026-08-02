@@ -48,7 +48,7 @@ func SelfVerifyStepRerunCommand(label string) (string, bool) {
 	case "MCP smoke":
 		return "./bin/agent-harness mcp", true
 	case "state roundtrip":
-		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness state migrate --json; rm -rf \"$tmp_state\"", true
+		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness state write --key smoke --value smoke --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness state read --key smoke --json; rm -rf \"$tmp_state\"", true
 	case "parallel isolation":
 		return "./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --progress=jsonl --json", true
 	case "daemon resilience":

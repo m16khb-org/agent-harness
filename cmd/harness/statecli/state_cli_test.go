@@ -26,8 +26,11 @@ func TestRunStateRoutesUsageAndTextRoundtrip(t *testing.T) {
 	stderr = captureStateCLIStderr(t, func() error {
 		return runState([]string{"unknown"})
 	})
-	if !strings.Contains(stderr, "agent-harness state migrate") {
-		t.Fatalf("state usage missing migrate command:\n%s", stderr)
+	if strings.Contains(stderr, "agent-harness state migrate") {
+		t.Fatalf("state usage still advertises retired migrate command:\n%s", stderr)
+	}
+	if err := runState([]string{"migrate"}); err == nil || !strings.Contains(err.Error(), "unknown state subcommand") {
+		t.Fatalf("retired migrate command error=%v", err)
 	}
 
 	input := filepath.Join(t.TempDir(), "state.txt")
@@ -76,7 +79,7 @@ func TestRunStateWriteReadAndPruneErrorsStaySurfaced(t *testing.T) {
 	}
 }
 
-func TestRunStatePruneDoctorAndMigrateTextBranches(t *testing.T) {
+func TestRunStatePruneAndDoctorTextBranches(t *testing.T) {
 	stateDir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateDir)
 	if _, err := core.StateWrite("old", "old content"); err != nil {
@@ -106,33 +109,17 @@ func TestRunStatePruneDoctorAndMigrateTextBranches(t *testing.T) {
 	doctorOut := captureStatusVerifyStdout(t, func() error {
 		return runState([]string{"doctor"})
 	})
-	if !strings.Contains(doctorOut, "state doctor found 1 issues") || !strings.Contains(doctorOut, "error invalid_json") {
+	if !strings.Contains(doctorOut, "state doctor found 1 issues") || !strings.Contains(doctorOut, "error invalid_state") {
 		t.Fatalf("unexpected doctor text:\n%s", doctorOut)
 	}
 	doctor, err := core.StateDoctor()
 	if err != nil {
 		t.Fatalf("state doctor: %v", err)
 	}
-	if !stateDoctorHasIssueCode(doctor.Issues, "invalid_json") || stateDoctorHasIssueCode(doctor.Issues, "missing") {
+	if !stateDoctorHasIssueCode(doctor.Issues, "invalid_state") || stateDoctorHasIssueCode(doctor.Issues, "missing") {
 		t.Fatalf("stateDoctorHasIssueCode mismatch for issues: %#v", doctor.Issues)
 	}
 
-	migrateDir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", migrateDir)
-	legacy := statecontract.RecordEnvelope{Key: "legacy", Content: "legacy content", UpdatedAt: "2000-01-01T00:00:00Z", Bytes: len([]byte("legacy content"))}
-	writeStateCLIRecord(t, migrateDir, "legacy", legacy)
-	dryMigrate := captureStatusVerifyStdout(t, func() error {
-		return runState([]string{"migrate"})
-	})
-	if !strings.Contains(dryMigrate, "would migrate 1 state records") || !strings.Contains(dryMigrate, "legacy\n") {
-		t.Fatalf("unexpected dry-run migrate text:\n%s", dryMigrate)
-	}
-	confirmedMigrate := captureStatusVerifyStdout(t, func() error {
-		return runState([]string{"migrate", "--confirm"})
-	})
-	if !strings.Contains(confirmedMigrate, "migrated 1 state records") || !strings.Contains(confirmedMigrate, "legacy\n") {
-		t.Fatalf("unexpected confirmed migrate text:\n%s", confirmedMigrate)
-	}
 }
 
 func writeStateCLIRecord(t *testing.T, dir, key string, record statecontract.RecordEnvelope) {

@@ -262,9 +262,7 @@ func runVerticalPreparationDifferential(t *testing.T, stateRoot, id string, requ
 	if err != nil {
 		t.Fatal(err)
 	}
-	repository := preparationoutbound.NewSQLiteRepository(database, func(context.Context) error {
-		return RequireIssueOpsMutationAllowed(stateRoot)
-	})
+	repository := preparationoutbound.NewSQLiteRepository(database)
 	evidence := preparationDifferentialEvidence{stateRoot: stateRoot, readIssue: executionIssueSnapshotReader}
 	service := preparationapp.NewService(
 		repository, &preparationDifferentialApplicationClock{trace: trace}, preparationDifferentialOperationID{},
@@ -289,9 +287,7 @@ func runVerticalOrcaPreparationDifferential(t *testing.T, stateRoot, id string, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	repository := preparationoutbound.NewSQLiteRepositoryWithDiagnosticRedactor(database, func(context.Context) error {
-		return RequireIssueOpsMutationAllowed(stateRoot)
-	}, policy.RedactDiagnostic)
+	repository := preparationoutbound.NewSQLiteRepositoryWithDiagnosticRedactor(database, policy.RedactDiagnostic)
 	evidence := preparationDifferentialEvidence{stateRoot: stateRoot, readIssue: executionIssueSnapshotReader}
 	gateway := preparationoutbound.NewOrcaGateway(preparationoutbound.OrcaDependencies{
 		Provisioner: orca,

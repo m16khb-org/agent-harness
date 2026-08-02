@@ -22,8 +22,6 @@ func runState(args []string) error {
 		return runStatePrune(args[1:])
 	case "doctor":
 		return runStateDoctor(args[1:])
-	case "migrate":
-		return runStateMigrate(args[1:])
 	case "maintain":
 		return runStateMaintain(args[1:])
 	default:
@@ -39,7 +37,6 @@ func stateUsage() {
   agent-harness state list [--json]
   agent-harness state prune --max-age DURATION [--confirm] [--json]
   agent-harness state doctor [--json]
-  agent-harness state migrate [--confirm] [--json]
   agent-harness state maintain [--json]
 `)
 }

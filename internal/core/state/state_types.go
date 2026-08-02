@@ -55,18 +55,3 @@ type StateDoctorResult struct {
 	Valid     []StateListEntry   `json:"valid"`
 	Issues    []StateDoctorIssue `json:"issues"`
 }
-
-type StateMigrateResult struct {
-	OK            bool               `json:"ok"`
-	StateDir      string             `json:"state_dir"`
-	FromSchema    int                `json:"from_schema"`
-	ToSchema      int                `json:"to_schema"`
-	Confirm       bool               `json:"confirm"`
-	DryRun        bool               `json:"dry_run"`
-	CandidateKeys []string           `json:"candidate_keys"`
-	Candidates    []StateListEntry   `json:"candidates"`
-	MigratedKeys  []string           `json:"migrated_keys"`
-	SkippedKeys   []string           `json:"skipped_keys"`
-	Skipped       []StateListEntry   `json:"skipped"`
-	Issues        []StateDoctorIssue `json:"issues"`
-}

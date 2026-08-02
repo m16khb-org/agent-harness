@@ -39,9 +39,6 @@ func TestPolicyStateUtilityAndProjectDocFacades(t *testing.T) {
 		t.Fatal("uniqSorted should de-duplicate")
 	}
 
-	if _, err := StateMigrate(true); err != nil {
-		t.Fatalf("StateMigrate: %v", err)
-	}
 	if _, err := NormalizeStateKey("key"); err != nil {
 		t.Fatalf("NormalizeStateKey: %v", err)
 	}

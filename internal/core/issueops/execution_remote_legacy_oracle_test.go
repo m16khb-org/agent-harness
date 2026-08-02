@@ -29,11 +29,6 @@ type legacyRemotePullRequestDependencies struct {
 }
 
 func createRemotePullRequestLegacy(ctx context.Context, stateRoot string, req RemotePullRequestRequest, deps legacyRemotePullRequestDependencies) (port.IssueProviderCreatePullRequestResult, error) {
-	if req.Confirm {
-		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-			return port.IssueProviderCreatePullRequestResult{}, err
-		}
-	}
 	if deps.Create == nil {
 		return port.IssueProviderCreatePullRequestResult{}, fmt.Errorf("remote pull request provider is unavailable")
 	}

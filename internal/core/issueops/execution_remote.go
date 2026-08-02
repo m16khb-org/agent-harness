@@ -66,11 +66,6 @@ type externalRemotePRPayload struct {
 // 호출하기 전에 정확한 operation intent 하나를 영속화하며, 모호한 호출은 절대
 // 재시도하지 않는다.
 func CreateRemotePullRequest(ctx context.Context, stateRoot string, req RemotePullRequestRequest, deps RemotePullRequestDependencies) (port.IssueProviderCreatePullRequestResult, error) {
-	if req.Confirm {
-		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-			return port.IssueProviderCreatePullRequestResult{}, err
-		}
-	}
 	if deps.Handler == nil {
 		return port.IssueProviderCreatePullRequestResult{}, ErrRemotePullRequestCreateHandlerUnavailable
 	}

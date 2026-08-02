@@ -51,7 +51,6 @@ const issueOpsUsageCatalog = `  agent-harness issueops start --repo PATH [--bran
   agent-harness issueops execution complete --id ID --generation N --final-head SHA --turing-report PATH --remote-artifact-url URL --verification TEXT... ACTOR_FLAGS --confirm [--json]
   agent-harness issueops execution sync-base --id ID (--preview | --apply --confirm --fingerprint SHA256 | --finalize | --abort) ACTOR_FLAGS [--json]
   agent-harness issueops execution switch-mode --id ID --mode direct|orca [--apply --confirm --fingerprint SHA256] ACTOR_FLAGS [--json]
-  agent-harness issueops reset-legacy --target-schema 1 (--preview|--status|--reconcile-remote --id ID --claim-id CLAIM --confirm|--drain-cycle --id ID --confirm|--confirm) [--expected-fingerprint SHA256] [--json]
   agent-harness issueops phase --id ID --to problem|grill|plan|compatibility-review|implement|ai-slop-clean|feedback|pr RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops ai-slop-clean record --id ID --category TEXT --verification TEXT RECORD_ACTOR_FLAGS [--json]
   agent-harness issueops implementation-review record --id ID --verdict pass|revise|stop --finding TEXT... --evidence TEXT... [--reviewer-host codex|claude] [--reviewer-model MODEL] [--reviewer-effort EFFORT] RECORD_ACTOR_FLAGS [--json]
@@ -107,7 +106,6 @@ var abridgedIssueOpsMainKeys = []string{
 	"execution prepare", "execution status", "execution whoami", "execution claim",
 	"execution release", "execution replace", "execution resume", "execution reconcile", "execution complete",
 	"execution sync-base", "execution switch-mode",
-	"reset-legacy",
 	"feedback add", "feedback mark-issue-updated",
 	"pr-readiness",
 	"cleanup status", "cleanup close-children", "cleanup orphan",

@@ -20,9 +20,10 @@ func TestRunStateMaintainReportsRoots(t *testing.T) {
 		t.Fatalf("seed state: %v", err)
 	}
 	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsRecord{
-		ID:    core.NewIssueOpsID("/repo/maintain", "1-maintain"),
-		Repo:  "/repo/maintain",
-		Phase: core.IssueOpsPhaseProblem,
+		SchemaVersion: issueopscontract.IssueOpsSchemaVersion,
+		ID:            core.NewIssueOpsID("/repo/maintain", "1-maintain"),
+		Repo:          "/repo/maintain",
+		Phase:         core.IssueOpsPhaseProblem,
 	}); err != nil {
 		t.Fatalf("seed issueops: %v", err)
 	}

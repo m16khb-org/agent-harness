@@ -19,15 +19,14 @@ func MCPSmokeInput() string {
 		`{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"project_docs_route","arguments":{"repo":".","task":"commit"}}}`,
 		`{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"state_prune","arguments":{"max_age":"1h"}}}`,
 		`{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"state_doctor","arguments":{}}}`,
-		`{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"state_migrate","arguments":{}}}`,
 	}, "\n") + "\n"
 }
 
 func ValidateMCPSmokeContract(step *StepResult) {
 	lines := splitLines(step.Stdout)
-	if len(lines) != 12 {
+	if len(lines) != 11 {
 		step.OK = false
-		step.Error = fmt.Sprintf("expected 12 MCP responses, got %d", len(lines))
+		step.Error = fmt.Sprintf("expected 11 MCP responses, got %d", len(lines))
 		return
 	}
 	for i, line := range lines {
@@ -74,7 +73,6 @@ func MCPSmokeExpectedMarkers() []string {
 		"state_write",
 		"state_prune",
 		"state_doctor",
-		"state_migrate",
 		"self_augment",
 		"self_augment_lesson",
 		"self_verify",
@@ -84,7 +82,6 @@ func MCPSmokeExpectedMarkers() []string {
 		"self_verify_promote",
 		"dry_run",
 		"healthy",
-		"to_schema",
 		"Lore:",
 	}
 }

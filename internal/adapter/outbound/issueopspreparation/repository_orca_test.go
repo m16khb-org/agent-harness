@@ -150,7 +150,7 @@ func TestOrcaIntentRepositoryRecordsBoundedFailureByCAS(t *testing.T) {
 
 func TestOrcaIntentRepositoryUsesInjectedBoundedDiagnosticRedactor(t *testing.T) {
 	store, _, begin := newOrcaRepositoryFixture(t)
-	repository := NewSQLiteRepositoryWithDiagnosticRedactor(store, func(context.Context) error { return nil }, func(message string) string {
+	repository := NewSQLiteRepositoryWithDiagnosticRedactor(store, func(message string) string {
 		return "redacted:" + message
 	})
 	state, err := repository.BeginIntent(context.Background(), begin)
@@ -177,7 +177,7 @@ func newOrcaRepositoryFixture(t *testing.T) (*preparationStore, *SQLiteRepositor
 	record.IssueURL = "https://github.com/example/repo/issues/199"
 	record.BranchPrepare = json.RawMessage(`{"provider":"github","issue_url":"https://github.com/example/repo/issues/199","branch":"199-orca","base_branch":"main","base_sha":"base","link_verified":true}`)
 	store.seedRecord(t, record)
-	repository := NewSQLiteRepository(store, func(context.Context) error { return nil })
+	repository := NewSQLiteRepository(store)
 	snapshot, err := repository.Load(context.Background(), record.ID)
 	if err != nil {
 		t.Fatal(err)

@@ -1,9 +1,6 @@
 package state
 
 import (
-	"encoding/json"
-	"fmt"
-
 	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/core/state/statepath"
 )
@@ -27,69 +24,26 @@ func inspectStateDoctorRecord(path, key string, data []byte) stateDoctorRecordIn
 			Message:  err.Error(),
 		}}}
 	}
-	var record statecontract.RecordEnvelope
-	if err := json.Unmarshal(data, &record); err != nil {
-		return stateDoctorRecordInspection{Issues: []StateDoctorIssue{{
-			Path:     path,
-			Key:      key,
-			Severity: "error",
-			Code:     "invalid_json",
-			Message:  err.Error(),
-		}}}
+	record, err := decodeStateRecord(key, data)
+	if err != nil {
+		return invalidStateDoctorInspection(path, key)
 	}
 	return validateStateDoctorRecord(path, key, record)
 }
 
 func validateStateDoctorRecord(path, key string, record statecontract.RecordEnvelope) stateDoctorRecordInspection {
-	fatalIssues := []StateDoctorIssue{}
-	warnings := []StateDoctorIssue{}
-	if record.Key != key {
-		fatalIssues = append(fatalIssues, StateDoctorIssue{
-			Path:     path,
-			Key:      key,
-			Severity: "error",
-			Code:     "key_mismatch",
-			Message:  fmt.Sprintf("record key %q does not match stored key %q", record.Key, key),
-		})
-	}
-	if record.Bytes != len([]byte(record.Content)) {
-		fatalIssues = append(fatalIssues, StateDoctorIssue{
-			Path:     path,
-			Key:      key,
-			Severity: "error",
-			Code:     "byte_count_mismatch",
-			Message:  fmt.Sprintf("record bytes=%d but content is %d bytes", record.Bytes, len([]byte(record.Content))),
-		})
-	}
 	if _, err := statepath.ParseTime(record.UpdatedAt); err != nil {
-		fatalIssues = append(fatalIssues, StateDoctorIssue{
-			Path:     path,
-			Key:      key,
-			Severity: "error",
-			Code:     "invalid_timestamp",
-			Message:  err.Error(),
-		})
+		return invalidStateDoctorInspection(path, key)
 	}
-	switch {
-	case record.SchemaVersion == 0:
-		warnings = append(warnings, StateDoctorIssue{
-			Path:     path,
-			Key:      key,
-			Severity: "warning",
-			Code:     "legacy_schema",
-			Message:  fmt.Sprintf("record has legacy schema version 0; migrate to schema version %d", StateCurrentSchemaVersion),
-		})
-	case record.SchemaVersion < 0 || record.SchemaVersion > StateCurrentSchemaVersion:
-		fatalIssues = append(fatalIssues, StateDoctorIssue{
-			Path:     path,
-			Key:      key,
-			Severity: "error",
-			Code:     "unsupported_schema",
-			Message:  fmt.Sprintf("record schema version %d is unsupported; current schema version is %d", record.SchemaVersion, StateCurrentSchemaVersion),
-		})
-	}
-	if len(fatalIssues) > 0 {
-		return stateDoctorRecordInspection{Issues: fatalIssues}
-	}
-	return stateDoctorRecordInspection{Valid: true, Record: record, Issues: warnings}
+	return stateDoctorRecordInspection{Valid: true, Record: record}
+}
+
+func invalidStateDoctorInspection(path, key string) stateDoctorRecordInspection {
+	return stateDoctorRecordInspection{Issues: []StateDoctorIssue{{
+		Path:     path,
+		Key:      key,
+		Severity: "error",
+		Code:     "invalid_state",
+		Message:  "invalid state",
+	}}}
 }

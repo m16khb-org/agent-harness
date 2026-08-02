@@ -99,11 +99,6 @@ func CleanupRemoteBranch(ctx context.Context, stateRoot string, req CleanupRemot
 	if deps.Git == nil {
 		deps.Git = defaultExecutionSyncBaseGit
 	}
-	if req.Apply {
-		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-			return CleanupRemoteBranchResult{OK: false, ID: req.ID}, err
-		}
-	}
 	record, err := ReadIssueOps(stateRoot, req.ID)
 	if err != nil {
 		return CleanupRemoteBranchResult{OK: false, ID: req.ID}, err

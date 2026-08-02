@@ -39,7 +39,6 @@ func buildMCPResponseContractSnapshot(t *testing.T, replacements map[string]stri
 		"max_age": "1h",
 	})
 	mcpSnapshot["state_doctor"] = runMCPToolContract(t, replacements, "state_doctor", map[string]any{})
-	mcpSnapshot["state_migrate"] = runMCPToolContract(t, replacements, "state_migrate", map[string]any{})
 	issueopsExecutionID := seedIssueOpsExecutionContract(t, workspaceDir, "69-mcp-execution-contract")
 	replacements[issueopsExecutionID] = "$MCP_EXECUTION_ID"
 	mcpSnapshot["issueops_execution_status"] = runMCPToolContract(t, replacements, "issueops_execution", map[string]any{

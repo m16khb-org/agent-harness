@@ -58,11 +58,6 @@ func ReconcileExecutionWithDependencies(ctx context.Context, stateRoot string, r
 	if req.Preview == req.Confirm {
 		return ExecutionReconcileResult{OK: false, ID: req.ID}, fmt.Errorf("execution reconcile requires exactly one of preview or confirm")
 	}
-	if req.Confirm {
-		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-			return ExecutionReconcileResult{OK: false, ID: req.ID}, err
-		}
-	}
 	actor, err := normalizeNativeActor(req.Actor)
 	if err != nil {
 		return ExecutionReconcileResult{OK: false, ID: req.ID}, err

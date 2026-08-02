@@ -226,5 +226,5 @@ func reseedReplaceArtifactDirectoryWithSymlink(t *testing.T, root, outside strin
 }
 
 func reseedArtifactRecord(root string, generation uint64) leasecontract.Record {
-	return leasecontract.Record{ID: "io-reseed-artifact", Execution: &leasecontract.Execution{Mode: "direct", Workspace: leasecontract.Workspace{SourceRoot: root + "/source", Root: root, Branch: "branch", BaseHead: "base", Driver: "git", LinkedAt: "2026-07-30T09:00:00Z"}, Lease: leasecontract.Lease{Generation: generation, Status: "claimable"}}}
+	return leasecontract.Record{SchemaVersion: leasecontract.SchemaVersion, ID: "io-reseed-artifact", Execution: &leasecontract.Execution{Mode: "direct", Workspace: leasecontract.Workspace{SourceRoot: root + "/source", Root: root, Branch: "branch", BaseHead: "base", Driver: "git", LinkedAt: "2026-07-30T09:00:00Z"}, Lease: leasecontract.Lease{Generation: generation, Status: "claimable"}}}
 }

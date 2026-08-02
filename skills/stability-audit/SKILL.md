@@ -67,7 +67,7 @@ The script builds the current binary and immediately runs the existing top-level
    - Stop the temp daemon and verify its pid is gone.
 
 5. **State/worker/policy sweep**
-   - With temp dirs, run state migrate/write/read/doctor, policy check on `git status --short`, worker enqueue/list/run.
+   - With temp dirs, run exact current-v1 state write/read/doctor, policy check on `git status --short`, worker enqueue/list/run.
    - Verify worker remains no-shell/read-only unless explicitly testing policy denial.
 
 6. **Leak/zombie/orphan sweep**

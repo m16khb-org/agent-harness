@@ -21,28 +21,19 @@ const (
 	intentBucket = "external_intent_v1"
 )
 
-type MutationGate func(context.Context) error
 type DiagnosticRedactor func(string) string
 
 type SQLiteRepository struct {
 	store  port.RecordInventoryStore
-	gate   MutationGate
 	redact DiagnosticRedactor
 }
 
-func NewSQLiteRepository(store port.RecordInventoryStore, gate MutationGate) *SQLiteRepository {
-	return NewSQLiteRepositoryWithDiagnosticRedactor(store, gate, nil)
+func NewSQLiteRepository(store port.RecordInventoryStore) *SQLiteRepository {
+	return NewSQLiteRepositoryWithDiagnosticRedactor(store, nil)
 }
 
-func NewSQLiteRepositoryWithDiagnosticRedactor(store port.RecordInventoryStore, gate MutationGate, redact DiagnosticRedactor) *SQLiteRepository {
-	return &SQLiteRepository{store: store, gate: gate, redact: redact}
-}
-
-func (repository *SQLiteRepository) RequireMutationAllowed(ctx context.Context) error {
-	if repository.gate == nil {
-		return fmt.Errorf("IssueOps mutation gate is unavailable")
-	}
-	return repository.gate(ctx)
+func NewSQLiteRepositoryWithDiagnosticRedactor(store port.RecordInventoryStore, redact DiagnosticRedactor) *SQLiteRepository {
+	return &SQLiteRepository{store: store, redact: redact}
 }
 
 func (repository *SQLiteRepository) Load(_ context.Context, id string) (preparationcontract.Snapshot, error) {

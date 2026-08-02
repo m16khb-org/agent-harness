@@ -21,7 +21,7 @@ func TestSelfVerifyStepRerunCommandCoversOperationalLabels(t *testing.T) {
 		"contract check":         "contract check",
 		"worker lifecycle smoke": "worker enqueue",
 		"MCP smoke":              "mcp",
-		"state roundtrip":        "state migrate",
+		"state roundtrip":        "state write",
 		"parallel isolation":     "self-verify --full",
 		"daemon resilience":      "daemon start",
 		"preflight fuzz":         "preflight --json",

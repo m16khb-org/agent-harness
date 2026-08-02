@@ -96,8 +96,6 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 	b := func(names ...string) map[string]bool { return v(names...) }
 	r := map[string]bool{}
 	switch path {
-	case "reset-legacy":
-		return v("--target-schema", "--expected-fingerprint", "--id", "--claim-id"), b("--preview", "--status", "--reconcile-remote", "--drain-cycle", "--confirm", "--json"), r, true
 	case "status":
 		return v("--id"), b("--json"), r, true
 	case "list":

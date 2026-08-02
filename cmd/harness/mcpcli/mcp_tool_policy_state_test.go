@@ -88,7 +88,6 @@ func TestHandlePolicyStateMCPToolCallCoversStatePayloads(t *testing.T) {
 		{name: "state list", call: MCPToolCall{Name: "state_list", Arguments: map[string]any{}}, wantText: "mcp-policy-state-test"},
 		{name: "state prune dry run", call: MCPToolCall{Name: "state_prune", Arguments: map[string]any{"max_age": "1h"}}, wantText: "dry_run"},
 		{name: "state doctor", call: MCPToolCall{Name: "state_doctor", Arguments: map[string]any{}}, wantText: "healthy"},
-		{name: "state migrate dry run", call: MCPToolCall{Name: "state_migrate", Arguments: map[string]any{}}, wantText: "dry_run"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			outcome := handlePolicyStateMCPToolCall(tc.call)
@@ -99,6 +98,14 @@ func TestHandlePolicyStateMCPToolCallCoversStatePayloads(t *testing.T) {
 				t.Fatalf("payload text = %s, want %q", text, tc.wantText)
 			}
 		})
+	}
+}
+
+func TestPolicyStateMCPDoesNotHandleRetiredMigration(t *testing.T) {
+	name := strings.Join([]string{"state", "migrate"}, "_")
+	outcome := handlePolicyStateMCPToolCall(MCPToolCall{Name: name, Arguments: map[string]any{}})
+	if outcome.Handled {
+		t.Fatalf("retired migration tool remains handled: %+v", outcome)
 	}
 }
 

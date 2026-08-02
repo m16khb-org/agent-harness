@@ -62,9 +62,7 @@ func newIssueOpsPreparationService(stateRoot, id string, deps issueOpsPreparatio
 	if err != nil {
 		return nil, err
 	}
-	repository := preparationoutbound.NewSQLiteRepositoryWithDiagnosticRedactor(database, func(context.Context) error {
-		return issueops.RequireIssueOpsMutationAllowed(stateRoot)
-	}, policy.RedactDiagnostic)
+	repository := preparationoutbound.NewSQLiteRepositoryWithDiagnosticRedactor(database, policy.RedactDiagnostic)
 	direct := preparationoutbound.NewDirectWorkspace(deps.Direct)
 	gateway := preparationoutbound.NewOrcaGateway(preparationoutbound.OrcaDependencies{
 		Provisioner: deps.Orca,

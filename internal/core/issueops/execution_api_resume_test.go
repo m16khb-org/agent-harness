@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -45,9 +44,7 @@ func TestExecutionActionResumeUsesInjectedHandlerExactlyOnce(t *testing.T) {
 }
 
 func TestExecutionActionResumePrioritizesConfirmBeforeMutationGuardAndInvalidActor(t *testing.T) {
-	stateDir := t.TempDir()
-	stateRoot := filepath.Join(stateDir, issueOpsDirectory)
-	writeResetTestFile(t, filepath.Join(stateDir, issueOpsLegacyDirectory), "io-aaaaaaaaaaaa.json", []byte(`{"schema_version":9,"id":"io-aaaaaaaaaaaa"}`))
+	stateRoot := t.TempDir()
 
 	calls := 0
 	result, err := ExecuteExecution(context.Background(), stateRoot, ExecutionActionRequest{

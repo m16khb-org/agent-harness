@@ -10,10 +10,10 @@ import (
 
 func TestMCPSmokeInputAndExpectedMarkers(t *testing.T) {
 	input := MCPSmokeInput()
-	if got := len(splitLines(input)); got != 12 {
+	if got := len(splitLines(input)); got != 11 {
 		t.Fatalf("MCPSmokeInput line count = %d", got)
 	}
-	for _, want := range []string{"initialize", "tools/list", "harness://project-docs", "state_migrate"} {
+	for _, want := range []string{"initialize", "tools/list", "harness://project-docs", "state_doctor"} {
 		if !strings.Contains(input, want) {
 			t.Fatalf("expected input to contain %q", want)
 		}
@@ -39,10 +39,10 @@ func TestValidateMCPSmokeContract(t *testing.T) {
 		stdout string
 		want   string
 	}{
-		{name: "wrong count", stdout: `{"result":{}}`, want: "expected 12 MCP responses"},
-		{name: "bad json", stdout: strings.Repeat(`{"result":{}}`+"\n", 11) + `not json`, want: "invalid JSON"},
-		{name: "missing result", stdout: strings.Repeat(`{"result":{}}`+"\n", 11) + `{"error":{}}`, want: "has no result"},
-		{name: "missing markers", stdout: strings.Repeat(`{"result":{}}`+"\n", 12), want: "expected tool/resource"},
+		{name: "wrong count", stdout: `{"result":{}}`, want: "expected 11 MCP responses"},
+		{name: "bad json", stdout: strings.Repeat(`{"result":{}}`+"\n", 10) + `not json`, want: "invalid JSON"},
+		{name: "missing result", stdout: strings.Repeat(`{"result":{}}`+"\n", 10) + `{"error":{}}`, want: "has no result"},
+		{name: "missing markers", stdout: strings.Repeat(`{"result":{}}`+"\n", 11), want: "expected tool/resource"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			step := StepResult{OK: true, Stdout: tc.stdout}
@@ -146,7 +146,7 @@ func TestDepsDefaultsAndSmallHelpers(t *testing.T) {
 func validMCPSmokeStdout() string {
 	markers := strings.Join(MCPSmokeExpectedMarkers(), " ") + strings.Repeat("x", 800)
 	var b strings.Builder
-	for i := 1; i <= 12; i++ {
+	for i := 1; i <= 11; i++ {
 		fmt.Fprintf(&b, `{"result":{"id":%d,"text":%q}}`+"\n", i, markers)
 	}
 	return b.String()

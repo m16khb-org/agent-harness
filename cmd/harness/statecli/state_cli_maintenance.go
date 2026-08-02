@@ -57,34 +57,6 @@ func runStateDoctor(args []string) error {
 	return nil
 }
 
-func runStateMigrate(args []string) error {
-	fs := flag.NewFlagSet("state migrate", flag.ContinueOnError)
-	confirm := fs.Bool("confirm", false, "rewrite legacy records; omitted means dry-run")
-	jsonOut := fs.Bool("json", false, "print JSON")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	result, err := core.StateMigrate(*confirm)
-	if err != nil {
-		return err
-	}
-	if *jsonOut {
-		return printJSON(result)
-	}
-	if result.Confirm {
-		fmt.Printf("migrated %d state records from schema %d to %d\n", len(result.MigratedKeys), result.FromSchema, result.ToSchema)
-		for _, key := range result.MigratedKeys {
-			fmt.Println(key)
-		}
-		return nil
-	}
-	fmt.Printf("would migrate %d state records from schema %d to %d\n", len(result.CandidateKeys), result.FromSchema, result.ToSchema)
-	for _, key := range result.CandidateKeys {
-		fmt.Println(key)
-	}
-	return nil
-}
-
 func runStateMaintain(args []string) error {
 	fs := flag.NewFlagSet("state maintain", flag.ContinueOnError)
 	jsonOut := fs.Bool("json", false, "print JSON")

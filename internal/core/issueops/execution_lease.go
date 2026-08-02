@@ -127,9 +127,6 @@ func StatusExecution(stateRoot, id string) (ExecutionResult, error) {
 }
 
 func ReleaseExecution(stateRoot string, req ExecutionReleaseRequest) (ExecutionResult, error) {
-	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-		return ExecutionResult{OK: false, ID: req.ID}, err
-	}
 	return releaseExecutionCompatibilityOracle(stateRoot, req)
 }
 
@@ -175,11 +172,6 @@ func ReplaceExecution(stateRoot string, req ExecutionReplaceRequest) (ExecutionR
 }
 
 func ReplaceExecutionWithDependencies(ctx context.Context, stateRoot string, req ExecutionReplaceRequest, deps ExecutionReplaceDependencies) (ExecutionReplaceResult, error) {
-	if req.Action == ExecutionReplaceRevoke || req.Action == ExecutionReplaceFinalize {
-		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-			return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, err
-		}
-	}
 	actor, err := normalizeNativeActor(req.Actor)
 	if err != nil {
 		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, err

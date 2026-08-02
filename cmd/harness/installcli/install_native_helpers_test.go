@@ -94,3 +94,29 @@ func TestPreferredShellRCAndAppendShellPathLinePlan(t *testing.T) {
 		t.Fatalf("shell rc did not contain local bin marker:\n%s", string(body))
 	}
 }
+
+func TestNativeActivationStepAcceptsOnlyInternalTransitionModes(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		dryRun bool
+		raw    string
+		want   string
+		valid  bool
+	}{
+		{name: "normal", valid: true},
+		{name: "begin", raw: "begin", want: "begin", valid: true},
+		{name: "seal", raw: "seal", want: "seal", valid: true},
+		{name: "unknown", raw: "other"},
+		{name: "dry_run_transition", dryRun: true, raw: "begin"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := nativeActivationStep(tc.dryRun, tc.raw)
+			if tc.valid && (err != nil || got != tc.want) {
+				t.Fatalf("step=%q err=%v", got, err)
+			}
+			if !tc.valid && err == nil {
+				t.Fatalf("invalid step accepted: %q", got)
+			}
+		})
+	}
+}

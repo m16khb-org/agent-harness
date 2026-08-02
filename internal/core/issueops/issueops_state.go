@@ -8,12 +8,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"agent-harness/internal/contract/issueops"
+	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/core/state"
 )
@@ -85,56 +87,24 @@ func readIssueOpsUnchecked(stateRoot, id string) (issueops.IssueOpsRecord, error
 }
 
 func decodeIssueOpsRecord(id string, b []byte) (issueops.IssueOpsRecord, error) {
-	var header struct {
-		SchemaVersion int    `json:"schema_version"`
-		ID            string `json:"id"`
-	}
-	if err := json.Unmarshal(b, &header); err != nil {
-		return issueops.IssueOpsRecord{OK: false, ID: id}, err
-	}
-	if header.ID != id {
-		return issueops.IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops id mismatch: record has %q", header.ID)
-	}
-	if header.SchemaVersion == 0 {
-		header.SchemaVersion = issueops.IssueOpsSchemaVersion
-	}
-	if schemaErr := issueOpsSchemaVersionError(header.SchemaVersion); schemaErr != nil {
-		record, projectionErr := decodeInvalidIssueOpsProjection(b)
-		if projectionErr != nil {
-			return issueops.IssueOpsRecord{OK: false, ID: id}, projectionErr
-		}
-		record.OK = false
-		record.Invalid = true
-		record.InvalidReason = boundedIssueOpsInvalidReason(schemaErr.Error())
-		return record, schemaErr
-	}
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(b, &fields); err != nil {
-		return issueops.IssueOpsRecord{OK: false, ID: id}, err
-	}
-	for _, name := range []string{"execution_handoff", "execution_workspace", "ownership", "remote_create_claim"} {
-		raw := fields[name]
-		if rawIssueOpsAuthorityPresent(raw) {
-			return issueops.IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("legacy execution authority %s is forbidden in IssueOps v1", name)
-		}
-	}
+	invalid := issueops.IssueOpsRecord{OK: false, ID: id, Invalid: true, InvalidReason: statecontract.ErrInvalidState.Error()}
 	var record issueops.IssueOpsRecord
-	if err := json.Unmarshal(b, &record); err != nil {
-		return issueops.IssueOpsRecord{OK: false, ID: id}, err
+	decoder := json.NewDecoder(bytes.NewReader(b))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&record); err != nil {
+		return invalid, statecontract.ErrInvalidState
 	}
-	if record.ID != id {
-		return issueops.IssueOpsRecord{OK: false, ID: id}, fmt.Errorf("issueops id mismatch: record has %q", record.ID)
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return invalid, statecontract.ErrInvalidState
 	}
-	if record.SchemaVersion == 0 {
-		record.SchemaVersion = issueops.IssueOpsSchemaVersion
+	if record.SchemaVersion != issueops.IssueOpsSchemaVersion || record.ID != id {
+		return invalid, statecontract.ErrInvalidState
+	}
+	if err := validateIssueOpsRecord(record); err != nil {
+		return invalid, statecontract.ErrInvalidState
 	}
 	record.OK = true
 	return record, nil
-}
-
-func rawIssueOpsAuthorityPresent(raw json.RawMessage) bool {
-	raw = bytes.TrimSpace(raw)
-	return len(raw) > 0 && !bytes.Equal(raw, []byte("null"))
 }
 
 // ListIssueOpsIDs returns every cycle id stored under stateRoot in ascending
@@ -153,9 +123,6 @@ func ListIssueOpsIDs(stateRoot string) ([]string, error) {
 // deleteIssueOps removes the cycle record for id; deleting an absent record is
 // not an error.
 func deleteIssueOps(stateRoot, id string) error {
-	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-		return err
-	}
 	id, err := normalizeIssueOpsID(id)
 	if err != nil {
 		return err
@@ -191,10 +158,6 @@ func touchAndWriteIssueOps(stateRoot string, record issueops.IssueOpsRecord) (is
 }
 
 func writeIssueOps(stateRoot string, record issueops.IssueOpsRecord) (issueops.IssueOpsRecord, error) {
-	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-		record.OK = false
-		return record, err
-	}
 	record, b, err := encodeIssueOpsRecord(record)
 	if err != nil {
 		return record, err
@@ -216,9 +179,9 @@ func encodeIssueOpsRecord(record issueops.IssueOpsRecord) (issueops.IssueOpsReco
 		record.OK = false
 		return record, nil, err
 	}
-	if err := normalizeIssueOpsSchemaVersion(&record); err != nil {
+	if record.SchemaVersion != issueops.IssueOpsSchemaVersion {
 		record.OK = false
-		return record, nil, err
+		return record, nil, statecontract.ErrInvalidState
 	}
 	if err := validateIssueOpsRecord(record); err != nil {
 		record.OK = false
@@ -251,65 +214,12 @@ func normalizeIssueOpsID(id string) (string, error) {
 	return id, nil
 }
 
-func normalizeIssueOpsSchemaVersion(record *issueops.IssueOpsRecord) error {
-	if record.SchemaVersion == 0 {
-		// In-memory constructors may omit the field; every persisted row is still v1.
-		record.SchemaVersion = issueops.IssueOpsSchemaVersion
-	}
-	return issueOpsSchemaVersionError(record.SchemaVersion)
-}
-
-func issueOpsSchemaVersionError(version int) error {
-	if version == issueops.IssueOpsSchemaVersion {
-		return nil
-	}
-	return fmt.Errorf("unsupported issueops schema_version %d; current is %d", version, issueops.IssueOpsSchemaVersion)
-}
-
 func validateIssueOpsRecord(record issueops.IssueOpsRecord) error {
 	if record.SchemaVersion != issueops.IssueOpsSchemaVersion {
-		return issueOpsSchemaVersionError(record.SchemaVersion)
+		return statecontract.ErrInvalidState
 	}
 	if record.Execution != nil {
 		return issueops.ValidateExecution(*record.Execution)
 	}
 	return nil
-}
-
-func decodeInvalidIssueOpsProjection(raw []byte) (issueops.IssueOpsRecord, error) {
-	var projection struct {
-		SchemaVersion int                    `json:"schema_version"`
-		ID            string                 `json:"id"`
-		Repo          string                 `json:"repo"`
-		Branch        string                 `json:"branch"`
-		Phase         issueops.IssueOpsPhase `json:"phase"`
-		WorktreePath  string                 `json:"worktree_path"`
-	}
-	if err := json.Unmarshal(raw, &projection); err != nil {
-		return issueops.IssueOpsRecord{}, err
-	}
-	record := issueops.IssueOpsRecord{
-		SchemaVersion: projection.SchemaVersion,
-		ID:            boundedIssueOpsIdentity(projection.ID, 128),
-		Repo:          boundedIssueOpsIdentity(projection.Repo, 4096),
-		Branch:        boundedIssueOpsIdentity(projection.Branch, 1024),
-		Phase:         projection.Phase,
-		WorktreePath:  boundedIssueOpsIdentity(projection.WorktreePath, 4096),
-	}
-	return record, nil
-}
-
-func boundedIssueOpsIdentity(value string, limit int) string {
-	if len(value) > limit || strings.ContainsRune(value, 0) {
-		return ""
-	}
-	return strings.TrimSpace(value)
-}
-
-func boundedIssueOpsInvalidReason(value string) string {
-	value = strings.TrimSpace(value)
-	if len(value) > 256 {
-		return value[:253] + "..."
-	}
-	return value
 }

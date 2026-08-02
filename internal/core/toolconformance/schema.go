@@ -185,7 +185,7 @@ func supported(schema map[string]any) error {
 		switch key {
 		case "type", "properties", "required", "items", "enum", "description", "additionalProperties", "minimum", "pattern", "maxLength":
 		default:
-			return fmt.Errorf("unsupported_schema_keyword: %s", key)
+			return fmt.Errorf("schema keyword is not supported: %s", key)
 		}
 		switch key {
 		case "properties":

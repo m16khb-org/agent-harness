@@ -58,9 +58,6 @@ func CompleteExecution(stateRoot string, req ExecutionCompleteRequest, deps Exec
 // completion timestamp를 결정적으로 고정할 수 있게 한다. production은 위
 // facade에서 time.Now를 주입하므로 기존 wall-clock 의미를 유지한다.
 func completeExecutionWithClock(stateRoot string, req ExecutionCompleteRequest, deps ExecutionCompleteDeps, now func() time.Time) (ExecutionResult, error) {
-	if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-		return ExecutionResult{OK: false, ID: req.ID}, err
-	}
 	actor, err := normalizeNativeActor(req.Actor)
 	if err != nil {
 		return ExecutionResult{OK: false, ID: req.ID}, err

@@ -4,13 +4,13 @@ package issueopscompletion
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 
 	completionapp "agent-harness/internal/application/issueopscompletion"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	completioncontract "agent-harness/internal/contract/issueopscompletion"
 	leasecontract "agent-harness/internal/contract/issueopslease"
+	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/core/issueops"
 )
 
@@ -94,15 +94,8 @@ func coreLease(lease leasecontract.Lease) issueopscontract.WriteLease {
 }
 
 func publicError(err error) error {
-	if errors.Is(err, leasecontract.ErrMalformedSchema) {
-		var syntax *json.SyntaxError
-		if errors.As(err, &syntax) {
-			return syntax
-		}
-	}
-	var unsupported leasecontract.UnsupportedSchemaError
-	if errors.As(err, &unsupported) {
-		return unsupported
+	if errors.Is(err, statecontract.ErrInvalidState) {
+		return statecontract.ErrInvalidState
 	}
 	return err
 }

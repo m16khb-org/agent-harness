@@ -125,9 +125,6 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 	case ExecutionActionStatus:
 		return StatusExecution(stateRoot, req.ID)
 	case ExecutionActionClaim:
-		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-			return ExecutionResult{OK: false, ID: req.ID}, err
-		}
 		if deps.Claim == nil {
 			return ExecutionResult{OK: false, ID: req.ID}, ErrClaimHandlerUnavailable
 		}
@@ -136,9 +133,6 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 			IssueBodySHA256: req.IssueBodySHA256, ContextPacketSHA256: req.ContextPacketSHA256,
 		}, ExecutionClaimDependencies{ReadIssue: deps.ReadIssue})
 	case ExecutionActionRelease:
-		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-			return ExecutionResult{OK: false, ID: req.ID}, err
-		}
 		if deps.Release == nil {
 			return ExecutionResult{OK: false, ID: req.ID}, ErrReleaseHandlerUnavailable
 		}
@@ -147,9 +141,6 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 		})
 	case ExecutionActionReplace:
 		if req.ReplaceAction == ExecutionReplaceReseed {
-			if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-				return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.ReplaceAction}, err
-			}
 			if deps.Reseed == nil {
 				return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.ReplaceAction}, ErrReseedHandlerUnavailable
 			}
@@ -170,9 +161,6 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 		if !req.Confirm {
 			return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("execution resume requires confirm")
 		}
-		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-			return ExecutionResumeResult{OK: false, ID: req.ID}, err
-		}
 		if deps.Resume == nil {
 			return ExecutionResumeResult{OK: false, ID: req.ID}, ErrResumeHandlerUnavailable
 		}
@@ -188,9 +176,6 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 			Handler: deps.Reconcile, RemoteReconcile: deps.RemoteReconcile,
 		})
 	case ExecutionActionComplete:
-		if err := RequireIssueOpsMutationAllowed(stateRoot); err != nil {
-			return ExecutionResult{OK: false, ID: req.ID}, err
-		}
 		if deps.Complete == nil {
 			return ExecutionResult{OK: false, ID: req.ID}, ErrCompleteHandlerUnavailable
 		}

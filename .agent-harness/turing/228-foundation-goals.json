@@ -85,6 +85,54 @@
           "ultraqaClasses": ["flaky_test", "misleading_success", "repeated_interruption"]
         }
       ]
+    },
+    {
+      "id": "G228-F3",
+      "title": "Remove pre-v1 state compatibility",
+      "objective": "Complete child #230 by removing reset/migrate production surfaces and accepting only exact schema v1 while preserving absent not-found and current native activation.",
+      "status": "pending",
+      "successCriteria": [
+        {
+          "id": "G228-F3-C1",
+          "scenario": "Run preserved exact-v1 and absent-record characterization tests, then add the seven-case invalid-existing matrix and capture named RED failures caused by schema-zero promotion or version/parser-specific errors.",
+          "channel": "cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/230-current-only-state/G228-F3-C1-red.txt",
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/230-current-only-state/G228-F3-C1-red.txt",
+          "cleanupReceipt": "No persistent process spawned; Go TempDir fixtures self-cleaned",
+          "ultraqaClasses": ["malformed_input", "stale_state", "misleading_success"]
+        },
+        {
+          "id": "G228-F3-C2",
+          "scenario": "Run the real state and IssueOps lease decoders against exact-v1, missing/zero/future schema, malformed JSON, legacy field, key mismatch, byte mismatch, and absent storage; require one invalid-state identity/text for every existing-invalid row and not-found only for absence.",
+          "channel": "cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/230-current-only-state/G228-F3-C2-green.txt",
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/230-current-only-state/G228-F3-C2-green.txt",
+          "cleanupReceipt": "No persistent process spawned; Go TempDir fixtures self-cleaned",
+          "ultraqaClasses": ["malformed_input", "misleading_success", "flaky_test"]
+        },
+        {
+          "id": "G228-F3-C3",
+          "scenario": "Run the exact production absence scan plus focused state, IssueOps, CLI, MCP, validation, selfworkflow, native-activation, race, and golden tests; require zero reset/migrate/unsupported-schema surfaces and preserved current activation.",
+          "channel": "cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/230-current-only-state/G228-F3-C3-surfaces.txt",
+          "status": "pass",
+          "capturedEvidence": ".agent-harness/turing/evidence/230-current-only-state/G228-F3-C3-surfaces.txt",
+          "cleanupReceipt": "No persistent process spawned; Go TempDir fixtures self-cleaned; no user-scope activation performed",
+          "ultraqaClasses": ["stale_state", "dirty_worktree", "misleading_success"]
+        },
+        {
+          "id": "G228-F3-C4",
+          "scenario": "Run ordered full, race, vet, build, architecture, response-golden, API-candidate, diff, fresh adversarial review, exact remote-head, and coordinator exact-head Codex/Claude smoke gates before draft child PR publication.",
+          "channel": "cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/230-current-only-state/G228-F3-C4-final.txt",
+          "status": "pending",
+          "capturedEvidence": null,
+          "cleanupReceipt": null,
+          "ultraqaClasses": ["hung_command", "flaky_test", "repeated_interruption", "misleading_success"]
+        }
+      ]
     }
   ],
   "metrics": {
