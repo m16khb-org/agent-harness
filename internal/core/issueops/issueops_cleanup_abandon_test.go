@@ -347,6 +347,30 @@ func TestCleanupAbandonRecordGatesRejectUnsafeRecords(t *testing.T) {
 	}
 }
 
+func TestCleanupAbandonIgnoresSelfChildIssueLink(t *testing.T) {
+	stateRoot, record := abandonTestRecord(t)
+	mutateFinishRecord(t, stateRoot, record.ID, func(rec *IssueOpsRecord) {
+		rec.IssueURL = "https://github.com/acme/repo/issues/91"
+		rec.IssueLinks = append(rec.IssueLinks, IssueOpsIssueLink{
+			Type: "child",
+			URL:  rec.IssueURL,
+		})
+	})
+
+	result, err := CleanupAbandon(
+		context.Background(),
+		stateRoot,
+		abandonRequest(record.ID, false, "superseded self-linked retry"),
+		abandonDeps(&fakeAbandonGit{}, authoritativeZeroOrca()),
+	)
+	if err != nil {
+		t.Fatalf("self child link must not block abandon: %v missing=%v", err, result.Missing)
+	}
+	if result.Fingerprint == "" {
+		t.Fatal("ready abandon preview must issue a fingerprint")
+	}
+}
+
 // AC-02: 로컬 잔여물(워크트리 디렉토리, 브랜치 ref, 경로 불일치)은 abandon을
 // 막는다 — abandon은 아무것도 지우지 않는 경로이기 때문이다.
 func TestCleanupAbandonRejectsLocalResidue(t *testing.T) {
