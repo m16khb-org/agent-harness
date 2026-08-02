@@ -21,7 +21,6 @@ type ExecutionReconcileIntentState struct {
 	InvocationState    string
 	InvocationAttempts int
 	Pending            bool
-	Migrated           bool
 }
 
 func CanonicalizeExecutionReconcileIntent(stateRoot, id string, snapshot *issueops.IssueOpsRecord) (ExecutionReconcileIntentState, error) {
@@ -38,13 +37,11 @@ func CanonicalizeExecutionReconcileIntent(stateRoot, id string, snapshot *issueo
 			return ExecutionReconcileIntentState{Record: record}, fmt.Errorf("reconcile snapshot ID changed before canonicalization")
 		}
 	}
-	persisted, payload, migrated, err := reconcileCanonicalOrcaIntent(stateRoot, record)
+	persisted, payload, err := reconcileCanonicalOrcaIntent(stateRoot, record)
 	if err != nil {
-		return ExecutionReconcileIntentState{Record: persisted, Migrated: migrated}, err
+		return ExecutionReconcileIntentState{Record: persisted}, err
 	}
-	state, err := executionReconcileIntentStateFromPayload(stateRoot, persisted, payload)
-	state.Migrated = migrated
-	return state, err
+	return executionReconcileIntentStateFromPayload(stateRoot, persisted, payload)
 }
 
 func ExecutionReconcileIntentRequest(expected ExecutionReconcileIntentState) (port.ExecutionOrcaIntentRequest, error) {
@@ -66,9 +63,7 @@ func MarkExecutionReconcileIntentInvoking(stateRoot string, expected ExecutionRe
 	if _, err := markOrcaIntentInvokingFromRawState(stateRoot, expected.Record, payload, expected.RecordRaw, expected.IntentRaw); err != nil {
 		return ExecutionReconcileIntentState{}, err
 	}
-	next, err := readExecutionReconcileIntent(stateRoot, expected.Record.ID, expected.OperationID)
-	next.Migrated = expected.Migrated
-	return next, err
+	return readExecutionReconcileIntent(stateRoot, expected.Record.ID, expected.OperationID)
 }
 
 func RecordExecutionReconcileIntentFailure(stateRoot string, expected ExecutionReconcileIntentState, invocationState string, cause error, now func() time.Time) error {
@@ -93,11 +88,9 @@ func ApplyExecutionReconcileIntentReceipt(ctx context.Context, stateRoot string,
 		if err != nil {
 			return ExecutionReconcileIntentState{}, err
 		}
-		return ExecutionReconcileIntentState{Record: persisted, RecordRaw: raw, OperationID: expected.OperationID, Migrated: expected.Migrated}, nil
+		return ExecutionReconcileIntentState{Record: persisted, RecordRaw: raw, OperationID: expected.OperationID}, nil
 	}
-	next, err := executionReconcileIntentStateFromPayload(stateRoot, persisted, nextPayload)
-	next.Migrated = expected.Migrated
-	return next, err
+	return executionReconcileIntentStateFromPayload(stateRoot, persisted, nextPayload)
 }
 
 func ReadExecutionReconcileRecord(stateRoot, id string) (issueops.IssueOpsRecord, error) {

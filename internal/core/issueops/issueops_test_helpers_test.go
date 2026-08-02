@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +10,129 @@ import (
 	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/preflight"
 )
+
+type claimableExecutionFixture struct {
+	record    issueops.IssueOpsRecord
+	worktree  string
+	tokenPath string
+}
+
+func executionActor(host, sessionID string) issueops.NativeActor {
+	receipt, err := ObserveNativeProcessReceipt(os.Getpid())
+	if err != nil {
+		panic(err)
+	}
+	return issueops.NativeActor{
+		Host: host, SessionID: sessionID, SessionProcess: &receipt,
+		ProcessAncestry: []issueops.NativeProcessReceipt{receipt},
+	}
+}
+
+func newClaimableExecutionFixture(t *testing.T, stateRoot, branch string) claimableExecutionFixture {
+	t.Helper()
+	repo := initIssueOpsRepo(t)
+	worktree := issueOpsWorktreePathForTest(repo, branch)
+	if code, _, stderr := preflight.GitCmd(repo, "worktree", "add", "-q", "-b", branch, worktree, "main"); code != 0 {
+		t.Fatalf("git worktree add: %s", stderr)
+	}
+	baseHead := strings.TrimSpace(preflight.GitOut(worktree, "rev-parse", "HEAD"))
+	record, err := StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: branch})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.WorktreePath = worktree
+	record.BranchPrepare = &issueops.IssueOpsBranchPrepare{
+		Provider: "github", IssueURL: "https://github.com/example/agent-harness/issues/69",
+		Branch: branch, BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true,
+	}
+	record.Execution = &issueops.Execution{
+		Mode: issueops.ExecutionModeDirect,
+		Workspace: issueops.Workspace{
+			SourceRoot: repo, Root: worktree, Branch: branch, BaseHead: baseHead,
+			Driver: "git", LinkedAt: "2026-07-22T00:00:00Z",
+		},
+		Lease: issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusClaimable},
+	}
+	token, tokenPath, err := createClaimToken(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Execution.Lease.ClaimTokenSHA256 = tokenSHA256(token)
+	if _, err := writeIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	return claimableExecutionFixture{record: record, worktree: worktree, tokenPath: tokenPath}
+}
+
+func prepareExecutionCompletionFixture(t *testing.T, stateRoot string, fixture *claimableExecutionFixture) {
+	t.Helper()
+	fixture.record.Phase = IssueOpsPhasePR
+	fixture.record.IssueURL = "https://github.com/example/agent-harness/issues/69"
+	fixture.record.RemoteArtifact = &issueops.IssueOpsRemoteArtifactVerification{
+		Provider: "github", Kind: "pr", URL: "https://github.com/example/agent-harness/pull/69",
+		Labels: []string{"enhancement"}, Assignees: []string{"maintainer"},
+		VerifiedAt: "2026-07-22T00:00:00Z", TargetBranch: "main",
+	}
+	if _, err := writeIssueOps(stateRoot, fixture.record); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func orcaPrepareRecord(t *testing.T) (string, issueops.IssueOpsRecord) {
+	t.Helper()
+	stateRoot, record := executionPrepareRecord(t)
+	if code, _, stderr := preflight.GitCmd(record.Repo, "update-ref", "-d", "refs/remotes/origin/"+record.Branch); code != 0 {
+		t.Fatalf("drop the remote fixture ref: %s", stderr)
+	}
+	return stateRoot, record
+}
+
+func resumeIntentFixture(t *testing.T, provider string, issue int) (string, issueops.IssueOpsRecord, externalOrcaIntentPayload) {
+	t.Helper()
+	stateRoot, record := executionPrepareRecord(t)
+	root := issueOpsWorktreePathForTest(record.Repo, record.Branch)
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if provider == "gitlab" {
+		record.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/" + fmt.Sprint(issue)
+		record.BranchPrepare.Provider = provider
+		record.BranchPrepare.IssueURL = record.IssueURL
+	}
+	record.WorktreePath = root
+	record.Execution = &issueops.Execution{
+		Mode: issueops.ExecutionModeOrca,
+		Workspace: issueops.Workspace{
+			SourceRoot: record.Repo, Root: root, Branch: record.Branch,
+			BaseHead: record.BranchPrepare.BaseSHA, Driver: "orca", LinkedAt: "2026-08-02T00:00:00Z",
+		},
+		Lease: issueops.WriteLease{
+			Generation: 2, Status: issueops.LeaseStatusClaimable,
+			ClaimTokenSHA256: strings.Repeat("d", 64),
+		},
+		Orca: &issueops.OrcaBinding{
+			RuntimeID: "runtime-current", RepoID: "repo-current", WorktreeID: "worktree-current",
+			WorktreeInstanceID: "instance-current", LeaseGeneration: 1,
+			OwnerHost: "codex", OwnerModel: "gpt-5.6-terra", OwnerEffort: "xhigh",
+			RunID: "run-current", TaskID: "task-current", DispatchID: "dispatch-current", TerminalPTYID: "pty-current",
+		},
+	}
+	record, err := writeIssueOps(stateRoot, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	packetPath, promptPath := executionOwnerArtifactPaths(record)
+	artifacts := executionResumeArtifacts{
+		claimTokenPath: claimTokenPath(record), issueBodySHA256: strings.Repeat("a", 64),
+		packetPath: packetPath, packetSHA256: strings.Repeat("b", 64),
+		promptPath: promptPath, promptSHA256: strings.Repeat("c", 64),
+	}
+	persisted, payload, err := beginOrcaExecutionResumeIntent(stateRoot, record, artifacts, record.Execution.Orca.RuntimeID, "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return stateRoot, persisted, payload
+}
 
 func initIssueOpsRepo(t *testing.T) string {
 	t.Helper()

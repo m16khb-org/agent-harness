@@ -63,35 +63,6 @@ func TestOrcaIntentMarkerRejectsPartialDuplicateAndUnknownIdentity(t *testing.T)
 	}
 }
 
-func TestLegacyOrcaIntentMarkerParserNeverInventsIssueIdentity(t *testing.T) {
-	tests := []struct {
-		marker     string
-		purpose    string
-		generation uint64
-	}{
-		{
-			marker:     "agent-harness issueops-v1 lifecycle=io-aaaaaaaaaaaa operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-			purpose:    orcaIntentPurposePrepare,
-			generation: 1,
-		},
-		{
-			marker:     "agent-harness issueops-v1 resume lifecycle=io-aaaaaaaaaaaa generation=2 operation=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-			purpose:    orcaIntentPurposeResume,
-			generation: 2,
-		},
-	}
-	for _, test := range tests {
-		parsed, err := parseLegacyOrcaIntentMarker(test.marker)
-		if err != nil {
-			t.Fatalf("parse legacy %q: %v", test.marker, err)
-		}
-		if parsed.Purpose != test.purpose || parsed.Generation != test.generation ||
-			parsed.Provider != "" || parsed.Issue != 0 {
-			t.Fatalf("legacy parser invented identity: %#v", parsed)
-		}
-	}
-}
-
 func TestAuthoritativeOrcaIssueIdentityRequiresVerifiedMatchingRecord(t *testing.T) {
 	valid := issueops.IssueOpsRecord{
 		IssueURL: "https://gitlab.example.com/acme/repo/-/work_items/2646",
@@ -217,39 +188,6 @@ func TestSealExternalOrcaIntentPayloadUsesTheVerifiedRecordIdentity(t *testing.T
 	wantSuffix := " provider=github issue=16"
 	if !strings.HasSuffix(sealed.Marker, wantSuffix) || sealed.Probe.Marker != sealed.Marker {
 		t.Fatalf("sealed markers = payload:%q probe:%q", sealed.Marker, sealed.Probe.Marker)
-	}
-}
-
-func TestBeginOrcaExecutionResumeIntentSealsGitLabIdentity(t *testing.T) {
-	stateRoot, record, _ := reseededOrcaCycle(t)
-	record.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/2646"
-	record.BranchPrepare.Provider = "gitlab"
-	record.BranchPrepare.IssueURL = record.IssueURL
-	record, err := writeIssueOps(stateRoot, record)
-	if err != nil {
-		t.Fatal(err)
-	}
-	artifacts := executionResumeArtifacts{
-		claimTokenPath:  record.Execution.Workspace.Root + "/claim-token",
-		issueBodySHA256: strings.Repeat("a", 64),
-		packetPath:      record.Execution.Workspace.Root + "/context.json",
-		packetSHA256:    strings.Repeat("b", 64),
-		promptPath:      record.Execution.Workspace.Root + "/prompt.md",
-		promptSHA256:    strings.Repeat("c", 64),
-	}
-
-	persisted, payload, err := beginOrcaExecutionResumeIntent(
-		stateRoot, record, artifacts, record.Execution.Orca.RuntimeID, "", nil,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	wantSuffix := " provider=gitlab issue=2646"
-	if !strings.HasSuffix(payload.Marker, wantSuffix) || payload.Probe.Marker != payload.Marker {
-		t.Fatalf("resume markers = payload:%q probe:%q", payload.Marker, payload.Probe.Marker)
-	}
-	if persisted.Execution.Pending == nil || persisted.Execution.Pending.Marker != payload.Marker {
-		t.Fatalf("persisted pending = %#v", persisted.Execution.Pending)
 	}
 }
 

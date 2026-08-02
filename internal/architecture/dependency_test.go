@@ -100,6 +100,64 @@ func TestEvaluateEdgesAllowsPreparationDomainContract(t *testing.T) {
 	}
 }
 
+func TestCurrentIssueOpsVerticalOnly(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+	forbidden := []string{
+		"Compatibility" + "Oracle",
+		"Legacy" + "Orca",
+		"Legacy" + "Self",
+		"parse" + "Legacy",
+		"render" + "Legacy",
+		"compatibility" + "Export",
+	}
+	retiredFacades := map[string]bool{
+		"Release" + "Execution":  true,
+		"Complete" + "Execution": true,
+	}
+	var violations []string
+	for _, root := range []string{"cmd", "internal"} {
+		err := filepath.WalkDir(filepath.Join(repoRoot, root), func(path string, entry os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
+				return nil
+			}
+			contents, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			relative, err := filepath.Rel(repoRoot, path)
+			if err != nil {
+				return err
+			}
+			for _, identifier := range forbidden {
+				if strings.Contains(string(contents), identifier) {
+					violations = append(violations, relative+" retains "+identifier)
+				}
+			}
+			file, err := parser.ParseFile(token.NewFileSet(), path, contents, 0)
+			if err != nil {
+				return err
+			}
+			for _, declaration := range file.Decls {
+				function, ok := declaration.(*ast.FuncDecl)
+				if ok && retiredFacades[function.Name.Name] {
+					violations = append(violations, relative+" defines retired facade "+function.Name.Name)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(violations) != 0 {
+		sort.Strings(violations)
+		t.Fatalf("retired IssueOps surfaces remain:\n%s", strings.Join(violations, "\n"))
+	}
+}
+
 func TestLegacyEdgesClassifyConcreteAdapterOutsideCompositionRoot(t *testing.T) {
 	edge := dependencyEdge{"cmd/harness/issueopscli", "internal/adapter/provider"}
 	if got := legacyEdges([]dependencyEdge{edge}); !reflect.DeepEqual(got, []dependencyEdge{edge}) {
@@ -410,9 +468,6 @@ func productionReseedRoutingViolations(repoRoot string) ([]string, error) {
 		file, err := parser.ParseFile(token.NewFileSet(), path, contents, 0)
 		if err != nil {
 			return nil, err
-		}
-		if sourceHasIdentifier(file, "reseedExecutionCompatibilityOracle") {
-			violations = append(violations, name+" retains the legacy reseed oracle")
 		}
 		violations = append(violations, reseedRoutingViolations(file, name == "execution_api.go")...)
 	}
@@ -831,9 +886,6 @@ func reseedRoutingViolations(file *ast.File, requireInjectedHandler bool) []stri
 		}
 		if calls["ReplaceExecutionWithDependencies"] {
 			violations = append(violations, "reseed route calls legacy ReplaceExecutionWithDependencies")
-		}
-		if calls["reseedExecutionCompatibilityOracle"] {
-			violations = append(violations, "reseed route calls the legacy reseed oracle")
 		}
 		return true
 	})

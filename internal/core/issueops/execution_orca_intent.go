@@ -460,14 +460,13 @@ func readExternalOrcaIntentPayloadShape(stateRoot, operationID string) (external
 func reconcileCanonicalOrcaIntent(
 	stateRoot string,
 	expected issueops.IssueOpsRecord,
-) (issueops.IssueOpsRecord, externalOrcaIntentPayload, bool, error) {
+) (issueops.IssueOpsRecord, externalOrcaIntentPayload, error) {
 	if expected.Execution == nil || expected.Execution.Pending == nil {
-		return expected, externalOrcaIntentPayload{}, false, unsafeLegacyOrcaIntent("Orca pending intent is missing")
+		return expected, externalOrcaIntentPayload{}, newOrcaIntentContractError("orca_intent_invalid", "Orca pending intent is missing")
 	}
 	var (
 		persisted issueops.IssueOpsRecord
-		sealed    externalOrcaIntentPayload
-		migrated  bool
+		intent    externalOrcaIntentPayload
 	)
 	err := withIssueOpsLock(context.Background(), stateRoot, expected.ID, func(context.Context) error {
 		current, err := ReadIssueOps(stateRoot, expected.ID)
@@ -479,7 +478,7 @@ func reconcileCanonicalOrcaIntent(
 			!reflect.DeepEqual(current.Execution, expected.Execution) ||
 			current.IssueURL != expected.IssueURL ||
 			!reflect.DeepEqual(current.BranchPrepare, expected.BranchPrepare) {
-			return unsafeLegacyOrcaIntent("Orca intent authority changed before migration CAS")
+			return newOrcaIntentContractError("orca_intent_authority_changed", "Orca intent authority changed before canonicalization")
 		}
 		pending := current.Execution.Pending
 		db, err := sqlstore.Open(stateRoot)
@@ -491,7 +490,7 @@ func reconcileCanonicalOrcaIntent(
 			return err
 		}
 		if !ok {
-			return unsafeLegacyOrcaIntent("Orca external intent payload is missing")
+			return newOrcaIntentContractError("orca_intent_invalid", "Orca external intent payload is missing")
 		}
 		contractRaw, err := json.Marshal(current)
 		if err != nil {
@@ -501,38 +500,19 @@ func reconcileCanonicalOrcaIntent(
 		if err != nil {
 			return err
 		}
-		var canonicalRaw []byte
-		sealed, canonicalRaw, migrated, err = preparationIntentCodec.Canonicalize(contractRecord, raw)
+		intent, _, err = preparationIntentCodec.Canonicalize(contractRecord, raw)
 		if err != nil {
-			var contractErr *preparationcontract.IntentError
-			if errors.As(err, &contractErr) && contractErr.Code == "legacy_intent_upgrade_unsafe" {
-				return unsafeLegacyOrcaIntent(contractErr.Detail)
-			}
-			return unsafeLegacyOrcaIntent(err.Error())
+			return err
 		}
-		if err := validateOrcaIntentRecordIdentity(current, sealed); err != nil {
-			return unsafeLegacyOrcaIntent(err.Error())
-		}
-		if !migrated {
-			return nil
-		}
-		current.Execution.Pending.Marker = sealed.Marker
-		persisted, err = persistExecutionTransitionWithMutations(stateRoot, current, nil, []sqlstore.Mutation{{
-			Bucket: externalIntentBucket, ID: sealed.OperationID, Data: canonicalRaw,
-		}})
-		if err != nil {
+		if err := validateOrcaIntentRecordIdentity(current, intent); err != nil {
 			return err
 		}
 		return nil
 	})
 	if err != nil {
-		return persisted, sealed, false, err
+		return persisted, intent, err
 	}
-	return persisted, sealed, migrated, nil
-}
-
-func unsafeLegacyOrcaIntent(detail string) error {
-	return newOrcaIntentContractError("legacy_intent_upgrade_unsafe", detail)
+	return persisted, intent, nil
 }
 
 func validateExternalOrcaIntentPayload(payload externalOrcaIntentPayload, operationID string) error {

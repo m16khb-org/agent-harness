@@ -1,5 +1,5 @@
-// Package issueopspreparation maps the compatibility execution facade to the
-// preparation application service.
+// Package issueopspreparation maps execution requests to the preparation
+// application service.
 package issueopspreparation
 
 import (

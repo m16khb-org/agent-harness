@@ -191,33 +191,6 @@ func parseOrcaIntentMarker(marker string) (orcaIntentMarkerIdentity, error) {
 	}, nil
 }
 
-func parseLegacyOrcaIntentMarker(marker string) (orcaIntentMarkerIdentity, error) {
-	identity, err := preparationIntentCodec.ParseLegacyMarker(marker)
-	if err != nil {
-		return orcaIntentMarkerIdentity{}, err
-	}
-	return orcaIntentMarkerIdentity{
-		Purpose: identity.Purpose, LifecycleID: identity.LifecycleID, Generation: identity.Generation,
-		OperationID: identity.OperationID, Provider: identity.Provider, Issue: identity.Issue,
-	}, nil
-}
-
-func renderLegacyOrcaIntentMarker(identity orcaIntentMarkerIdentity) (string, error) {
-	if err := validateOrcaMarkerCoreIdentity(identity); err != nil {
-		return "", err
-	}
-	fields := []string{orcaIntentMarkerPrefix}
-	if identity.Purpose == orcaIntentPurposeResume {
-		fields = append(fields, "resume")
-	}
-	fields = append(fields, "lifecycle="+identity.LifecycleID)
-	if identity.Purpose == orcaIntentPurposeResume {
-		fields = append(fields, "generation="+strconv.FormatUint(identity.Generation, 10))
-	}
-	fields = append(fields, "operation="+identity.OperationID)
-	return strings.Join(fields, " "), nil
-}
-
 func validateOrcaMarkerIdentity(identity orcaIntentMarkerIdentity) error {
 	if err := validateOrcaMarkerCoreIdentity(identity); err != nil {
 		return err

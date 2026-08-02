@@ -19,7 +19,7 @@ func TestClientListRunsProjectsInstalledShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || got[0].RuntimeID != "runtime-1" || got[0].ID != "run_issueops_1" || got[0].Legacy {
+	if len(got) != 1 || got[0].RuntimeID != "runtime-1" || got[0].ID != "run_issueops_1" {
 		t.Fatalf("run list projection = %#v", got)
 	}
 	if !slices.Equal(runner.calls[0], argv) {
@@ -135,8 +135,8 @@ func TestClientTaskInventoryKeepsSameTaskIDDistinctAcrossRuns(t *testing.T) {
 	runner.responses["orca orchestration run-list --json"] = CommandOutput{Stdout: []byte(`{
 		"ok":true,
 		"result":{"runs":[
-			{"id":"run_a","objective":"agent-harness issueops-v1 lifecycle=io-a","legacy":0},
-			{"id":"run_b","objective":"agent-harness issueops-v1 lifecycle=io-b","legacy":0}
+			{"id":"run_a","objective":"agent-harness issueops-v1 lifecycle=io-a"},
+			{"id":"run_b","objective":"agent-harness issueops-v1 lifecycle=io-b"}
 		]},
 		"_meta":{"runtimeId":"runtime-1"}
 	}`)}
@@ -158,27 +158,19 @@ func TestClientTaskInventoryKeepsSameTaskIDDistinctAcrossRuns(t *testing.T) {
 	}
 }
 
-func TestClientTaskInventorySkipsLegacyReadOnlyRun(t *testing.T) {
+func TestClientTaskInventoryRejectsRetiredRunIdentity(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca orchestration run-list --json"] = CommandOutput{Stdout: []byte(`{
 		"ok":true,
 		"result":{"runs":[
-			{"id":"run_legacy_local","objective":"Legacy orchestration state (adopted; inspect only)","legacy":1},
-			{"id":"run_a","objective":"agent-harness issueops-v1 lifecycle=io-a","legacy":0}
+			{"id":"run_legacy_local","objective":"retired orchestration state"},
+			{"id":"run_a","objective":"agent-harness issueops-v1 lifecycle=io-a"}
 		]},
 		"_meta":{"runtimeId":"runtime-1"}
 	}`)}
-	runner.responses["orca orchestration task-list --brief --run run_a --json"] = CommandOutput{Stdout: []byte(`{
-		"ok":true,
-		"result":{"tasks":[],"count":0},
-		"_meta":{"runtimeId":"runtime-1"}
-	}`)}
-
 	got, err := NewClient(runner).ListAllTasks(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(got) != 0 || len(runner.calls) != 2 || strings.Contains(strings.Join(runner.calls[1], " "), "run_legacy_local") {
-		t.Fatalf("legacy Run was queried as writable inventory: got=%#v calls=%#v", got, runner.calls)
+	var typed *port.OrcaError
+	if !errors.As(err, &typed) || typed.Code != "run_identity_incomplete" || len(got) != 0 || len(runner.calls) != 1 {
+		t.Fatalf("retired Run identity was accepted: got=%#v err=%v calls=%#v", got, err, runner.calls)
 	}
 }

@@ -179,7 +179,7 @@ func updateWithinSpan(
 		return leaseapp.RepositoryResult{}, leasecontract.Fail(leasecontract.FailurePersistence, leasecontract.ErrExecutionNotPrepared)
 	}
 	before := toApplicationRecord(record)
-	// 권한과 canonical CWD는 index 상태보다 먼저 판정해 legacy 공개 오류 우선순위를 보존한다.
+	// 권한과 canonical CWD는 index 상태보다 먼저 판정해 확립된 공개 오류 우선순위를 보존한다.
 	if err := validate(before); err != nil {
 		return leaseapp.RepositoryResult{}, err
 	}

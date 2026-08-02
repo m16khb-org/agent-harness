@@ -19,7 +19,7 @@ func issueOpsCompleteHandler(ctx context.Context, stateRoot string, request issu
 		return issueops.ExecutionResult{ID: request.ID}, err
 	}
 	service := completionapp.NewService(
-		completionoutbound.NewRepository(database), completionoutbound.NewEnvironment(issueOpsCompletionArtifactVerifier), completionoutbound.UTCClock{},
+		completionoutbound.NewRepository(database), completionoutbound.NewEnvironment(), completionoutbound.UTCClock{},
 		issueOpsCompletionProcessInspector, completionoutbound.NewTaskSettler(orca.New().SettleTask),
 	)
 	return completioninbound.NewHandler(service)(ctx, stateRoot, request)
@@ -28,19 +28,4 @@ func issueOpsCompleteHandler(ctx context.Context, stateRoot string, request issu
 func issueOpsCompletionProcessInspector(_ context.Context, receipt completioncontract.ProcessReceipt) (string, completioncontract.ProcessReceipt, error) {
 	status, observed, err := issueops.InspectNativeProcessReceipt(issueopscontract.NativeProcessReceipt{PID: receipt.PID, StartedAt: receipt.StartedAt, Executable: receipt.Executable})
 	return status, completioncontract.ProcessReceipt{PID: observed.PID, StartedAt: observed.StartedAt, Executable: observed.Executable}, err
-}
-
-func issueOpsCompletionArtifactVerifier(record completioncontract.RecordSnapshot, requestedURL string) error {
-	coreRecord := issueopscontract.IssueOpsRecord{
-		Phase: issueopscontract.IssueOpsPhase(record.Phase), IssueURL: record.IssueURL,
-		BranchPrepare: &issueopscontract.IssueOpsBranchPrepare{BaseBranch: record.BaseBranch},
-	}
-	if record.Artifact != nil {
-		coreRecord.RemoteArtifact = &issueopscontract.IssueOpsRemoteArtifactVerification{
-			Provider: record.Artifact.Provider, Kind: record.Artifact.Kind, URL: record.Artifact.URL,
-			Labels: append([]string(nil), record.Artifact.Labels...), Assignees: append([]string(nil), record.Artifact.Assignees...),
-			VerifiedAt: record.Artifact.VerifiedAt, TargetBranch: record.Artifact.TargetBranch,
-		}
-	}
-	return issueops.ValidateExecutionCompletionArtifact(coreRecord, requestedURL)
 }

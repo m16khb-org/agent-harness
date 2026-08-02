@@ -8,7 +8,6 @@ import (
 
 const (
 	selfVerificationSummaryKind         = selfworkflow.SelfVerificationSummaryKind
-	legacySelfAugmentSummaryKind        = selfworkflow.LegacySelfAugmentSummaryKind
 	selfVerificationKoreanName          = selfworkflow.SelfVerificationKoreanName
 	selfAugmentationLessonKind          = selfworkflow.SelfAugmentationLessonKind
 	selfAugmentationKoreanName          = selfworkflow.SelfAugmentationKoreanName

@@ -139,7 +139,7 @@ func (e *coreReconcileEffects) reconcileRequest(intent leaseapp.ReconcileIntentS
 	state, err := reconcileCoreIntentState(leaseoutbound.ReconcileEffectState{
 		Record: intent.Progress.Record, RecordRaw: intent.RecordRaw, IntentRaw: intent.IntentRaw,
 		OperationID: intent.OperationID, Stage: intent.Stage, InvocationState: intent.InvocationState,
-		InvocationAttempts: intent.InvocationAttempts, Pending: intent.Progress.Pending, Migrated: intent.Migrated,
+		InvocationAttempts: intent.InvocationAttempts, Pending: intent.Progress.Pending,
 	})
 	if err != nil {
 		return port.ExecutionOrcaIntentRequest{}, err
@@ -155,7 +155,7 @@ func reconcileEffectStateFromCore(state issueops.ExecutionReconcileIntentState) 
 	return leaseoutbound.ReconcileEffectState{
 		Record: record, RecordRaw: append([]byte(nil), state.RecordRaw...), IntentRaw: append([]byte(nil), state.IntentRaw...),
 		OperationID: state.OperationID, Stage: string(state.Stage), InvocationState: state.InvocationState,
-		InvocationAttempts: state.InvocationAttempts, Pending: state.Pending, Migrated: state.Migrated,
+		InvocationAttempts: state.InvocationAttempts, Pending: state.Pending,
 	}, nil
 }
 
@@ -167,7 +167,7 @@ func reconcileCoreIntentState(state leaseoutbound.ReconcileEffectState) (issueop
 	return issueops.ExecutionReconcileIntentState{
 		Record: record, RecordRaw: append([]byte(nil), state.RecordRaw...), IntentRaw: append([]byte(nil), state.IntentRaw...),
 		OperationID: state.OperationID, Stage: port.ExecutionOrcaIntentStage(state.Stage), InvocationState: state.InvocationState,
-		InvocationAttempts: state.InvocationAttempts, Pending: state.Pending, Migrated: state.Migrated,
+		InvocationAttempts: state.InvocationAttempts, Pending: state.Pending,
 	}, nil
 }
 

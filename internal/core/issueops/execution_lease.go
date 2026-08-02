@@ -126,47 +126,6 @@ func StatusExecution(stateRoot, id string) (ExecutionResult, error) {
 	return result, nil
 }
 
-func ReleaseExecution(stateRoot string, req ExecutionReleaseRequest) (ExecutionResult, error) {
-	return releaseExecutionCompatibilityOracle(stateRoot, req)
-}
-
-// releaseExecutionCompatibilityOracle는 공개 two-argument facade가 유지해야 할
-// 기존 동작이다. production ExecuteExecution은 injected vertical로만 진입한다.
-func releaseExecutionCompatibilityOracle(stateRoot string, req ExecutionReleaseRequest) (ExecutionResult, error) {
-	actor, err := normalizeNativeActor(req.Actor)
-	if err != nil {
-		return ExecutionResult{OK: false, ID: req.ID}, err
-	}
-	var persisted issueops.IssueOpsRecord
-	err = withIssueOpsLock(context.Background(), stateRoot, req.ID, func(context.Context) error {
-		record, err := ReadIssueOps(stateRoot, req.ID)
-		if err != nil {
-			return err
-		}
-		if record.Execution == nil {
-			return fmt.Errorf("IssueOps execution v1 is not prepared")
-		}
-		lease := &record.Execution.Lease
-		if lease.Status != issueops.LeaseStatusActive || lease.Generation != req.Generation || !sameNativeActor(lease.Holder, &actor) {
-			return fmt.Errorf("only the current holder may release generation %d", req.Generation)
-		}
-		if !samePath(req.CWD, record.Execution.Workspace.Root) {
-			return fmt.Errorf("release cwd must be the canonical worktree")
-		}
-		previous := *lease.Holder
-		lease.Status = issueops.LeaseStatusReleased
-		lease.Holder = nil
-		lease.ClaimTokenSHA256 = ""
-		lease.ReleasedAt = time.Now().UTC().Format(time.RFC3339Nano)
-		persisted, err = persistExecutionTransition(stateRoot, record, &previous)
-		return err
-	})
-	if err != nil {
-		return ExecutionResult{OK: false, ID: req.ID}, err
-	}
-	return executionResult(persisted), nil
-}
-
 func ReplaceExecution(stateRoot string, req ExecutionReplaceRequest) (ExecutionReplaceResult, error) {
 	return ReplaceExecutionWithDependencies(context.Background(), stateRoot, req, ExecutionReplaceDependencies{})
 }

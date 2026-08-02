@@ -1,5 +1,5 @@
-// Package issueopscompletion maps the compatibility execution facade to the
-// completion application service.
+// Package issueopscompletion maps execution requests to the completion
+// application service.
 package issueopscompletion
 
 import (

@@ -19,7 +19,6 @@ type ReconcileResult struct {
 	Reconciled             bool
 	Code                   string
 	ExternalStateInspected bool
-	IntentMigrated         bool
 }
 
 type ReconcileService struct {
@@ -38,9 +37,8 @@ func (s *ReconcileService) Reconcile(ctx context.Context, request ReconcileReque
 	}
 	intent, err := s.repository.Canonicalize(ctx, request.ID)
 	base.Record = intent.Progress.Record
-	base.IntentMigrated = intent.Migrated
 	if err != nil {
-		base.Code = "legacy_intent_upgrade_unsafe"
+		base.Code = "orca_intent_invalid"
 		return base, err
 	}
 	inventory, attempted, err := s.stages.Inspect(ctx, intent)

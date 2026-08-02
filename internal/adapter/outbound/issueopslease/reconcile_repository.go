@@ -25,7 +25,6 @@ type ReconcileEffectState struct {
 	InvocationState    string
 	InvocationAttempts int
 	Pending            bool
-	Migrated           bool
 }
 
 type ReconcileRepository struct{ effects ReconcileEffects }
@@ -80,7 +79,7 @@ func reconcileIntentState(state ReconcileEffectState) leaseapp.ReconcileIntentSt
 	return leaseapp.ReconcileIntentState{
 		Progress: reconcileProgress(state), OperationID: state.OperationID, Stage: state.Stage,
 		InvocationState: state.InvocationState, InvocationAttempts: state.InvocationAttempts,
-		RecordRaw: append([]byte(nil), state.RecordRaw...), IntentRaw: append([]byte(nil), state.IntentRaw...), Migrated: state.Migrated,
+		RecordRaw: append([]byte(nil), state.RecordRaw...), IntentRaw: append([]byte(nil), state.IntentRaw...),
 	}
 }
 
@@ -88,6 +87,6 @@ func reconcileEffectState(intent leaseapp.ReconcileIntentState) ReconcileEffectS
 	return ReconcileEffectState{
 		Record: intent.Progress.Record, RecordRaw: append([]byte(nil), intent.RecordRaw...), IntentRaw: append([]byte(nil), intent.IntentRaw...),
 		OperationID: intent.OperationID, Stage: intent.Stage, InvocationState: intent.InvocationState,
-		InvocationAttempts: intent.InvocationAttempts, Pending: intent.Progress.Pending, Migrated: intent.Migrated,
+		InvocationAttempts: intent.InvocationAttempts, Pending: intent.Progress.Pending,
 	}
 }

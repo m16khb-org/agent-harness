@@ -46,8 +46,7 @@ type ExecutionReconcileResult struct {
 	//
 	// omitempty를 쓰지 않는다. "조회하지 않았다"가 이 필드의 핵심 정보이므로
 	// false가 출력에서 사라지면 목적 자체가 무너진다.
-	ExternalStateInspected bool   `json:"external_state_inspected"`
-	IntentMigrationCode    string `json:"intent_migration_code,omitempty"`
+	ExternalStateInspected bool `json:"external_state_inspected"`
 }
 
 func ReconcileExecution(stateRoot string, req ExecutionReconcileRequest) (ExecutionReconcileResult, error) {
