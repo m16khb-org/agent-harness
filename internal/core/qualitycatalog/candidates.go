@@ -40,7 +40,7 @@ const (
 // external mechanism, not on dodging a forbidden-phrase denylist.
 var toolSignalMarkers = []string{
 	"go test", "go build", "go vet", "agent-harness", "harness ", "skill ",
-	"install-native", "install tests", "npm ", "./",
+	"agent-harness install", "install tests", "npm ", "./",
 	"_test", "test", "golden", "contract", "fixture", "smoke", "lint",
 	"coverage", "-cover", "-race", "-count", "--json", "roundtrip",
 	"benchmark", "schema", "self-verify", "self-augment", "quick_validate",

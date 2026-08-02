@@ -31,47 +31,47 @@ func handlePolicyStateMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	case "command_policy_audit":
 		result, err := core.AuditCommandPolicy(commandPolicyRequestFromArgs(call.Arguments))
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32000, Message: "command_policy_audit failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32000, "command_policy_audit failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "state_write":
 		result, err := core.StateWrite(argmap.String(call.Arguments, "key"), argmap.String(call.Arguments, "content"))
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32602, Message: "State write failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32602, "State write failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "state_read":
 		result, err := core.StateRead(argmap.String(call.Arguments, "key"))
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32602, Message: "State read failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32602, "State read failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "state_list":
 		result, err := core.StateList()
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32000, Message: "State list failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32000, "State list failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "state_prune":
 		maxAge, err := time.ParseDuration(argmap.String(call.Arguments, "max_age"))
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32602, Message: "State prune failed", Data: "invalid max_age: " + err.Error()})
+			return mcpToolFailure(newProtocolError(-32602, "State prune failed", "invalid max_age: "+err.Error()))
 		}
 		result, err := core.StatePrune(maxAge, argmap.Bool(call.Arguments, "confirm"))
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32602, Message: "State prune failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32602, "State prune failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "state_doctor":
 		result, err := core.StateDoctor()
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32000, Message: "State doctor failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32000, "State doctor failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "state_maintain":
 		result, err := core.StateMaintain()
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32000, Message: "State maintain failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32000, "State maintain failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	default:

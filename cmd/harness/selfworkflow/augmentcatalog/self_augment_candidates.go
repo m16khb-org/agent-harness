@@ -16,7 +16,7 @@ func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 			Impact: 97, Feasibility: 96, Novelty: 92, Risk: 12,
 			WhyNow:       []string{"Go CLI는 LLM 판단/코드 편집 주체가 아니므로 skill 표면이 필요하다", "Codex/Claude 공용 하네스 목적과 맞다"},
 			ExpectedGain: []string{"후보화→선택→구현→검증을 agent가 실제 수행", "GENIUS_THINK.md와 연구 앵커를 반복적으로 활용"},
-			VerifyWith:   []string{"skill quick_validate", "install-native", "self-verify QA gate"},
+			VerifyWith:   []string{"skill quick_validate", "agent-harness install", "self-verify QA gate"},
 		},
 		{
 			ID: "durable-augmentation-memory", Title: "Accumulate self-augmentation candidates, decisions, and failure lessons in state", Category: "memory",
@@ -54,7 +54,7 @@ func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 			VerifyWith:   []string{"internal/core install tests", "adapter golden fixtures"},
 		},
 		{
-			ID: "install-dry-run-mode", Title: "install-native에 dry-run planning mode 추가", Category: "safety",
+			ID: "install-dry-run-mode", Title: "install에 dry-run planning mode 추가", Category: "safety",
 			Impact: 85, Feasibility: 86, Novelty: 70, Risk: 18,
 			WhyNow:       []string{"user/global 설치는 안전하지만 쓰기 전 preview가 있으면 신뢰도가 오른다"},
 			ExpectedGain: []string{"destructive concern 감소", "다른 레포 설치 전 diff 예측"},

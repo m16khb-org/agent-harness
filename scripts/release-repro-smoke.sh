@@ -86,7 +86,7 @@ if ! is_truthy "$SKIP_BUILD"; then
   (cd "$ROOT" && go build -o "$BIN" ./cmd/harness)
 fi
 
-install_json="$tmp/install-native-dry-run.json"
+install_json="$tmp/install-dry-run.json"
 inspect_json="$tmp/inspect.json"
 docs_json="$tmp/docs.json"
 state_write_json="$tmp/state-write.json"
@@ -97,7 +97,7 @@ HOME="$home" \
 CODEX_HOME="$home/.codex" \
 HARNESS_STATE_DIR="$state" \
 HARNESS_ROOT="$fixture_root" \
-  "$BIN" install-native --dry-run --project-local --json > "$install_json"
+  "$BIN" install --dry-run --project-local --json > "$install_json"
 
 python3 - "$install_json" <<'PY'
 import json
@@ -107,11 +107,11 @@ path = sys.argv[1]
 data = json.load(open(path))
 errors = []
 if not data.get("ok"):
-    errors.append("install-native result ok=false")
+    errors.append("install result ok=false")
 if not data.get("dry_run"):
-    errors.append("install-native result dry_run=false")
+    errors.append("install result dry_run=false")
 if not data.get("project_local"):
-    errors.append("install-native result project_local=false")
+    errors.append("install result project_local=false")
 hosts = data.get("hosts", [])
 names = [host.get("host") for host in hosts]
 if names != ["codex", "claude"]:

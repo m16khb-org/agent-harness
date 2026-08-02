@@ -142,7 +142,7 @@ func repoSignalRules() []repoSignalRule {
 		{func(root string, signals *SelfAugmentRepoSignals) {
 			signals.HasInstallDryRunMode = dirContainsTerm(root, filepath.Join("cmd", "harness", "installcli"), "dry-run") &&
 				fileContainsTerm(root, filepath.Join("internal", "adapter", "install_contract_matrix_test.go"), "TestNativeInstallDryRunDoesNotWrite") &&
-				docsContainTerm(root, "install-native --dry-run")
+				docsContainTerm(root, "install --dry-run")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
 			signals.HasCLIAdapterSplit = fileContainsTerm(root, filepath.Join("internal", "adapter", "cli", "usage.go"), "func Usage") &&
@@ -169,7 +169,7 @@ func repoSignalRules() []repoSignalRule {
 				dirContainsTerm(root, filepath.Join("cmd", "harness", "workercli"), "runWorkerEnqueue")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
-			signals.HasReleaseReproPack = fileContainsTerm(root, filepath.Join("scripts", "release-repro-smoke.sh"), "install-native --dry-run --project-local --json") &&
+			signals.HasReleaseReproPack = fileContainsTerm(root, filepath.Join("scripts", "release-repro-smoke.sh"), "install --dry-run --project-local --json") &&
 				fileContainsTerm(root, filepath.Join(".agent-harness", "operations", "release-reproducibility.md"), "Release Checklist") &&
 				fileContainsTerm(root, filepath.Join(".agent-harness", "TESTING.md"), "release install reproducibility smoke")
 		}},

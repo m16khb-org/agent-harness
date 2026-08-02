@@ -30,7 +30,6 @@ func Commands() []Command {
 		{Name: "hook", Description: "run prompt-routing hooks"},
 		{Name: "project", Description: "bootstrap and maintain project operating docs"},
 		{Name: "install", Description: "install shared native skills and MCP config"},
-		{Name: "install-native", Description: "compatibility alias for install"},
 		{Name: "update", Description: "rebuild and refresh user-level integrations"},
 		{Name: "bootstrap", Description: "set up user-level integrations"},
 		{Name: "daemon", Description: "manage the MCP backend daemon"},
@@ -94,7 +93,6 @@ Usage:
   agent-harness web-fetch fetch --url URL [--timeout 30s] [--max-chars N] [--json]
   agent-harness web-fetch benchmark --fixtures PATH [--live] [--compare-baseline PATH] [--json]
   agent-harness install [--interactive] [--project-local] [--path-mode=auto|manual|skip] [--dry-run] [--json]
-  agent-harness install-native [--interactive] [--project-local] [--path-mode=auto|manual|skip] [--dry-run] [--json]  # compatibility alias
   agent-harness update [--path-mode=auto|manual|skip] [--dry-run] [--json]
   agent-harness bootstrap [--interactive] [--sync] [--path-mode=auto|manual|skip] [--dry-run] [--json]
   agent-harness self-verify [--full] [--iterations=10] [--seed=N] [--target-score=95] [--progress=none|jsonl] [--llm-eval] [--llm-eval-mode=advisory|gate] [--save-state] [--state-key KEY] [--json]

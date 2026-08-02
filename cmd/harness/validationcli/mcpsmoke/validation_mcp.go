@@ -25,7 +25,7 @@ func ValidateMCPWithDeps(binary, root string, deps MCPValidationDeps) StepResult
 	}
 	defer deps.RunCommandStepEnv(root, "MCP daemon stop", 5*time.Second, "", env, binary, "daemon", "stop", "--json")
 
-	step := deps.RunCommandStepEnvWithBudget(root, "MCP smoke", 30*time.Second, MCPSmokeInput(), env, 0, binary, "mcp")
+	step := deps.RunSDKSmoke(root, binary, env, 30*time.Second)
 	if !step.OK {
 		return step
 	}

@@ -348,7 +348,7 @@ func TestDecodeStructuredJSONObjectBoundsLargeErrorOutput() {}
 
 func TestReleaseReproPackIsSatisfiedByChecklistScriptAndTestingSignal(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "scripts", "release-repro-smoke.sh"), "agent-harness install-native --dry-run --project-local --json\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, "scripts", "release-repro-smoke.sh"), "agent-harness install --dry-run --project-local --json\n")
 	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "operations", "release-reproducibility.md"), "# Release Reproducibility\n\n## Release Checklist\n")
 	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "TESTING.md"), "- `scripts/release-repro-smoke.sh` clean-machine release install reproducibility smoke\n")
 

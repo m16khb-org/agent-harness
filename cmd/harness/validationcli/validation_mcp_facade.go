@@ -12,10 +12,6 @@ func ValidateMCPWithDeps(binary, root string, deps MCPValidationDeps) StepResult
 	return mcpsmoke.ValidateMCPWithDeps(binary, root, deps)
 }
 
-func MCPSmokeInput() string {
-	return mcpsmoke.MCPSmokeInput()
-}
-
 func ValidateMCPSmokeContract(step *StepResult) {
 	mcpsmoke.ValidateMCPSmokeContract(step)
 }

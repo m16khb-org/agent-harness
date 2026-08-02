@@ -12,7 +12,6 @@ import (
 const (
 	daemonStatusReady              = "ready"
 	daemonStatusStopped            = "stopped"
-	daemonStatusLegacyPID          = "legacy_pid_unverified"
 	daemonStatusSocketUnreachable  = "socket_unreachable"
 	daemonStatusIdentityMismatch   = "instance_identity_mismatch"
 	daemonStatusInstanceUnreadable = "instance_record_unreadable"
@@ -20,7 +19,7 @@ const (
 
 type daemonStatusDeps struct {
 	paths          func() (daemonPaths, error)
-	readInstance   func(string) (daemonInstance, bool, error)
+	readInstance   func(string) (daemonInstance, error)
 	probeStatus    func(string) (daemonIdentityResponse, error)
 	probeIdentity  func(string) (daemonInstance, error)
 	processAlive   func(int) bool
@@ -43,7 +42,7 @@ func checkDaemonStatusWithDeps(deps daemonStatusDeps) daemonStatus {
 		return daemonStatus{OK: false, Code: daemonStatusInstanceUnreadable, MaxConnections: maxConnections, Message: err.Error()}
 	}
 	status := daemonStatus{OK: true, Code: daemonStatusStopped, Paths: paths, MaxConnections: maxConnections, Message: "daemon is not running"}
-	record, legacy, readErr := deps.readInstance(paths.PID)
+	record, readErr := deps.readInstance(paths.PID)
 	var probe daemonIdentityResponse
 	probed := false
 	if readErr != nil {
@@ -51,7 +50,7 @@ func checkDaemonStatusWithDeps(deps daemonStatusDeps) daemonStatus {
 		probe, probeErr = probeDaemonStatusWithDeps(deps, paths.Socket)
 		if probeErr == nil {
 			probed = true
-			record, legacy, readErr = deps.readInstance(paths.PID)
+			record, readErr = deps.readInstance(paths.PID)
 		}
 		if readErr != nil && probeErr == nil {
 			observed := probe.Instance
@@ -72,10 +71,7 @@ func checkDaemonStatusWithDeps(deps daemonStatusDeps) daemonStatus {
 		}
 	}
 	status.PID = record.PID
-	status.LegacyPID = legacy
-	if !legacy {
-		status.Instance = &record
-	}
+	status.Instance = &record
 
 	if !probed {
 		var probeErr error
@@ -88,11 +84,6 @@ func checkDaemonStatusWithDeps(deps daemonStatusDeps) daemonStatus {
 				status.Code = daemonStatusSocketUnreachable
 				status.Message = "daemon pid exists but socket is not reachable"
 			}
-			if legacy {
-				status.OK = false
-				status.Code = daemonStatusLegacyPID
-				status.Message = "legacy daemon pid is status-only and cannot be verified"
-			}
 			return status
 		}
 	}
@@ -100,12 +91,6 @@ func checkDaemonStatusWithDeps(deps daemonStatusDeps) daemonStatus {
 	status.Running = true
 	status.Reachable = true
 	applyDaemonAdmissionStatus(&status, probe)
-	if legacy {
-		status.OK = false
-		status.Code = daemonStatusLegacyPID
-		status.Message = "legacy daemon pid is reachable but identity is unverified"
-		return status
-	}
 	if observed != record {
 		return daemonIdentityMismatchStatus(status, "daemon socket identity does not match instance record")
 	}
@@ -182,7 +167,7 @@ func daemonStatusBlocksStart(status daemonStatus) bool {
 	if status.OK && status.Code == daemonStatusStopped && !status.Running && !status.Reachable {
 		return false
 	}
-	return status.PID > 0 || status.Running || status.Reachable || status.LegacyPID || (status.Code != "" && status.Code != daemonStatusStopped)
+	return status.PID > 0 || status.Running || status.Reachable || (status.Code != "" && status.Code != daemonStatusStopped)
 }
 
 type daemonProcess interface {
@@ -315,7 +300,6 @@ func daemonStatusCanStop(status daemonStatus) bool {
 	return status.Code == daemonStatusSocketUnreachable &&
 		status.Running &&
 		!status.Reachable &&
-		!status.LegacyPID &&
 		status.Instance != nil &&
 		status.PID > 0 &&
 		status.PID == status.Instance.PID

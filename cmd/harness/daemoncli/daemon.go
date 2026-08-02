@@ -22,7 +22,6 @@ type daemonStatus struct {
 	MaxConnections    int             `json:"max_connections"`
 	Accepting         bool            `json:"accepting"`
 	Draining          bool            `json:"draining"`
-	LegacyPID         bool            `json:"legacy_pid,omitempty"`
 	PID               int             `json:"pid,omitempty"`
 	Code              string          `json:"code"`
 	Paths             daemonPaths     `json:"paths"`

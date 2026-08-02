@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestValidationMCPMermaidNativeWrappersUseDefaultSurfaces(t *testing.T) {
@@ -13,8 +14,15 @@ func TestValidationMCPMermaidNativeWrappersUseDefaultSurfaces(t *testing.T) {
 	t.Setenv("HOME", home)
 	writeNativeIntegrationFixture(t, root, home)
 
-	mcpBinary := writeMCPValidationFakeBinary(t, root)
-	if step := ValidateMCP(mcpBinary, root); !step.OK || !strings.Contains(step.Stdout, "atomic_commit_preflight") {
+	mcpDeps := MCPValidationDeps{
+		RunCommandStepEnv: func(string, string, time.Duration, string, []string, string, ...string) StepResult {
+			return StepResult{OK: true}
+		},
+		RunSDKSmoke: func(string, string, []string, time.Duration) StepResult {
+			return StepResult{Label: "MCP smoke", OK: true, Stdout: validMCPResponses()}
+		},
+	}
+	if step := ValidateMCPWithDeps("fake-harness", root, mcpDeps); !step.OK || !strings.Contains(step.Stdout, "atomic_commit_preflight") {
 		t.Fatalf("expected MCP wrapper success, got %+v", step)
 	}
 
@@ -78,33 +86,6 @@ func TestForbiddenNameHitsSkipsRuntimeStateDirs(t *testing.T) {
 	if len(hits) != 1 || hits[0] != "AGENTS.md contains m"+"16kh" {
 		t.Fatalf("expected only source hit, got %+v", hits)
 	}
-}
-
-func writeMCPValidationFakeBinary(t *testing.T, dir string) string {
-	t.Helper()
-	path := filepath.Join(dir, "fake-harness")
-	body := `#!/bin/sh
-set -eu
-case "$*" in
-  "mcp")
-    cat <<'EOF'
-` + strings.TrimSuffix(validMCPResponses(), "\n") + `
-EOF
-    ;;
-  "daemon stop --json")
-    printf '{"ok":true}\n'
-    ;;
-  *)
-    echo "unexpected fake harness args: $*" >&2
-    exit 2
-    ;;
-esac
-`
-	writeFileForWrapperTest(t, path, body)
-	if err := os.Chmod(path, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	return path
 }
 
 func writeNativeIntegrationFixture(t *testing.T, root, home string) {

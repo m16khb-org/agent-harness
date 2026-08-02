@@ -22,13 +22,6 @@ type contractAuditWorkerValidationDeps struct {
 	runCommandStepEnv func(string, string, time.Duration, string, []string, string, ...string) StepResult
 }
 
-type mcpValidationDeps struct {
-	mkdirTemp                   func(string, string) (string, error)
-	removeAll                   func(string) error
-	runCommandStepEnv           func(string, string, time.Duration, string, []string, string, ...string) StepResult
-	runCommandStepEnvWithBudget func(string, string, time.Duration, string, []string, int, string, ...string) StepResult
-}
-
 type stepBudgetCommandRunner func(dir, label string, timeout time.Duration, stdin string, env []string, name string, args ...string) StepResult
 type stepBudgetSnapshotWriter func(dir, key string, snapshot SelfAugmentStateSnapshot) error
 
@@ -55,27 +48,6 @@ func validateCommandPolicy(binary, root string) StepResult {
 
 func validateMCP(binary, root string) StepResult {
 	return validationcli.ValidateMCP(binary, root)
-}
-
-func validateMCPWithDeps(binary, root string, deps mcpValidationDeps) StepResult {
-	return validationcli.ValidateMCPWithDeps(binary, root, validationcli.MCPValidationDeps{
-		MkdirTemp:                   deps.mkdirTemp,
-		RemoveAll:                   deps.removeAll,
-		RunCommandStepEnv:           deps.runCommandStepEnv,
-		RunCommandStepEnvWithBudget: deps.runCommandStepEnvWithBudget,
-	})
-}
-
-func mcpSmokeInput() string {
-	return validationcli.MCPSmokeInput()
-}
-
-func validateMCPSmokeContract(step *StepResult) {
-	validationcli.ValidateMCPSmokeContract(step)
-}
-
-func mcpSmokeHasExpectedMarkers(stdout string) bool {
-	return validationcli.MCPSmokeHasExpectedMarkers(stdout)
 }
 
 func mcpSmokeExpectedMarkers() []string {

@@ -118,14 +118,6 @@ func runInstall(args []string) error {
 	return installcli.RunInstall(args)
 }
 
-func runInstallNative(args []string) error {
-	return installcli.RunInstallNative(args)
-}
-
-func runInstallCommand(commandName string, args []string) error {
-	return installcli.RunInstallCommand(commandName, args)
-}
-
 func validateInteractiveInstallInput(stdin *os.File) error {
 	return installcli.ValidateInteractiveInput(stdin)
 }

@@ -71,7 +71,7 @@ func SelfVerificationCoverageDefinitions() []SelfVerificationCoverageDefinition 
 		{Claim: "CLI inspect/docs smoke", Labels: []string{"inspect smoke", "docs index smoke"}},
 		{Claim: "self-verification candidate export", Labels: []string{"candidate export"}},
 		{Claim: "step duration budget baseline", Labels: []string{"step budget baseline"}},
-		{Claim: "install-native dry-run no-write smoke", Labels: []string{"install dry-run smoke"}},
+		{Claim: "install dry-run no-write smoke", Labels: []string{"install dry-run smoke"}},
 		{Claim: "command policy boundary", Labels: []string{"command policy smoke"}},
 		{Claim: "redacted command audit log", Labels: []string{"command audit smoke"}},
 		{Claim: "CLI/MCP compatibility contract", Labels: []string{"contract check"}},

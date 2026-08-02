@@ -15,7 +15,7 @@ func TestValidateInstallDryRunSmokeWrapperUsesExecutableSurface(t *testing.T) {
 	binary := writeInstallDryRunFakeBinary(t, root)
 
 	step := validateInstallDryRunSmoke(binary, root, 404)
-	if !step.OK || !strings.Contains(step.Command, "install-native --dry-run --project-local --json") {
+	if !step.OK || !strings.Contains(step.Command, "install --dry-run --project-local --json") {
 		t.Fatalf("expected wrapper success, got %+v", step)
 	}
 }
@@ -66,14 +66,14 @@ func TestValidateInstallDryRunSmokeWithDepsCoversSuccessAndSetupFailures(t *test
 				t.Fatalf("unexpected env: %v", env)
 			}
 			command := strings.Join(append([]string{name}, args...), " ")
-			if command != "bin/agent-harness install-native --dry-run --project-local --json" {
+			if command != "bin/agent-harness install --dry-run --project-local --json" {
 				t.Fatalf("unexpected command: %s", command)
 			}
 			return StepResult{Label: label, Command: command, OK: true, Stdout: mustMarshalInstallDryRunTest(t, validInstallDryRunResult())}
 		},
 	}
 	step := validateInstallDryRunSmokeWithDeps("bin/agent-harness", root, 23, deps)
-	if !step.OK || step.Label != "install dry-run smoke" || !strings.Contains(step.Command, "install-native --dry-run") {
+	if !step.OK || step.Label != "install dry-run smoke" || !strings.Contains(step.Command, "install --dry-run") {
 		t.Fatalf("unexpected install dry-run success: %+v", step)
 	}
 
@@ -195,7 +195,7 @@ func writeInstallDryRunFakeBinary(t *testing.T, dir string) string {
 	t.Helper()
 	path := filepath.Join(dir, "fake-harness")
 	body := "#!/bin/sh\nset -eu\ncase \"$*\" in\n" +
-		"  \"install-native --dry-run --project-local --json\") printf '%s\\n' '" + mustMarshalInstallDryRunTest(t, validInstallDryRunResult()) + "' ;;\n" +
+		"  \"install --dry-run --project-local --json\") printf '%s\\n' '" + mustMarshalInstallDryRunTest(t, validInstallDryRunResult()) + "' ;;\n" +
 		"  *) echo \"unexpected fake harness args: $*\" >&2; exit 2 ;;\n" +
 		"esac\n"
 	if err := os.WriteFile(path, []byte(body), 0o700); err != nil {

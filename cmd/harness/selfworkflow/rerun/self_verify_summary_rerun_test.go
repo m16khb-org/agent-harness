@@ -15,7 +15,7 @@ func TestSelfVerifyStepRerunCommandCoversOperationalLabels(t *testing.T) {
 		"docs index smoke":       "docs --json",
 		"candidate export":       "self-verify candidates",
 		"step budget baseline":   "self-verify compare",
-		"install dry-run smoke":  "install-native --dry-run",
+		"install dry-run smoke":  "install --dry-run",
 		"command policy smoke":   "policy check",
 		"command audit smoke":    "policy audit",
 		"contract check":         "contract check",

@@ -17,14 +17,14 @@ func TestValidateMCPWithDepsCoversSuccessAndResponseFailures(t *testing.T) {
 		RunCommandStepEnv: func(_ string, label string, _ time.Duration, _ string, _ []string, _ string, args ...string) StepResult {
 			return StepResult{Label: label, Command: strings.Join(args, " "), OK: true}
 		},
-		RunCommandStepEnvWithBudget: func(_ string, label string, _ time.Duration, input string, env []string, _ int, _ string, args ...string) StepResult {
-			if !strings.Contains(input, "tools/list") || !containsString(env, "HARNESS_STATE_DIR="+filepath.Join(root, "agent-harness-mcp-state-*dir")) {
-				return StepResult{Label: label, OK: false, Error: "missing input or env"}
+		RunSDKSmoke: func(_ string, _ string, env []string, _ time.Duration) StepResult {
+			if !containsString(env, "HARNESS_STATE_DIR="+filepath.Join(root, "agent-harness-mcp-state-*dir")) {
+				return StepResult{Label: "MCP smoke", OK: false, Error: "missing env"}
 			}
 			if !containsString(env, "HARNESS_MCP_DIRECT=1") {
-				return StepResult{Label: label, OK: false, Error: "MCP smoke must use direct transport for deterministic batch input"}
+				return StepResult{Label: "MCP smoke", OK: false, Error: "MCP smoke must use direct SDK transport"}
 			}
-			return StepResult{Label: label, Command: strings.Join(args, " "), OK: true, Stdout: validMCPResponses()}
+			return StepResult{Label: "MCP smoke", Command: "harness mcp", OK: true, Stdout: validMCPResponses()}
 		},
 	}
 
@@ -33,32 +33,24 @@ func TestValidateMCPWithDepsCoversSuccessAndResponseFailures(t *testing.T) {
 		t.Fatalf("expected MCP smoke success, got %+v", step)
 	}
 
-	deps.RunCommandStepEnvWithBudget = func(string, string, time.Duration, string, []string, int, string, ...string) StepResult {
-		return StepResult{Label: "MCP smoke", OK: true, Stdout: `{"jsonrpc":"2.0","id":1,"result":{}}` + "\n"}
+	deps.RunSDKSmoke = func(string, string, []string, time.Duration) StepResult {
+		return StepResult{Label: "MCP smoke", OK: true, Stdout: `{}` + "\n"}
 	}
 	wrongCount := ValidateMCPWithDeps("harness", root, deps)
-	if wrongCount.OK || !strings.Contains(wrongCount.Error, "expected 11 MCP responses, got 1") {
+	if wrongCount.OK || !strings.Contains(wrongCount.Error, "expected 11 MCP SDK results, got 1") {
 		t.Fatalf("expected response count failure, got %+v", wrongCount)
 	}
 
-	deps.RunCommandStepEnvWithBudget = func(string, string, time.Duration, string, []string, int, string, ...string) StepResult {
+	deps.RunSDKSmoke = func(string, string, []string, time.Duration) StepResult {
 		return StepResult{Label: "MCP smoke", OK: true, Stdout: strings.Repeat("not-json\n", 11)}
 	}
 	badJSON := ValidateMCPWithDeps("harness", root, deps)
-	if badJSON.OK || !strings.Contains(badJSON.Error, "response 1 is invalid JSON") {
+	if badJSON.OK || !strings.Contains(badJSON.Error, "SDK result 1 is invalid JSON") {
 		t.Fatalf("expected invalid JSON failure, got %+v", badJSON)
 	}
 
-	deps.RunCommandStepEnvWithBudget = func(string, string, time.Duration, string, []string, int, string, ...string) StepResult {
-		return StepResult{Label: "MCP smoke", OK: true, Stdout: strings.Repeat(`{"jsonrpc":"2.0","id":1,"error":{"code":-1}}`+"\n", 11)}
-	}
-	missingResult := ValidateMCPWithDeps("harness", root, deps)
-	if missingResult.OK || !strings.Contains(missingResult.Error, "response 1 has no result") {
-		t.Fatalf("expected missing result failure, got %+v", missingResult)
-	}
-
-	deps.RunCommandStepEnvWithBudget = func(string, string, time.Duration, string, []string, int, string, ...string) StepResult {
-		return StepResult{Label: "MCP smoke", OK: true, Stdout: strings.Repeat(`{"jsonrpc":"2.0","id":1,"result":{}}`+"\n", 11)}
+	deps.RunSDKSmoke = func(string, string, []string, time.Duration) StepResult {
+		return StepResult{Label: "MCP smoke", OK: true, Stdout: strings.Repeat(`{}`+"\n", 11)}
 	}
 	missingTool := ValidateMCPWithDeps("harness", root, deps)
 	if missingTool.OK || missingTool.Error != "MCP smoke did not expose expected tool/resource" {
@@ -93,7 +85,7 @@ func TestValidateMCPWithDepsCoversTempAndCommandFailure(t *testing.T) {
 	deps = MCPValidationDeps{
 		MkdirTemp: func(_ string, pattern string) (string, error) { return filepath.Join(root, pattern), nil },
 		RemoveAll: func(string) error { return nil },
-		RunCommandStepEnvWithBudget: func(string, string, time.Duration, string, []string, int, string, ...string) StepResult {
+		RunSDKSmoke: func(string, string, []string, time.Duration) StepResult {
 			return StepResult{Label: "MCP smoke", OK: false, Error: "mcp failed"}
 		},
 	}
@@ -111,7 +103,7 @@ func validMCPResponses() string {
 	}, " ")
 	lines := make([]string, 0, 11)
 	for id := 1; id <= 11; id++ {
-		body, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": id, "result": map[string]any{"text": payload}})
+		body, _ := json.Marshal(map[string]any{"id": id, "text": payload})
 		lines = append(lines, string(body))
 	}
 	return strings.Join(lines, "\n") + "\n"
