@@ -123,6 +123,7 @@ restore_file="$temporary_root/restore.json"
 codex_observation="$temporary_root/codex-observation.json"
 claude_observation="$temporary_root/claude-observation.json"
 dry_run_file="$temporary_root/install-dry-run.json"
+activation_snapshot="$temporary_root/source-activation-snapshot"
 mutation_started=0
 finalized=0
 lock_held=0
@@ -197,6 +198,184 @@ with open(output, "w", encoding="utf-8") as handle:
     json.dump(result, handle, sort_keys=True, separators=(",", ":"))
     handle.write("\n")
 os.chmod(output, 0o600)
+PY
+}
+
+capture_activation_snapshot() {
+  python3 - "$1" "${HOME:?}" "${CODEX_HOME:-${HOME:?}/.codex}" <<'PY'
+import hashlib
+import json
+import os
+import stat
+import sys
+
+snapshot, home, codex_home = sys.argv[1:]
+os.mkdir(snapshot, 0o700)
+targets = [
+    ("claude-hooks", os.path.join(home, ".claude", "settings.json")),
+    ("claude-mcp", os.path.join(home, ".claude.json")),
+    ("codex-hooks", os.path.join(codex_home, "hooks.json")),
+    ("codex-mcp", os.path.join(codex_home, "config.toml")),
+]
+records = []
+for name, target in targets:
+    info = os.lstat(target)
+    if not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode) or info.st_size > 1 << 20:
+        raise SystemExit(1)
+    with open(target, "rb") as handle:
+        data = handle.read((1 << 20) + 1)
+    if len(data) > 1 << 20:
+        raise SystemExit(1)
+    destination = os.path.join(snapshot, name)
+    descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, "wb") as handle:
+        handle.write(data)
+        handle.flush()
+        os.fsync(handle.fileno())
+    records.append({"name": name, "mode": stat.S_IMODE(info.st_mode), "sha256": hashlib.sha256(data).hexdigest()})
+manifest = os.path.join(snapshot, "manifest.json")
+descriptor = os.open(manifest, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+    json.dump(records, handle, sort_keys=True, separators=(",", ":"))
+    handle.write("\n")
+    handle.flush()
+    os.fsync(handle.fileno())
+directory = os.open(snapshot, os.O_RDONLY)
+try:
+    os.fsync(directory)
+finally:
+    os.close(directory)
+PY
+}
+
+restore_activation_snapshot() {
+  python3 - "$1" "${HOME:?}" "${CODEX_HOME:-${HOME:?}/.codex}" <<'PY'
+import hashlib
+import json
+import os
+import stat
+import sys
+import tempfile
+
+snapshot, home, codex_home = sys.argv[1:]
+expected = {
+    "claude-hooks": os.path.join(home, ".claude", "settings.json"),
+    "claude-mcp": os.path.join(home, ".claude.json"),
+    "codex-hooks": os.path.join(codex_home, "hooks.json"),
+    "codex-mcp": os.path.join(codex_home, "config.toml"),
+}
+manifest_path = os.path.join(snapshot, "manifest.json")
+manifest_info = os.lstat(manifest_path)
+if not stat.S_ISREG(manifest_info.st_mode) or stat.S_ISLNK(manifest_info.st_mode) or stat.S_IMODE(manifest_info.st_mode) != 0o600:
+    raise SystemExit(1)
+with open(manifest_path, encoding="utf-8") as handle:
+    records = json.load(handle)
+if not isinstance(records, list) or len(records) != len(expected) or {item.get("name") for item in records if isinstance(item, dict)} != set(expected):
+    raise SystemExit(1)
+for item in records:
+    if set(item) != {"name", "mode", "sha256"} or not isinstance(item["mode"], int) or item["mode"] < 0 or item["mode"] > 0o777:
+        raise SystemExit(1)
+    source = os.path.join(snapshot, item["name"])
+    source_info = os.lstat(source)
+    if not stat.S_ISREG(source_info.st_mode) or stat.S_ISLNK(source_info.st_mode) or stat.S_IMODE(source_info.st_mode) != 0o600 or source_info.st_size > 1 << 20:
+        raise SystemExit(1)
+    with open(source, "rb") as handle:
+        data = handle.read((1 << 20) + 1)
+    if len(data) > 1 << 20 or hashlib.sha256(data).hexdigest() != item["sha256"]:
+        raise SystemExit(1)
+    target = expected[item["name"]]
+    parent = os.path.dirname(target)
+    parent_info = os.lstat(parent)
+    if not stat.S_ISDIR(parent_info.st_mode) or stat.S_ISLNK(parent_info.st_mode):
+        raise SystemExit(1)
+    try:
+        target_info = os.lstat(target)
+    except FileNotFoundError:
+        pass
+    else:
+        if not stat.S_ISREG(target_info.st_mode) or stat.S_ISLNK(target_info.st_mode):
+            raise SystemExit(1)
+    descriptor, temporary = tempfile.mkstemp(prefix=".child-host-restore-", dir=parent)
+    try:
+        os.fchmod(descriptor, item["mode"])
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, target)
+        directory = os.open(parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+PY
+}
+
+instrument_child_smoke_hooks() {
+  python3 - "$1" "$2" "$3" "${HOME:?}" "${CODEX_HOME:-${HOME:?}/.codex}" <<'PY'
+import json
+import os
+import shlex
+import stat
+import sys
+import tempfile
+
+root, codex_observation, claude_observation, home, codex_home = sys.argv[1:]
+binary = os.path.join(root, "bin", "agent-harness")
+
+def instrument(path, observation):
+    info = os.lstat(path)
+    if not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode):
+        raise SystemExit(1)
+    with open(path, encoding="utf-8") as handle:
+        document = json.load(handle)
+    hooks = document.get("hooks")
+    if not isinstance(hooks, dict):
+        raise SystemExit(1)
+    prefix = f"/usr/bin/env HARNESS_CHILD_SMOKE_HOOKS=1 HARNESS_CHILD_SMOKE_OBSERVATION_FILE={shlex.quote(observation)} "
+    for event, subcommand in (("SessionStart", "session-start"), ("PreToolUse", "pre-tool-use")):
+        matches = 0
+        for group in hooks.get(event, []):
+            if not isinstance(group, dict):
+                continue
+            for hook in group.get("hooks", []):
+                if not isinstance(hook, dict):
+                    continue
+                command = hook.get("command")
+                expected = f"'{binary}' hook {subcommand}"
+                if isinstance(command, str) and command.startswith(expected):
+                    hook["command"] = prefix + command
+                    matches += 1
+        if matches != 1:
+            raise SystemExit(1)
+    parent = os.path.dirname(path)
+    descriptor, temporary = tempfile.mkstemp(prefix=".child-host-hooks-", dir=parent)
+    try:
+        os.fchmod(descriptor, stat.S_IMODE(info.st_mode))
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            json.dump(document, handle, sort_keys=True, separators=(",", ":"))
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+        directory = os.open(parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+
+instrument(os.path.join(codex_home, "hooks.json"), codex_observation)
+instrument(os.path.join(home, ".claude", "settings.json"), claude_observation)
 PY
 }
 
@@ -520,21 +699,17 @@ finish() {
   set +e
   HARNESS_ROOT="$source_root" "$source_root/scripts/install-native.sh" --skip-build --path-mode=skip --json >"$temporary_root/restore-install.json" 2>"$temporary_root/restore-install.err"
   local restore_install_status=$?
-  if ((restore_install_status == 0)); then
-    validate_managed_activation_identity "$source_root"
-    local restore_identity_status=$?
-    host_mcp_readback "$source_root" restore
-    local restore_mcp_status=$?
-    activation_digest "$source_root" "$restore_file"
-    local restore_digest_status=$?
-    validate_activation_digest "$restore_file" "$source_root"
-    local restore_digest_contract_status=$?
-    if ((restore_identity_status != 0 || restore_mcp_status != 0 || restore_digest_status != 0 || restore_digest_contract_status != 0)) || ! cmp -s "$before_file" "$restore_file"; then
-      verdict="fail"
-      return_code=1
-    fi
-  else
-    activation_digest "$source_root" "$restore_file" >/dev/null 2>&1 || true
+  restore_activation_snapshot "$activation_snapshot"
+  local restore_snapshot_status=$?
+  validate_managed_activation_identity "$source_root"
+  local restore_identity_status=$?
+  host_mcp_readback "$source_root" restore
+  local restore_mcp_status=$?
+  activation_digest "$source_root" "$restore_file"
+  local restore_digest_status=$?
+  validate_activation_digest "$restore_file" "$source_root" >/dev/null 2>&1
+  local restore_digest_contract_status=$?
+  if ((restore_install_status != 0 || restore_snapshot_status != 0 || restore_identity_status != 0 || restore_mcp_status != 0 || restore_digest_status != 0 || restore_digest_contract_status != 0)) || ! cmp -s "$before_file" "$restore_file"; then
     verdict="fail"
     return_code=1
   fi
@@ -637,11 +812,13 @@ validate_managed_activation_identity "$source_root" || fail_before_mutation 'cur
 host_mcp_readback "$source_root" before || fail_before_mutation 'source host-native MCP readback failed'
 activation_digest "$source_root" "$before_file" || fail_before_mutation 'cannot capture source activation digest'
 validate_activation_digest "$before_file" "$source_root" || fail_before_mutation 'source activation digest contract failed'
+capture_activation_snapshot "$activation_snapshot" || fail_before_mutation 'cannot capture exact source activation snapshot'
 
 mutation_started=1
 HARNESS_ROOT="$child_root" "$child_root/scripts/install-native.sh" --skip-build --path-mode=skip --json >"$temporary_root/activate.json" 2>"$temporary_root/activate.err" || fail_after_mutation 'child activation failed'
 validate_managed_activation_identity "$child_root" || fail_after_mutation 'activated managed identity drifted'
 host_mcp_readback "$child_root" activated || fail_after_mutation 'activated host-native MCP readback failed'
+instrument_child_smoke_hooks "$child_root" "$codex_observation" "$claude_observation" || fail_after_mutation 'child smoke hook instrumentation failed'
 activation_digest "$child_root" "$activated_file" || fail_after_mutation 'activated surface digest failed'
 validate_activation_digest "$activated_file" "$child_root" || fail_after_mutation 'activated surface digest contract failed'
 activated_binary_sha256="$(python3 - "$activated_file" <<'PY'

@@ -49,3 +49,24 @@ func TestRecordChildSmokeHookEventRejectsNonPrivateParent(t *testing.T) {
 		t.Fatal("non-private marker parent was accepted")
 	}
 }
+
+func TestChildSmokeRecordsHookInvocationBeforeDispatchFailure(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Chmod(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	observationPath := filepath.Join(root, "observation.json")
+	t.Setenv("HARNESS_CHILD_SMOKE_HOOKS", "1")
+	t.Setenv("HARNESS_CHILD_SMOKE_OBSERVATION_FILE", observationPath)
+
+	if err := runHook([]string{"session-start", "--invalid-child-smoke-flag"}); err == nil {
+		t.Fatal("invalid hook arguments unexpectedly passed")
+	}
+	data, err := os.ReadFile(observationPath + ".hooks")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "{\"event\":\"SessionStart\"}\n" {
+		t.Fatalf("marker=%q", data)
+	}
+}

@@ -300,7 +300,6 @@ func TestChildHostSmokeFailsClosedOnPostActivationDrift(t *testing.T) {
 		"activated-binary-mismatch",
 		"activation-failure",
 		"restore-failure",
-		"restore-raw-digest-drift",
 		"signal-during-codex",
 		"signal-during-restore",
 	} {
@@ -310,6 +309,26 @@ func TestChildHostSmokeFailsClosedOnPostActivationDrift(t *testing.T) {
 				t.Fatalf("scenario=%s result=%+v output=%s", scenario, result, result.Output)
 			}
 		})
+	}
+}
+
+func TestChildHostSmokeRepairsInstallerRawDigestDrift(t *testing.T) {
+	result := runChildHostSmokeFixture(t, childSmokeFixture{scenario: "restore-raw-digest-drift", confirm: true})
+	if result.ExitCode != 0 || result.Receipt.Verdict != "pass" || result.RestoreCalls != 1 || result.AfterMutationCalls != 0 || result.LockExists {
+		t.Fatalf("raw restore repair failed: result=%+v output=%s", result, result.Output)
+	}
+	if !reflect.DeepEqual(result.Receipt.Before, result.Receipt.Restore) {
+		t.Fatalf("raw restore drift remained: before=%+v restore=%+v", result.Receipt.Before, result.Receipt.Restore)
+	}
+}
+
+func TestChildHostSmokeRecreatesMissingConfigAfterRestoreFailure(t *testing.T) {
+	result := runChildHostSmokeFixture(t, childSmokeFixture{scenario: "restore-missing-file", confirm: true})
+	if result.ExitCode == 0 || result.Receipt.Verdict != "fail" || result.RestoreCalls != 1 || result.AfterMutationCalls != 0 || result.LockExists {
+		t.Fatalf("missing-file recovery did not fail closed: result=%+v output=%s", result, result.Output)
+	}
+	if !reflect.DeepEqual(result.Receipt.Before, result.Receipt.Restore) {
+		t.Fatalf("missing config was not restored exactly: before=%+v restore=%+v", result.Receipt.Before, result.Receipt.Restore)
 	}
 }
 
@@ -539,6 +558,10 @@ with open(os.path.join(home, ".claude", "settings.json"), "w", encoding="utf-8")
     handle.write("\n")
 PY
 chmod 0600 "$CODEX_HOME/config.toml" "$CODEX_HOME/hooks.json" "$HOME/.claude.json" "$HOME/.claude/settings.json"
+if [[ %q == source && "${FAKE_SCENARIO:-}" == restore-missing-file ]]; then
+  rm "$CODEX_HOME/hooks.json"
+  exit 20
+fi
 if [[ %q == source && "${FAKE_SCENARIO:-}" == restore-raw-digest-drift ]]; then
   printf ' ' >>"$CODEX_HOME/config.toml"
 fi
@@ -549,7 +572,7 @@ if [[ %q == child && "${FAKE_SCENARIO:-}" == activated-binary-mismatch ]]; then
   printf 'drift\n' >>"$HARNESS_ROOT/bin/agent-harness"
 fi
 printf '{"ok":true}\n'
-`, identity, identity, identity, identity, identity)
+`, identity, identity, identity, identity, identity, identity)
 }
 
 func fakeHostScript(host string) string {
@@ -665,6 +688,13 @@ case "${1:-}" in
       previous="$arg"
     done
     [[ -n "$host" && -n "${HARNESS_CHILD_SMOKE_OBSERVATION_FILE:-}" ]]
+    if [[ "$host" == codex ]]; then
+      hook_config="$CODEX_HOME/hooks.json"
+    else
+      hook_config="$HOME/.claude/settings.json"
+    fi
+    grep -Fq 'HARNESS_CHILD_SMOKE_HOOKS=1' "$hook_config"
+    grep -Fq "$HARNESS_CHILD_SMOKE_OBSERVATION_FILE" "$hook_config"
     [[ "${FAKE_SCENARIO:-}" != "$host-session-failure" ]] || exit 9
     if [[ "${FAKE_SCENARIO:-}" == signal-during-codex && "$host" == codex ]]; then
       kill -TERM "$PPID"
