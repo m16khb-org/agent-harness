@@ -5,7 +5,8 @@
 - 대상 브랜치: `117-hexagonal-architecture-migration`
 - source 브랜치: `200-final-architecture-gate`
 - sealed base: `9883f534f50fb628ac2fa754a3bf8f80d4734989`
-- local acceptance HEAD: `f1d347df9c5a1c8bd6a5766b11f34aa32e139772`
+- local gate execution HEAD: `f1d347df9c5a1c8bd6a5766b11f34aa32e139772`
+- first evidence-report review HEAD: `413d8c41a73d342d3b4c84875a7e5a5b0e59f4fb`
 - 설계: `docs/superpowers/specs/2026-08-02-final-architecture-gate-design.md`
 - 계획: `docs/superpowers/plans/2026-08-02-final-architecture-gate.md`
 
@@ -133,6 +134,17 @@ unit과 race를 순차 실행해 둘 다 통과함으로써 자원 경쟁으로 
   시간폭탄에 직접 연결되고, unsupported completion claim과 cleanup 대상
   scaffolding/주석/추상화는 없었다. Cleanup 중 추가 파일 변경은 하지 않았다.
 
+## 독립 리뷰 checkpoint
+
+Fresh `code-reviewer`가 first evidence-report HEAD `413d8c41`의 exact 4-file
+base diff를 읽기 전용으로 검토했다. 동작·architecture·hook acceptance finding은
+없었고 AC-200-01..07은 PASS, AC-200-08..09는 remote publication 전 PENDING으로
+판정했다. 유일한 P2 finding은 이 보고서가 `f1d347df`를 `local acceptance HEAD`로
+표현해 report commit을 포함한 reviewed HEAD와 혼동될 수 있다는 것이었다.
+따라서 위 metadata를 `local gate execution HEAD`와
+`first evidence-report review HEAD`로 분리했다. 이 correction의 follow-up
+unconditional verdict는 publication 전에 IssueOps review evidence로 기록한다.
+
 ## 로컬 최종 검증
 
 다음 명령은 canonical #200 worktree의 `f1d347df`에서 실행했고 모두 exit 0이다.
@@ -167,6 +179,7 @@ legacy baseline 변경은 없다.
 5280ed88 docs(architecture): harden final gate evidence
 f45ee479 docs(architecture): preserve source-cwd hook contract
 f1d347df test(hookmetrics): avoid time-bound prune fixtures
+413d8c41 docs(architecture): record final gate evidence
 ```
 
 OpenWiki, public API/schema, runtime behavior, compatibility package와 unrelated
