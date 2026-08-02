@@ -726,7 +726,12 @@ finish() {
   local restore_digest_status=$?
   validate_activation_digest "$restore_file" "$source_root" >/dev/null 2>&1
   local restore_digest_contract_status=$?
-  if ((restore_install_status != 0 || restore_snapshot_status != 0 || restore_identity_status != 0 || restore_mcp_status != 0 || restore_digest_status != 0 || restore_digest_contract_status != 0)) || ! cmp -s "$before_file" "$restore_file"; then
+  local exact_restore_status=0
+  cmp -s "$before_file" "$restore_file" || exact_restore_status=$?
+  if ((restore_install_status != 0 || restore_snapshot_status != 0 || restore_identity_status != 0 || restore_mcp_status != 0 || restore_digest_status != 0 || restore_digest_contract_status != 0 || exact_restore_status != 0)); then
+    printf 'child-host-smoke: restore stages failed: install=%d snapshot=%d identity=%d mcp=%d digest=%d contract=%d exact=%d\n' \
+      "$restore_install_status" "$restore_snapshot_status" "$restore_identity_status" "$restore_mcp_status" \
+      "$restore_digest_status" "$restore_digest_contract_status" "$exact_restore_status" >&2
     verdict="fail"
     return_code=1
   fi
@@ -737,6 +742,7 @@ finish() {
   if rmdir "$lock_path" 2>/dev/null; then
     lock_held=0
   else
+    printf 'child-host-smoke: activation lock release failed\n' >&2
     verdict="fail"
     return_code=1
   fi

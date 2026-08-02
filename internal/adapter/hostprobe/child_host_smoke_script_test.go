@@ -421,6 +421,14 @@ func TestChildHostSmokeAlwaysRestoresBeforeReturningFailure(t *testing.T) {
 	}
 }
 
+func TestChildHostSmokeReportsRestoreStageStatuses(t *testing.T) {
+	result := runChildHostSmokeFixture(t, childSmokeFixture{scenario: "restore-failure", confirm: true})
+	want := "restore stages failed: install=19 snapshot=0 identity=0 mcp=0 digest=0 contract=0 exact=0"
+	if !strings.Contains(result.Output, want) {
+		t.Fatalf("missing bounded restore diagnostics %q: result=%+v output=%s", want, result, result.Output)
+	}
+}
+
 func TestChildHostSmokeFailsClosedOnPostActivationDrift(t *testing.T) {
 	for _, scenario := range []string{
 		"codex-version-drift",
