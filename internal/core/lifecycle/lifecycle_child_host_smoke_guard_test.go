@@ -11,7 +11,7 @@ import (
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 )
 
-func TestCoordinatorChildHostSmokeAdmitsExactCommandWithReleasedChild(t *testing.T) {
+func TestCoordinatorChildHostSmokeAdmitsExactCommandWithoutExplicitSourceCheckout(t *testing.T) {
 	useCanonicalSmokeTempDir(t)
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source, record, childRoot := executionActiveLifecycleRecord(t)
@@ -65,7 +65,7 @@ func TestCoordinatorChildHostSmokeAdmitsExactCommandWithReleasedChild(t *testing
 		filepath.Join(outputDirArg, "receipt.json"),
 	)
 	req := lifecyclecontract.HookToolUseLifecycleRequest{
-		Repo: sourceArg, CWD: sourceArg, SourceCheckout: sourceArg,
+		Repo: sourceArg, CWD: sourceArg,
 		Tool: "exec_command", Command: command,
 		ToolInput:       map[string]any{"workdir": coordinatorArg},
 		EnforceWorktree: true,
@@ -125,7 +125,7 @@ func TestCoordinatorChildHostSmokeRejectsNearMisses(t *testing.T) {
 		output,
 	)
 	base := lifecyclecontract.HookToolUseLifecycleRequest{
-		Repo: sourceArg, CWD: sourceArg, SourceCheckout: sourceArg,
+		Repo: sourceArg, CWD: sourceArg,
 		Tool: "exec_command", ToolInput: map[string]any{"workdir": coordinatorArg},
 		EnforceWorktree: true,
 	}
@@ -181,6 +181,24 @@ func TestCoordinatorChildHostSmokeRejectsNearMisses(t *testing.T) {
 		req.Command = strings.Replace(exact, output, filepath.Join(canonicalSmokeTestPath(t, publicDir), "receipt.json"), 1)
 		if exactCoordinatorChildHostSmoke(req) {
 			t.Fatal("non-private receipt directory was classified")
+		}
+	})
+
+	t.Run("explicit source checkout mismatch", func(t *testing.T) {
+		req := base
+		req.Command = exact
+		req.SourceCheckout = childArg
+		if exactCoordinatorChildHostSmoke(req) {
+			t.Fatal("explicit source checkout mismatch was classified")
+		}
+	})
+
+	t.Run("repo source mismatch", func(t *testing.T) {
+		req := base
+		req.Command = exact
+		req.Repo = childArg
+		if exactCoordinatorChildHostSmoke(req) {
+			t.Fatal("repo source mismatch was classified without an explicit source checkout")
 		}
 	})
 }
