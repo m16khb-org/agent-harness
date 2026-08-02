@@ -29,14 +29,14 @@ func configureInstallCommandTest(t *testing.T, home string) string {
 	return root
 }
 
-func runInstallDryRunJSON(t *testing.T, home, commandName, pathMode string) port.NativeInstallResult {
+func runInstallDryRunJSON(t *testing.T, home, pathMode string) port.NativeInstallResult {
 	t.Helper()
 	configureInstallCommandTest(t, home)
 	out, _, err := captureInstallCommandOutput(t, nil, func() error {
-		return RunInstallCommand(commandName, []string{"--dry-run", "--json", "--path-mode=" + pathMode})
+		return RunInstall([]string{"--dry-run", "--json", "--path-mode=" + pathMode})
 	})
 	if err != nil {
-		t.Fatalf("%s --dry-run --json --path-mode=%s failed: %v\n%s", commandName, pathMode, err, out)
+		t.Fatalf("install --dry-run --json --path-mode=%s failed: %v\n%s", pathMode, err, out)
 	}
 	var result port.NativeInstallResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {

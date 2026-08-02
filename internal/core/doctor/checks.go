@@ -303,7 +303,7 @@ func (r *HarnessDoctorResult) checkNativeIntegrations(home string) {
 		return
 	}
 	if _, err := os.Stat(filepath.Join(home, ".codex", "hooks.json")); os.IsNotExist(err) {
-		r.addIssue("codex_hooks_missing", "warning", "Codex hooks.json is not present", filepath.Join(home, ".codex", "hooks.json"), &HarnessDoctorFix{Command: "agent-harness install-native", Description: "Install user-level hooks, skills, and MCP configuration."})
+		r.addIssue("codex_hooks_missing", "warning", "Codex hooks.json is not present", filepath.Join(home, ".codex", "hooks.json"), &HarnessDoctorFix{Command: "agent-harness install", Description: "Install user-level hooks, skills, and MCP configuration."})
 	}
 	r.addCheck("native_integrations", true, "checked user-level integration paths")
 }

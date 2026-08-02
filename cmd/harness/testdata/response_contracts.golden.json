@@ -210,10 +210,6 @@
           "name": "install"
         },
         {
-          "description": "compatibility alias for install",
-          "name": "install-native"
-        },
-        {
           "description": "rebuild and refresh user-level integrations",
           "name": "update"
         },
@@ -254,7 +250,7 @@
           "name": "version"
         }
       ],
-      "hash": "feb50933f50f896f5084e152cb20faba8db21e8c0fe033ca8d92e03ea58dc309",
+      "hash": "1df5ffe469c195ed6d28384ecc67de49c7583cd85cf4f094503e88e7e098c0b9",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -4178,7 +4174,7 @@
           "title": "Provide the self-augmentation loop as a native skill executor that creates real improvement diffs",
           "verify_with": [
             "skill quick_validate",
-            "install-native",
+            "agent-harness install",
             "self-verify QA gate"
           ],
           "why_now": [
@@ -4538,11 +4534,11 @@
           "novelty": 70,
           "risk": 18,
           "satisfaction_evidence": [
-            "install-native supports --dry-run planning with no filesystem writes and adapter-level coverage"
+            "install supports --dry-run planning with no filesystem writes and adapter-level coverage"
           ],
           "score": 0,
           "status": "already_satisfied",
-          "title": "install-native에 dry-run planning mode 추가",
+          "title": "install에 dry-run planning mode 추가",
           "verify_with": [
             "install tests",
             "temporary HOME smoke"
@@ -5287,7 +5283,7 @@
           "id": "self-verify-install-dry-run-smoke",
           "priority": 8,
           "satisfaction_evidence": [
-            "install dry-run smoke runs install-native --dry-run against temp HOME/CODEX_HOME/HARNESS_ROOT and asserts planned writes/links without filesystem mutations"
+            "install dry-run smoke runs install --dry-run against temp HOME/CODEX_HOME/HARNESS_ROOT and asserts planned writes/links without filesystem mutations"
           ],
           "score": 76,
           "status": "already_satisfied",
@@ -5296,7 +5292,7 @@
             "dry-run no-write assertion"
           ],
           "why_now": [
-            "install-native --dry-run should be an independent no-write evidence label"
+            "install --dry-run should be an independent no-write evidence label"
           ]
         },
         {
@@ -6355,10 +6351,6 @@
                 "name": "install"
               },
               {
-                "description": "compatibility alias for install",
-                "name": "install-native"
-              },
-              {
                 "description": "rebuild and refresh user-level integrations",
                 "name": "update"
               },
@@ -6399,7 +6391,7 @@
                 "name": "version"
               }
             ],
-            "hash": "feb50933f50f896f5084e152cb20faba8db21e8c0fe033ca8d92e03ea58dc309",
+            "hash": "1df5ffe469c195ed6d28384ecc67de49c7583cd85cf4f094503e88e7e098c0b9",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -7114,7 +7106,7 @@
                 "title": "Provide the self-augmentation loop as a native skill executor that creates real improvement diffs",
                 "verify_with": [
                   "skill quick_validate",
-                  "install-native",
+                  "agent-harness install",
                   "self-verify QA gate"
                 ],
                 "why_now": [
@@ -7474,11 +7466,11 @@
                 "novelty": 70,
                 "risk": 18,
                 "satisfaction_evidence": [
-                  "install-native supports --dry-run planning with no filesystem writes and adapter-level coverage"
+                  "install supports --dry-run planning with no filesystem writes and adapter-level coverage"
                 ],
                 "score": 0,
                 "status": "already_satisfied",
-                "title": "install-native에 dry-run planning mode 추가",
+                "title": "install에 dry-run planning mode 추가",
                 "verify_with": [
                   "install tests",
                   "temporary HOME smoke"
@@ -8257,7 +8249,7 @@
                 "id": "self-verify-install-dry-run-smoke",
                 "priority": 8,
                 "satisfaction_evidence": [
-                  "install dry-run smoke runs install-native --dry-run against temp HOME/CODEX_HOME/HARNESS_ROOT and asserts planned writes/links without filesystem mutations"
+                  "install dry-run smoke runs install --dry-run against temp HOME/CODEX_HOME/HARNESS_ROOT and asserts planned writes/links without filesystem mutations"
                 ],
                 "score": 76,
                 "status": "already_satisfied",
@@ -8266,7 +8258,7 @@
                   "dry-run no-write assertion"
                 ],
                 "why_now": [
-                  "install-native --dry-run should be an independent no-write evidence label"
+                  "install --dry-run should be an independent no-write evidence label"
                 ]
               },
               {

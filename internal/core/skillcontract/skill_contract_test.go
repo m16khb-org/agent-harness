@@ -143,14 +143,19 @@ func TestStabilityAuditSkillPinsSafetyModelContract(t *testing.T) {
 		"Never kill active `codex`, `claude`, `tmux`, or unrelated MCP processes",
 		"evidence-first audit",
 		// Operational-measurement fixes (STA-O findings).
-		"compatibility alias for `bootstrap`",
+		"`./bin/agent-harness install --dry-run --json`",
+		"`./bin/agent-harness install --json` only for full install tasks",
 		"intended dogfood setup",
 		"exact current-v1 state write/read/doctor",
 	})
 	body := readSkillForTest(t, "stability-audit")
-	retired := strings.Join([]string{"state", "migrate"}, " ")
-	if strings.Contains(body, retired) {
-		t.Fatalf("stability-audit skill still instructs agents to run retired command %q", retired)
+	for _, retired := range []string{
+		strings.Join([]string{"state", "migrate"}, " "),
+		strings.Join([]string{"agent-harness", "install-native"}, " "),
+	} {
+		if strings.Contains(body, retired) {
+			t.Fatalf("stability-audit skill still instructs agents to run retired command %q", retired)
+		}
 	}
 }
 

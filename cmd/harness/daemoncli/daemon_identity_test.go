@@ -31,8 +31,8 @@ func TestCheckDaemonStatusVerifiesInstanceFileSocketAndProcess(t *testing.T) {
 
 	status := checkDaemonStatusWithDeps(daemonStatusDeps{
 		paths: func() (daemonPaths, error) { return paths, nil },
-		readInstance: func(string) (daemonInstance, bool, error) {
-			return instance, false, nil
+		readInstance: func(string) (daemonInstance, error) {
+			return instance, nil
 		},
 		probeIdentity: func(string) (daemonInstance, error) { return instance, nil },
 		processAlive:  func(int) bool { return true },
@@ -62,12 +62,12 @@ func TestCheckDaemonStatusRechecksInstanceRecordAfterStartupSocketProbe(t *testi
 	reads := 0
 	status := checkDaemonStatusWithDeps(daemonStatusDeps{
 		paths: func() (daemonPaths, error) { return daemonPaths{Socket: "daemon.sock", PID: "daemon.pid"}, nil },
-		readInstance: func(string) (daemonInstance, bool, error) {
+		readInstance: func(string) (daemonInstance, error) {
 			reads++
 			if reads == 1 {
-				return daemonInstance{}, false, os.ErrNotExist
+				return daemonInstance{}, os.ErrNotExist
 			}
-			return instance, false, nil
+			return instance, nil
 		},
 		probeIdentity: func(string) (daemonInstance, error) { return instance, nil },
 		processAlive:  func(int) bool { return true },
@@ -93,7 +93,7 @@ func TestCheckDaemonStatusReportsLiveAdmissionHealth(t *testing.T) {
 	}
 	status := checkDaemonStatusWithDeps(daemonStatusDeps{
 		paths:        func() (daemonPaths, error) { return daemonPaths{Socket: "daemon.sock", PID: "daemon.pid"}, nil },
-		readInstance: func(string) (daemonInstance, bool, error) { return instance, false, nil },
+		readInstance: func(string) (daemonInstance, error) { return instance, nil },
 		probeStatus: func(string) (daemonIdentityResponse, error) {
 			return daemonIdentityResponse{
 				OK:                true,
@@ -138,7 +138,7 @@ func TestCheckDaemonStatusReportsHandshakeIdentityMismatch(t *testing.T) {
 			mutate(&handshake)
 			status := checkDaemonStatusWithDeps(daemonStatusDeps{
 				paths:         func() (daemonPaths, error) { return daemonPaths{Socket: "daemon.sock", PID: "daemon.pid"}, nil },
-				readInstance:  func(string) (daemonInstance, bool, error) { return fileInstance, false, nil },
+				readInstance:  func(string) (daemonInstance, error) { return fileInstance, nil },
 				probeIdentity: func(string) (daemonInstance, error) { return handshake, nil },
 				processAlive:  func(int) bool { return true },
 				inspectProcess: func(int) (daemonProcessIdentity, error) {
@@ -165,7 +165,7 @@ func TestCheckDaemonStatusAcceptsExecutableProjectionDriftAfterSymlinkUpdate(t *
 	}
 	status := checkDaemonStatusWithDeps(daemonStatusDeps{
 		paths:         func() (daemonPaths, error) { return daemonPaths{Socket: "daemon.sock", PID: "daemon.pid"}, nil },
-		readInstance:  func(string) (daemonInstance, bool, error) { return instance, false, nil },
+		readInstance:  func(string) (daemonInstance, error) { return instance, nil },
 		probeIdentity: func(string) (daemonInstance, error) { return instance, nil },
 		processAlive:  func(int) bool { return true },
 		inspectProcess: func(int) (daemonProcessIdentity, error) {
@@ -181,29 +181,17 @@ func TestCheckDaemonStatusAcceptsExecutableProjectionDriftAfterSymlinkUpdate(t *
 	}
 }
 
-func TestCheckDaemonStatusTreatsLegacyPIDAsStatusOnly(t *testing.T) {
+func TestCheckDaemonStatusRejectsLegacyPIDAsUnreadableInstance(t *testing.T) {
 	status := checkDaemonStatusWithDeps(daemonStatusDeps{
-		paths:         func() (daemonPaths, error) { return daemonPaths{Socket: "daemon.sock", PID: "daemon.pid"}, nil },
-		readInstance:  func(string) (daemonInstance, bool, error) { return daemonInstance{PID: 4242}, true, nil },
-		probeIdentity: func(string) (daemonInstance, error) { return daemonInstance{PID: 4242}, nil },
-		processAlive:  func(int) bool { return true },
-	})
-
-	if status.OK || !status.Running || !status.Reachable || status.IdentityVerified || !status.LegacyPID || status.Code != daemonStatusLegacyPID {
-		t.Fatalf("legacy pid must be observable but untrusted: %#v", status)
-	}
-}
-
-func TestCheckDaemonStatusKeepsLiveLegacyPIDFailClosedWithoutSocket(t *testing.T) {
-	status := checkDaemonStatusWithDeps(daemonStatusDeps{
-		paths:         func() (daemonPaths, error) { return daemonPaths{Socket: "daemon.sock", PID: "daemon.pid"}, nil },
-		readInstance:  func(string) (daemonInstance, bool, error) { return daemonInstance{PID: 4242}, true, nil },
+		paths: func() (daemonPaths, error) { return daemonPaths{Socket: "daemon.sock", PID: "daemon.pid"}, nil },
+		readInstance: func(string) (daemonInstance, error) {
+			return daemonInstance{}, errors.New("decode daemon instance record: invalid character")
+		},
 		probeIdentity: func(string) (daemonInstance, error) { return daemonInstance{}, errors.New("socket unavailable") },
-		processAlive:  func(int) bool { return true },
 	})
 
-	if status.OK || !status.Running || status.Reachable || status.IdentityVerified || !status.LegacyPID || status.Code != daemonStatusLegacyPID {
-		t.Fatalf("live legacy pid must remain observable and untrusted: %#v", status)
+	if status.OK || status.Running || status.Reachable || status.IdentityVerified || status.Code != daemonStatusInstanceUnreadable {
+		t.Fatalf("integer pid input must be rejected as unreadable structured state: %#v", status)
 	}
 }
 
@@ -524,11 +512,11 @@ func TestDaemonProcessIdentityMatchesLegacyLocalizedStartTime(t *testing.T) {
 	}
 }
 
-func TestStopDaemonRejectsLegacyPIDWithoutMutation(t *testing.T) {
+func TestStopDaemonRejectsUnreadableInstanceWithoutMutation(t *testing.T) {
 	mutated := false
 	status, err := stopDaemonWithDeps(daemonStopDeps{
 		checkStatus: func() daemonStatus {
-			return daemonStatus{OK: false, Running: true, Reachable: true, LegacyPID: true, PID: 4242, Code: daemonStatusLegacyPID}
+			return daemonStatus{OK: false, Code: daemonStatusInstanceUnreadable, Message: "decode daemon instance record"}
 		},
 		findProcess: func(int) (daemonProcess, error) {
 			mutated = true
@@ -540,11 +528,11 @@ func TestStopDaemonRejectsLegacyPIDWithoutMutation(t *testing.T) {
 		},
 	})
 
-	if err == nil || status.Code != daemonStatusLegacyPID {
-		t.Fatalf("legacy stop must fail closed: status=%#v err=%v", status, err)
+	if err == nil || status.Code != daemonStatusInstanceUnreadable {
+		t.Fatalf("unreadable instance stop must fail closed: status=%#v err=%v", status, err)
 	}
 	if mutated {
-		t.Fatal("legacy stop must not signal processes or remove state")
+		t.Fatal("unreadable instance stop must not signal processes or remove state")
 	}
 }
 

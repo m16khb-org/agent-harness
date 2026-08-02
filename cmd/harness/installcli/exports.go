@@ -12,14 +12,6 @@ func RunInstall(args []string) error {
 	return runInstall(args)
 }
 
-func RunInstallNative(args []string) error {
-	return runInstallNative(args)
-}
-
-func RunInstallCommand(commandName string, args []string) error {
-	return runInstallCommand(commandName, args)
-}
-
 func ValidateInteractiveInput(stdin *os.File) error {
 	return validateInteractiveInstallInput(stdin)
 }

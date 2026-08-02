@@ -36,7 +36,7 @@ func SelfVerifyStepRerunCommand(label string) (string, bool) {
 	case "step budget baseline":
 		return "tmp_state=\"$(mktemp -d)\" && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness self-verify --seed=100 --target-score=95 --save-state --state-key self-verify-budget-baseline --json && HARNESS_STATE_DIR=\"$tmp_state\" ./bin/agent-harness self-verify compare --baseline-key self-verify-budget-baseline --candidate-key self-verify-budget-baseline --json; rm -rf \"$tmp_state\"", true
 	case "install dry-run smoke":
-		return "tmp_home=\"$(mktemp -d)\" tmp_root=\"$(mktemp -d)\" && mkdir -p \"$tmp_root/skills/atomic-commit-push\" && printf -- '---\\nname: atomic-commit-push\\ndescription: smoke\\n---\\n' > \"$tmp_root/skills/atomic-commit-push/SKILL.md\" && HOME=\"$tmp_home\" CODEX_HOME=\"$tmp_home/.codex\" HARNESS_ROOT=\"$tmp_root\" ./bin/agent-harness install-native --dry-run --project-local --json; rm -rf \"$tmp_home\" \"$tmp_root\"", true
+		return "tmp_home=\"$(mktemp -d)\" tmp_root=\"$(mktemp -d)\" && mkdir -p \"$tmp_root/skills/atomic-commit-push\" && printf -- '---\\nname: atomic-commit-push\\ndescription: smoke\\n---\\n' > \"$tmp_root/skills/atomic-commit-push/SKILL.md\" && HOME=\"$tmp_home\" CODEX_HOME=\"$tmp_home/.codex\" HARNESS_ROOT=\"$tmp_root\" ./bin/agent-harness install --dry-run --project-local --json; rm -rf \"$tmp_home\" \"$tmp_root\"", true
 	case "command policy smoke":
 		return "./bin/agent-harness policy check --workspace-root \"$PWD\" --cwd \"$PWD\" --json -- git status --short", true
 	case "command audit smoke":
@@ -56,7 +56,7 @@ func SelfVerifyStepRerunCommand(label string) (string, bool) {
 	case "preflight fuzz":
 		return "./bin/agent-harness preflight --json \"$PWD\"", true
 	case "native integration":
-		return "./scripts/install-native.sh && ./bin/agent-harness install-native --dry-run --json", true
+		return "./scripts/install-native.sh && ./bin/agent-harness install --dry-run --json", true
 	case "redaction audit", "QA gate", "harness invariants":
 		return "go test ./cmd/harness -run Test -count=1", true
 	default:

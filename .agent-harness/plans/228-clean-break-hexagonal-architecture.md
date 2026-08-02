@@ -189,7 +189,7 @@ var ErrInvalidState = errors.New("invalid state")
 The coordinator-only command is:
 
 ```bash
-scripts/verify-child-host-smoke.sh \
+/absolute/canonical/coordinator/worktree/scripts/verify-child-host-smoke.sh \
   --issue 230 \
   --source-root /Users/m16khb/Workspace/agent-harness \
   --child-root /absolute/canonical/child/worktree \

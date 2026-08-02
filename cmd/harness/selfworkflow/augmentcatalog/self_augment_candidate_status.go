@@ -85,7 +85,7 @@ func candidateSatisfactionRules() []candidateSatisfactionRule {
 			return evidenceWhen(signals.HasGeniusMermaidLint, "QA gate lints Mermaid fences using GENIUS_THINK quote/<br/> rules and repo diagrams were normalized")
 		}},
 		{"install-dry-run-mode", func(signals SelfAugmentRepoSignals) []string {
-			return evidenceWhen(signals.HasInstallDryRunMode, "install-native supports --dry-run planning with no filesystem writes and adapter-level coverage")
+			return evidenceWhen(signals.HasInstallDryRunMode, "install supports --dry-run planning with no filesystem writes and adapter-level coverage")
 		}},
 		{"cli-mcp-adapter-split", func(signals SelfAugmentRepoSignals) []string {
 			return evidenceWhen(signals.HasCLIAdapterSplit && signals.HasMCPAdapterCatalog, "CLI usage lives in internal/adapter/cli", "MCP adapter-owned tool descriptors live in internal/adapter/mcp")

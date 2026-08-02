@@ -2,8 +2,11 @@ package harnessapp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -17,6 +20,7 @@ import (
 	"agent-harness/cmd/harness/qualitycli"
 	"agent-harness/internal/core"
 	"agent-harness/internal/port"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func TestCommandStepFacadeWrappers(t *testing.T) {
@@ -74,6 +78,9 @@ func TestAppAndRootCommandFacadeWrappers(t *testing.T) {
 	cmd := rootCommand()
 	if cmd.Version != version || len(cmd.Runners) == 0 {
 		t.Fatalf("root command = %#v", cmd)
+	}
+	if _, ok := cmd.Runners["install-native"]; ok {
+		t.Fatal("retired install-native alias remains routed")
 	}
 	if rootSubcommandErrorExitCode("unknown", errors.New("bad")) != 1 {
 		t.Fatal("default root subcommand exit code changed")
@@ -439,18 +446,23 @@ func TestRiskMCPAndIssueOpsPolicyFacadeWrappers(t *testing.T) {
 	if _, rpcErr := handleResourceRead(json.RawMessage(`{"uri":"unknown://resource"}`)); rpcErr == nil {
 		t.Fatal("unknown MCP resource should fail")
 	}
-	if result, rpcErr := handleRequest(rpcRequest{ID: json.RawMessage(`1`), Method: "initialize"}); rpcErr != nil || result == nil {
-		t.Fatalf("initialize result=%#v err=%#v", result, rpcErr)
+	serverConn, clientConn := net.Pipe()
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- serveMCPStreamContext(ctx, serverConn, serverConn, io.Discard) }()
+	client := mcp.NewClient(&mcp.Implementation{Name: "harnessapp-facade-test", Version: "1"}, nil)
+	session, err := client.Connect(ctx, &mcp.IOTransport{Reader: clientConn, Writer: clientConn}, nil)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, rpcErr := handleRequest(rpcRequest{ID: json.RawMessage(`1`), Method: "unknown"}); rpcErr == nil {
-		t.Fatal("unknown MCP request should fail")
+	tools, err := session.ListTools(ctx, nil)
+	if err != nil || len(tools.Tools) == 0 {
+		t.Fatalf("serveMCPStream tool listing failed: tools=%#v err=%v", tools, err)
 	}
-	var out bytes.Buffer
-	if err := serveMCPStream(strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize"}`+"\n"), &out, &bytes.Buffer{}); err != nil || !strings.Contains(out.String(), "serverInfo") {
-		t.Fatalf("serveMCPStream out=%q err=%v", out.String(), err)
-	}
-	writeRPCResult(json.RawMessage(`1`), map[string]any{"ok": true})
-	writeRPCError(json.RawMessage(`1`), -1, "bad", "data")
+	_ = session.Close()
+	cancel()
+	_ = clientConn.Close()
+	<-done
 }
 
 func TestCLIFacadeWrappers(t *testing.T) {
@@ -490,8 +502,6 @@ func TestCLIFacadeWrappers(t *testing.T) {
 	_ = runProjectDraftWikiSuggest([]string{"--repo", root, "--json"})
 
 	_ = runInstall([]string{"--help"})
-	_ = runInstallNative([]string{"--dry-run", "--json", "--skip-build"})
-	_ = runInstallCommand("install-native", []string{"--dry-run", "--json", "--skip-build"})
 	_ = validateInteractiveInstallInput(nil)
 	printInstallNativeResult(port.NativeInstallResult{OK: true})
 	_ = preferredShellRC(root)

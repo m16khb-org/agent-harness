@@ -112,7 +112,7 @@ func TestPolicyStateMCPDoesNotHandleRetiredMigration(t *testing.T) {
 func TestHandlePolicyStateMCPToolCallCoversErrorsAndUnknownTool(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	prune := handlePolicyStateMCPToolCall(MCPToolCall{Name: "state_prune", Arguments: map[string]any{"max_age": "not-a-duration"}})
-	if !prune.Handled || prune.Err == nil || prune.Err.Code != -32602 || prune.Err.Message != "State prune failed" || !strings.Contains(prune.Err.Data.(string), "invalid max_age") {
+	if !prune.Handled || prune.Err == nil || prune.Err.Code != -32602 || prune.Err.Message != "State prune failed" || !strings.Contains(string(prune.Err.Data), "invalid max_age") {
 		t.Fatalf("unexpected state_prune error outcome: %#v", prune)
 	}
 

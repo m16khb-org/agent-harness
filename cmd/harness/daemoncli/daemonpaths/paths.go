@@ -42,7 +42,7 @@ func Current() (Paths, error) {
 }
 
 func ReadPID(path string) int {
-	record, _, err := ReadInstance(path)
+	record, err := ReadInstance(path)
 	if err != nil {
 		return 0
 	}

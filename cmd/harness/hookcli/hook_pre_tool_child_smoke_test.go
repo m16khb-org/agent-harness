@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
@@ -66,13 +67,14 @@ func TestRunHookPreToolUseAdmitsChildSmokeFromInstalledHookArguments(t *testing.
 		t.Fatal(err)
 	}
 	command := fmt.Sprintf(
-		"scripts/verify-child-host-smoke.sh --issue 69 --source-root %s --child-root %s --head 0123456789012345678901234567890123456789 --remote-ref refs/heads/69-child-smoke --json-out %s --confirm-user-activation",
+		"%s --issue 69 --source-root %s --child-root %s --head 0123456789012345678901234567890123456789 --remote-ref refs/heads/69-child-smoke --json-out %s --confirm-user-activation",
+		script,
 		source,
 		child.path,
 		filepath.Join(outputDir, "receipt.json"),
 	)
 	payload, err := json.Marshal(map[string]any{
-		"cwd": source, "tool_name": "Bash",
+		"cwd": source, "tool_name": "exec_command",
 		"tool_input": map[string]any{"command": command},
 	})
 	if err != nil {
@@ -85,6 +87,22 @@ func TestRunHookPreToolUseAdmitsChildSmokeFromInstalledHookArguments(t *testing.
 	})
 	if got["decision"] != "allow" {
 		t.Fatalf("installed hook arguments must admit the exact coordinator child smoke: %+v", got)
+	}
+	unsafeCommand := strings.Replace(command, script, filepath.Join(source, "scripts", "verify-child-host-smoke.sh"), 1)
+	unsafePayload, err := json.Marshal(map[string]any{
+		"cwd": source, "tool_name": "exec_command",
+		"tool_input": map[string]any{"command": unsafeCommand},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocked := runHookCapture(t, string(unsafePayload), func() error {
+		return runHookPreToolUse([]string{
+			"--host", "codex", "--enforce-worktree", "--json",
+		})
+	})
+	if blocked["decision"] != "block" {
+		t.Fatalf("source script must not be admitted from coordinator script authority: %+v", blocked)
 	}
 }
 

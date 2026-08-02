@@ -8,16 +8,7 @@ import (
 	"time"
 )
 
-func TestMCPSmokeInputAndExpectedMarkers(t *testing.T) {
-	input := MCPSmokeInput()
-	if got := len(splitLines(input)); got != 11 {
-		t.Fatalf("MCPSmokeInput line count = %d", got)
-	}
-	for _, want := range []string{"initialize", "tools/list", "harness://project-docs", "state_doctor"} {
-		if !strings.Contains(input, want) {
-			t.Fatalf("expected input to contain %q", want)
-		}
-	}
+func TestMCPSmokeExpectedMarkers(t *testing.T) {
 	markers := MCPSmokeExpectedMarkers()
 	if len(markers) == 0 || !MCPSmokeHasExpectedMarkers(strings.Join(markers, "\n")) {
 		t.Fatal("expected marker set to satisfy marker check")
@@ -39,10 +30,9 @@ func TestValidateMCPSmokeContract(t *testing.T) {
 		stdout string
 		want   string
 	}{
-		{name: "wrong count", stdout: `{"result":{}}`, want: "expected 11 MCP responses"},
-		{name: "bad json", stdout: strings.Repeat(`{"result":{}}`+"\n", 10) + `not json`, want: "invalid JSON"},
-		{name: "missing result", stdout: strings.Repeat(`{"result":{}}`+"\n", 10) + `{"error":{}}`, want: "has no result"},
-		{name: "missing markers", stdout: strings.Repeat(`{"result":{}}`+"\n", 11), want: "expected tool/resource"},
+		{name: "wrong count", stdout: `{}`, want: "expected 11 MCP SDK results"},
+		{name: "bad json", stdout: strings.Repeat(`{}`+"\n", 10) + `not json`, want: "invalid JSON"},
+		{name: "missing markers", stdout: strings.Repeat(`{}`+"\n", 11), want: "expected tool/resource"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			step := StepResult{OK: true, Stdout: tc.stdout}
@@ -69,12 +59,12 @@ func TestValidateMCPWithDepsRunsSmokeAndCleanup(t *testing.T) {
 			stopCalled = label == "MCP daemon stop" && name == "bin" && len(args) == 3
 			return StepResult{OK: true}
 		},
-		RunCommandStepEnvWithBudget: func(dir, label string, timeout time.Duration, stdin string, env []string, outputBudget int, name string, args ...string) StepResult {
-			if dir != "/repo" || label != "MCP smoke" || name != "bin" || len(args) != 1 || args[0] != "mcp" {
+		RunSDKSmoke: func(dir, name string, env []string, timeout time.Duration) StepResult {
+			if dir != "/repo" || name != "bin" {
 				return StepResult{OK: false, Error: "unexpected command"}
 			}
-			if !strings.Contains(stdin, "tools/list") || !containsEnv(env, "HARNESS_MCP_DIRECT=1") {
-				return StepResult{OK: false, Error: "missing smoke input/env"}
+			if !containsEnv(env, "HARNESS_MCP_DIRECT=1") {
+				return StepResult{OK: false, Error: "missing direct SDK env"}
 			}
 			return StepResult{OK: true, Stdout: validMCPSmokeStdout()}
 		},
@@ -116,7 +106,7 @@ func TestValidateMCPWithDepsFailurePaths(t *testing.T) {
 		RunCommandStepEnv: func(string, string, time.Duration, string, []string, string, ...string) StepResult {
 			return StepResult{OK: true}
 		},
-		RunCommandStepEnvWithBudget: func(string, string, time.Duration, string, []string, int, string, ...string) StepResult {
+		RunSDKSmoke: func(string, string, []string, time.Duration) StepResult {
 			return StepResult{OK: false, Error: "mcp failed"}
 		},
 	})
@@ -127,7 +117,7 @@ func TestValidateMCPWithDepsFailurePaths(t *testing.T) {
 
 func TestDepsDefaultsAndSmallHelpers(t *testing.T) {
 	deps := (MCPValidationDeps{}).withDefaults()
-	if deps.MkdirTemp == nil || deps.RemoveAll == nil || deps.RunCommandStepEnv == nil || deps.RunCommandStepEnvWithBudget == nil {
+	if deps.MkdirTemp == nil || deps.RemoveAll == nil || deps.RunCommandStepEnv == nil || deps.RunSDKSmoke == nil {
 		t.Fatal("defaults should populate dependencies")
 	}
 	step := failedStep("label", errors.New("boom"))
@@ -147,7 +137,7 @@ func validMCPSmokeStdout() string {
 	markers := strings.Join(MCPSmokeExpectedMarkers(), " ") + strings.Repeat("x", 800)
 	var b strings.Builder
 	for i := 1; i <= 11; i++ {
-		fmt.Fprintf(&b, `{"result":{"id":%d,"text":%q}}`+"\n", i, markers)
+		fmt.Fprintf(&b, `{"id":%d,"text":%q}`+"\n", i, markers)
 	}
 	return b.String()
 }

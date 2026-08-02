@@ -407,10 +407,25 @@ func TestChildHostSmokeCompleteFakeTwoHostPass(t *testing.T) {
 	}
 }
 
+func TestChildHostSmokeRestoresWithChildInstallerWhenSourceInstallerUsesRetiredCLI(t *testing.T) {
+	result := runChildHostSmokeFixture(t, childSmokeFixture{scenario: "source-installer-retired-cli", confirm: true})
+	if result.ExitCode != 0 || result.Receipt.Verdict != "pass" || result.RestoreCalls != 1 || result.AfterMutationCalls != 0 || result.LockExists {
+		t.Fatalf("cross-version restore failed: result=%+v output=%s", result, result.Output)
+	}
+}
+
 func TestChildHostSmokeAlwaysRestoresBeforeReturningFailure(t *testing.T) {
 	result := runChildHostSmokeFixture(t, childSmokeFixture{scenario: "claude-session-failure", confirm: true})
 	if result.ExitCode == 0 || result.Receipt.Verdict != "fail" || result.RestoreCalls != 1 || result.AfterMutationCalls != 0 || result.LockExists {
 		t.Fatalf("unsafe failure receipt: %+v output=%s", result, result.Output)
+	}
+}
+
+func TestChildHostSmokeReportsRestoreStageStatuses(t *testing.T) {
+	result := runChildHostSmokeFixture(t, childSmokeFixture{scenario: "restore-failure", confirm: true})
+	want := "restore stages failed: install=19 snapshot=0 identity=0 mcp=0 digest=0 contract=0 exact=0"
+	if !strings.Contains(result.Output, want) {
+		t.Fatalf("missing bounded restore diagnostics %q: result=%+v output=%s", want, result, result.Output)
 	}
 }
 
@@ -551,6 +566,7 @@ func runChildHostSmokeFixture(t *testing.T, fixture childSmokeFixture) childSmok
 		"CODEX_HOME="+codexHome,
 		"HARNESS_STATE_DIR="+stateRoot,
 		"FAKE_CHILD_BINARY_TEMPLATE="+template,
+		"FAKE_SOURCE_ROOT="+sourceRoot,
 		"FAKE_CHILD_ROOT="+childRoot,
 		"FAKE_HEAD="+localHead,
 		"FAKE_REMOTE_HEAD="+remoteHead,
@@ -654,7 +670,10 @@ func fakeInstallScript(identity string) string {
 	return fmt.Sprintf(`#!/usr/bin/env bash
 set -euo pipefail
 identity=%q
-if [[ %q == source ]]; then
+if [[ "$identity" == source && "${FAKE_SCENARIO:-}" == source-installer-retired-cli ]]; then
+  exit 21
+fi
+if [[ "$HARNESS_ROOT" == "$FAKE_SOURCE_ROOT" ]]; then
   printf 'source_restore\n' >>"$FAKE_CALL_LOG"
   if [[ "${FAKE_SCENARIO:-}" == signal-during-restore ]]; then kill -TERM "$PPID"; fi
   [[ "${FAKE_SCENARIO:-}" != restore-failure ]] || exit 19
@@ -690,7 +709,7 @@ with open(os.path.join(home, ".claude", "settings.json"), "w", encoding="utf-8")
     json.dump(claude_hooks, handle, separators=(",", ":"))
     handle.write("\n")
 PY
-if [[ %q == child && "${FAKE_SCENARIO:-}" == activated-codex-hook-drift ]]; then
+if [[ "$HARNESS_ROOT" == "$FAKE_CHILD_ROOT" && "${FAKE_SCENARIO:-}" == activated-codex-hook-drift ]]; then
   "$REAL_PYTHON" - "$CODEX_HOME/hooks.json" <<'PY'
 import json
 import sys
@@ -705,21 +724,21 @@ with open(path, "w", encoding="utf-8") as handle:
 PY
 fi
 chmod 0600 "$CODEX_HOME/config.toml" "$CODEX_HOME/hooks.json" "$HOME/.claude.json" "$HOME/.claude/settings.json"
-if [[ %q == source && "${FAKE_SCENARIO:-}" == restore-missing-file ]]; then
+if [[ "$HARNESS_ROOT" == "$FAKE_SOURCE_ROOT" && "${FAKE_SCENARIO:-}" == restore-missing-file ]]; then
   rm "$CODEX_HOME/hooks.json"
   exit 20
 fi
-if [[ %q == source && "${FAKE_SCENARIO:-}" == restore-raw-digest-drift ]]; then
+if [[ "$HARNESS_ROOT" == "$FAKE_SOURCE_ROOT" && "${FAKE_SCENARIO:-}" == restore-raw-digest-drift ]]; then
   printf ' ' >>"$CODEX_HOME/config.toml"
 fi
-if [[ %q == child && "${FAKE_SCENARIO:-}" == activated-digest-missing ]]; then
+if [[ "$HARNESS_ROOT" == "$FAKE_CHILD_ROOT" && "${FAKE_SCENARIO:-}" == activated-digest-missing ]]; then
   rm -f "$CODEX_HOME/hooks.json"
 fi
-if [[ %q == child && "${FAKE_SCENARIO:-}" == activated-binary-mismatch ]]; then
+if [[ "$HARNESS_ROOT" == "$FAKE_CHILD_ROOT" && "${FAKE_SCENARIO:-}" == activated-binary-mismatch ]]; then
   printf 'drift\n' >>"$HARNESS_ROOT/bin/agent-harness"
 fi
 printf '{"ok":true}\n'
-`, identity, identity, identity, identity, identity, identity, identity)
+`, identity)
 }
 
 func fakeHostScript(host string) string {

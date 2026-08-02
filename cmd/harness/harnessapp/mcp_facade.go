@@ -9,10 +9,9 @@ import (
 	"agent-harness/cmd/harness/mcpcli"
 	"agent-harness/cmd/harness/selfworkflow"
 	"agent-harness/internal/core/issueops"
+	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 )
 
-type rpcRequest = mcpcli.RPCRequest
-type rpcError = mcpcli.RPCError
 type mcpToolCall = mcpcli.MCPToolCall
 type mcpToolOutcome = mcpcli.MCPToolOutcome
 
@@ -65,19 +64,14 @@ func mcpResources() []map[string]any {
 	return mcpcli.MCPResources()
 }
 
-func handleToolCall(params json.RawMessage) (any, *rpcError) {
+func handleToolCall(params json.RawMessage) (any, *jsonrpc.Error) {
 	configureMCPCLI()
 	return mcpcli.HandleToolCallWithDependencies(params, issueOpsMCPDependencies())
 }
 
-func handleResourceRead(params json.RawMessage) (any, *rpcError) {
+func handleResourceRead(params json.RawMessage) (any, *jsonrpc.Error) {
 	configureMCPCLI()
 	return mcpcli.HandleResourceRead(params)
-}
-
-func handleRequest(req rpcRequest) (any, *rpcError) {
-	configureMCPCLI()
-	return mcpcli.HandleRequestWithDependencies(req, issueOpsMCPDependencies())
 }
 
 func issueOpsMCPDependencies() mcpcli.MCPDependencies {
@@ -94,12 +88,4 @@ func issueOpsMCPDependencies() mcpcli.MCPDependencies {
 
 func textResult(text string) map[string]any {
 	return mcpcli.TextResult(text)
-}
-
-func writeRPCResult(id json.RawMessage, result any) {
-	mcpcli.WriteRPCResult(id, result)
-}
-
-func writeRPCError(id json.RawMessage, code int, message string, data any) {
-	mcpcli.WriteRPCError(id, code, message, data)
 }

@@ -5,6 +5,7 @@ import (
 
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
+	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 )
 
 type MCPToolCall struct {
@@ -18,7 +19,7 @@ type MCPToolOutcome struct {
 	IsError bool
 	Result  any
 	Payload any
-	Err     *RPCError
+	Err     *jsonrpc.Error
 }
 
 // MCPDependencies는 server 생성 시 고정된다. 요청 간 package-global dependency
@@ -54,24 +55,32 @@ func mcpToolDirect(result any) MCPToolOutcome {
 	return MCPToolOutcome{Handled: true, Direct: true, Result: result}
 }
 
-func mcpToolFailure(err *RPCError) MCPToolOutcome {
+func mcpToolFailure(err *jsonrpc.Error) MCPToolOutcome {
 	return MCPToolOutcome{Handled: true, Err: err}
 }
 
-func HandleToolCall(params json.RawMessage) (any, *RPCError) {
+func newProtocolError(code int64, message string, data any) *jsonrpc.Error {
+	var raw json.RawMessage
+	if data != nil {
+		raw, _ = json.Marshal(data)
+	}
+	return &jsonrpc.Error{Code: code, Message: message, Data: raw}
+}
+
+func HandleToolCall(params json.RawMessage) (any, *jsonrpc.Error) {
 	return HandleToolCallWithDependencies(params, MCPDependencies{})
 }
 
 // HandleToolCallWithReleaseHandler keeps the server dependency immutable per
 // call instead of caching a composition-root handler in package state.
-func HandleToolCallWithReleaseHandler(params json.RawMessage, release issueops.ExecutionReleaseHandler) (any, *RPCError) {
+func HandleToolCallWithReleaseHandler(params json.RawMessage, release issueops.ExecutionReleaseHandler) (any, *jsonrpc.Error) {
 	return HandleToolCallWithDependencies(params, MCPDependencies{Release: release})
 }
 
-func HandleToolCallWithDependencies(params json.RawMessage, deps MCPDependencies) (any, *RPCError) {
+func HandleToolCallWithDependencies(params json.RawMessage, deps MCPDependencies) (any, *jsonrpc.Error) {
 	var call MCPToolCall
 	if err := json.Unmarshal(params, &call); err != nil {
-		return nil, &RPCError{Code: -32602, Message: "Invalid params", Data: err.Error()}
+		return nil, newProtocolError(-32602, "Invalid params", err.Error())
 	}
 	for _, handler := range []func(MCPToolCall) MCPToolOutcome{
 		handleProjectMCPToolCall,
@@ -99,7 +108,7 @@ func HandleToolCallWithDependencies(params json.RawMessage, deps MCPDependencies
 		}
 		return TextResult(string(b)), nil
 	}
-	return nil, &RPCError{Code: -32602, Message: "Unknown tool", Data: call.Name}
+	return nil, newProtocolError(-32602, "Unknown tool", call.Name)
 }
 
 func TextResult(text string) map[string]any {

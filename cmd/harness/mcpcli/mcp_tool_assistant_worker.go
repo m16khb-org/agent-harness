@@ -19,7 +19,7 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 			Staged:   argmap.Bool(call.Arguments, "staged"),
 		})
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32000, Message: "commit_suggest failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32000, "commit_suggest failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "lint_diagnose":
@@ -28,13 +28,13 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 			CommandArgv: argmap.StringSlice(call.Arguments, "command_argv"),
 		})
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32000, Message: "lint_diagnose failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32000, "lint_diagnose failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "web_fetch_resilient":
 		timeout, err := time.ParseDuration(argmap.StringDefault(call.Arguments, "timeout", "30s"))
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32602, Message: "invalid timeout", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32602, "invalid timeout", err.Error()))
 		}
 		result, err := webfetch.Fetch(context.Background(), webfetch.Request{
 			URL:      argmap.String(call.Arguments, "url"),
@@ -42,7 +42,7 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 			MaxChars: argmap.Int(call.Arguments, "max_chars", 0),
 		})
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32000, Message: "web_fetch_resilient failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32000, "web_fetch_resilient failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "contract_schema", "contract_check":
@@ -50,7 +50,7 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	case "worker_enqueue":
 		result, err := core.EnqueueWorkerJob(argmap.String(call.Arguments, "kind"), argmap.String(call.Arguments, "payload"))
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32000, Message: "worker_enqueue failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32000, "worker_enqueue failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "worker_run_read_only":
@@ -66,25 +66,25 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 			},
 		)
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32000, Message: "worker_run_read_only failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32000, "worker_run_read_only failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "worker_status":
 		result, err := core.ReadWorkerJob(argmap.String(call.Arguments, "id"))
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32000, Message: "worker_status failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32000, "worker_status failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "worker_list":
 		result, err := core.ListWorkerJobs()
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32000, Message: "worker_list failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32000, "worker_list failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "worker_cancel":
 		result, err := core.CancelWorkerJob(argmap.String(call.Arguments, "id"))
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32000, Message: "worker_cancel failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32000, "worker_cancel failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	default:

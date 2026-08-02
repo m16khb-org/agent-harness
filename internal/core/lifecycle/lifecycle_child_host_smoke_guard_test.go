@@ -57,6 +57,13 @@ func TestCoordinatorChildHostSmokeAdmitsExactCommandWithoutExplicitSourceCheckou
 	if err := os.WriteFile(script, []byte("#!/usr/bin/env bash\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	sourceScript := filepath.Join(source, "scripts", "verify-child-host-smoke.sh")
+	if err := os.MkdirAll(filepath.Dir(sourceScript), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sourceScript, []byte("#!/usr/bin/env bash\nexit 19\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	outputDir := filepath.Join(t.TempDir(), "private")
 	if err := os.Mkdir(outputDir, 0o700); err != nil {
 		t.Fatal(err)
@@ -65,9 +72,11 @@ func TestCoordinatorChildHostSmokeAdmitsExactCommandWithoutExplicitSourceCheckou
 	childArg := canonicalSmokeTestPath(t, childRoot)
 	coordinatorArg := canonicalSmokeTestPath(t, coordinatorRoot)
 	outputDirArg := canonicalSmokeTestPath(t, outputDir)
+	scriptArg := filepath.Join(coordinatorArg, "scripts", "verify-child-host-smoke.sh")
 
 	command := fmt.Sprintf(
-		"scripts/verify-child-host-smoke.sh --issue 69 --source-root %s --child-root %s --head 0123456789012345678901234567890123456789 --remote-ref refs/heads/69-v1-observation --json-out %s --confirm-user-activation",
+		"%s --issue 69 --source-root %s --child-root %s --head 0123456789012345678901234567890123456789 --remote-ref refs/heads/69-v1-observation --json-out %s --confirm-user-activation",
+		scriptArg,
 		sourceArg,
 		childArg,
 		filepath.Join(outputDirArg, "receipt.json"),
@@ -84,6 +93,13 @@ func TestCoordinatorChildHostSmokeAdmitsExactCommandWithoutExplicitSourceCheckou
 	}
 	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
 		t.Fatalf("exact coordinator smoke must bypass the released child mutation fence: %+v", got)
+	}
+	sourceScriptCommand := strings.Replace(command, scriptArg, canonicalSmokeTestPath(t, sourceScript), 1)
+	sourceExecution := req
+	sourceExecution.Command = sourceScriptCommand
+	sourceExecution.ToolInput = map[string]any{"command": sourceScriptCommand}
+	if exactCoordinatorChildHostSmoke(sourceExecution) {
+		t.Fatal("source script must not be trusted when the coordinator script owns smoke authority")
 	}
 	sourceRepo := req
 	sourceRepo.Repo = sourceArg
@@ -161,9 +177,12 @@ func TestCoordinatorChildHostSmokeRejectsNearMisses(t *testing.T) {
 	}
 	sourceArg := canonicalSmokeTestPath(t, source)
 	childArg := canonicalSmokeTestPath(t, childRoot)
+	coordinatorArg := canonicalSmokeTestPath(t, coordinatorRoot)
 	output := filepath.Join(canonicalSmokeTestPath(t, outputDir), "receipt.json")
+	scriptArg := filepath.Join(coordinatorArg, "scripts", "verify-child-host-smoke.sh")
 	exact := fmt.Sprintf(
-		"scripts/verify-child-host-smoke.sh --issue 69 --source-root %s --child-root %s --head 0123456789012345678901234567890123456789 --remote-ref refs/heads/69-v1-observation --json-out %s --confirm-user-activation",
+		"%s --issue 69 --source-root %s --child-root %s --head 0123456789012345678901234567890123456789 --remote-ref refs/heads/69-v1-observation --json-out %s --confirm-user-activation",
+		scriptArg,
 		sourceArg,
 		childArg,
 		output,

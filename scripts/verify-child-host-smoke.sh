@@ -112,7 +112,7 @@ else:
         raise SystemExit(1)
 PY
 
-[[ -x "$source_root/scripts/install-native.sh" && -x "$source_root/bin/agent-harness" ]] || fail_before_mutation 'source installer and binary must exist'
+[[ -x "$source_root/bin/agent-harness" ]] || fail_before_mutation 'source binary must exist'
 [[ -x "$child_root/scripts/install-native.sh" ]] || fail_before_mutation 'child installer must exist'
 
 temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/agent-harness-child-smoke.XXXXXX")"
@@ -714,7 +714,7 @@ finish() {
   local verdict="$requested_verdict"
   restoring=1
   set +e
-  HARNESS_ROOT="$source_root" "$source_root/scripts/install-native.sh" --skip-build --path-mode=skip --json >"$temporary_root/restore-install.json" 2>"$temporary_root/restore-install.err"
+  HARNESS_ROOT="$source_root" "$child_root/scripts/install-native.sh" --skip-build --path-mode=skip --json >"$temporary_root/restore-install.json" 2>"$temporary_root/restore-install.err"
   local restore_install_status=$?
   restore_activation_snapshot "$activation_snapshot"
   local restore_snapshot_status=$?
@@ -726,7 +726,12 @@ finish() {
   local restore_digest_status=$?
   validate_activation_digest "$restore_file" "$source_root" >/dev/null 2>&1
   local restore_digest_contract_status=$?
-  if ((restore_install_status != 0 || restore_snapshot_status != 0 || restore_identity_status != 0 || restore_mcp_status != 0 || restore_digest_status != 0 || restore_digest_contract_status != 0)) || ! cmp -s "$before_file" "$restore_file"; then
+  local exact_restore_status=0
+  cmp -s "$before_file" "$restore_file" || exact_restore_status=$?
+  if ((restore_install_status != 0 || restore_snapshot_status != 0 || restore_identity_status != 0 || restore_mcp_status != 0 || restore_digest_status != 0 || restore_digest_contract_status != 0 || exact_restore_status != 0)); then
+    printf 'child-host-smoke: restore stages failed: install=%d snapshot=%d identity=%d mcp=%d digest=%d contract=%d exact=%d\n' \
+      "$restore_install_status" "$restore_snapshot_status" "$restore_identity_status" "$restore_mcp_status" \
+      "$restore_digest_status" "$restore_digest_contract_status" "$exact_restore_status" >&2
     verdict="fail"
     return_code=1
   fi
@@ -737,6 +742,7 @@ finish() {
   if rmdir "$lock_path" 2>/dev/null; then
     lock_held=0
   else
+    printf 'child-host-smoke: activation lock release failed\n' >&2
     verdict="fail"
     return_code=1
   fi
