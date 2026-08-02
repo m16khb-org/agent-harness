@@ -736,6 +736,7 @@ finish() {
     return_code=1
   fi
   if ((pending_signal != 0)); then
+    printf 'child-host-smoke: pending signal during restore: %d\n' "$pending_signal" >&2
     verdict="fail"
     return_code="$pending_signal"
   fi

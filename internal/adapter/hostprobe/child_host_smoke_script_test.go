@@ -429,6 +429,14 @@ func TestChildHostSmokeReportsRestoreStageStatuses(t *testing.T) {
 	}
 }
 
+func TestChildHostSmokeReportsPendingRestoreSignal(t *testing.T) {
+	result := runChildHostSmokeFixture(t, childSmokeFixture{scenario: "signal-during-restore", confirm: true})
+	want := "pending signal during restore: 143"
+	if !strings.Contains(result.Output, want) {
+		t.Fatalf("missing bounded restore signal diagnostic %q: result=%+v output=%s", want, result, result.Output)
+	}
+}
+
 func TestChildHostSmokeFailsClosedOnPostActivationDrift(t *testing.T) {
 	for _, scenario := range []string{
 		"codex-version-drift",
