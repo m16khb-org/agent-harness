@@ -191,6 +191,7 @@ type stableV1ChildCycle struct {
 }
 type stableV1Execution struct {
 	Mode           string                  `json:"mode"`
+	Selection      *stableV1Selection      `json:"selection,omitempty"`
 	Workspace      stableV1Workspace       `json:"workspace"`
 	Lease          stableV1Lease           `json:"lease"`
 	Orca           *stableV1OrcaBinding    `json:"orca,omitempty"`
@@ -198,6 +199,18 @@ type stableV1Execution struct {
 	Completion     *stableV1Completion     `json:"completion,omitempty"`
 	Failure        *stableV1Failure        `json:"failure,omitempty"`
 	SyncBaseEvents []stableV1SyncBaseEvent `json:"sync_base_events,omitempty"`
+}
+type stableV1Selection struct {
+	RequestedMode        string `json:"requested_mode"`
+	ResolvedMode         string `json:"resolved_mode"`
+	ProbeAttempted       bool   `json:"probe_attempted"`
+	ProbeAvailable       bool   `json:"probe_available"`
+	ProbeReady           bool   `json:"probe_ready"`
+	ProbeCode            string `json:"probe_code,omitempty"`
+	FallbackCode         string `json:"fallback_code,omitempty"`
+	ReadinessFingerprint string `json:"readiness_fingerprint"`
+	SelectedAt           string `json:"selected_at"`
+	ExplicitDirectReason string `json:"explicit_direct_reason,omitempty"`
 }
 type stableV1Workspace struct {
 	SourceRoot     string `json:"source_root"`

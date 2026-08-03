@@ -11,7 +11,16 @@ import (
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops"
+	preparationdomain "agent-harness/internal/domain/issueopspreparation"
 )
+
+func TestIssueOpsMCPErrorPayloadPreservesPreparationDenialCode(t *testing.T) {
+	err := &preparationdomain.Denial{Reason: preparationdomain.DenialDirectReasonRequired, Cause: errors.New("explicit direct mode requires a reason")}
+	payload := issueOpsMCPErrorPayload(err)
+	if payload["code"] != string(preparationdomain.DenialDirectReasonRequired) {
+		t.Fatalf("payload=%#v", payload)
+	}
+}
 
 func TestMCPExecutionDependenciesPropagatePublicationReconcileWithoutInvocation(t *testing.T) {
 	invoked := 0
@@ -135,12 +144,16 @@ func TestExecutionActionRequestFromMCPPreservesAutoMode(t *testing.T) {
 	}}
 	req, err := executionActionRequestFromMCPWithAncestry(map[string]any{
 		"action": "prepare", "id": "io-aaaaaaaaaaaa", "mode": "auto",
+		"direct_reason": "manual recovery", "expected_readiness_fingerprint": strings.Repeat("a", 64),
 	}, wantAncestry)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if req.Action != "prepare" || req.ID != "io-aaaaaaaaaaaa" || req.Mode != "auto" {
 		t.Fatalf("MCP auto prepare request drifted: %#v", req)
+	}
+	if req.DirectReason != "manual recovery" || req.ExpectedReadinessFingerprint != strings.Repeat("a", 64) {
+		t.Fatalf("MCP selection fields drifted: %#v", req)
 	}
 	if len(req.Actor.ProcessAncestry) != 1 || req.Actor.ProcessAncestry[0] != wantAncestry[0] {
 		t.Fatalf("MCP execution adapter did not preserve observed process ancestry: %#v", req.Actor.ProcessAncestry)

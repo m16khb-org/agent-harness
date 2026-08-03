@@ -156,10 +156,19 @@ func prepareHookExecutionFixture(t *testing.T, mode, host string) (string, issue
 		},
 		NewOperationID: func() (string, error) { return "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", nil },
 	})
-	result, err := handler(context.Background(), stateRoot, issueops.ExecutionPrepareRequest{
+	request := issueops.ExecutionPrepareRequest{
 		ID: record.ID, Mode: mode, Actor: actor, CWD: repo,
-		OwnerHost: host, OwnerModel: "test-model", OwnerEffort: "high", Confirm: true,
-	}, issueops.ExecutionPrepareInvocation{})
+		OwnerHost: host, OwnerModel: "test-model", OwnerEffort: "high",
+	}
+	if mode == "direct" {
+		request.DirectReason = "hook authority test"
+	}
+	preview, err := handler(context.Background(), stateRoot, request, issueops.ExecutionPrepareInvocation{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.ExpectedReadinessFingerprint, request.Confirm = preview.ReadinessFingerprint, true
+	result, err := handler(context.Background(), stateRoot, request, issueops.ExecutionPrepareInvocation{})
 	if err != nil {
 		t.Fatal(err)
 	}

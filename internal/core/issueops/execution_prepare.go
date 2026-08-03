@@ -18,33 +18,42 @@ import (
 const ExecutionModeAuto = "auto"
 
 type ExecutionPrepareRequest struct {
-	ID          string               `json:"id"`
-	Mode        string               `json:"mode"`
-	Actor       issueops.NativeActor `json:"actor"`
-	CWD         string               `json:"cwd"`
-	OwnerHost   string               `json:"owner_host,omitempty"`
-	OwnerModel  string               `json:"owner_model,omitempty"`
-	OwnerEffort string               `json:"owner_effort,omitempty"`
-	Confirm     bool                 `json:"confirm,omitempty"`
+	ID                           string               `json:"id"`
+	Mode                         string               `json:"mode"`
+	Actor                        issueops.NativeActor `json:"actor"`
+	CWD                          string               `json:"cwd"`
+	OwnerHost                    string               `json:"owner_host,omitempty"`
+	OwnerModel                   string               `json:"owner_model,omitempty"`
+	OwnerEffort                  string               `json:"owner_effort,omitempty"`
+	IssueSnapshotFile            string               `json:"issue_snapshot_file,omitempty"`
+	DirectReason                 string               `json:"direct_reason,omitempty"`
+	ExpectedReadinessFingerprint string               `json:"expected_readiness_fingerprint,omitempty"`
+	Confirm                      bool                 `json:"confirm,omitempty"`
 }
 
 type ExecutionPrepareResult struct {
-	OK                  bool                `json:"ok"`
-	ID                  string              `json:"id"`
-	Preview             bool                `json:"preview,omitempty"`
-	RequestedMode       string              `json:"requested_mode"`
-	ResolvedMode        string              `json:"resolved_mode"`
-	FallbackCode        string              `json:"fallback_code,omitempty"`
-	Workspace           issueops.Workspace  `json:"workspace"`
-	Execution           *issueops.Execution `json:"execution,omitempty"`
-	ClaimTokenPath      string              `json:"claim_token_path,omitempty"`
-	IssueBodySHA256     string              `json:"issue_body_sha256,omitempty"`
-	ContextPacketPath   string              `json:"context_packet_path,omitempty"`
-	ContextPacketSHA256 string              `json:"context_packet_sha256,omitempty"`
-	OwnerPromptPath     string              `json:"owner_prompt_path,omitempty"`
-	OwnerPromptSHA256   string              `json:"owner_prompt_sha256,omitempty"`
-	IssueSnapshotSource string              `json:"issue_snapshot_source,omitempty"`
-	NextCommand         string              `json:"next_command,omitempty"`
+	OK                   bool                `json:"ok"`
+	ID                   string              `json:"id"`
+	Preview              bool                `json:"preview,omitempty"`
+	RequestedMode        string              `json:"requested_mode"`
+	ResolvedMode         string              `json:"resolved_mode"`
+	FallbackCode         string              `json:"fallback_code,omitempty"`
+	ProbeAttempted       bool                `json:"probe_attempted"`
+	ProbeAvailable       bool                `json:"probe_available"`
+	ProbeReady           bool                `json:"probe_ready"`
+	ProbeCode            string              `json:"probe_code,omitempty"`
+	ReadinessFingerprint string              `json:"readiness_fingerprint,omitempty"`
+	ExplicitDirectReason string              `json:"explicit_direct_reason,omitempty"`
+	Workspace            issueops.Workspace  `json:"workspace"`
+	Execution            *issueops.Execution `json:"execution,omitempty"`
+	ClaimTokenPath       string              `json:"claim_token_path,omitempty"`
+	IssueBodySHA256      string              `json:"issue_body_sha256,omitempty"`
+	ContextPacketPath    string              `json:"context_packet_path,omitempty"`
+	ContextPacketSHA256  string              `json:"context_packet_sha256,omitempty"`
+	OwnerPromptPath      string              `json:"owner_prompt_path,omitempty"`
+	OwnerPromptSHA256    string              `json:"owner_prompt_sha256,omitempty"`
+	IssueSnapshotSource  string              `json:"issue_snapshot_source,omitempty"`
+	NextCommand          string              `json:"next_command,omitempty"`
 }
 
 // ensureOrcaBranchIsFree는 Orca가 워크트리를 만들기 전에 대상 브랜치 이름이
@@ -94,7 +103,7 @@ func ensureOrcaBranchIsFree(record issueops.IssueOpsRecord, branch string) error
 		}
 		return fmt.Errorf(
 			"branch %q already exists %s, so Orca cannot prepare this execution: Orca always creates a new branch, so it would take a different name (observed: a numeric suffix) and fail as worktree_branch_mismatch only after the worktree exists; "+
-				"use --mode direct, which adopts the existing branch, or %s",
+				"use --mode direct with an explicit --direct-reason, which adopts the existing branch, or %s",
 			branch, scope.where, scope.remedy)
 	}
 	return nil

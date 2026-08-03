@@ -17,11 +17,13 @@ func TestHandlerMapsEveryRequestAndResultField(t *testing.T) {
 	request := issueops.ExecutionPrepareRequest{
 		ID: "io-199", Mode: "orca",
 		Actor: model.NativeActor{Host: "codex", SessionID: "session-199", AgentID: "agent-199", SessionProcess: &process},
-		CWD:   "/repo", OwnerHost: "claude", OwnerModel: "claude-sonnet-5", OwnerEffort: "high", Confirm: true,
+		CWD:   "/repo", OwnerHost: "claude", OwnerModel: "claude-sonnet-5", OwnerEffort: "high", IssueSnapshotFile: "/private/gitlab-issue.json",
+		DirectReason: "manual recovery", ExpectedReadinessFingerprint: "fingerprint", Confirm: true,
 	}
 	execution := fullContractExecution()
 	service := &serviceFake{result: preparationcontract.Result{
 		OK: true, ID: request.ID, Preview: true, RequestedMode: "auto", ResolvedMode: "orca", FallbackCode: "fallback",
+		ProbeAttempted: true, ProbeAvailable: true, ProbeReady: true, ProbeCode: "ready", ReadinessFingerprint: "fingerprint", ExplicitDirectReason: "manual recovery",
 		Workspace: execution.Workspace, Execution: &execution,
 		ClaimTokenPath: "/tokens/199", IssueBodySHA256: "issue-sha", ContextPacketPath: "/packets/199",
 		ContextPacketSHA256: "packet-sha", OwnerPromptPath: "/prompts/199", OwnerPromptSHA256: "prompt-sha",
@@ -38,13 +40,15 @@ func TestHandlerMapsEveryRequestAndResultField(t *testing.T) {
 			Host: request.Actor.Host, SessionID: request.Actor.SessionID, AgentID: request.Actor.AgentID,
 			SessionProcess: &leasecontract.ProcessReceipt{PID: process.PID, StartedAt: process.StartedAt, Executable: process.Executable},
 		},
-		CWD: request.CWD, OwnerHost: request.OwnerHost, OwnerModel: request.OwnerModel, OwnerEffort: request.OwnerEffort, Confirm: true,
+		CWD: request.CWD, OwnerHost: request.OwnerHost, OwnerModel: request.OwnerModel, OwnerEffort: request.OwnerEffort, IssueSnapshotFile: request.IssueSnapshotFile,
+		DirectReason: request.DirectReason, ExpectedReadinessFingerprint: request.ExpectedReadinessFingerprint, Confirm: true,
 	}
 	if !reflect.DeepEqual(service.command, wantCommand) {
 		t.Fatalf("command=%#v want=%#v", service.command, wantCommand)
 	}
 	want := issueops.ExecutionPrepareResult{
 		OK: true, ID: request.ID, Preview: true, RequestedMode: "auto", ResolvedMode: "orca", FallbackCode: "fallback",
+		ProbeAttempted: true, ProbeAvailable: true, ProbeReady: true, ProbeCode: "ready", ReadinessFingerprint: "fingerprint", ExplicitDirectReason: "manual recovery",
 		Workspace: coreWorkspace(execution.Workspace), Execution: coreExecution(&execution),
 		ClaimTokenPath: "/tokens/199", IssueBodySHA256: "issue-sha", ContextPacketPath: "/packets/199",
 		ContextPacketSHA256: "packet-sha", OwnerPromptPath: "/prompts/199", OwnerPromptSHA256: "prompt-sha",
@@ -91,6 +95,7 @@ func (fake *serviceFake) Prepare(_ context.Context, command preparationcontract.
 func fullContractExecution() leasecontract.Execution {
 	return leasecontract.Execution{
 		Mode:      "orca",
+		Selection: &leasecontract.Selection{RequestedMode: "auto", ResolvedMode: "orca", ProbeAttempted: true, ProbeAvailable: true, ProbeReady: true, ProbeCode: "ready", ReadinessFingerprint: "fingerprint", SelectedAt: "selected"},
 		Workspace: leasecontract.Workspace{SourceRoot: "/source", Root: "/worktree", Branch: "199-vertical", BaseHead: "base", ParentWorktree: "/parent", Driver: "orca", LinkedAt: "2026-08-02T02:03:04Z"},
 		Lease: leasecontract.Lease{
 			Generation: 3, Status: "active",

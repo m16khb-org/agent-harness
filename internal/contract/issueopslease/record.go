@@ -56,6 +56,7 @@ type Record struct {
 
 type Execution struct {
 	Mode           string          `json:"mode"`
+	Selection      *Selection      `json:"selection,omitempty"`
 	Workspace      Workspace       `json:"workspace"`
 	Lease          Lease           `json:"lease"`
 	Orca           *OrcaBinding    `json:"orca,omitempty"`
@@ -63,6 +64,19 @@ type Execution struct {
 	Completion     *Completion     `json:"completion,omitempty"`
 	Failure        *FailureDetail  `json:"failure,omitempty"`
 	SyncBaseEvents []SyncBaseEvent `json:"sync_base_events,omitempty"`
+}
+
+type Selection struct {
+	RequestedMode        string `json:"requested_mode"`
+	ResolvedMode         string `json:"resolved_mode"`
+	ProbeAttempted       bool   `json:"probe_attempted"`
+	ProbeAvailable       bool   `json:"probe_available"`
+	ProbeReady           bool   `json:"probe_ready"`
+	ProbeCode            string `json:"probe_code,omitempty"`
+	FallbackCode         string `json:"fallback_code,omitempty"`
+	ReadinessFingerprint string `json:"readiness_fingerprint"`
+	SelectedAt           string `json:"selected_at"`
+	ExplicitDirectReason string `json:"explicit_direct_reason,omitempty"`
 }
 
 type OrcaBinding = stableV1OrcaBinding
@@ -167,8 +181,62 @@ func validateRecord(record Record) error {
 	if err := validateLease(execution.Lease); err != nil {
 		return err
 	}
+	if execution.Selection != nil {
+		if err := validateSelection(*execution.Selection, execution.Mode); err != nil {
+			return err
+		}
+	}
 	if err := validateSidecars(*execution); err != nil {
 		return err
+	}
+	return nil
+}
+
+func validateSelection(selection Selection, mode string) error {
+	if selection.RequestedMode != "auto" && selection.RequestedMode != "direct" && selection.RequestedMode != "orca" {
+		return fmt.Errorf("selection requested_mode must be auto, direct, or orca")
+	}
+	if selection.ResolvedMode != mode {
+		return fmt.Errorf("selection resolved_mode must equal execution mode")
+	}
+	if selection.ProbeAvailable && !selection.ProbeAttempted {
+		return fmt.Errorf("selection probe_available requires probe_attempted")
+	}
+	if selection.ProbeReady && !selection.ProbeAvailable {
+		return fmt.Errorf("selection probe_ready requires probe_available")
+	}
+	if !selection.ProbeAttempted && strings.TrimSpace(selection.ProbeCode) != "" {
+		return fmt.Errorf("unattempted selection probe must not contain probe_code")
+	}
+	if selection.RequestedMode != "direct" && !selection.ProbeAttempted {
+		return fmt.Errorf("auto and Orca selections require a readiness probe")
+	}
+	if (selection.RequestedMode == "direct" && mode != "direct") ||
+		(selection.RequestedMode == "orca" && mode != "orca") {
+		return fmt.Errorf("explicit selection mode must equal execution mode")
+	}
+	if mode == "orca" && !selection.ProbeReady {
+		return fmt.Errorf("Orca selection requires a ready probe")
+	}
+	if selection.RequestedMode == "auto" && mode == "direct" {
+		probeCode := strings.TrimSpace(selection.ProbeCode)
+		fallbackCode := strings.TrimSpace(selection.FallbackCode)
+		if selection.ProbeReady || fallbackCode == "" || fallbackCode != probeCode || fallbackCode != selection.FallbackCode {
+			return fmt.Errorf("auto direct selection requires the exact probe failure fallback_code")
+		}
+	}
+	if mode == "orca" && strings.TrimSpace(selection.FallbackCode) != "" {
+		return fmt.Errorf("Orca selection must not contain fallback_code")
+	}
+	if selection.RequestedMode == "direct" {
+		if selection.ProbeAttempted || strings.TrimSpace(selection.ExplicitDirectReason) == "" {
+			return fmt.Errorf("explicit direct selection requires a reason and no probe")
+		}
+	} else if strings.TrimSpace(selection.ExplicitDirectReason) != "" {
+		return fmt.Errorf("non-direct selection must not contain explicit_direct_reason")
+	}
+	if !validHexDigest(selection.ReadinessFingerprint, 64) || strings.TrimSpace(selection.SelectedAt) == "" {
+		return fmt.Errorf("selection receipt requires fingerprint and selected_at")
 	}
 	return nil
 }

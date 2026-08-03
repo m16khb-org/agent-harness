@@ -34,14 +34,17 @@ func ImplementerDefaults(host string) (model string, effort string, ok bool) {
 }
 
 type Command struct {
-	ID          string `json:"id"`
-	Mode        string `json:"mode"`
-	Actor       Actor  `json:"actor"`
-	CWD         string `json:"cwd"`
-	OwnerHost   string `json:"owner_host,omitempty"`
-	OwnerModel  string `json:"owner_model,omitempty"`
-	OwnerEffort string `json:"owner_effort,omitempty"`
-	Confirm     bool   `json:"confirm,omitempty"`
+	ID                           string `json:"id"`
+	Mode                         string `json:"mode"`
+	Actor                        Actor  `json:"actor"`
+	CWD                          string `json:"cwd"`
+	OwnerHost                    string `json:"owner_host,omitempty"`
+	OwnerModel                   string `json:"owner_model,omitempty"`
+	OwnerEffort                  string `json:"owner_effort,omitempty"`
+	IssueSnapshotFile            string `json:"issue_snapshot_file,omitempty"`
+	DirectReason                 string `json:"direct_reason,omitempty"`
+	ExpectedReadinessFingerprint string `json:"expected_readiness_fingerprint,omitempty"`
+	Confirm                      bool   `json:"confirm,omitempty"`
 }
 
 func (command Command) Clone() Command {
@@ -51,22 +54,28 @@ func (command Command) Clone() Command {
 }
 
 type Result struct {
-	OK                  bool                     `json:"ok"`
-	ID                  string                   `json:"id"`
-	Preview             bool                     `json:"preview,omitempty"`
-	RequestedMode       string                   `json:"requested_mode"`
-	ResolvedMode        string                   `json:"resolved_mode"`
-	FallbackCode        string                   `json:"fallback_code,omitempty"`
-	Workspace           Workspace                `json:"workspace"`
-	Execution           *leasecontract.Execution `json:"execution,omitempty"`
-	ClaimTokenPath      string                   `json:"claim_token_path,omitempty"`
-	IssueBodySHA256     string                   `json:"issue_body_sha256,omitempty"`
-	ContextPacketPath   string                   `json:"context_packet_path,omitempty"`
-	ContextPacketSHA256 string                   `json:"context_packet_sha256,omitempty"`
-	OwnerPromptPath     string                   `json:"owner_prompt_path,omitempty"`
-	OwnerPromptSHA256   string                   `json:"owner_prompt_sha256,omitempty"`
-	IssueSnapshotSource string                   `json:"issue_snapshot_source,omitempty"`
-	NextCommand         string                   `json:"next_command,omitempty"`
+	OK                   bool                     `json:"ok"`
+	ID                   string                   `json:"id"`
+	Preview              bool                     `json:"preview,omitempty"`
+	RequestedMode        string                   `json:"requested_mode"`
+	ResolvedMode         string                   `json:"resolved_mode"`
+	FallbackCode         string                   `json:"fallback_code,omitempty"`
+	ProbeAttempted       bool                     `json:"probe_attempted"`
+	ProbeAvailable       bool                     `json:"probe_available"`
+	ProbeReady           bool                     `json:"probe_ready"`
+	ProbeCode            string                   `json:"probe_code,omitempty"`
+	ReadinessFingerprint string                   `json:"readiness_fingerprint,omitempty"`
+	ExplicitDirectReason string                   `json:"explicit_direct_reason,omitempty"`
+	Workspace            Workspace                `json:"workspace"`
+	Execution            *leasecontract.Execution `json:"execution,omitempty"`
+	ClaimTokenPath       string                   `json:"claim_token_path,omitempty"`
+	IssueBodySHA256      string                   `json:"issue_body_sha256,omitempty"`
+	ContextPacketPath    string                   `json:"context_packet_path,omitempty"`
+	ContextPacketSHA256  string                   `json:"context_packet_sha256,omitempty"`
+	OwnerPromptPath      string                   `json:"owner_prompt_path,omitempty"`
+	OwnerPromptSHA256    string                   `json:"owner_prompt_sha256,omitempty"`
+	IssueSnapshotSource  string                   `json:"issue_snapshot_source,omitempty"`
+	NextCommand          string                   `json:"next_command,omitempty"`
 }
 
 func (result Result) Clone() Result {
@@ -162,6 +171,10 @@ func cloneExecutionPointer(execution *leasecontract.Execution) *leasecontract.Ex
 		return nil
 	}
 	cloned := *execution
+	if execution.Selection != nil {
+		selection := *execution.Selection
+		cloned.Selection = &selection
+	}
 	cloned.Lease.Holder = cloneActorPointer(execution.Lease.Holder)
 	if execution.Orca != nil {
 		binding := *execution.Orca

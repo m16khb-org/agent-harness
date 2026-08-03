@@ -73,6 +73,7 @@ func executionActionRequestFromMCPWithAncestry(args map[string]any, ancestry []m
 			ProcessAncestry: append([]model.NativeProcessReceipt(nil), ancestry...),
 		},
 		CWD: argmap.String(args, "cwd"), OwnerHost: argmap.String(args, "owner_host"), OwnerModel: argmap.String(args, "owner_model"), OwnerEffort: argmap.String(args, "owner_effort"),
+		DirectReason: argmap.String(args, "direct_reason"), ExpectedReadinessFingerprint: argmap.String(args, "expected_readiness_fingerprint"),
 		Generation: uint64(argmap.Int64(args, "generation", 0)), ExpectedGeneration: uint64(argmap.Int64(args, "expected_generation", 0)),
 		TokenFile: argmap.String(args, "claim_token_file"), ReplaceAction: argmap.String(args, "replace_action"),
 		IssueBodySHA256: argmap.String(args, "issue_body_sha256"), ContextPacketSHA256: argmap.String(args, "context_packet_sha256"),

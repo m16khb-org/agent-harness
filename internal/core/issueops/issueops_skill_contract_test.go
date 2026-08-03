@@ -40,7 +40,8 @@ func TestIssueOpsExecutionDocumentationHasOneCurrentContract(t *testing.T) {
 		"issueops execution claim", "--claim-token-file", "--issue-body-sha256",
 		"--context-packet-sha256", "issueops execution release",
 		"issueops execution replace", "issueops execution reconcile",
-		"issueops execution complete",
+		"issueops execution complete", "requested_mode", "resolved_mode",
+		"readiness fingerprint",
 	} {
 		if !strings.Contains(all, want) {
 			t.Fatalf("current execution v1 contract missing %q", want)
@@ -52,6 +53,9 @@ func TestIssueOpsExecutionDocumentationHasOneCurrentContract(t *testing.T) {
 				t.Fatalf("%s retains removed execution contract term %q", name, removed)
 			}
 		}
+	}
+	if count := strings.Count(documents["execution"], "agent-harness issueops execution prepare \\"); count != 1 {
+		t.Fatalf("execution reference must show one preview command and delegate confirm to next_command, count=%d", count)
 	}
 }
 
@@ -102,7 +106,7 @@ func removedIssueOpsExecutionTerms() []string {
 	return append(removedIssueOpsCurrentCommandTerms(),
 		"execution_handoff", "ownership_epoch", "ownership_dispatch", "owner_orienting",
 		"owner_active", "cleanup_pending_human_decision", "cleanup_executing",
-		"--orchestrator", "resolved_mode", "prep-only", "issueops_record_execution_decision",
+		"--orchestrator", "prep-only", "issueops_record_execution_decision",
 		"issueops_record_compatibility_review", "issueops_regress_for_replan",
 	)
 }

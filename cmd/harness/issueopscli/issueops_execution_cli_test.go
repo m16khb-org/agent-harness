@@ -16,7 +16,22 @@ import (
 	"agent-harness/internal/core"
 	issueopscore "agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/preflight"
+	preparationdomain "agent-harness/internal/domain/issueopspreparation"
 )
+
+func TestIssueOpsCLIErrorPayloadPreservesPreparationDenialCode(t *testing.T) {
+	err := &preparationdomain.Denial{Reason: preparationdomain.DenialDirectReasonRequired, Cause: errors.New("explicit direct mode requires a reason")}
+	out, gotErr := captureStdoutAndErrorForIssueOps(t, func() error {
+		return printIssueOpsResult(issueopscontract.IssueOpsRecord{}, true, err)
+	})
+	if gotErr != err {
+		t.Fatalf("error=%v want=%v", gotErr, err)
+	}
+	var payload map[string]any
+	if json.Unmarshal([]byte(out), &payload) != nil || payload["code"] != string(preparationdomain.DenialDirectReasonRequired) {
+		t.Fatalf("payload=%#v raw=%s", payload, out)
+	}
+}
 
 func TestIssueOpsExecutionDepsPropagatePublicationReconcileWithoutInvocation(t *testing.T) {
 	invoked := 0

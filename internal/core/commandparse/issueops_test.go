@@ -287,6 +287,21 @@ func TestExecutionSnapshotFileFlagMatchesCLIContract(t *testing.T) {
 	}
 }
 
+func TestExecutionPrepareAcceptsGeneratedConfirmFlags(t *testing.T) {
+	command, ok := ParseExactIssueOpsCommand("agent-harness issueops execution prepare --id io-1 --mode direct --direct-reason operator-approved --expected-readiness-fingerprint abc123 --confirm --json")
+	if !ok || command.Path != "execution prepare" {
+		t.Fatalf("generated confirm command did not parse: %#v ok=%v", command, ok)
+	}
+	values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
+	if !ok {
+		t.Fatal("execution prepare command has no exact flag spec")
+	}
+	flags, ok := ExactFlags(command, values, booleans, repeatable)
+	if !ok || flags["--direct-reason"][0] != "operator-approved" || flags["--expected-readiness-fingerprint"][0] != "abc123" {
+		t.Fatalf("generated confirm flags were rejected or lost: flags=%#v ok=%v", flags, ok)
+	}
+}
+
 func TestRemovedExecutionCommandsHaveNoFlagSpecs(t *testing.T) {
 	for _, path := range []string{"resume", "execution decide", "worktree prepare", "worktree prepare-tools", "worktree reconcile", "heartbeat"} {
 		if _, _, _, ok := IssueOpsCommandSpec(path); ok {

@@ -21,14 +21,15 @@ func TestDecisionMatrix(t *testing.T) {
 		wantFallback  string
 		wantDenial    DenialReason
 	}{
-		{name: "auto preview ready", mode: "auto", orca: OrcaReadiness{Ready: true}, wantCode: CodePreviewOrca, wantRequested: "auto", wantResolved: "orca"},
-		{name: "auto confirm ready", mode: "auto", confirm: true, orca: OrcaReadiness{Ready: true}, wantCode: CodeApplyOrca, wantRequested: "auto", wantResolved: "orca"},
+		{name: "auto preview ready", mode: "auto", orca: OrcaReadiness{Available: true, Ready: true}, wantCode: CodePreviewOrca, wantRequested: "auto", wantResolved: "orca"},
+		{name: "auto confirm ready", mode: "auto", confirm: true, orca: OrcaReadiness{Available: true, Ready: true}, wantCode: CodeApplyOrca, wantRequested: "auto", wantResolved: "orca"},
+		{name: "auto ready without availability", mode: "auto", orca: OrcaReadiness{Ready: true}, wantCode: CodePreviewDirect, wantRequested: "auto", wantResolved: "direct", wantFallback: "orca_probe_failed"},
 		{name: "auto preview unavailable", mode: "", orca: OrcaReadiness{Code: "orca_adapter_unavailable"}, wantCode: CodePreviewDirect, wantRequested: "auto", wantResolved: "direct", wantFallback: "orca_adapter_unavailable"},
 		{name: "auto confirm unavailable", mode: "auto", confirm: true, orca: OrcaReadiness{Code: "orca_probe_failed"}, wantCode: CodeApplyDirect, wantRequested: "auto", wantResolved: "direct", wantFallback: "orca_probe_failed"},
 		{name: "direct preview", mode: "direct", orca: OrcaReadiness{Ready: true}, wantCode: CodePreviewDirect, wantRequested: "direct", wantResolved: "direct"},
 		{name: "direct confirm", mode: "direct", confirm: true, wantCode: CodeApplyDirect, wantRequested: "direct", wantResolved: "direct"},
-		{name: "orca preview", mode: "orca", orca: OrcaReadiness{Ready: true}, wantCode: CodePreviewOrca, wantRequested: "orca", wantResolved: "orca"},
-		{name: "orca confirm", mode: "orca", confirm: true, orca: OrcaReadiness{Ready: true}, wantCode: CodeApplyOrca, wantRequested: "orca", wantResolved: "orca"},
+		{name: "orca preview", mode: "orca", orca: OrcaReadiness{Available: true, Ready: true}, wantCode: CodePreviewOrca, wantRequested: "orca", wantResolved: "orca"},
+		{name: "orca confirm", mode: "orca", confirm: true, orca: OrcaReadiness{Available: true, Ready: true}, wantCode: CodeApplyOrca, wantRequested: "orca", wantResolved: "orca"},
 		{name: "explicit Orca unavailable", mode: "orca", orca: OrcaReadiness{Code: "orca_adapter_unavailable"}, wantRequested: "orca", wantDenial: DenialOrcaUnavailable},
 		{name: "pending precedes mismatch", mode: "direct", confirm: true, execution: preparedExecution("orca", "active", true, true), wantCode: CodePendingReconcile, wantRequested: "direct", wantResolved: "orca"},
 		{name: "existing explicit same", mode: "direct", confirm: true, execution: preparedExecution("direct", "active", true, false), wantCode: CodeExisting, wantRequested: "direct", wantResolved: "direct"},
@@ -43,8 +44,12 @@ func TestDecisionMatrix(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			directReason := ""
+			if test.mode == preparationcontract.ModeDirect && test.execution == nil && test.rootConflict == nil {
+				directReason = "planned recovery"
+			}
 			decision, err := Decide(DecisionInput{
-				Command: preparationcontract.Command{ID: "io-prepare", Mode: test.mode, Confirm: test.confirm},
+				Command: preparationcontract.Command{ID: "io-prepare", Mode: test.mode, DirectReason: directReason, Confirm: test.confirm},
 				Snapshot: preparationcontract.Snapshot{
 					Record:        leasecontract.Record{ID: "io-prepare", Execution: test.execution},
 					CanonicalRoot: "/repo.worktrees/199-prepare", RootConflict: test.rootConflict,
@@ -72,6 +77,57 @@ func TestDecisionRejectsUnsupportedMode(t *testing.T) {
 	_, err := Decide(DecisionInput{Command: preparationcontract.Command{Mode: "remote"}})
 	if got := DenialReasonOf(err); got != DenialInvalidMode {
 		t.Fatalf("denial=%q err=%v", got, err)
+	}
+}
+
+func TestDecisionSelectionEvidenceAndDirectReason(t *testing.T) {
+	decision, err := Decide(DecisionInput{
+		Command: preparationcontract.Command{Mode: "auto"},
+		Orca:    OrcaReadiness{Available: true, Ready: false, Code: "orca_unready"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !decision.ProbeAttempted || !decision.ProbeAvailable || decision.ProbeReady ||
+		decision.ProbeCode != "orca_unready" || decision.FallbackCode != "orca_unready" || decision.ReadinessFingerprint == "" {
+		t.Fatalf("decision lost readiness evidence: %+v", decision)
+	}
+
+	_, err = Decide(DecisionInput{Command: preparationcontract.Command{Mode: "direct"}})
+	if got := DenialReasonOf(err); got != DenialDirectReasonRequired {
+		t.Fatalf("missing direct reason denial=%q err=%v", got, err)
+	}
+	decision, err = Decide(DecisionInput{Command: preparationcontract.Command{Mode: "direct", DirectReason: "  planned recovery  "}})
+	if err != nil || decision.ExplicitDirectReason != "planned recovery" || decision.ProbeAttempted || decision.ReadinessFingerprint == "" {
+		t.Fatalf("explicit direct decision=%+v err=%v", decision, err)
+	}
+}
+
+func TestReadinessFingerprintBindsProviderIssueOnlyWhenProbed(t *testing.T) {
+	command := preparationcontract.Command{Mode: "auto", OwnerHost: "codex", OwnerModel: "model", OwnerEffort: "high"}
+	first, err := Decide(DecisionInput{Command: command, Orca: OrcaReadiness{Available: true, Ready: true, Provider: "github", Issue: 248}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := Decide(DecisionInput{Command: command, Orca: OrcaReadiness{Available: true, Ready: true, Provider: "github", Issue: 249}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.ReadinessFingerprint == second.ReadinessFingerprint {
+		t.Fatal("provider issue drift did not change probed readiness fingerprint")
+	}
+
+	directCommand := preparationcontract.Command{Mode: "direct", DirectReason: "planned recovery"}
+	directA, err := Decide(DecisionInput{Command: directCommand, Orca: OrcaReadiness{Provider: "github", Issue: 248}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	directB, err := Decide(DecisionInput{Command: directCommand, Orca: OrcaReadiness{Provider: "gitlab", Issue: 999}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if directA.ReadinessFingerprint != directB.ReadinessFingerprint {
+		t.Fatal("explicit direct fingerprint read provider identity")
 	}
 }
 

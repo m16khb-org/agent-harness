@@ -2,11 +2,16 @@ package harnessapp
 
 import (
 	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"agent-harness/cmd/harness/issueopscli/executioncmd"
 	issueopscontract "agent-harness/internal/contract/issueops"
+	"agent-harness/internal/core/commandparse"
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
@@ -41,7 +46,7 @@ func TestIssueOpsPrepareWiringRunsRealDirectPreviewWithoutPersistence(t *testing
 
 	result, err := handler(context.Background(), stateRoot, issueops.ExecutionPrepareRequest{
 		ID: record.ID, Mode: "direct", Actor: issueopscontract.NativeActor{Host: "codex", SessionID: "session", SessionProcess: process},
-		CWD: repo, Confirm: false,
+		CWD: repo, DirectReason: "wiring preview test", Confirm: false,
 	}, issueops.ExecutionPrepareInvocation{})
 	if err != nil {
 		t.Fatal(err)
@@ -85,15 +90,41 @@ func TestIssueOpsPrepareWiringUsesRequestScopedIssueSnapshot(t *testing.T) {
 		Orca: &reconcileProvisionerFake{}, ReadIssue: fallback,
 	})
 
-	raw, err := issueops.ExecuteExecution(context.Background(), stateRoot, issueops.ExecutionActionRequest{
+	issueSnapshot := &port.ExecutionIssueSnapshotEvidence{
+		Provider: "gitlab", Source: "glab_mcp",
+		WebURL: "https://gitlab.example.com/acme/repo/-/issues/199",
+		Body:   claimWiringIssueBody(), State: "opened",
+	}
+	snapshotData, err := json.Marshal(issueSnapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshotPath := filepath.Join(t.TempDir(), "issue-snapshot.json")
+	if err := os.WriteFile(snapshotPath, snapshotData, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	request := issueops.ExecutionActionRequest{
 		Action: issueops.ExecutionActionPrepare, ID: record.ID, Mode: "orca",
-		Actor: claimWiringActor(t), CWD: repo, OwnerHost: "codex", Confirm: true,
-		IssueSnapshot: &port.ExecutionIssueSnapshotEvidence{
-			Provider: "gitlab", Source: "glab_mcp",
-			WebURL: "https://gitlab.example.com/acme/repo/-/issues/199",
-			Body:   claimWiringIssueBody(), State: "opened",
-		},
-	}, issueops.ExecutionActionDependencies{Prepare: handler, ReadIssue: fallback})
+		Actor: claimWiringActor(t), CWD: repo, OwnerHost: "codex",
+		IssueSnapshotFile: snapshotPath, IssueSnapshot: issueSnapshot,
+	}
+	previewRaw, err := issueops.ExecuteExecution(context.Background(), stateRoot, request, issueops.ExecutionActionDependencies{Prepare: handler, ReadIssue: fallback})
+	if err != nil {
+		t.Fatal(err)
+	}
+	preview := previewRaw.(issueops.ExecutionPrepareResult)
+	if !strings.Contains(preview.NextCommand, "--issue-snapshot-file '") {
+		t.Fatalf("snapshot-backed preview lost exact confirm source: %s", preview.NextCommand)
+	}
+	tokens := commandparse.SplitCommandTokens(preview.NextCommand)
+	if len(tokens) < 4 || strings.Join(tokens[:4], " ") != "agent-harness issueops execution prepare" {
+		t.Fatalf("invalid next command: %q tokens=%v", preview.NextCommand, tokens)
+	}
+	var raw any
+	err = executioncmd.Run(tokens[3:], executioncmd.Deps{
+		StateRoot: func() string { return stateRoot }, Prepare: handler, ReadIssue: fallback,
+		PrintJSON: func(value any) error { raw = value; return nil },
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

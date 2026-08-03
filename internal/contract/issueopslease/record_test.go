@@ -30,6 +30,61 @@ func TestValidateActorRetainsLegacyText(t *testing.T) {
 	}
 }
 
+func TestSelectionReceiptRoundTripsAndRemainsOptionalInCurrentV1(t *testing.T) {
+	record := Record{
+		SchemaVersion: SchemaVersion,
+		ID:            "io-selection",
+		Execution: &Execution{
+			Mode: "direct",
+			Workspace: Workspace{
+				SourceRoot: "/repo", Root: "/repo.worktrees/selection", Branch: "selection",
+				BaseHead: strings.Repeat("a", 40), Driver: "git", LinkedAt: "2026-08-03T00:00:00Z",
+			},
+			Lease: Lease{Generation: 1, Status: "released"},
+		},
+	}
+	encoded, err := Encode(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := Decode(record.ID, encoded)
+	if err != nil || decoded.Execution.Selection != nil {
+		t.Fatalf("legacy current-v1 record lost nil selection compatibility: record=%+v err=%v", decoded, err)
+	}
+
+	record.Execution.Selection = &Selection{
+		RequestedMode: "direct", ResolvedMode: "direct",
+		ReadinessFingerprint: strings.Repeat("b", 64), SelectedAt: "2026-08-03T00:00:01Z",
+		ExplicitDirectReason: "manual recovery",
+	}
+	encoded, err = Encode(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err = Decode(record.ID, encoded)
+	if err != nil || !reflect.DeepEqual(decoded.Execution.Selection, record.Execution.Selection) {
+		t.Fatalf("selection receipt changed across current-v1 round trip: got=%+v want=%+v err=%v", decoded.Execution.Selection, record.Execution.Selection, err)
+	}
+}
+
+func TestSelectionReceiptRequiresExactAutoFallbackCode(t *testing.T) {
+	selection := Selection{
+		RequestedMode: "auto", ResolvedMode: "direct", ProbeAttempted: true,
+		ProbeCode: "orca_unready", FallbackCode: "orca_unready",
+		ReadinessFingerprint: strings.Repeat("b", 64), SelectedAt: "2026-08-03T00:00:01Z",
+	}
+	if err := validateSelection(selection, "direct"); err != nil {
+		t.Fatalf("valid auto fallback rejected: %v", err)
+	}
+	for _, fallback := range []string{"", "different_code", " orca_unready "} {
+		candidate := selection
+		candidate.FallbackCode = fallback
+		if err := validateSelection(candidate, "direct"); err == nil {
+			t.Fatalf("invalid fallback_code %q accepted", fallback)
+		}
+	}
+}
+
 func assertJSONShape(t *testing.T, source, target reflect.Type, path string) {
 	t.Helper()
 	source = dereferenceJSONType(source)

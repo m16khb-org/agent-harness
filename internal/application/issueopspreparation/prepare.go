@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	leasecontract "agent-harness/internal/contract/issueopslease"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
 	preparationdomain "agent-harness/internal/domain/issueopspreparation"
 )
@@ -80,7 +81,10 @@ func (service *Service) Prepare(ctx context.Context, command preparationcontract
 				Model: strings.TrimSpace(command.OwnerModel), Effort: strings.TrimSpace(command.OwnerEffort),
 				Provider: issue.Provider, Issue: issue.Issue, Marker: marker, Workspace: workspace,
 			}
+			readiness.Provider = probeRequest.Provider
+			readiness.Issue = probeRequest.Issue
 			probe, probeErr := service.orca.Probe(ctx, probeRequest)
+			readiness.Available = probe.Available
 			readiness.Ready = probeErr == nil && probe.Available && probe.Ready
 			readiness.Code = strings.TrimSpace(probe.Code)
 			if probeErr != nil && readiness.Code == "" {
@@ -95,10 +99,16 @@ func (service *Service) Prepare(ctx context.Context, command preparationcontract
 	if err != nil {
 		return preparationcontract.Result{ID: command.ID, RequestedMode: requested}, err
 	}
+	if command.Confirm && command.ExpectedReadinessFingerprint != decision.ReadinessFingerprint {
+		return selectionResult(command.ID, decision, true), &preparationdomain.Denial{
+			Reason: preparationdomain.DenialReadinessFingerprintChanged,
+			Cause:  errors.New("readiness fingerprint changed before confirm"),
+		}
+	}
 	if decision.ResolvedMode == preparationcontract.ModeOrca {
 		return service.prepareOrca(ctx, snapshot, command, workspace, probeRequest, decision)
 	}
-	return service.prepareDirect(ctx, snapshot, command, workspace, decision)
+	return service.prepareDirect(ctx, snapshot, command, workspace, probeRequest, decision)
 }
 
 func (service *Service) prepareOrca(
@@ -139,7 +149,9 @@ func (service *Service) prepareOrca(
 		RequestedMode: decision.RequestedMode, ResolvedMode: preparationcontract.ModeOrca,
 		FallbackCode: decision.FallbackCode, Workspace: workspaceResult(workspace, "orca", ""),
 	}
+	applySelectionResult(&preview, decision)
 	if !command.Confirm {
+		preview.NextCommand = prepareConfirmCommand(command, decision)
 		return preview, nil
 	}
 	if service.operation == nil {
@@ -152,9 +164,10 @@ func (service *Service) prepareOrca(
 	if service.clock == nil {
 		return failedResult(command.ID), fmt.Errorf("preparation clock is unavailable")
 	}
+	selectedAt := formatTime(service.clock.Now())
 	state, err := service.repository.BeginIntent(ctx, OrcaBegin{
 		Snapshot: snapshot, Command: command, Workspace: workspace, Probe: probe,
-		Owner: owner, OperationID: operationID, StartedAt: formatTime(service.clock.Now()),
+		Owner: owner, OperationID: operationID, StartedAt: selectedAt, Selection: selectionReceipt(decision, selectedAt),
 	})
 	if err != nil {
 		return failedResult(command.ID), err
@@ -174,6 +187,7 @@ func (service *Service) prepareOrca(
 	result.RequestedMode = decision.RequestedMode
 	result.ResolvedMode = preparationcontract.ModeOrca
 	result.FallbackCode = decision.FallbackCode
+	applySelectionResult(&result, decision)
 	return result, nil
 }
 
@@ -264,7 +278,7 @@ func intentRequest(intent preparationcontract.Intent) preparationcontract.Intent
 	return request
 }
 
-func (service *Service) prepareDirect(ctx context.Context, snapshot preparationcontract.Snapshot, command preparationcontract.Command, workspace preparationcontract.WorkspaceRequest, decision preparationdomain.Decision) (preparationcontract.Result, error) {
+func (service *Service) prepareDirect(ctx context.Context, snapshot preparationcontract.Snapshot, command preparationcontract.Command, workspace preparationcontract.WorkspaceRequest, probe preparationcontract.ProbeRequest, decision preparationdomain.Decision) (preparationcontract.Result, error) {
 	actor, err := normalizeActor(command.Actor)
 	if err != nil {
 		return failedResult(command.ID), err
@@ -299,7 +313,9 @@ func (service *Service) prepareDirect(ctx context.Context, snapshot preparationc
 		RequestedMode: decision.RequestedMode, ResolvedMode: decision.ResolvedMode, FallbackCode: decision.FallbackCode,
 		Workspace: workspaceResultFromReceipt(receipt, linkedAt),
 	}
+	applySelectionResult(&result, decision)
 	if !command.Confirm {
+		result.NextCommand = prepareConfirmCommand(command, decision)
 		return result, nil
 	}
 	claimedAt := formatTime(service.clock.Now())
@@ -309,7 +325,7 @@ func (service *Service) prepareDirect(ctx context.Context, snapshot preparationc
 	persisted, err := service.repository.CommitDirect(ctx, DirectCommit{
 		Snapshot: snapshot, Command: command, Workspace: receipt,
 		RequestedMode: decision.RequestedMode, FallbackCode: decision.FallbackCode,
-		LinkedAt: linkedAt, ClaimedAt: claimedAt,
+		LinkedAt: linkedAt, ClaimedAt: claimedAt, Selection: selectionReceipt(decision, linkedAt), Probe: probe,
 	})
 	if err != nil {
 		return failedResult(command.ID), err
@@ -377,10 +393,84 @@ func normalizeActor(actor preparationcontract.Actor) (preparationcontract.Actor,
 }
 
 func preparedResult(record preparationcontract.Record, requested, fallback string) preparationcontract.Result {
-	return preparationcontract.Result{
+	result := preparationcontract.Result{
 		OK: true, ID: record.ID, RequestedMode: requested, ResolvedMode: record.Execution.Mode,
 		FallbackCode: fallback, Workspace: record.Execution.Workspace, Execution: cloneExecution(record.Execution),
 	}
+	if record.Execution.Selection != nil {
+		selection := record.Execution.Selection
+		result.RequestedMode = selection.RequestedMode
+		result.ResolvedMode = selection.ResolvedMode
+		result.FallbackCode = selection.FallbackCode
+		result.ProbeAttempted = selection.ProbeAttempted
+		result.ProbeAvailable = selection.ProbeAvailable
+		result.ProbeReady = selection.ProbeReady
+		result.ProbeCode = selection.ProbeCode
+		result.ReadinessFingerprint = selection.ReadinessFingerprint
+		result.ExplicitDirectReason = selection.ExplicitDirectReason
+	}
+	return result
+}
+
+func selectionResult(id string, decision preparationdomain.Decision, preview bool) preparationcontract.Result {
+	result := preparationcontract.Result{ID: id, Preview: preview, RequestedMode: decision.RequestedMode, ResolvedMode: decision.ResolvedMode, FallbackCode: decision.FallbackCode}
+	applySelectionResult(&result, decision)
+	return result
+}
+
+func applySelectionResult(result *preparationcontract.Result, decision preparationdomain.Decision) {
+	result.ProbeAttempted = decision.ProbeAttempted
+	result.ProbeAvailable = decision.ProbeAvailable
+	result.ProbeReady = decision.ProbeReady
+	result.ProbeCode = decision.ProbeCode
+	result.ReadinessFingerprint = decision.ReadinessFingerprint
+	result.ExplicitDirectReason = decision.ExplicitDirectReason
+}
+
+func selectionReceipt(decision preparationdomain.Decision, selectedAt string) leasecontract.Selection {
+	return leasecontract.Selection{
+		RequestedMode: decision.RequestedMode, ResolvedMode: decision.ResolvedMode,
+		ProbeAttempted: decision.ProbeAttempted, ProbeAvailable: decision.ProbeAvailable,
+		ProbeReady: decision.ProbeReady, ProbeCode: decision.ProbeCode, FallbackCode: decision.FallbackCode,
+		ReadinessFingerprint: decision.ReadinessFingerprint, SelectedAt: selectedAt,
+		ExplicitDirectReason: decision.ExplicitDirectReason,
+	}
+}
+
+func prepareConfirmCommand(command preparationcontract.Command, decision preparationdomain.Decision) string {
+	parts := []string{"agent-harness", "issueops", "execution", "prepare", "--id", quoteArg(command.ID), "--mode", quoteArg(decision.RequestedMode)}
+	if command.OwnerHost != "" {
+		parts = append(parts, "--owner-host", quoteArg(command.OwnerHost))
+	}
+	if command.OwnerModel != "" {
+		parts = append(parts, "--owner-model", quoteArg(command.OwnerModel))
+	}
+	if command.OwnerEffort != "" {
+		parts = append(parts, "--owner-effort", quoteArg(command.OwnerEffort))
+	}
+	if decision.ExplicitDirectReason != "" {
+		parts = append(parts, "--direct-reason", quoteArg(decision.ExplicitDirectReason))
+	}
+	parts = append(parts, "--expected-readiness-fingerprint", quoteArg(decision.ReadinessFingerprint))
+	if command.IssueSnapshotFile != "" {
+		parts = append(parts, "--issue-snapshot-file", quoteArg(command.IssueSnapshotFile))
+	}
+	if command.Actor.Host != "" {
+		parts = append(parts, "--host", quoteArg(command.Actor.Host))
+	}
+	if command.Actor.SessionID != "" {
+		parts = append(parts, "--session-id", quoteArg(command.Actor.SessionID))
+	}
+	if command.Actor.AgentID != "" {
+		parts = append(parts, "--agent-id", quoteArg(command.Actor.AgentID))
+	}
+	if command.Actor.SessionProcess != nil {
+		parts = append(parts, "--session-pid", strconv.Itoa(command.Actor.SessionProcess.PID), "--session-started-at", quoteArg(command.Actor.SessionProcess.StartedAt), "--session-executable", quoteArg(command.Actor.SessionProcess.Executable))
+	}
+	if command.CWD != "" {
+		parts = append(parts, "--cwd", quoteArg(command.CWD))
+	}
+	return strings.Join(append(parts, "--confirm", "--json"), " ")
 }
 
 func cloneExecution(execution *preparationcontract.Execution) *preparationcontract.Execution {

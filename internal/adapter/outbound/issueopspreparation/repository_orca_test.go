@@ -9,6 +9,7 @@ import (
 	preparationapp "agent-harness/internal/application/issueopspreparation"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
+	preparationdomain "agent-harness/internal/domain/issueopspreparation"
 )
 
 func TestOrcaIntentRepositoryBeginsBeforeEffectAtomically(t *testing.T) {
@@ -32,6 +33,9 @@ func TestOrcaIntentRepositoryBeginsBeforeEffectAtomically(t *testing.T) {
 	}
 	if persisted.Execution == nil || persisted.Execution.Mode != preparationcontract.ModeOrca || persisted.Execution.Lease.Status != "released" || persisted.Execution.Pending == nil || persisted.Execution.Pending.Marker != state.Intent.Marker {
 		t.Fatalf("execution=%+v", persisted.Execution)
+	}
+	if persisted.Execution.Selection == nil || persisted.Execution.Selection.ReadinessFingerprint != begin.Selection.ReadinessFingerprint {
+		t.Fatalf("selection=%+v", persisted.Execution.Selection)
 	}
 	decoded, err := (preparationcontract.IntentCodec{}).Decode(begin.OperationID, store.mustGet(intentBucket, begin.OperationID))
 	if err != nil || decoded.Marker != state.Intent.Marker {
@@ -183,12 +187,18 @@ func newOrcaRepositoryFixture(t *testing.T) (*preparationStore, *SQLiteRepositor
 		t.Fatal(err)
 	}
 	workspace := preparationcontract.WorkspaceRequest{LifecycleID: record.ID, SourceRoot: record.Repo, Root: "/repo.worktrees/199-orca", Branch: record.Branch, BaseBranch: "main", BaseHead: "base", Confirm: true, CWD: "/repo"}
+	command := preparationcontract.Command{ID: record.ID, Mode: preparationcontract.ModeOrca, OwnerHost: "codex", OwnerModel: "gpt-5.6-terra", OwnerEffort: "xhigh", Confirm: true}
+	decision, err := preparationdomain.Decide(preparationdomain.DecisionInput{Command: command, Orca: preparationdomain.OrcaReadiness{Available: true, Ready: true, Provider: "github", Issue: 199}})
+	if err != nil {
+		t.Fatal(err)
+	}
 	return store, repository, preparationapp.OrcaBegin{
-		Snapshot: snapshot, Command: preparationcontract.Command{ID: record.ID, Mode: preparationcontract.ModeOrca, OwnerHost: "codex", OwnerModel: "gpt-5.6-terra", OwnerEffort: "xhigh", Confirm: true},
+		Snapshot: snapshot, Command: command,
 		Workspace:   workspace,
 		Probe:       preparationcontract.ProbeRequest{Repo: record.Repo, Host: "codex", Model: "gpt-5.6-terra", Effort: "xhigh", Provider: "github", Issue: 199, Marker: "agent-harness issueops-v1 lifecycle=io-orca provider=github issue=199", Workspace: workspace},
 		Owner:       preparationcontract.OwnerEvidence{IssueURL: record.IssueURL, IssueBody: "body", BodySHA256: strings.Repeat("a", 64), Source: "github", Provider: "github", Issue: 199},
 		OperationID: "0123456789abcdef0123456789abcdef", StartedAt: "2026-08-02T00:00:00Z",
+		Selection: leasecontract.Selection{RequestedMode: "orca", ResolvedMode: "orca", ProbeAttempted: true, ProbeAvailable: true, ProbeReady: true, ProbeCode: "ready", ReadinessFingerprint: decision.ReadinessFingerprint, SelectedAt: "2026-08-02T00:00:00Z"},
 	}
 }
 

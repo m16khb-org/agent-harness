@@ -46,6 +46,9 @@ func TestExecutionSnapshotFileFlagMapsToPrepareRequest(t *testing.T) {
 	}, Deps{
 		StateRoot: func() string { return stateRoot },
 		Prepare: func(_ context.Context, _ string, request issueops.ExecutionPrepareRequest, _ issueops.ExecutionPrepareInvocation) (issueops.ExecutionPrepareResult, error) {
+			if request.IssueSnapshotFile != path {
+				t.Fatalf("snapshot file path=%q want=%q", request.IssueSnapshotFile, path)
+			}
 			return issueops.ExecutionPrepareResult{
 				OK: true, ID: request.ID, RequestedMode: request.Mode, ResolvedMode: "direct",
 			}, nil

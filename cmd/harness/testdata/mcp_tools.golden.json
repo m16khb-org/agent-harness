@@ -502,9 +502,17 @@
         "cwd": {
           "type": "string"
         },
+        "direct_reason": {
+          "maxLength": 512,
+          "type": "string"
+        },
         "expected_generation": {
           "minimum": 1,
           "type": "integer"
+        },
+        "expected_readiness_fingerprint": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
         },
         "final_head": {
           "type": "string"

@@ -29,7 +29,9 @@ func (handler Handler) Handle(ctx context.Context, _ string, request issueops.Ex
 	}
 	result, err := handler.service.Prepare(ctx, preparationcontract.Command{
 		ID: request.ID, Mode: request.Mode, Actor: preparationActor(request.Actor), CWD: request.CWD,
-		OwnerHost: request.OwnerHost, OwnerModel: request.OwnerModel, OwnerEffort: request.OwnerEffort, Confirm: request.Confirm,
+		OwnerHost: request.OwnerHost, OwnerModel: request.OwnerModel, OwnerEffort: request.OwnerEffort,
+		IssueSnapshotFile: request.IssueSnapshotFile,
+		DirectReason:      request.DirectReason, ExpectedReadinessFingerprint: request.ExpectedReadinessFingerprint, Confirm: request.Confirm,
 	})
 	return coreResult(result), publicError(err)
 }
@@ -48,6 +50,8 @@ func coreResult(result preparationcontract.Result) issueops.ExecutionPrepareResu
 	return issueops.ExecutionPrepareResult{
 		OK: result.OK, ID: result.ID, Preview: result.Preview,
 		RequestedMode: result.RequestedMode, ResolvedMode: result.ResolvedMode, FallbackCode: result.FallbackCode,
+		ProbeAttempted: result.ProbeAttempted, ProbeAvailable: result.ProbeAvailable, ProbeReady: result.ProbeReady,
+		ProbeCode: result.ProbeCode, ReadinessFingerprint: result.ReadinessFingerprint, ExplicitDirectReason: result.ExplicitDirectReason,
 		Workspace: coreWorkspace(result.Workspace), Execution: coreExecution(result.Execution),
 		ClaimTokenPath: result.ClaimTokenPath, IssueBodySHA256: result.IssueBodySHA256,
 		ContextPacketPath: result.ContextPacketPath, ContextPacketSHA256: result.ContextPacketSHA256,
@@ -74,6 +78,16 @@ func coreExecution(execution *leasecontract.Execution) *issueopscontract.Executi
 			ClaimTokenSHA256: execution.Lease.ClaimTokenSHA256, ClaimedAt: execution.Lease.ClaimedAt,
 			ReleasedAt: execution.Lease.ReleasedAt, ReplacedAt: execution.Lease.ReplacedAt, ReplacementReason: execution.Lease.ReplacementReason,
 		},
+	}
+	if execution.Selection != nil {
+		selection := execution.Selection
+		result.Selection = &issueopscontract.ExecutionSelection{
+			RequestedMode: selection.RequestedMode, ResolvedMode: selection.ResolvedMode,
+			ProbeAttempted: selection.ProbeAttempted, ProbeAvailable: selection.ProbeAvailable, ProbeReady: selection.ProbeReady,
+			ProbeCode: selection.ProbeCode, FallbackCode: selection.FallbackCode,
+			ReadinessFingerprint: selection.ReadinessFingerprint, SelectedAt: selection.SelectedAt,
+			ExplicitDirectReason: selection.ExplicitDirectReason,
+		}
 	}
 	if execution.Lease.Holder != nil {
 		holder := execution.Lease.Holder

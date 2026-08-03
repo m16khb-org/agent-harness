@@ -672,6 +672,7 @@ codex["version"] = codex_version
 claude["version"] = claude_version
 receipt = {
     "schema_version": 1,
+    "validation_lane": "native_host",
     "issue": int(issue),
     "local_head": local_head,
     "remote_head": remote_head,
