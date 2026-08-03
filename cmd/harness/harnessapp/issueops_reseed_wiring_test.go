@@ -9,6 +9,7 @@ import (
 
 	"agent-harness/cmd/harness/issueopscli/executioncmd"
 	model "agent-harness/internal/contract/issueops"
+	"agent-harness/internal/core/commandparse"
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
 )
@@ -129,6 +130,61 @@ func TestExecutionReseedCLIDogfoodDirectAndOrca(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestExecutionReseedPreviewNextCommandRunsWithoutCallerRepair(t *testing.T) {
+	stateRoot, record, _, _, _ := seedOrcaClaimSnapshot(t)
+	actor := claimWiringActor(t)
+	actor.SessionID = "claim wiring's session"
+	owner := reseedWiringOwner{}
+	preview, err := issueops.ReplaceExecutionWithDependencies(context.Background(), stateRoot, issueops.ExecutionReplaceRequest{
+		ID: record.ID, Action: issueops.ExecutionReplacePreview, ExpectedGeneration: 1, Actor: actor, CWD: record.Execution.Workspace.SourceRoot,
+	}, issueops.ExecutionReplaceDependencies{OrcaOwner: owner})
+	if err != nil {
+		t.Fatalf("preview: %v", err)
+	}
+	for _, flag := range []string{"--host", "--session-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"} {
+		if !strings.Contains(preview.NextCommand, flag) {
+			t.Fatalf("preview next command %q does not contain %s", preview.NextCommand, flag)
+		}
+	}
+	tokens := commandparse.SplitCommandTokens(preview.NextCommand)
+	if len(tokens) < 5 || strings.Join(tokens[:4], " ") != "agent-harness issueops execution replace" {
+		t.Fatalf("unexpected preview next command: %q", preview.NextCommand)
+	}
+	if !containsWiringTokenPair(tokens, "--session-id", actor.SessionID) {
+		t.Fatalf("quoted session identity did not round-trip: %q", preview.NextCommand)
+	}
+	if !containsWiringTokenPair(tokens, "--cwd", record.Execution.Workspace.Root) {
+		t.Fatalf("preview did not emit canonical worktree cwd: %q", preview.NextCommand)
+	}
+	if err := executioncmd.Run(tokens[3:], executioncmd.Deps{
+		StateRoot: func() string { return stateRoot },
+		ReadIssue: func(_ context.Context, _ string, request port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
+			return port.ExecutionIssueSnapshot{URL: request.URL, Body: claimWiringIssueBody(), State: "opened"}, nil
+		},
+		Reseed: func(ctx context.Context, root string, request issueops.ExecutionReseedRequest) (issueops.ExecutionReplaceResult, error) {
+			return issueOpsReseedHandlerWithOwner(ctx, root, request, owner)
+		},
+	}); err != nil {
+		t.Fatalf("execute emitted preview next command without repair: %v", err)
+	}
+	persisted, err := issueops.ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.Execution.Lease.Generation != 2 || persisted.Execution.Lease.Status != model.LeaseStatusClaimable {
+		t.Fatalf("persisted reseed=%+v", persisted.Execution.Lease)
+	}
+}
+
+func containsWiringTokenPair(tokens []string, name, value string) bool {
+	for index := 0; index+1 < len(tokens); index++ {
+		if tokens[index] == name && tokens[index+1] == value {
+			return true
+		}
+	}
+	return false
 }
 
 type reseedWiringOwner struct{}
