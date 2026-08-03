@@ -3,13 +3,14 @@ package port
 // NativeInstallRequest describes one host-neutral installation run.
 // Core code owns orchestration; host adapters own concrete files for each host.
 type NativeInstallRequest struct {
-	Root         string   `json:"root"`
-	Home         string   `json:"home"`
-	CodexHome    string   `json:"codex_home"`
-	BinPath      string   `json:"bin_path"`
-	SkillNames   []string `json:"skill_names"`
-	ProjectLocal bool     `json:"project_local"`
-	DryRun       bool     `json:"dry_run,omitempty"`
+	Root             string   `json:"root"`
+	Home             string   `json:"home"`
+	CodexHome        string   `json:"codex_home"`
+	BinPath          string   `json:"bin_path"`
+	SkillNames       []string `json:"skill_names"`
+	ProjectLocal     bool     `json:"project_local"`
+	DryRun           bool     `json:"dry_run,omitempty"`
+	AdoptCommandFile bool     `json:"adopt_command_file,omitempty"`
 }
 
 // NativeActivationEvidence is a host adapter's strict semantic readback of
@@ -29,18 +30,36 @@ type NativeActivationEvidence struct {
 
 // NativeInstallResult is the aggregate result of all host installers.
 type NativeInstallResult struct {
-	OK           bool                `json:"ok"`
-	Root         string              `json:"root"`
-	Home         string              `json:"home"`
-	CodexHome    string              `json:"codex_home"`
-	BinPath      string              `json:"bin_path"`
-	SkillNames   []string            `json:"skill_names"`
-	Hosts        []HostInstallResult `json:"hosts"`
-	Files        []InstallFile       `json:"files"`
-	Links        []InstallLink       `json:"links"`
-	Messages     []string            `json:"messages,omitempty"`
-	ProjectLocal bool                `json:"project_local"`
-	DryRun       bool                `json:"dry_run,omitempty"`
+	OK            bool                      `json:"ok"`
+	Root          string                    `json:"root"`
+	Home          string                    `json:"home"`
+	CodexHome     string                    `json:"codex_home"`
+	BinPath       string                    `json:"bin_path"`
+	SkillNames    []string                  `json:"skill_names"`
+	Hosts         []HostInstallResult       `json:"hosts"`
+	Files         []InstallFile             `json:"files"`
+	Links         []InstallLink             `json:"links"`
+	Messages      []string                  `json:"messages,omitempty"`
+	ProjectLocal  bool                      `json:"project_local"`
+	DryRun        bool                      `json:"dry_run,omitempty"`
+	CommandPath   *ManagedCommandPathResult `json:"command_path,omitempty"`
+	TransitionID  string                    `json:"transition_id,omitempty"`
+	Committed     bool                      `json:"committed,omitempty"`
+	AbortRequired bool                      `json:"abort_required,omitempty"`
+}
+
+type ManagedCommandPathResult struct {
+	Path              string `json:"path"`
+	Target            string `json:"target"`
+	BackupPath        string `json:"backup_path,omitempty"`
+	AdoptionApproved  bool   `json:"adoption_approved"`
+	WouldAdopt        bool   `json:"would_adopt,omitempty"`
+	Adopted           bool   `json:"adopted,omitempty"`
+	Committed         bool   `json:"committed,omitempty"`
+	RolledBack        bool   `json:"rolled_back,omitempty"`
+	RollbackAvailable bool   `json:"rollback_available,omitempty"`
+	BackupRetained    bool   `json:"backup_retained,omitempty"`
+	AbortRequired     bool   `json:"abort_required,omitempty"`
 }
 
 // HostInstallResult reports one concrete host adapter installation.

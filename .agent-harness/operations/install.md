@@ -32,6 +32,8 @@ agent-harness project bootstrap --repo /path/to/repo --sync
 
 `agent-harness` remains the canonical command identity. `ah` is a command symlink, not a shell alias or wrapper. If `~/.local/bin/ah` is a regular file, directory, or points elsewhere, install/update refuses to overwrite it and requires manual resolution.
 
+기존 `~/.local/bin/agent-harness`가 regular file이면 기본 install과 dry-run은 변경 없이 거부한다. 그 파일과 실제 실행 중인 staged/canonical candidate가 모두 정적 Go build identity `agent-harness/cmd/harness` / module `agent-harness`를 만족할 때만 `--adopt-command-file`로 adoption을 명시할 수 있다. 승인된 실행은 같은 디렉터리의 mode `0600` backup을 만든 뒤 temporary symlink와 command path를 atomic exchange하고 displaced identity를 재검증한다. native activation Seal 전 오류에서는 원래 bytes와 mode를 복원하고 exact transition을 Abort한다. Seal이 성공한 뒤 backup 정리만 실패하면 activation은 committed 상태로 유지되고 JSON receipt의 `backup_retained`와 recovery path를 따른다. `ah`에는 이 승인 플래그가 적용되지 않는다.
+
 `bootstrap` and `update` use the current `agent-harness` checkout. They build `bin/agent-harness`, refresh both command shims through the same installer path, run native host installation, refresh agent-harness MCP registration, and restart the shared daemon when it is already running so the MCP backend uses the rebuilt binary. They do not run `git pull`. Executable symlinks are resolved back to the checkout, so `ah update` works outside the repository directory.
 
 `ah update`는 host가 소유한 stdio MCP 프로세스를 열거하거나 종료하지 않는다. 살아 있는 agent-harness proxy는 daemon generation 교체를 감지해 동일한 protocol/capability 계약으로 다시 초기화한다. 교체 시점에 완료 여부를 확정할 수 없는 요청은 자동 재실행하지 않고 `daemon_generation_changed`, `outcome=unknown`, `reconcile_required=true` 오류로 끝낸다. 새 daemon의 handshake 계약이 달라지면 proxy를 종료해 host가 새 세션으로 다시 연결하게 한다.

@@ -12,20 +12,114 @@ import (
 
 const shellPathRCMarker = "# agent-harness: add user-local bin to PATH"
 
-func applyInstallPathPlan(result *port.NativeInstallResult, req port.NativeInstallRequest, mode string) error {
+type installPathTransaction struct {
+	req       port.NativeInstallRequest
+	command   *installutil.ManagedCommandPathTransaction
+	managed   bool
+	applied   bool
+	path      string
+	shortPath string
+}
+
+func prepareInstallPathPlan(result *port.NativeInstallResult, req port.NativeInstallRequest, mode string) (*installPathTransaction, error) {
+	return prepareInstallPathPlanForCandidate(result, req, req.BinPath, mode)
+}
+
+func prepareInstallPathPlanForCandidate(result *port.NativeInstallResult, req port.NativeInstallRequest, candidatePath, mode string) (*installPathTransaction, error) {
 	userBin := filepath.Join(req.Home, ".local", "bin")
 	commandPath := filepath.Join(userBin, "agent-harness")
-	link, err := installutil.EnsureSymlinkPlan(req.BinPath, commandPath, req.DryRun)
-	result.Links = append(result.Links, link)
-	if err != nil {
-		return err
-	}
 	shortCommandPath := filepath.Join(userBin, "ah")
-	shortLink, err := ensureShortCommandShimPlan(commandPath, shortCommandPath, req.DryRun)
-	result.Links = append(result.Links, shortLink)
-	if err != nil {
-		return err
+	transaction := &installPathTransaction{req: req, path: commandPath, shortPath: shortCommandPath}
+	info, statErr := os.Lstat(commandPath)
+	if statErr == nil && info.Mode().IsRegular() && info.Mode()&os.ModeSymlink == 0 {
+		managed, plan, err := installutil.PrepareManagedCommandPathCandidate(req.BinPath, candidatePath, commandPath, req.AdoptCommandFile, req.DryRun)
+		result.CommandPath = managedCommandPathResult(plan)
+		result.Links = append(result.Links, port.InstallLink{Path: commandPath, Target: req.BinPath, WouldCreate: plan.WouldAdopt})
+		if err != nil {
+			return nil, err
+		}
+		transaction.command = managed
+		transaction.managed = true
+	} else {
+		if statErr != nil && !os.IsNotExist(statErr) {
+			return nil, statErr
+		}
+		link, err := installutil.EnsureSymlinkPlan(req.BinPath, commandPath, true)
+		if req.DryRun {
+			result.Links = append(result.Links, link)
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
+	shortLink, err := ensureShortCommandShimPlan(commandPath, shortCommandPath, true)
+	if req.DryRun {
+		result.Links = append(result.Links, shortLink)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if req.DryRun {
+		if err := planShellPath(result, req, mode); err != nil {
+			return nil, err
+		}
+	}
+	return transaction, nil
+}
+
+func (transaction *installPathTransaction) apply(result *port.NativeInstallResult) error {
+	if transaction.managed {
+		plan, err := transaction.command.Apply()
+		result.CommandPath = managedCommandPathResult(plan)
+		transaction.applied = plan.Adopted
+		if err != nil {
+			return err
+		}
+		result.Links = append(result.Links, port.InstallLink{Path: transaction.path, Target: transaction.req.BinPath, Created: true})
+	} else {
+		link, err := installutil.EnsureSymlinkPlan(transaction.req.BinPath, transaction.path, false)
+		result.Links = append(result.Links, link)
+		if err != nil {
+			return err
+		}
+	}
+	shortLink, err := ensureShortCommandShimPlan(transaction.path, transaction.shortPath, false)
+	result.Links = append(result.Links, shortLink)
+	return err
+}
+
+func (transaction *installPathTransaction) rollback(result *port.NativeInstallResult) error {
+	if !transaction.managed || transaction.command == nil || !transaction.applied {
+		return nil
+	}
+	plan, err := transaction.command.Rollback()
+	if err == nil {
+		transaction.applied = false
+	}
+	result.CommandPath = managedCommandPathResult(plan)
+	return err
+}
+
+func (transaction *installPathTransaction) finalize(result *port.NativeInstallResult) error {
+	if !transaction.managed || transaction.command == nil {
+		return nil
+	}
+	plan, err := transaction.command.Finalize()
+	result.CommandPath = managedCommandPathResult(plan)
+	return err
+}
+
+func managedCommandPathResult(plan installutil.ManagedCommandPathPlan) *port.ManagedCommandPathResult {
+	return &port.ManagedCommandPathResult{
+		Path: plan.Path, Target: plan.Target, BackupPath: plan.BackupPath, AdoptionApproved: plan.AdoptionApproved,
+		WouldAdopt: plan.WouldAdopt, Adopted: plan.Adopted, Committed: plan.Committed, RolledBack: plan.RolledBack,
+		RollbackAvailable: plan.RollbackAvailable, BackupRetained: plan.BackupRetained,
+	}
+}
+
+func planShellPath(result *port.NativeInstallResult, req port.NativeInstallRequest, mode string) error {
+	commandPath := filepath.Join(req.Home, ".local", "bin", "agent-harness")
+	shortCommandPath := filepath.Join(req.Home, ".local", "bin", "ah")
 	if mode == "manual" {
 		result.Messages = append(result.Messages, `path-mode=manual: command shims are planned at `+commandPath+` and `+shortCommandPath+`; run export PATH="$HOME/.local/bin:$PATH" for this shell or add it to your shell rc`)
 		return nil

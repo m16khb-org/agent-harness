@@ -24,7 +24,10 @@ func configureInstallCommandTest(t *testing.T, home string) string {
 	t.Setenv("HARNESS_ROOT", root)
 	t.Setenv("SHELL", "/bin/zsh")
 	t.Setenv("PATH", "/usr/bin:/bin")
-	Configure(Deps{HarnessRoot: func() string { return root }})
+	Configure(Deps{
+		HarnessRoot:    func() string { return root },
+		ExecutablePath: func() (string, error) { return filepath.Join(root, "bin", "agent-harness"), nil },
+	})
 	t.Cleanup(Reset)
 	return root
 }
