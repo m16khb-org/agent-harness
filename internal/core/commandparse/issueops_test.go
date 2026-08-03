@@ -287,6 +287,26 @@ func TestExecutionSnapshotFileFlagMatchesCLIContract(t *testing.T) {
 	}
 }
 
+func TestExecutionReplaceCompletionGenerationFlagMatchesCLIContract(t *testing.T) {
+	command, ok := ParseExactIssueOpsCommand("agent-harness issueops execution replace --id io-1 --expected-generation 5 --preview --completion-generation 4 --json")
+	if !ok || command.Path != "execution replace" {
+		t.Fatalf("completion generation 명령이 exact IssueOps 경로로 파싱되지 않았다: %#v ok=%v", command, ok)
+	}
+	values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
+	if !ok {
+		t.Fatal("execution replace command has no exact flag spec")
+	}
+	flags, ok := ExactFlags(command, values, booleans, repeatable)
+	if !ok || len(flags["--completion-generation"]) != 1 || flags["--completion-generation"][0] != "4" {
+		t.Fatalf("CLI completion generation 플래그가 exact 명세에서 손실됐다: flags=%#v ok=%v", flags, ok)
+	}
+
+	nearMiss, _ := ParseExactIssueOpsCommand("agent-harness issueops execution replace --id io-1 --expected-generation 5 --preview --completion-gen 4 --json")
+	if flags, ok := ExactFlags(nearMiss, values, booleans, repeatable); ok || flags != nil {
+		t.Fatalf("등록하지 않은 completion generation 별칭을 허용했다: flags=%#v ok=%v", flags, ok)
+	}
+}
+
 func TestRemovedExecutionCommandsHaveNoFlagSpecs(t *testing.T) {
 	for _, path := range []string{"resume", "execution decide", "worktree prepare", "worktree prepare-tools", "worktree reconcile", "heartbeat"} {
 		if _, _, _, ok := IssueOpsCommandSpec(path); ok {

@@ -873,6 +873,33 @@ func executionActiveLifecycleRecord(t *testing.T) (string, issueopscontract.Issu
 	return repo, record, linked.path
 }
 
+func TestExecutionReplaceCompletionGenerationReachesTypedControlPlane(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	base := "agent-harness issueops execution replace --id " + record.ID +
+		" --expected-generation 1 --completion-generation 1"
+
+	preview := executionRequest(record, worker, "codex", "observer-session", base+" --preview --json")
+	if got := BuildLifecyclePreToolUseDecision(preview); got.Decision != "allow" {
+		t.Fatalf("completion-bearing reseed preview must reach the typed control plane: %+v", got)
+	}
+
+	reseedCommand := base + " --reseed --host claude --session-id owner-session --agent-id owner-agent" +
+		" --session-pid 1234 --session-started-at 2026-07-22T00:00:00Z --session-executable claude" +
+		" --cwd " + worker + " --confirm --json"
+	reseed := executionRequest(record, worker, "claude", "owner-session", reseedCommand)
+	reseed.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(reseed); got.Decision != "allow" {
+		t.Fatalf("completion-bearing reseed must reach the typed control plane: %+v", got)
+	}
+
+	nearMiss := preview
+	nearMiss.Command = strings.Replace(preview.Command, "--completion-generation", "--completion-gen", 1)
+	if got := BuildLifecyclePreToolUseDecision(nearMiss); got.Decision != "block" {
+		t.Fatalf("unregistered completion generation alias must stay fail-closed: %+v", got)
+	}
+}
+
 func TestExecutionLeaseAllowsOnlyCurrentHolderInCanonicalRoot(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	source := guardRepoWithCycle(t, "68-source", IssueOpsPhasePlan)
