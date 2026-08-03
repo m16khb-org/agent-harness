@@ -276,6 +276,17 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 				return cleanupReplacementFailure(record, err)
 			}
 			resealed = reseal
+			if record.Execution.Mode == issueops.ExecutionModeOrca {
+				binding := record.Execution.Orca
+				if binding == nil {
+					return cleanupReplacementFailure(record, fmt.Errorf("Orca replacement requires an existing binding"))
+				}
+				binding.LeaseGeneration = lease.Generation
+				binding.ArtifactIdentityVersion = issueops.OrcaArtifactIdentityVersion
+				binding.IssueBodySHA256 = reseal.issueBodySHA256
+				binding.ContextPacketSHA256 = reseal.packetSHA256
+				binding.OwnerPromptSHA256 = reseal.promptSHA256
+			}
 			persisted, err = persistExecutionTransition(stateRoot, record, nil)
 			if err != nil {
 				return cleanupReplacementFailure(record, err)
@@ -571,7 +582,16 @@ func executionQuiescenceFingerprint(ctx context.Context, record issueops.IssueOp
 	if err := validateExecutionRuntimeRolloverWithProcess(record, processStatus, orcaInventory); err != nil {
 		return "", err
 	}
-	if !deadOwnerRuntimeRollover(record, processStatus, orcaInventory) && (orcaInventory.TerminalLive || orcaInventory.TaskLive) {
+	sameRuntimeUnsafe := false
+	if record.Execution.Mode == issueops.ExecutionModeOrca && record.Execution.Orca != nil &&
+		strings.TrimSpace(orcaInventory.RuntimeID) != "" && strings.TrimSpace(orcaInventory.RuntimeID) == strings.TrimSpace(record.Execution.Orca.RuntimeID) {
+		taskStatus := strings.TrimSpace(orcaInventory.TaskStatus)
+		dispatchStatus := strings.TrimSpace(orcaInventory.DispatchStatus)
+		taskNonterminal := taskStatus != "" && taskStatus != "completed" && taskStatus != "failed"
+		dispatchNonterminal := dispatchStatus != "" && dispatchStatus != "completed" && dispatchStatus != "failed" && dispatchStatus != "circuit_broken"
+		sameRuntimeUnsafe = orcaInventory.TerminalID != "" || orcaInventory.TerminalLive || orcaInventory.TaskLive || taskNonterminal || dispatchNonterminal
+	}
+	if sameRuntimeUnsafe || (!deadOwnerRuntimeRollover(record, processStatus, orcaInventory) && (orcaInventory.TerminalLive || orcaInventory.TaskLive)) {
 		return "", fmt.Errorf("Orca owner is not quiescent: terminal_live=%t task_live=%t task_status=%s dispatch_status=%s", orcaInventory.TerminalLive, orcaInventory.TaskLive, orcaInventory.TaskStatus, orcaInventory.DispatchStatus)
 	}
 	inventoryOwners := map[int]bool{os.Getpid(): true}
@@ -678,7 +698,7 @@ func validateExecutionRuntimeRolloverWithProcess(record issueops.IssueOpsRecord,
 	lease := record.Execution.Lease
 	holderless := lease.Holder == nil && (lease.Status == issueops.LeaseStatusReleased || lease.Status == issueops.LeaseStatusClaimable)
 	taskSettled := inventory.TaskStatus == "completed" || inventory.TaskStatus == "failed"
-	dispatchSettled := inventory.DispatchStatus == "completed" || inventory.DispatchStatus == "failed" || inventory.DispatchStatus == "circuit_broken"
+	dispatchSettled := inventory.DispatchStatus == "completed" || inventory.DispatchStatus == "failed" || inventory.DispatchStatus == "circuit_broken" || inventory.DispatchStatus == "dispatched"
 	if !holderless || inventory.TerminalID != "" || inventory.TerminalLive || inventory.TaskLive || !taskSettled || !dispatchSettled {
 		return fmt.Errorf(
 			"Orca runtime rollover owner is not quiescent: terminal_id=%s terminal_live=%t task_live=%t task_status=%s dispatch_status=%s",

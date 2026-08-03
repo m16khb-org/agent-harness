@@ -95,13 +95,23 @@ func validateReseedRuntimeRollover(record leasecontract.Record, inventory port.E
 	}
 	sealed := strings.TrimSpace(record.Execution.Orca.RuntimeID)
 	observed := strings.TrimSpace(inventory.RuntimeID)
-	if observed == "" || observed == sealed {
+	if observed == "" {
+		return nil
+	}
+	if observed == sealed {
+		taskStatus := strings.TrimSpace(inventory.TaskStatus)
+		dispatchStatus := strings.TrimSpace(inventory.DispatchStatus)
+		taskNonterminal := taskStatus != "" && taskStatus != "completed" && taskStatus != "failed"
+		dispatchNonterminal := dispatchStatus != "" && dispatchStatus != "completed" && dispatchStatus != "failed" && dispatchStatus != "circuit_broken"
+		if inventory.TerminalID != "" || inventory.TerminalLive || inventory.TaskLive || taskNonterminal || dispatchNonterminal {
+			return fmt.Errorf("Orca owner is not quiescent: terminal_id=%s terminal_live=%t task_live=%t task_status=%s dispatch_status=%s", inventory.TerminalID, inventory.TerminalLive, inventory.TaskLive, inventory.TaskStatus, inventory.DispatchStatus)
+		}
 		return nil
 	}
 	lease := record.Execution.Lease
 	holderless := lease.Holder == nil && (lease.Status == "released" || lease.Status == "claimable")
 	taskSettled := inventory.TaskStatus == "completed" || inventory.TaskStatus == "failed"
-	dispatchSettled := inventory.DispatchStatus == "completed" || inventory.DispatchStatus == "failed" || inventory.DispatchStatus == "circuit_broken"
+	dispatchSettled := inventory.DispatchStatus == "completed" || inventory.DispatchStatus == "failed" || inventory.DispatchStatus == "circuit_broken" || inventory.DispatchStatus == "dispatched"
 	if !holderless || inventory.TerminalID != "" || inventory.TerminalLive || inventory.TaskLive || !taskSettled || !dispatchSettled {
 		return fmt.Errorf("Orca runtime rollover owner is not quiescent: terminal_id=%s terminal_live=%t task_live=%t task_status=%s dispatch_status=%s", inventory.TerminalID, inventory.TerminalLive, inventory.TaskLive, inventory.TaskStatus, inventory.DispatchStatus)
 	}

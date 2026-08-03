@@ -96,6 +96,20 @@ func TestExecutionReplacementRecoversDeadOwnerAfterOrcaRuntimeRollover(t *testin
 	if finalized.Execution.Lease.Generation != 2 || finalized.Execution.Lease.Status != contractissueops.LeaseStatusClaimable || finalized.Execution.Lease.Holder != nil {
 		t.Fatalf("finalized rollover lease is not claimable: %#v", finalized.Execution.Lease)
 	}
+	persisted, err := readIssueOpsUnchecked(stateRoot, record.ID)
+	if err != nil {
+		t.Fatalf("read finalized rollover record: %v", err)
+	}
+	binding := persisted.Execution.Orca
+	if binding == nil || binding.ArtifactIdentityVersion != contractissueops.OrcaArtifactIdentityVersion ||
+		binding.LeaseGeneration != 2 || binding.IssueBodySHA256 != finalized.IssueBodySHA256 ||
+		binding.ContextPacketSHA256 != finalized.ContextPacketSHA256 ||
+		binding.OwnerPromptSHA256 != finalized.OwnerPromptSHA256 {
+		t.Fatalf("finalize did not persist the resealed generation identity: binding=%#v result=%#v", binding, finalized)
+	}
+	if _, err := readExecutionResumeArtifacts(persisted); err != nil {
+		t.Fatalf("finalized generation artifacts are not immediately resumable: %v", err)
+	}
 }
 
 func TestExecutionReplacementRuntimeRolloverSafetyBoundaries(t *testing.T) {
@@ -165,6 +179,68 @@ func TestExecutionReplacementRuntimeRolloverSafetyBoundaries(t *testing.T) {
 		}, dependencies)
 		if err == nil || !strings.Contains(err.Error(), "Orca owner is not quiescent") {
 			t.Fatalf("same-runtime task liveness did not block finalization: %v", err)
+		}
+	})
+
+	t.Run("same runtime nonterminal status remains unsafe", func(t *testing.T) {
+		stateRoot, record := rolloverExecutionFixture(t)
+		inspector := &rolloverOwnerInspector{inventory: port.ExecutionOrcaOwnerInventory{
+			RuntimeID: "runtime-sealed", TaskStatus: "dispatched", DispatchStatus: "dispatched",
+		}}
+		dependencies := ExecutionReplaceDependencies{OrcaOwner: inspector}
+		requester := executionActor("codex", "replacement-owner")
+		preview, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+			ID: record.ID, Action: ExecutionReplacePreview, ExpectedGeneration: 1,
+			Actor: requester, CWD: record.Execution.Workspace.Root,
+		}, dependencies)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+			ID: record.ID, Action: ExecutionReplaceRevoke, ExpectedGeneration: 1,
+			InventoryFingerprint: preview.InventoryFingerprint, Reason: "same runtime status check",
+			Actor: requester, CWD: record.Execution.Workspace.Root, Confirm: true,
+		}, dependencies); err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = ReplaceExecutionWithDependencies(context.Background(), stateRoot, ExecutionReplaceRequest{
+			ID: record.ID, Action: ExecutionReplaceFinalizePreview, ExpectedGeneration: 2,
+			Actor: requester, CWD: record.Execution.Workspace.Root,
+		}, dependencies)
+		if err == nil || !strings.Contains(err.Error(), "Orca owner is not quiescent") {
+			t.Fatalf("same-runtime nonterminal status did not block finalization: %v", err)
+		}
+	})
+
+	t.Run("holderless changed runtime accepts settled task with stale dispatch", func(t *testing.T) {
+		_, record := rolloverExecutionFixture(t)
+		record.Execution.Lease.Status = contractissueops.LeaseStatusClaimable
+		record.Execution.Lease.Holder = nil
+
+		err := validateExecutionRuntimeRollover(record, port.ExecutionOrcaOwnerInventory{
+			RuntimeID: "runtime-current", TaskStatus: "failed", DispatchStatus: "dispatched",
+		})
+		if err != nil {
+			t.Fatalf("settled task with a stale dispatched row must not deadlock holderless recovery: %v", err)
+		}
+	})
+
+	t.Run("holderless changed runtime rejects unsafe stale dispatch evidence", func(t *testing.T) {
+		_, record := rolloverExecutionFixture(t)
+		record.Execution.Lease.Status = contractissueops.LeaseStatusClaimable
+		record.Execution.Lease.Holder = nil
+		inventories := []port.ExecutionOrcaOwnerInventory{
+			{RuntimeID: "runtime-current", TaskLive: true, TaskStatus: "failed", DispatchStatus: "dispatched"},
+			{RuntimeID: "runtime-current", TaskStatus: "dispatched", DispatchStatus: "dispatched"},
+			{RuntimeID: "runtime-current", TerminalID: "pty-old", TaskStatus: "failed", DispatchStatus: "dispatched"},
+			{RuntimeID: "runtime-current", TerminalLive: true, TaskStatus: "failed", DispatchStatus: "dispatched"},
+		}
+
+		for _, inventory := range inventories {
+			if err := validateExecutionRuntimeRollover(record, inventory); err == nil {
+				t.Fatalf("unsafe stale-dispatch inventory was accepted: %#v", inventory)
+			}
 		}
 	})
 }
