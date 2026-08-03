@@ -70,11 +70,11 @@ func ForRecord(record model.IssueOpsRecord, req model.IssueOpsCleanupStatusReque
 	worktree := strings.TrimSpace(record.WorktreePath)
 	if worktree == "" {
 		status.Missing = append(status.Missing, "worktree_path")
-		return finishIssueOpsCleanupStatus(status)
+		return Finalize(status)
 	}
 	if !worktreePathValid(worktree) {
 		status.Missing = append(status.Missing, "worktree_exists")
-		return finishIssueOpsCleanupStatus(status)
+		return Finalize(status)
 	}
 	if code, out, stderr := preflight.GitCmd(worktree, "status", "--porcelain=v1"); code != 0 {
 		status.Missing = append(status.Missing, "worktree_git_status")
@@ -114,7 +114,7 @@ func ForRecord(record model.IssueOpsRecord, req model.IssueOpsCleanupStatusReque
 			status.Missing = append(status.Missing, "remote_branch_absent")
 		}
 	}
-	return finishIssueOpsCleanupStatus(status)
+	return Finalize(status)
 }
 
 func hasUnverifiedChildClose(record model.IssueOpsRecord) bool {
@@ -129,7 +129,10 @@ func hasUnverifiedChildClose(record model.IssueOpsRecord) bool {
 	return false
 }
 
-func finishIssueOpsCleanupStatus(status model.IssueOpsCleanupStatus) model.IssueOpsCleanupStatus {
+// Finalize applies the cleanup status contract's stable sorting, readiness, and
+// three-choice presentation to status assembled by either structural inspection
+// or the cleanup finish readiness oracle.
+func Finalize(status model.IssueOpsCleanupStatus) model.IssueOpsCleanupStatus {
 	status.Missing = stringlist.UniqueSorted(status.Missing)
 	status.Warnings = stringlist.UniqueSorted(status.Warnings)
 	status.Ready = len(status.Missing) == 0
