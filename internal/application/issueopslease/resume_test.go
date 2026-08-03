@@ -46,6 +46,46 @@ func TestResumeRejectsBeforeArtifactsAndInventory(t *testing.T) {
 	}
 }
 
+func TestResumeReturnsExistingBindingWithoutAllocatingAnotherLaunch(t *testing.T) {
+	record := resumeApplicationTestRecord(4)
+	operationIDs := 0
+	service := NewResumeService(
+		resumeFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		resumeRepositoryFake{snapshot: ResumeSnapshot{Record: record}},
+		resumeArtifactsFunc(func(context.Context, leasecontract.Record) (leasecontract.ResumeArtifacts, error) {
+			return leasecontract.ResumeArtifacts{ClaimTokenPath: "token"}, nil
+		}),
+		resumeOwnersFunc(func(context.Context, leasecontract.Record) (leasedomain.ResumeInventory, bool, error) {
+			return leasedomain.ResumeInventory{RuntimeID: "runtime", TerminalLive: true, TaskLive: true, TerminalID: "pty"}, true, nil
+		}),
+		resumeStagesFake{},
+		resumeOperationIDsFunc(func() (string, error) {
+			operationIDs++
+			return strings.Repeat("d", 32), nil
+		}),
+		func(context.Context, leasedomain.ProcessReceipt) (string, leasedomain.ProcessReceipt, error) {
+			return "live", *resumeApplicationActor().Process, nil
+		},
+		reseedPathMatcher{},
+	)
+
+	result, err := service.Resume(context.Background(), ResumeRequest{
+		ID: record.ID, ExpectedGeneration: 4, Actor: resumeApplicationActor(),
+		Ancestry: []leasedomain.ProcessReceipt{*resumeApplicationActor().Process}, CWD: "/worktree", Confirm: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Disposition != leasedomain.ResumeExistingBinding {
+		t.Fatalf("resume disposition=%q want=%q", result.Disposition, leasedomain.ResumeExistingBinding)
+	}
+	if operationIDs != 0 {
+		t.Fatalf("same-generation live owner allocated %d launch operations", operationIDs)
+	}
+}
+
 func TestResumeCreatesTerminalRunTaskDispatchInApplicationOrder(t *testing.T) {
 	trace := []string{}
 	record := resumeApplicationTestRecord(4)
@@ -78,6 +118,9 @@ func TestResumeCreatesTerminalRunTaskDispatchInApplicationOrder(t *testing.T) {
 	}
 	if !result.OK || result.Receipt.Execution.Pending != nil {
 		t.Fatalf("result=%+v", result)
+	}
+	if result.Disposition != leasedomain.ResumeCreateTerminal {
+		t.Fatalf("resume disposition=%q want=%q", result.Disposition, leasedomain.ResumeCreateTerminal)
 	}
 	want := []string{
 		"fence", "actor", "snapshot", "artifacts", "owners", "operation_id", "begin",

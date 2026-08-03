@@ -20,9 +20,10 @@ type ResumeRequest struct {
 }
 
 type ResumeResult struct {
-	OK      bool
-	ID      string
-	Receipt leasecontract.ResumeReceipt
+	OK          bool
+	ID          string
+	Disposition leasedomain.ResumeDisposition
+	Receipt     leasecontract.ResumeReceipt
 }
 
 type ResumeService struct {
@@ -76,7 +77,7 @@ func (s *ResumeService) Resume(ctx context.Context, request ResumeRequest) (Resu
 			return err
 		}
 		if plan.Disposition == leasedomain.ResumeExistingBinding {
-			result = ResumeResult{OK: true, ID: request.ID, Receipt: leasecontract.ResumeReceipt{Execution: *snapshot.Record.Stable.Execution, Artifacts: artifacts}}
+			result = ResumeResult{OK: true, ID: request.ID, Disposition: plan.Disposition, Receipt: leasecontract.ResumeReceipt{Execution: *snapshot.Record.Stable.Execution, Artifacts: artifacts}}
 			return nil
 		}
 		operationID, err := s.operationIDs.New()
@@ -133,7 +134,7 @@ func (s *ResumeService) Resume(ctx context.Context, request ResumeRequest) (Resu
 		if progress.Pending {
 			return fmt.Errorf("execution resume did not complete the owner launch stages")
 		}
-		result = ResumeResult{OK: true, ID: request.ID, Receipt: leasecontract.ResumeReceipt{Execution: progress.Execution, Artifacts: artifacts}}
+		result = ResumeResult{OK: true, ID: request.ID, Disposition: plan.Disposition, Receipt: leasecontract.ResumeReceipt{Execution: progress.Execution, Artifacts: artifacts}}
 		return nil
 	})
 	if err != nil {

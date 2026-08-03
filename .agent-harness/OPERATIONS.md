@@ -233,8 +233,11 @@ possible Orca mutation. Failed-holder recovery uses the ordered generation-CAS
 replacement sequence and proves the prior process/resource is quiescent before
 creating a new claimable generation.
 
-When claimable Orca status returns an exact generation-bound `execution resume
---confirm` next command, execute that command unchanged. Resume accepts either
+When a coordinator sees claimable Orca status return an exact generation-bound
+`execution resume --confirm` next command, execute that command unchanged. A
+dispatched owner is different: when its sealed packet injects a claim command,
+that claim is its only next action and it must not recursively execute status'
+recovery resume. Resume accepts either
 the complete explicit `ACTOR_FLAGS` receipt or no actor flags; the actor-free
 form observes the current Codex/Claude session, native host process ancestry,
 and canonical process cwd. Supplying only part of `ACTOR_FLAGS` is rejected.
