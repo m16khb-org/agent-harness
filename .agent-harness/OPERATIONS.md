@@ -140,7 +140,7 @@ Use `.agent-harness/operations/release-reproducibility.md` before deciding Homeb
 ## Optional Orca execution v1
 
 Orca is user-installed and optional. Preview
-`agent-harness issueops execution prepare --id ID --mode auto ... --json`,
+`agent-harness issueops execution prepare --id ID --mode auto ... --json` preview 후 반환된 `next_command`의 동일 입력과 `--expected-readiness-fingerprint`로 confirm한다. `--mode direct`는 예외 경로이며 정규화된 `--direct-reason` 없이는 거부된다. 완료 전 status의 `execution.selection`에서 requested/resolved mode, probe booleans/code, fallback, fingerprint, selected_at, explicit-direct reason을 다시 읽는다.
 review the mode, branch, base SHA, canonical worktree, and owner model, then
 repeat the identical request with `--confirm`. `auto` selects Orca only when
 readiness succeeds before mutation; otherwise it selects direct. The only

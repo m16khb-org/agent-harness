@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/adapter/installutil"
+	installcontract "agent-harness/internal/contract/install"
 	"agent-harness/internal/port"
 )
 
@@ -14,7 +14,7 @@ const shellPathRCMarker = "# agent-harness: add user-local bin to PATH"
 
 type installPathTransaction struct {
 	req       port.NativeInstallRequest
-	command   *installutil.ManagedCommandPathTransaction
+	command   ManagedCommandPathTransaction
 	managed   bool
 	applied   bool
 	path      string
@@ -32,7 +32,7 @@ func prepareInstallPathPlanForCandidate(result *port.NativeInstallResult, req po
 	transaction := &installPathTransaction{req: req, path: commandPath, shortPath: shortCommandPath}
 	info, statErr := os.Lstat(commandPath)
 	if statErr == nil && info.Mode().IsRegular() && info.Mode()&os.ModeSymlink == 0 {
-		managed, plan, err := installutil.PrepareManagedCommandPathCandidate(req.BinPath, candidatePath, commandPath, req.AdoptCommandFile, req.DryRun)
+		managed, plan, err := PrepareManagedCommandPathCandidate(req.BinPath, candidatePath, commandPath, req.AdoptCommandFile, req.DryRun)
 		result.CommandPath = managedCommandPathResult(plan)
 		result.Links = append(result.Links, port.InstallLink{Path: commandPath, Target: req.BinPath, WouldCreate: plan.WouldAdopt})
 		if err != nil {
@@ -44,7 +44,7 @@ func prepareInstallPathPlanForCandidate(result *port.NativeInstallResult, req po
 		if statErr != nil && !os.IsNotExist(statErr) {
 			return nil, statErr
 		}
-		link, err := installutil.EnsureSymlinkPlan(req.BinPath, commandPath, true)
+		link, err := EnsureSymlinkPlan(req.BinPath, commandPath, true)
 		if req.DryRun {
 			result.Links = append(result.Links, link)
 		}
@@ -77,7 +77,7 @@ func (transaction *installPathTransaction) apply(result *port.NativeInstallResul
 		}
 		result.Links = append(result.Links, port.InstallLink{Path: transaction.path, Target: transaction.req.BinPath, Created: true})
 	} else {
-		link, err := installutil.EnsureSymlinkPlan(transaction.req.BinPath, transaction.path, false)
+		link, err := EnsureSymlinkPlan(transaction.req.BinPath, transaction.path, false)
 		result.Links = append(result.Links, link)
 		if err != nil {
 			return err
@@ -109,7 +109,7 @@ func (transaction *installPathTransaction) finalize(result *port.NativeInstallRe
 	return err
 }
 
-func managedCommandPathResult(plan installutil.ManagedCommandPathPlan) *port.ManagedCommandPathResult {
+func managedCommandPathResult(plan installcontract.ManagedCommandPathPlan) *port.ManagedCommandPathResult {
 	return &port.ManagedCommandPathResult{
 		Path: plan.Path, Target: plan.Target, BackupPath: plan.BackupPath, AdoptionApproved: plan.AdoptionApproved,
 		WouldAdopt: plan.WouldAdopt, Adopted: plan.Adopted, Committed: plan.Committed, RolledBack: plan.RolledBack,

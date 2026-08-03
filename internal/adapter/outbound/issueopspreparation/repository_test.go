@@ -12,6 +12,7 @@ import (
 	preparationapp "agent-harness/internal/application/issueopspreparation"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
+	preparationdomain "agent-harness/internal/domain/issueopspreparation"
 	"agent-harness/internal/port"
 )
 
@@ -46,6 +47,9 @@ func TestDirectRepositoryCommitWritesRecordAndHolderAtomically(t *testing.T) {
 	}
 	if persisted.Execution == nil || persisted.Execution.Mode != preparationcontract.ModeDirect || persisted.Execution.Lease.Generation != 1 || persisted.Execution.Lease.Status != "active" {
 		t.Fatalf("execution=%+v", persisted.Execution)
+	}
+	if persisted.Execution.Selection == nil || persisted.Execution.Selection.ReadinessFingerprint == "" || persisted.Execution.Selection.ExplicitDirectReason != "planned recovery" {
+		t.Fatalf("selection=%+v", persisted.Execution.Selection)
 	}
 	if persisted.Execution.Lease.Holder == nil || persisted.Execution.Lease.Holder.SessionProcess == nil || persisted.Execution.Lease.Holder.SessionProcess.StartedAt != "boot:42" {
 		t.Fatalf("holder=%+v", persisted.Execution.Lease.Holder)
@@ -102,13 +106,19 @@ func TestRepositoryRootScanRejectsClaimAndCorruption(t *testing.T) {
 
 func directRepositoryCommit(snapshot preparationcontract.Snapshot) preparationapp.DirectCommit {
 	actor := leasecontract.Actor{Host: "codex", SessionID: "session", AgentID: "agent", SessionProcess: &leasecontract.ProcessReceipt{PID: 42, StartedAt: "boot:42", Executable: "/bin/codex"}}
+	command := preparationcontract.Command{ID: snapshot.Record.ID, Mode: preparationcontract.ModeDirect, DirectReason: "planned recovery", Actor: actor, Confirm: true}
+	decision, err := preparationdomain.Decide(preparationdomain.DecisionInput{Command: command})
+	if err != nil {
+		panic(err)
+	}
 	return preparationapp.DirectCommit{
 		Snapshot:      snapshot,
-		Command:       preparationcontract.Command{ID: snapshot.Record.ID, Mode: preparationcontract.ModeDirect, Actor: actor, Confirm: true},
+		Command:       command,
 		Workspace:     preparationcontract.WorkspaceReceipt{SourceRoot: snapshot.Record.Repo, Root: "/repo.worktrees/199-prepare", Branch: snapshot.Record.Branch, BaseHead: "base", Driver: "git", Exists: true},
 		RequestedMode: preparationcontract.ModeDirect,
 		LinkedAt:      "2026-08-02T00:00:00Z",
 		ClaimedAt:     "2026-08-02T00:00:01Z",
+		Selection:     leasecontract.Selection{RequestedMode: "direct", ResolvedMode: "direct", ReadinessFingerprint: decision.ReadinessFingerprint, SelectedAt: "2026-08-02T00:00:00Z", ExplicitDirectReason: "planned recovery"},
 	}
 }
 

@@ -1,0 +1,33 @@
+{
+  "lifecycle_id": "io-268bd6ac6e7a",
+  "issue": "https://github.com/m16khb/agent-harness/issues/248",
+  "branch": "248-orca-ready-issueops-dogfood",
+  "base_head": "511457c2e56e73a2c7451ba547a8fd9cfa58ab74",
+  "final_head": "commit containing this report; supplied as an exact SHA to execution complete",
+  "mode": "orca",
+  "generation": 4,
+  "acceptance": [
+    {"id": "AC-01", "test": "TestValidateExecutionSelectionReceipt; TestSelectionReceiptRoundTripsAndRemainsOptionalInCurrentV1; TestDirectRepositoryCommitWritesRecordAndHolderAtomically; TestOrcaIntentRepositoryBeginsBeforeEffectAtomically", "command": "go test ./internal/contract/issueops ./internal/contract/issueopslease ./internal/contract/issueopspreparation ./internal/domain/issueopspreparation -run 'Selection|Readiness|DirectReason|Execution' -count=1", "result": "PASS"},
+    {"id": "AC-02", "test": "TestPrepareFingerprintGatePrecedesWorkspaceMutation; TestOrcaConfirmRejectsProviderIssueDriftBeforeIntent; TestReadinessFingerprintBindsProviderIssueOnlyWhenProbed", "command": "go test ./internal/application/issueopspreparation -run 'Selection|Fingerprint|DirectReason|Prepare|ProviderIssue' -count=1", "result": "PASS"},
+    {"id": "AC-03", "test": "TestDecisionSelectionEvidenceAndDirectReason; TestIssueOpsCLIErrorPayloadPreservesPreparationDenialCode; TestIssueOpsMCPErrorPayloadPreservesPreparationDenialCode; TestIssueOpsExecutionDocumentationHasOneCurrentContract; TestExecutionPrepareAcceptsGeneratedConfirmFlags", "command": "go test ./internal/domain/issueopspreparation ./cmd/harness/issueopscli ./cmd/harness/mcpcli ./internal/core/issueops ./internal/core/commandparse -run 'DirectReason|PreparationDenialCode|DocumentationHasOneCurrentContract|GeneratedConfirmFlags' -count=1", "result": "PASS"},
+    {"id": "AC-04", "test": "TestHandlerMapsEveryRequestAndResultField; TestMCPExecutionActionRequestFromMCPPreservesAutoMode; response contract goldens", "command": "go test ./cmd/harness/issueopscli ./cmd/harness/mcpcli ./cmd/harness/harnessapp ./cmd/harness/contractgolden -run 'Selection|Preparation|Execution|Golden' -count=1", "result": "PASS"},
+    {"id": "AC-05", "test": "TestChildHostSmokeCompleteFakeTwoHostPass", "command": "scripts/verify-go-test-match.sh --run 'ChildHostSmoke' --expect 'ChildHostSmoke' -- ./internal/adapter/hostprobe", "result": "PASS"},
+    {"id": "AC-06", "test": "installed governed IssueOps v1 runtime generation 4 status/claim plus bounded read-only SQLite projection", "command": "/Users/m16khb/.local/bin/agent-harness issueops execution status/claim --id io-268bd6ac6e7a --json; sqlite3 'file:/Users/m16khb/.local/state/agent-harness/issueops_v1/harness.db?mode=ro' bounded projection", "result": "PASS: schema=1, mode=orca, generation=4, lease=active, canonical worktree, Run=run_b39bf1ba1b65, task=task_d51a584fb183, dispatch=ctx_1679102a83b4, active native owner; WAL-aware read-only connection required"},
+    {"id": "AC-07", "test": "TestDecisionSelectionEvidenceAndDirectReason; TestOrcaPreviewAndAutoFallback", "command": "go test ./internal/domain/issueopspreparation ./internal/application/issueopspreparation -run 'DirectReason|AutoFallback|Selection' -count=1", "result": "PASS"},
+    {"id": "AC-08", "test": "full current-v1 regression; initial stale removed-term assertion fixed to recognize resolved_mode as current v1", "command": "go test ./... -count=1", "result": "PASS: GO_TEST_ALL_EXIT_CODE=0 on latest diff"}
+  ],
+  "verification": [
+    {"command": "go test ./internal/domain/issueopspreparation ./internal/application/issueopspreparation ./internal/adapter/inbound/issueopspreparation ./internal/adapter/outbound/issueopspreparation -count=1", "result": "PASS"},
+    {"command": "go test ./cmd/harness/issueopscli ./cmd/harness/mcpcli ./cmd/harness/harnessapp -count=1", "result": "PASS"},
+    {"command": "go test ./... -count=1", "result": "PASS: GO_TEST_ALL_EXIT_CODE=0"},
+    {"command": "go test -race ./... -count=1", "result": "PASS: GO_TEST_RACE_ALL_EXIT_CODE=0"},
+    {"command": "go vet ./...", "result": "PASS: GO_VET_EXIT_CODE=0"},
+    {"command": "go build -o bin/agent-harness ./cmd/harness", "result": "PASS: GO_BUILD_EXIT_CODE=0"}
+  ],
+  "ai_slop_clean": "PASS: removed duplicate inline selection pointer closures, updated stale resolved_mode and confirm examples, rejected impossible readiness and missing/mismatched auto fallback states, preserved private snapshot paths in exact confirm commands, and found no compatibility shim, speculative abstraction, dead branch, or comment noise",
+  "implementation_review": "recorded as a durable IssueOps receipt after the sealed-diff fresh review",
+  "commits": ["single atomic commit containing this report"],
+  "draft_pr": "created by governed remote create-pr after the sealed commit",
+  "deviations": [],
+  "blockers": "none"
+}

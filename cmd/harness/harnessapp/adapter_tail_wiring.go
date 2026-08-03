@@ -10,6 +10,7 @@ import (
 	fingerprintt4deps "agent-harness/internal/adapter/lifecycle/fingerprint"
 	projectbootstrapt4deps "agent-harness/internal/adapter/projectbootstrap"
 	projectdocsadapter "agent-harness/internal/adapter/projectdocs"
+	installcontract "agent-harness/internal/contract/install"
 )
 
 // configureAdapterTail은 설치 계획 수립과 프로젝트 문서 관측을 설치한다.
@@ -33,6 +34,16 @@ func configureAdapterTail() {
 	codext4deps.VerifyHookActivation = installutiladapter.VerifyHookActivation
 	fingerprintt4deps.ReadGitOriginURL = projectdocsadapter.ReadGitOriginURL
 	installclit4deps.EnsureSymlinkPlan = installutiladapter.EnsureSymlinkPlan
+	// 관리 대상 명령 파일 채택은 파일시스템 트랜잭션이다. 구현을 아는 곳은
+	// composition root 하나뿐이다.
+	installclit4deps.PrepareManagedCommandPathCandidate = func(target, candidate, path string, adopt, dryRun bool) (installclit4deps.ManagedCommandPathTransaction, installcontract.ManagedCommandPathPlan, error) {
+		transaction, plan, err := installutiladapter.PrepareManagedCommandPathCandidate(target, candidate, path, adopt, dryRun)
+		if transaction == nil {
+			return nil, plan, err
+		}
+		return transaction, plan, err
+	}
+	installclit4deps.SemanticSHA256 = installutiladapter.SemanticSHA256
 	nativeintegrationt4deps.SkillNamesForHost = installutiladapter.SkillNamesForHost
 	projectbootstrapt4deps.AnalyzeProjectSignals = projectdocsadapter.AnalyzeProjectSignals
 	projectbootstrapt4deps.RenderAgentsWithBlock = projectdocsadapter.RenderAgentsWithBlock

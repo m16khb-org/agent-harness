@@ -20,19 +20,6 @@ const (
 	managedCommandMaxSize    = int64(268435456)
 )
 
-type ManagedCommandPathPlan struct {
-	Path              string
-	Target            string
-	BackupPath        string
-	AdoptionApproved  bool
-	WouldAdopt        bool
-	Adopted           bool
-	Committed         bool
-	RolledBack        bool
-	RollbackAvailable bool
-	BackupRetained    bool
-}
-
 type ManagedCommandPathTransaction struct {
 	plan      ManagedCommandPathPlan
 	existing  managedCommandIdentity

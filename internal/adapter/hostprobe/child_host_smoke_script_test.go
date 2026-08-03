@@ -49,6 +49,7 @@ type childSmokeHostEvidence struct {
 
 type childSmokeReceipt struct {
 	SchemaVersion         int                        `json:"schema_version"`
+	ValidationLane        string                     `json:"validation_lane"`
 	Issue                 int                        `json:"issue"`
 	LocalHead             string                     `json:"local_head"`
 	RemoteHead            string                     `json:"remote_head"`
@@ -399,7 +400,7 @@ func assertChildSmokeObservation(t *testing.T, result port.HostProbeResult, path
 
 func TestChildHostSmokeCompleteFakeTwoHostPass(t *testing.T) {
 	result := runChildHostSmokeFixture(t, childSmokeFixture{confirm: true})
-	if result.ExitCode != 0 || result.Receipt.Verdict != "pass" || result.RestoreCalls != 1 || result.AfterMutationCalls != 0 || result.LockExists {
+	if result.ExitCode != 0 || result.Receipt.Verdict != "pass" || result.Receipt.ValidationLane != "native_host" || result.RestoreCalls != 1 || result.AfterMutationCalls != 0 || result.LockExists {
 		t.Fatalf("result=%+v output=%s", result, result.Output)
 	}
 	if result.ReceiptMode.Perm() != 0o600 || !reflect.DeepEqual(result.Receipt.Before, result.Receipt.Restore) {

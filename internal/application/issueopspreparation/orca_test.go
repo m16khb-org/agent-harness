@@ -9,17 +9,23 @@ import (
 
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
+	preparationdomain "agent-harness/internal/domain/issueopspreparation"
 )
 
 func TestOrcaPreviewAndAutoFallback(t *testing.T) {
 	t.Run("ready preview reads owner without mutation", func(t *testing.T) {
 		fixture := newOrcaApplicationFixture()
-		result, err := fixture.service.Prepare(context.Background(), orcaCommand(false, preparationcontract.ModeOrca))
+		command := orcaCommand(false, preparationcontract.ModeOrca)
+		command.IssueSnapshotFile = "/private/gitlab-issue.json"
+		result, err := fixture.service.Prepare(context.Background(), command)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !result.OK || !result.Preview || result.ResolvedMode != preparationcontract.ModeOrca {
 			t.Fatalf("result=%+v", result)
+		}
+		if !strings.Contains(result.NextCommand, "--issue-snapshot-file '/private/gitlab-issue.json'") {
+			t.Fatalf("snapshot-backed preview lost exact confirm source: %s", result.NextCommand)
 		}
 		assertOrcaTrace(t, fixture.trace, []string{"load", "workspace", "root", "orca.probe", "evidence.owner"})
 	})
@@ -46,6 +52,24 @@ func TestOrcaPreviewAndAutoFallback(t *testing.T) {
 		}
 		assertOrcaTrace(t, fixture.trace, []string{"load", "workspace", "root", "orca.probe"})
 	})
+}
+
+func TestOrcaConfirmRejectsProviderIssueDriftBeforeIntent(t *testing.T) {
+	fixture := newOrcaApplicationFixture()
+	previewCommand := orcaCommand(false, preparationcontract.ModeOrca)
+	preview, err := fixture.service.Prepare(context.Background(), previewCommand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture.repository.snapshot.Record.IssueURL = "https://github.com/example/repo/issues/200"
+	fixture.repository.snapshot.Record.BranchPrepare = []byte(`{"provider":"github","issue_url":"https://github.com/example/repo/issues/200","branch":"199-orca","base_branch":"main","base_sha":"base","link_verified":true}`)
+	confirm := orcaCommand(false, preparationcontract.ModeOrca)
+	confirm.Confirm = true
+	confirm.ExpectedReadinessFingerprint = preview.ReadinessFingerprint
+	_, err = fixture.service.Prepare(context.Background(), confirm)
+	if err == nil || !strings.Contains(err.Error(), "readiness fingerprint") || fixture.repository.beginIndex >= 0 {
+		t.Fatalf("provider issue drift reached intent: err=%v trace=%v", err, fixture.trace)
+	}
 }
 
 func TestOrcaIntentRunsSixDurableBeforeEffectStages(t *testing.T) {
@@ -202,10 +226,18 @@ func newOrcaApplicationFixture() *orcaApplicationFixture {
 }
 
 func orcaCommand(confirm bool, mode string) preparationcontract.Command {
-	return preparationcontract.Command{
-		ID: "io-orca", Mode: mode, CWD: "/repo", OwnerHost: "codex", Confirm: confirm,
+	command := preparationcontract.Command{
+		ID: "io-orca", Mode: mode, CWD: "/repo", OwnerHost: "codex", OwnerModel: preparationcontract.ImplementerModelCodex, OwnerEffort: preparationcontract.ImplementerEffortCodex, Confirm: confirm,
 		Actor: leasecontract.Actor{Host: "codex", SessionID: "session", SessionProcess: &leasecontract.ProcessReceipt{PID: 42, StartedAt: "start", Executable: "/bin/codex"}},
 	}
+	if confirm {
+		decision, err := preparationdomain.Decide(preparationdomain.DecisionInput{Command: command, Orca: preparationdomain.OrcaReadiness{Available: true, Ready: true, Provider: "github", Issue: 199}})
+		if err != nil {
+			panic(err)
+		}
+		command.ExpectedReadinessFingerprint = decision.ReadinessFingerprint
+	}
+	return command
 }
 
 type orcaApplicationRepositoryFake struct {
@@ -215,6 +247,7 @@ type orcaApplicationRepositoryFake struct {
 	initialAttempts   int
 	stickPending      bool
 	beginIndex        int
+	selection         leasecontract.Selection
 }
 
 func (fake *orcaApplicationRepositoryFake) Load(context.Context, string) (preparationcontract.Snapshot, error) {
@@ -231,6 +264,7 @@ func (*orcaApplicationRepositoryFake) CommitDirect(context.Context, DirectCommit
 func (fake *orcaApplicationRepositoryFake) BeginIntent(_ context.Context, begin OrcaBegin) (IntentState, error) {
 	*fake.trace = append(*fake.trace, "begin")
 	fake.beginIndex = len(*fake.trace) - 1
+	fake.selection = begin.Selection
 	invocation := fake.initialInvocation
 	if invocation == "" {
 		invocation = preparationcontract.InvocationNotInvoked
@@ -281,8 +315,10 @@ func (fake *orcaApplicationRepositoryFake) ApplyReceipt(_ context.Context, state
 			state.Intent.Stage = preparationcontract.IntentStageWorktree
 			return IntentProgress{State: state, Pending: true}, nil
 		}
+		selection := fake.selection
 		execution := &leasecontract.Execution{
 			Mode:      preparationcontract.ModeOrca,
+			Selection: &selection,
 			Workspace: leasecontract.Workspace{SourceRoot: state.Intent.Workspace.SourceRoot, Root: state.Intent.Workspace.Root, Branch: state.Intent.Workspace.Branch, BaseHead: state.Intent.Workspace.BaseHead, Driver: "orca", LinkedAt: state.Intent.StartedAt},
 			Lease:     leasecontract.Lease{Generation: 1, Status: "claimable", ClaimTokenSHA256: state.Intent.ClaimTokenSHA256},
 		}

@@ -122,25 +122,36 @@ type ExecutionPrepareRequest struct {
 	OwnerHost   string      `json:"owner_host,omitempty"`
 	OwnerModel  string      `json:"owner_model,omitempty"`
 	OwnerEffort string      `json:"owner_effort,omitempty"`
-	Confirm     bool        `json:"confirm,omitempty"`
+	// 선택 영수증 입력: 명시적 direct 근거와 준비도 지문을 함께 받는다.
+	IssueSnapshotFile            string `json:"issue_snapshot_file,omitempty"`
+	DirectReason                 string `json:"direct_reason,omitempty"`
+	ExpectedReadinessFingerprint string `json:"expected_readiness_fingerprint,omitempty"`
+	Confirm                      bool   `json:"confirm,omitempty"`
 }
 type ExecutionPrepareResult struct {
-	OK                  bool       `json:"ok"`
-	ID                  string     `json:"id"`
-	Preview             bool       `json:"preview,omitempty"`
-	RequestedMode       string     `json:"requested_mode"`
-	ResolvedMode        string     `json:"resolved_mode"`
-	FallbackCode        string     `json:"fallback_code,omitempty"`
-	Workspace           Workspace  `json:"workspace"`
-	Execution           *Execution `json:"execution,omitempty"`
-	ClaimTokenPath      string     `json:"claim_token_path,omitempty"`
-	IssueBodySHA256     string     `json:"issue_body_sha256,omitempty"`
-	ContextPacketPath   string     `json:"context_packet_path,omitempty"`
-	ContextPacketSHA256 string     `json:"context_packet_sha256,omitempty"`
-	OwnerPromptPath     string     `json:"owner_prompt_path,omitempty"`
-	OwnerPromptSHA256   string     `json:"owner_prompt_sha256,omitempty"`
-	IssueSnapshotSource string     `json:"issue_snapshot_source,omitempty"`
-	NextCommand         string     `json:"next_command,omitempty"`
+	OK            bool   `json:"ok"`
+	ID            string `json:"id"`
+	Preview       bool   `json:"preview,omitempty"`
+	RequestedMode string `json:"requested_mode"`
+	ResolvedMode  string `json:"resolved_mode"`
+	FallbackCode  string `json:"fallback_code,omitempty"`
+	// 준비도 탐침 영수증: 무엇을 시도했고 무엇을 보았는지 보존한다.
+	ProbeAttempted       bool       `json:"probe_attempted"`
+	ProbeAvailable       bool       `json:"probe_available"`
+	ProbeReady           bool       `json:"probe_ready"`
+	ProbeCode            string     `json:"probe_code,omitempty"`
+	ReadinessFingerprint string     `json:"readiness_fingerprint,omitempty"`
+	ExplicitDirectReason string     `json:"explicit_direct_reason,omitempty"`
+	Workspace            Workspace  `json:"workspace"`
+	Execution            *Execution `json:"execution,omitempty"`
+	ClaimTokenPath       string     `json:"claim_token_path,omitempty"`
+	IssueBodySHA256      string     `json:"issue_body_sha256,omitempty"`
+	ContextPacketPath    string     `json:"context_packet_path,omitempty"`
+	ContextPacketSHA256  string     `json:"context_packet_sha256,omitempty"`
+	OwnerPromptPath      string     `json:"owner_prompt_path,omitempty"`
+	OwnerPromptSHA256    string     `json:"owner_prompt_sha256,omitempty"`
+	IssueSnapshotSource  string     `json:"issue_snapshot_source,omitempty"`
+	NextCommand          string     `json:"next_command,omitempty"`
 }
 type ExecutionReconcileRequest struct {
 	ID       string          `json:"id"`

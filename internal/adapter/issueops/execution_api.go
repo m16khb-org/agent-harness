@@ -30,7 +30,9 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 	case ExecutionActionPrepare:
 		return invokeExecutionPrepareHandler(ctx, stateRoot, ExecutionPrepareRequest{
 			ID: req.ID, Mode: req.Mode, Actor: req.Actor, CWD: req.CWD,
-			OwnerHost: req.OwnerHost, OwnerModel: req.OwnerModel, OwnerEffort: req.OwnerEffort, Confirm: req.Confirm,
+			OwnerHost: req.OwnerHost, OwnerModel: req.OwnerModel, OwnerEffort: req.OwnerEffort,
+			IssueSnapshotFile: req.IssueSnapshotFile,
+			DirectReason:      req.DirectReason, ExpectedReadinessFingerprint: req.ExpectedReadinessFingerprint, Confirm: req.Confirm,
 		}, ExecutionPrepareInvocation{ReadIssue: deps.ReadIssue}, deps.Prepare)
 	case ExecutionActionStatus:
 		return StatusExecution(stateRoot, req.ID)
