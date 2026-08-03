@@ -55,6 +55,49 @@ func TestHookInputParsesCodexClaudeNativeSessionIdentity(t *testing.T) {
 	}
 }
 
+func TestCWDFromHookInputPrefersExplicitToolWorkdir(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "explicit workdir overrides session cwd",
+			input: `{"cwd":"/source","tool_input":{"workdir":" /source.worktrees/251-fix "}}`,
+			want:  "/source.worktrees/251-fix",
+		},
+		{
+			name:  "empty workdir keeps session cwd",
+			input: `{"cwd":" /source ","tool_input":{"workdir":"  "}}`,
+			want:  "/source",
+		},
+		{
+			name:  "non string workdir keeps session cwd",
+			input: `{"cwd":"/source","tool_input":{"workdir":42}}`,
+			want:  "/source",
+		},
+		{
+			name:  "generic tool cwd is not an execution workdir",
+			input: `{"cwd":"/source","tool_input":{"cwd":"/spoofed"}}`,
+			want:  "/source",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := EffectiveCWDFromHookInput([]byte(tt.input), true); got != tt.want {
+				t.Fatalf("EffectiveCWDFromHookInput = %q, want %q", got, tt.want)
+			}
+		})
+	}
+	input := []byte(`{"cwd":"/source","tool_input":{"workdir":"/source.worktrees/251-fix"}}`)
+	if got := EffectiveCWDFromHookInput(input, false); got != "/source" {
+		t.Fatalf("non-shell tool workdir changed cwd to %q", got)
+	}
+	if got := CWDFromHookInput(input); got != "/source" {
+		t.Fatalf("legacy CWD parser changed cwd to %q", got)
+	}
+}
+
 func TestPathsFromHookInputCollectsExplicitPatchAndInlinePaths(t *testing.T) {
 	// #100 계약: 키 기반 추출(top-level "path", nested "file"/"filename")은
 	// 의도적으로 보존한다 — 재평가 대상이 아니다. 반면 내용 heuristic
