@@ -88,6 +88,10 @@ func orcaPrepareRecord(t *testing.T) (string, issueops.IssueOpsRecord) {
 }
 
 func resumeIntentFixture(t *testing.T, provider string, issue int) (string, issueops.IssueOpsRecord, externalOrcaIntentPayload) {
+	return resumeIntentFixtureWithLinkVerified(t, provider, issue, true)
+}
+
+func resumeIntentFixtureWithLinkVerified(t *testing.T, provider string, issue int, linkVerified bool) (string, issueops.IssueOpsRecord, externalOrcaIntentPayload) {
 	t.Helper()
 	stateRoot, record := executionPrepareRecord(t)
 	root := issueOpsWorktreePathForTest(record.Repo, record.Branch)
@@ -99,6 +103,7 @@ func resumeIntentFixture(t *testing.T, provider string, issue int) (string, issu
 		record.BranchPrepare.Provider = provider
 		record.BranchPrepare.IssueURL = record.IssueURL
 	}
+	record.BranchPrepare.LinkVerified = linkVerified
 	record.WorktreePath = root
 	record.Execution = &issueops.Execution{
 		Mode: issueops.ExecutionModeOrca,

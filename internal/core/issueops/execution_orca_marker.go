@@ -96,9 +96,10 @@ func preparedOrcaIssueIdentity(record issueops.IssueOpsRecord) (orcaIssueIdentit
 	return orcaIssueIdentity{Provider: provider, Issue: issue}, nil
 }
 
-// GitHub의 최초 prepare만 로컬 브랜치 생성 뒤 linked branch를 붙이는 순서를
-// 사용한다. resume와 GitLab은 기존 verified-link 전제를 그대로 유지한다.
-func orcaPrepareIssueIdentity(record issueops.IssueOpsRecord) (orcaIssueIdentity, error) {
+// GitHub owner launch는 로컬 브랜치를 만든 뒤 linked branch를 검증하는 순서를
+// 사용한다. prepare와 resume는 owner prompt의 post-claim 검증에 도달해야 하므로
+// prepared identity를 허용하고, GitLab launch는 verified-link 전제를 유지한다.
+func orcaLaunchIssueIdentity(record issueops.IssueOpsRecord) (orcaIssueIdentity, error) {
 	issue, err := preparedOrcaIssueIdentity(record)
 	if err != nil {
 		return orcaIssueIdentity{}, err
@@ -118,7 +119,15 @@ func sealExternalOrcaIntentPayload(record issueops.IssueOpsRecord, payload exter
 }
 
 func sealExternalOrcaPrepareIntentPayload(record issueops.IssueOpsRecord, payload externalOrcaIntentPayload) (externalOrcaIntentPayload, error) {
-	issue, err := orcaPrepareIssueIdentity(record)
+	return sealExternalOrcaLaunchIntentPayload(record, payload)
+}
+
+func sealExternalOrcaResumeIntentPayload(record issueops.IssueOpsRecord, payload externalOrcaIntentPayload) (externalOrcaIntentPayload, error) {
+	return sealExternalOrcaLaunchIntentPayload(record, payload)
+}
+
+func sealExternalOrcaLaunchIntentPayload(record issueops.IssueOpsRecord, payload externalOrcaIntentPayload) (externalOrcaIntentPayload, error) {
+	issue, err := orcaLaunchIssueIdentity(record)
 	if err != nil {
 		return externalOrcaIntentPayload{}, err
 	}
@@ -140,9 +149,10 @@ func validateOrcaIntentIssueIdentity(record issueops.IssueOpsRecord, payload ext
 		issue orcaIssueIdentity
 		err   error
 	)
-	if normalizedOrcaIntentPurpose(payload) == orcaIntentPurposePrepare {
-		issue, err = orcaPrepareIssueIdentity(record)
-	} else {
+	switch normalizedOrcaIntentPurpose(payload) {
+	case orcaIntentPurposePrepare, orcaIntentPurposeResume:
+		issue, err = orcaLaunchIssueIdentity(record)
+	default:
 		issue, err = authoritativeOrcaIssueIdentity(record)
 	}
 	if err != nil {

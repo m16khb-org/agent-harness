@@ -35,6 +35,16 @@ func BuildLifecyclePreToolUseDecision(req lifecyclecontract.HookToolUseLifecycle
 		return result
 	}
 	typedExecutionControl := executionTypedControlPlane(req)
+	if !observation && typedExecutionControl {
+		if reason, deny := executionTypedPreLinkBlock(req); reason != "" {
+			result.Decision = "block"
+			result.Reason = reason
+			result.Deny = deny
+			if result.Deny != nil && result.Deny.Reason == "" {
+				result.Deny.Reason = reason
+			}
+		}
+	}
 	if !observation && !typedExecutionControl {
 		if req.EnforceWorktree {
 			if reason := directBranchCreationBlockReason(req); reason != "" {

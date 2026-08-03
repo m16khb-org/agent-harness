@@ -71,6 +71,11 @@ func TestExecutionWriterAbsentRecoveryRoutesUnversionedOrcaThroughReseed(t *test
 	if !strings.Contains(currentCommand, "execution resume") || strings.Contains(currentCommand, "--preview") {
 		t.Fatalf("current recovery command=%q", currentCommand)
 	}
+	current.BranchPrepare.LinkVerified = false
+	unverifiedGitHubCommand := executionWriterAbsentRecoveryCommand(current)
+	if !strings.Contains(unverifiedGitHubCommand, "execution resume") {
+		t.Fatalf("unverified GitHub launch recovery command=%q", unverifiedGitHubCommand)
+	}
 }
 
 func TestResumeDispatchRetainsDurableArtifactIdentity(t *testing.T) {
@@ -98,6 +103,16 @@ func TestResumeDispatchRetainsDurableArtifactIdentity(t *testing.T) {
 	}
 	if binding.IssueBodySHA256 != wantIssue || binding.ContextPacketSHA256 != wantPacket || binding.OwnerPromptSHA256 != wantPrompt {
 		t.Fatalf("resumed binding artifact identity=%+v", binding)
+	}
+}
+
+func TestBeginOrcaExecutionResumeIntentAllowsUnverifiedGitHubLaunch(t *testing.T) {
+	_, record, payload := resumeIntentFixtureWithLinkVerified(t, "github", 16, false)
+	if payload.Probe.Provider != "github" || payload.Probe.Issue != 16 {
+		t.Fatalf("resume identity = provider:%q issue:%d", payload.Probe.Provider, payload.Probe.Issue)
+	}
+	if record.Execution.Pending == nil || record.Execution.Pending.Marker != payload.Marker {
+		t.Fatalf("persisted pending = %#v", record.Execution.Pending)
 	}
 }
 

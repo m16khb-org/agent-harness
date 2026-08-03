@@ -104,14 +104,14 @@ func TestAuthoritativeOrcaIssueIdentityRequiresVerifiedMatchingRecord(t *testing
 	}
 }
 
-func TestOrcaPrepareIssueIdentityAllowsOnlyUnverifiedGitHub(t *testing.T) {
+func TestOrcaLaunchIssueIdentityAllowsOnlyUnverifiedGitHub(t *testing.T) {
 	github := issueops.IssueOpsRecord{
 		IssueURL: "https://github.com/acme/repo/issues/194",
 		BranchPrepare: &issueops.IssueOpsBranchPrepare{
 			Provider: "github", IssueURL: "https://github.com/acme/repo/issues/194",
 		},
 	}
-	identity, err := orcaPrepareIssueIdentity(github)
+	identity, err := orcaLaunchIssueIdentity(github)
 	if err != nil || identity != (orcaIssueIdentity{Provider: "github", Issue: 194}) {
 		t.Fatalf("GitHub prepare identity = %#v err=%v", identity, err)
 	}
@@ -122,12 +122,18 @@ func TestOrcaPrepareIssueIdentityAllowsOnlyUnverifiedGitHub(t *testing.T) {
 	prepared.Provider = "gitlab"
 	prepared.IssueURL = gitlab.IssueURL
 	gitlab.BranchPrepare = &prepared
-	if _, err := orcaPrepareIssueIdentity(gitlab); err == nil {
-		t.Fatal("미검증 GitLab branch identity가 Orca prepare에 허용됐다")
+	if _, err := orcaLaunchIssueIdentity(gitlab); err == nil {
+		t.Fatal("미검증 GitLab branch identity가 Orca launch에 허용됐다")
+	}
+
+	drifted := github
+	drifted.IssueURL = "https://github.com/acme/repo/issues/195"
+	if _, err := orcaLaunchIssueIdentity(drifted); err == nil {
+		t.Fatal("record와 branch prepare의 issue URL drift가 launch에 허용됐다")
 	}
 }
 
-func TestOrcaIntentIssueIdentityRequiresVerifiedLinkForResume(t *testing.T) {
+func TestOrcaIntentIssueIdentityAllowsOnlyUnverifiedGitHubForResumeLaunch(t *testing.T) {
 	record := issueops.IssueOpsRecord{
 		ID:       "io-aaaaaaaaaaaa",
 		IssueURL: "https://github.com/acme/repo/issues/194",
@@ -139,8 +145,19 @@ func TestOrcaIntentIssueIdentityRequiresVerifiedLinkForResume(t *testing.T) {
 		Purpose: orcaIntentPurposeResume, LifecycleID: record.ID,
 		Probe: intentContractProbeRequest(port.ExecutionOrcaProbeRequest{Provider: "github", Issue: 194}),
 	}
-	if err := validateOrcaIntentIssueIdentity(record, payload); err == nil {
-		t.Fatal("미검증 branch link로 resume intent identity가 허용됐다")
+	if err := validateOrcaIntentIssueIdentity(record, payload); err != nil {
+		t.Fatalf("미검증 GitHub branch identity가 owner의 post-claim 검증 전에 resume launch를 막았다: %v", err)
+	}
+
+	gitlab := record
+	gitlab.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/194"
+	prepared := *record.BranchPrepare
+	prepared.Provider = "gitlab"
+	prepared.IssueURL = gitlab.IssueURL
+	gitlab.BranchPrepare = &prepared
+	payload.Probe = intentContractProbeRequest(port.ExecutionOrcaProbeRequest{Provider: "gitlab", Issue: 194})
+	if err := validateOrcaIntentIssueIdentity(gitlab, payload); err == nil {
+		t.Fatal("미검증 GitLab branch identity가 resume launch에 허용됐다")
 	}
 }
 

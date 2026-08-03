@@ -228,7 +228,7 @@ func beginOrcaExecutionResumeIntentWithExpectedRaw(stateRoot string, record issu
 		TerminalPTYID: strings.TrimSpace(terminalPTYID),
 		PriorBinding:  &priorBinding, ResumeLease: &resumeLease,
 	}
-	payload, err = sealExternalOrcaIntentPayload(record, payload)
+	payload, err = sealExternalOrcaResumeIntentPayload(record, payload)
 	if err != nil {
 		return issueops.IssueOpsRecord{OK: false, ID: record.ID}, externalOrcaIntentPayload{}, err
 	}
