@@ -98,6 +98,14 @@ func TestOrcaIntentRepositoryCASCompletesClaimableAuthority(t *testing.T) {
 	if binding == nil || binding.RuntimeID != "runtime" || binding.RunID != "run" || binding.TaskID != "task" || binding.DispatchID != "dispatch" || binding.LeaseGeneration != 1 {
 		t.Fatalf("binding=%+v", binding)
 	}
+	if binding.ArtifactIdentityVersion != leasecontract.OrcaArtifactIdentityVersion {
+		t.Fatalf("binding artifact identity version=%d want=%d", binding.ArtifactIdentityVersion, leasecontract.OrcaArtifactIdentityVersion)
+	}
+	if binding.IssueBodySHA256 != state.Intent.IssueBodySHA256 ||
+		binding.ContextPacketSHA256 != state.OwnerArtifacts.ContextPacketSHA256 ||
+		binding.OwnerPromptSHA256 != state.OwnerArtifacts.OwnerPromptSHA256 {
+		t.Fatalf("binding artifact identity=%+v intent=%+v artifacts=%+v", binding, state.Intent, state.OwnerArtifacts)
+	}
 	if len(store.rows[holderBucket]) != 0 {
 		t.Fatalf("claimable execution wrote holder index: %+v", store.rows[holderBucket])
 	}

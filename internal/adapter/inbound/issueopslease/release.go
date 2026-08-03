@@ -41,7 +41,7 @@ func toCoreExecution(execution leasecontract.Execution) issueopscontract.Executi
 		Lease: toCoreLease(execution.Lease),
 	}
 	if execution.Orca != nil {
-		result.Orca = &issueopscontract.OrcaBinding{RuntimeID: execution.Orca.RuntimeID, RepoID: execution.Orca.RepoID, WorktreeID: execution.Orca.WorktreeID, RunID: execution.Orca.RunID, WorktreeInstanceID: execution.Orca.WorktreeInstanceID, LeaseGeneration: execution.Orca.LeaseGeneration, OwnerHost: execution.Orca.OwnerHost, OwnerModel: execution.Orca.OwnerModel, OwnerEffort: execution.Orca.OwnerEffort, TaskID: execution.Orca.TaskID, DispatchID: execution.Orca.DispatchID, TerminalPTYID: execution.Orca.TerminalPTYID}
+		result.Orca = &issueopscontract.OrcaBinding{RuntimeID: execution.Orca.RuntimeID, RepoID: execution.Orca.RepoID, WorktreeID: execution.Orca.WorktreeID, RunID: execution.Orca.RunID, WorktreeInstanceID: execution.Orca.WorktreeInstanceID, LeaseGeneration: execution.Orca.LeaseGeneration, ArtifactIdentityVersion: execution.Orca.ArtifactIdentityVersion, IssueBodySHA256: execution.Orca.IssueBodySHA256, ContextPacketSHA256: execution.Orca.ContextPacketSHA256, OwnerPromptSHA256: execution.Orca.OwnerPromptSHA256, OwnerHost: execution.Orca.OwnerHost, OwnerModel: execution.Orca.OwnerModel, OwnerEffort: execution.Orca.OwnerEffort, TaskID: execution.Orca.TaskID, DispatchID: execution.Orca.DispatchID, TerminalPTYID: execution.Orca.TerminalPTYID}
 	}
 	if execution.Pending != nil {
 		result.Pending = &issueopscontract.ExternalIntent{OperationID: execution.Pending.OperationID, Kind: execution.Pending.Kind, Marker: execution.Pending.Marker, StartedAt: execution.Pending.StartedAt}

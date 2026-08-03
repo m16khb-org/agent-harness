@@ -15,6 +15,12 @@ The two modes are `direct` and `orca`:
   claimable until that owner proves the sealed digests and consumes the token
   file.
 
+Preparation persists the issue-body, context-packet, and fully rendered owner
+prompt SHA-256 values together on the generation-bound Orca binding before the
+terminal intent is deleted. Resume compares artifact bytes to that durable
+identity; it does not rerender the prompt with the currently installed
+template.
+
 `auto` resolves Orca only when its readiness probe succeeds before mutation.
 An absent or unready Orca resolves to direct without creating Orca state. Once
 an Orca mutation may have happened, ambiguity fails closed and must be
@@ -208,6 +214,15 @@ Resume observes the current native Codex/Claude session, host process receipt,
 and canonical cwd when actor flags are absent. A complete explicit
 `ACTOR_FLAGS` receipt remains valid; a partial receipt is rejected.
 
+A legacy v1 Orca binding with neither an artifact identity version marker nor
+stored digests remains readable but cannot resume directly. New prepare and
+reseed bindings carry identity version 1 plus all three digests; a versioned
+all-empty, unversioned-complete, partial, or future-version binding is an
+invariant violation, not a legacy recovery candidate. Legacy claimable status emits `execution replace
+--preview`; follow the returned inventory-fenced `--reseed` command and then
+the returned resume command. Partial identities are invalid, and neither the
+prompt file nor a freshly computed digest is an accepted fallback trust root.
+
 Resume never recreates or reparents the worktree. A same-generation live
 terminal/task pair is an idempotent success. 재실행이 필요하면 기존 terminal을
 재사용할 수 있어도 새 generation-specific Run을 만들고 coordinator를 그 Run에
@@ -238,6 +253,16 @@ execution status
 
 Do not skip the preview or invent the fingerprint. A completed cycle does not
 render this recovery chain.
+
+A claimable legacy Orca cycle uses the analogous explicit chain:
+
+```text
+execution status
+  -> execution replace --preview
+  -> execution replace --reseed --inventory-fingerprint <preview fingerprint> --confirm
+  -> execution resume --expected-generation <replacement generation> --confirm
+```
+
 
 When workspace provisioning or remote publication may have mutated external
 state but the result is ambiguous, inspect and then confirm the exact

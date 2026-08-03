@@ -54,40 +54,56 @@ func readExecutionResumeArtifacts(record issueops.IssueOpsRecord) (executionResu
 	if tokenSHA256(token) != record.Execution.Lease.ClaimTokenSHA256 {
 		return executionResumeArtifacts{}, fmt.Errorf("current generation claim token identity changed")
 	}
+	binding := record.Execution.Orca
+	if binding == nil || !completeOrcaArtifactIdentity(binding) {
+		return executionResumeArtifacts{}, fmt.Errorf("sealed Orca artifact identity is not durable; run %s", executionReplacementPreviewCommand(record.ID, record.Execution.Lease.Generation))
+	}
 	packetPath, promptPath := executionOwnerArtifactPaths(record)
 	packetData, err := readExecutionOwnerArtifact(record.Execution.Workspace.Root, packetPath)
 	if err != nil {
 		return executionResumeArtifacts{}, fmt.Errorf("read sealed context packet: %w", err)
 	}
 	packetSHA256 := digestExecutionOwnerBytes(packetData)
+	if packetSHA256 != binding.ContextPacketSHA256 {
+		return executionResumeArtifacts{}, fmt.Errorf("sealed context packet identity changed")
+	}
 	var packet executionOwnerContextPacket
 	if err := json.Unmarshal(packetData, &packet); err != nil {
 		return executionResumeArtifacts{}, fmt.Errorf("parse sealed context packet: %w", err)
 	}
 	issueBodySHA256 := strings.TrimSpace(packet.Issue.BodySHA256)
-	if err := validateExecutionResumePacket(record, issueBodySHA256, packetSHA256); err != nil {
+	if issueBodySHA256 != binding.IssueBodySHA256 {
+		return executionResumeArtifacts{}, fmt.Errorf("sealed issue body identity changed")
+	}
+	if err := validateExecutionResumePacket(record, binding.IssueBodySHA256, binding.ContextPacketSHA256); err != nil {
 		return executionResumeArtifacts{}, err
 	}
-	binding := record.Execution.Orca
-	if binding == nil || packet.OwnerHost != binding.OwnerHost || packet.OwnerModel != binding.OwnerModel || packet.OwnerEffort != binding.OwnerEffort {
+	if packet.OwnerHost != binding.OwnerHost || packet.OwnerModel != binding.OwnerModel || packet.OwnerEffort != binding.OwnerEffort {
 		return executionResumeArtifacts{}, fmt.Errorf("sealed owner profile does not match the Orca binding")
-	}
-	expectedPrompt, err := renderExecutionOwnerPrompt(packet, packetPath, packetSHA256)
-	if err != nil {
-		return executionResumeArtifacts{}, fmt.Errorf("render sealed owner prompt: %w", err)
 	}
 	promptData, err := readExecutionOwnerArtifact(record.Execution.Workspace.Root, promptPath)
 	if err != nil {
 		return executionResumeArtifacts{}, fmt.Errorf("read sealed owner prompt: %w", err)
 	}
-	if string(promptData) != expectedPrompt {
+	promptSHA256 := digestExecutionOwnerBytes(promptData)
+	if promptSHA256 != binding.OwnerPromptSHA256 {
 		return executionResumeArtifacts{}, fmt.Errorf("sealed owner prompt identity changed")
 	}
 	return executionResumeArtifacts{
 		claimTokenPath: tokenPath, issueBodySHA256: issueBodySHA256,
 		packetPath: packetPath, packetSHA256: packetSHA256,
-		promptPath: promptPath, promptSHA256: digestExecutionOwnerBytes(promptData),
+		promptPath: promptPath, promptSHA256: promptSHA256,
 	}, nil
+}
+
+func completeOrcaArtifactIdentity(binding *issueops.OrcaBinding) bool {
+	return binding != nil && binding.ArtifactIdentityVersion == issueops.OrcaArtifactIdentityVersion &&
+		validExecutionOwnerDigest(binding.IssueBodySHA256) &&
+		validExecutionOwnerDigest(binding.ContextPacketSHA256) && validExecutionOwnerDigest(binding.OwnerPromptSHA256)
+}
+
+func validExecutionOwnerDigest(value string) bool {
+	return executionSHA256.MatchString(strings.TrimSpace(value))
 }
 
 // readExecutionResumeClaimToken은 owner를 다시 띄우기 전에 현재 generation의

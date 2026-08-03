@@ -107,6 +107,8 @@ func TestIssueOpsExecutionStatusProjectsActorFreeResumeCommand(t *testing.T) {
 		Orca: &issueopscontract.OrcaBinding{
 			RuntimeID: "runtime-1", RepoID: "repo-1", WorktreeID: "worktree-1",
 			LeaseGeneration: 2, OwnerHost: "codex", OwnerModel: "gpt-5.6-terra",
+			ArtifactIdentityVersion: issueopscontract.OrcaArtifactIdentityVersion,
+			IssueBodySHA256:         strings.Repeat("b", 64), ContextPacketSHA256: strings.Repeat("c", 64), OwnerPromptSHA256: strings.Repeat("d", 64),
 			TaskID: "task-1", DispatchID: "dispatch-1", TerminalPTYID: "pty-1",
 		},
 	}
@@ -124,6 +126,24 @@ func TestIssueOpsExecutionStatusProjectsActorFreeResumeCommand(t *testing.T) {
 	want := issueopscore.ExecutionResumeRecoveryCommand(id, 3)
 	if status.NextCommand != want {
 		t.Fatalf("status next command = %q, want %q", status.NextCommand, want)
+	}
+
+	record.Execution.Orca.IssueBodySHA256 = ""
+	record.Execution.Orca.ContextPacketSHA256 = ""
+	record.Execution.Orca.OwnerPromptSHA256 = ""
+	record.Execution.Orca.ArtifactIdentityVersion = 0
+	if _, err := issueopscore.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	legacyJSON := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"execution", "status", "--id", id, "--json"})
+	})
+	if err := json.Unmarshal([]byte(legacyJSON), &status); err != nil {
+		t.Fatalf("legacy execution status should return JSON: %v\n%s", err, legacyJSON)
+	}
+	want = "agent-harness issueops execution replace --id '" + id + "' --expected-generation 3 --preview"
+	if status.NextCommand != want {
+		t.Fatalf("legacy status next command = %q, want %q", status.NextCommand, want)
 	}
 }
 

@@ -101,6 +101,12 @@ func (s *ReseedService) Reseed(ctx context.Context, request ReseedRequest) (Rese
 			return err
 		}
 		next.Stable.Execution.Lease.ClaimTokenSHA256 = prepared.TokenSHA256
+		if next.Stable.Execution.Orca != nil {
+			next.Stable.Execution.Orca.ArtifactIdentityVersion = leasecontract.OrcaArtifactIdentityVersion
+			next.Stable.Execution.Orca.IssueBodySHA256 = prepared.Receipt.IssueBodySHA256
+			next.Stable.Execution.Orca.ContextPacketSHA256 = prepared.Receipt.ContextPacketSHA256
+			next.Stable.Execution.Orca.OwnerPromptSHA256 = prepared.Receipt.OwnerPromptSHA256
+		}
 		next.Lease = next.Stable.Execution.Lease
 		after, err := s.repository.CommitReseed(fenceCtx, snapshot, next)
 		if err != nil {

@@ -89,6 +89,8 @@ func coreExecution(execution *leasecontract.Execution) *issueopscontract.Executi
 		result.Orca = &issueopscontract.OrcaBinding{
 			RuntimeID: binding.RuntimeID, RepoID: binding.RepoID, WorktreeID: binding.WorktreeID,
 			RunID: binding.RunID, WorktreeInstanceID: binding.WorktreeInstanceID, LeaseGeneration: binding.LeaseGeneration,
+			ArtifactIdentityVersion: binding.ArtifactIdentityVersion,
+			IssueBodySHA256:         binding.IssueBodySHA256, ContextPacketSHA256: binding.ContextPacketSHA256, OwnerPromptSHA256: binding.OwnerPromptSHA256,
 			OwnerHost: binding.OwnerHost, OwnerModel: binding.OwnerModel, OwnerEffort: binding.OwnerEffort,
 			TaskID: binding.TaskID, DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID,
 		}

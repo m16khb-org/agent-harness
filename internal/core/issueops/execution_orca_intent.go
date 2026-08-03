@@ -345,6 +345,9 @@ func advanceOrcaIntentReceiptWithExpectedRaw(ctx context.Context, stateRoot stri
 			current.Execution.Workspace = workspaceFromReceipt(intentPortWorkspaceReceipt(updated.Prepared.Workspace), expected.StartedAt)
 		}
 		if expected.Stage == preparationcontract.IntentStageDispatch {
+			if expected.Launch == nil {
+				return fmt.Errorf("Orca sealed owner artifact identity is missing")
+			}
 			if normalizedOrcaIntentPurpose(expected) == orcaIntentPurposeResume {
 				if expected.ResumeLease == nil || !reflect.DeepEqual(intentContractLease(current.Execution.Lease), *expected.ResumeLease) {
 					return fmt.Errorf("resume lease changed before dispatch receipt CAS")
@@ -357,7 +360,10 @@ func advanceOrcaIntentReceiptWithExpectedRaw(ctx context.Context, stateRoot stri
 			current.Execution.Orca = &issueops.OrcaBinding{
 				RuntimeID: expected.Prepared.RuntimeID, RepoID: expected.Prepared.RepoID, WorktreeID: expected.Prepared.WorktreeID,
 				WorktreeInstanceID: expected.Prepared.WorktreeInstanceID, LeaseGeneration: expected.Generation, OwnerHost: expected.Probe.Host,
-				OwnerModel: expected.Probe.Model, OwnerEffort: expected.Probe.Effort, RunID: expected.RunID, TaskID: expected.TaskID,
+				ArtifactIdentityVersion: issueops.OrcaArtifactIdentityVersion,
+				IssueBodySHA256:         expected.IssueBodySHA256, ContextPacketSHA256: expected.Launch.ContextPacketSHA256,
+				OwnerPromptSHA256: expected.Launch.PromptSHA256,
+				OwnerModel:        expected.Probe.Model, OwnerEffort: expected.Probe.Effort, RunID: expected.RunID, TaskID: expected.TaskID,
 				DispatchID: receipt.DispatchID, TerminalPTYID: expected.TerminalPTYID,
 			}
 			current.Execution.Pending = nil

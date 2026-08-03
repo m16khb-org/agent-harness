@@ -303,6 +303,9 @@ func (repository *SQLiteRepository) ApplyReceipt(ctx context.Context, state prep
 		if state.Intent.Prepared == nil {
 			return preparationapp.IntentProgress{State: state, Pending: true}, fmt.Errorf("Orca prepared workspace receipt is missing")
 		}
+		if state.Intent.Launch == nil {
+			return preparationapp.IntentProgress{State: state, Pending: true}, fmt.Errorf("Orca sealed owner artifact identity is missing")
+		}
 		record.Execution.Lease = leasecontract.Lease{
 			Generation: state.Intent.Generation, Status: "claimable", ClaimTokenSHA256: state.Intent.ClaimTokenSHA256,
 		}
@@ -310,7 +313,10 @@ func (repository *SQLiteRepository) ApplyReceipt(ctx context.Context, state prep
 			RuntimeID: state.Intent.Prepared.RuntimeID, RepoID: state.Intent.Prepared.RepoID,
 			WorktreeID: state.Intent.Prepared.WorktreeID, WorktreeInstanceID: state.Intent.Prepared.WorktreeInstanceID,
 			LeaseGeneration: state.Intent.Generation, OwnerHost: state.Intent.Probe.Host,
-			OwnerModel: state.Intent.Probe.Model, OwnerEffort: state.Intent.Probe.Effort,
+			ArtifactIdentityVersion: leasecontract.OrcaArtifactIdentityVersion,
+			IssueBodySHA256:         state.Intent.IssueBodySHA256, ContextPacketSHA256: state.Intent.Launch.ContextPacketSHA256,
+			OwnerPromptSHA256: state.Intent.Launch.PromptSHA256,
+			OwnerModel:        state.Intent.Probe.Model, OwnerEffort: state.Intent.Probe.Effort,
 			RunID: state.Intent.RunID, TaskID: state.Intent.TaskID, DispatchID: strings.TrimSpace(receipt.DispatchID),
 			TerminalPTYID: state.Intent.TerminalPTYID,
 		}

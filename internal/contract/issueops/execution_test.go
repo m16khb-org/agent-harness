@@ -70,3 +70,44 @@ func TestValidateExecutionRejectsBindingFromFutureLeaseGeneration(t *testing.T) 
 		t.Fatalf("future binding generation must fail closed: %v", err)
 	}
 }
+
+func TestValidateExecutionAcceptsCompleteOrEmptyOrcaArtifactIdentity(t *testing.T) {
+	execution := validOrcaExecutionForTest()
+	if err := ValidateExecution(execution); err != nil {
+		t.Fatalf("legacy empty artifact identity must remain readable: %v", err)
+	}
+	execution.Orca.ArtifactIdentityVersion = OrcaArtifactIdentityVersion
+	execution.Orca.IssueBodySHA256 = strings.Repeat("a", 64)
+	execution.Orca.ContextPacketSHA256 = strings.Repeat("b", 64)
+	execution.Orca.OwnerPromptSHA256 = strings.Repeat("c", 64)
+	if err := ValidateExecution(execution); err != nil {
+		t.Fatalf("complete artifact identity must be valid: %v", err)
+	}
+}
+
+func TestValidateExecutionRejectsPostUpgradeEmptyOrcaArtifactIdentity(t *testing.T) {
+	execution := validOrcaExecutionForTest()
+	execution.Orca.ArtifactIdentityVersion = OrcaArtifactIdentityVersion
+	if err := ValidateExecution(execution); err == nil || !strings.Contains(err.Error(), "version requires a complete sealed artifact identity") {
+		t.Fatalf("post-upgrade empty artifact identity must fail as an invariant violation: %v", err)
+	}
+}
+
+func TestValidateExecutionRejectsUnversionedCurrentOrcaArtifactIdentity(t *testing.T) {
+	execution := validOrcaExecutionForTest()
+	execution.Orca.IssueBodySHA256 = strings.Repeat("a", 64)
+	execution.Orca.ContextPacketSHA256 = strings.Repeat("b", 64)
+	execution.Orca.OwnerPromptSHA256 = strings.Repeat("c", 64)
+	if err := ValidateExecution(execution); err == nil || !strings.Contains(err.Error(), "requires artifact identity version") {
+		t.Fatalf("unversioned current artifact identity must fail as an invariant violation: %v", err)
+	}
+}
+
+func TestValidateExecutionRejectsPartialOrcaArtifactIdentity(t *testing.T) {
+	execution := validOrcaExecutionForTest()
+	execution.Orca.ArtifactIdentityVersion = OrcaArtifactIdentityVersion
+	execution.Orca.OwnerPromptSHA256 = strings.Repeat("c", 64)
+	if err := ValidateExecution(execution); err == nil || !strings.Contains(err.Error(), "complete sealed artifact identity") {
+		t.Fatalf("partial artifact identity error=%v", err)
+	}
+}
