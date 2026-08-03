@@ -294,7 +294,7 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 	if persisted.Execution.Lease.Status == issueops.LeaseStatusClaimable {
 		switch persisted.Execution.Mode {
 		case issueops.ExecutionModeOrca:
-			result.NextCommand = executionResumeCommand(persisted.ID, persisted.Execution.Lease.Generation)
+			result.NextCommand = ExecutionResumeRecoveryCommand(persisted.ID, persisted.Execution.Lease.Generation)
 		case issueops.ExecutionModeDirect:
 			result.NextCommand = executionDirectClaimCommand(
 				persisted.ID,
@@ -329,7 +329,7 @@ func executionWriterAbsentRecoveryCommand(record issueops.IssueOpsRecord) string
 	switch lease.Status {
 	case issueops.LeaseStatusClaimable:
 		if record.Execution.Mode == issueops.ExecutionModeOrca {
-			return executionResumeCommand(record.ID, lease.Generation)
+			return ExecutionResumeRecoveryCommand(record.ID, lease.Generation)
 		}
 		if record.Execution.Mode == issueops.ExecutionModeDirect {
 			return executionDirectClaimCommand(record.ID, lease.Generation, claimTokenPath(record))

@@ -85,6 +85,48 @@ func TestIssueOpsExecutionPrepareCLIAndStatusShareSchemaProjection(t *testing.T)
 	}
 }
 
+func TestIssueOpsExecutionStatusProjectsActorFreeResumeCommand(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo, id, _ := executionCLIRecord(t)
+	record, err := issueopscore.ReadIssueOps(core.IssueOpsStateRoot(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	worktree := filepath.Join(repo+".worktrees", record.Branch)
+	record.WorktreePath = worktree
+	record.Execution = &issueopscontract.Execution{
+		Mode: issueopscontract.ExecutionModeOrca,
+		Workspace: issueopscontract.Workspace{
+			SourceRoot: repo, Root: worktree, Branch: record.Branch,
+			BaseHead: record.BranchPrepare.BaseSHA, Driver: "orca", LinkedAt: "2026-08-02T00:00:00Z",
+		},
+		Lease: issueopscontract.WriteLease{
+			Generation: 3, Status: issueopscontract.LeaseStatusClaimable,
+			ClaimTokenSHA256: strings.Repeat("a", 64),
+		},
+		Orca: &issueopscontract.OrcaBinding{
+			RuntimeID: "runtime-1", RepoID: "repo-1", WorktreeID: "worktree-1",
+			LeaseGeneration: 2, OwnerHost: "codex", OwnerModel: "gpt-5.6-terra",
+			TaskID: "task-1", DispatchID: "dispatch-1", TerminalPTYID: "pty-1",
+		},
+	}
+	if _, err := issueopscore.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+
+	statusJSON := captureStdoutForContract(t, func() error {
+		return runIssueOps([]string{"execution", "status", "--id", id, "--json"})
+	})
+	var status issueopscore.ExecutionResult
+	if err := json.Unmarshal([]byte(statusJSON), &status); err != nil {
+		t.Fatalf("execution status should return JSON: %v\n%s", err, statusJSON)
+	}
+	want := issueopscore.ExecutionResumeRecoveryCommand(id, 3)
+	if status.NextCommand != want {
+		t.Fatalf("status next command = %q, want %q", status.NextCommand, want)
+	}
+}
+
 func sameExecutionCLIPath(left, right string) bool {
 	left, leftErr := filepath.EvalSymlinks(left)
 	right, rightErr := filepath.EvalSymlinks(right)

@@ -68,6 +68,16 @@ func TestExecutionOwnerPacketUsesOnlyExecutionCommands(t *testing.T) {
 	}
 }
 
+func TestExecutionOwnerPromptSeparatesSealedClaimFromRecoveryResume(t *testing.T) {
+	record, req := ownerPacketFixture()
+	prompt := executionOwnerPromptFixture(t, record, req)
+	for _, required := range []string{"expected claimable", "sealed claim", "recovery resume", "status의 exact next_command"} {
+		if !strings.Contains(prompt, required) {
+			t.Fatalf("owner prompt is missing %q:\n%s", required, prompt)
+		}
+	}
+}
+
 func TestExecutionOwnerPromptOrdersLifecycleMutationsBeforePublication(t *testing.T) {
 	record, req := ownerPacketFixture()
 	prompt := executionOwnerPromptFixture(t, record, req)

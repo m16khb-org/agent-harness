@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopscore "agent-harness/internal/core/issueops"
 )
 
 func TestExecutionAdmitsExactOrcaOwnerControlPlaneCommands(t *testing.T) {
@@ -96,16 +97,24 @@ func TestExecutionAdmitsExactGenerationBoundResumeControlPlane(t *testing.T) {
 	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
-	command := "agent-harness issueops execution resume --id " + record.ID +
-		" --expected-generation 3 --host codex --session-id resume-session --session-pid 42" +
+	actorFlags := " --host codex --session-id resume-session --session-pid 42" +
 		" --session-started-at 2026-07-30T00:00:00Z --session-executable /bin/codex" +
-		" --cwd " + worker + " --confirm --json"
-	req := executionRequest(record, worker, "codex", "resume-session", command)
-	if !executionTypedControlPlane(req) {
-		t.Fatal("exact resume did not reach the typed control plane")
-	}
-	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
-		t.Fatalf("exact resume was blocked by holderless authority: %+v", got)
+		" --cwd " + worker
+	for name, suffix := range map[string]string{
+		"actor free": "",
+		"explicit":   actorFlags,
+	} {
+		t.Run(name, func(t *testing.T) {
+			command := issueopscore.ExecutionResumeRecoveryCommand(record.ID, 3)
+			command = strings.TrimSuffix(command, " --confirm") + suffix + " --confirm --json"
+			req := executionRequest(record, worker, "codex", "resume-session", command)
+			if !executionTypedControlPlane(req) {
+				t.Fatal("exact resume did not reach the typed control plane")
+			}
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+				t.Fatalf("exact resume was blocked by holderless authority: %+v", got)
+			}
+		})
 	}
 }
 
@@ -137,6 +146,7 @@ func TestExecutionKeepsNearMissResumeControlPlaneCommandsBlocked(t *testing.T) {
 		"active substitution":  strings.Replace(base, "--expected-generation 3", "--expected-generation $(date +%s)", 1) + " --confirm --json",
 		"empty lifecycle id":   strings.Replace(base, "--id "+record.ID, "--id ''", 1) + " --confirm --json",
 		"duplicate generation": base + " --expected-generation 4 --confirm --json",
+		"partial actor flags":  "agent-harness issueops execution resume --id " + record.ID + " --expected-generation 3 --host codex --confirm --json",
 	} {
 		t.Run(name, func(t *testing.T) {
 			req := executionRequest(record, worker, "codex", "resume-session", command)

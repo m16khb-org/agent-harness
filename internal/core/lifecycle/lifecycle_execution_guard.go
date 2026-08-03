@@ -663,11 +663,16 @@ func executionTypedControlPlane(req lifecyclecontract.HookToolUseLifecycleReques
 		generation, generationOK := oneFlag(flags, "--expected-generation")
 		parsedGeneration, generationErr := strconv.ParseUint(strings.TrimSpace(generation), 10, 64)
 		_, confirm := flags["--confirm"]
-		for _, name := range []string{"--host", "--session-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"} {
-			value, found := oneFlag(flags, name)
-			if !found || strings.TrimSpace(value) == "" {
-				return false
+		actorFlags := []string{"--host", "--session-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"}
+		actorExplicit := false
+		for _, name := range append(actorFlags, "--agent-id") {
+			_, actorExplicit = flags[name]
+			if actorExplicit {
+				break
 			}
+		}
+		if actorExplicit && !nonemptyExactFlags(flags, actorFlags...) {
+			return false
 		}
 		return idOK && strings.TrimSpace(id) != "" && generationOK &&
 			generationErr == nil && parsedGeneration > 0 && confirm

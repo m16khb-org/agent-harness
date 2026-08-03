@@ -116,7 +116,10 @@ Required skills:
    항목이 있으면 {WORKTREE_ROOT}/.agent-harness/artifact/의 plan/spec/turing-loop
    문서를 digest 검증 후 읽고 구현 계약의 일부로 삼는다.
 4. `{LEASE_STATUS_COMMAND}`를 한 번 실행한다.
-5. claim command가 `none`이면 durable holder가 현재 native session/generation/worktree와 같은지
+5. expected claimable 상태의 sealed claim과 status가 안내하는 recovery resume을 구분한다. claim
+   command가 존재하는 expected claimable 경로에서는 sealed claim만 실행한다. status가 recovery
+   `execution resume`을 next_command로 반환하면 claim으로 바꾸지 말고 status의 exact next_command를
+   최대 한 번 실행한 뒤 현재 task를 종료한다. claim command가 `none`이면 durable holder가 현재 native session/generation/worktree와 같은지
    확인한다. 아니면 먼저 `agent-harness issueops execution whoami --json`을 실행해 출력의
    host/session_id와 ancestry에서 native session 프로세스(owner host 실행 파일)의
    pid/started_at/executable receipt를 읽고, 그 리터럴 값을 아래 placeholder에 그대로 채운 exact
