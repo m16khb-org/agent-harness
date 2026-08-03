@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="${HARNESS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+BUILD_ROOT="${HARNESS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+ROOT="$BUILD_ROOT"
+if COMMON_GIT_DIR="$(git -C "$BUILD_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"; then
+  if [[ "$(basename "$COMMON_GIT_DIR")" == ".git" && -d "$COMMON_GIT_DIR" && ! -L "$COMMON_GIT_DIR" ]]; then
+    ROOT="$(cd "$COMMON_GIT_DIR/.." && pwd)"
+  fi
+fi
 export HARNESS_ROOT="$ROOT"
 BIN="$ROOT/bin/agent-harness"
 SKIP_BUILD="${HARNESS_SKIP_BUILD:-0}"
@@ -91,7 +97,7 @@ else
   else
     log "staging initial agent-harness binary from current checkout"
   fi
-  (cd "$ROOT" && go build -o "$STAGED_BIN" ./cmd/harness)
+  (cd "$BUILD_ROOT" && go build -o "$STAGED_BIN" ./cmd/harness)
   chmod 0755 "$STAGED_BIN"
   "$STAGED_BIN" version >/dev/null
   HARNESS_NATIVE_ACTIVATION_STEP=begin \
@@ -102,6 +108,11 @@ import os
 import sys
 
 source, target = sys.argv[1], sys.argv[2]
+staged = os.open(source, os.O_RDONLY)
+try:
+    os.fsync(staged)
+finally:
+    os.close(staged)
 os.replace(source, target)
 directory = os.open(os.path.dirname(target), os.O_RDONLY)
 try:

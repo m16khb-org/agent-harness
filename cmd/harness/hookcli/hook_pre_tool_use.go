@@ -12,6 +12,7 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/core"
+	coreinstall "agent-harness/internal/core/install"
 	issueopscore "agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/searchrouting"
 )
@@ -44,6 +45,14 @@ func runHookPreToolUse(args []string) error {
 	nativeHost := firstNonEmptyHookValue(payloadHost, flagHost)
 	if nativeHost == "" {
 		nativeHost = string(hookadapter.HostCodex)
+	}
+	diagnostic, runtimeErr := DiagnoseCurrentNativeRuntime()
+	if reason, blocked := coreinstall.NativeRuntimeDiagnosticMessage(diagnostic, runtimeErr); blocked {
+		if *jsonOut {
+			return printJSON(diagnostic)
+		}
+		markHookMetricBlocked()
+		return printJSON(hookadapter.Resolve(nativeHost).FormatBlock(reason))
 	}
 	processAncestry, _ := issueopscore.ObserveNativeProcessAncestry(os.Getpid())
 	tool := hookinput.ToolNameFromHookInput(stdin)

@@ -10,17 +10,19 @@ import (
 	"agent-harness/internal/port"
 )
 
-func writeClaudeSettings(path string, req port.NativeInstallRequest) (port.InstallFile, error) {
+func writeClaudeSettings(path string, req port.NativeInstallRequest) (port.InstallFile, []string, error) {
 	file := port.InstallFile{Path: path, Kind: "claude_user_settings"}
 	config := map[string]any{}
 	if existing, err := os.ReadFile(path); err == nil && len(strings.TrimSpace(string(existing))) > 0 {
 		if err := json.Unmarshal(existing, &config); err != nil {
-			return file, err
+			return file, nil, err
 		}
 	} else if err != nil && !os.IsNotExist(err) && !req.DryRun {
-		return file, err
+		return file, nil, err
 	}
-	return installutil.WriteJSONPlan(path, file.Kind, mergeClaudeHookConfig(config, req.BinPath), 0o644, req.DryRun)
+	messages := installutil.HookTargetDriftMessages(config, "claude", req.BinPath)
+	written, err := installutil.WriteJSONPlan(path, file.Kind, mergeClaudeHookConfig(config, req.BinPath), 0o644, req.DryRun)
+	return written, messages, err
 }
 
 func claudeSettingsConfig(binPath string) map[string]any {

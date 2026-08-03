@@ -26,7 +26,9 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	mcpTemplatePath := filepath.Join(req.Root, "configs", "codex", "mcp.config.toml")
 	plan.File(installutil.WriteTextPlan(mcpTemplatePath, "codex_mcp_template", codexTemplate(req), 0o644, req.DryRun))
 
-	plan.File(writeCodexHooks(filepath.Join(req.CodexHome, "hooks.json"), req))
+	hooksFile, hookMessages, hooksErr := writeCodexHooks(filepath.Join(req.CodexHome, "hooks.json"), req)
+	plan.File(hooksFile, hooksErr)
+	plan.Messages(hookMessages)
 
 	hooksTemplatePath := filepath.Join(req.Root, "configs", "codex", "hooks.json")
 	plan.File(installutil.WriteJSONPlan(hooksTemplatePath, "codex_hooks_template", codexHooksConfig("./bin/agent-harness"), 0o644, req.DryRun))

@@ -19,6 +19,9 @@ func (f fakeHostInstaller) Install(req port.NativeInstallRequest) (port.HostInst
 
 func TestInstallNativeDelegatesThroughHostInstaller(t *testing.T) {
 	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	writeInstallTestSkill(t, root, "alpha")
 	writeInstallTestSkill(t, root, "beta")
 	req := DefaultNativeInstallRequest(root, t.TempDir(), "", "")

@@ -257,10 +257,34 @@ func ExactReadOnlyShellCommand(command string) bool {
 	if HasActiveCommandSubstitution(command) || HasActiveInputRedirect(command) || HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) || HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) || HasActiveShellComment(command) || HasActiveZshEqualsExpansion(command) {
 		return false
 	}
+	if exactReadOnlyCommandLookup(command) {
+		return true
+	}
 	if HasUnquotedControlOperator(command) {
 		return exactReadOnlyShellSequence(command)
 	}
 	return exactReadOnlySimpleShellCommand(command)
+}
+
+func exactReadOnlyCommandLookup(command string) bool {
+	const prefix = "command -v "
+	command = strings.TrimSpace(command)
+	name, matched := strings.CutPrefix(command, prefix)
+	if !matched || name == "" {
+		return false
+	}
+	for index := 0; index < len(name); index++ {
+		character := name[index]
+		asciiAlphaNumeric := character >= 'a' && character <= 'z' ||
+			character >= 'A' && character <= 'Z' ||
+			character >= '0' && character <= '9'
+		if asciiAlphaNumeric || character == '_' ||
+			(index > 0 && (character == '.' || character == '+' || character == '-')) {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func exactReadOnlySimpleShellCommand(command string) bool {
