@@ -15,8 +15,6 @@ import (
 	"agent-harness/internal/port"
 )
 
-const claimOwnerArtifactLimit int64 = 64 * 1024
-
 type IssueSnapshot struct {
 	URL  string
 	Body string
@@ -162,7 +160,7 @@ func readClaimOwnerArtifact(root, path string) ([]byte, error) {
 		if index < len(parts)-1 && !info.IsDir() {
 			return nil, fmt.Errorf("owner artifact ancestor is not a directory")
 		}
-		if index == len(parts)-1 && (!info.Mode().IsRegular() || info.Mode().Perm() != 0o600 || info.Size() > claimOwnerArtifactLimit) {
+		if index == len(parts)-1 && (!info.Mode().IsRegular() || info.Mode().Perm() != 0o600 || info.Size() > leasecontract.OwnerArtifactMaxBytes) {
 			return nil, fmt.Errorf("owner artifact must be a private bounded regular file")
 		}
 	}
