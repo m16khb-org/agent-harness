@@ -30,6 +30,7 @@ type stableV1Record struct {
 	RemoteCompletion        *stableV1RemoteCompletion      `json:"remote_completion,omitempty"`
 	SourceMisdirectWarnings int                            `json:"source_misdirect_warnings,omitempty"`
 	CleanupFinishFailure    *stableV1CleanupFinishFailure  `json:"cleanup_finish_failure,omitempty"`
+	CleanupAbandonFailure   *stableV1CleanupAbandonFailure `json:"cleanup_abandon_failure,omitempty"`
 	ImplementationReview    *stableV1ImplementationReview  `json:"implementation_review,omitempty"`
 	RoutingTrace            []stableV1SkillRouting         `json:"routing_trace,omitempty"`
 	AISlopCleanAt           string                         `json:"ai_slop_clean_at,omitempty"`
@@ -49,6 +50,18 @@ type stableV1Feedback struct {
 	CreatedAt      string `json:"created_at"`
 	IssueUpdatedAt string `json:"issue_updated_at,omitempty"`
 	Resolution     string `json:"resolution,omitempty"`
+}
+type stableV1CleanupAbandonFailure struct {
+	Step            string `json:"step"`
+	Message         string `json:"message"`
+	Fingerprint     string `json:"fingerprint"`
+	RecordSHA       string `json:"record_sha"`
+	InventorySHA256 string `json:"inventory_sha256"`
+	WorktreePath    string `json:"worktree_path"`
+	Branch          string `json:"branch"`
+	WorktreeHead    string `json:"worktree_head"`
+	BranchOID       string `json:"branch_oid"`
+	At              string `json:"at"`
 }
 type stableV1IssueLink struct {
 	Type            string `json:"type"`

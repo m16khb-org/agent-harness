@@ -45,6 +45,7 @@ type Record struct {
 	RemoteCompletion        json.RawMessage `json:"remote_completion,omitempty"`
 	SourceMisdirectWarnings int             `json:"source_misdirect_warnings,omitempty"`
 	CleanupFinishFailure    json.RawMessage `json:"cleanup_finish_failure,omitempty"`
+	CleanupAbandonFailure   json.RawMessage `json:"cleanup_abandon_failure,omitempty"`
 	ImplementationReview    json.RawMessage `json:"implementation_review,omitempty"`
 	RoutingTrace            json.RawMessage `json:"routing_trace,omitempty"`
 	AISlopCleanAt           string          `json:"ai_slop_clean_at,omitempty"`

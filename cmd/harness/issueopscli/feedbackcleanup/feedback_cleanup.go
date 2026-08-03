@@ -499,7 +499,8 @@ func runCleanupRemoteBranch(args []string, deps Deps) error {
 	return nil
 }
 
-// runCleanupAbandon은 폐기된 비-done 사이클의 로컬 레코드 수명을 종료한다.
+// runCleanupAbandon은 폐기된 비-done 사이클의 로컬 worktree, branch, record
+// 수명을 종료한다.
 // finish와 달리 provider를 resolve조차 하지 않는다 — 이 경로는 원격(이슈 본문·
 // PR/MR·원격 브랜치)을 어떤 단계에서도 읽거나 쓰지 않는다(#106).
 func runCleanupAbandon(args []string, deps Deps) error {
@@ -507,7 +508,7 @@ func runCleanupAbandon(args []string, deps Deps) error {
 	id := fs.String("id", "", "issueops id")
 	reason := fs.String("reason", "", "why this cycle is abandoned (required, max 512 bytes); control characters and active shell characters are rejected because the lease guard parses this command exactly")
 	preview := fs.Bool("preview", false, "evaluate gates and issue a fingerprint without mutating")
-	apply := fs.Bool("apply", false, "delete the record and its external intent rows")
+	apply := fs.Bool("apply", false, "remove the sealed local worktree and branch, then delete the record and its external intent rows")
 	confirm := fs.Bool("confirm", false, "confirm the destructive apply")
 	fingerprint := fs.String("fingerprint", "", "fingerprint issued by the latest --preview")
 	jsonOut := fs.Bool("json", false, "print JSON")
@@ -543,7 +544,8 @@ func runCleanupAbandon(args []string, deps Deps) error {
 		return deps.PrintJSON(result)
 	}
 	if result.RecordDeleted {
-		fmt.Printf("cleanup abandoned: record deleted intent_rows=%d at=%s\n", len(result.IntentRowsDeleted), result.AbandonedAt)
+		fmt.Printf("cleanup abandoned: worktree_removed=%t branch_deleted=%t record_deleted=%t intent_rows=%d at=%s\n",
+			result.WorktreeRemoved, result.BranchDeleted, result.RecordDeleted, len(result.IntentRowsDeleted), result.AbandonedAt)
 	} else {
 		fmt.Printf("fingerprint: %s\n", result.Fingerprint)
 		if result.NextCommand != "" {

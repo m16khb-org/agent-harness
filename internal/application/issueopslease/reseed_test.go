@@ -2,6 +2,7 @@ package issueopslease
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"sync"
@@ -163,6 +164,22 @@ func TestReseedServiceValidatesActorBeforeConfirmForLegacyErrorPriority(t *testi
 	request.Actor.Host = "unknown"
 	if _, err := service.Reseed(context.Background(), request); err == nil || err.Error() != "native actor host must be codex or claude" {
 		t.Fatalf("confirm/actor error priority=%v", err)
+	}
+}
+
+func TestReseedServiceRejectsCleanupAbandonFence(t *testing.T) {
+	record := reseedTestRecord("released", 3)
+	record.Stable.CleanupAbandonFailure = json.RawMessage(`{"step":"applying"}`)
+	service := newReseedServiceForTest(
+		&serializedReseedFence{locks: map[string]*sync.Mutex{}},
+		&serializedReseedRepository{record: record},
+		reseedArtifactsFake{prepare: func(context.Context, leasecontract.Record) (ReseedArtifactReceipt, error) {
+			t.Fatal("cleanup fence must reject before artifact preparation")
+			return ReseedArtifactReceipt{}, nil
+		}, cleanup: func(context.Context, leasecontract.Record) error { return nil }},
+	)
+	if _, err := service.Reseed(context.Background(), reseedServiceRequest(record.ID)); err == nil || !strings.Contains(err.Error(), "blocked by cleanup abandon apply") {
+		t.Fatalf("cleanup abandon fence must block reseed: %v", err)
 	}
 }
 
