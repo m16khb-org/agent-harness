@@ -3,6 +3,7 @@ package codex
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"agent-harness/internal/core"
@@ -46,5 +47,35 @@ func TestVerifyActivationRejectsStaleCodexTarget(t *testing.T) {
 	}
 	if _, err := VerifyActivation(req); err == nil {
 		t.Fatal("stale Codex MCP target was accepted")
+	}
+}
+
+func TestVerifyActivationRejectsCodexWorktreeHookTarget(t *testing.T) {
+	root, home := t.TempDir(), t.TempDir()
+	writeAdapterTestSkill(t, root, "alpha")
+	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "agent-harness"))
+	req.SkillNames = []string{"alpha"}
+	if _, err := NewInstaller().Install(req); err != nil {
+		t.Fatal(err)
+	}
+	hooksPath := filepath.Join(req.CodexHome, "hooks.json")
+	raw, err := os.ReadFile(hooksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stale := filepath.Join(filepath.Dir(root), "source.worktrees", "completed", "bin", "agent-harness")
+	raw = []byte(strings.ReplaceAll(string(raw), req.BinPath, stale))
+	if err := os.WriteFile(hooksPath, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = VerifyActivation(req)
+	if err == nil {
+		t.Fatal("worktree Codex hook target was accepted")
+	}
+	for _, evidence := range []string{"Codex hook readback", "observed=" + stale, "expected=" + req.BinPath} {
+		if !strings.Contains(err.Error(), evidence) {
+			t.Fatalf("error = %q, want %q", err, evidence)
+		}
 	}
 }

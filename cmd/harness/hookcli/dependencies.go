@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+
+	coreinstall "agent-harness/internal/core/install"
 )
 
 var ResolveTarget = func(arg string) string {
@@ -23,6 +25,14 @@ var ResolveTarget = func(arg string) string {
 		return arg
 	}
 	return abs
+}
+
+var DiagnoseCurrentNativeRuntime = func() (coreinstall.NativeRuntimeDiagnostic, error) {
+	executable, err := os.Executable()
+	if err != nil {
+		return coreinstall.NativeRuntimeDiagnostic{}, err
+	}
+	return coreinstall.DiagnoseNativeRuntime(executable)
 }
 
 func printJSON(v any) error {

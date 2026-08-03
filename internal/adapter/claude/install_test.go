@@ -182,6 +182,41 @@ func TestClaudeInstallerReportsInvalidExistingSettings(t *testing.T) {
 	}
 }
 
+func TestClaudeInstallerReportsStaleHookTarget(t *testing.T) {
+	for _, dryRun := range []bool{false, true} {
+		t.Run(map[bool]string{false: "install", true: "dry-run"}[dryRun], func(t *testing.T) {
+			root := t.TempDir()
+			home := t.TempDir()
+			writeAdapterTestSkill(t, root, "alpha")
+			settingsPath := filepath.Join(home, ".claude", "settings.json")
+			writeClaudeTestFile(t, settingsPath, `{"hooks":{"PreToolUse":[{"matcher":"*","hooks":[{"type":"command","command":"'/source.worktrees/completed/bin/agent-harness' hook pre-tool-use --host claude"}]}]}}`)
+			expected := filepath.Join(root, "bin", "agent-harness")
+			req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), expected)
+			req.SkillNames = []string{"alpha"}
+			req.DryRun = dryRun
+
+			result, err := NewInstaller().Install(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := "claude native hook target is stale: observed=/source.worktrees/completed/bin/agent-harness expected=" + expected + "; reinstall hooks and restart the claude session"
+			if countClaudeMessage(result.Messages, want) != 1 {
+				t.Fatalf("messages = %#v, want exactly one %q", result.Messages, want)
+			}
+		})
+	}
+}
+
+func countClaudeMessage(messages []string, want string) int {
+	count := 0
+	for _, message := range messages {
+		if message == want {
+			count++
+		}
+	}
+	return count
+}
+
 func TestClaudeInstallHelpersCoverQuoting(t *testing.T) {
 	if got := shellQuote(""); got != "''" {
 		t.Fatalf("empty shellQuote = %q", got)

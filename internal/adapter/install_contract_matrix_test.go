@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"flag"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 	"testing"
 
 	claudeadapter "agent-harness/internal/adapter/claude"
@@ -227,6 +229,148 @@ func TestInstallNativeScriptExcludesRemovedProxyCompanion(t *testing.T) {
 	if _, err := os.Stat(filepath.Join("..", "..", "scripts", "setup-"+removed+"-runtime.sh")); !os.IsNotExist(err) {
 		t.Fatalf("removed proxy companion setup script must be removed, stat error: %v", err)
 	}
+}
+
+func TestInstallNativeScriptActivatesLinkedWorktreeBuildAtStableSource(t *testing.T) {
+	base := t.TempDir()
+	source := filepath.Join(base, "source")
+	worktree := filepath.Join(base, "source.worktrees", "feature")
+	if err := os.MkdirAll(source, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	runInstallScriptTestCommand(t, source, "git", "init", "-b", "main")
+	scriptSource, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install-native.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	scriptBytes, err := os.ReadFile(scriptSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeInstallScriptTestFile(t, filepath.Join(source, "scripts", "install-native.sh"), scriptBytes, 0o755)
+	writeInstallScriptTestFile(t, filepath.Join(source, "README.md"), []byte("fixture\n"), 0o644)
+	runInstallScriptTestCommand(t, source, "git", "add", ".")
+	runInstallScriptTestCommand(t, source, "git", "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "fixture")
+	runInstallScriptTestCommand(t, source, "git", "worktree", "add", "-b", "feature", worktree)
+
+	stableBinary := filepath.Join(source, "bin", "agent-harness")
+	writeInstallScriptTestFile(t, stableBinary, []byte("#!/bin/sh\nexit 0\n"), 0o755)
+	before := installScriptTestInode(t, stableBinary)
+	fakeBin := filepath.Join(base, "fake-bin")
+	fakeGo := `#!/bin/sh
+set -eu
+test "$1" = "build"
+shift
+output=""
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "-o" ]; then
+    output="$2"
+    shift 2
+    continue
+  fi
+  shift
+done
+test -n "$output"
+cat >"$output" <<'RUNTIME'
+#!/bin/sh
+case "${1:-}" in
+  version) exit 0 ;;
+  issueops) exit 0 ;;
+  install-native) printf '%s\n' "$HARNESS_ROOT" >"$FAKE_INSTALL_LOG"; exit 0 ;;
+  *) exit 0 ;;
+esac
+# new-runtime
+RUNTIME
+chmod 0755 "$output"
+`
+	writeInstallScriptTestFile(t, filepath.Join(fakeBin, "go"), []byte(fakeGo), 0o755)
+	installLog := filepath.Join(base, "installed-root.log")
+	command := exec.Command("bash", filepath.Join(worktree, "scripts", "install-native.sh"), "--json")
+	command.Dir = worktree
+	command.Env = append(withoutInstallScriptTestEnv(os.Environ(), "HARNESS_ROOT", "HARNESS_SKIP_BUILD"),
+		"PATH="+fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"FAKE_INSTALL_LOG="+installLog,
+	)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("install-native.sh failed: %v\n%s", err, output)
+	}
+
+	after := installScriptTestInode(t, stableBinary)
+	if before == after {
+		t.Fatalf("stable binary inode did not change: before=%d after=%d", before, after)
+	}
+	installed, err := os.ReadFile(stableBinary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(installed), "new-runtime") {
+		t.Fatalf("stable binary was not replaced: %q", installed)
+	}
+	if _, err := os.Stat(filepath.Join(worktree, "bin", "agent-harness")); !os.IsNotExist(err) {
+		t.Fatalf("linked worktree retained a runtime binary: %v", err)
+	}
+	recordedRoot, err := os.ReadFile(installLog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recordedInfo, recordedErr := os.Stat(strings.TrimSpace(string(recordedRoot)))
+	sourceInfo, sourceErr := os.Stat(source)
+	if recordedErr != nil || sourceErr != nil || !os.SameFile(recordedInfo, sourceInfo) {
+		t.Fatalf("installed HARNESS_ROOT = %q, want stable source %q", strings.TrimSpace(string(recordedRoot)), source)
+	}
+}
+
+func runInstallScriptTestCommand(t *testing.T, dir, name string, args ...string) {
+	t.Helper()
+	command := exec.Command(name, args...)
+	command.Dir = dir
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("%s %v failed: %v\n%s", name, args, err, output)
+	}
+}
+
+func writeInstallScriptTestFile(t *testing.T, path string, content []byte, mode os.FileMode) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, content, mode); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func installScriptTestInode(t *testing.T, path string) uint64 {
+	t.Helper()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		t.Fatalf("stat identity unavailable for %s", path)
+	}
+	return uint64(stat.Ino)
+}
+
+func withoutInstallScriptTestEnv(environment []string, names ...string) []string {
+	blocked := map[string]bool{}
+	for _, name := range names {
+		blocked[name+"="] = true
+	}
+	result := make([]string, 0, len(environment))
+	for _, entry := range environment {
+		keep := true
+		for prefix := range blocked {
+			if strings.HasPrefix(entry, prefix) {
+				keep = false
+				break
+			}
+		}
+		if keep {
+			result = append(result, entry)
+		}
+	}
+	return result
 }
 
 func writeContractSkill(t *testing.T, root, name string, hosts ...string) {

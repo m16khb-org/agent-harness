@@ -10,11 +10,13 @@ import (
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	hookadapter "agent-harness/internal/adapter/hook"
 	"agent-harness/internal/core"
+	coreinstall "agent-harness/internal/core/install"
 )
 
 type Config struct {
-	ResolveTarget func(string) string
-	PrintJSON     func(any) error
+	ResolveTarget     func(string) string
+	PrintJSON         func(any) error
+	RuntimeDiagnostic func() (coreinstall.NativeRuntimeDiagnostic, error)
 }
 
 func RunPostCompact(args []string, config Config) error {
@@ -70,6 +72,16 @@ func RunSessionStart(args []string, config Config) error {
 		return err
 	}
 	stdin, _ := io.ReadAll(os.Stdin)
+	if config.RuntimeDiagnostic != nil {
+		diagnostic, err := config.RuntimeDiagnostic()
+		if reason, blocked := coreinstall.NativeRuntimeDiagnosticMessage(diagnostic, err); blocked {
+			if *jsonOut {
+				return config.PrintJSON(diagnostic)
+			}
+			ho := resolveCatalogHost(hostFlag)
+			return config.PrintJSON(ho.FormatContext("SessionStart", reason, reason))
+		}
+	}
 	// Best-effort rotation of the hook-failure log (quality program Q2 /
 	// audit P1): the JSONL grew without bound because pruning required a
 	// manual command. Session start is the natural low-frequency hook for it.

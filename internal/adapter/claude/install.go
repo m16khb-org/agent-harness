@@ -22,7 +22,9 @@ func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult,
 	plan.Links(links)
 	plan.Errs(skillErrs)
 
-	plan.File(writeClaudeSettings(filepath.Join(req.Home, ".claude", "settings.json"), req))
+	settingsFile, hookMessages, settingsErr := writeClaudeSettings(filepath.Join(req.Home, ".claude", "settings.json"), req)
+	plan.File(settingsFile, settingsErr)
+	plan.Messages(hookMessages)
 	plan.File(writeClaudeUserMCP(filepath.Join(req.Home, ".claude.json"), req))
 
 	mcpConfig := claudeProjectMCPConfig()

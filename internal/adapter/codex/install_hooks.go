@@ -11,37 +11,38 @@ import (
 	"agent-harness/internal/port"
 )
 
-func writeCodexHooks(path string, req port.NativeInstallRequest) (port.InstallFile, error) {
+func writeCodexHooks(path string, req port.NativeInstallRequest) (port.InstallFile, []string, error) {
 	file := port.InstallFile{Path: path, Kind: "codex_user_hooks_config"}
 	config := map[string]any{}
 	if b, err := os.ReadFile(path); err == nil && len(strings.TrimSpace(string(b))) > 0 {
 		if err := json.Unmarshal(b, &config); err != nil {
-			return file, err
+			return file, nil, err
 		}
 	} else if err != nil && !os.IsNotExist(err) && !req.DryRun {
-		return file, err
+		return file, nil, err
 	}
+	messages := installutil.HookTargetDriftMessages(config, "codex", req.BinPath)
 	merged := mergeHookConfig(config, req.BinPath)
 	b, err := json.MarshalIndent(merged, "", "  ")
 	if err != nil {
-		return file, err
+		return file, messages, err
 	}
 	text := string(append(b, '\n'))
 	if existing, err := os.ReadFile(path); err == nil && string(existing) == text {
-		return file, nil
+		return file, messages, nil
 	}
 	if req.DryRun {
 		file.WouldWrite = true
-		return file, nil
+		return file, messages, nil
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return file, err
+		return file, messages, err
 	}
 	if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
-		return file, err
+		return file, messages, err
 	}
 	file.Written = true
-	return file, nil
+	return file, messages, nil
 }
 
 func codexHooksConfig(binPath string) map[string]any {
