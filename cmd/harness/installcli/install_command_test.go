@@ -35,6 +35,51 @@ func TestInstallCommandDryRunJSONDispatches(t *testing.T) {
 	}
 }
 
+func TestInstallCommandDryRunAllowsSelfVerifyBinaryOutsideHarnessRoot(t *testing.T) {
+	root := t.TempDir()
+	home := t.TempDir()
+	skillDir := filepath.Join(root, "skills", "atomic-commit-push")
+	if err := os.MkdirAll(skillDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: atomic-commit-push\ndescription: fixture\n---\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", home)
+	t.Setenv("CODEX_HOME", filepath.Join(home, ".codex"))
+	t.Setenv("HARNESS_ROOT", root)
+	Configure(Deps{
+		HarnessRoot:    func() string { return root },
+		ExecutablePath: func() (string, error) { return executable, nil },
+		HostInstallers: []port.HostInstaller{installerFixture{}},
+	})
+	t.Cleanup(Reset)
+
+	out, _, err := captureInstallCommandOutput(t, nil, func() error {
+		return RunInstall([]string{"--dry-run", "--project-local", "--path-mode=skip", "--json"})
+	})
+	if err != nil {
+		t.Fatalf("self-verify install dry-run failed with executable outside HARNESS_ROOT: %v\n%s", err, out)
+	}
+	var result port.NativeInstallResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil || !result.OK || !result.DryRun {
+		t.Fatalf("self-verify install dry-run result=%+v decodeErr=%v", result, err)
+	}
+}
+
+func TestNativeInstallCandidatePathRejectsExternalBinaryForApply(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "bin", "agent-harness")
+	external := filepath.Join(t.TempDir(), "agent-harness")
+	_, err := nativeInstallCandidatePath(target, false, func() (string, error) { return external, nil })
+	if err == nil || !strings.Contains(err.Error(), "canonical target or a same-directory staged binary") {
+		t.Fatalf("external apply candidate error = %v", err)
+	}
+}
+
 func TestInstallCommandDryRunAutoPathModePlansShimAndShellRC(t *testing.T) {
 	home := t.TempDir()
 	root := configureInstallCommandTest(t, home)

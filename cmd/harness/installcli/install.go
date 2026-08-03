@@ -59,7 +59,7 @@ func runInstall(args []string) error {
 	req.ProjectLocal = *projectLocal
 	req.DryRun = *dryRun
 	req.AdoptCommandFile = *adoptCommandFile
-	candidatePath, err := nativeInstallCandidatePath(req.BinPath, deps.ExecutablePath)
+	candidatePath, err := nativeInstallCandidatePath(req.BinPath, req.DryRun, deps.ExecutablePath)
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func executeInstall(req port.NativeInstallRequest, candidatePath, pathMode, acti
 	return applyAndSealInstall(req, pathMode, activationStep, jsonOut, activationService, activationRequest, preflight, pathTransaction)
 }
 
-func nativeInstallCandidatePath(target string, executable func() (string, error)) (string, error) {
+func nativeInstallCandidatePath(target string, dryRun bool, executable func() (string, error)) (string, error) {
 	if executable == nil {
 		return "", fmt.Errorf("native install executable inspector is unavailable")
 	}
@@ -131,8 +131,8 @@ func nativeInstallCandidatePath(target string, executable func() (string, error)
 	}
 	candidate = filepath.Clean(candidate)
 	target = filepath.Clean(target)
-	if filepath.Dir(candidate) != filepath.Dir(target) ||
-		(candidate != target && !strings.HasPrefix(filepath.Base(candidate), ".agent-harness.activate-")) {
+	if !dryRun && (filepath.Dir(candidate) != filepath.Dir(target) ||
+		(candidate != target && !strings.HasPrefix(filepath.Base(candidate), ".agent-harness.activate-"))) {
 		return "", fmt.Errorf("native install candidate must be the canonical target or a same-directory staged binary")
 	}
 	return candidate, nil
