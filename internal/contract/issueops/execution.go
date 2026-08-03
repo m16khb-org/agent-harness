@@ -28,13 +28,14 @@ const (
 )
 
 type Execution struct {
-	Mode       ExecutionMode        `json:"mode"`
-	Workspace  Workspace            `json:"workspace"`
-	Lease      WriteLease           `json:"lease"`
-	Orca       *OrcaBinding         `json:"orca,omitempty"`
-	Pending    *ExternalIntent      `json:"pending,omitempty"`
-	Completion *ExecutionCompletion `json:"completion,omitempty"`
-	Failure    *ExecutionFailure    `json:"failure,omitempty"`
+	Mode              ExecutionMode                `json:"mode"`
+	Workspace         Workspace                    `json:"workspace"`
+	Lease             WriteLease                   `json:"lease"`
+	Orca              *OrcaBinding                 `json:"orca,omitempty"`
+	Pending           *ExternalIntent              `json:"pending,omitempty"`
+	Completion        *ExecutionCompletion         `json:"completion,omitempty"`
+	CompletionHistory []ExecutionCompletionHistory `json:"completion_history,omitempty"`
+	Failure           *ExecutionFailure            `json:"failure,omitempty"`
 	// SyncBaseEvents는 completion 이후 base 재동기화(merge+push)의 durable
 	// 감사 기록이다. append-only이며 Completion.FinalHead는 불변으로 남는다
 	// — 완결 시점 증거를 보존하고, PR head는 provider가 관측하며, merge OID는
@@ -107,11 +108,19 @@ type ExternalIntent struct {
 }
 
 type ExecutionCompletion struct {
+	Generation        uint64   `json:"generation,omitempty"`
 	FinalHead         string   `json:"final_head"`
 	TuringReportPath  string   `json:"turing_report_path"`
 	Verification      []string `json:"verification"`
 	RemoteArtifactURL string   `json:"remote_artifact_url"`
 	CompletedAt       string   `json:"completed_at"`
+}
+
+type ExecutionCompletionHistory struct {
+	Generation uint64              `json:"generation"`
+	Completion ExecutionCompletion `json:"completion"`
+	Reason     string              `json:"reason"`
+	ReopenedAt string              `json:"reopened_at"`
 }
 
 type ExecutionFailure struct {
@@ -165,14 +174,25 @@ func ValidateExecution(execution Execution) error {
 		}
 	}
 	if execution.Completion != nil {
-		if !validCommitSHA(execution.Completion.FinalHead) || strings.TrimSpace(execution.Completion.TuringReportPath) == "" ||
-			len(execution.Completion.Verification) == 0 || strings.TrimSpace(execution.Completion.RemoteArtifactURL) == "" || strings.TrimSpace(execution.Completion.CompletedAt) == "" {
-			return fmt.Errorf("execution completion is incomplete")
+		if err := validateExecutionCompletion(*execution.Completion); err != nil {
+			return err
 		}
-		for _, evidence := range execution.Completion.Verification {
-			if strings.TrimSpace(evidence) == "" {
-				return fmt.Errorf("execution completion verification must be nonempty")
-			}
+		if execution.Completion.Generation > execution.Lease.Generation {
+			return fmt.Errorf("execution completion generation exceeds the lease generation")
+		}
+	}
+	for _, entry := range execution.CompletionHistory {
+		if entry.Generation == 0 || strings.TrimSpace(entry.Reason) == "" || strings.TrimSpace(entry.ReopenedAt) == "" {
+			return fmt.Errorf("execution completion history entry is incomplete")
+		}
+		if entry.Generation >= execution.Lease.Generation {
+			return fmt.Errorf("execution completion history generation must precede the lease generation")
+		}
+		if err := validateExecutionCompletion(entry.Completion); err != nil {
+			return fmt.Errorf("execution completion history: %w", err)
+		}
+		if entry.Completion.Generation != 0 && entry.Completion.Generation != entry.Generation {
+			return fmt.Errorf("execution completion history generation conflicts with its completion")
 		}
 	}
 	if execution.Failure != nil {
@@ -183,6 +203,19 @@ func ValidateExecution(execution Execution) error {
 	for _, event := range execution.SyncBaseEvents {
 		if err := validateExecutionSyncBaseEvent(event); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func validateExecutionCompletion(completion ExecutionCompletion) error {
+	if !validCommitSHA(completion.FinalHead) || strings.TrimSpace(completion.TuringReportPath) == "" ||
+		len(completion.Verification) == 0 || strings.TrimSpace(completion.RemoteArtifactURL) == "" || strings.TrimSpace(completion.CompletedAt) == "" {
+		return fmt.Errorf("execution completion is incomplete")
+	}
+	for _, evidence := range completion.Verification {
+		if strings.TrimSpace(evidence) == "" {
+			return fmt.Errorf("execution completion verification must be nonempty")
 		}
 	}
 	return nil

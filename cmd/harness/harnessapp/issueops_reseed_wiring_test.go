@@ -132,6 +132,77 @@ func TestExecutionReseedCLIDogfoodDirectAndOrca(t *testing.T) {
 	}
 }
 
+func TestExecutionReseedCompletedStatusExposesReopenContract(t *testing.T) {
+	stateRoot, record, _, _, _ := seedOrcaClaimSnapshot(t)
+	oldHead := "d6d8c6a5a98fcca6bca33edf9e7965636429ce28"
+	record.Phase = model.IssueOpsPhaseDone
+	record.Execution.Lease.Status = model.LeaseStatusReleased
+	record.Execution.Lease.ClaimTokenSHA256 = ""
+	record.Execution.Completion = &model.ExecutionCompletion{FinalHead: oldHead, TuringReportPath: ".agent-harness/turing/old.json", Verification: []string{"old verification"}, RemoteArtifactURL: "https://gitlab.example.com/acme/repo/-/merge_requests/1", CompletedAt: "2026-08-03T00:00:00Z"}
+	record.AISlopCleanAt = "old"
+	record.AISlopCleanHead = oldHead
+	record.AISlopCleanFingerprint = "old-fingerprint"
+	record.AISlopCleanCategories = []string{"duplication"}
+	record.AISlopCleanVerification = []string{"old verification"}
+	record.ImplementationReview = &model.IssueOpsImplementationReview{Verdict: "pass"}
+	record.RemoteCompletion = &model.IssueOpsRemoteCompletion{ReflectedAt: "old"}
+	record.PhaseLedger = model.IssueOpsPhaseLedger{
+		model.IssueOpsPhaseProblem:     {Phase: model.IssueOpsPhaseProblem, CompletedAt: "old-upstream"},
+		model.IssueOpsPhaseImplement:   {Phase: model.IssueOpsPhaseImplement, CompletedAt: "old"},
+		model.IssueOpsPhaseAISlopClean: {Phase: model.IssueOpsPhaseAISlopClean, CompletedAt: "old"},
+		model.IssueOpsPhaseFeedback:    {Phase: model.IssueOpsPhaseFeedback, CompletedAt: "old"},
+		model.IssueOpsPhasePR:          {Phase: model.IssueOpsPhasePR, CompletedAt: "old"},
+		model.IssueOpsPhaseDone:        {Phase: model.IssueOpsPhaseDone, CompletedAt: "old"},
+	}
+	if _, err := issueops.WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	actor := claimWiringActor(t)
+	owner := reseedWiringOwner{}
+	preview, err := issueops.ReplaceExecutionWithDependencies(context.Background(), stateRoot, issueops.ExecutionReplaceRequest{ID: record.ID, Action: issueops.ExecutionReplacePreview, ExpectedGeneration: 1, CompletionGeneration: 1, Actor: actor, CWD: record.Execution.Workspace.Root}, issueops.ExecutionReplaceDependencies{OrcaOwner: owner})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(preview.NextCommand, "--completion-generation 1") {
+		t.Fatalf("preview lost typed completion provenance: %q", preview.NextCommand)
+	}
+	result, err := issueOpsReseedHandlerWithOwner(context.Background(), stateRoot, issueops.ExecutionReseedRequest{ID: record.ID, ExpectedGeneration: 1, CompletionGeneration: 1, Actor: actor, CWD: record.Execution.Workspace.Root, InventoryFingerprint: preview.InventoryFingerprint, Reason: "functional HEAD changed", Confirm: true, ReadIssue: func(_ context.Context, _ string, request port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
+		return port.ExecutionIssueSnapshot{URL: request.URL, Body: claimWiringIssueBody(), State: "opened"}, nil
+	}}, owner)
+	if err != nil {
+		t.Fatalf("completed reseed: %v", err)
+	}
+	if result.Execution.Completion != nil || len(result.Execution.CompletionHistory) != 1 || result.Execution.CompletionHistory[0].Completion.FinalHead != oldHead || result.Execution.CompletionHistory[0].Completion.Verification[0] != "old verification" {
+		t.Fatalf("reseed projection=%+v", result.Execution)
+	}
+	status, err := issueops.StatusExecution(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	persisted, err := issueops.IssueOpsStatus(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.Execution.Completion != nil || len(status.Execution.CompletionHistory) != 1 || persisted.Phase != model.IssueOpsPhaseImplement {
+		t.Fatalf("status projection=%+v record_phase=%s", status.Execution, persisted.Phase)
+	}
+	if !strings.Contains(status.NextCommand, "issueops execution resume") || strings.Contains(status.NextCommand, "execution complete") {
+		t.Fatalf("status next command=%q", status.NextCommand)
+	}
+	if persisted.AISlopCleanAt != "" || persisted.ImplementationReview != nil || persisted.RemoteCompletion != nil {
+		t.Fatalf("status retained current proof: %+v", persisted)
+	}
+	if persisted.PhaseLedger[model.IssueOpsPhaseProblem].CompletedAt != "old-upstream" {
+		t.Fatalf("upstream ledger changed: %+v", persisted.PhaseLedger)
+	}
+	for _, phase := range []model.IssueOpsPhase{model.IssueOpsPhaseImplement, model.IssueOpsPhaseAISlopClean, model.IssueOpsPhaseFeedback, model.IssueOpsPhasePR, model.IssueOpsPhaseDone} {
+		entry := persisted.PhaseLedger[phase]
+		if entry.CompletedAt != "" || len(entry.Notes) == 0 || entry.Notes[len(entry.Notes)-1] != "stale: completed execution reseed (1 -> 2)" {
+			t.Fatalf("phase %s ledger=%+v", phase, entry)
+		}
+	}
+}
+
 func TestExecutionReseedPreviewNextCommandRunsWithoutCallerRepair(t *testing.T) {
 	stateRoot, record, _, _, _ := seedOrcaClaimSnapshot(t)
 	actor := claimWiringActor(t)

@@ -53,6 +53,9 @@ func TestHandlerMapsEveryRequestAndResultField(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("result=%#v want=%#v", got, want)
 	}
+	if len(got.Execution.CompletionHistory) != 1 || got.Execution.CompletionHistory[0].Completion.Verification[0] != "old history verification" {
+		t.Fatalf("completion history=%+v", got.Execution.CompletionHistory)
+	}
 
 	request.Actor.SessionProcess.PID = 999
 	if !reflect.DeepEqual(service.command, wantCommand) {
@@ -97,9 +100,12 @@ func fullContractExecution() leasecontract.Execution {
 			Holder:           &leasecontract.Actor{Host: "claude", SessionID: "owner", AgentID: "agent", SessionProcess: &leasecontract.ProcessReceipt{PID: 200, StartedAt: "2026-08-02T02:03:05Z", Executable: "/bin/claude"}},
 			ClaimTokenSHA256: "claim-sha", ClaimedAt: "claimed", ReleasedAt: "released", ReplacedAt: "replaced", ReplacementReason: "reason",
 		},
-		Orca:           &leasecontract.OrcaBinding{RuntimeID: "runtime", RepoID: "repo", WorktreeID: "worktree", RunID: "run", WorktreeInstanceID: "instance", LeaseGeneration: 3, OwnerHost: "claude", OwnerModel: "model", OwnerEffort: "high", TaskID: "task", DispatchID: "dispatch", TerminalPTYID: "pty"},
-		Pending:        &leasecontract.ExternalIntent{OperationID: "operation", Kind: "orca_prepare", Marker: "marker", StartedAt: "started"},
-		Completion:     &leasecontract.Completion{FinalHead: "head", TuringReportPath: "/report", Verification: []string{"go test ./..."}, RemoteArtifactURL: "https://example.test/pr/199", CompletedAt: "completed"},
+		Orca:       &leasecontract.OrcaBinding{RuntimeID: "runtime", RepoID: "repo", WorktreeID: "worktree", RunID: "run", WorktreeInstanceID: "instance", LeaseGeneration: 3, OwnerHost: "claude", OwnerModel: "model", OwnerEffort: "high", TaskID: "task", DispatchID: "dispatch", TerminalPTYID: "pty"},
+		Pending:    &leasecontract.ExternalIntent{OperationID: "operation", Kind: "orca_prepare", Marker: "marker", StartedAt: "started"},
+		Completion: &leasecontract.Completion{FinalHead: "head", TuringReportPath: "/report", Verification: []string{"go test ./..."}, RemoteArtifactURL: "https://example.test/pr/199", CompletedAt: "completed"},
+		CompletionHistory: []leasecontract.CompletionHistoryEntry{{
+			Generation: 2, Completion: leasecontract.Completion{Verification: []string{"old history verification"}}, Reason: "reseed", ReopenedAt: "reopened",
+		}},
 		Failure:        &leasecontract.FailureDetail{OperationID: "operation", Code: "failed", Message: "redacted", At: "failed-at"},
 		SyncBaseEvents: []leasecontract.SyncBaseEvent{{Mode: "merge", BaseBranch: "main", BaseOID: "base", MergeCommit: "merge", ConflictFiles: 2, Actor: "codex", At: "synced"}},
 	}

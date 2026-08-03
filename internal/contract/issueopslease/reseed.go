@@ -3,6 +3,7 @@ package issueopslease
 type ReseedRequest struct {
 	ID                   string `json:"id"`
 	ExpectedGeneration   uint64 `json:"expected_generation"`
+	CompletionGeneration uint64 `json:"completion_generation,omitempty"`
 	InventoryFingerprint string `json:"inventory_fingerprint,omitempty"`
 	Reason               string `json:"reason,omitempty"`
 	CWD                  string `json:"cwd"`

@@ -176,6 +176,12 @@ func cloneExecutionPointer(execution *leasecontract.Execution) *leasecontract.Ex
 		completion.Verification = cloneStrings(execution.Completion.Verification)
 		cloned.Completion = &completion
 	}
+	if execution.CompletionHistory != nil {
+		cloned.CompletionHistory = append([]leasecontract.CompletionHistoryEntry(nil), execution.CompletionHistory...)
+		for index := range cloned.CompletionHistory {
+			cloned.CompletionHistory[index].Completion.Verification = cloneStrings(execution.CompletionHistory[index].Completion.Verification)
+		}
+	}
 	if execution.Failure != nil {
 		failure := *execution.Failure
 		cloned.Failure = &failure

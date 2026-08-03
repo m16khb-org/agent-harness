@@ -29,6 +29,7 @@ func issueOpsExecutionSchema() map[string]any {
 			"owner_effort":           map[string]any{"type": "string"},
 			"generation":             map[string]any{"type": "integer", "minimum": 1},
 			"expected_generation":    map[string]any{"type": "integer", "minimum": 1},
+			"completion_generation":  map[string]any{"type": "integer", "minimum": 1},
 			"claim_token_file":       map[string]any{"type": "string"},
 			"issue_body_sha256":      map[string]any{"type": "string", "pattern": "^[0-9a-f]{64}$"},
 			"context_packet_sha256":  map[string]any{"type": "string", "pattern": "^[0-9a-f]{64}$"},

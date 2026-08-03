@@ -175,6 +175,20 @@ func TestIssueOpsExecutionPrepareCLIAndMCPStatusAndErrorsAreIdentical(t *testing
 			Dependencies{Prepare: executionCLIPrepareHandler(t)},
 		)
 	})
+	record, err := issueopscore.ReadIssueOps(core.IssueOpsStateRoot(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Execution.Lease.Generation = 2
+	record.Execution.CompletionHistory = []issueopscontract.ExecutionCompletionHistory{{
+		Generation: 1,
+		Completion: issueopscontract.ExecutionCompletion{Generation: 1, FinalHead: strings.Repeat("a", 40), TuringReportPath: ".agent-harness/turing/old.json", Verification: []string{"old verification"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/304", CompletedAt: "2026-08-03T00:00:00Z"},
+		Reason:     "functional HEAD changed",
+		ReopenedAt: "2026-08-04T00:00:00Z",
+	}}
+	if _, err := issueopscore.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
 
 	cliJSON := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"execution", "status", "--id", id, "--json"})
@@ -189,6 +203,9 @@ func TestIssueOpsExecutionPrepareCLIAndMCPStatusAndErrorsAreIdentical(t *testing
 	}
 	if !reflect.DeepEqual(cliResult, mcpResult) {
 		t.Fatalf("CLI and MCP execution DTOs diverged\nCLI=%#v\nMCP=%#v", cliResult, mcpResult)
+	}
+	if len(cliResult.Execution.CompletionHistory) != 1 || cliResult.Execution.CompletionHistory[0].Completion.Verification[0] != "old verification" {
+		t.Fatalf("CLI/MCP status lost completion history: %+v", cliResult.Execution.CompletionHistory)
 	}
 
 	cliErrorJSON, cliErr := captureStdoutAndErrorForIssueOps(t, func() error {

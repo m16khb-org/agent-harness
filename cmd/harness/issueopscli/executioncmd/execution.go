@@ -59,7 +59,7 @@ const Usage = `Usage:
   agent-harness issueops execution whoami [--json]
   agent-harness issueops execution claim --id ID --generation N --claim-token-file PATH [--issue-body-sha256 HEX --context-packet-sha256 HEX] [--issue-snapshot-file PATH] ACTOR_FLAGS [--json]
   agent-harness issueops execution release --id ID --generation N ACTOR_FLAGS [--json]
-  agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [fingerprint/reason flags] [--issue-snapshot-file PATH] ACTOR_FLAGS [--confirm] [--json]
+  agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [--completion-generation N] [fingerprint/reason flags] [--issue-snapshot-file PATH] ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops execution resume --id ID --expected-generation N [ACTOR_FLAGS] --confirm [--json]
   agent-harness issueops execution reconcile --id ID (--preview|--confirm) [--issue-snapshot-file PATH] ACTOR_FLAGS [--json]
   agent-harness issueops execution complete --id ID --generation N --final-head SHA --turing-report PATH --remote-artifact-url URL --verification TEXT... ACTOR_FLAGS --confirm [--json]
@@ -378,6 +378,7 @@ func runReplace(args []string, deps Deps) error {
 	fs := flag.NewFlagSet("issueops execution replace", flag.ContinueOnError)
 	id := fs.String("id", "", "IssueOps id")
 	generation := fs.Uint64("expected-generation", 0, "expected lease generation")
+	completionGeneration := fs.Uint64("completion-generation", 0, "legacy completion origin generation")
 	inventory := fs.String("inventory-fingerprint", "", "preview inventory fingerprint")
 	quiescence := fs.String("quiescence-fingerprint", "", "finalize-preview fingerprint")
 	reason := fs.String("reason", "", "replacement reason")
@@ -412,6 +413,7 @@ func runReplace(args []string, deps Deps) error {
 	}
 	result, err := execute(issueops.ExecutionActionRequest{
 		Action: issueops.ExecutionActionReplace, ID: *id, ReplaceAction: action, ExpectedGeneration: *generation,
+		CompletionGeneration: *completionGeneration,
 		InventoryFingerprint: *inventory, QuiescenceFingerprint: *quiescence, Reason: *reason,
 		Actor: actor.actor(), CWD: *actor.cwd, Confirm: *confirm,
 		IssueSnapshot: issueSnapshot,

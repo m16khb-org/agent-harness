@@ -155,7 +155,7 @@ func snapshot(record leasecontract.Record) (completioncontract.RecordSnapshot, e
 	result.Mode = execution.Mode
 	result.Lease = completionLease(execution.Lease)
 	if execution.Completion != nil {
-		result.Completion = &completioncontract.Completion{FinalHead: execution.Completion.FinalHead, TuringReportPath: execution.Completion.TuringReportPath, Verification: append([]string(nil), execution.Completion.Verification...), RemoteArtifactURL: execution.Completion.RemoteArtifactURL, CompletedAt: execution.Completion.CompletedAt}
+		result.Completion = &completioncontract.Completion{Generation: execution.Completion.Generation, FinalHead: execution.Completion.FinalHead, TuringReportPath: execution.Completion.TuringReportPath, Verification: append([]string(nil), execution.Completion.Verification...), RemoteArtifactURL: execution.Completion.RemoteArtifactURL, CompletedAt: execution.Completion.CompletedAt}
 	}
 	if execution.Orca != nil {
 		result.Orca = &completioncontract.OrcaBinding{RunID: execution.Orca.RunID, TaskID: execution.Orca.TaskID}
@@ -172,7 +172,7 @@ func applySnapshot(record *leasecontract.Record, snapshot completioncontract.Rec
 	if snapshot.Completion == nil {
 		record.Execution.Completion = nil
 	} else {
-		record.Execution.Completion = &leasecontract.Completion{FinalHead: snapshot.Completion.FinalHead, TuringReportPath: snapshot.Completion.TuringReportPath, Verification: append([]string(nil), snapshot.Completion.Verification...), RemoteArtifactURL: snapshot.Completion.RemoteArtifactURL, CompletedAt: snapshot.Completion.CompletedAt}
+		record.Execution.Completion = &leasecontract.Completion{Generation: snapshot.Completion.Generation, FinalHead: snapshot.Completion.FinalHead, TuringReportPath: snapshot.Completion.TuringReportPath, Verification: append([]string(nil), snapshot.Completion.Verification...), RemoteArtifactURL: snapshot.Completion.RemoteArtifactURL, CompletedAt: snapshot.Completion.CompletedAt}
 	}
 	persisted := make(map[string]persistedLedgerEntry, len(snapshot.Ledger))
 	for phase, entry := range snapshot.Ledger {

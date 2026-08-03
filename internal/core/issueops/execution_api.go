@@ -70,6 +70,7 @@ type ExecutionActionRequest struct {
 	OwnerEffort           string                               `json:"owner_effort,omitempty"`
 	Generation            uint64                               `json:"generation,omitempty"`
 	ExpectedGeneration    uint64                               `json:"expected_generation,omitempty"`
+	CompletionGeneration  uint64                               `json:"completion_generation,omitempty"`
 	TokenFile             string                               `json:"claim_token_file,omitempty"`
 	IssueBodySHA256       string                               `json:"issue_body_sha256,omitempty"`
 	ContextPacketSHA256   string                               `json:"context_packet_sha256,omitempty"`
@@ -145,13 +146,13 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 				return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.ReplaceAction}, ErrReseedHandlerUnavailable
 			}
 			return deps.Reseed(ctx, stateRoot, ExecutionReseedRequest{
-				ID: req.ID, ExpectedGeneration: req.ExpectedGeneration, InventoryFingerprint: req.InventoryFingerprint,
+				ID: req.ID, ExpectedGeneration: req.ExpectedGeneration, CompletionGeneration: req.CompletionGeneration, InventoryFingerprint: req.InventoryFingerprint,
 				Reason: req.Reason, Actor: req.Actor, CWD: req.CWD, Confirm: req.Confirm,
 				ReadIssue: deps.ReadIssue,
 			})
 		}
 		return ReplaceExecutionWithDependencies(ctx, stateRoot, ExecutionReplaceRequest{
-			ID: req.ID, Action: req.ReplaceAction, ExpectedGeneration: req.ExpectedGeneration,
+			ID: req.ID, Action: req.ReplaceAction, ExpectedGeneration: req.ExpectedGeneration, CompletionGeneration: req.CompletionGeneration,
 			InventoryFingerprint: req.InventoryFingerprint, QuiescenceFingerprint: req.QuiescenceFingerprint,
 			Reason: req.Reason, Actor: req.Actor, CWD: req.CWD, Confirm: req.Confirm,
 			// finalize/reseed 재봉인이 현재 이슈 본문을 다시 읽어야 하므로

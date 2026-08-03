@@ -102,8 +102,19 @@ func coreExecution(execution *leasecontract.Execution) *issueopscontract.Executi
 	if execution.Completion != nil {
 		completion := execution.Completion
 		result.Completion = &issueopscontract.ExecutionCompletion{
-			FinalHead: completion.FinalHead, TuringReportPath: completion.TuringReportPath,
+			Generation: completion.Generation, FinalHead: completion.FinalHead, TuringReportPath: completion.TuringReportPath,
 			Verification: cloneStrings(completion.Verification), RemoteArtifactURL: completion.RemoteArtifactURL, CompletedAt: completion.CompletedAt,
+		}
+	}
+	if execution.CompletionHistory != nil {
+		result.CompletionHistory = make([]issueopscontract.ExecutionCompletionHistory, len(execution.CompletionHistory))
+		for index, entry := range execution.CompletionHistory {
+			result.CompletionHistory[index] = issueopscontract.ExecutionCompletionHistory{
+				Generation: entry.Generation,
+				Completion: issueopscontract.ExecutionCompletion{Generation: entry.Completion.Generation, FinalHead: entry.Completion.FinalHead, TuringReportPath: entry.Completion.TuringReportPath, Verification: cloneStrings(entry.Completion.Verification), RemoteArtifactURL: entry.Completion.RemoteArtifactURL, CompletedAt: entry.Completion.CompletedAt},
+				Reason:     entry.Reason,
+				ReopenedAt: entry.ReopenedAt,
+			}
 		}
 	}
 	if execution.Failure != nil {

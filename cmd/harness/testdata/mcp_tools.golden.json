@@ -492,6 +492,10 @@
         "claim_token_file": {
           "type": "string"
         },
+        "completion_generation": {
+          "minimum": 1,
+          "type": "integer"
+        },
         "confirm": {
           "type": "boolean"
         },

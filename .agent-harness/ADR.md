@@ -813,3 +813,24 @@ Archived entries:
 - Verification: differential success/denial byte snapshots including rich
   sidecars and `repo: null`, architecture import-ratchet tests, and blocking
   clock tests for valid and rejected transitions.
+
+## 2026-08-04 — Completed reseed preserves typed completion provenance
+
+- Kind: `adr`
+- Source: GitHub #304 and durable incidents `io-14a09ebb1b15`, `io-a3818bd20165`
+- Decision: Future completion receipts stamp their lease generation. A
+  completion-bearing reseed archives that stamped generation, not the current
+  lease generation. Legacy receipts whose generation is absent require an
+  explicit `completion_generation` selection on preview/reseed; missing,
+  conflicting, or future generation selections fail before artifact prepare
+  and the raw-record CAS.
+- Rationale: #261 retained a generation-4 completion in an active generation-5
+  lease, while #237 retained a generation-1 completion in generation 2.
+  `completed_at < replaced_at` can show that a receipt is stale but cannot prove
+  its origin after multiple reseeds. Silent `current_generation-1` or timestamp
+  inference would therefore corrupt append-only audit history.
+- Consequences: schema v1 remains additive through an omitted completion
+  generation. Incident evidence supplies #261 origin 4 and #237 origin 1 for
+  post-merge dogfood. Preview carries an explicit origin into its exact reseed
+  command; state JSON is never edited to backfill provenance.
+- Rejected: current lease generation, timestamp heuristics, and silent fallback.

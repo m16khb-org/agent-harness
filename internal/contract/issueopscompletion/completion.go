@@ -33,6 +33,7 @@ type Lease struct {
 }
 
 type Completion struct {
+	Generation        uint64
 	FinalHead         string
 	TuringReportPath  string
 	Verification      []string

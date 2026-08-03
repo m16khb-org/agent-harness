@@ -66,6 +66,7 @@ type ExecutionReplaceRequest struct {
 	ID                    string               `json:"id"`
 	Action                string               `json:"action"`
 	ExpectedGeneration    uint64               `json:"expected_generation"`
+	CompletionGeneration  uint64               `json:"completion_generation,omitempty"`
 	InventoryFingerprint  string               `json:"inventory_fingerprint,omitempty"`
 	QuiescenceFingerprint string               `json:"quiescence_fingerprint,omitempty"`
 	Reason                string               `json:"reason,omitempty"`
@@ -77,6 +78,7 @@ type ExecutionReplaceRequest struct {
 type ExecutionReseedRequest struct {
 	ID                   string                         `json:"id"`
 	ExpectedGeneration   uint64                         `json:"expected_generation"`
+	CompletionGeneration uint64                         `json:"completion_generation,omitempty"`
 	InventoryFingerprint string                         `json:"inventory_fingerprint,omitempty"`
 	Reason               string                         `json:"reason,omitempty"`
 	Actor                issueops.NativeActor           `json:"actor"`
@@ -184,6 +186,7 @@ func previewExecutionReplacement(ctx context.Context, stateRoot string, req Exec
 		result.NextCommand = executionReseedCommand(
 			record.ID,
 			record.Execution.Lease.Generation,
+			req.CompletionGeneration,
 			fingerprint,
 			req.Actor,
 			record.Execution.Workspace.Root,
@@ -317,11 +320,14 @@ func executionDirectClaimCommand(id string, generation uint64, tokenPath string)
 		" --claim-token-file " + quoteExecutionOwnerArg(tokenPath)
 }
 
-func executionReseedCommand(id string, generation uint64, fingerprint string, actor issueops.NativeActor, cwd string) string {
+func executionReseedCommand(id string, generation, completionGeneration uint64, fingerprint string, actor issueops.NativeActor, cwd string) string {
 	process := actor.SessionProcess
 	command := "agent-harness issueops execution replace --id " + quoteExecutionOwnerArg(id) +
-		" --expected-generation " + strconv.FormatUint(generation, 10) +
-		" --reseed --inventory-fingerprint " + fingerprint +
+		" --expected-generation " + strconv.FormatUint(generation, 10)
+	if completionGeneration != 0 {
+		command += " --completion-generation " + strconv.FormatUint(completionGeneration, 10)
+	}
+	command += " --reseed --inventory-fingerprint " + fingerprint +
 		" --host " + quoteExecutionOwnerArg(actor.Host) +
 		" --session-id " + quoteExecutionOwnerArg(actor.SessionID)
 	if actor.AgentID != "" {
