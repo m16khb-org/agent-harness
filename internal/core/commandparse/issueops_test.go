@@ -347,6 +347,69 @@ func TestOwnerRecorderExactFlags(t *testing.T) {
 	}
 }
 
+func TestPlanPrepRecordExactCommandSpec(t *testing.T) {
+	commandText := "agent-harness issueops plan-prep record --id io-1" +
+		" --decisions-evidence adr-1 --decisions-evidence adr-2 --decisions-waive no-decisions" +
+		" --related-score-ref issue-1 --related-score-ref issue-2 --related-waive no-related" +
+		" --web-research-evidence source-1 --web-research-evidence source-2 --web-research-waive no-web" +
+		" --codebase-survey-evidence survey-1 --codebase-survey-evidence survey-2 --codebase-survey-waive no-survey" +
+		" --host codex --session-id owner-1 --agent-id agent-1 --cwd /worker --json"
+	command, ok := ParseExactIssueOpsCommand(commandText)
+	if !ok || command.Path != "plan-prep record" {
+		t.Fatalf("plan-prep record path=%q ok=%v", command.Path, ok)
+	}
+	values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
+	if !ok {
+		t.Fatal("plan-prep record has no exact flag spec")
+	}
+	flags, ok := ExactFlags(command, values, booleans, repeatable)
+	if !ok {
+		t.Fatalf("plan-prep record flags rejected: %#v", flags)
+	}
+	for _, name := range []string{
+		"--decisions-evidence", "--related-score-ref", "--web-research-evidence", "--codebase-survey-evidence",
+	} {
+		if got := len(flags[name]); got != 2 || !repeatable[name] {
+			t.Errorf("%s count=%d repeatable=%v; want count=2 repeatable=true", name, got, repeatable[name])
+		}
+	}
+	for _, name := range []string{
+		"--id", "--decisions-waive", "--related-waive", "--web-research-waive", "--codebase-survey-waive",
+		"--host", "--session-id", "--agent-id", "--cwd",
+	} {
+		if !values[name] || repeatable[name] {
+			t.Errorf("%s value=%v repeatable=%v; want value=true repeatable=false", name, values[name], repeatable[name])
+		}
+	}
+	if !booleans["--json"] {
+		t.Fatal("--json must be the exact boolean flag")
+	}
+}
+
+func TestPlanPrepRecordRejectsNonExactCommands(t *testing.T) {
+	base := "agent-harness issueops plan-prep record --id io-1 --host codex --session-id owner-1 --cwd /worker"
+	for _, commandText := range []string{
+		base + " --unknown value",
+		base + " --decisions-waive first --decisions-waive second",
+		base + " --host claude",
+	} {
+		command, ok := ParseExactIssueOpsCommand(commandText)
+		if !ok {
+			t.Fatalf("command must reach exact flag validation: %q", commandText)
+		}
+		values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
+		if !ok {
+			t.Fatalf("missing plan-prep spec for negative case: path=%q", command.Path)
+		}
+		if flags, ok := ExactFlags(command, values, booleans, repeatable); ok || flags != nil {
+			t.Errorf("non-exact plan-prep command accepted: %q flags=%#v", commandText, flags)
+		}
+	}
+	if _, ok := ParseExactIssueOpsCommand(base + " --decisions-evidence $(whoami)"); ok {
+		t.Fatal("active command substitution must fail before flag validation")
+	}
+}
+
 func TestExactReadOnlyShellCommandCorpus(t *testing.T) {
 	allow := []string{
 		"pwd",

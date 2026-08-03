@@ -337,3 +337,38 @@ func TestPlanningOwnerMutationsRemainAvailableAfterExecutionPrepare(t *testing.T
 		})
 	}
 }
+
+func TestPlanPrepRecordAllowsOnlyCurrentHolder(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	command := "agent-harness issueops plan-prep record --id " + record.ID +
+		" --decisions-evidence adr-1 --related-score-ref issue-293" +
+		" --web-research-waive local-evidence --codebase-survey-evidence parser-and-guard" +
+		" --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json"
+
+	holder := executionRequest(record, worker, "claude", "owner-session", command)
+	holder.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(holder); got.Decision != "allow" {
+		t.Fatalf("current holder plan-prep record was blocked: %+v", got)
+	}
+
+	foreign := holder
+	foreign.SessionID = "other-session"
+	if got := BuildLifecyclePreToolUseDecision(foreign); got.Decision != "block" ||
+		got.Deny == nil || got.Deny.Code != "holder_identity_mismatch" {
+		t.Fatalf("foreign plan-prep record must fail the holder fence: %+v", got)
+	}
+
+	for name, malformed := range map[string]string{
+		"missing actor":      strings.Replace(command, "--session-id owner-session ", "", 1),
+		"unknown flag":       command + " --unknown value",
+		"shell substitution": strings.Replace(command, "adr-1", "$(whoami)", 1),
+		"wrapper":            "env " + command,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if exactIssueOpsOwnerMutation(malformed) {
+				t.Fatalf("non-exact plan-prep command admitted: %s", malformed)
+			}
+		})
+	}
+}

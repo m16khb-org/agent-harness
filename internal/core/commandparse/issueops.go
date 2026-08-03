@@ -33,7 +33,7 @@ func ParseExactIssueOpsCommand(command string) (ExactIssueOpsCommand, bool) {
 	if len(tokens) > 3 {
 		switch tokens[2] {
 		case "compatibility", "execution", "devils-advocate", "feedback", "remote", "cleanup", "ai-slop-clean", "artifact", "implementation-review", "branch", "decision", "child",
-			"intent", "domain-review", "design":
+			"intent", "domain-review", "design", "plan-prep":
 			if strings.HasPrefix(tokens[3], "--") {
 				return ExactIssueOpsCommand{}, false
 			}
@@ -150,6 +150,12 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 			r[name] = true
 		}
 		return values, b("--approved", "--json"), r, true
+	case "plan-prep record":
+		values := v("--id", "--decisions-evidence", "--decisions-waive", "--related-score-ref", "--related-waive", "--web-research-evidence", "--web-research-waive", "--codebase-survey-evidence", "--codebase-survey-waive", "--host", "--session-id", "--agent-id", "--cwd")
+		for _, name := range []string{"--decisions-evidence", "--related-score-ref", "--web-research-evidence", "--codebase-survey-evidence"} {
+			r[name] = true
+		}
+		return values, b("--json"), r, true
 	case "regress":
 		return v("--id", "--reason", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
 	case "execution reconcile":

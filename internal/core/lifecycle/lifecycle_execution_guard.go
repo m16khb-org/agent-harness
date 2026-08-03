@@ -874,6 +874,7 @@ func exactIssueOpsOwnerMutation(commandText string) bool {
 	case "link-plan", "link-worktree", "compatibility review", "devils-advocate review", "phase",
 		"decision add", "ai-slop-clean record", "feedback mark-issue-updated", "feedback resolve",
 		"implementation-review record", "branch prepare", "intent record", "domain-review record", "design review", "regress",
+		"plan-prep record",
 		"link-child", "child start", "child status", "child accept", "child reject", "child drop",
 		"remote create-child", "remote create-pr", "remote verify-artifact", "remote reflect-devils-advocate":
 	default:
