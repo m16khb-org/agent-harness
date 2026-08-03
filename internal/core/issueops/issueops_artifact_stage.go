@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	leasecontract "agent-harness/internal/contract/issueopslease"
 	"agent-harness/internal/core/sqlstore"
 )
 
@@ -33,8 +34,8 @@ func StageIssueOpsArtifact(stateRoot, id, name string, content []byte) (IssueOps
 	if len(content) == 0 {
 		return IssueOpsRecord{OK: false}, fmt.Errorf("artifact content is empty")
 	}
-	if len(content) > executionOwnerArtifactLimit {
-		return IssueOpsRecord{OK: false}, fmt.Errorf("artifact exceeds %d bytes", executionOwnerArtifactLimit)
+	if len(content) > leasecontract.OwnerArtifactMaxBytes {
+		return IssueOpsRecord{OK: false}, fmt.Errorf("artifact exceeds %d bytes", leasecontract.OwnerArtifactMaxBytes)
 	}
 	// 거부형 redaction: 스크럽은 사람이 쓴 문서를 훼손하므로 반려한다.
 	if err := rejectSecretLikeContent(string(content)); err != nil {

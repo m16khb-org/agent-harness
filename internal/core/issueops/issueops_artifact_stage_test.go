@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	leasecontract "agent-harness/internal/contract/issueopslease"
 	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
@@ -23,7 +24,7 @@ func TestStageIssueOpsArtifactRejections(t *testing.T) {
 	if _, err := StageIssueOpsArtifact(stateRoot, record.ID, "notes", []byte("x")); err == nil {
 		t.Fatal("unknown artifact name must be rejected")
 	}
-	if _, err := StageIssueOpsArtifact(stateRoot, record.ID, "plan", make([]byte, executionOwnerArtifactLimit+1)); err == nil {
+	if _, err := StageIssueOpsArtifact(stateRoot, record.ID, "plan", make([]byte, leasecontract.OwnerArtifactMaxBytes+1)); err == nil {
 		t.Fatal("oversized artifact must be rejected")
 	}
 	if _, err := StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte("token: ghp_"+strings.Repeat("a", 36))); err == nil {
