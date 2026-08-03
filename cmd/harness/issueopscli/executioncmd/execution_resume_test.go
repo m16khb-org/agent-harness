@@ -52,7 +52,7 @@ func TestExecutionResumeCLIInvokesInjectedHandler(t *testing.T) {
 			if gotRoot != stateRoot || request.ID != "io-aaaaaaaaaaaa" || request.ExpectedGeneration != 3 || request.CWD != "/repo.worktrees/resume" || !request.Confirm {
 				t.Fatalf("resume handler request=%+v state_root=%q", request, gotRoot)
 			}
-			return issueops.ExecutionResumeResult{OK: true, ID: request.ID}, nil
+			return issueops.ExecutionResumeResult{OK: true, ID: request.ID, ResumeDisposition: "existing_binding"}, nil
 		},
 		PrintJSON: func(value any) error { output = value; return nil },
 	})
@@ -60,7 +60,7 @@ func TestExecutionResumeCLIInvokesInjectedHandler(t *testing.T) {
 		t.Fatalf("resume CLI err=%v calls=%d", err, calls)
 	}
 	result, ok := output.(issueops.ExecutionResumeResult)
-	if !ok || !result.OK || result.ID != "io-aaaaaaaaaaaa" {
+	if !ok || !result.OK || result.ID != "io-aaaaaaaaaaaa" || result.ResumeDisposition != "existing_binding" {
 		t.Fatalf("resume CLI output=%#v", output)
 	}
 }

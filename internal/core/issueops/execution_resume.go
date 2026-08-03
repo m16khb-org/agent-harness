@@ -26,6 +26,7 @@ type ExecutionResumeRequest struct {
 type ExecutionResumeResult struct {
 	OK                  bool               `json:"ok"`
 	ID                  string             `json:"id"`
+	ResumeDisposition   string             `json:"resume_disposition"`
 	Execution           issueops.Execution `json:"execution"`
 	ClaimTokenPath      string             `json:"claim_token_path"`
 	IssueBodySHA256     string             `json:"issue_body_sha256"`
@@ -264,18 +265,6 @@ func beginOrcaExecutionResumeIntentWithExpectedRaw(stateRoot string, record issu
 		return err
 	})
 	return persisted, payload, err
-}
-
-func executionResumeResult(record issueops.IssueOpsRecord, artifacts executionResumeArtifacts) ExecutionResumeResult {
-	generation := record.Execution.Lease.Generation
-	next := ExecutionResumeNextCommand(record.ID, generation, artifacts.claimTokenPath, artifacts.issueBodySHA256, artifacts.packetSHA256)
-	return ExecutionResumeResult{
-		OK: true, ID: record.ID, Execution: *record.Execution,
-		ClaimTokenPath: artifacts.claimTokenPath, IssueBodySHA256: artifacts.issueBodySHA256,
-		ContextPacketPath: artifacts.packetPath, ContextPacketSHA256: artifacts.packetSHA256,
-		OwnerPromptPath: artifacts.promptPath, OwnerPromptSHA256: artifacts.promptSHA256,
-		NextCommand: next,
-	}
 }
 
 func ExecutionResumeNextCommand(id string, generation uint64, claimTokenPath, issueBodySHA256, contextPacketSHA256 string) string {

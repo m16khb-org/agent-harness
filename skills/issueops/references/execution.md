@@ -223,8 +223,13 @@ invariant violation, not a legacy recovery candidate. Legacy claimable status em
 the returned resume command. Partial identities are invalid, and neither the
 prompt file nor a freshly computed digest is an accepted fallback trust root.
 
-Resume never recreates or reparents the worktree. A same-generation live
-terminal/task pair is an idempotent success. 재실행이 필요하면 기존 terminal을
+Resume never recreates or reparents the worktree. Its public response includes
+`resume_disposition`: `existing_binding`, `reuse_terminal`, or
+`create_terminal`. A same-generation live terminal/task pair is an idempotent
+`existing_binding` success and allocates no new launch operation. The response
+still returns the exact sealed claim command. A dispatched owner must execute
+that injected claim command exactly once; status' `execution resume` is a
+coordinator recovery projection and is not an owner action. 재실행이 필요하면 기존 terminal을
 재사용할 수 있어도 새 generation-specific Run을 만들고 coordinator를 그 Run에
 명시적으로 바인딩한 뒤 task/dispatch를 만든다. A live old-generation task or
 terminal/task contradiction fails closed. Ambiguous terminal/task/dispatch

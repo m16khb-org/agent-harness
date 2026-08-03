@@ -71,10 +71,17 @@ func TestExecutionOwnerPacketUsesOnlyExecutionCommands(t *testing.T) {
 func TestExecutionOwnerPromptSeparatesSealedClaimFromRecoveryResume(t *testing.T) {
 	record, req := ownerPacketFixture()
 	prompt := executionOwnerPromptFixture(t, record, req)
-	for _, required := range []string{"expected claimable", "sealed claim", "recovery resume", "status의 exact next_command"} {
+	for _, required := range []string{
+		"injected sealed claim command가 유일한 owner next action",
+		"`execution resume`은 coordinator 전용 recovery",
+		"dispatched owner는 실행하지 않는다",
+	} {
 		if !strings.Contains(prompt, required) {
 			t.Fatalf("owner prompt is missing %q:\n%s", required, prompt)
 		}
+	}
+	if strings.Contains(prompt, "claim으로 바꾸지 말고 status의 exact next_command") {
+		t.Fatalf("owner prompt still directs a dispatched owner to recurse through resume:\n%s", prompt)
 	}
 }
 
