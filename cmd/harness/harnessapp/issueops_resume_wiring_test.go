@@ -8,9 +8,9 @@ import (
 	"time"
 
 	leaseoutbound "agent-harness/internal/adapter/outbound/issueopslease"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/sqlstore"
 	leasedomain "agent-harness/internal/domain/issueopslease"
 	"agent-harness/internal/port"
 )
@@ -136,7 +136,7 @@ func resumeWiringDriftIntent(t *testing.T, stateRoot, operationID string) {
 	if err != nil || !ok {
 		t.Fatalf("read raw intent ok=%t err=%v", ok, err)
 	}
-	if err := db.Apply(context.Background(), []sqlstore.Mutation{{Bucket: resumeWiringIntentBucket, ID: operationID, Data: append(append([]byte(nil), raw...), ' ')}}); err != nil {
+	if err := db.Apply(context.Background(), []port.RecordMutation{{Bucket: resumeWiringIntentBucket, ID: operationID, Data: append(append([]byte(nil), raw...), ' ')}}); err != nil {
 		t.Fatal(err)
 	}
 }

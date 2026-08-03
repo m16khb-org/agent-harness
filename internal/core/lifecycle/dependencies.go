@@ -13,7 +13,7 @@ import (
 	"agent-harness/internal/core/projectdoc"
 	"agent-harness/internal/core/projectdocs"
 	"agent-harness/internal/core/searchrouting"
-	"agent-harness/internal/core/state"
+	"agent-harness/internal/adapter/outbound/state"
 )
 
 const ProjectDocsDir = projectdoc.ProjectDocsDir

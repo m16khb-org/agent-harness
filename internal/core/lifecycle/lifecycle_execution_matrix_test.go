@@ -8,7 +8,7 @@ import (
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 )
 
 func TestExecutionMatrixKeepsSourceAndForeignWorkIndependent(t *testing.T) {

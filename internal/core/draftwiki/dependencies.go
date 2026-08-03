@@ -14,7 +14,7 @@ import (
 	"agent-harness/internal/core/policy"
 	"agent-harness/internal/core/projectdoc"
 	"agent-harness/internal/core/prompt"
-	"agent-harness/internal/core/state"
+	"agent-harness/internal/adapter/outbound/state"
 	coreworker "agent-harness/internal/core/worker"
 )
 

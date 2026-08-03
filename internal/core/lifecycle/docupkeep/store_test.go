@@ -13,7 +13,7 @@ import (
 
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/core/lifecycle/model"
-	corestate "agent-harness/internal/core/state"
+	corestate "agent-harness/internal/adapter/outbound/state"
 )
 
 func TestAppendWritesJSONL(t *testing.T) {

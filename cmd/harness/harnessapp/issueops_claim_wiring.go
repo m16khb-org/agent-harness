@@ -11,7 +11,7 @@ import (
 	leaseoutbound "agent-harness/internal/adapter/outbound/issueopslease"
 	leaseapp "agent-harness/internal/application/issueopslease"
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/port"
 )
 

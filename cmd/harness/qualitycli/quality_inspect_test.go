@@ -12,7 +12,7 @@ import (
 
 func TestParseCoverageFindsPackagesBelowThreshold(t *testing.T) {
 	output := "ok  \tagent-harness/internal/core/commandguard\t0.011s\tcoverage: 54.3% of statements\n" +
-		"ok  \tagent-harness/internal/core/state\t0.012s\tcoverage: 81.0% of statements\n" +
+		"ok  \tagent-harness/internal/adapter/outbound/state\t0.012s\tcoverage: 81.0% of statements\n" +
 		"?   \tagent-harness/internal/core/empty\t[no test files]\n"
 
 	got := parseCoveragePackages(output, 60)

@@ -13,7 +13,7 @@ import (
 	model "agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/port"
 )
 

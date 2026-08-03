@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"agent-harness/internal/core/state"
+	"agent-harness/internal/adapter/outbound/state"
 )
 
 type traceAnalysisInput struct {

@@ -14,7 +14,7 @@ import (
 	"slices"
 	"time"
 
-	corestate "agent-harness/internal/core/state"
+	corestate "agent-harness/internal/adapter/outbound/state"
 )
 
 const (

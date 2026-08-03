@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	leasedomain "agent-harness/internal/domain/issueopslease"
 	"agent-harness/internal/port"
 )

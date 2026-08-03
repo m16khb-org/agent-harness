@@ -67,7 +67,7 @@ func candidateSatisfactionRules() []candidateSatisfactionRule {
 			return evidenceWhen(signals.HasIssueOpsLinkingBoundaryCoverage, "issueops linking covers invalid issue URLs, missing plan files, and plan/worktree boundary violations")
 		}},
 		{"state-write-locking", func(signals SelfAugmentRepoSignals) []string {
-			return evidenceWhen(signals.HasStateWriteLocking, "StateWrite serializes writes through the per-key state lock and has regression coverage")
+			return evidenceWhen(signals.HasStateWriteLocking, "StateWrite delegates to the application service, which serializes writes through the store span with regression coverage")
 		}},
 		{"coverage-commandguard", func(signals SelfAugmentRepoSignals) []string {
 			return evidenceWhen(signals.HasCommandguardBoundaryCoverage, "commandguard covers kubectl mutation denial, dry-run, shell separator, and broad Biome boundary paths")

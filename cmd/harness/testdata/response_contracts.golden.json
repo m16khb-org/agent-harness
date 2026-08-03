@@ -4729,7 +4729,7 @@
           "status": "already_satisfied",
           "title": "Store self-augmentation failure lessons in state",
           "verify_with": [
-            "go test ./internal/core/state -count=1",
+            "go test ./internal/application/state ./internal/adapter/outbound/state -count=1",
             "state_write/read roundtrip"
           ],
           "why_now": [
@@ -4886,14 +4886,14 @@
           "novelty": 56,
           "risk": 28,
           "satisfaction_evidence": [
-            "StateWrite serializes writes through the per-key state lock and has regression coverage"
+            "StateWrite delegates to the application service, which serializes writes through the store span with regression coverage"
           ],
           "score": 0,
           "status": "already_satisfied",
           "title": "Add write locking around state file updates",
           "verify_with": [
-            "go test ./internal/core/state -count=1",
-            "go test -race ./internal/core/state -count=1"
+            "go test ./internal/application/state ./internal/adapter/outbound/state ./internal/adapter/outbound/sqlstore -count=1",
+            "go test -race ./internal/application/state ./internal/adapter/outbound/state ./internal/adapter/outbound/sqlstore -count=1"
           ],
           "why_now": [
             ".agent-harness/PROJECT_AUDIT.md flags S1 P1 no write locking",
@@ -7661,7 +7661,7 @@
                 "status": "already_satisfied",
                 "title": "Store self-augmentation failure lessons in state",
                 "verify_with": [
-                  "go test ./internal/core/state -count=1",
+                  "go test ./internal/application/state ./internal/adapter/outbound/state -count=1",
                   "state_write/read roundtrip"
                 ],
                 "why_now": [
@@ -7818,14 +7818,14 @@
                 "novelty": 56,
                 "risk": 28,
                 "satisfaction_evidence": [
-                  "StateWrite serializes writes through the per-key state lock and has regression coverage"
+                  "StateWrite delegates to the application service, which serializes writes through the store span with regression coverage"
                 ],
                 "score": 0,
                 "status": "already_satisfied",
                 "title": "Add write locking around state file updates",
                 "verify_with": [
-                  "go test ./internal/core/state -count=1",
-                  "go test -race ./internal/core/state -count=1"
+                  "go test ./internal/application/state ./internal/adapter/outbound/state ./internal/adapter/outbound/sqlstore -count=1",
+                  "go test -race ./internal/application/state ./internal/adapter/outbound/state ./internal/adapter/outbound/sqlstore -count=1"
                 ],
                 "why_now": [
                   ".agent-harness/PROJECT_AUDIT.md flags S1 P1 no write locking",

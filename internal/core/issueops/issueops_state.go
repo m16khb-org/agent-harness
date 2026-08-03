@@ -14,10 +14,11 @@ import (
 	"strings"
 	"time"
 
+	"agent-harness/internal/adapter/outbound/sqlstore"
+	"agent-harness/internal/adapter/outbound/state"
 	"agent-harness/internal/contract/issueops"
 	statecontract "agent-harness/internal/contract/state"
-	"agent-harness/internal/core/sqlstore"
-	"agent-harness/internal/core/state"
+	"agent-harness/internal/port"
 )
 
 // 현재 schema는 legacy row를 해석하지 않도록 물리 namespace까지 분리한다.
@@ -133,7 +134,7 @@ func deleteIssueOps(stateRoot, id string) error {
 	}
 	// 스테이징 artifact는 레코드와 수명을 같이한다 — 레코드 삭제(prune,
 	// cleanup finish)가 스테이지 blob을 고아로 남기지 않는다(C4a-F1 ②).
-	return db.Apply(context.Background(), []sqlstore.Mutation{
+	return db.Apply(context.Background(), []port.RecordMutation{
 		{Bucket: artifactStageBucket, ID: id, Delete: true},
 		{Bucket: issueOpsBucket, ID: id, Delete: true},
 	})

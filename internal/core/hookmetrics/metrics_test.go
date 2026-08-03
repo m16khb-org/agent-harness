@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	corestate "agent-harness/internal/core/state"
+	corestate "agent-harness/internal/adapter/outbound/state"
 )
 
 // Q2 phase 2: hooks sit on the per-tool-call critical path with a 5s budget,

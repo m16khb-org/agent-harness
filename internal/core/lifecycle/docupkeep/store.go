@@ -16,7 +16,7 @@ import (
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/core/lifecycle/model"
 	"agent-harness/internal/core/projectdoc"
-	corestate "agent-harness/internal/core/state"
+	corestate "agent-harness/internal/adapter/outbound/state"
 )
 
 type Store struct {

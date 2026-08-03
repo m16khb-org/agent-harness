@@ -96,10 +96,11 @@ func repoSignalRules() []repoSignalRule {
 				fileContainsTerm(root, filepath.Join("internal", "core", "issueops", "linking", "link_test.go"), "TestValidateIssueURL")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
-			signals.HasStateWriteLocking = fileContainsTerm(root, filepath.Join("internal", "core", "state", "state_io.go"), "withStateLock(context.Background(), dir, key") &&
-				fileContainsTerm(root, filepath.Join("internal", "core", "state", "state_io.go"), "writeStateRecord(dir, key, record)") &&
-				fileContainsTerm(root, filepath.Join("internal", "core", "state", "state_lock.go"), "func withStateLock(ctx context.Context") &&
-				fileContainsTerm(root, filepath.Join("internal", "core", "state", "state_test.go"), "TestStateWriteWaitsForKeyLock")
+			signals.HasStateWriteLocking = fileContainsTerm(root, filepath.Join("internal", "application", "state", "service.go"), "func (service *Service) Write(key, content string)") &&
+				fileContainsTerm(root, filepath.Join("internal", "application", "state", "service.go"), "store.WithSpan(context.Background()") &&
+				fileContainsTerm(root, filepath.Join("internal", "application", "state", "service.go"), "service.writeRecord(store, dir, key, record)") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "outbound", "state", "state_io.go"), "return service().Write(key, content)") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "outbound", "state", "state_test.go"), "TestStateWriteWaitsForKeyLock")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
 			signals.HasCommandguardBoundaryCoverage = fileContainsTerm(root, filepath.Join("internal", "core", "commandguard", "lifecycle_command_kubectl_test.go"), "TestGitOpsKubectlDecisionBlocksMutatingCommands") &&

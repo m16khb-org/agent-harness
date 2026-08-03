@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/sqlstore"
-	"agent-harness/internal/core/state"
+	"agent-harness/internal/adapter/outbound/sqlstore"
+	"agent-harness/internal/adapter/outbound/state"
 )
 
 const loopBucket = "loop"

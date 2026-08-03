@@ -7,7 +7,7 @@ import (
 	leaseoutbound "agent-harness/internal/adapter/outbound/issueopslease"
 	leaseapp "agent-harness/internal/application/issueopslease"
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 )
 
 func issueOpsReleaseHandler(ctx context.Context, stateRoot string, request issueops.ExecutionReleaseRequest) (issueops.ExecutionResult, error) {

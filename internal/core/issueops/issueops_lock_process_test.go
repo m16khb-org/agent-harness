@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 )
 
 // TestWithIssueOpsLockRejectsSameRootReentry proves the in-process fail-closed

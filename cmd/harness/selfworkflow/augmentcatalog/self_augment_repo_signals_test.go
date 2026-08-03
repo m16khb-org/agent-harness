@@ -96,21 +96,23 @@ func TestValidateIssueURL() {}
 
 func TestStateWriteLockingIsSatisfiedByLockedStateWrite(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "state", "state_io.go"), `package state
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "application", "state", "service.go"), `package state
 
-func StateWrite(key, content string) (StateResult, error) {
-	err := withStateLock(context.Background(), dir, key, func(context.Context) error {
-		_, err := writeStateRecord(dir, key, record)
+func (service *Service) Write(key, content string) (StateResult, error) {
+	err := store.WithSpan(context.Background(), func(context.Context) error {
+		_, err := service.writeRecord(store, dir, key, record)
 		return err
 	})
 	return result, err
 }
 `)
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "state", "state_lock.go"), `package state
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "outbound", "state", "state_io.go"), `package state
 
-func withStateLock(ctx context.Context, dir, key string, fn func(context.Context) error) error { return fn(ctx) }
+func StateWrite(key, content string) (StateResult, error) {
+	return service().Write(key, content)
+}
 `)
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "state", "state_test.go"), `package state
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "outbound", "state", "state_test.go"), `package state
 
 func TestStateWriteWaitsForKeyLock() {}
 `)

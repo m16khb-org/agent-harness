@@ -3,20 +3,20 @@ package core
 import (
 	"time"
 
+	corestate "agent-harness/internal/adapter/outbound/state"
 	statecontract "agent-harness/internal/contract/state"
 	corepreflight "agent-harness/internal/core/preflight"
-	corestate "agent-harness/internal/core/state"
 	coretrace "agent-harness/internal/core/trace"
 )
 
-const StateCurrentSchemaVersion = corestate.StateCurrentSchemaVersion
+const StateCurrentSchemaVersion = statecontract.SchemaVersion
 
-type StateResult = corestate.StateResult
-type StateListEntry = corestate.StateListEntry
-type StateListResult = corestate.StateListResult
-type StatePruneResult = corestate.StatePruneResult
-type StateDoctorIssue = corestate.StateDoctorIssue
-type StateDoctorResult = corestate.StateDoctorResult
+type StateResult = statecontract.StateResult
+type StateListEntry = statecontract.StateListEntry
+type StateListResult = statecontract.StateListResult
+type StatePruneResult = statecontract.StatePruneResult
+type StateDoctorIssue = statecontract.StateDoctorIssue
+type StateDoctorResult = statecontract.StateDoctorResult
 
 func StateDir() string {
 	return corestate.StateDir()
@@ -58,7 +58,7 @@ func StateDelete(key string) error {
 	return corestate.StateDelete(key)
 }
 
-type StateMaintainResult = corestate.StateMaintainResult
+type StateMaintainResult = statecontract.StateMaintainResult
 
 func StateMaintain() (StateMaintainResult, error) {
 	return corestate.StateMaintain()

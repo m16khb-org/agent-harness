@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/contract/issueops"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
 	"agent-harness/internal/core/issueops/pathutil"
 	"agent-harness/internal/core/preflight"
-	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
 
@@ -496,7 +496,7 @@ func deleteAbandonedIssueOps(ctx context.Context, stateRoot string, record issue
 			return fmt.Errorf("abandon authority changed before deletion CAS")
 		}
 		rows := []string{}
-		mutations := []sqlstore.Mutation{}
+		mutations := []port.RecordMutation{}
 		for _, operationID := range operationIDs {
 			data, ok, err := db.Get(externalIntentBucket, operationID)
 			if err != nil {
@@ -514,13 +514,13 @@ func deleteAbandonedIssueOps(ctx context.Context, stateRoot string, record issue
 			if owner.LifecycleID != id {
 				return fmt.Errorf("refusing to delete external intent row %s owned by another lifecycle", operationID)
 			}
-			mutations = append(mutations, sqlstore.Mutation{Bucket: externalIntentBucket, ID: operationID, Delete: true})
+			mutations = append(mutations, port.RecordMutation{Bucket: externalIntentBucket, ID: operationID, Delete: true})
 			rows = append(rows, operationID)
 		}
 		// 스테이징 artifact는 레코드와 수명을 같이한다(C4a-F1 ②).
 		mutations = append(mutations,
-			sqlstore.Mutation{Bucket: artifactStageBucket, ID: id, Delete: true},
-			sqlstore.Mutation{Bucket: issueOpsBucket, ID: id, Delete: true},
+			port.RecordMutation{Bucket: artifactStageBucket, ID: id, Delete: true},
+			port.RecordMutation{Bucket: issueOpsBucket, ID: id, Delete: true},
 		)
 		if err := db.Apply(ctx, mutations); err != nil {
 			return err

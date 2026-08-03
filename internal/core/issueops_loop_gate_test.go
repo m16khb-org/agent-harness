@@ -11,7 +11,7 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 
 	"agent-harness/internal/core/looprun"
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 )
 
 func TestIssueOpsStrictPRReadinessBlocksActiveLoop(t *testing.T) {

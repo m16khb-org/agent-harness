@@ -8,7 +8,7 @@ import (
 
 	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/preflight"
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 )
 
 func TestIssueOpsIntentAndDesignGatePhaseProgression(t *testing.T) {

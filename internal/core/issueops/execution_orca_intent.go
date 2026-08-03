@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
 
@@ -91,7 +91,7 @@ func beginOrcaExecutionIntentWithID(stateRoot string, record issueops.IssueOpsRe
 				OperationID: operationID, Kind: string(port.ExecutionOrcaIntentWorktree), Marker: payload.Marker, StartedAt: startedAt,
 			},
 		}
-		persisted, err = persistExecutionTransitionWithMutations(stateRoot, current, nil, []sqlstore.Mutation{{
+		persisted, err = persistExecutionTransitionWithMutations(stateRoot, current, nil, []port.RecordMutation{{
 			Bucket: externalIntentBucket, ID: operationID, Data: data, RequireAbsent: true,
 		}})
 		return err
@@ -180,7 +180,7 @@ func markOrcaIntentInvokingWithExpectedRaw(stateRoot, id string, expected extern
 		if !reflect.DeepEqual(stored, expected) {
 			return fmt.Errorf("Orca intent payload changed before invocation CAS")
 		}
-		_, err = persistOrcaIntentTransition(stateRoot, record, expected.OperationID, expectedRecordRaw, expectedIntentRaw, []sqlstore.Mutation{{Bucket: externalIntentBucket, ID: expected.OperationID, Data: data}})
+		_, err = persistOrcaIntentTransition(stateRoot, record, expected.OperationID, expectedRecordRaw, expectedIntentRaw, []port.RecordMutation{{Bucket: externalIntentBucket, ID: expected.OperationID, Data: data}})
 		return err
 	})
 	return updated, err
@@ -198,7 +198,7 @@ func markOrcaIntentInvokingFromRawState(stateRoot string, record issueops.IssueO
 		if err := validateOrcaIntentExpectedRecord(record, expected); err != nil {
 			return err
 		}
-		_, err := persistOrcaIntentTransition(stateRoot, record, expected.OperationID, expectedRecordRaw, expectedIntentRaw, []sqlstore.Mutation{{Bucket: externalIntentBucket, ID: expected.OperationID, Data: data}})
+		_, err := persistOrcaIntentTransition(stateRoot, record, expected.OperationID, expectedRecordRaw, expectedIntentRaw, []port.RecordMutation{{Bucket: externalIntentBucket, ID: expected.OperationID, Data: data}})
 		return err
 	})
 	return updated, err
@@ -226,7 +226,7 @@ func recordOrcaIntentFailureWithExpectedRaw(stateRoot, id string, expected exter
 		record.Execution.Failure = &issueops.ExecutionFailure{
 			OperationID: stored.OperationID, Code: "external_operation_ambiguous", Message: message, At: executionNow(now),
 		}
-		_, err = persistOrcaIntentTransition(stateRoot, record, expected.OperationID, expectedRecordRaw, expectedIntentRaw, []sqlstore.Mutation{{Bucket: externalIntentBucket, ID: stored.OperationID, Data: data}})
+		_, err = persistOrcaIntentTransition(stateRoot, record, expected.OperationID, expectedRecordRaw, expectedIntentRaw, []port.RecordMutation{{Bucket: externalIntentBucket, ID: stored.OperationID, Data: data}})
 		return err
 	})
 }
@@ -243,7 +243,7 @@ func recordOrcaIntentFailureFromRawState(stateRoot string, record issueops.Issue
 		if err != nil {
 			return err
 		}
-		_, err = persistOrcaIntentTransition(stateRoot, next, expected.OperationID, expectedRecordRaw, expectedIntentRaw, []sqlstore.Mutation{{Bucket: externalIntentBucket, ID: expected.OperationID, Data: data}})
+		_, err = persistOrcaIntentTransition(stateRoot, next, expected.OperationID, expectedRecordRaw, expectedIntentRaw, []port.RecordMutation{{Bucket: externalIntentBucket, ID: expected.OperationID, Data: data}})
 		return err
 	})
 }
@@ -369,7 +369,7 @@ func advanceOrcaIntentReceiptWithExpectedRaw(ctx context.Context, stateRoot stri
 			current.Execution.Pending = nil
 			current.Execution.Failure = nil
 			var persistErr error
-			persisted, persistErr = persistOrcaIntentTransition(stateRoot, current, expected.OperationID, expectedRecordRaw, expectedIntentRaw, []sqlstore.Mutation{{Bucket: externalIntentBucket, ID: expected.OperationID, Delete: true}})
+			persisted, persistErr = persistOrcaIntentTransition(stateRoot, current, expected.OperationID, expectedRecordRaw, expectedIntentRaw, []port.RecordMutation{{Bucket: externalIntentBucket, ID: expected.OperationID, Delete: true}})
 			return persistErr
 		}
 		current.Execution.Pending.Kind = pendingKindForOrcaStage(updated.Stage)
@@ -379,7 +379,7 @@ func advanceOrcaIntentReceiptWithExpectedRaw(ctx context.Context, stateRoot stri
 			return err
 		}
 		var persistErr error
-		persisted, persistErr = persistOrcaIntentTransition(stateRoot, current, expected.OperationID, expectedRecordRaw, expectedIntentRaw, []sqlstore.Mutation{{Bucket: externalIntentBucket, ID: expected.OperationID, Data: data}})
+		persisted, persistErr = persistOrcaIntentTransition(stateRoot, current, expected.OperationID, expectedRecordRaw, expectedIntentRaw, []port.RecordMutation{{Bucket: externalIntentBucket, ID: expected.OperationID, Data: data}})
 		return persistErr
 	})
 	if err != nil {
@@ -388,16 +388,16 @@ func advanceOrcaIntentReceiptWithExpectedRaw(ctx context.Context, stateRoot stri
 	return persisted, updated, nil
 }
 
-func persistOrcaIntentTransition(stateRoot string, record issueops.IssueOpsRecord, operationID string, expectedRecordRaw, expectedIntentRaw []byte, extra []sqlstore.Mutation) (issueops.IssueOpsRecord, error) {
+func persistOrcaIntentTransition(stateRoot string, record issueops.IssueOpsRecord, operationID string, expectedRecordRaw, expectedIntentRaw []byte, extra []port.RecordMutation) (issueops.IssueOpsRecord, error) {
 	if expectedRecordRaw == nil && expectedIntentRaw == nil {
 		return persistExecutionTransitionWithMutations(stateRoot, record, nil, extra)
 	}
-	expected := []sqlstore.ExpectedRecord{}
+	expected := []port.ExpectedRecord{}
 	if expectedRecordRaw != nil {
-		expected = append(expected, sqlstore.ExpectedRecord{Bucket: issueOpsBucket, ID: record.ID, Data: expectedRecordRaw})
+		expected = append(expected, port.ExpectedRecord{Bucket: issueOpsBucket, ID: record.ID, Data: expectedRecordRaw})
 	}
 	if expectedIntentRaw != nil {
-		expected = append(expected, sqlstore.ExpectedRecord{Bucket: externalIntentBucket, ID: operationID, Data: expectedIntentRaw})
+		expected = append(expected, port.ExpectedRecord{Bucket: externalIntentBucket, ID: operationID, Data: expectedIntentRaw})
 	}
 	return persistExecutionTransitionWithRawCAS(stateRoot, record, expected, extra)
 }

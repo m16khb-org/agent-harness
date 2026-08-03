@@ -10,8 +10,9 @@ import (
 	"io/fs"
 	"strings"
 
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/port"
 )
 
 var leaseHolderBucket = fmt.Sprintf("lease_holder_v%d", issueops.IssueOpsSchemaVersion)
@@ -65,7 +66,7 @@ func persistExecutionTransition(stateRoot string, record issueops.IssueOpsRecord
 	return persistExecutionTransitionWithMutations(stateRoot, record, previousHolder, nil)
 }
 
-func persistExecutionTransitionWithMutations(stateRoot string, record issueops.IssueOpsRecord, previousHolder *issueops.NativeActor, extra []sqlstore.Mutation) (issueops.IssueOpsRecord, error) {
+func persistExecutionTransitionWithMutations(stateRoot string, record issueops.IssueOpsRecord, previousHolder *issueops.NativeActor, extra []port.RecordMutation) (issueops.IssueOpsRecord, error) {
 	encoded, data, err := encodeIssueOpsRecord(record)
 	if err != nil {
 		return encoded, err
@@ -74,7 +75,7 @@ func persistExecutionTransitionWithMutations(stateRoot string, record issueops.I
 	if err != nil {
 		return issueops.IssueOpsRecord{OK: false, ID: record.ID}, err
 	}
-	mutations := []sqlstore.Mutation{{Bucket: issueOpsBucket, ID: encoded.ID, Data: data}}
+	mutations := []port.RecordMutation{{Bucket: issueOpsBucket, ID: encoded.ID, Data: data}}
 	if previousHolder != nil {
 		mutation, err := leaseIndexDeleteMutation(db, encoded.ID, *previousHolder)
 		if err != nil {
@@ -106,7 +107,7 @@ func persistExecutionTransitionWithMutations(stateRoot string, record issueops.I
 			return issueops.IssueOpsRecord{OK: false, ID: encoded.ID}, err
 		}
 		if !alreadyCurrent {
-			mutations = append(mutations, sqlstore.Mutation{
+			mutations = append(mutations, port.RecordMutation{
 				Bucket: leaseHolderBucket, ID: leaseHolderIndexKey(*holder), Data: indexData, RequireAbsent: true,
 			})
 		}
@@ -122,20 +123,20 @@ func persistExecutionTransitionWithMutations(stateRoot string, record issueops.I
 // 같은 SQLite transaction에서 다시 대조한 뒤 저장한다. resume lease는
 // holderless claimable 상태를 유지하므로 lease-holder reverse index transition을
 // 여기로 옮기지 않는다.
-func persistExecutionTransitionWithRawCAS(stateRoot string, record issueops.IssueOpsRecord, expected []sqlstore.ExpectedRecord, extra []sqlstore.Mutation) (issueops.IssueOpsRecord, error) {
+func persistExecutionTransitionWithRawCAS(stateRoot string, record issueops.IssueOpsRecord, expected []port.ExpectedRecord, extra []port.RecordMutation) (issueops.IssueOpsRecord, error) {
 	db, err := sqlstore.Open(stateRoot)
 	if err != nil {
 		return issueops.IssueOpsRecord{OK: false, ID: record.ID}, err
 	}
 	var encoded issueops.IssueOpsRecord
-	if err := db.CompareAndApplyFunc(context.Background(), expected, func() ([]sqlstore.Mutation, error) {
+	if err := db.CompareAndApplyFunc(context.Background(), expected, func() ([]port.RecordMutation, error) {
 		var data []byte
 		var encodeErr error
 		encoded, data, encodeErr = encodeIssueOpsRecord(record)
 		if encodeErr != nil {
 			return nil, encodeErr
 		}
-		mutations := append([]sqlstore.Mutation{{Bucket: issueOpsBucket, ID: encoded.ID, Data: data}}, extra...)
+		mutations := append([]port.RecordMutation{{Bucket: issueOpsBucket, ID: encoded.ID, Data: data}}, extra...)
 		return mutations, nil
 	}); err != nil {
 		var stale *sqlstore.RawCASError
@@ -171,7 +172,7 @@ func requireLeaseIndexAvailable(db *sqlstore.DB, lifecycleID string, generation 
 	return false, fmt.Errorf("native session already holds active lease %s generation %d", existing.LifecycleID, existing.Generation)
 }
 
-func leaseIndexDeleteMutation(db *sqlstore.DB, lifecycleID string, actor issueops.NativeActor) (*sqlstore.Mutation, error) {
+func leaseIndexDeleteMutation(db *sqlstore.DB, lifecycleID string, actor issueops.NativeActor) (*port.RecordMutation, error) {
 	key := leaseHolderIndexKey(actor)
 	data, ok, err := db.Get(leaseHolderBucket, key)
 	if err != nil || !ok {
@@ -184,7 +185,7 @@ func leaseIndexDeleteMutation(db *sqlstore.DB, lifecycleID string, actor issueop
 	if existing.LifecycleID != lifecycleID {
 		return nil, fmt.Errorf("refusing to delete another lifecycle's lease-holder index")
 	}
-	return &sqlstore.Mutation{Bucket: leaseHolderBucket, ID: key, Delete: true}, nil
+	return &port.RecordMutation{Bucket: leaseHolderBucket, ID: key, Delete: true}, nil
 }
 
 func leaseHolderIndexKey(actor issueops.NativeActor) string {

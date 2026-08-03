@@ -3,7 +3,7 @@ package worker
 import (
 	"context"
 
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 )
 
 // withWorkerJobLock serializes the full read-modify-write span for a worker

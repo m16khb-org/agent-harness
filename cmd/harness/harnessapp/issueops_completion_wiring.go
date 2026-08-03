@@ -10,7 +10,7 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 	completioncontract "agent-harness/internal/contract/issueopscompletion"
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 )
 
 func issueOpsCompleteHandler(ctx context.Context, stateRoot string, request issueops.ExecutionCompleteRequest) (issueops.ExecutionResult, error) {

@@ -8,15 +8,16 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	corewebfetch "agent-harness/internal/core/webfetch"
+	webfetchoutbound "agent-harness/internal/adapter/outbound/webfetch"
+	webfetchcontract "agent-harness/internal/contract/webfetch"
 )
 
 type StepResult = commandstep.StepResult
 
 func Validate(binary, root string, seed int64) StepResult {
 	started := time.Now()
-	result, err := corewebfetch.RunBenchmark(context.Background(), corewebfetch.BenchmarkRequest{
-		Fixtures: corewebfetch.DeterministicFixtures(),
+	result, err := webfetchoutbound.RunBenchmark(context.Background(), webfetchcontract.BenchmarkRequest{
+		Fixtures: webfetchoutbound.DeterministicFixtures(),
 		Timeout:  time.Second,
 	})
 	if err != nil {
@@ -24,7 +25,7 @@ func Validate(binary, root string, seed int64) StepResult {
 	}
 	out, _ := json.Marshal(result)
 	if !result.OK {
-		return commandstep.AssertionStepWithOutput("web fetch battery", started, result.HardFailures, []string{string(out)}, []string{"internal/core/webfetch deterministic benchmark"}, 8*1024)
+		return commandstep.AssertionStepWithOutput("web fetch battery", started, result.HardFailures, []string{string(out)}, []string{"internal/adapter/outbound/webfetch deterministic benchmark"}, 8*1024)
 	}
 	return StepResult{
 		Label:      "web fetch battery",

@@ -1,0 +1,69 @@
+package state
+
+import (
+	"agent-harness/internal/adapter/outbound/sqlstore"
+	statepathadapter "agent-harness/internal/adapter/outbound/statepath"
+	stateapplication "agent-harness/internal/application/state"
+	statecontract "agent-harness/internal/contract/state"
+	"agent-harness/internal/domain/statepath"
+	stateport "agent-harness/internal/port/state"
+)
+
+const stateBucket = "state"
+
+func StateDir() string {
+	return statepathadapter.Dir()
+}
+
+func NormalizeStateKey(key string) (string, error) {
+	return statepath.NormalizeKey(key)
+}
+
+func statePath(dir, key string) string {
+	return statepathadapter.Path(dir, key)
+}
+
+func openStateDB(dir string) (*sqlstore.DB, error) {
+	return sqlstore.Open(dir)
+}
+
+func openStateStore(dir string) (stateport.Store, error) {
+	return sqlstore.Open(dir)
+}
+
+type existingRecords struct{}
+
+func (existingRecords) GetExisting(dir, bucket, id string) ([]byte, bool, error) {
+	return sqlstore.GetExisting(dir, bucket, id)
+}
+
+var _ stateport.ExistingReader = existingRecords{}
+
+func service() *stateapplication.Service {
+	return stateapplication.NewService(stateapplication.Dependencies{
+		StateDir:        statepathadapter.Dir,
+		StatePath:       statepathadapter.Path,
+		OpenStore:       openStateStore,
+		ExistingRecords: existingRecords{},
+	})
+}
+
+func StateWrite(key, content string) (statecontract.StateResult, error) {
+	return service().Write(key, content)
+}
+
+func StateRead(key string) (statecontract.StateResult, error) {
+	return service().Read(key)
+}
+
+func StateList() (statecontract.StateListResult, error) {
+	return service().List()
+}
+
+func WriteStateRecord(dir, key string, record statecontract.RecordEnvelope) (string, error) {
+	return service().WriteRecord(dir, key, record)
+}
+
+func StateDelete(key string) error {
+	return service().Delete(key)
+}
