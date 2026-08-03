@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "lifecycle": "io-38376843a133",
+  "mode": "orca",
+  "acceptance": {
+    "AC-01": {
+      "test": "TestStageIssueOpsArtifactRejections plus shared-symbol search",
+      "command": "rg -n 'OwnerArtifactMaxBytes' internal",
+      "result": "PASS: one exported contract declaration and 12 affected production/test references"
+    },
+    "AC-02": {
+      "test": "TestClaimContextPreflightAcceptsSealed98163ByteArtifact",
+      "red_command": "go test ./internal/adapter/outbound/issueopslease -run '^TestClaimContextPreflightAcceptsSealed98163ByteArtifact$' -count=1 -v",
+      "red_result": "FAIL as expected: read sealed artifact plan: owner artifact must be a private bounded regular file",
+      "green_command": "go test ./internal/adapter/outbound/issueopslease -run '^TestClaimContextPreflightAcceptsSealed98163ByteArtifact$' -count=1 -v",
+      "green_result": "PASS"
+    },
+    "AC-03": {
+      "test": "TestReadClaimOwnerArtifactRejectsUnsafeFiles",
+      "command": "go test ./internal/adapter/outbound/issueopslease -run '^TestReadClaimOwnerArtifactRejectsUnsafeFiles$' -count=1 -v",
+      "result": "PASS: >1 MiB, symlink, non-private, and non-regular cases rejected"
+    },
+    "AC-04": {
+      "test": "TestClaimContextPreflightAcceptsSealed98163ByteArtifact",
+      "command": "go test ./internal/adapter/outbound/issueopslease -run '^TestClaimContextPreflightAcceptsSealed98163ByteArtifact$' -count=1 -v",
+      "result": "POST_MERGE_PENDING: original #237 plan readback is 98,163 bytes with mode 0600 and the same-size sealed claim-preflight passes, but the actual live #237 claim must run only after #287 is merged and the shared CLI is rebuilt"
+    },
+    "AC-05": {
+      "test": "targeted regression, race, core/application, and build gates",
+      "command": "go test ./internal/adapter/outbound/issueopslease -count=1; go test -race ./internal/adapter/outbound/issueopslease -count=1; go test ./internal/core/issueops ./internal/application/issueopslease -count=1; go build -o bin/agent-harness ./cmd/harness",
+      "result": "POST_MERGE_PENDING: all pre-PR test, race, and build gates pass; PR merge and typed cleanup receipt remain coordinator-owned follow-up"
+    }
+  },
+  "sdd_ledger": [
+    {
+      "task": "RED",
+      "status": "completed",
+      "evidence": "98,163-byte sealed plan failed only at the legacy 64 KiB claim bound"
+    },
+    {
+      "task": "filesystem safety characterization",
+      "status": "completed",
+      "evidence": "all four unsafe cases rejected before implementation"
+    },
+    {
+      "task": "single shared contract implementation",
+      "status": "completed",
+      "evidence": "OwnerArtifactMaxBytes is the only owner-artifact size declaration"
+    },
+    {
+      "task": "GREEN and regression",
+      "status": "completed",
+      "evidence": "focused, package, race, core/application, and build gates passed"
+    },
+    {
+      "task": "publication and release",
+      "status": "pending",
+      "evidence": "awaiting review-sealed commit and draft PR"
+    }
+  ],
+  "verification": [
+    {
+      "command": "go test ./internal/adapter/outbound/issueopslease -run '^TestClaimContextPreflightAcceptsSealed98163ByteArtifact$' -count=1 -v",
+      "result": "RED FAIL as expected before implementation; GREEN PASS after implementation"
+    },
+    {
+      "command": "go test ./internal/adapter/outbound/issueopslease -run '^TestReadClaimOwnerArtifactRejectsUnsafeFiles$' -count=1 -v",
+      "result": "PASS before and after implementation"
+    },
+    {
+      "command": "rg -n 'executionOwnerArtifactLimit|claimOwnerArtifactLimit' internal",
+      "result": "PASS: expected exit 1 with zero matches"
+    },
+    {
+      "command": "rg -n 'OwnerArtifactMaxBytes' internal",
+      "result": "PASS: declaration and all affected consumers found"
+    },
+    {
+      "command": "go test ./internal/adapter/outbound/issueopslease -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test -race ./internal/adapter/outbound/issueopslease -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test ./internal/core/issueops ./internal/application/issueopslease -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go build -o bin/agent-harness ./cmd/harness",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    },
+    {
+      "command": "wc -c and stat readback of the original #237 plan",
+      "result": "PASS: 98,163 bytes and mode 0600"
+    }
+  ],
+  "ai_slop_clean": {
+    "scope": "all tracked, unstaged, and untracked implementation files",
+    "removed": "17 duplicated sealed-claim fixture lines; no legacy shim, speculative abstraction, comment noise, or dead code retained",
+    "shannon_audit": {
+      "snr": {
+        "before": 1.0,
+        "after": 1.0,
+        "passed": true
+      },
+      "entropy": {
+        "functions_above_6": 0,
+        "functions_above_12": 0,
+        "passed": true
+      },
+      "redundancy": {
+        "before": 1,
+        "after": 0,
+        "passed": true
+      },
+      "channel_overhead": {
+        "files_above_50_percent": 0,
+        "passed": true
+      },
+      "heuristic_caveat": "shell and diff inspection; behavior is backed by focused and package tests"
+    },
+    "result": "PASS"
+  },
+  "runtime_resources": {
+    "spawned": [],
+    "cleanup_receipt": "none spawned"
+  },
+  "implementation_review_history": [
+    {
+      "verdict": "revise",
+      "finding": "AC-01 evidence understated shared-contract consumers as 11 instead of 12",
+      "resolution": "consumer count corrected and cleanup verification repeated"
+    },
+    {
+      "verdict": "pass",
+      "finding": "none",
+      "resolution": "invalidated by the later evidence-status correction for AC-04 and AC-05"
+    },
+    {
+      "verdict": "revise",
+      "finding": "AC-04 and AC-05 were marked PASS before live post-merge claim, merge, and typed cleanup evidence existed",
+      "resolution": "both acceptance results corrected to POST_MERGE_PENDING"
+    }
+  ],
+  "deviations": [
+    "The plan's live claim of foreign lifecycle io-a3818bd20165 was replaced by read-only original-artifact metadata evidence plus current-worktree claim preflight because the owner contract authorizes exactly lifecycle io-38376843a133 and forbids foreign lifecycle mutation."
+  ],
+  "status": "verified_pending_review"
+}

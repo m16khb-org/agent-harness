@@ -153,6 +153,42 @@ func TestCodexInstallerDropsEmptyHookGroups(t *testing.T) {
 		t.Fatalf("installer dropped non-empty third-party hook group:\n%s", string(b))
 	}
 }
+
+func TestCodexInstallerReportsStaleHookTarget(t *testing.T) {
+	for _, dryRun := range []bool{false, true} {
+		t.Run(map[bool]string{false: "install", true: "dry-run"}[dryRun], func(t *testing.T) {
+			root := t.TempDir()
+			home := t.TempDir()
+			writeAdapterTestSkill(t, root, "alpha")
+			hooksPath := filepath.Join(home, ".codex", "hooks.json")
+			writeFile(t, hooksPath, `{"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"'/source.worktrees/completed/bin/agent-harness' hook pre-tool-use --host codex"}]}]}}`)
+			expected := filepath.Join(root, "bin", "agent-harness")
+			req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), expected)
+			req.SkillNames = []string{"alpha"}
+			req.DryRun = dryRun
+
+			result, err := NewInstaller().Install(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := "codex native hook target is stale: observed=/source.worktrees/completed/bin/agent-harness expected=" + expected + "; reinstall hooks and restart the codex session"
+			if countMessage(result.Messages, want) != 1 {
+				t.Fatalf("messages = %#v, want exactly one %q", result.Messages, want)
+			}
+		})
+	}
+}
+
+func countMessage(messages []string, want string) int {
+	count := 0
+	for _, message := range messages {
+		if message == want {
+			count++
+		}
+	}
+	return count
+}
+
 func writeFile(t *testing.T, path, text string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

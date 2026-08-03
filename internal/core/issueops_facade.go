@@ -480,6 +480,14 @@ func IssueOpsCleanupStatusForRecord(record issueopscontract.IssueOpsRecord, req 
 	return issueops.IssueOpsCleanupStatusForRecord(record, req)
 }
 
+func FinalizeIssueOpsCleanupStatus(status issueopscontract.IssueOpsCleanupStatus) issueopscontract.IssueOpsCleanupStatus {
+	return issueops.FinalizeIssueOpsCleanupStatus(status)
+}
+
+func IssueOpsRemoteArtifactMissing(record issueopscontract.IssueOpsRecord) []string {
+	return issueops.IssueOpsRemoteArtifactMissing(record)
+}
+
 func CloseIssueOpsChildren(stateRoot, id string, req issueopscontract.IssueOpsCloseChildrenRequest, provider func(string) (IssueProvider, error)) (issueopscontract.IssueOpsCloseChildrenResult, error) {
 	return issueops.CloseIssueOpsChildren(stateRoot, id, req, provider)
 }

@@ -33,6 +33,12 @@ func VerifyHookActivation(path string, expected map[string]any) (string, error) 
 	if !ok {
 		return "", fmt.Errorf("installed hook catalog is missing")
 	}
+	expectedTargets := hookTargets(expected)
+	if len(expectedTargets) == 1 {
+		if messages := HookTargetDriftMessages(actual, "host", expectedTargets[0]); len(messages) > 0 {
+			return "", fmt.Errorf("%s", messages[0])
+		}
+	}
 	for event, groupsValue := range actualHooks {
 		groups, ok := groupsValue.([]any)
 		if !ok {

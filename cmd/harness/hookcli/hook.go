@@ -120,7 +120,7 @@ func runHookSessionStart(args []string) error {
 }
 
 func hookCatalogConfig() hookcatalog.Config {
-	return hookcatalog.Config{ResolveTarget: ResolveTarget, PrintJSON: printJSON}
+	return hookcatalog.Config{ResolveTarget: ResolveTarget, PrintJSON: printJSON, RuntimeDiagnostic: DiagnoseCurrentNativeRuntime}
 }
 
 func hookUsage() {

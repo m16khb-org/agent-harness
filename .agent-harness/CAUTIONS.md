@@ -7,6 +7,8 @@ description: Recurring mistakes, operational cautions, and avoidance guidance.
 
 `agent-harness`에서 반복적으로 실수하기 쉬운 설계·운영 주의사항을 모은다.
 
+Native hook 설치는 lifecycle worktree의 binary를 영구 target으로 쓰거나 실행 중 inode를 제자리 덮어쓰면 안 된다. invoking checkout에서 build하되 Git common-dir의 source `bin/agent-harness`에 staged-file fsync와 atomic rename으로 활성화하고, 이전 target을 캐시한 host session은 재시작한다.
+
 ---
 
 ## 1. Host-specific lock-in

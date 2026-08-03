@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -26,7 +27,21 @@ func configureInstallCommandTest(t *testing.T, home string) string {
 	t.Setenv("PATH", "/usr/bin:/bin")
 	Configure(Deps{HarnessRoot: func() string { return root }})
 	t.Cleanup(Reset)
-	return root
+	return installCommandTestStableRoot(t, root)
+}
+
+func installCommandTestStableRoot(t *testing.T, invokingRoot string) string {
+	t.Helper()
+	command := exec.Command("git", "-C", invokingRoot, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	raw, err := command.Output()
+	if err != nil {
+		t.Fatalf("resolve independent stable root: %v", err)
+	}
+	commonDir := filepath.Clean(strings.TrimSpace(string(raw)))
+	if filepath.Base(commonDir) != ".git" {
+		t.Fatalf("git common dir = %q, want physical .git", commonDir)
+	}
+	return filepath.Dir(commonDir)
 }
 
 func runInstallDryRunJSON(t *testing.T, home, pathMode string) port.NativeInstallResult {

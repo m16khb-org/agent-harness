@@ -14,12 +14,11 @@ import (
 	"strings"
 
 	"agent-harness/internal/contract/issueops"
+	leasecontract "agent-harness/internal/contract/issueopslease"
 	"agent-harness/internal/core/commandparse"
 	"agent-harness/internal/core/issueops/remote"
 	"agent-harness/internal/port"
 )
-
-const executionOwnerArtifactLimit = 1 << 20
 
 //go:embed testdata/execution_owner_prompt.txt
 var executionOwnerPromptTemplate string
@@ -115,7 +114,7 @@ func readExecutionOwnerArtifact(root, path string) ([]byte, error) {
 		if index < len(parts)-1 && !info.IsDir() {
 			return nil, fmt.Errorf("owner artifact ancestor is not a directory")
 		}
-		if index == len(parts)-1 && (!info.Mode().IsRegular() || info.Mode().Perm() != 0o600 || info.Size() > executionOwnerArtifactLimit) {
+		if index == len(parts)-1 && (!info.Mode().IsRegular() || info.Mode().Perm() != 0o600 || info.Size() > leasecontract.OwnerArtifactMaxBytes) {
 			return nil, fmt.Errorf("owner artifact must be a private bounded regular file")
 		}
 	}
@@ -134,7 +133,7 @@ func readExecutionOwnerSnapshot(ctx context.Context, record issueops.IssueOpsRec
 	if err != nil {
 		return executionOwnerSnapshot{}, fmt.Errorf("read remote issue snapshot: %w", err)
 	}
-	if strings.TrimSpace(snapshot.URL) != strings.TrimSpace(record.IssueURL) || strings.TrimSpace(snapshot.Body) == "" || len(snapshot.Body) > executionOwnerArtifactLimit/2 {
+	if strings.TrimSpace(snapshot.URL) != strings.TrimSpace(record.IssueURL) || strings.TrimSpace(snapshot.Body) == "" || len(snapshot.Body) > leasecontract.OwnerArtifactMaxBytes/2 {
 		return executionOwnerSnapshot{}, fmt.Errorf("remote issue snapshot identity or bounded body is invalid")
 	}
 	acceptance := uniqueExecutionOwnerValues(executionAcceptanceID.FindAllString(snapshot.Body, -1))
@@ -193,8 +192,8 @@ func buildExecutionOwnerArtifacts(record issueops.IssueOpsRecord, req ExecutionP
 		return executionOwnerArtifacts{}, err
 	}
 	packetBytes = append(packetBytes, '\n')
-	if len(packetBytes) > executionOwnerArtifactLimit {
-		return executionOwnerArtifacts{}, fmt.Errorf("owner context packet exceeds %d bytes", executionOwnerArtifactLimit)
+	if len(packetBytes) > leasecontract.OwnerArtifactMaxBytes {
+		return executionOwnerArtifacts{}, fmt.Errorf("owner context packet exceeds %d bytes", leasecontract.OwnerArtifactMaxBytes)
 	}
 	packetDigest := digestExecutionOwnerBytes(packetBytes)
 	prompt, err := renderExecutionOwnerPrompt(packet, packetPath, packetDigest)
@@ -257,8 +256,8 @@ func renderExecutionOwnerPrompt(packet executionOwnerContextPacket, packetPath, 
 	if unresolved := executionPromptPlaceholder.FindString(prompt); unresolved != "" {
 		return "", fmt.Errorf("owner prompt value introduced unresolved placeholder %s", unresolved)
 	}
-	if len(prompt) > executionOwnerArtifactLimit {
-		return "", fmt.Errorf("owner prompt exceeds %d bytes", executionOwnerArtifactLimit)
+	if len(prompt) > leasecontract.OwnerArtifactMaxBytes {
+		return "", fmt.Errorf("owner prompt exceeds %d bytes", leasecontract.OwnerArtifactMaxBytes)
 	}
 	return prompt, nil
 }
@@ -460,7 +459,7 @@ func executionOwnerTuringReportPath(record issueops.IssueOpsRecord) string {
 }
 
 func writeExecutionOwnerArtifact(root, path string, value []byte) error {
-	if len(value) == 0 || len(value) > executionOwnerArtifactLimit {
+	if len(value) == 0 || len(value) > leasecontract.OwnerArtifactMaxBytes {
 		return fmt.Errorf("owner artifact is empty or oversized")
 	}
 	if err := ensureExecutionOwnerArtifactDirectory(root, filepath.Dir(path)); err != nil {

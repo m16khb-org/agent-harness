@@ -185,6 +185,8 @@ func previewExecutionReplacement(ctx context.Context, stateRoot string, req Exec
 			record.ID,
 			record.Execution.Lease.Generation,
 			fingerprint,
+			req.Actor,
+			record.Execution.Workspace.Root,
 		)
 	}
 	return result, nil
@@ -315,10 +317,21 @@ func executionDirectClaimCommand(id string, generation uint64, tokenPath string)
 		" --claim-token-file " + quoteExecutionOwnerArg(tokenPath)
 }
 
-func executionReseedCommand(id string, generation uint64, fingerprint string) string {
-	return "agent-harness issueops execution replace --id " + quoteExecutionOwnerArg(id) +
+func executionReseedCommand(id string, generation uint64, fingerprint string, actor issueops.NativeActor, cwd string) string {
+	process := actor.SessionProcess
+	command := "agent-harness issueops execution replace --id " + quoteExecutionOwnerArg(id) +
 		" --expected-generation " + strconv.FormatUint(generation, 10) +
-		" --reseed --inventory-fingerprint " + fingerprint + " --confirm"
+		" --reseed --inventory-fingerprint " + fingerprint +
+		" --host " + quoteExecutionOwnerArg(actor.Host) +
+		" --session-id " + quoteExecutionOwnerArg(actor.SessionID)
+	if actor.AgentID != "" {
+		command += " --agent-id " + quoteExecutionOwnerArg(actor.AgentID)
+	}
+	command += " --session-pid " + strconv.Itoa(process.PID) +
+		" --session-started-at " + quoteExecutionOwnerArg(process.StartedAt) +
+		" --session-executable " + quoteExecutionOwnerArg(process.Executable) +
+		" --cwd " + quoteExecutionOwnerArg(cwd) + " --confirm"
+	return command
 }
 
 func executionWriterAbsentRecoveryCommand(record issueops.IssueOpsRecord) string {
