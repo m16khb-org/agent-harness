@@ -30,6 +30,29 @@ func TestValidateActorRetainsLegacyText(t *testing.T) {
 	}
 }
 
+func TestValidateSidecarsDistinguishesLegacyAndPostUpgradeArtifactIdentity(t *testing.T) {
+	binding := OrcaBinding{
+		RuntimeID: "runtime", RepoID: "repo", WorktreeID: "worktree",
+		OwnerHost: "codex", OwnerModel: "model", TaskID: "task", DispatchID: "dispatch",
+	}
+	execution := Execution{Mode: "orca", Orca: &binding}
+	if err := validateSidecars(execution); err != nil {
+		t.Fatalf("unmarked legacy all-empty identity must remain readable: %v", err)
+	}
+
+	execution.Orca.ArtifactIdentityVersion = OrcaArtifactIdentityVersion
+	if err := validateSidecars(execution); err == nil || !strings.Contains(err.Error(), "version requires a complete sealed artifact identity") {
+		t.Fatalf("post-upgrade all-empty identity must fail as an invariant violation: %v", err)
+	}
+
+	execution.Orca.IssueBodySHA256 = strings.Repeat("a", 64)
+	execution.Orca.ContextPacketSHA256 = strings.Repeat("b", 64)
+	execution.Orca.OwnerPromptSHA256 = strings.Repeat("c", 64)
+	if err := validateSidecars(execution); err != nil {
+		t.Fatalf("versioned complete identity must be valid: %v", err)
+	}
+}
+
 func assertJSONShape(t *testing.T, source, target reflect.Type, path string) {
 	t.Helper()
 	source = dereferenceJSONType(source)

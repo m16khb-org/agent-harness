@@ -329,19 +329,26 @@ func executionWriterAbsentRecoveryCommand(record issueops.IssueOpsRecord) string
 	switch lease.Status {
 	case issueops.LeaseStatusClaimable:
 		if record.Execution.Mode == issueops.ExecutionModeOrca {
+			if !completeOrcaArtifactIdentity(record.Execution.Orca) {
+				return executionReplacementPreviewCommand(record.ID, lease.Generation)
+			}
 			return ExecutionResumeRecoveryCommand(record.ID, lease.Generation)
 		}
 		if record.Execution.Mode == issueops.ExecutionModeDirect {
 			return executionDirectClaimCommand(record.ID, lease.Generation, claimTokenPath(record))
 		}
 	case issueops.LeaseStatusReleased:
-		return "agent-harness issueops execution replace --id " + quoteExecutionOwnerArg(record.ID) +
-			" --expected-generation " + strconv.FormatUint(lease.Generation, 10) + " --preview"
+		return executionReplacementPreviewCommand(record.ID, lease.Generation)
 	case issueops.LeaseStatusRevoking:
 		return "agent-harness issueops execution replace --id " + quoteExecutionOwnerArg(record.ID) +
 			" --expected-generation " + strconv.FormatUint(lease.Generation, 10) + " --finalize-preview"
 	}
 	return ""
+}
+
+func executionReplacementPreviewCommand(id string, generation uint64) string {
+	return "agent-harness issueops execution replace --id " + quoteExecutionOwnerArg(id) +
+		" --expected-generation " + strconv.FormatUint(generation, 10) + " --preview"
 }
 
 // executionOwnerReseal은 replacement가 재봉인한 owner artifact의 정체다.

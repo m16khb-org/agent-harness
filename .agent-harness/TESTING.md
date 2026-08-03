@@ -386,6 +386,14 @@ Execution tests must cover:
 - a sealed context packet and owner prompt with exact digests, no raw claim
   token, no unresolved placeholder, only current catalog commands, and the
   exact ordered 14-field owner report golden.
+- preparation and every Orca reseed persist artifact identity version 1 and one
+  complete issue-body, packet, and prompt digest identity. Resume must survive an owner-prompt template
+  upgrade without rerendering, while independent prompt, packet, issue-body,
+  or stored-digest drift fails before an Orca mutation. Unversioned all-empty
+  legacy bindings route through preview and generation-CAS reseed; versioned
+  all-empty, unversioned-complete, partial, and future-version identities are
+  invalid. Producer tests must prove new prepare and reseed outputs carry both
+  the version marker and all three digests.
 - completion only from `pr` with the durable verified PR/MR projection; the
   completion receipt, lease release, reverse-index deletion, and `done` phase
   transition are one atomic write. An identical retry is idempotent only when

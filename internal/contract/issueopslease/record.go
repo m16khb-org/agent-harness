@@ -11,7 +11,10 @@ import (
 	statecontract "agent-harness/internal/contract/state"
 )
 
-const SchemaVersion = 1
+const (
+	SchemaVersion               = 1
+	OrcaArtifactIdentityVersion = 1
+)
 
 // Record은 release가 변경하지 않는 v1 sidecar를 canonical DTO로 보존한다.
 type Record struct {
@@ -223,6 +226,35 @@ func validateSidecars(execution Execution) error {
 		for name, value := range map[string]string{"runtime_id": execution.Orca.RuntimeID, "repo_id": execution.Orca.RepoID, "worktree_id": execution.Orca.WorktreeID, "owner_host": execution.Orca.OwnerHost, "owner_model": execution.Orca.OwnerModel, "task_id": execution.Orca.TaskID, "dispatch_id": execution.Orca.DispatchID} {
 			if strings.TrimSpace(value) == "" {
 				return fmt.Errorf("Orca binding %s is required", name)
+			}
+		}
+		digests := []string{execution.Orca.IssueBodySHA256, execution.Orca.ContextPacketSHA256, execution.Orca.OwnerPromptSHA256}
+		present := 0
+		for _, digest := range digests {
+			if digest != "" {
+				present++
+			}
+		}
+		if present != 0 && present != len(digests) {
+			return fmt.Errorf("Orca binding requires a complete sealed artifact identity")
+		}
+		switch execution.Orca.ArtifactIdentityVersion {
+		case 0:
+			if present != 0 {
+				return fmt.Errorf("Orca binding sealed artifact identity requires artifact identity version")
+			}
+		case OrcaArtifactIdentityVersion:
+			if present != len(digests) {
+				return fmt.Errorf("Orca binding artifact identity version requires a complete sealed artifact identity")
+			}
+		default:
+			return fmt.Errorf("unsupported Orca artifact identity version %d", execution.Orca.ArtifactIdentityVersion)
+		}
+		if present == len(digests) {
+			for _, digest := range digests {
+				if !validHexDigest(digest, 64) {
+					return fmt.Errorf("Orca binding sealed artifact identity must contain SHA-256 digests")
+				}
 			}
 		}
 	}

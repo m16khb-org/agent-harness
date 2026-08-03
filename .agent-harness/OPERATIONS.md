@@ -217,8 +217,11 @@ GitHub가 함께 들어갈 수 있는 provider-neutral 문서이며, GitHub CLI 
 
 For Orca mode, follow `skills/issueops/references/execution.md`. Preparation
 seals the remote issue body, context packet, fully rendered owner prompt, and
-private claim-token file before launch. The fresh owner verifies both SHA-256
-digests and runs the exact `issueops execution claim` command. Only the active
+private claim-token file before launch. The durable Orca binding stores
+artifact identity version 1 plus the issue-body, packet, and prompt SHA-256 values before the terminal preparation
+intent is deleted. Resume verifies those stored values and never rerenders the
+prompt with the currently installed template. The fresh owner runs the exact
+`issueops execution claim` command. Only the active
 generation holder implements, verifies, creates the draft PR/MR, and completes
 from the canonical worktree. The source main worktree remains available for
 unrelated cycles.
@@ -235,6 +238,12 @@ When claimable Orca status returns an exact generation-bound `execution resume
 the complete explicit `ACTOR_FLAGS` receipt or no actor flags; the actor-free
 form observes the current Codex/Claude session, native host process ancestry,
 and canonical process cwd. Supplying only part of `ACTOR_FLAGS` is rejected.
+An older v1 Orca binding with no identity version marker and no digests remains
+readable but is not resumable as-is. A versioned all-empty, unversioned-complete,
+partial, or future-version identity is an invariant violation. Legacy status returns `execution replace
+--preview`; execute each emitted command through generation-CAS `--reseed`,
+then execute the emitted resume command. Do not trust the current worktree
+files or add digest fields manually.
 
 `issueops remote create-pr`와 `issueops execution reconcile`의
 `remote_pr_create` 경로는 같은 publication capability handler를 사용한다.

@@ -56,6 +56,47 @@ func TestReseedServiceOrdersPrepareCommitAndBestEffortCleanup(t *testing.T) {
 	}
 }
 
+func TestReseedServicePersistsOrcaArtifactIdentityBeforeCommit(t *testing.T) {
+	record := reseedTestRecord("claimable", 3)
+	record.Stable.Execution.Mode = "orca"
+	record.Stable.Execution.Workspace.Driver = "orca"
+	record.Stable.Execution.Orca = &leasecontract.OrcaBinding{
+		RuntimeID: "runtime", RepoID: "repo", WorktreeID: "worktree", LeaseGeneration: 3,
+		OwnerHost: "codex", OwnerModel: "model", TaskID: "task", DispatchID: "dispatch",
+	}
+	var committed leasecontract.OrcaBinding
+	service := newReseedServiceForTest(
+		reseedFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		reseedRepositoryFake{snapshot: ReseedSnapshot{Record: record}, commit: func(_ context.Context, _ ReseedSnapshot, next Record) (RepositoryResult, error) {
+			committed = *next.Stable.Execution.Orca
+			return RepositoryResult{Record: next, Execution: *next.Stable.Execution}, nil
+		}},
+		reseedArtifactsFake{prepare: func(_ context.Context, _ leasecontract.Record) (ReseedArtifactReceipt, error) {
+			return ReseedArtifactReceipt{
+				TokenSHA256: strings.Repeat("d", 64),
+				Receipt: leasecontract.ReseedReceipt{
+					IssueBodySHA256: strings.Repeat("a", 64), ContextPacketSHA256: strings.Repeat("b", 64), OwnerPromptSHA256: strings.Repeat("c", 64),
+				},
+			}, nil
+		}, cleanup: func(context.Context, leasecontract.Record) error { return nil }},
+	)
+	request := reseedServiceRequest(record.ID)
+	if _, err := service.Reseed(context.Background(), request); err != nil {
+		t.Fatalf("reseed: %v", err)
+	}
+	if committed.IssueBodySHA256 != strings.Repeat("a", 64) || committed.ContextPacketSHA256 != strings.Repeat("b", 64) || committed.OwnerPromptSHA256 != strings.Repeat("c", 64) {
+		t.Fatalf("committed Orca artifact identity=%+v", committed)
+	}
+	if committed.ArtifactIdentityVersion != leasecontract.OrcaArtifactIdentityVersion {
+		t.Fatalf("committed artifact identity version=%d want=%d", committed.ArtifactIdentityVersion, leasecontract.OrcaArtifactIdentityVersion)
+	}
+	if committed.LeaseGeneration != 3 {
+		t.Fatalf("previous owner binding generation=%d want=3", committed.LeaseGeneration)
+	}
+}
+
 func TestReseedServiceSameLifecycleSuccessMakesSecondAttemptStaleBeforePrepare(t *testing.T) {
 	repository := &serializedReseedRepository{record: reseedTestRecord("released", 3)}
 	fence := &serializedReseedFence{locks: map[string]*sync.Mutex{}}

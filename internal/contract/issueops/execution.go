@@ -6,7 +6,10 @@ import (
 	"strings"
 )
 
-const IssueOpsSchemaVersion = 1
+const (
+	IssueOpsSchemaVersion       = 1
+	OrcaArtifactIdentityVersion = 1
+)
 
 type ExecutionMode string
 
@@ -78,18 +81,22 @@ type NativeProcessReceipt struct {
 }
 
 type OrcaBinding struct {
-	RuntimeID          string `json:"runtime_id"`
-	RepoID             string `json:"repo_id"`
-	WorktreeID         string `json:"worktree_id"`
-	RunID              string `json:"run_id,omitempty"`
-	WorktreeInstanceID string `json:"worktree_instance_id,omitempty"`
-	LeaseGeneration    uint64 `json:"lease_generation,omitempty"`
-	OwnerHost          string `json:"owner_host"`
-	OwnerModel         string `json:"owner_model"`
-	OwnerEffort        string `json:"owner_effort,omitempty"`
-	TaskID             string `json:"task_id"`
-	DispatchID         string `json:"dispatch_id"`
-	TerminalPTYID      string `json:"terminal_pty_id,omitempty"`
+	RuntimeID               string `json:"runtime_id"`
+	RepoID                  string `json:"repo_id"`
+	WorktreeID              string `json:"worktree_id"`
+	RunID                   string `json:"run_id,omitempty"`
+	WorktreeInstanceID      string `json:"worktree_instance_id,omitempty"`
+	LeaseGeneration         uint64 `json:"lease_generation,omitempty"`
+	ArtifactIdentityVersion uint64 `json:"artifact_identity_version,omitempty"`
+	IssueBodySHA256         string `json:"issue_body_sha256,omitempty"`
+	ContextPacketSHA256     string `json:"context_packet_sha256,omitempty"`
+	OwnerPromptSHA256       string `json:"owner_prompt_sha256,omitempty"`
+	OwnerHost               string `json:"owner_host"`
+	OwnerModel              string `json:"owner_model"`
+	OwnerEffort             string `json:"owner_effort,omitempty"`
+	TaskID                  string `json:"task_id"`
+	DispatchID              string `json:"dispatch_id"`
+	TerminalPTYID           string `json:"terminal_pty_id,omitempty"`
 }
 
 type ExternalIntent struct {
@@ -288,6 +295,35 @@ func validateOrcaBinding(binding OrcaBinding) error {
 	}
 	if binding.RunID != "" && (binding.RunID != strings.TrimSpace(binding.RunID) || len(binding.RunID) > 1024) {
 		return fmt.Errorf("Orca binding run_id must be one canonical explicit Run identity")
+	}
+	digests := []string{binding.IssueBodySHA256, binding.ContextPacketSHA256, binding.OwnerPromptSHA256}
+	present := 0
+	for _, digest := range digests {
+		if digest != "" {
+			present++
+		}
+	}
+	if present != 0 && present != len(digests) {
+		return fmt.Errorf("Orca binding requires a complete sealed artifact identity")
+	}
+	switch binding.ArtifactIdentityVersion {
+	case 0:
+		if present != 0 {
+			return fmt.Errorf("Orca binding sealed artifact identity requires artifact identity version")
+		}
+	case OrcaArtifactIdentityVersion:
+		if present != len(digests) {
+			return fmt.Errorf("Orca binding artifact identity version requires a complete sealed artifact identity")
+		}
+	default:
+		return fmt.Errorf("unsupported Orca artifact identity version %d", binding.ArtifactIdentityVersion)
+	}
+	if present == len(digests) {
+		for _, digest := range digests {
+			if !validSHA256(digest) {
+				return fmt.Errorf("Orca binding sealed artifact identity must contain SHA-256 digests")
+			}
+		}
 	}
 	return nil
 }
