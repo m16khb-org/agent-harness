@@ -27,7 +27,14 @@ type childSmokeSurfaceDigest struct {
 type childSmokeActivationDigest struct {
 	RootSHA256   string                    `json:"root_sha256"`
 	BinarySHA256 string                    `json:"binary_sha256"`
+	Command      childSmokeCommandDigest   `json:"command"`
 	Surfaces     []childSmokeSurfaceDigest `json:"surfaces"`
+}
+
+type childSmokeCommandDigest struct {
+	Path   string `json:"path"`
+	Target string `json:"target"`
+	SHA256 string `json:"sha256"`
 }
 
 type childSmokeHostEvidence struct {
@@ -57,10 +64,11 @@ type childSmokeReceipt struct {
 }
 
 type childSmokeFixture struct {
-	scenario   string
-	localHead  string
-	remoteHead string
-	confirm    bool
+	scenario       string
+	localHead      string
+	remoteHead     string
+	confirm        bool
+	regularCommand bool
 }
 
 type childSmokeRun struct {
@@ -400,10 +408,21 @@ func TestChildHostSmokeCompleteFakeTwoHostPass(t *testing.T) {
 	if result.Receipt.ActivatedRootSHA256 != result.Receipt.Activated.RootSHA256 || result.Receipt.ActivatedBinarySHA256 != result.Receipt.ChildBinarySHA256 || result.Receipt.Activated.BinarySHA256 != result.Receipt.ChildBinarySHA256 {
 		t.Fatalf("activated identity drift: %+v", result.Receipt)
 	}
+	if result.Receipt.Before.Command.SHA256 != result.Receipt.Before.BinarySHA256 || result.Receipt.Activated.Command.SHA256 != result.Receipt.Activated.BinarySHA256 ||
+		result.Receipt.Before.Command.Target == result.Receipt.Activated.Command.Target {
+		t.Fatalf("canonical command identity missing from round trip: before=%+v activated=%+v", result.Receipt.Before.Command, result.Receipt.Activated.Command)
+	}
 	for _, host := range []childSmokeHostEvidence{result.Receipt.Codex, result.Receipt.Claude} {
 		if !host.SessionStartObserved || !host.PreToolUseObserved || host.MCPCallCount != 1 || len(host.ResponseSHA256) != 64 || host.ExitCode != 0 {
 			t.Fatalf("host evidence=%+v", host)
 		}
+	}
+}
+
+func TestChildHostSmokeRegularCommandRoundTripUsesCanonicalIdentity(t *testing.T) {
+	result := runChildHostSmokeFixture(t, childSmokeFixture{confirm: true, regularCommand: true})
+	if result.ExitCode != 0 || result.Receipt.Verdict != "pass" || !reflect.DeepEqual(result.Receipt.Before, result.Receipt.Restore) {
+		t.Fatalf("regular command round trip failed: result=%+v output=%s", result, result.Output)
 	}
 }
 
@@ -423,7 +442,7 @@ func TestChildHostSmokeAlwaysRestoresBeforeReturningFailure(t *testing.T) {
 
 func TestChildHostSmokeReportsRestoreStageStatuses(t *testing.T) {
 	result := runChildHostSmokeFixture(t, childSmokeFixture{scenario: "restore-failure", confirm: true})
-	want := "restore stages failed: install=19 snapshot=0 identity=0 mcp=0 digest=0 contract=0 exact=0"
+	want := "restore stages failed: install=19 snapshot=0 identity=0 mcp=0 digest=1 contract=1 exact=2"
 	if !strings.Contains(result.Output, want) {
 		t.Fatalf("missing bounded restore diagnostics %q: result=%+v output=%s", want, result, result.Output)
 	}
@@ -492,6 +511,19 @@ func TestChildHostSmokeRejectsAuthorityAndConfirmationBeforeMutation(t *testing.
 	}
 }
 
+func TestChildHostSmokeForwardsManagedCommandAdoptionOnlyAfterConfirmation(t *testing.T) {
+	script, err := os.ReadFile(filepath.Join("..", "..", "..", "scripts", "verify-child-host-smoke.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(script)
+	confirmation := strings.Index(text, "explicit --confirm-user-activation is required")
+	adoption := strings.Index(text, "--adopt-command-file")
+	if confirmation < 0 || adoption < 0 || adoption < confirmation || strings.Count(text, "--adopt-command-file") != 1 {
+		t.Fatalf("child adoption must be one confirmed activation-only argument: confirmation=%d adoption=%d count=%d", confirmation, adoption, strings.Count(text, "--adopt-command-file"))
+	}
+}
+
 func runChildHostSmokeFixture(t *testing.T, fixture childSmokeFixture) childSmokeRun {
 	t.Helper()
 	root := t.TempDir()
@@ -524,6 +556,21 @@ func runChildHostSmokeFixture(t *testing.T, fixture childSmokeFixture) childSmok
 		writeManagedSurfaceFixture(t, home, codexHome, sourceRoot+"x")
 	}
 	writeExecutable(t, filepath.Join(sourceRoot, "bin", "agent-harness"), "#!/usr/bin/env bash\nprintf 'source-version\\n'\n")
+	if err := os.MkdirAll(filepath.Join(home, ".local", "bin"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	commandPath := filepath.Join(home, ".local", "bin", "agent-harness")
+	if fixture.regularCommand {
+		body, err := os.ReadFile(filepath.Join(sourceRoot, "bin", "agent-harness"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(commandPath, body, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	} else if err := os.Symlink(filepath.Join(sourceRoot, "bin", "agent-harness"), commandPath); err != nil {
+		t.Fatal(err)
+	}
 	template := filepath.Join(root, "child-binary-template")
 	writeExecutable(t, template, fakeChildBinaryScript)
 	writeExecutable(t, filepath.Join(sourceRoot, "scripts", "install-native.sh"), fakeInstallScript("source"))
@@ -682,6 +729,8 @@ else
   [[ "${FAKE_SCENARIO:-}" != activation-failure ]] || exit 17
 fi
 mkdir -p "$CODEX_HOME" "$HOME/.claude"
+mkdir -p "$HOME/.local/bin"
+ln -sfn "$HARNESS_ROOT/bin/agent-harness" "$HOME/.local/bin/agent-harness"
 python3 - "$HARNESS_ROOT" "$HOME" "$CODEX_HOME" <<'PY'
 import json
 import os

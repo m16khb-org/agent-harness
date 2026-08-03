@@ -23,11 +23,14 @@ func NewService(backend activationport.Backend, readback activationport.Readback
 }
 
 func (service *Service) Begin(ctx context.Context, request activationcontract.Request) (activationcontract.Result, error) {
-	if service == nil || service.backend == nil || service.readback == nil {
-		return activationcontract.Result{}, fmt.Errorf("native activation dependencies are required")
+	if service == nil || service.backend == nil {
+		return activationcontract.Result{}, fmt.Errorf("native activation backend is required")
 	}
 	if err := validateRequest(request); err != nil {
 		return activationcontract.Result{}, err
+	}
+	if request.TransitionID != "" {
+		return activationcontract.Result{}, fmt.Errorf("native activation begin must not provide a transition ID")
 	}
 	result, err := service.backend.Begin(ctx, activationport.BeginRequest{StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot, TargetBinary: request.TargetBinary})
 	if err != nil {
@@ -46,6 +49,9 @@ func (service *Service) Seal(ctx context.Context, request activationcontract.Req
 	if err := validateRequest(request); err != nil {
 		return activationcontract.Result{}, err
 	}
+	if !validTransitionID(request.TransitionID) {
+		return activationcontract.Result{}, fmt.Errorf("native activation seal requires the exact transition ID")
+	}
 	readback, err := service.readback.Verify(ctx, request.HarnessRoot, request.TargetBinary)
 	if err != nil {
 		return activationcontract.Result{}, err
@@ -56,6 +62,7 @@ func (service *Service) Seal(ctx context.Context, request activationcontract.Req
 	}
 	result, err := service.backend.Seal(ctx, activationport.SealRequest{
 		StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot, TargetBinary: request.TargetBinary,
+		TransitionID:  request.TransitionID,
 		CatalogSHA256: readback.CatalogSHA256,
 		Evidence:      append([]activationport.Evidence(nil), readback.Evidence...),
 	})
@@ -68,20 +75,42 @@ func (service *Service) Seal(ctx context.Context, request activationcontract.Req
 	return publicResult(result, readback), nil
 }
 
+func (service *Service) Abort(ctx context.Context, request activationcontract.Request) (activationcontract.Result, error) {
+	if service == nil || service.backend == nil {
+		return activationcontract.Result{}, fmt.Errorf("native activation backend is required")
+	}
+	if err := validateRequest(request); err != nil {
+		return activationcontract.Result{}, err
+	}
+	if !validTransitionID(request.TransitionID) {
+		return activationcontract.Result{}, fmt.Errorf("native activation abort requires the exact transition ID")
+	}
+	result, err := service.backend.Abort(ctx, activationport.AbortRequest{
+		StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot, TargetBinary: request.TargetBinary, TransitionID: request.TransitionID,
+	})
+	if err != nil {
+		return activationcontract.Result{}, err
+	}
+	if err := validateBackendIdentity(request, result); err != nil || !result.Aborted || result.Pending || result.Sealed || !validSHA256(result.BinarySHA256) {
+		return activationcontract.Result{}, fmt.Errorf("native activation backend did not abort the pending transition")
+	}
+	return publicResult(result, activationport.Readback{}), nil
+}
+
 func validateRequest(request activationcontract.Request) error {
 	if strings.TrimSpace(request.StateRoot) == "" || strings.TrimSpace(request.HarnessRoot) == "" || strings.TrimSpace(request.TargetBinary) == "" ||
 		request.StateRoot != strings.TrimSpace(request.StateRoot) || request.HarnessRoot != strings.TrimSpace(request.HarnessRoot) || request.TargetBinary != strings.TrimSpace(request.TargetBinary) {
 		return fmt.Errorf("native activation state root, harness root, and target binary are required")
 	}
+	if request.TransitionID != "" && !validTransitionID(request.TransitionID) {
+		return fmt.Errorf("native activation transition ID is invalid")
+	}
 	return nil
 }
 
 func validateBackendResult(request activationcontract.Request, result activationport.Result, sealed bool) error {
-	if result.StateRoot != request.StateRoot || result.HarnessRoot != request.HarnessRoot || result.TargetBinary != request.TargetBinary {
-		return fmt.Errorf("native activation backend identity mismatch")
-	}
-	if !validTimestamp(result.UpdatedAt) {
-		return fmt.Errorf("native activation backend transition timestamp is invalid")
+	if err := validateBackendIdentity(request, result); err != nil {
+		return err
 	}
 	if sealed {
 		if !result.Sealed || result.Pending || !validSHA256(result.BinarySHA256) {
@@ -93,6 +122,22 @@ func validateBackendResult(request activationcontract.Request, result activation
 		return fmt.Errorf("native activation backend did not persist a pending activation")
 	}
 	return nil
+}
+
+func validateBackendIdentity(request activationcontract.Request, result activationport.Result) error {
+	if result.StateRoot != request.StateRoot || result.HarnessRoot != request.HarnessRoot || result.TargetBinary != request.TargetBinary ||
+		(request.TransitionID != "" && result.TransitionID != request.TransitionID) || !validTransitionID(result.TransitionID) {
+		return fmt.Errorf("native activation backend identity mismatch")
+	}
+	if !validTimestamp(result.UpdatedAt) {
+		return fmt.Errorf("native activation backend transition timestamp is invalid")
+	}
+	return nil
+}
+
+func validTransitionID(value string) bool {
+	decoded, err := hex.DecodeString(value)
+	return err == nil && len(decoded) == 16 && value == strings.ToLower(value)
 }
 
 func validateReadback(readback activationport.Readback) (activationport.Readback, error) {
@@ -141,12 +186,12 @@ func publicResult(result activationport.Result, readback activationport.Readback
 	}
 	public := activationcontract.Result{
 		OK: true, StateRoot: result.StateRoot, HarnessRoot: result.HarnessRoot, TargetBinary: result.TargetBinary,
-		BinarySHA256: result.BinarySHA256, Pending: result.Pending, Sealed: result.Sealed, UpdatedAt: result.UpdatedAt,
+		BinarySHA256: result.BinarySHA256, TransitionID: result.TransitionID, Pending: result.Pending, Sealed: result.Sealed, Aborted: result.Aborted, UpdatedAt: result.UpdatedAt,
 	}
 	if result.Sealed {
 		public.Receipt = &activationcontract.Receipt{
 			SchemaVersion: activationcontract.SchemaVersion, StateRoot: result.StateRoot, HarnessRoot: result.HarnessRoot,
-			TargetBinary: result.TargetBinary, BinarySHA256: result.BinarySHA256, CatalogSHA256: readback.CatalogSHA256,
+			TargetBinary: result.TargetBinary, BinarySHA256: result.BinarySHA256, TransitionID: result.TransitionID, CatalogSHA256: readback.CatalogSHA256,
 			Evidence: evidence, SealedAt: result.UpdatedAt,
 		}
 	}

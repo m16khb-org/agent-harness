@@ -3,6 +3,7 @@ package nativeactivation
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -34,6 +35,7 @@ type Backend struct {
 	open       StoreOpen
 	executable func() (string, error)
 	now        func() time.Time
+	transition func() (string, error)
 }
 
 type binaryIdentity struct {
@@ -57,6 +59,7 @@ type pendingRecord struct {
 	HarnessRoot   string         `json:"harness_root"`
 	TargetBinary  string         `json:"target_binary"`
 	Candidate     binaryIdentity `json:"candidate"`
+	TransitionID  string         `json:"transition_id"`
 	StartedAt     string         `json:"started_at"`
 }
 
@@ -68,13 +71,14 @@ type receiptRecord struct {
 	Binary        binaryIdentity            `json:"binary"`
 	CatalogSHA256 string                    `json:"catalog_sha256"`
 	Evidence      []activationport.Evidence `json:"evidence"`
+	TransitionID  string                    `json:"transition_id"`
 	SealedAt      string                    `json:"sealed_at"`
 }
 
 var _ activationport.Backend = Backend{}
 
 func NewBackend(open StoreOpen) Backend {
-	return Backend{open: open, executable: os.Executable, now: time.Now}
+	return Backend{open: open, executable: os.Executable, now: time.Now, transition: newTransitionID}
 }
 
 func (backend Backend) Begin(ctx context.Context, request activationport.BeginRequest) (activationport.Result, error) {
@@ -93,9 +97,16 @@ func (backend Backend) Begin(ctx context.Context, request activationport.BeginRe
 		return activationport.Result{}, fmt.Errorf("native activation clock is unavailable")
 	}
 	startedAt := backend.now().UTC().Format(time.RFC3339Nano)
+	if backend.transition == nil {
+		return activationport.Result{}, fmt.Errorf("native activation transition ID generator is unavailable")
+	}
+	transitionID, err := backend.transition()
+	if err != nil || !validTransitionID(transitionID) {
+		return activationport.Result{}, fmt.Errorf("generate native activation transition ID")
+	}
 	record := pendingRecord{
 		SchemaVersion: schemaVersion, StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot,
-		TargetBinary: request.TargetBinary, Candidate: candidate, StartedAt: startedAt,
+		TargetBinary: request.TargetBinary, Candidate: candidate, TransitionID: transitionID, StartedAt: startedAt,
 	}
 	data, err := json.Marshal(record)
 	if err != nil {
@@ -115,13 +126,16 @@ func (backend Backend) Begin(ctx context.Context, request activationport.BeginRe
 	}
 	return activationport.Result{
 		StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot, TargetBinary: request.TargetBinary,
-		BinarySHA256: candidate.SHA256, Pending: true, UpdatedAt: startedAt,
+		BinarySHA256: candidate.SHA256, TransitionID: transitionID, Pending: true, UpdatedAt: startedAt,
 	}, nil
 }
 
 func (backend Backend) Seal(ctx context.Context, request activationport.SealRequest) (activationport.Result, error) {
 	if err := validatePaths(request.StateRoot, request.HarnessRoot, request.TargetBinary); err != nil {
 		return activationport.Result{}, err
+	}
+	if !validTransitionID(request.TransitionID) {
+		return activationport.Result{}, fmt.Errorf("native activation transition ID is invalid")
 	}
 	active, err := backend.activeBinary()
 	if err != nil {
@@ -166,7 +180,7 @@ func (backend Backend) Seal(ctx context.Context, request activationport.SealRequ
 		receipt := receiptRecord{
 			SchemaVersion: schemaVersion, StateRoot: request.StateRoot, HarnessRoot: request.HarnessRoot,
 			TargetBinary: request.TargetBinary, Binary: active, CatalogSHA256: request.CatalogSHA256,
-			Evidence: append([]activationport.Evidence(nil), request.Evidence...), SealedAt: sealedAt,
+			Evidence: append([]activationport.Evidence(nil), request.Evidence...), TransitionID: request.TransitionID, SealedAt: sealedAt,
 		}
 		data, err := json.Marshal(receipt)
 		if err != nil {
@@ -179,6 +193,48 @@ func (backend Backend) Seal(ctx context.Context, request activationport.SealRequ
 			return err
 		}
 		result = sealedResult(receipt)
+		return nil
+	}); err != nil {
+		return activationport.Result{}, err
+	}
+	return result, nil
+}
+
+func (backend Backend) Abort(ctx context.Context, request activationport.AbortRequest) (activationport.Result, error) {
+	if err := validatePaths(request.StateRoot, request.HarnessRoot, request.TargetBinary); err != nil {
+		return activationport.Result{}, err
+	}
+	if !validTransitionID(request.TransitionID) {
+		return activationport.Result{}, fmt.Errorf("native activation transition ID is invalid")
+	}
+	active, err := backend.activeBinary()
+	if err != nil {
+		return activationport.Result{}, fmt.Errorf("inspect native activation abort candidate: %w", err)
+	}
+	store, err := backendStore(request.StateRoot, backend.open)
+	if err != nil {
+		return activationport.Result{}, err
+	}
+	var result activationport.Result
+	if err := store.WithSpan(ctx, func(spanCtx context.Context) error {
+		data, ok, err := store.Get(storeBucket, pendingID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("native activation pending record is missing")
+		}
+		pending, err := decodeExact[pendingRecord](data)
+		if err != nil || !sameAbortPending(pending, request, active) {
+			return fmt.Errorf("invalid native activation abort state")
+		}
+		if err := store.Apply(spanCtx, []port.RecordMutation{{Bucket: storeBucket, ID: pendingID, Delete: true}}); err != nil {
+			return err
+		}
+		result = activationport.Result{
+			StateRoot: pending.StateRoot, HarnessRoot: pending.HarnessRoot, TargetBinary: pending.TargetBinary,
+			BinarySHA256: pending.Candidate.SHA256, TransitionID: pending.TransitionID, Aborted: true, UpdatedAt: pending.StartedAt,
+		}
 		return nil
 	}); err != nil {
 		return activationport.Result{}, err
@@ -321,14 +377,20 @@ func decodeExact[T any](data []byte) (T, error) {
 func samePending(record pendingRecord, request activationport.SealRequest, active binaryIdentity) bool {
 	return record.SchemaVersion == schemaVersion && record.StateRoot == request.StateRoot &&
 		record.HarnessRoot == request.HarnessRoot && record.TargetBinary == request.TargetBinary &&
-		sameBinaryContent(record.Candidate, active) && record.StartedAt != ""
+		record.TransitionID == request.TransitionID && sameBinaryContent(record.Candidate, active) && record.StartedAt != ""
+}
+
+func sameAbortPending(record pendingRecord, request activationport.AbortRequest, active binaryIdentity) bool {
+	return record.SchemaVersion == schemaVersion && record.StateRoot == request.StateRoot &&
+		record.HarnessRoot == request.HarnessRoot && record.TargetBinary == request.TargetBinary &&
+		record.TransitionID == request.TransitionID && sameBinaryContent(record.Candidate, active) && record.StartedAt != ""
 }
 
 func sameReceipt(record receiptRecord, request activationport.SealRequest, active binaryIdentity) bool {
 	return record.SchemaVersion == schemaVersion && record.StateRoot == request.StateRoot &&
 		record.HarnessRoot == request.HarnessRoot && record.TargetBinary == request.TargetBinary &&
 		record.Binary == active && record.CatalogSHA256 == request.CatalogSHA256 &&
-		slices.Equal(record.Evidence, request.Evidence) && record.SealedAt != ""
+		record.TransitionID == request.TransitionID && slices.Equal(record.Evidence, request.Evidence) && record.SealedAt != ""
 }
 
 func sameBinaryContent(left, right binaryIdentity) bool {
@@ -339,6 +401,19 @@ func sameBinaryContent(left, right binaryIdentity) bool {
 func sealedResult(record receiptRecord) activationport.Result {
 	return activationport.Result{
 		StateRoot: record.StateRoot, HarnessRoot: record.HarnessRoot, TargetBinary: record.TargetBinary,
-		BinarySHA256: record.Binary.SHA256, Sealed: true, UpdatedAt: record.SealedAt,
+		BinarySHA256: record.Binary.SHA256, TransitionID: record.TransitionID, Sealed: true, UpdatedAt: record.SealedAt,
 	}
+}
+
+func newTransitionID() (string, error) {
+	var value [16]byte
+	if _, err := rand.Read(value[:]); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(value[:]), nil
+}
+
+func validTransitionID(value string) bool {
+	decoded, err := hex.DecodeString(value)
+	return err == nil && len(decoded) == 16 && value == strings.ToLower(value)
 }

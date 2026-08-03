@@ -160,6 +160,7 @@ import tomllib
 root, output, home, codex_home = sys.argv[1:]
 root = os.path.realpath(root)
 binary = os.path.join(root, "bin", "agent-harness")
+command = os.path.join(home, ".local", "bin", "agent-harness")
 surfaces = [
     ("claude", "hooks", os.path.join(home, ".claude", "settings.json")),
     ("claude", "mcp", os.path.join(home, ".claude.json")),
@@ -186,12 +187,25 @@ def semantic_digest(path):
     canonical = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=lambda item: item.isoformat()).encode("utf-8")
     return hashlib.sha256(canonical).hexdigest()
 
+command_info = os.lstat(command)
+if stat.S_ISLNK(command_info.st_mode):
+    if os.readlink(command) != binary:
+        raise SystemExit(1)
+    command_sha256 = raw_digest(binary)
+elif stat.S_ISREG(command_info.st_mode):
+    command_sha256 = raw_digest(command)
+    if command_sha256 != raw_digest(binary):
+        raise SystemExit(1)
+else:
+    raise SystemExit(1)
+
 items = []
 for host, surface, path in surfaces:
     items.append({"host": host, "surface": surface, "semantic_sha256": semantic_digest(path), "sha256": raw_digest(path)})
 result = {
     "root_sha256": hashlib.sha256(root.encode()).hexdigest(),
     "binary_sha256": raw_digest(binary),
+    "command": {"path": command, "target": binary, "sha256": command_sha256},
     "surfaces": items,
 }
 with open(output, "w", encoding="utf-8") as handle:
@@ -544,13 +558,20 @@ import sys
 path, root = sys.argv[1:]
 with open(path, encoding="utf-8") as handle:
     value = json.load(handle)
-if set(value) != {"root_sha256", "binary_sha256", "surfaces"}:
+if set(value) != {"root_sha256", "binary_sha256", "command", "surfaces"}:
     raise SystemExit(1)
 sha = re.compile(r"[0-9a-f]{64}")
 expected_root = hashlib.sha256(os.path.realpath(root).encode()).hexdigest()
 with open(os.path.join(root, "bin", "agent-harness"), "rb") as handle:
     expected_binary = hashlib.sha256(handle.read()).hexdigest()
 if value["root_sha256"] != expected_root or value["binary_sha256"] != expected_binary:
+    raise SystemExit(1)
+command = value["command"]
+expected_command = os.path.join(os.environ["HOME"], ".local", "bin", "agent-harness")
+expected_target = os.path.join(os.path.realpath(root), "bin", "agent-harness")
+if not isinstance(command, dict) or set(command) != {"path", "target", "sha256"}:
+    raise SystemExit(1)
+if command != {"path": expected_command, "target": expected_target, "sha256": expected_binary}:
     raise SystemExit(1)
 surfaces = value["surfaces"]
 if not isinstance(surfaces, list) or len(surfaces) != 4:
@@ -627,7 +648,7 @@ import sys
 (output, issue, local_head, remote_head, child_binary, before_path, activated_path,
  codex_path, claude_path, restore_path, codex_version, claude_version, verdict) = sys.argv[1:]
 
-empty_digest = {"root_sha256": "", "binary_sha256": "", "surfaces": []}
+empty_digest = {"root_sha256": "", "binary_sha256": "", "command": {}, "surfaces": []}
 empty_host = {
     "session_start_observed": False,
     "pre_tool_use_observed": False,
@@ -838,7 +859,7 @@ validate_activation_digest "$before_file" "$source_root" || fail_before_mutation
 capture_activation_snapshot "$activation_snapshot" || fail_before_mutation 'cannot capture exact source activation snapshot'
 
 mutation_started=1
-HARNESS_ROOT="$child_root" "$child_root/scripts/install-native.sh" --skip-build --path-mode=skip --json >"$temporary_root/activate.json" 2>"$temporary_root/activate.err" || fail_after_mutation 'child activation failed'
+HARNESS_ROOT="$child_root" "$child_root/scripts/install-native.sh" --skip-build --path-mode=skip --adopt-command-file --json >"$temporary_root/activate.json" 2>"$temporary_root/activate.err" || fail_after_mutation 'child activation failed'
 validate_managed_activation_identity "$child_root" || fail_after_mutation 'activated managed identity drifted'
 host_mcp_readback "$child_root" activated || fail_after_mutation 'activated host-native MCP readback failed'
 instrument_claude_child_smoke_hooks "$child_root" "$claude_observation" || fail_after_mutation 'Claude child smoke hook instrumentation failed'
