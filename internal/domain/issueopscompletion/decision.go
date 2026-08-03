@@ -88,7 +88,7 @@ func ApplyAt(snapshot Snapshot, command Command, resolvedReport string, complete
 	lease.ClaimTokenSHA256 = ""
 	lease.ReleasedAt = completionTimestamp
 	completion := &Completion{
-		FinalHead: strings.ToLower(strings.TrimSpace(command.FinalHead)), TuringReportPath: resolvedReport,
+		Generation: command.Generation, FinalHead: strings.ToLower(strings.TrimSpace(command.FinalHead)), TuringReportPath: resolvedReport,
 		Verification: append([]string(nil), command.Verification...), RemoteArtifactURL: strings.TrimSpace(command.RemoteArtifactURL), CompletedAt: completionTimestamp,
 	}
 	ledger := cloneLedger(snapshot.Ledger)
@@ -107,6 +107,7 @@ func ApplyAt(snapshot Snapshot, command Command, resolvedReport string, complete
 	if done.EnteredAt == "" {
 		done.EnteredAt = transitionTimestamp
 	}
+	done.Notes = clearStaleNotes(done.Notes)
 	ledger["done"] = done
 	return Outcome{Phase: "done", Lease: lease, Completion: completion, Ledger: ledger}
 }

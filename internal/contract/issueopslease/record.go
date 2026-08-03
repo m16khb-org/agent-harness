@@ -58,19 +58,21 @@ type Record struct {
 }
 
 type Execution struct {
-	Mode           string          `json:"mode"`
-	Workspace      Workspace       `json:"workspace"`
-	Lease          Lease           `json:"lease"`
-	Orca           *OrcaBinding    `json:"orca,omitempty"`
-	Pending        *ExternalIntent `json:"pending,omitempty"`
-	Completion     *Completion     `json:"completion,omitempty"`
-	Failure        *FailureDetail  `json:"failure,omitempty"`
-	SyncBaseEvents []SyncBaseEvent `json:"sync_base_events,omitempty"`
+	Mode              string                   `json:"mode"`
+	Workspace         Workspace                `json:"workspace"`
+	Lease             Lease                    `json:"lease"`
+	Orca              *OrcaBinding             `json:"orca,omitempty"`
+	Pending           *ExternalIntent          `json:"pending,omitempty"`
+	Completion        *Completion              `json:"completion,omitempty"`
+	CompletionHistory []CompletionHistoryEntry `json:"completion_history,omitempty"`
+	Failure           *FailureDetail           `json:"failure,omitempty"`
+	SyncBaseEvents    []SyncBaseEvent          `json:"sync_base_events,omitempty"`
 }
 
 type OrcaBinding = stableV1OrcaBinding
 type ExternalIntent = stableV1ExternalIntent
 type Completion = stableV1Completion
+type CompletionHistoryEntry = stableV1CompletionHistory
 type FailureDetail = stableV1Failure
 type SyncBaseEvent = stableV1SyncBaseEvent
 
@@ -261,8 +263,27 @@ func validateSidecars(execution Execution) error {
 	if execution.Pending != nil && (execution.Pending.OperationID == "" || execution.Pending.Kind == "" || execution.Pending.Marker == "" || execution.Pending.StartedAt == "") {
 		return fmt.Errorf("pending external intent is incomplete")
 	}
-	if execution.Completion != nil && (!validHexDigest(execution.Completion.FinalHead, 40, 64) || strings.TrimSpace(execution.Completion.TuringReportPath) == "" || len(execution.Completion.Verification) == 0 || strings.TrimSpace(execution.Completion.RemoteArtifactURL) == "" || strings.TrimSpace(execution.Completion.CompletedAt) == "") {
-		return fmt.Errorf("execution completion is incomplete")
+	if execution.Completion != nil {
+		if err := validateCompletion(*execution.Completion); err != nil {
+			return err
+		}
+		if execution.Completion.Generation > execution.Lease.Generation {
+			return fmt.Errorf("execution completion generation exceeds the lease generation")
+		}
+	}
+	for _, entry := range execution.CompletionHistory {
+		if entry.Generation == 0 || strings.TrimSpace(entry.Reason) == "" || strings.TrimSpace(entry.ReopenedAt) == "" {
+			return fmt.Errorf("execution completion history entry is incomplete")
+		}
+		if entry.Generation >= execution.Lease.Generation {
+			return fmt.Errorf("execution completion history generation must precede the lease generation")
+		}
+		if err := validateCompletion(entry.Completion); err != nil {
+			return fmt.Errorf("execution completion history: %w", err)
+		}
+		if entry.Completion.Generation != 0 && entry.Completion.Generation != entry.Generation {
+			return fmt.Errorf("execution completion history generation conflicts with its completion")
+		}
 	}
 	if execution.Failure != nil && (execution.Failure.Code == "" || execution.Failure.At == "" || len(execution.Failure.Message) > 4096) {
 		return fmt.Errorf("execution failure is invalid")
@@ -279,6 +300,18 @@ func validateSidecars(execution Execution) error {
 		}
 		if event.ConflictFiles < 0 {
 			return fmt.Errorf("execution sync-base event conflict count must not be negative")
+		}
+	}
+	return nil
+}
+
+func validateCompletion(completion Completion) error {
+	if !validHexDigest(completion.FinalHead, 40, 64) || strings.TrimSpace(completion.TuringReportPath) == "" || len(completion.Verification) == 0 || strings.TrimSpace(completion.RemoteArtifactURL) == "" || strings.TrimSpace(completion.CompletedAt) == "" {
+		return fmt.Errorf("execution completion is incomplete")
+	}
+	for _, evidence := range completion.Verification {
+		if strings.TrimSpace(evidence) == "" {
+			return fmt.Errorf("execution completion verification must be nonempty")
 		}
 	}
 	return nil

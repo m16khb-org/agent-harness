@@ -11,7 +11,10 @@ func TestPrepareContractClonesMutableAuthority(t *testing.T) {
 	holder := &leasecontract.Actor{Host: "codex", SessionID: "session", SessionProcess: process}
 	execution := &leasecontract.Execution{
 		Mode: "direct", Lease: leasecontract.Lease{Generation: 1, Status: "active", Holder: holder},
-		Completion:     &leasecontract.Completion{Verification: []string{"go test ./..."}},
+		Completion: &leasecontract.Completion{Verification: []string{"go test ./..."}},
+		CompletionHistory: []leasecontract.CompletionHistoryEntry{{
+			Generation: 1, Completion: leasecontract.Completion{Verification: []string{"old verification"}},
+		}},
 		SyncBaseEvents: []leasecontract.SyncBaseEvent{{Mode: "apply", BaseBranch: "main"}},
 	}
 	command := Command{ID: "io-prepare", Actor: *holder}
@@ -28,13 +31,14 @@ func TestPrepareContractClonesMutableAuthority(t *testing.T) {
 	commandClone.Actor.SessionProcess.PID = 7
 	resultClone.Execution.Lease.Holder.SessionID = "changed"
 	resultClone.Execution.Completion.Verification[0] = "changed"
+	resultClone.Execution.CompletionHistory[0].Completion.Verification[0] = "changed"
 	snapshotClone.RecordRaw[0] = 'X'
 	snapshotClone.Record.BranchPrepare[0] = 'X'
 	snapshotClone.Record.Execution.SyncBaseEvents[0].Mode = "finalize"
 	snapshotClone.RootConflict.LifecycleID = "changed"
 
 	if command.Actor.SessionProcess.PID != 42 || result.Execution.Lease.Holder.SessionID != "session" ||
-		result.Execution.Completion.Verification[0] != "go test ./..." || string(snapshot.RecordRaw) != "record" ||
+		result.Execution.Completion.Verification[0] != "go test ./..." || result.Execution.CompletionHistory[0].Completion.Verification[0] != "old verification" || string(snapshot.RecordRaw) != "record" ||
 		string(snapshot.Record.BranchPrepare) != `{"provider":"github"}` || snapshot.Record.Execution.SyncBaseEvents[0].Mode != "apply" ||
 		snapshot.RootConflict.LifecycleID != "io-other" {
 		t.Fatal("a preparation clone mutated its source")

@@ -21,7 +21,7 @@ func (h ReseedHandler) Handle(ctx context.Context, _ string, request issueops.Ex
 		return issueops.ExecutionReplaceResult{ID: request.ID, Action: issueops.ExecutionReplaceReseed}, issueops.ErrReseedHandlerUnavailable
 	}
 	result, err := h.service.Reseed(ctx, leaseapp.ReseedRequest{
-		ID: request.ID, ExpectedGeneration: request.ExpectedGeneration, Actor: toDomainActor(request.Actor), Ancestry: toProcessAncestry(request.Actor),
+		ID: request.ID, ExpectedGeneration: request.ExpectedGeneration, CompletionGeneration: request.CompletionGeneration, Actor: toDomainActor(request.Actor), Ancestry: toProcessAncestry(request.Actor),
 		CWD: request.CWD, InventoryFingerprint: request.InventoryFingerprint, Reason: request.Reason, Confirm: request.Confirm,
 	})
 	if err != nil {

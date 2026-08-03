@@ -96,6 +96,57 @@ func TestCompleteRepositoryFailureDoesNotSettle(t *testing.T) {
 	}
 }
 
+func TestCompleteReopenedGenerationKeepsExactlyOnceContract(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		generation uint64
+		newHead    string
+	}{
+		{name: "issue 261 generation 6", generation: 6, newHead: "ff27b34520e4e253d8ebfd523e4e4352bf93e8d8"},
+		{name: "issue 237 generation 3", generation: 3, newHead: "9c8db06313cfce39d17a53123f84da1fc4bc7b34"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			record := activeCompletionRecord("direct")
+			record.Lease.Generation = test.generation
+			record.Ledger = map[string]completioncontract.LedgerEntry{
+				"pr":   {Phase: "pr", Notes: []string{"stale: completed execution reseed"}},
+				"done": {Phase: "done", EnteredAt: "old-done", Notes: []string{"stale: completed execution reseed"}},
+			}
+			trace := []string{}
+			repository := &repositoryFake{record: record, trace: &trace}
+			environment := &environmentFake{trace: &trace, canonical: true, head: test.newHead, report: "/worktree/new-report.json"}
+			service := NewService(repository, environment, fixedClock{fixedCompletionTime}, tracedLiveInspector(&trace), nil)
+			request := validRequest()
+			request.Generation = test.generation
+			request.FinalHead = test.newHead
+			request.TuringReportPath = "/worktree/new-report.json"
+			request.Verification = []string{"new verification"}
+			request.RemoteArtifactURL = "https://github.com/acme/repo/pull/304"
+
+			if _, err := service.Complete(context.Background(), request); err != nil {
+				t.Fatalf("complete reopened generation: %v", err)
+			}
+			if repository.record.Completion == nil || repository.record.Completion.Generation != test.generation || repository.record.Completion.FinalHead != test.newHead || repository.record.Lease.Status != "released" || repository.record.Phase != "done" {
+				t.Fatalf("new completion=%+v", repository.record)
+			}
+			if len(repository.record.Ledger["pr"].Notes) != 0 || len(repository.record.Ledger["done"].Notes) != 0 {
+				t.Fatalf("completed-reseed stale notes remain: %+v", repository.record.Ledger)
+			}
+			if _, err := service.Complete(context.Background(), request); err != nil {
+				t.Fatalf("identical completion retry: %v", err)
+			}
+			different := request
+			different.Verification = []string{"different verification"}
+			if _, err := service.Complete(context.Background(), different); err == nil || err.Error() != "execution completion already exists with different evidence" {
+				t.Fatalf("different completion retry error=%v", err)
+			}
+			if repository.commits != 1 {
+				t.Fatalf("completion commits=%d want=1", repository.commits)
+			}
+		})
+	}
+}
+
 type repositoryFake struct {
 	record    completioncontract.RecordSnapshot
 	trace     *[]string

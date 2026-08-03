@@ -170,6 +170,19 @@ func TestExecutionActionRequestFromMCPMapsResume(t *testing.T) {
 	}
 }
 
+func TestExecutionActionRequestFromMCPMapsCompletionGeneration(t *testing.T) {
+	req, err := executionActionRequestFromMCPWithAncestry(map[string]any{
+		"action": "replace", "id": "io-aaaaaaaaaaaa", "replace_action": "reseed",
+		"expected_generation": float64(5), "completion_generation": float64(4),
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if req.ExpectedGeneration != 5 || req.CompletionGeneration != 4 {
+		t.Fatalf("MCP reseed provenance request drifted: %#v", req)
+	}
+}
+
 func TestHandleToolCallWithDependenciesRoutesResumeToInjectedHandler(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	params, err := json.Marshal(MCPToolCall{Name: "issueops_execution", Arguments: map[string]any{

@@ -190,14 +190,15 @@ type stableV1ChildCycle struct {
 	ValidatedAt        string   `json:"validated_at,omitempty"`
 }
 type stableV1Execution struct {
-	Mode           string                  `json:"mode"`
-	Workspace      stableV1Workspace       `json:"workspace"`
-	Lease          stableV1Lease           `json:"lease"`
-	Orca           *stableV1OrcaBinding    `json:"orca,omitempty"`
-	Pending        *stableV1ExternalIntent `json:"pending,omitempty"`
-	Completion     *stableV1Completion     `json:"completion,omitempty"`
-	Failure        *stableV1Failure        `json:"failure,omitempty"`
-	SyncBaseEvents []stableV1SyncBaseEvent `json:"sync_base_events,omitempty"`
+	Mode              string                      `json:"mode"`
+	Workspace         stableV1Workspace           `json:"workspace"`
+	Lease             stableV1Lease               `json:"lease"`
+	Orca              *stableV1OrcaBinding        `json:"orca,omitempty"`
+	Pending           *stableV1ExternalIntent     `json:"pending,omitempty"`
+	Completion        *stableV1Completion         `json:"completion,omitempty"`
+	CompletionHistory []stableV1CompletionHistory `json:"completion_history,omitempty"`
+	Failure           *stableV1Failure            `json:"failure,omitempty"`
+	SyncBaseEvents    []stableV1SyncBaseEvent     `json:"sync_base_events,omitempty"`
 }
 type stableV1Workspace struct {
 	SourceRoot     string `json:"source_root"`
@@ -254,11 +255,18 @@ type stableV1ExternalIntent struct {
 	StartedAt   string `json:"started_at"`
 }
 type stableV1Completion struct {
+	Generation        uint64   `json:"generation,omitempty"`
 	FinalHead         string   `json:"final_head"`
 	TuringReportPath  string   `json:"turing_report_path"`
 	Verification      []string `json:"verification"`
 	RemoteArtifactURL string   `json:"remote_artifact_url"`
 	CompletedAt       string   `json:"completed_at"`
+}
+type stableV1CompletionHistory struct {
+	Generation uint64             `json:"generation"`
+	Completion stableV1Completion `json:"completion"`
+	Reason     string             `json:"reason"`
+	ReopenedAt string             `json:"reopened_at"`
 }
 type stableV1Failure struct {
 	OperationID string `json:"operation_id,omitempty"`

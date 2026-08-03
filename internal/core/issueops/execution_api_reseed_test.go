@@ -25,13 +25,14 @@ func TestExecuteExecutionReseedUsesInjectedHandlerOnce(t *testing.T) {
 		ReplaceAction:        ExecutionReplaceReseed,
 		ID:                   "io-reseed-handler",
 		ExpectedGeneration:   3,
+		CompletionGeneration: 2,
 		InventoryFingerprint: "inventory",
 		Reason:               "holderless recovery",
 		CWD:                  "/canonical/worktree",
 		Confirm:              true,
 	}, ExecutionActionDependencies{Reseed: func(_ context.Context, stateRoot string, request ExecutionReseedRequest) (ExecutionReplaceResult, error) {
 		called++
-		if stateRoot == "" || request.ID != "io-reseed-handler" || request.ExpectedGeneration != 3 || request.InventoryFingerprint != "inventory" || request.Reason != "holderless recovery" || request.CWD != "/canonical/worktree" || !request.Confirm {
+		if stateRoot == "" || request.ID != "io-reseed-handler" || request.ExpectedGeneration != 3 || request.CompletionGeneration != 2 || request.InventoryFingerprint != "inventory" || request.Reason != "holderless recovery" || request.CWD != "/canonical/worktree" || !request.Confirm {
 			t.Fatalf("unexpected injected reseed request: root=%q request=%+v", stateRoot, request)
 		}
 		return ExecutionReplaceResult{OK: true, ID: request.ID, Action: ExecutionReplaceReseed}, nil

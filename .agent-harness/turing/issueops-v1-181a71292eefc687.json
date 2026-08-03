@@ -1,0 +1,252 @@
+{
+  "lifecycle_id": "io-b286b1543a78",
+  "issue_url": "https://github.com/m16khb/agent-harness/issues/304",
+  "branch": "304-completion-reseed-stale-receipt",
+  "worktree_root": "/Users/m16khb/Workspace/agent-harness.worktrees/304-completion-reseed-stale-receipt",
+  "owner": {
+    "host": "codex",
+    "model": "gpt-5.6-sol",
+    "effort": "xhigh",
+    "mode": "orca",
+    "lease_generation": 1
+  },
+  "goal": "완료된 execution reseed가 이전 completion을 감사 가능한 history로 이동하고 새 generation이 새 HEAD와 evidence로 exactly-once completion할 수 있게 한다.",
+  "contract": [
+    "completion-bearing released 또는 claimable reseed만 current completion을 append-only completion_history로 이동한다.",
+    "future completion은 origin generation을 receipt에 stamp하고 legacy missing-generation reopen은 명시적 completion_generation 없이는 fail-closed한다.",
+    "같은 raw-CAS commit이 current completion, done phase, HEAD-bound proof를 재개하고 downstream ledger를 stale로 표시한다.",
+    "branch/worktree, remote artifact, feedback, decisions, sync-base events와 이전 history는 보존한다.",
+    "history가 없는 schema v1 record는 계속 읽으며 generic backward phase API와 legacy shim은 추가하지 않는다."
+  ],
+  "tdd_loop": [
+    {
+      "step": "RED",
+      "command": "go test ./internal/contract/issueops ./internal/contract/issueopslease ./internal/contract/issueopspreparation -count=1",
+      "observed": "build failed because Execution had no CompletionHistory contract or deep-copy projection",
+      "expected_reason": "append-only completion history contract was absent"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/application/issueopslease -run 'TestReseedService(ReopensCompletedExecutionAtomically|PreservesCompletionFreeSemantics|PrepareFailureDoesNotMutateCompletedSnapshot)' -count=1",
+      "observed": "prepared owner artifact still contained the old current completion and phase done",
+      "expected_reason": "reseed only advanced the lease generation"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/domain/issueopscompletion -run TestApplyCompletionClearsCompletedReseedStaleNotesFromPRAndDone -count=1",
+      "observed": "done retained the completed-reseed stale note",
+      "expected_reason": "normal completion only cleared stale notes from pr"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/adapter/inbound/issueopscompletion ./internal/adapter/inbound/issueopspreparation -count=1",
+      "observed": "completion and preparation public results dropped completion history",
+      "expected_reason": "manual execution DTO mappings did not project the additive field"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/contract/issueopslease -run 'Test(CurrentCompletionRejectsBlankVerificationEvidence|CompletionHistoryRejectsIncompleteEntries)' -count=1",
+      "observed": "current completion with a whitespace-only verification entry was accepted",
+      "expected_reason": "review msg_ccf7c443f51d found the shared trim validation missing from validateCompletion"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/domain/issueopscompletion ./internal/application/issueopslease -run 'Test(ApplyCompletionReleasesLeaseAndStampsDoneLedger|ReseedServiceArchivesCompletionAtItsOriginGeneration)$' -count=1",
+      "observed": "build failed because completion receipts and reseed requests had no typed generation provenance",
+      "expected_reason": "the first implementation incorrectly archived the current lease generation, which would label #261's generation-4 receipt as generation 5"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/domain/issueopscompletion ./internal/application/issueopslease ./internal/contract/issueops ./internal/contract/issueopslease ./internal/adapter/outbound/issueopscompletion ./internal/adapter/inbound/issueopscompletion ./internal/adapter/inbound/issueopslease ./internal/adapter/inbound/issueopspreparation ./internal/core/issueops ./cmd/harness/mcpcli ./cmd/harness/issueopscli/executioncmd -count=1",
+      "observed": "future receipt stamping, legacy typed selection, fail-closed missing/conflicting selection, persistence, CLI, and MCP projections passed"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/contract/issueops ./internal/contract/issueopslease ./internal/domain/issueopslease ./internal/application/issueopslease ./internal/adapter/outbound/issueopslease ./internal/application/issueopscompletion ./internal/adapter/outbound/issueopscompletion ./internal/core/issueops -count=1",
+      "observed": "all selected contract, domain, application, persistence, and core packages passed"
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/contract/issueops ./internal/contract/issueopslease ./internal/application/issueopscompletion -count=1",
+      "observed": "both strict contracts accepted completion-history entries whose origin generation equaled or exceeded the current lease generation",
+      "expected_reason": "history validated internal generation agreement but not that an archived completion must precede the post-reseed lease"
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/contract/issueops ./internal/contract/issueopslease ./internal/application/issueopscompletion -count=1",
+      "observed": "equal/future history provenance is rejected and the literal #261 generation-6 and #237 generation-3 completion transitions pass"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "statement": "completion-bearing released/claimable reseed의 허용 의미를 감사 가능한 reopen으로 하나로 고정한다.",
+      "tests": [
+        "TestValidateExecutionAcceptsCompletionHistory",
+        "TestCompletionHistoryStrictRoundTripAndLegacyRead",
+        "TestCompletionHistoryRejectsIncompleteEntries",
+        "TestCurrentCompletionRejectsBlankVerificationEvidence",
+        "TestCompletionGenerationValidation"
+      ],
+      "result": "PASS",
+      "observed": "current와 history의 blank verification을 공통 validator가 거부하고, stamped generation과 history origin generation의 일관성 및 history origin < current lease generation을 strict contract 양쪽에서 검증한다."
+    },
+    {
+      "id": "AC-02",
+      "statement": "이전 completion을 보존하면서 current slot, phase, proof, ledger를 같은 CAS에서 재개한다.",
+      "tests": [
+        "TestReseedServiceReopensCompletedExecutionAtomically",
+        "TestReseedServiceArchivesCompletionAtItsOriginGeneration",
+        "TestReseedServiceFailsClosedWithoutTypedLegacyCompletionProvenance",
+        "TestReseedServiceRejectsConflictingCompletionProvenance",
+        "TestReseedServicePreservesCompletionFreeSemantics",
+        "TestReseedServicePrepareFailureDoesNotMutateCompletedSnapshot",
+        "TestReseedServiceCommitFailureDoesNotPersistCompletedReopen",
+        "TestReseedRepositoryRejectedCASLeavesRecordAndHolderIndexUntouched"
+      ],
+      "result": "PASS",
+      "observed": "future receipt generation은 직접 사용하고 legacy receipt는 명시 selection을 요구한다. 누락·충돌은 prepare/CAS 전에 거부되며 실패 및 stale CAS는 durable record와 holder index를 변경하지 않는다."
+    },
+    {
+      "id": "AC-03",
+      "statement": "reopen을 금지할 때 필요한 fail-closed 대안이다.",
+      "result": "NOT_APPLICABLE",
+      "observed": "AC-01 compatibility review에서 reopen 계약을 선택했으므로 prohibition branch는 구현하지 않았다."
+    },
+    {
+      "id": "AC-04",
+      "statement": "새 generation holder가 새 HEAD와 evidence로 exactly-once completion할 수 있다.",
+      "tests": [
+        "TestCompleteReopenedGenerationKeepsExactlyOnceContract",
+        "TestApplyCompletionClearsCompletedReseedStaleNotesFromPRAndDone",
+        "TestRepositoryAtomicallyPersistsCompletionAndDeletesHolderIndex"
+      ],
+      "result": "PASS",
+      "observed": "#261 generation 6의 ff27b... 및 #237 generation 3의 9c8db... evidence가 각각 generation-stamped receipt로 한 번만 commit되고 동일 retry는 멱등 성공하며 다른 evidence retry는 기존 오류로 거부된다."
+    },
+    {
+      "id": "AC-05",
+      "statement": "이전 completion retry 규칙과 released holder index 정리가 회귀하지 않는다.",
+      "tests": [
+        "TestCompleteIdenticalRetrySkipsEnvironmentAndStillSettles",
+        "TestCompleteReopenedGenerationKeepsExactlyOnceContract",
+        "TestRepositoryAtomicallyPersistsCompletionAndDeletesHolderIndex"
+      ],
+      "result": "PASS",
+      "observed": "기존 exactly-once guard는 변경하지 않았고 completion repository가 holder index를 같은 transaction에서 삭제한다."
+    },
+    {
+      "id": "AC-06",
+      "statement": "#261 d6d8→ff27 및 #237 기존 완료→9c8db 전이를 literal fixture로 재현한다.",
+      "tests": [
+        "TestReseedServiceReopensCompletedExecutionAtomically",
+        "TestReseedServiceArchivesCompletionAtItsOriginGeneration",
+        "TestReseedRepositoryPersistsCompletedReseedHistoryFixtures",
+        "TestCompleteReopenedGenerationKeepsExactlyOnceContract"
+      ],
+      "result": "PASS",
+      "observed": "#261 lease generation 5/current completion d6d8... origin 4와 #237 lease generation 2/current completion fcd842... origin 1을 durable timestamp와 함께 고정하고, reopen 뒤 generation 6의 ff27b... 및 generation 3의 9c8db...가 실제 Completion.FinalHead가 되는 전이를 검증한다."
+    },
+    {
+      "id": "AC-07",
+      "statement": "CLI/MCP/status next_command와 운영 문서가 reopen 계약과 일치한다.",
+      "tests": [
+        "TestExecutionReseedCompletedStatusExposesReopenContract",
+        "TestExecutionReseedCLIMapsCompletionGeneration",
+        "TestExecutionActionRequestFromMCPMapsCompletionGeneration",
+        "TestIssueOpsExecutionPrepareCLIAndMCPStatusAndErrorsAreIdentical",
+        "contractgolden Golden",
+        "TestResponseContractsGolden"
+      ],
+      "result": "PASS",
+      "observed": "reseed result, lifecycle status, execution status, CLI와 MCP가 generation/history를 lossless하게 노출하고 preview next_command가 explicit completion_generation을 보존한다."
+    },
+    {
+      "id": "AC-08",
+      "statement": "실제 #261/#237 lifecycle 복구와 PR merge/release/cleanup dogfood",
+      "result": "DEFERRED",
+      "observed": "계획에 따라 #304 구현 PR 병합 뒤 coordinator가 parent 최신 binary로 수행하는 post-merge gate다. 이 worker는 live lifecycle을 reseed하지 않았다."
+    }
+  ],
+  "verification": [
+    "go test ./internal/contract/issueops ./internal/contract/issueopslease ./internal/domain/issueopslease ./internal/application/issueopslease ./internal/adapter/outbound/issueopslease ./internal/application/issueopscompletion ./internal/adapter/outbound/issueopscompletion ./internal/core/issueops -count=1 => exit 0",
+    "go test ./cmd/harness/issueopscli/... ./cmd/harness/harnessapp -count=1 => exit 0",
+    "go test ./cmd/harness/contractgolden -run Golden -count=1 => exit 0",
+    "go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1 => exit 0",
+    "go test ./... -count=1 => exit 0",
+    "go test -race ./... -count=1 => exit 0",
+    "go vet ./... => exit 0",
+    "go build -o bin/agent-harness ./cmd/harness => exit 0",
+    "git diff --check => exit 0"
+  ],
+  "shannon_audit": {
+    "diff_inventory": "38 tracked modified files plus the untracked Turing report and one untracked Go CLI contract test; code metrics cover 33 tracked changed Go files and the untracked Go test",
+    "snr": {
+      "baseline": 0.967,
+      "after": 1.0,
+      "target": 0.96,
+      "passed": true
+    },
+    "entropy": {
+      "scope": "19 changed production Go files; function bodies approximated from func declaration to the first top-level closing brace",
+      "head_above_6": 22,
+      "after_above_6": 23,
+      "head_above_12": 9,
+      "after_above_12": 9,
+      "passed": true,
+      "note": "lexical heuristic found no new production function above the high-risk threshold; one production function crossed only the low-risk warning threshold"
+    },
+    "redundancy": {
+      "head_same_file_exact_six_line_blocks": 12,
+      "after_same_file_exact_six_line_blocks": 12,
+      "passed": true
+    },
+    "channel_overhead": {
+      "head_files_over_50_percent": 0,
+      "after_files_over_50_percent": 0,
+      "passed": true,
+      "note": "the lexical boilerplate ratio found no changed production Go file above 50 percent"
+    },
+    "heuristic_caveat": "SNR, complexity, exact-block redundancy, and overhead are reproducible lexical approximations over the changed Go diff/files, not AST-backed metrics; tests, race, and vet provide secondary evidence.",
+    "no_input_guard": "not triggered; the measured Go diff was non-empty"
+  },
+  "ai_slop_clean": [
+    "중복 history model이나 legacy oracle을 추가하지 않고 기존 core/stable contract에 additive field만 두었다.",
+    "generic phase regression API와 compatibility shim을 추가하지 않았다.",
+    "기존 whole-record raw CAS와 exactly-once completion guard를 재사용했다.",
+    "review msg_ccf7c443f51d의 current completion whitespace evidence 회귀를 RED로 재현하고 shared validator에서 수정했다.",
+    "current lease generation, completed_at/replaced_at, current-1 heuristic을 모두 거절하고 receipt stamp 또는 explicit typed origin selection만 허용했다."
+  ],
+  "implementation_reviews": [
+    {
+      "reviewer": "fresh gpt-5.6-sol xhigh Brooks",
+      "verdict": "revise",
+      "findings": [
+        "#261 retained a generation-4 completion under lease generation 5, but the first implementation archived generation 5",
+        "#237 persistence fixture used a synthetic old HEAD instead of fcd84227e5ed67d951d02f866bb6c23f1ecb0b27",
+        "prior-history append, completion-bearing claimable, and completed CAS failure coverage was incomplete"
+      ],
+      "resolution": "future receipts now stamp generation; legacy receipts require explicit completion_generation; #261/#237 durable literals and the missing matrix were added; a new fresh review is required before publication"
+    },
+    {
+      "reviewer": "fresh gpt-5.6-sol xhigh Brooks after provenance revision",
+      "verdict": "pass",
+      "findings": [],
+      "observed": "unconditional PASS on the complete current diff, including shared current/history verification validation, generation stamping, explicit legacy origin selection, live #261/#237 fixtures, failure atomicity, and CLI/MCP projections"
+    },
+    {
+      "reviewer": "fresh gpt-5.6-sol xhigh Brooks after report/fingerprint refresh",
+      "verdict": "revise",
+      "findings": [
+        "strict history validation accepted an origin generation equal to or greater than the current lease generation",
+        "the live-state fixtures did not complete #261 at generation 6 and #237 at generation 3 with their actual new HEADs"
+      ],
+      "resolution": "both strict contracts now require history generation to precede the lease generation, equality/future RED fixtures were added, and completion tests now stamp ff27b... at generation 6 and 9c8db... at generation 3; another fresh sealed review is required"
+    }
+  ],
+  "deviations": [
+    "Orca worker-start retry가 current external dispatch ctx_8940a767e707을 복구했지만 durable record에는 stale dispatch ctx_442bc14138c4와 이전 PTY가 남았다. Coordinator 지시에 따라 sealed generation-1 claim을 mutation authority로 사용했다.",
+    "startup replace --preview는 native actor 오류로 끝난 read-only dogfood deviation이며 replace/reseed mutation은 실행하지 않았다.",
+    "Orca inbox reader는 lifecycle hook의 allowlist 밖이라 차단됐고, coordinator가 msg_ccf7c443f51d 리뷰 원문을 대화에 전달해 동일 내용을 검증·반영했다."
+  ]
+}

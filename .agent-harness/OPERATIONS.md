@@ -245,6 +245,22 @@ partial, or future-version identity is an invariant violation. Legacy status ret
 then execute the emitted resume command. Do not trust the current worktree
 files or add digest fields manually.
 
+완료 영수증이 있는 `released` 또는 `claimable` execution을 `--reseed`하면 기존 영수증은
+generation, reason, reopen time과 함께 append-only `execution.completion_history`로 이동하고
+현재 `completion`은 비워진다. 같은 raw-CAS commit이 phase를 `implement`로 되돌리고 현재
+HEAD에 묶인 AI-slop/implementation-review/remote-completion proof를 제거하며, `implement`
+이후 ledger entry를 `stale: completed execution reseed (<old> -> <new>)`로 표시한다. Branch,
+worktree, PR/MR artifact, feedback, decision, sync-base event와 이전 history는 보존된다. History가
+없는 기존 schema v1 record도 계속 읽을 수 있다. 새 completion은 receipt에 lease generation을
+직접 기록한다. Generation이 없는 legacy completion은 현재 lease generation이나
+`completed_at`/`replaced_at` 시간으로 원 generation을 추론하지 않는다. 이슈와 durable incident
+evidence로 확인한 origin을 preview와 reseed 양쪽에 `--completion-generation N`으로 명시해야 하며,
+누락하거나 stamped generation과 충돌하면 artifact prepare와 record CAS 전에 fail-closed한다.
+Preview의 `next_command`는 선택한 origin generation을 그대로 보존한다. Status가 반환한 exact generation-bound
+`resume` 또는 `claim`을 실행한 뒤 새 HEAD에서 구현 검증, AI-slop proof, implementation review,
+정상 forward phase를 다시 획득하고 새 evidence로 `execution complete`한다. 이전 completion을
+재시도하거나 state JSON을 직접 지우지 않는다.
+
 `issueops remote create-pr`와 `issueops execution reconcile`의
 `remote_pr_create` 경로는 같은 publication capability handler를 사용한다.
 초기 생성은 CLI에만 있고, 복구는 CLI와 MCP `issueops_execution` 양쪽에서 같은

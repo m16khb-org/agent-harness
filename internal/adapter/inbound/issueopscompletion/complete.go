@@ -71,7 +71,15 @@ func coreExecution(execution leasecontract.Execution) issueopscontract.Execution
 		result.Pending = &issueopscontract.ExternalIntent{OperationID: execution.Pending.OperationID, Kind: execution.Pending.Kind, Marker: execution.Pending.Marker, StartedAt: execution.Pending.StartedAt}
 	}
 	if execution.Completion != nil {
-		result.Completion = &issueopscontract.ExecutionCompletion{FinalHead: execution.Completion.FinalHead, TuringReportPath: execution.Completion.TuringReportPath, Verification: append([]string(nil), execution.Completion.Verification...), RemoteArtifactURL: execution.Completion.RemoteArtifactURL, CompletedAt: execution.Completion.CompletedAt}
+		result.Completion = &issueopscontract.ExecutionCompletion{Generation: execution.Completion.Generation, FinalHead: execution.Completion.FinalHead, TuringReportPath: execution.Completion.TuringReportPath, Verification: append([]string(nil), execution.Completion.Verification...), RemoteArtifactURL: execution.Completion.RemoteArtifactURL, CompletedAt: execution.Completion.CompletedAt}
+	}
+	for _, entry := range execution.CompletionHistory {
+		result.CompletionHistory = append(result.CompletionHistory, issueopscontract.ExecutionCompletionHistory{
+			Generation: entry.Generation,
+			Completion: issueopscontract.ExecutionCompletion{Generation: entry.Completion.Generation, FinalHead: entry.Completion.FinalHead, TuringReportPath: entry.Completion.TuringReportPath, Verification: append([]string(nil), entry.Completion.Verification...), RemoteArtifactURL: entry.Completion.RemoteArtifactURL, CompletedAt: entry.Completion.CompletedAt},
+			Reason:     entry.Reason,
+			ReopenedAt: entry.ReopenedAt,
+		})
 	}
 	if execution.Failure != nil {
 		result.Failure = &issueopscontract.ExecutionFailure{OperationID: execution.Failure.OperationID, Code: execution.Failure.Code, Message: execution.Failure.Message, At: execution.Failure.At}
