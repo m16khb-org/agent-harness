@@ -111,6 +111,7 @@ type OwnerEvidence struct {
 }
 
 type OwnerArtifacts struct {
+	PlanPath            string
 	ClaimTokenPath      string
 	ClaimTokenSHA256    string
 	ContextPacketPath   string

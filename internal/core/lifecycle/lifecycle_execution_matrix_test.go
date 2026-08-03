@@ -1038,3 +1038,104 @@ func TestExecutionClaimableAndReleasedLeaseGuidanceUsesActorFreeStatus(t *testin
 		})
 	}
 }
+
+func TestExecutionReleasedOrcaAllowsExactPlanArtifactStage(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source := guardRepoWithCycle(t, "262-source", IssueOpsPhasePlan)
+	linked := linkIssueOpsWorktreeForGuardTest(t, source, "262-released-artifact")
+	record, err := ReadIssueOps(IssueOpsStateRoot(), linked.id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Execution = &issueopscontract.Execution{
+		Mode: issueopscontract.ExecutionModeOrca,
+		Workspace: issueopscontract.Workspace{
+			SourceRoot: source, Root: linked.path, Branch: record.Branch,
+			BaseHead: strings.Repeat("a", 40), Driver: "orca", LinkedAt: "2026-08-03T00:00:00Z",
+		},
+		Lease: issueopscontract.WriteLease{Generation: 3, Status: issueopscontract.LeaseStatusReleased},
+	}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	planPath := filepath.Join(linked.path, ".agent-harness", "plans", "262.md")
+	if err := os.MkdirAll(filepath.Dir(planPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(planPath, []byte("# Recovery plan\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	request := lifecyclecontract.HookToolUseLifecycleRequest{
+		Repo: source, CWD: linked.path, SourceCheckout: source,
+		Host: "codex", SessionID: "coordinator", Tool: "Bash", EnforceWorktree: true,
+		Command: "agent-harness issueops artifact stage --id " + linked.id + " --name plan --file " + planPath + " --json",
+	}
+	request.Command = "agent-harness issueops link-plan --id " + linked.id + " --plan-path " + planPath + " --host codex --session-id coordinator --cwd " + linked.path + " --json"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("clean released Orca plan linking was denied: %+v", got)
+	}
+
+	request.Command = "agent-harness issueops artifact stage --id " + linked.id + " --name plan --file " + planPath + " --json"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("clean released Orca plan staging was denied: %+v", got)
+	}
+
+	request.Command = "agent-harness issueops artifact stage --id " + linked.id + " --name spec --file " + planPath + " --json"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "block" {
+		t.Fatalf("released recovery admitted non-plan staging: %+v", got)
+	}
+
+	record.Execution.Lease.Status = issueopscontract.LeaseStatusClaimable
+	record.Execution.Lease.ClaimTokenSHA256 = strings.Repeat("b", 64)
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	request.Command = "agent-harness issueops artifact stage --id " + linked.id + " --name plan --file " + planPath + " --json"
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "block" || got.Deny == nil || got.Deny.Code != "lease_claimable" {
+		t.Fatalf("claimable near-miss admitted recovery staging: %+v", got)
+	}
+}
+
+func TestExecutionReleasedOrcaRejectsCrossLifecyclePlanRecovery(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source := guardRepoWithCycle(t, "262-cross-source", IssueOpsPhasePlan)
+	released := linkIssueOpsWorktreeForGuardTest(t, source, "262-released-source")
+	target := linkIssueOpsWorktreeForGuardTest(t, source, "263-plan-target")
+	record, err := ReadIssueOps(IssueOpsStateRoot(), released.id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Execution = &issueopscontract.Execution{
+		Mode: issueopscontract.ExecutionModeOrca,
+		Workspace: issueopscontract.Workspace{
+			SourceRoot: source, Root: released.path, Branch: record.Branch,
+			BaseHead: strings.Repeat("a", 40), Driver: "orca", LinkedAt: "2026-08-03T00:00:00Z",
+		},
+		Lease: issueopscontract.WriteLease{Generation: 3, Status: issueopscontract.LeaseStatusReleased},
+	}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	planPath := filepath.Join(released.path, ".agent-harness", "plans", "262.md")
+	if err := os.MkdirAll(filepath.Dir(planPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(planPath, []byte("# Cross-lifecycle plan\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for name, command := range map[string]string{
+		"stage": "agent-harness issueops artifact stage --id " + target.id + " --name plan --file " + planPath + " --json",
+		"link":  "agent-harness issueops link-plan --id " + target.id + " --plan-path " + planPath + " --host codex --session-id coordinator --cwd " + released.path + " --json",
+	} {
+		t.Run(name, func(t *testing.T) {
+			request := lifecyclecontract.HookToolUseLifecycleRequest{
+				Repo: source, CWD: released.path, SourceCheckout: source,
+				Host: "codex", SessionID: "coordinator", Tool: "Bash", EnforceWorktree: true,
+				Command: command,
+			}
+			if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "block" {
+				t.Fatalf("released recovery admitted a different lifecycle ID: %+v", got)
+			}
+		})
+	}
+}

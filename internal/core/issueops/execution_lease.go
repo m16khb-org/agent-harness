@@ -376,6 +376,13 @@ func resealOwnerContextForReplacement(ctx context.Context, stateRoot string, rec
 	if record.Execution == nil || record.Execution.Mode != issueops.ExecutionModeOrca || record.Execution.Orca == nil {
 		return executionOwnerReseal{}, nil
 	}
+	if strings.TrimSpace(record.PlanPath) == "" {
+		return executionOwnerReseal{}, newPlanArtifactRequiredError(record, false)
+	}
+	stagedPlan, err := RequireStagedExecutionOwnerPlan(stateRoot, record)
+	if err != nil {
+		return executionOwnerReseal{}, err
+	}
 	if deps.ReadIssue == nil {
 		return executionOwnerReseal{}, fmt.Errorf("replacement cannot reseal the owner context without a remote issue reader")
 	}
@@ -383,9 +390,12 @@ func resealOwnerContextForReplacement(ctx context.Context, stateRoot string, rec
 	if err != nil {
 		return executionOwnerReseal{}, fmt.Errorf("replacement stopped because the remote issue could not be read for resealing: %w", err)
 	}
-	manifest, err := materializeStagedArtifacts(stateRoot, record)
+	plan, manifest, err := materializeExecutionOwnerArtifacts(stateRoot, record)
 	if err != nil {
 		return executionOwnerReseal{}, err
+	}
+	if plan.Path != record.PlanPath || plan.Digest != stagedPlan.Digest {
+		return executionOwnerReseal{}, newPlanArtifactRequiredError(record, false)
 	}
 	binding := record.Execution.Orca
 	artifacts, err := buildExecutionOwnerArtifacts(record, ExecutionPrepareRequest{

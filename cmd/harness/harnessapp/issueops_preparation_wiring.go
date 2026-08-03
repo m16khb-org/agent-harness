@@ -76,7 +76,7 @@ func newIssueOpsPreparationService(stateRoot, id string, deps issueOpsPreparatio
 	evidence := preparationoutbound.NewEvidence(preparationoutbound.EvidenceDependencies{
 		Workspace: issueops.ResolveExecutionPreparationWorkspace,
 		ReadOwner: func(ctx context.Context, snapshot preparationcontract.Snapshot, _ preparationcontract.Command) (preparationcontract.OwnerEvidence, error) {
-			return issueops.ReadExecutionPreparationOwnerEvidence(ctx, snapshot, deps.ReadIssue)
+			return issueops.ReadExecutionPreparationOwnerEvidence(ctx, stateRoot, snapshot, deps.ReadIssue)
 		},
 		MaterializeDirect: func(_ context.Context, snapshot preparationcontract.Snapshot, receipt preparationcontract.WorkspaceReceipt) error {
 			return issueops.MaterializeExecutionPreparationDirect(stateRoot, snapshot, receipt)

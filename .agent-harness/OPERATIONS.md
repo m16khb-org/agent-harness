@@ -132,6 +132,13 @@ repeat the identical request with `--confirm`. `auto` selects Orca only when
 readiness succeeds before mutation; otherwise it selects direct. The only
 first-party owner hosts are Codex and Claude.
 
+Orca-capable prepare 전에 승인된 child plan을 source checkout 밖의 coordinator
+임시 파일에 작성하고 `issueops artifact stage --id ID --name plan --file PATH --json`로
+stage한다. 이 command에는 actor flag가 없다. Fresh Orca prepare는 worktree receipt
+직후 `.agent-harness/artifact/plan.md`로 materialize하고 그 경로를 durable
+`plan_path`로 같은 CAS에 기록하며 동일 digest를 sealed packet에 넣은 뒤에만 owner를
+띄운다. `parent_plan_path`는 이 readiness를 만족시키지 않는다.
+
 엄브렐라 자식 cycle은 `issueops branch prepare`에 canonical
 `--parent-worktree`를 기록하고 preview의 `workspace.parent_worktree`가 부모
 통합 worktree를 가리키는지 확인한다. 내부 delegation이 없는 provider-native
@@ -158,8 +165,11 @@ path, IID가 모두 같을 때만 equivalent identity다.
 push하지 않으므로 이 순서가 성립한다. 실제 값은 앞 단계 출력에서 그대로 옮겨 적는다 — 아래
 꺾쇠 자리는 셸 변수가 아니다.
 
+#176의 전체 계약은 `branch prepare` (base SHA only) → `artifact stage --name plan` → `execution prepare --mode orca` → GraphQL `createLinkedBranch` with `oid=sealed base SHA` → `branch prepare --link-verified` 순서다.
+
 ```bash
 agent-harness issueops branch prepare --id ID --base-sha <BASE_HEAD> ...    # 기록만, 브랜치 없음
+agent-harness issueops artifact stage --id ID --name plan --file <TEMP_PLAN_OUTSIDE_SOURCE> --json
 agent-harness issueops execution prepare --id ID --mode orca ... --confirm  # Orca가 로컬 브랜치 생성
 gh api repos/<OWNER>/<REPO>/issues/<NUMBER> --jq .node_id                   # 다음 단계의 issueId
 gh api graphql -f 'query=mutation($issueId:ID!,$oid:GitObjectID!,$name:String!){createLinkedBranch(input:{issueId:$issueId,oid:$oid,name:$name}){linkedBranch{ref{name target{oid}}}}}' -F issueId=<NODE_ID> -F oid=<BASE_HEAD> -F name=<BRANCH>
@@ -248,6 +258,17 @@ partial, or future-version identity is an invariant violation. Legacy status ret
 then execute the emitted resume command. Do not trust the current worktree
 files or add digest fields manually.
 
+Resume은 `artifact_manifest.plan`, private sealed plan file, canonical child
+worktree 안의 durable `plan_path`가 같은 SHA-256인지 외부 mutation 전에 검증한다.
+누락 또는 drift는 `orca_plan_artifact_required`와 replacement-preview action으로
+끝나며 operation ID, intent, terminal/Run/task/dispatch, lease를 만들지 않는다.
+기존 released Orca cycle에 plan이 없으면 coordinator가 canonical worktree에 child
+plan을 작성하고 exact `link-plan`으로 경로를 고정한 뒤 동일 파일을 `artifact stage`
+한다. 이 예외는 Orca + released + holder/pending/completion 없음에서 plan에만
+허용된다. Stage는 현재 packet을 바꾸지 않으므로 반드시 generation-CAS
+`execution replace --reseed` 후 emitted `execution resume`을 실행한다. Active,
+claimable, revoking, completed, direct cycle에서는 stage/link가 계속 차단된다.
+
 `issueops remote create-pr`와 `issueops execution reconcile`의
 `remote_pr_create` 경로는 같은 publication capability handler를 사용한다.
 초기 생성은 CLI에만 있고, 복구는 CLI와 MCP `issueops_execution` 양쪽에서 같은
@@ -312,10 +333,12 @@ Use this order:
 
 ```text
 provider branch + base SHA
+-> approved child plan in coordinator temp file + artifact stage
 -> execution prepare preview/confirm
--> sealed packet/prompt + native owner launch
+-> worktree receipt + durable plan_path + sealed plan/packet/prompt
+-> native owner launch
 -> execution claim with token file and both digests
--> staged plan link + phase=implement
+-> compatibility/devil's-advocate gates + phase=implement
 -> TDD/verification in the canonical worktree
 -> AI-slop evidence + phase=ai-slop-clean
 -> implementation review + atomic commit/push + phase=pr
@@ -335,7 +358,7 @@ cleanup evidence 기록이 phase를 자동 전이한다고 가정하지 않는�
 
 ## IssueOps 이원 구조 운영 (planner/implementer)
 
-- 스폰 준비: `issueops artifact stage --id ID --name plan|spec|turing-loop --file PATH` (prepare 전에만; 잘못 올렸으면 `artifact unstage`) → `issueops execution prepare --id ID --mode auto ...` (`--owner-model` 생략 시 host implementer 기본값: codex `gpt-5.6-terra`/xhigh, claude `claude-sonnet-5`/high; Claude planner/reviewer 기본값은 `claude-opus-5`/high이며 Fable 5는 명시적 수동 지정만 허용).
+- 스폰 준비: 승인된 child plan을 source checkout 밖의 임시 파일에 작성 → `issueops artifact stage --id ID --name plan --file PATH --json` → `issueops execution prepare --id ID --mode auto ...`. `spec|turing-loop`도 prepare 전에 stage할 수 있고 잘못 올렸으면 `artifact unstage`한다. Clean released Orca에서는 next-generation recovery용 plan stage만 허용되며 반드시 `execution replace --reseed` 후 resume한다. (`--owner-model` 생략 시 host implementer 기본값: codex `gpt-5.6-terra`/xhigh, claude `claude-sonnet-5`/high; Claude planner/reviewer 기본값은 `claude-opus-5`/high이며 Fable 5는 명시적 수동 지정만 허용).
 - 다중 사이클 조망: `issueops list [--repo PATH] --json` — claimable/cleanup/unreflected 플래그와 scanned_records 비용을 함께 노출한다.
 - 하위 세션 publication(orca): `issueops implementation-review record --id ID --verdict pass --finding ... --evidence ... --reviewer-model <planner급>` 기록 후에만 `remote create-pr`가 통과한다. diff가 바뀌면 stale로 다시 막힌다.
 - 머지 후 정리(순서 고정): `cleanup status --merged` → `cleanup close-children --merged --confirm` → `remote reflect-completion --confirm` → `remote close-issue --confirm` → `cleanup finish --preview` → `cleanup finish --apply --confirm --fingerprint FP`. finish 재실행 전에는 preview로 fingerprint를 재발급한다.

@@ -266,6 +266,7 @@ func (repository *SQLiteRepository) ApplyReceipt(ctx context.Context, state prep
 		intent.ClaimTokenSHA256 = state.OwnerArtifacts.ClaimTokenSHA256
 		intent.Stage = preparationcontract.IntentStageTerminal
 		record.WorktreePath = prepared.Workspace.Root
+		record.PlanPath = state.OwnerArtifacts.PlanPath
 		record.Execution.Workspace = leasecontract.Workspace{
 			SourceRoot: prepared.Workspace.SourceRoot, Root: prepared.Workspace.Root,
 			Branch: prepared.Workspace.Branch, BaseHead: prepared.Workspace.BaseHead,

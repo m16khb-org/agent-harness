@@ -55,6 +55,24 @@ func TestIssueOpsExecutionDocumentationHasOneCurrentContract(t *testing.T) {
 	}
 }
 
+func TestIssueOpsDocumentationPreservesGitHubOrcaBranchOrdering(t *testing.T) {
+	documents := map[string]string{
+		"skill":      readIssueOpsContractFile(t, "skills", "issueops", "SKILL.md"),
+		"execution":  readIssueOpsContractFile(t, "skills", "issueops", "references", "execution.md"),
+		"start":      readIssueOpsContractFile(t, "skills", "issueops", "references", "operational-start.md"),
+		"operations": readIssueOpsContractFile(t, ".agent-harness", "OPERATIONS.md"),
+	}
+	const want = "`branch prepare` (base SHA only) → `artifact stage --name plan` → `execution prepare --mode orca` → GraphQL `createLinkedBranch` with `oid=sealed base SHA` → `branch prepare --link-verified`"
+	for name, document := range documents {
+		if !strings.Contains(document, want) {
+			t.Errorf("%s missing GitHub Orca branch ordering %q", name, want)
+		}
+		if strings.Contains(document, "gh issue develop --name") {
+			t.Errorf("%s reintroduces the superseded GitHub Orca branch creation command", name)
+		}
+	}
+}
+
 func TestIssueOpsExecutionDocumentationPreservesParallelIndependence(t *testing.T) {
 	all := strings.ToLower(joinIssueOpsContractDocuments(map[string]string{
 		"execution": readIssueOpsContractFile(t, "skills", "issueops", "references", "execution.md"),

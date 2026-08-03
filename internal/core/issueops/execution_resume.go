@@ -161,7 +161,23 @@ func validateExecutionResumePacket(record issueops.IssueOpsRecord, issueDigest, 
 	if observed := digestExecutionOwnerBytes([]byte(packet.Issue.Body)); observed != issueDigest {
 		return fmt.Errorf("sealed context packet issue body does not hash to its sealed digest: expected=%s observed=%s", issueDigest, observed)
 	}
+	planDigest, ok := packet.ArtifactManifest["plan"]
+	if !ok || !validExecutionOwnerDigest(planDigest) {
+		return newPlanResumeArtifactRequiredError(record)
+	}
+	sealedPlanPath := filepath.Join(record.Execution.Workspace.Root, filepath.FromSlash(IssueOpsArtifactDir), "plan.md")
+	sealedPlan, err := readExecutionOwnerArtifact(record.Execution.Workspace.Root, sealedPlanPath)
+	if err != nil || digestExecutionOwnerBytes(sealedPlan) != planDigest {
+		return newPlanResumeArtifactRequiredError(record)
+	}
+	durablePlan, err := readLinkedPlanIdentity(record)
+	if err != nil || durablePlan.Digest != planDigest {
+		return newPlanResumeArtifactRequiredError(record)
+	}
 	for name, digest := range packet.ArtifactManifest {
+		if name == "plan" {
+			continue
+		}
 		path := filepath.Join(record.Execution.Workspace.Root, filepath.FromSlash(IssueOpsArtifactDir), name+".md")
 		artifact, err := readExecutionOwnerArtifact(record.Execution.Workspace.Root, path)
 		if err != nil {

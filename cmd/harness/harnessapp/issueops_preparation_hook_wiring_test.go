@@ -143,6 +143,11 @@ func prepareHookExecutionFixture(t *testing.T, mode, host string) (string, issue
 	if _, err := issueops.WriteIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}
+	if mode == "orca" {
+		if _, err := issueops.StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte("# Hook preparation plan\n")); err != nil {
+			t.Fatal(err)
+		}
+	}
 	actor := claimWiringActor(t)
 	actor.Host = host
 	actor.SessionID = "prepare-hook-holder"
