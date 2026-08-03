@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"testing"
 
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/port"
 )
 
 func TestListLeaseHolderIndexesReadsAndValidatesExistingRows(t *testing.T) {
@@ -22,7 +23,7 @@ func TestListLeaseHolderIndexesReadsAndValidatesExistingRows(t *testing.T) {
 		t.Fatal(err)
 	}
 	key := leaseHolderIndexKey(actor)
-	if err := db.Apply(context.Background(), []sqlstore.Mutation{{Bucket: leaseHolderBucket, ID: key, Data: data}}); err != nil {
+	if err := db.Apply(context.Background(), []port.RecordMutation{{Bucket: leaseHolderBucket, ID: key, Data: data}}); err != nil {
 		t.Fatal(err)
 	}
 	rows, err := ListLeaseHolderIndexes(stateRoot)
@@ -58,7 +59,7 @@ func TestListLeaseHolderIndexesRejectsMalformedOrMismatchedRows(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := db.Apply(context.Background(), []sqlstore.Mutation{{Bucket: leaseHolderBucket, ID: test.key, Data: test.data}}); err != nil {
+			if err := db.Apply(context.Background(), []port.RecordMutation{{Bucket: leaseHolderBucket, ID: test.key, Data: test.data}}); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := ListLeaseHolderIndexes(stateRoot); err == nil {

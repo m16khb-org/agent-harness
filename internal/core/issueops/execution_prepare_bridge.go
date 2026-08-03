@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/contract/issueops"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
 

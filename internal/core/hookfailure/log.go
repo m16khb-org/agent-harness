@@ -1,8 +1,9 @@
 package hookfailure
 
 import (
+	corestate "agent-harness/internal/adapter/outbound/state"
+	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/core/policy"
-	corestate "agent-harness/internal/core/state"
 	"bufio"
 	"context"
 	"encoding/json"
@@ -12,7 +13,7 @@ import (
 	"time"
 )
 
-const hookFailureLogFile = corestate.HookFailureLogFile
+const hookFailureLogFile = statecontract.HookFailureLogFile
 const hookFailureSnippetLimit = 500
 
 type HookFailureEvent struct {

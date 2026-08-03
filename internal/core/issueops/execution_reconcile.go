@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
 
@@ -144,7 +143,7 @@ func markRemotePullRequestRetry(stateRoot, id string, expected externalRemotePRP
 		if !reflect.DeepEqual(current, expected) {
 			return fmt.Errorf("external intent payload changed before retry CAS")
 		}
-		_, err = persistExecutionTransitionWithMutations(stateRoot, record, nil, []sqlstore.Mutation{{Bucket: externalIntentBucket, ID: expected.OperationID, Data: data}})
+		_, err = persistExecutionTransitionWithMutations(stateRoot, record, nil, []port.RecordMutation{{Bucket: externalIntentBucket, ID: expected.OperationID, Data: data}})
 		return err
 	})
 	return updated, err
@@ -171,7 +170,7 @@ func finishRemotePullRequestPreInvocationFailure(stateRoot, id string, payload e
 		record.Execution.Failure = &issueops.ExecutionFailure{
 			OperationID: payload.OperationID, Code: "external_operation_not_invoked", Message: boundedExecutionRemoteDiagnostic(cause), At: executionNow(now),
 		}
-		persisted, err = persistExecutionTransitionWithMutations(stateRoot, record, nil, []sqlstore.Mutation{{Bucket: externalIntentBucket, ID: payload.OperationID, Delete: true}})
+		persisted, err = persistExecutionTransitionWithMutations(stateRoot, record, nil, []port.RecordMutation{{Bucket: externalIntentBucket, ID: payload.OperationID, Delete: true}})
 		return err
 	})
 	return persisted, err

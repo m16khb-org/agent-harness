@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/port"
 )
 

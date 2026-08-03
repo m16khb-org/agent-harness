@@ -196,7 +196,7 @@ func CandidateSpecs() []CandidateSpec {
 			Impact: 91, Feasibility: 76, Novelty: 56, Risk: 28,
 			WhyNow:       []string{".agent-harness/PROJECT_AUDIT.md flags S1 P1 no write locking"},
 			ExpectedGain: []string{"concurrent state writes stop risking lost updates"},
-			VerifyWith:   []string{"go test ./internal/core/state -count=1", "go test -race ./internal/core/state -count=1"},
+			VerifyWith:   []string{"go test ./internal/application/state ./internal/adapter/outbound/state ./internal/adapter/outbound/sqlstore -count=1", "go test -race ./internal/application/state ./internal/adapter/outbound/state ./internal/adapter/outbound/sqlstore -count=1"},
 			Evidence:     []string{"PROJECT_AUDIT S1 P1"},
 		},
 		{

@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"agent-harness/internal/adapter/outbound/state"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/core/lifecycle/docupkeep"
 	"agent-harness/internal/core/lifecycle/model"
-	"agent-harness/internal/core/state"
 )
 
 type Store struct {

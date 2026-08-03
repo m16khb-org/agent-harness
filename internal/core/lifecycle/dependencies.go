@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"agent-harness/internal/adapter/outbound/state"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/core/issueops"
@@ -13,7 +14,6 @@ import (
 	"agent-harness/internal/core/projectdoc"
 	"agent-harness/internal/core/projectdocs"
 	"agent-harness/internal/core/searchrouting"
-	"agent-harness/internal/core/state"
 )
 
 const ProjectDocsDir = projectdoc.ProjectDocsDir

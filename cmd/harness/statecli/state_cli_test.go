@@ -9,8 +9,8 @@ import (
 
 	statecontract "agent-harness/internal/contract/state"
 
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/core"
-	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/testsupport"
 )
 

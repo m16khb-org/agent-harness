@@ -9,8 +9,8 @@ import (
 	statecontract "agent-harness/internal/contract/state"
 
 	"agent-harness/cmd/harness/harnessapp/responsecontract"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/core"
-	"agent-harness/internal/core/sqlstore"
 )
 
 func runCLIJSONContract(t *testing.T, replacements map[string]string, fn func() error) any {

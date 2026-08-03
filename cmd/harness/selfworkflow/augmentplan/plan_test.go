@@ -90,7 +90,7 @@ func TestPlanSelfAugmentationUsesGeniusThinkAndScoreGate(t *testing.T) {
 		t.Fatalf("issueops linking coverage should be satisfied after boundary coverage is implemented: %+v", result.Candidates)
 	}
 	if candidateByID(result.Candidates, "state-write-locking").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
-		t.Fatalf("state write locking should be satisfied after StateWrite uses per-key locks: %+v", result.Candidates)
+		t.Fatalf("state write locking should be satisfied after StateWrite uses the application-owned store span: %+v", result.Candidates)
 	}
 	if candidateByID(result.Candidates, "coverage-commandguard").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
 		t.Fatalf("commandguard coverage should be satisfied after boundary coverage is implemented: %+v", result.Candidates)

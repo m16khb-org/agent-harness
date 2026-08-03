@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
+	corestate "agent-harness/internal/adapter/outbound/state"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/core/lifecycle/model"
-	corestate "agent-harness/internal/core/state"
 )
 
 func TestAppendWritesJSONL(t *testing.T) {

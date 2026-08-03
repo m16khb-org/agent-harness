@@ -1,9 +1,10 @@
 package doctor
 
 import (
+	"agent-harness/internal/adapter/outbound/state"
+	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/core/lifecycle"
 	"agent-harness/internal/core/projectdoc"
-	"agent-harness/internal/core/state"
 )
 
 const ProjectDocsDir = projectdoc.ProjectDocsDir
@@ -14,7 +15,7 @@ func StateDir() string {
 	return state.StateDir()
 }
 
-func StateDoctor() (state.StateDoctorResult, error) {
+func StateDoctor() (statecontract.StateDoctorResult, error) {
 	return state.StateDoctor()
 }
 

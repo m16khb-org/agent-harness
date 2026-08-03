@@ -6,11 +6,11 @@ import (
 	completioninbound "agent-harness/internal/adapter/inbound/issueopscompletion"
 	"agent-harness/internal/adapter/orca"
 	completionoutbound "agent-harness/internal/adapter/outbound/issueopscompletion"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	completionapp "agent-harness/internal/application/issueopscompletion"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	completioncontract "agent-harness/internal/contract/issueopscompletion"
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/sqlstore"
 )
 
 func issueOpsCompleteHandler(ctx context.Context, stateRoot string, request issueops.ExecutionCompleteRequest) (issueops.ExecutionResult, error) {

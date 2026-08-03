@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/contract/issueops"
 	statecontract "agent-harness/internal/contract/state"
-	"agent-harness/internal/core/sqlstore"
 )
 
 func TestIssueOpsUsesOnlySchemaOneAndDedicatedNamespace(t *testing.T) {

@@ -90,7 +90,7 @@ func TestVerifyWithGroundedRejectsSelfCritique(t *testing.T) {
 	}
 
 	for _, vw := range [][]string{
-		{"go test ./internal/core/state -count=1"},
+		{"go test ./internal/application/state ./internal/adapter/outbound/state -count=1"},
 		{"response_contract golden"},
 		{"markdown fixture lint"},
 		{"temp HOME install smoke"},

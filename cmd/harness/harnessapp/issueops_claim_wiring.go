@@ -9,9 +9,9 @@ import (
 
 	leaseinbound "agent-harness/internal/adapter/inbound/issueopslease"
 	leaseoutbound "agent-harness/internal/adapter/outbound/issueopslease"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	leaseapp "agent-harness/internal/application/issueopslease"
 	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
 

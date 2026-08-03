@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 )
 
 var workerIDRe = regexp.MustCompile(`^[A-Za-z0-9._-]{1,128}$`)

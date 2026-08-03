@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"agent-harness/internal/adapter/outbound/state"
 	"agent-harness/internal/core/docs"
 	"agent-harness/internal/core/draftwiki/queue"
 	"agent-harness/internal/core/judgement"
@@ -14,7 +15,6 @@ import (
 	"agent-harness/internal/core/policy"
 	"agent-harness/internal/core/projectdoc"
 	"agent-harness/internal/core/prompt"
-	"agent-harness/internal/core/state"
 	coreworker "agent-harness/internal/core/worker"
 )
 

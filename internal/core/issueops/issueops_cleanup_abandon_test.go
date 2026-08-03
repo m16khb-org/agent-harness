@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
 
@@ -514,7 +514,7 @@ func TestCleanupAbandonAllowsStaleOwnerIntentAfterEveryOrcaStageIsAbsent(t *test
 				t.Fatal(err)
 			}
 			record.Execution.Pending.Kind = tc.kind
-			record, err = persistExecutionTransitionWithMutations(stateRoot, record, nil, []sqlstore.Mutation{{
+			record, err = persistExecutionTransitionWithMutations(stateRoot, record, nil, []port.RecordMutation{{
 				Bucket: externalIntentBucket, ID: payload.OperationID, Data: data,
 			}})
 			if err != nil {

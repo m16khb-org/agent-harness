@@ -100,6 +100,21 @@ func TestEvaluateEdgesAllowsPreparationDomainContract(t *testing.T) {
 	}
 }
 
+func TestEvaluateEdgesAllowsOnlyWaveTwoStorageAdapterImports(t *testing.T) {
+	for _, edge := range []dependencyEdge{
+		{"internal/core/issueops", "internal/adapter/outbound/sqlstore"},
+		{"internal/core/lifecycle", "internal/adapter/outbound/state"},
+	} {
+		if violations := evaluateEdges([]dependencyEdge{edge}); len(violations) != 0 {
+			t.Fatalf("wave-two storage edge %s must remain buildable until the owning core caller moves: %v", formatEdge(edge), violations)
+		}
+	}
+	edge := dependencyEdge{"internal/core/issueops", "internal/adapter/outbound/webfetch"}
+	if violations := evaluateEdges([]dependencyEdge{edge}); !containsViolation(violations, "core_must_not_import_adapter_or_cmd", edge) {
+		t.Fatalf("unrelated core adapter edge must remain forbidden: %v", violations)
+	}
+}
+
 func TestCurrentIssueOpsVerticalOnly(t *testing.T) {
 	repoRoot := findRepoRoot(t)
 	forbidden := []string{
@@ -237,6 +252,63 @@ func TestProductionGraphMatchesBaseline(t *testing.T) {
 	if err := compareBaseline(legacyEdges(edges), baseline); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestStateSQLNetworkSourcePrefixesAbsent(t *testing.T) {
+	forbidden := []string{
+		"internal/core/sqlstore",
+		"internal/core/state",
+		"internal/core/webfetch",
+	}
+	var violations []string
+	for _, pkg := range loadProductionPackages(t) {
+		for _, prefix := range forbidden {
+			if pkg == prefix || strings.HasPrefix(pkg, prefix+"/") {
+				violations = append(violations, "package "+pkg)
+			}
+		}
+	}
+	for _, edge := range loadProductionEdges(t) {
+		for _, prefix := range forbidden {
+			if edge.imported == prefix || strings.HasPrefix(edge.imported, prefix+"/") {
+				violations = append(violations, "import "+formatEdge(edge))
+			}
+		}
+	}
+	if len(violations) != 0 {
+		sort.Strings(violations)
+		t.Fatalf("state SQL network source prefixes remain:\n%s", strings.Join(violations, "\n"))
+	}
+}
+
+func TestStateSQLNetworkImplementationImportsStayOutbound(t *testing.T) {
+	for _, edge := range loadProductionEdges(t) {
+		if !isStateSQLNetworkCapability(edge.importer) || isOutboundAdapter(edge.importer) {
+			continue
+		}
+		if edge.imported == "database/sql" || edge.imported == "os" || edge.imported == "os/exec" || edge.imported == "net/http" || strings.Contains(edge.imported, "sqlite") {
+			t.Fatalf("state SQL network implementation escaped outbound adapter: %s", formatEdge(edge))
+		}
+	}
+}
+
+func isStateSQLNetworkCapability(path string) bool {
+	for _, prefix := range []string{
+		"internal/application/state",
+		"internal/application/webfetch",
+		"internal/contract/state",
+		"internal/contract/webfetch",
+		"internal/domain/state",
+		"internal/domain/statepath",
+		"internal/domain/webfetch",
+		"internal/port/state",
+		"internal/port/webfetch",
+	} {
+		if path == prefix || strings.HasPrefix(path, prefix+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 func TestProductionReseedRoutingHasNoLegacyFallback(t *testing.T) {
@@ -983,7 +1055,7 @@ func sourceCallCounts(node ast.Node) map[string]int {
 func evaluateEdges(edges []dependencyEdge) []violation {
 	var violations []violation
 	for _, edge := range edges {
-		if isCore(edge.importer) && (isAdapter(edge.imported) || isCommand(edge.imported)) {
+		if isCore(edge.importer) && (isAdapter(edge.imported) || isCommand(edge.imported)) && !isWaveTwoStorageAdapterEdge(edge) {
 			violations = append(violations, violation{"core_must_not_import_adapter_or_cmd", edge})
 		}
 		if isAdapter(edge.importer) && isCommand(edge.imported) {
@@ -1042,6 +1114,15 @@ func evaluateEdges(edges []dependencyEdge) []violation {
 		}
 	}
 	return violations
+}
+
+func isWaveTwoStorageAdapterEdge(edge dependencyEdge) bool {
+	if !isCore(edge.importer) {
+		return false
+	}
+	// T6가 storage 구현을 먼저 이동하고 T7이 남은 core caller를 다음 merge에서
+	// 제거하므로, 봉인된 두 adapter만 중간 parent HEAD에서 허용한다.
+	return edge.imported == "internal/adapter/outbound/sqlstore" || edge.imported == "internal/adapter/outbound/state"
 }
 
 func evaluateOwnershipEdges(edges []dependencyEdge) []violation {

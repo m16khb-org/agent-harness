@@ -2,7 +2,7 @@ package harnessapp
 
 import (
 	nativeactivationoutbound "agent-harness/internal/adapter/outbound/nativeactivation"
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/port"
 	activationport "agent-harness/internal/port/nativeactivation"
 )

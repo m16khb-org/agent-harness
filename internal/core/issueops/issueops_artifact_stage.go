@@ -8,9 +8,9 @@ import (
 	"sort"
 	"strings"
 
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/core/sqlstore"
 )
 
 // artifactStageBucket은 prepare 이전에 코디네이터가 스테이징한 artifact를

@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops/artifactverify"
 	"agent-harness/internal/core/issueops/implementation"
 	"agent-harness/internal/core/issueops/remote"
 	"agent-harness/internal/core/policy"
-	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
 
@@ -214,7 +214,7 @@ func beginRemotePullRequestIntentWithOperationID(stateRoot string, expected issu
 		}
 		current.Execution.Pending = &issueops.ExternalIntent{OperationID: operationID, Kind: externalIntentRemotePR, Marker: marker, StartedAt: executionNow(now)}
 		current.Execution.Failure = nil
-		persisted, err = persistExecutionTransitionWithMutations(stateRoot, current, nil, []sqlstore.Mutation{{
+		persisted, err = persistExecutionTransitionWithMutations(stateRoot, current, nil, []port.RecordMutation{{
 			Bucket: externalIntentBucket, ID: operationID, Data: data, RequireAbsent: true,
 		}})
 		return err
@@ -257,7 +257,7 @@ func recordRemotePullRequestFailure(stateRoot, id, operationID, invocation strin
 		}
 		message := boundedExecutionRemoteDiagnostic(cause)
 		record.Execution.Failure = &issueops.ExecutionFailure{OperationID: operationID, Code: "external_operation_ambiguous", Message: message, At: executionNow(now)}
-		_, err = persistExecutionTransitionWithMutations(stateRoot, record, nil, []sqlstore.Mutation{{Bucket: externalIntentBucket, ID: operationID, Data: data}})
+		_, err = persistExecutionTransitionWithMutations(stateRoot, record, nil, []port.RecordMutation{{Bucket: externalIntentBucket, ID: operationID, Data: data}})
 		return err
 	})
 }
@@ -299,7 +299,7 @@ func finishRemotePullRequestIntent(stateRoot, id string, payload externalRemoteP
 		current.RemoteArtifact = &artifact
 		current.Execution.Pending = nil
 		current.Execution.Failure = nil
-		persisted, err = persistExecutionTransitionWithMutations(stateRoot, current, nil, []sqlstore.Mutation{{Bucket: externalIntentBucket, ID: payload.OperationID, Delete: true}})
+		persisted, err = persistExecutionTransitionWithMutations(stateRoot, current, nil, []port.RecordMutation{{Bucket: externalIntentBucket, ID: payload.OperationID, Delete: true}})
 		return err
 	})
 	return persisted, err

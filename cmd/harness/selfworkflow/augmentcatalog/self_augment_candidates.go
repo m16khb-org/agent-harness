@@ -37,7 +37,7 @@ func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 			Impact: 89, Feasibility: 91, Novelty: 84, Risk: 16,
 			WhyNow:       []string{"반복 실패를 다음 cycle에서 활용하려면 언어 피드백 저장소가 필요하다"},
 			ExpectedGain: []string{"실패 원인 재발 감소", "레포별 개선 이력 검색 가능"},
-			VerifyWith:   []string{"go test ./internal/core/state -count=1", "state_write/read roundtrip"},
+			VerifyWith:   []string{"go test ./internal/application/state ./internal/adapter/outbound/state -count=1", "state_write/read roundtrip"},
 		},
 		{
 			ID: "qa-race-tier", Title: "Conditionally attach risk-based race/static QA tier to the self-verification loop", Category: "qa",

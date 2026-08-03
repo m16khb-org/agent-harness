@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	leaseapp "agent-harness/internal/application/issueopslease"
 	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
 

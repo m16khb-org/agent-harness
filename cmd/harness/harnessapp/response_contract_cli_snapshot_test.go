@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/harnessapp/responsecontract"
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 )
 
 func buildCLIResponseContractSnapshot(t *testing.T, replacements map[string]string, stateDir, workspaceDir, gitRepoDir string) map[string]any {

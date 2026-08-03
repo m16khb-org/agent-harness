@@ -12,7 +12,7 @@ import (
 
 	"agent-harness/internal/contract/issueops"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/port"
 )
 
 type ExecutionResumeRequest struct {
@@ -256,9 +256,9 @@ func beginOrcaExecutionResumeIntentWithExpectedRaw(stateRoot string, record issu
 			Marker: payload.Marker, StartedAt: startedAt,
 		}
 		current.Execution.Failure = nil
-		mutations := []sqlstore.Mutation{{Bucket: externalIntentBucket, ID: operationID, Data: data, RequireAbsent: true}}
+		mutations := []port.RecordMutation{{Bucket: externalIntentBucket, ID: operationID, Data: data, RequireAbsent: true}}
 		if expectedRecordRaw != nil {
-			persisted, err = persistExecutionTransitionWithRawCAS(stateRoot, current, []sqlstore.ExpectedRecord{{Bucket: issueOpsBucket, ID: record.ID, Data: expectedRecordRaw}}, mutations)
+			persisted, err = persistExecutionTransitionWithRawCAS(stateRoot, current, []port.ExpectedRecord{{Bucket: issueOpsBucket, ID: record.ID, Data: expectedRecordRaw}}, mutations)
 			return err
 		}
 		persisted, err = persistExecutionTransitionWithMutations(stateRoot, current, nil, mutations)

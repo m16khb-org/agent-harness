@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
+	corestate "agent-harness/internal/adapter/outbound/state"
 	"agent-harness/internal/core/policy"
 	"agent-harness/internal/core/policy/auditid"
-	corestate "agent-harness/internal/core/state"
 )
 
 const (
