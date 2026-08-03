@@ -40,6 +40,13 @@ in 0.14 seconds, and the sequential regular full suite then passed.
 The current wrapper relay is reachable and owns the #237 Orca terminal. The
 first #237 claim reached that owner and exposed independent issue #287: its
 98,163-byte sealed plan exceeded a claim-only 64 KiB reader even though the
-producer and other readers allow 1 MiB. Issue #287 is being completed before
-the final #237 redispatch; #288 remains open until that live acceptance check
-is recorded.
+producer and other readers allow 1 MiB. Issue #287 was fixed and merged in PR
+#289 by unifying the owner-artifact reader limit at the shared 1 MiB contract.
+
+The live acceptance check then succeeded without restarting this coordinator:
+#237 claimed generation 1 as run `run_8401e427602d`, task
+`task_72288405815a`, and dispatch `ctx_a4ec921cd2ac` on the current relay. Its
+owner passed planning review, entered implementation, produced the expected
+architecture RED test, and began the source move. This demonstrates that an
+installed Orca CLI is used after the bounded stale-relay recovery and that the
+original long-lived host environment no longer prevents IssueOps dispatch.
