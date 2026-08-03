@@ -10,6 +10,7 @@ import (
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	hookadapter "agent-harness/internal/adapter/hook"
 	"agent-harness/internal/core"
+	coreinstall "agent-harness/internal/core/install"
 	issueopscore "agent-harness/internal/core/issueops"
 )
 
@@ -41,6 +42,14 @@ func runHookPreToolUse(args []string) error {
 	nativeHost := firstNonEmptyHookValue(payloadHost, flagHost)
 	if nativeHost == "" {
 		nativeHost = string(hookadapter.HostCodex)
+	}
+	diagnostic, runtimeErr := DiagnoseCurrentNativeRuntime()
+	if reason, blocked := coreinstall.NativeRuntimeDiagnosticMessage(diagnostic, runtimeErr); blocked {
+		if *jsonOut {
+			return printJSON(diagnostic)
+		}
+		markHookMetricBlocked()
+		return printJSON(hookadapter.Resolve(nativeHost).FormatBlock(reason))
 	}
 	processAncestry, _ := issueopscore.ObserveNativeProcessAncestry(os.Getpid())
 	result := core.BuildLifecyclePreToolUseDecision(core.HookToolUseLifecycleRequest{

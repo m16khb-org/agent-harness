@@ -12,7 +12,15 @@ import (
 // DefaultNativeInstallRequest normalizes common installation inputs while keeping
 // host-specific file decisions in adapter implementations.
 func DefaultNativeInstallRequest(root, home, codexHome, binPath string) port.NativeInstallRequest {
-	root = absClean(root)
+	invokingRoot := absClean(root)
+	root = invokingRoot
+	defaultBin := binPath == "" || absClean(binPath) == filepath.Join(invokingRoot, "bin", nativeBinaryName)
+	if stableRoot, err := ResolveStableNativeRoot(invokingRoot); err == nil {
+		root = stableRoot
+		if defaultBin {
+			binPath = filepath.Join(stableRoot, "bin", nativeBinaryName)
+		}
+	}
 	if home == "" {
 		home, _ = os.UserHomeDir()
 	}
@@ -22,7 +30,7 @@ func DefaultNativeInstallRequest(root, home, codexHome, binPath string) port.Nat
 	}
 	codexHome = absClean(codexHome)
 	if binPath == "" && root != "" {
-		binPath = filepath.Join(root, "bin", "agent-harness")
+		binPath = filepath.Join(root, "bin", nativeBinaryName)
 	}
 	binPath = absClean(binPath)
 	return port.NativeInstallRequest{
@@ -44,6 +52,14 @@ func InstallNative(req port.NativeInstallRequest, installers ...port.HostInstall
 	req.Home = absClean(req.Home)
 	req.CodexHome = absClean(req.CodexHome)
 	req.BinPath = absClean(req.BinPath)
+	stableRoot, err := ResolveStableNativeRoot(req.Root)
+	if err != nil {
+		return port.NativeInstallResult{OK: false, Root: req.Root, BinPath: req.BinPath}, err
+	}
+	req.Root = stableRoot
+	if err := ValidateStableNativeRuntime(req.Root, req.BinPath); err != nil {
+		return port.NativeInstallResult{OK: false, Root: req.Root, BinPath: req.BinPath}, err
+	}
 	if len(req.SkillNames) == 0 {
 		skills, err := ListSkillNames(req.Root)
 		if err != nil {

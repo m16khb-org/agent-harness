@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	coreinstall "agent-harness/internal/core/install"
 )
 
 func TestRunCatalogHooksWithInjectedPrinter(t *testing.T) {
@@ -36,6 +38,46 @@ func TestRunCatalogHooksWithInjectedPrinter(t *testing.T) {
 	if fmt.Sprint(printed[0]) == "" || fmt.Sprint(printed[1]) == "" {
 		t.Fatalf("printed values should be non-empty: %#v", printed)
 	}
+}
+
+func TestRunSessionStartReportsCachedWorktreeRuntimeForBothHosts(t *testing.T) {
+	for _, host := range []string{"codex", "claude"} {
+		t.Run(host, func(t *testing.T) {
+			var printed map[string]any
+			config := Config{
+				ResolveTarget: func(string) string { return t.TempDir() },
+				PrintJSON: func(value any) error {
+					printed, _ = value.(map[string]any)
+					return nil
+				},
+				RuntimeDiagnostic: func() (coreinstall.NativeRuntimeDiagnostic, error) {
+					return coreinstall.NativeRuntimeDiagnostic{
+						Stale: true, Observed: "/source.worktrees/completed/bin/agent-harness",
+						Expected: "/source/bin/agent-harness", RestartRequired: true,
+					}, nil
+				},
+			}
+			if err := RunSessionStart([]string{"--host", host}, config); err != nil {
+				t.Fatalf("RunSessionStart returned error: %v", err)
+			}
+			reason := sessionStartRuntimeContext(printed)
+			for _, evidence := range []string{
+				"observed=/source.worktrees/completed/bin/agent-harness",
+				"expected=/source/bin/agent-harness",
+				"restart the host session",
+			} {
+				if !strings.Contains(reason, evidence) {
+					t.Fatalf("%s context = %q, want %q", host, reason, evidence)
+				}
+			}
+		})
+	}
+}
+
+func sessionStartRuntimeContext(output map[string]any) string {
+	specific, _ := output["hookSpecificOutput"].(map[string]any)
+	context, _ := specific["additionalContext"].(string)
+	return context
 }
 
 func TestRunCatalogHooksFormatsHostOutputs(t *testing.T) {
