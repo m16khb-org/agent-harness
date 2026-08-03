@@ -33,6 +33,41 @@ func TestValidateHarnessInvariantsCoversHealthyMissingAndLegacyHits(t *testing.T
 	}
 }
 
+func TestValidateHarnessInvariantsUsesOwnedStatePaths(t *testing.T) {
+	root := makeValidationHarnessRoot(t)
+	for _, rel := range []string{
+		filepath.Join("internal", "core", "state", "state_io.go"),
+		filepath.Join("internal", "core", "state", "state_types.go"),
+	} {
+		if err := os.Remove(filepath.Join(root, rel)); err != nil && !os.IsNotExist(err) {
+			t.Fatal(err)
+		}
+	}
+	owned := []string{
+		filepath.Join("internal", "adapter", "outbound", "state", "state_io.go"),
+		filepath.Join("internal", "contract", "state", "record.go"),
+		filepath.Join("internal", "contract", "state", "results.go"),
+	}
+	for _, rel := range owned {
+		writeValidationFile(t, filepath.Join(root, rel), "ok\n")
+	}
+
+	result := validateHarnessInvariants(root)
+	if !result.OK {
+		t.Fatalf("expected owned state files to satisfy invariants, got %+v", result)
+	}
+	for _, rel := range owned {
+		missingRoot := makeValidationHarnessRoot(t)
+		if err := os.Remove(filepath.Join(missingRoot, rel)); err != nil {
+			t.Fatal(err)
+		}
+		missing := validateHarnessInvariants(missingRoot)
+		if missing.OK || !strings.Contains(missing.Error, "missing "+rel) {
+			t.Fatalf("expected missing owned state file %s, got %+v", rel, missing)
+		}
+	}
+}
+
 func TestValidateSkillShapeCoversFrontmatterAndAgentFile(t *testing.T) {
 	root := t.TempDir()
 	skillDir := filepath.Join(root, "skills", skillName)
@@ -126,8 +161,9 @@ func makeValidationHarnessRoot(t *testing.T) string {
 		filepath.Join("internal", "core", "policy", "policy_paths.go"),
 		filepath.Join("internal", "core", "preflight", "preflight.go"),
 		filepath.Join("internal", "core", "preflight", "package_helpers.go"),
-		filepath.Join("internal", "core", "state", "state_io.go"),
-		filepath.Join("internal", "core", "state", "state_types.go"),
+		filepath.Join("internal", "adapter", "outbound", "state", "state_io.go"),
+		filepath.Join("internal", "contract", "state", "record.go"),
+		filepath.Join("internal", "contract", "state", "results.go"),
 		filepath.Join("cmd", "harness", "contractgolden", "contract_golden_test.go"),
 		filepath.Join("cmd", "harness", "harnessapp", "response_contract_golden_test.go"),
 		filepath.Join("cmd", "harness", "selfworkflow", "summary", "self_augment_summary_test.go"),
