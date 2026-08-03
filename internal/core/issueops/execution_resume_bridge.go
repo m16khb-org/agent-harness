@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/adapter/outbound/sqlstore"
+	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 

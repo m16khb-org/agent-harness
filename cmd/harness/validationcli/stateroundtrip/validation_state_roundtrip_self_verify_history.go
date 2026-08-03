@@ -3,8 +3,8 @@ package stateroundtrip
 import (
 	"encoding/json"
 
-	"agent-harness/internal/core"
 	"agent-harness/internal/adapter/outbound/sqlstore"
+	"agent-harness/internal/core"
 )
 
 func (s *stateRoundtripSelfVerifySession) validateHistoryAndRetention(baselineCompareKey, candidateCompareKey, promotedBaselineKey string) StepResult {

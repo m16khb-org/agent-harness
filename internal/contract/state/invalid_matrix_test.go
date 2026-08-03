@@ -5,9 +5,9 @@ import (
 	"io/fs"
 	"testing"
 
-	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/adapter/outbound/sqlstore"
 	corestate "agent-harness/internal/adapter/outbound/state"
+	statecontract "agent-harness/internal/contract/state"
 )
 
 func TestStateInvalidMatrix(t *testing.T) {
