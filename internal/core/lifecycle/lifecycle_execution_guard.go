@@ -685,6 +685,59 @@ func executionTypedControlPlane(req lifecyclecontract.HookToolUseLifecycleReques
 	}
 }
 
+func executionTypedPreLinkBlock(req lifecyclecontract.HookToolUseLifecycleRequest) (string, *lifecyclecontract.IssueOpsDenyReason) {
+	if !req.EnforceWorktree {
+		return "", nil
+	}
+	id, ok := executionTypedMutationID(req)
+	if !ok {
+		return "", nil
+	}
+	record, err := ReadIssueOps(IssueOpsStateRoot(), id)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "IssueOps authority state could not be read (often transient state-store contention); retry once, and if it persists run `agent-harness doctor --repo " + cleanAbsPath(req.Repo) + " --json`", nil
+	}
+	if record.Execution == nil || record.Execution.Lease.Status != issueopscontract.LeaseStatusActive ||
+		!orcaBranchLinkVerificationRequired(record) {
+		return "", nil
+	}
+	reason := "active Orca owner must record the exact verified branch link before any other mutation"
+	return reason, executionDeny(record, "branch_link_verification_required", executionStatusCommand(record.ID))
+}
+
+func executionTypedMutationID(req lifecyclecontract.HookToolUseLifecycleRequest) (string, bool) {
+	if !searchrouting.IsShellTool(req.Tool) {
+		action, actionOK := req.ToolInput["action"].(string)
+		id, idOK := req.ToolInput["id"].(string)
+		switch strings.TrimSpace(action) {
+		case issueopscore.ExecutionActionPrepare, issueopscore.ExecutionActionClaim,
+			issueopscore.ExecutionActionRelease, issueopscore.ExecutionActionReplace,
+			issueopscore.ExecutionActionResume, issueopscore.ExecutionActionReconcile,
+			issueopscore.ExecutionActionComplete:
+			return strings.TrimSpace(id), actionOK && idOK && strings.TrimSpace(id) != ""
+		default:
+			return "", false
+		}
+	}
+	command, ok := commandparse.ParseExactIssueOpsCommand(req.Command)
+	if !ok {
+		return "", false
+	}
+	values, booleans, repeatable, ok := commandparse.IssueOpsCommandSpec(command.Path)
+	if !ok {
+		return "", false
+	}
+	flags, ok := commandparse.ExactFlags(command, values, booleans, repeatable)
+	if !ok {
+		return "", false
+	}
+	id, ok := oneFlag(flags, "--id")
+	return strings.TrimSpace(id), ok && strings.TrimSpace(id) != ""
+}
+
 func executionMutationDecision(req lifecyclecontract.HookToolUseLifecycleRequest) (bool, string, *lifecyclecontract.IssueOpsDenyReason) {
 	if !req.EnforceWorktree {
 		return false, "", nil
@@ -774,6 +827,10 @@ func executionMutationDecision(req lifecyclecontract.HookToolUseLifecycleRequest
 		}
 		if lease.Status == issueopscontract.LeaseStatusActive && executionActorMatches(req, lease.Holder) &&
 			targetsAuthorized {
+			if orcaBranchLinkVerificationRequired(record) && !exactOrcaBranchLinkRecorder(req.Command, record) {
+				reason := "active Orca owner must record the exact verified branch link before any other mutation"
+				return true, reason, executionDeny(record, "branch_link_verification_required", executionStatusCommand(record.ID))
+			}
 			return true, "", nil
 		}
 		if lease.Status == issueopscontract.LeaseStatusActive && lease.Holder != nil && !executionActorMatches(req, lease.Holder) {
@@ -842,6 +899,56 @@ func exactIssueOpsOwnerMutation(commandText string) bool {
 	for _, name := range []string{idFlag, "--host", "--session-id", "--cwd"} {
 		value, found := oneFlag(flags, name)
 		if !found || strings.TrimSpace(value) == "" {
+			return false
+		}
+	}
+	return true
+}
+
+func orcaBranchLinkVerificationRequired(record issueopscontract.IssueOpsRecord) bool {
+	return record.Execution != nil && record.Execution.Mode == issueopscontract.ExecutionModeOrca &&
+		(record.BranchPrepare == nil || !record.BranchPrepare.LinkVerified)
+}
+
+func exactOrcaBranchLinkRecorder(commandText string, record issueopscontract.IssueOpsRecord) bool {
+	prepared := record.BranchPrepare
+	if prepared == nil {
+		return false
+	}
+	command, ok := commandparse.ParseExactIssueOpsCommand(commandText)
+	if !ok || command.Path != "branch prepare" {
+		return false
+	}
+	values, booleans, repeatable, ok := commandparse.IssueOpsCommandSpec(command.Path)
+	if !ok {
+		return false
+	}
+	flags, ok := commandparse.ExactFlags(command, values, booleans, repeatable)
+	if !ok {
+		return false
+	}
+	if _, verified := flags["--link-verified"]; !verified {
+		return false
+	}
+	required := map[string]string{
+		"--id": record.ID, "--provider": strings.ToLower(strings.TrimSpace(prepared.Provider)),
+		"--issue-url": strings.TrimSpace(prepared.IssueURL), "--branch": strings.TrimSpace(prepared.Branch),
+		"--base-branch": strings.TrimSpace(prepared.BaseBranch),
+	}
+	for name, want := range required {
+		got, found := oneFlag(flags, name)
+		if !found || strings.TrimSpace(got) != want {
+			return false
+		}
+	}
+	for _, optional := range []struct{ name, want string }{
+		{"--base-sha", prepared.BaseSHA},
+		{"--parent-worktree", prepared.ParentWorktree},
+		{"--remote-branch-url", prepared.RemoteBranchURL},
+	} {
+		got, found := oneFlag(flags, optional.name)
+		want := strings.TrimSpace(optional.want)
+		if found != (want != "") || found && strings.TrimSpace(got) != want {
 			return false
 		}
 	}

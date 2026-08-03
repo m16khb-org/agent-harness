@@ -41,6 +41,123 @@ func TestExactIssueOpsOwnerMutationAdmitsBranchPrepare(t *testing.T) {
 	}
 }
 
+func TestUnverifiedOrcaHolderMayRecordBranchLinkButCannotMutateProduction(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	record.BranchPrepare.LinkVerified = false
+	record.Execution.Mode = issueopscontract.ExecutionModeOrca
+	record.Execution.Workspace.Driver = "orca"
+	record.Execution.Orca = &issueopscontract.OrcaBinding{
+		RuntimeID: "runtime", RepoID: "repo", WorktreeID: "worktree",
+		OwnerHost: "claude", OwnerModel: "claude-opus-4-6",
+		TaskID: "task", DispatchID: "dispatch",
+	}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+
+	production := executionRequest(record, worker, "claude", "owner-session", "")
+	production.AgentID = "owner-agent"
+	production.Tool = "apply_patch"
+	production.Paths = []string{filepath.Join(worker, "internal", "application", "issueops.go")}
+	if got := BuildLifecyclePreToolUseDecision(production); got.Decision != "block" || got.Deny == nil || got.Deny.Code != "branch_link_verification_required" {
+		t.Fatalf("unverified Orca holder production mutation must be blocked: %+v", got)
+	}
+
+	phaseCommand := "agent-harness issueops phase --id " + record.ID + " --to implement" +
+		" --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json"
+	phase := executionRequest(record, worker, "claude", "owner-session", phaseCommand)
+	phase.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(phase); got.Decision != "block" || got.Deny == nil || got.Deny.Code != "branch_link_verification_required" {
+		t.Fatalf("unverified Orca holder implement transition must be blocked: %+v", got)
+	}
+
+	branchCommand := "agent-harness issueops branch prepare --id " + record.ID + " --provider github" +
+		" --issue-url '" + record.IssueURL + "' --branch " + record.Branch + " --base-branch main" +
+		" --link-verified --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json"
+	branch := executionRequest(record, worker, "claude", "owner-session", branchCommand)
+	branch.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(branch); got.Decision != "allow" {
+		t.Fatalf("exact branch-link recorder must remain available to the unverified holder: %+v", got)
+	}
+	driftedBranch := branch
+	driftedBranch.Command = strings.Replace(branchCommand, "--base-branch main", "--base-branch other", 1)
+	if got := BuildLifecyclePreToolUseDecision(driftedBranch); got.Decision != "block" || got.Deny == nil || got.Deny.Code != "branch_link_verification_required" {
+		t.Fatalf("branch-link recorder with topology drift must be blocked: %+v", got)
+	}
+
+	linkPlanCommand := "agent-harness issueops link-plan --id " + record.ID + " --plan-path " + filepath.Join(worker, "plan.md") +
+		" --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json"
+	linkPlan := executionRequest(record, worker, "claude", "owner-session", linkPlanCommand)
+	linkPlan.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(linkPlan); got.Decision != "block" || got.Deny == nil || got.Deny.Code != "branch_link_verification_required" {
+		t.Fatalf("non-recovery owner mutation must be blocked before link verification: %+v", got)
+	}
+
+	releaseCommand := "agent-harness issueops execution release --id " + record.ID + " --generation 1" +
+		" --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json"
+	t.Run("shell typed control plane", func(t *testing.T) {
+		release := executionRequest(record, worker, "claude", "owner-session", releaseCommand)
+		release.AgentID = "owner-agent"
+		if got := BuildLifecyclePreToolUseDecision(release); got.Decision != "block" || got.Deny == nil || got.Deny.Code != "branch_link_verification_required" {
+			t.Fatalf("typed release must not bypass branch-link verification: %+v", got)
+		}
+	})
+	t.Run("MCP typed control plane", func(t *testing.T) {
+		release := executionRequest(record, worker, "claude", "owner-session", "")
+		release.AgentID = "owner-agent"
+		release.Tool = "mcp__agent_harness__issueops_execution"
+		release.ToolInput = map[string]any{"action": "release", "id": record.ID}
+		if got := BuildLifecyclePreToolUseDecision(release); got.Decision != "block" || got.Deny == nil || got.Deny.Code != "branch_link_verification_required" {
+			t.Fatalf("MCP release must not bypass branch-link verification: %+v", got)
+		}
+	})
+
+	record.BranchPrepare.LinkVerified = true
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	if got := BuildLifecyclePreToolUseDecision(production); got.Decision != "allow" {
+		t.Fatalf("verified Orca holder production mutation was blocked: %+v", got)
+	}
+}
+
+func TestUnverifiedClaimableOrcaMayResumeOwnerLaunch(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	record.BranchPrepare.LinkVerified = false
+	record.Execution.Mode = issueopscontract.ExecutionModeOrca
+	record.Execution.Workspace.Driver = "orca"
+	record.Execution.Lease.Status = issueopscontract.LeaseStatusClaimable
+	record.Execution.Lease.Holder = nil
+	record.Execution.Lease.ClaimedAt = ""
+	record.Execution.Lease.ClaimTokenSHA256 = strings.Repeat("a", 64)
+	record.Execution.Orca = &issueopscontract.OrcaBinding{
+		RuntimeID: "runtime", RepoID: "repo", WorktreeID: "worktree",
+		OwnerHost: "claude", OwnerModel: "claude-opus-4-6",
+		TaskID: "task", DispatchID: "dispatch",
+	}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+
+	resumeCommand := "agent-harness issueops execution resume --id " + record.ID + " --expected-generation 1" +
+		" --host claude --session-id replacement-session --session-pid 4321" +
+		" --session-started-at 2026-08-03T00:00:00Z --session-executable /usr/bin/claude" +
+		" --cwd " + worker + " --confirm --json"
+	resume := executionRequest(record, worker, "claude", "replacement-session", resumeCommand)
+	if got := BuildLifecyclePreToolUseDecision(resume); got.Decision != "allow" {
+		t.Fatalf("claimable Orca resume must remain available for owner recovery: %+v", got)
+	}
+
+	status := executionRequest(record, worker, "claude", "replacement-session", "")
+	status.Tool = "mcp__agent_harness__issueops_execution"
+	status.ToolInput = map[string]any{"action": "status", "id": record.ID}
+	if got := BuildLifecyclePreToolUseDecision(status); got.Decision != "allow" {
+		t.Fatalf("MCP execution status must remain observable: %+v", got)
+	}
+}
+
 func TestExactIssueOpsOwnerMutationAdmitsDelegationCommands(t *testing.T) {
 	actor := " --host codex --session-id sess-1 --cwd /tmp/parent-worktree --json"
 	commands := []string{
