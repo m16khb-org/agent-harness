@@ -37,6 +37,18 @@ func SourceFromHookInput(input []byte) string {
 }
 
 func CWDFromHookInput(input []byte) string {
+	return EffectiveCWDFromHookInput(input, false)
+}
+
+func EffectiveCWDFromHookInput(input []byte, allowToolWorkdir bool) string {
+	if !allowToolWorkdir {
+		return hookString(input, "cwd")
+	}
+	if toolInput, ok := hookInputObject(input)["tool_input"].(map[string]any); ok {
+		if workdir, ok := toolInput["workdir"].(string); ok && strings.TrimSpace(workdir) != "" {
+			return strings.TrimSpace(workdir)
+		}
+	}
 	return hookString(input, "cwd")
 }
 

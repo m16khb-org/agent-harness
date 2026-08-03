@@ -228,6 +228,67 @@ func TestRunHookPreToolUseAllowsHolderCanonicalPatchFromCodexSourceCWD(t *testin
 	}
 }
 
+func TestRunHookPreToolUseUsesExplicitExecWorkdirForHolderCommand(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	if err := os.MkdirAll(filepath.Join(source, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, ".git", "HEAD"), []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cycle := createLinkedIssueOpsWorktree(t, source, "251-exec-workdir")
+	actor := activateIssueOpsHookExecution(t, cycle.id)
+	command := "agent-harness issueops decision add --id " + cycle.id +
+		" --title workdir --body canonical --kind implementation" +
+		" --host " + actor.Host + " --session-id " + actor.SessionID +
+		" --agent-id " + actor.AgentID + " --cwd " + cycle.path + " --json"
+	payload, err := json.Marshal(map[string]any{
+		"cwd": source, "host": actor.Host, "session_id": actor.SessionID, "agent_id": actor.AgentID,
+		"tool_name":  "exec_command",
+		"tool_input": map[string]any{"cmd": command, "workdir": cycle.path},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--host", "codex", "--enforce-worktree", "--json"})
+	})
+	if got["decision"] != "allow" {
+		t.Fatalf("explicit exec workdir must be the lifecycle cwd: %+v", got)
+	}
+
+	payload, err = json.Marshal(map[string]any{
+		"cwd": source, "host": actor.Host, "session_id": "foreign-session", "agent_id": actor.AgentID,
+		"tool_name":  "exec_command",
+		"tool_input": map[string]any{"cmd": command, "workdir": cycle.path},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocked := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--host", "codex", "--enforce-worktree", "--json"})
+	})
+	if blocked["decision"] != "block" {
+		t.Fatalf("workdir normalization must not bypass holder identity: %+v", blocked)
+	}
+
+	payload, err = json.Marshal(map[string]any{
+		"cwd": source, "host": actor.Host, "session_id": "foreign-session", "agent_id": actor.AgentID,
+		"tool_name":  "Write",
+		"tool_input": map[string]any{"workdir": cycle.path, "content": "not a shell execution workdir"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	nonShell := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--host", "codex", "--enforce-worktree", "--json"})
+	})
+	if nonShell["decision"] != "allow" {
+		t.Fatalf("non-shell workdir must not retarget lifecycle authority: %+v", nonShell)
+	}
+}
+
 func assertIssueOpsDenyJSON(t *testing.T, raw any, id, root string, generation int, code string) {
 	t.Helper()
 	encoded, ok := raw.(string)
