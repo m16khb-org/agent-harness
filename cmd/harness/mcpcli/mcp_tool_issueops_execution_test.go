@@ -187,7 +187,7 @@ func TestHandleToolCallWithDependenciesRoutesResumeToInjectedHandler(t *testing.
 		if stateRoot == "" || request.ID != "io-aaaaaaaaaaaa" || request.ExpectedGeneration != 3 || request.CWD != "/repo.worktrees/resume" || !request.Confirm {
 			t.Fatalf("resume handler request=%+v state_root=%q", request, stateRoot)
 		}
-		return issueops.ExecutionResumeResult{OK: true, ID: request.ID}, nil
+		return issueops.ExecutionResumeResult{OK: true, ID: request.ID, ResumeDisposition: "existing_binding"}, nil
 	}})
 	if rpcErr != nil || calls != 1 {
 		t.Fatalf("resume MCP rpc_err=%v calls=%d", rpcErr, calls)
@@ -197,7 +197,8 @@ func TestHandleToolCallWithDependenciesRoutesResumeToInjectedHandler(t *testing.
 		t.Fatalf("resume MCP response type=%T", response)
 	}
 	content, ok := payload["content"].([]map[string]any)
-	if !ok || len(content) != 1 || !strings.Contains(content[0]["text"].(string), `"id": "io-aaaaaaaaaaaa"`) {
+	if !ok || len(content) != 1 || !strings.Contains(content[0]["text"].(string), `"id": "io-aaaaaaaaaaaa"`) ||
+		!strings.Contains(content[0]["text"].(string), `"resume_disposition": "existing_binding"`) {
 		t.Fatalf("resume MCP response=%#v", response)
 	}
 }

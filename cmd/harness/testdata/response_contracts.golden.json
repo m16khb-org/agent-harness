@@ -250,7 +250,7 @@
           "name": "version"
         }
       ],
-      "hash": "1df5ffe469c195ed6d28384ecc67de49c7583cd85cf4f094503e88e7e098c0b9",
+      "hash": "4759b0c1465777a53a86478d5512490180d74827bcbf7c19c8b3b664a5a21a7b",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -459,6 +459,7 @@
         "issueops_execution_resume": [
           "ok",
           "id",
+          "resume_disposition",
           "execution",
           "claim_token_path",
           "issue_body_sha256",
@@ -6391,7 +6392,7 @@
                 "name": "version"
               }
             ],
-            "hash": "1df5ffe469c195ed6d28384ecc67de49c7583cd85cf4f094503e88e7e098c0b9",
+            "hash": "4759b0c1465777a53a86478d5512490180d74827bcbf7c19c8b3b664a5a21a7b",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6600,6 +6601,7 @@
               "issueops_execution_resume": [
                 "ok",
                 "id",
+                "resume_disposition",
                 "execution",
                 "claim_token_path",
                 "issue_body_sha256",
