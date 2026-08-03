@@ -2,11 +2,13 @@ package executioncmd
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
 
+	model "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops"
 )
 
@@ -63,8 +65,125 @@ func TestExecutionResumeCLIInvokesInjectedHandler(t *testing.T) {
 	}
 }
 
+func TestExecutionResumeCLIInvokesHandlerWithObservedActor(t *testing.T) {
+	stateRoot := t.TempDir()
+	args := []string{"resume", "--id", "io-aaaaaaaaaaaa", "--expected-generation", "3", "--confirm", "--json"}
+	observation := resumeActorObservation{
+		Getenv: func(key string) string {
+			if key == "CLAUDE_CODE_SESSION_ID" {
+				return "claude-session"
+			}
+			return ""
+		},
+		Getwd: func() (string, error) { return "/repo.worktrees/resume", nil },
+		PID:   func() int { return 101 },
+		ObserveAncestry: func(int) ([]model.NativeProcessReceipt, error) {
+			return []model.NativeProcessReceipt{
+				{PID: 101, StartedAt: "2026-08-01T00:00:01Z", Executable: "/tmp/agent-harness"},
+				{PID: 42, StartedAt: "2026-08-01T00:00:00Z", Executable: "/opt/claude/bin/claude"},
+			}, nil
+		},
+	}
+	calls := 0
+	err := Run(args, Deps{
+		StateRoot: func() string { return stateRoot },
+		Resume: func(_ context.Context, _ string, request issueops.ExecutionResumeRequest) (issueops.ExecutionResumeResult, error) {
+			calls++
+			if request.Actor.Host != "claude" || request.Actor.SessionID != "claude-session" ||
+				request.Actor.SessionProcess == nil || request.Actor.SessionProcess.PID != 42 ||
+				request.CWD != "/repo.worktrees/resume" {
+				t.Fatalf("observed resume request=%+v", request)
+			}
+			return issueops.ExecutionResumeResult{OK: true, ID: request.ID}, nil
+		},
+		PrintJSON:              func(any) error { return nil },
+		resumeActorObservation: &observation,
+	})
+	if err != nil || calls != 1 {
+		t.Fatalf("actor-free resume err=%v calls=%d", err, calls)
+	}
+}
+
+func TestResolveResumeActorObservesNativeIdentityWhenActorFlagsAreAbsent(t *testing.T) {
+	flags, visited := resumeActorFlagsForTest(t, nil)
+	ancestry := []model.NativeProcessReceipt{
+		{PID: 101, StartedAt: "2026-08-01T00:00:01Z", Executable: "/tmp/agent-harness"},
+		{PID: 42, StartedAt: "2026-08-01T00:00:00Z", Executable: "/opt/codex/bin/codex"},
+	}
+	actor, cwd, err := resolveResumeActor(flags, visited, resumeActorObservation{
+		Getenv: func(key string) string {
+			if key == "CODEX_THREAD_ID" {
+				return "codex-session"
+			}
+			return ""
+		},
+		Getwd: func() (string, error) { return "/repo.worktrees/resume", nil },
+		PID:   func() int { return 101 },
+		ObserveAncestry: func(int) ([]model.NativeProcessReceipt, error) {
+			return ancestry, nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if actor.Host != "codex" || actor.SessionID != "codex-session" || cwd != "/repo.worktrees/resume" {
+		t.Fatalf("resolved actor=%+v cwd=%q", actor, cwd)
+	}
+	if actor.SessionProcess == nil || actor.SessionProcess.PID != 42 || len(actor.ProcessAncestry) != 1 {
+		t.Fatalf("native host receipt was not selected: %+v", actor)
+	}
+}
+
+func TestResolveResumeActorPreservesCompleteExplicitFlags(t *testing.T) {
+	args := []string{
+		"--host", "claude", "--session-id", "claude-session", "--agent-id", "worker-1",
+		"--session-pid", "42", "--session-started-at", "2026-08-01T00:00:00Z",
+		"--session-executable", "/opt/claude/bin/claude", "--cwd", "/repo.worktrees/resume",
+	}
+	flags, visited := resumeActorFlagsForTest(t, args)
+	actor, cwd, err := resolveResumeActor(flags, visited, resumeActorObservation{
+		Getenv: func(string) string { t.Fatal("explicit flags must not read native env"); return "" },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if actor.Host != "claude" || actor.SessionID != "claude-session" || actor.AgentID != "worker-1" ||
+		actor.SessionProcess == nil || actor.SessionProcess.PID != 42 || cwd != "/repo.worktrees/resume" {
+		t.Fatalf("explicit actor=%+v cwd=%q", actor, cwd)
+	}
+}
+
+func TestResolveResumeActorRejectsPartialExplicitFlags(t *testing.T) {
+	for name, args := range map[string][]string{
+		"host only":     {"--host", "codex"},
+		"cwd only":      {"--cwd", "/repo.worktrees/resume"},
+		"agent id only": {"--agent-id", "worker-1"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			flags, visited := resumeActorFlagsForTest(t, args)
+			_, _, err := resolveResumeActor(flags, visited, resumeActorObservation{})
+			if err == nil || !strings.Contains(err.Error(), "all ACTOR_FLAGS or none") {
+				t.Fatalf("partial actor flags error = %v", err)
+			}
+		})
+	}
+}
+
+func resumeActorFlagsForTest(t *testing.T, args []string) (actorFlags, map[string]bool) {
+	t.Helper()
+	fs := flag.NewFlagSet("resume actor test", flag.ContinueOnError)
+	flags := addActorFlags(fs)
+	if err := fs.Parse(args); err != nil {
+		t.Fatal(err)
+	}
+	return flags, visitedFlagNames(fs)
+}
+
 func TestExecutionResumeUsageIsAdvertisedOnce(t *testing.T) {
 	if got := strings.Count(Usage, "issueops execution resume"); got != 1 {
 		t.Fatalf("resume usage count = %d", got)
+	}
+	if !strings.Contains(Usage, "execution resume --id ID --expected-generation N [ACTOR_FLAGS] --confirm") {
+		t.Fatalf("resume usage does not advertise actor-free recovery: %s", Usage)
 	}
 }

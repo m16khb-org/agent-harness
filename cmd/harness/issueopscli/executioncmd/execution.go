@@ -14,20 +14,21 @@ import (
 )
 
 type Deps struct {
-	StateRoot   func() string
-	Prepare     issueops.ExecutionPrepareHandler
-	Orca        port.ExecutionOrcaProvisioner
-	OrcaOwner   port.ExecutionOrcaOwnerInspector
-	ReadIssue   issueops.ExecutionIssueSnapshotReadFunc
-	Claim       issueops.ExecutionClaimHandler
-	Release     issueops.ExecutionReleaseHandler
-	Reseed      issueops.ExecutionReseedHandler
-	Resume      issueops.ExecutionResumeHandler
-	Reconcile   issueops.ExecutionReconcileHandler
-	Complete    issueops.ExecutionCompleteHandler
-	Publication issueops.RemotePublicationHandlers
-	PrintJSON   func(any) error
-	PrintError  func(error) error
+	StateRoot              func() string
+	Prepare                issueops.ExecutionPrepareHandler
+	Orca                   port.ExecutionOrcaProvisioner
+	OrcaOwner              port.ExecutionOrcaOwnerInspector
+	ReadIssue              issueops.ExecutionIssueSnapshotReadFunc
+	Claim                  issueops.ExecutionClaimHandler
+	Release                issueops.ExecutionReleaseHandler
+	Reseed                 issueops.ExecutionReseedHandler
+	Resume                 issueops.ExecutionResumeHandler
+	Reconcile              issueops.ExecutionReconcileHandler
+	Complete               issueops.ExecutionCompleteHandler
+	Publication            issueops.RemotePublicationHandlers
+	PrintJSON              func(any) error
+	PrintError             func(error) error
+	resumeActorObservation *resumeActorObservation
 }
 
 func (deps Deps) actionDeps() issueops.ExecutionActionDependencies {
@@ -59,7 +60,7 @@ const Usage = `Usage:
   agent-harness issueops execution claim --id ID --generation N --claim-token-file PATH [--issue-body-sha256 HEX --context-packet-sha256 HEX] [--issue-snapshot-file PATH] ACTOR_FLAGS [--json]
   agent-harness issueops execution release --id ID --generation N ACTOR_FLAGS [--json]
   agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [fingerprint/reason flags] [--issue-snapshot-file PATH] ACTOR_FLAGS [--confirm] [--json]
-  agent-harness issueops execution resume --id ID --expected-generation N ACTOR_FLAGS --confirm [--json]
+  agent-harness issueops execution resume --id ID --expected-generation N [ACTOR_FLAGS] --confirm [--json]
   agent-harness issueops execution reconcile --id ID (--preview|--confirm) [--issue-snapshot-file PATH] ACTOR_FLAGS [--json]
   agent-harness issueops execution complete --id ID --generation N --final-head SHA --turing-report PATH --remote-artifact-url URL --verification TEXT... ACTOR_FLAGS --confirm [--json]
   agent-harness issueops execution sync-base --id ID (--preview | --apply --confirm --fingerprint SHA256 | --finalize | --abort) ACTOR_FLAGS [--json]
@@ -124,6 +125,71 @@ func (flags actorFlags) actor() model.NativeActor {
 		SessionProcess:  &model.NativeProcessReceipt{PID: *flags.pid, StartedAt: strings.TrimSpace(*flags.startedAt), Executable: strings.TrimSpace(*flags.executable)},
 		ProcessAncestry: ancestry,
 	}
+}
+
+type resumeActorObservation struct {
+	Getenv          func(string) string
+	Getwd           func() (string, error)
+	PID             func() int
+	ObserveAncestry func(int) ([]model.NativeProcessReceipt, error)
+}
+
+func defaultResumeActorObservation() resumeActorObservation {
+	return resumeActorObservation{
+		Getenv: os.Getenv, Getwd: os.Getwd, PID: os.Getpid,
+		ObserveAncestry: issueops.ObserveNativeProcessAncestry,
+	}
+}
+
+func visitedFlagNames(fs *flag.FlagSet) map[string]bool {
+	visited := map[string]bool{}
+	fs.Visit(func(flag *flag.Flag) { visited[flag.Name] = true })
+	return visited
+}
+
+func resolveResumeActor(flags actorFlags, visited map[string]bool, observation resumeActorObservation) (model.NativeActor, string, error) {
+	required := []string{"host", "session-id", "session-pid", "session-started-at", "session-executable", "cwd"}
+	anyExplicit := visited["agent-id"]
+	for _, name := range required {
+		anyExplicit = anyExplicit || visited[name]
+	}
+	if anyExplicit {
+		for _, name := range required {
+			if !visited[name] {
+				return model.NativeActor{}, "", fmt.Errorf("execution resume requires all ACTOR_FLAGS or none")
+			}
+		}
+		return flags.actor(), strings.TrimSpace(*flags.cwd), nil
+	}
+	if observation.Getenv == nil || observation.Getwd == nil || observation.PID == nil || observation.ObserveAncestry == nil {
+		return model.NativeActor{}, "", fmt.Errorf("execution resume native actor observation is unavailable")
+	}
+	identity, err := nativeSessionIdentityFromEnv(observation.Getenv)
+	if err != nil {
+		return model.NativeActor{}, "", err
+	}
+	pid := observation.PID()
+	ancestry, err := observation.ObserveAncestry(pid)
+	if err != nil {
+		return model.NativeActor{}, "", err
+	}
+	ancestry, err = reusableNativeProcessAncestry(identity.Host, pid, ancestry)
+	if err != nil {
+		return model.NativeActor{}, "", err
+	}
+	cwd, err := observation.Getwd()
+	if err != nil {
+		return model.NativeActor{}, "", fmt.Errorf("observe execution resume cwd: %w", err)
+	}
+	cwd = filepath.Clean(strings.TrimSpace(cwd))
+	if !filepath.IsAbs(cwd) {
+		return model.NativeActor{}, "", fmt.Errorf("execution resume cwd must be absolute")
+	}
+	process := ancestry[0]
+	return model.NativeActor{
+		Host: identity.Host, SessionID: identity.SessionID,
+		SessionProcess: &process, ProcessAncestry: ancestry,
+	}, cwd, nil
 }
 
 func runPrepare(args []string, deps Deps) error {
@@ -363,9 +429,17 @@ func runResume(args []string, deps Deps) error {
 	if done, err := parse(fs, args); done || err != nil {
 		return err
 	}
+	observation := defaultResumeActorObservation()
+	if deps.resumeActorObservation != nil {
+		observation = *deps.resumeActorObservation
+	}
+	resolvedActor, resolvedCWD, err := resolveResumeActor(actor, visitedFlagNames(fs), observation)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
 	result, err := execute(issueops.ExecutionActionRequest{
 		Action: issueops.ExecutionActionResume, ID: *id, ExpectedGeneration: *generation,
-		Actor: actor.actor(), CWD: *actor.cwd, Confirm: *confirm,
+		Actor: resolvedActor, CWD: resolvedCWD, Confirm: *confirm,
 	}, deps)
 	return output(result, *jsonOut, err, deps)
 }

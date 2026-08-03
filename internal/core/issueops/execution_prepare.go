@@ -215,7 +215,7 @@ func executionWriterAbsentNextCommand(record issueops.IssueOpsRecord, confirm bo
 	case issueops.LeaseStatusClaimable:
 		if record.Execution.Mode == issueops.ExecutionModeOrca &&
 			(record.Execution.Orca == nil || record.Execution.Orca.LeaseGeneration != generation) {
-			next := executionResumeCommand(record.ID, generation)
+			next := ExecutionResumeRecoveryCommand(record.ID, generation)
 			return next, fmt.Errorf(
 				"IssueOps execution is prepared but Orca generation %d has no current owner; run %s",
 				generation, next)

@@ -194,16 +194,19 @@ Replacement is a fail-closed sequence. There is no unsafe override:
    generation token/packet/prompt files. A retry first recovers exact
    harness-owned residue for that still-uncommitted generation.
 
-Every mutating step also requires `ACTOR_FLAGS`. `--reseed` is limited to the
+Every replacement step requires `ACTOR_FLAGS`. `--reseed` is limited to the
 documented holderless recovery case and still uses generation CAS and confirm.
 For Orca, `replace --finalize|--reseed` returns resume, not claim, as its next
-command:
+command. Execute that exact status projection without adding flags:
 
 ```bash
 agent-harness issueops execution resume \
-  --id "$ISSUEOPS_ID" --expected-generation "$GENERATION" \
-  $ACTOR_FLAGS --confirm --json
+  --id "$ISSUEOPS_ID" --expected-generation "$GENERATION" --confirm
 ```
+
+Resume observes the current native Codex/Claude session, host process receipt,
+and canonical cwd when actor flags are absent. A complete explicit
+`ACTOR_FLAGS` receipt remains valid; a partial receipt is rejected.
 
 Resume never recreates or reparents the worktree. A same-generation live
 terminal/task pair is an idempotent success. 재실행이 필요하면 기존 terminal을

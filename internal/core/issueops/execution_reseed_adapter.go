@@ -37,7 +37,7 @@ type ExecutionReseedArtifacts struct {
 func ExecutionReseedNextCommand(id string, generation uint64, mode, claimTokenPath string) string {
 	switch issueops.ExecutionMode(mode) {
 	case issueops.ExecutionModeOrca:
-		return executionResumeCommand(id, generation)
+		return ExecutionResumeRecoveryCommand(id, generation)
 	case issueops.ExecutionModeDirect:
 		return executionDirectClaimCommand(id, generation, claimTokenPath)
 	default:

@@ -270,7 +270,7 @@ func ExecutionResumeNextCommand(id string, generation uint64, claimTokenPath, is
 		" --context-packet-sha256 " + contextPacketSHA256
 }
 
-func executionResumeCommand(id string, generation uint64) string {
+func ExecutionResumeRecoveryCommand(id string, generation uint64) string {
 	return "agent-harness issueops execution resume --id " + quoteExecutionOwnerArg(id) +
 		" --expected-generation " + strconv.FormatUint(generation, 10) + " --confirm"
 }

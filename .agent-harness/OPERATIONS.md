@@ -230,6 +230,12 @@ possible Orca mutation. Failed-holder recovery uses the ordered generation-CAS
 replacement sequence and proves the prior process/resource is quiescent before
 creating a new claimable generation.
 
+When claimable Orca status returns an exact generation-bound `execution resume
+--confirm` next command, execute that command unchanged. Resume accepts either
+the complete explicit `ACTOR_FLAGS` receipt or no actor flags; the actor-free
+form observes the current Codex/Claude session, native host process ancestry,
+and canonical process cwd. Supplying only part of `ACTOR_FLAGS` is rejected.
+
 `issueops remote create-pr`와 `issueops execution reconcile`의
 `remote_pr_create` 경로는 같은 publication capability handler를 사용한다.
 초기 생성은 CLI에만 있고, 복구는 CLI와 MCP `issueops_execution` 양쪽에서 같은
