@@ -139,3 +139,21 @@ func TestValidateExecutionSelectionRequiresExactAutoFallbackCode(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateExecutionSelectionRejectsExplicitDirectFallbackCode(t *testing.T) {
+	execution := validOrcaExecutionForTest()
+	execution.Mode = ExecutionModeDirect
+	execution.Workspace.Driver = "git"
+	execution.Orca = nil
+	execution.Selection = &ExecutionSelection{
+		RequestedMode: "direct", ResolvedMode: "direct",
+		ReadinessFingerprint: strings.Repeat("b", 64), SelectedAt: "2026-08-03T00:00:00Z",
+		ExplicitDirectReason: "manual recovery",
+	}
+	for _, fallback := range []string{"orca_unready", " "} {
+		execution.Selection.FallbackCode = fallback
+		if err := ValidateExecution(execution); err == nil {
+			t.Fatalf("explicit direct selection with fallback_code %q accepted", fallback)
+		}
+	}
+}

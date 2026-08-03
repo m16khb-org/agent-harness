@@ -85,6 +85,20 @@ func TestSelectionReceiptRequiresExactAutoFallbackCode(t *testing.T) {
 	}
 }
 
+func TestSelectionReceiptRejectsExplicitDirectFallbackCode(t *testing.T) {
+	selection := Selection{
+		RequestedMode: "direct", ResolvedMode: "direct",
+		ReadinessFingerprint: strings.Repeat("b", 64), SelectedAt: "2026-08-03T00:00:01Z",
+		ExplicitDirectReason: "manual recovery",
+	}
+	for _, fallback := range []string{"orca_unready", " "} {
+		selection.FallbackCode = fallback
+		if err := validateSelection(selection, "direct"); err == nil {
+			t.Fatalf("explicit direct selection with fallback_code %q accepted", fallback)
+		}
+	}
+}
+
 func assertJSONShape(t *testing.T, source, target reflect.Type, path string) {
 	t.Helper()
 	source = dereferenceJSONType(source)

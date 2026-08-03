@@ -232,6 +232,9 @@ func validateSelection(selection Selection, mode string) error {
 		if selection.ProbeAttempted || strings.TrimSpace(selection.ExplicitDirectReason) == "" {
 			return fmt.Errorf("explicit direct selection requires a reason and no probe")
 		}
+		if selection.FallbackCode != "" {
+			return fmt.Errorf("explicit direct selection must not contain fallback_code")
+		}
 	} else if strings.TrimSpace(selection.ExplicitDirectReason) != "" {
 		return fmt.Errorf("non-direct selection must not contain explicit_direct_reason")
 	}
