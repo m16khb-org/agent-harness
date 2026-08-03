@@ -67,6 +67,9 @@ func (s *ReseedService) Reseed(ctx context.Context, request ReseedRequest) (Rese
 		if before.Stable.Execution == nil {
 			return leasecontract.Fail(leasecontract.FailurePersistence, leasecontract.ErrExecutionNotPrepared)
 		}
+		if cleanupAbandonApplying(before.Stable.CleanupAbandonFailure) {
+			return fmt.Errorf("execution reseed is blocked by cleanup abandon apply")
+		}
 		if err := leasedomain.ValidateReseedGeneration(toDomainLease(before.Lease), request.ExpectedGeneration); err != nil {
 			return err
 		}
@@ -265,6 +268,13 @@ func containsLedgerNote(notes []string, want string) bool {
 		}
 	}
 	return false
+}
+
+func cleanupAbandonApplying(raw json.RawMessage) bool {
+	var receipt struct {
+		Step string `json:"step"`
+	}
+	return len(raw) > 0 && json.Unmarshal(raw, &receipt) == nil && receipt.Step == "applying"
 }
 
 func toContractReseedActor(actor *leasedomain.Actor) *leasecontract.Actor {

@@ -29,8 +29,8 @@ const cleanupAbandonReasonLimit = 512
 // 거부보다 reason_required가 훨씬 읽기 쉽다).
 const cleanupAbandonReasonForbidden = "\"'`$\\|&;<>()*?~"
 
-// CleanupAbandonRequest는 폐기된 비-done 사이클의 로컬 레코드 수명 종료
-// (issue #106)의 입력이다.
+// CleanupAbandonRequest는 폐기된 비-done 사이클의 로컬 worktree, branch,
+// record 수명 종료(issue #106, #293)의 입력이다.
 //
 // 이 경로는 cleanup finish와 두 가지 축에서 다르다.
 //   - 원격 무접촉: 이슈 본문·PR/MR·원격 브랜치 어느 것도 읽지도 쓰지도 않는다.
@@ -69,25 +69,34 @@ type CleanupAbandonDeps struct {
 }
 
 type CleanupAbandonResult struct {
-	OK                 bool     `json:"ok"`
-	ID                 string   `json:"id"`
-	Preview            bool     `json:"preview"`
-	Reason             string   `json:"reason,omitempty"`
-	Missing            []string `json:"missing,omitempty"`
-	ReasonError        string   `json:"reason_error,omitempty"`
-	PendingIntentError string   `json:"pending_intent_error,omitempty"`
-	OrcaResidueError   string   `json:"orca_residue_error,omitempty"`
-	Fingerprint        string   `json:"fingerprint,omitempty"`
-	WorktreePath       string   `json:"worktree_path,omitempty"`
-	Branch             string   `json:"branch,omitempty"`
-	WorktreePresent    bool     `json:"worktree_present"`
-	BranchPresent      bool     `json:"branch_present"`
-	PendingOperationID string   `json:"pending_operation_id,omitempty"`
-	IntentRowsDeleted  []string `json:"intent_rows_deleted,omitempty"`
-	RecordDeleted      bool     `json:"record_deleted,omitempty"`
-	AbandonedAt        string   `json:"abandoned_at,omitempty"`
-	FailedStep         string   `json:"failed_step,omitempty"`
-	NextCommand        string   `json:"next_command,omitempty"`
+	OK                   bool     `json:"ok"`
+	ID                   string   `json:"id"`
+	Preview              bool     `json:"preview"`
+	Reason               string   `json:"reason,omitempty"`
+	Missing              []string `json:"missing,omitempty"`
+	ReasonError          string   `json:"reason_error,omitempty"`
+	PendingIntentError   string   `json:"pending_intent_error,omitempty"`
+	OrcaResidueError     string   `json:"orca_residue_error,omitempty"`
+	Fingerprint          string   `json:"fingerprint,omitempty"`
+	WorktreePath         string   `json:"worktree_path,omitempty"`
+	Branch               string   `json:"branch,omitempty"`
+	WorktreePresent      bool     `json:"worktree_present"`
+	BranchPresent        bool     `json:"branch_present"`
+	WorktreeCanonical    bool     `json:"worktree_canonical"`
+	WorktreeClean        bool     `json:"worktree_clean"`
+	WorktreeHead         string   `json:"worktree_head,omitempty"`
+	BranchOID            string   `json:"branch_oid,omitempty"`
+	BranchCheckoutPath   string   `json:"branch_checkout_path,omitempty"`
+	RemovalPlan          []string `json:"removal_plan,omitempty"`
+	RemoteBranchDeletion string   `json:"remote_branch_deletion"`
+	PendingOperationID   string   `json:"pending_operation_id,omitempty"`
+	IntentRowsDeleted    []string `json:"intent_rows_deleted,omitempty"`
+	WorktreeRemoved      bool     `json:"worktree_removed,omitempty"`
+	BranchDeleted        bool     `json:"branch_deleted,omitempty"`
+	RecordDeleted        bool     `json:"record_deleted,omitempty"`
+	AbandonedAt          string   `json:"abandoned_at,omitempty"`
+	FailedStep           string   `json:"failed_step,omitempty"`
+	NextCommand          string   `json:"next_command,omitempty"`
 	// Record는 삭제 대상 레코드 전문이다. C2-F6 예외의 유일한 보존 채널이므로
 	// preview와 apply 양쪽 결과에 담는다 — preview에만 담으면 preview 이후
 	// apply 직전까지의 변경분이 어디에도 남지 않는다.
@@ -95,23 +104,28 @@ type CleanupAbandonResult struct {
 }
 
 // cleanupAbandonInventory는 fingerprint 입력이 되는 현재 관측 상태다.
-// cleanupFinishInventory의 패턴을 차용하되 재사용하지는 않는다(brooks F12):
-// abandon의 준비 상태는 "잔여물이 없음"이고 finish의 준비 상태는 "잔여물을
-// 지금 지울 수 있음"이라, 같은 필드가 정반대 의미를 갖는다.
+// cleanupFinishInventory와 달리 원격 completion 권한을 다루지 않고, 레코드가
+// 지목한 로컬 worktree와 branch의 삭제 권한만 봉인한다.
 type cleanupAbandonInventory struct {
 	ID                 string `json:"id"`
 	Repo               string `json:"repo"`
 	Branch             string `json:"branch"`
 	WorktreeRoot       string `json:"worktree_root"`
 	WorktreePresent    bool   `json:"worktree_present"`
+	WorktreeCanonical  bool   `json:"worktree_canonical"`
+	WorktreeBranch     string `json:"worktree_branch"`
+	WorktreeClean      bool   `json:"worktree_clean"`
+	WorktreeHead       string `json:"worktree_head"`
 	BranchOID          string `json:"branch_oid"`
+	BranchCheckoutPath string `json:"branch_checkout_path"`
+	RecordSHA          string `json:"record_sha"`
 	Phase              string `json:"phase"`
 	LeaseStatus        string `json:"lease_status"`
 	PendingOperationID string `json:"pending_operation_id"`
 }
 
-// CleanupAbandon은 게이트 8종을 평가하고, apply에서 원격을 건드리지 않은 채
-// 레코드와 그 external intent 행들을 하나의 원자 배치로 삭제한다.
+// CleanupAbandon은 게이트를 평가하고, apply에서 원격을 건드리지 않은 채 로컬
+// worktree와 branch를 먼저 제거한 뒤 레코드와 intent 행을 원자 삭제한다.
 func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonRequest, deps CleanupAbandonDeps) (CleanupAbandonResult, error) {
 	if deps.Git == nil {
 		deps.Git = func(dir string, args ...string) (int, string) {
@@ -126,7 +140,10 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 	if err != nil {
 		return CleanupAbandonResult{OK: false, ID: req.ID}, err
 	}
-	result := CleanupAbandonResult{OK: true, ID: record.ID, Preview: !req.Apply, Reason: strings.TrimSpace(req.Reason)}
+	result := CleanupAbandonResult{
+		OK: true, ID: record.ID, Preview: !req.Apply, Reason: strings.TrimSpace(req.Reason),
+		RemoteBranchDeletion: "not_planned",
+	}
 	inventory, missing := cleanupAbandonGates(ctx, stateRoot, record, req, deps, &result)
 	result.Missing = missing
 	if len(missing) > 0 {
@@ -138,6 +155,7 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 		return CleanupAbandonResult{OK: false, ID: record.ID}, err
 	}
 	result.Fingerprint = fingerprint
+	result.RemovalPlan = cleanupAbandonRemovalPlan(record, inventory)
 	snapshot := record
 	result.Record = &snapshot
 	if !req.Apply {
@@ -155,12 +173,40 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 		result.OK = false
 		return result, fmt.Errorf("stale cleanup fingerprint; run --preview again and retry with the new value")
 	}
+	record, err = armCleanupAbandon(ctx, stateRoot, record, fingerprint, inventory)
+	if err != nil {
+		result.OK = false
+		return result, err
+	}
+	if inventory.WorktreePresent {
+		if code, out := deps.Git(record.Repo, "worktree", "remove", inventory.WorktreeRoot); code != 0 {
+			if _, statErr := os.Lstat(inventory.WorktreeRoot); !os.IsNotExist(statErr) {
+				result.OK = false
+				result.FailedStep = "worktree_remove"
+				receiptErr := recordCleanupAbandonFailure(stateRoot, record.ID, result.FailedStep, fmt.Errorf("%s", out), fingerprint, inventory)
+				result.NextCommand = cleanupAbandonPreviewCommand(record.ID, result.Reason)
+				return result, cleanupAbandonApplyError(fmt.Sprintf("cleanup abandon worktree removal failed (record preserved): %s", out), receiptErr)
+			}
+		}
+		result.WorktreeRemoved = true
+	}
+	if inventory.BranchOID != "" {
+		if code, out := deps.Git(record.Repo, "update-ref", "-d", "refs/heads/"+inventory.Branch, inventory.BranchOID); code != 0 {
+			result.OK = false
+			result.FailedStep = "branch_delete"
+			receiptErr := recordCleanupAbandonFailure(stateRoot, record.ID, result.FailedStep, fmt.Errorf("%s", out), fingerprint, inventory)
+			result.NextCommand = cleanupAbandonPreviewCommand(record.ID, result.Reason)
+			return result, cleanupAbandonApplyError(fmt.Sprintf("cleanup abandon branch deletion failed (record preserved): %s", out), receiptErr)
+		}
+		result.BranchDeleted = true
+	}
 	deleted, err := deleteAbandonedIssueOps(ctx, stateRoot, record, cleanupAbandonIntentOperationIDs(record))
 	if err != nil {
 		result.OK = false
 		result.FailedStep = "record_delete"
-		result.NextCommand = fmt.Sprintf("agent-harness issueops cleanup abandon --id %s --reason %q --preview --json", record.ID, result.Reason)
-		return result, fmt.Errorf("cleanup abandon deletion failed (record preserved): %w", err)
+		receiptErr := recordCleanupAbandonFailure(stateRoot, record.ID, result.FailedStep, err, fingerprint, inventory)
+		result.NextCommand = cleanupAbandonPreviewCommand(record.ID, result.Reason)
+		return result, cleanupAbandonApplyError(fmt.Sprintf("cleanup abandon deletion failed (record preserved): %v", err), receiptErr)
 	}
 	result.IntentRowsDeleted = deleted
 	result.RecordDeleted = true
@@ -168,7 +214,42 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 	return result, nil
 }
 
-// cleanupAbandonGates는 게이트 8종을 전부 평가하고 missing을 나열한다(첫 실패에
+func cleanupAbandonPreviewCommand(id, reason string) string {
+	return fmt.Sprintf("agent-harness issueops cleanup abandon --id %s --reason %q --preview --json", id, reason)
+}
+
+func recordCleanupAbandonFailure(stateRoot, id, step string, stepErr error, fingerprint string, inventory cleanupAbandonInventory) error {
+	return withCleanupAbandonLock(context.Background(), stateRoot, id, func(context.Context) error {
+		record, err := ReadIssueOps(stateRoot, id)
+		if err != nil {
+			return err
+		}
+		if record.CleanupAbandonFailure == nil || record.CleanupAbandonFailure.Fingerprint != fingerprint {
+			return fmt.Errorf("cleanup abandon attempt changed before failure receipt")
+		}
+		now := time.Now().UTC().Format(time.RFC3339Nano)
+		failure := &issueops.IssueOpsCleanupAbandonFailure{
+			Step: step, Message: stepErr.Error(), Fingerprint: fingerprint,
+			RecordSHA:    inventory.RecordSHA,
+			WorktreePath: inventory.WorktreeRoot, Branch: inventory.Branch,
+			WorktreeHead: inventory.WorktreeHead, BranchOID: inventory.BranchOID, At: now,
+		}
+		failure.InventorySHA256 = cleanupAbandonFailureSeal(record, failure)
+		record.CleanupAbandonFailure = failure
+		record.UpdatedAt = now
+		_, err = writeIssueOps(stateRoot, record)
+		return err
+	})
+}
+
+func cleanupAbandonApplyError(message string, receiptErr error) error {
+	if receiptErr == nil {
+		return fmt.Errorf("%s", message)
+	}
+	return fmt.Errorf("%s; failure receipt update failed: %v", message, receiptErr)
+}
+
+// cleanupAbandonGates는 모든 게이트를 평가하고 missing을 나열한다(첫 실패에
 // 멈추지 않는다 — 운영자가 한 번의 preview로 모든 결격 사유를 본다).
 func cleanupAbandonGates(ctx context.Context, stateRoot string, record issueops.IssueOpsRecord, req CleanupAbandonRequest, deps CleanupAbandonDeps, result *CleanupAbandonResult) (cleanupAbandonInventory, []string) {
 	missing := []string{}
@@ -210,6 +291,7 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record issueops.
 		ID: record.ID, Repo: record.Repo, Branch: strings.TrimSpace(record.Branch),
 		Phase: string(record.Phase), LeaseStatus: "none",
 	}
+	inventory.RecordSHA = cleanupAbandonRecordSHA(record)
 	if record.Execution != nil {
 		inventory.LeaseStatus = string(record.Execution.Lease.Status)
 		inventory.WorktreeRoot = strings.TrimSpace(record.Execution.Workspace.Root)
@@ -238,19 +320,47 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record issueops.
 	result.Branch = inventory.Branch
 	result.WorktreePresent = inventory.WorktreePresent
 	result.PendingOperationID = inventory.PendingOperationID
-	// ⑥ 로컬 워크트리 잔여가 있으면 거부. abandon은 아무것도 지우지 않는
-	// 경로이므로, 잔여물이 있으면 그것을 지울 수 있는 경로(finish/orphan)가
-	// 정답이다. 원격 브랜치 잔여는 비범위다(brooks F8 — doctor가 별도 추적).
 	if inventory.WorktreePresent {
-		missing = append(missing, "worktree_absent")
+		inventory, missing = cleanupAbandonInspectWorktree(inventory, deps, missing)
 	}
-	// ⑦ 로컬 브랜치 ref 잔여.
+	result.WorktreeCanonical = inventory.WorktreeCanonical
+	result.WorktreeClean = inventory.WorktreeClean
+	result.WorktreeHead = inventory.WorktreeHead
 	if inventory.Branch != "" {
 		if code, out := deps.Git(record.Repo, "rev-parse", "--verify", "--quiet", "refs/heads/"+inventory.Branch); code == 0 {
 			inventory.BranchOID = strings.TrimSpace(out)
 			result.BranchPresent = true
-			missing = append(missing, "branch_absent")
 		}
+	}
+	result.BranchOID = inventory.BranchOID
+	if result.BranchPresent {
+		if code, out := deps.Git(record.Repo, "worktree", "list", "--porcelain"); code != 0 {
+			missing = append(missing, "worktree_registry_observable")
+		} else {
+			inventory.BranchCheckoutPath = cleanupAbandonBranchCheckoutPath(out, inventory.Branch)
+			result.BranchCheckoutPath = inventory.BranchCheckoutPath
+			if inventory.BranchCheckoutPath != "" && !samePath(inventory.BranchCheckoutPath, inventory.WorktreeRoot) {
+				missing = append(missing, "branch_checked_out_elsewhere")
+			}
+		}
+	}
+	receiptMatches := cleanupAbandonFailureInventoryMatches(record, inventory, result.BranchPresent)
+	if record.CleanupAbandonFailure != nil && !receiptMatches {
+		missing = append(missing, "cleanup_failure_inventory")
+	}
+	partialBranchRetry := receiptMatches && cleanupAbandonPartialBranchRetry(record, inventory, result.BranchPresent)
+	if partialBranchRetry {
+		inventory.WorktreeHead = record.CleanupAbandonFailure.WorktreeHead
+		result.WorktreeHead = inventory.WorktreeHead
+	}
+	if (inventory.WorktreePresent || result.BranchPresent) && record.Execution == nil {
+		missing = append(missing, "local_residue_execution")
+	}
+	if inventory.WorktreePresent != result.BranchPresent && !partialBranchRetry {
+		missing = append(missing, "local_residue_pair")
+	}
+	if inventory.WorktreePresent && result.BranchPresent && inventory.WorktreeHead != inventory.BranchOID {
+		missing = append(missing, "local_branch_head")
 	}
 	// ⑤ pending external intent.
 	if record.Execution != nil && record.Execution.Pending != nil {
@@ -266,6 +376,135 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record issueops.
 		result.OrcaResidueError = err.Error()
 	}
 	return inventory, missing
+}
+
+func cleanupAbandonPartialBranchRetry(record issueops.IssueOpsRecord, inventory cleanupAbandonInventory, branchPresent bool) bool {
+	failure := record.CleanupAbandonFailure
+	return !inventory.WorktreePresent && branchPresent && failure != nil &&
+		(failure.Step == "applying" || failure.Step == "branch_delete") &&
+		samePath(failure.WorktreePath, inventory.WorktreeRoot) &&
+		failure.Branch == inventory.Branch && failure.BranchOID == inventory.BranchOID &&
+		failure.WorktreeHead == inventory.BranchOID
+}
+
+func cleanupAbandonFailureInventoryMatches(record issueops.IssueOpsRecord, inventory cleanupAbandonInventory, branchPresent bool) bool {
+	failure := record.CleanupAbandonFailure
+	if failure == nil {
+		return true
+	}
+	if !cleanupAbandonValidFingerprint(failure.Fingerprint) || !cleanupAbandonValidFingerprint(failure.RecordSHA) ||
+		!cleanupAbandonValidFingerprint(failure.InventorySHA256) ||
+		failure.InventorySHA256 != cleanupAbandonFailureSeal(record, failure) || failure.Branch != inventory.Branch ||
+		!samePath(failure.WorktreePath, inventory.WorktreeRoot) {
+		return false
+	}
+	originalAbsent := failure.WorktreeHead == "" && failure.BranchOID == ""
+	originalPaired := failure.WorktreePath != "" && failure.WorktreeHead != "" &&
+		failure.WorktreeHead == failure.BranchOID
+	if !originalAbsent && !originalPaired {
+		return false
+	}
+	switch failure.Step {
+	case "applying":
+		switch {
+		case inventory.WorktreePresent && branchPresent:
+			return originalPaired && inventory.WorktreeHead == failure.WorktreeHead && inventory.BranchOID == failure.BranchOID
+		case !inventory.WorktreePresent && branchPresent:
+			return originalPaired && inventory.BranchOID == failure.BranchOID
+		case !inventory.WorktreePresent && !branchPresent:
+			return originalAbsent || originalPaired
+		}
+	case "worktree_remove":
+		return inventory.WorktreePresent && branchPresent && originalPaired &&
+			inventory.WorktreeHead == failure.WorktreeHead && inventory.BranchOID == failure.BranchOID
+	case "branch_delete":
+		return !inventory.WorktreePresent && branchPresent && originalPaired && inventory.BranchOID == failure.BranchOID
+	case "record_delete":
+		return !inventory.WorktreePresent && !branchPresent && (originalAbsent || originalPaired)
+	}
+	return false
+}
+
+func cleanupAbandonValidFingerprint(value string) bool {
+	if len(value) != sha256.Size*2 {
+		return false
+	}
+	_, err := hex.DecodeString(value)
+	return err == nil
+}
+
+func cleanupAbandonFailureSeal(record issueops.IssueOpsRecord, failure *issueops.IssueOpsCleanupAbandonFailure) string {
+	sealed := struct {
+		ID           string `json:"id"`
+		Repo         string `json:"repo"`
+		Fingerprint  string `json:"fingerprint"`
+		RecordSHA    string `json:"record_sha"`
+		WorktreePath string `json:"worktree_path"`
+		Branch       string `json:"branch"`
+		WorktreeHead string `json:"worktree_head"`
+		BranchOID    string `json:"branch_oid"`
+	}{
+		ID: record.ID, Repo: record.Repo, Fingerprint: failure.Fingerprint,
+		RecordSHA: failure.RecordSHA, WorktreePath: failure.WorktreePath,
+		Branch: failure.Branch, WorktreeHead: failure.WorktreeHead, BranchOID: failure.BranchOID,
+	}
+	data, _ := json.Marshal(sealed)
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+}
+
+func cleanupAbandonBranchCheckoutPath(output, branch string) string {
+	currentPath := ""
+	for _, line := range strings.Split(output, "\n") {
+		switch {
+		case strings.HasPrefix(line, "worktree "):
+			currentPath = strings.TrimSpace(strings.TrimPrefix(line, "worktree "))
+		case strings.TrimSpace(line) == "branch refs/heads/"+branch:
+			return currentPath
+		}
+	}
+	return ""
+}
+
+func cleanupAbandonInspectWorktree(inventory cleanupAbandonInventory, deps CleanupAbandonDeps, missing []string) (cleanupAbandonInventory, []string) {
+	if code, out := deps.Git(inventory.WorktreeRoot, "rev-parse", "--show-toplevel"); code == 0 &&
+		samePath(out, inventory.WorktreeRoot) {
+		inventory.WorktreeCanonical = true
+	} else {
+		missing = append(missing, "worktree_canonical")
+	}
+	if code, out := deps.Git(inventory.WorktreeRoot, "symbolic-ref", "--quiet", "--short", "HEAD"); code == 0 {
+		inventory.WorktreeBranch = strings.TrimSpace(out)
+	}
+	if inventory.WorktreeBranch != inventory.Branch {
+		missing = append(missing, "worktree_branch_match")
+	}
+	if code, out := deps.Git(inventory.WorktreeRoot, "rev-parse", "HEAD"); code == 0 {
+		inventory.WorktreeHead = strings.TrimSpace(out)
+	} else {
+		missing = append(missing, "worktree_head")
+	}
+	if code, out := deps.Git(inventory.WorktreeRoot, "status", "--porcelain=v1"); code == 0 && strings.TrimSpace(out) == "" {
+		inventory.WorktreeClean = true
+	} else {
+		missing = append(missing, "worktree_clean")
+	}
+	return inventory, missing
+}
+
+func cleanupAbandonRemovalPlan(record issueops.IssueOpsRecord, inventory cleanupAbandonInventory) []string {
+	plan := []string{}
+	if inventory.WorktreePresent {
+		plan = append(plan, "local_worktree:"+inventory.WorktreeRoot)
+	}
+	if inventory.BranchOID != "" {
+		plan = append(plan, "local_branch:"+inventory.Branch+"@"+inventory.BranchOID)
+	}
+	plan = append(plan, "record:"+record.ID)
+	for _, operationID := range cleanupAbandonIntentOperationIDs(record) {
+		plan = append(plan, "intent:"+operationID)
+	}
+	return plan
 }
 
 // cleanupAbandonPendingRecovery는 pending intent가 안전하다고 증명되지 않았을 때
@@ -294,10 +533,9 @@ func cleanupAbandonLeaseHoldsWriter(status issueops.LeaseStatus) bool {
 // cleanupAbandonOrcaResourcesAbsent는 레코드를 지워도 orca 자원이 소유자를 잃지
 // 않는지 판정한다.
 //
-// abandon은 아무것도 지우지 않는 경로다. orca task가 살아 있는데 레코드를
-// 지우면 그 task는 소유자 조회가 영구히 0건이 되어 operational_task_residue로
-// 계속 보고된다 — #130이 정상 완료 경로에서 고친 것과 똑같은 증상이 이 경로로
-// 재현된다. 그래서 잔여물을 지울 수 있는 경로로 보낸다.
+// abandon은 Orca 자원을 지우지 않는다. orca task가 살아 있는데 레코드를 지우면
+// 그 task는 소유자 조회가 영구히 0건이 되어 operational_task_residue로 계속
+// 보고된다. 그래서 Orca 잔여물을 지울 수 있는 경로로 보낸다.
 //
 // 레코드에 바인딩이 있다는 것만으로 막지 않고 실조회한다. 그렇게 하면 orca에서
 // 이미 정리된 사이클까지 차단해 중도 포기 경로가 사라진다.
@@ -480,19 +718,14 @@ func deleteAbandonedIssueOps(ctx context.Context, stateRoot string, record issue
 		return nil, err
 	}
 	var deleted []string
-	err = withIssueOpsLock(ctx, stateRoot, id, func(context.Context) error {
+	err = withCleanupAbandonLock(ctx, stateRoot, id, func(context.Context) error {
 		// 임계구역 재검사: fingerprint는 lock 밖에서 계산됐다. 권위 필드가
 		// 그 사이 바뀌었다면 이 apply는 다른 상태를 지우는 것이 된다.
 		current, err := ReadIssueOps(stateRoot, id)
 		if err != nil {
 			return err
 		}
-		// lease 판정은 게이트 ③과 같은 함수를 쓴다. 같은 조건을 두 곳에서 각각
-		// 표현하면 한쪽만 바뀌었을 때 preview가 fingerprint까지 발급한 뒤 apply가
-		// 거부되는 상태가 생긴다 — 운영자에게는 이유 없이 막히는 것으로 보인다
-		// (#143, #142에서 실측).
-		if current.Phase != record.Phase || current.RemoteArtifact != nil || cleanupAbandonHasChildren(current) ||
-			(current.Execution != nil && cleanupAbandonLeaseHoldsWriter(current.Execution.Lease.Status)) {
+		if cleanupAbandonRecordSHA(current) != cleanupAbandonRecordSHA(record) {
 			return fmt.Errorf("abandon authority changed before deletion CAS")
 		}
 		rows := []string{}
@@ -565,6 +798,46 @@ func validateCleanupAbandonReason(reason string) error {
 		}
 	}
 	return nil
+}
+
+func armCleanupAbandon(ctx context.Context, stateRoot string, expected issueops.IssueOpsRecord, fingerprint string, inventory cleanupAbandonInventory) (issueops.IssueOpsRecord, error) {
+	var armed issueops.IssueOpsRecord
+	err := withCleanupAbandonLock(ctx, stateRoot, expected.ID, func(context.Context) error {
+		current, err := ReadIssueOps(stateRoot, expected.ID)
+		if err != nil {
+			return err
+		}
+		if cleanupAbandonRecordSHA(current) != cleanupAbandonRecordSHA(expected) {
+			return fmt.Errorf("abandon authority changed before local cleanup CAS")
+		}
+		now := time.Now().UTC().Format(time.RFC3339Nano)
+		failure := &issueops.IssueOpsCleanupAbandonFailure{
+			Step: "applying", Fingerprint: fingerprint,
+			RecordSHA:    inventory.RecordSHA,
+			WorktreePath: inventory.WorktreeRoot, Branch: inventory.Branch,
+			WorktreeHead: inventory.WorktreeHead, BranchOID: inventory.BranchOID, At: now,
+		}
+		failure.InventorySHA256 = cleanupAbandonFailureSeal(current, failure)
+		current.CleanupAbandonFailure = failure
+		if current.Execution != nil && current.Execution.Lease.Status == issueops.LeaseStatusClaimable {
+			current.Execution.Lease.Status = issueops.LeaseStatusReleased
+			current.Execution.Lease.ClaimTokenSHA256 = ""
+			current.Execution.Lease.ReleasedAt = now
+		}
+		current.UpdatedAt = now
+		armed, err = writeIssueOps(stateRoot, current)
+		return err
+	})
+	return armed, err
+}
+
+func cleanupAbandonRecordSHA(record issueops.IssueOpsRecord) string {
+	data, err := json.Marshal(record)
+	if err != nil {
+		return ""
+	}
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }
 
 func cleanupAbandonFingerprint(inventory cleanupAbandonInventory) (string, error) {
