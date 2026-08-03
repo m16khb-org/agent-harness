@@ -1,6 +1,8 @@
 package issueops
 
 import (
+	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -8,7 +10,97 @@ import (
 	"testing"
 
 	"agent-harness/internal/contract/issueops"
+	preparationcontract "agent-harness/internal/contract/issueopspreparation"
+	"agent-harness/internal/port"
 )
+
+func TestExecutionPreparationPlanArtifactGatePrecedesRemoteOwnerRead(t *testing.T) {
+	stateRoot, record := executionPrepareRecord(t)
+	record.Delegation = &issueops.IssueOpsDelegationContract{ParentPlanPath: filepath.Join(t.TempDir(), "parent-plan.md")}
+	raw, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	readerCalls := 0
+	reader := func(context.Context, string, port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
+		readerCalls++
+		return port.ExecutionIssueSnapshot{}, nil
+	}
+
+	_, err = ReadExecutionPreparationOwnerEvidence(context.Background(), stateRoot, preparationcontract.Snapshot{RecordRaw: raw}, reader)
+	if err == nil {
+		t.Fatal("missing staged plan passed preparation readiness")
+	}
+	if readerCalls != 0 {
+		t.Fatalf("remote issue reader calls=%d want 0", readerCalls)
+	}
+	fields, ok := err.(interface{ IssueOpsErrorFields() map[string]any })
+	if !ok || fields.IssueOpsErrorFields()["code"] != "orca_plan_artifact_required" {
+		t.Fatalf("error=%T %v want orca_plan_artifact_required", err, err)
+	}
+}
+
+func TestPrepareExecutionOwnerMaterializesPlanAndSealsManifest(t *testing.T) {
+	stateRoot, record := executionPrepareRecord(t)
+	const plan = "# Sealed owner plan\n"
+	if _, err := StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte(plan)); err != nil {
+		t.Fatal(err)
+	}
+	worktree := t.TempDir()
+	record.Execution = &issueops.Execution{
+		Mode: issueops.ExecutionModeOrca,
+		Workspace: issueops.Workspace{
+			SourceRoot: record.Repo, Root: worktree, Branch: record.Branch,
+			BaseHead: record.BranchPrepare.BaseSHA, Driver: "orca",
+		},
+		Lease: issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusReleased},
+	}
+	raw, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	workspace := preparationcontract.WorkspaceRequest{
+		LifecycleID: record.ID, SourceRoot: record.Repo, Root: worktree, Branch: record.Branch,
+		BaseBranch: record.BranchPrepare.BaseBranch, BaseHead: record.BranchPrepare.BaseSHA, Confirm: true,
+	}
+	receipt := preparationcontract.IntentReceipt{Workspace: &preparationcontract.OrcaWorkspaceReceipt{
+		Workspace: preparationcontract.WorkspaceReceipt{
+			SourceRoot: record.Repo, Root: worktree, Branch: record.Branch,
+			BaseHead: record.BranchPrepare.BaseSHA, Driver: "orca", Exists: true,
+		},
+		RuntimeID: "runtime", RepoID: "repo", WorktreeID: "worktree", WorktreeInstanceID: "instance",
+	}}
+	issueBody := "## Acceptance\n- AC-01 seal plan\n\n## Verification\n```bash\ngo test ./... -count=1\n```\n"
+	readIssue := func(_ context.Context, _ string, request port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
+		return port.ExecutionIssueSnapshot{URL: request.URL, Body: issueBody}, nil
+	}
+
+	artifacts, err := PrepareExecutionPreparationOwner(
+		context.Background(), stateRoot, preparationcontract.Snapshot{RecordRaw: raw},
+		preparationcontract.Command{ID: record.ID, OwnerHost: "codex", OwnerModel: "gpt-5.6-terra", OwnerEffort: "xhigh"},
+		preparationcontract.Intent{StartedAt: "2026-08-03T00:00:00Z", Workspace: workspace, IssueBodySHA256: digestExecutionOwnerBytes([]byte(issueBody))},
+		receipt, readIssue,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantPath := filepath.Join(worktree, filepath.FromSlash(IssueOpsArtifactDir), "plan.md")
+	wantDigest := digestExecutionOwnerBytes([]byte(plan))
+	if artifacts.PlanPath != wantPath {
+		t.Fatalf("plan path=%q want %q", artifacts.PlanPath, wantPath)
+	}
+	packetRaw, err := os.ReadFile(artifacts.ContextPacketPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var packet executionOwnerContextPacket
+	if err := json.Unmarshal(packetRaw, &packet); err != nil {
+		t.Fatal(err)
+	}
+	if packet.ArtifactManifest["plan"] != wantDigest {
+		t.Fatalf("artifact manifest=%+v want plan=%q", packet.ArtifactManifest, wantDigest)
+	}
+}
 
 func TestExecutionOwnerReportContractGolden(t *testing.T) {
 	record, req := ownerPacketFixture()

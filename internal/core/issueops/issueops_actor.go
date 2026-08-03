@@ -59,6 +59,23 @@ func validateExecutionMutation(record issueops.IssueOpsRecord, actor *IssueOpsAc
 	}
 	return nil
 }
+
+func validatePlanLinkMutation(record issueops.IssueOpsRecord, actor *IssueOpsActor) error {
+	if record.Execution == nil || !canStageIssueOpsArtifact(record, "plan") {
+		return validateExecutionMutation(record, actor)
+	}
+	host := ""
+	if actor != nil {
+		host = strings.ToLower(strings.TrimSpace(actor.Host))
+	}
+	if actor == nil || (host != "codex" && host != "claude") ||
+		strings.TrimSpace(actor.SessionID) == "" || len(actor.NativeProcessAncestry) == 0 ||
+		!samePath(actor.CWD, record.Execution.Workspace.Root) {
+		return fmt.Errorf("released Orca plan linking requires a native coordinator in the canonical worktree")
+	}
+	return nil
+}
+
 func validateWorkspacePreparationMutation(record issueops.IssueOpsRecord, actor *IssueOpsActor) error {
 	return validateExecutionMutation(record, actor)
 }

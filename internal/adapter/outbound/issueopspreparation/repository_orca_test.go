@@ -59,6 +59,7 @@ func TestOrcaIntentRepositoryCASCompletesClaimableAuthority(t *testing.T) {
 		}
 		if stage == preparationcontract.IntentStageWorktree {
 			state.OwnerArtifacts = preparationcontract.OwnerArtifacts{
+				PlanPath:       "/repo.worktrees/199-orca/.agent-harness/artifact/plan.md",
 				ClaimTokenPath: "/repo.worktrees/199-orca/.agent-harness/state/claim", ClaimTokenSHA256: strings.Repeat("d", 64),
 				ContextPacketPath: "/repo.worktrees/199-orca/.agent-harness/context.json", ContextPacketSHA256: strings.Repeat("c", 64),
 				OwnerPromptPath: "/repo.worktrees/199-orca/.agent-harness/owner.md", OwnerPromptSHA256: strings.Repeat("b", 64),
@@ -69,6 +70,15 @@ func TestOrcaIntentRepositoryCASCompletesClaimableAuthority(t *testing.T) {
 			t.Fatal(applyErr)
 		}
 		state = progress.State
+		if stage == preparationcontract.IntentStageWorktree {
+			persisted, decodeErr := leasecontract.Decode(begin.Snapshot.Record.ID, store.mustGet(recordBucket, begin.Snapshot.Record.ID))
+			if decodeErr != nil {
+				t.Fatal(decodeErr)
+			}
+			if persisted.PlanPath != state.OwnerArtifacts.PlanPath || state.Snapshot.Record.PlanPath != state.OwnerArtifacts.PlanPath {
+				t.Fatalf("worktree receipt did not atomically persist plan path: persisted=%q snapshot=%q want=%q", persisted.PlanPath, state.Snapshot.Record.PlanPath, state.OwnerArtifacts.PlanPath)
+			}
+		}
 		if stage != preparationcontract.IntentStageDispatch && !progress.Pending {
 			t.Fatalf("stage %s unexpectedly terminal", stage)
 		}
@@ -93,6 +103,9 @@ func TestOrcaIntentRepositoryCASCompletesClaimableAuthority(t *testing.T) {
 	}
 	if record.Execution.Pending != nil || record.Execution.Failure != nil || record.Execution.Lease.Status != "claimable" || record.Execution.Lease.Holder != nil || record.Execution.Lease.ClaimTokenSHA256 != strings.Repeat("d", 64) {
 		t.Fatalf("execution=%+v", record.Execution)
+	}
+	if record.PlanPath != state.OwnerArtifacts.PlanPath {
+		t.Fatalf("durable plan path=%q want %q", record.PlanPath, state.OwnerArtifacts.PlanPath)
 	}
 	binding := record.Execution.Orca
 	if binding == nil || binding.RuntimeID != "runtime" || binding.RunID != "run" || binding.TaskID != "task" || binding.DispatchID != "dispatch" || binding.LeaseGeneration != 1 {

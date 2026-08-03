@@ -995,6 +995,10 @@ func executionMutationDecision(req lifecyclecontract.HookToolUseLifecycleRequest
 	}
 	resourceWaitRoot, exactResourceWait := exactOwnedResourceWait(req.Command)
 	atomicWorkflowRoot, exactAtomicWorkflow := exactAtomicCommitWorkflowScript(req)
+	releasedPlanRecoveryID, exactReleasedPlanRecovery := exactReleasedPlanArtifactStage(req.Command)
+	if !exactReleasedPlanRecovery {
+		releasedPlanRecoveryID, exactReleasedPlanRecovery = exactReleasedPlanLink(req.Command)
+	}
 	atomicWorkflowRelativeScript := exactAtomicWorkflow && atomicCommitWorkflowUsesRelativeScript(req.Command)
 	temporaryBuildOutput, exactTemporaryBuild := "", false
 	if unsafeReason == "" {
@@ -1003,7 +1007,7 @@ func executionMutationDecision(req lifecyclecontract.HookToolUseLifecycleRequest
 	mayMutate := toolUseMayMutateLifecycleFiles(req.Tool, req.Command)
 	if searchrouting.IsShellTool(req.Tool) && !mayMutate {
 		mayMutate = true
-		if unsafeReason == "" && !exactIssueOpsOwnerMutation(req.Command) && !exactResourceWait && !exactAtomicWorkflow {
+		if unsafeReason == "" && !exactIssueOpsOwnerMutation(req.Command) && !exactReleasedPlanRecovery && !exactResourceWait && !exactAtomicWorkflow {
 			unsafeReason = "unclassified shell command is blocked while IssueOps mutation authority is active; use an exact listed reader or a statically classified foreground mutation command"
 		}
 	}
@@ -1074,6 +1078,12 @@ func executionMutationDecision(req lifecyclecontract.HookToolUseLifecycleRequest
 			executionSyncBaseResolutionAllows(req, *record.Execution, targets, root) {
 			return true, "", nil
 		}
+		if exactReleasedPlanRecovery && record.Execution.Mode == issueopscontract.ExecutionModeOrca &&
+			releasedPlanRecoveryID == record.ID &&
+			lease.Status == issueopscontract.LeaseStatusReleased && lease.Holder == nil &&
+			record.Execution.Pending == nil && record.Execution.Completion == nil && targetsAuthorized {
+			return true, "", nil
+		}
 		if lease.Status == issueopscontract.LeaseStatusActive && executionActorMatches(req, lease.Holder) &&
 			targetsAuthorized {
 			if orcaBranchLinkVerificationRequired(record) && !exactOrcaBranchLinkRecorder(req.Command, record) {
@@ -1135,6 +1145,55 @@ func exactIssueOpsOwnerMutation(commandText string) bool {
 	}
 	_, ok = commandparse.ExactIssueOpsOwnerMutation(command)
 	return ok
+}
+
+func exactReleasedPlanArtifactStage(commandText string) (string, bool) {
+	command, ok := commandparse.ParseExactIssueOpsCommand(commandText)
+	if !ok || command.Path != "artifact stage" {
+		return "", false
+	}
+	values, booleans, repeatable, ok := commandparse.IssueOpsCommandSpec(command.Path)
+	if !ok {
+		return "", false
+	}
+	flags, ok := commandparse.ExactFlags(command, values, booleans, repeatable)
+	if !ok {
+		return "", false
+	}
+	id, idOK := oneFlag(flags, "--id")
+	name, nameOK := oneFlag(flags, "--name")
+	file, fileOK := oneFlag(flags, "--file")
+	_, jsonOK := flags["--json"]
+	exact := idOK && strings.TrimSpace(id) != "" && nameOK && name == "plan" &&
+		fileOK && strings.TrimSpace(file) != "" && jsonOK
+	return strings.TrimSpace(id), exact
+}
+
+func exactReleasedPlanLink(commandText string) (string, bool) {
+	command, ok := commandparse.ParseExactIssueOpsCommand(commandText)
+	if !ok || command.Path != "link-plan" {
+		return "", false
+	}
+	values, booleans, repeatable, ok := commandparse.IssueOpsCommandSpec(command.Path)
+	if !ok {
+		return "", false
+	}
+	flags, ok := commandparse.ExactFlags(command, values, booleans, repeatable)
+	if !ok {
+		return "", false
+	}
+	id, found := oneFlag(flags, "--id")
+	if !found || strings.TrimSpace(id) == "" {
+		return "", false
+	}
+	for _, name := range []string{"--plan-path", "--host", "--session-id", "--cwd"} {
+		value, found := oneFlag(flags, name)
+		if !found || strings.TrimSpace(value) == "" {
+			return "", false
+		}
+	}
+	_, jsonOK := flags["--json"]
+	return strings.TrimSpace(id), jsonOK
 }
 
 func orcaBranchLinkVerificationRequired(record issueopscontract.IssueOpsRecord) bool {

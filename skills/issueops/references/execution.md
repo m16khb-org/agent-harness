@@ -91,6 +91,16 @@ provider adapter가 일반 `glab api` CLI로 같은 필드를 읽고 성공 결�
 fallback만 기록한다. secret, token, 개인 경로, server namespace는 기록하지
 않는다. 이 기록은 OpenWiki 자동 update를 실행하지 않는다.
 
+## GitHub Orca Branch Ordering
+
+GitHub Orca는 #176에서 검증된 순서를 고정한다: `branch prepare` (base SHA only) → `artifact stage --name plan` → `execution prepare --mode orca` → GraphQL `createLinkedBranch` with `oid=sealed base SHA` → `branch prepare --link-verified`.
+첫 `branch prepare`는 issue identity와 exact base SHA만 기록하고 provider branch를
+만들거나 `--link-verified`를 기록하지 않는다. plan을 먼저 stage한 뒤 Orca prepare가
+같은 이름의 local-only branch/worktree를 만든다. 그 다음 `createLinkedBranch`에 봉인
+SHA를 `oid`로 전달해 같은 이름의 remote linked branch를 만들고, exact reader로
+연결을 확인한 뒤 `branch prepare --link-verified`를 기록한다. `gh issue develop`은
+링크 시점 base branch HEAD를 사용할 수 있어 봉인 SHA와 갈라지므로 이 경로에서 금지한다.
+
 ## Prepare
 
 Run the preview first, inspect the selected mode, branch, base SHA, worktree,
@@ -346,7 +356,9 @@ Claude Code의 자동 실행 경로는 `Opus 5 → Sonnet 5`다. Fable 5는 자�
 
 ## Artifact Staging And Sealing
 
-메인(planner) 세션은 prepare **이전에** 계획/스펙/turing loop를 스테이징한다:
+메인(planner) 세션은 prepare **이전에** 승인된 child plan을 source checkout 밖의
+coordinator 임시 파일에 쓰고 계획/스펙/turing loop를 스테이징한다. Delegation의
+`parent_plan_path`는 child plan readiness 입력이 아니다:
 
 ```bash
 agent-harness issueops artifact stage --id "$ISSUEOPS_ID" --name plan --file plan.md --json
@@ -355,14 +367,29 @@ agent-harness issueops artifact stage --id "$ISSUEOPS_ID" --name turing-loop --f
 ```
 
 - 이름은 `plan|spec|turing-loop` 고정, 파일당 1MiB 상한, secret 패턴은 거부된다(스크럽 없음).
-- prepare가 워크트리 생성 직후 `<worktree>/.agent-harness/artifact/<name>.md`(0600)로
-  materialize하고, orca 모드는 `artifact_manifest`(sha256)를 sealed packet에 봉인한다.
-  owner claim 시 manifest가 검증되며 불일치는 drift로 read-only 잔류한다.
-- prepare 이후 stage/unstage는 명시적으로 거부된다(조용한 no-op 없음). 잘못
-  스테이징했으면 prepare 전에 `issueops artifact unstage --id ID --name NAME`.
-- `execution replace --finalize|--reseed` 재봉인은 staged 원본을 다시 읽어
-  manifest를 만들지만, 기존 artifact 파일은 immutable writer로 동일 바이트만
-  허용한다. 내용이 달라진 재-materialize는 거부된다.
+- Orca prepare preflight는 non-empty staged `plan`을 remote issue read와 모든 외부
+  mutation 전에 요구한다. 이미 `plan_path`가 있으면 canonical child worktree 안의
+  regular file이어야 하고 staged bytes와 SHA-256이 정확히 같아야 한다.
+- worktree receipt 직후 prepare가 `<worktree>/.agent-harness/artifact/<name>.md`(0600)로
+  materialize한다. Fresh Orca plan은 그 deterministic path를 durable `plan_path`로
+  같은 CAS에 기록하고, `artifact_manifest.plan`에 같은 SHA-256을 봉인한 뒤에만
+  terminal/Run/task/dispatch로 진행한다. 성공 readback 뒤 임시 source를 지워도 된다.
+- prepare 전 잘못 스테이징했으면 `issueops artifact unstage --id ID --name NAME`.
+  Prepare 후 recovery staging은 **Orca + released + holder/pending/completion 없음**의
+  clean generation에서 `--name plan`만 허용한다. 현재 sealed packet은 바뀌지 않으며
+  새 입력은 반드시 `execution replace --reseed`로 다음 generation에 재봉인한 뒤
+  `execution resume`해야 한다.
+- 기존 released cycle에 `plan_path`가 비어 있으면 canonical child worktree에 plan을
+  쓰고 exact `link-plan`을 먼저 실행한 다음 그 동일 파일을 stage한다. Active,
+  claimable, revoking, completed, direct execution과 path identity 교체는 fail-closed다.
+- `execution replace --finalize|--reseed` 재봉인은 staged 원본과 기존 durable
+  `plan_path`를 다시 읽어 exact digest identity를 요구한다. Replacement는
+  `plan_path`를 새로 만들거나 바꾸지 않으며, immutable artifact writer는 동일
+  바이트만 허용한다.
+- Resume은 manifest plan digest, sealed plan file, durable in-worktree `plan_path`를
+  모두 비교한다. 누락/drift는 operation ID, intent, terminal/Run/task/dispatch,
+  lease mutation 전에 `orca_plan_artifact_required`와 replacement-preview action으로
+  끝난다.
 - 이 디렉토리는 gitignore 대상이다 — 보존은 completion 섹션이 담당한다.
 
 ## Implementation Review Gate (orca mode)

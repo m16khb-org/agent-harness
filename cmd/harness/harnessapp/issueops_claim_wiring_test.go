@@ -83,6 +83,25 @@ func seedOrcaClaimSnapshot(t *testing.T) (string, issueopscontract.IssueOpsRecor
 	record.Phase = issueops.IssueOpsPhaseImplement
 	record.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/16"
 	record.BranchPrepare = &issueopscontract.IssueOpsBranchPrepare{Provider: "gitlab", IssueURL: record.IssueURL, Branch: record.Branch, BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true}
+	const plan = "# Snapshot owner plan\n"
+	if _, err := issueops.StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte(plan)); err != nil {
+		t.Fatal(err)
+	}
+	record.WorktreePath = worktree
+	record.PlanPath = filepath.Join(worktree, "plans", "linked.md")
+	if err := os.MkdirAll(filepath.Dir(record.PlanPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(record.PlanPath, []byte(plan), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	sealedPlanPath := filepath.Join(worktree, filepath.FromSlash(issueops.IssueOpsArtifactDir), "plan.md")
+	if err := os.MkdirAll(filepath.Dir(sealedPlanPath), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sealedPlanPath, []byte(plan), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	record.Execution = &issueopscontract.Execution{
 		Mode:      issueopscontract.ExecutionModeOrca,
 		Workspace: issueopscontract.Workspace{SourceRoot: source, Root: worktree, Branch: record.Branch, BaseHead: baseHead, Driver: "orca", LinkedAt: "2026-07-30T09:00:00Z"},
@@ -105,7 +124,7 @@ func seedOrcaClaimSnapshot(t *testing.T) (string, issueopscontract.IssueOpsRecor
 	packet := map[string]any{
 		"schema_version": 1, "lifecycle_id": record.ID, "mode": "orca", "source_root": source, "worktree_root": worktree,
 		"branch": record.Branch, "base_head": record.Execution.Workspace.BaseHead, "lease_generation": uint64(1), "claim_token_file": tokenPath,
-		"issue": map[string]string{"url": record.IssueURL, "body": claimWiringIssueBody(), "body_sha256": issueDigest}, "artifact_manifest": map[string]string{},
+		"issue": map[string]string{"url": record.IssueURL, "body": claimWiringIssueBody(), "body_sha256": issueDigest}, "artifact_manifest": map[string]string{"plan": claimWiringSHA256(plan)},
 	}
 	packetBytes, err := json.Marshal(packet)
 	if err != nil {
@@ -117,10 +136,15 @@ func seedOrcaClaimSnapshot(t *testing.T) (string, issueopscontract.IssueOpsRecor
 	if err := os.WriteFile(packetPath, packetBytes, 0o600); err != nil {
 		t.Fatal(err)
 	}
+	packetDigest := claimWiringSHA256(string(packetBytes))
+	record.Execution.Orca.ArtifactIdentityVersion = issueopscontract.OrcaArtifactIdentityVersion
+	record.Execution.Orca.IssueBodySHA256 = issueDigest
+	record.Execution.Orca.ContextPacketSHA256 = packetDigest
+	record.Execution.Orca.OwnerPromptSHA256 = strings.Repeat("d", 64)
 	if _, err := issueops.WriteIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}
-	return stateRoot, record, tokenPath, issueDigest, claimWiringSHA256(string(packetBytes))
+	return stateRoot, record, tokenPath, issueDigest, packetDigest
 }
 
 func claimWiringActor(t *testing.T) issueopscontract.NativeActor {
