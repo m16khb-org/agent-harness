@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -177,6 +178,201 @@ func TestInstallNativeScriptBindsStagedCandidateBeforeReplacement(t *testing.T) 
 	seal := strings.Index(script, "HARNESS_NATIVE_ACTIVATION_STEP=seal")
 	if begin < 0 || replace < 0 || seal < 0 || !(begin < replace && replace < seal) {
 		t.Fatalf("native activation order must be staged begin -> atomic replace -> canonical seal: begin=%d replace=%d seal=%d", begin, replace, seal)
+	}
+}
+
+func TestInstallNativeScriptRefusesRegularCommandBeforeActivationBegin(t *testing.T) {
+	harnessRoot := t.TempDir()
+	home := t.TempDir()
+	binDir := filepath.Join(harnessRoot, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	commandDir := filepath.Join(home, ".local", "bin")
+	if err := os.MkdirAll(commandDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(commandDir, "agent-harness"), []byte("prior managed command\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	callsPath := filepath.Join(harnessRoot, "calls")
+	pendingPath := filepath.Join(harnessRoot, "pending")
+	receiptPath := filepath.Join(harnessRoot, "receipt")
+	const priorReceipt = "prior sealed receipt\n"
+	if err := os.WriteFile(receiptPath, []byte(priorReceipt), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fakeBinary := `#!/usr/bin/env bash
+set -euo pipefail
+
+case "${1:-}" in
+  version)
+    exit 0
+    ;;
+  install)
+    dry_run=0
+    for arg in "$@"; do
+      if [[ "$arg" == "--dry-run" ]]; then
+        dry_run=1
+      fi
+    done
+    case "${HARNESS_NATIVE_ACTIVATION_STEP:-}" in
+      begin)
+        printf 'begin\n' >>"$FAKE_CALLS"
+        rm -f -- "$FAKE_RECEIPT"
+        printf 'pending\n' >"$FAKE_PENDING"
+        printf '{"transition_id":"0123456789abcdef0123456789abcdef","binary_sha256":"%s"}\n' "$FAKE_BINARY_SHA256"
+        ;;
+      abort)
+        printf 'abort\n' >>"$FAKE_CALLS"
+        rm -f -- "$FAKE_PENDING"
+        printf '{"aborted":true}\n'
+        ;;
+      *)
+        if [[ "$dry_run" == "1" ]]; then
+          printf 'preflight\n' >>"$FAKE_CALLS"
+        else
+          printf 'seal\n' >>"$FAKE_CALLS"
+        fi
+        if [[ -f "$HOME/.local/bin/agent-harness" ]]; then
+          printf 'refusing to replace non-symlink command path\n' >&2
+          exit 1
+        fi
+        exit 2
+        ;;
+    esac
+    ;;
+  *)
+    exit 2
+    ;;
+esac
+`
+	binPath := filepath.Join(binDir, "agent-harness")
+	if err := os.WriteFile(binPath, []byte(fakeBinary), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install-native.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("bash", scriptPath, "--skip-build", "--json")
+	cmd.Env = append(os.Environ(),
+		"HARNESS_ROOT="+harnessRoot,
+		"HARNESS_SKIP_BUILD=1",
+		"HOME="+home,
+		"FAKE_CALLS="+callsPath,
+		"FAKE_PENDING="+pendingPath,
+		"FAKE_RECEIPT="+receiptPath,
+		"FAKE_BINARY_SHA256="+sha256Hex(fakeBinary),
+	)
+	output, runErr := cmd.CombinedOutput()
+	if runErr == nil {
+		t.Fatalf("unapproved regular command path unexpectedly installed: %s", output)
+	}
+	calls, err := os.ReadFile(callsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipt, receiptErr := os.ReadFile(receiptPath)
+	_, pendingErr := os.Stat(pendingPath)
+	if got := strings.TrimSpace(string(calls)); got != "preflight" || receiptErr != nil || string(receipt) != priorReceipt || !os.IsNotExist(pendingErr) {
+		t.Fatalf("refusal must occur before activation mutation: calls=%q receipt=%q receiptErr=%v pendingErr=%v output=%s", got, receipt, receiptErr, pendingErr, output)
+	}
+}
+
+func TestInstallNativeScriptSupportsEmptyActivationArguments(t *testing.T) {
+	harnessRoot := t.TempDir()
+	home := t.TempDir()
+	binDir := filepath.Join(harnessRoot, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	callsPath := filepath.Join(harnessRoot, "calls")
+	fakeBinary := `#!/usr/bin/env bash
+set -euo pipefail
+
+case "${1:-}" in
+  version)
+    exit 0
+    ;;
+  install)
+    case "${HARNESS_NATIVE_ACTIVATION_STEP:-}" in
+      begin)
+        printf 'begin\n' >>"$FAKE_CALLS"
+        printf '{"transition_id":"0123456789abcdef0123456789abcdef","binary_sha256":"%s"}\n' "$FAKE_BINARY_SHA256"
+        ;;
+      seal)
+        printf 'seal\n' >>"$FAKE_CALLS"
+        printf '{"committed":true,"transition_id":"%s"}\n' "$HARNESS_NATIVE_ACTIVATION_TRANSITION_ID"
+        ;;
+      *)
+        printf 'preflight\n' >>"$FAKE_CALLS"
+        ;;
+    esac
+    ;;
+  *)
+    exit 2
+    ;;
+esac
+`
+	binPath := filepath.Join(binDir, "agent-harness")
+	if err := os.WriteFile(binPath, []byte(fakeBinary), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	scriptPath, err := filepath.Abs(filepath.Join("..", "..", "scripts", "install-native.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("bash", scriptPath, "--skip-build")
+	cmd.Env = append(os.Environ(),
+		"HARNESS_ROOT="+harnessRoot,
+		"HARNESS_SKIP_BUILD=1",
+		"HOME="+home,
+		"FAKE_CALLS="+callsPath,
+		"FAKE_BINARY_SHA256="+sha256Hex(fakeBinary),
+	)
+	output, runErr := cmd.CombinedOutput()
+	if runErr != nil {
+		t.Fatalf("empty activation argument arrays failed: %v\n%s", runErr, output)
+	}
+	calls, err := os.ReadFile(callsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(string(calls)); got != "preflight\nbegin\nseal" {
+		t.Fatalf("activation calls=%q output=%s", got, output)
+	}
+}
+
+func TestInstallNativeScriptForwardsAdoptionAndOwnsExactTransitionCleanup(t *testing.T) {
+	script := readFile(t, filepath.Join("..", "..", "scripts", "install-native.sh"))
+	for _, want := range []string{
+		"--adopt-command-file",
+		"ACTIVATION_ARGS+=(\"$arg\")",
+		"HARNESS_NATIVE_ACTIVATION_TRANSITION_ID=\"$ACTIVATION_TRANSITION_ID\"",
+		"HARNESS_NATIVE_ACTIVATION_STEP=abort",
+		"ACTIVATION_ABORTED=1",
+		"ACTIVATION_COMMITTED=1",
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("install-native.sh transition/adoption contract missing %q", want)
+		}
+	}
+	if strings.Count(script, "HARNESS_NATIVE_ACTIVATION_STEP=abort") != 1 {
+		t.Fatal("install-native.sh must have exactly one abort invocation site")
+	}
+}
+
+func TestNativeInstallAndChildSmokeScriptsHaveValidBashSyntax(t *testing.T) {
+	for _, path := range []string{
+		filepath.Join("..", "..", "scripts", "install-native.sh"),
+		filepath.Join("..", "..", "scripts", "verify-child-host-smoke.sh"),
+	} {
+		if output, err := exec.Command("bash", "-n", path).CombinedOutput(); err != nil {
+			t.Fatalf("bash -n %s: %v\n%s", path, err, output)
+		}
 	}
 }
 

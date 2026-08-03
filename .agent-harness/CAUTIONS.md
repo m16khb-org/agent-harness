@@ -299,6 +299,10 @@ Manual builds, smoke tests, and ad-hoc verification runs can leave stale binarie
 - To clean up stale manual artifacts: `rm -f /tmp/agent-harness-*`. Add this to a periodic workspace hygiene routine.
 - CI and automated scripts should prefer `mktemp -d` or Go `t.TempDir()` / `os.MkdirTemp` over hardcoded `/tmp/` paths.
 - Build scripts (`scripts/install-native.sh`) build to `$ROOT/bin/agent-harness`, not `/tmp`.
+- 기존 `~/.local/bin/agent-harness` regular file을 symlink처럼 일반 교체하지 않는다. `--adopt-command-file` 승인 뒤에도 두 binary의 정적 Go build identity, current euid·executable·single-link·size 경계를 모두 먼저 확인하고, Seal 전 실패는 private backup에서 복원한 뒤 같은 transition ID만 Abort한다. Seal 후 backup cleanup 실패는 committed activation을 rollback하지 않는다.
+- native install wrapper는 실제 실행과 같은 인자의 dry-run path preflight를 activation Begin보다 먼저 끝낸다. 승인되지 않은 regular command path가 Begin 뒤에 거부되면 기존 sealed receipt를 잃고 불필요한 pending transition을 남기므로, 실패 fixture는 호출 순서가 `preflight` 하나뿐이고 prior receipt와 pending 부재가 그대로인지 검증한다.
+- staged install의 managed-path preflight는 eventual canonical symlink target이 아니라 현재 실행 중인 `.agent-harness.activate-*` candidate의 build/file identity를 검사한다. command path 교체와 rollback은 atomic exchange로 displaced 객체를 먼저 보존한 뒤 승인된 identity 또는 exact symlink인지 확인하며, 경합이 감지되면 동시 교체 파일을 canonical path에 복원하고 private backup을 recovery evidence로 유지한다.
+- macOS 기본 Bash 3.2에서 `set -u`와 빈 array의 `"${values[@]}"` 조합은 `unbound variable`로 종료된다. optional install/activation args는 길이를 먼저 확인하고 빈 경우 array expansion 자체를 생략하며, `bash -n`만으로는 잡히지 않으므로 zero-flag wrapper runtime fixture를 둔다.
 
 ## 21. Worktree guard and execution liveness must use the same v1 fence
 

@@ -1,8 +1,10 @@
 package installcli
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -30,6 +32,51 @@ func TestInstallCommandDryRunJSONDispatches(t *testing.T) {
 	}
 	if result.Root != root {
 		t.Fatalf("install used unexpected harness root: got %q want %q", result.Root, root)
+	}
+}
+
+func TestInstallCommandDryRunAllowsSelfVerifyBinaryOutsideHarnessRoot(t *testing.T) {
+	root := t.TempDir()
+	home := t.TempDir()
+	skillDir := filepath.Join(root, "skills", "atomic-commit-push")
+	if err := os.MkdirAll(skillDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: atomic-commit-push\ndescription: fixture\n---\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", home)
+	t.Setenv("CODEX_HOME", filepath.Join(home, ".codex"))
+	t.Setenv("HARNESS_ROOT", root)
+	Configure(Deps{
+		HarnessRoot:    func() string { return root },
+		ExecutablePath: func() (string, error) { return executable, nil },
+		HostInstallers: []port.HostInstaller{installerFixture{}},
+	})
+	t.Cleanup(Reset)
+
+	out, _, err := captureInstallCommandOutput(t, nil, func() error {
+		return RunInstall([]string{"--dry-run", "--project-local", "--path-mode=skip", "--json"})
+	})
+	if err != nil {
+		t.Fatalf("self-verify install dry-run failed with executable outside HARNESS_ROOT: %v\n%s", err, out)
+	}
+	var result port.NativeInstallResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil || !result.OK || !result.DryRun {
+		t.Fatalf("self-verify install dry-run result=%+v decodeErr=%v", result, err)
+	}
+}
+
+func TestNativeInstallCandidatePathRejectsExternalBinaryForApply(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "bin", "agent-harness")
+	external := filepath.Join(t.TempDir(), "agent-harness")
+	_, err := nativeInstallCandidatePath(target, false, func() (string, error) { return external, nil })
+	if err == nil || !strings.Contains(err.Error(), "canonical target or a same-directory staged binary") {
+		t.Fatalf("external apply candidate error = %v", err)
 	}
 }
 
@@ -216,5 +263,108 @@ func TestInstallCommandShortShimRefusesUnrelatedSymlink(t *testing.T) {
 	target, readErr := os.Readlink(short)
 	if readErr != nil || target != unrelated {
 		t.Fatalf("unrelated ah symlink changed: target=%q err=%v", target, readErr)
+	}
+}
+
+func TestInstallCommandRefusesManagedRegularCommandWithoutApproval(t *testing.T) {
+	home := t.TempDir()
+	target := buildManagedTestCommand(t)
+	command := filepath.Join(home, ".local", "bin", "agent-harness")
+	copyTestCommand(t, target, command)
+	want, err := os.ReadFile(command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := port.NativeInstallResult{}
+	_, err = prepareInstallPathPlan(&result, port.NativeInstallRequest{Home: home, BinPath: target, DryRun: true}, "skip")
+	if err == nil || !strings.Contains(err.Error(), "--adopt-command-file") {
+		t.Fatalf("regular command refusal error = %v", err)
+	}
+	got, readErr := os.ReadFile(command)
+	if readErr != nil || !bytes.Equal(got, want) {
+		t.Fatalf("regular command changed without approval: readErr=%v", readErr)
+	}
+}
+
+func TestInstallCommandApprovedDryRunReportsManagedAdoptionWithoutWriting(t *testing.T) {
+	home := t.TempDir()
+	target := buildManagedTestCommand(t)
+	command := filepath.Join(home, ".local", "bin", "agent-harness")
+	copyTestCommand(t, target, command)
+	wantInfo, err := os.Lstat(command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := port.NativeInstallResult{}
+	_, err = prepareInstallPathPlan(&result, port.NativeInstallRequest{Home: home, BinPath: target, DryRun: true, AdoptCommandFile: true}, "skip")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.CommandPath == nil || !result.CommandPath.AdoptionApproved || !result.CommandPath.WouldAdopt || !result.CommandPath.RollbackAvailable || result.CommandPath.BackupPath == "" {
+		t.Fatalf("managed command dry-run receipt=%+v", result.CommandPath)
+	}
+	gotInfo, err := os.Lstat(command)
+	if err != nil || gotInfo.Mode() != wantInfo.Mode() || gotInfo.Size() != wantInfo.Size() || gotInfo.Mode()&os.ModeSymlink != 0 {
+		t.Fatalf("dry-run mutated command: got=%v want=%v err=%v", gotInfo, wantInfo, err)
+	}
+	if _, err := os.Lstat(result.CommandPath.BackupPath); !os.IsNotExist(err) {
+		t.Fatalf("dry-run created backup: %v", err)
+	}
+}
+
+func TestInstallCommandApprovedDryRunValidatesStagedCandidate(t *testing.T) {
+	home := t.TempDir()
+	root := t.TempDir()
+	target := filepath.Join(root, "bin", "agent-harness")
+	buildManagedCommandAt(t, target)
+	candidate := filepath.Join(filepath.Dir(target), ".agent-harness.activate-test")
+	copyTestCommand(t, target, candidate)
+	command := filepath.Join(home, ".local", "bin", "agent-harness")
+	copyTestCommand(t, candidate, command)
+	if err := os.WriteFile(target, []byte("not a managed Go binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	result := port.NativeInstallResult{}
+	_, err := prepareInstallPathPlanForCandidate(&result, port.NativeInstallRequest{
+		Home: home, BinPath: target, DryRun: true, AdoptCommandFile: true,
+	}, candidate, "skip")
+	if err != nil {
+		t.Fatalf("staged candidate preflight failed: %v", err)
+	}
+	if result.CommandPath == nil || !result.CommandPath.WouldAdopt || result.CommandPath.Target != target {
+		t.Fatalf("staged candidate plan = %+v", result.CommandPath)
+	}
+}
+
+func buildManagedTestCommand(t *testing.T) string {
+	t.Helper()
+	target := filepath.Join(t.TempDir(), "agent-harness")
+	buildManagedCommandAt(t, target)
+	return target
+}
+
+func buildManagedCommandAt(t *testing.T, target string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command("go", "build", "-o", target, "../../../cmd/harness")
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("build managed test command: %v\n%s", err, output)
+	}
+}
+
+func copyTestCommand(t *testing.T, source, destination string) {
+	t.Helper()
+	body, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(destination, body, 0o755); err != nil {
+		t.Fatal(err)
 	}
 }

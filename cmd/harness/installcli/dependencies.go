@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 
+	"agent-harness/internal/port"
 	activationport "agent-harness/internal/port/nativeactivation"
 )
 
@@ -11,21 +12,29 @@ import (
 // root injects implementations via Configure; defaults support standalone
 // use/tests.
 type Deps struct {
-	HarnessRoot       func() string
-	ActivationBackend activationport.Backend
+	HarnessRoot        func() string
+	ExecutablePath     func() (string, error)
+	ActivationBackend  activationport.Backend
+	ActivationReadback activationport.ReadbackVerifier
+	HostInstallers     []port.HostInstaller
 }
 
 var deps = defaultDeps()
 
 // Configure installs host-provided dependencies (called once by the composition
 // root); Reset restores defaults for tests via t.Cleanup.
-func Configure(d Deps) { deps = d }
+func Configure(d Deps) {
+	if d.ExecutablePath == nil {
+		d.ExecutablePath = os.Executable
+	}
+	deps = d
+}
 
 // Reset restores standalone defaults.
 func Reset() { deps = defaultDeps() }
 
 func defaultDeps() Deps {
-	return Deps{HarnessRoot: defaultHarnessRoot}
+	return Deps{HarnessRoot: defaultHarnessRoot, ExecutablePath: os.Executable}
 }
 
 func defaultHarnessRoot() string {

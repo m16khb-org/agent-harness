@@ -33,7 +33,7 @@ func TestBackendPersistsAndIdempotentlySealsCurrentActivation(t *testing.T) {
 		t.Fatalf("begin=%+v err=%v", begin, err)
 	}
 	request := activationport.SealRequest{
-		StateRoot: root, HarnessRoot: harnessRoot, TargetBinary: target, CatalogSHA256: "catalog",
+		StateRoot: root, HarnessRoot: harnessRoot, TargetBinary: target, TransitionID: begin.TransitionID, CatalogSHA256: "catalog",
 		Evidence: []activationport.Evidence{{Host: "codex", Surface: "mcp", Path: "/codex/mcp"}},
 	}
 	first, err := backend.Seal(context.Background(), request)
@@ -70,7 +70,7 @@ func TestBackendSealsStagedCandidateAfterAtomicRename(t *testing.T) {
 	}
 	backend.executable = func() (string, error) { return target, nil }
 	sealed, err := backend.Seal(context.Background(), activationport.SealRequest{
-		StateRoot: root, HarnessRoot: harnessRoot, TargetBinary: target,
+		StateRoot: root, HarnessRoot: harnessRoot, TargetBinary: target, TransitionID: begin.TransitionID,
 	})
 	if err != nil || !sealed.Sealed || sealed.BinarySHA256 != begin.BinarySHA256 {
 		t.Fatalf("sealed=%+v err=%v", sealed, err)
@@ -88,14 +88,80 @@ func TestBackendRejectsBinaryDriftBetweenBeginAndSeal(t *testing.T) {
 		t.Fatal(err)
 	}
 	backend := testBackend(target)
-	if _, err := backend.Begin(context.Background(), activationport.BeginRequest{StateRoot: root, HarnessRoot: harnessRoot, TargetBinary: target}); err != nil {
+	begin, err := backend.Begin(context.Background(), activationport.BeginRequest{StateRoot: root, HarnessRoot: harnessRoot, TargetBinary: target})
+	if err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(target, []byte("after"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if result, err := backend.Seal(context.Background(), activationport.SealRequest{StateRoot: root, HarnessRoot: harnessRoot, TargetBinary: target}); err == nil || result.Sealed {
+	if result, err := backend.Seal(context.Background(), activationport.SealRequest{StateRoot: root, HarnessRoot: harnessRoot, TargetBinary: target, TransitionID: begin.TransitionID}); err == nil || result.Sealed {
 		t.Fatalf("binary drift was accepted: result=%+v err=%v", result, err)
+	}
+}
+
+func TestBackendAbortDeletesOnlyExactPendingTransition(t *testing.T) {
+	root := t.TempDir()
+	harnessRoot := filepath.Join(root, "harness")
+	if err := os.MkdirAll(filepath.Join(harnessRoot, "bin"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(harnessRoot, "bin", "agent-harness")
+	if err := os.WriteFile(target, []byte("candidate"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	backend := testBackend(target)
+	begin, err := backend.Begin(context.Background(), activationport.BeginRequest{StateRoot: root, HarnessRoot: harnessRoot, TargetBinary: target})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stale := begin.TransitionID
+	if stale[0] == '0' {
+		stale = "1" + stale[1:]
+	} else {
+		stale = "0" + stale[1:]
+	}
+	request := activationport.AbortRequest{StateRoot: root, HarnessRoot: harnessRoot, TargetBinary: target, TransitionID: stale}
+	if result, err := backend.Abort(context.Background(), request); err == nil || result.Aborted {
+		t.Fatalf("stale abort was accepted: result=%+v err=%v", result, err)
+	}
+	request.TransitionID = begin.TransitionID
+	aborted, err := backend.Abort(context.Background(), request)
+	if err != nil || !aborted.Aborted || aborted.Pending || aborted.TransitionID != begin.TransitionID {
+		t.Fatalf("abort=%+v err=%v", aborted, err)
+	}
+	if result, err := backend.Seal(context.Background(), activationport.SealRequest{StateRoot: root, HarnessRoot: harnessRoot, TargetBinary: target, TransitionID: begin.TransitionID}); err == nil || result.Sealed {
+		t.Fatalf("aborted transition sealed: result=%+v err=%v", result, err)
+	}
+}
+
+func TestBackendBeginInvalidatesPriorSealedReceipt(t *testing.T) {
+	root := t.TempDir()
+	harnessRoot := filepath.Join(root, "harness")
+	if err := os.MkdirAll(filepath.Join(harnessRoot, "bin"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(harnessRoot, "bin", "agent-harness")
+	if err := os.WriteFile(target, []byte("candidate"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	backend := testBackend(target)
+	first, err := backend.Begin(context.Background(), activationport.BeginRequest{StateRoot: root, HarnessRoot: harnessRoot, TargetBinary: target})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := backend.Seal(context.Background(), activationport.SealRequest{StateRoot: root, HarnessRoot: harnessRoot, TargetBinary: target, TransitionID: first.TransitionID}); err != nil {
+		t.Fatal(err)
+	}
+	second, err := backend.Begin(context.Background(), activationport.BeginRequest{StateRoot: root, HarnessRoot: harnessRoot, TargetBinary: target})
+	if err != nil || second.TransitionID == first.TransitionID {
+		t.Fatalf("second begin=%+v err=%v", second, err)
+	}
+	if _, err := backend.Abort(context.Background(), activationport.AbortRequest{StateRoot: root, HarnessRoot: harnessRoot, TargetBinary: target, TransitionID: second.TransitionID}); err != nil {
+		t.Fatal(err)
+	}
+	if result, err := backend.Seal(context.Background(), activationport.SealRequest{StateRoot: root, HarnessRoot: harnessRoot, TargetBinary: target, TransitionID: first.TransitionID}); err == nil || result.Sealed {
+		t.Fatalf("prior receipt remained authoritative: result=%+v err=%v", result, err)
 	}
 }
 

@@ -19,6 +19,22 @@ func printInstallNativeResult(result port.NativeInstallResult) {
 	}
 	fmt.Printf("- mode: %s\n", mode)
 	fmt.Printf("- binary: %s\n", result.BinPath)
+	if command := result.CommandPath; command != nil {
+		state := "approved"
+		if command.WouldAdopt {
+			state = "would adopt"
+		} else if command.RolledBack {
+			state = "rolled back"
+		} else if command.Committed {
+			state = "committed"
+		} else if command.Adopted {
+			state = "adopted pending activation seal"
+		}
+		fmt.Printf("- managed command adoption: %s -> %s (%s)\n", command.Path, command.Target, state)
+		if command.BackupPath != "" {
+			fmt.Printf("- managed command backup/recovery path: %s (rollback_available=%t, backup_retained=%t)\n", command.BackupPath, command.RollbackAvailable, command.BackupRetained)
+		}
+	}
 	fmt.Printf("- Codex user skills: %s/skills/* -> %s/skills/*\n", result.CodexHome, result.Root)
 	fmt.Printf("- Claude user skills: %s -> %s/skills/*\n", filepath.Join(result.Home, ".claude", "skills", "*"), result.Root)
 	fmt.Printf("- Codex MCP config: %s\n", filepath.Join(result.CodexHome, "config.toml"))
