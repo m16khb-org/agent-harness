@@ -53,6 +53,13 @@ func TestUsageIncludesIssueOpsExecutionActions(t *testing.T) {
 	}
 }
 
+func TestUsageDocumentsExecutionReplaceCompletionGeneration(t *testing.T) {
+	usage := Usage("test")
+	if !strings.Contains(usage, "execution replace") || !strings.Contains(usage, "--completion-generation N") {
+		t.Fatalf("usage must document the completion-bearing reseed flag\n%s", usage)
+	}
+}
+
 func TestUsageOmitsRetiredStateAndIssueOpsMigration(t *testing.T) {
 	usage := Usage("test")
 	for _, retired := range []string{
