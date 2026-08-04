@@ -398,6 +398,27 @@ Execution tests must cover:
   completion receipt, lease release, reverse-index deletion, and `done` phase
   transition are one atomic write. An identical retry is idempotent only when
   all terminal invariants still hold.
+- completed replacement preview and reseed must test parent drift and no-drift
+  against the same outbound observer. Drift must preserve the raw record,
+  completion/history/ledger/lease, token paths, artifact prepare count, and
+  repository commit count.
+- current completion generation 0/missing is invalid in preview and reseed even
+  when the request supplies a generation. No selected-generation compatibility
+  fallback or legacy wording is permitted.
+- released-completion sync-base tests must cover matching/missing/wrong/history
+  generation, claimable/history-only state, canonical cwd, live/mismatched
+  process receipt, pending intent, stale fingerprint, immutable completion, and
+  exact apply/finalize/abort/retry commands. Hook matrices must run the exact
+  forms for Codex and Claude and block duplicates, wrappers, shell expansion,
+  wrong cwd/lifecycle, stale history generation, multiple modes, and unknown
+  flags.
+- architecture tests must scan every production Go file in
+  `internal/port/issueopsbasesync` and allow only Request, Receipt, Inspector,
+  and the `context` import.
+- after parent sync with #303, tests must first prove that typed-error
+  `next_command` and conflict `abort_command` cannot escape generated-command
+  provenance binding. GREEN requires canonical executable, hash, and generation
+  provenance on both fields, or a tested conversion to non-executable guidance.
 
 Orca external-intent tests treat worktree, terminal, Run create, Run bind, task,
 and dispatch as six separate durable stages. For every stage, exercise authoritative 0, exact 1,

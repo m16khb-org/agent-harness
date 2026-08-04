@@ -255,11 +255,10 @@ HEAD에 묶인 AI-slop/implementation-review/remote-completion proof를 제거�
 이후 ledger entry를 `stale: completed execution reseed (<old> -> <new>)`로 표시한다. Branch,
 worktree, PR/MR artifact, feedback, decision, sync-base event와 이전 history는 보존된다. History가
 없는 기존 schema v1 record도 계속 읽을 수 있다. 새 completion은 receipt에 lease generation을
-직접 기록한다. Generation이 없는 legacy completion은 현재 lease generation이나
-`completed_at`/`replaced_at` 시간으로 원 generation을 추론하지 않는다. 이슈와 durable incident
-evidence로 확인한 origin을 preview와 reseed 양쪽에 `--completion-generation N`으로 명시해야 하며,
-누락하거나 stamped generation과 충돌하면 artifact prepare와 record CAS 전에 fail-closed한다.
-Preview의 `next_command`는 선택한 origin generation을 그대로 보존한다. Status가 반환한 exact generation-bound
+직접 기록한다. Generation이 없거나 0인 current completion은 invalid v1 state이며 요청의
+`--completion-generation` 값으로 보정하지 않는다. Preview와 reseed는 durable stamped generation만
+권위로 사용하고, 누락하거나 충돌하면 artifact prepare와 record CAS 전에 fail-closed한다.
+Preview의 `next_command`는 stamped generation을 그대로 보존한다. Status가 반환한 exact generation-bound
 `resume` 또는 `claim`을 실행한 뒤 새 HEAD에서 구현 검증, AI-slop proof, implementation review,
 정상 forward phase를 다시 획득하고 새 evidence로 `execution complete`한다. 이전 completion을
 재시도하거나 state JSON을 직접 지우지 않는다.
@@ -281,17 +280,30 @@ ready/absent scenarios. Native installation and `self-verify` do not require
 Orca availability.
 
 `issueops execution sync-base` is the post-completion conflict-resolution
-surface (#114): when the merged base advances and the PR turns conflicting,
-run `--preview` from the canonical worktree for the divergence report and
-fingerprint, then `--apply --confirm --fingerprint` to merge the fetched base
-and push (merge only; rebase and force-push are rejected). Conflicts stop as a
-merge-in-progress for the active lease holder to resolve, then `--finalize`
-commits and pushes, or `--abort` withdraws. Mutating modes require the active
-holder (reseed and claim first on a released cycle); `execution reconcile
+surface (#114, #318). Completed replacement preview fetches and checks the
+recorded parent first. If the parent is not an ancestor of the completed work
+HEAD, it returns `post_completion_sync_base_required` and the exact
+`--preview --completion-generation N` command instead of reseed. Run that
+preview from the canonical worktree, then execute its generation- and
+fingerprint-fenced `--apply --confirm --fingerprint` command. Conflicts stop as
+a merge-in-progress; the emitted exact generation-bound `--finalize` commits
+and pushes, while `abort_command` withdraws. Apply/finalize/abort accept the
+existing active holder path or a released current completion with matching
+stamped generation and live native actor. They append only `sync_base_events`;
+current completion, history, and phase remain immutable. After successful sync,
+run completed replacement preview, reseed/claim, verify, and re-complete.
+Rebase and force-push remain rejected. `execution reconcile
 --preview` output is a constant, not an inventory observation — do not cite it
 as residue evidence. Confirm reports `external_state_inspected=true` only after
 the Orca inventory transport was actually attempted; local marker/request
 validation failures remain false.
+
+Publication of this flow is gated on parent integration with #303. The typed
+`BaseSyncRequiredError.next_command` does not pass through the success-result
+binder, and conflict `abort_command` is a separate generated shell field. Both
+must receive the same canonical executable/hash/generation provenance as other
+executable commands, or become explicitly non-executable guidance, with
+RED/GREEN coverage after syncing the parent branch.
 
 `issueops execution switch-mode` changes a prepared cycle between `direct` and
 `orca` (#167). `prepare` seals the mode at first run and afterwards **rejects a

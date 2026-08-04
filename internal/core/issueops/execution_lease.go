@@ -18,6 +18,7 @@ import (
 	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
+	basesyncport "agent-harness/internal/port/issueopsbasesync"
 )
 
 const (
@@ -108,6 +109,7 @@ type ExecutionReplaceResult struct {
 
 type ExecutionReplaceDependencies struct {
 	OrcaOwner port.ExecutionOrcaOwnerInspector
+	BaseSync  basesyncport.Inspector
 	// ReadIssue는 finalize와 reseed의 재봉인이 현재 이슈 본문을 다시 읽는
 	// 경로다. orca 사이클에서 누락되면 재봉인이 fail-closed로 거부된다.
 	ReadIssue ExecutionIssueSnapshotReadFunc
@@ -176,6 +178,9 @@ func previewExecutionReplacement(ctx context.Context, stateRoot string, req Exec
 	if err := validateExecutionReplacementCWD(record, req.CWD); err != nil {
 		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, err
 	}
+	if err := observeCompletedExecutionBase(ctx, record, req.CompletionGeneration, deps.BaseSync); err != nil {
+		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, err
+	}
 	fingerprint, _, err := executionInventoryFingerprint(ctx, record, req.Actor, deps)
 	if err != nil {
 		return ExecutionReplaceResult{OK: false, ID: req.ID, Action: req.Action}, err
@@ -193,6 +198,37 @@ func previewExecutionReplacement(ctx context.Context, stateRoot string, req Exec
 		)
 	}
 	return result, nil
+}
+
+func observeCompletedExecutionBase(ctx context.Context, record issueops.IssueOpsRecord, selectedGeneration uint64, inspector basesyncport.Inspector) error {
+	execution := record.Execution
+	if execution == nil || execution.Completion == nil ||
+		(execution.Lease.Status != issueops.LeaseStatusReleased && execution.Lease.Status != issueops.LeaseStatusClaimable) {
+		return nil
+	}
+	completionGeneration := execution.Completion.Generation
+	if completionGeneration == 0 {
+		return fmt.Errorf("invalid or missing stamped completion generation")
+	}
+	if selectedGeneration != 0 && selectedGeneration != completionGeneration {
+		return fmt.Errorf("completion_generation conflicts with stamped completion generation %d", completionGeneration)
+	}
+	if record.BranchPrepare == nil || strings.TrimSpace(record.BranchPrepare.BaseBranch) == "" {
+		return fmt.Errorf("completed replacement preview requires branch_prepare.base_branch")
+	}
+	if inspector == nil {
+		return fmt.Errorf("completed replacement preview requires base sync inspector")
+	}
+	receipt, err := inspector.Observe(ctx, basesyncport.Request{
+		Worktree: execution.Workspace.Root, BaseBranch: record.BranchPrepare.BaseBranch,
+	})
+	if err != nil {
+		return fmt.Errorf("observe completed execution base: %w", err)
+	}
+	if receipt.SyncRequired {
+		return issueops.NewBaseSyncRequiredError(record.ID, completionGeneration)
+	}
+	return nil
 }
 
 func previewExecutionFinalization(ctx context.Context, stateRoot string, req ExecutionReplaceRequest, deps ExecutionReplaceDependencies) (ExecutionReplaceResult, error) {

@@ -11,6 +11,7 @@ import (
 	model "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
+	basesyncport "agent-harness/internal/port/issueopsbasesync"
 )
 
 type Deps struct {
@@ -18,6 +19,7 @@ type Deps struct {
 	Prepare                issueops.ExecutionPrepareHandler
 	Orca                   port.ExecutionOrcaProvisioner
 	OrcaOwner              port.ExecutionOrcaOwnerInspector
+	BaseSync               basesyncport.Inspector
 	ReadIssue              issueops.ExecutionIssueSnapshotReadFunc
 	Claim                  issueops.ExecutionClaimHandler
 	Release                issueops.ExecutionReleaseHandler
@@ -28,12 +30,13 @@ type Deps struct {
 	Publication            issueops.RemotePublicationHandlers
 	PrintJSON              func(any) error
 	PrintError             func(error) error
+	syncBase               func(context.Context, string, issueops.ExecutionSyncBaseRequest, issueops.ExecutionSyncBaseDeps) (issueops.ExecutionSyncBaseResult, error)
 	resumeActorObservation *resumeActorObservation
 }
 
 func (deps Deps) actionDeps() issueops.ExecutionActionDependencies {
 	actionDeps := issueops.ExecutionActionDependencies{
-		Prepare: deps.Prepare, Orca: deps.Orca, OrcaOwner: deps.OrcaOwner, ReadIssue: deps.ReadIssue,
+		Prepare: deps.Prepare, Orca: deps.Orca, OrcaOwner: deps.OrcaOwner, BaseSync: deps.BaseSync, ReadIssue: deps.ReadIssue,
 		Claim: deps.Claim, Release: deps.Release, Reseed: deps.Reseed, Resume: deps.Resume, Reconcile: deps.Reconcile, Complete: deps.Complete,
 		RemoteReconcile: deps.Publication.Reconcile,
 	}
@@ -63,7 +66,7 @@ const Usage = `Usage:
   agent-harness issueops execution resume --id ID --expected-generation N [ACTOR_FLAGS] --confirm [--json]
   agent-harness issueops execution reconcile --id ID (--preview|--confirm) [--issue-snapshot-file PATH] ACTOR_FLAGS [--json]
   agent-harness issueops execution complete --id ID --generation N --final-head SHA --turing-report PATH --remote-artifact-url URL --verification TEXT... ACTOR_FLAGS --confirm [--json]
-  agent-harness issueops execution sync-base --id ID (--preview | --apply --confirm --fingerprint SHA256 | --finalize | --abort) ACTOR_FLAGS [--json]
+  agent-harness issueops execution sync-base --id ID --completion-generation N (--preview | --apply --confirm --fingerprint SHA256 | --finalize | --abort) ACTOR_FLAGS [--json]
   agent-harness issueops execution switch-mode --id ID --mode direct|orca [--apply --confirm --fingerprint SHA256] ACTOR_FLAGS [--json]
 
 ACTOR_FLAGS: --host codex|claude --session-id ID [--agent-id ID] --session-pid PID --session-started-at RFC3339 --session-executable PATH --cwd PATH`
@@ -378,7 +381,7 @@ func runReplace(args []string, deps Deps) error {
 	fs := flag.NewFlagSet("issueops execution replace", flag.ContinueOnError)
 	id := fs.String("id", "", "IssueOps id")
 	generation := fs.Uint64("expected-generation", 0, "expected lease generation")
-	completionGeneration := fs.Uint64("completion-generation", 0, "legacy completion origin generation")
+	completionGeneration := fs.Uint64("completion-generation", 0, "current completion generation")
 	inventory := fs.String("inventory-fingerprint", "", "preview inventory fingerprint")
 	quiescence := fs.String("quiescence-fingerprint", "", "finalize-preview fingerprint")
 	reason := fs.String("reason", "", "replacement reason")
@@ -500,6 +503,7 @@ func runComplete(args []string, deps Deps) error {
 func runSyncBase(args []string, deps Deps) error {
 	fs := flag.NewFlagSet("issueops execution sync-base", flag.ContinueOnError)
 	id := fs.String("id", "", "IssueOps id")
+	completionGeneration := fs.Uint64("completion-generation", 0, "current completion generation")
 	fingerprint := fs.String("fingerprint", "", "fingerprint issued by the latest --preview")
 	preview := fs.Bool("preview", false, "observe base divergence and issue a fingerprint")
 	apply := fs.Bool("apply", false, "merge the fetched base into the work branch and push")
@@ -531,8 +535,13 @@ func runSyncBase(args []string, deps Deps) error {
 	if deps.StateRoot == nil {
 		return output(nil, *jsonOut, fmt.Errorf("IssueOps state root is unavailable"), deps)
 	}
-	result, err := issueops.SyncExecutionBase(context.Background(), deps.StateRoot(), issueops.ExecutionSyncBaseRequest{
-		ID: *id, Mode: mode, Actor: actor.actor(), CWD: *actor.cwd, Confirm: *confirm, Fingerprint: *fingerprint,
+	syncBase := deps.syncBase
+	if syncBase == nil {
+		syncBase = issueops.SyncExecutionBase
+	}
+	result, err := syncBase(context.Background(), deps.StateRoot(), issueops.ExecutionSyncBaseRequest{
+		ID: *id, Mode: mode, CompletionGeneration: *completionGeneration,
+		Actor: actor.actor(), CWD: *actor.cwd, Confirm: *confirm, Fingerprint: *fingerprint,
 	}, issueops.ExecutionSyncBaseDeps{})
 	return output(result, *jsonOut, err, deps)
 }

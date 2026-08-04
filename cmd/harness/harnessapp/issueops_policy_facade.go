@@ -3,6 +3,7 @@ package harnessapp
 import (
 	"agent-harness/cmd/harness/issueopscli"
 	"agent-harness/cmd/harness/policycli"
+	basesyncoutbound "agent-harness/internal/adapter/outbound/issueopsbasesync"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/issueops"
@@ -15,7 +16,8 @@ func wirePolicyCLIDeps() {
 func runIssueOps(args []string) error {
 	execution := productionIssueOpsExecutionDependencies()
 	return issueopscli.RunIssueOpsWithDependencies(args, issueopscli.Dependencies{
-		Prepare: execution.Prepare, Orca: execution.Orca, OrcaOwner: execution.OrcaOwner, ReadIssue: execution.ReadIssue,
+		Prepare: execution.Prepare, Orca: execution.Orca, OrcaOwner: execution.OrcaOwner,
+		BaseSync: basesyncoutbound.NewInspector(basesyncoutbound.RunGit), ReadIssue: execution.ReadIssue,
 		Claim: issueops.ExecutionClaimHandler(issueOpsClaimHandler), Release: issueops.ExecutionReleaseHandler(issueOpsReleaseHandler),
 		Reseed: issueops.ExecutionReseedHandler(issueOpsReseedHandler), Resume: issueops.ExecutionResumeHandler(issueOpsResumeHandler),
 		Reconcile: issueops.ExecutionReconcileHandler(issueOpsReconcileHandler), Complete: issueops.ExecutionCompleteHandler(issueOpsCompleteHandler),

@@ -836,6 +836,16 @@ Shannon 측정 중 `rg -c`와 `agent-harness state read --key ...`가 active lea
   - `internal/adapter/outbound/issueopspreparation/repository_orca_test.go`
   - `internal/application/issueopslease/reseed_test.go`
 
+## 2026-08-04 — completed reseed 전에 parent drift를 먼저 해소해야 한다
+
+- Kind: `caution`
+- Source: GitHub #318
+- Summary: released current completion을 바로 reseed하면 stale parent 위에서 새 generation을 열어 동일 충돌을 다시 봉인할 수 있다.
+- Resolution: replacement preview와 reseed CAS 내부가 같은 outbound base observer로 parent ancestry를 확인한다. Drift면 어떤 artifact/token/history/ledger/lease mutation보다 먼저 `post_completion_sync_base_required`와 stamped-generation preview 명령을 반환한다. `Completion.Generation == 0`은 요청값으로 보정하지 않는 invalid v1 state다.
+- Recovery: released current completion + drift → generation-bound sync-base preview/apply → completed replacement preview → reseed/claim → verification → re-complete. History-only receipt, direct Git merge/rebase, force-push, state JSON backfill은 권위가 아니다.
+- Boundary: port는 Request/Receipt/Inspector만 소유하고 typed public error/next command는 contract, Git 관측은 outbound adapter가 소유한다.
+- Parent integration gate: #303의 success-result binder는 typed error 출력과 별도 `abort_command` field를 자동으로 봉인하지 않는다. Parent sync 뒤 canonical executable/hash/generation provenance RED/GREEN 없이 #318을 publish하지 않는다.
+
 ## 2026-07-31 — Orca task mutation은 explicit Run과 coordinator consumer를 함께 봉인해야 한다
 
 - Kind: `caution`

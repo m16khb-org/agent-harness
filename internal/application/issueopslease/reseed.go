@@ -9,6 +9,7 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	leasedomain "agent-harness/internal/domain/issueopslease"
+	basesyncport "agent-harness/internal/port/issueopsbasesync"
 )
 
 type ReseedRequest struct {
@@ -34,18 +35,19 @@ type ReseedService struct {
 	fence      ReseedFence
 	repository ReseedRepository
 	inventory  ReseedInventory
+	baseSync   basesyncport.Inspector
 	artifacts  ReseedArtifacts
 	clock      Clock
 	inspect    ProcessInspector
 	paths      CanonicalPathMatcher
 }
 
-func NewReseedService(fence ReseedFence, repository ReseedRepository, inventory ReseedInventory, artifacts ReseedArtifacts, clock Clock, inspect ProcessInspector, paths CanonicalPathMatcher) *ReseedService {
-	return &ReseedService{fence: fence, repository: repository, inventory: inventory, artifacts: artifacts, clock: clock, inspect: inspect, paths: paths}
+func NewReseedService(fence ReseedFence, repository ReseedRepository, inventory ReseedInventory, baseSync basesyncport.Inspector, artifacts ReseedArtifacts, clock Clock, inspect ProcessInspector, paths CanonicalPathMatcher) *ReseedService {
+	return &ReseedService{fence: fence, repository: repository, inventory: inventory, baseSync: baseSync, artifacts: artifacts, clock: clock, inspect: inspect, paths: paths}
 }
 
 func (s *ReseedService) Reseed(ctx context.Context, request ReseedRequest) (ReseedResult, error) {
-	if s.fence == nil || s.repository == nil || s.inventory == nil || s.artifacts == nil || s.clock == nil || s.paths == nil {
+	if s.fence == nil || s.repository == nil || s.inventory == nil || s.baseSync == nil || s.artifacts == nil || s.clock == nil || s.paths == nil {
 		return ReseedResult{ID: request.ID}, fmt.Errorf("reseed service dependencies are required")
 	}
 	var result ReseedResult
@@ -77,6 +79,9 @@ func (s *ReseedService) Reseed(ctx context.Context, request ReseedRequest) (Rese
 		}
 		completionGeneration, err := resolveCompletionGeneration(before.Stable.Execution, request.CompletionGeneration)
 		if err != nil {
+			return err
+		}
+		if err := s.observeCompletedBase(fenceCtx, before.Stable, completionGeneration); err != nil {
 			return err
 		}
 		observed, err := s.inventory.Observe(fenceCtx, before.Stable, actor)
@@ -136,6 +141,35 @@ func (s *ReseedService) Reseed(ctx context.Context, request ReseedRequest) (Rese
 	return result, nil
 }
 
+func (s *ReseedService) observeCompletedBase(ctx context.Context, record leasecontract.Record, completionGeneration uint64) error {
+	if record.Execution == nil || record.Execution.Completion == nil ||
+		(record.Execution.Lease.Status != "released" && record.Execution.Lease.Status != "claimable") {
+		return nil
+	}
+	var branchPrepare struct {
+		BaseBranch string `json:"base_branch"`
+	}
+	if len(record.BranchPrepare) == 0 {
+		return fmt.Errorf("completed reseed requires branch_prepare.base_branch")
+	}
+	if err := json.Unmarshal(record.BranchPrepare, &branchPrepare); err != nil {
+		return fmt.Errorf("decode branch_prepare for completed reseed: %w", err)
+	}
+	if strings.TrimSpace(branchPrepare.BaseBranch) == "" {
+		return fmt.Errorf("completed reseed requires branch_prepare.base_branch")
+	}
+	receipt, err := s.baseSync.Observe(ctx, basesyncport.Request{
+		Worktree: record.Execution.Workspace.Root, BaseBranch: branchPrepare.BaseBranch,
+	})
+	if err != nil {
+		return fmt.Errorf("observe completed execution base: %w", err)
+	}
+	if receipt.SyncRequired {
+		return issueopscontract.NewBaseSyncRequiredError(record.ID, completionGeneration)
+	}
+	return nil
+}
+
 func resolveCompletionGeneration(execution *leasecontract.Execution, selected uint64) (uint64, error) {
 	if execution == nil || execution.Completion == nil {
 		if selected != 0 {
@@ -144,19 +178,13 @@ func resolveCompletionGeneration(execution *leasecontract.Execution, selected ui
 		return 0, nil
 	}
 	stamped := execution.Completion.Generation
-	if stamped != 0 {
-		if selected != 0 && selected != stamped {
-			return 0, fmt.Errorf("completion_generation conflicts with stamped completion generation %d", stamped)
-		}
-		return stamped, nil
+	if stamped == 0 {
+		return 0, fmt.Errorf("invalid or missing stamped completion generation")
 	}
-	if selected == 0 {
-		return 0, fmt.Errorf("legacy completion requires completion_generation provenance")
+	if selected != 0 && selected != stamped {
+		return 0, fmt.Errorf("completion_generation conflicts with stamped completion generation %d", stamped)
 	}
-	if selected > execution.Lease.Generation {
-		return 0, fmt.Errorf("completion_generation %d exceeds current lease generation %d", selected, execution.Lease.Generation)
-	}
-	return selected, nil
+	return stamped, nil
 }
 
 func reopenCompletedExecution(record *leasecontract.Record, completionGeneration, previousGeneration, nextGeneration uint64, reason, reopenedAt string) error {

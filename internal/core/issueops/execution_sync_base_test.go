@@ -4,10 +4,12 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
 	"agent-harness/internal/contract/issueops"
+	"agent-harness/internal/core/commandparse"
 )
 
 const (
@@ -157,25 +159,22 @@ type syncBaseFixture struct {
 	git       *fakeSyncBaseGit
 }
 
-// newSyncBaseFixture는 completion까지 끝난 뒤 같은 holder가 lease를 다시 쥔
-// 상태(재claim 계약)를 만든다 — 설계 v2가 변형 3모드에 요구하는 전제다.
-func newSyncBaseFixture(t *testing.T, branch string) syncBaseFixture {
+func newReleasedSyncBaseFixture(t *testing.T, branch string) syncBaseFixture {
 	t.Helper()
 	stateRoot := t.TempDir()
 	claimable := newClaimableExecutionFixture(t, stateRoot, branch)
 	prepareExecutionCompletionFixture(t, stateRoot, &claimable)
 	actor := executionActor("codex", "sync-base-"+branch)
-	if _, err := claimViaVertical(stateRoot, ExecutionClaimRequest{
-		ID: claimable.record.ID, Generation: 1, Actor: actor,
-		CWD: claimable.worktree, TokenFile: claimable.tokenPath,
-	}); err != nil {
-		t.Fatal(err)
-	}
 	record, err := ReadIssueOps(stateRoot, claimable.record.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
+	record.Execution.Lease.Status = issueops.LeaseStatusReleased
+	record.Execution.Lease.Holder = nil
+	record.Execution.Lease.ClaimTokenSHA256 = ""
+	record.Execution.Lease.ReleasedAt = "2026-07-25T00:00:00Z"
 	record.Execution.Completion = &issueops.ExecutionCompletion{
+		Generation:        record.Execution.Lease.Generation,
 		FinalHead:         syncBaseFinalHead,
 		TuringReportPath:  filepath.Join(claimable.worktree, "turing-report.json"),
 		Verification:      []string{"go test ./... -count=1"},
@@ -198,8 +197,20 @@ func newSyncBaseFixture(t *testing.T, branch string) syncBaseFixture {
 	return syncBaseFixture{stateRoot: stateRoot, record: record, worktree: claimable.worktree, branch: branch, actor: actor, git: git}
 }
 
+func TestReleasedSyncBaseFixtureRepresentsCurrentCompletion(t *testing.T) {
+	fixture := newReleasedSyncBaseFixture(t, "318-released-fixture")
+	record, err := ReadIssueOps(fixture.stateRoot, fixture.record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.Execution.Lease.Status != issueops.LeaseStatusReleased || record.Execution.Lease.Holder != nil ||
+		record.Execution.Completion == nil || record.Execution.Completion.Generation != record.Execution.Lease.Generation {
+		t.Fatalf("fixture is not a released current completion: %+v", record.Execution)
+	}
+}
+
 func (f syncBaseFixture) request(mode string) ExecutionSyncBaseRequest {
-	return ExecutionSyncBaseRequest{ID: f.record.ID, Mode: mode, Actor: f.actor, CWD: f.worktree}
+	return ExecutionSyncBaseRequest{ID: f.record.ID, Mode: mode, CompletionGeneration: 1, Actor: f.actor, CWD: f.worktree}
 }
 
 func (f syncBaseFixture) run(t *testing.T, req ExecutionSyncBaseRequest) (ExecutionSyncBaseResult, error) {
@@ -221,7 +232,7 @@ func (f syncBaseFixture) rewrite(t *testing.T, mutate func(*issueops.IssueOpsRec
 
 // 게이트 10종 전수 거부. 설계 v2의 번호와 missing 토큰이 1:1로 대응한다.
 func TestExecutionSyncBaseGatesRejectEveryMissingPrecondition(t *testing.T) {
-	baseline := newSyncBaseFixture(t, "114-gates")
+	baseline := newReleasedSyncBaseFixture(t, "114-gates")
 	cases := []struct {
 		name    string
 		mode    string
@@ -257,7 +268,6 @@ func TestExecutionSyncBaseGatesRejectEveryMissingPrecondition(t *testing.T) {
 		{"worktree clean", ExecutionSyncBaseApply, func(_ *testing.T, f *syncBaseFixture) {
 			f.git.statusOut = " M internal/x.go"
 		}, "worktree_clean"},
-		{"lease holder", ExecutionSyncBaseApply, nil, "lease_holder"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -275,8 +285,6 @@ func TestExecutionSyncBaseGatesRejectEveryMissingPrecondition(t *testing.T) {
 			switch tc.missing {
 			case "cwd_canonical":
 				req.CWD = t.TempDir()
-			case "lease_holder":
-				req.Actor = executionActor("codex", "not-the-holder")
 			}
 			result, err := fixture.run(t, req)
 			if err == nil || !containsString(result.Missing, tc.missing) {
@@ -300,7 +308,7 @@ func TestExecutionSyncBaseGatesRejectEveryMissingPrecondition(t *testing.T) {
 // preview는 released·비-holder에서도 진단 채널로 열려 있어야 하고, 예상 충돌
 // 파일과 fingerprint를 함께 발급해야 한다.
 func TestExecutionSyncBasePreviewReportsConflictsAndIssuesFingerprint(t *testing.T) {
-	fixture := newSyncBaseFixture(t, "114-preview")
+	fixture := newReleasedSyncBaseFixture(t, "114-preview")
 	fixture.rewrite(t, func(r *issueops.IssueOpsRecord) {
 		r.Execution.Lease.Status = issueops.LeaseStatusReleased
 		r.Execution.Lease.Holder = nil
@@ -324,6 +332,7 @@ func TestExecutionSyncBasePreviewReportsConflictsAndIssuesFingerprint(t *testing
 	if !strings.Contains(result.NextCommand, "--apply --confirm --fingerprint "+result.Fingerprint) {
 		t.Fatalf("preview must hand over one finite apply command: %q", result.NextCommand)
 	}
+	assertReleasedSyncBaseCommand(t, result.NextCommand, fixture, "--apply")
 	for _, verb := range fixture.git.verbs() {
 		if verb == "merge" || verb == "push" || verb == "commit" {
 			t.Fatalf("preview must not touch the worktree: %v", fixture.git.verbs())
@@ -333,7 +342,7 @@ func TestExecutionSyncBasePreviewReportsConflictsAndIssuesFingerprint(t *testing
 
 // 무충돌 fast 경로: fetch→merge-tree→merge→push 순서와 인자를 전수 검증한다.
 func TestExecutionSyncBaseApplyRunsFetchMergePushInOrder(t *testing.T) {
-	fixture := newSyncBaseFixture(t, "114-apply")
+	fixture := newReleasedSyncBaseFixture(t, "114-apply")
 	preview, err := fixture.run(t, fixture.request(ExecutionSyncBasePreview))
 	if err != nil {
 		t.Fatal(err)
@@ -373,7 +382,7 @@ func TestExecutionSyncBaseApplyRunsFetchMergePushInOrder(t *testing.T) {
 
 // 충돌은 merge-in-progress를 남기고 정지한다 — push도 이벤트도 없다.
 func TestExecutionSyncBaseApplyStopsAtConflictWithoutPush(t *testing.T) {
-	fixture := newSyncBaseFixture(t, "114-conflict")
+	fixture := newReleasedSyncBaseFixture(t, "114-conflict")
 	preview, err := fixture.run(t, fixture.request(ExecutionSyncBasePreview))
 	if err != nil {
 		t.Fatal(err)
@@ -393,6 +402,8 @@ func TestExecutionSyncBaseApplyStopsAtConflictWithoutPush(t *testing.T) {
 	if !strings.Contains(result.NextCommand, "--finalize") {
 		t.Fatalf("conflict stop must name the resolution command: %q", result.NextCommand)
 	}
+	assertReleasedSyncBaseCommand(t, result.NextCommand, fixture, "--finalize")
+	assertReleasedSyncBaseCommand(t, result.AbortCommand, fixture, "--abort")
 	persisted, err := ReadIssueOps(fixture.stateRoot, fixture.record.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -405,7 +416,7 @@ func TestExecutionSyncBaseApplyStopsAtConflictWithoutPush(t *testing.T) {
 // push 실패는 로컬 merge commit을 남기고, 재실행은 merge 없이 push만 수행해
 // 멱등 수렴한다(설계 v2 push 계약).
 func TestExecutionSyncBaseApplyPushFailureConvergesIdempotently(t *testing.T) {
-	fixture := newSyncBaseFixture(t, "114-push-retry")
+	fixture := newReleasedSyncBaseFixture(t, "114-push-retry")
 	preview, err := fixture.run(t, fixture.request(ExecutionSyncBasePreview))
 	if err != nil {
 		t.Fatal(err)
@@ -419,6 +430,7 @@ func TestExecutionSyncBaseApplyPushFailureConvergesIdempotently(t *testing.T) {
 	if err == nil || result.FailedStep != "push" || !result.PushRetryRequired {
 		t.Fatalf("push failure must surface as a typed error: err=%v result=%#v", err, result)
 	}
+	assertReleasedSyncBaseCommand(t, result.NextCommand, fixture, "--preview")
 
 	// 병합은 이미 반영됐다 — 재preview는 merge 불필요 + ahead를 보고해야 한다.
 	fixture.git.ancestor[syncBaseBaseOID] = true
@@ -457,7 +469,7 @@ func TestExecutionSyncBaseApplyPushFailureConvergesIdempotently(t *testing.T) {
 
 // 성공한 apply는 durable 이벤트를 남기고 Completion.FinalHead는 불변이다.
 func TestExecutionSyncBaseRecordsDurableEventAndKeepsFinalHeadImmutable(t *testing.T) {
-	fixture := newSyncBaseFixture(t, "114-durable")
+	fixture := newReleasedSyncBaseFixture(t, "114-durable")
 	preview, err := fixture.run(t, fixture.request(ExecutionSyncBasePreview))
 	if err != nil {
 		t.Fatal(err)
@@ -490,7 +502,7 @@ func TestExecutionSyncBaseRecordsDurableEventAndKeepsFinalHeadImmutable(t *testi
 // finalize는 미해소 인덱스와 잔존 충돌 마커를 각각 거부한다.
 func TestExecutionSyncBaseFinalizeRejectsUnresolvedConflictsAndMarkers(t *testing.T) {
 	t.Run("unmerged index", func(t *testing.T) {
-		fixture := newSyncBaseFixture(t, "114-finalize-unmerged")
+		fixture := newReleasedSyncBaseFixture(t, "114-finalize-unmerged")
 		fixture.git.mergeHead = true
 		fixture.git.unmergedOut = "100644 " + syncBaseBaseOID + " 1\tinternal/a.go\x00"
 		result, err := fixture.run(t, fixture.request(ExecutionSyncBaseFinalize))
@@ -502,7 +514,7 @@ func TestExecutionSyncBaseFinalizeRejectsUnresolvedConflictsAndMarkers(t *testin
 		}
 	})
 	t.Run("conflict markers", func(t *testing.T) {
-		fixture := newSyncBaseFixture(t, "114-finalize-markers")
+		fixture := newReleasedSyncBaseFixture(t, "114-finalize-markers")
 		fixture.git.mergeHead = true
 		fixture.git.diffCheckCode = 1
 		result, err := fixture.run(t, fixture.request(ExecutionSyncBaseFinalize))
@@ -511,7 +523,7 @@ func TestExecutionSyncBaseFinalizeRejectsUnresolvedConflictsAndMarkers(t *testin
 		}
 	})
 	t.Run("clean finalize", func(t *testing.T) {
-		fixture := newSyncBaseFixture(t, "114-finalize-clean")
+		fixture := newReleasedSyncBaseFixture(t, "114-finalize-clean")
 		fixture.git.mergeHead = true
 		fixture.git.headOID = syncBaseMergeOID
 		result, err := fixture.run(t, fixture.request(ExecutionSyncBaseFinalize))
@@ -537,7 +549,7 @@ func TestExecutionSyncBaseFinalizeRejectsUnresolvedConflictsAndMarkers(t *testin
 }
 
 func TestExecutionSyncBaseAbortWithdrawsTheMergeWithoutEvent(t *testing.T) {
-	fixture := newSyncBaseFixture(t, "114-abort")
+	fixture := newReleasedSyncBaseFixture(t, "114-abort")
 	fixture.git.mergeHead = true
 	result, err := fixture.run(t, fixture.request(ExecutionSyncBaseAbort))
 	if err != nil {
@@ -555,7 +567,7 @@ func TestExecutionSyncBaseAbortWithdrawsTheMergeWithoutEvent(t *testing.T) {
 	}
 
 	// 진행 중 머지가 없으면 abort/finalize 모두 전제 미충족이다.
-	clean := newSyncBaseFixture(t, "114-abort-noop")
+	clean := newReleasedSyncBaseFixture(t, "114-abort-noop")
 	result, err = clean.run(t, clean.request(ExecutionSyncBaseAbort))
 	if err == nil || !containsString(result.Missing, "merge_in_progress") {
 		t.Fatalf("abort without a merge in progress must fail closed: %v %v", err, result.Missing)
@@ -564,7 +576,7 @@ func TestExecutionSyncBaseAbortWithdrawsTheMergeWithoutEvent(t *testing.T) {
 
 // fingerprint TOCTOU: preview 발급 이후 상태가 바뀌면 apply가 멈춘다.
 func TestExecutionSyncBaseApplyRejectsStaleFingerprint(t *testing.T) {
-	fixture := newSyncBaseFixture(t, "114-toctou")
+	fixture := newReleasedSyncBaseFixture(t, "114-toctou")
 	preview, err := fixture.run(t, fixture.request(ExecutionSyncBasePreview))
 	if err != nil {
 		t.Fatal(err)
@@ -577,6 +589,7 @@ func TestExecutionSyncBaseApplyRejectsStaleFingerprint(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "stale execution sync-base fingerprint") {
 		t.Fatalf("stale fingerprint was accepted: %v %#v", err, result)
 	}
+	assertReleasedSyncBaseCommand(t, result.NextCommand, fixture, "--preview")
 	if fixture.git.callWith("merge") != nil {
 		t.Fatal("stale fingerprint must stop before any merge")
 	}
@@ -590,7 +603,7 @@ func TestExecutionSyncBaseApplyRejectsStaleFingerprint(t *testing.T) {
 
 // git 2.38 미만 등으로 merge-tree --write-tree가 없으면 fail-closed다.
 func TestExecutionSyncBaseFailsClosedWhenMergeTreeIsUnavailable(t *testing.T) {
-	fixture := newSyncBaseFixture(t, "114-mergetree")
+	fixture := newReleasedSyncBaseFixture(t, "114-mergetree")
 	fixture.git.mergeTreeCode, fixture.git.mergeTreeOut = 129, "unknown option `write-tree'"
 	result, err := fixture.run(t, fixture.request(ExecutionSyncBasePreview))
 	if err == nil || !containsString(result.Missing, "merge_tree_supported") {
@@ -598,29 +611,122 @@ func TestExecutionSyncBaseFailsClosedWhenMergeTreeIsUnavailable(t *testing.T) {
 	}
 }
 
-// 변형 3모드는 활성 holder 필수 — released·claimable·비-holder 전부 거부.
-func TestExecutionSyncBaseMutatingModesRequireTheActiveHolder(t *testing.T) {
-	for _, mode := range []string{ExecutionSyncBaseApply, ExecutionSyncBaseFinalize, ExecutionSyncBaseAbort} {
-		t.Run(mode, func(t *testing.T) {
-			fixture := newSyncBaseFixture(t, "114-holder-"+mode)
-			fixture.git.mergeHead = true
-			fixture.rewrite(t, func(r *issueops.IssueOpsRecord) {
-				r.Execution.Lease.Status = issueops.LeaseStatusReleased
-				r.Execution.Lease.Holder = nil
-				r.Execution.Lease.ReleasedAt = "2026-07-25T00:00:00Z"
-			})
-			req := fixture.request(mode)
+func TestExecutionSyncBaseReleasedCompletionAuthorityRejectsInvalidState(t *testing.T) {
+	tests := []struct {
+		name    string
+		mutate  func(*issueops.IssueOpsRecord)
+		request func(*ExecutionSyncBaseRequest)
+		missing string
+	}{
+		{name: "missing completion generation", request: func(req *ExecutionSyncBaseRequest) { req.CompletionGeneration = 0 }, missing: "completion_generation_present"},
+		{name: "wrong completion generation", request: func(req *ExecutionSyncBaseRequest) { req.CompletionGeneration = 2 }, missing: "completion_generation_current"},
+		{name: "missing stamped completion generation", mutate: func(record *issueops.IssueOpsRecord) { record.Execution.Completion.Generation = 0 }, missing: "current_completion_generation_present"},
+		{name: "history only", mutate: func(record *issueops.IssueOpsRecord) {
+			record.Execution.Lease.Generation = 2
+			record.Execution.CompletionHistory = []issueops.ExecutionCompletionHistory{{
+				Generation: 1, Completion: *record.Execution.Completion, Reason: "prior reseed", ReopenedAt: "2026-07-26T00:00:00Z",
+			}}
+			record.Execution.Completion = nil
+		}, missing: "completion_present"},
+		{name: "claimable without current completion", mutate: func(record *issueops.IssueOpsRecord) {
+			record.Execution.Lease.Status = issueops.LeaseStatusClaimable
+			record.Execution.Lease.ClaimTokenSHA256 = strings.Repeat("b", 64)
+			record.Execution.Completion = nil
+		}, missing: "released_completion_authority"},
+		{name: "pending intent", mutate: func(record *issueops.IssueOpsRecord) {
+			record.Execution.Pending = &issueops.ExternalIntent{OperationID: "op-1", Kind: "orca", Marker: "m", StartedAt: "2026-07-25T00:00:00Z"}
+		}, missing: "pending_intent_absent"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := newReleasedSyncBaseFixture(t, "318-authority-"+strings.ReplaceAll(test.name, " ", "-"))
+			if test.mutate != nil {
+				fixture.rewrite(t, test.mutate)
+			}
+			req := fixture.request(ExecutionSyncBaseApply)
 			req.Confirm, req.Fingerprint = true, strings.Repeat("a", 64)
+			if test.request != nil {
+				test.request(&req)
+			}
 			result, err := fixture.run(t, req)
-			if err == nil || !containsString(result.Missing, "lease_holder") {
-				t.Fatalf("%s from a released lease must be denied: %v %v", mode, err, result.Missing)
+			if err == nil || !containsString(result.Missing, test.missing) {
+				t.Fatalf("error=%v missing=%v want=%q", err, result.Missing, test.missing)
 			}
 		})
 	}
 }
 
+func TestExecutionSyncBaseReleasedCompletionAuthorityRejectsInvalidProcessReceipt(t *testing.T) {
+	fixture := newReleasedSyncBaseFixture(t, "318-dead-process")
+	req := fixture.request(ExecutionSyncBaseApply)
+	req.Actor.SessionProcess = &issueops.NativeProcessReceipt{PID: 999999, StartedAt: "2026-01-01T00:00:00Z", Executable: "/missing/codex"}
+	req.Actor.ProcessAncestry = []issueops.NativeProcessReceipt{*req.Actor.SessionProcess}
+	if _, err := fixture.run(t, req); err == nil {
+		t.Fatal("dead native process receipt was accepted")
+	}
+
+	req = fixture.request(ExecutionSyncBaseApply)
+	req.Actor.ProcessAncestry = []issueops.NativeProcessReceipt{{PID: 1, StartedAt: "other", Executable: "codex"}}
+	if _, err := fixture.run(t, req); err == nil || !strings.Contains(err.Error(), "not in the local process ancestry") {
+		t.Fatalf("mismatched ancestry error=%v", err)
+	}
+}
+
+func TestExecutionSyncBaseActiveHolderAuthorityRemainsSupported(t *testing.T) {
+	fixture := newReleasedSyncBaseFixture(t, "318-active-holder")
+	fixture.rewrite(t, func(record *issueops.IssueOpsRecord) {
+		record.Execution.Lease.Status = issueops.LeaseStatusActive
+		record.Execution.Lease.Holder = &fixture.actor
+		record.Execution.Lease.ClaimedAt = "2026-07-25T00:00:00Z"
+		record.Execution.Completion = nil
+		record.RemoteArtifact = nil
+	})
+	previewRequest := fixture.request(ExecutionSyncBasePreview)
+	previewRequest.CompletionGeneration = 0
+	preview, err := fixture.run(t, previewRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(preview.NextCommand, "--completion-generation") {
+		t.Fatalf("active-holder preview added released authority generation: %q", preview.NextCommand)
+	}
+	fixture.git.postMergeHead = syncBaseMergeOID
+	applyRequest := fixture.request(ExecutionSyncBaseApply)
+	applyRequest.CompletionGeneration = 0
+	applyRequest.Confirm, applyRequest.Fingerprint = true, preview.Fingerprint
+	if _, err := fixture.run(t, applyRequest); err != nil {
+		t.Fatalf("active holder sync-base changed: %v", err)
+	}
+}
+
+func assertReleasedSyncBaseCommand(t *testing.T, text string, fixture syncBaseFixture, mode string) {
+	t.Helper()
+	if strings.Contains(text, "ACTOR_FLAGS") {
+		process := fixture.actor.SessionProcess
+		actorFlags := "--host " + quoteExecutionOwnerArg(fixture.actor.Host) +
+			" --session-id " + quoteExecutionOwnerArg(fixture.actor.SessionID) +
+			" --session-pid " + strconv.Itoa(process.PID) +
+			" --session-started-at " + quoteExecutionOwnerArg(process.StartedAt) +
+			" --session-executable " + quoteExecutionOwnerArg(process.Executable) +
+			" --cwd " + quoteExecutionOwnerArg(fixture.worktree)
+		text = strings.Replace(text, "ACTOR_FLAGS", actorFlags, 1)
+	}
+	command, ok := commandparse.ParseExactIssueOpsCommand(text)
+	if !ok || command.Path != "execution sync-base" {
+		t.Fatalf("command is not exact sync-base: %q", text)
+	}
+	values, booleans, repeatable, ok := commandparse.IssueOpsCommandSpec(command.Path)
+	if !ok {
+		t.Fatal("missing sync-base command spec")
+	}
+	flags, ok := commandparse.ExactFlags(command, values, booleans, repeatable)
+	if !ok || len(flags[mode]) != 1 || len(flags["--completion-generation"]) != 1 || flags["--completion-generation"][0] != "1" || flags["--id"][0] != fixture.record.ID {
+		t.Fatalf("released sync-base command flags=%v command=%q", flags, text)
+	}
+}
+
 func TestExecutionSyncBaseRejectsUnknownMode(t *testing.T) {
-	fixture := newSyncBaseFixture(t, "114-mode")
+	fixture := newReleasedSyncBaseFixture(t, "114-mode")
 	if _, err := fixture.run(t, fixture.request("rebase")); err == nil {
 		t.Fatal("unsupported mode must be rejected; rebase is explicitly out of scope")
 	}

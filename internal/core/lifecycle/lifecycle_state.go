@@ -35,6 +35,13 @@ func BuildLifecyclePreToolUseDecision(req lifecyclecontract.HookToolUseLifecycle
 		return result
 	}
 	typedExecutionControl := executionTypedControlPlane(req)
+	if !observation && !typedExecutionControl && executionSyncBaseInvocation(req) {
+		reason := "execution sync-base command does not match the exact current authority and completion-generation contract"
+		result.Decision = "block"
+		result.Reason = reason
+		result.Deny = &lifecyclecontract.IssueOpsDenyReason{Code: "unsafe_mutation", Reason: reason}
+		return result
+	}
 	if !observation && typedExecutionControl {
 		if reason, deny := executionTypedPreLinkBlock(req); reason != "" {
 			result.Decision = "block"

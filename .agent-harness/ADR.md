@@ -814,23 +814,42 @@ Archived entries:
   sidecars and `repo: null`, architecture import-ratchet tests, and blocking
   clock tests for valid and rejected transitions.
 
-## 2026-08-04 — Completed reseed preserves typed completion provenance
+## 2026-08-04 — Completed reseed requires stamped current completion provenance
 
 - Kind: `adr`
 - Source: GitHub #304 and durable incidents `io-14a09ebb1b15`, `io-a3818bd20165`
-- Decision: Future completion receipts stamp their lease generation. A
+- Decision: Completion receipts stamp their lease generation. A
   completion-bearing reseed archives that stamped generation, not the current
-  lease generation. Legacy receipts whose generation is absent require an
-  explicit `completion_generation` selection on preview/reseed; missing,
-  conflicting, or future generation selections fail before artifact prepare
-  and the raw-record CAS.
+  lease generation. A current completion whose generation is absent or zero is
+  invalid v1 state and cannot be repaired by request input. Missing or
+  conflicting generation selections fail before artifact preparation and the
+  raw-record CAS.
 - Rationale: #261 retained a generation-4 completion in an active generation-5
   lease, while #237 retained a generation-1 completion in generation 2.
   `completed_at < replaced_at` can show that a receipt is stale but cannot prove
   its origin after multiple reseeds. Silent `current_generation-1` or timestamp
   inference would therefore corrupt append-only audit history.
-- Consequences: schema v1 remains additive through an omitted completion
-  generation. Incident evidence supplies #261 origin 4 and #237 origin 1 for
-  post-merge dogfood. Preview carries an explicit origin into its exact reseed
-  command; state JSON is never edited to backfill provenance.
-- Rejected: current lease generation, timestamp heuristics, and silent fallback.
+- Consequences: preview and reseed trust only the stamped current completion.
+  History remains append-only evidence and never becomes current authority.
+  State JSON is never edited to backfill provenance.
+- Rejected: request-selected fallback, current lease generation, timestamp
+  heuristics, legacy wording, aliases, and silent compatibility paths.
+
+## 2026-08-04 — Post-completion base synchronization uses contract-owned authority
+
+- Kind: `adr`
+- Source: GitHub #318
+- Decision: completed replacement preview and reseed share one injected
+  `issueopsbasesync.Inspector`. Drift returns the contract-owned typed error
+  before mutation. Released sync-base requires current stamped completion
+  generation, canonical cwd, live actor, and preview fingerprint; active-holder
+  authorization remains unchanged and may synchronize an in-progress branch
+  before current completion or remote artifact exists.
+- Ownership: the port contains only Request/Receipt/Inspector, the outbound
+  adapter runs the four read-only Git observations, and
+  `internal/contract/issueops` owns the public error and exact next command.
+- Consequences: successful sync appends one event without changing completion,
+  history, or phase. Hooks admit only exact durable-state-matching commands for
+  both hosts and block near misses before they can bypass the released fence.
+- Rejected: direct Git recovery, restoring history into current completion,
+  port-owned public errors, aliases/shims, rebase, force-push, and reseed-first.

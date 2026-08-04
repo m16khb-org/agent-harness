@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -34,12 +35,13 @@ const (
 const executionSyncBaseGitTimeout = 120 * time.Second
 
 type ExecutionSyncBaseRequest struct {
-	ID          string               `json:"id"`
-	Mode        string               `json:"mode"`
-	Actor       issueops.NativeActor `json:"actor,omitempty"`
-	CWD         string               `json:"cwd"`
-	Confirm     bool                 `json:"confirm,omitempty"`
-	Fingerprint string               `json:"fingerprint,omitempty"`
+	ID                   string               `json:"id"`
+	Mode                 string               `json:"mode"`
+	CompletionGeneration uint64               `json:"completion_generation,omitempty"`
+	Actor                issueops.NativeActor `json:"actor,omitempty"`
+	CWD                  string               `json:"cwd"`
+	Confirm              bool                 `json:"confirm,omitempty"`
+	Fingerprint          string               `json:"fingerprint,omitempty"`
 }
 
 // ExecutionSyncBaseDeps는 Git 표면 하나만 주입점으로 연다. fetch·merge-tree·
@@ -71,30 +73,34 @@ type ExecutionSyncBaseResult struct {
 	Aborted             bool     `json:"aborted,omitempty"`
 	FailedStep          string   `json:"failed_step,omitempty"`
 	NextCommand         string   `json:"next_command,omitempty"`
+	AbortCommand        string   `json:"abort_command,omitempty"`
 }
 
-// executionSyncBaseInventory는 fingerprint 입력이 되는 현재 관측 상태다
-// (설계 v2 게이트 ⑩의 8개 항목 그대로). base tip은 fetch 이후 값이어야
-// stale base 머지를 fingerprint가 잡는다. json:"-" 필드는 절차에만 쓰이고
-// 해시에는 들어가지 않는다 — 스펙이 나열한 입력 집합을 넓히지 않는다.
+// executionSyncBaseInventory는 fingerprint 입력이 되는 현재 관측 상태다.
+// base tip은 fetch 이후 값이어야 stale base 머지를 fingerprint가 잡는다.
 type executionSyncBaseInventory struct {
-	ID                  string `json:"id"`
-	Repo                string `json:"repo"`
-	Branch              string `json:"branch"`
-	BaseBranch          string `json:"base_branch"`
-	BaseOID             string `json:"base_oid"`
-	WorkOID             string `json:"work_oid"`
-	MergeInProgress     bool   `json:"merge_in_progress"`
-	RemoteBranchPresent bool   `json:"remote_branch_present"`
+	ID                   string `json:"id"`
+	Repo                 string `json:"repo"`
+	Branch               string `json:"branch"`
+	BaseBranch           string `json:"base_branch"`
+	BaseOID              string `json:"base_oid"`
+	WorkOID              string `json:"work_oid"`
+	RemoteWorkOID        string `json:"remote_work_oid"`
+	LeaseGeneration      uint64 `json:"lease_generation"`
+	LeaseStatus          string `json:"lease_status"`
+	CompletionGeneration uint64 `json:"completion_generation"`
+	CompletionFinalHead  string `json:"completion_final_head"`
+	PendingIntentAbsent  bool   `json:"pending_intent_absent"`
+	MergeInProgress      bool   `json:"merge_in_progress"`
+	RemoteBranchPresent  bool   `json:"remote_branch_present"`
 
-	Root          string `json:"-"`
-	RemoteWorkOID string `json:"-"`
+	Root string `json:"-"`
 }
 
 // SyncExecutionBase는 게이트 10종을 fail-closed로 평가하고, 모드별 절차를
 // 실행한다. preview는 워크트리를 오염시키지 않는 관측 전용이며(merge-tree는
-// ODB에만 객체를 쓴다 — brooks F12), 변형 3모드는 활성 lease holder를 요구한다
-// (brooks F8·F17 — 무잠금 변형 소멸).
+// ODB에만 객체를 쓴다), 변형 3모드는 활성 holder 또는 generation이 일치하는
+// released current completion의 권위를 요구한다.
 func SyncExecutionBase(ctx context.Context, stateRoot string, req ExecutionSyncBaseRequest, deps ExecutionSyncBaseDeps) (ExecutionSyncBaseResult, error) {
 	if deps.Git == nil {
 		deps.Git = defaultExecutionSyncBaseGit
@@ -137,8 +143,8 @@ func SyncExecutionBase(ctx context.Context, stateRoot string, req ExecutionSyncB
 	result.Fingerprint = fingerprint
 	if mode == ExecutionSyncBasePreview {
 		result.NextCommand = fmt.Sprintf(
-			"agent-harness issueops execution sync-base --id %s --apply --confirm --fingerprint %s ACTOR_FLAGS --json",
-			record.ID, fingerprint)
+			"%s --apply --confirm --fingerprint %s ACTOR_FLAGS --json",
+			executionSyncBaseCommandPrefix(record), fingerprint)
 		return result, nil
 	}
 	// --confirm은 파괴적 머지 커밋과 push를 만드는 apply에만 요구한다
@@ -168,18 +174,29 @@ func executionSyncBaseGates(ctx context.Context, record issueops.IssueOpsRecord,
 	if execution == nil {
 		return inventory, append(missing, "execution_prepared")
 	}
-	// ① completion_present: sync-base는 완결 이후 표면이다(AC-02).
-	if execution.Completion == nil {
-		missing = append(missing, "completion_present")
-	}
-	// ② remote_artifact_present: 재동기화 대상 PR/MR이 없으면 할 일이 없다.
-	if record.RemoteArtifact == nil {
-		missing = append(missing, "remote_artifact_present")
+	// released maintenance는 current completion과 remote artifact가 권위다.
+	// Active holder는 PR 전 parent sync에도 같은 typed path를 사용한다.
+	if execution.Lease.Status != issueops.LeaseStatusActive {
+		if execution.Completion == nil {
+			missing = append(missing, "completion_present")
+		} else if execution.Completion.Generation == 0 {
+			missing = append(missing, "current_completion_generation_present")
+		}
+		if record.RemoteArtifact == nil {
+			missing = append(missing, "remote_artifact_present")
+		}
 	}
 	// ④ pending_intent_absent: 열린 외부 intent 위에서는 어떤 변형도 금지한다
 	//    (brooks F13 — replace 선례 준용, reconcile로 안내).
 	if execution.Pending != nil {
 		missing = append(missing, "pending_intent_absent")
+	}
+	inventory.PendingIntentAbsent = execution.Pending == nil
+	inventory.LeaseGeneration = execution.Lease.Generation
+	inventory.LeaseStatus = string(execution.Lease.Status)
+	if execution.Completion != nil {
+		inventory.CompletionGeneration = execution.Completion.Generation
+		inventory.CompletionFinalHead = execution.Completion.FinalHead
 	}
 	inventory.Branch = strings.TrimSpace(execution.Workspace.Branch)
 	inventory.Root = strings.TrimSpace(execution.Workspace.Root)
@@ -199,14 +216,7 @@ func executionSyncBaseGates(ctx context.Context, record issueops.IssueOpsRecord,
 	if !samePath(req.CWD, inventory.Root) {
 		missing = append(missing, "cwd_canonical")
 	}
-	// ⑨ lease_holder: 변형 3모드는 활성 lease + sameNativeActor 완전 일치
-	//    (ACTOR_FLAGS 전체 + session process receipt — brooks F4).
-	if mode != ExecutionSyncBasePreview {
-		lease := execution.Lease
-		if lease.Status != issueops.LeaseStatusActive || !sameNativeActor(lease.Holder, &actor) {
-			missing = append(missing, "lease_holder")
-		}
-	}
+	missing = append(missing, executionSyncBaseAuthorityMissing(execution, req, mode, actor)...)
 	// ⑥ head_on_recorded_branch: detached HEAD의 무증상 push 실패를 막는다
 	//    (brooks F3).
 	if code, head := deps.Git(ctx, inventory.Root, "branch", "--show-current"); code != 0 ||
@@ -298,6 +308,32 @@ func executionSyncBaseGates(ctx context.Context, record issueops.IssueOpsRecord,
 	return inventory, missing
 }
 
+func executionSyncBaseAuthorityMissing(execution *issueops.Execution, req ExecutionSyncBaseRequest, mode string, actor issueops.NativeActor) []string {
+	if execution == nil {
+		return nil
+	}
+	lease := execution.Lease
+	if lease.Status == issueops.LeaseStatusActive {
+		if mode != ExecutionSyncBasePreview && !sameNativeActor(lease.Holder, &actor) {
+			return []string{"lease_holder"}
+		}
+		return nil
+	}
+	if lease.Status != issueops.LeaseStatusReleased || execution.Completion == nil {
+		return []string{"released_completion_authority"}
+	}
+	if execution.Completion.Generation == 0 {
+		return nil
+	}
+	if req.CompletionGeneration == 0 {
+		return []string{"completion_generation_present"}
+	}
+	if req.CompletionGeneration != execution.Completion.Generation {
+		return []string{"completion_generation_current"}
+	}
+	return nil
+}
+
 // applyExecutionSyncBase는 무충돌이면 merge commit + push로 완결하고, 충돌이면
 // 파일을 나열한 채 merge-in-progress로 정지한다(해소 편집은 같은 holder).
 // 병합이 이미 반영된 상태에서의 재실행은 merge를 건너뛰고 push만 수행해
@@ -309,6 +345,7 @@ func applyExecutionSyncBase(ctx context.Context, stateRoot string, record issueo
 	//    요구하고 멈춘다(cleanup finish 선례).
 	if req.Fingerprint != fingerprint {
 		result.OK = false
+		result.NextCommand = executionSyncBasePreviewCommand(record)
 		return *result, fmt.Errorf("stale execution sync-base fingerprint; run --preview again and retry with the new value")
 	}
 	fail := executionSyncBaseFail(record, result)
@@ -328,8 +365,9 @@ func applyExecutionSyncBase(ctx context.Context, stateRoot string, record issueo
 				// 충돌이 아닌 다른 실패다 — 게이트 밖 실패로 fail-closed 보고.
 				return fail("merge", fmt.Errorf("git merge: %s", strings.TrimSpace(out)))
 			}
-			result.NextCommand = fmt.Sprintf(
-				"agent-harness issueops execution sync-base --id %s --finalize ACTOR_FLAGS --json (또는 --abort)", record.ID)
+			prefix := executionSyncBaseCommandPrefix(record)
+			result.NextCommand = prefix + " --finalize ACTOR_FLAGS --json"
+			result.AbortCommand = prefix + " --abort ACTOR_FLAGS --json"
 			return *result, nil
 		}
 		result.Merged, result.MergeInProgress = true, false
@@ -429,7 +467,7 @@ func executionSyncBaseFail(record issueops.IssueOpsRecord, result *ExecutionSync
 	return func(step string, stepErr error) (ExecutionSyncBaseResult, error) {
 		result.OK = false
 		result.FailedStep = step
-		result.NextCommand = executionSyncBasePreviewCommand(record.ID)
+		result.NextCommand = executionSyncBasePreviewCommand(record)
 		return *result, fmt.Errorf("execution sync-base step %s failed (re-run --preview then retry): %w", step, stepErr)
 	}
 }
@@ -599,8 +637,17 @@ func executionSyncBaseActorLabel(actor issueops.NativeActor) string {
 	return label
 }
 
-func executionSyncBasePreviewCommand(id string) string {
-	return fmt.Sprintf("agent-harness issueops execution sync-base --id %s --preview ACTOR_FLAGS --json", id)
+func executionSyncBaseCommandPrefix(record issueops.IssueOpsRecord) string {
+	command := "agent-harness issueops execution sync-base --id " + quoteExecutionOwnerArg(record.ID)
+	if record.Execution != nil && record.Execution.Lease.Status == issueops.LeaseStatusReleased &&
+		record.Execution.Completion != nil && record.Execution.Completion.Generation != 0 {
+		command += " --completion-generation " + strconv.FormatUint(record.Execution.Completion.Generation, 10)
+	}
+	return command
+}
+
+func executionSyncBasePreviewCommand(record issueops.IssueOpsRecord) string {
+	return executionSyncBaseCommandPrefix(record) + " --preview --json"
 }
 
 func executionStatusCommandForSyncBase(id string) string {
