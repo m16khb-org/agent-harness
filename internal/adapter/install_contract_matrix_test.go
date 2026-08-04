@@ -299,7 +299,23 @@ cat >"$output" <<'RUNTIME'
 case "${1:-}" in
   version) exit 0 ;;
   issueops) exit 0 ;;
-  install) printf '%s\n' "$HARNESS_ROOT" >"$FAKE_INSTALL_LOG"; exit 0 ;;
+  install)
+    printf '%s\n' "$HARNESS_ROOT" >"$FAKE_INSTALL_LOG"
+    transition_id=0123456789abcdef0123456789abcdef
+    case "${HARNESS_NATIVE_ACTIVATION_STEP:-}" in
+      begin)
+        binary_sha256="$(shasum -a 256 "$0" | awk '{print $1}')"
+        printf '{"transition_id":"%s","binary_sha256":"%s"}\n' "$transition_id" "$binary_sha256"
+        ;;
+      seal)
+        printf '{"committed":true,"transition_id":"%s"}\n' "${HARNESS_NATIVE_ACTIVATION_TRANSITION_ID:-$transition_id}"
+        ;;
+      abort)
+        printf '{"aborted":true,"transition_id":"%s"}\n' "${HARNESS_NATIVE_ACTIVATION_TRANSITION_ID:-$transition_id}"
+        ;;
+    esac
+    exit 0
+    ;;
   *) exit 0 ;;
 esac
 # new-runtime
