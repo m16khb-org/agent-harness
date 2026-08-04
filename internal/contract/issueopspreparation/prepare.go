@@ -186,6 +186,12 @@ func cloneExecutionPointer(execution *leasecontract.Execution) *leasecontract.Ex
 		failure := *execution.Failure
 		cloned.Failure = &failure
 	}
+	if execution.SyncBaseResolution != nil {
+		resolution := *execution.SyncBaseResolution
+		resolution.Actor = cloneActor(execution.SyncBaseResolution.Actor)
+		resolution.ConflictFiles = cloneStrings(execution.SyncBaseResolution.ConflictFiles)
+		cloned.SyncBaseResolution = &resolution
+	}
 	if execution.SyncBaseEvents != nil {
 		cloned.SyncBaseEvents = append([]leasecontract.SyncBaseEvent{}, execution.SyncBaseEvents...)
 	}

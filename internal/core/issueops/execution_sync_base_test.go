@@ -230,6 +230,19 @@ func (f syncBaseFixture) rewrite(t *testing.T, mutate func(*issueops.IssueOpsRec
 	}
 }
 
+func (f syncBaseFixture) sealResolution(t *testing.T, conflicts ...string) {
+	t.Helper()
+	if len(conflicts) == 0 {
+		conflicts = []string{"internal/a.go"}
+	}
+	f.rewrite(t, func(record *issueops.IssueOpsRecord) {
+		record.Execution.SyncBaseResolution = &issueops.ExecutionSyncBaseResolution{
+			Generation: record.Execution.Lease.Generation, CompletionGeneration: record.Execution.Completion.Generation,
+			BaseOID: syncBaseBaseOID, Actor: f.actor, ConflictFiles: conflicts, StartedAt: "2026-08-04T00:00:00Z",
+		}
+	})
+}
+
 // 게이트 10종 전수 거부. 설계 v2의 번호와 missing 토큰이 1:1로 대응한다.
 func TestExecutionSyncBaseGatesRejectEveryMissingPrecondition(t *testing.T) {
 	baseline := newReleasedSyncBaseFixture(t, "114-gates")
@@ -411,6 +424,12 @@ func TestExecutionSyncBaseApplyStopsAtConflictWithoutPush(t *testing.T) {
 	if len(persisted.Execution.SyncBaseEvents) != 0 {
 		t.Fatalf("conflict stop must not record a durable event: %#v", persisted.Execution.SyncBaseEvents)
 	}
+	resolution := persisted.Execution.SyncBaseResolution
+	if resolution == nil || resolution.Generation != persisted.Execution.Lease.Generation ||
+		!sameNativeActor(&resolution.Actor, &fixture.actor) ||
+		len(resolution.ConflictFiles) != 1 || resolution.ConflictFiles[0] != "internal/a.go" {
+		t.Fatalf("conflict stop must seal bounded resolution authority: %#v", resolution)
+	}
 }
 
 // push 실패는 로컬 merge commit을 남기고, 재실행은 merge 없이 push만 수행해
@@ -504,6 +523,7 @@ func TestExecutionSyncBaseFinalizeRejectsUnresolvedConflictsAndMarkers(t *testin
 	t.Run("unmerged index", func(t *testing.T) {
 		fixture := newReleasedSyncBaseFixture(t, "114-finalize-unmerged")
 		fixture.git.mergeHead = true
+		fixture.sealResolution(t)
 		fixture.git.unmergedOut = "100644 " + syncBaseBaseOID + " 1\tinternal/a.go\x00"
 		result, err := fixture.run(t, fixture.request(ExecutionSyncBaseFinalize))
 		if err == nil || !containsString(result.Missing, "conflict_resolution_complete") {
@@ -516,6 +536,7 @@ func TestExecutionSyncBaseFinalizeRejectsUnresolvedConflictsAndMarkers(t *testin
 	t.Run("conflict markers", func(t *testing.T) {
 		fixture := newReleasedSyncBaseFixture(t, "114-finalize-markers")
 		fixture.git.mergeHead = true
+		fixture.sealResolution(t)
 		fixture.git.diffCheckCode = 1
 		result, err := fixture.run(t, fixture.request(ExecutionSyncBaseFinalize))
 		if err == nil || !containsString(result.Missing, "conflict_markers_absent") {
@@ -525,6 +546,7 @@ func TestExecutionSyncBaseFinalizeRejectsUnresolvedConflictsAndMarkers(t *testin
 	t.Run("clean finalize", func(t *testing.T) {
 		fixture := newReleasedSyncBaseFixture(t, "114-finalize-clean")
 		fixture.git.mergeHead = true
+		fixture.sealResolution(t)
 		fixture.git.headOID = syncBaseMergeOID
 		result, err := fixture.run(t, fixture.request(ExecutionSyncBaseFinalize))
 		if err != nil {
@@ -545,12 +567,27 @@ func TestExecutionSyncBaseFinalizeRejectsUnresolvedConflictsAndMarkers(t *testin
 			persisted.Execution.SyncBaseEvents[0].Mode != issueops.ExecutionSyncBaseEventFinalize {
 			t.Fatalf("finalize must record its own durable event: %#v", persisted.Execution.SyncBaseEvents)
 		}
+		if persisted.Execution.SyncBaseResolution != nil {
+			t.Fatalf("finalize retained resolution authority: %#v", persisted.Execution.SyncBaseResolution)
+		}
+	})
+	t.Run("foreign actor", func(t *testing.T) {
+		fixture := newReleasedSyncBaseFixture(t, "114-finalize-foreign")
+		fixture.git.mergeHead = true
+		fixture.sealResolution(t)
+		request := fixture.request(ExecutionSyncBaseFinalize)
+		request.Actor.SessionID = "other-session"
+		result, err := fixture.run(t, request)
+		if err == nil || !containsString(result.Missing, "sync_base_resolution_actor") {
+			t.Fatalf("foreign resolution actor must fail closed: %v %v", err, result.Missing)
+		}
 	})
 }
 
 func TestExecutionSyncBaseAbortWithdrawsTheMergeWithoutEvent(t *testing.T) {
 	fixture := newReleasedSyncBaseFixture(t, "114-abort")
 	fixture.git.mergeHead = true
+	fixture.sealResolution(t)
 	result, err := fixture.run(t, fixture.request(ExecutionSyncBaseAbort))
 	if err != nil {
 		t.Fatalf("abort must be available to the holder: %v", err)
@@ -565,9 +602,13 @@ func TestExecutionSyncBaseAbortWithdrawsTheMergeWithoutEvent(t *testing.T) {
 	if len(persisted.Execution.SyncBaseEvents) != 0 {
 		t.Fatalf("abort is a withdrawal and must not be recorded: %#v", persisted.Execution.SyncBaseEvents)
 	}
+	if persisted.Execution.SyncBaseResolution != nil {
+		t.Fatalf("abort retained resolution authority: %#v", persisted.Execution.SyncBaseResolution)
+	}
 
 	// 진행 중 머지가 없으면 abort/finalize 모두 전제 미충족이다.
 	clean := newReleasedSyncBaseFixture(t, "114-abort-noop")
+	clean.sealResolution(t)
 	result, err = clean.run(t, clean.request(ExecutionSyncBaseAbort))
 	if err == nil || !containsString(result.Missing, "merge_in_progress") {
 		t.Fatalf("abort without a merge in progress must fail closed: %v %v", err, result.Missing)

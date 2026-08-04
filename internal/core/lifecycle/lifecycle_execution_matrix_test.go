@@ -863,6 +863,48 @@ func TestExecutionSyncBaseGeneralNonHolderMutationStaysBlocked(t *testing.T) {
 	}
 }
 
+func TestReleasedSyncBaseResolutionAllowsOnlySealedActorConflictFiles(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionReleasedCompletionLifecycleRecord(t)
+	actor := issueopscontract.NativeActor{
+		Host: "codex", SessionID: "maintenance-session",
+		SessionProcess: &issueopscontract.NativeProcessReceipt{
+			PID: 1234, StartedAt: "2026-07-22T00:00:00Z", Executable: "codex",
+		},
+	}
+	record.Execution.SyncBaseResolution = &issueopscontract.ExecutionSyncBaseResolution{
+		Generation: record.Execution.Lease.Generation, CompletionGeneration: record.Execution.Completion.Generation,
+		BaseOID: strings.Repeat("a", 40),
+		Actor:   actor, ConflictFiles: []string{"internal/conflict.go"},
+		StartedAt: "2026-08-04T00:00:00Z",
+	}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+
+	request := executionRequest(record, worker, actor.Host, actor.SessionID, "")
+	request.Tool = "apply_patch"
+	request.Paths = []string{filepath.Join(worker, "internal", "conflict.go")}
+	request.NativeProcessAncestry = []lifecyclecontract.NativeProcessReceipt{{
+		PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable,
+	}}
+	if got := BuildLifecyclePreToolUseDecision(request); got.Decision != "allow" {
+		t.Fatalf("sealed maintenance actor conflict edit was blocked: %+v", got)
+	}
+
+	outside := request
+	outside.Paths = []string{filepath.Join(worker, "internal", "unrelated.go")}
+	if got := BuildLifecyclePreToolUseDecision(outside); got.Decision != "block" {
+		t.Fatalf("resolution authority escaped the sealed conflict set: %+v", got)
+	}
+
+	foreign := request
+	foreign.SessionID = "other-session"
+	if got := BuildLifecyclePreToolUseDecision(foreign); got.Decision != "block" {
+		t.Fatalf("foreign actor used released sync-base resolution authority: %+v", got)
+	}
+}
+
 func executionReleasedCompletionLifecycleRecord(t *testing.T) (string, issueopscontract.IssueOpsRecord, string) {
 	t.Helper()
 	repo, record, worker := executionActiveLifecycleRecord(t)

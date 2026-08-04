@@ -997,6 +997,10 @@ func executionMutationDecision(req lifecyclecontract.HookToolUseLifecycleRequest
 		if exactTemporaryBuild {
 			targetsAuthorized = executionTemporaryBuildTargetsAuthorized(req, targets, root, temporaryBuildOutput)
 		}
+		if lease.Status == issueopscontract.LeaseStatusReleased && unsafeReason == "" &&
+			executionSyncBaseResolutionAllows(req, *record.Execution, targets, root) {
+			return true, "", nil
+		}
 		if lease.Status == issueopscontract.LeaseStatusActive && executionActorMatches(req, lease.Holder) &&
 			targetsAuthorized {
 			if orcaBranchLinkVerificationRequired(record) && !exactOrcaBranchLinkRecorder(req.Command, record) {
@@ -1019,6 +1023,26 @@ func executionMutationDecision(req lifecyclecontract.HookToolUseLifecycleRequest
 		return true, reason, deny
 	}
 	return false, "", nil
+}
+
+func executionSyncBaseResolutionAllows(req lifecyclecontract.HookToolUseLifecycleRequest, execution issueopscontract.Execution, targets []string, root string) bool {
+	resolution := execution.SyncBaseResolution
+	if resolution == nil || execution.Lease.Status != issueopscontract.LeaseStatusReleased ||
+		resolution.Generation != execution.Lease.Generation || !executionActorMatches(req, &resolution.Actor) || len(targets) == 0 {
+		return false
+	}
+	allowed := map[string]bool{}
+	for _, relative := range resolution.ConflictFiles {
+		if target := resolveHookTargetPath(root, relative); target != "" {
+			allowed[target] = true
+		}
+	}
+	for _, target := range targets {
+		if !allowed[cleanAbsPath(target)] {
+			return false
+		}
+	}
+	return true
 }
 
 func exactIssueOpsMutationHelpObservation(path string, tokens []string, start int) bool {

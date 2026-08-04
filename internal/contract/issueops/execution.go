@@ -3,6 +3,7 @@ package issueops
 import (
 	"encoding/hex"
 	"fmt"
+	"path/filepath"
 	"strings"
 )
 
@@ -28,14 +29,15 @@ const (
 )
 
 type Execution struct {
-	Mode              ExecutionMode                `json:"mode"`
-	Workspace         Workspace                    `json:"workspace"`
-	Lease             WriteLease                   `json:"lease"`
-	Orca              *OrcaBinding                 `json:"orca,omitempty"`
-	Pending           *ExternalIntent              `json:"pending,omitempty"`
-	Completion        *ExecutionCompletion         `json:"completion,omitempty"`
-	CompletionHistory []ExecutionCompletionHistory `json:"completion_history,omitempty"`
-	Failure           *ExecutionFailure            `json:"failure,omitempty"`
+	Mode               ExecutionMode                `json:"mode"`
+	Workspace          Workspace                    `json:"workspace"`
+	Lease              WriteLease                   `json:"lease"`
+	Orca               *OrcaBinding                 `json:"orca,omitempty"`
+	Pending            *ExternalIntent              `json:"pending,omitempty"`
+	Completion         *ExecutionCompletion         `json:"completion,omitempty"`
+	CompletionHistory  []ExecutionCompletionHistory `json:"completion_history,omitempty"`
+	Failure            *ExecutionFailure            `json:"failure,omitempty"`
+	SyncBaseResolution *ExecutionSyncBaseResolution `json:"sync_base_resolution,omitempty"`
 	// SyncBaseEvents는 completion 이후 base 재동기화(merge+push)의 durable
 	// 감사 기록이다. append-only이며 Completion.FinalHead는 불변으로 남는다
 	// — 완결 시점 증거를 보존하고, PR head는 provider가 관측하며, merge OID는
@@ -147,6 +149,17 @@ type ExecutionSyncBaseEvent struct {
 	At            string `json:"at"`
 }
 
+// ExecutionSyncBaseResolution seals temporary conflict-resolution authority
+// without reopening the released completion as a general write lease.
+type ExecutionSyncBaseResolution struct {
+	Generation           uint64      `json:"generation"`
+	CompletionGeneration uint64      `json:"completion_generation"`
+	BaseOID              string      `json:"base_oid"`
+	Actor                NativeActor `json:"actor"`
+	ConflictFiles        []string    `json:"conflict_files"`
+	StartedAt            string      `json:"started_at"`
+}
+
 func ValidateExecution(execution Execution) error {
 	if execution.Mode != ExecutionModeDirect && execution.Mode != ExecutionModeOrca {
 		return fmt.Errorf("execution mode must be direct or orca")
@@ -200,10 +213,38 @@ func ValidateExecution(execution Execution) error {
 			return fmt.Errorf("execution failure is invalid")
 		}
 	}
+	if execution.SyncBaseResolution != nil {
+		if err := validateExecutionSyncBaseResolution(execution, *execution.SyncBaseResolution); err != nil {
+			return err
+		}
+	}
 	for _, event := range execution.SyncBaseEvents {
 		if err := validateExecutionSyncBaseEvent(event); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func validateExecutionSyncBaseResolution(execution Execution, resolution ExecutionSyncBaseResolution) error {
+	if execution.Lease.Status != LeaseStatusReleased || execution.Completion == nil ||
+		resolution.Generation == 0 || resolution.Generation != execution.Lease.Generation ||
+		resolution.CompletionGeneration == 0 || resolution.CompletionGeneration != execution.Completion.Generation {
+		return fmt.Errorf("execution sync-base resolution must bind the released current completion")
+	}
+	if !validCommitSHA(resolution.BaseOID) || strings.TrimSpace(resolution.StartedAt) == "" || len(resolution.ConflictFiles) == 0 {
+		return fmt.Errorf("execution sync-base resolution is incomplete")
+	}
+	if err := ValidateNativeActor(resolution.Actor); err != nil {
+		return err
+	}
+	seen := map[string]bool{}
+	for _, path := range resolution.ConflictFiles {
+		clean := filepath.Clean(path)
+		if path == "" || path != clean || filepath.IsAbs(path) || clean == "." || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) || seen[clean] {
+			return fmt.Errorf("execution sync-base resolution conflict path is invalid")
+		}
+		seen[clean] = true
 	}
 	return nil
 }

@@ -163,7 +163,7 @@ func SyncExecutionBase(ctx context.Context, stateRoot string, req ExecutionSyncB
 	case ExecutionSyncBaseFinalize:
 		return finalizeExecutionSyncBase(ctx, stateRoot, record, actor, inventory, deps, &result)
 	default:
-		return abortExecutionSyncBase(ctx, record, inventory, deps, &result)
+		return abortExecutionSyncBase(ctx, stateRoot, record, inventory, deps, &result)
 	}
 }
 
@@ -335,6 +335,23 @@ func executionSyncBaseAuthorityMissing(execution *issueops.Execution, req Execut
 	if req.CompletionGeneration != execution.Completion.Generation {
 		return []string{"completion_generation_current"}
 	}
+	resolution := execution.SyncBaseResolution
+	switch mode {
+	case ExecutionSyncBaseApply:
+		if resolution != nil {
+			return []string{"sync_base_resolution_absent"}
+		}
+	case ExecutionSyncBaseFinalize, ExecutionSyncBaseAbort:
+		if resolution == nil {
+			return []string{"sync_base_resolution_present"}
+		}
+		if resolution.Generation != lease.Generation || resolution.CompletionGeneration != execution.Completion.Generation {
+			return []string{"sync_base_resolution_current"}
+		}
+		if !sameNativeActor(&resolution.Actor, &actor) {
+			return []string{"sync_base_resolution_actor"}
+		}
+	}
 	return nil
 }
 
@@ -368,6 +385,13 @@ func applyExecutionSyncBase(ctx context.Context, stateRoot string, record issueo
 			if len(result.ConflictFiles) == 0 {
 				// 충돌이 아닌 다른 실패다 — 게이트 밖 실패로 fail-closed 보고.
 				return fail("merge", fmt.Errorf("git merge: %s", strings.TrimSpace(out)))
+			}
+			if record.Execution != nil && record.Execution.Lease.Status == issueops.LeaseStatusReleased {
+				if err := startExecutionSyncBaseResolution(ctx, stateRoot, record.ID, actor, inventory, result.ConflictFiles); err != nil {
+					_, _ = deps.Git(ctx, inventory.Root, "merge", "--abort")
+					result.MergeInProgress = false
+					return fail("record_resolution", err)
+				}
 			}
 			prefix := executionSyncBaseCommandPrefix(record)
 			result.NextCommand = prefix + " --finalize ACTOR_FLAGS --json"
@@ -415,11 +439,16 @@ func finalizeExecutionSyncBase(ctx context.Context, stateRoot string, record iss
 
 // abortExecutionSyncBase는 진행 중 머지를 명시적으로 철회한다. 되돌림이므로
 // durable 이벤트를 남기지 않는다(이벤트는 apply/finalize 성공 전용).
-func abortExecutionSyncBase(ctx context.Context, record issueops.IssueOpsRecord, inventory executionSyncBaseInventory,
+func abortExecutionSyncBase(ctx context.Context, stateRoot string, record issueops.IssueOpsRecord, inventory executionSyncBaseInventory,
 	deps ExecutionSyncBaseDeps, result *ExecutionSyncBaseResult) (ExecutionSyncBaseResult, error) {
 	fail := executionSyncBaseFail(record, result)
 	if code, out := deps.Git(ctx, inventory.Root, "merge", "--abort"); code != 0 {
 		return fail("merge_abort", fmt.Errorf("git merge --abort: %s", strings.TrimSpace(out)))
+	}
+	if record.Execution != nil && record.Execution.Lease.Status == issueops.LeaseStatusReleased {
+		if err := clearExecutionSyncBaseResolution(ctx, stateRoot, record.ID); err != nil {
+			return fail("clear_resolution", err)
+		}
 	}
 	result.Aborted, result.MergeInProgress = true, false
 	return *result, nil
@@ -461,8 +490,46 @@ func appendExecutionSyncBaseEvent(ctx context.Context, stateRoot, id string, eve
 			return fmt.Errorf("IssueOps execution v1 is not prepared")
 		}
 		rec.Execution.SyncBaseEvents = append(rec.Execution.SyncBaseEvents, event)
+		rec.Execution.SyncBaseResolution = nil
 		rec.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
 		_, err = writeIssueOps(stateRoot, rec)
+		return err
+	})
+}
+
+func startExecutionSyncBaseResolution(ctx context.Context, stateRoot, id string, actor issueops.NativeActor,
+	inventory executionSyncBaseInventory, conflictFiles []string) error {
+	return withIssueOpsLock(ctx, stateRoot, id, func(context.Context) error {
+		record, err := ReadIssueOps(stateRoot, id)
+		if err != nil {
+			return err
+		}
+		if record.Execution == nil || record.Execution.Completion == nil || record.Execution.SyncBaseResolution != nil {
+			return fmt.Errorf("execution sync-base resolution state changed before sealing")
+		}
+		record.Execution.SyncBaseResolution = &issueops.ExecutionSyncBaseResolution{
+			Generation: record.Execution.Lease.Generation, CompletionGeneration: record.Execution.Completion.Generation,
+			BaseOID: inventory.BaseOID, Actor: actor,
+			ConflictFiles: append([]string(nil), conflictFiles...), StartedAt: time.Now().UTC().Format(time.RFC3339Nano),
+		}
+		record.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
+		_, err = writeIssueOps(stateRoot, record)
+		return err
+	})
+}
+
+func clearExecutionSyncBaseResolution(ctx context.Context, stateRoot, id string) error {
+	return withIssueOpsLock(ctx, stateRoot, id, func(context.Context) error {
+		record, err := ReadIssueOps(stateRoot, id)
+		if err != nil {
+			return err
+		}
+		if record.Execution == nil || record.Execution.SyncBaseResolution == nil {
+			return fmt.Errorf("execution sync-base resolution authority is absent")
+		}
+		record.Execution.SyncBaseResolution = nil
+		record.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
+		_, err = writeIssueOps(stateRoot, record)
 		return err
 	})
 }

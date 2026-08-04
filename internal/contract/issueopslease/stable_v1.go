@@ -190,15 +190,16 @@ type stableV1ChildCycle struct {
 	ValidatedAt        string   `json:"validated_at,omitempty"`
 }
 type stableV1Execution struct {
-	Mode              string                      `json:"mode"`
-	Workspace         stableV1Workspace           `json:"workspace"`
-	Lease             stableV1Lease               `json:"lease"`
-	Orca              *stableV1OrcaBinding        `json:"orca,omitempty"`
-	Pending           *stableV1ExternalIntent     `json:"pending,omitempty"`
-	Completion        *stableV1Completion         `json:"completion,omitempty"`
-	CompletionHistory []stableV1CompletionHistory `json:"completion_history,omitempty"`
-	Failure           *stableV1Failure            `json:"failure,omitempty"`
-	SyncBaseEvents    []stableV1SyncBaseEvent     `json:"sync_base_events,omitempty"`
+	Mode               string                      `json:"mode"`
+	Workspace          stableV1Workspace           `json:"workspace"`
+	Lease              stableV1Lease               `json:"lease"`
+	Orca               *stableV1OrcaBinding        `json:"orca,omitempty"`
+	Pending            *stableV1ExternalIntent     `json:"pending,omitempty"`
+	Completion         *stableV1Completion         `json:"completion,omitempty"`
+	CompletionHistory  []stableV1CompletionHistory `json:"completion_history,omitempty"`
+	Failure            *stableV1Failure            `json:"failure,omitempty"`
+	SyncBaseResolution *stableV1SyncBaseResolution `json:"sync_base_resolution,omitempty"`
+	SyncBaseEvents     []stableV1SyncBaseEvent     `json:"sync_base_events,omitempty"`
 }
 type stableV1Workspace struct {
 	SourceRoot     string `json:"source_root"`
@@ -282,6 +283,14 @@ type stableV1SyncBaseEvent struct {
 	ConflictFiles int    `json:"conflict_files"`
 	Actor         string `json:"actor"`
 	At            string `json:"at"`
+}
+type stableV1SyncBaseResolution struct {
+	Generation           uint64   `json:"generation"`
+	CompletionGeneration uint64   `json:"completion_generation"`
+	BaseOID              string   `json:"base_oid"`
+	Actor                Actor    `json:"actor"`
+	ConflictFiles        []string `json:"conflict_files"`
+	StartedAt            string   `json:"started_at"`
 }
 type stableV1RemoteCompletion struct {
 	ReflectedAt   string `json:"reflected_at,omitempty"`

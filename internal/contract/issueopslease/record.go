@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 
 	statecontract "agent-harness/internal/contract/state"
@@ -58,15 +59,16 @@ type Record struct {
 }
 
 type Execution struct {
-	Mode              string                   `json:"mode"`
-	Workspace         Workspace                `json:"workspace"`
-	Lease             Lease                    `json:"lease"`
-	Orca              *OrcaBinding             `json:"orca,omitempty"`
-	Pending           *ExternalIntent          `json:"pending,omitempty"`
-	Completion        *Completion              `json:"completion,omitempty"`
-	CompletionHistory []CompletionHistoryEntry `json:"completion_history,omitempty"`
-	Failure           *FailureDetail           `json:"failure,omitempty"`
-	SyncBaseEvents    []SyncBaseEvent          `json:"sync_base_events,omitempty"`
+	Mode               string                   `json:"mode"`
+	Workspace          Workspace                `json:"workspace"`
+	Lease              Lease                    `json:"lease"`
+	Orca               *OrcaBinding             `json:"orca,omitempty"`
+	Pending            *ExternalIntent          `json:"pending,omitempty"`
+	Completion         *Completion              `json:"completion,omitempty"`
+	CompletionHistory  []CompletionHistoryEntry `json:"completion_history,omitempty"`
+	Failure            *FailureDetail           `json:"failure,omitempty"`
+	SyncBaseResolution *SyncBaseResolution      `json:"sync_base_resolution,omitempty"`
+	SyncBaseEvents     []SyncBaseEvent          `json:"sync_base_events,omitempty"`
 }
 
 type OrcaBinding = stableV1OrcaBinding
@@ -74,6 +76,7 @@ type ExternalIntent = stableV1ExternalIntent
 type Completion = stableV1Completion
 type CompletionHistoryEntry = stableV1CompletionHistory
 type FailureDetail = stableV1Failure
+type SyncBaseResolution = stableV1SyncBaseResolution
 type SyncBaseEvent = stableV1SyncBaseEvent
 
 type Workspace struct {
@@ -287,6 +290,26 @@ func validateSidecars(execution Execution) error {
 	}
 	if execution.Failure != nil && (execution.Failure.Code == "" || execution.Failure.At == "" || len(execution.Failure.Message) > 4096) {
 		return fmt.Errorf("execution failure is invalid")
+	}
+	if execution.SyncBaseResolution != nil {
+		resolution := execution.SyncBaseResolution
+		if execution.Lease.Status != "released" || execution.Completion == nil ||
+			resolution.Generation == 0 || resolution.Generation != execution.Lease.Generation ||
+			resolution.CompletionGeneration == 0 || resolution.CompletionGeneration != execution.Completion.Generation ||
+			!validHexDigest(resolution.BaseOID, 40, 64) || strings.TrimSpace(resolution.StartedAt) == "" || len(resolution.ConflictFiles) == 0 {
+			return fmt.Errorf("execution sync-base resolution is invalid")
+		}
+		if err := validateActor(resolution.Actor); err != nil {
+			return err
+		}
+		seen := map[string]bool{}
+		for _, path := range resolution.ConflictFiles {
+			clean := filepath.Clean(path)
+			if path == "" || path != clean || filepath.IsAbs(path) || clean == "." || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) || seen[clean] {
+				return fmt.Errorf("execution sync-base resolution conflict path is invalid")
+			}
+			seen[clean] = true
+		}
 	}
 	for _, event := range execution.SyncBaseEvents {
 		if event.Mode != "apply" && event.Mode != "finalize" {
