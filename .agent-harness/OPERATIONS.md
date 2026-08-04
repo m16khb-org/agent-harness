@@ -39,6 +39,20 @@ agent-harness status --json
 agent-harness docs --json
 ```
 
+## Hook Kill-Switch
+
+Harness hooks are registered once at host level (`~/.claude/settings.json` and the Codex equivalent), so they fire in every repository the agent opens — including repositories the harness does not own. `HARNESS_DISABLE_HOOKS` turns that registration into a no-op for one session without editing host settings:
+
+```bash
+HARNESS_DISABLE_HOOKS=1 claude    # 이 세션에서만 harness hook 미적용
+export HARNESS_DISABLE_HOOKS=1    # 셸 세션 전체에 적용
+```
+
+- 값이 `1`, `true`, `yes`, `on` 중 하나면 활성이다 (`hookenv.Bool` 계약).
+- 모든 hook 이벤트(`user-prompt`, `pre-tool-use`, `post-tool-use`, `pre-compact`, `post-compact`, `session-start`, `stop`)가 검사 없이 exit 0으로 통과하고 latency telemetry도 남기지 않는다.
+- `agent-harness hook failures`와 `hook metrics`는 계속 동작한다. kill-switch가 끄는 것은 강제이지 관측이 아니다.
+- agent-harness 저장소 자체에서는 켜지 마라. worktree 강제, IssueOps mutation authority, staged-check gate가 함께 사라진다.
+
 ## Operational Health and One-Time Reconciliation
 
 `agent-harness doctor` is the sole public cross-system health gate for canonical Git state, all IssueOps records/bindings, optional Orca inventory, and unexpected user-state artifacts. Invocation-only preservation never writes state:
