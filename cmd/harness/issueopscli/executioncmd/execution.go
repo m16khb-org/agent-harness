@@ -534,6 +534,15 @@ func runSyncBase(args []string, deps Deps) error {
 	if mode == "" {
 		return output(nil, *jsonOut, fmt.Errorf("execution sync-base requires exactly one mode"), deps)
 	}
+	if mode != issueops.ExecutionSyncBasePreview {
+		processCWD, err := os.Getwd()
+		if err != nil {
+			return output(nil, *jsonOut, fmt.Errorf("observe execution sync-base process working directory: %w", err), deps)
+		}
+		if !sameExistingExecutionPath(processCWD, *actor.cwd) {
+			return output(nil, *jsonOut, fmt.Errorf("execution sync-base process working directory must match --cwd before mutation"), deps)
+		}
+	}
 	if deps.StateRoot == nil {
 		return output(nil, *jsonOut, fmt.Errorf("IssueOps state root is unavailable"), deps)
 	}
@@ -546,6 +555,22 @@ func runSyncBase(args []string, deps Deps) error {
 		Actor: actor.actor(), CWD: *actor.cwd, Confirm: *confirm, Fingerprint: *fingerprint,
 	}, issueops.ExecutionSyncBaseDeps{})
 	return output(result, *jsonOut, err, deps)
+}
+
+func sameExistingExecutionPath(left, right string) bool {
+	left = strings.TrimSpace(left)
+	right = strings.TrimSpace(right)
+	if left == "" || right == "" {
+		return false
+	}
+	leftAbs, leftErr := filepath.Abs(left)
+	rightAbs, rightErr := filepath.Abs(right)
+	if leftErr != nil || rightErr != nil {
+		return false
+	}
+	leftResolved, leftErr := filepath.EvalSymlinks(leftAbs)
+	rightResolved, rightErr := filepath.EvalSymlinks(rightAbs)
+	return leftErr == nil && rightErr == nil && filepath.Clean(leftResolved) == filepath.Clean(rightResolved)
 }
 
 // runSwitchMode는 준비된 실행의 모드를 바꾼다. sync-base와 같은 이유로

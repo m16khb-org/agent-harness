@@ -784,7 +784,7 @@ Orca owner가 active lease를 정상 claim하고 구현·대상 검증까지 마
 - `git_preflight.py`와 `api_doc_gate.py`의 정확한 단일 `python3` 호출만 current holder workflow로 인정한다.
 - 스크립트는 저장소 상대 경로와 사용자 홈의 설치·심볼릭 링크 경로를 모두 쓸 수 있으므로 사용자별 절대 경로를 하드코딩하지 않는다. 절대 경로는 명시적 expected worktree/source checkout, `HARNESS_ROOT`, `CODEX_HOME`, 사용자 홈의 Codex·Claude skill root처럼 설치기가 관리하는 base와 정확히 일치할 때만 허용한다. generic repo/cwd와 단순 `/skills/...` suffix 비교는 신뢰 근거로 쓰지 않는다.
 - 상대 `skills/...` 스크립트는 active lifecycle의 canonical worktree root에서만 실행한다. 하위 디렉터리에서는 같은 상대 경로가 `<subdir>/skills/...`를 가리키므로 holder라도 허용하지 않는다.
-- 선택적 repo 인자는 실제 shell 작업 디렉터리와 같은 canonical 경로만 허용한다. Codex `exec_command`는 `tool_input.workdir`, Claude Bash는 top-level `cwd`를 기준으로 삼고 해석이 모호한 상대 `workdir`는 거부한다.
+- 선택적 repo 인자는 실제 shell 작업 디렉터리와 같은 canonical 경로만 허용한다. Codex 0.146 stable hook은 `exec_command.workdir`를 `tool_input`에 직렬화하지 않고 turn-level `cwd`만 보내므로, generated absolute IssueOps 명령은 CLI가 `os.Getwd()`와 `--cwd`를 mutation 직전에 대조한다. Claude Bash는 top-level `cwd`를 기준으로 삼고 해석이 모호한 상대 `workdir`는 거부한다.
 - 비-shell tool은 같은 command 문자열을 실어도 이 경로로 분류하지 않는다. 공백이 포함된 argv, 추가 인자, 다른 인터프리터, 다른 스크립트, 외부 repo 대상은 계속 fail-closed한다.
 - 이 경로는 일반 read-only observation이 아니다. 기존 native holder identity와 canonical worktree containment를 모두 통과한 뒤에만 실행한다.
 
@@ -884,3 +884,16 @@ Shannon 측정 중 `rg -c`와 `agent-harness state read --key ...`가 active lea
   - `cmd/harness/issueopscli/generated_command_provenance_test.go`
   - `cmd/harness/mcpcli/generated_command_provenance_test.go`
   - `cmd/harness/issueopscli/feedbackcleanup/generated_command_provenance_test.go`
+
+## 2026-08-04 — Codex command-only hook payload에서 선언한 workdir를 실제 cwd로 오인하지 말 것
+
+- Kind: `caution`
+- Source: IssueOps #248/#329/#330 live dogfood
+- Summary: Codex 0.146의 stable `ExecCommandHandler::pre_tool_use_payload`는 `tool_input`에 `command`만 넣고 `workdir`를 누락한다. top-level `cwd`도 exec 요청값이 아니라 turn cwd라서, source checkout에서 canonical sibling worktree를 지정한 정상 generated command가 hook에서 영구 차단됐다.
+- Resolution: hook은 current generation과 canonical executable provenance를 통과한 absolute IssueOps command에 한해 command의 exact `--cwd`를 canonical root와 대조한다. 일반 PATH/bare 명령과 provenance 없는 absolute 명령에는 이 fallback을 열지 않는다. CLI root는 provenance를 검증한 뒤 owner mutation의 실제 `os.Getwd()`와 `--cwd`를 core mutation 전에 canonical 비교한다. delegation 명령의 durable identity는 `--id`가 아니라 `--parent`로 읽는다.
+- Evidence:
+  - Codex tag `rust-v0.146.0`의 `codex-rs/core/src/tools/handlers/unified_exec/exec_command.rs`
+  - `internal/core/lifecycle/lifecycle_execution_matrix_test.go`
+  - `internal/core/lifecycle/lifecycle_owner_mutation_test.go`
+  - `cmd/harness/issueopscli/generated_command_provenance_test.go`
+- Boundary: hook에서 전달되지 않은 workdir를 복원했다고 가장하지 않는다. 생성 provenance, native holder identity, canonical root, actual process cwd 중 하나라도 어긋나면 mutation을 fail-closed한다.

@@ -823,9 +823,30 @@ func TestExecutionSyncBaseReleasedCompletionNearMissesBlock(t *testing.T) {
 		})
 	}
 
-	wrongRequestCWD := executionRequest(record, record.Repo, "codex", "maintenance-session", exactApply)
-	if got := BuildLifecyclePreToolUseDecision(wrongRequestCWD); got.Decision != "block" {
-		t.Fatalf("wrong request cwd must block: %+v", got)
+	installedDir := filepath.Join(record.Repo, "bin")
+	if err := os.MkdirAll(installedDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	installed := filepath.Join(installedDir, "agent-harness")
+	if err := os.WriteFile(installed, []byte("trusted installed binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	installed, err := filepath.EvalSymlinks(installed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	transportBlindApply := strings.Replace(exactApply, "agent-harness", installed, 1) +
+		" --generated-by-executable " + installed +
+		" --generated-by-sha256 " + strings.Repeat("b", 64) +
+		" --generated-for-generation 2"
+	commandOnlyPayload := executionRequest(record, record.Repo, "codex", "maintenance-session", transportBlindApply)
+	if got := BuildLifecyclePreToolUseDecision(commandOnlyPayload); got.Decision != "allow" {
+		t.Fatalf("trusted generated command must survive Codex command-only hook payload: %+v", got)
+	}
+
+	bareFromSource := executionRequest(record, record.Repo, "codex", "maintenance-session", exactApply)
+	if got := BuildLifecyclePreToolUseDecision(bareFromSource); got.Decision != "block" {
+		t.Fatalf("transport-blind bare executable must stay blocked: %+v", got)
 	}
 }
 

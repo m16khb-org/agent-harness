@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
@@ -129,5 +130,48 @@ func TestGeneratedCommandRunsExactObservedBinaryEnvelopeWithoutCallerRepair(t *t
 	})
 	if runErr != nil || mutations != 1 {
 		t.Fatalf("exact generated command err=%v mutations=%d", runErr, mutations)
+	}
+}
+
+func TestGeneratedOwnerMutationRequiresActualProcessCWD(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := makeIssueOpsCLIRepoForTest(t, "generated-owner-process-cwd")
+	parent, actor := startIssueOpsCLIReadyDelegationParent(t, repo, "123-330-generated-owner-cwd")
+	evidence := issueopscontract.GeneratedCommandProvenance{
+		ExecutablePath: "/worktree/bin/agent-harness", ExecutableSHA256: strings.Repeat("a", 64), LeaseGeneration: 1,
+	}
+	args := withIssueOpsCLIActor([]string{
+		"child", "start", "--parent", parent.ID, "--branch", "330-generated-child",
+		"--title", "generated child", "--scope", "verify process cwd", "--acceptance", "cwd fence holds", "--json",
+	}, actor)
+	args = append(args,
+		"--generated-by-executable", evidence.ExecutablePath,
+		"--generated-by-sha256", evidence.ExecutableSHA256,
+		"--generated-for-generation", "1",
+	)
+	deps := Dependencies{Provenance: issueOpsProvenanceObserverStub{evidence: provenanceport.Receipt{
+		ExecutablePath: evidence.ExecutablePath, ExecutableSHA256: evidence.ExecutableSHA256,
+	}}}
+
+	t.Chdir(repo)
+	_, runErr := captureStdoutAndErrorForIssueOps(t, func() error {
+		return RunIssueOpsWithDependencies(args, deps)
+	})
+	if runErr == nil || !strings.Contains(runErr.Error(), "actual process cwd") {
+		t.Fatalf("generated owner mutation from source cwd must fail before mutation: %v", runErr)
+	}
+	status, err := core.IssueOpsChildStatus(core.IssueOpsStateRoot(), parent.ID, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(status.Children) != 0 {
+		t.Fatalf("cwd mismatch mutated parent children: %#v", status.Children)
+	}
+
+	t.Chdir(parent.WorktreePath)
+	if _, runErr := captureStdoutAndErrorForIssueOps(t, func() error {
+		return RunIssueOpsWithDependencies(args, deps)
+	}); runErr != nil {
+		t.Fatalf("matching actual process cwd must admit generated owner mutation: %v", runErr)
 	}
 }

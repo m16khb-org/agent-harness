@@ -28,7 +28,20 @@ func ParseExactIssueOpsCommand(command string) (ExactIssueOpsCommand, bool) {
 	if command == "" || HasUnquotedControlOperator(command) || HasActiveCommandSubstitution(command) || HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) || HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) || HasActiveZshEqualsExpansion(command) {
 		return ExactIssueOpsCommand{}, false
 	}
-	tokens := SplitCommandTokens(command)
+	return parseExactIssueOpsTokens(SplitCommandTokens(command))
+}
+
+// ParseExactIssueOpsArgs parses the argv slice received after the top-level
+// `issueops` command. Unlike ParseExactIssueOpsCommand, argv values are already
+// separated by the operating system and therefore do not need shell quoting.
+func ParseExactIssueOpsArgs(args []string) (ExactIssueOpsCommand, bool) {
+	tokens := make([]string, 0, len(args)+2)
+	tokens = append(tokens, "agent-harness", "issueops")
+	tokens = append(tokens, args...)
+	return parseExactIssueOpsTokens(tokens)
+}
+
+func parseExactIssueOpsTokens(tokens []string) (ExactIssueOpsCommand, bool) {
 	if len(tokens) < 3 || !exactIssueOpsExecutable(tokens) || tokens[1] != "issueops" {
 		return ExactIssueOpsCommand{}, false
 	}
@@ -46,6 +59,51 @@ func ParseExactIssueOpsCommand(command string) (ExactIssueOpsCommand, bool) {
 		}
 	}
 	return ExactIssueOpsCommand{Path: strings.Join(parts, " "), Tokens: tokens, Start: start}, true
+}
+
+// ExactIssueOpsOwnerMutation returns the validated flags for a lifecycle-owner
+// mutation. Read-only child status remains excluded unless --repair is present.
+func ExactIssueOpsOwnerMutation(command ExactIssueOpsCommand) (map[string][]string, bool) {
+	switch command.Path {
+	case "link-plan", "link-worktree", "compatibility review", "devils-advocate review", "phase",
+		"decision add", "ai-slop-clean record", "feedback mark-issue-updated", "feedback resolve",
+		"implementation-review record", "branch prepare", "intent record", "domain-review record", "design review", "regress",
+		"plan-prep record",
+		"link-child", "child start", "child status", "child accept", "child reject", "child drop",
+		"remote create-child", "remote create-pr", "remote verify-artifact", "remote reflect-devils-advocate":
+	default:
+		return nil, false
+	}
+	values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
+	if !ok {
+		return nil, false
+	}
+	flags, ok := ExactFlags(command, values, booleans, repeatable)
+	if !ok {
+		return nil, false
+	}
+	if command.Path == "child status" {
+		if _, repair := flags["--repair"]; !repair {
+			return nil, false
+		}
+	}
+	idFlag := IssueOpsLifecycleIDFlag(command.Path)
+	for _, name := range []string{idFlag, "--host", "--session-id", "--cwd"} {
+		values := flags[name]
+		if len(values) != 1 || strings.TrimSpace(values[0]) == "" {
+			return nil, false
+		}
+	}
+	return flags, true
+}
+
+// IssueOpsLifecycleIDFlag identifies the durable lifecycle selected by a
+// parsed command. Delegation commands address their parent lifecycle.
+func IssueOpsLifecycleIDFlag(path string) string {
+	if strings.HasPrefix(path, "child ") {
+		return "--parent"
+	}
+	return "--id"
 }
 
 func exactIssueOpsExecutable(tokens []string) bool {

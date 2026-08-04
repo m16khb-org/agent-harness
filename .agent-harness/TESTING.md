@@ -435,6 +435,13 @@ Execution tests must cover:
   envelope must decode to equivalent Codex and Claude hook decisions. A transition
   such as switch-mode apply that removes execution authority must return non-command
   guidance instead of an executable `next_command`.
+- Codex exec hook tests must include its stable command-only payload shape: top-level
+  turn cwd points at the source checkout and `tool_input` has no workdir. A current-
+  generation absolute generated IssueOps mutation may proceed only when its exact
+  `--cwd` selects the canonical worktree and the CLI independently proves that
+  `os.Getwd()` matches it before mutation. Bare commands, mismatched process cwd,
+  stale provenance, and delegation commands whose `--parent` identity is missing
+  must remain fail-closed.
 
 Orca external-intent tests treat worktree, terminal, Run create, Run bind, task,
 and dispatch as six separate durable stages. For every stage, exercise authoritative 0, exact 1,

@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -190,6 +191,45 @@ func TestChildStartAllowsOnlyCurrentParentHolder(t *testing.T) {
 	foreign.AgentID = "owner-agent"
 	if got := BuildLifecyclePreToolUseDecision(foreign); got.Decision != "block" || got.Deny == nil || got.Deny.Code != "holder_identity_mismatch" {
 		t.Fatalf("foreign child start must fail the parent holder fence: %+v", got)
+	}
+}
+
+func TestGeneratedChildStartSurvivesCodexCommandOnlyHookPayload(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	installedDir := filepath.Join(record.Repo, "bin")
+	if err := os.MkdirAll(installedDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	installed := filepath.Join(installedDir, "agent-harness")
+	if err := os.WriteFile(installed, []byte("trusted installed binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	installed, err := filepath.EvalSymlinks(installed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := installed + " issueops child start --parent " + record.ID +
+		" --branch 330-command-only --title child --scope regression --acceptance guarded" +
+		" --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json" +
+		" --generated-by-executable " + installed +
+		" --generated-by-sha256 " + strings.Repeat("b", 64) +
+		" --generated-for-generation 1"
+
+	commandOnly := executionRequest(record, record.Repo, "claude", "owner-session", command)
+	commandOnly.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(commandOnly); got.Decision != "allow" {
+		t.Fatalf("trusted generated owner mutation must survive Codex command-only hook payload: %+v targets=%v", got, executionMutationTargets(commandOnly))
+	}
+
+	bare := strings.Replace(command, installed, "agent-harness", 1)
+	bare = strings.ReplaceAll(bare, " --generated-by-executable "+installed, "")
+	bare = strings.ReplaceAll(bare, " --generated-by-sha256 "+strings.Repeat("b", 64), "")
+	bare = strings.ReplaceAll(bare, " --generated-for-generation 1", "")
+	bareFromSource := executionRequest(record, record.Repo, "claude", "owner-session", bare)
+	bareFromSource.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(bareFromSource); got.Decision != "block" {
+		t.Fatalf("transport-blind bare owner mutation must stay blocked: %+v", got)
 	}
 }
 

@@ -16,7 +16,11 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+
+	"agent-harness/internal/core/commandparse"
 )
 
 // issueOpsSubcommands는 `issueops <subcommand>`의 디스패치 레지스트리다.
@@ -76,7 +80,10 @@ func dispatchIssueOps(args []string) error {
 }
 
 func runIssueOpsWithDependencies(args []string, deps Dependencies) error {
-	clean, err := prepareGeneratedCommandInvocation(args, deps)
+	clean, generated, err := prepareGeneratedCommandInvocation(args, deps)
+	if err == nil && generated {
+		err = requireGeneratedOwnerProcessCWD(clean)
+	}
 	if err != nil {
 		if issueOpsJSONRequested(args) {
 			if printErr := printIssueOpsErrorJSON(err); printErr != nil {
@@ -101,6 +108,40 @@ func runIssueOpsWithDependencies(args []string, deps Dependencies) error {
 		}
 	}
 	return dispatchIssueOps(args)
+}
+
+func requireGeneratedOwnerProcessCWD(args []string) error {
+	command, ok := commandparse.ParseExactIssueOpsArgs(args)
+	if !ok {
+		return nil
+	}
+	flags, ok := commandparse.ExactIssueOpsOwnerMutation(command)
+	if !ok {
+		return nil
+	}
+	values := flags["--cwd"]
+	if len(values) != 1 {
+		return fmt.Errorf("generated owner mutation requires one exact --cwd")
+	}
+	processCWD, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("observe generated owner mutation actual process cwd: %w", err)
+	}
+	if !sameExistingIssueOpsPath(processCWD, values[0]) {
+		return fmt.Errorf("generated owner mutation actual process cwd must match --cwd before mutation")
+	}
+	return nil
+}
+
+func sameExistingIssueOpsPath(left, right string) bool {
+	leftAbs, leftErr := filepath.Abs(strings.TrimSpace(left))
+	rightAbs, rightErr := filepath.Abs(strings.TrimSpace(right))
+	if leftErr != nil || rightErr != nil || strings.TrimSpace(left) == "" || strings.TrimSpace(right) == "" {
+		return false
+	}
+	leftResolved, leftErr := filepath.EvalSymlinks(leftAbs)
+	rightResolved, rightErr := filepath.EvalSymlinks(rightAbs)
+	return leftErr == nil && rightErr == nil && filepath.Clean(leftResolved) == filepath.Clean(rightResolved)
 }
 
 // issueOpsConceptHints는 에이전트가 CLI subcommand으로 자주 오인하는 IssueOps

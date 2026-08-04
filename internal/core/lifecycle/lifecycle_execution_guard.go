@@ -147,7 +147,7 @@ func generatedIssueOpsExecutableBlock(req lifecyclecontract.HookToolUseLifecycle
 	if !ok {
 		return "generated IssueOps command provenance flags are invalid", &lifecyclecontract.IssueOpsDenyReason{Code: "generated_command_provenance_invalid"}
 	}
-	id, ok := oneFlag(flags, "--id")
+	id, ok := oneFlag(flags, commandparse.IssueOpsLifecycleIDFlag(command.Path))
 	if !ok || strings.TrimSpace(id) == "" {
 		return "generated IssueOps command requires an exact lifecycle id", &lifecyclecontract.IssueOpsDenyReason{Code: "generated_command_provenance_invalid"}
 	}
@@ -762,7 +762,7 @@ func exactExecutionSyncBaseTyped(req lifecyclecontract.HookToolUseLifecycleReque
 	}
 	record, err := ReadIssueOps(IssueOpsStateRoot(), id)
 	if err != nil || record.Execution == nil || record.Execution.Pending != nil ||
-		!sameExecutionPath(req.CWD, record.Execution.Workspace.Root) {
+		!exactExecutionSyncBaseHookCWD(req, flags, record.Execution.Workspace.Root) {
 		return false
 	}
 	if _, jsonOut := flags["--json"]; !jsonOut || !exactExecutionSyncBaseMode(flags) {
@@ -790,6 +790,22 @@ func exactExecutionSyncBaseTyped(req lifecyclecontract.HookToolUseLifecycleReque
 		return !confirm && !fingerprint
 	}
 	return exactExecutionSyncBaseMutationActor(req, flags, record.Execution.Workspace.Root)
+}
+
+func exactExecutionSyncBaseHookCWD(req lifecyclecontract.HookToolUseLifecycleRequest, flags map[string][]string, root string) bool {
+	if sameExecutionPath(req.CWD, root) {
+		return true
+	}
+	// Codex 0.146의 stable Bash hook payload는 exec_command의 workdir를
+	// 전달하지 않고 turn cwd와 command만 전달한다. 이 transport-blind 경로는
+	// 앞선 generated-executable 검증을 통과한 absolute command에만 열고,
+	// 실제 process cwd 일치는 CLI가 core mutation 전에 다시 검증한다.
+	command, ok := commandparse.ParseExactIssueOpsCommand(req.Command)
+	if !ok || len(command.Tokens) == 0 || !filepath.IsAbs(command.Tokens[0]) {
+		return false
+	}
+	commandCWD, ok := oneFlag(flags, "--cwd")
+	return ok && sameExecutionPath(commandCWD, root)
 }
 
 func exactExecutionSyncBaseMode(flags map[string][]string) bool {
@@ -1020,46 +1036,8 @@ func exactIssueOpsOwnerMutation(commandText string) bool {
 	if !ok {
 		return false
 	}
-	switch command.Path {
-	// decision add는 record.Decisions에 append만 하고 phase·lease·execution을 건드리지
-	// 않는다(append-only 계약은 TestDecisionAddTouchesOnlyTheDecisionList가 고정한다).
-	// 구현 중 설계 결정이 바뀌는 것은 정상인데 그 기록 경로가 implement 단계에서 막혀
-	// 있어, #152에서 preview 계약 변경 결정을 문서에만 남겨야 했다 — durable state에
-	// 담기지 않은 결정은 나중 사이클의 plan-prep prior-decisions 조회에 들어오지
-	// 않는다(이슈 #158).
-	case "link-plan", "link-worktree", "compatibility review", "devils-advocate review", "phase",
-		"decision add", "ai-slop-clean record", "feedback mark-issue-updated", "feedback resolve",
-		"implementation-review record", "branch prepare", "intent record", "domain-review record", "design review", "regress",
-		"plan-prep record",
-		"link-child", "child start", "child status", "child accept", "child reject", "child drop",
-		"remote create-child", "remote create-pr", "remote verify-artifact", "remote reflect-devils-advocate":
-	default:
-		return false
-	}
-	values, booleans, repeatable, ok := commandparse.IssueOpsCommandSpec(command.Path)
-	if !ok {
-		return false
-	}
-	flags, ok := commandparse.ExactFlags(command, values, booleans, repeatable)
-	if !ok {
-		return false
-	}
-	if command.Path == "child status" {
-		if _, repair := flags["--repair"]; !repair {
-			return false
-		}
-	}
-	idFlag := "--id"
-	if strings.HasPrefix(command.Path, "child ") {
-		idFlag = "--parent"
-	}
-	for _, name := range []string{idFlag, "--host", "--session-id", "--cwd"} {
-		value, found := oneFlag(flags, name)
-		if !found || strings.TrimSpace(value) == "" {
-			return false
-		}
-	}
-	return true
+	_, ok = commandparse.ExactIssueOpsOwnerMutation(command)
+	return ok
 }
 
 func orcaBranchLinkVerificationRequired(record issueopscontract.IssueOpsRecord) bool {
@@ -1408,7 +1386,7 @@ func exactIssueOpsOwnerNonTargetPaths(base, commandText string) map[string]bool 
 	if !ok {
 		return nil
 	}
-	names := []string{"--session-executable"}
+	names := []string{"--session-executable", issueopscontract.GeneratedByExecutableFlag}
 	if command.Path == "branch prepare" {
 		names = append(names, "--parent-worktree")
 	}
@@ -1429,10 +1407,27 @@ func exactIssueOpsOwnerNonTargetPaths(base, commandText string) map[string]bool 
 }
 
 func executionRequestTargetsStayInside(req lifecyclecontract.HookToolUseLifecycleRequest, targets []string, root string) bool {
+	effectiveCWD := hookRequestPathBase(req)
+	if exactIssueOpsOwnerMutation(req.Command) && !sameExecutionPath(effectiveCWD, root) && !exactIssueOpsOwnerHookCWD(req, root) {
+		return false
+	}
 	if len(targets) == 0 {
-		return sameExecutionPath(req.CWD, root)
+		return sameExecutionPath(effectiveCWD, root) || exactIssueOpsOwnerHookCWD(req, root)
 	}
 	return allExecutionTargetsInside(targets, root)
+}
+
+func exactIssueOpsOwnerHookCWD(req lifecyclecontract.HookToolUseLifecycleRequest, root string) bool {
+	command, ok := commandparse.ParseExactIssueOpsCommand(req.Command)
+	if !ok || len(command.Tokens) == 0 || !filepath.IsAbs(command.Tokens[0]) {
+		return false
+	}
+	flags, ok := commandparse.ExactIssueOpsOwnerMutation(command)
+	if !ok {
+		return false
+	}
+	commandCWD, ok := oneFlag(flags, "--cwd")
+	return ok && sameExecutionPath(commandCWD, root)
 }
 
 func executionUnsafeMutationReason(req lifecyclecontract.HookToolUseLifecycleRequest) string {
