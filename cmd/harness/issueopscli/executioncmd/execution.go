@@ -12,6 +12,7 @@ import (
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
 	basesyncport "agent-harness/internal/port/issueopsbasesync"
+	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
 
 type Deps struct {
@@ -31,6 +32,7 @@ type Deps struct {
 	PrintJSON              func(any) error
 	PrintError             func(error) error
 	syncBase               func(context.Context, string, issueops.ExecutionSyncBaseRequest, issueops.ExecutionSyncBaseDeps) (issueops.ExecutionSyncBaseResult, error)
+	Provenance             provenanceport.Observer
 	resumeActorObservation *resumeActorObservation
 }
 
@@ -571,6 +573,9 @@ func runSwitchMode(args []string, deps Deps) error {
 }
 
 func output(value any, jsonOut bool, err error, deps Deps) error {
+	if err == nil {
+		value, err = bindExecutionNextCommand(value, deps.Provenance)
+	}
 	if err != nil {
 		if jsonOut && deps.PrintError != nil {
 			_ = deps.PrintError(err)

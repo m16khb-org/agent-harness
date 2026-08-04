@@ -835,3 +835,37 @@ func TestCommandAfterDirectoryOptionCorpus(t *testing.T) {
 		t.Fatalf("expected -1 for empty -C= value, got %d", got)
 	}
 }
+
+func TestExactIssueOpsFlagsAcceptGeneratedBinaryProvenanceEnvelope(t *testing.T) {
+	command, ok := ParseExactIssueOpsCommand("agent-harness issueops execution resume --id io-1 --expected-generation 7 --confirm --generated-by-executable /repo/bin/agent-harness --generated-by-sha256 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --generated-for-generation 7")
+	if !ok {
+		t.Fatal("generated command did not parse")
+	}
+	values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
+	if !ok {
+		t.Fatal("execution resume has no exact flag spec")
+	}
+	flags, ok := ExactFlags(command, values, booleans, repeatable)
+	if !ok {
+		t.Fatal("generated provenance envelope was rejected")
+	}
+	if got := flags["--generated-for-generation"]; len(got) != 1 || got[0] != "7" {
+		t.Fatalf("generation flags = %#v", got)
+	}
+}
+
+func TestParseExactIssueOpsCommandAcceptsOnlyEnvelopeMatchedAbsoluteExecutable(t *testing.T) {
+	base := "/repo/bin/agent-harness issueops execution resume --id io-1 --expected-generation 7 --confirm" +
+		" --generated-by-executable /repo/bin/agent-harness" +
+		" --generated-by-sha256 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" +
+		" --generated-for-generation 7"
+	if _, ok := ParseExactIssueOpsCommand(base); !ok {
+		t.Fatal("generated command with envelope-matched absolute executable was rejected")
+	}
+	if _, ok := ParseExactIssueOpsCommand(strings.Replace(base, "--generated-by-executable /repo/bin/agent-harness", "--generated-by-executable /other/bin/agent-harness", 1)); ok {
+		t.Fatal("absolute executable must match the generated provenance envelope")
+	}
+	if _, ok := ParseExactIssueOpsCommand("/repo/bin/agent-harness issueops execution status --id io-1 --json"); ok {
+		t.Fatal("absolute executable without generated provenance must remain fail-closed")
+	}
+}

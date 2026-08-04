@@ -6,6 +6,7 @@ import (
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
 	basesyncport "agent-harness/internal/port/issueopsbasesync"
+	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
 
 func RunIssueOps(args []string) error {
@@ -25,6 +26,7 @@ type Dependencies struct {
 	Reconcile   issueops.ExecutionReconcileHandler
 	Complete    issueops.ExecutionCompleteHandler
 	Publication issueops.RemotePublicationHandlers
+	Provenance  provenanceport.Observer
 }
 
 func RunIssueOpsWithDependencies(args []string, deps Dependencies) error {

@@ -55,6 +55,7 @@ type ExecutionSyncBaseResult struct {
 	OK                  bool     `json:"ok"`
 	ID                  string   `json:"id"`
 	Mode                string   `json:"mode"`
+	LeaseGeneration     uint64   `json:"lease_generation,omitempty"`
 	Missing             []string `json:"missing,omitempty"`
 	Fingerprint         string   `json:"fingerprint,omitempty"`
 	Branch              string   `json:"branch,omitempty"`
@@ -118,6 +119,9 @@ func SyncExecutionBase(ctx context.Context, stateRoot string, req ExecutionSyncB
 		return ExecutionSyncBaseResult{OK: false, ID: req.ID, Mode: mode}, err
 	}
 	result := ExecutionSyncBaseResult{OK: true, ID: record.ID, Mode: mode}
+	if record.Execution != nil {
+		result.LeaseGeneration = record.Execution.Lease.Generation
+	}
 	// preview는 released 사이클과 비-holder 세션의 진단 채널이므로 actor를
 	// 요구하지 않는다. 변형 3모드만 live process receipt까지 정규화한다.
 	var actor issueops.NativeActor

@@ -415,10 +415,18 @@ Execution tests must cover:
 - architecture tests must scan every production Go file in
   `internal/port/issueopsbasesync` and allow only Request, Receipt, Inspector,
   and the `context` import.
-- after parent sync with #303, tests must first prove that typed-error
+- typed-error
   `next_command` and conflict `abort_command` cannot escape generated-command
   provenance binding. GREEN requires canonical executable, hash, and generation
   provenance on both fields, or a tested conversion to non-executable guidance.
+- generated `next_command` tests must cover CLI and MCP parity, every command-bearing
+  execution result (prepare/status/replace/resume/sync-base/switch-mode preview),
+  execution reseed preview, cleanup finish preview/apply, exact current-binary path/hash binding,
+  observation failure with no command fallback, and stale installed-binary versus
+  newer worktree-binary rejection before a mutation handler is entered. The same
+  envelope must decode to equivalent Codex and Claude hook decisions. A transition
+  such as switch-mode apply that removes execution authority must return non-command
+  guidance instead of an executable `next_command`.
 
 Orca external-intent tests treat worktree, terminal, Run create, Run bind, task,
 and dispatch as six separate durable stages. For every stage, exercise authoritative 0, exact 1,

@@ -13,7 +13,16 @@ import (
 	"agent-harness/internal/core/commandparse"
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
+	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
+
+type reseedProvenanceObserver struct{}
+
+func (reseedProvenanceObserver) Observe(context.Context) (provenanceport.Receipt, error) {
+	return provenanceport.Receipt{
+		ExecutablePath: "/repo/bin/agent-harness", ExecutableSHA256: strings.Repeat("a", 64),
+	}, nil
+}
 
 func TestHarnessAppReseedWiringUsesVerticalRepository(t *testing.T) {
 	receipt, err := issueops.ObserveNativeProcessReceipt(os.Getpid())
@@ -85,7 +94,8 @@ func TestExecutionReseedCLIDogfoodDirectAndOrca(t *testing.T) {
 			}
 			var result issueops.ExecutionReplaceResult
 			deps := executioncmd.Deps{
-				StateRoot: func() string { return stateRoot },
+				StateRoot:  func() string { return stateRoot },
+				Provenance: reseedProvenanceObserver{},
 				Reseed: func(ctx context.Context, root string, request issueops.ExecutionReseedRequest) (issueops.ExecutionReplaceResult, error) {
 					return issueOpsReseedHandlerWithOwner(ctx, root, request, owner)
 				},
@@ -313,7 +323,8 @@ func TestExecutionReseedPreviewNextCommandRunsWithoutCallerRepair(t *testing.T) 
 		t.Fatalf("preview did not emit canonical worktree cwd: %q", preview.NextCommand)
 	}
 	if err := executioncmd.Run(tokens[3:], executioncmd.Deps{
-		StateRoot: func() string { return stateRoot },
+		StateRoot:  func() string { return stateRoot },
+		Provenance: reseedProvenanceObserver{},
 		ReadIssue: func(_ context.Context, _ string, request port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
 			return port.ExecutionIssueSnapshot{URL: request.URL, Body: claimWiringIssueBody(), State: "opened"}, nil
 		},

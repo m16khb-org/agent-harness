@@ -37,6 +37,7 @@ func issueOpsExecutionDeps(deps Dependencies) executioncmd.Deps {
 		Reconcile:   deps.Reconcile,
 		Complete:    deps.Complete,
 		Publication: deps.Publication,
+		Provenance:  deps.Provenance,
 		PrintJSON:   printJSON,
 		PrintError:  printIssueOpsErrorJSON,
 	}
