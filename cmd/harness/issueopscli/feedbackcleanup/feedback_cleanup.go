@@ -12,6 +12,7 @@ import (
 	"agent-harness/internal/core"
 	issueopscore "agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/issueops/orphancleanup"
+	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
 
 type Deps struct {
@@ -41,7 +42,8 @@ type Deps struct {
 	// OrcaOwner는 cleanup abandon의 orca_resources_absent 게이트가 자원 잔여를
 	// 실조회하는 표면이다. OrcaIntent와 같은 이유로 nil이면 통과가 아니라
 	// 거부다 — 다만 orca 바인딩이 있는 레코드에서만 요구된다(#136).
-	OrcaOwner core.ExecutionOrcaOwnerInspector
+	OrcaOwner  core.ExecutionOrcaOwnerInspector
+	Provenance provenanceport.Observer
 }
 
 func RunFeedback(args []string, deps Deps) error {
@@ -405,6 +407,11 @@ func runCleanupFinish(args []string, deps Deps) error {
 	}
 	req := cleanupFinishRequest(record, snapshot, mergedArtifact, cwd, *apply, *confirm, *fingerprint)
 	result, err := core.IssueOpsCleanupFinish(context.Background(), core.IssueOpsStateRoot(), req, cleanupFinishDeps(deps, prov))
+	var bindErr error
+	result.NextCommand, bindErr = bindCleanupNextCommand(result.NextCommand, cleanupExecutionGeneration(record), deps.Provenance)
+	if bindErr != nil {
+		return printCleanupFinishError(deps, *jsonOut, bindErr)
+	}
 	if err != nil {
 		if *jsonOut {
 			if printErr := deps.PrintJSON(result); printErr != nil {
@@ -474,6 +481,11 @@ func runCleanupRemoteBranch(args []string, deps Deps) error {
 			return core.ReflectIssueOpsCleanupAudit(core.IssueOpsStateRoot(), rec, completion, audit, prov)
 		},
 	})
+	var bindErr error
+	result.NextCommand, bindErr = bindCleanupNextCommand(result.NextCommand, cleanupExecutionGeneration(record), deps.Provenance)
+	if bindErr != nil {
+		return printCleanupFinishError(deps, *jsonOut, bindErr)
+	}
 	if err != nil {
 		if *jsonOut {
 			if printErr := deps.PrintJSON(result); printErr != nil {
@@ -529,6 +541,16 @@ func runCleanupAbandon(args []string, deps Deps) error {
 		Confirm:     *confirm,
 		Fingerprint: *fingerprint,
 	}, core.IssueOpsCleanupAbandonDeps{Orca: deps.OrcaIntent, OrcaOwner: deps.OrcaOwner})
+	if result.NextCommand != "" {
+		record, readErr := issueopscore.ReadIssueOps(core.IssueOpsStateRoot(), *id)
+		if readErr != nil {
+			return printCleanupFinishError(deps, *jsonOut, readErr)
+		}
+		result.NextCommand, readErr = bindCleanupNextCommand(result.NextCommand, cleanupExecutionGeneration(record), deps.Provenance)
+		if readErr != nil {
+			return printCleanupFinishError(deps, *jsonOut, readErr)
+		}
+	}
 	if err != nil {
 		if *jsonOut {
 			// 게이트 결과와 레코드 전문이 담긴 result를 그대로 흘린다 —
@@ -551,6 +573,13 @@ func runCleanupAbandon(args []string, deps Deps) error {
 		}
 	}
 	return nil
+}
+
+func cleanupExecutionGeneration(record issueopscontract.IssueOpsRecord) uint64 {
+	if record.Execution == nil {
+		return 0
+	}
+	return record.Execution.Lease.Generation
 }
 
 func printCleanupFinishError(deps Deps, jsonOut bool, err error) error {

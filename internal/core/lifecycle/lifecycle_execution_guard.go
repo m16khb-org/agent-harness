@@ -121,6 +121,60 @@ func executionObservation(req lifecyclecontract.HookToolUseLifecycleRequest) boo
 	}
 }
 
+func generatedIssueOpsExecutableBlock(req lifecyclecontract.HookToolUseLifecycleRequest) (string, *lifecyclecontract.IssueOpsDenyReason) {
+	if !searchrouting.IsShellTool(req.Tool) {
+		return "", nil
+	}
+	commandText := strings.TrimSpace(req.Command)
+	hasEnvelope := strings.Contains(commandText, issueopscontract.GeneratedByExecutableFlag) ||
+		strings.Contains(commandText, issueopscontract.GeneratedBySHA256Flag) ||
+		strings.Contains(commandText, issueopscontract.GeneratedForGenerationFlag)
+	command, ok := commandparse.ParseExactIssueOpsCommand(commandText)
+	if !ok {
+		if hasEnvelope {
+			return "generated IssueOps command provenance is malformed or uses an unsafe shell form", &lifecyclecontract.IssueOpsDenyReason{Code: "generated_command_provenance_invalid"}
+		}
+		return "", nil
+	}
+	if !filepath.IsAbs(command.Tokens[0]) {
+		return "", nil
+	}
+	values, booleans, repeatable, ok := commandparse.IssueOpsCommandSpec(command.Path)
+	if !ok {
+		return "generated IssueOps command uses an unsupported absolute executable", &lifecyclecontract.IssueOpsDenyReason{Code: "generated_command_executable_untrusted"}
+	}
+	flags, ok := commandparse.ExactFlags(command, values, booleans, repeatable)
+	if !ok {
+		return "generated IssueOps command provenance flags are invalid", &lifecyclecontract.IssueOpsDenyReason{Code: "generated_command_provenance_invalid"}
+	}
+	id, ok := oneFlag(flags, "--id")
+	if !ok || strings.TrimSpace(id) == "" {
+		return "generated IssueOps command requires an exact lifecycle id", &lifecyclecontract.IssueOpsDenyReason{Code: "generated_command_provenance_invalid"}
+	}
+	record, err := ReadIssueOps(IssueOpsStateRoot(), strings.TrimSpace(id))
+	if err != nil || record.Execution == nil {
+		return "generated IssueOps command executable cannot be matched to durable execution state", &lifecyclecontract.IssueOpsDenyReason{Code: "generated_command_executable_untrusted"}
+	}
+	if err := issueopscontract.ValidateExecution(*record.Execution); err != nil {
+		return "generated IssueOps command executable cannot trust an invalid execution record", executionDeny(record, "generated_command_executable_untrusted", executionStatusCommand(record.ID))
+	}
+	executable, err := filepath.EvalSymlinks(command.Tokens[0])
+	if err != nil || cleanAbsPath(executable) != cleanAbsPath(command.Tokens[0]) {
+		return "generated IssueOps command executable must be an existing canonical path", executionDeny(record, "generated_command_executable_untrusted", executionStatusCommand(record.ID))
+	}
+	trusted := []string{
+		filepath.Join(record.Execution.Workspace.Root, "bin", "agent-harness"),
+		filepath.Join(record.Execution.Workspace.SourceRoot, "bin", "agent-harness"),
+	}
+	for _, candidate := range trusted {
+		resolved, resolveErr := filepath.EvalSymlinks(candidate)
+		if resolveErr == nil && cleanAbsPath(resolved) == cleanAbsPath(executable) {
+			return "", nil
+		}
+	}
+	return "generated IssueOps command executable is outside the durable worktree and trusted installed targets", executionDeny(record, "generated_command_executable_untrusted", executionStatusCommand(record.ID))
+}
+
 func exactCoordinatorChildHostSmoke(req lifecyclecontract.HookToolUseLifecycleRequest) bool {
 	commandText := strings.TrimSpace(req.Command)
 	if commandText == "" || commandparse.HasUnquotedControlOperator(commandText) ||

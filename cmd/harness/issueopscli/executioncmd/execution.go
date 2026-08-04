@@ -11,6 +11,7 @@ import (
 	model "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
+	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
 
 type Deps struct {
@@ -28,6 +29,7 @@ type Deps struct {
 	Publication            issueops.RemotePublicationHandlers
 	PrintJSON              func(any) error
 	PrintError             func(error) error
+	Provenance             provenanceport.Observer
 	resumeActorObservation *resumeActorObservation
 }
 
@@ -562,6 +564,9 @@ func runSwitchMode(args []string, deps Deps) error {
 }
 
 func output(value any, jsonOut bool, err error, deps Deps) error {
+	if err == nil {
+		value, err = bindExecutionNextCommand(value, deps.Provenance)
+	}
 	if err != nil {
 		if jsonOut && deps.PrintError != nil {
 			_ = deps.PrintError(err)

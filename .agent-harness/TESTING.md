@@ -398,6 +398,14 @@ Execution tests must cover:
   completion receipt, lease release, reverse-index deletion, and `done` phase
   transition are one atomic write. An identical retry is idempotent only when
   all terminal invariants still hold.
+- generated `next_command` tests must cover CLI and MCP parity, every command-bearing
+  execution result (prepare/status/replace/resume/sync-base/switch-mode preview),
+  execution reseed preview, cleanup finish preview/apply, exact current-binary path/hash binding,
+  observation failure with no command fallback, and stale installed-binary versus
+  newer worktree-binary rejection before a mutation handler is entered. The same
+  envelope must decode to equivalent Codex and Claude hook decisions. A transition
+  such as switch-mode apply that removes execution authority must return non-command
+  guidance instead of an executable `next_command`.
 
 Orca external-intent tests treat worktree, terminal, Run create, Run bind, task,
 and dispatch as six separate durable stages. For every stage, exercise authoritative 0, exact 1,

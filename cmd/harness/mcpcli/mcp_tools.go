@@ -5,6 +5,7 @@ import (
 
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
+	provenanceport "agent-harness/internal/port/issueopsprovenance"
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 )
 
@@ -36,6 +37,7 @@ type MCPDependencies struct {
 	Reconcile   issueops.ExecutionReconcileHandler
 	Complete    issueops.ExecutionCompleteHandler
 	Publication issueops.RemotePublicationHandlers
+	Provenance  provenanceport.Observer
 }
 
 func mcpToolPayload(payload any) MCPToolOutcome {

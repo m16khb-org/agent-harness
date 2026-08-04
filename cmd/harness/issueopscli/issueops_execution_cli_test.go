@@ -14,8 +14,10 @@ import (
 	"agent-harness/cmd/harness/mcpcli"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core"
+	"agent-harness/internal/core/commandparse"
 	issueopscore "agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/preflight"
+	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
 
 func TestIssueOpsExecutionDepsPropagatePublicationReconcileWithoutInvocation(t *testing.T) {
@@ -55,7 +57,12 @@ func TestIssueOpsExecutionDepsPropagateCompletionWithoutInvocation(t *testing.T)
 func TestIssueOpsExecutionPrepareCLIAndStatusShareSchemaProjection(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo, id, actorFlags := executionCLIRecord(t)
-	deps := Dependencies{Prepare: executionCLIPrepareHandler(t)}
+	deps := Dependencies{
+		Prepare: executionCLIPrepareHandler(t),
+		Provenance: issueOpsProvenanceObserverStub{evidence: provenanceport.Receipt{
+			ExecutablePath: "/repo/bin/agent-harness", ExecutableSHA256: strings.Repeat("e", 64),
+		}},
+	}
 
 	preparedJSON := captureStdoutForContract(t, func() error {
 		return runIssueOpsWithDependencies(append([]string{
@@ -74,7 +81,7 @@ func TestIssueOpsExecutionPrepareCLIAndStatusShareSchemaProjection(t *testing.T)
 	}
 
 	statusJSON := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"execution", "status", "--id", id, "--json"})
+		return RunIssueOpsWithDependencies([]string{"execution", "status", "--id", id, "--json"}, deps)
 	})
 	var status issueopscore.ExecutionResult
 	if err := json.Unmarshal([]byte(statusJSON), &status); err != nil {
@@ -116,15 +123,18 @@ func TestIssueOpsExecutionStatusProjectsActorFreeResumeCommand(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	deps := Dependencies{Provenance: issueOpsProvenanceObserverStub{evidence: provenanceport.Receipt{
+		ExecutablePath: "/repo/bin/agent-harness", ExecutableSHA256: strings.Repeat("e", 64),
+	}}}
 	statusJSON := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"execution", "status", "--id", id, "--json"})
+		return RunIssueOpsWithDependencies([]string{"execution", "status", "--id", id, "--json"}, deps)
 	})
 	var status issueopscore.ExecutionResult
 	if err := json.Unmarshal([]byte(statusJSON), &status); err != nil {
 		t.Fatalf("execution status should return JSON: %v\n%s", err, statusJSON)
 	}
 	want := issueopscore.ExecutionResumeRecoveryCommand(id, 3)
-	if status.NextCommand != want {
+	if !sameGeneratedExecutionCommand(status.NextCommand, want, 3) {
 		t.Fatalf("status next command = %q, want %q", status.NextCommand, want)
 	}
 
@@ -136,15 +146,28 @@ func TestIssueOpsExecutionStatusProjectsActorFreeResumeCommand(t *testing.T) {
 		t.Fatal(err)
 	}
 	legacyJSON := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"execution", "status", "--id", id, "--json"})
+		return RunIssueOpsWithDependencies([]string{"execution", "status", "--id", id, "--json"}, deps)
 	})
 	if err := json.Unmarshal([]byte(legacyJSON), &status); err != nil {
 		t.Fatalf("legacy execution status should return JSON: %v\n%s", err, legacyJSON)
 	}
 	want = "agent-harness issueops execution replace --id '" + id + "' --expected-generation 3 --preview"
-	if status.NextCommand != want {
+	if !sameGeneratedExecutionCommand(status.NextCommand, want, 3) {
 		t.Fatalf("legacy status next command = %q, want %q", status.NextCommand, want)
 	}
+}
+
+func sameGeneratedExecutionCommand(got, raw string, generation uint64) bool {
+	tokens := commandparse.SplitCommandTokens(got)
+	if len(tokens) < 2 {
+		return false
+	}
+	clean, provenance, present, err := issueopscontract.ConsumeGeneratedCommandProvenance(tokens[1:])
+	if err != nil || !present || provenance.LeaseGeneration != generation || tokens[0] != provenance.ExecutablePath {
+		return false
+	}
+	want := commandparse.SplitCommandTokens(raw)
+	return len(want) > 1 && strings.Join(clean, "\x00") == strings.Join(want[1:], "\x00")
 }
 
 func sameExecutionCLIPath(left, right string) bool {
