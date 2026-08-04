@@ -851,5 +851,10 @@ Archived entries:
 - Consequences: successful sync appends one event without changing completion,
   history, or phase. Hooks admit only exact durable-state-matching commands for
   both hosts and block near misses before they can bypass the released fence.
+- Integration: #303의 generated-command provenance를 error output과 CLI의 복수
+  command result에 확장한다. Typed drift `next_command`는 CLI와 MCP의 실제 error
+  경로에서 봉인하고, CLI conflict `next_command`/`abort_command`는 한 번 관측한
+  executable path/hash/lease generation을 공유한다. MCP catalog에는 sync-base action이
+  없으므로 도달 불가능한 success binder와 test는 #326 해결로 제거한다.
 - Rejected: direct Git recovery, restoring history into current completion,
   port-owned public errors, aliases/shims, rebase, force-push, and reseed-first.

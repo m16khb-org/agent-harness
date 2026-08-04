@@ -575,6 +575,8 @@ func runSwitchMode(args []string, deps Deps) error {
 func output(value any, jsonOut bool, err error, deps Deps) error {
 	if err == nil {
 		value, err = bindExecutionNextCommand(value, deps.Provenance)
+	} else {
+		err = bindExecutionErrorNextCommand(err, deps.Provenance)
 	}
 	if err != nil {
 		if jsonOut && deps.PrintError != nil {

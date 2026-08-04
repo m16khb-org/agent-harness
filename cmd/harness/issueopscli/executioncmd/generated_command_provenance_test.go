@@ -21,6 +21,18 @@ func (s provenanceObserverStub) Observe(context.Context) (provenanceport.Receipt
 	return s.evidence, s.err
 }
 
+type countingProvenanceObserver struct {
+	calls int
+}
+
+func (s *countingProvenanceObserver) Observe(context.Context) (provenanceport.Receipt, error) {
+	s.calls++
+	return provenanceport.Receipt{
+		ExecutablePath:   fmt.Sprintf("/repo/bin/agent-harness-%d", s.calls),
+		ExecutableSHA256: strings.Repeat(fmt.Sprint(s.calls), 64),
+	}, nil
+}
+
 func TestBindExecutionNextCommandUsesObservedBinaryAndResultGeneration(t *testing.T) {
 	raw := issueops.ExecutionReplaceResult{
 		Execution:   issueopscontract.Execution{Lease: issueopscontract.WriteLease{Generation: 7}},
@@ -38,6 +50,66 @@ func TestBindExecutionNextCommandUsesObservedBinaryAndResultGeneration(t *testin
 	}
 	if !strings.Contains(result.NextCommand, "--generated-for-generation 7") {
 		t.Fatalf("bound next command = %q", result.NextCommand)
+	}
+}
+
+func TestBindExecutionSyncBaseBindsConflictAbortWithSameProvenance(t *testing.T) {
+	observer := &countingProvenanceObserver{}
+	bound, err := bindExecutionNextCommand(issueops.ExecutionSyncBaseResult{
+		LeaseGeneration: 7,
+		NextCommand:     "agent-harness issueops execution sync-base --id io-1 --finalize",
+		AbortCommand:    "agent-harness issueops execution sync-base --id io-1 --abort",
+	}, observer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := bound.(issueops.ExecutionSyncBaseResult)
+	for name, command := range map[string]string{"next_command": result.NextCommand, "abort_command": result.AbortCommand} {
+		if !strings.HasPrefix(command, "'/repo/bin/agent-harness-1'") ||
+			!strings.Contains(command, "--generated-for-generation 7") ||
+			!strings.Contains(command, "--generated-by-sha256 "+strings.Repeat("1", 64)) {
+			t.Fatalf("%s is not bound to the shared observation: %q", name, command)
+		}
+	}
+	if observer.calls != 1 {
+		t.Fatalf("provenance observations=%d want=1", observer.calls)
+	}
+}
+
+func TestOutputBindsBaseSyncRequiredTypedErrorCommand(t *testing.T) {
+	observer := provenanceObserverStub{evidence: provenanceport.Receipt{
+		ExecutablePath: "/repo/bin/agent-harness", ExecutableSHA256: strings.Repeat("a", 64),
+	}}
+	err := output(nil, true, issueopscontract.NewBaseSyncRequiredError("io-1", 7), Deps{
+		Provenance: observer,
+		PrintError: func(error) error { return nil },
+	})
+	var typed *issueopscontract.BaseSyncRequiredError
+	if !errors.As(err, &typed) {
+		t.Fatalf("error type=%T error=%v", err, err)
+	}
+	if !strings.HasPrefix(typed.NextCommand, "'/repo/bin/agent-harness'") ||
+		!strings.Contains(typed.NextCommand, "--generated-for-generation 7") ||
+		!strings.Contains(typed.NextCommand, "--generated-by-sha256 "+strings.Repeat("a", 64)) {
+		t.Fatalf("typed error next_command is unbound: %q", typed.NextCommand)
+	}
+}
+
+func TestOutputBaseSyncRequiredObservationFailureHasNoUnboundFallback(t *testing.T) {
+	err := output(nil, true, issueopscontract.NewBaseSyncRequiredError("io-1", 7), Deps{
+		Provenance: provenanceObserverStub{err: errors.New("observation failed")},
+		PrintError: func(error) error { return nil },
+	})
+	if err == nil {
+		t.Fatal("observation failure exposed the typed error command")
+	}
+	fields, ok := err.(interface{ IssueOpsErrorFields() map[string]any })
+	if !ok || fields.IssueOpsErrorFields()["code"] != "generated_command_provenance_observation_failed" {
+		t.Fatalf("observation failure is not structured: %T %v", err, err)
+	}
+	var typed *issueopscontract.BaseSyncRequiredError
+	if errors.As(err, &typed) {
+		t.Fatalf("observation failure returned unbound next_command: %q", typed.NextCommand)
 	}
 }
 

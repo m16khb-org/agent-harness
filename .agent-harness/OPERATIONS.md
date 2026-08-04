@@ -298,12 +298,15 @@ as residue evidence. Confirm reports `external_state_inspected=true` only after
 the Orca inventory transport was actually attempted; local marker/request
 validation failures remain false.
 
-Publication of this flow is gated on parent integration with #303. The typed
-`BaseSyncRequiredError.next_command` does not pass through the success-result
-binder, and conflict `abort_command` is a separate generated shell field. Both
-must receive the same canonical executable/hash/generation provenance as other
-executable commands, or become explicitly non-executable guidance, with
-RED/GREEN coverage after syncing the parent branch.
+The #303 provenance boundary covers the typed
+`BaseSyncRequiredError.next_command` on both reachable CLI and MCP error paths.
+On the CLI sync-base success path, finalize and abort commands from one response
+share one canonical executable/hash/generation observation. If observation or
+binding fails, the adapter returns the structured provenance error without an
+unbound command fallback. Per #326, the public MCP action enum has no sync-base
+success action/result: AC-06 host parity is the exact CLI command plus the
+Codex/Claude hook classifier, while MCP binds reachable resume/replace
+`BaseSyncRequiredError` output only.
 
 `issueops execution switch-mode` changes a prepared cycle between `direct` and
 `orca` (#167). `prepare` seals the mode at first run and afterwards **rejects a

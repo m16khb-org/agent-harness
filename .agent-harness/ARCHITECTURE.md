@@ -376,10 +376,13 @@ cycle은 명시값이 없을 때 같은 경로를 계산해 하위 호환한다.
   The public typed error and exact next-command projection belong to
   `internal/contract/issueops`; Git/network observation belongs to the outbound
   adapter.
-- Parent integration with #303 must bind both the typed-error `next_command`
-  and conflict `abort_command` to canonical executable/hash/generation
-  provenance, or project them as non-executable guidance. The #318 branch must
-  not publish before that integration has RED/GREEN coverage.
+- The #303 provenance boundary binds typed-error `next_command` on the reachable
+  CLI and MCP error paths. CLI conflict `next_command` and `abort_command` share
+  one observed canonical executable/hash/generation receipt; observation
+  failure exposes no unbound fallback. As #326 records, the public MCP action
+  enum excludes sync-base and therefore has no sync-base success action/result;
+  AC-06 host parity is the exact CLI command plus Codex/Claude hook classifier,
+  while MCP binds only reachable resume/replace `BaseSyncRequiredError` output.
 
 ## MCP tool design guidance
 
