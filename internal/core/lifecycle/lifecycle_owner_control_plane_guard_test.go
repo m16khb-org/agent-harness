@@ -160,3 +160,29 @@ func TestExecutionKeepsNearMissResumeControlPlaneCommandsBlocked(t *testing.T) {
 		})
 	}
 }
+
+func TestExecutionGeneratedProvenanceEnvelopeKeepsHostParityAndShellFailClosed(t *testing.T) {
+	record := issueopscontract.IssueOpsRecord{ID: "io-aaaaaaaaaaaa"}
+	command := "agent-harness issueops execution resume --id io-aaaaaaaaaaaa --expected-generation 3 --confirm" +
+		" --generated-by-executable /repo/bin/agent-harness" +
+		" --generated-by-sha256 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" +
+		" --generated-for-generation 3 --json"
+	for _, host := range []string{"codex", "claude"} {
+		req := executionRequest(record, "/repo.worktrees/303", host, "session-1", command)
+		if !executionTypedControlPlane(req) {
+			t.Fatalf("%s rejected the shared generated provenance contract", host)
+		}
+	}
+	for name, unsafe := range map[string]string{
+		"substitution": strings.Replace(command, "/repo/bin/agent-harness", "$(command -v agent-harness)", 1),
+		"wrapper":      "sh -c '" + command + "'",
+		"other binary": strings.Replace(command, "agent-harness issueops", "/tmp/other-harness issueops", 1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := executionRequest(record, "/repo.worktrees/303", "codex", "session-1", unsafe)
+			if executionTypedControlPlane(req) {
+				t.Fatalf("unsafe generated command reached typed control plane: %q", unsafe)
+			}
+		})
+	}
+}

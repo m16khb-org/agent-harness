@@ -86,6 +86,7 @@ skills/
 - CLI/MCP contract golden은 `cmd/harness/testdata/`에 둔다. 의도된 schema 변경일 때만 `go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -update -count=1`로 갱신한다.
 - 실제 JSON response golden은 dynamic field(timestamp, temp path, audit id)를 normalize해서 host/session 차이로 인한 drift를 막는다.
 - response golden 범위는 state/policy뿐 아니라 docs/inspect/preflight처럼 agent가 자주 의존하는 읽기 표면을 우선 포함한다.
+- CLI와 MCP가 같은 `next_command`를 반환할 때 provenance 같은 composition evidence도 동일하게 결합한다. Port에는 contract 타입 대신 순수 observation receipt만 두고 application에서 contract evidence로 변환한다. 파일·프로세스 관측은 contract/core/cmd package에 넣지 않고 `harnessapp`이 outbound adapter를 생성해 주입하며, 관측 실패를 빈 값이나 `unavailable`로 치환하지 않는다.
 
 ---
 

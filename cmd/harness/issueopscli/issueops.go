@@ -11,6 +11,7 @@ import (
 	"agent-harness/internal/core/issueops/orphancleanup"
 	corehealth "agent-harness/internal/core/operationalhealth"
 	"agent-harness/internal/port"
+	provenanceport "agent-harness/internal/port/issueopsprovenance"
 	"context"
 	"errors"
 	"flag"
@@ -59,6 +60,10 @@ var issueOpsSubcommands = map[string]func([]string) error{
 }
 
 func runIssueOps(args []string) error {
+	return runIssueOpsWithDependencies(args, Dependencies{})
+}
+
+func dispatchIssueOps(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
 		issueOpsUsage()
 		return nil
@@ -71,17 +76,31 @@ func runIssueOps(args []string) error {
 }
 
 func runIssueOpsWithDependencies(args []string, deps Dependencies) error {
+	clean, err := prepareGeneratedCommandInvocation(args, deps)
+	if err != nil {
+		if issueOpsJSONRequested(args) {
+			if printErr := printIssueOpsErrorJSON(err); printErr != nil {
+				return printErr
+			}
+		}
+		return err
+	}
+	args = clean
 	if len(args) > 0 {
 		switch args[0] {
 		case "execution":
 			return runIssueOpsExecutionWithDependencies(args[1:], deps)
+		case "feedback":
+			return runIssueOpsFeedbackWithDependencies(args[1:], deps)
+		case "cleanup":
+			return runIssueOpsCleanupWithDependencies(args[1:], deps)
 		case "remote":
 			return remotecmd.Run(args[1:], issueOpsRemoteDepsWithPublication(deps.Publication))
 		case "remote-score":
 			return remotecmd.Run(append([]string{"score"}, args[1:]...), issueOpsRemoteDepsWithPublication(deps.Publication))
 		}
 	}
-	return runIssueOps(args)
+	return dispatchIssueOps(args)
 }
 
 // issueOpsConceptHints는 에이전트가 CLI subcommand으로 자주 오인하는 IssueOps
@@ -141,14 +160,22 @@ func parseIssueOpsFlags(fs *flag.FlagSet, args []string) (bool, error) {
 }
 
 func runIssueOpsFeedback(args []string) error {
+	return runIssueOpsFeedbackWithDependencies(args, Dependencies{})
+}
+
+func runIssueOpsFeedbackWithDependencies(args []string, deps Dependencies) error {
 	if len(args) > 0 && args[0] == "resolve" {
 		return runIssueOpsFeedbackResolve(args[1:])
 	}
-	return feedbackcleanup.RunFeedback(args, issueOpsFeedbackCleanupDeps())
+	return feedbackcleanup.RunFeedback(args, issueOpsFeedbackCleanupDeps(deps.Provenance))
 }
 
 func runIssueOpsCleanup(args []string) error {
-	return feedbackcleanup.RunCleanup(args, issueOpsFeedbackCleanupDeps())
+	return runIssueOpsCleanupWithDependencies(args, Dependencies{})
+}
+
+func runIssueOpsCleanupWithDependencies(args []string, deps Dependencies) error {
+	return feedbackcleanup.RunCleanup(args, issueOpsFeedbackCleanupDeps(deps.Provenance))
 }
 
 // normalizeOrcaRemoveWorktreeErr는 orca 워크트리 회수 오류를 멱등 계약으로
@@ -170,7 +197,7 @@ func normalizeOrcaRemoveWorktreeErr(err error) error {
 	return err
 }
 
-func issueOpsFeedbackCleanupDeps() feedbackcleanup.Deps {
+func issueOpsFeedbackCleanupDeps(provenance provenanceport.Observer) feedbackcleanup.Deps {
 	orphanDeps := issueOpsOrphanCleanupDeps()
 	orcaClient := orca.New()
 	return feedbackcleanup.Deps{
@@ -184,6 +211,7 @@ func issueOpsFeedbackCleanupDeps() feedbackcleanup.Deps {
 		// cleanup abandon orca_resources_absent 게이트: orca 자원 잔여를
 		// 실조회한다. 같은 provisioner가 owner 인벤토리도 제공한다(#136).
 		OrcaOwner:    orca.NewExecution(),
+		Provenance:   provenance,
 		ParseFlags:   parseIssueOpsFlags,
 		PrintResult:  printIssueOpsResult,
 		PrintJSON:    printJSON,
@@ -212,5 +240,5 @@ func issueOpsOrphanCleanupDeps() orphancleanup.Dependencies {
 }
 
 func issueOpsCleanupMerged(id string, requested bool) bool {
-	return feedbackcleanup.CleanupMerged(id, requested, issueOpsFeedbackCleanupDeps())
+	return feedbackcleanup.CleanupMerged(id, requested, issueOpsFeedbackCleanupDeps(nil))
 }

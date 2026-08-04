@@ -34,15 +34,16 @@ type ExecutionSwitchModeDependencies struct {
 }
 
 type ExecutionSwitchModeResult struct {
-	OK            bool     `json:"ok"`
-	ID            string   `json:"id"`
-	Preview       bool     `json:"preview"`
-	CurrentMode   string   `json:"current_mode,omitempty"`
-	RequestedMode string   `json:"requested_mode,omitempty"`
-	Missing       []string `json:"missing,omitempty"`
-	Fingerprint   string   `json:"fingerprint,omitempty"`
-	WorktreeRoot  string   `json:"worktree_root,omitempty"`
-	Branch        string   `json:"branch,omitempty"`
+	OK              bool     `json:"ok"`
+	ID              string   `json:"id"`
+	Preview         bool     `json:"preview"`
+	CurrentMode     string   `json:"current_mode,omitempty"`
+	RequestedMode   string   `json:"requested_mode,omitempty"`
+	LeaseGeneration uint64   `json:"lease_generation,omitempty"`
+	Missing         []string `json:"missing,omitempty"`
+	Fingerprint     string   `json:"fingerprint,omitempty"`
+	WorktreeRoot    string   `json:"worktree_root,omitempty"`
+	Branch          string   `json:"branch,omitempty"`
 	// WorktreePresent와 BranchPresent는 apply가 실제로 지울 대상이다. preview가
 	// 이 둘을 보여주지 않으면 사용자는 무엇을 승인하는지 모른다.
 	WorktreePresent bool `json:"worktree_present"`
@@ -51,6 +52,7 @@ type ExecutionSwitchModeResult struct {
 	// missing 슬러그만으로는 이름이 로컬에 있는지 원격에 있는지 알 수 없다.
 	BranchFreeError string `json:"branch_free_error,omitempty"`
 	NextCommand     string `json:"next_command,omitempty"`
+	NextAction      string `json:"next_action,omitempty"`
 	SwitchedAt      string `json:"switched_at,omitempty"`
 }
 
@@ -102,6 +104,7 @@ func SwitchExecutionMode(ctx context.Context, stateRoot string, req ExecutionSwi
 	result := ExecutionSwitchModeResult{
 		OK: true, ID: record.ID, Preview: !req.Apply,
 		CurrentMode: string(record.Execution.Mode), RequestedMode: requested,
+		LeaseGeneration: record.Execution.Lease.Generation,
 	}
 	inventory, missing := switchModeGates(record, requested, deps, &result)
 	result.Missing = missing
@@ -143,8 +146,7 @@ func SwitchExecutionMode(ctx context.Context, stateRoot string, req ExecutionSwi
 	result.WorktreePresent = false
 	result.BranchPresent = false
 	result.SwitchedAt = executionNow(nil)
-	result.NextCommand = fmt.Sprintf(
-		"agent-harness issueops execution prepare --id %s --mode %s --json", record.ID, requested)
+	result.NextAction = fmt.Sprintf("prepare IssueOps execution in %s mode", requested)
 	return result, nil
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"agent-harness/cmd/harness/mcpcli"
 	"agent-harness/cmd/harness/selfworkflow"
+	provenanceadapter "agent-harness/internal/adapter/outbound/issueopsprovenance"
 	"agent-harness/internal/core/issueops"
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 )
@@ -80,6 +81,7 @@ func issueOpsMCPDependencies() mcpcli.MCPDependencies {
 		Prepare: execution.Prepare, Orca: execution.Orca, OrcaOwner: execution.OrcaOwner, ReadIssue: execution.ReadIssue,
 		Claim: issueOpsClaimHandler, Release: issueOpsReleaseHandler, Reseed: issueOpsReseedHandler,
 		Resume: issueOpsResumeHandler, Reconcile: issueOpsReconcileHandler, Complete: issueOpsCompleteHandler,
+		Provenance: provenanceadapter.NewExecutableObserver(),
 		Publication: issueops.RemotePublicationHandlers{
 			Create: issueOpsPublicationCreateHandler, Reconcile: issueOpsPublicationReconcileHandler,
 		},

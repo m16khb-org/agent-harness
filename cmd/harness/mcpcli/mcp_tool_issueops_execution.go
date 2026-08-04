@@ -29,6 +29,10 @@ func handleMCPIssueOpsExecutionWithDependencies(args map[string]any, deps MCPDep
 	if err != nil {
 		return mcpToolErrorPayload(issueOpsMCPErrorPayload(err))
 	}
+	result, err = bindMCPIssueOpsExecutionNextCommand(result, deps.Provenance)
+	if err != nil {
+		return mcpToolErrorPayload(issueOpsMCPErrorPayload(err))
+	}
 	return mcpToolPayload(result)
 }
 

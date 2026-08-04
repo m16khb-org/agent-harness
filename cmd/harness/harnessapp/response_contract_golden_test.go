@@ -1,6 +1,8 @@
 package harnessapp
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -38,6 +40,21 @@ func TestResponseContractsGolden(t *testing.T) {
 		auditLog:      "$AUDIT_LOG",
 		workerDir:     "$WORKER_DIR",
 	}
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	executable, err = filepath.EvalSymlinks(executable)
+	if err != nil {
+		t.Fatal(err)
+	}
+	executableBytes, err := os.ReadFile(executable)
+	if err != nil {
+		t.Fatal(err)
+	}
+	executableHash := sha256.Sum256(executableBytes)
+	replacements[executable] = "$HARNESS_EXECUTABLE"
+	replacements[hex.EncodeToString(executableHash[:])] = "$HARNESS_EXECUTABLE_SHA256"
 	addEvalSymlinkReplacement(t, replacements, stateDir, "$STATE_DIR")
 	addEvalSymlinkReplacement(t, replacements, workspaceDir, "$WORKSPACE")
 	addEvalSymlinkReplacement(t, replacements, gitRepoDir, "$GIT_REPO")

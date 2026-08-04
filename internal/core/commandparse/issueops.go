@@ -3,8 +3,11 @@ package commandparse
 import (
 	"net/url"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
+
+	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
 // ExactIssueOpsCommand은 파싱된 정확한 `agent-harness issueops …` 명령이다.
@@ -18,14 +21,15 @@ type ExactIssueOpsCommand struct {
 // ParseExactIssueOpsCommand은 명령을 ExactIssueOpsCommand으로 파싱하며, 활성
 // shell control/expansion을 담은 명령은 모두 거부한다(fail closed). bare
 // `agent-harness`, `bin/agent-harness`, `./bin/agent-harness issueops …`
-// 호출만 파싱되고, 지원되는 두 단어 subcommand는 Path로 합쳐진다.
+// 호출과 provenance envelope의 executable과 exact 일치하는 absolute 호출만
+// 파싱되고, 지원되는 두 단어 subcommand는 Path로 합쳐진다.
 func ParseExactIssueOpsCommand(command string) (ExactIssueOpsCommand, bool) {
 	command = strings.TrimSpace(command)
 	if command == "" || HasUnquotedControlOperator(command) || HasActiveCommandSubstitution(command) || HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) || HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) || HasActiveZshEqualsExpansion(command) {
 		return ExactIssueOpsCommand{}, false
 	}
 	tokens := SplitCommandTokens(command)
-	if len(tokens) < 3 || (tokens[0] != "agent-harness" && tokens[0] != "bin/agent-harness" && tokens[0] != "./bin/agent-harness") || tokens[1] != "issueops" {
+	if len(tokens) < 3 || !exactIssueOpsExecutable(tokens) || tokens[1] != "issueops" {
 		return ExactIssueOpsCommand{}, false
 	}
 	parts := []string{tokens[2]}
@@ -42,6 +46,21 @@ func ParseExactIssueOpsCommand(command string) (ExactIssueOpsCommand, bool) {
 		}
 	}
 	return ExactIssueOpsCommand{Path: strings.Join(parts, " "), Tokens: tokens, Start: start}, true
+}
+
+func exactIssueOpsExecutable(tokens []string) bool {
+	if len(tokens) == 0 {
+		return false
+	}
+	switch tokens[0] {
+	case "agent-harness", "bin/agent-harness", "./bin/agent-harness":
+		return true
+	}
+	if !filepath.IsAbs(tokens[0]) {
+		return false
+	}
+	_, provenance, present, err := issueopscontract.ConsumeGeneratedCommandProvenance(tokens[1:])
+	return err == nil && present && provenance.ExecutablePath == tokens[0]
 }
 
 // ExactFlags는 ExactIssueOpsCommand의 flag를 value/boolean/repeatable spec에
@@ -64,7 +83,7 @@ func ExactFlags(command ExactIssueOpsCommand, values, booleans, repeatable map[s
 				return nil, false
 			}
 			parsed[name] = []string{"true"}
-		case values[name]:
+		case values[name] || generatedCommandProvenanceValueFlag(name):
 			if !hasValue {
 				if i+1 >= len(command.Tokens) || strings.HasPrefix(command.Tokens[i+1], "--") {
 					return nil, false
@@ -81,6 +100,17 @@ func ExactFlags(command ExactIssueOpsCommand, values, booleans, repeatable map[s
 		}
 	}
 	return parsed, true
+}
+
+func generatedCommandProvenanceValueFlag(name string) bool {
+	switch name {
+	case issueopscontract.GeneratedByExecutableFlag,
+		issueopscontract.GeneratedBySHA256Flag,
+		issueopscontract.GeneratedForGenerationFlag:
+		return true
+	default:
+		return false
+	}
 }
 
 // IssueOpsCommandSpec은 정확한 issueops subcommand path에 대한 (values,

@@ -3,6 +3,7 @@ package harnessapp
 import (
 	"agent-harness/cmd/harness/issueopscli"
 	"agent-harness/cmd/harness/policycli"
+	provenanceadapter "agent-harness/internal/adapter/outbound/issueopsprovenance"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/issueops"
@@ -19,6 +20,7 @@ func runIssueOps(args []string) error {
 		Claim: issueops.ExecutionClaimHandler(issueOpsClaimHandler), Release: issueops.ExecutionReleaseHandler(issueOpsReleaseHandler),
 		Reseed: issueops.ExecutionReseedHandler(issueOpsReseedHandler), Resume: issueops.ExecutionResumeHandler(issueOpsResumeHandler),
 		Reconcile: issueops.ExecutionReconcileHandler(issueOpsReconcileHandler), Complete: issueops.ExecutionCompleteHandler(issueOpsCompleteHandler),
+		Provenance: provenanceadapter.NewExecutableObserver(),
 		Publication: issueops.RemotePublicationHandlers{
 			Create:    issueops.RemotePullRequestCreateHandler(issueOpsPublicationCreateHandler),
 			Reconcile: issueops.RemotePullRequestReconcileHandler(issueOpsPublicationReconcileHandler),
