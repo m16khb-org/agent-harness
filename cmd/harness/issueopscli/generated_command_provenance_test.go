@@ -133,6 +133,50 @@ func TestGeneratedCommandRunsExactObservedBinaryEnvelopeWithoutCallerRepair(t *t
 	}
 }
 
+func TestGeneratedDelegatedChildBootstrapUsesParentExecutionProvenance(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo := makeIssueOpsCLIRepoForTest(t, "generated-delegated-bootstrap")
+	parent, _ := startIssueOpsCLIReadyDelegationParent(t, repo, "123-334-parent")
+	child := parent
+	child.ID = "io-generated-delegated-child"
+	child.Branch = "123-334-child-bootstrap"
+	child.WorktreePath = ""
+	child.Execution = nil
+	child.Delegation = &issueopscontract.IssueOpsDelegationContract{
+		ParentCycleID: parent.ID, TaskScope: "bootstrap", DelegatedAt: "2026-08-04T00:00:00Z",
+	}
+	parent.ChildCycles = append(parent.ChildCycles, issueopscontract.IssueOpsChildCycleRef{
+		CycleID: child.ID, Branch: child.Branch, CreatedAt: "2026-08-04T00:00:00Z",
+	})
+	if _, err := issueopscore.WriteIssueOps(core.IssueOpsStateRoot(), parent); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := issueopscore.WriteIssueOps(core.IssueOpsStateRoot(), child); err != nil {
+		t.Fatal(err)
+	}
+	evidence := issueopscontract.GeneratedCommandProvenance{
+		ExecutablePath: "/worktree/bin/agent-harness", ExecutableSHA256: strings.Repeat("a", 64), LeaseGeneration: 1,
+	}
+	args := []string{
+		"branch", "prepare", "--id", child.ID, "--provider", "github",
+		"--issue-url", "https://github.com/acme/repo/issues/334", "--branch", child.Branch,
+		"--base-branch", parent.Branch, "--base-sha", strings.Repeat("b", 40),
+		"--parent-worktree", parent.WorktreePath, "--link-verified",
+		"--host", "codex", "--session-id", "session", "--cwd", parent.WorktreePath, "--json",
+		"--generated-by-executable", evidence.ExecutablePath,
+		"--generated-by-sha256", evidence.ExecutableSHA256,
+		"--generated-for-generation", "1",
+	}
+	clean, generated, err := prepareGeneratedCommandInvocation(args, Dependencies{
+		Provenance: issueOpsProvenanceObserverStub{evidence: provenanceport.Receipt{
+			ExecutablePath: evidence.ExecutablePath, ExecutableSHA256: evidence.ExecutableSHA256,
+		}},
+	})
+	if err != nil || !generated || len(clean) == 0 {
+		t.Fatalf("delegated child bootstrap provenance was not resolved through parent: generated=%v clean=%v err=%v", generated, clean, err)
+	}
+}
+
 func TestGeneratedOwnerMutationRequiresActualProcessCWD(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := makeIssueOpsCLIRepoForTest(t, "generated-owner-process-cwd")

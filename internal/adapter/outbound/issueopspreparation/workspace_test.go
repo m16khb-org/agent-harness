@@ -49,14 +49,30 @@ func TestDirectWorkspaceRejectsNonCanonicalCWD(t *testing.T) {
 		LifecycleID: "io-prepare", SourceRoot: "/repo", Root: "/repo.worktrees/199-prepare",
 		Branch: "199-prepare", BaseHead: "base", CWD: "/other",
 	}
-	if _, err := adapter.ProbeAccess(context.Background(), request, "codex"); err == nil || !strings.Contains(err.Error(), "cwd must be source_root or the canonical worktree") {
+	if _, err := adapter.ProbeAccess(context.Background(), request, "codex"); err == nil || !strings.Contains(err.Error(), "sealed parent_worktree") {
 		t.Fatalf("access err=%v", err)
 	}
-	if _, err := adapter.Prepare(context.Background(), request); err == nil || !strings.Contains(err.Error(), "cwd must be source_root or the canonical worktree") {
+	if _, err := adapter.Prepare(context.Background(), request); err == nil || !strings.Contains(err.Error(), "sealed parent_worktree") {
 		t.Fatalf("prepare err=%v", err)
 	}
 	if provider.request.LifecycleID != "" {
 		t.Fatalf("provider called with %+v", provider.request)
+	}
+}
+
+func TestDirectWorkspaceAllowsSealedDelegatedParentCWD(t *testing.T) {
+	provider := &workspaceProviderFake{}
+	adapter := NewDirectWorkspace(provider)
+	request := preparationcontract.WorkspaceRequest{
+		LifecycleID: "io-child", SourceRoot: "/repo", Root: "/repo.worktrees/333-child",
+		Branch: "333-child", BaseBranch: "228-parent", BaseHead: "base",
+		ParentWorktree: "/repo.worktrees/228-parent", CWD: "/repo.worktrees/228-parent",
+	}
+	if _, err := adapter.ProbeAccess(context.Background(), request, "codex"); err != nil {
+		t.Fatalf("sealed delegated parent cwd must be admitted for access probing: %v", err)
+	}
+	if _, err := adapter.Prepare(context.Background(), request); err != nil {
+		t.Fatalf("sealed delegated parent cwd must be admitted for preparation: %v", err)
 	}
 }
 

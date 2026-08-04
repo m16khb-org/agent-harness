@@ -152,19 +152,26 @@ func generatedIssueOpsExecutableBlock(req lifecyclecontract.HookToolUseLifecycle
 		return "generated IssueOps command requires an exact lifecycle id", &lifecyclecontract.IssueOpsDenyReason{Code: "generated_command_provenance_invalid"}
 	}
 	record, err := ReadIssueOps(IssueOpsStateRoot(), strings.TrimSpace(id))
-	if err != nil || record.Execution == nil {
+	if err != nil {
 		return "generated IssueOps command executable cannot be matched to durable execution state", &lifecyclecontract.IssueOpsDenyReason{Code: "generated_command_executable_untrusted"}
 	}
-	if err := issueopscontract.ValidateExecution(*record.Execution); err != nil {
-		return "generated IssueOps command executable cannot trust an invalid execution record", executionDeny(record, "generated_command_executable_untrusted", executionStatusCommand(record.ID))
+	authority, delegatedBootstrap := generatedIssueOpsAuthorityRecord(command.Path, record)
+	if authority.Execution == nil {
+		return "generated IssueOps command executable cannot be matched to durable execution state", &lifecyclecontract.IssueOpsDenyReason{Code: "generated_command_executable_untrusted"}
+	}
+	if err := issueopscontract.ValidateExecution(*authority.Execution); err != nil {
+		return "generated IssueOps command executable cannot trust an invalid execution record", executionDeny(authority, "generated_command_executable_untrusted", executionStatusCommand(authority.ID))
+	}
+	if delegatedBootstrap && !generatedDelegatedBootstrapMatchesParent(req, command.Path, flags, record, authority) {
+		return "generated delegated child bootstrap does not match the current parent authority", executionDeny(authority, "generated_command_provenance_invalid", executionStatusCommand(authority.ID))
 	}
 	executable, err := filepath.EvalSymlinks(command.Tokens[0])
 	if err != nil || cleanAbsPath(executable) != cleanAbsPath(command.Tokens[0]) {
-		return "generated IssueOps command executable must be an existing canonical path", executionDeny(record, "generated_command_executable_untrusted", executionStatusCommand(record.ID))
+		return "generated IssueOps command executable must be an existing canonical path", executionDeny(authority, "generated_command_executable_untrusted", executionStatusCommand(authority.ID))
 	}
 	trusted := []string{
-		filepath.Join(record.Execution.Workspace.Root, "bin", "agent-harness"),
-		filepath.Join(record.Execution.Workspace.SourceRoot, "bin", "agent-harness"),
+		filepath.Join(authority.Execution.Workspace.Root, "bin", "agent-harness"),
+		filepath.Join(authority.Execution.Workspace.SourceRoot, "bin", "agent-harness"),
 	}
 	for _, candidate := range trusted {
 		resolved, resolveErr := filepath.EvalSymlinks(candidate)
@@ -172,7 +179,73 @@ func generatedIssueOpsExecutableBlock(req lifecyclecontract.HookToolUseLifecycle
 			return "", nil
 		}
 	}
-	return "generated IssueOps command executable is outside the durable worktree and trusted installed targets", executionDeny(record, "generated_command_executable_untrusted", executionStatusCommand(record.ID))
+	return "generated IssueOps command executable is outside the durable worktree and trusted installed targets", executionDeny(authority, "generated_command_executable_untrusted", executionStatusCommand(authority.ID))
+}
+
+func generatedIssueOpsAuthorityRecord(path string, record issueopscontract.IssueOpsRecord) (issueopscontract.IssueOpsRecord, bool) {
+	if record.Execution != nil {
+		return record, false
+	}
+	if path != "branch prepare" && path != "execution prepare" || record.Delegation == nil {
+		return issueopscontract.IssueOpsRecord{}, false
+	}
+	parentID := strings.TrimSpace(record.Delegation.ParentCycleID)
+	if parentID == "" {
+		return issueopscontract.IssueOpsRecord{}, false
+	}
+	parent, err := ReadIssueOps(IssueOpsStateRoot(), parentID)
+	if err != nil || parent.Execution == nil || !issueOpsParentReferencesChild(parent, record.ID) {
+		return issueopscontract.IssueOpsRecord{}, false
+	}
+	return parent, true
+}
+
+func issueOpsParentReferencesChild(parent issueopscontract.IssueOpsRecord, childID string) bool {
+	childID = strings.TrimSpace(childID)
+	for _, child := range parent.ChildCycles {
+		if strings.TrimSpace(child.CycleID) == childID {
+			return true
+		}
+	}
+	return false
+}
+
+func generatedDelegatedBootstrapMatchesParent(req lifecyclecontract.HookToolUseLifecycleRequest, path string, flags map[string][]string, child, parent issueopscontract.IssueOpsRecord) bool {
+	execution := parent.Execution
+	if execution == nil || execution.Lease.Status != issueopscontract.LeaseStatusActive || execution.Lease.Holder == nil ||
+		!executionActorMatches(req, execution.Lease.Holder) {
+		return false
+	}
+	host, hostOK := oneFlag(flags, "--host")
+	sessionID, sessionOK := oneFlag(flags, "--session-id")
+	cwd, cwdOK := oneFlag(flags, "--cwd")
+	generation, generationOK := oneFlag(flags, issueopscontract.GeneratedForGenerationFlag)
+	parsedGeneration, err := strconv.ParseUint(generation, 10, 64)
+	if !hostOK || !sessionOK || !cwdOK || !generationOK || err != nil || parsedGeneration != execution.Lease.Generation ||
+		!strings.EqualFold(strings.TrimSpace(host), strings.TrimSpace(execution.Lease.Holder.Host)) ||
+		strings.TrimSpace(sessionID) != strings.TrimSpace(execution.Lease.Holder.SessionID) ||
+		!sameExecutionPath(cwd, execution.Workspace.Root) {
+		return false
+	}
+	agentID, hasAgentID := oneFlag(flags, "--agent-id")
+	if strings.TrimSpace(execution.Lease.Holder.AgentID) != strings.TrimSpace(agentID) ||
+		(strings.TrimSpace(execution.Lease.Holder.AgentID) != "" && !hasAgentID) {
+		return false
+	}
+	switch path {
+	case "branch prepare":
+		branch, branchOK := oneFlag(flags, "--branch")
+		baseBranch, baseOK := oneFlag(flags, "--base-branch")
+		parentWorktree, worktreeOK := oneFlag(flags, "--parent-worktree")
+		return branchOK && baseOK && worktreeOK && strings.TrimSpace(branch) == strings.TrimSpace(child.Branch) &&
+			strings.TrimSpace(baseBranch) == strings.TrimSpace(parent.Branch) && sameExecutionPath(parentWorktree, execution.Workspace.Root)
+	case "execution prepare":
+		prepared := child.BranchPrepare
+		return prepared != nil && strings.TrimSpace(prepared.Branch) == strings.TrimSpace(child.Branch) &&
+			strings.TrimSpace(prepared.BaseBranch) == strings.TrimSpace(parent.Branch) && sameExecutionPath(prepared.ParentWorktree, execution.Workspace.Root)
+	default:
+		return false
+	}
 }
 
 func exactCoordinatorChildHostSmoke(req lifecyclecontract.HookToolUseLifecycleRequest) bool {

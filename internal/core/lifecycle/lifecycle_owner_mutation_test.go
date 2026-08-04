@@ -233,6 +233,60 @@ func TestGeneratedChildStartSurvivesCodexCommandOnlyHookPayload(t *testing.T) {
 	}
 }
 
+func TestGeneratedDelegatedChildBootstrapUsesCurrentParentAuthority(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, parent, worker := executionActiveLifecycleRecord(t)
+	installedDir := filepath.Join(parent.Repo, "bin")
+	if err := os.MkdirAll(installedDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	installed := filepath.Join(installedDir, "agent-harness")
+	if err := os.WriteFile(installed, []byte("trusted installed binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	installed, err := filepath.EvalSymlinks(installed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	child := parent
+	child.ID = "io-delegated-child"
+	child.Branch = "334-child-bootstrap"
+	child.WorktreePath = ""
+	child.Execution = nil
+	child.Delegation = &issueopscontract.IssueOpsDelegationContract{
+		ParentCycleID: parent.ID, TaskScope: "bootstrap", DelegatedAt: "2026-08-04T00:00:00Z",
+	}
+	parent.ChildCycles = append(parent.ChildCycles, issueopscontract.IssueOpsChildCycleRef{
+		CycleID: child.ID, Branch: child.Branch, CreatedAt: "2026-08-04T00:00:00Z",
+	})
+	if _, err := writeIssueOps(IssueOpsStateRoot(), parent); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), child); err != nil {
+		t.Fatal(err)
+	}
+
+	command := installed + " issueops branch prepare --id " + child.ID +
+		" --provider github --issue-url https://github.com/acme/repo/issues/334" +
+		" --branch 334-child-bootstrap --base-branch " + parent.Branch + " --base-sha " + strings.Repeat("a", 40) +
+		" --parent-worktree " + worker + " --link-verified" +
+		" --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json" +
+		" --generated-by-executable " + installed +
+		" --generated-by-sha256 " + strings.Repeat("b", 64) +
+		" --generated-for-generation 1"
+	commandOnly := executionRequest(parent, parent.Repo, "claude", "owner-session", command)
+	commandOnly.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(commandOnly); got.Decision != "allow" {
+		t.Fatalf("current parent must authorize provenance-bound delegated child bootstrap: %+v", got)
+	}
+
+	foreign := executionRequest(parent, parent.Repo, "claude", "foreign-session", command)
+	foreign.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(foreign); got.Decision != "block" {
+		t.Fatalf("foreign session must not bootstrap the delegated child: %+v", got)
+	}
+}
+
 func TestChildStatusSeparatesObservationFromRepairMutation(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	_, record, worker := executionActiveLifecycleRecord(t)
