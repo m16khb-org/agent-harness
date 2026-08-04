@@ -771,62 +771,99 @@ func TestExecutionHolderOutputAndDetachedFlagsFailClosed(t *testing.T) {
 	}
 }
 
-// 이슈 #114: sealed topology 가드가 형태 차단하는 워크트리 cwd에서 4모드가
-// typed control plane으로 통과해야 한다. 통과는 "권한 승인"이 아니라 "core로
-// 전달"이며(F14), 비-holder도 훅에서는 통과하고 core가 거부한다.
-func TestExecutionSyncBaseTypedControlPlaneAdmitsFourModes(t *testing.T) {
+func TestExecutionSyncBaseReleasedCompletionHostParity(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionReleasedCompletionLifecycleRecord(t)
+	base := "agent-harness issueops execution sync-base --id " + record.ID + " --completion-generation 2"
+	for _, host := range []string{"codex", "claude"} {
+		t.Run(host, func(t *testing.T) {
+			actorFlags := " --host " + host + " --session-id maintenance-session" +
+				" --session-pid 1234 --session-started-at 2026-07-22T00:00:00Z --session-executable " + host +
+				" --cwd " + worker + " --json"
+			commands := map[string]string{
+				"preview":  base + " --preview --json",
+				"apply":    base + " --apply --confirm --fingerprint " + strings.Repeat("a", 64) + actorFlags,
+				"finalize": base + " --finalize" + actorFlags,
+				"abort":    base + " --abort" + actorFlags,
+			}
+			for name, command := range commands {
+				req := executionRequest(record, worker, host, "maintenance-session", command)
+				if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+					t.Fatalf("%s %s must admit exact released-completion sync-base: %+v", host, name, got)
+				}
+			}
+		})
+	}
+}
+
+func TestExecutionSyncBaseReleasedCompletionNearMissesBlock(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionReleasedCompletionLifecycleRecord(t)
+	base := "agent-harness issueops execution sync-base --id " + record.ID
+	actorFlags := " --host codex --session-id maintenance-session --session-pid 1234" +
+		" --session-started-at 2026-07-22T00:00:00Z --session-executable codex --cwd " + worker + " --json"
+	exactApply := base + " --completion-generation 2 --apply --confirm --fingerprint " + strings.Repeat("a", 64) + actorFlags
+	nearMisses := map[string]string{
+		"missing completion generation":   base + " --preview --json",
+		"duplicate completion generation": base + " --completion-generation 2 --completion-generation 2 --preview --json",
+		"history generation":              strings.Replace(exactApply, "--completion-generation 2", "--completion-generation 1", 1),
+		"shell substitution":              strings.Replace(exactApply, "--completion-generation 2", "--completion-generation $GEN", 1),
+		"wrapper":                         "env " + exactApply,
+		"wrong cwd flag":                  strings.Replace(exactApply, "--cwd "+worker, "--cwd "+record.Repo, 1),
+		"wrong lifecycle":                 strings.Replace(exactApply, record.ID, "io-wrong", 1),
+		"unregistered flag":               exactApply + " --rebase",
+		"multiple modes":                  strings.Replace(exactApply, "--apply", "--preview --apply", 1),
+	}
+	for name, command := range nearMisses {
+		t.Run(name, func(t *testing.T) {
+			req := executionRequest(record, worker, "codex", "maintenance-session", command)
+			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+				t.Fatalf("%s must block: %+v", name, got)
+			}
+		})
+	}
+
+	wrongRequestCWD := executionRequest(record, record.Repo, "codex", "maintenance-session", exactApply)
+	if got := BuildLifecyclePreToolUseDecision(wrongRequestCWD); got.Decision != "block" {
+		t.Fatalf("wrong request cwd must block: %+v", got)
+	}
+}
+
+func TestExecutionSyncBaseGeneralNonHolderMutationStaysBlocked(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	_, record, worker := executionActiveLifecycleRecord(t)
-	actorFlags := " --host claude --session-id owner-session --agent-id owner-agent" +
+	command := "agent-harness issueops execution sync-base --id " + record.ID +
+		" --completion-generation 1 --abort --host claude --session-id wrong-session" +
 		" --session-pid 1234 --session-started-at 2026-07-22T00:00:00Z --session-executable claude" +
 		" --cwd " + worker + " --json"
-	base := "agent-harness issueops execution sync-base --id " + record.ID
-
-	for name, command := range map[string]string{
-		"preview":  base + " --preview" + actorFlags,
-		"apply":    base + " --apply --confirm --fingerprint " + strings.Repeat("a", 64) + actorFlags,
-		"finalize": base + " --finalize" + actorFlags,
-		"abort":    base + " --abort" + actorFlags,
-	} {
-		t.Run(name, func(t *testing.T) {
-			req := executionRequest(record, worker, "claude", "owner-session", command)
-			req.AgentID = "owner-agent"
-			if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
-				t.Fatalf("typed sync-base %s must reach core from the canonical worktree: %+v", name, got)
-			}
-		})
+	req := executionRequest(record, worker, "claude", "wrong-session", command)
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "block" {
+		t.Fatalf("general non-holder sync-base must stay blocked: %+v", got)
 	}
+}
 
-	// 비-holder도 훅에서는 통과한다 — 거부는 core의 lease_holder 게이트 몫이다.
-	nonHolder := executionRequest(record, worker, "claude", "wrong-session", base+" --abort"+actorFlags)
-	nonHolder.AgentID = "owner-agent"
-	if got := BuildLifecyclePreToolUseDecision(nonHolder); got.Decision != "allow" {
-		t.Fatalf("typed registration must not re-enter the hook lease fence: %+v", got)
+func executionReleasedCompletionLifecycleRecord(t *testing.T) (string, issueopscontract.IssueOpsRecord, string) {
+	t.Helper()
+	repo, record, worker := executionActiveLifecycleRecord(t)
+	record.Execution.Lease = issueopscontract.WriteLease{
+		Generation: 2, Status: issueopscontract.LeaseStatusReleased, ReleasedAt: "2026-07-22T01:00:00Z",
 	}
-
-	// spec에 없는 플래그는 exact 파싱에서 떨어져 typed control plane으로
-	// 인정되지 않는다 — 가드 정책이 sync-base 이름만으로 열리지 않았음을
-	// 증명한다. (활성 holder의 자기 워크트리 mutation은 원래 허용이므로 최종
-	// decision이 아니라 typed 분류 자체를 단언한다.)
-	for name, command := range map[string]string{
-		"unregistered flag": base + " --preview --rebase" + actorFlags,
-		"no mode force":     base + " --preview --apply --finalize --abort --confirm" + actorFlags + " --force",
-	} {
-		t.Run(name, func(t *testing.T) {
-			req := executionRequest(record, worker, "claude", "owner-session", command)
-			req.AgentID = "owner-agent"
-			if executionTypedControlPlane(req) {
-				t.Fatalf("%s must not be admitted as a typed control-plane command", name)
-			}
-		})
+	record.Execution.CompletionHistory = []issueopscontract.ExecutionCompletionHistory{{
+		Generation: 1,
+		Completion: issueopscontract.ExecutionCompletion{
+			Generation: 1, FinalHead: strings.Repeat("1", 40), TuringReportPath: ".agent-harness/turing/old.json",
+			Verification: []string{"old verification"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/1", CompletedAt: "2026-07-21T00:00:00Z",
+		},
+		Reason: "prior reseed", ReopenedAt: "2026-07-21T01:00:00Z",
+	}}
+	record.Execution.Completion = &issueopscontract.ExecutionCompletion{
+		Generation: 2, FinalHead: strings.Repeat("2", 40), TuringReportPath: ".agent-harness/turing/current.json",
+		Verification: []string{"current verification"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/2", CompletedAt: "2026-07-22T01:00:00Z",
 	}
-
-	// 비-holder 세션이 spec 밖 플래그로 던지면 typed 우회가 없으니 훅이 막는다.
-	foreign := executionRequest(record, worker, "claude", "wrong-session", base+" --preview --rebase"+actorFlags)
-	foreign.AgentID = "owner-agent"
-	if got := BuildLifecyclePreToolUseDecision(foreign); got.Decision != "block" {
-		t.Fatalf("non-holder unregistered sync-base must stay blocked: %+v", got)
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
 	}
+	return repo, record, worker
 }
 
 func executionRequest(record issueopscontract.IssueOpsRecord, cwd, host, sessionID, command string) lifecyclecontract.HookToolUseLifecycleRequest {

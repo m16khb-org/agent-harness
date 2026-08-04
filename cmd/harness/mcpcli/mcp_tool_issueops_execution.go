@@ -27,6 +27,7 @@ func handleMCPIssueOpsExecutionWithDependencies(args map[string]any, deps MCPDep
 	}
 	result, err := issueops.ExecuteExecution(context.Background(), core.IssueOpsStateRoot(), req, issueOpsExecutionActionDependencies(deps))
 	if err != nil {
+		err = bindMCPIssueOpsExecutionErrorNextCommand(err, deps.Provenance)
 		return mcpToolErrorPayload(issueOpsMCPErrorPayload(err))
 	}
 	result, err = bindMCPIssueOpsExecutionNextCommand(result, deps.Provenance)

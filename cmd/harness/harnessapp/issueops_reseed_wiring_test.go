@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/issueopscli/executioncmd"
+	basesyncoutbound "agent-harness/internal/adapter/outbound/issueopsbasesync"
 	model "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/commandparse"
 	"agent-harness/internal/core/issueops"
@@ -144,11 +145,12 @@ func TestExecutionReseedCLIDogfoodDirectAndOrca(t *testing.T) {
 
 func TestExecutionReseedCompletedStatusExposesReopenContract(t *testing.T) {
 	stateRoot, record, _, _, _ := seedOrcaClaimSnapshot(t)
+	claimWiringGit(t, record.Execution.Workspace.SourceRoot, "remote", "add", "origin", record.Execution.Workspace.SourceRoot)
 	oldHead := "d6d8c6a5a98fcca6bca33edf9e7965636429ce28"
 	record.Phase = model.IssueOpsPhaseDone
 	record.Execution.Lease.Status = model.LeaseStatusReleased
 	record.Execution.Lease.ClaimTokenSHA256 = ""
-	record.Execution.Completion = &model.ExecutionCompletion{FinalHead: oldHead, TuringReportPath: ".agent-harness/turing/old.json", Verification: []string{"old verification"}, RemoteArtifactURL: "https://gitlab.example.com/acme/repo/-/merge_requests/1", CompletedAt: "2026-08-03T00:00:00Z"}
+	record.Execution.Completion = &model.ExecutionCompletion{Generation: 1, FinalHead: oldHead, TuringReportPath: ".agent-harness/turing/old.json", Verification: []string{"old verification"}, RemoteArtifactURL: "https://gitlab.example.com/acme/repo/-/merge_requests/1", CompletedAt: "2026-08-03T00:00:00Z"}
 	record.AISlopCleanAt = "old"
 	record.AISlopCleanHead = oldHead
 	record.AISlopCleanFingerprint = "old-fingerprint"
@@ -169,7 +171,7 @@ func TestExecutionReseedCompletedStatusExposesReopenContract(t *testing.T) {
 	}
 	actor := claimWiringActor(t)
 	owner := reseedWiringOwner{}
-	preview, err := issueops.ReplaceExecutionWithDependencies(context.Background(), stateRoot, issueops.ExecutionReplaceRequest{ID: record.ID, Action: issueops.ExecutionReplacePreview, ExpectedGeneration: 1, CompletionGeneration: 1, Actor: actor, CWD: record.Execution.Workspace.Root}, issueops.ExecutionReplaceDependencies{OrcaOwner: owner})
+	preview, err := issueops.ReplaceExecutionWithDependencies(context.Background(), stateRoot, issueops.ExecutionReplaceRequest{ID: record.ID, Action: issueops.ExecutionReplacePreview, ExpectedGeneration: 1, CompletionGeneration: 1, Actor: actor, CWD: record.Execution.Workspace.Root}, issueops.ExecutionReplaceDependencies{OrcaOwner: owner, BaseSync: basesyncoutbound.NewInspector(basesyncoutbound.RunGit)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,6 +213,87 @@ func TestExecutionReseedCompletedStatusExposesReopenContract(t *testing.T) {
 			t.Fatalf("phase %s ledger=%+v", phase, entry)
 		}
 	}
+}
+
+func TestCompletedReplacementPreviewRequiresSyncBaseBeforeReseedWhenParentDrifted(t *testing.T) {
+	stateRoot, record, actor, owner := completedReplacementPreviewFixture(t, true)
+	preview, err := issueops.ReplaceExecutionWithDependencies(context.Background(), stateRoot, issueops.ExecutionReplaceRequest{
+		ID: record.ID, Action: issueops.ExecutionReplacePreview, ExpectedGeneration: 1, CompletionGeneration: 1,
+		Actor: actor, CWD: record.Execution.Workspace.Root,
+	}, issueops.ExecutionReplaceDependencies{OrcaOwner: owner, BaseSync: basesyncoutbound.NewInspector(basesyncoutbound.RunGit)})
+	if err == nil {
+		t.Fatalf("drifted completed preview emitted reseed instead of sync-base: %+v", preview)
+	}
+	structured, ok := err.(interface{ IssueOpsErrorFields() map[string]any })
+	if !ok {
+		t.Fatalf("drift rejection is not structured: %T %v", err, err)
+	}
+	fields := structured.IssueOpsErrorFields()
+	if fields["code"] != "post_completion_sync_base_required" || fields["completion_generation"] != uint64(1) {
+		t.Fatalf("drift rejection fields=%v", fields)
+	}
+	next, _ := fields["next_command"].(string)
+	if next != "agent-harness issueops execution sync-base --id '"+record.ID+"' --preview --completion-generation 1 --json" || strings.Contains(next, "--reseed") {
+		t.Fatalf("drift rejection next_command=%q", next)
+	}
+}
+
+func TestCompletedReplacementPreviewKeepsNoDriftReseed(t *testing.T) {
+	stateRoot, record, actor, owner := completedReplacementPreviewFixture(t, false)
+	preview, err := issueops.ReplaceExecutionWithDependencies(context.Background(), stateRoot, issueops.ExecutionReplaceRequest{
+		ID: record.ID, Action: issueops.ExecutionReplacePreview, ExpectedGeneration: 1, CompletionGeneration: 1,
+		Actor: actor, CWD: record.Execution.Workspace.Root,
+	}, issueops.ExecutionReplaceDependencies{OrcaOwner: owner, BaseSync: basesyncoutbound.NewInspector(basesyncoutbound.RunGit)})
+	if err != nil {
+		t.Fatalf("no-drift completed preview: %v", err)
+	}
+	if !strings.Contains(preview.NextCommand, "execution replace") || !strings.Contains(preview.NextCommand, "--reseed") || !strings.Contains(preview.NextCommand, "--completion-generation 1") {
+		t.Fatalf("no-drift completed preview lost reseed command: %q", preview.NextCommand)
+	}
+}
+
+func TestCompletedReplacementPreviewRejectsMissingStampedCompletionGeneration(t *testing.T) {
+	stateRoot, record, actor, owner := completedReplacementPreviewFixture(t, false)
+	record.Execution.Completion.Generation = 0
+	if _, err := issueops.WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	_, err := issueops.ReplaceExecutionWithDependencies(context.Background(), stateRoot, issueops.ExecutionReplaceRequest{
+		ID: record.ID, Action: issueops.ExecutionReplacePreview, ExpectedGeneration: 1, CompletionGeneration: 1,
+		Actor: actor, CWD: record.Execution.Workspace.Root,
+	}, issueops.ExecutionReplaceDependencies{OrcaOwner: owner, BaseSync: basesyncoutbound.NewInspector(basesyncoutbound.RunGit)})
+	if err == nil || err.Error() != "invalid or missing stamped completion generation" {
+		t.Fatalf("zero-generation preview error=%v", err)
+	}
+}
+
+func completedReplacementPreviewFixture(t *testing.T, drift bool) (string, model.IssueOpsRecord, model.NativeActor, reseedWiringOwner) {
+	t.Helper()
+	stateRoot, record, _, _, _ := seedOrcaClaimSnapshot(t)
+	source := record.Execution.Workspace.SourceRoot
+	worktree := record.Execution.Workspace.Root
+	claimWiringGit(t, source, "remote", "add", "origin", source)
+	if drift {
+		if err := os.WriteFile(source+"/parent-drift.txt", []byte("parent advanced\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		claimWiringGit(t, source, "add", "parent-drift.txt")
+		claimWiringGit(t, source, "-c", "user.name=IssueOps Test", "-c", "user.email=issueops@example.invalid", "commit", "-q", "-m", "test: advance parent")
+	}
+	finalHead := strings.TrimSpace(claimWiringGit(t, worktree, "rev-parse", "HEAD"))
+	record.Phase = model.IssueOpsPhaseDone
+	record.Execution.Lease.Status = model.LeaseStatusReleased
+	record.Execution.Lease.Holder = nil
+	record.Execution.Lease.ClaimTokenSHA256 = ""
+	record.Execution.Lease.ReleasedAt = "2026-08-03T00:00:00Z"
+	record.Execution.Completion = &model.ExecutionCompletion{
+		Generation: 1, FinalHead: finalHead, TuringReportPath: ".agent-harness/turing/old.json",
+		Verification: []string{"old verification"}, RemoteArtifactURL: "https://gitlab.example.com/acme/repo/-/merge_requests/1", CompletedAt: "2026-08-03T00:00:00Z",
+	}
+	if _, err := issueops.WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	return stateRoot, record, claimWiringActor(t), reseedWiringOwner{}
 }
 
 func TestExecutionReseedPreviewNextCommandRunsWithoutCallerRepair(t *testing.T) {

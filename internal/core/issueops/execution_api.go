@@ -7,6 +7,7 @@ import (
 
 	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
+	basesyncport "agent-harness/internal/port/issueopsbasesync"
 )
 
 var (
@@ -91,6 +92,7 @@ type ExecutionActionDependencies struct {
 	Prepare   ExecutionPrepareHandler
 	Orca      port.ExecutionOrcaProvisioner
 	OrcaOwner port.ExecutionOrcaOwnerInspector
+	BaseSync  basesyncport.Inspector
 	ReadIssue ExecutionIssueSnapshotReadFunc
 	Claim     ExecutionClaimHandler
 	Release   ExecutionReleaseHandler
@@ -157,7 +159,7 @@ func executeExecutionAction(ctx context.Context, stateRoot string, req Execution
 			Reason: req.Reason, Actor: req.Actor, CWD: req.CWD, Confirm: req.Confirm,
 			// finalize/reseed 재봉인이 현재 이슈 본문을 다시 읽어야 하므로
 			// prepare/claim과 같은 리더를 함께 넘긴다.
-		}, ExecutionReplaceDependencies{OrcaOwner: deps.OrcaOwner, ReadIssue: deps.ReadIssue})
+		}, ExecutionReplaceDependencies{OrcaOwner: deps.OrcaOwner, BaseSync: deps.BaseSync, ReadIssue: deps.ReadIssue})
 	case ExecutionActionResume:
 		if !req.Confirm {
 			return ExecutionResumeResult{OK: false, ID: req.ID}, fmt.Errorf("execution resume requires confirm")

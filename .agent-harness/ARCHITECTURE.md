@@ -362,6 +362,27 @@ cycle은 명시값이 없을 때 같은 경로를 계산해 하위 호환한다.
 - Completion never merges or deletes local/remote resources. Cleanup remains a
   separate human-authorized operation based on current merge and cleanliness
   evidence.
+- A completed replacement first observes the fetched parent base through the
+  `issueopsbasesync` port. Parent drift returns the typed
+  `post_completion_sync_base_required` contract before owner inventory,
+  artifact preparation, token creation, completion archival, or record CAS.
+- Post-completion sync authority is the released lease plus its current stamped
+  completion generation, canonical cwd, live native actor, and preview
+  fingerprint. Completion history never restores current authority. The only
+  recovery sequence is released current completion + drift → sync-base preview
+  → generation/fingerprint-fenced sync-base apply → replacement preview →
+  reseed/claim → verify and re-complete.
+- `internal/port/issueopsbasesync` owns only request, receipt, and interface.
+  The public typed error and exact next-command projection belong to
+  `internal/contract/issueops`; Git/network observation belongs to the outbound
+  adapter.
+- The #303 provenance boundary binds typed-error `next_command` on the reachable
+  CLI and MCP error paths. CLI conflict `next_command` and `abort_command` share
+  one observed canonical executable/hash/generation receipt; observation
+  failure exposes no unbound fallback. As #326 records, the public MCP action
+  enum excludes sync-base and therefore has no sync-base success action/result;
+  AC-06 host parity is the exact CLI command plus Codex/Claude hook classifier,
+  while MCP binds only reachable resume/replace `BaseSyncRequiredError` output.
 
 ## MCP tool design guidance
 

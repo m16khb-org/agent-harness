@@ -38,6 +38,52 @@ func TestBindMCPIssueOpsExecutionNextCommandMatchesCLIContract(t *testing.T) {
 	}
 }
 
+func TestMCPIssueOpsExecutionHandlerBindsBaseSyncRequiredErrorNextCommand(t *testing.T) {
+	observer := mcpProvenanceObserverStub{evidence: provenanceport.Receipt{
+		ExecutablePath: "/repo/bin/agent-harness", ExecutableSHA256: strings.Repeat("a", 64),
+	}}
+	outcome := handleMCPIssueOpsExecutionWithDependencies(map[string]any{
+		"action": "resume", "id": "io-aaaaaaaaaaaa", "expected_generation": float64(7),
+		"host": "codex", "session_id": "session-1", "session_pid": float64(42),
+		"session_started_at": "2026-08-04T00:00:00Z", "session_executable": "/bin/codex",
+		"cwd": "/repo.worktrees/318", "confirm": true,
+	}, MCPDependencies{
+		Resume: func(context.Context, string, issueops.ExecutionResumeRequest) (issueops.ExecutionResumeResult, error) {
+			return issueops.ExecutionResumeResult{}, issueopscontract.NewBaseSyncRequiredError("io-aaaaaaaaaaaa", 7)
+		},
+		Provenance: observer,
+	})
+	payload, ok := outcome.Payload.(map[string]any)
+	next, _ := payload["next_command"].(string)
+	if !ok || !outcome.IsError ||
+		!strings.HasPrefix(next, "'/repo/bin/agent-harness'") ||
+		!strings.Contains(next, "--generated-for-generation 7") ||
+		!strings.Contains(next, "--generated-by-sha256 "+strings.Repeat("a", 64)) {
+		t.Fatalf("MCP typed error outcome=%#v", outcome)
+	}
+}
+
+func TestMCPIssueOpsExecutionTypedErrorObservationFailureHasNoUnboundFallback(t *testing.T) {
+	outcome := handleMCPIssueOpsExecutionWithDependencies(map[string]any{
+		"action": "resume", "id": "io-aaaaaaaaaaaa", "expected_generation": float64(7),
+		"host": "codex", "session_id": "session-1", "session_pid": float64(42),
+		"session_started_at": "2026-08-04T00:00:00Z", "session_executable": "/bin/codex",
+		"cwd": "/repo.worktrees/318", "confirm": true,
+	}, MCPDependencies{
+		Resume: func(context.Context, string, issueops.ExecutionResumeRequest) (issueops.ExecutionResumeResult, error) {
+			return issueops.ExecutionResumeResult{}, issueopscontract.NewBaseSyncRequiredError("io-aaaaaaaaaaaa", 7)
+		},
+		Provenance: mcpProvenanceObserverStub{err: errors.New("observation failed")},
+	})
+	payload, ok := outcome.Payload.(map[string]any)
+	if !ok || !outcome.IsError || payload["code"] != "generated_command_provenance_observation_failed" {
+		t.Fatalf("MCP typed error observation failure=%#v", outcome)
+	}
+	if _, exists := payload["next_command"]; exists {
+		t.Fatalf("MCP typed error observation failure leaked command: %#v", payload)
+	}
+}
+
 func TestMCPIssueOpsExecutionHandlerBindsGeneratedNextCommand(t *testing.T) {
 	observer := mcpProvenanceObserverStub{evidence: provenanceport.Receipt{
 		ExecutablePath: "/repo/bin/agent-harness", ExecutableSHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -131,14 +177,6 @@ func TestBindMCPIssueOpsExecutionNextCommandCoversEveryCommandBearingResult(t *t
 				NextCommand: "agent-harness issueops execution claim --id io-1 --generation 3",
 			},
 			command: func(value any) string { return value.(issueops.ExecutionPrepareResult).NextCommand },
-		},
-		{
-			name: "sync-base", generation: 4,
-			value: issueops.ExecutionSyncBaseResult{
-				LeaseGeneration: 4,
-				NextCommand:     "agent-harness issueops execution sync-base --id io-1 --apply",
-			},
-			command: func(value any) string { return value.(issueops.ExecutionSyncBaseResult).NextCommand },
 		},
 		{
 			name: "switch-mode preview", generation: 5,

@@ -28,6 +28,7 @@ func issueOpsExecutionDeps(deps Dependencies) executioncmd.Deps {
 		Prepare:     deps.Prepare,
 		Orca:        deps.Orca,
 		OrcaOwner:   deps.OrcaOwner,
+		BaseSync:    deps.BaseSync,
 		ReadIssue:   deps.ReadIssue,
 		Claim:       deps.Claim,
 		Release:     deps.Release,

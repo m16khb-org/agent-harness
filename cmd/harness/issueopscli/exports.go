@@ -5,6 +5,7 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
+	basesyncport "agent-harness/internal/port/issueopsbasesync"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
 
@@ -16,6 +17,7 @@ type Dependencies struct {
 	Prepare     issueops.ExecutionPrepareHandler
 	Orca        port.ExecutionOrcaProvisioner
 	OrcaOwner   port.ExecutionOrcaOwnerInspector
+	BaseSync    basesyncport.Inspector
 	ReadIssue   issueops.ExecutionIssueSnapshotReadFunc
 	Claim       issueops.ExecutionClaimHandler
 	Release     issueops.ExecutionReleaseHandler

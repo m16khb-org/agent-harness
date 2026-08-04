@@ -2,8 +2,10 @@ package mcpcli
 
 import (
 	"context"
+	"errors"
 
 	provenanceapp "agent-harness/internal/application/issueopsprovenance"
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
@@ -46,11 +48,6 @@ func mcpExecutionNextCommand(value any) (string, uint64, func(string) any) {
 			result.NextCommand = command
 			return result
 		}
-	case issueops.ExecutionSyncBaseResult:
-		return result.NextCommand, result.LeaseGeneration, func(command string) any {
-			result.NextCommand = command
-			return result
-		}
 	case issueops.ExecutionSwitchModeResult:
 		return result.NextCommand, result.LeaseGeneration, func(command string) any {
 			result.NextCommand = command
@@ -59,4 +56,17 @@ func mcpExecutionNextCommand(value any) (string, uint64, func(string) any) {
 	default:
 		return "", 0, func(string) any { return value }
 	}
+}
+
+func bindMCPIssueOpsExecutionErrorNextCommand(err error, observer provenanceport.Observer) error {
+	var typed *issueopscontract.BaseSyncRequiredError
+	if !errors.As(err, &typed) {
+		return err
+	}
+	bound, bindErr := provenanceapp.Bind(context.Background(), typed.NextCommand, typed.CompletionGeneration, observer)
+	if bindErr != nil {
+		return bindErr
+	}
+	typed.NextCommand = bound
+	return err
 }

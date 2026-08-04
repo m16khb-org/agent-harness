@@ -730,13 +730,115 @@ func executionTypedControlPlane(req lifecyclecontract.HookToolUseLifecycleReques
 		}
 		return idOK && strings.TrimSpace(id) != "" && generationOK &&
 			generationErr == nil && parsedGeneration > 0 && confirm
-	case "execution prepare", "execution claim", "execution release", "execution replace", "execution reconcile", "execution complete", "execution sync-base", "execution switch-mode",
+	case "execution sync-base":
+		return exactExecutionSyncBaseTyped(req, flags)
+	case "execution prepare", "execution claim", "execution release", "execution replace", "execution reconcile", "execution complete", "execution switch-mode",
 		"cleanup orphan":
 		id, ok := oneFlag(flags, "--id")
 		return ok && strings.TrimSpace(id) != ""
 	default:
 		return false
 	}
+}
+
+func executionSyncBaseInvocation(req lifecyclecontract.HookToolUseLifecycleRequest) bool {
+	if !searchrouting.IsShellTool(req.Tool) {
+		return false
+	}
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(req.Command))
+	for index := 0; index+3 < len(tokens); index++ {
+		if (tokens[index] == "agent-harness" || tokens[index] == "bin/agent-harness" || tokens[index] == "./bin/agent-harness") &&
+			tokens[index+1] == "issueops" && tokens[index+2] == "execution" && tokens[index+3] == "sync-base" {
+			return true
+		}
+	}
+	return false
+}
+
+func exactExecutionSyncBaseTyped(req lifecyclecontract.HookToolUseLifecycleRequest, flags map[string][]string) bool {
+	id, idOK := oneFlag(flags, "--id")
+	if !idOK || strings.TrimSpace(id) == "" {
+		return false
+	}
+	record, err := ReadIssueOps(IssueOpsStateRoot(), id)
+	if err != nil || record.Execution == nil || record.Execution.Pending != nil ||
+		!sameExecutionPath(req.CWD, record.Execution.Workspace.Root) {
+		return false
+	}
+	if _, jsonOut := flags["--json"]; !jsonOut || !exactExecutionSyncBaseMode(flags) {
+		return false
+	}
+	switch record.Execution.Lease.Status {
+	case issueopscontract.LeaseStatusActive:
+		holder := record.Execution.Lease.Holder
+		if holder == nil || !sameExecutionActorRequest(holder, req) {
+			return false
+		}
+	case issueopscontract.LeaseStatusReleased:
+		completion := record.Execution.Completion
+		generation, generationOK := oneFlag(flags, "--completion-generation")
+		parsedGeneration, generationErr := strconv.ParseUint(strings.TrimSpace(generation), 10, 64)
+		if completion == nil || completion.Generation == 0 || !generationOK || generationErr != nil || parsedGeneration != completion.Generation {
+			return false
+		}
+	default:
+		return false
+	}
+	if _, preview := flags["--preview"]; preview {
+		_, confirm := flags["--confirm"]
+		_, fingerprint := flags["--fingerprint"]
+		return !confirm && !fingerprint
+	}
+	return exactExecutionSyncBaseMutationActor(req, flags, record.Execution.Workspace.Root)
+}
+
+func exactExecutionSyncBaseMode(flags map[string][]string) bool {
+	selected := 0
+	for _, name := range []string{"--preview", "--apply", "--finalize", "--abort"} {
+		if _, ok := flags[name]; ok {
+			selected++
+		}
+	}
+	if selected != 1 {
+		return false
+	}
+	_, apply := flags["--apply"]
+	_, confirm := flags["--confirm"]
+	fingerprint, hasFingerprint := oneFlag(flags, "--fingerprint")
+	if apply {
+		if !confirm || !hasFingerprint || len(fingerprint) != 64 {
+			return false
+		}
+		_, err := hex.DecodeString(fingerprint)
+		return err == nil
+	}
+	return !confirm && !hasFingerprint
+}
+
+func exactExecutionSyncBaseMutationActor(req lifecyclecontract.HookToolUseLifecycleRequest, flags map[string][]string, root string) bool {
+	if !nonemptyExactFlags(flags, "--host", "--session-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd") {
+		return false
+	}
+	host, _ := oneFlag(flags, "--host")
+	sessionID, _ := oneFlag(flags, "--session-id")
+	pid, _ := oneFlag(flags, "--session-pid")
+	cwd, _ := oneFlag(flags, "--cwd")
+	parsedPID, err := strconv.Atoi(pid)
+	if err != nil || parsedPID <= 0 || strings.ToLower(strings.TrimSpace(host)) != strings.ToLower(strings.TrimSpace(req.Host)) ||
+		strings.TrimSpace(sessionID) != strings.TrimSpace(req.SessionID) || !sameExecutionPath(cwd, root) {
+		return false
+	}
+	agentID, hasAgentID := oneFlag(flags, "--agent-id")
+	requestAgentID := strings.TrimSpace(req.AgentID)
+	return (requestAgentID == "" && !hasAgentID) || (hasAgentID && strings.TrimSpace(agentID) == requestAgentID)
+}
+
+func sameExecutionActorRequest(holder *issueopscontract.NativeActor, req lifecyclecontract.HookToolUseLifecycleRequest) bool {
+	if holder == nil || strings.ToLower(strings.TrimSpace(holder.Host)) != strings.ToLower(strings.TrimSpace(req.Host)) ||
+		strings.TrimSpace(holder.SessionID) != strings.TrimSpace(req.SessionID) || strings.TrimSpace(holder.AgentID) != strings.TrimSpace(req.AgentID) {
+		return false
+	}
+	return true
 }
 
 func executionTypedPreLinkBlock(req lifecyclecontract.HookToolUseLifecycleRequest) (string, *lifecyclecontract.IssueOpsDenyReason) {

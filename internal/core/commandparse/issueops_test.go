@@ -143,7 +143,7 @@ func TestDelegationCommandsHaveExactSpecs(t *testing.T) {
 // lifecycle guard의 typed control plane이 이 명령을 인식한다. 미등록 플래그는
 // 계속 거부되어야 가드 정책이 이름만으로 열리지 않는다.
 func TestExecutionSyncBaseExactFlags(t *testing.T) {
-	command, ok := ParseExactIssueOpsCommand("agent-harness issueops execution sync-base --id io-1 --apply --confirm --fingerprint deadbeef --host claude --session-id s1 --agent-id a1 --session-pid 42 --session-started-at 2026-07-25T00:00:00Z --session-executable claude --cwd /w --json")
+	command, ok := ParseExactIssueOpsCommand("agent-harness issueops execution sync-base --id io-1 --completion-generation 3 --apply --confirm --fingerprint deadbeef --host claude --session-id s1 --agent-id a1 --session-pid 42 --session-started-at 2026-07-25T00:00:00Z --session-executable claude --cwd /w --json")
 	if !ok || command.Path != "execution sync-base" {
 		t.Fatalf("execution sync-base did not parse as a two-word subcommand: %#v ok=%v", command, ok)
 	}
@@ -152,11 +152,11 @@ func TestExecutionSyncBaseExactFlags(t *testing.T) {
 		t.Fatal("execution sync-base has no exact flag spec")
 	}
 	flags, ok := ExactFlags(command, values, booleans, repeatable)
-	if !ok || flags["--fingerprint"][0] != "deadbeef" || flags["--cwd"][0] != "/w" || len(flags["--confirm"]) != 1 {
+	if !ok || flags["--completion-generation"][0] != "3" || flags["--fingerprint"][0] != "deadbeef" || flags["--cwd"][0] != "/w" || len(flags["--confirm"]) != 1 {
 		t.Fatalf("execution sync-base flags = %#v ok=%v", flags, ok)
 	}
 	for _, mode := range []string{"--preview", "--finalize", "--abort"} {
-		modeCommand, _ := ParseExactIssueOpsCommand("agent-harness issueops execution sync-base --id io-1 " + mode + " --host claude --session-id s1 --cwd /w --json")
+		modeCommand, _ := ParseExactIssueOpsCommand("agent-harness issueops execution sync-base --id io-1 --completion-generation 3 " + mode + " --host claude --session-id s1 --cwd /w --json")
 		if _, ok := ExactFlags(modeCommand, values, booleans, repeatable); !ok {
 			t.Fatalf("mode %s must be admitted by the exact spec", mode)
 		}
