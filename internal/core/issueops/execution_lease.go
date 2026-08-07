@@ -587,7 +587,7 @@ func executionInventoryFingerprint(ctx context.Context, record issueops.IssueOps
 	if err != nil {
 		return "", port.ExecutionOrcaOwnerInventory{}, err
 	}
-	if err := validateExecutionRuntimeRollover(record, orcaInventory); err != nil {
+	if err := validateExecutionRuntimeRolloverWithProcess(record, processStatus, orcaInventory); err != nil {
 		return "", port.ExecutionOrcaOwnerInventory{}, err
 	}
 	payload := struct {
@@ -619,11 +619,14 @@ func executionQuiescenceFingerprint(ctx context.Context, record issueops.IssueOp
 	if processStatus != "dead" {
 		return "", fmt.Errorf("old holder process identity is unsafe to finalize: pid=%d status=%s", holder.SessionProcess.PID, processStatus)
 	}
-	_, orcaInventory, err := executionOwnerInventory(ctx, record, deps)
+	processStatus, orcaInventory, err := executionOwnerInventory(ctx, record, deps)
 	if err != nil {
 		return "", err
 	}
-	if orcaInventory.TerminalLive || orcaInventory.TaskLive {
+	if err := validateExecutionRuntimeRolloverWithProcess(record, processStatus, orcaInventory); err != nil {
+		return "", err
+	}
+	if !deadOwnerRuntimeRollover(record, processStatus, orcaInventory) && (orcaInventory.TerminalLive || orcaInventory.TaskLive) {
 		return "", fmt.Errorf("Orca owner is not quiescent: terminal_live=%t task_live=%t task_status=%s dispatch_status=%s", orcaInventory.TerminalLive, orcaInventory.TaskLive, orcaInventory.TaskStatus, orcaInventory.DispatchStatus)
 	}
 	inventoryOwners := map[int]bool{os.Getpid(): true}
@@ -682,19 +685,49 @@ func executionOwnerInventory(ctx context.Context, record issueops.IssueOpsRecord
 	inventory, err := deps.OrcaOwner.InspectOwner(ctx, port.ExecutionOrcaOwnerInventoryRequest{
 		RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, RunID: binding.RunID, TaskID: binding.TaskID,
 		DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID,
-		AllowRuntimeRollover: record.Execution.Lease.Holder == nil &&
-			(record.Execution.Lease.Status == issueops.LeaseStatusReleased || record.Execution.Lease.Status == issueops.LeaseStatusClaimable),
+		AllowRuntimeRollover: allowExecutionRuntimeRollover(record, status),
 	})
 	return status, inventory, err
 }
 
+func allowExecutionRuntimeRollover(record issueops.IssueOpsRecord, processStatus string) bool {
+	lease := record.Execution.Lease
+	if lease.Holder == nil {
+		return lease.Status == issueops.LeaseStatusReleased || lease.Status == issueops.LeaseStatusClaimable
+	}
+	// Adapter가 바뀐 runtime을 읽는 권한은 core가 확인한 exact holder process의
+	// 종료 영수증에만 묶는다. lease 상태만으로 허용하면 live owner와 경쟁할 수 있다.
+	return processStatus == NativeProcessStatusDead &&
+		(lease.Status == issueops.LeaseStatusActive || lease.Status == issueops.LeaseStatusRevoking)
+}
+
+func deadOwnerRuntimeRollover(record issueops.IssueOpsRecord, processStatus string, inventory port.ExecutionOrcaOwnerInventory) bool {
+	if record.Execution == nil || record.Execution.Mode != issueops.ExecutionModeOrca || record.Execution.Orca == nil {
+		return false
+	}
+	lease := record.Execution.Lease
+	sealed := strings.TrimSpace(record.Execution.Orca.RuntimeID)
+	observed := strings.TrimSpace(inventory.RuntimeID)
+	return lease.Holder != nil && lease.Holder.SessionProcess != nil &&
+		(lease.Status == issueops.LeaseStatusActive || lease.Status == issueops.LeaseStatusRevoking) &&
+		processStatus == NativeProcessStatusDead && observed != "" && observed != sealed &&
+		inventory.TerminalID == "" && !inventory.TerminalLive
+}
+
 func validateExecutionRuntimeRollover(record issueops.IssueOpsRecord, inventory port.ExecutionOrcaOwnerInventory) error {
+	return validateExecutionRuntimeRolloverWithProcess(record, "none", inventory)
+}
+
+func validateExecutionRuntimeRolloverWithProcess(record issueops.IssueOpsRecord, processStatus string, inventory port.ExecutionOrcaOwnerInventory) error {
 	if record.Execution == nil || record.Execution.Mode != issueops.ExecutionModeOrca || record.Execution.Orca == nil {
 		return nil
 	}
 	sealed := strings.TrimSpace(record.Execution.Orca.RuntimeID)
 	observed := strings.TrimSpace(inventory.RuntimeID)
 	if observed == "" || observed == sealed {
+		return nil
+	}
+	if deadOwnerRuntimeRollover(record, processStatus, inventory) {
 		return nil
 	}
 	lease := record.Execution.Lease
