@@ -8,6 +8,24 @@ import (
 	"strings"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
+	"agent-harness/internal/domain/shelltoken"
+)
+
+// 셸 토큰 판정은 도메인 규칙이므로 shelltoken이 소유한다. 아래 별칭은 이 파일이
+// 원래 같은 패키지에서 쓰던 이름을 그대로 유지해, 분리가 호출부 문법을 바꾸지
+// 않게 한다.
+var (
+	SplitCommandTokens                 = shelltoken.SplitCommandTokens
+	HasActiveShellSpecialQuoting       = shelltoken.HasActiveShellSpecialQuoting
+	HasActiveShellComment              = shelltoken.HasActiveShellComment
+	HasActiveZshEqualsExpansion        = shelltoken.HasActiveZshEqualsExpansion
+	HasUnquotedControlOperator         = shelltoken.HasUnquotedControlOperator
+	HasUnquotedBackgroundOperator      = shelltoken.HasUnquotedBackgroundOperator
+	HasActiveCommandSubstitution       = shelltoken.HasActiveCommandSubstitution
+	HasActiveOutputRedirect            = shelltoken.HasActiveOutputRedirect
+	HasActiveInputRedirect             = shelltoken.HasActiveInputRedirect
+	HasActiveParameterOrTildeExpansion = shelltoken.HasActiveParameterOrTildeExpansion
+	HasActivePathnameExpansion         = shelltoken.HasActivePathnameExpansion
 )
 
 // ExactIssueOpsCommand은 파싱된 정확한 `agent-harness issueops …` 명령이다.
