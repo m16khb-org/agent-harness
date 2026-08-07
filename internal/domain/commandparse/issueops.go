@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
+	commandparsecontract "agent-harness/internal/contract/commandparse"
 	"agent-harness/internal/domain/shelltoken"
 )
 
@@ -135,7 +135,7 @@ func exactIssueOpsExecutable(tokens []string) bool {
 	if !filepath.IsAbs(tokens[0]) {
 		return false
 	}
-	_, provenance, present, err := issueopscontract.ConsumeGeneratedCommandProvenance(tokens[1:])
+	_, provenance, present, err := commandparsecontract.ConsumeGeneratedCommandProvenance(tokens[1:])
 	return err == nil && present && provenance.ExecutablePath == tokens[0]
 }
 
@@ -180,9 +180,9 @@ func ExactFlags(command ExactIssueOpsCommand, values, booleans, repeatable map[s
 
 func generatedCommandProvenanceValueFlag(name string) bool {
 	switch name {
-	case issueopscontract.GeneratedByExecutableFlag,
-		issueopscontract.GeneratedBySHA256Flag,
-		issueopscontract.GeneratedForGenerationFlag:
+	case commandparsecontract.GeneratedByExecutableFlag,
+		commandparsecontract.GeneratedBySHA256Flag,
+		commandparsecontract.GeneratedForGenerationFlag:
 		return true
 	default:
 		return false

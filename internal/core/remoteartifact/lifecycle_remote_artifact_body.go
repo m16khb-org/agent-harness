@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/core/commandparse"
+	"agent-harness/internal/domain/commandparse"
 )
 
 func readRemoteArtifactBodyFile(repo string, path string) string {

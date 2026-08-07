@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/core/commandparse"
+	"agent-harness/internal/domain/commandparse"
 )
 
 // issueOpsSubcommands는 `issueops <subcommand>`의 디스패치 레지스트리다.

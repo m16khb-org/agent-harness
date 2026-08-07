@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/commandparse"
+	"agent-harness/internal/domain/commandparse"
 )
 
 // cleanupSubcommandsInUsageText는 usage 문자열에서 `agent-harness issueops

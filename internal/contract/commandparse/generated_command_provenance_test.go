@@ -1,4 +1,4 @@
-package issueops
+package commandparse
 
 import (
 	"errors"

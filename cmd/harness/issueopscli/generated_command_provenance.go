@@ -4,20 +4,21 @@ import (
 	"context"
 	"strings"
 
+	commandparsecontract "agent-harness/internal/contract/commandparse"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core"
-	"agent-harness/internal/core/commandparse"
 	issueopscore "agent-harness/internal/core/issueops"
+	"agent-harness/internal/domain/commandparse"
 )
 
 func prepareGeneratedCommandInvocation(args []string, deps Dependencies) ([]string, bool, error) {
-	clean, expected, present, err := issueopscontract.ConsumeGeneratedCommandProvenance(args)
+	clean, expected, present, err := commandparsecontract.ConsumeGeneratedCommandProvenance(args)
 	if err != nil || !present {
 		return clean, false, err
 	}
 	id := issueOpsCommandID(clean)
 	if id == "" {
-		return nil, true, &issueopscontract.GeneratedCommandProvenanceError{
+		return nil, true, &commandparsecontract.GeneratedCommandProvenanceError{
 			Code: "generated_command_provenance_invalid", Message: "generated command provenance requires an IssueOps id",
 		}
 	}
@@ -33,18 +34,18 @@ func prepareGeneratedCommandInvocation(args []string, deps Dependencies) ([]stri
 		}
 	}
 	if deps.Provenance == nil {
-		return nil, true, issueopscontract.NewGeneratedCommandProvenanceObservationError(nil)
+		return nil, true, commandparsecontract.NewGeneratedCommandProvenanceObservationError(nil)
 	}
 	receipt, err := deps.Provenance.Observe(context.Background())
 	if err != nil {
-		return nil, true, issueopscontract.NewGeneratedCommandProvenanceObservationError(err)
+		return nil, true, commandparsecontract.NewGeneratedCommandProvenanceObservationError(err)
 	}
-	observed := issueopscontract.GeneratedCommandProvenance{
+	observed := commandparsecontract.GeneratedCommandProvenance{
 		ExecutablePath:   receipt.ExecutablePath,
 		ExecutableSHA256: receipt.ExecutableSHA256,
 		LeaseGeneration:  authority.Execution.Lease.Generation,
 	}
-	if err := issueopscontract.ValidateGeneratedCommandInvocation(expected, observed, authority.Execution.Lease.Generation); err != nil {
+	if err := commandparsecontract.ValidateGeneratedCommandInvocation(expected, observed, authority.Execution.Lease.Generation); err != nil {
 		return nil, true, err
 	}
 	return clean, true, nil
@@ -52,7 +53,7 @@ func prepareGeneratedCommandInvocation(args []string, deps Dependencies) ([]stri
 
 func generatedDelegatedBootstrapAuthority(args []string, child issueopscontract.IssueOpsRecord) (issueopscontract.IssueOpsRecord, error) {
 	invalid := func(message string) (issueopscontract.IssueOpsRecord, error) {
-		return issueopscontract.IssueOpsRecord{}, &issueopscontract.GeneratedCommandProvenanceError{
+		return issueopscontract.IssueOpsRecord{}, &commandparsecontract.GeneratedCommandProvenanceError{
 			Code: "generated_command_provenance_invalid", Message: message,
 		}
 	}

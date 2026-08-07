@@ -9,12 +9,13 @@ import (
 	"strings"
 	"time"
 
+	commandparsecontract "agent-harness/internal/contract/commandparse"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 
-	"agent-harness/internal/core/commandparse"
 	issueopscore "agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/lifecycle/worktreeguard"
+	"agent-harness/internal/domain/commandparse"
 	"agent-harness/internal/domain/searchrouting"
 )
 
@@ -126,9 +127,9 @@ func generatedIssueOpsExecutableBlock(req lifecyclecontract.HookToolUseLifecycle
 		return "", nil
 	}
 	commandText := strings.TrimSpace(req.Command)
-	hasEnvelope := strings.Contains(commandText, issueopscontract.GeneratedByExecutableFlag) ||
-		strings.Contains(commandText, issueopscontract.GeneratedBySHA256Flag) ||
-		strings.Contains(commandText, issueopscontract.GeneratedForGenerationFlag)
+	hasEnvelope := strings.Contains(commandText, commandparsecontract.GeneratedByExecutableFlag) ||
+		strings.Contains(commandText, commandparsecontract.GeneratedBySHA256Flag) ||
+		strings.Contains(commandText, commandparsecontract.GeneratedForGenerationFlag)
 	command, ok := commandparse.ParseExactIssueOpsCommand(commandText)
 	if !ok {
 		if hasEnvelope {
@@ -219,7 +220,7 @@ func generatedDelegatedBootstrapMatchesParent(req lifecyclecontract.HookToolUseL
 	host, hostOK := oneFlag(flags, "--host")
 	sessionID, sessionOK := oneFlag(flags, "--session-id")
 	cwd, cwdOK := oneFlag(flags, "--cwd")
-	generation, generationOK := oneFlag(flags, issueopscontract.GeneratedForGenerationFlag)
+	generation, generationOK := oneFlag(flags, commandparsecontract.GeneratedForGenerationFlag)
 	parsedGeneration, err := strconv.ParseUint(generation, 10, 64)
 	if !hostOK || !sessionOK || !cwdOK || !generationOK || err != nil || parsedGeneration != execution.Lease.Generation ||
 		!strings.EqualFold(strings.TrimSpace(host), strings.TrimSpace(execution.Lease.Holder.Host)) ||
@@ -1542,7 +1543,7 @@ func exactIssueOpsOwnerNonTargetPaths(base, commandText string) map[string]bool 
 	if !ok {
 		return nil
 	}
-	names := []string{"--session-executable", issueopscontract.GeneratedByExecutableFlag}
+	names := []string{"--session-executable", commandparsecontract.GeneratedByExecutableFlag}
 	if command.Path == "branch prepare" {
 		names = append(names, "--parent-worktree")
 	}
