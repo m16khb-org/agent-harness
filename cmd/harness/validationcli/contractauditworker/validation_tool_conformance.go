@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	"agent-harness/internal/domain/failurecause"
+	"agent-harness/internal/adapter/failurecause"
 )
 
 func ValidateToolConformance(binary, root string) StepResult {

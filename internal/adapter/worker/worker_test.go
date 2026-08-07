@@ -7,7 +7,7 @@ import (
 	"syscall"
 	"testing"
 
-	"agent-harness/internal/core/policy"
+	"agent-harness/internal/adapter/policy"
 )
 
 func TestWriteWorkerJobAtomicAndNoTempLeak(t *testing.T) {

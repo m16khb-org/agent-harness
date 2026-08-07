@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	coreinstall "agent-harness/internal/core/install"
+	coreinstall "agent-harness/internal/adapter/install"
 )
 
 var ResolveTarget = func(arg string) string {

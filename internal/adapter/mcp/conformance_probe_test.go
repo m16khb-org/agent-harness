@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	core "agent-harness/internal/core/toolconformance"
+	core "agent-harness/internal/adapter/toolconformance"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

@@ -10,10 +10,10 @@ import (
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	"agent-harness/internal/adapter/core"
 	hookadapter "agent-harness/internal/adapter/hook"
+	coreinstall "agent-harness/internal/adapter/install"
 	issueopscore "agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
-	coreinstall "agent-harness/internal/core/install"
 	"agent-harness/internal/domain/searchrouting"
 )
 

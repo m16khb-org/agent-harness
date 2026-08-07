@@ -3,8 +3,8 @@ package doctor
 import (
 	"agent-harness/internal/adapter/lifecycle"
 	"agent-harness/internal/adapter/outbound/state"
+	"agent-harness/internal/adapter/projectdoc"
 	statecontract "agent-harness/internal/contract/state"
-	"agent-harness/internal/core/projectdoc"
 )
 
 const ProjectDocsDir = projectdoc.ProjectDocsDir

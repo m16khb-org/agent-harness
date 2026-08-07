@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"agent-harness/internal/adapter/issueops/implementation"
+	"agent-harness/internal/adapter/policy"
 	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/policy"
 )
 
 // IssueOpsImplementationReviewRequest는 구현 diff에 대한 brooks 리뷰 기록이다.

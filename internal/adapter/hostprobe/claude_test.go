@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/toolconformance"
+	"agent-harness/internal/adapter/toolconformance"
 	"agent-harness/internal/port"
 )
 

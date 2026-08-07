@@ -4,9 +4,9 @@ import (
 	"time"
 
 	corestate "agent-harness/internal/adapter/outbound/state"
+	corepreflight "agent-harness/internal/adapter/preflight"
+	coretrace "agent-harness/internal/adapter/trace"
 	statecontract "agent-harness/internal/contract/state"
-	corepreflight "agent-harness/internal/core/preflight"
-	coretrace "agent-harness/internal/core/trace"
 )
 
 const StateCurrentSchemaVersion = statecontract.SchemaVersion

@@ -2,8 +2,8 @@ package projectbootstrap
 
 import (
 	"agent-harness/internal/adapter/lifecycle"
-	"agent-harness/internal/core/projectdoc"
-	"agent-harness/internal/core/projectdocs"
+	"agent-harness/internal/adapter/projectdoc"
+	"agent-harness/internal/adapter/projectdocs"
 )
 
 type ProjectDocsBootstrapRequest struct {

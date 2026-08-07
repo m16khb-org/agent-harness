@@ -10,7 +10,7 @@ import (
 
 	issueopscore "agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/adapter/issueops/remote"
-	"agent-harness/internal/core/remoteartifact"
+	"agent-harness/internal/adapter/remoteartifact"
 )
 
 // sealedIssueEditBlockReason은 봉인된 owner context에 묶인 이슈의 본문 편집을

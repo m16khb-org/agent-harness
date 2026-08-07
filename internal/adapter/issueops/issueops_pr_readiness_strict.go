@@ -6,8 +6,8 @@ import (
 
 	"agent-harness/internal/adapter/issueops/implementation"
 	"agent-harness/internal/adapter/issueops/stringlist"
+	"agent-harness/internal/adapter/preflight"
 	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/preflight"
 )
 
 func IssueOpsStrictPRReadiness(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {

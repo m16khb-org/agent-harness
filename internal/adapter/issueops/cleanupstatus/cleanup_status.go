@@ -6,8 +6,8 @@ import (
 
 	"agent-harness/internal/adapter/issueops/remote"
 	"agent-harness/internal/adapter/issueops/stringlist"
+	"agent-harness/internal/adapter/preflight"
 	model "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/preflight"
 	issueopsdomain "agent-harness/internal/domain/issueops"
 )
 

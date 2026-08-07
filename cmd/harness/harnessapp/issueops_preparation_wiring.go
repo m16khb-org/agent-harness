@@ -10,10 +10,10 @@ import (
 	"agent-harness/internal/adapter/orca"
 	preparationoutbound "agent-harness/internal/adapter/outbound/issueopspreparation"
 	"agent-harness/internal/adapter/outbound/sqlstore"
+	"agent-harness/internal/adapter/policy"
 	"agent-harness/internal/adapter/provider"
 	preparationapp "agent-harness/internal/application/issueopspreparation"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	"agent-harness/internal/core/policy"
 	"agent-harness/internal/port"
 )
 

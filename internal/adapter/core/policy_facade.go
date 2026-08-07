@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"sort"
 
-	"agent-harness/internal/core/policy"
+	"agent-harness/internal/adapter/policy"
 )
 
 type CommandPolicyRequest = policy.CommandPolicyRequest

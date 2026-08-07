@@ -10,7 +10,7 @@ import (
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	"agent-harness/internal/adapter/core"
 	hookadapter "agent-harness/internal/adapter/hook"
-	coreinstall "agent-harness/internal/core/install"
+	coreinstall "agent-harness/internal/adapter/install"
 )
 
 type Config struct {

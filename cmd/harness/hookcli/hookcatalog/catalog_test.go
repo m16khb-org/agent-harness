@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	coreinstall "agent-harness/internal/core/install"
+	coreinstall "agent-harness/internal/adapter/install"
 )
 
 func TestRunCatalogHooksWithInjectedPrinter(t *testing.T) {

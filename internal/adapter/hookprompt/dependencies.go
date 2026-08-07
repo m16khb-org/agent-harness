@@ -2,10 +2,10 @@ package hookprompt
 
 import (
 	"agent-harness/internal/adapter/lifecycle"
+	"agent-harness/internal/adapter/projectdoc"
+	"agent-harness/internal/adapter/projectdocs"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
-	"agent-harness/internal/core/projectdoc"
-	"agent-harness/internal/core/projectdocs"
 )
 
 type ProjectProfile = projectdocs.ProjectProfile

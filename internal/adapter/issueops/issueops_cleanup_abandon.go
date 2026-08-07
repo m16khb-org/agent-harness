@@ -12,9 +12,9 @@ import (
 
 	"agent-harness/internal/adapter/issueops/pathutil"
 	"agent-harness/internal/adapter/outbound/sqlstore"
+	"agent-harness/internal/adapter/preflight"
 	"agent-harness/internal/contract/issueops"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
 

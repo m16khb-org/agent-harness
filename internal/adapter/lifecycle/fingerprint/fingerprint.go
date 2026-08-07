@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"agent-harness/internal/adapter/lifecycle/model"
-	"agent-harness/internal/core/projectdocs"
+	"agent-harness/internal/adapter/projectdocs"
 )
 
 func ForRoot(root string) model.ProjectFingerprint {

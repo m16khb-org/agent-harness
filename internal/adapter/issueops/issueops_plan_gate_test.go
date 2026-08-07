@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/adapter/preflight"
 	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/preflight"
 )
 
 // B4 plan-before-execute gate: AdvanceIssueOpsPhase(...,"implement") must block

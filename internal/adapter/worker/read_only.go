@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"agent-harness/internal/core/policy"
+	"agent-harness/internal/adapter/policy"
 )
 
 func RunReadOnlyWorkerJob(kind, payload string, req policy.CommandPolicyRequest) (WorkerJob, error) {

@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	mcpadapter "agent-harness/internal/adapter/mcp"
-	"agent-harness/internal/core/toolconformance"
+	"agent-harness/internal/adapter/toolconformance"
 )
 
 type LiveRequest struct {
@@ -207,7 +207,7 @@ func evaluateBaselineReport() (toolconformance.BenchmarkReport, error) {
 }
 
 func regressionDirectory(root string) string {
-	return filepath.Join(root, "internal", "core", "toolconformance", "testdata", "regressions")
+	return filepath.Join(root, "internal", "adapter", "toolconformance", "testdata", "regressions")
 }
 
 func regressionFixtures(dir string) ([]string, error) {
@@ -454,7 +454,7 @@ func buildCandidateRegression(report toolconformance.BenchmarkReport) (toolconfo
 		ExpectedStateUnchanged:   true,
 	}
 	name := matches[0].Host + "-" + fixture.ID + "-" + firstN(signature, 12) + ".json"
-	tracked := filepath.Join("internal", "core", "toolconformance", "testdata", "regressions", name)
+	tracked := filepath.Join("internal", "adapter", "toolconformance", "testdata", "regressions", name)
 	return regression, tracked, nil
 }
 

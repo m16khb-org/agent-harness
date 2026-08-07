@@ -7,13 +7,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"agent-harness/internal/adapter/docs"
 	"agent-harness/internal/adapter/draftwiki/queue"
 	"agent-harness/internal/adapter/lifecycle"
 	"agent-harness/internal/adapter/outbound/state"
+	"agent-harness/internal/adapter/policy"
+	"agent-harness/internal/adapter/projectdoc"
 	coreworker "agent-harness/internal/adapter/worker"
-	"agent-harness/internal/core/docs"
-	"agent-harness/internal/core/policy"
-	"agent-harness/internal/core/projectdoc"
 	"agent-harness/internal/domain/judgement"
 	"agent-harness/internal/domain/prompt"
 )

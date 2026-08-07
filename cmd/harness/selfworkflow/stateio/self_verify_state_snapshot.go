@@ -8,7 +8,7 @@ import (
 	statecontract "agent-harness/internal/contract/state"
 
 	"agent-harness/internal/adapter/core"
-	"agent-harness/internal/domain/failurecause"
+	"agent-harness/internal/adapter/failurecause"
 )
 
 func ReadSelfAugmentStateSnapshot(key string) (SelfAugmentStateSnapshot, error) {

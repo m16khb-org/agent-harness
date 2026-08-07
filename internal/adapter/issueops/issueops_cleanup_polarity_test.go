@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"agent-harness/internal/adapter/preflight"
 	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/preflight"
 )
 
 // cleanup 진단의 `missing`은 **충족되지 않은 요구**의 목록이다. 그 안에 상태 차단을

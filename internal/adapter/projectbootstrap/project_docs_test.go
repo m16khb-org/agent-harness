@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"agent-harness/internal/adapter/draftwiki"
-	"agent-harness/internal/core/projectdoc"
-	"agent-harness/internal/core/projectdocs"
+	"agent-harness/internal/adapter/projectdoc"
+	"agent-harness/internal/adapter/projectdocs"
 )
 
 func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {

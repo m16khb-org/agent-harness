@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"agent-harness/internal/core/repopath"
+	"agent-harness/internal/adapter/repopath"
 )
 
 func ListDraftWiki(req DraftWikiListRequest) (DraftWikiListResult, error) {

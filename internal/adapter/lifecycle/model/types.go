@@ -1,8 +1,8 @@
 package model
 
 import (
+	"agent-harness/internal/adapter/projectdocs"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
-	"agent-harness/internal/core/projectdocs"
 )
 
 const ProjectLifecycleSchemaVersion = 1

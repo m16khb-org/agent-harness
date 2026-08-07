@@ -9,7 +9,7 @@ import (
 	"agent-harness/cmd/harness/contractcli"
 	"agent-harness/internal/adapter/hostprobe"
 	mcpadapter "agent-harness/internal/adapter/mcp"
-	"agent-harness/internal/core/toolconformance"
+	"agent-harness/internal/adapter/toolconformance"
 	"agent-harness/internal/port"
 )
 
