@@ -167,12 +167,15 @@ type ExecutionOrcaOwnerInventoryRequest struct {
 }
 
 type ExecutionOrcaOwnerInventory struct {
-	RuntimeID      string `json:"runtime_id,omitempty"`
-	TerminalLive   bool   `json:"terminal_live"`
-	TaskLive       bool   `json:"task_live"`
-	TerminalID     string `json:"terminal_id,omitempty"`
-	TaskStatus     string `json:"task_status,omitempty"`
-	DispatchStatus string `json:"dispatch_status,omitempty"`
+	RuntimeID                 string `json:"runtime_id,omitempty"`
+	TerminalLive              bool   `json:"terminal_live"`
+	TerminalInventoryComplete bool   `json:"terminal_inventory_complete"`
+	TaskLive                  bool   `json:"task_live"`
+	TerminalID                string `json:"terminal_id,omitempty"`
+	TaskStatus                string `json:"task_status,omitempty"`
+	DispatchStatus            string `json:"dispatch_status,omitempty"`
+	DispatchAssigneeHandle    string `json:"dispatch_assignee_handle,omitempty"`
+	DispatchAssigneePresent   bool   `json:"dispatch_assignee_present"`
 }
 
 type ExecutionOrcaOwnerInspector interface {

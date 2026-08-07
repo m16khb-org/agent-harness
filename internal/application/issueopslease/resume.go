@@ -60,7 +60,7 @@ func (s *ResumeService) Resume(ctx context.Context, request ResumeRequest) (Resu
 		if snapshot.Record.Stable.Execution == nil || snapshot.Record.Stable.Execution.Orca == nil {
 			return fmt.Errorf("execution resume requires an existing Orca binding")
 		}
-		preflight := resumeDomainRequest(snapshot.Record.Stable, request.ExpectedGeneration, s.paths.Matches(request.CWD, snapshot.Record.CanonicalRoot), leasedomain.ResumeInventory{}, true)
+		preflight := resumeDomainRequest(snapshot.Record.Stable, request.ExpectedGeneration, s.paths.Matches(request.CWD, snapshot.Record.CanonicalRoot), leasedomain.ResumeInventory{})
 		if _, err := leasedomain.PlanResume(preflight); err != nil {
 			return err
 		}
@@ -68,11 +68,11 @@ func (s *ResumeService) Resume(ctx context.Context, request ResumeRequest) (Resu
 		if err != nil {
 			return err
 		}
-		inventory, runtimeCompatible, err := s.owners.Observe(fenceCtx, snapshot.Record.Stable)
+		inventory, err := s.owners.Observe(fenceCtx, snapshot.Record.Stable)
 		if err != nil {
 			return err
 		}
-		plan, err := leasedomain.PlanResume(resumeDomainRequest(snapshot.Record.Stable, request.ExpectedGeneration, true, inventory, runtimeCompatible))
+		plan, err := leasedomain.PlanResume(resumeDomainRequest(snapshot.Record.Stable, request.ExpectedGeneration, true, inventory))
 		if err != nil {
 			return err
 		}
@@ -143,13 +143,13 @@ func (s *ResumeService) Resume(ctx context.Context, request ResumeRequest) (Resu
 	return result, nil
 }
 
-func resumeDomainRequest(record leasecontract.Record, generation uint64, canonicalCWD bool, inventory leasedomain.ResumeInventory, runtimeCompatible bool) leasedomain.ResumeRequest {
+func resumeDomainRequest(record leasecontract.Record, generation uint64, canonicalCWD bool, inventory leasedomain.ResumeInventory) leasedomain.ResumeRequest {
 	binding := record.Execution.Orca
 	return leasedomain.ResumeRequest{
 		ExpectedGeneration: generation, Lease: toDomainLease(record.Execution.Lease), BindingGeneration: binding.LeaseGeneration,
 		BindingRuntimeID: binding.RuntimeID, BindingTerminalID: binding.TerminalPTYID, CanonicalCWD: canonicalCWD,
 		ModeOrca: record.Execution.Mode == "orca", BindingPresent: binding != nil, PendingAbsent: record.Execution.Pending == nil,
-		RuntimeCompatible: runtimeCompatible, Inventory: inventory,
+		Inventory: inventory,
 	}
 }
 

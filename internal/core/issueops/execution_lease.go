@@ -316,6 +316,13 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 			if err != nil {
 				return cleanupReplacementFailure(record, err)
 			}
+			if binding := record.Execution.Orca; binding != nil {
+				binding.LeaseGeneration = lease.Generation
+				binding.ArtifactIdentityVersion = issueops.OrcaArtifactIdentityVersion
+				binding.IssueBodySHA256 = reseal.issueBodySHA256
+				binding.ContextPacketSHA256 = reseal.packetSHA256
+				binding.OwnerPromptSHA256 = reseal.promptSHA256
+			}
 			resealed = reseal
 			persisted, err = persistExecutionTransition(stateRoot, record, nil)
 			if err != nil {

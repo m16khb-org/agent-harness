@@ -438,8 +438,133 @@ func TestReseedServicePersistsOrcaArtifactIdentityBeforeCommit(t *testing.T) {
 	if committed.ArtifactIdentityVersion != leasecontract.OrcaArtifactIdentityVersion {
 		t.Fatalf("committed artifact identity version=%d want=%d", committed.ArtifactIdentityVersion, leasecontract.OrcaArtifactIdentityVersion)
 	}
-	if committed.LeaseGeneration != 3 {
-		t.Fatalf("previous owner binding generation=%d want=3", committed.LeaseGeneration)
+	if committed.LeaseGeneration != 4 {
+		t.Fatalf("reseeded binding generation=%d want=4", committed.LeaseGeneration)
+	}
+}
+
+func TestReseedServicePersistsSettledHolderlessRuntimeRollover(t *testing.T) {
+	record := reseedTestRecord("claimable", 3)
+	record.Stable.Execution.Mode = "orca"
+	record.Stable.Execution.Workspace.Driver = "orca"
+	record.Stable.Execution.Orca = &leasecontract.OrcaBinding{
+		RuntimeID: "runtime-old", RepoID: "repo", WorktreeID: "worktree", LeaseGeneration: 3,
+		OwnerHost: "codex", OwnerModel: "model", TaskID: "task", DispatchID: "dispatch",
+	}
+	var committed leasecontract.OrcaBinding
+	service := NewReseedService(
+		reseedFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		reseedRepositoryFake{snapshot: ReseedSnapshot{Record: record}, commit: func(_ context.Context, _ ReseedSnapshot, next Record) (RepositoryResult, error) {
+			committed = *next.Stable.Execution.Orca
+			return RepositoryResult{Record: next, Execution: *next.Stable.Execution}, nil
+		}},
+		reseedInventoryFunc(func(context.Context, leasecontract.Record, leasedomain.Actor) (ReseedInventoryReceipt, error) {
+			return ReseedInventoryReceipt{
+				Fingerprint: "current", RuntimeID: "runtime-current",
+				Inventory: leasedomain.ResumeInventory{RuntimeID: "runtime-current", TerminalInventoryComplete: true, TaskStatus: "failed", DispatchStatus: "dispatched", DispatchAssigneeHandle: "term-old"},
+			}, nil
+		}),
+		baseSyncInspectorFunc(func(context.Context, basesyncport.Request) (basesyncport.Receipt, error) {
+			return basesyncport.Receipt{}, nil
+		}),
+		reseedArtifactsFake{prepare: func(context.Context, leasecontract.Record) (ReseedArtifactReceipt, error) {
+			return ReseedArtifactReceipt{TokenSHA256: strings.Repeat("d", 64)}, nil
+		}, cleanup: func(context.Context, leasecontract.Record) error { return nil }},
+		fixedClock{now: time.Date(2026, 7, 30, 9, 0, 0, 0, time.UTC)},
+		func(context.Context, leasedomain.ProcessReceipt) (string, leasedomain.ProcessReceipt, error) {
+			return "live", leasedomain.ProcessReceipt{PID: 1, StartedAt: "start", Executable: "codex"}, nil
+		},
+		reseedPathMatcher{},
+	)
+	if _, err := service.Reseed(context.Background(), reseedServiceRequest(record.ID)); err != nil {
+		t.Fatalf("reseed: %v", err)
+	}
+	if committed.RuntimeID != "runtime-current" || committed.LeaseGeneration != 4 {
+		t.Fatalf("reseeded Orca binding=%+v", committed)
+	}
+}
+
+func TestReseedServiceRejectsChangedOwnerEvidenceFingerprintBeforePrepare(t *testing.T) {
+	record := reseedTestRecord("claimable", 3)
+	record.Stable.Execution.Mode = "orca"
+	record.Stable.Execution.Workspace.Driver = "orca"
+	record.Stable.Execution.Orca = &leasecontract.OrcaBinding{RuntimeID: "runtime-old", WorktreeID: "worktree", TaskID: "task", DispatchID: "dispatch"}
+	prepares := 0
+	service := NewReseedService(
+		reseedFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		reseedRepositoryFake{snapshot: ReseedSnapshot{Record: record}},
+		reseedInventoryFunc(func(context.Context, leasecontract.Record, leasedomain.Actor) (ReseedInventoryReceipt, error) {
+			return ReseedInventoryReceipt{
+				Fingerprint: "changed-owner-evidence",
+				Inventory: leasedomain.ResumeInventory{
+					RuntimeID: "runtime-current", TerminalInventoryComplete: true, TaskStatus: "failed", DispatchStatus: "pending", DispatchAssigneeHandle: "term-old",
+				},
+			}, nil
+		}),
+		baseSyncInspectorFunc(func(context.Context, basesyncport.Request) (basesyncport.Receipt, error) {
+			return basesyncport.Receipt{}, nil
+		}),
+		reseedArtifactsFake{prepare: func(context.Context, leasecontract.Record) (ReseedArtifactReceipt, error) {
+			prepares++
+			return ReseedArtifactReceipt{}, nil
+		}, cleanup: func(context.Context, leasecontract.Record) error { return nil }},
+		fixedClock{now: time.Date(2026, 7, 30, 9, 0, 0, 0, time.UTC)},
+		func(context.Context, leasedomain.ProcessReceipt) (string, leasedomain.ProcessReceipt, error) {
+			return "live", leasedomain.ProcessReceipt{PID: 1, StartedAt: "start", Executable: "codex"}, nil
+		},
+		reseedPathMatcher{},
+	)
+	request := reseedServiceRequest(record.ID)
+	request.InventoryFingerprint = "preview-owner-evidence"
+	if _, err := service.Reseed(context.Background(), request); err == nil || !strings.Contains(err.Error(), "stale replacement inventory fingerprint") {
+		t.Fatalf("reseed error=%v", err)
+	}
+	if prepares != 0 {
+		t.Fatalf("changed owner evidence reached artifact preparation %d times", prepares)
+	}
+}
+
+func TestReseedServiceRejectsUnsettledRolloverAfterFingerprintMatch(t *testing.T) {
+	record := reseedTestRecord("claimable", 3)
+	record.Stable.Execution.Mode = "orca"
+	record.Stable.Execution.Workspace.Driver = "orca"
+	record.Stable.Execution.Orca = &leasecontract.OrcaBinding{RuntimeID: "runtime-old", WorktreeID: "worktree", TaskID: "task", DispatchID: "dispatch"}
+	prepares := 0
+	service := NewReseedService(
+		reseedFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		reseedRepositoryFake{snapshot: ReseedSnapshot{Record: record}},
+		reseedInventoryFunc(func(context.Context, leasecontract.Record, leasedomain.Actor) (ReseedInventoryReceipt, error) {
+			return ReseedInventoryReceipt{
+				Fingerprint: "current",
+				Inventory: leasedomain.ResumeInventory{
+					RuntimeID: "runtime-current", TerminalInventoryComplete: true, TaskStatus: "failed", DispatchStatus: "pending", DispatchAssigneeHandle: "term-old",
+				},
+			}, nil
+		}),
+		baseSyncInspectorFunc(func(context.Context, basesyncport.Request) (basesyncport.Receipt, error) {
+			return basesyncport.Receipt{}, nil
+		}),
+		reseedArtifactsFake{prepare: func(context.Context, leasecontract.Record) (ReseedArtifactReceipt, error) {
+			prepares++
+			return ReseedArtifactReceipt{}, nil
+		}, cleanup: func(context.Context, leasecontract.Record) error { return nil }},
+		fixedClock{now: time.Date(2026, 7, 30, 9, 0, 0, 0, time.UTC)},
+		func(context.Context, leasedomain.ProcessReceipt) (string, leasedomain.ProcessReceipt, error) {
+			return "live", leasedomain.ProcessReceipt{PID: 1, StartedAt: "start", Executable: "codex"}, nil
+		},
+		reseedPathMatcher{},
+	)
+	if _, err := service.Reseed(context.Background(), reseedServiceRequest(record.ID)); err == nil || !strings.Contains(err.Error(), "resume_runtime_identity") {
+		t.Fatalf("reseed error=%v", err)
+	}
+	if prepares != 0 {
+		t.Fatalf("unsettled rollover reached artifact preparation %d times", prepares)
 	}
 }
 
@@ -670,8 +795,12 @@ func (r *serializedReseedRepository) CommitReseed(_ context.Context, _ ReseedSna
 }
 
 func newReseedServiceForTest(fence ReseedFence, repository ReseedRepository, artifacts ReseedArtifacts) *ReseedService {
-	return NewReseedService(fence, repository, reseedInventoryFunc(func(context.Context, leasecontract.Record, leasedomain.Actor) (ReseedInventoryReceipt, error) {
-		return ReseedInventoryReceipt{Fingerprint: "current"}, nil
+	return NewReseedService(fence, repository, reseedInventoryFunc(func(_ context.Context, record leasecontract.Record, _ leasedomain.Actor) (ReseedInventoryReceipt, error) {
+		inventory := leasedomain.ResumeInventory{}
+		if record.Execution != nil && record.Execution.Orca != nil {
+			inventory.RuntimeID = record.Execution.Orca.RuntimeID
+		}
+		return ReseedInventoryReceipt{Fingerprint: "current", Inventory: inventory}, nil
 	}), baseSyncInspectorFunc(func(context.Context, basesyncport.Request) (basesyncport.Receipt, error) {
 		return basesyncport.Receipt{}, nil
 	}), artifacts, fixedClock{now: time.Date(2026, 7, 30, 9, 0, 0, 0, time.UTC)}, func(context.Context, leasedomain.ProcessReceipt) (string, leasedomain.ProcessReceipt, error) {

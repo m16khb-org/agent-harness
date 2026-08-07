@@ -76,6 +76,7 @@ type ReseedRepository interface {
 type ReseedInventoryReceipt struct {
 	Fingerprint string
 	RuntimeID   string
+	Inventory   issueopslease.ResumeInventory
 }
 
 type ReseedInventory interface {
@@ -133,7 +134,7 @@ type ResumeArtifacts interface {
 }
 
 type ResumeOwnerInventory interface {
-	Observe(context.Context, leasecontract.Record) (issueopslease.ResumeInventory, bool, error)
+	Observe(context.Context, leasecontract.Record) (issueopslease.ResumeInventory, error)
 }
 
 type ResumeStageExecutor interface {

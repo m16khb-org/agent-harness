@@ -11,9 +11,9 @@ import (
 
 func TestResumeOwnerAndStageAdaptersDelegateOnce(t *testing.T) {
 	ownerCalls, inspectCalls, invokeCalls := 0, 0, 0
-	owner := NewResumeOwnerInventory(func(context.Context, leasecontract.Record) (leasedomain.ResumeInventory, bool, error) {
+	owner := NewResumeOwnerInventory(func(context.Context, leasecontract.Record) (leasedomain.ResumeInventory, error) {
 		ownerCalls++
-		return leasedomain.ResumeInventory{RuntimeID: "runtime"}, true, nil
+		return leasedomain.ResumeInventory{RuntimeID: "runtime"}, nil
 	})
 	stages := NewResumeStageExecutor(
 		func(context.Context, leaseapp.ResumeIntentState) (leasecontract.ResumeStageInventory, error) {
@@ -25,8 +25,8 @@ func TestResumeOwnerAndStageAdaptersDelegateOnce(t *testing.T) {
 			return leasecontract.ResumeStageReceipt{TerminalPTYID: "pty"}, nil
 		},
 	)
-	if _, compatible, err := owner.Observe(context.Background(), resumeRepositoryRecord(t, 1)); err != nil || !compatible {
-		t.Fatalf("owner err=%v compatible=%t", err, compatible)
+	if _, err := owner.Observe(context.Background(), resumeRepositoryRecord(t, 1)); err != nil {
+		t.Fatalf("owner err=%v", err)
 	}
 	if _, err := stages.Inspect(context.Background(), leaseapp.ResumeIntentState{}); err != nil {
 		t.Fatal(err)

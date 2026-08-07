@@ -447,7 +447,7 @@ func (c *Client) listTerminalsInventory(ctx context.Context, worktreeID string) 
 		value.StableTabTitle = stableTitles[visualTabKey(value.TabID, value.LeafID)]
 		result = append(result, value)
 	}
-	return executionTerminalInventory{RuntimeID: runtimeID, Rows: result}, nil
+	return executionTerminalInventory{RuntimeID: runtimeID, Rows: result, Complete: true}, nil
 }
 
 func (c *Client) showTerminalInventory(ctx context.Context, handle string) (executionTerminalDetailInventory, error) {

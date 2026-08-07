@@ -16,8 +16,7 @@ func TestPlanResumeDecisionTable(t *testing.T) {
 		ModeOrca:           true,
 		BindingPresent:     true,
 		PendingAbsent:      true,
-		RuntimeCompatible:  true,
-		Inventory:          ResumeInventory{RuntimeID: "runtime", TerminalID: "pty-3"},
+		Inventory:          ResumeInventory{RuntimeID: "runtime"},
 	}
 	for _, test := range []struct {
 		name string
@@ -32,14 +31,20 @@ func TestPlanResumeDecisionTable(t *testing.T) {
 			r.Inventory.TerminalLive = true
 			r.Inventory.TaskLive = true
 		}, deny: DenyResumeOwnerLive},
-		{name: "reuse terminal", edit: func(r *ResumeRequest) { r.Inventory.TerminalLive = true }, want: ResumeReuseTerminal},
+		{name: "reuse terminal", edit: func(r *ResumeRequest) { r.Inventory.TerminalLive = true; r.Inventory.TerminalID = "pty-3" }, want: ResumeReuseTerminal},
 		{name: "changed terminal", edit: func(r *ResumeRequest) { r.Inventory.TerminalLive = true; r.Inventory.TerminalID = "other" }, deny: DenyResumeTerminalIdentity},
+		{name: "matching ghost terminal", edit: func(r *ResumeRequest) { r.Inventory.TerminalID = "pty-3" }, deny: DenyResumeTerminalIdentity},
 		{name: "new terminal", edit: func(r *ResumeRequest) {}, want: ResumeCreateTerminal},
-		{name: "runtime mismatch", edit: func(r *ResumeRequest) { r.RuntimeCompatible = false }, deny: DenyResumeRuntimeIdentity},
+		{name: "unsafe runtime rollover", edit: func(r *ResumeRequest) {
+			r.Inventory.RuntimeID = "runtime-current"
+			r.Inventory.TaskStatus = "ready"
+		}, deny: DenyResumeRuntimeIdentity},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			request := base
-			test.edit(&request)
+			if test.edit != nil {
+				test.edit(&request)
+			}
 			plan, err := PlanResume(request)
 			if test.deny != "" {
 				if DenyCodeOf(err) != test.deny {
@@ -49,6 +54,51 @@ func TestPlanResumeDecisionTable(t *testing.T) {
 			}
 			if err != nil || plan.Disposition != test.want {
 				t.Fatalf("plan=%#v err=%v want=%q", plan, err, test.want)
+			}
+		})
+	}
+}
+
+func TestValidateHolderlessRuntimeRolloverEvidence(t *testing.T) {
+	base := HolderlessRuntimeRolloverRequest{
+		Lease:            Lease{Generation: 3, Status: "claimable", ClaimTokenSHA256: strings.Repeat("a", 64)},
+		BindingRuntimeID: "runtime-old",
+		Inventory: ResumeInventory{
+			RuntimeID: "runtime-current", TerminalInventoryComplete: true, TaskStatus: "failed",
+			DispatchStatus: "dispatched", DispatchAssigneeHandle: "term-old",
+		},
+	}
+	for _, test := range []struct {
+		name string
+		edit func(*HolderlessRuntimeRolloverRequest)
+		deny bool
+	}{
+		{name: "settled stale owner with absent assignee"},
+		{name: "same runtime", edit: func(r *HolderlessRuntimeRolloverRequest) { r.Inventory.RuntimeID = r.BindingRuntimeID }},
+		{name: "released holderless lease", edit: func(r *HolderlessRuntimeRolloverRequest) { r.Lease.Status = "released" }},
+		{name: "live task", edit: func(r *HolderlessRuntimeRolloverRequest) { r.Inventory.TaskLive = true }, deny: true},
+		{name: "matching ghost terminal", edit: func(r *HolderlessRuntimeRolloverRequest) { r.Inventory.TerminalID = "pty-old" }, deny: true},
+		{name: "present assignee", edit: func(r *HolderlessRuntimeRolloverRequest) { r.Inventory.DispatchAssigneePresent = true }, deny: true},
+		{name: "missing assignee identity", edit: func(r *HolderlessRuntimeRolloverRequest) { r.Inventory.DispatchAssigneeHandle = "" }, deny: true},
+		{name: "unsettled task", edit: func(r *HolderlessRuntimeRolloverRequest) { r.Inventory.TaskStatus = "ready" }, deny: true},
+		{name: "unsettled dispatch", edit: func(r *HolderlessRuntimeRolloverRequest) { r.Inventory.DispatchStatus = "pending" }, deny: true},
+		{name: "incomplete terminal inventory", edit: func(r *HolderlessRuntimeRolloverRequest) { r.Inventory.TerminalInventoryComplete = false }, deny: true},
+		{name: "live holder", edit: func(r *HolderlessRuntimeRolloverRequest) { r.Lease.Holder = &Actor{Host: "codex", SessionID: "owner"} }, deny: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			request := base
+			if test.edit != nil {
+				test.edit(&request)
+			}
+			err := ValidateHolderlessRuntimeRollover(request)
+			if test.deny {
+				if err == nil {
+					t.Fatal("runtime rollover was allowed")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("runtime rollover was rejected: %v", err)
 			}
 		})
 	}

@@ -96,6 +96,24 @@ func TestExecutionReplacementRecoversDeadOwnerAfterOrcaRuntimeRollover(t *testin
 	if finalized.Execution.Lease.Generation != 2 || finalized.Execution.Lease.Status != contractissueops.LeaseStatusClaimable || finalized.Execution.Lease.Holder != nil {
 		t.Fatalf("finalized rollover lease is not claimable: %#v", finalized.Execution.Lease)
 	}
+	if finalized.Execution.Orca.LeaseGeneration != finalized.Execution.Lease.Generation ||
+		finalized.Execution.Orca.ArtifactIdentityVersion != contractissueops.OrcaArtifactIdentityVersion ||
+		finalized.Execution.Orca.IssueBodySHA256 != finalized.IssueBodySHA256 ||
+		finalized.Execution.Orca.ContextPacketSHA256 != finalized.ContextPacketSHA256 ||
+		finalized.Execution.Orca.OwnerPromptSHA256 != finalized.OwnerPromptSHA256 {
+		t.Fatalf("finalize did not persist its generation-specific Orca identity: binding=%#v result=%#v", finalized.Execution.Orca, finalized)
+	}
+	persisted, err := ReadIssueOps(stateRoot, record.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.Execution.Orca.LeaseGeneration != finalized.Execution.Lease.Generation ||
+		persisted.Execution.Orca.ArtifactIdentityVersion != contractissueops.OrcaArtifactIdentityVersion ||
+		persisted.Execution.Orca.IssueBodySHA256 != finalized.IssueBodySHA256 ||
+		persisted.Execution.Orca.ContextPacketSHA256 != finalized.ContextPacketSHA256 ||
+		persisted.Execution.Orca.OwnerPromptSHA256 != finalized.OwnerPromptSHA256 {
+		t.Fatalf("durable finalize identity=%#v result=%#v", persisted.Execution.Orca, finalized)
+	}
 }
 
 func TestExecutionReplacementRuntimeRolloverSafetyBoundaries(t *testing.T) {
