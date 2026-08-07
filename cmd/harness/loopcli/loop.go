@@ -1,12 +1,11 @@
 package loopcli
 
 import (
+	looprun "agent-harness/internal/adapter/looprun"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
-
-	"agent-harness/internal/adapter/core"
 )
 
 type repeatedFlag []string
@@ -62,7 +61,7 @@ func runStart(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := core.StartLoopRun(core.LoopRunStartRequest{
+	result, err := looprun.Start(looprun.StartLoopRequest{
 		Repo:        *repo,
 		Name:        *name,
 		Goal:        *goal,
@@ -82,7 +81,7 @@ func runRecordAttempt(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := core.RecordLoopAttempt(*id, core.LoopRunRecordAttemptRequest{
+	result, err := looprun.RecordAttempt(*id, looprun.RecordAttemptRequest{
 		Verdict:  *verdict,
 		Evidence: []string(evidence),
 	})
@@ -101,12 +100,12 @@ func runStatus(args []string) error {
 	loopID := *id
 	var err error
 	if loopID == "" {
-		loopID, err = core.ResolveLoopRunID(*repo, *name)
+		loopID, err = looprun.ResolveID(*repo, *name)
 		if err != nil {
-			return printLoopResult(core.LoopRunStatusResult{OK: false}, err, *jsonOut)
+			return printLoopResult(looprun.StatusResult{OK: false}, err, *jsonOut)
 		}
 	}
-	result, err := core.LoopRunStatus(loopID)
+	result, err := looprun.Status(loopID)
 	return printLoopResult(result, err, *jsonOut)
 }
 
@@ -120,9 +119,9 @@ func runStop(args []string) error {
 		return err
 	}
 	if *success && *reason != "" {
-		return printLoopResult(core.LoopRun{OK: false}, fmt.Errorf("success_and_reason_conflict"), *jsonOut)
+		return printLoopResult(looprun.LoopRun{OK: false}, fmt.Errorf("success_and_reason_conflict"), *jsonOut)
 	}
-	result, err := core.StopLoopRun(*id, *success, *reason)
+	result, err := looprun.Stop(*id, *success, *reason)
 	return printLoopResult(result, err, *jsonOut)
 }
 

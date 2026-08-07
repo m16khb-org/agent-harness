@@ -53,14 +53,14 @@ cmd/harness/issueopscli/remotecmd -> internal/adapter/issueops/remote
 cmd/harness/issueopscli/remotecmd -> internal/adapter/provider
 cmd/harness/issueopscli/remoteverify -> internal/adapter/issueops
 cmd/harness/issueopscli/remoteverify -> internal/adapter/provider/remoteparse
-cmd/harness/loopcli -> internal/adapter/core
+cmd/harness/loopcli -> internal/adapter/looprun
 cmd/harness/mcpcli -> internal/adapter/audit
 cmd/harness/mcpcli -> internal/adapter/commitsuggest
-cmd/harness/mcpcli -> internal/adapter/core
 cmd/harness/mcpcli -> internal/adapter/docs
 cmd/harness/mcpcli -> internal/adapter/inspect
 cmd/harness/mcpcli -> internal/adapter/issueops
 cmd/harness/mcpcli -> internal/adapter/lintdiagnose
+cmd/harness/mcpcli -> internal/adapter/looprun
 cmd/harness/mcpcli -> internal/adapter/mcp
 cmd/harness/mcpcli -> internal/adapter/outbound/state
 cmd/harness/mcpcli -> internal/adapter/outbound/webfetch
