@@ -263,7 +263,7 @@ func issueOpsFeedbackCleanupDeps(provenance provenanceport.Observer) feedbackcle
 		// cleanup abandon의 artifact 게이트는 미병합을 요구하므로 조회 실패와
 		// 미병합을 구분하는 별도 관측 표면을 쓴다(#342).
 		ObserveArtifactMerged: observeIssueOpsRemoteArtifactMergedLive,
-		Provider:         provider.Resolve,
+		Provider:              provider.Resolve,
 		OrphanPreview: func(ctx context.Context, request orphancleanup.Request) (orphancleanup.Result, error) {
 			return orphancleanup.Preview(ctx, request, orphanDeps)
 		},
