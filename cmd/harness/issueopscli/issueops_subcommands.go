@@ -7,9 +7,8 @@ import (
 	"strings"
 
 	issueopscore "agent-harness/internal/adapter/issueops"
+	"agent-harness/internal/adapter/issueops/loopgate"
 	issueopscontract "agent-harness/internal/contract/issueops"
-
-	"agent-harness/internal/adapter/core"
 )
 
 // This file holds the individual `issueops <subcommand>` handlers. runIssueOps
@@ -324,7 +323,7 @@ func runIssueOpsPhase(args []string) error {
 		}
 		return err
 	}
-	record, err := core.AdvanceIssueOpsPhaseWithActor(issueopscore.IssueOpsStateRoot(), *id, *to, actor.actor())
+	record, err := loopgate.AdvancePhaseWithActor(issueopscore.IssueOpsStateRoot(), *id, *to, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -347,7 +346,7 @@ func runIssueOpsPRReadiness(args []string) error {
 	}
 	readiness := issueopscore.IssueOpsPRReadiness(record)
 	if *strict {
-		readiness = core.IssueOpsStrictPRReadinessWithState(issueopscore.IssueOpsStateRoot(), record)
+		readiness = loopgate.StrictPRReadinessWithState(issueopscore.IssueOpsStateRoot(), record)
 	}
 	if *jsonOut {
 		return printJSON(readiness)

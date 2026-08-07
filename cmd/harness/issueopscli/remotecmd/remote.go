@@ -516,7 +516,7 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 	if err := validateConfirmRemoteCreate(*confirm, labels, assignees); err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	result, err := core.CreateRemoteIssue(port.IssueProviderCreateIssueRequest{
+	result, err := issueopscore.CreateRemoteIssue(port.IssueProviderCreateIssueRequest{
 		Repo:      record.Repo,
 		Title:     *title,
 		Body:      finalBody,
@@ -628,7 +628,7 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 			return deps.printErrorResult(*jsonOut, validateErr)
 		}
 	}
-	result, err := core.CreateRemoteChild(port.IssueProviderCreateChildRequest{
+	result, err := issueopscore.CreateRemoteChild(port.IssueProviderCreateChildRequest{
 		Repo:           record.Repo,
 		ParentIssueURL: record.IssueURL,
 		Title:          *title,

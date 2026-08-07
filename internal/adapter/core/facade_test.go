@@ -166,7 +166,7 @@ func TestIssueOpsDraftWikiWorkflowAndWorkerFacades(t *testing.T) {
 		t.Fatalf("AddIssueOpsDecision: %v", err)
 	}
 	record, _ = ReadIssueOps(IssueOpsStateRoot(), record.ID)
-	if IssueOpsPRReadiness(record).Ready || IssueOpsStrictPRReadiness(record).Ready {
+	if IssueOpsPRReadiness(record).Ready {
 		t.Fatal("incomplete record should not be PR-ready")
 	}
 	_ = IssueOpsImplementationReadiness(record)

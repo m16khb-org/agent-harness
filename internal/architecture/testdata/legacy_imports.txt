@@ -11,7 +11,6 @@ cmd/harness/contractcli -> internal/adapter/cli
 cmd/harness/contractcli -> internal/adapter/mcp
 cmd/harness/contractcli -> internal/adapter/toolconformance
 cmd/harness/draftwikicli -> internal/adapter/draftwiki
-cmd/harness/hookcli -> internal/adapter/core
 cmd/harness/hookcli -> internal/adapter/hook
 cmd/harness/hookcli -> internal/adapter/hookmetrics
 cmd/harness/hookcli -> internal/adapter/hookprompt
@@ -27,7 +26,6 @@ cmd/harness/hookcli/hookcatalog -> internal/adapter/install
 cmd/harness/hookcli/hookcatalog -> internal/adapter/lifecycle
 cmd/harness/hookcli/hookcatalog -> internal/adapter/outbound/state
 cmd/harness/hookcli/hookcatalog -> internal/adapter/worker
-cmd/harness/hookcli/hookfailure -> internal/adapter/core
 cmd/harness/hookcli/hookfailure -> internal/adapter/hookfailure
 cmd/harness/hookcli/hookfailure -> internal/adapter/hookmetrics
 cmd/harness/installcli -> internal/adapter/claude
@@ -37,8 +35,8 @@ cmd/harness/installcli -> internal/adapter/installutil
 cmd/harness/installcli -> internal/adapter/issueops
 cmd/harness/installcli -> internal/adapter/mcp
 cmd/harness/issueopscli -> internal/adapter/cli
-cmd/harness/issueopscli -> internal/adapter/core
 cmd/harness/issueopscli -> internal/adapter/issueops
+cmd/harness/issueopscli -> internal/adapter/issueops/loopgate
 cmd/harness/issueopscli -> internal/adapter/issueops/orphancleanup
 cmd/harness/issueopscli -> internal/adapter/operationalhealth
 cmd/harness/issueopscli -> internal/adapter/orca
@@ -47,7 +45,6 @@ cmd/harness/issueopscli/benchmarkartifact -> internal/adapter/issueops
 cmd/harness/issueopscli/benchmarkcmd -> internal/adapter/issueops
 cmd/harness/issueopscli/benchmarkcmd -> internal/adapter/outbound/state
 cmd/harness/issueopscli/executioncmd -> internal/adapter/issueops
-cmd/harness/issueopscli/feedbackcleanup -> internal/adapter/core
 cmd/harness/issueopscli/feedbackcleanup -> internal/adapter/issueops
 cmd/harness/issueopscli/feedbackcleanup -> internal/adapter/issueops/orphancleanup
 cmd/harness/issueopscli/remotecmd -> internal/adapter/core
@@ -80,7 +77,6 @@ cmd/harness/mcpcli/resources -> internal/adapter/outbound/state
 cmd/harness/mcpcli/resources -> internal/adapter/policy
 cmd/harness/mcpcli/resources -> internal/adapter/projectdocs
 cmd/harness/policycli -> internal/adapter/audit
-cmd/harness/policycli -> internal/adapter/core
 cmd/harness/policycli -> internal/adapter/policy
 cmd/harness/projectcli -> internal/adapter/commitsuggest
 cmd/harness/projectcli -> internal/adapter/lintdiagnose
@@ -112,7 +108,6 @@ cmd/harness/validationcli/contractauditworker -> internal/adapter/failurecause
 cmd/harness/validationcli/contractauditworker -> internal/adapter/worker
 cmd/harness/validationcli/nativeintegration -> internal/adapter/install
 cmd/harness/validationcli/nativeintegration -> internal/adapter/installutil
-cmd/harness/validationcli/preflightfuzz -> internal/adapter/core
 cmd/harness/validationcli/preflightfuzz -> internal/adapter/preflight
 cmd/harness/validationcli/qagate -> internal/adapter/docs
 cmd/harness/validationcli/qagate -> internal/adapter/install
@@ -122,7 +117,6 @@ cmd/harness/validationcli/stateroundtrip -> internal/adapter/outbound/sqlstore
 cmd/harness/validationcli/stateroundtrip -> internal/adapter/outbound/state
 cmd/harness/validationcli/webfetch -> internal/adapter/outbound/webfetch
 cmd/harness/webfetchcli -> internal/adapter/outbound/webfetch
-cmd/harness/workercli -> internal/adapter/core
 cmd/harness/workercli -> internal/adapter/draftwiki
 cmd/harness/workercli -> internal/adapter/policy
 cmd/harness/workercli -> internal/adapter/worker
@@ -147,7 +141,6 @@ internal/adapter/core -> internal/adapter/issueops
 internal/adapter/core -> internal/adapter/issueops/artifacttemplate
 internal/adapter/core -> internal/adapter/lifecycle
 internal/adapter/core -> internal/adapter/lintdiagnose
-internal/adapter/core -> internal/adapter/looprun
 internal/adapter/core -> internal/adapter/outbound/state
 internal/adapter/core -> internal/adapter/policy
 internal/adapter/core -> internal/adapter/preflight
@@ -226,6 +219,8 @@ internal/adapter/issueops/implementation -> internal/adapter/preflight
 internal/adapter/issueops/intentdesign -> internal/adapter/policy
 internal/adapter/issueops/linking -> internal/adapter/issueops/pathutil
 internal/adapter/issueops/linking -> internal/adapter/issueops/remote
+internal/adapter/issueops/loopgate -> internal/adapter/issueops
+internal/adapter/issueops/loopgate -> internal/adapter/looprun
 internal/adapter/issueops/orphancleanup -> internal/adapter/preflight
 internal/adapter/issueops/readinesspaths -> internal/adapter/issueops/pathutil
 internal/adapter/lifecycle -> internal/adapter/commandguard

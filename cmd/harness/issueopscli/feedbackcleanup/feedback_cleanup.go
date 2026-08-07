@@ -10,7 +10,6 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 	port "agent-harness/internal/port"
 
-	"agent-harness/internal/adapter/core"
 	issueopscore "agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/adapter/issueops/orphancleanup"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"
@@ -214,7 +213,7 @@ func cleanupStatus(id string, mergedRequested bool, deps Deps) (issueopscontract
 	if err != nil {
 		return issueopscontract.IssueOpsCleanupStatus{OK: false, ID: id}, fmt.Errorf("merge evidence readback failed (refusing to continue): %w", err)
 	}
-	snapshot, err := core.ReadRemoteIssueSnapshot(context.Background(), prov, port.ExecutionIssueSnapshotRequest{
+	snapshot, err := issueopscore.ReadRemoteIssueSnapshot(context.Background(), prov, port.ExecutionIssueSnapshotRequest{
 		Repo: record.Repo, URL: record.IssueURL,
 	})
 	if err != nil {
@@ -400,7 +399,7 @@ func runCleanupFinish(args []string, deps Deps) error {
 	if err != nil {
 		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("merge evidence readback failed (refusing to continue): %w", err))
 	}
-	snapshot, err := core.ReadRemoteIssueSnapshot(context.Background(), prov, port.ExecutionIssueSnapshotRequest{
+	snapshot, err := issueopscore.ReadRemoteIssueSnapshot(context.Background(), prov, port.ExecutionIssueSnapshotRequest{
 		Repo: record.Repo, URL: record.IssueURL,
 	})
 	if err != nil {

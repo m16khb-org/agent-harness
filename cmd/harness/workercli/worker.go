@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"os"
 	"time"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func runWorker(args []string) error {
@@ -64,7 +62,7 @@ func runWorkerDraftWiki(args []string) error {
 	if root == "" {
 		root = deps.ResolveTarget("")
 	}
-	result, err := core.ProcessDraftWikiQueue(draftwiki.DraftWikiQueueProcessRequest{
+	result, err := draftwiki.ProcessDraftWikiQueue(draftwiki.DraftWikiQueueProcessRequest{
 		RepoRoot:   root,
 		TargetWiki: *targetWiki,
 		TargetType: *targetType,

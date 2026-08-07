@@ -10,6 +10,7 @@ import (
 	"agent-harness/cmd/harness/selfworkflow"
 	"agent-harness/internal/adapter/issueops"
 	provenanceadapter "agent-harness/internal/adapter/outbound/issueopsprovenance"
+
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 )
 

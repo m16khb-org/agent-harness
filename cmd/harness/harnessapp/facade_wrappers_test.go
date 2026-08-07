@@ -20,6 +20,7 @@ import (
 	"agent-harness/cmd/harness/qualitycli"
 	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/port"
+
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

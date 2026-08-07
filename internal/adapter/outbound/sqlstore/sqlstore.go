@@ -25,6 +25,7 @@ import (
 
 	"agent-harness/internal/port"
 	stateport "agent-harness/internal/port/state"
+
 	sqlite "modernc.org/sqlite"
 	sqlite3 "modernc.org/sqlite/lib"
 )

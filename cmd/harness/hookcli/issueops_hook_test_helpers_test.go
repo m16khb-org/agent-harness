@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/core"
 	issueopscore "agent-harness/internal/adapter/issueops"
+	"agent-harness/internal/adapter/issueops/loopgate"
 	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
@@ -70,7 +70,7 @@ func activateIssueOpsHookExecution(t *testing.T, id string) issueopscore.IssueOp
 	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.AdvanceIssueOpsPhaseWithActor(issueopscore.IssueOpsStateRoot(), id, string(issueopscore.IssueOpsPhaseImplement), actor); err != nil {
+	if _, err := loopgate.AdvancePhaseWithActor(issueopscore.IssueOpsStateRoot(), id, string(issueopscore.IssueOpsPhaseImplement), actor); err != nil {
 		t.Fatal(err)
 	}
 	return actor

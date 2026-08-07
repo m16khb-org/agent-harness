@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
+
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
