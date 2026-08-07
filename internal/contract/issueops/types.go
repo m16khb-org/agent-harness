@@ -363,6 +363,7 @@ type IssueOpsRecord struct {
 	RemoteCompletion        *IssueOpsRemoteCompletion           `json:"remote_completion,omitempty"`
 	SourceMisdirectWarnings int                                 `json:"source_misdirect_warnings,omitempty"`
 	CleanupFinishFailure    *IssueOpsCleanupFinishFailure       `json:"cleanup_finish_failure,omitempty"`
+	CleanupAbandonFailure   *IssueOpsCleanupAbandonFailure      `json:"cleanup_abandon_failure,omitempty"`
 	ImplementationReview    *IssueOpsImplementationReview       `json:"implementation_review,omitempty"`
 	RoutingTrace            []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
 	AISlopCleanAt           string                              `json:"ai_slop_clean_at,omitempty"`
@@ -399,6 +400,21 @@ type IssueOpsCleanupFinishFailure struct {
 	Step    string `json:"step"`
 	Message string `json:"message"`
 	At      string `json:"at"`
+}
+
+// IssueOpsCleanupAbandonFailure는 부분 실패 뒤 같은 로컬 대상을 재시도할 수 있도록
+// 마지막으로 승인된 inventory를 봉인한다.
+type IssueOpsCleanupAbandonFailure struct {
+	Step            string `json:"step"`
+	Message         string `json:"message"`
+	Fingerprint     string `json:"fingerprint"`
+	RecordSHA       string `json:"record_sha"`
+	InventorySHA256 string `json:"inventory_sha256"`
+	WorktreePath    string `json:"worktree_path"`
+	Branch          string `json:"branch"`
+	WorktreeHead    string `json:"worktree_head"`
+	BranchOID       string `json:"branch_oid"`
+	At              string `json:"at"`
 }
 
 // IssueOpsRemoteCompletion caches confirmed remote completion mutations.

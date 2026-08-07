@@ -384,15 +384,15 @@ func TestCleanupAbandonRejectsLocalResidue(t *testing.T) {
 			rec.Execution = abandonExecution(rec.Repo, root, issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusReleased})
 		})
 		result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), abandonDeps(&fakeAbandonGit{}, authoritativeZeroOrca()))
-		if err == nil || !containsString(result.Missing, "worktree_absent") {
-			t.Fatalf("present worktree must block: %v %v", err, result.Missing)
+		if err == nil || !containsString(result.Missing, "worktree_canonical") || !containsString(result.Missing, "local_residue_pair") {
+			t.Fatalf("unverified worktree-only residue must block: %v %v", err, result.Missing)
 		}
 	})
 	t.Run("branch ref present", func(t *testing.T) {
 		stateRoot, record := abandonTestRecord(t)
 		result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), abandonDeps(&fakeAbandonGit{branchOID: "abc123"}, authoritativeZeroOrca()))
-		if err == nil || !containsString(result.Missing, "branch_absent") {
-			t.Fatalf("present branch must block: %v %v", err, result.Missing)
+		if err == nil || !containsString(result.Missing, "local_residue_pair") {
+			t.Fatalf("branch-only residue without a retry receipt must block: %v %v", err, result.Missing)
 		}
 	})
 	t.Run("worktree identity conflict", func(t *testing.T) {
@@ -473,7 +473,7 @@ func TestCleanupAbandonPendingIntentGate(t *testing.T) {
 		}
 		orca := authoritativeZeroOrca()
 		result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), abandonDeps(&fakeAbandonGit{}, orca))
-		if err == nil || !containsString(result.Missing, "pending_intent_safe") || !containsString(result.Missing, "worktree_absent") {
+		if err == nil || !containsString(result.Missing, "pending_intent_safe") || !containsString(result.Missing, "worktree_canonical") {
 			t.Fatalf("present workspace root must block both gates: %v %v", err, result.Missing)
 		}
 		if orca.inspects != 0 {
@@ -603,6 +603,10 @@ func TestCleanupAbandonDeletesRecordAndIntentRowAtomically(t *testing.T) {
 	}
 	if preview.PendingOperationID != operationID {
 		t.Fatalf("preview must surface the pending operation id: %+v", preview)
+	}
+	wantPlanTail := []string{"record:" + record.ID, "intent:" + operationID}
+	if len(preview.RemovalPlan) < 2 || strings.Join(preview.RemovalPlan[len(preview.RemovalPlan)-2:], "\n") != strings.Join(wantPlanTail, "\n") {
+		t.Fatalf("preview must order record before its owned intent rows: %+v", preview.RemovalPlan)
 	}
 	applied, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, true, preview.Fingerprint), deps)
 	if err != nil {

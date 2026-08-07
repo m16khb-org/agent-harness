@@ -91,6 +91,9 @@ func claimWithinSpan(ctx context.Context, store port.TransactionalRecordStore, r
 	if leasedomain.IsClaimRetry(toDomainLease(before.Lease), request.Generation, request.Actor) {
 		return leaseapp.RepositoryResult{Record: before, Execution: *record.Execution}, nil
 	}
+	if cleanupAbandonApplying(record.CleanupAbandonFailure) {
+		return leaseapp.RepositoryResult{}, leasedomain.Deny(leasedomain.DenyLeaseClaimable, fmt.Errorf("lease is fenced by cleanup abandon apply"))
+	}
 	canonicalCWD := (FilesystemPathMatcher{}).Matches(request.CWD, before.CanonicalRoot)
 	if err := leasedomain.ValidateClaim(toDomainLease(before.Lease), leasedomain.ClaimRequest{
 		Generation: request.Generation, Actor: request.Actor, AuthorityVerified: true, CanonicalCWD: canonicalCWD, TokenVerified: true,
@@ -155,6 +158,13 @@ func claimWithinSpan(ctx context.Context, store port.TransactionalRecordStore, r
 	_ = os.Remove(request.TokenFile)
 	after := toApplicationRecord(record)
 	return leaseapp.RepositoryResult{Record: after, Execution: *record.Execution}, nil
+}
+
+func cleanupAbandonApplying(raw json.RawMessage) bool {
+	var receipt struct {
+		Step string `json:"step"`
+	}
+	return len(raw) > 0 && json.Unmarshal(raw, &receipt) == nil && receipt.Step == "applying"
 }
 
 func updateWithinSpan(

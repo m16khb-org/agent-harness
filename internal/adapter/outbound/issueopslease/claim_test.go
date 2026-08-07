@@ -2,6 +2,7 @@ package issueopslease
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -49,6 +50,23 @@ func TestSQLiteClaimRejectsUnpreparedExecution(t *testing.T) {
 	_, err := NewSQLiteRepository(newClaimStore(t, record)).Claim(context.Background(), leaseapp.ClaimRepositoryRequest{ID: record.ID})
 	if !errors.Is(err, leasecontract.ErrExecutionNotPrepared) {
 		t.Fatalf("unprepared execution error=%v", err)
+	}
+}
+
+func TestSQLiteClaimRejectsCleanupAbandonFence(t *testing.T) {
+	token := "claim-token"
+	actor := leasecontract.Actor{Host: "codex", SessionID: "claim-session", SessionProcess: &leasecontract.ProcessReceipt{PID: 42, StartedAt: "2026-07-30T00:00:00Z", Executable: "/usr/bin/codex"}}
+	record := claimableRecord(t, actor, token)
+	record.CleanupAbandonFailure = json.RawMessage(`{"step":"applying","message":"","fingerprint":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","worktree_path":"/tmp/worktree","branch":"claim","worktree_head":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","branch_oid":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","at":"2026-08-04T00:00:00Z"}`)
+	path := writeClaimToken(t, record, token)
+	_, err := NewSQLiteRepository(newClaimStore(t, record)).Claim(context.Background(), leaseapp.ClaimRepositoryRequest{
+		ID: record.ID, Generation: record.Execution.Lease.Generation,
+		Actor: leasedomain.Actor{Host: actor.Host, SessionID: actor.SessionID, Process: &leasedomain.ProcessReceipt{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}},
+		CWD:   record.Execution.Workspace.Root, TokenFile: path, Clock: fixedClaimClock{at: time.Date(2026, 7, 30, 0, 0, 1, 0, time.UTC)},
+		ValidateRecord: func(leaseapp.Record) error { return nil },
+	})
+	if leasedomain.DenyCodeOf(err) != leasedomain.DenyLeaseClaimable {
+		t.Fatalf("cleanup abandon fence must block a concurrent claim: %v", err)
 	}
 }
 

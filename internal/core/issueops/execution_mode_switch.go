@@ -137,9 +137,23 @@ func SwitchExecutionMode(ctx context.Context, stateRoot string, req ExecutionSwi
 		result.OK = false
 		return result, err
 	}
-	record.Execution = nil
-	record.WorktreePath = ""
-	if _, err := WriteIssueOps(stateRoot, record); err != nil {
+	// 외부 Git 조작 뒤에는 다시 공통 span lock에서 fence와 record CAS를 확인한다.
+	// cleanup abandon이 먼저 arm됐다면 그 receipt를 지우지 않고 record를 보존한다.
+	expectedSHA := cleanupAbandonRecordSHA(record)
+	err = withIssueOpsLock(ctx, stateRoot, record.ID, func(context.Context) error {
+		current, readErr := ReadIssueOps(stateRoot, record.ID)
+		if readErr != nil {
+			return readErr
+		}
+		if cleanupAbandonRecordSHA(current) != expectedSHA {
+			return fmt.Errorf("execution switch-mode authority changed before record mutation")
+		}
+		current.Execution = nil
+		current.WorktreePath = ""
+		_, writeErr := writeIssueOps(stateRoot, current)
+		return writeErr
+	})
+	if err != nil {
 		result.OK = false
 		return result, err
 	}
