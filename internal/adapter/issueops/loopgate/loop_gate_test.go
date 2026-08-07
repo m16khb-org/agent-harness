@@ -1,4 +1,4 @@
-package core
+package loopgate
 
 import (
 	"encoding/json"
@@ -10,6 +10,7 @@ import (
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 
+	"agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/adapter/looprun"
 	"agent-harness/internal/adapter/outbound/sqlstore"
 )
@@ -19,7 +20,7 @@ func TestIssueOpsStrictPRReadinessBlocksActiveLoop(t *testing.T) {
 	record := readyIssueOpsRecordForLoopGateTest(t)
 
 	loop := startCoreLoopGateLoop(t, record.Repo, "active-loop", 3)
-	ready := IssueOpsStrictPRReadiness(record)
+	ready := StrictPRReadiness(record)
 	if ready.Ready || !containsLoopGateString(ready.Missing, "loop_incomplete:"+loop.ID) {
 		t.Fatalf("active loop should block strict readiness, got %+v", ready)
 	}
@@ -30,7 +31,7 @@ func TestIssueOpsStrictPRReadinessIgnoresOtherRepoLoop(t *testing.T) {
 	record := readyIssueOpsRecordForLoopGateTest(t)
 
 	startCoreLoopGateLoop(t, filepath.Join(t.TempDir(), "other-repo"), "other-loop", 3)
-	ready := IssueOpsStrictPRReadiness(record)
+	ready := StrictPRReadiness(record)
 	if !ready.Ready || containsLoopGateString(ready.Missing, "loop_incomplete:") {
 		t.Fatalf("other repo loop should not block strict readiness, got %+v", ready)
 	}
@@ -55,7 +56,7 @@ func TestIssueOpsStrictPRReadinessIgnoresStaleRetiredPoolState(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ready := IssueOpsStrictPRReadiness(record)
+	ready := StrictPRReadiness(record)
 	if !ready.Ready || containsLoopGateString(ready.Missing, "pool_incomplete:") {
 		t.Fatalf("stale retired state must not block strict readiness, got %+v", ready)
 	}
@@ -72,7 +73,7 @@ func TestIssueOpsStrictPRReadinessBlocksExhaustedLoop(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("RecordAttempt: %v", err)
 	}
-	ready := IssueOpsStrictPRReadiness(record)
+	ready := StrictPRReadiness(record)
 	if ready.Ready || !containsLoopGateString(ready.Missing, "loop_incomplete:"+loop.ID) {
 		t.Fatalf("exhausted loop should block strict readiness, got %+v", ready)
 	}
@@ -86,7 +87,7 @@ func TestIssueOpsStrictPRReadinessClearsAfterLoopStop(t *testing.T) {
 	if _, err := looprun.Stop(loop.ID, false, "operator stopped loop after explicit handoff"); err != nil {
 		t.Fatalf("Stop: %v", err)
 	}
-	ready := IssueOpsStrictPRReadiness(record)
+	ready := StrictPRReadiness(record)
 	if !ready.Ready || containsLoopGateString(ready.Missing, "loop_incomplete:"+loop.ID) {
 		t.Fatalf("stopped loop should clear strict readiness, got %+v", ready)
 	}
@@ -101,7 +102,7 @@ func TestIssueOpsStrictPRReadinessClearsAfterLoopStop(t *testing.T) {
 	if _, err := looprun.Stop(successLoop.ID, true, ""); err != nil {
 		t.Fatalf("Stop success: %v", err)
 	}
-	ready = IssueOpsStrictPRReadiness(record)
+	ready = StrictPRReadiness(record)
 	if !ready.Ready || containsLoopGateString(ready.Missing, "loop_incomplete:"+successLoop.ID) {
 		t.Fatalf("succeeded loop should clear strict readiness, got %+v", ready)
 	}
@@ -126,8 +127,8 @@ func readyIssueOpsRecordForLoopGateTest(t *testing.T) issueopscontract.IssueOpsR
 	repo := initCoreLoopGateRepo(t)
 	record := issueopscontract.IssueOpsRecord{
 		OK:            true,
-		SchemaVersion: IssueOpsCurrentSchemaVersion,
-		ID:            NewIssueOpsID(repo, "main"),
+		SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
+		ID:            issueops.NewIssueOpsID(repo, "main"),
 		Repo:          repo,
 		Branch:        "main",
 		IssueURL:      "https://github.com/acme/repo/issues/11",
@@ -159,7 +160,7 @@ func readyIssueOpsRecordForLoopGateTest(t *testing.T) issueopscontract.IssueOpsR
 		},
 		AISlopCleanAt: "2026-07-07T00:00:00Z",
 	}
-	if _, err := WriteIssueOps(IssueOpsStateRoot(), record); err != nil {
+	if _, err := issueops.WriteIssueOps(issueops.IssueOpsStateRoot(), record); err != nil {
 		t.Fatalf("WriteIssueOps: %v", err)
 	}
 	return record

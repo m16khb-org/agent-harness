@@ -42,16 +42,6 @@ func SyncRemoteIssueGraph(record issueopscontract.IssueOpsRecord) (map[string]an
 	return issueops.SyncRemoteIssueGraph(record)
 }
 
-// CreateRemoteIssue creates an issue through the supplied provider. Callers
-// resolve the concrete provider (internal/adapter/provider.Resolve) and pass it
-// in, keeping core decoupled from github/gitlab.
-func CreateRemoteIssue(req IssueProviderCreateIssueRequest, prov IssueProvider) (IssueProviderCreateIssueResult, error) {
-	if prov == nil {
-		return IssueProviderCreateIssueResult{OK: false}, fmt.Errorf("no issue provider configured")
-	}
-	return prov.CreateIssue(req)
-}
-
 // ReflectIssueOpsDevilsAdvocateFindings reflects the recorded devil's-advocate
 // findings into the linked issue body through the supplied provider, stamping
 // IssueReflectedAt on a confirmed success. The caller resolves the provider.
@@ -84,16 +74,6 @@ func CreateIssueOpsRemotePullRequest(ctx context.Context, stateRoot string, req 
 	return issueops.CreateRemotePullRequest(ctx, stateRoot, req, issueops.RemotePullRequestDependencies{Handler: handler})
 }
 
-// CreateRemoteChild creates and verifies a provider-native child work item
-// through the supplied provider. State recording remains explicit at the
-// caller boundary via LinkIssueOpsChild so dry-runs never mutate state.
-func CreateRemoteChild(req IssueProviderCreateChildRequest, prov IssueProvider) (IssueProviderCreateChildResult, error) {
-	if prov == nil {
-		return IssueProviderCreateChildResult{OK: false}, fmt.Errorf("no issue provider configured")
-	}
-	return prov.CreateChild(req)
-}
-
 func CloseRemoteChild(req IssueProviderCloseChildRequest, prov IssueProvider) (IssueProviderCloseChildResult, error) {
 	if prov == nil {
 		return IssueProviderCloseChildResult{OK: false}, fmt.Errorf("no issue provider configured")
@@ -107,17 +87,6 @@ type ExecutionIssueSnapshotRequest = port.ExecutionIssueSnapshotRequest
 type ExecutionIssueSnapshot = port.ExecutionIssueSnapshot
 
 const IssueBodyCompletionStartMarker = port.IssueBodyCompletionStartMarker
-
-// ReadRemoteIssueSnapshot readback-reads the linked issue through the provider
-// when it supports snapshot reads; cleanup finish uses this for fail-closed
-// completion/close verification.
-func ReadRemoteIssueSnapshot(ctx context.Context, prov IssueProvider, req ExecutionIssueSnapshotRequest) (ExecutionIssueSnapshot, error) {
-	reader, ok := prov.(port.ExecutionIssueSnapshotReader)
-	if !ok {
-		return ExecutionIssueSnapshot{}, fmt.Errorf("issue provider does not support issue snapshot reads")
-	}
-	return reader.ReadIssueSnapshot(ctx, req)
-}
 
 // ReflectIssueOpsCompletion writes the completion section into the linked
 // issue body. merged must carry caller-verified provider merge readback.

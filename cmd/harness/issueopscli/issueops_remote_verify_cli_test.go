@@ -7,10 +7,9 @@ import (
 	"testing"
 
 	issueopscore "agent-harness/internal/adapter/issueops"
+	"agent-harness/internal/adapter/issueops/loopgate"
 	preflight "agent-harness/internal/adapter/preflight"
 	issueopscontract "agent-harness/internal/contract/issueops"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestRunIssueOpsRemoteVerifyArtifactValidationErrors(t *testing.T) {
@@ -119,7 +118,7 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) (issueop
 		t.Fatal(err)
 	}
 	record, actor := seedIssueOpsCLIExecution(t, record)
-	if _, err := core.AdvanceIssueOpsPhaseWithActor(issueopscore.IssueOpsStateRoot(), id, string(issueopscore.IssueOpsPhaseAISlopClean), actor); err != nil {
+	if _, err := loopgate.AdvancePhaseWithActor(issueopscore.IssueOpsStateRoot(), id, string(issueopscore.IssueOpsPhaseAISlopClean), actor); err != nil {
 		t.Fatal(err)
 	}
 	if code, _, stderr := preflight.GitCmd(worktree, "commit", "-q", "-m", "feat: implement remote verify cli"); code != 0 {
@@ -128,7 +127,7 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) (issueop
 	if code, _, stderr := preflight.GitCmd(worktree, "push", "-q"); code != 0 {
 		t.Fatalf("git push implementation failed: %s", stderr)
 	}
-	record, err = core.AdvanceIssueOpsPhaseWithActor(issueopscore.IssueOpsStateRoot(), id, string(issueopscore.IssueOpsPhasePR), actor)
+	record, err = loopgate.AdvancePhaseWithActor(issueopscore.IssueOpsStateRoot(), id, string(issueopscore.IssueOpsPhasePR), actor)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2,15 +2,12 @@ package core
 
 import (
 	"context"
-	"fmt"
-	"strings"
 	"time"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 
 	"agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/adapter/issueops/artifacttemplate"
-	"agent-harness/internal/adapter/looprun"
 )
 
 type IssueOpsActor = issueops.IssueOpsActor
@@ -387,36 +384,6 @@ func MarkIssueOpsContractFeedbackIssueUpdatedWithActor(stateRoot, id string, act
 	return issueops.MarkIssueOpsContractFeedbackIssueUpdatedWithActor(stateRoot, id, actor)
 }
 
-func AdvanceIssueOpsPhase(stateRoot, id, to string) (issueopscontract.IssueOpsRecord, error) {
-	if issueopscontract.IssueOpsPhase(strings.TrimSpace(to)) == IssueOpsPhasePR {
-		record, err := issueops.ReadIssueOps(stateRoot, id)
-		if err != nil {
-			return record, err
-		}
-		if record.Phase != IssueOpsPhasePR {
-			if ready := IssueOpsStrictPRReadiness(record); !ready.Ready {
-				return issueopscontract.IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter pr phase: missing %s", strings.Join(ready.Missing, ", "))
-			}
-		}
-	}
-	return issueops.AdvanceIssueOpsPhase(stateRoot, id, to)
-}
-
-func AdvanceIssueOpsPhaseWithActor(stateRoot, id, to string, actor IssueOpsActor) (issueopscontract.IssueOpsRecord, error) {
-	if issueopscontract.IssueOpsPhase(strings.TrimSpace(to)) == IssueOpsPhasePR {
-		record, err := issueops.ReadIssueOps(stateRoot, id)
-		if err != nil {
-			return record, err
-		}
-		if record.Phase != IssueOpsPhasePR {
-			if ready := IssueOpsStrictPRReadiness(record); !ready.Ready {
-				return issueopscontract.IssueOpsRecord{OK: false}, fmt.Errorf("cannot enter pr phase: missing %s", strings.Join(ready.Missing, ", "))
-			}
-		}
-	}
-	return issueops.AdvanceIssueOpsPhaseWithActor(stateRoot, id, to, actor)
-}
-
 func VerifyIssueOpsRemoteArtifact(stateRoot, id string, req issueopscontract.IssueOpsRemoteArtifactVerificationRequest) (issueopscontract.IssueOpsRecord, error) {
 	return issueops.VerifyIssueOpsRemoteArtifact(stateRoot, id, req)
 }
@@ -431,25 +398,6 @@ func ValidateIssueOpsRemoteArtifactVerification(stateRoot, id string, req issueo
 
 func IssueOpsPRReadiness(record issueopscontract.IssueOpsRecord) issueopscontract.IssueOpsReadiness {
 	return issueops.IssueOpsPRReadiness(record)
-}
-
-func IssueOpsStrictPRReadiness(record issueopscontract.IssueOpsRecord) issueopscontract.IssueOpsReadiness {
-	return issueOpsStrictPRReadinessWithLoopGate(issueops.IssueOpsStrictPRReadiness(record), record.Repo)
-}
-
-func IssueOpsStrictPRReadinessWithState(stateRoot string, record issueopscontract.IssueOpsRecord) issueopscontract.IssueOpsReadiness {
-	return issueOpsStrictPRReadinessWithLoopGate(issueops.IssueOpsStrictPRReadinessWithState(stateRoot, record), record.Repo)
-}
-
-func issueOpsStrictPRReadinessWithLoopGate(ready issueopscontract.IssueOpsReadiness, repo string) issueopscontract.IssueOpsReadiness {
-	missing, warnings := looprun.RepoGateMissing(repo)
-	if len(missing) == 0 && len(warnings) == 0 {
-		return ready
-	}
-	ready.Missing = uniqSorted(append(append([]string{}, ready.Missing...), missing...))
-	ready.Warnings = append(ready.Warnings, warnings...)
-	ready.Ready = len(ready.Missing) == 0
-	return ready
 }
 
 func IssueOpsImplementationReadiness(record issueopscontract.IssueOpsRecord) issueopscontract.IssueOpsReadiness {

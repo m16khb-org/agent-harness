@@ -9,6 +9,7 @@ import (
 
 	"agent-harness/cmd/harness/mcpcli/resources"
 	mcpadapter "agent-harness/internal/adapter/mcp"
+
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

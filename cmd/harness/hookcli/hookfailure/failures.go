@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
-	"agent-harness/internal/adapter/core"
 	hookfailure "agent-harness/internal/adapter/hookfailure"
 	hookmetrics "agent-harness/internal/adapter/hookmetrics"
 )
@@ -99,7 +98,7 @@ func RunStats(args []string) error {
 		return err
 	}
 	_ = jsonOut
-	stats, err := core.SummarizeHookFailureStats()
+	stats, err := SummarizeHookFailureStats()
 	if err != nil {
 		return err
 	}

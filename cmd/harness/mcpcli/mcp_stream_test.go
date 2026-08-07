@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"agent-harness/internal/adapter/issueops"
+
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

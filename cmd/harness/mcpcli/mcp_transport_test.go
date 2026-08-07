@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/adapter/issueops"
+
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

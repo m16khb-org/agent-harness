@@ -6,6 +6,7 @@ import (
 	"agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/port"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"
+
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 )
 

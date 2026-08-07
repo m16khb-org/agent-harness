@@ -1,8 +1,8 @@
 package preflightfuzz
 
-import "agent-harness/internal/adapter/core"
+import "agent-harness/internal/adapter/preflight"
 
-func preflightFuzzValidationErrors(preflight core.PreflightResult) []string {
+func preflightFuzzValidationErrors(preflight preflight.PreflightResult) []string {
 	errs := []string{}
 	if !preflight.OK {
 		errs = append(errs, "preflight ok=false")
