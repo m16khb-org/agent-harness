@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/issueopscli"
-	corefacade "agent-harness/internal/adapter/core"
 	publicationinbound "agent-harness/internal/adapter/inbound/issueopspublication"
 	"agent-harness/internal/adapter/issueops"
 	publicationoutbound "agent-harness/internal/adapter/outbound/issueopspublication"
@@ -159,7 +158,7 @@ func (e *corePublicationEffects) create(_ context.Context, providerName string, 
 	if err != nil {
 		return publicationcontract.ProviderCreateResult{}, err
 	}
-	result, err := corefacade.CreateRemotePullRequest(portPublicationRequest(request), resolved)
+	result, err := issueops.CreateRemotePullRequestViaProvider(portPublicationRequest(request), resolved)
 	return publicationcontract.ProviderCreateResult{
 		OK: result.OK, URL: result.URL, Number: result.Number, Preview: result.Preview,
 	}, err
@@ -173,7 +172,7 @@ func (e *corePublicationEffects) inspect(_ context.Context, intent publicationco
 	if err != nil {
 		return publicationcontract.Inventory{}, false, err
 	}
-	result, err := corefacade.ReconcileRemotePullRequest(publicationReconcileRequest(intent.Request), resolved)
+	result, err := issueops.ReconcileRemotePullRequestViaProvider(publicationReconcileRequest(intent.Request), resolved)
 	inventory := publicationcontract.Inventory{AuthoritativeZero: result.AuthoritativeZero}
 	if result.Candidates != nil {
 		inventory.Candidates = make([]publicationcontract.Candidate, len(result.Candidates))
