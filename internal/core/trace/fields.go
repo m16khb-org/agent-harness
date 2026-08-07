@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	"agent-harness/internal/core/failurecause"
+	"agent-harness/internal/domain/failurecause"
 	"agent-harness/internal/core/policy"
 )
 

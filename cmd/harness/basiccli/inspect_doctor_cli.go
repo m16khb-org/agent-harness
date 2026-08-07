@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"agent-harness/internal/core"
-	"agent-harness/internal/core/operationalhealth"
+	"agent-harness/internal/domain/operationalhealth"
 	"agent-harness/internal/core/repopath"
 )
 

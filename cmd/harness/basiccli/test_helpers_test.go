@@ -9,7 +9,7 @@ import (
 
 	"agent-harness/cmd/harness/daemoncli"
 	"agent-harness/internal/core"
-	"agent-harness/internal/core/operationalhealth"
+	"agent-harness/internal/domain/operationalhealth"
 	"agent-harness/internal/testsupport"
 )
 

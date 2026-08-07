@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/selfworkflow"
-	"agent-harness/internal/core/qualitycatalog"
+	"agent-harness/internal/domain/qualitycatalog"
 )
 
 type InspectDeps struct {

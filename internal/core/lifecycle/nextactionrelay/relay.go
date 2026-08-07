@@ -12,7 +12,7 @@ import (
 
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/core/lifecycle/model"
-	"agent-harness/internal/core/nextaction"
+	"agent-harness/internal/domain/nextaction"
 )
 
 type Store struct {

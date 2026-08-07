@@ -85,8 +85,8 @@ func repoSignalRules() []repoSignalRule {
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "mcpcli", "resources", "context_determinism_test.go"), "TestResourcesContextIsByteDeterministic")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
-			signals.HasHostJudgementCoverage = fileContainsTerm(root, filepath.Join("internal", "core", "judgement", "structured_test.go"), "TestDecodeStructuredJSONObjectRejectsMalformedOutputs") &&
-				fileContainsTerm(root, filepath.Join("internal", "core", "judgement", "structured_test.go"), "TestDecodeStructuredJSONObjectBoundsLargeErrorOutput")
+			signals.HasHostJudgementCoverage = fileContainsTerm(root, filepath.Join("internal", "domain", "judgement", "structured_test.go"), "TestDecodeStructuredJSONObjectRejectsMalformedOutputs") &&
+				fileContainsTerm(root, filepath.Join("internal", "domain", "judgement", "structured_test.go"), "TestDecodeStructuredJSONObjectBoundsLargeErrorOutput")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
 			signals.HasIssueOpsLinkingBoundaryCoverage = fileContainsTerm(root, filepath.Join("internal", "core", "issueops", "linking", "link_test.go"), "TestLinkIssueRejectsInvalidURL") &&

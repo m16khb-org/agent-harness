@@ -1,4 +1,4 @@
-package lintgate
+package hook
 
 import (
 	"os"

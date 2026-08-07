@@ -330,7 +330,7 @@ func TestResourcesContextIsByteDeterministic() {}
 
 func TestHostJudgementCoverageIsSatisfiedByMalformedResultTests(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "judgement", "structured_test.go"), `package judgement
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "domain", "judgement", "structured_test.go"), `package judgement
 
 func TestDecodeStructuredJSONObjectRejectsMalformedOutputs() {}
 func TestDecodeStructuredJSONObjectBoundsLargeErrorOutput() {}

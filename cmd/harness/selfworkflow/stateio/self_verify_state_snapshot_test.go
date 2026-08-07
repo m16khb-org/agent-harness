@@ -8,7 +8,7 @@ import (
 
 	"agent-harness/cmd/harness/selfworkflow/model"
 	"agent-harness/internal/core"
-	"agent-harness/internal/core/failurecause"
+	"agent-harness/internal/domain/failurecause"
 )
 
 func TestWriteSelfAugmentSnapshotRecordIsLockedAndAtomic(t *testing.T) {

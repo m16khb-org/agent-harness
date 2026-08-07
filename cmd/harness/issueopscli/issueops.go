@@ -9,7 +9,7 @@ import (
 	"agent-harness/internal/adapter/provider"
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/issueops/orphancleanup"
-	corehealth "agent-harness/internal/core/operationalhealth"
+	corehealth "agent-harness/internal/domain/operationalhealth"
 	"agent-harness/internal/port"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"
 	"context"

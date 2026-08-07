@@ -1,6 +1,6 @@
 package model
 
-import "agent-harness/internal/core/qualitycatalog"
+import "agent-harness/internal/domain/qualitycatalog"
 
 type SelfAugmentPlanRequest struct {
 	Cycles      int     `json:"cycles"`

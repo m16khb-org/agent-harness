@@ -7,7 +7,7 @@ import (
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/core/commandparse"
 	"agent-harness/internal/core/lifecycle/docupkeep"
-	"agent-harness/internal/core/searchrouting"
+	"agent-harness/internal/domain/searchrouting"
 )
 
 func ForToolUse(req lifecyclecontract.HookToolUseLifecycleRequest) []string {

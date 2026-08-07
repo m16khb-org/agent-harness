@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
-	corehealth "agent-harness/internal/core/operationalhealth"
+	corehealth "agent-harness/internal/domain/operationalhealth"
 	"agent-harness/internal/port"
 )
 

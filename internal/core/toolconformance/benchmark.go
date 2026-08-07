@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/failurecause"
+	"agent-harness/internal/domain/failurecause"
 	"agent-harness/internal/port"
 )
 

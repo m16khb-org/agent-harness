@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/core/lifecycle/model"
-	"agent-harness/internal/core/nextaction"
+	"agent-harness/internal/domain/nextaction"
 )
 
 func TestRecordDuplicatesAndClear(t *testing.T) {

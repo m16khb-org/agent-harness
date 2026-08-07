@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	corestate "agent-harness/internal/adapter/outbound/state"
-	"agent-harness/internal/core/failurecause"
+	"agent-harness/internal/domain/failurecause"
 )
 
 func TestTraceAnalyzeSelfVerifySummary(t *testing.T) {

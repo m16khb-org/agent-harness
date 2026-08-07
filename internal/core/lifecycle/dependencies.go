@@ -10,10 +10,10 @@ import (
 	"agent-harness/internal/core/lifecycle/liveapproval"
 	"agent-harness/internal/core/lifecycle/model"
 	"agent-harness/internal/core/lifecycle/worktreepath"
-	"agent-harness/internal/core/nextaction"
+	"agent-harness/internal/domain/nextaction"
 	"agent-harness/internal/core/projectdoc"
 	"agent-harness/internal/core/projectdocs"
-	"agent-harness/internal/core/searchrouting"
+	"agent-harness/internal/domain/searchrouting"
 )
 
 const ProjectDocsDir = projectdoc.ProjectDocsDir

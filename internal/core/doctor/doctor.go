@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/operationalhealth"
+	"agent-harness/internal/domain/operationalhealth"
 	"agent-harness/internal/core/repopath"
 )
 

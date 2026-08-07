@@ -12,7 +12,6 @@ import (
 	hookadapter "agent-harness/internal/adapter/hook"
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/lifecycle/doctarget"
-	"agent-harness/internal/core/lintgate"
 )
 
 func runHookPostToolUse(args []string) error {
@@ -71,7 +70,7 @@ func runHookPostToolUse(args []string) error {
 		if misdirectWarning != "" {
 			feedbackParts = append(feedbackParts, misdirectWarning)
 		}
-		if failed, feedback := lintgate.LintEditedGoFiles(parsedRepo, paths); failed {
+		if failed, feedback := hookadapter.LintEditedGoFiles(parsedRepo, paths); failed {
 			feedbackParts = append(feedbackParts, feedback)
 		}
 		if len(feedbackParts) > 0 {

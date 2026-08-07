@@ -15,7 +15,7 @@ import (
 	"agent-harness/internal/core/commandparse"
 	issueopscore "agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/lifecycle/worktreeguard"
-	"agent-harness/internal/core/searchrouting"
+	"agent-harness/internal/domain/searchrouting"
 )
 
 // 관찰 권한은 동시 execution 중 owner를 먼저 고르는 절차에 의존하지 않는다.

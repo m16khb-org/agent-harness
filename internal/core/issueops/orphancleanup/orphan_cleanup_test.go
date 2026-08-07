@@ -11,7 +11,7 @@ import (
 
 	model "agent-harness/internal/contract/issueops"
 	coreissueops "agent-harness/internal/core/issueops"
-	corehealth "agent-harness/internal/core/operationalhealth"
+	corehealth "agent-harness/internal/domain/operationalhealth"
 )
 
 func TestPreviewFailsClosedForUnsafeRecordlessTargets(t *testing.T) {

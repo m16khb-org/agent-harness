@@ -29,7 +29,6 @@ internal/adapter/mcp -> internal/core/policy
 internal/adapter/mcp -> internal/core/toolconformance
 internal/adapter/operationalhealth -> internal/core/issueops
 internal/adapter/operationalhealth -> internal/core/issueops/pathutil
-internal/adapter/operationalhealth -> internal/core/operationalhealth
 internal/adapter/orca -> internal/core/policy
 internal/adapter/outbound/state -> internal/adapter/outbound/sqlstore
 internal/adapter/outbound/state -> internal/adapter/outbound/statepath
@@ -90,7 +89,6 @@ internal/core/lifecycle/liveapproval -> os
 internal/core/lifecycle/nextactionrelay -> os
 internal/core/lifecycle/worktreepath -> os
 internal/core/lintdiagnose -> os/exec
-internal/core/lintgate -> os/exec
 internal/core/looprun -> internal/adapter/outbound/sqlstore
 internal/core/looprun -> internal/adapter/outbound/state
 internal/core/policy -> os

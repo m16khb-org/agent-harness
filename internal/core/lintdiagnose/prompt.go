@@ -3,8 +3,8 @@ package lintdiagnose
 import (
 	"fmt"
 
-	"agent-harness/internal/core/judgement"
-	"agent-harness/internal/core/prompt"
+	"agent-harness/internal/domain/judgement"
+	"agent-harness/internal/domain/prompt"
 )
 
 func BuildPrompt(exitCode int, logTail string) string {

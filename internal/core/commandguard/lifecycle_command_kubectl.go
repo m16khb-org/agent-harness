@@ -3,7 +3,7 @@ package commandguard
 import (
 	"strings"
 
-	"agent-harness/internal/core/searchrouting"
+	"agent-harness/internal/domain/searchrouting"
 )
 
 func GitOpsKubectlDecision(tool string, command string) (string, string) {
