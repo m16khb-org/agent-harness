@@ -24,19 +24,6 @@ func TestParseCoverageFindsPackagesBelowThreshold(t *testing.T) {
 	}
 }
 
-func TestParseCoverageSuppressesFacadeCorePackage(t *testing.T) {
-	output := "ok  \tagent-harness/internal/adapter/core\t0.011s\tcoverage: 55.4% of statements\n" +
-		"ok  \tagent-harness/internal/adapter/commandguard\t0.012s\tcoverage: 54.3% of statements\n"
-
-	got := parseCoveragePackages(output, 60)
-	if len(got) != 1 {
-		t.Fatalf("low coverage packages=%#v, want one non-facade package", got)
-	}
-	if got[0].Package != "agent-harness/internal/adapter/commandguard" {
-		t.Fatalf("facade package was not suppressed: %#v", got)
-	}
-}
-
 func TestRunRoutesQualityCommands(t *testing.T) {
 	for _, tc := range []struct {
 		name    string

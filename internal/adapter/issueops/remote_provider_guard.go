@@ -37,3 +37,29 @@ func ReadRemoteIssueSnapshot(ctx context.Context, prov port.IssueProvider, req p
 	}
 	return reader.ReadIssueSnapshot(ctx, req)
 }
+
+// CreateRemotePullRequestViaProvider는 provider가 구성되어 있을 때만 PR을 만든다.
+// 같은 패키지의 CreateRemotePullRequest는 lifecycle 상태를 함께 다루는 상위 경로이고,
+// 이 함수는 provider 호출 직전의 가드만 담당한다.
+func CreateRemotePullRequestViaProvider(req port.IssueProviderCreatePullRequestRequest, prov port.IssueProvider) (port.IssueProviderCreatePullRequestResult, error) {
+	if prov == nil {
+		return port.IssueProviderCreatePullRequestResult{OK: false}, fmt.Errorf("no issue provider configured")
+	}
+	return prov.CreatePullRequest(req)
+}
+
+// ReconcileRemotePullRequestViaProvider는 provider가 remote create 조정을 지원할 때만
+// 조정을 수행한다.
+func ReconcileRemotePullRequestViaProvider(req port.IssueProviderReconcilePullRequestRequest, prov port.IssueProvider) (port.IssueProviderReconcilePullRequestResult, error) {
+	reconciler, ok := prov.(port.IssueProviderRemoteCreateReconciler)
+	if !ok {
+		return port.IssueProviderReconcilePullRequestResult{}, fmt.Errorf("issue provider does not support remote create reconciliation")
+	}
+	return reconciler.ReconcilePullRequest(req)
+}
+
+// CreateRemotePullRequestWithHandler는 단일 handler를 dependency로 감싸 상위 경로에
+// 넘긴다. 호출부가 RemotePullRequestDependencies의 형태를 알 필요가 없게 한다.
+func CreateRemotePullRequestWithHandler(ctx context.Context, stateRoot string, req RemotePullRequestRequest, handler RemotePullRequestCreateHandler) (port.IssueProviderCreatePullRequestResult, error) {
+	return CreateRemotePullRequest(ctx, stateRoot, req, RemotePullRequestDependencies{Handler: handler})
+}

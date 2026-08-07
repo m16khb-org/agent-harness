@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 
-	"agent-harness/internal/adapter/core"
 	issueopscore "agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/adapter/issueops/remote"
 	"agent-harness/internal/adapter/provider"
@@ -724,7 +723,7 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	result, err := core.CreateIssueOpsRemotePullRequest(context.Background(), issueopscore.IssueOpsStateRoot(), issueopscore.RemotePullRequestRequest{
+	result, err := issueopscore.CreateRemotePullRequestWithHandler(context.Background(), issueopscore.IssueOpsStateRoot(), issueopscore.RemotePullRequestRequest{
 		ID: record.ID, Provider: providerName, Title: *title, Body: finalBody,
 		Head: headBranch, Base: baseBranch, Labels: labels, Assignees: assignees,
 		ExpectedGeneration: *expectedGeneration,
