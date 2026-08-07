@@ -21,3 +21,7 @@ func verifyIssueOpsRemoteArtifactMergedLive(artifact issueopscontract.IssueOpsRe
 func verifyIssueOpsRemoteArtifactMergedHeadLive(artifact issueopscontract.IssueOpsRemoteArtifactVerification) (core.IssueOpsCleanupRemoteBranchArtifactHead, error) {
 	return remoteverify.VerifyRemoteArtifactMergedHeadLive(artifact)
 }
+
+func observeIssueOpsRemoteArtifactMergedLive(artifact issueopscontract.IssueOpsRemoteArtifactVerification) (bool, error) {
+	return remoteverify.ObserveRemoteArtifactMergedLive(artifact)
+}

@@ -21,6 +21,12 @@ type Deps struct {
 	PrintJSON    func(value any) error
 	PrintError   func(err error) error
 	VerifyMerged func(issueopscontract.IssueOpsRemoteArtifactVerification) error
+	// ObserveArtifactMerged는 cleanup abandon 전용이다. VerifyMerged는 조회
+	// 실패와 미병합을 모두 error로 뭉개는데, 미병합을 요구하는 게이트는 둘을
+	// 구분해야 한다. 관측에 성공한 경우에만 (merged, nil)이 오고, 조회가
+	// 실패하면 error가 오며 그때 병합 여부는 미상이다. nil이면 abandon의
+	// artifact 게이트는 통과가 아니라 거부다(#342, fail-closed).
+	ObserveArtifactMerged func(issueopscontract.IssueOpsRemoteArtifactVerification) (bool, error)
 	// VerifyMergedHead는 cleanup remote-branch 전용이다. 게이트 ⑧·⑨·⑩이
 	// 같은 readback을 공유해야 하므로 머지 여부와 head ref 정체를 함께 받는다.
 	VerifyMergedHead func(issueopscontract.IssueOpsRemoteArtifactVerification) (core.IssueOpsCleanupRemoteBranchArtifactHead, error)
@@ -536,11 +542,12 @@ func runCleanupAbandon(args []string, deps Deps) error {
 		return fmt.Errorf("cleanup abandon requires exactly one mode: --preview or --apply --confirm --fingerprint SHA256")
 	}
 	result, err := core.IssueOpsCleanupAbandon(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsCleanupAbandonRequest{
-		ID:          *id,
-		Reason:      *reason,
-		Apply:       *apply,
-		Confirm:     *confirm,
-		Fingerprint: *fingerprint,
+		ID:               *id,
+		Reason:           *reason,
+		Apply:            *apply,
+		Confirm:          *confirm,
+		Fingerprint:      *fingerprint,
+		ArtifactUnmerged: cleanupArtifactUnmerged(*id, deps),
 	}, core.IssueOpsCleanupAbandonDeps{Orca: deps.OrcaIntent, OrcaOwner: deps.OrcaOwner})
 	if result.NextCommand != "" {
 		record, readErr := issueopscore.ReadIssueOps(core.IssueOpsStateRoot(), *id)
@@ -591,6 +598,25 @@ func printCleanupFinishError(deps Deps, jsonOut bool, err error) error {
 		}
 	}
 	return err
+}
+
+// cleanupArtifactUnmerged는 레코드의 remote artifact가 병합되지 않았음을 실제로
+// 관측했을 때만 true다. artifact가 없으면 abandon의 artifact 게이트 자체가
+// 적용되지 않으므로 값은 무의미하고, 조회 수단이 없거나 조회가 실패하면 false로
+// 남아 게이트가 닫힌 채 유지된다(#342).
+func cleanupArtifactUnmerged(id string, deps Deps) bool {
+	if deps.ObserveArtifactMerged == nil {
+		return false
+	}
+	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), id)
+	if err != nil || record.RemoteArtifact == nil {
+		return false
+	}
+	merged, err := deps.ObserveArtifactMerged(*record.RemoteArtifact)
+	if err != nil {
+		return false
+	}
+	return !merged
 }
 
 func CleanupMerged(id string, requested bool, deps Deps) bool {
