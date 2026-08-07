@@ -13,6 +13,7 @@ cmd/harness/contractcli -> internal/adapter/toolconformance
 cmd/harness/draftwikicli -> internal/adapter/draftwiki
 cmd/harness/hookcli -> internal/adapter/core
 cmd/harness/hookcli -> internal/adapter/hook
+cmd/harness/hookcli -> internal/adapter/hookmetrics
 cmd/harness/hookcli -> internal/adapter/hookprompt
 cmd/harness/hookcli -> internal/adapter/install
 cmd/harness/hookcli -> internal/adapter/issueops
@@ -27,6 +28,8 @@ cmd/harness/hookcli/hookcatalog -> internal/adapter/lifecycle
 cmd/harness/hookcli/hookcatalog -> internal/adapter/outbound/state
 cmd/harness/hookcli/hookcatalog -> internal/adapter/worker
 cmd/harness/hookcli/hookfailure -> internal/adapter/core
+cmd/harness/hookcli/hookfailure -> internal/adapter/hookfailure
+cmd/harness/hookcli/hookfailure -> internal/adapter/hookmetrics
 cmd/harness/installcli -> internal/adapter/claude
 cmd/harness/installcli -> internal/adapter/codex
 cmd/harness/installcli -> internal/adapter/install
@@ -49,6 +52,7 @@ cmd/harness/issueopscli/feedbackcleanup -> internal/adapter/issueops
 cmd/harness/issueopscli/feedbackcleanup -> internal/adapter/issueops/orphancleanup
 cmd/harness/issueopscli/remotecmd -> internal/adapter/core
 cmd/harness/issueopscli/remotecmd -> internal/adapter/issueops
+cmd/harness/issueopscli/remotecmd -> internal/adapter/issueops/artifacttemplate
 cmd/harness/issueopscli/remotecmd -> internal/adapter/issueops/remote
 cmd/harness/issueopscli/remotecmd -> internal/adapter/provider
 cmd/harness/issueopscli/remoteverify -> internal/adapter/issueops
@@ -119,6 +123,8 @@ cmd/harness/validationcli/stateroundtrip -> internal/adapter/outbound/state
 cmd/harness/validationcli/webfetch -> internal/adapter/outbound/webfetch
 cmd/harness/webfetchcli -> internal/adapter/outbound/webfetch
 cmd/harness/workercli -> internal/adapter/core
+cmd/harness/workercli -> internal/adapter/draftwiki
+cmd/harness/workercli -> internal/adapter/policy
 cmd/harness/workercli -> internal/adapter/worker
 internal/adapter/audit -> internal/adapter/outbound/state
 internal/adapter/audit -> internal/adapter/policy

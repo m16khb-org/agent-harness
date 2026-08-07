@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
+	port "agent-harness/internal/port"
 
 	"agent-harness/internal/adapter/core"
 	issueopscore "agent-harness/internal/adapter/issueops"
@@ -29,8 +30,8 @@ type Deps struct {
 	ObserveArtifactMerged func(issueopscontract.IssueOpsRemoteArtifactVerification) (bool, error)
 	// VerifyMergedHead는 cleanup remote-branch 전용이다. 게이트 ⑧·⑨·⑩이
 	// 같은 readback을 공유해야 하므로 머지 여부와 head ref 정체를 함께 받는다.
-	VerifyMergedHead func(issueopscontract.IssueOpsRemoteArtifactVerification) (core.IssueOpsCleanupRemoteBranchArtifactHead, error)
-	Provider         func(provider string) (core.IssueProvider, error)
+	VerifyMergedHead func(issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscore.CleanupRemoteBranchArtifactHead, error)
+	Provider         func(provider string) (port.IssueProvider, error)
 	// CleanupFinishGit and InspectCleanupProcesses expose the finish oracle's
 	// read-only local observers to status tests without weakening production
 	// defaults. Both remain nil in the live composition root.
@@ -44,11 +45,11 @@ type Deps struct {
 	// OrcaIntent는 cleanup abandon의 pending_intent_safe 게이트가 sealed
 	// marker로 orca 인벤토리를 실조회하는 표면이다. nil이면 그 게이트는 통과가
 	// 아니라 거부다(#106, fail-closed).
-	OrcaIntent core.ExecutionOrcaProvisioner
+	OrcaIntent issueopscore.ExecutionOrcaProvisioner
 	// OrcaOwner는 cleanup abandon의 orca_resources_absent 게이트가 자원 잔여를
 	// 실조회하는 표면이다. OrcaIntent와 같은 이유로 nil이면 통과가 아니라
 	// 거부다 — 다만 orca 바인딩이 있는 레코드에서만 요구된다(#136).
-	OrcaOwner  core.ExecutionOrcaOwnerInspector
+	OrcaOwner  issueopscore.ExecutionOrcaOwnerInspector
 	Provenance provenanceport.Observer
 }
 
@@ -72,7 +73,7 @@ func RunFeedback(args []string, deps Deps) error {
 		if help, err := deps.ParseFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
-		record, err := core.AddIssueOpsFeedbackWithActor(core.IssueOpsStateRoot(), *id, *source, *body, *classification, localActor(*host, *sessionID, *agentID, *cwd))
+		record, err := issueopscore.AddIssueOpsFeedbackWithActor(issueopscore.IssueOpsStateRoot(), *id, *source, *body, *classification, localActor(*host, *sessionID, *agentID, *cwd))
 		return deps.PrintResult(record, *jsonOut, err)
 	case "mark-issue-updated":
 		fs := flag.NewFlagSet("issueops feedback mark-issue-updated", flag.ContinueOnError)
@@ -85,16 +86,16 @@ func RunFeedback(args []string, deps Deps) error {
 		if help, err := deps.ParseFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
-		record, err := core.MarkIssueOpsContractFeedbackIssueUpdatedWithActor(core.IssueOpsStateRoot(), *id, localActor(*host, *sessionID, *agentID, *cwd))
+		record, err := issueopscore.MarkIssueOpsContractFeedbackIssueUpdatedWithActor(issueopscore.IssueOpsStateRoot(), *id, localActor(*host, *sessionID, *agentID, *cwd))
 		return deps.PrintResult(record, *jsonOut, err)
 	default:
 		return fmt.Errorf("unknown issueops feedback subcommand")
 	}
 }
 
-func localActor(host, sessionID, agentID, cwd string) core.IssueOpsActor {
+func localActor(host, sessionID, agentID, cwd string) issueopscore.IssueOpsActor {
 	ancestry, _ := issueopscore.ObserveNativeProcessAncestry(os.Getpid())
-	return core.IssueOpsActor{
+	return issueopscore.IssueOpsActor{
 		Host: host, SessionID: sessionID, AgentID: agentID, CWD: cwd,
 		NativeProcessAncestry: ancestry,
 	}
@@ -156,7 +157,7 @@ func RunCleanup(args []string, deps Deps) error {
 		// 요청 여부와 검증 결과를 함께 넘긴다. 위상 규약 이전의 우산 레코드는
 		// 자체 PR이 없어 verifiedMerged가 항상 false가 되는데, 그 구간에서만
 		// core가 자식의 원격 closed 상태를 대체 증거로 조회한다(#129).
-		result, err := core.CloseIssueOpsChildren(core.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsCloseChildrenRequest{
+		result, err := issueopscore.CloseIssueOpsChildren(issueopscore.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsCloseChildrenRequest{
 			Merged:                 verifiedMerged,
 			MergeEvidenceRequested: *merged,
 			Confirm:                *confirm,
@@ -189,16 +190,16 @@ func RunCleanup(args []string, deps Deps) error {
 }
 
 func cleanupStatus(id string, mergedRequested bool, deps Deps) (issueopscontract.IssueOpsCleanupStatus, error) {
-	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), id)
+	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), id)
 	if err != nil {
 		return issueopscontract.IssueOpsCleanupStatus{OK: false, ID: id}, err
 	}
-	structural := core.IssueOpsCleanupStatusForRecord(record, issueopscontract.IssueOpsCleanupStatusRequest{})
-	if !mergedRequested || record.Phase != core.IssueOpsPhaseDone || len(core.IssueOpsRemoteArtifactMissing(record)) > 0 {
+	structural := issueopscore.IssueOpsCleanupStatusForRecord(record, issueopscontract.IssueOpsCleanupStatusRequest{})
+	if !mergedRequested || record.Phase != issueopscore.IssueOpsPhaseDone || len(issueopscore.IssueOpsRemoteArtifactMissing(record)) > 0 {
 		return structural, nil
 	}
 
-	providerName := core.ResolveRecordProvider(record)
+	providerName := issueopscore.ResolveRecordProvider(record)
 	if providerName == "" {
 		return issueopscontract.IssueOpsCleanupStatus{OK: false, ID: id}, fmt.Errorf("cannot determine provider from IssueOps record")
 	}
@@ -213,7 +214,7 @@ func cleanupStatus(id string, mergedRequested bool, deps Deps) (issueopscontract
 	if err != nil {
 		return issueopscontract.IssueOpsCleanupStatus{OK: false, ID: id}, fmt.Errorf("merge evidence readback failed (refusing to continue): %w", err)
 	}
-	snapshot, err := core.ReadRemoteIssueSnapshot(context.Background(), prov, core.ExecutionIssueSnapshotRequest{
+	snapshot, err := core.ReadRemoteIssueSnapshot(context.Background(), prov, port.ExecutionIssueSnapshotRequest{
 		Repo: record.Repo, URL: record.IssueURL,
 	})
 	if err != nil {
@@ -223,7 +224,7 @@ func cleanupStatus(id string, mergedRequested bool, deps Deps) (issueopscontract
 	if err != nil {
 		return issueopscontract.IssueOpsCleanupStatus{OK: false, ID: id}, fmt.Errorf("cannot resolve current directory (refusing cleanup status): %w", err)
 	}
-	result, finishErr := core.IssueOpsCleanupFinish(context.Background(), core.IssueOpsStateRoot(), cleanupFinishRequest(
+	result, finishErr := issueopscore.CleanupFinish(context.Background(), issueopscore.IssueOpsStateRoot(), cleanupFinishRequest(
 		record, snapshot, mergedArtifact, cwd, false, false, "",
 	), cleanupFinishDeps(deps, prov))
 	if finishErr != nil && (result.ID != id || len(result.Missing) == 0) {
@@ -240,15 +241,15 @@ func cleanupStatus(id string, mergedRequested bool, deps Deps) (issueopscontract
 		Branch:            result.Branch,
 		RemoteArtifactURL: structural.RemoteArtifactURL,
 	}
-	return core.FinalizeIssueOpsCleanupStatus(status), nil
+	return issueopscore.FinalizeIssueOpsCleanupStatus(status), nil
 }
 
-func cleanupFinishRequest(record issueopscontract.IssueOpsRecord, snapshot core.ExecutionIssueSnapshot, mergedArtifact core.IssueOpsCleanupRemoteBranchArtifactHead, cwd string, apply, confirm bool, fingerprint string) core.IssueOpsCleanupFinishRequest {
-	return core.IssueOpsCleanupFinishRequest{
+func cleanupFinishRequest(record issueopscontract.IssueOpsRecord, snapshot port.ExecutionIssueSnapshot, mergedArtifact issueopscore.CleanupRemoteBranchArtifactHead, cwd string, apply, confirm bool, fingerprint string) issueopscore.CleanupFinishRequest {
+	return issueopscore.CleanupFinishRequest{
 		ID:                  record.ID,
 		CWD:                 cwd,
 		Merged:              true,
-		CompletionReflected: strings.Contains(snapshot.Body, core.IssueBodyCompletionStartMarker),
+		CompletionReflected: strings.Contains(snapshot.Body, port.IssueBodyCompletionStartMarker),
 		IssueClosed:         strings.EqualFold(strings.TrimSpace(snapshot.State), "closed"),
 		MergedBaseBranch:    mergedArtifact.BaseRefName,
 		Apply:               apply,
@@ -257,13 +258,13 @@ func cleanupFinishRequest(record issueopscontract.IssueOpsRecord, snapshot core.
 	}
 }
 
-func cleanupFinishDeps(deps Deps, prov core.IssueProvider) core.IssueOpsCleanupFinishDeps {
-	return core.IssueOpsCleanupFinishDeps{
+func cleanupFinishDeps(deps Deps, prov port.IssueProvider) issueopscore.CleanupFinishDeps {
+	return issueopscore.CleanupFinishDeps{
 		Git:                deps.CleanupFinishGit,
 		InspectProcesses:   deps.InspectCleanupProcesses,
 		RemoveOrcaWorktree: deps.RemoveOrcaWorktree,
-		ReflectAudit: func(rec issueopscontract.IssueOpsRecord, completion core.IssueProviderCompletionSection, audit string) error {
-			return core.ReflectIssueOpsCleanupAudit(core.IssueOpsStateRoot(), rec, completion, audit, prov)
+		ReflectAudit: func(rec issueopscontract.IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string) error {
+			return issueopscore.ReflectCleanupAudit(issueopscore.IssueOpsStateRoot(), rec, completion, audit, prov)
 		},
 	}
 }
@@ -372,13 +373,13 @@ func runCleanupFinish(args []string, deps Deps) error {
 	if !*preview && !*apply {
 		return fmt.Errorf("cleanup finish requires exactly one mode: --preview or --apply --confirm --fingerprint SHA256")
 	}
-	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
+	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), *id)
 	if err != nil {
 		return printCleanupFinishError(deps, *jsonOut, err)
 	}
 	providerName := *providerOverride
 	if providerName == "" {
-		providerName = core.ResolveRecordProvider(record)
+		providerName = issueopscore.ResolveRecordProvider(record)
 	}
 	if providerName == "" {
 		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("cannot determine provider from IssueOps record; pass --provider"))
@@ -399,7 +400,7 @@ func runCleanupFinish(args []string, deps Deps) error {
 	if err != nil {
 		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("merge evidence readback failed (refusing to continue): %w", err))
 	}
-	snapshot, err := core.ReadRemoteIssueSnapshot(context.Background(), prov, core.ExecutionIssueSnapshotRequest{
+	snapshot, err := core.ReadRemoteIssueSnapshot(context.Background(), prov, port.ExecutionIssueSnapshotRequest{
 		Repo: record.Repo, URL: record.IssueURL,
 	})
 	if err != nil {
@@ -412,7 +413,7 @@ func runCleanupFinish(args []string, deps Deps) error {
 		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("cannot resolve current directory (refusing destructive cleanup): %w", err))
 	}
 	req := cleanupFinishRequest(record, snapshot, mergedArtifact, cwd, *apply, *confirm, *fingerprint)
-	result, err := core.IssueOpsCleanupFinish(context.Background(), core.IssueOpsStateRoot(), req, cleanupFinishDeps(deps, prov))
+	result, err := issueopscore.CleanupFinish(context.Background(), issueopscore.IssueOpsStateRoot(), req, cleanupFinishDeps(deps, prov))
 	var bindErr error
 	result.NextCommand, bindErr = bindCleanupNextCommand(result.NextCommand, cleanupExecutionGeneration(record), deps.Provenance)
 	if bindErr != nil {
@@ -461,11 +462,11 @@ func runCleanupRemoteBranch(args []string, deps Deps) error {
 	if !*preview && !*apply {
 		return fmt.Errorf("cleanup remote-branch requires exactly one mode: --preview or --apply --confirm --fingerprint SHA256")
 	}
-	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), *id)
+	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), *id)
 	if err != nil {
 		return printCleanupFinishError(deps, *jsonOut, err)
 	}
-	providerName := core.ResolveRecordProvider(record)
+	providerName := issueopscore.ResolveRecordProvider(record)
 	if providerName == "" {
 		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("cannot determine provider from IssueOps record"))
 	}
@@ -476,15 +477,15 @@ func runCleanupRemoteBranch(args []string, deps Deps) error {
 	if deps.VerifyMergedHead == nil {
 		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("merge verification is not configured"))
 	}
-	result, err := core.IssueOpsCleanupRemoteBranch(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsCleanupRemoteBranchRequest{
+	result, err := issueopscore.CleanupRemoteBranch(context.Background(), issueopscore.IssueOpsStateRoot(), issueopscore.CleanupRemoteBranchRequest{
 		ID:          *id,
 		Apply:       *apply,
 		Confirm:     *confirm,
 		Fingerprint: *fingerprint,
-	}, core.IssueOpsCleanupRemoteBranchDeps{
+	}, issueopscore.CleanupRemoteBranchDeps{
 		VerifyMergedArtifact: deps.VerifyMergedHead,
-		ReflectAudit: func(rec issueopscontract.IssueOpsRecord, completion core.IssueProviderCompletionSection, audit string) error {
-			return core.ReflectIssueOpsCleanupAudit(core.IssueOpsStateRoot(), rec, completion, audit, prov)
+		ReflectAudit: func(rec issueopscontract.IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string) error {
+			return issueopscore.ReflectCleanupAudit(issueopscore.IssueOpsStateRoot(), rec, completion, audit, prov)
 		},
 	})
 	var bindErr error
@@ -541,16 +542,16 @@ func runCleanupAbandon(args []string, deps Deps) error {
 	if !*preview && !*apply {
 		return fmt.Errorf("cleanup abandon requires exactly one mode: --preview or --apply --confirm --fingerprint SHA256")
 	}
-	result, err := core.IssueOpsCleanupAbandon(context.Background(), core.IssueOpsStateRoot(), core.IssueOpsCleanupAbandonRequest{
+	result, err := issueopscore.CleanupAbandon(context.Background(), issueopscore.IssueOpsStateRoot(), issueopscore.CleanupAbandonRequest{
 		ID:               *id,
 		Reason:           *reason,
 		Apply:            *apply,
 		Confirm:          *confirm,
 		Fingerprint:      *fingerprint,
 		ArtifactUnmerged: cleanupArtifactUnmerged(*id, deps),
-	}, core.IssueOpsCleanupAbandonDeps{Orca: deps.OrcaIntent, OrcaOwner: deps.OrcaOwner})
+	}, issueopscore.CleanupAbandonDeps{Orca: deps.OrcaIntent, OrcaOwner: deps.OrcaOwner})
 	if result.NextCommand != "" {
-		record, readErr := issueopscore.ReadIssueOps(core.IssueOpsStateRoot(), *id)
+		record, readErr := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), *id)
 		if readErr != nil {
 			return printCleanupFinishError(deps, *jsonOut, readErr)
 		}
@@ -608,7 +609,7 @@ func cleanupArtifactUnmerged(id string, deps Deps) bool {
 	if deps.ObserveArtifactMerged == nil {
 		return false
 	}
-	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), id)
+	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), id)
 	if err != nil || record.RemoteArtifact == nil {
 		return false
 	}
@@ -623,7 +624,7 @@ func CleanupMerged(id string, requested bool, deps Deps) bool {
 	if !requested {
 		return false
 	}
-	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), id)
+	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), id)
 	if err != nil || record.RemoteArtifact == nil {
 		return false
 	}

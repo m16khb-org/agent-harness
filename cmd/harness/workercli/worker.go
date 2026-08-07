@@ -1,6 +1,9 @@
 package workercli
 
 import (
+	draftwiki "agent-harness/internal/adapter/draftwiki"
+	policy "agent-harness/internal/adapter/policy"
+	worker "agent-harness/internal/adapter/worker"
 	"flag"
 	"fmt"
 	"os"
@@ -61,7 +64,7 @@ func runWorkerDraftWiki(args []string) error {
 	if root == "" {
 		root = deps.ResolveTarget("")
 	}
-	result, err := core.ProcessDraftWikiQueue(core.DraftWikiQueueProcessRequest{
+	result, err := core.ProcessDraftWikiQueue(draftwiki.DraftWikiQueueProcessRequest{
 		RepoRoot:   root,
 		TargetWiki: *targetWiki,
 		TargetType: *targetType,
@@ -115,14 +118,14 @@ func runWorkerRun(args []string) error {
 	if workDir == "" {
 		workDir = root
 	}
-	req := core.CommandPolicyRequest{
+	req := policy.CommandPolicyRequest{
 		WorkspaceRoot: root,
 		CWD:           workDir,
 		Argv:          fs.Args(),
 		Timeout:       timeout.String(),
 		EnvAllowlist:  splitCSV(*envAllowlist),
 	}
-	job, err := core.RunReadOnlyWorkerJob(*kind, *payload, req)
+	job, err := worker.RunReadOnlyWorkerJob(*kind, *payload, req)
 	if *jsonOut {
 		_ = printJSON(job)
 	}
@@ -139,7 +142,7 @@ func runWorkerRun(args []string) error {
 		return err
 	}
 	if job.Result != nil && !job.Result.Policy.Allowed {
-		return core.PolicyDeniedError{Reasons: job.Result.Policy.DenyReasons}
+		return policy.PolicyDeniedError{Reasons: job.Result.Policy.DenyReasons}
 	}
 	if job.Result != nil && job.Result.ExitCode != 0 {
 		return fmt.Errorf("worker read-only command exited %d", job.Result.ExitCode)
