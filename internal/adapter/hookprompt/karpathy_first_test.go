@@ -1,11 +1,11 @@
 package hookprompt_test
 
 import (
+	"agent-harness/internal/adapter/hookprompt"
+	lifecycle "agent-harness/internal/adapter/lifecycle"
+	nextaction "agent-harness/internal/domain/nextaction"
 	"strings"
 	"testing"
-
-	core "agent-harness/internal/adapter/core"
-	"agent-harness/internal/adapter/hookprompt"
 )
 
 func TestKarpathyFirstFiresOnSubstantivePrompts(t *testing.T) {
@@ -101,8 +101,8 @@ func TestKarpathyFirstOptOutPrefixAloneDoesNotInject(t *testing.T) {
 
 func recordChoicesRelayForTest(t *testing.T, repo string) {
 	t.Helper()
-	trigger := core.BuildNextActionJudgementTrigger("작업 완료.\n\n선택지:\n1. 킬스위치를 구현하고 테스트까지 완료 (추천)\n2. 계획 문서만 커밋\n3. 보류하고 관찰 지속")
-	if relay := core.RecordStopNextActionRelay(repo, trigger); !relay.ShouldRelay {
+	trigger := nextaction.BuildNextActionJudgementTrigger("작업 완료.\n\n선택지:\n1. 킬스위치를 구현하고 테스트까지 완료 (추천)\n2. 계획 문서만 커밋\n3. 보류하고 관찰 지속")
+	if relay := lifecycle.RecordStopNextActionRelay(repo, trigger); !relay.ShouldRelay {
 		t.Fatalf("expected relay record to be written: %+v", relay)
 	}
 }

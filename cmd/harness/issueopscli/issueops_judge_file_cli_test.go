@@ -1,13 +1,13 @@
 package issueopscli
 
 import (
+	issueopscore "agent-harness/internal/adapter/issueops"
+	statestore "agent-harness/internal/adapter/outbound/state"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func writeJudgeFileFixtureForTest(t *testing.T) string {
@@ -40,8 +40,8 @@ func writeJudgeMapForTest(t *testing.T, content string) string {
 // (source_run_id가 실재하는 다른 run으로 해석됨)를 통과하게 한다.
 func writeProvenancedJudgeMap(t *testing.T, scoresJSON string) string {
 	t.Helper()
-	source := core.IssueOpsBenchmarkRunResult{ID: "judge-source-run", FixtureCount: 1}
-	if err := core.SaveIssueOpsBenchmarkRun(core.StateDir(), source); err != nil {
+	source := issueopscore.IssueOpsBenchmarkRunResult{ID: "judge-source-run", FixtureCount: 1}
+	if err := issueopscore.SaveIssueOpsBenchmarkRun(statestore.StateDir(), source); err != nil {
 		t.Fatal(err)
 	}
 	return writeJudgeMapForTest(t, `{"source_run_id":"judge-source-run","provenance":"recorded fresh-context judge","scores":`+scoresJSON+`}`)
@@ -57,7 +57,7 @@ func TestRunIssueOpsBenchmarkJudgeFileMergesScores(t *testing.T) {
 	out := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"benchmark", "run", "--fixtures", fixtures, "--judge", "file", "--judge-file", judgeFile, "--json"})
 	})
-	var result core.IssueOpsBenchmarkRunResult
+	var result issueopscore.IssueOpsBenchmarkRunResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("parse output: %v\n%s", err, out)
 	}
@@ -128,7 +128,7 @@ func TestRunIssueOpsBenchmarkJudgeNoneNeedsNoProvenance(t *testing.T) {
 	out := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"benchmark", "run", "--fixtures", fixtures, "--judge", "none", "--json"})
 	})
-	var result core.IssueOpsBenchmarkRunResult
+	var result issueopscore.IssueOpsBenchmarkRunResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("parse output: %v\n%s", err, out)
 	}

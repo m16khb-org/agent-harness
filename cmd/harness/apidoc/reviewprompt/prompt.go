@@ -1,13 +1,12 @@
 package reviewprompt
 
 import (
+	prompt "agent-harness/internal/domain/prompt"
 	"strings"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func Build(files []string, diff, extraPrompt string) string {
-	return core.BuildStructuredPrompt(core.StructuredPromptSpec{
+	return prompt.BuildStructuredPrompt(prompt.StructuredPromptSpec{
 		Identity:  "You are a strict, framework-agnostic pre-commit reviewer for API documentation contract drift.",
 		Objective: "Review the provided diff/content for the listed files, then inspect the directly related endpoint/controller/handler, DTO/schema, service/usecase, and error-mapping code needed to understand the public API contract. Do not fail unrelated legacy debt outside the changed endpoint/DTO/API surface.",
 		Phases: []string{
@@ -42,7 +41,7 @@ func Build(files []string, diff, extraPrompt string) string {
 			"Business-logic public error contracts visible from the change were considered.",
 			"The output is strict JSON with no prose or Markdown wrapper.",
 		},
-		Data: []core.PromptDataSection{
+		Data: []prompt.PromptDataSection{
 			{Title: "Additional Project-Specific Instructions", Content: strings.TrimSpace(extraPrompt)},
 			{Title: "Files Under Review", Content: bulletLines(files)},
 			{Title: "Diff Content Under Review", Content: diff},

@@ -5,8 +5,11 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/mcpcli/argmap"
-	"agent-harness/internal/adapter/core"
+	commitsuggest "agent-harness/internal/adapter/commitsuggest"
+	lintdiagnose "agent-harness/internal/adapter/lintdiagnose"
 	webfetchoutbound "agent-harness/internal/adapter/outbound/webfetch"
+	policy "agent-harness/internal/adapter/policy"
+	worker "agent-harness/internal/adapter/worker"
 	webfetchcontract "agent-harness/internal/contract/webfetch"
 )
 
@@ -15,7 +18,7 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	case "daemon_status":
 		return mcpToolPayload(DaemonStatus())
 	case "commit_suggest":
-		result, err := core.SuggestCommit(core.CommitSuggestRequest{
+		result, err := commitsuggest.SuggestCommit(commitsuggest.CommitSuggestRequest{
 			RepoRoot: ResolveTarget(argmap.String(call.Arguments, "repo")),
 			Staged:   argmap.Bool(call.Arguments, "staged"),
 		})
@@ -24,7 +27,7 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		}
 		return mcpToolPayload(result)
 	case "lint_diagnose":
-		result, err := core.DiagnoseCommand(core.LintDiagnoseRequest{
+		result, err := lintdiagnose.DiagnoseCommand(lintdiagnose.LintDiagnoseRequest{
 			RepoRoot:    ResolveTarget(argmap.String(call.Arguments, "repo")),
 			CommandArgv: argmap.StringSlice(call.Arguments, "command_argv"),
 		})
@@ -49,16 +52,16 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	case "contract_schema", "contract_check":
 		return mcpToolPayload(CompatibilityContract())
 	case "worker_enqueue":
-		result, err := core.EnqueueWorkerJob(argmap.String(call.Arguments, "kind"), argmap.String(call.Arguments, "payload"))
+		result, err := worker.EnqueueWorkerJob(argmap.String(call.Arguments, "kind"), argmap.String(call.Arguments, "payload"))
 		if err != nil {
 			return mcpToolFailure(newProtocolError(-32000, "worker_enqueue failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "worker_run_read_only":
-		result, err := core.RunReadOnlyWorkerJob(
+		result, err := worker.RunReadOnlyWorkerJob(
 			argmap.String(call.Arguments, "kind"),
 			argmap.String(call.Arguments, "payload"),
-			core.CommandPolicyRequest{
+			policy.CommandPolicyRequest{
 				WorkspaceRoot: argmap.String(call.Arguments, "workspace_root"),
 				CWD:           argmap.String(call.Arguments, "cwd"),
 				Argv:          argmap.StringSlice(call.Arguments, "argv"),
@@ -71,19 +74,19 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		}
 		return mcpToolPayload(result)
 	case "worker_status":
-		result, err := core.ReadWorkerJob(argmap.String(call.Arguments, "id"))
+		result, err := worker.ReadWorkerJob(argmap.String(call.Arguments, "id"))
 		if err != nil {
 			return mcpToolFailure(newProtocolError(-32000, "worker_status failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "worker_list":
-		result, err := core.ListWorkerJobs()
+		result, err := worker.ListWorkerJobs()
 		if err != nil {
 			return mcpToolFailure(newProtocolError(-32000, "worker_list failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "worker_cancel":
-		result, err := core.CancelWorkerJob(argmap.String(call.Arguments, "id"))
+		result, err := worker.CancelWorkerJob(argmap.String(call.Arguments, "id"))
 		if err != nil {
 			return mcpToolFailure(newProtocolError(-32000, "worker_cancel failed", err.Error()))
 		}

@@ -1,13 +1,12 @@
 package validationcli
 
 import (
+	preflight "agent-harness/internal/adapter/preflight"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestValidationParallelPreflightWrappersUseDefaultSurfaces(t *testing.T) {
@@ -33,7 +32,7 @@ func TestValidationParallelPreflightWrappersUseDefaultSurfaces(t *testing.T) {
 
 func writeParallelPreflightFakeBinary(t *testing.T, dir string) string {
 	t.Helper()
-	preflightJSON := mustMarshalParallelPreflight(t, core.PreflightResult{
+	preflightJSON := mustMarshalParallelPreflight(t, preflight.PreflightResult{
 		OK: true,
 		CommitStyleHints: map[string]any{
 			"conventional_subjects": 1,

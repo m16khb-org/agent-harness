@@ -10,8 +10,6 @@ import (
 	"time"
 
 	statecontract "agent-harness/internal/contract/state"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestValidationDependencyHelpers(t *testing.T) {
@@ -88,7 +86,7 @@ func TestValidationCandidateExportFacadeWithDeps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stateJSON, err := json.Marshal(core.StateResult{OK: true, Record: statecontract.RecordEnvelope{Key: key, Content: string(snapshotJSON), Bytes: len(snapshotJSON)}})
+	stateJSON, err := json.Marshal(statecontract.StateResult{OK: true, Record: statecontract.RecordEnvelope{Key: key, Content: string(snapshotJSON), Bytes: len(snapshotJSON)}})
 	if err != nil {
 		t.Fatal(err)
 	}

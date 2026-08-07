@@ -1,13 +1,12 @@
 package hookcli
 
 import (
+	issueopscore "agent-harness/internal/adapter/issueops"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestRunHookPreToolUseGeneratedProvenanceHostParity(t *testing.T) {
@@ -24,13 +23,13 @@ func TestRunHookPreToolUseGeneratedProvenanceHostParity(t *testing.T) {
 			cycle := createLinkedIssueOpsWorktree(t, source, "303-generated-provenance-"+host)
 			actor := activateIssueOpsHookExecution(t, cycle.id)
 			if host == "claude" {
-				record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), cycle.id)
+				record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), cycle.id)
 				if err != nil {
 					t.Fatal(err)
 				}
 				actor.Host = host
 				record.Execution.Lease.Holder.Host = host
-				if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+				if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
 					t.Fatal(err)
 				}
 			}

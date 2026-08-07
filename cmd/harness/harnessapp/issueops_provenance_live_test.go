@@ -1,6 +1,10 @@
 package harnessapp
 
 import (
+	"agent-harness/internal/adapter/issueops"
+	commandparsecontract "agent-harness/internal/contract/commandparse"
+	issueopscontract "agent-harness/internal/contract/issueops"
+	"agent-harness/internal/domain/commandparse"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -10,12 +14,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
-	"agent-harness/internal/adapter/issueops"
-	commandparsecontract "agent-harness/internal/contract/commandparse"
-	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/domain/commandparse"
 )
 
 func TestCurrentRelayReleasedReseedGeneratedCommandDogfood(t *testing.T) {
@@ -34,7 +32,7 @@ func TestCurrentRelayReleasedReseedGeneratedCommandDogfood(t *testing.T) {
 	}
 	binaryDigest := sha256.Sum256(binaryBytes)
 
-	live, err := issueops.ReadIssueOps(core.IssueOpsStateRoot(), lifecycleID)
+	live, err := issueops.ReadIssueOps(issueops.IssueOpsStateRoot(), lifecycleID)
 	if err != nil {
 		t.Fatal(err)
 	}

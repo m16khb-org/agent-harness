@@ -1,13 +1,12 @@
 package resources
 
 import (
+	contextregion "agent-harness/internal/domain/contextregion"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestResourcesContextIsByteDeterministic(t *testing.T) {
-	stable, _, err := core.ContextSerializationStable(func() any { return MCPResources() })
+	stable, _, err := contextregion.ContextSerializationStable(func() any { return MCPResources() })
 	if err != nil {
 		t.Fatal(err)
 	}

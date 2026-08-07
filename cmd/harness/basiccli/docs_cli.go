@@ -1,10 +1,9 @@
 package basiccli
 
 import (
+	docs "agent-harness/internal/adapter/docs"
 	"flag"
 	"fmt"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func runDocs(args []string) error {
@@ -20,7 +19,7 @@ func runDocsWithRoot(args []string, root string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result := core.DocsIndex(root, deps.Version)
+	result := docs.DocsIndex(root, deps.Version)
 	if *jsonOut {
 		return printJSON(result)
 	}

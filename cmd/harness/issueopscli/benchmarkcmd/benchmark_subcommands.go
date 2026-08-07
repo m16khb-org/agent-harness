@@ -5,7 +5,8 @@ import (
 	"fmt"
 
 	"agent-harness/cmd/harness/issueopscli/benchmarkartifact"
-	"agent-harness/internal/adapter/core"
+	issueopscore "agent-harness/internal/adapter/issueops"
+	statestore "agent-harness/internal/adapter/outbound/state"
 )
 
 // One handler per `issueops benchmark <subcommand>`. Run (benchmark.go) routes
@@ -21,15 +22,15 @@ func runBenchmarkRun(args []string) error {
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
 	}
-	fixtures, err := core.LoadIssueOpsBenchmarkFixtures(*fixturesPath)
+	fixtures, err := issueopscore.LoadIssueOpsBenchmarkFixtures(*fixturesPath)
 	if err != nil {
 		return err
 	}
-	artifacts := make(map[string]core.IssueOpsBenchmarkArtifact, len(fixtures))
+	artifacts := make(map[string]issueopscore.IssueOpsBenchmarkArtifact, len(fixtures))
 	for _, fixture := range fixtures {
 		artifacts[fixture.ID] = benchmarkartifact.FromFixture(fixture)
 	}
-	result, err := core.RunIssueOpsBenchmark(core.IssueOpsBenchmarkRunRequest{
+	result, err := issueopscore.RunIssueOpsBenchmark(issueopscore.IssueOpsBenchmarkRunRequest{
 		StateRoot: "",
 		Fixtures:  fixtures,
 		Artifacts: artifacts,
@@ -40,8 +41,8 @@ func runBenchmarkRun(args []string) error {
 	if err := applyBenchmarkJudge(*judge, *judgeFile, result, fixtures); err != nil {
 		return err
 	}
-	result = core.FinalizeIssueOpsBenchmarkRunResult(result)
-	if err := core.SaveIssueOpsBenchmarkRun(core.StateDir(), result); err != nil {
+	result = issueopscore.FinalizeIssueOpsBenchmarkRunResult(result)
+	if err := issueopscore.SaveIssueOpsBenchmarkRun(statestore.StateDir(), result); err != nil {
 		return err
 	}
 	if *jsonOut {
@@ -54,7 +55,7 @@ func runBenchmarkRun(args []string) error {
 // applyBenchmarkJudge augments the deterministic run result with judge scores
 // from a provenance-checked host-agent result file. Scores merge in place
 // through the shared result.Scores backing array.
-func applyBenchmarkJudge(judge, judgeFile string, result core.IssueOpsBenchmarkRunResult, fixtures []core.IssueOpsBenchmarkFixture) error {
+func applyBenchmarkJudge(judge, judgeFile string, result issueopscore.IssueOpsBenchmarkRunResult, fixtures []issueopscore.IssueOpsBenchmarkFixture) error {
 	switch judge {
 	case "file":
 		judgeMap, judgeScores, err := readIssueOpsJudgeMap(judgeFile, fixtures)
@@ -65,11 +66,11 @@ func applyBenchmarkJudge(judge, judgeFile string, result core.IssueOpsBenchmarkR
 		// self-attributed to this run (or naming a non-existent source run) is
 		// rejected. This is a self-reference guard, not a proof of judge
 		// independence.
-		if err := core.ValidateJudgeProvenance(judgeMap, result.ID, core.StateDir()); err != nil {
+		if err := issueopscore.ValidateJudgeProvenance(judgeMap, result.ID, statestore.StateDir()); err != nil {
 			return err
 		}
 		for i, fixture := range fixtures {
-			result.Scores[i] = core.MergeIssueOpsBenchmarkScoreWithJudge(result.Scores[i], judgeScores[fixture.ID])
+			result.Scores[i] = issueopscore.MergeIssueOpsBenchmarkScoreWithJudge(result.Scores[i], judgeScores[fixture.ID])
 		}
 	case "none":
 	default:
@@ -86,15 +87,15 @@ func runBenchmarkCompare(args []string) error {
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
 	}
-	baseline, err := core.ReadIssueOpsBenchmarkRun(core.StateDir(), *baselineID)
+	baseline, err := issueopscore.ReadIssueOpsBenchmarkRun(statestore.StateDir(), *baselineID)
 	if err != nil {
 		return err
 	}
-	candidate, err := core.ReadIssueOpsBenchmarkRun(core.StateDir(), *candidateID)
+	candidate, err := issueopscore.ReadIssueOpsBenchmarkRun(statestore.StateDir(), *candidateID)
 	if err != nil {
 		return err
 	}
-	result := core.CompareIssueOpsBenchmarkRuns(baseline, candidate)
+	result := issueopscore.CompareIssueOpsBenchmarkRuns(baseline, candidate)
 	if *jsonOut {
 		return printJSON(result)
 	}
@@ -117,15 +118,15 @@ func runBenchmarkGate(args []string) error {
 	if err != nil {
 		return err
 	}
-	baseline, err := core.ReadIssueOpsBenchmarkRun(core.StateDir(), *baselineID)
+	baseline, err := issueopscore.ReadIssueOpsBenchmarkRun(statestore.StateDir(), *baselineID)
 	if err != nil {
 		return err
 	}
-	candidateRun, err := core.ReadIssueOpsBenchmarkRun(core.StateDir(), *candidateID)
+	candidateRun, err := issueopscore.ReadIssueOpsBenchmarkRun(statestore.StateDir(), *candidateID)
 	if err != nil {
 		return err
 	}
-	result := core.EvaluateIssueOpsAutoresearchGate(core.IssueOpsAutoresearchGateRequest{
+	result := issueopscore.EvaluateIssueOpsAutoresearchGate(issueopscore.IssueOpsAutoresearchGateRequest{
 		Candidate:    candidate,
 		BaselineRun:  baseline,
 		CandidateRun: candidateRun,
@@ -153,7 +154,7 @@ func runBenchmarkReliability(args []string) error {
 	if err != nil {
 		return err
 	}
-	report, err := core.ComputeReliability(rec, *alpha)
+	report, err := issueopscore.ComputeReliability(rec, *alpha)
 	if err != nil {
 		return err
 	}
@@ -178,7 +179,7 @@ func runBenchmarkConsensus(args []string) error {
 	if err != nil {
 		return err
 	}
-	verdict, err := core.ConsensusJudgeVerdict(samples)
+	verdict, err := issueopscore.ConsensusJudgeVerdict(samples)
 	if err != nil {
 		return err
 	}

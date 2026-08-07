@@ -1,13 +1,13 @@
 package benchmarkcmd
 
 import (
+	issueopscore "agent-harness/internal/adapter/issueops"
+	statestore "agent-harness/internal/adapter/outbound/state"
 	"flag"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestRunBenchmarkRunCompareAndGate(t *testing.T) {
@@ -29,7 +29,7 @@ func TestRunBenchmarkRunCompareAndGate(t *testing.T) {
 	}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := core.SaveIssueOpsBenchmarkRun(core.StateDir(), core.IssueOpsBenchmarkRunResult{ID: "judge-source", FixtureCount: 1}); err != nil {
+	if err := issueopscore.SaveIssueOpsBenchmarkRun(statestore.StateDir(), issueopscore.IssueOpsBenchmarkRunResult{ID: "judge-source", FixtureCount: 1}); err != nil {
 		t.Fatalf("save judge source run: %v", err)
 	}
 	judgePath := filepath.Join(t.TempDir(), "judge.json")
@@ -64,10 +64,10 @@ func TestRunBenchmarkRunCompareAndGate(t *testing.T) {
 	}
 	baseline := benchmarkRunResult("baseline", 90, true)
 	candidate := benchmarkRunResult("candidate", 100, true)
-	if err := core.SaveIssueOpsBenchmarkRun(core.StateDir(), baseline); err != nil {
+	if err := issueopscore.SaveIssueOpsBenchmarkRun(statestore.StateDir(), baseline); err != nil {
 		t.Fatalf("save baseline: %v", err)
 	}
-	if err := core.SaveIssueOpsBenchmarkRun(core.StateDir(), candidate); err != nil {
+	if err := issueopscore.SaveIssueOpsBenchmarkRun(statestore.StateDir(), candidate); err != nil {
 		t.Fatalf("save candidate: %v", err)
 	}
 	if err := Run([]string{"compare", "--baseline", baseline.ID, "--candidate", candidate.ID, "--json"}); err != nil {
@@ -88,7 +88,7 @@ func TestRunBenchmarkRunCompareAndGate(t *testing.T) {
 }
 
 func TestBenchmarkHelpersAndErrors(t *testing.T) {
-	fixtures := []core.IssueOpsBenchmarkFixture{{ID: "known"}}
+	fixtures := []issueopscore.IssueOpsBenchmarkFixture{{ID: "known"}}
 	scorePath := filepath.Join(t.TempDir(), "scores.json")
 	if err := os.WriteFile(scorePath, []byte(`{"source_run_id":"src","provenance":"recorded judge","scores":{"known":{"ok":true,"fixture_id":"known","average_score":100,"minimum_score":100,"dimension_scores":[{"dimension":"intent_understanding","score":100,"evidence":"ok"}],"passed":true}}}`), 0o600); err != nil {
 		t.Fatal(err)
@@ -199,7 +199,7 @@ func TestRunBenchmarkReliability(t *testing.T) {
 
 func benchmarkRunIDs(t *testing.T) []string {
 	t.Helper()
-	entries, err := os.ReadDir(filepath.Join(core.StateDir(), "issueops-benchmarks"))
+	entries, err := os.ReadDir(filepath.Join(statestore.StateDir(), "issueops-benchmarks"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,20 +212,20 @@ func benchmarkRunIDs(t *testing.T) []string {
 	return ids
 }
 
-func benchmarkRunResult(id string, score float64, ok bool) core.IssueOpsBenchmarkRunResult {
-	return core.IssueOpsBenchmarkRunResult{
+func benchmarkRunResult(id string, score float64, ok bool) issueopscore.IssueOpsBenchmarkRunResult {
+	return issueopscore.IssueOpsBenchmarkRunResult{
 		OK:                   ok,
 		ID:                   id,
 		FixtureCount:         1,
 		AverageScore:         score,
 		MinimumScore:         score,
 		CriticalFailureCount: 0,
-		Scores: []core.IssueOpsBenchmarkScore{{
+		Scores: []issueopscore.IssueOpsBenchmarkScore{{
 			OK:           ok,
 			FixtureID:    "fixture-1",
 			AverageScore: score,
 			MinimumScore: score,
-			DimensionScores: []core.IssueOpsDimensionScore{{
+			DimensionScores: []issueopscore.IssueOpsDimensionScore{{
 				Dimension: "intent_understanding",
 				Score:     score,
 				Evidence:  "evidence",

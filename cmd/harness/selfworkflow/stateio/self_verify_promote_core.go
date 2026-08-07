@@ -1,16 +1,15 @@
 package stateio
 
 import (
+	statestore "agent-harness/internal/adapter/outbound/state"
 	"fmt"
 	"strings"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func PromoteSelfAugmentBaseline(fromKey, baselineKey string, confirm, allowFailedSource bool) (SelfAugmentPromoteResult, error) {
 	result := SelfAugmentPromoteResult{
 		OK:          false,
-		StateDir:    core.StateDir(),
+		StateDir:    statestore.StateDir(),
 		FromKey:     fromKey,
 		BaselineKey: baselineKey,
 		Confirm:     confirm,
@@ -42,10 +41,10 @@ func PromoteSelfAugmentBaseline(fromKey, baselineKey string, confirm, allowFaile
 			"refusing to promote: source snapshot %q did not pass the gate (ok=%v, termination_eligible=%v); rerun self-verify or pass --allow-failed-source",
 			fromKey, snapshot.OK, snapshot.Summary.TerminationEligible)
 	}
-	if err := WriteSelfAugmentSnapshotRecord(core.StateDir(), baselineKey, snapshot); err != nil {
+	if err := WriteSelfAugmentSnapshotRecord(statestore.StateDir(), baselineKey, snapshot); err != nil {
 		return result, err
 	}
-	state, err := core.StateRead(baselineKey)
+	state, err := statestore.StateRead(baselineKey)
 	if err != nil {
 		return result, err
 	}

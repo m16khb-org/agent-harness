@@ -1,13 +1,12 @@
 package catalog
 
 import (
+	contextregion "agent-harness/internal/domain/contextregion"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestToolsContextIsByteDeterministic(t *testing.T) {
-	stable, _, err := core.ContextSerializationStable(func() any { return Tools() })
+	stable, _, err := contextregion.ContextSerializationStable(func() any { return Tools() })
 	if err != nil {
 		t.Fatal(err)
 	}

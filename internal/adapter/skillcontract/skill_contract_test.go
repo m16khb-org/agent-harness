@@ -1,14 +1,13 @@
 package skillcontract
 
 import (
+	issueopscore "agent-harness/internal/adapter/issueops"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func readSkillForTest(t *testing.T, name string) string {
@@ -90,7 +89,7 @@ func TestP1PioneerCorrectnessContracts(t *testing.T) {
 		t.Fatal("dijkstra SKILL.md must keep scaling-test interpretation inside its fenced block")
 	}
 
-	fixtures, err := core.LoadIssueOpsBenchmarkFixtures(filepath.Join("..", "..", "..", "testdata", "issueops", "fixtures"))
+	fixtures, err := issueopscore.LoadIssueOpsBenchmarkFixtures(filepath.Join("..", "..", "..", "testdata", "issueops", "fixtures"))
 	if err != nil {
 		t.Fatal(err)
 	}

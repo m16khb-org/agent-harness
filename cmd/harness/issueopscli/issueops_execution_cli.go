@@ -2,7 +2,6 @@ package issueopscli
 
 import (
 	"agent-harness/cmd/harness/issueopscli/executioncmd"
-	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/adapter/issueops"
 )
 
@@ -24,7 +23,7 @@ func runIssueOpsExecutionWithDependencies(args []string, deps Dependencies) erro
 
 func issueOpsExecutionDeps(deps Dependencies) executioncmd.Deps {
 	return executioncmd.Deps{
-		StateRoot:   core.IssueOpsStateRoot,
+		StateRoot:   issueops.IssueOpsStateRoot,
 		Prepare:     deps.Prepare,
 		Orca:        deps.Orca,
 		OrcaOwner:   deps.OrcaOwner,

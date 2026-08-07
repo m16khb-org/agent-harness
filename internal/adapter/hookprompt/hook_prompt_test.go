@@ -1,14 +1,14 @@
 package hookprompt_test
 
 import (
+	"agent-harness/internal/adapter/hookprompt"
+	lifecycle "agent-harness/internal/adapter/lifecycle"
+	projectbootstrap "agent-harness/internal/adapter/projectbootstrap"
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	core "agent-harness/internal/adapter/core"
-	"agent-harness/internal/adapter/hookprompt"
-	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 )
 
 func TestBuildUserPromptMCPHintsInjectsConciseNextActionReminder(t *testing.T) {
@@ -192,7 +192,7 @@ func TestBuildUserPromptMCPHintsRequiresGitLabUsecaseFromRepoProfile(t *testing.
 	if err := os.WriteFile(filepath.Join(root, ".git", "config"), []byte("[remote \"origin\"]\n\turl = git@gitlab.example.internal:group/app.git\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.BootstrapProjectDocs(core.ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
+	if _, err := projectbootstrap.BootstrapProjectDocs(projectbootstrap.ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
 		t.Fatal(err)
 	}
 	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "이슈 만들고 MR까지 진행해줘", Repo: root})
@@ -248,10 +248,10 @@ func TestBuildUserPromptMCPHintsDoesNotTreatPRSubstringAsCommit(t *testing.T) {
 func TestBuildUserPromptMCPHintsIncludesPendingUpkeep(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
-	if _, err := core.InitProjectLifecycleState(root, true); err != nil {
+	if _, err := lifecycle.InitProjectLifecycleState(root, true); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.AppendDocUpkeepEvent(root, lifecyclecontract.DocUpkeepEvent{
+	if _, err := lifecycle.AppendDocUpkeepEvent(root, lifecyclecontract.DocUpkeepEvent{
 		Kind:       "operation_change",
 		TargetDocs: []string{"OPERATIONS.md"},
 		Summary:    "Hook behavior changed.",
@@ -279,7 +279,7 @@ func TestBuildUserPromptMCPHintsIncludesProjectProfile(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "package.json"), []byte(`{"dependencies":{"react":"latest","express":"latest"}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.BootstrapProjectDocs(core.ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
+	if _, err := projectbootstrap.BootstrapProjectDocs(projectbootstrap.ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
 		t.Fatal(err)
 	}
 	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "이거 좀 개선해줘", Repo: root})

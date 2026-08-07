@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	statecontract "agent-harness/internal/contract/state"
-
-	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/adapter/failurecause"
+	statestore "agent-harness/internal/adapter/outbound/state"
+	statecontract "agent-harness/internal/contract/state"
 )
 
 func ReadSelfAugmentStateSnapshot(key string) (SelfAugmentStateSnapshot, error) {
-	state, err := core.StateRead(key)
+	state, err := statestore.StateRead(key)
 	if err != nil {
 		return SelfAugmentStateSnapshot{}, err
 	}
@@ -43,7 +42,7 @@ func NormalizeSelfAugmentSnapshotFailureCause(snapshot *SelfAugmentStateSnapshot
 
 func WriteSelfAugmentSnapshotRecord(dir, key string, snapshot SelfAugmentStateSnapshot) error {
 	NormalizeSelfAugmentSnapshotFailureCause(&snapshot)
-	key, err := core.NormalizeStateKey(key)
+	key, err := statestore.NormalizeStateKey(key)
 	if err != nil {
 		return err
 	}
@@ -52,7 +51,7 @@ func WriteSelfAugmentSnapshotRecord(dir, key string, snapshot SelfAugmentStateSn
 		return err
 	}
 	record := statecontract.RecordEnvelope{
-		SchemaVersion: core.StateCurrentSchemaVersion,
+		SchemaVersion: statecontract.SchemaVersion,
 		Key:           key,
 		Content:       string(content),
 		UpdatedAt:     time.Now().UTC().Format(time.RFC3339Nano),
@@ -62,6 +61,6 @@ func WriteSelfAugmentSnapshotRecord(dir, key string, snapshot SelfAugmentStateSn
 	// core.writeStateRecord의 내구성과 맞춘다. 온디스크 출력은 경로·MarshalIndent·
 	// trailing newline이 모두 같아 byte-identical하며, crash-safe하고 동시 writer에
 	// 대해 직렬화된다.
-	_, err = core.WriteStateRecord(dir, key, record)
+	_, err = statestore.WriteStateRecord(dir, key, record)
 	return err
 }

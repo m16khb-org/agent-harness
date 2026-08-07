@@ -1,10 +1,9 @@
 package statecli
 
 import (
+	statestore "agent-harness/internal/adapter/outbound/state"
 	"flag"
 	"fmt"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func runStatePrune(args []string) error {
@@ -15,7 +14,7 @@ func runStatePrune(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := core.StatePrune(*maxAge, *confirm)
+	result, err := statestore.StatePrune(*maxAge, *confirm)
 	if err != nil {
 		return err
 	}
@@ -39,7 +38,7 @@ func runStateDoctor(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := core.StateDoctor()
+	result, err := statestore.StateDoctor()
 	if err != nil {
 		return err
 	}
@@ -63,7 +62,7 @@ func runStateMaintain(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := core.StateMaintain()
+	result, err := statestore.StateMaintain()
 	if err != nil {
 		return err
 	}

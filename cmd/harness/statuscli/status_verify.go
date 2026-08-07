@@ -7,21 +7,25 @@ import (
 	"strings"
 
 	"agent-harness/cmd/harness/daemoncli"
-	"agent-harness/internal/adapter/core"
+	doctor "agent-harness/internal/adapter/doctor"
+	inspect "agent-harness/internal/adapter/inspect"
+	statestore "agent-harness/internal/adapter/outbound/state"
+	worker "agent-harness/internal/adapter/worker"
+	statecontract "agent-harness/internal/contract/state"
 )
 
 type HarnessStatus struct {
-	OK         bool                     `json:"ok"`
-	Kind       string                   `json:"kind"`
-	Version    string                   `json:"version"`
-	Repo       string                   `json:"repo"`
-	Inspect    core.InspectInfo         `json:"inspect"`
-	Doctor     core.HarnessDoctorResult `json:"doctor"`
-	Daemon     daemoncli.Status         `json:"daemon"`
-	State      core.StateListResult     `json:"state"`
-	Workers    core.WorkerListResult    `json:"workers"`
-	SelfVerify SelfVerifyStatus         `json:"self_verify"`
-	Warnings   []string                 `json:"warnings"`
+	OK         bool                          `json:"ok"`
+	Kind       string                        `json:"kind"`
+	Version    string                        `json:"version"`
+	Repo       string                        `json:"repo"`
+	Inspect    inspect.InspectInfo           `json:"inspect"`
+	Doctor     doctor.HarnessDoctorResult    `json:"doctor"`
+	Daemon     daemoncli.Status              `json:"daemon"`
+	State      statecontract.StateListResult `json:"state"`
+	Workers    worker.WorkerListResult       `json:"workers"`
+	SelfVerify SelfVerifyStatus              `json:"self_verify"`
+	Warnings   []string                      `json:"warnings"`
 }
 
 type SelfVerifyStatus struct {
@@ -60,20 +64,20 @@ func buildHarnessStatus(repo string) HarnessStatus {
 	home, _ := os.UserHomeDir()
 	inspect := deps.InspectHarness(repo)
 	daemon := deps.CheckDaemonStatus()
-	doctor, doctorErr := core.HarnessDoctor(core.HarnessDoctorRequest{
+	doctor, doctorErr := doctor.HarnessDoctor(doctor.HarnessDoctorRequest{
 		RepoRoot:    repo,
 		HarnessRoot: deps.HarnessRoot(),
 		Home:        home,
 		Version:     deps.Version,
-		DaemonAdmission: core.HarnessDoctorDaemonAdmission{
+		DaemonAdmission: doctor.HarnessDoctorDaemonAdmission{
 			ActiveConnections: daemon.ActiveConnections,
 			MaxConnections:    daemon.MaxConnections,
 			Accepting:         daemon.Accepting,
 			Draining:          daemon.Draining,
 		},
 	})
-	state, stateErr := core.StateList()
-	workers, workerErr := core.ListWorkerJobs()
+	state, stateErr := statestore.StateList()
+	workers, workerErr := worker.ListWorkerJobs()
 	warnings := []string{}
 	if doctorErr != nil {
 		warnings = append(warnings, "doctor: "+doctorErr.Error())

@@ -1,14 +1,14 @@
 package smoke
 
 import (
+	docs "agent-harness/internal/adapter/docs"
+	inspect "agent-harness/internal/adapter/inspect"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"agent-harness/internal/adapter/core"
 )
 
-func inspectSmokeValidationErrors(info core.InspectInfo, stdout, root string) []string {
+func inspectSmokeValidationErrors(info inspect.InspectInfo, stdout, root string) []string {
 	errs := []string{}
 	if !info.OK {
 		errs = append(errs, "inspect ok=false")
@@ -25,7 +25,7 @@ func inspectSmokeValidationErrors(info core.InspectInfo, stdout, root string) []
 	return errs
 }
 
-func docsIndexSmokeValidationErrors(index core.DocsIndexResult, root string) []string {
+func docsIndexSmokeValidationErrors(index docs.DocsIndexResult, root string) []string {
 	errs := []string{}
 	if !index.OK {
 		errs = append(errs, "docs index ok=false")
@@ -55,7 +55,7 @@ func docsIndexSmokeValidationErrors(index core.DocsIndexResult, root string) []s
 	return errs
 }
 
-func docIndexContains(docs []core.DocIndexInfo, relPath string) bool {
+func docIndexContains(docs []docs.DocIndexInfo, relPath string) bool {
 	for _, doc := range docs {
 		if doc.RelPath == relPath {
 			return true

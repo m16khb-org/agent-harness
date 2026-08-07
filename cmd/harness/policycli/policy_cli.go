@@ -1,10 +1,10 @@
 package policycli
 
 import (
+	audit "agent-harness/internal/adapter/audit"
+	policy "agent-harness/internal/adapter/policy"
 	"fmt"
 	"os"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func runPolicy(args []string) error {
@@ -41,7 +41,7 @@ func runPolicyCheck(args []string) error {
 	if err != nil {
 		return err
 	}
-	result := core.EvaluateCommandPolicy(req)
+	result := policy.EvaluateCommandPolicy(req)
 	if jsonOut {
 		return printJSON(result)
 	}
@@ -54,7 +54,7 @@ func runPolicyFakeRun(args []string) error {
 	if err != nil {
 		return err
 	}
-	result := core.FakeRunCommand(req)
+	result := policy.FakeRunCommand(req)
 	if jsonOut {
 		if err := printJSON(result); err != nil {
 			return err
@@ -69,7 +69,7 @@ func runPolicyFakeRun(args []string) error {
 		}
 	}
 	if !result.Policy.Allowed {
-		return core.PolicyDeniedError{Reasons: result.Policy.DenyReasons}
+		return policy.PolicyDeniedError{Reasons: result.Policy.DenyReasons}
 	}
 	return nil
 }
@@ -82,7 +82,7 @@ func runPolicyRun(args []string) error {
 	if !readOnly {
 		return fmt.Errorf("policy run currently requires --read-only")
 	}
-	result := core.RunReadOnlyCommand(req)
+	result := policy.RunReadOnlyCommand(req)
 	if jsonOut {
 		if err := printJSON(result); err != nil {
 			return err
@@ -97,7 +97,7 @@ func runPolicyRun(args []string) error {
 		}
 	}
 	if !result.Policy.Allowed {
-		return core.PolicyDeniedError{Reasons: result.Policy.DenyReasons}
+		return policy.PolicyDeniedError{Reasons: result.Policy.DenyReasons}
 	}
 	if result.ExitCode != 0 {
 		return fmt.Errorf("command exited %d", result.ExitCode)
@@ -110,7 +110,7 @@ func runPolicyAudit(args []string) error {
 	if err != nil {
 		return err
 	}
-	result, err := core.AuditCommandPolicy(req)
+	result, err := audit.AuditCommandPolicy(req)
 	if jsonOut {
 		if printErr := printJSON(result); printErr != nil {
 			return printErr
@@ -122,7 +122,7 @@ func runPolicyAudit(args []string) error {
 	return err
 }
 
-func printPolicyEvaluation(result core.CommandPolicyEvaluation) {
+func printPolicyEvaluation(result policy.CommandPolicyEvaluation) {
 	if result.Allowed {
 		fmt.Printf("policy allowed: %s\n", result.AuditLogID)
 		return

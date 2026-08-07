@@ -1,14 +1,14 @@
 package projectcli
 
 import (
+	projectdoc "agent-harness/internal/adapter/projectdoc"
+	projectdocs "agent-harness/internal/adapter/projectdocs"
+	"agent-harness/internal/testsupport"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
-	"agent-harness/internal/testsupport"
 )
 
 func TestRunProject_dispatchesBootstrapText_whenRepoIsPositional(t *testing.T) {
@@ -39,7 +39,7 @@ func TestRunProjectDocs_printsRouteJSON_whenJSONFlagIsSet(t *testing.T) {
 	})
 
 	// Then
-	var result core.ProjectDocsRouteResult
+	var result projectdocs.ProjectDocsRouteResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode project docs json: %v\n%s", err, out)
 	}
@@ -61,14 +61,14 @@ func TestRunProjectRouteDocs_joinsTaskArgs_whenTaskFlagIsOmitted(t *testing.T) {
 	})
 
 	// Then
-	var result core.ProjectDocsRouteResult
+	var result projectdocs.ProjectDocsRouteResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode route-docs json: %v\n%s", err, out)
 	}
 	if result.Task != "architecture test" {
 		t.Fatalf("expected joined task args, got %q", result.Task)
 	}
-	if !projectRouteHasRel(result, filepath.ToSlash(filepath.Join(core.ProjectDocsDir, "TESTING.md"))) {
+	if !projectRouteHasRel(result, filepath.ToSlash(filepath.Join(projectdoc.ProjectDocsDir, "TESTING.md"))) {
 		t.Fatalf("expected testing doc route, got %+v", result.Docs)
 	}
 }
@@ -90,7 +90,7 @@ func TestRunProjectRecord_recordsADR_whenRequiredFieldsAreProvided(t *testing.T)
 	})
 
 	// Then
-	var result core.ProjectDocsRecordResult
+	var result projectdocs.ProjectDocsRecordResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode record json: %v\n%s", err, out)
 	}
@@ -146,7 +146,7 @@ func TestRunProjectRecord_returnsValidationError_whenTitleIsMissing(t *testing.T
 	}
 }
 
-func projectRouteHasRel(result core.ProjectDocsRouteResult, rel string) bool {
+func projectRouteHasRel(result projectdocs.ProjectDocsRouteResult, rel string) bool {
 	for _, doc := range result.Docs {
 		if doc.RelPath == rel {
 			return true

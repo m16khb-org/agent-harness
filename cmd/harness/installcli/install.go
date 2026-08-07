@@ -11,8 +11,9 @@ import (
 
 	claudeadapter "agent-harness/internal/adapter/claude"
 	codexadapter "agent-harness/internal/adapter/codex"
-	"agent-harness/internal/adapter/core"
+	install "agent-harness/internal/adapter/install"
 	"agent-harness/internal/adapter/installutil"
+	issueopscore "agent-harness/internal/adapter/issueops"
 	mcpadapter "agent-harness/internal/adapter/mcp"
 	activationapp "agent-harness/internal/application/nativeactivation"
 	activationcontract "agent-harness/internal/contract/nativeactivation"
@@ -54,10 +55,10 @@ func runInstall(args []string) error {
 		return fmt.Errorf("invalid --path-mode %q: expected auto, manual, or skip", *pathMode)
 	}
 	root := deps.HarnessRoot()
-	req := core.DefaultNativeInstallRequest(root, home, codexHome, filepath.Join(root, "bin", "agent-harness"))
+	req := install.DefaultNativeInstallRequest(root, home, codexHome, filepath.Join(root, "bin", "agent-harness"))
 	req.ProjectLocal = *projectLocal
 	req.DryRun = *dryRun
-	stateDir := filepath.Dir(core.IssueOpsStateRoot())
+	stateDir := filepath.Dir(issueopscore.IssueOpsStateRoot())
 	activationRequest := activationcontract.Request{StateRoot: stateDir, HarnessRoot: req.Root, TargetBinary: req.BinPath}
 	if !req.DryRun && deps.ActivationBackend == nil {
 		return fmt.Errorf("native activation backend is unavailable")
@@ -80,7 +81,7 @@ func runInstall(args []string) error {
 			return nil
 		}
 	}
-	result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
+	result, err := install.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
 	if pathErr := applyInstallPathPlan(&result, req, *pathMode); pathErr != nil {
 		result.OK = false
 		err = errors.Join(err, pathErr)

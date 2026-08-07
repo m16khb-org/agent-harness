@@ -7,9 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	issueopscore "agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestRunHookPreToolUseEnforcesLinkedIssueOpsWorktree(t *testing.T) {
@@ -21,15 +20,15 @@ func TestRunHookPreToolUseEnforcesLinkedIssueOpsWorktree(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(source, ".git", "HEAD"), []byte("ref: refs/heads/12-issue-worktree\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: source, Branch: "12-issue-worktree"})
+	record, err := issueopscore.StartIssueOps(issueopscore.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: source, Branch: "12-issue-worktree"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	recordIssueOpsHookIntentForTest(t, record.ID)
-	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/12"); err != nil {
+	if _, err := issueopscore.LinkIssueOpsIssue(issueopscore.IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/12"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsBranchPrepareRequest{
+	if _, err := issueopscore.PrepareIssueOpsBranch(issueopscore.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     "https://github.com/example/repo/issues/12",
 		Branch:       "12-issue-worktree",
@@ -45,12 +44,12 @@ func TestRunHookPreToolUseEnforcesLinkedIssueOpsWorktree(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(worktree, ".git", "HEAD"), []byte("ref: refs/heads/12-issue-worktree\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), record.ID, worktree); err != nil {
+	if _, err := issueopscore.LinkIssueOpsWorktree(issueopscore.IssueOpsStateRoot(), record.ID, worktree); err != nil {
 		t.Fatal(err)
 	}
 	recordIssueOpsHookDesignForTest(t, record.ID)
 	writeHookFixtureFile(t, worktree, "plans/issue-worktree.md", "plan\n")
-	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), record.ID, filepath.Join(worktree, "plans", "issue-worktree.md")); err != nil {
+	if _, err := issueopscore.LinkIssueOpsPlan(issueopscore.IssueOpsStateRoot(), record.ID, filepath.Join(worktree, "plans", "issue-worktree.md")); err != nil {
 		t.Fatal(err)
 	}
 	writeHookFixtureFile(t, worktree, "internal/core/issueops.go", "package core\n")
@@ -81,15 +80,15 @@ func TestRunHookPreToolUseDoesNotFenceUnpreparedLinkedCycle(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(source, ".git", "HEAD"), []byte("ref: refs/heads/main\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: source, Branch: "12-issue-worktree"})
+	record, err := issueopscore.StartIssueOps(issueopscore.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: source, Branch: "12-issue-worktree"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	recordIssueOpsHookIntentForTest(t, record.ID)
-	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/12"); err != nil {
+	if _, err := issueopscore.LinkIssueOpsIssue(issueopscore.IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/12"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsBranchPrepareRequest{
+	if _, err := issueopscore.PrepareIssueOpsBranch(issueopscore.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     "https://github.com/example/repo/issues/12",
 		Branch:       "12-issue-worktree",
@@ -105,7 +104,7 @@ func TestRunHookPreToolUseDoesNotFenceUnpreparedLinkedCycle(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(worktree, ".git", "HEAD"), []byte("ref: refs/heads/12-issue-worktree\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), record.ID, worktree); err != nil {
+	if _, err := issueopscore.LinkIssueOpsWorktree(issueopscore.IssueOpsStateRoot(), record.ID, worktree); err != nil {
 		t.Fatal(err)
 	}
 	recordIssueOpsHookDesignForTest(t, record.ID)
@@ -116,7 +115,7 @@ func TestRunHookPreToolUseDoesNotFenceUnpreparedLinkedCycle(t *testing.T) {
 	if err := os.WriteFile(planPath, []byte("plan\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), record.ID, planPath); err != nil {
+	if _, err := issueopscore.LinkIssueOpsPlan(issueopscore.IssueOpsStateRoot(), record.ID, planPath); err != nil {
 		t.Fatal(err)
 	}
 	payload, err := json.Marshal(map[string]any{
@@ -359,12 +358,12 @@ func TestRunHookPreToolUseBindsLeaseHolderToLocalProcessAncestry(t *testing.T) {
 		t.Fatalf("locally observed holder process ancestry must allow canonical mutation, got %+v", allowed)
 	}
 
-	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), cycle.id)
+	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), cycle.id)
 	if err != nil {
 		t.Fatal(err)
 	}
 	record.Execution.Lease.Holder.SessionProcess.StartedAt = "1970-01-01T00:00:00Z"
-	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
 	blocked := runHookCapture(t, string(payload), func() error {

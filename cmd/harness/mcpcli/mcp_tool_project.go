@@ -3,7 +3,11 @@ package mcpcli
 import (
 	"agent-harness/cmd/harness/apidoc"
 	"agent-harness/cmd/harness/mcpcli/argmap"
-	"agent-harness/internal/adapter/core"
+	docs "agent-harness/internal/adapter/docs"
+	inspect "agent-harness/internal/adapter/inspect"
+	preflight "agent-harness/internal/adapter/preflight"
+	projectbootstrap "agent-harness/internal/adapter/projectbootstrap"
+	projectdocs "agent-harness/internal/adapter/projectdocs"
 )
 
 func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
@@ -11,7 +15,7 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	case "harness_inspect":
 		return mcpToolPayload(InspectHarness(argmap.String(call.Arguments, "repo")))
 	case "atomic_commit_preflight":
-		return mcpToolPayload(core.GitPreflight(ResolveTarget(argmap.String(call.Arguments, "path")), HarnessRoot()))
+		return mcpToolPayload(preflight.GitPreflight(ResolveTarget(argmap.String(call.Arguments, "path")), HarnessRoot()))
 	case "commit_policy":
 		text, err := ReadHarnessFile(".agent-harness", "COMMIT_POLICY.md")
 		if err != nil {
@@ -19,29 +23,29 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		}
 		return mcpToolDirect(TextResult(text))
 	case "skill_manifest":
-		return mcpToolPayload(core.ListSkills(HarnessRoot(), skillName))
+		return mcpToolPayload(inspect.ListSkills(HarnessRoot(), skillName))
 	case "docs_index":
-		return mcpToolPayload(core.DocsIndex(HarnessRoot(), Version))
+		return mcpToolPayload(docs.DocsIndex(HarnessRoot(), Version))
 	case "project_docs_route":
-		result, err := core.RouteProjectDocs(ResolveTarget(argmap.String(call.Arguments, "repo")), argmap.StringDefault(call.Arguments, "task", "general"))
+		result, err := projectdocs.RouteProjectDocs(ResolveTarget(argmap.String(call.Arguments, "repo")), argmap.StringDefault(call.Arguments, "task", "general"))
 		if err != nil {
 			return mcpToolFailure(newProtocolError(-32602, "Project docs route failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "project_docs_bootstrap_plan":
-		result, err := core.BootstrapProjectDocs(core.ProjectDocsBootstrapRequest{RepoRoot: ResolveTarget(argmap.String(call.Arguments, "repo")), Write: false})
+		result, err := projectbootstrap.BootstrapProjectDocs(projectbootstrap.ProjectDocsBootstrapRequest{RepoRoot: ResolveTarget(argmap.String(call.Arguments, "repo")), Write: false})
 		if err != nil {
 			return mcpToolFailure(newProtocolError(-32602, "Project docs bootstrap plan failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "project_docs_read":
-		result, err := core.ReadProjectDoc(ResolveTarget(argmap.String(call.Arguments, "repo")), argmap.String(call.Arguments, "rel_path"))
+		result, err := projectdocs.ReadProjectDoc(ResolveTarget(argmap.String(call.Arguments, "repo")), argmap.String(call.Arguments, "rel_path"))
 		if err != nil {
 			return mcpToolFailure(newProtocolError(-32602, "Project docs read failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "project_docs_update":
-		result, err := core.UpdateProjectDoc(core.ProjectDocsUpdateRequest{
+		result, err := projectdocs.UpdateProjectDoc(projectdocs.ProjectDocsUpdateRequest{
 			RepoRoot:       ResolveTarget(argmap.String(call.Arguments, "repo")),
 			RelPath:        argmap.String(call.Arguments, "rel_path"),
 			Content:        argmap.String(call.Arguments, "content"),
@@ -55,7 +59,7 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		}
 		return mcpToolPayload(result)
 	case "project_docs_record":
-		result, err := core.AppendProjectDocsRecord(core.ProjectDocsRecordRequest{
+		result, err := projectdocs.AppendProjectDocsRecord(projectdocs.ProjectDocsRecordRequest{
 			RepoRoot:     ResolveTarget(argmap.String(call.Arguments, "repo")),
 			Kind:         argmap.String(call.Arguments, "kind"),
 			Title:        argmap.String(call.Arguments, "title"),

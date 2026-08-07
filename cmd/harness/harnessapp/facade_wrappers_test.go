@@ -18,7 +18,7 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 
 	"agent-harness/cmd/harness/qualitycli"
-	"agent-harness/internal/adapter/core"
+	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/port"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -166,7 +166,7 @@ func TestHostAndPathFacadeWrappers(t *testing.T) {
 	if !containsString([]string{"a"}, "a") {
 		t.Fatal("containsString failed")
 	}
-	if !stateDoctorHasIssueCode([]core.StateDoctorIssue{{Code: "x"}}, "x") {
+	if !stateDoctorHasIssueCode([]statecontract.StateDoctorIssue{{Code: "x"}}, "x") {
 		t.Fatal("stateDoctorHasIssueCode failed")
 	}
 

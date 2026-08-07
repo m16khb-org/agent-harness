@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"agent-harness/cmd/harness/mcpcli/argmap"
-	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/adapter/issueops"
 	model "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
@@ -25,7 +24,7 @@ func handleMCPIssueOpsExecutionWithDependencies(args map[string]any, deps MCPDep
 	if err != nil {
 		return mcpToolErrorPayload(issueOpsMCPErrorPayload(err))
 	}
-	result, err := issueops.ExecuteExecution(context.Background(), core.IssueOpsStateRoot(), req, issueOpsExecutionActionDependencies(deps))
+	result, err := issueops.ExecuteExecution(context.Background(), issueops.IssueOpsStateRoot(), req, issueOpsExecutionActionDependencies(deps))
 	if err != nil {
 		err = bindMCPIssueOpsExecutionErrorNextCommand(err, deps.Provenance)
 		return mcpToolErrorPayload(issueOpsMCPErrorPayload(err))

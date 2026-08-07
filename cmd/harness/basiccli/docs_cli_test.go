@@ -1,13 +1,12 @@
 package basiccli
 
 import (
+	docs "agent-harness/internal/adapter/docs"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestRunDocs_printsJSON_whenJSONFlagIsSet(t *testing.T) {
@@ -17,7 +16,7 @@ func TestRunDocs_printsJSON_whenJSONFlagIsSet(t *testing.T) {
 	})
 
 	// 검증
-	var result core.DocsIndexResult
+	var result docs.DocsIndexResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode docs json: %v\n%s", err, out)
 	}
@@ -73,7 +72,7 @@ func TestRunDocsWithRoot_rejectsInvalidFlag(t *testing.T) {
 	}
 }
 
-func docsIndexHasRel(result core.DocsIndexResult, rel string) bool {
+func docsIndexHasRel(result docs.DocsIndexResult, rel string) bool {
 	for _, doc := range result.Docs {
 		if doc.RelPath == rel {
 			return true

@@ -7,10 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	statecontract "agent-harness/internal/contract/state"
-
-	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/adapter/outbound/sqlstore"
+	statestore "agent-harness/internal/adapter/outbound/state"
+	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/testsupport"
 )
 
@@ -82,10 +81,10 @@ func TestRunStateWriteReadAndPruneErrorsStaySurfaced(t *testing.T) {
 func TestRunStatePruneAndDoctorTextBranches(t *testing.T) {
 	stateDir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateDir)
-	if _, err := core.StateWrite("old", "old content"); err != nil {
+	if _, err := statestore.StateWrite("old", "old content"); err != nil {
 		t.Fatalf("write old state: %v", err)
 	}
-	old, err := core.StateRead("old")
+	old, err := statestore.StateRead("old")
 	if err != nil {
 		t.Fatalf("read old state: %v", err)
 	}
@@ -112,7 +111,7 @@ func TestRunStatePruneAndDoctorTextBranches(t *testing.T) {
 	if !strings.Contains(doctorOut, "state doctor found 1 issues") || !strings.Contains(doctorOut, "error invalid_state") {
 		t.Fatalf("unexpected doctor text:\n%s", doctorOut)
 	}
-	doctor, err := core.StateDoctor()
+	doctor, err := statestore.StateDoctor()
 	if err != nil {
 		t.Fatalf("state doctor: %v", err)
 	}
@@ -156,7 +155,7 @@ func captureStatusVerifyStdout(t *testing.T, fn func() error) string {
 	return testsupport.CaptureStdout(t, fn)
 }
 
-func stateDoctorHasIssueCode(issues []core.StateDoctorIssue, want string) bool {
+func stateDoctorHasIssueCode(issues []statecontract.StateDoctorIssue, want string) bool {
 	for _, issue := range issues {
 		if issue.Code == want {
 			return true

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/selfworkflow/model"
-	"agent-harness/internal/adapter/core"
+	statestore "agent-harness/internal/adapter/outbound/state"
 	"agent-harness/internal/testsupport"
 )
 
@@ -35,7 +35,7 @@ func captureStdout(t *testing.T, fn func() error) string {
 
 func assertStateRecordContains(t *testing.T, key string, want string) {
 	t.Helper()
-	state, err := core.StateRead(key)
+	state, err := statestore.StateRead(key)
 	if err != nil {
 		t.Fatalf("read state %q: %v", key, err)
 	}

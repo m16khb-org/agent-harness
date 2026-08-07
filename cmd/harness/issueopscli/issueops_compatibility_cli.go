@@ -4,9 +4,8 @@ import (
 	"flag"
 	"fmt"
 
+	issueopscore "agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func runIssueOpsCompatibility(args []string) error {
@@ -34,7 +33,7 @@ func runIssueOpsCompatibility(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsCompatibilityReviewWithActor(core.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsCompatibilityReviewRequest{
+	record, err := issueopscore.RecordIssueOpsCompatibilityReviewWithActor(issueopscore.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsCompatibilityReviewRequest{
 		BackwardCompatibility: backwardCompatibility,
 		SideEffects:           sideEffects,
 		RollbackPlan:          *rollbackPlan,

@@ -8,14 +8,14 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/workercli"
-	"agent-harness/internal/adapter/core"
+	draftwiki "agent-harness/internal/adapter/draftwiki"
 )
 
 func TestRunProjectDraftWikiPruneJSON(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
 	for i := 0; i < 3; i++ {
-		if _, err := core.AppendDraftWikiQueueEvent(core.DraftWikiQueueAppendRequest{
+		if _, err := draftwiki.AppendDraftWikiQueueEvent(draftwiki.DraftWikiQueueAppendRequest{
 			RepoRoot:       root,
 			SourceMaterial: "cli prune material",
 		}); err != nil {

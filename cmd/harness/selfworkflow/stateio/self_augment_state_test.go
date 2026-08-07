@@ -8,7 +8,7 @@ import (
 
 	"agent-harness/cmd/harness/selfworkflow/augmentplan"
 	"agent-harness/cmd/harness/selfworkflow/model"
-	"agent-harness/internal/adapter/core"
+	statestore "agent-harness/internal/adapter/outbound/state"
 )
 
 func TestSaveSelfAugmentPlan(t *testing.T) {
@@ -29,7 +29,7 @@ func TestSaveSelfAugmentPlan(t *testing.T) {
 	if result.StateCheckpoint.Key != "self-augment-plan-test" || result.StateCheckpoint.Path != filepath.Join(dir, "self-augment-plan-test.json") {
 		t.Fatalf("unexpected plan checkpoint metadata: %+v", result.StateCheckpoint)
 	}
-	state, err := core.StateRead("self-augment-plan-test")
+	state, err := statestore.StateRead("self-augment-plan-test")
 	if err != nil {
 		t.Fatalf("StateRead: %v", err)
 	}

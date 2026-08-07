@@ -8,9 +8,14 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
-	"agent-harness/internal/adapter/core"
 	hookadapter "agent-harness/internal/adapter/hook"
+	hookfailure "agent-harness/internal/adapter/hookfailure"
+	hookmetrics "agent-harness/internal/adapter/hookmetrics"
+	hookprompt "agent-harness/internal/adapter/hookprompt"
 	coreinstall "agent-harness/internal/adapter/install"
+	lifecycle "agent-harness/internal/adapter/lifecycle"
+	statestore "agent-harness/internal/adapter/outbound/state"
+	worker "agent-harness/internal/adapter/worker"
 )
 
 type Config struct {
@@ -35,11 +40,11 @@ func RunPostCompact(args []string, config Config) error {
 	if parsedRepo == "" {
 		parsedRepo = config.ResolveTarget("")
 	}
-	result := core.BuildLifecyclePostCompactReminder(parsedRepo)
+	result := lifecycle.BuildLifecyclePostCompactReminder(parsedRepo)
 	if *jsonOut {
 		return config.PrintJSON(result)
 	}
-	cat := core.BuildProjectDocCatalogContext(parsedRepo)
+	cat := hookprompt.BuildProjectDocCatalogContext(parsedRepo)
 
 	// Codex post-compact uses systemMessage only.
 	if hostOf(hostFlag) == "codex" {
@@ -85,8 +90,8 @@ func RunSessionStart(args []string, config Config) error {
 	// Best-effort rotation of the hook-failure log (quality program Q2 /
 	// audit P1): the JSONL grew without bound because pruning required a
 	// manual command. Session start is the natural low-frequency hook for it.
-	_, _ = core.PruneHookFailureLog(720 * time.Hour)
-	_, _ = core.PruneHookMetricsLog(720 * time.Hour)
+	_, _ = hookfailure.PruneHookFailureLog(720 * time.Hour)
+	_, _ = hookmetrics.PruneHookMetricsLog(720 * time.Hour)
 	// Best-effort self-heal of crashed worker jobs (A2/W1): mark dead-PID running
 	// jobs failed. Amortized to at most once per 6h via a stat-only sentinel
 	// because the detector is an unbounded full-dir scan and the worker dir has
@@ -95,8 +100,8 @@ func RunSessionStart(args []string, config Config) error {
 	// permission repair on known sqlite state roots. Amortized to at most
 	// once per 24h via a stat-only sentinel — maintenance is cheap (ms) but
 	// unnecessary on every session start.
-	_, _, _ = core.MaybeMaintainStateStores(24 * time.Hour)
-	_, _, _ = core.MaybeDetectStuckWorkerJobs(6 * time.Hour)
+	_, _, _ = statestore.MaybeMaintainStateStores(24 * time.Hour)
+	_, _, _ = worker.MaybeDetectStuckWorkerJobs(6 * time.Hour)
 	parsedRepo := strings.TrimSpace(*repo)
 	if parsedRepo == "" {
 		parsedRepo = hookinput.RepoFromHookInput(stdin)
@@ -104,7 +109,7 @@ func RunSessionStart(args []string, config Config) error {
 	if parsedRepo == "" {
 		parsedRepo = config.ResolveTarget("")
 	}
-	cat := core.BuildProjectDocCatalogContext(parsedRepo)
+	cat := hookprompt.BuildProjectDocCatalogContext(parsedRepo)
 	if *jsonOut {
 		return config.PrintJSON(cat)
 	}

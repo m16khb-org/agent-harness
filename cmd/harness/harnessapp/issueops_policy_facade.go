@@ -3,10 +3,10 @@ package harnessapp
 import (
 	"agent-harness/cmd/harness/issueopscli"
 	"agent-harness/cmd/harness/policycli"
-	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/adapter/issueops"
 	basesyncoutbound "agent-harness/internal/adapter/outbound/issueopsbasesync"
 	provenanceadapter "agent-harness/internal/adapter/outbound/issueopsprovenance"
+	policy "agent-harness/internal/adapter/policy"
 	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
@@ -62,10 +62,10 @@ func runPolicyAudit(args []string) error {
 	return policycli.RunAudit(args)
 }
 
-func parseCommandPolicyFlags(name string, args []string) (core.CommandPolicyRequest, bool, error) {
+func parseCommandPolicyFlags(name string, args []string) (policy.CommandPolicyRequest, bool, error) {
 	return policycli.ParseFlags(name, args)
 }
 
-func parseCommandPolicyRunFlags(args []string) (core.CommandPolicyRequest, bool, bool, error) {
+func parseCommandPolicyRunFlags(args []string) (policy.CommandPolicyRequest, bool, bool, error) {
 	return policycli.ParseRunFlags(args)
 }

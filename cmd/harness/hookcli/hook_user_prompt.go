@@ -9,8 +9,9 @@ import (
 	"agent-harness/cmd/harness/hookcli/hookenv"
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	"agent-harness/cmd/harness/hookcli/hookprompt"
-	"agent-harness/internal/adapter/core"
 	hookadapter "agent-harness/internal/adapter/hook"
+	hookprompt2 "agent-harness/internal/adapter/hookprompt"
+	lifecycle "agent-harness/internal/adapter/lifecycle"
 )
 
 func runHookUserPrompt(args []string) error {
@@ -43,7 +44,7 @@ func runHookUserPrompt(args []string) error {
 	} else if payloadHost != "" && flagHost != "" && !strings.EqualFold(payloadHost, flagHost) {
 		nativeHost = "conflict"
 	}
-	result := core.BuildUserPromptMCPHints(core.HookUserPromptRequest{
+	result := hookprompt2.BuildUserPromptMCPHints(hookprompt2.HookUserPromptRequest{
 		Prompt:               prompt,
 		Repo:                 repo,
 		Host:                 nativeHost,
@@ -54,7 +55,7 @@ func runHookUserPrompt(args []string) error {
 	// Clear only after BuildUserPromptMCPHints: choice replies ("1", "2번")
 	// read the relay record to expand the chosen option before it is consumed.
 	if hookprompt.ShouldConsumeNextActionRelay(prompt) {
-		core.ClearStopNextActionRelay(repo)
+		lifecycle.ClearStopNextActionRelay(repo)
 	}
 	if *jsonOut {
 		return printJSON(result)

@@ -9,7 +9,9 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/daemoncli"
-	"agent-harness/internal/adapter/core"
+	inspect "agent-harness/internal/adapter/inspect"
+	statestore "agent-harness/internal/adapter/outbound/state"
+	worker "agent-harness/internal/adapter/worker"
 	"agent-harness/internal/testsupport"
 )
 
@@ -19,10 +21,10 @@ func TestBuildHarnessStatusReportsStateWorkerAndSelfVerify(t *testing.T) {
 	workerDir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateDir)
 	t.Setenv("HARNESS_WORKER_DIR", workerDir)
-	if _, err := core.StateWrite("self-verify-latest", `{"ok":true}`); err != nil {
+	if _, err := statestore.StateWrite("self-verify-latest", `{"ok":true}`); err != nil {
 		t.Fatalf("write self verify state: %v", err)
 	}
-	if _, err := core.EnqueueWorkerJob("smoke", "payload"); err != nil {
+	if _, err := worker.EnqueueWorkerJob("smoke", "payload"); err != nil {
 		t.Fatalf("enqueue worker job: %v", err)
 	}
 
@@ -61,7 +63,7 @@ func TestBuildHarnessStatusSharesDaemonAdmissionWithDoctor(t *testing.T) {
 		HarnessRoot:       func() string { return repo },
 		ResolveTarget:     func(target string) string { return target },
 		Version:           "test",
-		InspectHarness:    func(string) core.InspectInfo { return core.InspectInfo{} },
+		InspectHarness:    func(string) inspect.InspectInfo { return inspect.InspectInfo{} },
 		CheckDaemonStatus: func() daemoncli.Status { return want },
 	})
 

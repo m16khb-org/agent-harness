@@ -1,14 +1,14 @@
 package smoke
 
 import (
+	docs "agent-harness/internal/adapter/docs"
+	inspect "agent-harness/internal/adapter/inspect"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestValidateInspectWithDepsCoversCommandAndContractBranches(t *testing.T) {
@@ -19,10 +19,10 @@ func TestValidateInspectWithDepsCoversCommandAndContractBranches(t *testing.T) {
 		if dir != root || label != "inspect smoke" || timeout != 30*time.Second || stdin != "" {
 			t.Fatalf("unexpected inspect command envelope: dir=%q label=%q timeout=%s stdin=%q", dir, label, timeout, stdin)
 		}
-		out, err := json.Marshal(core.InspectInfo{
+		out, err := json.Marshal(inspect.InspectInfo{
 			OK:     true,
-			Skills: []core.SkillInfo{{Name: "self-verify", HasSkillMD: true}},
-			Integration: core.IntegrationStatus{
+			Skills: []inspect.SkillInfo{{Name: "self-verify", HasSkillMD: true}},
+			Integration: inspect.IntegrationStatus{
 				ProjectClaudeMCPConfig: true,
 			},
 		})
@@ -51,7 +51,7 @@ func TestValidateInspectWithDepsCoversCommandAndContractBranches(t *testing.T) {
 	}
 
 	missing := validateInspectWithDeps("bin", root, func(string, string, time.Duration, string, string, ...string) StepResult {
-		out, err := json.Marshal(core.InspectInfo{OK: false})
+		out, err := json.Marshal(inspect.InspectInfo{OK: false})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -135,17 +135,17 @@ func TestValidateSmokeWrappersUseExecutableSurface(t *testing.T) {
 func writeValidationSmokeFakeBinary(t *testing.T, dir, root string) string {
 	t.Helper()
 	path := filepath.Join(dir, "fake-harness")
-	inspect, err := json.Marshal(core.InspectInfo{
+	inspect, err := json.Marshal(inspect.InspectInfo{
 		OK:     true,
-		Skills: []core.SkillInfo{{Name: "self-verify", HasSkillMD: true}},
-		Integration: core.IntegrationStatus{
+		Skills: []inspect.SkillInfo{{Name: "self-verify", HasSkillMD: true}},
+		Integration: inspect.IntegrationStatus{
 			ProjectClaudeMCPConfig: true,
 		},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	docs, err := json.Marshal(core.DocsIndexResult{OK: true, HarnessRoot: root, Docs: []core.DocIndexInfo{
+	docs, err := json.Marshal(docs.DocsIndexResult{OK: true, HarnessRoot: root, Docs: []docs.DocIndexInfo{
 		{RelPath: "AGENTS.md", Title: "Agents"},
 		{RelPath: "CLAUDE.md", Title: "Claude"},
 		{RelPath: "GENIUS_THINK.md", Title: "Genius"},
@@ -170,7 +170,7 @@ func writeValidationSmokeFakeBinary(t *testing.T, dir, root string) string {
 
 func TestValidateDocsIndexWithDepsCoversCommandAndContractBranches(t *testing.T) {
 	root := t.TempDir()
-	wantDocs := []core.DocIndexInfo{
+	wantDocs := []docs.DocIndexInfo{
 		{RelPath: "AGENTS.md", Title: "Agents"},
 		{RelPath: "CLAUDE.md", Title: "Claude"},
 		{RelPath: "GENIUS_THINK.md", Title: "Genius"},
@@ -185,7 +185,7 @@ func TestValidateDocsIndexWithDepsCoversCommandAndContractBranches(t *testing.T)
 		if dir != root || label != "docs index smoke" || timeout != 30*time.Second || stdin != "" {
 			t.Fatalf("unexpected docs command envelope: dir=%q label=%q timeout=%s stdin=%q", dir, label, timeout, stdin)
 		}
-		out, err := json.Marshal(core.DocsIndexResult{OK: true, HarnessRoot: root, Docs: wantDocs})
+		out, err := json.Marshal(docs.DocsIndexResult{OK: true, HarnessRoot: root, Docs: wantDocs})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -207,10 +207,10 @@ func TestValidateDocsIndexWithDepsCoversCommandAndContractBranches(t *testing.T)
 	}
 
 	missing := validateDocsIndexWithDeps("bin", root, func(string, string, time.Duration, string, string, ...string) StepResult {
-		out, err := json.Marshal(core.DocsIndexResult{
+		out, err := json.Marshal(docs.DocsIndexResult{
 			OK:          false,
 			HarnessRoot: root + "-other",
-			Docs:        []core.DocIndexInfo{{RelPath: "AGENTS.md", Title: ""}},
+			Docs:        []docs.DocIndexInfo{{RelPath: "AGENTS.md", Title: ""}},
 		})
 		if err != nil {
 			t.Fatal(err)

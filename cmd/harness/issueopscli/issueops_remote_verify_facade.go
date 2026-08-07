@@ -2,7 +2,7 @@ package issueopscli
 
 import (
 	"agent-harness/cmd/harness/issueopscli/remoteverify"
-	"agent-harness/internal/adapter/core"
+	issueopscore "agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
@@ -18,7 +18,7 @@ func verifyIssueOpsRemoteArtifactMergedLive(artifact issueopscontract.IssueOpsRe
 	return remoteverify.VerifyRemoteArtifactMergedLive(artifact)
 }
 
-func verifyIssueOpsRemoteArtifactMergedHeadLive(artifact issueopscontract.IssueOpsRemoteArtifactVerification) (core.IssueOpsCleanupRemoteBranchArtifactHead, error) {
+func verifyIssueOpsRemoteArtifactMergedHeadLive(artifact issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscore.CleanupRemoteBranchArtifactHead, error) {
 	return remoteverify.VerifyRemoteArtifactMergedHeadLive(artifact)
 }
 
