@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"agent-harness/internal/core/searchrouting"
+	"agent-harness/internal/domain/searchrouting"
 )
 
 var (

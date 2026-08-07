@@ -1,6 +1,6 @@
 package augmentcatalog
 
-import "agent-harness/internal/core/qualitycatalog"
+import "agent-harness/internal/domain/qualitycatalog"
 
 func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidate {
 	base := []SelfAugmentCandidate{

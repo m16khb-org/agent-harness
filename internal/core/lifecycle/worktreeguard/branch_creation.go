@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"agent-harness/internal/core/commandparse"
-	"agent-harness/internal/core/searchrouting"
+	"agent-harness/internal/domain/searchrouting"
 )
 
 type BranchCreation struct {

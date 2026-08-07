@@ -1,8 +1,11 @@
-// Package lintgate provides a DETERMINISTIC, fail-open lint check for the
+// LintEditedGoFiles provides a DETERMINISTIC, fail-open lint check for the
 // PostToolUse hook (B3). It deliberately has NO dependency on host-agent
 // provider settings, so the per-edit critical-path hook can never invoke a
 // networked judgement path.
-package lintgate
+//
+// It lives in the hook adapter because running gofmt is process I/O: the
+// capability that owns the hook transport also owns the tools it shells out to.
+package hook
 
 import (
 	"context"

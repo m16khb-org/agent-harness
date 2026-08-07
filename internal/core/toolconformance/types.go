@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"agent-harness/internal/core/failurecause"
+	"agent-harness/internal/domain/failurecause"
 )
 
 const (

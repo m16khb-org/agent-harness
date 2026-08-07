@@ -4,8 +4,8 @@ import (
 	"sort"
 	"strings"
 
-	"agent-harness/internal/core/failurecause"
 	"agent-harness/internal/core/policy"
+	"agent-harness/internal/domain/failurecause"
 )
 
 func nestedMap(doc map[string]any, key string) map[string]any {

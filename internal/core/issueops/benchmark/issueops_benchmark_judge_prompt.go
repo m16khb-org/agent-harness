@@ -3,8 +3,8 @@ package benchmark
 import (
 	"encoding/json"
 
-	"agent-harness/internal/core/judgement"
-	"agent-harness/internal/core/prompt"
+	"agent-harness/internal/domain/judgement"
+	"agent-harness/internal/domain/prompt"
 )
 
 func buildIssueOpsLLMJudgePrompt(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) (string, error) {

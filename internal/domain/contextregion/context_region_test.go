@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/core"
-	"agent-harness/internal/core/contextregion"
+	"agent-harness/internal/domain/contextregion"
 )
 
 func contextToAny(t *testing.T, v any) any {

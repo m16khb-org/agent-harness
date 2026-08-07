@@ -7,10 +7,10 @@ import (
 
 	"agent-harness/internal/core/hookprompt"
 	"agent-harness/internal/core/lifecycle"
-	"agent-harness/internal/core/nextaction"
 	"agent-harness/internal/core/policy"
 	"agent-harness/internal/core/projectdocs"
 	coreworker "agent-harness/internal/core/worker"
+	"agent-harness/internal/domain/nextaction"
 )
 
 type HookUserPromptRequest = hookprompt.HookUserPromptRequest

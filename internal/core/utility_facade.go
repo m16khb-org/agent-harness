@@ -3,7 +3,6 @@ package core
 import (
 	"agent-harness/internal/core/audit"
 	"agent-harness/internal/core/commitsuggest"
-	"agent-harness/internal/core/contextregion"
 	coredocs "agent-harness/internal/core/docs"
 	"agent-harness/internal/core/doctor"
 	coreguard "agent-harness/internal/core/guard"
@@ -11,10 +10,11 @@ import (
 	"agent-harness/internal/core/hookmetrics"
 	coreinspect "agent-harness/internal/core/inspect"
 	coreinstall "agent-harness/internal/core/install"
-	"agent-harness/internal/core/judgement"
 	"agent-harness/internal/core/lintdiagnose"
 	"agent-harness/internal/core/policy"
-	"agent-harness/internal/core/prompt"
+	"agent-harness/internal/domain/contextregion"
+	"agent-harness/internal/domain/judgement"
+	"agent-harness/internal/domain/prompt"
 	"agent-harness/internal/port"
 	"time"
 )

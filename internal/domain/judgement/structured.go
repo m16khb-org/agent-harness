@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"agent-harness/internal/core/prompt"
+	"agent-harness/internal/domain/prompt"
 )
 
 func BuildJSONSchemaSection(example string, fieldTypes []string) prompt.PromptDataSection {

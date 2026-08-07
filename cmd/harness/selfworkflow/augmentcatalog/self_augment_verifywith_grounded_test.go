@@ -3,7 +3,7 @@ package augmentcatalog
 import (
 	"testing"
 
-	"agent-harness/internal/core/qualitycatalog"
+	"agent-harness/internal/domain/qualitycatalog"
 )
 
 // Every self-augment candidate (base + refilled quality specs) must carry an

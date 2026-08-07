@@ -5,7 +5,7 @@ import (
 	"agent-harness/internal/core/draftwiki"
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/lintdiagnose"
-	"agent-harness/internal/core/prompt"
+	"agent-harness/internal/domain/prompt"
 	"os"
 	"path/filepath"
 	"strings"

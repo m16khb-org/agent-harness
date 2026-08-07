@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"agent-harness/internal/core"
-	"agent-harness/internal/core/operationalhealth"
 	"agent-harness/internal/core/repopath"
+	"agent-harness/internal/domain/operationalhealth"
 )
 
 type doctorRepeatedFlag []string

@@ -15,7 +15,7 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/issueops/pathutil"
-	corehealth "agent-harness/internal/core/operationalhealth"
+	corehealth "agent-harness/internal/domain/operationalhealth"
 	"agent-harness/internal/port"
 )
 

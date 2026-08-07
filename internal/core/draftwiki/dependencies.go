@@ -10,12 +10,12 @@ import (
 	"agent-harness/internal/adapter/outbound/state"
 	"agent-harness/internal/core/docs"
 	"agent-harness/internal/core/draftwiki/queue"
-	"agent-harness/internal/core/judgement"
 	"agent-harness/internal/core/lifecycle"
 	"agent-harness/internal/core/policy"
 	"agent-harness/internal/core/projectdoc"
-	"agent-harness/internal/core/prompt"
 	coreworker "agent-harness/internal/core/worker"
+	"agent-harness/internal/domain/judgement"
+	"agent-harness/internal/domain/prompt"
 )
 
 const ProjectDocsDir = projectdoc.ProjectDocsDir

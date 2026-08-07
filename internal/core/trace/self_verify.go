@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"agent-harness/internal/core/failurecause"
 	"agent-harness/internal/core/policy"
 	"agent-harness/internal/core/trace/classification"
+	"agent-harness/internal/domain/failurecause"
 )
 
 func selfVerifySummaryFindings(doc map[string]any) []TraceAnalysisFinding {

@@ -14,7 +14,7 @@ import (
 	"agent-harness/internal/core"
 	coreinstall "agent-harness/internal/core/install"
 	issueopscore "agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/searchrouting"
+	"agent-harness/internal/domain/searchrouting"
 )
 
 func runHookPreToolUse(args []string) error {

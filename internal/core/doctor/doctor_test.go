@@ -12,7 +12,7 @@ import (
 	"agent-harness/internal/core"
 	"agent-harness/internal/core/doctor"
 	"agent-harness/internal/core/looprun"
-	"agent-harness/internal/core/operationalhealth"
+	"agent-harness/internal/domain/operationalhealth"
 )
 
 func TestHarnessDoctorJSONIncludesDaemonAdmissionHealth(t *testing.T) {

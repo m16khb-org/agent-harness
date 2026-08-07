@@ -7,7 +7,7 @@ import (
 
 	"agent-harness/cmd/harness/daemoncli"
 	"agent-harness/internal/core"
-	"agent-harness/internal/core/operationalhealth"
+	"agent-harness/internal/domain/operationalhealth"
 )
 
 // Deps는 basic CLI 명령들이 의존하는, 호스트가 제공하는 구현을 담는다.

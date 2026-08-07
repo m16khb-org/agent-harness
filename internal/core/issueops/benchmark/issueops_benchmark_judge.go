@@ -3,7 +3,7 @@ package benchmark
 import (
 	"fmt"
 
-	"agent-harness/internal/core/judgement"
+	"agent-harness/internal/domain/judgement"
 )
 
 type IssueOpsLLMJudgeRequest struct {

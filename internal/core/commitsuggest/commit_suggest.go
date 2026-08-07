@@ -5,9 +5,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"agent-harness/internal/core/judgement"
-	"agent-harness/internal/core/prompt"
 	"agent-harness/internal/core/repopath"
+	"agent-harness/internal/domain/judgement"
+	"agent-harness/internal/domain/prompt"
 )
 
 // CommitSuggestRequest는 commit message 제안을 구성한다.
