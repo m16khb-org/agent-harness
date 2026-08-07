@@ -47,6 +47,12 @@ type CleanupAbandonRequest struct {
 	Apply       bool
 	Confirm     bool
 	Fingerprint string
+	// ArtifactUnmerged는 레코드의 remote artifact가 병합되지 않았음을 호출자가
+	// 실제로 관측했다는 뜻이다. 관측 실패와 미관측은 모두 false로 남아 게이트가
+	// 닫힌 상태를 유지한다(fail-closed). 이 값은 fingerprint 입력이 아니다 —
+	// 네트워크 관측을 인벤토리에 섞으면 일시적 원격 오류가 preview 재발급
+	// 루프를 만든다(finish의 remote_branch_absent와 같은 규율).
+	ArtifactUnmerged bool
 }
 
 // CleanupAbandonDeps는 게이트 평가의 외부 표면이다.
@@ -258,11 +264,16 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record issueops.
 		missing = append(missing, "reason_required")
 		result.ReasonError = err.Error()
 	}
-	// ② done은 finish/prune 전용이다. abandon이 done을 삼키면 머지 증적 보존
-	// 경로(reflect→finish)를 우회하는 탈출구가 된다.
-	if record.Phase == IssueOpsPhaseDone {
-		missing = append(missing, "phase_not_done")
-	}
+	// ② 보존해야 할 것은 phase 이름이 아니라 머지 증적이다.
+	//
+	// 원래 이 게이트는 done을 통째로 거부했다. abandon이 done을 삼키면 머지 증적
+	// 보존 경로(reflect→finish)를 우회하는 탈출구가 된다는 우려였고, 그 우려의
+	// 실체는 게이트 ④가 이미 막는다. done 자체를 거부하면 finish가 성립하지 않는
+	// 결말 — artifact가 없거나 병합되지 않은 채 완료된 사이클 — 이 어느 경로로도
+	// 은퇴하지 못한다(#342에서 실측: 6건이 이 사유로 차단).
+	//
+	// finish는 remote_artifact_merged를 요구하므로 미머지 레코드에 쓸 수 없고,
+	// 그 요구를 완화하는 것은 잘못된 정리를 여는 일이다. 따라서 판정을 ④로 옮긴다.
 	// ③ lease allowlist: 홀더가 없는 상태만 통과한다.
 	//
 	// 판정 기준은 상태 이름이 아니라 writer의 유무다. validateWriteLease가
@@ -278,9 +289,10 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record issueops.
 	if record.Execution != nil && cleanupAbandonLeaseHoldsWriter(record.Execution.Lease.Status) {
 		missing = append(missing, "lease_terminal")
 	}
-	// ④ 머지 증적을 가진 레코드의 정답은 reflect→finish다.
-	if record.RemoteArtifact != nil {
-		missing = append(missing, "no_remote_artifact")
+	// ④ 머지 증적을 가진 레코드의 정답은 reflect→finish다. artifact가 있는데
+	// 미병합을 관측하지 못했다면 — 조회 실패든 미관측이든 — 닫힌 채로 둔다.
+	if record.RemoteArtifact != nil && !req.ArtifactUnmerged {
+		missing = append(missing, "remote_artifact_unmerged")
 	}
 	// ⑧ 자식 고아 방지(finish의 child_tasks_closed 대응물, brooks F6).
 	if cleanupAbandonHasChildren(record) {
@@ -552,9 +564,20 @@ func cleanupAbandonOrcaResourcesAbsent(ctx context.Context, record issueops.Issu
 	if deps.OrcaOwner == nil {
 		return fmt.Errorf("Orca owner inspector is not configured; resolve this cycle with `agent-harness issueops cleanup finish` or `agent-harness issueops cleanup orphan`")
 	}
+	// Orca 런타임이 롤오버되면 봉인된 runtime ID로는 아무것도 조회할 수 없고,
+	// 어댑터는 bounded 권한 없이 바뀐 runtime의 인벤토리를 돌려주지 않는다. 그
+	// 조회 실패를 ambiguous로 취급하면 롤오버를 겪은 레코드는 finish(머지 증적
+	// 필요)로도 abandon으로도 은퇴하지 못한다(#342에서 실측: 4건이 이 사유로 차단).
+	//
+	// 권한은 holderless에서만 연다. 살아 있는 writer가 있으면 이전 런타임의 자원
+	// 부재를 증명할 수 없기 때문이다. 게이트 ③이 같은 판정으로 active/revoking을
+	// 이미 거부하므로 두 게이트는 같은 방향으로 닫힌다.
+	allowRuntimeRollover := !cleanupAbandonLeaseHoldsWriter(record.Execution.Lease.Status) &&
+		record.Execution.Lease.Holder == nil
 	inventory, err := deps.OrcaOwner.InspectOwner(ctx, port.ExecutionOrcaOwnerInventoryRequest{
 		RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, RunID: binding.RunID, TaskID: binding.TaskID,
 		DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID,
+		AllowRuntimeRollover: allowRuntimeRollover,
 	})
 	if err != nil {
 		return fmt.Errorf("Orca owner inventory is ambiguous; resolve this cycle with `agent-harness issueops cleanup finish` or `agent-harness issueops cleanup orphan`: %w", err)

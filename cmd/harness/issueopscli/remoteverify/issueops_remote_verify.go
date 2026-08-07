@@ -64,10 +64,25 @@ func VerifyRemoteArtifactMergedLive(artifact issueopscontract.IssueOpsRemoteArti
 	return err
 }
 
-// VerifyRemoteArtifactMergedHeadLive는 머지 검증과 head ref 관측을 한 번의
-// readback으로 수행한다. 두 값이 다른 시점의 관측이면 cleanup remote-branch의
-// OID CAS가 무의미해지므로 분리된 조회 표면을 두지 않는다(#116).
-func VerifyRemoteArtifactMergedHeadLive(artifact issueopscontract.IssueOpsRemoteArtifactVerification) (core.IssueOpsCleanupRemoteBranchArtifactHead, error) {
+// ObserveRemoteArtifactMergedLive는 artifact의 현재 병합 여부만 관측한다.
+//
+// VerifyRemoteArtifactMergedLive는 "조회 실패"와 "조회했더니 미병합"을 모두
+// error로 뭉갠다. 머지를 요구하는 게이트(finish, remote-branch)에는 그 구분이
+// 필요 없지만, 미병합을 요구하는 게이트(cleanup abandon)는 둘을 반드시 구분해야
+// 한다. 조회 실패를 미병합으로 읽으면 원격이 잠시 불통일 때 병합된 사이클이
+// abandon으로 지워질 수 있다(#342).
+//
+// 따라서 여기서는 관측에 성공한 경우에만 (merged, nil)을 돌려주고, 조회가
+// 실패하면 병합 여부를 미상으로 두고 error를 그대로 올린다.
+func ObserveRemoteArtifactMergedLive(artifact issueopscontract.IssueOpsRemoteArtifactVerification) (bool, error) {
+	live, err := fetchRemoteArtifactLive(artifact)
+	if err != nil {
+		return false, err
+	}
+	return live.Merged, nil
+}
+
+func fetchRemoteArtifactLive(artifact issueopscontract.IssueOpsRemoteArtifactVerification) (liveRemoteArtifact, error) {
 	provider := strings.ToLower(strings.TrimSpace(artifact.Provider))
 	kind := strings.ToLower(strings.TrimSpace(artifact.Kind))
 	switch kind {
@@ -76,17 +91,22 @@ func VerifyRemoteArtifactMergedHeadLive(artifact issueopscontract.IssueOpsRemote
 	case "merge_request":
 		kind = "mr"
 	}
-	var live liveRemoteArtifact
-	var err error
 	switch provider + ":" + kind {
 	case "github:pr":
-		live, err = fetchGitHubPullRequestArtifact(strings.TrimSpace(artifact.URL))
+		return fetchGitHubPullRequestArtifact(strings.TrimSpace(artifact.URL))
 	case "gitlab:mr":
-		live, err = fetchGitLabMergeRequestArtifact(strings.TrimSpace(artifact.URL))
+		return fetchGitLabMergeRequestArtifact(strings.TrimSpace(artifact.URL))
 	default:
-		return core.IssueOpsCleanupRemoteBranchArtifactHead{},
+		return liveRemoteArtifact{},
 			fmt.Errorf("unsupported remote artifact for merge verification: %s:%s", provider, kind)
 	}
+}
+
+// VerifyRemoteArtifactMergedHeadLive는 머지 검증과 head ref 관측을 한 번의
+// readback으로 수행한다. 두 값이 다른 시점의 관측이면 cleanup remote-branch의
+// OID CAS가 무의미해지므로 분리된 조회 표면을 두지 않는다(#116).
+func VerifyRemoteArtifactMergedHeadLive(artifact issueopscontract.IssueOpsRemoteArtifactVerification) (core.IssueOpsCleanupRemoteBranchArtifactHead, error) {
+	live, err := fetchRemoteArtifactLive(artifact)
 	if err != nil {
 		return core.IssueOpsCleanupRemoteBranchArtifactHead{}, err
 	}

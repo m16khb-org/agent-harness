@@ -268,9 +268,16 @@ func TestCleanupAbandonRecordGatesRejectUnsafeRecords(t *testing.T) {
 		missing string
 	}{
 		{
-			name:    "done phase belongs to finish",
-			mutate:  func(rec *issueops.IssueOpsRecord) { rec.Phase = IssueOpsPhaseDone },
-			missing: "phase_not_done",
+			// done + 머지 증적은 여전히 reflect→finish의 몫이다. 미병합 관측이
+			// 없으면 phase가 done이든 아니든 게이트는 닫힌 채로 남는다(#342).
+			name: "done phase with an artifact belongs to finish",
+			mutate: func(rec *issueops.IssueOpsRecord) {
+				rec.Phase = IssueOpsPhaseDone
+				rec.RemoteArtifact = &issueops.IssueOpsRemoteArtifactVerification{
+					Provider: "github", Kind: "pr", URL: "https://github.com/acme/repo/pull/9",
+				}
+			},
+			missing: "remote_artifact_unmerged",
 		},
 		{
 			name: "remote artifact belongs to reflect then finish",
@@ -279,7 +286,7 @@ func TestCleanupAbandonRecordGatesRejectUnsafeRecords(t *testing.T) {
 					Provider: "github", Kind: "pr", URL: "https://github.com/acme/repo/pull/9",
 				}
 			},
-			missing: "no_remote_artifact",
+			missing: "remote_artifact_unmerged",
 		},
 		{
 			name: "child cycles would be orphaned",
