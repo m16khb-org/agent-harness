@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func runTrace(args []string) error {

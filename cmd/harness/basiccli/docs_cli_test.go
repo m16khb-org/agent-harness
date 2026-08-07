@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func TestRunDocs_printsJSON_whenJSONFlagIsSet(t *testing.T) {

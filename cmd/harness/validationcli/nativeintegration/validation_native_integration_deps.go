@@ -3,8 +3,8 @@ package nativeintegration
 import (
 	"os"
 
+	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/adapter/installutil"
-	"agent-harness/internal/core"
 )
 
 type nativeIntegrationValidationDeps struct {

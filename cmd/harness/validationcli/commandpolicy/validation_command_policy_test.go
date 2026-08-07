@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func TestValidateCommandPolicyWrapperUsesExecutableSurface(t *testing.T) {

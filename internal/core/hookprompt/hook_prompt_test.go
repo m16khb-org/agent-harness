@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	core "agent-harness/internal/adapter/core"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
-	core "agent-harness/internal/core"
 	"agent-harness/internal/core/hookprompt"
 )
 

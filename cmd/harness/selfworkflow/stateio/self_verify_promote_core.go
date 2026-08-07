@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func PromoteSelfAugmentBaseline(fromKey, baselineKey string, confirm, allowFailedSource bool) (SelfAugmentPromoteResult, error) {

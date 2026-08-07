@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/mcpcli/argmap"
+	"agent-harness/internal/adapter/core"
 	webfetchoutbound "agent-harness/internal/adapter/outbound/webfetch"
 	webfetchcontract "agent-harness/internal/contract/webfetch"
-	"agent-harness/internal/core"
 )
 
 func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {

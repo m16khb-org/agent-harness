@@ -8,7 +8,7 @@ import (
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func TestRunIssueOpsRemoteVerifyArtifactValidationErrors(t *testing.T) {

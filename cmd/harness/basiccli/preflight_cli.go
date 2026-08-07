@@ -3,7 +3,7 @@ package basiccli
 import (
 	"flag"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func runPreflight(args []string) error {

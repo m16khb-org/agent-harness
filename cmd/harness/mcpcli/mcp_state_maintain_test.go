@@ -3,7 +3,7 @@ package mcpcli
 import (
 	"testing"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func TestMCPStateMaintain(t *testing.T) {

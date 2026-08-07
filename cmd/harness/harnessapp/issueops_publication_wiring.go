@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/issueopscli"
+	corefacade "agent-harness/internal/adapter/core"
 	publicationinbound "agent-harness/internal/adapter/inbound/issueopspublication"
 	publicationoutbound "agent-harness/internal/adapter/outbound/issueopspublication"
 	"agent-harness/internal/adapter/provider"
 	publicationapp "agent-harness/internal/application/issueopspublication"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	publicationcontract "agent-harness/internal/contract/issueopspublication"
-	corefacade "agent-harness/internal/core"
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
 )

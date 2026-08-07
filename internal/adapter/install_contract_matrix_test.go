@@ -15,7 +15,7 @@ import (
 
 	claudeadapter "agent-harness/internal/adapter/claude"
 	codexadapter "agent-harness/internal/adapter/codex"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/port"
 )
 

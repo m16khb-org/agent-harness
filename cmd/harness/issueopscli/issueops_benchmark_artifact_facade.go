@@ -2,7 +2,7 @@ package issueopscli
 
 import (
 	"agent-harness/cmd/harness/issueopscli/benchmarkartifact"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func benchmarkArtifactFromFixture(fixture core.IssueOpsBenchmarkFixture) core.IssueOpsBenchmarkArtifact {

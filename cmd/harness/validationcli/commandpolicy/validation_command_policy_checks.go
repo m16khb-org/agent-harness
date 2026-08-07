@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"path/filepath"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 type commandPolicyValidationCheck struct {

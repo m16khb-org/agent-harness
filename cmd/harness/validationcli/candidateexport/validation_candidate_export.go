@@ -9,7 +9,7 @@ import (
 
 	"agent-harness/cmd/harness/commandstep"
 	"agent-harness/cmd/harness/selfworkflow"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 const aggregateOutputBudgetBytes = 8 * 1024

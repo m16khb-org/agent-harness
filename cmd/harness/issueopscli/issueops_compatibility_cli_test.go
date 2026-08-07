@@ -7,7 +7,7 @@ import (
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func TestIssueOpsCompatibilityReviewCLIRecordsReview(t *testing.T) {

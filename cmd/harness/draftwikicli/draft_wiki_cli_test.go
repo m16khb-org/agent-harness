@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/workercli"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func TestRunProjectDraftWikiPruneJSON(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/selfworkflow/model"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func writePromoteGateSnapshotForTest(t *testing.T, dir, key string, ok, terminationEligible bool) {

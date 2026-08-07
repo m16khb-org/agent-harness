@@ -18,7 +18,7 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 
 	"agent-harness/cmd/harness/qualitycli"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/port"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

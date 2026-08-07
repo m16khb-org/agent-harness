@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/selfworkflow/model"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 type Deps struct {

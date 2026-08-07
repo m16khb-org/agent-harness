@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/domain/contextregion"
 )
 

@@ -3,7 +3,7 @@ package stateroundtrip
 import (
 	"encoding/json"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func (s *stateRoundtripStateSession) validatePrune() StepResult {

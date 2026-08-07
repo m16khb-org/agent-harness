@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func ExtraPrompt(repo, promptFile string) (string, error) {

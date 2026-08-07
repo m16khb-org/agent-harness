@@ -346,7 +346,7 @@ func parseCoveragePackages(output string, threshold float64) []CoveragePackage {
 }
 
 func suppressLowCoveragePackage(pkg string) bool {
-	return pkg == "agent-harness/internal/core" || strings.HasSuffix(pkg, "/internal/core")
+	return pkg == "agent-harness/internal/adapter/core" || strings.HasSuffix(pkg, "/internal/core")
 }
 
 func collectBranchFunctions(root string) ([]BranchFunction, []string) {

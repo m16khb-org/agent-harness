@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func runStateWrite(args []string) error {

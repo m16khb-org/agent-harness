@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"agent-harness/cmd/harness/daemoncli"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 type HarnessStatus struct {

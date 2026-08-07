@@ -3,7 +3,7 @@ package contractcli
 import (
 	"testing"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func TestCompatibilityContractContextIsByteDeterministic(t *testing.T) {

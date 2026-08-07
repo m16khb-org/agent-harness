@@ -13,7 +13,8 @@ func TestNoRemovedProviderEndpointReferences(t *testing.T) {
 	if !ok {
 		t.Fatal("resolve current file")
 	}
-	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", ".."))
+	// 이 파일은 internal/adapter/core에 있으므로 저장소 루트는 세 단계 위다.
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", "..", ".."))
 	for _, relRoot := range []string{"internal", "cmd"} {
 		root := filepath.Join(repoRoot, relRoot)
 		err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {

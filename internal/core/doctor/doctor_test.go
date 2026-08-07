@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/core/doctor"
 	"agent-harness/internal/core/looprun"
 	"agent-harness/internal/domain/operationalhealth"

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 type parallelIsolationProbeDeps struct {

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func ValidateWorkerLifecycle(binary, root string, seed int64) StepResult {

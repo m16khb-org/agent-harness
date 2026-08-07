@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func Record(args []string, stdin []byte, hookErr error) {

@@ -1,6 +1,6 @@
 package preflightfuzz
 
-import "agent-harness/internal/core"
+import "agent-harness/internal/adapter/core"
 
 func preflightFuzzValidationErrors(preflight core.PreflightResult) []string {
 	errs := []string{}

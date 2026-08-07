@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 type repeatedFlag []string

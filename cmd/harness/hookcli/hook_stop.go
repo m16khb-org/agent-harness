@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
+	"agent-harness/internal/adapter/core"
 	hookadapter "agent-harness/internal/adapter/hook"
-	"agent-harness/internal/core"
 )
 
 func runHookStop(args []string) error {

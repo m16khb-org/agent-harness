@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func TestRunIssueOpsBenchmarkGateCLIKeepsCandidate(t *testing.T) {

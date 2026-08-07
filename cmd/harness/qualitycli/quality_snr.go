@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 // snrEvidence renders the SNR signal's human-readable evidence lines.

@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
+	"agent-harness/internal/adapter/core"
 	hookadapter "agent-harness/internal/adapter/hook"
-	"agent-harness/internal/core"
 	coreinstall "agent-harness/internal/core/install"
 )
 

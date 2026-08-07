@@ -8,9 +8,9 @@ import (
 	"os"
 	"strings"
 
+	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/adapter/provider"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core"
 	issueopscore "agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/issueops/remote"
 )

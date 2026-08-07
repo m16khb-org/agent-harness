@@ -10,7 +10,7 @@ import (
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func TestRunIssueOpsUsageAndCleanupBranches(t *testing.T) {

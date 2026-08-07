@@ -11,7 +11,7 @@ import (
 
 	"agent-harness/cmd/harness/contractcli"
 	"agent-harness/internal/adapter/cli"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func TestValidateCommandAuditWithDepsCoversSuccessCommandReadAndContractFailures(t *testing.T) {

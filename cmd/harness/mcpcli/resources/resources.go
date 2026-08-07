@@ -3,8 +3,8 @@ package resources
 import (
 	"encoding/json"
 
+	"agent-harness/internal/adapter/core"
 	mcpadapter "agent-harness/internal/adapter/mcp"
-	"agent-harness/internal/core"
 )
 
 type Config struct {

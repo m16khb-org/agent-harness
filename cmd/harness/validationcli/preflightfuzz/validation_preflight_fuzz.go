@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 const commandOutputBudgetBytes = 32 * 1024

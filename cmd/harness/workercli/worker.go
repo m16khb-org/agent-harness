@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func runWorker(args []string) error {

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/adapter/core"
 	commandparsecontract "agent-harness/internal/contract/commandparse"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core"
 	issueopscore "agent-harness/internal/core/issueops"
 	"agent-harness/internal/domain/commandparse"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"

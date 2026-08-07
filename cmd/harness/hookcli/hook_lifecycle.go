@@ -9,8 +9,8 @@ import (
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
+	"agent-harness/internal/adapter/core"
 	hookadapter "agent-harness/internal/adapter/hook"
-	"agent-harness/internal/core"
 	"agent-harness/internal/core/lifecycle/doctarget"
 )
 

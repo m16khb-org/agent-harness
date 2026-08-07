@@ -8,7 +8,7 @@ import (
 
 	"agent-harness/cmd/harness/selfworkflow/augmentcatalog"
 	"agent-harness/cmd/harness/selfworkflow/model"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 const (

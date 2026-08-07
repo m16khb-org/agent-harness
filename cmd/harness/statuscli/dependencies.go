@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"agent-harness/cmd/harness/daemoncli"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 // Deps holds host-provided dependencies for the status CLI. The composition root

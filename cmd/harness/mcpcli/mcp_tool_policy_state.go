@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/mcpcli/argmap"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func commandPolicyRequestFromArgs(args map[string]any) core.CommandPolicyRequest {

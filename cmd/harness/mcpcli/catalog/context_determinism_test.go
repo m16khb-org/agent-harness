@@ -3,7 +3,7 @@ package catalog
 import (
 	"testing"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func TestToolsContextIsByteDeterministic(t *testing.T) {

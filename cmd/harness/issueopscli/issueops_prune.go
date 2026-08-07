@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func runIssueOpsPrune(args []string) error {

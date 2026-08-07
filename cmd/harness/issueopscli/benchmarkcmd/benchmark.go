@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 var benchmarkSubcommands = map[string]func([]string) error{

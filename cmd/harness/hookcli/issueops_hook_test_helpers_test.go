@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/adapter/core"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core"
 	issueopscore "agent-harness/internal/core/issueops"
 )
 
