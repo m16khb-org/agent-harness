@@ -7,11 +7,30 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/hookcli/hookcatalog"
+	"agent-harness/cmd/harness/hookcli/hookenv"
 	"agent-harness/cmd/harness/hookcli/hookfailure"
 	"agent-harness/internal/core"
 )
 
+// hookDisabled reports whether HARNESS_DISABLE_HOOKS turns this invocation into
+// a no-op. The switch exists so a single host-level hook registration can stay
+// installed while the agent works in repositories the harness does not own.
+// failures/metrics are operator queries rather than hook events, so they remain
+// available: the switch turns off enforcement, not observability.
+func hookDisabled(args []string) bool {
+	if !hookenv.Bool("HARNESS_DISABLE_HOOKS") {
+		return false
+	}
+	if len(args) > 0 && (args[0] == "failures" || args[0] == "metrics") {
+		return false
+	}
+	return true
+}
+
 func runHook(args []string) error {
+	if hookDisabled(args) {
+		return nil
+	}
 	stdin, restoreStdin, stdinErr := captureReplayableHookStdin()
 	if restoreStdin != nil {
 		defer restoreStdin()
