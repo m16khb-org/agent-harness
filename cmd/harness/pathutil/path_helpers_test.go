@@ -1,12 +1,11 @@
 package pathutil
 
 import (
+	statecontract "agent-harness/internal/contract/state"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestResolveTargetPrefersExplicitArgument(t *testing.T) {
@@ -214,7 +213,7 @@ func TestSplitCSVContainsAndStateIssueHelpers(t *testing.T) {
 	if !ContainsString([]string{"a", "b"}, "b") || ContainsString([]string{"a"}, "z") {
 		t.Fatal("ContainsString mismatch")
 	}
-	issues := []core.StateDoctorIssue{{Code: "bad_json"}}
+	issues := []statecontract.StateDoctorIssue{{Code: "bad_json"}}
 	if !StateDoctorHasIssueCode(issues, "bad_json") || StateDoctorHasIssueCode(issues, "missing") {
 		t.Fatal("StateDoctorHasIssueCode mismatch")
 	}

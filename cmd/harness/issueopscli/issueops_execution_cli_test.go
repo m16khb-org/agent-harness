@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/mcpcli"
-	"agent-harness/internal/adapter/core"
 	issueopscore "agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/adapter/preflight"
 	commandparsecontract "agent-harness/internal/contract/commandparse"
@@ -96,7 +95,7 @@ func TestIssueOpsExecutionPrepareCLIAndStatusShareSchemaProjection(t *testing.T)
 func TestIssueOpsExecutionStatusProjectsActorFreeResumeCommand(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo, id, _ := executionCLIRecord(t)
-	record, err := issueopscore.ReadIssueOps(core.IssueOpsStateRoot(), id)
+	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +119,7 @@ func TestIssueOpsExecutionStatusProjectsActorFreeResumeCommand(t *testing.T) {
 			TaskID: "task-1", DispatchID: "dispatch-1", TerminalPTYID: "pty-1",
 		},
 	}
-	if _, err := issueopscore.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
 
@@ -143,7 +142,7 @@ func TestIssueOpsExecutionStatusProjectsActorFreeResumeCommand(t *testing.T) {
 	record.Execution.Orca.ContextPacketSHA256 = ""
 	record.Execution.Orca.OwnerPromptSHA256 = ""
 	record.Execution.Orca.ArtifactIdentityVersion = 0
-	if _, err := issueopscore.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
 	legacyJSON := captureStdoutForContract(t, func() error {
@@ -199,7 +198,7 @@ func TestIssueOpsExecutionPrepareCLIAndMCPStatusAndErrorsAreIdentical(t *testing
 			Dependencies{Prepare: executionCLIPrepareHandler(t)},
 		)
 	})
-	record, err := issueopscore.ReadIssueOps(core.IssueOpsStateRoot(), id)
+	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,7 +209,7 @@ func TestIssueOpsExecutionPrepareCLIAndMCPStatusAndErrorsAreIdentical(t *testing
 		Reason:     "functional HEAD changed",
 		ReopenedAt: "2026-08-04T00:00:00Z",
 	}}
-	if _, err := issueopscore.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
 
@@ -353,7 +352,7 @@ func executionCLIRecord(t *testing.T) (string, string, []string) {
 	}
 	baseHead := preflight.GitOut(repo, "rev-parse", "HEAD")
 	branch := "69-execution-cli"
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := issueopscore.StartIssueOps(issueopscore.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -362,7 +361,7 @@ func executionCLIRecord(t *testing.T) (string, string, []string) {
 		Provider: "github", IssueURL: record.IssueURL, Branch: branch,
 		BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true,
 	}
-	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
 	receipt, err := issueopscore.ObserveNativeProcessReceipt(os.Getpid())

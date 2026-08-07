@@ -4,9 +4,8 @@ import (
 	"flag"
 	"fmt"
 
+	issueopscore "agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func runIssueOpsDomainReview(args []string) error {
@@ -31,7 +30,7 @@ func runIssueOpsDomainReview(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsDomainReviewWithActor(core.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsDomainReviewRequest{
+	record, err := issueopscore.RecordIssueOpsDomainReviewWithActor(issueopscore.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsDomainReviewRequest{
 		Terminology:       terminology,
 		ModelFit:          *modelFit,
 		Risks:             risks,
@@ -59,7 +58,7 @@ func runIssueOpsAISlopClean(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsAISlopCleanEvidenceWithActor(core.IssueOpsStateRoot(), *id, categories, verification, actor.actor())
+	record, err := issueopscore.RecordIssueOpsAISlopCleanEvidenceWithActor(issueopscore.IssueOpsStateRoot(), *id, categories, verification, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -76,7 +75,7 @@ func runIssueOpsRegress(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := core.RegressIssueOpsForReplanWithActor(core.IssueOpsStateRoot(), *id, *reason, actor.actor())
+	record, err := issueopscore.RegressIssueOpsForReplanWithActor(issueopscore.IssueOpsStateRoot(), *id, *reason, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -94,6 +93,6 @@ func runIssueOpsFeedbackResolve(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := core.ResolveIssueOpsFeedbackWithActor(core.IssueOpsStateRoot(), *id, *index, *resolution, actor.actor())
+	record, err := issueopscore.ResolveIssueOpsFeedbackWithActor(issueopscore.IssueOpsStateRoot(), *id, *index, *resolution, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }

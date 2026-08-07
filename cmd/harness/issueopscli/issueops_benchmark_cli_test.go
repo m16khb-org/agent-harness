@@ -1,12 +1,11 @@
 package issueopscli
 
 import (
+	issueopscore "agent-harness/internal/adapter/issueops"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestRunIssueOpsBenchmarkCompareAndGateTextBranches(t *testing.T) {
@@ -14,13 +13,13 @@ func TestRunIssueOpsBenchmarkCompareAndGateTextBranches(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", stateDir)
 	baseline := benchmarkRunForCLITest("baseline", 80, "baseline evidence")
 	candidate := benchmarkRunForCLITest("candidate", 95, "candidate evidence")
-	if err := core.SaveIssueOpsBenchmarkRun(stateDir, baseline); err != nil {
+	if err := issueopscore.SaveIssueOpsBenchmarkRun(stateDir, baseline); err != nil {
 		t.Fatal(err)
 	}
-	if err := core.SaveIssueOpsBenchmarkRun(stateDir, candidate); err != nil {
+	if err := issueopscore.SaveIssueOpsBenchmarkRun(stateDir, candidate); err != nil {
 		t.Fatal(err)
 	}
-	candidatePath := writeIssueOpsCandidateForCLITest(t, core.IssueOpsAutoresearchCandidate{
+	candidatePath := writeIssueOpsCandidateForCLITest(t, issueopscore.IssueOpsAutoresearchCandidate{
 		ID:               "issueops-benchmark-cli",
 		Hypothesis:       "Benchmark CLI text output should be stable.",
 		TargetDimensions: []string{"issue_quality"},
@@ -72,15 +71,15 @@ func TestRunIssueOpsBenchmarkUsageAndErrorBranches(t *testing.T) {
 	}
 }
 
-func benchmarkRunForCLITest(id string, score float64, evidence string) core.IssueOpsBenchmarkRunResult {
-	return core.FinalizeIssueOpsBenchmarkRunResult(core.IssueOpsBenchmarkRunResult{
+func benchmarkRunForCLITest(id string, score float64, evidence string) issueopscore.IssueOpsBenchmarkRunResult {
+	return issueopscore.FinalizeIssueOpsBenchmarkRunResult(issueopscore.IssueOpsBenchmarkRunResult{
 		ID: id,
-		Scores: []core.IssueOpsBenchmarkScore{{
+		Scores: []issueopscore.IssueOpsBenchmarkScore{{
 			OK:           true,
 			FixtureID:    "fixture",
 			AverageScore: score,
 			MinimumScore: score,
-			DimensionScores: []core.IssueOpsDimensionScore{
+			DimensionScores: []issueopscore.IssueOpsDimensionScore{
 				{Dimension: "issue_quality", Score: score, Evidence: evidence},
 			},
 			Passed: true,

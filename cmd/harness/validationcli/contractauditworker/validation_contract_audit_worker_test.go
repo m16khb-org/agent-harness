@@ -11,7 +11,7 @@ import (
 
 	"agent-harness/cmd/harness/contractcli"
 	"agent-harness/internal/adapter/cli"
-	"agent-harness/internal/adapter/core"
+	worker "agent-harness/internal/adapter/worker"
 )
 
 func TestValidateCommandAuditWithDepsCoversSuccessCommandReadAndContractFailures(t *testing.T) {
@@ -193,7 +193,7 @@ func TestValidateToolConformanceWithDepsAddsTypedFailureEvidence(t *testing.T) {
 func TestValidateWorkerLifecycleWithDepsCoversSuccessParseCommandAndContractFailures(t *testing.T) {
 	root := t.TempDir()
 	workerDir := filepath.Join(root, "worker")
-	queued := core.WorkerJob{OK: true, ID: "job-1", Kind: "smoke", Status: core.WorkerStatusQueued, NoShell: true}
+	queued := worker.WorkerJob{OK: true, ID: "job-1", Kind: "smoke", Status: worker.WorkerStatusQueued, NoShell: true}
 	queuedBody, _ := json.Marshal(queued)
 	deps := ValidationDeps{
 		MkdirTemp: func(string, string) (string, error) { return workerDir, nil },
@@ -235,7 +235,7 @@ func TestValidateWorkerLifecycleWithDepsCoversSuccessParseCommandAndContractFail
 		t.Fatalf("expected enqueue parse failure, got %+v", step)
 	}
 
-	badJob := core.WorkerJob{OK: true, ID: "job-2", Status: core.WorkerStatusRunning, NoShell: false}
+	badJob := worker.WorkerJob{OK: true, ID: "job-2", Status: worker.WorkerStatusRunning, NoShell: false}
 	badBody, _ := json.Marshal(badJob)
 	deps.RunCommandStepEnv = func(_ string, label string, _ time.Duration, _ string, _ []string, _ string, args ...string) StepResult {
 		if strings.Contains(label, "enqueue") {

@@ -1,11 +1,10 @@
 package basiccli
 
 import (
+	guard "agent-harness/internal/adapter/guard"
 	"flag"
 	"fmt"
 	"os"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func runGuard(args []string) error {
@@ -44,7 +43,7 @@ func runGuardCheck(args []string) error {
 	if *all {
 		*staged = false
 	}
-	result := core.GuardCheck(core.GuardCheckRequest{RepoRoot: *repo, Staged: *staged, All: *all, Files: files})
+	result := guard.GuardCheck(guard.GuardCheckRequest{RepoRoot: *repo, Staged: *staged, All: *all, Files: files})
 	if *jsonOut {
 		if err := printJSON(result); err != nil {
 			return err
@@ -63,13 +62,13 @@ func runGuardCheck(args []string) error {
 		}
 	}
 	if !result.OK {
-		blockers := []core.GuardFinding{}
+		blockers := []guard.GuardFinding{}
 		for _, finding := range result.Findings {
 			if finding.Severity == "block" {
 				blockers = append(blockers, finding)
 			}
 		}
-		return core.GuardBlockedError{Findings: blockers}
+		return guard.GuardBlockedError{Findings: blockers}
 	}
 	return nil
 }

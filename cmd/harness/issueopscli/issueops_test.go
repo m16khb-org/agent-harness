@@ -1,13 +1,12 @@
 package issueopscli
 
 import (
+	issueopscore "agent-harness/internal/adapter/issueops"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestRunIssueOpsLifecycle(t *testing.T) {
@@ -113,7 +112,7 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"devils-advocate", "review", "--id", id, "--verdict", "pass", "--json"})
 	})
-	current, err := core.ReadIssueOps(core.IssueOpsStateRoot(), id)
+	current, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), id)
 	if err != nil {
 		t.Fatal(err)
 	}

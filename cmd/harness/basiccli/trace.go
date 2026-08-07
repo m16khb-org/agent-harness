@@ -1,11 +1,10 @@
 package basiccli
 
 import (
+	trace "agent-harness/internal/adapter/trace"
 	"flag"
 	"fmt"
 	"os"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func runTrace(args []string) error {
@@ -38,7 +37,7 @@ func runTraceAnalyze(args []string) error {
 	if *input == "" && fs.NArg() > 0 {
 		*input = fs.Arg(0)
 	}
-	result, err := core.TraceAnalyze(core.TraceAnalyzeRequest{Input: *input})
+	result, err := trace.TraceAnalyze(trace.TraceAnalyzeRequest{Input: *input})
 	if err != nil {
 		if *jsonOut {
 			_ = printJSON(result)

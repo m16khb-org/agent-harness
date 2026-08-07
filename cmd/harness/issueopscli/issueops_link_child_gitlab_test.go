@@ -1,13 +1,12 @@
 package issueopscli
 
 import (
+	issueopscore "agent-harness/internal/adapter/issueops"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestRunIssueOpsLinkChildRecordsGitLabWorkItemAfterIssuesTaskFallback(t *testing.T) {
@@ -64,7 +63,7 @@ esac
 		})
 	})
 
-	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), started.ID)
+	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), started.ID)
 	if err != nil {
 		t.Fatal(err)
 	}

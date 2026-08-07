@@ -1,19 +1,17 @@
 package issueopscli
 
 import (
+	issueopscore "agent-harness/internal/adapter/issueops"
+	commandparsecontract "agent-harness/internal/contract/commandparse"
+	issueopscontract "agent-harness/internal/contract/issueops"
+	"agent-harness/internal/domain/commandparse"
+	provenanceport "agent-harness/internal/port/issueopsprovenance"
 	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
-	issueopscore "agent-harness/internal/adapter/issueops"
-	commandparsecontract "agent-harness/internal/contract/commandparse"
-	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/domain/commandparse"
-	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
 
 type issueOpsProvenanceObserverStub struct {
@@ -27,7 +25,7 @@ func (s issueOpsProvenanceObserverStub) Observe(context.Context) (provenanceport
 func TestGeneratedCommandRejectsStaleInstalledBinaryBeforeMutation(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := makeIssueOpsCLIRepoForTest(t, "generated-command-provenance")
-	record, err := issueopscore.StartIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: "303-provenance"})
+	record, err := issueopscore.StartIssueOps(issueopscore.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: "303-provenance"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +43,7 @@ func TestGeneratedCommandRejectsStaleInstalledBinaryBeforeMutation(t *testing.T)
 			}},
 		},
 	}
-	if _, err := issueopscore.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
 
@@ -82,7 +80,7 @@ func TestGeneratedCommandRejectsStaleInstalledBinaryBeforeMutation(t *testing.T)
 func TestGeneratedCommandRunsExactObservedBinaryEnvelopeWithoutCallerRepair(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := makeIssueOpsCLIRepoForTest(t, "generated-command-exact-binary")
-	record, err := issueopscore.StartIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: "303-exact-binary"})
+	record, err := issueopscore.StartIssueOps(issueopscore.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: "303-exact-binary"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +98,7 @@ func TestGeneratedCommandRunsExactObservedBinaryEnvelopeWithoutCallerRepair(t *t
 			}},
 		},
 	}
-	if _, err := issueopscore.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
 	evidence := commandparsecontract.GeneratedCommandProvenance{
@@ -149,10 +147,10 @@ func TestGeneratedDelegatedChildBootstrapUsesParentExecutionProvenance(t *testin
 	parent.ChildCycles = append(parent.ChildCycles, issueopscontract.IssueOpsChildCycleRef{
 		CycleID: child.ID, Branch: child.Branch, CreatedAt: "2026-08-04T00:00:00Z",
 	})
-	if _, err := issueopscore.WriteIssueOps(core.IssueOpsStateRoot(), parent); err != nil {
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), parent); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := issueopscore.WriteIssueOps(core.IssueOpsStateRoot(), child); err != nil {
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), child); err != nil {
 		t.Fatal(err)
 	}
 	evidence := commandparsecontract.GeneratedCommandProvenance{
@@ -205,7 +203,7 @@ func TestGeneratedOwnerMutationRequiresActualProcessCWD(t *testing.T) {
 	if runErr == nil || !strings.Contains(runErr.Error(), "actual process cwd") {
 		t.Fatalf("generated owner mutation from source cwd must fail before mutation: %v", runErr)
 	}
-	status, err := core.IssueOpsChildStatus(core.IssueOpsStateRoot(), parent.ID, false)
+	status, err := issueopscore.IssueOpsChildStatus(issueopscore.IssueOpsStateRoot(), parent.ID, false)
 	if err != nil {
 		t.Fatal(err)
 	}

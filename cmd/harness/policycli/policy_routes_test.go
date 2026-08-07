@@ -1,15 +1,14 @@
 package policycli
 
 import (
+	policy "agent-harness/internal/adapter/policy"
+	"agent-harness/internal/testsupport"
 	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
-	"agent-harness/internal/testsupport"
 )
 
 func TestRunPolicyRoutesFakeRunAndReadOnlyRun(t *testing.T) {
@@ -26,7 +25,7 @@ func TestRunPolicyRoutesFakeRunAndReadOnlyRun(t *testing.T) {
 	fakeOut := captureStatusVerifyStdout(t, func() error {
 		return Run([]string{"fake-run", "--workspace-root", repo, "--cwd", repo, "--write", "--json", "--", "touch", "marker"})
 	})
-	var fake core.CommandFakeRunResult
+	var fake policy.CommandFakeRunResult
 	if err := json.Unmarshal([]byte(fakeOut), &fake); err != nil {
 		t.Fatalf("decode fake-run JSON: %v\n%s", err, fakeOut)
 	}
@@ -37,7 +36,7 @@ func TestRunPolicyRoutesFakeRunAndReadOnlyRun(t *testing.T) {
 	runOut := captureStatusVerifyStdout(t, func() error {
 		return Run([]string{"run", "--read-only", "--workspace-root", repo, "--cwd", repo, "--json", "--", "git", "status", "--short"})
 	})
-	var run core.CommandRunResult
+	var run policy.CommandRunResult
 	if err := json.Unmarshal([]byte(runOut), &run); err != nil {
 		t.Fatalf("decode policy run JSON: %v\n%s", err, runOut)
 	}
@@ -54,7 +53,7 @@ func TestRunPolicyRunRequiresReadOnlyAndDeniesShell(t *testing.T) {
 	}
 
 	err := RunFakeRun([]string{"--workspace-root", repo, "--cwd", repo, "--", "sh", "-c", "true"})
-	var denied core.PolicyDeniedError
+	var denied policy.PolicyDeniedError
 	if !errors.As(err, &denied) {
 		t.Fatalf("expected policy denied error, got %T %v", err, err)
 	}

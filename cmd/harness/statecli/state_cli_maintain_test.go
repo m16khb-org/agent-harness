@@ -5,9 +5,10 @@ import (
 	"strings"
 	"testing"
 
+	issueopscore "agent-harness/internal/adapter/issueops"
+	statestore "agent-harness/internal/adapter/outbound/state"
 	issueopscontract "agent-harness/internal/contract/issueops"
-
-	"agent-harness/internal/adapter/core"
+	statecontract "agent-harness/internal/contract/state"
 )
 
 func TestRunStateMaintainReportsRoots(t *testing.T) {
@@ -16,14 +17,14 @@ func TestRunStateMaintainReportsRoots(t *testing.T) {
 	t.Setenv("HARNESS_WORKER_DIR", "")
 	// Materialize the root store and the IssueOps v1 store; worker and loop stay
 	// absent and must be reported as skipped, not created.
-	if _, err := core.StateWrite("maintain-smoke", "content"); err != nil {
+	if _, err := statestore.StateWrite("maintain-smoke", "content"); err != nil {
 		t.Fatalf("seed state: %v", err)
 	}
-	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsRecord{
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), issueopscontract.IssueOpsRecord{
 		SchemaVersion: issueopscontract.IssueOpsSchemaVersion,
-		ID:            core.NewIssueOpsID("/repo/maintain", "1-maintain"),
+		ID:            issueopscore.NewIssueOpsID("/repo/maintain", "1-maintain"),
 		Repo:          "/repo/maintain",
-		Phase:         core.IssueOpsPhaseProblem,
+		Phase:         issueopscore.IssueOpsPhaseProblem,
 	}); err != nil {
 		t.Fatalf("seed issueops: %v", err)
 	}
@@ -31,7 +32,7 @@ func TestRunStateMaintainReportsRoots(t *testing.T) {
 	out := captureStatusVerifyStdout(t, func() error {
 		return runState([]string{"maintain", "--json"})
 	})
-	var result core.StateMaintainResult
+	var result statecontract.StateMaintainResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode maintain JSON: %v\n%s", err, out)
 	}

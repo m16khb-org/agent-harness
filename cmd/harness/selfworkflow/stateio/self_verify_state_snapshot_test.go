@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/selfworkflow/model"
-	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/adapter/failurecause"
+	statestore "agent-harness/internal/adapter/outbound/state"
 )
 
 func TestWriteSelfAugmentSnapshotRecordIsLockedAndAtomic(t *testing.T) {
@@ -112,7 +112,7 @@ func TestReadSelfAugmentStateSnapshotNormalizesLegacyFailureCause(t *testing.T) 
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := core.StateWrite("legacy-"+tc.name, tc.content); err != nil {
+			if _, err := statestore.StateWrite("legacy-"+tc.name, tc.content); err != nil {
 				t.Fatalf("write legacy state: %v", err)
 			}
 

@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	"agent-harness/internal/adapter/core"
+	docs "agent-harness/internal/adapter/docs"
+	inspect "agent-harness/internal/adapter/inspect"
 )
 
 // The smoke steps parse the captured stdout as JSON, so the budget must
@@ -46,7 +47,7 @@ func validateInspectWithDeps(binary, root string, run validationCommandRunner) S
 	if rejected, truncated := rejectTruncatedCapture(step); truncated {
 		return rejected
 	}
-	var info core.InspectInfo
+	var info inspect.InspectInfo
 	if err := json.Unmarshal([]byte(step.Stdout), &info); err != nil {
 		step.OK = false
 		step.Error = err.Error()
@@ -76,7 +77,7 @@ func validateDocsIndexWithDeps(binary, root string, run validationCommandRunner)
 	if rejected, truncated := rejectTruncatedCapture(step); truncated {
 		return rejected
 	}
-	var index core.DocsIndexResult
+	var index docs.DocsIndexResult
 	if err := json.Unmarshal([]byte(step.Stdout), &index); err != nil {
 		step.OK = false
 		step.Error = err.Error()

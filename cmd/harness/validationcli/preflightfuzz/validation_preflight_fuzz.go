@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	"agent-harness/internal/adapter/core"
+	preflight "agent-harness/internal/adapter/preflight"
 )
 
 const commandOutputBudgetBytes = 32 * 1024
@@ -59,7 +59,7 @@ func validatePreflightFuzzWithDeps(binary, root string, seed int64, deps preflig
 	if !step.OK {
 		return step
 	}
-	var preflight core.PreflightResult
+	var preflight preflight.PreflightResult
 	if err := json.Unmarshal([]byte(step.Stdout), &preflight); err != nil {
 		step.OK = false
 		step.Error = err.Error()

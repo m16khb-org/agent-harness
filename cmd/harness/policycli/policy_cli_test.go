@@ -1,6 +1,8 @@
 package policycli
 
 import (
+	policy "agent-harness/internal/adapter/policy"
+	"agent-harness/internal/testsupport"
 	"encoding/json"
 	"errors"
 	"os"
@@ -8,9 +10,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
-	"agent-harness/internal/testsupport"
 )
 
 func TestParseCommandPolicyFlagsUsesDefaultRootCWDAndEnvAllowlist(t *testing.T) {
@@ -83,7 +82,7 @@ func TestRunPolicyRunReturnsDeniedPolicyError(t *testing.T) {
 
 	err := runPolicyRun([]string{"--read-only", "--workspace-root", repo, "--cwd", repo, "--", "sh", "-c", "true"})
 
-	var denied core.PolicyDeniedError
+	var denied policy.PolicyDeniedError
 	if !errors.As(err, &denied) {
 		t.Fatalf("expected policy denied error, got %T %v", err, err)
 	}
@@ -104,7 +103,7 @@ func TestRunPolicyCheckUsesWorkspacePolicyOverride(t *testing.T) {
 	stdout := capturePolicyCLIStdout(t, func() error {
 		return runPolicyCheck([]string{"--json", "--workspace-root", repo, "--cwd", repo, "--", "repo-tool"})
 	})
-	var result core.CommandPolicyEvaluation
+	var result policy.CommandPolicyEvaluation
 	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
 		t.Fatalf("unmarshal policy check output %q: %v", stdout, err)
 	}

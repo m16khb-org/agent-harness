@@ -1,10 +1,9 @@
 package draftwikicli
 
 import (
+	draftwiki "agent-harness/internal/adapter/draftwiki"
 	"flag"
 	"fmt"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func runProjectDraftWikiPrune(args []string) error {
@@ -26,7 +25,7 @@ func runProjectDraftWikiPrune(args []string) error {
 		return fmt.Errorf("--keep must be >= 0")
 	}
 	if *all {
-		result, err := core.PruneAllDraftWikiQueues("", *keep)
+		result, err := draftwiki.PruneAllDraftWikiQueues("", *keep)
 		if err != nil {
 			return err
 		}
@@ -39,7 +38,7 @@ func runProjectDraftWikiPrune(args []string) error {
 		}
 		return nil
 	}
-	result, err := core.PruneDraftWikiQueue(*repo, *keep)
+	result, err := draftwiki.PruneDraftWikiQueue(*repo, *keep)
 	if err != nil {
 		return err
 	}

@@ -6,10 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	issueopscontract "agent-harness/internal/contract/issueops"
-
-	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/adapter/issueops"
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -34,11 +32,11 @@ func TestExportedIssueOpsFacades(t *testing.T) {
 
 func TestIssueOpsPublicationCreateRequiresComposedDependencies(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: t.TempDir(), Branch: "195-publication-wrapper"})
+	record, err := issueops.StartIssueOps(issueops.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: t.TempDir(), Branch: "195-publication-wrapper"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	record, err = core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), record.ID, "https://github.com/acme/repo/issues/195")
+	record, err = issueops.LinkIssueOpsIssue(issueops.IssueOpsStateRoot(), record.ID, "https://github.com/acme/repo/issues/195")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +61,7 @@ func TestIssueOpsPublicationCreateRequiresComposedDependencies(t *testing.T) {
 }
 
 func TestIssueOpsBenchmarkArtifactFacades(t *testing.T) {
-	fixture := core.IssueOpsBenchmarkFixture{
+	fixture := issueops.IssueOpsBenchmarkFixture{
 		Title:         "Fix quality gate",
 		UserPrompt:    "raise coverage",
 		RepoContext:   "agent-harness",
@@ -84,7 +82,7 @@ func TestIssueOpsBenchmarkArtifactFacades(t *testing.T) {
 
 func TestIssueOpsDecisionAndCleanupCLIBranches(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: t.TempDir(), Branch: "123-decision"})
+	record, err := issueops.StartIssueOps(issueops.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: t.TempDir(), Branch: "123-decision"})
 	if err != nil {
 		t.Fatal(err)
 	}

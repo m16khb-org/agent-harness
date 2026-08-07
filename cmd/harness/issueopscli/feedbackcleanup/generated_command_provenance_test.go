@@ -1,6 +1,13 @@
 package feedbackcleanup
 
 import (
+	issueopscore "agent-harness/internal/adapter/issueops"
+	"agent-harness/internal/adapter/orca"
+	commandparsecontract "agent-harness/internal/contract/commandparse"
+	issueopscontract "agent-harness/internal/contract/issueops"
+	"agent-harness/internal/domain/commandparse"
+	"agent-harness/internal/port"
+	provenanceport "agent-harness/internal/port/issueopsprovenance"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -9,14 +16,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
-	"agent-harness/internal/adapter/orca"
-	commandparsecontract "agent-harness/internal/contract/commandparse"
-	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/domain/commandparse"
-	"agent-harness/internal/port"
-	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
 
 type cleanupProvenanceObserverStub struct {
@@ -35,18 +34,18 @@ func TestCleanupFinishPreviewEmitsBoundFinishCommand(t *testing.T) {
 		printed = value
 		return nil
 	}
-	deps.Provider = func(string) (core.IssueProvider, error) {
-		return &cleanupStatusProvider{snapshot: core.ExecutionIssueSnapshot{
-			URL: record.IssueURL, Body: core.IssueBodyCompletionStartMarker, State: "closed",
+	deps.Provider = func(string) (port.IssueProvider, error) {
+		return &cleanupStatusProvider{snapshot: port.ExecutionIssueSnapshot{
+			URL: record.IssueURL, Body: port.IssueBodyCompletionStartMarker, State: "closed",
 		}}, nil
 	}
-	deps.VerifyMergedHead = func(issueopscontract.IssueOpsRemoteArtifactVerification) (core.IssueOpsCleanupRemoteBranchArtifactHead, error) {
-		return core.IssueOpsCleanupRemoteBranchArtifactHead{HeadRefName: record.Branch, HeadRefOID: "abc123", BaseRefName: "main"}, nil
+	deps.VerifyMergedHead = func(issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscore.CleanupRemoteBranchArtifactHead, error) {
+		return issueopscore.CleanupRemoteBranchArtifactHead{HeadRefName: record.Branch, HeadRefOID: "abc123", BaseRefName: "main"}, nil
 	}
 	if err := RunCleanup([]string{"finish", "--id", record.ID, "--preview", "--json"}, deps); err != nil {
 		t.Fatal(err)
 	}
-	result, ok := printed.(core.IssueOpsCleanupFinishResult)
+	result, ok := printed.(issueopscore.CleanupFinishResult)
 	if !ok || !strings.Contains(result.NextCommand, "cleanup finish") || !strings.Contains(result.NextCommand, "--generated-for-generation 1") {
 		t.Fatalf("cleanup finish preview result = %#v", printed)
 	}
@@ -105,7 +104,7 @@ func TestCurrentRelayCleanupGeneratedCommandDogfood(t *testing.T) {
 		t.Fatal(err)
 	}
 	binaryHash := sha256.Sum256(binaryBytes)
-	live, err := core.ReadIssueOps(core.IssueOpsStateRoot(), lifecycleID)
+	live, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), lifecycleID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,15 +123,15 @@ func TestCurrentRelayCleanupGeneratedCommandDogfood(t *testing.T) {
 	record.Execution.Mode = issueopscontract.ExecutionModeOrca
 	record.Execution.Workspace.Driver = "orca"
 	record.Execution.Orca = &binding
-	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
 
 	observer := cleanupProvenanceObserverStub{evidence: provenanceport.Receipt{
 		ExecutablePath: binary, ExecutableSHA256: hex.EncodeToString(binaryHash[:]),
 	}}
-	provider := &liveCleanupProvider{cleanupStatusProvider: cleanupStatusProvider{snapshot: core.ExecutionIssueSnapshot{
-		URL: record.IssueURL, Body: core.IssueBodyCompletionStartMarker, State: "closed",
+	provider := &liveCleanupProvider{cleanupStatusProvider: cleanupStatusProvider{snapshot: port.ExecutionIssueSnapshot{
+		URL: record.IssueURL, Body: port.IssueBodyCompletionStartMarker, State: "closed",
 	}}}
 	var printed any
 	removeCalls := 0
@@ -150,9 +149,9 @@ func TestCurrentRelayCleanupGeneratedCommandDogfood(t *testing.T) {
 			return 1, "unexpected git call"
 		}
 	}
-	deps.Provider = func(string) (core.IssueProvider, error) { return provider, nil }
-	deps.VerifyMergedHead = func(issueopscontract.IssueOpsRemoteArtifactVerification) (core.IssueOpsCleanupRemoteBranchArtifactHead, error) {
-		return core.IssueOpsCleanupRemoteBranchArtifactHead{HeadRefName: record.Branch, HeadRefOID: "abc123", BaseRefName: "main"}, nil
+	deps.Provider = func(string) (port.IssueProvider, error) { return provider, nil }
+	deps.VerifyMergedHead = func(issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscore.CleanupRemoteBranchArtifactHead, error) {
+		return issueopscore.CleanupRemoteBranchArtifactHead{HeadRefName: record.Branch, HeadRefOID: "abc123", BaseRefName: "main"}, nil
 	}
 	deps.RemoveOrcaWorktree = func(ctx context.Context, worktreeID string) error {
 		removeCalls++
@@ -172,7 +171,7 @@ func TestCurrentRelayCleanupGeneratedCommandDogfood(t *testing.T) {
 	if err := RunCleanup([]string{"finish", "--id", record.ID, "--preview", "--json"}, deps); err != nil {
 		t.Fatal(err)
 	}
-	preview, ok := printed.(core.IssueOpsCleanupFinishResult)
+	preview, ok := printed.(issueopscore.CleanupFinishResult)
 	if !ok || preview.NextCommand == "" {
 		t.Fatalf("cleanup current-relay preview = %#v", printed)
 	}
@@ -196,7 +195,7 @@ func TestCurrentRelayCleanupGeneratedCommandDogfood(t *testing.T) {
 	if removeCalls != 1 {
 		t.Fatalf("current relay remove calls = %d, want 1", removeCalls)
 	}
-	if _, err := core.ReadIssueOps(core.IssueOpsStateRoot(), record.ID); !errors.Is(err, os.ErrNotExist) {
+	if _, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), record.ID); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("cleanup dogfood record was not deleted: %v", err)
 	}
 }

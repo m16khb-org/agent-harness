@@ -8,9 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	issueopscore "agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestRunIssueOpsUsageAndCleanupBranches(t *testing.T) {
@@ -111,10 +110,10 @@ func TestRunIssueOpsCleanupCloseChildrenRequiresMergedAndConfirmRecordsState(t *
 	t.Setenv("PATH", bin)
 	record := issueopscontract.IssueOpsRecord{
 		SchemaVersion: issueopscontract.IssueOpsSchemaVersion,
-		ID:            core.NewIssueOpsID(repo, "12-child-cleanup"),
+		ID:            issueopscore.NewIssueOpsID(repo, "12-child-cleanup"),
 		Repo:          repo,
 		Branch:        "12-child-cleanup",
-		Phase:         core.IssueOpsPhasePR,
+		Phase:         issueopscore.IssueOpsPhasePR,
 		IssueURL:      "https://github.com/acme/repo/issues/12",
 		IssueLinks: []issueopscontract.IssueOpsIssueLink{{
 			Type:     "child",
@@ -129,7 +128,7 @@ func TestRunIssueOpsCleanupCloseChildrenRequiresMergedAndConfirmRecordsState(t *
 		Labels:    []string{"issueops"},
 		Assignees: []string{"octocat"},
 	}
-	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
 
@@ -147,7 +146,7 @@ func TestRunIssueOpsCleanupCloseChildrenRequiresMergedAndConfirmRecordsState(t *
 	if result["closed_count"] != float64(1) || result["dry_run"] == true {
 		t.Fatalf("unexpected close-children result: %#v", result)
 	}
-	updated, err := core.ReadIssueOps(core.IssueOpsStateRoot(), record.ID)
+	updated, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), record.ID)
 	if err != nil {
 		t.Fatal(err)
 	}

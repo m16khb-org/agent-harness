@@ -1,13 +1,12 @@
 package policycli
 
 import (
+	policy "agent-harness/internal/adapter/policy"
 	"flag"
 	"time"
-
-	"agent-harness/internal/adapter/core"
 )
 
-func parseCommandPolicyFlags(name string, args []string) (core.CommandPolicyRequest, bool, error) {
+func parseCommandPolicyFlags(name string, args []string) (policy.CommandPolicyRequest, bool, error) {
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	workspaceRoot := fs.String("workspace-root", "", "workspace root boundary")
 	cwd := fs.String("cwd", "", "command working directory")
@@ -19,7 +18,7 @@ func parseCommandPolicyFlags(name string, args []string) (core.CommandPolicyRequ
 	shellReason := fs.String("shell-reason", "", "reason for shell interpreter exception")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil {
-		return core.CommandPolicyRequest{}, false, err
+		return policy.CommandPolicyRequest{}, false, err
 	}
 	root := *workspaceRoot
 	if root == "" {
@@ -29,7 +28,7 @@ func parseCommandPolicyFlags(name string, args []string) (core.CommandPolicyRequ
 	if workDir == "" {
 		workDir = root
 	}
-	req := core.CommandPolicyRequest{
+	req := policy.CommandPolicyRequest{
 		WorkspaceRoot:  root,
 		CWD:            workDir,
 		Argv:           fs.Args(),
@@ -43,7 +42,7 @@ func parseCommandPolicyFlags(name string, args []string) (core.CommandPolicyRequ
 	return req, *jsonOut, nil
 }
 
-func parseCommandPolicyRunFlags(args []string) (core.CommandPolicyRequest, bool, bool, error) {
+func parseCommandPolicyRunFlags(args []string) (policy.CommandPolicyRequest, bool, bool, error) {
 	fs := flag.NewFlagSet("policy run", flag.ContinueOnError)
 	workspaceRoot := fs.String("workspace-root", "", "workspace root boundary")
 	cwd := fs.String("cwd", "", "command working directory")
@@ -52,7 +51,7 @@ func parseCommandPolicyRunFlags(args []string) (core.CommandPolicyRequest, bool,
 	readOnly := fs.Bool("read-only", false, "execute only if policy allows a read-only command")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil {
-		return core.CommandPolicyRequest{}, false, false, err
+		return policy.CommandPolicyRequest{}, false, false, err
 	}
 	root := *workspaceRoot
 	if root == "" {
@@ -62,7 +61,7 @@ func parseCommandPolicyRunFlags(args []string) (core.CommandPolicyRequest, bool,
 	if workDir == "" {
 		workDir = root
 	}
-	req := core.CommandPolicyRequest{
+	req := policy.CommandPolicyRequest{
 		WorkspaceRoot: root,
 		CWD:           workDir,
 		Argv:          fs.Args(),

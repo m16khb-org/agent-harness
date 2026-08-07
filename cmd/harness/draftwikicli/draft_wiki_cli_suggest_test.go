@@ -1,13 +1,12 @@
 package draftwikicli
 
 import (
+	draftwiki "agent-harness/internal/adapter/draftwiki"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestRunProjectDraftWikiSuggest_printsPrompt_whenInputIsPositional(t *testing.T) {
@@ -45,7 +44,7 @@ func TestRunProjectDraftWikiSuggest_printsPromptJSON_whenJSONFlagIsSet(t *testin
 	})
 
 	// Then
-	var result core.DraftWikiSuggestResult
+	var result draftwiki.DraftWikiSuggestResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode suggest dry-run json: %v\n%s", err, out)
 	}

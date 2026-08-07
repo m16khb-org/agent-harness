@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"agent-harness/cmd/harness/daemoncli"
-	"agent-harness/internal/adapter/core"
+	inspect "agent-harness/internal/adapter/inspect"
 )
 
 // Deps holds host-provided dependencies for the status CLI. The composition root
@@ -14,7 +14,7 @@ type Deps struct {
 	HarnessRoot       func() string
 	ResolveTarget     func(string) string
 	Version           string
-	InspectHarness    func(string) core.InspectInfo
+	InspectHarness    func(string) inspect.InspectInfo
 	CheckDaemonStatus func() daemoncli.Status
 }
 
@@ -32,7 +32,7 @@ func defaultDeps() Deps {
 		HarnessRoot:       defaultHarnessRoot,
 		ResolveTarget:     defaultResolveTarget,
 		Version:           "dev",
-		InspectHarness:    func(string) core.InspectInfo { return core.InspectInfo{} },
+		InspectHarness:    func(string) inspect.InspectInfo { return inspect.InspectInfo{} },
 		CheckDaemonStatus: daemoncli.CheckDaemonStatus,
 	}
 }

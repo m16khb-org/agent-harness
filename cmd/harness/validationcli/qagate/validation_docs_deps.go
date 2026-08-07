@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	"agent-harness/internal/adapter/core"
+	docs "agent-harness/internal/adapter/docs"
+	install "agent-harness/internal/adapter/install"
 )
 
 type StepResult = commandstep.StepResult
@@ -25,10 +26,10 @@ func (deps docsValidationDeps) withDefaults() docsValidationDeps {
 		deps.readFile = os.ReadFile
 	}
 	if deps.listDocs == nil {
-		deps.listDocs = core.ListDocs
+		deps.listDocs = docs.ListDocs
 	}
 	if deps.listSkills == nil {
-		deps.listSkills = core.ListSkillNames
+		deps.listSkills = install.ListSkillNames
 	}
 	if deps.exists == nil {
 		deps.exists = exists

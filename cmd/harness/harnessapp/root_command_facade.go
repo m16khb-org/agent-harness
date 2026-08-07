@@ -4,7 +4,8 @@ import (
 	"os"
 
 	"agent-harness/cmd/harness/rootcmd"
-	"agent-harness/internal/adapter/core"
+	guard "agent-harness/internal/adapter/guard"
+	policy "agent-harness/internal/adapter/policy"
 )
 
 func RunRootCommand(args []string) int {
@@ -67,11 +68,11 @@ func runMCPNoArgs(_ []string) error {
 func rootSubcommandErrorExitCode(name string, err error) int {
 	switch name {
 	case "policy":
-		if core.IsPolicyDenied(err) {
+		if policy.IsPolicyDenied(err) {
 			return 3
 		}
 	case "guard":
-		if core.IsGuardBlocked(err) {
+		if guard.IsGuardBlocked(err) {
 			return 3
 		}
 	}

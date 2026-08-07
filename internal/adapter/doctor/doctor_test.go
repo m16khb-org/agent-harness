@@ -1,6 +1,11 @@
 package doctor_test
 
 import (
+	"agent-harness/internal/adapter/doctor"
+	lifecycle "agent-harness/internal/adapter/lifecycle"
+	"agent-harness/internal/adapter/looprun"
+	projectbootstrap "agent-harness/internal/adapter/projectbootstrap"
+	"agent-harness/internal/domain/operationalhealth"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -8,11 +13,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"agent-harness/internal/adapter/core"
-	"agent-harness/internal/adapter/doctor"
-	"agent-harness/internal/adapter/looprun"
-	"agent-harness/internal/domain/operationalhealth"
 )
 
 func TestHarnessDoctorJSONIncludesDaemonAdmissionHealth(t *testing.T) {
@@ -54,7 +54,7 @@ func TestHarnessDoctorHealthyBaseline(t *testing.T) {
 	stateRoot := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateRoot)
 	repo := t.TempDir()
-	if _, err := core.BootstrapProjectDocs(core.ProjectDocsBootstrapRequest{RepoRoot: repo, Write: true}); err != nil {
+	if _, err := projectbootstrap.BootstrapProjectDocs(projectbootstrap.ProjectDocsBootstrapRequest{RepoRoot: repo, Write: true}); err != nil {
 		t.Fatal(err)
 	}
 	result, err := doctor.HarnessDoctor(doctor.HarnessDoctorRequest{RepoRoot: repo, HarnessRoot: repo, Home: t.TempDir(), Version: "test"})
@@ -190,11 +190,11 @@ func TestHarnessDoctorReportsRepoLocalRuntimeState(t *testing.T) {
 func TestHarnessDoctorReportsLifecycleNamespaceMismatch(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
-	plan, err := core.InitProjectLifecycleState(repo, true)
+	plan, err := lifecycle.InitProjectLifecycleState(repo, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var profile core.ProjectLifecycleProfile
+	var profile lifecycle.ProjectLifecycleProfile
 	b, err := os.ReadFile(plan.ProjectJSONPath)
 	if err != nil {
 		t.Fatal(err)
@@ -222,7 +222,7 @@ func TestHarnessDoctorReportsLifecycleNamespaceMismatch(t *testing.T) {
 func TestHarnessDoctorReportsLoopContracts(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
-	if _, err := core.BootstrapProjectDocs(core.ProjectDocsBootstrapRequest{RepoRoot: repo, Write: true}); err != nil {
+	if _, err := projectbootstrap.BootstrapProjectDocs(projectbootstrap.ProjectDocsBootstrapRequest{RepoRoot: repo, Write: true}); err != nil {
 		t.Fatal(err)
 	}
 	loop, err := looprun.Start(looprun.StartLoopRequest{
@@ -250,7 +250,7 @@ func TestHarnessDoctorReportsLoopContracts(t *testing.T) {
 func TestHarnessDoctorLoopContractsHealthyWhenNoIncompleteLoops(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
-	if _, err := core.BootstrapProjectDocs(core.ProjectDocsBootstrapRequest{RepoRoot: repo, Write: true}); err != nil {
+	if _, err := projectbootstrap.BootstrapProjectDocs(projectbootstrap.ProjectDocsBootstrapRequest{RepoRoot: repo, Write: true}); err != nil {
 		t.Fatal(err)
 	}
 	result, err := doctor.HarnessDoctor(doctor.HarnessDoctorRequest{RepoRoot: repo, HarnessRoot: repo, Home: t.TempDir(), Version: "test"})

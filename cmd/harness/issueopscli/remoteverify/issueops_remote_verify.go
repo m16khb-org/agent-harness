@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	issueopscore "agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
-
-	"agent-harness/internal/adapter/core"
 )
 
 type liveRemoteArtifact struct {
@@ -105,16 +104,16 @@ func fetchRemoteArtifactLive(artifact issueopscontract.IssueOpsRemoteArtifactVer
 // VerifyRemoteArtifactMergedHeadLive는 머지 검증과 head ref 관측을 한 번의
 // readback으로 수행한다. 두 값이 다른 시점의 관측이면 cleanup remote-branch의
 // OID CAS가 무의미해지므로 분리된 조회 표면을 두지 않는다(#116).
-func VerifyRemoteArtifactMergedHeadLive(artifact issueopscontract.IssueOpsRemoteArtifactVerification) (core.IssueOpsCleanupRemoteBranchArtifactHead, error) {
+func VerifyRemoteArtifactMergedHeadLive(artifact issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscore.CleanupRemoteBranchArtifactHead, error) {
 	live, err := fetchRemoteArtifactLive(artifact)
 	if err != nil {
-		return core.IssueOpsCleanupRemoteBranchArtifactHead{}, err
+		return issueopscore.CleanupRemoteBranchArtifactHead{}, err
 	}
 	if !live.Merged {
-		return core.IssueOpsCleanupRemoteBranchArtifactHead{},
+		return issueopscore.CleanupRemoteBranchArtifactHead{},
 			fmt.Errorf("remote artifact is not verified merged: %s", artifact.URL)
 	}
-	return core.IssueOpsCleanupRemoteBranchArtifactHead{
+	return issueopscore.CleanupRemoteBranchArtifactHead{
 		HeadRefName: strings.TrimSpace(live.HeadRefName),
 		HeadRefOID:  strings.TrimSpace(live.HeadRefOID),
 		BaseRefName: strings.TrimSpace(live.BaseRefName),

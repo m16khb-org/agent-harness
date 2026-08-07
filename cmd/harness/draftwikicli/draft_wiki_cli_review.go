@@ -1,10 +1,9 @@
 package draftwikicli
 
 import (
+	draftwiki "agent-harness/internal/adapter/draftwiki"
 	"flag"
 	"fmt"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func runProjectDraftWikiApprove(args []string) error {
@@ -12,7 +11,7 @@ func runProjectDraftWikiApprove(args []string) error {
 	if err != nil {
 		return err
 	}
-	result, err := core.ApproveDraftWiki(core.DraftWikiMoveRequest{RepoRoot: repo, Path: path})
+	result, err := draftwiki.ApproveDraftWiki(draftwiki.DraftWikiMoveRequest{RepoRoot: repo, Path: path})
 	if err != nil {
 		return err
 	}
@@ -28,7 +27,7 @@ func runProjectDraftWikiReject(args []string) error {
 	if err != nil {
 		return err
 	}
-	result, err := core.RejectDraftWiki(core.DraftWikiMoveRequest{RepoRoot: repo, Path: path})
+	result, err := draftwiki.RejectDraftWiki(draftwiki.DraftWikiMoveRequest{RepoRoot: repo, Path: path})
 	if err != nil {
 		return err
 	}
@@ -50,7 +49,7 @@ func runProjectDraftWikiPromote(args []string) error {
 	if fs.NArg() != 1 {
 		return fmt.Errorf("exactly one draft path is required")
 	}
-	result, err := core.PromoteDraftWiki(core.DraftWikiPromoteRequest{
+	result, err := draftwiki.PromoteDraftWiki(draftwiki.DraftWikiPromoteRequest{
 		RepoRoot: *repo,
 		Path:     fs.Arg(0),
 		Confirm:  *confirm,

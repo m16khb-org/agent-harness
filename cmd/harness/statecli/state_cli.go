@@ -1,12 +1,11 @@
 package statecli
 
 import (
+	statestore "agent-harness/internal/adapter/outbound/state"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func runStateWrite(args []string) error {
@@ -53,7 +52,7 @@ func runStateWrite(args []string) error {
 		}
 		content = string(b)
 	}
-	result, err := core.StateWrite(*key, content)
+	result, err := statestore.StateWrite(*key, content)
 	if err != nil {
 		return err
 	}
@@ -74,7 +73,7 @@ func runStateRead(args []string) error {
 	if *key == "" && fs.NArg() > 0 {
 		*key = fs.Arg(0)
 	}
-	result, err := core.StateRead(*key)
+	result, err := statestore.StateRead(*key)
 	if err != nil {
 		return err
 	}
@@ -91,7 +90,7 @@ func runStateList(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := core.StateList()
+	result, err := statestore.StateList()
 	if err != nil {
 		return err
 	}

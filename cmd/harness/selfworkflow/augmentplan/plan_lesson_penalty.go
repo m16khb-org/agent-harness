@@ -8,7 +8,7 @@ import (
 
 	"agent-harness/cmd/harness/selfworkflow/augmentcatalog"
 	"agent-harness/cmd/harness/selfworkflow/model"
-	"agent-harness/internal/adapter/core"
+	statestore "agent-harness/internal/adapter/outbound/state"
 )
 
 const (
@@ -37,7 +37,7 @@ func severeLessonCounts() (map[string]int, []string) {
 
 func severeLessonCountsAt(now time.Time) (map[string]int, []string) {
 	counts := map[string]int{}
-	list, err := core.StateList()
+	list, err := statestore.StateList()
 	if err != nil {
 		return counts, []string{"lesson scan: " + err.Error()}
 	}
@@ -45,7 +45,7 @@ func severeLessonCountsAt(now time.Time) (map[string]int, []string) {
 		if !strings.HasPrefix(key, selfAugmentLessonKeyPrefix) {
 			continue
 		}
-		record, err := core.StateRead(key)
+		record, err := statestore.StateRead(key)
 		if err != nil {
 			continue
 		}

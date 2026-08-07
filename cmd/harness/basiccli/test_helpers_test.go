@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/daemoncli"
-	"agent-harness/internal/adapter/core"
+	inspect "agent-harness/internal/adapter/inspect"
 	"agent-harness/internal/domain/operationalhealth"
 	"agent-harness/internal/testsupport"
 )
@@ -23,10 +23,10 @@ func init() {
 		CollectOperationalHealth: func(_ context.Context, repo string) operationalhealth.Snapshot {
 			return healthyCLIOperationalSnapshot(repo)
 		},
-		InspectHarness: func(repo string) core.InspectInfo {
+		InspectHarness: func(repo string) inspect.InspectInfo {
 			target := testResolveTarget(repo)
 			home, _ := os.UserHomeDir()
-			return core.InspectHarness(root, target, home, "0.1.0", "atomic-commit-push")
+			return inspect.InspectHarness(root, target, home, "0.1.0", "atomic-commit-push")
 		},
 	})
 }

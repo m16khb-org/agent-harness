@@ -1,10 +1,9 @@
 package stateio
 
 import (
+	statestore "agent-harness/internal/adapter/outbound/state"
 	"encoding/json"
 	"time"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func SaveSelfVerificationSummary(result *SelfAugmentResult, key string) error {
@@ -17,9 +16,9 @@ func SaveSelfVerificationSummary(result *SelfAugmentResult, key string) error {
 		result.StateCheckpoint = &SelfAugmentStateCheckpoint{OK: false, Key: key, Error: err.Error()}
 		return err
 	}
-	state, err := core.StateWrite(key, string(b))
+	state, err := statestore.StateWrite(key, string(b))
 	if err != nil {
-		result.StateCheckpoint = &SelfAugmentStateCheckpoint{OK: false, Key: key, StateDir: core.StateDir(), Error: err.Error()}
+		result.StateCheckpoint = &SelfAugmentStateCheckpoint{OK: false, Key: key, StateDir: statestore.StateDir(), Error: err.Error()}
 		return err
 	}
 	result.StateCheckpoint = &SelfAugmentStateCheckpoint{

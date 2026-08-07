@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
-	"agent-harness/internal/adapter/core"
 	hookadapter "agent-harness/internal/adapter/hook"
 	coreinstall "agent-harness/internal/adapter/install"
 	issueopscore "agent-harness/internal/adapter/issueops"
+	lifecycle "agent-harness/internal/adapter/lifecycle"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/domain/searchrouting"
@@ -56,7 +56,7 @@ func runHookPreToolUse(args []string) error {
 	}
 	processAncestry, _ := issueopscore.ObserveNativeProcessAncestry(os.Getpid())
 	tool := hookinput.ToolNameFromHookInput(stdin)
-	result := core.BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
+	result := lifecycle.BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:                  parsedRepo,
 		CWD:                   hookinput.EffectiveCWDFromHookInput(stdin, searchrouting.IsShellTool(tool)),
 		Host:                  nativeHost,

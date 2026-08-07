@@ -1,10 +1,9 @@
 package stateroundtrip
 
 import (
-	"encoding/json"
-
-	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/adapter/outbound/sqlstore"
+	statecontract "agent-harness/internal/contract/state"
+	"encoding/json"
 )
 
 func (s *stateRoundtripSelfVerifySession) validateHistoryAndRetention(baselineCompareKey, candidateCompareKey, promotedBaselineKey string) StepResult {
@@ -73,7 +72,7 @@ func (s *stateRoundtripSelfVerifySession) validateHistoryAndRetention(baselineCo
 	if !doctor.OK {
 		return s.combineFailed(doctor)
 	}
-	var doctorResult core.StateDoctorResult
+	var doctorResult statecontract.StateDoctorResult
 	if err := json.Unmarshal([]byte(doctor.Stdout), &doctorResult); err != nil {
 		return s.fail(err.Error())
 	}
@@ -83,7 +82,7 @@ func (s *stateRoundtripSelfVerifySession) validateHistoryAndRetention(baselineCo
 	return StepResult{OK: true}
 }
 
-func stateDoctorHasIssueCode(issues []core.StateDoctorIssue, want string) bool {
+func stateDoctorHasIssueCode(issues []statecontract.StateDoctorIssue, want string) bool {
 	for _, issue := range issues {
 		if issue.Code == want {
 			return true

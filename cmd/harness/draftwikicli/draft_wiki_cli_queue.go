@@ -1,10 +1,9 @@
 package draftwikicli
 
 import (
+	draftwiki "agent-harness/internal/adapter/draftwiki"
 	"flag"
 	"fmt"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func runProjectDraftWikiQueue(args []string) error {
@@ -26,7 +25,7 @@ func runProjectDraftWikiQueue(args []string) error {
 	if err != nil {
 		return err
 	}
-	result, err := core.AppendDraftWikiQueueEvent(core.DraftWikiQueueAppendRequest{
+	result, err := draftwiki.AppendDraftWikiQueueEvent(draftwiki.DraftWikiQueueAppendRequest{
 		RepoRoot:       *repo,
 		SourceMaterial: sourceMaterial,
 		TargetWiki:     *targetWiki,

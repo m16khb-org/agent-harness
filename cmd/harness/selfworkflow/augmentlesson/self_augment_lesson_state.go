@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/selfworkflow/model"
-	"agent-harness/internal/adapter/core"
+	statestore "agent-harness/internal/adapter/outbound/state"
 )
 
 type Deps struct {
@@ -93,10 +93,10 @@ func SaveSelfAugmentLesson(req model.SelfAugmentLessonRequest, deps Deps) (model
 		result.StateCheckpoint = &model.SelfAugmentStateCheckpoint{OK: false, Key: key, Error: err.Error()}
 		return result, err
 	}
-	state, err := core.StateWrite(key, string(b))
+	state, err := statestore.StateWrite(key, string(b))
 	if err != nil {
 		result.OK = false
-		result.StateCheckpoint = &model.SelfAugmentStateCheckpoint{OK: false, Key: key, StateDir: core.StateDir(), Error: err.Error()}
+		result.StateCheckpoint = &model.SelfAugmentStateCheckpoint{OK: false, Key: key, StateDir: statestore.StateDir(), Error: err.Error()}
 		return result, err
 	}
 	result.StateCheckpoint = &model.SelfAugmentStateCheckpoint{
@@ -106,7 +106,7 @@ func SaveSelfAugmentLesson(req model.SelfAugmentLessonRequest, deps Deps) (model
 		Path:     state.Path,
 		Bytes:    state.Record.Bytes,
 	}
-	_, _ = core.StatePrunePrefix(selfAugmentLessonStateKeyPrefix, selfAugmentLessonStateMaxAge, selfAugmentLessonStateMaxRecords, true)
+	_, _ = statestore.StatePrunePrefix(selfAugmentLessonStateKeyPrefix, selfAugmentLessonStateMaxAge, selfAugmentLessonStateMaxRecords, true)
 	return result, nil
 }
 

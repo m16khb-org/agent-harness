@@ -1,11 +1,10 @@
 package mcpcli
 
 import (
+	worker "agent-harness/internal/adapter/worker"
 	"encoding/json"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestHandleAssistantWorkerMCPToolCallCoversLocalAssistantPayloads(t *testing.T) {
@@ -44,9 +43,9 @@ func TestHandleAssistantWorkerMCPToolCallCoversWorkerLifecyclePayloads(t *testin
 	if !enqueue.Handled || enqueue.Err != nil {
 		t.Fatalf("unexpected worker_enqueue outcome: %#v", enqueue)
 	}
-	var job core.WorkerJob
+	var job worker.WorkerJob
 	decodeAssistantWorkerPayload(t, enqueue.Payload, &job)
-	if job.Status != core.WorkerStatusQueued || job.Kind != "qa" {
+	if job.Status != worker.WorkerStatusQueued || job.Kind != "qa" {
 		t.Fatalf("unexpected enqueued job: %+v", job)
 	}
 
@@ -57,7 +56,7 @@ func TestHandleAssistantWorkerMCPToolCallCoversWorkerLifecyclePayloads(t *testin
 	}{
 		{name: "worker status", call: MCPToolCall{Name: "worker_status", Arguments: map[string]any{"id": job.ID}}, wantText: job.ID},
 		{name: "worker list", call: MCPToolCall{Name: "worker_list", Arguments: map[string]any{}}, wantText: job.ID},
-		{name: "worker cancel", call: MCPToolCall{Name: "worker_cancel", Arguments: map[string]any{"id": job.ID}}, wantText: core.WorkerStatusCancelled},
+		{name: "worker cancel", call: MCPToolCall{Name: "worker_cancel", Arguments: map[string]any{"id": job.ID}}, wantText: worker.WorkerStatusCancelled},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			outcome := handleAssistantWorkerMCPToolCall(tc.call)

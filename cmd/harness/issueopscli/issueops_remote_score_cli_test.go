@@ -1,28 +1,27 @@
 package issueopscli
 
 import (
+	issueopscore "agent-harness/internal/adapter/issueops"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestRunIssueOpsRemoteScoreCLIDeterministic(t *testing.T) {
-	input := writeIssueOpsRemoteScoreRequestForCLITest(t, core.IssueOpsRemoteScoringRequest{
+	input := writeIssueOpsRemoteScoreRequestForCLITest(t, issueopscore.IssueOpsRemoteScoringRequest{
 		Provider:  "github",
 		Threshold: 0.70,
-		Issue: core.IssueOpsRemoteArtifact{
+		Issue: issueopscore.IssueOpsRemoteArtifact{
 			Title: "IssueOps related issue and label scoring",
 			Body:  "Score related issues and enhancement labels before creating an issue.",
 		},
-		IssueCandidates: []core.IssueOpsRemoteIssueCandidate{
+		IssueCandidates: []issueopscore.IssueOpsRemoteIssueCandidate{
 			{ID: "#11", Title: "IssueOps related issue and label scoring", Score: scoreForCLITest(0.93)},
 			{ID: "#8", Title: "Unrelated docs cleanup", Score: scoreForCLITest(0.30)},
 		},
-		LabelCandidates: []core.IssueOpsRemoteLabelCandidate{
+		LabelCandidates: []issueopscore.IssueOpsRemoteLabelCandidate{
 			{Name: "enhancement", Score: scoreForCLITest(0.90)},
 			{Name: "documentation", Score: scoreForCLITest(0.20)},
 		},
@@ -30,7 +29,7 @@ func TestRunIssueOpsRemoteScoreCLIDeterministic(t *testing.T) {
 	out := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"remote", "score", "--input", input, "--judge", "none", "--json"})
 	})
-	var result core.IssueOpsRemoteScoringResult
+	var result issueopscore.IssueOpsRemoteScoringResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("remote score should return JSON: %v\n%s", err, out)
 	}
@@ -56,7 +55,7 @@ func TestRunIssueOpsRemoteScoreCLIAcceptsCandidateAliases(t *testing.T) {
 	out := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"remote", "score", "--input", input, "--judge", "none", "--json"})
 	})
-	var result core.IssueOpsRemoteScoringResult
+	var result issueopscore.IssueOpsRemoteScoringResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("remote score should return JSON: %v\n%s", err, out)
 	}
@@ -93,9 +92,9 @@ func TestRunIssueOpsRemoteScoreFailureWithJSONEmitsStructuredError(t *testing.T)
 }
 
 func TestRunIssueOpsRemoteScoreCLIUsesJudgeFile(t *testing.T) {
-	input := writeIssueOpsRemoteScoreRequestForCLITest(t, core.IssueOpsRemoteScoringRequest{
+	input := writeIssueOpsRemoteScoreRequestForCLITest(t, issueopscore.IssueOpsRemoteScoringRequest{
 		Provider: "gitlab",
-		Issue:    core.IssueOpsRemoteArtifact{Title: "IssueOps GitLab remote scoring"},
+		Issue:    issueopscore.IssueOpsRemoteArtifact{Title: "IssueOps GitLab remote scoring"},
 	})
 	judgeFile := filepath.Join(t.TempDir(), "judge.json")
 	if err := os.WriteFile(judgeFile, []byte(`{"ok":true,"provider":"gitlab","threshold":0.7,"execution_class":"background_join","read_only":true,"join_before":"remote_artifact_write","selected_related_issues":[{"id":"#11","score":0.91,"threshold":0.7,"selected":true,"evidence":["same IssueOps workflow"],"apply_hint":"link in issue body: #11"}],"rejected_related_issues":[],"selected_labels":[{"name":"enhancement","score":0.94,"threshold":0.7,"selected":true,"evidence":["feature request"],"apply_hint":"apply GitLab label: enhancement"}],"rejected_labels":[],"apply_instructions":["apply selected labels with the GitLab issue labels field or glab issue create --label: enhancement"],"warnings":[]}`), 0o644); err != nil {
@@ -104,7 +103,7 @@ func TestRunIssueOpsRemoteScoreCLIUsesJudgeFile(t *testing.T) {
 	out := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"remote", "score", "--input", input, "--judge", "file", "--judge-file", judgeFile, "--json"})
 	})
-	var result core.IssueOpsRemoteScoringResult
+	var result issueopscore.IssueOpsRemoteScoringResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("remote judge-file score should return JSON: %v\n%s", err, out)
 	}
@@ -114,9 +113,9 @@ func TestRunIssueOpsRemoteScoreCLIUsesJudgeFile(t *testing.T) {
 }
 
 func TestRunIssueOpsRemoteScoreCLIRendersHostAgentPrompt(t *testing.T) {
-	input := writeIssueOpsRemoteScoreRequestForCLITest(t, core.IssueOpsRemoteScoringRequest{
+	input := writeIssueOpsRemoteScoreRequestForCLITest(t, issueopscore.IssueOpsRemoteScoringRequest{
 		Provider: "github",
-		Issue:    core.IssueOpsRemoteArtifact{Title: "IssueOps host-agent scoring prompt"},
+		Issue:    issueopscore.IssueOpsRemoteArtifact{Title: "IssueOps host-agent scoring prompt"},
 	})
 	out := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"remote", "score", "--input", input, "--judge", "prompt", "--json"})
@@ -141,11 +140,11 @@ func TestRunIssueOpsRemoteScoreCLIRendersHostAgentPrompt(t *testing.T) {
 }
 
 func TestRunIssueOpsRemoteScoreCLITextShowsIssueTitleWithReference(t *testing.T) {
-	input := writeIssueOpsRemoteScoreRequestForCLITest(t, core.IssueOpsRemoteScoringRequest{
+	input := writeIssueOpsRemoteScoreRequestForCLITest(t, issueopscore.IssueOpsRemoteScoringRequest{
 		Provider:  "github",
 		Threshold: 0.70,
-		Issue:     core.IssueOpsRemoteArtifact{Title: "IssueOps related issue scoring"},
-		IssueCandidates: []core.IssueOpsRemoteIssueCandidate{
+		Issue:     issueopscore.IssueOpsRemoteArtifact{Title: "IssueOps related issue scoring"},
+		IssueCandidates: []issueopscore.IssueOpsRemoteIssueCandidate{
 			{ID: "#11", Title: "IssueOps related issue and label scoring", Score: scoreForCLITest(0.93)},
 		},
 	})

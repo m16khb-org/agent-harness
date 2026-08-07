@@ -1,11 +1,10 @@
 package issueopscli
 
 import (
+	issueopscore "agent-harness/internal/adapter/issueops"
 	"flag"
 	"fmt"
 	"time"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func runIssueOpsPrune(args []string) error {
@@ -24,7 +23,7 @@ func runIssueOpsPrune(args []string) error {
 	if err != nil {
 		return fmt.Errorf("invalid --max-age: %w", err)
 	}
-	result, err := core.PruneIssueOps(core.IssueOpsStateRoot(), age, *confirm)
+	result, err := issueopscore.PruneIssueOps(issueopscore.IssueOpsStateRoot(), age, *confirm)
 	if err != nil {
 		if *jsonOut {
 			if printErr := printIssueOpsErrorJSON(err); printErr != nil {

@@ -9,7 +9,7 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 
 	cliadapter "agent-harness/internal/adapter/cli"
-	"agent-harness/internal/adapter/core"
+	issueopscore "agent-harness/internal/adapter/issueops"
 )
 
 func issueOpsUsage() {
@@ -69,7 +69,7 @@ func runIssueOpsBranch(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.PrepareIssueOpsBranchWithActor(core.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsBranchPrepareRequest{
+	record, err := issueopscore.PrepareIssueOpsBranchWithActor(issueopscore.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsBranchPrepareRequest{
 		Provider:        *provider,
 		IssueURL:        *issueURL,
 		Branch:          *branch,

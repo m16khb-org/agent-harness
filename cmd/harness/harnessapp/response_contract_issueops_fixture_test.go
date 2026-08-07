@@ -1,19 +1,17 @@
 package harnessapp
 
 import (
+	"agent-harness/internal/adapter/issueops"
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
-	"agent-harness/internal/adapter/issueops"
-	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
 func seedIssueOpsExecutionContract(t *testing.T, repo, branch string) string {
 	t.Helper()
-	record, err := issueops.StartIssueOps(core.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := issueops.StartIssueOps(issueops.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +36,7 @@ func seedIssueOpsExecutionContract(t *testing.T, repo, branch string) string {
 			Generation: 1, Status: issueopscontract.LeaseStatusClaimable, ClaimTokenSHA256: strings.Repeat("b", 64),
 		},
 	}
-	if _, err := issueops.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+	if _, err := issueops.WriteIssueOps(issueops.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
 	return record.ID

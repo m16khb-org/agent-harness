@@ -1,10 +1,9 @@
 package draftwikicli
 
 import (
+	draftwiki "agent-harness/internal/adapter/draftwiki"
 	"flag"
 	"fmt"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func runProjectDraftWikiSuggest(args []string) error {
@@ -21,7 +20,7 @@ func runProjectDraftWikiSuggest(args []string) error {
 	if *input == "" && fs.NArg() == 1 {
 		*input = fs.Arg(0)
 	}
-	result, err := core.SuggestDraftWiki(core.DraftWikiSuggestRequest{
+	result, err := draftwiki.SuggestDraftWiki(draftwiki.DraftWikiSuggestRequest{
 		RepoRoot:   *repo,
 		InputPath:  *input,
 		Title:      *title,

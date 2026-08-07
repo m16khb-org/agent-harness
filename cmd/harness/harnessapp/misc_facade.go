@@ -10,7 +10,7 @@ import (
 	"agent-harness/cmd/harness/contractcli"
 	"agent-harness/cmd/harness/pathutil"
 	"agent-harness/cmd/harness/selfworkflow"
-	"agent-harness/internal/adapter/core"
+	statecontract "agent-harness/internal/contract/state"
 )
 
 type CompatibilityContract = contractcli.CompatibilityContract
@@ -96,7 +96,7 @@ func containsString(items []string, want string) bool {
 	return pathutil.ContainsString(items, want)
 }
 
-func stateDoctorHasIssueCode(issues []core.StateDoctorIssue, want string) bool {
+func stateDoctorHasIssueCode(issues []statecontract.StateDoctorIssue, want string) bool {
 	return pathutil.StateDoctorHasIssueCode(issues, want)
 }
 

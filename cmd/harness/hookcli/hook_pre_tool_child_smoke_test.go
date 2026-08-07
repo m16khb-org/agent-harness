@@ -8,9 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	issueopscore "agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestRunHookPreToolUseAdmitsChildSmokeFromInstalledHookArguments(t *testing.T) {
@@ -30,7 +29,7 @@ func TestRunHookPreToolUseAdmitsChildSmokeFromInstalledHookArguments(t *testing.
 	coordinator := createLinkedIssueOpsWorktree(t, source, "228-coordinator")
 	setReleasedHookExecution(t, child, source)
 	setReleasedHookExecution(t, coordinator, source)
-	childRecord, err := core.ReadIssueOps(core.IssueOpsStateRoot(), child.id)
+	childRecord, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), child.id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,17 +37,17 @@ func TestRunHookPreToolUseAdmitsChildSmokeFromInstalledHookArguments(t *testing.
 	childRecord.Delegation = &issueopscontract.IssueOpsDelegationContract{
 		ParentCycleID: coordinator.id, TaskScope: "exact child smoke", DelegatedAt: "2026-08-02T00:00:00Z",
 	}
-	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), childRecord); err != nil {
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), childRecord); err != nil {
 		t.Fatal(err)
 	}
-	coordinatorRecord, err := core.ReadIssueOps(core.IssueOpsStateRoot(), coordinator.id)
+	coordinatorRecord, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), coordinator.id)
 	if err != nil {
 		t.Fatal(err)
 	}
 	coordinatorRecord.ChildCycles = []issueopscontract.IssueOpsChildCycleRef{{
 		CycleID: child.id, Branch: childRecord.Branch, ChildIssueURL: childRecord.IssueURL,
 	}}
-	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), coordinatorRecord); err != nil {
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), coordinatorRecord); err != nil {
 		t.Fatal(err)
 	}
 
@@ -108,7 +107,7 @@ func TestRunHookPreToolUseAdmitsChildSmokeFromInstalledHookArguments(t *testing.
 
 func setReleasedHookExecution(t *testing.T, linked linkedIssueOpsWorktree, source string) {
 	t.Helper()
-	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), linked.id)
+	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), linked.id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +122,7 @@ func setReleasedHookExecution(t *testing.T, linked linkedIssueOpsWorktree, sourc
 			ReleasedAt: "2026-08-02T00:00:00Z",
 		},
 	}
-	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -1,13 +1,13 @@
 package basiccli
 
 import (
+	guard "agent-harness/internal/adapter/guard"
+	trace "agent-harness/internal/adapter/trace"
 	"encoding/json"
 	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/core"
 )
 
 func TestRunTraceRoutesUsageUnknownAndAnalyzeJSON(t *testing.T) {
@@ -23,7 +23,7 @@ func TestRunTraceRoutesUsageUnknownAndAnalyzeJSON(t *testing.T) {
 	out := captureStatusVerifyStdout(t, func() error {
 		return RunTrace([]string{"analyze", "--input", input, "--json"})
 	})
-	var result core.TraceAnalyzeResult
+	var result trace.TraceAnalyzeResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode trace analyze JSON: %v\n%s", err, out)
 	}
@@ -56,7 +56,7 @@ func TestRunGuardRoutesAndChecksExplicitFiles(t *testing.T) {
 	out := captureStatusVerifyStdout(t, func() error {
 		return RunGuard([]string{"check", "--repo", repo, "--json", "--", "ok_test.go"})
 	})
-	var result core.GuardCheckResult
+	var result guard.GuardCheckResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode guard JSON: %v\n%s", err, out)
 	}
@@ -72,7 +72,7 @@ func TestRunGuardCheckTextOutputReturnsBlockedError(t *testing.T) {
 	out, err := captureTraceGuardPolicyStdout(t, func() error {
 		return RunGuardCheck([]string{"--repo", repo, "--", "slow_test.go"})
 	})
-	var blocked core.GuardBlockedError
+	var blocked guard.GuardBlockedError
 	if !errors.As(err, &blocked) {
 		t.Fatalf("expected guard blocked error, got %T %v", err, err)
 	}

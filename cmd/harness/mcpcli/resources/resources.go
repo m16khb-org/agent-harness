@@ -1,10 +1,12 @@
 package resources
 
 import (
-	"encoding/json"
-
-	"agent-harness/internal/adapter/core"
+	docs "agent-harness/internal/adapter/docs"
 	mcpadapter "agent-harness/internal/adapter/mcp"
+	statestore "agent-harness/internal/adapter/outbound/state"
+	policy "agent-harness/internal/adapter/policy"
+	projectdocs "agent-harness/internal/adapter/projectdocs"
+	"encoding/json"
 )
 
 type Config struct {
@@ -67,12 +69,12 @@ func HandleResourceRead(params json.RawMessage, config Config) (any, *ReadError)
 		return nil, &ReadError{Code: -32602, Message: "Invalid params", Data: err.Error()}
 	}
 	if req.URI == "harness://docs" {
-		result := core.DocsIndex(config.HarnessRoot, config.Version)
+		result := docs.DocsIndex(config.HarnessRoot, config.Version)
 		b, _ := json.MarshalIndent(result, "", "  ")
 		return content(req.URI, "application/json", string(b)), nil
 	}
 	if req.URI == "harness://project-docs" {
-		result, err := core.RouteProjectDocs(".", "general")
+		result, err := projectdocs.RouteProjectDocs(".", "general")
 		if err != nil {
 			return nil, &ReadError{Code: -32000, Message: "Cannot read project docs route", Data: err.Error()}
 		}
@@ -86,11 +88,11 @@ func HandleResourceRead(params json.RawMessage, config Config) (any, *ReadError)
 		return content(req.URI, "text/markdown", apiDocGuidanceText()), nil
 	}
 	if req.URI == "harness://command-policy" {
-		b, _ := json.MarshalIndent(core.CommandPolicySummary(), "", "  ")
+		b, _ := json.MarshalIndent(policy.CommandPolicySummary(), "", "  ")
 		return content(req.URI, "application/json", string(b)), nil
 	}
 	if req.URI == "harness://state" {
-		result, err := core.StateList()
+		result, err := statestore.StateList()
 		if err != nil {
 			return nil, &ReadError{Code: -32000, Message: "Cannot read state index", Data: err.Error()}
 		}

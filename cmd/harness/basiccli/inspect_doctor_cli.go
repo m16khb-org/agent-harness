@@ -1,6 +1,9 @@
 package basiccli
 
 import (
+	doctor "agent-harness/internal/adapter/doctor"
+	"agent-harness/internal/adapter/repopath"
+	"agent-harness/internal/domain/operationalhealth"
 	"context"
 	"flag"
 	"fmt"
@@ -8,10 +11,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"agent-harness/internal/adapter/core"
-	"agent-harness/internal/adapter/repopath"
-	"agent-harness/internal/domain/operationalhealth"
 )
 
 type doctorRepeatedFlag []string
@@ -86,7 +85,7 @@ func runDoctor(args []string) error {
 	snapshot := deps.CollectOperationalHealth(context.Background(), root)
 	home, _ := os.UserHomeDir()
 	daemon := deps.CheckDaemonStatus()
-	result, err := core.HarnessDoctor(core.HarnessDoctorRequest{
+	result, err := doctor.HarnessDoctor(doctor.HarnessDoctorRequest{
 		RepoRoot:            root,
 		HarnessRoot:         deps.HarnessRoot(),
 		Home:                home,
@@ -98,7 +97,7 @@ func runDoctor(args []string) error {
 			PreserveCycleIDs:        cycleIDs,
 			PreserveTerminalHandles: terminalHandles,
 		},
-		DaemonAdmission: core.HarnessDoctorDaemonAdmission{
+		DaemonAdmission: doctor.HarnessDoctorDaemonAdmission{
 			ActiveConnections: daemon.ActiveConnections,
 			MaxConnections:    daemon.MaxConnections,
 			Accepting:         daemon.Accepting,

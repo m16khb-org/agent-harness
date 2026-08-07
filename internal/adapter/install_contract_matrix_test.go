@@ -15,7 +15,7 @@ import (
 
 	claudeadapter "agent-harness/internal/adapter/claude"
 	codexadapter "agent-harness/internal/adapter/codex"
-	"agent-harness/internal/adapter/core"
+	install "agent-harness/internal/adapter/install"
 	"agent-harness/internal/port"
 )
 
@@ -79,9 +79,9 @@ func TestNativeInstallAdapterContractMatrix(t *testing.T) {
 			writeContractSkill(t, root, "codex-only", "codex")
 			writeContractSkill(t, root, "claude-only", "claude")
 
-			req := core.DefaultNativeInstallRequest(root, home, codexHome, binPath)
+			req := install.DefaultNativeInstallRequest(root, home, codexHome, binPath)
 			req.ProjectLocal = tc.projectLocal
-			result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
+			result, err := install.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
 			if err != nil {
 				t.Fatalf("InstallNative returned error: %v\n%+v", err, result)
 			}
@@ -100,10 +100,10 @@ func TestNativeInstallDryRunDoesNotWrite(t *testing.T) {
 	binPath := filepath.Join(root, "bin", "harness")
 	writeContractSkill(t, root, "alpha")
 
-	req := core.DefaultNativeInstallRequest(root, home, codexHome, binPath)
+	req := install.DefaultNativeInstallRequest(root, home, codexHome, binPath)
 	req.ProjectLocal = true
 	req.DryRun = true
-	result, err := core.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
+	result, err := install.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
 	if err != nil {
 		t.Fatalf("dry-run InstallNative returned error: %v\n%+v", err, result)
 	}
