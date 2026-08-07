@@ -42,9 +42,12 @@ func ValidateExecutionPreparationOrcaProbe(stateRoot, id string, request prepara
 	return "", nil
 }
 
-func ReadExecutionPreparationOwnerEvidence(ctx context.Context, snapshot preparationcontract.Snapshot, readIssue ExecutionIssueSnapshotReadFunc) (preparationcontract.OwnerEvidence, error) {
+func ReadExecutionPreparationOwnerEvidence(ctx context.Context, stateRoot string, snapshot preparationcontract.Snapshot, readIssue ExecutionIssueSnapshotReadFunc) (preparationcontract.OwnerEvidence, error) {
 	record, err := executionPreparationCoreRecord(snapshot)
 	if err != nil {
+		return preparationcontract.OwnerEvidence{}, err
+	}
+	if _, err := RequireStagedExecutionOwnerPlan(stateRoot, record); err != nil {
 		return preparationcontract.OwnerEvidence{}, err
 	}
 	owner, err := readExecutionOwnerSnapshot(ctx, record, readIssue)
@@ -125,10 +128,11 @@ func PrepareExecutionPreparationOwner(
 	if err != nil {
 		return preparationcontract.OwnerArtifacts{}, err
 	}
-	manifest, err := materializeStagedArtifacts(stateRoot, record)
+	plan, manifest, err := materializeExecutionOwnerArtifacts(stateRoot, record)
 	if err != nil {
 		return preparationcontract.OwnerArtifacts{}, err
 	}
+	record.PlanPath = plan.Path
 	artifacts, err := buildExecutionOwnerArtifacts(record, ExecutionPrepareRequest{
 		ID: command.ID, Mode: preparationcontract.ModeOrca,
 		OwnerHost: command.OwnerHost, OwnerModel: command.OwnerModel, OwnerEffort: command.OwnerEffort,
@@ -137,6 +141,7 @@ func PrepareExecutionPreparationOwner(
 		return preparationcontract.OwnerArtifacts{}, err
 	}
 	return preparationcontract.OwnerArtifacts{
+		PlanPath:       plan.Path,
 		ClaimTokenPath: claimTokenPath(record), ClaimTokenSHA256: tokenSHA256,
 		ContextPacketPath: artifacts.packetPath, ContextPacketSHA256: artifacts.packetSHA256,
 		OwnerPromptPath: artifacts.promptPath, OwnerPromptSHA256: artifacts.promptSHA256,

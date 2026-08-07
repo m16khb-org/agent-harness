@@ -254,6 +254,7 @@ func advanceOrcaIntentReceipt(ctx context.Context, stateRoot string, record issu
 
 func advanceOrcaIntentReceiptWithExpectedRaw(ctx context.Context, stateRoot string, record issueops.IssueOpsRecord, expected externalOrcaIntentPayload, expectedRecordRaw, expectedIntentRaw []byte, receipt port.ExecutionOrcaIntentReceipt, readIssue ExecutionIssueSnapshotReadFunc, now func() time.Time) (issueops.IssueOpsRecord, externalOrcaIntentPayload, error) {
 	updated := expected
+	ownerPlanPath := ""
 	updated.InvocationState = orcaIntentNotInvoked
 	updated.InvocationAttempts = 0
 	switch expected.Stage {
@@ -275,10 +276,12 @@ func advanceOrcaIntentReceiptWithExpectedRaw(ctx context.Context, stateRoot stri
 		if err != nil {
 			return record, expected, err
 		}
-		artifactManifest, err := materializeStagedArtifacts(stateRoot, prepared)
+		plan, artifactManifest, err := materializeExecutionOwnerArtifacts(stateRoot, prepared)
 		if err != nil {
 			return record, expected, err
 		}
+		prepared.PlanPath = plan.Path
+		ownerPlanPath = plan.Path
 		artifacts, err := buildExecutionOwnerArtifacts(prepared, ExecutionPrepareRequest{
 			ID: prepared.ID, Mode: string(issueops.ExecutionModeOrca), OwnerHost: expected.Probe.Host,
 			OwnerModel: expected.Probe.Model, OwnerEffort: expected.Probe.Effort,
@@ -342,6 +345,7 @@ func advanceOrcaIntentReceiptWithExpectedRaw(ctx context.Context, stateRoot stri
 		}
 		if expected.Stage == preparationcontract.IntentStageWorktree {
 			current.WorktreePath = updated.Prepared.Workspace.Root
+			current.PlanPath = ownerPlanPath
 			current.Execution.Workspace = workspaceFromReceipt(intentPortWorkspaceReceipt(updated.Prepared.Workspace), expected.StartedAt)
 		}
 		if expected.Stage == preparationcontract.IntentStageDispatch {

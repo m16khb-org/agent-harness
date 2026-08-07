@@ -2,6 +2,8 @@ package harnessapp
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -11,6 +13,90 @@ import (
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
+
+func TestIssueOpsPreparationPlanArtifactFailureStopsBeforeOwnerMutations(t *testing.T) {
+	stateRoot := t.TempDir()
+	repo := t.TempDir()
+	claimWiringGit(t, repo, "init", "-q", "-b", "main")
+	claimWiringGit(t, repo, "-c", "user.name=IssueOps Test", "-c", "user.email=issueops@example.invalid", "commit", "--allow-empty", "-q", "-m", "initial")
+	baseHead := strings.TrimSpace(preflight.GitOut(repo, "rev-parse", "HEAD"))
+	record, err := issueops.StartIssueOps(stateRoot, issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: "262-plan-readiness"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.IssueURL = "https://github.com/acme/repo/issues/262"
+	record.BranchPrepare = &issueopscontract.IssueOpsBranchPrepare{
+		Provider: "github", IssueURL: record.IssueURL, Branch: record.Branch,
+		BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true,
+	}
+	if _, err := issueops.WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	orca := &planReadinessOrcaFake{}
+	remoteReads := 0
+	operationIDs := 0
+	handler := newIssueOpsPreparationHandler(issueOpsPreparationCompositionDeps{
+		Orca: orca,
+		ReadIssue: func(context.Context, string, port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error) {
+			remoteReads++
+			return port.ExecutionIssueSnapshot{}, nil
+		},
+		NewOperationID: func() (string, error) {
+			operationIDs++
+			return "must-not-be-created", nil
+		},
+	})
+
+	result, err := handler(context.Background(), stateRoot, issueops.ExecutionPrepareRequest{
+		ID: record.ID, Mode: "orca", Actor: claimWiringActor(t), CWD: repo,
+		OwnerHost: "codex", Confirm: true,
+	}, issueops.ExecutionPrepareInvocation{})
+	if err == nil || result.OK {
+		t.Fatalf("result=%#v err=%v, want plan readiness failure", result, err)
+	}
+	fields, ok := err.(interface{ IssueOpsErrorFields() map[string]any })
+	if !ok || fields.IssueOpsErrorFields()["code"] != "orca_plan_artifact_required" {
+		t.Fatalf("error=%T %v want orca_plan_artifact_required", err, err)
+	}
+	if orca.probeCalls != 1 || orca.inspectCalls != 0 || orca.invokeCalls != 0 {
+		t.Fatalf("Orca probe=%d inspect=%d invoke=%d, want 1/0/0", orca.probeCalls, orca.inspectCalls, orca.invokeCalls)
+	}
+	if remoteReads != 0 || operationIDs != 0 {
+		t.Fatalf("remote reads=%d operation IDs=%d, want 0/0", remoteReads, operationIDs)
+	}
+	persisted, readErr := issueops.ReadIssueOps(stateRoot, record.ID)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if persisted.Execution != nil || persisted.WorktreePath != "" {
+		t.Fatalf("readiness failure persisted begin intent or lease: %#v", persisted)
+	}
+	worktree := filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees", record.Branch)
+	if _, statErr := os.Lstat(worktree); !os.IsNotExist(statErr) {
+		t.Fatalf("readiness failure materialized workspace %q: %v", worktree, statErr)
+	}
+}
+
+type planReadinessOrcaFake struct {
+	probeCalls   int
+	inspectCalls int
+	invokeCalls  int
+}
+
+func (fake *planReadinessOrcaFake) Probe(context.Context, port.ExecutionOrcaProbeRequest) (port.ExecutionOrcaProbeResult, error) {
+	fake.probeCalls++
+	return port.ExecutionOrcaProbeResult{Available: true, Ready: true}, nil
+}
+
+func (fake *planReadinessOrcaFake) InspectIntent(context.Context, port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentInventory, error) {
+	fake.inspectCalls++
+	return port.ExecutionOrcaIntentInventory{AuthoritativeZero: true}, nil
+}
+
+func (fake *planReadinessOrcaFake) InvokeIntent(context.Context, port.ExecutionOrcaIntentRequest) (port.ExecutionOrcaIntentReceipt, error) {
+	fake.invokeCalls++
+	return port.ExecutionOrcaIntentReceipt{}, nil
+}
 
 func TestIssueOpsPrepareWiringRunsRealDirectPreviewWithoutPersistence(t *testing.T) {
 	stateRoot := t.TempDir()
@@ -74,6 +160,9 @@ func TestIssueOpsPrepareWiringUsesRequestScopedIssueSnapshot(t *testing.T) {
 		BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true,
 	}
 	if _, err := issueops.WriteIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := issueops.StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte("# Request-scoped snapshot plan\n")); err != nil {
 		t.Fatal(err)
 	}
 	fallbackCalls := 0

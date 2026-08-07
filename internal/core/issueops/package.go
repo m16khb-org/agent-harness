@@ -384,7 +384,7 @@ func linkIssueOpsPlan(stateRoot, id, planPath string, actor *IssueOpsActor) (iss
 		if readErr != nil {
 			return readErr
 		}
-		if actorErr := validateExecutionMutation(record, actor); actorErr != nil {
+		if actorErr := validatePlanLinkMutation(record, actor); actorErr != nil {
 			return actorErr
 		}
 		var writeErr error

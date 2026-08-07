@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -23,6 +24,147 @@ const artifactStageBucket = "artifact_stage_v1"
 const IssueOpsArtifactDir = ".agent-harness/artifact"
 
 var issueOpsArtifactNames = map[string]bool{"plan": true, "spec": true, "turing-loop": true}
+
+type PlanIdentity struct {
+	Path   string
+	Digest string
+}
+
+type OwnerPlanIdentity = PlanIdentity
+
+type planArtifactRequiredError struct {
+	nextCommand string
+}
+
+type artifactStageRecoveryError struct {
+	id string
+}
+
+func (e *artifactStageRecoveryError) Error() string {
+	return "artifacts are sealed after execution prepare; only a clean released Orca generation may stage a plan, and execution replace --reseed is required before resume"
+}
+
+func (e *artifactStageRecoveryError) IssueOpsErrorFields() map[string]any {
+	return map[string]any{
+		"code":            "artifact_stage_requires_reseed",
+		"required_action": "execution replace --reseed",
+		"next_command":    "agent-harness issueops execution status --id " + quoteExecutionOwnerArg(e.id) + " --json",
+	}
+}
+
+func (e *planArtifactRequiredError) Error() string {
+	return "Orca execution requires a staged plan artifact"
+}
+
+func (e *planArtifactRequiredError) IssueOpsErrorFields() map[string]any {
+	fields := map[string]any{
+		"code":    "orca_plan_artifact_required",
+		"missing": []string{"plan"},
+	}
+	if e.nextCommand != "" {
+		fields["next_command"] = e.nextCommand
+	}
+	return fields
+}
+
+func RequireStagedExecutionOwnerPlan(stateRoot string, record issueops.IssueOpsRecord) (PlanIdentity, error) {
+	staged, err := readStagedArtifacts(stateRoot, record.ID)
+	if err != nil {
+		return PlanIdentity{}, err
+	}
+	plan, ok := staged["plan"]
+	if !ok || strings.TrimSpace(plan) == "" {
+		return PlanIdentity{}, newPlanArtifactRequiredError(record, true)
+	}
+	identity := PlanIdentity{Digest: digestExecutionOwnerBytes([]byte(plan))}
+	if strings.TrimSpace(record.PlanPath) == "" {
+		return identity, nil
+	}
+	linked, err := readLinkedPlanIdentity(record)
+	if err != nil || linked.Digest != identity.Digest {
+		return PlanIdentity{}, newPlanArtifactRequiredError(record, false)
+	}
+	return linked, nil
+}
+
+func newPlanArtifactRequiredError(record issueops.IssueOpsRecord, allowStageCommand bool) error {
+	typed := &planArtifactRequiredError{}
+	if !allowStageCommand {
+		return typed
+	}
+	if identity, err := readLinkedPlanIdentity(record); err == nil {
+		typed.nextCommand = "agent-harness issueops artifact stage --id " + quoteExecutionOwnerArg(record.ID) +
+			" --name plan --file " + quoteExecutionOwnerArg(identity.Path) + " --json"
+	}
+	return typed
+}
+
+func newPlanResumeArtifactRequiredError(record issueops.IssueOpsRecord) error {
+	typed := &planArtifactRequiredError{}
+	if record.Execution != nil && record.Execution.Lease.Generation > 0 {
+		typed.nextCommand = executionReplacementPreviewCommand(record.ID, record.Execution.Lease.Generation)
+	}
+	return typed
+}
+
+func readLinkedPlanIdentity(record issueops.IssueOpsRecord) (PlanIdentity, error) {
+	worktree := strings.TrimSpace(record.WorktreePath)
+	planPath := strings.TrimSpace(record.PlanPath)
+	if worktree == "" || planPath == "" || strings.Contains(worktree, "\x00") || strings.Contains(planPath, "\x00") {
+		return PlanIdentity{}, fmt.Errorf("durable plan path is unavailable")
+	}
+	if !filepath.IsAbs(planPath) {
+		planPath = filepath.Join(worktree, planPath)
+	}
+	worktree, err := filepath.Abs(worktree)
+	if err != nil {
+		return PlanIdentity{}, err
+	}
+	planPath, err = filepath.Abs(planPath)
+	if err != nil {
+		return PlanIdentity{}, err
+	}
+	worktree, planPath = filepath.Clean(worktree), filepath.Clean(planPath)
+	worktreeInfo, err := os.Stat(worktree)
+	if err != nil || !worktreeInfo.IsDir() || !issueOpsPlanPathInsideWorktree(worktree, planPath) {
+		return PlanIdentity{}, fmt.Errorf("durable plan path is outside the canonical worktree")
+	}
+	info, err := os.Lstat(planPath)
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+		return PlanIdentity{}, fmt.Errorf("durable plan path is not a regular file")
+	}
+	content, err := os.ReadFile(planPath)
+	if err != nil || strings.TrimSpace(string(content)) == "" {
+		return PlanIdentity{}, fmt.Errorf("durable plan is empty or unreadable")
+	}
+	return PlanIdentity{Path: planPath, Digest: digestExecutionOwnerBytes(content)}, nil
+}
+
+func materializeExecutionOwnerArtifacts(stateRoot string, record issueops.IssueOpsRecord) (OwnerPlanIdentity, map[string]string, error) {
+	preflight, err := RequireStagedExecutionOwnerPlan(stateRoot, record)
+	if err != nil {
+		return OwnerPlanIdentity{}, nil, err
+	}
+	manifest, err := materializeStagedArtifacts(stateRoot, record)
+	if err != nil {
+		return OwnerPlanIdentity{}, nil, err
+	}
+	planDigest, ok := manifest["plan"]
+	if !ok || !strings.EqualFold(planDigest, preflight.Digest) {
+		return OwnerPlanIdentity{}, nil, newPlanArtifactRequiredError(record, false)
+	}
+	if preflight.Path != "" {
+		return preflight, manifest, nil
+	}
+	prepared := record
+	prepared.WorktreePath = record.Execution.Workspace.Root
+	prepared.PlanPath = filepath.Join(record.Execution.Workspace.Root, filepath.FromSlash(IssueOpsArtifactDir), "plan.md")
+	identity, err := readLinkedPlanIdentity(prepared)
+	if err != nil || !strings.EqualFold(identity.Digest, planDigest) {
+		return OwnerPlanIdentity{}, nil, newPlanArtifactRequiredError(prepared, false)
+	}
+	return identity, manifest, nil
+}
 
 // StageIssueOpsArtifact는 plan|spec|turing-loop artifact를 스테이징한다.
 // prepare 이후(Execution 존재)에는 조용한 no-op 대신 명시적으로 실패한다 —
@@ -50,8 +192,8 @@ func StageIssueOpsArtifact(stateRoot, id, name string, content []byte) (issueops
 		if e != nil {
 			return e
 		}
-		if rec.Execution != nil {
-			return fmt.Errorf("artifacts must be staged before execution prepare; the sealed manifest cannot be restaged (inspect with `agent-harness issueops execution status --id %s --json`)", rec.ID)
+		if !canStageIssueOpsArtifact(rec, name) {
+			return &artifactStageRecoveryError{id: rec.ID}
 		}
 		staged, e := readStagedArtifacts(stateRoot, rec.ID)
 		if e != nil {
@@ -76,6 +218,19 @@ func StageIssueOpsArtifact(stateRoot, id, name string, content []byte) (issueops
 		return issueops.IssueOpsRecord{OK: false}, err
 	}
 	return record, nil
+}
+
+func canStageIssueOpsArtifact(record issueops.IssueOpsRecord, name string) bool {
+	if record.Execution == nil {
+		return true
+	}
+	execution := record.Execution
+	return name == "plan" &&
+		execution.Mode == issueops.ExecutionModeOrca &&
+		execution.Lease.Status == issueops.LeaseStatusReleased &&
+		execution.Lease.Holder == nil &&
+		execution.Pending == nil &&
+		execution.Completion == nil
 }
 
 // UnstageIssueOpsArtifact는 스테이징된 artifact 하나를 되돌린다. prepare
@@ -161,8 +316,9 @@ func readStagedArtifacts(stateRoot, id string) (map[string]string, error) {
 // materializeStagedArtifacts는 스테이징된 artifact를 워크트리의
 // IssueOpsArtifactDir로 0600 파일로 옮기고 name→sha256 manifest를 돌려준다.
 // writeExecutionOwnerArtifact의 immutable 계약을 재사용하므로 재실행은
-// 동일 내용일 때만 통과한다. 스테이징이 없으면 빈 manifest다(하위 호환).
-// replacement 재봉인도 이 경로로 같은 내용을 검증해 manifest를 다시 만든다.
+// 동일 내용일 때만 통과한다. generic helper는 스테이징이 없으면 빈 manifest를
+// 반환하지만 Orca owner 경로는 materializeExecutionOwnerArtifacts에서 plan을
+// 필수로 검증한다. replacement 재봉인도 그 경로로 같은 내용을 다시 검증한다.
 // 기존 파일을 바꾸는 재-materialize는 immutable writer가 거부한다.
 func materializeStagedArtifacts(stateRoot string, record issueops.IssueOpsRecord) (map[string]string, error) {
 	if record.Execution == nil || strings.TrimSpace(record.Execution.Workspace.Root) == "" {

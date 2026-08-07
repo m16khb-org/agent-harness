@@ -394,6 +394,14 @@ Execution tests must cover:
   all-empty, unversioned-complete, partial, and future-version identities are
   invalid. Producer tests must prove new prepare and reseed outputs carry both
   the version marker and all three digests.
+- Orca plan readiness tests must prove a non-empty staged `plan` before fresh
+  owner evidence/mutation, atomic `plan_path` persistence with the worktree
+  receipt, exact staged/sealed/durable digest equality on reseed and resume,
+  and zero operation/worktree/terminal/Run/task/dispatch/lease mutations on
+  failure. Released recovery staging is limited to a clean holderless Orca
+  generation and changes only the next reseal input. Run the focused regressions
+  with `go test ./internal/core/issueops ./cmd/harness/harnessapp -run 'PlanArtifact|Preparation.*Plan|Owner.*Plan|Replace.*Plan|Intent.*Plan|Resume.*Plan' -count=1`
+  plus `go test ./internal/core/issueops ./internal/core/lifecycle -run 'Artifact.*Released|Released.*Artifact' -count=1`.
 - completion only from `pr` with the durable verified PR/MR projection; the
   completion receipt, lease release, reverse-index deletion, and `done` phase
   transition are one atomic write. An identical retry is idempotent only when

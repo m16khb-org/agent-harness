@@ -2,6 +2,7 @@ package issueops
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,6 +54,64 @@ func TestReadExecutionResumeArtifactsRejectsSealedIdentityDrift(t *testing.T) {
 				t.Fatalf("drift error=%v want=%q", err, tt.want)
 			}
 		})
+	}
+}
+
+func TestResumePlanIdentityRejectsUnsealedOrDriftedPlan(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(t *testing.T, record *issueops.IssueOpsRecord)
+	}{
+		{name: "manifest plan missing", mutate: func(t *testing.T, record *issueops.IssueOpsRecord) {
+			mutateResumePacket(t, record, func(packet *executionOwnerContextPacket) { delete(packet.ArtifactManifest, "plan") })
+		}},
+		{name: "manifest plan digest invalid", mutate: func(t *testing.T, record *issueops.IssueOpsRecord) {
+			mutateResumePacket(t, record, func(packet *executionOwnerContextPacket) { packet.ArtifactManifest["plan"] = "invalid" })
+		}},
+		{name: "sealed plan artifact missing", mutate: func(t *testing.T, record *issueops.IssueOpsRecord) {
+			if err := os.Remove(filepath.Join(record.Execution.Workspace.Root, filepath.FromSlash(IssueOpsArtifactDir), "plan.md")); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{name: "sealed plan artifact digest mismatch", mutate: func(t *testing.T, record *issueops.IssueOpsRecord) {
+			writePrivateResumeFixture(t, filepath.Join(record.Execution.Workspace.Root, filepath.FromSlash(IssueOpsArtifactDir), "plan.md"), []byte("# Tampered sealed plan\n"))
+		}},
+		{name: "durable plan missing", mutate: func(t *testing.T, record *issueops.IssueOpsRecord) {
+			record.PlanPath = filepath.Join(record.Execution.Workspace.Root, "plans", "missing.md")
+		}},
+		{name: "durable plan outside worktree", mutate: func(t *testing.T, record *issueops.IssueOpsRecord) {
+			record.PlanPath = filepath.Join(t.TempDir(), "outside.md")
+			writePlanArtifactTestFile(t, record.PlanPath, "# Resume plan\n")
+		}},
+		{name: "durable plan digest mismatch", mutate: func(t *testing.T, record *issueops.IssueOpsRecord) {
+			writePlanArtifactTestFile(t, record.PlanPath, "# Different durable plan\n")
+		}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			record, _ := sealedResumeIdentityFixture(t)
+			test.mutate(t, &record)
+			if _, err := readExecutionResumeArtifacts(record); err == nil {
+				t.Fatal("invalid plan identity passed resume validation")
+			} else {
+				fields, ok := err.(interface{ IssueOpsErrorFields() map[string]any })
+				if !ok || fields.IssueOpsErrorFields()["code"] != "orca_plan_artifact_required" {
+					t.Fatalf("error=%T %v want orca_plan_artifact_required", err, err)
+				}
+				next, ok := fields.IssueOpsErrorFields()["next_command"].(string)
+				if !ok || !strings.Contains(next, "execution replace") || !strings.Contains(next, "--preview") {
+					t.Fatalf("next_command=%q want replacement preview", next)
+				}
+			}
+		})
+	}
+}
+
+func TestResumePlanIdentityAcceptsMatchingSealedAndDurablePlan(t *testing.T) {
+	record, _ := sealedResumeIdentityFixture(t)
+	if _, err := readExecutionResumeArtifacts(record); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -122,7 +181,8 @@ func sealedResumeIdentityFixture(t *testing.T) (issueops.IssueOpsRecord, executi
 	issueBody := "## Acceptance\n- AC-01 sealed resume\n\n## Verification\n```bash\ngo test ./...\n```\n"
 	record := issueops.IssueOpsRecord{
 		SchemaVersion: issueops.IssueOpsSchemaVersion, ID: "io-aaaaaaaaaaaa", Repo: filepath.Join(t.TempDir(), "source"), Branch: "254-resume",
-		IssueURL: "https://github.com/example/agent-harness/issues/254", PlanPath: filepath.Join(worktree, ".agent-harness", "plan.md"),
+		IssueURL: "https://github.com/example/agent-harness/issues/254", WorktreePath: worktree,
+		PlanPath:      filepath.Join(worktree, "plans", "linked.md"),
 		BranchPrepare: &issueops.IssueOpsBranchPrepare{Provider: "github", IssueURL: "https://github.com/example/agent-harness/issues/254", Branch: "254-resume", BaseBranch: "main", BaseSHA: strings.Repeat("a", 40), LinkVerified: true},
 		Execution: &issueops.Execution{
 			Mode:      issueops.ExecutionModeOrca,
@@ -131,6 +191,13 @@ func sealedResumeIdentityFixture(t *testing.T) (issueops.IssueOpsRecord, executi
 			Orca:      &issueops.OrcaBinding{RuntimeID: "runtime", RepoID: "repo", WorktreeID: "worktree", LeaseGeneration: 1, OwnerHost: "codex", OwnerModel: "gpt-5.6-sol", OwnerEffort: "high", TaskID: "task", DispatchID: "dispatch"},
 		},
 	}
+	const plan = "# Resume plan\n"
+	writePlanArtifactTestFile(t, record.PlanPath, plan)
+	sealedPlanPath := filepath.Join(worktree, filepath.FromSlash(IssueOpsArtifactDir), "plan.md")
+	if err := os.MkdirAll(filepath.Dir(sealedPlanPath), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	writePrivateResumeFixture(t, sealedPlanPath, []byte(plan))
 	token := "sealed-resume-token"
 	record.Execution.Lease.ClaimTokenSHA256 = tokenSHA256(token)
 	tokenPath := claimTokenPath(record)
@@ -142,7 +209,8 @@ func sealedResumeIdentityFixture(t *testing.T) (issueops.IssueOpsRecord, executi
 		issue:          executionOwnerIssue{URL: record.IssueURL, Body: issueBody, BodySHA256: digestExecutionOwnerBytes([]byte(issueBody))},
 		requiredSkills: []string{"issueops"}, acceptanceIDs: []string{"AC-01"}, verificationCommands: []string{"go test ./..."},
 	}
-	artifacts, err := buildExecutionOwnerArtifacts(record, ExecutionPrepareRequest{OwnerHost: "codex", OwnerModel: "gpt-5.6-sol", OwnerEffort: "high"}, snapshot, nil)
+	manifest := map[string]string{"plan": digestExecutionOwnerBytes([]byte(plan))}
+	artifacts, err := buildExecutionOwnerArtifacts(record, ExecutionPrepareRequest{OwnerHost: "codex", OwnerModel: "gpt-5.6-sol", OwnerEffort: "high"}, snapshot, manifest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,6 +223,26 @@ func sealedResumeIdentityFixture(t *testing.T) (issueops.IssueOpsRecord, executi
 		packetPath: artifacts.packetPath, packetSHA256: artifacts.packetSHA256,
 		promptPath: artifacts.promptPath, promptSHA256: artifacts.promptSHA256,
 	}
+}
+
+func mutateResumePacket(t *testing.T, record *issueops.IssueOpsRecord, mutate func(*executionOwnerContextPacket)) {
+	t.Helper()
+	packetPath, _ := executionOwnerArtifactPaths(*record)
+	raw, err := os.ReadFile(packetPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var packet executionOwnerContextPacket
+	if err := json.Unmarshal(raw, &packet); err != nil {
+		t.Fatal(err)
+	}
+	mutate(&packet)
+	raw, err = json.Marshal(packet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writePrivateResumeFixture(t, packetPath, raw)
+	record.Execution.Orca.ContextPacketSHA256 = digestExecutionOwnerBytes(raw)
 }
 
 func writePrivateResumeFixture(t *testing.T, path string, data []byte) {
