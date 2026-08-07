@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/adapter/issueops"
 )
 
 // 판정은 core가 하지만, CLI가 종결 표면을 실제로 넘기는지는 이 층에서만

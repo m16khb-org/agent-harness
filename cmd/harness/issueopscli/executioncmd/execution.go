@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"agent-harness/internal/adapter/issueops"
 	model "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
 	basesyncport "agent-harness/internal/port/issueopsbasesync"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"

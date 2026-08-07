@@ -11,7 +11,7 @@ import (
 	"sync"
 	"testing"
 
-	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/adapter/issueops"
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

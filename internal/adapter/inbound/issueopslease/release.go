@@ -6,10 +6,10 @@ import (
 	"errors"
 	"fmt"
 
+	"agent-harness/internal/adapter/issueops"
 	leaseapp "agent-harness/internal/application/issueopslease"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/core/issueops"
 	leasedomain "agent-harness/internal/domain/issueopslease"
 )
 

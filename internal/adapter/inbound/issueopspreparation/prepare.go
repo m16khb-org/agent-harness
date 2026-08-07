@@ -6,11 +6,11 @@ import (
 	"context"
 	"errors"
 
+	"agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
 	statecontract "agent-harness/internal/contract/state"
-	"agent-harness/internal/core/issueops"
 )
 
 type service interface {

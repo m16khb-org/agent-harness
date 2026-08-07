@@ -10,8 +10,8 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 
 	"agent-harness/internal/adapter/core"
-	issueopscore "agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/orphancleanup"
+	issueopscore "agent-harness/internal/adapter/issueops"
+	"agent-harness/internal/adapter/issueops/orphancleanup"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
 

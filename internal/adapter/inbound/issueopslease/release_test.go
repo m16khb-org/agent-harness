@@ -9,11 +9,11 @@ import (
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 
+	"agent-harness/internal/adapter/issueops"
 	leaseadapter "agent-harness/internal/adapter/outbound/issueopslease"
 	leaseapp "agent-harness/internal/application/issueopslease"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	statecontract "agent-harness/internal/contract/state"
-	"agent-harness/internal/core/issueops"
 	leasedomain "agent-harness/internal/domain/issueopslease"
 )
 

@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"agent-harness/internal/adapter/core"
+	"agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/issueops"
 )
 
 func seedIssueOpsExecutionContract(t *testing.T, repo, branch string) string {

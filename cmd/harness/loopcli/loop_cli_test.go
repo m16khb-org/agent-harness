@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/core/looprun"
+	"agent-harness/internal/adapter/looprun"
 	"agent-harness/internal/testsupport"
 )
 

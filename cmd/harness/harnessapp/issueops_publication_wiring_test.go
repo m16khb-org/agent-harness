@@ -7,7 +7,7 @@ import (
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 
-	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/port"
 )
 

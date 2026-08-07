@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/adapter/issueops"
+	"agent-harness/internal/adapter/lifecycle"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/lifecycle"
 )
 
 const hookChoiceQualityEvidenceEscaped = `\n\n## 선택지 품질 증거\n- context 확인: git status, 테스트 결과, 사용자 요청 범위를 확인했습니다.\n- 추천 근거: safe=상태 변경 없음, reversible=되돌릴 작업 없음, aligned=사용자 요청 범위와 일치합니다.\n- 사용자 승인 경계: 원격 push/delete/destructive 작업은 추천하지 않았습니다.`

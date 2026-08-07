@@ -13,9 +13,9 @@ import (
 
 	"agent-harness/cmd/harness/mcpcli"
 	"agent-harness/internal/adapter/core"
+	issueopscore "agent-harness/internal/adapter/issueops"
 	commandparsecontract "agent-harness/internal/contract/commandparse"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	issueopscore "agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/domain/commandparse"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"

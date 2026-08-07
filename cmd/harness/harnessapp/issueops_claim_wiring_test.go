@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
 )
 

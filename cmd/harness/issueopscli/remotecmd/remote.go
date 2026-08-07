@@ -9,10 +9,10 @@ import (
 	"strings"
 
 	"agent-harness/internal/adapter/core"
+	issueopscore "agent-harness/internal/adapter/issueops"
+	"agent-harness/internal/adapter/issueops/remote"
 	"agent-harness/internal/adapter/provider"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	issueopscore "agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/remote"
 )
 
 type Deps struct {

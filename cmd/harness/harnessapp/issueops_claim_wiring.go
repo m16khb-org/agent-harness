@@ -8,10 +8,10 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 
 	leaseinbound "agent-harness/internal/adapter/inbound/issueopslease"
+	"agent-harness/internal/adapter/issueops"
 	leaseoutbound "agent-harness/internal/adapter/outbound/issueopslease"
 	"agent-harness/internal/adapter/outbound/sqlstore"
 	leaseapp "agent-harness/internal/application/issueopslease"
-	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
 )
 

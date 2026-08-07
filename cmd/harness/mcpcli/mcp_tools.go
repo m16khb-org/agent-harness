@@ -3,7 +3,7 @@ package mcpcli
 import (
 	"encoding/json"
 
-	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/port"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"

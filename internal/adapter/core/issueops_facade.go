@@ -8,9 +8,9 @@ import (
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 
-	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/artifacttemplate"
-	"agent-harness/internal/core/looprun"
+	"agent-harness/internal/adapter/issueops"
+	"agent-harness/internal/adapter/issueops/artifacttemplate"
+	"agent-harness/internal/adapter/looprun"
 )
 
 type IssueOpsActor = issueops.IssueOpsActor

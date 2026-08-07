@@ -154,7 +154,7 @@ func makeValidationHarnessRoot(t *testing.T) string {
 		filepath.Join("skills", "self-verify", "CANDIDATES.md"),
 		filepath.Join("skills", "project-bootstrap", "SKILL.md"),
 		filepath.Join("internal", "core", "docs", "docs.go"),
-		filepath.Join("internal", "core", "projectbootstrap", "project_docs_bootstrap.go"),
+		filepath.Join("internal", "adapter", "projectbootstrap", "project_docs_bootstrap.go"),
 		filepath.Join("internal", "core", "projectdocs", "project_docs_render.go"),
 		filepath.Join("internal", "core", "inspect", "inspect.go"),
 		filepath.Join("internal", "core", "policy", "policy_evaluate.go"),

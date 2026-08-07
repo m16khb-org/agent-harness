@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )

@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/issueopscli/executioncmd"
+	"agent-harness/internal/adapter/issueops"
 	basesyncoutbound "agent-harness/internal/adapter/outbound/issueopsbasesync"
 	model "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/domain/commandparse"
 	"agent-harness/internal/port"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"

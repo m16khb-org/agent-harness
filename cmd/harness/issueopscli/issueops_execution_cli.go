@@ -3,7 +3,7 @@ package issueopscli
 import (
 	"agent-harness/cmd/harness/issueopscli/executioncmd"
 	"agent-harness/internal/adapter/core"
-	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/adapter/issueops"
 )
 
 func runIssueOpsExecution(args []string) error {

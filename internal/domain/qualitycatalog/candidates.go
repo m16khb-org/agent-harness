@@ -180,7 +180,7 @@ func CandidateSpecs() []CandidateSpec {
 			Impact: 90, Feasibility: 72, Novelty: 58, Risk: 26,
 			WhyNow:       []string{".agent-harness/PROJECT_AUDIT.md flags D1 P1 no connection limit"},
 			ExpectedGain: []string{"daemon resource exhaustion has an explicit guard and test"},
-			VerifyWith:   []string{"go test ./cmd/harness/daemoncli ./internal/core/worker -count=1"},
+			VerifyWith:   []string{"go test ./cmd/harness/daemoncli ./internal/adapter/worker -count=1"},
 			Evidence:     []string{"PROJECT_AUDIT D1 P1"},
 		},
 		{
@@ -188,7 +188,7 @@ func CandidateSpecs() []CandidateSpec {
 			Impact: 88, Feasibility: 74, Novelty: 58, Risk: 24,
 			WhyNow:       []string{".agent-harness/PROJECT_AUDIT.md flags W1 P1 stuck running jobs"},
 			ExpectedGain: []string{"worker status can classify stale running records"},
-			VerifyWith:   []string{"go test ./internal/core/worker ./cmd/harness/workercli -count=1"},
+			VerifyWith:   []string{"go test ./internal/adapter/worker ./cmd/harness/workercli -count=1"},
 			Evidence:     []string{"PROJECT_AUDIT W1 P1"},
 		},
 		{
@@ -204,7 +204,7 @@ func CandidateSpecs() []CandidateSpec {
 			Impact: 86, Feasibility: 78, Novelty: 54, Risk: 22,
 			WhyNow:       []string{".agent-harness/PROJECT_AUDIT.md flags Q1 P1 stale lock detection"},
 			ExpectedGain: []string{"draft-wiki queue processing does not wedge on abandoned locks"},
-			VerifyWith:   []string{"go test ./internal/core/draftwiki/... ./cmd/harness/draftwikicli -count=1"},
+			VerifyWith:   []string{"go test ./internal/adapter/draftwiki/... ./cmd/harness/draftwikicli -count=1"},
 			Evidence:     []string{"PROJECT_AUDIT Q1 P1"},
 		},
 	}

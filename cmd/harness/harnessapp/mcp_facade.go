@@ -8,8 +8,8 @@ import (
 
 	"agent-harness/cmd/harness/mcpcli"
 	"agent-harness/cmd/harness/selfworkflow"
+	"agent-harness/internal/adapter/issueops"
 	provenanceadapter "agent-harness/internal/adapter/outbound/issueopsprovenance"
-	"agent-harness/internal/core/issueops"
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 )
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/adapter/issueops"
 )
 
 func TestExecutionReseedCLIMapsCompletionGeneration(t *testing.T) {
