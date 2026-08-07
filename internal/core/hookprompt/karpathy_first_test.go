@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	core "agent-harness/internal/core"
+	core "agent-harness/internal/adapter/core"
 	"agent-harness/internal/core/hookprompt"
 )
 

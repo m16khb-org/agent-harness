@@ -2,7 +2,7 @@ package issueopscli
 
 import (
 	"agent-harness/cmd/harness/issueopscli/executioncmd"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/core/issueops"
 )
 

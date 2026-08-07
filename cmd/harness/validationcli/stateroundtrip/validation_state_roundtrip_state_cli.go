@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 type validateStateRoundtripStateInput struct {

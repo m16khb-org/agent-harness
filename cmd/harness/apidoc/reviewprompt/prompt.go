@@ -3,7 +3,7 @@ package reviewprompt
 import (
 	"strings"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func Build(files []string, diff, extraPrompt string) string {

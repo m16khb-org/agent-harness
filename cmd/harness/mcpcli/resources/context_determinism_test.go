@@ -3,7 +3,7 @@ package resources
 import (
 	"testing"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func TestResourcesContextIsByteDeterministic(t *testing.T) {

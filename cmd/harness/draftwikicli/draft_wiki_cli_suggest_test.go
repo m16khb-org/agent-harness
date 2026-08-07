@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func TestRunProjectDraftWikiSuggest_printsPrompt_whenInputIsPositional(t *testing.T) {

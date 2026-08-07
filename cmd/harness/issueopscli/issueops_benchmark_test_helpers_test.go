@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func writeIssueOpsRemoteScoreRequestForCLITest(t *testing.T, req core.IssueOpsRemoteScoringRequest) string {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func TestRunTraceRoutesUsageUnknownAndAnalyzeJSON(t *testing.T) {

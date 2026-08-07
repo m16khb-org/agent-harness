@@ -9,7 +9,7 @@ import (
 	"agent-harness/cmd/harness/hookcli/hookcatalog"
 	"agent-harness/cmd/harness/hookcli/hookenv"
 	"agent-harness/cmd/harness/hookcli/hookfailure"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 // hookDisabled reports whether HARNESS_DISABLE_HOOKS turns this invocation into

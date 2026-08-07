@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"agent-harness/cmd/harness/rootcmd"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func RunRootCommand(args []string) int {

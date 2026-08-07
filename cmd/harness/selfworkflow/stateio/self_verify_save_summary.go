@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func SaveSelfVerificationSummary(result *SelfAugmentResult, key string) error {

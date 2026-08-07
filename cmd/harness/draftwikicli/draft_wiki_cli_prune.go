@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func runProjectDraftWikiPrune(args []string) error {

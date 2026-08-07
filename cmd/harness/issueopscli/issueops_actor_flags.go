@@ -4,7 +4,7 @@ import (
 	"flag"
 	"os"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 	issueopscore "agent-harness/internal/core/issueops"
 )
 

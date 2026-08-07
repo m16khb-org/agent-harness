@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 type VerifyWorkResult struct {

@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func TestResolveTargetPrefersExplicitArgument(t *testing.T) {

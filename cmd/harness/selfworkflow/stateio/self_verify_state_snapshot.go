@@ -7,7 +7,7 @@ import (
 
 	statecontract "agent-harness/internal/contract/state"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/domain/failurecause"
 )
 

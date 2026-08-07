@@ -7,7 +7,7 @@ import (
 
 	cliadapter "agent-harness/internal/adapter/cli"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 const version = "0.1.0"

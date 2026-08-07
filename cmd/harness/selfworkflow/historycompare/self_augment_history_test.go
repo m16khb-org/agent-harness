@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/selfworkflow/stateio"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func TestSelfAugmentHistory(t *testing.T) {

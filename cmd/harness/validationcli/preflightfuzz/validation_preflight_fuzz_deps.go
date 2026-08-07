@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 type preflightFuzzCommandRunner func(root, label string, timeout time.Duration, input string, command ...string) StepResult

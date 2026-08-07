@@ -9,7 +9,7 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 
 	cliadapter "agent-harness/internal/adapter/cli"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func issueOpsUsage() {

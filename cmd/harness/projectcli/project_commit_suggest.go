@@ -1,7 +1,7 @@
 package projectcli
 
 import (
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 	"flag"
 	"fmt"
 	"os"

@@ -6,8 +6,8 @@ import (
 	"os"
 
 	"agent-harness/cmd/harness/mcpcli/argmap"
+	"agent-harness/internal/adapter/core"
 	model "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core"
 	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
 )

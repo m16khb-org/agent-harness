@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/adapter/hook"
-	"agent-harness/internal/core"
 )
 
 func TestClaudeInstallerDefaultsToUserScopeOnly(t *testing.T) {

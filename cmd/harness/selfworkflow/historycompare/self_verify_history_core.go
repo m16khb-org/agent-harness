@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"agent-harness/cmd/harness/selfworkflow/stateio"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func SelfAugmentHistory(prefix string, limit int, retentionOptions ...SelfAugmentHistoryRetentionOptions) (SelfAugmentHistoryResult, error) {

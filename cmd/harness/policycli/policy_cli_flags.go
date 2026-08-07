@@ -4,7 +4,7 @@ import (
 	"flag"
 	"time"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func parseCommandPolicyFlags(name string, args []string) (core.CommandPolicyRequest, bool, error) {

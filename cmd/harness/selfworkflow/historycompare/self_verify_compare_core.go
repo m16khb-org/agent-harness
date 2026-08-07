@@ -7,7 +7,7 @@ import (
 
 	"agent-harness/cmd/harness/selfworkflow/stateio"
 	"agent-harness/cmd/harness/selfworkflow/summary"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func CompareSelfAugmentSummaries(baselineKey, candidateKey string, maxElapsedRegressionPct float64) (SelfAugmentCompareResult, error) {

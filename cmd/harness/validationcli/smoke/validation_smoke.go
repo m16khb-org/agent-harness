@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 // The smoke steps parse the captured stdout as JSON, so the budget must

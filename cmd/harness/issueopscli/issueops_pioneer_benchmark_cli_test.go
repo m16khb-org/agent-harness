@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/issueopscli/benchmarkartifact"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 // 모든 repo fixture에 대해 실제 CLI 디스패치 경로(benchmarkcmd run -> FromFixture

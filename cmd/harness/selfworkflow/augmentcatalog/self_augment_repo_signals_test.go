@@ -175,7 +175,7 @@ func DetectStuckWorkerJobs() (WorkerListResult, error) {
 func TestWorkerDetectStuckJobsMarksDeadPIDAsFailed() {}
 func TestWorkerDetectStuckJobsSkipsAlivePID() {}
 `)
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "workflow_facade.go"), `package core
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "core", "workflow_facade.go"), `package core
 
 func DetectStuckWorkerJobs() (WorkerListResult, error) {
 	return coreworker.DetectStuckWorkerJobs()

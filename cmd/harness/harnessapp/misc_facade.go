@@ -10,7 +10,7 @@ import (
 	"agent-harness/cmd/harness/contractcli"
 	"agent-harness/cmd/harness/pathutil"
 	"agent-harness/cmd/harness/selfworkflow"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 type CompatibilityContract = contractcli.CompatibilityContract

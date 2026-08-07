@@ -3,7 +3,7 @@ package mcpcli
 import (
 	"agent-harness/cmd/harness/apidoc"
 	"agent-harness/cmd/harness/mcpcli/argmap"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {

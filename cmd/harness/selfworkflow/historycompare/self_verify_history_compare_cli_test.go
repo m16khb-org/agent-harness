@@ -9,7 +9,7 @@ import (
 
 	"agent-harness/cmd/harness/selfworkflow/model"
 	"agent-harness/cmd/harness/selfworkflow/stateio"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/testsupport"
 )
 

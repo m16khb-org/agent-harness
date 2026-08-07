@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"agent-harness/cmd/harness/issueopscli/benchmarkartifact"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 // One handler per `issueops benchmark <subcommand>`. Run (benchmark.go) routes

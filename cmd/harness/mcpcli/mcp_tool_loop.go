@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"agent-harness/cmd/harness/mcpcli/argmap"
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 var loopMCPHandlers = map[string]func(map[string]any) MCPToolOutcome{

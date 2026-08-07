@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 func TestValidateInspectWithDepsCoversCommandAndContractBranches(t *testing.T) {

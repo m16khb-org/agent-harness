@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
+	"agent-harness/internal/adapter/core"
 	hookadapter "agent-harness/internal/adapter/hook"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
-	"agent-harness/internal/core"
 	coreinstall "agent-harness/internal/core/install"
 	issueopscore "agent-harness/internal/core/issueops"
 	"agent-harness/internal/domain/searchrouting"

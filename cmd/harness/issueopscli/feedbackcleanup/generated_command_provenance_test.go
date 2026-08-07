@@ -10,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/adapter/orca"
 	commandparsecontract "agent-harness/internal/contract/commandparse"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core"
 	"agent-harness/internal/domain/commandparse"
 	"agent-harness/internal/port"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"

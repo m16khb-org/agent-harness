@@ -6,7 +6,7 @@ import (
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 
-	"agent-harness/internal/core"
+	"agent-harness/internal/adapter/core"
 )
 
 // 우산 브랜치 게이트는 provider 호출 이전에 선다. 자식이 만들어진 뒤에는 위상을

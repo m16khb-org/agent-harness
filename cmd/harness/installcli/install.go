@@ -11,11 +11,11 @@ import (
 
 	claudeadapter "agent-harness/internal/adapter/claude"
 	codexadapter "agent-harness/internal/adapter/codex"
+	"agent-harness/internal/adapter/core"
 	"agent-harness/internal/adapter/installutil"
 	mcpadapter "agent-harness/internal/adapter/mcp"
 	activationapp "agent-harness/internal/application/nativeactivation"
 	activationcontract "agent-harness/internal/contract/nativeactivation"
-	"agent-harness/internal/core"
 	"agent-harness/internal/port"
 	activationport "agent-harness/internal/port/nativeactivation"
 )
