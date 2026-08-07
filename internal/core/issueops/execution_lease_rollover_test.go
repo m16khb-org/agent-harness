@@ -3,6 +3,7 @@ package issueops
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -201,6 +202,21 @@ func rolloverExecutionFixture(t *testing.T) (string, contractissueops.IssueOpsRe
 		WorktreeInstanceID: "instance", RunID: "run", TaskID: "task",
 		DispatchID: "dispatch", TerminalPTYID: "pty-old", LeaseGeneration: 1,
 		OwnerHost: "codex", OwnerModel: "gpt-5.6-sol", OwnerEffort: "high",
+	}
+	// Orca 실행은 sealed plan readiness를 요구한다. 실제 수명주기에서 plan은 owner가
+	// 활성화되기 전 released generation에서 link-plan + artifact stage로 봉인되므로,
+	// 픽스처도 durable plan path와 staged artifact를 같은 순서로 갖춘다.
+	const planBody = "# Plan\n"
+	record.PlanPath = filepath.Join(record.WorktreePath, "plan.md")
+	writePlanArtifactTestFile(t, record.PlanPath, planBody)
+	record.Execution.Lease = contractissueops.WriteLease{
+		Generation: 1, Status: contractissueops.LeaseStatusReleased,
+	}
+	if _, err := writeIssueOps(stateRoot, record); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte(planBody)); err != nil {
+		t.Fatal(err)
 	}
 	record.Execution.Lease = contractissueops.WriteLease{
 		Generation: 1, Status: contractissueops.LeaseStatusActive,
