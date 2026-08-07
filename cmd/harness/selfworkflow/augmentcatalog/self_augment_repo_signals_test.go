@@ -131,7 +131,7 @@ func TestStateWriteWaitsForKeyLock() {}
 
 func TestCommandguardCoverageIsSatisfiedByBoundaryTests(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "commandguard", "lifecycle_command_kubectl_test.go"), `package commandguard
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "domain", "commandguard", "lifecycle_command_kubectl_test.go"), `package commandguard
 
 func TestGitOpsKubectlDecisionBlocksMutatingCommands() {}
 func TestGitOpsKubectlDecisionHandlesBoundaryTokens() {
@@ -139,6 +139,9 @@ func TestGitOpsKubectlDecisionHandlesBoundaryTokens() {
 	_ = "shell separator stops rollout subverb"
 	_ = "rollout undo is blocked"
 }
+`)
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "commandguard", "lifecycle_command_staged_checks_test.go"), `package commandguard
+
 func TestStagedCheckDecisionWarnsForBroadBiomeCommands() {}
 func TestPackageScriptAndBiomeHelpersHandleBoundaries() {
 	_ = "non-app/lib directories should not count as broad repo dirs"
