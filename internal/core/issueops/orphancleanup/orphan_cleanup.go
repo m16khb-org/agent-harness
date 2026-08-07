@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	model "agent-harness/internal/contract/issueops"
-	corehealth "agent-harness/internal/domain/operationalhealth"
 	"agent-harness/internal/core/preflight"
+	corehealth "agent-harness/internal/domain/operationalhealth"
 )
 
 // Request identifies one recordless local worktree and its already-merged
