@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
+	"agent-harness/internal/adapter/issueops"
 	leaseapp "agent-harness/internal/application/issueopslease"
 	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/core/issueops"
 	leasedomain "agent-harness/internal/domain/issueopslease"
 )
 

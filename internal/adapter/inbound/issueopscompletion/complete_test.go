@@ -5,10 +5,10 @@ import (
 	"reflect"
 	"testing"
 
+	"agent-harness/internal/adapter/issueops"
 	completionapp "agent-harness/internal/application/issueopscompletion"
 	model "agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/core/issueops"
 )
 
 func TestHandlerMapsCoreRequestAndResult(t *testing.T) {

@@ -1,6 +1,6 @@
 package mcpcli
 
-import "agent-harness/internal/core/issueops"
+import "agent-harness/internal/adapter/issueops"
 
 // IssueOps v1 intentionally exposes one MCP action tool. Its action field
 // selects the same execution DTO used by the CLI subcommands.

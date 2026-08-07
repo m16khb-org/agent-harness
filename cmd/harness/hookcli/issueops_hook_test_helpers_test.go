@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"agent-harness/internal/adapter/core"
+	issueopscore "agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	issueopscore "agent-harness/internal/core/issueops"
 )
 
 func recordIssueOpsHookIntentForTest(t *testing.T, id string) {

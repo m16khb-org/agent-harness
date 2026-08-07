@@ -5,11 +5,11 @@ import (
 
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 
-	"agent-harness/internal/core/hookprompt"
-	"agent-harness/internal/core/lifecycle"
+	"agent-harness/internal/adapter/hookprompt"
+	"agent-harness/internal/adapter/lifecycle"
+	coreworker "agent-harness/internal/adapter/worker"
 	"agent-harness/internal/core/policy"
 	"agent-harness/internal/core/projectdocs"
-	coreworker "agent-harness/internal/core/worker"
 	"agent-harness/internal/domain/nextaction"
 )
 

@@ -68,7 +68,7 @@ func TestQualitySignalHarvesterIsSatisfiedByQualityInspectCLIAndSignals(t *testi
 
 func TestIssueOpsLinkingCoverageIsSatisfiedByBoundaryTests(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "issueops", "linking", "link_test.go"), `package linking
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "issueops", "linking", "link_test.go"), `package linking
 
 func TestLinkIssueRejectsInvalidURL() {
 	_ = "http(s) URL"
@@ -162,7 +162,7 @@ func TestPackageScriptAndBiomeHelpersHandleBoundaries() {
 
 func TestWorkerStuckRunningDetectionIsSatisfiedByCoreAndCLI(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "worker", "store.go"), `package worker
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "worker", "store.go"), `package worker
 
 func DetectStuckWorkerJobs() (WorkerListResult, error) {
 	current.Status = WorkerStatusFailed
@@ -170,7 +170,7 @@ func DetectStuckWorkerJobs() (WorkerListResult, error) {
 	return result, nil
 }
 `)
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "worker", "worker_test.go"), `package worker
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "worker", "worker_test.go"), `package worker
 
 func TestWorkerDetectStuckJobsMarksDeadPIDAsFailed() {}
 func TestWorkerDetectStuckJobsSkipsAlivePID() {}
@@ -264,7 +264,7 @@ func TestRunDaemonAcceptLoopExpires64IdleSessionsAndAdmitsInitialize() {}
 
 func TestDraftWikiStaleLockIsSatisfiedByQueueLockRecovery(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "draftwiki", "queue", "lock.go"), `package queue
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "draftwiki", "queue", "lock.go"), `package queue
 
 const staleLockMaxAge = 5 * time.Minute
 
@@ -279,7 +279,7 @@ func isStale(path string) bool {
 	return !processAlive(pid)
 }
 `)
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "draftwiki", "queue", "queue_test.go"), `package queue
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "draftwiki", "queue", "queue_test.go"), `package queue
 
 func TestAcquireLockRecoversStaleDeadPIDLock() {}
 func TestAcquireLockKeepsLiveCurrentLock() {}

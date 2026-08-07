@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
+	"agent-harness/internal/adapter/issueops"
 	provenanceapp "agent-harness/internal/application/issueopsprovenance"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/issueops"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
 

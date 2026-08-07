@@ -7,9 +7,9 @@ import (
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 
+	"agent-harness/internal/adapter/issueops"
 	publicationapp "agent-harness/internal/application/issueopspublication"
 	publicationcontract "agent-harness/internal/contract/issueopspublication"
-	"agent-harness/internal/core/issueops"
 )
 
 type reconcileService interface {

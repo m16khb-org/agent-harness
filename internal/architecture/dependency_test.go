@@ -475,7 +475,7 @@ func route(req request, deps dependencies) {
 }
 
 func TestReseedOwnerArtifactPreparationDoesNotReapplyLeaseTransition(t *testing.T) {
-	path := filepath.Join(findRepoRoot(t), "internal", "core", "issueops", "execution_reseed_adapter.go")
+	path := filepath.Join(findRepoRoot(t), "internal", "adapter", "issueops", "execution_reseed_adapter.go")
 	contents, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -521,7 +521,7 @@ func route(req request, deps dependencies) {
 }
 
 func productionReseedRoutingViolations(repoRoot string) ([]string, error) {
-	dir := filepath.Join(repoRoot, "internal", "core", "issueops")
+	dir := filepath.Join(repoRoot, "internal", "adapter", "issueops")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -548,7 +548,7 @@ func productionReseedRoutingViolations(repoRoot string) ([]string, error) {
 }
 
 func productionResumeRoutingViolations(repoRoot string) ([]string, error) {
-	dir := filepath.Join(repoRoot, "internal", "core", "issueops")
+	dir := filepath.Join(repoRoot, "internal", "adapter", "issueops")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -597,7 +597,7 @@ func productionResumeRoutingViolations(repoRoot string) ([]string, error) {
 }
 
 func productionReconcileRoutingViolations(repoRoot string) ([]string, error) {
-	coreDir := filepath.Join(repoRoot, "internal", "core", "issueops")
+	coreDir := filepath.Join(repoRoot, "internal", "adapter", "issueops")
 	entries, err := os.ReadDir(coreDir)
 	if err != nil {
 		return nil, err
@@ -669,7 +669,7 @@ func productionPublicationCallerViolations(repoRoot string) ([]string, error) {
 
 func productionPreparationRoutingViolations(repoRoot string) ([]string, error) {
 	var violations []string
-	coreDir := filepath.Join(repoRoot, "internal", "core", "issueops")
+	coreDir := filepath.Join(repoRoot, "internal", "adapter", "issueops")
 	entries, err := os.ReadDir(coreDir)
 	if err != nil {
 		return nil, err
@@ -830,7 +830,7 @@ func functionCallCount(file *ast.File, functionName, callName string) int {
 }
 
 func productionPublicationLegacyOrchestrationViolations(repoRoot string) ([]string, error) {
-	coreDir := filepath.Join(repoRoot, "internal", "core", "issueops")
+	coreDir := filepath.Join(repoRoot, "internal", "adapter", "issueops")
 	entries, err := os.ReadDir(coreDir)
 	if err != nil {
 		return nil, err

@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"testing"
 
+	"agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	publicationcontract "agent-harness/internal/contract/issueopspublication"
-	"agent-harness/internal/core/issueops"
 )
 
 type fakeCreateService struct {

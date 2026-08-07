@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"agent-harness/internal/core/draftwiki"
+	"agent-harness/internal/adapter/draftwiki"
 )
 
 const DraftWikiDir = draftwiki.DraftWikiDir

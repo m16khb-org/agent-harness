@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"testing"
 
+	"agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/issueops"
 )
 
 func TestActionDepsPropagatePublicationReconcileWithoutInvocation(t *testing.T) {

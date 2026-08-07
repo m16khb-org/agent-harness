@@ -3,8 +3,8 @@ package issueopslease
 import (
 	"context"
 
+	"agent-harness/internal/adapter/issueops"
 	leaseapp "agent-harness/internal/application/issueopslease"
-	"agent-harness/internal/core/issueops"
 )
 
 type ReconcileHandler struct{ service *leaseapp.ReconcileService }

@@ -89,11 +89,11 @@ func repoSignalRules() []repoSignalRule {
 				fileContainsTerm(root, filepath.Join("internal", "domain", "judgement", "structured_test.go"), "TestDecodeStructuredJSONObjectBoundsLargeErrorOutput")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
-			signals.HasIssueOpsLinkingBoundaryCoverage = fileContainsTerm(root, filepath.Join("internal", "core", "issueops", "linking", "link_test.go"), "TestLinkIssueRejectsInvalidURL") &&
-				fileContainsTerm(root, filepath.Join("internal", "core", "issueops", "linking", "link_test.go"), "TestLinkPlanRejectsBoundaryViolations") &&
-				fileContainsTerm(root, filepath.Join("internal", "core", "issueops", "linking", "link_test.go"), "plan_path does not exist") &&
-				fileContainsTerm(root, filepath.Join("internal", "core", "issueops", "linking", "link_test.go"), "plan_path must be inside linked worktree") &&
-				fileContainsTerm(root, filepath.Join("internal", "core", "issueops", "linking", "link_test.go"), "TestValidateIssueURL")
+			signals.HasIssueOpsLinkingBoundaryCoverage = fileContainsTerm(root, filepath.Join("internal", "adapter", "issueops", "linking", "link_test.go"), "TestLinkIssueRejectsInvalidURL") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "issueops", "linking", "link_test.go"), "TestLinkPlanRejectsBoundaryViolations") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "issueops", "linking", "link_test.go"), "plan_path does not exist") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "issueops", "linking", "link_test.go"), "plan_path must be inside linked worktree") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "issueops", "linking", "link_test.go"), "TestValidateIssueURL")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
 			signals.HasStateWriteLocking = fileContainsTerm(root, filepath.Join("internal", "application", "state", "service.go"), "func (service *Service) Write(key, content string)") &&
@@ -114,10 +114,10 @@ func repoSignalRules() []repoSignalRule {
 				fileContainsTerm(root, stagedTest, "non-app/lib directories should not count as broad repo dirs")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
-			signals.HasWorkerStuckRunningDetection = fileContainsTerm(root, filepath.Join("internal", "core", "worker", "store.go"), "func DetectStuckWorkerJobs") &&
-				fileContainsTerm(root, filepath.Join("internal", "core", "worker", "store.go"), "WorkerStatusFailed") &&
-				fileContainsTerm(root, filepath.Join("internal", "core", "worker", "worker_test.go"), "TestWorkerDetectStuckJobsMarksDeadPIDAsFailed") &&
-				fileContainsTerm(root, filepath.Join("internal", "core", "worker", "worker_test.go"), "TestWorkerDetectStuckJobsSkipsAlivePID") &&
+			signals.HasWorkerStuckRunningDetection = fileContainsTerm(root, filepath.Join("internal", "adapter", "worker", "store.go"), "func DetectStuckWorkerJobs") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "worker", "store.go"), "WorkerStatusFailed") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "worker", "worker_test.go"), "TestWorkerDetectStuckJobsMarksDeadPIDAsFailed") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "worker", "worker_test.go"), "TestWorkerDetectStuckJobsSkipsAlivePID") &&
 				fileContainsTerm(root, filepath.Join("internal", "adapter", "core", "workflow_facade.go"), "func DetectStuckWorkerJobs") &&
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "workercli", "worker.go"), `"cleanup-stuck"`) &&
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "workercli", "worker_queue_cli.go"), "runWorkerCleanupStuck") &&
@@ -132,12 +132,12 @@ func repoSignalRules() []repoSignalRule {
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server_loop_test.go"), "TestRunDaemonAcceptLoopExpires64IdleSessionsAndAdmitsInitialize")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
-			signals.HasDraftWikiStaleLockDetection = fileContainsTerm(root, filepath.Join("internal", "core", "draftwiki", "queue", "lock.go"), "staleLockMaxAge") &&
-				fileContainsTerm(root, filepath.Join("internal", "core", "draftwiki", "queue", "lock.go"), "func isStale") &&
-				fileContainsTerm(root, filepath.Join("internal", "core", "draftwiki", "queue", "lock.go"), "os.Remove(path)") &&
-				fileContainsTerm(root, filepath.Join("internal", "core", "draftwiki", "queue", "lock.go"), "processAlive(pid)") &&
-				fileContainsTerm(root, filepath.Join("internal", "core", "draftwiki", "queue", "queue_test.go"), "TestAcquireLockRecoversStaleDeadPIDLock") &&
-				fileContainsTerm(root, filepath.Join("internal", "core", "draftwiki", "queue", "queue_test.go"), "TestAcquireLockKeepsLiveCurrentLock")
+			signals.HasDraftWikiStaleLockDetection = fileContainsTerm(root, filepath.Join("internal", "adapter", "draftwiki", "queue", "lock.go"), "staleLockMaxAge") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "draftwiki", "queue", "lock.go"), "func isStale") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "draftwiki", "queue", "lock.go"), "os.Remove(path)") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "draftwiki", "queue", "lock.go"), "processAlive(pid)") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "draftwiki", "queue", "queue_test.go"), "TestAcquireLockRecoversStaleDeadPIDLock") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "draftwiki", "queue", "queue_test.go"), "TestAcquireLockKeepsLiveCurrentLock")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
 			signals.HasGeniusMermaidLint = dirContainsTerm(root, filepath.Join("cmd", "harness", "validationcli"), "lintMermaidBlocks") &&
@@ -170,7 +170,7 @@ func repoSignalRules() []repoSignalRule {
 				dirContainsTerm(root, filepath.Join("cmd", "harness", "policycli"), "policy audit")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
-			signals.HasWorkerMVP = fileContainsTerm(root, filepath.Join("internal", "core", "worker", "worker.go"), "EnqueueWorkerJob") &&
+			signals.HasWorkerMVP = fileContainsTerm(root, filepath.Join("internal", "adapter", "worker", "worker.go"), "EnqueueWorkerJob") &&
 				dirContainsTerm(root, filepath.Join("cmd", "harness", "workercli"), "runWorkerEnqueue")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {

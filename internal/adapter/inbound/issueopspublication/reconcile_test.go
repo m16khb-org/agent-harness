@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/adapter/issueops"
 	publicationcontract "agent-harness/internal/contract/issueopspublication"
-	"agent-harness/internal/core/issueops"
 )
 
 func TestReconcileHandlerProjectsRawRecordAndPreservesResult(t *testing.T) {

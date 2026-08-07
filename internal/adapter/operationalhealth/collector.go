@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"agent-harness/internal/adapter/issueops"
+	"agent-harness/internal/adapter/issueops/pathutil"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/pathutil"
 	corehealth "agent-harness/internal/domain/operationalhealth"
 	"agent-harness/internal/port"
 )

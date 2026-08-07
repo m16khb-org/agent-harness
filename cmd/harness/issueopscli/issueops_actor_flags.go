@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"agent-harness/internal/adapter/core"
-	issueopscore "agent-harness/internal/core/issueops"
+	issueopscore "agent-harness/internal/adapter/issueops"
 )
 
 type issueOpsActorFlags struct {

@@ -1,6 +1,6 @@
 package core
 
-import "agent-harness/internal/core/looprun"
+import "agent-harness/internal/adapter/looprun"
 
 type LoopRun = looprun.LoopRun
 type LoopAttempt = looprun.LoopAttempt

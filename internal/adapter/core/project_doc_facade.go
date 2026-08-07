@@ -1,7 +1,7 @@
 package core
 
 import (
-	"agent-harness/internal/core/projectbootstrap"
+	"agent-harness/internal/adapter/projectbootstrap"
 	"agent-harness/internal/core/projectdoc"
 	"agent-harness/internal/core/projectdocs"
 )

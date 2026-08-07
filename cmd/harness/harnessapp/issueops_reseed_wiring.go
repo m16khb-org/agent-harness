@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	leaseinbound "agent-harness/internal/adapter/inbound/issueopslease"
+	"agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/adapter/orca"
 	basesyncoutbound "agent-harness/internal/adapter/outbound/issueopsbasesync"
 	leaseoutbound "agent-harness/internal/adapter/outbound/issueopslease"
@@ -14,7 +15,6 @@ import (
 	leaseapp "agent-harness/internal/application/issueopslease"
 	model "agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
 )
 

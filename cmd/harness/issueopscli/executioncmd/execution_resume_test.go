@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/adapter/issueops"
 	model "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/issueops"
 )
 
 func TestExecutionResumeCLIParsesOnlyTheExactFlagSurface(t *testing.T) {

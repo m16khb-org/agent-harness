@@ -11,7 +11,7 @@ import (
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	"agent-harness/internal/adapter/core"
 	hookadapter "agent-harness/internal/adapter/hook"
-	"agent-harness/internal/core/lifecycle/doctarget"
+	"agent-harness/internal/adapter/lifecycle/doctarget"
 )
 
 func runHookPostToolUse(args []string) error {

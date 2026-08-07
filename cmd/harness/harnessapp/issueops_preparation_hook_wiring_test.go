@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/hookcli"
+	"agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
 	"agent-harness/internal/testsupport"
 )

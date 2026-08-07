@@ -12,12 +12,12 @@ import (
 	"agent-harness/cmd/harness/issueopscli"
 	corefacade "agent-harness/internal/adapter/core"
 	publicationinbound "agent-harness/internal/adapter/inbound/issueopspublication"
+	"agent-harness/internal/adapter/issueops"
 	publicationoutbound "agent-harness/internal/adapter/outbound/issueopspublication"
 	"agent-harness/internal/adapter/provider"
 	publicationapp "agent-harness/internal/application/issueopspublication"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	publicationcontract "agent-harness/internal/contract/issueopspublication"
-	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
 )
 

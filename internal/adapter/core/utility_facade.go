@@ -1,13 +1,13 @@
 package core
 
 import (
+	"agent-harness/internal/adapter/doctor"
+	"agent-harness/internal/adapter/hookfailure"
+	"agent-harness/internal/adapter/hookmetrics"
 	"agent-harness/internal/core/audit"
 	"agent-harness/internal/core/commitsuggest"
 	coredocs "agent-harness/internal/core/docs"
-	"agent-harness/internal/core/doctor"
 	coreguard "agent-harness/internal/core/guard"
-	"agent-harness/internal/core/hookfailure"
-	"agent-harness/internal/core/hookmetrics"
 	coreinspect "agent-harness/internal/core/inspect"
 	coreinstall "agent-harness/internal/core/install"
 	"agent-harness/internal/core/lintdiagnose"
