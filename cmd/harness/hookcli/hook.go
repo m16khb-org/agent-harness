@@ -10,6 +10,7 @@ import (
 	"agent-harness/cmd/harness/hookcli/hookenv"
 	"agent-harness/cmd/harness/hookcli/hookfailure"
 	"agent-harness/internal/adapter/core"
+	hookmetrics "agent-harness/internal/adapter/hookmetrics"
 )
 
 // hookDisabled reports whether HARNESS_DISABLE_HOOKS turns this invocation into
@@ -52,7 +53,7 @@ func runHook(args []string) error {
 	// Best-effort latency telemetry for real hook events (quality program
 	// Q2 phase 2); meta subcommands (failures/metrics) are not hook events.
 	if len(args) > 0 && args[0] != "failures" && args[0] != "metrics" {
-		_ = core.RecordHookMetricEvent(core.HookMetricEvent{
+		_ = core.RecordHookMetricEvent(hookmetrics.HookMetricEvent{
 			Hook:       args[0],
 			Host:       hookfailure.ArgValue(args, "--host"),
 			DurationMS: time.Since(started).Milliseconds(),

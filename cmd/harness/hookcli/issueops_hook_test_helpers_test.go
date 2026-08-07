@@ -12,7 +12,7 @@ import (
 
 func recordIssueOpsHookIntentForTest(t *testing.T, id string) {
 	t.Helper()
-	if _, err := core.RecordIssueOpsIntent(core.IssueOpsStateRoot(), id, issueopscontract.IssueOpsIntentRecordRequest{
+	if _, err := issueopscore.RecordIssueOpsIntent(issueopscore.IssueOpsStateRoot(), id, issueopscontract.IssueOpsIntentRecordRequest{
 		RawRequest:        "refactor issueops flow",
 		InterpretedIntent: "keep intent and design evidence before implementation",
 		SuccessCriteria:   []string{"intent is recorded", "design is reviewed"},
@@ -23,7 +23,7 @@ func recordIssueOpsHookIntentForTest(t *testing.T, id string) {
 
 func recordIssueOpsHookDesignForTest(t *testing.T, id string) {
 	t.Helper()
-	if _, err := core.RecordIssueOpsDesignReview(core.IssueOpsStateRoot(), id, issueopscontract.IssueOpsDesignReviewRequest{
+	if _, err := issueopscore.RecordIssueOpsDesignReview(issueopscore.IssueOpsStateRoot(), id, issueopscontract.IssueOpsDesignReviewRequest{
 		ProblemSummary: "IssueOps must preserve the work contract",
 		ProposedDesign: "Gate implementation on a reviewed design contract",
 		RefactorPlan:   "Keep hook guard behavior aligned with IssueOps cycle state",
@@ -36,9 +36,9 @@ func recordIssueOpsHookDesignForTest(t *testing.T, id string) {
 	}
 }
 
-func activateIssueOpsHookExecution(t *testing.T, id string) core.IssueOpsActor {
+func activateIssueOpsHookExecution(t *testing.T, id string) issueopscore.IssueOpsActor {
 	t.Helper()
-	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), id)
+	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func activateIssueOpsHookExecution(t *testing.T, id string) core.IssueOpsActor {
 		baseHead = strings.Repeat("a", 40)
 	}
 	const now = "2026-07-22T00:00:00Z"
-	actor := core.IssueOpsActor{Host: "codex", SessionID: "hookcli-test", AgentID: "test-agent", CWD: record.WorktreePath}
+	actor := issueopscore.IssueOpsActor{Host: "codex", SessionID: "hookcli-test", AgentID: "test-agent", CWD: record.WorktreePath}
 	receipt, err := issueopscore.ObserveNativeProcessReceipt(os.Getpid())
 	if err != nil {
 		t.Fatal(err)
@@ -67,10 +67,10 @@ func activateIssueOpsHookExecution(t *testing.T, id string) core.IssueOpsActor {
 			},
 		},
 	}
-	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), id, string(core.IssueOpsPhaseImplement), actor); err != nil {
+	if _, err := core.AdvanceIssueOpsPhaseWithActor(issueopscore.IssueOpsStateRoot(), id, string(issueopscore.IssueOpsPhaseImplement), actor); err != nil {
 		t.Fatal(err)
 	}
 	return actor

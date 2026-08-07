@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	issueopscore "agent-harness/internal/adapter/issueops"
+	preflight "agent-harness/internal/adapter/preflight"
 	issueopscontract "agent-harness/internal/contract/issueops"
 
 	"agent-harness/internal/adapter/core"
@@ -61,8 +63,8 @@ func TestRunIssueOpsChildLifecycle(t *testing.T) {
 	}
 
 	child := started.Child
-	child.Phase = core.IssueOpsPhaseDone
-	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), child); err != nil {
+	child.Phase = issueopscore.IssueOpsPhaseDone
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), child); err != nil {
 		t.Fatal(err)
 	}
 	acceptOut := captureStdoutForContract(t, func() error {
@@ -108,7 +110,7 @@ func TestCLIIssueOpsPhaseAdvanceToPRBlockedByChildren(t *testing.T) {
 	if err := json.Unmarshal([]byte(startOut), &started); err != nil {
 		t.Fatalf("child start should return JSON: %v\n%s", err, startOut)
 	}
-	if _, err := core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), parent.ID, string(core.IssueOpsPhaseAISlopClean), actor); err != nil {
+	if _, err := core.AdvanceIssueOpsPhaseWithActor(issueopscore.IssueOpsStateRoot(), parent.ID, string(issueopscore.IssueOpsPhaseAISlopClean), actor); err != nil {
 		t.Fatal(err)
 	}
 
@@ -118,8 +120,8 @@ func TestCLIIssueOpsPhaseAdvanceToPRBlockedByChildren(t *testing.T) {
 	assertIssueOpsJSONErrorContains(t, blockedOut, err, "child_incomplete:"+started.Child.ID)
 
 	child := started.Child
-	child.Phase = core.IssueOpsPhaseDone
-	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), child); err != nil {
+	child.Phase = issueopscore.IssueOpsPhaseDone
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), child); err != nil {
 		t.Fatal(err)
 	}
 	_ = captureStdoutForContract(t, func() error {
@@ -132,7 +134,7 @@ func TestCLIIssueOpsPhaseAdvanceToPRBlockedByChildren(t *testing.T) {
 	if err := json.Unmarshal([]byte(prOut), &prRecord); err != nil {
 		t.Fatalf("phase pr should return JSON after child acceptance: %v\n%s", err, prOut)
 	}
-	if prRecord.Phase != core.IssueOpsPhasePR {
+	if prRecord.Phase != issueopscore.IssueOpsPhasePR {
 		t.Fatalf("accepted child should allow parent pr phase, got %s", prRecord.Phase)
 	}
 }
@@ -157,7 +159,7 @@ func TestCLIIssueOpsStrictPRReadinessReportsIncompleteChildren(t *testing.T) {
 	if err := json.Unmarshal([]byte(startOut), &started); err != nil {
 		t.Fatalf("child start should return JSON: %v\n%s", err, startOut)
 	}
-	if _, err := core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), parent.ID, string(core.IssueOpsPhaseAISlopClean), actor); err != nil {
+	if _, err := core.AdvanceIssueOpsPhaseWithActor(issueopscore.IssueOpsStateRoot(), parent.ID, string(issueopscore.IssueOpsPhaseAISlopClean), actor); err != nil {
 		t.Fatal(err)
 	}
 
@@ -173,7 +175,7 @@ func TestCLIIssueOpsStrictPRReadinessReportsIncompleteChildren(t *testing.T) {
 	}
 }
 
-func startIssueOpsCLIReadyDelegationParent(t *testing.T, repo, branch string) (issueopscontract.IssueOpsRecord, core.IssueOpsActor) {
+func startIssueOpsCLIReadyDelegationParent(t *testing.T, repo, branch string) (issueopscontract.IssueOpsRecord, issueopscore.IssueOpsActor) {
 	t.Helper()
 	out := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"start", "--repo", repo, "--branch", branch, "--json"})
@@ -187,39 +189,39 @@ func startIssueOpsCLIReadyDelegationParent(t *testing.T, repo, branch string) (i
 	writeIssueOpsCLIFileForTest(t, worktree, "plans/parent.md", "parent plan\n")
 	prepareIssueOpsCLIParentImplementationSurface(t, record.ID, branch, worktree)
 	recordIssueOpsCLIParentDelegationPrereqs(t, record.ID, planPath)
-	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), record.ID)
+	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), record.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	record, actor := seedIssueOpsCLIExecution(t, record)
-	record, err = core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), record.ID, string(core.IssueOpsPhaseImplement), actor)
+	record, err = core.AdvanceIssueOpsPhaseWithActor(issueopscore.IssueOpsStateRoot(), record.ID, string(issueopscore.IssueOpsPhaseImplement), actor)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return record, actor
 }
 
-func startIssueOpsCLIReadyPRParentWithChild(t *testing.T, repo, branch string) (issueopscontract.IssueOpsRecord, core.IssueOpsActor) {
+func startIssueOpsCLIReadyPRParentWithChild(t *testing.T, repo, branch string) (issueopscontract.IssueOpsRecord, issueopscore.IssueOpsActor) {
 	t.Helper()
-	if code, _, stderr := core.GitCmd(repo, "checkout", "-q", "-b", branch); code != 0 {
+	if code, _, stderr := preflight.GitCmd(repo, "checkout", "-q", "-b", branch); code != 0 {
 		t.Fatalf("git checkout parent branch failed: %s", stderr)
 	}
 	writeIssueOpsCLIFileForTest(t, repo, "plans/parent-pr.md", "parent plan\n")
 	writeIssueOpsCLIFileForTest(t, repo, "internal/parent.go", "package parent\n")
-	if code, _, stderr := core.GitCmd(repo, "add", "plans/parent-pr.md", "internal/parent.go"); code != 0 {
+	if code, _, stderr := preflight.GitCmd(repo, "add", "plans/parent-pr.md", "internal/parent.go"); code != 0 {
 		t.Fatalf("git add parent files failed: %s", stderr)
 	}
-	if code, _, stderr := core.GitCmd(repo, "commit", "-q", "-m", "feat: parent pr fixture"); code != 0 {
+	if code, _, stderr := preflight.GitCmd(repo, "commit", "-q", "-m", "feat: parent pr fixture"); code != 0 {
 		t.Fatalf("git commit parent fixture failed: %s", stderr)
 	}
-	if code, _, stderr := core.GitCmd(repo, "push", "-q", "-u", "origin", branch); code != 0 {
+	if code, _, stderr := preflight.GitCmd(repo, "push", "-q", "-u", "origin", branch); code != 0 {
 		t.Fatalf("git push parent branch failed: %s", stderr)
 	}
-	if code, _, stderr := core.GitCmd(repo, "checkout", "-q", "main"); code != 0 {
+	if code, _, stderr := preflight.GitCmd(repo, "checkout", "-q", "main"); code != 0 {
 		t.Fatalf("git checkout main failed: %s", stderr)
 	}
 	worktree := filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees", branch)
-	if code, _, stderr := core.GitCmd(repo, "worktree", "add", "-q", worktree, branch); code != 0 {
+	if code, _, stderr := preflight.GitCmd(repo, "worktree", "add", "-q", worktree, branch); code != 0 {
 		t.Fatalf("git worktree add parent branch failed: %s", stderr)
 	}
 
@@ -232,12 +234,12 @@ func startIssueOpsCLIReadyPRParentWithChild(t *testing.T, repo, branch string) (
 	}
 	prepareIssueOpsCLIParentImplementationSurface(t, parent.ID, branch, worktree)
 	recordIssueOpsCLIParentDelegationPrereqs(t, parent.ID, filepath.Join(worktree, "plans", "parent-pr.md"))
-	parent, err := core.ReadIssueOps(core.IssueOpsStateRoot(), parent.ID)
+	parent, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), parent.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	parent, actor := seedIssueOpsCLIExecution(t, parent)
-	parent, err = core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), parent.ID, string(core.IssueOpsPhaseImplement), actor)
+	parent, err = core.AdvanceIssueOpsPhaseWithActor(issueopscore.IssueOpsStateRoot(), parent.ID, string(issueopscore.IssueOpsPhaseImplement), actor)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,10 +248,10 @@ func startIssueOpsCLIReadyPRParentWithChild(t *testing.T, repo, branch string) (
 
 func prepareIssueOpsCLIParentImplementationSurface(t *testing.T, id, branch, worktree string) {
 	t.Helper()
-	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), id, "https://github.com/example/repo/issues/123"); err != nil {
+	if _, err := issueopscore.LinkIssueOpsIssue(issueopscore.IssueOpsStateRoot(), id, "https://github.com/example/repo/issues/123"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), id, issueopscontract.IssueOpsBranchPrepareRequest{
+	if _, err := issueopscore.PrepareIssueOpsBranch(issueopscore.IssueOpsStateRoot(), id, issueopscontract.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     "https://github.com/example/repo/issues/123",
 		Branch:       branch,
@@ -258,7 +260,7 @@ func prepareIssueOpsCLIParentImplementationSurface(t *testing.T, id, branch, wor
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), id, worktree); err != nil {
+	if _, err := issueopscore.LinkIssueOpsWorktree(issueopscore.IssueOpsStateRoot(), id, worktree); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -268,16 +270,16 @@ func recordIssueOpsCLIParentDelegationPrereqs(t *testing.T, id, planPath string)
 	recordIssueOpsCoreIntentForCLITest(t, id)
 	recordIssueOpsCLIPlanPrepForTest(t, id)
 	recordIssueOpsCoreDesignForCLITest(t, id)
-	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), id, planPath); err != nil {
+	if _, err := issueopscore.LinkIssueOpsPlan(issueopscore.IssueOpsStateRoot(), id, planPath); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.RecordIssueOpsDomainReview(core.IssueOpsStateRoot(), id, issueopscontract.IssueOpsDomainReviewRequest{
+	if _, err := issueopscore.RecordIssueOpsDomainReview(issueopscore.IssueOpsStateRoot(), id, issueopscontract.IssueOpsDomainReviewRequest{
 		ModelFit:    "delegation cli fixture follows IssueOps domain model",
 		Terminology: []string{"parent cycle", "child cycle"},
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.RecordIssueOpsCompatibilityReview(core.IssueOpsStateRoot(), id, issueopscontract.IssueOpsCompatibilityReviewRequest{
+	if _, err := issueopscore.RecordIssueOpsCompatibilityReview(issueopscore.IssueOpsStateRoot(), id, issueopscontract.IssueOpsCompatibilityReviewRequest{
 		BackwardCompatibility: []string{"existing IssueOps records remain readable"},
 		SideEffects:           []string{"child CLI writes only IssueOps state"},
 		RollbackPlan:          "Revert child CLI dispatch.",
@@ -286,7 +288,7 @@ func recordIssueOpsCLIParentDelegationPrereqs(t *testing.T, id, planPath string)
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.RecordIssueOpsDevilsAdvocateReview(core.IssueOpsStateRoot(), id, issueopscontract.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
+	if _, err := issueopscore.RecordIssueOpsDevilsAdvocateReview(issueopscore.IssueOpsStateRoot(), id, issueopscontract.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
 		t.Fatal(err)
 	}
 }
