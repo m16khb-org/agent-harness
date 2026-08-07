@@ -4385,7 +4385,7 @@
           "status": "already_satisfied",
           "title": "Add daemon connection limit protection",
           "verify_with": [
-            "go test ./cmd/harness/daemoncli ./internal/core/worker -count=1"
+            "go test ./cmd/harness/daemoncli ./internal/adapter/worker -count=1"
           ],
           "why_now": [
             ".agent-harness/PROJECT_AUDIT.md flags D1 P1 no connection limit",
@@ -4438,7 +4438,7 @@
           "status": "already_satisfied",
           "title": "Detect and recover stale draft-wiki locks",
           "verify_with": [
-            "go test ./internal/core/draftwiki/... ./cmd/harness/draftwikicli -count=1"
+            "go test ./internal/adapter/draftwiki/... ./cmd/harness/draftwikicli -count=1"
           ],
           "why_now": [
             ".agent-harness/PROJECT_AUDIT.md flags Q1 P1 stale lock detection",
@@ -4944,7 +4944,7 @@
           "status": "already_satisfied",
           "title": "Detect worker jobs stuck running after process crash",
           "verify_with": [
-            "go test ./internal/core/worker ./cmd/harness/workercli -count=1"
+            "go test ./internal/adapter/worker ./cmd/harness/workercli -count=1"
           ],
           "why_now": [
             ".agent-harness/PROJECT_AUDIT.md flags W1 P1 stuck running jobs",
@@ -7318,7 +7318,7 @@
                 "status": "already_satisfied",
                 "title": "Add daemon connection limit protection",
                 "verify_with": [
-                  "go test ./cmd/harness/daemoncli ./internal/core/worker -count=1"
+                  "go test ./cmd/harness/daemoncli ./internal/adapter/worker -count=1"
                 ],
                 "why_now": [
                   ".agent-harness/PROJECT_AUDIT.md flags D1 P1 no connection limit",
@@ -7371,7 +7371,7 @@
                 "status": "already_satisfied",
                 "title": "Detect and recover stale draft-wiki locks",
                 "verify_with": [
-                  "go test ./internal/core/draftwiki/... ./cmd/harness/draftwikicli -count=1"
+                  "go test ./internal/adapter/draftwiki/... ./cmd/harness/draftwikicli -count=1"
                 ],
                 "why_now": [
                   ".agent-harness/PROJECT_AUDIT.md flags Q1 P1 stale lock detection",
@@ -7877,7 +7877,7 @@
                 "status": "already_satisfied",
                 "title": "Detect worker jobs stuck running after process crash",
                 "verify_with": [
-                  "go test ./internal/core/worker ./cmd/harness/workercli -count=1"
+                  "go test ./internal/adapter/worker ./cmd/harness/workercli -count=1"
                 ],
                 "why_now": [
                   ".agent-harness/PROJECT_AUDIT.md flags W1 P1 stuck running jobs",
