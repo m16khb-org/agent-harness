@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"agent-harness/internal/adapter/issueops"
+	"agent-harness/internal/adapter/preflight"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
 

@@ -10,8 +10,8 @@ import (
 
 	"agent-harness/internal/adapter/issueops/pathutil"
 	"agent-harness/internal/adapter/issueops/readinesspaths"
+	"agent-harness/internal/adapter/preflight"
 	model "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/preflight"
 )
 
 func HasEvidence(record model.IssueOpsRecord) bool {

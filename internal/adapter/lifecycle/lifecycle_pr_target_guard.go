@@ -7,7 +7,7 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 
-	"agent-harness/internal/core/remoteartifact"
+	"agent-harness/internal/adapter/remoteartifact"
 )
 
 func issueOpsPRTargetBranchBlockReason(req lifecyclecontract.HookToolUseLifecycleRequest) string {

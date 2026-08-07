@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/policy"
+	"agent-harness/internal/adapter/policy"
 	"agent-harness/internal/port"
 )
 

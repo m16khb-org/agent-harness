@@ -17,8 +17,8 @@ import (
 	"agent-harness/internal/adapter/issueops/linking"
 	"agent-harness/internal/adapter/issueops/start"
 	"agent-harness/internal/adapter/issueops/stringlist"
+	"agent-harness/internal/adapter/preflight"
 	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
 

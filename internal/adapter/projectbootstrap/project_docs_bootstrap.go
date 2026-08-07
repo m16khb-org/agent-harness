@@ -7,9 +7,9 @@ import (
 
 	"agent-harness/internal/adapter/draftwiki"
 	"agent-harness/internal/adapter/lifecycle"
-	"agent-harness/internal/core/projectdoc"
-	"agent-harness/internal/core/projectdocs"
-	"agent-harness/internal/core/repopath"
+	"agent-harness/internal/adapter/projectdoc"
+	"agent-harness/internal/adapter/projectdocs"
+	"agent-harness/internal/adapter/repopath"
 )
 
 func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrapResult, error) {

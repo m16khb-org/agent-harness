@@ -1,6 +1,6 @@
 package commandstep
 
-import "agent-harness/internal/domain/failurecause"
+import "agent-harness/internal/adapter/failurecause"
 
 type StepResult struct {
 	Label           string                  `json:"label"`

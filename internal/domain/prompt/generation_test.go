@@ -1,10 +1,10 @@
 package prompt_test
 
 import (
+	"agent-harness/internal/adapter/commitsuggest"
 	"agent-harness/internal/adapter/draftwiki"
 	"agent-harness/internal/adapter/issueops"
-	"agent-harness/internal/core/commitsuggest"
-	"agent-harness/internal/core/lintdiagnose"
+	"agent-harness/internal/adapter/lintdiagnose"
 	"agent-harness/internal/domain/prompt"
 	"os"
 	"path/filepath"

@@ -140,7 +140,7 @@ func TestGitOpsKubectlDecisionHandlesBoundaryTokens() {
 	_ = "rollout undo is blocked"
 }
 `)
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "commandguard", "lifecycle_command_staged_checks_test.go"), `package commandguard
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "commandguard", "lifecycle_command_staged_checks_test.go"), `package commandguard
 
 func TestStagedCheckDecisionWarnsForBroadBiomeCommands() {}
 func TestPackageScriptAndBiomeHelpersHandleBoundaries() {

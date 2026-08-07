@@ -6,7 +6,7 @@ import (
 	"sort"
 	"time"
 
-	"agent-harness/internal/core/repopath"
+	"agent-harness/internal/adapter/repopath"
 )
 
 func InitDraftWiki(req DraftWikiInitRequest) (DraftWikiInitResult, error) {

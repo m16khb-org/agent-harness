@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"agent-harness/internal/adapter/preflight"
 	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 	basesyncport "agent-harness/internal/port/issueopsbasesync"
 )

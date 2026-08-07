@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/selfworkflow/model"
-	"agent-harness/internal/domain/failurecause"
+	"agent-harness/internal/adapter/failurecause"
 )
 
 func TestCompareSelfAugmentSummariesFromSnapshotsCoversWarningsAndGoalRegressions(t *testing.T) {

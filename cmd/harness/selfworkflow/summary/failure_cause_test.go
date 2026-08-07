@@ -3,7 +3,7 @@ package summary
 import (
 	"agent-harness/cmd/harness/commandstep"
 	"agent-harness/cmd/harness/selfworkflow/model"
-	"agent-harness/internal/domain/failurecause"
+	"agent-harness/internal/adapter/failurecause"
 	"testing"
 )
 

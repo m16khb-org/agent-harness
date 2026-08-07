@@ -54,8 +54,8 @@ func repoSignalRules() []repoSignalRule {
 				dirContainsTerm(root, filepath.Join("cmd", "harness", "selfworkflow"), "MinimumGoalScore")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
-			signals.HasRepoLocalSandbox = dirContainsTerm(root, filepath.Join("internal", "core", "policy"), "path_outside_workspace") &&
-				fileContainsTerm(root, filepath.Join("internal", "core", "policy", "policy_test.go"), "TestCommandPolicyDeniesPathArgsOutsideWorkspace") &&
+			signals.HasRepoLocalSandbox = dirContainsTerm(root, filepath.Join("internal", "adapter", "policy"), "path_outside_workspace") &&
+				fileContainsTerm(root, filepath.Join("internal", "adapter", "policy", "policy_test.go"), "TestCommandPolicyDeniesPathArgsOutsideWorkspace") &&
 				(dirContainsTerm(root, filepath.Join("cmd", "harness", "validationcli"), "policy deny outside path arg") ||
 					dirContainsTerm(root, filepath.Join("cmd", "harness", "validationcli", "commandpolicy"), "policy deny outside path arg"))
 		}},
@@ -106,7 +106,7 @@ func repoSignalRules() []repoSignalRule {
 			// kubectl 판정은 도메인으로, staged check는 디스크를 읽으므로 core에
 			// 남았다. 커버리지 신호도 두 위치를 각각 확인한다.
 			kubectlTest := filepath.Join("internal", "domain", "commandguard", "lifecycle_command_kubectl_test.go")
-			stagedTest := filepath.Join("internal", "core", "commandguard", "lifecycle_command_staged_checks_test.go")
+			stagedTest := filepath.Join("internal", "adapter", "commandguard", "lifecycle_command_staged_checks_test.go")
 			signals.HasCommandguardBoundaryCoverage = fileContainsTerm(root, kubectlTest, "TestGitOpsKubectlDecisionBlocksMutatingCommands") &&
 				fileContainsTerm(root, kubectlTest, "TestGitOpsKubectlDecisionHandlesBoundaryTokens") &&
 				fileContainsTerm(root, kubectlTest, "separate dry-run flag allows apply") &&
@@ -166,7 +166,7 @@ func repoSignalRules() []repoSignalRule {
 				dirContainsTerm(root, filepath.Join("cmd", "harness", "selfworkflow"), "release-repro-pack")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
-			signals.HasCommandAuditLog = fileContainsTerm(root, filepath.Join("internal", "core", "audit", "audit.go"), "AuditCommandPolicy") &&
+			signals.HasCommandAuditLog = fileContainsTerm(root, filepath.Join("internal", "adapter", "audit", "audit.go"), "AuditCommandPolicy") &&
 				dirContainsTerm(root, filepath.Join("cmd", "harness", "policycli"), "policy audit")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {

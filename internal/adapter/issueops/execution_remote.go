@@ -14,8 +14,8 @@ import (
 	"agent-harness/internal/adapter/issueops/implementation"
 	"agent-harness/internal/adapter/issueops/remote"
 	"agent-harness/internal/adapter/outbound/sqlstore"
+	"agent-harness/internal/adapter/policy"
 	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/policy"
 	"agent-harness/internal/port"
 )
 

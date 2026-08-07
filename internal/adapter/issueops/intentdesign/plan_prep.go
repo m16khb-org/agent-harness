@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"agent-harness/internal/adapter/policy"
 	model "agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/policy"
 )
 
 // RecordPlanPrep stores the pre-plan evidence gate: prior-decision lookup,

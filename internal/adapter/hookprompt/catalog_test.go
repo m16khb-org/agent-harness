@@ -10,7 +10,7 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 
-	"agent-harness/internal/core/projectdoc"
+	"agent-harness/internal/adapter/projectdoc"
 )
 
 func linkedWorktreeCycleForHookPromptTest(t *testing.T, repo, branch string) string {

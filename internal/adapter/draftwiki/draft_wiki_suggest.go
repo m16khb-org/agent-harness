@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/core/repopath"
+	"agent-harness/internal/adapter/repopath"
 )
 
 type DraftWikiSuggestRequest struct {

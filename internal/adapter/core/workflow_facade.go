@@ -7,9 +7,9 @@ import (
 
 	"agent-harness/internal/adapter/hookprompt"
 	"agent-harness/internal/adapter/lifecycle"
+	"agent-harness/internal/adapter/policy"
+	"agent-harness/internal/adapter/projectdocs"
 	coreworker "agent-harness/internal/adapter/worker"
-	"agent-harness/internal/core/policy"
-	"agent-harness/internal/core/projectdocs"
 	"agent-harness/internal/domain/nextaction"
 )
 

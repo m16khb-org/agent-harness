@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"agent-harness/internal/core/repopath"
+	"agent-harness/internal/adapter/repopath"
 )
 
 func PromoteDraftWiki(req DraftWikiPromoteRequest) (DraftWikiPromoteResult, error) {

@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	mcpadapter "agent-harness/internal/adapter/mcp"
-	"agent-harness/internal/core/toolconformance"
+	"agent-harness/internal/adapter/toolconformance"
 )
 
 func TestConformanceBaselineFailsWithJSONWhenInjectedCaseFails(t *testing.T) {
@@ -216,7 +216,7 @@ func TestBuildCandidateRegressionRequiresRepeatedSignatureWithinOneHostFixture(t
 	if candidate.Host != "codex" || len(candidate.ConfirmedEvidenceIDs) != 2 {
 		t.Fatalf("candidate=%+v", candidate)
 	}
-	if want := "internal/core/toolconformance/testdata/regressions/codex-empty_object-0123456789ab.json"; tracked != want {
+	if want := "internal/adapter/toolconformance/testdata/regressions/codex-empty_object-0123456789ab.json"; tracked != want {
 		t.Fatalf("tracked=%q want=%q", tracked, want)
 	}
 }

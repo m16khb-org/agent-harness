@@ -6,11 +6,11 @@ import (
 
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 
+	"agent-harness/internal/adapter/commandguard"
 	"agent-harness/internal/adapter/lifecycle/liveapproval"
 	"agent-harness/internal/adapter/lifecycle/nextactionrelay"
 	"agent-harness/internal/adapter/lifecycle/worktreeguard"
-	"agent-harness/internal/core/commandguard"
-	"agent-harness/internal/core/remoteartifact"
+	"agent-harness/internal/adapter/remoteartifact"
 )
 
 func BuildLifecyclePreToolUseDecision(req lifecyclecontract.HookToolUseLifecycleRequest) lifecyclecontract.HookPreToolUseDecisionResult {

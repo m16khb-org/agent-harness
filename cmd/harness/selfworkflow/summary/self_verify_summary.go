@@ -4,7 +4,7 @@ import (
 	"sort"
 
 	"agent-harness/cmd/harness/selfworkflow/rerun"
-	"agent-harness/internal/domain/failurecause"
+	"agent-harness/internal/adapter/failurecause"
 )
 
 func SummarizeSelfAugment(result SelfAugmentResult) SelfAugmentSummary {

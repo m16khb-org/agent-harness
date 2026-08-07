@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"agent-harness/internal/adapter/preflight"
 	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/preflight"
 )
 
 // ExecutionSwitchModeRequest는 준비된 실행의 모드를 바꾸는 입력이다.

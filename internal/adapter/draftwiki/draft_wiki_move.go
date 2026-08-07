@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"agent-harness/internal/core/repopath"
+	"agent-harness/internal/adapter/repopath"
 )
 
 func ApproveDraftWiki(req DraftWikiMoveRequest) (DraftWikiMoveResult, error) {

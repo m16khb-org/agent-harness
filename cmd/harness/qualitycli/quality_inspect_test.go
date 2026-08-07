@@ -11,28 +11,28 @@ import (
 )
 
 func TestParseCoverageFindsPackagesBelowThreshold(t *testing.T) {
-	output := "ok  \tagent-harness/internal/core/commandguard\t0.011s\tcoverage: 54.3% of statements\n" +
+	output := "ok  \tagent-harness/internal/adapter/commandguard\t0.011s\tcoverage: 54.3% of statements\n" +
 		"ok  \tagent-harness/internal/adapter/outbound/state\t0.012s\tcoverage: 81.0% of statements\n" +
-		"?   \tagent-harness/internal/core/empty\t[no test files]\n"
+		"?   \tagent-harness/internal/adapter/empty\t[no test files]\n"
 
 	got := parseCoveragePackages(output, 60)
 	if len(got) != 1 {
 		t.Fatalf("low coverage packages=%#v, want one", got)
 	}
-	if got[0].Package != "agent-harness/internal/core/commandguard" || got[0].Coverage != 54.3 {
+	if got[0].Package != "agent-harness/internal/adapter/commandguard" || got[0].Coverage != 54.3 {
 		t.Fatalf("unexpected low coverage package: %+v", got[0])
 	}
 }
 
 func TestParseCoverageSuppressesFacadeCorePackage(t *testing.T) {
-	output := "ok  \tagent-harness/internal/core\t0.011s\tcoverage: 55.4% of statements\n" +
-		"ok  \tagent-harness/internal/core/commandguard\t0.012s\tcoverage: 54.3% of statements\n"
+	output := "ok  \tagent-harness/internal/adapter/core\t0.011s\tcoverage: 55.4% of statements\n" +
+		"ok  \tagent-harness/internal/adapter/commandguard\t0.012s\tcoverage: 54.3% of statements\n"
 
 	got := parseCoveragePackages(output, 60)
 	if len(got) != 1 {
 		t.Fatalf("low coverage packages=%#v, want one non-facade package", got)
 	}
-	if got[0].Package != "agent-harness/internal/core/commandguard" {
+	if got[0].Package != "agent-harness/internal/adapter/commandguard" {
 		t.Fatalf("facade package was not suppressed: %#v", got)
 	}
 }
@@ -117,7 +117,7 @@ func qualityDepsForTest(now string) InspectDeps {
 	return InspectDeps{
 		Now: func() string { return now },
 		Coverage: func(string) (string, error) {
-			return "ok  \tagent-harness/internal/core/example\t0.011s\tcoverage: 54.3% of statements\n", nil
+			return "ok  \tagent-harness/internal/adapter/example\t0.011s\tcoverage: 54.3% of statements\n", nil
 		},
 		SelfAugmentOpenCount: func(string) (int, error) { return 2, nil },
 		SelfVerifyOpenCount:  func(string) (int, error) { return 1, nil },
@@ -166,7 +166,7 @@ func branchy(v int) int {
 	result := Inspect(root, InspectDeps{
 		Now: func() string { return "2026-06-13T00:00:00Z" },
 		Coverage: func(string) (string, error) {
-			return "ok  \tagent-harness/internal/core/commandguard\t0.011s\tcoverage: 54.3% of statements\n", nil
+			return "ok  \tagent-harness/internal/adapter/commandguard\t0.011s\tcoverage: 54.3% of statements\n", nil
 		},
 		SelfAugmentOpenCount: func(string) (int, error) { return 10, nil },
 		SelfVerifyOpenCount:  func(string) (int, error) { return 0, nil },
@@ -203,14 +203,14 @@ func TestInspectQualityCandidatesCanUseProjectedStatuses(t *testing.T) {
 	result := Inspect(root, InspectDeps{
 		Now: func() string { return "2026-06-13T00:00:00Z" },
 		Coverage: func(string) (string, error) {
-			return "ok  \tagent-harness/internal/core/commandguard\t0.011s\tcoverage: 74.3% of statements\n", nil
+			return "ok  \tagent-harness/internal/adapter/commandguard\t0.011s\tcoverage: 74.3% of statements\n", nil
 		},
 		SelfAugmentOpenCount: func(string) (int, error) { return 8, nil },
 		SelfVerifyOpenCount:  func(string) (int, error) { return 0, nil },
 		Candidates: func(string) []QualityCandidate {
 			return []QualityCandidate{
 				{ID: "quality-signal-harvester", Status: "already_satisfied", Score: 0, VerifyWith: []string{"agent-harness quality inspect --json"}, Evidence: []string{"quality inspect CLI"}},
-				{ID: "coverage-issueops-linking", Status: "open", Score: 77.4, VerifyWith: []string{"go test ./internal/core/issueops/linking -count=1"}, Evidence: []string{"PROJECT_AUDIT"}},
+				{ID: "coverage-issueops-linking", Status: "open", Score: 77.4, VerifyWith: []string{"go test ./internal/adapter/issueops/linking -count=1"}, Evidence: []string{"PROJECT_AUDIT"}},
 			}
 		},
 	})
