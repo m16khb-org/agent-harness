@@ -12,11 +12,12 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/mcpcli"
+	commandparsecontract "agent-harness/internal/contract/commandparse"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core"
-	"agent-harness/internal/core/commandparse"
 	issueopscore "agent-harness/internal/core/issueops"
 	"agent-harness/internal/core/preflight"
+	"agent-harness/internal/domain/commandparse"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
 
@@ -162,7 +163,7 @@ func sameGeneratedExecutionCommand(got, raw string, generation uint64) bool {
 	if len(tokens) < 2 {
 		return false
 	}
-	clean, provenance, present, err := issueopscontract.ConsumeGeneratedCommandProvenance(tokens[1:])
+	clean, provenance, present, err := commandparsecontract.ConsumeGeneratedCommandProvenance(tokens[1:])
 	if err != nil || !present || provenance.LeaseGeneration != generation || tokens[0] != provenance.ExecutablePath {
 		return false
 	}

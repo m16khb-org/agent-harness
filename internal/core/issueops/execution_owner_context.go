@@ -15,8 +15,8 @@ import (
 
 	"agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/core/commandparse"
 	"agent-harness/internal/core/issueops/remote"
+	"agent-harness/internal/domain/commandparse"
 	"agent-harness/internal/port"
 )
 

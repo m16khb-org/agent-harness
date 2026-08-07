@@ -11,10 +11,11 @@ import (
 	"strings"
 	"testing"
 
+	commandparsecontract "agent-harness/internal/contract/commandparse"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core"
-	"agent-harness/internal/core/commandparse"
 	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/domain/commandparse"
 )
 
 func TestCurrentRelayReleasedReseedGeneratedCommandDogfood(t *testing.T) {
@@ -109,7 +110,7 @@ func assertCurrentRelayDogfoodCommand(t *testing.T, command, binary, digest stri
 	if len(tokens) < 3 || tokens[0] != binary || tokens[1] != "issueops" {
 		t.Fatalf("generated command does not select exact dogfood binary: %q", command)
 	}
-	_, provenance, present, err := issueopscontract.ConsumeGeneratedCommandProvenance(tokens[2:])
+	_, provenance, present, err := commandparsecontract.ConsumeGeneratedCommandProvenance(tokens[2:])
 	if err != nil || !present {
 		t.Fatalf("generated command provenance err=%v present=%t: %q", err, present, command)
 	}

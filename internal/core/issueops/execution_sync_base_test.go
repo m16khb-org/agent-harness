@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/core/commandparse"
+	"agent-harness/internal/domain/commandparse"
 )
 
 const (

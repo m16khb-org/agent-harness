@@ -8,10 +8,11 @@ import (
 	"strings"
 	"testing"
 
+	commandparsecontract "agent-harness/internal/contract/commandparse"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core"
-	"agent-harness/internal/core/commandparse"
 	issueopscore "agent-harness/internal/core/issueops"
+	"agent-harness/internal/domain/commandparse"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
 
@@ -102,10 +103,10 @@ func TestGeneratedCommandRunsExactObservedBinaryEnvelopeWithoutCallerRepair(t *t
 	if _, err := issueopscore.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
-	evidence := issueopscontract.GeneratedCommandProvenance{
+	evidence := commandparsecontract.GeneratedCommandProvenance{
 		ExecutablePath: "/worktree/bin/agent-harness", ExecutableSHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", LeaseGeneration: 7,
 	}
-	command, err := issueopscontract.BindGeneratedCommand(
+	command, err := commandparsecontract.BindGeneratedCommand(
 		"agent-harness issueops execution release --id "+record.ID+" --generation 7 --json",
 		evidence,
 	)
@@ -154,7 +155,7 @@ func TestGeneratedDelegatedChildBootstrapUsesParentExecutionProvenance(t *testin
 	if _, err := issueopscore.WriteIssueOps(core.IssueOpsStateRoot(), child); err != nil {
 		t.Fatal(err)
 	}
-	evidence := issueopscontract.GeneratedCommandProvenance{
+	evidence := commandparsecontract.GeneratedCommandProvenance{
 		ExecutablePath: "/worktree/bin/agent-harness", ExecutableSHA256: strings.Repeat("a", 64), LeaseGeneration: 1,
 	}
 	args := []string{
@@ -181,7 +182,7 @@ func TestGeneratedOwnerMutationRequiresActualProcessCWD(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := makeIssueOpsCLIRepoForTest(t, "generated-owner-process-cwd")
 	parent, actor := startIssueOpsCLIReadyDelegationParent(t, repo, "123-330-generated-owner-cwd")
-	evidence := issueopscontract.GeneratedCommandProvenance{
+	evidence := commandparsecontract.GeneratedCommandProvenance{
 		ExecutablePath: "/worktree/bin/agent-harness", ExecutableSHA256: strings.Repeat("a", 64), LeaseGeneration: 1,
 	}
 	args := withIssueOpsCLIActor([]string{

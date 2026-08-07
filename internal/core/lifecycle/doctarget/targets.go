@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
-	"agent-harness/internal/core/commandparse"
 	"agent-harness/internal/core/lifecycle/docupkeep"
+	"agent-harness/internal/domain/commandparse"
 	"agent-harness/internal/domain/searchrouting"
 )
 

@@ -1,4 +1,4 @@
-package commandparse
+package shelltoken
 
 import "testing"
 

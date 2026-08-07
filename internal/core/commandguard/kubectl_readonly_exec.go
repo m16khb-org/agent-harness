@@ -3,7 +3,7 @@ package commandguard
 import (
 	"strings"
 
-	"agent-harness/internal/core/commandparse"
+	"agent-harness/internal/domain/commandparse"
 	"agent-harness/internal/domain/searchrouting"
 )
 

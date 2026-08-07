@@ -11,9 +11,10 @@ import (
 	"testing"
 
 	"agent-harness/internal/adapter/orca"
+	commandparsecontract "agent-harness/internal/contract/commandparse"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/core"
-	"agent-harness/internal/core/commandparse"
+	"agent-harness/internal/domain/commandparse"
 	"agent-harness/internal/port"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
@@ -179,14 +180,14 @@ func TestCurrentRelayCleanupGeneratedCommandDogfood(t *testing.T) {
 	if len(tokens) < 4 || tokens[0] != binary || tokens[1] != "issueops" || tokens[2] != "cleanup" {
 		t.Fatalf("cleanup generated command = %q", preview.NextCommand)
 	}
-	clean, provenance, present, err := issueopscontract.ConsumeGeneratedCommandProvenance(tokens[2:])
+	clean, provenance, present, err := commandparsecontract.ConsumeGeneratedCommandProvenance(tokens[2:])
 	if err != nil || !present {
 		t.Fatalf("cleanup generated provenance err=%v present=%t", err, present)
 	}
-	observed := issueopscontract.GeneratedCommandProvenance{
+	observed := commandparsecontract.GeneratedCommandProvenance{
 		ExecutablePath: observer.evidence.ExecutablePath, ExecutableSHA256: observer.evidence.ExecutableSHA256, LeaseGeneration: 1,
 	}
-	if err := issueopscontract.ValidateGeneratedCommandInvocation(provenance, observed, 1); err != nil {
+	if err := commandparsecontract.ValidateGeneratedCommandInvocation(provenance, observed, 1); err != nil {
 		t.Fatal(err)
 	}
 	if err := RunCleanup(clean[1:], deps); err != nil {
