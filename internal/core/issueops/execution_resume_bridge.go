@@ -40,10 +40,6 @@ func ReadExecutionResumeArtifacts(record issueops.IssueOpsRecord) (ExecutionResu
 
 func NewExecutionResumeOperationID() (string, error) { return newExecutionOperationID() }
 
-func ValidateExecutionResumeOwner(record issueops.IssueOpsRecord, inventory port.ExecutionOrcaOwnerInventory) error {
-	return validateExecutionRuntimeRollover(record, inventory)
-}
-
 func ExecutionResumeIntentRequest(expected ExecutionResumeIntentState) (port.ExecutionOrcaIntentRequest, error) {
 	payload, err := executionResumeIntentPayload(expected)
 	if err != nil {

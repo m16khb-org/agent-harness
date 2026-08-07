@@ -51,15 +51,12 @@ func (a *ReseedInventory) Observe(ctx context.Context, record leasecontract.Reco
 		}
 		binding := record.Execution.Orca
 		orcaInventory, err = a.owner.InspectOwner(ctx, port.ExecutionOrcaOwnerInventoryRequest{
-			RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, TaskID: binding.TaskID,
+			RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, RunID: binding.RunID, TaskID: binding.TaskID,
 			DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID,
 			AllowRuntimeRollover: record.Execution.Lease.Holder == nil &&
 				(record.Execution.Lease.Status == "released" || record.Execution.Lease.Status == "claimable"),
 		})
 		if err != nil {
-			return leaseapp.ReseedInventoryReceipt{}, err
-		}
-		if err := validateReseedRuntimeRollover(record, orcaInventory); err != nil {
 			return leaseapp.ReseedInventoryReceipt{}, err
 		}
 	}
@@ -78,7 +75,15 @@ func (a *ReseedInventory) Observe(ctx context.Context, record leasecontract.Reco
 		return leaseapp.ReseedInventoryReceipt{}, err
 	}
 	sum := sha256.Sum256(encoded)
-	return leaseapp.ReseedInventoryReceipt{Fingerprint: hex.EncodeToString(sum[:]), RuntimeID: strings.TrimSpace(orcaInventory.RuntimeID)}, nil
+	return leaseapp.ReseedInventoryReceipt{
+		Fingerprint: hex.EncodeToString(sum[:]), RuntimeID: strings.TrimSpace(orcaInventory.RuntimeID),
+		Inventory: leasedomain.ResumeInventory{
+			RuntimeID: orcaInventory.RuntimeID, TerminalLive: orcaInventory.TerminalLive,
+			TerminalInventoryComplete: orcaInventory.TerminalInventoryComplete, TaskLive: orcaInventory.TaskLive,
+			TerminalID: orcaInventory.TerminalID, TaskStatus: orcaInventory.TaskStatus, DispatchStatus: orcaInventory.DispatchStatus,
+			DispatchAssigneeHandle: orcaInventory.DispatchAssigneeHandle, DispatchAssigneePresent: orcaInventory.DispatchAssigneePresent,
+		},
+	}, nil
 }
 
 func reseedInventoryActor(actor leasedomain.Actor) leasecontract.Actor {
@@ -87,25 +92,6 @@ func reseedInventoryActor(actor leasedomain.Actor) leasecontract.Actor {
 		result.SessionProcess = &leasecontract.ProcessReceipt{PID: actor.Process.PID, StartedAt: actor.Process.StartedAt, Executable: actor.Process.Executable}
 	}
 	return result
-}
-
-func validateReseedRuntimeRollover(record leasecontract.Record, inventory port.ExecutionOrcaOwnerInventory) error {
-	if record.Execution == nil || record.Execution.Mode != "orca" || record.Execution.Orca == nil {
-		return nil
-	}
-	sealed := strings.TrimSpace(record.Execution.Orca.RuntimeID)
-	observed := strings.TrimSpace(inventory.RuntimeID)
-	if observed == "" || observed == sealed {
-		return nil
-	}
-	lease := record.Execution.Lease
-	holderless := lease.Holder == nil && (lease.Status == "released" || lease.Status == "claimable")
-	taskSettled := inventory.TaskStatus == "completed" || inventory.TaskStatus == "failed"
-	dispatchSettled := inventory.DispatchStatus == "completed" || inventory.DispatchStatus == "failed" || inventory.DispatchStatus == "circuit_broken"
-	if !holderless || inventory.TerminalID != "" || inventory.TerminalLive || inventory.TaskLive || !taskSettled || !dispatchSettled {
-		return fmt.Errorf("Orca runtime rollover owner is not quiescent: terminal_id=%s terminal_live=%t task_live=%t task_status=%s dispatch_status=%s", inventory.TerminalID, inventory.TerminalLive, inventory.TaskLive, inventory.TaskStatus, inventory.DispatchStatus)
-	}
-	return nil
 }
 
 func reseedWorkspaceSnapshot(workspace leasecontract.Workspace) (string, error) {

@@ -126,23 +126,20 @@ func (e *coreResumeEffects) readArtifacts(_ context.Context, record leasecontrac
 	return leasecontract.ResumeArtifacts{ClaimTokenPath: artifacts.ClaimTokenPath, IssueBodySHA256: artifacts.IssueBodySHA256, ContextPacketPath: artifacts.ContextPacketPath, ContextPacketSHA256: artifacts.ContextPacketSHA256, OwnerPromptPath: artifacts.OwnerPromptPath, OwnerPromptSHA256: artifacts.OwnerPromptSHA256}, nil
 }
 
-func (e *coreResumeEffects) observeOwner(ctx context.Context, record leasecontract.Record) (leasedomain.ResumeInventory, bool, error) {
+func (e *coreResumeEffects) observeOwner(ctx context.Context, record leasecontract.Record) (leasedomain.ResumeInventory, error) {
 	if e.owner == nil || record.Execution == nil || record.Execution.Orca == nil {
-		return leasedomain.ResumeInventory{}, false, fmt.Errorf("resume owner inspector is required")
+		return leasedomain.ResumeInventory{}, fmt.Errorf("resume owner inspector is required")
 	}
 	binding := record.Execution.Orca
 	inventory, err := e.owner.InspectOwner(ctx, port.ExecutionOrcaOwnerInventoryRequest{RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, RunID: binding.RunID, TaskID: binding.TaskID, DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID, AllowRuntimeRollover: true})
 	if err != nil {
-		return leasedomain.ResumeInventory{}, false, fmt.Errorf("inspect previous Orca owner: %w", err)
+		return leasedomain.ResumeInventory{}, fmt.Errorf("inspect previous Orca owner: %w", err)
 	}
-	coreRecord, err := resumeCoreRecord(record)
-	if err != nil {
-		return leasedomain.ResumeInventory{}, false, err
-	}
-	if err := issueops.ValidateExecutionResumeOwner(coreRecord, inventory); err != nil {
-		return leasedomain.ResumeInventory{}, false, err
-	}
-	return leasedomain.ResumeInventory{RuntimeID: inventory.RuntimeID, TerminalLive: inventory.TerminalLive, TaskLive: inventory.TaskLive, TerminalID: inventory.TerminalID}, true, nil
+	return leasedomain.ResumeInventory{
+		RuntimeID: inventory.RuntimeID, TerminalLive: inventory.TerminalLive, TerminalInventoryComplete: inventory.TerminalInventoryComplete,
+		TaskLive: inventory.TaskLive, TerminalID: inventory.TerminalID, TaskStatus: inventory.TaskStatus, DispatchStatus: inventory.DispatchStatus,
+		DispatchAssigneeHandle: inventory.DispatchAssigneeHandle, DispatchAssigneePresent: inventory.DispatchAssigneePresent,
+	}, nil
 }
 
 func (e *coreResumeEffects) inspectStage(ctx context.Context, intent leaseapp.ResumeIntentState) (leasecontract.ResumeStageInventory, error) {

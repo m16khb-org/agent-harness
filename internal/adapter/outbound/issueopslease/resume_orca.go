@@ -9,7 +9,7 @@ import (
 	leasedomain "agent-harness/internal/domain/issueopslease"
 )
 
-type ResumeOwnerObserver func(context.Context, leasecontract.Record) (leasedomain.ResumeInventory, bool, error)
+type ResumeOwnerObserver func(context.Context, leasecontract.Record) (leasedomain.ResumeInventory, error)
 
 type ResumeOwnerInventory struct{ observe ResumeOwnerObserver }
 
@@ -17,9 +17,9 @@ func NewResumeOwnerInventory(observe ResumeOwnerObserver) *ResumeOwnerInventory 
 	return &ResumeOwnerInventory{observe: observe}
 }
 
-func (a *ResumeOwnerInventory) Observe(ctx context.Context, record leasecontract.Record) (leasedomain.ResumeInventory, bool, error) {
+func (a *ResumeOwnerInventory) Observe(ctx context.Context, record leasecontract.Record) (leasedomain.ResumeInventory, error) {
 	if a == nil || a.observe == nil {
-		return leasedomain.ResumeInventory{}, false, fmt.Errorf("resume owner observer is required")
+		return leasedomain.ResumeInventory{}, fmt.Errorf("resume owner observer is required")
 	}
 	return a.observe(ctx, record)
 }

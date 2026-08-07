@@ -91,6 +91,17 @@ func (s *ReseedService) Reseed(ctx context.Context, request ReseedRequest) (Rese
 		if observed.Fingerprint != request.InventoryFingerprint {
 			return fmt.Errorf("stale replacement inventory fingerprint")
 		}
+		if before.Stable.Execution.Mode == "orca" {
+			binding := before.Stable.Execution.Orca
+			if binding == nil {
+				return leasecontract.Fail(leasecontract.FailurePersistence, leasecontract.ErrExecutionNotPrepared)
+			}
+			if err := leasedomain.ValidateHolderlessRuntimeRollover(leasedomain.HolderlessRuntimeRolloverRequest{
+				Lease: toDomainLease(before.Lease), BindingRuntimeID: binding.RuntimeID, Inventory: observed.Inventory,
+			}); err != nil {
+				return err
+			}
+		}
 		stable, err := cloneReseedRecord(before.Stable)
 		if err != nil {
 			return leasecontract.Fail(leasecontract.FailurePersistence, err)
@@ -117,6 +128,7 @@ func (s *ReseedService) Reseed(ctx context.Context, request ReseedRequest) (Rese
 		}
 		next.Stable.Execution.Lease.ClaimTokenSHA256 = prepared.TokenSHA256
 		if next.Stable.Execution.Orca != nil {
+			next.Stable.Execution.Orca.LeaseGeneration = outcome.Generation
 			next.Stable.Execution.Orca.ArtifactIdentityVersion = leasecontract.OrcaArtifactIdentityVersion
 			next.Stable.Execution.Orca.IssueBodySHA256 = prepared.Receipt.IssueBodySHA256
 			next.Stable.Execution.Orca.ContextPacketSHA256 = prepared.Receipt.ContextPacketSHA256
