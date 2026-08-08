@@ -58,8 +58,8 @@ func mcpExecutionNextCommand(value any) (string, uint64, func(string) any) {
 }
 
 func bindMCPIssueOpsExecutionErrorNextCommand(err error, observer provenanceport.Observer) error {
-	var typed *issueopscontract.BaseSyncRequiredError
-	if !errors.As(err, &typed) {
+	typed, ok := errors.AsType[*issueopscontract.BaseSyncRequiredError](err)
+	if !ok {
 		return err
 	}
 	bound, bindErr := provenanceapp.Bind(context.Background(), typed.NextCommand, typed.CompletionGeneration, observer)

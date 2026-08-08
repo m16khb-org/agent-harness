@@ -266,8 +266,8 @@ func inspectWorkspaceProcesses(root string, excluded map[int]bool) ([]workspaceP
 		return nil, ctx.Err()
 	}
 	if err != nil {
-		var exitErr *exec.ExitError
-		if !(errors.As(err, &exitErr) && exitErr.ExitCode() == 1 && strings.TrimSpace(stderr.String()) == "") {
+		exitErr, ok := errors.AsType[*exec.ExitError](err)
+		if !(ok && exitErr.ExitCode() == 1 && strings.TrimSpace(stderr.String()) == "") {
 			return nil, fmt.Errorf("lsof workspace inventory: %s", strings.TrimSpace(stderr.String()))
 		}
 	}

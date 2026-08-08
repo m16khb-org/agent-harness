@@ -81,13 +81,11 @@ func isRetryableCommandError(err error) bool {
 	if err == nil {
 		return false
 	}
-	var execErr *exec.Error
-	if errors.As(err, &execErr) {
+	if _, ok := errors.AsType[*exec.Error](err); ok {
 		// Binary missing or not executable on PATH: retrying won't help.
 		return false
 	}
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
+	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 		stderr := strings.ToLower(string(exitErr.Stderr))
 		for _, signal := range nonRetryableCommandSignals {
 			if strings.Contains(stderr, signal) {

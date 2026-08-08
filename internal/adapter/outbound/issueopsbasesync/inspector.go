@@ -96,8 +96,7 @@ func RunGit(ctx context.Context, dir string, args ...string) (int, string, strin
 	if err == nil {
 		return 0, stdout.String(), stderr.String(), nil
 	}
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
+	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 		return exitErr.ExitCode(), stdout.String(), stderr.String(), nil
 	}
 	return 0, stdout.String(), stderr.String(), err

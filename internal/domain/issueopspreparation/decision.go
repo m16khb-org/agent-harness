@@ -84,8 +84,7 @@ func (denial *Denial) IssueOpsErrorFields() map[string]any {
 }
 
 func DenialReasonOf(err error) DenialReason {
-	var denial *Denial
-	if errors.As(err, &denial) {
+	if denial, ok := errors.AsType[*Denial](err); ok {
 		return denial.Reason
 	}
 	return ""

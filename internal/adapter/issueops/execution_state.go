@@ -130,8 +130,7 @@ func persistExecutionTransitionWithRawCAS(stateRoot string, record issueops.Issu
 		mutations := append([]port.RecordMutation{{Bucket: issueOpsBucket, ID: encoded.ID, Data: data}}, extra...)
 		return mutations, nil
 	}); err != nil {
-		var stale *sqlstore.RawCASError
-		if errors.As(err, &stale) {
+		if stale, ok := errors.AsType[*sqlstore.RawCASError](err); ok {
 			if stale.Bucket == issueOpsBucket {
 				return issueops.IssueOpsRecord{OK: false, ID: record.ID}, fmt.Errorf("stale raw record snapshot")
 			}

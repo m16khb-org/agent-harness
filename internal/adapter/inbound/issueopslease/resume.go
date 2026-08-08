@@ -34,8 +34,8 @@ func publicResumeError(err error) error {
 			return cause
 		}
 	}
-	var failure *leasecontract.Failure
-	if !errors.As(err, &failure) {
+	failure, ok := errors.AsType[*leasecontract.Failure](err)
+	if !ok {
 		return err
 	}
 	return failure.Cause

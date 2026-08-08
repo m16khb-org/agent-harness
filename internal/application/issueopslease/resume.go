@@ -179,8 +179,7 @@ func resumeStageReconcileCause(reason string) error {
 }
 
 func resumeInvocationFailureState(err error) string {
-	var typed *port.OrcaError
-	if errors.As(err, &typed) && !typed.Invoked {
+	if typed, ok := errors.AsType[*port.OrcaError](err); ok && !typed.Invoked {
 		return "not_invoked_proven"
 	}
 	return "unknown"

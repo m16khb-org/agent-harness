@@ -24,8 +24,7 @@ func (e *Denial) Error() string             { return fmt.Sprintf("%s: %v", e.Cod
 func (e *Denial) Unwrap() error             { return e.Cause }
 func Deny(code DenyCode, cause error) error { return &Denial{Code: code, Cause: cause} }
 func DenyCodeOf(err error) DenyCode {
-	var denial *Denial
-	if errors.As(err, &denial) {
+	if denial, ok := errors.AsType[*Denial](err); ok {
 		return denial.Code
 	}
 	return ""

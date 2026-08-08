@@ -29,8 +29,7 @@ func Fail(code FailureCode, cause error) error {
 }
 
 func FailureCodeOf(err error) FailureCode {
-	var failure *Failure
-	if errors.As(err, &failure) {
+	if failure, ok := errors.AsType[*Failure](err); ok {
 		return failure.Code
 	}
 	return ""

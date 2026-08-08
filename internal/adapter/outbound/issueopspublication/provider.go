@@ -28,8 +28,7 @@ func (g *ProviderGateway) Create(ctx context.Context, provider string, request c
 	}
 	result, err := g.create(ctx, provider, request.Clone())
 	invocation := contract.InvocationUnknown
-	var typed *port.IssueProviderCreateError
-	if errors.As(err, &typed) && !typed.Invoked {
+	if typed, ok := errors.AsType[*port.IssueProviderCreateError](err); ok && !typed.Invoked {
 		invocation = contract.InvocationNotInvokedProven
 	}
 	return result, invocation, err

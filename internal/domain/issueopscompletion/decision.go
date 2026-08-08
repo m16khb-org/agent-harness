@@ -52,8 +52,7 @@ func deny(code DenyCode, message string) error {
 }
 
 func CodeOf(err error) DenyCode {
-	var denial *Denial
-	if errors.As(err, &denial) {
+	if denial, ok := errors.AsType[*Denial](err); ok {
 		return denial.Code
 	}
 	return ""
