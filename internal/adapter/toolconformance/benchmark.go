@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"agent-harness/internal/adapter/failurecause"
+	failurecausecontract "agent-harness/internal/contract/failurecause"
 	"agent-harness/internal/port"
 )
 
@@ -259,14 +260,14 @@ func classifyHostResult(result port.HostProbeResult, fixture Fixture) EpisodeRep
 	if schemaDriftClassification(classification) && result.CanonicalValid {
 		return incompleteEpisode(result.Host, result.HostVersion, fixture, result.Profile, result.RequestedModel, result.Attempt, "transport", "probe_result_invalid", result.Host+"_runner")
 	}
-	evidence := []failurecause.Evidence{}
+	evidence := []failurecausecontract.Evidence{}
 	failed := classification != Classification(ExactValid)
 	if failed {
-		cause := failurecause.Model
+		cause := failurecausecontract.Model
 		if result.AdvertisedValid && !result.CanonicalValid {
-			cause = failurecause.ContractInput
+			cause = failurecausecontract.ContractInput
 		}
-		evidence = append(evidence, failurecause.Evidence{Cause: cause, Code: string(classification), Source: "tool_conformance"})
+		evidence = append(evidence, failurecausecontract.Evidence{Cause: cause, Code: string(classification), Source: "tool_conformance"})
 	}
 	causeResult := failurecause.Classify(failed, evidence)
 	return EpisodeReport{
@@ -326,14 +327,14 @@ func validResumedEpisode(episode EpisodeReport) bool {
 	return !schemaDriftClassification(episode.Classification) || !episode.CanonicalValid
 }
 func incompleteEpisode(host, version string, fixture Fixture, profile, model string, attempt int, cause, code, source string) EpisodeReport {
-	parsedCause := failurecause.Cause(cause)
-	if parsedCause != failurecause.HarnessEnvironment && parsedCause != failurecause.Transport && parsedCause != failurecause.ContractInput && parsedCause != failurecause.Model {
-		parsedCause = failurecause.Unknown
+	parsedCause := failurecausecontract.Cause(cause)
+	if parsedCause != failurecausecontract.HarnessEnvironment && parsedCause != failurecausecontract.Transport && parsedCause != failurecausecontract.ContractInput && parsedCause != failurecausecontract.Model {
+		parsedCause = failurecausecontract.Unknown
 	}
 	if source == "" {
 		source = "tool_conformance"
 	}
-	result := failurecause.Classify(true, []failurecause.Evidence{{Cause: parsedCause, Code: code, Source: source}})
+	result := failurecause.Classify(true, []failurecausecontract.Evidence{{Cause: parsedCause, Code: code, Source: source}})
 	return EpisodeReport{
 		Status:               EpisodeIncomplete,
 		Host:                 host,
@@ -439,9 +440,9 @@ func countReport(report BenchmarkReport) BenchmarkCounts {
 					counts.NoCalls++
 				} else {
 					switch episode.FailureCause {
-					case failurecause.HarnessEnvironment:
+					case failurecausecontract.HarnessEnvironment:
 						counts.EnvironmentFailures++
-					case failurecause.Transport:
+					case failurecausecontract.Transport:
 						counts.TransportFailures++
 					}
 				}

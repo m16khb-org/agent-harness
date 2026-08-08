@@ -5,37 +5,17 @@ import (
 	"strings"
 
 	"agent-harness/internal/domain/policy"
+
+	failurecausecontract "agent-harness/internal/contract/failurecause"
 )
 
-type Cause string
-
-const (
-	None               Cause = "none"
-	Model              Cause = "model"
-	HarnessEnvironment Cause = "harness_environment"
-	Transport          Cause = "transport"
-	ContractInput      Cause = "contract_input"
-	Unknown            Cause = "unknown"
-)
-
-type Evidence struct {
-	Cause  Cause  `json:"cause"`
-	Code   string `json:"code"`
-	Source string `json:"source"`
-}
-type Result struct {
-	Cause    Cause      `json:"cause"`
-	Reason   string     `json:"reason"`
-	Evidence []Evidence `json:"evidence"`
-}
-
-func Classify(failed bool, items []Evidence) Result {
+func Classify(failed bool, items []failurecausecontract.Evidence) failurecausecontract.Result {
 	if !failed {
-		return Result{Cause: None, Reason: "no_failed_steps", Evidence: []Evidence{}}
+		return failurecausecontract.Result{Cause: failurecausecontract.None, Reason: "no_failed_steps", Evidence: []failurecausecontract.Evidence{}}
 	}
-	out := make([]Evidence, 0, len(items))
+	out := make([]failurecausecontract.Evidence, 0, len(items))
 	for _, e := range items {
-		if e.Cause == Model || e.Cause == HarnessEnvironment || e.Cause == Transport || e.Cause == ContractInput || e.Cause == Unknown {
+		if e.Cause == failurecausecontract.Model || e.Cause == failurecausecontract.HarnessEnvironment || e.Cause == failurecausecontract.Transport || e.Cause == failurecausecontract.ContractInput || e.Cause == failurecausecontract.Unknown {
 			e.Code = token(e.Code)
 			e.Source = token(e.Source)
 			out = append(out, e)
@@ -50,20 +30,20 @@ func Classify(failed bool, items []Evidence) Result {
 		}
 		return out[i].Source < out[j].Source
 	})
-	cause := Unknown
-	for _, want := range []Cause{Transport, HarnessEnvironment, ContractInput, Model} {
+	cause := failurecausecontract.Unknown
+	for _, want := range []failurecausecontract.Cause{failurecausecontract.Transport, failurecausecontract.HarnessEnvironment, failurecausecontract.ContractInput, failurecausecontract.Model} {
 		for _, e := range out {
 			if e.Cause == want {
 				cause = want
 				break
 			}
 		}
-		if cause != Unknown {
+		if cause != failurecausecontract.Unknown {
 			break
 		}
 	}
 	reason := "no_typed_evidence"
-	if cause != Unknown {
+	if cause != failurecausecontract.Unknown {
 		codes := []string{}
 		for _, e := range out {
 			if e.Cause == cause && (len(codes) == 0 || codes[len(codes)-1] != e.Code) {
@@ -72,7 +52,7 @@ func Classify(failed bool, items []Evidence) Result {
 		}
 		reason = string(cause) + ":" + strings.Join(codes, "+")
 	}
-	return Result{Cause: cause, Reason: reason, Evidence: out}
+	return failurecausecontract.Result{Cause: cause, Reason: reason, Evidence: out}
 }
 func token(s string) string {
 	s = policy.RedactDiagnostic(s)

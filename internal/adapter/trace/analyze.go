@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"agent-harness/internal/adapter/failurecause"
+	"agent-harness/internal/contract/failurecause"
 )
 
 const TraceAnalysisKind = "trace_analysis"
