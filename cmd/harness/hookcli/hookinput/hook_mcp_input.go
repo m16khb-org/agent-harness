@@ -64,6 +64,22 @@ func mcpRemoteArtifactCommandFromHookObject(obj map[string]any, toolInput map[st
 			args = append(args, "--body", shellQuoteArg(body))
 		}
 	}
+	// PR/MR의 base·head는 IssueOps PR target guard가 검사하는 값이다. connector가
+	// 표준 필드와 호환 별칭 어느 쪽으로 보내든 명령 표현에 보존해야 한다 —
+	// 누락되면 올바른 대상 branch를 전달해도 base 없음으로 오탐 차단된다(#263).
+	// branch 개념이 없는 issue에는 지어내지 않는다.
+	if kind == "pr" || kind == "mr" {
+		baseFlag, headFlag := "--base", "--head"
+		if cli == "glab" {
+			baseFlag, headFlag = "--target-branch", "--source-branch"
+		}
+		if base := firstStringValue(toolInput, "base", "base_branch", "baseBranch", "target_branch", "targetBranch"); base != "" {
+			args = append(args, baseFlag, shellQuoteArg(base))
+		}
+		if head := firstStringValue(toolInput, "head", "head_branch", "headBranch", "source_branch", "sourceBranch"); head != "" {
+			args = append(args, headFlag, shellQuoteArg(head))
+		}
+	}
 	for _, label := range stringListValue(toolInput, "label", "labels", "add_label", "add_labels") {
 		args = append(args, "--label", shellQuoteArg(label))
 	}
