@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
-	lifecycle "agent-harness/internal/adapter/lifecycle"
 	hookadapter "agent-harness/internal/domain/hook"
 	nextaction "agent-harness/internal/domain/nextaction"
 )
@@ -41,7 +40,7 @@ func runHookStop(args []string) error {
 	if resolvedHost == "" {
 		resolvedHost = string(hookadapter.HostCodex)
 	}
-	result := lifecycle.BuildLifecycleStopReminder(parsedRepo)
+	result := buildLifecycleStopReminder(parsedRepo)
 	message := hookinput.LastAssistantMessageFromHookInput(stdin)
 	if message == "" {
 		message = hookinput.ReadLastAssistantMessageFromTranscript(hookinput.TranscriptPathFromHookInput(stdin))
@@ -72,7 +71,7 @@ func runHookStop(args []string) error {
 	}
 	ho := hookadapter.Resolve(resolvedHost)
 	if nextActionTriggerEnabled && nextActionTrigger.ShouldReenterAgent {
-		relayRecord := lifecycle.RecordStopNextActionRelay(parsedRepo, nextActionTrigger)
+		relayRecord := recordStopNextActionRelay(parsedRepo, nextActionTrigger)
 		if !relayRecord.ShouldRelay {
 			return printJSON(ho.FormatNoop())
 		}

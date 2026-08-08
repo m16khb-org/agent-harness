@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"agent-harness/internal/adapter/lifecycle"
 	projectdoc "agent-harness/internal/domain/projectdoc"
 	projectdocdomain "agent-harness/internal/domain/projectdoc"
 )
@@ -16,7 +15,7 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 		return ProjectDocsBootstrapResult{}, err
 	}
 	signals := AnalyzeProjectSignals(root)
-	lifecycleState, err := lifecycle.InitProjectLifecycleState(root, req.Write, signals.Profile)
+	lifecycleState, err := initProjectLifecycleState(root, req.Write, signals.Profile)
 	if err != nil {
 		return ProjectDocsBootstrapResult{}, err
 	}

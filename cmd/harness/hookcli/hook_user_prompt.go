@@ -9,7 +9,6 @@ import (
 	"agent-harness/cmd/harness/hookcli/hookenv"
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	"agent-harness/cmd/harness/hookcli/hookprompt"
-	lifecycle "agent-harness/internal/adapter/lifecycle"
 	hookpromptcontract "agent-harness/internal/contract/hookprompt"
 	hookadapter "agent-harness/internal/domain/hook"
 )
@@ -55,7 +54,7 @@ func runHookUserPrompt(args []string) error {
 	// Clear only after BuildUserPromptMCPHints: choice replies ("1", "2번")
 	// read the relay record to expand the chosen option before it is consumed.
 	if hookprompt.ShouldConsumeNextActionRelay(prompt) {
-		lifecycle.ClearStopNextActionRelay(repo)
+		clearStopNextActionRelay(repo)
 	}
 	if *jsonOut {
 		return printJSON(result)

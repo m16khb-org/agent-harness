@@ -1,7 +1,5 @@
 cmd/harness/basiccli -> internal/adapter/doctor
 cmd/harness/contractcli -> internal/adapter/toolconformance
-cmd/harness/hookcli -> internal/adapter/lifecycle
-cmd/harness/hookcli/hookcatalog -> internal/adapter/lifecycle
 cmd/harness/issueopscli -> internal/adapter/issueops
 cmd/harness/issueopscli -> internal/adapter/issueops/loopgate
 cmd/harness/issueopscli -> internal/adapter/issueops/orphancleanup
@@ -26,4 +24,3 @@ internal/adapter/lifecycle -> internal/adapter/issueops
 internal/adapter/mcp -> internal/adapter/toolconformance
 internal/adapter/outbound/state -> internal/adapter/outbound/sqlstore
 internal/adapter/outbound/state -> internal/adapter/outbound/statepath
-internal/adapter/projectbootstrap -> internal/adapter/lifecycle
