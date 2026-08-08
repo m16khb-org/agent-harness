@@ -83,14 +83,6 @@ func probeDaemonStatus(socket string) (daemonIdentityResponse, error) {
 	return response, nil
 }
 
-func probeDaemonIdentity(socket string) (daemonInstance, error) {
-	response, err := probeDaemonStatus(socket)
-	if err != nil {
-		return daemonInstance{}, err
-	}
-	return response.Instance, nil
-}
-
 func serveDaemonConnection(conn net.Conn, logFile daemonServerLogFile, instance daemonInstance, serveMCPStream func(net.Conn, daemonServerLogFile) error) error {
 	return serveDaemonConnectionWithAdmission(conn, logFile, instance, newDaemonAdmission(maxConnections), func(_ context.Context, conn net.Conn, logFile daemonServerLogFile) error {
 		return serveMCPStream(conn, logFile)

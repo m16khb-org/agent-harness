@@ -10,17 +10,6 @@ import (
 	webfetchport "agent-harness/internal/port/webfetch"
 )
 
-func sanitizeURL(raw string) string {
-	u, err := url.Parse(strings.TrimSpace(raw))
-	if err != nil {
-		return strings.TrimSpace(raw)
-	}
-	if u.User != nil {
-		u.User = url.User("<redacted>")
-	}
-	return u.String()
-}
-
 func validateFetchURL(ctx context.Context, raw string, allowPrivate bool, resolver webfetchport.Resolver) (*url.URL, error) {
 	u, err := url.Parse(strings.TrimSpace(raw))
 	if err != nil {
