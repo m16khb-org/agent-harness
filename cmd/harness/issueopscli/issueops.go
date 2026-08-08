@@ -4,7 +4,6 @@ import (
 	"agent-harness/cmd/harness/issueopscli/benchmarkcmd"
 	"agent-harness/cmd/harness/issueopscli/feedbackcleanup"
 	"agent-harness/cmd/harness/issueopscli/remotecmd"
-	"agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/adapter/issueops/orphancleanup"
 	corehealth "agent-harness/internal/domain/operationalhealth"
 	"agent-harness/internal/port"
@@ -173,10 +172,10 @@ func suggestIssueOpsSubcommand(input string) string {
 }
 
 func issueOpsRemoteDeps() remotecmd.Deps {
-	return issueOpsRemoteDepsWithPublication(issueops.RemotePublicationHandlers{})
+	return issueOpsRemoteDepsWithPublication(remotecmd.PublicationHandlers{})
 }
 
-func issueOpsRemoteDepsWithPublication(publication issueops.RemotePublicationHandlers) remotecmd.Deps {
+func issueOpsRemoteDepsWithPublication(publication remotecmd.PublicationHandlers) remotecmd.Deps {
 	return remotecmd.Deps{
 		PrintJSON:    printJSON,
 		PrintResult:  printIssueOpsResult,

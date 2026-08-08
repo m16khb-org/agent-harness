@@ -37,7 +37,7 @@ type MCPDependencies struct {
 	Resume      issueops.ExecutionResumeHandler
 	Reconcile   issueops.ExecutionReconcileHandler
 	Complete    issueops.ExecutionCompleteHandler
-	Publication issueops.RemotePublicationHandlers
+	Publication PublicationHandlers
 	Provenance  provenanceport.Observer
 }
 

@@ -3,7 +3,6 @@ cmd/harness/issueopscli -> internal/adapter/issueops/loopgate
 cmd/harness/issueopscli -> internal/adapter/issueops/orphancleanup
 cmd/harness/issueopscli/executioncmd -> internal/adapter/issueops
 cmd/harness/issueopscli/feedbackcleanup -> internal/adapter/issueops/orphancleanup
-cmd/harness/issueopscli/remotecmd -> internal/adapter/issueops
 cmd/harness/mcpcli -> internal/adapter/issueops
 internal/adapter/inbound/issueopslease -> internal/adapter/issueops
 internal/adapter/issueops -> internal/adapter/outbound/sqlstore

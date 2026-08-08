@@ -1,6 +1,7 @@
 package executioncmd
 
 import (
+	"agent-harness/cmd/harness/issueopscli/remotecmd"
 	"context"
 	"flag"
 	"fmt"
@@ -28,7 +29,7 @@ type Deps struct {
 	Resume                 issueops.ExecutionResumeHandler
 	Reconcile              issueops.ExecutionReconcileHandler
 	Complete               issueops.ExecutionCompleteHandler
-	Publication            issueops.RemotePublicationHandlers
+	Publication            remotecmd.PublicationHandlers
 	PrintJSON              func(any) error
 	PrintError             func(error) error
 	syncBase               func(context.Context, string, issueops.ExecutionSyncBaseRequest, issueops.ExecutionSyncBaseDeps) (issueops.ExecutionSyncBaseResult, error)

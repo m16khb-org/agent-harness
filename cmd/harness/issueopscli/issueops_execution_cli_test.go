@@ -1,6 +1,7 @@
 package issueopscli
 
 import (
+	"agent-harness/cmd/harness/issueopscli/remotecmd"
 	"context"
 	"encoding/json"
 	"errors"
@@ -27,7 +28,7 @@ func TestIssueOpsExecutionDepsPropagatePublicationReconcileWithoutInvocation(t *
 		return issueopscore.ExecutionReconcileResult{}, nil
 	})
 
-	deps := issueOpsExecutionDeps(Dependencies{Publication: issueopscore.RemotePublicationHandlers{Reconcile: handler}})
+	deps := issueOpsExecutionDeps(Dependencies{Publication: remotecmd.PublicationHandlers{Reconcile: handler}})
 	if deps.Publication.Reconcile == nil {
 		t.Fatal("publication reconcile handler was not propagated")
 	}

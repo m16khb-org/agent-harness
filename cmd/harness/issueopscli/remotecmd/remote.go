@@ -2,6 +2,7 @@ package remotecmd
 
 import (
 	artifacttemplate "agent-harness/internal/domain/artifacttemplate"
+	issueopsremote "agent-harness/internal/domain/issueopsremote"
 	port "agent-harness/internal/port"
 	"context"
 	"encoding/json"
@@ -10,7 +11,6 @@ import (
 	"os"
 	"strings"
 
-	issueopscore "agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/domain/issueopsremote"
 )
@@ -22,7 +22,7 @@ type Deps struct {
 	VerifyLive             func(issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error
 	VerifyMerged           func(issueopscontract.IssueOpsRemoteArtifactVerification) error
 	ObserveProcessAncestry func(int) ([]issueopscontract.NativeProcessReceipt, error)
-	Publication            issueopscore.RemotePublicationHandlers
+	Publication            PublicationHandlers
 }
 
 func Run(args []string, deps Deps) error {
@@ -66,7 +66,7 @@ func Run(args []string, deps Deps) error {
 			return err
 		}
 		if *judge == "prompt" {
-			result, promptErr := issueopscore.RenderIssueOpsRemoteJudgePrompt(issueopscore.IssueOpsRemoteLLMJudgeRequest{Request: req})
+			result, promptErr := remoteDeps.RenderIssueOpsRemoteJudgePrompt(issueopsremote.IssueOpsRemoteLLMJudgeRequest{Request: req})
 			if promptErr != nil {
 				if *jsonOut {
 					if printErr := deps.printError(promptErr); printErr != nil {
@@ -81,12 +81,12 @@ func Run(args []string, deps Deps) error {
 			fmt.Println(result.Prompt)
 			return nil
 		}
-		var result issueopscore.IssueOpsRemoteScoringResult
+		var result issueopsremote.IssueOpsRemoteScoringResult
 		switch *judge {
 		case "file":
 			result, err = readIssueOpsRemoteJudgeFile(*judgeFile)
 		case "none":
-			result, err = issueopscore.ScoreIssueOpsRemoteCandidates(req)
+			result, err = remoteDeps.ScoreIssueOpsRemoteCandidates(req)
 		default:
 			err = fmt.Errorf("unsupported issueops remote score judge %q", *judge)
 		}
@@ -138,7 +138,7 @@ func Run(args []string, deps Deps) error {
 			Labels:       labels,
 			Assignees:    assignees,
 		}
-		_, err := issueopscore.ValidateIssueOpsRemoteArtifactVerification(issueopscore.IssueOpsStateRoot(), *id, req)
+		_, err := remoteDeps.ValidateIssueOpsRemoteArtifactVerification(remoteDeps.IssueOpsStateRoot(), *id, req)
 		var record issueopscontract.IssueOpsRecord
 		if err == nil {
 			err = deps.verifyLive(req)
@@ -147,7 +147,7 @@ func Run(args []string, deps Deps) error {
 			var ancestry []issueopscontract.NativeProcessReceipt
 			ancestry, err = deps.observeNativeProcessAncestry()
 			if err == nil {
-				record, err = issueopscore.VerifyIssueOpsRemoteArtifactWithActor(issueopscore.IssueOpsStateRoot(), *id, req, issueopscore.IssueOpsActor{
+				record, err = remoteDeps.VerifyIssueOpsRemoteArtifactWithActor(remoteDeps.IssueOpsStateRoot(), *id, req, issueopscontract.IssueOpsActor{
 					Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd, NativeProcessAncestry: ancestry,
 				})
 			}
@@ -187,11 +187,11 @@ func runRemoteReflectDevilsAdvocate(args []string, deps Deps) error {
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), *id)
+	record, err := remoteDeps.ReadIssueOps(remoteDeps.IssueOpsStateRoot(), *id)
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	providerName := firstNonEmptyMain(*providerOverride, issueopscore.ResolveRecordProvider(record))
+	providerName := firstNonEmptyMain(*providerOverride, remoteDeps.ResolveRecordProvider(record))
 	if providerName == "" {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
 		return deps.printErrorResult(*jsonOut, err)
@@ -204,7 +204,7 @@ func runRemoteReflectDevilsAdvocate(args []string, deps Deps) error {
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	_, result, err := issueopscore.ReflectDevilsAdvocateFindingsWithActor(issueopscore.IssueOpsStateRoot(), *id, *confirm, prov, issueopscore.IssueOpsActor{
+	_, result, err := remoteDeps.ReflectDevilsAdvocateFindingsWithActor(remoteDeps.IssueOpsStateRoot(), *id, *confirm, prov, issueopscontract.IssueOpsActor{
 		Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd, NativeProcessAncestry: ancestry,
 	})
 	if err != nil {
@@ -225,11 +225,11 @@ func runRemoteReflectDevilsAdvocate(args []string, deps Deps) error {
 // provider, provider readback 머지 검증)를 fail-closed로 해석한다. readback
 // 실패는 "판정 불가"이며 강등 없이 에러다(설계 v5 WS3).
 func resolveRemoteCompletionInputs(deps Deps, id, providerOverride string) (issueopscontract.IssueOpsRecord, port.IssueProvider, error) {
-	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), id)
+	record, err := remoteDeps.ReadIssueOps(remoteDeps.IssueOpsStateRoot(), id)
 	if err != nil {
 		return issueopscontract.IssueOpsRecord{}, nil, err
 	}
-	providerName := firstNonEmptyMain(providerOverride, issueopscore.ResolveRecordProvider(record))
+	providerName := firstNonEmptyMain(providerOverride, remoteDeps.ResolveRecordProvider(record))
 	if providerName == "" {
 		return issueopscontract.IssueOpsRecord{}, nil, fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
 	}
@@ -262,7 +262,7 @@ func runRemoteReflectCompletion(args []string, deps Deps) error {
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	_, result, err := issueopscore.ReflectIssueCompletion(issueopscore.IssueOpsStateRoot(), *id, true, *confirm, prov)
+	_, result, err := remoteDeps.ReflectIssueCompletion(remoteDeps.IssueOpsStateRoot(), *id, true, *confirm, prov)
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
@@ -290,7 +290,7 @@ func runRemoteCloseIssue(args []string, deps Deps) error {
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	_, result, err := issueopscore.CloseIssueOpsRemoteIssue(issueopscore.IssueOpsStateRoot(), *id, true, *confirm, prov)
+	_, result, err := remoteDeps.CloseIssueOpsRemoteIssue(remoteDeps.IssueOpsStateRoot(), *id, true, *confirm, prov)
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
@@ -368,7 +368,7 @@ func (f *repeatedFlag) Set(value string) error {
 	return nil
 }
 
-func formatIssueOpsRemoteIssueRef(issue issueopscore.IssueOpsRemoteScoredItem) string {
+func formatIssueOpsRemoteIssueRef(issue issueopsremote.IssueOpsRemoteScoredItem) string {
 	ref := firstNonEmptyMain(issue.ID, issue.URL)
 	title := strings.TrimSpace(issue.Title)
 	if title == "" {
@@ -380,35 +380,35 @@ func formatIssueOpsRemoteIssueRef(issue issueopscore.IssueOpsRemoteScoredItem) s
 	return fmt.Sprintf("%s (%s)", ref, title)
 }
 
-func readIssueOpsRemoteScoringRequestFile(path string) (issueopscore.IssueOpsRemoteScoringRequest, error) {
+func readIssueOpsRemoteScoringRequestFile(path string) (issueopsremote.IssueOpsRemoteScoringRequest, error) {
 	path = strings.TrimSpace(path)
 	if path == "" {
-		return issueopscore.IssueOpsRemoteScoringRequest{}, fmt.Errorf("input is required")
+		return issueopsremote.IssueOpsRemoteScoringRequest{}, fmt.Errorf("input is required")
 	}
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return issueopscore.IssueOpsRemoteScoringRequest{}, err
+		return issueopsremote.IssueOpsRemoteScoringRequest{}, err
 	}
-	var req issueopscore.IssueOpsRemoteScoringRequest
-	req, err = issueopscore.DecodeIssueOpsRemoteScoringRequest(b)
+	var req issueopsremote.IssueOpsRemoteScoringRequest
+	req, err = remoteDeps.DecodeIssueOpsRemoteScoringRequest(b)
 	if err != nil {
-		return issueopscore.IssueOpsRemoteScoringRequest{}, fmt.Errorf("parse input file %s: %w", path, err)
+		return issueopsremote.IssueOpsRemoteScoringRequest{}, fmt.Errorf("parse input file %s: %w", path, err)
 	}
 	return req, nil
 }
 
-func readIssueOpsRemoteJudgeFile(path string) (issueopscore.IssueOpsRemoteScoringResult, error) {
+func readIssueOpsRemoteJudgeFile(path string) (issueopsremote.IssueOpsRemoteScoringResult, error) {
 	path = strings.TrimSpace(path)
 	if path == "" {
-		return issueopscore.IssueOpsRemoteScoringResult{}, fmt.Errorf("judge-file is required for --judge file")
+		return issueopsremote.IssueOpsRemoteScoringResult{}, fmt.Errorf("judge-file is required for --judge file")
 	}
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return issueopscore.IssueOpsRemoteScoringResult{}, err
+		return issueopsremote.IssueOpsRemoteScoringResult{}, err
 	}
-	result, err := issueopscore.DecodeIssueOpsRemoteJudgeJSON(b)
+	result, err := remoteDeps.DecodeIssueOpsRemoteJudgeJSON(b)
 	if err != nil {
-		return issueopscore.IssueOpsRemoteScoringResult{}, fmt.Errorf("parse judge file %s: %w", path, err)
+		return issueopsremote.IssueOpsRemoteScoringResult{}, fmt.Errorf("parse judge file %s: %w", path, err)
 	}
 	return result, nil
 }
@@ -485,11 +485,11 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), *id)
+	record, err := remoteDeps.ReadIssueOps(remoteDeps.IssueOpsStateRoot(), *id)
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	providerName := firstNonEmptyMain(*providerOverride, issueopscore.ResolveRecordProvider(record))
+	providerName := firstNonEmptyMain(*providerOverride, remoteDeps.ResolveRecordProvider(record))
 	if providerName == "" {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
 		return deps.printErrorResult(*jsonOut, err)
@@ -514,7 +514,7 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 	if err := validateConfirmRemoteCreate(*confirm, labels, assignees); err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	result, err := issueopscore.CreateRemoteIssue(port.IssueProviderCreateIssueRequest{
+	result, err := remoteDeps.CreateRemoteIssue(port.IssueProviderCreateIssueRequest{
 		Repo:      record.Repo,
 		Title:     *title,
 		Body:      finalBody,
@@ -574,7 +574,7 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), *id)
+	record, err := remoteDeps.ReadIssueOps(remoteDeps.IssueOpsStateRoot(), *id)
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
@@ -585,13 +585,13 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 	// 우산 브랜치 게이트는 provider 호출 이전에 선다. 자식이 만들어진 뒤에는
 	// 위상을 되돌릴 수 없고, 부모에 원격 artifact가 없는 채로 자식만 생기면
 	// 정리 경로가 순환 차단된다(#129).
-	if reason := issueopscore.UmbrellaBranchGateReason(record); reason != "" {
+	if reason := remoteDeps.UmbrellaBranchGateReason(record); reason != "" {
 		return deps.printErrorResult(*jsonOut, fmt.Errorf("%s", reason))
 	}
 	if err := validateCreateChildInputs(*title, labels, assignees); err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	providerName := firstNonEmptyMain(*providerOverride, issueopscore.ResolveRecordProvider(record))
+	providerName := firstNonEmptyMain(*providerOverride, remoteDeps.ResolveRecordProvider(record))
 	if providerName == "" {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
 		return deps.printErrorResult(*jsonOut, err)
@@ -613,20 +613,20 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	var actor issueopscore.IssueOpsActor
+	var actor issueopscontract.IssueOpsActor
 	if *confirm && record.Execution != nil {
 		ancestry, observeErr := deps.observeNativeProcessAncestry()
 		if observeErr != nil {
 			return deps.printErrorResult(*jsonOut, observeErr)
 		}
-		actor = issueopscore.IssueOpsActor{
+		actor = issueopscontract.IssueOpsActor{
 			Host: *host, SessionID: *sessionID, AgentID: *agentID, CWD: *cwd, NativeProcessAncestry: ancestry,
 		}
-		if validateErr := issueopscore.ValidateIssueOpsMutationActor(issueopscore.IssueOpsStateRoot(), record.ID, actor); validateErr != nil {
+		if validateErr := remoteDeps.ValidateIssueOpsMutationActor(remoteDeps.IssueOpsStateRoot(), record.ID, actor); validateErr != nil {
 			return deps.printErrorResult(*jsonOut, validateErr)
 		}
 	}
-	result, err := issueopscore.CreateRemoteChild(port.IssueProviderCreateChildRequest{
+	result, err := remoteDeps.CreateRemoteChild(port.IssueProviderCreateChildRequest{
 		Repo:           record.Repo,
 		ParentIssueURL: record.IssueURL,
 		Title:          *title,
@@ -643,7 +643,7 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 			err := fmt.Errorf("provider did not verify child hierarchy")
 			return deps.printErrorResult(*jsonOut, err)
 		}
-		if _, err := issueopscore.LinkIssueOpsChildWithActor(issueopscore.IssueOpsStateRoot(), record.ID, result.ChildURL, *title, actor); err != nil {
+		if _, err := remoteDeps.LinkIssueOpsChildWithActor(remoteDeps.IssueOpsStateRoot(), record.ID, result.ChildURL, *title, actor); err != nil {
 			return deps.printErrorResult(*jsonOut, err)
 		}
 	}
@@ -688,11 +688,11 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), *id)
+	record, err := remoteDeps.ReadIssueOps(remoteDeps.IssueOpsStateRoot(), *id)
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	providerName := firstNonEmptyMain(*providerOverride, issueopscore.ResolveRecordProvider(record))
+	providerName := firstNonEmptyMain(*providerOverride, remoteDeps.ResolveRecordProvider(record))
 	if providerName == "" {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
 		return deps.printErrorResult(*jsonOut, err)
@@ -722,7 +722,7 @@ func runRemoteCreatePR(args []string, deps Deps) error {
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	result, err := issueopscore.CreateRemotePullRequestWithHandler(context.Background(), issueopscore.IssueOpsStateRoot(), issueopscore.RemotePullRequestRequest{
+	result, err := remoteDeps.CreateRemotePullRequestWithHandler(context.Background(), remoteDeps.IssueOpsStateRoot(), issueopscontract.RemotePullRequestRequest{
 		ID: record.ID, Provider: providerName, Title: *title, Body: finalBody,
 		Head: headBranch, Base: baseBranch, Labels: labels, Assignees: assignees,
 		ExpectedGeneration: *expectedGeneration,
@@ -762,7 +762,7 @@ func (deps Deps) remoteNativeActor(host, sessionID, agentID string, sessionPID i
 func (deps Deps) observeNativeProcessAncestry() ([]issueopscontract.NativeProcessReceipt, error) {
 	observe := deps.ObserveProcessAncestry
 	if observe == nil {
-		observe = issueopscore.ObserveNativeProcessAncestry
+		observe = remoteDeps.ObserveNativeProcessAncestry
 	}
 	ancestry, err := observe(os.Getpid())
 	if err != nil {
@@ -863,7 +863,7 @@ func readScoreSummaryFile(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	var result issueopscore.IssueOpsRemoteScoringResult
+	var result issueopsremote.IssueOpsRemoteScoringResult
 	if err := json.Unmarshal(b, &result); err != nil {
 		return strings.TrimSpace(string(b)), nil
 	}
@@ -883,7 +883,7 @@ func readScoreSummaryFile(path string) (string, error) {
 	return strings.Join(parts, "\n"), nil
 }
 
-func joinScoredItems(items []issueopscore.IssueOpsRemoteScoredItem) string {
+func joinScoredItems(items []issueopsremote.IssueOpsRemoteScoredItem) string {
 	out := make([]string, 0, len(items))
 	for _, item := range items {
 		name := firstNonEmptyMain(item.Name, item.ID, item.Title, item.URL)
@@ -903,7 +903,7 @@ func runRemoteSyncGraph(args []string, deps Deps) error {
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), *id)
+	record, err := remoteDeps.ReadIssueOps(remoteDeps.IssueOpsStateRoot(), *id)
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
@@ -925,7 +925,7 @@ func runRemoteSyncGraph(args []string, deps Deps) error {
 		fmt.Printf("[dry-run] would sync %d issue graph links to remote issue %s\n", links, record.IssueURL)
 		return nil
 	}
-	result, err := issueopscore.SyncRemoteIssueGraph(record)
+	result, err := remoteDeps.SyncRemoteIssueGraph(record)
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}

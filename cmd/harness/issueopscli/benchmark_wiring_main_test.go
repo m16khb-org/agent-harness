@@ -25,5 +25,6 @@ func TestMain(m *testing.M) {
 		ValidateJudgeProvenance:              issueopscore.ValidateJudgeProvenance,
 	})
 	wireCleanupForTests()
+	wireRemoteForTests()
 	os.Exit(m.Run())
 }

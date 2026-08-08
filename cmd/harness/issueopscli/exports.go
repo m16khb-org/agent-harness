@@ -1,6 +1,7 @@
 package issueopscli
 
 import (
+	"agent-harness/cmd/harness/issueopscli/remotecmd"
 	"agent-harness/cmd/harness/issueopscli/remoteverify"
 	"agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
@@ -25,7 +26,7 @@ type Dependencies struct {
 	Resume      issueops.ExecutionResumeHandler
 	Reconcile   issueops.ExecutionReconcileHandler
 	Complete    issueops.ExecutionCompleteHandler
-	Publication issueops.RemotePublicationHandlers
+	Publication remotecmd.PublicationHandlers
 	Provenance  provenanceport.Observer
 }
 

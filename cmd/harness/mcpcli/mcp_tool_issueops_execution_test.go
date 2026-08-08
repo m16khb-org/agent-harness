@@ -20,7 +20,7 @@ func TestMCPExecutionDependenciesPropagatePublicationReconcileWithoutInvocation(
 		return issueops.ExecutionReconcileResult{}, nil
 	})
 
-	deps := issueOpsExecutionActionDependencies(MCPDependencies{Publication: issueops.RemotePublicationHandlers{Reconcile: handler}})
+	deps := issueOpsExecutionActionDependencies(MCPDependencies{Publication: PublicationHandlers{Reconcile: handler}})
 	if deps.RemoteReconcile == nil {
 		t.Fatal("publication reconcile handler was not propagated")
 	}
@@ -69,7 +69,7 @@ func TestMCPPublicationReconcilePreservesToolErrorClassification(t *testing.T) {
 				"host": "codex", "session_id": "publication-mcp-session",
 				"session_pid": float64(receipt.PID), "session_started_at": receipt.StartedAt,
 				"session_executable": receipt.Executable, "cwd": record.Execution.Workspace.Root,
-			}, MCPDependencies{Publication: issueops.RemotePublicationHandlers{Reconcile: func(_ context.Context, _ string, request issueops.ExecutionReconcileRequest) (issueops.ExecutionReconcileResult, error) {
+			}, MCPDependencies{Publication: PublicationHandlers{Reconcile: func(_ context.Context, _ string, request issueops.ExecutionReconcileRequest) (issueops.ExecutionReconcileResult, error) {
 				calls++
 				if request.Snapshot == nil || request.Snapshot.ID != record.ID {
 					t.Fatalf("publication reconcile snapshot=%#v", request.Snapshot)

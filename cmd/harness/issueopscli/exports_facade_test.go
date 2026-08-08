@@ -1,6 +1,7 @@
 package issueopscli
 
 import (
+	"agent-harness/cmd/harness/issueopscli/remotecmd"
 	"context"
 	"errors"
 	"strings"
@@ -48,7 +49,7 @@ func TestIssueOpsPublicationCreateRequiresComposedDependencies(t *testing.T) {
 		t.Fatalf("zero dependency wrapper err=%v", err)
 	}
 	handlerCalls := 0
-	err = RunIssueOpsWithDependencies(args, Dependencies{Publication: issueops.RemotePublicationHandlers{Create: func(_ context.Context, _ string, request issueops.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
+	err = RunIssueOpsWithDependencies(args, Dependencies{Publication: remotecmd.PublicationHandlers{Create: func(_ context.Context, _ string, request issueops.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 		handlerCalls++
 		if request.ID != record.ID || request.Confirm {
 			t.Fatalf("request=%#v", request)

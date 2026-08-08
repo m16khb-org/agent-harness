@@ -44,7 +44,7 @@ func TestServeMCPStreamListsHarnessTools(t *testing.T) {
 func TestServeMCPStreamCarriesPublicationReconcileWithoutInvokingOnHandshake(t *testing.T) {
 	invoked := 0
 	session := startMCPTransportTestSession(t, "stdio", MCPDependencies{
-		Publication: issueops.RemotePublicationHandlers{Reconcile: func(context.Context, string, issueops.ExecutionReconcileRequest) (issueops.ExecutionReconcileResult, error) {
+		Publication: PublicationHandlers{Reconcile: func(context.Context, string, issueops.ExecutionReconcileRequest) (issueops.ExecutionReconcileResult, error) {
 			invoked++
 			return issueops.ExecutionReconcileResult{}, nil
 		}},
