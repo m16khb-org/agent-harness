@@ -38,9 +38,30 @@ func TestOwnershipManifestAllowsTargetDirections(t *testing.T) {
 		{"internal/application/nativeactivation", "internal/port/nativeactivation"},
 		{"internal/adapter/outbound/nativeactivation", "internal/application/nativeactivation"},
 		{"cmd/harness/harnessapp", "internal/adapter/outbound/nativeactivation"},
+		// DTO가 다른 capability의 DTO를 필드로 갖는 것은 계약 조합이지 구현 의존이
+		// 아니다. contract 사이 참조는 이미 lease/completion/preparation vertical이
+		// 쓰고 있는 방향이다.
+		{"internal/contract/issueopslease", "internal/contract/state"},
+		{"internal/contract/lifecycle", "internal/contract/projectdoc"},
 	}
 	if violations := evaluateOwnershipEdges(edges); len(violations) != 0 {
 		t.Fatalf("target ownership directions must be allowed, got %s", formatViolations(violations))
+	}
+}
+
+// contract가 구현 계층을 참조하는 것은 여전히 금지다. 위 예외는 contract 사이에만
+// 적용되며 domain·application·adapter·cmd로 향하는 edge는 그대로 막힌다.
+func TestOwnershipManifestStillRejectsContractToImplementation(t *testing.T) {
+	for _, imported := range []string{
+		"internal/domain/state",
+		"internal/application/state",
+		"internal/adapter/outbound/state",
+		"internal/port/state",
+	} {
+		edge := dependencyEdge{"internal/contract/state", imported}
+		if !containsViolation(evaluateOwnershipEdges([]dependencyEdge{edge}), "contract_must_not_import_internal", edge) {
+			t.Fatalf("contract must not import %s", imported)
+		}
 	}
 }
 

@@ -1158,7 +1158,7 @@ func evaluateOwnershipEdges(edges []dependencyEdge) []violation {
 			violations = append(violations, violation{"ownership_forbids_core_package", edge})
 			continue
 		}
-		if isContract(edge.importer) && strings.HasPrefix(edge.imported, "internal/") {
+		if isContract(edge.importer) && strings.HasPrefix(edge.imported, "internal/") && !isContract(edge.imported) {
 			violations = append(violations, violation{"contract_must_not_import_internal", edge})
 		}
 		if isDomain(edge.importer) && strings.HasPrefix(edge.imported, "internal/") && !isContract(edge.imported) {
