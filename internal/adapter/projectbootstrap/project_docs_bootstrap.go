@@ -9,11 +9,10 @@ import (
 	"agent-harness/internal/adapter/lifecycle"
 	"agent-harness/internal/adapter/projectdoc"
 	"agent-harness/internal/adapter/projectdocs"
-	"agent-harness/internal/adapter/repopath"
 )
 
 func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrapResult, error) {
-	root, err := repopath.NormalizeRoot(req.RepoRoot)
+	root, err := NormalizeRepoRoot(req.RepoRoot)
 	if err != nil {
 		return ProjectDocsBootstrapResult{}, err
 	}

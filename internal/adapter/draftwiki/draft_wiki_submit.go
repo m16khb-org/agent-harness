@@ -4,8 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"agent-harness/internal/adapter/repopath"
 )
 
 type DraftWikiSubmitRequest struct {
@@ -25,11 +23,11 @@ type DraftWikiSubmitResult struct {
 }
 
 func SubmitDraftWiki(req DraftWikiSubmitRequest) (DraftWikiSubmitResult, error) {
-	root, err := repopath.NormalizeRoot(req.RepoRoot)
+	root, err := NormalizeRepoRoot(req.RepoRoot)
 	if err != nil {
 		return DraftWikiSubmitResult{}, err
 	}
-	inputPath, err := repopath.ResolveFile(root, req.DraftPath)
+	inputPath, err := ResolveRepoFile(root, req.DraftPath)
 	if err != nil {
 		return DraftWikiSubmitResult{}, err
 	}

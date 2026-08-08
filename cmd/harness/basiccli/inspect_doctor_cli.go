@@ -2,7 +2,6 @@ package basiccli
 
 import (
 	doctor "agent-harness/internal/adapter/doctor"
-	"agent-harness/internal/adapter/repopath"
 	"agent-harness/internal/domain/operationalhealth"
 	"context"
 	"flag"
@@ -77,7 +76,7 @@ func runDoctor(args []string) error {
 	if err != nil {
 		return err
 	}
-	root, err := repopath.NormalizeRoot(*repo)
+	root, err := NormalizeRepoRoot(*repo)
 	if err != nil {
 		return err
 	}

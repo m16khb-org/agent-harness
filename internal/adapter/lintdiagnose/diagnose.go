@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-
-	"agent-harness/internal/adapter/repopath"
 )
 
 type LintDiagnoseRequest struct {
@@ -23,7 +21,7 @@ type LintDiagnoseResult struct {
 }
 
 func DiagnoseCommand(req LintDiagnoseRequest) (LintDiagnoseResult, error) {
-	root, err := repopath.NormalizeRoot(req.RepoRoot)
+	root, err := NormalizeRepoRoot(req.RepoRoot)
 	if err != nil {
 		return LintDiagnoseResult{}, err
 	}

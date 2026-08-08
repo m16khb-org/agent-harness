@@ -7,11 +7,10 @@ import (
 	"time"
 
 	"agent-harness/internal/adapter/lifecycle/fingerprint"
-	"agent-harness/internal/adapter/repopath"
 )
 
 func ResolveProjectLifecycleState(repoRoot string) (ProjectLifecycleStatePlan, error) {
-	root, err := repopath.NormalizeRoot(repoRoot)
+	root, err := NormalizeRepoRoot(repoRoot)
 	if err != nil {
 		return ProjectLifecycleStatePlan{OK: false, StateRoot: StateDir(), SchemaVersion: ProjectLifecycleSchemaVersion}, err
 	}
