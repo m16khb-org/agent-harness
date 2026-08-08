@@ -1,6 +1,7 @@
 package issueopscli
 
 import (
+	"agent-harness/cmd/harness/hookcli/hookenv"
 	"agent-harness/cmd/harness/issueopscli/benchmarkcmd"
 	issueopscore "agent-harness/internal/adapter/issueops"
 	"os"
@@ -10,6 +11,10 @@ import (
 // 프로덕션에서는 harnessapp이 주입한다. 벤치마크 CLI 계약 테스트는 실제 실행
 // 경로를 검증하므로 같은 배선을 재현한다.
 func TestMain(m *testing.M) {
+	// remote artifact gate smoke는 hook enforcement가 켜져 있음을 전제한다.
+	// dogfood 셸의 HARNESS_DISABLE_HOOKS=1이 새어 들어오면 hook이 no-op이 되어
+	// 빈 stdout을 JSON으로 파싱하려다 실패한다(#395).
+	hookenv.ClearInheritedOperatorSwitches()
 	benchmarkcmd.ConfigureBenchmark(benchmarkcmd.BenchmarkDeps{
 		CompareIssueOpsBenchmarkRuns:         issueopscore.CompareIssueOpsBenchmarkRuns,
 		ComputeReliability:                   issueopscore.ComputeReliability,
