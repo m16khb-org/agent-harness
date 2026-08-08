@@ -512,12 +512,12 @@
           "id": "BT-G11-C4",
           "scenario": "AC-06 전체 dogfood(create→claim→PR→cleanup)",
           "channel": "none",
-          "status": "partial",
-          "capturedEvidence": "실제 dogfood 실행(issue #423 / io-cb83a79e1bfd / run_ca9be64d90ac). owner가 claim → branch await-link → branch prepare --link-verified까지 완주했고, digest 3종과 baseline test를 실측 검증했으며, 막혔을 때 lease를 released로 반납하고 worktree를 clean하게 남겼다 — 앞의 두 수정이 실물에서 증명됐다. 그 지점에서 세 번째 결함(planner 게이트 부재)이 드러나 PR #425로 고쳤고 신규 lifecycle 실측으로 게이트 동작을 확인했다. create→claim→(PR→cleanup)의 뒷부분은 세 번째 수정 이후 새 사이클로만 도달한다.",
+          "status": "pass",
+          "capturedEvidence": "AC-06 완주. lifecycle io-794e8851ad5d / run_a4ff8713c7c7 / task_f4373328a3f2. 올바른 순서(planner 기록 → branch prepare → artifact stage → execution prepare → createLinkedBranch)로 진행했고 owner가 await-link → link-verified → implement → PR → complete를 완주했다. task completed, lease generation 1 released, completion final_head f87cea93 artifact PR #429. PR #429는 CI 통과 후 머지됐고 대상 이슈 #428은 CLOSED. owner 결과물을 worktree에서 직접 검증했다 — 회귀·vet·gofmt 통과.",
           "cleanupReceipt": "none spawned"
         }
       ],
-      "closingNote": "PR #422(대기+반납)와 #425(planner 게이트) 머지. dogfood가 세 결함을 차례로 드러냈고 앞의 둘은 실물에서 수정이 증명됐다."
+      "closingNote": "#319 CLOSED. dogfood가 결함 넷을 차례로 드러냈다: 완주 불가능한 링크 검증(#422), lease 덫(#422), planner 게이트 부재(#425), gofmt 분류 누락(#430). 네 번째는 owner가 스스로 찾아 UNVERIFIED로 보고했다."
     },
     {
       "id": "BT-G12",
@@ -543,12 +543,29 @@
         }
       ],
       "closingNote": "PR #426. owner가 planner 게이트에서 막혀 도달하지 못한 변경을 coordinator가 마무리했다."
+    },
+    {
+      "id": "BT-G13",
+      "title": "guard가 저장소 자신의 검증 명령을 막던 문제",
+      "status": "completed",
+      "objective": "`gofmt -l`과 디렉터리 피연산자를 read-only로 인정한다.",
+      "successCriteria": [
+        {
+          "id": "BT-G13-C1",
+          "scenario": "문서화된 검증 명령이 active lease에서 실행 가능하다",
+          "channel": "auxiliary:cli",
+          "status": "pass",
+          "capturedEvidence": "owner가 gofmt 축을 UNVERIFIED로 보고한 것이 발견 경로다. -l/-d를 보고 flag로 요구하고 디렉터리를 받되 -w/-r/profile/절대경로/상위탈출/비-Go 확장자는 계속 거부. 허용 5종·거부 11종 PASS.",
+          "cleanupReceipt": "none spawned"
+        }
+      ],
+      "closingNote": "PR #430. owner가 실행할 수 없는 검증을 통과했다고 적지 않은 것이 이 결함을 드러냈다."
     }
   ],
   "metrics": {
-    "evidenceCoverage": 0.96,
-    "reworkRate": 0.26,
-    "cycleEfficiency": 0.94,
+    "evidenceCoverage": 0.99,
+    "reworkRate": 0.24,
+    "cycleEfficiency": 0.97,
     "parallelizationRatio": 1.0,
     "cleanupCompliance": 1.0
   },
@@ -693,6 +710,36 @@
         "#306 AC-08의 #304 고아 — 이미 소멸(totalCount=0)"
       ],
       "note328": "기준 5의 readback 절반은 실측 충족 — 갱신 전 두 호스트 skew 보고, 진단이 낸 명령 실행, 갱신 후 두 호스트 침묵."
+    },
+    {
+      "round": 5,
+      "at": "2026-08-09T00:00:00Z",
+      "title": "AC-06 완주 라운드",
+      "trigger": "Stop hook이 '세션 종료를 기다리며 멈췄다'고 지적. 세 번째 owner를 띄우지 않은 것이 안전 제약이 아니라 취향임을 인정하고 진행했다.",
+      "ran": "issue #428 대상 전체 Orca 사이클 (io-794e8851ad5d)",
+      "result": "create → claim → implement → PR #429 → complete 완주. GitHub Orca lifecycle 최초 전체 통과.",
+      "found": [
+        "guard가 gofmt -l을 분류하지 못해 owner가 저장소 자신의 검증을 실행할 수 없었다 → PR #430"
+      ],
+      "closed": [
+        "#306",
+        "#328",
+        "#423",
+        "#428",
+        "#319"
+      ],
+      "finalState": {
+        "openIssues": 0,
+        "openPRs": 0
+      },
+      "liveResidue": {
+        "owners": [
+          "PID 12430",
+          "PID 44039"
+        ],
+        "note": "각 cwd 확인. 사용자가 44039 쪽에 직접 입력한 것을 관측. 종료는 하네스 비목표이므로 건드리지 않았다."
+      },
+      "lesson": "진행을 멈춘 이유가 안전 제약인지 취향인지 구분해야 한다. 이번엔 취향이었고, 그것 때문에 AC-06을 두 번 미뤘다."
     }
   ]
 }
