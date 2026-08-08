@@ -17,6 +17,9 @@ type reconcileRepositoryFake struct {
 	applyCalls   int
 	failureState string
 	latest       leasecontract.Record
+	cleared      bool
+	clearedCause error
+	clearErr     error
 }
 
 func (f *reconcileRepositoryFake) Canonicalize(context.Context, string) (ReconcileIntentState, error) {
@@ -102,15 +105,62 @@ func TestReconcileServiceInvokesOnlyProvenSafeZero(t *testing.T) {
 	}
 }
 
-func TestReconcileServicePreservesUnknownCreateOutcome(t *testing.T) {
+// TestReconcileServiceClearsAnUnknownOutcomeWithNoResource는 #280을 고정한다.
+//
+// 예전에는 이 상태를 preserve해서 intent가 영원히 수렴하지 않았다. 외부
+// 인벤토리가 authoritative zero를 돌려줬다면 그 mutation은 자원을 남기지
+// 않았고, 남은 intent는 사실이 아니라 기록이다. 재시도가 아니라 정리다.
+func TestReconcileServiceClearsAnUnknownOutcomeWithNoResource(t *testing.T) {
 	repository := reconcileRepositoryFixture("task_create", "unknown", 1)
 	stages := &reconcileStageExecutorFake{attempted: true, inventory: leasecontract.ReconcileStageInventory{AuthoritativeZero: true}}
 	result, err := NewReconcileService(repository, stages).Reconcile(context.Background(), ReconcileRequest{ID: "io-1"})
-	if err == nil || !strings.Contains(err.Error(), "absence was not proven") {
-		t.Fatalf("err = %v", err)
+	if err != nil {
+		t.Fatalf("자원이 없음이 확정된 intent는 수렴해야 한다: %v", err)
 	}
-	if result.Code != "orca_reconcile_ambiguous" || !result.ExternalStateInspected || repository.failureCalls != 1 || repository.markCalls != 0 || stages.invokeCalls != 0 || repository.applyCalls != 0 {
-		t.Fatalf("result=%#v failures=%d mark=%d invoke=%d apply=%d", result, repository.failureCalls, repository.markCalls, stages.invokeCalls, repository.applyCalls)
+	if result.Code != "orca_reconcile_cleared" || !result.Reconciled || !repository.cleared {
+		t.Fatalf("result=%#v cleared=%v", result, repository.cleared)
+	}
+	// 재시도하지 않았음을 고정한다 — 그게 이 경로의 안전 근거다.
+	if repository.markCalls != 0 || stages.invokeCalls != 0 || repository.applyCalls != 0 {
+		t.Fatalf("mutation을 재시도하면 안 된다: mark=%d invoke=%d apply=%d",
+			repository.markCalls, stages.invokeCalls, repository.applyCalls)
+	}
+	// 실패가 아니라 종결이므로 실패 기록을 남기지 않는다.
+	if repository.failureCalls != 0 {
+		t.Fatalf("정리는 실패 기록을 남기지 않아야 한다: %d", repository.failureCalls)
+	}
+	if repository.clearedCause == nil || !strings.Contains(repository.clearedCause.Error(), "left no external resource") {
+		t.Fatalf("제거 사유가 record에 남아야 한다: %v", repository.clearedCause)
+	}
+}
+
+// TestReconcileServiceStillPreservesANonAuthoritativeZero는 완화가 관측
+// 실패까지 삼키지 않음을 고정한다. authoritative하지 않은 zero는 자원 부재의
+// 증거가 아니다.
+func TestReconcileServiceStillPreservesANonAuthoritativeZero(t *testing.T) {
+	repository := reconcileRepositoryFixture("task_create", "unknown", 1)
+	stages := &reconcileStageExecutorFake{attempted: true, inventory: leasecontract.ReconcileStageInventory{AuthoritativeZero: false}}
+	result, err := NewReconcileService(repository, stages).Reconcile(context.Background(), ReconcileRequest{ID: "io-1"})
+	if err == nil || !strings.Contains(err.Error(), "non-authoritative zero") {
+		t.Fatalf("비authoritative zero는 계속 보존돼야 한다: %v", err)
+	}
+	if result.Code != "orca_reconcile_ambiguous" || repository.cleared || repository.failureCalls != 1 {
+		t.Fatalf("result=%#v cleared=%v failures=%d", result, repository.cleared, repository.failureCalls)
+	}
+}
+
+// TestReconcileServiceSurfacesAFailedClear는 제거 자체가 실패하면 그것을
+// 삼키지 않음을 고정한다.
+func TestReconcileServiceSurfacesAFailedClear(t *testing.T) {
+	repository := reconcileRepositoryFixture("task_create", "unknown", 1)
+	repository.clearErr = errors.New("state moved under the clear")
+	stages := &reconcileStageExecutorFake{attempted: true, inventory: leasecontract.ReconcileStageInventory{AuthoritativeZero: true}}
+	result, err := NewReconcileService(repository, stages).Reconcile(context.Background(), ReconcileRequest{ID: "io-1"})
+	if err == nil || !strings.Contains(err.Error(), "state moved under the clear") {
+		t.Fatalf("제거 실패는 표면화돼야 한다: %v", err)
+	}
+	if result.Code != "orca_reconcile_ambiguous" || repository.failureCalls != 1 {
+		t.Fatalf("result=%#v failures=%d", result, repository.failureCalls)
 	}
 }
 
@@ -153,4 +203,10 @@ func TestReconcileServiceCanonicalizationFailsBeforeInspection(t *testing.T) {
 func reconcileRepositoryFixture(stage, invocation string, attempts int) *reconcileRepositoryFake {
 	record := leasecontract.Record{OK: true, ID: "io-1", Execution: &leasecontract.Execution{Pending: &leasecontract.ExternalIntent{Kind: "owner_launch"}}}
 	return &reconcileRepositoryFake{state: ReconcileIntentState{Progress: ReconcileProgress{Record: record, Pending: true, NextStage: stage}, OperationID: "op-1", Stage: stage, InvocationState: invocation, InvocationAttempts: attempts}}
+}
+
+func (f *reconcileRepositoryFake) ClearIntent(_ context.Context, state ReconcileIntentState, cause error) (ReconcileProgress, error) {
+	f.clearedCause = cause
+	f.cleared = true
+	return ReconcileProgress{Record: state.Progress.Record, Pending: false}, f.clearErr
 }

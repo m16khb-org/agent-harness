@@ -11,7 +11,9 @@ import (
 )
 
 type reconcileEffectsFake struct {
-	state ReconcileEffectState
+	state          ReconcileEffectState
+	clearedIntent  bool
+	clearIntentErr error
 }
 
 func (f *reconcileEffectsFake) Canonicalize(context.Context, string) (ReconcileEffectState, error) {
@@ -57,4 +59,10 @@ func TestReconcileStageExecutorPreservesAttemptDisclosure(t *testing.T) {
 	if !attempted || !errors.Is(err, wantErr) {
 		t.Fatalf("attempted=%t err=%v", attempted, err)
 	}
+}
+
+func (f *reconcileEffectsFake) ClearIntent(_ context.Context, state ReconcileEffectState, _ error) (ReconcileEffectState, error) {
+	f.clearedIntent = true
+	state.Pending = false
+	return state, f.clearIntentErr
 }

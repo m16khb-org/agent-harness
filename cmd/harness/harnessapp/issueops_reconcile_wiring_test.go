@@ -160,8 +160,11 @@ func TestIssueOpsReconcileVerticalUsesInjectedClockForFailureReceipt(t *testing.
 	}, issueops.ExecutionReconcileDependencies{
 		Orca: fake, Handler: issueOpsReconcileHandler, Now: func() time.Time { return want },
 	})
-	if err == nil {
-		t.Fatal("ambiguous invocation must retain the intent")
+	// #280: 외부 인벤토리가 authoritative zero를 돌려주면 intent를 보존하지
+	// 않고 제거한다. 그래도 종결 사유는 record에 남고, 그 시각은 주입된
+	// clock을 써야 한다 — 이 테스트의 주 목적은 그 clock이다.
+	if err != nil {
+		t.Fatalf("자원이 없음이 확정된 intent는 수렴해야 한다: %v", err)
 	}
 	persisted, err := issueops.ReadIssueOps(stateRoot, record.ID)
 	if err != nil {
@@ -169,6 +172,12 @@ func TestIssueOpsReconcileVerticalUsesInjectedClockForFailureReceipt(t *testing.
 	}
 	if persisted.Execution.Failure == nil || persisted.Execution.Failure.At != want.Format(time.RFC3339Nano) {
 		t.Fatalf("failure=%#v", persisted.Execution.Failure)
+	}
+	if persisted.Execution.Failure.Code != "external_operation_left_no_resource" {
+		t.Fatalf("종결 사유가 정리임을 밝혀야 한다: %#v", persisted.Execution.Failure)
+	}
+	if persisted.Execution.Pending != nil {
+		t.Fatalf("정리된 intent는 남지 않아야 한다: %#v", persisted.Execution.Pending)
 	}
 }
 

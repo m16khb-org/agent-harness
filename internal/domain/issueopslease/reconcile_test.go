@@ -12,7 +12,11 @@ func TestPlanReconcileStage(t *testing.T) {
 		{name: "exact candidate is adopted", input: ReconcileStageRequest{CandidateCount: 1}, action: ReconcileStageAdopt},
 		{name: "multiple candidates are preserved", input: ReconcileStageRequest{CandidateCount: 2}, action: ReconcileStagePreserve, reason: "multiple-candidates"},
 		{name: "non authoritative zero is preserved", input: ReconcileStageRequest{AuthoritativeZero: false}, action: ReconcileStagePreserve, reason: "non-authoritative-zero"},
-		{name: "unknown create outcome is preserved", input: ReconcileStageRequest{Stage: "task_create", AuthoritativeZero: true, InvocationState: "unknown"}, action: ReconcileStagePreserve, reason: "unknown-invocation"},
+		// #280: authoritative zero면 자원이 없음이 확정됐다. 재시도는 못 하지만
+		// 남은 intent는 사실이 아니므로 지운다 — 그렇지 않으면 영원히 수렴하지 않는다.
+		{name: "unknown create outcome with no resource is cleared", input: ReconcileStageRequest{Stage: "task_create", AuthoritativeZero: true, InvocationState: "unknown"}, action: ReconcileStageClear, reason: "invocation-left-no-resource"},
+		// 자원이 있으면(candidate 관측) 여전히 adopt이고, 비authoritative zero는 preserve다.
+		{name: "non authoritative zero is still preserved even when invoked", input: ReconcileStageRequest{Stage: "task_create", AuthoritativeZero: false, InvocationState: "unknown"}, action: ReconcileStagePreserve, reason: "non-authoritative-zero"},
 		{name: "first proven absent invocation is allowed", input: ReconcileStageRequest{Stage: "task_create", AuthoritativeZero: true, InvocationState: "not_invoked_proven", InvocationAttempts: 0}, action: ReconcileStageInvoke},
 		{name: "one proven absent retry is allowed", input: ReconcileStageRequest{Stage: "task_create", AuthoritativeZero: true, InvocationState: "not_invoked_proven", InvocationAttempts: 1}, action: ReconcileStageInvoke},
 		{name: "second retry is exhausted", input: ReconcileStageRequest{Stage: "task_create", AuthoritativeZero: true, InvocationState: "not_invoked_proven", InvocationAttempts: 2}, action: ReconcileStagePreserve, reason: "retry-exhausted"},

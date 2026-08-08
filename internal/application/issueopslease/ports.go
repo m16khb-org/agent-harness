@@ -167,6 +167,9 @@ type ReconcileRepository interface {
 	MarkInvoking(context.Context, ReconcileIntentState) (ReconcileIntentState, error)
 	RecordFailure(context.Context, ReconcileIntentState, string, error) error
 	ApplyReceipt(context.Context, ReconcileIntentState, leasecontract.ReconcileStageReceipt) (ReconcileProgress, error)
+	// ClearIntent는 외부 자원이 없음이 authoritative하게 확인된 intent를
+	// 제거한다. 재시도가 아니라 기록 정리다(#280).
+	ClearIntent(context.Context, ReconcileIntentState, error) (ReconcileProgress, error)
 	Latest(context.Context, string) (leasecontract.Record, error)
 }
 

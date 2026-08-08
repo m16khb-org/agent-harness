@@ -637,3 +637,38 @@ func intentPortStage(stage preparationcontract.IntentStage) port.ExecutionOrcaIn
 func intentContractStage(stage port.ExecutionOrcaIntentStage) preparationcontract.IntentStage {
 	return preparationcontract.IntentStage(stage)
 }
+
+// ClearOrcaIntentWithNoResource는 외부 자원이 없음이 authoritative하게 확인된
+// intent를 제거한다.
+//
+// 재시도가 아니다. mutation이 실행됐는지 모르더라도 인벤토리가 authoritative
+// zero를 돌려줬다면 그 mutation은 자원을 남기지 않았고, 남은 intent는 사실이
+// 아니라 기록이다. 그 기록을 지우는 데는 중복 생성 위험이 없다(#280).
+//
+// CAS는 그대로다. 기대한 record/intent raw와 다르면 아무것도 바꾸지 않는다 —
+// 사이에 상태가 움직였다면 그 관측은 이미 낡았다.
+func ClearOrcaIntentWithNoResource(stateRoot string, record issueops.IssueOpsRecord, expected externalOrcaIntentPayload, expectedRecordRaw, expectedIntentRaw []byte, cause error, now func() time.Time) (issueops.IssueOpsRecord, error) {
+	persisted := record
+	err := withIssueOpsLock(context.Background(), stateRoot, record.ID, func(context.Context) error {
+		if err := validateOrcaIntentExpectedRecord(record, expected); err != nil {
+			return err
+		}
+		current := record
+		current.Execution.Pending = nil
+		current.Execution.Failure = &issueops.ExecutionFailure{
+			OperationID: expected.OperationID,
+			Code:        "external_operation_left_no_resource",
+			Message:     boundedExecutionRemoteDiagnostic(cause),
+			At:          executionNow(now),
+		}
+		var persistErr error
+		persisted, persistErr = persistOrcaIntentTransition(stateRoot, current, expected.OperationID,
+			expectedRecordRaw, expectedIntentRaw,
+			[]port.RecordMutation{{Bucket: externalIntentBucket, ID: expected.OperationID, Delete: true}})
+		return persistErr
+	})
+	if err != nil {
+		return record, err
+	}
+	return persisted, nil
+}
