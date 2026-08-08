@@ -284,14 +284,8 @@ func githubSteps(issueURL, branch, baseBranch, baseSHA string) []model.IssueOpsB
 	// 성공한다(#163 실측). Orca는 로컬 워크트리와 로컬 브랜치만 만들고 push하지
 	// 않으므로, 먼저 실행하면 Orca가 이름 충돌로 막히고(#149·#152·#154) 나중에
 	// 실행하면 linked branch 추적을 그대로 얻는다.
-	// Orca 순서 안내. 이 문구가 execution prepare의 실제 판정과 어긋나면 documented
-	// flow를 따르는 사용자가 막힌다 — 실제로 그랬다(#319). 지금은 봉인된 base 그대로인
-	// linked branch를 prepare가 채택하므로 두 순서가 모두 성립하고, 그 조건을 밝힌다.
-	const orcaOrder = "For Orca mode either order works. Running this first is safe as long as the linked branch " +
-		"stays at the sealed base: `issueops execution prepare --mode orca` adopts a remote branch whose tip is " +
-		"exactly that SHA. Once any commit lands on it, prepare blocks instead of letting Orca take a suffixed " +
-		"name — run this after `issueops execution prepare` in that case, because Orca creates the local branch " +
-		"without pushing and the name is still free on the remote."
+	const orcaOrder = "For Orca mode run this after `issueops execution prepare` instead: Orca creates the local branch " +
+		"without pushing, so the name is still free on the remote and the link still attaches."
 	steps := []model.IssueOpsBranchPrepareStep{{
 		Order:       1,
 		Strategy:    "mcp_unavailable",
