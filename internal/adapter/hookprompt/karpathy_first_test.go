@@ -3,6 +3,7 @@ package hookprompt_test
 import (
 	"agent-harness/internal/adapter/hookprompt"
 	lifecycle "agent-harness/internal/adapter/lifecycle"
+	hookpromptcontract "agent-harness/internal/contract/hookprompt"
 	nextaction "agent-harness/internal/domain/nextaction"
 	"strings"
 	"testing"
@@ -17,7 +18,7 @@ func TestKarpathyFirstFiresOnSubstantivePrompts(t *testing.T) {
 		"안녕하세요, 오늘 날씨 어때요?",
 		"3개의 버그를 우선순위대로 고쳐줘",
 	} {
-		got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: prompt})
+		got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: prompt})
 		if !got.KarpathyFirst || !got.ShouldInject {
 			t.Fatalf("expected karpathy-first to fire for %q: %+v", prompt, got)
 		}
@@ -46,7 +47,7 @@ func TestKarpathyFirstSkipsPromptsWithoutFreshIntent(t *testing.T) {
 		"계속 진행",
 		"go ahead",
 	} {
-		got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: prompt})
+		got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: prompt})
 		if got.KarpathyFirst || got.UserNotice != "" {
 			t.Fatalf("karpathy-first must not fire for %q: %+v", prompt, got)
 		}
@@ -57,7 +58,7 @@ func TestKarpathyFirstSkipsPromptsWithoutFreshIntent(t *testing.T) {
 }
 
 func TestKarpathyFirstOptOutPrefixSkipsButKeepsRouting(t *testing.T) {
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "그대로: 변경사항 커밋하고 푸시해줘"})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "그대로: 변경사항 커밋하고 푸시해줘"})
 	if got.KarpathyFirst || got.UserNotice != "" || strings.Contains(got.AdditionalContext, "karpathy-first") {
 		t.Fatalf("opt-out prefix must skip karpathy-first: %+v", got)
 	}
@@ -74,7 +75,7 @@ func TestKarpathyFirstOptOutPrefixSkipsButKeepsRouting(t *testing.T) {
 }
 
 func TestKarpathyFirstDisableSwitchSkipsButKeepsRouting(t *testing.T) {
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{
 		Prompt:               "변경사항 커밋하고 푸시해줘",
 		DisableKarpathyFirst: true,
 	})
@@ -93,7 +94,7 @@ func TestKarpathyFirstDisableSwitchSkipsButKeepsRouting(t *testing.T) {
 }
 
 func TestKarpathyFirstOptOutPrefixAloneDoesNotInject(t *testing.T) {
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "그대로:"})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "그대로:"})
 	if got.ShouldInject || got.AdditionalContext != "" {
 		t.Fatalf("prefix-only prompt must not inject: %+v", got)
 	}
@@ -111,7 +112,7 @@ func TestKarpathyFirstExpandsChoiceReplyFromRelay(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	recordChoicesRelayForTest(t, repo)
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "2번", Repo: repo})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "2번", Repo: repo})
 	if !got.KarpathyFirst || !got.ShouldInject {
 		t.Fatalf("choice reply with relay record must fire expansion: %+v", got)
 	}
@@ -129,7 +130,7 @@ func TestKarpathyFirstExpandsRecommendedReplyFromRelay(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	recordChoicesRelayForTest(t, repo)
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "추천대로", Repo: repo})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "추천대로", Repo: repo})
 	if !got.KarpathyFirst || !strings.Contains(got.AdditionalContext, "킬스위치를 구현하고") {
 		t.Fatalf("recommended reply must expand to the recommended option: %+v", got)
 	}
@@ -138,7 +139,7 @@ func TestKarpathyFirstExpandsRecommendedReplyFromRelay(t *testing.T) {
 func TestKarpathyFirstChoiceExpansionStaysQuietWithoutRelay(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "2번", Repo: repo})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "2번", Repo: repo})
 	if got.KarpathyFirst || got.UserNotice != "" || strings.Contains(got.AdditionalContext, "karpathy-first") {
 		t.Fatalf("choice reply without a relay record must stay unaugmented: %+v", got)
 	}
@@ -148,11 +149,11 @@ func TestKarpathyFirstChoiceExpansionSkipsOutOfRangeAndDisabled(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	recordChoicesRelayForTest(t, repo)
-	outOfRange := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "9번", Repo: repo})
+	outOfRange := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "9번", Repo: repo})
 	if outOfRange.KarpathyFirst {
 		t.Fatalf("out-of-range choice must not expand: %+v", outOfRange)
 	}
-	disabled := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "2번", Repo: repo, DisableKarpathyFirst: true})
+	disabled := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "2번", Repo: repo, DisableKarpathyFirst: true})
 	if disabled.KarpathyFirst || strings.Contains(disabled.AdditionalContext, "karpathy-first") {
 		t.Fatalf("disable switch must also gate choice expansion: %+v", disabled)
 	}

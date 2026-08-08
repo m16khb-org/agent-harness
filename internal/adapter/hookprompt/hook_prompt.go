@@ -1,20 +1,12 @@
 package hookprompt
 
 import (
+	hookpromptcontract "agent-harness/internal/contract/hookprompt"
 	"strings"
 	"time"
 
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 )
-
-type HookUserPromptRequest struct {
-	Prompt               string `json:"prompt"`
-	Repo                 string `json:"repo,omitempty"`
-	Host                 string `json:"host,omitempty"`
-	SessionID            string `json:"session_id,omitempty"`
-	EnableLLMHints       bool   `json:"enable_llm_hints,omitempty"`
-	DisableKarpathyFirst bool   `json:"disable_karpathy_first,omitempty"`
-}
 
 const (
 	hintPriorityRequired  = PriorityRequired
@@ -29,23 +21,11 @@ const (
 // actually needed.
 const nextActionPolicyHint = "next-action: decision turns need 3 choices/1 recommendation; recommend only safe/reversible/aligned options; Stop hook relays full decision details"
 
-type HookUserPromptResult struct {
-	OK                bool                     `json:"ok"`
-	Kind              string                   `json:"kind"`
-	GeneratedAt       string                   `json:"generated_at"`
-	ShouldInject      bool                     `json:"should_inject"`
-	AdditionalContext string                   `json:"additional_context,omitempty"`
-	Hints             []HookUserPromptHint     `json:"hints,omitempty"`
-	ProjectDocs       []ProjectDocCatalogEntry `json:"project_docs,omitempty"`
-	KarpathyFirst     bool                     `json:"karpathy_first,omitempty"`
-	UserNotice        string                   `json:"user_notice,omitempty"`
-}
+type HookUserPromptHint = hookpromptcontract.Hint
 
-type HookUserPromptHint = Hint
-
-func BuildUserPromptMCPHints(req HookUserPromptRequest) HookUserPromptResult {
+func BuildUserPromptMCPHints(req hookpromptcontract.HookUserPromptRequest) hookpromptcontract.HookUserPromptResult {
 	prompt := strings.TrimSpace(req.Prompt)
-	result := HookUserPromptResult{
+	result := hookpromptcontract.HookUserPromptResult{
 		OK:          true,
 		Kind:        "hook_user_prompt",
 		GeneratedAt: time.Now().Format(time.RFC3339),

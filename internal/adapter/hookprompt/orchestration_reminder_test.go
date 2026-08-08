@@ -1,6 +1,7 @@
 package hookprompt
 
 import (
+	hookpromptcontract "agent-harness/internal/contract/hookprompt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -152,7 +153,7 @@ func TestOrchestrationRelayBoundCountsNonDroppedChildren(t *testing.T) {
 func TestUserPromptHintsIncludeOrchestrationReminder(t *testing.T) {
 	repo, parent := seedOrchestrationReminderFixture(t)
 
-	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "continue", Repo: repo})
+	got := BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "continue", Repo: repo})
 	if !got.ShouldInject {
 		t.Fatalf("expected user prompt hints to inject dynamic context")
 	}

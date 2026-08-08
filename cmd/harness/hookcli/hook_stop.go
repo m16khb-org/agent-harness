@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
-	hookprompt "agent-harness/internal/adapter/hookprompt"
 	lifecycle "agent-harness/internal/adapter/lifecycle"
 	hookadapter "agent-harness/internal/domain/hook"
 	nextaction "agent-harness/internal/domain/nextaction"
@@ -78,7 +77,7 @@ func runHookStop(args []string) error {
 			return printJSON(ho.FormatNoop())
 		}
 		reason := nextaction.BuildJudgementRelayReason(nextActionTrigger)
-		if facts := hookprompt.StopOrchestrationRelayFacts(parsedRepo); facts != "" {
+		if facts := StopOrchestrationRelayFacts(parsedRepo); facts != "" {
 			reason += " 관찰된 orchestration 상태: " + facts + "."
 		}
 		return printJSON(ho.FormatStopBlock(reason))

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
-	hookprompt "agent-harness/internal/adapter/hookprompt"
 	lifecycle "agent-harness/internal/adapter/lifecycle"
 	installcontract "agent-harness/internal/contract/install"
 	hookadapter "agent-harness/internal/domain/hook"
@@ -48,7 +47,7 @@ func RunPostCompact(args []string, config Config) error {
 	if *jsonOut {
 		return config.PrintJSON(result)
 	}
-	cat := hookprompt.BuildProjectDocCatalogContext(parsedRepo)
+	cat := BuildProjectDocCatalogContext(parsedRepo)
 
 	// Codex post-compact uses systemMessage only.
 	if hostOf(hostFlag) == "codex" {
@@ -121,7 +120,7 @@ func RunSessionStart(args []string, config Config) error {
 	if parsedRepo == "" {
 		parsedRepo = config.ResolveTarget("")
 	}
-	cat := hookprompt.BuildProjectDocCatalogContext(parsedRepo)
+	cat := BuildProjectDocCatalogContext(parsedRepo)
 	if *jsonOut {
 		return config.PrintJSON(cat)
 	}

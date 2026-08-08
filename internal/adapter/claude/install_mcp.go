@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"agent-harness/internal/adapter/installutil"
 	"agent-harness/internal/port"
 )
 
@@ -26,7 +25,7 @@ func writeClaudeUserMCP(path string, req port.NativeInstallRequest) (port.Instal
 	}
 	delete(mcpServers, "agent-harness")
 	mcpServers["agent_harness"] = claudeUserMCPServer(req)
-	return installutil.WriteJSONPlan(path, file.Kind, config, 0o600, req.DryRun)
+	return WriteJSONPlan(path, file.Kind, config, 0o600, req.DryRun)
 }
 
 func claudeUserMCPServer(req port.NativeInstallRequest) map[string]any {

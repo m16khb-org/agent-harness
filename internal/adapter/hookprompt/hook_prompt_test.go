@@ -4,6 +4,7 @@ import (
 	"agent-harness/internal/adapter/hookprompt"
 	lifecycle "agent-harness/internal/adapter/lifecycle"
 	projectbootstrap "agent-harness/internal/adapter/projectbootstrap"
+	hookpromptcontract "agent-harness/internal/contract/hookprompt"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"os"
 	"path/filepath"
@@ -14,7 +15,7 @@ import (
 func TestBuildUserPromptMCPHintsInjectsConciseNextActionReminder(t *testing.T) {
 	// UserPromptSubmit must stay compact because Codex renders additionalContext
 	// inline in the hook transcript. The full policy belongs to Stop relay.
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "아무 작업이나 진행해줘"})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "아무 작업이나 진행해줘"})
 	if !got.OK || !got.ShouldInject {
 		t.Fatalf("expected next-action reminder to inject for a non-empty prompt: %+v", got)
 	}
@@ -31,7 +32,7 @@ func TestBuildUserPromptMCPHintsInjectsConciseNextActionReminder(t *testing.T) {
 }
 
 func TestBuildUserPromptMCPHintsLeavesJudgementDetailsToStopRelay(t *testing.T) {
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "작업을 마무리해줘"})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "작업을 마무리해줘"})
 	for _, gone := range []string{"State the auto-proceed or no-auto-proceed rationale", "no-auto-proceed judgement is sticky", "recommended option is continued implementation"} {
 		if strings.Contains(got.AdditionalContext, gone) {
 			t.Fatalf("UserPromptSubmit must not carry Stop relay judgement detail %q:\n%s", gone, got.AdditionalContext)
@@ -40,7 +41,7 @@ func TestBuildUserPromptMCPHintsLeavesJudgementDetailsToStopRelay(t *testing.T) 
 }
 
 func TestBuildUserPromptMCPHintsKeepsAutoContinuationContextShort(t *testing.T) {
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "foldering slice가 모두 완료될 때까지 자동진행"})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "foldering slice가 모두 완료될 때까지 자동진행"})
 	if !strings.Contains(got.AdditionalContext, "next-action:") {
 		t.Fatalf("expected short next-action reminder:\n%s", got.AdditionalContext)
 	}
@@ -53,7 +54,7 @@ func TestBuildUserPromptMCPHintsKeepsAutoContinuationContextShort(t *testing.T) 
 }
 
 func TestBuildUserPromptMCPHintsDoesNotInjectStickyNoAutoProceedPolicy(t *testing.T) {
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "계속 진행"})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "계속 진행"})
 	for _, gone := range []string{"no-auto-proceed", "sticky", "goal continuation", "explicit user choice"} {
 		if strings.Contains(got.AdditionalContext, gone) {
 			t.Fatalf("sticky no-auto-proceed policy belongs to Stop relay, found %q:\n%s", gone, got.AdditionalContext)
@@ -62,7 +63,7 @@ func TestBuildUserPromptMCPHintsDoesNotInjectStickyNoAutoProceedPolicy(t *testin
 }
 
 func TestBuildUserPromptMCPHintsForAPIWork(t *testing.T) {
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "새 endpoint와 DTO를 추가해줘"})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "새 endpoint와 DTO를 추가해줘"})
 	if !got.OK || !got.ShouldInject {
 		t.Fatalf("expected injected hint: %+v", got)
 	}
@@ -75,7 +76,7 @@ func TestBuildUserPromptMCPHintsForAPIWork(t *testing.T) {
 }
 
 func TestBuildUserPromptMCPHintsRoutesProblemToPR(t *testing.T) {
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "문제 파악부터 GitLab 이슈, 구현 계획, TDD, 피드백 루프, MR까지 진행해줘"})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "문제 파악부터 GitLab 이슈, 구현 계획, TDD, 피드백 루프, MR까지 진행해줘"})
 	for _, want := range []string{"issueops", "issue-driven workflow", "hooks must not create issues or PRs"} {
 		if !strings.Contains(got.AdditionalContext, want) {
 			t.Fatalf("issueops hint missing %q:\n%s", want, got.AdditionalContext)
@@ -84,14 +85,14 @@ func TestBuildUserPromptMCPHintsRoutesProblemToPR(t *testing.T) {
 }
 
 func TestBuildUserPromptMCPHintsForBugRecordsCaution(t *testing.T) {
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "이 회귀 버그 고쳐줘"})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "이 회귀 버그 고쳐줘"})
 	if !strings.Contains(got.AdditionalContext, "record reusable caution") {
 		t.Fatalf("expected caution record hint:\n%s", got.AdditionalContext)
 	}
 }
 
 func TestBuildUserPromptMCPHintsUsesCompactBanner(t *testing.T) {
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "새 endpoint와 DTO를 추가해줘"})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "새 endpoint와 DTO를 추가해줘"})
 	for _, want := range []string{"[agent-harness]\n", "- docs:", "- actions:", "- next-action:", "- rule:"} {
 		if !strings.Contains(got.AdditionalContext, want) {
 			t.Fatalf("compact multiline context missing %q:\n%s", want, got.AdditionalContext)
@@ -130,7 +131,7 @@ func TestRenderHookMCPHintContextNormalizesFallbackLabels(t *testing.T) {
 func TestBuildUserPromptMCPHintsDropsKeywordDocPrescription(t *testing.T) {
 	// Architecture keywords used to prescribe required:/consider: docs. That
 	// verdict is removed; doc choice is left to the agent via the catalog.
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "hook 구조와 대안을 설계해줘"})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "hook 구조와 대안을 설계해줘"})
 	for _, gone := range []string{"required:", "consider:", "ARCHITECTURE.md", "ADR.md"} {
 		if strings.Contains(got.AdditionalContext, gone) {
 			t.Fatalf("keyword doc prescription should be gone, found %q:\n%s", gone, got.AdditionalContext)
@@ -151,7 +152,7 @@ func TestBuildUserPromptMCPHintsOmitExternalCompanionTools(t *testing.T) {
 		"llm-wiki knowledge base에서 research 자료를 compile해줘",
 	}
 	for _, prompt := range prompts {
-		got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: prompt})
+		got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: prompt})
 		for _, gone := range []string{"CodeGraph", "LLM Wiki", "claude-mem", "agentmemory"} {
 			if strings.Contains(got.AdditionalContext, gone) {
 				t.Fatalf("external companion tool hint %q should be gone for prompt %q:\n%s", gone, prompt, got.AdditionalContext)
@@ -161,7 +162,7 @@ func TestBuildUserPromptMCPHintsOmitExternalCompanionTools(t *testing.T) {
 }
 
 func TestBuildUserPromptMCPHintsRequiresGitLabUsecase(t *testing.T) {
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "GitLab child items와 linked items를 정리하고 MR까지 진행해줘"})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "GitLab child items와 linked items를 정리하고 MR까지 진행해줘"})
 	for _, want := range []string{"required:", "gitlab-usecase", "linked items from child items", "actions:", "VCS remote work"} {
 		if !strings.Contains(got.AdditionalContext, want) {
 			t.Fatalf("GitLab usecase hint missing %q:\n%s", want, got.AdditionalContext)
@@ -181,7 +182,7 @@ func TestBuildUserPromptMCPHintsRequiresGitLabUsecaseFromRepoProfile(t *testing.
 	if _, err := projectbootstrap.BootstrapProjectDocs(projectbootstrap.ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
 		t.Fatal(err)
 	}
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "이슈 만들고 MR까지 진행해줘", Repo: root})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "이슈 만들고 MR까지 진행해줘", Repo: root})
 	for _, want := range []string{
 		"required:",
 		"gitlab-usecase",
@@ -200,32 +201,32 @@ func TestBuildUserPromptMCPHintsRequiresGitLabUsecaseFromRepoProfile(t *testing.
 }
 
 func TestBuildUserPromptMCPHintsRoutesLLMReviewWhenEnabled(t *testing.T) {
-	disabled := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "이 계획을 검토하고 개선점을 분석해줘"})
+	disabled := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "이 계획을 검토하고 개선점을 분석해줘"})
 	if strings.Contains(disabled.AdditionalContext, "host-agent prompt for second-pass review") {
 		t.Fatalf("LLM hint should be opt-in:\n%s", disabled.AdditionalContext)
 	}
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "이 계획을 검토하고 개선점을 분석해줘", EnableLLMHints: true})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "이 계획을 검토하고 개선점을 분석해줘", EnableLLMHints: true})
 	if !strings.Contains(got.AdditionalContext, "host-agent prompt for second-pass review") {
 		t.Fatalf("expected LLM secondary hint:\n%s", got.AdditionalContext)
 	}
 }
 
 func TestBuildUserPromptMCPHintsEmptyPromptDoesNotInject(t *testing.T) {
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "   "})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "   "})
 	if got.ShouldInject || got.AdditionalContext != "" || len(got.Hints) != 0 {
 		t.Fatalf("expected no injection for empty prompt: %+v", got)
 	}
 }
 
 func TestBuildUserPromptMCPHintsAmbiguousPromptEmphasizesRoute(t *testing.T) {
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "이거 좀 개선해줘"})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "이거 좀 개선해줘"})
 	if !strings.Contains(got.AdditionalContext, "docs:") || strings.Contains(got.AdditionalContext, "required:") {
 		t.Fatalf("ambiguous prompt should emphasize route without required docs:\n%s", got.AdditionalContext)
 	}
 }
 
 func TestBuildUserPromptMCPHintsDoesNotTreatPRSubstringAsCommit(t *testing.T) {
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "print output formatting을 확인해줘"})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "print output formatting을 확인해줘"})
 	if strings.Contains(got.AdditionalContext, "COMMIT_POLICY.md") {
 		t.Fatalf("substring pr should not trigger commit policy:\n%s", got.AdditionalContext)
 	}
@@ -245,7 +246,7 @@ func TestBuildUserPromptMCPHintsIncludesPendingUpkeep(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "계속", Repo: root})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "계속", Repo: root})
 	for _, want := range []string{"pending upkeep:", "OPERATIONS.md", "Hook behavior changed.", "refresh project docs only if evidence changed"} {
 		if !strings.Contains(got.AdditionalContext, want) {
 			t.Fatalf("pending upkeep hint missing %q:\n%s", want, got.AdditionalContext)
@@ -268,7 +269,7 @@ func TestBuildUserPromptMCPHintsIncludesProjectProfile(t *testing.T) {
 	if _, err := projectbootstrap.BootstrapProjectDocs(projectbootstrap.ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
 		t.Fatal(err)
 	}
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "이거 좀 개선해줘", Repo: root})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "이거 좀 개선해줘", Repo: root})
 	for _, want := range []string{"profile:", "gitlab/self-hosted@gitlab.example.internal", "JavaScript/TypeScript", "backend", "frontend", "fullstack"} {
 		if !strings.Contains(got.AdditionalContext, want) {
 			t.Fatalf("profile hint missing %q:\n%s", want, got.AdditionalContext)

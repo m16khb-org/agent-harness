@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"agent-harness/internal/adapter/installutil"
 	"agent-harness/internal/port"
 )
 
@@ -21,7 +20,7 @@ func writeClaudeSettings(path string, req port.NativeInstallRequest) (port.Insta
 		return file, nil, err
 	}
 	messages := HookTargetDriftMessages(config, "claude", req.BinPath)
-	written, err := installutil.WriteJSONPlan(path, file.Kind, mergeClaudeHookConfig(config, req.BinPath), 0o644, req.DryRun)
+	written, err := WriteJSONPlan(path, file.Kind, mergeClaudeHookConfig(config, req.BinPath), 0o644, req.DryRun)
 	return written, messages, err
 }
 

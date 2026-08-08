@@ -1,6 +1,7 @@
 package hookprompt
 
 import (
+	hookpromptcontract "agent-harness/internal/contract/hookprompt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -90,7 +91,7 @@ func TestBuildUserPromptMCPHintsHasNoCatalog(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
 	writeProjectDoc(t, repo, "ARCHITECTURE.md", "# 아키텍처\n\n## 핵심 경계\n")
-	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "이거 좀 개선해줘", Repo: repo})
+	got := BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "이거 좀 개선해줘", Repo: repo})
 	if strings.Contains(got.AdditionalContext, "project docs (read what's relevant):") {
 		t.Fatalf("user-prompt must not embed the catalog: %s", got.AdditionalContext)
 	}
@@ -110,18 +111,18 @@ func TestBuildUserPromptMCPHintsIncludesLinkedWorktreeReminder(t *testing.T) {
 	}
 	worktree := linkedWorktreeCycleForHookPromptTest(t, repo, "2519-test-quality-comprehensive")
 
-	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "계획 계속 진행", Repo: repo})
+	got := BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "계획 계속 진행", Repo: repo})
 	if !strings.Contains(got.AdditionalContext, "worktree: "+worktree) || !strings.Contains(got.AdditionalContext, "편집 전 cwd/절대경로 확인") {
 		t.Fatalf("user prompt context missing worktree reminder:\n%s", got.AdditionalContext)
 	}
 	emptyRepo := filepath.Join(t.TempDir(), "agent-harness")
-	if noCycle := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "계획 계속 진행", Repo: emptyRepo}); strings.Contains(noCycle.AdditionalContext, "편집 전 cwd/절대경로 확인") {
+	if noCycle := BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "계획 계속 진행", Repo: emptyRepo}); strings.Contains(noCycle.AdditionalContext, "편집 전 cwd/절대경로 확인") {
 		t.Fatalf("user prompt context should not include worktree reminder without linked cycles:\n%s", noCycle.AdditionalContext)
 	}
 }
 
 func TestRenderUserPromptUserView(t *testing.T) {
-	result := HookUserPromptResult{
+	result := hookpromptcontract.HookUserPromptResult{
 		ProjectDocs: []ProjectDocCatalogEntry{
 			{RelPath: ".agent-harness/ADR.md", Title: "구현 계획", Description: "Structural decisions, rationale, and rejected alternatives."},
 			{RelPath: ".agent-harness/X.md", Title: "엑스", Description: ""},
@@ -136,13 +137,13 @@ func TestRenderUserPromptUserView(t *testing.T) {
 	if strings.Count(view, "\n") < 2 {
 		t.Fatalf("expected multi-line user view:\n%s", view)
 	}
-	if got := RenderUserPromptUserView(HookUserPromptResult{}); got != "" {
+	if got := RenderUserPromptUserView(hookpromptcontract.HookUserPromptResult{}); got != "" {
 		t.Fatalf("expected empty user view without docs, got %q", got)
 	}
 }
 
 func TestRenderUserPromptCodexContextPreservesFullCatalogForAgent(t *testing.T) {
-	result := HookUserPromptResult{
+	result := hookpromptcontract.HookUserPromptResult{
 		AdditionalContext: "[agent-harness] 프로젝트 지침 확인 중... | project docs (read what's relevant): ADR.md=Structural decisions, rationale, and rejected alternatives. | route: choose project docs if ambiguous | rule: use docs/tools only when material",
 		ProjectDocs: []ProjectDocCatalogEntry{
 			{RelPath: ".agent-harness/ADR.md", Title: "구현 계획", Description: "Structural decisions, rationale, and rejected alternatives."},
@@ -175,7 +176,7 @@ func TestAppendCompactPendingUpkeepDeduplicatesEvents(t *testing.T) {
 }
 
 func TestBuildUserPromptMCPHintsNoCatalogWithoutRepoDocs(t *testing.T) {
-	got := BuildUserPromptMCPHints(HookUserPromptRequest{Prompt: "그냥 질문이야"})
+	got := BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: "그냥 질문이야"})
 	if strings.Contains(got.AdditionalContext, "project docs (read what's relevant):") {
 		t.Fatalf("catalog must not appear without a working repo: %s", got.AdditionalContext)
 	}

@@ -1,8 +1,10 @@
 package hookprompt
 
+import hookpromptcontract "agent-harness/internal/contract/hookprompt"
+
 import "strings"
 
-func fallbackHintPriority(h Hint) string {
+func fallbackHintPriority(h hookpromptcontract.Hint) string {
 	switch {
 	case strings.HasSuffix(h.Tool, ".md"):
 		return PriorityConsider
@@ -15,11 +17,11 @@ func fallbackHintPriority(h Hint) string {
 	}
 }
 
-func FallbackHintPriority(h Hint) string {
+func FallbackHintPriority(h hookpromptcontract.Hint) string {
 	return fallbackHintPriority(h)
 }
 
-func compactHintLabel(h Hint) string {
+func compactHintLabel(h hookpromptcontract.Hint) string {
 	switch h.Tool {
 	case "project_docs_route":
 		return "use project docs only when repo-specific context matters"
@@ -55,6 +57,6 @@ func compactHintLabel(h Hint) string {
 	}
 }
 
-func CompactHintLabel(h Hint) string {
+func CompactHintLabel(h hookpromptcontract.Hint) string {
 	return compactHintLabel(h)
 }
