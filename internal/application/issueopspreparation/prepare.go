@@ -67,6 +67,12 @@ func (service *Service) Prepare(ctx context.Context, command preparationcontract
 			if command.OwnerHost != "codex" && command.OwnerHost != "claude" {
 				return failedResult(command.ID), fmt.Errorf("Orca owner_host must be codex or claude")
 			}
+			// owner가 보충할 수 없는 planner 전제가 빠져 있으면 띄우지 않는다.
+			// 띄우면 owner는 claim까지 완주한 뒤 채울 수 없는 게이트에 부딪혀
+			// 반드시 실패한다 — 실측으로 그랬다(#319, io-cb83a79e1bfd).
+			if gates := preparationcontract.MissingPlannerGates(snapshot.Record); len(gates) > 0 {
+				return failedResult(command.ID), plannerGateError(gates)
+			}
 			codec := preparationcontract.IntentCodec{}
 			issue, issueErr := codec.PrepareIssueIdentity(snapshot.Record)
 			if issueErr != nil {
@@ -527,3 +533,15 @@ func writerlessError(record preparationcontract.Record, next string) error {
 func quoteArg(value string) string                      { return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'" }
 func formatTime(value time.Time) string                 { return value.UTC().Format(time.RFC3339Nano) }
 func failedResult(id string) preparationcontract.Result { return preparationcontract.Result{ID: id} }
+
+// plannerGateError는 무엇이 빠졌는지와 그것을 기록하는 정확한 명령을 함께
+// 돌려준다. 키만 나열하면 coordinator는 무엇을 실행할지 추측하게 된다.
+func plannerGateError(gates []preparationcontract.PlannerGate) error {
+	lines := make([]string, 0, len(gates)+1)
+	lines = append(lines, "Orca prepare needs planner-owned records the owner cannot supply: "+
+		strings.Join(preparationcontract.PlannerGateKeys(gates), ", ")+". Record them first:")
+	for _, gate := range gates {
+		lines = append(lines, "  "+gate.Command)
+	}
+	return errors.New(strings.Join(lines, "\n"))
+}

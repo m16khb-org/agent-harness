@@ -212,6 +212,11 @@ func newOrcaApplicationFixture() *orcaApplicationFixture {
 		SchemaVersion: 1, ID: "io-orca", Repo: "/repo", Branch: "199-orca", Phase: "implement",
 		IssueURL:      "https://github.com/example/repo/issues/199",
 		BranchPrepare: []byte(`{"provider":"github","issue_url":"https://github.com/example/repo/issues/199","branch":"199-orca","base_branch":"main","base_sha":"base","link_verified":true}`),
+		// planner 소유 전제는 owner가 보충할 수 없으므로 prepare가 이것들 없이는
+		// owner를 띄우지 않는다(#319). fixture는 유효한 출발 상태여야 한다.
+		Intent:               []byte(`{"raw_request":"r","interpreted_intent":"i","success_criteria":["c"]}`),
+		DesignReview:         []byte(`{"problem_summary":"p","proposed_design":"d","verification":["v"],"approved":true}`),
+		DevilsAdvocateReview: []byte(`{"verdict":"pass","recorded_at":"2026-08-09T00:00:00Z"}`),
 	}
 	fixture.repository = &orcaApplicationRepositoryFake{trace: &fixture.trace, snapshot: preparationcontract.Snapshot{Record: record, RecordRaw: []byte("raw")}, beginIndex: -1}
 	fixture.gateway = &orcaApplicationGatewayFake{trace: &fixture.trace, probe: preparationcontract.ProbeResult{Available: true, Ready: true}, firstEffectIndex: -1}
