@@ -7,12 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"agent-harness/internal/adapter/repopath"
 )
 
 func AppendProjectDocsRecord(req projectdocscontract.ProjectDocsRecordRequest) (projectdocscontract.ProjectDocsRecordResult, error) {
-	root, err := repopath.NormalizeRoot(req.RepoRoot)
+	root, err := NormalizeRepoRoot(req.RepoRoot)
 	if err != nil {
 		return projectdocscontract.ProjectDocsRecordResult{}, err
 	}

@@ -5,7 +5,6 @@ import (
 	"os/exec"
 	"strings"
 
-	"agent-harness/internal/adapter/repopath"
 	"agent-harness/internal/domain/judgement"
 	"agent-harness/internal/domain/prompt"
 )
@@ -26,7 +25,7 @@ type CommitSuggestResult struct {
 }
 
 func SuggestCommit(req CommitSuggestRequest) (CommitSuggestResult, error) {
-	root, err := repopath.NormalizeRoot(req.RepoRoot)
+	root, err := NormalizeRepoRoot(req.RepoRoot)
 	if err != nil {
 		return CommitSuggestResult{}, err
 	}

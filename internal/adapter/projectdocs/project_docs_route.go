@@ -6,12 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"agent-harness/internal/adapter/repopath"
 )
 
 func RouteProjectDocs(repoRoot, task string) (projectdocscontract.ProjectDocsRouteResult, error) {
-	root, err := repopath.NormalizeRoot(repoRoot)
+	root, err := NormalizeRepoRoot(repoRoot)
 	if err != nil {
 		return projectdocscontract.ProjectDocsRouteResult{}, err
 	}

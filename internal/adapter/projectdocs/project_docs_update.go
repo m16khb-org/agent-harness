@@ -7,12 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"agent-harness/internal/adapter/repopath"
 )
 
 func ReadProjectDoc(repoRoot, relPath string) (projectdocscontract.ProjectDocsReadResult, error) {
-	root, err := repopath.NormalizeRoot(repoRoot)
+	root, err := NormalizeRepoRoot(repoRoot)
 	if err != nil {
 		return projectdocscontract.ProjectDocsReadResult{}, err
 	}
@@ -45,7 +43,7 @@ func ReadProjectDoc(repoRoot, relPath string) (projectdocscontract.ProjectDocsRe
 }
 
 func UpdateProjectDoc(req projectdocscontract.ProjectDocsUpdateRequest) (projectdocscontract.ProjectDocsUpdateResult, error) {
-	root, err := repopath.NormalizeRoot(req.RepoRoot)
+	root, err := NormalizeRepoRoot(req.RepoRoot)
 	if err != nil {
 		return projectdocscontract.ProjectDocsUpdateResult{}, err
 	}

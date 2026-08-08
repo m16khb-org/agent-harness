@@ -32,6 +32,7 @@ type (
 
 func wireBasicCLIDeps() {
 	configureDocsReaders()
+	configureRepoPathResolvers()
 	operationalCollector := operationalhealth.Collector{Git: operationalhealth.ExecGitRunner{}, Orca: orca.New()}
 	basiccli.Configure(basiccli.Deps{
 		GitPreflight:             preflight.GitPreflight,

@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/repopath"
 	"agent-harness/internal/domain/operationalhealth"
 )
 
@@ -67,7 +66,7 @@ type HarnessDoctorFix struct {
 }
 
 func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
-	root, err := repopath.NormalizeRoot(req.RepoRoot)
+	root, err := NormalizeRepoRoot(req.RepoRoot)
 	if err != nil {
 		return HarnessDoctorResult{OK: false, Kind: "harness_doctor", StateDir: StateDir()}, err
 	}

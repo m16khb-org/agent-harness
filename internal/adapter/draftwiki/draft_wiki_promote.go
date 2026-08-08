@@ -5,12 +5,10 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-
-	"agent-harness/internal/adapter/repopath"
 )
 
 func PromoteDraftWiki(req DraftWikiPromoteRequest) (DraftWikiPromoteResult, error) {
-	root, err := repopath.NormalizeRoot(req.RepoRoot)
+	root, err := NormalizeRepoRoot(req.RepoRoot)
 	if err != nil {
 		return DraftWikiPromoteResult{}, err
 	}
