@@ -1087,7 +1087,10 @@ func evaluateEdges(edges []dependencyEdge) []violation {
 		if isAdapter(edge.importer) && isCommand(edge.imported) {
 			violations = append(violations, violation{"adapter_must_not_import_cmd", edge})
 		}
-		if isPort(edge.importer) && strings.HasPrefix(edge.imported, "internal/") {
+		// port는 계약 어휘로 말한다. 인터페이스 시그니처가 DTO를 참조하는 것은
+		// 구현 의존이 아니라 계약 사용이므로 port -> contract는 허용한다. domain·
+		// application·adapter·cmd로 향하는 edge는 그대로 막힌다.
+		if isPort(edge.importer) && strings.HasPrefix(edge.imported, "internal/") && !isContract(edge.imported) && !isPort(edge.imported) {
 			violations = append(violations, violation{"port_must_not_import_internal", edge})
 		}
 		if isDomain(edge.importer) && isDomainImplementation(edge.imported) && !isAllowedDomainContract(edge) {
@@ -1167,7 +1170,10 @@ func evaluateOwnershipEdges(edges []dependencyEdge) []violation {
 		if isApplication(edge.importer) && (isAdapter(edge.imported) || isCommand(edge.imported)) {
 			violations = append(violations, violation{"application_must_not_import_adapter_or_cmd", edge})
 		}
-		if isPort(edge.importer) && strings.HasPrefix(edge.imported, "internal/") {
+		// port는 계약 어휘로 말한다. 인터페이스 시그니처가 DTO를 참조하는 것은
+		// 구현 의존이 아니라 계약 사용이므로 port -> contract는 허용한다. domain·
+		// application·adapter·cmd로 향하는 edge는 그대로 막힌다.
+		if isPort(edge.importer) && strings.HasPrefix(edge.imported, "internal/") && !isContract(edge.imported) && !isPort(edge.imported) {
 			violations = append(violations, violation{"port_must_not_import_internal", edge})
 		}
 	}

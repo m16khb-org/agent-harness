@@ -16,7 +16,7 @@ func TestOwnershipManifestRejectsLegacyAndInvertedEdges(t *testing.T) {
 		{"domain adapter", dependencyEdge{"internal/domain/state", "internal/adapter/fs"}, "domain_must_only_import_contract"},
 		{"application command", dependencyEdge{"internal/application/nativeactivation", "cmd/harness"}, "application_must_not_import_adapter_or_cmd"},
 		{"contract domain", dependencyEdge{"internal/contract/state", "internal/domain/state"}, "contract_must_not_import_internal"},
-		{"port contract", dependencyEdge{"internal/port/state", "internal/contract/state"}, "port_must_not_import_internal"},
+		{"port domain", dependencyEdge{"internal/port/state", "internal/domain/state"}, "port_must_not_import_internal"},
 	}
 
 	for _, tt := range tests {
@@ -43,6 +43,10 @@ func TestOwnershipManifestAllowsTargetDirections(t *testing.T) {
 		// 쓰고 있는 방향이다.
 		{"internal/contract/issueopslease", "internal/contract/state"},
 		{"internal/contract/lifecycle", "internal/contract/projectdoc"},
+		// port는 계약 어휘로 말한다. 인터페이스가 DTO를 시그니처에 쓰는 것은
+		// 구현 의존이 아니다.
+		{"internal/port/issueopsbasesync", "internal/contract/issueops"},
+		{"internal/port", "internal/contract/state"},
 	}
 	if violations := evaluateOwnershipEdges(edges); len(violations) != 0 {
 		t.Fatalf("target ownership directions must be allowed, got %s", formatViolations(violations))
@@ -61,6 +65,21 @@ func TestOwnershipManifestStillRejectsContractToImplementation(t *testing.T) {
 		edge := dependencyEdge{"internal/contract/state", imported}
 		if !containsViolation(evaluateOwnershipEdges([]dependencyEdge{edge}), "contract_must_not_import_internal", edge) {
 			t.Fatalf("contract must not import %s", imported)
+		}
+	}
+}
+
+// port가 구현 계층을 참조하는 것은 여전히 금지다. 위 예외는 contract와 port
+// 사이에만 적용된다.
+func TestOwnershipManifestStillRejectsPortToImplementation(t *testing.T) {
+	for _, imported := range []string{
+		"internal/domain/state",
+		"internal/application/state",
+		"internal/adapter/outbound/state",
+	} {
+		edge := dependencyEdge{"internal/port", imported}
+		if !containsViolation(evaluateOwnershipEdges([]dependencyEdge{edge}), "port_must_not_import_internal", edge) {
+			t.Fatalf("port must not import %s", imported)
 		}
 	}
 }
