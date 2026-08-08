@@ -73,6 +73,9 @@ func HandleResourceRead(params json.RawMessage, config Config) (any, *ReadError)
 		return nil, &ReadError{Code: -32602, Message: "Invalid params", Data: err.Error()}
 	}
 	if req.URI == "harness://docs" {
+		if config.DocsIndex == nil {
+			return nil, &ReadError{Code: -32000, Message: "Cannot read docs index", Data: "docs index reader is not configured"}
+		}
 		result := config.DocsIndex(config.HarnessRoot, config.Version)
 		b, _ := json.MarshalIndent(result, "", "  ")
 		return content(req.URI, "application/json", string(b)), nil
