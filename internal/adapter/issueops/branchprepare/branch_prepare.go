@@ -302,10 +302,11 @@ func githubSteps(issueURL, branch, baseBranch, baseSHA string) []model.IssueOpsB
 				"Recorded base_sha is empty, so the linked branch takes whatever " + baseBranch +
 				" points at when this runs — it can diverge from a sealed Orca base (#176). " + orcaOrder,
 		})
+		steps = append(steps, githubLinkedBranchReadbackSteps(issueURL, branch, "", 3)...)
 		return append(steps, model.IssueOpsBranchPrepareStep{
-			Order:       3,
+			Order:       5,
 			Strategy:    "fail",
-			Description: "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
+			Description: "Stop the IssueOps branch preparation if the linked development branch cannot be created or the readback does not match.",
 		})
 	}
 	steps = append(steps,
@@ -329,11 +330,66 @@ func githubSteps(issueURL, branch, baseBranch, baseSHA string) []model.IssueOpsB
 				"as shell parameter expansion otherwise and the lifecycle guard rejects the command. " + orcaOrder,
 		},
 	)
+	steps = append(steps, githubLinkedBranchReadbackSteps(issueURL, branch, baseSHA, 4)...)
 	return append(steps, model.IssueOpsBranchPrepareStep{
-		Order:       4,
+		Order:       6,
 		Strategy:    "fail",
-		Description: "Stop the IssueOps branch preparation if the linked development branch cannot be created.",
+		Description: "Stop the IssueOps branch preparation if the linked development branch cannot be created or the readback does not match.",
 	})
+}
+
+// githubLinkedBranchReadbackSteps는 생성 직후의 검증 단계를 만든다.
+//
+// 왜 필요한가: `createLinkedBranch`가 GraphQL 오류 없이 응답하고도 실제 ref를
+// 만들지 않는 부분 성공이 실측됐다 — 응답의 `linkedBranch`가 null이고 issue에는
+// `ref: null`인 LinkedBranch 레코드만 남았다(#306). 생성 단계만 안내하고 끝나면
+// 그 상태가 성공으로 통과하고, 같은 이름으로 재개할 수도 없게 된다.
+//
+// 검증은 두 축이다. issue 쪽 `linkedBranches`와 원격 `refs/heads/<branch>`가
+// 서로를 확인한다 — 한쪽만 보면 provider 레코드와 실제 ref의 불일치를 놓친다.
+func githubLinkedBranchReadbackSteps(issueURL, branch, baseSHA string, firstOrder int) []model.IssueOpsBranchPrepareStep {
+	expectation := "Confirm that the node's `ref` is not null and that `ref.name` is exactly " + branch + "."
+	if baseSHA != "" {
+		expectation += " Confirm that `ref.target.oid` is exactly the sealed base " + baseSHA + "."
+	}
+	return []model.IssueOpsBranchPrepareStep{
+		{
+			Order:    firstOrder,
+			Strategy: "verify_linked_branch",
+			Command: []string{"gh", "api", "graphql", "-f",
+				"query=" + githubLinkedBranchReadbackQuery(issueURL)},
+			Description: "Read the issue's linked branches back. " + expectation +
+				" A null `ref` is a partial success, not a failure to retry: the mutation already created a " +
+				"LinkedBranch record, so running it again does not fix the state and may add a second orphan. " +
+				"Report the observation instead.",
+		},
+		{
+			Order:    firstOrder + 1,
+			Strategy: "verify_linked_branch",
+			Command:  []string{"git", "ls-remote", "--heads", "origin", "refs/heads/" + branch},
+			Description: "Read the remote ref back. It must print exactly one line for refs/heads/" + branch +
+				" and its OID must match what the previous step reported. An empty result with a non-null " +
+				"LinkedBranch record is the same partial success; do not retry the mutation.",
+		},
+	}
+}
+
+// githubLinkedBranchReadbackQuery는 issue의 linked branch를 다시 읽는 질의다.
+// 생성 질의와 같은 필드를 요청해 응답을 그대로 대조할 수 있게 한다.
+func githubLinkedBranchReadbackQuery(issueURL string) string {
+	owner, repo, number := githubIssueCoordinates(issueURL)
+	return "{repository(owner:\"" + owner + "\",name:\"" + repo + "\")" +
+		"{issue(number:" + number + "){linkedBranches(first:10){totalCount nodes{id ref{name target{oid}}}}}}}"
+}
+
+// githubIssueCoordinates는 이슈 URL에서 owner, repo, number를 뽑는다.
+func githubIssueCoordinates(issueURL string) (string, string, string) {
+	trimmed := strings.TrimSuffix(strings.TrimSpace(issueURL), "/")
+	parts := strings.Split(trimmed, "/")
+	if len(parts) < 4 {
+		return "OWNER", "REPO", "NUMBER"
+	}
+	return parts[len(parts)-4], parts[len(parts)-3], parts[len(parts)-1]
 }
 
 const githubCreateLinkedBranchQuery = "mutation($issueId:ID!,$oid:GitObjectID!,$name:String!)" +

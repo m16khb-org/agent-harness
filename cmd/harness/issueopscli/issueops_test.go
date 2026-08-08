@@ -59,9 +59,10 @@ func TestRunIssueOpsLifecycle(t *testing.T) {
 	if prepare["parent_worktree"] != repo+".worktrees/main" {
 		t.Fatalf("branch prepare should persist explicit parent worktree: %#v", prepare)
 	}
+	// #306: 생성 뒤 linked-branch readback 두 단계가 더해져 5단계다.
 	steps, ok := prepare["steps"].([]any)
-	if !ok || len(steps) != 3 {
-		t.Fatalf("branch prepare should include fallback steps: %#v", prepare)
+	if !ok || len(steps) != 5 {
+		t.Fatalf("branch prepare should include fallback and readback steps: %#v", prepare)
 	}
 
 	worktreePath := makeIssueOpsCLIWorktreeForTest(t, repo, "1-provider-linked-branch")

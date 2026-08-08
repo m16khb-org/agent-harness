@@ -59,7 +59,8 @@ func TestStepsKeepTheirExistingShape(t *testing.T) {
 		wantCmd   string
 		wantSteps int
 	}{
-		{"github", "https://github.com/acme/repo/issues/16", "gh", 4},
+		// #306: 생성 뒤 두 readback 단계가 더해져 6단계다.
+		{"github", "https://github.com/acme/repo/issues/16", "gh", 6},
 		{"gitlab", "https://gitlab.example.com/acme/repo/-/issues/16", "glab", 3},
 	} {
 		t.Run(test.provider, func(t *testing.T) {
