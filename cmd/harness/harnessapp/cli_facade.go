@@ -2,6 +2,7 @@ package harnessapp
 
 import (
 	statestore "agent-harness/internal/adapter/outbound/state"
+	"agent-harness/internal/adapter/projectdocs"
 	"os"
 
 	"agent-harness/cmd/harness/basiccli"
@@ -46,11 +47,12 @@ func wireBasicCLIDeps() {
 		StateWrite:  statestore.StateWrite,
 	})
 	statuscli.Configure(statuscli.Deps{
-		HarnessRoot:       harnessRoot,
-		ResolveTarget:     resolveTarget,
-		Version:           version,
-		InspectHarness:    inspectHarness,
-		CheckDaemonStatus: checkDaemonStatus,
+		AnalyzeProjectSignals: projectdocs.AnalyzeProjectSignals,
+		HarnessRoot:           harnessRoot,
+		ResolveTarget:         resolveTarget,
+		Version:               version,
+		InspectHarness:        inspectHarness,
+		CheckDaemonStatus:     checkDaemonStatus,
 	})
 	workercli.Configure(workercli.Deps{ResolveTarget: resolveTarget})
 }
@@ -212,7 +214,7 @@ func runWorker(args []string) error {
 }
 
 func runLoop(args []string) error {
-	return loopcli.Run(args)
+	return loopcli.Run(loopDependencies(), args)
 }
 
 func runWebFetch(args []string) error {

@@ -7,7 +7,7 @@ import (
 	inspect "agent-harness/internal/adapter/inspect"
 	preflight "agent-harness/internal/adapter/preflight"
 	projectbootstrap "agent-harness/internal/adapter/projectbootstrap"
-	projectdocs "agent-harness/internal/adapter/projectdocs"
+	projectdocscontract "agent-harness/internal/contract/projectdocs"
 )
 
 func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
@@ -27,7 +27,7 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	case "docs_index":
 		return mcpToolPayload(docs.DocsIndex(HarnessRoot(), Version))
 	case "project_docs_route":
-		result, err := projectdocs.RouteProjectDocs(ResolveTarget(argmap.String(call.Arguments, "repo")), argmap.StringDefault(call.Arguments, "task", "general"))
+		result, err := RouteProjectDocs(ResolveTarget(argmap.String(call.Arguments, "repo")), argmap.StringDefault(call.Arguments, "task", "general"))
 		if err != nil {
 			return mcpToolFailure(newProtocolError(-32602, "Project docs route failed", err.Error()))
 		}
@@ -39,13 +39,13 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		}
 		return mcpToolPayload(result)
 	case "project_docs_read":
-		result, err := projectdocs.ReadProjectDoc(ResolveTarget(argmap.String(call.Arguments, "repo")), argmap.String(call.Arguments, "rel_path"))
+		result, err := ReadProjectDoc(ResolveTarget(argmap.String(call.Arguments, "repo")), argmap.String(call.Arguments, "rel_path"))
 		if err != nil {
 			return mcpToolFailure(newProtocolError(-32602, "Project docs read failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "project_docs_update":
-		result, err := projectdocs.UpdateProjectDoc(projectdocs.ProjectDocsUpdateRequest{
+		result, err := UpdateProjectDoc(projectdocscontract.ProjectDocsUpdateRequest{
 			RepoRoot:       ResolveTarget(argmap.String(call.Arguments, "repo")),
 			RelPath:        argmap.String(call.Arguments, "rel_path"),
 			Content:        argmap.String(call.Arguments, "content"),
@@ -59,7 +59,7 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		}
 		return mcpToolPayload(result)
 	case "project_docs_record":
-		result, err := projectdocs.AppendProjectDocsRecord(projectdocs.ProjectDocsRecordRequest{
+		result, err := AppendProjectDocsRecord(projectdocscontract.ProjectDocsRecordRequest{
 			RepoRoot:     ResolveTarget(argmap.String(call.Arguments, "repo")),
 			Kind:         argmap.String(call.Arguments, "kind"),
 			Title:        argmap.String(call.Arguments, "title"),

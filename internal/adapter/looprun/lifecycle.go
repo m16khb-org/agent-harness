@@ -1,6 +1,7 @@
 package looprun
 
 import (
+	loopruncontract "agent-harness/internal/contract/looprun"
 	"context"
 	"errors"
 	"fmt"
@@ -16,25 +17,25 @@ const (
 	defaultLoopStatus  = "active"
 )
 
-func Start(req StartLoopRequest) (LoopRun, error) {
+func Start(req loopruncontract.StartLoopRequest) (loopruncontract.LoopRun, error) {
 	repo, err := normalizeRepo(req.Repo)
 	if err != nil {
-		return LoopRun{OK: false}, err
+		return loopruncontract.LoopRun{OK: false}, err
 	}
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
-		return LoopRun{OK: false}, fmt.Errorf("name is required")
+		return loopruncontract.LoopRun{OK: false}, fmt.Errorf("name is required")
 	}
 	goal := redactFreeform(req.Goal)
 	if goal == "" {
-		return LoopRun{OK: false}, fmt.Errorf("goal is required")
+		return loopruncontract.LoopRun{OK: false}, fmt.Errorf("goal is required")
 	}
 	maxAttempts, err := normalizeMaxAttempts(req.MaxAttempts)
 	if err != nil {
-		return LoopRun{OK: false}, err
+		return loopruncontract.LoopRun{OK: false}, err
 	}
 	loopID := newLoopID(repo, name)
-	var loop LoopRun
+	var loop loopruncontract.LoopRun
 	err = withLoopLock(context.Background(), loopID, func(context.Context) error {
 		existing, readErr := ReadLoop(loopID)
 		if readErr == nil {
@@ -48,7 +49,7 @@ func Start(req StartLoopRequest) (LoopRun, error) {
 			return readErr
 		}
 		now := timestampNow()
-		loop = LoopRun{
+		loop = loopruncontract.LoopRun{
 			OK:            true,
 			SchemaVersion: LoopRunCurrentSchemaVersion,
 			ID:            loopID,
@@ -68,20 +69,20 @@ func Start(req StartLoopRequest) (LoopRun, error) {
 	return loop, err
 }
 
-func RecordAttempt(loopID string, req RecordAttemptRequest) (LoopRun, error) {
+func RecordAttempt(loopID string, req loopruncontract.RecordAttemptRequest) (loopruncontract.LoopRun, error) {
 	loopID, err := normalizeLoopID(loopID)
 	if err != nil {
-		return LoopRun{OK: false}, err
+		return loopruncontract.LoopRun{OK: false}, err
 	}
 	verdict := strings.TrimSpace(req.Verdict)
 	if verdict != "pass" && verdict != "fail" {
-		return LoopRun{OK: false, ID: loopID}, fmt.Errorf("verdict_invalid")
+		return loopruncontract.LoopRun{OK: false, ID: loopID}, fmt.Errorf("verdict_invalid")
 	}
 	evidence := redactStrings(cleanStrings(req.Evidence))
 	if len(evidence) == 0 {
-		return LoopRun{OK: false, ID: loopID}, fmt.Errorf("evidence_required")
+		return loopruncontract.LoopRun{OK: false, ID: loopID}, fmt.Errorf("evidence_required")
 	}
-	var loop LoopRun
+	var loop loopruncontract.LoopRun
 	err = withLoopLock(context.Background(), loopID, func(context.Context) error {
 		var readErr error
 		loop, readErr = ReadLoop(loopID)
@@ -92,7 +93,7 @@ func RecordAttempt(loopID string, req RecordAttemptRequest) (LoopRun, error) {
 			return fmt.Errorf("loop_not_active")
 		}
 		now := timestampNow()
-		loop.Attempts = append(loop.Attempts, LoopAttempt{
+		loop.Attempts = append(loop.Attempts, loopruncontract.LoopAttempt{
 			Seq:      len(loop.Attempts) + 1,
 			Verdict:  verdict,
 			Evidence: evidence,
@@ -109,12 +110,12 @@ func RecordAttempt(loopID string, req RecordAttemptRequest) (LoopRun, error) {
 	return loop, err
 }
 
-func Stop(loopID string, success bool, reason string) (LoopRun, error) {
+func Stop(loopID string, success bool, reason string) (loopruncontract.LoopRun, error) {
 	loopID, err := normalizeLoopID(loopID)
 	if err != nil {
-		return LoopRun{OK: false}, err
+		return loopruncontract.LoopRun{OK: false}, err
 	}
-	var loop LoopRun
+	var loop loopruncontract.LoopRun
 	err = withLoopLock(context.Background(), loopID, func(context.Context) error {
 		var readErr error
 		loop, readErr = ReadLoop(loopID)
@@ -146,12 +147,12 @@ func Stop(loopID string, success bool, reason string) (LoopRun, error) {
 	return loop, err
 }
 
-func Status(loopID string) (StatusResult, error) {
+func Status(loopID string) (loopruncontract.StatusResult, error) {
 	loop, err := ReadLoop(loopID)
 	if err != nil {
-		return StatusResult{OK: false}, err
+		return loopruncontract.StatusResult{OK: false}, err
 	}
-	result := StatusResult{OK: true, Loop: loop, AttemptCount: len(loop.Attempts)}
+	result := loopruncontract.StatusResult{OK: true, Loop: loop, AttemptCount: len(loop.Attempts)}
 	if len(loop.Attempts) > 0 {
 		result.LastVerdict = loop.Attempts[len(loop.Attempts)-1].Verdict
 	}

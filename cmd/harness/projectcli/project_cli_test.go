@@ -2,7 +2,8 @@ package projectcli
 
 import (
 	projectdoc "agent-harness/internal/adapter/projectdoc"
-	projectdocs "agent-harness/internal/adapter/projectdocs"
+	projectdocs "agent-harness/internal/contract/projectdocs"
+	projectdocscontract "agent-harness/internal/contract/projectdocs"
 	"agent-harness/internal/testsupport"
 	"encoding/json"
 	"os"
@@ -90,7 +91,7 @@ func TestRunProjectRecord_recordsADR_whenRequiredFieldsAreProvided(t *testing.T)
 	})
 
 	// Then
-	var result projectdocs.ProjectDocsRecordResult
+	var result projectdocscontract.ProjectDocsRecordResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode record json: %v\n%s", err, out)
 	}

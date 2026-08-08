@@ -4,7 +4,6 @@ import (
 	guard "agent-harness/internal/adapter/guard"
 	policy "agent-harness/internal/adapter/policy"
 	preflight "agent-harness/internal/adapter/preflight"
-	projectdocs "agent-harness/internal/adapter/projectdocs"
 	policydomain "agent-harness/internal/domain/policy"
 	projectdocdomain "agent-harness/internal/domain/projectdoc"
 	"flag"
@@ -125,7 +124,7 @@ func verifyWorkEvidenceItemWithCommand(name string, ok bool, summary string, com
 }
 
 func buildVerifyWorkSuggestedCommands(root string) []VerifyWorkSuggestedCommand {
-	signals := projectdocs.AnalyzeProjectSignals(root)
+	signals := deps.AnalyzeProjectSignals(root)
 	out := []VerifyWorkSuggestedCommand{}
 	add := func(kind string, commands []projectdocdomain.EvidenceCommand) {
 		for i, command := range commands {

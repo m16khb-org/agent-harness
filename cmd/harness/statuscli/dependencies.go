@@ -1,6 +1,7 @@
 package statuscli
 
 import (
+	projectdocdomain "agent-harness/internal/domain/projectdoc"
 	"encoding/json"
 	"os"
 
@@ -11,11 +12,13 @@ import (
 // Deps holds host-provided dependencies for the status CLI. The composition root
 // injects implementations via Configure; defaults support standalone use/tests.
 type Deps struct {
-	HarnessRoot       func() string
-	ResolveTarget     func(string) string
-	Version           string
-	InspectHarness    func(string) inspect.InspectInfo
-	CheckDaemonStatus func() daemoncli.Status
+	// AnalyzeProjectSignals는 composition root가 주입한다.
+	AnalyzeProjectSignals func(root string) projectdocdomain.ProjectSignals
+	HarnessRoot           func() string
+	ResolveTarget         func(string) string
+	Version               string
+	InspectHarness        func(string) inspect.InspectInfo
+	CheckDaemonStatus     func() daemoncli.Status
 }
 
 var deps = defaultDeps()

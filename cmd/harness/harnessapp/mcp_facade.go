@@ -1,6 +1,8 @@
 package harnessapp
 
 import (
+	"agent-harness/internal/adapter/looprun"
+	"agent-harness/internal/adapter/projectdocs"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,6 +20,14 @@ func configureMCPCLI() {
 	mcpcli.Version = version
 	mcpcli.HarnessRoot = harnessRoot
 	mcpcli.ResolveTarget = resolveTarget
+	mcpcli.RouteProjectDocs = projectdocs.RouteProjectDocs
+	mcpcli.ReadProjectDoc = projectdocs.ReadProjectDoc
+	mcpcli.UpdateProjectDoc = projectdocs.UpdateProjectDoc
+	mcpcli.AppendProjectDocsRecord = projectdocs.AppendProjectDocsRecord
+	mcpcli.LoopStart = looprun.Start
+	mcpcli.LoopRecordAttempt = looprun.RecordAttempt
+	mcpcli.LoopStop = looprun.Stop
+	mcpcli.LoopStatus = looprun.Status
 	mcpcli.ReadHarnessFile = readHarnessFile
 	mcpcli.InspectHarness = func(repo string) any {
 		return inspectHarness(repo)

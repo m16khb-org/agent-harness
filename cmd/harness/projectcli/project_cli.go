@@ -3,6 +3,7 @@ package projectcli
 import (
 	projectbootstrap "agent-harness/internal/adapter/projectbootstrap"
 	projectdocs "agent-harness/internal/adapter/projectdocs"
+	projectdocscontract "agent-harness/internal/contract/projectdocs"
 	"flag"
 	"fmt"
 	"strings"
@@ -110,7 +111,7 @@ func runProjectRecord(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := projectdocs.AppendProjectDocsRecord(projectdocs.ProjectDocsRecordRequest{
+	result, err := projectdocs.AppendProjectDocsRecord(projectdocscontract.ProjectDocsRecordRequest{
 		RepoRoot:     *repo,
 		Kind:         *kind,
 		Title:        *title,

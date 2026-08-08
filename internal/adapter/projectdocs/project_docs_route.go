@@ -1,6 +1,7 @@
 package projectdocs
 
 import (
+	projectdocscontract "agent-harness/internal/contract/projectdocs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,21 +10,21 @@ import (
 	"agent-harness/internal/adapter/repopath"
 )
 
-func RouteProjectDocs(repoRoot, task string) (ProjectDocsRouteResult, error) {
+func RouteProjectDocs(repoRoot, task string) (projectdocscontract.ProjectDocsRouteResult, error) {
 	root, err := repopath.NormalizeRoot(repoRoot)
 	if err != nil {
-		return ProjectDocsRouteResult{}, err
+		return projectdocscontract.ProjectDocsRouteResult{}, err
 	}
 	normalizedTask := strings.ToLower(strings.TrimSpace(task))
 	if normalizedTask == "" {
 		normalizedTask = "general"
 	}
 	rels := routeDocsForTask(normalizedTask)
-	entries := make([]ProjectDocRouteEntry, 0, len(rels))
+	entries := make([]projectdocscontract.ProjectDocRouteEntry, 0, len(rels))
 	for _, rd := range rels {
 		path := filepath.Join(root, filepath.FromSlash(rd.rel))
 		_, err := os.Stat(path)
-		entries = append(entries, ProjectDocRouteEntry{RelPath: rd.rel, Path: path, Reason: rd.reason, Exists: err == nil})
+		entries = append(entries, projectdocscontract.ProjectDocRouteEntry{RelPath: rd.rel, Path: path, Reason: rd.reason, Exists: err == nil})
 	}
 	warnings := []string{}
 	missingProjectDocs := true
@@ -33,7 +34,7 @@ func RouteProjectDocs(repoRoot, task string) (ProjectDocsRouteResult, error) {
 	if missingProjectDocs {
 		warnings = append(warnings, "project docs are missing; run agent-harness project bootstrap to create AGENTS.md routing, .agent-harness docs, and repo metadata")
 	}
-	return ProjectDocsRouteResult{
+	return projectdocscontract.ProjectDocsRouteResult{
 		OK:          true,
 		Kind:        "project_docs_route",
 		RepoRoot:    root,
