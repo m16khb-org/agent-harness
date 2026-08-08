@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"agent-harness/internal/contract/issueops"
+	issueopsdomain "agent-harness/internal/domain/issueops"
 	"agent-harness/internal/domain/issueopsremote"
 	"agent-harness/internal/port"
 )
@@ -29,6 +30,9 @@ type CleanupRemoteBranchDeps struct {
 	// (finish ④'의 CleanupAudit 병합 선례). best-effort이며 실패해도 이미 끝난
 	// 원격 삭제를 되돌리지 않는다.
 	ReflectAudit func(record issueops.IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string) error
+	// ObserveArtifact는 replacement 증거를 provider에서 읽는다. 주입되지 않으면
+	// 그 경로는 열리지 않는다 — 관측 없이 증거를 인정하지 않는다(#323).
+	ObserveArtifact func(url string) (issueopsdomain.ArtifactObservation, error)
 }
 
 // cleanupRemoteBranchInventory는 fingerprint 입력이 되는 현재 관측 상태다.
@@ -40,6 +44,8 @@ type cleanupRemoteBranchInventory struct {
 	Branch      string `json:"branch"`
 	RemoteOID   string `json:"remote_oid"`
 	ArtifactURL string `json:"artifact_url"`
+	// SupersededBy는 replacement 증거를 fingerprint 입력에 포함시킨다.
+	SupersededBy string `json:"superseded_by,omitempty"`
 }
 
 // CleanupRemoteBranch는 게이트 12종을 fail-closed로 평가하고, apply에서
@@ -53,7 +59,7 @@ func CleanupRemoteBranch(ctx context.Context, stateRoot string, req CleanupRemot
 		return CleanupRemoteBranchResult{OK: false, ID: req.ID}, err
 	}
 	result := CleanupRemoteBranchResult{OK: true, ID: record.ID, Preview: !req.Apply}
-	inventory, missing := cleanupRemoteBranchGates(ctx, record, deps, &result)
+	inventory, missing := cleanupRemoteBranchGates(ctx, record, req, deps, &result)
 	result.Missing = missing
 	if len(missing) > 0 {
 		result.OK = false
@@ -113,7 +119,7 @@ func CleanupRemoteBranch(ctx context.Context, stateRoot string, req CleanupRemot
 
 // cleanupRemoteBranchGates는 게이트 12종을 전부 평가하고 missing을 나열한다
 // (첫 실패에 멈추지 않는다 — 한 번의 preview로 모든 결격 사유를 본다).
-func cleanupRemoteBranchGates(ctx context.Context, record issueops.IssueOpsRecord, deps CleanupRemoteBranchDeps, result *CleanupRemoteBranchResult) (cleanupRemoteBranchInventory, []string) {
+func cleanupRemoteBranchGates(ctx context.Context, record issueops.IssueOpsRecord, req CleanupRemoteBranchRequest, deps CleanupRemoteBranchDeps, result *CleanupRemoteBranchResult) (cleanupRemoteBranchInventory, []string) {
 	missing := []string{}
 	inventory := cleanupRemoteBranchInventory{ID: record.ID, Repo: record.Repo, Branch: strings.TrimSpace(record.Branch)}
 	if record.Execution != nil {
@@ -187,7 +193,16 @@ func cleanupRemoteBranchGates(ctx context.Context, record issueops.IssueOpsRecor
 		case cleanupRemoteTipReachedBase(ctx, record, inventory, deps):
 			result.RemoteTipReachedBase = true
 		default:
-			missing = append(missing, "remote_tip_equals_merged_head")
+			// ancestry로도 판정할 수 없는 경우가 있다: 기록된 base 브랜치가 이미
+			// 삭제됐거나, 전진분이 base가 아니라 다른 target으로 재통합된 경우다.
+			// 그때는 후속 merged artifact의 provider readback이 유일한 근거다(#323).
+			if err := verifyRemoteBranchSupersedingArtifact(record, req, deps); err != nil {
+				result.SupersedeError = err.Error()
+				missing = append(missing, "remote_tip_equals_merged_head")
+			} else {
+				inventory.SupersededBy = strings.TrimSpace(req.SupersededBy)
+				result.SupersededBy = inventory.SupersededBy
+			}
 		}
 	}
 	return inventory, missing
@@ -284,4 +299,28 @@ func cleanupRemoteBranchFingerprint(inventory cleanupRemoteBranchInventory) (str
 	}
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:]), nil
+}
+
+// verifyRemoteBranchSupersedingArtifact는 replacement 증거를 provider readback으로
+// 검증한다. finish의 같은 이름 함수와 규칙을 공유하며(domain의
+// ValidateSupersedingArtifact), 관측·증거가 없으면 사유를 돌려준다.
+func verifyRemoteBranchSupersedingArtifact(record issueops.IssueOpsRecord, req CleanupRemoteBranchRequest, deps CleanupRemoteBranchDeps) error {
+	candidate := strings.TrimSpace(req.SupersededBy)
+	if candidate == "" {
+		return fmt.Errorf("no superseding artifact was provided")
+	}
+	if deps.ObserveArtifact == nil {
+		return fmt.Errorf("superseding artifact cannot be verified: provider observation is not configured")
+	}
+	if record.RemoteArtifact == nil || strings.TrimSpace(record.RemoteArtifact.URL) == "" {
+		return fmt.Errorf("original artifact URL is unknown; cannot verify a supersede relation")
+	}
+	replacement, err := deps.ObserveArtifact(candidate)
+	if err != nil {
+		return fmt.Errorf("superseding artifact %s could not be observed: %w", candidate, err)
+	}
+	return issueopsdomain.ValidateSupersedingArtifact(issueopsdomain.ArtifactObservation{
+		URL:      record.RemoteArtifact.URL,
+		Provider: record.RemoteArtifact.Provider,
+	}, replacement)
 }

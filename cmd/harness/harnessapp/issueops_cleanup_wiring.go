@@ -31,6 +31,7 @@ func configureIssueOpsCleanup() {
 		CleanupRemoteBranch: func(ctx context.Context, stateRoot string, req issueopscontract.CleanupRemoteBranchRequest, d feedbackcleanup.Deps, prov port.IssueProvider) (issueopscontract.CleanupRemoteBranchResult, error) {
 			return issueopscore.CleanupRemoteBranch(ctx, stateRoot, req, issueopscore.CleanupRemoteBranchDeps{
 				VerifyMergedArtifact: d.VerifyMergedHead,
+				ObserveArtifact:      issueopscore.ObserveRemoteArtifact,
 				ReflectAudit: func(rec issueopscontract.IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string) error {
 					return issueopscore.ReflectCleanupAudit(issueopscore.IssueOpsStateRoot(), rec, completion, audit, prov)
 				},

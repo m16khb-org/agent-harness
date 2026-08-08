@@ -72,10 +72,15 @@ type CleanupFinishRequest struct {
 // 이 표면은 source checkout 전용이다(cwd = record.Repo). 워크트리 cwd에서의
 // 호출은 lease 가드가 미분류 셸로 차단한다.
 type CleanupRemoteBranchRequest struct {
-	ID          string
-	Apply       bool
-	Confirm     bool
-	Fingerprint string
+	ID string
+	// SupersededBy는 원격 tip이 기록된 머지 head보다 전진했고, 그 전진분이
+	// 후속 merged artifact로 재통합된 경우에 그 artifact URL이다. 기록된 base
+	// 브랜치가 이미 삭제됐거나 후속 머지 대상이 base가 아니면 ancestry로는
+	// 판정할 수 없어, provider readback 증거가 유일한 근거가 된다(#323).
+	SupersededBy string
+	Apply        bool
+	Confirm      bool
+	Fingerprint  string
 }
 
 type CleanupAbandonResult struct {
@@ -168,4 +173,8 @@ type CleanupRemoteBranchResult struct {
 	AuditError           string `json:"audit_error,omitempty"`
 	FailedStep           string `json:"failed_step,omitempty"`
 	NextCommand          string `json:"next_command,omitempty"`
+	// SupersededBy는 게이트 ⑩을 replacement 증거로 통과했을 때 그 artifact URL이다.
+	SupersededBy string `json:"superseded_by,omitempty"`
+	// SupersedeError는 replacement 증거가 제시됐으나 검증에 실패한 사유다.
+	SupersedeError string `json:"supersede_error,omitempty"`
 }
