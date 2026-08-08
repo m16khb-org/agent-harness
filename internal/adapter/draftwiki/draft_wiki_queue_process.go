@@ -1,6 +1,7 @@
 package draftwiki
 
 import (
+	draftwikicontract "agent-harness/internal/contract/draftwiki"
 	"strings"
 	"time"
 )
@@ -77,7 +78,7 @@ func processDraftWikiQueueEvent(req DraftWikiQueueProcessRequest, event DraftWik
 	if targetWiki == "" {
 		targetWiki = strings.TrimSpace(event.TargetWiki)
 	}
-	prompt := buildDraftWikiSuggestPrompt(DraftWikiSuggestRequest{
+	prompt := buildDraftWikiSuggestPrompt(draftwikicontract.DraftWikiSuggestRequest{
 		Title:      "Draft wiki queued memory",
 		TargetWiki: targetWiki,
 		TargetType: targetType,

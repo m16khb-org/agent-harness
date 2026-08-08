@@ -1,6 +1,7 @@
 package draftwiki
 
 import (
+	draftwikicontract "agent-harness/internal/contract/draftwiki"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -10,7 +11,7 @@ type draftWikiSuggestLLMResponse struct {
 	BodyMarkdown string `json:"body_markdown"`
 }
 
-func buildDraftWikiSuggestPrompt(req DraftWikiSuggestRequest, input, targetType string) string {
+func buildDraftWikiSuggestPrompt(req draftwikicontract.DraftWikiSuggestRequest, input, targetType string) string {
 	title := strings.TrimSpace(req.Title)
 	if title == "" {
 		title = "Draft wiki candidate"

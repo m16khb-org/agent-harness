@@ -1,16 +1,17 @@
 package draftwiki
 
 import (
+	draftwikicontract "agent-harness/internal/contract/draftwiki"
 	"os"
 	"path/filepath"
 	"sort"
 	"time"
 )
 
-func InitDraftWiki(req DraftWikiInitRequest) (DraftWikiInitResult, error) {
+func InitDraftWiki(req draftwikicontract.DraftWikiInitRequest) (draftwikicontract.DraftWikiInitResult, error) {
 	root, err := NormalizeRepoRoot(req.RepoRoot)
 	if err != nil {
-		return DraftWikiInitResult{}, err
+		return draftwikicontract.DraftWikiInitResult{}, err
 	}
 	files := []ProjectDocsPlannedFile{}
 	for rel, content := range draftWikiSeedFiles() {
@@ -18,10 +19,10 @@ func InitDraftWiki(req DraftWikiInitRequest) (DraftWikiInitResult, error) {
 		action := plannedFileAction(path, content)
 		if req.Write && action == "create" {
 			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-				return DraftWikiInitResult{}, err
+				return draftwikicontract.DraftWikiInitResult{}, err
 			}
 			if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-				return DraftWikiInitResult{}, err
+				return draftwikicontract.DraftWikiInitResult{}, err
 			}
 		}
 		if req.Write && action == "update" {
@@ -37,7 +38,7 @@ func InitDraftWiki(req DraftWikiInitRequest) (DraftWikiInitResult, error) {
 		})
 	}
 	sort.Slice(files, func(i, j int) bool { return files[i].RelPath < files[j].RelPath })
-	return DraftWikiInitResult{
+	return draftwikicontract.DraftWikiInitResult{
 		OK:          true,
 		Kind:        "draft_wiki_init",
 		RepoRoot:    root,

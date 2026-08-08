@@ -55,7 +55,6 @@ internal/adapter/mcp -> internal/adapter/toolconformance
 internal/adapter/operationalhealth -> internal/adapter/issueops/pathutil
 internal/adapter/outbound/state -> internal/adapter/outbound/sqlstore
 internal/adapter/outbound/state -> internal/adapter/outbound/statepath
-internal/adapter/projectbootstrap -> internal/adapter/draftwiki
 internal/adapter/projectbootstrap -> internal/adapter/lifecycle
 internal/adapter/projectbootstrap -> internal/adapter/projectdocs
 internal/adapter/worker -> internal/adapter/outbound/sqlstore

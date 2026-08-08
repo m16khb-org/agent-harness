@@ -1,6 +1,8 @@
 package draftwiki
 
-func BuildDraftWikiSuggestPrompt(req DraftWikiSuggestRequest, input, targetType string) string {
+import draftwikicontract "agent-harness/internal/contract/draftwiki"
+
+func BuildDraftWikiSuggestPrompt(req draftwikicontract.DraftWikiSuggestRequest, input, targetType string) string {
 	return buildDraftWikiSuggestPrompt(req, input, targetType)
 }
 

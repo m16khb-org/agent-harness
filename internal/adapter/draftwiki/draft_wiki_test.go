@@ -1,6 +1,7 @@
 package draftwiki
 
 import (
+	draftwikicontract "agent-harness/internal/contract/draftwiki"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,7 +12,7 @@ import (
 func TestInitDraftWikiCreatesReviewStaging(t *testing.T) {
 	root := t.TempDir()
 
-	dry, err := InitDraftWiki(DraftWikiInitRequest{RepoRoot: root})
+	dry, err := InitDraftWiki(draftwikicontract.DraftWikiInitRequest{RepoRoot: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,7 +23,7 @@ func TestInitDraftWikiCreatesReviewStaging(t *testing.T) {
 		t.Fatalf("dry-run created draft wiki dir or unexpected stat error: %v", err)
 	}
 
-	written, err := InitDraftWiki(DraftWikiInitRequest{RepoRoot: root, Write: true})
+	written, err := InitDraftWiki(draftwikicontract.DraftWikiInitRequest{RepoRoot: root, Write: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +58,7 @@ summary: "Reusable hook policy note."
 Body.
 `)
 
-	result, err := ListDraftWiki(DraftWikiListRequest{RepoRoot: root})
+	result, err := ListDraftWiki(draftwikicontract.DraftWikiListRequest{RepoRoot: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +79,7 @@ func TestApproveDraftWikiMovesDraftCandidate(t *testing.T) {
 	draft := filepath.Join(root, DraftWikiDir, "draft", "candidate.md")
 	mustWrite(t, draft, "# Candidate\n")
 
-	result, err := ApproveDraftWiki(DraftWikiMoveRequest{RepoRoot: root, Path: draft})
+	result, err := ApproveDraftWiki(draftwikicontract.DraftWikiMoveRequest{RepoRoot: root, Path: draft})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +99,7 @@ func TestRejectDraftWikiMovesCandidateToRejected(t *testing.T) {
 	draft := filepath.Join(root, DraftWikiDir, "draft", "candidate.md")
 	mustWrite(t, draft, "# Candidate\n")
 
-	result, err := RejectDraftWiki(DraftWikiMoveRequest{RepoRoot: root, Path: draft})
+	result, err := RejectDraftWiki(draftwikicontract.DraftWikiMoveRequest{RepoRoot: root, Path: draft})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +126,7 @@ target_type: "notes"
 # Candidate
 `)
 
-	dry, err := PromoteDraftWiki(DraftWikiPromoteRequest{RepoRoot: root, Path: approved})
+	dry, err := PromoteDraftWiki(draftwikicontract.DraftWikiPromoteRequest{RepoRoot: root, Path: approved})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +140,7 @@ target_type: "notes"
 		t.Fatalf("dry-run moved approved file: %v", err)
 	}
 
-	confirmed, err := PromoteDraftWiki(DraftWikiPromoteRequest{
+	confirmed, err := PromoteDraftWiki(draftwikicontract.DraftWikiPromoteRequest{
 		RepoRoot: root,
 		Path:     approved,
 		Confirm:  true,

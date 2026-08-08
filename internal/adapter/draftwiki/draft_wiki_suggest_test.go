@@ -1,6 +1,7 @@
 package draftwiki
 
 import (
+	draftwikicontract "agent-harness/internal/contract/draftwiki"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,7 +14,7 @@ func TestSuggestDraftWikiRendersHostAgentPrompt(t *testing.T) {
 	input := filepath.Join(root, "memory.md")
 	mustWrite(t, input, "Hook policy should stay bookkeeping-only.\n")
 
-	result, err := SuggestDraftWiki(DraftWikiSuggestRequest{
+	result, err := SuggestDraftWiki(draftwikicontract.DraftWikiSuggestRequest{
 		RepoRoot:   root,
 		InputPath:  input,
 		Title:      "Hook policy memory",
@@ -51,7 +52,7 @@ suggester: "host-agent"
 
 Harness records supplied drafts without calling an external service.`)
 
-	result, err := SubmitDraftWiki(DraftWikiSubmitRequest{
+	result, err := SubmitDraftWiki(draftwikicontract.DraftWikiSubmitRequest{
 		RepoRoot:  root,
 		DraftPath: input,
 	})

@@ -1,39 +1,24 @@
 package draftwiki
 
 import (
+	draftwikicontract "agent-harness/internal/contract/draftwiki"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-type DraftWikiSubmitRequest struct {
-	RepoRoot   string `json:"repo_root"`
-	DraftPath  string `json:"draft_path"`
-	Title      string `json:"title,omitempty"`
-	TargetWiki string `json:"target_wiki,omitempty"`
-	TargetType string `json:"target_type,omitempty"`
-}
-
-type DraftWikiSubmitResult struct {
-	OK        bool           `json:"ok"`
-	Kind      string         `json:"kind"`
-	RepoRoot  string         `json:"repo_root"`
-	InputPath string         `json:"input_path"`
-	Draft     DraftWikiDraft `json:"draft"`
-}
-
-func SubmitDraftWiki(req DraftWikiSubmitRequest) (DraftWikiSubmitResult, error) {
+func SubmitDraftWiki(req draftwikicontract.DraftWikiSubmitRequest) (draftwikicontract.DraftWikiSubmitResult, error) {
 	root, err := NormalizeRepoRoot(req.RepoRoot)
 	if err != nil {
-		return DraftWikiSubmitResult{}, err
+		return draftwikicontract.DraftWikiSubmitResult{}, err
 	}
 	inputPath, err := ResolveRepoFile(root, req.DraftPath)
 	if err != nil {
-		return DraftWikiSubmitResult{}, err
+		return draftwikicontract.DraftWikiSubmitResult{}, err
 	}
 	body, err := os.ReadFile(inputPath)
 	if err != nil {
-		return DraftWikiSubmitResult{}, err
+		return draftwikicontract.DraftWikiSubmitResult{}, err
 	}
 	targetType := strings.TrimSpace(req.TargetType)
 	if targetType == "" {
@@ -41,13 +26,13 @@ func SubmitDraftWiki(req DraftWikiSubmitRequest) (DraftWikiSubmitResult, error) 
 	}
 	draftPath, err := writeSuggestedDraft(root, req.Title, req.TargetWiki, targetType, string(body))
 	if err != nil {
-		return DraftWikiSubmitResult{}, err
+		return draftwikicontract.DraftWikiSubmitResult{}, err
 	}
 	draft, err := readDraftWikiDraft(root, draftPath, "draft")
 	if err != nil {
-		return DraftWikiSubmitResult{}, err
+		return draftwikicontract.DraftWikiSubmitResult{}, err
 	}
-	return DraftWikiSubmitResult{
+	return draftwikicontract.DraftWikiSubmitResult{
 		OK:        true,
 		Kind:      "draft_wiki_submit",
 		RepoRoot:  root,

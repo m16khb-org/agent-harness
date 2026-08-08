@@ -1,7 +1,7 @@
 package draftwikicli
 
 import (
-	draftwiki "agent-harness/internal/adapter/draftwiki"
+	draftwiki "agent-harness/internal/contract/draftwiki"
 	"encoding/json"
 	"os"
 	"path/filepath"

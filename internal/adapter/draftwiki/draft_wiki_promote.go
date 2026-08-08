@@ -1,23 +1,24 @@
 package draftwiki
 
 import (
+	draftwikicontract "agent-harness/internal/contract/draftwiki"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 )
 
-func PromoteDraftWiki(req DraftWikiPromoteRequest) (DraftWikiPromoteResult, error) {
+func PromoteDraftWiki(req draftwikicontract.DraftWikiPromoteRequest) (draftwikicontract.DraftWikiPromoteResult, error) {
 	root, err := NormalizeRepoRoot(req.RepoRoot)
 	if err != nil {
-		return DraftWikiPromoteResult{}, err
+		return draftwikicontract.DraftWikiPromoteResult{}, err
 	}
 	from, err := resolveDraftWikiDraft(root, req.Path)
 	if err != nil {
-		return DraftWikiPromoteResult{}, err
+		return draftwikicontract.DraftWikiPromoteResult{}, err
 	}
 	if from.Status != "approved" {
-		return DraftWikiPromoteResult{}, fmt.Errorf("draft %s has status %q; promote requires approved", from.RelPath, from.Status)
+		return draftwikicontract.DraftWikiPromoteResult{}, fmt.Errorf("draft %s has status %q; promote requires approved", from.RelPath, from.Status)
 	}
 	exportPath := filepath.Join(root, filepath.FromSlash(DraftWikiDir), "exported", filepath.Base(from.Path))
 	exportRel, err := filepath.Rel(root, exportPath)
@@ -26,7 +27,7 @@ func PromoteDraftWiki(req DraftWikiPromoteRequest) (DraftWikiPromoteResult, erro
 	}
 	exportRel = filepath.ToSlash(exportRel)
 	exportLogPath := filepath.Join(root, filepath.FromSlash(DraftWikiDir), "exported", "export.log")
-	result := DraftWikiPromoteResult{
+	result := draftwikicontract.DraftWikiPromoteResult{
 		OK:            true,
 		Kind:          "draft_wiki_promote",
 		RepoRoot:      root,
@@ -44,10 +45,10 @@ func PromoteDraftWiki(req DraftWikiPromoteRequest) (DraftWikiPromoteResult, erro
 	}
 	to, err := moveDraftWikiFile(root, from, "exported")
 	if err != nil {
-		return DraftWikiPromoteResult{}, err
+		return draftwikicontract.DraftWikiPromoteResult{}, err
 	}
 	if err := appendDraftWikiExportLog(exportLogPath, from, to); err != nil {
-		return DraftWikiPromoteResult{}, err
+		return draftwikicontract.DraftWikiPromoteResult{}, err
 	}
 	result.Executed = true
 	result.To = &to
@@ -56,7 +57,7 @@ func PromoteDraftWiki(req DraftWikiPromoteRequest) (DraftWikiPromoteResult, erro
 	return result, nil
 }
 
-func appendDraftWikiExportLog(logPath string, from, to DraftWikiDraft) error {
+func appendDraftWikiExportLog(logPath string, from, to draftwikicontract.DraftWikiDraft) error {
 	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
 		return err
 	}

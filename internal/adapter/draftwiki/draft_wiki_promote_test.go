@@ -1,6 +1,7 @@
 package draftwiki
 
 import (
+	draftwikicontract "agent-harness/internal/contract/draftwiki"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,7 +23,7 @@ summary: "A durable note."
 Durable local export.
 `)
 
-	dry, err := PromoteDraftWiki(DraftWikiPromoteRequest{RepoRoot: root, Path: approved})
+	dry, err := PromoteDraftWiki(draftwikicontract.DraftWikiPromoteRequest{RepoRoot: root, Path: approved})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +37,7 @@ Durable local export.
 		t.Fatalf("dry-run moved approved file: %v", err)
 	}
 
-	confirmed, err := PromoteDraftWiki(DraftWikiPromoteRequest{
+	confirmed, err := PromoteDraftWiki(draftwikicontract.DraftWikiPromoteRequest{
 		RepoRoot: root,
 		Path:     approved,
 		Confirm:  true,
@@ -87,7 +88,7 @@ title: "Candidate"
 # Candidate
 `)
 
-	_, err := PromoteDraftWiki(DraftWikiPromoteRequest{RepoRoot: root, Path: draft, Confirm: true})
+	_, err := PromoteDraftWiki(draftwikicontract.DraftWikiPromoteRequest{RepoRoot: root, Path: draft, Confirm: true})
 	if err == nil || !strings.Contains(err.Error(), `has status "draft"; promote requires approved`) {
 		t.Fatalf("expected unapproved refusal, got %v", err)
 	}

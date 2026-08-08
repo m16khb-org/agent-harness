@@ -1,6 +1,7 @@
 package draftwiki
 
 import (
+	draftwikicontract "agent-harness/internal/contract/draftwiki"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,9 +10,9 @@ import (
 	"agent-harness/internal/domain/draftmeta"
 )
 
-func resolveDraftWikiDraft(root, draftPath string) (DraftWikiDraft, error) {
+func resolveDraftWikiDraft(root, draftPath string) (draftwikicontract.DraftWikiDraft, error) {
 	if strings.TrimSpace(draftPath) == "" {
-		return DraftWikiDraft{}, fmt.Errorf("draft path is required")
+		return draftwikicontract.DraftWikiDraft{}, fmt.Errorf("draft path is required")
 	}
 	path := draftPath
 	if !filepath.IsAbs(path) {
@@ -19,37 +20,37 @@ func resolveDraftWikiDraft(root, draftPath string) (DraftWikiDraft, error) {
 	}
 	abs, err := filepath.Abs(path)
 	if err != nil {
-		return DraftWikiDraft{}, err
+		return draftwikicontract.DraftWikiDraft{}, err
 	}
 	rel, err := filepath.Rel(root, abs)
 	if err != nil {
-		return DraftWikiDraft{}, err
+		return draftwikicontract.DraftWikiDraft{}, err
 	}
 	if rel == "." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || rel == ".." || filepath.IsAbs(rel) {
-		return DraftWikiDraft{}, fmt.Errorf("draft path escapes repo root: %s", draftPath)
+		return draftwikicontract.DraftWikiDraft{}, fmt.Errorf("draft path escapes repo root: %s", draftPath)
 	}
 	relSlash := filepath.ToSlash(rel)
 	status, ok := draftWikiStatusFromRel(relSlash)
 	if !ok {
-		return DraftWikiDraft{}, fmt.Errorf("draft path must be inside %s/{draft,approved,rejected}: %s", DraftWikiDir, relSlash)
+		return draftwikicontract.DraftWikiDraft{}, fmt.Errorf("draft path must be inside %s/{draft,approved,rejected}: %s", DraftWikiDir, relSlash)
 	}
 	if !strings.HasSuffix(relSlash, ".md") {
-		return DraftWikiDraft{}, fmt.Errorf("draft path must be a markdown file: %s", relSlash)
+		return draftwikicontract.DraftWikiDraft{}, fmt.Errorf("draft path must be a markdown file: %s", relSlash)
 	}
 	info, err := os.Stat(abs)
 	if err != nil {
-		return DraftWikiDraft{}, err
+		return draftwikicontract.DraftWikiDraft{}, err
 	}
 	if info.IsDir() {
-		return DraftWikiDraft{}, fmt.Errorf("draft path is a directory: %s", relSlash)
+		return draftwikicontract.DraftWikiDraft{}, fmt.Errorf("draft path is a directory: %s", relSlash)
 	}
 	return readDraftWikiDraft(root, abs, status)
 }
 
-func readDraftWikiDraft(root, path, status string) (DraftWikiDraft, error) {
+func readDraftWikiDraft(root, path, status string) (draftwikicontract.DraftWikiDraft, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return DraftWikiDraft{}, err
+		return draftwikicontract.DraftWikiDraft{}, err
 	}
 	rel, err := filepath.Rel(root, path)
 	if err != nil {
@@ -66,9 +67,9 @@ func readDraftWikiDraft(root, path, status string) (DraftWikiDraft, error) {
 	}
 	info, err := os.Stat(path)
 	if err != nil {
-		return DraftWikiDraft{}, err
+		return draftwikicontract.DraftWikiDraft{}, err
 	}
-	return DraftWikiDraft{
+	return draftwikicontract.DraftWikiDraft{
 		RelPath:    rel,
 		Path:       path,
 		Status:     status,

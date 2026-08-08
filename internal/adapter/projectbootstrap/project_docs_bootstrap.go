@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"agent-harness/internal/adapter/draftwiki"
 	"agent-harness/internal/adapter/lifecycle"
 	"agent-harness/internal/adapter/projectdocs"
+	draftwikicontract "agent-harness/internal/contract/draftwiki"
 	projectdoc "agent-harness/internal/domain/projectdoc"
 	projectdocdomain "agent-harness/internal/domain/projectdoc"
 )
@@ -54,7 +54,7 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 			Reason:  projectDocReason(rel),
 		})
 	}
-	draftWiki, err := draftwiki.InitDraftWiki(draftwiki.DraftWikiInitRequest{RepoRoot: root, Write: req.Write})
+	draftWiki, err := InitDraftWiki(draftwikicontract.DraftWikiInitRequest{RepoRoot: root, Write: req.Write})
 	if err != nil {
 		return ProjectDocsBootstrapResult{}, err
 	}

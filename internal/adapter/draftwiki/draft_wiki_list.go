@@ -1,18 +1,19 @@
 package draftwiki
 
 import (
+	draftwikicontract "agent-harness/internal/contract/draftwiki"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 )
 
-func ListDraftWiki(req DraftWikiListRequest) (DraftWikiListResult, error) {
+func ListDraftWiki(req draftwikicontract.DraftWikiListRequest) (draftwikicontract.DraftWikiListResult, error) {
 	root, err := NormalizeRepoRoot(req.RepoRoot)
 	if err != nil {
-		return DraftWikiListResult{}, err
+		return draftwikicontract.DraftWikiListResult{}, err
 	}
-	drafts := []DraftWikiDraft{}
+	drafts := []draftwikicontract.DraftWikiDraft{}
 	for _, status := range draftWikiStatusDirs {
 		dir := filepath.Join(root, filepath.FromSlash(DraftWikiDir), status)
 		entries, err := os.ReadDir(dir)
@@ -20,7 +21,7 @@ func ListDraftWiki(req DraftWikiListRequest) (DraftWikiListResult, error) {
 			if os.IsNotExist(err) {
 				continue
 			}
-			return DraftWikiListResult{}, err
+			return draftwikicontract.DraftWikiListResult{}, err
 		}
 		for _, entry := range entries {
 			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
@@ -28,13 +29,13 @@ func ListDraftWiki(req DraftWikiListRequest) (DraftWikiListResult, error) {
 			}
 			draft, err := readDraftWikiDraft(root, filepath.Join(dir, entry.Name()), status)
 			if err != nil {
-				return DraftWikiListResult{}, err
+				return draftwikicontract.DraftWikiListResult{}, err
 			}
 			drafts = append(drafts, draft)
 		}
 	}
 	sort.Slice(drafts, func(i, j int) bool { return drafts[i].RelPath < drafts[j].RelPath })
-	return DraftWikiListResult{
+	return draftwikicontract.DraftWikiListResult{
 		OK:       true,
 		Kind:     "draft_wiki_list",
 		RepoRoot: root,

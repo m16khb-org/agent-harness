@@ -2,6 +2,7 @@ package draftwikicli
 
 import (
 	draftwiki "agent-harness/internal/adapter/draftwiki"
+	draftwikicontract "agent-harness/internal/contract/draftwiki"
 	"flag"
 	"fmt"
 )
@@ -17,7 +18,7 @@ func runProjectDraftWikiInit(args []string) error {
 	if fs.NArg() > 0 {
 		*repo = fs.Arg(0)
 	}
-	result, err := draftwiki.InitDraftWiki(draftwiki.DraftWikiInitRequest{RepoRoot: *repo, Write: !*dryRun})
+	result, err := draftwiki.InitDraftWiki(draftwikicontract.DraftWikiInitRequest{RepoRoot: *repo, Write: !*dryRun})
 	if err != nil {
 		return err
 	}
@@ -45,7 +46,7 @@ func runProjectDraftWikiList(args []string) error {
 	if fs.NArg() > 0 {
 		*repo = fs.Arg(0)
 	}
-	result, err := draftwiki.ListDraftWiki(draftwiki.DraftWikiListRequest{RepoRoot: *repo})
+	result, err := draftwiki.ListDraftWiki(draftwikicontract.DraftWikiListRequest{RepoRoot: *repo})
 	if err != nil {
 		return err
 	}

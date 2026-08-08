@@ -2,6 +2,7 @@ package draftwikicli
 
 import (
 	draftwiki "agent-harness/internal/adapter/draftwiki"
+	draftwikicontract "agent-harness/internal/contract/draftwiki"
 	"flag"
 	"fmt"
 )
@@ -20,7 +21,7 @@ func runProjectDraftWikiSuggest(args []string) error {
 	if *input == "" && fs.NArg() == 1 {
 		*input = fs.Arg(0)
 	}
-	result, err := draftwiki.SuggestDraftWiki(draftwiki.DraftWikiSuggestRequest{
+	result, err := draftwiki.SuggestDraftWiki(draftwikicontract.DraftWikiSuggestRequest{
 		RepoRoot:   *repo,
 		InputPath:  *input,
 		Title:      *title,
