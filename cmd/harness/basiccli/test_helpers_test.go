@@ -1,6 +1,7 @@
 package basiccli
 
 import (
+	"agent-harness/internal/adapter/docs"
 	"agent-harness/internal/adapter/preflight"
 	"context"
 	"os"
@@ -19,6 +20,7 @@ func init() {
 	root := testHarnessRoot()
 	Configure(Deps{
 		GitPreflight:      preflight.GitPreflight,
+		DocsIndex:         docs.DocsIndex,
 		HarnessRoot:       func() string { return root },
 		ResolveTarget:     testResolveTarget,
 		Version:           "0.1.0",

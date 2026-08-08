@@ -1,6 +1,7 @@
 package docs
 
 import (
+	docscontract "agent-harness/internal/contract/docs"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -12,22 +13,6 @@ import (
 
 const draftWikiDir = ".agent-harness/draft-wiki"
 const evidenceDir = ".agent-harness/evidence"
-
-type DocsIndexResult struct {
-	OK          bool           `json:"ok"`
-	Version     string         `json:"version"`
-	HarnessRoot string         `json:"harness_root"`
-	Docs        []DocIndexInfo `json:"docs"`
-	GeneratedAt string         `json:"generated_at"`
-}
-
-type DocIndexInfo struct {
-	RelPath  string   `json:"rel_path"`
-	Path     string   `json:"path"`
-	Title    string   `json:"title"`
-	Headings []string `json:"headings"`
-	Bytes    int64    `json:"bytes"`
-}
 
 func ListDocs(root string) []string {
 	var candidates []string
@@ -124,9 +109,9 @@ func isExcludedDoc(root, path string) bool {
 	return false
 }
 
-func DocsIndex(root, version string) DocsIndexResult {
+func DocsIndex(root, version string) docscontract.DocsIndexResult {
 	paths := ListDocs(root)
-	docs := make([]DocIndexInfo, 0, len(paths))
+	docs := make([]docscontract.DocIndexInfo, 0, len(paths))
 	for _, path := range paths {
 		info, err := os.Stat(path)
 		if err != nil || info.IsDir() {
@@ -137,7 +122,7 @@ func DocsIndex(root, version string) DocsIndexResult {
 			rel = path
 		}
 		title, headings := ReadHeadings(path)
-		docs = append(docs, DocIndexInfo{
+		docs = append(docs, docscontract.DocIndexInfo{
 			RelPath:  filepath.ToSlash(rel),
 			Path:     path,
 			Title:    title,
@@ -146,7 +131,7 @@ func DocsIndex(root, version string) DocsIndexResult {
 		})
 	}
 	sort.Slice(docs, func(i, j int) bool { return docs[i].RelPath < docs[j].RelPath })
-	return DocsIndexResult{
+	return docscontract.DocsIndexResult{
 		OK:          true,
 		Version:     version,
 		HarnessRoot: root,

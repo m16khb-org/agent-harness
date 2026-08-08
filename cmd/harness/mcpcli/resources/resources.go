@@ -1,15 +1,17 @@
 package resources
 
 import (
-	docs "agent-harness/internal/adapter/docs"
 	mcpadapter "agent-harness/internal/adapter/mcp"
 	policy "agent-harness/internal/adapter/policy"
 	projectdocs "agent-harness/internal/adapter/projectdocs"
+	docscontract "agent-harness/internal/contract/docs"
 	statecontract "agent-harness/internal/contract/state"
 	"encoding/json"
 )
 
 type Config struct {
+	// DocsIndex는 composition root가 주입한다.
+	DocsIndex func(root, version string) docscontract.DocsIndexResult
 	// StateList는 composition root가 주입한다.
 	StateList       func() (statecontract.StateListResult, error)
 	HarnessRoot     string
@@ -71,7 +73,10 @@ func HandleResourceRead(params json.RawMessage, config Config) (any, *ReadError)
 		return nil, &ReadError{Code: -32602, Message: "Invalid params", Data: err.Error()}
 	}
 	if req.URI == "harness://docs" {
-		result := docs.DocsIndex(config.HarnessRoot, config.Version)
+		if config.DocsIndex == nil {
+			return nil, &ReadError{Code: -32000, Message: "Cannot read docs index", Data: "docs index reader is not configured"}
+		}
+		result := config.DocsIndex(config.HarnessRoot, config.Version)
 		b, _ := json.MarshalIndent(result, "", "  ")
 		return content(req.URI, "application/json", string(b)), nil
 	}

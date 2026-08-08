@@ -1,6 +1,7 @@
 package basiccli
 
 import (
+	"agent-harness/internal/adapter/docs"
 	"agent-harness/internal/adapter/preflight"
 	"context"
 	"encoding/json"
@@ -127,6 +128,7 @@ func TestRunDoctor_printsLiveDaemonAdmissionHealth(t *testing.T) {
 	t.Cleanup(func() { Configure(oldDeps) })
 	Configure(Deps{
 		GitPreflight:   preflight.GitPreflight,
+		DocsIndex:      docs.DocsIndex,
 		HarnessRoot:    func() string { return repo },
 		ResolveTarget:  func(target string) string { return target },
 		Version:        "test",

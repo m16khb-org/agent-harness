@@ -1,10 +1,8 @@
 cmd/harness/apidoc/reviewfiles -> internal/adapter/preflight
-cmd/harness/basiccli -> internal/adapter/docs
 cmd/harness/basiccli -> internal/adapter/doctor
 cmd/harness/basiccli -> internal/adapter/guard
 cmd/harness/basiccli -> internal/adapter/repopath
 cmd/harness/basiccli -> internal/adapter/trace
-cmd/harness/commandstep -> internal/adapter/failurecause
 cmd/harness/contractcli -> internal/adapter/cli
 cmd/harness/contractcli -> internal/adapter/mcp
 cmd/harness/contractcli -> internal/adapter/toolconformance
@@ -26,12 +24,8 @@ cmd/harness/hookcli/hookcatalog -> internal/adapter/outbound/state
 cmd/harness/hookcli/hookcatalog -> internal/adapter/worker
 cmd/harness/hookcli/hookfailure -> internal/adapter/hookfailure
 cmd/harness/hookcli/hookfailure -> internal/adapter/hookmetrics
-cmd/harness/installcli -> internal/adapter/claude
-cmd/harness/installcli -> internal/adapter/codex
-cmd/harness/installcli -> internal/adapter/install
 cmd/harness/installcli -> internal/adapter/installutil
 cmd/harness/installcli -> internal/adapter/issueops
-cmd/harness/installcli -> internal/adapter/mcp
 cmd/harness/issueopscli -> internal/adapter/cli
 cmd/harness/issueopscli -> internal/adapter/issueops
 cmd/harness/issueopscli -> internal/adapter/issueops/loopgate
@@ -63,7 +57,6 @@ cmd/harness/mcpcli -> internal/adapter/projectbootstrap
 cmd/harness/mcpcli -> internal/adapter/projectdocs
 cmd/harness/mcpcli -> internal/adapter/worker
 cmd/harness/mcpcli/catalog -> internal/adapter/mcp
-cmd/harness/mcpcli/resources -> internal/adapter/docs
 cmd/harness/mcpcli/resources -> internal/adapter/mcp
 cmd/harness/mcpcli/resources -> internal/adapter/policy
 cmd/harness/mcpcli/resources -> internal/adapter/projectdocs
@@ -80,7 +73,6 @@ cmd/harness/selfworkflow/augmentplan -> internal/adapter/install
 cmd/harness/selfworkflow/augmentplan -> internal/adapter/outbound/state
 cmd/harness/selfworkflow/candidateexport -> internal/adapter/outbound/state
 cmd/harness/selfworkflow/historycompare -> internal/adapter/outbound/state
-cmd/harness/selfworkflow/model -> internal/adapter/failurecause
 cmd/harness/selfworkflow/stateio -> internal/adapter/failurecause
 cmd/harness/selfworkflow/stateio -> internal/adapter/outbound/state
 cmd/harness/selfworkflow/summary -> internal/adapter/failurecause
@@ -90,14 +82,12 @@ cmd/harness/statuscli -> internal/adapter/outbound/state
 cmd/harness/statuscli -> internal/adapter/policy
 cmd/harness/statuscli -> internal/adapter/projectdocs
 cmd/harness/statuscli -> internal/adapter/worker
-cmd/harness/validationcli/contractauditworker -> internal/adapter/failurecause
 cmd/harness/validationcli/contractauditworker -> internal/adapter/worker
 cmd/harness/validationcli/nativeintegration -> internal/adapter/install
 cmd/harness/validationcli/nativeintegration -> internal/adapter/installutil
 cmd/harness/validationcli/preflightfuzz -> internal/adapter/preflight
 cmd/harness/validationcli/qagate -> internal/adapter/docs
 cmd/harness/validationcli/qagate -> internal/adapter/install
-cmd/harness/validationcli/smoke -> internal/adapter/docs
 cmd/harness/validationcli/stateroundtrip -> internal/adapter/outbound/sqlstore
 cmd/harness/validationcli/stateroundtrip -> internal/adapter/outbound/state
 cmd/harness/validationcli/webfetch -> internal/adapter/outbound/webfetch

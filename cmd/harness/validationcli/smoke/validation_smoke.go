@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	docs "agent-harness/internal/adapter/docs"
+	docs "agent-harness/internal/contract/docs"
 	inspect "agent-harness/internal/contract/inspect"
 )
 
