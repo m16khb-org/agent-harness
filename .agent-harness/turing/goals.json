@@ -512,18 +512,43 @@
           "id": "BT-G11-C4",
           "scenario": "AC-06 전체 dogfood(create→claim→PR→cleanup)",
           "channel": "none",
-          "status": "blocked",
-          "capturedEvidence": "create→claim은 이미 통과했음이 실측으로 확인됨(io-b3d92dc6247a, lease generation 1 active claim). 그 다음에서 막히던 원인 두 개를 제거했다. 전체 실행에는 (1) 새 바이너리 설치 — live owner의 hook 대상 파일 교체, (2) 두 번째 native owner 기동이 필요하고, 첫 owner가 아직 lease를 든 채 살아 있어 사용자 결정이 필요하다.",
+          "status": "partial",
+          "capturedEvidence": "실제 dogfood 실행(issue #423 / io-cb83a79e1bfd / run_ca9be64d90ac). owner가 claim → branch await-link → branch prepare --link-verified까지 완주했고, digest 3종과 baseline test를 실측 검증했으며, 막혔을 때 lease를 released로 반납하고 worktree를 clean하게 남겼다 — 앞의 두 수정이 실물에서 증명됐다. 그 지점에서 세 번째 결함(planner 게이트 부재)이 드러나 PR #425로 고쳤고 신규 lifecycle 실측으로 게이트 동작을 확인했다. create→claim→(PR→cleanup)의 뒷부분은 세 번째 수정 이후 새 사이클로만 도달한다.",
           "cleanupReceipt": "none spawned"
         }
       ],
-      "closingNote": "PR #422. 원인 두 개 제거. AC-06 실행만 남았고 그것은 환경 결정에 달려 있다."
+      "closingNote": "PR #422(대기+반납)와 #425(planner 게이트) 머지. dogfood가 세 결함을 차례로 드러냈고 앞의 둘은 실물에서 수정이 증명됐다."
+    },
+    {
+      "id": "BT-G12",
+      "title": "#423 orca client analyzer 정리",
+      "status": "completed",
+      "objective": "dogfood 대상으로 만든 이슈의 실제 변경을 완료한다.",
+      "successCriteria": [
+        {
+          "id": "BT-G12-C1",
+          "scenario": "errors.As와 strings.Fields 순회가 client.go에 남지 않는다",
+          "channel": "auxiliary:cli",
+          "status": "pass",
+          "capturedEvidence": "grep -c 각 0건. AC-03을 go vet에서 소스 관측으로 정정했다 — 이 toolchain의 go vet에는 해당 analyzer가 없어 원래 조건은 vacuously PASS였다(owner가 지적).",
+          "cleanupReceipt": "none spawned"
+        },
+        {
+          "id": "BT-G12-C2",
+          "scenario": "동작이 같다",
+          "channel": "auxiliary:cli",
+          "status": "pass",
+          "capturedEvidence": "go test ./internal/adapter/orca -count=1 ok — 에러 매칭과 help flag 파싱 계약이 기존 테스트로 통과. 전체 회귀 GREEN.",
+          "cleanupReceipt": "none spawned"
+        }
+      ],
+      "closingNote": "PR #426. owner가 planner 게이트에서 막혀 도달하지 못한 변경을 coordinator가 마무리했다."
     }
   ],
   "metrics": {
-    "evidenceCoverage": 0.94,
-    "reworkRate": 0.28,
-    "cycleEfficiency": 0.92,
+    "evidenceCoverage": 0.96,
+    "reworkRate": 0.26,
+    "cycleEfficiency": 0.94,
     "parallelizationRatio": 1.0,
     "cleanupCompliance": 1.0
   },
@@ -637,6 +662,37 @@
         "#306 AC-08 — 대상 고아 소멸로 도달 불가"
       ],
       "lesson": "차단 결론은 관측이 아니라 추론이었다. 관측을 먼저 다 하고 나서 차단을 선언한다."
+    },
+    {
+      "round": 4,
+      "at": "2026-08-09T00:00:00Z",
+      "title": "dogfood 실행 라운드",
+      "ran": "issue #423 대상 실제 GitHub Orca 사이클 (io-cb83a79e1bfd / run_ca9be64d90ac / task_5e536fff2a22)",
+      "proved": [
+        "branch await-link가 coordinator의 링크를 기다려 owner가 완주",
+        "막힌 owner가 lease를 released로 반납 — 이전 lifecycle과 달리 사람 개입 없이 회수됨"
+      ],
+      "found": [
+        "execution prepare가 owner를 채울 수 없는 planner 게이트 앞으로 밀어넣음 → PR #425"
+      ],
+      "merged": [
+        "#422 await-link + lease 반납",
+        "#424 turing round3",
+        "#425 planner 게이트",
+        "#426 #423 실작업"
+      ],
+      "liveResidue": {
+        "owners": [
+          "PID 12430 (.worktrees/414-terminal-identity-fix)",
+          "PID 44039 (.worktrees/423-orca-client-analyzer)"
+        ],
+        "note": "두 세션 모두 살아 있고 사용자가 423 쪽에 직접 입력한 것을 관측했다. 종료는 하네스 비목표이므로 건드리지 않았다. abandon은 Orca 자원이 남아 있어 거부하며, 그 제거는 Orca의 영역이다."
+      },
+      "unreachable": [
+        "#328 기준 4·5의 #248 worktree — 이 세션 앞선 정리에서 제거됨",
+        "#306 AC-08의 #304 고아 — 이미 소멸(totalCount=0)"
+      ],
+      "note328": "기준 5의 readback 절반은 실측 충족 — 갱신 전 두 호스트 skew 보고, 진단이 낸 명령 실행, 갱신 후 두 호스트 침묵."
     }
   ]
 }

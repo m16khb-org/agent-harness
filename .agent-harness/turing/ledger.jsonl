@@ -108,3 +108,7 @@
 {"at":"2026-08-09T00:00:00Z","event":"correction","goal":"BT-G7","note":"misdiagnosed owner PID 12430 as idle-and-blocking; the task record showed it claimed the lease, hit branch_link_verification_required, and reported worker_done honestly"}
 {"at":"2026-08-09T00:00:00Z","event":"pass","goal":"BT-G11","note":"#319 root cause removed via PR #422: owner can now await the coordinator's linked branch, and can release the lease when blocked"}
 {"at":"2026-08-09T00:00:00Z","event":"block","goal":"BT-G11","note":"AC-06 end-to-end needs a binary install that swaps the live owner's hook target, plus a second native owner"}
+{"at":"2026-08-09T00:00:00Z","event":"pass","goal":"BT-G11","note":"live dogfood proved await-link and the lease-release exit; the cycle self-recovered where the previous one needed a human"}
+{"at":"2026-08-09T00:00:00Z","event":"pass","goal":"BT-G11","note":"third defect found by that dogfood and fixed in PR #425: prepare launched owners into planner gates they cannot fill"}
+{"at":"2026-08-09T00:00:00Z","event":"pass","goal":"BT-G12","note":"#423 closed via PR #426; AC-03 corrected from go vet to source observation after the owner showed the analyzer is absent from this toolchain"}
+{"at":"2026-08-09T00:00:00Z","event":"block","goal":"BT-G9","note":"two owner sessions alive (12430, 44039); user observed typing into the 423 one; abandon refuses while Orca resources remain"}
