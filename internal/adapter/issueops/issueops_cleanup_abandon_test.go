@@ -391,15 +391,24 @@ func TestCleanupAbandonRejectsLocalResidue(t *testing.T) {
 			rec.Execution = abandonExecution(rec.Repo, root, issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusReleased})
 		})
 		result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), abandonDeps(&fakeAbandonGit{}, authoritativeZeroOrca()))
-		if err == nil || !containsString(result.Missing, "worktree_canonical") || !containsString(result.Missing, "local_residue_pair") {
+		// registry가 인정하지 않는 worktree는 계속 막는다. 비대칭 자체는
+		// #433 이후 거부 사유가 아니므로 worktree_canonical만 남는다.
+		if err == nil || !containsString(result.Missing, "worktree_canonical") {
 			t.Fatalf("unverified worktree-only residue must block: %v %v", err, result.Missing)
 		}
+		if containsString(result.Missing, "local_residue_pair") {
+			t.Fatalf("비대칭 자체는 더 이상 거부 사유가 아니다: %v", result.Missing)
+		}
 	})
-	t.Run("branch ref present", func(t *testing.T) {
+	// branch만 남은 잔여물은 #433 이후 정리 가능하다. 그 계약은
+	// TestCleanupAbandonClearsAsymmetricResidue가 고정한다. 여기서는 그
+	// 경로에도 execution 근거가 여전히 필요함을 고정한다 — 잔여물이 있는데
+	// record에 execution이 없으면 무엇을 지우는 것인지 설명할 수 없다.
+	t.Run("branch ref present without execution", func(t *testing.T) {
 		stateRoot, record := abandonTestRecord(t)
 		result, err := CleanupAbandon(context.Background(), stateRoot, abandonRequest(record.ID, false, ""), abandonDeps(&fakeAbandonGit{branchOID: "abc123"}, authoritativeZeroOrca()))
-		if err == nil || !containsString(result.Missing, "local_residue_pair") {
-			t.Fatalf("branch-only residue without a retry receipt must block: %v %v", err, result.Missing)
+		if err == nil || !containsString(result.Missing, "local_residue_execution") {
+			t.Fatalf("execution 없는 잔여물은 계속 막아야 한다: %v %v", err, result.Missing)
 		}
 	})
 	t.Run("worktree identity conflict", func(t *testing.T) {
