@@ -310,9 +310,22 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record issueops.
 	if (inventory.WorktreePresent || result.BranchPresent) && record.Execution == nil {
 		missing = append(missing, "local_residue_execution")
 	}
-	if inventory.WorktreePresent != result.BranchPresent && !partialBranchRetry {
-		missing = append(missing, "local_residue_pair")
-	}
+	// 비대칭 잔여물(한쪽만 남음)은 거부하지 않는다(#433).
+	//
+	// 예전에는 이 비대칭 자체가 거부 사유였고, abandon 자신이 남긴 retry
+	// receipt가 있을 때만 예외가 열렸다. 그래서 worktree가 **다른 경로로**
+	// 사라진 lifecycle에는 typed 출구가 없었다 — cleanup finish는 머지 증거를,
+	// cleanup orphan은 worktree를 요구하므로 둘 다 해당되지 않았다.
+	// 실측: io-268bd6ac6e7a가 다른 모든 게이트를 통과하고도 이 하나로 영구히
+	// 막혔다.
+	//
+	// 완화해도 안전한 근거는 각 축의 검사가 따로 서 있기 때문이다. worktree는
+	// canonical·clean·head로, branch는 다른 곳에 체크아웃되지 않았는지로 각각
+	// 검증되고, fingerprint가 두 축의 관측(존재 여부와 값)을 모두 결속하므로
+	// apply 직전에 없던 쪽이 생기면 stale로 멈춘다.
+	//
+	// 쌍이 온전할 때의 head 일치 요구는 아래에서 그대로 유지한다 — 그것은
+	// 비대칭 문제가 아니라 두 관측이 서로 모순되는 경우다.
 	if inventory.WorktreePresent && result.BranchPresent && inventory.WorktreeHead != inventory.BranchOID {
 		missing = append(missing, "local_branch_head")
 	}

@@ -151,8 +151,12 @@ func TestCleanupAbandonBranchFailurePreservesRetryInventory(t *testing.T) {
 	mutateFinishRecord(t, stateRoot, fixture.record.ID, func(record *issueops.IssueOpsRecord) {
 		record.CleanupAbandonFailure.BranchOID = "different-oid"
 	})
+	// receipt의 OID가 관측과 어긋나면 계속 막는다. 예전에는 이것이
+	// local_residue_pair로 보고됐지만, #433이 비대칭 자체를 허용하면서
+	// 이제 cleanup_failure_inventory가 잡는다 — receipt와 관측이 불일치한다는
+	// 더 정확한 진단이다. 막는다는 사실은 그대로다.
 	mismatch, mismatchErr := CleanupAbandon(context.Background(), stateRoot, abandonRequest(fixture.record.ID, false, ""), CleanupAbandonDeps{})
-	if mismatchErr == nil || !containsString(mismatch.Missing, "local_residue_pair") {
+	if mismatchErr == nil || !containsString(mismatch.Missing, "cleanup_failure_inventory") {
 		t.Fatalf("branch-only retry must match the sealed OID: err=%v result=%+v", mismatchErr, mismatch)
 	}
 	mutateFinishRecord(t, stateRoot, fixture.record.ID, func(record *issueops.IssueOpsRecord) {
