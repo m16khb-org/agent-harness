@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
-	hookadapter "agent-harness/internal/adapter/hook"
-	"agent-harness/internal/core"
-	coreinstall "agent-harness/internal/core/install"
-	issueopscore "agent-harness/internal/core/issueops"
+	issueopscontract "agent-harness/internal/contract/issueops"
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
+	hookadapter "agent-harness/internal/domain/hook"
+	"agent-harness/internal/domain/searchrouting"
 )
 
 func runHookPreToolUse(args []string) error {
@@ -44,26 +44,27 @@ func runHookPreToolUse(args []string) error {
 		nativeHost = string(hookadapter.HostCodex)
 	}
 	diagnostic, runtimeErr := DiagnoseCurrentNativeRuntime()
-	if reason, blocked := coreinstall.NativeRuntimeDiagnosticMessage(diagnostic, runtimeErr); blocked {
+	if reason, blocked := NativeRuntimeDiagnosticMessage(diagnostic, runtimeErr); blocked {
 		if *jsonOut {
 			return printJSON(diagnostic)
 		}
 		markHookMetricBlocked()
 		return printJSON(hookadapter.Resolve(nativeHost).FormatBlock(reason))
 	}
-	processAncestry, _ := issueopscore.ObserveNativeProcessAncestry(os.Getpid())
-	result := core.BuildLifecyclePreToolUseDecision(core.HookToolUseLifecycleRequest{
+	processAncestry, _ := ObserveNativeProcessAncestry(os.Getpid())
+	tool := hookinput.ToolNameFromHookInput(stdin)
+	result := buildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:                  parsedRepo,
-		CWD:                   hookinput.CWDFromHookInput(stdin),
+		CWD:                   hookinput.EffectiveCWDFromHookInput(stdin, searchrouting.IsShellTool(tool)),
 		Host:                  nativeHost,
 		SessionID:             hookinput.SessionIDFromHookInput(stdin),
 		AgentID:               hookinput.AgentIDFromHookInput(stdin),
-		Tool:                  hookinput.ToolNameFromHookInput(stdin),
+		Tool:                  tool,
 		ToolInput:             hookinput.ToolInputFromHookInput(stdin),
 		Paths:                 hookinput.PathsFromHookInput(stdin),
 		Command:               hookinput.CommandFromHookInput(stdin),
 		ProjectPath:           hookinput.ProjectPathFromHookInput(stdin),
-		NativeProcessAncestry: processAncestry,
+		NativeProcessAncestry: lifecycleProcessReceipts(processAncestry),
 		Source:                "pre-tool-use",
 		EnforceWorktree:       *enforceWorktree,
 		EnforceKoreanRemote:   *enforceKoreanRemote,
@@ -97,7 +98,7 @@ func runHookPreToolUse(args []string) error {
 	return printJSON(ho.FormatNoop())
 }
 
-func hookDenyReason(result core.HookPreToolUseDecisionResult) string {
+func hookDenyReason(result lifecyclecontract.HookPreToolUseDecisionResult) string {
 	if result.Deny == nil {
 		return result.Reason
 	}
@@ -115,6 +116,16 @@ func firstNonEmptyHookValue(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func lifecycleProcessReceipts(receipts []issueopscontract.NativeProcessReceipt) []lifecyclecontract.NativeProcessReceipt {
+	converted := make([]lifecyclecontract.NativeProcessReceipt, 0, len(receipts))
+	for _, receipt := range receipts {
+		converted = append(converted, lifecyclecontract.NativeProcessReceipt{
+			PID: receipt.PID, StartedAt: receipt.StartedAt, Executable: receipt.Executable,
+		})
+	}
+	return converted
 }
 
 // resolveExpectedWorktree는 명시적으로 제공된 expected worktree(flag 또는

@@ -11,7 +11,7 @@ import (
 	"sort"
 	"time"
 
-	"agent-harness/internal/core/webfetch"
+	webfetchcontract "agent-harness/internal/contract/webfetch"
 )
 
 type Deps struct {
@@ -57,7 +57,7 @@ func runFetch(args []string, deps Deps) error {
 	if err != nil {
 		return fmt.Errorf("invalid --timeout: %w", err)
 	}
-	result, err := webfetch.Fetch(context.Background(), webfetch.Request{
+	result, err := Fetch(context.Background(), webfetchcontract.Request{
 		URL:      *rawURL,
 		Timeout:  timeout,
 		MaxChars: *maxChars,
@@ -93,7 +93,7 @@ func runBenchmark(args []string, deps Deps) error {
 	if err != nil {
 		return err
 	}
-	result, err := webfetch.RunBenchmark(context.Background(), webfetch.BenchmarkRequest{
+	result, err := RunBenchmark(context.Background(), webfetchcontract.BenchmarkRequest{
 		Fixtures:       fixtures,
 		Live:           *live,
 		LiveOptIn:      os.Getenv("HARNESS_WEBFETCH_LIVE") == "1",
@@ -115,9 +115,9 @@ func printJSON(stdout io.Writer, value any) error {
 	return encoder.Encode(value)
 }
 
-func loadFixtures(path string) ([]webfetch.BenchmarkFixture, error) {
+func loadFixtures(path string) ([]webfetchcontract.BenchmarkFixture, error) {
 	if path == "builtin" {
-		return webfetch.DeterministicFixtures(), nil
+		return DeterministicFixtures(), nil
 	}
 	info, err := os.Stat(path)
 	if err != nil {
@@ -138,7 +138,7 @@ func loadFixtures(path string) ([]webfetch.BenchmarkFixture, error) {
 		names = append(names, entry.Name())
 	}
 	sort.Strings(names)
-	var fixtures []webfetch.BenchmarkFixture
+	var fixtures []webfetchcontract.BenchmarkFixture
 	for _, name := range names {
 		next, err := loadFixtureFile(filepath.Join(path, name))
 		if err != nil {
@@ -152,23 +152,23 @@ func loadFixtures(path string) ([]webfetch.BenchmarkFixture, error) {
 	return fixtures, nil
 }
 
-func loadFixtureFile(path string) ([]webfetch.BenchmarkFixture, error) {
+func loadFixtureFile(path string) ([]webfetchcontract.BenchmarkFixture, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 	var wrapper struct {
-		Fixtures []webfetch.BenchmarkFixture `json:"fixtures"`
+		Fixtures []webfetchcontract.BenchmarkFixture `json:"fixtures"`
 	}
 	if err := json.Unmarshal(raw, &wrapper); err == nil && wrapper.Fixtures != nil {
 		return wrapper.Fixtures, nil
 	}
-	var one webfetch.BenchmarkFixture
+	var one webfetchcontract.BenchmarkFixture
 	if err := json.Unmarshal(raw, &one); err != nil {
 		return nil, fmt.Errorf("parse fixtures %s: %w", path, err)
 	}
 	if one.ID == "" {
 		return nil, fmt.Errorf("fixture file %s missing id", path)
 	}
-	return []webfetch.BenchmarkFixture{one}, nil
+	return []webfetchcontract.BenchmarkFixture{one}, nil
 }

@@ -2,7 +2,6 @@ package model
 
 const (
 	SelfVerificationSummaryKind     = "self_verification_summary"
-	LegacySelfAugmentSummaryKind    = "self_augment_summary"
 	SelfVerificationKoreanName      = "자기 검증 루프"
 	SelfAugmentationKoreanName      = "자가 증강 루프"
 	DefaultLoopTargetScoreExclusive = 95.0

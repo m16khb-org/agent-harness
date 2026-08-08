@@ -1,11 +1,11 @@
 package projectcli
 
 import (
+	projectbootstrapcontract "agent-harness/internal/contract/projectbootstrap"
+	projectdocscontract "agent-harness/internal/contract/projectdocs"
 	"flag"
 	"fmt"
 	"strings"
-
-	"agent-harness/internal/core"
 )
 
 func runProjectBootstrap(args []string) error {
@@ -21,7 +21,7 @@ func runProjectBootstrap(args []string) error {
 	if fs.NArg() > 0 {
 		*repo = fs.Arg(0)
 	}
-	result, err := core.BootstrapProjectDocs(core.ProjectDocsBootstrapRequest{RepoRoot: *repo, Write: *write && !*dryRun, Sync: *sync})
+	result, err := bootstrapProjectDocs(projectbootstrapcontract.ProjectDocsBootstrapRequest{RepoRoot: *repo, Write: *write && !*dryRun, Sync: *sync})
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func runProjectDocs(args []string) error {
 	if fs.NArg() > 0 {
 		*repo = fs.Arg(0)
 	}
-	result, err := core.RouteProjectDocs(*repo, "general")
+	result, err := RouteProjectDocs(*repo, "general")
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func runProjectRouteDocs(args []string) error {
 	if fs.NArg() > 0 {
 		*task = strings.Join(fs.Args(), " ")
 	}
-	result, err := core.RouteProjectDocs(*repo, *task)
+	result, err := RouteProjectDocs(*repo, *task)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func runProjectRecord(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := core.AppendProjectDocsRecord(core.ProjectDocsRecordRequest{
+	result, err := AppendProjectDocsRecord(projectdocscontract.ProjectDocsRecordRequest{
 		RepoRoot:     *repo,
 		Kind:         *kind,
 		Title:        *title,

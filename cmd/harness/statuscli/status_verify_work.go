@@ -1,26 +1,28 @@
 package statuscli
 
 import (
+	guardcontract "agent-harness/internal/contract/guard"
+	policydomain "agent-harness/internal/contract/policy"
+	preflightcontract "agent-harness/internal/contract/preflight"
+	projectdocdomain "agent-harness/internal/domain/projectdoc"
 	"flag"
 	"fmt"
 	"os/exec"
 	"strings"
-
-	"agent-harness/internal/core"
 )
 
 type VerifyWorkResult struct {
-	OK                bool                         `json:"ok"`
-	Kind              string                       `json:"kind"`
-	Repo              string                       `json:"repo"`
-	GitStatus         string                       `json:"git_status,omitempty"`
-	Preflight         core.PreflightResult         `json:"preflight"`
-	Guard             core.GuardCheckResult        `json:"guard"`
-	Command           *core.CommandRunResult       `json:"command,omitempty"`
-	Evidence          []string                     `json:"evidence"`
-	EvidenceMatrix    []VerifyWorkEvidenceItem     `json:"evidence_matrix"`
-	SuggestedCommands []VerifyWorkSuggestedCommand `json:"suggested_commands"`
-	Warnings          []string                     `json:"warnings"`
+	OK                bool                              `json:"ok"`
+	Kind              string                            `json:"kind"`
+	Repo              string                            `json:"repo"`
+	GitStatus         string                            `json:"git_status,omitempty"`
+	Preflight         preflightcontract.PreflightResult `json:"preflight"`
+	Guard             guardcontract.GuardCheckResult    `json:"guard"`
+	Command           *policydomain.CommandRunResult    `json:"command,omitempty"`
+	Evidence          []string                          `json:"evidence"`
+	EvidenceMatrix    []VerifyWorkEvidenceItem          `json:"evidence_matrix"`
+	SuggestedCommands []VerifyWorkSuggestedCommand      `json:"suggested_commands"`
+	Warnings          []string                          `json:"warnings"`
 }
 
 type VerifyWorkEvidenceItem struct {
@@ -74,23 +76,23 @@ func buildVerifyWork(repo string, all bool, argv []string) VerifyWorkResult {
 	if err != nil {
 		warnings = append(warnings, "git status: "+err.Error())
 	}
-	preflight := core.GitPreflight(root, deps.HarnessRoot())
+	preflight := deps.GitPreflight(root, deps.HarnessRoot())
 	if preflight.OK {
 		evidence = append(evidence, "git preflight completed")
 	} else {
 		warnings = append(warnings, "git preflight reported issues")
 	}
 	evidenceMatrix = append(evidenceMatrix, verifyWorkEvidenceItem("git_preflight", preflight.OK, "git repository preflight completed"))
-	guard := core.GuardCheck(core.GuardCheckRequest{RepoRoot: root, Staged: !all, All: all})
+	guard := GuardCheck(guardcontract.GuardCheckRequest{RepoRoot: root, Staged: !all, All: all})
 	if guard.OK {
 		evidence = append(evidence, fmt.Sprintf("guard check passed (%s, %d files)", guard.Mode, len(guard.CheckedFiles)))
 	} else {
 		warnings = append(warnings, "guard check has blocking findings")
 	}
 	evidenceMatrix = append(evidenceMatrix, verifyWorkEvidenceItem("guard_check", guard.OK, fmt.Sprintf("guard check completed in %s mode for %d file(s)", guard.Mode, len(guard.CheckedFiles))))
-	var command *core.CommandRunResult
+	var command *policydomain.CommandRunResult
 	if len(argv) > 0 {
-		run := core.RunReadOnlyCommand(core.CommandPolicyRequest{WorkspaceRoot: root, CWD: root, Argv: argv, Timeout: "30s"})
+		run := RunReadOnlyCommand(policydomain.CommandPolicyRequest{WorkspaceRoot: root, CWD: root, Argv: argv, Timeout: "30s"})
 		command = &run
 		if run.OK {
 			evidence = append(evidence, "read-only verification command passed")
@@ -121,9 +123,9 @@ func verifyWorkEvidenceItemWithCommand(name string, ok bool, summary string, com
 }
 
 func buildVerifyWorkSuggestedCommands(root string) []VerifyWorkSuggestedCommand {
-	signals := core.AnalyzeProjectSignals(root)
+	signals := deps.AnalyzeProjectSignals(root)
 	out := []VerifyWorkSuggestedCommand{}
-	add := func(kind string, commands []core.EvidenceCommand) {
+	add := func(kind string, commands []projectdocdomain.EvidenceCommand) {
 		for i, command := range commands {
 			fields := strings.Fields(command.Command)
 			if len(fields) == 0 {

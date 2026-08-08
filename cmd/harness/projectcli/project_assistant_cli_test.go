@@ -1,12 +1,12 @@
 package projectcli
 
 import (
+	commitsuggest "agent-harness/internal/contract/commitsuggest"
+	lintdiagnose "agent-harness/internal/contract/lintdiagnose"
 	"encoding/json"
 	"os/exec"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/core"
 )
 
 func TestRunProjectCommitSuggest_printsNoChangesMessage_whenDiffIsEmpty(t *testing.T) {
@@ -37,7 +37,7 @@ func TestRunProjectCommitSuggest_printsNoChangesJSON_whenJSONFlagIsSet(t *testin
 	})
 
 	// Then
-	var result core.CommitSuggestResult
+	var result commitsuggest.CommitSuggestResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode commit-suggest json: %v\n%s", err, out)
 	}
@@ -71,7 +71,7 @@ func TestRunProjectLintDiagnose_printsSuccessJSON_whenJSONFlagIsSet(t *testing.T
 	})
 
 	// Then
-	var result core.LintDiagnoseResult
+	var result lintdiagnose.LintDiagnoseResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode lint-diagnose json: %v\n%s", err, out)
 	}

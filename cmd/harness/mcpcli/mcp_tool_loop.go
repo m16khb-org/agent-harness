@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"agent-harness/cmd/harness/mcpcli/argmap"
-	"agent-harness/internal/core"
+	loopruncontract "agent-harness/internal/contract/looprun"
 )
 
 var loopMCPHandlers = map[string]func(map[string]any) MCPToolOutcome{
@@ -33,7 +33,7 @@ func loopMCPOutcome(payload any, err error, message string) MCPToolOutcome {
 }
 
 func handleMCPLoopStart(args map[string]any) MCPToolOutcome {
-	result, err := core.StartLoopRun(core.LoopRunStartRequest{
+	result, err := LoopStart(loopruncontract.StartLoopRequest{
 		Repo:        argmap.String(args, "repo"),
 		Name:        argmap.String(args, "name"),
 		Goal:        argmap.String(args, "goal"),
@@ -44,7 +44,7 @@ func handleMCPLoopStart(args map[string]any) MCPToolOutcome {
 }
 
 func handleMCPLoopRecordAttempt(args map[string]any) MCPToolOutcome {
-	result, err := core.RecordLoopAttempt(argmap.String(args, "id"), core.LoopRunRecordAttemptRequest{
+	result, err := LoopRecordAttempt(argmap.String(args, "id"), loopruncontract.RecordAttemptRequest{
 		Verdict:  argmap.String(args, "verdict"),
 		Evidence: argmap.StringSlice(args, "evidence"),
 	})
@@ -52,11 +52,11 @@ func handleMCPLoopRecordAttempt(args map[string]any) MCPToolOutcome {
 }
 
 func handleMCPLoopStatus(args map[string]any) MCPToolOutcome {
-	result, err := core.LoopRunStatus(argmap.String(args, "id"))
+	result, err := LoopStatus(argmap.String(args, "id"))
 	return loopMCPOutcome(result, err, "Loop status failed")
 }
 
 func handleMCPLoopStop(args map[string]any) MCPToolOutcome {
-	result, err := core.StopLoopRun(argmap.String(args, "id"), argmap.Bool(args, "success"), argmap.String(args, "reason"))
+	result, err := LoopStop(argmap.String(args, "id"), argmap.Bool(args, "success"), argmap.String(args, "reason"))
 	return loopMCPOutcome(result, err, "Loop stop failed")
 }

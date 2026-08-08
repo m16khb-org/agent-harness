@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	mcpcontract "agent-harness/internal/contract/mcp"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -12,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	core "agent-harness/internal/core/toolconformance"
+	core "agent-harness/internal/adapter/toolconformance"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -271,18 +272,18 @@ func TestConformanceProbeCopiesSourceSchemaBeforeAdvertising(t *testing.T) {
 	}
 }
 
-func testProbeConfig(t *testing.T, path string) ConformanceProbeConfig {
+func testProbeConfig(t *testing.T, path string) mcpcontract.ConformanceProbeConfig {
 	t.Helper()
 	return newTestProbeConfig(t, "empty_object", "harness_probe_empty_object", map[string]any{"type": "object"}, map[string]any{}, path, "token")
 }
 
-func newTestProbeConfig(t *testing.T, fixtureID, probeTool string, schema, expected map[string]any, path, token string) ConformanceProbeConfig {
+func newTestProbeConfig(t *testing.T, fixtureID, probeTool string, schema, expected map[string]any, path, token string) mcpcontract.ConformanceProbeConfig {
 	t.Helper()
 	schemaSHA, err := core.CanonicalSchemaSHA256(schema)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return ConformanceProbeConfig{
+	return mcpcontract.ConformanceProbeConfig{
 		FixtureID: fixtureID, ProbeTool: probeTool, Schema: schema, SchemaSHA: schemaSHA,
 		ExpectedArguments: expected, ResultPath: path, RunToken: token,
 	}
@@ -302,7 +303,7 @@ func connectConformanceProbe(t *testing.T, server *mcp.Server) *mcp.ClientSessio
 	return session
 }
 
-func serveConformanceProbeStdio(t *testing.T, config ConformanceProbeConfig) *mcp.ClientSession {
+func serveConformanceProbeStdio(t *testing.T, config mcpcontract.ConformanceProbeConfig) *mcp.ClientSession {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	inputReader, inputWriter := io.Pipe()

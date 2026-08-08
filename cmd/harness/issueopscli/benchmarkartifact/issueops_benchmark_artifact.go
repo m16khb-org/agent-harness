@@ -1,12 +1,11 @@
 package benchmarkartifact
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"strings"
-
-	"agent-harness/internal/core"
 )
 
-func FromFixture(fixture core.IssueOpsBenchmarkFixture) core.IssueOpsBenchmarkArtifact {
+func FromFixture(fixture issueopscontract.IssueOpsBenchmarkFixture) issueopscontract.IssueOpsBenchmarkArtifact {
 	const guideline = "docs/superpowers/specs/issueops-issue-pr-guidelines.md"
 	issueNumber := "1"
 	branchName := "feature/1-issueops-quality-benchmark"
@@ -23,7 +22,7 @@ func FromFixture(fixture core.IssueOpsBenchmarkFixture) core.IssueOpsBenchmarkAr
 	expectedPR := bullets(fixture.ExpectedPR)
 	clarificationGate := "Status: no implementation has started. This artifact is a planning, issue, and readiness draft only; coding and PR/MR opening are blocked until the user confirms the quality metric, issue contract, and issue-based branch."
 
-	return core.IssueOpsBenchmarkArtifact{
+	return issueopscontract.IssueOpsBenchmarkArtifact{
 		ProblemSummary: strings.Join([]string{
 			"요청 요약: " + problem,
 			"저장소 맥락: " + strings.TrimSpace(fixture.RepoContext),
@@ -153,11 +152,11 @@ func FromFixture(fixture core.IssueOpsBenchmarkFixture) core.IssueOpsBenchmarkAr
 // tautologically — exactly parallel to pioneerEvidenceFor. Real discrimination
 // comes from the tampered-trace boundary test and from future real traces
 // recorded during non-CI issueops runs. Fixtures without expected routing get nil.
-func routingTraceFor(fixture core.IssueOpsBenchmarkFixture) []core.SkillRouting {
+func routingTraceFor(fixture issueopscontract.IssueOpsBenchmarkFixture) []issueopscontract.SkillRouting {
 	if len(fixture.ExpectedRouting) == 0 {
 		return nil
 	}
-	trace := make([]core.SkillRouting, len(fixture.ExpectedRouting))
+	trace := make([]issueopscontract.SkillRouting, len(fixture.ExpectedRouting))
 	copy(trace, fixture.ExpectedRouting)
 	return trace
 }

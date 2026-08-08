@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
 
-	"agent-harness/internal/core/policy"
+	"agent-harness/internal/domain/policy"
 	"agent-harness/internal/port"
 )
 
@@ -61,8 +62,20 @@ func (ExecRunner) Run(ctx context.Context, cwd string, timeout time.Duration, ar
 	}
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	cmd := exec.CommandContext(runCtx, argv[0], argv[1:]...)
+	environ := os.Environ()
+	output, err := runOrcaCommand(runCtx, cwd, argv, nil)
+	if !shouldRetryWithoutInheritedRelay(environ, output, err) {
+		return output, err
+	}
+	return runOrcaCommand(runCtx, cwd, argv, orcaCommandEnvironment(environ))
+}
+
+func runOrcaCommand(ctx context.Context, cwd string, argv []string, environ []string) (CommandOutput, error) {
+	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
 	cmd.Dir = strings.TrimSpace(cwd)
+	if environ != nil {
+		cmd.Env = environ
+	}
 	stdout := boundedStreamBuffer{limit: MaxEnvelopeBytes}
 	stderr := boundedStreamBuffer{limit: MaxEnvelopeBytes}
 	cmd.Stdout = &stdout
@@ -83,10 +96,49 @@ func (ExecRunner) Run(ctx context.Context, cwd string, timeout time.Duration, ar
 	if err == nil {
 		return output, nil
 	}
-	if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		return output, &port.OrcaError{Code: "command_timeout", Detail: boundedDiagnostic(string(output.Stderr)), Invoked: true, Timeout: true}
 	}
 	return output, &port.OrcaError{Code: "command_failed", Detail: commandFailureDiagnostic(output), Invoked: true}
+}
+
+func shouldRetryWithoutInheritedRelay(environ []string, output CommandOutput, err error) bool {
+	const ownerlessRelayDiagnostic = "No owning Orca client is connected to the relay"
+	var orcaErr *port.OrcaError
+	return hasInheritedOrcaRelay(environ) &&
+		errors.As(err, &orcaErr) &&
+		orcaErr.Code == "command_failed" &&
+		strings.Contains(string(output.Stderr), ownerlessRelayDiagnostic)
+}
+
+func hasInheritedOrcaRelay(environ []string) bool {
+	present := make(map[string]bool, 3)
+	for _, entry := range environ {
+		name, value, found := strings.Cut(entry, "=")
+		if found && value != "" {
+			switch name {
+			case "ORCA_RELAY_DIR", "ORCA_RELAY_SOCKET_PATH", "ORCA_RELAY_CREDENTIAL_FILE":
+				present[name] = true
+			}
+		}
+	}
+	return present["ORCA_RELAY_DIR"] &&
+		present["ORCA_RELAY_SOCKET_PATH"] &&
+		present["ORCA_RELAY_CREDENTIAL_FILE"]
+}
+
+func orcaCommandEnvironment(environ []string) []string {
+	filtered := make([]string, 0, len(environ))
+	for _, entry := range environ {
+		name, _, _ := strings.Cut(entry, "=")
+		switch name {
+		case "ORCA_RELAY_DIR", "ORCA_RELAY_SOCKET_PATH", "ORCA_RELAY_CREDENTIAL_FILE":
+			continue
+		default:
+			filtered = append(filtered, entry)
+		}
+	}
+	return filtered
 }
 
 func commandFailureDiagnostic(output CommandOutput) string {

@@ -1,12 +1,11 @@
 package loopcli
 
 import (
+	loopruncontract "agent-harness/internal/contract/looprun"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
-
-	"agent-harness/internal/core"
 )
 
 type repeatedFlag []string
@@ -23,20 +22,20 @@ func (r *repeatedFlag) Set(value string) error {
 	return nil
 }
 
-func Run(args []string) error {
+func Run(deps Dependencies, args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
 		loopUsage()
 		return nil
 	}
 	switch args[0] {
 	case "start":
-		return runStart(args[1:])
+		return runStart(deps, args[1:])
 	case "record-attempt":
-		return runRecordAttempt(args[1:])
+		return runRecordAttempt(deps, args[1:])
 	case "status":
-		return runStatus(args[1:])
+		return runStatus(deps, args[1:])
 	case "stop":
-		return runStop(args[1:])
+		return runStop(deps, args[1:])
 	default:
 		loopUsage()
 		return fmt.Errorf("unknown loop subcommand %q", args[0])
@@ -52,7 +51,7 @@ func loopUsage() {
 `)
 }
 
-func runStart(args []string) error {
+func runStart(deps Dependencies, args []string) error {
 	fs := flag.NewFlagSet("loop start", flag.ContinueOnError)
 	repo := fs.String("repo", "", "repository path")
 	name := fs.String("name", "", "loop name")
@@ -62,7 +61,7 @@ func runStart(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := core.StartLoopRun(core.LoopRunStartRequest{
+	result, err := deps.Start(loopruncontract.StartLoopRequest{
 		Repo:        *repo,
 		Name:        *name,
 		Goal:        *goal,
@@ -72,7 +71,7 @@ func runStart(args []string) error {
 	return printLoopResult(result, err, *jsonOut)
 }
 
-func runRecordAttempt(args []string) error {
+func runRecordAttempt(deps Dependencies, args []string) error {
 	fs := flag.NewFlagSet("loop record-attempt", flag.ContinueOnError)
 	id := fs.String("id", "", "loop id")
 	verdict := fs.String("verdict", "", "attempt verdict: pass or fail")
@@ -82,14 +81,14 @@ func runRecordAttempt(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := core.RecordLoopAttempt(*id, core.LoopRunRecordAttemptRequest{
+	result, err := deps.RecordAttempt(*id, loopruncontract.RecordAttemptRequest{
 		Verdict:  *verdict,
 		Evidence: []string(evidence),
 	})
 	return printLoopResult(result, err, *jsonOut)
 }
 
-func runStatus(args []string) error {
+func runStatus(deps Dependencies, args []string) error {
 	fs := flag.NewFlagSet("loop status", flag.ContinueOnError)
 	id := fs.String("id", "", "loop id")
 	repo := fs.String("repo", "", "repository path")
@@ -101,16 +100,16 @@ func runStatus(args []string) error {
 	loopID := *id
 	var err error
 	if loopID == "" {
-		loopID, err = core.ResolveLoopRunID(*repo, *name)
+		loopID, err = deps.ResolveID(*repo, *name)
 		if err != nil {
-			return printLoopResult(core.LoopRunStatusResult{OK: false}, err, *jsonOut)
+			return printLoopResult(loopruncontract.StatusResult{OK: false}, err, *jsonOut)
 		}
 	}
-	result, err := core.LoopRunStatus(loopID)
+	result, err := deps.Status(loopID)
 	return printLoopResult(result, err, *jsonOut)
 }
 
-func runStop(args []string) error {
+func runStop(deps Dependencies, args []string) error {
 	fs := flag.NewFlagSet("loop stop", flag.ContinueOnError)
 	id := fs.String("id", "", "loop id")
 	success := fs.Bool("success", false, "mark loop succeeded")
@@ -120,9 +119,9 @@ func runStop(args []string) error {
 		return err
 	}
 	if *success && *reason != "" {
-		return printLoopResult(core.LoopRun{OK: false}, fmt.Errorf("success_and_reason_conflict"), *jsonOut)
+		return printLoopResult(loopruncontract.LoopRun{OK: false}, fmt.Errorf("success_and_reason_conflict"), *jsonOut)
 	}
-	result, err := core.StopLoopRun(*id, *success, *reason)
+	result, err := deps.Stop(*id, *success, *reason)
 	return printLoopResult(result, err, *jsonOut)
 }
 

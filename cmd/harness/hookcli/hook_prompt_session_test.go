@@ -1,6 +1,9 @@
 package hookcli
 
 import (
+	hookfailure "agent-harness/internal/adapter/hookfailure"
+	hookmetrics "agent-harness/internal/adapter/hookmetrics"
+	hookfailurecontract "agent-harness/internal/contract/hookfailure"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -8,8 +11,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"agent-harness/internal/core"
 )
 
 func TestRunHookUserPromptDropsCatalog(t *testing.T) {
@@ -435,16 +436,16 @@ func TestRunHookSessionStartPrunesStaleHookFailures(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := hookTempRepoWithDoc(t)
 	stale := `{"timestamp":"` + time.Now().UTC().Add(-31*24*time.Hour).Format(time.RFC3339Nano) + `","hook":"stop","error":"stale"}` + "\n"
-	if err := os.WriteFile(core.HookFailureLogPath(), []byte(stale), 0o600); err != nil {
+	if err := os.WriteFile(hookfailure.HookFailureLogPath(), []byte(stale), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.RecordHookFailureEvent(core.HookFailureEvent{Hook: "stop", Error: "recent"}); err != nil {
+	if _, err := hookfailure.RecordHookFailureEvent(hookfailurecontract.HookFailureEvent{Hook: "stop", Error: "recent"}); err != nil {
 		t.Fatal(err)
 	}
 
 	runHookCapture(t, `{"cwd":"`+repo+`","source":"startup"}`, func() error { return runHookSessionStart(nil) })
 
-	stats, err := core.SummarizeHookFailureLog()
+	stats, err := hookfailure.SummarizeHookFailureLog()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -463,7 +464,7 @@ func TestRunHookRecordsLatencyMetricWithBlockDecision(t *testing.T) {
 	runHookCapture(t, `{"prompt":"x"}`, func() error {
 		return runHook([]string{"user-prompt", "--prompt", "hello"})
 	})
-	stats, err := core.SummarizeHookMetricsLog()
+	stats, err := hookmetrics.SummarizeHookMetricsLog()
 	if err != nil || stats.Total != 1 || stats.ByHook["user-prompt"].Count != 1 {
 		t.Fatalf("dispatcher must record one latency metric: %+v err=%v", stats, err)
 	}
@@ -475,7 +476,7 @@ func TestRunHookRecordsLatencyMetricWithBlockDecision(t *testing.T) {
 	runHookCapture(t, `{"prompt":"y"}`, func() error {
 		return runHook([]string{"user-prompt", "--prompt", "again"})
 	})
-	stats, err = core.SummarizeHookMetricsLog()
+	stats, err = hookmetrics.SummarizeHookMetricsLog()
 	if err != nil || stats.ByHook["user-prompt"].Blocks != 1 {
 		t.Fatalf("blocked event must carry decision=block: %+v err=%v", stats, err)
 	}

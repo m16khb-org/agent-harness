@@ -15,7 +15,6 @@ const (
 	SelfAugmentationPlanKind            = model.SelfAugmentationPlanKind
 	SelfVerificationKoreanName          = model.SelfVerificationKoreanName
 	SelfVerificationSummaryKind         = model.SelfVerificationSummaryKind
-	LegacySelfAugmentSummaryKind        = model.LegacySelfAugmentSummaryKind
 	SelfAugmentCandidateStatusOpen      = selfAugmentCandidateStatusOpen
 	SelfAugmentCandidateStatusSatisfied = selfAugmentCandidateStatusSatisfied
 )
@@ -27,10 +26,7 @@ const (
 	selfAugmentationPlanKind        = model.SelfAugmentationPlanKind
 	selfVerificationKoreanName      = model.SelfVerificationKoreanName
 	selfVerificationSummaryKind     = model.SelfVerificationSummaryKind
-	legacySelfAugmentSummaryKind    = model.LegacySelfAugmentSummaryKind
 )
-
-const selfVerifyStepBudgetMinRegressionMS int64 = 25
 
 type StepResult = commandstep.StepResult
 
@@ -67,7 +63,6 @@ type SelfVerificationFailureCluster = model.SelfVerificationFailureCluster
 type SelfVerificationGoalDefinition = model.SelfVerificationGoalDefinition
 type SelfVerificationGoalScore = model.SelfVerificationGoalScore
 
-type selfAugmentHistoryRetentionOptions = model.SelfAugmentHistoryRetentionOptions
 type selfVerificationCoverageDefinition = model.SelfVerificationCoverageDefinition
 type selfVerificationGoalDefinition = model.SelfVerificationGoalDefinition
 

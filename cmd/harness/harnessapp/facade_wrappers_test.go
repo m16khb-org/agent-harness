@@ -2,8 +2,11 @@ package harnessapp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -12,9 +15,13 @@ import (
 	"testing"
 	"time"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	"agent-harness/cmd/harness/qualitycli"
-	"agent-harness/internal/core"
+	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/port"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func TestCommandStepFacadeWrappers(t *testing.T) {
@@ -72,6 +79,9 @@ func TestAppAndRootCommandFacadeWrappers(t *testing.T) {
 	cmd := rootCommand()
 	if cmd.Version != version || len(cmd.Runners) == 0 {
 		t.Fatalf("root command = %#v", cmd)
+	}
+	if _, ok := cmd.Runners["install-native"]; ok {
+		t.Fatal("retired install-native alias remains routed")
 	}
 	if rootSubcommandErrorExitCode("unknown", errors.New("bad")) != 1 {
 		t.Fatal("default root subcommand exit code changed")
@@ -157,7 +167,7 @@ func TestHostAndPathFacadeWrappers(t *testing.T) {
 	if !containsString([]string{"a"}, "a") {
 		t.Fatal("containsString failed")
 	}
-	if !stateDoctorHasIssueCode([]core.StateDoctorIssue{{Code: "x"}}, "x") {
+	if !stateDoctorHasIssueCode([]statecontract.StateDoctorIssue{{Code: "x"}}, "x") {
 		t.Fatal("stateDoctorHasIssueCode failed")
 	}
 
@@ -408,7 +418,7 @@ func TestRiskMCPAndIssueOpsPolicyFacadeWrappers(t *testing.T) {
 	if issueOpsCleanupMerged("", false) {
 		t.Fatal("empty cleanup should not be merged")
 	}
-	if err := verifyIssueOpsRemoteArtifactLive(core.IssueOpsRemoteArtifactVerificationRequest{Provider: "github", Kind: "pr", URL: "not-a-url"}); err == nil {
+	if err := verifyIssueOpsRemoteArtifactLive(issueopscontract.IssueOpsRemoteArtifactVerificationRequest{Provider: "github", Kind: "pr", URL: "not-a-url"}); err == nil {
 		t.Fatal("invalid remote artifact URL should fail")
 	}
 	if _, _, err := parseCommandPolicyFlags("policy", []string{"--workspace-root", root, "--cwd", root, "--", "git", "status"}); err != nil {
@@ -437,18 +447,23 @@ func TestRiskMCPAndIssueOpsPolicyFacadeWrappers(t *testing.T) {
 	if _, rpcErr := handleResourceRead(json.RawMessage(`{"uri":"unknown://resource"}`)); rpcErr == nil {
 		t.Fatal("unknown MCP resource should fail")
 	}
-	if result, rpcErr := handleRequest(rpcRequest{ID: json.RawMessage(`1`), Method: "initialize"}); rpcErr != nil || result == nil {
-		t.Fatalf("initialize result=%#v err=%#v", result, rpcErr)
+	serverConn, clientConn := net.Pipe()
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- serveMCPStreamContext(ctx, serverConn, serverConn, io.Discard) }()
+	client := mcp.NewClient(&mcp.Implementation{Name: "harnessapp-facade-test", Version: "1"}, nil)
+	session, err := client.Connect(ctx, &mcp.IOTransport{Reader: clientConn, Writer: clientConn}, nil)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, rpcErr := handleRequest(rpcRequest{ID: json.RawMessage(`1`), Method: "unknown"}); rpcErr == nil {
-		t.Fatal("unknown MCP request should fail")
+	tools, err := session.ListTools(ctx, nil)
+	if err != nil || len(tools.Tools) == 0 {
+		t.Fatalf("serveMCPStream tool listing failed: tools=%#v err=%v", tools, err)
 	}
-	var out bytes.Buffer
-	if err := serveMCPStream(strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize"}`+"\n"), &out, &bytes.Buffer{}); err != nil || !strings.Contains(out.String(), "serverInfo") {
-		t.Fatalf("serveMCPStream out=%q err=%v", out.String(), err)
-	}
-	writeRPCResult(json.RawMessage(`1`), map[string]any{"ok": true})
-	writeRPCError(json.RawMessage(`1`), -1, "bad", "data")
+	_ = session.Close()
+	cancel()
+	_ = clientConn.Close()
+	<-done
 }
 
 func TestCLIFacadeWrappers(t *testing.T) {
@@ -480,16 +495,7 @@ func TestCLIFacadeWrappers(t *testing.T) {
 	_ = runInspect([]string{"--json", root})
 	_ = runDoctor([]string{"--json"})
 
-	if _, _, _, err := parseDraftWikiPathFlags("draft", []string{"--repo", root, "--json", "draft.md"}); err != nil {
-		t.Fatalf("parseDraftWikiPathFlags: %v", err)
-	}
-	_, _ = draftWikiQueueMaterial(root, "", "material", false)
-	_ = runProjectDraftWiki([]string{"unknown"})
-	_ = runProjectDraftWikiSuggest([]string{"--repo", root, "--json"})
-
 	_ = runInstall([]string{"--help"})
-	_ = runInstallNative([]string{"--dry-run", "--json", "--skip-build"})
-	_ = runInstallCommand("install-native", []string{"--dry-run", "--json", "--skip-build"})
 	_ = validateInteractiveInstallInput(nil)
 	printInstallNativeResult(port.NativeInstallResult{OK: true})
 	_ = preferredShellRC(root)
@@ -514,8 +520,6 @@ func TestCLIFacadeWrappers(t *testing.T) {
 	_ = runStateList([]string{"--json"})
 	_ = runStatePrune([]string{"--dry-run", "--json"})
 	_ = runStateDoctor([]string{"--json"})
-	_ = runStateMigrate([]string{"--json"})
-
 	_ = runStatus([]string{"--repo", root, "--json"})
 	_ = buildHarnessStatus(root)
 	_ = runVerifyWork([]string{"--repo", root, "--json"})
@@ -523,7 +527,6 @@ func TestCLIFacadeWrappers(t *testing.T) {
 
 	_ = runWorker([]string{"unknown"})
 	_ = runWorkerEnqueue([]string{"--help"})
-	_ = runWorkerDraftWiki([]string{"--help"})
 	_ = runWorkerRun([]string{"--help"})
 	_ = runWorkerStatus([]string{"--id", "missing", "--json"})
 	_ = runWorkerList([]string{"--json"})

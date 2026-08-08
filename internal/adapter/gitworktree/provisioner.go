@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/core/preflight"
 	"agent-harness/internal/port"
 )
 
@@ -64,7 +63,7 @@ func (Provisioner) Prepare(ctx context.Context, req port.ExecutionWorkspaceReque
 		return receipt, err
 	}
 	args := worktreeAddArgs(receipt)
-	if code, _, stderr := preflight.GitCmd(receipt.SourceRoot, args...); code != 0 {
+	if code, _, stderr := GitCmd(receipt.SourceRoot, args...); code != 0 {
 		return receipt, fmt.Errorf("git %s: %s", strings.Join(args, " "), stderr)
 	}
 	if _, err := inspectExisting(receipt); err != nil {
@@ -86,7 +85,7 @@ func validateRequest(req port.ExecutionWorkspaceRequest) (port.ExecutionWorkspac
 	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
 		return receipt, fmt.Errorf("source_root must be a real directory")
 	}
-	top := strings.TrimSpace(preflight.GitOut(receipt.SourceRoot, "rev-parse", "--show-toplevel"))
+	top := strings.TrimSpace(GitOut(receipt.SourceRoot, "rev-parse", "--show-toplevel"))
 	if !sameResolvedPath(top, receipt.SourceRoot) {
 		return receipt, fmt.Errorf("source_root must be the Git top-level")
 	}
@@ -108,9 +107,9 @@ func inspectExisting(receipt port.ExecutionWorkspaceReceipt) (bool, error) {
 	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
 		return false, fmt.Errorf("canonical worktree path is occupied by a non-directory or symlink")
 	}
-	top := preflight.GitOut(receipt.Root, "rev-parse", "--show-toplevel")
-	branch := preflight.GitOut(receipt.Root, "branch", "--show-current")
-	head := preflight.GitOut(receipt.Root, "rev-parse", "HEAD")
+	top := GitOut(receipt.Root, "rev-parse", "--show-toplevel")
+	branch := GitOut(receipt.Root, "branch", "--show-current")
+	head := GitOut(receipt.Root, "rev-parse", "HEAD")
 	if !sameResolvedPath(top, receipt.Root) || branch != receipt.Branch || head != receipt.BaseHead {
 		return false, fmt.Errorf("existing canonical worktree identity does not match branch and base_head")
 	}
@@ -118,12 +117,12 @@ func inspectExisting(receipt port.ExecutionWorkspaceReceipt) (bool, error) {
 }
 
 func worktreeAddArgs(receipt port.ExecutionWorkspaceReceipt) []string {
-	if preflight.GitOut(receipt.SourceRoot, "show-ref", "--verify", "--hash", "refs/heads/"+receipt.Branch) != "" {
+	if GitOut(receipt.SourceRoot, "show-ref", "--verify", "--hash", "refs/heads/"+receipt.Branch) != "" {
 		return []string{"worktree", "add", "-q", receipt.Root, receipt.Branch}
 	}
 	for _, remote := range []string{"origin", "upstream"} {
 		ref := "refs/remotes/" + remote + "/" + receipt.Branch
-		if preflight.GitOut(receipt.SourceRoot, "show-ref", "--verify", "--hash", ref) != "" {
+		if GitOut(receipt.SourceRoot, "show-ref", "--verify", "--hash", ref) != "" {
 			return []string{"worktree", "add", "-q", "-b", receipt.Branch, receipt.Root, ref}
 		}
 	}

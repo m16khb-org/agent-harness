@@ -9,8 +9,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-
-	"agent-harness/internal/core"
 )
 
 // snrEvidence renders the SNR signal's human-readable evidence lines.
@@ -119,7 +117,10 @@ func snrStructuralOnly(line string) bool {
 // readSNRBaseline returns the persisted baseline ratio, or false when none is
 // stored or it cannot be parsed.
 func readSNRBaseline() (float64, bool) {
-	res, err := core.StateRead(snrBaselineStateKey)
+	if hostDeps.StateRead == nil {
+		return 0, false
+	}
+	res, err := hostDeps.StateRead(snrBaselineStateKey)
 	if err != nil || !res.OK {
 		return 0, false
 	}
@@ -133,6 +134,9 @@ func readSNRBaseline() (float64, bool) {
 // saveSNRBaseline persists the current ratio as the new baseline for trend
 // comparison on a later run.
 func saveSNRBaseline(ratio float64) error {
-	_, err := core.StateWrite(snrBaselineStateKey, strconv.FormatFloat(ratio, 'f', 4, 64))
+	if hostDeps.StateWrite == nil {
+		return fmt.Errorf("quality SNR baseline store is not configured")
+	}
+	_, err := hostDeps.StateWrite(snrBaselineStateKey, strconv.FormatFloat(ratio, 'f', 4, 64))
 	return err
 }

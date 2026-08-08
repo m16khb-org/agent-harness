@@ -12,6 +12,7 @@ import (
 
 	leaseapp "agent-harness/internal/application/issueopslease"
 	leasecontract "agent-harness/internal/contract/issueopslease"
+	statecontract "agent-harness/internal/contract/state"
 	leasedomain "agent-harness/internal/domain/issueopslease"
 	"agent-harness/internal/port"
 )
@@ -90,6 +91,9 @@ func claimWithinSpan(ctx context.Context, store port.TransactionalRecordStore, r
 	if leasedomain.IsClaimRetry(toDomainLease(before.Lease), request.Generation, request.Actor) {
 		return leaseapp.RepositoryResult{Record: before, Execution: *record.Execution}, nil
 	}
+	if cleanupAbandonApplying(record.CleanupAbandonFailure) {
+		return leaseapp.RepositoryResult{}, leasedomain.Deny(leasedomain.DenyLeaseClaimable, fmt.Errorf("lease is fenced by cleanup abandon apply"))
+	}
 	canonicalCWD := (FilesystemPathMatcher{}).Matches(request.CWD, before.CanonicalRoot)
 	if err := leasedomain.ValidateClaim(toDomainLease(before.Lease), leasedomain.ClaimRequest{
 		Generation: request.Generation, Actor: request.Actor, AuthorityVerified: true, CanonicalCWD: canonicalCWD, TokenVerified: true,
@@ -156,6 +160,13 @@ func claimWithinSpan(ctx context.Context, store port.TransactionalRecordStore, r
 	return leaseapp.RepositoryResult{Record: after, Execution: *record.Execution}, nil
 }
 
+func cleanupAbandonApplying(raw json.RawMessage) bool {
+	var receipt struct {
+		Step string `json:"step"`
+	}
+	return len(raw) > 0 && json.Unmarshal(raw, &receipt) == nil && receipt.Step == "applying"
+}
+
 func updateWithinSpan(
 	ctx context.Context,
 	store port.TransactionalRecordStore,
@@ -178,7 +189,7 @@ func updateWithinSpan(
 		return leaseapp.RepositoryResult{}, leasecontract.Fail(leasecontract.FailurePersistence, leasecontract.ErrExecutionNotPrepared)
 	}
 	before := toApplicationRecord(record)
-	// 권한과 canonical CWD는 index 상태보다 먼저 판정해 legacy 공개 오류 우선순위를 보존한다.
+	// 권한과 canonical CWD는 index 상태보다 먼저 판정해 확립된 공개 오류 우선순위를 보존한다.
 	if err := validate(before); err != nil {
 		return leaseapp.RepositoryResult{}, err
 	}
@@ -237,15 +248,10 @@ func decodeLeaseRecord(id string, data []byte) (leasecontract.Record, error) {
 	if err == nil {
 		return record, nil
 	}
-	var unsupported leasecontract.UnsupportedSchemaError
-	switch {
-	case errors.Is(err, leasecontract.ErrMalformedSchema):
-		return leasecontract.Record{}, leasecontract.Fail(leasecontract.FailureMalformedSchema, err)
-	case errors.As(err, &unsupported):
-		return leasecontract.Record{}, leasecontract.Fail(leasecontract.FailureUnsupportedSchema, err)
-	default:
-		return leasecontract.Record{}, leasecontract.Fail(leasecontract.FailurePersistence, err)
+	if errors.Is(err, statecontract.ErrInvalidState) {
+		return leasecontract.Record{}, leasecontract.Fail(leasecontract.FailureInvalidState, err)
 	}
+	return leasecontract.Record{}, leasecontract.Fail(leasecontract.FailurePersistence, err)
 }
 
 func toDomainLease(lease leasecontract.Lease) leasedomain.Lease {

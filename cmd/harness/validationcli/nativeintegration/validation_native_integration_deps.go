@@ -2,9 +2,6 @@ package nativeintegration
 
 import (
 	"os"
-
-	"agent-harness/internal/adapter/installutil"
-	"agent-harness/internal/core"
 )
 
 type nativeIntegrationValidationDeps struct {
@@ -21,10 +18,10 @@ func (deps nativeIntegrationValidationDeps) withDefaults() nativeIntegrationVali
 		deps.userHomeDir = os.UserHomeDir
 	}
 	if deps.listSkills == nil {
-		deps.listSkills = core.ListSkillNames
+		deps.listSkills = ListSkillNames
 	}
 	if deps.skillNamesForHost == nil {
-		deps.skillNamesForHost = installutil.SkillNamesForHost
+		deps.skillNamesForHost = SkillNamesForHost
 	}
 	if deps.exists == nil {
 		deps.exists = exists

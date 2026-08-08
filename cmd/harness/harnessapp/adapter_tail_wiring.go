@@ -1,0 +1,42 @@
+package harnessapp
+
+import (
+	installclit4deps "agent-harness/cmd/harness/installcli"
+	projectclit4deps "agent-harness/cmd/harness/projectcli"
+	nativeintegrationt4deps "agent-harness/cmd/harness/validationcli/nativeintegration"
+	claudet4deps "agent-harness/internal/adapter/claude"
+	codext4deps "agent-harness/internal/adapter/codex"
+	installutiladapter "agent-harness/internal/adapter/installutil"
+	fingerprintt4deps "agent-harness/internal/adapter/lifecycle/fingerprint"
+	projectbootstrapt4deps "agent-harness/internal/adapter/projectbootstrap"
+	projectdocsadapter "agent-harness/internal/adapter/projectdocs"
+)
+
+// configureAdapterTail은 설치 계획 수립과 프로젝트 문서 관측을 설치한다.
+func configureAdapterTail() {
+	claudet4deps.CaptureNativeActivationEvidence = installutiladapter.CaptureNativeActivationEvidence
+	claudet4deps.EnsureSymlinkPlan = installutiladapter.EnsureSymlinkPlan
+	claudet4deps.HookGroupContainsAgentHarness = installutiladapter.HookGroupContainsAgentHarness
+	claudet4deps.HookTargetDriftMessages = installutiladapter.HookTargetDriftMessages
+	claudet4deps.PlanHostSkillLinks = installutiladapter.PlanHostSkillLinks
+	claudet4deps.PreToolUseEnforcementFlags = installutiladapter.PreToolUseEnforcementFlags
+	claudet4deps.SemanticSHA256 = installutiladapter.SemanticSHA256
+	claudet4deps.StopEnforcementFlags = installutiladapter.StopEnforcementFlags
+	claudet4deps.VerifyHookActivation = installutiladapter.VerifyHookActivation
+	codext4deps.CaptureNativeActivationEvidence = installutiladapter.CaptureNativeActivationEvidence
+	codext4deps.HookGroupContainsAgentHarness = installutiladapter.HookGroupContainsAgentHarness
+	codext4deps.HookTargetDriftMessages = installutiladapter.HookTargetDriftMessages
+	codext4deps.PlanHostSkillLinks = installutiladapter.PlanHostSkillLinks
+	codext4deps.PreToolUseEnforcementFlags = installutiladapter.PreToolUseEnforcementFlags
+	codext4deps.SemanticSHA256 = installutiladapter.SemanticSHA256
+	codext4deps.StopEnforcementFlags = installutiladapter.StopEnforcementFlags
+	codext4deps.VerifyHookActivation = installutiladapter.VerifyHookActivation
+	fingerprintt4deps.ReadGitOriginURL = projectdocsadapter.ReadGitOriginURL
+	installclit4deps.EnsureSymlinkPlan = installutiladapter.EnsureSymlinkPlan
+	nativeintegrationt4deps.SkillNamesForHost = installutiladapter.SkillNamesForHost
+	projectbootstrapt4deps.AnalyzeProjectSignals = projectdocsadapter.AnalyzeProjectSignals
+	projectbootstrapt4deps.RenderAgentsWithBlock = projectdocsadapter.RenderAgentsWithBlock
+	projectbootstrapt4deps.RenderProjectDocs = projectdocsadapter.RenderProjectDocs
+	projectclit4deps.AppendProjectDocsRecord = projectdocsadapter.AppendProjectDocsRecord
+	projectclit4deps.RouteProjectDocs = projectdocsadapter.RouteProjectDocs
+}

@@ -1,74 +1,47 @@
 package mcpcli
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strings"
 	"sync"
 	"testing"
 
-	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/adapter/issueops"
+
+	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func TestRunMCPDirectUsesStreamTransport(t *testing.T) {
 	t.Setenv("HARNESS_MCP_DIRECT", "1")
-	stdout, stderr, err := captureMCPStdio(t,
-		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`+"\n"+
-			`{"jsonrpc":"2.0","method":"notifications/initialized"}`+"\n",
-		RunMCP)
-	// SDK returns EOF error when input closes; the response was already written.
-	if err != nil && !strings.Contains(err.Error(), "server is closing") && !strings.Contains(err.Error(), "EOF") {
-		t.Fatalf("RunMCP direct failed: %v\nstderr:\n%s", err, stderr)
-	}
-
-	var response map[string]any
-	if err := json.Unmarshal([]byte(strings.TrimSpace(stdout)), &response); err != nil {
-		t.Fatalf("decode RunMCP response: %v\n%s", err, stdout)
-	}
-	if response["id"].(float64) != 1 {
-		t.Fatalf("unexpected response id: %#v", response)
-	}
-	result := response["result"].(map[string]any)
-	serverInfo := result["serverInfo"].(map[string]any)
-	if serverInfo["name"] != "agent_harness" {
-		t.Fatalf("unexpected server info: %#v", serverInfo)
+	session := startRunMCPTestSession(t, MCPDependencies{})
+	tools, err := session.ListTools(context.Background(), nil)
+	if err != nil || len(tools.Tools) == 0 {
+		t.Fatalf("RunMCP direct tool listing failed: tools=%#v err=%v", tools, err)
 	}
 }
 
 func TestRunMCPWithDependenciesUsesItsReleaseHandlerOnDirectTransport(t *testing.T) {
 	t.Setenv("HARNESS_MCP_DIRECT", "1")
 	called := false
-	stdout, stderr, err := captureMCPStdio(t,
-		`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"issueops_execution","arguments":{"action":"release","id":"io-mcp-direct","generation":1}}}`+"\n",
-		func() error {
-			return RunMCPWithDependencies(MCPDependencies{Release: func(_ context.Context, _ string, request issueops.ExecutionReleaseRequest) (issueops.ExecutionResult, error) {
-				called = true
-				return issueops.ExecutionResult{OK: true, ID: request.ID}, nil
-			}})
-		},
-	)
-	if err != nil && !strings.Contains(err.Error(), "server is closing") && !strings.Contains(err.Error(), "EOF") {
-		t.Fatalf("RunMCPWithDependencies direct failed: %v\nstderr:\n%s", err, stderr)
+	session := startRunMCPTestSession(t, MCPDependencies{Release: func(_ context.Context, _ string, request issueops.ExecutionReleaseRequest) (issueops.ExecutionResult, error) {
+		called = true
+		return issueops.ExecutionResult{OK: true, ID: request.ID}, nil
+	}})
+	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "issueops_execution", Arguments: map[string]any{"action": "release", "id": "io-mcp-direct", "generation": 1}})
+	if err != nil {
+		t.Fatal(err)
 	}
 	if !called {
 		t.Fatal("direct MCP transport did not invoke its injected release handler")
 	}
-	var response struct {
-		Result struct {
-			Content []struct {
-				Text string `json:"text"`
-			} `json:"content"`
-		} `json:"result"`
-	}
-	if err := json.Unmarshal([]byte(stdout), &response); err != nil {
-		t.Fatalf("decode direct MCP response: %v\n%s", err, stdout)
-	}
-	if len(response.Result.Content) != 1 || !strings.Contains(response.Result.Content[0].Text, `"id": "io-mcp-direct"`) {
-		t.Fatalf("direct MCP response did not use injected handler result:\n%s", stdout)
+	if len(result.Content) != 1 || !strings.Contains(result.Content[0].(*mcp.TextContent).Text, `"id": "io-mcp-direct"`) {
+		t.Fatalf("direct MCP response did not use injected handler result: %#v", result)
 	}
 }
 
@@ -84,16 +57,26 @@ func TestServeMCPStreamWithDependenciesKeepsConcurrentReleaseHandlersIsolated(t 
 		group.Add(1)
 		go func(tc testCase) {
 			defer group.Done()
-			input := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"issueops_execution","arguments":{"action":"release","id":"` + tc.id + `","generation":1}}}` + "\n"
-			var output bytes.Buffer
-			if err := ServeMCPStreamWithDependencies(strings.NewReader(input), &output, io.Discard, MCPDependencies{Release: func(_ context.Context, _ string, request issueops.ExecutionReleaseRequest) (issueops.ExecutionResult, error) {
+			server := initSDKServer(MCPDependencies{Release: func(_ context.Context, _ string, request issueops.ExecutionReleaseRequest) (issueops.ExecutionResult, error) {
 				called <- tc.id
 				return issueops.ExecutionResult{OK: true, ID: request.ID}, nil
-			}}); err != nil {
+			}})
+			serverTransport, clientTransport := mcp.NewInMemoryTransports()
+			serverSession, err := server.Connect(context.Background(), serverTransport, nil)
+			if err != nil {
 				errs <- err
 				return
 			}
-			if !strings.Contains(output.String(), tc.id) {
+			defer serverSession.Close()
+			client := mcp.NewClient(&mcp.Implementation{Name: "transport-test", Version: "1"}, nil)
+			clientSession, err := client.Connect(context.Background(), clientTransport, nil)
+			if err != nil {
+				errs <- err
+				return
+			}
+			defer clientSession.Close()
+			result, err := clientSession.CallTool(context.Background(), &mcp.CallToolParams{Name: "issueops_execution", Arguments: map[string]any{"action": "release", "id": tc.id, "generation": 1}})
+			if err != nil || len(result.Content) != 1 || !strings.Contains(result.Content[0].(*mcp.TextContent).Text, tc.id) {
 				errs <- fmt.Errorf("response did not contain %s", tc.id)
 			}
 		}(tc)
@@ -117,156 +100,130 @@ func TestServeMCPStreamWithDependenciesKeepsConcurrentReleaseHandlersIsolated(t 
 	}
 }
 
-func TestMCPTransportStdoutAndStderrWrappers(t *testing.T) {
-	resultOut := captureStatusVerifyStdout(t, func() error {
-		writeRPCResult(json.RawMessage(`"abc"`), map[string]any{"ok": true})
-		return nil
-	})
-	var result map[string]any
-	if err := json.Unmarshal([]byte(resultOut), &result); err != nil {
-		t.Fatalf("decode result wrapper output: %v\n%s", err, resultOut)
-	}
-	if result["id"] != "abc" || result["jsonrpc"] != "2.0" {
-		t.Fatalf("unexpected result wrapper payload: %#v", result)
-	}
-
-	errorOut := captureStatusVerifyStdout(t, func() error {
-		writeRPCError(json.RawMessage(`7`), -32601, "Method not found", "missing")
-		return nil
-	})
-	var errorPayload map[string]any
-	if err := json.Unmarshal([]byte(errorOut), &errorPayload); err != nil {
-		t.Fatalf("decode error wrapper output: %v\n%s", err, errorOut)
-	}
-	if errorPayload["id"].(float64) != 7 {
-		t.Fatalf("unexpected error wrapper payload: %#v", errorPayload)
-	}
-
-	stderr, err := captureProjectCLIStderr(t, func() error {
-		handleNotification(RPCRequest{Method: "notifications/initialized"})
-		return nil
-	})
+func TestSDKTransportOwnsBothStdioAndDaemonConnections(t *testing.T) {
+	source, err := os.ReadFile("mcp_transport.go")
 	if err != nil {
-		t.Fatalf("notification wrapper failed: %v", err)
+		t.Fatal(err)
 	}
-	if strings.Contains(stderr, "notifications/initialized") {
-		t.Fatalf("notifications/initialized should be suppressed from diagnostics:\n%s", stderr)
+	for _, forbidden := range []string{"serveMCPStream" + "Legacy", "type RPC" + "Request", "type RPC" + "Error", "canUseSDK" + "Transport"} {
+		if strings.Contains(string(source), forbidden) {
+			t.Fatalf("SDK transport does not exclusively own MCP streams: found %q", forbidden)
+		}
 	}
 
-	stderr2, err2 := captureProjectCLIStderr(t, func() error {
-		handleNotification(RPCRequest{Method: "notifications/something-else"})
-		return nil
+	for _, mode := range []string{"stdio", "daemon_conn"} {
+		t.Run(mode, func(t *testing.T) {
+			session := startMCPTransportTestSession(t, mode, MCPDependencies{})
+			tools, err := session.ListTools(context.Background(), nil)
+			if err != nil || !containsSDKTool(tools.Tools, "issueops_execution") {
+				t.Fatalf("SDK tool listing failed: tools=%#v err=%v", tools, err)
+			}
+			resource, err := session.ReadResource(context.Background(), &mcp.ReadResourceParams{URI: "harness://commit-policy"})
+			if err != nil || len(resource.Contents) == 0 {
+				t.Fatalf("SDK resource read failed: resource=%#v err=%v", resource, err)
+			}
+		})
+	}
+}
+
+func TestSDKTransportPreservesStructuredToolErrors(t *testing.T) {
+	session := startMCPTransportTestSession(t, "stdio", MCPDependencies{})
+	_, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "state_prune", Arguments: map[string]any{"max_age": "not-a-duration"},
 	})
-	if err2 != nil {
-		t.Fatalf("notification wrapper failed: %v", err2)
+	if err == nil {
+		t.Fatal("invalid tool arguments unexpectedly succeeded")
 	}
-	if !strings.Contains(stderr2, "agent-harness mcp notification: notifications/something-else") {
-		t.Fatalf("non-initialized notification should be logged:\n%s", stderr2)
+	var protocolErr *jsonrpc.Error
+	if !errors.As(err, &protocolErr) {
+		t.Fatalf("tool failure was not a structured JSON-RPC error: %T %v", err, err)
 	}
-}
-
-// Note: this exercises the LEGACY transport (M1): strings.NewReader is not an
-// io.ReadWriter, so canUseSDKTransport returns false and ServeMCPStream routes
-// to serveMCPStreamLegacy. serveMCPStreamLegacy is load-bearing for the split
-// reader/writer stdio path (HARNESS_MCP_DIRECT MCP smoke), so both transports
-// are intentionally kept.
-func TestMCPTransportCoversInitAndToolsLegacy(t *testing.T) {
-	input := strings.Join([]string{
-		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`,
-		`{"jsonrpc":"2.0","method":"notifications/initialized"}`,
-		`{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`,
-		`{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"harness://commit-policy"}}`,
-	}, "\n") + "\n"
-
-	var out bytes.Buffer
-	var diag bytes.Buffer
-	err := ServeMCPStream(strings.NewReader(input), &out, &diag)
-	// SDK returns an error when the input stream ends; responses are already written.
-	if err != nil && !strings.Contains(err.Error(), "server is closing") && !strings.Contains(err.Error(), "EOF") {
-		t.Fatalf("ServeMCPStream: %v", err)
-	}
-	output := out.String()
-	if !strings.Contains(output, `"serverInfo"`) || !strings.Contains(output, `"name":"agent_harness"`) {
-		t.Fatalf("missing server info in output:\n%s", output)
-	}
-	if !strings.Contains(output, "atomic_commit_preflight") {
-		t.Fatalf("missing tools in output:\n%s", output)
-	}
-	if !strings.Contains(output, `harness://commit-policy`) {
-		t.Fatalf("missing resource read response in output:\n%s", output)
+	if protocolErr.Code != jsonrpc.CodeInvalidParams {
+		t.Fatalf("protocol error code = %d, want %d", protocolErr.Code, jsonrpc.CodeInvalidParams)
 	}
 }
 
-func TestMCPTransportErrorResponseFormat(t *testing.T) {
-	var out bytes.Buffer
-	writeRPCErrorTo(&out, nil, -32000, "boom", "data")
-	if !strings.Contains(out.String(), `"id":null`) || !strings.Contains(out.String(), `"boom"`) {
-		t.Fatalf("writeRPCErrorTo did not preserve null id error response: %s", out.String())
+func containsSDKTool(tools []*mcp.Tool, name string) bool {
+	for _, tool := range tools {
+		if tool.Name == name {
+			return true
+		}
 	}
+	return false
 }
 
-func captureMCPStdio(t *testing.T, stdin string, fn func() error) (string, string, error) {
+func startMCPTransportTestSession(t *testing.T, mode string, deps MCPDependencies) *mcp.ClientSession {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	var reader io.ReadCloser
+	var writer io.WriteCloser
+	var closeClient func()
+	switch mode {
+	case "stdio":
+		serverReader, clientWriter := io.Pipe()
+		clientReader, serverWriter := io.Pipe()
+		go func() {
+			done <- ServeMCPStreamContextWithDependencies(ctx, serverReader, serverWriter, io.Discard, deps)
+		}()
+		reader, writer = clientReader, clientWriter
+		closeClient = func() { _ = clientReader.Close(); _ = clientWriter.Close() }
+	case "daemon_conn":
+		serverConn, clientConn := net.Pipe()
+		go func() { done <- ServeMCPStreamContextWithDependencies(ctx, serverConn, serverConn, io.Discard, deps) }()
+		reader, writer = clientConn, clientConn
+		closeClient = func() { _ = clientConn.Close() }
+	default:
+		t.Fatalf("unknown transport mode %q", mode)
+	}
+	client := mcp.NewClient(&mcp.Implementation{Name: "transport-test", Version: "1"}, nil)
+	session, err := client.Connect(ctx, &mcp.IOTransport{Reader: reader, Writer: writer}, nil)
+	if err != nil {
+		cancel()
+		closeClient()
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = session.Close()
+		cancel()
+		closeClient()
+		<-done
+	})
+	return session
+}
+
+func startRunMCPTestSession(t *testing.T, deps MCPDependencies) *mcp.ClientSession {
 	t.Helper()
 	oldStdin, oldStdout, oldStderr := os.Stdin, os.Stdout, os.Stderr
-	defer func() {
-		os.Stdin = oldStdin
-		os.Stdout = oldStdout
-		os.Stderr = oldStderr
-	}()
-
-	inR, inW, err := os.Pipe()
+	serverReader, clientWriter, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
 	}
-	outR, outW, err := os.Pipe()
+	clientReader, serverWriter, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
 	}
-	errR, errW, err := os.Pipe()
+	diagnostics, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	type readResult struct {
-		out []byte
-		err error
-	}
-	outDone := make(chan readResult, 1)
-	errDone := make(chan readResult, 1)
-	go func() {
-		out, err := io.ReadAll(outR)
-		outDone <- readResult{out: out, err: err}
-	}()
-	go func() {
-		out, err := io.ReadAll(errR)
-		errDone <- readResult{out: out, err: err}
-	}()
-	if _, err := inW.WriteString(stdin); err != nil {
+	os.Stdin, os.Stdout, os.Stderr = serverReader, serverWriter, diagnostics
+	done := make(chan error, 1)
+	go func() { done <- RunMCPWithDependencies(deps) }()
+	client := mcp.NewClient(&mcp.Implementation{Name: "direct-test", Version: "1"}, nil)
+	session, err := client.Connect(context.Background(), &mcp.IOTransport{Reader: clientReader, Writer: clientWriter}, nil)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := inW.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	os.Stdin, os.Stdout, os.Stderr = inR, outW, errW
-	callErr := fn()
-	closeOutErr := outW.Close()
-	closeErrErr := errW.Close()
-	outRead := <-outDone
-	errRead := <-errDone
-	_ = inR.Close()
-	_ = outR.Close()
-	_ = errR.Close()
-	if closeOutErr != nil {
-		t.Fatal(closeOutErr)
-	}
-	if closeErrErr != nil {
-		t.Fatal(closeErrErr)
-	}
-	if outRead.err != nil {
-		t.Fatal(outRead.err)
-	}
-	if errRead.err != nil {
-		t.Fatal(errRead.err)
-	}
-	return string(outRead.out), string(errRead.out), callErr
+	t.Cleanup(func() {
+		_ = session.Close()
+		_ = clientWriter.Close()
+		_ = clientReader.Close()
+		_ = serverReader.Close()
+		_ = serverWriter.Close()
+		_ = diagnostics.Close()
+		os.Stdin, os.Stdout, os.Stderr = oldStdin, oldStdout, oldStderr
+		<-done
+	})
+	return session
 }

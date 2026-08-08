@@ -9,7 +9,7 @@ import (
 
 	"agent-harness/cmd/harness/commandstep"
 	"agent-harness/cmd/harness/selfworkflow"
-	"agent-harness/internal/core"
+	statecontract "agent-harness/internal/contract/state"
 )
 
 const aggregateOutputBudgetBytes = 8 * 1024
@@ -82,7 +82,7 @@ func ValidateSelfVerifyCandidateExportWithDeps(binary, root string, seed int64, 
 	if !readStep.OK {
 		return commandstep.CombineFailedStep("candidate export", started, readStep, stdoutParts, commands, aggregateOutputBudgetBytes)
 	}
-	var readResult core.StateResult
+	var readResult statecontract.StateResult
 	if err := json.Unmarshal([]byte(readStep.Stdout), &readResult); err != nil {
 		return commandstep.AssertionStepWithOutput("candidate export", started, []string{err.Error()}, stdoutParts, commands, aggregateOutputBudgetBytes)
 	}

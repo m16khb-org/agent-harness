@@ -1,6 +1,6 @@
 package augmentcatalog
 
-import "agent-harness/internal/core/qualitycatalog"
+import "agent-harness/internal/domain/qualitycatalog"
 
 func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidate {
 	base := []SelfAugmentCandidate{
@@ -16,7 +16,7 @@ func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 			Impact: 97, Feasibility: 96, Novelty: 92, Risk: 12,
 			WhyNow:       []string{"Go CLI는 LLM 판단/코드 편집 주체가 아니므로 skill 표면이 필요하다", "Codex/Claude 공용 하네스 목적과 맞다"},
 			ExpectedGain: []string{"후보화→선택→구현→검증을 agent가 실제 수행", "GENIUS_THINK.md와 연구 앵커를 반복적으로 활용"},
-			VerifyWith:   []string{"skill quick_validate", "install-native", "self-verify QA gate"},
+			VerifyWith:   []string{"skill quick_validate", "agent-harness install", "self-verify QA gate"},
 		},
 		{
 			ID: "durable-augmentation-memory", Title: "Accumulate self-augmentation candidates, decisions, and failure lessons in state", Category: "memory",
@@ -37,7 +37,7 @@ func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 			Impact: 89, Feasibility: 91, Novelty: 84, Risk: 16,
 			WhyNow:       []string{"반복 실패를 다음 cycle에서 활용하려면 언어 피드백 저장소가 필요하다"},
 			ExpectedGain: []string{"실패 원인 재발 감소", "레포별 개선 이력 검색 가능"},
-			VerifyWith:   []string{"go test ./internal/core/state -count=1", "state_write/read roundtrip"},
+			VerifyWith:   []string{"go test ./internal/application/state ./internal/adapter/outbound/state -count=1", "state_write/read roundtrip"},
 		},
 		{
 			ID: "qa-race-tier", Title: "Conditionally attach risk-based race/static QA tier to the self-verification loop", Category: "qa",
@@ -54,7 +54,7 @@ func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 			VerifyWith:   []string{"internal/core install tests", "adapter golden fixtures"},
 		},
 		{
-			ID: "install-dry-run-mode", Title: "install-native에 dry-run planning mode 추가", Category: "safety",
+			ID: "install-dry-run-mode", Title: "install에 dry-run planning mode 추가", Category: "safety",
 			Impact: 85, Feasibility: 86, Novelty: 70, Risk: 18,
 			WhyNow:       []string{"user/global 설치는 안전하지만 쓰기 전 preview가 있으면 신뢰도가 오른다"},
 			ExpectedGain: []string{"destructive concern 감소", "다른 레포 설치 전 diff 예측"},
@@ -86,7 +86,7 @@ func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 			Impact: 94, Feasibility: 86, Novelty: 76, Risk: 24,
 			WhyNow:       []string{"cmd/harness가 routing, usage, MCP schema를 모두 소유하면 기능 추가 때 drift 위험이 커진다"},
 			ExpectedGain: []string{"CLI/MCP 표면을 독립적으로 테스트", "후속 worker와 contract 기능 추가 비용 감소"},
-			VerifyWith:   []string{"internal/adapter/cli tests", "internal/adapter/mcp tests", "usage golden"},
+			VerifyWith:   []string{"internal/domain/cli tests", "internal/domain/mcp tests", "usage golden"},
 		},
 		{
 			ID: "dto-compatibility-contract", Title: "Expose a CLI/MCP DTO compatibility contract and schema check", Category: "contract",

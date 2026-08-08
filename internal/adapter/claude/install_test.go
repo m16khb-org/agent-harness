@@ -1,14 +1,13 @@
 package claude
 
 import (
+	install "agent-harness/internal/adapter/install"
+	hook "agent-harness/internal/domain/hook"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/hook"
-	"agent-harness/internal/core"
 )
 
 func TestClaudeInstallerDefaultsToUserScopeOnly(t *testing.T) {
@@ -18,7 +17,7 @@ func TestClaudeInstallerDefaultsToUserScopeOnly(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
 	req.SkillNames = []string{"alpha"}
 	result, err := NewInstaller().Install(req)
 	if err != nil {
@@ -81,7 +80,7 @@ func TestClaudeInstallerProjectLocalIsExplicit(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
 	req.SkillNames = []string{"alpha"}
 	req.ProjectLocal = true
 	if _, err := NewInstaller().Install(req); err != nil {
@@ -118,7 +117,7 @@ func TestClaudeInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
   }
 }
 `)
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
 	req.SkillNames = []string{"alpha"}
 	if _, err := NewInstaller().Install(req); err != nil {
 		t.Fatal(err)
@@ -167,7 +166,7 @@ func TestClaudeInstallerReportsInvalidExistingSettings(t *testing.T) {
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
 	writeClaudeTestFile(t, filepath.Join(home, ".claude", "settings.json"), "{")
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
 	req.SkillNames = []string{"alpha"}
 
 	result, err := NewInstaller().Install(req)
@@ -191,7 +190,7 @@ func TestClaudeInstallerReportsStaleHookTarget(t *testing.T) {
 			settingsPath := filepath.Join(home, ".claude", "settings.json")
 			writeClaudeTestFile(t, settingsPath, `{"hooks":{"PreToolUse":[{"matcher":"*","hooks":[{"type":"command","command":"'/source.worktrees/completed/bin/agent-harness' hook pre-tool-use --host claude"}]}]}}`)
 			expected := filepath.Join(root, "bin", "agent-harness")
-			req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), expected)
+			req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), expected)
 			req.SkillNames = []string{"alpha"}
 			req.DryRun = dryRun
 

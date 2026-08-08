@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/selfworkflow/stateio"
-	"agent-harness/internal/core"
+	statestore "agent-harness/internal/adapter/outbound/state"
 )
 
 func TestSelfAugmentHistory(t *testing.T) {
@@ -55,7 +55,7 @@ func TestSelfAugmentHistory(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("write other snapshot: %v", err)
 	}
-	if _, err := core.StateWrite("self-verify-note", "not a summary"); err != nil {
+	if _, err := statestore.StateWrite("self-verify-note", "not a summary"); err != nil {
 		t.Fatalf("write non-summary state: %v", err)
 	}
 
@@ -97,7 +97,7 @@ func TestSelfAugmentHistory(t *testing.T) {
 	if retentionDryRun.Retention == nil || !retentionDryRun.Retention.DryRun || retentionDryRun.Retention.Confirm || len(retentionDryRun.Retention.DeletedKeys) != 0 {
 		t.Fatalf("unexpected retention dry-run: %+v", retentionDryRun.Retention)
 	}
-	if _, err := core.StateRead("self-verify-old"); err != nil {
+	if _, err := statestore.StateRead("self-verify-old"); err != nil {
 		t.Fatalf("retention dry-run deleted old summary: %v", err)
 	}
 
@@ -108,7 +108,7 @@ func TestSelfAugmentHistory(t *testing.T) {
 	if retentionConfirmed.Retention == nil || retentionConfirmed.Retention.DryRun || !retentionConfirmed.Retention.Confirm || !containsString(retentionConfirmed.Retention.DeletedKeys, "self-verify-old") {
 		t.Fatalf("unexpected retention confirm: %+v", retentionConfirmed.Retention)
 	}
-	if _, err := core.StateRead("self-verify-old"); err == nil {
+	if _, err := statestore.StateRead("self-verify-old"); err == nil {
 		t.Fatalf("retention confirm left old summary in state")
 	}
 

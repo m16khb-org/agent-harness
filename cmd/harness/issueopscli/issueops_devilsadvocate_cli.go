@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"agent-harness/internal/core"
+	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
 func runIssueOpsDevilsAdvocate(args []string) error {
@@ -27,7 +27,7 @@ func runIssueOpsDevilsAdvocate(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsDevilsAdvocateReviewWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsDevilsAdvocateReviewRequest{
+	record, err := issueOpsCLIDeps.RecordIssueOpsDevilsAdvocateReviewWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsDevilsAdvocateReviewRequest{
 		Verdict:         *verdict,
 		Findings:        findings,
 		Waived:          *waive,

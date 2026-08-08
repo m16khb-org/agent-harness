@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/selfworkflow"
-	"agent-harness/internal/core/qualitycatalog"
+	"agent-harness/internal/domain/qualitycatalog"
 )
 
 type InspectDeps struct {
@@ -331,9 +331,6 @@ func parseCoveragePackages(output string, threshold float64) []CoveragePackage {
 		if err != nil || value >= threshold {
 			continue
 		}
-		if suppressLowCoveragePackage(fields[1]) {
-			continue
-		}
 		packages = append(packages, CoveragePackage{Package: fields[1], Coverage: value})
 	}
 	sort.Slice(packages, func(i, j int) bool {
@@ -343,10 +340,6 @@ func parseCoveragePackages(output string, threshold float64) []CoveragePackage {
 		return packages[i].Package < packages[j].Package
 	})
 	return packages
-}
-
-func suppressLowCoveragePackage(pkg string) bool {
-	return pkg == "agent-harness/internal/core" || strings.HasSuffix(pkg, "/internal/core")
 }
 
 func collectBranchFunctions(root string) ([]BranchFunction, []string) {

@@ -1,11 +1,14 @@
 package mcpcli
 
 import (
+	inspectcontract "agent-harness/internal/contract/inspect"
+	loopruncontract "agent-harness/internal/contract/looprun"
+	preflightcontract "agent-harness/internal/contract/preflight"
+	projectdocscontract "agent-harness/internal/contract/projectdocs"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"agent-harness/cmd/harness/apidoc"
 	"agent-harness/cmd/harness/selfworkflow"
@@ -115,14 +118,30 @@ func resolveSelfVerifyRunMode(full bool, iterationsFlagSet bool, iterations int)
 	return runmode.Resolve(full, iterationsFlagSet, iterations)
 }
 
-func splitLines(s string) []string {
-	if strings.TrimSpace(s) == "" {
-		return []string{}
-	}
-	return strings.Split(strings.TrimRight(s, "\n"), "\n")
-}
-
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
 }
+
+// loop run 연산은 composition root가 설치한다. MCP tool router는 loop 상태를
+// 어디에 저장하는지 알지 않는다.
+var (
+	LoopStart         func(loopruncontract.StartLoopRequest) (loopruncontract.LoopRun, error)
+	LoopRecordAttempt func(loopID string, req loopruncontract.RecordAttemptRequest) (loopruncontract.LoopRun, error)
+	LoopStop          func(loopID string, success bool, reason string) (loopruncontract.LoopRun, error)
+	LoopStatus        func(loopID string) (loopruncontract.StatusResult, error)
+)
+
+// project docs 연산은 composition root가 설치한다.
+var (
+	RouteProjectDocs        func(repoRoot, task string) (projectdocscontract.ProjectDocsRouteResult, error)
+	ReadProjectDoc          func(repoRoot, relPath string) (projectdocscontract.ProjectDocsReadResult, error)
+	UpdateProjectDoc        func(projectdocscontract.ProjectDocsUpdateRequest) (projectdocscontract.ProjectDocsUpdateResult, error)
+	AppendProjectDocsRecord func(projectdocscontract.ProjectDocsRecordRequest) (projectdocscontract.ProjectDocsRecordResult, error)
+)
+
+// GitPreflight와 ListSkills는 composition root가 설치한다. MCP tool router는
+// git 실행이나 skill 디렉터리 탐색을 스스로 하지 않는다.
+var GitPreflight func(target, harnessRoot string) preflightcontract.PreflightResult
+
+var ListSkills func(root, skillName string) []inspectcontract.SkillInfo

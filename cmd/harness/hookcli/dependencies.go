@@ -1,11 +1,15 @@
 package hookcli
 
 import (
+	hookfailurecontract "agent-harness/internal/contract/hookfailure"
+	hookmetricscontract "agent-harness/internal/contract/hookmetrics"
+	workercontract "agent-harness/internal/contract/worker"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"time"
 
-	coreinstall "agent-harness/internal/core/install"
+	installcontract "agent-harness/internal/contract/install"
 )
 
 var ResolveTarget = func(arg string) string {
@@ -27,12 +31,12 @@ var ResolveTarget = func(arg string) string {
 	return abs
 }
 
-var DiagnoseCurrentNativeRuntime = func() (coreinstall.NativeRuntimeDiagnostic, error) {
+var DiagnoseCurrentNativeRuntime = func() (installcontract.NativeRuntimeDiagnostic, error) {
 	executable, err := os.Executable()
 	if err != nil {
-		return coreinstall.NativeRuntimeDiagnostic{}, err
+		return installcontract.NativeRuntimeDiagnostic{}, err
 	}
-	return coreinstall.DiagnoseNativeRuntime(executable)
+	return DiagnoseNativeRuntime(executable)
 }
 
 func printJSON(v any) error {
@@ -40,3 +44,14 @@ func printJSON(v any) error {
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)
 }
+
+// hook metric/failure 로그 연산은 composition root가 설치한다. hookcatalog에
+// 넘기는 Config도 여기서 조립한다.
+var (
+	RecordHookMetricEvent func(hookmetricscontract.HookMetricEvent) (hookmetricscontract.HookMetricRecordResult, error)
+	PruneHookFailureLog   func(maxAge time.Duration) (hookfailurecontract.HookFailurePruneResult, error)
+	PruneHookMetricsLog   func(maxAge time.Duration) (hookmetricscontract.HookMetricsPruneResult, error)
+)
+
+// 정체된 worker job 탐지는 composition root가 설치한다.
+var MaybeDetectStuckWorkerJobs func(minInterval time.Duration) (workercontract.WorkerListResult, bool, error)

@@ -7,7 +7,7 @@ import (
 
 	"agent-harness/cmd/harness/commandstep"
 	"agent-harness/cmd/harness/selfworkflow"
-	"agent-harness/internal/core"
+	statecontract "agent-harness/internal/contract/state"
 )
 
 const aggregateOutputBudgetBytes = 8 * 1024
@@ -30,7 +30,7 @@ type stateRoundtripValidationDeps struct {
 	mkdirTemp     func(string, string) (string, error)
 	removeAll     func(string) error
 	writeFile     func(string, []byte, os.FileMode) error
-	stateRead     func(string) (core.StateResult, error)
+	stateRead     func(string) (statecontract.StateResult, error)
 	writeSnapshot func(string, string, SelfAugmentStateSnapshot) error
 	run           stateRoundtripCommandRunner
 }
@@ -46,7 +46,7 @@ func (deps stateRoundtripValidationDeps) withDefaults() stateRoundtripValidation
 		deps.writeFile = os.WriteFile
 	}
 	if deps.stateRead == nil {
-		deps.stateRead = core.StateRead
+		deps.stateRead = StateRead
 	}
 	if deps.writeSnapshot == nil {
 		deps.writeSnapshot = selfworkflow.WriteSelfAugmentSnapshotRecord

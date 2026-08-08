@@ -427,7 +427,7 @@ func TestExecutionTaskTitleFitsOrcaAndBindsSealedIntent(t *testing.T) {
 	}
 }
 
-func TestExecutionIntentInventoryRejectsLegacyOrcaTaskTitle(t *testing.T) {
+func TestExecutionIntentInventoryRejectsRetiredTaskTitle(t *testing.T) {
 	workspace, probe := executionFixture(t)
 	probe.Marker = "agent-harness issueops-v1 lifecycle=io-c7e2d4e02b59 operation=c8b92dda09eaf3d provider=github issue=69"
 	prepared := port.ExecutionOrcaWorkspaceReceipt{Workspace: port.ExecutionWorkspaceReceipt{
@@ -439,15 +439,15 @@ func TestExecutionIntentInventoryRejectsLegacyOrcaTaskTitle(t *testing.T) {
 		Prepared: &prepared, Launch: &launch, TerminalPTYID: "pty-69", TerminalHandle: "term-stale",
 		RunID: "run-69", RunBound: true,
 	}
-	legacyTitle := probe.Marker + " prompt=" + strings.ToLower(launch.PromptSHA256[:16])
-	legacyTitle = legacyTitle[:77] + "..."
+	retiredTitle := probe.Marker + " prompt=" + strings.ToLower(launch.PromptSHA256[:16])
+	retiredTitle = retiredTitle[:77] + "..."
 	client := &executionFake{tasks: []port.OrcaTask{{
-		RuntimeID: "runtime-69", ID: "task-legacy", Title: legacyTitle, DisplayName: workspace.Branch, Status: "ready",
+		RuntimeID: "runtime-69", ID: "task-retired", Title: retiredTitle, DisplayName: workspace.Branch, Status: "ready",
 	}}}
 
 	inventory, err := NewExecutionClient(client).InspectIntent(context.Background(), request)
 	if err != nil || len(inventory.Candidates) != 0 || !inventory.AuthoritativeZero {
-		t.Fatalf("legacy Orca title must be ignored: inventory=%#v err=%v", inventory, err)
+		t.Fatalf("retired Orca title must be ignored: inventory=%#v err=%v", inventory, err)
 	}
 }
 
@@ -584,6 +584,76 @@ func TestExecutionOwnerInventoryReportsExactTerminalAndTaskLiveness(t *testing.T
 	})
 	if err != nil || got.TerminalLive || got.TaskLive {
 		t.Fatalf("terminal task inventory should be quiescent: got=%#v err=%v", got, err)
+	}
+}
+
+func TestExecutionOwnerInventoryReportsDispatchAssigneePresence(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		terminals []port.OrcaTerminal
+		present   bool
+	}{
+		{name: "assignee absent"},
+		{name: "assignee present", terminals: []port.OrcaTerminal{{RuntimeID: "runtime-69", Handle: "term-assignee", PTYID: "pty-assignee", WorktreeID: "wt-69"}}, present: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			client := &executionFake{
+				terminals: tc.terminals,
+				tasks:     []port.OrcaTask{{RuntimeID: "runtime-69", ID: "task-69", Status: "completed"}},
+				dispatch:  port.OrcaDispatch{RuntimeID: "runtime-69", ID: "dispatch-69", TaskID: "task-69", AssigneeHandle: "term-assignee", Status: "dispatched"},
+			}
+			got, err := NewExecutionClient(client).InspectOwner(context.Background(), port.ExecutionOrcaOwnerInventoryRequest{
+				RuntimeID: "runtime-69", WorktreeID: "wt-69", TaskID: "task-69", DispatchID: "dispatch-69", TerminalPTYID: "pty-old",
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.DispatchAssigneeHandle != "term-assignee" || got.DispatchAssigneePresent != tc.present {
+				t.Fatalf("dispatch assignee evidence=%#v want handle=%q present=%t", got, "term-assignee", tc.present)
+			}
+		})
+	}
+}
+
+func TestExecutionOwnerInventoryReportsTerminalInventoryCompleteness(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		complete bool
+	}{
+		{name: "complete", complete: true},
+		{name: "incomplete"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			complete := tc.complete
+			client := &executionFake{
+				terminalInventoryComplete: &complete,
+				tasks:                     []port.OrcaTask{{RuntimeID: "runtime-69", ID: "task-69", Status: "completed"}},
+				dispatch:                  port.OrcaDispatch{RuntimeID: "runtime-69", ID: "dispatch-69", TaskID: "task-69", AssigneeHandle: "term-old", Status: "dispatched"},
+			}
+			got, err := NewExecutionClient(client).InspectOwner(context.Background(), port.ExecutionOrcaOwnerInventoryRequest{
+				RuntimeID: "runtime-69", WorktreeID: "wt-69", TaskID: "task-69", DispatchID: "dispatch-69", TerminalPTYID: "pty-old",
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.TerminalInventoryComplete != tc.complete {
+				t.Fatalf("terminal inventory completeness=%t want=%t", got.TerminalInventoryComplete, tc.complete)
+			}
+		})
+	}
+}
+
+func TestExecutionOwnerInventoryRejectsAmbiguousOwnerTerminal(t *testing.T) {
+	terminal := port.OrcaTerminal{RuntimeID: "runtime-69", Handle: "term-old", PTYID: "pty-old", WorktreeID: "wt-69"}
+	client := &executionFake{
+		terminals: []port.OrcaTerminal{terminal, terminal},
+		tasks:     []port.OrcaTask{{RuntimeID: "runtime-69", ID: "task-69", Status: "completed"}},
+		dispatch:  port.OrcaDispatch{RuntimeID: "runtime-69", ID: "dispatch-69", TaskID: "task-69", AssigneeHandle: "term-old", Status: "dispatched"},
+	}
+	if got, err := NewExecutionClient(client).InspectOwner(context.Background(), port.ExecutionOrcaOwnerInventoryRequest{
+		RuntimeID: "runtime-69", WorktreeID: "wt-69", TaskID: "task-69", DispatchID: "dispatch-69", TerminalPTYID: "pty-old",
+	}); err == nil {
+		t.Fatalf("ambiguous owner terminal inventory=%#v", got)
 	}
 }
 
@@ -1111,28 +1181,29 @@ func executionWorktree(workspace port.ExecutionWorkspaceRequest, request port.Ex
 }
 
 type executionFake struct {
-	calls                    []string
-	workspace                port.ExecutionWorkspaceRequest
-	probeRequest             port.ExecutionOrcaProbeRequest
-	worktrees                []port.OrcaWorktree
-	worktreeRequest          port.OrcaCreateWorktreeRequest
-	terminalRequest          port.OrcaCreateTerminalRequest
-	createdTerminal          *port.OrcaTerminal
-	runs                     []port.OrcaRun
-	currentRun               *port.OrcaRun
-	runRequest               port.OrcaCreateRunRequest
-	taskRequest              port.OrcaCreateTaskRequest
-	dispatchRequest          port.OrcaDispatchRequest
-	terminals                []port.OrcaTerminal
-	readyTasks               []port.OrcaTask
-	tasks                    []port.OrcaTask
-	dispatch                 port.OrcaDispatch
-	createdTask              *port.OrcaTask
-	terminalDetail           *executionTerminalDetailInventory
-	terminalDetailErr        error
-	terminalInventoryRuntime *string
-	taskInventoryRuntime     *string
-	dispatchInventoryRuntime *string
+	calls                     []string
+	workspace                 port.ExecutionWorkspaceRequest
+	probeRequest              port.ExecutionOrcaProbeRequest
+	worktrees                 []port.OrcaWorktree
+	worktreeRequest           port.OrcaCreateWorktreeRequest
+	terminalRequest           port.OrcaCreateTerminalRequest
+	createdTerminal           *port.OrcaTerminal
+	runs                      []port.OrcaRun
+	currentRun                *port.OrcaRun
+	runRequest                port.OrcaCreateRunRequest
+	taskRequest               port.OrcaCreateTaskRequest
+	dispatchRequest           port.OrcaDispatchRequest
+	terminals                 []port.OrcaTerminal
+	readyTasks                []port.OrcaTask
+	tasks                     []port.OrcaTask
+	dispatch                  port.OrcaDispatch
+	createdTask               *port.OrcaTask
+	terminalDetail            *executionTerminalDetailInventory
+	terminalDetailErr         error
+	terminalInventoryRuntime  *string
+	terminalInventoryComplete *bool
+	taskInventoryRuntime      *string
+	dispatchInventoryRuntime  *string
 }
 
 func (f *executionFake) Probe(context.Context, port.OrcaProbeRequest) (port.OrcaProbeResult, error) {
@@ -1226,7 +1297,11 @@ func (f *executionFake) ListTerminals(context.Context, string) ([]port.OrcaTermi
 
 func (f *executionFake) listTerminalsInventory(context.Context, string) (executionTerminalInventory, error) {
 	f.calls = append(f.calls, "list-terminals-inventory")
-	return executionTerminalInventory{RuntimeID: executionFakeRuntime(f.terminalInventoryRuntime), Rows: append([]port.OrcaTerminal(nil), f.terminals...)}, nil
+	complete := true
+	if f.terminalInventoryComplete != nil {
+		complete = *f.terminalInventoryComplete
+	}
+	return executionTerminalInventory{RuntimeID: executionFakeRuntime(f.terminalInventoryRuntime), Rows: append([]port.OrcaTerminal(nil), f.terminals...), Complete: complete}, nil
 }
 
 func (f *executionFake) showTerminalInventory(_ context.Context, handle string) (executionTerminalDetailInventory, error) {

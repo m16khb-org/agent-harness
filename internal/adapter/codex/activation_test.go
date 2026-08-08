@@ -1,18 +1,17 @@
 package codex
 
 import (
+	install "agent-harness/internal/adapter/install"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/core"
 )
 
 func TestVerifyActivationRejectsStaleCodexTarget(t *testing.T) {
 	root, home := t.TempDir(), t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "agent-harness"))
+	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "agent-harness"))
 	req.SkillNames = []string{"alpha"}
 	if _, err := NewInstaller().Install(req); err != nil {
 		t.Fatal(err)
@@ -53,7 +52,7 @@ func TestVerifyActivationRejectsStaleCodexTarget(t *testing.T) {
 func TestVerifyActivationRejectsCodexWorktreeHookTarget(t *testing.T) {
 	root, home := t.TempDir(), t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "agent-harness"))
+	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "agent-harness"))
 	req.SkillNames = []string{"alpha"}
 	if _, err := NewInstaller().Install(req); err != nil {
 		t.Fatal(err)

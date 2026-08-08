@@ -47,7 +47,7 @@ func validateInstallDryRunSmokeWithDeps(binary, root string, seed int64, deps in
 		"CODEX_HOME=" + filepath.Join(tempHome, ".codex"),
 		"HARNESS_ROOT=" + tempRoot,
 	}
-	step := deps.run(root, "install dry-run smoke", 30*time.Second, "", env, binary, "install-native", "--dry-run", "--project-local", "--json")
+	step := deps.run(root, "install dry-run smoke", 30*time.Second, "", env, binary, "install", "--dry-run", "--project-local", "--json")
 	if !step.OK {
 		return step
 	}

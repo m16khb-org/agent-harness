@@ -27,10 +27,6 @@ go build -o bin/agent-harness ./cmd/harness
 ./bin/agent-harness install-native --dry-run --json
 ./bin/agent-harness inspect --json
 ./bin/agent-harness docs --json
-./bin/agent-harness project draft-wiki init --dry-run --json
-./bin/agent-harness project draft-wiki list --json
-./bin/agent-harness project draft-wiki suggest --input .agent-harness/ADR.md --target-wiki dev-fundamentals --dry-run --json
-tmp_state="$(mktemp -d)" && printf 'draft wiki smoke\n' | HARNESS_STATE_DIR="$tmp_state" ./bin/agent-harness project draft-wiki queue --repo "$PWD" --stdin --json && rm -rf "$tmp_state"
 ./bin/agent-harness guard check --staged --json
 printf '{"prompt":"endpoint와 DTO를 추가해줘"}' | ./bin/agent-harness hook user-prompt
 ./bin/agent-harness policy check --workspace-root "$PWD" --cwd "$PWD" --json -- git status --short
@@ -159,6 +155,8 @@ baseline은 representative schema 3개와 `valid`, `unknown_key`, `coercible_typ
 Live 측정은 CI와 기본 self-verify에 포함하지 않는다. `HARNESS_TOOL_CONFORMANCE_LIVE=1`과 host/model/auth 입력을 명시한 뒤 clean-context `3 hosts × 3 fixtures = 9 completed episodes`를 수집한다. environment/transport/no-call attempt는 model denominator에서 제외하며, case당 최대 3회 retry 후 9 episodes를 채우지 못하면 `inconclusive`다. invalid raw call은 동일 host/schema/diagnostic signature가 2회 이상 재현되어야 regression fixture와 canonical production enforcement 후보가 된다. 한 번뿐인 관측은 승격하지 않는다.
 
 환경 실패율 5%는 조사 warning일 뿐 pass/fail threshold가 아니다. context-pressure profile과 10/20 reproduction batch는 clean initial matrix와 denominator를 합치지 않고 별도 승인·비용 경계로 실행한다. evidence는 `.agent-harness/evidence/tool-conformance/`에 mode 0600/0700으로 저장하고 git에 추가하지 않는다.
+
+Reversible child-host smoke는 일반 live matrix와 별도다. `scripts/verify-child-host-smoke.sh`는 literal `--confirm-user-activation`, clean local HEAD, exact singleton remote ref가 모두 일치할 때만 user-scope integration을 잠시 활성화한다. 활성화 직후 두 host의 managed `SessionStart`/`PreToolUse` handler는 command·type·timeout·key set까지 exact contract로 검증하며, enforcement flag 누락이나 shell suffix 추가를 거부한다. Codex `exec --json`은 hook lifecycle notification을 JSONL에 투영하지 않으므로 실제 child hook process가 private marker에 `SessionStart`/`PreToolUse` 이름만 기록한다. Claude child command에는 marker 경로를 직접 주입한다. Codex는 검증된 활성화 handler 자체를 user config·plugin·co-resident hook을 로드하지 않는 private episode `CODEX_HOME`에 투영한 뒤 invocation-scoped `--dangerously-bypass-hook-trust`를 사용하며 trust state는 수정·저장하지 않는다. Host runner는 marker와 native MCP result를 boolean/count/SHA-256/exit/duration projection으로 합친 뒤 원문 stream과 marker를 폐기한다. 어떤 post-activation 실패도 source installer 1회, 원래 네 설정 파일의 private byte snapshot 원자 복원, before/restore raw+semantic digest equality를 모두 통과하지 못하면 `verdict=pass`가 될 수 없다.
 
 ---
 
@@ -335,7 +333,7 @@ Endpoint/controller/DTO/schema/OpenAPI 변경 시 `.agent-harness/OPEN_API_SPEC.
 
 ## Contract/audit/worker verification
 
-CLI/MCP DTO를 변경할 때는 `agent-harness contract check --json`과 golden test를 실행해 command name, MCP tool name, required response field가 machine-visible하게 유지되는지 확인한다. policy audit 동작 변경은 JSONL record가 append-only이고 secret-like argument가 redacted 되는지 검증한다. generic worker 변경은 no-shell MVP 범위이므로 enqueue/status/list/cancel을 테스트한다. draft-wiki worker 변경은 fake `agy`와 temp settings/hub/state를 사용해 명시 `project draft-wiki queue` 적재와 `worker draft-wiki`의 `.agent-harness/draft-wiki/draft` 파일 생성을 함께 검증한다. PostToolUse hook이 draft-wiki queue를 자동 생성하지 않는 회귀 테스트를 유지한다.
+CLI/MCP DTO를 변경할 때는 `agent-harness contract check --json`과 golden test를 실행해 command name, MCP tool name, required response field가 machine-visible하게 유지되는지 확인한다. policy audit 동작 변경은 JSONL record가 append-only이고 secret-like argument가 redacted 되는지 검증한다. generic worker 변경은 no-shell MVP 범위이므로 enqueue/status/list/cancel을 테스트한다.
 
 ## Lifecycle state tests
 
@@ -384,10 +382,70 @@ Execution tests must cover:
 - a sealed context packet and owner prompt with exact digests, no raw claim
   token, no unresolved placeholder, only current catalog commands, and the
   exact ordered 14-field owner report golden.
+- preparation and every Orca reseed persist artifact identity version 1 and one
+  complete issue-body, packet, and prompt digest identity. Resume must survive an owner-prompt template
+  upgrade without rerendering, while independent prompt, packet, issue-body,
+  or stored-digest drift fails before an Orca mutation. Unversioned all-empty
+  legacy bindings route through preview and generation-CAS reseed; versioned
+  all-empty, unversioned-complete, partial, and future-version identities are
+  invalid. Producer tests must prove new prepare and reseed outputs carry both
+  the version marker and all three digests.
+- Orca plan readiness tests must prove a non-empty staged `plan` before fresh
+  owner evidence/mutation, atomic `plan_path` persistence with the worktree
+  receipt, exact staged/sealed/durable digest equality on reseed and resume,
+  and zero operation/worktree/terminal/Run/task/dispatch/lease mutations on
+  failure. Released recovery staging is limited to a clean holderless Orca
+  generation and changes only the next reseal input. Run the focused regressions
+  with `go test ./internal/core/issueops ./cmd/harness/harnessapp -run 'PlanArtifact|Preparation.*Plan|Owner.*Plan|Replace.*Plan|Intent.*Plan|Resume.*Plan' -count=1`
+  plus `go test ./internal/core/issueops ./internal/core/lifecycle -run 'Artifact.*Released|Released.*Artifact' -count=1`.
 - completion only from `pr` with the durable verified PR/MR projection; the
   completion receipt, lease release, reverse-index deletion, and `done` phase
   transition are one atomic write. An identical retry is idempotent only when
   all terminal invariants still hold.
+- completed replacement preview and reseed must test parent drift and no-drift
+  against the same outbound observer. Drift must preserve the raw record,
+  completion/history/ledger/lease, token paths, artifact prepare count, and
+  repository commit count.
+- current completion generation 0/missing is invalid in preview and reseed even
+  when the request supplies a generation. No selected-generation compatibility
+  fallback or legacy wording is permitted.
+- released-completion sync-base tests must cover matching/missing/wrong/history
+  generation, claimable/history-only state, canonical cwd, live/mismatched
+  process receipt, pending intent, stale fingerprint, immutable completion, and
+  exact apply/finalize/abort/retry commands. Hook matrices must run the exact
+  forms for Codex and Claude and block duplicates, wrappers, shell expansion,
+  wrong cwd/lifecycle, stale history generation, multiple modes, and unknown
+  flags.
+- architecture tests must scan every production Go file in
+  `internal/port/issueopsbasesync` and allow only Request, Receipt, Inspector,
+  and the `context` import.
+- typed-error
+  `next_command` and conflict `abort_command` cannot escape generated-command
+  provenance binding. GREEN requires canonical executable, hash, and generation
+  provenance on both fields, or a tested conversion to non-executable guidance.
+- released sync-base production reachability must start from a claimable fixture
+  and use the public execution dispatcher with the production claim and complete
+  handlers before preview/apply/finalize. Direct completion/active record writes
+  are allowed only for isolated gate tests and cannot serve as vertical evidence.
+- generated `next_command` tests must cover every production-reachable adapter
+  path. CLI covers prepare/status/replace/resume/sync-base/switch-mode preview;
+  MCP covers its advertised prepare/status/replace/resume/reconcile/complete
+  surface plus typed base-sync-required errors from resume/replace. Because MCP
+  has no sync-base action, a success-result sync-base binder/test is dead code.
+  Both adapters also cover
+  execution reseed preview, cleanup finish preview/apply, exact current-binary path/hash binding,
+  observation failure with no command fallback, and stale installed-binary versus
+  newer worktree-binary rejection before a mutation handler is entered. The same
+  envelope must decode to equivalent Codex and Claude hook decisions. A transition
+  such as switch-mode apply that removes execution authority must return non-command
+  guidance instead of an executable `next_command`.
+- Codex exec hook tests must include its stable command-only payload shape: top-level
+  turn cwd points at the source checkout and `tool_input` has no workdir. A current-
+  generation absolute generated IssueOps mutation may proceed only when its exact
+  `--cwd` selects the canonical worktree and the CLI independently proves that
+  `os.Getwd()` matches it before mutation. Bare commands, mismatched process cwd,
+  stale provenance, and delegation commands whose `--parent` identity is missing
+  must remain fail-closed.
 
 Orca external-intent tests treat worktree, terminal, Run create, Run bind, task,
 and dispatch as six separate durable stages. For every stage, exercise authoritative 0, exact 1,

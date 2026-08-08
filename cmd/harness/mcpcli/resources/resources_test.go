@@ -1,6 +1,9 @@
 package resources
 
 import (
+	"agent-harness/internal/adapter/docs"
+	statestore "agent-harness/internal/adapter/outbound/state"
+	"agent-harness/internal/adapter/projectdocs"
 	"encoding/json"
 	"errors"
 	"os"
@@ -24,8 +27,11 @@ func TestHandleResourceReadReturnsJSONResources(t *testing.T) {
 	}
 
 	config := Config{
-		HarnessRoot: harnessRoot,
-		Version:     "test-version",
+		RouteProjectDocs: projectdocs.RouteProjectDocs,
+		HarnessRoot:      harnessRoot,
+		Version:          "test-version",
+		StateList:        statestore.StateList,
+		DocsIndex:        docs.DocsIndex,
 	}
 	for _, uri := range []string{
 		"harness://docs",

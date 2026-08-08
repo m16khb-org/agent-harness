@@ -1,14 +1,12 @@
 package issueopscli
 
 import (
+	issueopscore "agent-harness/internal/adapter/issueops"
+	issueopscontract "agent-harness/internal/contract/issueops"
+	"agent-harness/internal/testsupport"
 	"os"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/core"
-	issueopscore "agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
-	"agent-harness/internal/testsupport"
 )
 
 func captureStdoutForContract(t *testing.T, fn func() error) string {
@@ -66,7 +64,7 @@ func recordIssueOpsCLIDesignForTest(t *testing.T, id string) {
 
 func recordIssueOpsCoreIntentForCLITest(t *testing.T, id string) {
 	t.Helper()
-	if _, err := core.RecordIssueOpsIntent(core.IssueOpsStateRoot(), id, core.IssueOpsIntentRecordRequest{
+	if _, err := issueopscore.RecordIssueOpsIntent(issueopscore.IssueOpsStateRoot(), id, issueopscontract.IssueOpsIntentRecordRequest{
 		RawRequest:        "refactor issueops flow",
 		InterpretedIntent: "keep intent and design evidence before implementation",
 		SuccessCriteria:   []string{"intent is recorded", "design is reviewed"},
@@ -77,8 +75,8 @@ func recordIssueOpsCoreIntentForCLITest(t *testing.T, id string) {
 
 func recordIssueOpsCLIPlanPrepForTest(t *testing.T, id string) {
 	t.Helper()
-	waived := core.IssueOpsPlanPrepItemRequest{WaiveReason: "cli lifecycle test"}
-	if _, err := core.RecordIssueOpsPlanPrep(core.IssueOpsStateRoot(), id, core.IssueOpsPlanPrepRequest{
+	waived := issueopscontract.IssueOpsPlanPrepItemRequest{WaiveReason: "cli lifecycle test"}
+	if _, err := issueopscore.RecordIssueOpsPlanPrep(issueopscore.IssueOpsStateRoot(), id, issueopscontract.IssueOpsPlanPrepRequest{
 		PriorDecisions: waived,
 		RelatedIssues:  waived,
 		WebResearch:    waived,
@@ -90,7 +88,7 @@ func recordIssueOpsCLIPlanPrepForTest(t *testing.T, id string) {
 
 func recordIssueOpsCoreDesignForCLITest(t *testing.T, id string) {
 	t.Helper()
-	if _, err := core.RecordIssueOpsDesignReview(core.IssueOpsStateRoot(), id, core.IssueOpsDesignReviewRequest{
+	if _, err := issueopscore.RecordIssueOpsDesignReview(issueopscore.IssueOpsStateRoot(), id, issueopscontract.IssueOpsDesignReviewRequest{
 		ProblemSummary: "IssueOps must preserve the work contract",
 		ProposedDesign: "Gate implementation on a reviewed design contract",
 		RefactorPlan:   "Keep IssueOps state and adapter changes scoped to the active cycle",
@@ -103,41 +101,41 @@ func recordIssueOpsCoreDesignForCLITest(t *testing.T, id string) {
 	}
 }
 
-func seedIssueOpsCLIExecution(t *testing.T, record core.IssueOpsRecord) (core.IssueOpsRecord, core.IssueOpsActor) {
+func seedIssueOpsCLIExecution(t *testing.T, record issueopscontract.IssueOpsRecord) (issueopscontract.IssueOpsRecord, issueopscore.IssueOpsActor) {
 	t.Helper()
 	baseHead := strings.TrimSpace(record.BranchPrepare.BaseSHA)
 	if len(baseHead) != 40 {
 		baseHead = strings.Repeat("a", 40)
 	}
 	const now = "2026-07-22T00:00:00Z"
-	actor := core.IssueOpsActor{Host: "codex", SessionID: "issueops-cli-test", AgentID: "test-agent", CWD: record.WorktreePath}
+	actor := issueopscore.IssueOpsActor{Host: "codex", SessionID: "issueops-cli-test", AgentID: "test-agent", CWD: record.WorktreePath}
 	receipt, err := issueopscore.ObserveNativeProcessReceipt(os.Getpid())
 	if err != nil {
 		t.Fatal(err)
 	}
-	actor.NativeProcessAncestry = []model.NativeProcessReceipt{receipt}
-	record.Execution = &model.Execution{
-		Mode: model.ExecutionModeDirect,
-		Workspace: model.Workspace{
+	actor.NativeProcessAncestry = []issueopscontract.NativeProcessReceipt{receipt}
+	record.Execution = &issueopscontract.Execution{
+		Mode: issueopscontract.ExecutionModeDirect,
+		Workspace: issueopscontract.Workspace{
 			SourceRoot: record.Repo, Root: record.WorktreePath, Branch: record.Branch,
 			BaseHead: baseHead, Driver: "git", LinkedAt: now,
 		},
-		Lease: model.WriteLease{
-			Generation: 1, Status: model.LeaseStatusActive, ClaimedAt: now,
-			Holder: &model.NativeActor{
+		Lease: issueopscontract.WriteLease{
+			Generation: 1, Status: issueopscontract.LeaseStatusActive, ClaimedAt: now,
+			Holder: &issueopscontract.NativeActor{
 				Host: actor.Host, SessionID: actor.SessionID, AgentID: actor.AgentID,
 				SessionProcess: &receipt,
 			},
 		},
 	}
-	written, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record)
+	written, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return written, actor
 }
 
-func withIssueOpsCLIActor(args []string, actor core.IssueOpsActor) []string {
+func withIssueOpsCLIActor(args []string, actor issueopscore.IssueOpsActor) []string {
 	return append(args,
 		"--host", actor.Host,
 		"--session-id", actor.SessionID,

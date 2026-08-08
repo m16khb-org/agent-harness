@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/mcpcli"
-	cliadapter "agent-harness/internal/adapter/cli"
+	cliadapter "agent-harness/internal/domain/cli"
 )
 
 const version = "0.1.0"

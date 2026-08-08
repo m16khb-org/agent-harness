@@ -6,9 +6,7 @@ import (
 	"os"
 
 	"agent-harness/cmd/harness/mcpcli/argmap"
-	"agent-harness/internal/core"
-	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
+	model "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -16,24 +14,25 @@ func handleMCPIssueOpsExecution(args map[string]any) MCPToolOutcome {
 	return handleMCPIssueOpsExecutionWithDependencies(args, MCPDependencies{})
 }
 
-func handleMCPIssueOpsExecutionWithReleaseHandler(args map[string]any, release issueops.ExecutionReleaseHandler) MCPToolOutcome {
-	return handleMCPIssueOpsExecutionWithDependencies(args, MCPDependencies{Release: release})
-}
-
 func handleMCPIssueOpsExecutionWithDependencies(args map[string]any, deps MCPDependencies) MCPToolOutcome {
 	req, err := executionActionRequestFromMCP(args)
 	if err != nil {
 		return mcpToolErrorPayload(issueOpsMCPErrorPayload(err))
 	}
-	result, err := issueops.ExecuteExecution(context.Background(), core.IssueOpsStateRoot(), req, issueOpsExecutionActionDependencies(deps))
+	result, err := execDeps.ExecuteExecution(context.Background(), execDeps.IssueOpsStateRoot(), req, issueOpsExecutionActionDependencies(deps))
+	if err != nil {
+		err = bindMCPIssueOpsExecutionErrorNextCommand(err, deps.Provenance)
+		return mcpToolErrorPayload(issueOpsMCPErrorPayload(err))
+	}
+	result, err = bindMCPIssueOpsExecutionNextCommand(result, deps.Provenance)
 	if err != nil {
 		return mcpToolErrorPayload(issueOpsMCPErrorPayload(err))
 	}
 	return mcpToolPayload(result)
 }
 
-func issueOpsExecutionActionDependencies(deps MCPDependencies) issueops.ExecutionActionDependencies {
-	return issueops.ExecutionActionDependencies{
+func issueOpsExecutionActionDependencies(deps MCPDependencies) port.ExecutionActionDependencies {
+	return port.ExecutionActionDependencies{
 		Prepare: deps.Prepare, Orca: deps.Orca, OrcaOwner: deps.OrcaOwner, ReadIssue: deps.ReadIssue,
 		Claim: deps.Claim, Release: deps.Release, Reseed: deps.Reseed, Resume: deps.Resume, Reconcile: deps.Reconcile, Complete: deps.Complete,
 		RemoteReconcile: deps.Publication.Reconcile,
@@ -52,20 +51,20 @@ func issueOpsMCPErrorPayload(err error) map[string]any {
 	return payload
 }
 
-func executionActionRequestFromMCP(args map[string]any) (issueops.ExecutionActionRequest, error) {
-	ancestry, _ := issueops.ObserveNativeProcessAncestry(os.Getpid())
+func executionActionRequestFromMCP(args map[string]any) (model.ExecutionActionRequest, error) {
+	ancestry, _ := execDeps.ObserveNativeProcessAncestry(os.Getpid())
 	// 관측이 실패하면 ancestry가 비어 core mutation validation이 호출자의
 	// process receipt를 신뢰하는 대신 fail-closed로 동작한다.
 	return executionActionRequestFromMCPWithAncestry(args, ancestry)
 }
 
-func executionActionRequestFromMCPWithAncestry(args map[string]any, ancestry []model.NativeProcessReceipt) (issueops.ExecutionActionRequest, error) {
+func executionActionRequestFromMCPWithAncestry(args map[string]any, ancestry []model.NativeProcessReceipt) (model.ExecutionActionRequest, error) {
 	pid := argmap.Int(args, "session_pid", 0)
 	snapshot, err := executionIssueSnapshotFromMCP(args)
 	if err != nil {
-		return issueops.ExecutionActionRequest{}, err
+		return model.ExecutionActionRequest{}, err
 	}
-	return issueops.ExecutionActionRequest{
+	return model.ExecutionActionRequest{
 		Action: argmap.String(args, "action"), ID: argmap.String(args, "id"), Mode: argmap.String(args, "mode"),
 		Actor: model.NativeActor{
 			Host: argmap.String(args, "host"), SessionID: argmap.String(args, "session_id"), AgentID: argmap.String(args, "agent_id"),
@@ -73,7 +72,7 @@ func executionActionRequestFromMCPWithAncestry(args map[string]any, ancestry []m
 			ProcessAncestry: append([]model.NativeProcessReceipt(nil), ancestry...),
 		},
 		CWD: argmap.String(args, "cwd"), OwnerHost: argmap.String(args, "owner_host"), OwnerModel: argmap.String(args, "owner_model"), OwnerEffort: argmap.String(args, "owner_effort"),
-		Generation: uint64(argmap.Int64(args, "generation", 0)), ExpectedGeneration: uint64(argmap.Int64(args, "expected_generation", 0)),
+		Generation: uint64(argmap.Int64(args, "generation", 0)), ExpectedGeneration: uint64(argmap.Int64(args, "expected_generation", 0)), CompletionGeneration: uint64(argmap.Int64(args, "completion_generation", 0)),
 		TokenFile: argmap.String(args, "claim_token_file"), ReplaceAction: argmap.String(args, "replace_action"),
 		IssueBodySHA256: argmap.String(args, "issue_body_sha256"), ContextPacketSHA256: argmap.String(args, "context_packet_sha256"),
 		InventoryFingerprint: argmap.String(args, "inventory_fingerprint"), QuiescenceFingerprint: argmap.String(args, "quiescence_fingerprint"),

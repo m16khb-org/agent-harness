@@ -1,14 +1,13 @@
 package codex
 
 import (
+	install "agent-harness/internal/adapter/install"
+	hook "agent-harness/internal/domain/hook"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/adapter/hook"
-	"agent-harness/internal/core"
 )
 
 func TestInstallerName(t *testing.T) {
@@ -28,7 +27,7 @@ func TestCodexInstallerWritesOnlyUserAndHarnessTemplatePaths(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
 	req.SkillNames = []string{"alpha"}
 	result, err := NewInstaller().Install(req)
 	if err != nil {
@@ -73,7 +72,7 @@ func TestCodexInstallerMergesLifecycleHooksIdempotently(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
 	req.SkillNames = []string{"alpha"}
 	if _, err := NewInstaller().Install(req); err != nil {
 		t.Fatal(err)
@@ -123,7 +122,7 @@ func TestCodexInstallerDropsEmptyHookGroups(t *testing.T) {
 	root := t.TempDir()
 	home := t.TempDir()
 	writeAdapterTestSkill(t, root, "alpha")
-	req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
+	req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), filepath.Join(root, "bin", "harness"))
 	req.SkillNames = []string{"alpha"}
 	hooksPath := filepath.Join(home, ".codex", "hooks.json")
 	writeFile(t, hooksPath, `{"hooks":{"PostToolUse":[{"matcher":"Write|Edit|Bash","hooks":[]}],"PreToolUse":[{"matcher":"Read","hooks":[{"type":"command","command":"echo preserved","timeout":1}]}]}}`)
@@ -163,7 +162,7 @@ func TestCodexInstallerReportsStaleHookTarget(t *testing.T) {
 			hooksPath := filepath.Join(home, ".codex", "hooks.json")
 			writeFile(t, hooksPath, `{"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"'/source.worktrees/completed/bin/agent-harness' hook pre-tool-use --host codex"}]}]}}`)
 			expected := filepath.Join(root, "bin", "agent-harness")
-			req := core.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), expected)
+			req := install.DefaultNativeInstallRequest(root, home, filepath.Join(home, ".codex"), expected)
 			req.SkillNames = []string{"alpha"}
 			req.DryRun = dryRun
 

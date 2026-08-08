@@ -4,7 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core"
+	issueopscore "agent-harness/internal/adapter/issueops"
+	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
 // 우산 브랜치 게이트는 provider 호출 이전에 선다. 자식이 만들어진 뒤에는 위상을
@@ -12,11 +13,11 @@ import (
 func TestCreateChildRequiresPreparedUmbrellaBranch(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{Repo: repo, Branch: "78-umbrella"})
+	record, err := issueopscore.StartIssueOps(issueopscore.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: "78-umbrella"})
 	if err != nil {
 		t.Fatalf("StartIssueOps: %v", err)
 	}
-	record, err = core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), record.ID, "https://github.com/acme/repo/issues/78")
+	record, err = issueopscore.LinkIssueOpsIssue(issueopscore.IssueOpsStateRoot(), record.ID, "https://github.com/acme/repo/issues/78")
 	if err != nil {
 		t.Fatalf("LinkIssueOpsIssue: %v", err)
 	}

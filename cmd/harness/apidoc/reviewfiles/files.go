@@ -7,8 +7,6 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-
-	"agent-harness/internal/core"
 )
 
 func ExtraPrompt(repo, promptFile string) (string, error) {
@@ -31,7 +29,7 @@ func Diff(repo string, files []string, diffFile string) (string, error) {
 		return string(b), err
 	}
 	args := append([]string{"diff", "--cached", "--"}, files...)
-	code, out, stderr := core.GitCmd(repo, args...)
+	code, out, stderr := GitCmd(repo, args...)
 	if code != 0 {
 		return "", fmt.Errorf("git diff failed: %s", stderr)
 	}
@@ -68,7 +66,7 @@ func FullContent(repo string, files []string) (string, error) {
 }
 
 func Staged(repo string) []string {
-	code, out, _ := core.GitCmd(repo, "diff", "--cached", "--name-only", "--diff-filter=ACMR", "--")
+	code, out, _ := GitCmd(repo, "diff", "--cached", "--name-only", "--diff-filter=ACMR", "--")
 	if code != 0 {
 		return nil
 	}
@@ -76,7 +74,7 @@ func Staged(repo string) []string {
 }
 
 func Tracked(repo string) []string {
-	code, out, _ := core.GitCmd(repo, "ls-files")
+	code, out, _ := GitCmd(repo, "ls-files")
 	if code != 0 {
 		return nil
 	}

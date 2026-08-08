@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/adapter/installutil"
 	"agent-harness/internal/port"
 )
 
@@ -15,7 +14,7 @@ const shellPathRCMarker = "# agent-harness: add user-local bin to PATH"
 func applyInstallPathPlan(result *port.NativeInstallResult, req port.NativeInstallRequest, mode string) error {
 	userBin := filepath.Join(req.Home, ".local", "bin")
 	commandPath := filepath.Join(userBin, "agent-harness")
-	link, err := installutil.EnsureSymlinkPlan(req.BinPath, commandPath, req.DryRun)
+	link, err := EnsureSymlinkPlan(req.BinPath, commandPath, req.DryRun)
 	result.Links = append(result.Links, link)
 	if err != nil {
 		return err
@@ -60,7 +59,7 @@ func ensureShortCommandShimPlan(target, path string, dryRun bool) (port.InstallL
 	link := port.InstallLink{Path: path, Target: target}
 	info, err := os.Lstat(path)
 	if os.IsNotExist(err) {
-		return installutil.EnsureSymlinkPlan(target, path, dryRun)
+		return EnsureSymlinkPlan(target, path, dryRun)
 	}
 	if err != nil {
 		return link, err

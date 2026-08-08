@@ -2,7 +2,11 @@ package harnessapp
 
 import (
 	"agent-harness/cmd/harness/hookcli"
+	hookfailurecli "agent-harness/cmd/harness/hookcli/hookfailure"
 	"agent-harness/cmd/harness/updatecli"
+	hookfailureadapter "agent-harness/internal/adapter/hookfailure"
+	"agent-harness/internal/adapter/hookmetrics"
+	"agent-harness/internal/adapter/worker"
 )
 
 type daemonProcess = updatecli.DaemonProcess
@@ -23,51 +27,21 @@ func wireHostCLIDeps() {
 
 func configureHookCLI() {
 	hookcli.ResolveTarget = resolveTarget
+	hookcli.RecordHookMetricEvent = hookmetrics.RecordHookMetricEvent
+	hookcli.PruneHookFailureLog = hookfailureadapter.PruneHookFailureLog
+	hookcli.PruneHookMetricsLog = hookmetrics.PruneHookMetricsLog
+	hookcli.MaybeDetectStuckWorkerJobs = worker.MaybeDetectStuckWorkerJobs
+	hookfailurecli.RecordHookFailureEvent = hookfailureadapter.RecordHookFailureEvent
+	hookfailurecli.ListHookFailureEvents = hookfailureadapter.ListHookFailureEvents
+	hookfailurecli.PruneHookFailureLog = hookfailureadapter.PruneHookFailureLog
+	hookfailurecli.SummarizeHookFailureLog = hookfailureadapter.SummarizeHookFailureLog
+	hookfailurecli.SummarizeHookMetricsLog = hookmetrics.SummarizeHookMetricsLog
+	hookfailurecli.MetricsRate = hookmetrics.Rate
 }
 
 func runHook(args []string) error {
 	configureHookCLI()
 	return hookcli.RunHook(args)
-}
-
-func runHookUserPrompt(args []string) error {
-	configureHookCLI()
-	return hookcli.RunHookUserPrompt(args)
-}
-
-func runHookPreToolUse(args []string) error {
-	configureHookCLI()
-	return hookcli.RunHookPreToolUse(args)
-}
-
-func runHookPostToolUse(args []string) error {
-	configureHookCLI()
-	return hookcli.RunHookPostToolUse(args)
-}
-
-func runHookPreCompact(args []string) error {
-	configureHookCLI()
-	return hookcli.RunHookPreCompact(args)
-}
-
-func runHookPostCompact(args []string) error {
-	configureHookCLI()
-	return hookcli.RunHookPostCompact(args)
-}
-
-func runHookSessionStart(args []string) error {
-	configureHookCLI()
-	return hookcli.RunHookSessionStart(args)
-}
-
-func runHookStop(args []string) error {
-	configureHookCLI()
-	return hookcli.RunHookStop(args)
-}
-
-func runHookFailures(args []string) error {
-	configureHookCLI()
-	return hookcli.RunHookFailures(args)
 }
 
 func hookArgValue(args []string, flagName string) string {
@@ -157,15 +131,6 @@ func runInstallScriptCommand(commandName string, args []string) error {
 	return updatecli.RunInstallScriptCommand(commandName, args)
 }
 
-func runInstallScriptExec(script string, args ...string) error {
-	return updatecli.RunInstallScriptExec(script, args...)
-}
-
-func refreshRunningDaemonAfterInstall() (bool, error) {
-	resetUpdateFacadeDeps()
-	return updatecli.RefreshRunningDaemonAfterInstall()
-}
-
 func terminateStaleDaemonProcesses() (int, error) {
 	resetUpdateFacadeDeps()
 	return updatecli.TerminateStaleDaemonProcesses()
@@ -179,10 +144,6 @@ func listDaemonProcesses() ([]daemonProcess, error) {
 	return updatecli.ListDaemonProcesses()
 }
 
-func terminateDaemonProcess(pid int) error {
-	return updatecli.TerminateDaemonProcess(pid)
-}
-
 func refreshRunningMCPProxiesAfterInstall() (int, error) {
 	resetUpdateFacadeDeps()
 	return updatecli.RefreshRunningMCPProxiesAfterInstall()
@@ -194,8 +155,4 @@ func parseMCPProxyProcess(line, binary string) (mcpProxyProcess, bool) {
 
 func listMCPProxyProcesses() ([]mcpProxyProcess, error) {
 	return updatecli.ListMCPProxyProcesses()
-}
-
-func terminateMCPProxyProcess(pid int) error {
-	return updatecli.TerminateMCPProxyProcess(pid)
 }

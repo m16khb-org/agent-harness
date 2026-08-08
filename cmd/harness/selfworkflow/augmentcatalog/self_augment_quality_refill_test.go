@@ -13,7 +13,6 @@ func TestQualityRefillCandidatesStayOpenWithScoresAndVerification(t *testing.T) 
 		"daemon-connection-limit",
 		"worker-stuck-running-detection",
 		"state-write-locking",
-		"draftwiki-stale-lock",
 	}
 
 	byID := map[string]SelfAugmentCandidate{}

@@ -59,6 +59,7 @@ func TestOrcaIntentRepositoryCASCompletesClaimableAuthority(t *testing.T) {
 		}
 		if stage == preparationcontract.IntentStageWorktree {
 			state.OwnerArtifacts = preparationcontract.OwnerArtifacts{
+				PlanPath:       "/repo.worktrees/199-orca/.agent-harness/artifact/plan.md",
 				ClaimTokenPath: "/repo.worktrees/199-orca/.agent-harness/state/claim", ClaimTokenSHA256: strings.Repeat("d", 64),
 				ContextPacketPath: "/repo.worktrees/199-orca/.agent-harness/context.json", ContextPacketSHA256: strings.Repeat("c", 64),
 				OwnerPromptPath: "/repo.worktrees/199-orca/.agent-harness/owner.md", OwnerPromptSHA256: strings.Repeat("b", 64),
@@ -69,6 +70,15 @@ func TestOrcaIntentRepositoryCASCompletesClaimableAuthority(t *testing.T) {
 			t.Fatal(applyErr)
 		}
 		state = progress.State
+		if stage == preparationcontract.IntentStageWorktree {
+			persisted, decodeErr := leasecontract.Decode(begin.Snapshot.Record.ID, store.mustGet(recordBucket, begin.Snapshot.Record.ID))
+			if decodeErr != nil {
+				t.Fatal(decodeErr)
+			}
+			if persisted.PlanPath != state.OwnerArtifacts.PlanPath || state.Snapshot.Record.PlanPath != state.OwnerArtifacts.PlanPath {
+				t.Fatalf("worktree receipt did not atomically persist plan path: persisted=%q snapshot=%q want=%q", persisted.PlanPath, state.Snapshot.Record.PlanPath, state.OwnerArtifacts.PlanPath)
+			}
+		}
 		if stage != preparationcontract.IntentStageDispatch && !progress.Pending {
 			t.Fatalf("stage %s unexpectedly terminal", stage)
 		}
@@ -94,9 +104,20 @@ func TestOrcaIntentRepositoryCASCompletesClaimableAuthority(t *testing.T) {
 	if record.Execution.Pending != nil || record.Execution.Failure != nil || record.Execution.Lease.Status != "claimable" || record.Execution.Lease.Holder != nil || record.Execution.Lease.ClaimTokenSHA256 != strings.Repeat("d", 64) {
 		t.Fatalf("execution=%+v", record.Execution)
 	}
+	if record.PlanPath != state.OwnerArtifacts.PlanPath {
+		t.Fatalf("durable plan path=%q want %q", record.PlanPath, state.OwnerArtifacts.PlanPath)
+	}
 	binding := record.Execution.Orca
 	if binding == nil || binding.RuntimeID != "runtime" || binding.RunID != "run" || binding.TaskID != "task" || binding.DispatchID != "dispatch" || binding.LeaseGeneration != 1 {
 		t.Fatalf("binding=%+v", binding)
+	}
+	if binding.ArtifactIdentityVersion != leasecontract.OrcaArtifactIdentityVersion {
+		t.Fatalf("binding artifact identity version=%d want=%d", binding.ArtifactIdentityVersion, leasecontract.OrcaArtifactIdentityVersion)
+	}
+	if binding.IssueBodySHA256 != state.Intent.IssueBodySHA256 ||
+		binding.ContextPacketSHA256 != state.OwnerArtifacts.ContextPacketSHA256 ||
+		binding.OwnerPromptSHA256 != state.OwnerArtifacts.OwnerPromptSHA256 {
+		t.Fatalf("binding artifact identity=%+v intent=%+v artifacts=%+v", binding, state.Intent, state.OwnerArtifacts)
 	}
 	if len(store.rows[holderBucket]) != 0 {
 		t.Fatalf("claimable execution wrote holder index: %+v", store.rows[holderBucket])
@@ -150,7 +171,7 @@ func TestOrcaIntentRepositoryRecordsBoundedFailureByCAS(t *testing.T) {
 
 func TestOrcaIntentRepositoryUsesInjectedBoundedDiagnosticRedactor(t *testing.T) {
 	store, _, begin := newOrcaRepositoryFixture(t)
-	repository := NewSQLiteRepositoryWithDiagnosticRedactor(store, func(context.Context) error { return nil }, func(message string) string {
+	repository := NewSQLiteRepositoryWithDiagnosticRedactor(store, func(message string) string {
 		return "redacted:" + message
 	})
 	state, err := repository.BeginIntent(context.Background(), begin)
@@ -177,7 +198,7 @@ func newOrcaRepositoryFixture(t *testing.T) (*preparationStore, *SQLiteRepositor
 	record.IssueURL = "https://github.com/example/repo/issues/199"
 	record.BranchPrepare = json.RawMessage(`{"provider":"github","issue_url":"https://github.com/example/repo/issues/199","branch":"199-orca","base_branch":"main","base_sha":"base","link_verified":true}`)
 	store.seedRecord(t, record)
-	repository := NewSQLiteRepository(store, func(context.Context) error { return nil })
+	repository := NewSQLiteRepository(store)
 	snapshot, err := repository.Load(context.Background(), record.ID)
 	if err != nil {
 		t.Fatal(err)

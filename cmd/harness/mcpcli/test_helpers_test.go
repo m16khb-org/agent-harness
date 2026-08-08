@@ -6,8 +6,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
-
-	"agent-harness/internal/testsupport"
 )
 
 func mustMarshalMCPTest(t *testing.T, value any) json.RawMessage {
@@ -17,16 +15,6 @@ func mustMarshalMCPTest(t *testing.T, value any) json.RawMessage {
 		t.Fatal(err)
 	}
 	return b
-}
-
-func captureStatusVerifyStdout(t *testing.T, fn func() error) string {
-	t.Helper()
-	return testsupport.CaptureStdout(t, fn)
-}
-
-func captureProjectCLIStderr(t *testing.T, fn func() error) (string, error) {
-	t.Helper()
-	return testsupport.CaptureStderrAndError(t, fn)
 }
 
 func makeGitRepoForContract(t *testing.T) string {

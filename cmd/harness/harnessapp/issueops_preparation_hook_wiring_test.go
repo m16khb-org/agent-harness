@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/hookcli"
-	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/adapter/issueops"
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 	"agent-harness/internal/testsupport"
 )
@@ -58,9 +58,9 @@ func TestExecutionPrepareEnabledHooksDenyForeignAndStaleHolderIdentity(t *testin
 			output := runEnabledPreparationHook(t, host, root, foreign, target)
 			assertPreparationHookDeny(t, host, output, prepared.ID, root, 1, "holder_identity_mismatch")
 
-			for name, mutate := range map[string]func(*model.NativeProcessReceipt){
-				"pid start":  func(receipt *model.NativeProcessReceipt) { receipt.StartedAt = "1970-01-01T00:00:00Z" },
-				"executable": func(receipt *model.NativeProcessReceipt) { receipt.Executable = "/foreign/codex" },
+			for name, mutate := range map[string]func(*issueopscontract.NativeProcessReceipt){
+				"pid start":  func(receipt *issueopscontract.NativeProcessReceipt) { receipt.StartedAt = "1970-01-01T00:00:00Z" },
+				"executable": func(receipt *issueopscontract.NativeProcessReceipt) { receipt.Executable = "/foreign/codex" },
 			} {
 				t.Run(name, func(t *testing.T) {
 					record, err := issueops.ReadIssueOps(stateRoot, prepared.ID)
@@ -90,23 +90,23 @@ func TestExecutionPrepareEnabledHooksExposeOrcaWriterlessRecovery(t *testing.T) 
 	target := filepath.Join(root, "owned.go")
 
 	for _, test := range []struct {
-		status model.LeaseStatus
+		status issueopscontract.LeaseStatus
 		code   string
 	}{
-		{status: model.LeaseStatusClaimable, code: "lease_claimable"},
-		{status: model.LeaseStatusReleased, code: "lease_released"},
-		{status: model.LeaseStatusRevoking, code: "lease_revoking"},
+		{status: issueopscontract.LeaseStatusClaimable, code: "lease_claimable"},
+		{status: issueopscontract.LeaseStatusReleased, code: "lease_released"},
+		{status: issueopscontract.LeaseStatusRevoking, code: "lease_revoking"},
 	} {
 		t.Run(string(test.status), func(t *testing.T) {
 			record, err := issueops.ReadIssueOps(stateRoot, prepared.ID)
 			if err != nil {
 				t.Fatal(err)
 			}
-			record.Execution.Lease = model.WriteLease{Generation: 1, Status: test.status}
+			record.Execution.Lease = issueopscontract.WriteLease{Generation: 1, Status: test.status}
 			switch test.status {
-			case model.LeaseStatusClaimable:
+			case issueopscontract.LeaseStatusClaimable:
 				record.Execution.Lease.ClaimTokenSHA256 = strings.Repeat("a", 64)
-			case model.LeaseStatusRevoking:
+			case issueopscontract.LeaseStatusRevoking:
 				holder := actor
 				holder.ProcessAncestry = nil
 				record.Execution.Lease.Holder = &holder
@@ -122,7 +122,7 @@ func TestExecutionPrepareEnabledHooksExposeOrcaWriterlessRecovery(t *testing.T) 
 	}
 }
 
-func prepareHookExecutionFixture(t *testing.T, mode, host string) (string, issueops.IssueOpsRecord, model.NativeActor) {
+func prepareHookExecutionFixture(t *testing.T, mode, host string) (string, issueopscontract.IssueOpsRecord, issueopscontract.NativeActor) {
 	t.Helper()
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	stateRoot := issueops.IssueOpsStateRoot()
@@ -131,17 +131,22 @@ func prepareHookExecutionFixture(t *testing.T, mode, host string) (string, issue
 	claimWiringGit(t, repo, "-c", "user.name=IssueOps Test", "-c", "user.email=issueops@example.invalid", "commit", "--allow-empty", "-q", "-m", "fixture")
 	baseHead := strings.TrimSpace(claimWiringGit(t, repo, "rev-parse", "HEAD"))
 	branch := "199-hook-" + mode + "-" + host
-	record, err := issueops.StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := issueops.StartIssueOps(stateRoot, issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
 	record.IssueURL = "https://github.com/acme/repo/issues/199"
-	record.BranchPrepare = &issueops.IssueOpsBranchPrepare{
+	record.BranchPrepare = &issueopscontract.IssueOpsBranchPrepare{
 		Provider: "github", IssueURL: record.IssueURL, Branch: branch,
 		BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true,
 	}
 	if _, err := issueops.WriteIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
+	}
+	if mode == "orca" {
+		if _, err := issueops.StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte("# Hook preparation plan\n")); err != nil {
+			t.Fatal(err)
+		}
 	}
 	actor := claimWiringActor(t)
 	actor.Host = host
@@ -189,7 +194,7 @@ func (*hookPreparationDirectFake) Prepare(_ context.Context, request port.Execut
 	}, nil
 }
 
-func runEnabledPreparationHook(t *testing.T, host, cwd string, actor model.NativeActor, target string) map[string]any {
+func runEnabledPreparationHook(t *testing.T, host, cwd string, actor issueopscontract.NativeActor, target string) map[string]any {
 	t.Helper()
 	tool := "apply_patch"
 	if host == "claude" {

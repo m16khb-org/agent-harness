@@ -6,13 +6,11 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	"agent-harness/cmd/harness/daemoncli"
 	"agent-harness/cmd/harness/selfworkflow"
 )
 
 const selfVerifyCommandOutputBudgetBytes = 32 * 1024
 const selfVerifyAggregateOutputBudgetBytes = 8 * 1024
-const skillName = "atomic-commit-push"
 
 type StepResult = commandstep.StepResult
 type SelfAugmentCompareResult = selfworkflow.SelfAugmentCompareResult
@@ -30,8 +28,6 @@ type SelfAugmentHistoryRetention = selfworkflow.SelfAugmentHistoryRetention
 type SelfVerificationCandidateExportResult = selfworkflow.SelfVerificationCandidateExportResult
 type SelfVerificationCandidate = selfworkflow.SelfVerificationCandidate
 type SelfVerificationCandidateExportStateSnapshot = selfworkflow.SelfVerificationCandidateExportStateSnapshot
-type daemonPaths = daemoncli.Paths
-type daemonStatus = daemoncli.Status
 
 const selfVerificationCandidateExportKind = selfworkflow.SelfVerificationCandidateExportKind
 const selfVerificationKoreanName = selfworkflow.SelfVerificationKoreanName

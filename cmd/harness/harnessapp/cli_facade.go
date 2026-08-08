@@ -1,10 +1,13 @@
 package harnessapp
 
 import (
+	"agent-harness/internal/adapter/docs"
+	statestore "agent-harness/internal/adapter/outbound/state"
+	"agent-harness/internal/adapter/preflight"
+	"agent-harness/internal/adapter/projectdocs"
 	"os"
 
 	"agent-harness/cmd/harness/basiccli"
-	"agent-harness/cmd/harness/draftwikicli"
 	"agent-harness/cmd/harness/installcli"
 	"agent-harness/cmd/harness/loopcli"
 	"agent-harness/cmd/harness/projectcli"
@@ -18,8 +21,6 @@ import (
 	"agent-harness/internal/port"
 )
 
-const shellPathRCMarker = installcli.ShellPathRCMarker
-
 type (
 	HarnessStatus              = statuscli.Status
 	SelfVerifyStatus           = statuscli.SelfVerificationStatus
@@ -29,27 +30,67 @@ type (
 )
 
 func wireBasicCLIDeps() {
+	configureDocsReaders()
+	configureStateStores()
+	configureIssueOpsRuntime()
+	configureTail8()
+	configureDoctorLoopGate()
+	configureRemoteArtifactRules()
+	configureHookPrompts()
+	configureInstallPlans()
+	configureStateDatabases()
+	configureTail6()
+	configureTail5()
+	configureAdapterTail()
+	configureTailCapabilities2()
+	configureTailCapabilities()
+	configureIssueOpsReaders()
+	configureInstallReaders()
+	configureProjectDocReaders()
+	configurePolicyAndGitObservers()
+	configureAdapterStateAccess()
+	configureWorkerJobs()
+	configureRepoPathResolvers()
+	configureProjectBootstrap()
+	configureHookCLILifecycle()
+	configureDoctorHookPromptLifecycle()
+	configureToolConformance()
+	configureDoctorRunner()
+	configureIssueOpsBenchmark()
+	configureIssueOpsCleanup()
+	configureIssueOpsRemote()
+	configureIssueOpsOrphanAndLoopGate()
+	configureLifecycleIssueOps()
+	configureIssueOpsLeaseNextCommands()
+	configureIssueOpsExecutionRunners()
+	configureIssueOpsCLIRuntime()
 	operationalCollector := operationalhealth.Collector{Git: operationalhealth.ExecGitRunner{}, Orca: orca.New()}
 	basiccli.Configure(basiccli.Deps{
+		GitPreflight:             preflight.GitPreflight,
 		HarnessRoot:              harnessRoot,
 		ResolveTarget:            resolveTarget,
 		Version:                  version,
 		InspectHarness:           inspectHarness,
 		CheckDaemonStatus:        checkDaemonStatus,
 		CollectOperationalHealth: operationalCollector.Collect,
+		DocsIndex:                docs.DocsIndex,
 	})
-	installcli.Configure(installcli.Deps{HarnessRoot: harnessRoot})
+	installcli.Configure(installDependencies())
 	qualitycli.Configure(qualitycli.Deps{
 		HarnessRoot: harnessRoot,
 		Version:     version,
 		PrintJSON:   printJSON,
+		StateRead:   statestore.StateRead,
+		StateWrite:  statestore.StateWrite,
 	})
 	statuscli.Configure(statuscli.Deps{
-		HarnessRoot:       harnessRoot,
-		ResolveTarget:     resolveTarget,
-		Version:           version,
-		InspectHarness:    inspectHarness,
-		CheckDaemonStatus: checkDaemonStatus,
+		AnalyzeProjectSignals: projectdocs.AnalyzeProjectSignals,
+		HarnessRoot:           harnessRoot,
+		ResolveTarget:         resolveTarget,
+		Version:               version,
+		InspectHarness:        inspectHarness,
+		CheckDaemonStatus:     checkDaemonStatus,
+		GitPreflight:          preflight.GitPreflight,
 	})
 	workercli.Configure(workercli.Deps{ResolveTarget: resolveTarget})
 }
@@ -98,32 +139,8 @@ func runDoctor(args []string) error {
 	return basiccli.RunDoctor(args)
 }
 
-func runProjectDraftWiki(args []string) error {
-	return draftwikicli.RunProjectDraftWiki(args)
-}
-
-func draftWikiQueueMaterial(repo, input, material string, stdinFlag bool) (string, error) {
-	return draftwikicli.DraftWikiQueueMaterial(repo, input, material, stdinFlag)
-}
-
-func runProjectDraftWikiSuggest(args []string) error {
-	return draftwikicli.RunProjectDraftWikiSuggest(args)
-}
-
-func parseDraftWikiPathFlags(name string, args []string) (path, repo string, jsonOut bool, err error) {
-	return draftwikicli.ParseDraftWikiPathFlags(name, args)
-}
-
 func runInstall(args []string) error {
 	return installcli.RunInstall(args)
-}
-
-func runInstallNative(args []string) error {
-	return installcli.RunInstallNative(args)
-}
-
-func runInstallCommand(commandName string, args []string) error {
-	return installcli.RunInstallCommand(commandName, args)
 }
 
 func validateInteractiveInstallInput(stdin *os.File) error {
@@ -175,31 +192,27 @@ func runProjectLintDiagnose(args []string) error {
 }
 
 func runState(args []string) error {
-	return statecli.Run(args)
+	return statecli.Run(stateDependencies(), args)
 }
 
 func runStateWrite(args []string) error {
-	return statecli.RunWrite(args)
+	return statecli.RunWrite(stateDependencies(), args)
 }
 
 func runStateRead(args []string) error {
-	return statecli.RunRead(args)
+	return statecli.RunRead(stateDependencies(), args)
 }
 
 func runStateList(args []string) error {
-	return statecli.RunList(args)
+	return statecli.RunList(stateDependencies(), args)
 }
 
 func runStatePrune(args []string) error {
-	return statecli.RunPrune(args)
+	return statecli.RunPrune(stateDependencies(), args)
 }
 
 func runStateDoctor(args []string) error {
-	return statecli.RunDoctor(args)
-}
-
-func runStateMigrate(args []string) error {
-	return statecli.RunMigrate(args)
+	return statecli.RunDoctor(stateDependencies(), args)
 }
 
 func runStatus(args []string) error {
@@ -223,7 +236,7 @@ func runWorker(args []string) error {
 }
 
 func runLoop(args []string) error {
-	return loopcli.Run(args)
+	return loopcli.Run(loopDependencies(), args)
 }
 
 func runWebFetch(args []string) error {
@@ -232,10 +245,6 @@ func runWebFetch(args []string) error {
 
 func runWorkerEnqueue(args []string) error {
 	return workercli.RunEnqueue(args)
-}
-
-func runWorkerDraftWiki(args []string) error {
-	return workercli.RunDraftWiki(args)
 }
 
 func runWorkerRun(args []string) error {

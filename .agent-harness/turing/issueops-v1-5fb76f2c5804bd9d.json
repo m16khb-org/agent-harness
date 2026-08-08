@@ -1,0 +1,271 @@
+{
+  "lifecycle_id": "io-2d2180901da9",
+  "issue_url": "https://github.com/m16khb/agent-harness/issues/318",
+  "linked_findings": [
+    "https://github.com/m16khb/agent-harness/issues/326"
+  ],
+  "branch": "318-post-completion-sync-base-v2",
+  "base_head": "84d8618d47849c167fc6d5b9796f1e9d87e2ed6e",
+  "worktree_root": "/Users/m16khb/Workspace/agent-harness.worktrees/318-post-completion-sync-base-v2",
+  "owner": {
+    "host": "codex",
+    "model": "gpt-5.6-sol",
+    "effort": "xhigh",
+    "mode": "orca",
+    "lease_generation": 1
+  },
+  "goal": "완료된 IssueOps lifecycle이 stale parent 위에서 reseed되지 않게 하고 released current completion에서 generation-fenced sync-base recovery를 제공한다.",
+  "contract": [
+    "Completion.Generation은 stamped current authority이며 0 또는 missing은 요청값으로 보정하지 않고 fail-closed한다.",
+    "completed replacement preview와 reseed CAS는 같은 injected base observer로 mutation 전에 parent ancestry를 확인한다.",
+    "released sync-base mutation은 current completion generation, canonical cwd, live actor, preview fingerprint를 모두 요구한다.",
+    "active-holder sync-base 권위는 변경하지 않고 completion, history, phase는 sync 뒤에도 불변이다.",
+    "port에는 Request/Receipt/Inspector만 남기고 typed public error와 next command는 contract가 소유한다.",
+    "Codex와 Claude hook은 exact generation-bound form만 허용하고 모든 near miss를 block한다.",
+    "MCP는 catalog가 노출하는 실제 error 경로만 provenance-bind하며 도달 불가능한 sync-base success binder를 두지 않는다."
+  ],
+  "tdd_loop": [
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/issueops ./cmd/harness/harnessapp ./internal/application/issueopslease -run 'ReleasedSyncBase|CompletedReplacementPreview|Reseed.*Base' -count=1 -v",
+      "observed": "drifted completed replacement preview가 sync-base error 대신 reseed command를 반환했다.",
+      "expected_reason": "replacement preview에 completed-base observer가 없었다."
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/adapter/outbound/issueopsbasesync -count=1 -v",
+      "observed": "NewInspector와 ErrGitRunnerRequired가 없어 adapter test가 compile되지 않았다.",
+      "expected_reason": "base-drift observation port와 outbound adapter가 없었다."
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/application/issueopslease ./cmd/harness/harnessapp -run 'BaseSync|Completed.*Reseed|Reseed.*Drift' -count=1 -v",
+      "observed": "parent drift에서도 reseed가 artifact prepare와 durable commit까지 진행했다.",
+      "expected_reason": "CAS snapshot 이후 mutation 전 drift recheck가 없었다."
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/application/issueopslease ./cmd/harness/harnessapp -run 'MissingStampedCompletionGeneration' -count=1 -v",
+      "observed": "Completion.Generation 0이 request-selected generation으로 보정되어 preview와 apply가 진행됐다.",
+      "expected_reason": "pre-v1 selected-generation fallback이 남아 있었다."
+    },
+    {
+      "step": "REGRESSION_RED",
+      "command": "go test ./internal/application/issueopslease ./internal/adapter/inbound/issueopslease ./cmd/harness/harnessapp -run 'BaseSync|Completed.*Reseed|Reseed.*Drift|MissingStampedCompletionGeneration' -count=1 -v",
+      "observed": "agent-harness/cmd/harness/harnessapp failed in TestCompletedReplacementPreviewRejectsMissingStampedCompletionGeneration: zero-generation preview error=invalid or missing stamped completion generation.",
+      "expected_reason": "production fail-closed wording was corrected, but the harnessapp assertion still expected the superseded exact text current completion generation is required. This was a deterministic test-contract mismatch, not a flaky runner failure."
+    },
+    {
+      "step": "REGRESSION_GREEN",
+      "command": "go test ./internal/application/issueopslease ./internal/adapter/inbound/issueopslease ./cmd/harness/harnessapp -run 'BaseSync|Completed.*Reseed|Reseed.*Drift|MissingStampedCompletionGeneration' -count=1 -v",
+      "observed": "after changing only the harnessapp expected error literal to invalid or missing stamped completion generation, the exact command passed in all three packages. The post-parent final suite must rerun this command unchanged."
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/architecture -run TestIssueOpsBaseSyncPortOwnsOnlyRequestReceiptAndInterface -count=1",
+      "observed": "port package가 BaseSyncRequiredError, constructor, next-command formatting, IssueOpsErrorFields와 fmt/strings imports를 소유했다.",
+      "expected_reason": "public error contract가 request/receipt/interface port boundary를 침범했다."
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/issueops ./cmd/harness/issueopscli/executioncmd ./internal/core/commandparse -run 'SyncBase|CompletionGeneration' -count=1 -v",
+      "observed": "released current completion에 mutation authority가 없었고 parser와 CLI는 completion-generation을 인식하지 못했다.",
+      "expected_reason": "sync-base는 active-holder authority만 구현했다."
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/lifecycle ./cmd/harness/hookcli -run 'SyncBase|CompletionGeneration|HostParity' -count=1 -v",
+      "observed": "released exact form과 missing/duplicate/history/wrong-cwd/nonholder near miss를 durable state 기준으로 구분하지 못했다.",
+      "expected_reason": "hook classifier에 released current-completion authority가 없었다."
+    },
+    {
+      "step": "RED",
+      "command": "go test ./internal/core/issueops -run TestExecutionSyncBaseActiveHolderAuthorityRemainsSupported -count=1 -v",
+      "observed": "active generation-1 in-progress fixture without current completion or remote artifact was rejected with completion_present, remote_artifact_present.",
+      "expected_reason": "released-maintenance evidence gates were applied unconditionally to the existing active-holder parent-sync path."
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/core/issueops -run TestExecutionSyncBaseActiveHolderAuthorityRemainsSupported -count=1 -v",
+      "observed": "active holder without current completion/remote artifact passed with omitted completion-generation; released authority gates remain unchanged."
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/core/issueops ./internal/core/lifecycle ./internal/core/commandparse -count=1",
+      "observed": "issueops, lifecycle, commandparse regression packages passed."
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./cmd/harness/issueopscli/... ./cmd/harness/harnessapp ./cmd/harness/mcpcli -count=1",
+      "observed": "IssueOps CLI, execution command adapter, harness wiring, and MCP packages passed."
+    },
+    {
+      "step": "GREEN",
+      "command": "go test ./internal/architecture -run 'TestIssueOpsBaseSyncPortOwnsOnlyRequestReceiptAndInterface|TestProductionGraphMatchesBaseline' -count=1",
+      "observed": "package-wide port ownership and production dependency baseline passed."
+    },
+    {
+      "step": "DOGFOOD",
+      "command": "./bin/agent-harness issueops execution sync-base --id 'io-2d2180901da9' --preview ACTOR_FLAGS --json",
+      "observed": "active generation 1 preview resolved parent 939e5499f17bac8c8a02bab70f9febde52c42efe, work 2b4f825986e9cbd37f9c11d044c2d896fa609e28, fingerprint f7d6d84e72ddaaa072d50b66a01c8dfded3ee3302e1fd4b7a57419a46be6459e, merge_needed=true, and four predicted conflicts."
+    },
+    {
+      "step": "DOGFOOD",
+      "command": "./bin/agent-harness issueops execution sync-base --id 'io-2d2180901da9' --apply --confirm --fingerprint f7d6d84e72ddaaa072d50b66a01c8dfded3ee3302e1fd4b7a57419a46be6459e ACTOR_FLAGS --json; resolve the four reported files; run the emitted --finalize ACTOR_FLAGS command",
+      "observed": "apply entered a governed merge-in-progress without push; finalize created and pushed merge commit 1a86b19ad75b3c440c61d3b444e2afa50cae35c1. git show readback proves parent 939e5499f17bac8c8a02bab70f9febde52c42efe is the second parent; rebuild passed."
+    },
+    {
+      "step": "INTEGRATION_RED",
+      "command": "go test ./cmd/harness/issueopscli/executioncmd -run 'TestBindExecutionSyncBaseBindsConflictAbortWithSameProvenance|TestOutputBindsBaseSyncRequiredTypedErrorCommand' -count=1 -v",
+      "observed": "abort_command remained an unbound PATH command and BaseSyncRequiredError.next_command bypassed the success-result binder.",
+      "expected_reason": "#303 bound one success-result next_command only; typed errors and the second sync-base command field were separate projection paths."
+    },
+    {
+      "step": "INTEGRATION_GREEN",
+      "command": "go test ./cmd/harness/issueopscli/executioncmd -run 'TestBindExecutionSyncBaseBindsConflictAbortWithSameProvenance|TestOutputBindsBaseSyncRequiredTypedErrorCommand' -count=1 -v",
+      "observed": "typed error next_command and conflict finalize/abort commands are bound; finalize and abort share one executable path/hash/generation observation with no unbound fallback."
+    },
+    {
+      "step": "MCP_INTEGRATION_RED",
+      "command": "go test ./cmd/harness/mcpcli -run 'TestMCPIssueOpsExecutionHandlerBindsBaseSyncRequiredErrorNextCommand|TestMCPIssueOpsExecutionTypedErrorObservationFailureHasNoUnboundFallback' -count=1 -v",
+      "observed": "reachable resume error was projected by issueOpsMCPErrorPayload before provenance binding, so BaseSyncRequiredError.next_command remained an unbound PATH command.",
+      "expected_reason": "#303 bound success results only and the MCP handler returned typed errors through a separate structured-payload path."
+    },
+    {
+      "step": "MCP_INTEGRATION_GREEN",
+      "command": "go test ./cmd/harness/mcpcli -run 'TestMCPIssueOpsExecutionHandlerBindsBaseSyncRequiredErrorNextCommand|TestMCPIssueOpsExecutionTypedErrorObservationFailureHasNoUnboundFallback' -count=1 -v",
+      "observed": "reachable resume/replace typed errors are bound before structured MCP projection and observation failure exposes no next_command. MCP catalog has no sync-base action, so the unreachable ExecutionSyncBaseResult success binder/test was removed to resolve #326."
+    },
+    {
+      "step": "VERTICAL_GREEN",
+      "command": "go test ./cmd/harness/harnessapp -run TestReleasedSyncBaseReachableThroughProductionClaimCompleteTransitions -count=1 -v",
+      "observed": "public ExecuteExecution with the production claim and complete handlers created released generation-1 authority; released preview/apply/finalize succeeded and the completion receipt, final_head, history, phase, and released lease stayed immutable."
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "tests": [
+        "TestCompletedReplacementPreviewRequiresSyncBaseBeforeReseedWhenParentDrifted",
+        "TestInspectorReportsParentDrift"
+      ],
+      "command": "go test ./internal/core/issueops ./cmd/harness/harnessapp ./internal/adapter/outbound/issueopsbasesync -run 'CompletedReplacementPreview|Inspector' -count=1",
+      "result": "PASS",
+      "observed": "drifted completed preview returns typed sync-base requirement before reseed projection."
+    },
+    {
+      "id": "AC-02",
+      "tests": [
+        "TestReseedServiceRejectsParentDriftBeforeArtifactsOrCommit",
+        "TestIssueOpsBaseSyncPortOwnsOnlyRequestReceiptAndInterface"
+      ],
+      "command": "go test ./internal/application/issueopslease ./internal/architecture -run 'RejectsParentDrift|IssueOpsBaseSyncPort' -count=1",
+      "result": "PASS",
+      "observed": "drift rejection preserves artifacts, token paths, completion/history/ledger/lease, commits, and public error ownership."
+    },
+    {
+      "id": "AC-03",
+      "tests": [
+        "TestReleasedSyncBaseFixtureRepresentsCurrentCompletion",
+        "TestExecutionSyncBaseReleasedCompletionAuthorityRejectsInvalidState",
+        "TestExecutionSyncBaseRecordsDurableEventAndKeepsFinalHeadImmutable",
+        "TestReleasedSyncBaseReachableThroughProductionClaimCompleteTransitions"
+      ],
+      "command": "go test ./internal/core/issueops ./cmd/harness/harnessapp -run 'ReleasedSyncBase|ReleasedCompletionAuthority|KeepsFinalHeadImmutable|ProductionClaimCompleteTransitions' -count=1",
+      "result": "PASS",
+      "observed": "history-only and unstamped completion are invalid; both isolated gates and the public production claim→complete→released sync vertical append an event without changing completion, final_head, history, phase, or released authority."
+    },
+    {
+      "id": "AC-04",
+      "tests": [
+        "TestCompletedReplacementPreviewKeepsNoDriftReseed",
+        "TestInspectorObservesNoDriftWithExactReadOnlyCommands"
+      ],
+      "command": "go test ./cmd/harness/harnessapp ./internal/adapter/outbound/issueopsbasesync -run 'KeepsNoDriftReseed|ObservesNoDrift' -count=1",
+      "result": "PASS",
+      "observed": "no-drift completed reseed behavior remains unchanged and observer runs only the four contracted Git observations."
+    },
+    {
+      "id": "AC-05",
+      "tests": [
+        "TestExecutionSyncBaseApplyRunsFetchMergePushInOrder",
+        "TestExecutionSyncBaseApplyStopsAtConflictWithoutPush",
+        "TestExecutionSyncBaseApplyPushFailureConvergesIdempotently",
+        "TestExecutionSyncBaseAbortWithdrawsTheMergeWithoutEvent",
+        "TestExecutionSyncBaseApplyRejectsStaleFingerprint"
+      ],
+      "command": "go test ./internal/core/issueops -run 'ExecutionSyncBase(Apply|Abort|Finalize|Preview)' -count=1",
+      "result": "PASS",
+      "observed": "released apply/finalize/abort/retry commands carry stamped generation; fingerprint, conflict, retry, abort, and immutable evidence paths pass."
+    },
+    {
+      "id": "AC-06",
+      "tests": [
+        "TestExecutionSyncBaseReleasedCompletionHostParity",
+        "TestExecutionSyncBaseReleasedCompletionNearMissesBlock",
+        "TestExecutionSyncBaseGeneralNonHolderMutationStaysBlocked"
+      ],
+      "command": "go test ./internal/core/lifecycle ./cmd/harness/hookcli -run 'SyncBase|CompletionGeneration|HostParity' -count=1 -v",
+      "result": "PASS",
+      "observed": "Codex and Claude allow only exact durable-state-matching forms and block every near miss."
+    },
+    {
+      "id": "AC-07",
+      "tests": [
+        "Task 6 governed lifecycle recovery evidence",
+        "TestBindExecutionSyncBaseBindsConflictAbortWithSameProvenance",
+        "TestOutputBindsBaseSyncRequiredTypedErrorCommand",
+        "TestMCPIssueOpsExecutionHandlerBindsBaseSyncRequiredErrorNextCommand",
+        "TestMCPIssueOpsExecutionTypedErrorObservationFailureHasNoUnboundFallback"
+      ],
+      "command": "go test ./cmd/harness/issueopscli/executioncmd ./cmd/harness/mcpcli -run 'BindExecutionSyncBase|BaseSyncRequired' -count=1 -v",
+      "result": "PASS",
+      "observed": "active lifecycle dogfood merged parent 939e5499 through governed preview/apply/finalize; CLI binds conflict finalize/abort from one receipt; reachable CLI/MCP typed errors bind before output; unreachable MCP sync-base success binding was removed for #326; final serial full/race/vet/build passed."
+    }
+  ],
+  "verification": [
+    "go test ./internal/core/issueops ./internal/core/lifecycle ./internal/core/commandparse -count=1 => exit 0",
+    "go test ./cmd/harness/issueopscli/... ./cmd/harness/harnessapp ./cmd/harness/mcpcli -count=1 => exit 0",
+    "go test ./internal/architecture -run 'TestIssueOpsBaseSyncPortOwnsOnlyRequestReceiptAndInterface|TestProductionGraphMatchesBaseline' -count=1 => exit 0",
+    "go test ./internal/application/issueopslease ./internal/adapter/inbound/issueopslease ./cmd/harness/harnessapp -run 'BaseSync|Completed.*Reseed|Reseed.*Drift|MissingStampedCompletionGeneration' -count=1 -v => post-parent exact rerun exit 0; the earlier harnessapp stale-literal failure is resolved",
+    "go test ./cmd/harness/mcpcli -run 'TestMCPIssueOpsExecutionHandlerBindsBaseSyncRequiredErrorNextCommand|TestMCPIssueOpsExecutionTypedErrorObservationFailureHasNoUnboundFallback' -count=1 -v => exit 0",
+    "go test ./cmd/harness/harnessapp -run TestReleasedSyncBaseReachableThroughProductionClaimCompleteTransitions -count=1 -v => exit 0",
+    "go test ./... -count=1 => final serial exit 0",
+    "go test -race ./... -count=1 => final serial exit 0",
+    "go vet ./... => final serial exit 0",
+    "go build -o bin/agent-harness ./cmd/harness => final serial exit 0",
+    "go test ./cmd/harness/contractgolden -run Golden -count=1 => final exit 0",
+    "go test ./cmd/harness/harnessapp -run TestResponseContractsGolden -count=1 => final exit 0",
+    "git diff --check => exit 0"
+  ],
+  "ai_slop_clean": [
+    "selected-generation completion fallback와 legacy wording을 제거했다.",
+    "port-owned public error와 next-command formatting을 contract로 옮기고 alias/shim을 남기지 않았다.",
+    "released/active authority를 한 helper로 고정하고 generated command prefix를 재사용했다.",
+    "설명만 반복하던 주석과 stale active-holder-only 설명을 정리했다.",
+    "MCP public action enum에 없는 ExecutionSyncBaseResult success binder/test를 제거하고 reachable typed-error vertical만 남겨 #326의 dead-code finding을 해결했다."
+  ],
+  "implementation_reviews": [
+    {
+      "stage": "pre-sync checkpoint",
+      "reviewer": "independent gpt-5.6-sol xhigh Brooks-grade review",
+      "verdict": "pass",
+      "findings": [],
+      "evidence": "active mutations still require sameNativeActor; released mutations require current stamped completion generation; pending/cwd/branch/remote/clean/fingerprint gates remain fail-closed. Independent focused core and architecture commands passed. Safe for the atomic commit/push required to make governed sync-base apply operate on a clean branch."
+    },
+    {
+      "stage": "final post-parent checkpoint",
+      "reviewer": "independent gpt-5.6-sol xhigh Brooks-grade review",
+      "verdict": "pass",
+      "findings": [],
+      "evidence": "production diff, claim→complete→released sync vertical fixture discipline, CLI/MCP reachability, #326 dead-case removal, docs, and git diff --check have no blocking finding; final serial full/race/vet/build subsequently passed. Two earlier bounded background reviewers were interrupted as stalled and were not treated as verdicts."
+    }
+  ],
+  "deviations": [
+    "materialized plan은 Turing path를 issueops-v1-345ef2bed404e022.json으로 적었지만 sealed generation-1 packet과 owner instruction이 issueops-v1-5fb76f2c5804bd9d.json을 요구하므로 후자를 사용했다.",
+    "#303 코드를 미리 복제하지 않고 parent 939e5499가 merge된 뒤 typed error와 abort_command projection을 실제 binder 계약 위에서 RED/GREEN으로 결합했다.",
+    "MCP issueops_execution catalog에는 sync-base action이 없어서 ExecutionSyncBaseResult success binder/test는 production-unreachable했다. #326에 기록된 finding을 alias나 새 MCP surface 없이 dead case 제거로 해결하고, 실제 resume/replace typed-error provenance vertical만 유지했다.",
+    "절대 불변식이 exactly one lifecycle과 one mutation root를 허용하므로 plan의 실제 #248/#293 lifecycle mutation dogfood는 이 dispatched owner가 수행하지 않았다.",
+    "Task 3 combined focused command가 한 번 FAIL했다. Exact package는 cmd/harness/harnessapp, test는 TestCompletedReplacementPreviewRejectsMissingStampedCompletionGeneration, root cause는 production wording 변경 뒤 stale exact-string assertion이었다. One-line assertion repair 뒤 동일 command와 full/race suites가 PASS했으며 post-parent final suite에서도 동일 command를 다시 실행해야 한다."
+  ]
+}

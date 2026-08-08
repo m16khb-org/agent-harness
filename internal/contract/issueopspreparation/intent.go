@@ -158,9 +158,9 @@ type Intent struct {
 	ResumeLease        *leasecontract.Lease  `json:"resume_lease,omitempty"`
 }
 
-// ResumeBinding preserves the predecessor resume-intent byte order. Persisted
-// issueops_v1 records use leasecontract.OrcaBinding, whose legacy byte order is
-// different, so the two stable wire contracts cannot share one struct.
+// ResumeBinding preserves the stable resume-intent byte order. Persisted
+// issueops_v1 records use leasecontract.OrcaBinding with a different stable
+// byte order, so the two wire contracts cannot share one struct.
 type ResumeBinding struct {
 	RuntimeID          string `json:"runtime_id"`
 	RepoID             string `json:"repo_id"`
@@ -265,61 +265,19 @@ func (IntentCodec) Seal(intent Intent, issue IssueIdentity) (Intent, error) {
 	return intent, nil
 }
 
-// Canonicalize returns identical bytes for canonical intents. An exact legacy
-// marker may be upgraded only before an external invocation is possible.
-func (codec IntentCodec) Canonicalize(record leasecontract.Record, raw []byte) (Intent, []byte, bool, error) {
+// Canonicalize validates the current intent contract without mutating its bytes.
+func (IntentCodec) Canonicalize(record leasecontract.Record, raw []byte) (Intent, []byte, error) {
 	intent, err := decodeShape(raw)
 	if err != nil {
-		return Intent{}, nil, false, unsafeLegacy(err.Error())
+		return Intent{}, nil, err
 	}
-	if err := validateIntent(intent, intent.OperationID); err == nil {
-		if err := validateRecordAuthority(record, intent); err != nil {
-			return Intent{}, nil, false, unsafeLegacy(err.Error())
-		}
-		return intent, append([]byte(nil), raw...), false, nil
-	}
-	if intent.InvocationState != InvocationNotInvoked {
-		return Intent{}, nil, false, unsafeLegacy("legacy Orca intent invocation was not proven absent")
-	}
-	legacy, err := parseLegacyMarker(intent.Marker)
-	if err != nil {
-		return Intent{}, nil, false, unsafeLegacy("Orca intent marker is neither canonical nor exact legacy")
-	}
-	if legacy.Purpose != normalizedPurpose(intent) || legacy.LifecycleID != intent.LifecycleID ||
-		legacy.Generation != intent.Generation || legacy.OperationID != intent.OperationID {
-		return Intent{}, nil, false, unsafeLegacy("legacy Orca intent identity does not match current pending authority")
+	if err := validateIntent(intent, intent.OperationID); err != nil {
+		return Intent{}, nil, err
 	}
 	if err := validateRecordAuthority(record, intent); err != nil {
-		return Intent{}, nil, false, unsafeLegacy(err.Error())
+		return Intent{}, nil, err
 	}
-	if record.Execution.Failure != nil && record.Execution.Failure.OperationID != intent.OperationID {
-		return Intent{}, nil, false, unsafeLegacy("legacy Orca intent failure receipt belongs to another operation")
-	}
-	issue, err := issueIdentity(record)
-	if err != nil {
-		return Intent{}, nil, false, unsafeLegacy(err.Error())
-	}
-	if intent.Probe.Provider != issue.Provider || intent.Probe.Issue != issue.Issue {
-		return Intent{}, nil, false, unsafeLegacy("legacy Orca probe identity does not match the verified issue")
-	}
-	sealed, err := codec.Seal(intent, issue)
-	if err != nil {
-		return Intent{}, nil, false, unsafeLegacy(err.Error())
-	}
-	adjusted := record
-	execution := *record.Execution
-	pending := *record.Execution.Pending
-	execution.Pending = &pending
-	adjusted.Execution = &execution
-	adjusted.Execution.Pending.Marker = sealed.Marker
-	if err := validateRecordAuthority(adjusted, sealed); err != nil {
-		return Intent{}, nil, false, unsafeLegacy(err.Error())
-	}
-	encoded, err := codec.Encode(sealed)
-	if err != nil {
-		return Intent{}, nil, false, err
-	}
-	return sealed, encoded, !bytes.Equal(encoded, raw), nil
+	return intent, append([]byte(nil), raw...), nil
 }
 
 func decodeShape(raw []byte) (Intent, error) {
@@ -441,10 +399,6 @@ func validateRecordAuthority(record leasecontract.Record, intent Intent) error {
 	return nil
 }
 
-func issueIdentity(record leasecontract.Record) (IssueIdentity, error) {
-	return parseIssueIdentity(record, false)
-}
-
 func (IntentCodec) PrepareIssueIdentity(record leasecontract.Record) (IssueIdentity, error) {
 	return parseIssueIdentity(record, true)
 }
@@ -502,10 +456,6 @@ func (IntentCodec) RenderReadinessMarker(lifecycleID string, issue IssueIdentity
 
 func (codec IntentCodec) ParseMarker(marker string) (MarkerIdentity, error) {
 	return parseMarker(marker)
-}
-
-func (codec IntentCodec) ParseLegacyMarker(marker string) (MarkerIdentity, error) {
-	return parseLegacyMarker(marker)
 }
 
 func renderMarker(identity MarkerIdentity) (string, error) {
@@ -569,33 +519,6 @@ func parseMarker(marker string) (MarkerIdentity, error) {
 	}
 	rendered, err := renderMarker(identity)
 	if err != nil || rendered != marker {
-		return MarkerIdentity{}, invalidMarker()
-	}
-	return identity, nil
-}
-
-func parseLegacyMarker(marker string) (MarkerIdentity, error) {
-	fields := strings.Fields(marker)
-	identity := MarkerIdentity{}
-	switch {
-	case len(fields) == 4 && fields[0] == "agent-harness" && fields[1] == "issueops-v1":
-		identity.Purpose, identity.Generation = PurposePrepare, 1
-		identity.LifecycleID = strings.TrimPrefix(fields[2], "lifecycle=")
-		identity.OperationID = strings.TrimPrefix(fields[3], "operation=")
-	case len(fields) == 6 && fields[0] == "agent-harness" && fields[1] == "issueops-v1" && fields[2] == "resume":
-		identity.Purpose = PurposeResume
-		identity.LifecycleID = strings.TrimPrefix(fields[3], "lifecycle=")
-		raw := strings.TrimPrefix(fields[4], "generation=")
-		var err error
-		identity.Generation, err = strconv.ParseUint(raw, 10, 64)
-		if err != nil {
-			return MarkerIdentity{}, invalidMarker()
-		}
-		identity.OperationID = strings.TrimPrefix(fields[5], "operation=")
-	default:
-		return MarkerIdentity{}, invalidMarker()
-	}
-	if !validToken(identity.LifecycleID) || !validToken(identity.OperationID) {
 		return MarkerIdentity{}, invalidMarker()
 	}
 	return identity, nil
@@ -684,4 +607,3 @@ func contractError(code, detail string) error { return &IntentError{Code: code, 
 func invalidMarker() error {
 	return contractError("intent_marker_invalid", "Orca intent marker is not canonical")
 }
-func unsafeLegacy(detail string) error { return contractError("legacy_intent_upgrade_unsafe", detail) }

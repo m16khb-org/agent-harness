@@ -6,11 +6,10 @@ import (
 	"os"
 	"strings"
 
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
+
 	"agent-harness/cmd/harness/hookcli/hookinput"
-	hookadapter "agent-harness/internal/adapter/hook"
-	"agent-harness/internal/core"
-	"agent-harness/internal/core/lifecycle/doctarget"
-	"agent-harness/internal/core/lintgate"
+	hookdomain "agent-harness/internal/domain/hook"
 )
 
 func runHookPostToolUse(args []string) error {
@@ -32,22 +31,22 @@ func runHookPostToolUse(args []string) error {
 	tool := hookinput.ToolNameFromHookInput(stdin)
 	paths := hookinput.PathsFromHookInput(stdin)
 	command := hookinput.CommandFromHookInput(stdin)
-	req := core.HookToolUseLifecycleRequest{
+	req := lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:    parsedRepo,
 		Tool:    tool,
 		Paths:   paths,
 		Command: command,
 		Source:  "post-tool-use",
 	}
-	result, err := core.RecordLifecycleToolUse(req)
+	result, err := recordLifecycleToolUse(req)
 	if err != nil {
-		result = core.HookToolUseLifecycleResult{OK: false, Warnings: []string{"lifecycle_record_error:" + err.Error()}}
+		result = lifecyclecontract.HookToolUseLifecycleResult{OK: false, Warnings: []string{"lifecycle_record_error:" + err.Error()}}
 	}
-	misdirectWarning, misdirectRecordID := core.SourceCheckoutMisdirectWarning(req)
+	misdirectWarning, misdirectRecordID := sourceCheckoutMisdirectWarning(req)
 	if misdirectWarning != "" && misdirectRecordID != "" {
 		// 훅은 관측 기록만 남긴다(비차단 best-effort) — 판단과 게이트는
 		// strict readiness의 경고 키가 담당한다.
-		_, _ = core.IncrementIssueOpsSourceMisdirect(core.IssueOpsStateRoot(), misdirectRecordID)
+		_, _ = IncrementIssueOpsSourceMisdirect(IssueOpsStateRoot(), misdirectRecordID)
 	}
 	if *jsonOut {
 		return printJSON(map[string]any{
@@ -64,16 +63,16 @@ func runHookPostToolUse(args []string) error {
 	// fail-open and self-gates on .go paths, so no process is spawned for
 	// non-Go edits, reads, or command tools.
 	h := strings.TrimSpace(*host)
-	if h == "claude" && doctarget.ToolUseMayMutateLifecycleFiles(tool, command) {
+	if h == "claude" && ToolUseMayMutateLifecycleFiles(tool, command) {
 		feedbackParts := []string{}
 		if misdirectWarning != "" {
 			feedbackParts = append(feedbackParts, misdirectWarning)
 		}
-		if failed, feedback := lintgate.LintEditedGoFiles(parsedRepo, paths); failed {
+		if failed, feedback := LintEditedGoFiles(parsedRepo, paths); failed {
 			feedbackParts = append(feedbackParts, feedback)
 		}
 		if len(feedbackParts) > 0 {
-			return printJSON(hookadapter.Resolve(h).FormatContext("PostToolUse", strings.Join(feedbackParts, "\n"), ""))
+			return printJSON(hookdomain.Resolve(h).FormatContext("PostToolUse", strings.Join(feedbackParts, "\n"), ""))
 		}
 	}
 	return printJSON(map[string]any{})
@@ -94,7 +93,7 @@ func runHookPreCompact(args []string) error {
 	if parsedRepo == "" {
 		parsedRepo = ResolveTarget("")
 	}
-	result := core.BuildLifecyclePreCompactCapsule(parsedRepo)
+	result := buildLifecyclePreCompactCapsule(parsedRepo)
 	if *jsonOut {
 		return printJSON(result)
 	}

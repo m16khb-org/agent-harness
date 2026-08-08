@@ -28,7 +28,6 @@ func writeStateRoundtripFakeBinary(t *testing.T, dir string, seed int64) string 
 	t.Helper()
 	key := "self-verify-" + formatSeedForStateRoundtrip(seed)
 	oldKey := key + "-old"
-	legacyKey := key + "-legacy"
 	baseKey := key + "-compare-base"
 	candidateKey := key + "-compare-candidate"
 	promotedKey := key + "-promoted-baseline"
@@ -37,13 +36,11 @@ func writeStateRoundtripFakeBinary(t *testing.T, dir string, seed int64) string 
 set -eu
 key="` + key + `"
 old_key="` + oldKey + `"
-legacy_key="` + legacyKey + `"
 base_key="` + baseKey + `"
 candidate_key="` + candidateKey + `"
 promoted_key="` + promotedKey + `"
 content="` + contentJSON + `"
 list_count_file="$HARNESS_STATE_DIR/.list-count"
-doctor_count_file="$HARNESS_STATE_DIR/.doctor-count"
 history_count_file="$HARNESS_STATE_DIR/.history-count"
 case "$*" in
   state\ write*)
@@ -51,13 +48,10 @@ case "$*" in
       *"--key $old_key"*) out_key="$old_key"; out_content="old state"; out_bytes=9 ;;
       *) out_key="$key"; out_content="$content"; out_bytes=31 ;;
     esac
-    printf '{"ok":true,"path":"%s/%s.json","record":{"key":"%s","content":"%s","bytes":%s}}\n' "$HARNESS_STATE_DIR" "$out_key" "$out_key" "$out_content" "$out_bytes"
+	printf '{"ok":true,"path":"%s/%s.json","record":{"schema_version":1,"key":"%s","content":"%s","updated_at":"2026-08-02T00:00:00Z","bytes":%s}}\n' "$HARNESS_STATE_DIR" "$out_key" "$out_key" "$out_content" "$out_bytes"
     ;;
   state\ read*)
-    case "$*" in
-      *"--key $legacy_key"*) printf '{"ok":true,"record":{"schema_version":1,"key":"%s","content":"legacy state","bytes":12}}\n' "$legacy_key" ;;
-      *) printf '{"ok":true,"record":{"key":"%s","content":"%s","bytes":31}}\n' "$key" "$content" ;;
-    esac
+	printf '{"ok":true,"record":{"schema_version":1,"key":"%s","content":"%s","updated_at":"2026-08-02T00:00:00Z","bytes":31}}\n' "$key" "$content"
     ;;
   state\ list\ --json)
     count=0
@@ -76,22 +70,8 @@ case "$*" in
   state\ prune\ --max-age\ 1h\ --confirm\ --json)
     printf '{"ok":true,"confirm":true,"deleted_keys":["%s"]}\n' "$old_key"
     ;;
-  state\ migrate\ --json)
-    printf '{"ok":true,"dry_run":true,"candidate_keys":["%s"],"migrated_keys":[]}\n' "$legacy_key"
-    ;;
-  state\ migrate\ --confirm\ --json)
-    printf '{"ok":true,"confirm":true,"migrated_keys":["%s"]}\n' "$legacy_key"
-    ;;
   state\ doctor\ --json)
-    count=0
-    [ -f "$doctor_count_file" ] && count="$(cat "$doctor_count_file")"
-    count=$((count + 1))
-    printf '%s' "$count" > "$doctor_count_file"
-    if [ "$count" -eq 1 ]; then
-      printf '{"ok":true,"healthy":true}\n'
-    else
-      printf '{"ok":true,"healthy":false,"valid_keys":["%s"],"issues":[{"code":"invalid_json"}]}\n' "$key"
-    fi
+	printf '{"ok":true,"healthy":false,"valid_keys":["%s"],"issues":[{"code":"invalid_state"}]}\n' "$key"
     ;;
   self-verify\ compare*)
     case "$*" in

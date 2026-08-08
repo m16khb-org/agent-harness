@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/core"
+	statecontract "agent-harness/internal/contract/state"
 )
 
 func TestValidateParallelTempIsolationWithDepsCoversSuccessErrorsAndCollision(t *testing.T) {
@@ -54,10 +54,10 @@ func TestRunParallelIsolationProbeWithDepsCoversCommandAndContractFailures(t *te
 			case strings.Contains(label, "write"):
 				return StepResult{Label: label, Command: strings.Join(args, " "), OK: true}
 			case strings.Contains(label, "read"):
-				body, _ := json.Marshal(core.StateResult{OK: true, Record: core.StateRecord{Key: "parallel-9-2", Content: "worker=2 seed=9"}})
+				body, _ := json.Marshal(statecontract.StateResult{OK: true, Record: statecontract.RecordEnvelope{Key: "parallel-9-2", Content: "worker=2 seed=9"}})
 				return StepResult{Label: label, Command: strings.Join(args, " "), OK: true, Stdout: string(body)}
 			default:
-				body, _ := json.Marshal(core.StateListResult{OK: true, Keys: []string{"parallel-9-2"}})
+				body, _ := json.Marshal(statecontract.StateListResult{OK: true, Keys: []string{"parallel-9-2"}})
 				return StepResult{Label: label, Command: strings.Join(args, " "), OK: true, Stdout: string(body)}
 			}
 		},
@@ -88,7 +88,7 @@ func TestRunParallelIsolationProbeWithDepsCoversCommandAndContractFailures(t *te
 
 	deps.runCommandStepEnv = func(_ string, label string, _ time.Duration, _ string, _ []string, _ string, args ...string) StepResult {
 		if strings.Contains(label, "read") {
-			body, _ := json.Marshal(core.StateResult{OK: true, Record: core.StateRecord{Key: "other", Content: "wrong"}})
+			body, _ := json.Marshal(statecontract.StateResult{OK: true, Record: statecontract.RecordEnvelope{Key: "other", Content: "wrong"}})
 			return StepResult{Label: label, Command: strings.Join(args, " "), OK: true, Stdout: string(body)}
 		}
 		return StepResult{Label: label, Command: strings.Join(args, " "), OK: true, Stdout: `{}`}
@@ -100,7 +100,7 @@ func TestRunParallelIsolationProbeWithDepsCoversCommandAndContractFailures(t *te
 
 	deps.runCommandStepEnv = func(_ string, label string, _ time.Duration, _ string, _ []string, _ string, args ...string) StepResult {
 		if strings.Contains(label, "read") {
-			body, _ := json.Marshal(core.StateResult{OK: true, Record: core.StateRecord{Key: "parallel-9-2", Content: "worker=2 seed=9"}})
+			body, _ := json.Marshal(statecontract.StateResult{OK: true, Record: statecontract.RecordEnvelope{Key: "parallel-9-2", Content: "worker=2 seed=9"}})
 			return StepResult{Label: label, Command: strings.Join(args, " "), OK: true, Stdout: string(body)}
 		}
 		return StepResult{Label: label, Command: strings.Join(args, " "), OK: true, Stdout: `{"ok":`}
@@ -112,10 +112,10 @@ func TestRunParallelIsolationProbeWithDepsCoversCommandAndContractFailures(t *te
 
 	deps.runCommandStepEnv = func(_ string, label string, _ time.Duration, _ string, _ []string, _ string, args ...string) StepResult {
 		if strings.Contains(label, "read") {
-			body, _ := json.Marshal(core.StateResult{OK: true, Record: core.StateRecord{Key: "parallel-9-2", Content: "worker=2 seed=9"}})
+			body, _ := json.Marshal(statecontract.StateResult{OK: true, Record: statecontract.RecordEnvelope{Key: "parallel-9-2", Content: "worker=2 seed=9"}})
 			return StepResult{Label: label, Command: strings.Join(args, " "), OK: true, Stdout: string(body)}
 		}
-		body, _ := json.Marshal(core.StateListResult{OK: true, Keys: []string{"parallel-9-2", "leak"}})
+		body, _ := json.Marshal(statecontract.StateListResult{OK: true, Keys: []string{"parallel-9-2", "leak"}})
 		return StepResult{Label: label, Command: strings.Join(args, " "), OK: true, Stdout: string(body)}
 	}
 	leaked := runParallelIsolationProbeWithDeps("harness", root, 9, 2, deps)

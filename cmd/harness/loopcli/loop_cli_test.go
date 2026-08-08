@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/core/looprun"
+	looprun "agent-harness/internal/contract/looprun"
 	"agent-harness/internal/testsupport"
 )
 
@@ -18,7 +18,7 @@ func TestRunLoopLifecycle(t *testing.T) {
 	}
 
 	startOut := captureLoopStdout(t, func() error {
-		return Run([]string{"start", "--repo", repo, "--name", "cli loop", "--goal", "tests pass", "--max-attempts", "2", "--json", "--", "go", "test", "./..."})
+		return Run(testDependencies(), []string{"start", "--repo", repo, "--name", "cli loop", "--goal", "tests pass", "--max-attempts", "2", "--json", "--", "go", "test", "./..."})
 	})
 	var loop looprun.LoopRun
 	unmarshalLoopJSON(t, startOut, &loop)
@@ -27,7 +27,7 @@ func TestRunLoopLifecycle(t *testing.T) {
 	}
 
 	failOut := captureLoopStdout(t, func() error {
-		return Run([]string{"record-attempt", "--id", loop.ID, "--verdict", "fail", "--evidence", "one failure", "--json"})
+		return Run(testDependencies(), []string{"record-attempt", "--id", loop.ID, "--verdict", "fail", "--evidence", "one failure", "--json"})
 	})
 	unmarshalLoopJSON(t, failOut, &loop)
 	if len(loop.Attempts) != 1 || loop.Attempts[0].Verdict != "fail" {
@@ -35,7 +35,7 @@ func TestRunLoopLifecycle(t *testing.T) {
 	}
 
 	passOut := captureLoopStdout(t, func() error {
-		return Run([]string{"record-attempt", "--id", loop.ID, "--verdict", "pass", "--evidence", "all green", "--json"})
+		return Run(testDependencies(), []string{"record-attempt", "--id", loop.ID, "--verdict", "pass", "--evidence", "all green", "--json"})
 	})
 	unmarshalLoopJSON(t, passOut, &loop)
 	if len(loop.Attempts) != 2 || loop.Attempts[1].Verdict != "pass" {
@@ -43,7 +43,7 @@ func TestRunLoopLifecycle(t *testing.T) {
 	}
 
 	stopOut := captureLoopStdout(t, func() error {
-		return Run([]string{"stop", "--id", loop.ID, "--success", "--json"})
+		return Run(testDependencies(), []string{"stop", "--id", loop.ID, "--success", "--json"})
 	})
 	unmarshalLoopJSON(t, stopOut, &loop)
 	if loop.Status != "succeeded" {
@@ -51,7 +51,7 @@ func TestRunLoopLifecycle(t *testing.T) {
 	}
 
 	statusOut := captureLoopStdout(t, func() error {
-		return Run([]string{"status", "--id", loop.ID, "--json"})
+		return Run(testDependencies(), []string{"status", "--id", loop.ID, "--json"})
 	})
 	var status looprun.StatusResult
 	unmarshalLoopJSON(t, statusOut, &status)
@@ -67,21 +67,21 @@ func TestRunLoopExhaustionFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	startOut := captureLoopStdout(t, func() error {
-		return Run([]string{"start", "--repo", repo, "--name", "exhaust", "--goal", "fail closed", "--max-attempts", "1", "--json"})
+		return Run(testDependencies(), []string{"start", "--repo", repo, "--name", "exhaust", "--goal", "fail closed", "--max-attempts", "1", "--json"})
 	})
 	var loop looprun.LoopRun
 	unmarshalLoopJSON(t, startOut, &loop)
 	recordOut := captureLoopStdout(t, func() error {
-		return Run([]string{"record-attempt", "--id", loop.ID, "--verdict", "fail", "--evidence", "failed once", "--json"})
+		return Run(testDependencies(), []string{"record-attempt", "--id", loop.ID, "--verdict", "fail", "--evidence", "failed once", "--json"})
 	})
 	unmarshalLoopJSON(t, recordOut, &loop)
 	if loop.Status != "exhausted" {
 		t.Fatalf("single fail should exhaust, got %+v", loop)
 	}
-	if err := Run([]string{"record-attempt", "--id", loop.ID, "--verdict", "fail", "--evidence", "after exhausted", "--json"}); err == nil {
+	if err := Run(testDependencies(), []string{"record-attempt", "--id", loop.ID, "--verdict", "fail", "--evidence", "after exhausted", "--json"}); err == nil {
 		t.Fatal("record-attempt after exhausted should fail")
 	}
-	if err := Run([]string{"stop", "--id", loop.ID, "--success", "--json"}); err == nil {
+	if err := Run(testDependencies(), []string{"stop", "--id", loop.ID, "--success", "--json"}); err == nil {
 		t.Fatal("success stop after failed exhausted loop should fail")
 	}
 }

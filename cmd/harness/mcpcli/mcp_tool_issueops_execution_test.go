@@ -5,13 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/adapter/issueops"
+	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
 func TestMCPExecutionDependenciesPropagatePublicationReconcileWithoutInvocation(t *testing.T) {
@@ -21,7 +20,7 @@ func TestMCPExecutionDependenciesPropagatePublicationReconcileWithoutInvocation(
 		return issueops.ExecutionReconcileResult{}, nil
 	})
 
-	deps := issueOpsExecutionActionDependencies(MCPDependencies{Publication: issueops.RemotePublicationHandlers{Reconcile: handler}})
+	deps := issueOpsExecutionActionDependencies(MCPDependencies{Publication: PublicationHandlers{Reconcile: handler}})
 	if deps.RemoteReconcile == nil {
 		t.Fatal("publication reconcile handler was not propagated")
 	}
@@ -70,7 +69,7 @@ func TestMCPPublicationReconcilePreservesToolErrorClassification(t *testing.T) {
 				"host": "codex", "session_id": "publication-mcp-session",
 				"session_pid": float64(receipt.PID), "session_started_at": receipt.StartedAt,
 				"session_executable": receipt.Executable, "cwd": record.Execution.Workspace.Root,
-			}, MCPDependencies{Publication: issueops.RemotePublicationHandlers{Reconcile: func(_ context.Context, _ string, request issueops.ExecutionReconcileRequest) (issueops.ExecutionReconcileResult, error) {
+			}, MCPDependencies{Publication: PublicationHandlers{Reconcile: func(_ context.Context, _ string, request issueops.ExecutionReconcileRequest) (issueops.ExecutionReconcileResult, error) {
 				calls++
 				if request.Snapshot == nil || request.Snapshot.ID != record.ID {
 					t.Fatalf("publication reconcile snapshot=%#v", request.Snapshot)
@@ -92,13 +91,13 @@ func TestMCPPublicationReconcilePreservesToolErrorClassification(t *testing.T) {
 	}
 }
 
-func publicationReconcileMCPRecord(t *testing.T, stateRoot string) (issueops.IssueOpsRecord, model.NativeProcessReceipt) {
+func publicationReconcileMCPRecord(t *testing.T, stateRoot string) (issueopscontract.IssueOpsRecord, issueopscontract.NativeProcessReceipt) {
 	t.Helper()
 	ancestry, err := issueops.ObserveNativeProcessAncestry(os.Getpid())
 	if err != nil {
 		t.Fatal(err)
 	}
-	var receipt model.NativeProcessReceipt
+	var receipt issueopscontract.NativeProcessReceipt
 	for _, candidate := range ancestry {
 		if candidate.PID == os.Getpid() {
 			receipt = candidate
@@ -109,16 +108,16 @@ func publicationReconcileMCPRecord(t *testing.T, stateRoot string) (issueops.Iss
 		t.Fatalf("current process receipt missing from ancestry: %#v", ancestry)
 	}
 	repo, worktree := t.TempDir(), t.TempDir()
-	actor := model.NativeActor{Host: "codex", SessionID: "publication-mcp-session", SessionProcess: &receipt}
-	record := issueops.IssueOpsRecord{
+	actor := issueopscontract.NativeActor{Host: "codex", SessionID: "publication-mcp-session", SessionProcess: &receipt}
+	record := issueopscontract.IssueOpsRecord{
 		OK: true, SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
 		ID: issueops.NewIssueOpsID(repo, "195-publication-mcp"), Repo: repo, Branch: "195-publication-mcp",
 		Phase: issueops.IssueOpsPhasePR, WorktreePath: worktree,
-		Execution: &model.Execution{
-			Mode:      model.ExecutionModeDirect,
-			Workspace: model.Workspace{SourceRoot: repo, Root: worktree, Branch: "195-publication-mcp", BaseHead: strings.Repeat("a", 40), Driver: "git", LinkedAt: "2026-08-01T00:00:00Z"},
-			Lease:     model.WriteLease{Generation: 1, Status: model.LeaseStatusActive, Holder: &actor, ClaimedAt: "2026-08-01T00:00:00Z"},
-			Pending:   &model.ExternalIntent{OperationID: "0123456789abcdef0123456789abcdef", Kind: "remote_pr_create", Marker: "<!-- agent-harness:issueops-v1 operation=0123456789abcdef0123456789abcdef -->", StartedAt: "2026-08-01T00:00:00Z"},
+		Execution: &issueopscontract.Execution{
+			Mode:      issueopscontract.ExecutionModeDirect,
+			Workspace: issueopscontract.Workspace{SourceRoot: repo, Root: worktree, Branch: "195-publication-mcp", BaseHead: strings.Repeat("a", 40), Driver: "git", LinkedAt: "2026-08-01T00:00:00Z"},
+			Lease:     issueopscontract.WriteLease{Generation: 1, Status: issueopscontract.LeaseStatusActive, Holder: &actor, ClaimedAt: "2026-08-01T00:00:00Z"},
+			Pending:   &issueopscontract.ExternalIntent{OperationID: "0123456789abcdef0123456789abcdef", Kind: "remote_pr_create", Marker: "<!-- agent-harness:issueops-v1 operation=0123456789abcdef0123456789abcdef -->", StartedAt: "2026-08-01T00:00:00Z"},
 		},
 		CreatedAt: "2026-08-01T00:00:00Z",
 		UpdatedAt: "2026-08-01T00:00:00Z",
@@ -131,7 +130,7 @@ func publicationReconcileMCPRecord(t *testing.T, stateRoot string) (issueops.Iss
 }
 
 func TestExecutionActionRequestFromMCPPreservesAutoMode(t *testing.T) {
-	wantAncestry := []model.NativeProcessReceipt{{
+	wantAncestry := []issueopscontract.NativeProcessReceipt{{
 		PID: 42, StartedAt: "2026-07-22T00:00:00Z", Executable: "/usr/bin/codex",
 	}}
 	req, err := executionActionRequestFromMCPWithAncestry(map[string]any{
@@ -171,6 +170,19 @@ func TestExecutionActionRequestFromMCPMapsResume(t *testing.T) {
 	}
 }
 
+func TestExecutionActionRequestFromMCPMapsCompletionGeneration(t *testing.T) {
+	req, err := executionActionRequestFromMCPWithAncestry(map[string]any{
+		"action": "replace", "id": "io-aaaaaaaaaaaa", "replace_action": "reseed",
+		"expected_generation": float64(5), "completion_generation": float64(4),
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if req.ExpectedGeneration != 5 || req.CompletionGeneration != 4 {
+		t.Fatalf("MCP reseed provenance request drifted: %#v", req)
+	}
+}
+
 func TestHandleToolCallWithDependenciesRoutesResumeToInjectedHandler(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	params, err := json.Marshal(MCPToolCall{Name: "issueops_execution", Arguments: map[string]any{
@@ -188,7 +200,7 @@ func TestHandleToolCallWithDependenciesRoutesResumeToInjectedHandler(t *testing.
 		if stateRoot == "" || request.ID != "io-aaaaaaaaaaaa" || request.ExpectedGeneration != 3 || request.CWD != "/repo.worktrees/resume" || !request.Confirm {
 			t.Fatalf("resume handler request=%+v state_root=%q", request, stateRoot)
 		}
-		return issueops.ExecutionResumeResult{OK: true, ID: request.ID}, nil
+		return issueops.ExecutionResumeResult{OK: true, ID: request.ID, ResumeDisposition: "existing_binding"}, nil
 	}})
 	if rpcErr != nil || calls != 1 {
 		t.Fatalf("resume MCP rpc_err=%v calls=%d", rpcErr, calls)
@@ -198,7 +210,8 @@ func TestHandleToolCallWithDependenciesRoutesResumeToInjectedHandler(t *testing.
 		t.Fatalf("resume MCP response type=%T", response)
 	}
 	content, ok := payload["content"].([]map[string]any)
-	if !ok || len(content) != 1 || !strings.Contains(content[0]["text"].(string), `"id": "io-aaaaaaaaaaaa"`) {
+	if !ok || len(content) != 1 || !strings.Contains(content[0]["text"].(string), `"id": "io-aaaaaaaaaaaa"`) ||
+		!strings.Contains(content[0]["text"].(string), `"resume_disposition": "existing_binding"`) {
 		t.Fatalf("resume MCP response=%#v", response)
 	}
 }
@@ -247,28 +260,5 @@ func TestExecutionActionRequestFromMCPRejectsMalformedIssueSnapshot(t *testing.T
 				t.Fatal("malformed issue_snapshot was silently accepted")
 			}
 		})
-	}
-}
-
-func TestHandleMCPIssueOpsExecutionPreservesResetRequiredFields(t *testing.T) {
-	stateDir := t.TempDir()
-	t.Setenv("HARNESS_STATE_DIR", stateDir)
-	if err := os.MkdirAll(filepath.Join(stateDir, "issueops"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	outcome := handleMCPIssueOpsExecutionWithDependencies(map[string]any{
-		"action": "prepare", "id": "io-aaaaaaaaaaaa", "mode": "auto", "confirm": true,
-	}, MCPDependencies{Prepare: func(_ context.Context, stateRoot string, request issueops.ExecutionPrepareRequest, _ issueops.ExecutionPrepareInvocation) (issueops.ExecutionPrepareResult, error) {
-		return issueops.ExecutionPrepareResult{ID: request.ID}, issueops.RequireIssueOpsMutationAllowed(stateRoot)
-	}})
-	if !outcome.Handled || !outcome.IsError {
-		t.Fatalf("reset-required MCP mutation outcome = %#v", outcome)
-	}
-	payload, ok := outcome.Payload.(map[string]any)
-	if !ok {
-		t.Fatalf("reset-required MCP payload type = %T", outcome.Payload)
-	}
-	if payload["code"] != "reset_required" || payload["target_schema"] != 1 || payload["state_root"] != stateDir || payload["next_command"] == "" {
-		t.Fatalf("reset-required MCP payload lost CLI parity fields: %#v", payload)
 	}
 }

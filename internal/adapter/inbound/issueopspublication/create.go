@@ -3,9 +3,10 @@ package issueopspublication
 import (
 	"context"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	publicationapp "agent-harness/internal/application/issueopspublication"
 	publicationcontract "agent-harness/internal/contract/issueopspublication"
-	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -17,13 +18,16 @@ var _ createService = (*publicationapp.CreateService)(nil)
 
 type CreateHandler struct{ service createService }
 
-func NewCreateHandler(service createService) issueops.RemotePullRequestCreateHandler {
+// 반환 타입은 어댑터의 이름 붙은 핸들러 타입 대신 같은 시그니처를 직접 쓴다.
+// Go에서 두 형태는 할당 호환이므로 소비자는 그대로 동작하고, inbound 어댑터는
+// issueops 어댑터를 알 필요가 없어진다.
+func NewCreateHandler(service createService) func(context.Context, string, issueopscontract.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 	return CreateHandler{service: service}.Handle
 }
 
-func (h CreateHandler) Handle(ctx context.Context, _ string, request issueops.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
+func (h CreateHandler) Handle(ctx context.Context, _ string, request issueopscontract.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 	if h.service == nil {
-		return port.IssueProviderCreatePullRequestResult{}, issueops.ErrRemotePullRequestCreateHandlerUnavailable
+		return port.IssueProviderCreatePullRequestResult{}, issueopscontract.ErrRemotePullRequestCreateHandlerUnavailable
 	}
 	result, err := h.service.Create(ctx, publicationcontract.CreateCommand{
 		ID: request.ID, Provider: request.Provider, Title: request.Title, Body: request.Body,
@@ -37,7 +41,7 @@ func (h CreateHandler) Handle(ctx context.Context, _ string, request issueops.Re
 	}, err
 }
 
-func publicationActor(actor issueops.NativeActor) publicationcontract.Actor {
+func publicationActor(actor issueopscontract.NativeActor) publicationcontract.Actor {
 	result := publicationcontract.Actor{Host: actor.Host, SessionID: actor.SessionID, AgentID: actor.AgentID}
 	if actor.SessionProcess != nil {
 		result.SessionProcess = &publicationcontract.ProcessReceipt{

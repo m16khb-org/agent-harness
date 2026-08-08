@@ -784,7 +784,7 @@ Orca owner가 active lease를 정상 claim하고 구현·대상 검증까지 마
 - `git_preflight.py`와 `api_doc_gate.py`의 정확한 단일 `python3` 호출만 current holder workflow로 인정한다.
 - 스크립트는 저장소 상대 경로와 사용자 홈의 설치·심볼릭 링크 경로를 모두 쓸 수 있으므로 사용자별 절대 경로를 하드코딩하지 않는다. 절대 경로는 명시적 expected worktree/source checkout, `HARNESS_ROOT`, `CODEX_HOME`, 사용자 홈의 Codex·Claude skill root처럼 설치기가 관리하는 base와 정확히 일치할 때만 허용한다. generic repo/cwd와 단순 `/skills/...` suffix 비교는 신뢰 근거로 쓰지 않는다.
 - 상대 `skills/...` 스크립트는 active lifecycle의 canonical worktree root에서만 실행한다. 하위 디렉터리에서는 같은 상대 경로가 `<subdir>/skills/...`를 가리키므로 holder라도 허용하지 않는다.
-- 선택적 repo 인자는 실제 shell 작업 디렉터리와 같은 canonical 경로만 허용한다. Codex `exec_command`는 `tool_input.workdir`, Claude Bash는 top-level `cwd`를 기준으로 삼고 해석이 모호한 상대 `workdir`는 거부한다.
+- 선택적 repo 인자는 실제 shell 작업 디렉터리와 같은 canonical 경로만 허용한다. Codex 0.146 stable hook은 `exec_command.workdir`를 `tool_input`에 직렬화하지 않고 turn-level `cwd`만 보내므로, generated absolute IssueOps 명령은 CLI가 `os.Getwd()`와 `--cwd`를 mutation 직전에 대조한다. Claude Bash는 top-level `cwd`를 기준으로 삼고 해석이 모호한 상대 `workdir`는 거부한다.
 - 비-shell tool은 같은 command 문자열을 실어도 이 경로로 분류하지 않는다. 공백이 포함된 argv, 추가 인자, 다른 인터프리터, 다른 스크립트, 외부 repo 대상은 계속 fail-closed한다.
 - 이 경로는 일반 read-only observation이 아니다. 기존 native holder identity와 canonical worktree containment를 모두 통과한 뒤에만 실행한다.
 
@@ -825,6 +825,29 @@ Shannon 측정 중 `rg -c`와 `agent-harness state read --key ...`가 active lea
   - status에 token placeholder만 남기는 방식은 durable resume 시 실제 claim 경로를 다시 추론해야 하므로 기각
   - Orca current-generation claimable에서 직접 claim을 안내하는 방식은 resume가 제공하는 sealed digest handoff를 건너뛰므로 기각
 
+## 2026-08-03 — Orca resume은 현재 prompt template을 trust root로 쓰면 안 된다
+
+- Kind: `caution`
+- Source: IssueOps #248/#254 Orca dogfood
+- Summary: terminal preparation intent를 삭제한 뒤 resume이 현재 바이너리의 owner prompt template으로 expected prompt를 다시 렌더링하면, 정상적인 template 변경만으로 이미 봉인된 실행이 영구 중단된다.
+- Resolution: prepare와 Orca reseed는 identity version 1과 issue-body, context-packet, owner-prompt SHA-256을 generation-bound Orca binding에 함께 저장한다. Resume은 artifact bytes를 이 durable identity와만 비교하고 prompt를 다시 렌더링하지 않는다. Version marker와 세 digest가 모두 없는 기존 v1 binding만 status가 preview → generation-CAS reseed → resume 복구 체인으로 보낸다. Versioned all-empty는 새 persistence 결함이므로 invariant violation이며, unversioned-complete·일부 digest·future version·worktree 파일을 새 trust root로 채택하는 fallback은 fail-closed한다.
+- Evidence:
+  - `internal/core/issueops/execution_resume_identity_test.go`
+  - `internal/adapter/outbound/issueopspreparation/repository_orca_test.go`
+  - `internal/application/issueopslease/reseed_test.go`
+
+## 2026-08-04 — completed reseed 전에 parent drift를 먼저 해소해야 한다
+
+- Kind: `caution`
+- Source: GitHub #318
+- Summary: released current completion을 바로 reseed하면 stale parent 위에서 새 generation을 열어 동일 충돌을 다시 봉인할 수 있다.
+- Resolution: replacement preview와 reseed CAS 내부가 같은 outbound base observer로 parent ancestry를 확인한다. Drift면 어떤 artifact/token/history/ledger/lease mutation보다 먼저 `post_completion_sync_base_required`와 stamped-generation preview 명령을 반환한다. `Completion.Generation == 0`은 요청값으로 보정하지 않는 invalid v1 state다.
+- Recovery: released current completion + drift → generation-bound sync-base preview/apply → completed replacement preview → reseed/claim → verification → re-complete. History-only receipt, direct Git merge/rebase, force-push, state JSON backfill은 권위가 아니다.
+- Boundary: port는 Request/Receipt/Inspector만 소유하고 typed public error/next command는 contract, Git 관측은 outbound adapter가 소유한다.
+- Parent integration: #303의 success-result binder 밖에 있던 typed error `next_command`는 CLI/MCP의 실제 error 경로에서 봉인하고, CLI의 별도 `abort_command` field는 `next_command`와 같은 canonical executable/hash/generation observation을 사용한다. Observation/binding 실패 시 unbound command fallback 없이 structured provenance error로 종료한다.
+- Fixture discipline: released sync-base gate 단위 테스트는 직접 fixture를 쓸 수 있지만 production reachability 증거로 대신하지 않는다. Claimable 초기 상태에서 public execution dispatcher와 실제 claim/complete handler를 통과해 released stamped completion을 만든 뒤 preview/apply/finalize와 completion 불변성을 검증한다.
+- Adapter reachability: public catalog에 없는 action의 result binder/test는 production 계약 증거가 아니라 dead code다. #326처럼 실제 schema→handler 경로가 없는 MCP sync-base success case는 제거하고, catalog에 존재하는 resume/replace의 typed-error vertical만 유지한다.
+
 ## 2026-07-31 — Orca task mutation은 explicit Run과 coordinator consumer를 함께 봉인해야 한다
 
 - Kind: `caution`
@@ -848,3 +871,42 @@ Shannon 측정 중 `rg -c`와 `agent-harness state read --key ...`가 active lea
   - TestClientTaskInventoryKeepsSameTaskIDDistinctAcrossRuns
   - TestExecutionAdmitsExactOrcaOwnerControlPlaneCommands
   - TestRunHookPreToolUseAllowsCurrentOrcaOwnerControlCommands
+
+## 2026-08-04 — 생성된 IssueOps command의 PATH token만으로 실행 바이너리를 신뢰하지 말 것
+
+- Kind: `caution`
+- Source: IssueOps #303 stale installed-binary dogfood
+- Summary: core가 만든 `next_command`를 CLI 출력 단계에서만 꾸미거나 executable 관측 실패를 빈 evidence로 대체하면 MCP 경로와 cleanup command가 오래된 PATH 바이너리를 그대로 실행할 수 있다.
+- Resolution: contract는 canonical executable path·SHA-256·lease generation의 DTO와 pure bind/validate만 소유한다. Port는 contract를 import하지 않는 순수 observation receipt를 반환하고 application binder가 이를 contract evidence로 변환하며, 실제 observer는 `harnessapp` composition root만 생성한다. CLI와 MCP composition은 생성 command의 첫 token을 관측한 canonical executable literal로 바꾸고 같은 envelope를 결합한다. Hook은 self-declared envelope만 믿지 않고 absolute token을 durable worktree/source의 canonical `bin/agent-harness`로 제한하며 wrapper·substitution·outside-root target을 차단한다. IssueOps root는 subcommand dispatch 전에 현재 executable과 durable generation을 다시 검증한다. 관측 실패, incomplete envelope, binary mismatch, generation drift는 command fallback 없이 structured error로 끝낸다. 일반 수동 command의 PATH UX는 유지하고 pre-v1 바이너리는 reserved flag를 알 수 없는 flag로 거부한다.
+- Evidence:
+  - `internal/contract/issueops/generated_command_provenance.go`
+  - `internal/adapter/outbound/issueopsprovenance/observer.go`
+  - `cmd/harness/issueopscli/generated_command_provenance_test.go`
+  - `cmd/harness/mcpcli/generated_command_provenance_test.go`
+  - `cmd/harness/issueopscli/feedbackcleanup/generated_command_provenance_test.go`
+
+## 2026-08-04 — Codex command-only hook payload에서 선언한 workdir를 실제 cwd로 오인하지 말 것
+
+- Kind: `caution`
+- Source: IssueOps #248/#329/#330 live dogfood
+- Summary: Codex 0.146의 stable `ExecCommandHandler::pre_tool_use_payload`는 `tool_input`에 `command`만 넣고 `workdir`를 누락한다. top-level `cwd`도 exec 요청값이 아니라 turn cwd라서, source checkout에서 canonical sibling worktree를 지정한 정상 generated command가 hook에서 영구 차단됐다.
+- Resolution: hook은 current generation과 canonical executable provenance를 통과한 absolute IssueOps command에 한해 command의 exact `--cwd`를 canonical root와 대조한다. 일반 PATH/bare 명령과 provenance 없는 absolute 명령에는 이 fallback을 열지 않는다. CLI root는 provenance를 검증한 뒤 owner mutation의 실제 `os.Getwd()`와 `--cwd`를 core mutation 전에 canonical 비교한다. delegation 명령의 durable identity는 `--id`가 아니라 `--parent`로 읽는다.
+- Evidence:
+  - Codex tag `rust-v0.146.0`의 `codex-rs/core/src/tools/handlers/unified_exec/exec_command.rs`
+  - `internal/core/lifecycle/lifecycle_execution_matrix_test.go`
+  - `internal/core/lifecycle/lifecycle_owner_mutation_test.go`
+  - `cmd/harness/issueopscli/generated_command_provenance_test.go`
+- Boundary: hook에서 전달되지 않은 workdir를 복원했다고 가장하지 않는다. 생성 provenance, native holder identity, canonical root, actual process cwd 중 하나라도 어긋나면 mutation을 fail-closed한다.
+
+## 2026-08-04 — released sync-base 충돌에 일반 write lease를 다시 열지 말 것
+
+- Kind: `caution`
+- Source: IssueOps #248/#332 live dogfood
+- Summary: governed sync-base apply가 충돌을 남겨도 lifecycle lease는 released라서 첫 conflict edit이 `lease_released`로 차단됐다. finalize 명령만 제공하고 해소 writer를 기록하지 않으면 충돌 경로는 도달 불가능하다.
+- Resolution: apply가 충돌한 released current completion에는 lease/completion generation, base OID, native actor receipt, exact conflict file set을 `sync_base_resolution`으로 봉인한다. lifecycle guard는 그 actor가 canonical root 안의 그 파일들만 바꾸는 경우에만 임시 권한을 주며 일반 active lease로 전환하지 않는다. finalize는 event append와 resolution 제거를 한 record write로 수행하고 abort도 merge 철회 뒤 resolution을 제거한다.
+- Evidence:
+  - `internal/core/issueops/execution_sync_base_test.go`
+  - `internal/core/lifecycle/lifecycle_execution_matrix_test.go`
+  - live `io-268bd6ac6e7a` generation 5 apply에서 12-conflict resolution receipt를 기록한 뒤 이전에 막힌 exact conflict `apply_patch` PASS
+  - 같은 live merge의 governed abort가 receipt와 merge state를 함께 제거
+- Boundary: unrelated file, 다른 actor/process, 다른 generation/completion, absolute/상위 경로 conflict entry는 계속 fail-closed한다. 충돌 해소 뒤 새 기능 변경이나 일반 검증이 필요하면 sync-base를 finalize한 다음 정상 reseed/claim lifecycle로 돌아간다.

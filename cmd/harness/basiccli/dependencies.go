@@ -1,25 +1,33 @@
 package basiccli
 
 import (
+	docscontract "agent-harness/internal/contract/docs"
+	preflightcontract "agent-harness/internal/contract/preflight"
 	"context"
 	"encoding/json"
 	"os"
 
 	"agent-harness/cmd/harness/daemoncli"
-	"agent-harness/internal/core"
-	"agent-harness/internal/core/operationalhealth"
+	inspect "agent-harness/internal/contract/inspect"
+	"agent-harness/internal/domain/operationalhealth"
 )
 
 // Deps는 basic CLI 명령들이 의존하는, 호스트가 제공하는 구현을 담는다.
 // composition root가 Configure로 실제 구현을 주입하며, 단독 실행과 테스트는
 // 기본값으로 대체한다.
 type Deps struct {
+	// GitPreflight는 composition root가 주입한다. git 실행은 CLI의 일이 아니다.
+	GitPreflight             func(target, harnessRoot string) preflightcontract.PreflightResult
 	HarnessRoot              func() string
 	ResolveTarget            func(string) string
 	Version                  string
-	InspectHarness           func(string) core.InspectInfo
+	InspectHarness           func(string) inspect.InspectInfo
 	CheckDaemonStatus        func() daemoncli.Status
 	CollectOperationalHealth func(context.Context, string) operationalhealth.Snapshot
+
+	// DocsIndex는 composition root가 주입한다. 문서 색인은 파일시스템을 읽으므로
+	// CLI가 그 구현을 알 필요가 없다.
+	DocsIndex func(root, version string) docscontract.DocsIndexResult
 }
 
 // deps는 현재 구성된 의존성을 담는다. package-private이며 Configure/Reset을
@@ -40,7 +48,7 @@ func defaultDeps() Deps {
 		HarnessRoot:       defaultHarnessRoot,
 		ResolveTarget:     defaultResolveTarget,
 		Version:           "dev",
-		InspectHarness:    func(string) core.InspectInfo { return core.InspectInfo{} },
+		InspectHarness:    func(string) inspect.InspectInfo { return inspect.InspectInfo{} },
 		CheckDaemonStatus: daemoncli.CheckDaemonStatus,
 		CollectOperationalHealth: func(_ context.Context, repo string) operationalhealth.Snapshot {
 			return operationalhealth.Snapshot{

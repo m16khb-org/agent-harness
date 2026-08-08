@@ -1,23 +1,22 @@
 package issueopscli
 
 import (
+	issueopscore "agent-harness/internal/adapter/issueops"
 	"encoding/json"
 	"testing"
-
-	"agent-harness/internal/core"
 )
 
 func TestRunIssueOpsBenchmarkGateCLIKeepsCandidate(t *testing.T) {
 	stateDir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateDir)
-	baseline := core.IssueOpsBenchmarkRunResult{
+	baseline := issueopscore.IssueOpsBenchmarkRunResult{
 		ID: "baseline",
-		Scores: []core.IssueOpsBenchmarkScore{{
+		Scores: []issueopscore.IssueOpsBenchmarkScore{{
 			OK:           true,
 			FixtureID:    "fixture",
 			AverageScore: 100,
 			MinimumScore: 100,
-			DimensionScores: []core.IssueOpsDimensionScore{
+			DimensionScores: []issueopscore.IssueOpsDimensionScore{
 				{Dimension: "issue_quality", Score: 100, Evidence: "baseline"},
 			},
 			Passed: true,
@@ -25,13 +24,13 @@ func TestRunIssueOpsBenchmarkGateCLIKeepsCandidate(t *testing.T) {
 	}
 	candidateRun := baseline
 	candidateRun.ID = "candidate"
-	if err := core.SaveIssueOpsBenchmarkRun(stateDir, core.FinalizeIssueOpsBenchmarkRunResult(baseline)); err != nil {
+	if err := issueopscore.SaveIssueOpsBenchmarkRun(stateDir, issueopscore.FinalizeIssueOpsBenchmarkRunResult(baseline)); err != nil {
 		t.Fatal(err)
 	}
-	if err := core.SaveIssueOpsBenchmarkRun(stateDir, core.FinalizeIssueOpsBenchmarkRunResult(candidateRun)); err != nil {
+	if err := issueopscore.SaveIssueOpsBenchmarkRun(stateDir, issueopscore.FinalizeIssueOpsBenchmarkRunResult(candidateRun)); err != nil {
 		t.Fatal(err)
 	}
-	candidatePath := writeIssueOpsCandidateForCLITest(t, core.IssueOpsAutoresearchCandidate{
+	candidatePath := writeIssueOpsCandidateForCLITest(t, issueopscore.IssueOpsAutoresearchCandidate{
 		ID:               "issueops-autoresearch-loop",
 		Hypothesis:       "Bounded IssueOps changes should pass the gate.",
 		TargetDimensions: []string{"issue_quality"},
@@ -41,7 +40,7 @@ func TestRunIssueOpsBenchmarkGateCLIKeepsCandidate(t *testing.T) {
 	out := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"benchmark", "gate", "--baseline", "baseline", "--candidate", "candidate", "--candidate-file", candidatePath, "--changed-path", "skills/issueops/SKILL.md", "--json"})
 	})
-	var result core.IssueOpsAutoresearchGateResult
+	var result issueopscore.IssueOpsAutoresearchGateResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("gate should return JSON: %v\n%s", err, out)
 	}
@@ -53,23 +52,23 @@ func TestRunIssueOpsBenchmarkGateCLIKeepsCandidate(t *testing.T) {
 func TestRunIssueOpsBenchmarkGateCLIDiscardsOutsideEditSurface(t *testing.T) {
 	stateDir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateDir)
-	run := core.FinalizeIssueOpsBenchmarkRunResult(core.IssueOpsBenchmarkRunResult{
+	run := issueopscore.FinalizeIssueOpsBenchmarkRunResult(issueopscore.IssueOpsBenchmarkRunResult{
 		ID: "baseline",
-		Scores: []core.IssueOpsBenchmarkScore{{
+		Scores: []issueopscore.IssueOpsBenchmarkScore{{
 			OK:           true,
 			FixtureID:    "fixture",
 			AverageScore: 100,
 			MinimumScore: 100,
-			DimensionScores: []core.IssueOpsDimensionScore{
+			DimensionScores: []issueopscore.IssueOpsDimensionScore{
 				{Dimension: "issue_quality", Score: 100, Evidence: "baseline"},
 			},
 			Passed: true,
 		}},
 	})
-	if err := core.SaveIssueOpsBenchmarkRun(stateDir, run); err != nil {
+	if err := issueopscore.SaveIssueOpsBenchmarkRun(stateDir, run); err != nil {
 		t.Fatal(err)
 	}
-	candidatePath := writeIssueOpsCandidateForCLITest(t, core.IssueOpsAutoresearchCandidate{
+	candidatePath := writeIssueOpsCandidateForCLITest(t, issueopscore.IssueOpsAutoresearchCandidate{
 		ID:               "issueops-autoresearch-loop",
 		Hypothesis:       "Only skill changes are allowed.",
 		TargetDimensions: []string{"issue_quality"},
@@ -79,7 +78,7 @@ func TestRunIssueOpsBenchmarkGateCLIDiscardsOutsideEditSurface(t *testing.T) {
 	out := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"benchmark", "gate", "--baseline", "baseline", "--candidate", "baseline", "--candidate-file", candidatePath, "--changed-path", "cmd/harness/issueops.go", "--json"})
 	})
-	var result core.IssueOpsAutoresearchGateResult
+	var result issueopscore.IssueOpsAutoresearchGateResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("gate should return JSON: %v\n%s", err, out)
 	}

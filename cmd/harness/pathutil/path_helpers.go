@@ -1,11 +1,10 @@
 package pathutil
 
 import (
+	statecontract "agent-harness/internal/contract/state"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"agent-harness/internal/core"
 )
 
 func ReadHarnessFile(root string, parts ...string) (string, error) {
@@ -122,7 +121,7 @@ func ContainsString(items []string, want string) bool {
 	return false
 }
 
-func StateDoctorHasIssueCode(issues []core.StateDoctorIssue, want string) bool {
+func StateDoctorHasIssueCode(issues []statecontract.StateDoctorIssue, want string) bool {
 	for _, issue := range issues {
 		if issue.Code == want {
 			return true

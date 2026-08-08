@@ -4,20 +4,18 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"io"
+	"path/filepath"
 	"strings"
+
+	statecontract "agent-harness/internal/contract/state"
 )
 
-const SchemaVersion = 1
-
-var ErrMalformedSchema = errors.New("malformed issueops schema")
-
-type UnsupportedSchemaError struct{ Version int }
-
-func (e UnsupportedSchemaError) Error() string {
-	return fmt.Sprintf("unsupported issueops schema_version %d; current is %d", e.Version, SchemaVersion)
-}
+const (
+	SchemaVersion               = 1
+	OrcaArtifactIdentityVersion = 1
+)
 
 // Record은 release가 변경하지 않는 v1 sidecar를 canonical DTO로 보존한다.
 type Record struct {
@@ -48,6 +46,7 @@ type Record struct {
 	RemoteCompletion        json.RawMessage `json:"remote_completion,omitempty"`
 	SourceMisdirectWarnings int             `json:"source_misdirect_warnings,omitempty"`
 	CleanupFinishFailure    json.RawMessage `json:"cleanup_finish_failure,omitempty"`
+	CleanupAbandonFailure   json.RawMessage `json:"cleanup_abandon_failure,omitempty"`
 	ImplementationReview    json.RawMessage `json:"implementation_review,omitempty"`
 	RoutingTrace            json.RawMessage `json:"routing_trace,omitempty"`
 	AISlopCleanAt           string          `json:"ai_slop_clean_at,omitempty"`
@@ -61,20 +60,24 @@ type Record struct {
 }
 
 type Execution struct {
-	Mode           string          `json:"mode"`
-	Workspace      Workspace       `json:"workspace"`
-	Lease          Lease           `json:"lease"`
-	Orca           *OrcaBinding    `json:"orca,omitempty"`
-	Pending        *ExternalIntent `json:"pending,omitempty"`
-	Completion     *Completion     `json:"completion,omitempty"`
-	Failure        *FailureDetail  `json:"failure,omitempty"`
-	SyncBaseEvents []SyncBaseEvent `json:"sync_base_events,omitempty"`
+	Mode               string                   `json:"mode"`
+	Workspace          Workspace                `json:"workspace"`
+	Lease              Lease                    `json:"lease"`
+	Orca               *OrcaBinding             `json:"orca,omitempty"`
+	Pending            *ExternalIntent          `json:"pending,omitempty"`
+	Completion         *Completion              `json:"completion,omitempty"`
+	CompletionHistory  []CompletionHistoryEntry `json:"completion_history,omitempty"`
+	Failure            *FailureDetail           `json:"failure,omitempty"`
+	SyncBaseResolution *SyncBaseResolution      `json:"sync_base_resolution,omitempty"`
+	SyncBaseEvents     []SyncBaseEvent          `json:"sync_base_events,omitempty"`
 }
 
 type OrcaBinding = stableV1OrcaBinding
 type ExternalIntent = stableV1ExternalIntent
 type Completion = stableV1Completion
+type CompletionHistoryEntry = stableV1CompletionHistory
 type FailureDetail = stableV1Failure
+type SyncBaseResolution = stableV1SyncBaseResolution
 type SyncBaseEvent = stableV1SyncBaseEvent
 
 type Workspace struct {
@@ -109,74 +112,43 @@ type ProcessReceipt struct {
 }
 
 func Decode(id string, data []byte) (Record, error) {
-	var header struct {
-		SchemaVersion int    `json:"schema_version"`
-		ID            string `json:"id"`
-	}
-	if err := json.Unmarshal(data, &header); err != nil {
-		return Record{}, schemaDecodeError(err)
-	}
-	if header.SchemaVersion == 0 {
-		header.SchemaVersion = SchemaVersion
-	}
-	if header.SchemaVersion != SchemaVersion {
-		return Record{}, UnsupportedSchemaError{Version: header.SchemaVersion}
-	}
-	if header.ID != id {
-		return Record{}, fmt.Errorf("issueops id mismatch: record has %q", header.ID)
-	}
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return Record{}, schemaDecodeError(err)
-	}
-	for _, name := range []string{"execution_handoff", "execution_workspace", "ownership", "remote_create_claim"} {
-		raw := bytes.TrimSpace(fields[name])
-		if len(raw) > 0 && !bytes.Equal(raw, []byte("null")) {
-			return Record{}, fmt.Errorf("legacy execution authority %s is forbidden", name)
-		}
-	}
 	var shape stableV1Record
-	if err := json.Unmarshal(data, &shape); err != nil {
-		return Record{}, schemaDecodeError(err)
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&shape); err != nil {
+		return Record{}, statecontract.Invalid("")
 	}
-	if shape.SchemaVersion == 0 {
-		shape.SchemaVersion = SchemaVersion
+	var trailing json.RawMessage
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		return Record{}, statecontract.Invalid("")
+	}
+	if shape.SchemaVersion != SchemaVersion || shape.ID != id {
+		return Record{}, statecontract.Invalid("")
 	}
 	canonical, err := json.Marshal(shape)
 	if err != nil {
-		return Record{}, err
+		return Record{}, statecontract.Invalid("")
 	}
 	var record Record
 	if err := json.Unmarshal(canonical, &record); err != nil {
-		return Record{}, schemaDecodeError(err)
+		return Record{}, statecontract.Invalid("")
 	}
 	record.OK = true
 	if err := validateRecord(record); err != nil {
-		return Record{}, err
+		return Record{}, statecontract.Invalid("")
 	}
 	return record, nil
 }
 
 func Encode(record Record) ([]byte, error) {
 	record.OK = true
-	if record.SchemaVersion == 0 {
-		record.SchemaVersion = SchemaVersion
-	}
 	if record.SchemaVersion != SchemaVersion {
-		return nil, UnsupportedSchemaError{Version: record.SchemaVersion}
+		return nil, statecontract.Invalid("")
 	}
 	if err := validateRecord(record); err != nil {
 		return nil, err
 	}
 	return json.MarshalIndent(record, "", "  ")
-}
-
-func schemaDecodeError(err error) error {
-	var typeError *json.UnmarshalTypeError
-	if errors.As(err, &typeError) {
-		return err
-	}
-	return fmt.Errorf("%w: %w", ErrMalformedSchema, err)
 }
 
 func validateRecord(record Record) error {
@@ -262,15 +234,83 @@ func validateSidecars(execution Execution) error {
 				return fmt.Errorf("Orca binding %s is required", name)
 			}
 		}
+		digests := []string{execution.Orca.IssueBodySHA256, execution.Orca.ContextPacketSHA256, execution.Orca.OwnerPromptSHA256}
+		present := 0
+		for _, digest := range digests {
+			if digest != "" {
+				present++
+			}
+		}
+		if present != 0 && present != len(digests) {
+			return fmt.Errorf("Orca binding requires a complete sealed artifact identity")
+		}
+		switch execution.Orca.ArtifactIdentityVersion {
+		case 0:
+			if present != 0 {
+				return fmt.Errorf("Orca binding sealed artifact identity requires artifact identity version")
+			}
+		case OrcaArtifactIdentityVersion:
+			if present != len(digests) {
+				return fmt.Errorf("Orca binding artifact identity version requires a complete sealed artifact identity")
+			}
+		default:
+			return fmt.Errorf("unsupported Orca artifact identity version %d", execution.Orca.ArtifactIdentityVersion)
+		}
+		if present == len(digests) {
+			for _, digest := range digests {
+				if !validHexDigest(digest, 64) {
+					return fmt.Errorf("Orca binding sealed artifact identity must contain SHA-256 digests")
+				}
+			}
+		}
 	}
 	if execution.Pending != nil && (execution.Pending.OperationID == "" || execution.Pending.Kind == "" || execution.Pending.Marker == "" || execution.Pending.StartedAt == "") {
 		return fmt.Errorf("pending external intent is incomplete")
 	}
-	if execution.Completion != nil && (!validHexDigest(execution.Completion.FinalHead, 40, 64) || strings.TrimSpace(execution.Completion.TuringReportPath) == "" || len(execution.Completion.Verification) == 0 || strings.TrimSpace(execution.Completion.RemoteArtifactURL) == "" || strings.TrimSpace(execution.Completion.CompletedAt) == "") {
-		return fmt.Errorf("execution completion is incomplete")
+	if execution.Completion != nil {
+		if err := validateCompletion(*execution.Completion); err != nil {
+			return err
+		}
+		if execution.Completion.Generation > execution.Lease.Generation {
+			return fmt.Errorf("execution completion generation exceeds the lease generation")
+		}
+	}
+	for _, entry := range execution.CompletionHistory {
+		if entry.Generation == 0 || strings.TrimSpace(entry.Reason) == "" || strings.TrimSpace(entry.ReopenedAt) == "" {
+			return fmt.Errorf("execution completion history entry is incomplete")
+		}
+		if entry.Generation >= execution.Lease.Generation {
+			return fmt.Errorf("execution completion history generation must precede the lease generation")
+		}
+		if err := validateCompletion(entry.Completion); err != nil {
+			return fmt.Errorf("execution completion history: %w", err)
+		}
+		if entry.Completion.Generation != 0 && entry.Completion.Generation != entry.Generation {
+			return fmt.Errorf("execution completion history generation conflicts with its completion")
+		}
 	}
 	if execution.Failure != nil && (execution.Failure.Code == "" || execution.Failure.At == "" || len(execution.Failure.Message) > 4096) {
 		return fmt.Errorf("execution failure is invalid")
+	}
+	if execution.SyncBaseResolution != nil {
+		resolution := execution.SyncBaseResolution
+		if execution.Lease.Status != "released" || execution.Completion == nil ||
+			resolution.Generation == 0 || resolution.Generation != execution.Lease.Generation ||
+			resolution.CompletionGeneration == 0 || resolution.CompletionGeneration != execution.Completion.Generation ||
+			!validHexDigest(resolution.BaseOID, 40, 64) || strings.TrimSpace(resolution.StartedAt) == "" || len(resolution.ConflictFiles) == 0 {
+			return fmt.Errorf("execution sync-base resolution is invalid")
+		}
+		if err := validateActor(resolution.Actor); err != nil {
+			return err
+		}
+		seen := map[string]bool{}
+		for _, path := range resolution.ConflictFiles {
+			clean := filepath.Clean(path)
+			if path == "" || path != clean || filepath.IsAbs(path) || clean == "." || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) || seen[clean] {
+				return fmt.Errorf("execution sync-base resolution conflict path is invalid")
+			}
+			seen[clean] = true
+		}
 	}
 	for _, event := range execution.SyncBaseEvents {
 		if event.Mode != "apply" && event.Mode != "finalize" {
@@ -284,6 +324,18 @@ func validateSidecars(execution Execution) error {
 		}
 		if event.ConflictFiles < 0 {
 			return fmt.Errorf("execution sync-base event conflict count must not be negative")
+		}
+	}
+	return nil
+}
+
+func validateCompletion(completion Completion) error {
+	if !validHexDigest(completion.FinalHead, 40, 64) || strings.TrimSpace(completion.TuringReportPath) == "" || len(completion.Verification) == 0 || strings.TrimSpace(completion.RemoteArtifactURL) == "" || strings.TrimSpace(completion.CompletedAt) == "" {
+		return fmt.Errorf("execution completion is incomplete")
+	}
+	for _, evidence := range completion.Verification {
+		if strings.TrimSpace(evidence) == "" {
+			return fmt.Errorf("execution completion verification must be nonempty")
 		}
 	}
 	return nil

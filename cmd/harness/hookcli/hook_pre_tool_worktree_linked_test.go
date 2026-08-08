@@ -7,7 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core"
+	issueopscore "agent-harness/internal/adapter/issueops"
+	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
 func TestRunHookPreToolUseEnforcesLinkedIssueOpsWorktree(t *testing.T) {
@@ -19,15 +20,15 @@ func TestRunHookPreToolUseEnforcesLinkedIssueOpsWorktree(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(source, ".git", "HEAD"), []byte("ref: refs/heads/12-issue-worktree\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{Repo: source, Branch: "12-issue-worktree"})
+	record, err := issueopscore.StartIssueOps(issueopscore.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: source, Branch: "12-issue-worktree"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	recordIssueOpsHookIntentForTest(t, record.ID)
-	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/12"); err != nil {
+	if _, err := issueopscore.LinkIssueOpsIssue(issueopscore.IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/12"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), record.ID, core.IssueOpsBranchPrepareRequest{
+	if _, err := issueopscore.PrepareIssueOpsBranch(issueopscore.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     "https://github.com/example/repo/issues/12",
 		Branch:       "12-issue-worktree",
@@ -43,12 +44,12 @@ func TestRunHookPreToolUseEnforcesLinkedIssueOpsWorktree(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(worktree, ".git", "HEAD"), []byte("ref: refs/heads/12-issue-worktree\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), record.ID, worktree); err != nil {
+	if _, err := issueopscore.LinkIssueOpsWorktree(issueopscore.IssueOpsStateRoot(), record.ID, worktree); err != nil {
 		t.Fatal(err)
 	}
 	recordIssueOpsHookDesignForTest(t, record.ID)
 	writeHookFixtureFile(t, worktree, "plans/issue-worktree.md", "plan\n")
-	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), record.ID, filepath.Join(worktree, "plans", "issue-worktree.md")); err != nil {
+	if _, err := issueopscore.LinkIssueOpsPlan(issueopscore.IssueOpsStateRoot(), record.ID, filepath.Join(worktree, "plans", "issue-worktree.md")); err != nil {
 		t.Fatal(err)
 	}
 	writeHookFixtureFile(t, worktree, "internal/core/issueops.go", "package core\n")
@@ -79,15 +80,15 @@ func TestRunHookPreToolUseDoesNotFenceUnpreparedLinkedCycle(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(source, ".git", "HEAD"), []byte("ref: refs/heads/main\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{Repo: source, Branch: "12-issue-worktree"})
+	record, err := issueopscore.StartIssueOps(issueopscore.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: source, Branch: "12-issue-worktree"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	recordIssueOpsHookIntentForTest(t, record.ID)
-	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/12"); err != nil {
+	if _, err := issueopscore.LinkIssueOpsIssue(issueopscore.IssueOpsStateRoot(), record.ID, "https://github.com/example/repo/issues/12"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), record.ID, core.IssueOpsBranchPrepareRequest{
+	if _, err := issueopscore.PrepareIssueOpsBranch(issueopscore.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     "https://github.com/example/repo/issues/12",
 		Branch:       "12-issue-worktree",
@@ -103,7 +104,7 @@ func TestRunHookPreToolUseDoesNotFenceUnpreparedLinkedCycle(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(worktree, ".git", "HEAD"), []byte("ref: refs/heads/12-issue-worktree\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), record.ID, worktree); err != nil {
+	if _, err := issueopscore.LinkIssueOpsWorktree(issueopscore.IssueOpsStateRoot(), record.ID, worktree); err != nil {
 		t.Fatal(err)
 	}
 	recordIssueOpsHookDesignForTest(t, record.ID)
@@ -114,7 +115,7 @@ func TestRunHookPreToolUseDoesNotFenceUnpreparedLinkedCycle(t *testing.T) {
 	if err := os.WriteFile(planPath, []byte("plan\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), record.ID, planPath); err != nil {
+	if _, err := issueopscore.LinkIssueOpsPlan(issueopscore.IssueOpsStateRoot(), record.ID, planPath); err != nil {
 		t.Fatal(err)
 	}
 	payload, err := json.Marshal(map[string]any{
@@ -226,17 +227,65 @@ func TestRunHookPreToolUseAllowsHolderCanonicalPatchFromCodexSourceCWD(t *testin
 	}
 }
 
-func assertIssueOpsDenyJSON(t *testing.T, raw any, id, root string, generation int, code string) {
-	t.Helper()
-	encoded, ok := raw.(string)
-	if !ok {
-		t.Fatalf("structured deny reason must be a JSON string, got %#v", raw)
+func TestRunHookPreToolUseUsesExplicitExecWorkdirForHolderCommand(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	source := filepath.Join(t.TempDir(), "agent-harness")
+	if err := os.MkdirAll(filepath.Join(source, ".git"), 0o755); err != nil {
+		t.Fatal(err)
 	}
-	var fields map[string]any
-	if err := json.Unmarshal([]byte(encoded), &fields); err != nil {
-		t.Fatalf("structured deny reason is not JSON: %q: %v", encoded, err)
+	if err := os.WriteFile(filepath.Join(source, ".git", "HEAD"), []byte("ref: refs/heads/main\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	assertIssueOpsDenyFields(t, fields, id, root, generation, code)
+	cycle := createLinkedIssueOpsWorktree(t, source, "251-exec-workdir")
+	actor := activateIssueOpsHookExecution(t, cycle.id)
+	command := "agent-harness issueops decision add --id " + cycle.id +
+		" --title workdir --body canonical --kind implementation" +
+		" --host " + actor.Host + " --session-id " + actor.SessionID +
+		" --agent-id " + actor.AgentID + " --cwd " + cycle.path + " --json"
+	payload, err := json.Marshal(map[string]any{
+		"cwd": source, "host": actor.Host, "session_id": actor.SessionID, "agent_id": actor.AgentID,
+		"tool_name":  "exec_command",
+		"tool_input": map[string]any{"cmd": command, "workdir": cycle.path},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--host", "codex", "--enforce-worktree", "--json"})
+	})
+	if got["decision"] != "allow" {
+		t.Fatalf("explicit exec workdir must be the lifecycle cwd: %+v", got)
+	}
+
+	payload, err = json.Marshal(map[string]any{
+		"cwd": source, "host": actor.Host, "session_id": "foreign-session", "agent_id": actor.AgentID,
+		"tool_name":  "exec_command",
+		"tool_input": map[string]any{"cmd": command, "workdir": cycle.path},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocked := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--host", "codex", "--enforce-worktree", "--json"})
+	})
+	if blocked["decision"] != "block" {
+		t.Fatalf("workdir normalization must not bypass holder identity: %+v", blocked)
+	}
+
+	payload, err = json.Marshal(map[string]any{
+		"cwd": source, "host": actor.Host, "session_id": "foreign-session", "agent_id": actor.AgentID,
+		"tool_name":  "Write",
+		"tool_input": map[string]any{"workdir": cycle.path, "content": "not a shell execution workdir"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	nonShell := runHookCapture(t, string(payload), func() error {
+		return runHookPreToolUse([]string{"--host", "codex", "--enforce-worktree", "--json"})
+	})
+	if nonShell["decision"] != "allow" {
+		t.Fatalf("non-shell workdir must not retarget lifecycle authority: %+v", nonShell)
+	}
 }
 
 func assertIssueOpsDenyFields(t *testing.T, raw any, id, root string, generation int, code string) {
@@ -296,12 +345,12 @@ func TestRunHookPreToolUseBindsLeaseHolderToLocalProcessAncestry(t *testing.T) {
 		t.Fatalf("locally observed holder process ancestry must allow canonical mutation, got %+v", allowed)
 	}
 
-	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), cycle.id)
+	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), cycle.id)
 	if err != nil {
 		t.Fatal(err)
 	}
 	record.Execution.Lease.Holder.SessionProcess.StartedAt = "1970-01-01T00:00:00Z"
-	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
 	blocked := runHookCapture(t, string(payload), func() error {

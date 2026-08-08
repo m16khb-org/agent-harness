@@ -1,12 +1,11 @@
 package basiccli
 
 import (
+	preflight "agent-harness/internal/contract/preflight"
 	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"agent-harness/internal/core"
 )
 
 func TestRunPreflightPrintsJSONForExplicitTarget(t *testing.T) {
@@ -17,7 +16,7 @@ func TestRunPreflightPrintsJSONForExplicitTarget(t *testing.T) {
 		return RunPreflight([]string{"--json", repo})
 	})
 
-	var result core.PreflightResult
+	var result preflight.PreflightResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode preflight JSON: %v\n%s", err, out)
 	}
@@ -49,7 +48,7 @@ func TestRunPreflightDefaultsTargetFromEnvironment(t *testing.T) {
 		return RunPreflight(nil)
 	})
 
-	var result core.PreflightResult
+	var result preflight.PreflightResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode preflight JSON: %v\n%s", err, out)
 	}

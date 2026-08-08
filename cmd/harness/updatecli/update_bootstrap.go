@@ -24,7 +24,7 @@ func runInstallScriptCommand(commandName string, args []string) error {
 	dryRun := fs.Bool("dry-run", false, "show install plan without writing")
 	pathMode := fs.String("path-mode", "", "manage ~/.local/bin PATH setup: auto, manual, or skip")
 	interactive := fs.Bool("interactive", false, "ask for install choices before applying the plan")
-	jsonOut := fs.Bool("json", false, "print JSON from install-native")
+	jsonOut := fs.Bool("json", false, "print JSON from install")
 	skipBuild := fs.Bool("skip-build", false, "do not rebuild bin/agent-harness")
 	if err := fs.Parse(args); err != nil {
 		if err == flag.ErrHelp {

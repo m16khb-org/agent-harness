@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	"agent-harness/internal/core"
 )
 
 type preflightFuzzCommandRunner func(root, label string, timeout time.Duration, input string, command ...string) StepResult
@@ -31,7 +30,7 @@ func (deps preflightFuzzValidationDeps) withDefaults() preflightFuzzValidationDe
 		deps.writeFile = os.WriteFile
 	}
 	if deps.git == nil {
-		deps.git = core.GitCmd
+		deps.git = GitCmd
 	}
 	if deps.run == nil {
 		deps.run = runPreflightFuzzCommand

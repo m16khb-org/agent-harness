@@ -54,8 +54,17 @@ func TestReadPIDAndProcessAliveBoundaries(t *testing.T) {
 	if err := os.WriteFile(path, []byte("123\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	if ReadPID(path) != 0 {
+		t.Fatalf("integer-only pid must be rejected, got %d", ReadPID(path))
+	}
+	if err := WriteInstance(path, InstanceRecord{
+		PID: 123, ProcessStartTime: "start-a", Executable: "/tmp/agent-harness",
+		InstanceNonce: "nonce-a", BuildSHA: "build-a", ProtocolVersion: "1", Generation: "generation-a",
+	}); err != nil {
+		t.Fatal(err)
+	}
 	if ReadPID(path) != 123 {
-		t.Fatalf("expected pid 123, got %d", ReadPID(path))
+		t.Fatalf("expected structured pid 123, got %d", ReadPID(path))
 	}
 	if ProcessAlive(0) {
 		t.Fatal("pid 0 should not be alive")

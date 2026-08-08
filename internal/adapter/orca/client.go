@@ -447,7 +447,7 @@ func (c *Client) listTerminalsInventory(ctx context.Context, worktreeID string) 
 		value.StableTabTitle = stableTitles[visualTabKey(value.TabID, value.LeafID)]
 		result = append(result, value)
 	}
-	return executionTerminalInventory{RuntimeID: runtimeID, Rows: result}, nil
+	return executionTerminalInventory{RuntimeID: runtimeID, Rows: result, Complete: true}, nil
 }
 
 func (c *Client) showTerminalInventory(ctx context.Context, handle string) (executionTerminalDetailInventory, error) {
@@ -640,8 +640,8 @@ func (c *Client) UseRun(ctx context.Context, runID string) (port.OrcaRun, error)
 		return port.OrcaRun{}, err
 	}
 	used, err := c.runMutation(ctx, []string{"orca", "orchestration", "run-use", "--id", runID, "--json"})
-	if err == nil && (used.ID != runID || used.Legacy) {
-		return port.OrcaRun{}, &port.OrcaError{Code: "run_binding_mismatch", Detail: "Orca bound a different or legacy Run", Invoked: true}
+	if err == nil && used.ID != runID {
+		return port.OrcaRun{}, &port.OrcaError{Code: "run_binding_mismatch", Detail: "Orca bound a different Run", Invoked: true}
 	}
 	return used, err
 }
@@ -669,7 +669,7 @@ func currentCoordinatorHandle() (string, error) {
 func validateRunID(runID string) (string, error) {
 	raw := runID
 	runID = strings.TrimSpace(raw)
-	if raw != runID || runID == "" || len(runID) > 1024 || strings.ContainsRune(runID, 0) || runID == "run_legacy_local" {
+	if raw != runID || runID == "" || len(runID) > 1024 || strings.ContainsRune(runID, 0) {
 		return "", &port.OrcaError{Code: "run_identity_invalid"}
 	}
 	return runID, nil
@@ -708,9 +708,6 @@ func (c *Client) listTasksAcrossRunsInventory(ctx context.Context, flags ...stri
 	result := executionTaskInventory{}
 	seen := make(map[string]struct{})
 	for _, run := range runs {
-		if run.Legacy {
-			continue
-		}
 		inventory, err := c.listRunTasksInventory(ctx, run.ID, flags...)
 		if err != nil {
 			return executionTaskInventory{}, err
@@ -841,39 +838,7 @@ const taskStatusCompleted = "completed"
 // 이 메서드가 별도로 있는 이유는 어떤 status가 종결인지가 Orca 쪽 지식이기
 // 때문이다. 호출자는 "종결시켜라"만 말하고 값은 알 필요가 없다.
 func (c *Client) SettleTask(ctx context.Context, runID, id string) error {
-	if strings.TrimSpace(runID) == "" {
-		resolved, err := c.resolveUniqueTaskRunID(ctx, id)
-		if err != nil {
-			return err
-		}
-		runID = resolved
-	}
 	return c.UpdateTask(ctx, runID, id, taskStatusCompleted, "")
-}
-
-func (c *Client) resolveUniqueTaskRunID(ctx context.Context, taskID string) (string, error) {
-	taskID = strings.TrimSpace(taskID)
-	if taskID == "" {
-		return "", &port.OrcaError{Code: "task_identity_invalid"}
-	}
-	tasks, err := c.ListAllTasks(ctx)
-	if err != nil {
-		return "", err
-	}
-	runID := ""
-	for _, task := range tasks {
-		if task.ID != taskID {
-			continue
-		}
-		if runID != "" {
-			return "", &port.OrcaError{Code: "legacy_task_run_ambiguous", Detail: "legacy task identity exists in more than one explicit Run", Invoked: true}
-		}
-		runID = task.RunID
-	}
-	if runID == "" {
-		return "", &port.OrcaError{Code: "legacy_task_run_unresolved", Detail: "legacy task identity is absent from explicit Runs", Invoked: true}
-	}
-	return runID, nil
 }
 
 // UpdateTask는 execution complete가 orca 모드 사이클의 task를 종결시키는 경로다
@@ -994,7 +959,7 @@ func (c *Client) SendWorkerDone(ctx context.Context, req port.OrcaWorkerDoneRequ
 
 func validateWorkerDoneRequest(req port.OrcaWorkerDoneRequest) error {
 	if _, err := validateRunID(req.RunID); err != nil {
-		return fmt.Errorf("worker_done requires a concrete non-legacy Run identity")
+		return fmt.Errorf("worker_done requires a concrete current Run identity")
 	}
 	if !concreteTerminalHandlePattern.MatchString(req.FromHandle) || !concreteTerminalHandlePattern.MatchString(req.ToHandle) || req.FromHandle == req.ToHandle || len(req.FromHandle) > 256 || len(req.ToHandle) > 256 {
 		return fmt.Errorf("worker_done requires distinct concrete bounded Orca terminal handles")
@@ -1164,15 +1129,14 @@ func (t taskPayload) portValue() port.OrcaTask {
 type runPayload struct {
 	ID        string `json:"id"`
 	Objective string `json:"objective"`
-	Legacy    int    `json:"legacy"`
 }
 
 func (r runPayload) portValue(runtimeID string) (port.OrcaRun, error) {
-	if strings.TrimSpace(r.ID) == "" || r.ID != strings.TrimSpace(r.ID) ||
-		strings.TrimSpace(r.Objective) == "" || r.Objective != strings.TrimSpace(r.Objective) {
+	id, err := validateRunID(r.ID)
+	if err != nil || strings.TrimSpace(r.Objective) == "" || r.Objective != strings.TrimSpace(r.Objective) {
 		return port.OrcaRun{}, &port.OrcaError{Code: "run_identity_incomplete", Invoked: true}
 	}
-	return port.OrcaRun{RuntimeID: runtimeID, ID: r.ID, Objective: r.Objective, Legacy: r.Legacy != 0}, nil
+	return port.OrcaRun{RuntimeID: runtimeID, ID: id, Objective: r.Objective}, nil
 }
 
 func hasJSONValue(raw json.RawMessage) bool {

@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"time"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	leaseinbound "agent-harness/internal/adapter/inbound/issueopslease"
+	"agent-harness/internal/adapter/issueops"
 	leaseoutbound "agent-harness/internal/adapter/outbound/issueopslease"
 	leaseapp "agent-harness/internal/application/issueopslease"
 	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -20,7 +22,7 @@ func issueOpsReconcileHandler(ctx context.Context, stateRoot string, request iss
 	return leaseinbound.NewReconcileHandler(service)(ctx, stateRoot, request, deps)
 }
 
-func newIssueOpsReconcileService(stateRoot string, provisioner port.ExecutionOrcaProvisioner, readIssue issueops.ExecutionIssueSnapshotReadFunc, snapshot *issueops.IssueOpsRecord, now func() time.Time) *leaseapp.ReconcileService {
+func newIssueOpsReconcileService(stateRoot string, provisioner port.ExecutionOrcaProvisioner, readIssue issueops.ExecutionIssueSnapshotReadFunc, snapshot *issueopscontract.IssueOpsRecord, now func() time.Time) *leaseapp.ReconcileService {
 	effects := &coreReconcileEffects{stateRoot: stateRoot, provisioner: provisioner, readIssue: readIssue, snapshot: snapshot, now: now}
 	return leaseapp.NewReconcileService(
 		leaseoutbound.NewReconcileRepository(effects),
@@ -32,7 +34,7 @@ type coreReconcileEffects struct {
 	stateRoot   string
 	provisioner port.ExecutionOrcaProvisioner
 	readIssue   issueops.ExecutionIssueSnapshotReadFunc
-	snapshot    *issueops.IssueOpsRecord
+	snapshot    *issueopscontract.IssueOpsRecord
 	now         func() time.Time
 }
 
@@ -137,7 +139,7 @@ func (e *coreReconcileEffects) reconcileRequest(intent leaseapp.ReconcileIntentS
 	state, err := reconcileCoreIntentState(leaseoutbound.ReconcileEffectState{
 		Record: intent.Progress.Record, RecordRaw: intent.RecordRaw, IntentRaw: intent.IntentRaw,
 		OperationID: intent.OperationID, Stage: intent.Stage, InvocationState: intent.InvocationState,
-		InvocationAttempts: intent.InvocationAttempts, Pending: intent.Progress.Pending, Migrated: intent.Migrated,
+		InvocationAttempts: intent.InvocationAttempts, Pending: intent.Progress.Pending,
 	})
 	if err != nil {
 		return port.ExecutionOrcaIntentRequest{}, err
@@ -153,7 +155,7 @@ func reconcileEffectStateFromCore(state issueops.ExecutionReconcileIntentState) 
 	return leaseoutbound.ReconcileEffectState{
 		Record: record, RecordRaw: append([]byte(nil), state.RecordRaw...), IntentRaw: append([]byte(nil), state.IntentRaw...),
 		OperationID: state.OperationID, Stage: string(state.Stage), InvocationState: state.InvocationState,
-		InvocationAttempts: state.InvocationAttempts, Pending: state.Pending, Migrated: state.Migrated,
+		InvocationAttempts: state.InvocationAttempts, Pending: state.Pending,
 	}, nil
 }
 
@@ -165,11 +167,11 @@ func reconcileCoreIntentState(state leaseoutbound.ReconcileEffectState) (issueop
 	return issueops.ExecutionReconcileIntentState{
 		Record: record, RecordRaw: append([]byte(nil), state.RecordRaw...), IntentRaw: append([]byte(nil), state.IntentRaw...),
 		OperationID: state.OperationID, Stage: port.ExecutionOrcaIntentStage(state.Stage), InvocationState: state.InvocationState,
-		InvocationAttempts: state.InvocationAttempts, Pending: state.Pending, Migrated: state.Migrated,
+		InvocationAttempts: state.InvocationAttempts, Pending: state.Pending,
 	}, nil
 }
 
-func reconcileContractRecord(record issueops.IssueOpsRecord) (leasecontract.Record, error) {
+func reconcileContractRecord(record issueopscontract.IssueOpsRecord) (leasecontract.Record, error) {
 	data, err := json.Marshal(record)
 	if err != nil {
 		return leasecontract.Record{}, err

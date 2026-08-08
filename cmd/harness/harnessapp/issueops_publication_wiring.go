@@ -11,13 +11,12 @@ import (
 
 	"agent-harness/cmd/harness/issueopscli"
 	publicationinbound "agent-harness/internal/adapter/inbound/issueopspublication"
+	"agent-harness/internal/adapter/issueops"
 	publicationoutbound "agent-harness/internal/adapter/outbound/issueopspublication"
 	"agent-harness/internal/adapter/provider"
 	publicationapp "agent-harness/internal/application/issueopspublication"
+	issueopscontract "agent-harness/internal/contract/issueops"
 	publicationcontract "agent-harness/internal/contract/issueopspublication"
-	corefacade "agent-harness/internal/core"
-	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
 	"agent-harness/internal/port"
 )
 
@@ -159,7 +158,7 @@ func (e *corePublicationEffects) create(_ context.Context, providerName string, 
 	if err != nil {
 		return publicationcontract.ProviderCreateResult{}, err
 	}
-	result, err := corefacade.CreateRemotePullRequest(portPublicationRequest(request), resolved)
+	result, err := issueops.CreateRemotePullRequestViaProvider(portPublicationRequest(request), resolved)
 	return publicationcontract.ProviderCreateResult{
 		OK: result.OK, URL: result.URL, Number: result.Number, Preview: result.Preview,
 	}, err
@@ -173,7 +172,7 @@ func (e *corePublicationEffects) inspect(_ context.Context, intent publicationco
 	if err != nil {
 		return publicationcontract.Inventory{}, false, err
 	}
-	result, err := corefacade.ReconcileRemotePullRequest(publicationReconcileRequest(intent.Request), resolved)
+	result, err := issueops.ReconcileRemotePullRequestViaProvider(publicationReconcileRequest(intent.Request), resolved)
 	inventory := publicationcontract.Inventory{AuthoritativeZero: result.AuthoritativeZero}
 	if result.Candidates != nil {
 		inventory.Candidates = make([]publicationcontract.Candidate, len(result.Candidates))
@@ -209,17 +208,17 @@ func corePublicationRequest(command publicationcontract.CreateCommand) issueops.
 	}
 }
 
-func corePublicationActor(actor publicationcontract.Actor) model.NativeActor {
-	result := model.NativeActor{Host: actor.Host, SessionID: actor.SessionID, AgentID: actor.AgentID}
+func corePublicationActor(actor publicationcontract.Actor) issueopscontract.NativeActor {
+	result := issueopscontract.NativeActor{Host: actor.Host, SessionID: actor.SessionID, AgentID: actor.AgentID}
 	if actor.SessionProcess != nil {
-		result.SessionProcess = &model.NativeProcessReceipt{
+		result.SessionProcess = &issueopscontract.NativeProcessReceipt{
 			PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable,
 		}
 	}
 	if actor.ProcessAncestry != nil {
-		result.ProcessAncestry = make([]model.NativeProcessReceipt, len(actor.ProcessAncestry))
+		result.ProcessAncestry = make([]issueopscontract.NativeProcessReceipt, len(actor.ProcessAncestry))
 		for index, receipt := range actor.ProcessAncestry {
-			result.ProcessAncestry[index] = model.NativeProcessReceipt{
+			result.ProcessAncestry[index] = issueopscontract.NativeProcessReceipt{
 				PID: receipt.PID, StartedAt: receipt.StartedAt, Executable: receipt.Executable,
 			}
 		}
@@ -245,11 +244,11 @@ func publicationIntentEffectState(state issueops.RemotePublicationIntentState, e
 
 func publicationEligibility(prepared issueops.RemotePublicationPreparedState) publicationcontract.CreateEligibility {
 	record := prepared.Record
-	executionActive := record.Execution != nil && record.Execution.Lease.Status == model.LeaseStatusActive
+	executionActive := record.Execution != nil && record.Execution.Lease.Status == issueopscontract.LeaseStatusActive
 	noPending := record.Execution == nil || record.Execution.Pending == nil
 	return publicationcontract.CreateEligibility{
 		Provider: strings.ToLower(strings.TrimSpace(prepared.Provider)), Kind: prepared.Kind, Confirm: prepared.Request.Confirm,
-		PhasePR: record.Phase == model.IssueOpsPhasePR, ExecutionActive: executionActive, NoPending: noPending,
+		PhasePR: record.Phase == issueopscontract.IssueOpsPhasePR, ExecutionActive: executionActive, NoPending: noPending,
 		NoArtifact: record.RemoteArtifact == nil, BranchAuthority: true,
 		CanonicalLabelsAssignees: len(prepared.Request.Labels) > 0 && len(prepared.Request.Assignees) > 0,
 	}
@@ -258,8 +257,8 @@ func publicationEligibility(prepared issueops.RemotePublicationPreparedState) pu
 func publicationIntentEligibility(state issueops.RemotePublicationIntentState) publicationcontract.CreateEligibility {
 	return publicationcontract.CreateEligibility{
 		Provider: strings.ToLower(strings.TrimSpace(state.Provider)), Kind: state.Kind, Confirm: state.Request.Confirm,
-		PhasePR:         state.Record.Phase == model.IssueOpsPhasePR,
-		ExecutionActive: state.Record.Execution != nil && state.Record.Execution.Lease.Status == model.LeaseStatusActive,
+		PhasePR:         state.Record.Phase == issueopscontract.IssueOpsPhasePR,
+		ExecutionActive: state.Record.Execution != nil && state.Record.Execution.Lease.Status == issueopscontract.LeaseStatusActive,
 		NoPending:       false, NoArtifact: state.Record.RemoteArtifact == nil, BranchAuthority: true,
 		CanonicalLabelsAssignees: len(state.Request.Labels) > 0 && len(state.Request.Assignees) > 0,
 	}
@@ -269,7 +268,7 @@ func corePublicationIntentState(state publicationoutbound.EffectState) (issueops
 	if len(state.RecordRaw) == 0 {
 		return issueops.RemotePublicationIntentState{}, fmt.Errorf("publication record raw bytes are required")
 	}
-	var record issueops.IssueOpsRecord
+	var record issueopscontract.IssueOpsRecord
 	if err := json.Unmarshal(state.RecordRaw, &record); err != nil {
 		return issueops.RemotePublicationIntentState{}, fmt.Errorf("decode publication record: %w", err)
 	}

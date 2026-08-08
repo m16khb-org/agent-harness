@@ -5,9 +5,9 @@ import (
 	"io"
 	"os"
 
-	cliadapter "agent-harness/internal/adapter/cli"
-
-	"agent-harness/internal/core"
+	inspect "agent-harness/internal/adapter/inspect"
+	inspectcontract "agent-harness/internal/contract/inspect"
+	cliadapter "agent-harness/internal/domain/cli"
 )
 
 const version = "0.1.0"
@@ -27,11 +27,11 @@ func fprintString(w io.Writer, text string) {
 	_, _ = fmt.Fprint(w, text)
 }
 
-func inspectHarness(repoArg string) core.InspectInfo {
+func inspectHarness(repoArg string) inspectcontract.InspectInfo {
 	root := harnessRoot()
 	target := resolveTarget(repoArg)
 	home, _ := os.UserHomeDir()
-	return core.InspectHarness(root, target, home, version, skillName)
+	return inspect.InspectHarness(root, target, home, version, skillName)
 }
 
 func printJSON(v any) error {

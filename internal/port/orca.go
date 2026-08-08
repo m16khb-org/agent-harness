@@ -106,7 +106,6 @@ type OrcaRun struct {
 	RuntimeID string `json:"-"`
 	ID        string `json:"id"`
 	Objective string `json:"objective"`
-	Legacy    bool   `json:"legacy,omitempty"`
 }
 
 type OrcaCreateRunRequest struct {

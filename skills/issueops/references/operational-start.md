@@ -63,13 +63,27 @@ below, if provider linkage or the base SHA cannot be verified, stop before
 creating a local workspace.
 
 For GitHub Orca, omit `--link-verified` from the first `branch prepare` call.
-After `execution prepare` creates the local-only branch and the owner claims the
-lease, create the GitHub linked branch at the sealed base SHA and run the exact
-`VerifyBranchLink` command from the owner packet. That command repeats
-`branch prepare` with `--link-verified` and the current owner actor flags.
+The complete #176 sequence is `branch prepare` (base SHA only) → `artifact stage --name plan` → `execution prepare --mode orca` → GraphQL `createLinkedBranch` with `oid=sealed base SHA` → `branch prepare --link-verified`.
+After `execution prepare` creates the local-only branch, run the exact
+`createLinkedBranch` steps at the sealed base SHA. Once the owner claims the
+lease, it runs the exact `VerifyBranchLink` command from its packet. That
+command repeats `branch prepare` with `--link-verified` and the current owner
+actor flags. Claim is an authority transition, not an alternate branch-creation
+step; it does not change the five branch operations above.
 `link-plan` and implementation remain blocked until this update succeeds.
+Do not use `gh issue develop`: it resolves the base branch at link time and can
+therefore diverge from the sealed base SHA.
 
 ## Execution v1
+
+Orca가 선택될 수 있는 prepare 전에 승인된 child plan을 source checkout 밖의
+coordinator 임시 파일에 쓰고 먼저 stage한다. `artifact stage`의 실제 플래그에는
+actor receipt가 없으며 `--id`, `--name`, `--file`, `--json`만 사용한다:
+
+```bash
+agent-harness issueops artifact stage \
+  --id "$ISSUEOPS_ID" --name plan --file <TEMP_PLAN_OUTSIDE_SOURCE> --json
+```
 
 Use one preview/confirm request. `auto` resolves to Orca only when readiness is
 proven before mutation; otherwise it resolves to direct:
@@ -97,11 +111,13 @@ private packet and prompt, verifies both sealed digests, and runs the exact
 for the full claim, replacement, reconciliation, publication, and completion
 contract.
 
-After workspace creation, write and link the issue-based plan inside the
-canonical worktree, complete compatibility and devil's-advocate review, then
-enter implementation. Sub-agent use follows the repository's documented
-net-positive patterns; it is main-agent judgment, not a second IssueOps state
-machine.
+For Orca, the worktree receipt materializes the staged plan at
+`.agent-harness/artifact/plan.md`, persists it as durable `plan_path`, and seals
+the same digest before owner launch. Read back that path and digest before
+removing the temporary source. `parent_plan_path` is not promoted. Complete
+compatibility and devil's-advocate review, then enter implementation. Sub-agent
+use follows the repository's documented net-positive patterns; it is
+main-agent judgment, not a second IssueOps state machine.
 
 ## Publication And Completion
 

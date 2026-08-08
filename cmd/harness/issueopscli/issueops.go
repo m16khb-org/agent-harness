@@ -4,18 +4,19 @@ import (
 	"agent-harness/cmd/harness/issueopscli/benchmarkcmd"
 	"agent-harness/cmd/harness/issueopscli/feedbackcleanup"
 	"agent-harness/cmd/harness/issueopscli/remotecmd"
-	"agent-harness/internal/adapter/operationalhealth"
-	"agent-harness/internal/adapter/orca"
-	"agent-harness/internal/adapter/provider"
-	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/orphancleanup"
-	corehealth "agent-harness/internal/core/operationalhealth"
+	orphancontract "agent-harness/internal/contract/issueopsorphancleanup"
+	corehealth "agent-harness/internal/domain/operationalhealth"
 	"agent-harness/internal/port"
+	provenanceport "agent-harness/internal/port/issueopsprovenance"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+
+	"agent-harness/internal/domain/commandparse"
 )
 
 // issueOpsSubcommands는 `issueops <subcommand>`의 디스패치 레지스트리다.
@@ -56,10 +57,13 @@ var issueOpsSubcommands = map[string]func([]string) error{
 	"pr-readiness": runIssueOpsPRReadiness,
 	"decision":     runIssueOpsDecision,
 	"execution":    runIssueOpsExecution,
-	"reset-legacy": runIssueOpsResetLegacy,
 }
 
 func runIssueOps(args []string) error {
+	return runIssueOpsWithDependencies(args, Dependencies{})
+}
+
+func dispatchIssueOps(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
 		issueOpsUsage()
 		return nil
@@ -72,17 +76,68 @@ func runIssueOps(args []string) error {
 }
 
 func runIssueOpsWithDependencies(args []string, deps Dependencies) error {
+	clean, generated, err := prepareGeneratedCommandInvocation(args, deps)
+	if err == nil && generated {
+		err = requireGeneratedOwnerProcessCWD(clean)
+	}
+	if err != nil {
+		if issueOpsJSONRequested(args) {
+			if printErr := printIssueOpsErrorJSON(err); printErr != nil {
+				return printErr
+			}
+		}
+		return err
+	}
+	args = clean
 	if len(args) > 0 {
 		switch args[0] {
 		case "execution":
 			return runIssueOpsExecutionWithDependencies(args[1:], deps)
+		case "feedback":
+			return runIssueOpsFeedbackWithDependencies(args[1:], deps)
+		case "cleanup":
+			return runIssueOpsCleanupWithDependencies(args[1:], deps)
 		case "remote":
 			return remotecmd.Run(args[1:], issueOpsRemoteDepsWithPublication(deps.Publication))
 		case "remote-score":
 			return remotecmd.Run(append([]string{"score"}, args[1:]...), issueOpsRemoteDepsWithPublication(deps.Publication))
 		}
 	}
-	return runIssueOps(args)
+	return dispatchIssueOps(args)
+}
+
+func requireGeneratedOwnerProcessCWD(args []string) error {
+	command, ok := commandparse.ParseExactIssueOpsArgs(args)
+	if !ok {
+		return nil
+	}
+	flags, ok := commandparse.ExactIssueOpsOwnerMutation(command)
+	if !ok {
+		return nil
+	}
+	values := flags["--cwd"]
+	if len(values) != 1 {
+		return fmt.Errorf("generated owner mutation requires one exact --cwd")
+	}
+	processCWD, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("observe generated owner mutation actual process cwd: %w", err)
+	}
+	if !sameExistingIssueOpsPath(processCWD, values[0]) {
+		return fmt.Errorf("generated owner mutation actual process cwd must match --cwd before mutation")
+	}
+	return nil
+}
+
+func sameExistingIssueOpsPath(left, right string) bool {
+	leftAbs, leftErr := filepath.Abs(strings.TrimSpace(left))
+	rightAbs, rightErr := filepath.Abs(strings.TrimSpace(right))
+	if leftErr != nil || rightErr != nil || strings.TrimSpace(left) == "" || strings.TrimSpace(right) == "" {
+		return false
+	}
+	leftResolved, leftErr := filepath.EvalSymlinks(leftAbs)
+	rightResolved, rightErr := filepath.EvalSymlinks(rightAbs)
+	return leftErr == nil && rightErr == nil && filepath.Clean(leftResolved) == filepath.Clean(rightResolved)
 }
 
 // issueOpsConceptHints는 에이전트가 CLI subcommand으로 자주 오인하는 IssueOps
@@ -117,10 +172,10 @@ func suggestIssueOpsSubcommand(input string) string {
 }
 
 func issueOpsRemoteDeps() remotecmd.Deps {
-	return issueOpsRemoteDepsWithPublication(issueops.RemotePublicationHandlers{})
+	return issueOpsRemoteDepsWithPublication(remotecmd.PublicationHandlers{})
 }
 
-func issueOpsRemoteDepsWithPublication(publication issueops.RemotePublicationHandlers) remotecmd.Deps {
+func issueOpsRemoteDepsWithPublication(publication remotecmd.PublicationHandlers) remotecmd.Deps {
 	return remotecmd.Deps{
 		PrintJSON:    printJSON,
 		PrintResult:  printIssueOpsResult,
@@ -142,14 +197,22 @@ func parseIssueOpsFlags(fs *flag.FlagSet, args []string) (bool, error) {
 }
 
 func runIssueOpsFeedback(args []string) error {
+	return runIssueOpsFeedbackWithDependencies(args, Dependencies{})
+}
+
+func runIssueOpsFeedbackWithDependencies(args []string, deps Dependencies) error {
 	if len(args) > 0 && args[0] == "resolve" {
 		return runIssueOpsFeedbackResolve(args[1:])
 	}
-	return feedbackcleanup.RunFeedback(args, issueOpsFeedbackCleanupDeps())
+	return feedbackcleanup.RunFeedback(args, issueOpsFeedbackCleanupDeps(deps.Provenance))
 }
 
 func runIssueOpsCleanup(args []string) error {
-	return feedbackcleanup.RunCleanup(args, issueOpsFeedbackCleanupDeps())
+	return runIssueOpsCleanupWithDependencies(args, Dependencies{})
+}
+
+func runIssueOpsCleanupWithDependencies(args []string, deps Dependencies) error {
+	return feedbackcleanup.RunCleanup(args, issueOpsFeedbackCleanupDeps(deps.Provenance))
 }
 
 // normalizeOrcaRemoveWorktreeErr는 orca 워크트리 회수 오류를 멱등 계약으로
@@ -171,20 +234,20 @@ func normalizeOrcaRemoveWorktreeErr(err error) error {
 	return err
 }
 
-func issueOpsFeedbackCleanupDeps() feedbackcleanup.Deps {
+func issueOpsFeedbackCleanupDeps(provenance provenanceport.Observer) feedbackcleanup.Deps {
 	orphanDeps := issueOpsOrphanCleanupDeps()
-	orcaClient := orca.New()
 	return feedbackcleanup.Deps{
 		// cleanup finish ② 단계: orca 회수. "이미 없음"은 멱등 계약상 성공.
 		RemoveOrcaWorktree: func(ctx context.Context, worktreeID string) error {
-			return normalizeOrcaRemoveWorktreeErr(orcaClient.RemoveWorktree(ctx, worktreeID, false))
+			return normalizeOrcaRemoveWorktreeErr(RemoveOrcaWorktree(ctx, worktreeID, false))
 		},
 		// cleanup abandon pending_intent_safe 게이트: sealed marker로 orca
 		// 인벤토리를 실조회한다. 조회 전용이며 mutation은 부르지 않는다.
-		OrcaIntent: orca.NewExecution(),
+		OrcaIntent: NewOrcaExecutionIntent(),
 		// cleanup abandon orca_resources_absent 게이트: orca 자원 잔여를
 		// 실조회한다. 같은 provisioner가 owner 인벤토리도 제공한다(#136).
-		OrcaOwner:    orca.NewExecution(),
+		OrcaOwner:    NewOrcaExecutionOwner(),
+		Provenance:   provenance,
 		ParseFlags:   parseIssueOpsFlags,
 		PrintResult:  printIssueOpsResult,
 		PrintJSON:    printJSON,
@@ -192,26 +255,28 @@ func issueOpsFeedbackCleanupDeps() feedbackcleanup.Deps {
 		VerifyMerged: verifyIssueOpsRemoteArtifactMergedLive,
 		// cleanup remote-branch 게이트 ⑧·⑨·⑩의 단일 readback 표면.
 		VerifyMergedHead: verifyIssueOpsRemoteArtifactMergedHeadLive,
-		Provider:         provider.Resolve,
-		OrphanPreview: func(ctx context.Context, request orphancleanup.Request) (orphancleanup.Result, error) {
-			return orphancleanup.Preview(ctx, request, orphanDeps)
+		// cleanup abandon의 artifact 게이트는 미병합을 요구하므로 조회 실패와
+		// 미병합을 구분하는 별도 관측 표면을 쓴다(#342).
+		ObserveArtifactMerged: observeIssueOpsRemoteArtifactMergedLive,
+		Provider:              Resolve,
+		OrphanPreview: func(ctx context.Context, request orphancontract.Request) (orphancontract.Result, error) {
+			return orphanPreview(ctx, request, orphanDeps)
 		},
-		OrphanApply: func(ctx context.Context, request orphancleanup.Request, apply orphancleanup.ApplyRequest) (orphancleanup.Result, error) {
-			return orphancleanup.Apply(ctx, request, apply, orphanDeps)
+		OrphanApply: func(ctx context.Context, request orphancontract.Request, apply orphancontract.ApplyRequest) (orphancontract.Result, error) {
+			return orphanApply(ctx, request, apply, orphanDeps)
 		},
 	}
 }
 
-func issueOpsOrphanCleanupDeps() orphancleanup.Dependencies {
-	collector := operationalhealth.Collector{Git: operationalhealth.ExecGitRunner{}, Orca: orca.New()}
-	return orphancleanup.Dependencies{
+func issueOpsOrphanCleanupDeps() OrphanDependencies {
+	return OrphanDependencies{
 		Collect: func(ctx context.Context, repo string) (corehealth.Snapshot, error) {
-			return collector.Collect(ctx, repo), nil
+			return CollectOperationalHealth(ctx, repo), nil
 		},
 		VerifyMerged: verifyIssueOpsRemoteArtifactMergedLive,
 	}
 }
 
 func issueOpsCleanupMerged(id string, requested bool) bool {
-	return feedbackcleanup.CleanupMerged(id, requested, issueOpsFeedbackCleanupDeps())
+	return feedbackcleanup.CleanupMerged(id, requested, issueOpsFeedbackCleanupDeps(nil))
 }

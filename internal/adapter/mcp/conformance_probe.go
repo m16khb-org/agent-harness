@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	mcpcontract "agent-harness/internal/contract/mcp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -12,46 +13,37 @@ import (
 	"strings"
 	"sync"
 
-	"agent-harness/internal/core/policy"
-	"agent-harness/internal/core/toolconformance"
+	toolconformancecontract "agent-harness/internal/contract/toolconformance"
+	"agent-harness/internal/domain/policy"
+	toolconformancedomain "agent-harness/internal/domain/toolconformance"
+
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 const conformanceRawLimit = 64 << 10
 
-type ConformanceProbeConfig struct {
-	FixtureID          string
-	ProbeTool          string
-	Schema             map[string]any
-	SchemaSHA          string
-	ExpectedArguments  map[string]any
-	ResultPath         string
-	RunToken           string
-	ProductionDispatch func()
-}
-
 type ConformanceCapture struct {
-	FixtureID          string                         `json:"fixture_id"`
-	CallCount          int                            `json:"call_count"`
-	RawSHA256          string                         `json:"raw_sha256"`
-	CanonicalArguments any                            `json:"canonical_arguments"`
-	SchemaSHA256       string                         `json:"schema_sha256"`
-	RunTokenSHA256     string                         `json:"run_token_sha256"`
-	Classification     toolconformance.Classification `json:"classification"`
-	AdvertisedValid    bool                           `json:"advertised_valid"`
-	CanonicalValid     bool                           `json:"canonical_valid"`
-	Diagnostics        []toolconformance.Diagnostic   `json:"diagnostics"`
+	FixtureID          string                                 `json:"fixture_id"`
+	CallCount          int                                    `json:"call_count"`
+	RawSHA256          string                                 `json:"raw_sha256"`
+	CanonicalArguments any                                    `json:"canonical_arguments"`
+	SchemaSHA256       string                                 `json:"schema_sha256"`
+	RunTokenSHA256     string                                 `json:"run_token_sha256"`
+	Classification     toolconformancecontract.Classification `json:"classification"`
+	AdvertisedValid    bool                                   `json:"advertised_valid"`
+	CanonicalValid     bool                                   `json:"canonical_valid"`
+	Diagnostics        []toolconformancecontract.Diagnostic   `json:"diagnostics"`
 }
 
 type conformanceProbe struct {
-	config ConformanceProbeConfig
+	config mcpcontract.ConformanceProbeConfig
 	mu     sync.Mutex
 	calls  int
 }
 
 // NewConformanceProbeServer constructs an isolated capture-only MCP server.
 // It intentionally does not share the production catalog or dispatch path.
-func NewConformanceProbeServer(config ConformanceProbeConfig) (*mcp.Server, error) {
+func NewConformanceProbeServer(config mcpcontract.ConformanceProbeConfig) (*mcp.Server, error) {
 	schema, err := cloneSchema(config.Schema)
 	if err != nil {
 		return nil, err
@@ -71,7 +63,7 @@ func NewConformanceProbeServer(config ConformanceProbeConfig) (*mcp.Server, erro
 	return server, nil
 }
 
-func newConformanceProbe(config ConformanceProbeConfig) (*conformanceProbe, error) {
+func newConformanceProbe(config mcpcontract.ConformanceProbeConfig) (*conformanceProbe, error) {
 	if config.ProbeTool == "" {
 		return nil, fmt.Errorf("probe_tool_required")
 	}
@@ -81,7 +73,7 @@ func newConformanceProbe(config ConformanceProbeConfig) (*conformanceProbe, erro
 	if config.ExpectedArguments == nil {
 		return nil, fmt.Errorf("expected_arguments_required")
 	}
-	actualSHA, err := toolconformance.CanonicalSchemaSHA256(config.Schema)
+	actualSHA, err := toolconformancedomain.CanonicalSchemaSHA256(config.Schema)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +83,7 @@ func newConformanceProbe(config ConformanceProbeConfig) (*conformanceProbe, erro
 	return &conformanceProbe{config: config}, nil
 }
 
-func ServeConformanceProbe(ctx context.Context, input io.Reader, output io.Writer, config ConformanceProbeConfig) error {
+func ServeConformanceProbe(ctx context.Context, input io.Reader, output io.Writer, config mcpcontract.ConformanceProbeConfig) error {
 	server, err := NewConformanceProbeServer(config)
 	if err != nil {
 		return err
@@ -161,12 +153,12 @@ func probeFailure(code string) *mcp.CallToolResult {
 	return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: string(body)}}}
 }
 
-func captureArguments(config ConformanceProbeConfig, raw []byte) (ConformanceCapture, error) {
+func captureArguments(config mcpcontract.ConformanceProbeConfig, raw []byte) (ConformanceCapture, error) {
 	if len(raw) > conformanceRawLimit {
 		return ConformanceCapture{}, fmt.Errorf("arguments_too_large")
 	}
-	classified, err := toolconformance.Classify(
-		toolconformance.CallObservation{RawArguments: raw, CallCount: 1},
+	classified, err := toolconformancedomain.Classify(
+		toolconformancecontract.CallObservation{RawArguments: raw, CallCount: 1},
 		config.Schema,
 		config.ExpectedArguments,
 	)
@@ -236,8 +228,8 @@ func redactArguments(value any, schema map[string]any, path string, replacements
 	}
 }
 
-func redactDiagnosticPaths(diagnostics []toolconformance.Diagnostic, replacements map[string]string) []toolconformance.Diagnostic {
-	out := append([]toolconformance.Diagnostic(nil), diagnostics...)
+func redactDiagnosticPaths(diagnostics []toolconformancecontract.Diagnostic, replacements map[string]string) []toolconformancecontract.Diagnostic {
+	out := append([]toolconformancecontract.Diagnostic(nil), diagnostics...)
 	for index := range out {
 		if replacement, ok := replacements[out[index].Path]; ok {
 			out[index].Path = replacement

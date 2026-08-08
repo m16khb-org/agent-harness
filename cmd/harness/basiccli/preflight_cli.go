@@ -2,8 +2,7 @@ package basiccli
 
 import (
 	"flag"
-
-	"agent-harness/internal/core"
+	"fmt"
 )
 
 func runPreflight(args []string) error {
@@ -16,7 +15,10 @@ func runPreflight(args []string) error {
 	if fs.NArg() > 0 {
 		target = fs.Arg(0)
 	}
-	result := core.GitPreflight(deps.ResolveTarget(target), deps.HarnessRoot())
+	if deps.GitPreflight == nil {
+		return fmt.Errorf("git preflight is not configured")
+	}
+	result := deps.GitPreflight(deps.ResolveTarget(target), deps.HarnessRoot())
 	if *jsonOut {
 		return printJSON(result)
 	}

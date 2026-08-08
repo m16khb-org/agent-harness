@@ -1,0 +1,36 @@
+package issueops
+
+import "agent-harness/internal/domain/issueopsremote"
+
+type IssueOpsRemoteArtifact = remote.IssueOpsRemoteArtifact
+type IssueOpsRemoteIssueCandidate = remote.IssueOpsRemoteIssueCandidate
+type IssueOpsRemoteLabelCandidate = remote.IssueOpsRemoteLabelCandidate
+type IssueOpsRemoteScoringRequest = remote.IssueOpsRemoteScoringRequest
+type IssueOpsRemoteScoredItem = remote.IssueOpsRemoteScoredItem
+type IssueOpsRemoteScoringResult = remote.IssueOpsRemoteScoringResult
+type IssueOpsRemoteLLMJudgeRequest = remote.IssueOpsRemoteLLMJudgeRequest
+type IssueOpsRemoteJudgePromptResult = remote.IssueOpsRemoteJudgePromptResult
+
+func DecodeIssueOpsRemoteScoringRequest(data []byte) (IssueOpsRemoteScoringRequest, error) {
+	return remote.DecodeIssueOpsRemoteScoringRequest(data)
+}
+
+func ScoreIssueOpsRemoteCandidates(req IssueOpsRemoteScoringRequest) (IssueOpsRemoteScoringResult, error) {
+	return remote.ScoreIssueOpsRemoteCandidates(req)
+}
+
+func RunIssueOpsRemoteLLMJudge(req IssueOpsRemoteLLMJudgeRequest) (IssueOpsRemoteScoringResult, error) {
+	return remote.RunIssueOpsRemoteLLMJudge(req)
+}
+
+func RenderIssueOpsRemoteLLMJudgePrompt(req IssueOpsRemoteLLMJudgeRequest) (string, error) {
+	return remote.RenderIssueOpsRemoteLLMJudgePrompt(req)
+}
+
+func RenderIssueOpsRemoteJudgePrompt(req IssueOpsRemoteLLMJudgeRequest) (IssueOpsRemoteJudgePromptResult, error) {
+	return remote.RenderIssueOpsRemoteJudgePrompt(req)
+}
+
+func DecodeIssueOpsRemoteJudgeJSON(out []byte) (IssueOpsRemoteScoringResult, error) {
+	return remote.DecodeIssueOpsRemoteJudgeJSON(out)
+}

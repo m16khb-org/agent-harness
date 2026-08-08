@@ -20,7 +20,7 @@ func TestDirectRepositoryCommitWritesRecordAndHolderAtomically(t *testing.T) {
 	record := repositoryRecord("io-prepare", "/repo", "199-prepare")
 	record.Decisions = json.RawMessage(`[{"kind":"preserved"}]`)
 	store.seedRecord(t, record)
-	repository := NewSQLiteRepository(store, func(context.Context) error { return nil })
+	repository := NewSQLiteRepository(store)
 
 	snapshot, err := repository.Load(context.Background(), record.ID)
 	if err != nil {
@@ -61,7 +61,7 @@ func TestDirectRepositoryHolderConflictRollsBackRecord(t *testing.T) {
 	store.seedRecord(t, record)
 	commit := directRepositoryCommit(preparationcontract.Snapshot{Record: record, RecordRaw: store.mustGet(recordBucket, record.ID)})
 	store.rows[holderBucket] = map[string][]byte{holderIndexKey(commit.Command.Actor): []byte(`{"occupied":true}`)}
-	repository := NewSQLiteRepository(store, func(context.Context) error { return nil })
+	repository := NewSQLiteRepository(store)
 	before := append([]byte(nil), store.mustGet(recordBucket, record.ID)...)
 
 	if _, err := repository.CommitDirect(context.Background(), commit); err == nil || !strings.Contains(err.Error(), "already exists") {
@@ -91,24 +91,12 @@ func TestRepositoryRootScanRejectsClaimAndCorruption(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			store := newPreparationStore()
 			test.seed(t, store)
-			repository := NewSQLiteRepository(store, func(context.Context) error { return nil })
+			repository := NewSQLiteRepository(store)
 			err := repository.EnsureRootUnclaimed(context.Background(), "io-self", "/repo.worktrees/199-prepare")
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("err=%v", err)
 			}
 		})
-	}
-}
-
-func TestRepositoryMutationGateFailsClosed(t *testing.T) {
-	want := errors.New("hook mutation denied")
-	repository := NewSQLiteRepository(newPreparationStore(), func(context.Context) error { return want })
-	if err := repository.RequireMutationAllowed(context.Background()); !errors.Is(err, want) {
-		t.Fatalf("err=%v", err)
-	}
-	repository = NewSQLiteRepository(newPreparationStore(), nil)
-	if err := repository.RequireMutationAllowed(context.Background()); err == nil || !strings.Contains(err.Error(), "mutation gate") {
-		t.Fatalf("err=%v", err)
 	}
 }
 

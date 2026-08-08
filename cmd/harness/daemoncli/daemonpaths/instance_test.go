@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func TestReadInstanceSupportsAdditiveJSONAndLegacyPID(t *testing.T) {
+func TestReadInstanceAcceptsStructuredInstanceRejectsLegacyPID(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "agent-harness.pid")
 	record := InstanceRecord{
 		PID:              4242,
@@ -21,9 +21,9 @@ func TestReadInstanceSupportsAdditiveJSONAndLegacyPID(t *testing.T) {
 	if err := WriteInstance(path, record); err != nil {
 		t.Fatal(err)
 	}
-	got, legacy, err := ReadInstance(path)
-	if err != nil || legacy || got != record {
-		t.Fatalf("JSON instance round-trip failed: got=%#v legacy=%v err=%v", got, legacy, err)
+	got, err := ReadInstance(path)
+	if err != nil || got != record {
+		t.Fatalf("JSON instance round-trip failed: got=%#v err=%v", got, err)
 	}
 	if info, err := os.Stat(path); err != nil || info.Mode().Perm() != 0o600 {
 		t.Fatalf("instance file must be private: info=%v err=%v", info, err)
@@ -32,9 +32,9 @@ func TestReadInstanceSupportsAdditiveJSONAndLegacyPID(t *testing.T) {
 	if err := os.WriteFile(path, []byte("123\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	got, legacy, err = ReadInstance(path)
-	if err != nil || !legacy || got.PID != 123 {
-		t.Fatalf("legacy pid read failed: got=%#v legacy=%v err=%v", got, legacy, err)
+	got, err = ReadInstance(path)
+	if err == nil || got != (InstanceRecord{}) {
+		t.Fatalf("legacy pid must be rejected: got=%#v err=%v", got, err)
 	}
 }
 

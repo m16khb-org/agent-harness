@@ -86,6 +86,7 @@ skills/
 - CLI/MCP contract golden은 `cmd/harness/testdata/`에 둔다. 의도된 schema 변경일 때만 `go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -run Golden -update -count=1`로 갱신한다.
 - 실제 JSON response golden은 dynamic field(timestamp, temp path, audit id)를 normalize해서 host/session 차이로 인한 drift를 막는다.
 - response golden 범위는 state/policy뿐 아니라 docs/inspect/preflight처럼 agent가 자주 의존하는 읽기 표면을 우선 포함한다.
+- CLI와 MCP가 같은 `next_command`를 반환할 때 provenance 같은 composition evidence도 동일하게 결합한다. Port에는 contract 타입 대신 순수 observation receipt만 두고 application에서 contract evidence로 변환한다. 파일·프로세스 관측은 contract/core/cmd package에 넣지 않고 `harnessapp`이 outbound adapter를 생성해 주입하며, 관측 실패를 빈 값이나 `unavailable`로 치환하지 않는다.
 
 ---
 
@@ -96,7 +97,6 @@ skills/
 - job은 idempotency key, timeout, cancellation을 갖는다.
 - worker 시작/종료는 stale lock과 orphan process를 처리한다.
 - 장기 작업 상태와 project lifecycle queue/profile은 user state dir에 저장하고, repo에 secret/state 원문을 쓰지 않는다. lifecycle state는 `projects/<repo-id>/` namespace로 격리해 같은 머신의 여러 repo가 섞이지 않게 한다.
-- 메인 에이전트가 명시 판단한 draft-wiki 후보는 repo가 아니라 project-scoped user state queue에 bounded/redacted 텍스트로 저장한다. worker가 처리할 때도 shell string을 만들지 말고 `agy -p <prompt>` argv 실행만 사용한다.
 
 ---
 
@@ -128,9 +128,34 @@ skills/
 ### Dependency fitness ratchet
 
 - `internal/architecture/dependency_test.go`는 direct production import만 검사한다. edge 표기는 항상 `importer -> imported`이며 정렬 순서를 바꾸지 않는다.
-- unconditional layer rule 위반은 baseline에 추가하지 않는다. 기존 legacy edge는 `internal/architecture/testdata/legacy_imports.txt`에만 기록하고, 제거 시 baseline도 함께 줄인다.
+- legacy baseline은 없다. 전환이 끝났으므로 `internal/adapter/*`를 composition root 밖에서 import하는 edge는 새로 추가할 수 없다. `TestProductionGraphHasNoLegacyAdapterEdges`가 즉시 실패한다. 어댑터 기능이 필요하면 세 갈래 처방(순수 규칙은 domain, 타입은 contract, I/O는 주입)을 따른다.
 - composition root 예외는 `cmd/harness/harnessapp` 하나로 제한한다. 새 concrete-adapter import가 그 밖에 필요하다면 먼저 boundary를 재검토한다.
 - IssueOps 수직 마이그레이션은 capability별 contract/domain/application/inbound/outbound 패키지를 사용한다. domain은 JSON·filesystem·process·SQLite·clock을 import하지 않고, application port는 해당 capability가 실제로 쓰는 좁은 연산만 선언한다. persisted bytes가 공개 계약이면 legacy facade와 새 vertical의 differential 및 race evidence를 함께 유지한다.
+
+### concrete-adapter 의존을 걷어내는 순서
+
+legacy edge를 없앨 때는 **소비되는 심볼의 성격**이 처방을 결정한다. 심볼을 먼저 분류하고
+그에 맞는 방법을 쓴다. 순서를 뒤집으면 옮길 곳이 없거나 edge가 줄지 않는다.
+
+| 소비 형태 | 처방 | 근거 |
+|---|---|---|
+| 순수 함수·규칙 | `internal/domain/<cap>`으로 이동 | 규칙은 I/O보다 아래 계층에 속한다 |
+| **타입** | `internal/contract/<cap>`으로 이동 | 구조체 필드 타입은 주입으로 대체할 수 없다 |
+| I/O 함수 | composition root가 주입 | 구현 선택은 root의 결정이다 |
+
+- **타입 이동과 함수 주입은 대개 둘 다 필요하다.** 한 capability의 소비자가 타입과 함수를
+  함께 쓰면, 타입만 옮겨도 여전히 adapter를 import하고 함수만 주입하면 시그니처에 쓸 타입이
+  없다.
+- domain은 다른 domain을 import할 수 없다(`domain_must_only_import_contract`). 두 capability에
+  걸친 타입은 domain으로 옮길 수 없으므로 contract를 쓰거나 adapter에 남긴다. 공유 규칙을
+  중복 선언해 규칙을 통과시키지 않는다 — 특히 redaction 같은 보안 로직은 한쪽만 고쳐지면
+  그대로 구멍이 된다.
+- **주입에 default 구현을 두지 않는다.** default가 concrete를 가리키면 그 package가 다시
+  adapter를 알게 된다. 미주입은 조용히 통과시키지 말고 구조화된 오류로 드러낸다.
+- 하위 package만 정리해서 상위가 대신 그 adapter를 import하게 되면 edge는 **이동만 하고 줄지
+  않는다.** 상위가 이미 그 adapter를 아는 경우에만 하위 정리가 순감이 된다.
+- fitness graph는 test import를 수집하지 않는다. 테스트는 production wiring과 **같은 concrete
+  구현**을 주입해 동작을 그대로 검증한다. 스텁으로 바꾸면 검증 대상이 달라진다.
 
 ---
 
@@ -235,7 +260,6 @@ SOLID, YAGNI, KISS는 함께 적용한다. SOLID는 인터페이스와 계층을
 ## Hook 컨벤션
 
 - UserPromptSubmit hook은 사용자의 prompt와 project-scoped lifecycle state를 분석해 MCP 후보 힌트를 주입한다. 예외적으로 exact `승인 AH-XXXXXX`는 Codex kubectl live-access pending record를 10분짜리 one-shot grant로 전환하며, raw command 없이 session/request fingerprint에만 결합한다. PreToolUse hook은 tool 실행 직전의 critical path에 있으므로 기본은 host stdout `{}`인 빠른 allow/no-op preflight로 유지한다. 명시적으로 설치된 deterministic gate만 차단할 수 있고, Codex live-access gate는 project-scoped user state의 keyed lock 안에서 token 발급 또는 grant 한 번 소비만 수행한다. PostToolUse hook은 성공한 mutating tool 실행 이후 lifecycle upkeep queue 기록만 수행하며 read-only Bash/조회 output path로 upkeep을 만들지 않는다. Stop hook은 lifecycle reminder를 계산하되 Stop hook stdout schema 호환을 위해 host에는 빈 JSON 객체만 반환한다. PreCompact/PostCompact hook은 pending upkeep queue를 작은 user-state capsule로 저장하고 한 번만 복원한다. Codex와 Claude Code hook adapter는 같은 `agent-harness hook user-prompt/pre-tool-use/post-tool-use/pre-compact/post-compact/stop` CLI를 호출해야 한다. 어떤 hook도 작업을 대신 실행하거나 shared docs를 직접 수정하거나 긴 파일/네트워크를 읽지 않는다.
-- draft-wiki queue append는 hook 휴리스틱이 아니라 메인 에이전트의 명시 판단 뒤에만 수행한다. 장기 재사용 가치가 있다고 판단한 경우 `agent-harness project draft-wiki queue --stdin`을 heredoc과 함께 쓰거나 `--input` 파일을 넘긴다. `agy -p` 호출과 `.agent-harness/draft-wiki/draft` 파일 쓰기는 `agent-harness worker draft-wiki`가 hook 밖에서 수행한다.
 - Hook 출력은 event별 host schema를 따른다. UserPromptSubmit/PostCompact처럼 additional context를 지원하는 이벤트만 `hookSpecificOutput.additionalContext`를 쓰고, Stop/PreToolUse는 빈 JSON 객체 또는 검증된 host control schema만 사용한다. Codex PreToolUse는 native `ask`를 내보내지 않고 token 안내를 포함한 flat block을 사용하며, 승인된 동일 요청을 한 번 소비하면 `{}` allow를 반환한다. 실패해도 사용자 작업을 불필요하게 막지 않도록 작고 deterministic하게 유지한다.
 - UserPromptSubmit output is host-shaped at the adapter edge: Codex uses `--host codex` where needed, omits `systemMessage`, and avoids noisy route/action/profile/pending-upkeep prose in visible TUI channels; Claude Code may keep the richer `systemMessage` + compact `additionalContext` split for events that support it.
 - `.agent-harness/*.md` frontmatter descriptions are canonical bootstrap/sync metadata. Keep them concise English category descriptions, not prose summaries, because every `project bootstrap`/`project bootstrap --sync` target and every project-doc catalog inherits them.

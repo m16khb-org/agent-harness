@@ -6,13 +6,15 @@ import (
 	"fmt"
 	"time"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
 	leaseinbound "agent-harness/internal/adapter/inbound/issueopslease"
+	"agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/adapter/orca"
 	leaseoutbound "agent-harness/internal/adapter/outbound/issueopslease"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	leaseapp "agent-harness/internal/application/issueopslease"
 	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/sqlstore"
 	leasedomain "agent-harness/internal/domain/issueopslease"
 	"agent-harness/internal/port"
 )
@@ -124,23 +126,20 @@ func (e *coreResumeEffects) readArtifacts(_ context.Context, record leasecontrac
 	return leasecontract.ResumeArtifacts{ClaimTokenPath: artifacts.ClaimTokenPath, IssueBodySHA256: artifacts.IssueBodySHA256, ContextPacketPath: artifacts.ContextPacketPath, ContextPacketSHA256: artifacts.ContextPacketSHA256, OwnerPromptPath: artifacts.OwnerPromptPath, OwnerPromptSHA256: artifacts.OwnerPromptSHA256}, nil
 }
 
-func (e *coreResumeEffects) observeOwner(ctx context.Context, record leasecontract.Record) (leasedomain.ResumeInventory, bool, error) {
+func (e *coreResumeEffects) observeOwner(ctx context.Context, record leasecontract.Record) (leasedomain.ResumeInventory, error) {
 	if e.owner == nil || record.Execution == nil || record.Execution.Orca == nil {
-		return leasedomain.ResumeInventory{}, false, fmt.Errorf("resume owner inspector is required")
+		return leasedomain.ResumeInventory{}, fmt.Errorf("resume owner inspector is required")
 	}
 	binding := record.Execution.Orca
 	inventory, err := e.owner.InspectOwner(ctx, port.ExecutionOrcaOwnerInventoryRequest{RuntimeID: binding.RuntimeID, WorktreeID: binding.WorktreeID, RunID: binding.RunID, TaskID: binding.TaskID, DispatchID: binding.DispatchID, TerminalPTYID: binding.TerminalPTYID, AllowRuntimeRollover: true})
 	if err != nil {
-		return leasedomain.ResumeInventory{}, false, fmt.Errorf("inspect previous Orca owner: %w", err)
+		return leasedomain.ResumeInventory{}, fmt.Errorf("inspect previous Orca owner: %w", err)
 	}
-	coreRecord, err := resumeCoreRecord(record)
-	if err != nil {
-		return leasedomain.ResumeInventory{}, false, err
-	}
-	if err := issueops.ValidateExecutionResumeOwner(coreRecord, inventory); err != nil {
-		return leasedomain.ResumeInventory{}, false, err
-	}
-	return leasedomain.ResumeInventory{RuntimeID: inventory.RuntimeID, TerminalLive: inventory.TerminalLive, TaskLive: inventory.TaskLive, TerminalID: inventory.TerminalID}, true, nil
+	return leasedomain.ResumeInventory{
+		RuntimeID: inventory.RuntimeID, TerminalLive: inventory.TerminalLive, TerminalInventoryComplete: inventory.TerminalInventoryComplete,
+		TaskLive: inventory.TaskLive, TerminalID: inventory.TerminalID, TaskStatus: inventory.TaskStatus, DispatchStatus: inventory.DispatchStatus,
+		DispatchAssigneeHandle: inventory.DispatchAssigneeHandle, DispatchAssigneePresent: inventory.DispatchAssigneePresent,
+	}, nil
 }
 
 func (e *coreResumeEffects) inspectStage(ctx context.Context, intent leaseapp.ResumeIntentState) (leasecontract.ResumeStageInventory, error) {
@@ -185,14 +184,14 @@ func (e *coreResumeEffects) invokeStage(ctx context.Context, intent leaseapp.Res
 	return leasecontract.ResumeStageReceipt{TerminalPTYID: receipt.TerminalPTYID, RunID: receipt.RunID, RunBound: receipt.RunBound, TaskID: receipt.TaskID, DispatchID: receipt.DispatchID}, nil
 }
 
-func resumeCoreRecord(record leasecontract.Record) (issueops.IssueOpsRecord, error) {
+func resumeCoreRecord(record leasecontract.Record) (issueopscontract.IssueOpsRecord, error) {
 	data, err := json.Marshal(record)
 	if err != nil {
-		return issueops.IssueOpsRecord{}, err
+		return issueopscontract.IssueOpsRecord{}, err
 	}
-	var result issueops.IssueOpsRecord
+	var result issueopscontract.IssueOpsRecord
 	if err := json.Unmarshal(data, &result); err != nil {
-		return issueops.IssueOpsRecord{}, err
+		return issueopscontract.IssueOpsRecord{}, err
 	}
 	return result, nil
 }

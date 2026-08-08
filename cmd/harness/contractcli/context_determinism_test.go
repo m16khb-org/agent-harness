@@ -1,13 +1,12 @@
 package contractcli
 
 import (
+	contextregion "agent-harness/internal/domain/contextregion"
 	"testing"
-
-	"agent-harness/internal/core"
 )
 
 func TestCompatibilityContractContextIsByteDeterministic(t *testing.T) {
-	stable, _, err := core.ContextSerializationStable(func() any { return BuildCompatibilityContract() })
+	stable, _, err := contextregion.ContextSerializationStable(func() any { return BuildCompatibilityContract() })
 	if err != nil {
 		t.Fatal(err)
 	}

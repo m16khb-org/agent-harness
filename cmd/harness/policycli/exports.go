@@ -1,6 +1,6 @@
 package policycli
 
-import "agent-harness/internal/core"
+import policy "agent-harness/internal/contract/policy"
 
 func Run(args []string) error {
 	return runPolicy(args)
@@ -22,10 +22,10 @@ func RunAudit(args []string) error {
 	return runPolicyAudit(args)
 }
 
-func ParseFlags(name string, args []string) (core.CommandPolicyRequest, bool, error) {
+func ParseFlags(name string, args []string) (policy.CommandPolicyRequest, bool, error) {
 	return parseCommandPolicyFlags(name, args)
 }
 
-func ParseRunFlags(args []string) (core.CommandPolicyRequest, bool, bool, error) {
+func ParseRunFlags(args []string) (policy.CommandPolicyRequest, bool, bool, error) {
 	return parseCommandPolicyRunFlags(args)
 }

@@ -52,8 +52,8 @@ The script builds the current binary and immediately runs the existing top-level
    - Dry-run both high-level paths with JSON when available:
      - `./bin/agent-harness bootstrap --dry-run --json`
    - Verify native install surfaces:
-     - `./bin/agent-harness install-native --dry-run --json` (`install-native` is a compatibility alias for `bootstrap` in the current CLI)
-     - `./bin/agent-harness install-native --json` only for full install tasks.
+     - `./bin/agent-harness install --dry-run --json`
+     - `./bin/agent-harness install --json` only for full install tasks.
      - `codex mcp get agent_harness`
      - `claude mcp list` and check for duplicate/conflicting `agent_harness` scopes. Exception: in the agent-harness repo itself, user-scope `agent_harness` plus project-scope `agent_harness_project` is the intended dogfood setup (`.mcp.json` template), not a conflict.
 
@@ -67,7 +67,7 @@ The script builds the current binary and immediately runs the existing top-level
    - Stop the temp daemon and verify its pid is gone.
 
 5. **State/worker/policy sweep**
-   - With temp dirs, run state migrate/write/read/doctor, policy check on `git status --short`, worker enqueue/list/run.
+   - With temp dirs, run exact current-v1 state write/read/doctor, policy check on `git status --short`, worker enqueue/list/run.
    - Verify worker remains no-shell/read-only unless explicitly testing policy denial.
 
 6. **Leak/zombie/orphan sweep**

@@ -68,7 +68,7 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 | `agent-harness daemon` user-level daemon | 구현됨 | 여러 host/session의 공통 MCP backend, 상태 공유 | `HARNESS_DAEMON_DIR` 또는 `~/.local/state/agent-harness/daemon`; stale lock, pid, socket, stop/status 제공 |
 | `agent-harness issueops` | 구현됨 | issue-driven 루프의 durable 상태와 direct/Orca execution v1 lease | IssueOps가 단일 authority다. Orca는 readiness, workspace, native owner launch/inventory만 제공하고 generation/actor/CWD fence는 core가 소유한다. |
 | `agent-harness loop` | 구현됨 | verify-until-done 루프 계약의 durable 상태와 PR readiness 게이트 | 하네스는 검증 명령을 실행하지 않고 `verify_argv`, 시도 evidence, stop 상태를 기록·게이트한다. |
-| `agent-harness worker` one-shot jobs | 부분 구현 | no-shell lifecycle job record와 draft-wiki queue 처리 | 현재 daemon은 MCP proxy backend이며 장기 상주 job daemon이 아니다. `worker draft-wiki`는 메인 에이전트가 명시 적재한 queue를 한 번 처리하고 `agy -p` argv만 호출한다. |
+| `agent-harness worker` one-shot jobs | 부분 구현 | no-shell lifecycle job record | 현재 daemon은 MCP proxy backend이며 장기 상주 job daemon이 아니다. |
 | Codex plugin/skill | Phase 5 | Codex에서 설치·명령·문서 UX 개선 | core 로직 금지, CLI/MCP 호출 래퍼만 허용 |
 | Claude commands/hooks | Phase 6 | Claude Code UX 개선 | core 정책 우회 금지 |
 
@@ -112,7 +112,7 @@ Deterministic baseline과 live evidence는 advertised schema validity와 closed 
 `internal/architecture`는 production import graph의 test-only fitness boundary다. `go list -json ./...`의 direct `Imports`만 정렬된 `importer -> imported` edge로 수집하며, test import와 transitive dependency는 graph에 포함하지 않는다.
 
 - `internal/core/... -> internal/adapter/...|cmd/...`, `internal/adapter/... -> cmd/...`, `internal/port -> internal/...`는 baseline 없이 즉시 실패한다.
-- legacy infrastructure·adapter-to-core·composition root 밖 concrete-adapter edge는 `internal/architecture/testdata/legacy_imports.txt`와 정확히 일치해야 한다. 신규·이동·삭제 후 남은 stale edge는 `legacy_baseline` rule과 edge를 함께 출력한다.
+- legacy adapter edge는 0이다. `internal/adapter/*`는 composition root(`cmd/harness/harnessapp`)에서만 import한다. 예외는 둘뿐이다 — 같은 capability의 하위 package 사이 edge는 구현 정리이므로 세지 않고(capability는 `internal/adapter/` 다음 경로 요소, `outbound`/`inbound`는 방향 분류이므로 그 다음 요소까지 읽는다), `outbound/sqlstore`는 capability가 아니라 공유 저장 엔진이므로 다른 outbound 어댑터가 직접 쓸 수 있다. 그 밖의 edge는 `TestProductionGraphHasNoLegacyAdapterEdges`가 막는다.
 - baseline을 줄이는 변경은 의도된 architecture 개선으로 같은 review에서만 허용한다. production package 이동이나 runtime wiring은 이 ratchet의 범위가 아니다.
 
 ---
@@ -124,7 +124,6 @@ Deterministic baseline과 live evidence는 advertised schema validity와 closed 
 - 대상: `AGENTS.md`, `CLAUDE.md`, `GENIUS_THINK.md`, `.agent-harness/*.md`, `skills/self-verify/*.md`, `skills/self-augment/*.md`
 - 필드: relative path, absolute path, title, headings, byte size
 - 제공 표면: CLI `docs --json`, MCP `docs_index`, resource `harness://docs`
-- 제외: `.agent-harness/draft-wiki/**`는 사용자가 검토하는 wiki 후보 staging area이므로 source-of-truth docs index에 섞지 않는다.
 
 Project docs bootstrap:
 
@@ -133,19 +132,11 @@ Project docs bootstrap:
 - 안전: `AGENTS.md` 전체를 덮어쓰지 않고 `AGENT_HARNESS` marker block만 관리한다.
 - MCP: `project_docs_bootstrap_plan`, `project_docs_route`, `harness://project-docs`와 lifecycle profile metadata로 어떤 작업에 어떤 문서/레포 맥락을 확인해야 하는지 제공한다.
 
-Draft wiki staging:
-
-- 위치: 적용 대상 repo의 `.agent-harness/draft-wiki/{draft,approved,rejected}/`
-- 목적: 장기 재사용 가치가 있다고 판단한 후보를 사용자가 파일 diff로 직접 검토·수정·승인하는 repo-local staging area로 둔다.
-- 제공 표면: CLI `agent-harness project draft-wiki init/list/suggest/queue/approve/reject/promote`
-- Hook/worker 흐름: hook은 draft-wiki 가치 판단이나 queue append를 자동 수행하지 않는다. UserPromptSubmit은 “메인 에이전트가 장기 재사용 가치 여부를 판단하라”는 지침만 주입하고, 메인 에이전트가 의미 있는 후보라고 판단한 경우에만 `agent-harness project draft-wiki queue --stdin`(heredoc 권장) 또는 `--input`으로 bounded/redacted user-state queue(`draft-wiki-queue.jsonl`)에 명시 적재한다. hook critical path에서는 `agy`를 실행하지 않는다. `agent-harness worker draft-wiki`가 queue를 읽어 `agy -p`를 argv 실행하고 응답을 `.agent-harness/draft-wiki/draft/*.md`에 쓴다.
-- 경계: `suggest`와 `worker draft-wiki`만 `agy -p`를 호출한다. `promote --confirm`은 승인된 draft를 repo-local `exported/` 디렉토리로 이동하고 `export.log`만 append한다. 외부 wiki ingest, lint, index, query-pack은 하네스 promote의 책임이 아니다.
-
 현재 `agent-harness state`는 작은 에이전트 체크포인트를 state root의 SQLite 데이터베이스(`harness.db`의 `state` bucket row)로 저장한다. project lifecycle state는 같은 user-state root 아래 `projects/<repo-id>/`에 격리되며 target repo의 `.agent-harness/`에는 쓰지 않는다. IssueOps v1 상태는 독립 namespace `issueops_v1/harness.db`의 `issueops_v1` bucket에 저장해 Codex와 Claude 세션을 넘어 이어간다. Loop 상태는 같은 user-state root 아래 `loop/harness.db`의 `loop` bucket에 저장한다. 모든 read-modify-write span은 해당 root의 `harness.lock.db`에 BEGIN IMMEDIATE 트랜잭션을 유지하는 sqlstore span으로 직렬화된다(프로세스 사망 시 자동 해제, span 중첩 금지).
 
 - 기본 위치: `~/.local/state/agent-harness/`
 - project lifecycle 위치: `~/.local/state/agent-harness/projects/<repo-id>/project.json` 및 `doc-upkeep-queue.jsonl`; `<repo-id>`는 repo fingerprint hash라 같은 머신의 여러 repo가 섞이지 않는다.
-- IssueOps 위치: `~/.local/state/agent-harness/issueops_v1/harness.db`, bucket `issueops_v1`. 한 row는 lifecycle evidence와 정확히 하나의 `Execution`을 저장한다. Execution은 canonical workspace, direct/Orca mode, generation-fenced lease, native process receipt, pending external intent, Orca resource identity, sealed owner artifacts, completion receipt를 가진다. 사용자 요청과 설계 검토 같은 freeform 값은 secret-like 패턴을 redaction한 뒤 저장한다.
+- IssueOps 위치: `~/.local/state/agent-harness/issueops_v1/harness.db`, bucket `issueops_v1`. 한 row는 lifecycle evidence와 정확히 하나의 `Execution`을 저장한다. Execution은 canonical workspace, direct/Orca mode, generation-fenced lease, native process receipt, pending external intent, Orca resource identity, generation에 봉인된 issue-body/context-packet/owner-prompt digest identity, completion receipt를 가진다. terminal preparation intent가 삭제된 뒤에는 identity version 1과 이 세 digest가 resume의 trust root이며 현재 prompt template을 다시 렌더링하지 않는다. Version marker 없는 all-empty binding만 과거 record로 복구할 수 있고, versioned all-empty는 새 persistence invariant 위반으로 거부한다. 사용자 요청과 설계 검토 같은 freeform 값은 secret-like 패턴을 redaction한 뒤 저장한다.
 - IssueOps v1의 현재 쓰기 버전은 `schema_version=1`이다. Missing/zero v1 row는 1로 정규화하지만 legacy write-authority key, mixed schema, 또는 future schema는 byte-identical fail-closed다. Legacy namespace와 row/file은 자동 변환하지 않는다. `issueops reset-legacy preview/status/confirm`의 fingerprint-CAS, live-process barrier, staged-binary binding, exact file manifest를 통과한 명시적 destructive reset 뒤에만 v1 mutation이 열린다.
 - `execution release`는 첫 production vertical이다. CLI/MCP transport facade는 injected release handler만 호출하고, `internal/contract/issueopslease`의 stable v1 canonicalization → pure `internal/domain/issueopslease` → capability-local `internal/application/issueopslease` → inbound/outbound adapter 순서로 흐른다. `cmd/harness/harnessapp`만 SQLite store, process observation, clock, filesystem path matcher를 조립하며, 기존 two-argument `ReleaseExecution`은 외부 Go surface와 differential oracle을 위한 compatibility facade로만 남는다.
 - `execution reconcile`의 Orca `worktree_create`·`owner_launch`·`dispatch` confirm도 같은 vertical 경계를 사용한다. kind-local router가 injected handler로 보내고, application은 호출당 현재 durable stage 하나만 inventory/adopt 또는 bounded retry/CAS한다. preview와 no-pending은 side effect가 없는 compatibility router에 남는다.
@@ -158,6 +149,7 @@ Draft wiki staging:
 - schema: current `schema_version=1`; version이 없는 legacy record는 read-compatible하고 `state migrate`로 승격한다.
 - 제공 표면: CLI `state write/read/list/prune/doctor/migrate`, MCP `state_write/state_read/state_list/state_prune/state_doctor/state_migrate`, resource `harness://state`
 - IssueOps 제공 표면: 기존 lifecycle/domain CLI와 함께 `issueops execution prepare/status/claim/release/replace/reconcile/switch-mode/complete`, generation-fenced `issueops remote create-pr`, destructive migration boundary인 `issueops reset-legacy preview/status/confirm`을 제공한다. 이원 구조 운영 표면으로 `issueops artifact stage/unstage`(prepare 전 스테이징·materialize·orca packet manifest 봉인), `issueops implementation-review record`(orca 모드 publication fail-closed 게이트, 변경 집합 fingerprint 바인딩), `issueops list`(read-only 다중 사이클 집계, scanned_records 비용 노출), `issueops cleanup finish`(record-backed 머지 후 정리 — orca 회수→git worktree 제거→브랜치 CAS 삭제→감사 라인 멱등 반영→레코드 삭제, resumable), `issueops remote reflect-completion/close-issue`(completion 섹션 보존·부모 이슈 close, 원격 readback fail-closed)를 제공한다. execution prepare는 `--owner-model` 미지정 시 host별 implementer 기본값(codex gpt-5.6-terra/xhigh, claude claude-sonnet-5/high)을 적용하고, owner 프롬프트에 planner급 reviewer 모델(codex gpt-5.6-sol/xhigh, claude claude-opus-5/high)을 렌더한다. Claude의 Fable 5는 자동 기본값이나 폴백으로 쓰지 않고 명시적 수동 지정으로만 사용한다. IssueOps MCP 표면은 정확히 하나인 `issueops_execution`이며 action으로 같은 execution state machine을 호출한다. `execution prepare`가 provider branch의 exact base SHA에서 fixed sibling worktree를 만들고, direct는 caller에게 generation 1을 부여하며 Orca는 sealed packet/prompt/token file과 claimable lease를 만든다. External mutation은 intent-first이고 ambiguity는 reconcile 전까지 fail closed다. `execution complete`는 phase `pr`, active generation, final HEAD, committed Turing report, verification, exact verified remote URL을 요구하며 `done` 전이와 lease release를 원자적으로 기록한다.
+- IssueOps가 생성하는 `next_command`는 prepare/status/replace/resume/sync-base/switch-mode preview와 cleanup preview/finish를 포함해 첫 token을 생성 바이너리의 canonical executable literal로 렌더하고 같은 path·SHA-256·lease generation envelope를 포함한다. 실행 authority를 제거하는 switch-mode apply는 shell command를 만들지 않고 non-command `next_action`만 반환한다. 사람이 직접 입력하는 일반 `agent-harness` PATH UX는 바꾸지 않는다. CLI와 MCP composition은 outbound executable observer를 통해 같은 envelope를 결합하고, IssueOps root는 subcommand mutation 전에 현재 executable과 durable generation을 대조한다. Hook은 absolute token이 envelope와 일치하는 것만으로 신뢰하지 않고 durable worktree 또는 source root의 canonical `bin/agent-harness`인지 먼저 제한한다. 관측 실패·stale binary·generation drift에는 command를 내보내거나 fallback하지 않으며 structured error로 중단한다. Contract는 DTO·pure bind/validate만 소유하고 port는 contract를 import하지 않는 순수 observation receipt를 소유한다. 실제 observer 생성은 `harnessapp` composition root에만 두고 executable 관측 I/O는 outbound adapter에만 둔다.
 - cleanup: `state prune --max-age DURATION`은 기본 dry-run이고, 실제 삭제에는 `--confirm`이 필요하다.
 - integrity: `state doctor`는 checkpoint 파일을 수정하지 않고 invalid JSON, key mismatch, byte count drift, timestamp 오류를 보고한다.
 - comprehensive diagnostics: `agent-harness doctor`는 state doctor를 포함해 install, hooks, MCP, daemon, project docs, lifecycle namespace, repo-local runtime/schema 흔적을 종합 점검한다.
@@ -361,6 +353,27 @@ cycle은 명시값이 없을 때 같은 경로를 계산해 하위 호환한다.
 - Completion never merges or deletes local/remote resources. Cleanup remains a
   separate human-authorized operation based on current merge and cleanliness
   evidence.
+- A completed replacement first observes the fetched parent base through the
+  `issueopsbasesync` port. Parent drift returns the typed
+  `post_completion_sync_base_required` contract before owner inventory,
+  artifact preparation, token creation, completion archival, or record CAS.
+- Post-completion sync authority is the released lease plus its current stamped
+  completion generation, canonical cwd, live native actor, and preview
+  fingerprint. Completion history never restores current authority. The only
+  recovery sequence is released current completion + drift → sync-base preview
+  → generation/fingerprint-fenced sync-base apply → replacement preview →
+  reseed/claim → verify and re-complete.
+- `internal/port/issueopsbasesync` owns only request, receipt, and interface.
+  The public typed error and exact next-command projection belong to
+  `internal/contract/issueops`; Git/network observation belongs to the outbound
+  adapter.
+- The #303 provenance boundary binds typed-error `next_command` on the reachable
+  CLI and MCP error paths. CLI conflict `next_command` and `abort_command` share
+  one observed canonical executable/hash/generation receipt; observation
+  failure exposes no unbound fallback. As #326 records, the public MCP action
+  enum excludes sync-base and therefore has no sync-base success action/result;
+  AC-06 host parity is the exact CLI command plus Codex/Claude hook classifier,
+  while MCP binds only reachable resume/replace `BaseSyncRequiredError` output.
 
 ## MCP tool design guidance
 
@@ -399,4 +412,4 @@ quiescence·head OID CAS·fingerprint) 뒤에만 파괴 단계를 수행하고 �
 - `internal/adapter/mcp`는 compatibility/worker 계열 adapter-level MCP tool descriptor를 소유한다. `cmd/harness`는 JSON-RPC request handling과 core usecase 호출을 유지한다.
 - `agent-harness contract schema|check`는 CLI/MCP command list, MCP tool name, required response field를 검증하는 DTO compatibility 표면이다.
 - `agent-harness policy audit`는 redacted command-policy decision을 append-only JSONL로 기록하며 command를 실행하지 않는다.
-- `agent-harness worker`의 generic `enqueue/status/list/cancel`은 no-shell lifecycle MVP다. 예외적으로 `worker draft-wiki`는 메인 에이전트가 명시 적재한 user-state draft-wiki queue 처리 전용 one-shot worker이며 shell을 거치지 않고 `agy -p` argv만 호출해 repo-local draft를 만든다.
+- `agent-harness worker`의 generic `enqueue/status/list/cancel`은 no-shell lifecycle MVP다.

@@ -5,7 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"agent-harness/internal/core/issueops"
+	issueopscontract "agent-harness/internal/contract/issueops"
+
+	"agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -46,11 +48,11 @@ func TestIssueOpsPublicationCompositionBuildsBothServicesAndCreatesPreview(t *te
 	stateRoot := t.TempDir()
 	repo := t.TempDir()
 	branch := "195-publication-composition"
-	record := issueops.IssueOpsRecord{
+	record := issueopscontract.IssueOpsRecord{
 		OK: true, SchemaVersion: issueops.IssueOpsCurrentSchemaVersion,
 		ID: issueops.NewIssueOpsID(repo, branch), Repo: repo, Branch: branch, Phase: issueops.IssueOpsPhasePR,
 		IssueURL: "https://github.com/acme/repo/issues/195",
-		BranchPrepare: &issueops.IssueOpsBranchPrepare{
+		BranchPrepare: &issueopscontract.IssueOpsBranchPrepare{
 			Provider: "github", IssueURL: "https://github.com/acme/repo/issues/195",
 			Branch: branch, BaseBranch: "117-hexagonal-architecture-migration", LinkVerified: true,
 		},
@@ -70,7 +72,7 @@ func TestIssueOpsPublicationCompositionBuildsBothServicesAndCreatesPreview(t *te
 			}
 			return fake, nil
 		},
-		VerifyLive: func(issueops.IssueOpsRemoteArtifactVerificationRequest) error {
+		VerifyLive: func(issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error {
 			verifyCalls++
 			return nil
 		},

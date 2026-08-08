@@ -3,11 +3,9 @@ package statecli
 import (
 	"flag"
 	"fmt"
-
-	"agent-harness/internal/core"
 )
 
-func runStatePrune(args []string) error {
+func runStatePrune(deps Dependencies, args []string) error {
 	fs := flag.NewFlagSet("state prune", flag.ContinueOnError)
 	maxAge := fs.Duration("max-age", 0, "prune records older than this duration, e.g. 720h")
 	confirm := fs.Bool("confirm", false, "delete matching records; omitted means dry-run")
@@ -15,7 +13,7 @@ func runStatePrune(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := core.StatePrune(*maxAge, *confirm)
+	result, err := deps.Prune(*maxAge, *confirm)
 	if err != nil {
 		return err
 	}
@@ -33,13 +31,13 @@ func runStatePrune(args []string) error {
 	return nil
 }
 
-func runStateDoctor(args []string) error {
+func runStateDoctor(deps Dependencies, args []string) error {
 	fs := flag.NewFlagSet("state doctor", flag.ContinueOnError)
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := core.StateDoctor()
+	result, err := deps.Doctor()
 	if err != nil {
 		return err
 	}
@@ -57,41 +55,13 @@ func runStateDoctor(args []string) error {
 	return nil
 }
 
-func runStateMigrate(args []string) error {
-	fs := flag.NewFlagSet("state migrate", flag.ContinueOnError)
-	confirm := fs.Bool("confirm", false, "rewrite legacy records; omitted means dry-run")
-	jsonOut := fs.Bool("json", false, "print JSON")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	result, err := core.StateMigrate(*confirm)
-	if err != nil {
-		return err
-	}
-	if *jsonOut {
-		return printJSON(result)
-	}
-	if result.Confirm {
-		fmt.Printf("migrated %d state records from schema %d to %d\n", len(result.MigratedKeys), result.FromSchema, result.ToSchema)
-		for _, key := range result.MigratedKeys {
-			fmt.Println(key)
-		}
-		return nil
-	}
-	fmt.Printf("would migrate %d state records from schema %d to %d\n", len(result.CandidateKeys), result.FromSchema, result.ToSchema)
-	for _, key := range result.CandidateKeys {
-		fmt.Println(key)
-	}
-	return nil
-}
-
-func runStateMaintain(args []string) error {
+func runStateMaintain(deps Dependencies, args []string) error {
 	fs := flag.NewFlagSet("state maintain", flag.ContinueOnError)
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := core.StateMaintain()
+	result, err := deps.Maintain()
 	if err != nil {
 		return err
 	}

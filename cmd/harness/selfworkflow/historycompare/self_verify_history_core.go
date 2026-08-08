@@ -7,13 +7,12 @@ import (
 	"strings"
 
 	"agent-harness/cmd/harness/selfworkflow/stateio"
-	"agent-harness/internal/core"
 )
 
 func SelfAugmentHistory(prefix string, limit int, retentionOptions ...SelfAugmentHistoryRetentionOptions) (SelfAugmentHistoryResult, error) {
 	result := SelfAugmentHistoryResult{
 		OK:       false,
-		StateDir: core.StateDir(),
+		StateDir: StateDir(),
 		Prefix:   prefix,
 		Limit:    limit,
 		Entries:  []SelfAugmentHistoryEntry{},
@@ -36,7 +35,7 @@ func SelfAugmentHistory(prefix string, limit int, retentionOptions ...SelfAugmen
 	if retention.PruneRequested && retention.Limit <= 0 {
 		return result, fmt.Errorf("prune-retention requires a positive --retention-limit")
 	}
-	list, err := core.StateList()
+	list, err := StateList()
 	if err != nil {
 		return result, err
 	}
@@ -44,7 +43,7 @@ func SelfAugmentHistory(prefix string, limit int, retentionOptions ...SelfAugmen
 		if prefix != "" && !strings.HasPrefix(record.Key, prefix) {
 			continue
 		}
-		state, err := core.StateRead(record.Key)
+		state, err := StateRead(record.Key)
 		if err != nil {
 			result.Skipped = append(result.Skipped, SelfAugmentHistorySkipped{Key: record.Key, Reason: "state_read:" + err.Error()})
 			continue

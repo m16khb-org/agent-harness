@@ -2,7 +2,9 @@ package issueopslease
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -10,7 +12,348 @@ import (
 
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	leasedomain "agent-harness/internal/domain/issueopslease"
+	basesyncport "agent-harness/internal/port/issueopsbasesync"
 )
+
+func TestReseedServiceRejectsParentDriftBeforeArtifactsOrCommit(t *testing.T) {
+	record := completedReseedTestRecord(strings.Repeat("d", 40))
+	record.Stable.BranchPrepare = json.RawMessage(`{"base_branch":"main"}`)
+	before, err := cloneReseedRecord(record.Stable)
+	if err != nil {
+		t.Fatal(err)
+	}
+	commitCalls := 0
+	prepareCalls := 0
+	inspectorCalls := 0
+	service := newReseedServiceForTestWithBaseSync(
+		reseedFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		reseedRepositoryFake{snapshot: ReseedSnapshot{Record: record}, commit: func(context.Context, ReseedSnapshot, Record) (RepositoryResult, error) {
+			commitCalls++
+			return RepositoryResult{}, nil
+		}},
+		reseedArtifactsFake{prepare: func(context.Context, leasecontract.Record) (ReseedArtifactReceipt, error) {
+			prepareCalls++
+			return ReseedArtifactReceipt{TokenSHA256: strings.Repeat("a", 64)}, nil
+		}, cleanup: func(context.Context, leasecontract.Record) error { return nil }},
+		baseSyncInspectorFunc(func(_ context.Context, request basesyncport.Request) (basesyncport.Receipt, error) {
+			inspectorCalls++
+			if request.Worktree != "/worktree" || request.BaseBranch != "main" {
+				t.Fatalf("base sync request=%+v", request)
+			}
+			return basesyncport.Receipt{BaseOID: strings.Repeat("a", 40), WorkOID: strings.Repeat("b", 40), SyncRequired: true}, nil
+		}),
+	)
+	request := reseedServiceRequest(record.ID)
+	request.ExpectedGeneration = 4
+	request.CompletionGeneration = 4
+	_, err = service.Reseed(context.Background(), request)
+	if err == nil {
+		t.Fatal("drifted completed reseed was allowed")
+	}
+	structured, ok := err.(interface{ IssueOpsErrorFields() map[string]any })
+	if !ok {
+		t.Fatalf("drift rejection is not structured: %T %v", err, err)
+	}
+	fields := structured.IssueOpsErrorFields()
+	if fields["code"] != "post_completion_sync_base_required" || fields["completion_generation"] != uint64(4) {
+		t.Fatalf("drift rejection fields=%v", fields)
+	}
+	if inspectorCalls != 1 || commitCalls != 0 || prepareCalls != 0 {
+		t.Fatalf("calls inspector=%d commit=%d prepare=%d", inspectorCalls, commitCalls, prepareCalls)
+	}
+	if !reflect.DeepEqual(record.Stable, before) {
+		t.Fatalf("drift rejection mutated loaded state: before=%+v after=%+v", before, record.Stable)
+	}
+}
+
+func TestReseedServiceReopensCompletedExecutionAtomically(t *testing.T) {
+	oldHead := "d6d8c6a5a98fcca6bca33edf9e7965636429ce28"
+	newHead := "ff27b34520e4e253d8ebfd523e4e4352bf93e8d8"
+	record := completedReseedTestRecord(oldHead)
+	var prepared leasecontract.Record
+	var committed leasecontract.Record
+	service := newReseedServiceForTest(
+		reseedFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		reseedRepositoryFake{snapshot: ReseedSnapshot{Record: record}, commit: func(_ context.Context, _ ReseedSnapshot, next Record) (RepositoryResult, error) {
+			committed = next.Stable
+			return RepositoryResult{Record: next, Execution: *next.Stable.Execution}, nil
+		}},
+		reseedArtifactsFake{prepare: func(_ context.Context, next leasecontract.Record) (ReseedArtifactReceipt, error) {
+			prepared = next
+			return ReseedArtifactReceipt{TokenSHA256: strings.Repeat("a", 64), Receipt: leasecontract.ReseedReceipt{ClaimTokenPath: "/worktree/token"}}, nil
+		}, cleanup: func(context.Context, leasecontract.Record) error { return nil }},
+	)
+	request := reseedServiceRequest(record.ID)
+	request.ExpectedGeneration = 4
+	request.Reason = "functional HEAD moved to " + newHead
+	result, err := service.Reseed(context.Background(), request)
+	if err != nil {
+		t.Fatalf("reseed completed execution: %v", err)
+	}
+	for name, candidate := range map[string]leasecontract.Record{"prepared": prepared, "committed": committed} {
+		if candidate.Execution.Completion != nil || candidate.Phase != "implement" {
+			t.Fatalf("%s current completion=%+v phase=%q", name, candidate.Execution.Completion, candidate.Phase)
+		}
+		if len(candidate.Execution.CompletionHistory) != 1 {
+			t.Fatalf("%s history=%+v", name, candidate.Execution.CompletionHistory)
+		}
+		entry := candidate.Execution.CompletionHistory[0]
+		if entry.Generation != 4 || entry.Completion.FinalHead != oldHead || entry.Reason != request.Reason || entry.ReopenedAt != "2026-07-30T09:00:00Z" {
+			t.Fatalf("%s history entry=%+v", name, entry)
+		}
+		assertCompletedReseedProofCleared(t, candidate)
+		assertCompletedReseedHistoryPreserved(t, candidate)
+		assertCompletedReseedLedgerStale(t, candidate)
+	}
+	if result.Execution.Lease.Generation != 5 || result.Execution.Completion != nil || result.Execution.CompletionHistory[0].Completion.FinalHead != oldHead {
+		t.Fatalf("result execution=%+v", result.Execution)
+	}
+}
+
+func TestReseedServiceArchivesCompletionAtItsOriginGeneration(t *testing.T) {
+	record := completedReseedTestRecord(strings.Repeat("e", 40))
+	record.Stable.Execution.Lease.Generation = 5
+	record.Stable.Execution.Completion.Generation = 5
+	record.Lease = record.Stable.Execution.Lease
+	record.Stable.Execution.CompletionHistory = []leasecontract.CompletionHistoryEntry{{
+		Generation: 1,
+		Completion: leasecontract.Completion{FinalHead: strings.Repeat("a", 40), TuringReportPath: ".agent-harness/turing/prior.json", Verification: []string{"prior verification"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/1", CompletedAt: "2026-07-01T00:00:00Z"},
+		Reason:     "prior reopen", ReopenedAt: "2026-07-02T00:00:00Z",
+	}}
+	var committed leasecontract.Record
+	service := newReseedServiceForTest(
+		reseedFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		reseedRepositoryFake{snapshot: ReseedSnapshot{Record: record}, commit: func(_ context.Context, _ ReseedSnapshot, next Record) (RepositoryResult, error) {
+			committed = next.Stable
+			return RepositoryResult{Record: next, Execution: *next.Stable.Execution}, nil
+		}},
+		reseedArtifactsFake{prepare: func(_ context.Context, _ leasecontract.Record) (ReseedArtifactReceipt, error) {
+			return ReseedArtifactReceipt{TokenSHA256: strings.Repeat("c", 64)}, nil
+		}, cleanup: func(context.Context, leasecontract.Record) error { return nil }},
+	)
+	request := reseedServiceRequest(record.ID)
+	request.ExpectedGeneration = 5
+	request.Reason = "functional HEAD moved"
+	if _, err := service.Reseed(context.Background(), request); err != nil {
+		t.Fatal(err)
+	}
+	if len(committed.Execution.CompletionHistory) != 2 || committed.Execution.CompletionHistory[1].Generation != 5 {
+		t.Fatalf("history=%+v", committed.Execution.CompletionHistory)
+	}
+	if got := committed.Execution.CompletionHistory[0].Completion.FinalHead; got != strings.Repeat("a", 40) {
+		t.Fatalf("prior history changed: %+v", committed.Execution.CompletionHistory[0])
+	}
+}
+
+func TestReseedServiceRejectsMissingStampedCompletionGeneration(t *testing.T) {
+	record := completedReseedTestRecord("d6d8c6a5a98fcca6bca33edf9e7965636429ce28")
+	record.Stable.Execution.Lease.Generation = 5
+	record.Stable.Execution.Lease.ReplacedAt = "2026-08-03T17:58:40.077656Z"
+	record.Stable.Execution.Completion.Generation = 0
+	record.Stable.Execution.Completion.CompletedAt = "2026-08-03T17:41:13.488177Z"
+	record.Lease = record.Stable.Execution.Lease
+	service := newReseedServiceForTest(
+		reseedFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		reseedRepositoryFake{snapshot: ReseedSnapshot{Record: record}, commit: func(context.Context, ReseedSnapshot, Record) (RepositoryResult, error) {
+			t.Fatal("commit must not run")
+			return RepositoryResult{}, nil
+		}},
+		reseedArtifactsFake{prepare: func(context.Context, leasecontract.Record) (ReseedArtifactReceipt, error) {
+			t.Fatal("prepare must not run")
+			return ReseedArtifactReceipt{}, nil
+		}, cleanup: func(context.Context, leasecontract.Record) error { return nil }},
+	)
+	for _, selected := range []uint64{4, 0} {
+		request := reseedServiceRequest(record.ID)
+		request.ExpectedGeneration = 5
+		request.CompletionGeneration = selected
+		if _, err := service.Reseed(context.Background(), request); err == nil || err.Error() != "invalid or missing stamped completion generation" {
+			t.Fatalf("selected=%d invalid completion error=%v", selected, err)
+		}
+	}
+}
+
+func TestReseedServiceRejectsConflictingCompletionProvenance(t *testing.T) {
+	record := completedReseedTestRecord(strings.Repeat("d", 40))
+	service := newReseedServiceForTest(
+		reseedFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		reseedRepositoryFake{snapshot: ReseedSnapshot{Record: record}, commit: func(context.Context, ReseedSnapshot, Record) (RepositoryResult, error) {
+			t.Fatal("commit must not run")
+			return RepositoryResult{}, nil
+		}},
+		reseedArtifactsFake{prepare: func(context.Context, leasecontract.Record) (ReseedArtifactReceipt, error) {
+			t.Fatal("prepare must not run")
+			return ReseedArtifactReceipt{}, nil
+		}, cleanup: func(context.Context, leasecontract.Record) error { return nil }},
+	)
+	request := reseedServiceRequest(record.ID)
+	request.ExpectedGeneration = 4
+	request.CompletionGeneration = 3
+	if _, err := service.Reseed(context.Background(), request); err == nil || err.Error() != "completion_generation conflicts with stamped completion generation 4" {
+		t.Fatalf("conflicting provenance error=%v", err)
+	}
+}
+
+func TestReseedServiceCommitFailureDoesNotPersistCompletedReopen(t *testing.T) {
+	record := completedReseedTestRecord(strings.Repeat("d", 40))
+	before, err := cloneReseedRecord(record.Stable)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := newReseedServiceForTest(
+		reseedFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		reseedRepositoryFake{snapshot: ReseedSnapshot{Record: record}, commit: func(context.Context, ReseedSnapshot, Record) (RepositoryResult, error) {
+			return RepositoryResult{}, errReseedCommit
+		}},
+		reseedArtifactsFake{prepare: func(context.Context, leasecontract.Record) (ReseedArtifactReceipt, error) {
+			return ReseedArtifactReceipt{TokenSHA256: strings.Repeat("a", 64)}, nil
+		}, cleanup: func(context.Context, leasecontract.Record) error { return nil }},
+	)
+	request := reseedServiceRequest(record.ID)
+	request.ExpectedGeneration = 4
+	if _, err := service.Reseed(context.Background(), request); !errors.Is(err, errReseedCommit) {
+		t.Fatalf("commit error=%v", err)
+	}
+	if !reflect.DeepEqual(record.Stable, before) {
+		t.Fatal("commit failure mutated the loaded completed snapshot")
+	}
+}
+
+func TestReseedServicePreservesCompletionFreeSemantics(t *testing.T) {
+	record := completedReseedTestRecord("9c8db06313cfce39d17a53123f84da1fc4bc7b34")
+	record.Stable.Execution.Completion = nil
+	before := record.Stable
+	var committed leasecontract.Record
+	service := newReseedServiceForTest(
+		reseedFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		reseedRepositoryFake{snapshot: ReseedSnapshot{Record: record}, commit: func(_ context.Context, _ ReseedSnapshot, next Record) (RepositoryResult, error) {
+			committed = next.Stable
+			return RepositoryResult{Record: next, Execution: *next.Stable.Execution}, nil
+		}},
+		reseedArtifactsFake{prepare: func(_ context.Context, _ leasecontract.Record) (ReseedArtifactReceipt, error) {
+			return ReseedArtifactReceipt{TokenSHA256: strings.Repeat("a", 64)}, nil
+		}, cleanup: func(context.Context, leasecontract.Record) error { return nil }},
+	)
+	request := reseedServiceRequest(record.ID)
+	request.ExpectedGeneration = 4
+	if _, err := service.Reseed(context.Background(), request); err != nil {
+		t.Fatal(err)
+	}
+	if committed.Phase != before.Phase || !reflect.DeepEqual(committed.PhaseLedger, before.PhaseLedger) || committed.AISlopCleanHead != before.AISlopCleanHead || !reflect.DeepEqual(committed.ImplementationReview, before.ImplementationReview) || !reflect.DeepEqual(committed.RemoteCompletion, before.RemoteCompletion) {
+		t.Fatalf("completion-free reseed changed existing semantics: before=%+v after=%+v", before, committed)
+	}
+}
+
+func TestReseedServicePrepareFailureDoesNotMutateCompletedSnapshot(t *testing.T) {
+	record := completedReseedTestRecord(strings.Repeat("d", 40))
+	before, err := cloneReseedRecord(record.Stable)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := newReseedServiceForTest(
+		reseedFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		reseedRepositoryFake{snapshot: ReseedSnapshot{Record: record}, commit: func(context.Context, ReseedSnapshot, Record) (RepositoryResult, error) {
+			t.Fatal("commit must not run")
+			return RepositoryResult{}, nil
+		}},
+		reseedArtifactsFake{prepare: func(context.Context, leasecontract.Record) (ReseedArtifactReceipt, error) {
+			return ReseedArtifactReceipt{}, errors.New("prepare failed")
+		}, cleanup: func(context.Context, leasecontract.Record) error { return nil }},
+	)
+	request := reseedServiceRequest(record.ID)
+	request.ExpectedGeneration = 4
+	if _, err := service.Reseed(context.Background(), request); err == nil || err.Error() != "prepare failed" {
+		t.Fatalf("prepare error=%v", err)
+	}
+	if !reflect.DeepEqual(record.Stable, before) {
+		t.Fatal("prepare failure mutated the loaded completed snapshot")
+	}
+}
+
+func completedReseedTestRecord(oldHead string) Record {
+	record := reseedTestRecord("released", 4)
+	record.Stable.Phase = "done"
+	record.Stable.BranchPrepare = json.RawMessage(`{"base_branch":"main"}`)
+	record.Stable.Execution.Completion = &leasecontract.Completion{
+		Generation: 4, FinalHead: oldHead, TuringReportPath: ".agent-harness/turing/old.json", Verification: []string{"old verification"},
+		RemoteArtifactURL: "https://github.com/acme/repo/pull/1", CompletedAt: "2026-07-29T09:00:00Z",
+	}
+	record.Stable.Execution.SyncBaseEvents = []leasecontract.SyncBaseEvent{{Mode: "apply", BaseBranch: "main", BaseOID: strings.Repeat("a", 40), MergeCommit: strings.Repeat("b", 40), Actor: "codex", At: "2026-07-29T10:00:00Z"}}
+	record.Stable.RemoteArtifact = json.RawMessage(`{"provider":"github","kind":"draft_pr","url":"https://github.com/acme/repo/pull/1"}`)
+	record.Stable.Feedback = json.RawMessage(`[{"source":"review","body":"keep"}]`)
+	record.Stable.Decisions = json.RawMessage(`[{"title":"keep"}]`)
+	record.Stable.RemoteCompletion = json.RawMessage(`{"reflected_at":"old"}`)
+	record.Stable.ImplementationReview = json.RawMessage(`{"verdict":"pass"}`)
+	record.Stable.AISlopCleanAt = "old-at"
+	record.Stable.AISlopCleanHead = oldHead
+	record.Stable.AISlopCleanFingerprint = "old-fingerprint"
+	record.Stable.AISlopCleanCategories = json.RawMessage(`["duplication"]`)
+	record.Stable.AISlopCleanVerification = json.RawMessage(`["old verification"]`)
+	record.Stable.PhaseLedger = json.RawMessage(`{"problem":{"phase":"problem","entered_at":"p0","completed_at":"p1","notes":["keep upstream"]},"implement":{"phase":"implement","entered_at":"i0","completed_at":"i1","artifacts":["old implementation"]},"ai-slop-clean":{"phase":"ai-slop-clean","entered_at":"a0","completed_at":"a1"},"feedback":{"phase":"feedback","entered_at":"f0","completed_at":"f1"},"pr":{"phase":"pr","entered_at":"r0","completed_at":"r1","notes":["keep pr"]},"done":{"phase":"done","entered_at":"d0","completed_at":"d1"}}`)
+	return record
+}
+
+func assertCompletedReseedProofCleared(t *testing.T, record leasecontract.Record) {
+	t.Helper()
+	if record.AISlopCleanAt != "" || record.AISlopCleanHead != "" || record.AISlopCleanFingerprint != "" || record.AISlopCleanCategories != nil || record.AISlopCleanVerification != nil || record.ImplementationReview != nil || record.RemoteCompletion != nil {
+		t.Fatalf("current proof not cleared: %+v", record)
+	}
+}
+
+func assertCompletedReseedHistoryPreserved(t *testing.T, record leasecontract.Record) {
+	t.Helper()
+	if record.RemoteArtifact == nil || record.Feedback == nil || record.Decisions == nil || len(record.Execution.SyncBaseEvents) != 1 {
+		t.Fatalf("historical sidecars not preserved: %+v", record)
+	}
+}
+
+func assertCompletedReseedLedgerStale(t *testing.T, record leasecontract.Record) {
+	t.Helper()
+	var ledger map[string]struct {
+		CompletedAt string   `json:"completed_at"`
+		Notes       []string `json:"notes"`
+	}
+	if err := json.Unmarshal(record.PhaseLedger, &ledger); err != nil {
+		t.Fatal(err)
+	}
+	if ledger["problem"].CompletedAt != "p1" || !reflect.DeepEqual(ledger["problem"].Notes, []string{"keep upstream"}) {
+		t.Fatalf("upstream ledger changed: %+v", ledger["problem"])
+	}
+	wantNote := "stale: completed execution reseed (4 -> 5)"
+	for _, phase := range []string{"implement", "ai-slop-clean", "feedback", "pr", "done"} {
+		if ledger[phase].CompletedAt != "" || !containsString(ledger[phase].Notes, wantNote) {
+			t.Fatalf("phase %s not stale: %+v", phase, ledger[phase])
+		}
+	}
+	if !containsString(ledger["pr"].Notes, "keep pr") {
+		t.Fatalf("prior pr note lost: %+v", ledger["pr"])
+	}
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
+}
 
 func TestReseedServiceOrdersPrepareCommitAndBestEffortCleanup(t *testing.T) {
 	trace := []string{}
@@ -27,6 +370,9 @@ func TestReseedServiceOrdersPrepareCommitAndBestEffortCleanup(t *testing.T) {
 		reseedInventoryFunc(func(_ context.Context, _ leasecontract.Record, _ leasedomain.Actor) (ReseedInventoryReceipt, error) {
 			trace = append(trace, "inventory")
 			return ReseedInventoryReceipt{Fingerprint: "current"}, nil
+		}),
+		baseSyncInspectorFunc(func(context.Context, basesyncport.Request) (basesyncport.Receipt, error) {
+			return basesyncport.Receipt{}, nil
 		}),
 		reseedArtifactsFake{prepare: func(_ context.Context, next leasecontract.Record) (ReseedArtifactReceipt, error) {
 			trace = append(trace, "prepare")
@@ -53,6 +399,172 @@ func TestReseedServiceOrdersPrepareCommitAndBestEffortCleanup(t *testing.T) {
 	}
 	if got := strings.Join(trace, ","); got != "fence,inventory,prepare,commit,cleanup" {
 		t.Fatalf("trace=%s", got)
+	}
+}
+
+func TestReseedServicePersistsOrcaArtifactIdentityBeforeCommit(t *testing.T) {
+	record := reseedTestRecord("claimable", 3)
+	record.Stable.Execution.Mode = "orca"
+	record.Stable.Execution.Workspace.Driver = "orca"
+	record.Stable.Execution.Orca = &leasecontract.OrcaBinding{
+		RuntimeID: "runtime", RepoID: "repo", WorktreeID: "worktree", LeaseGeneration: 3,
+		OwnerHost: "codex", OwnerModel: "model", TaskID: "task", DispatchID: "dispatch",
+	}
+	var committed leasecontract.OrcaBinding
+	service := newReseedServiceForTest(
+		reseedFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		reseedRepositoryFake{snapshot: ReseedSnapshot{Record: record}, commit: func(_ context.Context, _ ReseedSnapshot, next Record) (RepositoryResult, error) {
+			committed = *next.Stable.Execution.Orca
+			return RepositoryResult{Record: next, Execution: *next.Stable.Execution}, nil
+		}},
+		reseedArtifactsFake{prepare: func(_ context.Context, _ leasecontract.Record) (ReseedArtifactReceipt, error) {
+			return ReseedArtifactReceipt{
+				TokenSHA256: strings.Repeat("d", 64),
+				Receipt: leasecontract.ReseedReceipt{
+					IssueBodySHA256: strings.Repeat("a", 64), ContextPacketSHA256: strings.Repeat("b", 64), OwnerPromptSHA256: strings.Repeat("c", 64),
+				},
+			}, nil
+		}, cleanup: func(context.Context, leasecontract.Record) error { return nil }},
+	)
+	request := reseedServiceRequest(record.ID)
+	if _, err := service.Reseed(context.Background(), request); err != nil {
+		t.Fatalf("reseed: %v", err)
+	}
+	if committed.IssueBodySHA256 != strings.Repeat("a", 64) || committed.ContextPacketSHA256 != strings.Repeat("b", 64) || committed.OwnerPromptSHA256 != strings.Repeat("c", 64) {
+		t.Fatalf("committed Orca artifact identity=%+v", committed)
+	}
+	if committed.ArtifactIdentityVersion != leasecontract.OrcaArtifactIdentityVersion {
+		t.Fatalf("committed artifact identity version=%d want=%d", committed.ArtifactIdentityVersion, leasecontract.OrcaArtifactIdentityVersion)
+	}
+	if committed.LeaseGeneration != 4 {
+		t.Fatalf("reseeded binding generation=%d want=4", committed.LeaseGeneration)
+	}
+}
+
+func TestReseedServicePersistsSettledHolderlessRuntimeRollover(t *testing.T) {
+	record := reseedTestRecord("claimable", 3)
+	record.Stable.Execution.Mode = "orca"
+	record.Stable.Execution.Workspace.Driver = "orca"
+	record.Stable.Execution.Orca = &leasecontract.OrcaBinding{
+		RuntimeID: "runtime-old", RepoID: "repo", WorktreeID: "worktree", LeaseGeneration: 3,
+		OwnerHost: "codex", OwnerModel: "model", TaskID: "task", DispatchID: "dispatch",
+	}
+	var committed leasecontract.OrcaBinding
+	service := NewReseedService(
+		reseedFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		reseedRepositoryFake{snapshot: ReseedSnapshot{Record: record}, commit: func(_ context.Context, _ ReseedSnapshot, next Record) (RepositoryResult, error) {
+			committed = *next.Stable.Execution.Orca
+			return RepositoryResult{Record: next, Execution: *next.Stable.Execution}, nil
+		}},
+		reseedInventoryFunc(func(context.Context, leasecontract.Record, leasedomain.Actor) (ReseedInventoryReceipt, error) {
+			return ReseedInventoryReceipt{
+				Fingerprint: "current", RuntimeID: "runtime-current",
+				Inventory: leasedomain.ResumeInventory{RuntimeID: "runtime-current", TerminalInventoryComplete: true, TaskStatus: "failed", DispatchStatus: "dispatched", DispatchAssigneeHandle: "term-old"},
+			}, nil
+		}),
+		baseSyncInspectorFunc(func(context.Context, basesyncport.Request) (basesyncport.Receipt, error) {
+			return basesyncport.Receipt{}, nil
+		}),
+		reseedArtifactsFake{prepare: func(context.Context, leasecontract.Record) (ReseedArtifactReceipt, error) {
+			return ReseedArtifactReceipt{TokenSHA256: strings.Repeat("d", 64)}, nil
+		}, cleanup: func(context.Context, leasecontract.Record) error { return nil }},
+		fixedClock{now: time.Date(2026, 7, 30, 9, 0, 0, 0, time.UTC)},
+		func(context.Context, leasedomain.ProcessReceipt) (string, leasedomain.ProcessReceipt, error) {
+			return "live", leasedomain.ProcessReceipt{PID: 1, StartedAt: "start", Executable: "codex"}, nil
+		},
+		reseedPathMatcher{},
+	)
+	if _, err := service.Reseed(context.Background(), reseedServiceRequest(record.ID)); err != nil {
+		t.Fatalf("reseed: %v", err)
+	}
+	if committed.RuntimeID != "runtime-current" || committed.LeaseGeneration != 4 {
+		t.Fatalf("reseeded Orca binding=%+v", committed)
+	}
+}
+
+func TestReseedServiceRejectsChangedOwnerEvidenceFingerprintBeforePrepare(t *testing.T) {
+	record := reseedTestRecord("claimable", 3)
+	record.Stable.Execution.Mode = "orca"
+	record.Stable.Execution.Workspace.Driver = "orca"
+	record.Stable.Execution.Orca = &leasecontract.OrcaBinding{RuntimeID: "runtime-old", WorktreeID: "worktree", TaskID: "task", DispatchID: "dispatch"}
+	prepares := 0
+	service := NewReseedService(
+		reseedFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		reseedRepositoryFake{snapshot: ReseedSnapshot{Record: record}},
+		reseedInventoryFunc(func(context.Context, leasecontract.Record, leasedomain.Actor) (ReseedInventoryReceipt, error) {
+			return ReseedInventoryReceipt{
+				Fingerprint: "changed-owner-evidence",
+				Inventory: leasedomain.ResumeInventory{
+					RuntimeID: "runtime-current", TerminalInventoryComplete: true, TaskStatus: "failed", DispatchStatus: "pending", DispatchAssigneeHandle: "term-old",
+				},
+			}, nil
+		}),
+		baseSyncInspectorFunc(func(context.Context, basesyncport.Request) (basesyncport.Receipt, error) {
+			return basesyncport.Receipt{}, nil
+		}),
+		reseedArtifactsFake{prepare: func(context.Context, leasecontract.Record) (ReseedArtifactReceipt, error) {
+			prepares++
+			return ReseedArtifactReceipt{}, nil
+		}, cleanup: func(context.Context, leasecontract.Record) error { return nil }},
+		fixedClock{now: time.Date(2026, 7, 30, 9, 0, 0, 0, time.UTC)},
+		func(context.Context, leasedomain.ProcessReceipt) (string, leasedomain.ProcessReceipt, error) {
+			return "live", leasedomain.ProcessReceipt{PID: 1, StartedAt: "start", Executable: "codex"}, nil
+		},
+		reseedPathMatcher{},
+	)
+	request := reseedServiceRequest(record.ID)
+	request.InventoryFingerprint = "preview-owner-evidence"
+	if _, err := service.Reseed(context.Background(), request); err == nil || !strings.Contains(err.Error(), "stale replacement inventory fingerprint") {
+		t.Fatalf("reseed error=%v", err)
+	}
+	if prepares != 0 {
+		t.Fatalf("changed owner evidence reached artifact preparation %d times", prepares)
+	}
+}
+
+func TestReseedServiceRejectsUnsettledRolloverAfterFingerprintMatch(t *testing.T) {
+	record := reseedTestRecord("claimable", 3)
+	record.Stable.Execution.Mode = "orca"
+	record.Stable.Execution.Workspace.Driver = "orca"
+	record.Stable.Execution.Orca = &leasecontract.OrcaBinding{RuntimeID: "runtime-old", WorktreeID: "worktree", TaskID: "task", DispatchID: "dispatch"}
+	prepares := 0
+	service := NewReseedService(
+		reseedFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		reseedRepositoryFake{snapshot: ReseedSnapshot{Record: record}},
+		reseedInventoryFunc(func(context.Context, leasecontract.Record, leasedomain.Actor) (ReseedInventoryReceipt, error) {
+			return ReseedInventoryReceipt{
+				Fingerprint: "current",
+				Inventory: leasedomain.ResumeInventory{
+					RuntimeID: "runtime-current", TerminalInventoryComplete: true, TaskStatus: "failed", DispatchStatus: "pending", DispatchAssigneeHandle: "term-old",
+				},
+			}, nil
+		}),
+		baseSyncInspectorFunc(func(context.Context, basesyncport.Request) (basesyncport.Receipt, error) {
+			return basesyncport.Receipt{}, nil
+		}),
+		reseedArtifactsFake{prepare: func(context.Context, leasecontract.Record) (ReseedArtifactReceipt, error) {
+			prepares++
+			return ReseedArtifactReceipt{}, nil
+		}, cleanup: func(context.Context, leasecontract.Record) error { return nil }},
+		fixedClock{now: time.Date(2026, 7, 30, 9, 0, 0, 0, time.UTC)},
+		func(context.Context, leasedomain.ProcessReceipt) (string, leasedomain.ProcessReceipt, error) {
+			return "live", leasedomain.ProcessReceipt{PID: 1, StartedAt: "start", Executable: "codex"}, nil
+		},
+		reseedPathMatcher{},
+	)
+	if _, err := service.Reseed(context.Background(), reseedServiceRequest(record.ID)); err == nil || !strings.Contains(err.Error(), "resume_runtime_identity") {
+		t.Fatalf("reseed error=%v", err)
+	}
+	if prepares != 0 {
+		t.Fatalf("unsettled rollover reached artifact preparation %d times", prepares)
 	}
 }
 
@@ -125,6 +637,22 @@ func TestReseedServiceValidatesActorBeforeConfirmForLegacyErrorPriority(t *testi
 	}
 }
 
+func TestReseedServiceRejectsCleanupAbandonFence(t *testing.T) {
+	record := reseedTestRecord("released", 3)
+	record.Stable.CleanupAbandonFailure = json.RawMessage(`{"step":"applying"}`)
+	service := newReseedServiceForTest(
+		&serializedReseedFence{locks: map[string]*sync.Mutex{}},
+		&serializedReseedRepository{record: record},
+		reseedArtifactsFake{prepare: func(context.Context, leasecontract.Record) (ReseedArtifactReceipt, error) {
+			t.Fatal("cleanup fence must reject before artifact preparation")
+			return ReseedArtifactReceipt{}, nil
+		}, cleanup: func(context.Context, leasecontract.Record) error { return nil }},
+	)
+	if _, err := service.Reseed(context.Background(), reseedServiceRequest(record.ID)); err == nil || !strings.Contains(err.Error(), "blocked by cleanup abandon apply") {
+		t.Fatalf("cleanup abandon fence must block reseed: %v", err)
+	}
+}
+
 func TestReseedServiceDifferentLifecyclesPrepareInParallel(t *testing.T) {
 	fence := &serializedReseedFence{locks: map[string]*sync.Mutex{}}
 	entered := make(chan string, 2)
@@ -192,6 +720,12 @@ type reseedInventoryFunc func(context.Context, leasecontract.Record, leasedomain
 
 func (f reseedInventoryFunc) Observe(ctx context.Context, record leasecontract.Record, actor leasedomain.Actor) (ReseedInventoryReceipt, error) {
 	return f(ctx, record, actor)
+}
+
+type baseSyncInspectorFunc func(context.Context, basesyncport.Request) (basesyncport.Receipt, error)
+
+func (f baseSyncInspectorFunc) Observe(ctx context.Context, request basesyncport.Request) (basesyncport.Receipt, error) {
+	return f(ctx, request)
 }
 
 type reseedRepositoryFake struct {
@@ -277,9 +811,23 @@ func (r *serializedReseedRepository) CommitReseed(_ context.Context, _ ReseedSna
 }
 
 func newReseedServiceForTest(fence ReseedFence, repository ReseedRepository, artifacts ReseedArtifacts) *ReseedService {
+	return NewReseedService(fence, repository, reseedInventoryFunc(func(_ context.Context, record leasecontract.Record, _ leasedomain.Actor) (ReseedInventoryReceipt, error) {
+		inventory := leasedomain.ResumeInventory{}
+		if record.Execution != nil && record.Execution.Orca != nil {
+			inventory.RuntimeID = record.Execution.Orca.RuntimeID
+		}
+		return ReseedInventoryReceipt{Fingerprint: "current", Inventory: inventory}, nil
+	}), baseSyncInspectorFunc(func(context.Context, basesyncport.Request) (basesyncport.Receipt, error) {
+		return basesyncport.Receipt{}, nil
+	}), artifacts, fixedClock{now: time.Date(2026, 7, 30, 9, 0, 0, 0, time.UTC)}, func(context.Context, leasedomain.ProcessReceipt) (string, leasedomain.ProcessReceipt, error) {
+		return "live", leasedomain.ProcessReceipt{PID: 1, StartedAt: "start", Executable: "codex"}, nil
+	}, reseedPathMatcher{})
+}
+
+func newReseedServiceForTestWithBaseSync(fence ReseedFence, repository ReseedRepository, artifacts ReseedArtifacts, baseSync basesyncport.Inspector) *ReseedService {
 	return NewReseedService(fence, repository, reseedInventoryFunc(func(context.Context, leasecontract.Record, leasedomain.Actor) (ReseedInventoryReceipt, error) {
 		return ReseedInventoryReceipt{Fingerprint: "current"}, nil
-	}), artifacts, fixedClock{now: time.Date(2026, 7, 30, 9, 0, 0, 0, time.UTC)}, func(context.Context, leasedomain.ProcessReceipt) (string, leasedomain.ProcessReceipt, error) {
+	}), baseSync, artifacts, fixedClock{now: time.Date(2026, 7, 30, 9, 0, 0, 0, time.UTC)}, func(context.Context, leasedomain.ProcessReceipt) (string, leasedomain.ProcessReceipt, error) {
 		return "live", leasedomain.ProcessReceipt{PID: 1, StartedAt: "start", Executable: "codex"}, nil
 	}, reseedPathMatcher{})
 }

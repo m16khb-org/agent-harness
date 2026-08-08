@@ -13,14 +13,15 @@ BIN="$ROOT/bin/agent-harness"
 SKIP_BUILD="${HARNESS_SKIP_BUILD:-0}"
 HARNESS_ARGS=()
 STAGED_BIN=""
+ACTIVATION_BEGUN=0
 
 usage() {
   cat <<'EOF'
-Usage: scripts/install-native.sh [agent-harness install-native flags]
+Usage: scripts/install-native.sh [agent-harness install flags]
 
 Build and install agent-harness native Codex/Claude integrations.
 
-Harness flags are passed to `agent-harness install-native`, for example:
+Harness flags are passed to `agent-harness install`, for example:
   --project-local
   --dry-run
   --json
@@ -99,12 +100,9 @@ else
   (cd "$BUILD_ROOT" && go build -o "$STAGED_BIN" ./cmd/harness)
   chmod 0755 "$STAGED_BIN"
   "$STAGED_BIN" version >/dev/null
-  "$STAGED_BIN" issueops reset-legacy \
-    --target-schema 1 \
-    --activation-begin \
-    --harness-root "$ROOT" \
-    --target-binary "$BIN" \
-    --json >/dev/null
+  HARNESS_NATIVE_ACTIVATION_STEP=begin \
+    "$STAGED_BIN" install --path-mode=skip --json >/dev/null
+  ACTIVATION_BEGUN=1
   python3 - "$STAGED_BIN" "$BIN" <<'PY'
 import os
 import sys
@@ -127,21 +125,23 @@ PY
 fi
 
 if [[ -x "$BIN" ]]; then
-  if [[ "$DRY_RUN" != "1" ]] && is_truthy "$SKIP_BUILD"; then
-    "$BIN" issueops reset-legacy \
-      --target-schema 1 \
-      --activation-begin \
-      --harness-root "$ROOT" \
-      --target-binary "$BIN" \
-      --json >/dev/null
+  if [[ "$DRY_RUN" != "1" && "$ACTIVATION_BEGUN" != "1" ]]; then
+    HARNESS_NATIVE_ACTIVATION_STEP=begin \
+      "$BIN" install --path-mode=skip --json >/dev/null
   fi
-  if ((${#HARNESS_ARGS[@]})); then
-    "$BIN" install-native "${HARNESS_ARGS[@]}"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    if ((${#HARNESS_ARGS[@]})); then
+      "$BIN" install "${HARNESS_ARGS[@]}"
+    else
+      "$BIN" install
+    fi
+  elif ((${#HARNESS_ARGS[@]})); then
+    HARNESS_NATIVE_ACTIVATION_STEP=seal "$BIN" install "${HARNESS_ARGS[@]}"
   else
-    "$BIN" install-native
+    HARNESS_NATIVE_ACTIVATION_STEP=seal "$BIN" install
   fi
 elif [[ "$DRY_RUN" == "1" ]]; then
-  log "dry-run: binary missing; skipping install-native plan because ${BIN} does not exist yet"
+  log "dry-run: binary missing; skipping install plan because ${BIN} does not exist yet"
 else
   log "agent-harness binary missing after build: ${BIN}"
   exit 1

@@ -1,12 +1,11 @@
 package benchmarkartifact
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"strings"
-
-	"agent-harness/internal/core"
 )
 
-func prDraft(fixture core.IssueOpsBenchmarkFixture, issueNumber, branchName, worktreePath, guideline, expectedIssue, expectedPR string) string {
+func prDraft(fixture issueopscontract.IssueOpsBenchmarkFixture, issueNumber, branchName, worktreePath, guideline, expectedIssue, expectedPR string) string {
 	return strings.Join([]string{
 		"## Intent",
 		"",

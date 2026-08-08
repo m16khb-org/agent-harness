@@ -6,9 +6,11 @@ import (
 	"os"
 	"testing"
 
+	statecontract "agent-harness/internal/contract/state"
+
 	"agent-harness/cmd/harness/harnessapp/responsecontract"
-	"agent-harness/internal/core"
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/adapter/outbound/sqlstore"
+	statestore "agent-harness/internal/adapter/outbound/state"
 )
 
 func runCLIJSONContract(t *testing.T, replacements map[string]string, fn func() error) any {
@@ -85,16 +87,16 @@ func captureStdoutForContract(t *testing.T, fn func() error) string {
 	return string(read.out)
 }
 
-func mustStateReadForContract(t *testing.T, key string) core.StateResult {
+func mustStateReadForContract(t *testing.T, key string) statecontract.StateResult {
 	t.Helper()
-	result, err := core.StateRead(key)
+	result, err := statestore.StateRead(key)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return result
 }
 
-func mustWriteStateRecordForContract(t *testing.T, stateDir, key string, record core.StateRecord) {
+func mustWriteStateRecordForContract(t *testing.T, stateDir, key string, record statecontract.RecordEnvelope) {
 	t.Helper()
 	b, err := json.MarshalIndent(record, "", "  ")
 	if err != nil {

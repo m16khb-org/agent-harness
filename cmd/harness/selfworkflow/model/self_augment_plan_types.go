@@ -1,6 +1,6 @@
 package model
 
-import "agent-harness/internal/core/qualitycatalog"
+import "agent-harness/internal/domain/qualitycatalog"
 
 type SelfAugmentPlanRequest struct {
 	Cycles      int     `json:"cycles"`
@@ -96,7 +96,6 @@ type SelfAugmentRepoSignals struct {
 	HasCommandguardBoundaryCoverage    bool     `json:"has_commandguard_boundary_coverage"`
 	HasWorkerStuckRunningDetection     bool     `json:"has_worker_stuck_running_detection"`
 	HasDaemonConnectionLimit           bool     `json:"has_daemon_connection_limit"`
-	HasDraftWikiStaleLockDetection     bool     `json:"has_draftwiki_stale_lock_detection"`
 	HasGeniusMermaidLint               bool     `json:"has_genius_mermaid_lint"`
 	HasInstallDryRunMode               bool     `json:"has_install_dry_run_mode"`
 	HasCLIAdapterSplit                 bool     `json:"has_cli_adapter_split"`

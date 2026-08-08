@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
-	"agent-harness/internal/core"
+	hookfailurecontract "agent-harness/internal/contract/hookfailure"
 )
 
 func Record(args []string, stdin []byte, hookErr error) {
@@ -27,7 +27,7 @@ func Record(args []string, stdin []byte, hookErr error) {
 	if repo == "" {
 		repo = hookinput.RepoFromHookInput(stdin)
 	}
-	_, _ = core.RecordHookFailureEvent(core.HookFailureEvent{
+	_, _ = RecordHookFailureEvent(hookfailurecontract.HookFailureEvent{
 		Hook:           hook,
 		Host:           ArgValue(args, "--host"),
 		Repo:           repo,
@@ -54,7 +54,7 @@ func Run(args []string) error {
 		return err
 	}
 	if *pruneFlag > 0 {
-		pruneResult, err := core.PruneHookFailureLog(*pruneFlag)
+		pruneResult, err := PruneHookFailureLog(*pruneFlag)
 		if err != nil {
 			return err
 		}
@@ -63,7 +63,7 @@ func Run(args []string) error {
 		}
 		return printJSON(pruneResult)
 	}
-	result, err := core.ListHookFailureEvents(*limit)
+	result, err := ListHookFailureEvents(*limit)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func RunMetrics(args []string) error {
 		return err
 	}
 	_ = jsonOut
-	stats, err := core.SummarizeHookMetricsLog()
+	stats, err := SummarizeHookMetricsLog()
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func RunStats(args []string) error {
 		return err
 	}
 	_ = jsonOut
-	stats, err := core.SummarizeHookFailureStats()
+	stats, err := SummarizeHookFailureStats()
 	if err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ func RunPrune(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := core.PruneHookFailureLog(*maxAge)
+	result, err := PruneHookFailureLog(*maxAge)
 	if err != nil {
 		return err
 	}

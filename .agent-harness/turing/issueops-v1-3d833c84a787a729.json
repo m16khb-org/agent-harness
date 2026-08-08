@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "lifecycle": "io-7723ca3d635c",
+  "mode": "orca",
+  "acceptance": {
+    "AC-01": {
+      "test": "TestPlanPrepRecordExactCommandSpec",
+      "red_command": "go test -v ./internal/core/commandparse -run '^TestPlanPrep' -count=1",
+      "red_result": "FAIL as expected: path was plan-prep instead of plan-prep record",
+      "green_command": "go test ./internal/core/commandparse -run PlanPrep -count=1",
+      "green_result": "PASS: exact two-word path is parsed"
+    },
+    "AC-02": {
+      "test": "TestPlanPrepRecordExactCommandSpec and TestPlanPrepRecordRejectsNonExactCommands",
+      "command": "go test ./internal/core/commandparse -run PlanPrep -count=1",
+      "result": "PASS: exact CLI evidence, waive, id, actor, cwd, and json flags accepted; only four evidence flags repeat; unknown and duplicate non-repeatable flags rejected"
+    },
+    "AC-03": {
+      "test": "TestPlanPrepRecordAllowsOnlyCurrentHolder",
+      "red_command": "go test -v ./internal/core/lifecycle -run '^TestPlanPrepRecordAllowsOnlyCurrentHolder$' -count=1",
+      "red_result": "FAIL as expected: current holder was denied as unclassified shell command",
+      "green_command": "go test ./internal/core/lifecycle ./cmd/harness/hookcli -run 'PlanPrep|IssueOps' -count=1",
+      "green_result": "PASS: current holder allowed; foreign session, missing actor, unknown flag, shell substitution, and wrapper remain fail-closed"
+    },
+    "AC-04": {
+      "test": "PlanPrep parser and owner-guard TDD sequence",
+      "command": "go test ./internal/core/commandparse ./internal/core/lifecycle ./cmd/harness/hookcli -count=1",
+      "result": "PASS after both expected RED failures and minimal GREEN implementation"
+    },
+    "AC-05": {
+      "test": "Issue #293 live owner plan-prep retry and durable status readback",
+      "command": "post-merge native install followed by the exact #293 plan-prep record command and status readback",
+      "result": "POST_MERGE_PENDING: coordinator owns the #293 live retry after merge and native install"
+    },
+    "AC-06": {
+      "test": "targeted, full, race, vet, build, and diff gates",
+      "command": "required verification command set",
+      "result": "PASS: targeted, full, targeted race, vet, build, and diff check pass; the first repository-wide race saw an unrelated webfetch comparator child killed, and the coordinator's immediate isolated rerun of the identical command in this worktree passed every package with exit 0"
+    }
+  },
+  "verification": [
+    {
+      "command": "go test ./internal/core/commandparse ./internal/core/lifecycle ./cmd/harness/hookcli -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test ./... -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test -race ./... -count=1",
+      "result": "FIRST RUN FAIL: agent-harness/internal/core/webfetch TestRunBenchmarkLiveRunsBaselineComparatorAsBlackBox at webfetch_test.go:408 reported BaselineAvailable=false and warning baseline comparator failed for public_article: signal: killed; no data-race diagnostic was emitted"
+    },
+    {
+      "command": "go test -race ./... -count=1",
+      "result": "PASS: coordinator immediately reran the identical command alone in the same canonical worktree and observed exit 0 with every package passing"
+    },
+    {
+      "command": "go test -race ./internal/core/commandparse ./internal/core/lifecycle ./cmd/harness/hookcli -count=1",
+      "result": "PASS: changed packages and hook adapter"
+    },
+    {
+      "command": "go vet ./...",
+      "result": "PASS"
+    },
+    {
+      "command": "go build -o bin/agent-harness ./cmd/harness",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    }
+  ],
+  "ai_slop_clean": {
+    "scope": "four tracked Go files plus this Turing report; no untracked non-ignored implementation files",
+    "removed": "none: the diff already contains one parser path, one exact spec, one owner allowlist entry, and focused tests; no legacy shim, speculative abstraction, comment noise, dead code, or unrelated formatting found",
+    "shannon_audit": {
+      "diff_inventory": "106 additions and 1 deletion across four tracked Go files before the report",
+      "snr": {
+        "before": 1.0,
+        "after": 1.0,
+        "signal_lines": 106,
+        "noise_lines": 0,
+        "passed": true
+      },
+      "entropy": {
+        "new_functions_above_6": 0,
+        "new_functions_above_12": 0,
+        "passed": true
+      },
+      "redundancy": {
+        "duplicate_added_blocks_over_6_lines": 0,
+        "passed": true
+      },
+      "channel_overhead": {
+        "added_files_above_50_percent_boilerplate": 0,
+        "passed": true
+      },
+      "heuristic_caveat": "diff-based shell measurement; behavior and negative boundaries are backed by focused tests"
+    },
+    "result": "PASS"
+  },
+  "related_issues": {
+    "duplicates": [
+      "https://github.com/m16khb/agent-harness/issues/305"
+    ],
+    "live_verification": "https://github.com/m16khb/agent-harness/issues/293",
+    "link_related_result": "BLOCKED: the exact holder command was denied unsafe_mutation because link-related is absent from the current exact parser/owner allowlist; a durable scope decision records the relationship without expanding this implementation"
+  },
+  "deviations": [
+    "The approved plan and coordinator direction leave AC-05 to the post-merge/native-install #293 live owner.",
+    "The first repository-wide race run failed when the unrelated webfetch benchmark's baseline comparator child received signal: killed. Because it emitted no race diagnostic, full non-race and changed-package race passed, and an immediate same-worktree identical-command rerun passed every package, the evidence supports a non-reproducible environmental process termination rather than a change-induced defect.",
+    "The requested #305 duplicates link could not be recorded through link-related without broadening the classifier repair; the denial was reported and not bypassed."
+  ],
+  "reusable_caution": "A signal: killed child-process failure in a race benchmark is not itself a data-race finding. Preserve the first exact failure, require an isolated identical-command rerun plus changed-package race evidence, and never erase the transient result.",
+  "status": "verified_pending_post_merge_ac05"
+}

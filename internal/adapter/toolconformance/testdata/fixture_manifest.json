@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "fixtures": [
+    {
+      "id": "empty_object",
+      "probe_tool": "harness_probe_empty_object",
+      "source_tool": "contract_schema",
+      "schema_sha256": "7b1b2936a97f4bbeb5b021fcd767d3d808029152c60d77e75c279d6d51222bfa",
+      "expected_arguments": {}
+    },
+    {
+      "id": "mixed_scalar_array",
+      "probe_tool": "harness_probe_mixed_scalar_array",
+      "source_tool": "command_policy_check",
+      "schema_sha256": "137a93364fc30e8ab066b4bc50cb72231e31da45aea1df2986805476ce9b20ee",
+      "expected_arguments": {
+        "workspace_root": "/workspace",
+        "cwd": "/workspace",
+        "argv": ["git", "status", "--short"],
+        "network_allowed": false,
+        "shell_allowed": false,
+        "write_allowed": false,
+        "env_allowlist": ["PATH"],
+        "timeout": "30s"
+      }
+    },
+    {
+      "id": "nested_execution_array",
+      "probe_tool": "harness_probe_nested_object_array",
+      "source_tool": "issueops_execution",
+      "schema_sha256": "d1f7d1eb96ba04dcad1ae85a671ad794e978b9ea9b88d1de6a970a359ebce18d",
+      "expected_arguments": {
+        "action": "complete",
+        "id": "issueops-probe",
+        "generation": 1,
+        "host": "codex",
+        "session_id": "session-1",
+        "session_pid": 42,
+        "session_started_at": "2026-07-22T00:00:00Z",
+        "session_executable": "/bin/codex",
+        "cwd": "/workspace",
+        "final_head": "0123456789012345678901234567890123456789",
+        "turing_report_path": "/workspace/turing.json",
+        "verification": ["go test ./... -count=1"],
+        "remote_artifact_url": "https://github.com/example/repo/pull/1",
+        "confirm": true
+      }
+    }
+  ],
+  "baseline_cases": [
+    {"fixture_id": "empty_object", "payload_class": "valid", "expected_classification": "exact_valid", "arguments": {}},
+    {
+      "fixture_id": "mixed_scalar_array",
+      "payload_class": "valid",
+      "expected_classification": "exact_valid",
+      "arguments": {
+        "workspace_root": "/workspace", "cwd": "/workspace", "argv": ["git", "status", "--short"],
+        "network_allowed": false, "shell_allowed": false, "write_allowed": false, "env_allowlist": ["PATH"], "timeout": "30s"
+      }
+    },
+    {
+      "fixture_id": "nested_execution_array",
+      "payload_class": "valid",
+      "expected_classification": "exact_valid",
+      "arguments": {
+        "action": "complete", "id": "issueops-probe", "generation": 1, "host": "codex", "session_id": "session-1", "session_pid": 42,
+        "session_started_at": "2026-07-22T00:00:00Z", "session_executable": "/bin/codex", "cwd": "/workspace",
+        "final_head": "0123456789012345678901234567890123456789", "turing_report_path": "/workspace/turing.json",
+        "verification": ["go test ./... -count=1"], "remote_artifact_url": "https://github.com/example/repo/pull/1", "confirm": true
+      }
+    },
+    {"fixture_id": "empty_object", "payload_class": "unknown_key", "expected_classification": "unknown_key", "arguments": {"requireUnique": true}},
+    {
+      "fixture_id": "mixed_scalar_array", "payload_class": "unknown_key", "expected_classification": "unknown_key",
+      "arguments": {"workspace_root": "/workspace", "cwd": "/workspace", "argv": ["git", "status", "--short"], "network_allowed": false, "shell_allowed": false, "write_allowed": false, "env_allowlist": ["PATH"], "timeout": "30s", "requireUnique": true}
+    },
+    {
+      "fixture_id": "nested_execution_array", "payload_class": "unknown_key", "expected_classification": "unknown_key",
+      "arguments": {"action": "complete", "id": "issueops-probe", "generation": 1, "host": "codex", "session_id": "session-1", "session_pid": 42, "session_started_at": "2026-07-22T00:00:00Z", "session_executable": "/bin/codex", "cwd": "/workspace", "final_head": "0123456789012345678901234567890123456789", "turing_report_path": "/workspace/turing.json", "verification": ["go test ./... -count=1"], "remote_artifact_url": "https://github.com/example/repo/pull/1", "confirm": true, "requireUnique": true}
+    },
+    {
+      "fixture_id": "mixed_scalar_array", "payload_class": "coercible_type_drift", "expected_classification": "coercible_type_drift",
+      "arguments": {"workspace_root": "/workspace", "cwd": "/workspace", "argv": ["git", "status", "--short"], "network_allowed": "false", "shell_allowed": false, "write_allowed": false, "env_allowlist": ["PATH"], "timeout": "30s"}
+    },
+    {
+      "fixture_id": "nested_execution_array", "payload_class": "coercible_type_drift", "expected_classification": "coercible_type_drift",
+      "arguments": {"action": "complete", "id": "issueops-probe", "generation": 1, "host": "codex", "session_id": "session-1", "session_pid": 42, "session_started_at": "2026-07-22T00:00:00Z", "session_executable": "/bin/codex", "cwd": "/workspace", "final_head": "0123456789012345678901234567890123456789", "turing_report_path": "/workspace/turing.json", "verification": "go test ./... -count=1", "remote_artifact_url": "https://github.com/example/repo/pull/1", "confirm": true}
+    },
+    {
+      "fixture_id": "mixed_scalar_array", "payload_class": "noncoercible_type_drift", "expected_classification": "noncoercible_type_drift",
+      "arguments": {"workspace_root": "/workspace", "cwd": "/workspace", "argv": {}, "network_allowed": false, "shell_allowed": false, "write_allowed": false, "env_allowlist": ["PATH"], "timeout": "30s"}
+    },
+    {
+      "fixture_id": "nested_execution_array", "payload_class": "noncoercible_type_drift", "expected_classification": "noncoercible_type_drift",
+      "arguments": {"action": "complete", "id": "issueops-probe", "generation": 1, "host": "codex", "session_id": "session-1", "session_pid": 42, "session_started_at": "2026-07-22T00:00:00Z", "session_executable": "/bin/codex", "cwd": "/workspace", "final_head": "0123456789012345678901234567890123456789", "turing_report_path": "/workspace/turing.json", "verification": {}, "remote_artifact_url": "https://github.com/example/repo/pull/1", "confirm": true}
+    }
+  ]
+}

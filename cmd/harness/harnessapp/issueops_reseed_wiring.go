@@ -6,14 +6,15 @@ import (
 	"fmt"
 
 	leaseinbound "agent-harness/internal/adapter/inbound/issueopslease"
+	"agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/adapter/orca"
+	basesyncoutbound "agent-harness/internal/adapter/outbound/issueopsbasesync"
 	leaseoutbound "agent-harness/internal/adapter/outbound/issueopslease"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/adapter/provider"
 	leaseapp "agent-harness/internal/application/issueopslease"
+	model "agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
-	"agent-harness/internal/core/sqlstore"
 	"agent-harness/internal/port"
 )
 
@@ -46,7 +47,8 @@ func issueOpsReseedHandlerWithOwner(ctx context.Context, stateRoot string, reque
 		}
 		return leasecontract.ReseedReceipt{IssueBodySHA256: prepared.IssueBodySHA256, ContextPacketPath: prepared.ContextPacketPath, ContextPacketSHA256: prepared.ContextPacketSHA256, OwnerPromptPath: prepared.OwnerPromptPath, OwnerPromptSHA256: prepared.OwnerPromptSHA256}, nil
 	})
-	service := leaseapp.NewReseedService(fence, leaseoutbound.NewReseedRepository(db), inventory, artifacts, leaseoutbound.UTCClock{}, leaseoutbound.InspectNativeProcess, leaseoutbound.FilesystemPathMatcher{})
+	baseSync := basesyncoutbound.NewInspector(basesyncoutbound.RunGit)
+	service := leaseapp.NewReseedService(fence, leaseoutbound.NewReseedRepository(db), inventory, baseSync, artifacts, leaseoutbound.UTCClock{}, leaseoutbound.InspectNativeProcess, leaseoutbound.FilesystemPathMatcher{})
 	return leaseinbound.NewReseedHandler(service)(ctx, stateRoot, request)
 }
 

@@ -12,8 +12,8 @@ import (
 
 	"agent-harness/cmd/harness/mcpcli"
 	"agent-harness/cmd/harness/selfworkflow"
-	cliadapter "agent-harness/internal/adapter/cli"
-	mcpadapter "agent-harness/internal/adapter/mcp"
+	cliadapter "agent-harness/internal/domain/cli"
+	mcpadapter "agent-harness/internal/domain/mcp"
 )
 
 var MCPTools = func() []map[string]any {
@@ -124,7 +124,7 @@ func BuildCompatibilityContract() CompatibilityContract {
 			"issueops_execution":              {"ok", "id", "execution", "issue_snapshot_source", "next_command"},
 			"issueops_execution_prepare":      {"ok", "id", "preview", "requested_mode", "resolved_mode", "fallback_code", "workspace", "execution", "claim_token_path", "issue_body_sha256", "context_packet_path", "context_packet_sha256", "owner_prompt_path", "owner_prompt_sha256", "issue_snapshot_source", "next_command"},
 			"issueops_execution_replace":      {"ok", "id", "action", "execution", "inventory_fingerprint", "quiescence_fingerprint", "claim_token_path", "issue_snapshot_source", "next_command"},
-			"issueops_execution_resume":       {"ok", "id", "execution", "claim_token_path", "issue_body_sha256", "context_packet_path", "context_packet_sha256", "owner_prompt_path", "owner_prompt_sha256", "next_command"},
+			"issueops_execution_resume":       {"ok", "id", "resume_disposition", "execution", "claim_token_path", "issue_body_sha256", "context_packet_path", "context_packet_sha256", "owner_prompt_path", "owner_prompt_sha256", "next_command"},
 			"issueops_execution_reconcile":    {"ok", "id", "preview", "reconciled", "code", "execution", "pending", "issue_snapshot_source"},
 			"issueops_pr_readiness":           {"ok", "ready", "missing", "issue_url", "plan_path", "branch"},
 			"issueops_cleanup_status":         {"ok", "ready", "id", "merged", "missing", "warnings", "choices", "worktree_path", "branch", "remote_artifact_url"},

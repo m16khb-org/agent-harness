@@ -1,6 +1,10 @@
 package harnessapp
 
 import (
+	"agent-harness/internal/adapter/inspect"
+	"agent-harness/internal/adapter/looprun"
+	"agent-harness/internal/adapter/preflight"
+	"agent-harness/internal/adapter/projectdocs"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -8,18 +12,25 @@ import (
 
 	"agent-harness/cmd/harness/mcpcli"
 	"agent-harness/cmd/harness/selfworkflow"
-	"agent-harness/internal/core/issueops"
-)
+	provenanceadapter "agent-harness/internal/adapter/outbound/issueopsprovenance"
 
-type rpcRequest = mcpcli.RPCRequest
-type rpcError = mcpcli.RPCError
-type mcpToolCall = mcpcli.MCPToolCall
-type mcpToolOutcome = mcpcli.MCPToolOutcome
+	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
+)
 
 func configureMCPCLI() {
 	mcpcli.Version = version
 	mcpcli.HarnessRoot = harnessRoot
 	mcpcli.ResolveTarget = resolveTarget
+	mcpcli.RouteProjectDocs = projectdocs.RouteProjectDocs
+	mcpcli.ReadProjectDoc = projectdocs.ReadProjectDoc
+	mcpcli.UpdateProjectDoc = projectdocs.UpdateProjectDoc
+	mcpcli.AppendProjectDocsRecord = projectdocs.AppendProjectDocsRecord
+	mcpcli.LoopStart = looprun.Start
+	mcpcli.LoopRecordAttempt = looprun.RecordAttempt
+	mcpcli.LoopStop = looprun.Stop
+	mcpcli.LoopStatus = looprun.Status
+	mcpcli.GitPreflight = preflight.GitPreflight
+	mcpcli.ListSkills = inspect.ListSkills
 	mcpcli.ReadHarnessFile = readHarnessFile
 	mcpcli.InspectHarness = func(repo string) any {
 		return inspectHarness(repo)
@@ -65,19 +76,14 @@ func mcpResources() []map[string]any {
 	return mcpcli.MCPResources()
 }
 
-func handleToolCall(params json.RawMessage) (any, *rpcError) {
+func handleToolCall(params json.RawMessage) (any, *jsonrpc.Error) {
 	configureMCPCLI()
 	return mcpcli.HandleToolCallWithDependencies(params, issueOpsMCPDependencies())
 }
 
-func handleResourceRead(params json.RawMessage) (any, *rpcError) {
+func handleResourceRead(params json.RawMessage) (any, *jsonrpc.Error) {
 	configureMCPCLI()
 	return mcpcli.HandleResourceRead(params)
-}
-
-func handleRequest(req rpcRequest) (any, *rpcError) {
-	configureMCPCLI()
-	return mcpcli.HandleRequestWithDependencies(req, issueOpsMCPDependencies())
 }
 
 func issueOpsMCPDependencies() mcpcli.MCPDependencies {
@@ -86,7 +92,8 @@ func issueOpsMCPDependencies() mcpcli.MCPDependencies {
 		Prepare: execution.Prepare, Orca: execution.Orca, OrcaOwner: execution.OrcaOwner, ReadIssue: execution.ReadIssue,
 		Claim: issueOpsClaimHandler, Release: issueOpsReleaseHandler, Reseed: issueOpsReseedHandler,
 		Resume: issueOpsResumeHandler, Reconcile: issueOpsReconcileHandler, Complete: issueOpsCompleteHandler,
-		Publication: issueops.RemotePublicationHandlers{
+		Provenance: provenanceadapter.NewExecutableObserver(),
+		Publication: mcpcli.PublicationHandlers{
 			Create: issueOpsPublicationCreateHandler, Reconcile: issueOpsPublicationReconcileHandler,
 		},
 	}
@@ -94,12 +101,4 @@ func issueOpsMCPDependencies() mcpcli.MCPDependencies {
 
 func textResult(text string) map[string]any {
 	return mcpcli.TextResult(text)
-}
-
-func writeRPCResult(id json.RawMessage, result any) {
-	mcpcli.WriteRPCResult(id, result)
-}
-
-func writeRPCError(id json.RawMessage, code int, message string, data any) {
-	mcpcli.WriteRPCError(id, code, message, data)
 }

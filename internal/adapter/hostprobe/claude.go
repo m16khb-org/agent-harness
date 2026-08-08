@@ -79,10 +79,15 @@ func (r ClaudeRunner) Run(ctx context.Context, request port.HostProbeRequest) po
 		return failedResult(r.Name(), "", request, started, r.deps, "harness_environment", "mcp_config_write_failed")
 	}
 
+	hookSmoke := r.deps.Getenv("HARNESS_CHILD_SMOKE_HOOKS") == "1"
+	envNames := []string{}
+	if hookSmoke {
+		envNames = append(envNames, "HARNESS_CHILD_SMOKE_HOOKS", "HARNESS_CHILD_SMOKE_OBSERVATION_FILE")
+	}
 	output, err := r.deps.Process.Run(ctx, CommandRequest{
 		Cwd:     root,
-		Argv:    claudeArgv(executable, configPath, request),
-		Env:     isolatedHostEnv(r.deps),
+		Argv:    claudeArgvMode(executable, configPath, request, hookSmoke),
+		Env:     isolatedHostEnv(r.deps, envNames...),
 		Timeout: EpisodeTimeout,
 	})
 	if err != nil {
@@ -98,15 +103,34 @@ func (r ClaudeRunner) Run(ctx context.Context, request port.HostProbeRequest) po
 	if observed := observedModelFromOutput(output.Stdout); observed != "" {
 		result.ObservedModel = observed
 	}
+	if hookSmoke {
+		observation, err := observeHostStream(output.Stdout)
+		if err != nil {
+			return failedResult(r.Name(), "", request, started, r.deps, "transport", "host_stream_invalid")
+		}
+		recorded, err := observeRecordedHookEvents(r.deps)
+		if err != nil {
+			return failedResult(r.Name(), "", request, started, r.deps, "transport", err.Error())
+		}
+		mergeHookObservation(&observation, recorded)
+		applyHostStreamObservation(&result, observation, output.ExitCode)
+		if err := persistChildSmokeObservation(r.deps, result, observation.MCPCallCount); err != nil {
+			return failedResult(r.Name(), "", request, started, r.deps, "transport", err.Error())
+		}
+	}
 	return result
 }
 
-func claudeArgv(executable, configPath string, request port.HostProbeRequest) []string {
+func claudeArgvMode(executable, configPath string, request port.HostProbeRequest, hookSmoke bool) []string {
+	settingSources := ""
+	if hookSmoke {
+		settingSources = "user"
+	}
 	argv := []string{
 		executable,
 		"-p",
 		"--verbose",
-		"--setting-sources", "",
+		"--setting-sources", settingSources,
 		"--output-format", "stream-json",
 		"--strict-mcp-config",
 		"--mcp-config", configPath,

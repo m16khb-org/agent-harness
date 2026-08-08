@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	"agent-harness/internal/core"
+	preflight "agent-harness/internal/contract/preflight"
 )
 
 const commandOutputBudgetBytes = 32 * 1024
@@ -18,10 +18,6 @@ type StepResult = commandstep.StepResult
 
 func Validate(binary, root string, seed int64) StepResult {
 	return validatePreflightFuzzWithDeps(binary, root, seed, preflightFuzzValidationDeps{})
-}
-
-func validatePreflightFuzz(binary, root string, seed int64) StepResult {
-	return Validate(binary, root, seed)
 }
 
 func validatePreflightFuzzWithDeps(binary, root string, seed int64, deps preflightFuzzValidationDeps) StepResult {
@@ -59,7 +55,7 @@ func validatePreflightFuzzWithDeps(binary, root string, seed int64, deps preflig
 	if !step.OK {
 		return step
 	}
-	var preflight core.PreflightResult
+	var preflight preflight.PreflightResult
 	if err := json.Unmarshal([]byte(step.Stdout), &preflight); err != nil {
 		step.OK = false
 		step.Error = err.Error()

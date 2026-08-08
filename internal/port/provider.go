@@ -49,14 +49,6 @@ type IssueProviderCreatePullRequestRequest struct {
 	CWD             string   `json:"cwd,omitempty"`
 }
 
-// IssueProviderCreatePullRequestResult reports the outcome.
-type IssueProviderCreatePullRequestResult struct {
-	OK      bool   `json:"ok"`
-	URL     string `json:"url"`
-	Number  string `json:"number"`
-	Preview string `json:"preview,omitempty"`
-}
-
 type IssueProviderReconcilePullRequestRequest struct {
 	Repo            string
 	ProjectKey      string

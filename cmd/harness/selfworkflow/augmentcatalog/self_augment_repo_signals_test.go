@@ -23,7 +23,7 @@ func TestDirContainsTermIgnoresTestOnlySignals(t *testing.T) {
 
 func TestCollectSelfAugmentRepoSignalsFindsMCPAdapterCatalogInContractCLI(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "mcp", "catalog.go"), "package mcp\nfunc AdapterOwnedTools() {}\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "domain", "mcp", "catalog.go"), "package mcp\nfunc AdapterOwnedTools() {}\n")
 	writeFileForRepoSignalTest(t, filepath.Join(root, "cmd", "harness", "contractcli", "contract.go"), "package contractcli\nconst marker = \"mcpadapter.AdapterOwnedTools\"\n")
 
 	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
@@ -68,7 +68,7 @@ func TestQualitySignalHarvesterIsSatisfiedByQualityInspectCLIAndSignals(t *testi
 
 func TestIssueOpsLinkingCoverageIsSatisfiedByBoundaryTests(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "issueops", "linking", "link_test.go"), `package linking
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "issueops", "linking", "link_test.go"), `package linking
 
 func TestLinkIssueRejectsInvalidURL() {
 	_ = "http(s) URL"
@@ -96,21 +96,23 @@ func TestValidateIssueURL() {}
 
 func TestStateWriteLockingIsSatisfiedByLockedStateWrite(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "state", "state_io.go"), `package state
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "application", "state", "service.go"), `package state
 
-func StateWrite(key, content string) (StateResult, error) {
-	err := withStateLock(context.Background(), dir, key, func(context.Context) error {
-		_, err := writeStateRecord(dir, key, record)
+func (service *Service) Write(key, content string) (StateResult, error) {
+	err := store.WithSpan(context.Background(), func(context.Context) error {
+		_, err := service.writeRecord(store, dir, key, record)
 		return err
 	})
 	return result, err
 }
 `)
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "state", "state_lock.go"), `package state
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "outbound", "state", "state_io.go"), `package state
 
-func withStateLock(ctx context.Context, dir, key string, fn func(context.Context) error) error { return fn(ctx) }
+func StateWrite(key, content string) (StateResult, error) {
+	return service().Write(key, content)
+}
 `)
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "state", "state_test.go"), `package state
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "outbound", "state", "state_test.go"), `package state
 
 func TestStateWriteWaitsForKeyLock() {}
 `)
@@ -129,7 +131,7 @@ func TestStateWriteWaitsForKeyLock() {}
 
 func TestCommandguardCoverageIsSatisfiedByBoundaryTests(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "commandguard", "lifecycle_command_kubectl_test.go"), `package commandguard
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "domain", "commandguard", "lifecycle_command_kubectl_test.go"), `package commandguard
 
 func TestGitOpsKubectlDecisionBlocksMutatingCommands() {}
 func TestGitOpsKubectlDecisionHandlesBoundaryTokens() {
@@ -137,6 +139,9 @@ func TestGitOpsKubectlDecisionHandlesBoundaryTokens() {
 	_ = "shell separator stops rollout subverb"
 	_ = "rollout undo is blocked"
 }
+`)
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "commandguard", "lifecycle_command_staged_checks_test.go"), `package commandguard
+
 func TestStagedCheckDecisionWarnsForBroadBiomeCommands() {}
 func TestPackageScriptAndBiomeHelpersHandleBoundaries() {
 	_ = "non-app/lib directories should not count as broad repo dirs"
@@ -157,7 +162,7 @@ func TestPackageScriptAndBiomeHelpersHandleBoundaries() {
 
 func TestWorkerStuckRunningDetectionIsSatisfiedByCoreAndCLI(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "worker", "store.go"), `package worker
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "worker", "store.go"), `package worker
 
 func DetectStuckWorkerJobs() (WorkerListResult, error) {
 	current.Status = WorkerStatusFailed
@@ -165,16 +170,10 @@ func DetectStuckWorkerJobs() (WorkerListResult, error) {
 	return result, nil
 }
 `)
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "worker", "worker_test.go"), `package worker
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "worker", "worker_test.go"), `package worker
 
 func TestWorkerDetectStuckJobsMarksDeadPIDAsFailed() {}
 func TestWorkerDetectStuckJobsSkipsAlivePID() {}
-`)
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "workflow_facade.go"), `package core
-
-func DetectStuckWorkerJobs() (WorkerListResult, error) {
-	return coreworker.DetectStuckWorkerJobs()
-}
 `)
 	writeFileForRepoSignalTest(t, filepath.Join(root, "cmd", "harness", "workercli", "worker.go"), `package workercli
 
@@ -257,49 +256,13 @@ func TestRunDaemonAcceptLoopExpires64IdleSessionsAndAdmitsInitialize() {}
 	}
 }
 
-func TestDraftWikiStaleLockIsSatisfiedByQueueLockRecovery(t *testing.T) {
-	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "draftwiki", "queue", "lock.go"), `package queue
-
-const staleLockMaxAge = 5 * time.Minute
-
-func AcquireLock(projectStateDir string) (func(), bool, error) {
-	if isStale(path) {
-		_ = os.Remove(path)
-	}
-	return func() {}, true, nil
-}
-
-func isStale(path string) bool {
-	return !processAlive(pid)
-}
-`)
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "draftwiki", "queue", "queue_test.go"), `package queue
-
-func TestAcquireLockRecoversStaleDeadPIDLock() {}
-func TestAcquireLockKeepsLiveCurrentLock() {}
-func TestAcquireLockContention() {}
-`)
-
-	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
-	if !signals.HasDraftWikiStaleLockDetection {
-		t.Fatalf("draft-wiki stale lock signal was not detected: %+v", signals)
-	}
-
-	candidate := SelfAugmentCandidate{ID: "draftwiki-stale-lock", Status: SelfAugmentCandidateStatusOpen, Score: 76.24}
-	MarkSatisfiedSelfAugmentCandidate(&candidate, signals)
-	if candidate.Status != SelfAugmentCandidateStatusSatisfied || candidate.Score != 0 || len(candidate.SatisfactionEvidence) == 0 {
-		t.Fatalf("draft-wiki stale lock candidate was not marked satisfied: %+v", candidate)
-	}
-}
-
 func TestMCPResourceCoverageIsSatisfiedByCatalogAndReadEdgeTests(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "mcp", "resource_catalog_test.go"), `package mcp
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "domain", "mcp", "resource_catalog_test.go"), `package mcp
 
 func TestResourcesExposeStableDescriptors() {}
 `)
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "mcp", "catalog_test.go"), `package mcp
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "domain", "mcp", "catalog_test.go"), `package mcp
 
 func TestResourceMapsPreserveDescriptorShape() {}
 `)
@@ -328,7 +291,7 @@ func TestResourcesContextIsByteDeterministic() {}
 
 func TestHostJudgementCoverageIsSatisfiedByMalformedResultTests(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "core", "judgement", "structured_test.go"), `package judgement
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "domain", "judgement", "structured_test.go"), `package judgement
 
 func TestDecodeStructuredJSONObjectRejectsMalformedOutputs() {}
 func TestDecodeStructuredJSONObjectBoundsLargeErrorOutput() {}
@@ -348,7 +311,7 @@ func TestDecodeStructuredJSONObjectBoundsLargeErrorOutput() {}
 
 func TestReleaseReproPackIsSatisfiedByChecklistScriptAndTestingSignal(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "scripts", "release-repro-smoke.sh"), "agent-harness install-native --dry-run --project-local --json\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, "scripts", "release-repro-smoke.sh"), "agent-harness install --dry-run --project-local --json\n")
 	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "operations", "release-reproducibility.md"), "# Release Reproducibility\n\n## Release Checklist\n")
 	writeFileForRepoSignalTest(t, filepath.Join(root, ".agent-harness", "TESTING.md"), "- `scripts/release-repro-smoke.sh` clean-machine release install reproducibility smoke\n")
 

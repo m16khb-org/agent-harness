@@ -8,7 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core"
+	issueopscore "agent-harness/internal/adapter/issueops"
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/testsupport"
 )
 
@@ -81,16 +82,16 @@ type linkedIssueOpsWorktree struct {
 
 func createLinkedIssueOpsWorktree(t *testing.T, source, branch string) linkedIssueOpsWorktree {
 	t.Helper()
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{Repo: source, Branch: branch})
+	record, err := issueopscore.StartIssueOps(issueopscore.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: source, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
 	recordIssueOpsHookIntentForTest(t, record.ID)
 	issueURL := "https://github.com/example/repo/issues/" + strings.SplitN(branch, "-", 2)[0]
-	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), record.ID, issueURL); err != nil {
+	if _, err := issueopscore.LinkIssueOpsIssue(issueopscore.IssueOpsStateRoot(), record.ID, issueURL); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), record.ID, core.IssueOpsBranchPrepareRequest{
+	if _, err := issueopscore.PrepareIssueOpsBranch(issueopscore.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     issueURL,
 		Branch:       branch,
@@ -106,7 +107,7 @@ func createLinkedIssueOpsWorktree(t *testing.T, source, branch string) linkedIss
 	if err := os.WriteFile(filepath.Join(worktree, ".git", "HEAD"), []byte("ref: refs/heads/"+branch+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), record.ID, worktree); err != nil {
+	if _, err := issueopscore.LinkIssueOpsWorktree(issueopscore.IssueOpsStateRoot(), record.ID, worktree); err != nil {
 		t.Fatal(err)
 	}
 	recordIssueOpsHookDesignForTest(t, record.ID)
@@ -117,10 +118,10 @@ func createLinkedIssueOpsWorktree(t *testing.T, source, branch string) linkedIss
 	if err := os.WriteFile(planPath, []byte("plan\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), record.ID, planPath); err != nil {
+	if _, err := issueopscore.LinkIssueOpsPlan(issueopscore.IssueOpsStateRoot(), record.ID, planPath); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.RecordIssueOpsCompatibilityReview(core.IssueOpsStateRoot(), record.ID, core.IssueOpsCompatibilityReviewRequest{
+	if _, err := issueopscore.RecordIssueOpsCompatibilityReview(issueopscore.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsCompatibilityReviewRequest{
 		BackwardCompatibility: []string{"hook fixture preserves linked worktree behavior"},
 		SideEffects:           []string{"worktree MCP guard still blocks source-root-bound tools from linked worktree cwd"},
 		RollbackPlan:          "remove fixture IssueOps state and rerun hook tests",
@@ -129,7 +130,7 @@ func createLinkedIssueOpsWorktree(t *testing.T, source, branch string) linkedIss
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.RecordIssueOpsDevilsAdvocateReview(core.IssueOpsStateRoot(), record.ID, core.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
+	if _, err := issueopscore.RecordIssueOpsDevilsAdvocateReview(issueopscore.IssueOpsStateRoot(), record.ID, issueopscontract.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
 		t.Fatal(err)
 	}
 	return linkedIssueOpsWorktree{id: record.ID, path: worktree}

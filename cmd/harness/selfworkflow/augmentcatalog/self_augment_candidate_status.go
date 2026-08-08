@@ -67,7 +67,7 @@ func candidateSatisfactionRules() []candidateSatisfactionRule {
 			return evidenceWhen(signals.HasIssueOpsLinkingBoundaryCoverage, "issueops linking covers invalid issue URLs, missing plan files, and plan/worktree boundary violations")
 		}},
 		{"state-write-locking", func(signals SelfAugmentRepoSignals) []string {
-			return evidenceWhen(signals.HasStateWriteLocking, "StateWrite serializes writes through the per-key state lock and has regression coverage")
+			return evidenceWhen(signals.HasStateWriteLocking, "StateWrite delegates to the application service, which serializes writes through the store span with regression coverage")
 		}},
 		{"coverage-commandguard", func(signals SelfAugmentRepoSignals) []string {
 			return evidenceWhen(signals.HasCommandguardBoundaryCoverage, "commandguard covers kubectl mutation denial, dry-run, shell separator, and broad Biome boundary paths")
@@ -78,17 +78,14 @@ func candidateSatisfactionRules() []candidateSatisfactionRule {
 		{"daemon-connection-limit", func(signals SelfAugmentRepoSignals) []string {
 			return evidenceWhen(signals.HasDaemonConnectionLimit, "daemon accept loop enforces maxConnections with rejection and graceful-drain coverage")
 		}},
-		{"draftwiki-stale-lock", func(signals SelfAugmentRepoSignals) []string {
-			return evidenceWhen(signals.HasDraftWikiStaleLockDetection, "draft-wiki queue lock detects stale PID/age locks and has recovery regression coverage")
-		}},
 		{"genius-mermaid-lint", func(signals SelfAugmentRepoSignals) []string {
 			return evidenceWhen(signals.HasGeniusMermaidLint, "QA gate lints Mermaid fences using GENIUS_THINK quote/<br/> rules and repo diagrams were normalized")
 		}},
 		{"install-dry-run-mode", func(signals SelfAugmentRepoSignals) []string {
-			return evidenceWhen(signals.HasInstallDryRunMode, "install-native supports --dry-run planning with no filesystem writes and adapter-level coverage")
+			return evidenceWhen(signals.HasInstallDryRunMode, "install supports --dry-run planning with no filesystem writes and adapter-level coverage")
 		}},
 		{"cli-mcp-adapter-split", func(signals SelfAugmentRepoSignals) []string {
-			return evidenceWhen(signals.HasCLIAdapterSplit && signals.HasMCPAdapterCatalog, "CLI usage lives in internal/adapter/cli", "MCP adapter-owned tool descriptors live in internal/adapter/mcp")
+			return evidenceWhen(signals.HasCLIAdapterSplit && signals.HasMCPAdapterCatalog, "CLI usage lives in internal/domain/cli", "MCP adapter-owned tool descriptors live in internal/domain/mcp")
 		}},
 		{"dto-compatibility-contract", func(signals SelfAugmentRepoSignals) []string {
 			return evidenceWhen(signals.HasCompatibilityContract, "harness contract schema/check exposes CLI/MCP compatibility contract")

@@ -1,15 +1,14 @@
 package issueopscli
 
 import (
+	issueopscore "agent-harness/internal/adapter/issueops"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
-
-	"agent-harness/internal/core"
 )
 
-func writeIssueOpsRemoteScoreRequestForCLITest(t *testing.T, req core.IssueOpsRemoteScoringRequest) string {
+func writeIssueOpsRemoteScoreRequestForCLITest(t *testing.T, req issueopscore.IssueOpsRemoteScoringRequest) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "remote-score.json")
 	b, err := json.Marshal(req)
@@ -26,7 +25,7 @@ func scoreForCLITest(score float64) *float64 {
 	return &score
 }
 
-func writeIssueOpsCandidateForCLITest(t *testing.T, candidate core.IssueOpsAutoresearchCandidate) string {
+func writeIssueOpsCandidateForCLITest(t *testing.T, candidate issueopscore.IssueOpsAutoresearchCandidate) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "candidate.json")
 	b, err := json.Marshal(candidate)

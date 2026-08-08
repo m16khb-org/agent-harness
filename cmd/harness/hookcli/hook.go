@@ -9,7 +9,7 @@ import (
 	"agent-harness/cmd/harness/hookcli/hookcatalog"
 	"agent-harness/cmd/harness/hookcli/hookenv"
 	"agent-harness/cmd/harness/hookcli/hookfailure"
-	"agent-harness/internal/core"
+	hookmetricscontract "agent-harness/internal/contract/hookmetrics"
 )
 
 // hookDisabled reports whether HARNESS_DISABLE_HOOKS turns this invocation into
@@ -39,14 +39,20 @@ func runHook(args []string) error {
 		return stdinErr
 	}
 	started := time.Now()
-	err := runHookDispatch(args)
+	var err error
+	if len(args) > 0 {
+		err = recordChildSmokeHookEvent(args[0])
+	}
+	if err == nil {
+		err = runHookDispatch(args)
+	}
 	if err != nil {
 		hookfailure.Record(args, stdin, err)
 	}
 	// Best-effort latency telemetry for real hook events (quality program
 	// Q2 phase 2); meta subcommands (failures/metrics) are not hook events.
 	if len(args) > 0 && args[0] != "failures" && args[0] != "metrics" {
-		_ = core.RecordHookMetricEvent(core.HookMetricEvent{
+		_, _ = RecordHookMetricEvent(hookmetricscontract.HookMetricEvent{
 			Hook:       args[0],
 			Host:       hookfailure.ArgValue(args, "--host"),
 			DurationMS: time.Since(started).Milliseconds(),
@@ -133,7 +139,7 @@ func runHookSessionStart(args []string) error {
 }
 
 func hookCatalogConfig() hookcatalog.Config {
-	return hookcatalog.Config{ResolveTarget: ResolveTarget, PrintJSON: printJSON, RuntimeDiagnostic: DiagnoseCurrentNativeRuntime}
+	return hookcatalog.Config{ResolveTarget: ResolveTarget, PrintJSON: printJSON, RuntimeDiagnostic: DiagnoseCurrentNativeRuntime, PruneHookFailureLog: PruneHookFailureLog, PruneHookMetricsLog: PruneHookMetricsLog, MaybeDetectStuckWorkerJobs: MaybeDetectStuckWorkerJobs, BuildLifecyclePostCompactReminder: buildLifecyclePostCompactReminder}
 }
 
 func hookUsage() {

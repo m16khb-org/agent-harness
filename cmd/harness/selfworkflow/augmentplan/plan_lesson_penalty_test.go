@@ -9,7 +9,7 @@ import (
 
 	"agent-harness/cmd/harness/selfworkflow/augmentcatalog"
 	"agent-harness/cmd/harness/selfworkflow/model"
-	"agent-harness/internal/core"
+	statestore "agent-harness/internal/adapter/outbound/state"
 )
 
 func TestApplyLessonPenaltiesDemotesRepeatedSevereLessons(t *testing.T) {
@@ -71,7 +71,7 @@ func TestSevereLessonCountsCountsOnlySevereLessonSnapshots(t *testing.T) {
 		if err != nil {
 			t.Fatalf("marshal lesson: %v", err)
 		}
-		if _, err := core.StateWrite(key, string(b)); err != nil {
+		if _, err := statestore.StateWrite(key, string(b)); err != nil {
 			t.Fatalf("write lesson state %s: %v", key, err)
 		}
 	}
@@ -81,10 +81,10 @@ func TestSevereLessonCountsCountsOnlySevereLessonSnapshots(t *testing.T) {
 	writeLesson(t, "self-augment-lesson-cand-a-3", "cand-a", "info")
 	writeLesson(t, "self-augment-lesson-cand-a-4", "cand-a", "warning")
 	writeLesson(t, "self-augment-lesson-cand-b-1", "cand-b", "critical")
-	if _, err := core.StateWrite("self-augment-lesson-broken-1", "{not json"); err != nil {
+	if _, err := statestore.StateWrite("self-augment-lesson-broken-1", "{not json"); err != nil {
 		t.Fatalf("write malformed lesson: %v", err)
 	}
-	if _, err := core.StateWrite("unrelated-key", `{"kind":"other"}`); err != nil {
+	if _, err := statestore.StateWrite("unrelated-key", `{"kind":"other"}`); err != nil {
 		t.Fatalf("write unrelated state: %v", err)
 	}
 
@@ -124,7 +124,7 @@ func TestSevereLessonCountsIgnoresOldLessonsOutsideRecentWindow(t *testing.T) {
 		if err != nil {
 			t.Fatalf("marshal lesson: %v", err)
 		}
-		if _, err := core.StateWrite(key, string(b)); err != nil {
+		if _, err := statestore.StateWrite(key, string(b)); err != nil {
 			t.Fatalf("write lesson state %s: %v", key, err)
 		}
 	}
@@ -175,7 +175,7 @@ func TestPlanAppliesLessonPenaltyAndRotatesSelection(t *testing.T) {
 			t.Fatalf("marshal lesson: %v", err)
 		}
 		key := fmt.Sprintf("self-augment-lesson-top-%d", i)
-		if _, err := core.StateWrite(key, string(b)); err != nil {
+		if _, err := statestore.StateWrite(key, string(b)); err != nil {
 			t.Fatalf("write lesson state: %v", err)
 		}
 	}

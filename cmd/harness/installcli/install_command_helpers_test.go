@@ -1,6 +1,10 @@
 package installcli
 
 import (
+	claudeadapter "agent-harness/internal/adapter/claude"
+	codexadapter "agent-harness/internal/adapter/codex"
+	"agent-harness/internal/adapter/install"
+	activationport "agent-harness/internal/port/nativeactivation"
 	"bytes"
 	"encoding/json"
 	"io"
@@ -25,7 +29,14 @@ func configureInstallCommandTest(t *testing.T, home string) string {
 	t.Setenv("HARNESS_ROOT", root)
 	t.Setenv("SHELL", "/bin/zsh")
 	t.Setenv("PATH", "/usr/bin:/bin")
-	Configure(Deps{HarnessRoot: func() string { return root }})
+	Configure(Deps{
+		HarnessRoot:          func() string { return root },
+		NativeInstallRequest: install.DefaultNativeInstallRequest,
+		InstallNative: func(req port.NativeInstallRequest) (port.NativeInstallResult, error) {
+			return install.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
+		},
+		ActivationReadback: func(port.NativeInstallRequest) activationport.ReadbackVerifier { return nil },
+	})
 	t.Cleanup(Reset)
 	return installCommandTestStableRoot(t, root)
 }
@@ -44,14 +55,14 @@ func installCommandTestStableRoot(t *testing.T, invokingRoot string) string {
 	return filepath.Dir(commonDir)
 }
 
-func runInstallDryRunJSON(t *testing.T, home, commandName, pathMode string) port.NativeInstallResult {
+func runInstallDryRunJSON(t *testing.T, home, pathMode string) port.NativeInstallResult {
 	t.Helper()
 	configureInstallCommandTest(t, home)
 	out, _, err := captureInstallCommandOutput(t, nil, func() error {
-		return RunInstallCommand(commandName, []string{"--dry-run", "--json", "--path-mode=" + pathMode})
+		return RunInstall([]string{"--dry-run", "--json", "--path-mode=" + pathMode})
 	})
 	if err != nil {
-		t.Fatalf("%s --dry-run --json --path-mode=%s failed: %v\n%s", commandName, pathMode, err, out)
+		t.Fatalf("install --dry-run --json --path-mode=%s failed: %v\n%s", pathMode, err, out)
 	}
 	var result port.NativeInstallResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {

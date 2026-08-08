@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/selfworkflow/model"
-	"agent-harness/internal/core"
+	statestore "agent-harness/internal/adapter/outbound/state"
 )
 
 func TestPromoteSelfAugmentBaseline(t *testing.T) {
@@ -33,7 +33,7 @@ func TestPromoteSelfAugmentBaseline(t *testing.T) {
 	if !dry.OK || !dry.DryRun || dry.Promoted {
 		t.Fatalf("unexpected dry-run promote result: %+v", dry)
 	}
-	if _, err := core.StateRead("baseline"); err == nil {
+	if _, err := statestore.StateRead("baseline"); err == nil {
 		t.Fatalf("dry-run wrote baseline")
 	}
 	confirmed, err := PromoteSelfAugmentBaseline("candidate", "baseline", true, false)

@@ -1,10 +1,13 @@
 package issueopscli
 
 import (
+	"agent-harness/cmd/harness/issueopscli/remotecmd"
 	"agent-harness/cmd/harness/issueopscli/remoteverify"
-	"agent-harness/internal/core"
-	"agent-harness/internal/core/issueops"
+	executionissue "agent-harness/internal/contract/executionissue"
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
+	basesyncport "agent-harness/internal/port/issueopsbasesync"
+	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
 
 func RunIssueOps(args []string) error {
@@ -12,17 +15,19 @@ func RunIssueOps(args []string) error {
 }
 
 type Dependencies struct {
-	Prepare     issueops.ExecutionPrepareHandler
+	Prepare     issueopscontract.ExecutionPrepareHandler
 	Orca        port.ExecutionOrcaProvisioner
 	OrcaOwner   port.ExecutionOrcaOwnerInspector
-	ReadIssue   issueops.ExecutionIssueSnapshotReadFunc
-	Claim       issueops.ExecutionClaimHandler
-	Release     issueops.ExecutionReleaseHandler
-	Reseed      issueops.ExecutionReseedHandler
-	Resume      issueops.ExecutionResumeHandler
-	Reconcile   issueops.ExecutionReconcileHandler
-	Complete    issueops.ExecutionCompleteHandler
-	Publication issueops.RemotePublicationHandlers
+	BaseSync    basesyncport.Inspector
+	ReadIssue   executionissue.ExecutionIssueSnapshotReadFunc
+	Claim       issueopscontract.ExecutionClaimHandler
+	Release     issueopscontract.ExecutionReleaseHandler
+	Reseed      issueopscontract.ExecutionReseedHandler
+	Resume      issueopscontract.ExecutionResumeHandler
+	Reconcile   port.ExecutionReconcileHandler
+	Complete    issueopscontract.ExecutionCompleteHandler
+	Publication remotecmd.PublicationHandlers
+	Provenance  provenanceport.Observer
 }
 
 func RunIssueOpsWithDependencies(args []string, deps Dependencies) error {
@@ -31,23 +36,23 @@ func RunIssueOpsWithDependencies(args []string, deps Dependencies) error {
 
 // RunIssueOpsWithReleaseHandler is the composition-root entry point for the
 // production release vertical. Other IssueOps actions retain their existing facade.
-func RunIssueOpsWithReleaseHandler(args []string, release issueops.ExecutionReleaseHandler) error {
+func RunIssueOpsWithReleaseHandler(args []string, release issueopscontract.ExecutionReleaseHandler) error {
 	return RunIssueOpsWithExecutionHandlers(args, nil, release)
 }
 
-func RunIssueOpsWithExecutionHandlers(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler) error {
+func RunIssueOpsWithExecutionHandlers(args []string, claim issueopscontract.ExecutionClaimHandler, release issueopscontract.ExecutionReleaseHandler) error {
 	return RunIssueOpsWithExecutionHandlersAndReseed(args, claim, release, nil)
 }
 
-func RunIssueOpsWithExecutionHandlersAndReseed(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler, reseed issueops.ExecutionReseedHandler) error {
+func RunIssueOpsWithExecutionHandlersAndReseed(args []string, claim issueopscontract.ExecutionClaimHandler, release issueopscontract.ExecutionReleaseHandler, reseed issueopscontract.ExecutionReseedHandler) error {
 	return RunIssueOpsWithExecutionHandlersAndReseedAndResume(args, claim, release, reseed, nil)
 }
 
-func RunIssueOpsWithExecutionHandlersAndReseedAndResume(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler, reseed issueops.ExecutionReseedHandler, resume issueops.ExecutionResumeHandler) error {
+func RunIssueOpsWithExecutionHandlersAndReseedAndResume(args []string, claim issueopscontract.ExecutionClaimHandler, release issueopscontract.ExecutionReleaseHandler, reseed issueopscontract.ExecutionReseedHandler, resume issueopscontract.ExecutionResumeHandler) error {
 	return RunIssueOpsWithExecutionHandlersAndReseedResumeAndReconcile(args, claim, release, reseed, resume, nil)
 }
 
-func RunIssueOpsWithExecutionHandlersAndReseedResumeAndReconcile(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler, reseed issueops.ExecutionReseedHandler, resume issueops.ExecutionResumeHandler, reconcile issueops.ExecutionReconcileHandler) error {
+func RunIssueOpsWithExecutionHandlersAndReseedResumeAndReconcile(args []string, claim issueopscontract.ExecutionClaimHandler, release issueopscontract.ExecutionReleaseHandler, reseed issueopscontract.ExecutionReseedHandler, resume issueopscontract.ExecutionResumeHandler, reconcile port.ExecutionReconcileHandler) error {
 	return RunIssueOpsWithDependencies(args, Dependencies{
 		Claim: claim, Release: release, Reseed: reseed, Resume: resume, Reconcile: reconcile,
 	})
@@ -61,7 +66,7 @@ func CleanupMerged(id string, requested bool) bool {
 	return issueOpsCleanupMerged(id, requested)
 }
 
-func VerifyRemoteArtifactLive(req core.IssueOpsRemoteArtifactVerificationRequest) error {
+func VerifyRemoteArtifactLive(req issueopscontract.IssueOpsRemoteArtifactVerificationRequest) error {
 	return verifyIssueOpsRemoteArtifactLive(req)
 }
 

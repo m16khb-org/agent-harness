@@ -3,14 +3,12 @@ package stateio
 import (
 	"fmt"
 	"strings"
-
-	"agent-harness/internal/core"
 )
 
 func PromoteSelfAugmentBaseline(fromKey, baselineKey string, confirm, allowFailedSource bool) (SelfAugmentPromoteResult, error) {
 	result := SelfAugmentPromoteResult{
 		OK:          false,
-		StateDir:    core.StateDir(),
+		StateDir:    StateDir(),
 		FromKey:     fromKey,
 		BaselineKey: baselineKey,
 		Confirm:     confirm,
@@ -42,10 +40,10 @@ func PromoteSelfAugmentBaseline(fromKey, baselineKey string, confirm, allowFaile
 			"refusing to promote: source snapshot %q did not pass the gate (ok=%v, termination_eligible=%v); rerun self-verify or pass --allow-failed-source",
 			fromKey, snapshot.OK, snapshot.Summary.TerminationEligible)
 	}
-	if err := WriteSelfAugmentSnapshotRecord(core.StateDir(), baselineKey, snapshot); err != nil {
+	if err := WriteSelfAugmentSnapshotRecord(StateDir(), baselineKey, snapshot); err != nil {
 		return result, err
 	}
-	state, err := core.StateRead(baselineKey)
+	state, err := StateRead(baselineKey)
 	if err != nil {
 		return result, err
 	}

@@ -1,6 +1,7 @@
 package issueopscli
 
 import (
+	"agent-harness/cmd/harness/issueopscli/remotecmd"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,10 +13,12 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/mcpcli"
-	"agent-harness/internal/core"
-	issueopscore "agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
-	"agent-harness/internal/core/preflight"
+	issueopscore "agent-harness/internal/adapter/issueops"
+	"agent-harness/internal/adapter/preflight"
+	commandparsecontract "agent-harness/internal/contract/commandparse"
+	issueopscontract "agent-harness/internal/contract/issueops"
+	"agent-harness/internal/domain/commandparse"
+	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
 
 func TestIssueOpsExecutionDepsPropagatePublicationReconcileWithoutInvocation(t *testing.T) {
@@ -25,7 +28,7 @@ func TestIssueOpsExecutionDepsPropagatePublicationReconcileWithoutInvocation(t *
 		return issueopscore.ExecutionReconcileResult{}, nil
 	})
 
-	deps := issueOpsExecutionDeps(Dependencies{Publication: issueopscore.RemotePublicationHandlers{Reconcile: handler}})
+	deps := issueOpsExecutionDeps(Dependencies{Publication: remotecmd.PublicationHandlers{Reconcile: handler}})
 	if deps.Publication.Reconcile == nil {
 		t.Fatal("publication reconcile handler was not propagated")
 	}
@@ -55,7 +58,12 @@ func TestIssueOpsExecutionDepsPropagateCompletionWithoutInvocation(t *testing.T)
 func TestIssueOpsExecutionPrepareCLIAndStatusShareSchemaProjection(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo, id, actorFlags := executionCLIRecord(t)
-	deps := Dependencies{Prepare: executionCLIPrepareHandler(t)}
+	deps := Dependencies{
+		Prepare: executionCLIPrepareHandler(t),
+		Provenance: issueOpsProvenanceObserverStub{evidence: provenanceport.Receipt{
+			ExecutablePath: "/repo/bin/agent-harness", ExecutableSHA256: strings.Repeat("e", 64),
+		}},
+	}
 
 	preparedJSON := captureStdoutForContract(t, func() error {
 		return runIssueOpsWithDependencies(append([]string{
@@ -74,7 +82,7 @@ func TestIssueOpsExecutionPrepareCLIAndStatusShareSchemaProjection(t *testing.T)
 	}
 
 	statusJSON := captureStdoutForContract(t, func() error {
-		return runIssueOps([]string{"execution", "status", "--id", id, "--json"})
+		return RunIssueOpsWithDependencies([]string{"execution", "status", "--id", id, "--json"}, deps)
 	})
 	var status issueopscore.ExecutionResult
 	if err := json.Unmarshal([]byte(statusJSON), &status); err != nil {
@@ -85,10 +93,82 @@ func TestIssueOpsExecutionPrepareCLIAndStatusShareSchemaProjection(t *testing.T)
 	}
 }
 
-func sameExecutionCLIPath(left, right string) bool {
-	left, leftErr := filepath.EvalSymlinks(left)
-	right, rightErr := filepath.EvalSymlinks(right)
-	return leftErr == nil && rightErr == nil && filepath.Clean(left) == filepath.Clean(right)
+func TestIssueOpsExecutionStatusProjectsActorFreeResumeCommand(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	repo, id, _ := executionCLIRecord(t)
+	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	worktree := filepath.Join(repo+".worktrees", record.Branch)
+	record.WorktreePath = worktree
+	record.Execution = &issueopscontract.Execution{
+		Mode: issueopscontract.ExecutionModeOrca,
+		Workspace: issueopscontract.Workspace{
+			SourceRoot: repo, Root: worktree, Branch: record.Branch,
+			BaseHead: record.BranchPrepare.BaseSHA, Driver: "orca", LinkedAt: "2026-08-02T00:00:00Z",
+		},
+		Lease: issueopscontract.WriteLease{
+			Generation: 3, Status: issueopscontract.LeaseStatusClaimable,
+			ClaimTokenSHA256: strings.Repeat("a", 64),
+		},
+		Orca: &issueopscontract.OrcaBinding{
+			RuntimeID: "runtime-1", RepoID: "repo-1", WorktreeID: "worktree-1",
+			LeaseGeneration: 2, OwnerHost: "codex", OwnerModel: "gpt-5.6-terra",
+			ArtifactIdentityVersion: issueopscontract.OrcaArtifactIdentityVersion,
+			IssueBodySHA256:         strings.Repeat("b", 64), ContextPacketSHA256: strings.Repeat("c", 64), OwnerPromptSHA256: strings.Repeat("d", 64),
+			TaskID: "task-1", DispatchID: "dispatch-1", TerminalPTYID: "pty-1",
+		},
+	}
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+
+	deps := Dependencies{Provenance: issueOpsProvenanceObserverStub{evidence: provenanceport.Receipt{
+		ExecutablePath: "/repo/bin/agent-harness", ExecutableSHA256: strings.Repeat("e", 64),
+	}}}
+	statusJSON := captureStdoutForContract(t, func() error {
+		return RunIssueOpsWithDependencies([]string{"execution", "status", "--id", id, "--json"}, deps)
+	})
+	var status issueopscore.ExecutionResult
+	if err := json.Unmarshal([]byte(statusJSON), &status); err != nil {
+		t.Fatalf("execution status should return JSON: %v\n%s", err, statusJSON)
+	}
+	want := issueopscore.ExecutionResumeRecoveryCommand(id, 3)
+	if !sameGeneratedExecutionCommand(status.NextCommand, want, 3) {
+		t.Fatalf("status next command = %q, want %q", status.NextCommand, want)
+	}
+
+	record.Execution.Orca.IssueBodySHA256 = ""
+	record.Execution.Orca.ContextPacketSHA256 = ""
+	record.Execution.Orca.OwnerPromptSHA256 = ""
+	record.Execution.Orca.ArtifactIdentityVersion = 0
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+	legacyJSON := captureStdoutForContract(t, func() error {
+		return RunIssueOpsWithDependencies([]string{"execution", "status", "--id", id, "--json"}, deps)
+	})
+	if err := json.Unmarshal([]byte(legacyJSON), &status); err != nil {
+		t.Fatalf("legacy execution status should return JSON: %v\n%s", err, legacyJSON)
+	}
+	want = "agent-harness issueops execution replace --id '" + id + "' --expected-generation 3 --preview"
+	if !sameGeneratedExecutionCommand(status.NextCommand, want, 3) {
+		t.Fatalf("legacy status next command = %q, want %q", status.NextCommand, want)
+	}
+}
+
+func sameGeneratedExecutionCommand(got, raw string, generation uint64) bool {
+	tokens := commandparse.SplitCommandTokens(got)
+	if len(tokens) < 2 {
+		return false
+	}
+	clean, provenance, present, err := commandparsecontract.ConsumeGeneratedCommandProvenance(tokens[1:])
+	if err != nil || !present || provenance.LeaseGeneration != generation || tokens[0] != provenance.ExecutablePath {
+		return false
+	}
+	want := commandparse.SplitCommandTokens(raw)
+	return len(want) > 1 && strings.Join(clean, "\x00") == strings.Join(want[1:], "\x00")
 }
 
 func TestIssueOpsExecutionCLIRejectsLegacyDecideAndAmbiguousReplace(t *testing.T) {
@@ -113,6 +193,20 @@ func TestIssueOpsExecutionPrepareCLIAndMCPStatusAndErrorsAreIdentical(t *testing
 			Dependencies{Prepare: executionCLIPrepareHandler(t)},
 		)
 	})
+	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Execution.Lease.Generation = 2
+	record.Execution.CompletionHistory = []issueopscontract.ExecutionCompletionHistory{{
+		Generation: 1,
+		Completion: issueopscontract.ExecutionCompletion{Generation: 1, FinalHead: strings.Repeat("a", 40), TuringReportPath: ".agent-harness/turing/old.json", Verification: []string{"old verification"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/304", CompletedAt: "2026-08-03T00:00:00Z"},
+		Reason:     "functional HEAD changed",
+		ReopenedAt: "2026-08-04T00:00:00Z",
+	}}
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
 
 	cliJSON := captureStdoutForContract(t, func() error {
 		return runIssueOps([]string{"execution", "status", "--id", id, "--json"})
@@ -127,6 +221,9 @@ func TestIssueOpsExecutionPrepareCLIAndMCPStatusAndErrorsAreIdentical(t *testing
 	}
 	if !reflect.DeepEqual(cliResult, mcpResult) {
 		t.Fatalf("CLI and MCP execution DTOs diverged\nCLI=%#v\nMCP=%#v", cliResult, mcpResult)
+	}
+	if len(cliResult.Execution.CompletionHistory) != 1 || cliResult.Execution.CompletionHistory[0].Completion.Verification[0] != "old verification" {
+		t.Fatalf("CLI/MCP status lost completion history: %+v", cliResult.Execution.CompletionHistory)
 	}
 
 	cliErrorJSON, cliErr := captureStdoutAndErrorForIssueOps(t, func() error {
@@ -168,7 +265,7 @@ func executionCLIPrepareHandler(t *testing.T) issueopscore.ExecutionPrepareHandl
 		}
 		actor := request.Actor
 		actor.ProcessAncestry = nil
-		workspace := model.Workspace{
+		workspace := issueopscontract.Workspace{
 			SourceRoot: record.Repo,
 			Root:       filepath.Join(record.Repo+".worktrees", record.Branch),
 			Branch:     record.Branch,
@@ -176,12 +273,12 @@ func executionCLIPrepareHandler(t *testing.T) issueopscore.ExecutionPrepareHandl
 			Driver:     "git",
 			LinkedAt:   "2026-08-02T00:00:00Z",
 		}
-		execution := &model.Execution{
-			Mode:      model.ExecutionModeDirect,
+		execution := &issueopscontract.Execution{
+			Mode:      issueopscontract.ExecutionModeDirect,
 			Workspace: workspace,
-			Lease: model.WriteLease{
+			Lease: issueopscontract.WriteLease{
 				Generation: 1,
-				Status:     model.LeaseStatusActive,
+				Status:     issueopscontract.LeaseStatusActive,
 				Holder:     &actor,
 				ClaimedAt:  workspace.LinkedAt,
 			},
@@ -250,16 +347,16 @@ func executionCLIRecord(t *testing.T) (string, string, []string) {
 	}
 	baseHead := preflight.GitOut(repo, "rev-parse", "HEAD")
 	branch := "69-execution-cli"
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{Repo: repo, Branch: branch})
+	record, err := issueopscore.StartIssueOps(issueopscore.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: repo, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
 	record.IssueURL = "https://github.com/example/agent-harness/issues/69"
-	record.BranchPrepare = &core.IssueOpsBranchPrepare{
+	record.BranchPrepare = &issueopscontract.IssueOpsBranchPrepare{
 		Provider: "github", IssueURL: record.IssueURL, Branch: branch,
 		BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true,
 	}
-	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
 	receipt, err := issueopscore.ObserveNativeProcessReceipt(os.Getpid())

@@ -1,11 +1,12 @@
 package issueopslease
 
 import (
+	"encoding/json"
 	"reflect"
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops/model"
+	model "agent-harness/internal/contract/issueops"
 )
 
 func TestStableV1ShapeCoversEveryPersistedCoreField(t *testing.T) {
@@ -27,6 +28,141 @@ func TestValidateActorRetainsLegacyText(t *testing.T) {
 				t.Fatalf("validateActor error=%v want=%q", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestValidateSidecarsDistinguishesLegacyAndPostUpgradeArtifactIdentity(t *testing.T) {
+	binding := OrcaBinding{
+		RuntimeID: "runtime", RepoID: "repo", WorktreeID: "worktree",
+		OwnerHost: "codex", OwnerModel: "model", TaskID: "task", DispatchID: "dispatch",
+	}
+	execution := Execution{Mode: "orca", Orca: &binding}
+	if err := validateSidecars(execution); err != nil {
+		t.Fatalf("unmarked legacy all-empty identity must remain readable: %v", err)
+	}
+
+	execution.Orca.ArtifactIdentityVersion = OrcaArtifactIdentityVersion
+	if err := validateSidecars(execution); err == nil || !strings.Contains(err.Error(), "version requires a complete sealed artifact identity") {
+		t.Fatalf("post-upgrade all-empty identity must fail as an invariant violation: %v", err)
+	}
+
+	execution.Orca.IssueBodySHA256 = strings.Repeat("a", 64)
+	execution.Orca.ContextPacketSHA256 = strings.Repeat("b", 64)
+	execution.Orca.OwnerPromptSHA256 = strings.Repeat("c", 64)
+	if err := validateSidecars(execution); err != nil {
+		t.Fatalf("versioned complete identity must be valid: %v", err)
+	}
+}
+
+func TestCompletionHistoryStrictRoundTripAndLegacyRead(t *testing.T) {
+	record := completionHistoryRecord()
+	encoded, err := Encode(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := Decode(record.ID, encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(decoded.Execution.CompletionHistory, record.Execution.CompletionHistory) {
+		t.Fatalf("completion history round trip=%+v want=%+v", decoded.Execution.CompletionHistory, record.Execution.CompletionHistory)
+	}
+	if decoded.Execution.CompletionHistory[0].Completion.Generation != 1 {
+		t.Fatalf("completion generation did not round trip: %+v", decoded.Execution.CompletionHistory[0])
+	}
+
+	var legacy map[string]any
+	if err := json.Unmarshal(encoded, &legacy); err != nil {
+		t.Fatal(err)
+	}
+	execution := legacy["execution"].(map[string]any)
+	delete(execution, "completion_history")
+	execution["completion"] = map[string]any{
+		"final_head": strings.Repeat("c", 40), "turing_report_path": ".agent-harness/turing/legacy.json",
+		"verification": []any{"go test ./... -count=1"}, "remote_artifact_url": "https://github.com/acme/repo/pull/1", "completed_at": "2026-08-02T00:00:00Z",
+	}
+	legacyBytes, err := json.Marshal(legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Decode(record.ID, legacyBytes); err != nil {
+		t.Fatalf("schema v1 record without completion_history must remain readable: %v", err)
+	}
+}
+
+func TestCompletionHistoryRejectsIncompleteEntries(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		mutate func(*CompletionHistoryEntry)
+	}{
+		{name: "generation", mutate: func(entry *CompletionHistoryEntry) { entry.Generation = 0 }},
+		{name: "completion", mutate: func(entry *CompletionHistoryEntry) { entry.Completion.Verification = nil }},
+		{name: "blank verification", mutate: func(entry *CompletionHistoryEntry) { entry.Completion.Verification = []string{" "} }},
+		{name: "current generation", mutate: func(entry *CompletionHistoryEntry) {
+			entry.Generation = 2
+			entry.Completion.Generation = 2
+		}},
+		{name: "future generation", mutate: func(entry *CompletionHistoryEntry) {
+			entry.Generation = 3
+			entry.Completion.Generation = 3
+		}},
+		{name: "reason", mutate: func(entry *CompletionHistoryEntry) { entry.Reason = " " }},
+		{name: "reopened at", mutate: func(entry *CompletionHistoryEntry) { entry.ReopenedAt = " " }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			record := completionHistoryRecord()
+			test.mutate(&record.Execution.CompletionHistory[0])
+			if _, err := Encode(record); err == nil {
+				t.Fatal("invalid completion history accepted")
+			}
+		})
+	}
+}
+
+func TestCurrentCompletionRejectsBlankVerificationEvidence(t *testing.T) {
+	record := completionHistoryRecord()
+	record.Execution.CompletionHistory = nil
+	record.Execution.Completion = &Completion{
+		FinalHead: strings.Repeat("b", 40), TuringReportPath: ".agent-harness/turing/report.json",
+		Verification: []string{" "}, RemoteArtifactURL: "https://github.com/acme/repo/pull/1", CompletedAt: "2026-08-03T00:00:00Z",
+	}
+	if _, err := Encode(record); err == nil {
+		t.Fatal("current completion with blank verification evidence accepted")
+	}
+}
+
+func TestCompletionGenerationValidation(t *testing.T) {
+	record := completionHistoryRecord()
+	record.Execution.CompletionHistory[0].Completion.Generation = 2
+	if _, err := Encode(record); err == nil || !strings.Contains(err.Error(), "generation conflicts") {
+		t.Fatalf("history generation conflict error=%v", err)
+	}
+
+	record = completionHistoryRecord()
+	record.Execution.CompletionHistory = nil
+	record.Execution.Completion = &Completion{
+		Generation: 3, FinalHead: strings.Repeat("b", 40), TuringReportPath: ".agent-harness/turing/report.json",
+		Verification: []string{"go test ./..."}, RemoteArtifactURL: "https://github.com/acme/repo/pull/1", CompletedAt: "2026-08-03T00:00:00Z",
+	}
+	if _, err := Encode(record); err == nil || !strings.Contains(err.Error(), "exceeds the lease generation") {
+		t.Fatalf("current completion generation error=%v", err)
+	}
+}
+
+func completionHistoryRecord() Record {
+	return Record{
+		SchemaVersion: SchemaVersion,
+		ID:            "io-completion-history",
+		Execution: &Execution{
+			Mode:      "direct",
+			Workspace: Workspace{SourceRoot: "/source", Root: "/worktree", Branch: "branch", BaseHead: strings.Repeat("a", 40), Driver: "git", LinkedAt: "2026-08-03T00:00:00Z"},
+			Lease:     Lease{Generation: 2, Status: "released"},
+			CompletionHistory: []CompletionHistoryEntry{{
+				Generation: 1,
+				Completion: Completion{Generation: 1, FinalHead: strings.Repeat("b", 40), TuringReportPath: ".agent-harness/turing/report.json", Verification: []string{"go test ./... -count=1"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/1", CompletedAt: "2026-08-03T00:00:00Z"},
+				Reason:     "new verified HEAD", ReopenedAt: "2026-08-04T00:00:00Z",
+			}},
+		},
 	}
 }
 

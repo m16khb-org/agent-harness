@@ -23,9 +23,9 @@ func TestResumeRejectsBeforeArtifactsAndInventory(t *testing.T) {
 			artifacts++
 			return leasecontract.ResumeArtifacts{}, nil
 		}),
-		resumeOwnersFunc(func(context.Context, leasecontract.Record) (leasedomain.ResumeInventory, bool, error) {
+		resumeOwnersFunc(func(context.Context, leasecontract.Record) (leasedomain.ResumeInventory, error) {
 			owners++
-			return leasedomain.ResumeInventory{}, true, nil
+			return leasedomain.ResumeInventory{}, nil
 		}),
 		resumeStagesFake{},
 		resumeOperationIDsFunc(func() (string, error) { return strings.Repeat("a", 32), nil }),
@@ -46,6 +46,46 @@ func TestResumeRejectsBeforeArtifactsAndInventory(t *testing.T) {
 	}
 }
 
+func TestResumeReturnsExistingBindingWithoutAllocatingAnotherLaunch(t *testing.T) {
+	record := resumeApplicationTestRecord(4)
+	operationIDs := 0
+	service := NewResumeService(
+		resumeFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		resumeRepositoryFake{snapshot: ResumeSnapshot{Record: record}},
+		resumeArtifactsFunc(func(context.Context, leasecontract.Record) (leasecontract.ResumeArtifacts, error) {
+			return leasecontract.ResumeArtifacts{ClaimTokenPath: "token"}, nil
+		}),
+		resumeOwnersFunc(func(context.Context, leasecontract.Record) (leasedomain.ResumeInventory, error) {
+			return leasedomain.ResumeInventory{RuntimeID: "runtime", TerminalLive: true, TaskLive: true, TerminalID: "pty"}, nil
+		}),
+		resumeStagesFake{},
+		resumeOperationIDsFunc(func() (string, error) {
+			operationIDs++
+			return strings.Repeat("d", 32), nil
+		}),
+		func(context.Context, leasedomain.ProcessReceipt) (string, leasedomain.ProcessReceipt, error) {
+			return "live", *resumeApplicationActor().Process, nil
+		},
+		reseedPathMatcher{},
+	)
+
+	result, err := service.Resume(context.Background(), ResumeRequest{
+		ID: record.ID, ExpectedGeneration: 4, Actor: resumeApplicationActor(),
+		Ancestry: []leasedomain.ProcessReceipt{*resumeApplicationActor().Process}, CWD: "/worktree", Confirm: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Disposition != leasedomain.ResumeExistingBinding {
+		t.Fatalf("resume disposition=%q want=%q", result.Disposition, leasedomain.ResumeExistingBinding)
+	}
+	if operationIDs != 0 {
+		t.Fatalf("same-generation live owner allocated %d launch operations", operationIDs)
+	}
+}
+
 func TestResumeCreatesTerminalRunTaskDispatchInApplicationOrder(t *testing.T) {
 	trace := []string{}
 	record := resumeApplicationTestRecord(4)
@@ -60,9 +100,9 @@ func TestResumeCreatesTerminalRunTaskDispatchInApplicationOrder(t *testing.T) {
 			trace = append(trace, "artifacts")
 			return leasecontract.ResumeArtifacts{ClaimTokenPath: "token", IssueBodySHA256: strings.Repeat("a", 64), ContextPacketPath: "packet", ContextPacketSHA256: strings.Repeat("b", 64), OwnerPromptPath: "prompt", OwnerPromptSHA256: strings.Repeat("c", 64)}, nil
 		}),
-		resumeOwnersFunc(func(context.Context, leasecontract.Record) (leasedomain.ResumeInventory, bool, error) {
+		resumeOwnersFunc(func(context.Context, leasecontract.Record) (leasedomain.ResumeInventory, error) {
 			trace = append(trace, "owners")
-			return leasedomain.ResumeInventory{RuntimeID: "runtime"}, true, nil
+			return leasedomain.ResumeInventory{RuntimeID: "runtime"}, nil
 		}),
 		resumeTraceStages{trace: &trace},
 		resumeOperationIDsFunc(func() (string, error) { trace = append(trace, "operation_id"); return strings.Repeat("d", 32), nil }),
@@ -79,6 +119,9 @@ func TestResumeCreatesTerminalRunTaskDispatchInApplicationOrder(t *testing.T) {
 	if !result.OK || result.Receipt.Execution.Pending != nil {
 		t.Fatalf("result=%+v", result)
 	}
+	if result.Disposition != leasedomain.ResumeCreateTerminal {
+		t.Fatalf("resume disposition=%q want=%q", result.Disposition, leasedomain.ResumeCreateTerminal)
+	}
 	want := []string{
 		"fence", "actor", "snapshot", "artifacts", "owners", "operation_id", "begin",
 		"load_terminal_create", "inspect_terminal_create", "mark_terminal_create", "invoke_terminal_create", "apply_terminal_create",
@@ -89,6 +132,44 @@ func TestResumeCreatesTerminalRunTaskDispatchInApplicationOrder(t *testing.T) {
 	}
 	if !slices.Equal(trace, want) {
 		t.Fatalf("trace=%v\nwant=%v", trace, want)
+	}
+}
+
+func TestResumeCreatesOneOwnerForSettledHolderlessRuntimeRollover(t *testing.T) {
+	record := resumeApplicationTestRecord(4)
+	record.Stable.Execution.Orca.RuntimeID = "runtime-old"
+	operationIDs := 0
+	service := NewResumeService(
+		resumeFenceFunc(func(_ context.Context, _ string, fn func(context.Context) error) error {
+			return fn(context.Background())
+		}),
+		resumeRepositoryFake{snapshot: ResumeSnapshot{Record: record}},
+		resumeArtifactsFunc(func(context.Context, leasecontract.Record) (leasecontract.ResumeArtifacts, error) {
+			return leasecontract.ResumeArtifacts{ClaimTokenPath: "token"}, nil
+		}),
+		resumeOwnersFunc(func(context.Context, leasecontract.Record) (leasedomain.ResumeInventory, error) {
+			return leasedomain.ResumeInventory{
+				RuntimeID: "runtime-current", TerminalInventoryComplete: true, TaskStatus: "failed",
+				DispatchStatus: "dispatched", DispatchAssigneeHandle: "term-old",
+			}, nil
+		}),
+		resumeStagesFake{},
+		resumeOperationIDsFunc(func() (string, error) { operationIDs++; return strings.Repeat("d", 32), nil }),
+		func(context.Context, leasedomain.ProcessReceipt) (string, leasedomain.ProcessReceipt, error) {
+			return "live", *resumeApplicationActor().Process, nil
+		},
+		reseedPathMatcher{},
+	)
+
+	result, err := service.Resume(context.Background(), ResumeRequest{
+		ID: record.ID, ExpectedGeneration: 4, Actor: resumeApplicationActor(),
+		Ancestry: []leasedomain.ProcessReceipt{*resumeApplicationActor().Process}, CWD: "/worktree", Confirm: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Disposition != leasedomain.ResumeCreateTerminal || operationIDs != 1 {
+		t.Fatalf("runtime rollover resume=%+v operation_ids=%d", result, operationIDs)
 	}
 }
 
@@ -137,8 +218,8 @@ func resumeApplicationStageService(record Record, repository ResumeRepository, s
 		resumeArtifactsFunc(func(context.Context, leasecontract.Record) (leasecontract.ResumeArtifacts, error) {
 			return leasecontract.ResumeArtifacts{ClaimTokenPath: "token", IssueBodySHA256: strings.Repeat("a", 64), ContextPacketPath: "packet", ContextPacketSHA256: strings.Repeat("b", 64), OwnerPromptPath: "prompt", OwnerPromptSHA256: strings.Repeat("c", 64)}, nil
 		}),
-		resumeOwnersFunc(func(context.Context, leasecontract.Record) (leasedomain.ResumeInventory, bool, error) {
-			return leasedomain.ResumeInventory{RuntimeID: "runtime"}, true, nil
+		resumeOwnersFunc(func(context.Context, leasecontract.Record) (leasedomain.ResumeInventory, error) {
+			return leasedomain.ResumeInventory{RuntimeID: "runtime"}, nil
 		}),
 		stages,
 		resumeOperationIDsFunc(func() (string, error) { return strings.Repeat("d", 32), nil }),
@@ -196,9 +277,9 @@ func (f resumeArtifactsFunc) ReadAndVerify(ctx context.Context, record leasecont
 	return f(ctx, record)
 }
 
-type resumeOwnersFunc func(context.Context, leasecontract.Record) (leasedomain.ResumeInventory, bool, error)
+type resumeOwnersFunc func(context.Context, leasecontract.Record) (leasedomain.ResumeInventory, error)
 
-func (f resumeOwnersFunc) Observe(ctx context.Context, record leasecontract.Record) (leasedomain.ResumeInventory, bool, error) {
+func (f resumeOwnersFunc) Observe(ctx context.Context, record leasecontract.Record) (leasedomain.ResumeInventory, error) {
 	return f(ctx, record)
 }
 

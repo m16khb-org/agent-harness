@@ -1,10 +1,9 @@
 package stateroundtrip
 
 import (
+	statecontract "agent-harness/internal/contract/state"
 	"encoding/json"
 	"time"
-
-	"agent-harness/internal/core"
 )
 
 type validateStateRoundtripStateInput struct {
@@ -38,9 +37,6 @@ func validateStateRoundtripStateCLI(input validateStateRoundtripStateInput) vali
 	if step := session.validatePrune(); !step.OK {
 		return session.result(step)
 	}
-	if step := session.validateMigrateAndDoctor(); !step.OK {
-		return session.result(step)
-	}
 	return session.result(StepResult{OK: true})
 }
 
@@ -68,7 +64,7 @@ func (s *stateRoundtripStateSession) validateWriteReadList() StepResult {
 	if !write.OK {
 		return s.combineFailed(write)
 	}
-	var writeResult core.StateResult
+	var writeResult statecontract.StateResult
 	if err := json.Unmarshal([]byte(write.Stdout), &writeResult); err != nil {
 		return s.fail(err.Error())
 	}
@@ -80,7 +76,7 @@ func (s *stateRoundtripStateSession) validateWriteReadList() StepResult {
 	if !read.OK {
 		return s.combineFailed(read)
 	}
-	var readResult core.StateResult
+	var readResult statecontract.StateResult
 	if err := json.Unmarshal([]byte(read.Stdout), &readResult); err != nil {
 		return s.fail(err.Error())
 	}
@@ -92,7 +88,7 @@ func (s *stateRoundtripStateSession) validateWriteReadList() StepResult {
 	if !list.OK {
 		return s.combineFailed(list)
 	}
-	var listResult core.StateListResult
+	var listResult statecontract.StateListResult
 	if err := json.Unmarshal([]byte(list.Stdout), &listResult); err != nil {
 		return s.fail(err.Error())
 	}

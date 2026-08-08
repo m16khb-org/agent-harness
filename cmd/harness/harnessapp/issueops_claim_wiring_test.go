@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/issueops/model"
+	"agent-harness/internal/adapter/issueops"
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -24,9 +24,9 @@ func TestHarnessAppClaimWiring(t *testing.T) {
 }
 
 func TestIssueOpsClaimProviderNameUsesBranchPrepareAuthority(t *testing.T) {
-	got, err := issueOpsClaimProviderName(issueops.IssueOpsRecord{
+	got, err := issueOpsClaimProviderName(issueopscontract.IssueOpsRecord{
 		IssueURL:      "https://code.company.example/group/agent-harness/-/issues/197",
-		BranchPrepare: &issueops.IssueOpsBranchPrepare{Provider: "gitlab"},
+		BranchPrepare: &issueopscontract.IssueOpsBranchPrepare{Provider: "gitlab"},
 	})
 	if err != nil || got != "gitlab" {
 		t.Fatalf("provider=%q err=%v", got, err)
@@ -34,7 +34,7 @@ func TestIssueOpsClaimProviderNameUsesBranchPrepareAuthority(t *testing.T) {
 }
 
 func TestIssueOpsClaimProviderNameRejectsURLInferenceWithoutBranchAuthority(t *testing.T) {
-	_, err := issueOpsClaimProviderName(issueops.IssueOpsRecord{})
+	_, err := issueOpsClaimProviderName(issueopscontract.IssueOpsRecord{})
 	if err == nil || !strings.Contains(err.Error(), "linked issue provider is unavailable") {
 		t.Fatalf("URL inference must be rejected: %v", err)
 	}
@@ -57,12 +57,12 @@ func TestIssueOpsClaimHandlerUsesResolvedSnapshotReader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("claim with resolved snapshot reader: %v", err)
 	}
-	if !result.OK || result.Execution.Lease.Status != model.LeaseStatusActive || reads != 1 {
+	if !result.OK || result.Execution.Lease.Status != issueopscontract.LeaseStatusActive || reads != 1 {
 		t.Fatalf("claim result=%+v resolved_reads=%d", result, reads)
 	}
 }
 
-func seedOrcaClaimSnapshot(t *testing.T) (string, issueops.IssueOpsRecord, string, string, string) {
+func seedOrcaClaimSnapshot(t *testing.T) (string, issueopscontract.IssueOpsRecord, string, string, string) {
 	t.Helper()
 	stateRoot := t.TempDir()
 	source := filepath.Join(t.TempDir(), "source")
@@ -76,18 +76,37 @@ func seedOrcaClaimSnapshot(t *testing.T) (string, issueops.IssueOpsRecord, strin
 	claimWiringGit(t, source, "-c", "user.name=IssueOps Test", "-c", "user.email=issueops@example.invalid", "commit", "-q", "-m", "test: snapshot fixture")
 	claimWiringGit(t, source, "worktree", "add", "-q", "-b", branch, worktree, "main")
 	baseHead := strings.TrimSpace(claimWiringGit(t, worktree, "rev-parse", "HEAD"))
-	record, err := issueops.StartIssueOps(stateRoot, issueops.IssueOpsStartRequest{Repo: source, Branch: branch})
+	record, err := issueops.StartIssueOps(stateRoot, issueopscontract.IssueOpsStartRequest{Repo: source, Branch: branch})
 	if err != nil {
 		t.Fatal(err)
 	}
 	record.Phase = issueops.IssueOpsPhaseImplement
 	record.IssueURL = "https://gitlab.example.com/acme/repo/-/work_items/16"
-	record.BranchPrepare = &issueops.IssueOpsBranchPrepare{Provider: "gitlab", IssueURL: record.IssueURL, Branch: record.Branch, BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true}
-	record.Execution = &model.Execution{
-		Mode:      model.ExecutionModeOrca,
-		Workspace: model.Workspace{SourceRoot: source, Root: worktree, Branch: record.Branch, BaseHead: baseHead, Driver: "orca", LinkedAt: "2026-07-30T09:00:00Z"},
-		Lease:     model.WriteLease{Generation: 1, Status: model.LeaseStatusClaimable},
-		Orca:      &model.OrcaBinding{RuntimeID: "runtime", RepoID: "repo", WorktreeID: "worktree", LeaseGeneration: 1, OwnerHost: "codex", OwnerModel: "model", TaskID: "task", DispatchID: "dispatch"},
+	record.BranchPrepare = &issueopscontract.IssueOpsBranchPrepare{Provider: "gitlab", IssueURL: record.IssueURL, Branch: record.Branch, BaseBranch: "main", BaseSHA: baseHead, LinkVerified: true}
+	const plan = "# Snapshot owner plan\n"
+	if _, err := issueops.StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte(plan)); err != nil {
+		t.Fatal(err)
+	}
+	record.WorktreePath = worktree
+	record.PlanPath = filepath.Join(worktree, "plans", "linked.md")
+	if err := os.MkdirAll(filepath.Dir(record.PlanPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(record.PlanPath, []byte(plan), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	sealedPlanPath := filepath.Join(worktree, filepath.FromSlash(issueops.IssueOpsArtifactDir), "plan.md")
+	if err := os.MkdirAll(filepath.Dir(sealedPlanPath), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(sealedPlanPath, []byte(plan), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	record.Execution = &issueopscontract.Execution{
+		Mode:      issueopscontract.ExecutionModeOrca,
+		Workspace: issueopscontract.Workspace{SourceRoot: source, Root: worktree, Branch: record.Branch, BaseHead: baseHead, Driver: "orca", LinkedAt: "2026-07-30T09:00:00Z"},
+		Lease:     issueopscontract.WriteLease{Generation: 1, Status: issueopscontract.LeaseStatusClaimable},
+		Orca:      &issueopscontract.OrcaBinding{RuntimeID: "runtime", RepoID: "repo", WorktreeID: "worktree", LeaseGeneration: 1, OwnerHost: "codex", OwnerModel: "model", TaskID: "task", DispatchID: "dispatch"},
 	}
 	token := "snapshot-claim-token"
 	tokenDigest := claimWiringSHA256(token)
@@ -105,7 +124,7 @@ func seedOrcaClaimSnapshot(t *testing.T) (string, issueops.IssueOpsRecord, strin
 	packet := map[string]any{
 		"schema_version": 1, "lifecycle_id": record.ID, "mode": "orca", "source_root": source, "worktree_root": worktree,
 		"branch": record.Branch, "base_head": record.Execution.Workspace.BaseHead, "lease_generation": uint64(1), "claim_token_file": tokenPath,
-		"issue": map[string]string{"url": record.IssueURL, "body": claimWiringIssueBody(), "body_sha256": issueDigest}, "artifact_manifest": map[string]string{},
+		"issue": map[string]string{"url": record.IssueURL, "body": claimWiringIssueBody(), "body_sha256": issueDigest}, "artifact_manifest": map[string]string{"plan": claimWiringSHA256(plan)},
 	}
 	packetBytes, err := json.Marshal(packet)
 	if err != nil {
@@ -117,19 +136,24 @@ func seedOrcaClaimSnapshot(t *testing.T) (string, issueops.IssueOpsRecord, strin
 	if err := os.WriteFile(packetPath, packetBytes, 0o600); err != nil {
 		t.Fatal(err)
 	}
+	packetDigest := claimWiringSHA256(string(packetBytes))
+	record.Execution.Orca.ArtifactIdentityVersion = issueopscontract.OrcaArtifactIdentityVersion
+	record.Execution.Orca.IssueBodySHA256 = issueDigest
+	record.Execution.Orca.ContextPacketSHA256 = packetDigest
+	record.Execution.Orca.OwnerPromptSHA256 = strings.Repeat("d", 64)
 	if _, err := issueops.WriteIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}
-	return stateRoot, record, tokenPath, issueDigest, claimWiringSHA256(string(packetBytes))
+	return stateRoot, record, tokenPath, issueDigest, packetDigest
 }
 
-func claimWiringActor(t *testing.T) model.NativeActor {
+func claimWiringActor(t *testing.T) issueopscontract.NativeActor {
 	t.Helper()
 	receipt, err := issueops.ObserveNativeProcessReceipt(os.Getpid())
 	if err != nil {
 		t.Fatal(err)
 	}
-	return model.NativeActor{Host: "codex", SessionID: "claim-wiring", SessionProcess: &receipt, ProcessAncestry: []model.NativeProcessReceipt{receipt}}
+	return issueopscontract.NativeActor{Host: "codex", SessionID: "claim-wiring", SessionProcess: &receipt, ProcessAncestry: []issueopscontract.NativeProcessReceipt{receipt}}
 }
 
 func claimWiringIssueBody() string {

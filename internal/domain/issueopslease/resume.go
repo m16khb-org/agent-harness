@@ -23,10 +23,15 @@ const (
 )
 
 type ResumeInventory struct {
-	RuntimeID    string
-	TerminalLive bool
-	TaskLive     bool
-	TerminalID   string
+	RuntimeID                 string
+	TerminalLive              bool
+	TerminalInventoryComplete bool
+	TaskLive                  bool
+	TerminalID                string
+	TaskStatus                string
+	DispatchStatus            string
+	DispatchAssigneeHandle    string
+	DispatchAssigneePresent   bool
 }
 
 type ResumeRequest struct {
@@ -39,7 +44,6 @@ type ResumeRequest struct {
 	ModeOrca           bool
 	BindingPresent     bool
 	PendingAbsent      bool
-	RuntimeCompatible  bool
 	Inventory          ResumeInventory
 }
 
@@ -47,6 +51,33 @@ type ResumePlan struct {
 	Disposition         ResumeDisposition
 	RuntimeID           string
 	ReusedTerminalPTYID string
+}
+
+type HolderlessRuntimeRolloverRequest struct {
+	Lease            Lease
+	BindingRuntimeID string
+	Inventory        ResumeInventory
+}
+
+func ValidateHolderlessRuntimeRollover(request HolderlessRuntimeRolloverRequest) error {
+	sealedRuntimeID := strings.TrimSpace(request.BindingRuntimeID)
+	observedRuntimeID := strings.TrimSpace(request.Inventory.RuntimeID)
+	if sealedRuntimeID == "" || observedRuntimeID == "" {
+		return Deny(DenyResumeRuntimeIdentity, fmt.Errorf("Orca runtime identity is incomplete"))
+	}
+	if observedRuntimeID == sealedRuntimeID {
+		return nil
+	}
+	if request.Lease.Holder != nil || (request.Lease.Status != "released" && request.Lease.Status != "claimable") {
+		return Deny(DenyResumeRuntimeIdentity, fmt.Errorf("Orca runtime rollover requires a holderless released or claimable lease"))
+	}
+	if !request.Inventory.TerminalInventoryComplete || request.Inventory.TerminalID != "" || request.Inventory.TerminalLive ||
+		request.Inventory.TaskLive || !terminalTaskStatus(request.Inventory.TaskStatus) ||
+		!recoverableStaleDispatchStatus(request.Inventory.DispatchStatus) || strings.TrimSpace(request.Inventory.DispatchAssigneeHandle) == "" ||
+		request.Inventory.DispatchAssigneePresent {
+		return Deny(DenyResumeRuntimeIdentity, fmt.Errorf("Orca runtime rollover owner evidence is not holderless and settled"))
+	}
+	return nil
 }
 
 func PlanResume(request ResumeRequest) (ResumePlan, error) {
@@ -62,13 +93,21 @@ func PlanResume(request ResumeRequest) (ResumePlan, error) {
 	if !request.CanonicalCWD {
 		return ResumePlan{}, Deny(DenyCanonicalCWD, fmt.Errorf("execution resume cwd must be the canonical worktree"))
 	}
-	if !request.RuntimeCompatible {
-		return ResumePlan{}, Deny(DenyResumeRuntimeIdentity, fmt.Errorf("Orca runtime identity is incompatible"))
-	}
-
 	runtimeID := strings.TrimSpace(request.Inventory.RuntimeID)
 	if runtimeID == "" {
 		runtimeID = strings.TrimSpace(request.BindingRuntimeID)
+	}
+	if runtimeID != strings.TrimSpace(request.BindingRuntimeID) {
+		if err := ValidateHolderlessRuntimeRollover(HolderlessRuntimeRolloverRequest{
+			Lease: request.Lease, BindingRuntimeID: request.BindingRuntimeID, Inventory: request.Inventory,
+		}); err != nil {
+			return ResumePlan{}, err
+		}
+		return ResumePlan{Disposition: ResumeCreateTerminal, RuntimeID: runtimeID}, nil
+	}
+	terminalID := strings.TrimSpace(request.Inventory.TerminalID)
+	if terminalID != "" && !request.Inventory.TerminalLive {
+		return ResumePlan{}, Deny(DenyResumeTerminalIdentity, fmt.Errorf("Orca owner terminal is present but not live"))
 	}
 	if request.Inventory.TaskLive {
 		if !request.Inventory.TerminalLive {
@@ -80,13 +119,34 @@ func PlanResume(request ResumeRequest) (ResumePlan, error) {
 		return ResumePlan{Disposition: ResumeExistingBinding, RuntimeID: runtimeID}, nil
 	}
 	if request.Inventory.TerminalLive {
-		terminalID := strings.TrimSpace(request.Inventory.TerminalID)
 		if terminalID == "" || terminalID != strings.TrimSpace(request.BindingTerminalID) {
 			return ResumePlan{}, Deny(DenyResumeTerminalIdentity, fmt.Errorf("Orca owner terminal identity changed"))
 		}
 		return ResumePlan{Disposition: ResumeReuseTerminal, RuntimeID: runtimeID, ReusedTerminalPTYID: terminalID}, nil
 	}
 	return ResumePlan{Disposition: ResumeCreateTerminal, RuntimeID: runtimeID}, nil
+}
+
+func terminalTaskStatus(status string) bool {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "completed", "failed":
+		return true
+	default:
+		return false
+	}
+}
+
+func recoverableStaleDispatchStatus(status string) bool {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "completed", "failed", "circuit_broken":
+		return true
+	case "dispatched":
+		// #261의 종료 task는 assignee가 없는 dispatched 장부 행을 남긴다. 이
+		// 상태는 다른 absence 증거가 모두 있을 때만 old-runtime residue다.
+		return true
+	default:
+		return false
+	}
 }
 
 type ResumeStageAction string

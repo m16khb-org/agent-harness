@@ -30,6 +30,7 @@ type stableV1Record struct {
 	RemoteCompletion        *stableV1RemoteCompletion      `json:"remote_completion,omitempty"`
 	SourceMisdirectWarnings int                            `json:"source_misdirect_warnings,omitempty"`
 	CleanupFinishFailure    *stableV1CleanupFinishFailure  `json:"cleanup_finish_failure,omitempty"`
+	CleanupAbandonFailure   *stableV1CleanupAbandonFailure `json:"cleanup_abandon_failure,omitempty"`
 	ImplementationReview    *stableV1ImplementationReview  `json:"implementation_review,omitempty"`
 	RoutingTrace            []stableV1SkillRouting         `json:"routing_trace,omitempty"`
 	AISlopCleanAt           string                         `json:"ai_slop_clean_at,omitempty"`
@@ -49,6 +50,18 @@ type stableV1Feedback struct {
 	CreatedAt      string `json:"created_at"`
 	IssueUpdatedAt string `json:"issue_updated_at,omitempty"`
 	Resolution     string `json:"resolution,omitempty"`
+}
+type stableV1CleanupAbandonFailure struct {
+	Step            string `json:"step"`
+	Message         string `json:"message"`
+	Fingerprint     string `json:"fingerprint"`
+	RecordSHA       string `json:"record_sha"`
+	InventorySHA256 string `json:"inventory_sha256"`
+	WorktreePath    string `json:"worktree_path"`
+	Branch          string `json:"branch"`
+	WorktreeHead    string `json:"worktree_head"`
+	BranchOID       string `json:"branch_oid"`
+	At              string `json:"at"`
 }
 type stableV1IssueLink struct {
 	Type            string `json:"type"`
@@ -190,14 +203,16 @@ type stableV1ChildCycle struct {
 	ValidatedAt        string   `json:"validated_at,omitempty"`
 }
 type stableV1Execution struct {
-	Mode           string                  `json:"mode"`
-	Workspace      stableV1Workspace       `json:"workspace"`
-	Lease          stableV1Lease           `json:"lease"`
-	Orca           *stableV1OrcaBinding    `json:"orca,omitempty"`
-	Pending        *stableV1ExternalIntent `json:"pending,omitempty"`
-	Completion     *stableV1Completion     `json:"completion,omitempty"`
-	Failure        *stableV1Failure        `json:"failure,omitempty"`
-	SyncBaseEvents []stableV1SyncBaseEvent `json:"sync_base_events,omitempty"`
+	Mode               string                      `json:"mode"`
+	Workspace          stableV1Workspace           `json:"workspace"`
+	Lease              stableV1Lease               `json:"lease"`
+	Orca               *stableV1OrcaBinding        `json:"orca,omitempty"`
+	Pending            *stableV1ExternalIntent     `json:"pending,omitempty"`
+	Completion         *stableV1Completion         `json:"completion,omitempty"`
+	CompletionHistory  []stableV1CompletionHistory `json:"completion_history,omitempty"`
+	Failure            *stableV1Failure            `json:"failure,omitempty"`
+	SyncBaseResolution *stableV1SyncBaseResolution `json:"sync_base_resolution,omitempty"`
+	SyncBaseEvents     []stableV1SyncBaseEvent     `json:"sync_base_events,omitempty"`
 }
 type stableV1Workspace struct {
 	SourceRoot     string `json:"source_root"`
@@ -230,18 +245,22 @@ type stableV1ProcessReceipt struct {
 	Executable string `json:"executable"`
 }
 type stableV1OrcaBinding struct {
-	RuntimeID          string `json:"runtime_id"`
-	RepoID             string `json:"repo_id"`
-	WorktreeID         string `json:"worktree_id"`
-	RunID              string `json:"run_id,omitempty"`
-	WorktreeInstanceID string `json:"worktree_instance_id,omitempty"`
-	LeaseGeneration    uint64 `json:"lease_generation,omitempty"`
-	OwnerHost          string `json:"owner_host"`
-	OwnerModel         string `json:"owner_model"`
-	OwnerEffort        string `json:"owner_effort,omitempty"`
-	TaskID             string `json:"task_id"`
-	DispatchID         string `json:"dispatch_id"`
-	TerminalPTYID      string `json:"terminal_pty_id,omitempty"`
+	RuntimeID               string `json:"runtime_id"`
+	RepoID                  string `json:"repo_id"`
+	WorktreeID              string `json:"worktree_id"`
+	RunID                   string `json:"run_id,omitempty"`
+	WorktreeInstanceID      string `json:"worktree_instance_id,omitempty"`
+	LeaseGeneration         uint64 `json:"lease_generation,omitempty"`
+	ArtifactIdentityVersion uint64 `json:"artifact_identity_version,omitempty"`
+	IssueBodySHA256         string `json:"issue_body_sha256,omitempty"`
+	ContextPacketSHA256     string `json:"context_packet_sha256,omitempty"`
+	OwnerPromptSHA256       string `json:"owner_prompt_sha256,omitempty"`
+	OwnerHost               string `json:"owner_host"`
+	OwnerModel              string `json:"owner_model"`
+	OwnerEffort             string `json:"owner_effort,omitempty"`
+	TaskID                  string `json:"task_id"`
+	DispatchID              string `json:"dispatch_id"`
+	TerminalPTYID           string `json:"terminal_pty_id,omitempty"`
 }
 type stableV1ExternalIntent struct {
 	OperationID string `json:"operation_id"`
@@ -250,11 +269,18 @@ type stableV1ExternalIntent struct {
 	StartedAt   string `json:"started_at"`
 }
 type stableV1Completion struct {
+	Generation        uint64   `json:"generation,omitempty"`
 	FinalHead         string   `json:"final_head"`
 	TuringReportPath  string   `json:"turing_report_path"`
 	Verification      []string `json:"verification"`
 	RemoteArtifactURL string   `json:"remote_artifact_url"`
 	CompletedAt       string   `json:"completed_at"`
+}
+type stableV1CompletionHistory struct {
+	Generation uint64             `json:"generation"`
+	Completion stableV1Completion `json:"completion"`
+	Reason     string             `json:"reason"`
+	ReopenedAt string             `json:"reopened_at"`
 }
 type stableV1Failure struct {
 	OperationID string `json:"operation_id,omitempty"`
@@ -270,6 +296,14 @@ type stableV1SyncBaseEvent struct {
 	ConflictFiles int    `json:"conflict_files"`
 	Actor         string `json:"actor"`
 	At            string `json:"at"`
+}
+type stableV1SyncBaseResolution struct {
+	Generation           uint64   `json:"generation"`
+	CompletionGeneration uint64   `json:"completion_generation"`
+	BaseOID              string   `json:"base_oid"`
+	Actor                Actor    `json:"actor"`
+	ConflictFiles        []string `json:"conflict_files"`
+	StartedAt            string   `json:"started_at"`
 }
 type stableV1RemoteCompletion struct {
 	ReflectedAt   string `json:"reflected_at,omitempty"`

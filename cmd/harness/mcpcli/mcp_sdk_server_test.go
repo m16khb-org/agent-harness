@@ -8,7 +8,8 @@ import (
 	"sync"
 	"testing"
 
-	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/adapter/issueops"
+
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -80,7 +81,7 @@ func TestInitSDKServerAcceptsPublicationReconcileWithoutInvokingIt(t *testing.T)
 		return issueops.ExecutionReconcileResult{}, nil
 	})
 
-	server := initSDKServer(MCPDependencies{Publication: issueops.RemotePublicationHandlers{Reconcile: handler}})
+	server := initSDKServer(MCPDependencies{Publication: PublicationHandlers{Reconcile: handler}})
 	if server == nil {
 		t.Fatal("initSDKServer returned nil")
 	}

@@ -6,14 +6,14 @@ import (
 
 	"agent-harness/internal/adapter/gitworktree"
 	preparationinbound "agent-harness/internal/adapter/inbound/issueopspreparation"
+	"agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/adapter/orca"
 	preparationoutbound "agent-harness/internal/adapter/outbound/issueopspreparation"
+	"agent-harness/internal/adapter/outbound/sqlstore"
 	"agent-harness/internal/adapter/provider"
 	preparationapp "agent-harness/internal/application/issueopspreparation"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
-	"agent-harness/internal/core/issueops"
-	"agent-harness/internal/core/policy"
-	"agent-harness/internal/core/sqlstore"
+	"agent-harness/internal/domain/policy"
 	"agent-harness/internal/port"
 )
 
@@ -62,9 +62,7 @@ func newIssueOpsPreparationService(stateRoot, id string, deps issueOpsPreparatio
 	if err != nil {
 		return nil, err
 	}
-	repository := preparationoutbound.NewSQLiteRepositoryWithDiagnosticRedactor(database, func(context.Context) error {
-		return issueops.RequireIssueOpsMutationAllowed(stateRoot)
-	}, policy.RedactDiagnostic)
+	repository := preparationoutbound.NewSQLiteRepositoryWithDiagnosticRedactor(database, policy.RedactDiagnostic)
 	direct := preparationoutbound.NewDirectWorkspace(deps.Direct)
 	gateway := preparationoutbound.NewOrcaGateway(preparationoutbound.OrcaDependencies{
 		Provisioner: deps.Orca,
@@ -78,7 +76,7 @@ func newIssueOpsPreparationService(stateRoot, id string, deps issueOpsPreparatio
 	evidence := preparationoutbound.NewEvidence(preparationoutbound.EvidenceDependencies{
 		Workspace: issueops.ResolveExecutionPreparationWorkspace,
 		ReadOwner: func(ctx context.Context, snapshot preparationcontract.Snapshot, _ preparationcontract.Command) (preparationcontract.OwnerEvidence, error) {
-			return issueops.ReadExecutionPreparationOwnerEvidence(ctx, snapshot, deps.ReadIssue)
+			return issueops.ReadExecutionPreparationOwnerEvidence(ctx, stateRoot, snapshot, deps.ReadIssue)
 		},
 		MaterializeDirect: func(_ context.Context, snapshot preparationcontract.Snapshot, receipt preparationcontract.WorkspaceReceipt) error {
 			return issueops.MaterializeExecutionPreparationDirect(stateRoot, snapshot, receipt)

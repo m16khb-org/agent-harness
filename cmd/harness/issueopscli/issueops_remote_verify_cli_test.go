@@ -6,13 +6,16 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core"
+	issueopscore "agent-harness/internal/adapter/issueops"
+	"agent-harness/internal/adapter/issueops/loopgate"
+	preflight "agent-harness/internal/adapter/preflight"
+	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
 func TestRunIssueOpsRemoteVerifyArtifactValidationErrors(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := makeIssueOpsCLIGitRepoForRemoteVerifyTest(t)
-	record, err := core.StartIssueOps(core.IssueOpsStateRoot(), core.IssueOpsStartRequest{
+	record, err := issueopscore.StartIssueOps(issueopscore.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{
 		Repo:   repo,
 		Branch: "75-remote-verify-cli",
 	})
@@ -57,13 +60,13 @@ func TestRunIssueOpsRemoteVerifyArtifactValidationErrors(t *testing.T) {
 	}
 }
 
-func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) (core.IssueOpsRecord, core.IssueOpsActor) {
+func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) (issueopscontract.IssueOpsRecord, issueopscore.IssueOpsActor) {
 	t.Helper()
 	recordIssueOpsCoreIntentForCLITest(t, id)
-	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), id, "https://github.com/example/repo/issues/75"); err != nil {
+	if _, err := issueopscore.LinkIssueOpsIssue(issueopscore.IssueOpsStateRoot(), id, "https://github.com/example/repo/issues/75"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), id, core.IssueOpsBranchPrepareRequest{
+	if _, err := issueopscore.PrepareIssueOpsBranch(issueopscore.IssueOpsStateRoot(), id, issueopscontract.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     "https://github.com/example/repo/issues/75",
 		Branch:       "75-remote-verify-cli",
@@ -72,29 +75,29 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) (core.Is
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if code, _, stderr := core.GitCmd(repo, "checkout", "-q", "-b", "75-remote-verify-cli"); code != 0 {
+	if code, _, stderr := preflight.GitCmd(repo, "checkout", "-q", "-b", "75-remote-verify-cli"); code != 0 {
 		t.Fatalf("git checkout branch failed: %s", stderr)
 	}
-	if code, _, stderr := core.GitCmd(repo, "push", "-q", "-u", "origin", "75-remote-verify-cli"); code != 0 {
+	if code, _, stderr := preflight.GitCmd(repo, "push", "-q", "-u", "origin", "75-remote-verify-cli"); code != 0 {
 		t.Fatalf("git push branch failed: %s", stderr)
 	}
-	if code, _, stderr := core.GitCmd(repo, "checkout", "-q", "main"); code != 0 {
+	if code, _, stderr := preflight.GitCmd(repo, "checkout", "-q", "main"); code != 0 {
 		t.Fatalf("git checkout main failed: %s", stderr)
 	}
 	worktree := filepath.Join(filepath.Dir(repo), filepath.Base(repo)+".worktrees", "75-remote-verify-cli")
-	if code, _, stderr := core.GitCmd(repo, "worktree", "add", "-q", worktree, "75-remote-verify-cli"); code != 0 {
+	if code, _, stderr := preflight.GitCmd(repo, "worktree", "add", "-q", worktree, "75-remote-verify-cli"); code != 0 {
 		t.Fatalf("git worktree add failed: %s", stderr)
 	}
-	if _, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), id, worktree); err != nil {
+	if _, err := issueopscore.LinkIssueOpsWorktree(issueopscore.IssueOpsStateRoot(), id, worktree); err != nil {
 		t.Fatal(err)
 	}
 	recordIssueOpsCoreDesignForCLITest(t, id)
 	planPath := filepath.Join(worktree, "plans", "remote-verify.md")
 	writeIssueOpsCLIFileForTest(t, worktree, "plans/remote-verify.md", "plan\n")
-	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), id, planPath); err != nil {
+	if _, err := issueopscore.LinkIssueOpsPlan(issueopscore.IssueOpsStateRoot(), id, planPath); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.RecordIssueOpsCompatibilityReview(core.IssueOpsStateRoot(), id, core.IssueOpsCompatibilityReviewRequest{
+	if _, err := issueopscore.RecordIssueOpsCompatibilityReview(issueopscore.IssueOpsStateRoot(), id, issueopscontract.IssueOpsCompatibilityReviewRequest{
 		BackwardCompatibility: []string{"existing IssueOps JSON records remain readable"},
 		SideEffects:           []string{"phase ordering changes are limited to IssueOps lifecycle gates"},
 		RollbackPlan:          "Revert compatibility-review phase and readiness gate.",
@@ -103,28 +106,28 @@ func makeIssueOpsPRPhaseRecordForCLITest(t *testing.T, id, repo string) (core.Is
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.RecordIssueOpsDevilsAdvocateReview(core.IssueOpsStateRoot(), id, core.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
+	if _, err := issueopscore.RecordIssueOpsDevilsAdvocateReview(issueopscore.IssueOpsStateRoot(), id, issueopscontract.IssueOpsDevilsAdvocateReviewRequest{Verdict: "pass"}); err != nil {
 		t.Fatal(err)
 	}
 	writeIssueOpsCLIFileForTest(t, worktree, "internal/demo.go", "package demo\n")
-	if code, _, stderr := core.GitCmd(worktree, "add", "plans/remote-verify.md", "internal/demo.go"); code != 0 {
+	if code, _, stderr := preflight.GitCmd(worktree, "add", "plans/remote-verify.md", "internal/demo.go"); code != 0 {
 		t.Fatalf("git add implementation failed: %s", stderr)
 	}
-	record, err := core.ReadIssueOps(core.IssueOpsStateRoot(), id)
+	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), id)
 	if err != nil {
 		t.Fatal(err)
 	}
 	record, actor := seedIssueOpsCLIExecution(t, record)
-	if _, err := core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), id, string(core.IssueOpsPhaseAISlopClean), actor); err != nil {
+	if _, err := loopgate.AdvancePhaseWithActor(issueopscore.IssueOpsStateRoot(), id, string(issueopscore.IssueOpsPhaseAISlopClean), actor); err != nil {
 		t.Fatal(err)
 	}
-	if code, _, stderr := core.GitCmd(worktree, "commit", "-q", "-m", "feat: implement remote verify cli"); code != 0 {
+	if code, _, stderr := preflight.GitCmd(worktree, "commit", "-q", "-m", "feat: implement remote verify cli"); code != 0 {
 		t.Fatalf("git commit implementation failed: %s", stderr)
 	}
-	if code, _, stderr := core.GitCmd(worktree, "push", "-q"); code != 0 {
+	if code, _, stderr := preflight.GitCmd(worktree, "push", "-q"); code != 0 {
 		t.Fatalf("git push implementation failed: %s", stderr)
 	}
-	record, err = core.AdvanceIssueOpsPhaseWithActor(core.IssueOpsStateRoot(), id, string(core.IssueOpsPhasePR), actor)
+	record, err = loopgate.AdvancePhaseWithActor(issueopscore.IssueOpsStateRoot(), id, string(issueopscore.IssueOpsPhasePR), actor)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,10 +138,10 @@ func makeIssueOpsCLIGitRepoForRemoteVerifyTest(t *testing.T) string {
 	t.Helper()
 	repo := makeIssueOpsCLIRepoForTest(t, "remote-verify-cli")
 	remote := t.TempDir()
-	if code, _, stderr := core.GitCmd(remote, "init", "--bare", "-q"); code != 0 {
+	if code, _, stderr := preflight.GitCmd(remote, "init", "--bare", "-q"); code != 0 {
 		t.Fatalf("git init bare failed: %s", stderr)
 	}
-	if code, _, stderr := core.GitCmd(repo, "init", "-q", "-b", "main"); code != 0 {
+	if code, _, stderr := preflight.GitCmd(repo, "init", "-q", "-b", "main"); code != 0 {
 		t.Fatalf("git init failed: %s", stderr)
 	}
 	for _, args := range [][]string{
@@ -146,18 +149,18 @@ func makeIssueOpsCLIGitRepoForRemoteVerifyTest(t *testing.T) string {
 		{"config", "user.email", "issueops@example.test"},
 		{"remote", "add", "origin", remote},
 	} {
-		if code, _, stderr := core.GitCmd(repo, args...); code != 0 {
+		if code, _, stderr := preflight.GitCmd(repo, args...); code != 0 {
 			t.Fatalf("git %v failed: %s", args, stderr)
 		}
 	}
 	writeIssueOpsCLIFileForTest(t, repo, "README.md", "readme\n")
-	if code, _, stderr := core.GitCmd(repo, "add", "README.md"); code != 0 {
+	if code, _, stderr := preflight.GitCmd(repo, "add", "README.md"); code != 0 {
 		t.Fatalf("git add failed: %s", stderr)
 	}
-	if code, _, stderr := core.GitCmd(repo, "commit", "-q", "-m", "initial"); code != 0 {
+	if code, _, stderr := preflight.GitCmd(repo, "commit", "-q", "-m", "initial"); code != 0 {
 		t.Fatalf("git commit failed: %s", stderr)
 	}
-	if code, _, stderr := core.GitCmd(repo, "push", "-q", "-u", "origin", "main"); code != 0 {
+	if code, _, stderr := preflight.GitCmd(repo, "push", "-q", "-u", "origin", "main"); code != 0 {
 		t.Fatalf("git push main failed: %s", stderr)
 	}
 	return repo

@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"agent-harness/internal/core"
+	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
 func runIssueOpsPlanPrep(args []string) error {
@@ -34,11 +34,11 @@ func runIssueOpsPlanPrep(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsPlanPrepWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsPlanPrepRequest{
-		PriorDecisions: core.IssueOpsPlanPrepItemRequest{Evidence: []string(decisionsEvidence), WaiveReason: *decisionsWaive},
-		RelatedIssues:  core.IssueOpsPlanPrepItemRequest{Evidence: []string(relatedScore), WaiveReason: *relatedWaive},
-		WebResearch:    core.IssueOpsPlanPrepItemRequest{Evidence: []string(webResearch), WaiveReason: *webWaive},
-		CodebaseSurvey: core.IssueOpsPlanPrepItemRequest{Evidence: []string(codebaseSurvey), WaiveReason: *surveyWaive},
+	record, err := issueOpsCLIDeps.RecordIssueOpsPlanPrepWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsPlanPrepRequest{
+		PriorDecisions: issueopscontract.IssueOpsPlanPrepItemRequest{Evidence: []string(decisionsEvidence), WaiveReason: *decisionsWaive},
+		RelatedIssues:  issueopscontract.IssueOpsPlanPrepItemRequest{Evidence: []string(relatedScore), WaiveReason: *relatedWaive},
+		WebResearch:    issueopscontract.IssueOpsPlanPrepItemRequest{Evidence: []string(webResearch), WaiveReason: *webWaive},
+		CodebaseSurvey: issueopscontract.IssueOpsPlanPrepItemRequest{Evidence: []string(codebaseSurvey), WaiveReason: *surveyWaive},
 	}, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }

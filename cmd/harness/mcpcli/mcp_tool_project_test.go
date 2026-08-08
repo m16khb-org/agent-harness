@@ -79,7 +79,7 @@ func TestHandleProjectMCPToolCallCoversProjectErrorBranches(t *testing.T) {
 			if !outcome.Handled || outcome.Err == nil {
 				t.Fatalf("expected handled MCP failure, got %#v", outcome)
 			}
-			if outcome.Err.Code != -32602 || outcome.Err.Message != tc.wantMessage || !strings.Contains(outcome.Err.Data.(string), tc.wantData) {
+			if outcome.Err.Code != -32602 || outcome.Err.Message != tc.wantMessage || !strings.Contains(string(outcome.Err.Data), tc.wantData) {
 				t.Fatalf("unexpected MCP error: %+v", outcome.Err)
 			}
 		})

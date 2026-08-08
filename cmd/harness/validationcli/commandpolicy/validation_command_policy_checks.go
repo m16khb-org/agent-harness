@@ -1,10 +1,9 @@
 package commandpolicy
 
 import (
+	policy "agent-harness/internal/contract/policy"
 	"encoding/json"
 	"path/filepath"
-
-	"agent-harness/internal/core"
 )
 
 type commandPolicyValidationCheck struct {
@@ -30,7 +29,7 @@ func commandPolicyChecks(binary, tempWorkspace, outside string) []commandPolicyV
 			name:  binary,
 			args:  []string{"policy", "check", "--json", "--workspace-root", tempWorkspace, "--cwd", tempWorkspace, "--", "git", "status", "--short"},
 			validate: func(stdout string) []string {
-				var allowedEval core.CommandPolicyEvaluation
+				var allowedEval policy.CommandPolicyEvaluation
 				if err := json.Unmarshal([]byte(stdout), &allowedEval); err != nil {
 					return []string{err.Error()}
 				}
@@ -45,7 +44,7 @@ func commandPolicyChecks(binary, tempWorkspace, outside string) []commandPolicyV
 			name:  binary,
 			args:  []string{"policy", "check", "--json", "--workspace-root", tempWorkspace, "--cwd", outside, "--", "git", "status", "--short"},
 			validate: func(stdout string) []string {
-				var outsideEval core.CommandPolicyEvaluation
+				var outsideEval policy.CommandPolicyEvaluation
 				if err := json.Unmarshal([]byte(stdout), &outsideEval); err != nil {
 					return []string{err.Error()}
 				}
@@ -60,7 +59,7 @@ func commandPolicyChecks(binary, tempWorkspace, outside string) []commandPolicyV
 			name:  binary,
 			args:  []string{"policy", "check", "--json", "--workspace-root", tempWorkspace, "--cwd", tempWorkspace, "--", "cat", filepath.Join(outside, "note.txt")},
 			validate: func(stdout string) []string {
-				var outsidePathEval core.CommandPolicyEvaluation
+				var outsidePathEval policy.CommandPolicyEvaluation
 				if err := json.Unmarshal([]byte(stdout), &outsidePathEval); err != nil {
 					return []string{err.Error()}
 				}
@@ -75,7 +74,7 @@ func commandPolicyChecks(binary, tempWorkspace, outside string) []commandPolicyV
 			name:  binary,
 			args:  []string{"policy", "check", "--json", "--workspace-root", tempWorkspace, "--cwd", tempWorkspace, "--", "sh", "-c", "echo ok"},
 			validate: func(stdout string) []string {
-				var shellEval core.CommandPolicyEvaluation
+				var shellEval policy.CommandPolicyEvaluation
 				if err := json.Unmarshal([]byte(stdout), &shellEval); err != nil {
 					return []string{err.Error()}
 				}
@@ -90,7 +89,7 @@ func commandPolicyChecks(binary, tempWorkspace, outside string) []commandPolicyV
 			name:  binary,
 			args:  []string{"policy", "fake-run", "--json", "--workspace-root", tempWorkspace, "--cwd", tempWorkspace, "--write", "--", "touch", "marker"},
 			validate: func(stdout string) []string {
-				var fakeResult core.CommandFakeRunResult
+				var fakeResult policy.CommandFakeRunResult
 				if err := json.Unmarshal([]byte(stdout), &fakeResult); err != nil {
 					return []string{err.Error()}
 				}

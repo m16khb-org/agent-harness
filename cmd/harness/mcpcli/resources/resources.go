@@ -1,13 +1,20 @@
 package resources
 
 import (
+	docscontract "agent-harness/internal/contract/docs"
+	projectdocscontract "agent-harness/internal/contract/projectdocs"
+	statecontract "agent-harness/internal/contract/state"
+	mcpadapter "agent-harness/internal/domain/mcp"
 	"encoding/json"
-
-	mcpadapter "agent-harness/internal/adapter/mcp"
-	"agent-harness/internal/core"
 )
 
 type Config struct {
+	// RouteProjectDocs는 composition root가 주입한다.
+	RouteProjectDocs func(repoRoot, task string) (projectdocscontract.ProjectDocsRouteResult, error)
+	// DocsIndex는 composition root가 주입한다.
+	DocsIndex func(root, version string) docscontract.DocsIndexResult
+	// StateList는 composition root가 주입한다.
+	StateList       func() (statecontract.StateListResult, error)
 	HarnessRoot     string
 	Version         string
 	SkillName       string
@@ -67,12 +74,15 @@ func HandleResourceRead(params json.RawMessage, config Config) (any, *ReadError)
 		return nil, &ReadError{Code: -32602, Message: "Invalid params", Data: err.Error()}
 	}
 	if req.URI == "harness://docs" {
-		result := core.DocsIndex(config.HarnessRoot, config.Version)
+		if config.DocsIndex == nil {
+			return nil, &ReadError{Code: -32000, Message: "Cannot read docs index", Data: "docs index reader is not configured"}
+		}
+		result := config.DocsIndex(config.HarnessRoot, config.Version)
 		b, _ := json.MarshalIndent(result, "", "  ")
 		return content(req.URI, "application/json", string(b)), nil
 	}
 	if req.URI == "harness://project-docs" {
-		result, err := core.RouteProjectDocs(".", "general")
+		result, err := config.RouteProjectDocs(".", "general")
 		if err != nil {
 			return nil, &ReadError{Code: -32000, Message: "Cannot read project docs route", Data: err.Error()}
 		}
@@ -86,11 +96,14 @@ func HandleResourceRead(params json.RawMessage, config Config) (any, *ReadError)
 		return content(req.URI, "text/markdown", apiDocGuidanceText()), nil
 	}
 	if req.URI == "harness://command-policy" {
-		b, _ := json.MarshalIndent(core.CommandPolicySummary(), "", "  ")
+		b, _ := json.MarshalIndent(CommandPolicySummary(), "", "  ")
 		return content(req.URI, "application/json", string(b)), nil
 	}
 	if req.URI == "harness://state" {
-		result, err := core.StateList()
+		if config.StateList == nil {
+			return nil, &ReadError{Code: -32000, Message: "Cannot read state index", Data: "state index reader is not configured"}
+		}
+		result, err := config.StateList()
 		if err != nil {
 			return nil, &ReadError{Code: -32000, Message: "Cannot read state index", Data: err.Error()}
 		}

@@ -262,7 +262,7 @@ exit 2
 	}
 }
 
-func TestGitHubLegacySelfPlaceholderIsExactAtMeOnly(t *testing.T) {
+func TestGitHubSelfPlaceholderIsExactAtMeOnly(t *testing.T) {
 	binDir, repo := t.TempDir(), t.TempDir()
 	writeFakeGh(t, binDir, `#!/bin/sh
 if [ "$1 $2" = "pr create" ]; then printf 'https://github.com/acme/repo/pull/16\n'; exit 0; fi

@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"agent-harness/internal/core"
+	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
 func runIssueOpsDomainReview(args []string) error {
@@ -29,7 +29,7 @@ func runIssueOpsDomainReview(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsDomainReviewWithActor(core.IssueOpsStateRoot(), *id, core.IssueOpsDomainReviewRequest{
+	record, err := issueOpsCLIDeps.RecordIssueOpsDomainReviewWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsDomainReviewRequest{
 		Terminology:       terminology,
 		ModelFit:          *modelFit,
 		Risks:             risks,
@@ -57,7 +57,7 @@ func runIssueOpsAISlopClean(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := core.RecordIssueOpsAISlopCleanEvidenceWithActor(core.IssueOpsStateRoot(), *id, categories, verification, actor.actor())
+	record, err := issueOpsCLIDeps.RecordIssueOpsAISlopCleanEvidenceWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *id, categories, verification, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -74,7 +74,7 @@ func runIssueOpsRegress(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := core.RegressIssueOpsForReplanWithActor(core.IssueOpsStateRoot(), *id, *reason, actor.actor())
+	record, err := issueOpsCLIDeps.RegressIssueOpsForReplanWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *id, *reason, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -92,6 +92,6 @@ func runIssueOpsFeedbackResolve(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := core.ResolveIssueOpsFeedbackWithActor(core.IssueOpsStateRoot(), *id, *index, *resolution, actor.actor())
+	record, err := issueOpsCLIDeps.ResolveIssueOpsFeedbackWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *id, *index, *resolution, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }

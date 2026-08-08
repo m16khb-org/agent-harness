@@ -4,8 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"time"
-
-	"agent-harness/internal/core"
 )
 
 func runIssueOpsPrune(args []string) error {
@@ -24,7 +22,7 @@ func runIssueOpsPrune(args []string) error {
 	if err != nil {
 		return fmt.Errorf("invalid --max-age: %w", err)
 	}
-	result, err := core.PruneIssueOps(core.IssueOpsStateRoot(), age, *confirm)
+	result, err := issueOpsCLIDeps.PruneIssueOps(issueOpsCLIDeps.IssueOpsStateRoot(), age, *confirm)
 	if err != nil {
 		if *jsonOut {
 			if printErr := printIssueOpsErrorJSON(err); printErr != nil {

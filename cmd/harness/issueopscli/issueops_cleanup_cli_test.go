@@ -8,7 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core"
+	issueopscore "agent-harness/internal/adapter/issueops"
+	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
 func TestRunIssueOpsUsageAndCleanupBranches(t *testing.T) {
@@ -107,26 +108,27 @@ func TestRunIssueOpsCleanupCloseChildrenRequiresMergedAndConfirmRecordsState(t *
 	bin := t.TempDir()
 	writeFakeGhForCloseChildren(t, bin)
 	t.Setenv("PATH", bin)
-	record := core.IssueOpsRecord{
-		ID:       core.NewIssueOpsID(repo, "12-child-cleanup"),
-		Repo:     repo,
-		Branch:   "12-child-cleanup",
-		Phase:    core.IssueOpsPhasePR,
-		IssueURL: "https://github.com/acme/repo/issues/12",
-		IssueLinks: []core.IssueOpsIssueLink{{
+	record := issueopscontract.IssueOpsRecord{
+		SchemaVersion: issueopscontract.IssueOpsSchemaVersion,
+		ID:            issueopscore.NewIssueOpsID(repo, "12-child-cleanup"),
+		Repo:          repo,
+		Branch:        "12-child-cleanup",
+		Phase:         issueopscore.IssueOpsPhasePR,
+		IssueURL:      "https://github.com/acme/repo/issues/12",
+		IssueLinks: []issueopscontract.IssueOpsIssueLink{{
 			Type:     "child",
 			URL:      "https://github.com/acme/repo/issues/34",
 			Provider: "github",
 		}},
 	}
-	record.RemoteArtifact = &core.IssueOpsRemoteArtifactVerification{
+	record.RemoteArtifact = &issueopscontract.IssueOpsRemoteArtifactVerification{
 		Provider:  "github",
 		Kind:      "pr",
 		URL:       "https://github.com/acme/repo/pull/55",
 		Labels:    []string{"issueops"},
 		Assignees: []string{"octocat"},
 	}
-	if _, err := core.WriteIssueOps(core.IssueOpsStateRoot(), record); err != nil {
+	if _, err := issueopscore.WriteIssueOps(issueopscore.IssueOpsStateRoot(), record); err != nil {
 		t.Fatal(err)
 	}
 
@@ -144,7 +146,7 @@ func TestRunIssueOpsCleanupCloseChildrenRequiresMergedAndConfirmRecordsState(t *
 	if result["closed_count"] != float64(1) || result["dry_run"] == true {
 		t.Fatalf("unexpected close-children result: %#v", result)
 	}
-	updated, err := core.ReadIssueOps(core.IssueOpsStateRoot(), record.ID)
+	updated, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), record.ID)
 	if err != nil {
 		t.Fatal(err)
 	}

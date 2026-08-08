@@ -1,14 +1,13 @@
 package benchmarkcmd
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"strings"
-
-	"agent-harness/internal/core"
 )
 
 var benchmarkSubcommands = map[string]func([]string) error{
@@ -34,7 +33,7 @@ func Run(args []string) error {
 // readJudgeSamples reads the offline-recorded judge samples JSON (file path, or
 // stdin when the path is empty). ConsensusJudgeVerdict enforces the independence
 // guard (distinct sample ids + non-empty provenance) so this loader only decodes.
-func readJudgeSamples(path string) ([]core.JudgeSample, error) {
+func readJudgeSamples(path string) ([]issueopscontract.JudgeSample, error) {
 	var raw []byte
 	var err error
 	if strings.TrimSpace(path) == "" {
@@ -46,7 +45,7 @@ func readJudgeSamples(path string) ([]core.JudgeSample, error) {
 		return nil, err
 	}
 	var payload struct {
-		Samples []core.JudgeSample `json:"samples"`
+		Samples []issueopscontract.JudgeSample `json:"samples"`
 	}
 	if err := json.Unmarshal(raw, &payload); err != nil {
 		return nil, fmt.Errorf("parse judge samples: %w", err)
@@ -57,7 +56,7 @@ func readJudgeSamples(path string) ([]core.JudgeSample, error) {
 // readRecordedOutcomes reads the offline recorded-outcomes JSON (file path, or
 // stdin when the path is empty). ComputeReliability enforces the provenance
 // guard (distinct run ids + non-empty provenance) so this loader only decodes.
-func readRecordedOutcomes(path string) (core.RecordedOutcomes, error) {
+func readRecordedOutcomes(path string) (issueopscontract.RecordedOutcomes, error) {
 	var raw []byte
 	var err error
 	if strings.TrimSpace(path) == "" {
@@ -66,11 +65,11 @@ func readRecordedOutcomes(path string) (core.RecordedOutcomes, error) {
 		raw, err = os.ReadFile(path)
 	}
 	if err != nil {
-		return core.RecordedOutcomes{}, err
+		return issueopscontract.RecordedOutcomes{}, err
 	}
-	var rec core.RecordedOutcomes
+	var rec issueopscontract.RecordedOutcomes
 	if err := json.Unmarshal(raw, &rec); err != nil {
-		return core.RecordedOutcomes{}, fmt.Errorf("parse recorded outcomes: %w", err)
+		return issueopscontract.RecordedOutcomes{}, fmt.Errorf("parse recorded outcomes: %w", err)
 	}
 	return rec, nil
 }
@@ -110,7 +109,7 @@ func (f *repeatedFlag) Set(value string) error {
 // decode (its fixture keys are unknown top-level fields) rather than silently
 // bypassing the provenance gate. Missing keys must error here: merging a
 // zero-value judge score would silently fail the fixture via JudgeFailures.
-func readIssueOpsJudgeMap(path string, fixtures []core.IssueOpsBenchmarkFixture) (core.IssueOpsJudgeMap, map[string]core.IssueOpsBenchmarkScore, error) {
+func readIssueOpsJudgeMap(path string, fixtures []issueopscontract.IssueOpsBenchmarkFixture) (issueopscontract.IssueOpsJudgeMap, map[string]issueopscontract.IssueOpsBenchmarkScore, error) {
 	var raw []byte
 	var err error
 	if strings.TrimSpace(path) == "" {
@@ -119,7 +118,7 @@ func readIssueOpsJudgeMap(path string, fixtures []core.IssueOpsBenchmarkFixture)
 		raw, err = os.ReadFile(path)
 	}
 	if err != nil {
-		return core.IssueOpsJudgeMap{}, nil, err
+		return issueopscontract.IssueOpsJudgeMap{}, nil, err
 	}
 	var wrapper struct {
 		SourceRunID string                     `json:"source_run_id"`
@@ -129,45 +128,45 @@ func readIssueOpsJudgeMap(path string, fixtures []core.IssueOpsBenchmarkFixture)
 	dec := json.NewDecoder(strings.NewReader(string(raw)))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&wrapper); err != nil {
-		return core.IssueOpsJudgeMap{}, nil, fmt.Errorf("parse judge map (expect {\"source_run_id\":..,\"provenance\":..,\"scores\":{...}}): %w", err)
+		return issueopscontract.IssueOpsJudgeMap{}, nil, fmt.Errorf("parse judge map (expect {\"source_run_id\":..,\"provenance\":..,\"scores\":{...}}): %w", err)
 	}
 	if wrapper.Scores == nil {
-		return core.IssueOpsJudgeMap{}, nil, fmt.Errorf("judge map missing \"scores\" object")
+		return issueopscontract.IssueOpsJudgeMap{}, nil, fmt.Errorf("judge map missing \"scores\" object")
 	}
-	scores := make(map[string]core.IssueOpsBenchmarkScore, len(wrapper.Scores))
+	scores := make(map[string]issueopscontract.IssueOpsBenchmarkScore, len(wrapper.Scores))
 	known := make(map[string]bool, len(fixtures))
 	for _, fixture := range fixtures {
 		known[fixture.ID] = true
 		value, ok := wrapper.Scores[fixture.ID]
 		if !ok {
-			return core.IssueOpsJudgeMap{}, nil, fmt.Errorf("judge map missing fixture %q", fixture.ID)
+			return issueopscontract.IssueOpsJudgeMap{}, nil, fmt.Errorf("judge map missing fixture %q", fixture.ID)
 		}
-		score, err := core.DecodeIssueOpsBenchmarkJudgeJSON(value)
+		score, err := benchmarkDeps.DecodeIssueOpsBenchmarkJudgeJSON(value)
 		if err != nil {
-			return core.IssueOpsJudgeMap{}, nil, fmt.Errorf("judge score for fixture %q: %w", fixture.ID, err)
+			return issueopscontract.IssueOpsJudgeMap{}, nil, fmt.Errorf("judge score for fixture %q: %w", fixture.ID, err)
 		}
 		scores[fixture.ID] = score
 	}
 	for key := range wrapper.Scores {
 		if !known[key] {
-			return core.IssueOpsJudgeMap{}, nil, fmt.Errorf("judge map has unknown fixture %q", key)
+			return issueopscontract.IssueOpsJudgeMap{}, nil, fmt.Errorf("judge map has unknown fixture %q", key)
 		}
 	}
-	return core.IssueOpsJudgeMap{SourceRunID: wrapper.SourceRunID, Provenance: wrapper.Provenance}, scores, nil
+	return issueopscontract.IssueOpsJudgeMap{SourceRunID: wrapper.SourceRunID, Provenance: wrapper.Provenance}, scores, nil
 }
 
-func readIssueOpsAutoresearchCandidateFile(path string) (core.IssueOpsAutoresearchCandidate, error) {
+func readIssueOpsAutoresearchCandidateFile(path string) (issueopscontract.IssueOpsAutoresearchCandidate, error) {
 	path = strings.TrimSpace(path)
 	if path == "" {
-		return core.IssueOpsAutoresearchCandidate{}, fmt.Errorf("candidate-file is required")
+		return issueopscontract.IssueOpsAutoresearchCandidate{}, fmt.Errorf("candidate-file is required")
 	}
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return core.IssueOpsAutoresearchCandidate{}, err
+		return issueopscontract.IssueOpsAutoresearchCandidate{}, err
 	}
-	var candidate core.IssueOpsAutoresearchCandidate
+	var candidate issueopscontract.IssueOpsAutoresearchCandidate
 	if err := json.Unmarshal(b, &candidate); err != nil {
-		return core.IssueOpsAutoresearchCandidate{}, fmt.Errorf("parse candidate file %s: %w", path, err)
+		return issueopscontract.IssueOpsAutoresearchCandidate{}, fmt.Errorf("parse candidate file %s: %w", path, err)
 	}
 	return candidate, nil
 }

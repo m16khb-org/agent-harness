@@ -7,14 +7,24 @@ import (
 	"io"
 	"log/slog"
 
-	mcpadapter "agent-harness/internal/adapter/mcp"
+	"agent-harness/cmd/harness/mcpcli/resources"
+	mcpadapter "agent-harness/internal/domain/mcp"
+
+	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func initSDKServer(deps MCPDependencies) *mcp.Server {
+	return initSDKServerWithDiagnostics(deps, io.Discard)
+}
+
+func initSDKServerWithDiagnostics(deps MCPDependencies, diagnostics io.Writer) *mcp.Server {
+	if diagnostics == nil {
+		diagnostics = io.Discard
+	}
 	server := mcp.NewServer(
 		&mcp.Implementation{Name: "agent_harness", Version: Version},
-		sdkServerOptions(),
+		sdkServerOptionsWithDiagnostics(diagnostics),
 	)
 	registerAllTools(server, deps)
 	registerAllResources(server)
@@ -22,9 +32,13 @@ func initSDKServer(deps MCPDependencies) *mcp.Server {
 }
 
 func sdkServerOptions() *mcp.ServerOptions {
+	return sdkServerOptionsWithDiagnostics(io.Discard)
+}
+
+func sdkServerOptionsWithDiagnostics(diagnostics io.Writer) *mcp.ServerOptions {
 	return &mcp.ServerOptions{
 		Instructions: "This MCP endpoint is a proxy to the shared agent-harness daemon. Use harness tools for shared Codex/Claude inspection, atomic commit preflight, state checkpoints, self-verification, self-augmentation, and commit policy context. External wiki or knowledge-base workflows belong to their own separately installed servers, not agent-harness.",
-		Logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:       slog.New(slog.NewTextHandler(diagnostics, nil)),
 		Capabilities: &mcp.ServerCapabilities{},
 	}
 }
@@ -42,7 +56,7 @@ func sdkToolHandler(groupHandler func(MCPToolCall) MCPToolOutcome, toolName stri
 		}
 		outcome := groupHandler(MCPToolCall{Name: toolName, Arguments: args})
 		if outcome.Err != nil {
-			return nil, fmt.Errorf("%s: %v", outcome.Err.Message, outcome.Err.Data)
+			return nil, outcome.Err
 		}
 		if outcome.Direct {
 			if dm, ok := outcome.Result.(map[string]any); ok {
@@ -114,15 +128,35 @@ func resolveHandlerGroup(name string) func(MCPToolCall) MCPToolOutcome {
 	group, ok := dm[name]
 	if !ok {
 		return func(call MCPToolCall) MCPToolOutcome {
-			return MCPToolOutcome{Handled: true, Err: &RPCError{Code: -32602, Message: "Unknown tool", Data: call.Name}}
+			return MCPToolOutcome{Handled: true, Err: newProtocolError(-32602, "Unknown tool", call.Name)}
 		}
 	}
 	if fn, ok := handlerGroupLookup[group]; ok {
 		return fn
 	}
 	return func(call MCPToolCall) MCPToolOutcome {
-		return MCPToolOutcome{Handled: true, Err: &RPCError{Code: -32602, Message: "Unknown tool", Data: call.Name}}
+		return MCPToolOutcome{Handled: true, Err: newProtocolError(-32602, "Unknown tool", call.Name)}
 	}
+}
+
+func MCPResources() []map[string]any {
+	return resources.MCPResources()
+}
+
+func HandleResourceRead(params json.RawMessage) (any, *jsonrpc.Error) {
+	result, readErr := resources.HandleResourceRead(params, resources.Config{
+		HarnessRoot:      HarnessRoot(),
+		Version:          Version,
+		SkillName:        skillName,
+		ReadHarnessFile:  ReadHarnessFile,
+		StateList:        StateList,
+		RouteProjectDocs: RouteProjectDocs,
+		DocsIndex:        DocsIndex,
+	})
+	if readErr != nil {
+		return nil, newProtocolError(int64(readErr.Code), readErr.Message, readErr.Data)
+	}
+	return result, nil
 }
 
 func registerAllResources(server *mcp.Server) {
@@ -146,7 +180,7 @@ func sdkResourceHandler() mcp.ResourceHandler {
 		}
 		result, readErr := HandleResourceRead(params)
 		if readErr != nil {
-			return nil, fmt.Errorf("%s: %v", readErr.Message, readErr.Data)
+			return nil, readErr
 		}
 		if m, ok := result.(map[string]any); ok {
 			if contents, ok := m["contents"].([]any); ok && len(contents) > 0 {
@@ -174,21 +208,18 @@ func sdkReadResourceResult(content map[string]any) *mcp.ReadResourceResult {
 	}
 }
 
-// serveMCPStreamSDK runs the MCP server using the official go-sdk IOTransport.
-// Used for bidirectional connections (net.Conn from daemon accept loop).
-func serveMCPStreamSDK(ctx context.Context, input io.Reader, output io.Writer, deps MCPDependencies) error {
-	server := initSDKServer(deps)
-	rwc, ok := input.(io.ReadWriteCloser)
-	if !ok {
-		return server.Run(ctx, &mcp.IOTransport{
-			Reader: io.NopCloser(input),
-			Writer: writeCloser{output},
-		})
+// serveMCPStreamSDK runs both split stdio and bidirectional daemon connections
+// through the official go-sdk IOTransport.
+func serveMCPStreamSDK(ctx context.Context, input io.Reader, output io.Writer, diagnostics io.Writer, deps MCPDependencies) error {
+	server := initSDKServerWithDiagnostics(deps, diagnostics)
+	if rwc, ok := input.(io.ReadWriteCloser); ok && io.Writer(rwc) == output {
+		return server.Run(ctx, &mcp.IOTransport{Reader: rwc, Writer: rwc})
 	}
-	return server.Run(ctx, &mcp.IOTransport{
-		Reader: rwc,
-		Writer: rwc,
-	})
+	reader := io.ReadCloser(io.NopCloser(input))
+	if closer, ok := input.(io.ReadCloser); ok {
+		reader = closer
+	}
+	return server.Run(ctx, &mcp.IOTransport{Reader: reader, Writer: writeCloser{output}})
 }
 
 type writeCloser struct{ io.Writer }

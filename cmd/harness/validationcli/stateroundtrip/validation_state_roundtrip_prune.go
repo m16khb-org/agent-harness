@@ -1,9 +1,8 @@
 package stateroundtrip
 
 import (
+	statecontract "agent-harness/internal/contract/state"
 	"encoding/json"
-
-	"agent-harness/internal/core"
 )
 
 func (s *stateRoundtripStateSession) validatePrune() StepResult {
@@ -12,12 +11,12 @@ func (s *stateRoundtripStateSession) validatePrune() StepResult {
 	if !oldWrite.OK {
 		return s.combineFailed(oldWrite)
 	}
-	var oldWriteResult core.StateResult
+	var oldWriteResult statecontract.StateResult
 	if err := json.Unmarshal([]byte(oldWrite.Stdout), &oldWriteResult); err != nil {
 		return s.fail(err.Error())
 	}
 	oldWriteResult.Record.UpdatedAt = "2000-01-01T00:00:00Z"
-	if _, err := core.WriteStateRecord(s.input.tempState, oldKey, oldWriteResult.Record); err != nil {
+	if _, err := WriteStateRecord(s.input.tempState, oldKey, oldWriteResult.Record); err != nil {
 		return s.fail(err.Error())
 	}
 
@@ -25,7 +24,7 @@ func (s *stateRoundtripStateSession) validatePrune() StepResult {
 	if !pruneDry.OK {
 		return s.combineFailed(pruneDry)
 	}
-	var pruneDryResult core.StatePruneResult
+	var pruneDryResult statecontract.StatePruneResult
 	if err := json.Unmarshal([]byte(pruneDry.Stdout), &pruneDryResult); err != nil {
 		return s.fail(err.Error())
 	}
@@ -37,7 +36,7 @@ func (s *stateRoundtripStateSession) validatePrune() StepResult {
 	if !pruneConfirm.OK {
 		return s.combineFailed(pruneConfirm)
 	}
-	var pruneConfirmResult core.StatePruneResult
+	var pruneConfirmResult statecontract.StatePruneResult
 	if err := json.Unmarshal([]byte(pruneConfirm.Stdout), &pruneConfirmResult); err != nil {
 		return s.fail(err.Error())
 	}
@@ -49,7 +48,7 @@ func (s *stateRoundtripStateSession) validatePrune() StepResult {
 	if !listAfterPrune.OK {
 		return s.combineFailed(listAfterPrune)
 	}
-	var listAfterPruneResult core.StateListResult
+	var listAfterPruneResult statecontract.StateListResult
 	if err := json.Unmarshal([]byte(listAfterPrune.Stdout), &listAfterPruneResult); err != nil {
 		return s.fail(err.Error())
 	}

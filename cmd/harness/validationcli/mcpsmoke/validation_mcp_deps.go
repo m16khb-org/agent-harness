@@ -14,10 +14,10 @@ const commandOutputBudgetBytes = 32 * 1024
 type StepResult = commandstep.StepResult
 
 type MCPValidationDeps struct {
-	MkdirTemp                   func(string, string) (string, error)
-	RemoveAll                   func(string) error
-	RunCommandStepEnv           func(string, string, time.Duration, string, []string, string, ...string) StepResult
-	RunCommandStepEnvWithBudget func(string, string, time.Duration, string, []string, int, string, ...string) StepResult
+	MkdirTemp         func(string, string) (string, error)
+	RemoveAll         func(string) error
+	RunCommandStepEnv func(string, string, time.Duration, string, []string, string, ...string) StepResult
+	RunSDKSmoke       func(string, string, []string, time.Duration) StepResult
 }
 
 func (deps MCPValidationDeps) withDefaults() MCPValidationDeps {
@@ -30,18 +30,14 @@ func (deps MCPValidationDeps) withDefaults() MCPValidationDeps {
 	if deps.RunCommandStepEnv == nil {
 		deps.RunCommandStepEnv = runCommandStepEnv
 	}
-	if deps.RunCommandStepEnvWithBudget == nil {
-		deps.RunCommandStepEnvWithBudget = runCommandStepEnvWithBudget
+	if deps.RunSDKSmoke == nil {
+		deps.RunSDKSmoke = runSDKSmoke
 	}
 	return deps
 }
 
 func runCommandStepEnv(dir, label string, timeout time.Duration, stdin string, env []string, name string, args ...string) StepResult {
 	return commandstep.RunEnv(dir, label, timeout, stdin, env, commandOutputBudgetBytes, name, args...)
-}
-
-func runCommandStepEnvWithBudget(dir, label string, timeout time.Duration, stdin string, env []string, outputBudget int, name string, args ...string) StepResult {
-	return commandstep.RunEnvWithBudget(dir, label, timeout, stdin, env, outputBudget, name, args...)
 }
 
 func failedStep(label string, err error) StepResult {

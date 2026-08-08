@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	cliadapter "agent-harness/internal/adapter/cli"
+	cliadapter "agent-harness/internal/domain/cli"
 	"agent-harness/internal/testsupport"
 )
 

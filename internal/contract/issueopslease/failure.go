@@ -12,9 +12,8 @@ var ErrExecutionNotPrepared = errors.New("IssueOps execution v1 is not prepared"
 type FailureCode string
 
 const (
-	FailureMalformedSchema   FailureCode = "malformed_schema"
-	FailureUnsupportedSchema FailureCode = "unsupported_schema"
-	FailurePersistence       FailureCode = "persistence"
+	FailureInvalidState FailureCode = "invalid_state"
+	FailurePersistence  FailureCode = "persistence"
 )
 
 type Failure struct {

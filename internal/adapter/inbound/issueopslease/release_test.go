@@ -7,10 +7,13 @@ import (
 	"testing"
 	"time"
 
+	issueopscontract "agent-harness/internal/contract/issueops"
+
+	"agent-harness/internal/adapter/issueops"
 	leaseadapter "agent-harness/internal/adapter/outbound/issueopslease"
 	leaseapp "agent-harness/internal/application/issueopslease"
 	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/core/issueops"
+	statecontract "agent-harness/internal/contract/state"
 	leasedomain "agent-harness/internal/domain/issueopslease"
 )
 
@@ -51,7 +54,7 @@ func TestReleaseHandlerReturnsCommittedProjectionWithoutStatusReadback(t *testin
 	handler := NewReleaseHandler(service)
 	result, err := handler(context.Background(), "/state-root-that-must-not-be-read", issueops.ExecutionReleaseRequest{
 		ID: record.ID, Generation: 1, CWD: "/canonical",
-		Actor: issueops.NativeActor{Host: actor.Host, SessionID: actor.SessionID, SessionProcess: &issueops.NativeProcessReceipt{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}, ProcessAncestry: []issueops.NativeProcessReceipt{{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}}},
+		Actor: issueopscontract.NativeActor{Host: actor.Host, SessionID: actor.SessionID, SessionProcess: &issueopscontract.NativeProcessReceipt{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}, ProcessAncestry: []issueopscontract.NativeProcessReceipt{{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}}},
 	})
 	if err != nil {
 		t.Fatalf("release handler: %v", err)
@@ -72,7 +75,7 @@ func TestPublicReleaseErrorRetainsCompatibilityText(t *testing.T) {
 	}{
 		{name: "holder", err: leasedomain.Deny(leasedomain.DenyLeaseAuthority, errors.New("internal")), want: "only the current holder may release generation 7"},
 		{name: "cwd", err: leasedomain.Deny(leasedomain.DenyCanonicalCWD, errors.New("internal")), want: "release cwd must be the canonical worktree"},
-		{name: "unsupported", err: leasecontract.Fail(leasecontract.FailureUnsupportedSchema, leasecontract.UnsupportedSchemaError{Version: 2}), want: "unsupported issueops schema_version 2; current is 1"},
+		{name: "invalid state", err: leasecontract.Fail(leasecontract.FailureInvalidState, statecontract.ErrInvalidState), want: "invalid state"},
 		{name: "persistence", err: leasecontract.Fail(leasecontract.FailurePersistence, errors.New("holder index is unavailable")), want: "holder index is unavailable"},
 	}
 	for _, tc := range cases {
@@ -108,7 +111,7 @@ func TestReleaseHandlerPreservesNotPreparedCompatibilityText(t *testing.T) {
 	)
 	_, err = NewReleaseHandler(service)(context.Background(), "/unused", issueops.ExecutionReleaseRequest{
 		ID: record.ID, Generation: 1, CWD: "/canonical",
-		Actor: issueops.NativeActor{Host: actor.Host, SessionID: actor.SessionID, SessionProcess: &issueops.NativeProcessReceipt{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}, ProcessAncestry: []issueops.NativeProcessReceipt{{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}}},
+		Actor: issueopscontract.NativeActor{Host: actor.Host, SessionID: actor.SessionID, SessionProcess: &issueopscontract.NativeProcessReceipt{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}, ProcessAncestry: []issueopscontract.NativeProcessReceipt{{PID: actor.SessionProcess.PID, StartedAt: actor.SessionProcess.StartedAt, Executable: actor.SessionProcess.Executable}}},
 	})
 	if err == nil || err.Error() != "IssueOps execution v1 is not prepared" {
 		t.Fatalf("not prepared error=%v", err)
@@ -119,12 +122,12 @@ func TestReleaseHandlerPreservesLegacyNativeActorValidationText(t *testing.T) {
 	handler := NewReleaseHandler(leaseapp.NewReleaseService(nil, nil, nil, nil))
 	for _, tc := range []struct {
 		name  string
-		actor issueops.NativeActor
+		actor issueopscontract.NativeActor
 		want  string
 	}{
-		{name: "invalid host", actor: issueops.NativeActor{Host: "other"}, want: "native actor host must be codex or claude"},
-		{name: "missing session", actor: issueops.NativeActor{Host: "codex"}, want: "native actor session_id is required"},
-		{name: "missing receipt", actor: issueops.NativeActor{Host: "codex", SessionID: "missing-receipt"}, want: "native actor requires a PID reuse-safe session_process receipt"},
+		{name: "invalid host", actor: issueopscontract.NativeActor{Host: "other"}, want: "native actor host must be codex or claude"},
+		{name: "missing session", actor: issueopscontract.NativeActor{Host: "codex"}, want: "native actor session_id is required"},
+		{name: "missing receipt", actor: issueopscontract.NativeActor{Host: "codex", SessionID: "missing-receipt"}, want: "native actor requires a PID reuse-safe session_process receipt"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := handler(context.Background(), "/unused", issueops.ExecutionReleaseRequest{ID: "io-native-actor", Generation: 1, Actor: tc.actor})
@@ -136,13 +139,13 @@ func TestReleaseHandlerPreservesLegacyNativeActorValidationText(t *testing.T) {
 }
 
 func TestReleaseHandlerPreservesLegacyContractAndPersistenceText(t *testing.T) {
-	actor := issueops.NativeActor{
+	actor := issueopscontract.NativeActor{
 		Host:      "codex",
 		SessionID: "public-error-session",
-		SessionProcess: &issueops.NativeProcessReceipt{
+		SessionProcess: &issueopscontract.NativeProcessReceipt{
 			PID: 1234, StartedAt: "2026-07-29T00:00:00Z", Executable: "/usr/bin/codex",
 		},
-		ProcessAncestry: []issueops.NativeProcessReceipt{{
+		ProcessAncestry: []issueopscontract.NativeProcessReceipt{{
 			PID: 1234, StartedAt: "2026-07-29T00:00:00Z", Executable: "/usr/bin/codex",
 		}},
 	}
@@ -152,9 +155,9 @@ func TestReleaseHandlerPreservesLegacyContractAndPersistenceText(t *testing.T) {
 		want string
 	}{
 		{
-			name: "future schema",
-			err:  leasecontract.Fail(leasecontract.FailureUnsupportedSchema, leasecontract.UnsupportedSchemaError{Version: 2}),
-			want: "unsupported issueops schema_version 2; current is 1",
+			name: "invalid state",
+			err:  leasecontract.Fail(leasecontract.FailureInvalidState, statecontract.ErrInvalidState),
+			want: "invalid state",
 		},
 		{
 			name: "conflicting holder index",

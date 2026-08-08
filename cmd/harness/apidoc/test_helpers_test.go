@@ -1,9 +1,7 @@
 package apidoc
 
 import (
-	"os"
 	"os/exec"
-	"path/filepath"
 	"testing"
 
 	"agent-harness/internal/testsupport"
@@ -45,14 +43,4 @@ func containsString(items []string, want string) bool {
 		}
 	}
 	return false
-}
-
-func writeFileForWrapperTest(t *testing.T, path, body string) {
-	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
-		t.Fatal(err)
-	}
 }

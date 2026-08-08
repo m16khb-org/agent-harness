@@ -16,5 +16,3 @@ type SelfAugmentStateSnapshot = model.SelfAugmentStateSnapshot
 type SelfAugmentStepBudgetRegression = model.SelfAugmentStepBudgetRegression
 type SelfAugmentStepDurationStat = model.SelfAugmentStepDurationStat
 type SelfAugmentSummary = model.SelfAugmentSummary
-
-type selfAugmentHistoryRetentionOptions = model.SelfAugmentHistoryRetentionOptions

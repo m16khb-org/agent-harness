@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
 // InstanceRecord는 daemon 생명주기 동작을 정확히 하나의 OS 프로세스와 정확히
-// 하나의 daemon protocol 인스턴스에 묶는다. 필드는 additive이므로 구버전
-// 바이너리도 legacy 정수 PID 형식을 status 용도로만 계속 읽을 수 있다.
+// 하나의 daemon protocol 인스턴스에 묶는다.
 type InstanceRecord struct {
 	PID              int    `json:"pid"`
 	ProcessStartTime string `json:"process_start_time"`
@@ -44,27 +42,18 @@ func (r InstanceRecord) Validate() error {
 	return nil
 }
 
-// ReadInstance는 과거의 정수 PID 파일에 대해서만 legacy=true를 반환한다. 호출자는
-// 그 PID를 표시할 수는 있으나 파괴적 동작에 사용해서는 안 된다.
-func ReadInstance(path string) (record InstanceRecord, legacy bool, err error) {
+func ReadInstance(path string) (record InstanceRecord, err error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return InstanceRecord{}, false, err
-	}
-	trimmed := strings.TrimSpace(string(b))
-	if pid, parseErr := strconv.Atoi(trimmed); parseErr == nil {
-		if pid <= 0 {
-			return InstanceRecord{}, true, fmt.Errorf("legacy pid must be positive")
-		}
-		return InstanceRecord{PID: pid}, true, nil
+		return InstanceRecord{}, err
 	}
 	if err := json.Unmarshal(b, &record); err != nil {
-		return InstanceRecord{}, false, fmt.Errorf("decode daemon instance record: %w", err)
+		return InstanceRecord{}, fmt.Errorf("decode daemon instance record: %w", err)
 	}
 	if err := record.Validate(); err != nil {
-		return InstanceRecord{}, false, fmt.Errorf("invalid daemon instance record: %w", err)
+		return InstanceRecord{}, fmt.Errorf("invalid daemon instance record: %w", err)
 	}
-	return record, false, nil
+	return record, nil
 }
 
 func WriteInstance(path string, record InstanceRecord) error {

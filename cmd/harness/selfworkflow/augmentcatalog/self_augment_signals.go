@@ -4,8 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"agent-harness/internal/core"
 )
 
 func ScoreBool(ok bool) float64 {
@@ -35,7 +33,7 @@ func SelectedCandidateID(candidate *SelfAugmentCandidate) string {
 }
 
 func DocsContainTerm(root, term string) bool {
-	for _, path := range core.ListDocs(root) {
+	for _, path := range ListDocs(root) {
 		b, err := os.ReadFile(path)
 		if err == nil && strings.Contains(string(b), term) {
 			return true

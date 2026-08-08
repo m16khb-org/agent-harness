@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"agent-harness/internal/core"
-	"agent-harness/internal/core/failurecause"
+	statecontract "agent-harness/internal/contract/state"
 )
 
 func ReadSelfAugmentStateSnapshot(key string) (SelfAugmentStateSnapshot, error) {
-	state, err := core.StateRead(key)
+	state, err := StateRead(key)
 	if err != nil {
 		return SelfAugmentStateSnapshot{}, err
 	}
@@ -18,7 +17,7 @@ func ReadSelfAugmentStateSnapshot(key string) (SelfAugmentStateSnapshot, error) 
 	if err := json.Unmarshal([]byte(state.Record.Content), &snapshot); err != nil {
 		return SelfAugmentStateSnapshot{}, err
 	}
-	if !IsSelfVerificationSummaryKind(snapshot.Kind) {
+	if snapshot.Kind != selfVerificationSummaryKind {
 		return SelfAugmentStateSnapshot{}, fmt.Errorf("state key %q contains kind %q, want %s", key, snapshot.Kind, selfVerificationSummaryKind)
 	}
 	if snapshot.SchemaVersion != 1 {
@@ -29,10 +28,11 @@ func ReadSelfAugmentStateSnapshot(key string) (SelfAugmentStateSnapshot, error) 
 }
 
 func IsSelfVerificationSummaryKind(kind string) bool {
-	return kind == selfVerificationSummaryKind || kind == legacySelfAugmentSummaryKind
+	return kind == selfVerificationSummaryKind
 }
+
 func NormalizeSelfAugmentSnapshotFailureCause(snapshot *SelfAugmentStateSnapshot) {
-	classified := failurecause.Classify(snapshot.Summary.FailedSteps > 0, snapshot.Summary.FailureCauseEvidence)
+	classified := Classify(snapshot.Summary.FailedSteps > 0, snapshot.Summary.FailureCauseEvidence)
 	snapshot.Summary.FailureCause = classified.Cause
 	snapshot.Summary.FailureCauseReason = classified.Reason
 	snapshot.Summary.FailureCauseEvidence = classified.Evidence
@@ -40,7 +40,7 @@ func NormalizeSelfAugmentSnapshotFailureCause(snapshot *SelfAugmentStateSnapshot
 
 func WriteSelfAugmentSnapshotRecord(dir, key string, snapshot SelfAugmentStateSnapshot) error {
 	NormalizeSelfAugmentSnapshotFailureCause(&snapshot)
-	key, err := core.NormalizeStateKey(key)
+	key, err := NormalizeStateKey(key)
 	if err != nil {
 		return err
 	}
@@ -48,8 +48,8 @@ func WriteSelfAugmentSnapshotRecord(dir, key string, snapshot SelfAugmentStateSn
 	if err != nil {
 		return err
 	}
-	record := core.StateRecord{
-		SchemaVersion: core.StateCurrentSchemaVersion,
+	record := statecontract.RecordEnvelope{
+		SchemaVersion: statecontract.SchemaVersion,
 		Key:           key,
 		Content:       string(content),
 		UpdatedAt:     time.Now().UTC().Format(time.RFC3339Nano),
@@ -59,6 +59,6 @@ func WriteSelfAugmentSnapshotRecord(dir, key string, snapshot SelfAugmentStateSn
 	// core.writeStateRecord의 내구성과 맞춘다. 온디스크 출력은 경로·MarshalIndent·
 	// trailing newline이 모두 같아 byte-identical하며, crash-safe하고 동시 writer에
 	// 대해 직렬화된다.
-	_, err = core.WriteStateRecord(dir, key, record)
+	_, err = WriteStateRecord(dir, key, record)
 	return err
 }

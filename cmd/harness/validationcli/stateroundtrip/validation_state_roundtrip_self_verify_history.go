@@ -1,10 +1,8 @@
 package stateroundtrip
 
 import (
+	statecontract "agent-harness/internal/contract/state"
 	"encoding/json"
-
-	"agent-harness/internal/core"
-	"agent-harness/internal/core/sqlstore"
 )
 
 func (s *stateRoundtripSelfVerifySession) validateHistoryAndRetention(baselineCompareKey, candidateCompareKey, promotedBaselineKey string) StepResult {
@@ -62,7 +60,7 @@ func (s *stateRoundtripSelfVerifySession) validateHistoryAndRetention(baselineCo
 		return s.fail("self-verify history retention confirm left too many matching summaries")
 	}
 
-	db, err := sqlstore.Open(input.tempState)
+	db, err := OpenStateDatabase(input.tempState)
 	if err != nil {
 		return s.fail(err.Error())
 	}
@@ -73,17 +71,17 @@ func (s *stateRoundtripSelfVerifySession) validateHistoryAndRetention(baselineCo
 	if !doctor.OK {
 		return s.combineFailed(doctor)
 	}
-	var doctorResult core.StateDoctorResult
+	var doctorResult statecontract.StateDoctorResult
 	if err := json.Unmarshal([]byte(doctor.Stdout), &doctorResult); err != nil {
 		return s.fail(err.Error())
 	}
-	if !doctorResult.OK || doctorResult.Healthy || !containsString(doctorResult.ValidKeys, key) || !stateDoctorHasIssueCode(doctorResult.Issues, "invalid_json") {
+	if !doctorResult.OK || doctorResult.Healthy || !containsString(doctorResult.ValidKeys, key) || !stateDoctorHasIssueCode(doctorResult.Issues, "invalid_state") {
 		return s.fail("state doctor did not report corrupt fixture and preserve valid key")
 	}
 	return StepResult{OK: true}
 }
 
-func stateDoctorHasIssueCode(issues []core.StateDoctorIssue, want string) bool {
+func stateDoctorHasIssueCode(issues []statecontract.StateDoctorIssue, want string) bool {
 	for _, issue := range issues {
 		if issue.Code == want {
 			return true

@@ -20,9 +20,10 @@ type ResumeRequest struct {
 }
 
 type ResumeResult struct {
-	OK      bool
-	ID      string
-	Receipt leasecontract.ResumeReceipt
+	OK          bool
+	ID          string
+	Disposition leasedomain.ResumeDisposition
+	Receipt     leasecontract.ResumeReceipt
 }
 
 type ResumeService struct {
@@ -59,7 +60,7 @@ func (s *ResumeService) Resume(ctx context.Context, request ResumeRequest) (Resu
 		if snapshot.Record.Stable.Execution == nil || snapshot.Record.Stable.Execution.Orca == nil {
 			return fmt.Errorf("execution resume requires an existing Orca binding")
 		}
-		preflight := resumeDomainRequest(snapshot.Record.Stable, request.ExpectedGeneration, s.paths.Matches(request.CWD, snapshot.Record.CanonicalRoot), leasedomain.ResumeInventory{}, true)
+		preflight := resumeDomainRequest(snapshot.Record.Stable, request.ExpectedGeneration, s.paths.Matches(request.CWD, snapshot.Record.CanonicalRoot), leasedomain.ResumeInventory{})
 		if _, err := leasedomain.PlanResume(preflight); err != nil {
 			return err
 		}
@@ -67,16 +68,16 @@ func (s *ResumeService) Resume(ctx context.Context, request ResumeRequest) (Resu
 		if err != nil {
 			return err
 		}
-		inventory, runtimeCompatible, err := s.owners.Observe(fenceCtx, snapshot.Record.Stable)
+		inventory, err := s.owners.Observe(fenceCtx, snapshot.Record.Stable)
 		if err != nil {
 			return err
 		}
-		plan, err := leasedomain.PlanResume(resumeDomainRequest(snapshot.Record.Stable, request.ExpectedGeneration, true, inventory, runtimeCompatible))
+		plan, err := leasedomain.PlanResume(resumeDomainRequest(snapshot.Record.Stable, request.ExpectedGeneration, true, inventory))
 		if err != nil {
 			return err
 		}
 		if plan.Disposition == leasedomain.ResumeExistingBinding {
-			result = ResumeResult{OK: true, ID: request.ID, Receipt: leasecontract.ResumeReceipt{Execution: *snapshot.Record.Stable.Execution, Artifacts: artifacts}}
+			result = ResumeResult{OK: true, ID: request.ID, Disposition: plan.Disposition, Receipt: leasecontract.ResumeReceipt{Execution: *snapshot.Record.Stable.Execution, Artifacts: artifacts}}
 			return nil
 		}
 		operationID, err := s.operationIDs.New()
@@ -133,7 +134,7 @@ func (s *ResumeService) Resume(ctx context.Context, request ResumeRequest) (Resu
 		if progress.Pending {
 			return fmt.Errorf("execution resume did not complete the owner launch stages")
 		}
-		result = ResumeResult{OK: true, ID: request.ID, Receipt: leasecontract.ResumeReceipt{Execution: progress.Execution, Artifacts: artifacts}}
+		result = ResumeResult{OK: true, ID: request.ID, Disposition: plan.Disposition, Receipt: leasecontract.ResumeReceipt{Execution: progress.Execution, Artifacts: artifacts}}
 		return nil
 	})
 	if err != nil {
@@ -142,13 +143,13 @@ func (s *ResumeService) Resume(ctx context.Context, request ResumeRequest) (Resu
 	return result, nil
 }
 
-func resumeDomainRequest(record leasecontract.Record, generation uint64, canonicalCWD bool, inventory leasedomain.ResumeInventory, runtimeCompatible bool) leasedomain.ResumeRequest {
+func resumeDomainRequest(record leasecontract.Record, generation uint64, canonicalCWD bool, inventory leasedomain.ResumeInventory) leasedomain.ResumeRequest {
 	binding := record.Execution.Orca
 	return leasedomain.ResumeRequest{
 		ExpectedGeneration: generation, Lease: toDomainLease(record.Execution.Lease), BindingGeneration: binding.LeaseGeneration,
 		BindingRuntimeID: binding.RuntimeID, BindingTerminalID: binding.TerminalPTYID, CanonicalCWD: canonicalCWD,
 		ModeOrca: record.Execution.Mode == "orca", BindingPresent: binding != nil, PendingAbsent: record.Execution.Pending == nil,
-		RuntimeCompatible: runtimeCompatible, Inventory: inventory,
+		Inventory: inventory,
 	}
 }
 

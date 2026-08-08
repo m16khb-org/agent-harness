@@ -21,28 +21,19 @@ const (
 	intentBucket = "external_intent_v1"
 )
 
-type MutationGate func(context.Context) error
 type DiagnosticRedactor func(string) string
 
 type SQLiteRepository struct {
 	store  port.RecordInventoryStore
-	gate   MutationGate
 	redact DiagnosticRedactor
 }
 
-func NewSQLiteRepository(store port.RecordInventoryStore, gate MutationGate) *SQLiteRepository {
-	return NewSQLiteRepositoryWithDiagnosticRedactor(store, gate, nil)
+func NewSQLiteRepository(store port.RecordInventoryStore) *SQLiteRepository {
+	return NewSQLiteRepositoryWithDiagnosticRedactor(store, nil)
 }
 
-func NewSQLiteRepositoryWithDiagnosticRedactor(store port.RecordInventoryStore, gate MutationGate, redact DiagnosticRedactor) *SQLiteRepository {
-	return &SQLiteRepository{store: store, gate: gate, redact: redact}
-}
-
-func (repository *SQLiteRepository) RequireMutationAllowed(ctx context.Context) error {
-	if repository.gate == nil {
-		return fmt.Errorf("IssueOps mutation gate is unavailable")
-	}
-	return repository.gate(ctx)
+func NewSQLiteRepositoryWithDiagnosticRedactor(store port.RecordInventoryStore, redact DiagnosticRedactor) *SQLiteRepository {
+	return &SQLiteRepository{store: store, redact: redact}
 }
 
 func (repository *SQLiteRepository) Load(_ context.Context, id string) (preparationcontract.Snapshot, error) {
@@ -275,6 +266,7 @@ func (repository *SQLiteRepository) ApplyReceipt(ctx context.Context, state prep
 		intent.ClaimTokenSHA256 = state.OwnerArtifacts.ClaimTokenSHA256
 		intent.Stage = preparationcontract.IntentStageTerminal
 		record.WorktreePath = prepared.Workspace.Root
+		record.PlanPath = state.OwnerArtifacts.PlanPath
 		record.Execution.Workspace = leasecontract.Workspace{
 			SourceRoot: prepared.Workspace.SourceRoot, Root: prepared.Workspace.Root,
 			Branch: prepared.Workspace.Branch, BaseHead: prepared.Workspace.BaseHead,
@@ -312,6 +304,9 @@ func (repository *SQLiteRepository) ApplyReceipt(ctx context.Context, state prep
 		if state.Intent.Prepared == nil {
 			return preparationapp.IntentProgress{State: state, Pending: true}, fmt.Errorf("Orca prepared workspace receipt is missing")
 		}
+		if state.Intent.Launch == nil {
+			return preparationapp.IntentProgress{State: state, Pending: true}, fmt.Errorf("Orca sealed owner artifact identity is missing")
+		}
 		record.Execution.Lease = leasecontract.Lease{
 			Generation: state.Intent.Generation, Status: "claimable", ClaimTokenSHA256: state.Intent.ClaimTokenSHA256,
 		}
@@ -319,7 +314,10 @@ func (repository *SQLiteRepository) ApplyReceipt(ctx context.Context, state prep
 			RuntimeID: state.Intent.Prepared.RuntimeID, RepoID: state.Intent.Prepared.RepoID,
 			WorktreeID: state.Intent.Prepared.WorktreeID, WorktreeInstanceID: state.Intent.Prepared.WorktreeInstanceID,
 			LeaseGeneration: state.Intent.Generation, OwnerHost: state.Intent.Probe.Host,
-			OwnerModel: state.Intent.Probe.Model, OwnerEffort: state.Intent.Probe.Effort,
+			ArtifactIdentityVersion: leasecontract.OrcaArtifactIdentityVersion,
+			IssueBodySHA256:         state.Intent.IssueBodySHA256, ContextPacketSHA256: state.Intent.Launch.ContextPacketSHA256,
+			OwnerPromptSHA256: state.Intent.Launch.PromptSHA256,
+			OwnerModel:        state.Intent.Probe.Model, OwnerEffort: state.Intent.Probe.Effort,
 			RunID: state.Intent.RunID, TaskID: state.Intent.TaskID, DispatchID: strings.TrimSpace(receipt.DispatchID),
 			TerminalPTYID: state.Intent.TerminalPTYID,
 		}

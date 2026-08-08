@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/adapter/installutil"
 	"agent-harness/internal/port"
 )
 
@@ -21,7 +20,7 @@ func writeCodexHooks(path string, req port.NativeInstallRequest) (port.InstallFi
 	} else if err != nil && !os.IsNotExist(err) && !req.DryRun {
 		return file, nil, err
 	}
-	messages := installutil.HookTargetDriftMessages(config, "codex", req.BinPath)
+	messages := HookTargetDriftMessages(config, "codex", req.BinPath)
 	merged := mergeHookConfig(config, req.BinPath)
 	b, err := json.MarshalIndent(merged, "", "  ")
 	if err != nil {
@@ -92,9 +91,9 @@ func codexHookCommand(binPath, subcommand string) string {
 	case "user-prompt", "session-start", "post-compact":
 		cmd += " --host codex"
 	case "pre-tool-use":
-		cmd += " --host codex " + installutil.PreToolUseEnforcementFlags()
+		cmd += " --host codex " + PreToolUseEnforcementFlags()
 	case "stop":
-		cmd += " " + installutil.StopEnforcementFlags()
+		cmd += " " + StopEnforcementFlags()
 	}
 	return cmd
 }
@@ -116,7 +115,7 @@ func mergeHookConfig(config map[string]any, binPath string) map[string]any {
 				if !hookGroupHasHooks(group) {
 					continue
 				}
-				if installutil.HookGroupContainsAgentHarness(group) {
+				if HookGroupContainsAgentHarness(group) {
 					if !replaced {
 						groups = append(groups, codexHookGroup(spec))
 						replaced = true

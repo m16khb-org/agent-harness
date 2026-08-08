@@ -1,40 +1,39 @@
 package issueopslease
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"context"
-	"encoding/json"
 	"errors"
 
 	leaseapp "agent-harness/internal/application/issueopslease"
 	leasecontract "agent-harness/internal/contract/issueopslease"
-	"agent-harness/internal/core/issueops"
 	leasedomain "agent-harness/internal/domain/issueopslease"
 )
 
 type ReseedHandler struct{ service *leaseapp.ReseedService }
 
-func NewReseedHandler(service *leaseapp.ReseedService) issueops.ExecutionReseedHandler {
+func NewReseedHandler(service *leaseapp.ReseedService) issueopscontract.ExecutionReseedHandler {
 	return ReseedHandler{service: service}.Handle
 }
 
-func (h ReseedHandler) Handle(ctx context.Context, _ string, request issueops.ExecutionReseedRequest) (issueops.ExecutionReplaceResult, error) {
+func (h ReseedHandler) Handle(ctx context.Context, _ string, request issueopscontract.ExecutionReseedRequest) (issueopscontract.ExecutionReplaceResult, error) {
 	if h.service == nil {
-		return issueops.ExecutionReplaceResult{ID: request.ID, Action: issueops.ExecutionReplaceReseed}, issueops.ErrReseedHandlerUnavailable
+		return issueopscontract.ExecutionReplaceResult{ID: request.ID, Action: issueopscontract.ExecutionReplaceReseed}, issueopscontract.ErrReseedHandlerUnavailable
 	}
 	result, err := h.service.Reseed(ctx, leaseapp.ReseedRequest{
-		ID: request.ID, ExpectedGeneration: request.ExpectedGeneration, Actor: toDomainActor(request.Actor), Ancestry: toProcessAncestry(request.Actor),
+		ID: request.ID, ExpectedGeneration: request.ExpectedGeneration, CompletionGeneration: request.CompletionGeneration, Actor: toDomainActor(request.Actor), Ancestry: toProcessAncestry(request.Actor),
 		CWD: request.CWD, InventoryFingerprint: request.InventoryFingerprint, Reason: request.Reason, Confirm: request.Confirm,
 	})
 	if err != nil {
-		return issueops.ExecutionReplaceResult{ID: request.ID, Action: issueops.ExecutionReplaceReseed}, publicReseedError(err)
+		return issueopscontract.ExecutionReplaceResult{ID: request.ID, Action: issueopscontract.ExecutionReplaceReseed}, publicReseedError(err)
 	}
-	response := issueops.ExecutionReplaceResult{
-		OK: true, ID: result.ID, Action: issueops.ExecutionReplaceReseed, Execution: toCoreExecution(result.Execution),
+	response := issueopscontract.ExecutionReplaceResult{
+		OK: true, ID: result.ID, Action: issueopscontract.ExecutionReplaceReseed, Execution: toCoreExecution(result.Execution),
 		ClaimTokenPath: result.Receipt.ClaimTokenPath, IssueBodySHA256: result.Receipt.IssueBodySHA256,
 		ContextPacketPath: result.Receipt.ContextPacketPath, ContextPacketSHA256: result.Receipt.ContextPacketSHA256,
 		OwnerPromptPath: result.Receipt.OwnerPromptPath, OwnerPromptSHA256: result.Receipt.OwnerPromptSHA256,
 	}
-	response.NextCommand = issueops.ExecutionReseedNextCommand(
+	response.NextCommand = executionReseedNextCommand(
 		result.ID, result.Execution.Lease.Generation, result.Execution.Mode, result.Receipt.ClaimTokenPath,
 	)
 	return response, nil
@@ -47,12 +46,6 @@ func publicReseedError(err error) error {
 	var failure *leasecontract.Failure
 	if !errors.As(err, &failure) {
 		return err
-	}
-	if failure.Code == leasecontract.FailureMalformedSchema {
-		var syntax *json.SyntaxError
-		if errors.As(failure, &syntax) {
-			return syntax
-		}
 	}
 	return failure.Cause
 }

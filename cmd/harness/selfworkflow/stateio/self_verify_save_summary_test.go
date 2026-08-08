@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/selfworkflow/model"
-	"agent-harness/internal/core"
+	statestore "agent-harness/internal/adapter/outbound/state"
 )
 
 func TestNewSelfVerificationSummarySnapshotCopiesResultFields(t *testing.T) {
@@ -48,7 +48,7 @@ func TestSaveSelfVerificationSummaryWritesDefaultKeyAndRejectsInvalidKey(t *test
 		result.StateCheckpoint.Bytes == 0 {
 		t.Fatalf("unexpected successful checkpoint: %+v", result.StateCheckpoint)
 	}
-	state, err := core.StateRead("self-verify-latest")
+	state, err := statestore.StateRead("self-verify-latest")
 	if err != nil {
 		t.Fatalf("read saved summary: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestSaveSelfAugmentSummary(t *testing.T) {
 	if result.StateCheckpoint.Key != "self-verify-test" || result.StateCheckpoint.Path != filepath.Join(dir, "self-verify-test.json") {
 		t.Fatalf("unexpected checkpoint metadata: %+v", result.StateCheckpoint)
 	}
-	state, err := core.StateRead("self-verify-test")
+	state, err := statestore.StateRead("self-verify-test")
 	if err != nil {
 		t.Fatalf("StateRead: %v", err)
 	}

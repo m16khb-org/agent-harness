@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"agent-harness/internal/core/issueops"
+	"agent-harness/internal/adapter/issueops"
 )
 
 func TestReconcileHandlerFailsClosedWithoutService(t *testing.T) {

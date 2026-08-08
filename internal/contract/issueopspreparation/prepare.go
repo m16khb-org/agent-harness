@@ -111,6 +111,7 @@ type OwnerEvidence struct {
 }
 
 type OwnerArtifacts struct {
+	PlanPath            string
 	ClaimTokenPath      string
 	ClaimTokenSHA256    string
 	ContextPacketPath   string
@@ -176,9 +177,21 @@ func cloneExecutionPointer(execution *leasecontract.Execution) *leasecontract.Ex
 		completion.Verification = cloneStrings(execution.Completion.Verification)
 		cloned.Completion = &completion
 	}
+	if execution.CompletionHistory != nil {
+		cloned.CompletionHistory = append([]leasecontract.CompletionHistoryEntry(nil), execution.CompletionHistory...)
+		for index := range cloned.CompletionHistory {
+			cloned.CompletionHistory[index].Completion.Verification = cloneStrings(execution.CompletionHistory[index].Completion.Verification)
+		}
+	}
 	if execution.Failure != nil {
 		failure := *execution.Failure
 		cloned.Failure = &failure
+	}
+	if execution.SyncBaseResolution != nil {
+		resolution := *execution.SyncBaseResolution
+		resolution.Actor = cloneActor(execution.SyncBaseResolution.Actor)
+		resolution.ConflictFiles = cloneStrings(execution.SyncBaseResolution.ConflictFiles)
+		cloned.SyncBaseResolution = &resolution
 	}
 	if execution.SyncBaseEvents != nil {
 		cloned.SyncBaseEvents = append([]leasecontract.SyncBaseEvent{}, execution.SyncBaseEvents...)

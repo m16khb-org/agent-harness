@@ -1,6 +1,7 @@
 package commandpolicy
 
 import (
+	policy "agent-harness/internal/contract/policy"
 	"encoding/json"
 	"errors"
 	"os"
@@ -8,8 +9,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"agent-harness/internal/core"
 )
 
 func TestValidateCommandPolicyWrapperUsesExecutableSurface(t *testing.T) {
@@ -49,15 +48,15 @@ func TestValidateCommandPolicyWithDepsCoversSuccessAndSetupFailure(t *testing.T)
 			calls = append(calls, label+":"+command)
 			switch label {
 			case "policy allow":
-				return policyStep(label, command, core.CommandPolicyEvaluation{OK: true, Allowed: true})
+				return policyStep(label, command, policy.CommandPolicyEvaluation{OK: true, Allowed: true})
 			case "policy deny outside":
-				return policyStep(label, command, core.CommandPolicyEvaluation{OK: true, Allowed: false, DenyReasons: []string{"cwd_outside_workspace"}})
+				return policyStep(label, command, policy.CommandPolicyEvaluation{OK: true, Allowed: false, DenyReasons: []string{"cwd_outside_workspace"}})
 			case "policy deny outside path arg":
-				return policyStep(label, command, core.CommandPolicyEvaluation{OK: true, Allowed: false, DenyReasons: []string{"path_outside_workspace"}})
+				return policyStep(label, command, policy.CommandPolicyEvaluation{OK: true, Allowed: false, DenyReasons: []string{"path_outside_workspace"}})
 			case "policy deny shell":
-				return policyStep(label, command, core.CommandPolicyEvaluation{OK: true, Allowed: false, DenyReasons: []string{"shell_interpreter_not_allowed"}})
+				return policyStep(label, command, policy.CommandPolicyEvaluation{OK: true, Allowed: false, DenyReasons: []string{"shell_interpreter_not_allowed"}})
 			case "policy fake-run":
-				return policyStep(label, command, core.CommandFakeRunResult{OK: true, Executed: false, Policy: core.CommandPolicyEvaluation{OK: true, Allowed: true}})
+				return policyStep(label, command, policy.CommandFakeRunResult{OK: true, Executed: false, Policy: policy.CommandPolicyEvaluation{OK: true, Allowed: true}})
 			default:
 				t.Fatalf("unexpected label: %s", label)
 			}
@@ -110,9 +109,9 @@ func TestValidateCommandPolicyWithDepsCoversCommandParseAndContractFailures(t *t
 	deps.run = func(_ string, label string, _ time.Duration, _ string, _ string, _ ...string) StepResult {
 		switch label {
 		case "policy allow":
-			return policyStep(label, label, core.CommandPolicyEvaluation{OK: true, Allowed: false})
+			return policyStep(label, label, policy.CommandPolicyEvaluation{OK: true, Allowed: false})
 		default:
-			return policyStep(label, label, core.CommandPolicyEvaluation{OK: true, Allowed: false})
+			return policyStep(label, label, policy.CommandPolicyEvaluation{OK: true, Allowed: false})
 		}
 	}
 	allowContract := validateCommandPolicyWithDeps("bin", root, deps)
@@ -136,15 +135,15 @@ func validCommandPolicyRunner(t *testing.T) commandPolicyCommandRunner {
 		command := strings.Join(append([]string{name}, args...), " ")
 		switch label {
 		case "policy allow":
-			return policyStep(label, command, core.CommandPolicyEvaluation{OK: true, Allowed: true})
+			return policyStep(label, command, policy.CommandPolicyEvaluation{OK: true, Allowed: true})
 		case "policy deny outside":
-			return policyStep(label, command, core.CommandPolicyEvaluation{OK: true, Allowed: false, DenyReasons: []string{"cwd_outside_workspace"}})
+			return policyStep(label, command, policy.CommandPolicyEvaluation{OK: true, Allowed: false, DenyReasons: []string{"cwd_outside_workspace"}})
 		case "policy deny outside path arg":
-			return policyStep(label, command, core.CommandPolicyEvaluation{OK: true, Allowed: false, DenyReasons: []string{"path_outside_workspace"}})
+			return policyStep(label, command, policy.CommandPolicyEvaluation{OK: true, Allowed: false, DenyReasons: []string{"path_outside_workspace"}})
 		case "policy deny shell":
-			return policyStep(label, command, core.CommandPolicyEvaluation{OK: true, Allowed: false, DenyReasons: []string{"shell_interpreter_not_allowed"}})
+			return policyStep(label, command, policy.CommandPolicyEvaluation{OK: true, Allowed: false, DenyReasons: []string{"shell_interpreter_not_allowed"}})
 		case "policy fake-run":
-			return policyStep(label, command, core.CommandFakeRunResult{OK: true, Executed: false, Policy: core.CommandPolicyEvaluation{OK: true, Allowed: true}})
+			return policyStep(label, command, policy.CommandFakeRunResult{OK: true, Executed: false, Policy: policy.CommandPolicyEvaluation{OK: true, Allowed: true}})
 		default:
 			t.Fatalf("unexpected label: %s", label)
 		}
@@ -163,11 +162,11 @@ func policyStep(tLabel, command string, value any) StepResult {
 func writeCommandPolicyFakeBinary(t *testing.T, dir string) string {
 	t.Helper()
 	path := filepath.Join(dir, "fake-harness")
-	allowed := mustMarshalCommandPolicyTest(t, core.CommandPolicyEvaluation{OK: true, Allowed: true})
-	cwdOutside := mustMarshalCommandPolicyTest(t, core.CommandPolicyEvaluation{OK: true, Allowed: false, DenyReasons: []string{"cwd_outside_workspace"}})
-	pathOutside := mustMarshalCommandPolicyTest(t, core.CommandPolicyEvaluation{OK: true, Allowed: false, DenyReasons: []string{"path_outside_workspace"}})
-	shellDenied := mustMarshalCommandPolicyTest(t, core.CommandPolicyEvaluation{OK: true, Allowed: false, DenyReasons: []string{"shell_interpreter_not_allowed"}})
-	fakeRun := mustMarshalCommandPolicyTest(t, core.CommandFakeRunResult{OK: true, Executed: false, Policy: core.CommandPolicyEvaluation{OK: true, Allowed: true}})
+	allowed := mustMarshalCommandPolicyTest(t, policy.CommandPolicyEvaluation{OK: true, Allowed: true})
+	cwdOutside := mustMarshalCommandPolicyTest(t, policy.CommandPolicyEvaluation{OK: true, Allowed: false, DenyReasons: []string{"cwd_outside_workspace"}})
+	pathOutside := mustMarshalCommandPolicyTest(t, policy.CommandPolicyEvaluation{OK: true, Allowed: false, DenyReasons: []string{"path_outside_workspace"}})
+	shellDenied := mustMarshalCommandPolicyTest(t, policy.CommandPolicyEvaluation{OK: true, Allowed: false, DenyReasons: []string{"shell_interpreter_not_allowed"}})
+	fakeRun := mustMarshalCommandPolicyTest(t, policy.CommandFakeRunResult{OK: true, Executed: false, Policy: policy.CommandPolicyEvaluation{OK: true, Allowed: true}})
 	body := "#!/bin/sh\nset -eu\ncase \"$*\" in\n" +
 		"  policy\\ check*agent-harness-policy-outside-*\" -- git status --short\") printf '%s\\n' '" + cwdOutside + "' ;;\n" +
 		"  policy\\ check*\" -- cat \"*agent-harness-policy-outside-*) printf '%s\\n' '" + pathOutside + "' ;;\n" +

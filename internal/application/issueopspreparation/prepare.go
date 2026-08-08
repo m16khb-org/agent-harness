@@ -29,11 +29,6 @@ func (service *Service) Prepare(ctx context.Context, command preparationcontract
 	if service.repository == nil {
 		return failedResult(command.ID), fmt.Errorf("preparation repository is unavailable")
 	}
-	if command.Confirm {
-		if err := service.repository.RequireMutationAllowed(ctx); err != nil {
-			return failedResult(command.ID), err
-		}
-	}
 	snapshot, err := service.repository.Load(ctx, command.ID)
 	if err != nil {
 		return failedResult(command.ID), err

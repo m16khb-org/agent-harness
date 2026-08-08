@@ -42,7 +42,7 @@ class StabilityAuditScriptTest(unittest.TestCase):
 
         self.assertEqual(
             calls,
-            [[str(audit.BIN), "doctor", "--repo", "/Users/m16khb/Workspace/agent-harness", "--json", "--preserve-terminal", "term_current"]],
+            [[str(audit.BIN), "doctor", "--repo", str(audit.ROOT), "--sealed", "--json", "--preserve-terminal", "term_current"]],
         )
         self.assertEqual(report["steps"][0]["name"], "operational_doctor")
         self.assertTrue(report["steps"][0]["ok"])
@@ -69,7 +69,7 @@ class StabilityAuditScriptTest(unittest.TestCase):
 
         self.assertEqual(
             calls,
-            [[str(audit.BIN), "doctor", "--repo", str(audit.ROOT), "--json", "--preserve-terminal", "term_sealed"]],
+            [[str(audit.BIN), "doctor", "--repo", str(audit.ROOT), "--sealed", "--json", "--preserve-terminal", "term_sealed"]],
         )
 
     def test_operational_doctor_omits_blank_terminal_and_requires_ok_and_healthy(self) -> None:
@@ -101,7 +101,7 @@ class StabilityAuditScriptTest(unittest.TestCase):
                     with mock.patch.object(audit, "run", side_effect=fake_run):
                         audit.operational_doctor(report)
 
-                self.assertEqual(calls, [[str(audit.BIN), "doctor", "--repo", str(audit.ROOT), "--json"]])
+                self.assertEqual(calls, [[str(audit.BIN), "doctor", "--repo", str(audit.ROOT), "--sealed", "--json"]])
                 self.assertEqual(report["steps"][0]["ok"], want_ok)
                 self.assertEqual(bool(report["failures"]), not want_ok)
 
@@ -243,7 +243,7 @@ class StabilityAuditScriptTest(unittest.TestCase):
                 for action in actions:
                     action.assert_not_called()
 
-    def test_install_checks_use_only_current_bootstrap_flags(self) -> None:
+    def test_install_checks_use_canonical_install_command(self) -> None:
         audit = load_audit_module()
         calls: list[list[str]] = []
 
@@ -259,13 +259,96 @@ class StabilityAuditScriptTest(unittest.TestCase):
 
         report = {"steps": [], "failures": []}
         with mock.patch.object(audit, "run", side_effect=fake_run):
-            audit.install_checks(report, full_install=False)
+            audit.install_checks(report, full_install=True)
 
         self.assertEqual(
             [step["name"] for step in report["steps"]],
-            ["bootstrap_dry_json", "install_native_dry_json"],
+            ["bootstrap_dry_json", "install_dry_json", "install_real_json"],
         )
-        self.assertNotIn("--sync", [arg for call in calls for arg in call])
+        self.assertEqual(
+            [call[1:] for call in calls],
+            [
+                ["bootstrap", "--dry-run", "--json"],
+                ["install", "--dry-run", "--json"],
+                ["install", "--json"],
+            ],
+        )
+        self.assertNotIn("install-native", [arg for call in calls for arg in call])
+
+    def test_temp_state_worker_policy_uses_current_state_commands(self) -> None:
+        audit = load_audit_module()
+        calls: list[list[str]] = []
+
+        def fake_run(cmd, **_kwargs):
+            call = [str(arg) for arg in cmd]
+            calls.append(call)
+            payload = {"ok": True}
+            if call[1:3] == ["state", "read"]:
+                payload["record"] = {
+                    "schema_version": 1,
+                    "key": "stability-audit",
+                    "content": "current-v1",
+                    "bytes": 10,
+                    "updated_at": "2026-08-02T00:00:00Z",
+                }
+            return {
+                "returncode": 0,
+                "stdout": json.dumps(payload),
+                "stderr": "",
+                "duration_ms": 1,
+                "timeout": False,
+            }
+
+        report = {"steps": [], "failures": []}
+        with mock.patch.object(audit, "run", side_effect=fake_run):
+            audit.temp_state_worker_policy(report)
+
+        retired = [str(audit.BIN), "state", "migrate", "--json"]
+        self.assertNotIn(retired, calls)
+        self.assertIn(
+            [str(audit.BIN), "state", "write", "--key", "stability-audit", "--value", "current-v1", "--json"],
+            calls,
+        )
+        self.assertIn([str(audit.BIN), "state", "read", "--key", "stability-audit", "--json"], calls)
+        self.assertIn([str(audit.BIN), "state", "doctor", "--json"], calls)
+        self.assertTrue(report["steps"][0]["ok"])
+
+    def test_temp_state_worker_policy_rejects_invalid_readback(self) -> None:
+        audit = load_audit_module()
+        cases = [
+            ("wrong_schema", {"schema_version": 0}),
+            ("wrong_key", {"key": "other"}),
+            ("wrong_content", {"content": "other"}),
+        ]
+
+        for name, override in cases:
+            with self.subTest(name=name):
+                def fake_run(cmd, **_kwargs):
+                    call = [str(arg) for arg in cmd]
+                    payload = {"ok": True}
+                    if call[1:3] == ["state", "read"]:
+                        record = {
+                            "schema_version": 1,
+                            "key": "stability-audit",
+                            "content": "current-v1",
+                        }
+                        record.update(override)
+                        payload["record"] = record
+                    return {
+                        "returncode": 0,
+                        "stdout": json.dumps(payload),
+                        "stderr": "",
+                        "duration_ms": 1,
+                        "timeout": False,
+                    }
+
+                report = {"steps": [], "failures": []}
+                with mock.patch.object(audit, "run", side_effect=fake_run):
+                    audit.temp_state_worker_policy(report)
+
+                self.assertFalse(report["steps"][0]["ok"])
+                state_read = next(item for item in report["steps"][0]["details"] if item["name"] == "state_read")
+                self.assertFalse(state_read["ok"])
 
     def test_regression_timeouts_cover_observed_full_gate_durations(self) -> None:
         audit = load_audit_module()

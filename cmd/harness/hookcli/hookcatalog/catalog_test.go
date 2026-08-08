@@ -1,13 +1,14 @@
 package hookcatalog
 
 import (
+	lifecycle "agent-harness/internal/adapter/lifecycle"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	coreinstall "agent-harness/internal/core/install"
+	coreinstall "agent-harness/internal/contract/install"
 )
 
 func TestRunCatalogHooksWithInjectedPrinter(t *testing.T) {
@@ -20,7 +21,8 @@ func TestRunCatalogHooksWithInjectedPrinter(t *testing.T) {
 	}
 	var printed []any
 	config := Config{
-		ResolveTarget: func(string) string { return repo },
+		BuildLifecyclePostCompactReminder: lifecycle.BuildLifecyclePostCompactReminder,
+		ResolveTarget:                     func(string) string { return repo },
 		PrintJSON: func(value any) error {
 			printed = append(printed, value)
 			return nil
@@ -45,7 +47,8 @@ func TestRunSessionStartReportsCachedWorktreeRuntimeForBothHosts(t *testing.T) {
 		t.Run(host, func(t *testing.T) {
 			var printed map[string]any
 			config := Config{
-				ResolveTarget: func(string) string { return t.TempDir() },
+				BuildLifecyclePostCompactReminder: lifecycle.BuildLifecyclePostCompactReminder,
+				ResolveTarget:                     func(string) string { return t.TempDir() },
 				PrintJSON: func(value any) error {
 					printed, _ = value.(map[string]any)
 					return nil
@@ -90,7 +93,8 @@ func TestRunCatalogHooksFormatsHostOutputs(t *testing.T) {
 	}
 	var printed []any
 	config := Config{
-		ResolveTarget: func(string) string { return repo },
+		BuildLifecyclePostCompactReminder: lifecycle.BuildLifecyclePostCompactReminder,
+		ResolveTarget:                     func(string) string { return repo },
 		PrintJSON: func(value any) error {
 			printed = append(printed, value)
 			return nil

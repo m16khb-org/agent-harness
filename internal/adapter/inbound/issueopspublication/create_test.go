@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
+	"agent-harness/internal/adapter/issueops"
 	publicationcontract "agent-harness/internal/contract/issueopspublication"
-	"agent-harness/internal/core/issueops"
 	"agent-harness/internal/port"
 )
 

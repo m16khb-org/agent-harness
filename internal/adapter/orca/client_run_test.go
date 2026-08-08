@@ -19,7 +19,7 @@ func TestClientListRunsProjectsInstalledShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || got[0].RuntimeID != "runtime-1" || got[0].ID != "run_issueops_1" || got[0].Legacy {
+	if len(got) != 1 || got[0].RuntimeID != "runtime-1" || got[0].ID != "run_issueops_1" {
 		t.Fatalf("run list projection = %#v", got)
 	}
 	if !slices.Equal(runner.calls[0], argv) {
@@ -84,6 +84,30 @@ func TestClientProbeRejectsRunInventoryFromAnotherRuntime(t *testing.T) {
 	}
 }
 
+func TestClientProbeTreatsUnrelatedOpaqueRunAsValidInventory(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.lookPaths["orca"] = "/usr/local/bin/orca"
+	runner.lookPaths["codex"] = "/usr/local/bin/codex"
+	runner.responses["orca status --json"] = fixtureOutput(t, "status_ready.json")
+	runner.responses["orca repo show --repo path:/repo --json"] = fixtureOutput(t, "repo_show.json")
+	addCompleteProbeLeafHelp(runner)
+	runner.responses["orca orchestration run-list --json"] = CommandOutput{Stdout: []byte(`{
+		"ok":true,
+		"result":{"runs":[
+			{"id":"run_legacy_local","objective":"Legacy orchestration state (inspect only)","legacy":1}
+		]},
+		"_meta":{"runtimeId":"runtime-1"}
+	}`)}
+
+	got, err := NewClient(runner).Probe(context.Background(), port.OrcaProbeRequest{Repo: "/repo", Agent: "codex", Provider: "github"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Ready || got.Code != "" {
+		t.Fatalf("syntactically valid unrelated Run blocked Orca readiness: %#v", got)
+	}
+}
+
 func TestClientCurrentRunRejectsMissingProjection(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca orchestration run-current --json"] = CommandOutput{Stdout: []byte(`{
@@ -135,8 +159,8 @@ func TestClientTaskInventoryKeepsSameTaskIDDistinctAcrossRuns(t *testing.T) {
 	runner.responses["orca orchestration run-list --json"] = CommandOutput{Stdout: []byte(`{
 		"ok":true,
 		"result":{"runs":[
-			{"id":"run_a","objective":"agent-harness issueops-v1 lifecycle=io-a","legacy":0},
-			{"id":"run_b","objective":"agent-harness issueops-v1 lifecycle=io-b","legacy":0}
+			{"id":"run_a","objective":"agent-harness issueops-v1 lifecycle=io-a"},
+			{"id":"run_b","objective":"agent-harness issueops-v1 lifecycle=io-b"}
 		]},
 		"_meta":{"runtimeId":"runtime-1"}
 	}`)}
@@ -158,27 +182,27 @@ func TestClientTaskInventoryKeepsSameTaskIDDistinctAcrossRuns(t *testing.T) {
 	}
 }
 
-func TestClientTaskInventorySkipsLegacyReadOnlyRun(t *testing.T) {
+func TestClientTaskInventoryReadsOpaqueRunRowsUniformly(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca orchestration run-list --json"] = CommandOutput{Stdout: []byte(`{
 		"ok":true,
 		"result":{"runs":[
-			{"id":"run_legacy_local","objective":"Legacy orchestration state (adopted; inspect only)","legacy":1},
-			{"id":"run_a","objective":"agent-harness issueops-v1 lifecycle=io-a","legacy":0}
+			{"id":"run_legacy_local","objective":"retired orchestration state"},
+			{"id":"run_a","objective":"agent-harness issueops-v1 lifecycle=io-a"}
 		]},
 		"_meta":{"runtimeId":"runtime-1"}
 	}`)}
-	runner.responses["orca orchestration task-list --brief --run run_a --json"] = CommandOutput{Stdout: []byte(`{
-		"ok":true,
-		"result":{"tasks":[],"count":0},
-		"_meta":{"runtimeId":"runtime-1"}
-	}`)}
+	for _, runID := range []string{"run_a", "run_legacy_local"} {
+		command := "orca orchestration task-list --brief --run " + runID + " --json"
+		runner.responses[command] = CommandOutput{Stdout: []byte(`{
+			"ok":true,
+			"result":{"tasks":[],"count":0},
+			"_meta":{"runtimeId":"runtime-1"}
+		}`)}
+	}
 
 	got, err := NewClient(runner).ListAllTasks(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(got) != 0 || len(runner.calls) != 2 || strings.Contains(strings.Join(runner.calls[1], " "), "run_legacy_local") {
-		t.Fatalf("legacy Run was queried as writable inventory: got=%#v calls=%#v", got, runner.calls)
+	if err != nil || len(got) != 0 || len(runner.calls) != 3 {
+		t.Fatalf("opaque read-only Run inventory: got=%#v err=%v calls=%#v", got, err, runner.calls)
 	}
 }

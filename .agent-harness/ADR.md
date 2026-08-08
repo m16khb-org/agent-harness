@@ -813,3 +813,134 @@ Archived entries:
 - Verification: differential success/denial byte snapshots including rich
   sidecars and `repo: null`, architecture import-ratchet tests, and blocking
   clock tests for valid and rejected transitions.
+
+## 2026-08-04 — Completed reseed requires stamped current completion provenance
+
+- Kind: `adr`
+- Source: GitHub #304 and durable incidents `io-14a09ebb1b15`, `io-a3818bd20165`
+- Decision: Completion receipts stamp their lease generation. A
+  completion-bearing reseed archives that stamped generation, not the current
+  lease generation. A current completion whose generation is absent or zero is
+  invalid v1 state and cannot be repaired by request input. Missing or
+  conflicting generation selections fail before artifact preparation and the
+  raw-record CAS.
+- Rationale: #261 retained a generation-4 completion in an active generation-5
+  lease, while #237 retained a generation-1 completion in generation 2.
+  `completed_at < replaced_at` can show that a receipt is stale but cannot prove
+  its origin after multiple reseeds. Silent `current_generation-1` or timestamp
+  inference would therefore corrupt append-only audit history.
+- Consequences: preview and reseed trust only the stamped current completion.
+  History remains append-only evidence and never becomes current authority.
+  State JSON is never edited to backfill provenance.
+- Rejected: request-selected fallback, current lease generation, timestamp
+  heuristics, legacy wording, aliases, and silent compatibility paths.
+
+## 2026-08-04 — Post-completion base synchronization uses contract-owned authority
+
+- Kind: `adr`
+- Source: GitHub #318
+- Decision: completed replacement preview and reseed share one injected
+  `issueopsbasesync.Inspector`. Drift returns the contract-owned typed error
+  before mutation. Released sync-base requires current stamped completion
+  generation, canonical cwd, live actor, and preview fingerprint; active-holder
+  authorization remains unchanged and may synchronize an in-progress branch
+  before current completion or remote artifact exists.
+- Ownership: the port contains only Request/Receipt/Inspector, the outbound
+  adapter runs the four read-only Git observations, and
+  `internal/contract/issueops` owns the public error and exact next command.
+- Consequences: successful sync appends one event without changing completion,
+  history, or phase. Hooks admit only exact durable-state-matching commands for
+  both hosts and block near misses before they can bypass the released fence.
+- Integration: #303의 generated-command provenance를 error output과 CLI의 복수
+  command result에 확장한다. Typed drift `next_command`는 CLI와 MCP의 실제 error
+  경로에서 봉인하고, CLI conflict `next_command`/`abort_command`는 한 번 관측한
+  executable path/hash/lease generation을 공유한다. MCP catalog에는 sync-base action이
+  없으므로 도달 불가능한 success binder와 test는 #326 해결로 제거한다.
+- Rejected: direct Git recovery, restoring history into current completion,
+  port-owned public errors, aliases/shims, rebase, force-push, and reseed-first.
+
+## 2026-08-08 — Dependency ratchet은 capability 경계만 센다
+
+- Source: GitHub #234
+- Decision: `legacyEdges`는 concrete-adapter edge 중 **capability 경계를 넘는
+  것만** legacy로 센다. 같은 capability의 adapter package 사이 edge는 baseline에
+  올리지 않는다. capability는 `internal/adapter/` 다음 경로 요소이며,
+  `outbound`/`inbound`는 capability가 아니라 방향 분류이므로 그 다음 요소까지
+  읽는다(`outbound/state`와 `outbound/sqlstore`는 서로 다른 capability다).
+- Rationale: 하나의 adapter를 하위 package로 나누는 것은 계층 위반이 아니라 구현
+  정리다. 이전 규칙은 `internal/adapter/issueops -> internal/adapter/issueops/linking`
+  같은 내부 구조까지 adapter 간 결합으로 세어, package를 잘게 나눌수록 baseline이
+  늘어나는 역유인을 만들었다. 52개 file을 한 package에 두면 ratchet이 조용해지고
+  나누면 벌점을 받는 것은 ratchet이 측정하려던 바가 아니다.
+- Ownership: 판정은 `isSameCapabilityAdapter`가 소유하고 `legacyEdges`만 사용한다.
+  `evaluateEdges`의 forbidden rule은 바뀌지 않으므로
+  `inbound_adapter_must_not_import_outbound_adapter`,
+  `core_must_not_import_adapter_or_cmd`, `adapter_must_not_import_cmd`는 그대로
+  즉시 실패한다.
+- Consequences: baseline 226 → 181. 남은 181개는 cmd → adapter 116개와 capability를
+  넘는 adapter 간 65개이며, 전자는 composition root 이동(#233), 후자는 port 역전으로
+  해소한다. capability 내부 결합은 ratchet이 아니라 code review가 다룬다.
+- Rejected: baseline에 45개를 그대로 두는 안(측정 대상이 아닌 것을 남겨 zero-baseline
+  목표가 package 병합을 유도한다), capability 예외를 `evaluateEdges`까지 확장하는
+  안(inbound가 같은 capability의 outbound를 직접 부르는 것을 허용하게 된다).
+
+## 2026-08-08 — legacy baseline을 없애고 래칫을 불변식으로 바꾼다
+
+- Source: GitHub #234, #238
+- Decision: `internal/architecture/testdata/legacy_imports.txt`를 삭제하고,
+  래칫을 "legacy adapter edge는 0"이라는 불변식으로 대체한다. 새 edge는
+  baseline에 등록하는 것이 아니라 애초에 들어올 수 없다.
+- Rationale: baseline은 전환 중에만 의미가 있다. 263개에서 시작해 0이 된 지금
+  파일을 남겨두면 "여기 한 줄 추가하면 통과한다"는 우회로가 그대로 남는다.
+  마지막까지 남았던 `outbound/state -> outbound/sqlstore`와
+  `issueops -> outbound/sqlstore`는 빚이 아니라 의도된 설계였다 — sqlstore는
+  특정 capability의 어댑터가 아니라 저장 엔진이고, 포트로 감싸 주입할 수는
+  있으나 그 대가로 저장소의 거의 모든 테스트 패키지가 배선을 짊어진다. 엔진
+  교체는 실제 요구가 아니므로 `isSharedStorageEngineEdge`로 명시했다.
+- Consequence: 예외는 outbound -> sqlstore 한 방향뿐이며
+  `TestSharedStorageEngineExceptionIsOneDirectionOnly`가 cmd·inbound·domain에서
+  들어오는 edge와 sqlstore 밖으로의 확장을 함께 막는다.
+
+## 2026-08-08 — port는 계약 어휘로 말한다
+
+- Source: GitHub #234
+- Decision: `port_must_not_import_internal`은 port가 **구현 계층**
+  (`domain`·`application`·`adapter`·`cmd`)을 import하는 것만 막는다. port가
+  contract를 참조하거나 port 사이를 참조하는 것은 위반이 아니다.
+- Rationale: port는 인터페이스 계층이고, 인터페이스는 무엇을 주고받는지 말해야
+  한다. 그 어휘가 계약 DTO다. 두 규칙(`contract`는 port를 못 봄, `port`는
+  contract를 못 봄)이 함께 서면 **DTO가 어느 계층에도 속할 수 없는 사각지대**가
+  생긴다. 실제로 `ExecutionActionRequest`가 `*port.ExecutionIssueSnapshotEvidence`
+  를 필드로 갖는 바람에 contract로도 port로도 갈 수 없었고, 그 하나 때문에
+  `issueopscli`·`executioncmd`·`mcpcli`·`issueopslease` 네 곳의 어댑터 의존이
+  풀리지 않았다. 방향을 하나 열어야 하는데, contract가 port를 보는 것은 DTO가
+  인터페이스를 물게 되므로 틀렸고, port가 contract를 보는 것이 헥사고날의 정의에
+  맞는다.
+- Consequence: port의 순수 DTO는 contract로 내려가고 port에는 인터페이스와
+  그 별칭만 남는다. `TestOwnershipManifestStillRejectsPortToImplementation`이
+  port -> domain/application/adapter 방향이 여전히 막히는지 고정한다.
+
+## 2026-08-08 — contract 사이 참조는 계약 조합이다
+
+- Source: GitHub #234
+- Decision: `contract_must_not_import_internal`은 contract가 **구현 계층**
+  (`domain`·`application`·`adapter`·`cmd`·`port`)을 import하는 것만 막는다. contract
+  package 사이 참조는 위반이 아니다.
+- Rationale: DTO가 다른 capability의 DTO를 필드로 갖는 것은 계약 조합이지 구현 의존이
+  아니다. 이 저장소는 이미 그 방향을 쓰고 있다 —
+  `contract/issueopslease -> contract/state`,
+  `contract/issueopscompletion -> contract/issueopslease`,
+  `contract/issueopspreparation -> contract/issueopslease`. 그런데 이들은
+  `isFoundationOwner` 화이트리스트 밖이라 검사되지 않았을 뿐이고, 목록 안의
+  `contract/lifecycle`은 같은 종류의 참조가 막혔다. **같은 방향이 package에 따라
+  허용되고 금지되는 것은 규칙이 의도한 바가 아니다.**
+- Ownership: `evaluateOwnershipEdges`의 일반 contract rule만 바뀐다. vertical별
+  `publication_contract_must_not_import_internal`,
+  `leasevertical_contract_must_not_import_production_issueops`는 그대로 유지되므로
+  IssueOps 수직 마이그레이션의 좁은 계약 경계는 영향을 받지 않는다.
+- Consequences: `ProjectLifecycleStatePlan`처럼 다른 capability의 DTO를 품는 타입을
+  contract로 올릴 길이 열린다. 그 타입들이 `lifecycle`·`doctor`·`projectbootstrap`의
+  legacy edge를 막고 있었다.
+- Rejected: DTO를 capability마다 중복 선언하는 안(같은 계약이 두 곳에서 갈라진다),
+  `isFoundationOwner` 목록에서 `contract/lifecycle`을 빼는 안(그 package가 받아야 할
+  다른 엄격한 규칙까지 함께 사라진다).

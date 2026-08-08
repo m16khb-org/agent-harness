@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/core/looprun"
+	looprun "agent-harness/internal/contract/looprun"
 )
 
 func TestMCPLoopLifecycle(t *testing.T) {

@@ -16,7 +16,7 @@ func TestInstallCommandDryRunJSONDispatches(t *testing.T) {
 	root := configureInstallCommandTest(t, home)
 
 	out, _, err := captureInstallCommandOutput(t, nil, func() error {
-		return RunInstallCommand("install", []string{"--dry-run", "--json"})
+		return RunInstall([]string{"--dry-run", "--json"})
 	})
 	if err != nil {
 		t.Fatalf("install --dry-run --json failed: %v\n%s", err, out)
@@ -36,7 +36,7 @@ func TestInstallCommandDryRunJSONDispatches(t *testing.T) {
 func TestInstallCommandDryRunAutoPathModePlansShimAndShellRC(t *testing.T) {
 	home := t.TempDir()
 	root := configureInstallCommandTest(t, home)
-	result := runInstallDryRunJSON(t, home, "install", "auto")
+	result := runInstallDryRunJSON(t, home, "auto")
 	if !hasInstallLink(result.Links, filepath.Join(home, ".local", "bin", "agent-harness"), filepath.Join(root, "bin", "agent-harness"), true) {
 		t.Fatalf("auto path mode did not plan command shim link: %+v", result.Links)
 	}
@@ -51,7 +51,7 @@ func TestInstallCommandDryRunAutoPathModePlansShimAndShellRC(t *testing.T) {
 func TestInstallCommandDryRunManualPathModePlansShimWithoutShellRC(t *testing.T) {
 	home := t.TempDir()
 	root := configureInstallCommandTest(t, home)
-	result := runInstallDryRunJSON(t, home, "install", "manual")
+	result := runInstallDryRunJSON(t, home, "manual")
 	if !hasInstallLink(result.Links, filepath.Join(home, ".local", "bin", "agent-harness"), filepath.Join(root, "bin", "agent-harness"), true) {
 		t.Fatalf("manual path mode did not plan command shim link: %+v", result.Links)
 	}
@@ -72,7 +72,7 @@ func TestInstallCommandInteractiveDryRunSelectsProjectLocalAndManualPathMode(t *
 	t.Setenv("AGENT_HARNESS_INSTALL_HELPER", "1")
 
 	stdout, stderr, err := captureInstallCommandOutput(t, strings.NewReader("y\n2\n"), func() error {
-		return RunInstallCommand("install", []string{"--interactive", "--dry-run", "--json"})
+		return RunInstall([]string{"--interactive", "--dry-run", "--json"})
 	})
 	if err != nil {
 		t.Fatalf("interactive install dry-run failed: %v\nstdout=%s\nstderr=%s", err, stdout, stderr)
@@ -108,7 +108,7 @@ func TestInstallCommandInteractiveDryRunClosedStdinFailsBeforeDeadline(t *testin
 	done := make(chan result, 1)
 	go func() {
 		stdout, stderr, err := captureInstallCommandOutput(t, strings.NewReader(""), func() error {
-			return RunInstallCommand("install", []string{"--interactive", "--dry-run", "--json"})
+			return RunInstall([]string{"--interactive", "--dry-run", "--json"})
 		})
 		done <- result{stdout: stdout, stderr: stderr, err: err}
 	}()
@@ -136,19 +136,10 @@ func TestValidateInteractiveInstallInputRejectsPipe(t *testing.T) {
 	}
 }
 
-func TestInstallNativeAliasAcceptsPathMode(t *testing.T) {
-	home := t.TempDir()
-	configureInstallCommandTest(t, home)
-	result := runInstallDryRunJSON(t, home, "install-native", "manual")
-	if !messagesContain(result.Messages, `export PATH="$HOME/.local/bin:$PATH"`) {
-		t.Fatalf("install-native alias did not honor --path-mode=manual: %+v", result.Messages)
-	}
-}
-
 func TestInstallCommandDryRunSkipPathModeDoesNotPlanShellRC(t *testing.T) {
 	home := t.TempDir()
 	root := configureInstallCommandTest(t, home)
-	result := runInstallDryRunJSON(t, home, "install", "skip")
+	result := runInstallDryRunJSON(t, home, "skip")
 	if !hasInstallLink(result.Links, filepath.Join(home, ".local", "bin", "agent-harness"), filepath.Join(root, "bin", "agent-harness"), true) {
 		t.Fatalf("skip path mode did not plan command shim link: %+v", result.Links)
 	}
@@ -172,7 +163,7 @@ func TestInstallCommandShortShimKeepsMatchingLink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := runInstallDryRunJSON(t, home, "install", "skip")
+	result := runInstallDryRunJSON(t, home, "skip")
 	if !hasInstallLink(result.Links, short, canonical, false) {
 		t.Fatalf("matching ah shim was not preserved: %+v", result.Links)
 	}
@@ -190,7 +181,7 @@ func TestInstallCommandShortShimRefusesExistingFile(t *testing.T) {
 	}
 
 	_, _, err := captureInstallCommandOutput(t, nil, func() error {
-		return RunInstallCommand("install", []string{"--dry-run", "--json", "--path-mode=skip"})
+		return RunInstall([]string{"--dry-run", "--json", "--path-mode=skip"})
 	})
 	if err == nil || !strings.Contains(err.Error(), "refusing to replace existing ah command") {
 		t.Fatalf("existing ah file error = %v", err)
@@ -217,7 +208,7 @@ func TestInstallCommandShortShimRefusesUnrelatedSymlink(t *testing.T) {
 	}
 
 	_, _, err := captureInstallCommandOutput(t, nil, func() error {
-		return RunInstallCommand("install", []string{"--dry-run", "--json", "--path-mode=skip"})
+		return RunInstall([]string{"--dry-run", "--json", "--path-mode=skip"})
 	})
 	if err == nil || !strings.Contains(err.Error(), "refusing to replace existing ah command") {
 		t.Fatalf("unrelated ah symlink error = %v", err)
@@ -225,21 +216,5 @@ func TestInstallCommandShortShimRefusesUnrelatedSymlink(t *testing.T) {
 	target, readErr := os.Readlink(short)
 	if readErr != nil || target != unrelated {
 		t.Fatalf("unrelated ah symlink changed: target=%q err=%v", target, readErr)
-	}
-}
-
-func TestInstallNativeAliasKeepsUsageName(t *testing.T) {
-	configureInstallCommandTest(t, t.TempDir())
-	_, stderr, err := captureInstallCommandOutput(t, nil, func() error {
-		return RunInstallCommand("install-native", []string{"--badflag"})
-	})
-	if err == nil {
-		t.Fatalf("install-native --badflag unexpectedly succeeded:\n%s", stderr)
-	}
-	if !strings.Contains(stderr, "Usage of install-native:") {
-		t.Fatalf("install-native alias did not keep usage name:\n%s", stderr)
-	}
-	if strings.Contains(stderr, "Usage of install:") {
-		t.Fatalf("install-native alias leaked install usage name:\n%s", stderr)
 	}
 }

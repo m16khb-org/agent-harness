@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/core"
+	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
 func TestVerifyIssueOpsRemoteArtifactLiveRejectsMissingGitHubPR(t *testing.T) {
 	installFakeGHForRemoteArtifactTest(t)
-	err := VerifyRemoteArtifactLive(core.IssueOpsRemoteArtifactVerificationRequest{
+	err := VerifyRemoteArtifactLive(issueopscontract.IssueOpsRemoteArtifactVerificationRequest{
 		Provider:  "github",
 		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/9999",
@@ -26,7 +26,7 @@ func TestVerifyIssueOpsRemoteArtifactLiveRejectsMissingGitHubPR(t *testing.T) {
 
 func TestVerifyIssueOpsRemoteArtifactLiveRequiresRemoteLabelsAndAssignees(t *testing.T) {
 	installFakeGHForRemoteArtifactTest(t)
-	if err := VerifyRemoteArtifactLive(core.IssueOpsRemoteArtifactVerificationRequest{
+	if err := VerifyRemoteArtifactLive(issueopscontract.IssueOpsRemoteArtifactVerificationRequest{
 		Provider:  "github",
 		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/1",
@@ -35,7 +35,7 @@ func TestVerifyIssueOpsRemoteArtifactLiveRequiresRemoteLabelsAndAssignees(t *tes
 	}); err != nil {
 		t.Fatalf("expected matching GitHub PR evidence to pass: %v", err)
 	}
-	if err := VerifyRemoteArtifactLive(core.IssueOpsRemoteArtifactVerificationRequest{
+	if err := VerifyRemoteArtifactLive(issueopscontract.IssueOpsRemoteArtifactVerificationRequest{
 		Provider:  "github",
 		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/1",
@@ -44,7 +44,7 @@ func TestVerifyIssueOpsRemoteArtifactLiveRequiresRemoteLabelsAndAssignees(t *tes
 	}); err == nil || !strings.Contains(err.Error(), "label") {
 		t.Fatalf("expected missing label to fail live verification, got %v", err)
 	}
-	if err := VerifyRemoteArtifactLive(core.IssueOpsRemoteArtifactVerificationRequest{
+	if err := VerifyRemoteArtifactLive(issueopscontract.IssueOpsRemoteArtifactVerificationRequest{
 		Provider:  "github",
 		Kind:      "pr",
 		URL:       "https://github.com/example/repo/pull/1",
@@ -57,14 +57,14 @@ func TestVerifyIssueOpsRemoteArtifactLiveRequiresRemoteLabelsAndAssignees(t *tes
 
 func TestVerifyIssueOpsRemoteArtifactMergedLiveRequiresMergedGitHubPR(t *testing.T) {
 	installFakeGHForRemoteArtifactTest(t)
-	if err := VerifyRemoteArtifactMergedLive(core.IssueOpsRemoteArtifactVerification{
+	if err := VerifyRemoteArtifactMergedLive(issueopscontract.IssueOpsRemoteArtifactVerification{
 		Provider: "github",
 		Kind:     "pr",
 		URL:      "https://github.com/example/repo/pull/2",
 	}); err == nil || !strings.Contains(err.Error(), "not verified merged") {
 		t.Fatalf("expected closed unmerged GitHub PR to fail cleanup merge verification, got %v", err)
 	}
-	if err := VerifyRemoteArtifactMergedLive(core.IssueOpsRemoteArtifactVerification{
+	if err := VerifyRemoteArtifactMergedLive(issueopscontract.IssueOpsRemoteArtifactVerification{
 		Provider: "github",
 		Kind:     "pr",
 		URL:      "https://github.com/example/repo/pull/3",
@@ -124,7 +124,7 @@ printf '%s\n' '{"url":"https://github.com/example/repo/pull/3","state":"MERGED",
 	t.Setenv("HARNESS_FAKE_GH_LOG", logPath)
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	head, err := VerifyRemoteArtifactMergedHeadLive(core.IssueOpsRemoteArtifactVerification{
+	head, err := VerifyRemoteArtifactMergedHeadLive(issueopscontract.IssueOpsRemoteArtifactVerification{
 		Provider: "github", Kind: "pr", URL: "https://github.com/example/repo/pull/3",
 	})
 	if err != nil {
@@ -155,7 +155,7 @@ printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/merge_requ
 `)
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	head, err := VerifyRemoteArtifactMergedHeadLive(core.IssueOpsRemoteArtifactVerification{
+	head, err := VerifyRemoteArtifactMergedHeadLive(issueopscontract.IssueOpsRemoteArtifactVerification{
 		Provider: "gitlab", Kind: "mr", URL: "https://gitlab.example.com/group/project/-/merge_requests/42",
 	})
 	if err != nil {
@@ -171,7 +171,7 @@ printf '%s\n' '{"web_url":"https://gitlab.example.com/group/project/-/merge_requ
 
 func TestVerifyRemoteArtifactMergedHeadLiveRejectsUnmerged(t *testing.T) {
 	installFakeGHForRemoteArtifactTest(t)
-	if _, err := VerifyRemoteArtifactMergedHeadLive(core.IssueOpsRemoteArtifactVerification{
+	if _, err := VerifyRemoteArtifactMergedHeadLive(issueopscontract.IssueOpsRemoteArtifactVerification{
 		Provider: "github", Kind: "pr", URL: "https://github.com/example/repo/pull/2",
 	}); err == nil || !strings.Contains(err.Error(), "not verified merged") {
 		t.Fatalf("unmerged PR must fail head verification: %v", err)

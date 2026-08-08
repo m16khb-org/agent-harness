@@ -140,33 +140,12 @@ func TestReconcileServiceDisclosesOnlyActualInspectionAttempt(t *testing.T) {
 	}
 }
 
-func TestReconcileServiceReportsMigrationOnAmbiguousOutcome(t *testing.T) {
-	repository := reconcileRepositoryFixture("task_create", "not_invoked_proven", 0)
-	repository.state.Migrated = true
-	stages := &reconcileStageExecutorFake{attempted: true, inspectErr: errors.New("transport")}
-	result, err := NewReconcileService(repository, stages).Reconcile(context.Background(), ReconcileRequest{ID: "io-1"})
-	if err == nil || !result.IntentMigrated || result.Code != "orca_reconcile_ambiguous" {
-		t.Fatalf("result=%#v err=%v", result, err)
-	}
-}
-
 func TestReconcileServiceCanonicalizationFailsBeforeInspection(t *testing.T) {
 	repository := reconcileRepositoryFixture("task_create", "not_invoked_proven", 0)
 	repository.canonicalErr = errors.New("unsafe marker")
 	stages := &reconcileStageExecutorFake{}
 	result, err := NewReconcileService(repository, stages).Reconcile(context.Background(), ReconcileRequest{ID: "io-1"})
-	if err == nil || result.Code != "legacy_intent_upgrade_unsafe" || result.ExternalStateInspected || stages.inspectCalls != 0 {
-		t.Fatalf("result=%#v inspect=%d err=%v", result, stages.inspectCalls, err)
-	}
-}
-
-func TestReconcileServicePreservesPartialMigrationDisclosureOnCanonicalizationFailure(t *testing.T) {
-	repository := reconcileRepositoryFixture("task_create", "not_invoked_proven", 0)
-	repository.state.Migrated = true
-	repository.canonicalErr = errors.New("snapshot changed after migration")
-	stages := &reconcileStageExecutorFake{}
-	result, err := NewReconcileService(repository, stages).Reconcile(context.Background(), ReconcileRequest{ID: "io-1"})
-	if err == nil || !result.IntentMigrated || result.Record.ID != "io-1" || result.Code != "legacy_intent_upgrade_unsafe" || stages.inspectCalls != 0 {
+	if err == nil || result.Code != "orca_intent_invalid" || result.ExternalStateInspected || stages.inspectCalls != 0 {
 		t.Fatalf("result=%#v inspect=%d err=%v", result, stages.inspectCalls, err)
 	}
 }

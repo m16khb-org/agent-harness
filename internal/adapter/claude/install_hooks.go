@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"agent-harness/internal/adapter/installutil"
 	"agent-harness/internal/port"
 )
 
@@ -20,8 +19,8 @@ func writeClaudeSettings(path string, req port.NativeInstallRequest) (port.Insta
 	} else if err != nil && !os.IsNotExist(err) && !req.DryRun {
 		return file, nil, err
 	}
-	messages := installutil.HookTargetDriftMessages(config, "claude", req.BinPath)
-	written, err := installutil.WriteJSONPlan(path, file.Kind, mergeClaudeHookConfig(config, req.BinPath), 0o644, req.DryRun)
+	messages := HookTargetDriftMessages(config, "claude", req.BinPath)
+	written, err := WriteJSONPlan(path, file.Kind, mergeClaudeHookConfig(config, req.BinPath), 0o644, req.DryRun)
 	return written, messages, err
 }
 
@@ -42,7 +41,7 @@ func mergeClaudeHookConfig(config map[string]any, binPath string) map[string]any
 		groups := []any{}
 		if existing, ok := hooks[spec.Event].([]any); ok {
 			for _, group := range existing {
-				if !installutil.HookGroupContainsAgentHarness(group) {
+				if !HookGroupContainsAgentHarness(group) {
 					groups = append(groups, group)
 				}
 			}
@@ -92,10 +91,10 @@ func claudeHookGroup(spec claudeLifecycleHookSpec) map[string]any {
 func claudeHookCommand(binPath, subcommand string) string {
 	cmd := fmt.Sprintf("%s hook %s", shellQuote(binPath), subcommand)
 	if subcommand == "pre-tool-use" {
-		cmd += " --host claude " + installutil.PreToolUseEnforcementFlags()
+		cmd += " --host claude " + PreToolUseEnforcementFlags()
 	}
 	if subcommand == "stop" {
-		cmd += " --host claude " + installutil.StopEnforcementFlags()
+		cmd += " --host claude " + StopEnforcementFlags()
 	}
 	if subcommand == "post-tool-use" {
 		// --host lets post-tool-use inject a deterministic gofmt lint-failure as

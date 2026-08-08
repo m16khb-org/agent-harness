@@ -3,7 +3,8 @@ package mcpcli
 import (
 	"agent-harness/cmd/harness/apidoc"
 	"agent-harness/cmd/harness/mcpcli/argmap"
-	"agent-harness/internal/core"
+	projectbootstrapcontract "agent-harness/internal/contract/projectbootstrap"
+	projectdocscontract "agent-harness/internal/contract/projectdocs"
 )
 
 func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
@@ -11,37 +12,37 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	case "harness_inspect":
 		return mcpToolPayload(InspectHarness(argmap.String(call.Arguments, "repo")))
 	case "atomic_commit_preflight":
-		return mcpToolPayload(core.GitPreflight(ResolveTarget(argmap.String(call.Arguments, "path")), HarnessRoot()))
+		return mcpToolPayload(GitPreflight(ResolveTarget(argmap.String(call.Arguments, "path")), HarnessRoot()))
 	case "commit_policy":
 		text, err := ReadHarnessFile(".agent-harness", "COMMIT_POLICY.md")
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32000, Message: "Cannot read commit policy", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32000, "Cannot read commit policy", err.Error()))
 		}
 		return mcpToolDirect(TextResult(text))
 	case "skill_manifest":
-		return mcpToolPayload(core.ListSkills(HarnessRoot(), skillName))
+		return mcpToolPayload(ListSkills(HarnessRoot(), skillName))
 	case "docs_index":
-		return mcpToolPayload(core.DocsIndex(HarnessRoot(), Version))
+		return mcpToolPayload(DocsIndex(HarnessRoot(), Version))
 	case "project_docs_route":
-		result, err := core.RouteProjectDocs(ResolveTarget(argmap.String(call.Arguments, "repo")), argmap.StringDefault(call.Arguments, "task", "general"))
+		result, err := RouteProjectDocs(ResolveTarget(argmap.String(call.Arguments, "repo")), argmap.StringDefault(call.Arguments, "task", "general"))
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32602, Message: "Project docs route failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32602, "Project docs route failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "project_docs_bootstrap_plan":
-		result, err := core.BootstrapProjectDocs(core.ProjectDocsBootstrapRequest{RepoRoot: ResolveTarget(argmap.String(call.Arguments, "repo")), Write: false})
+		result, err := bootstrapProjectDocs(projectbootstrapcontract.ProjectDocsBootstrapRequest{RepoRoot: ResolveTarget(argmap.String(call.Arguments, "repo")), Write: false})
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32602, Message: "Project docs bootstrap plan failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32602, "Project docs bootstrap plan failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "project_docs_read":
-		result, err := core.ReadProjectDoc(ResolveTarget(argmap.String(call.Arguments, "repo")), argmap.String(call.Arguments, "rel_path"))
+		result, err := ReadProjectDoc(ResolveTarget(argmap.String(call.Arguments, "repo")), argmap.String(call.Arguments, "rel_path"))
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32602, Message: "Project docs read failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32602, "Project docs read failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "project_docs_update":
-		result, err := core.UpdateProjectDoc(core.ProjectDocsUpdateRequest{
+		result, err := UpdateProjectDoc(projectdocscontract.ProjectDocsUpdateRequest{
 			RepoRoot:       ResolveTarget(argmap.String(call.Arguments, "repo")),
 			RelPath:        argmap.String(call.Arguments, "rel_path"),
 			Content:        argmap.String(call.Arguments, "content"),
@@ -51,11 +52,11 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 			Confirm:        argmap.Bool(call.Arguments, "confirm"),
 		})
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32602, Message: "Project docs update failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32602, "Project docs update failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "project_docs_record":
-		result, err := core.AppendProjectDocsRecord(core.ProjectDocsRecordRequest{
+		result, err := AppendProjectDocsRecord(projectdocscontract.ProjectDocsRecordRequest{
 			RepoRoot:     ResolveTarget(argmap.String(call.Arguments, "repo")),
 			Kind:         argmap.String(call.Arguments, "kind"),
 			Title:        argmap.String(call.Arguments, "title"),
@@ -69,7 +70,7 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 			Source:       argmap.StringDefault(call.Arguments, "source", "mcp"),
 		})
 		if err != nil {
-			return mcpToolFailure(&RPCError{Code: -32602, Message: "Project docs record failed", Data: err.Error()})
+			return mcpToolFailure(newProtocolError(-32602, "Project docs record failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "api_doc_review":
@@ -83,7 +84,7 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 			JSON:       true,
 		})
 		if err != nil && !apidoc.IsReviewGateError(err) {
-			return mcpToolFailure(&RPCError{Code: -32000, Message: "API doc review failed", Data: result})
+			return mcpToolFailure(newProtocolError(-32000, "API doc review failed", result))
 		}
 		return mcpToolPayload(result)
 	case "api_doc_static_check":
@@ -94,7 +95,7 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 			JSON:  true,
 		})
 		if err != nil && !apidoc.IsStaticGateError(err) {
-			return mcpToolFailure(&RPCError{Code: -32000, Message: "API doc static check failed", Data: result})
+			return mcpToolFailure(newProtocolError(-32000, "API doc static check failed", result))
 		}
 		return mcpToolPayload(result)
 	default:

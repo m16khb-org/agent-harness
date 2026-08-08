@@ -37,26 +37,6 @@ type ExecutionWorkspaceAccessProber interface {
 	ProbeAccess(context.Context, ExecutionWorkspaceRequest, string) (ExecutionWorkspaceAccessResult, error)
 }
 
-type ExecutionIssueSnapshotRequest struct {
-	Repo string `json:"repo"`
-	URL  string `json:"url"`
-}
-
-type ExecutionIssueSnapshot struct {
-	URL    string `json:"url"`
-	Body   string `json:"body"`
-	State  string `json:"state,omitempty"`
-	Source string `json:"source,omitempty"`
-}
-
-type ExecutionIssueSnapshotEvidence struct {
-	Provider string `json:"provider"`
-	Source   string `json:"source"`
-	WebURL   string `json:"web_url"`
-	Body     string `json:"body"`
-	State    string `json:"state"`
-}
-
 type ExecutionIssueSnapshotReader interface {
 	ReadIssueSnapshot(context.Context, ExecutionIssueSnapshotRequest) (ExecutionIssueSnapshot, error)
 }
@@ -167,12 +147,15 @@ type ExecutionOrcaOwnerInventoryRequest struct {
 }
 
 type ExecutionOrcaOwnerInventory struct {
-	RuntimeID      string `json:"runtime_id,omitempty"`
-	TerminalLive   bool   `json:"terminal_live"`
-	TaskLive       bool   `json:"task_live"`
-	TerminalID     string `json:"terminal_id,omitempty"`
-	TaskStatus     string `json:"task_status,omitempty"`
-	DispatchStatus string `json:"dispatch_status,omitempty"`
+	RuntimeID                 string `json:"runtime_id,omitempty"`
+	TerminalLive              bool   `json:"terminal_live"`
+	TerminalInventoryComplete bool   `json:"terminal_inventory_complete"`
+	TaskLive                  bool   `json:"task_live"`
+	TerminalID                string `json:"terminal_id,omitempty"`
+	TaskStatus                string `json:"task_status,omitempty"`
+	DispatchStatus            string `json:"dispatch_status,omitempty"`
+	DispatchAssigneeHandle    string `json:"dispatch_assignee_handle,omitempty"`
+	DispatchAssigneePresent   bool   `json:"dispatch_assignee_present"`
 }
 
 type ExecutionOrcaOwnerInspector interface {

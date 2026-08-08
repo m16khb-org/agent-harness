@@ -210,10 +210,6 @@
           "name": "install"
         },
         {
-          "description": "compatibility alias for install",
-          "name": "install-native"
-        },
-        {
           "description": "rebuild and refresh user-level integrations",
           "name": "update"
         },
@@ -254,7 +250,7 @@
           "name": "version"
         }
       ],
-      "hash": "bef9b8eeb380337c6b4a2e5431e1c2bc08c4a5ccceee63260dff66d934390474",
+      "hash": "4759b0c1465777a53a86478d5512490180d74827bcbf7c19c8b3b664a5a21a7b",
       "mcp_tools": [
         "api_doc_review",
         "api_doc_static_check",
@@ -291,7 +287,6 @@
         "state_doctor",
         "state_list",
         "state_maintain",
-        "state_migrate",
         "state_prune",
         "state_read",
         "state_write",
@@ -464,6 +459,7 @@
         "issueops_execution_resume": [
           "ok",
           "id",
+          "resume_disposition",
           "execution",
           "claim_token_path",
           "issue_body_sha256",
@@ -764,13 +760,6 @@
           "has_skill_md": true,
           "name": "dijkstra",
           "path": "$HARNESS_ROOT/skills/dijkstra"
-        },
-        {
-          "description": "Use when judging .agent-harness/draft-wiki candidates, turning agent notes into reviewable draft wiki files, approving/rejecting drafts, or promoting approved drafts into the repo-local exported directory.",
-          "has_openai_yaml": true,
-          "has_skill_md": true,
-          "name": "draft-wiki-promoter",
-          "path": "$HARNESS_ROOT/skills/draft-wiki-promoter"
         },
         {
           "description": "Meeting-record augmentation / team-memory specialist. Named after Douglas Engelbart — inventor of the mouse, hypertext, and the Augment human-intellect program. His core insight: tools should augment collective human intellect, and shared living records are how a team thinks together. Use when converting meeting transcripts, NAVER Clova Note exports, Slack huddle notes, speaker-labeled voice records, pasted meeting text, or AI meeting summaries into Korean meeting minutes, Slack Canvas-ready meeting docs, automatic Slack List registrations, fallback index-binding handoffs, Slack recaps, action tables, or reusable meeting-minutes prompts.",
@@ -1499,7 +1488,7 @@
         }
       },
       "id": "$ISSUEOPS_ID",
-      "next_command": "agent-harness issueops execution claim --id '$CLI_EXECUTION_ID' --generation 1 --claim-token-file '$WORKSPACE.worktrees/69-cli-execution-contract/.agent-harness/state/issueops-v1/$ISSUEOPS_STATE_KEY/lease-1.token'",
+      "next_command": "'$HARNESS_EXECUTABLE' issueops execution claim --id '$CLI_EXECUTION_ID' --generation 1 --claim-token-file '$WORKSPACE.worktrees/69-cli-execution-contract/.agent-harness/state/issueops-v1/$ISSUEOPS_STATE_KEY/lease-1.token' --generated-by-executable '$HARNESS_EXECUTABLE' --generated-by-sha256 $HARNESS_EXECUTABLE_SHA256 --generated-for-generation 1",
       "ok": true
     },
     "issueops_feedback_add": {
@@ -4179,7 +4168,7 @@
           "title": "Provide the self-augmentation loop as a native skill executor that creates real improvement diffs",
           "verify_with": [
             "skill quick_validate",
-            "install-native",
+            "agent-harness install",
             "self-verify QA gate"
           ],
           "why_now": [
@@ -4226,15 +4215,15 @@
           "novelty": 76,
           "risk": 24,
           "satisfaction_evidence": [
-            "CLI usage lives in internal/adapter/cli",
-            "MCP adapter-owned tool descriptors live in internal/adapter/mcp"
+            "CLI usage lives in internal/domain/cli",
+            "MCP adapter-owned tool descriptors live in internal/domain/mcp"
           ],
           "score": 0,
           "status": "already_satisfied",
           "title": "Split CLI usage and MCP schema catalog into adapter-owned packages",
           "verify_with": [
-            "internal/adapter/cli tests",
-            "internal/adapter/mcp tests",
+            "internal/domain/cli tests",
+            "internal/domain/mcp tests",
             "usage golden"
           ],
           "why_now": [
@@ -4389,7 +4378,7 @@
           "status": "already_satisfied",
           "title": "Add daemon connection limit protection",
           "verify_with": [
-            "go test ./cmd/harness/daemoncli ./internal/core/worker -count=1"
+            "go test ./cmd/harness/daemoncli ./internal/adapter/worker -count=1"
           ],
           "why_now": [
             ".agent-harness/PROJECT_AUDIT.md flags D1 P1 no connection limit",
@@ -4422,30 +4411,6 @@
           ],
           "why_now": [
             "release smoke는 배포 판단 근거를 만들었지만 아직 선택 기준과 rollback 기준이 기록되지 않았다",
-            "Already satisfied; do not select in the next self-augmentation cycle"
-          ]
-        },
-        {
-          "category": "audit-risk",
-          "expected_gain": [
-            "draft-wiki queue processing does not wedge on abandoned locks"
-          ],
-          "feasibility": 78,
-          "id": "draftwiki-stale-lock",
-          "impact": 86,
-          "novelty": 54,
-          "risk": 22,
-          "satisfaction_evidence": [
-            "draft-wiki queue lock detects stale PID/age locks and has recovery regression coverage"
-          ],
-          "score": 0,
-          "status": "already_satisfied",
-          "title": "Detect and recover stale draft-wiki locks",
-          "verify_with": [
-            "go test ./internal/core/draftwiki/... ./cmd/harness/draftwikicli -count=1"
-          ],
-          "why_now": [
-            ".agent-harness/PROJECT_AUDIT.md flags Q1 P1 stale lock detection",
             "Already satisfied; do not select in the next self-augmentation cycle"
           ]
         },
@@ -4539,11 +4504,11 @@
           "novelty": 70,
           "risk": 18,
           "satisfaction_evidence": [
-            "install-native supports --dry-run planning with no filesystem writes and adapter-level coverage"
+            "install supports --dry-run planning with no filesystem writes and adapter-level coverage"
           ],
           "score": 0,
           "status": "already_satisfied",
-          "title": "install-native에 dry-run planning mode 추가",
+          "title": "install에 dry-run planning mode 추가",
           "verify_with": [
             "install tests",
             "temporary HOME smoke"
@@ -4734,7 +4699,7 @@
           "status": "already_satisfied",
           "title": "Store self-augmentation failure lessons in state",
           "verify_with": [
-            "go test ./internal/core/state -count=1",
+            "go test ./internal/application/state ./internal/adapter/outbound/state -count=1",
             "state_write/read roundtrip"
           ],
           "why_now": [
@@ -4891,14 +4856,14 @@
           "novelty": 56,
           "risk": 28,
           "satisfaction_evidence": [
-            "StateWrite serializes writes through the per-key state lock and has regression coverage"
+            "StateWrite delegates to the application service, which serializes writes through the store span with regression coverage"
           ],
           "score": 0,
           "status": "already_satisfied",
           "title": "Add write locking around state file updates",
           "verify_with": [
-            "go test ./internal/core/state -count=1",
-            "go test -race ./internal/core/state -count=1"
+            "go test ./internal/application/state ./internal/adapter/outbound/state ./internal/adapter/outbound/sqlstore -count=1",
+            "go test -race ./internal/application/state ./internal/adapter/outbound/state ./internal/adapter/outbound/sqlstore -count=1"
           ],
           "why_now": [
             ".agent-harness/PROJECT_AUDIT.md flags S1 P1 no write locking",
@@ -4948,7 +4913,7 @@
           "status": "already_satisfied",
           "title": "Detect worker jobs stuck running after process crash",
           "verify_with": [
-            "go test ./internal/core/worker ./cmd/harness/workercli -count=1"
+            "go test ./internal/adapter/worker ./cmd/harness/workercli -count=1"
           ],
           "why_now": [
             ".agent-harness/PROJECT_AUDIT.md flags W1 P1 stuck running jobs",
@@ -5034,7 +4999,6 @@
         "has_cross_platform_build_matrix": true,
         "has_daemon_connection_limit": true,
         "has_distribution_decision": true,
-        "has_draftwiki_stale_lock_detection": true,
         "has_genius_mermaid_lint": true,
         "has_genius_think": true,
         "has_goal_score_summary": true,
@@ -5068,7 +5032,6 @@
           "brooks",
           "codd",
           "dijkstra",
-          "draft-wiki-promoter",
           "engelbart",
           "gitlab-usecase",
           "hopper",
@@ -5288,7 +5251,7 @@
           "id": "self-verify-install-dry-run-smoke",
           "priority": 8,
           "satisfaction_evidence": [
-            "install dry-run smoke runs install-native --dry-run against temp HOME/CODEX_HOME/HARNESS_ROOT and asserts planned writes/links without filesystem mutations"
+            "install dry-run smoke runs install --dry-run against temp HOME/CODEX_HOME/HARNESS_ROOT and asserts planned writes/links without filesystem mutations"
           ],
           "score": 76,
           "status": "already_satisfied",
@@ -5297,7 +5260,7 @@
             "dry-run no-write assertion"
           ],
           "why_now": [
-            "install-native --dry-run should be an independent no-write evidence label"
+            "install --dry-run should be an independent no-write evidence label"
           ]
         },
         {
@@ -5718,13 +5681,13 @@
       }
     },
     "state_doctor_corrupt": {
-      "checked": 3,
+      "checked": 2,
       "healthy": false,
       "issues": [
         {
-          "code": "invalid_json",
+          "code": "invalid_state",
           "key": "corrupt",
-          "message": "invalid character 'n' looking for beginning of object key string",
+          "message": "invalid state",
           "path": "$STATE_DIR/corrupt.json",
           "severity": "error"
         }
@@ -5737,21 +5700,14 @@
           "key": "current",
           "schema_version": 1,
           "updated_at": "$TIMESTAMP"
-        },
-        {
-          "bytes": 14,
-          "key": "legacy",
-          "schema_version": 1,
-          "updated_at": "$TIMESTAMP"
         }
       ],
       "valid_keys": [
-        "current",
-        "legacy"
+        "current"
       ]
     },
     "state_doctor_healthy": {
-      "checked": 2,
+      "checked": 1,
       "healthy": true,
       "issues": [],
       "ok": true,
@@ -5762,17 +5718,10 @@
           "key": "current",
           "schema_version": 1,
           "updated_at": "$TIMESTAMP"
-        },
-        {
-          "bytes": 14,
-          "key": "legacy",
-          "schema_version": 1,
-          "updated_at": "$TIMESTAMP"
         }
       ],
       "valid_keys": [
-        "current",
-        "legacy"
+        "current"
       ]
     },
     "state_list": {
@@ -5789,72 +5738,6 @@
         }
       ],
       "state_dir": "$STATE_DIR"
-    },
-    "state_migrate_confirm": {
-      "candidate_keys": [
-        "legacy"
-      ],
-      "candidates": [
-        {
-          "bytes": 14,
-          "key": "legacy",
-          "schema_version": 0,
-          "updated_at": "$TIMESTAMP"
-        }
-      ],
-      "confirm": true,
-      "dry_run": false,
-      "from_schema": 0,
-      "issues": [],
-      "migrated_keys": [
-        "legacy"
-      ],
-      "ok": true,
-      "skipped": [
-        {
-          "bytes": 15,
-          "key": "current",
-          "schema_version": 1,
-          "updated_at": "$TIMESTAMP"
-        }
-      ],
-      "skipped_keys": [
-        "current"
-      ],
-      "state_dir": "$STATE_DIR",
-      "to_schema": 1
-    },
-    "state_migrate_dry_run": {
-      "candidate_keys": [
-        "legacy"
-      ],
-      "candidates": [
-        {
-          "bytes": 14,
-          "key": "legacy",
-          "schema_version": 0,
-          "updated_at": "$TIMESTAMP"
-        }
-      ],
-      "confirm": false,
-      "dry_run": true,
-      "from_schema": 0,
-      "issues": [],
-      "migrated_keys": [],
-      "ok": true,
-      "skipped": [
-        {
-          "bytes": 15,
-          "key": "current",
-          "schema_version": 1,
-          "updated_at": "$TIMESTAMP"
-        }
-      ],
-      "skipped_keys": [
-        "current"
-      ],
-      "state_dir": "$STATE_DIR",
-      "to_schema": 1
     },
     "state_prune_confirm": {
       "confirm": true,
@@ -6436,10 +6319,6 @@
                 "name": "install"
               },
               {
-                "description": "compatibility alias for install",
-                "name": "install-native"
-              },
-              {
                 "description": "rebuild and refresh user-level integrations",
                 "name": "update"
               },
@@ -6480,7 +6359,7 @@
                 "name": "version"
               }
             ],
-            "hash": "bef9b8eeb380337c6b4a2e5431e1c2bc08c4a5ccceee63260dff66d934390474",
+            "hash": "4759b0c1465777a53a86478d5512490180d74827bcbf7c19c8b3b664a5a21a7b",
             "mcp_tools": [
               "api_doc_review",
               "api_doc_static_check",
@@ -6517,7 +6396,6 @@
               "state_doctor",
               "state_list",
               "state_maintain",
-              "state_migrate",
               "state_prune",
               "state_read",
               "state_write",
@@ -6690,6 +6568,7 @@
               "issueops_execution_resume": [
                 "ok",
                 "id",
+                "resume_disposition",
                 "execution",
                 "claim_token_path",
                 "issue_body_sha256",
@@ -7013,13 +6892,6 @@
                 "path": "$HARNESS_ROOT/skills/dijkstra"
               },
               {
-                "description": "Use when judging .agent-harness/draft-wiki candidates, turning agent notes into reviewable draft wiki files, approving/rejecting drafts, or promoting approved drafts into the repo-local exported directory.",
-                "has_openai_yaml": true,
-                "has_skill_md": true,
-                "name": "draft-wiki-promoter",
-                "path": "$HARNESS_ROOT/skills/draft-wiki-promoter"
-              },
-              {
                 "description": "Meeting-record augmentation / team-memory specialist. Named after Douglas Engelbart — inventor of the mouse, hypertext, and the Augment human-intellect program. His core insight: tools should augment collective human intellect, and shared living records are how a team thinks together. Use when converting meeting transcripts, NAVER Clova Note exports, Slack huddle notes, speaker-labeled voice records, pasted meeting text, or AI meeting summaries into Korean meeting minutes, Slack Canvas-ready meeting docs, automatic Slack List registrations, fallback index-binding handoffs, Slack recaps, action tables, or reusable meeting-minutes prompts.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -7139,7 +7011,7 @@
               }
             },
             "id": "$MCP_EXECUTION_ID",
-            "next_command": "agent-harness issueops execution claim --id '$MCP_EXECUTION_ID' --generation 1 --claim-token-file '$WORKSPACE.worktrees/69-mcp-execution-contract/.agent-harness/state/issueops-v1/$ISSUEOPS_STATE_KEY/lease-1.token'",
+            "next_command": "'$HARNESS_EXECUTABLE' issueops execution claim --id '$MCP_EXECUTION_ID' --generation 1 --claim-token-file '$WORKSPACE.worktrees/69-mcp-execution-contract/.agent-harness/state/issueops-v1/$ISSUEOPS_STATE_KEY/lease-1.token' --generated-by-executable '$HARNESS_EXECUTABLE' --generated-by-sha256 $HARNESS_EXECUTABLE_SHA256 --generated-for-generation 1",
             "ok": true
           },
           "type": "text"
@@ -7196,7 +7068,7 @@
                 "title": "Provide the self-augmentation loop as a native skill executor that creates real improvement diffs",
                 "verify_with": [
                   "skill quick_validate",
-                  "install-native",
+                  "agent-harness install",
                   "self-verify QA gate"
                 ],
                 "why_now": [
@@ -7243,15 +7115,15 @@
                 "novelty": 76,
                 "risk": 24,
                 "satisfaction_evidence": [
-                  "CLI usage lives in internal/adapter/cli",
-                  "MCP adapter-owned tool descriptors live in internal/adapter/mcp"
+                  "CLI usage lives in internal/domain/cli",
+                  "MCP adapter-owned tool descriptors live in internal/domain/mcp"
                 ],
                 "score": 0,
                 "status": "already_satisfied",
                 "title": "Split CLI usage and MCP schema catalog into adapter-owned packages",
                 "verify_with": [
-                  "internal/adapter/cli tests",
-                  "internal/adapter/mcp tests",
+                  "internal/domain/cli tests",
+                  "internal/domain/mcp tests",
                   "usage golden"
                 ],
                 "why_now": [
@@ -7406,7 +7278,7 @@
                 "status": "already_satisfied",
                 "title": "Add daemon connection limit protection",
                 "verify_with": [
-                  "go test ./cmd/harness/daemoncli ./internal/core/worker -count=1"
+                  "go test ./cmd/harness/daemoncli ./internal/adapter/worker -count=1"
                 ],
                 "why_now": [
                   ".agent-harness/PROJECT_AUDIT.md flags D1 P1 no connection limit",
@@ -7439,30 +7311,6 @@
                 ],
                 "why_now": [
                   "release smoke는 배포 판단 근거를 만들었지만 아직 선택 기준과 rollback 기준이 기록되지 않았다",
-                  "Already satisfied; do not select in the next self-augmentation cycle"
-                ]
-              },
-              {
-                "category": "audit-risk",
-                "expected_gain": [
-                  "draft-wiki queue processing does not wedge on abandoned locks"
-                ],
-                "feasibility": 78,
-                "id": "draftwiki-stale-lock",
-                "impact": 86,
-                "novelty": 54,
-                "risk": 22,
-                "satisfaction_evidence": [
-                  "draft-wiki queue lock detects stale PID/age locks and has recovery regression coverage"
-                ],
-                "score": 0,
-                "status": "already_satisfied",
-                "title": "Detect and recover stale draft-wiki locks",
-                "verify_with": [
-                  "go test ./internal/core/draftwiki/... ./cmd/harness/draftwikicli -count=1"
-                ],
-                "why_now": [
-                  ".agent-harness/PROJECT_AUDIT.md flags Q1 P1 stale lock detection",
                   "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
@@ -7556,11 +7404,11 @@
                 "novelty": 70,
                 "risk": 18,
                 "satisfaction_evidence": [
-                  "install-native supports --dry-run planning with no filesystem writes and adapter-level coverage"
+                  "install supports --dry-run planning with no filesystem writes and adapter-level coverage"
                 ],
                 "score": 0,
                 "status": "already_satisfied",
-                "title": "install-native에 dry-run planning mode 추가",
+                "title": "install에 dry-run planning mode 추가",
                 "verify_with": [
                   "install tests",
                   "temporary HOME smoke"
@@ -7751,7 +7599,7 @@
                 "status": "already_satisfied",
                 "title": "Store self-augmentation failure lessons in state",
                 "verify_with": [
-                  "go test ./internal/core/state -count=1",
+                  "go test ./internal/application/state ./internal/adapter/outbound/state -count=1",
                   "state_write/read roundtrip"
                 ],
                 "why_now": [
@@ -7908,14 +7756,14 @@
                 "novelty": 56,
                 "risk": 28,
                 "satisfaction_evidence": [
-                  "StateWrite serializes writes through the per-key state lock and has regression coverage"
+                  "StateWrite delegates to the application service, which serializes writes through the store span with regression coverage"
                 ],
                 "score": 0,
                 "status": "already_satisfied",
                 "title": "Add write locking around state file updates",
                 "verify_with": [
-                  "go test ./internal/core/state -count=1",
-                  "go test -race ./internal/core/state -count=1"
+                  "go test ./internal/application/state ./internal/adapter/outbound/state ./internal/adapter/outbound/sqlstore -count=1",
+                  "go test -race ./internal/application/state ./internal/adapter/outbound/state ./internal/adapter/outbound/sqlstore -count=1"
                 ],
                 "why_now": [
                   ".agent-harness/PROJECT_AUDIT.md flags S1 P1 no write locking",
@@ -7965,7 +7813,7 @@
                 "status": "already_satisfied",
                 "title": "Detect worker jobs stuck running after process crash",
                 "verify_with": [
-                  "go test ./internal/core/worker ./cmd/harness/workercli -count=1"
+                  "go test ./internal/adapter/worker ./cmd/harness/workercli -count=1"
                 ],
                 "why_now": [
                   ".agent-harness/PROJECT_AUDIT.md flags W1 P1 stuck running jobs",
@@ -8051,7 +7899,6 @@
               "has_cross_platform_build_matrix": true,
               "has_daemon_connection_limit": true,
               "has_distribution_decision": true,
-              "has_draftwiki_stale_lock_detection": true,
               "has_genius_mermaid_lint": true,
               "has_genius_think": true,
               "has_goal_score_summary": true,
@@ -8085,7 +7932,6 @@
                 "brooks",
                 "codd",
                 "dijkstra",
-                "draft-wiki-promoter",
                 "engelbart",
                 "gitlab-usecase",
                 "hopper",
@@ -8339,7 +8185,7 @@
                 "id": "self-verify-install-dry-run-smoke",
                 "priority": 8,
                 "satisfaction_evidence": [
-                  "install dry-run smoke runs install-native --dry-run against temp HOME/CODEX_HOME/HARNESS_ROOT and asserts planned writes/links without filesystem mutations"
+                  "install dry-run smoke runs install --dry-run against temp HOME/CODEX_HOME/HARNESS_ROOT and asserts planned writes/links without filesystem mutations"
                 ],
                 "score": 76,
                 "status": "already_satisfied",
@@ -8348,7 +8194,7 @@
                   "dry-run no-write assertion"
                 ],
                 "why_now": [
-                  "install-native --dry-run should be an independent no-write evidence label"
+                  "install --dry-run should be an independent no-write evidence label"
                 ]
               },
               {
@@ -8801,13 +8647,13 @@
       "content": [
         {
           "json": {
-            "checked": 7,
+            "checked": 6,
             "healthy": false,
             "issues": [
               {
-                "code": "invalid_json",
+                "code": "invalid_state",
                 "key": "corrupt",
-                "message": "invalid character 'n' looking for beginning of object key string",
+                "message": "invalid state",
                 "path": "$STATE_DIR/corrupt.json",
                 "severity": "error"
               }
@@ -8818,12 +8664,6 @@
               {
                 "bytes": 15,
                 "key": "current",
-                "schema_version": 1,
-                "updated_at": "$TIMESTAMP"
-              },
-              {
-                "bytes": 14,
-                "key": "legacy",
                 "schema_version": 1,
                 "updated_at": "$TIMESTAMP"
               },
@@ -8854,85 +8694,11 @@
             ],
             "valid_keys": [
               "current",
-              "legacy",
               "self-augment-lesson-contract",
               "self-verify-baseline",
               "self-verify-candidate",
               "self-verify-candidates-contract"
             ]
-          },
-          "type": "text"
-        }
-      ]
-    },
-    "state_migrate": {
-      "content": [
-        {
-          "json": {
-            "candidate_keys": [],
-            "candidates": [],
-            "confirm": false,
-            "dry_run": true,
-            "from_schema": 0,
-            "issues": [
-              {
-                "code": "invalid_json",
-                "key": "corrupt",
-                "message": "invalid character 'n' looking for beginning of object key string",
-                "path": "$STATE_DIR/corrupt.json",
-                "severity": "error"
-              }
-            ],
-            "migrated_keys": [],
-            "ok": true,
-            "skipped": [
-              {
-                "bytes": 15,
-                "key": "current",
-                "schema_version": 1,
-                "updated_at": "$TIMESTAMP"
-              },
-              {
-                "bytes": 14,
-                "key": "legacy",
-                "schema_version": 1,
-                "updated_at": "$TIMESTAMP"
-              },
-              {
-                "bytes": "$STATE_RECORD_BYTES",
-                "key": "self-augment-lesson-contract",
-                "schema_version": 1,
-                "updated_at": "$TIMESTAMP"
-              },
-              {
-                "bytes": "$STATE_RECORD_BYTES",
-                "key": "self-verify-baseline",
-                "schema_version": 1,
-                "updated_at": "$TIMESTAMP"
-              },
-              {
-                "bytes": "$STATE_RECORD_BYTES",
-                "key": "self-verify-candidate",
-                "schema_version": 1,
-                "updated_at": "$TIMESTAMP"
-              },
-              {
-                "bytes": "$STATE_RECORD_BYTES",
-                "key": "self-verify-candidates-contract",
-                "schema_version": 1,
-                "updated_at": "$TIMESTAMP"
-              }
-            ],
-            "skipped_keys": [
-              "current",
-              "legacy",
-              "self-augment-lesson-contract",
-              "self-verify-baseline",
-              "self-verify-candidate",
-              "self-verify-candidates-contract"
-            ],
-            "state_dir": "$STATE_DIR",
-            "to_schema": 1
           },
           "type": "text"
         }
@@ -8944,9 +8710,7 @@
           "json": {
             "confirm": false,
             "cutoff": "$TIMESTAMP",
-            "deleted_keys": [
-              "legacy"
-            ],
+            "deleted_keys": [],
             "dry_run": true,
             "kept": [
               {
@@ -8989,14 +8753,7 @@
             ],
             "max_age": "1h0m0s",
             "ok": true,
-            "pruned": [
-              {
-                "bytes": 14,
-                "key": "legacy",
-                "schema_version": 1,
-                "updated_at": "$TIMESTAMP"
-              }
-            ],
+            "pruned": [],
             "state_dir": "$STATE_DIR"
           },
           "type": "text"

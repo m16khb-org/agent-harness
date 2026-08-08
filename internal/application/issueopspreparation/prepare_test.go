@@ -18,7 +18,7 @@ func TestDirectPreparationPreviewAndConfirmTrace(t *testing.T) {
 		wantTrace []string
 	}{
 		{name: "preview", wantTrace: []string{"load", "workspace", "root", "direct.prepare", "clock"}},
-		{name: "confirm", confirm: true, wantTrace: []string{"gate", "load", "workspace", "root", "direct.access", "direct.prepare", "clock", "clock", "evidence.materialize", "commit"}},
+		{name: "confirm", confirm: true, wantTrace: []string{"load", "workspace", "root", "direct.access", "direct.prepare", "clock", "clock", "evidence.materialize", "commit"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -52,16 +52,16 @@ func TestDirectPreparationFailureStopsBeforeLaterEffects(t *testing.T) {
 	}{
 		{name: "access denial", configure: func(f *directServiceFixture) {
 			f.direct.access = preparationcontract.AccessResult{Allowed: false, RelaunchCommand: "codex --add-dir /repo.worktrees/199"}
-		}, wantTrace: []string{"gate", "load", "workspace", "root", "direct.access"}},
+		}, wantTrace: []string{"load", "workspace", "root", "direct.access"}},
 		{name: "provision failure", configure: func(f *directServiceFixture) {
 			f.direct.prepareErr = errors.New("provision failed")
-		}, wantTrace: []string{"gate", "load", "workspace", "root", "direct.access", "direct.prepare"}},
+		}, wantTrace: []string{"load", "workspace", "root", "direct.access", "direct.prepare"}},
 		{name: "artifact failure", configure: func(f *directServiceFixture) {
 			f.evidence.materializeErr = errors.New("artifact failed")
-		}, wantTrace: []string{"gate", "load", "workspace", "root", "direct.access", "direct.prepare", "clock", "clock", "evidence.materialize"}},
+		}, wantTrace: []string{"load", "workspace", "root", "direct.access", "direct.prepare", "clock", "clock", "evidence.materialize"}},
 		{name: "persistence failure", configure: func(f *directServiceFixture) {
 			f.repository.commitErr = errors.New("persist failed")
-		}, wantTrace: []string{"gate", "load", "workspace", "root", "direct.access", "direct.prepare", "clock", "clock", "evidence.materialize", "commit"}},
+		}, wantTrace: []string{"load", "workspace", "root", "direct.access", "direct.prepare", "clock", "clock", "evidence.materialize", "commit"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -88,11 +88,11 @@ func TestPreparationDecisionShortCircuitsDirectEffects(t *testing.T) {
 		wantCode  string
 		wantNext  bool
 	}{
-		{name: "idempotent", mode: "direct", execution: applicationExecution("direct", "active", false), wantTrace: []string{"gate", "load"}, wantCode: "existing"},
-		{name: "pending", mode: "direct", execution: applicationExecution("direct", "released", true), wantTrace: []string{"gate", "load"}, wantCode: "pending_reconcile", wantNext: true},
-		{name: "mismatch", mode: "orca", execution: applicationExecution("direct", "active", false), wantTrace: []string{"gate", "load"}, wantCode: "mode_mismatch", wantNext: true},
-		{name: "writerless", mode: "direct", execution: applicationExecution("direct", "released", false), wantTrace: []string{"gate", "load"}, wantCode: "writerless", wantNext: true},
-		{name: "root collision", mode: "direct", rootErr: errors.New("canonical root belongs to io-other"), wantTrace: []string{"gate", "load", "workspace", "root"}, wantCode: "root_conflict"},
+		{name: "idempotent", mode: "direct", execution: applicationExecution("direct", "active", false), wantTrace: []string{"load"}, wantCode: "existing"},
+		{name: "pending", mode: "direct", execution: applicationExecution("direct", "released", true), wantTrace: []string{"load"}, wantCode: "pending_reconcile", wantNext: true},
+		{name: "mismatch", mode: "orca", execution: applicationExecution("direct", "active", false), wantTrace: []string{"load"}, wantCode: "mode_mismatch", wantNext: true},
+		{name: "writerless", mode: "direct", execution: applicationExecution("direct", "released", false), wantTrace: []string{"load"}, wantCode: "writerless", wantNext: true},
+		{name: "root collision", mode: "direct", rootErr: errors.New("canonical root belongs to io-other"), wantTrace: []string{"load", "workspace", "root"}, wantCode: "root_conflict"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -158,15 +158,9 @@ func applicationExecution(mode, status string, pending bool) *leasecontract.Exec
 type applicationRepositoryFake struct {
 	trace     *[]string
 	snapshot  preparationcontract.Snapshot
-	gateErr   error
 	rootErr   error
 	commitErr error
 	commit    *DirectCommit
-}
-
-func (fake *applicationRepositoryFake) RequireMutationAllowed(context.Context) error {
-	*fake.trace = append(*fake.trace, "gate")
-	return fake.gateErr
 }
 
 func (fake *applicationRepositoryFake) Load(context.Context, string) (preparationcontract.Snapshot, error) {

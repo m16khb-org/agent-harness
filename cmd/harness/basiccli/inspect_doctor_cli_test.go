@@ -1,6 +1,8 @@
 package basiccli
 
 import (
+	"agent-harness/internal/adapter/docs"
+	"agent-harness/internal/adapter/preflight"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,8 +14,10 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/daemoncli"
-	"agent-harness/internal/core"
-	"agent-harness/internal/core/operationalhealth"
+	doctor "agent-harness/internal/adapter/doctor"
+	projectbootstrap "agent-harness/internal/adapter/projectbootstrap"
+	inspect "agent-harness/internal/contract/inspect"
+	"agent-harness/internal/domain/operationalhealth"
 	"agent-harness/internal/testsupport"
 )
 
@@ -45,7 +49,7 @@ func TestRunInspect_printsJSON_whenJSONFlagIsSet(t *testing.T) {
 	})
 
 	// 검증
-	var result core.InspectInfo
+	var result inspect.InspectInfo
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode inspect json: %v\n%s", err, out)
 	}
@@ -58,7 +62,7 @@ func TestRunDoctor_printsHealthyText_whenProjectDocsAreInitialized(t *testing.T)
 	// 준비
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
-	if _, err := core.BootstrapProjectDocs(core.ProjectDocsBootstrapRequest{RepoRoot: repo, Write: true}); err != nil {
+	if _, err := projectbootstrap.BootstrapProjectDocs(projectbootstrap.ProjectDocsBootstrapRequest{RepoRoot: repo, Write: true}); err != nil {
 		t.Fatalf("bootstrap project docs: %v", err)
 	}
 
@@ -105,7 +109,7 @@ func TestRunDoctor_printsJSON_whenJSONFlagIsSet(t *testing.T) {
 	})
 
 	// 검증
-	var result core.HarnessDoctorResult
+	var result doctor.HarnessDoctorResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode doctor json: %v\n%s", err, out)
 	}
@@ -123,10 +127,12 @@ func TestRunDoctor_printsLiveDaemonAdmissionHealth(t *testing.T) {
 	oldDeps := deps
 	t.Cleanup(func() { Configure(oldDeps) })
 	Configure(Deps{
+		GitPreflight:   preflight.GitPreflight,
+		DocsIndex:      docs.DocsIndex,
 		HarnessRoot:    func() string { return repo },
 		ResolveTarget:  func(target string) string { return target },
 		Version:        "test",
-		InspectHarness: func(string) core.InspectInfo { return core.InspectInfo{} },
+		InspectHarness: func(string) inspect.InspectInfo { return inspect.InspectInfo{} },
 		CheckDaemonStatus: func() daemoncli.Status {
 			return daemoncli.Status{
 				ActiveConnections: 64,
@@ -143,7 +149,7 @@ func TestRunDoctor_printsLiveDaemonAdmissionHealth(t *testing.T) {
 	out := captureStatusVerifyStdout(t, func() error {
 		return RunDoctor([]string{"--repo", repo, "--json"})
 	})
-	var result core.HarnessDoctorResult
+	var result doctor.HarnessDoctorResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode doctor json: %v\n%s", err, out)
 	}
@@ -173,7 +179,7 @@ func TestRunDoctorOperationalPreserveFlagsAreRepeatableAndInvocationScoped(t *te
 			"--json",
 		})
 	})
-	var result core.HarnessDoctorResult
+	var result doctor.HarnessDoctorResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode doctor json: %v\n%s", err, out)
 	}
@@ -206,7 +212,7 @@ func TestRunDoctorDefaultsToInteractiveProfileForUserTerminals(t *testing.T) {
 	out := captureStatusVerifyStdout(t, func() error {
 		return RunDoctor([]string{"--repo", repo, "--json"})
 	})
-	var result core.HarnessDoctorResult
+	var result doctor.HarnessDoctorResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode doctor json: %v\n%s", err, out)
 	}
@@ -257,7 +263,7 @@ func TestRunDoctorOperationalInventoryFailureHasJSONTextParity(t *testing.T) {
 	jsonOut := captureStatusVerifyStdout(t, func() error {
 		return RunDoctor([]string{"--repo", repo, "--json"})
 	})
-	var result core.HarnessDoctorResult
+	var result doctor.HarnessDoctorResult
 	if err := json.Unmarshal([]byte(jsonOut), &result); err != nil {
 		t.Fatalf("decode doctor json: %v\n%s", err, jsonOut)
 	}
@@ -324,7 +330,7 @@ func TestRunDoctor_returnsError_whenRepoPathIsInvalid(t *testing.T) {
 	}
 }
 
-func doctorResultHasIssue(result core.HarnessDoctorResult, code string) bool {
+func doctorResultHasIssue(result doctor.HarnessDoctorResult, code string) bool {
 	for _, issue := range result.Issues {
 		if issue.Code == code {
 			return true
@@ -333,13 +339,13 @@ func doctorResultHasIssue(result core.HarnessDoctorResult, code string) bool {
 	return false
 }
 
-func doctorResultCheck(result core.HarnessDoctorResult, name string) (core.HarnessDoctorCheck, bool) {
+func doctorResultCheck(result doctor.HarnessDoctorResult, name string) (doctor.HarnessDoctorCheck, bool) {
 	for _, check := range result.Checks {
 		if check.Name == name {
 			return check, true
 		}
 	}
-	return core.HarnessDoctorCheck{}, false
+	return doctor.HarnessDoctorCheck{}, false
 }
 
 func TestRunDoctor_doesNotRequireRealHome(t *testing.T) {

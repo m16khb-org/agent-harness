@@ -1,15 +1,15 @@
 package mcpcli
 
 import (
+	statestore "agent-harness/internal/adapter/outbound/state"
+	statecontract "agent-harness/internal/contract/state"
 	"testing"
-
-	"agent-harness/internal/core"
 )
 
 func TestMCPStateMaintain(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	t.Setenv("HARNESS_WORKER_DIR", "")
-	if _, err := core.StateWrite("mcp-maintain-smoke", "content"); err != nil {
+	if _, err := statestore.StateWrite("mcp-maintain-smoke", "content"); err != nil {
 		t.Fatalf("seed state: %v", err)
 	}
 
@@ -17,7 +17,7 @@ func TestMCPStateMaintain(t *testing.T) {
 	if outcome.Err != nil {
 		t.Fatalf("state_maintain failed: %+v", outcome.Err)
 	}
-	result, ok := outcome.Payload.(core.StateMaintainResult)
+	result, ok := outcome.Payload.(statecontract.StateMaintainResult)
 	if !ok {
 		t.Fatalf("unexpected payload type %T", outcome.Payload)
 	}

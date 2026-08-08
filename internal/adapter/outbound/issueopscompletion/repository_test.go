@@ -15,6 +15,13 @@ import (
 
 func TestRepositoryAtomicallyPersistsCompletionAndDeletesHolderIndex(t *testing.T) {
 	record, actor := completionRepositoryRecord(t)
+	record.Execution.CompletionHistory = []leasecontract.CompletionHistoryEntry{{
+		Generation: 4,
+		Completion: leasecontract.Completion{FinalHead: "d6d8c6a5a98fcca6bca33edf9e7965636429ce28", TuringReportPath: ".agent-harness/turing/old.json", Verification: []string{"old verification"}, RemoteArtifactURL: "https://github.com/acme/repo/pull/198", CompletedAt: "2026-08-01T00:00:00Z"},
+		Reason:     "functional HEAD moved",
+		ReopenedAt: "2026-08-02T00:00:00Z",
+	}}
+	record.Execution.Lease.Generation = 5
 	raw, err := leasecontract.Encode(record)
 	if err != nil {
 		t.Fatal(err)
@@ -33,7 +40,7 @@ func TestRepositoryAtomicallyPersistsCompletionAndDeletesHolderIndex(t *testing.
 		before.Lease.Status = "released"
 		before.Lease.Holder = nil
 		before.Lease.ReleasedAt = "2026-08-02T01:02:03.000000004Z"
-		before.Completion = &completioncontract.Completion{FinalHead: strings.Repeat("a", 40), TuringReportPath: "/worktree/report.json", Verification: []string{"go test ./..."}, RemoteArtifactURL: "https://github.com/acme/repo/pull/198", CompletedAt: "2026-08-02T01:02:03.000000004Z"}
+		before.Completion = &completioncontract.Completion{Generation: 5, FinalHead: strings.Repeat("a", 40), TuringReportPath: "/worktree/report.json", Verification: []string{"go test ./..."}, RemoteArtifactURL: "https://github.com/acme/repo/pull/198", CompletedAt: "2026-08-02T01:02:03.000000004Z"}
 		before.Ledger["pr"] = completioncontract.LedgerEntry{Phase: "pr", EnteredAt: "2026-08-02T00:00:03Z", CompletedAt: "2026-08-02T01:02:03.000000004Z", Artifacts: []string{"strict_pr_readiness", "children_complete", "remote_artifact", "target_branch_match"}}
 		before.Ledger["done"] = completioncontract.LedgerEntry{Phase: "done", EnteredAt: "2026-08-02T01:02:03.000000004Z"}
 		return before, true, nil
@@ -51,8 +58,11 @@ func TestRepositoryAtomicallyPersistsCompletionAndDeletesHolderIndex(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if persisted.Phase != "done" || persisted.Execution.Completion == nil || persisted.Execution.Lease.Status != "released" {
+	if persisted.Phase != "done" || persisted.Execution.Completion == nil || persisted.Execution.Completion.Generation != 5 || persisted.Execution.Lease.Status != "released" {
 		t.Fatalf("persisted = %+v", persisted)
+	}
+	if len(persisted.Execution.CompletionHistory) != 1 || persisted.Execution.CompletionHistory[0].Completion.FinalHead != "d6d8c6a5a98fcca6bca33edf9e7965636429ce28" || persisted.Execution.CompletionHistory[0].Completion.Verification[0] != "old verification" {
+		t.Fatalf("completion history lost: %+v", persisted.Execution.CompletionHistory)
 	}
 	var ledger map[string]completioncontract.LedgerEntry
 	if err := json.Unmarshal(persisted.PhaseLedger, &ledger); err != nil {

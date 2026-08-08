@@ -5,7 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/core"
+	issueopscore "agent-harness/internal/adapter/issueops"
+	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
 func TestIssueOpsCompatibilityReviewCLIRecordsReview(t *testing.T) {
@@ -20,10 +21,10 @@ func TestIssueOpsCompatibilityReviewCLIRecordsReview(t *testing.T) {
 	}
 	id := record["id"].(string)
 	recordIssueOpsCoreIntentForCLITest(t, id)
-	if _, err := core.LinkIssueOpsIssue(core.IssueOpsStateRoot(), id, "https://github.com/example/repo/issues/123"); err != nil {
+	if _, err := issueopscore.LinkIssueOpsIssue(issueopscore.IssueOpsStateRoot(), id, "https://github.com/example/repo/issues/123"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := core.PrepareIssueOpsBranch(core.IssueOpsStateRoot(), id, core.IssueOpsBranchPrepareRequest{
+	if _, err := issueopscore.PrepareIssueOpsBranch(issueopscore.IssueOpsStateRoot(), id, issueopscontract.IssueOpsBranchPrepareRequest{
 		Provider:     "github",
 		IssueURL:     "https://github.com/example/repo/issues/123",
 		Branch:       "123-compatibility-review",
@@ -33,12 +34,12 @@ func TestIssueOpsCompatibilityReviewCLIRecordsReview(t *testing.T) {
 		t.Fatal(err)
 	}
 	worktree := makeIssueOpsCLIWorktreeForTest(t, repo, "123-compatibility-review")
-	if _, err := core.LinkIssueOpsWorktree(core.IssueOpsStateRoot(), id, worktree); err != nil {
+	if _, err := issueopscore.LinkIssueOpsWorktree(issueopscore.IssueOpsStateRoot(), id, worktree); err != nil {
 		t.Fatal(err)
 	}
 	recordIssueOpsCoreDesignForCLITest(t, id)
 	writeIssueOpsCLIFileForTest(t, worktree, "plans/demo.md", "plan\n")
-	if _, err := core.LinkIssueOpsPlan(core.IssueOpsStateRoot(), id, filepath.Join(worktree, "plans/demo.md")); err != nil {
+	if _, err := issueopscore.LinkIssueOpsPlan(issueopscore.IssueOpsStateRoot(), id, filepath.Join(worktree, "plans/demo.md")); err != nil {
 		t.Fatal(err)
 	}
 

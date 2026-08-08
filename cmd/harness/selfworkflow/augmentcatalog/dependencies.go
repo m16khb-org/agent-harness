@@ -7,10 +7,7 @@ const (
 	SelfAugmentCandidateStatusSatisfied = "already_satisfied"
 )
 
-const (
-	selfAugmentCandidateStatusOpen      = SelfAugmentCandidateStatusOpen
-	selfAugmentCandidateStatusSatisfied = SelfAugmentCandidateStatusSatisfied
-)
+const ()
 
 type SelfAugmentCandidate = model.SelfAugmentCandidate
 type SelfAugmentGoal = model.SelfAugmentGoal

@@ -191,6 +191,7 @@ func terminalCompletionMatches(record completioncontract.RecordSnapshot, command
 	return record.Phase == "done" && record.Lease.Generation == command.Generation && record.Lease.Status == "released" &&
 		record.Lease.Holder == nil && record.Lease.ClaimTokenSHA256 == "" && strings.TrimSpace(record.Lease.ReleasedAt) != "" &&
 		completion != nil && strings.TrimSpace(completion.CompletedAt) != "" &&
+		(completion.Generation == 0 || completion.Generation == command.Generation) &&
 		strings.EqualFold(completion.FinalHead, strings.TrimSpace(command.FinalHead)) &&
 		environment.PathsMatch(completion.TuringReportPath, command.TuringReportPath) &&
 		slices.Equal(completion.Verification, command.Verification) &&

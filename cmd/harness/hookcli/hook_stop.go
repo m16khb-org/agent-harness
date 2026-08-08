@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
-	hookadapter "agent-harness/internal/adapter/hook"
-	"agent-harness/internal/core"
+	hookadapter "agent-harness/internal/domain/hook"
+	nextaction "agent-harness/internal/domain/nextaction"
 )
 
 func runHookStop(args []string) error {
@@ -40,21 +40,21 @@ func runHookStop(args []string) error {
 	if resolvedHost == "" {
 		resolvedHost = string(hookadapter.HostCodex)
 	}
-	result := core.BuildLifecycleStopReminder(parsedRepo)
+	result := buildLifecycleStopReminder(parsedRepo)
 	message := hookinput.LastAssistantMessageFromHookInput(stdin)
 	if message == "" {
 		message = hookinput.ReadLastAssistantMessageFromTranscript(hookinput.TranscriptPathFromHookInput(stdin))
 	}
 	transcriptPath := hookinput.TranscriptPathFromHookInput(stdin)
-	nextActions := core.BuildNumberedNextActionsDecision(
+	nextActions := nextaction.BuildNumberedNextActionsDecision(
 		message,
 		*enforceNumberedNextActions,
 		"stop",
 	)
 	stopHookActive := hookinput.Bool(stdin, "stop_hook_active")
 	nextActionTriggerEnabled := *relayNextActionJudgement
-	nextActionTrigger := core.BuildNextActionJudgementTrigger(message)
-	noAutoProceedJudgement := core.IsNoAutoProceedJudgement(message)
+	nextActionTrigger := nextaction.BuildNextActionJudgementTrigger(message)
+	noAutoProceedJudgement := nextaction.IsNoAutoProceedJudgement(message)
 	engelbartCanvasBlock, engelbartCanvasReason := buildEngelbartCanvasSectionsBlock(message, transcriptPath, *enforceEngelbartCanvasSections)
 	if *jsonOut {
 		return printJSON(map[string]any{
@@ -71,12 +71,12 @@ func runHookStop(args []string) error {
 	}
 	ho := hookadapter.Resolve(resolvedHost)
 	if nextActionTriggerEnabled && nextActionTrigger.ShouldReenterAgent {
-		relayRecord := core.RecordStopNextActionRelay(parsedRepo, nextActionTrigger)
+		relayRecord := recordStopNextActionRelay(parsedRepo, nextActionTrigger)
 		if !relayRecord.ShouldRelay {
 			return printJSON(ho.FormatNoop())
 		}
-		reason := core.BuildNextActionJudgementRelayReason(nextActionTrigger)
-		if facts := core.StopOrchestrationRelayFacts(parsedRepo); facts != "" {
+		reason := nextaction.BuildJudgementRelayReason(nextActionTrigger)
+		if facts := StopOrchestrationRelayFacts(parsedRepo); facts != "" {
 			reason += " 관찰된 orchestration 상태: " + facts + "."
 		}
 		return printJSON(ho.FormatStopBlock(reason))

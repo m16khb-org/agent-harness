@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	"agent-harness/internal/core"
+	statecontract "agent-harness/internal/contract/state"
 )
 
 type parallelIsolationProbeDeps struct {
@@ -82,7 +82,7 @@ func runParallelIsolationProbeWithDeps(binary, root string, seed int64, worker i
 		probe.Error = "state read failed: " + read.Error
 		return probe
 	}
-	var readResult core.StateResult
+	var readResult statecontract.StateResult
 	if err := json.Unmarshal([]byte(read.Stdout), &readResult); err != nil {
 		probe.Error = "state read parse failed: " + err.Error()
 		return probe
@@ -97,7 +97,7 @@ func runParallelIsolationProbeWithDeps(binary, root string, seed int64, worker i
 		probe.Error = "state list failed: " + list.Error
 		return probe
 	}
-	var listResult core.StateListResult
+	var listResult statecontract.StateListResult
 	if err := json.Unmarshal([]byte(list.Stdout), &listResult); err != nil {
 		probe.Error = "state list parse failed: " + err.Error()
 		return probe

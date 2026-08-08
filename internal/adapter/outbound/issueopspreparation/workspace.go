@@ -49,8 +49,9 @@ func (adapter *DirectWorkspaceAdapter) Prepare(ctx context.Context, request prep
 }
 
 func validateDirectCWD(request preparationcontract.WorkspaceRequest) error {
-	if !sameResolvedPath(request.CWD, request.SourceRoot) && !sameResolvedPath(request.CWD, request.Root) {
-		return fmt.Errorf("direct prepare cwd must be source_root or the canonical worktree")
+	if !sameResolvedPath(request.CWD, request.SourceRoot) && !sameResolvedPath(request.CWD, request.Root) &&
+		(strings.TrimSpace(request.ParentWorktree) == "" || !sameResolvedPath(request.CWD, request.ParentWorktree)) {
+		return fmt.Errorf("direct prepare cwd must be source_root, the canonical worktree, or the sealed parent_worktree")
 	}
 	return nil
 }
