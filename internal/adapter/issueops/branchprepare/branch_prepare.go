@@ -361,7 +361,8 @@ func githubLinkedBranchReadbackSteps(issueURL, branch, baseSHA string, firstOrde
 			Description: "Read the issue's linked branches back. " + expectation +
 				" A null `ref` is a partial success, not a failure to retry: the mutation already created a " +
 				"LinkedBranch record, so running it again does not fix the state and may add a second orphan. " +
-				"Report the observation instead.",
+				"Recover with `agent-harness issueops cleanup linked-branch --id <id> --preview`, which classifies " +
+				"the record and issues a fingerprint bound to the exact node; never delete it with raw GraphQL.",
 		},
 		{
 			Order:    firstOrder + 1,
@@ -369,7 +370,8 @@ func githubLinkedBranchReadbackSteps(issueURL, branch, baseSHA string, firstOrde
 			Command:  []string{"git", "ls-remote", "--heads", "origin", "refs/heads/" + branch},
 			Description: "Read the remote ref back. It must print exactly one line for refs/heads/" + branch +
 				" and its OID must match what the previous step reported. An empty result with a non-null " +
-				"LinkedBranch record is the same partial success; do not retry the mutation.",
+				"LinkedBranch record is the same partial success; do not retry the mutation. " +
+				"Recover with `agent-harness issueops cleanup linked-branch --id <id> --preview`.",
 		},
 	}
 }

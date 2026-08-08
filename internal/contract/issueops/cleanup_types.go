@@ -178,3 +178,49 @@ type CleanupRemoteBranchResult struct {
 	// SupersedeError는 replacement 증거가 제시됐으나 검증에 실패한 사유다.
 	SupersedeError string `json:"supersede_error,omitempty"`
 }
+
+// CleanupLinkedBranchRequest는 `createLinkedBranch`가 남긴 ref-null 고아
+// 레코드를 typed 경로로 정리하는 입력이다(#306 AC-04).
+//
+// 지울 대상을 사용자가 지정하지 않는다는 점이 이 표면의 핵심이다. ref가 없는
+// 레코드는 이름이 없으므로 사람이 지목하면 오지목을 검증할 방법이 없다.
+// preview가 이슈를 읽어 후보를 **하나로 확정**했을 때만 그 노드 id가 결속된
+// fingerprint를 발급하고, apply는 그 fingerprint로만 진행한다.
+type CleanupLinkedBranchRequest struct {
+	ID          string
+	Apply       bool
+	Confirm     bool
+	Fingerprint string
+}
+
+// CleanupLinkedBranchResult는 관측·분류·처분을 한 응답에 담는다.
+type CleanupLinkedBranchResult struct {
+	OK      bool     `json:"ok"`
+	ID      string   `json:"id"`
+	Preview bool     `json:"preview"`
+	Missing []string `json:"missing,omitempty"`
+	// State는 도메인 분류다: absent | healthy | orphan_ref_null | mismatched | ambiguous.
+	// 삭제가 허용되는 값은 orphan_ref_null 하나뿐이다.
+	State string `json:"state"`
+	// StateReason은 왜 그 분류인지다. 지울 수 없는 이유가 사용자에게 보이지
+	// 않으면 raw GraphQL로 우회하게 된다 — 그것이 이 이슈가 금지하는 경로다.
+	StateReason     string `json:"state_reason,omitempty"`
+	IssueURL        string `json:"issue_url,omitempty"`
+	RequestedBranch string `json:"requested_branch,omitempty"`
+	SealedBase      string `json:"sealed_base,omitempty"`
+	// LinkedBranchID는 preview가 확정한 삭제 대상 노드다. 확정하지 못하면 비어 있다.
+	LinkedBranchID string `json:"linked_branch_id,omitempty"`
+	LinkedCount    int    `json:"linked_count"`
+	// RemoteRefOID는 refs/heads/<RequestedBranch>의 같은 시점 관측이다.
+	RemoteRefOID  string `json:"remote_ref_oid,omitempty"`
+	Fingerprint   string `json:"fingerprint,omitempty"`
+	AlreadyAbsent bool   `json:"already_absent,omitempty"`
+	Deleted       bool   `json:"deleted,omitempty"`
+	DeletedAt     string `json:"deleted_at,omitempty"`
+	// AuditRecorded는 처분을 durable audit에 남겼는지다(AC-06).
+	AuditRecorded bool   `json:"audit_recorded,omitempty"`
+	AuditError    string `json:"audit_error,omitempty"`
+	ObserveError  string `json:"observe_error,omitempty"`
+	FailedStep    string `json:"failed_step,omitempty"`
+	NextCommand   string `json:"next_command,omitempty"`
+}

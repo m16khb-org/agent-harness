@@ -101,7 +101,7 @@ func localActor(host, sessionID, agentID, cwd string) issueopscontract.IssueOpsA
 
 func RunCleanup(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops cleanup status --id ID [--merged] [--json]\n       agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]\n       agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]\n       agent-harness issueops cleanup remote-branch --id ID (--preview | --apply --confirm --fingerprint SHA256) [--superseded-by URL] [--json]\n       agent-harness issueops cleanup finish --id ID [--provider github|gitlab] (--preview | --apply --confirm --fingerprint SHA256) [--superseded-by URL] [--json]\n       agent-harness issueops cleanup abandon --id ID --reason TEXT (--preview | --apply --confirm --fingerprint SHA256) [--json]")
+		fmt.Println("Usage: agent-harness issueops cleanup status --id ID [--merged] [--json]\n       agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]\n       agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]\n       agent-harness issueops cleanup remote-branch --id ID (--preview | --apply --confirm --fingerprint SHA256) [--superseded-by URL] [--json]\n       agent-harness issueops cleanup linked-branch --id ID (--preview | --apply --confirm --fingerprint SHA256) [--json]\n       agent-harness issueops cleanup finish --id ID [--provider github|gitlab] (--preview | --apply --confirm --fingerprint SHA256) [--superseded-by URL] [--json]\n       agent-harness issueops cleanup abandon --id ID --reason TEXT (--preview | --apply --confirm --fingerprint SHA256) [--json]")
 		return nil
 	}
 	switch args[0] {
@@ -138,6 +138,8 @@ func RunCleanup(args []string, deps Deps) error {
 		return nil
 	case "remote-branch":
 		return runCleanupRemoteBranch(args[1:], deps)
+	case "linked-branch":
+		return runCleanupLinkedBranch(args[1:], deps)
 	case "finish":
 		return runCleanupFinish(args[1:], deps)
 	case "abandon":
@@ -617,4 +619,78 @@ func CleanupMerged(id string, requested bool, deps Deps) bool {
 		return false
 	}
 	return deps.VerifyMerged(*record.RemoteArtifact) == nil
+}
+
+// runCleanupLinkedBranch는 `createLinkedBranch`가 남긴 ref-null 고아 레코드를
+// typed 경로로 정리한다(#306).
+//
+// 지울 대상을 사용자가 지정하지 않는 것이 이 표면의 핵심이다. ref가 없는
+// 레코드는 이름이 없으므로 사람이 지목하면 오지목을 검증할 방법이 없다.
+// preview가 관측으로 후보를 하나로 확정했을 때만 노드 id가 결속된 fingerprint를
+// 발급하고, apply는 다시 관측해 같은 fingerprint가 나올 때만 진행한다.
+func runCleanupLinkedBranch(args []string, deps Deps) error {
+	fs := flag.NewFlagSet("issueops cleanup linked-branch", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	preview := fs.Bool("preview", false, "observe and classify without mutating")
+	apply := fs.Bool("apply", false, "delete the sealed orphan linked branch record")
+	confirm := fs.Bool("confirm", false, "confirm the destructive apply")
+	fingerprint := fs.String("fingerprint", "", "fingerprint issued by the latest --preview")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := deps.ParseFlags(fs, args); help || err != nil {
+		return err
+	}
+	if *preview && *apply {
+		return fmt.Errorf("cleanup linked-branch --preview and --apply are mutually exclusive")
+	}
+	if !*preview && !*apply {
+		return fmt.Errorf("cleanup linked-branch requires exactly one mode: --preview or --apply --confirm --fingerprint SHA256")
+	}
+	record, err := cleanupDeps.ReadIssueOps(cleanupDeps.IssueOpsStateRoot(), *id)
+	if err != nil {
+		return printCleanupFinishError(deps, *jsonOut, err)
+	}
+	result, err := cleanupDeps.CleanupLinkedBranch(context.Background(), cleanupDeps.IssueOpsStateRoot(), issueopscontract.CleanupLinkedBranchRequest{
+		ID: *id, Apply: *apply, Confirm: *confirm, Fingerprint: *fingerprint,
+	})
+	var bindErr error
+	result.NextCommand, bindErr = bindCleanupNextCommand(result.NextCommand, cleanupExecutionGeneration(record), deps.Provenance)
+	if bindErr != nil {
+		return printCleanupFinishError(deps, *jsonOut, bindErr)
+	}
+	if err != nil {
+		if *jsonOut {
+			if printErr := deps.PrintJSON(result); printErr != nil {
+				return printErr
+			}
+		}
+		return err
+	}
+	if *jsonOut {
+		return deps.PrintJSON(result)
+	}
+	printCleanupLinkedBranchResult(result)
+	return nil
+}
+
+func printCleanupLinkedBranchResult(result issueopscontract.CleanupLinkedBranchResult) {
+	switch {
+	case result.Deleted:
+		fmt.Printf("orphan linked branch deleted: node=%s at=%s\n", result.LinkedBranchID, result.DeletedAt)
+	case result.AlreadyAbsent:
+		fmt.Printf("linked branch already absent: issue=%s branch=%s\n", result.IssueURL, result.RequestedBranch)
+	default:
+		fmt.Printf("state: %s\n", result.State)
+		if result.StateReason != "" {
+			fmt.Printf("reason: %s\n", result.StateReason)
+		}
+		if result.LinkedBranchID != "" {
+			fmt.Printf("target: %s\n", result.LinkedBranchID)
+		}
+		if result.NextCommand != "" {
+			fmt.Printf("next: %s\n", result.NextCommand)
+		}
+	}
+	if result.AuditError != "" {
+		fmt.Printf("audit error: %s\n", result.AuditError)
+	}
 }

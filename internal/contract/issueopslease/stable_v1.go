@@ -30,6 +30,7 @@ type stableV1Record struct {
 	RemoteCompletion        *stableV1RemoteCompletion      `json:"remote_completion,omitempty"`
 	SourceMisdirectWarnings int                            `json:"source_misdirect_warnings,omitempty"`
 	CleanupFinishFailure    *stableV1CleanupFinishFailure  `json:"cleanup_finish_failure,omitempty"`
+	LinkedBranchCleanup     *stableV1LinkedBranchCleanup   `json:"linked_branch_cleanup,omitempty"`
 	CleanupAbandonFailure   *stableV1CleanupAbandonFailure `json:"cleanup_abandon_failure,omitempty"`
 	ImplementationReview    *stableV1ImplementationReview  `json:"implementation_review,omitempty"`
 	RoutingTrace            []stableV1SkillRouting         `json:"routing_trace,omitempty"`
@@ -322,6 +323,22 @@ type stableV1RemoteCompletion struct {
 	ReflectedAt   string `json:"reflected_at,omitempty"`
 	IssueClosedAt string `json:"issue_closed_at,omitempty"`
 }
+
+// stableV1LinkedBranchCleanup은 ref-null 고아 linked-branch 처분의 감사
+// 기록이다(#306 AC-06). 처분 사실과 그 근거가 된 관측을 함께 남긴다.
+type stableV1LinkedBranchCleanup struct {
+	State          string `json:"state"`
+	StateReason    string `json:"state_reason,omitempty"`
+	LinkedBranchID string `json:"linked_branch_id,omitempty"`
+	LinkedCount    int    `json:"linked_count"`
+	RemoteRefOID   string `json:"remote_ref_oid,omitempty"`
+	Fingerprint    string `json:"fingerprint,omitempty"`
+	Deleted        bool   `json:"deleted,omitempty"`
+	AlreadyAbsent  bool   `json:"already_absent,omitempty"`
+	FailedStep     string `json:"failed_step,omitempty"`
+	ObservedAt     string `json:"observed_at"`
+}
+
 type stableV1CleanupFinishFailure struct {
 	Step    string `json:"step"`
 	Message string `json:"message"`
