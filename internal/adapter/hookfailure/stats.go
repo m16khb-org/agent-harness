@@ -1,30 +1,16 @@
 package hookfailure
 
 import (
+	hookfailurecontract "agent-harness/internal/contract/hookfailure"
 	"bufio"
 	"encoding/json"
 	"os"
 	"time"
 )
 
-// HookFailureStats aggregates the failure JSONL into the hook-health metrics
-// the quality program's Q2 item requires: failure counts (total, per hook,
-// recent windows) plus log-health fields for the rotation policy.
-type HookFailureStats struct {
-	OK        bool           `json:"ok"`
-	Path      string         `json:"path"`
-	Total     int            `json:"total"`
-	ByHook    map[string]int `json:"by_hook,omitempty"`
-	Last24h   int            `json:"last_24h"`
-	Last7d    int            `json:"last_7d"`
-	SizeBytes int64          `json:"size_bytes"`
-	Oldest    string         `json:"oldest,omitempty"`
-	Newest    string         `json:"newest,omitempty"`
-}
-
-func SummarizeHookFailureLog() (HookFailureStats, error) {
+func SummarizeHookFailureLog() (hookfailurecontract.HookFailureStats, error) {
 	path := HookFailureLogPath()
-	stats := HookFailureStats{OK: true, Path: path, ByHook: map[string]int{}}
+	stats := hookfailurecontract.HookFailureStats{OK: true, Path: path, ByHook: map[string]int{}}
 
 	f, err := os.Open(path)
 	if os.IsNotExist(err) {
@@ -47,7 +33,7 @@ func SummarizeHookFailureLog() (HookFailureStats, error) {
 		if len(line) == 0 {
 			continue
 		}
-		var event HookFailureEvent
+		var event hookfailurecontract.HookFailureEvent
 		if json.Unmarshal(line, &event) != nil {
 			// Count unparseable lines so interleaved/corrupt entries (the
 			// documented PIPE_BUF risk) stay visible instead of vanishing.

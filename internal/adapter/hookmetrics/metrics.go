@@ -5,6 +5,7 @@
 package hookmetrics
 
 import (
+	hookmetricscontract "agent-harness/internal/contract/hookmetrics"
 	"bufio"
 	"context"
 	"encoding/json"
@@ -24,54 +25,6 @@ const (
 	defaultStaleTempAge       = time.Hour
 )
 
-type HookMetricEvent struct {
-	Timestamp  string `json:"timestamp,omitempty"`
-	Hook       string `json:"hook"`
-	Host       string `json:"host,omitempty"`
-	DurationMS int64  `json:"duration_ms"`
-	// Decision is set by enforcement gates when they block ("block"); empty
-	// for ordinary completions.
-	Decision string `json:"decision,omitempty"`
-}
-
-type HookMetricRecordResult struct {
-	OK   bool   `json:"ok"`
-	Path string `json:"path"`
-}
-
-type HookLatencyStats struct {
-	Count  int   `json:"count"`
-	P50MS  int64 `json:"p50_ms"`
-	P95MS  int64 `json:"p95_ms"`
-	MaxMS  int64 `json:"max_ms"`
-	Blocks int   `json:"blocks"`
-	// Asks counts enforcement "ask" decisions; like Blocks they are real gate
-	// interventions, so both feed GateHitRate (A2/G4).
-	Asks int `json:"asks"`
-	// GateHitRate = (Blocks+Asks)/Count: the fraction of invocations where the
-	// gate actually intervened. A gate that is silently disabled keeps Count
-	// rising while this drops to ~0, which absolute Blocks alone cannot reveal.
-	GateHitRate float64 `json:"gate_hit_rate"`
-}
-
-type HookMetricsStats struct {
-	OK     bool                        `json:"ok"`
-	Path   string                      `json:"path"`
-	Total  int                         `json:"total"`
-	ByHook map[string]HookLatencyStats `json:"by_hook,omitempty"`
-	// GateHitRate is the overall (Blocks+Asks)/Count across all hooks.
-	GateHitRate float64 `json:"gate_hit_rate"`
-	Last24h     int     `json:"last_24h"`
-}
-
-type HookMetricsPruneResult struct {
-	OK               bool   `json:"ok"`
-	Path             string `json:"path"`
-	Pruned           int    `json:"pruned"`
-	Kept             int    `json:"kept"`
-	StaleTempRemoved int    `json:"stale_temp_removed,omitempty"`
-}
-
 type hookMetricsPruneLimits struct {
 	MaxEntries   int
 	MaxBytes     int64
@@ -82,9 +35,9 @@ func HookMetricsLogPath() string {
 	return filepath.Join(corestate.StateDir(), hookMetricsLogFile)
 }
 
-func RecordHookMetricEvent(event HookMetricEvent) (HookMetricRecordResult, error) {
+func RecordHookMetricEvent(event hookmetricscontract.HookMetricEvent) (hookmetricscontract.HookMetricRecordResult, error) {
 	path := HookMetricsLogPath()
-	result := HookMetricRecordResult{OK: false, Path: path}
+	result := hookmetricscontract.HookMetricRecordResult{OK: false, Path: path}
 	if event.Timestamp == "" {
 		event.Timestamp = time.Now().UTC().Format(time.RFC3339Nano)
 	}
@@ -110,9 +63,9 @@ func RecordHookMetricEvent(event HookMetricEvent) (HookMetricRecordResult, error
 	return result, nil
 }
 
-func SummarizeHookMetricsLog() (HookMetricsStats, error) {
+func SummarizeHookMetricsLog() (hookmetricscontract.HookMetricsStats, error) {
 	path := HookMetricsLogPath()
-	stats := HookMetricsStats{OK: true, Path: path, ByHook: map[string]HookLatencyStats{}}
+	stats := hookmetricscontract.HookMetricsStats{OK: true, Path: path, ByHook: map[string]hookmetricscontract.HookLatencyStats{}}
 
 	events, err := readHookMetricEvents(path)
 	if os.IsNotExist(err) {
@@ -162,7 +115,7 @@ func SummarizeHookMetricsLog() (HookMetricsStats, error) {
 	return stats, nil
 }
 
-func PruneHookMetricsLog(maxAge time.Duration) (HookMetricsPruneResult, error) {
+func PruneHookMetricsLog(maxAge time.Duration) (hookmetricscontract.HookMetricsPruneResult, error) {
 	return pruneHookMetricsLog(maxAge, hookMetricsPruneLimits{
 		MaxEntries:   defaultHookMetricsEntries,
 		MaxBytes:     defaultHookMetricsBytes,
@@ -170,9 +123,9 @@ func PruneHookMetricsLog(maxAge time.Duration) (HookMetricsPruneResult, error) {
 	})
 }
 
-func pruneHookMetricsLog(maxAge time.Duration, limits hookMetricsPruneLimits) (HookMetricsPruneResult, error) {
+func pruneHookMetricsLog(maxAge time.Duration, limits hookMetricsPruneLimits) (hookmetricscontract.HookMetricsPruneResult, error) {
 	path := HookMetricsLogPath()
-	result := HookMetricsPruneResult{OK: false, Path: path}
+	result := hookmetricscontract.HookMetricsPruneResult{OK: false, Path: path}
 	err := corestate.WithKeyLock(context.Background(), filepath.Dir(path), "hook-metrics", func(context.Context) error {
 		if removed, err := sweepStaleHookMetricTemps(filepath.Dir(path), limits.StaleTempAge); err != nil {
 			return err
@@ -189,7 +142,7 @@ func pruneHookMetricsLog(maxAge time.Duration, limits hookMetricsPruneLimits) (H
 			return err
 		}
 		cutoff := time.Now().UTC().Add(-maxAge)
-		kept := make([]HookMetricEvent, 0, len(events))
+		kept := make([]hookmetricscontract.HookMetricEvent, 0, len(events))
 		for _, event := range events {
 			ts, err := time.Parse(time.RFC3339Nano, event.Timestamp)
 			if err == nil && ts.Before(cutoff) {
@@ -263,7 +216,7 @@ func sweepStaleHookMetricTemps(dir string, staleAfter time.Duration) (int, error
 	return removed, nil
 }
 
-func boundHookMetricEvents(events []HookMetricEvent, limits hookMetricsPruneLimits) ([]HookMetricEvent, int, error) {
+func boundHookMetricEvents(events []hookmetricscontract.HookMetricEvent, limits hookMetricsPruneLimits) ([]hookmetricscontract.HookMetricEvent, int, error) {
 	original := len(events)
 	if limits.MaxEntries > 0 && len(events) > limits.MaxEntries {
 		events = events[len(events)-limits.MaxEntries:]
@@ -288,13 +241,13 @@ func boundHookMetricEvents(events []HookMetricEvent, limits hookMetricsPruneLimi
 	return events, original - len(events), nil
 }
 
-func readHookMetricEvents(path string) ([]HookMetricEvent, error) {
+func readHookMetricEvents(path string) ([]hookmetricscontract.HookMetricEvent, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	var events []HookMetricEvent
+	var events []hookmetricscontract.HookMetricEvent
 	scanner := bufio.NewScanner(f)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for scanner.Scan() {
@@ -302,7 +255,7 @@ func readHookMetricEvents(path string) ([]HookMetricEvent, error) {
 		if len(line) == 0 {
 			continue
 		}
-		var event HookMetricEvent
+		var event hookmetricscontract.HookMetricEvent
 		if json.Unmarshal(line, &event) != nil {
 			continue
 		}

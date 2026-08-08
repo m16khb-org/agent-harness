@@ -1,6 +1,7 @@
 package hookfailure
 
 import (
+	hookfailurecontract "agent-harness/internal/contract/hookfailure"
 	"encoding/json"
 	"os"
 	"testing"
@@ -14,12 +15,12 @@ func TestSummarizeHookFailureLogAggregatesByHookAndRecency(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 
 	for _, hook := range []string{"stop", "stop"} {
-		if _, err := RecordHookFailureEvent(HookFailureEvent{Hook: hook, Error: "boom"}); err != nil {
+		if _, err := RecordHookFailureEvent(hookfailurecontract.HookFailureEvent{Hook: hook, Error: "boom"}); err != nil {
 			t.Fatal(err)
 		}
 	}
 	// One old event (8 days ago) appended directly, since Record stamps now.
-	old, err := json.Marshal(HookFailureEvent{
+	old, err := json.Marshal(hookfailurecontract.HookFailureEvent{
 		Timestamp: time.Now().UTC().Add(-8 * 24 * time.Hour).Format(time.RFC3339Nano),
 		Hook:      "pre-tool-use",
 		Error:     "stale",

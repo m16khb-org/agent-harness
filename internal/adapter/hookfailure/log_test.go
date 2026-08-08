@@ -1,6 +1,7 @@
 package hookfailure
 
 import (
+	hookfailurecontract "agent-harness/internal/contract/hookfailure"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -24,7 +25,7 @@ func TestRecordHookFailureEventConcurrentAppendsStayValid(t *testing.T) {
 	for range n {
 		go func() {
 			defer wg.Done()
-			_, _ = RecordHookFailureEvent(HookFailureEvent{
+			_, _ = RecordHookFailureEvent(hookfailurecontract.HookFailureEvent{
 				Hook:           "stop",
 				CommandSnippet: big,
 				Error:          big,
@@ -44,7 +45,7 @@ func TestRecordHookFailureEventConcurrentAppendsStayValid(t *testing.T) {
 		t.Fatalf("expected %d lines, got %d (interleaved/lost writes)", n, len(lines))
 	}
 	for i, ln := range lines {
-		var ev HookFailureEvent
+		var ev hookfailurecontract.HookFailureEvent
 		if err := json.Unmarshal([]byte(ln), &ev); err != nil {
 			t.Fatalf("line %d is not valid JSON (torn concurrent append): %v", i, err)
 		}
@@ -55,7 +56,7 @@ func TestRecordHookFailureEventWritesRedactedJSONL(t *testing.T) {
 	stateDir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateDir)
 
-	result, err := RecordHookFailureEvent(HookFailureEvent{
+	result, err := RecordHookFailureEvent(hookfailurecontract.HookFailureEvent{
 		Hook:           "pre-tool-use",
 		Host:           "codex",
 		Repo:           "/repo",

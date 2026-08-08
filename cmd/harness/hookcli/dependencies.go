@@ -1,9 +1,12 @@
 package hookcli
 
 import (
+	hookfailurecontract "agent-harness/internal/contract/hookfailure"
+	hookmetricscontract "agent-harness/internal/contract/hookmetrics"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"time"
 
 	coreinstall "agent-harness/internal/adapter/install"
 )
@@ -40,3 +43,11 @@ func printJSON(v any) error {
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)
 }
+
+// hook metric/failure 로그 연산은 composition root가 설치한다. hookcatalog에
+// 넘기는 Config도 여기서 조립한다.
+var (
+	RecordHookMetricEvent func(hookmetricscontract.HookMetricEvent) (hookmetricscontract.HookMetricRecordResult, error)
+	PruneHookFailureLog   func(maxAge time.Duration) (hookfailurecontract.HookFailurePruneResult, error)
+	PruneHookMetricsLog   func(maxAge time.Duration) (hookmetricscontract.HookMetricsPruneResult, error)
+)

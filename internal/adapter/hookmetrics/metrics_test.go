@@ -1,6 +1,7 @@
 package hookmetrics
 
 import (
+	hookmetricscontract "agent-harness/internal/contract/hookmetrics"
 	"context"
 	"encoding/json"
 	"os"
@@ -16,7 +17,7 @@ import (
 func TestSummarizeHookMetricsAggregatesLatencyAndDecisions(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 
-	for _, e := range []HookMetricEvent{
+	for _, e := range []hookmetricscontract.HookMetricEvent{
 		{Hook: "pre-tool-use", DurationMS: 10},
 		{Hook: "pre-tool-use", DurationMS: 20},
 		{Hook: "pre-tool-use", DurationMS: 200, Decision: "block"},
@@ -55,7 +56,7 @@ func TestSummarizeHookMetricsAggregatesLatencyAndDecisions(t *testing.T) {
 // visible. "ask" is a real enforcement decision and must count toward the rate.
 func TestSummarizeHookMetricsGateHitRateCountsBlockAndAsk(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	for _, e := range []HookMetricEvent{
+	for _, e := range []hookmetricscontract.HookMetricEvent{
 		{Hook: "pre-tool-use", DurationMS: 10},                    // pass
 		{Hook: "pre-tool-use", DurationMS: 20, Decision: "block"}, // block
 		{Hook: "pre-tool-use", DurationMS: 30, Decision: "ask"},   // ask (was uncounted)
@@ -96,10 +97,10 @@ func TestSummarizeHookMetricsHandlesMissingLog(t *testing.T) {
 
 func TestPruneHookMetricsLogDropsOldEntries(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	if _, err := RecordHookMetricEvent(HookMetricEvent{Hook: "stop", DurationMS: 5}); err != nil {
+	if _, err := RecordHookMetricEvent(hookmetricscontract.HookMetricEvent{Hook: "stop", DurationMS: 5}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := RecordHookMetricEvent(HookMetricEvent{
+	if _, err := RecordHookMetricEvent(hookmetricscontract.HookMetricEvent{
 		Timestamp: time.Now().UTC().Add(-31 * 24 * time.Hour).Format(time.RFC3339Nano),
 		Hook:      "stop", DurationMS: 5,
 	}); err != nil {
@@ -115,7 +116,7 @@ func TestPruneHookMetricsLogKeepsNewestEntriesWithinLineLimit(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	base := time.Now().UTC().Add(-time.Hour)
 	for i := 0; i < 5; i++ {
-		if _, err := RecordHookMetricEvent(HookMetricEvent{
+		if _, err := RecordHookMetricEvent(hookmetricscontract.HookMetricEvent{
 			Timestamp:  base.Add(time.Duration(i) * time.Second).Format(time.RFC3339Nano),
 			Hook:       "session-start",
 			DurationMS: int64(10 + i),
@@ -143,7 +144,7 @@ func TestPruneHookMetricsLogKeepsNewestEntriesWithinLineLimit(t *testing.T) {
 func TestPruneHookMetricsLogKeepsNewestEntriesWithinByteLimit(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	base := time.Now().UTC().Add(-time.Hour)
-	events := []HookMetricEvent{
+	events := []hookmetricscontract.HookMetricEvent{
 		{Timestamp: base.Format(time.RFC3339Nano), Hook: "session-start", Host: "old", DurationMS: 10},
 		{Timestamp: base.Add(time.Second).Format(time.RFC3339Nano), Hook: "session-start", Host: "newer", DurationMS: 20},
 		{Timestamp: base.Add(2 * time.Second).Format(time.RFC3339Nano), Hook: "session-start", Host: "newest", DurationMS: 30},
@@ -179,7 +180,7 @@ func TestPruneHookMetricsLogKeepsNewestEntriesWithinByteLimit(t *testing.T) {
 func TestPruneHookMetricsLogSweepsOnlyStaleTempFiles(t *testing.T) {
 	stateDir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateDir)
-	if _, err := RecordHookMetricEvent(HookMetricEvent{Hook: "stop", DurationMS: 5}); err != nil {
+	if _, err := RecordHookMetricEvent(hookmetricscontract.HookMetricEvent{Hook: "stop", DurationMS: 5}); err != nil {
 		t.Fatal(err)
 	}
 	stale := filepath.Join(stateDir, ".hook-metrics.jsonl-stale.tmp")
@@ -210,7 +211,7 @@ func TestPruneHookMetricsLogSweepsOnlyStaleTempFiles(t *testing.T) {
 func TestPruneHookMetricsLogWaitsForMetricsLock(t *testing.T) {
 	stateDir := t.TempDir()
 	t.Setenv("HARNESS_STATE_DIR", stateDir)
-	if _, err := RecordHookMetricEvent(HookMetricEvent{Hook: "stop", DurationMS: 5}); err != nil {
+	if _, err := RecordHookMetricEvent(hookmetricscontract.HookMetricEvent{Hook: "stop", DurationMS: 5}); err != nil {
 		t.Fatal(err)
 	}
 

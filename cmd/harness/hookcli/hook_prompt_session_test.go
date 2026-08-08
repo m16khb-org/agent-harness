@@ -3,6 +3,7 @@ package hookcli
 import (
 	hookfailure "agent-harness/internal/adapter/hookfailure"
 	hookmetrics "agent-harness/internal/adapter/hookmetrics"
+	hookfailurecontract "agent-harness/internal/contract/hookfailure"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -438,7 +439,7 @@ func TestRunHookSessionStartPrunesStaleHookFailures(t *testing.T) {
 	if err := os.WriteFile(hookfailure.HookFailureLogPath(), []byte(stale), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := hookfailure.RecordHookFailureEvent(hookfailure.HookFailureEvent{Hook: "stop", Error: "recent"}); err != nil {
+	if _, err := hookfailure.RecordHookFailureEvent(hookfailurecontract.HookFailureEvent{Hook: "stop", Error: "recent"}); err != nil {
 		t.Fatal(err)
 	}
 
