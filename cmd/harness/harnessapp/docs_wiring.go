@@ -6,7 +6,6 @@ import (
 	"agent-harness/cmd/harness/selfworkflow/augmentplan"
 	"agent-harness/cmd/harness/validationcli/qagate"
 	"agent-harness/internal/adapter/docs"
-	"agent-harness/internal/adapter/draftwiki"
 	"agent-harness/internal/adapter/inspect"
 )
 
@@ -21,5 +20,4 @@ func configureDocsReaders() {
 	augmentcatalog.ListDocs = docs.ListDocs
 	qagate.ListDocs = docs.ListDocs
 	inspect.ListDocs = docs.ListDocs
-	draftwiki.ReadHeadings = docs.ReadHeadings
 }

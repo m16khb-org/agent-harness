@@ -2,7 +2,6 @@ package issueopscli
 
 import (
 	auditstatepkg "agent-harness/internal/adapter/audit"
-	draftwikistatepkg "agent-harness/internal/adapter/draftwiki"
 	issueopsstatepkg "agent-harness/internal/adapter/issueops"
 	lifecyclestatepkg "agent-harness/internal/adapter/lifecycle"
 	compactstatepkg "agent-harness/internal/adapter/lifecycle/compact"
@@ -16,7 +15,6 @@ import (
 func init() {
 	auditstatepkg.StateDir = statestore.StateDir
 	auditstatepkg.WithKeyLock = statestore.WithKeyLock
-	draftwikistatepkg.StateDir = statestore.StateDir
 	issueopsstatepkg.StateDir = statestore.StateDir
 	lifecyclestatepkg.StateDir = statestore.StateDir
 	lifecyclestatepkg.WithKeyLock = statestore.WithKeyLock

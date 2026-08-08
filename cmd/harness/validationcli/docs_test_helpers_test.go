@@ -5,7 +5,6 @@ import (
 	augmentplancli "agent-harness/cmd/harness/selfworkflow/augmentplan"
 	qagatecli "agent-harness/cmd/harness/validationcli/qagate"
 	"agent-harness/internal/adapter/docs"
-	"agent-harness/internal/adapter/draftwiki"
 	"agent-harness/internal/adapter/inspect"
 )
 
@@ -14,7 +13,6 @@ import (
 // test import를 수집하지 않으므로 여기서는 concrete를 써도 된다.
 func init() {
 	inspect.ListDocs = docs.ListDocs
-	draftwiki.ReadHeadings = docs.ReadHeadings
 	augmentcatalogcli.ListDocs = docs.ListDocs
 	augmentplancli.DocsIndex = docs.DocsIndex
 	qagatecli.ListDocs = docs.ListDocs

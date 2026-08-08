@@ -495,13 +495,6 @@ func TestCLIFacadeWrappers(t *testing.T) {
 	_ = runInspect([]string{"--json", root})
 	_ = runDoctor([]string{"--json"})
 
-	if _, _, _, err := parseDraftWikiPathFlags("draft", []string{"--repo", root, "--json", "draft.md"}); err != nil {
-		t.Fatalf("parseDraftWikiPathFlags: %v", err)
-	}
-	_, _ = draftWikiQueueMaterial(root, "", "material", false)
-	_ = runProjectDraftWiki([]string{"unknown"})
-	_ = runProjectDraftWikiSuggest([]string{"--repo", root, "--json"})
-
 	_ = runInstall([]string{"--help"})
 	_ = validateInteractiveInstallInput(nil)
 	printInstallNativeResult(port.NativeInstallResult{OK: true})
@@ -534,7 +527,6 @@ func TestCLIFacadeWrappers(t *testing.T) {
 
 	_ = runWorker([]string{"unknown"})
 	_ = runWorkerEnqueue([]string{"--help"})
-	_ = runWorkerDraftWiki([]string{"--help"})
 	_ = runWorkerRun([]string{"--help"})
 	_ = runWorkerStatus([]string{"--id", "missing", "--json"})
 	_ = runWorkerList([]string{"--json"})

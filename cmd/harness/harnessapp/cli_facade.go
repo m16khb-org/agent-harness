@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"agent-harness/cmd/harness/basiccli"
-	"agent-harness/cmd/harness/draftwikicli"
 	"agent-harness/cmd/harness/installcli"
 	"agent-harness/cmd/harness/loopcli"
 	"agent-harness/cmd/harness/projectcli"
@@ -117,22 +116,6 @@ func runDoctor(args []string) error {
 	return basiccli.RunDoctor(args)
 }
 
-func runProjectDraftWiki(args []string) error {
-	return draftwikicli.RunProjectDraftWiki(args)
-}
-
-func draftWikiQueueMaterial(repo, input, material string, stdinFlag bool) (string, error) {
-	return draftwikicli.DraftWikiQueueMaterial(repo, input, material, stdinFlag)
-}
-
-func runProjectDraftWikiSuggest(args []string) error {
-	return draftwikicli.RunProjectDraftWikiSuggest(args)
-}
-
-func parseDraftWikiPathFlags(name string, args []string) (path, repo string, jsonOut bool, err error) {
-	return draftwikicli.ParseDraftWikiPathFlags(name, args)
-}
-
 func runInstall(args []string) error {
 	return installcli.RunInstall(args)
 }
@@ -239,10 +222,6 @@ func runWebFetch(args []string) error {
 
 func runWorkerEnqueue(args []string) error {
 	return workercli.RunEnqueue(args)
-}
-
-func runWorkerDraftWiki(args []string) error {
-	return workercli.RunDraftWiki(args)
 }
 
 func runWorkerRun(args []string) error {

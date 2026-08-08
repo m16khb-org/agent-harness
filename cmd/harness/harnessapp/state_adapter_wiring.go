@@ -3,7 +3,6 @@ package harnessapp
 import (
 	audit "agent-harness/internal/adapter/audit"
 	doctor "agent-harness/internal/adapter/doctor"
-	draftwiki "agent-harness/internal/adapter/draftwiki"
 	hookfailure "agent-harness/internal/adapter/hookfailure"
 	hookmetrics "agent-harness/internal/adapter/hookmetrics"
 	issueops "agent-harness/internal/adapter/issueops"
@@ -24,7 +23,6 @@ func configureAdapterStateAccess() {
 	audit.WithKeyLock = statestore.WithKeyLock
 	doctor.StateDir = statestore.StateDir
 	doctor.StateDoctor = statestore.StateDoctor
-	draftwiki.StateDir = statestore.StateDir
 	hookfailure.StateDir = statestore.StateDir
 	hookfailure.WithKeyLock = statestore.WithKeyLock
 	hookmetrics.StateDir = statestore.StateDir

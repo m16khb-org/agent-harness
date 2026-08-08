@@ -78,9 +78,6 @@ func candidateSatisfactionRules() []candidateSatisfactionRule {
 		{"daemon-connection-limit", func(signals SelfAugmentRepoSignals) []string {
 			return evidenceWhen(signals.HasDaemonConnectionLimit, "daemon accept loop enforces maxConnections with rejection and graceful-drain coverage")
 		}},
-		{"draftwiki-stale-lock", func(signals SelfAugmentRepoSignals) []string {
-			return evidenceWhen(signals.HasDraftWikiStaleLockDetection, "draft-wiki queue lock detects stale PID/age locks and has recovery regression coverage")
-		}},
 		{"genius-mermaid-lint", func(signals SelfAugmentRepoSignals) []string {
 			return evidenceWhen(signals.HasGeniusMermaidLint, "QA gate lints Mermaid fences using GENIUS_THINK quote/<br/> rules and repo diagrams were normalized")
 		}},

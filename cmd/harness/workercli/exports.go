@@ -8,10 +8,6 @@ func RunEnqueue(args []string) error {
 	return runWorkerEnqueue(args)
 }
 
-func RunDraftWiki(args []string) error {
-	return runWorkerDraftWiki(args)
-}
-
 func RunReadOnly(args []string) error {
 	return runWorkerRun(args)
 }

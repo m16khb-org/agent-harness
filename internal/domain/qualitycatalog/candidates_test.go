@@ -5,8 +5,8 @@ import "testing"
 func TestCandidatesProjectSpecsIntoOpenCandidates(t *testing.T) {
 	specs := CandidateSpecs()
 	candidates := Candidates()
-	if len(specs) < 10 {
-		t.Fatalf("expected at least 10 quality specs, got %d", len(specs))
+	if len(specs) < 9 {
+		t.Fatalf("expected at least 9 quality specs, got %d", len(specs))
 	}
 	if len(candidates) >= len(specs) {
 		t.Fatalf("resolved specs should not be projected as open candidates: got %d candidates from %d specs", len(candidates), len(specs))
@@ -44,7 +44,6 @@ func TestCandidatesExcludeResolvedAuditDuplicates(t *testing.T) {
 		"daemon-connection-limit":        true,
 		"worker-stuck-running-detection": true,
 		"state-write-locking":            true,
-		"draftwiki-stale-lock":           true,
 	}
 	for _, candidate := range Candidates() {
 		if resolved[candidate.ID] {

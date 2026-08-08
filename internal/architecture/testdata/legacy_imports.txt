@@ -3,7 +3,6 @@ cmd/harness/basiccli -> internal/adapter/guard
 cmd/harness/contractcli -> internal/adapter/cli
 cmd/harness/contractcli -> internal/adapter/mcp
 cmd/harness/contractcli -> internal/adapter/toolconformance
-cmd/harness/draftwikicli -> internal/adapter/draftwiki
 cmd/harness/hookcli -> internal/adapter/hook
 cmd/harness/hookcli -> internal/adapter/hookprompt
 cmd/harness/hookcli -> internal/adapter/lifecycle
@@ -31,12 +30,10 @@ cmd/harness/projectcli -> internal/adapter/projectdocs
 cmd/harness/statuscli -> internal/adapter/doctor
 cmd/harness/validationcli/nativeintegration -> internal/adapter/installutil
 cmd/harness/validationcli/stateroundtrip -> internal/adapter/outbound/sqlstore
-cmd/harness/workercli -> internal/adapter/draftwiki
 internal/adapter/claude -> internal/adapter/installutil
 internal/adapter/codex -> internal/adapter/installutil
 internal/adapter/doctor -> internal/adapter/lifecycle
 internal/adapter/doctor -> internal/adapter/looprun
-internal/adapter/draftwiki -> internal/adapter/lifecycle
 internal/adapter/hookprompt -> internal/adapter/issueops
 internal/adapter/hookprompt -> internal/adapter/lifecycle
 internal/adapter/hostprobe -> internal/adapter/toolconformance
@@ -55,7 +52,6 @@ internal/adapter/mcp -> internal/adapter/toolconformance
 internal/adapter/operationalhealth -> internal/adapter/issueops/pathutil
 internal/adapter/outbound/state -> internal/adapter/outbound/sqlstore
 internal/adapter/outbound/state -> internal/adapter/outbound/statepath
-internal/adapter/projectbootstrap -> internal/adapter/draftwiki
 internal/adapter/projectbootstrap -> internal/adapter/lifecycle
 internal/adapter/projectbootstrap -> internal/adapter/projectdocs
 internal/adapter/worker -> internal/adapter/outbound/sqlstore

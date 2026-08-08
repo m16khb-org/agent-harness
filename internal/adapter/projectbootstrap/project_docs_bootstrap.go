@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"agent-harness/internal/adapter/draftwiki"
 	"agent-harness/internal/adapter/lifecycle"
 	"agent-harness/internal/adapter/projectdocs"
 	projectdoc "agent-harness/internal/domain/projectdoc"
@@ -54,11 +53,6 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 			Reason:  projectDocReason(rel),
 		})
 	}
-	draftWiki, err := draftwiki.InitDraftWiki(draftwiki.DraftWikiInitRequest{RepoRoot: root, Write: req.Write})
-	if err != nil {
-		return ProjectDocsBootstrapResult{}, err
-	}
-	files = append(files, draftWiki.Files...)
 	// Ensure every standard project doc carries its canonical meta frontmatter,
 	// preserving body content. This runs on bootstrap and --sync alike so even
 	// preserved (non-synced) docs declare their category, fixed by doc name.

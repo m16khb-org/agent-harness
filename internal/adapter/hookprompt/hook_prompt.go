@@ -28,7 +28,6 @@ const (
 // The Stop hook relay carries the full auto/no-auto decision contract when it is
 // actually needed.
 const nextActionPolicyHint = "next-action: decision turns need 3 choices/1 recommendation; recommend only safe/reversible/aligned options; Stop hook relays full decision details"
-const draftWikiPolicyHint = "draft-wiki: queue reusable project knowledge by main-agent judgement only"
 
 type HookUserPromptResult struct {
 	OK                bool                     `json:"ok"`

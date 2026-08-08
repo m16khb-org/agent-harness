@@ -191,7 +191,7 @@ In full mode, build a real-usage scenario for every criterion through ONE of the
 | 5 | **Isolated worktree edits** | Bounded code changes in separate git worktree | IssueOps worktree-based implementation |
 | 6 | **Model specialization** | Cheap model for search, expensive model for reasoning | Explorer on Haiku, reviewer on Opus |
 | 7 | **Tool-gated exploration** | Read-only tools only — prevents accidental writes | Explorer with Grep/Glob/Read only, no Write/Bash |
-| 8 | **Background long-running** | Non-blocking async work with progress checks | draft-wiki worker, long test suite run |
+| 8 | **Background long-running** | Non-blocking async work with progress checks | long test suite run |
 | 9 | **Plan-execute separation** | Planner (read-only) vs executor (write) — already structural | Von Neumann plans, Turing executes |
 | 10 | **Forked context exploration** | Branch exploration with full context copy, no pollution | Claude Code forked subagents |
 | 11 | **Task fan-out** | Naturally decomposable independent subtasks | Batch migration touching isolated modules |

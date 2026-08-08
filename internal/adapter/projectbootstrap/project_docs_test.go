@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/draftwiki"
 	"agent-harness/internal/adapter/projectdocs"
 	projectdoc "agent-harness/internal/domain/projectdoc"
 	projectdocdomain "agent-harness/internal/domain/projectdoc"
@@ -29,17 +28,12 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, projectdocdomain.ProjectDocsDir)); !os.IsNotExist(err) {
 		t.Fatalf("dry-run created docs dir or unexpected stat error: %v", err)
 	}
-	wantBootstrapFiles := 1 + len(projectdocdomain.ProjectDocNames()) + len(draftwiki.DraftWikiSeedFiles())
+	wantBootstrapFiles := 1 + len(projectdocdomain.ProjectDocNames())
 	if len(dry.Files) != wantBootstrapFiles {
 		t.Fatalf("planned files=%d want %d", len(dry.Files), wantBootstrapFiles)
 	}
 	if projectPlanContainsRel(dry.Files, ".agent-harness/VCS.md") {
 		t.Fatalf("optional VCS.md must not be created by bootstrap: %+v", dry.Files)
-	}
-	for rel := range draftwiki.DraftWikiSeedFiles() {
-		if !projectPlanContainsRel(dry.Files, rel) {
-			t.Fatalf("dry-run plan missing draft-wiki seed %s: %+v", rel, dry.Files)
-		}
 	}
 	if dry.LifecycleState.ProjectStateDir == "" || dry.LifecycleState.ProjectJSONPath == "" {
 		t.Fatalf("dry-run missing lifecycle namespace plan: %+v", dry.LifecycleState)
@@ -85,11 +79,6 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, projectdocdomain.ProjectDocsDir, "VCS.md")); !os.IsNotExist(err) {
 		t.Fatalf("bootstrap unexpectedly created optional VCS.md: %v", err)
-	}
-	for rel := range draftwiki.DraftWikiSeedFiles() {
-		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); err != nil {
-			t.Fatalf("expected draft-wiki seed %s: %v", rel, err)
-		}
 	}
 	testingDoc := mustRead(t, filepath.Join(root, projectdocdomain.ProjectDocsDir, "TESTING.md"))
 	if !strings.Contains(testingDoc, "go test ./...") || !strings.Contains(testingDoc, "Confidence: high") {

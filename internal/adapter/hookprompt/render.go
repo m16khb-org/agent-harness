@@ -27,7 +27,6 @@ func renderHookMCPHintContext(hints []HookUserPromptHint, pendingUpkeep []lifecy
 	appendCompactPendingUpkeep(&parts, pendingUpkeep)
 	appendSecondaryHints(&parts, groups[hintPrioritySecondary])
 	appendContextLine(&parts, "next-action", strings.TrimPrefix(nextActionPolicyHint, "next-action: "))
-	appendContextLine(&parts, "draft-wiki", strings.TrimPrefix(draftWikiPolicyHint, "draft-wiki: "))
 	appendContextLine(&parts, "rule", "verify with repo/tool evidence before changing files")
 	return strings.Join(parts, "\n")
 }

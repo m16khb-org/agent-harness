@@ -101,9 +101,6 @@ func TestPlanSelfAugmentationUsesGeniusThinkAndScoreGate(t *testing.T) {
 	if candidateByID(result.Candidates, "daemon-connection-limit").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
 		t.Fatalf("daemon connection limit should be satisfied after accept-loop max connection guard is implemented: %+v", result.Candidates)
 	}
-	if candidateByID(result.Candidates, "draftwiki-stale-lock").Status != augmentcatalog.SelfAugmentCandidateStatusSatisfied {
-		t.Fatalf("draft-wiki stale lock should be satisfied after queue lock stale recovery is implemented: %+v", result.Candidates)
-	}
 	if result.SelectedCandidate != nil {
 		t.Fatalf("expected no selected candidate after all catalog candidates are satisfied, got %+v", result.SelectedCandidate)
 	}

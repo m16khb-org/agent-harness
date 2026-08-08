@@ -3,8 +3,6 @@ package projectcli
 import (
 	"fmt"
 	"os"
-
-	"agent-harness/cmd/harness/draftwikicli"
 )
 
 func runProject(args []string) error {
@@ -21,8 +19,6 @@ func runProject(args []string) error {
 		return runProjectRouteDocs(args[1:])
 	case "record":
 		return runProjectRecord(args[1:])
-	case "draft-wiki":
-		return draftwikicli.RunProjectDraftWiki(args[1:])
 	case "commit-suggest":
 		return runProjectCommitSuggest(args[1:])
 	case "lint-diagnose":

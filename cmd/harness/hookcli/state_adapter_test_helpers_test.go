@@ -2,7 +2,6 @@ package hookcli
 
 import (
 	doctorstatepkg "agent-harness/internal/adapter/doctor"
-	draftwikistatepkg "agent-harness/internal/adapter/draftwiki"
 	hookfailurestatepkg "agent-harness/internal/adapter/hookfailure"
 	hookmetricsstatepkg "agent-harness/internal/adapter/hookmetrics"
 	issueopsstatepkg "agent-harness/internal/adapter/issueops"
@@ -19,7 +18,6 @@ import (
 func init() {
 	doctorstatepkg.StateDir = statestore.StateDir
 	doctorstatepkg.StateDoctor = statestore.StateDoctor
-	draftwikistatepkg.StateDir = statestore.StateDir
 	hookfailurestatepkg.StateDir = statestore.StateDir
 	hookfailurestatepkg.WithKeyLock = statestore.WithKeyLock
 	hookmetricsstatepkg.StateDir = statestore.StateDir

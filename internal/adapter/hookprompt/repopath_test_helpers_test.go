@@ -1,7 +1,6 @@
 package hookprompt
 
 import (
-	draftwikipkg "agent-harness/internal/adapter/draftwiki"
 	lifecyclepkg "agent-harness/internal/adapter/lifecycle"
 	projectbootstrappkg "agent-harness/internal/adapter/projectbootstrap"
 	projectdocspkg "agent-harness/internal/adapter/projectdocs"
@@ -14,6 +13,4 @@ func init() {
 	lifecyclepkg.NormalizeRepoRoot = repopath.NormalizeRoot
 	projectbootstrappkg.NormalizeRepoRoot = repopath.NormalizeRoot
 	projectdocspkg.NormalizeRepoRoot = repopath.NormalizeRoot
-	draftwikipkg.NormalizeRepoRoot = repopath.NormalizeRoot
-	draftwikipkg.ResolveRepoFile = repopath.ResolveFile
 }

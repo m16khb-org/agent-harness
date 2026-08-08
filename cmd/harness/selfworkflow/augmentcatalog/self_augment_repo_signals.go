@@ -131,14 +131,6 @@ func repoSignalRules() []repoSignalRule {
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "daemoncli", "daemon_server_loop_test.go"), "TestRunDaemonAcceptLoopExpires64IdleSessionsAndAdmitsInitialize")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
-			signals.HasDraftWikiStaleLockDetection = fileContainsTerm(root, filepath.Join("internal", "adapter", "draftwiki", "queue", "lock.go"), "staleLockMaxAge") &&
-				fileContainsTerm(root, filepath.Join("internal", "adapter", "draftwiki", "queue", "lock.go"), "func isStale") &&
-				fileContainsTerm(root, filepath.Join("internal", "adapter", "draftwiki", "queue", "lock.go"), "os.Remove(path)") &&
-				fileContainsTerm(root, filepath.Join("internal", "adapter", "draftwiki", "queue", "lock.go"), "processAlive(pid)") &&
-				fileContainsTerm(root, filepath.Join("internal", "adapter", "draftwiki", "queue", "queue_test.go"), "TestAcquireLockRecoversStaleDeadPIDLock") &&
-				fileContainsTerm(root, filepath.Join("internal", "adapter", "draftwiki", "queue", "queue_test.go"), "TestAcquireLockKeepsLiveCurrentLock")
-		}},
-		{func(root string, signals *SelfAugmentRepoSignals) {
 			signals.HasGeniusMermaidLint = dirContainsTerm(root, filepath.Join("cmd", "harness", "validationcli"), "lintMermaidBlocks") &&
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "validationcli", "validation_mcp_mermaid_native_wrappers_test.go"), "TestLintMermaidBlocksEnforcesGeniusThinkRules") &&
 				!fileContainsTerm(root, filepath.Join(".agent-harness", "ARCHITECTURE.md"), `\n`)

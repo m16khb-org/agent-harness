@@ -4,7 +4,6 @@ import (
 	"agent-harness/cmd/harness/basiccli"
 	"agent-harness/internal/adapter/commitsuggest"
 	"agent-harness/internal/adapter/doctor"
-	"agent-harness/internal/adapter/draftwiki"
 	"agent-harness/internal/adapter/lifecycle"
 	"agent-harness/internal/adapter/lintdiagnose"
 	"agent-harness/internal/adapter/projectbootstrap"
@@ -24,6 +23,4 @@ func configureRepoPathResolvers() {
 	commitsuggest.NormalizeRepoRoot = repopath.NormalizeRoot
 	projectbootstrap.NormalizeRepoRoot = repopath.NormalizeRoot
 	projectdocs.NormalizeRepoRoot = repopath.NormalizeRoot
-	draftwiki.NormalizeRepoRoot = repopath.NormalizeRoot
-	draftwiki.ResolveRepoFile = repopath.ResolveFile
 }

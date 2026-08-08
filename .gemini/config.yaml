@@ -15,7 +15,6 @@ ignore_patterns:
   - "evidence/**"
   - "coverage/**"
   - "tmp/**"
-  - ".agent-harness/draft-wiki/**"
   - ".codegraph/**"
   - ".harness/**"
   - ".cache/**"
