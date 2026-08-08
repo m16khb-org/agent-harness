@@ -1,3 +1,6 @@
+// Package policy는 command policy의 DTO를 소유한다.
+//
+// 평가 규칙과 redaction은 domain에 남고, 결과를 주고받는 계층은 이 타입만 안다.
 package policy
 
 import (

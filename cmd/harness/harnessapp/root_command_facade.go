@@ -1,11 +1,11 @@
 package harnessapp
 
 import (
+	policycontract "agent-harness/internal/contract/policy"
 	"os"
 
 	"agent-harness/cmd/harness/rootcmd"
 	guard "agent-harness/internal/adapter/guard"
-	policy "agent-harness/internal/domain/policy"
 )
 
 func RunRootCommand(args []string) int {
@@ -64,7 +64,7 @@ func rootCommand() rootcmd.Command {
 func rootSubcommandErrorExitCode(name string, err error) int {
 	switch name {
 	case "policy":
-		if policy.IsPolicyDenied(err) {
+		if policycontract.IsPolicyDenied(err) {
 			return 3
 		}
 	case "guard":

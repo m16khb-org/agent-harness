@@ -139,7 +139,7 @@ func runHookSessionStart(args []string) error {
 }
 
 func hookCatalogConfig() hookcatalog.Config {
-	return hookcatalog.Config{ResolveTarget: ResolveTarget, PrintJSON: printJSON, RuntimeDiagnostic: DiagnoseCurrentNativeRuntime, PruneHookFailureLog: PruneHookFailureLog, PruneHookMetricsLog: PruneHookMetricsLog}
+	return hookcatalog.Config{ResolveTarget: ResolveTarget, PrintJSON: printJSON, RuntimeDiagnostic: DiagnoseCurrentNativeRuntime, PruneHookFailureLog: PruneHookFailureLog, PruneHookMetricsLog: PruneHookMetricsLog, MaybeDetectStuckWorkerJobs: MaybeDetectStuckWorkerJobs}
 }
 
 func hookUsage() {

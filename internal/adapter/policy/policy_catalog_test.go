@@ -1,6 +1,7 @@
 package policy
 
 import (
+	policycontract "agent-harness/internal/contract/policy"
 	policydomain "agent-harness/internal/domain/policy"
 	"os"
 	"strings"
@@ -9,7 +10,7 @@ import (
 
 func TestCommandPolicyRedactsAndDeniesSecretLikeArgs(t *testing.T) {
 	root := t.TempDir()
-	result := EvaluateCommandPolicy(policydomain.CommandPolicyRequest{
+	result := EvaluateCommandPolicy(policycontract.CommandPolicyRequest{
 		WorkspaceRoot: root,
 		CWD:           root,
 		Argv:          []string{"cat", ".env"},
@@ -38,7 +39,7 @@ func TestCommandPolicyCatalogDrivesAllowAndDenyDecisions(t *testing.T) {
 	cases := []struct {
 		name   string
 		argv   []string
-		flags  func(*policydomain.CommandPolicyRequest)
+		flags  func(*policycontract.CommandPolicyRequest)
 		reason string
 	}{
 		{name: "read-only command", argv: []string{"rg", "needle", "."}},
@@ -52,14 +53,14 @@ func TestCommandPolicyCatalogDrivesAllowAndDenyDecisions(t *testing.T) {
 		{
 			name: "write command allowed by flag",
 			argv: []string{"touch", "marker"},
-			flags: func(req *policydomain.CommandPolicyRequest) {
+			flags: func(req *policycontract.CommandPolicyRequest) {
 				req.WriteAllowed = true
 			},
 		},
 		{
 			name: "network command allowed by flag",
 			argv: []string{"curl", "https://example.invalid"},
-			flags: func(req *policydomain.CommandPolicyRequest) {
+			flags: func(req *policycontract.CommandPolicyRequest) {
 				req.NetworkAllowed = true
 				req.WriteAllowed = true // curl is outside the read-only allowlist, so explicit write/process approval is also required.
 			},
@@ -67,7 +68,7 @@ func TestCommandPolicyCatalogDrivesAllowAndDenyDecisions(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			req := policydomain.CommandPolicyRequest{
+			req := policycontract.CommandPolicyRequest{
 				WorkspaceRoot: root,
 				CWD:           root,
 				Argv:          tc.argv,
@@ -123,7 +124,7 @@ func TestPolicyOverridesLoadPerEvaluation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := EvaluateCommandPolicy(policydomain.CommandPolicyRequest{
+	result := EvaluateCommandPolicy(policycontract.CommandPolicyRequest{
 		WorkspaceRoot: repoRoot,
 		CWD:           repoRoot,
 		Argv:          []string{"echo", "ok"},
@@ -133,7 +134,7 @@ func TestPolicyOverridesLoadPerEvaluation(t *testing.T) {
 		t.Fatalf("expected additional read-only command to be allowed: %+v", result)
 	}
 
-	network := EvaluateCommandPolicy(policydomain.CommandPolicyRequest{
+	network := EvaluateCommandPolicy(policycontract.CommandPolicyRequest{
 		WorkspaceRoot:  repoRoot,
 		CWD:            repoRoot,
 		Argv:           []string{"nc", "example.invalid", "80"},
@@ -145,7 +146,7 @@ func TestPolicyOverridesLoadPerEvaluation(t *testing.T) {
 		t.Fatalf("expected additional network command to be recognized and allowed with flags: %+v", network)
 	}
 
-	shell := EvaluateCommandPolicy(policydomain.CommandPolicyRequest{
+	shell := EvaluateCommandPolicy(policycontract.CommandPolicyRequest{
 		WorkspaceRoot: repoRoot,
 		CWD:           repoRoot,
 		Argv:          []string{"bash", "-c", "true"},
@@ -158,7 +159,7 @@ func TestPolicyOverridesLoadPerEvaluation(t *testing.T) {
 
 func TestLoadPolicyOverridesNoFileIsBackwardCompatible(t *testing.T) {
 	repoRoot := t.TempDir()
-	result := EvaluateCommandPolicy(policydomain.CommandPolicyRequest{
+	result := EvaluateCommandPolicy(policycontract.CommandPolicyRequest{
 		WorkspaceRoot: repoRoot,
 		CWD:           repoRoot,
 		Argv:          []string{"git", "status", "--short"},
@@ -179,7 +180,7 @@ func TestPolicyOverridesInvalidJSONWarnsAndUsesBuiltins(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := EvaluateCommandPolicy(policydomain.CommandPolicyRequest{
+	result := EvaluateCommandPolicy(policycontract.CommandPolicyRequest{
 		WorkspaceRoot: repoRoot,
 		CWD:           repoRoot,
 		Argv:          []string{"git", "status", "--short"},
@@ -204,7 +205,7 @@ func TestPolicyOverrideAffectsEvaluation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result := EvaluateCommandPolicy(policydomain.CommandPolicyRequest{
+	result := EvaluateCommandPolicy(policycontract.CommandPolicyRequest{
 		WorkspaceRoot: repoRoot,
 		CWD:           repoRoot,
 		Argv:          []string{"my-readonly-tool", "arg"},
@@ -226,7 +227,7 @@ func TestPolicyOverridesDoNotLeakAcrossWorkspaceRoots(t *testing.T) {
 	}
 	rootWithoutOverride := t.TempDir()
 
-	allowed := EvaluateCommandPolicy(policydomain.CommandPolicyRequest{
+	allowed := EvaluateCommandPolicy(policycontract.CommandPolicyRequest{
 		WorkspaceRoot: rootWithOverride,
 		CWD:           rootWithOverride,
 		Argv:          []string{"repo-tool"},
@@ -236,7 +237,7 @@ func TestPolicyOverridesDoNotLeakAcrossWorkspaceRoots(t *testing.T) {
 		t.Fatalf("root with override should allow repo-tool: %+v", allowed)
 	}
 
-	denied := EvaluateCommandPolicy(policydomain.CommandPolicyRequest{
+	denied := EvaluateCommandPolicy(policycontract.CommandPolicyRequest{
 		WorkspaceRoot: rootWithoutOverride,
 		CWD:           rootWithoutOverride,
 		Argv:          []string{"repo-tool"},
@@ -256,17 +257,17 @@ func TestPolicyTierClassifiesEveryFlagCombination(t *testing.T) {
 		wantName string
 		wantCaps []string
 	}{
-		{false, false, false, policydomain.PolicyTierReadOnly, []string{}},
-		{true, false, false, policydomain.PolicyTierWorkspaceWrite, []string{"write"}},
-		{false, true, false, policydomain.PolicyTierNetworkAccess, []string{"network"}},
-		{true, true, false, policydomain.PolicyTierNetworkAccess, []string{"network", "write"}},
-		{false, false, true, policydomain.PolicyTierShellException, []string{"shell"}},
-		{true, false, true, policydomain.PolicyTierShellException, []string{"shell", "write"}},
-		{false, true, true, policydomain.PolicyTierShellException, []string{"network", "shell"}},
-		{true, true, true, policydomain.PolicyTierShellException, []string{"network", "shell", "write"}},
+		{false, false, false, policycontract.PolicyTierReadOnly, []string{}},
+		{true, false, false, policycontract.PolicyTierWorkspaceWrite, []string{"write"}},
+		{false, true, false, policycontract.PolicyTierNetworkAccess, []string{"network"}},
+		{true, true, false, policycontract.PolicyTierNetworkAccess, []string{"network", "write"}},
+		{false, false, true, policycontract.PolicyTierShellException, []string{"shell"}},
+		{true, false, true, policycontract.PolicyTierShellException, []string{"shell", "write"}},
+		{false, true, true, policycontract.PolicyTierShellException, []string{"network", "shell"}},
+		{true, true, true, policycontract.PolicyTierShellException, []string{"network", "shell", "write"}},
 	}
 	for _, tc := range cases {
-		result := EvaluateCommandPolicy(policydomain.CommandPolicyRequest{
+		result := EvaluateCommandPolicy(policycontract.CommandPolicyRequest{
 			WorkspaceRoot:  root,
 			CWD:            root,
 			Argv:           []string{"git", "status", "--short"},

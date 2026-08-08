@@ -6,6 +6,7 @@ import (
 	"agent-harness/cmd/harness/updatecli"
 	hookfailureadapter "agent-harness/internal/adapter/hookfailure"
 	"agent-harness/internal/adapter/hookmetrics"
+	"agent-harness/internal/adapter/worker"
 )
 
 type daemonProcess = updatecli.DaemonProcess
@@ -29,6 +30,7 @@ func configureHookCLI() {
 	hookcli.RecordHookMetricEvent = hookmetrics.RecordHookMetricEvent
 	hookcli.PruneHookFailureLog = hookfailureadapter.PruneHookFailureLog
 	hookcli.PruneHookMetricsLog = hookmetrics.PruneHookMetricsLog
+	hookcli.MaybeDetectStuckWorkerJobs = worker.MaybeDetectStuckWorkerJobs
 	hookfailurecli.RecordHookFailureEvent = hookfailureadapter.RecordHookFailureEvent
 	hookfailurecli.ListHookFailureEvents = hookfailureadapter.ListHookFailureEvents
 	hookfailurecli.PruneHookFailureLog = hookfailureadapter.PruneHookFailureLog

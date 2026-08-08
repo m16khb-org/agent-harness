@@ -9,23 +9,23 @@ import (
 	"agent-harness/cmd/harness/daemoncli"
 	doctor "agent-harness/internal/adapter/doctor"
 	statestore "agent-harness/internal/adapter/outbound/state"
-	worker "agent-harness/internal/adapter/worker"
 	inspect "agent-harness/internal/contract/inspect"
 	statecontract "agent-harness/internal/contract/state"
+	workercontract "agent-harness/internal/contract/worker"
 )
 
 type HarnessStatus struct {
-	OK         bool                          `json:"ok"`
-	Kind       string                        `json:"kind"`
-	Version    string                        `json:"version"`
-	Repo       string                        `json:"repo"`
-	Inspect    inspect.InspectInfo           `json:"inspect"`
-	Doctor     doctor.HarnessDoctorResult    `json:"doctor"`
-	Daemon     daemoncli.Status              `json:"daemon"`
-	State      statecontract.StateListResult `json:"state"`
-	Workers    worker.WorkerListResult       `json:"workers"`
-	SelfVerify SelfVerifyStatus              `json:"self_verify"`
-	Warnings   []string                      `json:"warnings"`
+	OK         bool                            `json:"ok"`
+	Kind       string                          `json:"kind"`
+	Version    string                          `json:"version"`
+	Repo       string                          `json:"repo"`
+	Inspect    inspect.InspectInfo             `json:"inspect"`
+	Doctor     doctor.HarnessDoctorResult      `json:"doctor"`
+	Daemon     daemoncli.Status                `json:"daemon"`
+	State      statecontract.StateListResult   `json:"state"`
+	Workers    workercontract.WorkerListResult `json:"workers"`
+	SelfVerify SelfVerifyStatus                `json:"self_verify"`
+	Warnings   []string                        `json:"warnings"`
 }
 
 type SelfVerifyStatus struct {
@@ -77,7 +77,7 @@ func buildHarnessStatus(repo string) HarnessStatus {
 		},
 	})
 	state, stateErr := statestore.StateList()
-	workers, workerErr := worker.ListWorkerJobs()
+	workers, workerErr := ListWorkerJobs()
 	warnings := []string{}
 	if doctorErr != nil {
 		warnings = append(warnings, "doctor: "+doctorErr.Error())

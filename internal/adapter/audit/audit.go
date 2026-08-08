@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"agent-harness/internal/adapter/policy"
-	policydomain "agent-harness/internal/domain/policy"
+	policydomain "agent-harness/internal/contract/policy"
 )
 
 // CommandAuditRecord는 policy 결정을 append-only로 남긴 redacted 기록이다.

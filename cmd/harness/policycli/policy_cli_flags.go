@@ -1,7 +1,7 @@
 package policycli
 
 import (
-	policy "agent-harness/internal/domain/policy"
+	policy "agent-harness/internal/contract/policy"
 	"flag"
 	"time"
 )

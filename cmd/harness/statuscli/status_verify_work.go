@@ -3,8 +3,8 @@ package statuscli
 import (
 	guard "agent-harness/internal/adapter/guard"
 	policy "agent-harness/internal/adapter/policy"
+	policydomain "agent-harness/internal/contract/policy"
 	preflightcontract "agent-harness/internal/contract/preflight"
-	policydomain "agent-harness/internal/domain/policy"
 	projectdocdomain "agent-harness/internal/domain/projectdoc"
 	"flag"
 	"fmt"
