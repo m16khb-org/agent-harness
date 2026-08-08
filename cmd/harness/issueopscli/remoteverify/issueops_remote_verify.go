@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	issueopscore "agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopscore "agent-harness/internal/contract/issueops"
 )
 
 type liveRemoteArtifact struct {

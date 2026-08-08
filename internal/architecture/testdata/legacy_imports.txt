@@ -7,14 +7,12 @@ cmd/harness/contractcli -> internal/adapter/toolconformance
 cmd/harness/draftwikicli -> internal/adapter/draftwiki
 cmd/harness/hookcli -> internal/adapter/hook
 cmd/harness/hookcli -> internal/adapter/hookprompt
-cmd/harness/hookcli -> internal/adapter/issueops
 cmd/harness/hookcli -> internal/adapter/lifecycle
 cmd/harness/hookcli -> internal/adapter/lifecycle/doctarget
 cmd/harness/hookcli/hookcatalog -> internal/adapter/hook
 cmd/harness/hookcli/hookcatalog -> internal/adapter/hookprompt
 cmd/harness/hookcli/hookcatalog -> internal/adapter/lifecycle
 cmd/harness/installcli -> internal/adapter/installutil
-cmd/harness/installcli -> internal/adapter/issueops
 cmd/harness/issueopscli -> internal/adapter/cli
 cmd/harness/issueopscli -> internal/adapter/issueops
 cmd/harness/issueopscli -> internal/adapter/issueops/loopgate
@@ -29,7 +27,6 @@ cmd/harness/issueopscli/feedbackcleanup -> internal/adapter/issueops
 cmd/harness/issueopscli/feedbackcleanup -> internal/adapter/issueops/orphancleanup
 cmd/harness/issueopscli/remotecmd -> internal/adapter/issueops
 cmd/harness/issueopscli/remotecmd -> internal/adapter/provider
-cmd/harness/issueopscli/remoteverify -> internal/adapter/issueops
 cmd/harness/mcpcli -> internal/adapter/audit
 cmd/harness/mcpcli -> internal/adapter/commitsuggest
 cmd/harness/mcpcli -> internal/adapter/issueops
@@ -70,7 +67,6 @@ internal/adapter/lifecycle -> internal/adapter/remoteartifact
 internal/adapter/lifecycle/fingerprint -> internal/adapter/projectdocs
 internal/adapter/looprun -> internal/adapter/outbound/sqlstore
 internal/adapter/mcp -> internal/adapter/toolconformance
-internal/adapter/operationalhealth -> internal/adapter/issueops
 internal/adapter/operationalhealth -> internal/adapter/issueops/pathutil
 internal/adapter/outbound/state -> internal/adapter/outbound/sqlstore
 internal/adapter/outbound/state -> internal/adapter/outbound/statepath

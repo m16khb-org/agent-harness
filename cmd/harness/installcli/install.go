@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	issueopscore "agent-harness/internal/adapter/issueops"
 	activationapp "agent-harness/internal/application/nativeactivation"
 	activationcontract "agent-harness/internal/contract/nativeactivation"
 )
@@ -54,7 +53,7 @@ func runInstall(args []string) error {
 	req := deps.NativeInstallRequest(root, home, codexHome, filepath.Join(root, "bin", "agent-harness"))
 	req.ProjectLocal = *projectLocal
 	req.DryRun = *dryRun
-	stateDir := filepath.Dir(issueopscore.IssueOpsStateRoot())
+	stateDir := filepath.Dir(IssueOpsStateRoot())
 	activationRequest := activationcontract.Request{StateRoot: stateDir, HarnessRoot: req.Root, TargetBinary: req.BinPath}
 	if !req.DryRun && deps.ActivationBackend == nil {
 		return fmt.Errorf("native activation backend is unavailable")

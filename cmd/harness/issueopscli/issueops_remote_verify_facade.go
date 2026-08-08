@@ -2,8 +2,8 @@ package issueopscli
 
 import (
 	"agent-harness/cmd/harness/issueopscli/remoteverify"
-	issueopscore "agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
+	issueopscore "agent-harness/internal/contract/issueops"
 )
 
 func verifyIssueOpsChildIssueBeforeLink(childURL string) error {

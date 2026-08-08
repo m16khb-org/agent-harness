@@ -39,8 +39,8 @@ func TestCleanupFinishPreviewEmitsBoundFinishCommand(t *testing.T) {
 			URL: record.IssueURL, Body: port.IssueBodyCompletionStartMarker, State: "closed",
 		}}, nil
 	}
-	deps.VerifyMergedHead = func(issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscore.CleanupRemoteBranchArtifactHead, error) {
-		return issueopscore.CleanupRemoteBranchArtifactHead{HeadRefName: record.Branch, HeadRefOID: "abc123", BaseRefName: "main"}, nil
+	deps.VerifyMergedHead = func(issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscontract.CleanupRemoteBranchArtifactHead, error) {
+		return issueopscontract.CleanupRemoteBranchArtifactHead{HeadRefName: record.Branch, HeadRefOID: "abc123", BaseRefName: "main"}, nil
 	}
 	if err := RunCleanup([]string{"finish", "--id", record.ID, "--preview", "--json"}, deps); err != nil {
 		t.Fatal(err)
@@ -150,8 +150,8 @@ func TestCurrentRelayCleanupGeneratedCommandDogfood(t *testing.T) {
 		}
 	}
 	deps.Provider = func(string) (port.IssueProvider, error) { return provider, nil }
-	deps.VerifyMergedHead = func(issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscore.CleanupRemoteBranchArtifactHead, error) {
-		return issueopscore.CleanupRemoteBranchArtifactHead{HeadRefName: record.Branch, HeadRefOID: "abc123", BaseRefName: "main"}, nil
+	deps.VerifyMergedHead = func(issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscontract.CleanupRemoteBranchArtifactHead, error) {
+		return issueopscontract.CleanupRemoteBranchArtifactHead{HeadRefName: record.Branch, HeadRefOID: "abc123", BaseRefName: "main"}, nil
 	}
 	deps.RemoveOrcaWorktree = func(ctx context.Context, worktreeID string) error {
 		removeCalls++

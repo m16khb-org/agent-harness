@@ -10,7 +10,6 @@ import (
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	hookadapter "agent-harness/internal/adapter/hook"
-	issueopscore "agent-harness/internal/adapter/issueops"
 	lifecycle "agent-harness/internal/adapter/lifecycle"
 	"agent-harness/internal/adapter/lifecycle/doctarget"
 )
@@ -49,7 +48,7 @@ func runHookPostToolUse(args []string) error {
 	if misdirectWarning != "" && misdirectRecordID != "" {
 		// 훅은 관측 기록만 남긴다(비차단 best-effort) — 판단과 게이트는
 		// strict readiness의 경고 키가 담당한다.
-		_, _ = issueopscore.IncrementIssueOpsSourceMisdirect(issueopscore.IssueOpsStateRoot(), misdirectRecordID)
+		_, _ = IncrementIssueOpsSourceMisdirect(IssueOpsStateRoot(), misdirectRecordID)
 	}
 	if *jsonOut {
 		return printJSON(map[string]any{
