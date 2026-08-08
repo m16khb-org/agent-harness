@@ -3,13 +3,15 @@ package resources
 import (
 	docs "agent-harness/internal/adapter/docs"
 	mcpadapter "agent-harness/internal/adapter/mcp"
-	statestore "agent-harness/internal/adapter/outbound/state"
 	policy "agent-harness/internal/adapter/policy"
 	projectdocs "agent-harness/internal/adapter/projectdocs"
+	statecontract "agent-harness/internal/contract/state"
 	"encoding/json"
 )
 
 type Config struct {
+	// StateList는 composition root가 주입한다.
+	StateList       func() (statecontract.StateListResult, error)
 	HarnessRoot     string
 	Version         string
 	SkillName       string
@@ -92,7 +94,10 @@ func HandleResourceRead(params json.RawMessage, config Config) (any, *ReadError)
 		return content(req.URI, "application/json", string(b)), nil
 	}
 	if req.URI == "harness://state" {
-		result, err := statestore.StateList()
+		if config.StateList == nil {
+			return nil, &ReadError{Code: -32000, Message: "Cannot read state index", Data: "state index reader is not configured"}
+		}
+		result, err := config.StateList()
 		if err != nil {
 			return nil, &ReadError{Code: -32000, Message: "Cannot read state index", Data: err.Error()}
 		}

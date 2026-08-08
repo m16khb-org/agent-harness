@@ -29,6 +29,7 @@ func TestComputeCodeSNR(t *testing.T) {
 
 func TestSNRBaselineRoundTrip(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	configureTestStateStore(t)
 	if _, ok := readSNRBaseline(); ok {
 		t.Fatal("expected no baseline before any save")
 	}

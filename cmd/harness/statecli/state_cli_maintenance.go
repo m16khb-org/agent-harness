@@ -1,12 +1,11 @@
 package statecli
 
 import (
-	statestore "agent-harness/internal/adapter/outbound/state"
 	"flag"
 	"fmt"
 )
 
-func runStatePrune(args []string) error {
+func runStatePrune(deps Dependencies, args []string) error {
 	fs := flag.NewFlagSet("state prune", flag.ContinueOnError)
 	maxAge := fs.Duration("max-age", 0, "prune records older than this duration, e.g. 720h")
 	confirm := fs.Bool("confirm", false, "delete matching records; omitted means dry-run")
@@ -14,7 +13,7 @@ func runStatePrune(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := statestore.StatePrune(*maxAge, *confirm)
+	result, err := deps.Prune(*maxAge, *confirm)
 	if err != nil {
 		return err
 	}
@@ -32,13 +31,13 @@ func runStatePrune(args []string) error {
 	return nil
 }
 
-func runStateDoctor(args []string) error {
+func runStateDoctor(deps Dependencies, args []string) error {
 	fs := flag.NewFlagSet("state doctor", flag.ContinueOnError)
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := statestore.StateDoctor()
+	result, err := deps.Doctor()
 	if err != nil {
 		return err
 	}
@@ -56,13 +55,13 @@ func runStateDoctor(args []string) error {
 	return nil
 }
 
-func runStateMaintain(args []string) error {
+func runStateMaintain(deps Dependencies, args []string) error {
 	fs := flag.NewFlagSet("state maintain", flag.ContinueOnError)
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := statestore.StateMaintain()
+	result, err := deps.Maintain()
 	if err != nil {
 		return err
 	}
