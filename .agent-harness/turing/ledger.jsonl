@@ -112,3 +112,6 @@
 {"at":"2026-08-09T00:00:00Z","event":"pass","goal":"BT-G11","note":"third defect found by that dogfood and fixed in PR #425: prepare launched owners into planner gates they cannot fill"}
 {"at":"2026-08-09T00:00:00Z","event":"pass","goal":"BT-G12","note":"#423 closed via PR #426; AC-03 corrected from go vet to source observation after the owner showed the analyzer is absent from this toolchain"}
 {"at":"2026-08-09T00:00:00Z","event":"block","goal":"BT-G9","note":"two owner sessions alive (12430, 44039); user observed typing into the 423 one; abandon refuses while Orca resources remain"}
+{"at":"2026-08-09T00:00:00Z","event":"pass","goal":"BT-G11","note":"AC-06 complete: the GitHub Orca lifecycle ran create -> claim -> implement -> PR #429 -> complete for the first time (io-794e8851ad5d)"}
+{"at":"2026-08-09T00:00:00Z","event":"pass","goal":"BT-G13","note":"#430: gofmt -l admitted as read-only; the owner found this by honestly reporting the axis as UNVERIFIED"}
+{"at":"2026-08-09T00:00:00Z","event":"pass","goal":"BT-G1","note":"backlog exhausted: 0 open issues, 0 open PRs"}
