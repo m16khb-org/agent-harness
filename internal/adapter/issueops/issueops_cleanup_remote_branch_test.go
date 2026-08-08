@@ -107,8 +107,8 @@ func remoteBranchGit() *fakeRemoteBranchGit {
 func remoteBranchDeps(git *fakeRemoteBranchGit) CleanupRemoteBranchDeps {
 	return CleanupRemoteBranchDeps{
 		Git: git.run,
-		VerifyMergedArtifact: func(issueops.IssueOpsRemoteArtifactVerification) (CleanupRemoteBranchArtifactHead, error) {
-			return CleanupRemoteBranchArtifactHead{
+		VerifyMergedArtifact: func(issueops.IssueOpsRemoteArtifactVerification) (issueops.CleanupRemoteBranchArtifactHead, error) {
+			return issueops.CleanupRemoteBranchArtifactHead{
 				HeadRefName: remoteBranchTestBranch, HeadRefOID: remoteBranchTestHeadOID,
 			}, nil
 		},
@@ -190,8 +190,8 @@ func TestCleanupRemoteBranchFailsClosed(t *testing.T) {
 		{
 			name: "unmerged artifact",
 			deps: func(d *CleanupRemoteBranchDeps) {
-				d.VerifyMergedArtifact = func(issueops.IssueOpsRemoteArtifactVerification) (CleanupRemoteBranchArtifactHead, error) {
-					return CleanupRemoteBranchArtifactHead{}, fmt.Errorf("remote artifact is not verified merged")
+				d.VerifyMergedArtifact = func(issueops.IssueOpsRemoteArtifactVerification) (issueops.CleanupRemoteBranchArtifactHead, error) {
+					return issueops.CleanupRemoteBranchArtifactHead{}, fmt.Errorf("remote artifact is not verified merged")
 				}
 			},
 			missing: "remote_artifact_merged",
@@ -199,8 +199,8 @@ func TestCleanupRemoteBranchFailsClosed(t *testing.T) {
 		{
 			name: "readback failure",
 			deps: func(d *CleanupRemoteBranchDeps) {
-				d.VerifyMergedArtifact = func(issueops.IssueOpsRemoteArtifactVerification) (CleanupRemoteBranchArtifactHead, error) {
-					return CleanupRemoteBranchArtifactHead{}, fmt.Errorf("gh: HTTP 503")
+				d.VerifyMergedArtifact = func(issueops.IssueOpsRemoteArtifactVerification) (issueops.CleanupRemoteBranchArtifactHead, error) {
+					return issueops.CleanupRemoteBranchArtifactHead{}, fmt.Errorf("gh: HTTP 503")
 				}
 			},
 			missing: "remote_artifact_merged",
@@ -215,8 +215,8 @@ func TestCleanupRemoteBranchFailsClosed(t *testing.T) {
 		{
 			name: "artifact head is another branch",
 			deps: func(d *CleanupRemoteBranchDeps) {
-				d.VerifyMergedArtifact = func(issueops.IssueOpsRemoteArtifactVerification) (CleanupRemoteBranchArtifactHead, error) {
-					return CleanupRemoteBranchArtifactHead{
+				d.VerifyMergedArtifact = func(issueops.IssueOpsRemoteArtifactVerification) (issueops.CleanupRemoteBranchArtifactHead, error) {
+					return issueops.CleanupRemoteBranchArtifactHead{
 						HeadRefName: "999-other-branch", HeadRefOID: remoteBranchTestHeadOID,
 					}, nil
 				}

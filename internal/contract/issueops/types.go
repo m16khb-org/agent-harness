@@ -505,3 +505,25 @@ type IssueOpsCloseChildrenResult struct {
 	Children      []IssueOpsCloseChildResult `json:"children"`
 	Missing       []string                   `json:"missing,omitempty"`
 }
+
+type LeaseHolderIndex struct {
+	Key           string `json:"-"`
+	SchemaVersion int    `json:"schema_version"`
+	LifecycleID   string `json:"lifecycle_id"`
+	Generation    uint64 `json:"generation"`
+	Host          string `json:"host"`
+	SessionID     string `json:"session_id"`
+	AgentID       string `json:"agent_id,omitempty"`
+}
+
+// CleanupRemoteBranchArtifactHead는 머지 검증 readback이 함께 돌려주는 원격
+// PR/MR의 head ref 정체다. 게이트 ⑨(타 브랜치 PR 방어)와 ⑩(머지 후 push된
+// 커밋 유실 방지)이 이 두 값에만 의존한다.
+type CleanupRemoteBranchArtifactHead struct {
+	HeadRefName string
+	HeadRefOID  string
+	// BaseRefName은 같은 readback에서 관측한 artifact의 현재 base ref다.
+	// remote-branch 게이트는 이 값을 읽지 않지만, cleanup finish의 base drift
+	// 게이트가 머지 관측과 같은 시점의 base를 요구하므로 여기에 함께 실린다.
+	BaseRefName string
+}

@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -27,18 +28,6 @@ type CleanupRemoteBranchRequest struct {
 	Fingerprint string
 }
 
-// CleanupRemoteBranchArtifactHead는 머지 검증 readback이 함께 돌려주는 원격
-// PR/MR의 head ref 정체다. 게이트 ⑨(타 브랜치 PR 방어)와 ⑩(머지 후 push된
-// 커밋 유실 방지)이 이 두 값에만 의존한다.
-type CleanupRemoteBranchArtifactHead struct {
-	HeadRefName string
-	HeadRefOID  string
-	// BaseRefName은 같은 readback에서 관측한 artifact의 현재 base ref다.
-	// remote-branch 게이트는 이 값을 읽지 않지만, cleanup finish의 base drift
-	// 게이트가 머지 관측과 같은 시점의 base를 요구하므로 여기에 함께 실린다.
-	BaseRefName string
-}
-
 // CleanupRemoteBranchDeps는 외부 표면 주입점이다.
 //
 // Git은 sync-base와 같은 ctx 서명을 쓴다 — 원격 관측과 삭제가 모두 네트워크
@@ -48,7 +37,7 @@ type CleanupRemoteBranchArtifactHead struct {
 // 같은 응답에서 나와야 한다.
 type CleanupRemoteBranchDeps struct {
 	Git                  func(ctx context.Context, dir string, args ...string) (int, string)
-	VerifyMergedArtifact func(artifact issueops.IssueOpsRemoteArtifactVerification) (CleanupRemoteBranchArtifactHead, error)
+	VerifyMergedArtifact func(artifact issueops.IssueOpsRemoteArtifactVerification) (issueopscontract.CleanupRemoteBranchArtifactHead, error)
 	// ReflectAudit는 삭제 성공 사실을 이슈 본문 completion 섹션에 멱등 병합한다
 	// (finish ④'의 CleanupAudit 병합 선례). best-effort이며 실패해도 이미 끝난
 	// 원격 삭제를 되돌리지 않는다.

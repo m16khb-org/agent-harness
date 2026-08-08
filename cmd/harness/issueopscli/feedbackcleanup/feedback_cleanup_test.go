@@ -168,9 +168,9 @@ func TestRunCleanupStatusSkipsRemoteObservationUntilFinishEligible(t *testing.T)
 			providerCalls := 0
 			var printed []any
 			deps := cleanupStatusDeps(&printed)
-			deps.VerifyMergedHead = func(issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscore.CleanupRemoteBranchArtifactHead, error) {
+			deps.VerifyMergedHead = func(issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscontract.CleanupRemoteBranchArtifactHead, error) {
 				mergeCalls++
-				return issueopscore.CleanupRemoteBranchArtifactHead{}, nil
+				return issueopscontract.CleanupRemoteBranchArtifactHead{}, nil
 			}
 			deps.Provider = func(string) (port.IssueProvider, error) {
 				providerCalls++
@@ -209,8 +209,8 @@ func TestRunCleanupStatusFailsClosedOnMergedReadbackErrors(t *testing.T) {
 				providerCalls++
 				return &cleanupStatusProvider{}, nil
 			}
-			deps.VerifyMergedHead = func(issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscore.CleanupRemoteBranchArtifactHead, error) {
-				return issueopscore.CleanupRemoteBranchArtifactHead{}, tc.err
+			deps.VerifyMergedHead = func(issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscontract.CleanupRemoteBranchArtifactHead, error) {
+				return issueopscontract.CleanupRemoteBranchArtifactHead{}, tc.err
 			}
 
 			err := RunCleanup([]string{"status", "--id", record.ID, "--merged"}, deps)
@@ -271,8 +271,8 @@ func TestRunCleanupStatusProjectsFinishReadinessParity(t *testing.T) {
 				}
 				return provider, nil
 			}
-			deps.VerifyMergedHead = func(issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscore.CleanupRemoteBranchArtifactHead, error) {
-				return issueopscore.CleanupRemoteBranchArtifactHead{HeadRefName: record.Branch, HeadRefOID: "abc123", BaseRefName: tc.mergedBase}, nil
+			deps.VerifyMergedHead = func(issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscontract.CleanupRemoteBranchArtifactHead, error) {
+				return issueopscontract.CleanupRemoteBranchArtifactHead{HeadRefName: record.Branch, HeadRefOID: "abc123", BaseRefName: tc.mergedBase}, nil
 			}
 			gitCalls := 0
 			deps.CleanupFinishGit = func(_ string, args ...string) (int, string) {
@@ -351,8 +351,8 @@ func TestRunCleanupStatusDoesNotNormalizeProviderOrIssueErrors(t *testing.T) {
 			record := cleanupStatusRecord(t, true, true)
 			deps := cleanupStatusDeps(nil)
 			deps.Provider = tc.provider
-			deps.VerifyMergedHead = func(issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscore.CleanupRemoteBranchArtifactHead, error) {
-				return issueopscore.CleanupRemoteBranchArtifactHead{BaseRefName: "main"}, nil
+			deps.VerifyMergedHead = func(issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscontract.CleanupRemoteBranchArtifactHead, error) {
+				return issueopscontract.CleanupRemoteBranchArtifactHead{BaseRefName: "main"}, nil
 			}
 			err := RunCleanup([]string{"status", "--id", record.ID, "--merged"}, deps)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {

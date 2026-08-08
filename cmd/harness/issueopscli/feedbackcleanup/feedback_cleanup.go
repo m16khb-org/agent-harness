@@ -29,7 +29,7 @@ type Deps struct {
 	ObserveArtifactMerged func(issueopscontract.IssueOpsRemoteArtifactVerification) (bool, error)
 	// VerifyMergedHead는 cleanup remote-branch 전용이다. 게이트 ⑧·⑨·⑩이
 	// 같은 readback을 공유해야 하므로 머지 여부와 head ref 정체를 함께 받는다.
-	VerifyMergedHead func(issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscore.CleanupRemoteBranchArtifactHead, error)
+	VerifyMergedHead func(issueopscontract.IssueOpsRemoteArtifactVerification) (issueopscontract.CleanupRemoteBranchArtifactHead, error)
 	Provider         func(provider string) (port.IssueProvider, error)
 	// CleanupFinishGit and InspectCleanupProcesses expose the finish oracle's
 	// read-only local observers to status tests without weakening production
@@ -243,7 +243,7 @@ func cleanupStatus(id string, mergedRequested bool, deps Deps) (issueopscontract
 	return issueopscore.FinalizeIssueOpsCleanupStatus(status), nil
 }
 
-func cleanupFinishRequest(record issueopscontract.IssueOpsRecord, snapshot port.ExecutionIssueSnapshot, mergedArtifact issueopscore.CleanupRemoteBranchArtifactHead, cwd string, apply, confirm bool, fingerprint string) issueopscore.CleanupFinishRequest {
+func cleanupFinishRequest(record issueopscontract.IssueOpsRecord, snapshot port.ExecutionIssueSnapshot, mergedArtifact issueopscontract.CleanupRemoteBranchArtifactHead, cwd string, apply, confirm bool, fingerprint string) issueopscore.CleanupFinishRequest {
 	return issueopscore.CleanupFinishRequest{
 		ID:                  record.ID,
 		CWD:                 cwd,

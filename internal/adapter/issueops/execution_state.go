@@ -1,6 +1,7 @@
 package issueops
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -17,31 +18,21 @@ import (
 
 var leaseHolderBucket = fmt.Sprintf("lease_holder_v%d", issueops.IssueOpsSchemaVersion)
 
-type LeaseHolderIndex struct {
-	Key           string `json:"-"`
-	SchemaVersion int    `json:"schema_version"`
-	LifecycleID   string `json:"lifecycle_id"`
-	Generation    uint64 `json:"generation"`
-	Host          string `json:"host"`
-	SessionID     string `json:"session_id"`
-	AgentID       string `json:"agent_id,omitempty"`
-}
-
-type leaseHolderIndex = LeaseHolderIndex
+type leaseHolderIndex = issueopscontract.LeaseHolderIndex
 
 // ListLeaseHolderIndexes는 state를 생성하거나 복구하지 않고 reverse index를
 // 읽는다. 모든 row는 content에서 파생한 key와 대조해 검증한다.
-func ListLeaseHolderIndexes(stateRoot string) ([]LeaseHolderIndex, error) {
+func ListLeaseHolderIndexes(stateRoot string) ([]issueopscontract.LeaseHolderIndex, error) {
 	rows, err := sqlstore.GetAllExisting(stateRoot, leaseHolderBucket)
 	if errors.Is(err, fs.ErrNotExist) {
-		return []LeaseHolderIndex{}, nil
+		return []issueopscontract.LeaseHolderIndex{}, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	result := make([]LeaseHolderIndex, 0, len(rows))
+	result := make([]issueopscontract.LeaseHolderIndex, 0, len(rows))
 	for _, row := range rows {
-		var index LeaseHolderIndex
+		var index issueopscontract.LeaseHolderIndex
 		if err := json.Unmarshal(row.Data, &index); err != nil {
 			return nil, fmt.Errorf("decode active lease-holder index %s: %w", row.ID, err)
 		}

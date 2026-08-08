@@ -9,7 +9,6 @@ import (
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	hookadapter "agent-harness/internal/adapter/hook"
-	issueopscore "agent-harness/internal/adapter/issueops"
 	lifecycle "agent-harness/internal/adapter/lifecycle"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
@@ -53,7 +52,7 @@ func runHookPreToolUse(args []string) error {
 		markHookMetricBlocked()
 		return printJSON(hookadapter.Resolve(nativeHost).FormatBlock(reason))
 	}
-	processAncestry, _ := issueopscore.ObserveNativeProcessAncestry(os.Getpid())
+	processAncestry, _ := ObserveNativeProcessAncestry(os.Getpid())
 	tool := hookinput.ToolNameFromHookInput(stdin)
 	result := lifecycle.BuildLifecyclePreToolUseDecision(lifecyclecontract.HookToolUseLifecycleRequest{
 		Repo:                  parsedRepo,

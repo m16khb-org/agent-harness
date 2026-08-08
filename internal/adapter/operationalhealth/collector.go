@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/adapter/issueops/pathutil"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	corehealth "agent-harness/internal/domain/operationalhealth"
@@ -201,8 +200,8 @@ func (collector Collector) collectGit(ctx context.Context, snapshot *corehealth.
 }
 
 func (collector Collector) collectIssueOps(snapshot *corehealth.Snapshot) ([]issueopscontract.IssueOpsRecord, bool) {
-	stateRoot := issueops.IssueOpsStateRoot()
-	ids, err := issueops.ListIssueOpsIDs(stateRoot)
+	stateRoot := IssueOpsStateRoot()
+	ids, err := ListIssueOpsIDs(stateRoot)
 	if err != nil {
 		addProblem(snapshot, "issueops", "issueops_list_failed", "IssueOps ID inventory failed")
 		return nil, false
@@ -210,7 +209,7 @@ func (collector Collector) collectIssueOps(snapshot *corehealth.Snapshot) ([]iss
 	records := make([]issueopscontract.IssueOpsRecord, 0, len(ids))
 	orcaOwned := false
 	for _, id := range ids {
-		record, err := issueops.ReadIssueOpsExisting(stateRoot, id)
+		record, err := ReadIssueOpsExisting(stateRoot, id)
 		if err != nil {
 			addProblem(snapshot, "issueops_record", "issueops_read_failed", "could not read IssueOps record "+strings.TrimSpace(id))
 			continue
@@ -221,7 +220,7 @@ func (collector Collector) collectIssueOps(snapshot *corehealth.Snapshot) ([]iss
 		snapshot.InventoryProblems = append(snapshot.InventoryProblems, problems...)
 		orcaOwned = orcaOwned || recordOwnsOrca(record)
 	}
-	indexes, err := issueops.ListLeaseHolderIndexes(stateRoot)
+	indexes, err := ListLeaseHolderIndexes(stateRoot)
 	if err != nil {
 		addProblem(snapshot, "issueops_lease_holder", "issueops_lease_holder_list_failed", "IssueOps active lease-holder index inventory failed")
 	} else {
@@ -239,7 +238,7 @@ func (collector Collector) nativeProcessInspector() NativeProcessInspector {
 	if collector.InspectNativeProcess != nil {
 		return collector.InspectNativeProcess
 	}
-	return issueops.InspectNativeProcessReceipt
+	return InspectNativeProcessReceipt
 }
 
 func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth.Snapshot, owned bool) {
