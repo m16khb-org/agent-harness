@@ -856,27 +856,16 @@ func (c *Client) SettleTask(ctx context.Context, runID, id string) error {
 	// 재시도는 정확히 한 번이다. 반복하면 fence가 풀리지 않는 상황에서
 	// 무한히 매달린다. 바인딩 자체가 실패하면 원래 fence 진단을 그대로
 	// 돌려준다 — 그것이 사용자가 볼 근본 원인이다.
-	if bindErr := c.BindRun(ctx, runID); bindErr != nil {
+	//
+	// 바인딩은 UseRun으로 한다. UseRun은 Orca가 돌려준 Run이 요청한 Run과
+	// 같은지까지 확인하므로, 엉뚱한 Run에 바인딩된 채로 재시도해 잘못된
+	// authority로 mutation하는 경로가 없다. 바인딩을 되돌리지도 않는다 —
+	// completion은 그 lifecycle의 마지막 단계이고, 이전 바인딩을 복원하면
+	// 그 사이 일어난 다른 mutation의 authority를 되돌리는 셈이 된다.
+	if _, bindErr := c.UseRun(ctx, runID); bindErr != nil {
 		return err
 	}
 	return c.UpdateTask(ctx, runID, id, taskStatusCompleted, "")
-}
-
-// BindRun은 이 coordinator terminal을 지정한 Run에 바인딩한다.
-//
-// 바인딩은 되돌리지 않는다. completion은 그 lifecycle의 마지막 단계이고, 이전
-// 바인딩을 기억했다가 복원하면 그 사이 일어난 다른 mutation의 authority를
-// 되돌리는 셈이 된다.
-func (c *Client) BindRun(ctx context.Context, runID string) error {
-	runID, err := validateRunID(runID)
-	if err != nil {
-		return err
-	}
-	if _, err := currentCoordinatorHandle(); err != nil {
-		return err
-	}
-	_, err = c.runJSON(ctx, "", readTimeout, []string{"orca", "orchestration", "run-use", "--id", runID, "--json"}, &struct{}{})
-	return err
 }
 
 // isConsumerFenced는 오류가 Orca의 Run consumer fence인지 보고한다.

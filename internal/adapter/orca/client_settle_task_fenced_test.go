@@ -14,6 +14,8 @@ import (
 const (
 	fencedRunID  = "run_c137f557d022"
 	fencedTaskID = "task_8971e683a744"
+	// boundRunStdout은 run-use가 요청한 Run에 실제로 바인딩됐을 때의 응답이다.
+	boundRunStdout = `{"ok":true,"result":{"run":{"id":"run_c137f557d022","objective":"consumer_fenced reproduction"}}}`
 )
 
 func fencedUpdateArgv() []string {
@@ -45,7 +47,7 @@ func TestClientSettleTaskRebindsTheSealedRunWhenFenced(t *testing.T) {
 	bind := strings.Join(fencedBindArgv(), " ")
 	runner.responses[update] = CommandOutput{Invoked: true, Stdout: []byte(
 		`{"ok":false,"error":{"code":"consumer_fenced","message":"This coordinator terminal is bound to run_other, not ` + fencedRunID + `."}}`)}
-	runner.responses[bind] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{}}`)}
+	runner.responses[bind] = CommandOutput{Invoked: true, Stdout: []byte(boundRunStdout)}
 	rebinding := &rebindingRunner{inner: runner, bindKey: bind, updateKey: update,
 		afterBind: CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{}}`)}}
 
@@ -66,7 +68,7 @@ func TestClientSettleTaskRetriesTheRebindExactlyOnce(t *testing.T) {
 	runner := newFakeRunner(t)
 	fenced := `{"ok":false,"error":{"code":"consumer_fenced","message":"still fenced"}}`
 	runner.responses[strings.Join(fencedUpdateArgv(), " ")] = CommandOutput{Invoked: true, Stdout: []byte(fenced)}
-	runner.responses[strings.Join(fencedBindArgv(), " ")] = CommandOutput{Invoked: true, Stdout: []byte(`{"ok":true,"result":{}}`)}
+	runner.responses[strings.Join(fencedBindArgv(), " ")] = CommandOutput{Invoked: true, Stdout: []byte(boundRunStdout)}
 
 	err := NewClient(runner).SettleTask(context.Background(), fencedRunID, fencedTaskID)
 	if err == nil {
@@ -109,6 +111,27 @@ func TestClientSettleTaskReportsTheOriginalFenceWhenRebindFails(t *testing.T) {
 	}
 	if len(runner.calls) != 2 {
 		t.Fatalf("바인딩이 실패하면 재시도하지 않아야 한다: %#v", runner.calls)
+	}
+}
+
+// TestClientSettleTaskRefusesToRetryWhenTheBindLandsElsewhere는 재시도의 전제를
+// 고정한다. run-use가 성공을 보고했더라도 다른 Run에 붙었다면 authority는
+// 회복되지 않았다. 그 상태로 task-update를 다시 보내면 엉뚱한 Run의 권한으로
+// mutation을 시도하는 셈이므로, 바인딩 결과 ID를 확인하고 멈춘다.
+func TestClientSettleTaskRefusesToRetryWhenTheBindLandsElsewhere(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses[strings.Join(fencedUpdateArgv(), " ")] = CommandOutput{Invoked: true, Stdout: []byte(
+		`{"ok":false,"error":{"code":"consumer_fenced","message":"bound elsewhere"}}`)}
+	runner.responses[strings.Join(fencedBindArgv(), " ")] = CommandOutput{Invoked: true, Stdout: []byte(
+		`{"ok":true,"result":{"run":{"id":"run_somewhere_else","objective":"other work"}}}`)}
+
+	err := NewClient(runner).SettleTask(context.Background(), fencedRunID, fencedTaskID)
+	var typed *port.OrcaError
+	if !errors.As(err, &typed) || typed.Code != "consumer_fenced" {
+		t.Fatalf("엉뚱한 바인딩은 fence 진단을 그대로 남겨야 한다: %v", err)
+	}
+	if len(runner.calls) != 2 {
+		t.Fatalf("authority가 회복되지 않았으면 재시도하면 안 된다: %#v", runner.calls)
 	}
 }
 
