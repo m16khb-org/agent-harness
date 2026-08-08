@@ -14,8 +14,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"agent-harness/internal/adapter/outbound/sqlstore"
 )
 
 var workerIDRe = regexp.MustCompile(`^[A-Za-z0-9._-]{1,128}$`)
@@ -23,8 +21,8 @@ var workerIDRe = regexp.MustCompile(`^[A-Za-z0-9._-]{1,128}$`)
 // workerBucket is the sqlstore bucket holding one row per worker job.
 const workerBucket = "worker"
 
-func openWorkerDB(dir string) (*sqlstore.DB, error) {
-	return sqlstore.Open(dir)
+func openWorkerDB(dir string) (StateDatabase, error) {
+	return OpenStateDatabase(dir)
 }
 
 func ReadWorkerJob(id string) (workercontract.WorkerJob, error) {

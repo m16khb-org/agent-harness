@@ -11,8 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"agent-harness/internal/adapter/outbound/sqlstore"
 )
 
 const loopBucket = "loop"
@@ -21,8 +19,8 @@ func StateRoot() string {
 	return filepath.Join(StateDir(), "loop")
 }
 
-func openStore() (*sqlstore.DB, error) {
-	return sqlstore.Open(StateRoot())
+func openStore() (StateDatabase, error) {
+	return OpenStateDatabase(StateRoot())
 }
 
 func ReadLoop(loopID string) (loopruncontract.LoopRun, error) {
@@ -51,7 +49,7 @@ func ReadLoopExisting(loopID string) (loopruncontract.LoopRun, error) {
 	if err != nil {
 		return loopruncontract.LoopRun{OK: false}, err
 	}
-	data, ok, err := sqlstore.GetExisting(StateRoot(), loopBucket, loopID)
+	data, ok, err := GetExisting(StateRoot(), loopBucket, loopID)
 	if err != nil {
 		return loopruncontract.LoopRun{OK: false, ID: loopID}, err
 	}
@@ -104,7 +102,7 @@ func writeLoop(loop loopruncontract.LoopRun) (loopruncontract.LoopRun, error) {
 }
 
 func ListLoopIDs() ([]string, error) {
-	ids, err := sqlstore.ListExisting(StateRoot(), loopBucket)
+	ids, err := ListExisting(StateRoot(), loopBucket)
 	if errors.Is(err, fs.ErrNotExist) {
 		return []string{}, nil
 	}

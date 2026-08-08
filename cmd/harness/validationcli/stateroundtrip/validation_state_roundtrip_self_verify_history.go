@@ -1,7 +1,6 @@
 package stateroundtrip
 
 import (
-	"agent-harness/internal/adapter/outbound/sqlstore"
 	statecontract "agent-harness/internal/contract/state"
 	"encoding/json"
 )
@@ -61,7 +60,7 @@ func (s *stateRoundtripSelfVerifySession) validateHistoryAndRetention(baselineCo
 		return s.fail("self-verify history retention confirm left too many matching summaries")
 	}
 
-	db, err := sqlstore.Open(input.tempState)
+	db, err := OpenStateDatabase(input.tempState)
 	if err != nil {
 		return s.fail(err.Error())
 	}
