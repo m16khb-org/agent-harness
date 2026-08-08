@@ -314,7 +314,7 @@ func TestCleanupRemoteBranchGatesRejectUnrecordedBranch(t *testing.T) {
 	result := CleanupRemoteBranchResult{}
 	_, missing := cleanupRemoteBranchGates(context.Background(), issueops.IssueOpsRecord{
 		ID: "io-test", Repo: t.TempDir(), Phase: IssueOpsPhaseDone,
-	}, remoteBranchDeps(git), &result)
+	}, CleanupRemoteBranchRequest{ID: "io-test"}, remoteBranchDeps(git), &result)
 	if !containsString(missing, "branch_recorded") {
 		t.Fatalf("an unrecorded branch must block: %v", missing)
 	}
