@@ -38,6 +38,11 @@ func runHook(args []string) error {
 	if stdinErr != nil {
 		return stdinErr
 	}
+	// 신호로 끝나면 아래 완료 경로가 실행되지 않아 어떤 기록도 남지 않는다.
+	// 어느 hook이 어떤 신호로 끝났는지는 죽는 쪽만 알 수 있으므로 여기서
+	// 관측한다(#268). SIGKILL은 handler를 설치할 수 없어 upstream 영역이다.
+	stopTerminationDiagnostics := hookfailure.InstallTerminationDiagnostics(args, stdin)
+	defer stopTerminationDiagnostics()
 	started := time.Now()
 	var err error
 	if len(args) > 0 {

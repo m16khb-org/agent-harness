@@ -14,6 +14,14 @@ type HookFailureEvent struct {
 	Argv           []string `json:"argv,omitempty"`
 	CommandSnippet string   `json:"command_snippet,omitempty"`
 	Error          string   `json:"error"`
+	// Termination은 hook이 자기 오류가 아니라 외부 신호로 끝났을 때 그 사유를
+	// 담는다("signal:terminated" 등). 비어 있으면 통상적인 오류 종료다.
+	//
+	// 이 필드가 필요한 이유: host가 hook 자식을 signal로 끝내면 hook은 exit
+	// code를 남기지 못하고, 호출자는 "hook exited without a status code"라는
+	// 사유 없는 문구만 보게 된다. 어느 hook이 어떤 신호로 끝났는지는 죽는
+	// 쪽만 알 수 있으므로 여기서 기록한다(#268).
+	Termination string `json:"termination,omitempty"`
 }
 
 type HookFailureRecordResult struct {
