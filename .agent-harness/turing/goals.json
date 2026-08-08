@@ -441,5 +441,70 @@
     "cycleEfficiency": 0.89,
     "parallelizationRatio": 1.0,
     "cleanupCompliance": 1.0
-  }
+  },
+  "rounds": [
+    {
+      "round": "orca-dogfood-2026-08-09",
+      "trigger": "사용자 지시: 전부 진행, 도그푸드가 필요하면 진행",
+      "orcaRuntime": "5e6698b5-40d2-4c67-af55-2456865e80c4 (relay 0.1.0+66c426c5173c)",
+      "resolved": [
+        {
+          "issue": 411,
+          "pr": 412,
+          "note": "prepare preview가 generation 0으로 provenance 바인딩 실패 — Orca 준비 경로 전체를 막고 있었다"
+        },
+        {
+          "issue": 414,
+          "pr": 415,
+          "note": "owner terminal 식별이 tab title에 의존. 이 relay는 stableTabTitle을 채우지 않아 구조적으로 불가능했다. 수정 후 Orca 모드 prepare가 처음으로 완주"
+        },
+        {
+          "issue": 328,
+          "pr": 416,
+          "note": "기준 1·2(세대 skew 진단과 recovery action). 기준 4·5는 실제 설치 조작 필요",
+          "partial": true
+        },
+        {
+          "issue": 280,
+          "pr": 417,
+          "note": "reconcile clear 액션. 두 번 재현 후 5개 레이어 배선"
+        }
+      ],
+      "reverted": [
+        {
+          "pr": 410,
+          "revertedBy": 413,
+          "note": "ensureOrcaBranchIsFree의 pre-check를 열었다가 Orca가 suffix 브랜치를 만들어 orphan 발생. 단위 테스트만 GREEN이었고 실제 mutation을 검증하지 않은 것이 원인"
+        }
+      ],
+      "corrections": [
+        "#319 순서 결함은 이미 해결돼 있었다 — SKILL.md line 18의 #176 ordering을 잘못 읽었다",
+        "#280을 slop으로 닫은 판단을 정정하고 재개설했다 — 두 번 재현했다"
+      ],
+      "blocked": [
+        {
+          "issue": 325,
+          "reason": "owner 세션이 lease를 쥐고 있어 completion까지 도달 불가. 해결 경로(run-use bind 후 재시도)는 이슈에 기록"
+        },
+        {
+          "issue": 319,
+          "reason": "AC-06 전체 dogfood가 같은 이유로 막힘. 순서 결함 자체는 없음을 실측"
+        },
+        {
+          "issue": 328,
+          "reason": "기준 4·5는 실제 두 호스트 설치 조작 필요"
+        },
+        {
+          "issue": 306,
+          "reason": "orphan 대상(#304 linkedBranches)이 이미 소멸(totalCount=0)"
+        }
+      ],
+      "liveResidue": {
+        "ownerProcess": "PID 12430 claude --model claude-opus-5 --effort high (41분 경과)",
+        "lifecycle": "io-b3d92dc6247a lease generation 2 revoking",
+        "worktree": ".worktrees/414-terminal-identity-fix",
+        "recovery": "owner 세션을 닫으면 execution replace --finalize → cleanup으로 회수. 살아있는 native 프로세스 자동 종료는 금지(#276 비목표)"
+      }
+    }
+  ]
 }
