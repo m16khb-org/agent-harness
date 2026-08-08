@@ -1,0 +1,10 @@
+package draftwiki
+
+import (
+	"agent-harness/internal/adapter/docs"
+)
+
+// production wiring과 같은 문서 reader를 설치한다.
+func init() {
+	ReadHeadings = docs.ReadHeadings
+}

@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"agent-harness/internal/adapter/docs"
 	"agent-harness/internal/adapter/draftwiki/queue"
 	"agent-harness/internal/adapter/lifecycle"
 	"agent-harness/internal/adapter/outbound/state"
@@ -193,5 +192,5 @@ func StateDir() string {
 }
 
 func readDocHeadings(path string) (string, []string) {
-	return docs.ReadHeadings(path)
+	return ReadHeadings(path)
 }
