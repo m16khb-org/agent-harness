@@ -1,6 +1,6 @@
 package policycli
 
-import policy "agent-harness/internal/domain/policy"
+import policy "agent-harness/internal/contract/policy"
 
 func Run(args []string) error {
 	return runPolicy(args)

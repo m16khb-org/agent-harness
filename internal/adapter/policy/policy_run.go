@@ -1,6 +1,7 @@
 package policy
 
 import (
+	policycontract "agent-harness/internal/contract/policy"
 	policydomain "agent-harness/internal/domain/policy"
 	"bytes"
 	"context"
@@ -11,11 +12,11 @@ import (
 	"time"
 )
 
-func FakeRunCommand(req policydomain.CommandPolicyRequest) policydomain.CommandFakeRunResult {
+func FakeRunCommand(req policycontract.CommandPolicyRequest) policycontract.CommandFakeRunResult {
 	started := time.Now()
 	policy := EvaluateCommandPolicy(req)
 	finished := time.Now()
-	result := policydomain.CommandFakeRunResult{
+	result := policycontract.CommandFakeRunResult{
 		OK:         policy.Allowed,
 		Executed:   false,
 		ExitCode:   0,
@@ -33,13 +34,13 @@ func FakeRunCommand(req policydomain.CommandPolicyRequest) policydomain.CommandF
 	return result
 }
 
-func RunReadOnlyCommand(req policydomain.CommandPolicyRequest) policydomain.CommandRunResult {
+func RunReadOnlyCommand(req policycontract.CommandPolicyRequest) policycontract.CommandRunResult {
 	req.WriteAllowed = false
 	req.NetworkAllowed = false
 	req.ShellAllowed = false
 	started := time.Now()
 	policy := EvaluateCommandPolicy(req)
-	result := policydomain.CommandRunResult{
+	result := policycontract.CommandRunResult{
 		OK:        policy.Allowed,
 		Executed:  false,
 		ExitCode:  0,

@@ -1,7 +1,7 @@
 package policy
 
 import (
-	policydomain "agent-harness/internal/domain/policy"
+	policydomain "agent-harness/internal/contract/policy"
 	"os"
 	"path/filepath"
 	"testing"

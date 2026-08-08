@@ -7,7 +7,7 @@ import (
 	audit "agent-harness/internal/adapter/audit"
 	statestore "agent-harness/internal/adapter/outbound/state"
 	policy "agent-harness/internal/adapter/policy"
-	policydomain "agent-harness/internal/domain/policy"
+	policydomain "agent-harness/internal/contract/policy"
 )
 
 func commandPolicyRequestFromArgs(args map[string]any) policydomain.CommandPolicyRequest {

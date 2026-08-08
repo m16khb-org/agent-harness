@@ -2,8 +2,7 @@ package workercli
 
 import (
 	draftwiki "agent-harness/internal/adapter/draftwiki"
-	worker "agent-harness/internal/adapter/worker"
-	policy "agent-harness/internal/domain/policy"
+	policy "agent-harness/internal/contract/policy"
 	"flag"
 	"fmt"
 	"os"
@@ -123,7 +122,7 @@ func runWorkerRun(args []string) error {
 		Timeout:       timeout.String(),
 		EnvAllowlist:  splitCSV(*envAllowlist),
 	}
-	job, err := worker.RunReadOnlyWorkerJob(*kind, *payload, req)
+	job, err := RunReadOnlyWorkerJob(*kind, *payload, req)
 	if *jsonOut {
 		_ = printJSON(job)
 	}

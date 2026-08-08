@@ -7,7 +7,7 @@ import (
 	basesyncoutbound "agent-harness/internal/adapter/outbound/issueopsbasesync"
 	provenanceadapter "agent-harness/internal/adapter/outbound/issueopsprovenance"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	policy "agent-harness/internal/domain/policy"
+	policy "agent-harness/internal/contract/policy"
 )
 
 func wirePolicyCLIDeps() {

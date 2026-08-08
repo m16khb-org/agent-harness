@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	worker "agent-harness/internal/adapter/worker"
+	workercontract "agent-harness/internal/contract/worker"
 )
 
 func ValidateWorkerLifecycle(binary, root string, seed int64) StepResult {
@@ -25,7 +25,7 @@ func ValidateWorkerLifecycleWithDeps(binary, root string, seed int64, deps Valid
 	if !enqueue.OK {
 		return enqueue
 	}
-	var job worker.WorkerJob
+	var job workercontract.WorkerJob
 	if err := json.Unmarshal([]byte(enqueue.Stdout), &job); err != nil {
 		return commandstep.FailedStep("worker lifecycle smoke", err)
 	}
@@ -38,7 +38,7 @@ func ValidateWorkerLifecycleWithDeps(binary, root string, seed int64, deps Valid
 			errs = append(errs, step.Label+" failed")
 		}
 	}
-	if !job.NoShell || job.Status != worker.WorkerStatusQueued {
+	if !job.NoShell || job.Status != workercontract.WorkerStatusQueued {
 		errs = append(errs, "worker job is not queued no-shell")
 	}
 	return commandstep.AssertionStep("worker lifecycle smoke", time.Now(), errs)

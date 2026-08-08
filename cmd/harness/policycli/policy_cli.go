@@ -3,7 +3,7 @@ package policycli
 import (
 	audit "agent-harness/internal/adapter/audit"
 	policy "agent-harness/internal/adapter/policy"
-	policydomain "agent-harness/internal/domain/policy"
+	policydomain "agent-harness/internal/contract/policy"
 	"fmt"
 	"os"
 )

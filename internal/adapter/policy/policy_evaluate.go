@@ -5,12 +5,13 @@ import (
 	"strings"
 	"time"
 
+	policycontract "agent-harness/internal/contract/policy"
 	policydomain "agent-harness/internal/domain/policy"
 
 	"agent-harness/internal/domain/auditid"
 )
 
-func EvaluateCommandPolicy(req policydomain.CommandPolicyRequest) policydomain.CommandPolicyEvaluation {
+func EvaluateCommandPolicy(req policycontract.CommandPolicyRequest) policycontract.CommandPolicyEvaluation {
 	root := absOrOriginal(req.WorkspaceRoot)
 	cwd := absOrOriginal(req.CWD)
 	catalog := policyCatalogForWorkspace(root)
@@ -25,7 +26,7 @@ func EvaluateCommandPolicy(req policydomain.CommandPolicyRequest) policydomain.C
 	if auditID == "" {
 		auditID = auditid.Generate(req.WorkspaceRoot, req.CWD, req.Argv)
 	}
-	result := policydomain.CommandPolicyEvaluation{
+	result := policycontract.CommandPolicyEvaluation{
 		OK:             true,
 		AuditLogID:     auditID,
 		WorkspaceRoot:  root,
@@ -37,7 +38,7 @@ func EvaluateCommandPolicy(req policydomain.CommandPolicyRequest) policydomain.C
 		WriteAllowed:   req.WriteAllowed,
 		ShellAllowed:   req.ShellAllowed,
 		ShellReason:    policydomain.RedactFreeform(req.ShellReason),
-		Tier: policydomain.ResolveTier(policydomain.Request{
+		Tier: policydomain.ResolveTier(policycontract.Request{
 			WriteAllowed: req.WriteAllowed, NetworkAllowed: req.NetworkAllowed, ShellAllowed: req.ShellAllowed,
 		}),
 		DenyReasons: []string{},

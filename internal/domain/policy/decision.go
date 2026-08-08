@@ -1,27 +1,10 @@
 package policy
 
+import policycontract "agent-harness/internal/contract/policy"
+
 import "sort"
 
-const (
-	TierReadOnly       = "read_only"
-	TierWorkspaceWrite = "workspace_write"
-	TierNetworkAccess  = "network_access"
-	TierShellException = "shell_exception"
-)
-
-type Request struct {
-	WriteAllowed   bool
-	NetworkAllowed bool
-	ShellAllowed   bool
-}
-
-type Tier struct {
-	Name                string   `json:"name"`
-	GrantedCapabilities []string `json:"granted_capabilities"`
-	Rationale           string   `json:"rationale"`
-}
-
-func ResolveTier(request Request) Tier {
+func ResolveTier(request policycontract.Request) policycontract.Tier {
 	capabilities := []string{}
 	if request.WriteAllowed {
 		capabilities = append(capabilities, "write")
@@ -33,25 +16,25 @@ func ResolveTier(request Request) Tier {
 		capabilities = append(capabilities, "shell")
 	}
 	sort.Strings(capabilities)
-	name := TierReadOnly
+	name := policycontract.TierReadOnly
 	switch {
 	case request.ShellAllowed:
-		name = TierShellException
+		name = policycontract.TierShellException
 	case request.NetworkAllowed:
-		name = TierNetworkAccess
+		name = policycontract.TierNetworkAccess
 	case request.WriteAllowed:
-		name = TierWorkspaceWrite
+		name = policycontract.TierWorkspaceWrite
 	}
-	return Tier{Name: name, GrantedCapabilities: capabilities, Rationale: Rationale(name)}
+	return policycontract.Tier{Name: name, GrantedCapabilities: capabilities, Rationale: Rationale(name)}
 }
 
 func Rationale(name string) string {
 	switch name {
-	case TierShellException:
+	case policycontract.TierShellException:
 		return "shell interpreter exception granted; requires an explicit shell_reason and is audited"
-	case TierNetworkAccess:
+	case policycontract.TierNetworkAccess:
 		return "network capability granted; shell interpreters remain denied"
-	case TierWorkspaceWrite:
+	case policycontract.TierWorkspaceWrite:
 		return "write capability granted within the workspace; network and shell remain denied"
 	default:
 		return "no write, network, or shell capability requested; restricted to the read-only allowlist"

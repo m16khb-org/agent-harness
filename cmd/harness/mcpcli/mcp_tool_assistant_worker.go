@@ -8,9 +8,8 @@ import (
 	commitsuggest "agent-harness/internal/adapter/commitsuggest"
 	lintdiagnose "agent-harness/internal/adapter/lintdiagnose"
 	webfetchoutbound "agent-harness/internal/adapter/outbound/webfetch"
-	worker "agent-harness/internal/adapter/worker"
+	policy "agent-harness/internal/contract/policy"
 	webfetchcontract "agent-harness/internal/contract/webfetch"
-	policy "agent-harness/internal/domain/policy"
 )
 
 func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
@@ -52,13 +51,13 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	case "contract_schema", "contract_check":
 		return mcpToolPayload(CompatibilityContract())
 	case "worker_enqueue":
-		result, err := worker.EnqueueWorkerJob(argmap.String(call.Arguments, "kind"), argmap.String(call.Arguments, "payload"))
+		result, err := EnqueueWorkerJob(argmap.String(call.Arguments, "kind"), argmap.String(call.Arguments, "payload"))
 		if err != nil {
 			return mcpToolFailure(newProtocolError(-32000, "worker_enqueue failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "worker_run_read_only":
-		result, err := worker.RunReadOnlyWorkerJob(
+		result, err := RunReadOnlyWorkerJob(
 			argmap.String(call.Arguments, "kind"),
 			argmap.String(call.Arguments, "payload"),
 			policy.CommandPolicyRequest{
@@ -74,19 +73,19 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		}
 		return mcpToolPayload(result)
 	case "worker_status":
-		result, err := worker.ReadWorkerJob(argmap.String(call.Arguments, "id"))
+		result, err := ReadWorkerJob(argmap.String(call.Arguments, "id"))
 		if err != nil {
 			return mcpToolFailure(newProtocolError(-32000, "worker_status failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "worker_list":
-		result, err := worker.ListWorkerJobs()
+		result, err := ListWorkerJobs()
 		if err != nil {
 			return mcpToolFailure(newProtocolError(-32000, "worker_list failed", err.Error()))
 		}
 		return mcpToolPayload(result)
 	case "worker_cancel":
-		result, err := worker.CancelWorkerJob(argmap.String(call.Arguments, "id"))
+		result, err := CancelWorkerJob(argmap.String(call.Arguments, "id"))
 		if err != nil {
 			return mcpToolFailure(newProtocolError(-32000, "worker_cancel failed", err.Error()))
 		}

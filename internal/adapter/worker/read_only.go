@@ -1,16 +1,17 @@
 package worker
 
 import (
+	workercontract "agent-harness/internal/contract/worker"
 	"context"
 	"fmt"
 	"os"
 	"time"
 
 	"agent-harness/internal/adapter/policy"
-	policydomain "agent-harness/internal/domain/policy"
+	policydomain "agent-harness/internal/contract/policy"
 )
 
-func RunReadOnlyWorkerJob(kind, payload string, req policydomain.CommandPolicyRequest) (WorkerJob, error) {
+func RunReadOnlyWorkerJob(kind, payload string, req policydomain.CommandPolicyRequest) (workercontract.WorkerJob, error) {
 	job, err := EnqueueWorkerJob(kind, payload)
 	if err != nil {
 		return job, err
@@ -28,10 +29,10 @@ func RunReadOnlyWorkerJob(kind, payload string, req policydomain.CommandPolicyRe
 			return reReadErr
 		}
 		job = current
-		if current.Status != WorkerStatusQueued {
+		if current.Status != workercontract.WorkerStatusQueued {
 			return fmt.Errorf("worker job %s cannot run from status %s", job.ID, current.Status)
 		}
-		current.Status = WorkerStatusRunning
+		current.Status = workercontract.WorkerStatusRunning
 		current.StartedAt = time.Now().UTC().Format(time.RFC3339Nano)
 		current.PID = os.Getpid()
 		current.NoShell = true
@@ -56,9 +57,9 @@ func RunReadOnlyWorkerJob(kind, payload string, req policydomain.CommandPolicyRe
 		current.Result = &result
 		current.OK = result.OK
 		if result.OK {
-			current.Status = WorkerStatusSucceeded
+			current.Status = workercontract.WorkerStatusSucceeded
 		} else {
-			current.Status = WorkerStatusFailed
+			current.Status = workercontract.WorkerStatusFailed
 		}
 		current.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
 		job = current

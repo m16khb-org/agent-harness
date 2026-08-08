@@ -1,6 +1,7 @@
 package worker
 
 import (
+	workercontract "agent-harness/internal/contract/worker"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -26,39 +27,39 @@ func openWorkerDB(dir string) (*sqlstore.DB, error) {
 	return sqlstore.Open(dir)
 }
 
-func ReadWorkerJob(id string) (WorkerJob, error) {
+func ReadWorkerJob(id string) (workercontract.WorkerJob, error) {
 	if !workerIDRe.MatchString(id) || strings.Contains(id, "..") {
-		return WorkerJob{OK: false, ID: id}, fmt.Errorf("invalid worker job id")
+		return workercontract.WorkerJob{OK: false, ID: id}, fmt.Errorf("invalid worker job id")
 	}
 	dir, err := workerDir()
 	if err != nil {
-		return WorkerJob{OK: false, ID: id}, err
+		return workercontract.WorkerJob{OK: false, ID: id}, err
 	}
 	db, err := openWorkerDB(dir)
 	if err != nil {
-		return WorkerJob{OK: false, ID: id, WorkerDir: dir}, err
+		return workercontract.WorkerJob{OK: false, ID: id, WorkerDir: dir}, err
 	}
 	b, ok, err := db.Get(workerBucket, id)
 	if err != nil {
-		return WorkerJob{OK: false, ID: id, WorkerDir: dir}, err
+		return workercontract.WorkerJob{OK: false, ID: id, WorkerDir: dir}, err
 	}
 	if !ok {
-		return WorkerJob{OK: false, ID: id, WorkerDir: dir}, fmt.Errorf("worker job %s: %w", id, fs.ErrNotExist)
+		return workercontract.WorkerJob{OK: false, ID: id, WorkerDir: dir}, fmt.Errorf("worker job %s: %w", id, fs.ErrNotExist)
 	}
-	var job WorkerJob
+	var job workercontract.WorkerJob
 	if err := json.Unmarshal(b, &job); err != nil {
-		return WorkerJob{OK: false, ID: id, WorkerDir: dir}, err
+		return workercontract.WorkerJob{OK: false, ID: id, WorkerDir: dir}, err
 	}
 	job.WorkerDir = dir
 	return job, nil
 }
 
-func ListWorkerJobs() (WorkerListResult, error) {
+func ListWorkerJobs() (workercontract.WorkerListResult, error) {
 	dir, err := workerDir()
 	if err != nil {
-		return WorkerListResult{OK: false}, err
+		return workercontract.WorkerListResult{OK: false}, err
 	}
-	result := WorkerListResult{OK: true, WorkerDir: dir, Jobs: []WorkerJob{}}
+	result := workercontract.WorkerListResult{OK: true, WorkerDir: dir, Jobs: []workercontract.WorkerJob{}}
 	db, err := openWorkerDB(dir)
 	if err != nil {
 		return result, err
@@ -79,19 +80,19 @@ func ListWorkerJobs() (WorkerListResult, error) {
 }
 
 // summarizeWorkerQueue builds the status histogram + saturation depth (A2/G6).
-func summarizeWorkerQueue(jobs []WorkerJob) *WorkerQueueStats {
-	q := &WorkerQueueStats{Total: len(jobs)}
+func summarizeWorkerQueue(jobs []workercontract.WorkerJob) *workercontract.WorkerQueueStats {
+	q := &workercontract.WorkerQueueStats{Total: len(jobs)}
 	for _, job := range jobs {
 		switch job.Status {
-		case WorkerStatusQueued:
+		case workercontract.WorkerStatusQueued:
 			q.Queued++
-		case WorkerStatusRunning:
+		case workercontract.WorkerStatusRunning:
 			q.Running++
-		case WorkerStatusSucceeded:
+		case workercontract.WorkerStatusSucceeded:
 			q.Succeeded++
-		case WorkerStatusFailed:
+		case workercontract.WorkerStatusFailed:
 			q.Failed++
-		case WorkerStatusCancelled:
+		case workercontract.WorkerStatusCancelled:
 			q.Cancelled++
 		}
 	}
@@ -99,7 +100,7 @@ func summarizeWorkerQueue(jobs []WorkerJob) *WorkerQueueStats {
 	return q
 }
 
-func writeWorkerJob(job WorkerJob) error {
+func writeWorkerJob(job workercontract.WorkerJob) error {
 	if !workerIDRe.MatchString(job.ID) || strings.Contains(job.ID, "..") {
 		return fmt.Errorf("invalid worker job id")
 	}
@@ -141,12 +142,12 @@ func workerDir() (string, error) {
 // "running" status whose PID is no longer alive, it marks the job as
 // "failed" with an error message. Returns the list of jobs that were
 // detected and fixed.
-func DetectStuckWorkerJobs() (WorkerListResult, error) {
+func DetectStuckWorkerJobs() (workercontract.WorkerListResult, error) {
 	dir, err := workerDir()
 	if err != nil {
-		return WorkerListResult{OK: false}, err
+		return workercontract.WorkerListResult{OK: false}, err
 	}
-	result := WorkerListResult{OK: true, WorkerDir: dir, Jobs: []WorkerJob{}}
+	result := workercontract.WorkerListResult{OK: true, WorkerDir: dir, Jobs: []workercontract.WorkerJob{}}
 	db, err := openWorkerDB(dir)
 	if err != nil {
 		return result, err
@@ -160,7 +161,7 @@ func DetectStuckWorkerJobs() (WorkerListResult, error) {
 		if err != nil {
 			continue
 		}
-		if job.Status == WorkerStatusRunning && !isPIDAlive(job.PID) {
+		if job.Status == workercontract.WorkerStatusRunning && !isPIDAlive(job.PID) {
 			// Lock per job so we don't race with another modifier.
 			fixed := false
 			lockErr := withWorkerJobLock(context.Background(), dir, id, func(context.Context) error {
@@ -168,12 +169,12 @@ func DetectStuckWorkerJobs() (WorkerListResult, error) {
 				if reReadErr != nil {
 					return reReadErr
 				}
-				if current.Status != WorkerStatusRunning || isPIDAlive(current.PID) {
+				if current.Status != workercontract.WorkerStatusRunning || isPIDAlive(current.PID) {
 					// Status changed or PID became alive since we first
 					// checked; nothing to fix.
 					return nil
 				}
-				current.Status = WorkerStatusFailed
+				current.Status = workercontract.WorkerStatusFailed
 				current.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
 				current.OK = false
 				current.Result = nil // clear any stale result
@@ -207,14 +208,14 @@ const stuckScanSentinel = ".last-stuck-scan"
 // ran=false when the scan was skipped this interval. Best-effort: the sentinel
 // is touched even on detector error so a transient failure cannot make every
 // session re-run the scan.
-func MaybeDetectStuckWorkerJobs(minInterval time.Duration) (WorkerListResult, bool, error) {
+func MaybeDetectStuckWorkerJobs(minInterval time.Duration) (workercontract.WorkerListResult, bool, error) {
 	dir, err := workerDir()
 	if err != nil {
-		return WorkerListResult{OK: false}, false, err
+		return workercontract.WorkerListResult{OK: false}, false, err
 	}
 	sentinel := filepath.Join(dir, stuckScanSentinel)
 	if info, statErr := os.Stat(sentinel); statErr == nil && time.Since(info.ModTime()) < minInterval {
-		return WorkerListResult{OK: true, WorkerDir: dir, Jobs: []WorkerJob{}}, false, nil
+		return workercontract.WorkerListResult{OK: true, WorkerDir: dir, Jobs: []workercontract.WorkerJob{}}, false, nil
 	}
 	result, detErr := DetectStuckWorkerJobs()
 	if mkErr := os.MkdirAll(dir, 0o700); mkErr == nil {

@@ -11,7 +11,7 @@ import (
 	"agent-harness/internal/adapter/lifecycle"
 	"agent-harness/internal/adapter/outbound/state"
 	"agent-harness/internal/adapter/projectdoc"
-	coreworker "agent-harness/internal/adapter/worker"
+	workercontract "agent-harness/internal/contract/worker"
 	"agent-harness/internal/domain/judgement"
 	"agent-harness/internal/domain/policy"
 	"agent-harness/internal/domain/prompt"
@@ -24,10 +24,10 @@ const QueueLockFile = queue.LockFile
 const MaxQueueEvents = queue.MaxEvents
 
 const (
-	WorkerStatusQueued    = coreworker.WorkerStatusQueued
-	WorkerStatusRunning   = coreworker.WorkerStatusRunning
-	WorkerStatusSucceeded = coreworker.WorkerStatusSucceeded
-	WorkerStatusFailed    = coreworker.WorkerStatusFailed
+	WorkerStatusQueued    = workercontract.WorkerStatusQueued
+	WorkerStatusRunning   = workercontract.WorkerStatusRunning
+	WorkerStatusSucceeded = workercontract.WorkerStatusSucceeded
+	WorkerStatusFailed    = workercontract.WorkerStatusFailed
 )
 
 const draftWikiQueueFile = QueueFile

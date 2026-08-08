@@ -1,7 +1,6 @@
 package workercli
 
 import (
-	worker "agent-harness/internal/adapter/worker"
 	"flag"
 	"fmt"
 )
@@ -14,7 +13,7 @@ func runWorkerEnqueue(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	job, err := worker.EnqueueWorkerJob(*kind, *payload)
+	job, err := EnqueueWorkerJob(*kind, *payload)
 	if *jsonOut {
 		_ = printJSON(job)
 	}
@@ -31,7 +30,7 @@ func runWorkerStatus(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	job, err := worker.ReadWorkerJob(*id)
+	job, err := ReadWorkerJob(*id)
 	if *jsonOut {
 		_ = printJSON(job)
 	}
@@ -47,7 +46,7 @@ func runWorkerList(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := worker.ListWorkerJobs()
+	result, err := ListWorkerJobs()
 	if *jsonOut {
 		_ = printJSON(result)
 	}
@@ -65,7 +64,7 @@ func runWorkerCleanupStuck(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := worker.DetectStuckWorkerJobs()
+	result, err := DetectStuckWorkerJobs()
 	if *jsonOut {
 		_ = printJSON(result)
 	}
@@ -84,7 +83,7 @@ func runWorkerCancel(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	job, err := worker.CancelWorkerJob(*id)
+	job, err := CancelWorkerJob(*id)
 	if *jsonOut {
 		_ = printJSON(job)
 	}

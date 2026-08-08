@@ -1,6 +1,7 @@
 package worker
 
 import (
+	workercontract "agent-harness/internal/contract/worker"
 	"fmt"
 	"testing"
 	"time"
@@ -14,11 +15,11 @@ func TestListWorkerJobsReportsQueueDepth(t *testing.T) {
 	t.Setenv("HARNESS_WORKER_DIR", dir)
 
 	statuses := []string{
-		WorkerStatusQueued, WorkerStatusQueued,
-		WorkerStatusRunning,
-		WorkerStatusSucceeded,
-		WorkerStatusFailed,
-		WorkerStatusCancelled,
+		workercontract.WorkerStatusQueued, workercontract.WorkerStatusQueued,
+		workercontract.WorkerStatusRunning,
+		workercontract.WorkerStatusSucceeded,
+		workercontract.WorkerStatusFailed,
+		workercontract.WorkerStatusCancelled,
 	}
 	for i, s := range statuses {
 		job, err := EnqueueWorkerJob("queue-test", fmt.Sprintf("p%d", i))
@@ -55,7 +56,7 @@ func TestMaybeDetectStuckWorkerJobsSentinelGates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	job.Status = WorkerStatusRunning
+	job.Status = workercontract.WorkerStatusRunning
 	job.PID = 99999999 // far beyond max pid_t; kill(2) returns ESRCH
 	job.UpdatedAt = "2020-01-01T00:00:00Z"
 	if err := writeWorkerJob(job); err != nil {
@@ -70,7 +71,7 @@ func TestMaybeDetectStuckWorkerJobsSentinelGates(t *testing.T) {
 	if len(result.Jobs) != 1 {
 		t.Fatalf("expected 1 stuck job fixed, got %+v", result)
 	}
-	if stored, _ := ReadWorkerJob(job.ID); stored.Status != WorkerStatusFailed {
+	if stored, _ := ReadWorkerJob(job.ID); stored.Status != workercontract.WorkerStatusFailed {
 		t.Fatalf("stuck job should be marked failed, got %s", stored.Status)
 	}
 

@@ -1,7 +1,7 @@
 package commandpolicy
 
 import (
-	policy "agent-harness/internal/domain/policy"
+	policy "agent-harness/internal/contract/policy"
 	"encoding/json"
 	"path/filepath"
 )

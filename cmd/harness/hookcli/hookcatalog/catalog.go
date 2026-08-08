@@ -3,6 +3,7 @@ package hookcatalog
 import (
 	hookfailurecontract "agent-harness/internal/contract/hookfailure"
 	hookmetricscontract "agent-harness/internal/contract/hookmetrics"
+	workercontract "agent-harness/internal/contract/worker"
 	"flag"
 	"io"
 	"os"
@@ -15,10 +16,11 @@ import (
 	coreinstall "agent-harness/internal/adapter/install"
 	lifecycle "agent-harness/internal/adapter/lifecycle"
 	statestore "agent-harness/internal/adapter/outbound/state"
-	worker "agent-harness/internal/adapter/worker"
 )
 
 type Config struct {
+	// 정체된 worker job 탐지는 composition root가 주입한다.
+	MaybeDetectStuckWorkerJobs func(minInterval time.Duration) (workercontract.WorkerListResult, bool, error)
 	// prune 연산은 composition root가 주입한다.
 	PruneHookFailureLog func(maxAge time.Duration) (hookfailurecontract.HookFailurePruneResult, error)
 	PruneHookMetricsLog func(maxAge time.Duration) (hookmetricscontract.HookMetricsPruneResult, error)
@@ -110,7 +112,9 @@ func RunSessionStart(args []string, config Config) error {
 	// once per 24h via a stat-only sentinel — maintenance is cheap (ms) but
 	// unnecessary on every session start.
 	_, _, _ = statestore.MaybeMaintainStateStores(24 * time.Hour)
-	_, _, _ = worker.MaybeDetectStuckWorkerJobs(6 * time.Hour)
+	if config.MaybeDetectStuckWorkerJobs != nil {
+		_, _, _ = config.MaybeDetectStuckWorkerJobs(6 * time.Hour)
+	}
 	parsedRepo := strings.TrimSpace(*repo)
 	if parsedRepo == "" {
 		parsedRepo = hookinput.RepoFromHookInput(stdin)

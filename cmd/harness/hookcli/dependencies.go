@@ -3,6 +3,7 @@ package hookcli
 import (
 	hookfailurecontract "agent-harness/internal/contract/hookfailure"
 	hookmetricscontract "agent-harness/internal/contract/hookmetrics"
+	workercontract "agent-harness/internal/contract/worker"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -51,3 +52,6 @@ var (
 	PruneHookFailureLog   func(maxAge time.Duration) (hookfailurecontract.HookFailurePruneResult, error)
 	PruneHookMetricsLog   func(maxAge time.Duration) (hookmetricscontract.HookMetricsPruneResult, error)
 )
+
+// 정체된 worker job 탐지는 composition root가 설치한다.
+var MaybeDetectStuckWorkerJobs func(minInterval time.Duration) (workercontract.WorkerListResult, bool, error)

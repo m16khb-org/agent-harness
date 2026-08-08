@@ -1,6 +1,7 @@
 package policy_test
 
 import (
+	policycontract "agent-harness/internal/contract/policy"
 	"testing"
 
 	policydomain "agent-harness/internal/domain/policy"
@@ -9,13 +10,13 @@ import (
 func TestResolveTierPreservesCapabilityPrecedence(t *testing.T) {
 	tests := []struct {
 		name    string
-		request policydomain.Request
+		request policycontract.Request
 		want    string
 	}{
-		{"read only", policydomain.Request{}, policydomain.TierReadOnly},
-		{"write", policydomain.Request{WriteAllowed: true}, policydomain.TierWorkspaceWrite},
-		{"network", policydomain.Request{WriteAllowed: true, NetworkAllowed: true}, policydomain.TierNetworkAccess},
-		{"shell", policydomain.Request{WriteAllowed: true, NetworkAllowed: true, ShellAllowed: true}, policydomain.TierShellException},
+		{"read only", policycontract.Request{}, policycontract.TierReadOnly},
+		{"write", policycontract.Request{WriteAllowed: true}, policycontract.TierWorkspaceWrite},
+		{"network", policycontract.Request{WriteAllowed: true, NetworkAllowed: true}, policycontract.TierNetworkAccess},
+		{"shell", policycontract.Request{WriteAllowed: true, NetworkAllowed: true, ShellAllowed: true}, policycontract.TierShellException},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

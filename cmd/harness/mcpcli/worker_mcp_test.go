@@ -1,7 +1,7 @@
 package mcpcli
 
 import (
-	worker "agent-harness/internal/adapter/worker"
+	workercontract "agent-harness/internal/contract/worker"
 	"encoding/json"
 	"path/filepath"
 	"strings"
@@ -19,7 +19,7 @@ func TestMCPWorkerRunReadOnlyAllowsGitStatus(t *testing.T) {
 		"cwd":            repo,
 		"argv":           []string{"git", "status", "--short"},
 	})
-	if !job.OK || job.Status != worker.WorkerStatusSucceeded {
+	if !job.OK || job.Status != workercontract.WorkerStatusSucceeded {
 		t.Fatalf("worker_run_read_only did not succeed: %+v", job)
 	}
 	if job.Result == nil || !job.Result.Executed || job.Result.ExitCode != 0 || !job.Result.ReadOnly {
@@ -52,7 +52,7 @@ func TestMCPWorkerRunReadOnlyDeniesWriteNetworkAndShell(t *testing.T) {
 				"cwd":            repo,
 				"argv":           tc.argv,
 			})
-			if job.Status != worker.WorkerStatusFailed || job.Result == nil || job.Result.Policy.Allowed {
+			if job.Status != workercontract.WorkerStatusFailed || job.Result == nil || job.Result.Policy.Allowed {
 				t.Fatalf("unsafe command was not denied: %+v", job)
 			}
 			if !containsStringForWorkerMCPTest(job.Result.Policy.DenyReasons, tc.reason) {
@@ -67,7 +67,7 @@ func TestMCPWorkerRunReadOnlyDeniesWriteNetworkAndShell(t *testing.T) {
 	}
 }
 
-func callMCPWorkerRunReadOnlyForTest(t *testing.T, args map[string]any) worker.WorkerJob {
+func callMCPWorkerRunReadOnlyForTest(t *testing.T, args map[string]any) workercontract.WorkerJob {
 	t.Helper()
 	params, err := json.Marshal(map[string]any{"name": "worker_run_read_only", "arguments": args})
 	if err != nil {
@@ -89,7 +89,7 @@ func callMCPWorkerRunReadOnlyForTest(t *testing.T, args map[string]any) worker.W
 	if !ok {
 		t.Fatalf("unexpected MCP text content: %#v", content[0])
 	}
-	var job worker.WorkerJob
+	var job workercontract.WorkerJob
 	if err := json.Unmarshal([]byte(text), &job); err != nil {
 		t.Fatalf("unmarshal worker job %q: %v", text, err)
 	}
