@@ -6,7 +6,6 @@ cmd/harness/basiccli -> internal/adapter/inspect
 cmd/harness/basiccli -> internal/adapter/preflight
 cmd/harness/basiccli -> internal/adapter/repopath
 cmd/harness/basiccli -> internal/adapter/trace
-cmd/harness/commandstep -> internal/adapter/failurecause
 cmd/harness/contractcli -> internal/adapter/cli
 cmd/harness/contractcli -> internal/adapter/mcp
 cmd/harness/contractcli -> internal/adapter/toolconformance
@@ -84,7 +83,6 @@ cmd/harness/selfworkflow/augmentplan -> internal/adapter/install
 cmd/harness/selfworkflow/augmentplan -> internal/adapter/outbound/state
 cmd/harness/selfworkflow/candidateexport -> internal/adapter/outbound/state
 cmd/harness/selfworkflow/historycompare -> internal/adapter/outbound/state
-cmd/harness/selfworkflow/model -> internal/adapter/failurecause
 cmd/harness/selfworkflow/stateio -> internal/adapter/failurecause
 cmd/harness/selfworkflow/stateio -> internal/adapter/outbound/state
 cmd/harness/selfworkflow/summary -> internal/adapter/failurecause
@@ -96,7 +94,6 @@ cmd/harness/statuscli -> internal/adapter/policy
 cmd/harness/statuscli -> internal/adapter/preflight
 cmd/harness/statuscli -> internal/adapter/projectdocs
 cmd/harness/statuscli -> internal/adapter/worker
-cmd/harness/validationcli/contractauditworker -> internal/adapter/failurecause
 cmd/harness/validationcli/contractauditworker -> internal/adapter/worker
 cmd/harness/validationcli/nativeintegration -> internal/adapter/install
 cmd/harness/validationcli/nativeintegration -> internal/adapter/installutil
