@@ -280,9 +280,3 @@ func normalizeExecutionSwitchMode(value string) (string, error) {
 		return "", fmt.Errorf("execution switch-mode requires an explicit --mode direct or orca")
 	}
 }
-
-// executionSwitchModeCommand는 prepare가 모드 불일치를 거부할 때 안내하는
-// 다음 명령이다. 거부만 하고 해소 경로를 주지 않으면 사용자가 갇힌다.
-func executionSwitchModeCommand(id, mode string) string {
-	return fmt.Sprintf("agent-harness issueops execution switch-mode --id %s --mode %s --json", id, mode)
-}

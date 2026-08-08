@@ -18,8 +18,6 @@ import (
 	"agent-harness/internal/port"
 )
 
-const shellPathRCMarker = installcli.ShellPathRCMarker
-
 type (
 	HarnessStatus              = statuscli.Status
 	SelfVerifyStatus           = statuscli.SelfVerificationStatus

@@ -2,9 +2,6 @@ package harnessapp
 
 import "agent-harness/cmd/harness/selfworkflow"
 
-const selfVerifyLLMEvalEnv = "HARNESS_SELF_VERIFY_LLM_EVAL"
-const selfVerifyLLMEvalEvidenceBudgetBytes = selfworkflow.SelfVerifyLLMEvalEvidenceBudgetBytes
-
 type SelfVerifyLLMEvalConfig = selfworkflow.SelfVerifyLLMEvalConfig
 type SelfVerifyLLMEvalInput = selfworkflow.SelfVerifyLLMEvalInput
 type SelfVerifyLLMEvalOptions = selfworkflow.SelfVerifyLLMEvalOptions

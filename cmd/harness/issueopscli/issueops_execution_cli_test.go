@@ -170,12 +170,6 @@ func sameGeneratedExecutionCommand(got, raw string, generation uint64) bool {
 	return len(want) > 1 && strings.Join(clean, "\x00") == strings.Join(want[1:], "\x00")
 }
 
-func sameExecutionCLIPath(left, right string) bool {
-	left, leftErr := filepath.EvalSymlinks(left)
-	right, rightErr := filepath.EvalSymlinks(right)
-	return leftErr == nil && rightErr == nil && filepath.Clean(left) == filepath.Clean(right)
-}
-
 func TestIssueOpsExecutionCLIRejectsLegacyDecideAndAmbiguousReplace(t *testing.T) {
 	if err := runIssueOps([]string{"execution", "decide"}); err == nil || !strings.Contains(err.Error(), "unknown issueops execution subcommand") {
 		t.Fatalf("legacy execution decide must be absent, got %v", err)

@@ -65,18 +65,6 @@ suggester: "host-agent"
 	})
 }
 
-func decodeDraftWikiSuggestLLMOutput(out []byte) (string, error) {
-	var response draftWikiSuggestLLMResponse
-	if err := DecodeHostJudgementStructuredJSONObject("draft wiki suggest", out, &response); err != nil {
-		return "", fmt.Errorf("decode draft wiki LLM output: %w", err)
-	}
-	body := strings.TrimSpace(response.BodyMarkdown)
-	if body == "" {
-		return "", fmt.Errorf("draft wiki LLM output missing body_markdown")
-	}
-	return body, nil
-}
-
 func draftWikiSuggestResponseSchemaExample(title, targetWiki, targetType string) string {
 	body := fmt.Sprintf(`---
 title: %q

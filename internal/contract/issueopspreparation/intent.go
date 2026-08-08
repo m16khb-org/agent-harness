@@ -399,10 +399,6 @@ func validateRecordAuthority(record leasecontract.Record, intent Intent) error {
 	return nil
 }
 
-func issueIdentity(record leasecontract.Record) (IssueIdentity, error) {
-	return parseIssueIdentity(record, false)
-}
-
 func (IntentCodec) PrepareIssueIdentity(record leasecontract.Record) (IssueIdentity, error) {
 	return parseIssueIdentity(record, true)
 }

@@ -80,10 +80,3 @@ func issueOpsChildTerminal(entry issueops.IssueOpsChildStatusEntry, _ issueops.I
 func issueOpsChildDropped(entry issueops.IssueOpsChildStatusEntry) bool {
 	return strings.TrimSpace(entry.ValidationVerdict) == "dropped"
 }
-
-func issueOpsAppendActiveChildrenAudit(reason string, childIDs []string) string {
-	if len(childIDs) == 0 {
-		return strings.TrimSpace(reason)
-	}
-	return strings.TrimSpace(reason) + "; active_children=" + strings.Join(childIDs, ",")
-}

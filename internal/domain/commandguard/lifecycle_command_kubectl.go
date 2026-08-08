@@ -76,15 +76,6 @@ func kubectlMutationBlocked(verb string, subverb string, args []string) bool {
 	}
 }
 
-func kubectlLiveAccessNeedsConfirmation(verb string) bool {
-	switch verb {
-	case "exec", "port-forward":
-		return true
-	default:
-		return false
-	}
-}
-
 func kubectlDryRun(args []string) bool {
 	for i, arg := range args {
 		switch {

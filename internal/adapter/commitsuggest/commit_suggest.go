@@ -25,10 +25,6 @@ type CommitSuggestResult struct {
 	Prompt        string `json:"prompt,omitempty"`
 }
 
-type commitSuggestResponse struct {
-	CommitMessage string `json:"commit_message"`
-}
-
 func SuggestCommit(req CommitSuggestRequest) (CommitSuggestResult, error) {
 	root, err := repopath.NormalizeRoot(req.RepoRoot)
 	if err != nil {

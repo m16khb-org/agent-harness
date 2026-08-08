@@ -1,7 +1,6 @@
 package mcpcli
 
 import (
-	"fmt"
 	"time"
 
 	"agent-harness/cmd/harness/mcpcli/argmap"
@@ -103,11 +102,4 @@ func handleSelfLoopMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	default:
 		return MCPToolOutcome{}
 	}
-}
-
-func wrapSelfVerificationGateError(result selfworkflow.SelfAugmentResult, err error) (selfworkflow.SelfAugmentResult, error) {
-	if err == nil || !isSelfVerificationGateError(err) {
-		return result, err
-	}
-	return result, fmt.Errorf("%w: %w", ErrSelfVerificationGateFailed, err)
 }

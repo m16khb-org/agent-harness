@@ -40,55 +40,6 @@ func setIssueOpsPhaseForTest(t *testing.T, repo, branch string, phase issueopsco
 	}
 }
 
-func linkIssueOpsBranchEvidenceForTest(t *testing.T, repo, branch string) {
-	t.Helper()
-	id := newIssueOpsID(repo, branch)
-	before, err := ReadIssueOps(IssueOpsStateRoot(), id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	issueURL := "https://github.com/example/repo/issues/1"
-	if _, err := LinkIssueOpsIssue(IssueOpsStateRoot(), id, issueURL); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := PrepareIssueOpsBranch(IssueOpsStateRoot(), id, issueopscontract.IssueOpsBranchPrepareRequest{
-		Provider:     "github",
-		IssueURL:     issueURL,
-		Branch:       issueOpsProviderBranchForTest(branch),
-		BaseBranch:   "main",
-		LinkVerified: true,
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if before.Phase != IssueOpsPhaseProblem && before.Phase != IssueOpsPhasePlan {
-		if _, err := AdvanceIssueOpsPhase(IssueOpsStateRoot(), id, string(before.Phase)); err != nil {
-			t.Fatal(err)
-		}
-	}
-}
-
-func issueOpsProviderBranchForTest(branch string) string {
-	if validateIssueOpsIssueBranch(branch) == nil {
-		return branch
-	}
-	slug := strings.Trim(strings.Map(func(r rune) rune {
-		switch {
-		case r >= 'a' && r <= 'z':
-			return r
-		case r >= 'A' && r <= 'Z':
-			return r + ('a' - 'A')
-		case r >= '0' && r <= '9':
-			return r
-		default:
-			return '-'
-		}
-	}, branch), "-")
-	if slug == "" {
-		slug = "branch"
-	}
-	return "1-" + slug
-}
-
 func markIssueOpsPRPhaseForTest(t *testing.T, repo, branch string) {
 	t.Helper()
 	id := newIssueOpsID(repo, branch)
@@ -124,17 +75,6 @@ func makeIssueOpsGuardWorktreeForTest(t *testing.T, repo, slug string) string {
 		t.Fatal(err)
 	}
 	return worktree
-}
-
-func writeIssueOpsGuardFileForTest(t *testing.T, root, rel, content string) {
-	t.Helper()
-	path := filepath.Join(root, filepath.FromSlash(rel))
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatal(err)
-	}
 }
 
 type linkedIssueOpsWorktreeForTest struct {

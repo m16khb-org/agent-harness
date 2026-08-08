@@ -177,15 +177,6 @@ func planBranchMismatchesRecord(record model.IssueOpsRecord) bool {
 	return branch != "" && branch != strings.TrimSpace(record.Branch)
 }
 
-func worktreePathValid(path string) bool {
-	path = strings.TrimSpace(path)
-	if path == "" || strings.Contains(path, "\x00") {
-		return false
-	}
-	info, err := os.Stat(path)
-	return err == nil && info.IsDir()
-}
-
 // worktreeGitTracked checks whether a path is a git-tracked directory — either a
 // main checkout (where .git is a directory) or a linked worktree (where .git is
 // a file pointing to the gitdir). Non-git directories and missing paths return

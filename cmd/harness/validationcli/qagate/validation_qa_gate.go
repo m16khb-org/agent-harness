@@ -11,10 +11,6 @@ func ValidateQAGate(root string) StepResult {
 	return validateQAGateWithDeps(root, docsValidationDeps{})
 }
 
-func validateQAGate(root string) StepResult {
-	return ValidateQAGate(root)
-}
-
 func validateQAGateWithDeps(root string, deps docsValidationDeps) StepResult {
 	deps = deps.withDefaults()
 	started := time.Now()

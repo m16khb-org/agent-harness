@@ -170,14 +170,6 @@ func prepareRemotePullRequest(stateRoot string, req RemotePullRequestRequest) (i
 	}, kind, nil
 }
 
-func beginRemotePullRequestIntent(stateRoot string, expected issueops.IssueOpsRecord, actor issueops.NativeActor, cwd string, expectedGeneration uint64, providerReq port.IssueProviderCreatePullRequestRequest, provider, kind string, now func() time.Time) (issueops.IssueOpsRecord, externalRemotePRPayload, error) {
-	operationID, err := newExecutionOperationID()
-	if err != nil {
-		return issueops.IssueOpsRecord{}, externalRemotePRPayload{}, err
-	}
-	return beginRemotePullRequestIntentWithOperationID(stateRoot, expected, actor, cwd, expectedGeneration, providerReq, provider, kind, operationID, now)
-}
-
 func beginRemotePullRequestIntentWithOperationID(stateRoot string, expected issueops.IssueOpsRecord, actor issueops.NativeActor, cwd string, expectedGeneration uint64, providerReq port.IssueProviderCreatePullRequestRequest, provider, kind, operationID string, now func() time.Time) (issueops.IssueOpsRecord, externalRemotePRPayload, error) {
 	if !validRemotePullRequestOperationID(operationID) {
 		return issueops.IssueOpsRecord{}, externalRemotePRPayload{}, fmt.Errorf("remote operation ID must be exactly 32 lowercase hexadecimal characters")

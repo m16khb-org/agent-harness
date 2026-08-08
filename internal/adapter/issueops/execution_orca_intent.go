@@ -99,93 +99,6 @@ func beginOrcaExecutionIntentWithID(stateRoot string, record issueops.IssueOpsRe
 	return persisted, payload, err
 }
 
-func executeOrcaIntentStage(ctx context.Context, stateRoot string, record issueops.IssueOpsRecord, payload externalOrcaIntentPayload, orca port.ExecutionOrcaProvisioner, readIssue ExecutionIssueSnapshotReadFunc, now func() time.Time) (issueops.IssueOpsRecord, externalOrcaIntentPayload, error) {
-	if orca == nil {
-		return record, payload, fmt.Errorf("Orca intent reconciliation is unavailable")
-	}
-	request, err := executionOrcaIntentRequest(record, payload)
-	if err != nil {
-		return record, payload, err
-	}
-	inventory, err := orca.InspectIntent(ctx, request)
-	if err != nil {
-		_ = recordOrcaIntentFailure(stateRoot, record.ID, payload, payload.InvocationState, err, now)
-		return record, payload, fmt.Errorf("Orca intent inventory is ambiguous; intent retained: %w", err)
-	}
-	if len(inventory.Candidates) > 1 {
-		err := fmt.Errorf("Orca intent inventory found multiple candidates; intent retained")
-		_ = recordOrcaIntentFailure(stateRoot, record.ID, payload, payload.InvocationState, err, now)
-		return record, payload, err
-	}
-	if len(inventory.Candidates) == 1 {
-		updated, next, advanceErr := advanceOrcaIntentReceipt(ctx, stateRoot, record, payload, inventory.Candidates[0], readIssue, now)
-		if advanceErr != nil {
-			_ = recordOrcaIntentFailure(stateRoot, record.ID, payload, orcaIntentUnknown, advanceErr, now)
-		}
-		return updated, next, advanceErr
-	}
-	if !inventory.AuthoritativeZero {
-		err := fmt.Errorf("Orca intent inventory returned a non-authoritative zero; intent retained")
-		_ = recordOrcaIntentFailure(stateRoot, record.ID, payload, payload.InvocationState, err, now)
-		return record, payload, err
-	}
-	if payload.InvocationState != orcaIntentNotInvoked && payload.Stage != preparationcontract.IntentStageRunBind {
-		err := fmt.Errorf("authoritative zero cannot retry an Orca mutation whose absence was not proven; intent retained")
-		_ = recordOrcaIntentFailure(stateRoot, record.ID, payload, payload.InvocationState, err, now)
-		return record, payload, err
-	}
-	if payload.InvocationAttempts >= maxOrcaIntentAttempts {
-		err := fmt.Errorf("Orca intent retry is exhausted; intent retained")
-		_ = recordOrcaIntentFailure(stateRoot, record.ID, payload, payload.InvocationState, err, now)
-		return record, payload, err
-	}
-	payload, err = markOrcaIntentInvoking(stateRoot, record.ID, payload)
-	if err != nil {
-		return record, payload, err
-	}
-	receipt, invokeErr := orca.InvokeIntent(ctx, request)
-	if invokeErr != nil {
-		invocation := orcaIntentUnknown
-		var typed *port.OrcaError
-		if errors.As(invokeErr, &typed) && !typed.Invoked {
-			invocation = orcaIntentNotInvoked
-		}
-		_ = recordOrcaIntentFailure(stateRoot, record.ID, payload, invocation, invokeErr, now)
-		return record, payload, fmt.Errorf("Orca mutation outcome requires execution reconcile; mutation was not repeated: %w", invokeErr)
-	}
-	updated, next, advanceErr := advanceOrcaIntentReceipt(ctx, stateRoot, record, payload, receipt, readIssue, now)
-	if advanceErr != nil {
-		_ = recordOrcaIntentFailure(stateRoot, record.ID, payload, orcaIntentUnknown, advanceErr, now)
-	}
-	return updated, next, advanceErr
-}
-
-func markOrcaIntentInvoking(stateRoot, id string, expected externalOrcaIntentPayload) (externalOrcaIntentPayload, error) {
-	return markOrcaIntentInvokingWithExpectedRaw(stateRoot, id, expected, nil, nil)
-}
-
-func markOrcaIntentInvokingWithExpectedRaw(stateRoot, id string, expected externalOrcaIntentPayload, expectedRecordRaw, expectedIntentRaw []byte) (externalOrcaIntentPayload, error) {
-	updated := expected
-	updated.InvocationState = orcaIntentUnknown
-	updated.InvocationAttempts++
-	data, err := preparationIntentCodec.Encode(updated)
-	if err != nil {
-		return externalOrcaIntentPayload{}, err
-	}
-	err = withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
-		record, stored, err := readAndMatchOrcaIntent(stateRoot, id, expected)
-		if err != nil {
-			return err
-		}
-		if !reflect.DeepEqual(stored, expected) {
-			return fmt.Errorf("Orca intent payload changed before invocation CAS")
-		}
-		_, err = persistOrcaIntentTransition(stateRoot, record, expected.OperationID, expectedRecordRaw, expectedIntentRaw, []port.RecordMutation{{Bucket: externalIntentBucket, ID: expected.OperationID, Data: data}})
-		return err
-	})
-	return updated, err
-}
-
 func markOrcaIntentInvokingFromRawState(stateRoot string, record issueops.IssueOpsRecord, expected externalOrcaIntentPayload, expectedRecordRaw, expectedIntentRaw []byte) (externalOrcaIntentPayload, error) {
 	updated := expected
 	updated.InvocationState = orcaIntentUnknown
@@ -202,33 +115,6 @@ func markOrcaIntentInvokingFromRawState(stateRoot string, record issueops.IssueO
 		return err
 	})
 	return updated, err
-}
-
-func recordOrcaIntentFailure(stateRoot, id string, expected externalOrcaIntentPayload, invocation string, cause error, now func() time.Time) error {
-	return recordOrcaIntentFailureWithExpectedRaw(stateRoot, id, expected, nil, nil, invocation, cause, now)
-}
-
-func recordOrcaIntentFailureWithExpectedRaw(stateRoot, id string, expected externalOrcaIntentPayload, expectedRecordRaw, expectedIntentRaw []byte, invocation string, cause error, now func() time.Time) error {
-	return withIssueOpsLock(context.Background(), stateRoot, id, func(context.Context) error {
-		record, stored, err := readAndMatchOrcaIntent(stateRoot, id, expected)
-		if err != nil {
-			return err
-		}
-		if !reflect.DeepEqual(stored, expected) {
-			return fmt.Errorf("Orca intent payload changed before failure receipt")
-		}
-		stored.InvocationState = invocation
-		data, err := preparationIntentCodec.Encode(stored)
-		if err != nil {
-			return err
-		}
-		message := boundedExecutionRemoteDiagnostic(cause)
-		record.Execution.Failure = &issueops.ExecutionFailure{
-			OperationID: stored.OperationID, Code: "external_operation_ambiguous", Message: message, At: executionNow(now),
-		}
-		_, err = persistOrcaIntentTransition(stateRoot, record, expected.OperationID, expectedRecordRaw, expectedIntentRaw, []port.RecordMutation{{Bucket: externalIntentBucket, ID: stored.OperationID, Data: data}})
-		return err
-	})
 }
 
 func recordOrcaIntentFailureFromRawState(stateRoot string, record issueops.IssueOpsRecord, expected externalOrcaIntentPayload, expectedRecordRaw, expectedIntentRaw []byte, invocation string, cause error, now func() time.Time) error {
@@ -527,10 +413,6 @@ func reconcileCanonicalOrcaIntent(
 
 func validateExternalOrcaIntentPayload(payload externalOrcaIntentPayload, operationID string) error {
 	return preparationIntentCodec.Validate(payload, operationID)
-}
-
-func validateExternalOrcaIntentPayloadShape(payload externalOrcaIntentPayload, operationID string) error {
-	return preparationIntentCodec.ValidateShape(payload, operationID)
 }
 
 func normalizedOrcaIntentPurpose(payload externalOrcaIntentPayload) string {

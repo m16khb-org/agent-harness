@@ -32,7 +32,6 @@ const (
 )
 
 const draftWikiQueueFile = QueueFile
-const draftWikiQueueLockFile = QueueLockFile
 const maxDraftWikiQueueEvents = MaxQueueEvents
 
 type ProjectDocsPlannedFile = projectdoc.ProjectDocsPlannedFile
