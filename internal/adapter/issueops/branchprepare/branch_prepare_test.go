@@ -69,7 +69,8 @@ func TestPrepareUsesGitHubDevelopFallback(t *testing.T) {
 		t.Fatal(err)
 	}
 	prepare := record.BranchPrepare
-	if prepare == nil || len(prepare.Steps) != 3 {
+	// #306: base SHA 없는 경로도 생성 뒤 두 readback 단계를 갖는다.
+	if prepare == nil || len(prepare.Steps) != 5 {
 		t.Fatalf("expected github branch prepare steps: %+v", record)
 	}
 	if prepare.Steps[0].Strategy != "mcp_unavailable" {
