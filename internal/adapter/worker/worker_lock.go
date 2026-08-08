@@ -2,8 +2,6 @@ package worker
 
 import (
 	"context"
-
-	"agent-harness/internal/adapter/outbound/sqlstore"
 )
 
 // withWorkerJobLock serializes the full read-modify-write span for a worker
@@ -12,7 +10,7 @@ import (
 // active-root metadata.
 func withWorkerJobLock(ctx context.Context, dir, jobID string, fn func(context.Context) error) error {
 	_ = jobID // spans are per-directory; the id names the span for callers
-	db, err := sqlstore.Open(dir)
+	db, err := OpenStateDatabase(dir)
 	if err != nil {
 		return err
 	}
