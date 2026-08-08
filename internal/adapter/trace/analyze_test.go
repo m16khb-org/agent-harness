@@ -1,6 +1,7 @@
 package trace
 
 import (
+	tracecontract "agent-harness/internal/contract/trace"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -31,7 +32,7 @@ func TestTraceAnalyzeSelfVerifySummary(t *testing.T) {
 	if err := os.WriteFile(input, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	result, err := TraceAnalyze(TraceAnalyzeRequest{Input: input})
+	result, err := TraceAnalyze(tracecontract.TraceAnalyzeRequest{Input: input})
 	if err != nil {
 		t.Fatalf("TraceAnalyze: %v", err)
 	}
@@ -68,7 +69,7 @@ func TestTraceAnalyzeDocUpkeepJSONLRedactsSecretEvidence(t *testing.T) {
 	if err := os.WriteFile(input, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	result, err := TraceAnalyze(TraceAnalyzeRequest{Input: input})
+	result, err := TraceAnalyze(tracecontract.TraceAnalyzeRequest{Input: input})
 	if err != nil {
 		t.Fatalf("TraceAnalyze: %v", err)
 	}
@@ -90,7 +91,7 @@ func TestTraceAnalyzeSingleDocUpkeepJSON(t *testing.T) {
 	if err := os.WriteFile(input, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	result, err := TraceAnalyze(TraceAnalyzeRequest{Input: input})
+	result, err := TraceAnalyze(tracecontract.TraceAnalyzeRequest{Input: input})
 	if err != nil {
 		t.Fatalf("TraceAnalyze: %v", err)
 	}
@@ -117,7 +118,7 @@ func TestTraceAnalyzeGuardFindingsAndWarnings(t *testing.T) {
 	if err := os.WriteFile(input, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	result, err := TraceAnalyze(TraceAnalyzeRequest{Input: input})
+	result, err := TraceAnalyze(tracecontract.TraceAnalyzeRequest{Input: input})
 	if err != nil {
 		t.Fatalf("TraceAnalyze guard: %v", err)
 	}
@@ -140,7 +141,7 @@ func TestTraceAnalyzeGuardFindingsAndWarnings(t *testing.T) {
 	if err := os.WriteFile(unknown, []byte(`{"other":true}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	noFindings, err := TraceAnalyze(TraceAnalyzeRequest{Input: unknown})
+	noFindings, err := TraceAnalyze(tracecontract.TraceAnalyzeRequest{Input: unknown})
 	if err != nil {
 		t.Fatalf("TraceAnalyze unknown: %v", err)
 	}
@@ -154,7 +155,7 @@ func TestTraceAnalyzeInvalidJSONAndJSONLFallback(t *testing.T) {
 	if err := os.WriteFile(invalid, []byte(`{"broken":`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	result, err := TraceAnalyze(TraceAnalyzeRequest{Input: invalid})
+	result, err := TraceAnalyze(tracecontract.TraceAnalyzeRequest{Input: invalid})
 	if err != nil {
 		t.Fatalf("TraceAnalyze invalid JSON warning result: %v", err)
 	}
@@ -166,7 +167,7 @@ func TestTraceAnalyzeInvalidJSONAndJSONLFallback(t *testing.T) {
 	if err := os.WriteFile(jsonl, []byte("{\"broken\":\n{\"event\":\"step_end\",\"step\":\"daemon build\",\"ok\":false}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	fallback, err := TraceAnalyze(TraceAnalyzeRequest{Input: jsonl})
+	fallback, err := TraceAnalyze(tracecontract.TraceAnalyzeRequest{Input: jsonl})
 	if err != nil {
 		t.Fatalf("TraceAnalyze JSONL fallback: %v", err)
 	}
@@ -176,7 +177,7 @@ func TestTraceAnalyzeInvalidJSONAndJSONLFallback(t *testing.T) {
 }
 
 func TestDedupeTraceFindingsKeepsDistinctFailureCauses(t *testing.T) {
-	findings := dedupeTraceFindings([]TraceAnalysisFinding{
+	findings := dedupeTraceFindings([]tracecontract.TraceAnalysisFinding{
 		{
 			FailureClass:     "shared_failure",
 			FailureCause:     failurecause.Transport,
@@ -219,7 +220,7 @@ func TestTraceAnalyzeRedactsFailureCauseEvidence(t *testing.T) {
 	if err := os.WriteFile(input, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	result, err := TraceAnalyze(TraceAnalyzeRequest{Input: input})
+	result, err := TraceAnalyze(tracecontract.TraceAnalyzeRequest{Input: input})
 	if err != nil {
 		t.Fatalf("TraceAnalyze: %v", err)
 	}
@@ -240,7 +241,7 @@ func TestTraceAnalyzeReadsStateKey(t *testing.T) {
 	if _, err := corestate.StateWrite("trace-fixture", `{"failed_steps":1,"failure_class":"intermittent","failed_step":"go test"}`); err != nil {
 		t.Fatal(err)
 	}
-	result, err := TraceAnalyze(TraceAnalyzeRequest{Input: "trace-fixture"})
+	result, err := TraceAnalyze(tracecontract.TraceAnalyzeRequest{Input: "trace-fixture"})
 	if err != nil {
 		t.Fatalf("TraceAnalyze state key: %v", err)
 	}
@@ -250,19 +251,19 @@ func TestTraceAnalyzeReadsStateKey(t *testing.T) {
 }
 
 func TestTraceAnalyzeRejectsEmptyInput(t *testing.T) {
-	if _, err := TraceAnalyze(TraceAnalyzeRequest{}); err == nil {
+	if _, err := TraceAnalyze(tracecontract.TraceAnalyzeRequest{}); err == nil {
 		t.Fatal("expected missing input error")
 	}
 	input := filepath.Join(t.TempDir(), "empty.jsonl")
 	if err := os.WriteFile(input, []byte(" \n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := TraceAnalyze(TraceAnalyzeRequest{Input: input}); err == nil {
+	if _, err := TraceAnalyze(tracecontract.TraceAnalyzeRequest{Input: input}); err == nil {
 		t.Fatal("expected empty input error")
 	}
 }
 
-func stringifyTraceResult(result TraceAnalyzeResult) string {
+func stringifyTraceResult(result tracecontract.TraceAnalyzeResult) string {
 	var b strings.Builder
 	for _, finding := range result.Findings {
 		b.WriteString(finding.FailureClass)

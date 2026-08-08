@@ -1,33 +1,20 @@
 package lintdiagnose
 
 import (
+	lintdiagnosecontract "agent-harness/internal/contract/lintdiagnose"
 	"fmt"
 	"os/exec"
 	"strings"
 )
 
-type LintDiagnoseRequest struct {
-	RepoRoot    string   `json:"repo_root"`
-	CommandArgv []string `json:"command_argv"`
-}
-
-type LintDiagnoseResult struct {
-	OK          bool     `json:"ok"`
-	CommandArgv []string `json:"command_argv"`
-	ExitCode    int      `json:"exit_code"`
-	Failed      bool     `json:"failed"`
-	Diagnosis   string   `json:"diagnosis,omitempty"`
-	Prompt      string   `json:"prompt,omitempty"`
-}
-
-func DiagnoseCommand(req LintDiagnoseRequest) (LintDiagnoseResult, error) {
+func DiagnoseCommand(req lintdiagnosecontract.LintDiagnoseRequest) (lintdiagnosecontract.LintDiagnoseResult, error) {
 	root, err := NormalizeRepoRoot(req.RepoRoot)
 	if err != nil {
-		return LintDiagnoseResult{}, err
+		return lintdiagnosecontract.LintDiagnoseResult{}, err
 	}
 
 	if len(req.CommandArgv) == 0 {
-		return LintDiagnoseResult{}, fmt.Errorf("missing command to execute")
+		return lintdiagnosecontract.LintDiagnoseResult{}, fmt.Errorf("missing command to execute")
 	}
 
 	// 1. Run the targeted command
@@ -51,7 +38,7 @@ func DiagnoseCommand(req LintDiagnoseRequest) (LintDiagnoseResult, error) {
 		}
 	}
 
-	result := LintDiagnoseResult{
+	result := lintdiagnosecontract.LintDiagnoseResult{
 		OK:          true,
 		CommandArgv: req.CommandArgv,
 		ExitCode:    exitCode,

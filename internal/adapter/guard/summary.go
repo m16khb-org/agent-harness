@@ -1,12 +1,13 @@
 package guard
 
 import (
+	guardcontract "agent-harness/internal/contract/guard"
 	"fmt"
 )
 
-func dedupeGuardFindings(findings []GuardFinding) []GuardFinding {
+func dedupeGuardFindings(findings []guardcontract.GuardFinding) []guardcontract.GuardFinding {
 	seen := map[string]bool{}
-	out := []GuardFinding{}
+	out := []guardcontract.GuardFinding{}
 	for _, finding := range findings {
 		key := finding.Severity + "\x00" + finding.Rule + "\x00" + finding.File + "\x00" + fmt.Sprint(finding.Line) + "\x00" + finding.Evidence
 		if seen[key] {

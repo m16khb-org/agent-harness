@@ -1,6 +1,7 @@
 package commitsuggest
 
 import (
+	commitsuggestcontract "agent-harness/internal/contract/commitsuggest"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -9,25 +10,10 @@ import (
 	"agent-harness/internal/domain/prompt"
 )
 
-// CommitSuggestRequest는 commit message 제안을 구성한다.
-type CommitSuggestRequest struct {
-	RepoRoot string `json:"repo_root"`
-	Staged   bool   `json:"staged"`
-}
-
-type CommitSuggestResult struct {
-	OK            bool   `json:"ok"`
-	Executed      bool   `json:"executed"`
-	RepoRoot      string `json:"repo_root"`
-	Staged        bool   `json:"staged"`
-	CommitMessage string `json:"commit_message,omitempty"`
-	Prompt        string `json:"prompt,omitempty"`
-}
-
-func SuggestCommit(req CommitSuggestRequest) (CommitSuggestResult, error) {
+func SuggestCommit(req commitsuggestcontract.CommitSuggestRequest) (commitsuggestcontract.CommitSuggestResult, error) {
 	root, err := NormalizeRepoRoot(req.RepoRoot)
 	if err != nil {
-		return CommitSuggestResult{}, err
+		return commitsuggestcontract.CommitSuggestResult{}, err
 	}
 
 	var gitArgs []string
@@ -39,12 +25,12 @@ func SuggestCommit(req CommitSuggestRequest) (CommitSuggestResult, error) {
 
 	diffBytes, err := exec.Command("git", gitArgs...).Output()
 	if err != nil {
-		return CommitSuggestResult{}, fmt.Errorf("git diff failed: %w", err)
+		return commitsuggestcontract.CommitSuggestResult{}, fmt.Errorf("git diff failed: %w", err)
 	}
 
 	diffContent := string(diffBytes)
 	if strings.TrimSpace(diffContent) == "" {
-		return CommitSuggestResult{
+		return commitsuggestcontract.CommitSuggestResult{
 			OK:       true,
 			Executed: false,
 			RepoRoot: root,
@@ -52,7 +38,7 @@ func SuggestCommit(req CommitSuggestRequest) (CommitSuggestResult, error) {
 		}, nil
 	}
 
-	return CommitSuggestResult{
+	return commitsuggestcontract.CommitSuggestResult{
 		OK:       true,
 		Executed: true,
 		RepoRoot: root,

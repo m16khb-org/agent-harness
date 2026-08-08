@@ -1,6 +1,7 @@
 package guard
 
 import (
+	guardcontract "agent-harness/internal/contract/guard"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -53,12 +54,12 @@ func guardExistingSymbols(root string, targetFiles []string) map[string][]string
 	return symbols
 }
 
-func guardReuseFinding(rel string, line int, symbol string, existing map[string][]string) (GuardFinding, bool) {
+func guardReuseFinding(rel string, line int, symbol string, existing map[string][]string) (guardcontract.GuardFinding, bool) {
 	key := normalizeGuardSymbol(symbol)
 	if key == "" || len(existing[key]) == 0 {
-		return GuardFinding{}, false
+		return guardcontract.GuardFinding{}, false
 	}
-	return GuardFinding{
+	return guardcontract.GuardFinding{
 		Severity: "review",
 		Rule:     "reuse-before-new",
 		File:     rel,

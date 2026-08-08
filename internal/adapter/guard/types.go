@@ -1,41 +1,11 @@
 package guard
 
-type GuardCheckRequest struct {
-	RepoRoot string   `json:"repo_root"`
-	Staged   bool     `json:"staged"`
-	All      bool     `json:"all"`
-	Files    []string `json:"files,omitempty"`
-}
+import guardcontract "agent-harness/internal/contract/guard"
 
-type GuardCheckResult struct {
-	OK           bool           `json:"ok"`
-	RepoRoot     string         `json:"repo_root"`
-	Mode         string         `json:"mode"`
-	CheckedFiles []string       `json:"checked_files"`
-	Findings     []GuardFinding `json:"findings"`
-	Summary      GuardSummary   `json:"summary"`
-	Warnings     []string       `json:"warnings,omitempty"`
-}
-
-type GuardFinding struct {
-	Severity    string   `json:"severity"`
-	Rule        string   `json:"rule"`
-	File        string   `json:"file,omitempty"`
-	Line        int      `json:"line,omitempty"`
-	Message     string   `json:"message"`
-	Evidence    string   `json:"evidence,omitempty"`
-	Suggestions []string `json:"suggestions,omitempty"`
-}
-
-type GuardSummary struct {
-	Block  int `json:"block"`
-	Warn   int `json:"warn"`
-	Review int `json:"review"`
-	Info   int `json:"info"`
-}
-
+// GuardBlockedError는 Error() 메서드를 가지므로 contract가 아니라 여기에 남는다.
+// contract는 DTO만 소유하고 동작을 갖지 않는다.
 type GuardBlockedError struct {
-	Findings []GuardFinding
+	Findings []guardcontract.GuardFinding
 }
 
 func (e GuardBlockedError) Error() string {

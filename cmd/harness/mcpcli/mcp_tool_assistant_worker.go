@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/mcpcli/argmap"
-	commitsuggest "agent-harness/internal/adapter/commitsuggest"
-	lintdiagnose "agent-harness/internal/adapter/lintdiagnose"
+	commitsuggestcontract "agent-harness/internal/contract/commitsuggest"
+	lintdiagnosecontract "agent-harness/internal/contract/lintdiagnose"
 	policy "agent-harness/internal/contract/policy"
 	webfetchcontract "agent-harness/internal/contract/webfetch"
 )
@@ -16,7 +16,7 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	case "daemon_status":
 		return mcpToolPayload(DaemonStatus())
 	case "commit_suggest":
-		result, err := commitsuggest.SuggestCommit(commitsuggest.CommitSuggestRequest{
+		result, err := SuggestCommit(commitsuggestcontract.CommitSuggestRequest{
 			RepoRoot: ResolveTarget(argmap.String(call.Arguments, "repo")),
 			Staged:   argmap.Bool(call.Arguments, "staged"),
 		})
@@ -25,7 +25,7 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		}
 		return mcpToolPayload(result)
 	case "lint_diagnose":
-		result, err := lintdiagnose.DiagnoseCommand(lintdiagnose.LintDiagnoseRequest{
+		result, err := DiagnoseCommand(lintdiagnosecontract.LintDiagnoseRequest{
 			RepoRoot:    ResolveTarget(argmap.String(call.Arguments, "repo")),
 			CommandArgv: argmap.StringSlice(call.Arguments, "command_argv"),
 		})

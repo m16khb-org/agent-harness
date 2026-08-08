@@ -1,6 +1,7 @@
 package trace
 
 import (
+	tracecontract "agent-harness/internal/contract/trace"
 	"fmt"
 	"strings"
 
@@ -16,7 +17,7 @@ type docUpkeepEvent struct {
 	Status     string
 }
 
-func docUpkeepFindings(events []docUpkeepEvent) []TraceAnalysisFinding {
+func docUpkeepFindings(events []docUpkeepEvent) []tracecontract.TraceAnalysisFinding {
 	if len(events) == 0 {
 		return nil
 	}
@@ -31,9 +32,9 @@ func docUpkeepFindings(events []docUpkeepEvent) []TraceAnalysisFinding {
 		}
 		byTarget[target]++
 	}
-	findings := []TraceAnalysisFinding{}
+	findings := []tracecontract.TraceAnalysisFinding{}
 	for _, target := range traceSortedIntKeys(byTarget) {
-		findings = append(findings, TraceAnalysisFinding{
+		findings = append(findings, tracecontract.TraceAnalysisFinding{
 			FailureClass:        "lifecycle_doc_upkeep",
 			RecurringPattern:    fmt.Sprintf("%s queued %d time(s)", policy.RedactFreeform(target), byTarget[target]),
 			ProposedKnob:        "route pending upkeep into completion evidence instead of leaving lifecycle queue stale",

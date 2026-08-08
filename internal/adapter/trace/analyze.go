@@ -1,47 +1,21 @@
 package trace
 
 import (
+	tracecontract "agent-harness/internal/contract/trace"
 	"fmt"
 	"strings"
-
-	"agent-harness/internal/contract/failurecause"
 )
 
 const TraceAnalysisKind = "trace_analysis"
 
-type TraceAnalyzeRequest struct {
-	Input string `json:"input"`
-}
-
-type TraceAnalyzeResult struct {
-	OK           bool                   `json:"ok"`
-	Kind         string                 `json:"kind"`
-	Input        string                 `json:"input"`
-	InputSource  string                 `json:"input_source"`
-	TraceTypes   []string               `json:"trace_types"`
-	FindingCount int                    `json:"finding_count"`
-	Findings     []TraceAnalysisFinding `json:"findings"`
-	Warnings     []string               `json:"warnings,omitempty"`
-}
-
-type TraceAnalysisFinding struct {
-	FailureClass         string                  `json:"failure_class"`
-	FailureCause         failurecause.Cause      `json:"failure_cause"`
-	FailureCauseEvidence []failurecause.Evidence `json:"failure_cause_evidence"`
-	RecurringPattern     string                  `json:"recurring_pattern"`
-	ProposedKnob         string                  `json:"proposed_knob"`
-	OverfitRisk          string                  `json:"overfit_risk"`
-	VerificationCommand  string                  `json:"verification_command"`
-}
-
-func TraceAnalyze(req TraceAnalyzeRequest) (TraceAnalyzeResult, error) {
+func TraceAnalyze(req tracecontract.TraceAnalyzeRequest) (tracecontract.TraceAnalyzeResult, error) {
 	input := strings.TrimSpace(req.Input)
-	result := TraceAnalyzeResult{
+	result := tracecontract.TraceAnalyzeResult{
 		OK:         false,
 		Kind:       TraceAnalysisKind,
 		Input:      input,
 		TraceTypes: []string{},
-		Findings:   []TraceAnalysisFinding{},
+		Findings:   []tracecontract.TraceAnalysisFinding{},
 		Warnings:   []string{},
 	}
 	if input == "" {

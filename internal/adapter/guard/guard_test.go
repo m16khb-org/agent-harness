@@ -1,6 +1,7 @@
 package guard
 
 import (
+	guardcontract "agent-harness/internal/contract/guard"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,7 +26,7 @@ func ` + testName + `(t *testing.T) {
 		t.Fatalf("git add failed: %s", stderr)
 	}
 
-	result := GuardCheck(GuardCheckRequest{RepoRoot: repo, Staged: true})
+	result := GuardCheck(guardcontract.GuardCheckRequest{RepoRoot: repo, Staged: true})
 	if result.OK || result.Summary.Block != 2 {
 		t.Fatalf("expected blocking findings: %+v", result)
 	}
@@ -51,7 +52,7 @@ func normalizeTargetDoc(items []string) []string { return items }
 		t.Fatalf("git add failed: %s", stderr)
 	}
 
-	result := GuardCheck(GuardCheckRequest{RepoRoot: repo, Staged: true})
+	result := GuardCheck(guardcontract.GuardCheckRequest{RepoRoot: repo, Staged: true})
 	if result.Summary.Block != 0 || result.Summary.Review == 0 {
 		t.Fatalf("expected non-blocking reuse review: %+v", result)
 	}
@@ -70,7 +71,7 @@ func main() {}
 		t.Fatalf("git add failed: %s", stderr)
 	}
 
-	result := GuardCheck(GuardCheckRequest{RepoRoot: repo, Staged: true})
+	result := GuardCheck(guardcontract.GuardCheckRequest{RepoRoot: repo, Staged: true})
 	if result.Summary.Block != 0 || !result.OK {
 		t.Fatalf("prod-only warning should not block: %+v", result)
 	}
@@ -86,7 +87,7 @@ func TestGuardCheckBlocksSecretLikePaths(t *testing.T) {
 		t.Fatalf("git add failed: %s", stderr)
 	}
 
-	result := GuardCheck(GuardCheckRequest{RepoRoot: repo, Staged: true})
+	result := GuardCheck(guardcontract.GuardCheckRequest{RepoRoot: repo, Staged: true})
 	if result.OK || !guardHasFinding(result, "secret-like-path") {
 		t.Fatalf("expected secret path block: %+v", result)
 	}
@@ -109,7 +110,7 @@ func TestGuardWarnsOnNonDeterministicImmutablePrefix(t *testing.T) {
 		t.Fatalf("git add failed: %s", stderr)
 	}
 
-	result := GuardCheck(GuardCheckRequest{RepoRoot: repo, Staged: true})
+	result := GuardCheck(guardcontract.GuardCheckRequest{RepoRoot: repo, Staged: true})
 	if result.Summary.Block != 0 {
 		t.Fatalf("non-determinism warning must not block: %+v", result)
 	}
@@ -138,7 +139,7 @@ func TestGuardIgnoresNonDeterminismWithoutImmutablePrefixMarker(t *testing.T) {
 		t.Fatalf("git add failed: %s", stderr)
 	}
 
-	result := GuardCheck(GuardCheckRequest{RepoRoot: repo, Staged: true})
+	result := GuardCheck(guardcontract.GuardCheckRequest{RepoRoot: repo, Staged: true})
 	if guardHasFinding(result, "nondeterministic-context-serialization") {
 		t.Fatalf("unmarked builder must not trigger determinism rule: %+v", result.Findings)
 	}
@@ -164,7 +165,7 @@ func writeGuardFile(t *testing.T, repo, rel, content string) {
 	}
 }
 
-func guardHasFinding(result GuardCheckResult, rule string) bool {
+func guardHasFinding(result guardcontract.GuardCheckResult, rule string) bool {
 	for _, finding := range result.Findings {
 		if finding.Rule == rule {
 			return true

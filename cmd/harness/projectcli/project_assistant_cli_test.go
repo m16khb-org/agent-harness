@@ -1,8 +1,8 @@
 package projectcli
 
 import (
-	commitsuggest "agent-harness/internal/adapter/commitsuggest"
-	lintdiagnose "agent-harness/internal/adapter/lintdiagnose"
+	commitsuggest "agent-harness/internal/contract/commitsuggest"
+	lintdiagnose "agent-harness/internal/contract/lintdiagnose"
 	"encoding/json"
 	"os/exec"
 	"strings"

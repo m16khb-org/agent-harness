@@ -1,6 +1,7 @@
 package trace
 
 import (
+	tracecontract "agent-harness/internal/contract/trace"
 	"fmt"
 	"strings"
 
@@ -8,7 +9,7 @@ import (
 	"agent-harness/internal/domain/traceclassification"
 )
 
-func selfVerifySummaryFindings(doc map[string]any) []TraceAnalysisFinding {
+func selfVerifySummaryFindings(doc map[string]any) []tracecontract.TraceAnalysisFinding {
 	summary := nestedMap(doc, "summary")
 	if summary == nil {
 		summary = doc
@@ -47,7 +48,7 @@ func selfVerifySummaryFindings(doc map[string]any) []TraceAnalysisFinding {
 	classifiedCause := Classify(true, failureCauseEvidence)
 	failureCause := classifiedCause.Cause
 	failureCauseEvidence = classifiedCause.Evidence
-	return []TraceAnalysisFinding{{
+	return []tracecontract.TraceAnalysisFinding{{
 		FailureClass:         policy.RedactFreeform(failureClass),
 		FailureCause:         failureCause,
 		FailureCauseEvidence: failureCauseEvidence,
