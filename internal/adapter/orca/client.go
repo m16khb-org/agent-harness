@@ -838,7 +838,40 @@ const taskStatusCompleted = "completed"
 // 이 메서드가 별도로 있는 이유는 어떤 status가 종결인지가 Orca 쪽 지식이기
 // 때문이다. 호출자는 "종결시켜라"만 말하고 값은 알 필요가 없다.
 func (c *Client) SettleTask(ctx context.Context, runID, id string) error {
+	err := c.UpdateTask(ctx, runID, id, taskStatusCompleted, "")
+	if err == nil || !isConsumerFenced(err) {
+		return err
+	}
+	// Orca는 task mutation을 Run 단위로 격리하고 호출 terminal이 그 Run의
+	// current consumer인지 인증한다. coordinator가 그 사이 다른 Run에
+	// 바인딩됐으면 completion의 settle이 consumer_fenced로 실패하고, durable
+	// lifecycle completion이 성공한 뒤에도 Orca task가 열린 채 남는다(#325).
+	//
+	// 봉인된 Run은 record가 이미 알고 있으므로 다시 바인딩하면 authority가
+	// 회복된다. 실측(relay 0.1.0+66c426c5173c):
+	//   task-update --run A → consumer_fenced ("bound to B, not A")
+	//   run-use --id A      → ok
+	//   task-update --run A → ok
+	//
+	// 재시도는 정확히 한 번이다. 반복하면 fence가 풀리지 않는 상황에서
+	// 무한히 매달린다. 바인딩 자체가 실패하면 원래 fence 진단을 그대로
+	// 돌려준다 — 그것이 사용자가 볼 근본 원인이다.
+	//
+	// 바인딩은 UseRun으로 한다. UseRun은 Orca가 돌려준 Run이 요청한 Run과
+	// 같은지까지 확인하므로, 엉뚱한 Run에 바인딩된 채로 재시도해 잘못된
+	// authority로 mutation하는 경로가 없다. 바인딩을 되돌리지도 않는다 —
+	// completion은 그 lifecycle의 마지막 단계이고, 이전 바인딩을 복원하면
+	// 그 사이 일어난 다른 mutation의 authority를 되돌리는 셈이 된다.
+	if _, bindErr := c.UseRun(ctx, runID); bindErr != nil {
+		return err
+	}
 	return c.UpdateTask(ctx, runID, id, taskStatusCompleted, "")
+}
+
+// isConsumerFenced는 오류가 Orca의 Run consumer fence인지 보고한다.
+func isConsumerFenced(err error) bool {
+	var typed *port.OrcaError
+	return errors.As(err, &typed) && typed.Code == "consumer_fenced"
 }
 
 // UpdateTask는 execution complete가 orca 모드 사이클의 task를 종결시키는 경로다
