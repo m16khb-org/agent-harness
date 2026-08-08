@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	mcpcontract "agent-harness/internal/contract/mcp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -20,17 +21,6 @@ import (
 
 const conformanceRawLimit = 64 << 10
 
-type ConformanceProbeConfig struct {
-	FixtureID          string
-	ProbeTool          string
-	Schema             map[string]any
-	SchemaSHA          string
-	ExpectedArguments  map[string]any
-	ResultPath         string
-	RunToken           string
-	ProductionDispatch func()
-}
-
 type ConformanceCapture struct {
 	FixtureID          string                         `json:"fixture_id"`
 	CallCount          int                            `json:"call_count"`
@@ -45,14 +35,14 @@ type ConformanceCapture struct {
 }
 
 type conformanceProbe struct {
-	config ConformanceProbeConfig
+	config mcpcontract.ConformanceProbeConfig
 	mu     sync.Mutex
 	calls  int
 }
 
 // NewConformanceProbeServer constructs an isolated capture-only MCP server.
 // It intentionally does not share the production catalog or dispatch path.
-func NewConformanceProbeServer(config ConformanceProbeConfig) (*mcp.Server, error) {
+func NewConformanceProbeServer(config mcpcontract.ConformanceProbeConfig) (*mcp.Server, error) {
 	schema, err := cloneSchema(config.Schema)
 	if err != nil {
 		return nil, err
@@ -72,7 +62,7 @@ func NewConformanceProbeServer(config ConformanceProbeConfig) (*mcp.Server, erro
 	return server, nil
 }
 
-func newConformanceProbe(config ConformanceProbeConfig) (*conformanceProbe, error) {
+func newConformanceProbe(config mcpcontract.ConformanceProbeConfig) (*conformanceProbe, error) {
 	if config.ProbeTool == "" {
 		return nil, fmt.Errorf("probe_tool_required")
 	}
@@ -92,7 +82,7 @@ func newConformanceProbe(config ConformanceProbeConfig) (*conformanceProbe, erro
 	return &conformanceProbe{config: config}, nil
 }
 
-func ServeConformanceProbe(ctx context.Context, input io.Reader, output io.Writer, config ConformanceProbeConfig) error {
+func ServeConformanceProbe(ctx context.Context, input io.Reader, output io.Writer, config mcpcontract.ConformanceProbeConfig) error {
 	server, err := NewConformanceProbeServer(config)
 	if err != nil {
 		return err
@@ -162,7 +152,7 @@ func probeFailure(code string) *mcp.CallToolResult {
 	return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: string(body)}}}
 }
 
-func captureArguments(config ConformanceProbeConfig, raw []byte) (ConformanceCapture, error) {
+func captureArguments(config mcpcontract.ConformanceProbeConfig, raw []byte) (ConformanceCapture, error) {
 	if len(raw) > conformanceRawLimit {
 		return ConformanceCapture{}, fmt.Errorf("arguments_too_large")
 	}

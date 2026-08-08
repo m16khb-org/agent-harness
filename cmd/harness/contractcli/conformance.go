@@ -12,8 +12,8 @@ import (
 	"sort"
 	"strings"
 
-	mcpadapter "agent-harness/internal/adapter/mcp"
 	"agent-harness/internal/adapter/toolconformance"
+	mcpcontract "agent-harness/internal/contract/mcp"
 	mcpdomain "agent-harness/internal/domain/mcp"
 )
 
@@ -533,7 +533,7 @@ func runConformanceServe(args []string) error {
 	}
 	for _, f := range fixtures {
 		if f.ID == *id {
-			return mcpadapter.ServeConformanceProbe(context.Background(), os.Stdin, os.Stdout, mcpadapter.ConformanceProbeConfig{FixtureID: f.ID, ProbeTool: f.ProbeTool, Schema: sourceSchema(f.SourceTool), SchemaSHA: f.SchemaSHA256, ExpectedArguments: f.ExpectedArguments, ResultPath: *path, RunToken: *token})
+			return ServeConformanceProbe(context.Background(), os.Stdin, os.Stdout, mcpcontract.ConformanceProbeConfig{FixtureID: f.ID, ProbeTool: f.ProbeTool, Schema: sourceSchema(f.SourceTool), SchemaSHA: f.SchemaSHA256, ExpectedArguments: f.ExpectedArguments, ResultPath: *path, RunToken: *token})
 		}
 	}
 	return fmt.Errorf("unknown fixture %s", *id)

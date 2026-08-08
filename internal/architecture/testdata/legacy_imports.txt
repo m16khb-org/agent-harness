@@ -1,6 +1,4 @@
 cmd/harness/basiccli -> internal/adapter/doctor
-cmd/harness/basiccli -> internal/adapter/guard
-cmd/harness/contractcli -> internal/adapter/mcp
 cmd/harness/contractcli -> internal/adapter/toolconformance
 cmd/harness/hookcli -> internal/adapter/lifecycle
 cmd/harness/hookcli/hookcatalog -> internal/adapter/lifecycle
