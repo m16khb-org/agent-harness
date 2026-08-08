@@ -1,8 +1,8 @@
 package smoke
 
 import (
-	docs "agent-harness/internal/adapter/docs"
 	inspect "agent-harness/internal/adapter/inspect"
+	docs "agent-harness/internal/contract/docs"
 	"encoding/json"
 	"os"
 	"path/filepath"

@@ -1,6 +1,7 @@
 package docs
 
 import (
+	docscontract "agent-harness/internal/contract/docs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -102,7 +103,7 @@ func TestDocsIndexExcludesEvidence(t *testing.T) {
 	}
 }
 
-func docIndexContains(docs []DocIndexInfo, relPath string) bool {
+func docIndexContains(docs []docscontract.DocIndexInfo, relPath string) bool {
 	for _, doc := range docs {
 		if doc.RelPath == relPath {
 			return true

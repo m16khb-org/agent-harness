@@ -1,7 +1,6 @@
 package basiccli
 
 import (
-	docs "agent-harness/internal/adapter/docs"
 	"flag"
 	"fmt"
 )
@@ -19,7 +18,10 @@ func runDocsWithRoot(args []string, root string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result := docs.DocsIndex(root, deps.Version)
+	if deps.DocsIndex == nil {
+		return fmt.Errorf("docs index reader is not configured")
+	}
+	result := deps.DocsIndex(root, deps.Version)
 	if *jsonOut {
 		return printJSON(result)
 	}

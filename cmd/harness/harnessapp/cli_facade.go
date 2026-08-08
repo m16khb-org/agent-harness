@@ -1,6 +1,7 @@
 package harnessapp
 
 import (
+	"agent-harness/internal/adapter/docs"
 	statestore "agent-harness/internal/adapter/outbound/state"
 	"os"
 
@@ -36,8 +37,9 @@ func wireBasicCLIDeps() {
 		InspectHarness:           inspectHarness,
 		CheckDaemonStatus:        checkDaemonStatus,
 		CollectOperationalHealth: operationalCollector.Collect,
+		DocsIndex:                docs.DocsIndex,
 	})
-	installcli.Configure(installcli.Deps{HarnessRoot: harnessRoot, ActivationBackend: nativeActivationBackend()})
+	installcli.Configure(installDependencies())
 	qualitycli.Configure(qualitycli.Deps{
 		HarnessRoot: harnessRoot,
 		Version:     version,
