@@ -526,18 +526,43 @@ func exactReadOnlyStateRead(tokens []string) bool {
 	return keySeen
 }
 
+// exactReadOnlyGofmtDiff는 파일을 건드리지 않는 gofmt 형태만 인정한다.
+//
+// -l은 재포맷이 필요한 경로를 나열하고 -d는 diff를 출력한다. 둘 다 쓰기가
+// 없다. -s는 단순화 제안을 그 출력에 반영할 뿐이므로 함께 열어도 read-only다.
+//
+// 디렉터리 피연산자를 받는 것이 중요하다. 저장소가 문서화한 검증 명령이
+// `gofmt -l internal cmd`인데 .go 파일만 받으면 active lease를 든 owner가
+// **자기 저장소의 검증을 실행할 수 없다** — 실측으로 그랬다(#319 dogfood,
+// PR #429의 owner가 gofmt 축을 UNVERIFIED로 보고했다).
+//
+// -w(덮어쓰기), -r(재작성), profile flag는 열지 않는다. 피연산자는 저장소
+// 상대 경로여야 하며 stdin alias와 상위 탈출은 거부한다.
 func exactReadOnlyGofmtDiff(tokens []string) bool {
-	// -d는 파일을 덮어쓰지 않고 stdout에 formatting diff만 출력한다.
-	// 쓰기·profile·rewrite 표면을 열지 않도록 명시적 .go 파일만 받는다.
-	if len(tokens) < 2 || tokens[0] != "-d" {
-		return false
-	}
-	for _, operand := range tokens[1:] {
-		if operand == "" || operand == "-" || strings.HasPrefix(operand, "-") || path.Ext(operand) != ".go" {
+	reporting := false
+	operands := 0
+	for _, token := range tokens {
+		if strings.HasPrefix(token, "-") {
+			switch token {
+			case "-l", "-d":
+				reporting = true
+			case "-s", "-e":
+				// 출력 내용만 바꾸는 flag다. 쓰기를 열지 않는다.
+			default:
+				return false
+			}
+			continue
+		}
+		// 디렉터리는 열되 비-Go 파일은 계속 막는다. 확장자가 있는데 .go가
+		// 아니면 gofmt의 대상이 아니고, 기존 계약도 그것을 거부해 왔다.
+		if !repoRelativeReaderOperand(token) || (path.Ext(token) != "" && path.Ext(token) != ".go") {
 			return false
 		}
+		operands++
 	}
-	return true
+	// 보고 flag가 없으면 gofmt는 stdout에 포맷 결과를 쏟아낸다. 그것도 쓰기는
+	// 아니지만 이 표면의 목적이 아니므로 명시적으로 요구한다.
+	return reporting && operands > 0
 }
 
 func exactReadOnlyGoDoc(tokens []string) bool {
