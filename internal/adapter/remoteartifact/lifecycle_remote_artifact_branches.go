@@ -1,13 +1,8 @@
 package remoteartifact
 
-import "strings"
+import remoteartifactcontract "agent-harness/internal/contract/remoteartifact"
 
-type PullRequestBranchInfo struct {
-	Provider   string
-	Kind       string
-	HeadBranch string
-	BaseBranch string
-}
+import "strings"
 
 // IssueEditTargetFromCommand는 이슈 본문을 바꾸는 편집 명령의 대상 식별자를
 // 돌려준다. 번호와 URL 두 형태가 그대로 나오며, 봉인 여부 판정은 durable
@@ -33,18 +28,18 @@ func IssueEditTargetFromCommand(tool, command, repo string) (string, bool) {
 	return target, true
 }
 
-func PullRequestBranchInfoFromCommand(tool, command, repo string) (PullRequestBranchInfo, bool) {
+func PullRequestBranchInfoFromCommand(tool, command, repo string) (remoteartifactcontract.PullRequestBranchInfo, bool) {
 	if !remoteArtifactGateAppliesToTool(tool) {
-		return PullRequestBranchInfo{}, false
+		return remoteartifactcontract.PullRequestBranchInfo{}, false
 	}
 	artifact, ok := parseGHRemoteArtifactCommand(command, repo)
 	if !ok || artifact.action != "create" {
-		return PullRequestBranchInfo{}, false
+		return remoteartifactcontract.PullRequestBranchInfo{}, false
 	}
 	if artifact.kind != "pr" && artifact.kind != "mr" {
-		return PullRequestBranchInfo{}, false
+		return remoteartifactcontract.PullRequestBranchInfo{}, false
 	}
-	return PullRequestBranchInfo{
+	return remoteartifactcontract.PullRequestBranchInfo{
 		Provider:   strings.TrimSpace(artifact.provider),
 		Kind:       strings.TrimSpace(artifact.kind),
 		HeadBranch: strings.TrimSpace(artifact.headBranch),

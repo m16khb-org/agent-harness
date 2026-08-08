@@ -9,7 +9,6 @@ import (
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 
 	issueopscore "agent-harness/internal/adapter/issueops"
-	"agent-harness/internal/adapter/remoteartifact"
 	"agent-harness/internal/domain/issueopsremote"
 )
 
@@ -25,7 +24,7 @@ import (
 // 보호이며, 미지의 명령 형태를 fail-closed로 막으면 봉인과 무관한 일상 작업이
 // 깨진다.
 func sealedIssueEditBlockReason(req lifecyclecontract.HookToolUseLifecycleRequest) string {
-	target, ok := remoteartifact.IssueEditTargetFromCommand(req.Tool, req.Command, req.Repo)
+	target, ok := IssueEditTargetFromCommand(req.Tool, req.Command, req.Repo)
 	if !ok {
 		return ""
 	}

@@ -6,11 +6,10 @@ import (
 
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 
-	"agent-harness/internal/adapter/commandguard"
 	"agent-harness/internal/adapter/lifecycle/liveapproval"
 	"agent-harness/internal/adapter/lifecycle/nextactionrelay"
 	"agent-harness/internal/adapter/lifecycle/worktreeguard"
-	"agent-harness/internal/adapter/remoteartifact"
+	commandguarddomain "agent-harness/internal/domain/commandguard"
 )
 
 func BuildLifecyclePreToolUseDecision(req lifecyclecontract.HookToolUseLifecycleRequest) lifecyclecontract.HookPreToolUseDecisionResult {
@@ -88,13 +87,13 @@ func BuildLifecyclePreToolUseDecision(req lifecyclecontract.HookToolUseLifecycle
 		}
 	}
 	if result.Decision != "block" && req.EnforceKoreanRemote {
-		if reason := remoteartifact.KoreanBlockReason(req.Tool, req.Command, req.Repo); reason != "" {
+		if reason := KoreanBlockReason(req.Tool, req.Command, req.Repo); reason != "" {
 			result.Decision = "block"
 			result.Reason = reason
 		}
 	}
 	if result.Decision != "block" && req.EnforceVCSLinking {
-		if reason := remoteartifact.VCSIssueLinkingBlockReason(req.Tool, req.Command, req.Repo); reason != "" {
+		if reason := VCSIssueLinkingBlockReason(req.Tool, req.Command, req.Repo); reason != "" {
 			result.Decision = "block"
 			result.Reason = reason
 		}
@@ -112,19 +111,19 @@ func BuildLifecyclePreToolUseDecision(req lifecyclecontract.HookToolUseLifecycle
 		}
 	}
 	if result.Decision != "block" && req.EnforceStagedChecks {
-		if decision, reason := commandguard.StagedCheckDecision(req.Tool, req.Repo, req.Command); decision != "" {
+		if decision, reason := StagedCheckDecision(req.Tool, req.Repo, req.Command); decision != "" {
 			result.Decision = decision
 			result.Reason = reason
 		}
 	}
 	if result.Decision != "block" && req.EnforceGitOpsKubectl {
-		evaluation := commandguard.EvaluateGitOpsKubectl(req.Tool, req.Command)
+		evaluation := commandguarddomain.EvaluateGitOpsKubectl(req.Tool, req.Command)
 		if evaluation.Decision != "" {
 			result.Decision = evaluation.Decision
 			result.Reason = evaluation.Reason
 			if evaluation.Decision == "ask" && strings.EqualFold(strings.TrimSpace(req.Host), "codex") {
 				switch evaluation.LiveAccess {
-				case commandguard.KubectlLiveAccessPortForward:
+				case commandguarddomain.KubectlLiveAccessPortForward:
 					applyCodexLiveApproval(&result, liveapproval.Evaluate(liveApprovalStore(), liveapproval.Request{
 						Host:      req.Host,
 						SessionID: req.SessionID,
@@ -133,7 +132,7 @@ func BuildLifecyclePreToolUseDecision(req lifecyclecontract.HookToolUseLifecycle
 						Tool:      req.Tool,
 						Command:   req.Command,
 					}))
-				case commandguard.KubectlLiveAccessReadOnlyExec:
+				case commandguarddomain.KubectlLiveAccessReadOnlyExec:
 					applyCodexLiveApproval(&result, liveapproval.EvaluateReadOnlyExec(liveApprovalStore(), liveapproval.ReadOnlyExecRequest{
 						Host:      req.Host,
 						SessionID: req.SessionID,
@@ -144,7 +143,7 @@ func BuildLifecyclePreToolUseDecision(req lifecyclecontract.HookToolUseLifecycle
 						Context:   evaluation.ExecScope.Context,
 						Namespace: evaluation.ExecScope.Namespace,
 					}))
-				case commandguard.KubectlLiveAccessUnsafeExec:
+				case commandguarddomain.KubectlLiveAccessUnsafeExec:
 					result.Decision = "block"
 					result.Reason = "kubectl exec is blocked: Codex session approval is limited to explicit-context and explicit-namespace DNS, resolver, and Linkerd metrics diagnostics."
 				default:
