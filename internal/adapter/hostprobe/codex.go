@@ -286,10 +286,6 @@ func replaceEnvironmentValue(environment []string, name, value string) []string 
 	return result
 }
 
-func codexArgv(executable, root string, request port.HostProbeRequest, resultPath string) []string {
-	return codexArgvMode(executable, root, request, resultPath, false)
-}
-
 func codexArgvMode(executable, root string, request port.HostProbeRequest, resultPath string, hookSmoke bool) []string {
 	serve := serveArgv(request, resultPath)
 	args, _ := json.Marshal(serve[1:])

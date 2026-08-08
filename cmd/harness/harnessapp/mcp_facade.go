@@ -14,9 +14,6 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 )
 
-type mcpToolCall = mcpcli.MCPToolCall
-type mcpToolOutcome = mcpcli.MCPToolOutcome
-
 func configureMCPCLI() {
 	mcpcli.Version = version
 	mcpcli.HarnessRoot = harnessRoot

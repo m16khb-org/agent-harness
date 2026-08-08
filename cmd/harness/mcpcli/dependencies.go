@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"agent-harness/cmd/harness/apidoc"
 	"agent-harness/cmd/harness/selfworkflow"
@@ -113,13 +112,6 @@ type selfVerifyRunMode = runmode.Mode
 
 func resolveSelfVerifyRunMode(full bool, iterationsFlagSet bool, iterations int) (selfVerifyRunMode, error) {
 	return runmode.Resolve(full, iterationsFlagSet, iterations)
-}
-
-func splitLines(s string) []string {
-	if strings.TrimSpace(s) == "" {
-		return []string{}
-	}
-	return strings.Split(strings.TrimRight(s, "\n"), "\n")
 }
 
 func fileExists(path string) bool {

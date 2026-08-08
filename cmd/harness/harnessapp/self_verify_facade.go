@@ -6,8 +6,6 @@ import (
 	"agent-harness/cmd/harness/selfworkflow"
 )
 
-const selfVerificationCandidateExportKind = selfworkflow.SelfVerificationCandidateExportKind
-
 type SelfVerificationCandidateExportResult = selfworkflow.SelfVerificationCandidateExportResult
 type SelfVerificationCandidate = selfworkflow.SelfVerificationCandidate
 type SelfVerificationCandidateExportStateSnapshot = selfworkflow.SelfVerificationCandidateExportStateSnapshot

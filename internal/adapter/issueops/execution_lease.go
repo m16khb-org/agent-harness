@@ -731,10 +731,6 @@ func deadOwnerRuntimeRollover(record issueops.IssueOpsRecord, processStatus stri
 		inventory.TerminalID == "" && !inventory.TerminalLive
 }
 
-func validateExecutionRuntimeRollover(record issueops.IssueOpsRecord, inventory port.ExecutionOrcaOwnerInventory) error {
-	return validateExecutionRuntimeRolloverWithProcess(record, "none", inventory)
-}
-
 func validateExecutionRuntimeRolloverWithProcess(record issueops.IssueOpsRecord, processStatus string, inventory port.ExecutionOrcaOwnerInventory) error {
 	if record.Execution == nil || record.Execution.Mode != issueops.ExecutionModeOrca || record.Execution.Orca == nil {
 		return nil

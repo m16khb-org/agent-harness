@@ -21,7 +21,6 @@ const ProjectLifecycleSchemaVersion = model.ProjectLifecycleSchemaVersion
 const projectLifecycleProfileFile = model.ProjectLifecycleProfileFile
 const docUpkeepQueueFile = model.DocUpkeepQueueFile
 const compactCapsuleFile = model.CompactCapsuleFile
-const stopNextActionRelayFile = model.StopNextActionRelayFile
 
 type ProjectProfile = projectdocs.ProjectProfile
 type ProjectFingerprint = model.ProjectFingerprint
@@ -122,14 +121,6 @@ func IssueOpsPhaseExpectsWorktree(phase issueopscontract.IssueOpsPhase) bool {
 	return issueops.IssueOpsPhaseExpectsWorktree(phase)
 }
 
-func issueOpsCycleWorktreeMissing(record issueopscontract.IssueOpsRecord) bool {
-	return issueops.IssueOpsCycleWorktreeMissing(record)
-}
-
-func validateIssueOpsIssueBranch(branch string) error {
-	return issueops.ValidateIssueOpsIssueBranch(branch)
-}
-
 func newIssueOpsID(repo, branch string) string {
 	return issueops.NewIssueOpsID(repo, branch)
 }
@@ -192,10 +183,6 @@ func liveApprovalStore() liveapproval.Store {
 		WithLock:  state.WithKeyLock,
 		WriteJSON: writeJSONAtomic,
 	}
-}
-
-func normalizeTargetDocs(docs []string) []string {
-	return docupkeep.NormalizeTargetDocs(docs)
 }
 
 func worktreeGuardEditTargets(req lifecyclecontract.HookToolUseLifecycleRequest) []string {

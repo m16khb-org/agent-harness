@@ -30,10 +30,6 @@ func runIssueOps(args []string) error {
 	})
 }
 
-func verifyIssueOpsChildIssueBeforeLink(childURL string) error {
-	return issueopscli.VerifyChildIssueBeforeLink(childURL)
-}
-
 func issueOpsCleanupMerged(id string, requested bool) bool {
 	return issueopscli.CleanupMerged(id, requested)
 }
@@ -44,22 +40,6 @@ func verifyIssueOpsRemoteArtifactLive(req issueopscontract.IssueOpsRemoteArtifac
 
 func runPolicy(args []string) error {
 	return policycli.Run(args)
-}
-
-func runPolicyCheck(args []string) error {
-	return policycli.RunCheck(args)
-}
-
-func runPolicyFakeRun(args []string) error {
-	return policycli.RunFakeRun(args)
-}
-
-func runPolicyRun(args []string) error {
-	return policycli.RunReadOnly(args)
-}
-
-func runPolicyAudit(args []string) error {
-	return policycli.RunAudit(args)
 }
 
 func parseCommandPolicyFlags(name string, args []string) (policy.CommandPolicyRequest, bool, error) {

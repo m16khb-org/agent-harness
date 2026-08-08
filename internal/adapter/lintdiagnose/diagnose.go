@@ -22,10 +22,6 @@ type LintDiagnoseResult struct {
 	Prompt      string   `json:"prompt,omitempty"`
 }
 
-type lintDiagnoseResponse struct {
-	Diagnosis string `json:"diagnosis"`
-}
-
 func DiagnoseCommand(req LintDiagnoseRequest) (LintDiagnoseResult, error) {
 	root, err := repopath.NormalizeRoot(req.RepoRoot)
 	if err != nil {

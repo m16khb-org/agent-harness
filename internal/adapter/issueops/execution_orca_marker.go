@@ -3,14 +3,11 @@ package issueops
 import (
 	"strconv"
 	"strings"
-	"unicode"
 
 	"agent-harness/internal/adapter/issueops/remote"
 	"agent-harness/internal/contract/issueops"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
 )
-
-const orcaIntentMarkerPrefix = "agent-harness issueops-v1"
 
 type orcaIssueIdentity struct {
 	Provider string
@@ -175,21 +172,6 @@ func renderOrcaIntentMarker(identity orcaIntentMarkerIdentity) (string, error) {
 	})
 }
 
-func renderOrcaReadinessMarker(lifecycleID string, issue orcaIssueIdentity) (string, error) {
-	if !validOrcaMarkerToken(lifecycleID) || !validOrcaProvider(issue.Provider) || issue.Issue <= 0 {
-		return "", newOrcaIntentContractError(
-			"intent_marker_invalid",
-			"Orca readiness marker identity is invalid",
-		)
-	}
-	return strings.Join([]string{
-		orcaIntentMarkerPrefix,
-		"lifecycle=" + lifecycleID,
-		"provider=" + issue.Provider,
-		"issue=" + strconv.Itoa(issue.Issue),
-	}, " "), nil
-}
-
 func parseOrcaIntentMarker(marker string) (orcaIntentMarkerIdentity, error) {
 	identity, err := preparationIntentCodec.ParseMarker(marker)
 	if err != nil {
@@ -199,51 +181,4 @@ func parseOrcaIntentMarker(marker string) (orcaIntentMarkerIdentity, error) {
 		Purpose: identity.Purpose, LifecycleID: identity.LifecycleID, Generation: identity.Generation,
 		OperationID: identity.OperationID, Provider: identity.Provider, Issue: identity.Issue,
 	}, nil
-}
-
-func validateOrcaMarkerIdentity(identity orcaIntentMarkerIdentity) error {
-	if err := validateOrcaMarkerCoreIdentity(identity); err != nil {
-		return err
-	}
-	if !validOrcaProvider(identity.Provider) || identity.Issue <= 0 {
-		return invalidOrcaMarker()
-	}
-	return nil
-}
-
-func validateOrcaMarkerCoreIdentity(identity orcaIntentMarkerIdentity) error {
-	if identity.Purpose != orcaIntentPurposePrepare && identity.Purpose != orcaIntentPurposeResume {
-		return invalidOrcaMarker()
-	}
-	if !validOrcaMarkerToken(identity.LifecycleID) || !validOrcaMarkerToken(identity.OperationID) {
-		return invalidOrcaMarker()
-	}
-	if identity.Purpose == orcaIntentPurposePrepare && identity.Generation != 1 ||
-		identity.Purpose == orcaIntentPurposeResume && identity.Generation == 0 {
-		return invalidOrcaMarker()
-	}
-	return nil
-}
-
-func validOrcaProvider(provider string) bool {
-	return provider == "github" || provider == "gitlab"
-}
-
-func validOrcaMarkerToken(value string) bool {
-	if value == "" || value != strings.TrimSpace(value) || strings.ContainsRune(value, '=') {
-		return false
-	}
-	return !strings.ContainsFunc(value, unicode.IsSpace)
-}
-
-func orcaMarkerField(field, name string) (string, error) {
-	value, ok := strings.CutPrefix(field, name+"=")
-	if !ok || !validOrcaMarkerToken(value) {
-		return "", invalidOrcaMarker()
-	}
-	return value, nil
-}
-
-func invalidOrcaMarker() error {
-	return newOrcaIntentContractError("intent_marker_invalid", "Orca intent marker is not canonical")
 }

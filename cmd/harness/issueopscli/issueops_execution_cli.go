@@ -9,14 +9,6 @@ func runIssueOpsExecution(args []string) error {
 	return runIssueOpsExecutionWithDependencies(args, Dependencies{})
 }
 
-func runIssueOpsExecutionWithRelease(args []string, release issueops.ExecutionReleaseHandler) error {
-	return runIssueOpsExecutionWithDependencies(args, Dependencies{Release: release})
-}
-
-func runIssueOpsExecutionWithHandlers(args []string, claim issueops.ExecutionClaimHandler, release issueops.ExecutionReleaseHandler) error {
-	return runIssueOpsExecutionWithDependencies(args, Dependencies{Claim: claim, Release: release})
-}
-
 func runIssueOpsExecutionWithDependencies(args []string, deps Dependencies) error {
 	return executioncmd.Run(args, issueOpsExecutionDeps(deps))
 }

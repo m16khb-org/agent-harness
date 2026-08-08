@@ -6,10 +6,6 @@ func ValidateMermaidDocs(root string) []string {
 	return validateMermaidDocsWithDeps(root, docsValidationDeps{})
 }
 
-func validateMermaidDocs(root string) []string {
-	return ValidateMermaidDocs(root)
-}
-
 func validateMermaidDocsWithDeps(root string, deps docsValidationDeps) []string {
 	deps = deps.withDefaults()
 	errs := []string{}

@@ -480,11 +480,6 @@ func selectedFixtureForPair(pairs []fixturePair, host, fixture string) (Fixture,
 	return Fixture{}, false
 }
 
-func pairSelected(pairs []fixturePair, host, fixture string) bool {
-	_, selected := selectedFixtureForPair(pairs, host, fixture)
-	return selected
-}
-
 func completedForPair(report BenchmarkReport, host, fixture string) int {
 	for _, hostReport := range report.Hosts {
 		if hostReport.Host == host {

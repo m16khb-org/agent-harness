@@ -24,10 +24,6 @@ func ValidateRedactionAudit(root string) StepResult {
 	return validateRedactionAuditWithDeps(root, docsValidationDeps{})
 }
 
-func validateRedactionAudit(root string) StepResult {
-	return ValidateRedactionAudit(root)
-}
-
 func validateRedactionAuditWithDeps(root string, deps docsValidationDeps) StepResult {
 	deps = deps.withDefaults()
 	started := time.Now()

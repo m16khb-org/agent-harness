@@ -28,8 +28,6 @@ const (
 	selfVerificationSummaryKind     = model.SelfVerificationSummaryKind
 )
 
-const selfVerifyStepBudgetMinRegressionMS int64 = 25
-
 type StepResult = commandstep.StepResult
 
 type SelfAugmentCandidate = model.SelfAugmentCandidate
@@ -65,7 +63,6 @@ type SelfVerificationFailureCluster = model.SelfVerificationFailureCluster
 type SelfVerificationGoalDefinition = model.SelfVerificationGoalDefinition
 type SelfVerificationGoalScore = model.SelfVerificationGoalScore
 
-type selfAugmentHistoryRetentionOptions = model.SelfAugmentHistoryRetentionOptions
 type selfVerificationCoverageDefinition = model.SelfVerificationCoverageDefinition
 type selfVerificationGoalDefinition = model.SelfVerificationGoalDefinition
 

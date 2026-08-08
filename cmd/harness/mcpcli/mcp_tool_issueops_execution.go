@@ -15,10 +15,6 @@ func handleMCPIssueOpsExecution(args map[string]any) MCPToolOutcome {
 	return handleMCPIssueOpsExecutionWithDependencies(args, MCPDependencies{})
 }
 
-func handleMCPIssueOpsExecutionWithReleaseHandler(args map[string]any, release issueops.ExecutionReleaseHandler) MCPToolOutcome {
-	return handleMCPIssueOpsExecutionWithDependencies(args, MCPDependencies{Release: release})
-}
-
 func handleMCPIssueOpsExecutionWithDependencies(args map[string]any, deps MCPDependencies) MCPToolOutcome {
 	req, err := executionActionRequestFromMCP(args)
 	if err != nil {

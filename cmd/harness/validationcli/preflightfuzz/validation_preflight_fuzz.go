@@ -20,10 +20,6 @@ func Validate(binary, root string, seed int64) StepResult {
 	return validatePreflightFuzzWithDeps(binary, root, seed, preflightFuzzValidationDeps{})
 }
 
-func validatePreflightFuzz(binary, root string, seed int64) StepResult {
-	return Validate(binary, root, seed)
-}
-
 func validatePreflightFuzzWithDeps(binary, root string, seed int64, deps preflightFuzzValidationDeps) StepResult {
 	deps = deps.withDefaults()
 	started := time.Now()

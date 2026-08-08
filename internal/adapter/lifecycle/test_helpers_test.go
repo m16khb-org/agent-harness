@@ -3,7 +3,6 @@ package lifecycle
 import (
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
 )
 
@@ -14,10 +13,6 @@ func containsString(values []string, want string) bool {
 		}
 	}
 	return false
-}
-
-func shellQuote(value string) string {
-	return strconv.Quote(value)
 }
 
 func mustWrite(t *testing.T, path, content string) {

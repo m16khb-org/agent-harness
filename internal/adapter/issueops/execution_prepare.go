@@ -1,7 +1,6 @@
 package issueops
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -110,15 +109,6 @@ func exactGitLabPreparedRemote(record issueops.IssueOpsRecord, branch, observedO
 		strings.EqualFold(strings.TrimSpace(observedOID), strings.TrimSpace(prepared.BaseSHA))
 }
 
-func validateExecutionOrcaReceipt(workspace port.ExecutionWorkspaceRequest, receipt port.ExecutionOrcaReceipt) error {
-	got := receipt.Workspace
-	if !samePath(got.SourceRoot, workspace.SourceRoot) || !samePath(got.Root, workspace.Root) || got.Branch != workspace.Branch || got.BaseHead != workspace.BaseHead || got.Driver != "orca" ||
-		strings.TrimSpace(receipt.RuntimeID) == "" || strings.TrimSpace(receipt.RepoID) == "" || strings.TrimSpace(receipt.WorktreeID) == "" || strings.TrimSpace(receipt.TaskID) == "" || strings.TrimSpace(receipt.DispatchID) == "" {
-		return fmt.Errorf("Orca receipt does not match the sealed execution workspace and launch identity")
-	}
-	return nil
-}
-
 func validateExecutionOrcaWorkspaceReceipt(workspace port.ExecutionWorkspaceRequest, receipt port.ExecutionOrcaWorkspaceReceipt) error {
 	got := receipt.Workspace
 	if !samePath(got.SourceRoot, workspace.SourceRoot) || !samePath(got.Root, workspace.Root) || got.Branch != workspace.Branch || got.BaseHead != workspace.BaseHead || got.Driver != "orca" ||
@@ -134,109 +124,6 @@ func newExecutionOperationID() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(raw[:]), nil
-}
-
-func resolveExecutionPrepareMode(ctx context.Context, record issueops.IssueOpsRecord, req ExecutionPrepareRequest, requested string, orca port.ExecutionOrcaProvisioner) (string, string, port.ExecutionOrcaProbeRequest, error) {
-	probeReq := port.ExecutionOrcaProbeRequest{
-		Repo: record.Repo, Host: strings.ToLower(strings.TrimSpace(req.OwnerHost)),
-		Model: strings.TrimSpace(req.OwnerModel), Effort: strings.TrimSpace(req.OwnerEffort),
-	}
-	if requested == string(issueops.ExecutionModeDirect) {
-		return requested, "", probeReq, nil
-	}
-	if probeReq.Host != "codex" && probeReq.Host != "claude" {
-		return "", "", probeReq, fmt.Errorf("Orca owner_host must be codex or claude")
-	}
-	if orca == nil {
-		if requested == ExecutionModeAuto {
-			return string(issueops.ExecutionModeDirect), "orca_adapter_unavailable", probeReq, nil
-		}
-		return "", "", probeReq, fmt.Errorf("Orca provisioner is unavailable")
-	}
-	issueIdentity, err := orcaLaunchIssueIdentity(record)
-	if err != nil {
-		return "", "", probeReq, err
-	}
-	probeReq.Provider = issueIdentity.Provider
-	probeReq.Issue = issueIdentity.Issue
-	probeReq.Marker, err = renderOrcaReadinessMarker(record.ID, issueIdentity)
-	if err != nil {
-		return "", "", probeReq, err
-	}
-	probe, err := orca.Probe(ctx, probeReq)
-	if err != nil || !probe.Available || !probe.Ready {
-		code := strings.TrimSpace(probe.Code)
-		if code == "" {
-			code = "orca_probe_failed"
-		}
-		if requested == ExecutionModeAuto {
-			return string(issueops.ExecutionModeDirect), code, probeReq, nil
-		}
-		if err != nil {
-			return "", "", probeReq, fmt.Errorf("Orca probe failed: %w", err)
-		}
-		return "", "", probeReq, fmt.Errorf("Orca probe failed: %s", code)
-	}
-	// Orca는 준비됐지만 브랜치 이름이 이미 쓰이고 있으면 이 경로는 실행할 수 없다.
-	// IssueOps 정식 순서(`gh issue develop` → `branch prepare`)를 따르면 항상 그렇게
-	// 되므로, auto가 여기서 Orca를 확정하면 사전 확인에 막힌 뒤 사용자가 손으로
-	// --mode direct를 다시 줘야 한다 — auto가 실행 가능한 모드를 고르지 못한 것이다
-	// (이슈 #152).
-	//
-	// 같은 함수를 재사용해 폴백 판정과 실제 차단 기준을 하나로 유지한다. 두 곳에
-	// 조건을 따로 쓰면 한쪽만 고쳐져 auto가 direct로 갔는데 direct도 막히거나 그
-	// 반대가 된다.
-	if err := ensureOrcaBranchIsFree(record, strings.TrimSpace(record.Branch)); err != nil {
-		const code = "orca_branch_name_taken"
-		if requested == ExecutionModeAuto {
-			return string(issueops.ExecutionModeDirect), code, probeReq, nil
-		}
-		// 명시적으로 Orca를 고른 사용자의 의도는 대신 바꾸지 않는다. 원인과 다음
-		// 행동을 담은 사전 확인 메시지를 그대로 전한다.
-		return "", "", probeReq, err
-	}
-	return string(issueops.ExecutionModeOrca), "", probeReq, nil
-}
-
-// executionWriterAbsentNextCommand는 준비된 실행에 lease writer가 없을 때 그
-// 사실과 해소 명령을 돌려준다. writer가 있으면 nil이다.
-//
-// 상태별로 다음 행동이 다르다. claimable은 토큰이 발급돼 있으므로 claim이
-// 바로 되고, released는 토큰이 없어 reseed로 재봉인해야 하며, revoking은 이전
-// 홀더가 죽어야 finalize할 수 있다. 하나의 문구로 뭉뚱그리면 사용자가 어느
-// 명령을 써야 할지 모른다(이슈 #170).
-func executionWriterAbsentNextCommand(record issueops.IssueOpsRecord, confirm bool) (string, error) {
-	if !confirm {
-		return "", nil
-	}
-	lease := record.Execution.Lease
-	generation := lease.Generation
-	switch lease.Status {
-	case issueops.LeaseStatusClaimable:
-		if record.Execution.Mode == issueops.ExecutionModeOrca &&
-			(record.Execution.Orca == nil || record.Execution.Orca.LeaseGeneration != generation) {
-			next := ExecutionResumeRecoveryCommand(record.ID, generation)
-			return next, fmt.Errorf(
-				"IssueOps execution is prepared but Orca generation %d has no current owner; run %s",
-				generation, next)
-		}
-		next := executionWriterAbsentRecoveryCommand(record)
-		return next, fmt.Errorf(
-			"IssueOps execution is prepared but generation %d is claimable and has no writer; run %s",
-			generation, next)
-	case issueops.LeaseStatusReleased:
-		next := executionWriterAbsentRecoveryCommand(record)
-		return next, fmt.Errorf(
-			"IssueOps execution is prepared but generation %d was released and has no writer; preview resealing with %s",
-			generation, next)
-	case issueops.LeaseStatusRevoking:
-		next := executionWriterAbsentRecoveryCommand(record)
-		return next, fmt.Errorf(
-			"IssueOps execution generation %d is revoking and has no writer; finalize the revocation with %s",
-			generation, next)
-	default:
-		return "", nil
-	}
 }
 
 func executionWorkspaceRequest(record issueops.IssueOpsRecord, confirm bool) (port.ExecutionWorkspaceRequest, error) {
@@ -370,41 +257,11 @@ func renderExecutionOwnerReportContract(record issueops.IssueOpsRecord, req Exec
 	return strings.Join(lines, "\n")
 }
 
-func executionReconcileCommand(id string, preview bool) string {
-	action := "--confirm"
-	if preview {
-		action = "--preview"
-	}
-	return "agent-harness issueops execution reconcile --id " + id + " " + action + " ACTOR_FLAGS"
-}
-
-func normalizeExecutionPrepareMode(mode string) (string, error) {
-	switch normalized := strings.ToLower(strings.TrimSpace(mode)); normalized {
-	case "", ExecutionModeAuto:
-		return ExecutionModeAuto, nil
-	case string(issueops.ExecutionModeDirect), string(issueops.ExecutionModeOrca):
-		return normalized, nil
-	default:
-		return "", fmt.Errorf("execution mode must be auto, direct, or orca")
-	}
-}
-
 func workspaceFromReceipt(receipt port.ExecutionWorkspaceReceipt, linkedAt string) issueops.Workspace {
 	return issueops.Workspace{
 		SourceRoot: receipt.SourceRoot, Root: receipt.Root, Branch: receipt.Branch,
 		BaseHead: receipt.BaseHead, ParentWorktree: receipt.ParentWorktree,
 		Driver: receipt.Driver, LinkedAt: linkedAt,
-	}
-}
-
-func preparedExecutionResult(record issueops.IssueOpsRecord, requested string) ExecutionPrepareResult {
-	return preparedExecutionResultWithModes(record, requested, "")
-}
-
-func preparedExecutionResultWithModes(record issueops.IssueOpsRecord, requested, fallback string) ExecutionPrepareResult {
-	return ExecutionPrepareResult{
-		OK: true, ID: record.ID, RequestedMode: requested, ResolvedMode: string(record.Execution.Mode),
-		FallbackCode: fallback, Workspace: record.Execution.Workspace, Execution: record.Execution,
 	}
 }
 

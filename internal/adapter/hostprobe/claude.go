@@ -121,10 +121,6 @@ func (r ClaudeRunner) Run(ctx context.Context, request port.HostProbeRequest) po
 	return result
 }
 
-func claudeArgv(executable, configPath string, request port.HostProbeRequest) []string {
-	return claudeArgvMode(executable, configPath, request, false)
-}
-
 func claudeArgvMode(executable, configPath string, request port.HostProbeRequest, hookSmoke bool) []string {
 	settingSources := ""
 	if hookSmoke {

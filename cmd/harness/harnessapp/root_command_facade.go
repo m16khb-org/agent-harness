@@ -61,10 +61,6 @@ func rootCommand() rootcmd.Command {
 	}
 }
 
-func runMCPNoArgs(_ []string) error {
-	return runMCP()
-}
-
 func rootSubcommandErrorExitCode(name string, err error) int {
 	switch name {
 	case "policy":

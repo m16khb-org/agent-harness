@@ -190,10 +190,6 @@ func validateIssueOpsIssueBranch(branch string) error {
 	return branchprepare.ValidateBranch(branch)
 }
 
-func issueOpsBranchPrepareSteps(provider, issueURL, branch, baseBranch, baseSHA string) []issueops.IssueOpsBranchPrepareStep {
-	return branchprepare.Steps(provider, issueURL, branch, baseBranch, baseSHA)
-}
-
 func issueOpsBranchPrepareStore() branchprepare.Store {
 	return branchprepare.Store{
 		Read:             ReadIssueOps,

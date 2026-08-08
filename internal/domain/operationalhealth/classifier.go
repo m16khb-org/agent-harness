@@ -566,16 +566,6 @@ func preservableIdentityComplete(cycle Cycle) bool {
 	return retainedLeaseIdentityComplete(cycle)
 }
 
-func completeGroup(values ...string) bool {
-	present := 0
-	for _, value := range values {
-		if strings.TrimSpace(value) != "" {
-			present++
-		}
-	}
-	return present == 0 || present == len(values)
-}
-
 func validateCycleResources(builder *findingBuilder, snapshot Snapshot, cycle Cycle, authority CycleAuthority, repoScoped bool, gitPathCounts, worktreeCounts, terminalCounts, ptyCounts, taskCounts, dispatchCounts map[string]int) {
 	var gitWorktree GitWorktree
 	gitWorktreeOK := false

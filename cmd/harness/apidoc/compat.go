@@ -30,10 +30,6 @@ func apiDocInput(repo string, files []string, diffFile string, all bool) (string
 	return Input(repo, files, diffFile, all)
 }
 
-func apiDocFullContent(repo string, files []string) (string, error) {
-	return FullContent(repo, files)
-}
-
 func stagedAPIDocFiles(repo string) []string {
 	return StagedFiles(repo)
 }

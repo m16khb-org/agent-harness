@@ -288,19 +288,6 @@ func TestRunHookPreToolUseUsesExplicitExecWorkdirForHolderCommand(t *testing.T) 
 	}
 }
 
-func assertIssueOpsDenyJSON(t *testing.T, raw any, id, root string, generation int, code string) {
-	t.Helper()
-	encoded, ok := raw.(string)
-	if !ok {
-		t.Fatalf("structured deny reason must be a JSON string, got %#v", raw)
-	}
-	var fields map[string]any
-	if err := json.Unmarshal([]byte(encoded), &fields); err != nil {
-		t.Fatalf("structured deny reason is not JSON: %q: %v", encoded, err)
-	}
-	assertIssueOpsDenyFields(t, fields, id, root, generation, code)
-}
-
 func assertIssueOpsDenyFields(t *testing.T, raw any, id, root string, generation int, code string) {
 	t.Helper()
 	fields, ok := raw.(map[string]any)

@@ -10,7 +10,6 @@ import (
 	"agent-harness/cmd/harness/selfworkflow/steps"
 )
 
-const selfVerifyLLMEvalEnv = llmeval.EnvName
 const SelfVerifyLLMEvalEvidenceBudgetBytes = llmeval.SelfVerifyLLMEvalEvidenceBudgetBytes
 
 type SelfVerifyLLMEvalConfig = llmeval.SelfVerifyLLMEvalConfig
