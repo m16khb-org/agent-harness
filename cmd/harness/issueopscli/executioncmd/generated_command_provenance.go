@@ -27,6 +27,17 @@ func bindExecutionNextCommand(value any, observer provenanceport.Observer) (any,
 	if command == "" {
 		return value, nil
 	}
+	// generation 0은 아직 lease가 없다는 뜻이다 — prepare preview가 그 경우다.
+	// provenance는 "이 generation의 lease에 결속된 명령"을 표현하므로 결속할
+	// 대상이 없으면 붙일 것이 없다. 억지로 붙이면 Validate가 generation 0을
+	// 거부해 preview 자체가 실패하고, Orca 준비 경로가 통째로 막힌다(#411).
+	//
+	// unbound 명령은 hook의 기존 executable 계약(PATH·repo-relative form)으로
+	// 정상 분류되므로 안전 경계가 낮아지지 않는다. absolute form만 provenance를
+	// 요구하는데, 그 요구는 lease가 생긴 뒤의 명령에 그대로 남는다.
+	if generation == 0 {
+		return value, nil
+	}
 	bound, err := provenanceapp.Bind(context.Background(), command, generation, observer)
 	if err != nil {
 		return nil, err
