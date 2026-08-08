@@ -18,4 +18,3 @@ internal/adapter/inbound/issueopspublication -> internal/adapter/issueops
 internal/adapter/issueops -> internal/adapter/outbound/sqlstore
 internal/adapter/lifecycle -> internal/adapter/issueops
 internal/adapter/outbound/state -> internal/adapter/outbound/sqlstore
-internal/adapter/outbound/state -> internal/adapter/outbound/statepath
