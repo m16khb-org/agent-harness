@@ -1,8 +1,6 @@
 cmd/harness/apidoc/reviewfiles -> internal/adapter/preflight
 cmd/harness/basiccli -> internal/adapter/doctor
 cmd/harness/basiccli -> internal/adapter/guard
-cmd/harness/basiccli -> internal/adapter/inspect
-cmd/harness/basiccli -> internal/adapter/preflight
 cmd/harness/basiccli -> internal/adapter/repopath
 cmd/harness/basiccli -> internal/adapter/trace
 cmd/harness/contractcli -> internal/adapter/cli
@@ -48,7 +46,6 @@ cmd/harness/loopcli -> internal/adapter/looprun
 cmd/harness/mcpcli -> internal/adapter/audit
 cmd/harness/mcpcli -> internal/adapter/commitsuggest
 cmd/harness/mcpcli -> internal/adapter/docs
-cmd/harness/mcpcli -> internal/adapter/inspect
 cmd/harness/mcpcli -> internal/adapter/issueops
 cmd/harness/mcpcli -> internal/adapter/lintdiagnose
 cmd/harness/mcpcli -> internal/adapter/looprun
@@ -56,7 +53,6 @@ cmd/harness/mcpcli -> internal/adapter/mcp
 cmd/harness/mcpcli -> internal/adapter/outbound/state
 cmd/harness/mcpcli -> internal/adapter/outbound/webfetch
 cmd/harness/mcpcli -> internal/adapter/policy
-cmd/harness/mcpcli -> internal/adapter/preflight
 cmd/harness/mcpcli -> internal/adapter/projectbootstrap
 cmd/harness/mcpcli -> internal/adapter/projectdocs
 cmd/harness/mcpcli -> internal/adapter/worker
@@ -82,10 +78,8 @@ cmd/harness/selfworkflow/stateio -> internal/adapter/outbound/state
 cmd/harness/selfworkflow/summary -> internal/adapter/failurecause
 cmd/harness/statuscli -> internal/adapter/doctor
 cmd/harness/statuscli -> internal/adapter/guard
-cmd/harness/statuscli -> internal/adapter/inspect
 cmd/harness/statuscli -> internal/adapter/outbound/state
 cmd/harness/statuscli -> internal/adapter/policy
-cmd/harness/statuscli -> internal/adapter/preflight
 cmd/harness/statuscli -> internal/adapter/projectdocs
 cmd/harness/statuscli -> internal/adapter/worker
 cmd/harness/validationcli/contractauditworker -> internal/adapter/worker
@@ -94,7 +88,6 @@ cmd/harness/validationcli/nativeintegration -> internal/adapter/installutil
 cmd/harness/validationcli/preflightfuzz -> internal/adapter/preflight
 cmd/harness/validationcli/qagate -> internal/adapter/docs
 cmd/harness/validationcli/qagate -> internal/adapter/install
-cmd/harness/validationcli/smoke -> internal/adapter/inspect
 cmd/harness/validationcli/stateroundtrip -> internal/adapter/outbound/sqlstore
 cmd/harness/validationcli/stateroundtrip -> internal/adapter/outbound/state
 cmd/harness/validationcli/webfetch -> internal/adapter/outbound/webfetch

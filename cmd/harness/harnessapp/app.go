@@ -7,6 +7,7 @@ import (
 
 	cliadapter "agent-harness/internal/adapter/cli"
 	inspect "agent-harness/internal/adapter/inspect"
+	inspectcontract "agent-harness/internal/contract/inspect"
 )
 
 const version = "0.1.0"
@@ -26,7 +27,7 @@ func fprintString(w io.Writer, text string) {
 	_, _ = fmt.Fprint(w, text)
 }
 
-func inspectHarness(repoArg string) inspect.InspectInfo {
+func inspectHarness(repoArg string) inspectcontract.InspectInfo {
 	root := harnessRoot()
 	target := resolveTarget(repoArg)
 	home, _ := os.UserHomeDir()

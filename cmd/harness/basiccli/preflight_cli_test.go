@@ -1,7 +1,7 @@
 package basiccli
 
 import (
-	preflight "agent-harness/internal/adapter/preflight"
+	preflight "agent-harness/internal/contract/preflight"
 	"encoding/json"
 	"path/filepath"
 	"strings"

@@ -1,6 +1,7 @@
 package preflight
 
 import (
+	preflightcontract "agent-harness/internal/contract/preflight"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -9,25 +10,25 @@ import (
 
 var conventionalSubjectRe = regexp.MustCompile(`^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([^)]+\))?!?: .+`)
 
-func listRemotes(root string) []RemoteInfo {
+func listRemotes(root string) []preflightcontract.RemoteInfo {
 	lines := splitLines(GitOut(root, "remote", "-v"))
-	var out []RemoteInfo
+	var out []preflightcontract.RemoteInfo
 	for _, line := range lines {
 		fields := strings.Fields(line)
 		if len(fields) >= 3 && fields[2] == "(fetch)" {
-			out = append(out, RemoteInfo{Name: fields[0], URL: redactRemote(fields[1])})
+			out = append(out, preflightcontract.RemoteInfo{Name: fields[0], URL: redactRemote(fields[1])})
 		}
 	}
 	return out
 }
 
-func recentCommits(root string, limit int) []CommitInfo {
+func recentCommits(root string, limit int) []preflightcontract.CommitInfo {
 	lines := splitLines(GitOut(root, "log", fmt.Sprintf("-%d", limit), "--pretty=format:%h%x09%s"))
-	var out []CommitInfo
+	var out []preflightcontract.CommitInfo
 	for _, line := range lines {
 		parts := strings.SplitN(line, "\t", 2)
 		if len(parts) == 2 {
-			out = append(out, CommitInfo{SHA: parts[0], Subject: parts[1]})
+			out = append(out, preflightcontract.CommitInfo{SHA: parts[0], Subject: parts[1]})
 		}
 	}
 	return out

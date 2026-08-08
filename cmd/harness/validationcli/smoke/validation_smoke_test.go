@@ -1,8 +1,9 @@
 package smoke
 
 import (
-	inspect "agent-harness/internal/adapter/inspect"
 	docs "agent-harness/internal/contract/docs"
+	inspect "agent-harness/internal/contract/inspect"
+	inspectcontract "agent-harness/internal/contract/inspect"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -21,7 +22,7 @@ func TestValidateInspectWithDepsCoversCommandAndContractBranches(t *testing.T) {
 		}
 		out, err := json.Marshal(inspect.InspectInfo{
 			OK:     true,
-			Skills: []inspect.SkillInfo{{Name: "self-verify", HasSkillMD: true}},
+			Skills: []inspectcontract.SkillInfo{{Name: "self-verify", HasSkillMD: true}},
 			Integration: inspect.IntegrationStatus{
 				ProjectClaudeMCPConfig: true,
 			},
@@ -137,7 +138,7 @@ func writeValidationSmokeFakeBinary(t *testing.T, dir, root string) string {
 	path := filepath.Join(dir, "fake-harness")
 	inspect, err := json.Marshal(inspect.InspectInfo{
 		OK:     true,
-		Skills: []inspect.SkillInfo{{Name: "self-verify", HasSkillMD: true}},
+		Skills: []inspectcontract.SkillInfo{{Name: "self-verify", HasSkillMD: true}},
 		Integration: inspect.IntegrationStatus{
 			ProjectClaudeMCPConfig: true,
 		},

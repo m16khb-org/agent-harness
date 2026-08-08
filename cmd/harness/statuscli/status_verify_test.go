@@ -1,6 +1,7 @@
 package statuscli
 
 import (
+	"agent-harness/internal/adapter/preflight"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -9,9 +10,9 @@ import (
 	"testing"
 
 	"agent-harness/cmd/harness/daemoncli"
-	inspect "agent-harness/internal/adapter/inspect"
 	statestore "agent-harness/internal/adapter/outbound/state"
 	worker "agent-harness/internal/adapter/worker"
+	inspect "agent-harness/internal/contract/inspect"
 	"agent-harness/internal/testsupport"
 )
 
@@ -60,6 +61,7 @@ func TestBuildHarnessStatusSharesDaemonAdmissionWithDoctor(t *testing.T) {
 		Draining:          false,
 	}
 	Configure(Deps{
+		GitPreflight:      preflight.GitPreflight,
 		HarnessRoot:       func() string { return repo },
 		ResolveTarget:     func(target string) string { return target },
 		Version:           "test",

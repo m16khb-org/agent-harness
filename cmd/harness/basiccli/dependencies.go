@@ -2,12 +2,13 @@ package basiccli
 
 import (
 	docscontract "agent-harness/internal/contract/docs"
+	preflightcontract "agent-harness/internal/contract/preflight"
 	"context"
 	"encoding/json"
 	"os"
 
 	"agent-harness/cmd/harness/daemoncli"
-	inspect "agent-harness/internal/adapter/inspect"
+	inspect "agent-harness/internal/contract/inspect"
 	"agent-harness/internal/domain/operationalhealth"
 )
 
@@ -15,6 +16,8 @@ import (
 // composition root가 Configure로 실제 구현을 주입하며, 단독 실행과 테스트는
 // 기본값으로 대체한다.
 type Deps struct {
+	// GitPreflight는 composition root가 주입한다. git 실행은 CLI의 일이 아니다.
+	GitPreflight             func(target, harnessRoot string) preflightcontract.PreflightResult
 	HarnessRoot              func() string
 	ResolveTarget            func(string) string
 	Version                  string
