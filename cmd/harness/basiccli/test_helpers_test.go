@@ -1,6 +1,7 @@
 package basiccli
 
 import (
+	"agent-harness/internal/adapter/docs"
 	"context"
 	"os"
 	"os/exec"
@@ -16,6 +17,7 @@ import (
 func init() {
 	root := testHarnessRoot()
 	Configure(Deps{
+		DocsIndex:         docs.DocsIndex,
 		HarnessRoot:       func() string { return root },
 		ResolveTarget:     testResolveTarget,
 		Version:           "0.1.0",

@@ -9,16 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	claudeadapter "agent-harness/internal/adapter/claude"
-	codexadapter "agent-harness/internal/adapter/codex"
-	install "agent-harness/internal/adapter/install"
-	"agent-harness/internal/adapter/installutil"
 	issueopscore "agent-harness/internal/adapter/issueops"
-	mcpadapter "agent-harness/internal/adapter/mcp"
 	activationapp "agent-harness/internal/application/nativeactivation"
 	activationcontract "agent-harness/internal/contract/nativeactivation"
-	"agent-harness/internal/port"
-	activationport "agent-harness/internal/port/nativeactivation"
 )
 
 func runInstall(args []string) error {
@@ -55,7 +48,10 @@ func runInstall(args []string) error {
 		return fmt.Errorf("invalid --path-mode %q: expected auto, manual, or skip", *pathMode)
 	}
 	root := deps.HarnessRoot()
-	req := install.DefaultNativeInstallRequest(root, home, codexHome, filepath.Join(root, "bin", "agent-harness"))
+	if deps.NativeInstallRequest == nil || deps.InstallNative == nil {
+		return fmt.Errorf("native installer is not configured")
+	}
+	req := deps.NativeInstallRequest(root, home, codexHome, filepath.Join(root, "bin", "agent-harness"))
 	req.ProjectLocal = *projectLocal
 	req.DryRun = *dryRun
 	stateDir := filepath.Dir(issueopscore.IssueOpsStateRoot())
@@ -67,7 +63,10 @@ func runInstall(args []string) error {
 	if err != nil {
 		return err
 	}
-	activationService := activationapp.NewService(deps.ActivationBackend, hostActivationReadback{request: req})
+	if deps.ActivationReadback == nil {
+		return fmt.Errorf("native activation readback is not configured")
+	}
+	activationService := activationapp.NewService(deps.ActivationBackend, deps.ActivationReadback(req))
 	if !req.DryRun && activationStep != "seal" {
 		pending, err := activationService.Begin(context.Background(), activationRequest)
 		if err != nil {
@@ -81,7 +80,7 @@ func runInstall(args []string) error {
 			return nil
 		}
 	}
-	result, err := install.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())
+	result, err := deps.InstallNative(req)
 	if pathErr := applyInstallPathPlan(&result, req, *pathMode); pathErr != nil {
 		result.OK = false
 		err = errors.Join(err, pathErr)
@@ -117,39 +116,6 @@ func nativeActivationStep(dryRun bool, raw string) (string, error) {
 	default:
 		return "", fmt.Errorf("invalid native activation step %q", step)
 	}
-}
-
-type hostActivationReadback struct{ request port.NativeInstallRequest }
-
-func (readback hostActivationReadback) Verify(_ context.Context, harnessRoot, targetBinary string) (activationport.Readback, error) {
-	if readback.request.Root != harnessRoot || readback.request.BinPath != targetBinary {
-		return activationport.Readback{}, fmt.Errorf("native activation readback target changed")
-	}
-	codexEvidence, err := codexadapter.VerifyActivation(readback.request)
-	if err != nil {
-		return activationport.Readback{}, err
-	}
-	claudeEvidence, err := claudeadapter.VerifyActivation(readback.request)
-	if err != nil {
-		return activationport.Readback{}, err
-	}
-	tools := mcpadapter.IssueOpsBasicTools()
-	if len(tools) != 1 || tools[0].Name != "issueops_execution" {
-		return activationport.Readback{}, fmt.Errorf("IssueOps v1 MCP activation catalog must contain exactly issueops_execution")
-	}
-	catalogSHA, err := installutil.SemanticSHA256(tools)
-	if err != nil {
-		return activationport.Readback{}, err
-	}
-	evidence := append(codexEvidence, claudeEvidence...)
-	result := make([]activationport.Evidence, 0, len(evidence))
-	for _, item := range evidence {
-		result = append(result, activationport.Evidence{
-			Host: item.Host, Surface: item.Surface, Path: item.Path, SemanticSHA256: item.SemanticSHA256,
-			SHA256: item.SHA256, Mode: item.Mode, Size: item.Size, Device: item.Device, Inode: item.Inode,
-		})
-	}
-	return activationport.Readback{CatalogSHA256: catalogSHA, Evidence: result}, nil
 }
 
 func installUserHomeDir() (string, error) {

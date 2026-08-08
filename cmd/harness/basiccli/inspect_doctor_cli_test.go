@@ -1,6 +1,7 @@
 package basiccli
 
 import (
+	"agent-harness/internal/adapter/docs"
 	"context"
 	"encoding/json"
 	"errors"
@@ -125,6 +126,7 @@ func TestRunDoctor_printsLiveDaemonAdmissionHealth(t *testing.T) {
 	oldDeps := deps
 	t.Cleanup(func() { Configure(oldDeps) })
 	Configure(Deps{
+		DocsIndex:      docs.DocsIndex,
 		HarnessRoot:    func() string { return repo },
 		ResolveTarget:  func(target string) string { return target },
 		Version:        "test",

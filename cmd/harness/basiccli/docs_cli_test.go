@@ -1,7 +1,7 @@
 package basiccli
 
 import (
-	docs "agent-harness/internal/adapter/docs"
+	docs "agent-harness/internal/contract/docs"
 	"encoding/json"
 	"os"
 	"path/filepath"

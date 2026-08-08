@@ -1,5 +1,4 @@
 cmd/harness/apidoc/reviewfiles -> internal/adapter/preflight
-cmd/harness/basiccli -> internal/adapter/docs
 cmd/harness/basiccli -> internal/adapter/doctor
 cmd/harness/basiccli -> internal/adapter/guard
 cmd/harness/basiccli -> internal/adapter/inspect
@@ -27,12 +26,8 @@ cmd/harness/hookcli/hookcatalog -> internal/adapter/outbound/state
 cmd/harness/hookcli/hookcatalog -> internal/adapter/worker
 cmd/harness/hookcli/hookfailure -> internal/adapter/hookfailure
 cmd/harness/hookcli/hookfailure -> internal/adapter/hookmetrics
-cmd/harness/installcli -> internal/adapter/claude
-cmd/harness/installcli -> internal/adapter/codex
-cmd/harness/installcli -> internal/adapter/install
 cmd/harness/installcli -> internal/adapter/installutil
 cmd/harness/installcli -> internal/adapter/issueops
-cmd/harness/installcli -> internal/adapter/mcp
 cmd/harness/issueopscli -> internal/adapter/cli
 cmd/harness/issueopscli -> internal/adapter/issueops
 cmd/harness/issueopscli -> internal/adapter/issueops/loopgate
@@ -66,7 +61,6 @@ cmd/harness/mcpcli -> internal/adapter/projectbootstrap
 cmd/harness/mcpcli -> internal/adapter/projectdocs
 cmd/harness/mcpcli -> internal/adapter/worker
 cmd/harness/mcpcli/catalog -> internal/adapter/mcp
-cmd/harness/mcpcli/resources -> internal/adapter/docs
 cmd/harness/mcpcli/resources -> internal/adapter/mcp
 cmd/harness/mcpcli/resources -> internal/adapter/policy
 cmd/harness/mcpcli/resources -> internal/adapter/projectdocs
@@ -100,7 +94,6 @@ cmd/harness/validationcli/nativeintegration -> internal/adapter/installutil
 cmd/harness/validationcli/preflightfuzz -> internal/adapter/preflight
 cmd/harness/validationcli/qagate -> internal/adapter/docs
 cmd/harness/validationcli/qagate -> internal/adapter/install
-cmd/harness/validationcli/smoke -> internal/adapter/docs
 cmd/harness/validationcli/smoke -> internal/adapter/inspect
 cmd/harness/validationcli/stateroundtrip -> internal/adapter/outbound/sqlstore
 cmd/harness/validationcli/stateroundtrip -> internal/adapter/outbound/state
