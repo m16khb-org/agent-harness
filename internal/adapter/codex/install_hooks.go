@@ -21,6 +21,11 @@ func writeCodexHooks(path string, req port.NativeInstallRequest) (port.InstallFi
 		return file, nil, err
 	}
 	messages := HookTargetDriftMessages(config, "codex", req.BinPath)
+	// 경로가 같아도 빌드 세대가 갈리면 이전 세대 hook이 새 typed command를
+	// 모른 채 차단해 복구가 교착된다(#328). 그 축을 여기서 함께 보고한다.
+	if HookTargetGenerationMessages != nil && RunningBuildGenerationString != nil && FileBuildGenerationString != nil {
+		messages = append(messages, HookTargetGenerationMessages(config, "codex", req.BinPath, RunningBuildGenerationString(), FileBuildGenerationString)...)
+	}
 	merged := mergeHookConfig(config, req.BinPath)
 	b, err := json.MarshalIndent(merged, "", "  ")
 	if err != nil {

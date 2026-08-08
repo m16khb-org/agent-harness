@@ -11,7 +11,10 @@ var (
 	EnsureSymlinkPlan               func(target, path string, dryRun bool) (port.InstallLink, error)
 	HookGroupContainsAgentHarness   func(group any) bool
 	HookTargetDriftMessages         func(config map[string]any, host, expected string) []string
+	HookTargetGenerationMessages    func(config map[string]any, host, expected, running string, read func(string) string) []string
 	PlanHostSkillLinks              func(root, destRoot string, skillNames []string, host string, dryRun bool) ([]string, []port.InstallLink, []string, []error)
+	FileBuildGenerationString       func(path string) string
+	RunningBuildGenerationString    func() string
 	PreToolUseEnforcementFlags      func() string
 	SemanticSHA256                  func(value any) (string, error)
 	StopEnforcementFlags            func() string
