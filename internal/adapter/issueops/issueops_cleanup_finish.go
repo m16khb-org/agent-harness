@@ -16,26 +16,6 @@ import (
 	"agent-harness/internal/port"
 )
 
-// CleanupFinishRequest는 record-backed 머지 후 정리(설계 v5 WS3)의 입력이다.
-// Merged/CompletionReflected/IssueClosed는 caller가 원격 readback으로 검증한
-// 값이며, readback 실패는 caller에서 fail-closed로 끝난다(값이 오지 않는다).
-type CleanupFinishRequest struct {
-	ID                  string
-	CWD                 string
-	Merged              bool
-	CompletionReflected bool
-	IssueClosed         bool
-	// MergedBaseBranch는 머지 readback이 함께 관측한 원격 artifact의 현재 base
-	// ref다. done 전이는 draft PR 생성 직후에 일어나고 finish는 머지 이후에
-	// 실행되므로 그 사이 구간에서 base가 바뀔 수 있다. 레코드의 base 값은 done
-	// 시점에 검증된 과거이므로 drift를 구조적으로 검출하지 못한다 — 원격 관측만이
-	// 유효한 증거다.
-	MergedBaseBranch string
-	Apply            bool
-	Confirm          bool
-	Fingerprint      string
-}
-
 // CleanupFinishDeps는 파괴 단계의 외부 표면 주입점이다. Git은 (dir, args...)를
 // 실행해 (exitCode, stdout)을 돌려준다. RemoveOrcaWorktree는 orca 관리
 // 워크스페이스 회수이며 "이미 없음"을 성공으로 정규화해야 한다(멱등 계약).
@@ -48,32 +28,6 @@ type CleanupFinishDeps struct {
 	// 빈 값으로 덮어쓰는 사고를 구조적으로 차단한다(C2-F1 (c)).
 	ReflectAudit     func(record issueops.IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string) error
 	InspectProcesses func(root string) ([]string, error)
-}
-
-type CleanupFinishResult struct {
-	OK              bool     `json:"ok"`
-	ID              string   `json:"id"`
-	Preview         bool     `json:"preview"`
-	Missing         []string `json:"missing,omitempty"`
-	Fingerprint     string   `json:"fingerprint,omitempty"`
-	WorktreePath    string   `json:"worktree_path,omitempty"`
-	Branch          string   `json:"branch,omitempty"`
-	WorktreePresent bool     `json:"worktree_present"`
-	BranchPresent   bool     `json:"branch_present"`
-	// WorkspaceProcesses는 workspace_processes_quiescent가 막았을 때 그 판정의
-	// 근거를 담는다. 게이트는 이미 PID와 명령명을 관측하는데 개수만 쓰고 버려서,
-	// 차단당한 사용자가 lsof를 직접 돌려야 했다 — 그 lsof마저 워크트리 경로를
-	// 인자로 주면 lifecycle 가드에 걸린다(이슈 #154).
-	WorkspaceProcesses []string `json:"workspace_processes,omitempty"`
-	OrcaWorktreeID     string   `json:"orca_worktree_id,omitempty"`
-	OrcaRemoved        bool     `json:"orca_removed,omitempty"`
-	WorktreeRemoved    bool     `json:"worktree_removed,omitempty"`
-	BranchDeleted      bool     `json:"branch_deleted,omitempty"`
-	AuditReflected     bool     `json:"audit_reflected,omitempty"`
-	AuditError         string   `json:"audit_error,omitempty"`
-	RecordDeleted      bool     `json:"record_deleted,omitempty"`
-	FailedStep         string   `json:"failed_step,omitempty"`
-	NextCommand        string   `json:"next_command,omitempty"`
 }
 
 // cleanupFinishRemedyCommand는 해소 경로가 하나로 정해지는 missing에만 그 명령을

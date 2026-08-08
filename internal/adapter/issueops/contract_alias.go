@@ -77,3 +77,17 @@ type (
 	ExecutionIssueSnapshotReadFunc = port.ExecutionIssueSnapshotReadFunc
 	ExecutionPrepareInvocation     = port.ExecutionPrepareInvocation
 )
+
+// cleanup DTO도 계약이 소유한다.
+type (
+	CleanupAbandonRequest      = issueopscontract.CleanupAbandonRequest
+	CleanupFinishRequest       = issueopscontract.CleanupFinishRequest
+	CleanupRemoteBranchRequest = issueopscontract.CleanupRemoteBranchRequest
+	IssueOpsActor              = issueopscontract.IssueOpsActor
+)
+
+type (
+	CleanupAbandonResult      = issueopscontract.CleanupAbandonResult
+	CleanupFinishResult       = issueopscontract.CleanupFinishResult
+	CleanupRemoteBranchResult = issueopscontract.CleanupRemoteBranchResult
+)

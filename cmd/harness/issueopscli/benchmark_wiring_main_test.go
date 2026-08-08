@@ -24,5 +24,6 @@ func TestMain(m *testing.M) {
 		SaveIssueOpsBenchmarkRun:             issueopscore.SaveIssueOpsBenchmarkRun,
 		ValidateJudgeProvenance:              issueopscore.ValidateJudgeProvenance,
 	})
+	wireCleanupForTests()
 	os.Exit(m.Run())
 }
