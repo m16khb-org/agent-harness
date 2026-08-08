@@ -1,6 +1,7 @@
 package projectdocs
 
 import (
+	projectdoc "agent-harness/internal/domain/projectdoc"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -8,8 +9,8 @@ import (
 	"strings"
 )
 
-func inferProjectProfile(root string, signals ProjectSignals) ProjectProfile {
-	profile := ProjectProfile{
+func inferProjectProfile(root string, signals projectdoc.ProjectSignals) projectdoc.ProjectProfile {
+	profile := projectdoc.ProjectProfile{
 		VCS:             inferProjectVCS(root),
 		Languages:       append([]string{}, signals.Languages...),
 		PackageManagers: append([]string{}, signals.PackageManagers...),
@@ -42,13 +43,13 @@ func inferProjectProfile(root string, signals ProjectSignals) ProjectProfile {
 	return profile
 }
 
-func inferProjectVCS(root string) ProjectVCSProfile {
+func inferProjectVCS(root string) projectdoc.ProjectVCSProfile {
 	origin := ReadGitOriginURL(root)
 	if origin == "" {
 		if _, err := os.Stat(filepath.Join(root, ".git")); err == nil {
-			return ProjectVCSProfile{Provider: "git", Hosting: "local", RemoteName: "origin"}
+			return projectdoc.ProjectVCSProfile{Provider: "git", Hosting: "local", RemoteName: "origin"}
 		}
-		return ProjectVCSProfile{Provider: "none", Hosting: "local"}
+		return projectdoc.ProjectVCSProfile{Provider: "none", Hosting: "local"}
 	}
 	host := remoteHost(origin)
 	provider := "git"
@@ -74,7 +75,7 @@ func inferProjectVCS(root string) ProjectVCSProfile {
 	if host == "" {
 		hosting = "unknown"
 	}
-	return ProjectVCSProfile{Provider: provider, Hosting: hosting, RemoteHost: host, RemoteName: "origin"}
+	return projectdoc.ProjectVCSProfile{Provider: provider, Hosting: hosting, RemoteHost: host, RemoteName: "origin"}
 }
 
 func ReadGitOriginURL(root string) string {

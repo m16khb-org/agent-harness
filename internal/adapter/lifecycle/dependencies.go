@@ -9,10 +9,10 @@ import (
 	"agent-harness/internal/adapter/lifecycle/worktreepath"
 	"agent-harness/internal/adapter/outbound/state"
 	"agent-harness/internal/adapter/projectdoc"
-	"agent-harness/internal/adapter/projectdocs"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/domain/nextaction"
+	projectdocdomain "agent-harness/internal/domain/projectdoc"
 	"agent-harness/internal/domain/searchrouting"
 )
 
@@ -22,7 +22,7 @@ const projectLifecycleProfileFile = model.ProjectLifecycleProfileFile
 const docUpkeepQueueFile = model.DocUpkeepQueueFile
 const compactCapsuleFile = model.CompactCapsuleFile
 
-type ProjectProfile = projectdocs.ProjectProfile
+type ProjectProfile = projectdocdomain.ProjectProfile
 type ProjectFingerprint = model.ProjectFingerprint
 type ProjectLifecycleProfile = model.ProjectLifecycleProfile
 type ProjectLifecycleStatePlan = model.ProjectLifecycleStatePlan

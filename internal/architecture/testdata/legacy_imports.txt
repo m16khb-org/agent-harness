@@ -138,7 +138,6 @@ internal/adapter/hookmetrics -> internal/adapter/outbound/state
 internal/adapter/hookprompt -> internal/adapter/issueops
 internal/adapter/hookprompt -> internal/adapter/lifecycle
 internal/adapter/hookprompt -> internal/adapter/projectdoc
-internal/adapter/hookprompt -> internal/adapter/projectdocs
 internal/adapter/hostprobe -> internal/adapter/toolconformance
 internal/adapter/inbound/issueopscompletion -> internal/adapter/issueops
 internal/adapter/inbound/issueopslease -> internal/adapter/issueops
@@ -186,7 +185,6 @@ internal/adapter/lifecycle -> internal/adapter/lifecycle/worktreeguard
 internal/adapter/lifecycle -> internal/adapter/lifecycle/worktreepath
 internal/adapter/lifecycle -> internal/adapter/outbound/state
 internal/adapter/lifecycle -> internal/adapter/projectdoc
-internal/adapter/lifecycle -> internal/adapter/projectdocs
 internal/adapter/lifecycle -> internal/adapter/remoteartifact
 internal/adapter/lifecycle -> internal/adapter/repopath
 internal/adapter/lifecycle/compact -> internal/adapter/lifecycle/docupkeep
@@ -198,7 +196,6 @@ internal/adapter/lifecycle/docupkeep -> internal/adapter/outbound/state
 internal/adapter/lifecycle/docupkeep -> internal/adapter/projectdoc
 internal/adapter/lifecycle/fingerprint -> internal/adapter/lifecycle/model
 internal/adapter/lifecycle/fingerprint -> internal/adapter/projectdocs
-internal/adapter/lifecycle/model -> internal/adapter/projectdocs
 internal/adapter/lifecycle/nextactionrelay -> internal/adapter/lifecycle/model
 internal/adapter/lintdiagnose -> internal/adapter/repopath
 internal/adapter/looprun -> internal/adapter/outbound/sqlstore

@@ -1,11 +1,12 @@
 package projectdocs
 
 import (
+	projectdoc "agent-harness/internal/domain/projectdoc"
 	"path/filepath"
 	"strings"
 )
 
-func RenderProjectDocs(root string, signals ProjectSignals) map[string]string {
+func RenderProjectDocs(root string, signals projectdoc.ProjectSignals) map[string]string {
 	out := map[string]string{}
 	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "ARCHITECTURE.md"))] = renderArchitecture(signals)
 	out[filepath.ToSlash(filepath.Join(ProjectDocsDir, "CAUTIONS.md"))] = renderCautions(signals)
@@ -26,11 +27,11 @@ func RenderProjectDocs(root string, signals ProjectSignals) map[string]string {
 	return out
 }
 
-func renderArchitecture(signals ProjectSignals) string {
+func renderArchitecture(signals projectdoc.ProjectSignals) string {
 	return "# Architecture\n\n## Purpose\n\nThis is an architecture draft generated from project files by agent-harness. Mark weak inferences with Confidence; current code and command output are authoritative.\n\n## Detected structure\n\n" + bulletListWithFallback(signals.Files, "Not enough project signal files were detected.") + "\n## Guidance\n\n- Before large design changes, inspect current entrypoints, package/module boundaries, and data flow.\n- Add new abstractions only after existing patterns and test boundaries are confirmed.\n"
 }
 
-func renderCautions(signals ProjectSignals) string {
+func renderCautions(signals projectdoc.ProjectSignals) string {
 	items := []string{"Generated docs are drafts; directly verify weak evidence.", "Do not commit secrets, credentials, local state, or generated artifacts."}
 	if len(signals.GitHubWorkflows) > 0 {
 		items = append(items, "CI workflows exist; compare local verification with CI behavior.")
@@ -73,7 +74,7 @@ This project-specific constitution should be read at session start. Follow the g
 `
 }
 
-func renderConventions(signals ProjectSignals) string {
+func renderConventions(signals projectdoc.ProjectSignals) string {
 	lines := []string{"# Conventions\n\n## Detected conventions\n\n"}
 	if len(signals.DetectedConventions) == 0 {
 		lines = append(lines, "- Few conventions were auto-detected. Inspect README, config, and existing files first.\n")
@@ -85,7 +86,7 @@ func renderConventions(signals ProjectSignals) string {
 	return strings.Join(lines, "")
 }
 
-func renderTechStack(signals ProjectSignals) string {
+func renderTechStack(signals projectdoc.ProjectSignals) string {
 	var b strings.Builder
 	b.WriteString("# Tech Stack\n\n## Detected languages\n\n")
 	b.WriteString(bulletListWithFallback(signals.Languages, "Could not auto-confirm languages."))
@@ -96,7 +97,7 @@ func renderTechStack(signals ProjectSignals) string {
 	return b.String()
 }
 
-func renderTesting(signals ProjectSignals) string {
+func renderTesting(signals projectdoc.ProjectSignals) string {
 	var b strings.Builder
 	b.WriteString("# Testing\n\n")
 	b.WriteString("## Purpose\n\n")

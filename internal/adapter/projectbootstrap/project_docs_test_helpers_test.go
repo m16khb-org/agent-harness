@@ -8,6 +8,7 @@ import (
 
 	"agent-harness/internal/adapter/projectdoc"
 	"agent-harness/internal/adapter/projectdocs"
+	projectdocdomain "agent-harness/internal/domain/projectdoc"
 )
 
 func mustWrite(t *testing.T, path, content string) {
@@ -37,7 +38,7 @@ func firstLines(s string, n int) string {
 	return strings.Join(lines, "\n")
 }
 
-func containsProjectCommand(commands []projectdocs.EvidenceCommand, command string) bool {
+func containsProjectCommand(commands []projectdocdomain.EvidenceCommand, command string) bool {
 	for _, c := range commands {
 		if c.Command == command {
 			return true

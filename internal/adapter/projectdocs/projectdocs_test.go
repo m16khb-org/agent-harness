@@ -1,6 +1,7 @@
 package projectdocs
 
 import (
+	projectdoc "agent-harness/internal/domain/projectdoc"
 	"os"
 	"path/filepath"
 	"strings"
@@ -189,7 +190,7 @@ func TestProjectDocsHelpers(t *testing.T) {
 	if got := bulletListWithFallback(nil, "fallback"); got != "- fallback\n" {
 		t.Fatalf("bullet fallback = %q", got)
 	}
-	if got := commandList([]EvidenceCommand{{Command: "go test", Evidence: []string{"go.mod"}, Confidence: "high"}}); !strings.Contains(got, "`go test`") {
+	if got := commandList([]projectdoc.EvidenceCommand{{Command: "go test", Evidence: []string{"go.mod"}, Confidence: "high"}}); !strings.Contains(got, "`go test`") {
 		t.Fatalf("commandList = %q", got)
 	}
 }

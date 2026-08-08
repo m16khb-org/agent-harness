@@ -10,6 +10,7 @@ import (
 	"agent-harness/internal/adapter/draftwiki"
 	"agent-harness/internal/adapter/projectdoc"
 	"agent-harness/internal/adapter/projectdocs"
+	projectdocdomain "agent-harness/internal/domain/projectdoc"
 )
 
 func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
@@ -195,11 +196,11 @@ func TestProjectDocsBootstrapResultJSONContract(t *testing.T) {
 		Write:    true,
 		Sync:     true,
 		DryRun:   false,
-		Signals: projectdocs.ProjectSignals{
+		Signals: projectdocdomain.ProjectSignals{
 			Languages:       []string{"go"},
 			PackageManagers: []string{"go"},
-			Profile: projectdocs.ProjectProfile{
-				VCS: projectdocs.ProjectVCSProfile{
+			Profile: projectdocdomain.ProjectProfile{
+				VCS: projectdocdomain.ProjectVCSProfile{
 					Provider: "git",
 					Hosting:  "github",
 				},

@@ -1,6 +1,7 @@
 package projectdocs
 
 import (
+	projectdoc "agent-harness/internal/domain/projectdoc"
 	"strings"
 )
 
@@ -36,7 +37,7 @@ Record structural choices, rejected alternatives, and decisions that affect long
 `
 }
 
-func renderOperations(signals ProjectSignals) string {
+func renderOperations(signals projectdoc.ProjectSignals) string {
 	var b strings.Builder
 	b.WriteString("# Operations\n\n")
 	b.WriteString("## Local development\n\n")
@@ -113,7 +114,7 @@ func bulletListWithFallback(items []string, fallback string) string {
 	return b.String()
 }
 
-func commandList(commands []EvidenceCommand) string {
+func commandList(commands []projectdoc.EvidenceCommand) string {
 	if len(commands) == 0 {
 		return "- No auto-inferred commands. Check README, CI workflows, and package scripts.\n"
 	}

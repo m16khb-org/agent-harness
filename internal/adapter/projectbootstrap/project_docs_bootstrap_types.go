@@ -3,7 +3,7 @@ package projectbootstrap
 import (
 	"agent-harness/internal/adapter/lifecycle"
 	"agent-harness/internal/adapter/projectdoc"
-	"agent-harness/internal/adapter/projectdocs"
+	projectdocdomain "agent-harness/internal/domain/projectdoc"
 )
 
 type ProjectDocsBootstrapRequest struct {
@@ -21,7 +21,7 @@ type ProjectDocsBootstrapResult struct {
 	Sync           bool                                `json:"sync"`
 	DryRun         bool                                `json:"dry_run"`
 	GeneratedAt    string                              `json:"generated_at"`
-	Signals        projectdocs.ProjectSignals          `json:"signals"`
+	Signals        projectdocdomain.ProjectSignals     `json:"signals"`
 	Files          []projectdoc.ProjectDocsPlannedFile `json:"files"`
 	LifecycleState lifecycle.ProjectLifecycleStatePlan `json:"lifecycle_state"`
 	Warnings       []string                            `json:"warnings,omitempty"`

@@ -6,6 +6,7 @@ import (
 	preflight "agent-harness/internal/adapter/preflight"
 	projectdocs "agent-harness/internal/adapter/projectdocs"
 	policydomain "agent-harness/internal/domain/policy"
+	projectdocdomain "agent-harness/internal/domain/projectdoc"
 	"flag"
 	"fmt"
 	"os/exec"
@@ -126,7 +127,7 @@ func verifyWorkEvidenceItemWithCommand(name string, ok bool, summary string, com
 func buildVerifyWorkSuggestedCommands(root string) []VerifyWorkSuggestedCommand {
 	signals := projectdocs.AnalyzeProjectSignals(root)
 	out := []VerifyWorkSuggestedCommand{}
-	add := func(kind string, commands []projectdocs.EvidenceCommand) {
+	add := func(kind string, commands []projectdocdomain.EvidenceCommand) {
 		for i, command := range commands {
 			fields := strings.Fields(command.Command)
 			if len(fields) == 0 {
