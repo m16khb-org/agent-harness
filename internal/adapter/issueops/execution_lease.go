@@ -20,48 +20,6 @@ import (
 	basesyncport "agent-harness/internal/port/issueopsbasesync"
 )
 
-const (
-	ExecutionReplacePreview         = "preview"
-	ExecutionReplaceRevoke          = "revoke"
-	ExecutionReplaceFinalizePreview = "finalize-preview"
-	ExecutionReplaceFinalize        = "finalize"
-	ExecutionReplaceReseed          = "reseed"
-)
-
-type ExecutionResult struct {
-	OK        bool               `json:"ok"`
-	ID        string             `json:"id"`
-	Execution issueops.Execution `json:"execution"`
-	// OrcaTaskSettled와 OrcaTaskError는 완료가 orca task를 terminal 상태로
-	// 옮겼는지를 보고한다. 종결은 best-effort이므로 실패해도 완료 자체는
-	// 성공이며, 침묵하면 진단이 불가능하므로 사유를 남긴다(#130).
-	OrcaTaskSettled     bool   `json:"orca_task_settled,omitempty"`
-	OrcaTaskError       string `json:"orca_task_error,omitempty"`
-	IssueSnapshotSource string `json:"issue_snapshot_source,omitempty"`
-	NextCommand         string `json:"next_command,omitempty"`
-}
-
-type ExecutionClaimRequest struct {
-	ID                  string               `json:"id"`
-	Generation          uint64               `json:"generation"`
-	Actor               issueops.NativeActor `json:"actor"`
-	CWD                 string               `json:"cwd"`
-	TokenFile           string               `json:"claim_token_file"`
-	IssueBodySHA256     string               `json:"issue_body_sha256,omitempty"`
-	ContextPacketSHA256 string               `json:"context_packet_sha256,omitempty"`
-}
-
-type ExecutionClaimDependencies struct {
-	ReadIssue ExecutionIssueSnapshotReadFunc
-}
-
-type ExecutionReleaseRequest struct {
-	ID         string               `json:"id"`
-	Generation uint64               `json:"generation"`
-	Actor      issueops.NativeActor `json:"actor"`
-	CWD        string               `json:"cwd"`
-}
-
 type ExecutionReplaceRequest struct {
 	ID                    string               `json:"id"`
 	Action                string               `json:"action"`
@@ -73,37 +31,6 @@ type ExecutionReplaceRequest struct {
 	Actor                 issueops.NativeActor `json:"actor"`
 	CWD                   string               `json:"cwd"`
 	Confirm               bool                 `json:"confirm,omitempty"`
-}
-
-type ExecutionReseedRequest struct {
-	ID                   string                         `json:"id"`
-	ExpectedGeneration   uint64                         `json:"expected_generation"`
-	CompletionGeneration uint64                         `json:"completion_generation,omitempty"`
-	InventoryFingerprint string                         `json:"inventory_fingerprint,omitempty"`
-	Reason               string                         `json:"reason,omitempty"`
-	Actor                issueops.NativeActor           `json:"actor"`
-	CWD                  string                         `json:"cwd"`
-	Confirm              bool                           `json:"confirm,omitempty"`
-	ReadIssue            ExecutionIssueSnapshotReadFunc `json:"-"`
-}
-
-type ExecutionReplaceResult struct {
-	OK                    bool               `json:"ok"`
-	ID                    string             `json:"id"`
-	Action                string             `json:"action"`
-	Execution             issueops.Execution `json:"execution"`
-	InventoryFingerprint  string             `json:"inventory_fingerprint,omitempty"`
-	QuiescenceFingerprint string             `json:"quiescence_fingerprint,omitempty"`
-	ClaimTokenPath        string             `json:"claim_token_path,omitempty"`
-	// 아래 값은 replacement가 새 generation으로 재봉인한 owner artifact의
-	// 정체다. owner는 digest들을 claim 명령에 그대로 넣어야 하므로 노출한다.
-	IssueBodySHA256     string `json:"issue_body_sha256,omitempty"`
-	ContextPacketPath   string `json:"context_packet_path,omitempty"`
-	ContextPacketSHA256 string `json:"context_packet_sha256,omitempty"`
-	OwnerPromptPath     string `json:"owner_prompt_path,omitempty"`
-	OwnerPromptSHA256   string `json:"owner_prompt_sha256,omitempty"`
-	IssueSnapshotSource string `json:"issue_snapshot_source,omitempty"`
-	NextCommand         string `json:"next_command,omitempty"`
 }
 
 type ExecutionReplaceDependencies struct {

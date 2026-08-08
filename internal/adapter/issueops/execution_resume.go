@@ -15,28 +15,6 @@ import (
 	"agent-harness/internal/port"
 )
 
-type ExecutionResumeRequest struct {
-	ID                 string               `json:"id"`
-	ExpectedGeneration uint64               `json:"expected_generation"`
-	Actor              issueops.NativeActor `json:"actor"`
-	CWD                string               `json:"cwd"`
-	Confirm            bool                 `json:"confirm"`
-}
-
-type ExecutionResumeResult struct {
-	OK                  bool               `json:"ok"`
-	ID                  string             `json:"id"`
-	ResumeDisposition   string             `json:"resume_disposition"`
-	Execution           issueops.Execution `json:"execution"`
-	ClaimTokenPath      string             `json:"claim_token_path"`
-	IssueBodySHA256     string             `json:"issue_body_sha256"`
-	ContextPacketPath   string             `json:"context_packet_path"`
-	ContextPacketSHA256 string             `json:"context_packet_sha256"`
-	OwnerPromptPath     string             `json:"owner_prompt_path"`
-	OwnerPromptSHA256   string             `json:"owner_prompt_sha256"`
-	NextCommand         string             `json:"next_command"`
-}
-
 type executionResumeArtifacts struct {
 	claimTokenPath  string
 	issueBodySHA256 string

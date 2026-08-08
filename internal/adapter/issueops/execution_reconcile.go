@@ -12,42 +12,6 @@ import (
 	"agent-harness/internal/port"
 )
 
-type ExecutionReconcileRequest struct {
-	ID       string                   `json:"id"`
-	Preview  bool                     `json:"preview,omitempty"`
-	Confirm  bool                     `json:"confirm,omitempty"`
-	Actor    issueops.NativeActor     `json:"actor"`
-	CWD      string                   `json:"cwd"`
-	Snapshot *issueops.IssueOpsRecord `json:"-"`
-}
-
-type ExecutionReconcileDependencies struct {
-	Orca            port.ExecutionOrcaProvisioner
-	ReadIssue       ExecutionIssueSnapshotReadFunc
-	RemoteReconcile RemotePullRequestReconcileHandler
-	Now             func() time.Time
-	Handler         ExecutionReconcileHandler
-}
-
-type ExecutionReconcileResult struct {
-	OK                  bool                     `json:"ok"`
-	ID                  string                   `json:"id"`
-	Preview             bool                     `json:"preview,omitempty"`
-	Reconciled          bool                     `json:"reconciled"`
-	Code                string                   `json:"code"`
-	Execution           issueops.Execution       `json:"execution"`
-	Pending             *issueops.ExternalIntent `json:"pending,omitempty"`
-	IssueSnapshotSource string                   `json:"issue_snapshot_source,omitempty"`
-	// ExternalStateInspected는 이 결과가 외부 자원을 실제로 조회하고 나온
-	// 것인지 밝힌다. preview는 pending kind만 보고 상수 코드를 돌려주므로
-	// false다 — 그 구분이 없으면 preview 출력이 "Orca 자원이 이런 상태다"라는
-	// 관측 증거로 오독된다(#99의 오진단이 그렇게 생겼다, 이슈 #154).
-	//
-	// omitempty를 쓰지 않는다. "조회하지 않았다"가 이 필드의 핵심 정보이므로
-	// false가 출력에서 사라지면 목적 자체가 무너진다.
-	ExternalStateInspected bool `json:"external_state_inspected"`
-}
-
 func ReconcileExecution(stateRoot string, req ExecutionReconcileRequest) (ExecutionReconcileResult, error) {
 	return ReconcileExecutionWithDependencies(context.Background(), stateRoot, req, ExecutionReconcileDependencies{})
 }

@@ -31,21 +31,6 @@ type RemotePullRequestCreateFunc func(string, port.IssueProviderCreatePullReques
 type RemotePullRequestReconcileFunc func(string, port.IssueProviderReconcilePullRequestRequest) (port.IssueProviderReconcilePullRequestResult, error)
 type RemoteArtifactVerifyFunc func(issueops.IssueOpsRemoteArtifactVerificationRequest) error
 
-type RemotePullRequestRequest struct {
-	ID                 string               `json:"id"`
-	Provider           string               `json:"provider"`
-	Title              string               `json:"title"`
-	Body               string               `json:"body"`
-	Head               string               `json:"head"`
-	Base               string               `json:"base"`
-	Labels             []string             `json:"labels"`
-	Assignees          []string             `json:"assignees"`
-	ExpectedGeneration uint64               `json:"expected_generation"`
-	Actor              issueops.NativeActor `json:"actor"`
-	CWD                string               `json:"cwd"`
-	Confirm            bool                 `json:"confirm"`
-}
-
 type RemotePullRequestDependencies struct {
 	Handler RemotePullRequestCreateHandler
 }
