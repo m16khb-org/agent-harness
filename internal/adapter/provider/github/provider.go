@@ -49,9 +49,18 @@ func (Provider) CreateIssue(req port.IssueProviderCreateIssueRequest) (port.Issu
 	if err != nil {
 		return port.IssueProviderCreateIssueResult{OK: false}, err
 	}
+	// #314: public contract가 선언한 number를 canonical URL에서 투영한다.
+	// 판정하지 못하면 성공으로 오인하지 않고 reconciliation을 요구한다 —
+	// 원격 mutation은 이미 일어났으므로 재시도를 안내해서는 안 된다.
+	number := createdArtifactNumber(result.URL)
+	if number == "" {
+		return port.IssueProviderCreateIssueResult{OK: false, URL: result.URL},
+			fmt.Errorf("created issue URL %q has no canonical number; needs reconciliation; not retried", result.URL)
+	}
 	return port.IssueProviderCreateIssueResult{
-		OK:  true,
-		URL: result.URL,
+		OK:     true,
+		URL:    result.URL,
+		Number: number,
 	}, nil
 }
 
@@ -103,9 +112,15 @@ func (Provider) CreatePullRequest(req port.IssueProviderCreatePullRequestRequest
 	if err := verifyCreatedGitHubPullRequest(req, result.URL); err != nil {
 		return port.IssueProviderCreatePullRequestResult{OK: false, URL: result.URL}, githubCreatedPullRequestError(result.URL, err)
 	}
+	number := createdArtifactNumber(result.URL)
+	if number == "" {
+		return port.IssueProviderCreatePullRequestResult{OK: false, URL: result.URL},
+			fmt.Errorf("created pull request URL %q has no canonical number; needs reconciliation; not retried", result.URL)
+	}
 	return port.IssueProviderCreatePullRequestResult{
-		OK:  true,
-		URL: result.URL,
+		OK:     true,
+		URL:    result.URL,
+		Number: number,
 	}, nil
 }
 
