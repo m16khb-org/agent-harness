@@ -5,7 +5,6 @@ cmd/harness/hookcli/hookcatalog -> internal/adapter/lifecycle
 cmd/harness/issueopscli -> internal/adapter/issueops
 cmd/harness/issueopscli -> internal/adapter/issueops/loopgate
 cmd/harness/issueopscli -> internal/adapter/issueops/orphancleanup
-cmd/harness/issueopscli/benchmarkartifact -> internal/adapter/issueops
 cmd/harness/issueopscli/benchmarkcmd -> internal/adapter/issueops
 cmd/harness/issueopscli/executioncmd -> internal/adapter/issueops
 cmd/harness/issueopscli/feedbackcleanup -> internal/adapter/issueops

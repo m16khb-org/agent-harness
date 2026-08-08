@@ -1,6 +1,7 @@
 package benchmark
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,7 +10,7 @@ import (
 	"strings"
 )
 
-func LoadIssueOpsBenchmarkFixtures(dir string) ([]IssueOpsBenchmarkFixture, error) {
+func LoadIssueOpsBenchmarkFixtures(dir string) ([]issueopscontract.IssueOpsBenchmarkFixture, error) {
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
 		return nil, fmt.Errorf("fixtures path is required")
@@ -18,7 +19,7 @@ func LoadIssueOpsBenchmarkFixtures(dir string) ([]IssueOpsBenchmarkFixture, erro
 	if err != nil {
 		return nil, err
 	}
-	var fixtures []IssueOpsBenchmarkFixture
+	var fixtures []issueopscontract.IssueOpsBenchmarkFixture
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
 			continue
@@ -28,7 +29,7 @@ func LoadIssueOpsBenchmarkFixtures(dir string) ([]IssueOpsBenchmarkFixture, erro
 		if err != nil {
 			return nil, err
 		}
-		var fixture IssueOpsBenchmarkFixture
+		var fixture issueopscontract.IssueOpsBenchmarkFixture
 		if err := json.Unmarshal(b, &fixture); err != nil {
 			return nil, fmt.Errorf("parse fixture %s: %w", path, err)
 		}
@@ -44,7 +45,7 @@ func LoadIssueOpsBenchmarkFixtures(dir string) ([]IssueOpsBenchmarkFixture, erro
 	return fixtures, nil
 }
 
-func validateIssueOpsBenchmarkFixture(f IssueOpsBenchmarkFixture) error {
+func validateIssueOpsBenchmarkFixture(f issueopscontract.IssueOpsBenchmarkFixture) error {
 	if strings.TrimSpace(f.ID) == "" {
 		return fmt.Errorf("id is required")
 	}

@@ -1,6 +1,7 @@
 package benchmark
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"strings"
 	"testing"
 )
@@ -23,7 +24,7 @@ func TestIssueOpsJudgeFileParsesFencedJSON(t *testing.T) {
 
 func TestIssueOpsLLMJudgeReturnsRemovedServiceError(t *testing.T) {
 	_, err := RunIssueOpsLLMJudge(IssueOpsLLMJudgeRequest{
-		Fixture: IssueOpsBenchmarkFixture{ID: "fixture"},
+		Fixture: issueopscontract.IssueOpsBenchmarkFixture{ID: "fixture"},
 	})
 	if err == nil || !strings.Contains(err.Error(), "no longer calls external LLM services") {
 		t.Fatalf("expected removed service error, got %v", err)
@@ -58,8 +59,8 @@ func TestIssueOpsJudgeFileRejectsFencedUnknownField(t *testing.T) {
 
 func TestIssueOpsLLMJudgePromptRequiresDimensionScoresArray(t *testing.T) {
 	prompt, err := buildIssueOpsLLMJudgePrompt(
-		IssueOpsBenchmarkFixture{ID: "fixture", Title: "Fixture", UserPrompt: "prompt", RepoContext: "context", CriticalFailures: []string{"failure"}},
-		IssueOpsBenchmarkArtifact{ProblemSummary: "summary"},
+		issueopscontract.IssueOpsBenchmarkFixture{ID: "fixture", Title: "Fixture", UserPrompt: "prompt", RepoContext: "context", CriticalFailures: []string{"failure"}},
+		issueopscontract.IssueOpsBenchmarkArtifact{ProblemSummary: "summary"},
 	)
 	if err != nil {
 		t.Fatal(err)

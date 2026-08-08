@@ -1,11 +1,12 @@
 package benchmark
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"os"
 	"strings"
 )
 
-func detectIssueOpsCriticalFailures(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) []string {
+func detectIssueOpsCriticalFailures(fixture issueopscontract.IssueOpsBenchmarkFixture, artifact issueopscontract.IssueOpsBenchmarkArtifact) []string {
 	var failures []string
 	for _, rule := range fixture.CriticalFailures {
 		ruleText := strings.ToLower(rule)
@@ -41,47 +42,47 @@ func detectIssueOpsCriticalFailures(fixture IssueOpsBenchmarkFixture, artifact I
 	return append(failures, detectIssueOpsQualityCriticalFailures(fixture, artifact)...)
 }
 
-func implementationInWorktree(artifact IssueOpsBenchmarkArtifact) bool {
+func implementationInWorktree(artifact issueopscontract.IssueOpsBenchmarkArtifact) bool {
 	worktreePath := strings.TrimSpace(artifact.WorktreePath)
 	location := strings.TrimSpace(artifact.ImplementationLocation)
 	return worktreePath != "" && location != "" && (location == worktreePath || strings.HasPrefix(location, worktreePath+string(os.PathSeparator)))
 }
 
-func issueOpsDomainContractEvidenceComplete(artifact IssueOpsBenchmarkArtifact) bool {
+func issueOpsDomainContractEvidenceComplete(artifact issueopscontract.IssueOpsBenchmarkArtifact) bool {
 	return containsAllFold(artifact.DomainContractEvidence, "invariant", "exact mechanism", "equivalent behavior", "source") &&
 		containsAnyFold(artifact.DomainContractEvidence, "file:", "line", ":")
 }
 
-func issueOpsAPIDocGateEvidenceComplete(artifact IssueOpsBenchmarkArtifact) bool {
+func issueOpsAPIDocGateEvidenceComplete(artifact issueopscontract.IssueOpsBenchmarkArtifact) bool {
 	return containsAllFold(artifact.APIDocGateEvidence, "changed endpoint", "public error", "static check", "review") &&
 		containsAnyFold(artifact.APIDocGateEvidence, "openapi", "swagger", "api-doc", "api doc")
 }
 
-func issueOpsLiveEvidenceMatrixComplete(artifact IssueOpsBenchmarkArtifact) bool {
+func issueOpsLiveEvidenceMatrixComplete(artifact issueopscontract.IssueOpsBenchmarkArtifact) bool {
 	return containsAllFold(artifact.LiveEvidenceMatrix, "environment", "repo config", "runtime", "remediation order") &&
 		containsAnyFold(artifact.LiveEvidenceMatrix, "dev", "stg", "prod", "local", "production")
 }
 
-func issueOpsReviewFeedbackEvidenceComplete(artifact IssueOpsBenchmarkArtifact) bool {
+func issueOpsReviewFeedbackEvidenceComplete(artifact issueopscontract.IssueOpsBenchmarkArtifact) bool {
 	return containsAllFold(artifact.ReviewFeedbackEvidence, "classification", "verification", "thread reply", "resolution") &&
 		containsAnyFold(artifact.ReviewFeedbackEvidence, "valid", "stale", "noise", "contract_change", "defect") &&
 		issueOpsReviewAgentThreadEvidenceComplete(artifact)
 }
 
-func issueOpsCompletionHygieneComplete(artifact IssueOpsBenchmarkArtifact) bool {
+func issueOpsCompletionHygieneComplete(artifact issueopscontract.IssueOpsBenchmarkArtifact) bool {
 	return containsAllFold(artifact.CompletionHygiene, "final diff", "target branch", "remote artifact", "single commit", "cleanup") &&
 		containsAnyFold(artifact.CompletionHygiene, "pr", "mr", "issue") &&
 		issueOpsDraftIssueCompletionEvidenceComplete(artifact)
 }
 
-func workerPromptHasContextGate(artifact IssueOpsBenchmarkArtifact) bool {
+func workerPromptHasContextGate(artifact issueopscontract.IssueOpsBenchmarkArtifact) bool {
 	prompt := artifact.SubagentPrompts
 	return containsAllFold(prompt, "pwd", "branch", "head") &&
 		(containsFold(prompt, "worktree") || strings.TrimSpace(artifact.WorktreePath) != "") &&
 		containsAnyFold(prompt, "stop", "halt", "중단")
 }
 
-func reviewPromptIsBounded(artifact IssueOpsBenchmarkArtifact) bool {
+func reviewPromptIsBounded(artifact issueopscontract.IssueOpsBenchmarkArtifact) bool {
 	prompt := artifact.SubagentPrompts
 	if !containsAnyFold(prompt, "review", "code-reviewer", "verifier") {
 		return true
@@ -121,7 +122,7 @@ var issueOpsPRSectionConcepts = [][]string{
 	{"automation", "AI", "자동화", "AI 개입"},
 }
 
-func hasIssueOpsGuidelineRef(artifact IssueOpsBenchmarkArtifact) bool {
+func hasIssueOpsGuidelineRef(artifact issueopscontract.IssueOpsBenchmarkArtifact) bool {
 	const guideline = "docs/superpowers/specs/issueops-issue-pr-guidelines.md"
 	return containsFold(artifact.GuidelineRef, guideline) ||
 		containsFold(artifact.IssueDraft, guideline) ||

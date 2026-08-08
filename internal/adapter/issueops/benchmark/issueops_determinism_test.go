@@ -1,6 +1,7 @@
 package benchmark
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"reflect"
 	"testing"
 )
@@ -24,15 +25,15 @@ func TestScorerDeterminismOrderedOutputsStable(t *testing.T) {
 	// A partially-FAILING artifact so the failure slices are non-empty and their
 	// ordering is actually exercised (an all-pass artifact would compare empty
 	// slices and prove little).
-	fixture := IssueOpsBenchmarkFixture{
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{
 		ID:                 "determinism",
 		PioneerSkillTarget: "codd",
-		ExpectedRouting:    []SkillRouting{{Phase: "plan", Skill: "codd"}},
+		ExpectedRouting:    []issueopscontract.SkillRouting{{Phase: "plan", Skill: "codd"}},
 		CriticalFailures:   []string{"skips domain contract evidence", "skips live evidence matrix"},
 	}
 	artifact := completeBenchmarkArtifactForTest()
 	artifact.PioneerSkillEvidence = coddKeywordEvidence
-	artifact.RoutingTrace = []SkillRouting{{Phase: "plan", Skill: "codd"}}
+	artifact.RoutingTrace = []issueopscontract.SkillRouting{{Phase: "plan", Skill: "codd"}}
 	artifact.DomainContractEvidence = ""
 	artifact.LiveEvidenceMatrix = ""
 	artifact.PhaseChoices = ""
@@ -63,7 +64,7 @@ func TestScorerDeterminismOrderedOutputsStable(t *testing.T) {
 // future refactor that ranged the checks map and scrambled order would slip
 // through). This proves the comparison discriminates ordering.
 func TestScorerDeterminismComparisonCatchesReordering(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{
 		ID:               "determinism-teeth",
 		CriticalFailures: []string{"skips domain contract evidence", "skips live evidence matrix"},
 	}

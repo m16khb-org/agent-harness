@@ -1,8 +1,10 @@
 package benchmark
 
+import issueopscontract "agent-harness/internal/contract/issueops"
+
 import "strings"
 
-func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) IssueOpsBenchmarkScore {
+func ScoreIssueOpsBenchmarkArtifact(fixture issueopscontract.IssueOpsBenchmarkFixture, artifact issueopscontract.IssueOpsBenchmarkArtifact) IssueOpsBenchmarkScore {
 	checks := map[string]struct {
 		ok       bool
 		evidence string
@@ -145,7 +147,7 @@ func ScoreIssueOpsBenchmarkArtifact(fixture IssueOpsBenchmarkFixture, artifact I
 // does not exercise a metadata-conditional dimension, so the dimension is
 // recorded but excluded from average/minimum/Passed. Keep every conditional
 // dimension here rather than hardcoding one name in the scoring loop.
-func issueOpsDimensionNotApplicable(dimension string, fixture IssueOpsBenchmarkFixture) string {
+func issueOpsDimensionNotApplicable(dimension string, fixture issueopscontract.IssueOpsBenchmarkFixture) string {
 	switch dimension {
 	case "pioneer_skill_contribution":
 		if strings.TrimSpace(fixture.PioneerSkillTarget) == "" {

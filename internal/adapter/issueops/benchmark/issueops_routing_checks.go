@@ -1,5 +1,7 @@
 package benchmark
 
+import issueopscontract "agent-harness/internal/contract/issueops"
+
 import "strings"
 
 // issueOpsSkillRoutingFidelityComplete reports whether the artifact's recorded
@@ -19,15 +21,15 @@ import "strings"
 //
 // Fixtures without ExpectedRouting are handled as N/A by the scorer and never
 // reach this check.
-func issueOpsSkillRoutingFidelityComplete(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) bool {
+func issueOpsSkillRoutingFidelityComplete(fixture issueopscontract.IssueOpsBenchmarkFixture, artifact issueopscontract.IssueOpsBenchmarkArtifact) bool {
 	return RoutingFidelity(fixture.ExpectedRouting, artifact.RoutingTrace).OK
 }
 
 // RoutingFidelityResult reports whether an observed routing trace covered every
 // expected skill-at-phase pairing, listing the pairings that were not observed.
 type RoutingFidelityResult struct {
-	OK      bool           `json:"ok"`
-	Missing []SkillRouting `json:"missing,omitempty"`
+	OK      bool                            `json:"ok"`
+	Missing []issueopscontract.SkillRouting `json:"missing,omitempty"`
 }
 
 // RoutingFidelity is the shared core of skill_routing_fidelity. It reports
@@ -35,8 +37,8 @@ type RoutingFidelityResult struct {
 // missing. Reused for both the benchmark dimension (observed = artifact trace)
 // and live scoring of a real run (observed = the recorded RoutingTrace), so a
 // real run is scored by the same logic instead of a synthesized tautology.
-func RoutingFidelity(expected, observed []SkillRouting) RoutingFidelityResult {
-	var missing []SkillRouting
+func RoutingFidelity(expected, observed []issueopscontract.SkillRouting) RoutingFidelityResult {
+	var missing []issueopscontract.SkillRouting
 	for _, e := range expected {
 		if !routingTraceHasPairing(observed, e) {
 			missing = append(missing, e)
@@ -45,7 +47,7 @@ func RoutingFidelity(expected, observed []SkillRouting) RoutingFidelityResult {
 	return RoutingFidelityResult{OK: len(missing) == 0, Missing: missing}
 }
 
-func routingTraceHasPairing(trace []SkillRouting, expected SkillRouting) bool {
+func routingTraceHasPairing(trace []issueopscontract.SkillRouting, expected issueopscontract.SkillRouting) bool {
 	for _, entry := range trace {
 		if strings.EqualFold(strings.TrimSpace(entry.Phase), strings.TrimSpace(expected.Phase)) &&
 			strings.EqualFold(strings.TrimSpace(entry.Skill), strings.TrimSpace(expected.Skill)) {

@@ -1,11 +1,13 @@
 package benchmark
 
+import issueopscontract "agent-harness/internal/contract/issueops"
+
 import "testing"
 
 func pioneerCheckForTest(target, evidence string) bool {
 	return issueOpsPioneerSkillEvidenceComplete(
-		IssueOpsBenchmarkFixture{ID: "pioneer-" + target, PioneerSkillTarget: target},
-		IssueOpsBenchmarkArtifact{PioneerSkillEvidence: evidence},
+		issueopscontract.IssueOpsBenchmarkFixture{ID: "pioneer-" + target, PioneerSkillTarget: target},
+		issueopscontract.IssueOpsBenchmarkArtifact{PioneerSkillEvidence: evidence},
 	)
 }
 

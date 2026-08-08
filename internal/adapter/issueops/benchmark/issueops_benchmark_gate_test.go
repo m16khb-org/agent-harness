@@ -1,20 +1,21 @@
 package benchmark
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"strings"
 	"testing"
 )
 
 func TestRunAndCompareIssueOpsBenchmark(t *testing.T) {
 	dir := t.TempDir()
-	fixtures := []IssueOpsBenchmarkFixture{
+	fixtures := []issueopscontract.IssueOpsBenchmarkFixture{
 		{ID: "fixture", Title: "Fixture", UserPrompt: "prompt", RepoContext: "ctx", CriticalFailures: []string{"works in source repo"}},
 	}
 
 	baseline, err := RunIssueOpsBenchmark(IssueOpsBenchmarkRunRequest{
 		StateRoot: dir,
 		Fixtures:  fixtures,
-		Artifacts: map[string]IssueOpsBenchmarkArtifact{
+		Artifacts: map[string]issueopscontract.IssueOpsBenchmarkArtifact{
 			"fixture": {},
 		},
 	})
@@ -24,7 +25,7 @@ func TestRunAndCompareIssueOpsBenchmark(t *testing.T) {
 	candidate, err := RunIssueOpsBenchmark(IssueOpsBenchmarkRunRequest{
 		StateRoot: dir,
 		Fixtures:  fixtures,
-		Artifacts: map[string]IssueOpsBenchmarkArtifact{
+		Artifacts: map[string]issueopscontract.IssueOpsBenchmarkArtifact{
 			"fixture": completeBenchmarkArtifactForTest(),
 		},
 	})
