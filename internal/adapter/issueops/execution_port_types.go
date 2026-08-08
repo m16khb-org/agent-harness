@@ -56,7 +56,6 @@ type ExecutionActionDependencies struct {
 	// Orca-specific Reconcile handler.
 	RemoteReconcile RemotePullRequestReconcileHandler
 }
-type ExecutionIssueSnapshotReadFunc func(context.Context, string, port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error)
 type ExecutionReconcileDependencies struct {
 	Orca            port.ExecutionOrcaProvisioner
 	ReadIssue       ExecutionIssueSnapshotReadFunc
@@ -69,9 +68,6 @@ type ExecutionReconcileDependencies struct {
 // cleanup abandon의 orca 인벤토리 실조회 표면을 주입받게 하는 alias다.
 type ExecutionOrcaProvisioner = port.ExecutionOrcaProvisioner
 type ExecutionOrcaOwnerInspector = port.ExecutionOrcaOwnerInspector
-type ExecutionPrepareInvocation struct {
-	ReadIssue ExecutionIssueSnapshotReadFunc
-}
 type ExecutionReconcileHandler func(context.Context, string, ExecutionReconcileRequest, ExecutionReconcileDependencies) (ExecutionReconcileResult, error)
 type RemotePublicationHandlers struct {
 	Create    RemotePullRequestCreateHandler

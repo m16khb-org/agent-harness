@@ -1,6 +1,9 @@
 package issueops
 
-import issueopscontract "agent-harness/internal/contract/issueops"
+import (
+	issueopscontract "agent-harness/internal/contract/issueops"
+	"agent-harness/internal/port"
+)
 
 // 실행 API의 요청·결과·핸들러는 계약이다. 어댑터는 같은 이름으로 재노출만 한다.
 type (
@@ -67,4 +70,10 @@ var (
 	ErrRemotePullRequestReconcileHandlerUnavailable = issueopscontract.ErrRemotePullRequestReconcileHandlerUnavailable
 	ErrReseedHandlerUnavailable                     = issueopscontract.ErrReseedHandlerUnavailable
 	ErrResumeHandlerUnavailable                     = issueopscontract.ErrResumeHandlerUnavailable
+)
+
+// port가 소유하는 실행 준비 경로도 같은 이름으로 재노출한다.
+type (
+	ExecutionIssueSnapshotReadFunc = port.ExecutionIssueSnapshotReadFunc
+	ExecutionPrepareInvocation     = port.ExecutionPrepareInvocation
 )

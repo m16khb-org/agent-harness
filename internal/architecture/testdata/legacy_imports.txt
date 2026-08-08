@@ -8,8 +8,6 @@ cmd/harness/issueopscli/feedbackcleanup -> internal/adapter/issueops/orphanclean
 cmd/harness/issueopscli/remotecmd -> internal/adapter/issueops
 cmd/harness/mcpcli -> internal/adapter/issueops
 internal/adapter/inbound/issueopslease -> internal/adapter/issueops
-internal/adapter/inbound/issueopspreparation -> internal/adapter/issueops
-internal/adapter/inbound/issueopspublication -> internal/adapter/issueops
 internal/adapter/issueops -> internal/adapter/outbound/sqlstore
 internal/adapter/lifecycle -> internal/adapter/issueops
 internal/adapter/outbound/state -> internal/adapter/outbound/sqlstore

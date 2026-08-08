@@ -6,11 +6,11 @@ import (
 	"context"
 	"errors"
 
-	"agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
 	statecontract "agent-harness/internal/contract/state"
+	"agent-harness/internal/port"
 )
 
 type service interface {
@@ -19,13 +19,16 @@ type service interface {
 
 type Handler struct{ service service }
 
-func NewHandler(service service) issueops.ExecutionPrepareHandler {
+// 반환 타입은 어댑터의 이름 붙은 핸들러 타입 대신 같은 시그니처를 직접 쓴다.
+// Go에서 두 형태는 할당 호환이므로 소비자는 그대로 동작하고, inbound 어댑터는
+// issueops 어댑터를 알 필요가 없어진다.
+func NewHandler(service service) func(context.Context, string, issueopscontract.ExecutionPrepareRequest, port.ExecutionPrepareInvocation) (issueopscontract.ExecutionPrepareResult, error) {
 	return Handler{service: service}.Handle
 }
 
-func (handler Handler) Handle(ctx context.Context, _ string, request issueops.ExecutionPrepareRequest, _ issueops.ExecutionPrepareInvocation) (issueops.ExecutionPrepareResult, error) {
+func (handler Handler) Handle(ctx context.Context, _ string, request issueopscontract.ExecutionPrepareRequest, _ port.ExecutionPrepareInvocation) (issueopscontract.ExecutionPrepareResult, error) {
 	if handler.service == nil {
-		return issueops.ExecutionPrepareResult{ID: request.ID}, issueops.ErrPrepareHandlerUnavailable
+		return issueopscontract.ExecutionPrepareResult{ID: request.ID}, issueopscontract.ErrPrepareHandlerUnavailable
 	}
 	result, err := handler.service.Prepare(ctx, preparationcontract.Command{
 		ID: request.ID, Mode: request.Mode, Actor: preparationActor(request.Actor), CWD: request.CWD,
@@ -44,8 +47,8 @@ func preparationActor(actor issueopscontract.NativeActor) preparationcontract.Ac
 	return result
 }
 
-func coreResult(result preparationcontract.Result) issueops.ExecutionPrepareResult {
-	return issueops.ExecutionPrepareResult{
+func coreResult(result preparationcontract.Result) issueopscontract.ExecutionPrepareResult {
+	return issueopscontract.ExecutionPrepareResult{
 		OK: result.OK, ID: result.ID, Preview: result.Preview,
 		RequestedMode: result.RequestedMode, ResolvedMode: result.ResolvedMode, FallbackCode: result.FallbackCode,
 		Workspace: coreWorkspace(result.Workspace), Execution: coreExecution(result.Execution),
