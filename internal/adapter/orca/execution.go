@@ -649,7 +649,10 @@ func (p *ExecutionProvisioner) reconcileCreatedTerminal(ctx context.Context, cre
 			// 조회 창에서 PTY 또는 handle 행이 나타나는지만 기다린다.
 			lastErr = fmt.Errorf("Orca owner terminal is absent")
 		} else {
-			lastErr = validateExecutionIntentTerminal(*candidate, prepared, marker)
+			// created identity로 고른 행이므로 완화된 marker 규칙을 쓴다.
+			// create 응답 자체(위 빠른 경로)에는 적용하지 않는다 — 그 응답에는
+			// PTY가 아직 없을 수 있고, inventory 대기와 중복 검출이 필요하다.
+			lastErr = validateExecutionResolvedTerminal(*candidate, prepared, marker)
 		}
 		if lastErr == nil {
 			return *candidate, nil
@@ -917,16 +920,68 @@ func validateExecutionIntentTerminal(terminal port.OrcaTerminal, prepared port.E
 	if err := validateExecutionTerminalReceipt(terminal, prepared); err != nil {
 		return err
 	}
-	if strings.TrimSpace(terminal.Title) != marker && strings.TrimSpace(terminal.StableTabTitle) != marker {
-		return fmt.Errorf("Orca owner terminal does not match the sealed intent")
+	if strings.TrimSpace(terminal.Title) == marker || strings.TrimSpace(terminal.StableTabTitle) == marker {
+		return nil
 	}
-	return nil
+	// 관측값을 함께 남긴다 — 기대값만 있으면 다음 사람이 같은 조사를 반복한다(#414).
+	return fmt.Errorf(
+		"Orca owner terminal does not match the sealed intent: tab title mismatch (stable_tab_title=%q title=%q expected=%q)",
+		strings.TrimSpace(terminal.StableTabTitle), strings.TrimSpace(terminal.Title), marker)
 }
 
+// validateExecutionResolvedTerminal은 **create 응답의 exact PTY/handle로 골라낸**
+// inventory 행에 적용하는 검증이다.
+//
+// 그 행은 executionSoleCreatedTerminal이 created identity로 고르고 둘 이상이면
+// fail-closed하므로, 어느 terminal인지는 이미 확정돼 있다. 거기서 marker는
+// 확정을 재확인하는 보조 축이지 유일한 근거가 아니다.
+//
+// 완화가 필요한 이유는 실측이다. relay 0.1.0+66c426c5173c는 모든 terminal의
+// `stableTabTitle`을 null로 두고, live `title`은 Orca가 truncate한 뒤 에이전트가
+// 자기 상태로 덮어쓴다(관측: stable_tab_title="" title="✳ Claude Code").
+// 그 조합에서 marker 문자열 일치를 요구하면 얼마를 기다려도 성립하지 않아
+// Orca 모드 prepare가 영구히 막힌다(#414, #169).
+//
+// 완화는 stable tab title이 **비어 있을 때만** 적용한다. 값이 있는데 다르면
+// 다른 lifecycle의 terminal일 수 있으므로 계속 거부한다.
+func validateExecutionResolvedTerminal(terminal port.OrcaTerminal, prepared port.ExecutionOrcaWorkspaceReceipt, marker string) error {
+	if err := validateExecutionTerminalReceipt(terminal, prepared); err != nil {
+		return err
+	}
+	if strings.TrimSpace(terminal.Title) == marker || strings.TrimSpace(terminal.StableTabTitle) == marker {
+		return nil
+	}
+	if strings.TrimSpace(terminal.StableTabTitle) == "" {
+		return nil
+	}
+	return fmt.Errorf(
+		"Orca owner terminal does not match the sealed intent: tab title mismatch (stable_tab_title=%q title=%q expected=%q)",
+		strings.TrimSpace(terminal.StableTabTitle), strings.TrimSpace(terminal.Title), marker)
+}
+
+// validateExecutionTerminalReceipt는 어긋난 축을 이름으로 보고한다.
+//
+// 예전에는 여섯 조건을 한 문구로 합쳐서, 실패했을 때 handle이 없는 것인지
+// runtime이 다른 것인지 아직 연결되지 않은 것인지 구분할 수 없었다. 그 구분이
+// 없으면 대기 상한을 늘려야 할지, 다른 식별자를 써야 할지 판단할 근거가 없다.
 func validateExecutionTerminalReceipt(terminal port.OrcaTerminal, prepared port.ExecutionOrcaWorkspaceReceipt) error {
-	if strings.TrimSpace(terminal.Handle) == "" || strings.TrimSpace(terminal.PTYID) == "" || terminal.WorktreeID != prepared.WorktreeID ||
-		strings.TrimSpace(prepared.RuntimeID) == "" || terminal.RuntimeID != prepared.RuntimeID || !terminal.Connected || !terminal.Writable {
-		return fmt.Errorf("Orca owner terminal does not match the sealed intent")
+	switch {
+	case strings.TrimSpace(terminal.Handle) == "":
+		return fmt.Errorf("Orca owner terminal does not match the sealed intent: handle is empty")
+	case strings.TrimSpace(terminal.PTYID) == "":
+		return fmt.Errorf("Orca owner terminal does not match the sealed intent: pty id is empty")
+	case strings.TrimSpace(prepared.RuntimeID) == "":
+		return fmt.Errorf("Orca owner terminal does not match the sealed intent: sealed runtime id is empty")
+	case terminal.RuntimeID != prepared.RuntimeID:
+		return fmt.Errorf("Orca owner terminal does not match the sealed intent: runtime mismatch (observed=%q sealed=%q)",
+			terminal.RuntimeID, prepared.RuntimeID)
+	case terminal.WorktreeID != prepared.WorktreeID:
+		return fmt.Errorf("Orca owner terminal does not match the sealed intent: worktree mismatch (observed=%q sealed=%q)",
+			terminal.WorktreeID, prepared.WorktreeID)
+	case !terminal.Connected:
+		return fmt.Errorf("Orca owner terminal does not match the sealed intent: terminal is not connected")
+	case !terminal.Writable:
+		return fmt.Errorf("Orca owner terminal does not match the sealed intent: terminal is not writable")
 	}
 	return nil
 }
