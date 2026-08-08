@@ -97,11 +97,25 @@ func TestUnverifiedOrcaHolderMayRecordBranchLinkButCannotMutateProduction(t *tes
 
 	releaseCommand := "agent-harness issueops execution release --id " + record.ID + " --generation 1" +
 		" --host claude --session-id owner-session --agent-id owner-agent --cwd " + worker + " --json"
+	// 반납은 이 창에서 허용한다(#319). 예전에는 막았는데, 그 일괄 규칙이
+	// 진행도 반납도 못 하는 덫을 만들었다: blocker에 부딪힌 owner가 lease를
+	// 들고 종료하면, 프로세스가 살아 있는 한 typed 회수는 정당하게 거부하고
+	// 프로세스 종료는 하네스의 비목표라 자동화하지 않으므로, 남는 회수 수단이
+	// 사람뿐이 된다. 실측으로 그 상태가 됐다(lifecycle io-b3d92dc6247a).
+	//
+	// 반납이 mutation 경계를 넓히지 않는다는 것이 근거다 — 쓰기 권한을
+	// 내려놓을 뿐이고, 이 창에서 막고 싶었던 production mutation은 위에서
+	// 그대로 차단된다.
 	t.Run("shell typed control plane", func(t *testing.T) {
 		release := executionRequest(record, worker, "claude", "owner-session", releaseCommand)
 		release.AgentID = "owner-agent"
-		if got := BuildLifecyclePreToolUseDecision(release); got.Decision != "block" || got.Deny == nil || got.Deny.Code != "branch_link_verification_required" {
-			t.Fatalf("typed release must not bypass branch-link verification: %+v", got)
+		if got := BuildLifecyclePreToolUseDecision(release); got.Decision != "allow" {
+			t.Fatalf("막힌 owner는 lease를 반납하고 나갈 수 있어야 한다: %+v", got)
+		}
+		drifted := release
+		drifted.Command = strings.Replace(releaseCommand, "--generation 1", "--generation 2", 1)
+		if got := BuildLifecyclePreToolUseDecision(drifted); got.Decision != "block" || got.Deny == nil || got.Deny.Code != "branch_link_verification_required" {
+			t.Fatalf("현재 generation이 아닌 반납은 계속 막아야 한다: %+v", got)
 		}
 	})
 	t.Run("MCP typed control plane", func(t *testing.T) {
@@ -109,8 +123,13 @@ func TestUnverifiedOrcaHolderMayRecordBranchLinkButCannotMutateProduction(t *tes
 		release.AgentID = "owner-agent"
 		release.Tool = "mcp__agent_harness__issueops_execution"
 		release.ToolInput = map[string]any{"action": "release", "id": record.ID}
-		if got := BuildLifecyclePreToolUseDecision(release); got.Decision != "block" || got.Deny == nil || got.Deny.Code != "branch_link_verification_required" {
-			t.Fatalf("MCP release must not bypass branch-link verification: %+v", got)
+		if got := BuildLifecyclePreToolUseDecision(release); got.Decision != "allow" {
+			t.Fatalf("두 표면이 같은 판정을 해야 한다: %+v", got)
+		}
+		other := release
+		other.ToolInput = map[string]any{"action": "release", "id": "io-someone-else"}
+		if got := BuildLifecyclePreToolUseDecision(other); got.Decision == "allow" {
+			t.Fatalf("다른 lifecycle의 반납까지 열면 안 된다: %+v", got)
 		}
 	})
 

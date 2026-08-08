@@ -194,7 +194,12 @@ publication과 종료:
    결과를 받으라고 기다리거나 worktree/branch를 cleanup하지 않는다.
 
 막힘 규칙:
-- lease/session/generation deny: status 1회 → exact next_command 최대 1회 → 여전히 실패하면 종료.
+- **claim한 뒤 막혀서 종료할 때는 반드시 lease를 먼저 반납한다.** 들고 종료하면 프로세스가 살아
+  있는 한 아무도 그 lifecycle을 회수할 수 없고, 남는 수단이 사람의 개입뿐이 된다. 반납은 쓰기
+  권한을 내려놓는 것일 뿐이라 어떤 창에서도 안전하며, 그래서 가드가 항상 허용한다:
+  {RELEASE_COMMAND}
+- lease/session/generation deny: status 1회 → exact next_command 최대 1회 → 여전히 실패하면
+  lease를 반납하고 종료.
 - issue/packet digest drift: mutation 없이 종료하고 두 digest를 보고.
 - Orca external result ambiguity: direct로 전환하지 말고 exact reconcile command만 보고.
 - source/foreign mutation이 필요해 보이면 scope가 잘못된 것이므로 실행하지 않고 issue에 반영할

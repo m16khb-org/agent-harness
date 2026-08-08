@@ -88,3 +88,47 @@ func TestBranchLinkWaitCountsAsAnObservation(t *testing.T) {
 		t.Fatal("branch prepare는 관찰이 아니다")
 	}
 }
+
+// TestPreLinkWindowLetsTheOwnerHandTheLeaseBack는 이 창이 덫이 아님을
+// 고정한다.
+//
+// 반납까지 막으면 blocker에 부딪힌 owner는 진행도 반납도 못 한 채 lease를
+// 들고 종료한다. 그러면 typed 회수는 프로세스가 살아 있다는 이유로 정당하게
+// 거부하고, 프로세스 종료는 하네스의 비목표라 자동화하지 않으므로, 남는
+// 회수 수단이 사람뿐이 된다 — 실제로 그 상태가 됐다(#319).
+func TestPreLinkWindowLetsTheOwnerHandTheLeaseBack(t *testing.T) {
+	record := linkWaitRecord()
+	record.Execution = &issueopscontract.Execution{
+		Mode:  issueopscontract.ExecutionModeOrca,
+		Lease: issueopscontract.WriteLease{Status: issueopscontract.LeaseStatusActive, Generation: 3},
+	}
+	if !exactOrcaLeaseRelease("agent-harness issueops execution release --id io-linkwait --generation 3 --json", record) {
+		t.Fatal("현재 generation을 지목한 반납은 이 창에서 허용돼야 한다")
+	}
+	for _, command := range []string{
+		"agent-harness issueops execution release --id io-linkwait --generation 2 --json",
+		"agent-harness issueops execution release --id io-other --generation 3 --json",
+		"agent-harness issueops execution release --id io-linkwait --json",
+		"agent-harness issueops execution complete --id io-linkwait --generation 3 --json",
+	} {
+		if exactOrcaLeaseRelease(command, record) {
+			t.Fatalf("허용하면 안 되는 형태다: %q", command)
+		}
+	}
+}
+
+// TestPreLinkDenyNamesTheReleaseExit는 진단이 출구를 알려주는지 고정한다.
+// 반납할 수 있어도 owner가 그 사실을 모르면 여전히 들고 종료한다.
+func TestPreLinkDenyNamesTheReleaseExit(t *testing.T) {
+	record := linkWaitRecord()
+	record.Execution = &issueopscontract.Execution{
+		Mode:  issueopscontract.ExecutionModeOrca,
+		Lease: issueopscontract.WriteLease{Status: issueopscontract.LeaseStatusActive, Generation: 3},
+	}
+	reason := orcaBranchLinkDenyReason(record)
+	for _, needle := range []string{"await-link --id io-linkwait", "execution release --id io-linkwait --generation 3", "hands the lease back"} {
+		if !strings.Contains(reason, needle) {
+			t.Fatalf("진단이 %q를 담아야 한다: %s", needle, reason)
+		}
+	}
+}
