@@ -1,6 +1,7 @@
 package toolconformance
 
 import (
+	toolconformancecontract "agent-harness/internal/contract/toolconformance"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -11,31 +12,31 @@ import (
 	"unicode/utf8"
 )
 
-func Classify(observation CallObservation, schema map[string]any, expected any) (CaseResult, error) {
+func Classify(observation toolconformancecontract.CallObservation, schema map[string]any, expected any) (toolconformancecontract.CaseResult, error) {
 	var arguments any
 	if err := json.Unmarshal(observation.RawArguments, &arguments); err != nil {
-		return CaseResult{Classification: InvalidJSON}, nil
+		return toolconformancecontract.CaseResult{Classification: toolconformancecontract.InvalidJSON}, nil
 	}
 	if observation.CallCount == 0 {
-		return CaseResult{Classification: NoCall}, nil
+		return toolconformancecontract.CaseResult{Classification: toolconformancecontract.NoCall}, nil
 	}
 	if observation.CallCount > 1 {
-		return CaseResult{Classification: MultipleCalls}, nil
+		return toolconformancecontract.CaseResult{Classification: toolconformancecontract.MultipleCalls}, nil
 	}
 	advertised, err := Validate(schema, arguments)
 	if err != nil {
-		return CaseResult{}, err
+		return toolconformancecontract.CaseResult{}, err
 	}
 	canonical, err := Validate(ClosedProjection(schema), arguments)
 	if err != nil {
-		return CaseResult{}, err
+		return toolconformancecontract.CaseResult{}, err
 	}
-	result := CaseResult{AdvertisedValid: len(advertised) == 0, CanonicalValid: len(canonical) == 0, Diagnostics: canonical}
+	result := toolconformancecontract.CaseResult{AdvertisedValid: len(advertised) == 0, CanonicalValid: len(canonical) == 0, Diagnostics: canonical}
 	if len(canonical) == 0 {
 		if reflect.DeepEqual(arguments, expected) {
-			result.Classification = ExactValid
+			result.Classification = toolconformancecontract.ExactValid
 		} else {
-			result.Classification = ValidButSemanticallyDifferent
+			result.Classification = toolconformancecontract.ValidButSemanticallyDifferent
 		}
 		return result, nil
 	}
@@ -46,19 +47,19 @@ func Classify(observation CallObservation, schema map[string]any, expected any) 
 		}
 	}
 	if allUnknown {
-		result.Classification = UnknownKey
+		result.Classification = toolconformancecontract.UnknownKey
 	} else if only(canonical, "missing_required") {
-		result.Classification = MissingRequired
+		result.Classification = toolconformancecontract.MissingRequired
 	} else if only(canonical, "enum_mismatch") {
-		result.Classification = EnumMismatch
+		result.Classification = toolconformancecontract.EnumMismatch
 	} else if only(canonical, "wrong_type") && coercible(expected, arguments) {
-		result.Classification = CoercibleTypeDrift
+		result.Classification = toolconformancecontract.CoercibleTypeDrift
 	} else {
-		result.Classification = NoncoercibleTypeDrift
+		result.Classification = toolconformancecontract.NoncoercibleTypeDrift
 	}
 	return result, nil
 }
-func only(diagnostics []Diagnostic, code string) bool {
+func only(diagnostics []toolconformancecontract.Diagnostic, code string) bool {
 	for _, d := range diagnostics {
 		if d.Code != code {
 			return false
@@ -150,16 +151,16 @@ func project(v any) any {
 		return v
 	}
 }
-func Validate(schema map[string]any, value any) ([]Diagnostic, error) {
+func Validate(schema map[string]any, value any) ([]toolconformancecontract.Diagnostic, error) {
 	if err := supported(schema); err != nil {
 		return nil, err
 	}
-	out := []Diagnostic{}
+	out := []toolconformancecontract.Diagnostic{}
 	validate(schema, value, "", &out)
-	sortDiagnostics(out)
+	SortDiagnostics(out)
 	return out, nil
 }
-func sortDiagnostics(out []Diagnostic) {
+func SortDiagnostics(out []toolconformancecontract.Diagnostic) {
 	sort.Slice(out, func(i, j int) bool {
 		a, b := out[i], out[j]
 		if a.Path != b.Path {
@@ -240,7 +241,7 @@ func supported(schema map[string]any) error {
 	}
 	return nil
 }
-func validate(s map[string]any, v any, p string, out *[]Diagnostic) {
+func validate(s map[string]any, v any, p string, out *[]toolconformancecontract.Diagnostic) {
 	typ, _ := s["type"].(string)
 	if typ == "object" {
 		obj, ok := v.(map[string]any)
@@ -249,7 +250,7 @@ func validate(s map[string]any, v any, p string, out *[]Diagnostic) {
 			if p == "" {
 				code = "root_type_mismatch"
 			}
-			*out = append(*out, Diagnostic{Path: p, Code: code, Expected: "object", Actual: typeOf(v)})
+			*out = append(*out, toolconformancecontract.Diagnostic{Path: p, Code: code, Expected: "object", Actual: typeOf(v)})
 			return
 		}
 		props, _ := s["properties"].(map[string]any)
@@ -257,7 +258,7 @@ func validate(s map[string]any, v any, p string, out *[]Diagnostic) {
 		for _, r := range required {
 			key := r.(string)
 			if _, ok := obj[key]; !ok {
-				*out = append(*out, Diagnostic{Path: pointer(p, key), Code: "missing_required", Expected: "required property", Actual: "missing"})
+				*out = append(*out, toolconformancecontract.Diagnostic{Path: pointer(p, key), Code: "missing_required", Expected: "required property", Actual: "missing"})
 			}
 		}
 		allow, present := s["additionalProperties"].(bool)
@@ -268,7 +269,7 @@ func validate(s map[string]any, v any, p string, out *[]Diagnostic) {
 			child, ok := props[key]
 			if !ok {
 				if !allow {
-					*out = append(*out, Diagnostic{Path: pointer(p, key), Code: "unknown_key", Expected: "declared property", Actual: typeOf(item)})
+					*out = append(*out, toolconformancecontract.Diagnostic{Path: pointer(p, key), Code: "unknown_key", Expected: "declared property", Actual: typeOf(item)})
 				}
 				continue
 			}
@@ -279,7 +280,7 @@ func validate(s map[string]any, v any, p string, out *[]Diagnostic) {
 	if typ == "array" {
 		arr, ok := v.([]any)
 		if !ok {
-			*out = append(*out, Diagnostic{Path: p, Code: "wrong_type", Expected: "array", Actual: typeOf(v)})
+			*out = append(*out, toolconformancecontract.Diagnostic{Path: p, Code: "wrong_type", Expected: "array", Actual: typeOf(v)})
 			return
 		}
 		child, _ := s["items"].(map[string]any)
@@ -297,19 +298,19 @@ func validate(s map[string]any, v any, p string, out *[]Diagnostic) {
 			}
 		}
 		if !matched {
-			*out = append(*out, Diagnostic{Path: p, Code: "enum_mismatch", Expected: "enum", Actual: typeOf(v)})
+			*out = append(*out, toolconformancecontract.Diagnostic{Path: p, Code: "enum_mismatch", Expected: "enum", Actual: typeOf(v)})
 			return
 		}
 	}
 	if (typ == "boolean" && !isBool(v)) || (typ == "string" && !isString(v)) || (typ == "number" && !isNumber(v)) || (typ == "integer" && !isInteger(v)) {
-		*out = append(*out, Diagnostic{Path: p, Code: "wrong_type", Expected: typ, Actual: typeOf(v)})
+		*out = append(*out, toolconformancecontract.Diagnostic{Path: p, Code: "wrong_type", Expected: typ, Actual: typeOf(v)})
 		return
 	}
 	if minimum, present := s["minimum"]; present {
 		minimumValue, minimumOK := numericValue(minimum)
 		actualValue, actualOK := numericValue(v)
 		if minimumOK && actualOK && actualValue < minimumValue {
-			*out = append(*out, Diagnostic{
+			*out = append(*out, toolconformancecontract.Diagnostic{
 				Path: p, Code: "minimum_mismatch",
 				Expected: ">= " + formatNumericValue(minimumValue), Actual: formatNumericValue(actualValue),
 			})
@@ -318,7 +319,7 @@ func validate(s map[string]any, v any, p string, out *[]Diagnostic) {
 	if pattern, present := s["pattern"].(string); present {
 		value, ok := v.(string)
 		if ok && !regexp.MustCompile(pattern).MatchString(value) {
-			*out = append(*out, Diagnostic{Path: p, Code: "pattern_mismatch", Expected: pattern, Actual: "string"})
+			*out = append(*out, toolconformancecontract.Diagnostic{Path: p, Code: "pattern_mismatch", Expected: pattern, Actual: "string"})
 		}
 	}
 	if maximum, present := s["maxLength"]; present {
@@ -327,7 +328,7 @@ func validate(s map[string]any, v any, p string, out *[]Diagnostic) {
 		if maximumOK && valueOK {
 			length := utf8.RuneCountInString(value)
 			if float64(length) > maximumValue {
-				*out = append(*out, Diagnostic{
+				*out = append(*out, toolconformancecontract.Diagnostic{
 					Path: p, Code: "max_length_mismatch",
 					Expected: "<= " + formatNumericValue(maximumValue), Actual: strconv.Itoa(length),
 				})

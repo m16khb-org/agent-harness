@@ -1,6 +1,7 @@
 package toolconformance
 
 import (
+	toolconformancecontract "agent-harness/internal/contract/toolconformance"
 	"encoding/json"
 	"reflect"
 	"strings"
@@ -11,16 +12,16 @@ func TestClassifyPriorityAndBranches(t *testing.T) {
 	schema := map[string]any{"type": "object", "required": []any{"mode"}, "properties": map[string]any{"mode": map[string]any{"type": "string", "enum": []any{"safe"}}, "flag": map[string]any{"type": "boolean"}}}
 	for _, tt := range []struct {
 		name        string
-		observation CallObservation
+		observation toolconformancecontract.CallObservation
 		expected    map[string]any
-		want        Classification
+		want        toolconformancecontract.Classification
 	}{
-		{"invalid json before call count", CallObservation{RawArguments: []byte(`{`), CallCount: 0}, nil, InvalidJSON},
-		{"no call", CallObservation{RawArguments: []byte(`{}`), CallCount: 0}, nil, NoCall},
-		{"multiple calls", CallObservation{RawArguments: []byte(`{}`), CallCount: 2}, nil, MultipleCalls},
-		{"semantic difference", CallObservation{RawArguments: []byte(`{"mode":"safe"}`), CallCount: 1}, map[string]any{"mode": "other"}, ValidButSemanticallyDifferent},
-		{"missing required", CallObservation{RawArguments: []byte(`{}`), CallCount: 1}, nil, MissingRequired},
-		{"enum mismatch", CallObservation{RawArguments: []byte(`{"mode":"unsafe"}`), CallCount: 1}, map[string]any{"mode": "safe"}, EnumMismatch},
+		{"invalid json before call count", toolconformancecontract.CallObservation{RawArguments: []byte(`{`), CallCount: 0}, nil, toolconformancecontract.InvalidJSON},
+		{"no call", toolconformancecontract.CallObservation{RawArguments: []byte(`{}`), CallCount: 0}, nil, toolconformancecontract.NoCall},
+		{"multiple calls", toolconformancecontract.CallObservation{RawArguments: []byte(`{}`), CallCount: 2}, nil, toolconformancecontract.MultipleCalls},
+		{"semantic difference", toolconformancecontract.CallObservation{RawArguments: []byte(`{"mode":"safe"}`), CallCount: 1}, map[string]any{"mode": "other"}, toolconformancecontract.ValidButSemanticallyDifferent},
+		{"missing required", toolconformancecontract.CallObservation{RawArguments: []byte(`{}`), CallCount: 1}, nil, toolconformancecontract.MissingRequired},
+		{"enum mismatch", toolconformancecontract.CallObservation{RawArguments: []byte(`{"mode":"unsafe"}`), CallCount: 1}, map[string]any{"mode": "safe"}, toolconformancecontract.EnumMismatch},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := Classify(tt.observation, schema, tt.expected)
@@ -41,17 +42,17 @@ func TestClassifyRequiresLosslessCoercion(t *testing.T) {
 	for _, tt := range []struct {
 		name string
 		raw  []byte
-		want Classification
+		want toolconformancecontract.Classification
 	}{
-		{"bool text parses and matches", []byte(`{"flag":"false","tags":["one","two"],"argv":["git"]}`), CoercibleTypeDrift},
-		{"csv trims spacing and matches", []byte(`{"flag":false,"tags":"one, two","argv":["git"]}`), CoercibleTypeDrift},
-		{"invalid bool text is noncoercible", []byte(`{"flag":"not-bool","tags":["one","two"],"argv":["git"]}`), NoncoercibleTypeDrift},
-		{"wrong bool value is noncoercible", []byte(`{"flag":"true","tags":["one","two"],"argv":["git"]}`), NoncoercibleTypeDrift},
-		{"csv values must match exactly", []byte(`{"flag":false,"tags":"one,other","argv":["git"]}`), NoncoercibleTypeDrift},
-		{"one convertible and one noncoercible mismatch", []byte(`{"flag":"false","tags":["one","two"],"argv":{}}`), NoncoercibleTypeDrift},
+		{"bool text parses and matches", []byte(`{"flag":"false","tags":["one","two"],"argv":["git"]}`), toolconformancecontract.CoercibleTypeDrift},
+		{"csv trims spacing and matches", []byte(`{"flag":false,"tags":"one, two","argv":["git"]}`), toolconformancecontract.CoercibleTypeDrift},
+		{"invalid bool text is noncoercible", []byte(`{"flag":"not-bool","tags":["one","two"],"argv":["git"]}`), toolconformancecontract.NoncoercibleTypeDrift},
+		{"wrong bool value is noncoercible", []byte(`{"flag":"true","tags":["one","two"],"argv":["git"]}`), toolconformancecontract.NoncoercibleTypeDrift},
+		{"csv values must match exactly", []byte(`{"flag":false,"tags":"one,other","argv":["git"]}`), toolconformancecontract.NoncoercibleTypeDrift},
+		{"one convertible and one noncoercible mismatch", []byte(`{"flag":"false","tags":["one","two"],"argv":{}}`), toolconformancecontract.NoncoercibleTypeDrift},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Classify(CallObservation{RawArguments: tt.raw, CallCount: 1}, schema, expected)
+			got, err := Classify(toolconformancecontract.CallObservation{RawArguments: tt.raw, CallCount: 1}, schema, expected)
 			if err != nil || got.Classification != tt.want {
 				t.Fatalf("got=%#v err=%v", got, err)
 			}
@@ -59,8 +60,8 @@ func TestClassifyRequiresLosslessCoercion(t *testing.T) {
 	}
 	t.Run("blank csv maps to empty slice", func(t *testing.T) {
 		emptyTags := map[string]any{"flag": false, "tags": []any{}, "argv": []any{"git"}}
-		got, err := Classify(CallObservation{RawArguments: []byte(`{"flag":false,"tags":"","argv":["git"]}`), CallCount: 1}, schema, emptyTags)
-		if err != nil || got.Classification != CoercibleTypeDrift {
+		got, err := Classify(toolconformancecontract.CallObservation{RawArguments: []byte(`{"flag":false,"tags":"","argv":["git"]}`), CallCount: 1}, schema, emptyTags)
+		if err != nil || got.Classification != toolconformancecontract.CoercibleTypeDrift {
 			t.Fatalf("blank csv got=%#v err=%v", got, err)
 		}
 	})
@@ -76,16 +77,16 @@ func TestValidatorSupportsNestedUnknownEscapesNumbersEnumsAndMixedArrays(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []Diagnostic{{Path: "/list/1", Code: "wrong_type", Expected: "string", Actual: "boolean"}, {Path: "/list/2", Code: "wrong_type", Expected: "string", Actual: "number"}, {Path: "/mode", Code: "enum_mismatch", Expected: "enum", Actual: "string"}, {Path: "/nested/a~0~1b", Code: "wrong_type", Expected: "integer", Actual: "number"}, {Path: "/nested/extra", Code: "unknown_key", Expected: "declared property", Actual: "boolean"}}
+	want := []toolconformancecontract.Diagnostic{{Path: "/list/1", Code: "wrong_type", Expected: "string", Actual: "boolean"}, {Path: "/list/2", Code: "wrong_type", Expected: "string", Actual: "number"}, {Path: "/mode", Code: "enum_mismatch", Expected: "enum", Actual: "string"}, {Path: "/nested/a~0~1b", Code: "wrong_type", Expected: "integer", Actual: "number"}, {Path: "/nested/extra", Code: "unknown_key", Expected: "declared property", Actual: "boolean"}}
 	if !reflect.DeepEqual(diagnostics, want) {
 		t.Fatalf("got=%#v want=%#v", diagnostics, want)
 	}
 }
 
 func TestSortDiagnosticsUsesFullTuple(t *testing.T) {
-	got := []Diagnostic{{Path: "/a", Code: "wrong_type", Expected: "z", Actual: "z"}, {Path: "/a", Code: "wrong_type", Expected: "a", Actual: "z"}, {Path: "/a", Code: "enum_mismatch", Expected: "enum", Actual: "string"}, {Path: "/a", Code: "wrong_type", Expected: "a", Actual: "a"}}
-	sortDiagnostics(got)
-	want := []Diagnostic{{Path: "/a", Code: "enum_mismatch", Expected: "enum", Actual: "string"}, {Path: "/a", Code: "wrong_type", Expected: "a", Actual: "a"}, {Path: "/a", Code: "wrong_type", Expected: "a", Actual: "z"}, {Path: "/a", Code: "wrong_type", Expected: "z", Actual: "z"}}
+	got := []toolconformancecontract.Diagnostic{{Path: "/a", Code: "wrong_type", Expected: "z", Actual: "z"}, {Path: "/a", Code: "wrong_type", Expected: "a", Actual: "z"}, {Path: "/a", Code: "enum_mismatch", Expected: "enum", Actual: "string"}, {Path: "/a", Code: "wrong_type", Expected: "a", Actual: "a"}}
+	SortDiagnostics(got)
+	want := []toolconformancecontract.Diagnostic{{Path: "/a", Code: "enum_mismatch", Expected: "enum", Actual: "string"}, {Path: "/a", Code: "wrong_type", Expected: "a", Actual: "a"}, {Path: "/a", Code: "wrong_type", Expected: "a", Actual: "z"}, {Path: "/a", Code: "wrong_type", Expected: "z", Actual: "z"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got=%#v want=%#v", got, want)
 	}
@@ -105,7 +106,7 @@ func TestValidatorSupportsNumericMinimum(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []Diagnostic{{Path: "/generation", Code: "minimum_mismatch", Expected: ">= 1", Actual: "0"}}
+	want := []toolconformancecontract.Diagnostic{{Path: "/generation", Code: "minimum_mismatch", Expected: ">= 1", Actual: "0"}}
 	if !reflect.DeepEqual(diagnostics, want) {
 		t.Fatalf("diagnostics=%#v want=%#v", diagnostics, want)
 	}
@@ -123,7 +124,7 @@ func TestValidatorSupportsStringPatternWithoutEchoingRejectedValue(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []Diagnostic{{Path: "/digest", Code: "pattern_mismatch", Expected: "^[0-9a-f]{64}$", Actual: "string"}}
+	want := []toolconformancecontract.Diagnostic{{Path: "/digest", Code: "pattern_mismatch", Expected: "^[0-9a-f]{64}$", Actual: "string"}}
 	if !reflect.DeepEqual(diagnostics, want) {
 		t.Fatalf("diagnostics=%#v want=%#v", diagnostics, want)
 	}
@@ -143,7 +144,7 @@ func TestValidatorSupportsStringMaxLength(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []Diagnostic{{Path: "/body", Code: "max_length_mismatch", Expected: "<= 3", Actual: "4"}}
+	want := []toolconformancecontract.Diagnostic{{Path: "/body", Code: "max_length_mismatch", Expected: "<= 3", Actual: "4"}}
 	if !reflect.DeepEqual(diagnostics, want) {
 		t.Fatalf("diagnostics=%#v want=%#v", diagnostics, want)
 	}
@@ -165,7 +166,7 @@ func TestNestedObjectMismatchUsesWrongType(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []Diagnostic{{Path: "/nested", Code: "wrong_type", Expected: "object", Actual: "string"}}
+	want := []toolconformancecontract.Diagnostic{{Path: "/nested", Code: "wrong_type", Expected: "object", Actual: "string"}}
 	if !reflect.DeepEqual(diagnostics, want) {
 		t.Fatalf("diagnostics=%#v want=%#v", diagnostics, want)
 	}
@@ -177,9 +178,9 @@ func TestReportEnumsRejectUnknownJSONValues(t *testing.T) {
 		data string
 		out  any
 	}{
-		{name: "status", data: `"unknown"`, out: new(EpisodeStatus)},
-		{name: "classification", data: `"unknown"`, out: new(Classification)},
-		{name: "gate", data: `"unknown"`, out: new(GateDecision)},
+		{name: "status", data: `"unknown"`, out: new(toolconformancecontract.EpisodeStatus)},
+		{name: "classification", data: `"unknown"`, out: new(toolconformancecontract.Classification)},
+		{name: "gate", data: `"unknown"`, out: new(toolconformancecontract.GateDecision)},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := json.Unmarshal([]byte(tt.data), tt.out); err == nil {

@@ -13,8 +13,9 @@ import (
 	"strings"
 	"sync"
 
-	"agent-harness/internal/adapter/toolconformance"
+	toolconformancecontract "agent-harness/internal/contract/toolconformance"
 	"agent-harness/internal/domain/policy"
+	toolconformancedomain "agent-harness/internal/domain/toolconformance"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -22,16 +23,16 @@ import (
 const conformanceRawLimit = 64 << 10
 
 type ConformanceCapture struct {
-	FixtureID          string                         `json:"fixture_id"`
-	CallCount          int                            `json:"call_count"`
-	RawSHA256          string                         `json:"raw_sha256"`
-	CanonicalArguments any                            `json:"canonical_arguments"`
-	SchemaSHA256       string                         `json:"schema_sha256"`
-	RunTokenSHA256     string                         `json:"run_token_sha256"`
-	Classification     toolconformance.Classification `json:"classification"`
-	AdvertisedValid    bool                           `json:"advertised_valid"`
-	CanonicalValid     bool                           `json:"canonical_valid"`
-	Diagnostics        []toolconformance.Diagnostic   `json:"diagnostics"`
+	FixtureID          string                                 `json:"fixture_id"`
+	CallCount          int                                    `json:"call_count"`
+	RawSHA256          string                                 `json:"raw_sha256"`
+	CanonicalArguments any                                    `json:"canonical_arguments"`
+	SchemaSHA256       string                                 `json:"schema_sha256"`
+	RunTokenSHA256     string                                 `json:"run_token_sha256"`
+	Classification     toolconformancecontract.Classification `json:"classification"`
+	AdvertisedValid    bool                                   `json:"advertised_valid"`
+	CanonicalValid     bool                                   `json:"canonical_valid"`
+	Diagnostics        []toolconformancecontract.Diagnostic   `json:"diagnostics"`
 }
 
 type conformanceProbe struct {
@@ -72,7 +73,7 @@ func newConformanceProbe(config mcpcontract.ConformanceProbeConfig) (*conformanc
 	if config.ExpectedArguments == nil {
 		return nil, fmt.Errorf("expected_arguments_required")
 	}
-	actualSHA, err := toolconformance.CanonicalSchemaSHA256(config.Schema)
+	actualSHA, err := toolconformancedomain.CanonicalSchemaSHA256(config.Schema)
 	if err != nil {
 		return nil, err
 	}
@@ -156,8 +157,8 @@ func captureArguments(config mcpcontract.ConformanceProbeConfig, raw []byte) (Co
 	if len(raw) > conformanceRawLimit {
 		return ConformanceCapture{}, fmt.Errorf("arguments_too_large")
 	}
-	classified, err := toolconformance.Classify(
-		toolconformance.CallObservation{RawArguments: raw, CallCount: 1},
+	classified, err := toolconformancedomain.Classify(
+		toolconformancecontract.CallObservation{RawArguments: raw, CallCount: 1},
 		config.Schema,
 		config.ExpectedArguments,
 	)
@@ -227,8 +228,8 @@ func redactArguments(value any, schema map[string]any, path string, replacements
 	}
 }
 
-func redactDiagnosticPaths(diagnostics []toolconformance.Diagnostic, replacements map[string]string) []toolconformance.Diagnostic {
-	out := append([]toolconformance.Diagnostic(nil), diagnostics...)
+func redactDiagnosticPaths(diagnostics []toolconformancecontract.Diagnostic, replacements map[string]string) []toolconformancecontract.Diagnostic {
+	out := append([]toolconformancecontract.Diagnostic(nil), diagnostics...)
 	for index := range out {
 		if replacement, ok := replacements[out[index].Path]; ok {
 			out[index].Path = replacement

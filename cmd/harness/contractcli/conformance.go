@@ -1,6 +1,8 @@
 package contractcli
 
 import (
+	toolconformancecontract "agent-harness/internal/contract/toolconformance"
+	toolconformancedomain "agent-harness/internal/domain/toolconformance"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -12,7 +14,6 @@ import (
 	"sort"
 	"strings"
 
-	"agent-harness/internal/adapter/toolconformance"
 	mcpcontract "agent-harness/internal/contract/mcp"
 	mcpdomain "agent-harness/internal/domain/mcp"
 )
@@ -26,22 +27,22 @@ type LiveRequest struct {
 	TargetCompleted    int
 	MaxAttemptsPerCase int
 	EvidenceDir        string
-	Previous           *toolconformance.BenchmarkReport
+	Previous           *toolconformancecontract.BenchmarkReport
 }
 
 type ReplayOutcome struct {
 	HandlerCalls      int
 	StateBeforeSHA256 string
 	StateAfterSHA256  string
-	Classification    toolconformance.Classification
-	Diagnostics       []toolconformance.Diagnostic
+	Classification    toolconformancecontract.Classification
+	Diagnostics       []toolconformancecontract.Diagnostic
 	FinalResult       map[string]any
 }
 
 type ConformanceDependencies struct {
 	Catalog          func() []mcpdomain.Tool
 	Root             func() string
-	RunProcess       func(context.Context, LiveRequest) (toolconformance.BenchmarkReport, error)
+	RunProcess       func(context.Context, LiveRequest) (toolconformancecontract.BenchmarkReport, error)
 	EvaluateBaseline func() (caseCount int, ok bool, err error)
 	Replay           func(context.Context, string, string) (ReplayOutcome, error)
 }
@@ -60,16 +61,16 @@ func defaultConformanceDependencies() ConformanceDependencies {
 			}
 			return root
 		},
-		RunProcess: func(context.Context, LiveRequest) (toolconformance.BenchmarkReport, error) {
-			return toolconformance.BenchmarkReport{}, fmt.Errorf("live_runner_unavailable")
+		RunProcess: func(context.Context, LiveRequest) (toolconformancecontract.BenchmarkReport, error) {
+			return toolconformancecontract.BenchmarkReport{}, fmt.Errorf("live_runner_unavailable")
 		},
 		EvaluateBaseline: evaluateSyntheticBaseline,
 		Replay: func(_ context.Context, fixturePath, stateDir string) (ReplayOutcome, error) {
-			fixture, err := toolconformance.LoadRegressionFixture(fixturePath)
+			fixture, err := loadRegressionFixture(fixturePath)
 			if err != nil {
 				return ReplayOutcome{}, err
 			}
-			replayed, err := toolconformance.ReplayRegression(fixture, conformanceDescriptors(), stateDir)
+			replayed, err := replayRegression(fixture, conformanceDescriptors(), stateDir)
 			if err != nil {
 				return ReplayOutcome{}, err
 			}
@@ -125,20 +126,20 @@ func runConformance(args []string) error {
 	}
 }
 
-func conformanceDescriptors() []toolconformance.ToolDescriptor {
-	out := []toolconformance.ToolDescriptor{}
+func conformanceDescriptors() []toolconformancecontract.ToolDescriptor {
+	out := []toolconformancecontract.ToolDescriptor{}
 	for _, t := range conformanceDependencies.Catalog() {
-		out = append(out, toolconformance.ToolDescriptor{Name: t.Name, InputSchema: t.InputSchema})
+		out = append(out, toolconformancecontract.ToolDescriptor{Name: t.Name, InputSchema: t.InputSchema})
 	}
 	return out
 }
 
 func evaluateSyntheticBaseline() (int, bool, error) {
-	fixtures, cases, err := toolconformance.LoadManifest(conformanceDescriptors())
+	fixtures, cases, err := loadManifest(conformanceDescriptors())
 	if err != nil {
 		return 0, false, err
 	}
-	byID := map[string]toolconformance.Fixture{}
+	byID := map[string]toolconformancecontract.Fixture{}
 	schema := map[string]map[string]any{}
 	byTool := map[string]map[string]any{}
 	for _, d := range conformanceDescriptors() {
@@ -151,7 +152,7 @@ func evaluateSyntheticBaseline() (int, bool, error) {
 	ok := true
 	for _, c := range cases {
 		raw, marshalErr := json.Marshal(c.Arguments)
-		got, classifyErr := toolconformance.Classify(toolconformance.CallObservation{RawArguments: raw, CallCount: 1}, schema[c.FixtureID], byID[c.FixtureID].ExpectedArguments)
+		got, classifyErr := toolconformancedomain.Classify(toolconformancecontract.CallObservation{RawArguments: raw, CallCount: 1}, schema[c.FixtureID], byID[c.FixtureID].ExpectedArguments)
 		ok = ok && marshalErr == nil && classifyErr == nil && got.Classification == c.ExpectedClassification
 	}
 	return len(cases), ok, nil
@@ -180,30 +181,30 @@ func runConformanceBaseline(args []string) error {
 	return nil
 }
 
-func evaluateBaselineReport() (toolconformance.BenchmarkReport, error) {
+func evaluateBaselineReport() (toolconformancecontract.BenchmarkReport, error) {
 	caseCount, ok, err := conformanceDependencies.EvaluateBaseline()
 	if err != nil {
-		return toolconformance.BenchmarkReport{}, err
+		return toolconformancecontract.BenchmarkReport{}, err
 	}
 	regressions, err := regressionFixtures(regressionDirectory(conformanceDependencies.Root()))
 	if err != nil {
-		return toolconformance.BenchmarkReport{}, err
+		return toolconformancecontract.BenchmarkReport{}, err
 	}
 	for _, fixture := range regressions {
 		outcome, replayErr := replayFixture(fixture)
 		caseCount++
 		ok = ok && replayErr == nil && outcome.HandlerCalls == 0 && outcome.StateBeforeSHA256 != "" && outcome.StateBeforeSHA256 == outcome.StateAfterSHA256
 	}
-	decision := toolconformance.GateBaselinePassed
+	decision := toolconformancecontract.GateBaselinePassed
 	if !ok {
-		decision = toolconformance.GateInconclusive
+		decision = toolconformancecontract.GateInconclusive
 	}
-	return toolconformance.BenchmarkReport{
-		OK: ok, SchemaVersion: toolconformance.ReportSchemaVersion, RunID: "deterministic-baseline",
+	return toolconformancecontract.BenchmarkReport{
+		OK: ok, SchemaVersion: toolconformancecontract.ReportSchemaVersion, RunID: "deterministic-baseline",
 		Profile: "deterministic", CaseCount: caseCount,
-		Counts: toolconformance.BenchmarkCounts{Attempts: caseCount, Completed: caseCount},
-		Gate:   toolconformance.GateReport{Decision: decision},
-		Hosts:  []toolconformance.HostReport{}, Warnings: []string{},
+		Counts: toolconformancecontract.BenchmarkCounts{Attempts: caseCount, Completed: caseCount},
+		Gate:   toolconformancecontract.GateReport{Decision: decision},
+		Hosts:  []toolconformancecontract.HostReport{}, Warnings: []string{},
 	}, nil
 }
 
@@ -295,22 +296,22 @@ func runConformanceLive(args []string) error {
 	return nil
 }
 
-func loadBenchmarkReport(path string) (toolconformance.BenchmarkReport, error) {
+func loadBenchmarkReport(path string) (toolconformancecontract.BenchmarkReport, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return toolconformance.BenchmarkReport{}, err
+		return toolconformancecontract.BenchmarkReport{}, err
 	}
-	var report toolconformance.BenchmarkReport
+	var report toolconformancecontract.BenchmarkReport
 	if err := json.Unmarshal(data, &report); err != nil {
-		return toolconformance.BenchmarkReport{}, err
+		return toolconformancecontract.BenchmarkReport{}, err
 	}
-	if report.SchemaVersion != toolconformance.ReportSchemaVersion {
-		return toolconformance.BenchmarkReport{}, fmt.Errorf("unsupported report schema version %d", report.SchemaVersion)
+	if report.SchemaVersion != toolconformancecontract.ReportSchemaVersion {
+		return toolconformancecontract.BenchmarkReport{}, fmt.Errorf("unsupported report schema version %d", report.SchemaVersion)
 	}
 	return report, nil
 }
 
-func persistLiveReport(report *toolconformance.BenchmarkReport, request LiveRequest) error {
+func persistLiveReport(report *toolconformancecontract.BenchmarkReport, request LiveRequest) error {
 	root := conformanceDependencies.Root()
 	evidenceRoot := request.EvidenceDir
 	if !filepath.IsAbs(evidenceRoot) {
@@ -329,7 +330,7 @@ func persistLiveReport(report *toolconformance.BenchmarkReport, request LiveRequ
 	}
 	relativeRunDir := filepath.Join(relative, safeRunID(report.RunID))
 	report.Evidence.ReportPath = filepath.Join(relativeRunDir, "report.json")
-	if report.Gate.Decision == toolconformance.GateAuthorizeHardening {
+	if report.Gate.Decision == toolconformancecontract.GateAuthorizeHardening {
 		candidate, tracked, buildErr := buildCandidateRegression(*report)
 		if buildErr != nil {
 			return buildErr
@@ -390,9 +391,9 @@ func writePrivateJSONFile(path string, value any) error {
 	return os.Rename(name, path)
 }
 
-func buildCandidateRegression(report toolconformance.BenchmarkReport) (toolconformance.RegressionFixture, string, error) {
+func buildCandidateRegression(report toolconformancecontract.BenchmarkReport) (toolconformancecontract.RegressionFixture, string, error) {
 	signature := report.Gate.ConfirmedSignature
-	groups := map[string][]toolconformance.EpisodeReport{}
+	groups := map[string][]toolconformancecontract.EpisodeReport{}
 	keys := []string{}
 	for _, host := range report.Hosts {
 		for _, episode := range host.Cases {
@@ -407,7 +408,7 @@ func buildCandidateRegression(report toolconformance.BenchmarkReport) (toolconfo
 		}
 	}
 	sort.Strings(keys)
-	matches := []toolconformance.EpisodeReport{}
+	matches := []toolconformancecontract.EpisodeReport{}
 	for _, key := range keys {
 		if len(groups[key]) >= 2 {
 			matches = groups[key]
@@ -415,13 +416,13 @@ func buildCandidateRegression(report toolconformance.BenchmarkReport) (toolconfo
 		}
 	}
 	if len(matches) < 2 {
-		return toolconformance.RegressionFixture{}, "", fmt.Errorf("confirmed_signature_evidence_missing")
+		return toolconformancecontract.RegressionFixture{}, "", fmt.Errorf("confirmed_signature_evidence_missing")
 	}
-	fixtures, _, err := toolconformance.LoadManifest(conformanceDescriptors())
+	fixtures, _, err := loadManifest(conformanceDescriptors())
 	if err != nil {
-		return toolconformance.RegressionFixture{}, "", err
+		return toolconformancecontract.RegressionFixture{}, "", err
 	}
-	var fixture toolconformance.Fixture
+	var fixture toolconformancecontract.Fixture
 	for _, candidate := range fixtures {
 		if candidate.ID == matches[0].FixtureID {
 			fixture = candidate
@@ -429,12 +430,12 @@ func buildCandidateRegression(report toolconformance.BenchmarkReport) (toolconfo
 		}
 	}
 	if fixture.ID == "" {
-		return toolconformance.RegressionFixture{}, "", fmt.Errorf("confirmed_fixture_missing")
+		return toolconformancecontract.RegressionFixture{}, "", fmt.Errorf("confirmed_fixture_missing")
 	}
 	evidenceIDs := make([]string, 0, len(matches))
 	for _, match := range matches {
 		if !validSHA256Text(match.EvidenceID) {
-			return toolconformance.RegressionFixture{}, "", fmt.Errorf("confirmed_evidence_id_invalid")
+			return toolconformancecontract.RegressionFixture{}, "", fmt.Errorf("confirmed_evidence_id_invalid")
 		}
 		evidenceIDs = append(evidenceIDs, match.EvidenceID)
 	}
@@ -443,7 +444,7 @@ func buildCandidateRegression(report toolconformance.BenchmarkReport) (toolconfo
 	if modelLabel == "" {
 		modelLabel = matches[0].RequestedModel
 	}
-	regression := toolconformance.RegressionFixture{
+	regression := toolconformancecontract.RegressionFixture{
 		SchemaVersion: 1, FixtureID: fixture.ID, SourceTool: fixture.SourceTool, ProbeTool: fixture.ProbeTool,
 		SourceSchemaSHA256: fixture.SchemaSHA256, Host: matches[0].Host,
 		HostVersion: matches[0].HostVersion, ModelLabel: modelLabel,
@@ -451,7 +452,7 @@ func buildCandidateRegression(report toolconformance.BenchmarkReport) (toolconfo
 		ExpectedClassification: matches[0].Classification, ExpectedDiagnostics: matches[0].Diagnostics,
 		ExpectedDiagnosticSignature: signature, ConfirmedEvidenceIDs: evidenceIDs,
 		ExpectedHandlerCallCount: 0,
-		ExpectedFinalResult:      toolconformance.InvalidToolArgumentsResult(fixture.SourceTool, matches[0].Diagnostics),
+		ExpectedFinalResult:      toolconformancedomain.InvalidToolArgumentsResult(fixture.SourceTool, matches[0].Diagnostics),
 		ExpectedStateUnchanged:   true,
 	}
 	name := matches[0].Host + "-" + fixture.ID + "-" + firstN(signature, 12) + ".json"
@@ -527,7 +528,7 @@ func runConformanceServe(args []string) error {
 	if *id == "" || *path == "" || *token == "" {
 		return fmt.Errorf("fixture-id, result-file, and run-token are required")
 	}
-	fixtures, _, err := toolconformance.LoadManifest(conformanceDescriptors())
+	fixtures, _, err := loadManifest(conformanceDescriptors())
 	if err != nil {
 		return err
 	}
