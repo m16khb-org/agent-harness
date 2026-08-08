@@ -5,24 +5,6 @@ import (
 	"strings"
 )
 
-// A7 — judge-map provenance. The --judge file backend merges externally-produced
-// judge scores into a fresh deterministic run. IssueOpsJudgeMap wraps those
-// scores with the provenance of the run whose artifacts the judge evaluated, so
-// a judge map cannot be silently self-attributed to the very run it scores.
-//
-// HONEST SCOPE (mirrors the RecordedRun provenance guard in
-// issueops_reliability.go): ValidateJudgeProvenance is a SELF-REFERENCE GUARD,
-// not a proof of judge independence. It rejects a judge map whose source run is
-// the scored run itself and requires the named source run to actually exist on
-// disk — raising the bar from "type any string" to "name a real prior run". It
-// does NOT establish that an independent judge evaluated different artifacts;
-// the dashboard must not claim "independent judge" on the strength of this gate.
-type IssueOpsJudgeMap struct {
-	SourceRunID string                            `json:"source_run_id"`
-	Provenance  string                            `json:"provenance"`
-	Scores      map[string]IssueOpsBenchmarkScore `json:"scores"`
-}
-
 // runReader resolves a persisted run id to confirm it exists; ReadIssueOpsBenchmarkRun
 // satisfies it. Injected so tests need not touch global state.
 type runReader func(stateRoot, id string) (IssueOpsBenchmarkRunResult, error)

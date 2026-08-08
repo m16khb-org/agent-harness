@@ -7,18 +7,6 @@ import (
 	"agent-harness/internal/contract/issueops"
 )
 
-// IssueOpsPruneResult reports one prune preview or confirmed prune pass over
-// done cycles.
-type IssueOpsPruneResult struct {
-	OK        bool     `json:"ok"`
-	StateRoot string   `json:"state_root"`
-	MaxAge    string   `json:"max_age"`
-	Cutoff    string   `json:"cutoff"`
-	DryRun    bool     `json:"dry_run"`
-	Pruned    []string `json:"pruned"`
-	Kept      []string `json:"kept"`
-}
-
 // PruneIssueOps deletes done cycles whose lease is released (or absent) and
 // whose last update is older than maxAge. Every mutating lifecycle hook scans
 // all stored cycles, so unpruned done receipts grow that scan without bound;

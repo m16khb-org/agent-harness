@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 
-	"agent-harness/internal/adapter/issueops"
 	completionapp "agent-harness/internal/application/issueopscompletion"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	completioncontract "agent-harness/internal/contract/issueopscompletion"
@@ -20,13 +19,13 @@ type service interface {
 
 type Handler struct{ service service }
 
-func NewHandler(service service) issueops.ExecutionCompleteHandler {
+func NewHandler(service service) issueopscontract.ExecutionCompleteHandler {
 	return Handler{service: service}.Handle
 }
 
-func (h Handler) Handle(ctx context.Context, _ string, request issueops.ExecutionCompleteRequest) (issueops.ExecutionResult, error) {
+func (h Handler) Handle(ctx context.Context, _ string, request issueopscontract.ExecutionCompleteRequest) (issueopscontract.ExecutionResult, error) {
 	if h.service == nil {
-		return issueops.ExecutionResult{ID: request.ID}, issueops.ErrCompleteHandlerUnavailable
+		return issueopscontract.ExecutionResult{ID: request.ID}, issueopscontract.ErrCompleteHandlerUnavailable
 	}
 	result, err := h.service.Complete(ctx, completionapp.Request{
 		ID: request.ID, Generation: request.Generation, Actor: completionActor(request.Actor), Ancestry: completionAncestry(request.Actor),
@@ -34,9 +33,9 @@ func (h Handler) Handle(ctx context.Context, _ string, request issueops.Executio
 		Verification: append([]string(nil), request.Verification...), RemoteArtifactURL: request.RemoteArtifactURL, Confirm: request.Confirm,
 	})
 	if err != nil {
-		return issueops.ExecutionResult{ID: request.ID}, publicError(err)
+		return issueopscontract.ExecutionResult{ID: request.ID}, publicError(err)
 	}
-	return issueops.ExecutionResult{OK: result.OK, ID: result.ID, Execution: coreExecution(result.Execution), OrcaTaskSettled: result.OrcaTaskSettled, OrcaTaskError: result.OrcaTaskError}, nil
+	return issueopscontract.ExecutionResult{OK: result.OK, ID: result.ID, Execution: coreExecution(result.Execution), OrcaTaskSettled: result.OrcaTaskSettled, OrcaTaskError: result.OrcaTaskError}, nil
 }
 
 func completionActor(actor issueopscontract.NativeActor) completioncontract.Actor {

@@ -98,7 +98,7 @@ func TestDoublePreCompactMergesPendingDocUpkeep(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read compact capsule: %v", err)
 	}
-	var capsule model.LifecycleCompactCapsule
+	var capsule lifecyclecontract.LifecycleCompactCapsule
 	if err := json.Unmarshal(b, &capsule); err != nil {
 		t.Fatalf("unmarshal capsule: %v", err)
 	}
@@ -146,7 +146,7 @@ func TestDoublePreCompactDeduplicatesByTarget(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read capsule: %v", err)
 	}
-	var capsule model.LifecycleCompactCapsule
+	var capsule lifecyclecontract.LifecycleCompactCapsule
 	if err := json.Unmarshal(b, &capsule); err != nil {
 		t.Fatalf("unmarshal capsule: %v", err)
 	}
@@ -159,8 +159,8 @@ func TestConsumeCompactCapsuleRespectsInterleavingWrite(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, model.CompactCapsuleFile)
 
-	capsuleWithStamp := func(stamp, summary string) model.LifecycleCompactCapsule {
-		return model.LifecycleCompactCapsule{
+	capsuleWithStamp := func(stamp, summary string) lifecyclecontract.LifecycleCompactCapsule {
+		return lifecyclecontract.LifecycleCompactCapsule{
 			SchemaVersion:    model.ProjectLifecycleSchemaVersion,
 			RepoID:           "repo-1",
 			CreatedAt:        stamp,
@@ -200,7 +200,7 @@ func TestConsumeCompactCapsuleNonceDisambiguatesSameTimestamp(t *testing.T) {
 	path := filepath.Join(dir, model.CompactCapsuleFile)
 	const stamp = "2026-06-16T00:00:00.000000000Z" // identical across both writes
 
-	first := model.LifecycleCompactCapsule{
+	first := lifecyclecontract.LifecycleCompactCapsule{
 		SchemaVersion:    model.ProjectLifecycleSchemaVersion,
 		RepoID:           "repo-1",
 		CreatedAt:        stamp,
@@ -256,11 +256,11 @@ func TestPreCompactConcurrentMergeNoLostUpdate(t *testing.T) {
 	}
 }
 
-func compactPlanForTest(t *testing.T, stateDir string) model.ProjectLifecycleStatePlan {
+func compactPlanForTest(t *testing.T, stateDir string) lifecyclecontract.ProjectLifecycleStatePlan {
 	t.Helper()
 	repo := t.TempDir()
 	projectStateDir := filepath.Join(stateDir, "projects", "repo-1")
-	return model.ProjectLifecycleStatePlan{
+	return lifecyclecontract.ProjectLifecycleStatePlan{
 		OK:              true,
 		RepoRoot:        repo,
 		RepoID:          "repo-1",
@@ -271,12 +271,12 @@ func compactPlanForTest(t *testing.T, stateDir string) model.ProjectLifecycleSta
 	}
 }
 
-func compactStoreForTest(plan model.ProjectLifecycleStatePlan, events []lifecyclecontract.DocUpkeepEvent) Store {
+func compactStoreForTest(plan lifecyclecontract.ProjectLifecycleStatePlan, events []lifecyclecontract.DocUpkeepEvent) Store {
 	return Store{
-		ReadPending: func(string, int) ([]lifecyclecontract.DocUpkeepEvent, model.ProjectLifecycleStatePlan, error) {
+		ReadPending: func(string, int) ([]lifecyclecontract.DocUpkeepEvent, lifecyclecontract.ProjectLifecycleStatePlan, error) {
 			return events, plan, nil
 		},
-		Validate: func(string) (model.ProjectLifecycleStatePlan, error) {
+		Validate: func(string) (lifecyclecontract.ProjectLifecycleStatePlan, error) {
 			return plan, nil
 		},
 		WriteJSON: writeJSONForTest,

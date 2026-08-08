@@ -2,6 +2,7 @@ package harnessapp
 
 import (
 	"agent-harness/cmd/harness/issueopscli"
+	"agent-harness/cmd/harness/issueopscli/remotecmd"
 	"agent-harness/cmd/harness/policycli"
 	"agent-harness/internal/adapter/issueops"
 	basesyncoutbound "agent-harness/internal/adapter/outbound/issueopsbasesync"
@@ -23,7 +24,7 @@ func runIssueOps(args []string) error {
 		Reseed: issueops.ExecutionReseedHandler(issueOpsReseedHandler), Resume: issueops.ExecutionResumeHandler(issueOpsResumeHandler),
 		Reconcile: issueops.ExecutionReconcileHandler(issueOpsReconcileHandler), Complete: issueops.ExecutionCompleteHandler(issueOpsCompleteHandler),
 		Provenance: provenanceadapter.NewExecutableObserver(),
-		Publication: issueops.RemotePublicationHandlers{
+		Publication: remotecmd.PublicationHandlers{
 			Create:    issueops.RemotePullRequestCreateHandler(issueOpsPublicationCreateHandler),
 			Reconcile: issueops.RemotePullRequestReconcileHandler(issueOpsPublicationReconcileHandler),
 		},

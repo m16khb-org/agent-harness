@@ -29,7 +29,7 @@ var (
 	countMCPGatewayFDs = countMCPGatewayFDsViaLsof
 )
 
-func (r *HarnessDoctorResult) checkProjectDocs(root string) {
+func checkProjectDocs(r *HarnessDoctorResult, root string) {
 	missing := []string{}
 	for _, name := range ProjectDocNames() {
 		if _, err := os.Stat(filepath.Join(root, ProjectDocsDir, name)); os.IsNotExist(err) {
@@ -37,60 +37,60 @@ func (r *HarnessDoctorResult) checkProjectDocs(root string) {
 		}
 	}
 	if len(missing) == 0 {
-		r.addCheck("project_docs", true, "all standard .agent-harness docs exist")
+		addCheck(r, "project_docs", true, "all standard .agent-harness docs exist")
 		return
 	}
-	r.addCheck("project_docs", false, strings.Join(missing, ", "))
-	r.addIssue("project_docs_missing", "warning", "standard .agent-harness docs are missing", filepath.Join(root, ProjectDocsDir), &HarnessDoctorFix{Command: "agent-harness project bootstrap --repo " + shellQuote(root), Description: "Create or refresh the standard project guidance docs and profile metadata."})
+	addCheck(r, "project_docs", false, strings.Join(missing, ", "))
+	addIssue(r, "project_docs_missing", "warning", "standard .agent-harness docs are missing", filepath.Join(root, ProjectDocsDir), &HarnessDoctorFix{Command: "agent-harness project bootstrap --repo " + shellQuote(root), Description: "Create or refresh the standard project guidance docs and profile metadata."})
 }
 
-func (r *HarnessDoctorResult) checkRepoLocalRuntimeState(root string) {
+func checkRepoLocalRuntimeState(r *HarnessDoctorResult, root string) {
 	candidates := []string{
 		filepath.Join(root, ProjectDocsDir, "state"),
 		filepath.Join(root, ProjectDocsDir, "state.schema.json"),
 	}
 	for _, path := range candidates {
 		if _, err := os.Stat(path); err == nil {
-			r.addIssue("repo_local_state_present", "warning", "repo-local lifecycle runtime or schema state should not be committed in team repositories", path, &HarnessDoctorFix{Description: "Move runtime state to the user-state project namespace and ensure repo-local state paths are ignored or removed."})
+			addIssue(r, "repo_local_state_present", "warning", "repo-local lifecycle runtime or schema state should not be committed in team repositories", path, &HarnessDoctorFix{Description: "Move runtime state to the user-state project namespace and ensure repo-local state paths are ignored or removed."})
 		}
 	}
 	stateMD := filepath.Join(root, ProjectDocsDir, "STATE.md")
 	if b, err := os.ReadFile(stateMD); err == nil {
 		lower := strings.ToLower(string(b))
 		if strings.Contains(lower, "schema") || strings.Contains(lower, "runtime state") || strings.Contains(lower, "jsonl") {
-			r.addIssue("repo_local_state_present", "warning", "STATE.md appears to describe runtime/schema state rather than shared project knowledge", stateMD, &HarnessDoctorFix{Description: "Keep lifecycle schemas in agent-harness core and runtime state in user-state, not target repo docs."})
+			addIssue(r, "repo_local_state_present", "warning", "STATE.md appears to describe runtime/schema state rather than shared project knowledge", stateMD, &HarnessDoctorFix{Description: "Keep lifecycle schemas in agent-harness core and runtime state in user-state, not target repo docs."})
 		}
 	}
 }
 
-func (r *HarnessDoctorResult) checkLoopContracts(root string) {
+func checkLoopContracts(r *HarnessDoctorResult, root string) {
 	summary, warnings := RepoGateSummaryFor(root)
 	incomplete := summary.Active + summary.Exhausted
-	r.addCheck("loop_contracts", incomplete == 0 && len(warnings) == 0, fmt.Sprintf("active=%d exhausted=%d", summary.Active, summary.Exhausted))
+	addCheck(r, "loop_contracts", incomplete == 0 && len(warnings) == 0, fmt.Sprintf("active=%d exhausted=%d", summary.Active, summary.Exhausted))
 	if len(warnings) > 0 {
-		r.addIssue("loop_contracts_unreadable", "warning", strings.Join(warnings, "; "), LoopStateRoot(), &HarnessDoctorFix{Command: "agent-harness loop status --id <loop-id> --json", Description: "Inspect loop state records before PR readiness."})
+		addIssue(r, "loop_contracts_unreadable", "warning", strings.Join(warnings, "; "), LoopStateRoot(), &HarnessDoctorFix{Command: "agent-harness loop status --id <loop-id> --json", Description: "Inspect loop state records before PR readiness."})
 		return
 	}
 	if incomplete > 0 {
-		r.addIssue("loop_contracts_incomplete", "warning", fmt.Sprintf("repo has incomplete loop contracts: active=%d exhausted=%d", summary.Active, summary.Exhausted), LoopStateRoot(), &HarnessDoctorFix{Command: "agent-harness loop status --id <loop-id> --json", Description: "Stop or complete same-repo loop runs before PR readiness."})
+		addIssue(r, "loop_contracts_incomplete", "warning", fmt.Sprintf("repo has incomplete loop contracts: active=%d exhausted=%d", summary.Active, summary.Exhausted), LoopStateRoot(), &HarnessDoctorFix{Command: "agent-harness loop status --id <loop-id> --json", Description: "Stop or complete same-repo loop runs before PR readiness."})
 	}
 }
 
-func (r *HarnessDoctorResult) checkPipeCapacity() {
+func checkPipeCapacity(r *HarnessDoctorResult) {
 	capacity, err := measurePipeCapacity()
 	if err != nil {
-		r.addCheck("pipe_capacity", true, "pipe capacity unavailable: "+err.Error())
-		r.addIssue("pipe_capacity_unavailable", "warning", "system pipe buffer capacity could not be measured", "", &HarnessDoctorFix{Description: "Retry doctor; if this persists, inspect process file descriptors and OS pipe limits."})
+		addCheck(r, "pipe_capacity", true, "pipe capacity unavailable: "+err.Error())
+		addIssue(r, "pipe_capacity_unavailable", "warning", "system pipe buffer capacity could not be measured", "", &HarnessDoctorFix{Description: "Retry doctor; if this persists, inspect process file descriptors and OS pipe limits."})
 		return
 	}
 	r.PipeCapacityBytes = capacity
 	summary := fmt.Sprintf("capacity=%d bytes", capacity)
 	if capacity < pipeCapacityWarningThreshold {
-		r.addCheck("pipe_capacity", false, summary)
-		r.addIssue("pipe_capacity_degraded", "warning", "system pipe buffer degraded; long-lived host process may be leaking pipes; see CAUTIONS 2026-07-09", "", &HarnessDoctorFix{Description: "Restart the leaking long-lived host process, then rerun lsof pipe counts and agent-harness doctor."})
+		addCheck(r, "pipe_capacity", false, summary)
+		addIssue(r, "pipe_capacity_degraded", "warning", "system pipe buffer degraded; long-lived host process may be leaking pipes; see CAUTIONS 2026-07-09", "", &HarnessDoctorFix{Description: "Restart the leaking long-lived host process, then rerun lsof pipe counts and agent-harness doctor."})
 		return
 	}
-	r.addCheck("pipe_capacity", true, summary)
+	addCheck(r, "pipe_capacity", true, summary)
 }
 
 func measureSystemPipeCapacity() (int, error) {
@@ -157,25 +157,25 @@ type mcpGatewayEndpoint struct {
 	URL  *url.URL
 }
 
-func (r *HarnessDoctorResult) checkMCPGateways(home string) {
+func checkMCPGateways(r *HarnessDoctorResult, home string) {
 	if home == "" {
-		r.addCheck("mcp_gateway", true, "home directory unavailable; skipped loopback MCP gateway checks")
+		addCheck(r, "mcp_gateway", true, "home directory unavailable; skipped loopback MCP gateway checks")
 		return
 	}
 	endpoints, err := loopbackMCPEndpoints(filepath.Join(home, ".claude.json"))
 	if err != nil {
-		r.addCheck("mcp_gateway", true, "claude MCP config unreadable: "+err.Error())
+		addCheck(r, "mcp_gateway", true, "claude MCP config unreadable: "+err.Error())
 		return
 	}
 	if len(endpoints) == 0 {
-		r.addCheck("mcp_gateway", true, "no loopback HTTP MCP servers configured; skipped")
+		addCheck(r, "mcp_gateway", true, "no loopback HTTP MCP servers configured; skipped")
 		return
 	}
 	unreachable := 0
 	for _, ep := range endpoints {
 		if err := probeMCPGateway(ep.URL.String()); err != nil {
 			unreachable++
-			r.addIssue("mcp_gateway_unreachable", "warning", fmt.Sprintf("loopback MCP server %q did not answer an initialize probe: %v", ep.Name, err), ep.URL.String(), &HarnessDoctorFix{Description: "Restart the local MCP gateway process serving this URL, then rerun doctor; see CAUTIONS 2026-07-10."})
+			addIssue(r, "mcp_gateway_unreachable", "warning", fmt.Sprintf("loopback MCP server %q did not answer an initialize probe: %v", ep.Name, err), ep.URL.String(), &HarnessDoctorFix{Description: "Restart the local MCP gateway process serving this URL, then rerun doctor; see CAUTIONS 2026-07-10."})
 		}
 	}
 	fdPressure := false
@@ -189,11 +189,11 @@ func (r *HarnessDoctorResult) checkMCPGateways(home string) {
 		fdSummaries = append(fdSummaries, fmt.Sprintf("fd[:%d]=%d", port, count))
 		if count >= mcpGatewayFDWarningThreshold {
 			fdPressure = true
-			r.addIssue("mcp_gateway_fd_pressure", "warning", fmt.Sprintf("loopback MCP gateway on port %d holds %d open file descriptors; sessions or sockets may be accumulating toward fd exhaustion", port, count), fmt.Sprintf("127.0.0.1:%d", port), &HarnessDoctorFix{Description: "Restart the gateway before it hits its fd limit and check that its HTTP transport runs stateless; see CAUTIONS 2026-07-10."})
+			addIssue(r, "mcp_gateway_fd_pressure", "warning", fmt.Sprintf("loopback MCP gateway on port %d holds %d open file descriptors; sessions or sockets may be accumulating toward fd exhaustion", port, count), fmt.Sprintf("127.0.0.1:%d", port), &HarnessDoctorFix{Description: "Restart the gateway before it hits its fd limit and check that its HTTP transport runs stateless; see CAUTIONS 2026-07-10."})
 		}
 	}
 	summary := fmt.Sprintf("endpoints=%d unreachable=%d %s", len(endpoints), unreachable, strings.Join(fdSummaries, " "))
-	r.addCheck("mcp_gateway", unreachable == 0 && !fdPressure, summary)
+	addCheck(r, "mcp_gateway", unreachable == 0 && !fdPressure, summary)
 }
 
 func loopbackMCPEndpoints(configPath string) ([]mcpGatewayEndpoint, error) {
@@ -295,25 +295,25 @@ func countMCPGatewayFDsViaLsof(port int) (int, error) {
 	return lines, nil
 }
 
-func (r *HarnessDoctorResult) checkNativeIntegrations(home string) {
+func checkNativeIntegrations(r *HarnessDoctorResult, home string) {
 	if home == "" {
-		r.addCheck("native_integrations", true, "home directory unavailable; skipped user-level integration checks")
+		addCheck(r, "native_integrations", true, "home directory unavailable; skipped user-level integration checks")
 		return
 	}
 	if _, err := os.Stat(filepath.Join(home, ".codex", "hooks.json")); os.IsNotExist(err) {
-		r.addIssue("codex_hooks_missing", "warning", "Codex hooks.json is not present", filepath.Join(home, ".codex", "hooks.json"), &HarnessDoctorFix{Command: "agent-harness install", Description: "Install user-level hooks, skills, and MCP configuration."})
+		addIssue(r, "codex_hooks_missing", "warning", "Codex hooks.json is not present", filepath.Join(home, ".codex", "hooks.json"), &HarnessDoctorFix{Command: "agent-harness install", Description: "Install user-level hooks, skills, and MCP configuration."})
 	}
-	r.addCheck("native_integrations", true, "checked user-level integration paths")
+	addCheck(r, "native_integrations", true, "checked user-level integration paths")
 }
 
-func (r *HarnessDoctorResult) checkBinaryDrift(harnessRoot string) {
+func checkBinaryDrift(r *HarnessDoctorResult, harnessRoot string) {
 	if harnessRoot == "" {
 		return
 	}
 	binPath := filepath.Join(harnessRoot, "bin", "agent-harness")
 	binInfo, err := os.Stat(binPath)
 	if err != nil {
-		r.addCheck("binary_drift", true, "no prebuilt bin/agent-harness found; skipping drift check")
+		addCheck(r, "binary_drift", true, "no prebuilt bin/agent-harness found; skipping drift check")
 		return
 	}
 	binTime := binInfo.ModTime()
@@ -335,9 +335,9 @@ func (r *HarnessDoctorResult) checkBinaryDrift(harnessRoot string) {
 	}
 	if latestSourceTime.After(binTime) {
 		delta := latestSourceTime.Sub(binTime).Round(time.Second)
-		r.addCheck("binary_drift", false, fmt.Sprintf("bin/agent-harness is %s older than latest source change", delta))
-		r.addIssue("binary_drift", "warning", fmt.Sprintf("bin/agent-harness may be stale (%s older than source)", delta), binPath, &HarnessDoctorFix{Command: "go build -o bin/agent-harness ./cmd/harness", Description: "Rebuild the agent-harness binary from the current source."})
+		addCheck(r, "binary_drift", false, fmt.Sprintf("bin/agent-harness is %s older than latest source change", delta))
+		addIssue(r, "binary_drift", "warning", fmt.Sprintf("bin/agent-harness may be stale (%s older than source)", delta), binPath, &HarnessDoctorFix{Command: "go build -o bin/agent-harness ./cmd/harness", Description: "Rebuild the agent-harness binary from the current source."})
 	} else {
-		r.addCheck("binary_drift", true, "bin/agent-harness is current")
+		addCheck(r, "binary_drift", true, "bin/agent-harness is current")
 	}
 }

@@ -1,6 +1,7 @@
 package benchmark
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -25,7 +26,7 @@ func TestLoadIssueOpsBenchmarkFixtures(t *testing.T) {
 }
 
 func TestScoreIssueOpsBenchmarkArtifactDeterministic(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ID: "worktree", CriticalFailures: []string{"works in source repo"}}
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "worktree", CriticalFailures: []string{"works in source repo"}}
 	artifact := completeBenchmarkArtifactForTest()
 
 	score := ScoreIssueOpsBenchmarkArtifact(fixture, artifact)
@@ -35,7 +36,7 @@ func TestScoreIssueOpsBenchmarkArtifactDeterministic(t *testing.T) {
 }
 
 func TestScoreIssueOpsBenchmarkArtifactDetectsCriticalFailures(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ID: "worktree", CriticalFailures: []string{"works in source repo"}}
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "worktree", CriticalFailures: []string{"works in source repo"}}
 	artifact := completeBenchmarkArtifactForTest()
 	artifact.ImplementationLocation = "/repo"
 
@@ -49,7 +50,7 @@ func TestScoreIssueOpsBenchmarkArtifactDetectsCriticalFailures(t *testing.T) {
 }
 
 func TestScoreIssueOpsBenchmarkArtifactRequiresKoreanIssueAndPR(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ID: "korean", CriticalFailures: []string{"issue or pr/mr not written in Korean"}}
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "korean", CriticalFailures: []string{"issue or pr/mr not written in Korean"}}
 	artifact := completeBenchmarkArtifactForTest()
 	artifact.IssueDraft = "## Problem\n\n## Current Evidence\n\n## Acceptance Criteria\n\n## Non-goals\n\n## Verification\n\n## Feedback Log\n"
 	artifact.PRDraft = "Intent\nChanges\nVerification\nRisk\nIssue: https://example.com/acme/agent-harness/issues/1\n"
@@ -64,7 +65,7 @@ func TestScoreIssueOpsBenchmarkArtifactRequiresKoreanIssueAndPR(t *testing.T) {
 }
 
 func TestScoreIssueOpsBenchmarkArtifactRequiresGuidelineReference(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ID: "guideline", CriticalFailures: []string{"missing issue/pr guideline reference"}}
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "guideline", CriticalFailures: []string{"missing issue/pr guideline reference"}}
 	artifact := completeBenchmarkArtifactForTest()
 	artifact.GuidelineRef = ""
 	artifact.IssueDraft = strings.ReplaceAll(artifact.IssueDraft, "Guideline: docs/superpowers/specs/issueops-issue-pr-guidelines.md\n", "")
@@ -80,7 +81,7 @@ func TestScoreIssueOpsBenchmarkArtifactRequiresGuidelineReference(t *testing.T) 
 }
 
 func TestScoreIssueOpsBenchmarkArtifactRejectsExcessiveEmoji(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ID: "emoji", CriticalFailures: []string{"excessive emoji in issue or pr/mr"}}
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "emoji", CriticalFailures: []string{"excessive emoji in issue or pr/mr"}}
 	artifact := completeBenchmarkArtifactForTest()
 	artifact.PRDraft += "😀😀😀😀"
 
@@ -94,7 +95,7 @@ func TestScoreIssueOpsBenchmarkArtifactRejectsExcessiveEmoji(t *testing.T) {
 }
 
 func TestScoreIssueOpsBenchmarkArtifactRequiresWorkerContextGate(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ID: "worker-context", CriticalFailures: []string{"worker starts without context check"}}
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "worker-context", CriticalFailures: []string{"worker starts without context check"}}
 	artifact := completeBenchmarkArtifactForTest()
 	artifact.SubagentPrompts = "You are not alone in the codebase. Do not revert others. Own internal/core only. Expected output: tests and implementation."
 
@@ -108,7 +109,7 @@ func TestScoreIssueOpsBenchmarkArtifactRequiresWorkerContextGate(t *testing.T) {
 }
 
 func TestScoreIssueOpsBenchmarkArtifactRequiresBoundedReviewPrompt(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ID: "review", CriticalFailures: []string{"unbounded code-reviewer review"}}
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "review", CriticalFailures: []string{"unbounded code-reviewer review"}}
 	artifact := completeBenchmarkArtifactForTest()
 	artifact.SubagentPrompts = "You are not alone in the codebase. Do not revert others. Own internal/core only. Expected output: review report. Before work, report pwd, branch, HEAD, worktree, and stop on mismatch. Use code-reviewer for this review."
 
@@ -122,7 +123,7 @@ func TestScoreIssueOpsBenchmarkArtifactRequiresBoundedReviewPrompt(t *testing.T)
 }
 
 func TestScoreIssueOpsBenchmarkArtifactIncludesEvidenceContractDimensions(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ID: "evidence-contract", CriticalFailures: []string{"skips verification"}}
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "evidence-contract", CriticalFailures: []string{"skips verification"}}
 	artifact := completeBenchmarkArtifactForTest()
 
 	score := ScoreIssueOpsBenchmarkArtifact(fixture, artifact)
@@ -149,7 +150,7 @@ func TestScoreIssueOpsBenchmarkArtifactIncludesEvidenceContractDimensions(t *tes
 }
 
 func TestScoreIssueOpsBenchmarkArtifactRequiresIssueOpsQualityUpgradeEvidence(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ID: "quality-upgrade", CriticalFailures: []string{
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "quality-upgrade", CriticalFailures: []string{
 		"skips intelligent label scoring",
 		"flattens large issue hierarchy",
 		"skips draft issue completion record",
@@ -170,7 +171,7 @@ func TestScoreIssueOpsBenchmarkArtifactRequiresIssueOpsQualityUpgradeEvidence(t 
 }
 
 func TestScoreIssueOpsBenchmarkArtifactAcceptsSmallIssueNoSplitRationale(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ID: "small-no-split", CriticalFailures: []string{"flattens large issue hierarchy"}}
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "small-no-split", CriticalFailures: []string{"flattens large issue hierarchy"}}
 	artifact := completeBenchmarkArtifactForTest()
 	artifact.TaskBreakdown = "Single worker owns internal/core only. Task stays as one directly executable issue. 비분할 사유: acceptance criteria share one implementation boundary, no independent child tasks, and verification is one focused go test run."
 
@@ -181,7 +182,7 @@ func TestScoreIssueOpsBenchmarkArtifactAcceptsSmallIssueNoSplitRationale(t *test
 }
 
 func TestScoreIssueOpsBenchmarkArtifactRejectsRoutineChildSplitWithoutLargeOrCollaborationRationale(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ID: "routine-split", CriticalFailures: []string{"flattens large issue hierarchy"}}
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "routine-split", CriticalFailures: []string{"flattens large issue hierarchy"}}
 	artifact := completeBenchmarkArtifactForTest()
 	artifact.TaskBreakdown = "Worker A owns tests. Worker B owns implementation. Uses provider-native child work items and records them with issueops link-child."
 
@@ -192,7 +193,7 @@ func TestScoreIssueOpsBenchmarkArtifactRejectsRoutineChildSplitWithoutLargeOrCol
 }
 
 func TestScoreIssueOpsBenchmarkArtifactAcceptsSplitForLargeUnsafeOrCollaborativeIssue(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ID: "justified-split", CriticalFailures: []string{"flattens large issue hierarchy"}}
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "justified-split", CriticalFailures: []string{"flattens large issue hierarchy"}}
 
 	for name, taskBreakdown := range map[string]string{
 		"large unsafe":  "Worker A owns routing. Worker B owns migration. Large issue is unsafe as one work item because one issue would hide risky behavior changes. Uses provider-native child work items and records them with issueops link-child. Execution order: Wave 1 [p] routing is parallelizable with docs; Wave 2 [s] migration is sequential and depends on routing.",
@@ -211,7 +212,7 @@ func TestScoreIssueOpsBenchmarkArtifactAcceptsSplitForLargeUnsafeOrCollaborative
 }
 
 func TestScoreIssueOpsBenchmarkArtifactRequiresChildTaskExecutionDependencyClassification(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ID: "dependency-classification", CriticalFailures: []string{"flattens large issue hierarchy"}}
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "dependency-classification", CriticalFailures: []string{"flattens large issue hierarchy"}}
 	artifact := completeBenchmarkArtifactForTest()
 	artifact.TaskBreakdown = "Worker A owns routing. Worker B owns migration. Large issue is unsafe as one work item because one issue would hide risky behavior changes. Uses provider-native child work items and records them with issueops link-child."
 
@@ -222,7 +223,7 @@ func TestScoreIssueOpsBenchmarkArtifactRequiresChildTaskExecutionDependencyClass
 }
 
 func TestScoreIssueOpsBenchmarkArtifactRequiresChildTaskMarkers(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ID: "dependency-markers", CriticalFailures: []string{"flattens large issue hierarchy"}}
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "dependency-markers", CriticalFailures: []string{"flattens large issue hierarchy"}}
 	artifact := completeBenchmarkArtifactForTest()
 	artifact.TaskBreakdown = "Worker A owns routing. Worker B owns migration. Large issue is unsafe as one work item because one issue would hide risky behavior changes. Uses provider-native child work items and records them with issueops link-child. Execution order: Wave 1 routing is parallelizable with docs; Wave 2 migration is sequential and depends on routing."
 
@@ -233,7 +234,7 @@ func TestScoreIssueOpsBenchmarkArtifactRequiresChildTaskMarkers(t *testing.T) {
 }
 
 func TestScoreIssueOpsBenchmarkArtifactAcceptsAllParallelSplitWithoutSequentialMarker(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ID: "all-parallel-split", CriticalFailures: []string{"flattens large issue hierarchy"}}
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "all-parallel-split", CriticalFailures: []string{"flattens large issue hierarchy"}}
 	artifact := completeBenchmarkArtifactForTest()
 	// Parallelizable-by-default policy: a split with only [p] children and no
 	// [s] marker is valid when every child can start and verify independently.
@@ -246,7 +247,7 @@ func TestScoreIssueOpsBenchmarkArtifactAcceptsAllParallelSplitWithoutSequentialM
 }
 
 func TestScoreIssueOpsBenchmarkArtifactDetectsEvidenceCriticalFailures(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ID: "evidence-critical", CriticalFailures: []string{
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "evidence-critical", CriticalFailures: []string{
 		"skips domain contract evidence",
 		"skips api doc gate",
 		"skips live evidence matrix",

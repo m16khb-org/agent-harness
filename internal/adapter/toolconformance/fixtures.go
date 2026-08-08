@@ -1,10 +1,7 @@
 package toolconformance
 
 import (
-	"bytes"
-	"crypto/sha256"
 	_ "embed"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -12,14 +9,6 @@ import (
 
 //go:embed testdata/fixture_manifest.json
 var manifestJSON []byte
-
-type Fixture struct {
-	ID                string         `json:"id"`
-	ProbeTool         string         `json:"probe_tool"`
-	SourceTool        string         `json:"source_tool"`
-	SchemaSHA256      string         `json:"schema_sha256"`
-	ExpectedArguments map[string]any `json:"expected_arguments"`
-}
 
 type fixtureManifest struct {
 	SchemaVersion int            `json:"schema_version"`
@@ -71,14 +60,6 @@ func loadManifest(data []byte, descriptors []ToolDescriptor) ([]Fixture, []Basel
 		d.BaselineCases[i].Arguments = cloneArguments(d.BaselineCases[i].Arguments)
 	}
 	return d.Fixtures, d.BaselineCases, nil
-}
-func CanonicalSchemaSHA256(schema map[string]any) (string, error) {
-	var encoded bytes.Buffer
-	if err := json.NewEncoder(&encoded).Encode(schema); err != nil {
-		return "", err
-	}
-	sum := sha256.Sum256(encoded.Bytes())
-	return hex.EncodeToString(sum[:]), nil
 }
 
 func validateBaselineCases(fixtures []Fixture, cases []BaselineCase) error {

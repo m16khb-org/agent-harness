@@ -1,7 +1,6 @@
 package issueopscli
 
 import (
-	issueopscore "agent-harness/internal/adapter/issueops"
 	commandparsecontract "agent-harness/internal/contract/commandparse"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/domain/commandparse"
@@ -20,7 +19,7 @@ func prepareGeneratedCommandInvocation(args []string, deps Dependencies) ([]stri
 			Code: "generated_command_provenance_invalid", Message: "generated command provenance requires an IssueOps id",
 		}
 	}
-	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), id)
+	record, err := issueOpsCLIDeps.ReadIssueOps(issueOpsCLIDeps.IssueOpsStateRoot(), id)
 	if err != nil {
 		return nil, true, err
 	}
@@ -68,7 +67,7 @@ func generatedDelegatedBootstrapAuthority(args []string, child issueopscontract.
 		return invalid("generated delegated child bootstrap command is malformed")
 	}
 	parentID := strings.TrimSpace(child.Delegation.ParentCycleID)
-	parent, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), parentID)
+	parent, err := issueOpsCLIDeps.ReadIssueOps(issueOpsCLIDeps.IssueOpsStateRoot(), parentID)
 	if err != nil || parent.Execution == nil || parent.Execution.Lease.Status != issueopscontract.LeaseStatusActive ||
 		!generatedParentReferencesChild(parent, child.ID) {
 		return invalid("generated delegated child bootstrap requires an active referenced parent execution")

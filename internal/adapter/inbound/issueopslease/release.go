@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	"agent-harness/internal/adapter/issueops"
 	leaseapp "agent-harness/internal/application/issueopslease"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
@@ -15,20 +14,20 @@ import (
 
 type ReleaseHandler struct{ service *leaseapp.ReleaseService }
 
-func NewReleaseHandler(service *leaseapp.ReleaseService) issueops.ExecutionReleaseHandler {
+func NewReleaseHandler(service *leaseapp.ReleaseService) issueopscontract.ExecutionReleaseHandler {
 	handler := ReleaseHandler{service: service}
 	return handler.Handle
 }
 
-func (h ReleaseHandler) Handle(ctx context.Context, _ string, request issueops.ExecutionReleaseRequest) (issueops.ExecutionResult, error) {
+func (h ReleaseHandler) Handle(ctx context.Context, _ string, request issueopscontract.ExecutionReleaseRequest) (issueopscontract.ExecutionResult, error) {
 	if h.service == nil {
-		return issueops.ExecutionResult{ID: request.ID}, issueops.ErrReleaseHandlerUnavailable
+		return issueopscontract.ExecutionResult{ID: request.ID}, issueopscontract.ErrReleaseHandlerUnavailable
 	}
 	result, err := h.service.Release(ctx, leaseapp.ReleaseRequest{ID: request.ID, Generation: request.Generation, Actor: toDomainActor(request.Actor), Ancestry: toProcessAncestry(request.Actor), CWD: request.CWD})
 	if err != nil {
-		return issueops.ExecutionResult{ID: request.ID}, publicReleaseError(err, request.Generation)
+		return issueopscontract.ExecutionResult{ID: request.ID}, publicReleaseError(err, request.Generation)
 	}
-	return issueops.ExecutionResult{OK: result.OK, ID: result.ID, Execution: toCoreExecution(result.Execution)}, nil
+	return issueopscontract.ExecutionResult{OK: result.OK, ID: result.ID, Execution: toCoreExecution(result.Execution)}, nil
 }
 
 func toCoreExecution(execution leasecontract.Execution) issueopscontract.Execution {

@@ -30,8 +30,6 @@ var (
 	executionSHA256            = regexp.MustCompile(`^[0-9a-f]{64}$`)
 )
 
-type ExecutionIssueSnapshotReadFunc func(context.Context, string, port.ExecutionIssueSnapshotRequest) (port.ExecutionIssueSnapshot, error)
-
 type executionOwnerIssue struct {
 	URL        string `json:"url"`
 	Body       string `json:"body"`

@@ -13,7 +13,6 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 
-	issueopscore "agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/adapter/lifecycle/worktreeguard"
 	"agent-harness/internal/domain/commandparse"
 	"agent-harness/internal/domain/searchrouting"
@@ -384,7 +383,7 @@ func childHostSmokeScriptToken(token string) bool {
 }
 
 func delegatedChildSmokeCoordinator(sourceRoot, childRoot, issue string) (string, bool) {
-	ids, err := issueopscore.ListIssueOpsIDs(IssueOpsStateRoot())
+	ids, err := issueOpsDeps.ListIssueOpsIDs(IssueOpsStateRoot())
 	if err != nil {
 		return "", false
 	}
@@ -959,10 +958,10 @@ func executionTypedMutationID(req lifecyclecontract.HookToolUseLifecycleRequest)
 		action, actionOK := req.ToolInput["action"].(string)
 		id, idOK := req.ToolInput["id"].(string)
 		switch strings.TrimSpace(action) {
-		case issueopscore.ExecutionActionPrepare, issueopscore.ExecutionActionClaim,
-			issueopscore.ExecutionActionRelease, issueopscore.ExecutionActionReplace,
-			issueopscore.ExecutionActionResume, issueopscore.ExecutionActionReconcile,
-			issueopscore.ExecutionActionComplete:
+		case issueopscontract.ExecutionActionPrepare, issueopscontract.ExecutionActionClaim,
+			issueopscontract.ExecutionActionRelease, issueopscontract.ExecutionActionReplace,
+			issueopscontract.ExecutionActionResume, issueopscontract.ExecutionActionReconcile,
+			issueopscontract.ExecutionActionComplete:
 			return strings.TrimSpace(id), actionOK && idOK && strings.TrimSpace(id) != ""
 		default:
 			return "", false
@@ -1662,7 +1661,7 @@ func containsExecutionToken(tokens []string, want string) bool {
 
 func executionGuardRecords(req lifecyclecontract.HookToolUseLifecycleRequest, targets []string) ([]issueopscontract.IssueOpsRecord, error) {
 	records := []issueopscontract.IssueOpsRecord{}
-	ids, err := issueopscore.ListIssueOpsIDs(IssueOpsStateRoot())
+	ids, err := issueOpsDeps.ListIssueOpsIDs(IssueOpsStateRoot())
 	if err != nil {
 		return nil, err
 	}

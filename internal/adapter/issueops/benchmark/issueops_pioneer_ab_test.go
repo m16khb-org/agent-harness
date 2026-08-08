@@ -1,6 +1,7 @@
 package benchmark
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -12,13 +13,13 @@ import (
 // regression gate for the scoring path, not proof that issueops invoked the
 // skills (the plan's honesty rule: unmeasured != failing).
 
-func pioneerABFixturesForTest(t *testing.T) []IssueOpsBenchmarkFixture {
+func pioneerABFixturesForTest(t *testing.T) []issueopscontract.IssueOpsBenchmarkFixture {
 	t.Helper()
 	fixtures, err := LoadIssueOpsBenchmarkFixtures(filepath.Join("..", "..", "..", "..", "testdata", "issueops", "fixtures"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var pioneers []IssueOpsBenchmarkFixture
+	var pioneers []issueopscontract.IssueOpsBenchmarkFixture
 	for _, fixture := range fixtures {
 		if strings.HasPrefix(fixture.ID, "pioneer-") {
 			pioneers = append(pioneers, fixture)
@@ -57,9 +58,9 @@ func pioneerABEvidenceForTest(target string) string {
 	}
 }
 
-func pioneerABRunForTest(t *testing.T, fixtures []IssueOpsBenchmarkFixture, withEvidence bool) IssueOpsBenchmarkRunResult {
+func pioneerABRunForTest(t *testing.T, fixtures []issueopscontract.IssueOpsBenchmarkFixture, withEvidence bool) IssueOpsBenchmarkRunResult {
 	t.Helper()
-	artifacts := make(map[string]IssueOpsBenchmarkArtifact, len(fixtures))
+	artifacts := make(map[string]issueopscontract.IssueOpsBenchmarkArtifact, len(fixtures))
 	for _, fixture := range fixtures {
 		artifact := completeBenchmarkArtifactForTest()
 		if withEvidence {
@@ -107,10 +108,10 @@ func TestPioneerDimensionAbsenceIsNotARegression(t *testing.T) {
 	pioneers := pioneerABFixturesForTest(t)
 	baseline := pioneerABRunForTest(t, pioneers, true)
 
-	workflowOnly := IssueOpsBenchmarkFixture{ID: "workflow-only"}
+	workflowOnly := issueopscontract.IssueOpsBenchmarkFixture{ID: "workflow-only"}
 	candidate, err := RunIssueOpsBenchmark(IssueOpsBenchmarkRunRequest{
-		Fixtures:  []IssueOpsBenchmarkFixture{workflowOnly},
-		Artifacts: map[string]IssueOpsBenchmarkArtifact{"workflow-only": completeBenchmarkArtifactForTest()},
+		Fixtures:  []issueopscontract.IssueOpsBenchmarkFixture{workflowOnly},
+		Artifacts: map[string]issueopscontract.IssueOpsBenchmarkArtifact{"workflow-only": completeBenchmarkArtifactForTest()},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -130,7 +131,7 @@ func TestPioneerGateRejectsSignatureRegression(t *testing.T) {
 
 	// Candidate drops one fixture's signature: the gate must catch the
 	// pioneer dimension regression and discard the candidate.
-	artifacts := make(map[string]IssueOpsBenchmarkArtifact, len(fixtures))
+	artifacts := make(map[string]issueopscontract.IssueOpsBenchmarkArtifact, len(fixtures))
 	for i, fixture := range fixtures {
 		artifact := completeBenchmarkArtifactForTest()
 		artifact.PioneerSkillEvidence = pioneerABEvidenceForTest(fixture.PioneerSkillTarget)

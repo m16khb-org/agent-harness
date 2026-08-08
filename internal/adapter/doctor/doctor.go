@@ -9,62 +9,6 @@ import (
 	"agent-harness/internal/domain/operationalhealth"
 )
 
-type HarnessDoctorRequest struct {
-	RepoRoot            string                       `json:"repo_root,omitempty"`
-	HarnessRoot         string                       `json:"harness_root,omitempty"`
-	Home                string                       `json:"home,omitempty"`
-	Version             string                       `json:"version,omitempty"`
-	DaemonAdmission     HarnessDoctorDaemonAdmission `json:"daemon_admission,omitempty"`
-	OperationalSnapshot *operationalhealth.Snapshot  `json:"-"`
-	OperationalOptions  operationalhealth.Options    `json:"-"`
-}
-
-type HarnessDoctorDaemonAdmission struct {
-	ActiveConnections int  `json:"active_connections"`
-	MaxConnections    int  `json:"max_connections"`
-	Accepting         bool `json:"accepting"`
-	Draining          bool `json:"draining"`
-}
-
-type HarnessDoctorResult struct {
-	OK                bool                      `json:"ok"`
-	Healthy           bool                      `json:"healthy"`
-	Kind              string                    `json:"kind"`
-	Version           string                    `json:"version,omitempty"`
-	HarnessRoot       string                    `json:"harness_root,omitempty"`
-	RepoRoot          string                    `json:"repo_root"`
-	StateDir          string                    `json:"state_dir"`
-	LifecycleState    ProjectLifecycleStatePlan `json:"lifecycle_state"`
-	PipeCapacityBytes int                       `json:"pipe_capacity_bytes"`
-	ActiveConnections int                       `json:"active_connections"`
-	MaxConnections    int                       `json:"max_connections"`
-	Accepting         bool                      `json:"accepting"`
-	Draining          bool                      `json:"draining"`
-	Checks            []HarnessDoctorCheck      `json:"checks"`
-	Issues            []HarnessDoctorIssue      `json:"issues"`
-	GeneratedAt       string                    `json:"generated_at"`
-}
-
-type HarnessDoctorCheck struct {
-	Name    string `json:"name"`
-	Healthy bool   `json:"healthy"`
-	Summary string `json:"summary"`
-}
-
-type HarnessDoctorIssue struct {
-	Code     string            `json:"code"`
-	Severity string            `json:"severity"`
-	Summary  string            `json:"summary"`
-	Path     string            `json:"path,omitempty"`
-	Fix      *HarnessDoctorFix `json:"fix,omitempty"`
-}
-
-type HarnessDoctorFix struct {
-	Command     string `json:"command,omitempty"`
-	Destructive bool   `json:"destructive"`
-	Description string `json:"description"`
-}
-
 func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 	root, err := NormalizeRepoRoot(req.RepoRoot)
 	if err != nil {
@@ -86,18 +30,18 @@ func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 		Issues:            []HarnessDoctorIssue{},
 		GeneratedAt:       time.Now().UTC().Format(time.RFC3339Nano),
 	}
-	result.addCheck("binary", true, "agent-harness command is running")
+	addCheck(&result, "binary", true, "agent-harness command is running")
 
 	stateDoctor, stateDoctorErr := StateDoctor()
 	if stateDoctorErr != nil {
-		result.addIssue("state_doctor_error", "error", "state doctor could not inspect the user-state store", StateDir(), &HarnessDoctorFix{Description: "Check user-state directory permissions or set HARNESS_STATE_DIR to a writable location."})
+		addIssue(&result, "state_doctor_error", "error", "state doctor could not inspect the user-state store", StateDir(), &HarnessDoctorFix{Description: "Check user-state directory permissions or set HARNESS_STATE_DIR to a writable location."})
 	} else {
-		result.addCheck("state_store", stateDoctor.Healthy, stateDoctor.StateDir)
+		addCheck(&result, "state_store", stateDoctor.Healthy, stateDoctor.StateDir)
 		for _, issue := range stateDoctor.Issues {
 			if req.OperationalSnapshot != nil && isUnexpectedStateArtifact(issue.Code) {
 				continue
 			}
-			result.addIssue("state_"+issue.Code, issue.Severity, issue.Message, issue.Path, &HarnessDoctorFix{Command: "agent-harness state doctor --json", Description: "Inspect state-store integrity details with the narrow state doctor."})
+			addIssue(&result, "state_"+issue.Code, issue.Severity, issue.Message, issue.Path, &HarnessDoctorFix{Command: "agent-harness state doctor --json", Description: "Inspect state-store integrity details with the narrow state doctor."})
 		}
 	}
 	if req.OperationalSnapshot != nil {
@@ -110,7 +54,7 @@ func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 			}
 		}
 		op := operationalhealth.Classify(snapshot, req.OperationalOptions)
-		result.addCheck("operational_state", op.Healthy, fmt.Sprintf("findings=%d", len(op.Findings)))
+		addCheck(&result, "operational_state", op.Healthy, fmt.Sprintf("findings=%d", len(op.Findings)))
 		for _, finding := range op.Findings {
 			severity := "warning"
 			if finding.Code == operationalhealth.FindingInventoryUnknown {
@@ -124,30 +68,30 @@ func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 				}
 				summary = fmt.Sprintf("%s %s: %s", resourceKind, resourceID, summary)
 			}
-			result.addIssue(finding.Code, severity, summary, finding.Path, &HarnessDoctorFix{Description: "Inspect exact operational identities and reconcile this finding before continuing."})
+			addIssue(&result, finding.Code, severity, summary, finding.Path, &HarnessDoctorFix{Description: "Inspect exact operational identities and reconcile this finding before continuing."})
 		}
 	}
 
 	lifecycle, err := ValidateProjectLifecycleState(root)
 	if err != nil {
-		result.addIssue("lifecycle_state_error", "error", "project lifecycle state could not be resolved", root, &HarnessDoctorFix{Command: "agent-harness project bootstrap --repo " + shellQuote(root), Description: "Initialize project lifecycle state and repo metadata through project bootstrap."})
+		addIssue(&result, "lifecycle_state_error", "error", "project lifecycle state could not be resolved", root, &HarnessDoctorFix{Command: "agent-harness project bootstrap --repo " + shellQuote(root), Description: "Initialize project lifecycle state and repo metadata through project bootstrap."})
 	} else {
 		result.LifecycleState = lifecycle
-		result.addCheck("project_lifecycle_state", lifecycle.Exists && lifecycle.NamespaceValid, lifecycle.ProjectStateDir)
+		addCheck(&result, "project_lifecycle_state", lifecycle.Exists && lifecycle.NamespaceValid, lifecycle.ProjectStateDir)
 		if !lifecycle.Exists {
-			result.addIssue("lifecycle_state_missing", "warning", "project lifecycle namespace has not been initialized", lifecycle.ProjectStateDir, &HarnessDoctorFix{Command: "agent-harness project bootstrap --repo " + shellQuote(root), Description: "Create the repo-scoped lifecycle namespace and profile metadata in user-state."})
+			addIssue(&result, "lifecycle_state_missing", "warning", "project lifecycle namespace has not been initialized", lifecycle.ProjectStateDir, &HarnessDoctorFix{Command: "agent-harness project bootstrap --repo " + shellQuote(root), Description: "Create the repo-scoped lifecycle namespace and profile metadata in user-state."})
 		} else if !lifecycle.NamespaceValid {
-			result.addIssue("lifecycle_namespace_mismatch", "error", "project lifecycle state fingerprint does not match this repo", lifecycle.ProjectJSONPath, &HarnessDoctorFix{Command: "agent-harness doctor --repo " + shellQuote(root) + " --json", Description: "Review the namespace mismatch before migrating or deleting stale state."})
+			addIssue(&result, "lifecycle_namespace_mismatch", "error", "project lifecycle state fingerprint does not match this repo", lifecycle.ProjectJSONPath, &HarnessDoctorFix{Command: "agent-harness doctor --repo " + shellQuote(root) + " --json", Description: "Review the namespace mismatch before migrating or deleting stale state."})
 		}
 	}
 
-	result.checkProjectDocs(root)
-	result.checkRepoLocalRuntimeState(root)
-	result.checkLoopContracts(root)
-	result.checkPipeCapacity()
-	result.checkMCPGateways(req.Home)
-	result.checkNativeIntegrations(req.Home)
-	result.checkBinaryDrift(req.HarnessRoot)
+	checkProjectDocs(&result, root)
+	checkRepoLocalRuntimeState(&result, root)
+	checkLoopContracts(&result, root)
+	checkPipeCapacity(&result)
+	checkMCPGateways(&result, req.Home)
+	checkNativeIntegrations(&result, req.Home)
+	checkBinaryDrift(&result, req.HarnessRoot)
 
 	sort.Slice(result.Issues, func(i, j int) bool {
 		if result.Issues[i].Severity != result.Issues[j].Severity {
@@ -168,11 +112,11 @@ func HarnessDoctor(req HarnessDoctorRequest) (HarnessDoctorResult, error) {
 	return result, nil
 }
 
-func (r *HarnessDoctorResult) addCheck(name string, healthy bool, summary string) {
+func addCheck(r *HarnessDoctorResult, name string, healthy bool, summary string) {
 	r.Checks = append(r.Checks, HarnessDoctorCheck{Name: name, Healthy: healthy, Summary: summary})
 }
 
-func (r *HarnessDoctorResult) addIssue(code, severity, summary, path string, fix *HarnessDoctorFix) {
+func addIssue(r *HarnessDoctorResult, code, severity, summary, path string, fix *HarnessDoctorFix) {
 	r.Issues = append(r.Issues, HarnessDoctorIssue{Code: code, Severity: severity, Summary: summary, Path: path, Fix: fix})
 }
 

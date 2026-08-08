@@ -1,8 +1,10 @@
 package benchmark
 
+import issueopscontract "agent-harness/internal/contract/issueops"
+
 import "strings"
 
-func issueOpsLabelDecisionEvidenceComplete(artifact IssueOpsBenchmarkArtifact) bool {
+func issueOpsLabelDecisionEvidenceComplete(artifact issueopscontract.IssueOpsBenchmarkArtifact) bool {
 	text := artifact.IssueDraft + "\n" + artifact.ProblemSummary
 	hasDecision := containsAllFold(text, "selected label", "rejected label") ||
 		containsAllFold(text, "선택 라벨", "거절 라벨")
@@ -11,7 +13,7 @@ func issueOpsLabelDecisionEvidenceComplete(artifact IssueOpsBenchmarkArtifact) b
 		containsAnyFold(text, "manual override", "수동 override", "수동 판단")
 }
 
-func issueOpsHierarchyEvidenceComplete(artifact IssueOpsBenchmarkArtifact) bool {
+func issueOpsHierarchyEvidenceComplete(artifact issueopscontract.IssueOpsBenchmarkArtifact) bool {
 	text := artifact.TaskBreakdown + "\n" + artifact.Plan
 	hasChildWork := containsAnyFold(text, "sub-issue", "subissue", "child item", "child work item") &&
 		containsAnyFold(text, "link-child", "provider-native", "github sub-issue", "gitlab child")
@@ -93,19 +95,19 @@ func issueOpsChildTaskDependencyClassificationComplete(text string) bool {
 	)
 }
 
-func issueOpsDraftIssueCompletionEvidenceComplete(artifact IssueOpsBenchmarkArtifact) bool {
+func issueOpsDraftIssueCompletionEvidenceComplete(artifact issueopscontract.IssueOpsBenchmarkArtifact) bool {
 	return containsAllFold(artifact.CompletionHygiene, "draft issue completion record", "final diff", "evidence", "labels", "children", "unresolved follow-up") &&
 		containsAnyFold(artifact.CompletionHygiene, "pr url", "mr url")
 }
 
-func issueOpsReviewAgentThreadEvidenceComplete(artifact IssueOpsBenchmarkArtifact) bool {
+func issueOpsReviewAgentThreadEvidenceComplete(artifact issueopscontract.IssueOpsBenchmarkArtifact) bool {
 	text := artifact.ReviewFeedbackEvidence
 	return containsAnyFold(text, "kodus", "gemini code assist", "review-agent") &&
 		containsAllFold(text, "thread reply", "resolution") &&
 		containsAnyFold(text, "resolveReviewThread", "resolved=true")
 }
 
-func detectIssueOpsQualityCriticalFailures(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) []string {
+func detectIssueOpsQualityCriticalFailures(fixture issueopscontract.IssueOpsBenchmarkFixture, artifact issueopscontract.IssueOpsBenchmarkArtifact) []string {
 	var failures []string
 	for _, rule := range fixture.CriticalFailures {
 		ruleText := strings.ToLower(rule)

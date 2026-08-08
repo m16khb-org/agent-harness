@@ -2,7 +2,6 @@ package state
 
 import (
 	"agent-harness/internal/adapter/outbound/sqlstore"
-	statepathadapter "agent-harness/internal/adapter/outbound/statepath"
 	stateapplication "agent-harness/internal/application/state"
 	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/domain/statepath"
@@ -12,7 +11,7 @@ import (
 const stateBucket = "state"
 
 func StateDir() string {
-	return statepathadapter.Dir()
+	return stateDir()
 }
 
 func NormalizeStateKey(key string) (string, error) {
@@ -20,7 +19,7 @@ func NormalizeStateKey(key string) (string, error) {
 }
 
 func statePath(dir, key string) string {
-	return statepathadapter.Path(dir, key)
+	return statepath.Path(dir, key)
 }
 
 func openStateDB(dir string) (*sqlstore.DB, error) {
@@ -41,8 +40,8 @@ var _ stateport.ExistingReader = existingRecords{}
 
 func service() *stateapplication.Service {
 	return stateapplication.NewService(stateapplication.Dependencies{
-		StateDir:        statepathadapter.Dir,
-		StatePath:       statepathadapter.Path,
+		StateDir:        stateDir,
+		StatePath:       statepath.Path,
 		OpenStore:       openStateStore,
 		ExistingRecords: existingRecords{},
 	})

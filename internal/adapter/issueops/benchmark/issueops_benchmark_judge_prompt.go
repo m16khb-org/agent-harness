@@ -1,17 +1,18 @@
 package benchmark
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"encoding/json"
 
 	"agent-harness/internal/domain/judgement"
 	"agent-harness/internal/domain/prompt"
 )
 
-func buildIssueOpsLLMJudgePrompt(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) (string, error) {
+func buildIssueOpsLLMJudgePrompt(fixture issueopscontract.IssueOpsBenchmarkFixture, artifact issueopscontract.IssueOpsBenchmarkArtifact) (string, error) {
 	payload, err := json.Marshal(struct {
-		Fixture  IssueOpsBenchmarkFixture  `json:"fixture"`
-		Artifact IssueOpsBenchmarkArtifact `json:"artifact"`
-		Rubric   []string                  `json:"rubric_dimensions"`
+		Fixture  issueopscontract.IssueOpsBenchmarkFixture  `json:"fixture"`
+		Artifact issueopscontract.IssueOpsBenchmarkArtifact `json:"artifact"`
+		Rubric   []string                                   `json:"rubric_dimensions"`
 	}{
 		Fixture:  fixture,
 		Artifact: artifact,
@@ -64,7 +65,7 @@ func buildIssueOpsLLMJudgePrompt(fixture IssueOpsBenchmarkFixture, artifact Issu
 	}), nil
 }
 
-func BuildIssueOpsLLMJudgePrompt(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) (string, error) {
+func BuildIssueOpsLLMJudgePrompt(fixture issueopscontract.IssueOpsBenchmarkFixture, artifact issueopscontract.IssueOpsBenchmarkArtifact) (string, error) {
 	return buildIssueOpsLLMJudgePrompt(fixture, artifact)
 }
 

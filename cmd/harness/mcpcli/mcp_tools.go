@@ -1,9 +1,10 @@
 package mcpcli
 
 import (
+	executionissue "agent-harness/internal/contract/executionissue"
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"encoding/json"
 
-	"agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/port"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"
 
@@ -27,17 +28,17 @@ type MCPToolOutcome struct {
 // MCPDependencies는 server 생성 시 고정된다. 요청 간 package-global dependency
 // cache를 두지 않아 서로 다른 MCP server의 handler가 섞이지 않는다.
 type MCPDependencies struct {
-	Prepare     issueops.ExecutionPrepareHandler
+	Prepare     issueopscontract.ExecutionPrepareHandler
 	Orca        port.ExecutionOrcaProvisioner
 	OrcaOwner   port.ExecutionOrcaOwnerInspector
-	ReadIssue   issueops.ExecutionIssueSnapshotReadFunc
-	Claim       issueops.ExecutionClaimHandler
-	Release     issueops.ExecutionReleaseHandler
-	Reseed      issueops.ExecutionReseedHandler
-	Resume      issueops.ExecutionResumeHandler
-	Reconcile   issueops.ExecutionReconcileHandler
-	Complete    issueops.ExecutionCompleteHandler
-	Publication issueops.RemotePublicationHandlers
+	ReadIssue   executionissue.ExecutionIssueSnapshotReadFunc
+	Claim       issueopscontract.ExecutionClaimHandler
+	Release     issueopscontract.ExecutionReleaseHandler
+	Reseed      issueopscontract.ExecutionReseedHandler
+	Resume      issueopscontract.ExecutionResumeHandler
+	Reconcile   port.ExecutionReconcileHandler
+	Complete    issueopscontract.ExecutionCompleteHandler
+	Publication PublicationHandlers
 	Provenance  provenanceport.Observer
 }
 
@@ -76,7 +77,7 @@ func HandleToolCall(params json.RawMessage) (any, *jsonrpc.Error) {
 
 // HandleToolCallWithReleaseHandler keeps the server dependency immutable per
 // call instead of caching a composition-root handler in package state.
-func HandleToolCallWithReleaseHandler(params json.RawMessage, release issueops.ExecutionReleaseHandler) (any, *jsonrpc.Error) {
+func HandleToolCallWithReleaseHandler(params json.RawMessage, release issueopscontract.ExecutionReleaseHandler) (any, *jsonrpc.Error) {
 	return HandleToolCallWithDependencies(params, MCPDependencies{Release: release})
 }
 

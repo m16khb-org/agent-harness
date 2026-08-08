@@ -13,37 +13,6 @@ import (
 
 const regressionFixtureLimit = 64 << 10
 
-type RegressionFixture struct {
-	SchemaVersion               int            `json:"schema_version"`
-	FixtureID                   string         `json:"fixture_id"`
-	SourceTool                  string         `json:"source_tool"`
-	ProbeTool                   string         `json:"probe_tool"`
-	SourceSchemaSHA256          string         `json:"source_schema_sha256"`
-	Host                        string         `json:"host"`
-	HostVersion                 string         `json:"host_version"`
-	ModelLabel                  string         `json:"model_label"`
-	CanonicalArguments          any            `json:"canonical_arguments"`
-	RawArgumentsSHA256          string         `json:"raw_arguments_sha256"`
-	ExpectedClassification      Classification `json:"expected_classification"`
-	ExpectedDiagnostics         []Diagnostic   `json:"expected_diagnostics"`
-	ExpectedDiagnosticSignature string         `json:"expected_diagnostic_signature"`
-	ConfirmedEvidenceIDs        []string       `json:"confirmed_evidence_ids"`
-	ExpectedHandlerCallCount    int            `json:"expected_handler_call_count"`
-	ExpectedFinalResult         map[string]any `json:"expected_final_result"`
-	ExpectedStateUnchanged      bool           `json:"expected_state_unchanged"`
-}
-
-type ReplayResult struct {
-	OK                  bool           `json:"ok"`
-	Classification      Classification `json:"classification"`
-	Diagnostics         []Diagnostic   `json:"diagnostics"`
-	DiagnosticSignature string         `json:"diagnostic_signature"`
-	HandlerCalls        int            `json:"handler_calls"`
-	FinalResult         map[string]any `json:"final_result"`
-	StateBeforeSHA256   string         `json:"state_before_sha256"`
-	StateAfterSHA256    string         `json:"state_after_sha256"`
-}
-
 func LoadRegressionFixture(path string) (RegressionFixture, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -194,18 +163,6 @@ func ReplayRegression(fixture RegressionFixture, descriptors []ToolDescriptor, s
 		(!fixture.ExpectedStateUnchanged || replay.StateBeforeSHA256 == replay.StateAfterSHA256) &&
 		jsonDeepEqual(replay.FinalResult, fixture.ExpectedFinalResult)
 	return replay, nil
-}
-
-func InvalidToolArgumentsResult(tool string, diagnostics []Diagnostic) map[string]any {
-	return map[string]any{
-		"ok":      false,
-		"isError": true,
-		"error": map[string]any{
-			"code":        "invalid_tool_arguments",
-			"tool":        tool,
-			"diagnostics": append([]Diagnostic(nil), diagnostics...),
-		},
-	}
 }
 
 func jsonDeepEqual(left, right any) bool {

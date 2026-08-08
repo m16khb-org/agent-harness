@@ -6,11 +6,6 @@ import (
 	"agent-harness/internal/domain/judgement"
 )
 
-type IssueOpsLLMJudgeRequest struct {
-	Fixture  IssueOpsBenchmarkFixture
-	Artifact IssueOpsBenchmarkArtifact
-}
-
 func RunIssueOpsLLMJudge(req IssueOpsLLMJudgeRequest) (IssueOpsBenchmarkScore, error) {
 	if _, err := buildIssueOpsLLMJudgePrompt(req.Fixture, req.Artifact); err != nil {
 		return IssueOpsBenchmarkScore{}, err

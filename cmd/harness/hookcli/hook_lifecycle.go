@@ -9,7 +9,6 @@ import (
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
-	lifecycle "agent-harness/internal/adapter/lifecycle"
 	hookdomain "agent-harness/internal/domain/hook"
 )
 
@@ -39,11 +38,11 @@ func runHookPostToolUse(args []string) error {
 		Command: command,
 		Source:  "post-tool-use",
 	}
-	result, err := lifecycle.RecordLifecycleToolUse(req)
+	result, err := recordLifecycleToolUse(req)
 	if err != nil {
 		result = lifecyclecontract.HookToolUseLifecycleResult{OK: false, Warnings: []string{"lifecycle_record_error:" + err.Error()}}
 	}
-	misdirectWarning, misdirectRecordID := lifecycle.SourceCheckoutMisdirectWarning(req)
+	misdirectWarning, misdirectRecordID := sourceCheckoutMisdirectWarning(req)
 	if misdirectWarning != "" && misdirectRecordID != "" {
 		// 훅은 관측 기록만 남긴다(비차단 best-effort) — 판단과 게이트는
 		// strict readiness의 경고 키가 담당한다.
@@ -94,7 +93,7 @@ func runHookPreCompact(args []string) error {
 	if parsedRepo == "" {
 		parsedRepo = ResolveTarget("")
 	}
-	result := lifecycle.BuildLifecyclePreCompactCapsule(parsedRepo)
+	result := buildLifecyclePreCompactCapsule(parsedRepo)
 	if *jsonOut {
 		return printJSON(result)
 	}

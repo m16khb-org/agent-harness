@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
-	lifecycle "agent-harness/internal/adapter/lifecycle"
 	installcontract "agent-harness/internal/contract/install"
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	hookadapter "agent-harness/internal/domain/hook"
 )
 
@@ -25,6 +25,8 @@ type Config struct {
 	ResolveTarget       func(string) string
 	PrintJSON           func(any) error
 	RuntimeDiagnostic   func() (installcontract.NativeRuntimeDiagnostic, error)
+	// post-compact 리마인더 생성은 composition root가 주입한다.
+	BuildLifecyclePostCompactReminder func(string) lifecyclecontract.LifecycleCompactResult
 }
 
 func RunPostCompact(args []string, config Config) error {
@@ -43,7 +45,7 @@ func RunPostCompact(args []string, config Config) error {
 	if parsedRepo == "" {
 		parsedRepo = config.ResolveTarget("")
 	}
-	result := lifecycle.BuildLifecyclePostCompactReminder(parsedRepo)
+	result := config.BuildLifecyclePostCompactReminder(parsedRepo)
 	if *jsonOut {
 		return config.PrintJSON(result)
 	}

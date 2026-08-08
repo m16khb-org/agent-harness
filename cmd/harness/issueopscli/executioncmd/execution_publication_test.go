@@ -1,6 +1,7 @@
 package executioncmd
 
 import (
+	"agent-harness/cmd/harness/issueopscli/remotecmd"
 	"context"
 	"fmt"
 	"io"
@@ -20,7 +21,7 @@ func TestActionDepsPropagatePublicationReconcileWithoutInvocation(t *testing.T) 
 		return issueops.ExecutionReconcileResult{}, nil
 	})
 
-	deps := (Deps{Publication: issueops.RemotePublicationHandlers{Reconcile: handler}}).actionDeps()
+	deps := (Deps{Publication: remotecmd.PublicationHandlers{Reconcile: handler}}).actionDeps()
 	if deps.RemoteReconcile == nil {
 		t.Fatal("publication reconcile handler was not propagated")
 	}
@@ -43,7 +44,7 @@ func TestRunPublicationReconcilePreservesCLITextProjection(t *testing.T) {
 			"--session-executable", receipt.Executable, "--cwd", record.Execution.Workspace.Root,
 		}, Deps{
 			StateRoot: func() string { return stateRoot },
-			Publication: issueops.RemotePublicationHandlers{Reconcile: func(_ context.Context, _ string, request issueops.ExecutionReconcileRequest) (issueops.ExecutionReconcileResult, error) {
+			Publication: remotecmd.PublicationHandlers{Reconcile: func(_ context.Context, _ string, request issueops.ExecutionReconcileRequest) (issueops.ExecutionReconcileResult, error) {
 				calls++
 				if request.Snapshot == nil || request.Snapshot.ID != record.ID {
 					t.Fatalf("publication reconcile snapshot=%#v", request.Snapshot)

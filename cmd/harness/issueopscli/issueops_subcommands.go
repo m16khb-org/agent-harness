@@ -6,8 +6,6 @@ import (
 	"os"
 	"strings"
 
-	issueopscore "agent-harness/internal/adapter/issueops"
-	"agent-harness/internal/adapter/issueops/loopgate"
 	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
@@ -24,7 +22,7 @@ func runIssueOpsStart(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := issueopscore.StartIssueOps(issueopscore.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: *repo, Branch: *branch})
+	record, err := issueOpsCLIDeps.StartIssueOps(issueOpsCLIDeps.IssueOpsStateRoot(), issueopscontract.IssueOpsStartRequest{Repo: *repo, Branch: *branch})
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -35,7 +33,7 @@ func runIssueOpsStatus(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := issueopscore.IssueOpsStatus(issueopscore.IssueOpsStateRoot(), *id)
+	record, err := issueOpsCLIDeps.IssueOpsStatus(issueOpsCLIDeps.IssueOpsStateRoot(), *id)
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -48,7 +46,7 @@ func runIssueOpsLinkIssue(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := issueopscore.LinkIssueOpsIssueWithActor(issueopscore.IssueOpsStateRoot(), *id, *issueURL, actor.actor())
+	record, err := issueOpsCLIDeps.LinkIssueOpsIssueWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *id, *issueURL, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -61,7 +59,7 @@ func runIssueOpsLinkPlan(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := issueopscore.LinkIssueOpsPlanWithActor(issueopscore.IssueOpsStateRoot(), *id, *planPath, actor.actor())
+	record, err := issueOpsCLIDeps.LinkIssueOpsPlanWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *id, *planPath, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -74,7 +72,7 @@ func runIssueOpsLinkWorktree(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := issueopscore.LinkIssueOpsWorktreeWithActor(issueopscore.IssueOpsStateRoot(), *id, *worktreePath, actor.actor())
+	record, err := issueOpsCLIDeps.LinkIssueOpsWorktreeWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *id, *worktreePath, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -91,7 +89,7 @@ func runIssueOpsLinkChild(args []string) error {
 	if err := verifyIssueOpsChildIssueBeforeLink(*childURL); err != nil {
 		return printIssueOpsResult(issueopscontract.IssueOpsRecord{OK: false}, *jsonOut, err)
 	}
-	record, err := issueopscore.LinkIssueOpsChildWithActor(issueopscore.IssueOpsStateRoot(), *id, *childURL, *title, actor.actor())
+	record, err := issueOpsCLIDeps.LinkIssueOpsChildWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *id, *childURL, *title, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -106,7 +104,7 @@ func runIssueOpsLinkRelated(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := issueopscore.LinkIssueOpsRelatedWithActor(issueopscore.IssueOpsStateRoot(), *id, *linkType, *relatedURL, *title, actor.actor())
+	record, err := issueOpsCLIDeps.LinkIssueOpsRelatedWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *id, *linkType, *relatedURL, *title, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -147,7 +145,7 @@ func runIssueOpsChildStart(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	result, err := issueopscore.StartIssueOpsChildWithActor(issueopscore.IssueOpsStateRoot(), issueopscontract.IssueOpsChildStartRequest{
+	result, err := issueOpsCLIDeps.StartIssueOpsChildWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), issueopscontract.IssueOpsChildStartRequest{
 		ParentID:           *parentID,
 		Branch:             *branch,
 		Title:              *title,
@@ -167,7 +165,7 @@ func runIssueOpsChildStatus(args []string, repairDefault bool) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	result, err := issueopscore.IssueOpsChildStatusWithActor(issueopscore.IssueOpsStateRoot(), *parentID, *repair, actor.actor())
+	result, err := issueOpsCLIDeps.IssueOpsChildStatusWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *parentID, *repair, actor.actor())
 	if *jsonOut {
 		return printIssueOpsChildValue(result, true, err)
 	}
@@ -191,7 +189,7 @@ func runIssueOpsChildAccept(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	result, err := issueopscore.AcceptIssueOpsChildWithActor(issueopscore.IssueOpsStateRoot(), *parentID, *childID, []string(evidence), actor.actor())
+	result, err := issueOpsCLIDeps.AcceptIssueOpsChildWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *parentID, *childID, []string(evidence), actor.actor())
 	return printIssueOpsChildValue(result, *jsonOut, err)
 }
 
@@ -205,7 +203,7 @@ func runIssueOpsChildReject(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	result, err := issueopscore.RejectIssueOpsChildWithActor(issueopscore.IssueOpsStateRoot(), *parentID, *childID, *reason, nil, actor.actor())
+	result, err := issueOpsCLIDeps.RejectIssueOpsChildWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *parentID, *childID, *reason, nil, actor.actor())
 	return printIssueOpsChildValue(result, *jsonOut, err)
 }
 
@@ -219,7 +217,7 @@ func runIssueOpsChildDrop(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	result, err := issueopscore.DropIssueOpsChildWithActor(issueopscore.IssueOpsStateRoot(), *parentID, *childID, *reason, actor.actor())
+	result, err := issueOpsCLIDeps.DropIssueOpsChildWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *parentID, *childID, *reason, actor.actor())
 	return printIssueOpsChildValue(result, *jsonOut, err)
 }
 
@@ -251,14 +249,14 @@ func runIssueOpsRoutingScore(args []string) error {
 	if err != nil {
 		return err
 	}
-	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), *id)
+	record, err := issueOpsCLIDeps.ReadIssueOps(issueOpsCLIDeps.IssueOpsStateRoot(), *id)
 	if err != nil {
 		if *jsonOut {
 			return printIssueOpsErrorJSON(err)
 		}
 		return err
 	}
-	result := issueopscore.ScoreLiveRoutingFidelity(record, expected)
+	result := issueOpsCLIDeps.ScoreLiveRoutingFidelity(record, expected)
 	if *jsonOut {
 		return printJSON(result)
 	}
@@ -269,12 +267,12 @@ func runIssueOpsRoutingScore(args []string) error {
 	return nil
 }
 
-func parseExpectedRouting(spec string) ([]issueopscore.SkillRouting, error) {
+func parseExpectedRouting(spec string) ([]issueopscontract.SkillRouting, error) {
 	spec = strings.TrimSpace(spec)
 	if spec == "" {
 		return nil, fmt.Errorf("--expect is required as comma-separated phase:skill pairings")
 	}
-	var out []issueopscore.SkillRouting
+	var out []issueopscontract.SkillRouting
 	for _, p := range strings.Split(spec, ",") {
 		p = strings.TrimSpace(p)
 		if p == "" {
@@ -285,7 +283,7 @@ func parseExpectedRouting(spec string) ([]issueopscore.SkillRouting, error) {
 		if !ok || phase == "" || skill == "" {
 			return nil, fmt.Errorf("invalid --expect pairing %q; want phase:skill", p)
 		}
-		out = append(out, issueopscore.SkillRouting{Phase: phase, Skill: skill})
+		out = append(out, issueopscontract.SkillRouting{Phase: phase, Skill: skill})
 	}
 	if len(out) == 0 {
 		return nil, fmt.Errorf("--expect produced no pairings")
@@ -303,7 +301,7 @@ func runIssueOpsRecordRouting(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := issueopscore.RecordIssueOpsRoutingWithActor(issueopscore.IssueOpsStateRoot(), *id, *phase, *skill, actor.actor())
+	record, err := issueOpsCLIDeps.RecordIssueOpsRoutingWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *id, *phase, *skill, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -323,7 +321,7 @@ func runIssueOpsPhase(args []string) error {
 		}
 		return err
 	}
-	record, err := loopgate.AdvancePhaseWithActor(issueopscore.IssueOpsStateRoot(), *id, *to, actor.actor())
+	record, err := advancePhaseWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *id, *to, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -335,7 +333,7 @@ func runIssueOpsPRReadiness(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	record, err := issueopscore.ReadIssueOps(issueopscore.IssueOpsStateRoot(), *id)
+	record, err := issueOpsCLIDeps.ReadIssueOps(issueOpsCLIDeps.IssueOpsStateRoot(), *id)
 	if err != nil {
 		if *jsonOut {
 			if printErr := printIssueOpsErrorJSON(err); printErr != nil {
@@ -344,9 +342,9 @@ func runIssueOpsPRReadiness(args []string) error {
 		}
 		return err
 	}
-	readiness := issueopscore.IssueOpsPRReadiness(record)
+	readiness := issueOpsCLIDeps.IssueOpsPRReadiness(record)
 	if *strict {
-		readiness = loopgate.StrictPRReadinessWithState(issueopscore.IssueOpsStateRoot(), record)
+		readiness = strictPRReadinessWithState(issueOpsCLIDeps.IssueOpsStateRoot(), record)
 	}
 	if *jsonOut {
 		return printJSON(readiness)
@@ -374,7 +372,7 @@ func runIssueOpsArtifact(args []string) error {
 		if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 			return err
 		}
-		record, err := issueopscore.UnstageIssueOpsArtifact(issueopscore.IssueOpsStateRoot(), *id, *name)
+		record, err := issueOpsCLIDeps.UnstageIssueOpsArtifact(issueOpsCLIDeps.IssueOpsStateRoot(), *id, *name)
 		return printIssueOpsResult(record, *jsonOut, err)
 	}
 	if args[0] != "stage" {
@@ -395,7 +393,7 @@ func runIssueOpsArtifact(args []string) error {
 	if err != nil {
 		return err
 	}
-	record, err := issueopscore.StageIssueOpsArtifact(issueopscore.IssueOpsStateRoot(), *id, *name, content)
+	record, err := issueOpsCLIDeps.StageIssueOpsArtifact(issueOpsCLIDeps.IssueOpsStateRoot(), *id, *name, content)
 	if err != nil {
 		if *jsonOut {
 			if printErr := printIssueOpsErrorJSON(err); printErr != nil {
@@ -404,7 +402,7 @@ func runIssueOpsArtifact(args []string) error {
 		}
 		return err
 	}
-	staged, err := issueopscore.StagedIssueOpsArtifactNames(issueopscore.IssueOpsStateRoot(), record.ID)
+	staged, err := issueOpsCLIDeps.StagedIssueOpsArtifactNames(issueOpsCLIDeps.IssueOpsStateRoot(), record.ID)
 	if err != nil {
 		return err
 	}
@@ -440,7 +438,7 @@ func runIssueOpsImplementationReview(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := issueopscore.RecordIssueOpsImplementationReview(issueopscore.IssueOpsStateRoot(), *id, issueopscore.IssueOpsImplementationReviewRequest{
+	record, err := issueOpsCLIDeps.RecordIssueOpsImplementationReview(issueOpsCLIDeps.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsImplementationReviewRequest{
 		Verdict: *verdict, Findings: findings, Evidence: evidence,
 		ReviewerHost: *reviewerHost, ReviewerModel: *reviewerModel, ReviewerEffort: *reviewerEffort,
 	})
@@ -456,7 +454,7 @@ func runIssueOpsList(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
 		return err
 	}
-	result, err := issueopscore.ListIssueOpsCycles(issueopscore.IssueOpsStateRoot(), *repo)
+	result, err := issueOpsCLIDeps.ListIssueOpsCycles(issueOpsCLIDeps.IssueOpsStateRoot(), *repo)
 	if err != nil {
 		return err
 	}

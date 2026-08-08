@@ -1,10 +1,13 @@
 package issueops
 
-import "agent-harness/internal/adapter/issueops/benchmark"
+import (
+	"agent-harness/internal/adapter/issueops/benchmark"
+	issueopscontract "agent-harness/internal/contract/issueops"
+)
 
-type IssueOpsBenchmarkFixture = benchmark.IssueOpsBenchmarkFixture
-type IssueOpsBenchmarkArtifact = benchmark.IssueOpsBenchmarkArtifact
-type SkillRouting = benchmark.SkillRouting
+type IssueOpsBenchmarkFixture = issueopscontract.IssueOpsBenchmarkFixture
+type IssueOpsBenchmarkArtifact = issueopscontract.IssueOpsBenchmarkArtifact
+type SkillRouting = issueopscontract.SkillRouting
 type IssueOpsDimensionScore = benchmark.IssueOpsDimensionScore
 type IssueOpsBenchmarkScore = benchmark.IssueOpsBenchmarkScore
 type IssueOpsBenchmarkRunRequest = benchmark.IssueOpsBenchmarkRunRequest

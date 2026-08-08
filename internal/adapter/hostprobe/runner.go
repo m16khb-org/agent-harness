@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/toolconformance"
+	toolconformancecontract "agent-harness/internal/contract/toolconformance"
 	"agent-harness/internal/domain/policy"
 	"agent-harness/internal/port"
 )
@@ -189,16 +189,16 @@ func boundedVersion(value string) string {
 }
 
 type episodeCapture struct {
-	FixtureID          string                         `json:"fixture_id"`
-	CallCount          int                            `json:"call_count"`
-	RawSHA256          string                         `json:"raw_sha256"`
-	CanonicalArguments any                            `json:"canonical_arguments"`
-	SchemaSHA256       string                         `json:"schema_sha256"`
-	RunTokenSHA256     string                         `json:"run_token_sha256"`
-	Classification     toolconformance.Classification `json:"classification"`
-	AdvertisedValid    bool                           `json:"advertised_valid"`
-	CanonicalValid     bool                           `json:"canonical_valid"`
-	Diagnostics        []toolconformance.Diagnostic   `json:"diagnostics"`
+	FixtureID          string                                 `json:"fixture_id"`
+	CallCount          int                                    `json:"call_count"`
+	RawSHA256          string                                 `json:"raw_sha256"`
+	CanonicalArguments any                                    `json:"canonical_arguments"`
+	SchemaSHA256       string                                 `json:"schema_sha256"`
+	RunTokenSHA256     string                                 `json:"run_token_sha256"`
+	Classification     toolconformancecontract.Classification `json:"classification"`
+	AdvertisedValid    bool                                   `json:"advertised_valid"`
+	CanonicalValid     bool                                   `json:"canonical_valid"`
+	Diagnostics        []toolconformancecontract.Diagnostic   `json:"diagnostics"`
 }
 
 type hostStreamObservation struct {
@@ -451,7 +451,7 @@ func decodeEpisodeCapture(resultPath string, request port.HostProbeRequest) (epi
 	if capture.CallCount != 1 || capture.CanonicalArguments == nil || !validSHA256(capture.RawSHA256) || !validSHA256(capture.RunTokenSHA256) {
 		return episodeCapture{}, fmt.Errorf("probe_result_invalid")
 	}
-	if _, err := toolconformance.ParseClassification(string(capture.Classification)); err != nil {
+	if _, err := toolconformancecontract.ParseClassification(string(capture.Classification)); err != nil {
 		return episodeCapture{}, fmt.Errorf("probe_result_invalid")
 	}
 	multiplePath := resultPath + ".multiple"
@@ -465,10 +465,10 @@ func decodeEpisodeCapture(resultPath string, request port.HostProbeRequest) (epi
 			return episodeCapture{}, fmt.Errorf("multiple_call_marker_invalid")
 		}
 		capture.CallCount = marker.CallCount
-		capture.Classification = toolconformance.Classification(toolconformance.MultipleCalls)
+		capture.Classification = toolconformancecontract.Classification(toolconformancecontract.MultipleCalls)
 		capture.AdvertisedValid = false
 		capture.CanonicalValid = false
-		capture.Diagnostics = []toolconformance.Diagnostic{}
+		capture.Diagnostics = []toolconformancecontract.Diagnostic{}
 	} else if !os.IsNotExist(markerErr) {
 		if markerErr.Error() == "evidence_file_too_large" {
 			return episodeCapture{}, fmt.Errorf("multiple_call_marker_too_large")

@@ -32,6 +32,8 @@ type (
 func wireBasicCLIDeps() {
 	configureDocsReaders()
 	configureStateStores()
+	configureIssueOpsRuntime()
+	configureTail8()
 	configureDoctorLoopGate()
 	configureRemoteArtifactRules()
 	configureHookPrompts()
@@ -49,6 +51,19 @@ func wireBasicCLIDeps() {
 	configureAdapterStateAccess()
 	configureWorkerJobs()
 	configureRepoPathResolvers()
+	configureProjectBootstrap()
+	configureHookCLILifecycle()
+	configureDoctorHookPromptLifecycle()
+	configureToolConformance()
+	configureDoctorRunner()
+	configureIssueOpsBenchmark()
+	configureIssueOpsCleanup()
+	configureIssueOpsRemote()
+	configureIssueOpsOrphanAndLoopGate()
+	configureLifecycleIssueOps()
+	configureIssueOpsLeaseNextCommands()
+	configureIssueOpsExecutionRunners()
+	configureIssueOpsCLIRuntime()
 	operationalCollector := operationalhealth.Collector{Git: operationalhealth.ExecGitRunner{}, Orca: orca.New()}
 	basiccli.Configure(basiccli.Deps{
 		GitPreflight:             preflight.GitPreflight,

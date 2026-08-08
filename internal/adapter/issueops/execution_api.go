@@ -2,107 +2,14 @@ package issueops
 
 import (
 	"context"
-	"errors"
 	"fmt"
-
-	"agent-harness/internal/contract/issueops"
-	"agent-harness/internal/port"
-	basesyncport "agent-harness/internal/port/issueopsbasesync"
 )
-
-var (
-	ErrPrepareHandlerUnavailable                    = errors.New("issueops execution prepare handler is not configured")
-	ErrClaimHandlerUnavailable                      = errors.New("issueops execution claim handler is not configured")
-	ErrReleaseHandlerUnavailable                    = errors.New("issueops execution release handler is not configured")
-	ErrReseedHandlerUnavailable                     = errors.New("issueops execution reseed handler is not configured")
-	ErrResumeHandlerUnavailable                     = errors.New("issueops execution resume handler is not configured")
-	ErrReconcileHandlerUnavailable                  = errors.New("issueops execution reconcile handler is not configured")
-	ErrCompleteHandlerUnavailable                   = errors.New("issueops execution complete handler is not configured")
-	ErrRemotePullRequestCreateHandlerUnavailable    = errors.New("remote pull request provider is unavailable")
-	ErrRemotePullRequestReconcileHandlerUnavailable = errors.New("remote reconcile provider is unavailable")
-)
-
-type ExecutionPrepareInvocation struct {
-	ReadIssue ExecutionIssueSnapshotReadFunc
-}
-
-type ExecutionPrepareHandler func(context.Context, string, ExecutionPrepareRequest, ExecutionPrepareInvocation) (ExecutionPrepareResult, error)
-type ExecutionClaimHandler func(context.Context, string, ExecutionClaimRequest, ExecutionClaimDependencies) (ExecutionResult, error)
-type ExecutionReleaseHandler func(context.Context, string, ExecutionReleaseRequest) (ExecutionResult, error)
-type ExecutionReseedHandler func(context.Context, string, ExecutionReseedRequest) (ExecutionReplaceResult, error)
-type ExecutionResumeHandler func(context.Context, string, ExecutionResumeRequest) (ExecutionResumeResult, error)
-type ExecutionReconcileHandler func(context.Context, string, ExecutionReconcileRequest, ExecutionReconcileDependencies) (ExecutionReconcileResult, error)
-type ExecutionCompleteHandler func(context.Context, string, ExecutionCompleteRequest) (ExecutionResult, error)
-
-type RemotePullRequestCreateHandler func(context.Context, string, RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error)
-type RemotePullRequestReconcileHandler func(context.Context, string, ExecutionReconcileRequest) (ExecutionReconcileResult, error)
-
-type RemotePublicationHandlers struct {
-	Create    RemotePullRequestCreateHandler
-	Reconcile RemotePullRequestReconcileHandler
-}
 
 func invokeExecutionPrepareHandler(ctx context.Context, stateRoot string, request ExecutionPrepareRequest, invocation ExecutionPrepareInvocation, handler ExecutionPrepareHandler) (ExecutionPrepareResult, error) {
 	if handler == nil {
 		return ExecutionPrepareResult{ID: request.ID}, ErrPrepareHandlerUnavailable
 	}
 	return handler(ctx, stateRoot, request, invocation)
-}
-
-const (
-	ExecutionActionPrepare   = "prepare"
-	ExecutionActionStatus    = "status"
-	ExecutionActionClaim     = "claim"
-	ExecutionActionRelease   = "release"
-	ExecutionActionReplace   = "replace"
-	ExecutionActionResume    = "resume"
-	ExecutionActionReconcile = "reconcile"
-	ExecutionActionComplete  = "complete"
-)
-
-type ExecutionActionRequest struct {
-	Action                string                               `json:"action"`
-	ID                    string                               `json:"id"`
-	Mode                  string                               `json:"mode,omitempty"`
-	Actor                 issueops.NativeActor                 `json:"actor,omitempty"`
-	CWD                   string                               `json:"cwd,omitempty"`
-	OwnerHost             string                               `json:"owner_host,omitempty"`
-	OwnerModel            string                               `json:"owner_model,omitempty"`
-	OwnerEffort           string                               `json:"owner_effort,omitempty"`
-	Generation            uint64                               `json:"generation,omitempty"`
-	ExpectedGeneration    uint64                               `json:"expected_generation,omitempty"`
-	CompletionGeneration  uint64                               `json:"completion_generation,omitempty"`
-	TokenFile             string                               `json:"claim_token_file,omitempty"`
-	IssueBodySHA256       string                               `json:"issue_body_sha256,omitempty"`
-	ContextPacketSHA256   string                               `json:"context_packet_sha256,omitempty"`
-	ReplaceAction         string                               `json:"replace_action,omitempty"`
-	InventoryFingerprint  string                               `json:"inventory_fingerprint,omitempty"`
-	QuiescenceFingerprint string                               `json:"quiescence_fingerprint,omitempty"`
-	Reason                string                               `json:"reason,omitempty"`
-	Preview               bool                                 `json:"preview,omitempty"`
-	Confirm               bool                                 `json:"confirm,omitempty"`
-	FinalHead             string                               `json:"final_head,omitempty"`
-	TuringReportPath      string                               `json:"turing_report_path,omitempty"`
-	Verification          []string                             `json:"verification,omitempty"`
-	RemoteArtifactURL     string                               `json:"remote_artifact_url,omitempty"`
-	IssueSnapshot         *port.ExecutionIssueSnapshotEvidence `json:"issue_snapshot,omitempty"`
-}
-
-type ExecutionActionDependencies struct {
-	Prepare   ExecutionPrepareHandler
-	Orca      port.ExecutionOrcaProvisioner
-	OrcaOwner port.ExecutionOrcaOwnerInspector
-	BaseSync  basesyncport.Inspector
-	ReadIssue ExecutionIssueSnapshotReadFunc
-	Claim     ExecutionClaimHandler
-	Release   ExecutionReleaseHandler
-	Reseed    ExecutionReseedHandler
-	Resume    ExecutionResumeHandler
-	Reconcile ExecutionReconcileHandler
-	Complete  ExecutionCompleteHandler
-	// RemoteReconcile handles remote_pr_create recovery independently of the
-	// Orca-specific Reconcile handler.
-	RemoteReconcile RemotePullRequestReconcileHandler
 }
 
 func ExecuteExecution(ctx context.Context, stateRoot string, req ExecutionActionRequest, deps ExecutionActionDependencies) (any, error) {

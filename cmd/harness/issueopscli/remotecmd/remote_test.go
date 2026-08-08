@@ -73,7 +73,7 @@ func TestRunVerifyArtifactAndRemoteCreateDryRuns(t *testing.T) {
 			}
 			return nil
 		},
-		Publication: issueopscore.RemotePublicationHandlers{Create: func(context.Context, string, issueopscore.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
+		Publication: PublicationHandlers{Create: func(context.Context, string, issueopscore.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 			return port.IssueProviderCreatePullRequestResult{OK: true, Preview: "would create pull request"}, nil
 		}},
 	}
@@ -171,7 +171,7 @@ func TestRunRemoteCreatePRDryRunRejectsSecretLikeContentBeforeProviderCall(t *te
 	record := remoteIssueOpsRecord(t)
 	secret := "api_key=opaque-token password=opaque-password Authorization: Bearer opaque-bearer /tmp/secret.pem"
 	deps := Deps{
-		Publication: issueopscore.RemotePublicationHandlers{Create: func(context.Context, string, issueopscore.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
+		Publication: PublicationHandlers{Create: func(context.Context, string, issueopscore.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 			return port.IssueProviderCreatePullRequestResult{}, errors.New("remote create title or body contains secret-like content")
 		}},
 	}
@@ -201,7 +201,7 @@ func TestRunRemoteCreatePRUsesPublicationHandlerForPreviewAndConfirm(t *testing.
 	handlerCalls := 0
 	var printed []any
 	deps := Deps{
-		Publication: issueopscore.RemotePublicationHandlers{Create: func(_ context.Context, stateRoot string, request issueopscore.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
+		Publication: PublicationHandlers{Create: func(_ context.Context, stateRoot string, request issueopscore.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 			handlerCalls++
 			if stateRoot != issueopscore.IssueOpsStateRoot() || request.ID != record.ID || request.Provider != "github" || request.Title != "PR" {
 				t.Fatalf("stateRoot=%q request=%#v", stateRoot, request)
@@ -266,7 +266,7 @@ func TestRunRemoteCreatePRObservesAncestryOnlyForConfirmedMutation(t *testing.T)
 			observeCalls++
 			return nil, errors.New("ps unavailable")
 		},
-		Publication: issueopscore.RemotePublicationHandlers{Create: func(context.Context, string, issueopscore.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
+		Publication: PublicationHandlers{Create: func(context.Context, string, issueopscore.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error) {
 			providerCalls++
 			return port.IssueProviderCreatePullRequestResult{OK: true, Preview: "would create pull request"}, nil
 		}},

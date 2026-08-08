@@ -1,7 +1,6 @@
 package basiccli
 
 import (
-	guard "agent-harness/internal/adapter/guard"
 	guardcontract "agent-harness/internal/contract/guard"
 	"flag"
 	"fmt"
@@ -69,7 +68,7 @@ func runGuardCheck(args []string) error {
 				blockers = append(blockers, finding)
 			}
 		}
-		return guard.GuardBlockedError{Findings: blockers}
+		return NewGuardBlockedError(blockers)
 	}
 	return nil
 }

@@ -15,19 +15,6 @@ import (
 	"agent-harness/internal/port"
 )
 
-// CleanupRemoteBranchRequest는 머지 검증된 사이클의 원격 브랜치를 typed 경로로
-// 삭제하는 입력이다(이슈 #116). cleanup 명령군 순서는
-// status → close-children → remote-branch → finish다.
-//
-// 이 표면은 source checkout 전용이다(cwd = record.Repo). 워크트리 cwd에서의
-// 호출은 lease 가드가 미분류 셸로 차단한다.
-type CleanupRemoteBranchRequest struct {
-	ID          string
-	Apply       bool
-	Confirm     bool
-	Fingerprint string
-}
-
 // CleanupRemoteBranchDeps는 외부 표면 주입점이다.
 //
 // Git은 sync-base와 같은 ctx 서명을 쓴다 — 원격 관측과 삭제가 모두 네트워크
@@ -42,33 +29,6 @@ type CleanupRemoteBranchDeps struct {
 	// (finish ④'의 CleanupAudit 병합 선례). best-effort이며 실패해도 이미 끝난
 	// 원격 삭제를 되돌리지 않는다.
 	ReflectAudit func(record issueops.IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string) error
-}
-
-type CleanupRemoteBranchResult struct {
-	OK                  bool     `json:"ok"`
-	ID                  string   `json:"id"`
-	Preview             bool     `json:"preview"`
-	Missing             []string `json:"missing,omitempty"`
-	ArtifactError       string   `json:"artifact_error,omitempty"`
-	RemoteIdentityError string   `json:"remote_identity_error,omitempty"`
-	Fingerprint         string   `json:"fingerprint,omitempty"`
-	Branch              string   `json:"branch,omitempty"`
-	RemoteOID           string   `json:"remote_oid,omitempty"`
-	ArtifactHeadBranch  string   `json:"artifact_head_branch,omitempty"`
-	ArtifactHeadOID     string   `json:"artifact_head_oid,omitempty"`
-	RemoteBranchPresent bool     `json:"remote_branch_present"`
-	// RemoteTipReachedBase는 게이트 ⑩이 OID 일치가 아니라 ancestry로 통과했음을
-	// 밝힌다. 두 근거는 강도가 다르므로 무엇으로 통과했는지 남긴다 — OID 일치는
-	// "머지된 그 커밋 그대로"이고, ancestry는 "다른 커밋이지만 이미 base에 있다"다
-	// (이슈 #153).
-	RemoteTipReachedBase bool   `json:"remote_tip_reached_base,omitempty"`
-	AlreadyAbsent        bool   `json:"already_absent,omitempty"`
-	Deleted              bool   `json:"deleted,omitempty"`
-	DeletedAt            string `json:"deleted_at,omitempty"`
-	AuditReflected       bool   `json:"audit_reflected,omitempty"`
-	AuditError           string `json:"audit_error,omitempty"`
-	FailedStep           string `json:"failed_step,omitempty"`
-	NextCommand          string `json:"next_command,omitempty"`
 }
 
 // cleanupRemoteBranchInventory는 fingerprint 입력이 되는 현재 관측 상태다.

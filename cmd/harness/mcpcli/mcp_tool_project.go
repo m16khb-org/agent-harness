@@ -3,7 +3,7 @@ package mcpcli
 import (
 	"agent-harness/cmd/harness/apidoc"
 	"agent-harness/cmd/harness/mcpcli/argmap"
-	projectbootstrap "agent-harness/internal/adapter/projectbootstrap"
+	projectbootstrapcontract "agent-harness/internal/contract/projectbootstrap"
 	projectdocscontract "agent-harness/internal/contract/projectdocs"
 )
 
@@ -30,7 +30,7 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		}
 		return mcpToolPayload(result)
 	case "project_docs_bootstrap_plan":
-		result, err := projectbootstrap.BootstrapProjectDocs(projectbootstrap.ProjectDocsBootstrapRequest{RepoRoot: ResolveTarget(argmap.String(call.Arguments, "repo")), Write: false})
+		result, err := bootstrapProjectDocs(projectbootstrapcontract.ProjectDocsBootstrapRequest{RepoRoot: ResolveTarget(argmap.String(call.Arguments, "repo")), Write: false})
 		if err != nil {
 			return mcpToolFailure(newProtocolError(-32602, "Project docs bootstrap plan failed", err.Error()))
 		}

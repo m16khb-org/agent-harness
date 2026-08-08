@@ -2,10 +2,10 @@ package issueopscli
 
 import (
 	"agent-harness/cmd/harness/issueopscli/benchmarkartifact"
-	issueopscore "agent-harness/internal/adapter/issueops"
+	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
-func benchmarkArtifactFromFixture(fixture issueopscore.IssueOpsBenchmarkFixture) issueopscore.IssueOpsBenchmarkArtifact {
+func benchmarkArtifactFromFixture(fixture issueopscontract.IssueOpsBenchmarkFixture) issueopscontract.IssueOpsBenchmarkArtifact {
 	return benchmarkartifact.FromFixture(fixture)
 }
 

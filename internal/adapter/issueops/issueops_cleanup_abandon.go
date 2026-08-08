@@ -28,32 +28,6 @@ const cleanupAbandonReasonLimit = 512
 // 거부보다 reason_required가 훨씬 읽기 쉽다).
 const cleanupAbandonReasonForbidden = "\"'`$\\|&;<>()*?~"
 
-// CleanupAbandonRequest는 폐기된 비-done 사이클의 로컬 worktree, branch,
-// record 수명 종료(issue #106, #293)의 입력이다.
-//
-// 이 경로는 cleanup finish와 두 가지 축에서 다르다.
-//   - 원격 무접촉: 이슈 본문·PR/MR·원격 브랜치 어느 것도 읽지도 쓰지도 않는다.
-//     ReflectCleanupAudit를 재사용하지 않는 이유는 빈 completion payload가 열린
-//     이슈에 가짜 "완료 기록" 섹션을 append하고, 그 마커만 보는
-//     `completion_reflected` 게이트가 미래 사이클의 파괴적 finish를 영구
-//     개방하기 때문이다(brooks F3).
-//   - 보존 불변식 C2-F6("레코드 삭제 전 보존")의 의도적 예외: 원격에 남길
-//     자리가 없으므로 삭제 대상 레코드 전문을 결과 JSON에 담는 것이 유일한
-//     보존 채널이다(brooks F7 완화책).
-type CleanupAbandonRequest struct {
-	ID          string
-	Reason      string
-	Apply       bool
-	Confirm     bool
-	Fingerprint string
-	// ArtifactUnmerged는 레코드의 remote artifact가 병합되지 않았음을 호출자가
-	// 실제로 관측했다는 뜻이다. 관측 실패와 미관측은 모두 false로 남아 게이트가
-	// 닫힌 상태를 유지한다(fail-closed). 이 값은 fingerprint 입력이 아니다 —
-	// 네트워크 관측을 인벤토리에 섞으면 일시적 원격 오류가 preview 재발급
-	// 루프를 만든다(finish의 remote_branch_absent와 같은 규율).
-	ArtifactUnmerged bool
-}
-
 // CleanupAbandonDeps는 게이트 평가의 외부 표면이다.
 //
 // Orca는 pending_intent_safe 게이트가 sealed marker로 orca 인벤토리를 실조회할
@@ -71,41 +45,6 @@ type CleanupAbandonDeps struct {
 	// 바인딩이 있는 레코드에서만 일어난다 — direct 사이클까지 어댑터를
 	// 요구하면 아무 관련 없는 정리가 막힌다.
 	OrcaOwner port.ExecutionOrcaOwnerInspector
-}
-
-type CleanupAbandonResult struct {
-	OK                   bool     `json:"ok"`
-	ID                   string   `json:"id"`
-	Preview              bool     `json:"preview"`
-	Reason               string   `json:"reason,omitempty"`
-	Missing              []string `json:"missing,omitempty"`
-	ReasonError          string   `json:"reason_error,omitempty"`
-	PendingIntentError   string   `json:"pending_intent_error,omitempty"`
-	OrcaResidueError     string   `json:"orca_residue_error,omitempty"`
-	Fingerprint          string   `json:"fingerprint,omitempty"`
-	WorktreePath         string   `json:"worktree_path,omitempty"`
-	Branch               string   `json:"branch,omitempty"`
-	WorktreePresent      bool     `json:"worktree_present"`
-	BranchPresent        bool     `json:"branch_present"`
-	WorktreeCanonical    bool     `json:"worktree_canonical"`
-	WorktreeClean        bool     `json:"worktree_clean"`
-	WorktreeHead         string   `json:"worktree_head,omitempty"`
-	BranchOID            string   `json:"branch_oid,omitempty"`
-	BranchCheckoutPath   string   `json:"branch_checkout_path,omitempty"`
-	RemovalPlan          []string `json:"removal_plan,omitempty"`
-	RemoteBranchDeletion string   `json:"remote_branch_deletion"`
-	PendingOperationID   string   `json:"pending_operation_id,omitempty"`
-	IntentRowsDeleted    []string `json:"intent_rows_deleted,omitempty"`
-	WorktreeRemoved      bool     `json:"worktree_removed,omitempty"`
-	BranchDeleted        bool     `json:"branch_deleted,omitempty"`
-	RecordDeleted        bool     `json:"record_deleted,omitempty"`
-	AbandonedAt          string   `json:"abandoned_at,omitempty"`
-	FailedStep           string   `json:"failed_step,omitempty"`
-	NextCommand          string   `json:"next_command,omitempty"`
-	// Record는 삭제 대상 레코드 전문이다. C2-F6 예외의 유일한 보존 채널이므로
-	// preview와 apply 양쪽 결과에 담는다 — preview에만 담으면 preview 이후
-	// apply 직전까지의 변경분이 어디에도 남지 않는다.
-	Record *issueops.IssueOpsRecord `json:"record,omitempty"`
 }
 
 // cleanupAbandonInventory는 fingerprint 입력이 되는 현재 관측 상태다.

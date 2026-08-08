@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 
-	issueopscore "agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
@@ -35,7 +34,7 @@ func runIssueOpsPlanPrep(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := issueopscore.RecordIssueOpsPlanPrepWithActor(issueopscore.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsPlanPrepRequest{
+	record, err := issueOpsCLIDeps.RecordIssueOpsPlanPrepWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsPlanPrepRequest{
 		PriorDecisions: issueopscontract.IssueOpsPlanPrepItemRequest{Evidence: []string(decisionsEvidence), WaiveReason: *decisionsWaive},
 		RelatedIssues:  issueopscontract.IssueOpsPlanPrepItemRequest{Evidence: []string(relatedScore), WaiveReason: *relatedWaive},
 		WebResearch:    issueopscontract.IssueOpsPlanPrepItemRequest{Evidence: []string(webResearch), WaiveReason: *webWaive},

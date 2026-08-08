@@ -17,7 +17,7 @@ import (
 )
 
 func TestAppendWritesJSONL(t *testing.T) {
-	plan := model.ProjectLifecycleStatePlan{
+	plan := lifecyclecontract.ProjectLifecycleStatePlan{
 		OK:              true,
 		RepoRoot:        t.TempDir(),
 		RepoID:          "repo-1",
@@ -27,8 +27,8 @@ func TestAppendWritesJSONL(t *testing.T) {
 		NamespaceValid:  true,
 	}
 	store := Store{
-		Validate: func(string) (model.ProjectLifecycleStatePlan, error) { return plan, nil },
-		Init:     func(string, bool) (model.ProjectLifecycleStatePlan, error) { return plan, nil },
+		Validate: func(string) (lifecyclecontract.ProjectLifecycleStatePlan, error) { return plan, nil },
+		Init:     func(string, bool) (lifecyclecontract.ProjectLifecycleStatePlan, error) { return plan, nil },
 	}
 
 	result, err := Append(store, plan.RepoRoot, lifecyclecontract.DocUpkeepEvent{
@@ -81,7 +81,7 @@ func TestReadPendingFiltersLimitsAndSkipsMalformedLines(t *testing.T) {
 	if err := os.WriteFile(plan.QueuePath, []byte(joinLines(lines...)), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	store := Store{Validate: func(string) (model.ProjectLifecycleStatePlan, error) { return plan, nil }}
+	store := Store{Validate: func(string) (lifecyclecontract.ProjectLifecycleStatePlan, error) { return plan, nil }}
 
 	events, gotPlan, err := ReadPending(store, plan.RepoRoot, 2)
 	if err != nil {
@@ -110,7 +110,7 @@ func TestReadPendingCompactsQueueToPendingEvents(t *testing.T) {
 	if err := os.WriteFile(plan.QueuePath, []byte(joinLines(lines...)), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	store := Store{Validate: func(string) (model.ProjectLifecycleStatePlan, error) { return plan, nil }}
+	store := Store{Validate: func(string) (lifecyclecontract.ProjectLifecycleStatePlan, error) { return plan, nil }}
 
 	events, _, err := ReadPending(store, plan.RepoRoot, 0)
 	if err != nil {
@@ -134,8 +134,8 @@ func TestReadPendingCompactsQueueToPendingEvents(t *testing.T) {
 func TestAppendWaitsForDocUpkeepLock(t *testing.T) {
 	plan := docUpkeepPlanForTest(t)
 	store := Store{
-		Validate: func(string) (model.ProjectLifecycleStatePlan, error) { return plan, nil },
-		Init:     func(string, bool) (model.ProjectLifecycleStatePlan, error) { return plan, nil },
+		Validate: func(string) (lifecyclecontract.ProjectLifecycleStatePlan, error) { return plan, nil },
+		Init:     func(string, bool) (lifecyclecontract.ProjectLifecycleStatePlan, error) { return plan, nil },
 	}
 
 	started := make(chan struct{})
@@ -167,7 +167,7 @@ func TestAppendWaitsForDocUpkeepLock(t *testing.T) {
 
 func TestReadPendingHandlesPlanAndQueueBoundaries(t *testing.T) {
 	plan := docUpkeepPlanForTest(t)
-	store := Store{Validate: func(string) (model.ProjectLifecycleStatePlan, error) { return plan, nil }}
+	store := Store{Validate: func(string) (lifecyclecontract.ProjectLifecycleStatePlan, error) { return plan, nil }}
 	events, _, err := ReadPending(store, plan.RepoRoot, 0)
 	if err != nil {
 		t.Fatal(err)
@@ -178,7 +178,7 @@ func TestReadPendingHandlesPlanAndQueueBoundaries(t *testing.T) {
 
 	noState := plan
 	noState.Exists = false
-	store = Store{Validate: func(string) (model.ProjectLifecycleStatePlan, error) { return noState, nil }}
+	store = Store{Validate: func(string) (lifecyclecontract.ProjectLifecycleStatePlan, error) { return noState, nil }}
 	events, _, err = ReadPending(store, plan.RepoRoot, 0)
 	if err != nil || len(events) != 0 {
 		t.Fatalf("non-existent lifecycle returned events=%+v err=%v", events, err)
@@ -186,13 +186,13 @@ func TestReadPendingHandlesPlanAndQueueBoundaries(t *testing.T) {
 
 	badNamespace := plan
 	badNamespace.NamespaceValid = false
-	store = Store{Validate: func(string) (model.ProjectLifecycleStatePlan, error) { return badNamespace, nil }}
+	store = Store{Validate: func(string) (lifecyclecontract.ProjectLifecycleStatePlan, error) { return badNamespace, nil }}
 	events, _, err = ReadPending(store, plan.RepoRoot, 0)
 	if err != nil || len(events) != 0 {
 		t.Fatalf("namespace mismatch returned events=%+v err=%v", events, err)
 	}
 
-	store = Store{Validate: func(string) (model.ProjectLifecycleStatePlan, error) {
+	store = Store{Validate: func(string) (lifecyclecontract.ProjectLifecycleStatePlan, error) {
 		return plan, fmt.Errorf("validate failed")
 	}}
 	events, _, err = ReadPending(store, plan.RepoRoot, 0)
@@ -221,10 +221,10 @@ func TestNormalizeTargetDocs(t *testing.T) {
 	}
 }
 
-func docUpkeepPlanForTest(t *testing.T) model.ProjectLifecycleStatePlan {
+func docUpkeepPlanForTest(t *testing.T) lifecyclecontract.ProjectLifecycleStatePlan {
 	t.Helper()
 	stateDir := t.TempDir()
-	return model.ProjectLifecycleStatePlan{
+	return lifecyclecontract.ProjectLifecycleStatePlan{
 		OK:              true,
 		RepoRoot:        t.TempDir(),
 		RepoID:          "repo-1",

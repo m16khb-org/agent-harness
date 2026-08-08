@@ -1,6 +1,7 @@
 package intentdesign
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"errors"
 	"fmt"
 	"strings"
@@ -18,7 +19,7 @@ type Store struct {
 }
 
 const (
-	DesignReviewEvidenceExample  = "design review checked alternatives and risks"
+	DesignReviewEvidenceExample  = issueopscontract.IssueOpsDesignReviewEvidenceExample
 	designReviewEvidenceGuidance = `approved design review requires design_review_evidence: this is not a separate flag or decision record; add --verification "design review checked alternatives and risks" or a Korean equivalent such as "설계 검토 완료: 대안과 위험 확인"`
 )
 

@@ -1,6 +1,7 @@
 package benchmark
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"strings"
 	"testing"
 )
@@ -11,21 +12,21 @@ const coddKeywordEvidence = "Schema/row count: orders has 12M rows\nEXPLAIN evid
 // Same-entry pairing: the expected (phase,skill) must match ONE trace entry on
 // BOTH fields. A trace with the right skill at the WRONG phase must fail.
 func TestSkillRoutingFidelitySameEntryPairing(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ExpectedRouting: []SkillRouting{{Phase: "plan", Skill: "codd"}}}
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ExpectedRouting: []issueopscontract.SkillRouting{{Phase: "plan", Skill: "codd"}}}
 
-	matched := IssueOpsBenchmarkArtifact{RoutingTrace: []SkillRouting{{Phase: "Plan", Skill: "CODD"}}}
+	matched := issueopscontract.IssueOpsBenchmarkArtifact{RoutingTrace: []issueopscontract.SkillRouting{{Phase: "Plan", Skill: "CODD"}}}
 	if !issueOpsSkillRoutingFidelityComplete(fixture, matched) {
 		t.Fatal("case-insensitive same-entry pairing must pass")
 	}
 
 	// 'plan' present (from hopper entry) and 'codd' present (from review entry),
 	// but codd never fired at plan -> must FAIL same-entry pairing.
-	crossPaired := IssueOpsBenchmarkArtifact{RoutingTrace: []SkillRouting{{Phase: "plan", Skill: "hopper"}, {Phase: "review", Skill: "codd"}}}
+	crossPaired := issueopscontract.IssueOpsBenchmarkArtifact{RoutingTrace: []issueopscontract.SkillRouting{{Phase: "plan", Skill: "hopper"}, {Phase: "review", Skill: "codd"}}}
 	if issueOpsSkillRoutingFidelityComplete(fixture, crossPaired) {
 		t.Fatal("cross-paired trace (right skill at wrong phase) must FAIL same-entry pairing")
 	}
 
-	if issueOpsSkillRoutingFidelityComplete(fixture, IssueOpsBenchmarkArtifact{}) {
+	if issueOpsSkillRoutingFidelityComplete(fixture, issueopscontract.IssueOpsBenchmarkArtifact{}) {
 		t.Fatal("empty trace must fail when routing is expected")
 	}
 }
@@ -33,7 +34,7 @@ func TestSkillRoutingFidelitySameEntryPairing(t *testing.T) {
 // Direction A: a fixture WITHOUT expected_routing keeps pre-dimension scores
 // (true N/A: excluded from average/minimum/Passed) while still recorded.
 func TestRoutingDimensionNAExcludedForNonRoutingFixture(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ID: "fixture"}
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "fixture"}
 	score := ScoreIssueOpsBenchmarkArtifact(fixture, completeBenchmarkArtifactForTest())
 
 	if score.AverageScore != 100 || score.MinimumScore != 100 || !score.Passed {
@@ -56,7 +57,7 @@ func TestRoutingDimensionNAExcludedForNonRoutingFixture(t *testing.T) {
 // Direction B (silent-no-op guard): a routing fixture with an empty trace must
 // actually participate — minimum drops to 0 and a routing failure is recorded.
 func TestRoutingDimensionParticipatesForRoutingFixture(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{ID: "f", ExpectedRouting: []SkillRouting{{Phase: "plan", Skill: "codd"}}}
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{ID: "f", ExpectedRouting: []issueopscontract.SkillRouting{{Phase: "plan", Skill: "codd"}}}
 	score := ScoreIssueOpsBenchmarkArtifact(fixture, completeBenchmarkArtifactForTest())
 
 	if score.MinimumScore != 0 || score.Passed {
@@ -78,16 +79,16 @@ func TestRoutingDimensionParticipatesForRoutingFixture(t *testing.T) {
 // ONLY the routing critical rule (not "skips pioneer method"), isolating the two
 // axes so the ONLY thing distinguishing tampered from clean is routing.
 func TestSkillRoutingFidelityCatchesKeywordWithoutRouting(t *testing.T) {
-	fixture := IssueOpsBenchmarkFixture{
+	fixture := issueopscontract.IssueOpsBenchmarkFixture{
 		ID:                 "routing-boundary",
 		PioneerSkillTarget: "codd",
-		ExpectedRouting:    []SkillRouting{{Phase: "plan", Skill: "codd"}},
+		ExpectedRouting:    []issueopscontract.SkillRouting{{Phase: "plan", Skill: "codd"}},
 		CriticalFailures:   []string{"skips expected routing"},
 	}
 
 	clean := completeBenchmarkArtifactForTest()
 	clean.PioneerSkillEvidence = coddKeywordEvidence
-	clean.RoutingTrace = []SkillRouting{{Phase: "plan", Skill: "codd"}}
+	clean.RoutingTrace = []issueopscontract.SkillRouting{{Phase: "plan", Skill: "codd"}}
 	cleanScore := ScoreIssueOpsBenchmarkArtifact(fixture, clean)
 
 	if dimScore(cleanScore, "skill_routing_fidelity") != 100 {

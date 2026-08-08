@@ -9,52 +9,6 @@ import (
 	"agent-harness/internal/contract/issueops"
 )
 
-// ExecutionSwitchModeRequest는 준비된 실행의 모드를 바꾸는 입력이다.
-//
-// prepare가 아니라 별도 명령인 이유는 파괴 범위다. Orca는 기존 브랜치나 경로를
-// 입양하지 않고 path_collision으로 거부하므로(orca
-// src/main/ipc/workspace-create-error-classifier.ts) 전환은 반드시 기존 워크트리와
-// 로컬 브랜치 제거를 동반한다. cleanup abandon과 finish가 각자 이름을 가진 것과
-// 같은 이유로, 그 조작을 준비 명령 안에 숨기지 않는다(이슈 #167).
-type ExecutionSwitchModeRequest struct {
-	ID          string
-	Mode        string
-	CWD         string
-	Apply       bool
-	Confirm     bool
-	Fingerprint string
-	Actor       issueops.NativeActor
-}
-
-// ExecutionSwitchModeDependencies는 게이트 평가와 정리의 외부 표면이다.
-// Git이 nil이면 preflight를 쓴다 — cleanup 경로와 같은 관례다.
-type ExecutionSwitchModeDependencies struct {
-	Git func(dir string, args ...string) (int, string)
-}
-
-type ExecutionSwitchModeResult struct {
-	OK              bool     `json:"ok"`
-	ID              string   `json:"id"`
-	Preview         bool     `json:"preview"`
-	CurrentMode     string   `json:"current_mode,omitempty"`
-	RequestedMode   string   `json:"requested_mode,omitempty"`
-	LeaseGeneration uint64   `json:"lease_generation,omitempty"`
-	Missing         []string `json:"missing,omitempty"`
-	Fingerprint     string   `json:"fingerprint,omitempty"`
-	WorktreeRoot    string   `json:"worktree_root,omitempty"`
-	Branch          string   `json:"branch,omitempty"`
-	// WorktreePresent와 BranchPresent는 apply가 실제로 지울 대상이다. preview가
-	// 이 둘을 보여주지 않으면 사용자는 무엇을 승인하는지 모른다.
-	WorktreePresent bool `json:"worktree_present"`
-	BranchPresent   bool `json:"branch_present"`
-	// BranchFreeError는 orca 전환이 브랜치 이름에 막혔을 때의 원인이다.
-	// missing 슬러그만으로는 이름이 로컬에 있는지 원격에 있는지 알 수 없다.
-	BranchFreeError string `json:"branch_free_error,omitempty"`
-	NextCommand     string `json:"next_command,omitempty"`
-	NextAction      string `json:"next_action,omitempty"`
-	SwitchedAt      string `json:"switched_at,omitempty"`
-}
-
 // switchModeInventory는 fingerprint 입력이 되는 현재 관측 상태다.
 type switchModeInventory struct {
 	ID              string `json:"id"`

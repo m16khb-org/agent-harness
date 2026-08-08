@@ -37,26 +37,6 @@ type ExecutionWorkspaceAccessProber interface {
 	ProbeAccess(context.Context, ExecutionWorkspaceRequest, string) (ExecutionWorkspaceAccessResult, error)
 }
 
-type ExecutionIssueSnapshotRequest struct {
-	Repo string `json:"repo"`
-	URL  string `json:"url"`
-}
-
-type ExecutionIssueSnapshot struct {
-	URL    string `json:"url"`
-	Body   string `json:"body"`
-	State  string `json:"state,omitempty"`
-	Source string `json:"source,omitempty"`
-}
-
-type ExecutionIssueSnapshotEvidence struct {
-	Provider string `json:"provider"`
-	Source   string `json:"source"`
-	WebURL   string `json:"web_url"`
-	Body     string `json:"body"`
-	State    string `json:"state"`
-}
-
 type ExecutionIssueSnapshotReader interface {
 	ReadIssueSnapshot(context.Context, ExecutionIssueSnapshotRequest) (ExecutionIssueSnapshot, error)
 }

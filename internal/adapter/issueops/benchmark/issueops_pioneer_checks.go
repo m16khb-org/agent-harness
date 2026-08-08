@@ -1,5 +1,7 @@
 package benchmark
 
+import issueopscontract "agent-harness/internal/contract/issueops"
+
 import "strings"
 
 // issueOpsPioneerSkillEvidenceComplete reports whether the artifact's
@@ -12,7 +14,7 @@ import "strings"
 //
 // Fixtures without a pioneer_skill_target are handled as N/A by the scorer
 // and never reach this check.
-func issueOpsPioneerSkillEvidenceComplete(fixture IssueOpsBenchmarkFixture, artifact IssueOpsBenchmarkArtifact) bool {
+func issueOpsPioneerSkillEvidenceComplete(fixture issueopscontract.IssueOpsBenchmarkFixture, artifact issueopscontract.IssueOpsBenchmarkArtifact) bool {
 	evidence := artifact.PioneerSkillEvidence
 	switch strings.ToLower(strings.TrimSpace(fixture.PioneerSkillTarget)) {
 	case "von-neumann":

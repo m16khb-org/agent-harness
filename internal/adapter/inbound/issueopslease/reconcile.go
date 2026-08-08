@@ -1,24 +1,25 @@
 package issueopslease
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
+	"agent-harness/internal/port"
 	"context"
 
-	"agent-harness/internal/adapter/issueops"
 	leaseapp "agent-harness/internal/application/issueopslease"
 )
 
 type ReconcileHandler struct{ service *leaseapp.ReconcileService }
 
-func NewReconcileHandler(service *leaseapp.ReconcileService) issueops.ExecutionReconcileHandler {
+func NewReconcileHandler(service *leaseapp.ReconcileService) port.ExecutionReconcileHandler {
 	return ReconcileHandler{service: service}.Handle
 }
 
-func (h ReconcileHandler) Handle(ctx context.Context, _ string, request issueops.ExecutionReconcileRequest, _ issueops.ExecutionReconcileDependencies) (issueops.ExecutionReconcileResult, error) {
+func (h ReconcileHandler) Handle(ctx context.Context, _ string, request issueopscontract.ExecutionReconcileRequest, _ port.ExecutionReconcileDependencies) (issueopscontract.ExecutionReconcileResult, error) {
 	if h.service == nil {
-		return issueops.ExecutionReconcileResult{ID: request.ID}, issueops.ErrReconcileHandlerUnavailable
+		return issueopscontract.ExecutionReconcileResult{ID: request.ID}, issueopscontract.ErrReconcileHandlerUnavailable
 	}
 	result, err := h.service.Reconcile(ctx, leaseapp.ReconcileRequest{ID: request.ID})
-	public := issueops.ExecutionReconcileResult{
+	public := issueopscontract.ExecutionReconcileResult{
 		OK: result.OK, ID: result.ID, Reconciled: result.Reconciled, Code: result.Code,
 		ExternalStateInspected: result.ExternalStateInspected,
 	}

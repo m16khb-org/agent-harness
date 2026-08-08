@@ -16,26 +16,26 @@ import (
 )
 
 type Store struct {
-	ReadPending func(repoRoot string, limit int) ([]lifecyclecontract.DocUpkeepEvent, model.ProjectLifecycleStatePlan, error)
-	Validate    func(repoRoot string) (model.ProjectLifecycleStatePlan, error)
+	ReadPending func(repoRoot string, limit int) ([]lifecyclecontract.DocUpkeepEvent, lifecyclecontract.ProjectLifecycleStatePlan, error)
+	Validate    func(repoRoot string) (lifecyclecontract.ProjectLifecycleStatePlan, error)
 	WriteJSON   func(path string, value any, perm os.FileMode) error
 }
 
-func BuildPreCompactCapsule(store Store, repo string) model.LifecycleCompactResult {
+func BuildPreCompactCapsule(store Store, repo string) lifecyclecontract.LifecycleCompactResult {
 	events, plan, err := store.ReadPending(repo, 8)
 	if err != nil {
-		return model.LifecycleCompactResult{OK: true, Warnings: []string{"pending_doc_upkeep_read_error"}}
+		return lifecyclecontract.LifecycleCompactResult{OK: true, Warnings: []string{"pending_doc_upkeep_read_error"}}
 	}
 	if !plan.Exists || !plan.NamespaceValid || len(events) == 0 {
-		return model.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath}
+		return lifecyclecontract.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath}
 	}
 
-	var result model.LifecycleCompactResult
+	var result lifecyclecontract.LifecycleCompactResult
 	// P2: serialize the read-existing -> merge -> write span so two overlapping
 	// PreCompacts (the same per-repo capsule is shared across sessions) cannot
 	// lose each other's merged PendingDocUpkeep via a last-writer-wins clobber.
 	lockErr := WithKeyLock(context.Background(), plan.ProjectStateDir, "compact-capsule", func(context.Context) error {
-		capsule := model.LifecycleCompactCapsule{
+		capsule := lifecyclecontract.LifecycleCompactCapsule{
 			SchemaVersion:     model.ProjectLifecycleSchemaVersion,
 			RepoRoot:          plan.RepoRoot,
 			RepoID:            plan.RepoID,
@@ -59,14 +59,14 @@ func BuildPreCompactCapsule(store Store, repo string) model.LifecycleCompactResu
 		}
 
 		if err := store.WriteJSON(plan.CompactPath, capsule, 0o600); err != nil {
-			result = model.LifecycleCompactResult{OK: false, PendingCount: len(capsule.PendingDocUpkeep), CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_write_error"}}
+			result = lifecyclecontract.LifecycleCompactResult{OK: false, PendingCount: len(capsule.PendingDocUpkeep), CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_write_error"}}
 			return nil
 		}
-		result = model.LifecycleCompactResult{OK: true, Recorded: true, PendingCount: len(capsule.PendingDocUpkeep), CompactPath: plan.CompactPath}
+		result = lifecyclecontract.LifecycleCompactResult{OK: true, Recorded: true, PendingCount: len(capsule.PendingDocUpkeep), CompactPath: plan.CompactPath}
 		return nil
 	})
 	if lockErr != nil {
-		return model.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_lock_error"}}
+		return lifecyclecontract.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_lock_error"}}
 	}
 	return result
 }
@@ -84,17 +84,17 @@ func compactCapsuleNonce(repoID, createdAt string) string {
 
 // readCompactCapsule reads an existing compact capsule from disk.
 // Returns the capsule and true if a valid capsule was found.
-func readCompactCapsule(path string) (model.LifecycleCompactCapsule, bool) {
+func readCompactCapsule(path string) (lifecyclecontract.LifecycleCompactCapsule, bool) {
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return model.LifecycleCompactCapsule{}, false
+		return lifecyclecontract.LifecycleCompactCapsule{}, false
 	}
-	var capsule model.LifecycleCompactCapsule
+	var capsule lifecyclecontract.LifecycleCompactCapsule
 	if err := json.Unmarshal(b, &capsule); err != nil {
-		return model.LifecycleCompactCapsule{}, false
+		return lifecyclecontract.LifecycleCompactCapsule{}, false
 	}
 	if capsule.SchemaVersion != model.ProjectLifecycleSchemaVersion {
-		return model.LifecycleCompactCapsule{}, false
+		return lifecyclecontract.LifecycleCompactCapsule{}, false
 	}
 	return capsule, true
 }
@@ -123,34 +123,34 @@ func mergeDocUpkeepEvents(existing, incoming []lifecyclecontract.DocUpkeepEvent)
 	return out
 }
 
-func BuildPostCompactReminder(store Store, repo string) model.LifecycleCompactResult {
+func BuildPostCompactReminder(store Store, repo string) lifecyclecontract.LifecycleCompactResult {
 	plan, err := store.Validate(repo)
 	if err != nil {
-		return model.LifecycleCompactResult{OK: true, Warnings: []string{"lifecycle_state_read_error"}}
+		return lifecyclecontract.LifecycleCompactResult{OK: true, Warnings: []string{"lifecycle_state_read_error"}}
 	}
 	if !plan.Exists || !plan.NamespaceValid {
-		return model.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath}
+		return lifecyclecontract.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath}
 	}
 	b, err := os.ReadFile(plan.CompactPath)
 	if os.IsNotExist(err) {
-		return model.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath}
+		return lifecyclecontract.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath}
 	}
 	if err != nil {
-		return model.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_read_error"}}
+		return lifecyclecontract.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_read_error"}}
 	}
-	var capsule model.LifecycleCompactCapsule
+	var capsule lifecyclecontract.LifecycleCompactCapsule
 	if err := json.Unmarshal(b, &capsule); err != nil {
-		return model.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_decode_error"}}
+		return lifecyclecontract.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_decode_error"}}
 	}
 	if capsule.SchemaVersion != model.ProjectLifecycleSchemaVersion || capsule.RepoID != plan.RepoID {
-		return model.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_namespace_mismatch"}}
+		return lifecyclecontract.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath, Warnings: []string{"compact_capsule_namespace_mismatch"}}
 	}
 	context := renderLifecycleCompactContext(capsule)
 	if strings.TrimSpace(context) == "" {
-		return model.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath}
+		return lifecyclecontract.LifecycleCompactResult{OK: true, CompactPath: plan.CompactPath}
 	}
 	consumeCompactCapsule(plan.CompactPath, capsule)
-	return model.LifecycleCompactResult{
+	return lifecyclecontract.LifecycleCompactResult{
 		OK:                true,
 		ShouldInject:      true,
 		AdditionalContext: context,
@@ -166,7 +166,7 @@ func BuildPostCompactReminder(store Store, repo string) model.LifecycleCompactRe
 // PostCompact rather than deleting unseen hints. This is a non-atomic
 // compare-and-swap — a residual TOCTOU and a coarse-clock CreatedAt-equality
 // window remain — but it never loses data the prior unconditional remove kept.
-func consumeCompactCapsule(path string, consumed model.LifecycleCompactCapsule) {
+func consumeCompactCapsule(path string, consumed lifecyclecontract.LifecycleCompactCapsule) {
 	// Compare BOTH CreatedAt and Nonce (conjunction). Nonce alone would be unsafe
 	// during migration: two legacy capsules both have an empty Nonce and would
 	// falsely match. With the conjunction, an empty-nonce legacy capsule degrades
@@ -185,7 +185,7 @@ func docsFromDocUpkeepEvents(events []lifecyclecontract.DocUpkeepEvent) []string
 	return docupkeep.NormalizeTargetDocs(docs)
 }
 
-func renderLifecycleCompactContext(capsule model.LifecycleCompactCapsule) string {
+func renderLifecycleCompactContext(capsule lifecyclecontract.LifecycleCompactCapsule) string {
 	if len(capsule.PendingDocUpkeep) == 0 && len(capsule.RequiredDocs) == 0 {
 		return ""
 	}

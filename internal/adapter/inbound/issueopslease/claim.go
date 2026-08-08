@@ -1,11 +1,11 @@
 package issueopslease
 
 import (
+	issueopscontract "agent-harness/internal/contract/issueops"
 	"context"
 	"errors"
 	"fmt"
 
-	"agent-harness/internal/adapter/issueops"
 	leaseapp "agent-harness/internal/application/issueopslease"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	leasedomain "agent-harness/internal/domain/issueopslease"
@@ -13,23 +13,23 @@ import (
 
 type ClaimHandler struct{ service *leaseapp.ClaimService }
 
-func NewClaimHandler(service *leaseapp.ClaimService) issueops.ExecutionClaimHandler {
+func NewClaimHandler(service *leaseapp.ClaimService) issueopscontract.ExecutionClaimHandler {
 	handler := ClaimHandler{service: service}
 	return handler.Handle
 }
 
-func (h ClaimHandler) Handle(ctx context.Context, _ string, request issueops.ExecutionClaimRequest, _ issueops.ExecutionClaimDependencies) (issueops.ExecutionResult, error) {
+func (h ClaimHandler) Handle(ctx context.Context, _ string, request issueopscontract.ExecutionClaimRequest, _ issueopscontract.ExecutionClaimDependencies) (issueopscontract.ExecutionResult, error) {
 	if h.service == nil {
-		return issueops.ExecutionResult{ID: request.ID}, issueops.ErrClaimHandlerUnavailable
+		return issueopscontract.ExecutionResult{ID: request.ID}, issueopscontract.ErrClaimHandlerUnavailable
 	}
 	result, err := h.service.Claim(ctx, leaseapp.ClaimRequest{
 		ID: request.ID, Generation: request.Generation, Actor: toDomainActor(request.Actor), Ancestry: toProcessAncestry(request.Actor),
 		CWD: request.CWD, TokenFile: request.TokenFile, IssueBodySHA256: request.IssueBodySHA256, ContextPacketSHA256: request.ContextPacketSHA256,
 	})
 	if err != nil {
-		return issueops.ExecutionResult{ID: request.ID}, publicClaimError(err, request.Generation)
+		return issueopscontract.ExecutionResult{ID: request.ID}, publicClaimError(err, request.Generation)
 	}
-	return issueops.ExecutionResult{OK: result.OK, ID: result.ID, Execution: toCoreExecution(result.Execution)}, nil
+	return issueopscontract.ExecutionResult{OK: result.OK, ID: result.ID, Execution: toCoreExecution(result.Execution)}, nil
 }
 
 func publicClaimError(err error, generation uint64) error {
