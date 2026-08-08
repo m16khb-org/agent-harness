@@ -2,6 +2,7 @@ package executioncmd
 
 import (
 	"agent-harness/cmd/harness/issueopscli/remotecmd"
+	executionissue "agent-harness/internal/contract/executionissue"
 	"context"
 	"flag"
 	"fmt"
@@ -9,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/adapter/issueops"
 	model "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 	basesyncport "agent-harness/internal/port/issueopsbasesync"
@@ -18,27 +18,27 @@ import (
 
 type Deps struct {
 	StateRoot              func() string
-	Prepare                issueops.ExecutionPrepareHandler
+	Prepare                model.ExecutionPrepareHandler
 	Orca                   port.ExecutionOrcaProvisioner
 	OrcaOwner              port.ExecutionOrcaOwnerInspector
 	BaseSync               basesyncport.Inspector
-	ReadIssue              issueops.ExecutionIssueSnapshotReadFunc
-	Claim                  issueops.ExecutionClaimHandler
-	Release                issueops.ExecutionReleaseHandler
-	Reseed                 issueops.ExecutionReseedHandler
-	Resume                 issueops.ExecutionResumeHandler
-	Reconcile              issueops.ExecutionReconcileHandler
-	Complete               issueops.ExecutionCompleteHandler
+	ReadIssue              executionissue.ExecutionIssueSnapshotReadFunc
+	Claim                  model.ExecutionClaimHandler
+	Release                model.ExecutionReleaseHandler
+	Reseed                 model.ExecutionReseedHandler
+	Resume                 model.ExecutionResumeHandler
+	Reconcile              port.ExecutionReconcileHandler
+	Complete               model.ExecutionCompleteHandler
 	Publication            remotecmd.PublicationHandlers
 	PrintJSON              func(any) error
 	PrintError             func(error) error
-	syncBase               func(context.Context, string, issueops.ExecutionSyncBaseRequest, issueops.ExecutionSyncBaseDeps) (issueops.ExecutionSyncBaseResult, error)
+	syncBase               func(context.Context, string, model.ExecutionSyncBaseRequest, model.ExecutionSyncBaseDeps) (model.ExecutionSyncBaseResult, error)
 	Provenance             provenanceport.Observer
 	resumeActorObservation *resumeActorObservation
 }
 
-func (deps Deps) actionDeps() issueops.ExecutionActionDependencies {
-	actionDeps := issueops.ExecutionActionDependencies{
+func (deps Deps) actionDeps() port.ExecutionActionDependencies {
+	actionDeps := port.ExecutionActionDependencies{
 		Prepare: deps.Prepare, Orca: deps.Orca, OrcaOwner: deps.OrcaOwner, BaseSync: deps.BaseSync, ReadIssue: deps.ReadIssue,
 		Claim: deps.Claim, Release: deps.Release, Reseed: deps.Reseed, Resume: deps.Resume, Reconcile: deps.Reconcile, Complete: deps.Complete,
 		RemoteReconcile: deps.Publication.Reconcile,
@@ -52,11 +52,11 @@ func (deps Deps) actionDeps() issueops.ExecutionActionDependencies {
 	return actionDeps
 }
 
-func execute(req issueops.ExecutionActionRequest, deps Deps) (any, error) {
+func execute(req model.ExecutionActionRequest, deps Deps) (any, error) {
 	if deps.StateRoot == nil {
 		return nil, fmt.Errorf("IssueOps state root is unavailable")
 	}
-	return issueops.ExecuteExecution(context.Background(), deps.StateRoot(), req, deps.actionDeps())
+	return execDeps.ExecuteExecution(context.Background(), deps.StateRoot(), req, deps.actionDeps())
 }
 
 const Usage = `Usage:
@@ -125,7 +125,7 @@ func addActorFlags(fs *flag.FlagSet) actorFlags {
 }
 
 func (flags actorFlags) actor() model.NativeActor {
-	ancestry, _ := issueops.ObserveNativeProcessAncestry(os.Getpid())
+	ancestry, _ := execDeps.ObserveNativeProcessAncestry(os.Getpid())
 	return model.NativeActor{
 		Host: strings.TrimSpace(*flags.host), SessionID: strings.TrimSpace(*flags.sessionID), AgentID: strings.TrimSpace(*flags.agentID),
 		SessionProcess:  &model.NativeProcessReceipt{PID: *flags.pid, StartedAt: strings.TrimSpace(*flags.startedAt), Executable: strings.TrimSpace(*flags.executable)},
@@ -143,7 +143,7 @@ type resumeActorObservation struct {
 func defaultResumeActorObservation() resumeActorObservation {
 	return resumeActorObservation{
 		Getenv: os.Getenv, Getwd: os.Getwd, PID: os.Getpid,
-		ObserveAncestry: issueops.ObserveNativeProcessAncestry,
+		ObserveAncestry: execDeps.ObserveNativeProcessAncestry,
 	}
 }
 
@@ -213,8 +213,8 @@ func runPrepare(args []string, deps Deps) error {
 	if err != nil {
 		return output(nil, *jsonOut, err, deps)
 	}
-	result, err := execute(issueops.ExecutionActionRequest{
-		Action: issueops.ExecutionActionPrepare, ID: *id, Mode: *mode, Actor: actor.actor(), CWD: *actor.cwd,
+	result, err := execute(model.ExecutionActionRequest{
+		Action: model.ExecutionActionPrepare, ID: *id, Mode: *mode, Actor: actor.actor(), CWD: *actor.cwd,
 		OwnerHost: *ownerHost, OwnerModel: *ownerModel, OwnerEffort: *ownerEffort, Confirm: *confirm,
 		IssueSnapshot: issueSnapshot,
 	}, deps)
@@ -227,7 +227,7 @@ func runStatus(args []string, deps Deps) error {
 	if done, err := parse(fs, args); done || err != nil {
 		return err
 	}
-	result, err := execute(issueops.ExecutionActionRequest{Action: issueops.ExecutionActionStatus, ID: *id}, deps)
+	result, err := execute(model.ExecutionActionRequest{Action: model.ExecutionActionStatus, ID: *id}, deps)
 	return output(result, *jsonOut, err, deps)
 }
 
@@ -332,7 +332,7 @@ func runWhoami(args []string, deps Deps) error {
 	if err != nil {
 		return output(nil, *jsonOut, err, deps)
 	}
-	ancestry, err := issueops.ObserveNativeProcessAncestry(os.Getpid())
+	ancestry, err := execDeps.ObserveNativeProcessAncestry(os.Getpid())
 	if err != nil {
 		return output(nil, *jsonOut, err, deps)
 	}
@@ -358,8 +358,8 @@ func runClaim(args []string, deps Deps) error {
 	if err != nil {
 		return output(nil, *jsonOut, err, deps)
 	}
-	result, err := execute(issueops.ExecutionActionRequest{
-		Action: issueops.ExecutionActionClaim, ID: *id, Generation: *generation,
+	result, err := execute(model.ExecutionActionRequest{
+		Action: model.ExecutionActionClaim, ID: *id, Generation: *generation,
 		Actor: actor.actor(), CWD: *actor.cwd, TokenFile: *claimTokenFile,
 		IssueBodySHA256: *issueDigest, ContextPacketSHA256: *packetDigest,
 		IssueSnapshot: issueSnapshot,
@@ -374,8 +374,8 @@ func runRelease(args []string, deps Deps) error {
 	if done, err := parse(fs, args); done || err != nil {
 		return err
 	}
-	result, err := execute(issueops.ExecutionActionRequest{
-		Action: issueops.ExecutionActionRelease, ID: *id, Generation: *generation, Actor: actor.actor(), CWD: *actor.cwd,
+	result, err := execute(model.ExecutionActionRequest{
+		Action: model.ExecutionActionRelease, ID: *id, Generation: *generation, Actor: actor.actor(), CWD: *actor.cwd,
 	}, deps)
 	return output(result, *jsonOut, err, deps)
 }
@@ -401,9 +401,9 @@ func runReplace(args []string, deps Deps) error {
 		return output(nil, *jsonOut, err, deps)
 	}
 	actions := map[string]bool{
-		issueops.ExecutionReplacePreview: *preview, issueops.ExecutionReplaceRevoke: *revoke,
-		issueops.ExecutionReplaceFinalizePreview: *finalizePreview, issueops.ExecutionReplaceFinalize: *finalize,
-		issueops.ExecutionReplaceReseed: *reseed,
+		model.ExecutionReplacePreview: *preview, model.ExecutionReplaceRevoke: *revoke,
+		model.ExecutionReplaceFinalizePreview: *finalizePreview, model.ExecutionReplaceFinalize: *finalize,
+		model.ExecutionReplaceReseed: *reseed,
 	}
 	action := ""
 	for candidate, selected := range actions {
@@ -417,8 +417,8 @@ func runReplace(args []string, deps Deps) error {
 	if action == "" {
 		return output(nil, *jsonOut, fmt.Errorf("execution replace requires exactly one action"), deps)
 	}
-	result, err := execute(issueops.ExecutionActionRequest{
-		Action: issueops.ExecutionActionReplace, ID: *id, ReplaceAction: action, ExpectedGeneration: *generation,
+	result, err := execute(model.ExecutionActionRequest{
+		Action: model.ExecutionActionReplace, ID: *id, ReplaceAction: action, ExpectedGeneration: *generation,
 		CompletionGeneration: *completionGeneration,
 		InventoryFingerprint: *inventory, QuiescenceFingerprint: *quiescence, Reason: *reason,
 		Actor: actor.actor(), CWD: *actor.cwd, Confirm: *confirm,
@@ -445,8 +445,8 @@ func runResume(args []string, deps Deps) error {
 	if err != nil {
 		return output(nil, *jsonOut, err, deps)
 	}
-	result, err := execute(issueops.ExecutionActionRequest{
-		Action: issueops.ExecutionActionResume, ID: *id, ExpectedGeneration: *generation,
+	result, err := execute(model.ExecutionActionRequest{
+		Action: model.ExecutionActionResume, ID: *id, ExpectedGeneration: *generation,
 		Actor: resolvedActor, CWD: resolvedCWD, Confirm: *confirm,
 	}, deps)
 	return output(result, *jsonOut, err, deps)
@@ -465,8 +465,8 @@ func runReconcile(args []string, deps Deps) error {
 	if err != nil {
 		return output(nil, *jsonOut, err, deps)
 	}
-	result, err := execute(issueops.ExecutionActionRequest{
-		Action: issueops.ExecutionActionReconcile, ID: *id, Preview: *preview, Confirm: *confirm,
+	result, err := execute(model.ExecutionActionRequest{
+		Action: model.ExecutionActionReconcile, ID: *id, Preview: *preview, Confirm: *confirm,
 		Actor: actor.actor(), CWD: *actor.cwd, IssueSnapshot: issueSnapshot,
 	}, deps)
 	return output(result, *jsonOut, err, deps)
@@ -492,8 +492,8 @@ func runComplete(args []string, deps Deps) error {
 	if done, err := parse(fs, args); done || err != nil {
 		return err
 	}
-	result, err := execute(issueops.ExecutionActionRequest{
-		Action: issueops.ExecutionActionComplete, ID: *id, Generation: *generation, Actor: actor.actor(), CWD: *actor.cwd,
+	result, err := execute(model.ExecutionActionRequest{
+		Action: model.ExecutionActionComplete, ID: *id, Generation: *generation, Actor: actor.actor(), CWD: *actor.cwd,
 		FinalHead: *finalHead, TuringReportPath: *report, Verification: verification,
 		RemoteArtifactURL: *remoteURL, Confirm: *confirm,
 	}, deps)
@@ -518,10 +518,10 @@ func runSyncBase(args []string, deps Deps) error {
 		return err
 	}
 	modes := map[string]bool{
-		issueops.ExecutionSyncBasePreview:  *preview,
-		issueops.ExecutionSyncBaseApply:    *apply,
-		issueops.ExecutionSyncBaseFinalize: *finalize,
-		issueops.ExecutionSyncBaseAbort:    *abort,
+		model.ExecutionSyncBasePreview:  *preview,
+		model.ExecutionSyncBaseApply:    *apply,
+		model.ExecutionSyncBaseFinalize: *finalize,
+		model.ExecutionSyncBaseAbort:    *abort,
 	}
 	mode := ""
 	for candidate, selected := range modes {
@@ -535,7 +535,7 @@ func runSyncBase(args []string, deps Deps) error {
 	if mode == "" {
 		return output(nil, *jsonOut, fmt.Errorf("execution sync-base requires exactly one mode"), deps)
 	}
-	if mode != issueops.ExecutionSyncBasePreview {
+	if mode != model.ExecutionSyncBasePreview {
 		processCWD, err := os.Getwd()
 		if err != nil {
 			return output(nil, *jsonOut, fmt.Errorf("observe execution sync-base process working directory: %w", err), deps)
@@ -549,12 +549,12 @@ func runSyncBase(args []string, deps Deps) error {
 	}
 	syncBase := deps.syncBase
 	if syncBase == nil {
-		syncBase = issueops.SyncExecutionBase
+		syncBase = execDeps.SyncExecutionBase
 	}
-	result, err := syncBase(context.Background(), deps.StateRoot(), issueops.ExecutionSyncBaseRequest{
+	result, err := syncBase(context.Background(), deps.StateRoot(), model.ExecutionSyncBaseRequest{
 		ID: *id, Mode: mode, CompletionGeneration: *completionGeneration,
 		Actor: actor.actor(), CWD: *actor.cwd, Confirm: *confirm, Fingerprint: *fingerprint,
-	}, issueops.ExecutionSyncBaseDeps{})
+	}, model.ExecutionSyncBaseDeps{})
 	return output(result, *jsonOut, err, deps)
 }
 
@@ -591,10 +591,10 @@ func runSwitchMode(args []string, deps Deps) error {
 	if deps.StateRoot == nil {
 		return output(nil, *jsonOut, fmt.Errorf("IssueOps state root is unavailable"), deps)
 	}
-	result, err := issueops.SwitchExecutionMode(context.Background(), deps.StateRoot(), issueops.ExecutionSwitchModeRequest{
+	result, err := execDeps.SwitchExecutionMode(context.Background(), deps.StateRoot(), model.ExecutionSwitchModeRequest{
 		ID: *id, Mode: *mode, CWD: *actor.cwd, Apply: *apply, Confirm: *confirm,
 		Fingerprint: *fingerprint, Actor: actor.actor(),
-	}, issueops.ExecutionSwitchModeDependencies{})
+	}, model.ExecutionSwitchModeDependencies{})
 	return output(result, *jsonOut, err, deps)
 }
 
@@ -619,15 +619,15 @@ func output(value any, jsonOut bool, err error, deps Deps) error {
 
 func printText(value any) {
 	switch result := value.(type) {
-	case issueops.ExecutionPrepareResult:
+	case model.ExecutionPrepareResult:
 		fmt.Printf("%s %s %s generation=%d\n", result.ID, result.ResolvedMode, result.Workspace.Root, executionGeneration(result.Execution))
-	case issueops.ExecutionResult:
+	case model.ExecutionResult:
 		fmt.Printf("%s %s generation=%d\n", result.ID, result.Execution.Lease.Status, result.Execution.Lease.Generation)
-	case issueops.ExecutionReplaceResult:
+	case model.ExecutionReplaceResult:
 		fmt.Printf("%s %s generation=%d next=%s\n", result.ID, result.Execution.Lease.Status, result.Execution.Lease.Generation, result.NextCommand)
-	case issueops.ExecutionReconcileResult:
+	case model.ExecutionReconcileResult:
 		fmt.Printf("%s %s pending=%t\n", result.ID, result.Code, result.Pending != nil)
-	case issueops.ExecutionSyncBaseResult:
+	case model.ExecutionSyncBaseResult:
 		fmt.Printf("%s %s merged=%t pushed=%t conflicts=%d next=%s\n",
 			result.ID, result.Mode, result.Merged, result.Pushed, len(result.ConflictFiles), result.NextCommand)
 	default:

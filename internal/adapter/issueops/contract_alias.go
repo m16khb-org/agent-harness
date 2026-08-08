@@ -91,3 +91,15 @@ type (
 	CleanupFinishResult       = issueopscontract.CleanupFinishResult
 	CleanupRemoteBranchResult = issueopscontract.CleanupRemoteBranchResult
 )
+
+// 실행 액션 계약도 같은 이름으로 재노출한다.
+type (
+	ExecutionActionRequest         = issueopscontract.ExecutionActionRequest
+	ExecutionClaimDependencies     = issueopscontract.ExecutionClaimDependencies
+	ExecutionClaimHandler          = issueopscontract.ExecutionClaimHandler
+	ExecutionPrepareHandler        = issueopscontract.ExecutionPrepareHandler
+	ExecutionReseedHandler         = issueopscontract.ExecutionReseedHandler
+	ExecutionReseedRequest         = issueopscontract.ExecutionReseedRequest
+	RemotePublicationHandlers      = issueopscontract.RemotePublicationHandlers
+	RemotePullRequestCreateHandler = issueopscontract.RemotePullRequestCreateHandler
+)

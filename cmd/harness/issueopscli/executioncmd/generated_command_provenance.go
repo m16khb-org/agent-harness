@@ -4,14 +4,13 @@ import (
 	"context"
 	"errors"
 
-	"agent-harness/internal/adapter/issueops"
 	provenanceapp "agent-harness/internal/application/issueopsprovenance"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
 
 func bindExecutionNextCommand(value any, observer provenanceport.Observer) (any, error) {
-	if result, ok := value.(issueops.ExecutionSyncBaseResult); ok {
+	if result, ok := value.(issueopscontract.ExecutionSyncBaseResult); ok {
 		bound, err := provenanceapp.BindMany(
 			context.Background(),
 			[]string{result.NextCommand, result.AbortCommand},
@@ -37,7 +36,7 @@ func bindExecutionNextCommand(value any, observer provenanceport.Observer) (any,
 
 func executionNextCommand(value any) (string, uint64, func(string) any) {
 	switch result := value.(type) {
-	case issueops.ExecutionPrepareResult:
+	case issueopscontract.ExecutionPrepareResult:
 		generation := uint64(0)
 		if result.Execution != nil {
 			generation = result.Execution.Lease.Generation
@@ -46,22 +45,22 @@ func executionNextCommand(value any) (string, uint64, func(string) any) {
 			result.NextCommand = command
 			return result
 		}
-	case issueops.ExecutionResult:
+	case issueopscontract.ExecutionResult:
 		return result.NextCommand, result.Execution.Lease.Generation, func(command string) any {
 			result.NextCommand = command
 			return result
 		}
-	case issueops.ExecutionReplaceResult:
+	case issueopscontract.ExecutionReplaceResult:
 		return result.NextCommand, result.Execution.Lease.Generation, func(command string) any {
 			result.NextCommand = command
 			return result
 		}
-	case issueops.ExecutionResumeResult:
+	case issueopscontract.ExecutionResumeResult:
 		return result.NextCommand, result.Execution.Lease.Generation, func(command string) any {
 			result.NextCommand = command
 			return result
 		}
-	case issueops.ExecutionSwitchModeResult:
+	case issueopscontract.ExecutionSwitchModeResult:
 		return result.NextCommand, result.LeaseGeneration, func(command string) any {
 			result.NextCommand = command
 			return result

@@ -61,6 +61,8 @@ func wireBasicCLIDeps() {
 	configureIssueOpsRemote()
 	configureIssueOpsOrphanAndLoopGate()
 	configureLifecycleIssueOps()
+	configureIssueOpsLeaseNextCommands()
+	configureIssueOpsExecutionRunners()
 	operationalCollector := operationalhealth.Collector{Git: operationalhealth.ExecGitRunner{}, Orca: orca.New()}
 	basiccli.Configure(basiccli.Deps{
 		GitPreflight:             preflight.GitPreflight,

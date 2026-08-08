@@ -12,5 +12,6 @@ import (
 func TestMain(m *testing.M) {
 	projectbootstrap.ConfigureLifecycle(lifecycle.InitProjectLifecycleState)
 	ConfigureProjectBootstrap(projectbootstrap.BootstrapProjectDocs)
+	wireExecutionForTests()
 	os.Exit(m.Run())
 }
