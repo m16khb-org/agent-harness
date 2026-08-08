@@ -39,6 +39,8 @@ type executionOwnerIssue struct {
 type executionOwnerCommands struct {
 	LeaseStatus          string `json:"lease_status"`
 	Claim                string `json:"claim"`
+	AwaitBranchLink      string `json:"await_branch_link"`
+	Release              string `json:"release"`
 	VerifyBranchLinkRead string `json:"verify_branch_link_read"`
 	VerifyBranchLink     string `json:"verify_branch_link"`
 	LinkPlan             string `json:"link_plan"`
@@ -226,6 +228,8 @@ func renderExecutionOwnerPrompt(packet executionOwnerContextPacket, packetPath, 
 		"PACKET_PATH": packetPath, "PACKET_SHA256": packetDigest,
 		"OWNER_HOST": packet.OwnerHost, "OWNER_MODEL": packet.OwnerModel, "OWNER_EFFORT": packet.OwnerEffort,
 		"REVIEWER_MODEL": packet.ReviewerModel, "REVIEWER_EFFORT": packet.ReviewerEffort,
+		"AWAIT_BRANCH_LINK_COMMAND":       packet.Commands.AwaitBranchLink,
+		"RELEASE_COMMAND":                 packet.Commands.Release,
 		"VERIFY_BRANCH_LINK_READ_COMMAND": packet.Commands.VerifyBranchLinkRead,
 		"VERIFY_BRANCH_LINK_COMMAND":      packet.Commands.VerifyBranchLink,
 		"LINK_PLAN_COMMAND":               packet.Commands.LinkPlan,
@@ -317,10 +321,18 @@ func executionOwnerCommandsFor(record issueops.IssueOpsRecord, req ExecutionPrep
 		"--host", strings.ToLower(strings.TrimSpace(req.OwnerHost)), "--session-id", "<SESSION_ID>",
 		"--cwd", quoteExecutionOwnerArg(record.Execution.Workspace.Root),
 	}, " ")
+	// 반납은 막힌 owner의 안전한 출구다. 들고 종료하면 프로세스가 살아 있는 한
+	// 아무도 그 lifecycle을 회수할 수 없다(#319).
+	release := "agent-harness issueops execution release --id " + quoteExecutionOwnerArg(record.ID) +
+		" --generation " + strconv.FormatUint(record.Execution.Lease.Generation, 10) + " " + shortActor + " --json"
 	verifyBranchLinkRead := "none"
 	verifyBranchLink := "none"
+	awaitBranchLink := "none"
 	if prepared := record.BranchPrepare; prepared != nil && !prepared.LinkVerified {
 		if strings.EqualFold(strings.TrimSpace(prepared.Provider), "github") {
+			// GitHub에서만 pre-link 창이 존재한다. GitLab은 prepare 시점에
+			// 이미 link_verified를 요구하므로 기다릴 것이 없다(#319).
+			awaitBranchLink = "agent-harness issueops branch await-link --id " + quoteExecutionOwnerArg(record.ID) + " --json"
 			projectKey := remote.ProjectKey(prepared.IssueURL, "github", "issue")
 			issueNumber := remote.IssueNumber(prepared.IssueURL)
 			repoSlug := strings.TrimPrefix(projectKey, "github.com/")
@@ -386,6 +398,8 @@ func executionOwnerCommandsFor(record issueops.IssueOpsRecord, req ExecutionPrep
 		" --to pr " + shortActor + " --json"
 	return executionOwnerCommands{
 		LeaseStatus: status, Claim: claim, VerifyBranchLinkRead: verifyBranchLinkRead,
+		AwaitBranchLink:  awaitBranchLink,
+		Release:          release,
 		VerifyBranchLink: verifyBranchLink, LinkPlan: linkPlan,
 		CompatibilityReview: compatibilityReview, EnterImplement: enterImplement,
 		AISlopCleanRecord: aiSlopCleanRecord, EnterAISlopClean: enterAISlopClean,

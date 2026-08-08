@@ -76,9 +76,15 @@ Required skills:
    있을 때만 붙인다. token 원문은 출력하지 않는다:
    {CLAIM_COMMAND}
 6. claim/holder 확인 전 production mutation을 하지 않는다.
-7. branch_prepare.link_verified가 false면 아래 exact reader를 한 번 실행해 issue에 exact branch가
-   연결됐는지 검증한다. 대체 GraphQL이나 다른 reader를 만들지 않는다. reader가 `none`이면 임의
-   provider 명령을 만들지 말고 blocker를 보고한다:
+7. branch_prepare.link_verified가 false면 먼저 아래 exact command로 링크가 나타날 때까지
+   기다린다. GitHub Orca 경로에서는 이 시점에 링크가 **아직 없는 것이 정상**이다 — Orca가 항상
+   새 branch를 만들기 때문에 원격 branch가 먼저 있으면 prepare 자체가 실패하고, 그래서
+   coordinator의 createLinkedBranch는 당신의 기동 뒤에 온다. 그 부재를 실패로 보고하지 않는다.
+   이 command는 경계가 있어 스스로 종료하며, 시간 안에 나타나지 않으면 그때 blocker를 보고한다:
+   {AWAIT_BRANCH_LINK_COMMAND}
+   그다음 아래 exact reader로 issue에 exact branch가 연결됐는지 확인한다.
+   대체 GraphQL이나 다른 reader를 만들지 않는다. reader가 `none`이면 임의 provider 명령을
+   만들지 말고 blocker를 보고한다:
    {VERIFY_BRANCH_LINK_READ_COMMAND}
    연결이 확인된 경우에만 아래 exact command로 봉인된 branch/base/parent topology를 보존하며
    link_verified를 기록한다. 이미 true면 두 command가 `none`이므로 실행하지 않는다:
@@ -134,7 +140,12 @@ publication과 종료:
    결과를 받으라고 기다리거나 worktree/branch를 cleanup하지 않는다.
 
 막힘 규칙:
-- lease/session/generation deny: status 1회 → exact next_command 최대 1회 → 여전히 실패하면 종료.
+- **claim한 뒤 막혀서 종료할 때는 반드시 lease를 먼저 반납한다.** 들고 종료하면 프로세스가 살아
+  있는 한 아무도 그 lifecycle을 회수할 수 없고, 남는 수단이 사람의 개입뿐이 된다. 반납은 쓰기
+  권한을 내려놓는 것일 뿐이라 어떤 창에서도 안전하며, 그래서 가드가 항상 허용한다:
+  {RELEASE_COMMAND}
+- lease/session/generation deny: status 1회 → exact next_command 최대 1회 → 여전히 실패하면
+  lease를 반납하고 종료.
 - issue/packet digest drift: mutation 없이 종료하고 두 digest를 보고.
 - Orca external result ambiguity: direct로 전환하지 말고 exact reconcile command만 보고.
 - source/foreign mutation이 필요해 보이면 scope가 잘못된 것이므로 실행하지 않고 issue에 반영할

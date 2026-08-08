@@ -362,7 +362,9 @@ func githubLinkedBranchReadbackSteps(issueURL, branch, baseSHA string, firstOrde
 				" A null `ref` is a partial success, not a failure to retry: the mutation already created a " +
 				"LinkedBranch record, so running it again does not fix the state and may add a second orphan. " +
 				"Recover with `agent-harness issueops cleanup linked-branch --id <id> --preview`, which classifies " +
-				"the record and issues a fingerprint bound to the exact node; never delete it with raw GraphQL.",
+				"the record and issues a fingerprint bound to the exact node; never delete it with raw GraphQL. " +
+				"An owner that reaches this step before the coordinator has created the link is early, not blocked: " +
+				"`agent-harness issueops branch await-link --id <id>` waits for it within a bounded window.",
 		},
 		{
 			Order:    firstOrder + 1,

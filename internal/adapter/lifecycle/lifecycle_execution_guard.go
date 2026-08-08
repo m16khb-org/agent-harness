@@ -77,10 +77,14 @@ func executionObservation(req lifecyclecontract.HookToolUseLifecycleRequest) boo
 	// 이 목록이 명시적 열거인 것은 fail-closed의 근거다. 규칙 기반 판정으로
 	// 바꾸면 분류 누락이 차단이 아니라 통과로 새어 나간다(#135).
 	switch command.Path {
-	case "status", "execution status", "pr-readiness", "cleanup status":
+	case "status", "execution status", "pr-readiness", "cleanup status", "branch await-link":
 		// cleanup status의 --merged가 원격을 조회하지만 그것도 읽기다.
 		// cleanup remote-branch --preview가 같은 자격으로 원격 OID를 관측하는
 		// 선례가 있다.
+		//
+		// branch await-link는 같은 관측을 주기적으로 되풀이할 뿐 아무것도
+		// 쓰지 않는다. 이것이 관찰로 인정되지 않으면 owner는 pre-link 창을
+		// 기다릴 수 없고, 그 창을 terminal 실패로 다루게 된다(#319).
 		id, ok := oneFlag(flags, "--id")
 		return ok && strings.TrimSpace(id) != ""
 	case "child status":
@@ -949,8 +953,13 @@ func executionTypedPreLinkBlock(req lifecyclecontract.HookToolUseLifecycleReques
 		!orcaBranchLinkVerificationRequired(record) {
 		return "", nil
 	}
-	reason := "active Orca owner must record the exact verified branch link before any other mutation"
-	return reason, executionDeny(record, "branch_link_verification_required", executionStatusCommand(record.ID))
+	if exactOrcaLeaseRelease(req.Command, record) || typedLeaseReleaseAction(req, record) {
+		// 반납은 이 창의 안전한 출구다. 막으면 진행도 반납도 못 하는 덫이 된다.
+		// shell과 MCP 두 표면이 같은 판정을 해야 한다 — 한쪽만 열면 owner가
+		// 어느 표면을 쓰느냐에 따라 회수 가능성이 갈린다.
+		return "", nil
+	}
+	return orcaBranchLinkDenyReason(record), executionDeny(record, "branch_link_verification_required", executionStatusCommand(record.ID))
 }
 
 func executionTypedMutationID(req lifecyclecontract.HookToolUseLifecycleRequest) (string, bool) {
@@ -1087,9 +1096,9 @@ func executionMutationDecision(req lifecyclecontract.HookToolUseLifecycleRequest
 		}
 		if lease.Status == issueopscontract.LeaseStatusActive && executionActorMatches(req, lease.Holder) &&
 			targetsAuthorized {
-			if orcaBranchLinkVerificationRequired(record) && !exactOrcaBranchLinkRecorder(req.Command, record) {
-				reason := "active Orca owner must record the exact verified branch link before any other mutation"
-				return true, reason, executionDeny(record, "branch_link_verification_required", executionStatusCommand(record.ID))
+			if orcaBranchLinkVerificationRequired(record) && !exactOrcaBranchLinkRecorder(req.Command, record) &&
+				!exactOrcaBranchLinkWait(req.Command, record) && !exactOrcaLeaseRelease(req.Command, record) {
+				return true, orcaBranchLinkDenyReason(record), executionDeny(record, "branch_link_verification_required", executionStatusCommand(record.ID))
 			}
 			return true, "", nil
 		}
@@ -1863,4 +1872,104 @@ func exactRemoteScoreObservation(flags map[string][]string) bool {
 	default:
 		return false
 	}
+}
+
+// exactOrcaBranchLinkWait은 pre-link 창에서 owner가 쓸 수 있는 유일한 대기
+// reader를 인정한다(#319).
+//
+// 이 창이 존재하는 이유는 순서가 뒤집을 수 없기 때문이다. Orca는 항상 새
+// branch를 만들므로 원격 branch가 먼저 있으면 prepare 자체가 실패한다. 따라서
+// coordinator의 createLinkedBranch는 owner 기동 **뒤**에 와야 하고, owner는
+// 그 사이를 기다릴 수단이 있어야 한다. 기다릴 수단이 없으면 owner는 시작
+// 시점의 부재를 terminal 실패로 다루고, 이 경로는 완주할 수 없다.
+//
+// 인정하는 것은 이 lifecycle을 지목한 정확한 한 형태뿐이다. 읽기 전용이므로
+// 허용해도 mutation 경계는 그대로다.
+func exactOrcaBranchLinkWait(commandText string, record issueopscontract.IssueOpsRecord) bool {
+	command, ok := commandparse.ParseExactIssueOpsCommand(commandText)
+	if !ok || command.Path != "branch await-link" {
+		return false
+	}
+	values, booleans, repeatable, ok := commandparse.IssueOpsCommandSpec(command.Path)
+	if !ok {
+		return false
+	}
+	flags, ok := commandparse.ExactFlags(command, values, booleans, repeatable)
+	if !ok {
+		return false
+	}
+	id, found := oneFlag(flags, "--id")
+	return found && strings.TrimSpace(id) == record.ID
+}
+
+// orcaBranchLinkDenyReason은 pre-link 창의 차단 사유다. 두 차단 지점이 같은
+// 문장을 쓰도록 한 곳에서 만든다.
+//
+// 차단 사유만 말하고 기다릴 방법을 말하지 않으면 owner는 그것을 terminal
+// 실패로 다룬다 — 실측된 실패가 정확히 그랬다(#319, task_e3946ef93086).
+func orcaBranchLinkDenyReason(record issueopscontract.IssueOpsRecord) string {
+	return "active Orca owner must await and record the exact verified branch link before any other mutation; " +
+		"`agent-harness issueops branch await-link --id " + record.ID + "` waits for the coordinator to create it, " +
+		"and `agent-harness issueops execution release --id " + record.ID + " --generation " +
+		strconv.FormatUint(leaseGenerationOf(record), 10) + "` hands the lease back if you must stop"
+}
+
+// exactOrcaLeaseRelease는 pre-link 창에서 현재 holder의 lease 반납을 인정한다.
+//
+// 이 창에서 owner는 링크가 기록되기 전 어떤 mutation도 할 수 없다. 그런데
+// 반납까지 막으면 진행도 반납도 불가능한 덫이 된다 — 실제로 그랬다. blocker를
+// 보고한 owner가 lease를 든 채 종료했고, 프로세스가 살아 있는 한 typed
+// 회수(`replace --finalize-preview`)는 정당하게 거부하며, 프로세스 종료는
+// 하네스의 비목표라 자동화하지 않는다. 남은 회수 수단이 사람뿐이었다(#319).
+//
+// 반납은 위험이 아니라 안전한 출구다. 쓰기 권한을 내려놓을 뿐이므로 이 창에서
+// 허용해도 mutation 경계는 넓어지지 않는다. 인정하는 것은 이 lifecycle과 현재
+// generation을 지목한 정확한 한 형태뿐이다.
+func exactOrcaLeaseRelease(commandText string, record issueopscontract.IssueOpsRecord) bool {
+	if record.Execution == nil {
+		return false
+	}
+	command, ok := commandparse.ParseExactIssueOpsCommand(commandText)
+	if !ok || command.Path != "execution release" {
+		return false
+	}
+	values, booleans, repeatable, ok := commandparse.IssueOpsCommandSpec(command.Path)
+	if !ok {
+		return false
+	}
+	flags, ok := commandparse.ExactFlags(command, values, booleans, repeatable)
+	if !ok {
+		return false
+	}
+	id, idOK := oneFlag(flags, "--id")
+	if !idOK || strings.TrimSpace(id) != record.ID {
+		return false
+	}
+	generation, generationOK := oneFlag(flags, "--generation")
+	if !generationOK {
+		return false
+	}
+	parsed, err := strconv.ParseUint(strings.TrimSpace(generation), 10, 64)
+	return err == nil && parsed == record.Execution.Lease.Generation
+}
+
+// leaseGenerationOf는 진단 문구가 참조할 현재 generation이다.
+func leaseGenerationOf(record issueopscontract.IssueOpsRecord) uint64 {
+	if record.Execution == nil {
+		return 0
+	}
+	return record.Execution.Lease.Generation
+}
+
+// typedLeaseReleaseAction은 MCP 표면의 반납 요청을 인정한다. shell 쪽
+// exactOrcaLeaseRelease와 같은 근거이며, 대상 lifecycle을 지목한 release
+// 하나만 통과시킨다.
+func typedLeaseReleaseAction(req lifecyclecontract.HookToolUseLifecycleRequest, record issueopscontract.IssueOpsRecord) bool {
+	if searchrouting.IsShellTool(req.Tool) {
+		return false
+	}
+	action, actionOK := req.ToolInput["action"].(string)
+	id, idOK := req.ToolInput["id"].(string)
+	return actionOK && idOK && strings.TrimSpace(action) == issueopscontract.ExecutionActionRelease &&
+		strings.TrimSpace(id) == record.ID
 }

@@ -224,3 +224,34 @@ type CleanupLinkedBranchResult struct {
 	FailedStep    string `json:"failed_step,omitempty"`
 	NextCommand   string `json:"next_command,omitempty"`
 }
+
+// AwaitBranchLinkRequest는 coordinator가 만들 linked branch가 나타날 때까지
+// 경계 있게 기다리는 읽기 전용 요청이다(#319).
+type AwaitBranchLinkRequest struct {
+	ID string
+	// Timeout은 Go duration 문자열이다. 비어 있으면 기본값을 쓴다.
+	Timeout string
+}
+
+// AwaitBranchLinkResult는 대기 결과와 그 근거가 된 관측이다.
+type AwaitBranchLinkResult struct {
+	OK      bool     `json:"ok"`
+	ID      string   `json:"id"`
+	Missing []string `json:"missing,omitempty"`
+	// Linked는 봉인된 정체성과 일치하는 링크를 관측했는지다.
+	Linked          bool   `json:"linked"`
+	AlreadyVerified bool   `json:"already_verified,omitempty"`
+	TimedOut        bool   `json:"timed_out,omitempty"`
+	IssueURL        string `json:"issue_url,omitempty"`
+	Branch          string `json:"branch,omitempty"`
+	SealedBase      string `json:"sealed_base,omitempty"`
+	LinkedBranchID  string `json:"linked_branch_id,omitempty"`
+	ObservedOID     string `json:"observed_oid,omitempty"`
+	// State와 StateReason은 마지막 관측의 분류다. 기다리다 실패했을 때
+	// 무엇을 보고 있었는지가 남아야 다음 사람이 다시 조사하지 않는다.
+	State          string `json:"state,omitempty"`
+	StateReason    string `json:"state_reason,omitempty"`
+	Attempts       int    `json:"attempts"`
+	TimeoutSeconds int    `json:"timeout_seconds"`
+	NextCommand    string `json:"next_command,omitempty"`
+}

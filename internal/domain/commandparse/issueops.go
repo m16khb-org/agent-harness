@@ -339,6 +339,10 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v("--id", "--name"), b("--json"), r, true
 	case "artifact stage":
 		return v("--id", "--name", "--file", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
+	// branch await-link는 읽기 전용 대기다. pre-link 창에서 owner가 쓸 수
+	// 있어야 하므로 가드가 이 형태 하나를 명시적으로 허용한다(#319).
+	case "branch await-link":
+		return v("--id", "--timeout", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
 	case "cleanup status":
 		return v("--id", "--host", "--session-id", "--agent-id", "--cwd"), b("--merged", "--json"), r, true
 	case "cleanup close-children":
