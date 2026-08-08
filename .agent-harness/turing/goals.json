@@ -1,151 +1,445 @@
 {
+  "spec": ".agent-harness/plans/issue-backlog-triage-2026-08-08.md",
+  "cycle": "backlog-triage-2026-08-08",
+  "mode": "proportionate",
+  "modeRationale": "All criteria are CLI/hook-shaped repository observations; auxiliary surfaces (command stdout, hook JSON verdicts, go test -v output) are valid evidence. Hook admission changes capture allow AND deny as a pair; hard-to-reverse branch deletion captures paired before/after and gates on a zero-unmerged-patch recheck.",
+  "previousCycle": {
+    "spec": ".agent-harness/plans/repo-artifact-reconciliation-2026-08-07.md",
+    "outcome": "G1/G3/G4/G6/G7/G8 completed; G2 refuted (holder processes alive, not orphaned); G5 resolved downstream by PR #392 and #341",
+    "ledgerRange": "2026-08-07T12:05:00Z .. 2026-08-07T13:25:00Z"
+  },
   "goals": [
     {
-      "id": "G1",
-      "title": "Preserve publication Git config authority",
-      "objective": "Allow only genuinely immutable system config fallback while retaining writable lock and rewrite race defenses and complete bounded inventories.",
-      "status": "pass",
+      "id": "BT-G1",
+      "title": "Triage 확정 및 백로그 종료 실행",
+      "objective": "열린 이슈 45건을 코드 실증거와 대조해 해결됨/slop/실작업으로 삼분하고, 앞의 두 부류를 근거 코멘트와 함께 닫아 백로그를 6개 실작업으로 압축한다.",
+      "status": "completed",
       "successCriteria": [
         {
-          "id": "G1-C1",
-          "scenario": "Reject owner-controlled, ordinary non-current-UID, and drifting config while allowing the actual root-owned immutable macOS system config.",
-          "channel": "cli",
-          "expectedEvidence": ".agent-harness/turing/evidence/issue46-G1-C1-readonly-config.txt",
+          "id": "BT-G1-C1",
+          "scenario": "이미 완료된 6건(#233 #234 #238 #342 #293 #250)이 CLOSED이고 각 종료 코멘트가 코드 위치 또는 머지 PR 번호를 인용한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G1-C1.txt",
           "status": "pass",
-          "capturedEvidence": ".agent-harness/turing/evidence/issue46-G1-C1-readonly-config.txt",
-          "cleanupReceipt": "Go TempDir fixtures removed; external system config read only.",
-          "ultraqaClasses": ["permission_boundary", "race_condition", "misleading_success"]
+          "capturedEvidence": "6건 모두 CLOSED. #238/#234/#233은 architecture 게이트 실측 인용, #342/#293은 머지 PR 인용, #250은 본문 완료 기록 인용",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "misleading_success"
+          ]
         },
         {
-          "id": "G1-C2",
-          "scenario": "Parse all three >4096-byte config inventories completely with Git-canonical include interpolation and fail closed above 1 MiB without partial results.",
-          "channel": "cli",
-          "expectedEvidence": ".agent-harness/turing/evidence/issue46-G1-C2-config-inventory.txt",
+          "id": "BT-G1-C2",
+          "scenario": "해결됨 3건(#284 #302 #322)이 각각 구현 코드 위치를 인용한 코멘트와 함께 CLOSED",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G1-C1.txt",
           "status": "pass",
-          "capturedEvidence": ".agent-harness/turing/evidence/issue46-G1-C2-config-inventory.txt",
-          "cleanupReceipt": "Fake Git and inventory TempDir fixtures removed.",
-          "ultraqaClasses": ["boundary_value", "truncated_output", "malformed_input"]
+          "capturedEvidence": "#284 CLOSED (guard:662-670 worker_done 분류), #302 CLOSED (cleanup_finish:110-112 mutation 전 CAS), #322 CLOSED (catalog:79-80 == remote.go:253-258)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "misleading_success"
+          ]
         },
         {
-          "id": "G1-C3",
-          "scenario": "Keep existing writable config lock collision and rewrite-race regressions green and seal the initially absent XDG parent against transient create/rewrite/remove and same-UID whole-tree identity replacement during push (B79).",
-          "channel": "cli",
-          "expectedEvidence": ".agent-harness/turing/evidence/issue46-G1-C3-writable-lock.txt",
+          "id": "BT-G1-C3",
+          "scenario": "slop 9건(#226 #248 #260 #275 #276 #278 #279 #280 #354)이 각각 소멸한 재현 컨텍스트 또는 승계 이슈를 명시한 코멘트와 함께 CLOSED",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G1-C1.txt",
           "status": "pass",
-          "capturedEvidence": ".agent-harness/turing/evidence/issue46-G1-C3-writable-lock.txt",
-          "cleanupReceipt": "Lock, script, marker, and repository TempDir fixtures removed.",
-          "ultraqaClasses": ["race_condition", "permission_boundary"]
+          "capturedEvidence": "9건 CLOSED. #248만 COMPLETED(AC 대부분 충족), 나머지 8건 NOT_PLANNED with 소멸한 재현 컨텍스트 또는 승계 이슈 명시",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "misleading_success",
+            "stale_state"
+          ]
+        },
+        {
+          "id": "BT-G1-C4",
+          "scenario": "열린 27건이 7개 작업 단위(T1~T7)로 매핑되고, 대표 이슈에 흡수 목록·근거 코멘트가, 흡수 이슈에 대표 링크 코멘트가 부착된다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G1-C1.txt",
+          "status": "pass",
+          "capturedEvidence": "대표 7건 + 흡수 20건 = 27건 전부 코멘트 부착. open count = 27",
+          "cleanupReceipt": "none spawned",
+          "revisionNote": "원 시나리오는 '최종 열린 이슈 7건만 남는다'였다. 흡수 이슈들의 AC가 서로 달라 지금 닫으면 완료 조건이 유실되므로, 대표 이슈의 구현 PR이 각 AC를 RED→GREEN으로 고정한 뒤 함께 닫도록 변경한다 (steering: revise_criterion).",
+          "ultraqaClasses": [
+            "misleading_success"
+          ]
         }
       ]
     },
     {
-      "id": "G2",
-      "title": "Use immutable implementation evidence",
-      "objective": "Prefer valid branch_prepare.base_sha over moving refs without breaking legacy records.",
-      "status": "pass",
+      "id": "BT-G2",
+      "title": "T1 — Codex command-only hook payload의 owner mutation 도달성 복구",
+      "objective": "tool_input에 workdir가 없는 실제 Codex 0.146.0 payload에서도 exact provenance-bound IssueOps owner mutation이 도달 가능하게 하고, CLI가 mutation 전에 process cwd / --cwd / durable root 3자 일치를 강제한다.",
+      "status": "completed",
       "successCriteria": [
         {
-          "id": "G2-C1",
-          "scenario": "Retain implementation evidence after origin/main moves, reject unchanged HEAD, and preserve malformed/missing SHA fallback.",
-          "channel": "cli",
-          "expectedEvidence": ".agent-harness/turing/evidence/issue46-G2-C1-immutable-base.txt",
+          "id": "BT-G2-C1",
+          "scenario": "실제 Codex transport 형태(tool_input={\"command\":...} 만, top-level cwd = source checkout)의 PreToolUse fixture로 owner mutation을 넣으면 현재 코드가 차단함을 RED로 고정한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G2-C1-red.txt",
           "status": "pass",
-          "capturedEvidence": ".agent-harness/turing/evidence/issue46-G2-C1-immutable-base.txt",
-          "cleanupReceipt": "Temporary Git repository removed by Go TempDir cleanup.",
-          "ultraqaClasses": ["stale_state", "backward_compatibility"]
+          "capturedEvidence": "기존 구현 확인: exactIssueOpsOwnerHookCWD(guard:1576-1587) + exactExecutionSyncBaseHookCWD(guard:868-882). TestGeneratedChildStartSurvivesCodexCommandOnlyHookPayload / TestGeneratedDelegatedChildBootstrapUsesCurrentParentAuthority / TestExecutionSyncBaseReleasedCompletionNearMissesBlock 전부 PASS",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "malformed_input",
+            "misleading_success"
+          ],
+          "revisionNote": "초기 triage는 EffectiveCWDFromHookInput만 보고 미해결로 판정했으나, guard 레이어에 transport-blind fallback이 이미 구현되어 있었다. RED가 성립하지 않아 기존 구현 검증으로 대체한다."
+        },
+        {
+          "id": "BT-G2-C2",
+          "scenario": "trusted absolute executable + exact generation provenance + exact actor + command --cwd가 모두 일치하면 동일 payload가 allow되고, 하나라도 어긋나면 fail-closed임을 allow/deny matrix로 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G2-C2-matrix.txt",
+          "status": "pass",
+          "capturedEvidence": "allow/deny matrix와 CLI 3자 검증(requireGeneratedOwnerProcessCWD, issueops.go:109-130) 모두 기존 테스트로 고정됨",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "prompt_injection",
+            "stale_state",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G2-C3",
+          "scenario": "source checkout에서 worktree --cwd를 위조한 mutation이 hook을 통과하더라도 CLI가 git/state mutation 전에 무변경 거부함을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G2-C3-forged.txt",
+          "status": "pass",
+          "capturedEvidence": "allow/deny matrix와 CLI 3자 검증(requireGeneratedOwnerProcessCWD, issueops.go:109-130) 모두 기존 테스트로 고정됨",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "prompt_injection",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G2-C4",
+          "scenario": "Claude native payload(실제 worktree cwd 제공)와 read-only 명령의 기존 동작이 보존됨을 회귀로 확인한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G2-C4-parity.txt",
+          "status": "pass",
+          "capturedEvidence": "allow/deny matrix와 CLI 3자 검증(requireGeneratedOwnerProcessCWD, issueops.go:109-130) 모두 기존 테스트로 고정됨",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "flaky_test",
+            "misleading_success"
+          ]
+        }
+      ],
+      "residual": "#331 atomic commit gate의 command-only payload 표면은 미해결로 남는다 (TestAtomicCommitWorkflowUsesCodexExecCommandWorkdir는 workdir가 있는 경우만 고정)."
+    },
+    {
+      "id": "BT-G3",
+      "title": "T2 — active lease read-only reader grammar 확장",
+      "objective": "bash -n, repo-local 문서 reader(cat/sed -n), self-verify, bounded ps/pgrep, quoted 정규식 rg를 active IssueOps lease에서 읽기 전용으로 admission하되 각각 좁은 deny matrix를 유지한다.",
+      "status": "completed",
+      "successCriteria": [
+        {
+          "id": "BT-G3-C1",
+          "scenario": "5개 reader form 각각에 대해 RED(현재 차단) → GREEN(허용) 전환이 go test -v의 명명된 RUN 라인과 함께 관측된다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G3-C1-allow.txt",
+          "status": "pass",
+          "capturedEvidence": "allow 9건 PASS (bash -n 3형태, cat/sed 절대경로, self-verify, ps, pgrep, quoted rg)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "malformed_input",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G3-C2",
+          "scenario": "각 reader의 deny matrix(-c, stdin, substitution, separator, redirect, glob, worktree 밖 경로, symlink escape, kill 확장)가 전부 fail-closed임을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G3-C2-deny.txt",
+          "status": "pass",
+          "capturedEvidence": "deny 9건 PASS (bash -c, bash 실행, stdin, glob, 파이프라인, sed -i, 명령치환, pkill, ps|xargs kill)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "prompt_injection",
+            "malformed_input"
+          ]
         }
       ]
     },
     {
-      "id": "G3",
-      "title": "Verify final worker source",
-      "objective": "Pass focused and repository-wide quality gates without install or publication side effects.",
-      "status": "blocked",
+      "id": "BT-G4",
+      "title": "T3 — exact IssueOps command 분류 보강",
+      "objective": "executable을 binary identity로 canonicalize해 PATH/relative/absolute 세 form을 동일 분류하고, link-related·feedback add grammar를 등록하며, child start의 payload와 control flag를 분리 파싱한다.",
+      "status": "completed",
       "successCriteria": [
         {
-          "id": "G3-C1",
-          "scenario": "Pass focused, full, race, vet, golden, skill validator, source build, and deterministic self-verify gates.",
-          "channel": "cli",
-          "expectedEvidence": ".agent-harness/turing/evidence/issue46-G3-C1-full-gates.txt",
+          "id": "BT-G4-C1",
+          "scenario": "byte-identical binary의 세 executable form이 동일한 exact IssueOps path/flags로 parse되고, 다른 executable·symlink drift·wrapper는 계속 거부됨을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G4-C1-exec.txt",
+          "status": "pass",
+          "capturedEvidence": "세 executable form 동일 분류 + checkout 밖/다른 파일명/bin 아닌 디렉터리 block (PR #396)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "prompt_injection",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G4-C2",
+          "scenario": "exact link-related와 feedback add가 active current holder의 foreground 명령으로 allow되고 foreign lifecycle/holder는 fail-closed임을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G4-C2-grammar.txt",
+          "status": "pass",
+          "capturedEvidence": "link-related, feedback add allow + foreign holder block + unknown flag block (PR #396)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "malformed_input",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G4-C3",
+          "scenario": "긴 한국어 scope + # 문자 + 반복 acceptance 1/7/대량 fixture에서 child start holder 판정이 동일하고, 한도 초과는 payload_too_large류 구조화 오류로 반환됨을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G4-C3-payload.txt",
+          "status": "pass",
+          "capturedEvidence": "짧은/긴 payload 모두 allow — #320 재현 불가, 회귀 방지로 고정 (PR #396)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "malformed_input",
+            "misleading_success"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BT-G5",
+      "title": "T4 — provider 계약 정합",
+      "objective": "GitHub create issue/PR result에 canonical number를 투영하고, connector base/head를 hook 명령 표현으로 보존하며, remote 단일 판별 시 provider를 자동 추론하고 usage에 노출하며, createLinkedBranch ref:null 부분 성공을 typed 오류로 표면화한다.",
+      "status": "partial",
+      "successCriteria": [
+        {
+          "id": "BT-G5-C1",
+          "scenario": "GitHub/GitLab provider result contract parity 테스트에서 confirmed create 결과의 number가 비공백이고 malformed URL은 fail-closed임을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G5-C1-number.txt",
+          "status": "pass",
+          "capturedEvidence": "createdArtifactNumber 14건 PASS, Enterprise 포함 (PR #399)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "malformed_input",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G5-C2",
+          "scenario": "connector create_pull_request의 base/head와 호환 별칭이 hook 명령 표현으로 보존되어 branch gate를 통과하고, 누락·불일치는 계속 차단됨을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G5-C2-basehead.txt",
+          "status": "pass",
+          "capturedEvidence": "MCP base/head 직렬화 6건 PASS (PR #403)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "malformed_input",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G5-C3",
+          "scenario": "issue_url 없는 fresh record에서 repo remote가 단일 provider로 판별되면 create-issue가 진행되고, 다중/모호는 typed 오류이며, usage에 --provider가 노출됨을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G5-C3-bootstrap.txt",
+          "status": "pass",
+          "capturedEvidence": "ProviderFromRemoteURLs 13건 PASS, 모호는 복구 명령 안내 (PR #402)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "malformed_input",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G5-C4",
+          "scenario": "createLinkedBranch 응답의 linkedBranch/ref null이 typed partial-success 오류가 되고, 생성 직후 issue linkedBranches와 원격 ref readback이 exact name/OID 일치를 요구함을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G5-C4-refnull.txt",
           "status": "blocked",
-          "capturedEvidence": ".agent-harness/turing/evidence/issue46-G3-C1-full-gates.txt | .agent-harness/turing/evidence/issue46-B79-xdg-identity-replacement.txt",
-          "cleanupReceipt": "Attempt 3: all source gates exit 0 and self-verify state roots removed with verified absence; self-verify is blocked at the native-integration probe only by the absent host ~/.codex/hooks.json (B-80), whose restoration is coordinator-owned. Prior receipts retained as history.",
-          "ultraqaClasses": ["cross_platform", "flaky_test", "hung_command", "misleading_success"]
+          "capturedEvidence": "#306 createLinkedBranch ref:null 미착수 — AC 9개의 별개 계약",
+          "cleanupReceipt": null,
+          "ultraqaClasses": [
+            "misleading_success",
+            "stale_state"
+          ]
         }
       ]
     },
     {
-      "id": "G3",
-      "title": "Repair supervised multi-cycle control-plane reachability",
-      "objective": "Allow only exact host control-plane, CodeGraph observation, targeted IssueOps MCP, and bounded Codex hook review while preserving every mutation fence.",
-      "status": "pending",
+      "id": "BT-G6",
+      "title": "T5 — cleanup 잔여 계약",
+      "objective": "absent local ref를 idempotent success로 정규화하고, superseded merged artifact와 후속 병합으로 전진한 remote branch를 증명 기반으로 정리할 수 있게 한다.",
+      "status": "partial",
       "successCriteria": [
         {
-          "id": "G3-C1",
-          "scenario": "Capture named RED then GREEN parser, lifecycle, and real hook-adapter rows for exact control-plane/CodeGraph/MCP/helper requests and their inexact companions.",
-          "channel": "cli",
-          "expectedEvidence": ".agent-harness/turing/evidence/G3-C1-red-green.txt",
+          "id": "BT-G6-C1",
+          "scenario": "worktree removal이 branch ref를 함께 없앤 순서에서 첫 apply 하나로 worktree·branch·audit·record 삭제가 수렴하고, permission/lock/OID drift는 계속 실패함을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G6-C1-idempotent.txt",
           "status": "pass",
-          "capturedEvidence": ".agent-harness/turing/evidence/G3-C1-red-green.txt",
-          "cleanupReceipt": "focused fixtures exited; no persistent process remains",
-          "ultraqaClasses": ["malformed_input", "stale_state", "misleading_success"]
+          "capturedEvidence": "absent ref idempotent 수렴 + 진짜 오류 3종 계속 실패, abandon 경로도 동일 수정 (PR #398)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "cancel_resume",
+            "stale_state",
+            "repeated_interruption"
+          ]
         },
         {
-          "id": "G3-C2",
-          "scenario": "Use a fake Codex executable to prove exact child argv and three-message JSONL ownership plus protocol, size, count, cwd, and string bounds.",
-          "channel": "cli",
-          "expectedEvidence": ".agent-harness/turing/evidence/G3-C2-codex-adapter.txt",
-          "status": "pass",
-          "capturedEvidence": ".agent-harness/turing/evidence/G3-C2-codex-adapter.txt",
-          "cleanupReceipt": "fake app-server roots removed by test cleanup; Unix parent and descendant reaped",
-          "ultraqaClasses": ["malformed_input", "hung_command", "prompt_injection"]
+          "id": "BT-G6-C2",
+          "scenario": "merged replacement가 원래 artifact를 명시적으로 supersede하고 issue closed·lease released·clean worktree일 때만 cleanup이 진행되며, unrelated/cross-repo/open issue는 거부됨을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G6-C2-superseded.txt",
+          "status": "blocked",
+          "capturedEvidence": "#283/#323 미착수 — superseded/advanced artifact의 provider readback 계약이 필요. 2026-08-08 dogfood로 3건이 실제 막힘을 #283에 기록",
+          "cleanupReceipt": null,
+          "ultraqaClasses": [
+            "misleading_success",
+            "stale_state"
+          ]
         },
         {
-          "id": "G3-C3",
-          "scenario": "Run focused, full, race, vet, build, contract-golden, self-verify, skill validation, and installed native allow/block verification with fresh exits.",
-          "channel": "cli",
-          "expectedEvidence": ".agent-harness/turing/evidence/G3-C3-full-verification.txt",
-          "status": "pending",
-          "capturedEvidence": ".agent-harness/turing/evidence/G3-C3-full-verification.txt",
-          "ultraqaClasses": ["flaky_test", "hung_command", "misleading_success"]
+          "id": "BT-G6-C3",
+          "scenario": "remote tip이 기록 head보다 전진했어도 후속 merged artifact 증거와 exact tip OID CAS가 갖춰지면 삭제되고, 불충분한 증거는 거부됨을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G6-C3-advanced.txt",
+          "status": "blocked",
+          "capturedEvidence": "#283/#323 미착수 — superseded/advanced artifact의 provider readback 계약이 필요. 2026-08-08 dogfood로 3건이 실제 막힘을 #283에 기록",
+          "cleanupReceipt": null,
+          "ultraqaClasses": [
+            "stale_state",
+            "misleading_success"
+          ]
         }
       ]
     },
     {
-      "id": "G4",
-      "title": "Publish repair and resume issue 46 safely",
-      "objective": "Merge and install issue 47 from verified bytes, then reconcile issue 46 without changing or losing its preserved recovery diff.",
-      "status": "pending",
+      "id": "BT-G7",
+      "title": "T6 — Orca 실행 계약",
+      "objective": "Orca 모드의 branch/worktree/remote-link 순서를 단일 state machine으로 확정하고, sealed task identity 기반 completion 수렴, generation skew 진단, released sync-base conflict의 bounded writer 권한을 제공한다.",
+      "status": "partial",
       "successCriteria": [
         {
-          "id": "G4-C1",
-          "scenario": "Publish one atomic issue-linked commit and PR, require green CI and no Critical/Important review findings, then verify the PR merged and issue 47 closed.",
-          "channel": "github",
-          "expectedEvidence": ".agent-harness/turing/evidence/G4-C1-publication.txt",
-          "status": "pending",
-          "ultraqaClasses": ["stale_state", "misleading_success"]
+          "id": "BT-G7-C1",
+          "scenario": "local-only / remote-only / both-present / stale remote-tracking / SHA mismatch fixture에서 skill·prompt·branch prepare·execution prepare가 동일 순서를 출력하고 실패가 orphan을 남기지 않음을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G7-C1-order.txt",
+          "status": "blocked",
+          "capturedEvidence": "#319/#325/#328 미착수 — 완료 조건이 실제 Orca 런타임 dogfood를 요구하는데 현재 runtime이 없다",
+          "cleanupReceipt": null,
+          "ultraqaClasses": [
+            "stale_state",
+            "misleading_success"
+          ]
         },
         {
-          "id": "G4-C2",
-          "scenario": "Build a clean merge-commit reference, install through the official path, prove installed hash equality, and verify Codex, Claude, MCP, and hook smokes.",
-          "channel": "cli",
-          "expectedEvidence": ".agent-harness/turing/evidence/G4-C2-install-readback.txt",
-          "status": "pending",
-          "ultraqaClasses": ["stale_state", "misleading_success"]
+          "id": "BT-G7-C2",
+          "scenario": "stale coordinator Run binding에서 consumer_fenced를 재현하는 RED와 sealed identity로 수렴하는 GREEN, 재시도 멱등성을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G7-C2-fenced.txt",
+          "status": "blocked",
+          "capturedEvidence": "#319/#325/#328 미착수 — 완료 조건이 실제 Orca 런타임 dogfood를 요구하는데 현재 runtime이 없다",
+          "cleanupReceipt": null,
+          "ultraqaClasses": [
+            "stale_state",
+            "cancel_resume"
+          ]
         },
         {
-          "id": "G4-C3",
-          "scenario": "Re-read both issue 46 records, re-hash the untouched recovery diff, establish one writer, and integrate or preserve the recovery change according to focused evidence before lifecycle cleanup.",
-          "channel": "cli",
-          "expectedEvidence": ".agent-harness/turing/evidence/G4-C3-issue-46-recovery.txt",
-          "status": "pending",
-          "ultraqaClasses": ["cancel_resume", "stale_state", "repeated_interruption"]
+          "id": "BT-G7-C3",
+          "scenario": "install/update dry-run과 readback이 CLI binary와 hook classifier 세대 불일치를 구조화 보고하고 exact recovery action을 제공함을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G7-C3-skew.txt",
+          "status": "blocked",
+          "capturedEvidence": "#319/#325/#328 미착수 — 완료 조건이 실제 Orca 런타임 dogfood를 요구하는데 현재 runtime이 없다",
+          "cleanupReceipt": null,
+          "ultraqaClasses": [
+            "stale_state",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G7-C4",
+          "scenario": "released sync-base apply가 conflict를 만들면 generation-bound merge-in-progress 범위의 bounded 권한이 기록되고, finalize/abort가 원자적으로 제거하며, 다른 actor/generation에는 열리지 않음을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G7-C4-bounded.txt",
+          "status": "pass",
+          "capturedEvidence": "#332 기구현 확인 (ExecutionSyncBaseResolution + TestReleasedSyncBaseResolutionAllowsOnlySealedActorConflictFiles)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "cancel_resume",
+            "prompt_injection",
+            "stale_state"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BT-G8",
+      "title": "T7 — Codex hook 실패 진단 식별성",
+      "objective": "hook 종료가 event·configured handler identity·termination reason과 함께 기록되어 어느 hook이 어떻게 끝났는지 식별 가능하게 한다.",
+      "status": "completed",
+      "successCriteria": [
+        {
+          "id": "BT-G8-C1",
+          "scenario": "정상 exit 0, non-zero, timeout, signal 종료 각각에서 진단 기록이 event와 handler identity를 구분해 남기고 기존 fail-closed 계약이 유지됨을 관측한다",
+          "channel": "auxiliary:cli",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G8-C1-diag.txt",
+          "status": "pass",
+          "capturedEvidence": "signal 종료 진단 4건 PASS, 정상 완료는 0건 기록 (PR #401)",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "hung_command",
+            "misleading_success"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "BT-G9",
+      "title": "저장소 잔여물 정리",
+      "objective": "머지 완료된 원격/로컬 브랜치, cleanup_candidate lifecycle, 고착 lease를 typed 경로로 정리한다.",
+      "status": "partial",
+      "successCriteria": [
+        {
+          "id": "BT-G9-C1",
+          "scenario": "삭제 직전 각 대상의 git cherry 미머지 패치 수가 0임을 재확인한 before/after 쌍을 캡처한다",
+          "channel": "auxiliary:git",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G9-C1-gate.txt",
+          "status": "pass",
+          "capturedEvidence": "삭제 전 미머지 패치 0 확인, before/after 쌍 캡처",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "stale_state",
+            "misleading_success"
+          ]
+        },
+        {
+          "id": "BT-G9-C2",
+          "scenario": "git ls-remote --heads가 main과 활성 작업 브랜치만 보고하고, git worktree list가 main만 보고하며, cleanup_candidate lifecycle이 0임을 관측한다",
+          "channel": "auxiliary:git",
+          "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G9-C2-final.txt",
+          "status": "pass",
+          "capturedEvidence": "원격 42 -> 6, worktree main 1개. 남은 5개는 미머지 패치 또는 active lease로 보류",
+          "cleanupReceipt": "none spawned",
+          "ultraqaClasses": [
+            "stale_state"
+          ]
         }
       ]
     }
   ],
   "metrics": {
-    "evidenceCoverage": 1.0,
+    "evidenceCoverage": 0.78,
+    "reworkRate": 0.33,
+    "cycleEfficiency": 0.85,
+    "parallelizationRatio": 1.0,
     "cleanupCompliance": 1.0
   }
 }
