@@ -101,7 +101,7 @@ func localActor(host, sessionID, agentID, cwd string) issueopscontract.IssueOpsA
 
 func RunCleanup(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops cleanup status --id ID [--merged] [--json]\n       agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]\n       agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]\n       agent-harness issueops cleanup remote-branch --id ID (--preview | --apply --confirm --fingerprint SHA256) [--json]\n       agent-harness issueops cleanup finish --id ID [--provider github|gitlab] (--preview | --apply --confirm --fingerprint SHA256) [--json]\n       agent-harness issueops cleanup abandon --id ID --reason TEXT (--preview | --apply --confirm --fingerprint SHA256) [--json]")
+		fmt.Println("Usage: agent-harness issueops cleanup status --id ID [--merged] [--json]\n       agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]\n       agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]\n       agent-harness issueops cleanup remote-branch --id ID (--preview | --apply --confirm --fingerprint SHA256) [--json]\n       agent-harness issueops cleanup finish --id ID [--provider github|gitlab] (--preview | --apply --confirm --fingerprint SHA256) [--superseded-by URL] [--json]\n       agent-harness issueops cleanup abandon --id ID --reason TEXT (--preview | --apply --confirm --fingerprint SHA256) [--json]")
 		return nil
 	}
 	switch args[0] {
@@ -223,7 +223,7 @@ func cleanupStatus(id string, mergedRequested bool, deps Deps) (issueopscontract
 		return issueopscontract.IssueOpsCleanupStatus{OK: false, ID: id}, fmt.Errorf("cannot resolve current directory (refusing cleanup status): %w", err)
 	}
 	result, finishErr := cleanupDeps.CleanupFinish(context.Background(), cleanupDeps.IssueOpsStateRoot(), cleanupFinishRequest(
-		record, snapshot, mergedArtifact, cwd, false, false, "",
+		record, snapshot, mergedArtifact, cwd, false, false, "", true, "",
 	), deps, prov)
 	if finishErr != nil && (result.ID != id || len(result.Missing) == 0) {
 		return issueopscontract.IssueOpsCleanupStatus{OK: false, ID: id}, finishErr
@@ -242,11 +242,12 @@ func cleanupStatus(id string, mergedRequested bool, deps Deps) (issueopscontract
 	return cleanupDeps.FinalizeIssueOpsCleanupStatus(status), nil
 }
 
-func cleanupFinishRequest(record issueopscontract.IssueOpsRecord, snapshot port.ExecutionIssueSnapshot, mergedArtifact issueopscontract.CleanupRemoteBranchArtifactHead, cwd string, apply, confirm bool, fingerprint string) issueopscontract.CleanupFinishRequest {
+func cleanupFinishRequest(record issueopscontract.IssueOpsRecord, snapshot port.ExecutionIssueSnapshot, mergedArtifact issueopscontract.CleanupRemoteBranchArtifactHead, cwd string, apply, confirm bool, fingerprint string, merged bool, supersededBy string) issueopscontract.CleanupFinishRequest {
 	return issueopscontract.CleanupFinishRequest{
 		ID:                  record.ID,
 		CWD:                 cwd,
-		Merged:              true,
+		Merged:              merged,
+		SupersededBy:        supersededBy,
 		CompletionReflected: strings.Contains(snapshot.Body, port.IssueBodyCompletionStartMarker),
 		IssueClosed:         strings.EqualFold(strings.TrimSpace(snapshot.State), "closed"),
 		MergedBaseBranch:    mergedArtifact.BaseRefName,
@@ -346,6 +347,7 @@ func runCleanupFinish(args []string, deps Deps) error {
 	apply := fs.Bool("apply", false, "run the destructive cleanup steps")
 	confirm := fs.Bool("confirm", false, "confirm the destructive apply")
 	fingerprint := fs.String("fingerprint", "", "fingerprint issued by the latest --preview")
+	supersededBy := fs.String("superseded-by", "", "merged artifact URL that explicitly supersedes the recorded artifact")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := deps.ParseFlags(fs, args); help || err != nil {
 		return err
@@ -383,9 +385,11 @@ func runCleanupFinish(args []string, deps Deps) error {
 	if deps.VerifyMergedHead == nil {
 		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("merge verification is not configured"))
 	}
-	mergedArtifact, err := deps.VerifyMergedHead(*record.RemoteArtifact)
-	if err != nil {
-		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("merge evidence readback failed (refusing to continue): %w", err))
+	// 원 artifact가 머지되지 않은 것은 replacement 증거가 있을 때만 통과 후보다.
+	// 증거가 없으면 종전대로 여기서 멈춘다 — 관측 실패를 조용히 넘기지 않는다.
+	mergedArtifact, mergeErr := deps.VerifyMergedHead(*record.RemoteArtifact)
+	if mergeErr != nil && strings.TrimSpace(*supersededBy) == "" {
+		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("merge evidence readback failed (refusing to continue): %w", mergeErr))
 	}
 	snapshot, err := cleanupDeps.ReadRemoteIssueSnapshot(context.Background(), prov, port.ExecutionIssueSnapshotRequest{
 		Repo: record.Repo, URL: record.IssueURL,
@@ -399,7 +403,7 @@ func runCleanupFinish(args []string, deps Deps) error {
 		// 가드를 여는 대신 fail-closed로 거부한다(C2-F4).
 		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("cannot resolve current directory (refusing destructive cleanup): %w", err))
 	}
-	req := cleanupFinishRequest(record, snapshot, mergedArtifact, cwd, *apply, *confirm, *fingerprint)
+	req := cleanupFinishRequest(record, snapshot, mergedArtifact, cwd, *apply, *confirm, *fingerprint, mergeErr == nil, strings.TrimSpace(*supersededBy))
 	result, err := cleanupDeps.CleanupFinish(context.Background(), cleanupDeps.IssueOpsStateRoot(), req, deps, prov)
 	var bindErr error
 	result.NextCommand, bindErr = bindCleanupNextCommand(result.NextCommand, cleanupExecutionGeneration(record), deps.Provenance)

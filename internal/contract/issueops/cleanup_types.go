@@ -55,9 +55,14 @@ type CleanupFinishRequest struct {
 	// 시점에 검증된 과거이므로 drift를 구조적으로 검출하지 못한다 — 원격 관측만이
 	// 유효한 증거다.
 	MergedBaseBranch string
-	Apply            bool
-	Confirm          bool
-	Fingerprint      string
+	// SupersededBy는 원래 artifact가 closed-unmerged이고 후속 artifact가 그
+	// 변경을 명시적으로 대체해 머지된 경우에 그 후속 artifact URL이다. 이 값이
+	// 있으면 merged 게이트를 replacement 증거로 대신 충족할 수 있다(#283).
+	// 증거는 provider readback으로 검증되며, 검증 실패는 통과가 아니라 거부다.
+	SupersededBy string
+	Apply        bool
+	Confirm      bool
+	Fingerprint  string
 }
 
 // CleanupRemoteBranchRequest는 머지 검증된 사이클의 원격 브랜치를 typed 경로로
@@ -131,6 +136,12 @@ type CleanupFinishResult struct {
 	RecordDeleted      bool     `json:"record_deleted,omitempty"`
 	FailedStep         string   `json:"failed_step,omitempty"`
 	NextCommand        string   `json:"next_command,omitempty"`
+	// SupersededBy는 merged 게이트를 replacement 증거로 충족했을 때 그 artifact
+	// URL이다. 무엇을 근거로 통과했는지 결과만 보고 알 수 있어야 한다.
+	SupersededBy string `json:"superseded_by,omitempty"`
+	// SupersedeError는 replacement 증거가 제시됐으나 검증에 실패한 사유다.
+	// 비어 있으면 증거가 아예 없었다는 뜻이다.
+	SupersedeError string `json:"supersede_error,omitempty"`
 }
 type CleanupRemoteBranchResult struct {
 	OK                  bool     `json:"ok"`
