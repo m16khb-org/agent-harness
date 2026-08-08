@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/policy"
 	"agent-harness/internal/adapter/toolconformance"
+	"agent-harness/internal/domain/policy"
 	"agent-harness/internal/port"
 )
 

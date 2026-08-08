@@ -2,8 +2,6 @@ package policy
 
 import (
 	"strings"
-
-	policydomain "agent-harness/internal/domain/policy"
 )
 
 type CommandPolicyRequest struct {
@@ -27,29 +25,29 @@ type CommandPolicyRequest struct {
 // excluded so a single approval never raises the whole session's safety level.
 
 const (
-	PolicyTierReadOnly       = policydomain.TierReadOnly
-	PolicyTierWorkspaceWrite = policydomain.TierWorkspaceWrite
-	PolicyTierNetworkAccess  = policydomain.TierNetworkAccess
-	PolicyTierShellException = policydomain.TierShellException
+	PolicyTierReadOnly       = TierReadOnly
+	PolicyTierWorkspaceWrite = TierWorkspaceWrite
+	PolicyTierNetworkAccess  = TierNetworkAccess
+	PolicyTierShellException = TierShellException
 )
 
 type CommandPolicyEvaluation struct {
-	OK             bool              `json:"ok"`
-	Allowed        bool              `json:"allowed"`
-	AuditLogID     string            `json:"audit_log_id"`
-	WorkspaceRoot  string            `json:"workspace_root"`
-	CWD            string            `json:"cwd"`
-	Argv           []string          `json:"argv"`
-	Timeout        string            `json:"timeout"`
-	EnvAllowlist   []string          `json:"env_allowlist"`
-	NetworkAllowed bool              `json:"network_allowed"`
-	WriteAllowed   bool              `json:"write_allowed"`
-	ShellAllowed   bool              `json:"shell_allowed"`
-	ShellReason    string            `json:"shell_reason,omitempty"`
-	Tier           policydomain.Tier `json:"tier"`
-	DenyReasons    []string          `json:"deny_reasons"`
-	Warnings       []string          `json:"warnings"`
-	GeneratedAt    string            `json:"generated_at"`
+	OK             bool     `json:"ok"`
+	Allowed        bool     `json:"allowed"`
+	AuditLogID     string   `json:"audit_log_id"`
+	WorkspaceRoot  string   `json:"workspace_root"`
+	CWD            string   `json:"cwd"`
+	Argv           []string `json:"argv"`
+	Timeout        string   `json:"timeout"`
+	EnvAllowlist   []string `json:"env_allowlist"`
+	NetworkAllowed bool     `json:"network_allowed"`
+	WriteAllowed   bool     `json:"write_allowed"`
+	ShellAllowed   bool     `json:"shell_allowed"`
+	ShellReason    string   `json:"shell_reason,omitempty"`
+	Tier           Tier     `json:"tier"`
+	DenyReasons    []string `json:"deny_reasons"`
+	Warnings       []string `json:"warnings"`
+	GeneratedAt    string   `json:"generated_at"`
 }
 
 type CommandFakeRunResult struct {

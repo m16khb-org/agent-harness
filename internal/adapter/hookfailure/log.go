@@ -2,8 +2,8 @@ package hookfailure
 
 import (
 	corestate "agent-harness/internal/adapter/outbound/state"
-	"agent-harness/internal/adapter/policy"
 	statecontract "agent-harness/internal/contract/state"
+	"agent-harness/internal/domain/policy"
 	"bufio"
 	"context"
 	"encoding/json"

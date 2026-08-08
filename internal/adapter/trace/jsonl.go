@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"agent-harness/internal/adapter/policy"
+	"agent-harness/internal/domain/policy"
 	"agent-harness/internal/domain/traceclassification"
 )
 

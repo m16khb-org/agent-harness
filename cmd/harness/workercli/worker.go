@@ -2,8 +2,8 @@ package workercli
 
 import (
 	draftwiki "agent-harness/internal/adapter/draftwiki"
-	policy "agent-harness/internal/adapter/policy"
 	worker "agent-harness/internal/adapter/worker"
+	policy "agent-harness/internal/domain/policy"
 	"flag"
 	"fmt"
 	"os"

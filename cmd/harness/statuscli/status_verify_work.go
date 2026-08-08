@@ -5,6 +5,7 @@ import (
 	policy "agent-harness/internal/adapter/policy"
 	preflight "agent-harness/internal/adapter/preflight"
 	projectdocs "agent-harness/internal/adapter/projectdocs"
+	policydomain "agent-harness/internal/domain/policy"
 	"flag"
 	"fmt"
 	"os/exec"
@@ -12,17 +13,17 @@ import (
 )
 
 type VerifyWorkResult struct {
-	OK                bool                         `json:"ok"`
-	Kind              string                       `json:"kind"`
-	Repo              string                       `json:"repo"`
-	GitStatus         string                       `json:"git_status,omitempty"`
-	Preflight         preflight.PreflightResult    `json:"preflight"`
-	Guard             guard.GuardCheckResult       `json:"guard"`
-	Command           *policy.CommandRunResult     `json:"command,omitempty"`
-	Evidence          []string                     `json:"evidence"`
-	EvidenceMatrix    []VerifyWorkEvidenceItem     `json:"evidence_matrix"`
-	SuggestedCommands []VerifyWorkSuggestedCommand `json:"suggested_commands"`
-	Warnings          []string                     `json:"warnings"`
+	OK                bool                           `json:"ok"`
+	Kind              string                         `json:"kind"`
+	Repo              string                         `json:"repo"`
+	GitStatus         string                         `json:"git_status,omitempty"`
+	Preflight         preflight.PreflightResult      `json:"preflight"`
+	Guard             guard.GuardCheckResult         `json:"guard"`
+	Command           *policydomain.CommandRunResult `json:"command,omitempty"`
+	Evidence          []string                       `json:"evidence"`
+	EvidenceMatrix    []VerifyWorkEvidenceItem       `json:"evidence_matrix"`
+	SuggestedCommands []VerifyWorkSuggestedCommand   `json:"suggested_commands"`
+	Warnings          []string                       `json:"warnings"`
 }
 
 type VerifyWorkEvidenceItem struct {
@@ -90,9 +91,9 @@ func buildVerifyWork(repo string, all bool, argv []string) VerifyWorkResult {
 		warnings = append(warnings, "guard check has blocking findings")
 	}
 	evidenceMatrix = append(evidenceMatrix, verifyWorkEvidenceItem("guard_check", guard.OK, fmt.Sprintf("guard check completed in %s mode for %d file(s)", guard.Mode, len(guard.CheckedFiles))))
-	var command *policy.CommandRunResult
+	var command *policydomain.CommandRunResult
 	if len(argv) > 0 {
-		run := policy.RunReadOnlyCommand(policy.CommandPolicyRequest{WorkspaceRoot: root, CWD: root, Argv: argv, Timeout: "30s"})
+		run := policy.RunReadOnlyCommand(policydomain.CommandPolicyRequest{WorkspaceRoot: root, CWD: root, Argv: argv, Timeout: "30s"})
 		command = &run
 		if run.OK {
 			evidence = append(evidence, "read-only verification command passed")

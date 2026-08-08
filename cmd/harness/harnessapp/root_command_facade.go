@@ -5,7 +5,7 @@ import (
 
 	"agent-harness/cmd/harness/rootcmd"
 	guard "agent-harness/internal/adapter/guard"
-	policy "agent-harness/internal/adapter/policy"
+	policy "agent-harness/internal/domain/policy"
 )
 
 func RunRootCommand(args []string) int {

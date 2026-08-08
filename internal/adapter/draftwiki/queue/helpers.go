@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"strings"
 
-	"agent-harness/internal/adapter/policy"
+	"agent-harness/internal/domain/policy"
 )
 
 func TrimMaterial(material string) string {

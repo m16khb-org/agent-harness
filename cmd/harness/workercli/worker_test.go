@@ -2,8 +2,8 @@ package workercli
 
 import (
 	"agent-harness/internal/adapter/outbound/sqlstore"
-	policy "agent-harness/internal/adapter/policy"
 	worker "agent-harness/internal/adapter/worker"
+	policy "agent-harness/internal/domain/policy"
 	"agent-harness/internal/testsupport"
 	"encoding/json"
 	"errors"

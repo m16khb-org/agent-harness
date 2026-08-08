@@ -11,10 +11,10 @@ import (
 	"agent-harness/internal/adapter/draftwiki/queue"
 	"agent-harness/internal/adapter/lifecycle"
 	"agent-harness/internal/adapter/outbound/state"
-	"agent-harness/internal/adapter/policy"
 	"agent-harness/internal/adapter/projectdoc"
 	coreworker "agent-harness/internal/adapter/worker"
 	"agent-harness/internal/domain/judgement"
+	"agent-harness/internal/domain/policy"
 	"agent-harness/internal/domain/prompt"
 )
 

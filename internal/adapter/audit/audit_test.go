@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/policy"
+	"agent-harness/internal/domain/policy"
 )
 
 func TestAuditCommandPolicyWritesRedactedJSONL(t *testing.T) {

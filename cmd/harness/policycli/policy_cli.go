@@ -3,6 +3,7 @@ package policycli
 import (
 	audit "agent-harness/internal/adapter/audit"
 	policy "agent-harness/internal/adapter/policy"
+	policydomain "agent-harness/internal/domain/policy"
 	"fmt"
 	"os"
 )
@@ -69,7 +70,7 @@ func runPolicyFakeRun(args []string) error {
 		}
 	}
 	if !result.Policy.Allowed {
-		return policy.PolicyDeniedError{Reasons: result.Policy.DenyReasons}
+		return policydomain.PolicyDeniedError{Reasons: result.Policy.DenyReasons}
 	}
 	return nil
 }
@@ -97,7 +98,7 @@ func runPolicyRun(args []string) error {
 		}
 	}
 	if !result.Policy.Allowed {
-		return policy.PolicyDeniedError{Reasons: result.Policy.DenyReasons}
+		return policydomain.PolicyDeniedError{Reasons: result.Policy.DenyReasons}
 	}
 	if result.ExitCode != 0 {
 		return fmt.Errorf("command exited %d", result.ExitCode)
@@ -122,7 +123,7 @@ func runPolicyAudit(args []string) error {
 	return err
 }
 
-func printPolicyEvaluation(result policy.CommandPolicyEvaluation) {
+func printPolicyEvaluation(result policydomain.CommandPolicyEvaluation) {
 	if result.Allowed {
 		fmt.Printf("policy allowed: %s\n", result.AuditLogID)
 		return

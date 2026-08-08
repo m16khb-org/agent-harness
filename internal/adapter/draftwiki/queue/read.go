@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"agent-harness/internal/adapter/policy"
+	"agent-harness/internal/domain/policy"
 )
 
 func CountLines(path string, limit int) (int, error) {

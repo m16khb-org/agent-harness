@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	"agent-harness/internal/adapter/policy"
+	"agent-harness/internal/domain/policy"
 )
 
 type Cause string
