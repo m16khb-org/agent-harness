@@ -55,6 +55,7 @@ func wireBasicCLIDeps() {
 	configureHookCLILifecycle()
 	configureDoctorHookPromptLifecycle()
 	configureToolConformance()
+	configureDoctorRunner()
 	operationalCollector := operationalhealth.Collector{Git: operationalhealth.ExecGitRunner{}, Orca: orca.New()}
 	basiccli.Configure(basiccli.Deps{
 		GitPreflight:             preflight.GitPreflight,

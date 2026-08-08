@@ -1,7 +1,7 @@
 package basiccli
 
 import (
-	doctor "agent-harness/internal/adapter/doctor"
+	doctorcontract "agent-harness/internal/contract/doctor"
 	"agent-harness/internal/domain/operationalhealth"
 	"context"
 	"flag"
@@ -84,7 +84,7 @@ func runDoctor(args []string) error {
 	snapshot := deps.CollectOperationalHealth(context.Background(), root)
 	home, _ := os.UserHomeDir()
 	daemon := deps.CheckDaemonStatus()
-	result, err := doctor.HarnessDoctor(doctor.HarnessDoctorRequest{
+	result, err := harnessDoctor(doctorcontract.HarnessDoctorRequest{
 		RepoRoot:            root,
 		HarnessRoot:         deps.HarnessRoot(),
 		Home:                home,
@@ -96,7 +96,7 @@ func runDoctor(args []string) error {
 			PreserveCycleIDs:        cycleIDs,
 			PreserveTerminalHandles: terminalHandles,
 		},
-		DaemonAdmission: doctor.HarnessDoctorDaemonAdmission{
+		DaemonAdmission: doctorcontract.HarnessDoctorDaemonAdmission{
 			ActiveConnections: daemon.ActiveConnections,
 			MaxConnections:    daemon.MaxConnections,
 			Accepting:         daemon.Accepting,

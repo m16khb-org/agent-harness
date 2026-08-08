@@ -1,4 +1,3 @@
-cmd/harness/basiccli -> internal/adapter/doctor
 cmd/harness/issueopscli -> internal/adapter/issueops
 cmd/harness/issueopscli -> internal/adapter/issueops/loopgate
 cmd/harness/issueopscli -> internal/adapter/issueops/orphancleanup
@@ -8,7 +7,6 @@ cmd/harness/issueopscli/feedbackcleanup -> internal/adapter/issueops
 cmd/harness/issueopscli/feedbackcleanup -> internal/adapter/issueops/orphancleanup
 cmd/harness/issueopscli/remotecmd -> internal/adapter/issueops
 cmd/harness/mcpcli -> internal/adapter/issueops
-cmd/harness/statuscli -> internal/adapter/doctor
 internal/adapter/inbound/issueopscompletion -> internal/adapter/issueops
 internal/adapter/inbound/issueopslease -> internal/adapter/issueops
 internal/adapter/inbound/issueopspreparation -> internal/adapter/issueops

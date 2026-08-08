@@ -1,30 +1,30 @@
 package statuscli
 
 import (
+	doctorcontract "agent-harness/internal/contract/doctor"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
 
 	"agent-harness/cmd/harness/daemoncli"
-	doctor "agent-harness/internal/adapter/doctor"
 	inspect "agent-harness/internal/contract/inspect"
 	statecontract "agent-harness/internal/contract/state"
 	workercontract "agent-harness/internal/contract/worker"
 )
 
 type HarnessStatus struct {
-	OK         bool                            `json:"ok"`
-	Kind       string                          `json:"kind"`
-	Version    string                          `json:"version"`
-	Repo       string                          `json:"repo"`
-	Inspect    inspect.InspectInfo             `json:"inspect"`
-	Doctor     doctor.HarnessDoctorResult      `json:"doctor"`
-	Daemon     daemoncli.Status                `json:"daemon"`
-	State      statecontract.StateListResult   `json:"state"`
-	Workers    workercontract.WorkerListResult `json:"workers"`
-	SelfVerify SelfVerifyStatus                `json:"self_verify"`
-	Warnings   []string                        `json:"warnings"`
+	OK         bool                               `json:"ok"`
+	Kind       string                             `json:"kind"`
+	Version    string                             `json:"version"`
+	Repo       string                             `json:"repo"`
+	Inspect    inspect.InspectInfo                `json:"inspect"`
+	Doctor     doctorcontract.HarnessDoctorResult `json:"doctor"`
+	Daemon     daemoncli.Status                   `json:"daemon"`
+	State      statecontract.StateListResult      `json:"state"`
+	Workers    workercontract.WorkerListResult    `json:"workers"`
+	SelfVerify SelfVerifyStatus                   `json:"self_verify"`
+	Warnings   []string                           `json:"warnings"`
 }
 
 type SelfVerifyStatus struct {
@@ -63,12 +63,12 @@ func buildHarnessStatus(repo string) HarnessStatus {
 	home, _ := os.UserHomeDir()
 	inspect := deps.InspectHarness(repo)
 	daemon := deps.CheckDaemonStatus()
-	doctor, doctorErr := doctor.HarnessDoctor(doctor.HarnessDoctorRequest{
+	doctor, doctorErr := harnessDoctor(doctorcontract.HarnessDoctorRequest{
 		RepoRoot:    repo,
 		HarnessRoot: deps.HarnessRoot(),
 		Home:        home,
 		Version:     deps.Version,
-		DaemonAdmission: doctor.HarnessDoctorDaemonAdmission{
+		DaemonAdmission: doctorcontract.HarnessDoctorDaemonAdmission{
 			ActiveConnections: daemon.ActiveConnections,
 			MaxConnections:    daemon.MaxConnections,
 			Accepting:         daemon.Accepting,
