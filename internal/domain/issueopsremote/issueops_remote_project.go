@@ -2,7 +2,6 @@ package remote
 
 import (
 	"fmt"
-	"net"
 	"net/url"
 	"regexp"
 	"strings"
@@ -133,8 +132,14 @@ func ValidateGitRemoteMatchesIssue(issueURL, remoteURL, provider string) error {
 func normalizedWebHost(parsed *url.URL) string {
 	host := strings.ToLower(parsed.Hostname())
 	port := parsed.Port()
+	// net.JoinHostPort와 같은 규칙이지만 net을 import하지 않는다. 호스트 정규화는
+	// 순수 문자열 규칙이고, domain은 net을 의존해서는 안 된다. 아래 IPv6 분기가
+	// 이미 같은 대괄호 처리를 하므로 표기도 일관된다.
 	if port != "" && port != "443" {
-		return net.JoinHostPort(host, port)
+		if strings.Contains(host, ":") {
+			return "[" + host + "]:" + port
+		}
+		return host + ":" + port
 	}
 	if strings.Contains(host, ":") {
 		return "[" + host + "]"

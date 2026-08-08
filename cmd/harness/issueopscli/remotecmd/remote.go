@@ -1,7 +1,7 @@
 package remotecmd
 
 import (
-	artifacttemplate "agent-harness/internal/adapter/issueops/artifacttemplate"
+	artifacttemplate "agent-harness/internal/domain/artifacttemplate"
 	port "agent-harness/internal/port"
 	"context"
 	"encoding/json"
@@ -11,9 +11,9 @@ import (
 	"strings"
 
 	issueopscore "agent-harness/internal/adapter/issueops"
-	"agent-harness/internal/adapter/issueops/remote"
 	"agent-harness/internal/adapter/provider"
 	issueopscontract "agent-harness/internal/contract/issueops"
+	"agent-harness/internal/domain/issueopsremote"
 )
 
 type Deps struct {

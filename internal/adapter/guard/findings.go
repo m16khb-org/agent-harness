@@ -3,7 +3,7 @@ package guard
 import (
 	"strings"
 
-	"agent-harness/internal/adapter/guard/pattern"
+	"agent-harness/internal/domain/guardpattern"
 )
 
 func guardFileFindings(rel, content string, existingSymbols map[string][]string) []GuardFinding {

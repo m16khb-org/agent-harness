@@ -11,7 +11,7 @@ import (
 
 	corestate "agent-harness/internal/adapter/outbound/state"
 	"agent-harness/internal/adapter/policy"
-	"agent-harness/internal/adapter/policy/auditid"
+	"agent-harness/internal/domain/auditid"
 )
 
 const (

@@ -6,7 +6,7 @@ import (
 
 	"agent-harness/internal/adapter/failurecause"
 	"agent-harness/internal/adapter/policy"
-	"agent-harness/internal/adapter/trace/classification"
+	"agent-harness/internal/domain/traceclassification"
 )
 
 func selfVerifySummaryFindings(doc map[string]any) []TraceAnalysisFinding {

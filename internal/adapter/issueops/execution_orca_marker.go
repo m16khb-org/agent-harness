@@ -4,9 +4,9 @@ import (
 	"strconv"
 	"strings"
 
-	"agent-harness/internal/adapter/issueops/remote"
 	"agent-harness/internal/contract/issueops"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
+	"agent-harness/internal/domain/issueopsremote"
 )
 
 type orcaIssueIdentity struct {

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"agent-harness/internal/adapter/policy"
-	"agent-harness/internal/adapter/trace/classification"
+	"agent-harness/internal/domain/traceclassification"
 )
 
 func analyzeTraceJSONL(text string) ([]TraceAnalysisFinding, []string) {

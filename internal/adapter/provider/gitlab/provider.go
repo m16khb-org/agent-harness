@@ -14,7 +14,7 @@ import (
 
 	"agent-harness/internal/adapter/provider/issuebody"
 	"agent-harness/internal/adapter/provider/providerutil"
-	"agent-harness/internal/adapter/provider/remoteparse"
+	"agent-harness/internal/domain/remoteparse"
 	"agent-harness/internal/port"
 )
 

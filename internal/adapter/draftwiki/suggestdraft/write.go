@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/draftwiki/draftmeta"
+	"agent-harness/internal/domain/draftmeta"
 )
 
 func Write(root, draftWikiDir, title, targetWiki, targetType, output string) (string, error) {

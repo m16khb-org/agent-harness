@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"agent-harness/internal/adapter/guard/pattern"
+	"agent-harness/internal/domain/guardpattern"
 )
 
 func guardExistingSymbols(root string, targetFiles []string) map[string][]string {
