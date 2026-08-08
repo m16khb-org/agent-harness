@@ -135,7 +135,11 @@ func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonReq
 		result.WorktreeRemoved = true
 	}
 	if inventory.BranchOID != "" {
-		if code, out := deps.Git(record.Repo, "update-ref", "-d", "refs/heads/"+inventory.Branch, inventory.BranchOID); code != 0 {
+		// finish와 같은 순서 결함이다: 앞선 worktree 제거가 linked branch ref를
+		// 함께 회수하면 이 시점의 대상은 이미 없다. 부재는 삭제의 목표 상태이므로
+		// 재관측으로 확인한 뒤 idempotent success로 정규화한다(#291).
+		if code, out := deps.Git(record.Repo, "update-ref", "-d", "refs/heads/"+inventory.Branch, inventory.BranchOID); code != 0 &&
+			branchRefPresent(deps.Git, record.Repo, inventory.Branch) {
 			result.OK = false
 			result.FailedStep = "branch_delete"
 			receiptErr := recordCleanupAbandonFailure(stateRoot, record.ID, result.FailedStep, fmt.Errorf("%s", out), fingerprint, inventory)

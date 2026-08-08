@@ -151,7 +151,18 @@ func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishReque
 	// ④ 로컬 브랜치 삭제(head OID CAS, 부재 = 생략).
 	if inventory.BranchOID != "" {
 		if code, out := deps.Git(record.Repo, "update-ref", "-d", "refs/heads/"+inventory.Branch, inventory.BranchOID); code != 0 {
-			return fail("branch_delete", fmt.Errorf("git update-ref -d: %s", out))
+			// ③이 Orca/Git worktree를 제거하면서 linked branch ref까지 함께
+			// 회수하는 순서가 있다. 그때 이 단계의 대상은 이미 없고, 부재는
+			// 삭제가 목표로 하던 상태 그 자체다. 실패로 처리하면 첫 apply가
+			// exact-once/idempotent 계약을 깨고 두 번 실행해야 수렴한다(#291).
+			//
+			// 판정 근거는 오류 문자열이 아니라 **재관측**이다. Git 메시지는
+			// 버전·로케일에 따라 달라지지만 ref 존재 여부는 그렇지 않다.
+			// permission, lock contention, OID drift는 ref가 남아 있으므로
+			// 그대로 실패한다.
+			if branchRefPresent(deps.Git, record.Repo, inventory.Branch) {
+				return fail("branch_delete", fmt.Errorf("git update-ref -d: %s", out))
+			}
 		}
 		result.BranchDeleted = true
 	}
@@ -367,4 +378,19 @@ func ReflectCleanupAudit(stateRoot string, record issueops.IssueOpsRecord, compl
 		rc.ReflectedAt = now
 	})
 	return err
+}
+
+// branchRefPresent는 exact local branch ref가 여전히 존재하는지 재관측한다.
+//
+// `update-ref -d` 실패를 부재로 정규화할지 판정하는 유일한 근거다. Git의 오류
+// 문구는 버전과 로케일에 따라 달라지므로 문자열 매칭 대신 ref 자체를 다시
+// 읽는다. 관측이 불가능하면(예: Git 호출 자체가 실패) 존재하는 것으로 보아
+// fail-closed한다 — 부재를 증명하지 못한 상태에서 성공으로 정규화하면 실제
+// 실패를 삼키게 된다.
+func branchRefPresent(git func(dir string, args ...string) (int, string), repo, branch string) bool {
+	if git == nil || strings.TrimSpace(branch) == "" {
+		return true
+	}
+	code, _ := git(repo, "show-ref", "--verify", "--quiet", "refs/heads/"+branch)
+	return code == 0
 }
