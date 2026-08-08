@@ -85,8 +85,7 @@ func (adapter *OrcaGatewayAdapter) Invoke(ctx context.Context, request preparati
 	receipt, err := adapter.dependencies.Provisioner.InvokeIntent(ctx, toPortIntentRequest(request))
 	if err != nil {
 		state := preparationcontract.InvocationUnknown
-		var typed *port.OrcaError
-		if errors.As(err, &typed) && !typed.Invoked {
+		if typed, ok := errors.AsType[*port.OrcaError](err); ok && !typed.Invoked {
 			state = preparationcontract.InvocationNotInvoked
 		}
 		return preparationcontract.IntentReceipt{}, &preparationcontract.InvocationError{State: state, Cause: err}

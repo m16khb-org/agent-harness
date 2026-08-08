@@ -43,8 +43,8 @@ func publicReseedError(err error) error {
 	if leasedomain.DenyCodeOf(err) != "" {
 		return errors.Unwrap(err)
 	}
-	var failure *leasecontract.Failure
-	if !errors.As(err, &failure) {
+	failure, ok := errors.AsType[*leasecontract.Failure](err)
+	if !ok {
 		return err
 	}
 	return failure.Cause

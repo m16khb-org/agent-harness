@@ -137,8 +137,7 @@ func (e *coreReconcileEffects) invokeStage(ctx context.Context, intent leaseapp.
 	receipt, err := e.provisioner.InvokeIntent(ctx, request)
 	if err != nil {
 		invocation := "unknown"
-		var typed *port.OrcaError
-		if errors.As(err, &typed) && !typed.Invoked {
+		if typed, ok := errors.AsType[*port.OrcaError](err); ok && !typed.Invoked {
 			invocation = "not_invoked_proven"
 		}
 		return leasecontract.ReconcileStageReceipt{}, invocation, err

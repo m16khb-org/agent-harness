@@ -41,8 +41,8 @@ func publicClaimError(err error, generation uint64) error {
 	case leasedomain.DenyClaimToken:
 		return fmt.Errorf("claim token does not match the current generation")
 	}
-	var failure *leasecontract.Failure
-	if !errors.As(err, &failure) {
+	failure, ok := errors.AsType[*leasecontract.Failure](err)
+	if !ok {
 		return err
 	}
 	return failure.Cause

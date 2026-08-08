@@ -222,8 +222,7 @@ func normalizeOrcaRemoveWorktreeErr(err error) error {
 	if err == nil {
 		return nil
 	}
-	var orcaErr *port.OrcaError
-	if errors.As(err, &orcaErr) && strings.Contains(strings.ToLower(orcaErr.Code), "not_found") {
+	if orcaErr, ok := errors.AsType[*port.OrcaError](err); ok && strings.Contains(strings.ToLower(orcaErr.Code), "not_found") {
 		return nil
 	}
 	// 폴백: orca CLI 산문 메시지 매칭. 문구/로캘 변경에 취약하므로

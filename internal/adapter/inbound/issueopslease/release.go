@@ -82,8 +82,8 @@ func publicReleaseError(err error, generation uint64) error {
 	} else if code == leasedomain.DenyCanonicalCWD {
 		return fmt.Errorf("release cwd must be the canonical worktree")
 	}
-	var failure *leasecontract.Failure
-	if !errors.As(err, &failure) {
+	failure, ok := errors.AsType[*leasecontract.Failure](err)
+	if !ok {
 		return err
 	}
 	return failure.Cause

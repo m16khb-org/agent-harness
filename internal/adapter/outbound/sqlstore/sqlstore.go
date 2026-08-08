@@ -392,8 +392,8 @@ func (d *DB) beginSpanTx(ctx context.Context) (*sql.Tx, error) {
 }
 
 func isSQLiteLockContention(err error) bool {
-	var sqliteErr *sqlite.Error
-	if !errors.As(err, &sqliteErr) {
+	sqliteErr, ok := errors.AsType[*sqlite.Error](err)
+	if !ok {
 		return false
 	}
 	primaryCode := sqliteErr.Code() & 0xff

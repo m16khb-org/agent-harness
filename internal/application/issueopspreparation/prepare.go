@@ -234,8 +234,7 @@ func (service *Service) advanceOrca(ctx context.Context, state IntentState) (Int
 	receipt, err := service.orca.Invoke(ctx, request)
 	if err != nil {
 		invocation := preparationcontract.InvocationUnknown
-		var typed *preparationcontract.InvocationError
-		if errors.As(err, &typed) && typed.State != "" {
+		if typed, ok := errors.AsType[*preparationcontract.InvocationError](err); ok && typed.State != "" {
 			invocation = typed.State
 		}
 		_ = service.recordOrcaFailure(ctx, marked, invocation, err)

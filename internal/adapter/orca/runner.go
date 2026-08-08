@@ -104,9 +104,11 @@ func runOrcaCommand(ctx context.Context, cwd string, argv []string, environ []st
 
 func shouldRetryWithoutInheritedRelay(environ []string, output CommandOutput, err error) bool {
 	const ownerlessRelayDiagnostic = "No owning Orca client is connected to the relay"
-	var orcaErr *port.OrcaError
-	return hasInheritedOrcaRelay(environ) &&
-		errors.As(err, &orcaErr) &&
+	if !hasInheritedOrcaRelay(environ) {
+		return false
+	}
+	orcaErr, ok := errors.AsType[*port.OrcaError](err)
+	return ok &&
 		orcaErr.Code == "command_failed" &&
 		strings.Contains(string(output.Stderr), ownerlessRelayDiagnostic)
 }
