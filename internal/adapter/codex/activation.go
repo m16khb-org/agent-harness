@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/adapter/installutil"
 	"agent-harness/internal/port"
 )
 
@@ -23,22 +22,22 @@ func VerifyActivation(req port.NativeInstallRequest) ([]port.NativeActivationEvi
 		!strings.HasSuffix(text, expectedBlock) {
 		return nil, fmt.Errorf("Codex MCP readback does not contain exactly one canonical agent_harness server")
 	}
-	mcpDigest, err := installutil.SemanticSHA256(map[string]any{
+	mcpDigest, err := SemanticSHA256(map[string]any{
 		"host": "codex", "surface": "mcp", "block": expectedBlock,
 	})
 	if err != nil {
 		return nil, err
 	}
 	hooksPath := filepath.Join(req.CodexHome, "hooks.json")
-	hooksDigest, err := installutil.VerifyHookActivation(hooksPath, codexHooksConfig(req.BinPath))
+	hooksDigest, err := VerifyHookActivation(hooksPath, codexHooksConfig(req.BinPath))
 	if err != nil {
 		return nil, fmt.Errorf("Codex hook readback failed: %w", err)
 	}
-	mcpEvidence, err := installutil.CaptureNativeActivationEvidence("codex", "mcp", configPath, mcpDigest)
+	mcpEvidence, err := CaptureNativeActivationEvidence("codex", "mcp", configPath, mcpDigest)
 	if err != nil {
 		return nil, err
 	}
-	hookEvidence, err := installutil.CaptureNativeActivationEvidence("codex", "hooks", hooksPath, hooksDigest)
+	hookEvidence, err := CaptureNativeActivationEvidence("codex", "hooks", hooksPath, hooksDigest)
 	if err != nil {
 		return nil, err
 	}

@@ -16,7 +16,7 @@ func (Installer) Name() string { return "codex" }
 func (Installer) Install(req port.NativeInstallRequest) (port.HostInstallResult, error) {
 	plan := installutil.NewPlan("codex", req.DryRun)
 
-	_, links, messages, skillErrs := installutil.PlanHostSkillLinks(req.Root, filepath.Join(req.CodexHome, "skills"), req.SkillNames, "codex", req.DryRun)
+	_, links, messages, skillErrs := PlanHostSkillLinks(req.Root, filepath.Join(req.CodexHome, "skills"), req.SkillNames, "codex", req.DryRun)
 	plan.Messages(messages)
 	plan.Links(links)
 	plan.Errs(skillErrs)

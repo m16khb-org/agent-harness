@@ -9,7 +9,6 @@ cmd/harness/hookcli -> internal/adapter/lifecycle
 cmd/harness/hookcli/hookcatalog -> internal/adapter/hook
 cmd/harness/hookcli/hookcatalog -> internal/adapter/hookprompt
 cmd/harness/hookcli/hookcatalog -> internal/adapter/lifecycle
-cmd/harness/installcli -> internal/adapter/installutil
 cmd/harness/issueopscli -> internal/adapter/cli
 cmd/harness/issueopscli -> internal/adapter/issueops
 cmd/harness/issueopscli -> internal/adapter/issueops/loopgate
@@ -25,9 +24,7 @@ cmd/harness/issueopscli/remotecmd -> internal/adapter/issueops
 cmd/harness/mcpcli -> internal/adapter/issueops
 cmd/harness/mcpcli -> internal/adapter/projectbootstrap
 cmd/harness/projectcli -> internal/adapter/projectbootstrap
-cmd/harness/projectcli -> internal/adapter/projectdocs
 cmd/harness/statuscli -> internal/adapter/doctor
-cmd/harness/validationcli/nativeintegration -> internal/adapter/installutil
 cmd/harness/validationcli/stateroundtrip -> internal/adapter/outbound/sqlstore
 internal/adapter/claude -> internal/adapter/installutil
 internal/adapter/codex -> internal/adapter/installutil
@@ -44,11 +41,9 @@ internal/adapter/issueops -> internal/adapter/outbound/sqlstore
 internal/adapter/lifecycle -> internal/adapter/commandguard
 internal/adapter/lifecycle -> internal/adapter/issueops
 internal/adapter/lifecycle -> internal/adapter/remoteartifact
-internal/adapter/lifecycle/fingerprint -> internal/adapter/projectdocs
 internal/adapter/looprun -> internal/adapter/outbound/sqlstore
 internal/adapter/mcp -> internal/adapter/toolconformance
 internal/adapter/outbound/state -> internal/adapter/outbound/sqlstore
 internal/adapter/outbound/state -> internal/adapter/outbound/statepath
 internal/adapter/projectbootstrap -> internal/adapter/lifecycle
-internal/adapter/projectbootstrap -> internal/adapter/projectdocs
 internal/adapter/worker -> internal/adapter/outbound/sqlstore
