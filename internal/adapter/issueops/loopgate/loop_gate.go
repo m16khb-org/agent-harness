@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"agent-harness/internal/adapter/issueops"
-	"agent-harness/internal/adapter/looprun"
 	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
@@ -62,7 +61,7 @@ func guardPRPhase(stateRoot, id, to string) error {
 }
 
 func withLoopGate(ready issueopscontract.IssueOpsReadiness, repo string) issueopscontract.IssueOpsReadiness {
-	missing, warnings := looprun.RepoGateMissing(repo)
+	missing, warnings := RepoGateMissing(repo)
 	if len(missing) == 0 && len(warnings) == 0 {
 		return ready
 	}

@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/issueops/pathutil"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	corehealth "agent-harness/internal/domain/operationalhealth"
 	"agent-harness/internal/port"
@@ -64,7 +63,7 @@ func (runner ExecGitRunner) Run(ctx context.Context, repo string, args ...string
 }
 
 func canonicalInventoryPath(path string) string {
-	abs := pathutil.CleanAbsPath(path)
+	abs := CleanAbsPath(path)
 	if abs == "" {
 		return ""
 	}

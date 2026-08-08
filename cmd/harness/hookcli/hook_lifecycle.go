@@ -11,7 +11,6 @@ import (
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	hookadapter "agent-harness/internal/adapter/hook"
 	lifecycle "agent-harness/internal/adapter/lifecycle"
-	"agent-harness/internal/adapter/lifecycle/doctarget"
 )
 
 func runHookPostToolUse(args []string) error {
@@ -65,7 +64,7 @@ func runHookPostToolUse(args []string) error {
 	// fail-open and self-gates on .go paths, so no process is spawned for
 	// non-Go edits, reads, or command tools.
 	h := strings.TrimSpace(*host)
-	if h == "claude" && doctarget.ToolUseMayMutateLifecycleFiles(tool, command) {
+	if h == "claude" && ToolUseMayMutateLifecycleFiles(tool, command) {
 		feedbackParts := []string{}
 		if misdirectWarning != "" {
 			feedbackParts = append(feedbackParts, misdirectWarning)
