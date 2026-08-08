@@ -8,8 +8,8 @@ import (
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 
-	cliadapter "agent-harness/internal/adapter/cli"
 	issueopscore "agent-harness/internal/adapter/issueops"
+	cliadapter "agent-harness/internal/domain/cli"
 )
 
 func issueOpsUsage() {
@@ -18,7 +18,7 @@ func issueOpsUsage() {
 
 // issueOpsUsageText는 `issueops` 서브커맨드 usage 원문을 반환한다.
 //
-// 줄 자체는 여기 없다 — `internal/adapter/cli`의 카탈로그가 유일한 원본이고 최상위
+// 줄 자체는 여기 없다 — `internal/domain/cli`의 카탈로그가 유일한 원본이고 최상위
 // usage는 같은 카탈로그를 축약 키로 걸러 렌더한다(#188). 전에는 같은 줄을 두 곳에
 // 손으로 유지했고, 한쪽 누락은 parity 테스트가 잡았지만 **양쪽에 아예 없으면**
 // 검사할 대상이 없어 `execution switch-mode`(#167)가 그 구멍으로 살아남았다.

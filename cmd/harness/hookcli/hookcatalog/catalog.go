@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
-	hookadapter "agent-harness/internal/adapter/hook"
 	hookprompt "agent-harness/internal/adapter/hookprompt"
 	lifecycle "agent-harness/internal/adapter/lifecycle"
 	installcontract "agent-harness/internal/contract/install"
+	hookadapter "agent-harness/internal/domain/hook"
 )
 
 type Config struct {

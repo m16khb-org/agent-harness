@@ -12,7 +12,7 @@ import (
 
 	"agent-harness/cmd/harness/mcpcli"
 	"agent-harness/cmd/harness/selfworkflow"
-	cliadapter "agent-harness/internal/adapter/cli"
+	cliadapter "agent-harness/internal/domain/cli"
 	mcpadapter "agent-harness/internal/domain/mcp"
 )
 

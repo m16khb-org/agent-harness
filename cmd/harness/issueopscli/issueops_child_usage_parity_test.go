@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	cliadapter "agent-harness/internal/adapter/cli"
+	cliadapter "agent-harness/internal/domain/cli"
 )
 
 func TestIssueOpsChildUsageMatchesCanonicalCatalog(t *testing.T) {

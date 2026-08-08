@@ -5,9 +5,9 @@ import (
 	"io"
 	"os"
 
-	cliadapter "agent-harness/internal/adapter/cli"
 	inspect "agent-harness/internal/adapter/inspect"
 	inspectcontract "agent-harness/internal/contract/inspect"
+	cliadapter "agent-harness/internal/domain/cli"
 )
 
 const version = "0.1.0"

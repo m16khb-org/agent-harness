@@ -9,8 +9,8 @@ import (
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
-	hookadapter "agent-harness/internal/adapter/hook"
 	lifecycle "agent-harness/internal/adapter/lifecycle"
+	hookdomain "agent-harness/internal/domain/hook"
 )
 
 func runHookPostToolUse(args []string) error {
@@ -69,11 +69,11 @@ func runHookPostToolUse(args []string) error {
 		if misdirectWarning != "" {
 			feedbackParts = append(feedbackParts, misdirectWarning)
 		}
-		if failed, feedback := hookadapter.LintEditedGoFiles(parsedRepo, paths); failed {
+		if failed, feedback := LintEditedGoFiles(parsedRepo, paths); failed {
 			feedbackParts = append(feedbackParts, feedback)
 		}
 		if len(feedbackParts) > 0 {
-			return printJSON(hookadapter.Resolve(h).FormatContext("PostToolUse", strings.Join(feedbackParts, "\n"), ""))
+			return printJSON(hookdomain.Resolve(h).FormatContext("PostToolUse", strings.Join(feedbackParts, "\n"), ""))
 		}
 	}
 	return printJSON(map[string]any{})

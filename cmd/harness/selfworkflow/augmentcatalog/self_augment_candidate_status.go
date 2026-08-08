@@ -85,7 +85,7 @@ func candidateSatisfactionRules() []candidateSatisfactionRule {
 			return evidenceWhen(signals.HasInstallDryRunMode, "install supports --dry-run planning with no filesystem writes and adapter-level coverage")
 		}},
 		{"cli-mcp-adapter-split", func(signals SelfAugmentRepoSignals) []string {
-			return evidenceWhen(signals.HasCLIAdapterSplit && signals.HasMCPAdapterCatalog, "CLI usage lives in internal/adapter/cli", "MCP adapter-owned tool descriptors live in internal/domain/mcp")
+			return evidenceWhen(signals.HasCLIAdapterSplit && signals.HasMCPAdapterCatalog, "CLI usage lives in internal/domain/cli", "MCP adapter-owned tool descriptors live in internal/domain/mcp")
 		}},
 		{"dto-compatibility-contract", func(signals SelfAugmentRepoSignals) []string {
 			return evidenceWhen(signals.HasCompatibilityContract, "harness contract schema/check exposes CLI/MCP compatibility contract")

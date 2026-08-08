@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	cliadapter "agent-harness/internal/adapter/cli"
+	cliadapter "agent-harness/internal/domain/cli"
 )
 
 // usageCommandKey는 usage 라인에서 플래그 직전까지의 명령 경로를 `agent-harness

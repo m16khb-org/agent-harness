@@ -94,7 +94,7 @@ func TestIssueOpsExecutionDocumentationPreservesParallelIndependence(t *testing.
 
 func TestIssueOpsCurrentSurfacesDoNotNameRemovedCommands(t *testing.T) {
 	for _, parts := range [][]string{
-		{"internal", "adapter", "cli", "usage.go"},
+		{"internal", "domain", "cli", "usage.go"},
 		{"cmd", "harness", "issueopscli", "issueops_cli_support.go"},
 		{"internal", "domain", "commandparse", "issueops.go"},
 		{"internal", "domain", "mcp", "issueops_catalog.go"},

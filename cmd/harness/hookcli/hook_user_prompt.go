@@ -9,9 +9,9 @@ import (
 	"agent-harness/cmd/harness/hookcli/hookenv"
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	"agent-harness/cmd/harness/hookcli/hookprompt"
-	hookadapter "agent-harness/internal/adapter/hook"
 	hookprompt2 "agent-harness/internal/adapter/hookprompt"
 	lifecycle "agent-harness/internal/adapter/lifecycle"
+	hookadapter "agent-harness/internal/domain/hook"
 )
 
 func runHookUserPrompt(args []string) error {

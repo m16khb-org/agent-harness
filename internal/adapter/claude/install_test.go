@@ -1,8 +1,8 @@
 package claude
 
 import (
-	"agent-harness/internal/adapter/hook"
 	install "agent-harness/internal/adapter/install"
+	hook "agent-harness/internal/domain/hook"
 	"encoding/json"
 	"os"
 	"path/filepath"
