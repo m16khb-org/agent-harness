@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"agent-harness/internal/adapter/draftwiki"
-	"agent-harness/internal/adapter/projectdoc"
 	"agent-harness/internal/adapter/projectdocs"
+	projectdoc "agent-harness/internal/domain/projectdoc"
 	projectdocdomain "agent-harness/internal/domain/projectdoc"
 )
 
@@ -26,10 +26,10 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 	if !dry.OK || !dry.DryRun || dry.Write {
 		t.Fatalf("unexpected dry-run flags: %+v", dry)
 	}
-	if _, err := os.Stat(filepath.Join(root, projectdoc.ProjectDocsDir)); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, projectdocdomain.ProjectDocsDir)); !os.IsNotExist(err) {
 		t.Fatalf("dry-run created docs dir or unexpected stat error: %v", err)
 	}
-	wantBootstrapFiles := 1 + len(projectdoc.ProjectDocNames()) + len(draftwiki.DraftWikiSeedFiles())
+	wantBootstrapFiles := 1 + len(projectdocdomain.ProjectDocNames()) + len(draftwiki.DraftWikiSeedFiles())
 	if len(dry.Files) != wantBootstrapFiles {
 		t.Fatalf("planned files=%d want %d", len(dry.Files), wantBootstrapFiles)
 	}
@@ -74,16 +74,16 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 		t.Fatalf("persisted metadata missing project profile: %+v", written.LifecycleState.Profile.Metadata)
 	}
 	agents := mustRead(t, filepath.Join(root, "AGENTS.md"))
-	if !strings.Contains(agents, "# Existing Rules") || !strings.Contains(agents, projectdoc.AgentsStartMarker) || !strings.Contains(agents, ".agent-harness/TESTING.md") || !strings.Contains(agents, ".agent-harness/OPERATIONS.md") {
+	if !strings.Contains(agents, "# Existing Rules") || !strings.Contains(agents, projectdocdomain.AgentsStartMarker) || !strings.Contains(agents, ".agent-harness/TESTING.md") || !strings.Contains(agents, ".agent-harness/OPERATIONS.md") {
 		t.Fatalf("AGENTS.md marker block not merged correctly:\n%s", agents)
 	}
-	for _, name := range projectdoc.ProjectDocNames() {
-		path := filepath.Join(root, projectdoc.ProjectDocsDir, name)
+	for _, name := range projectdocdomain.ProjectDocNames() {
+		path := filepath.Join(root, projectdocdomain.ProjectDocsDir, name)
 		if _, err := os.Stat(path); err != nil {
 			t.Fatalf("expected generated %s: %v", name, err)
 		}
 	}
-	if _, err := os.Stat(filepath.Join(root, projectdoc.ProjectDocsDir, "VCS.md")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, projectdocdomain.ProjectDocsDir, "VCS.md")); !os.IsNotExist(err) {
 		t.Fatalf("bootstrap unexpectedly created optional VCS.md: %v", err)
 	}
 	for rel := range draftwiki.DraftWikiSeedFiles() {
@@ -91,7 +91,7 @@ func TestBootstrapProjectDocsDryRunAndWrite(t *testing.T) {
 			t.Fatalf("expected draft-wiki seed %s: %v", rel, err)
 		}
 	}
-	testingDoc := mustRead(t, filepath.Join(root, projectdoc.ProjectDocsDir, "TESTING.md"))
+	testingDoc := mustRead(t, filepath.Join(root, projectdocdomain.ProjectDocsDir, "TESTING.md"))
 	if !strings.Contains(testingDoc, "go test ./...") || !strings.Contains(testingDoc, "Confidence: high") {
 		t.Fatalf("TESTING.md lacks inferred command evidence:\n%s", testingDoc)
 	}
@@ -130,11 +130,11 @@ func TestRouteProjectDocsForPreciseTasks(t *testing.T) {
 func TestProjectBootstrapPreservesExistingDocsUnlessSync(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
-	mustWrite(t, filepath.Join(root, projectdoc.ProjectDocsDir, "TESTING.md"), "# Custom Testing\n\nKeep local detail.\n")
+	mustWrite(t, filepath.Join(root, projectdocdomain.ProjectDocsDir, "TESTING.md"), "# Custom Testing\n\nKeep local detail.\n")
 	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
 		t.Fatal(err)
 	}
-	if got := mustRead(t, filepath.Join(root, projectdoc.ProjectDocsDir, "TESTING.md")); !strings.Contains(got, "Keep local detail.") {
+	if got := mustRead(t, filepath.Join(root, projectdocdomain.ProjectDocsDir, "TESTING.md")); !strings.Contains(got, "Keep local detail.") {
 		t.Fatalf("bootstrap without sync replaced existing doc:\n%s", got)
 	}
 	synced, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true, Sync: true})
@@ -144,7 +144,7 @@ func TestProjectBootstrapPreservesExistingDocsUnlessSync(t *testing.T) {
 	if !synced.Sync {
 		t.Fatalf("sync flag not reflected in result: %+v", synced)
 	}
-	if got := mustRead(t, filepath.Join(root, projectdoc.ProjectDocsDir, "TESTING.md")); strings.Contains(got, "Keep local detail.") {
+	if got := mustRead(t, filepath.Join(root, projectdocdomain.ProjectDocsDir, "TESTING.md")); strings.Contains(got, "Keep local detail.") {
 		t.Fatalf("bootstrap --sync did not refresh existing doc:\n%s", got)
 	}
 }
@@ -155,8 +155,8 @@ func TestBootstrapWritesMetaFrontmatterIntoCreatedDocs(t *testing.T) {
 	if _, err := BootstrapProjectDocs(ProjectDocsBootstrapRequest{RepoRoot: root, Write: true}); err != nil {
 		t.Fatal(err)
 	}
-	arch := mustRead(t, filepath.Join(root, projectdoc.ProjectDocsDir, "ARCHITECTURE.md"))
-	canonical, _ := projectdoc.DocMetaDescription("ARCHITECTURE.md")
+	arch := mustRead(t, filepath.Join(root, projectdocdomain.ProjectDocsDir, "ARCHITECTURE.md"))
+	canonical, _ := projectdocdomain.DocMetaDescription("ARCHITECTURE.md")
 	if !strings.HasPrefix(arch, "---\nname: ARCHITECTURE.md\ndescription: "+canonical+"\n---\n") {
 		t.Fatalf("created doc missing canonical frontmatter:\n%s", firstLines(arch, 4))
 	}
@@ -165,7 +165,7 @@ func TestBootstrapWritesMetaFrontmatterIntoCreatedDocs(t *testing.T) {
 func TestBootstrapAddsFrontmatterToExistingDocPreservingBody(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	root := t.TempDir()
-	dir := filepath.Join(root, projectdoc.ProjectDocsDir)
+	dir := filepath.Join(root, projectdocdomain.ProjectDocsDir)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func TestBootstrapAddsFrontmatterToExistingDocPreservingBody(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := mustRead(t, filepath.Join(dir, "CONVENTIONS.md"))
-	canonical, _ := projectdoc.DocMetaDescription("CONVENTIONS.md")
+	canonical, _ := projectdocdomain.DocMetaDescription("CONVENTIONS.md")
 	if !strings.HasPrefix(got, "---\nname: CONVENTIONS.md\ndescription: "+canonical+"\n---\n") {
 		t.Fatalf("frontmatter not added to existing doc:\n%s", firstLines(got, 4))
 	}

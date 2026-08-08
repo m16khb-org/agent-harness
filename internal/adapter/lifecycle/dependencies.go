@@ -7,10 +7,10 @@ import (
 	"agent-harness/internal/adapter/lifecycle/liveapproval"
 	"agent-harness/internal/adapter/lifecycle/model"
 	"agent-harness/internal/adapter/lifecycle/worktreepath"
-	"agent-harness/internal/adapter/projectdoc"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"agent-harness/internal/domain/nextaction"
+	projectdoc "agent-harness/internal/domain/projectdoc"
 	projectdocdomain "agent-harness/internal/domain/projectdoc"
 	"agent-harness/internal/domain/searchrouting"
 )

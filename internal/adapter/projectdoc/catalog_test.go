@@ -1,6 +1,7 @@
 package projectdoc
 
 import (
+	projectdocdomain "agent-harness/internal/domain/projectdoc"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,7 +24,7 @@ func TestDiscoverProjectDocsUsesFrontmatterThenCanonicalMeta(t *testing.T) {
 	if catalog[0].RelPath != ".agent-harness/ARCHITECTURE.md" || catalog[1].RelPath != ".agent-harness/CUSTOM.md" {
 		t.Fatalf("catalog not sorted by rel path: %+v", catalog)
 	}
-	canonical, _ := DocMetaDescription("ARCHITECTURE.md")
+	canonical, _ := projectdocdomain.DocMetaDescription("ARCHITECTURE.md")
 	if catalog[0].Description != canonical {
 		t.Fatalf("expected canonical meta fallback, got %q", catalog[0].Description)
 	}
@@ -45,7 +46,7 @@ func TestDiscoverProjectDocsEmptyWhenNoAgentHarness(t *testing.T) {
 }
 
 func TestFormatProjectDocCatalogUsesDescription(t *testing.T) {
-	catalog := []ProjectDocCatalogEntry{
+	catalog := []projectdocdomain.ProjectDocCatalogEntry{
 		{RelPath: ".agent-harness/ADR.md", Title: "구현 계획", Description: "Structural decisions, rationale, and rejected alternatives."},
 		{RelPath: ".agent-harness/X.md", Title: "엑스", Description: ""},
 	}
