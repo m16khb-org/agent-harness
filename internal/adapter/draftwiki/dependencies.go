@@ -9,14 +9,15 @@ import (
 
 	"agent-harness/internal/adapter/draftwiki/queue"
 	"agent-harness/internal/adapter/lifecycle"
-	"agent-harness/internal/adapter/projectdoc"
 	workercontract "agent-harness/internal/contract/worker"
 	"agent-harness/internal/domain/judgement"
 	"agent-harness/internal/domain/policy"
+	projectdoc "agent-harness/internal/domain/projectdoc"
+	projectdocdomain "agent-harness/internal/domain/projectdoc"
 	"agent-harness/internal/domain/prompt"
 )
 
-const ProjectDocsDir = projectdoc.ProjectDocsDir
+const ProjectDocsDir = projectdocdomain.ProjectDocsDir
 
 const QueueFile = queue.File
 const QueueLockFile = queue.LockFile

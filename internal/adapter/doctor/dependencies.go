@@ -2,7 +2,7 @@ package doctor
 
 import (
 	"agent-harness/internal/adapter/lifecycle"
-	"agent-harness/internal/adapter/projectdoc"
+	projectdoc "agent-harness/internal/domain/projectdoc"
 )
 
 const ProjectDocsDir = projectdoc.ProjectDocsDir

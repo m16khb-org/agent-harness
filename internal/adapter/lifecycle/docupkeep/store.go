@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"agent-harness/internal/adapter/lifecycle/model"
-	"agent-harness/internal/adapter/projectdoc"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
+	projectdoc "agent-harness/internal/domain/projectdoc"
 )
 
 type Store struct {

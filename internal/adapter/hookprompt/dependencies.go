@@ -2,9 +2,9 @@ package hookprompt
 
 import (
 	"agent-harness/internal/adapter/lifecycle"
-	"agent-harness/internal/adapter/projectdoc"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
+	projectdoc "agent-harness/internal/domain/projectdoc"
 	projectdocdomain "agent-harness/internal/domain/projectdoc"
 )
 
@@ -34,12 +34,4 @@ func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []issueopscontract.I
 
 func IssueOpsPhaseExpectsWorktree(phase issueopscontract.IssueOpsPhase) bool {
 	return lifecycle.IssueOpsPhaseExpectsWorktree(phase)
-}
-
-func DiscoverProjectDocs(repoRoot string) []ProjectDocCatalogEntry {
-	return projectdoc.DiscoverProjectDocs(repoRoot)
-}
-
-func FormatProjectDocCatalog(entries []ProjectDocCatalogEntry) string {
-	return projectdoc.FormatProjectDocCatalog(entries)
 }

@@ -1,13 +1,14 @@
 package projectdoc
 
 import (
+	projectdocdomain "agent-harness/internal/domain/projectdoc"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 )
 
-// ProjectDocCatalogEntry describes one project doc in the working repo's
+// projectdocdomain.ProjectDocCatalogEntry describes one project doc in the working repo's
 // .agent-harness directory: its repo-relative path and a fixed description of
 // what category of information it contains.
 //
@@ -18,11 +19,6 @@ import (
 // the harness only provides an accurate, deterministic menu. The description is
 // canonical metadata (from the doc's frontmatter or the name-keyed table), not a
 // summary of the doc's current contents.
-type ProjectDocCatalogEntry struct {
-	RelPath     string `json:"rel_path"`
-	Title       string `json:"title"`
-	Description string `json:"description,omitempty"`
-}
 
 // DiscoverProjectDocs returns the catalog of <repoRoot>/.agent-harness/*.md for
 // the repo currently being worked in. This is the TARGET repo's project docs,
@@ -32,7 +28,7 @@ type ProjectDocCatalogEntry struct {
 // the frontmatter. The result is deterministic (sorted by path) so it can live
 // in an immutable context prefix. Returns nil when repoRoot is empty or has no
 // .agent-harness docs.
-func DiscoverProjectDocs(repoRoot string) []ProjectDocCatalogEntry {
+func DiscoverProjectDocs(repoRoot string) []projectdocdomain.ProjectDocCatalogEntry {
 	repoRoot = strings.TrimSpace(repoRoot)
 	if repoRoot == "" {
 		return nil
@@ -42,7 +38,7 @@ func DiscoverProjectDocs(repoRoot string) []ProjectDocCatalogEntry {
 	if err != nil {
 		return nil
 	}
-	catalog := []ProjectDocCatalogEntry{}
+	catalog := []projectdocdomain.ProjectDocCatalogEntry{}
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
@@ -51,13 +47,13 @@ func DiscoverProjectDocs(repoRoot string) []ProjectDocCatalogEntry {
 		if err != nil {
 			continue
 		}
-		_, description, _, _ := ParseFrontmatter(string(content))
+		_, description, _, _ := projectdocdomain.ParseFrontmatter(string(content))
 		if description == "" {
-			if canonical, ok := DocMetaDescription(entry.Name()); ok {
+			if canonical, ok := projectdocdomain.DocMetaDescription(entry.Name()); ok {
 				description = canonical
 			}
 		}
-		catalog = append(catalog, ProjectDocCatalogEntry{
+		catalog = append(catalog, projectdocdomain.ProjectDocCatalogEntry{
 			RelPath:     filepath.ToSlash(filepath.Join(".agent-harness", entry.Name())),
 			Title:       firstMarkdownTitle(string(content)),
 			Description: description,
@@ -70,7 +66,7 @@ func DiscoverProjectDocs(repoRoot string) []ProjectDocCatalogEntry {
 // FormatProjectDocCatalog renders a compact one-line menu of the project docs,
 // describing each by its canonical metadata so the main agent can judge which to
 // read. Returns "" when there is nothing to present.
-func FormatProjectDocCatalog(entries []ProjectDocCatalogEntry) string {
+func FormatProjectDocCatalog(entries []projectdocdomain.ProjectDocCatalogEntry) string {
 	if len(entries) == 0 {
 		return ""
 	}
@@ -93,7 +89,7 @@ func FormatProjectDocCatalog(entries []ProjectDocCatalogEntry) string {
 // firstMarkdownTitle returns the first level-1 heading in content, skipping any
 // leading frontmatter block. Returns "" when there is no H1.
 func firstMarkdownTitle(content string) string {
-	_, _, body, ok := ParseFrontmatter(content)
+	_, _, body, ok := projectdocdomain.ParseFrontmatter(content)
 	if !ok {
 		body = content
 	}

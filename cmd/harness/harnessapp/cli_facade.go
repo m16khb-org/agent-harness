@@ -33,6 +33,7 @@ type (
 func wireBasicCLIDeps() {
 	configureDocsReaders()
 	configureStateStores()
+	configureProjectDocReaders()
 	configurePolicyAndGitObservers()
 	configureAdapterStateAccess()
 	configureWorkerJobs()

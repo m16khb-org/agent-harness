@@ -2,7 +2,7 @@ package projectbootstrap
 
 import (
 	"agent-harness/internal/adapter/lifecycle"
-	"agent-harness/internal/adapter/projectdoc"
+	projectdoc "agent-harness/internal/domain/projectdoc"
 	projectdocdomain "agent-harness/internal/domain/projectdoc"
 )
 

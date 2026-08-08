@@ -1,9 +1,9 @@
 package projectcli
 
 import (
-	projectdoc "agent-harness/internal/adapter/projectdoc"
 	projectdocs "agent-harness/internal/contract/projectdocs"
 	projectdocscontract "agent-harness/internal/contract/projectdocs"
+	projectdoc "agent-harness/internal/domain/projectdoc"
 	"agent-harness/internal/testsupport"
 	"encoding/json"
 	"os"

@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"agent-harness/internal/adapter/projectdoc"
 	"agent-harness/internal/adapter/projectdocs"
 	projectdocscontract "agent-harness/internal/contract/projectdocs"
+	projectdoc "agent-harness/internal/domain/projectdoc"
 )
 
 func TestAppendProjectDocsRecordWritesCautionsAndADR(t *testing.T) {
