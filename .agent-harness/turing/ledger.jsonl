@@ -93,3 +93,8 @@
 {"ts": "2026-08-08T14:40:00Z", "goal": "BT-G9", "criterion": "BT-G9-C1", "status": "pass", "evidence": ".agent-harness/turing/evidence/backlog-triage/BT-G9-C1-gate.txt | 삭제 전 미머지 패치 0 확인 | cleanup: none spawned", "rework": 0}
 {"ts": "2026-08-08T14:45:00Z", "goal": "BT-G9", "criterion": "BT-G9-C2", "status": "pass", "evidence": ".agent-harness/turing/evidence/backlog-triage/BT-G9-C2-final.txt | 원격 42->6, worktree 1 | cleanup: none spawned", "rework": 0}
 {"ts": "2026-08-08T14:50:00Z", "goal": "BT-G9", "event": "goal_partial", "status": "partial", "evidence": "원격 브랜치 35개 삭제. 남은 5개는 미머지 패치(234-tail-three/248/293) 또는 active lease(228/268)로 보류"}
+{"ts": "2026-08-09T00:10:00Z", "goal": "BT-G6", "criterion": "BT-G6-C2", "status": "pass", "evidence": "PR #405 — ValidateSupersedingArtifact + cleanup finish --superseded-by | cleanup: none spawned", "rework": 0}
+{"ts": "2026-08-09T00:12:00Z", "goal": "BT-G6", "criterion": "BT-G6-C3", "status": "pass", "evidence": "PR #407 — cleanup remote-branch 게이트 ⑩ 세 번째 경로 | cleanup: none spawned", "rework": 1}
+{"ts": "2026-08-09T00:14:00Z", "goal": "BT-G6", "event": "goal_complete", "status": "pass", "evidence": "#291 #283 #323 전부 머지", "metrics": {"evidenceCoverage": 1.0, "reworkRate": 0.33, "cleanupCompliance": 1.0}}
+{"ts": "2026-08-09T00:20:00Z", "goal": "BT-G5", "criterion": "BT-G5-C4", "status": "partial", "evidence": "PR #408 검출·검증 축 구현. #304 orphan 소멸(totalCount=0)로 정리 축은 대상 없음 | cleanup: none spawned", "rework": 0}
+{"ts": "2026-08-09T00:30:00Z", "goal": "BT-CYCLE", "event": "cycle_summary", "status": "partial", "evidence": "열린 이슈 45 -> 4. PR 15건 머지. 남은 4건은 외부 상태(Orca 런타임 3건, GitHub orphan 1건) 의존으로 완료 조건 충족 불가", "metrics": {"issuesClosed": 41, "prsMerged": 15, "remoteBranches": "42 -> 5", "worktrees": 1}}
