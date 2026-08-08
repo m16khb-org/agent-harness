@@ -3,8 +3,8 @@ package statuscli
 import (
 	guard "agent-harness/internal/adapter/guard"
 	policy "agent-harness/internal/adapter/policy"
-	preflight "agent-harness/internal/adapter/preflight"
 	projectdocs "agent-harness/internal/adapter/projectdocs"
+	preflightcontract "agent-harness/internal/contract/preflight"
 	policydomain "agent-harness/internal/domain/policy"
 	projectdocdomain "agent-harness/internal/domain/projectdoc"
 	"flag"
@@ -14,17 +14,17 @@ import (
 )
 
 type VerifyWorkResult struct {
-	OK                bool                           `json:"ok"`
-	Kind              string                         `json:"kind"`
-	Repo              string                         `json:"repo"`
-	GitStatus         string                         `json:"git_status,omitempty"`
-	Preflight         preflight.PreflightResult      `json:"preflight"`
-	Guard             guard.GuardCheckResult         `json:"guard"`
-	Command           *policydomain.CommandRunResult `json:"command,omitempty"`
-	Evidence          []string                       `json:"evidence"`
-	EvidenceMatrix    []VerifyWorkEvidenceItem       `json:"evidence_matrix"`
-	SuggestedCommands []VerifyWorkSuggestedCommand   `json:"suggested_commands"`
-	Warnings          []string                       `json:"warnings"`
+	OK                bool                              `json:"ok"`
+	Kind              string                            `json:"kind"`
+	Repo              string                            `json:"repo"`
+	GitStatus         string                            `json:"git_status,omitempty"`
+	Preflight         preflightcontract.PreflightResult `json:"preflight"`
+	Guard             guard.GuardCheckResult            `json:"guard"`
+	Command           *policydomain.CommandRunResult    `json:"command,omitempty"`
+	Evidence          []string                          `json:"evidence"`
+	EvidenceMatrix    []VerifyWorkEvidenceItem          `json:"evidence_matrix"`
+	SuggestedCommands []VerifyWorkSuggestedCommand      `json:"suggested_commands"`
+	Warnings          []string                          `json:"warnings"`
 }
 
 type VerifyWorkEvidenceItem struct {
@@ -78,7 +78,7 @@ func buildVerifyWork(repo string, all bool, argv []string) VerifyWorkResult {
 	if err != nil {
 		warnings = append(warnings, "git status: "+err.Error())
 	}
-	preflight := preflight.GitPreflight(root, deps.HarnessRoot())
+	preflight := deps.GitPreflight(root, deps.HarnessRoot())
 	if preflight.OK {
 		evidence = append(evidence, "git preflight completed")
 	} else {

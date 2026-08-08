@@ -2,6 +2,7 @@ package harnessapp
 
 import (
 	statestore "agent-harness/internal/adapter/outbound/state"
+	"agent-harness/internal/adapter/preflight"
 	"os"
 
 	"agent-harness/cmd/harness/basiccli"
@@ -30,6 +31,7 @@ type (
 func wireBasicCLIDeps() {
 	operationalCollector := operationalhealth.Collector{Git: operationalhealth.ExecGitRunner{}, Orca: orca.New()}
 	basiccli.Configure(basiccli.Deps{
+		GitPreflight:             preflight.GitPreflight,
 		HarnessRoot:              harnessRoot,
 		ResolveTarget:            resolveTarget,
 		Version:                  version,
@@ -46,6 +48,7 @@ func wireBasicCLIDeps() {
 		StateWrite:  statestore.StateWrite,
 	})
 	statuscli.Configure(statuscli.Deps{
+		GitPreflight:      preflight.GitPreflight,
 		HarnessRoot:       harnessRoot,
 		ResolveTarget:     resolveTarget,
 		Version:           version,

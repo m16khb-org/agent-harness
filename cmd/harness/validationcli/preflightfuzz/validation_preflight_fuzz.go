@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	preflight "agent-harness/internal/adapter/preflight"
+	preflight "agent-harness/internal/contract/preflight"
 )
 
 const commandOutputBudgetBytes = 32 * 1024

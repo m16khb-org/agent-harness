@@ -1,7 +1,7 @@
 package preflightfuzz
 
 import (
-	preflight "agent-harness/internal/adapter/preflight"
+	preflight "agent-harness/internal/contract/preflight"
 	"encoding/json"
 	"errors"
 	"os"

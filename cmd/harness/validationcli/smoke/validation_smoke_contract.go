@@ -2,7 +2,7 @@ package smoke
 
 import (
 	docs "agent-harness/internal/adapter/docs"
-	inspect "agent-harness/internal/adapter/inspect"
+	inspect "agent-harness/internal/contract/inspect"
 	"os"
 	"path/filepath"
 	"strings"

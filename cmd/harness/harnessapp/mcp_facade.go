@@ -1,6 +1,8 @@
 package harnessapp
 
 import (
+	"agent-harness/internal/adapter/inspect"
+	"agent-harness/internal/adapter/preflight"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,6 +20,8 @@ func configureMCPCLI() {
 	mcpcli.Version = version
 	mcpcli.HarnessRoot = harnessRoot
 	mcpcli.ResolveTarget = resolveTarget
+	mcpcli.GitPreflight = preflight.GitPreflight
+	mcpcli.ListSkills = inspect.ListSkills
 	mcpcli.ReadHarnessFile = readHarnessFile
 	mcpcli.InspectHarness = func(repo string) any {
 		return inspectHarness(repo)
