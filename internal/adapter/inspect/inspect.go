@@ -7,8 +7,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	coredocs "agent-harness/internal/adapter/docs"
 )
 
 func InspectHarness(root, target, home, version, skillName string) inspectcontract.InspectInfo {
@@ -22,7 +20,7 @@ func InspectHarness(root, target, home, version, skillName string) inspectcontra
 		HarnessRoot: root,
 		TargetRepo:  target,
 		Skills:      ListSkills(root, skillName),
-		Docs:        coredocs.ListDocs(root),
+		Docs:        ListDocs(root),
 		Integration: inspectcontract.IntegrationStatus{
 			CodexSkillPath:         codexSkill,
 			CodexSkillInstalled:    Exists(filepath.Join(codexSkill, "SKILL.md")),

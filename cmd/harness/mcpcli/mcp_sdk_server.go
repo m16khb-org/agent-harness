@@ -1,7 +1,6 @@
 package mcpcli
 
 import (
-	"agent-harness/internal/adapter/docs"
 	statestore "agent-harness/internal/adapter/outbound/state"
 	"context"
 	"encoding/json"
@@ -153,7 +152,7 @@ func HandleResourceRead(params json.RawMessage) (any, *jsonrpc.Error) {
 		ReadHarnessFile:  ReadHarnessFile,
 		StateList:        statestore.StateList,
 		RouteProjectDocs: RouteProjectDocs,
-		DocsIndex:        docs.DocsIndex,
+		DocsIndex:        DocsIndex,
 	})
 	if readErr != nil {
 		return nil, newProtocolError(int64(readErr.Code), readErr.Message, readErr.Data)

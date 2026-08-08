@@ -1,7 +1,6 @@
 package augmentcatalog
 
 import (
-	docs "agent-harness/internal/adapter/docs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,7 +33,7 @@ func SelectedCandidateID(candidate *SelfAugmentCandidate) string {
 }
 
 func DocsContainTerm(root, term string) bool {
-	for _, path := range docs.ListDocs(root) {
+	for _, path := range ListDocs(root) {
 		b, err := os.ReadFile(path)
 		if err == nil && strings.Contains(string(b), term) {
 			return true

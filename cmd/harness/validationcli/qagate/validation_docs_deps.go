@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	docs "agent-harness/internal/adapter/docs"
 	install "agent-harness/internal/adapter/install"
 )
 
@@ -26,7 +25,7 @@ func (deps docsValidationDeps) withDefaults() docsValidationDeps {
 		deps.readFile = os.ReadFile
 	}
 	if deps.listDocs == nil {
-		deps.listDocs = docs.ListDocs
+		deps.listDocs = ListDocs
 	}
 	if deps.listSkills == nil {
 		deps.listSkills = install.ListSkillNames

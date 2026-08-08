@@ -3,7 +3,6 @@ package mcpcli
 import (
 	"agent-harness/cmd/harness/apidoc"
 	"agent-harness/cmd/harness/mcpcli/argmap"
-	docs "agent-harness/internal/adapter/docs"
 	projectbootstrap "agent-harness/internal/adapter/projectbootstrap"
 	projectdocscontract "agent-harness/internal/contract/projectdocs"
 )
@@ -23,7 +22,7 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	case "skill_manifest":
 		return mcpToolPayload(ListSkills(HarnessRoot(), skillName))
 	case "docs_index":
-		return mcpToolPayload(docs.DocsIndex(HarnessRoot(), Version))
+		return mcpToolPayload(DocsIndex(HarnessRoot(), Version))
 	case "project_docs_route":
 		result, err := RouteProjectDocs(ResolveTarget(argmap.String(call.Arguments, "repo")), argmap.StringDefault(call.Arguments, "task", "general"))
 		if err != nil {

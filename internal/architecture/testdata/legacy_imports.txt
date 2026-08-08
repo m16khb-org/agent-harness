@@ -39,7 +39,6 @@ cmd/harness/issueopscli/remotecmd -> internal/adapter/provider
 cmd/harness/issueopscli/remoteverify -> internal/adapter/issueops
 cmd/harness/mcpcli -> internal/adapter/audit
 cmd/harness/mcpcli -> internal/adapter/commitsuggest
-cmd/harness/mcpcli -> internal/adapter/docs
 cmd/harness/mcpcli -> internal/adapter/issueops
 cmd/harness/mcpcli -> internal/adapter/lintdiagnose
 cmd/harness/mcpcli -> internal/adapter/mcp
@@ -57,9 +56,7 @@ cmd/harness/projectcli -> internal/adapter/commitsuggest
 cmd/harness/projectcli -> internal/adapter/lintdiagnose
 cmd/harness/projectcli -> internal/adapter/projectbootstrap
 cmd/harness/projectcli -> internal/adapter/projectdocs
-cmd/harness/selfworkflow/augmentcatalog -> internal/adapter/docs
 cmd/harness/selfworkflow/augmentlesson -> internal/adapter/outbound/state
-cmd/harness/selfworkflow/augmentplan -> internal/adapter/docs
 cmd/harness/selfworkflow/augmentplan -> internal/adapter/install
 cmd/harness/selfworkflow/augmentplan -> internal/adapter/outbound/state
 cmd/harness/selfworkflow/candidateexport -> internal/adapter/outbound/state
@@ -76,7 +73,6 @@ cmd/harness/validationcli/contractauditworker -> internal/adapter/worker
 cmd/harness/validationcli/nativeintegration -> internal/adapter/install
 cmd/harness/validationcli/nativeintegration -> internal/adapter/installutil
 cmd/harness/validationcli/preflightfuzz -> internal/adapter/preflight
-cmd/harness/validationcli/qagate -> internal/adapter/docs
 cmd/harness/validationcli/qagate -> internal/adapter/install
 cmd/harness/validationcli/stateroundtrip -> internal/adapter/outbound/sqlstore
 cmd/harness/validationcli/stateroundtrip -> internal/adapter/outbound/state
@@ -94,7 +90,6 @@ internal/adapter/doctor -> internal/adapter/looprun
 internal/adapter/doctor -> internal/adapter/outbound/state
 internal/adapter/doctor -> internal/adapter/projectdoc
 internal/adapter/doctor -> internal/adapter/repopath
-internal/adapter/draftwiki -> internal/adapter/docs
 internal/adapter/draftwiki -> internal/adapter/lifecycle
 internal/adapter/draftwiki -> internal/adapter/outbound/state
 internal/adapter/draftwiki -> internal/adapter/projectdoc
@@ -111,7 +106,6 @@ internal/adapter/inbound/issueopscompletion -> internal/adapter/issueops
 internal/adapter/inbound/issueopslease -> internal/adapter/issueops
 internal/adapter/inbound/issueopspreparation -> internal/adapter/issueops
 internal/adapter/inbound/issueopspublication -> internal/adapter/issueops
-internal/adapter/inspect -> internal/adapter/docs
 internal/adapter/issueops -> internal/adapter/outbound/sqlstore
 internal/adapter/issueops -> internal/adapter/outbound/state
 internal/adapter/issueops -> internal/adapter/preflight
