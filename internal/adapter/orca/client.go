@@ -870,8 +870,8 @@ func (c *Client) SettleTask(ctx context.Context, runID, id string) error {
 
 // isConsumerFenced는 오류가 Orca의 Run consumer fence인지 보고한다.
 func isConsumerFenced(err error) bool {
-	var typed *port.OrcaError
-	return errors.As(err, &typed) && typed.Code == "consumer_fenced"
+	typed, ok := errors.AsType[*port.OrcaError](err)
+	return ok && typed.Code == "consumer_fenced"
 }
 
 // UpdateTask는 execution complete가 orca 모드 사이클의 task를 종결시키는 경로다
@@ -1065,11 +1065,9 @@ func (c *Client) runJSON(ctx context.Context, cwd string, timeout time.Duration,
 		// 정규화가 무력화되어 cleanup finish가 수렴하지 못한다(#97).
 		// envelope 부재나 ok:true 모순은 원래 오류를 유지해 실패 신호를
 		// 삼키지 않는다.
-		var runErr *port.OrcaError
-		if errors.As(err, &runErr) && runErr.Code == "command_failed" {
+		if runErr, ok := errors.AsType[*port.OrcaError](err); ok && runErr.Code == "command_failed" {
 			if runtimeID, envErr := decodeResult(output, nil); envErr != nil {
-				var typed *port.OrcaError
-				if errors.As(envErr, &typed) {
+				if typed, typedOK := errors.AsType[*port.OrcaError](envErr); typedOK {
 					return runtimeID, typed
 				}
 			}
@@ -1311,7 +1309,7 @@ func samePath(left, right string) bool {
 
 func containsAllHelpFlags(value string, items []string) bool {
 	present := map[string]struct{}{}
-	for _, field := range strings.Fields(value) {
+	for field := range strings.FieldsSeq(value) {
 		field = strings.Trim(field, "[](),;:")
 		if index := strings.IndexByte(field, '='); index >= 0 {
 			field = field[:index]
