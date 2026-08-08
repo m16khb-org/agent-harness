@@ -9,7 +9,7 @@ import (
 	codexadapter "agent-harness/internal/adapter/codex"
 	"agent-harness/internal/adapter/install"
 	"agent-harness/internal/adapter/installutil"
-	mcpadapter "agent-harness/internal/adapter/mcp"
+	mcpadapter "agent-harness/internal/domain/mcp"
 	"agent-harness/internal/port"
 	activationport "agent-harness/internal/port/nativeactivation"
 )

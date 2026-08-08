@@ -13,7 +13,7 @@ import (
 	"agent-harness/cmd/harness/mcpcli"
 	"agent-harness/cmd/harness/selfworkflow"
 	cliadapter "agent-harness/internal/adapter/cli"
-	mcpadapter "agent-harness/internal/adapter/mcp"
+	mcpadapter "agent-harness/internal/domain/mcp"
 )
 
 var MCPTools = func() []map[string]any {

@@ -8,8 +8,8 @@ import (
 
 	"agent-harness/cmd/harness/contractcli"
 	"agent-harness/internal/adapter/hostprobe"
-	mcpadapter "agent-harness/internal/adapter/mcp"
 	"agent-harness/internal/adapter/toolconformance"
+	mcpadapter "agent-harness/internal/domain/mcp"
 	"agent-harness/internal/port"
 )
 

@@ -86,7 +86,7 @@ func SelfAugmentCandidates(signals SelfAugmentRepoSignals) []SelfAugmentCandidat
 			Impact: 94, Feasibility: 86, Novelty: 76, Risk: 24,
 			WhyNow:       []string{"cmd/harness가 routing, usage, MCP schema를 모두 소유하면 기능 추가 때 drift 위험이 커진다"},
 			ExpectedGain: []string{"CLI/MCP 표면을 독립적으로 테스트", "후속 worker와 contract 기능 추가 비용 감소"},
-			VerifyWith:   []string{"internal/adapter/cli tests", "internal/adapter/mcp tests", "usage golden"},
+			VerifyWith:   []string{"internal/adapter/cli tests", "internal/domain/mcp tests", "usage golden"},
 		},
 		{
 			ID: "dto-compatibility-contract", Title: "Expose a CLI/MCP DTO compatibility contract and schema check", Category: "contract",

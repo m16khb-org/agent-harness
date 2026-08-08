@@ -78,8 +78,8 @@ func repoSignalRules() []repoSignalRule {
 				qualityInspectContainsTerm(root, "low_coverage_packages")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
-			signals.HasMCPResourceCoverage = fileContainsTerm(root, filepath.Join("internal", "adapter", "mcp", "resource_catalog_test.go"), "TestResourcesExposeStableDescriptors") &&
-				fileContainsTerm(root, filepath.Join("internal", "adapter", "mcp", "catalog_test.go"), "TestResourceMapsPreserveDescriptorShape") &&
+			signals.HasMCPResourceCoverage = fileContainsTerm(root, filepath.Join("internal", "domain", "mcp", "resource_catalog_test.go"), "TestResourcesExposeStableDescriptors") &&
+				fileContainsTerm(root, filepath.Join("internal", "domain", "mcp", "catalog_test.go"), "TestResourceMapsPreserveDescriptorShape") &&
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "mcpcli", "resources", "resources_test.go"), "TestHandleResourceReadReportsInvalidUnknownAndReadErrors") &&
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "mcpcli", "resources", "resources_test.go"), "TestHandleResourceReadUsesCatalogSkillNameWhenConfigSkillNameIsEmpty") &&
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "mcpcli", "resources", "context_determinism_test.go"), "TestResourcesContextIsByteDeterministic")
@@ -213,7 +213,7 @@ func readmeContainsTerm(root, term string) bool {
 }
 
 func hasMCPAdapterCatalog(root string) bool {
-	return dirContainsTerm(root, filepath.Join("internal", "adapter", "mcp"), "AdapterOwnedTools") &&
+	return dirContainsTerm(root, filepath.Join("internal", "domain", "mcp"), "AdapterOwnedTools") &&
 		(dirContainsTerm(root, filepath.Join("cmd", "harness"), "mcpadapter.AdapterOwnedTools") ||
 			dirContainsTerm(root, filepath.Join("cmd", "harness", "mcpcli"), "mcpadapter.AdapterOwnedTools") ||
 			dirContainsTerm(root, filepath.Join("cmd", "harness", "contractcli"), "mcpadapter.AdapterOwnedTools"))

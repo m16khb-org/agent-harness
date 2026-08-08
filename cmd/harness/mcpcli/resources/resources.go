@@ -1,10 +1,10 @@
 package resources
 
 import (
-	mcpadapter "agent-harness/internal/adapter/mcp"
 	docscontract "agent-harness/internal/contract/docs"
 	projectdocscontract "agent-harness/internal/contract/projectdocs"
 	statecontract "agent-harness/internal/contract/state"
+	mcpadapter "agent-harness/internal/domain/mcp"
 	"encoding/json"
 )
 

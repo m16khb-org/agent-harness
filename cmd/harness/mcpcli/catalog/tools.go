@@ -1,6 +1,6 @@
 package catalog
 
-import mcpadapter "agent-harness/internal/adapter/mcp"
+import mcpadapter "agent-harness/internal/domain/mcp"
 
 // Tools returns the advertised MCP tools/list payload. It derives entirely from
 // the adapter catalog (mcpadapter.AdvertisedTools) so the advertised list, the

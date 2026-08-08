@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"testing"
 
-	mcpadapter "agent-harness/internal/adapter/mcp"
 	"agent-harness/internal/adapter/toolconformance"
+	mcpadapter "agent-harness/internal/domain/mcp"
 )
 
 func TestConformanceBaselineFailsWithJSONWhenInjectedCaseFails(t *testing.T) {

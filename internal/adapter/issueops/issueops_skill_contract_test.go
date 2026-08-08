@@ -97,7 +97,7 @@ func TestIssueOpsCurrentSurfacesDoNotNameRemovedCommands(t *testing.T) {
 		{"internal", "adapter", "cli", "usage.go"},
 		{"cmd", "harness", "issueopscli", "issueops_cli_support.go"},
 		{"internal", "domain", "commandparse", "issueops.go"},
-		{"internal", "adapter", "mcp", "issueops_catalog.go"},
+		{"internal", "domain", "mcp", "issueops_catalog.go"},
 	} {
 		content := readIssueOpsContractFile(t, parts...)
 		for _, removed := range removedIssueOpsCurrentCommandTerms() {

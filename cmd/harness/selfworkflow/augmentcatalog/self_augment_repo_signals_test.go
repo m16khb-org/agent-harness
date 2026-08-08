@@ -23,7 +23,7 @@ func TestDirContainsTermIgnoresTestOnlySignals(t *testing.T) {
 
 func TestCollectSelfAugmentRepoSignalsFindsMCPAdapterCatalogInContractCLI(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "mcp", "catalog.go"), "package mcp\nfunc AdapterOwnedTools() {}\n")
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "domain", "mcp", "catalog.go"), "package mcp\nfunc AdapterOwnedTools() {}\n")
 	writeFileForRepoSignalTest(t, filepath.Join(root, "cmd", "harness", "contractcli", "contract.go"), "package contractcli\nconst marker = \"mcpadapter.AdapterOwnedTools\"\n")
 
 	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
@@ -294,11 +294,11 @@ func TestAcquireLockContention() {}
 
 func TestMCPResourceCoverageIsSatisfiedByCatalogAndReadEdgeTests(t *testing.T) {
 	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "mcp", "resource_catalog_test.go"), `package mcp
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "domain", "mcp", "resource_catalog_test.go"), `package mcp
 
 func TestResourcesExposeStableDescriptors() {}
 `)
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "mcp", "catalog_test.go"), `package mcp
+	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "domain", "mcp", "catalog_test.go"), `package mcp
 
 func TestResourceMapsPreserveDescriptorShape() {}
 `)
