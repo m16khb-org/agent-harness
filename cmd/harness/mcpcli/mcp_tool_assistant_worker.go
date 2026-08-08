@@ -7,7 +7,6 @@ import (
 	"agent-harness/cmd/harness/mcpcli/argmap"
 	commitsuggest "agent-harness/internal/adapter/commitsuggest"
 	lintdiagnose "agent-harness/internal/adapter/lintdiagnose"
-	webfetchoutbound "agent-harness/internal/adapter/outbound/webfetch"
 	policy "agent-harness/internal/contract/policy"
 	webfetchcontract "agent-harness/internal/contract/webfetch"
 )
@@ -39,7 +38,7 @@ func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		if err != nil {
 			return mcpToolFailure(newProtocolError(-32602, "invalid timeout", err.Error()))
 		}
-		result, err := webfetchoutbound.Fetch(context.Background(), webfetchcontract.Request{
+		result, err := Fetch(context.Background(), webfetchcontract.Request{
 			URL:      argmap.String(call.Arguments, "url"),
 			Timeout:  timeout,
 			MaxChars: argmap.Int(call.Arguments, "max_chars", 0),

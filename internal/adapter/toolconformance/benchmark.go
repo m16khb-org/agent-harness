@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/failurecause"
 	failurecausecontract "agent-harness/internal/contract/failurecause"
 	"agent-harness/internal/port"
 )
@@ -269,7 +268,7 @@ func classifyHostResult(result port.HostProbeResult, fixture Fixture) EpisodeRep
 		}
 		evidence = append(evidence, failurecausecontract.Evidence{Cause: cause, Code: string(classification), Source: "tool_conformance"})
 	}
-	causeResult := failurecause.Classify(failed, evidence)
+	causeResult := ClassifyFailureCause(failed, evidence)
 	return EpisodeReport{
 		Status:               EpisodeCompleted,
 		Host:                 result.Host,
@@ -334,7 +333,7 @@ func incompleteEpisode(host, version string, fixture Fixture, profile, model str
 	if source == "" {
 		source = "tool_conformance"
 	}
-	result := failurecause.Classify(true, []failurecausecontract.Evidence{{Cause: parsedCause, Code: code, Source: source}})
+	result := ClassifyFailureCause(true, []failurecausecontract.Evidence{{Cause: parsedCause, Code: code, Source: source}})
 	return EpisodeReport{
 		Status:               EpisodeIncomplete,
 		Host:                 host,

@@ -11,7 +11,6 @@ import (
 	"sort"
 	"time"
 
-	webfetchoutbound "agent-harness/internal/adapter/outbound/webfetch"
 	webfetchcontract "agent-harness/internal/contract/webfetch"
 )
 
@@ -58,7 +57,7 @@ func runFetch(args []string, deps Deps) error {
 	if err != nil {
 		return fmt.Errorf("invalid --timeout: %w", err)
 	}
-	result, err := webfetchoutbound.Fetch(context.Background(), webfetchcontract.Request{
+	result, err := Fetch(context.Background(), webfetchcontract.Request{
 		URL:      *rawURL,
 		Timeout:  timeout,
 		MaxChars: *maxChars,
@@ -94,7 +93,7 @@ func runBenchmark(args []string, deps Deps) error {
 	if err != nil {
 		return err
 	}
-	result, err := webfetchoutbound.RunBenchmark(context.Background(), webfetchcontract.BenchmarkRequest{
+	result, err := RunBenchmark(context.Background(), webfetchcontract.BenchmarkRequest{
 		Fixtures:       fixtures,
 		Live:           *live,
 		LiveOptIn:      os.Getenv("HARNESS_WEBFETCH_LIVE") == "1",
@@ -118,7 +117,7 @@ func printJSON(stdout io.Writer, value any) error {
 
 func loadFixtures(path string) ([]webfetchcontract.BenchmarkFixture, error) {
 	if path == "builtin" {
-		return webfetchoutbound.DeterministicFixtures(), nil
+		return DeterministicFixtures(), nil
 	}
 	info, err := os.Stat(path)
 	if err != nil {

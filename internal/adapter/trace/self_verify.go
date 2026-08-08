@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"agent-harness/internal/adapter/failurecause"
 	"agent-harness/internal/domain/policy"
 	"agent-harness/internal/domain/traceclassification"
 )
@@ -45,7 +44,7 @@ func selfVerifySummaryFindings(doc map[string]any) []TraceAnalysisFinding {
 		}
 	}
 	failureCauseEvidence := failureCauseEvidenceField(summary, "failure_cause_evidence")
-	classifiedCause := failurecause.Classify(true, failureCauseEvidence)
+	classifiedCause := Classify(true, failureCauseEvidence)
 	failureCause := classifiedCause.Cause
 	failureCauseEvidence = classifiedCause.Evidence
 	return []TraceAnalysisFinding{{

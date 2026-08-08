@@ -1,7 +1,6 @@
 package policycli
 
 import (
-	audit "agent-harness/internal/adapter/audit"
 	policydomain "agent-harness/internal/contract/policy"
 	"fmt"
 	"os"
@@ -110,7 +109,7 @@ func runPolicyAudit(args []string) error {
 	if err != nil {
 		return err
 	}
-	result, err := audit.AuditCommandPolicy(req)
+	result, err := AuditCommandPolicy(req)
 	if jsonOut {
 		if printErr := printJSON(result); printErr != nil {
 			return printErr
