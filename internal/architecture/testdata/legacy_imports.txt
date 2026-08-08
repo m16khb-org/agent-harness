@@ -1,2 +1,0 @@
-internal/adapter/issueops -> internal/adapter/outbound/sqlstore
-internal/adapter/outbound/state -> internal/adapter/outbound/sqlstore

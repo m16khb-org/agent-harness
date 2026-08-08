@@ -204,7 +204,7 @@ func TestLegacyEdgesExcludeSameCapabilityAdapterPackages(t *testing.T) {
 	// 그 아래 서로 다른 capability는 같은 것으로 묶이지 않는다.
 	crossing := []dependencyEdge{
 		{"internal/adapter/trace", "internal/adapter/policy"},
-		{"internal/adapter/outbound/state", "internal/adapter/outbound/sqlstore"},
+		{"internal/adapter/outbound/state", "internal/adapter/outbound/webfetch"},
 		{"internal/adapter/lifecycle", "internal/adapter/projectdoc"},
 	}
 	for _, edge := range crossing {
@@ -237,33 +237,7 @@ func TestLegacyInfrastructureIncludesNetAndSyscall(t *testing.T) {
 	}
 }
 
-func TestCompareBaselineRejectsNewAndStaleEdges(t *testing.T) {
-	newEdge := dependencyEdge{"internal/adapter/cli", "internal/core/issueops"}
-	staleEdge := dependencyEdge{"internal/core/issueops", "os/exec"}
-
-	if err := compareBaseline([]dependencyEdge{newEdge}, nil); err == nil || !strings.Contains(err.Error(), "legacy_baseline: new legacy edge: internal/adapter/cli -> internal/core/issueops") {
-		t.Fatalf("expected exact new-edge error, got %v", err)
-	}
-	if err := compareBaseline(nil, []dependencyEdge{staleEdge}); err == nil || !strings.Contains(err.Error(), "legacy_baseline: stale legacy edge: internal/core/issueops -> os/exec") {
-		t.Fatalf("expected exact stale-edge error, got %v", err)
-	}
-}
-
-func TestParseBaselineRejectsUnsortedAndDuplicateEdges(t *testing.T) {
-	if got, err := parseBaseline(""); err != nil || len(got) != 0 {
-		t.Fatalf("expected empty baseline to be valid, got %v, %v", got, err)
-	}
-	if _, err := parseBaseline(`internal/core/z -> os
-internal/core/a -> os`); err == nil || !strings.Contains(err.Error(), "legacy_baseline: baseline is not sorted") {
-		t.Fatalf("expected sorted-baseline error, got %v", err)
-	}
-	if _, err := parseBaseline(`internal/core/a -> os
-internal/core/a -> os`); err == nil || !strings.Contains(err.Error(), "legacy_baseline: duplicate edge: internal/core/a -> os") {
-		t.Fatalf("expected duplicate-baseline error, got %v", err)
-	}
-}
-
-func TestProductionGraphMatchesBaseline(t *testing.T) {
+func TestProductionGraphHasNoLegacyAdapterEdges(t *testing.T) {
 	edges := loadProductionEdges(t)
 	if got := evaluateEdges(edges); len(got) != 0 {
 		t.Fatalf("forbidden dependency violations:\n%s", formatViolations(got))
@@ -274,10 +248,20 @@ func TestProductionGraphMatchesBaseline(t *testing.T) {
 		t.Fatalf("production import inventory is not byte-stable")
 	}
 
-	baseline := readBaseline(t)
-	if err := compareBaseline(legacyEdges(edges), baseline); err != nil {
-		t.Fatal(err)
+	// legacy baseline은 비었다. 전환이 끝났으므로 래칫은 "남은 edge가 0"이라는
+	// 불변식으로 대체한다 — 새 legacy edge는 baseline에 등록하는 것이 아니라
+	// 애초에 들어올 수 없다.
+	if remaining := legacyEdges(edges); len(remaining) != 0 {
+		t.Fatalf("legacy adapter edges are no longer allowed; the transition is complete:\n%s", formatEdges(remaining))
 	}
+}
+
+func formatEdges(edges []dependencyEdge) string {
+	lines := make([]string, 0, len(edges))
+	for _, edge := range edges {
+		lines = append(lines, "  "+formatEdge(edge))
+	}
+	return strings.Join(lines, "\n")
 }
 
 func TestStateSQLNetworkSourcePrefixesAbsent(t *testing.T) {
@@ -1303,22 +1287,6 @@ func isPreparationOutboundAdapter(path string) bool {
 	return path == "internal/adapter/outbound/issueopspreparation" || strings.HasPrefix(path, "internal/adapter/outbound/issueopspreparation/")
 }
 
-func compareBaseline(observed, baseline []dependencyEdge) error {
-	observed = sortedEdges(observed)
-	baseline = sortedEdges(baseline)
-	var problems []string
-	for _, edge := range difference(observed, baseline) {
-		problems = append(problems, "legacy_baseline: new legacy edge: "+formatEdge(edge))
-	}
-	for _, edge := range difference(baseline, observed) {
-		problems = append(problems, "legacy_baseline: stale legacy edge: "+formatEdge(edge))
-	}
-	if len(problems) == 0 {
-		return nil
-	}
-	return fmt.Errorf("%s", strings.Join(problems, "\n"))
-}
-
 func containsViolation(violations []violation, rule string, edge dependencyEdge) bool {
 	for _, got := range violations {
 		if got.rule == rule && got.edge == edge {
@@ -1403,50 +1371,13 @@ func findRepoRoot(t *testing.T) string {
 	}
 }
 
-func readBaseline(t *testing.T) []dependencyEdge {
-	t.Helper()
-	contents, err := os.ReadFile("testdata/legacy_imports.txt")
-	if err != nil {
-		t.Fatalf("read legacy baseline: %v", err)
-	}
-	edges, err := parseBaseline(string(contents))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return edges
-}
-
-func parseBaseline(contents string) ([]dependencyEdge, error) {
-	if strings.TrimSpace(contents) == "" {
-		return nil, nil
-	}
-	var edges []dependencyEdge
-	previous := ""
-	for _, line := range strings.Split(strings.TrimSpace(contents), "\n") {
-		parts := strings.Split(line, " -> ")
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("legacy_baseline: invalid edge: %q", line)
-		}
-		edge := dependencyEdge{parts[0], parts[1]}
-		current := formatEdge(edge)
-		if current == previous {
-			return nil, fmt.Errorf("legacy_baseline: duplicate edge: %s", current)
-		}
-		if previous != "" && current < previous {
-			return nil, fmt.Errorf("legacy_baseline: baseline is not sorted: %s before %s", current, previous)
-		}
-		previous = current
-		edges = append(edges, edge)
-	}
-	return edges, nil
-}
-
 func legacyEdges(edges []dependencyEdge) []dependencyEdge {
 	var legacy []dependencyEdge
 	for _, edge := range edges {
 		if (isCore(edge.importer) && isLegacyInfrastructure(edge.imported)) ||
 			(isAdapter(edge.importer) && isCore(edge.imported) && !isMigratedInboundAdapter(edge.importer)) ||
-			(isConcreteAdapter(edge.imported) && !isCompositionRoot(edge.importer) && !isSameCapabilityAdapter(edge.importer, edge.imported)) {
+			(isConcreteAdapter(edge.imported) && !isCompositionRoot(edge.importer) && !isSameCapabilityAdapter(edge.importer, edge.imported) &&
+				!isSharedStorageEngineEdge(edge.importer, edge.imported)) {
 			legacy = append(legacy, edge)
 		}
 	}
@@ -1546,6 +1477,21 @@ func isSameCapabilityAdapter(importer, imported string) bool {
 	}
 	capability := adapterCapability(importer)
 	return capability != "" && capability == adapterCapability(imported)
+}
+
+// outbound/sqlstore는 특정 capability의 어댑터가 아니라 저장 엔진 자체다.
+// state와 issueops는 각자의 레코드를 같은 sqlite 파일에 담으며, 엔진을 포트로
+// 감싸 주입으로 갈아끼우는 것은 가능하지만 그 대가로 이 저장소의 거의 모든
+// 테스트 패키지가 배선을 짊어지게 된다. 엔진 교체는 실제 요구가 아니므로,
+// outbound 어댑터가 공유 저장 엔진을 직접 쓰는 것은 의도된 설계로 못박는다.
+// 허용 범위는 outbound -> sqlstore 한 방향뿐이고, cmd·inbound·domain에서
+// 들어오는 edge는 그대로 막힌다.
+func isSharedStorageEngineEdge(importer, imported string) bool {
+	if imported != "internal/adapter/outbound/sqlstore" {
+		return false
+	}
+	return strings.HasPrefix(importer, "internal/adapter/outbound/") ||
+		importer == "internal/adapter/issueops"
 }
 
 func isInboundAdapter(path string) bool {

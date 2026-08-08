@@ -84,6 +84,26 @@ func TestOwnershipManifestStillRejectsPortToImplementation(t *testing.T) {
 	}
 }
 
+// 공유 저장 엔진 예외는 outbound -> sqlstore 한 방향뿐이다. cmd나 inbound에서
+// 엔진을 직접 잡는 것은 그대로 위반이다.
+func TestSharedStorageEngineExceptionIsOneDirectionOnly(t *testing.T) {
+	if !isSharedStorageEngineEdge("internal/adapter/outbound/state", "internal/adapter/outbound/sqlstore") {
+		t.Fatal("outbound adapters may use the shared storage engine")
+	}
+	for _, importer := range []string{
+		"cmd/harness/statecli",
+		"internal/adapter/inbound/issueopslease",
+		"internal/domain/state",
+	} {
+		if isSharedStorageEngineEdge(importer, "internal/adapter/outbound/sqlstore") {
+			t.Fatalf("%s must not reach the storage engine directly", importer)
+		}
+	}
+	if isSharedStorageEngineEdge("internal/adapter/outbound/state", "internal/adapter/lifecycle") {
+		t.Fatal("the exception must not widen beyond the storage engine")
+	}
+}
+
 func TestProductionFoundationOwnershipHasNoForbiddenEdges(t *testing.T) {
 	if violations := foundationOwnershipViolations(loadProductionEdges(t)); len(violations) != 0 {
 		t.Fatalf("foundation ownership violations:\n%s", formatViolations(violations))
