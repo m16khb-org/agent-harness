@@ -4223,14 +4223,14 @@
           "risk": 24,
           "satisfaction_evidence": [
             "CLI usage lives in internal/adapter/cli",
-            "MCP adapter-owned tool descriptors live in internal/adapter/mcp"
+            "MCP adapter-owned tool descriptors live in internal/domain/mcp"
           ],
           "score": 0,
           "status": "already_satisfied",
           "title": "Split CLI usage and MCP schema catalog into adapter-owned packages",
           "verify_with": [
             "internal/adapter/cli tests",
-            "internal/adapter/mcp tests",
+            "internal/domain/mcp tests",
             "usage golden"
           ],
           "why_now": [
@@ -7156,14 +7156,14 @@
                 "risk": 24,
                 "satisfaction_evidence": [
                   "CLI usage lives in internal/adapter/cli",
-                  "MCP adapter-owned tool descriptors live in internal/adapter/mcp"
+                  "MCP adapter-owned tool descriptors live in internal/domain/mcp"
                 ],
                 "score": 0,
                 "status": "already_satisfied",
                 "title": "Split CLI usage and MCP schema catalog into adapter-owned packages",
                 "verify_with": [
                   "internal/adapter/cli tests",
-                  "internal/adapter/mcp tests",
+                  "internal/domain/mcp tests",
                   "usage golden"
                 ],
                 "why_now": [

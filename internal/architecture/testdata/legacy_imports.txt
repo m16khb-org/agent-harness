@@ -34,11 +34,8 @@ cmd/harness/mcpcli -> internal/adapter/audit
 cmd/harness/mcpcli -> internal/adapter/commitsuggest
 cmd/harness/mcpcli -> internal/adapter/issueops
 cmd/harness/mcpcli -> internal/adapter/lintdiagnose
-cmd/harness/mcpcli -> internal/adapter/mcp
 cmd/harness/mcpcli -> internal/adapter/outbound/webfetch
 cmd/harness/mcpcli -> internal/adapter/projectbootstrap
-cmd/harness/mcpcli/catalog -> internal/adapter/mcp
-cmd/harness/mcpcli/resources -> internal/adapter/mcp
 cmd/harness/policycli -> internal/adapter/audit
 cmd/harness/projectcli -> internal/adapter/commitsuggest
 cmd/harness/projectcli -> internal/adapter/lintdiagnose

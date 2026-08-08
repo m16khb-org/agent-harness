@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	mcp "agent-harness/internal/adapter/mcp"
 	core "agent-harness/internal/adapter/toolconformance"
+	mcp "agent-harness/internal/domain/mcp"
 )
 
 func TestManifestBaselineClassifierTable(t *testing.T) {

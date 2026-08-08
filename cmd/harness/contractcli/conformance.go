@@ -14,6 +14,7 @@ import (
 
 	mcpadapter "agent-harness/internal/adapter/mcp"
 	"agent-harness/internal/adapter/toolconformance"
+	mcpdomain "agent-harness/internal/domain/mcp"
 )
 
 type LiveRequest struct {
@@ -38,7 +39,7 @@ type ReplayOutcome struct {
 }
 
 type ConformanceDependencies struct {
-	Catalog          func() []mcpadapter.Tool
+	Catalog          func() []mcpdomain.Tool
 	Root             func() string
 	RunProcess       func(context.Context, LiveRequest) (toolconformance.BenchmarkReport, error)
 	EvaluateBaseline func() (caseCount int, ok bool, err error)
@@ -51,7 +52,7 @@ func init() { conformanceDependencies = defaultConformanceDependencies() }
 
 func defaultConformanceDependencies() ConformanceDependencies {
 	return ConformanceDependencies{
-		Catalog: mcpadapter.AdvertisedTools,
+		Catalog: mcpdomain.AdvertisedTools,
 		Root: func() string {
 			root, err := os.Getwd()
 			if err != nil {
