@@ -3,6 +3,7 @@ package remotecmd
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 	issueopsremote "agent-harness/internal/domain/issueopsremote"
@@ -17,12 +18,15 @@ var remoteDeps = neutralRemoteDeps()
 
 // RemoteDeps는 composition root가 실제 어댑터를 꽂는 진입점이다.
 type RemoteDeps struct {
-	CloseIssueOpsRemoteIssue                   func(stateRoot, id string, merged, confirm bool, prov port.IssueProvider) (issueopscontract.IssueOpsRecord, port.IssueProviderCloseIssueResult, error)
-	CreateRemoteChild                          func(req port.IssueProviderCreateChildRequest, prov port.IssueProvider) (port.IssueProviderCreateChildResult, error)
-	CreateRemoteIssue                          func(req port.IssueProviderCreateIssueRequest, prov port.IssueProvider) (port.IssueProviderCreateIssueResult, error)
-	CreateRemotePullRequestWithHandler         func(ctx context.Context, stateRoot string, req issueopscontract.RemotePullRequestRequest, handler func(context.Context, string, issueopscontract.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error)) (port.IssueProviderCreatePullRequestResult, error)
-	DecodeIssueOpsRemoteJudgeJSON              func(out []byte) (issueopsremote.IssueOpsRemoteScoringResult, error)
-	DecodeIssueOpsRemoteScoringRequest         func(data []byte) (issueopsremote.IssueOpsRemoteScoringRequest, error)
+	CloseIssueOpsRemoteIssue           func(stateRoot, id string, merged, confirm bool, prov port.IssueProvider) (issueopscontract.IssueOpsRecord, port.IssueProviderCloseIssueResult, error)
+	CreateRemoteChild                  func(req port.IssueProviderCreateChildRequest, prov port.IssueProvider) (port.IssueProviderCreateChildResult, error)
+	CreateRemoteIssue                  func(req port.IssueProviderCreateIssueRequest, prov port.IssueProvider) (port.IssueProviderCreateIssueResult, error)
+	CreateRemotePullRequestWithHandler func(ctx context.Context, stateRoot string, req issueopscontract.RemotePullRequestRequest, handler func(context.Context, string, issueopscontract.RemotePullRequestRequest) (port.IssueProviderCreatePullRequestResult, error)) (port.IssueProviderCreatePullRequestResult, error)
+	DecodeIssueOpsRemoteJudgeJSON      func(out []byte) (issueopsremote.IssueOpsRemoteScoringResult, error)
+	DecodeIssueOpsRemoteScoringRequest func(data []byte) (issueopsremote.IssueOpsRemoteScoringRequest, error)
+	// InferProviderFromRepoRemotes는 record가 provider를 모를 때 저장소 remote로
+	// 판별한다. 최초 이슈 생성의 bootstrap 순환을 끊는 유일한 경로다(#300).
+	InferProviderFromRepoRemotes               func(repo string) (string, error)
 	IssueOpsStateRoot                          func() string
 	LinkIssueOpsChildWithActor                 func(stateRoot, id, childURL, title string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
 	ObserveNativeProcessAncestry               func(pid int) ([]issueopscontract.NativeProcessReceipt, error)
@@ -43,6 +47,9 @@ type RemoteDeps struct {
 func ConfigureRemote(deps RemoteDeps) {
 	if deps.CloseIssueOpsRemoteIssue != nil {
 		remoteDeps.CloseIssueOpsRemoteIssue = deps.CloseIssueOpsRemoteIssue
+	}
+	if deps.InferProviderFromRepoRemotes != nil {
+		remoteDeps.InferProviderFromRepoRemotes = deps.InferProviderFromRepoRemotes
 	}
 	if deps.CreateRemoteChild != nil {
 		remoteDeps.CreateRemoteChild = deps.CreateRemoteChild
@@ -157,4 +164,14 @@ func neutralRemoteDeps() RemoteDeps {
 			return issueopscontract.IssueOpsRecord{}, errRemoteNotConfigured
 		},
 	}
+}
+
+// inferProviderFromRepoRemotes는 주입된 관측이 있으면 그것으로 provider를
+// 판별하고, 없으면 원래의 bootstrap 오류를 그대로 돌려준다. 관측 없이
+// 추측하지 않는다.
+func inferProviderFromRepoRemotes(repo string) (string, error) {
+	if remoteDeps.InferProviderFromRepoRemotes == nil {
+		return "", fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set or pass --provider github|gitlab")
+	}
+	return remoteDeps.InferProviderFromRepoRemotes(repo)
 }

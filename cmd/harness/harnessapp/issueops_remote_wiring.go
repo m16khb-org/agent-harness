@@ -28,6 +28,7 @@ func configureIssueOpsRemote() {
 		ReflectDevilsAdvocateFindingsWithActor:     issueopscore.ReflectDevilsAdvocateFindingsWithActor,
 		ReflectIssueCompletion:                     issueopscore.ReflectIssueCompletion,
 		RenderIssueOpsRemoteJudgePrompt:            issueopscore.RenderIssueOpsRemoteJudgePrompt,
+		InferProviderFromRepoRemotes:               issueopscore.InferProviderFromRepoRemotes,
 		ResolveRecordProvider:                      issueopscore.ResolveRecordProvider,
 		ScoreIssueOpsRemoteCandidates:              issueopscore.ScoreIssueOpsRemoteCandidates,
 		SyncRemoteIssueGraph:                       issueopscore.SyncRemoteIssueGraph,

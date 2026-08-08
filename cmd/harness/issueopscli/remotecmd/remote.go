@@ -491,8 +491,14 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 	}
 	providerName := firstNonEmptyMain(*providerOverride, remoteDeps.ResolveRecordProvider(record))
 	if providerName == "" {
-		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
-		return deps.printErrorResult(*jsonOut, err)
+		// 최초 이슈를 만드는 명령이 이미 존재하는 issue_url을 요구하면 bootstrap
+		// 순환이다. record가 침묵하면 저장소 remote에 물어본다(#300). 판별이
+		// 모호하면 추측하지 않고 --provider 복구 명령을 안내한다.
+		inferred, inferErr := inferProviderFromRepoRemotes(record.Repo)
+		if inferErr != nil {
+			return deps.printErrorResult(*jsonOut, inferErr)
+		}
+		providerName = inferred
 	}
 	prov, err := Resolve(providerName)
 	if err != nil {
