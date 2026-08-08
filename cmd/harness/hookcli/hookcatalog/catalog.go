@@ -13,8 +13,8 @@ import (
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	hookadapter "agent-harness/internal/adapter/hook"
 	hookprompt "agent-harness/internal/adapter/hookprompt"
-	coreinstall "agent-harness/internal/adapter/install"
 	lifecycle "agent-harness/internal/adapter/lifecycle"
+	installcontract "agent-harness/internal/contract/install"
 )
 
 type Config struct {
@@ -25,7 +25,7 @@ type Config struct {
 	PruneHookMetricsLog func(maxAge time.Duration) (hookmetricscontract.HookMetricsPruneResult, error)
 	ResolveTarget       func(string) string
 	PrintJSON           func(any) error
-	RuntimeDiagnostic   func() (coreinstall.NativeRuntimeDiagnostic, error)
+	RuntimeDiagnostic   func() (installcontract.NativeRuntimeDiagnostic, error)
 }
 
 func RunPostCompact(args []string, config Config) error {
@@ -83,7 +83,7 @@ func RunSessionStart(args []string, config Config) error {
 	stdin, _ := io.ReadAll(os.Stdin)
 	if config.RuntimeDiagnostic != nil {
 		diagnostic, err := config.RuntimeDiagnostic()
-		if reason, blocked := coreinstall.NativeRuntimeDiagnosticMessage(diagnostic, err); blocked {
+		if reason, blocked := NativeRuntimeDiagnosticMessage(diagnostic, err); blocked {
 			if *jsonOut {
 				return config.PrintJSON(diagnostic)
 			}

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	coreinstall "agent-harness/internal/adapter/install"
+	coreinstall "agent-harness/internal/contract/install"
 )
 
 func TestRunHookPreToolUseBlocksCachedWorktreeRuntimeForBothHosts(t *testing.T) {
