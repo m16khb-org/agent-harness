@@ -10,7 +10,6 @@ import (
 	"sort"
 	"strings"
 
-	"agent-harness/internal/adapter/preflight"
 	model "agent-harness/internal/contract/issueops"
 	corehealth "agent-harness/internal/domain/operationalhealth"
 )
@@ -109,11 +108,11 @@ func Apply(ctx context.Context, request Request, apply ApplyRequest, deps Depend
 	if strings.TrimSpace(apply.Fingerprint) != preview.Fingerprint {
 		return preview, fmt.Errorf("stale preview fingerprint: rerun orphan cleanup preview before apply")
 	}
-	if code, _, stderr := preflight.GitCmd(preview.RepoRoot, "worktree", "remove", preview.WorktreePath); code != 0 {
+	if code, _, stderr := GitCmd(preview.RepoRoot, "worktree", "remove", preview.WorktreePath); code != 0 {
 		return preview, fmt.Errorf("remove confirmed local worktree: %s", boundedGitFailure(stderr))
 	}
 	preview.LocalWorktreeRemoved = true
-	if code, _, stderr := preflight.GitCmd(preview.RepoRoot, "update-ref", "-d", "refs/heads/"+preview.Branch, preview.HeadSHA); code != 0 {
+	if code, _, stderr := GitCmd(preview.RepoRoot, "update-ref", "-d", "refs/heads/"+preview.Branch, preview.HeadSHA); code != 0 {
 		return preview, fmt.Errorf("remove confirmed local branch with preview HEAD CAS: %s", boundedGitFailure(stderr))
 	}
 	preview.LocalBranchRemoved = true
@@ -266,7 +265,7 @@ func inspectInventory(result *Result, request Request, snapshot corehealth.Snaps
 }
 
 func inspectWorktreeCleanliness(result *Result, worktree string) {
-	code, out, _ := preflight.GitCmd(worktree, "status", "--porcelain=v1")
+	code, out, _ := GitCmd(worktree, "status", "--porcelain=v1")
 	if code != 0 {
 		missing(result, "worktree_git_status")
 		return

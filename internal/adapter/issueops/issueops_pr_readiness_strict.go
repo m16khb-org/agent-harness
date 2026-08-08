@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"agent-harness/internal/adapter/issueops/implementation"
-	"agent-harness/internal/adapter/preflight"
 	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/domain/stringlist"
 )
@@ -21,30 +20,30 @@ func IssueOpsStrictPRReadiness(record issueops.IssueOpsRecord) issueops.IssueOps
 	gitRoot := issueOpsStrictGitRoot(record)
 	if gitRoot == "" {
 		missing = append(missing, "repo")
-	} else if code, out, _ := preflight.GitCmd(gitRoot, "rev-parse", "--is-inside-work-tree"); code != 0 || strings.TrimSpace(out) != "true" {
+	} else if code, out, _ := GitCmd(gitRoot, "rev-parse", "--is-inside-work-tree"); code != 0 || strings.TrimSpace(out) != "true" {
 		missing = append(missing, "repo_git")
 	} else {
 		currentHead = issueOpsCurrentHead(record)
 		currentFingerprint = implementation.ChangeFingerprint(record)
-		branch := strings.TrimSpace(preflight.GitOut(gitRoot, "branch", "--show-current"))
+		branch := strings.TrimSpace(GitOut(gitRoot, "branch", "--show-current"))
 		if strings.TrimSpace(record.Branch) != "" && branch != strings.TrimSpace(record.Branch) {
 			missing = append(missing, "branch_match")
 			warnings = append(warnings, "current branch "+branch+" does not match IssueOps branch "+strings.TrimSpace(record.Branch))
 		}
-		if strings.TrimSpace(preflight.GitOut(gitRoot, "status", "--porcelain=v1")) != "" {
+		if strings.TrimSpace(GitOut(gitRoot, "status", "--porcelain=v1")) != "" {
 			missing = append(missing, "worktree_clean")
 		}
-		upstream := strings.TrimSpace(preflight.GitOut(gitRoot, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"))
+		upstream := strings.TrimSpace(GitOut(gitRoot, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"))
 		if upstream == "" {
 			missing = append(missing, "upstream")
 		} else {
-			if code, _, stderr := preflight.GitCmd(gitRoot, "fetch", "--quiet"); code != 0 {
+			if code, _, stderr := GitCmd(gitRoot, "fetch", "--quiet"); code != 0 {
 				missing = append(missing, "upstream_fetch")
 				if strings.TrimSpace(stderr) != "" {
 					warnings = append(warnings, "failed to fetch upstream: "+strings.TrimSpace(stderr))
 				}
 			}
-			counts := strings.Fields(preflight.GitOut(gitRoot, "rev-list", "--left-right", "--count", "HEAD...@{u}"))
+			counts := strings.Fields(GitOut(gitRoot, "rev-list", "--left-right", "--count", "HEAD...@{u}"))
 			if len(counts) != 2 || counts[0] != "0" || counts[1] != "0" {
 				missing = append(missing, "upstream_synced")
 				if len(counts) == 2 {

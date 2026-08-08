@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/preflight"
 	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 	basesyncport "agent-harness/internal/port/issueopsbasesync"
@@ -796,15 +795,15 @@ func workspaceSnapshot(workspace issueops.Workspace) (string, error) {
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return "", err
 	}
-	_, tracked, stderr := preflight.GitCmdRaw(workspace.Root, "diff", "--binary", "--no-ext-diff", "--")
+	_, tracked, stderr := GitCmdRaw(workspace.Root, "diff", "--binary", "--no-ext-diff", "--")
 	if stderr != "" {
 		return "", fmt.Errorf("read tracked diff: %s", strings.TrimSpace(stderr))
 	}
-	_, staged, stderr := preflight.GitCmdRaw(workspace.Root, "diff", "--cached", "--binary", "--no-ext-diff", "--")
+	_, staged, stderr := GitCmdRaw(workspace.Root, "diff", "--cached", "--binary", "--no-ext-diff", "--")
 	if stderr != "" {
 		return "", fmt.Errorf("read staged diff: %s", strings.TrimSpace(stderr))
 	}
-	code, untrackedRaw, stderr := preflight.GitCmdRaw(workspace.Root, "ls-files", "--others", "--exclude-standard", "-z")
+	code, untrackedRaw, stderr := GitCmdRaw(workspace.Root, "ls-files", "--others", "--exclude-standard", "-z")
 	if code != 0 {
 		return "", fmt.Errorf("list untracked files: %s", strings.TrimSpace(stderr))
 	}
@@ -842,7 +841,7 @@ func workspaceSnapshot(workspace issueops.Workspace) (string, error) {
 }
 
 func gitOutput(root string, args ...string) (string, error) {
-	code, stdout, stderr := preflight.GitCmd(root, args...)
+	code, stdout, stderr := GitCmd(root, args...)
 	if code != 0 {
 		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), stderr)
 	}

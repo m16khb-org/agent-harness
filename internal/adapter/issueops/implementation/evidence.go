@@ -10,7 +10,6 @@ import (
 
 	"agent-harness/internal/adapter/issueops/pathutil"
 	"agent-harness/internal/adapter/issueops/readinesspaths"
-	"agent-harness/internal/adapter/preflight"
 	model "agent-harness/internal/contract/issueops"
 )
 
@@ -19,7 +18,7 @@ func HasEvidence(record model.IssueOpsRecord) bool {
 	if worktree == "" || !readinesspaths.WorktreePathValid(worktree) {
 		return false
 	}
-	if code, out, _ := preflight.GitCmd(worktree, "rev-parse", "--is-inside-work-tree"); code == 0 && strings.TrimSpace(out) == "true" {
+	if code, out, _ := GitCmd(worktree, "rev-parse", "--is-inside-work-tree"); code == 0 && strings.TrimSpace(out) == "true" {
 		if gitStatusHasImplementationChange(record, worktree) {
 			return true
 		}
@@ -33,12 +32,12 @@ func ChangeFingerprint(record model.IssueOpsRecord) string {
 	if gitRoot == "" {
 		return ""
 	}
-	if code, out, _ := preflight.GitCmd(gitRoot, "rev-parse", "--is-inside-work-tree"); code != 0 || strings.TrimSpace(out) != "true" {
+	if code, out, _ := GitCmd(gitRoot, "rev-parse", "--is-inside-work-tree"); code != 0 || strings.TrimSpace(out) != "true" {
 		return ""
 	}
 	paths := map[string]bool{}
 	if base := diffBaseRef(record, gitRoot); base != "" {
-		_, names, _ := preflight.GitCmd(gitRoot, "diff", "--name-only", base+"..HEAD", "--")
+		_, names, _ := GitCmd(gitRoot, "diff", "--name-only", base+"..HEAD", "--")
 		for _, name := range strings.Split(names, "\n") {
 			if path := cleanRelativePath(name); path != "" {
 				paths[path] = true
@@ -125,7 +124,7 @@ func gitStatusHasImplementationChange(record model.IssueOpsRecord, worktree stri
 }
 
 func gitStatusPorcelain(worktree string) string {
-	code, out, _ := preflight.GitCmdRaw(worktree, "status", "--porcelain=v1", "--untracked-files=all")
+	code, out, _ := GitCmdRaw(worktree, "status", "--porcelain=v1", "--untracked-files=all")
 	if code != 0 {
 		return ""
 	}
@@ -137,7 +136,7 @@ func gitHeadDiffersFromBase(record model.IssueOpsRecord, worktree string) bool {
 	if ref == "" {
 		return false
 	}
-	_, names, _ := preflight.GitCmd(worktree, "diff", "--name-only", ref+"..HEAD", "--")
+	_, names, _ := GitCmd(worktree, "diff", "--name-only", ref+"..HEAD", "--")
 	for _, name := range strings.Split(names, "\n") {
 		name = strings.TrimSpace(name)
 		if name != "" && !PathMatchesPlan(record, worktree, name) {
@@ -172,7 +171,7 @@ func diffBaseRef(record model.IssueOpsRecord, gitRoot string) string {
 		return ""
 	}
 	if baseSHA := strings.TrimSpace(record.BranchPrepare.BaseSHA); fullGitObjectID(baseSHA) {
-		if code, _, _ := preflight.GitCmd(gitRoot, "rev-parse", "--verify", "--end-of-options", baseSHA+"^{commit}"); code == 0 {
+		if code, _, _ := GitCmd(gitRoot, "rev-parse", "--verify", "--end-of-options", baseSHA+"^{commit}"); code == 0 {
 			return baseSHA
 		}
 	}
@@ -181,7 +180,7 @@ func diffBaseRef(record model.IssueOpsRecord, gitRoot string) string {
 		return ""
 	}
 	for _, ref := range []string{"origin/" + base, base} {
-		if code, _, _ := preflight.GitCmd(gitRoot, "rev-parse", "--verify", ref+"^{commit}"); code == 0 {
+		if code, _, _ := GitCmd(gitRoot, "rev-parse", "--verify", ref+"^{commit}"); code == 0 {
 			return ref
 		}
 	}

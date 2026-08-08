@@ -1,4 +1,3 @@
-cmd/harness/apidoc/reviewfiles -> internal/adapter/preflight
 cmd/harness/basiccli -> internal/adapter/doctor
 cmd/harness/basiccli -> internal/adapter/guard
 cmd/harness/basiccli -> internal/adapter/trace
@@ -39,13 +38,10 @@ cmd/harness/mcpcli -> internal/adapter/issueops
 cmd/harness/mcpcli -> internal/adapter/lintdiagnose
 cmd/harness/mcpcli -> internal/adapter/mcp
 cmd/harness/mcpcli -> internal/adapter/outbound/webfetch
-cmd/harness/mcpcli -> internal/adapter/policy
 cmd/harness/mcpcli -> internal/adapter/projectbootstrap
 cmd/harness/mcpcli/catalog -> internal/adapter/mcp
 cmd/harness/mcpcli/resources -> internal/adapter/mcp
-cmd/harness/mcpcli/resources -> internal/adapter/policy
 cmd/harness/policycli -> internal/adapter/audit
-cmd/harness/policycli -> internal/adapter/policy
 cmd/harness/projectcli -> internal/adapter/commitsuggest
 cmd/harness/projectcli -> internal/adapter/lintdiagnose
 cmd/harness/projectcli -> internal/adapter/projectbootstrap
@@ -55,16 +51,13 @@ cmd/harness/selfworkflow/stateio -> internal/adapter/failurecause
 cmd/harness/selfworkflow/summary -> internal/adapter/failurecause
 cmd/harness/statuscli -> internal/adapter/doctor
 cmd/harness/statuscli -> internal/adapter/guard
-cmd/harness/statuscli -> internal/adapter/policy
 cmd/harness/validationcli/nativeintegration -> internal/adapter/install
 cmd/harness/validationcli/nativeintegration -> internal/adapter/installutil
-cmd/harness/validationcli/preflightfuzz -> internal/adapter/preflight
 cmd/harness/validationcli/qagate -> internal/adapter/install
 cmd/harness/validationcli/stateroundtrip -> internal/adapter/outbound/sqlstore
 cmd/harness/validationcli/webfetch -> internal/adapter/outbound/webfetch
 cmd/harness/webfetchcli -> internal/adapter/outbound/webfetch
 cmd/harness/workercli -> internal/adapter/draftwiki
-internal/adapter/audit -> internal/adapter/policy
 internal/adapter/claude -> internal/adapter/installutil
 internal/adapter/codex -> internal/adapter/installutil
 internal/adapter/doctor -> internal/adapter/lifecycle
@@ -72,7 +65,6 @@ internal/adapter/doctor -> internal/adapter/looprun
 internal/adapter/doctor -> internal/adapter/projectdoc
 internal/adapter/draftwiki -> internal/adapter/lifecycle
 internal/adapter/draftwiki -> internal/adapter/projectdoc
-internal/adapter/gitworktree -> internal/adapter/preflight
 internal/adapter/hookprompt -> internal/adapter/issueops
 internal/adapter/hookprompt -> internal/adapter/lifecycle
 internal/adapter/hookprompt -> internal/adapter/projectdoc
@@ -82,11 +74,7 @@ internal/adapter/inbound/issueopslease -> internal/adapter/issueops
 internal/adapter/inbound/issueopspreparation -> internal/adapter/issueops
 internal/adapter/inbound/issueopspublication -> internal/adapter/issueops
 internal/adapter/issueops -> internal/adapter/outbound/sqlstore
-internal/adapter/issueops -> internal/adapter/preflight
-internal/adapter/issueops/cleanupstatus -> internal/adapter/preflight
-internal/adapter/issueops/implementation -> internal/adapter/preflight
 internal/adapter/issueops/loopgate -> internal/adapter/looprun
-internal/adapter/issueops/orphancleanup -> internal/adapter/preflight
 internal/adapter/lifecycle -> internal/adapter/commandguard
 internal/adapter/lifecycle -> internal/adapter/issueops
 internal/adapter/lifecycle -> internal/adapter/projectdoc
@@ -107,4 +95,3 @@ internal/adapter/projectdocs -> internal/adapter/projectdoc
 internal/adapter/toolconformance -> internal/adapter/failurecause
 internal/adapter/trace -> internal/adapter/failurecause
 internal/adapter/worker -> internal/adapter/outbound/sqlstore
-internal/adapter/worker -> internal/adapter/policy

@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"agent-harness/internal/adapter/policy"
 	policydomain "agent-harness/internal/contract/policy"
 )
 
@@ -24,7 +23,7 @@ type CommandAuditRecord struct {
 // AuditCommandPolicy는 명령 요청을 평가해 redacted policy 결정을 JSONL audit
 // log에 append한다. 명령 자체를 실행하지는 않는다.
 func AuditCommandPolicy(req policydomain.CommandPolicyRequest) (CommandAuditRecord, error) {
-	evaluation := policy.EvaluateCommandPolicy(req)
+	evaluation := EvaluateCommandPolicy(req)
 	record := CommandAuditRecord{
 		OK:          evaluation.Allowed,
 		Kind:        "command_policy_audit",

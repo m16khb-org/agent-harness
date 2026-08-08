@@ -2,7 +2,6 @@ package resources
 
 import (
 	mcpadapter "agent-harness/internal/adapter/mcp"
-	policy "agent-harness/internal/adapter/policy"
 	docscontract "agent-harness/internal/contract/docs"
 	projectdocscontract "agent-harness/internal/contract/projectdocs"
 	statecontract "agent-harness/internal/contract/state"
@@ -97,7 +96,7 @@ func HandleResourceRead(params json.RawMessage, config Config) (any, *ReadError)
 		return content(req.URI, "text/markdown", apiDocGuidanceText()), nil
 	}
 	if req.URI == "harness://command-policy" {
-		b, _ := json.MarshalIndent(policy.CommandPolicySummary(), "", "  ")
+		b, _ := json.MarshalIndent(CommandPolicySummary(), "", "  ")
 		return content(req.URI, "application/json", string(b)), nil
 	}
 	if req.URI == "harness://state" {

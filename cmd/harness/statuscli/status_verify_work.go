@@ -2,7 +2,6 @@ package statuscli
 
 import (
 	guard "agent-harness/internal/adapter/guard"
-	policy "agent-harness/internal/adapter/policy"
 	policydomain "agent-harness/internal/contract/policy"
 	preflightcontract "agent-harness/internal/contract/preflight"
 	projectdocdomain "agent-harness/internal/domain/projectdoc"
@@ -93,7 +92,7 @@ func buildVerifyWork(repo string, all bool, argv []string) VerifyWorkResult {
 	evidenceMatrix = append(evidenceMatrix, verifyWorkEvidenceItem("guard_check", guard.OK, fmt.Sprintf("guard check completed in %s mode for %d file(s)", guard.Mode, len(guard.CheckedFiles))))
 	var command *policydomain.CommandRunResult
 	if len(argv) > 0 {
-		run := policy.RunReadOnlyCommand(policydomain.CommandPolicyRequest{WorkspaceRoot: root, CWD: root, Argv: argv, Timeout: "30s"})
+		run := RunReadOnlyCommand(policydomain.CommandPolicyRequest{WorkspaceRoot: root, CWD: root, Argv: argv, Timeout: "30s"})
 		command = &run
 		if run.OK {
 			evidence = append(evidence, "read-only verification command passed")

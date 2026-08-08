@@ -12,7 +12,6 @@ import (
 
 	"agent-harness/internal/adapter/issueops/pathutil"
 	"agent-harness/internal/adapter/outbound/sqlstore"
-	"agent-harness/internal/adapter/preflight"
 	"agent-harness/internal/contract/issueops"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
 	"agent-harness/internal/port"
@@ -135,7 +134,7 @@ type cleanupAbandonInventory struct {
 func CleanupAbandon(ctx context.Context, stateRoot string, req CleanupAbandonRequest, deps CleanupAbandonDeps) (CleanupAbandonResult, error) {
 	if deps.Git == nil {
 		deps.Git = func(dir string, args ...string) (int, string) {
-			code, stdout, stderr := preflight.GitCmd(dir, args...)
+			code, stdout, stderr := GitCmd(dir, args...)
 			if code != 0 && stderr != "" {
 				return code, stderr
 			}

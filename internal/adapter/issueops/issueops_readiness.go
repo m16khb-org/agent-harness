@@ -6,7 +6,6 @@ import (
 	"agent-harness/internal/adapter/issueops/implementation"
 	"agent-harness/internal/adapter/issueops/intentdesign"
 	"agent-harness/internal/adapter/issueops/readinesspaths"
-	"agent-harness/internal/adapter/preflight"
 	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/domain/stringlist"
 )
@@ -264,7 +263,7 @@ func issueOpsCurrentHead(record issueops.IssueOpsRecord) string {
 	if gitRoot == "" {
 		return ""
 	}
-	if code, out, _ := preflight.GitCmd(gitRoot, "rev-parse", "HEAD"); code == 0 {
+	if code, out, _ := GitCmd(gitRoot, "rev-parse", "HEAD"); code == 0 {
 		return strings.TrimSpace(out)
 	}
 	return ""

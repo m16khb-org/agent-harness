@@ -4,7 +4,6 @@ import (
 	"os"
 	"strings"
 
-	"agent-harness/internal/adapter/preflight"
 	model "agent-harness/internal/contract/issueops"
 	issueopsdomain "agent-harness/internal/domain/issueops"
 	"agent-harness/internal/domain/issueopsremote"
@@ -76,7 +75,7 @@ func ForRecord(record model.IssueOpsRecord, req model.IssueOpsCleanupStatusReque
 		status.Missing = append(status.Missing, "worktree_exists")
 		return Finalize(status)
 	}
-	if code, out, stderr := preflight.GitCmd(worktree, "status", "--porcelain=v1"); code != 0 {
+	if code, out, stderr := GitCmd(worktree, "status", "--porcelain=v1"); code != 0 {
 		status.Missing = append(status.Missing, "worktree_git_status")
 		if strings.TrimSpace(stderr) != "" {
 			status.Warnings = append(status.Warnings, strings.TrimSpace(stderr))
@@ -88,7 +87,7 @@ func ForRecord(record model.IssueOpsRecord, req model.IssueOpsCleanupStatusReque
 		// 같은 극성을 쓴다.
 		status.Missing = append(status.Missing, "worktree_clean")
 	}
-	actualBranch := strings.TrimSpace(preflight.GitOut(worktree, "branch", "--show-current"))
+	actualBranch := strings.TrimSpace(GitOut(worktree, "branch", "--show-current"))
 	if actualBranch == "" {
 		status.Missing = append(status.Missing, "branch")
 	} else if strings.TrimSpace(record.Branch) != "" && actualBranch != strings.TrimSpace(record.Branch) {
@@ -98,7 +97,7 @@ func ForRecord(record model.IssueOpsRecord, req model.IssueOpsCleanupStatusReque
 	if remote == "" {
 		status.Missing = append(status.Missing, "remote_branch_check_unavailable")
 	} else if actualBranch != "" {
-		if code, out, stderr := preflight.GitCmd(worktree, "ls-remote", "--heads", remote, actualBranch); code != 0 {
+		if code, out, stderr := GitCmd(worktree, "ls-remote", "--heads", remote, actualBranch); code != 0 {
 			status.Missing = append(status.Missing, "remote_branch_check_failed")
 			if strings.TrimSpace(stderr) != "" {
 				status.Warnings = append(status.Warnings, strings.TrimSpace(stderr))
@@ -162,7 +161,7 @@ func worktreePathValid(path string) bool {
 }
 
 func firstIssueOpsGitRemote(worktree string) string {
-	for _, remote := range strings.Fields(preflight.GitOut(worktree, "remote")) {
+	for _, remote := range strings.Fields(GitOut(worktree, "remote")) {
 		remote = strings.TrimSpace(remote)
 		if remote != "" {
 			return remote

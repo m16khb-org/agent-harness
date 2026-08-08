@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	"agent-harness/internal/adapter/policy"
 	policydomain "agent-harness/internal/contract/policy"
 )
 
@@ -45,7 +44,7 @@ func RunReadOnlyWorkerJob(kind, payload string, req policydomain.CommandPolicyRe
 		return job, err
 	}
 
-	result := policy.RunReadOnlyCommand(req)
+	result := RunReadOnlyCommand(req)
 
 	// Transition to final status under lock.
 	if err := withWorkerJobLock(context.Background(), dir, job.ID, func(context.Context) error {
