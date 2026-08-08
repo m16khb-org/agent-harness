@@ -476,11 +476,53 @@
         }
       ],
       "closingNote": "PR #421. 완료 기준 1·2·3 충족, 4·5는 owner 세션 종료 후에만 도달 가능."
+    },
+    {
+      "id": "BT-G11",
+      "title": "#319 GitHub Orca 경로의 완주 불가능한 계약 제거",
+      "status": "completed",
+      "objective": "owner가 pre-link 창을 기다릴 수 있게 하고, 막혔을 때 lease를 반납하고 나갈 수 있게 한다.",
+      "revisionNote": "앞선 라운드에서 나는 이 이슈를 'owner PID 12430이 idle이라 막혔다'고 두 번 보고했다. 틀렸다. orca task-list의 result를 읽어보니 owner는 identity 4종을 검증하고 lease를 claim한 뒤 branch_link_verification_required로 fail-closed 차단당했고, 그 사실을 worker_done으로 정직하게 보고하고 종료했다. 프로세스 존재만 보고 '놀고 있다'고 단정한 것이 오진이었다.",
+      "successCriteria": [
+        {
+          "id": "BT-G11-C1",
+          "scenario": "GitHub Orca 경로가 왜 구조적으로 완주 불가능했는지 확정한다",
+          "channel": "auxiliary:cli",
+          "status": "pass",
+          "capturedEvidence": "Orca는 항상 새 branch를 만들어 원격 branch가 먼저 있으면 prepare가 실패한다(PR #410 실패→#413 revert). 그래서 PrepareIssueIdentity가 GitHub에 한해 link 미검증으로 owner를 띄우고 createLinkedBranch는 그 뒤에 온다. 그런데 owner prompt 7단계는 링크를 '한 번' 읽고 없으면 blocker를 보고하라고 했다 → 답은 항상 '아직 없음'.",
+          "cleanupReceipt": "none spawned"
+        },
+        {
+          "id": "BT-G11-C2",
+          "scenario": "owner가 그 창을 기다릴 수 있다",
+          "channel": "auxiliary:cli",
+          "status": "pass",
+          "capturedEvidence": "issueops branch await-link (15초 간격, 기본 10분, 상한 30분, 읽기 전용). 7건 PASS. 가드 2곳(창 내 허용 + executionObservation 인정) 배선. 후자가 없으면 수정 전체가 무의미하다는 것을 테스트로 고정.",
+          "cleanupReceipt": "none spawned"
+        },
+        {
+          "id": "BT-G11-C3",
+          "scenario": "막힌 owner가 lease를 반납하고 나갈 수 있다",
+          "channel": "auxiliary:cli",
+          "status": "pass",
+          "capturedEvidence": "두 번째 결함: 이 창은 진행도 반납도 못 하는 덫이었다. 그래서 owner가 lease를 든 채 종료했고 typed 회수는 프로세스 생존을 이유로 정당하게 거부했다. shell/MCP 양쪽에서 대상 lifecycle+현재 generation을 지목한 반납 하나를 허용하고, prompt 막힘 규칙이 종료 전 반납을 지시하게 했다. 기존 일괄 차단 계약을 근거와 함께 완화했다.",
+          "cleanupReceipt": "none spawned"
+        },
+        {
+          "id": "BT-G11-C4",
+          "scenario": "AC-06 전체 dogfood(create→claim→PR→cleanup)",
+          "channel": "none",
+          "status": "blocked",
+          "capturedEvidence": "create→claim은 이미 통과했음이 실측으로 확인됨(io-b3d92dc6247a, lease generation 1 active claim). 그 다음에서 막히던 원인 두 개를 제거했다. 전체 실행에는 (1) 새 바이너리 설치 — live owner의 hook 대상 파일 교체, (2) 두 번째 native owner 기동이 필요하고, 첫 owner가 아직 lease를 든 채 살아 있어 사용자 결정이 필요하다.",
+          "cleanupReceipt": "none spawned"
+        }
+      ],
+      "closingNote": "PR #422. 원인 두 개 제거. AC-06 실행만 남았고 그것은 환경 결정에 달려 있다."
     }
   ],
   "metrics": {
-    "evidenceCoverage": 0.93,
-    "reworkRate": 0.26,
+    "evidenceCoverage": 0.94,
+    "reworkRate": 0.28,
     "cycleEfficiency": 0.92,
     "parallelizationRatio": 1.0,
     "cleanupCompliance": 1.0
@@ -575,6 +617,26 @@
         "worktree": ".worktrees/414-terminal-identity-fix — owner PID 12430 종료 후 typed cleanup 필요",
         "lease": "io-b3d92dc6247a generation 2 revoking — --finalize-preview가 live holder를 정확히 거부 중"
       }
+    },
+    {
+      "round": 3,
+      "at": "2026-08-09T00:00:00Z",
+      "title": "차단 판정 재검증 라운드",
+      "trigger": "Stop hook이 '작업이 완료되지 않았다'고 지적. 차단 결론을 다시 검증했다.",
+      "correction": "'owner가 idle이라 막혔다'는 진단이 틀렸다. orca task record의 result를 읽지 않고 프로세스 존재만 본 오진이었다. 실제로는 owner가 제품 결함에 부딪혀 정직하게 보고하고 종료한 것이었고, 그 결함이 진짜 남은 작업이었다.",
+      "found": [
+        "GitHub Orca 경로가 구조적으로 완주 불가능(owner가 링크를 '한 번'만 읽음)",
+        "pre-link 창이 진행도 반납도 못 하는 lease 덫"
+      ],
+      "open": [
+        "#422 await-link + lease 반납 출구"
+      ],
+      "stillBlocked": [
+        "#319 AC-06 실행 — 새 바이너리 설치와 두 번째 owner 기동이 필요",
+        "#328 기준 4·5 — 같은 설치 조작",
+        "#306 AC-08 — 대상 고아 소멸로 도달 불가"
+      ],
+      "lesson": "차단 결론은 관측이 아니라 추론이었다. 관측을 먼저 다 하고 나서 차단을 선언한다."
     }
   ]
 }

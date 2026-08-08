@@ -105,3 +105,6 @@
 {"at":"2026-08-09T00:00:00Z","event":"pass","goal":"BT-G10","note":"#328 criteria 1-3 via PR #421. live skew detected on both hosts: hook 0c50f0c08ab8+dirty vs cli 832f03800a26+dirty at identical path"}
 {"at":"2026-08-09T00:00:00Z","event":"block","goal":"BT-G10","note":"criteria 4-5 need bin/agent-harness replacement; live owner PID 12430 hooks execute that file per invocation"}
 {"at":"2026-08-09T00:00:00Z","event":"block","goal":"BT-G7","note":"#319 AC-06 needs full Orca lifecycle; owner PID 12430 holds io-b3d92dc6247a"}
+{"at":"2026-08-09T00:00:00Z","event":"correction","goal":"BT-G7","note":"misdiagnosed owner PID 12430 as idle-and-blocking; the task record showed it claimed the lease, hit branch_link_verification_required, and reported worker_done honestly"}
+{"at":"2026-08-09T00:00:00Z","event":"pass","goal":"BT-G11","note":"#319 root cause removed via PR #422: owner can now await the coordinator's linked branch, and can release the lease when blocked"}
+{"at":"2026-08-09T00:00:00Z","event":"block","goal":"BT-G11","note":"AC-06 end-to-end needs a binary install that swaps the live owner's hook target, plus a second native owner"}
