@@ -6,7 +6,6 @@ import (
 
 	"agent-harness/cmd/harness/issueopscli/benchmarkartifact"
 	issueopscore "agent-harness/internal/adapter/issueops"
-	statestore "agent-harness/internal/adapter/outbound/state"
 )
 
 // One handler per `issueops benchmark <subcommand>`. Run (benchmark.go) routes
@@ -42,7 +41,7 @@ func runBenchmarkRun(args []string) error {
 		return err
 	}
 	result = issueopscore.FinalizeIssueOpsBenchmarkRunResult(result)
-	if err := issueopscore.SaveIssueOpsBenchmarkRun(statestore.StateDir(), result); err != nil {
+	if err := issueopscore.SaveIssueOpsBenchmarkRun(StateDir(), result); err != nil {
 		return err
 	}
 	if *jsonOut {
@@ -66,7 +65,7 @@ func applyBenchmarkJudge(judge, judgeFile string, result issueopscore.IssueOpsBe
 		// self-attributed to this run (or naming a non-existent source run) is
 		// rejected. This is a self-reference guard, not a proof of judge
 		// independence.
-		if err := issueopscore.ValidateJudgeProvenance(judgeMap, result.ID, statestore.StateDir()); err != nil {
+		if err := issueopscore.ValidateJudgeProvenance(judgeMap, result.ID, StateDir()); err != nil {
 			return err
 		}
 		for i, fixture := range fixtures {
@@ -87,11 +86,11 @@ func runBenchmarkCompare(args []string) error {
 	if help, err := parseFlags(fs, args); help || err != nil {
 		return err
 	}
-	baseline, err := issueopscore.ReadIssueOpsBenchmarkRun(statestore.StateDir(), *baselineID)
+	baseline, err := issueopscore.ReadIssueOpsBenchmarkRun(StateDir(), *baselineID)
 	if err != nil {
 		return err
 	}
-	candidate, err := issueopscore.ReadIssueOpsBenchmarkRun(statestore.StateDir(), *candidateID)
+	candidate, err := issueopscore.ReadIssueOpsBenchmarkRun(StateDir(), *candidateID)
 	if err != nil {
 		return err
 	}
@@ -118,11 +117,11 @@ func runBenchmarkGate(args []string) error {
 	if err != nil {
 		return err
 	}
-	baseline, err := issueopscore.ReadIssueOpsBenchmarkRun(statestore.StateDir(), *baselineID)
+	baseline, err := issueopscore.ReadIssueOpsBenchmarkRun(StateDir(), *baselineID)
 	if err != nil {
 		return err
 	}
-	candidateRun, err := issueopscore.ReadIssueOpsBenchmarkRun(statestore.StateDir(), *candidateID)
+	candidateRun, err := issueopscore.ReadIssueOpsBenchmarkRun(StateDir(), *candidateID)
 	if err != nil {
 		return err
 	}

@@ -8,7 +8,6 @@ import (
 
 	"agent-harness/cmd/harness/daemoncli"
 	doctor "agent-harness/internal/adapter/doctor"
-	statestore "agent-harness/internal/adapter/outbound/state"
 	inspect "agent-harness/internal/contract/inspect"
 	statecontract "agent-harness/internal/contract/state"
 	workercontract "agent-harness/internal/contract/worker"
@@ -76,7 +75,7 @@ func buildHarnessStatus(repo string) HarnessStatus {
 			Draining:          daemon.Draining,
 		},
 	})
-	state, stateErr := statestore.StateList()
+	state, stateErr := StateList()
 	workers, workerErr := ListWorkerJobs()
 	warnings := []string{}
 	if doctorErr != nil {

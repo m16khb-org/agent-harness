@@ -6,12 +6,11 @@ import (
 	"time"
 
 	"agent-harness/internal/adapter/failurecause"
-	statestore "agent-harness/internal/adapter/outbound/state"
 	statecontract "agent-harness/internal/contract/state"
 )
 
 func ReadSelfAugmentStateSnapshot(key string) (SelfAugmentStateSnapshot, error) {
-	state, err := statestore.StateRead(key)
+	state, err := StateRead(key)
 	if err != nil {
 		return SelfAugmentStateSnapshot{}, err
 	}
@@ -42,7 +41,7 @@ func NormalizeSelfAugmentSnapshotFailureCause(snapshot *SelfAugmentStateSnapshot
 
 func WriteSelfAugmentSnapshotRecord(dir, key string, snapshot SelfAugmentStateSnapshot) error {
 	NormalizeSelfAugmentSnapshotFailureCause(&snapshot)
-	key, err := statestore.NormalizeStateKey(key)
+	key, err := NormalizeStateKey(key)
 	if err != nil {
 		return err
 	}
@@ -61,6 +60,6 @@ func WriteSelfAugmentSnapshotRecord(dir, key string, snapshot SelfAugmentStateSn
 	// core.writeStateRecord의 내구성과 맞춘다. 온디스크 출력은 경로·MarshalIndent·
 	// trailing newline이 모두 같아 byte-identical하며, crash-safe하고 동시 writer에
 	// 대해 직렬화된다.
-	_, err = statestore.WriteStateRecord(dir, key, record)
+	_, err = WriteStateRecord(dir, key, record)
 	return err
 }
