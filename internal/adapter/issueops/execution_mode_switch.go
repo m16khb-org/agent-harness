@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"agent-harness/internal/adapter/preflight"
 	"agent-harness/internal/contract/issueops"
 )
 
@@ -81,7 +80,7 @@ type switchModeInventory struct {
 func SwitchExecutionMode(ctx context.Context, stateRoot string, req ExecutionSwitchModeRequest, deps ExecutionSwitchModeDependencies) (ExecutionSwitchModeResult, error) {
 	if deps.Git == nil {
 		deps.Git = func(dir string, args ...string) (int, string) {
-			code, stdout, stderr := preflight.GitCmd(dir, args...)
+			code, stdout, stderr := GitCmd(dir, args...)
 			if code != 0 && stderr != "" {
 				return code, stderr
 			}

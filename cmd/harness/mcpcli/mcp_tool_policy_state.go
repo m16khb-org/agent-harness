@@ -5,7 +5,6 @@ import (
 
 	"agent-harness/cmd/harness/mcpcli/argmap"
 	audit "agent-harness/internal/adapter/audit"
-	policy "agent-harness/internal/adapter/policy"
 	policydomain "agent-harness/internal/contract/policy"
 )
 
@@ -27,9 +26,9 @@ func commandPolicyRequestFromArgs(args map[string]any) policydomain.CommandPolic
 func handlePolicyStateMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	switch call.Name {
 	case "command_policy_check":
-		return mcpToolPayload(policy.EvaluateCommandPolicy(commandPolicyRequestFromArgs(call.Arguments)))
+		return mcpToolPayload(EvaluateCommandPolicy(commandPolicyRequestFromArgs(call.Arguments)))
 	case "command_fake_run":
-		return mcpToolPayload(policy.FakeRunCommand(commandPolicyRequestFromArgs(call.Arguments)))
+		return mcpToolPayload(FakeRunCommand(commandPolicyRequestFromArgs(call.Arguments)))
 	case "command_policy_audit":
 		result, err := audit.AuditCommandPolicy(commandPolicyRequestFromArgs(call.Arguments))
 		if err != nil {

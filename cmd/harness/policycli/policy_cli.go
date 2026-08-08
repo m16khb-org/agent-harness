@@ -2,7 +2,6 @@ package policycli
 
 import (
 	audit "agent-harness/internal/adapter/audit"
-	policy "agent-harness/internal/adapter/policy"
 	policydomain "agent-harness/internal/contract/policy"
 	"fmt"
 	"os"
@@ -42,7 +41,7 @@ func runPolicyCheck(args []string) error {
 	if err != nil {
 		return err
 	}
-	result := policy.EvaluateCommandPolicy(req)
+	result := EvaluateCommandPolicy(req)
 	if jsonOut {
 		return printJSON(result)
 	}
@@ -55,7 +54,7 @@ func runPolicyFakeRun(args []string) error {
 	if err != nil {
 		return err
 	}
-	result := policy.FakeRunCommand(req)
+	result := FakeRunCommand(req)
 	if jsonOut {
 		if err := printJSON(result); err != nil {
 			return err
@@ -83,7 +82,7 @@ func runPolicyRun(args []string) error {
 	if !readOnly {
 		return fmt.Errorf("policy run currently requires --read-only")
 	}
-	result := policy.RunReadOnlyCommand(req)
+	result := RunReadOnlyCommand(req)
 	if jsonOut {
 		if err := printJSON(result); err != nil {
 			return err

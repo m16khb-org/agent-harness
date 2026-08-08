@@ -16,7 +16,6 @@ import (
 	"agent-harness/internal/adapter/issueops/intentdesign"
 	"agent-harness/internal/adapter/issueops/linking"
 	"agent-harness/internal/adapter/issueops/start"
-	"agent-harness/internal/adapter/preflight"
 	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/domain/stringlist"
 	"agent-harness/internal/port"
@@ -196,7 +195,7 @@ func issueOpsBranchPrepareStore() branchprepare.Store {
 		TouchWrite:       touchAndWriteIssueOps,
 		ValidateIssueURL: linking.ValidateIssueURL,
 		ResolveBaseCommit: func(repo, revision string) (string, error) {
-			code, stdout, stderr := preflight.GitCmd(
+			code, stdout, stderr := GitCmd(
 				repo,
 				"rev-parse",
 				"--verify",

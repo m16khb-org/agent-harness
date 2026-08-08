@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"agent-harness/internal/adapter/issueops/pathutil"
-	"agent-harness/internal/adapter/preflight"
 	"agent-harness/internal/contract/issueops"
 	"agent-harness/internal/port"
 )
@@ -81,7 +80,7 @@ func ensureOrcaBranchIsFree(record issueops.IssueOpsRecord, branch string) error
 		{ref: "refs/remotes/origin/" + branch, where: "on origin",
 			remedy: "delete the remote branch if it holds no work, or run `git fetch --prune` if it is already gone"},
 	} {
-		code, output, _ := preflight.GitCmd(record.Repo, "rev-parse", "--verify", "--quiet", scope.ref)
+		code, output, _ := GitCmd(record.Repo, "rev-parse", "--verify", "--quiet", scope.ref)
 		if code != 0 {
 			continue
 		}
