@@ -46,3 +46,8 @@ type StatusResult struct {
 	AttemptCount int     `json:"attempt_count"`
 	LastVerdict  string  `json:"last_verdict,omitempty"`
 }
+
+type RepoGateSummary struct {
+	Active    int
+	Exhausted int
+}
