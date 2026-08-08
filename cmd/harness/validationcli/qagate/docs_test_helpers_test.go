@@ -4,7 +4,6 @@ import (
 	augmentcatalogcli "agent-harness/cmd/harness/selfworkflow/augmentcatalog"
 	augmentplancli "agent-harness/cmd/harness/selfworkflow/augmentplan"
 	"agent-harness/internal/adapter/docs"
-	"agent-harness/internal/adapter/draftwiki"
 	"agent-harness/internal/adapter/inspect"
 )
 
@@ -14,7 +13,6 @@ import (
 func init() {
 	ListDocs = docs.ListDocs
 	inspect.ListDocs = docs.ListDocs
-	draftwiki.ReadHeadings = docs.ReadHeadings
 	augmentcatalogcli.ListDocs = docs.ListDocs
 	augmentplancli.DocsIndex = docs.DocsIndex
 }

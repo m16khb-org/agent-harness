@@ -122,20 +122,6 @@ func TestKarpathySkillPinsPrivacyAndProportionalityContract(t *testing.T) {
 	})
 }
 
-func TestDraftWikiPromoterSkillPinsHookAndPromotionContract(t *testing.T) {
-	assertSkillContains(t, "draft-wiki-promoter", []string{
-		// Hook boundary.
-		"Never run external LLM calls inside PostToolUse hooks",
-		// Promotion gate.
-		"only approved drafts may be promoted",
-		// Operational-measurement fixes (DWP-O findings).
-		"`queue` and `prune` subcommands",
-		// Repo-local promotion boundary: promote never writes outside the repo.
-		"it never writes outside the repo",
-		"Never write into external wikis or companion tools",
-	})
-}
-
 func TestStabilityAuditSkillPinsSafetyModelContract(t *testing.T) {
 	assertSkillContains(t, "stability-audit", []string{
 		// Process-safety model (the STA-B boundary).

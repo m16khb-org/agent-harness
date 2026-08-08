@@ -68,7 +68,7 @@ Mermaid는 보조 자료다. 규칙·경계·검증 명령은 아래 텍스트�
 | `agent-harness daemon` user-level daemon | 구현됨 | 여러 host/session의 공통 MCP backend, 상태 공유 | `HARNESS_DAEMON_DIR` 또는 `~/.local/state/agent-harness/daemon`; stale lock, pid, socket, stop/status 제공 |
 | `agent-harness issueops` | 구현됨 | issue-driven 루프의 durable 상태와 direct/Orca execution v1 lease | IssueOps가 단일 authority다. Orca는 readiness, workspace, native owner launch/inventory만 제공하고 generation/actor/CWD fence는 core가 소유한다. |
 | `agent-harness loop` | 구현됨 | verify-until-done 루프 계약의 durable 상태와 PR readiness 게이트 | 하네스는 검증 명령을 실행하지 않고 `verify_argv`, 시도 evidence, stop 상태를 기록·게이트한다. |
-| `agent-harness worker` one-shot jobs | 부분 구현 | no-shell lifecycle job record와 draft-wiki queue 처리 | 현재 daemon은 MCP proxy backend이며 장기 상주 job daemon이 아니다. `worker draft-wiki`는 메인 에이전트가 명시 적재한 queue를 한 번 처리하고 `agy -p` argv만 호출한다. |
+| `agent-harness worker` one-shot jobs | 부분 구현 | no-shell lifecycle job record | 현재 daemon은 MCP proxy backend이며 장기 상주 job daemon이 아니다. |
 | Codex plugin/skill | Phase 5 | Codex에서 설치·명령·문서 UX 개선 | core 로직 금지, CLI/MCP 호출 래퍼만 허용 |
 | Claude commands/hooks | Phase 6 | Claude Code UX 개선 | core 정책 우회 금지 |
 
@@ -124,7 +124,6 @@ Deterministic baseline과 live evidence는 advertised schema validity와 closed 
 - 대상: `AGENTS.md`, `CLAUDE.md`, `GENIUS_THINK.md`, `.agent-harness/*.md`, `skills/self-verify/*.md`, `skills/self-augment/*.md`
 - 필드: relative path, absolute path, title, headings, byte size
 - 제공 표면: CLI `docs --json`, MCP `docs_index`, resource `harness://docs`
-- 제외: `.agent-harness/draft-wiki/**`는 사용자가 검토하는 wiki 후보 staging area이므로 source-of-truth docs index에 섞지 않는다.
 
 Project docs bootstrap:
 
@@ -132,14 +131,6 @@ Project docs bootstrap:
 - 기본 동작: `agent-harness project bootstrap`은 누락된 파일과 user-state repo profile metadata를 생성한다. 계획만 볼 때는 `--dry-run`, 기존 문서/프로필을 현재 템플릿과 repo evidence로 다시 맞출 때는 `--sync`를 쓴다.
 - 안전: `AGENTS.md` 전체를 덮어쓰지 않고 `AGENT_HARNESS` marker block만 관리한다.
 - MCP: `project_docs_bootstrap_plan`, `project_docs_route`, `harness://project-docs`와 lifecycle profile metadata로 어떤 작업에 어떤 문서/레포 맥락을 확인해야 하는지 제공한다.
-
-Draft wiki staging:
-
-- 위치: 적용 대상 repo의 `.agent-harness/draft-wiki/{draft,approved,rejected}/`
-- 목적: 장기 재사용 가치가 있다고 판단한 후보를 사용자가 파일 diff로 직접 검토·수정·승인하는 repo-local staging area로 둔다.
-- 제공 표면: CLI `agent-harness project draft-wiki init/list/suggest/queue/approve/reject/promote`
-- Hook/worker 흐름: hook은 draft-wiki 가치 판단이나 queue append를 자동 수행하지 않는다. UserPromptSubmit은 “메인 에이전트가 장기 재사용 가치 여부를 판단하라”는 지침만 주입하고, 메인 에이전트가 의미 있는 후보라고 판단한 경우에만 `agent-harness project draft-wiki queue --stdin`(heredoc 권장) 또는 `--input`으로 bounded/redacted user-state queue(`draft-wiki-queue.jsonl`)에 명시 적재한다. hook critical path에서는 `agy`를 실행하지 않는다. `agent-harness worker draft-wiki`가 queue를 읽어 `agy -p`를 argv 실행하고 응답을 `.agent-harness/draft-wiki/draft/*.md`에 쓴다.
-- 경계: `suggest`와 `worker draft-wiki`만 `agy -p`를 호출한다. `promote --confirm`은 승인된 draft를 repo-local `exported/` 디렉토리로 이동하고 `export.log`만 append한다. 외부 wiki ingest, lint, index, query-pack은 하네스 promote의 책임이 아니다.
 
 현재 `agent-harness state`는 작은 에이전트 체크포인트를 state root의 SQLite 데이터베이스(`harness.db`의 `state` bucket row)로 저장한다. project lifecycle state는 같은 user-state root 아래 `projects/<repo-id>/`에 격리되며 target repo의 `.agent-harness/`에는 쓰지 않는다. IssueOps v1 상태는 독립 namespace `issueops_v1/harness.db`의 `issueops_v1` bucket에 저장해 Codex와 Claude 세션을 넘어 이어간다. Loop 상태는 같은 user-state root 아래 `loop/harness.db`의 `loop` bucket에 저장한다. 모든 read-modify-write span은 해당 root의 `harness.lock.db`에 BEGIN IMMEDIATE 트랜잭션을 유지하는 sqlstore span으로 직렬화된다(프로세스 사망 시 자동 해제, span 중첩 금지).
 
@@ -421,4 +412,4 @@ quiescence·head OID CAS·fingerprint) 뒤에만 파괴 단계를 수행하고 �
 - `internal/adapter/mcp`는 compatibility/worker 계열 adapter-level MCP tool descriptor를 소유한다. `cmd/harness`는 JSON-RPC request handling과 core usecase 호출을 유지한다.
 - `agent-harness contract schema|check`는 CLI/MCP command list, MCP tool name, required response field를 검증하는 DTO compatibility 표면이다.
 - `agent-harness policy audit`는 redacted command-policy decision을 append-only JSONL로 기록하며 command를 실행하지 않는다.
-- `agent-harness worker`의 generic `enqueue/status/list/cancel`은 no-shell lifecycle MVP다. 예외적으로 `worker draft-wiki`는 메인 에이전트가 명시 적재한 user-state draft-wiki queue 처리 전용 one-shot worker이며 shell을 거치지 않고 `agy -p` argv만 호출해 repo-local draft를 만든다.
+- `agent-harness worker`의 generic `enqueue/status/list/cancel`은 no-shell lifecycle MVP다.

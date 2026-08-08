@@ -256,42 +256,6 @@ func TestRunDaemonAcceptLoopExpires64IdleSessionsAndAdmitsInitialize() {}
 	}
 }
 
-func TestDraftWikiStaleLockIsSatisfiedByQueueLockRecovery(t *testing.T) {
-	root := t.TempDir()
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "draftwiki", "queue", "lock.go"), `package queue
-
-const staleLockMaxAge = 5 * time.Minute
-
-func AcquireLock(projectStateDir string) (func(), bool, error) {
-	if isStale(path) {
-		_ = os.Remove(path)
-	}
-	return func() {}, true, nil
-}
-
-func isStale(path string) bool {
-	return !processAlive(pid)
-}
-`)
-	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "adapter", "draftwiki", "queue", "queue_test.go"), `package queue
-
-func TestAcquireLockRecoversStaleDeadPIDLock() {}
-func TestAcquireLockKeepsLiveCurrentLock() {}
-func TestAcquireLockContention() {}
-`)
-
-	signals := CollectSelfAugmentRepoSignals(root, 0, nil, "")
-	if !signals.HasDraftWikiStaleLockDetection {
-		t.Fatalf("draft-wiki stale lock signal was not detected: %+v", signals)
-	}
-
-	candidate := SelfAugmentCandidate{ID: "draftwiki-stale-lock", Status: SelfAugmentCandidateStatusOpen, Score: 76.24}
-	MarkSatisfiedSelfAugmentCandidate(&candidate, signals)
-	if candidate.Status != SelfAugmentCandidateStatusSatisfied || candidate.Score != 0 || len(candidate.SatisfactionEvidence) == 0 {
-		t.Fatalf("draft-wiki stale lock candidate was not marked satisfied: %+v", candidate)
-	}
-}
-
 func TestMCPResourceCoverageIsSatisfiedByCatalogAndReadEdgeTests(t *testing.T) {
 	root := t.TempDir()
 	writeFileForRepoSignalTest(t, filepath.Join(root, "internal", "domain", "mcp", "resource_catalog_test.go"), `package mcp

@@ -33,7 +33,6 @@ func TestExportWrappersDelegateToWorkerCommands(t *testing.T) {
 	}{
 		{name: "Run", run: Run, wantErr: "missing worker subcommand"},
 		{name: "RunEnqueue", run: RunEnqueue, wantErr: "worker job kind is required"},
-		{name: "RunDraftWiki", run: RunDraftWiki, args: []string{"--bad"}, wantErr: "flag provided but not defined"},
 		{name: "RunReadOnly", run: RunReadOnly, wantErr: "requires --read-only"},
 		{name: "RunStatus", run: RunStatus, args: []string{"--id", "missing"}, wantErr: "file does not exist"},
 		{name: "RunList", run: RunList, args: []string{"--bad"}, wantErr: "flag provided but not defined"},

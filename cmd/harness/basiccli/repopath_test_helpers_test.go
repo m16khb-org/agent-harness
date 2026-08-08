@@ -3,7 +3,6 @@ package basiccli
 import (
 	commitsuggestpkg "agent-harness/internal/adapter/commitsuggest"
 	doctorpkg "agent-harness/internal/adapter/doctor"
-	draftwikipkg "agent-harness/internal/adapter/draftwiki"
 	lifecyclepkg "agent-harness/internal/adapter/lifecycle"
 	lintdiagnosepkg "agent-harness/internal/adapter/lintdiagnose"
 	projectbootstrappkg "agent-harness/internal/adapter/projectbootstrap"
@@ -22,6 +21,4 @@ func init() {
 	commitsuggestpkg.NormalizeRepoRoot = repopath.NormalizeRoot
 	projectbootstrappkg.NormalizeRepoRoot = repopath.NormalizeRoot
 	projectdocspkg.NormalizeRepoRoot = repopath.NormalizeRoot
-	draftwikipkg.NormalizeRepoRoot = repopath.NormalizeRoot
-	draftwikipkg.ResolveRepoFile = repopath.ResolveFile
 }

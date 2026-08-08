@@ -1,7 +1,6 @@
 package projectbootstrap
 
 import (
-	draftwikipkg "agent-harness/internal/adapter/draftwiki"
 	lifecyclepkg "agent-harness/internal/adapter/lifecycle"
 	projectdocspkg "agent-harness/internal/adapter/projectdocs"
 	"agent-harness/internal/adapter/repopath"
@@ -13,6 +12,4 @@ func init() {
 	NormalizeRepoRoot = repopath.NormalizeRoot
 	lifecyclepkg.NormalizeRepoRoot = repopath.NormalizeRoot
 	projectdocspkg.NormalizeRepoRoot = repopath.NormalizeRoot
-	draftwikipkg.NormalizeRepoRoot = repopath.NormalizeRoot
-	draftwikipkg.ResolveRepoFile = repopath.ResolveFile
 }

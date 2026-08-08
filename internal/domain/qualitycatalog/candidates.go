@@ -11,7 +11,6 @@ var resolvedCandidateIDs = map[string]bool{
 	"daemon-connection-limit":        true,
 	"worker-stuck-running-detection": true,
 	"state-write-locking":            true,
-	"draftwiki-stale-lock":           true,
 }
 
 // VerificationKind classifies how a candidate's change is verified externally,
@@ -198,14 +197,6 @@ func CandidateSpecs() []CandidateSpec {
 			ExpectedGain: []string{"concurrent state writes stop risking lost updates"},
 			VerifyWith:   []string{"go test ./internal/application/state ./internal/adapter/outbound/state ./internal/adapter/outbound/sqlstore -count=1", "go test -race ./internal/application/state ./internal/adapter/outbound/state ./internal/adapter/outbound/sqlstore -count=1"},
 			Evidence:     []string{"PROJECT_AUDIT S1 P1"},
-		},
-		{
-			ID: "draftwiki-stale-lock", Title: "Detect and recover stale draft-wiki locks", Category: "audit-risk",
-			Impact: 86, Feasibility: 78, Novelty: 54, Risk: 22,
-			WhyNow:       []string{".agent-harness/PROJECT_AUDIT.md flags Q1 P1 stale lock detection"},
-			ExpectedGain: []string{"draft-wiki queue processing does not wedge on abandoned locks"},
-			VerifyWith:   []string{"go test ./internal/adapter/draftwiki/... ./cmd/harness/draftwikicli -count=1"},
-			Evidence:     []string{"PROJECT_AUDIT Q1 P1"},
 		},
 	}
 	// Quality specs are all code/correctness candidates; default them to

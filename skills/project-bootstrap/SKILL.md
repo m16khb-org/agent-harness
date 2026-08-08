@@ -21,7 +21,6 @@ Create evidence-backed project operating documents and repo profile metadata for
 - `.agent-harness/TESTING.md` — good/bad test criteria and likely verification commands for test work.
 - `.agent-harness/OPEN_API_SPEC.md` — static plus agent documentation gate prompt for endpoint/DTO/OpenAPI changes.
 - `.agent-harness/ADR.md` — architecture decision rationale and rejected alternatives.
-- `.agent-harness/draft-wiki/` — README plus `draft/`, `approved/`, `rejected/` staging tree for the draft-wiki-promoter workflow (created by bootstrap; operated via `project draft-wiki` subcommands).
 - `.agent-harness/OPERATIONS.md`
 - `.agent-harness/AGENT_WORKFLOW.md`
 

@@ -2,7 +2,6 @@ package prompt_test
 
 import (
 	"agent-harness/internal/adapter/commitsuggest"
-	"agent-harness/internal/adapter/draftwiki"
 	"agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/adapter/lintdiagnose"
 	"agent-harness/internal/domain/prompt"
@@ -14,11 +13,7 @@ import (
 
 func TestCoreHostJudgementPromptsUseStructuredContract(t *testing.T) {
 	prompts := map[string]string{
-		"commit": commitsuggest.BuildPrompt("diff --git a/file b/file\n"),
-		"draft_wiki": draftwiki.BuildDraftWikiSuggestPrompt(draftwiki.DraftWikiSuggestRequest{
-			Title:      "Prompt contract",
-			TargetWiki: "dev-fundamentals",
-		}, "source material", "notes"),
+		"commit":         commitsuggest.BuildPrompt("diff --git a/file b/file\n"),
 		"issueops_judge": mustIssueOpsJudgePromptForTest(t),
 		"lint_diagnose":  lintdiagnose.BuildPrompt(1, "failure output"),
 	}

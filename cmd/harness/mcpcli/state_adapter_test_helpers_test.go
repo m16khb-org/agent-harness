@@ -3,7 +3,6 @@ package mcpcli
 import (
 	auditstatepkg "agent-harness/internal/adapter/audit"
 	doctorstatepkg "agent-harness/internal/adapter/doctor"
-	draftwikistatepkg "agent-harness/internal/adapter/draftwiki"
 	issueopsstatepkg "agent-harness/internal/adapter/issueops"
 	lifecyclestatepkg "agent-harness/internal/adapter/lifecycle"
 	compactstatepkg "agent-harness/internal/adapter/lifecycle/compact"
@@ -20,7 +19,6 @@ func init() {
 	auditstatepkg.WithKeyLock = statestore.WithKeyLock
 	doctorstatepkg.StateDir = statestore.StateDir
 	doctorstatepkg.StateDoctor = statestore.StateDoctor
-	draftwikistatepkg.StateDir = statestore.StateDir
 	issueopsstatepkg.StateDir = statestore.StateDir
 	lifecyclestatepkg.StateDir = statestore.StateDir
 	lifecyclestatepkg.WithKeyLock = statestore.WithKeyLock

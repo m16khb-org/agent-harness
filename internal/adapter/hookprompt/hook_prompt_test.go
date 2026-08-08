@@ -61,20 +61,6 @@ func TestBuildUserPromptMCPHintsDoesNotInjectStickyNoAutoProceedPolicy(t *testin
 	}
 }
 
-func TestBuildUserPromptMCPHintsInjectsConciseDraftWikiReminder(t *testing.T) {
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "훅 정책을 개선해줘"})
-	for _, want := range []string{"draft-wiki:", "main-agent judgement only"} {
-		if !strings.Contains(got.AdditionalContext, want) {
-			t.Fatalf("draft-wiki reminder missing %q:\n%s", want, got.AdditionalContext)
-		}
-	}
-	for _, gone := range []string{"agent-harness project draft-wiki queue", "<<'EOF'", "heuristics must not queue"} {
-		if strings.Contains(got.AdditionalContext, gone) {
-			t.Fatalf("UserPromptSubmit must not embed verbose draft-wiki policy %q:\n%s", gone, got.AdditionalContext)
-		}
-	}
-}
-
 func TestBuildUserPromptMCPHintsForAPIWork(t *testing.T) {
 	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "새 endpoint와 DTO를 추가해줘"})
 	if !got.OK || !got.ShouldInject {
@@ -106,7 +92,7 @@ func TestBuildUserPromptMCPHintsForBugRecordsCaution(t *testing.T) {
 
 func TestBuildUserPromptMCPHintsUsesCompactBanner(t *testing.T) {
 	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: "새 endpoint와 DTO를 추가해줘"})
-	for _, want := range []string{"[agent-harness]\n", "- docs:", "- actions:", "- next-action:", "- draft-wiki:", "- rule:"} {
+	for _, want := range []string{"[agent-harness]\n", "- docs:", "- actions:", "- next-action:", "- rule:"} {
 		if !strings.Contains(got.AdditionalContext, want) {
 			t.Fatalf("compact multiline context missing %q:\n%s", want, got.AdditionalContext)
 		}

@@ -762,13 +762,6 @@
           "path": "$HARNESS_ROOT/skills/dijkstra"
         },
         {
-          "description": "Use when judging .agent-harness/draft-wiki candidates, turning agent notes into reviewable draft wiki files, approving/rejecting drafts, or promoting approved drafts into the repo-local exported directory.",
-          "has_openai_yaml": true,
-          "has_skill_md": true,
-          "name": "draft-wiki-promoter",
-          "path": "$HARNESS_ROOT/skills/draft-wiki-promoter"
-        },
-        {
           "description": "Meeting-record augmentation / team-memory specialist. Named after Douglas Engelbart — inventor of the mouse, hypertext, and the Augment human-intellect program. His core insight: tools should augment collective human intellect, and shared living records are how a team thinks together. Use when converting meeting transcripts, NAVER Clova Note exports, Slack huddle notes, speaker-labeled voice records, pasted meeting text, or AI meeting summaries into Korean meeting minutes, Slack Canvas-ready meeting docs, automatic Slack List registrations, fallback index-binding handoffs, Slack recaps, action tables, or reusable meeting-minutes prompts.",
           "has_openai_yaml": true,
           "has_skill_md": true,
@@ -4422,30 +4415,6 @@
           ]
         },
         {
-          "category": "audit-risk",
-          "expected_gain": [
-            "draft-wiki queue processing does not wedge on abandoned locks"
-          ],
-          "feasibility": 78,
-          "id": "draftwiki-stale-lock",
-          "impact": 86,
-          "novelty": 54,
-          "risk": 22,
-          "satisfaction_evidence": [
-            "draft-wiki queue lock detects stale PID/age locks and has recovery regression coverage"
-          ],
-          "score": 0,
-          "status": "already_satisfied",
-          "title": "Detect and recover stale draft-wiki locks",
-          "verify_with": [
-            "go test ./internal/adapter/draftwiki/... ./cmd/harness/draftwikicli -count=1"
-          ],
-          "why_now": [
-            ".agent-harness/PROJECT_AUDIT.md flags Q1 P1 stale lock detection",
-            "Already satisfied; do not select in the next self-augmentation cycle"
-          ]
-        },
-        {
           "category": "contract",
           "expected_gain": [
             "response DTO 변경 시 명시적 hash와 required field 확인",
@@ -5030,7 +4999,6 @@
         "has_cross_platform_build_matrix": true,
         "has_daemon_connection_limit": true,
         "has_distribution_decision": true,
-        "has_draftwiki_stale_lock_detection": true,
         "has_genius_mermaid_lint": true,
         "has_genius_think": true,
         "has_goal_score_summary": true,
@@ -5064,7 +5032,6 @@
           "brooks",
           "codd",
           "dijkstra",
-          "draft-wiki-promoter",
           "engelbart",
           "gitlab-usecase",
           "hopper",
@@ -6925,13 +6892,6 @@
                 "path": "$HARNESS_ROOT/skills/dijkstra"
               },
               {
-                "description": "Use when judging .agent-harness/draft-wiki candidates, turning agent notes into reviewable draft wiki files, approving/rejecting drafts, or promoting approved drafts into the repo-local exported directory.",
-                "has_openai_yaml": true,
-                "has_skill_md": true,
-                "name": "draft-wiki-promoter",
-                "path": "$HARNESS_ROOT/skills/draft-wiki-promoter"
-              },
-              {
                 "description": "Meeting-record augmentation / team-memory specialist. Named after Douglas Engelbart — inventor of the mouse, hypertext, and the Augment human-intellect program. His core insight: tools should augment collective human intellect, and shared living records are how a team thinks together. Use when converting meeting transcripts, NAVER Clova Note exports, Slack huddle notes, speaker-labeled voice records, pasted meeting text, or AI meeting summaries into Korean meeting minutes, Slack Canvas-ready meeting docs, automatic Slack List registrations, fallback index-binding handoffs, Slack recaps, action tables, or reusable meeting-minutes prompts.",
                 "has_openai_yaml": true,
                 "has_skill_md": true,
@@ -7351,30 +7311,6 @@
                 ],
                 "why_now": [
                   "release smoke는 배포 판단 근거를 만들었지만 아직 선택 기준과 rollback 기준이 기록되지 않았다",
-                  "Already satisfied; do not select in the next self-augmentation cycle"
-                ]
-              },
-              {
-                "category": "audit-risk",
-                "expected_gain": [
-                  "draft-wiki queue processing does not wedge on abandoned locks"
-                ],
-                "feasibility": 78,
-                "id": "draftwiki-stale-lock",
-                "impact": 86,
-                "novelty": 54,
-                "risk": 22,
-                "satisfaction_evidence": [
-                  "draft-wiki queue lock detects stale PID/age locks and has recovery regression coverage"
-                ],
-                "score": 0,
-                "status": "already_satisfied",
-                "title": "Detect and recover stale draft-wiki locks",
-                "verify_with": [
-                  "go test ./internal/adapter/draftwiki/... ./cmd/harness/draftwikicli -count=1"
-                ],
-                "why_now": [
-                  ".agent-harness/PROJECT_AUDIT.md flags Q1 P1 stale lock detection",
                   "Already satisfied; do not select in the next self-augmentation cycle"
                 ]
               },
@@ -7963,7 +7899,6 @@
               "has_cross_platform_build_matrix": true,
               "has_daemon_connection_limit": true,
               "has_distribution_decision": true,
-              "has_draftwiki_stale_lock_detection": true,
               "has_genius_mermaid_lint": true,
               "has_genius_think": true,
               "has_goal_score_summary": true,
@@ -7997,7 +7932,6 @@
                 "brooks",
                 "codd",
                 "dijkstra",
-                "draft-wiki-promoter",
                 "engelbart",
                 "gitlab-usecase",
                 "hopper",
