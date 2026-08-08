@@ -9,6 +9,18 @@ import (
 // production wiring과 같은 설치 유틸을 설치한다. 이 테스트는 두 host adapter의
 // 계약을 함께 확인하므로 양쪽 의존을 모두 채운다.
 func init() {
+	claudeadapter.NewInstallPlan = func(host string, dryRun bool) claudeadapter.InstallPlan {
+		return installutiladapter.NewPlan(host, dryRun)
+	}
+	claudeadapter.WriteJSONPlan = installutiladapter.WriteJSONPlan
+	claudeadapter.WriteTextPlan = installutiladapter.WriteTextPlan
+	claudeadapter.TOMLString = installutiladapter.TOMLString
+	codexadapter.NewInstallPlan = func(host string, dryRun bool) codexadapter.InstallPlan {
+		return installutiladapter.NewPlan(host, dryRun)
+	}
+	codexadapter.WriteJSONPlan = installutiladapter.WriteJSONPlan
+	codexadapter.WriteTextPlan = installutiladapter.WriteTextPlan
+	codexadapter.TOMLString = installutiladapter.TOMLString
 	for _, set := range []func(){
 		func() {
 			claudeadapter.CaptureNativeActivationEvidence = installutiladapter.CaptureNativeActivationEvidence

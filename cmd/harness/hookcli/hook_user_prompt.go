@@ -9,8 +9,8 @@ import (
 	"agent-harness/cmd/harness/hookcli/hookenv"
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	"agent-harness/cmd/harness/hookcli/hookprompt"
-	hookprompt2 "agent-harness/internal/adapter/hookprompt"
 	lifecycle "agent-harness/internal/adapter/lifecycle"
+	hookpromptcontract "agent-harness/internal/contract/hookprompt"
 	hookadapter "agent-harness/internal/domain/hook"
 )
 
@@ -44,7 +44,7 @@ func runHookUserPrompt(args []string) error {
 	} else if payloadHost != "" && flagHost != "" && !strings.EqualFold(payloadHost, flagHost) {
 		nativeHost = "conflict"
 	}
-	result := hookprompt2.BuildUserPromptMCPHints(hookprompt2.HookUserPromptRequest{
+	result := BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{
 		Prompt:               prompt,
 		Repo:                 repo,
 		Host:                 nativeHost,

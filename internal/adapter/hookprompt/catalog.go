@@ -1,20 +1,15 @@
 package hookprompt
 
+import hookpromptcontract "agent-harness/internal/contract/hookprompt"
+
 import "strings"
 
-type ProjectDocCatalogContext struct {
-	ShouldInject bool
-	ProjectDocs  []ProjectDocCatalogEntry
-	Compact      string
-	UserView     string
-}
-
-func BuildProjectDocCatalogContext(repo string) ProjectDocCatalogContext {
+func BuildProjectDocCatalogContext(repo string) hookpromptcontract.ProjectDocCatalogContext {
 	docs := DiscoverProjectDocs(repo)
 	worktreeReminder := activeWorktreeReminderValue(repo)
 	orchestrationReminder := orchestrationReminderValue(repo)
 	if len(docs) == 0 && worktreeReminder == "" && orchestrationReminder == "" {
-		return ProjectDocCatalogContext{}
+		return hookpromptcontract.ProjectDocCatalogContext{}
 	}
 	compact := FormatProjectDocCatalog(docs)
 	userView := renderProjectDocCatalogUserView(docs)
@@ -30,7 +25,7 @@ func BuildProjectDocCatalogContext(repo string) ProjectDocCatalogContext {
 		compact = appendCatalogContextLine(compact, "orchestration: "+line)
 		userView = appendCatalogContextLine(userView, "• orchestration: "+line)
 	}
-	return ProjectDocCatalogContext{
+	return hookpromptcontract.ProjectDocCatalogContext{
 		ShouldInject: true,
 		ProjectDocs:  docs,
 		Compact:      compact,
@@ -70,10 +65,10 @@ func renderProjectDocCatalogUserView(docs []ProjectDocCatalogEntry) string {
 	return b.String()
 }
 
-func RenderUserPromptUserView(result HookUserPromptResult) string {
+func RenderUserPromptUserView(result hookpromptcontract.HookUserPromptResult) string {
 	return renderProjectDocCatalogUserView(result.ProjectDocs)
 }
 
-func RenderUserPromptCodexContext(result HookUserPromptResult) string {
+func RenderUserPromptCodexContext(result hookpromptcontract.HookUserPromptResult) string {
 	return RenderUserPromptUserView(result)
 }

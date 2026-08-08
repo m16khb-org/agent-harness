@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/adapter/installutil"
 	"agent-harness/internal/port"
 )
 
@@ -62,7 +61,7 @@ startup_timeout_sec = 30
 
 [mcp_servers.agent_harness.env]
 HARNESS_ROOT = %s
-`, installutil.TOMLString(req.BinPath), installutil.TOMLString(req.Root))
+`, TOMLString(req.BinPath), TOMLString(req.Root))
 }
 
 func codexTemplate(req port.NativeInstallRequest) string {

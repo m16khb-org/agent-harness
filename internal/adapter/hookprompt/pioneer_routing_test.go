@@ -1,6 +1,7 @@
 package hookprompt_test
 
 import (
+	hookpromptcontract "agent-harness/internal/contract/hookprompt"
 	"testing"
 
 	"agent-harness/internal/adapter/hookprompt"
@@ -8,7 +9,7 @@ import (
 
 func hintToolsFor(t *testing.T, prompt string) map[string]bool {
 	t.Helper()
-	got := hookprompt.BuildUserPromptMCPHints(hookprompt.HookUserPromptRequest{Prompt: prompt})
+	got := hookprompt.BuildUserPromptMCPHints(hookpromptcontract.HookUserPromptRequest{Prompt: prompt})
 	tools := map[string]bool{}
 	for _, hint := range got.Hints {
 		tools[hint.Tool] = true
