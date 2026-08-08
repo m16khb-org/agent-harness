@@ -62,7 +62,7 @@ func ensureOrcaBranchIsFree(record issueops.IssueOpsRecord, branch string) error
 		}
 		return fmt.Errorf(
 			"branch %q already exists %s, so Orca cannot prepare this execution: Orca always creates a new branch, so it would take a different name (observed: a numeric suffix) and fail as worktree_branch_mismatch only after the worktree exists; "+
-				"use --mode direct, which adopts the existing branch, or %s",
+				"use --mode direct with an explicit --direct-reason, which adopts the existing branch, or %s",
 			branch, scope.where, scope.remedy)
 	}
 	return nil

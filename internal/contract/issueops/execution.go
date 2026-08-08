@@ -30,6 +30,7 @@ const (
 
 type Execution struct {
 	Mode               ExecutionMode                `json:"mode"`
+	Selection          *ExecutionSelection          `json:"selection,omitempty"`
 	Workspace          Workspace                    `json:"workspace"`
 	Lease              WriteLease                   `json:"lease"`
 	Orca               *OrcaBinding                 `json:"orca,omitempty"`
@@ -44,6 +45,19 @@ type Execution struct {
 	// 이 이벤트가 담당한다(설계 v2 brooks F9). 기존 레코드는 nil이므로
 	// 스키마는 additive다.
 	SyncBaseEvents []ExecutionSyncBaseEvent `json:"sync_base_events,omitempty"`
+}
+
+type ExecutionSelection struct {
+	RequestedMode        string `json:"requested_mode"`
+	ResolvedMode         string `json:"resolved_mode"`
+	ProbeAttempted       bool   `json:"probe_attempted"`
+	ProbeAvailable       bool   `json:"probe_available"`
+	ProbeReady           bool   `json:"probe_ready"`
+	ProbeCode            string `json:"probe_code,omitempty"`
+	FallbackCode         string `json:"fallback_code,omitempty"`
+	ReadinessFingerprint string `json:"readiness_fingerprint"`
+	SelectedAt           string `json:"selected_at"`
+	ExplicitDirectReason string `json:"explicit_direct_reason,omitempty"`
 }
 
 type Workspace struct {
@@ -170,6 +184,11 @@ func ValidateExecution(execution Execution) error {
 	if err := validateWriteLease(execution.Lease); err != nil {
 		return err
 	}
+	if execution.Selection != nil {
+		if err := validateExecutionSelection(*execution.Selection, execution.Mode); err != nil {
+			return err
+		}
+	}
 	if execution.Mode == ExecutionModeDirect && execution.Orca != nil {
 		return fmt.Errorf("direct execution must not contain an Orca binding")
 	}
@@ -258,6 +277,58 @@ func validateExecutionCompletion(completion ExecutionCompletion) error {
 		if strings.TrimSpace(evidence) == "" {
 			return fmt.Errorf("execution completion verification must be nonempty")
 		}
+	}
+	return nil
+}
+
+func validateExecutionSelection(selection ExecutionSelection, mode ExecutionMode) error {
+	if selection.RequestedMode != "auto" && selection.RequestedMode != "direct" && selection.RequestedMode != "orca" {
+		return fmt.Errorf("selection requested_mode must be auto, direct, or orca")
+	}
+	if selection.ResolvedMode != string(mode) {
+		return fmt.Errorf("selection resolved_mode must equal execution mode")
+	}
+	if selection.ProbeAvailable && !selection.ProbeAttempted {
+		return fmt.Errorf("selection probe_available requires probe_attempted")
+	}
+	if selection.ProbeReady && !selection.ProbeAvailable {
+		return fmt.Errorf("selection probe_ready requires probe_available")
+	}
+	if !selection.ProbeAttempted && strings.TrimSpace(selection.ProbeCode) != "" {
+		return fmt.Errorf("unattempted selection probe must not contain probe_code")
+	}
+	if selection.RequestedMode != "direct" && !selection.ProbeAttempted {
+		return fmt.Errorf("auto and Orca selections require a readiness probe")
+	}
+	if (selection.RequestedMode == "direct" && mode != ExecutionModeDirect) ||
+		(selection.RequestedMode == "orca" && mode != ExecutionModeOrca) {
+		return fmt.Errorf("explicit selection mode must equal execution mode")
+	}
+	if mode == ExecutionModeOrca && !selection.ProbeReady {
+		return fmt.Errorf("Orca selection requires a ready probe")
+	}
+	if selection.RequestedMode == "auto" && mode == ExecutionModeDirect {
+		probeCode := strings.TrimSpace(selection.ProbeCode)
+		fallbackCode := strings.TrimSpace(selection.FallbackCode)
+		if selection.ProbeReady || fallbackCode == "" || fallbackCode != probeCode || fallbackCode != selection.FallbackCode {
+			return fmt.Errorf("auto direct selection requires the exact probe failure fallback_code")
+		}
+	}
+	if mode == ExecutionModeOrca && strings.TrimSpace(selection.FallbackCode) != "" {
+		return fmt.Errorf("Orca selection must not contain fallback_code")
+	}
+	if selection.RequestedMode == "direct" {
+		if selection.ProbeAttempted || strings.TrimSpace(selection.ExplicitDirectReason) == "" {
+			return fmt.Errorf("explicit direct selection requires a reason and no probe")
+		}
+		if selection.FallbackCode != "" {
+			return fmt.Errorf("explicit direct selection must not contain fallback_code")
+		}
+	} else if strings.TrimSpace(selection.ExplicitDirectReason) != "" {
+		return fmt.Errorf("non-direct selection must not contain explicit_direct_reason")
+	}
+	if !validSHA256(selection.ReadinessFingerprint) || strings.TrimSpace(selection.SelectedAt) == "" {
+		return fmt.Errorf("selection receipt requires fingerprint and selected_at")
 	}
 	return nil
 }

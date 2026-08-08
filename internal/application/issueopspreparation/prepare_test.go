@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
+	preparationdomain "agent-harness/internal/domain/issueopspreparation"
 )
 
 func TestDirectPreparationPreviewAndConfirmTrace(t *testing.T) {
@@ -78,6 +80,22 @@ func TestDirectPreparationFailureStopsBeforeLaterEffects(t *testing.T) {
 	}
 }
 
+func TestPrepareFingerprintGatePrecedesWorkspaceMutation(t *testing.T) {
+	fixture := newDirectServiceFixture()
+	command := directCommand(true)
+	command.ExpectedReadinessFingerprint = ""
+	result, err := fixture.service.Prepare(context.Background(), command)
+	if err == nil || result.OK || !strings.Contains(err.Error(), "readiness fingerprint") {
+		t.Fatalf("result=%+v err=%v", result, err)
+	}
+	if got := preparationdomain.DenialReasonOf(err); got != preparationdomain.DenialReadinessFingerprintChanged {
+		t.Fatalf("denial=%q err=%v", got, err)
+	}
+	if traceIndex(fixture.trace, "direct.prepare") >= 0 || fixture.repository.commit != nil {
+		t.Fatalf("fingerprint drift reached mutation: %v", fixture.trace)
+	}
+}
+
 func TestPreparationDecisionShortCircuitsDirectEffects(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -138,10 +156,19 @@ func newDirectServiceFixture() *directServiceFixture {
 }
 
 func directCommand(confirm bool) preparationcontract.Command {
-	return preparationcontract.Command{
+	command := preparationcontract.Command{
 		ID: "io-prepare", Mode: "direct", CWD: "/repo", Confirm: confirm,
-		Actor: leasecontract.Actor{Host: "codex", SessionID: "session", SessionProcess: &leasecontract.ProcessReceipt{PID: 42, StartedAt: "start", Executable: "/bin/codex"}},
+		DirectReason: "planned recovery",
+		Actor:        leasecontract.Actor{Host: "codex", SessionID: "session", SessionProcess: &leasecontract.ProcessReceipt{PID: 42, StartedAt: "start", Executable: "/bin/codex"}},
 	}
+	if confirm {
+		decision, err := preparationdomain.Decide(preparationdomain.DecisionInput{Command: command})
+		if err != nil {
+			panic(err)
+		}
+		command.ExpectedReadinessFingerprint = decision.ReadinessFingerprint
+	}
+	return command
 }
 
 func applicationExecution(mode, status string, pending bool) *leasecontract.Execution {
@@ -179,8 +206,9 @@ func (fake *applicationRepositoryFake) CommitDirect(_ context.Context, commit Di
 	if fake.commitErr != nil {
 		return preparationcontract.Result{ID: commit.Command.ID}, fake.commitErr
 	}
-	execution := &leasecontract.Execution{Mode: "direct", Workspace: leasecontract.Workspace{SourceRoot: commit.Workspace.SourceRoot, Root: commit.Workspace.Root, Branch: commit.Workspace.Branch, BaseHead: commit.Workspace.BaseHead, ParentWorktree: commit.Workspace.ParentWorktree, Driver: "git", LinkedAt: commit.LinkedAt}, Lease: leasecontract.Lease{Generation: 1, Status: "active", Holder: &commit.Command.Actor, ClaimedAt: commit.ClaimedAt}}
-	return preparationcontract.Result{OK: true, ID: commit.Command.ID, RequestedMode: commit.RequestedMode, ResolvedMode: "direct", FallbackCode: commit.FallbackCode, Workspace: execution.Workspace, Execution: execution}, nil
+	selection := commit.Selection
+	execution := &leasecontract.Execution{Mode: "direct", Selection: &selection, Workspace: leasecontract.Workspace{SourceRoot: commit.Workspace.SourceRoot, Root: commit.Workspace.Root, Branch: commit.Workspace.Branch, BaseHead: commit.Workspace.BaseHead, ParentWorktree: commit.Workspace.ParentWorktree, Driver: "git", LinkedAt: commit.LinkedAt}, Lease: leasecontract.Lease{Generation: 1, Status: "active", Holder: &commit.Command.Actor, ClaimedAt: commit.ClaimedAt}}
+	return preparationcontract.Result{OK: true, ID: commit.Command.ID, RequestedMode: commit.RequestedMode, ResolvedMode: "direct", FallbackCode: commit.FallbackCode, ReadinessFingerprint: selection.ReadinessFingerprint, ExplicitDirectReason: selection.ExplicitDirectReason, Workspace: execution.Workspace, Execution: execution}, nil
 }
 
 func (*applicationRepositoryFake) BeginIntent(context.Context, OrcaBegin) (IntentState, error) {

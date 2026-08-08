@@ -104,7 +104,7 @@ SHA를 `oid`로 전달해 같은 이름의 remote linked branch를 만들고, ex
 ## Prepare
 
 Run the preview first, inspect the selected mode, branch, base SHA, worktree,
-owner model, and next command, then repeat the same request with `--confirm`:
+owner model, and `next_command`, then execute that exact returned command:
 
 ```bash
 agent-harness issueops execution prepare \
@@ -115,17 +115,9 @@ agent-harness issueops execution prepare \
   --owner-effort "$OWNER_EFFORT" \
   $ACTOR_FLAGS \
   --json
-
-agent-harness issueops execution prepare \
-  --id "$ISSUEOPS_ID" \
-  --mode auto \
-  --owner-host "$OWNER_HOST" \
-  --owner-model "$OWNER_MODEL" \
-  --owner-effort "$OWNER_EFFORT" \
-  $ACTOR_FLAGS \
-  --confirm \
-  --json
 ```
+
+The preview response seals the selection evidence in `readiness_fingerprint` and renders the exact confirm as `next_command`. Confirm must supply `--expected-readiness-fingerprint`; any changed probe result, owner profile, provider/issue identity, or explicit-direct reason fails before mutation. Explicit `--mode direct` is reserved for a bounded operator-approved exception and requires `--direct-reason`; it performs no Orca probe. Durable status exposes the same fields under `execution.selection`.
 
 `ACTOR_FLAGS` are the exact native process identity and cwd:
 

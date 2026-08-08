@@ -19,6 +19,10 @@ func TestPrintInstallNativeResultCoversDryRunAndProjectLocalModes(t *testing.T) 
 		ProjectLocal: false,
 		DryRun:       true,
 		Messages:     []string{"planned install"},
+		CommandPath: &port.ManagedCommandPathResult{
+			Path: "/home/user/.local/bin/agent-harness", Target: "/repo/harness/bin/agent-harness", BackupPath: "/home/user/.local/bin/.backup",
+			AdoptionApproved: true, WouldAdopt: true, RollbackAvailable: true,
+		},
 	}
 
 	dryRunOut := captureStatusVerifyStdout(t, func() error {
@@ -30,6 +34,8 @@ func TestPrintInstallNativeResultCoversDryRunAndProjectLocalModes(t *testing.T) 
 		"- mode: user/global only",
 		"- Project-local repo files: unchanged by default",
 		"- planned install",
+		"managed command adoption: /home/user/.local/bin/agent-harness -> /repo/harness/bin/agent-harness (would adopt)",
+		"rollback_available=true",
 	} {
 		if !strings.Contains(dryRunOut, want) {
 			t.Fatalf("dry-run output missing %q:\n%s", want, dryRunOut)
@@ -106,6 +112,7 @@ func TestNativeActivationStepAcceptsOnlyInternalTransitionModes(t *testing.T) {
 		{name: "normal", valid: true},
 		{name: "begin", raw: "begin", want: "begin", valid: true},
 		{name: "seal", raw: "seal", want: "seal", valid: true},
+		{name: "abort", raw: "abort", want: "abort", valid: true},
 		{name: "unknown", raw: "other"},
 		{name: "dry_run_transition", dryRun: true, raw: "begin"},
 	} {

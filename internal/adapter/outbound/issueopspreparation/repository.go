@@ -12,6 +12,7 @@ import (
 	preparationapp "agent-harness/internal/application/issueopspreparation"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
+	preparationdomain "agent-harness/internal/domain/issueopspreparation"
 	"agent-harness/internal/port"
 )
 
@@ -67,6 +68,9 @@ func (repository *SQLiteRepository) CommitDirect(ctx context.Context, commit pre
 	if repository.store == nil {
 		return preparationcontract.Result{ID: commit.Command.ID}, fmt.Errorf("preparation record store is unavailable")
 	}
+	if err := validateSelectionReceipt(commit.Selection, commit.Command, commit.Probe, preparationcontract.ModeDirect); err != nil {
+		return preparationcontract.Result{ID: commit.Command.ID}, err
+	}
 	var result preparationcontract.Result
 	err := repository.store.WithSpan(ctx, func(spanCtx context.Context) error {
 		current, err := repository.Load(spanCtx, commit.Command.ID)
@@ -82,8 +86,10 @@ func (repository *SQLiteRepository) CommitDirect(ctx context.Context, commit pre
 		record := current.Record
 		record.WorktreePath = commit.Workspace.Root
 		actor := commit.Command.Clone().Actor
+		selection := commit.Selection
 		record.Execution = &leasecontract.Execution{
-			Mode: preparationcontract.ModeDirect,
+			Mode:      preparationcontract.ModeDirect,
+			Selection: &selection,
 			Workspace: leasecontract.Workspace{
 				SourceRoot: commit.Workspace.SourceRoot, Root: commit.Workspace.Root,
 				Branch: commit.Workspace.Branch, BaseHead: commit.Workspace.BaseHead,
@@ -114,6 +120,9 @@ func (repository *SQLiteRepository) CommitDirect(ctx context.Context, commit pre
 			OK: true, ID: record.ID, RequestedMode: commit.RequestedMode,
 			ResolvedMode: preparationcontract.ModeDirect, FallbackCode: commit.FallbackCode,
 			Workspace: record.Execution.Workspace, Execution: record.Execution,
+			ProbeAttempted: commit.Selection.ProbeAttempted, ProbeAvailable: commit.Selection.ProbeAvailable,
+			ProbeReady: commit.Selection.ProbeReady, ProbeCode: commit.Selection.ProbeCode,
+			ReadinessFingerprint: commit.Selection.ReadinessFingerprint, ExplicitDirectReason: commit.Selection.ExplicitDirectReason,
 		}.Clone()
 		return nil
 	})
@@ -126,6 +135,9 @@ func (repository *SQLiteRepository) CommitDirect(ctx context.Context, commit pre
 func (repository *SQLiteRepository) BeginIntent(ctx context.Context, begin preparationapp.OrcaBegin) (preparationapp.IntentState, error) {
 	if repository.store == nil {
 		return preparationapp.IntentState{}, fmt.Errorf("preparation record store is unavailable")
+	}
+	if err := validateSelectionReceipt(begin.Selection, begin.Command, begin.Probe, preparationcontract.ModeOrca); err != nil {
+		return preparationapp.IntentState{}, err
 	}
 	var state preparationapp.IntentState
 	err := repository.store.WithSpan(ctx, func(spanCtx context.Context) error {
@@ -166,8 +178,10 @@ func (repository *SQLiteRepository) BeginIntent(ctx context.Context, begin prepa
 			return err
 		}
 		record := current.Record
+		selection := begin.Selection
 		record.Execution = &leasecontract.Execution{
-			Mode: preparationcontract.ModeOrca,
+			Mode:      preparationcontract.ModeOrca,
+			Selection: &selection,
 			Workspace: leasecontract.Workspace{
 				SourceRoot: begin.Workspace.SourceRoot, Root: begin.Workspace.Root,
 				Branch: begin.Workspace.Branch, BaseHead: begin.Workspace.BaseHead,
@@ -196,6 +210,26 @@ func (repository *SQLiteRepository) BeginIntent(ctx context.Context, begin prepa
 		return nil
 	})
 	return state, err
+}
+
+func validateSelectionReceipt(selection leasecontract.Selection, command preparationcontract.Command, probe preparationcontract.ProbeRequest, mode string) error {
+	if selection.ResolvedMode != mode || selection.RequestedMode != command.Mode {
+		return fmt.Errorf("selection receipt does not match the chosen execution path")
+	}
+	decision := preparationdomain.Decision{
+		RequestedMode: selection.RequestedMode, ResolvedMode: selection.ResolvedMode,
+		ProbeAttempted: selection.ProbeAttempted, ProbeAvailable: selection.ProbeAvailable,
+		ProbeReady: selection.ProbeReady, ProbeCode: selection.ProbeCode, FallbackCode: selection.FallbackCode,
+		ExplicitDirectReason: selection.ExplicitDirectReason,
+		ProbeProvider:        strings.ToLower(strings.TrimSpace(probe.Provider)), ProbeIssue: probe.Issue,
+	}
+	if expected := preparationdomain.Fingerprint(decision, command); selection.ReadinessFingerprint != expected {
+		return fmt.Errorf("selection receipt readiness fingerprint changed before persistence")
+	}
+	if strings.TrimSpace(selection.SelectedAt) == "" {
+		return fmt.Errorf("selection receipt selected_at is required")
+	}
+	return nil
 }
 
 func (repository *SQLiteRepository) MarkInvoking(ctx context.Context, state preparationapp.IntentState) (preparationapp.IntentState, error) {

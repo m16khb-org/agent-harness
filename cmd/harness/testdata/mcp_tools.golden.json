@@ -506,9 +506,15 @@
         "cwd": {
           "type": "string"
         },
+        "direct_reason": {
+          "type": "string"
+        },
         "expected_generation": {
           "minimum": 1,
           "type": "integer"
+        },
+        "expected_readiness_fingerprint": {
+          "type": "string"
         },
         "final_head": {
           "type": "string"

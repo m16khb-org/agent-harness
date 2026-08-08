@@ -60,7 +60,7 @@ func execute(req model.ExecutionActionRequest, deps Deps) (any, error) {
 }
 
 const Usage = `Usage:
-  agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude [--owner-model MODEL] [--owner-effort EFFORT] [--issue-snapshot-file PATH] ACTOR_FLAGS [--confirm] [--json]
+  agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude [--owner-model MODEL] [--owner-effort EFFORT] [--direct-reason REASON] [--expected-readiness-fingerprint SHA256] [--issue-snapshot-file PATH] ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops execution status --id ID [--json]
   agent-harness issueops execution whoami [--json]
   agent-harness issueops execution claim --id ID --generation N --claim-token-file PATH [--issue-body-sha256 HEX --context-packet-sha256 HEX] [--issue-snapshot-file PATH] ACTOR_FLAGS [--json]
@@ -203,6 +203,8 @@ func runPrepare(args []string, deps Deps) error {
 	id, mode := fs.String("id", "", "IssueOps id"), fs.String("mode", "auto", "auto, direct, orca")
 	ownerHost, ownerModel := fs.String("owner-host", "", "owner host"), fs.String("owner-model", "", "owner model")
 	ownerEffort := fs.String("owner-effort", "", "owner effort")
+	directReason := fs.String("direct-reason", "", "required reason for explicit direct mode")
+	expectedReadinessFingerprint := fs.String("expected-readiness-fingerprint", "", "preview readiness fingerprint required by confirm")
 	issueSnapshotFile := fs.String("issue-snapshot-file", "", "private GitLab issue snapshot JSON file")
 	actor := addActorFlags(fs)
 	confirm, jsonOut := fs.Bool("confirm", false, "confirm mutations"), fs.Bool("json", false, "print JSON")
@@ -215,7 +217,9 @@ func runPrepare(args []string, deps Deps) error {
 	}
 	result, err := execute(model.ExecutionActionRequest{
 		Action: model.ExecutionActionPrepare, ID: *id, Mode: *mode, Actor: actor.actor(), CWD: *actor.cwd,
-		OwnerHost: *ownerHost, OwnerModel: *ownerModel, OwnerEffort: *ownerEffort, Confirm: *confirm,
+		OwnerHost: *ownerHost, OwnerModel: *ownerModel, OwnerEffort: *ownerEffort,
+		IssueSnapshotFile: *issueSnapshotFile,
+		DirectReason:      *directReason, ExpectedReadinessFingerprint: *expectedReadinessFingerprint, Confirm: *confirm,
 		IssueSnapshot: issueSnapshot,
 	}, deps)
 	return output(result, *jsonOut, err, deps)

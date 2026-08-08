@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	leasecontract "agent-harness/internal/contract/issueopslease"
 	preparationcontract "agent-harness/internal/contract/issueopspreparation"
 )
 
@@ -47,6 +48,8 @@ type DirectCommit struct {
 	FallbackCode  string
 	LinkedAt      string
 	ClaimedAt     string
+	Selection     leasecontract.Selection
+	Probe         preparationcontract.ProbeRequest
 }
 
 type OrcaBegin struct {
@@ -57,6 +60,7 @@ type OrcaBegin struct {
 	Owner       preparationcontract.OwnerEvidence
 	OperationID string
 	StartedAt   string
+	Selection   leasecontract.Selection
 }
 
 type IntentState struct {

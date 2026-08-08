@@ -166,3 +166,90 @@ func TestValidateExecutionRejectsInvalidCompletionHistory(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateExecutionSelectionReceipt(t *testing.T) {
+	execution := validOrcaExecutionForTest()
+	execution.Selection = &ExecutionSelection{
+		RequestedMode:        "auto",
+		ResolvedMode:         "orca",
+		ProbeAttempted:       true,
+		ProbeAvailable:       true,
+		ProbeReady:           true,
+		ProbeCode:            "ready",
+		ReadinessFingerprint: strings.Repeat("b", 64),
+		SelectedAt:           "2026-08-03T00:00:00Z",
+	}
+	if err := ValidateExecution(execution); err != nil {
+		t.Fatalf("valid selection receipt rejected: %v", err)
+	}
+
+	invalid := []struct {
+		name   string
+		mutate func(*ExecutionSelection)
+	}{
+		{name: "mode mismatch", mutate: func(receipt *ExecutionSelection) { receipt.ResolvedMode = "direct" }},
+		{name: "auto without probe", mutate: func(receipt *ExecutionSelection) {
+			receipt.ProbeAttempted = false
+			receipt.ProbeAvailable = false
+			receipt.ProbeReady = false
+			receipt.ProbeCode = ""
+		}},
+		{name: "ready without available", mutate: func(receipt *ExecutionSelection) { receipt.ProbeAvailable = false }},
+		{name: "fallback on orca", mutate: func(receipt *ExecutionSelection) { receipt.FallbackCode = "orca_unready" }},
+		{name: "direct reason on auto", mutate: func(receipt *ExecutionSelection) { receipt.ExplicitDirectReason = "manual recovery" }},
+		{name: "missing fingerprint", mutate: func(receipt *ExecutionSelection) { receipt.ReadinessFingerprint = "" }},
+	}
+	for _, test := range invalid {
+		t.Run(test.name, func(t *testing.T) {
+			candidate := execution
+			receipt := *execution.Selection
+			test.mutate(&receipt)
+			candidate.Selection = &receipt
+			if err := ValidateExecution(candidate); err == nil {
+				t.Fatal("invalid selection receipt accepted")
+			}
+		})
+	}
+}
+
+func TestValidateExecutionSelectionRequiresExactAutoFallbackCode(t *testing.T) {
+	execution := validOrcaExecutionForTest()
+	execution.Mode = ExecutionModeDirect
+	execution.Workspace.Driver = "git"
+	execution.Orca = nil
+	execution.Selection = &ExecutionSelection{
+		RequestedMode: "auto", ResolvedMode: "direct", ProbeAttempted: true,
+		ProbeCode: "orca_unready", FallbackCode: "orca_unready",
+		ReadinessFingerprint: strings.Repeat("b", 64), SelectedAt: "2026-08-03T00:00:00Z",
+	}
+	if err := ValidateExecution(execution); err != nil {
+		t.Fatalf("valid auto fallback rejected: %v", err)
+	}
+	for _, fallback := range []string{"", "different_code", " orca_unready "} {
+		candidate := execution
+		selection := *execution.Selection
+		selection.FallbackCode = fallback
+		candidate.Selection = &selection
+		if err := ValidateExecution(candidate); err == nil {
+			t.Fatalf("invalid fallback_code %q accepted", fallback)
+		}
+	}
+}
+
+func TestValidateExecutionSelectionRejectsExplicitDirectFallbackCode(t *testing.T) {
+	execution := validOrcaExecutionForTest()
+	execution.Mode = ExecutionModeDirect
+	execution.Workspace.Driver = "git"
+	execution.Orca = nil
+	execution.Selection = &ExecutionSelection{
+		RequestedMode: "direct", ResolvedMode: "direct",
+		ReadinessFingerprint: strings.Repeat("b", 64), SelectedAt: "2026-08-03T00:00:00Z",
+		ExplicitDirectReason: "manual recovery",
+	}
+	for _, fallback := range []string{"orca_unready", " "} {
+		execution.Selection.FallbackCode = fallback
+		if err := ValidateExecution(execution); err == nil {
+			t.Fatalf("explicit direct selection with fallback_code %q accepted", fallback)
+		}
+	}
+}

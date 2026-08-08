@@ -31,6 +31,7 @@ func configureInstallCommandTest(t *testing.T, home string) string {
 	t.Setenv("PATH", "/usr/bin:/bin")
 	Configure(Deps{
 		HarnessRoot:          func() string { return root },
+		ExecutablePath:       func() (string, error) { return filepath.Join(root, "bin", "agent-harness"), nil },
 		NativeInstallRequest: install.DefaultNativeInstallRequest,
 		InstallNative: func(req port.NativeInstallRequest) (port.NativeInstallResult, error) {
 			return install.InstallNative(req, codexadapter.NewInstaller(), claudeadapter.NewInstaller())

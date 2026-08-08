@@ -6,6 +6,7 @@ type Request struct {
 	StateRoot    string `json:"state_root"`
 	HarnessRoot  string `json:"harness_root"`
 	TargetBinary string `json:"target_binary"`
+	TransitionID string `json:"transition_id,omitempty"`
 }
 
 type Evidence struct {
@@ -26,6 +27,7 @@ type Receipt struct {
 	HarnessRoot   string     `json:"harness_root"`
 	TargetBinary  string     `json:"target_binary"`
 	BinarySHA256  string     `json:"binary_sha256"`
+	TransitionID  string     `json:"transition_id"`
 	CatalogSHA256 string     `json:"catalog_sha256"`
 	Evidence      []Evidence `json:"evidence"`
 	SealedAt      string     `json:"sealed_at"`
@@ -37,8 +39,10 @@ type Result struct {
 	HarnessRoot  string   `json:"harness_root"`
 	TargetBinary string   `json:"target_binary"`
 	BinarySHA256 string   `json:"binary_sha256,omitempty"`
+	TransitionID string   `json:"transition_id"`
 	Pending      bool     `json:"pending"`
 	Sealed       bool     `json:"sealed"`
+	Aborted      bool     `json:"aborted,omitempty"`
 	UpdatedAt    string   `json:"updated_at"`
 	Receipt      *Receipt `json:"receipt,omitempty"`
 }
