@@ -1,6 +1,7 @@
 package looprun
 
 import (
+	loopruncontract "agent-harness/internal/contract/looprun"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -25,58 +26,58 @@ func openStore() (*sqlstore.DB, error) {
 	return sqlstore.Open(StateRoot())
 }
 
-func ReadLoop(loopID string) (LoopRun, error) {
+func ReadLoop(loopID string) (loopruncontract.LoopRun, error) {
 	loopID, err := normalizeLoopID(loopID)
 	if err != nil {
-		return LoopRun{OK: false}, err
+		return loopruncontract.LoopRun{OK: false}, err
 	}
 	db, err := openStore()
 	if err != nil {
-		return LoopRun{OK: false, ID: loopID}, err
+		return loopruncontract.LoopRun{OK: false, ID: loopID}, err
 	}
 	data, ok, err := db.Get(loopBucket, loopID)
 	if err != nil {
-		return LoopRun{OK: false, ID: loopID}, err
+		return loopruncontract.LoopRun{OK: false, ID: loopID}, err
 	}
 	if !ok {
-		return LoopRun{OK: false, ID: loopID}, fmt.Errorf("loop %s: %w", loopID, fs.ErrNotExist)
+		return loopruncontract.LoopRun{OK: false, ID: loopID}, fmt.Errorf("loop %s: %w", loopID, fs.ErrNotExist)
 	}
 	return decodeLoop(loopID, data)
 }
 
 // ReadLoopExisting reads one existing loop without creating, repairing, or
 // changing permissions on the loop store.
-func ReadLoopExisting(loopID string) (LoopRun, error) {
+func ReadLoopExisting(loopID string) (loopruncontract.LoopRun, error) {
 	loopID, err := normalizeLoopID(loopID)
 	if err != nil {
-		return LoopRun{OK: false}, err
+		return loopruncontract.LoopRun{OK: false}, err
 	}
 	data, ok, err := sqlstore.GetExisting(StateRoot(), loopBucket, loopID)
 	if err != nil {
-		return LoopRun{OK: false, ID: loopID}, err
+		return loopruncontract.LoopRun{OK: false, ID: loopID}, err
 	}
 	if !ok {
-		return LoopRun{OK: false, ID: loopID}, fmt.Errorf("loop %s: %w", loopID, fs.ErrNotExist)
+		return loopruncontract.LoopRun{OK: false, ID: loopID}, fmt.Errorf("loop %s: %w", loopID, fs.ErrNotExist)
 	}
 	return decodeLoop(loopID, data)
 }
 
-func decodeLoop(loopID string, data []byte) (LoopRun, error) {
-	var loop LoopRun
+func decodeLoop(loopID string, data []byte) (loopruncontract.LoopRun, error) {
+	var loop loopruncontract.LoopRun
 	if err := json.Unmarshal(data, &loop); err != nil {
-		return LoopRun{OK: false, ID: loopID}, err
+		return loopruncontract.LoopRun{OK: false, ID: loopID}, err
 	}
 	if loop.ID != loopID {
-		return LoopRun{OK: false, ID: loopID}, fmt.Errorf("loop id mismatch: record has %q", loop.ID)
+		return loopruncontract.LoopRun{OK: false, ID: loopID}, fmt.Errorf("loop id mismatch: record has %q", loop.ID)
 	}
 	if err := normalizeLoopSchemaVersion(&loop); err != nil {
-		return LoopRun{OK: false, ID: loopID}, err
+		return loopruncontract.LoopRun{OK: false, ID: loopID}, err
 	}
 	loop.OK = true
 	return loop, nil
 }
 
-func writeLoop(loop LoopRun) (LoopRun, error) {
+func writeLoop(loop loopruncontract.LoopRun) (loopruncontract.LoopRun, error) {
 	if _, err := normalizeLoopID(loop.ID); err != nil {
 		loop.OK = false
 		return loop, err
@@ -142,7 +143,7 @@ func normalizeLoopID(id string) (string, error) {
 	return id, nil
 }
 
-func normalizeLoopSchemaVersion(loop *LoopRun) error {
+func normalizeLoopSchemaVersion(loop *loopruncontract.LoopRun) error {
 	switch {
 	case loop.SchemaVersion == 0:
 		loop.SchemaVersion = LoopRunCurrentSchemaVersion

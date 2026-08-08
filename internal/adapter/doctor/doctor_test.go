@@ -5,6 +5,7 @@ import (
 	lifecycle "agent-harness/internal/adapter/lifecycle"
 	"agent-harness/internal/adapter/looprun"
 	projectbootstrap "agent-harness/internal/adapter/projectbootstrap"
+	loopruncontract "agent-harness/internal/contract/looprun"
 	"agent-harness/internal/domain/operationalhealth"
 	"encoding/json"
 	"os"
@@ -225,7 +226,7 @@ func TestHarnessDoctorReportsLoopContracts(t *testing.T) {
 	if _, err := projectbootstrap.BootstrapProjectDocs(projectbootstrap.ProjectDocsBootstrapRequest{RepoRoot: repo, Write: true}); err != nil {
 		t.Fatal(err)
 	}
-	loop, err := looprun.Start(looprun.StartLoopRequest{
+	loop, err := looprun.Start(loopruncontract.StartLoopRequest{
 		Repo:        repo,
 		Name:        "doctor-loop",
 		Goal:        "verify doctor loop contract reporting",

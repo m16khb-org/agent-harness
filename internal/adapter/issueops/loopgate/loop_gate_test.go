@@ -13,6 +13,7 @@ import (
 	"agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/adapter/looprun"
 	"agent-harness/internal/adapter/outbound/sqlstore"
+	loopruncontract "agent-harness/internal/contract/looprun"
 )
 
 func TestIssueOpsStrictPRReadinessBlocksActiveLoop(t *testing.T) {
@@ -67,7 +68,7 @@ func TestIssueOpsStrictPRReadinessBlocksExhaustedLoop(t *testing.T) {
 	record := readyIssueOpsRecordForLoopGateTest(t)
 
 	loop := startCoreLoopGateLoop(t, record.Repo, "exhausted-loop", 1)
-	if _, err := looprun.RecordAttempt(loop.ID, looprun.RecordAttemptRequest{
+	if _, err := looprun.RecordAttempt(loop.ID, loopruncontract.RecordAttemptRequest{
 		Verdict:  "fail",
 		Evidence: []string{"focused verification failed"},
 	}); err != nil {
@@ -93,7 +94,7 @@ func TestIssueOpsStrictPRReadinessClearsAfterLoopStop(t *testing.T) {
 	}
 
 	successLoop := startCoreLoopGateLoop(t, record.Repo, "succeeded-loop", 3)
-	if _, err := looprun.RecordAttempt(successLoop.ID, looprun.RecordAttemptRequest{
+	if _, err := looprun.RecordAttempt(successLoop.ID, loopruncontract.RecordAttemptRequest{
 		Verdict:  "pass",
 		Evidence: []string{"focused verification passed"},
 	}); err != nil {
@@ -108,9 +109,9 @@ func TestIssueOpsStrictPRReadinessClearsAfterLoopStop(t *testing.T) {
 	}
 }
 
-func startCoreLoopGateLoop(t *testing.T, repo, name string, maxAttempts int) looprun.LoopRun {
+func startCoreLoopGateLoop(t *testing.T, repo, name string, maxAttempts int) loopruncontract.LoopRun {
 	t.Helper()
-	loop, err := looprun.Start(looprun.StartLoopRequest{
+	loop, err := looprun.Start(loopruncontract.StartLoopRequest{
 		Repo:        repo,
 		Name:        name,
 		Goal:        "verify strict loop gate behavior",

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"agent-harness/internal/adapter/projectdoc"
-	"agent-harness/internal/adapter/projectdocs"
+	projectdocs "agent-harness/internal/contract/projectdocs"
 	projectdocdomain "agent-harness/internal/domain/projectdoc"
 )
 

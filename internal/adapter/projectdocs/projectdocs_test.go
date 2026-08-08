@@ -1,6 +1,7 @@
 package projectdocs
 
 import (
+	projectdocscontract "agent-harness/internal/contract/projectdocs"
 	projectdoc "agent-harness/internal/domain/projectdoc"
 	"os"
 	"path/filepath"
@@ -61,7 +62,7 @@ func TestReadUpdateRecordAndAgentsBlock(t *testing.T) {
 	if missing.Exists || len(missing.Warnings) == 0 {
 		t.Fatalf("expected missing warning, got %#v", missing)
 	}
-	create, err := UpdateProjectDoc(ProjectDocsUpdateRequest{
+	create, err := UpdateProjectDoc(projectdocscontract.ProjectDocsUpdateRequest{
 		RepoRoot: root,
 		RelPath:  filepath.ToSlash(filepath.Join(ProjectDocsDir, "TESTING.md")),
 		Content:  "# Testing\n",
@@ -79,17 +80,17 @@ func TestReadUpdateRecordAndAgentsBlock(t *testing.T) {
 	if err != nil || !read.Exists || read.SHA256 == "" || !strings.Contains(read.Content, "# Testing") {
 		t.Fatalf("unexpected read result: %#v err=%v", read, err)
 	}
-	if _, err := UpdateProjectDoc(ProjectDocsUpdateRequest{RepoRoot: root, RelPath: create.RelPath, Content: "# Changed", Summary: "change"}); err == nil {
+	if _, err := UpdateProjectDoc(projectdocscontract.ProjectDocsUpdateRequest{RepoRoot: root, RelPath: create.RelPath, Content: "# Changed", Summary: "change"}); err == nil {
 		t.Fatal("expected existing update without SHA to fail")
 	}
-	dry, err := UpdateProjectDoc(ProjectDocsUpdateRequest{RepoRoot: root, RelPath: create.RelPath, Content: "# Changed", Summary: "change", ExpectedSHA256: read.SHA256})
+	dry, err := UpdateProjectDoc(projectdocscontract.ProjectDocsUpdateRequest{RepoRoot: root, RelPath: create.RelPath, Content: "# Changed", Summary: "change", ExpectedSHA256: read.SHA256})
 	if err != nil {
 		t.Fatalf("dry update returned error: %v", err)
 	}
 	if !dry.DryRun || dry.Action != "update" || len(dry.Warnings) == 0 {
 		t.Fatalf("unexpected dry update: %#v", dry)
 	}
-	for _, req := range []ProjectDocsRecordRequest{
+	for _, req := range []projectdocscontract.ProjectDocsRecordRequest{
 		{RepoRoot: root, Kind: "failure", Title: "Caution", Summary: "Summary", Context: "ctx", Resolution: "fixed", Evidence: []string{"go test"}, Source: "test"},
 		{RepoRoot: root, Kind: "decision", Title: "ADR", Summary: "Summary", Decision: "do it", Alternatives: []string{"skip"}, Consequences: "tradeoff"},
 	} {
@@ -101,7 +102,7 @@ func TestReadUpdateRecordAndAgentsBlock(t *testing.T) {
 			t.Fatalf("unexpected record result: %#v", result)
 		}
 	}
-	if _, err := AppendProjectDocsRecord(ProjectDocsRecordRequest{RepoRoot: root, Kind: "unknown", Title: "x", Summary: "y"}); err == nil {
+	if _, err := AppendProjectDocsRecord(projectdocscontract.ProjectDocsRecordRequest{RepoRoot: root, Kind: "unknown", Title: "x", Summary: "y"}); err == nil {
 		t.Fatal("expected unsupported record kind")
 	}
 	rendered := RenderAgentsWithBlock(root, "")
@@ -123,7 +124,7 @@ func TestReadUpdateRecordAndAgentsBlock(t *testing.T) {
 
 func TestOptionalVCSProjectDocCanBeCreatedAndReadOnDemand(t *testing.T) {
 	root := t.TempDir()
-	created, err := UpdateProjectDoc(ProjectDocsUpdateRequest{
+	created, err := UpdateProjectDoc(projectdocscontract.ProjectDocsUpdateRequest{
 		RepoRoot: root,
 		RelPath:  ".agent-harness/VCS.md",
 		Content:  "# VCS\n\n## GitHub\n",
@@ -232,7 +233,7 @@ func containsProjectDocString(items []string, want string) bool {
 	return false
 }
 
-func routeContains(entries []ProjectDocRouteEntry, rel string) bool {
+func routeContains(entries []projectdocscontract.ProjectDocRouteEntry, rel string) bool {
 	for _, entry := range entries {
 		if entry.RelPath == rel {
 			return true

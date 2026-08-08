@@ -3,13 +3,15 @@ package resources
 import (
 	mcpadapter "agent-harness/internal/adapter/mcp"
 	policy "agent-harness/internal/adapter/policy"
-	projectdocs "agent-harness/internal/adapter/projectdocs"
 	docscontract "agent-harness/internal/contract/docs"
+	projectdocscontract "agent-harness/internal/contract/projectdocs"
 	statecontract "agent-harness/internal/contract/state"
 	"encoding/json"
 )
 
 type Config struct {
+	// RouteProjectDocs는 composition root가 주입한다.
+	RouteProjectDocs func(repoRoot, task string) (projectdocscontract.ProjectDocsRouteResult, error)
 	// DocsIndex는 composition root가 주입한다.
 	DocsIndex func(root, version string) docscontract.DocsIndexResult
 	// StateList는 composition root가 주입한다.
@@ -81,7 +83,7 @@ func HandleResourceRead(params json.RawMessage, config Config) (any, *ReadError)
 		return content(req.URI, "application/json", string(b)), nil
 	}
 	if req.URI == "harness://project-docs" {
-		result, err := projectdocs.RouteProjectDocs(".", "general")
+		result, err := config.RouteProjectDocs(".", "general")
 		if err != nil {
 			return nil, &ReadError{Code: -32000, Message: "Cannot read project docs route", Data: err.Error()}
 		}

@@ -7,11 +7,12 @@ import (
 
 	"agent-harness/internal/adapter/projectdoc"
 	"agent-harness/internal/adapter/projectdocs"
+	projectdocscontract "agent-harness/internal/contract/projectdocs"
 )
 
 func TestAppendProjectDocsRecordWritesCautionsAndADR(t *testing.T) {
 	root := t.TempDir()
-	caution, err := projectdocs.AppendProjectDocsRecord(projectdocs.ProjectDocsRecordRequest{
+	caution, err := projectdocs.AppendProjectDocsRecord(projectdocscontract.ProjectDocsRecordRequest{
 		RepoRoot:   root,
 		Kind:       "caution",
 		Title:      "MCP route over-read fixed",
@@ -34,7 +35,7 @@ func TestAppendProjectDocsRecordWritesCautionsAndADR(t *testing.T) {
 		}
 	}
 
-	adr, err := projectdocs.AppendProjectDocsRecord(projectdocs.ProjectDocsRecordRequest{
+	adr, err := projectdocs.AppendProjectDocsRecord(projectdocscontract.ProjectDocsRecordRequest{
 		RepoRoot:     root,
 		Kind:         "adr",
 		Title:        "Use task-routed project docs",
@@ -73,7 +74,7 @@ func TestReadAndUpdateProjectDocRequireSHAConsensus(t *testing.T) {
 		t.Fatalf("unexpected read result: %+v", read)
 	}
 	content := read.Content + "\n## Repo-specific evidence\n\n- Evidence: test updated through project_docs_update.\n"
-	if _, err := projectdocs.UpdateProjectDoc(projectdocs.ProjectDocsUpdateRequest{
+	if _, err := projectdocs.UpdateProjectDoc(projectdocscontract.ProjectDocsUpdateRequest{
 		RepoRoot: root,
 		RelPath:  "TESTING.md",
 		Content:  content,
@@ -82,7 +83,7 @@ func TestReadAndUpdateProjectDocRequireSHAConsensus(t *testing.T) {
 	}); err == nil || !strings.Contains(err.Error(), "expected_sha256 is required") {
 		t.Fatalf("expected missing sha error, got %v", err)
 	}
-	dry, err := projectdocs.UpdateProjectDoc(projectdocs.ProjectDocsUpdateRequest{
+	dry, err := projectdocs.UpdateProjectDoc(projectdocscontract.ProjectDocsUpdateRequest{
 		RepoRoot:       root,
 		RelPath:        "TESTING.md",
 		Content:        content,
@@ -99,7 +100,7 @@ func TestReadAndUpdateProjectDocRequireSHAConsensus(t *testing.T) {
 	if strings.Contains(mustRead(t, filepath.Join(root, projectdoc.ProjectDocsDir, "TESTING.md")), "Repo-specific evidence") {
 		t.Fatalf("dry-run wrote the document")
 	}
-	written, err := projectdocs.UpdateProjectDoc(projectdocs.ProjectDocsUpdateRequest{
+	written, err := projectdocs.UpdateProjectDoc(projectdocscontract.ProjectDocsUpdateRequest{
 		RepoRoot:       root,
 		RelPath:        ".agent-harness/TESTING.md",
 		Content:        content,

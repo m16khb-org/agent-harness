@@ -147,12 +147,13 @@ func MCPResources() []map[string]any {
 
 func HandleResourceRead(params json.RawMessage) (any, *jsonrpc.Error) {
 	result, readErr := resources.HandleResourceRead(params, resources.Config{
-		HarnessRoot:     HarnessRoot(),
-		Version:         Version,
-		SkillName:       skillName,
-		ReadHarnessFile: ReadHarnessFile,
-		StateList:       statestore.StateList,
-		DocsIndex:       docs.DocsIndex,
+		HarnessRoot:      HarnessRoot(),
+		Version:          Version,
+		SkillName:        skillName,
+		ReadHarnessFile:  ReadHarnessFile,
+		StateList:        statestore.StateList,
+		RouteProjectDocs: RouteProjectDocs,
+		DocsIndex:        docs.DocsIndex,
 	})
 	if readErr != nil {
 		return nil, newProtocolError(int64(readErr.Code), readErr.Message, readErr.Data)

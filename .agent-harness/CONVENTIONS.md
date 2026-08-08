@@ -133,6 +133,31 @@ skills/
 - composition root 예외는 `cmd/harness/harnessapp` 하나로 제한한다. 새 concrete-adapter import가 그 밖에 필요하다면 먼저 boundary를 재검토한다.
 - IssueOps 수직 마이그레이션은 capability별 contract/domain/application/inbound/outbound 패키지를 사용한다. domain은 JSON·filesystem·process·SQLite·clock을 import하지 않고, application port는 해당 capability가 실제로 쓰는 좁은 연산만 선언한다. persisted bytes가 공개 계약이면 legacy facade와 새 vertical의 differential 및 race evidence를 함께 유지한다.
 
+### concrete-adapter 의존을 걷어내는 순서
+
+legacy edge를 없앨 때는 **소비되는 심볼의 성격**이 처방을 결정한다. 심볼을 먼저 분류하고
+그에 맞는 방법을 쓴다. 순서를 뒤집으면 옮길 곳이 없거나 edge가 줄지 않는다.
+
+| 소비 형태 | 처방 | 근거 |
+|---|---|---|
+| 순수 함수·규칙 | `internal/domain/<cap>`으로 이동 | 규칙은 I/O보다 아래 계층에 속한다 |
+| **타입** | `internal/contract/<cap>`으로 이동 | 구조체 필드 타입은 주입으로 대체할 수 없다 |
+| I/O 함수 | composition root가 주입 | 구현 선택은 root의 결정이다 |
+
+- **타입 이동과 함수 주입은 대개 둘 다 필요하다.** 한 capability의 소비자가 타입과 함수를
+  함께 쓰면, 타입만 옮겨도 여전히 adapter를 import하고 함수만 주입하면 시그니처에 쓸 타입이
+  없다.
+- domain은 다른 domain을 import할 수 없다(`domain_must_only_import_contract`). 두 capability에
+  걸친 타입은 domain으로 옮길 수 없으므로 contract를 쓰거나 adapter에 남긴다. 공유 규칙을
+  중복 선언해 규칙을 통과시키지 않는다 — 특히 redaction 같은 보안 로직은 한쪽만 고쳐지면
+  그대로 구멍이 된다.
+- **주입에 default 구현을 두지 않는다.** default가 concrete를 가리키면 그 package가 다시
+  adapter를 알게 된다. 미주입은 조용히 통과시키지 말고 구조화된 오류로 드러낸다.
+- 하위 package만 정리해서 상위가 대신 그 adapter를 import하게 되면 edge는 **이동만 하고 줄지
+  않는다.** 상위가 이미 그 adapter를 아는 경우에만 하위 정리가 순감이 된다.
+- fitness graph는 test import를 수집하지 않는다. 테스트는 production wiring과 **같은 concrete
+  구현**을 주입해 동작을 그대로 검증한다. 스텁으로 바꾸면 검증 대상이 달라진다.
+
 ---
 
 ## 9. Shared Skill 컨벤션

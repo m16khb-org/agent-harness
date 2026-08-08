@@ -1,6 +1,7 @@
 package looprun
 
 import (
+	loopruncontract "agent-harness/internal/contract/looprun"
 	"fmt"
 	"sort"
 	"strings"
@@ -78,7 +79,7 @@ func RepoGateSummaryFor(repo string) (RepoGateSummary, []string) {
 	return summary, warnings
 }
 
-func loopIncomplete(loop LoopRun) bool {
+func loopIncomplete(loop loopruncontract.LoopRun) bool {
 	switch strings.TrimSpace(loop.Status) {
 	case "active", "exhausted":
 		return true

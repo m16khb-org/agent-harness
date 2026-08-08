@@ -1,6 +1,7 @@
 package looprun
 
 import (
+	loopruncontract "agent-harness/internal/contract/looprun"
 	"strings"
 	"testing"
 )
@@ -8,7 +9,7 @@ import (
 func TestStartResumePreservesAttemptsAndRedactsGoal(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
-	req := StartLoopRequest{
+	req := loopruncontract.StartLoopRequest{
 		Repo:        repo,
 		Name:        "qa-loop",
 		Goal:        "run tests with token=super-secret-value",
@@ -26,7 +27,7 @@ func TestStartResumePreservesAttemptsAndRedactsGoal(t *testing.T) {
 	if len(started.VerifyArgv) != 3 || started.VerifyArgv[0] != "go" {
 		t.Fatalf("verify argv should be stored exactly, got %+v", started.VerifyArgv)
 	}
-	if _, err := RecordAttempt(started.ID, RecordAttemptRequest{Verdict: "fail", Evidence: []string{"go test failed"}}); err != nil {
+	if _, err := RecordAttempt(started.ID, loopruncontract.RecordAttemptRequest{Verdict: "fail", Evidence: []string{"go test failed"}}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -45,7 +46,7 @@ func TestStartResumePreservesAttemptsAndRedactsGoal(t *testing.T) {
 func TestRecordAttemptEvidenceRequired(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	loop := startLoopForTest(t, "evidence-required", 2)
-	if _, err := RecordAttempt(loop.ID, RecordAttemptRequest{Verdict: "pass"}); err == nil || !strings.Contains(err.Error(), "evidence_required") {
+	if _, err := RecordAttempt(loop.ID, loopruncontract.RecordAttemptRequest{Verdict: "pass"}); err == nil || !strings.Contains(err.Error(), "evidence_required") {
 		t.Fatalf("record attempt without evidence err=%v, want evidence_required", err)
 	}
 }
@@ -53,14 +54,14 @@ func TestRecordAttemptEvidenceRequired(t *testing.T) {
 func TestRecordAttemptAutoExhaustRejectsFurtherAttempts(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	loop := startLoopForTest(t, "auto-exhaust", 1)
-	exhausted, err := RecordAttempt(loop.ID, RecordAttemptRequest{Verdict: "fail", Evidence: []string{"first failure"}})
+	exhausted, err := RecordAttempt(loop.ID, loopruncontract.RecordAttemptRequest{Verdict: "fail", Evidence: []string{"first failure"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if exhausted.Status != "exhausted" || len(exhausted.Attempts) != 1 {
 		t.Fatalf("max fail should exhaust loop, got %+v", exhausted)
 	}
-	if _, err := RecordAttempt(loop.ID, RecordAttemptRequest{Verdict: "fail", Evidence: []string{"after exhausted"}}); err == nil || !strings.Contains(err.Error(), "loop_not_active") {
+	if _, err := RecordAttempt(loop.ID, loopruncontract.RecordAttemptRequest{Verdict: "fail", Evidence: []string{"after exhausted"}}); err == nil || !strings.Contains(err.Error(), "loop_not_active") {
 		t.Fatalf("attempt after exhausted err=%v, want loop_not_active", err)
 	}
 }
@@ -71,13 +72,13 @@ func TestStopSuccessRequiresPass(t *testing.T) {
 	if _, err := Stop(loop.ID, true, ""); err == nil || !strings.Contains(err.Error(), "loop_success_requires_pass") {
 		t.Fatalf("success without pass err=%v, want loop_success_requires_pass", err)
 	}
-	if _, err := RecordAttempt(loop.ID, RecordAttemptRequest{Verdict: "fail", Evidence: []string{"still failing"}}); err != nil {
+	if _, err := RecordAttempt(loop.ID, loopruncontract.RecordAttemptRequest{Verdict: "fail", Evidence: []string{"still failing"}}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Stop(loop.ID, true, ""); err == nil || !strings.Contains(err.Error(), "loop_success_requires_pass") {
 		t.Fatalf("success after failing attempt err=%v, want loop_success_requires_pass", err)
 	}
-	if _, err := RecordAttempt(loop.ID, RecordAttemptRequest{Verdict: "pass", Evidence: []string{"all checks passed"}}); err != nil {
+	if _, err := RecordAttempt(loop.ID, loopruncontract.RecordAttemptRequest{Verdict: "pass", Evidence: []string{"all checks passed"}}); err != nil {
 		t.Fatal(err)
 	}
 	stopped, err := Stop(loop.ID, true, "")
@@ -91,7 +92,7 @@ func TestStopSuccessRequiresPass(t *testing.T) {
 
 func TestStopReasonAndTerminalRestartRefusal(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
-	req := StartLoopRequest{Repo: t.TempDir(), Name: "terminal", Goal: "prove stop reason", MaxAttempts: 2}
+	req := loopruncontract.StartLoopRequest{Repo: t.TempDir(), Name: "terminal", Goal: "prove stop reason", MaxAttempts: 2}
 	loop, err := Start(req)
 	if err != nil {
 		t.Fatal(err)
@@ -114,7 +115,7 @@ func TestStopReasonAndTerminalRestartRefusal(t *testing.T) {
 func TestStatusReportsAttemptSummary(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	loop := startLoopForTest(t, "status", 3)
-	if _, err := RecordAttempt(loop.ID, RecordAttemptRequest{Verdict: "pass", Evidence: []string{"green"}}); err != nil {
+	if _, err := RecordAttempt(loop.ID, loopruncontract.RecordAttemptRequest{Verdict: "pass", Evidence: []string{"green"}}); err != nil {
 		t.Fatal(err)
 	}
 	status, err := Status(loop.ID)
@@ -126,9 +127,9 @@ func TestStatusReportsAttemptSummary(t *testing.T) {
 	}
 }
 
-func startLoopForTest(t *testing.T, name string, maxAttempts int) LoopRun {
+func startLoopForTest(t *testing.T, name string, maxAttempts int) loopruncontract.LoopRun {
 	t.Helper()
-	loop, err := Start(StartLoopRequest{Repo: t.TempDir(), Name: name, Goal: "verify until done", MaxAttempts: maxAttempts})
+	loop, err := Start(loopruncontract.StartLoopRequest{Repo: t.TempDir(), Name: name, Goal: "verify until done", MaxAttempts: maxAttempts})
 	if err != nil {
 		t.Fatal(err)
 	}

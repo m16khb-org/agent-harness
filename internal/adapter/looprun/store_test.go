@@ -1,6 +1,7 @@
 package looprun
 
 import (
+	loopruncontract "agent-harness/internal/contract/looprun"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,7 +28,7 @@ func TestReadLoopRefusesFutureSchema(t *testing.T) {
 func TestRepoGateSummaryDoesNotRepairExistingLoopStore(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 	repo := t.TempDir()
-	if _, err := Start(StartLoopRequest{Repo: repo, Name: "read-only", Goal: "prove diagnostic reads stay read-only"}); err != nil {
+	if _, err := Start(loopruncontract.StartLoopRequest{Repo: repo, Name: "read-only", Goal: "prove diagnostic reads stay read-only"}); err != nil {
 		t.Fatal(err)
 	}
 
