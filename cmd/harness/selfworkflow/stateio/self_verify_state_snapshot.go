@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"agent-harness/internal/adapter/failurecause"
 	statecontract "agent-harness/internal/contract/state"
 )
 
@@ -33,7 +32,7 @@ func IsSelfVerificationSummaryKind(kind string) bool {
 }
 
 func NormalizeSelfAugmentSnapshotFailureCause(snapshot *SelfAugmentStateSnapshot) {
-	classified := failurecause.Classify(snapshot.Summary.FailedSteps > 0, snapshot.Summary.FailureCauseEvidence)
+	classified := Classify(snapshot.Summary.FailedSteps > 0, snapshot.Summary.FailureCauseEvidence)
 	snapshot.Summary.FailureCause = classified.Cause
 	snapshot.Summary.FailureCauseReason = classified.Reason
 	snapshot.Summary.FailureCauseEvidence = classified.Evidence

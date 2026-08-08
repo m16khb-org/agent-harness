@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/mcpcli/argmap"
-	audit "agent-harness/internal/adapter/audit"
 	policydomain "agent-harness/internal/contract/policy"
 )
 
@@ -30,7 +29,7 @@ func handlePolicyStateMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	case "command_fake_run":
 		return mcpToolPayload(FakeRunCommand(commandPolicyRequestFromArgs(call.Arguments)))
 	case "command_policy_audit":
-		result, err := audit.AuditCommandPolicy(commandPolicyRequestFromArgs(call.Arguments))
+		result, err := AuditCommandPolicy(commandPolicyRequestFromArgs(call.Arguments))
 		if err != nil {
 			return mcpToolFailure(newProtocolError(-32000, "command_policy_audit failed", err.Error()))
 		}

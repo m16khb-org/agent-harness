@@ -4,7 +4,6 @@ import (
 	"sort"
 
 	"agent-harness/cmd/harness/selfworkflow/rerun"
-	"agent-harness/internal/adapter/failurecause"
 	failurecausecontract "agent-harness/internal/contract/failurecause"
 )
 
@@ -86,7 +85,7 @@ func SummarizeSelfVerification(result SelfAugmentResult, targetScore float64) Se
 			}
 		}
 	}
-	cause := failurecause.Classify(summary.FailedSteps > 0, evidence)
+	cause := Classify(summary.FailedSteps > 0, evidence)
 	summary.FailureCause, summary.FailureCauseReason, summary.FailureCauseEvidence = cause.Cause, cause.Reason, cause.Evidence
 	summary.MinimumGoalScore = 100
 	if len(summary.GoalScores) == 0 {

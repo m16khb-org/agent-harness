@@ -1,6 +1,7 @@
 package audit
 
 import (
+	auditcontract "agent-harness/internal/contract/audit"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,21 +11,11 @@ import (
 	policydomain "agent-harness/internal/contract/policy"
 )
 
-// CommandAuditRecord는 policy 결정을 append-only로 남긴 redacted 기록이다.
-type CommandAuditRecord struct {
-	OK          bool                                 `json:"ok"`
-	Kind        string                               `json:"kind"`
-	AuditLogID  string                               `json:"audit_log_id"`
-	GeneratedAt string                               `json:"generated_at"`
-	LogPath     string                               `json:"log_path,omitempty"`
-	Policy      policydomain.CommandPolicyEvaluation `json:"policy"`
-}
-
 // AuditCommandPolicy는 명령 요청을 평가해 redacted policy 결정을 JSONL audit
 // log에 append한다. 명령 자체를 실행하지는 않는다.
-func AuditCommandPolicy(req policydomain.CommandPolicyRequest) (CommandAuditRecord, error) {
+func AuditCommandPolicy(req policydomain.CommandPolicyRequest) (auditcontract.CommandAuditRecord, error) {
 	evaluation := EvaluateCommandPolicy(req)
-	record := CommandAuditRecord{
+	record := auditcontract.CommandAuditRecord{
 		OK:          evaluation.Allowed,
 		Kind:        "command_policy_audit",
 		AuditLogID:  evaluation.AuditLogID,

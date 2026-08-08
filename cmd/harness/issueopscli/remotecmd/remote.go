@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	issueopscore "agent-harness/internal/adapter/issueops"
-	"agent-harness/internal/adapter/provider"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	"agent-harness/internal/domain/issueopsremote"
 )
@@ -197,7 +196,7 @@ func runRemoteReflectDevilsAdvocate(args []string, deps Deps) error {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	prov, err := provider.Resolve(providerName)
+	prov, err := Resolve(providerName)
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
@@ -234,7 +233,7 @@ func resolveRemoteCompletionInputs(deps Deps, id, providerOverride string) (issu
 	if providerName == "" {
 		return issueopscontract.IssueOpsRecord{}, nil, fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
 	}
-	prov, err := provider.Resolve(providerName)
+	prov, err := Resolve(providerName)
 	if err != nil {
 		return issueopscontract.IssueOpsRecord{}, nil, err
 	}
@@ -495,7 +494,7 @@ func runRemoteCreateIssue(args []string, deps Deps) error {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	prov, err := provider.Resolve(providerName)
+	prov, err := Resolve(providerName)
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}
@@ -597,7 +596,7 @@ func runRemoteCreateChild(args []string, deps Deps) error {
 		err := fmt.Errorf("cannot determine provider from IssueOps record; ensure issue_url is set")
 		return deps.printErrorResult(*jsonOut, err)
 	}
-	prov, err := provider.Resolve(providerName)
+	prov, err := Resolve(providerName)
 	if err != nil {
 		return deps.printErrorResult(*jsonOut, err)
 	}

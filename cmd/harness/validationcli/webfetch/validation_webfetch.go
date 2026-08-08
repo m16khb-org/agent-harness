@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/commandstep"
-	webfetchoutbound "agent-harness/internal/adapter/outbound/webfetch"
 	webfetchcontract "agent-harness/internal/contract/webfetch"
 )
 
@@ -16,8 +15,8 @@ type StepResult = commandstep.StepResult
 
 func Validate(binary, root string, seed int64) StepResult {
 	started := time.Now()
-	result, err := webfetchoutbound.RunBenchmark(context.Background(), webfetchcontract.BenchmarkRequest{
-		Fixtures: webfetchoutbound.DeterministicFixtures(),
+	result, err := RunBenchmark(context.Background(), webfetchcontract.BenchmarkRequest{
+		Fixtures: DeterministicFixtures(),
 		Timeout:  time.Second,
 	})
 	if err != nil {
