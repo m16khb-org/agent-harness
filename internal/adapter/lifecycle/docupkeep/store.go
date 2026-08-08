@@ -13,35 +13,34 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/lifecycle/model"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	projectdoc "agent-harness/internal/domain/projectdoc"
 )
 
 type Store struct {
-	Validate func(repoRoot string) (model.ProjectLifecycleStatePlan, error)
-	Init     func(repoRoot string, confirm bool) (model.ProjectLifecycleStatePlan, error)
+	Validate func(repoRoot string) (lifecyclecontract.ProjectLifecycleStatePlan, error)
+	Init     func(repoRoot string, confirm bool) (lifecyclecontract.ProjectLifecycleStatePlan, error)
 }
 
-func Append(store Store, repoRoot string, event lifecyclecontract.DocUpkeepEvent) (model.DocUpkeepAppendResult, error) {
+func Append(store Store, repoRoot string, event lifecyclecontract.DocUpkeepEvent) (lifecyclecontract.DocUpkeepAppendResult, error) {
 	plan, err := store.Validate(repoRoot)
 	if err != nil {
-		return model.DocUpkeepAppendResult{OK: false}, err
+		return lifecyclecontract.DocUpkeepAppendResult{OK: false}, err
 	}
 	if !plan.Exists {
 		plan, err = store.Init(repoRoot, true)
 		if err != nil {
-			return model.DocUpkeepAppendResult{OK: false}, err
+			return lifecyclecontract.DocUpkeepAppendResult{OK: false}, err
 		}
 	}
 	if !plan.NamespaceValid {
-		return model.DocUpkeepAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath}, fmt.Errorf("project lifecycle namespace mismatch for %s", plan.RepoRoot)
+		return lifecyclecontract.DocUpkeepAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath}, fmt.Errorf("project lifecycle namespace mismatch for %s", plan.RepoRoot)
 	}
 	if strings.TrimSpace(event.Kind) == "" {
-		return model.DocUpkeepAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath}, fmt.Errorf("doc upkeep event kind is required")
+		return lifecyclecontract.DocUpkeepAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath}, fmt.Errorf("doc upkeep event kind is required")
 	}
 	if strings.TrimSpace(event.Summary) == "" {
-		return model.DocUpkeepAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath}, fmt.Errorf("doc upkeep event summary is required")
+		return lifecyclecontract.DocUpkeepAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath}, fmt.Errorf("doc upkeep event summary is required")
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	if event.ID == "" {
@@ -55,11 +54,11 @@ func Append(store Store, repoRoot string, event lifecyclecontract.DocUpkeepEvent
 	}
 	event.TargetDocs = NormalizeTargetDocs(event.TargetDocs)
 	if err := os.MkdirAll(plan.ProjectStateDir, 0o700); err != nil {
-		return model.DocUpkeepAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath}, err
+		return lifecyclecontract.DocUpkeepAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath}, err
 	}
 	b, err := json.Marshal(event)
 	if err != nil {
-		return model.DocUpkeepAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath}, err
+		return lifecyclecontract.DocUpkeepAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath}, err
 	}
 	if err := WithKeyLock(context.Background(), plan.ProjectStateDir, "doc-upkeep", func(context.Context) error {
 		f, err := os.OpenFile(plan.QueuePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
@@ -70,12 +69,12 @@ func Append(store Store, repoRoot string, event lifecyclecontract.DocUpkeepEvent
 		_, err = f.Write(append(b, '\n'))
 		return err
 	}); err != nil {
-		return model.DocUpkeepAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath}, err
+		return lifecyclecontract.DocUpkeepAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath}, err
 	}
-	return model.DocUpkeepAppendResult{OK: true, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath, Event: event}, nil
+	return lifecyclecontract.DocUpkeepAppendResult{OK: true, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath, Event: event}, nil
 }
 
-func ReadPending(store Store, repoRoot string, limit int) ([]lifecyclecontract.DocUpkeepEvent, model.ProjectLifecycleStatePlan, error) {
+func ReadPending(store Store, repoRoot string, limit int) ([]lifecyclecontract.DocUpkeepEvent, lifecyclecontract.ProjectLifecycleStatePlan, error) {
 	plan, err := store.Validate(repoRoot)
 	if err != nil || !plan.Exists || !plan.NamespaceValid {
 		return []lifecyclecontract.DocUpkeepEvent{}, plan, err

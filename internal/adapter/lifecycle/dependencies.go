@@ -9,9 +9,9 @@ import (
 	"agent-harness/internal/adapter/lifecycle/worktreepath"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
+	projectdoccontract "agent-harness/internal/contract/projectdoc"
 	"agent-harness/internal/domain/nextaction"
-	projectdoc "agent-harness/internal/domain/projectdoc"
-	projectdocdomain "agent-harness/internal/domain/projectdoc"
+	"agent-harness/internal/domain/projectdoc"
 	"agent-harness/internal/domain/searchrouting"
 )
 
@@ -21,14 +21,14 @@ const projectLifecycleProfileFile = model.ProjectLifecycleProfileFile
 const docUpkeepQueueFile = model.DocUpkeepQueueFile
 const compactCapsuleFile = model.CompactCapsuleFile
 
-type ProjectProfile = projectdocdomain.ProjectProfile
-type ProjectFingerprint = model.ProjectFingerprint
-type ProjectLifecycleProfile = model.ProjectLifecycleProfile
-type ProjectLifecycleStatePlan = model.ProjectLifecycleStatePlan
-type DocUpkeepAppendResult = model.DocUpkeepAppendResult
-type LifecycleStopReminderResult = model.LifecycleStopReminderResult
-type LifecycleCompactCapsule = model.LifecycleCompactCapsule
-type LifecycleCompactResult = model.LifecycleCompactResult
+type ProjectProfile = projectdoccontract.ProjectProfile
+type ProjectFingerprint = lifecyclecontract.ProjectFingerprint
+type ProjectLifecycleProfile = lifecyclecontract.ProjectLifecycleProfile
+type ProjectLifecycleStatePlan = lifecyclecontract.ProjectLifecycleStatePlan
+type DocUpkeepAppendResult = lifecyclecontract.DocUpkeepAppendResult
+type LifecycleStopReminderResult = lifecyclecontract.LifecycleStopReminderResult
+type LifecycleCompactCapsule = lifecyclecontract.LifecycleCompactCapsule
+type LifecycleCompactResult = lifecyclecontract.LifecycleCompactResult
 type NextActionJudgementTriggerResult = nextaction.NextActionJudgementTriggerResult
 type NumberedNextActionsDecisionResult = nextaction.NumberedNextActionsDecisionResult
 type NextActionCandidate = nextaction.NextActionCandidate

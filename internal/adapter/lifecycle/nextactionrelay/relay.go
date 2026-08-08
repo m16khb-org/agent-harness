@@ -16,8 +16,8 @@ import (
 )
 
 type Store struct {
-	Validate  func(repoRoot string) (model.ProjectLifecycleStatePlan, error)
-	Init      func(repoRoot string, confirm bool) (model.ProjectLifecycleStatePlan, error)
+	Validate  func(repoRoot string) (lifecyclecontract.ProjectLifecycleStatePlan, error)
+	Init      func(repoRoot string, confirm bool) (lifecyclecontract.ProjectLifecycleStatePlan, error)
 	WriteJSON func(path string, value any, perm os.FileMode) error
 }
 

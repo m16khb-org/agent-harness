@@ -1,12 +1,12 @@
 package nextactionrelay
 
 import (
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"agent-harness/internal/adapter/lifecycle/model"
 	"agent-harness/internal/domain/nextaction"
 )
 
@@ -70,10 +70,10 @@ func newRelayTestStore(t *testing.T) *relayTestStore {
 
 func (s *relayTestStore) lifecycleStore() Store {
 	return Store{
-		Validate: func(string) (model.ProjectLifecycleStatePlan, error) {
+		Validate: func(string) (lifecyclecontract.ProjectLifecycleStatePlan, error) {
 			return s.plan(true), nil
 		},
-		Init: func(string, bool) (model.ProjectLifecycleStatePlan, error) {
+		Init: func(string, bool) (lifecyclecontract.ProjectLifecycleStatePlan, error) {
 			return s.plan(true), nil
 		},
 		WriteJSON: func(path string, value any, perm os.FileMode) error {
@@ -89,8 +89,8 @@ func (s *relayTestStore) lifecycleStore() Store {
 	}
 }
 
-func (s *relayTestStore) plan(exists bool) model.ProjectLifecycleStatePlan {
-	return model.ProjectLifecycleStatePlan{
+func (s *relayTestStore) plan(exists bool) lifecyclecontract.ProjectLifecycleStatePlan {
+	return lifecyclecontract.ProjectLifecycleStatePlan{
 		OK:              true,
 		Exists:          exists,
 		NamespaceValid:  true,

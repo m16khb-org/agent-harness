@@ -1,6 +1,7 @@
 package projectbootstrap
 
 import (
+	projectdoccontract "agent-harness/internal/contract/projectdoc"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -188,8 +189,8 @@ func TestProjectDocsBootstrapResultJSONContract(t *testing.T) {
 		Signals: projectdocdomain.ProjectSignals{
 			Languages:       []string{"go"},
 			PackageManagers: []string{"go"},
-			Profile: projectdocdomain.ProjectProfile{
-				VCS: projectdocdomain.ProjectVCSProfile{
+			Profile: projectdoccontract.ProjectProfile{
+				VCS: projectdoccontract.ProjectVCSProfile{
 					Provider: "git",
 					Hosting:  "github",
 				},

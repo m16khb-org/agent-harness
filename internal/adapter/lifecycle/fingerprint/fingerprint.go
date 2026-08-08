@@ -1,16 +1,15 @@
 package fingerprint
 
 import (
+	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"agent-harness/internal/adapter/lifecycle/model"
 )
 
-func ForRoot(root string) model.ProjectFingerprint {
+func ForRoot(root string) lifecyclecontract.ProjectFingerprint {
 	gitDir := ""
 	if info, err := os.Stat(filepath.Join(root, ".git")); err == nil {
 		if info.IsDir() {
@@ -24,15 +23,15 @@ func ForRoot(root string) model.ProjectFingerprint {
 		sum := sha256.Sum256([]byte(origin))
 		originHash = hex.EncodeToString(sum[:])
 	}
-	return model.ProjectFingerprint{RepoRoot: root, GitDir: gitDir, GitOriginHash: originHash}
+	return lifecyclecontract.ProjectFingerprint{RepoRoot: root, GitDir: gitDir, GitOriginHash: originHash}
 }
 
-func RepoID(fp model.ProjectFingerprint) string {
+func RepoID(fp lifecyclecontract.ProjectFingerprint) string {
 	parts := []string{fp.RepoRoot, fp.GitDir, fp.GitOriginHash}
 	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
 	return hex.EncodeToString(sum[:])[:24]
 }
 
-func Equal(a, b model.ProjectFingerprint) bool {
+func Equal(a, b lifecyclecontract.ProjectFingerprint) bool {
 	return a.RepoRoot == b.RepoRoot && a.GitDir == b.GitDir && a.GitOriginHash == b.GitOriginHash
 }

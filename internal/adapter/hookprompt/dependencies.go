@@ -4,11 +4,11 @@ import (
 	"agent-harness/internal/adapter/lifecycle"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
-	projectdoc "agent-harness/internal/domain/projectdoc"
-	projectdocdomain "agent-harness/internal/domain/projectdoc"
+	projectdoccontract "agent-harness/internal/contract/projectdoc"
+	"agent-harness/internal/domain/projectdoc"
 )
 
-type ProjectProfile = projectdocdomain.ProjectProfile
+type ProjectProfile = projectdoccontract.ProjectProfile
 type ProjectDocCatalogEntry = projectdoc.ProjectDocCatalogEntry
 
 func ResolveProjectLifecycleState(repoRoot string) (lifecycle.ProjectLifecycleStatePlan, error) {
