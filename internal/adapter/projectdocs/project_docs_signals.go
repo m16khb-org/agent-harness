@@ -1,13 +1,14 @@
 package projectdocs
 
 import (
+	projectdoc "agent-harness/internal/domain/projectdoc"
 	"sort"
 	"strings"
 )
 
-func AnalyzeProjectSignals(root string) ProjectSignals {
+func AnalyzeProjectSignals(root string) projectdoc.ProjectSignals {
 	files := listInterestingFiles(root)
-	s := ProjectSignals{Files: files}
+	s := projectdoc.ProjectSignals{Files: files}
 	addLang := func(v string) { s.Languages = appendUnique(s.Languages, v) }
 	addPM := func(v string) { s.PackageManagers = appendUnique(s.PackageManagers, v) }
 	addConvention := func(v string) { s.DetectedConventions = appendUnique(s.DetectedConventions, v) }
@@ -15,13 +16,13 @@ func AnalyzeProjectSignals(root string) ProjectSignals {
 		switch rel {
 		case "go.mod":
 			addLang("Go")
-			s.TestCommands = append(s.TestCommands, EvidenceCommand{Command: "go test ./...", Evidence: []string{"go.mod"}, Confidence: "high"})
-			s.BuildCommands = append(s.BuildCommands, EvidenceCommand{Command: "go build ./...", Evidence: []string{"go.mod"}, Confidence: "medium"})
-			s.LintCommands = append(s.LintCommands, EvidenceCommand{Command: "go vet ./...", Evidence: []string{"go.mod"}, Confidence: "medium"})
+			s.TestCommands = append(s.TestCommands, projectdoc.EvidenceCommand{Command: "go test ./...", Evidence: []string{"go.mod"}, Confidence: "high"})
+			s.BuildCommands = append(s.BuildCommands, projectdoc.EvidenceCommand{Command: "go build ./...", Evidence: []string{"go.mod"}, Confidence: "medium"})
+			s.LintCommands = append(s.LintCommands, projectdoc.EvidenceCommand{Command: "go vet ./...", Evidence: []string{"go.mod"}, Confidence: "medium"})
 		case "package.json":
 			addLang("JavaScript/TypeScript")
 			addPM("npm-compatible")
-			s.TestCommands = append(s.TestCommands, EvidenceCommand{Command: "npm test", Evidence: []string{"package.json"}, Confidence: "medium"})
+			s.TestCommands = append(s.TestCommands, projectdoc.EvidenceCommand{Command: "npm test", Evidence: []string{"package.json"}, Confidence: "medium"})
 		case "pnpm-lock.yaml":
 			addPM("pnpm")
 		case "yarn.lock":
@@ -29,12 +30,12 @@ func AnalyzeProjectSignals(root string) ProjectSignals {
 		case "pyproject.toml":
 			addLang("Python")
 			addPM("pyproject")
-			s.TestCommands = append(s.TestCommands, EvidenceCommand{Command: "pytest", Evidence: []string{"pyproject.toml"}, Confidence: "medium"})
+			s.TestCommands = append(s.TestCommands, projectdoc.EvidenceCommand{Command: "pytest", Evidence: []string{"pyproject.toml"}, Confidence: "medium"})
 		case "Cargo.toml":
 			addLang("Rust")
 			addPM("cargo")
-			s.TestCommands = append(s.TestCommands, EvidenceCommand{Command: "cargo test", Evidence: []string{"Cargo.toml"}, Confidence: "high"})
-			s.BuildCommands = append(s.BuildCommands, EvidenceCommand{Command: "cargo build", Evidence: []string{"Cargo.toml"}, Confidence: "high"})
+			s.TestCommands = append(s.TestCommands, projectdoc.EvidenceCommand{Command: "cargo test", Evidence: []string{"Cargo.toml"}, Confidence: "high"})
+			s.BuildCommands = append(s.BuildCommands, projectdoc.EvidenceCommand{Command: "cargo build", Evidence: []string{"Cargo.toml"}, Confidence: "high"})
 		case "Makefile":
 			addConvention("Makefile exists; inspect targets before inventing commands")
 		case "Taskfile.yml", "Taskfile.yaml":

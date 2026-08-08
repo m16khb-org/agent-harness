@@ -192,7 +192,9 @@ func TestReadPendingHandlesPlanAndQueueBoundaries(t *testing.T) {
 		t.Fatalf("namespace mismatch returned events=%+v err=%v", events, err)
 	}
 
-	store = Store{Validate: func(string) (model.ProjectLifecycleStatePlan, error) { return plan, fmt.Errorf("validate failed") }}
+	store = Store{Validate: func(string) (model.ProjectLifecycleStatePlan, error) {
+		return plan, fmt.Errorf("validate failed")
+	}}
 	events, _, err = ReadPending(store, plan.RepoRoot, 0)
 	if err == nil || err.Error() != "validate failed" || len(events) != 0 {
 		t.Fatalf("validate failure events=%+v err=%v", events, err)

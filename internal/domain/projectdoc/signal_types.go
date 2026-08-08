@@ -1,4 +1,4 @@
-package projectdocs
+package projectdoc
 
 type ProjectSignals struct {
 	Files               []string          `json:"files"`

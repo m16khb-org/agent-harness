@@ -1,8 +1,8 @@
 package model
 
 import (
-	"agent-harness/internal/adapter/projectdocs"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
+	projectdoc "agent-harness/internal/domain/projectdoc"
 )
 
 const ProjectLifecycleSchemaVersion = 1
@@ -18,12 +18,12 @@ type ProjectFingerprint struct {
 }
 
 type ProjectLifecycleProfile struct {
-	SchemaVersion int                         `json:"schema_version"`
-	RepoID        string                      `json:"repo_id"`
-	Fingerprint   ProjectFingerprint          `json:"fingerprint"`
-	Metadata      *projectdocs.ProjectProfile `json:"metadata,omitempty"`
-	CreatedAt     string                      `json:"created_at"`
-	UpdatedAt     string                      `json:"updated_at"`
+	SchemaVersion int                        `json:"schema_version"`
+	RepoID        string                     `json:"repo_id"`
+	Fingerprint   ProjectFingerprint         `json:"fingerprint"`
+	Metadata      *projectdoc.ProjectProfile `json:"metadata,omitempty"`
+	CreatedAt     string                     `json:"created_at"`
+	UpdatedAt     string                     `json:"updated_at"`
 }
 
 type ProjectLifecycleStatePlan struct {
