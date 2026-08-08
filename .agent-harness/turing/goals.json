@@ -261,9 +261,9 @@
           "scenario": "createLinkedBranch 응답의 linkedBranch/ref null이 typed partial-success 오류가 되고, 생성 직후 issue linkedBranches와 원격 ref readback이 exact name/OID 일치를 요구함을 관측한다",
           "channel": "auxiliary:cli",
           "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G5-C4-refnull.txt",
-          "status": "blocked",
-          "capturedEvidence": "#306 createLinkedBranch ref:null 미착수 — AC 9개의 별개 계약",
-          "cleanupReceipt": null,
+          "status": "partial",
+          "capturedEvidence": "PR #408이 검출·검증 축(AC-01~03,05,07) 구현. AC-04/06/08은 #304의 orphan이 이미 소멸(linkedBranches.totalCount=0)해 대상 없음",
+          "cleanupReceipt": "none spawned",
           "ultraqaClasses": [
             "misleading_success",
             "stale_state"
@@ -275,7 +275,7 @@
       "id": "BT-G6",
       "title": "T5 — cleanup 잔여 계약",
       "objective": "absent local ref를 idempotent success로 정규화하고, superseded merged artifact와 후속 병합으로 전진한 remote branch를 증명 기반으로 정리할 수 있게 한다.",
-      "status": "partial",
+      "status": "completed",
       "successCriteria": [
         {
           "id": "BT-G6-C1",
@@ -296,9 +296,9 @@
           "scenario": "merged replacement가 원래 artifact를 명시적으로 supersede하고 issue closed·lease released·clean worktree일 때만 cleanup이 진행되며, unrelated/cross-repo/open issue는 거부됨을 관측한다",
           "channel": "auxiliary:cli",
           "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G6-C2-superseded.txt",
-          "status": "blocked",
-          "capturedEvidence": "#283/#323 미착수 — superseded/advanced artifact의 provider readback 계약이 필요. 2026-08-08 dogfood로 3건이 실제 막힘을 #283에 기록",
-          "cleanupReceipt": null,
+          "status": "pass",
+          "capturedEvidence": "PR #405 — ValidateSupersedingArtifact + cleanup finish --superseded-by, 15+5건 PASS",
+          "cleanupReceipt": "none spawned",
           "ultraqaClasses": [
             "misleading_success",
             "stale_state"
@@ -309,9 +309,9 @@
           "scenario": "remote tip이 기록 head보다 전진했어도 후속 merged artifact 증거와 exact tip OID CAS가 갖춰지면 삭제되고, 불충분한 증거는 거부됨을 관측한다",
           "channel": "auxiliary:cli",
           "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G6-C3-advanced.txt",
-          "status": "blocked",
-          "capturedEvidence": "#283/#323 미착수 — superseded/advanced artifact의 provider readback 계약이 필요. 2026-08-08 dogfood로 3건이 실제 막힘을 #283에 기록",
-          "cleanupReceipt": null,
+          "status": "pass",
+          "capturedEvidence": "PR #407 — 같은 계약을 cleanup remote-branch 게이트 ⑩의 세 번째 경로로 적용, 5건 PASS",
+          "cleanupReceipt": "none spawned",
           "ultraqaClasses": [
             "stale_state",
             "misleading_success"
@@ -426,7 +426,7 @@
           "channel": "auxiliary:git",
           "expectedEvidence": ".agent-harness/turing/evidence/backlog-triage/BT-G9-C2-final.txt",
           "status": "pass",
-          "capturedEvidence": "원격 42 -> 6, worktree main 1개. 남은 5개는 미머지 패치 또는 active lease로 보류",
+          "capturedEvidence": "원격 42 -> 5, worktree 1개. 보류 3건은 active lease 또는 미확정 미머지 패치",
           "cleanupReceipt": "none spawned",
           "ultraqaClasses": [
             "stale_state"
@@ -436,9 +436,9 @@
     }
   ],
   "metrics": {
-    "evidenceCoverage": 0.78,
-    "reworkRate": 0.33,
-    "cycleEfficiency": 0.85,
+    "evidenceCoverage": 0.88,
+    "reworkRate": 0.3,
+    "cycleEfficiency": 0.89,
     "parallelizationRatio": 1.0,
     "cleanupCompliance": 1.0
   }
