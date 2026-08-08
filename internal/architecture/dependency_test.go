@@ -188,6 +188,32 @@ func TestLegacyEdgesClassifyConcreteAdapterOutsideCompositionRoot(t *testing.T) 
 	}
 }
 
+func TestLegacyEdgesExcludeSameCapabilityAdapterPackages(t *testing.T) {
+	inside := []dependencyEdge{
+		{"internal/adapter/issueops", "internal/adapter/issueops/linking"},
+		{"internal/adapter/issueops/linking", "internal/adapter/issueops/pathutil"},
+		{"internal/adapter/lifecycle/compact", "internal/adapter/lifecycle/model"},
+	}
+	for _, edge := range inside {
+		if got := legacyEdges([]dependencyEdge{edge}); len(got) != 0 {
+			t.Fatalf("same-capability adapter edge %s must stay outside the legacy baseline, got %v", formatEdge(edge), got)
+		}
+	}
+
+	// capability 경계를 넘으면 여전히 legacy다. outbound/inbound는 방향 분류이므로
+	// 그 아래 서로 다른 capability는 같은 것으로 묶이지 않는다.
+	crossing := []dependencyEdge{
+		{"internal/adapter/trace", "internal/adapter/policy"},
+		{"internal/adapter/outbound/state", "internal/adapter/outbound/sqlstore"},
+		{"internal/adapter/lifecycle", "internal/adapter/projectdoc"},
+	}
+	for _, edge := range crossing {
+		if got := legacyEdges([]dependencyEdge{edge}); !reflect.DeepEqual(got, []dependencyEdge{edge}) {
+			t.Fatalf("cross-capability adapter edge %s must stay in the legacy baseline, got %v", formatEdge(edge), got)
+		}
+	}
+}
+
 func TestLegacyEdgesExcludeMigratedInboundAdapters(t *testing.T) {
 	for _, importer := range []string{"internal/adapter/inbound/issueopslease", "internal/adapter/inbound/issueopspublication", "internal/adapter/inbound/issueopscompletion", "internal/adapter/inbound/issueopspreparation"} {
 		edge := dependencyEdge{importer, "internal/core/issueops"}
@@ -1414,7 +1440,7 @@ func legacyEdges(edges []dependencyEdge) []dependencyEdge {
 	for _, edge := range edges {
 		if (isCore(edge.importer) && isLegacyInfrastructure(edge.imported)) ||
 			(isAdapter(edge.importer) && isCore(edge.imported) && !isMigratedInboundAdapter(edge.importer)) ||
-			(isConcreteAdapter(edge.imported) && !isCompositionRoot(edge.importer)) {
+			(isConcreteAdapter(edge.imported) && !isCompositionRoot(edge.importer) && !isSameCapabilityAdapter(edge.importer, edge.imported)) {
 			legacy = append(legacy, edge)
 		}
 	}
@@ -1488,6 +1514,33 @@ func isApplication(path string) bool {
 }
 
 func isConcreteAdapter(path string) bool { return isAdapter(path) }
+
+// adapterCapability는 adapter 경로가 구현하는 capability 이름을 돌려준다.
+// outbound/inbound는 capability가 아니라 방향 분류이므로 그 다음 요소까지 읽는다.
+func adapterCapability(path string) string {
+	rest := strings.TrimPrefix(path, "internal/adapter/")
+	if rest == path {
+		return ""
+	}
+	parts := strings.Split(rest, "/")
+	if (parts[0] == "outbound" || parts[0] == "inbound") && len(parts) > 1 {
+		return parts[0] + "/" + parts[1]
+	}
+	return parts[0]
+}
+
+// isSameCapabilityAdapter는 두 adapter가 같은 capability의 구현인지 판정한다.
+//
+// 하나의 adapter를 하위 package로 나누는 것은 계층 위반이 아니라 구현 정리다.
+// 이를 adapter 간 결합으로 세면 package를 잘게 나눌수록 벌점이 되어, 커다란
+// package를 유지할 유인이 생긴다. capability 경계를 넘는 의존만 legacy로 센다.
+func isSameCapabilityAdapter(importer, imported string) bool {
+	if !isAdapter(importer) || !isAdapter(imported) {
+		return false
+	}
+	capability := adapterCapability(importer)
+	return capability != "" && capability == adapterCapability(imported)
+}
 
 func isInboundAdapter(path string) bool {
 	return path == "internal/adapter/inbound" || strings.HasPrefix(path, "internal/adapter/inbound/")
