@@ -1,14 +1,13 @@
 package statecli
 
 import (
-	statestore "agent-harness/internal/adapter/outbound/state"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 )
 
-func runStateWrite(args []string) error {
+func runStateWrite(deps Dependencies, args []string) error {
 	fs := flag.NewFlagSet("state write", flag.ContinueOnError)
 	key := fs.String("key", "", "state key; [A-Za-z0-9._-], max 128 chars")
 	value := fs.String("value", "", "state content")
@@ -52,7 +51,7 @@ func runStateWrite(args []string) error {
 		}
 		content = string(b)
 	}
-	result, err := statestore.StateWrite(*key, content)
+	result, err := deps.Write(*key, content)
 	if err != nil {
 		return err
 	}
@@ -63,7 +62,7 @@ func runStateWrite(args []string) error {
 	return nil
 }
 
-func runStateRead(args []string) error {
+func runStateRead(deps Dependencies, args []string) error {
 	fs := flag.NewFlagSet("state read", flag.ContinueOnError)
 	key := fs.String("key", "", "state key")
 	jsonOut := fs.Bool("json", false, "print JSON")
@@ -73,7 +72,7 @@ func runStateRead(args []string) error {
 	if *key == "" && fs.NArg() > 0 {
 		*key = fs.Arg(0)
 	}
-	result, err := statestore.StateRead(*key)
+	result, err := deps.Read(*key)
 	if err != nil {
 		return err
 	}
@@ -84,13 +83,13 @@ func runStateRead(args []string) error {
 	return nil
 }
 
-func runStateList(args []string) error {
+func runStateList(deps Dependencies, args []string) error {
 	fs := flag.NewFlagSet("state list", flag.ContinueOnError)
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := statestore.StateList()
+	result, err := deps.List()
 	if err != nil {
 		return err
 	}

@@ -1,25 +1,25 @@
 package statecli
 
-func Run(args []string) error {
-	return runState(args)
+func Run(deps Dependencies, args []string) error {
+	return runState(deps, args)
 }
 
-func RunWrite(args []string) error {
-	return runStateWrite(args)
+func RunWrite(deps Dependencies, args []string) error {
+	return runStateWrite(deps, args)
 }
 
-func RunRead(args []string) error {
-	return runStateRead(args)
+func RunRead(deps Dependencies, args []string) error {
+	return runStateRead(deps, args)
 }
 
-func RunList(args []string) error {
-	return runStateList(args)
+func RunList(deps Dependencies, args []string) error {
+	return runStateList(deps, args)
 }
 
-func RunPrune(args []string) error {
-	return runStatePrune(args)
+func RunPrune(deps Dependencies, args []string) error {
+	return runStatePrune(deps, args)
 }
 
-func RunDoctor(args []string) error {
-	return runStateDoctor(args)
+func RunDoctor(deps Dependencies, args []string) error {
+	return runStateDoctor(deps, args)
 }

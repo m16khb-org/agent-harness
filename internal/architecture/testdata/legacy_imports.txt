@@ -69,7 +69,6 @@ cmd/harness/mcpcli -> internal/adapter/worker
 cmd/harness/mcpcli/catalog -> internal/adapter/mcp
 cmd/harness/mcpcli/resources -> internal/adapter/docs
 cmd/harness/mcpcli/resources -> internal/adapter/mcp
-cmd/harness/mcpcli/resources -> internal/adapter/outbound/state
 cmd/harness/mcpcli/resources -> internal/adapter/policy
 cmd/harness/mcpcli/resources -> internal/adapter/projectdocs
 cmd/harness/policycli -> internal/adapter/audit
@@ -78,7 +77,6 @@ cmd/harness/projectcli -> internal/adapter/commitsuggest
 cmd/harness/projectcli -> internal/adapter/lintdiagnose
 cmd/harness/projectcli -> internal/adapter/projectbootstrap
 cmd/harness/projectcli -> internal/adapter/projectdocs
-cmd/harness/qualitycli -> internal/adapter/outbound/state
 cmd/harness/selfworkflow/augmentcatalog -> internal/adapter/docs
 cmd/harness/selfworkflow/augmentlesson -> internal/adapter/outbound/state
 cmd/harness/selfworkflow/augmentplan -> internal/adapter/docs
@@ -90,7 +88,6 @@ cmd/harness/selfworkflow/model -> internal/adapter/failurecause
 cmd/harness/selfworkflow/stateio -> internal/adapter/failurecause
 cmd/harness/selfworkflow/stateio -> internal/adapter/outbound/state
 cmd/harness/selfworkflow/summary -> internal/adapter/failurecause
-cmd/harness/statecli -> internal/adapter/outbound/state
 cmd/harness/statuscli -> internal/adapter/doctor
 cmd/harness/statuscli -> internal/adapter/guard
 cmd/harness/statuscli -> internal/adapter/inspect

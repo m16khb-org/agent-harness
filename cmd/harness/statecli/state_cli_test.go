@@ -17,18 +17,18 @@ func TestRunStateRoutesUsageAndTextRoundtrip(t *testing.T) {
 	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
 
 	stderr := captureStateCLIStderr(t, func() error {
-		return runState(nil)
+		return runState(testDependencies(), nil)
 	})
 	if !strings.Contains(stderr, "agent-harness state write") {
 		t.Fatalf("state usage missing write command:\n%s", stderr)
 	}
 	stderr = captureStateCLIStderr(t, func() error {
-		return runState([]string{"unknown"})
+		return runState(testDependencies(), []string{"unknown"})
 	})
 	if strings.Contains(stderr, "agent-harness state migrate") {
 		t.Fatalf("state usage still advertises retired migrate command:\n%s", stderr)
 	}
-	if err := runState([]string{"migrate"}); err == nil || !strings.Contains(err.Error(), "unknown state subcommand") {
+	if err := runState(testDependencies(), []string{"migrate"}); err == nil || !strings.Contains(err.Error(), "unknown state subcommand") {
 		t.Fatalf("retired migrate command error=%v", err)
 	}
 
@@ -37,19 +37,19 @@ func TestRunStateRoutesUsageAndTextRoundtrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeOut := captureStatusVerifyStdout(t, func() error {
-		return runState([]string{"write", "--key", "text-key", "--input", input})
+		return runState(testDependencies(), []string{"write", "--key", "text-key", "--input", input})
 	})
 	if !strings.Contains(writeOut, `state "text-key" written`) || !strings.Contains(writeOut, "16 bytes") {
 		t.Fatalf("unexpected state write text output:\n%s", writeOut)
 	}
 	readOut := captureStatusVerifyStdout(t, func() error {
-		return runState([]string{"read", "text-key"})
+		return runState(testDependencies(), []string{"read", "text-key"})
 	})
 	if readOut != "state from file\n" {
 		t.Fatalf("unexpected state read text output %q", readOut)
 	}
 	listOut := captureStatusVerifyStdout(t, func() error {
-		return runState([]string{"list"})
+		return runState(testDependencies(), []string{"list"})
 	})
 	if !strings.Contains(listOut, "text-key\n") {
 		t.Fatalf("unexpected state list text output:\n%s", listOut)
@@ -63,17 +63,17 @@ func TestRunStateWriteReadAndPruneErrorsStaySurfaced(t *testing.T) {
 		{"write", "--key", "missing-source"},
 		{"write", "--key", "too-many", "--value", "one", "--input", filepath.Join(t.TempDir(), "missing.txt")},
 	} {
-		if err := runState(args); err == nil || !strings.Contains(err.Error(), "provide exactly one content source") {
-			t.Fatalf("runState(%v) error=%v, want content source error", args, err)
+		if err := runState(testDependencies(), args); err == nil || !strings.Contains(err.Error(), "provide exactly one content source") {
+			t.Fatalf("runState(testDependencies(), %v) error=%v, want content source error", args, err)
 		}
 	}
-	if err := runState([]string{"write", "--key", "missing-input", "--input", filepath.Join(t.TempDir(), "missing.txt")}); err == nil {
+	if err := runState(testDependencies(), []string{"write", "--key", "missing-input", "--input", filepath.Join(t.TempDir(), "missing.txt")}); err == nil {
 		t.Fatal("expected missing input file error")
 	}
-	if err := runState([]string{"read", "--key", "missing"}); err == nil {
+	if err := runState(testDependencies(), []string{"read", "--key", "missing"}); err == nil {
 		t.Fatal("expected missing read key error")
 	}
-	if err := runState([]string{"prune", "--max-age", "0s"}); err == nil {
+	if err := runState(testDependencies(), []string{"prune", "--max-age", "0s"}); err == nil {
 		t.Fatal("expected invalid prune max-age error")
 	}
 }
@@ -92,13 +92,13 @@ func TestRunStatePruneAndDoctorTextBranches(t *testing.T) {
 	writeStateCLIRecord(t, stateDir, "old", old.Record)
 
 	dryPrune := captureStatusVerifyStdout(t, func() error {
-		return runState([]string{"prune", "--max-age", "1h"})
+		return runState(testDependencies(), []string{"prune", "--max-age", "1h"})
 	})
 	if !strings.Contains(dryPrune, "would prune 1 state records") || !strings.Contains(dryPrune, "old\n") {
 		t.Fatalf("unexpected dry-run prune text:\n%s", dryPrune)
 	}
 	confirmedPrune := captureStatusVerifyStdout(t, func() error {
-		return runState([]string{"prune", "--max-age", "1h", "--confirm"})
+		return runState(testDependencies(), []string{"prune", "--max-age", "1h", "--confirm"})
 	})
 	if !strings.Contains(confirmedPrune, "pruned 1 state records") || !strings.Contains(confirmedPrune, "old\n") {
 		t.Fatalf("unexpected confirmed prune text:\n%s", confirmedPrune)
@@ -106,7 +106,7 @@ func TestRunStatePruneAndDoctorTextBranches(t *testing.T) {
 
 	writeRawStateCLIRow(t, stateDir, "corrupt", "{bad json\n")
 	doctorOut := captureStatusVerifyStdout(t, func() error {
-		return runState([]string{"doctor"})
+		return runState(testDependencies(), []string{"doctor"})
 	})
 	if !strings.Contains(doctorOut, "state doctor found 1 issues") || !strings.Contains(doctorOut, "error invalid_state") {
 		t.Fatalf("unexpected doctor text:\n%s", doctorOut)

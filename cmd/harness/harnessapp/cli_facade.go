@@ -1,6 +1,7 @@
 package harnessapp
 
 import (
+	statestore "agent-harness/internal/adapter/outbound/state"
 	"os"
 
 	"agent-harness/cmd/harness/basiccli"
@@ -41,6 +42,8 @@ func wireBasicCLIDeps() {
 		HarnessRoot: harnessRoot,
 		Version:     version,
 		PrintJSON:   printJSON,
+		StateRead:   statestore.StateRead,
+		StateWrite:  statestore.StateWrite,
 	})
 	statuscli.Configure(statuscli.Deps{
 		HarnessRoot:       harnessRoot,
@@ -165,27 +168,27 @@ func runProjectLintDiagnose(args []string) error {
 }
 
 func runState(args []string) error {
-	return statecli.Run(args)
+	return statecli.Run(stateDependencies(), args)
 }
 
 func runStateWrite(args []string) error {
-	return statecli.RunWrite(args)
+	return statecli.RunWrite(stateDependencies(), args)
 }
 
 func runStateRead(args []string) error {
-	return statecli.RunRead(args)
+	return statecli.RunRead(stateDependencies(), args)
 }
 
 func runStateList(args []string) error {
-	return statecli.RunList(args)
+	return statecli.RunList(stateDependencies(), args)
 }
 
 func runStatePrune(args []string) error {
-	return statecli.RunPrune(args)
+	return statecli.RunPrune(stateDependencies(), args)
 }
 
 func runStateDoctor(args []string) error {
-	return statecli.RunDoctor(args)
+	return statecli.RunDoctor(stateDependencies(), args)
 }
 
 func runStatus(args []string) error {
