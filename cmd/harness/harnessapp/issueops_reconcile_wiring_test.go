@@ -203,6 +203,7 @@ func reconcilePendingFixture(t *testing.T, failStage port.ExecutionOrcaIntentSta
 	if _, err := issueops.WriteIssueOps(stateRoot, record); err != nil {
 		t.Fatal(err)
 	}
+	seedPlannerGates(t, stateRoot, record.ID)
 	if _, err := issueops.StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte("# Reconcile plan\n")); err != nil {
 		t.Fatal(err)
 	}

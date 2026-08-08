@@ -144,6 +144,7 @@ func prepareHookExecutionFixture(t *testing.T, mode, host string) (string, issue
 		t.Fatal(err)
 	}
 	if mode == "orca" {
+		seedPlannerGates(t, stateRoot, record.ID)
 		if _, err := issueops.StageIssueOpsArtifact(stateRoot, record.ID, "plan", []byte("# Hook preparation plan\n")); err != nil {
 			t.Fatal(err)
 		}
