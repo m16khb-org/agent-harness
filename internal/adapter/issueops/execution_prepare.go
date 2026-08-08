@@ -54,10 +54,16 @@ func ensureOrcaBranchIsFree(record issueops.IssueOpsRecord, branch string) error
 		if code != 0 {
 			continue
 		}
-		// GitLab branch prepare가 봉인된 base에 빈 원격 브랜치를 먼저 만드는
-		// 순서를 보존한다. 로컬 브랜치나 다른 SHA의 원격 브랜치는 기존처럼
-		// 차단하고, 이 정확한 원격 ref만 adapter의 안전한 정규화에 맡긴다.
-		if scope.where == "on origin" && exactGitLabPreparedRemote(record, branch, output) {
+		// branch prepare가 봉인된 base에 linked 원격 브랜치를 먼저 만드는 순서를
+		// 보존한다. 로컬 브랜치나 다른 SHA의 원격 브랜치는 기존처럼 차단하고,
+		// 이 정확한 원격 ref만 adapter의 안전한 정규화에 맡긴다.
+		//
+		// 안전 근거는 provider 이름이 아니라 **원격 tip이 봉인된 base 그대로여서
+		// 잃을 작업이 없다**는 관측이다. 처음에는 GitLab만 예외로 두었는데,
+		// GitHub도 documented flow가 같은 순서(branch prepare --link-verified →
+		// linked branch → execution prepare --mode orca)를 지시하므로 그 순서를
+		// 따르는 사용자가 GitHub에서만 막혔다(#319).
+		if scope.where == "on origin" && exactPreparedRemoteAtSealedBase(record, branch, output) {
 			continue
 		}
 		return fmt.Errorf(
@@ -68,10 +74,16 @@ func ensureOrcaBranchIsFree(record issueops.IssueOpsRecord, branch string) error
 	return nil
 }
 
-func exactGitLabPreparedRemote(record issueops.IssueOpsRecord, branch, observedOID string) bool {
+// exactPreparedRemoteAtSealedBase는 원격 브랜치가 이 lifecycle이 준비한 linked
+// branch이고, tip이 봉인된 base SHA 그대로인지 보고한다.
+//
+// 네 조건을 모두 요구한다: link가 검증됐고, 기록된 branch 이름과 같고, base SHA가
+// 봉인돼 있고, 관측된 원격 tip이 그 SHA와 정확히 같아야 한다. 커밋이 하나라도
+// 올라가 있으면 OID가 달라져 채택되지 않으므로, 이 경로가 작업을 잃는 문을
+// 열지 않는다.
+func exactPreparedRemoteAtSealedBase(record issueops.IssueOpsRecord, branch, observedOID string) bool {
 	prepared := record.BranchPrepare
 	return prepared != nil &&
-		strings.EqualFold(strings.TrimSpace(prepared.Provider), "gitlab") &&
 		prepared.LinkVerified &&
 		strings.TrimSpace(prepared.Branch) == strings.TrimSpace(branch) &&
 		strings.TrimSpace(prepared.BaseSHA) != "" &&
