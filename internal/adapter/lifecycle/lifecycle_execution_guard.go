@@ -1332,10 +1332,36 @@ func exactAtomicCommitWorkflowScript(req lifecyclecontract.HookToolUseLifecycleR
 		}
 		root = resolveHookTargetPath(cwd, tokens[2])
 	}
-	if root == "" || root != cwd {
+	if root == "" {
+		return "", false
+	}
+	if root != cwd && !selfDescribingAtomicWorkflowInvocation(tokens, root) {
 		return "", false
 	}
 	return root, true
+}
+
+// selfDescribingAtomicWorkflowInvocation은 script와 repo 인자가 **둘 다 절대
+// 경로이고 같은 root를 지목하는** 호출인지 보고한다.
+//
+// Codex 0.146의 stable hook payload는 exec_command의 workdir를 전달하지 않아
+// hook이 보는 cwd는 언제나 turn의 source checkout이다. 그 상태에서 cwd 일치를
+// 요구하면 canonical worktree의 봉인된 preflight를 실행할 방법이 없어진다(#331).
+//
+// 관측할 수 없는 workdir를 추측하는 대신, 명령 자체가 대상을 완전히 기술할 때만
+// 연다. script 경로의 skill root와 repo 인자가 정확히 같아야 하므로 다른 repo를
+// 지목하거나 설치본 script로 worktree를 겨누는 형태는 이 조건에 걸리지 않는다.
+// 그 뒤의 holder·worktree fence는 그대로 적용된다.
+func selfDescribingAtomicWorkflowInvocation(tokens []string, root string) bool {
+	if len(tokens) != 3 || !filepath.IsAbs(filepath.Clean(tokens[1])) || !filepath.IsAbs(filepath.Clean(tokens[2])) {
+		return false
+	}
+	// `<root>/skills/atomic-commit-push/scripts/<name>.py` 에서 root를 되짚는다.
+	scriptRoot := cleanAbsPath(tokens[1])
+	for range 4 {
+		scriptRoot = filepath.Dir(scriptRoot)
+	}
+	return scriptRoot != "" && scriptRoot != string(filepath.Separator) && sameExecutionPath(scriptRoot, root)
 }
 
 // atomicCommitWorkflowCWD는 Codex exec_command가 실제로 사용하는 workdir와
