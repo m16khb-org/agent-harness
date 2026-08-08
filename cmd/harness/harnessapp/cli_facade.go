@@ -32,6 +32,7 @@ type (
 func wireBasicCLIDeps() {
 	configureDocsReaders()
 	configureStateStores()
+	configureAdapterTail()
 	configureTailCapabilities2()
 	configureTailCapabilities()
 	configureIssueOpsReaders()

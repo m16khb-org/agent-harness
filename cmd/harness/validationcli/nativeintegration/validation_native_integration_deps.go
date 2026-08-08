@@ -1,7 +1,6 @@
 package nativeintegration
 
 import (
-	"agent-harness/internal/adapter/installutil"
 	"os"
 )
 
@@ -22,7 +21,7 @@ func (deps nativeIntegrationValidationDeps) withDefaults() nativeIntegrationVali
 		deps.listSkills = ListSkillNames
 	}
 	if deps.skillNamesForHost == nil {
-		deps.skillNamesForHost = installutil.SkillNamesForHost
+		deps.skillNamesForHost = SkillNamesForHost
 	}
 	if deps.exists == nil {
 		deps.exists = exists

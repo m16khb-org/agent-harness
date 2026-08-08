@@ -2,7 +2,6 @@ package projectcli
 
 import (
 	projectbootstrap "agent-harness/internal/adapter/projectbootstrap"
-	projectdocs "agent-harness/internal/adapter/projectdocs"
 	projectdocscontract "agent-harness/internal/contract/projectdocs"
 	"flag"
 	"fmt"
@@ -55,7 +54,7 @@ func runProjectDocs(args []string) error {
 	if fs.NArg() > 0 {
 		*repo = fs.Arg(0)
 	}
-	result, err := projectdocs.RouteProjectDocs(*repo, "general")
+	result, err := RouteProjectDocs(*repo, "general")
 	if err != nil {
 		return err
 	}
@@ -79,7 +78,7 @@ func runProjectRouteDocs(args []string) error {
 	if fs.NArg() > 0 {
 		*task = strings.Join(fs.Args(), " ")
 	}
-	result, err := projectdocs.RouteProjectDocs(*repo, *task)
+	result, err := RouteProjectDocs(*repo, *task)
 	if err != nil {
 		return err
 	}
@@ -111,7 +110,7 @@ func runProjectRecord(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	result, err := projectdocs.AppendProjectDocsRecord(projectdocscontract.ProjectDocsRecordRequest{
+	result, err := AppendProjectDocsRecord(projectdocscontract.ProjectDocsRecordRequest{
 		RepoRoot:     *repo,
 		Kind:         *kind,
 		Title:        *title,

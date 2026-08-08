@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"agent-harness/internal/adapter/lifecycle/model"
-	"agent-harness/internal/adapter/projectdocs"
 )
 
 func ForRoot(root string) model.ProjectFingerprint {
@@ -21,7 +20,7 @@ func ForRoot(root string) model.ProjectFingerprint {
 		}
 	}
 	originHash := ""
-	if origin := projectdocs.ReadGitOriginURL(root); origin != "" {
+	if origin := ReadGitOriginURL(root); origin != "" {
 		sum := sha256.Sum256([]byte(origin))
 		originHash = hex.EncodeToString(sum[:])
 	}
