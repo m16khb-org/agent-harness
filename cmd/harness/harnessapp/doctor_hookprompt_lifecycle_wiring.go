@@ -1,19 +1,16 @@
-package hookcatalog
+package harnessapp
 
 import (
 	"agent-harness/internal/adapter/doctor"
 	"agent-harness/internal/adapter/hookprompt"
 	lifecycle "agent-harness/internal/adapter/lifecycle"
-	"agent-harness/internal/adapter/projectbootstrap"
 	issueopscontract "agent-harness/internal/contract/issueops"
-	"os"
-	"testing"
 )
 
-// 프로덕션에서는 harnessapp이 주입한다. 이 패키지 테스트는 실제 lifecycle
-// 상태를 전제로 하므로 같은 배선을 재현한다.
-func TestMain(m *testing.M) {
-	projectbootstrap.ConfigureLifecycle(lifecycle.InitProjectLifecycleState)
+// doctor와 hookprompt는 lifecycle 어댑터를 직접 알지 않는다. 실제 구현을 아는
+// 곳은 composition root 하나뿐이다.
+func configureDoctorHookPromptLifecycle() {
+	doctor.ConfigureLifecycle(lifecycle.ValidateProjectLifecycleState)
 	hookprompt.ConfigureLifecycle(hookprompt.LifecycleDeps{
 		ResolveProjectLifecycleState: lifecycle.ResolveProjectLifecycleState,
 		ReadPendingDocUpkeepEvents:   lifecycle.ReadPendingDocUpkeepEvents,
@@ -27,6 +24,4 @@ func TestMain(m *testing.M) {
 		},
 		IssueOpsPhaseExpectsWorktree: lifecycle.IssueOpsPhaseExpectsWorktree,
 	})
-	doctor.ConfigureLifecycle(lifecycle.ValidateProjectLifecycleState)
-	os.Exit(m.Run())
 }

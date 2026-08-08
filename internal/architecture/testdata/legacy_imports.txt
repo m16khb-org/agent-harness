@@ -12,8 +12,6 @@ cmd/harness/mcpcli -> internal/adapter/issueops
 cmd/harness/mcpcli -> internal/adapter/projectbootstrap
 cmd/harness/projectcli -> internal/adapter/projectbootstrap
 cmd/harness/statuscli -> internal/adapter/doctor
-internal/adapter/doctor -> internal/adapter/lifecycle
-internal/adapter/hookprompt -> internal/adapter/lifecycle
 internal/adapter/hostprobe -> internal/adapter/toolconformance
 internal/adapter/inbound/issueopscompletion -> internal/adapter/issueops
 internal/adapter/inbound/issueopslease -> internal/adapter/issueops
