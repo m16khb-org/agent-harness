@@ -1,6 +1,7 @@
 package commitsuggest
 
 import (
+	commitsuggestcontract "agent-harness/internal/contract/commitsuggest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,7 +12,7 @@ import (
 
 func TestSuggestCommitReturnsNoopWhenDiffIsEmpty(t *testing.T) {
 	repo := initCommitSuggestRepo(t)
-	result, err := SuggestCommit(CommitSuggestRequest{
+	result, err := SuggestCommit(commitsuggestcontract.CommitSuggestRequest{
 		RepoRoot: repo,
 		Staged:   false,
 	})
@@ -29,7 +30,7 @@ func TestSuggestCommitRendersPromptForWorkingTreeDiff(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := SuggestCommit(CommitSuggestRequest{
+	result, err := SuggestCommit(commitsuggestcontract.CommitSuggestRequest{
 		RepoRoot: repo,
 	})
 	if err != nil {

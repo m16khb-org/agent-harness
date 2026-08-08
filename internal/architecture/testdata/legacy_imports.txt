@@ -1,6 +1,5 @@
 cmd/harness/basiccli -> internal/adapter/doctor
 cmd/harness/basiccli -> internal/adapter/guard
-cmd/harness/basiccli -> internal/adapter/trace
 cmd/harness/contractcli -> internal/adapter/cli
 cmd/harness/contractcli -> internal/adapter/mcp
 cmd/harness/contractcli -> internal/adapter/toolconformance
@@ -25,16 +24,11 @@ cmd/harness/issueopscli/executioncmd -> internal/adapter/issueops
 cmd/harness/issueopscli/feedbackcleanup -> internal/adapter/issueops
 cmd/harness/issueopscli/feedbackcleanup -> internal/adapter/issueops/orphancleanup
 cmd/harness/issueopscli/remotecmd -> internal/adapter/issueops
-cmd/harness/mcpcli -> internal/adapter/commitsuggest
 cmd/harness/mcpcli -> internal/adapter/issueops
-cmd/harness/mcpcli -> internal/adapter/lintdiagnose
 cmd/harness/mcpcli -> internal/adapter/projectbootstrap
-cmd/harness/projectcli -> internal/adapter/commitsuggest
-cmd/harness/projectcli -> internal/adapter/lintdiagnose
 cmd/harness/projectcli -> internal/adapter/projectbootstrap
 cmd/harness/projectcli -> internal/adapter/projectdocs
 cmd/harness/statuscli -> internal/adapter/doctor
-cmd/harness/statuscli -> internal/adapter/guard
 cmd/harness/validationcli/nativeintegration -> internal/adapter/installutil
 cmd/harness/validationcli/stateroundtrip -> internal/adapter/outbound/sqlstore
 cmd/harness/workercli -> internal/adapter/draftwiki

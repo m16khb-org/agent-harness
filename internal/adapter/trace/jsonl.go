@@ -1,6 +1,7 @@
 package trace
 
 import (
+	tracecontract "agent-harness/internal/contract/trace"
 	"bufio"
 	"encoding/json"
 	"fmt"
@@ -10,7 +11,7 @@ import (
 	"agent-harness/internal/domain/traceclassification"
 )
 
-func analyzeTraceJSONL(text string) ([]TraceAnalysisFinding, []string) {
+func analyzeTraceJSONL(text string) ([]tracecontract.TraceAnalysisFinding, []string) {
 	scanner := bufio.NewScanner(strings.NewReader(text))
 	events := []docUpkeepEvent{}
 	failedSteps := map[string]int{}
@@ -38,10 +39,10 @@ func analyzeTraceJSONL(text string) ([]TraceAnalysisFinding, []string) {
 			traceTypes = append(traceTypes, "self_verify_progress_jsonl")
 		}
 	}
-	findings := []TraceAnalysisFinding{}
+	findings := []tracecontract.TraceAnalysisFinding{}
 	findings = append(findings, docUpkeepFindings(events)...)
 	for _, step := range traceSortedIntKeys(failedSteps) {
-		findings = append(findings, TraceAnalysisFinding{
+		findings = append(findings, tracecontract.TraceAnalysisFinding{
 			FailureClass:        "self_verify_progress_failure",
 			RecurringPattern:    fmt.Sprintf("%s failed %d time(s)", policy.RedactFreeform(step), failedSteps[step]),
 			ProposedKnob:        classification.ProposedKnobForStep(step),

@@ -1,7 +1,7 @@
 package statuscli
 
 import (
-	guard "agent-harness/internal/adapter/guard"
+	guardcontract "agent-harness/internal/contract/guard"
 	policydomain "agent-harness/internal/contract/policy"
 	preflightcontract "agent-harness/internal/contract/preflight"
 	projectdocdomain "agent-harness/internal/domain/projectdoc"
@@ -17,7 +17,7 @@ type VerifyWorkResult struct {
 	Repo              string                            `json:"repo"`
 	GitStatus         string                            `json:"git_status,omitempty"`
 	Preflight         preflightcontract.PreflightResult `json:"preflight"`
-	Guard             guard.GuardCheckResult            `json:"guard"`
+	Guard             guardcontract.GuardCheckResult    `json:"guard"`
 	Command           *policydomain.CommandRunResult    `json:"command,omitempty"`
 	Evidence          []string                          `json:"evidence"`
 	EvidenceMatrix    []VerifyWorkEvidenceItem          `json:"evidence_matrix"`
@@ -83,7 +83,7 @@ func buildVerifyWork(repo string, all bool, argv []string) VerifyWorkResult {
 		warnings = append(warnings, "git preflight reported issues")
 	}
 	evidenceMatrix = append(evidenceMatrix, verifyWorkEvidenceItem("git_preflight", preflight.OK, "git repository preflight completed"))
-	guard := guard.GuardCheck(guard.GuardCheckRequest{RepoRoot: root, Staged: !all, All: all})
+	guard := GuardCheck(guardcontract.GuardCheckRequest{RepoRoot: root, Staged: !all, All: all})
 	if guard.OK {
 		evidence = append(evidence, fmt.Sprintf("guard check passed (%s, %d files)", guard.Mode, len(guard.CheckedFiles)))
 	} else {

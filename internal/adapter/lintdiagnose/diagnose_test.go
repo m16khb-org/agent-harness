@@ -1,6 +1,7 @@
 package lintdiagnose
 
 import (
+	lintdiagnosecontract "agent-harness/internal/contract/lintdiagnose"
 	"strings"
 	"testing"
 )
@@ -8,7 +9,7 @@ import (
 func TestDiagnoseCommandRendersPromptForFailedCommand(t *testing.T) {
 	root := t.TempDir()
 
-	result, err := DiagnoseCommand(LintDiagnoseRequest{
+	result, err := DiagnoseCommand(lintdiagnosecontract.LintDiagnoseRequest{
 		RepoRoot:    root,
 		CommandArgv: []string{"/bin/sh", "-c", "echo lint failed >&2; exit 2"},
 	})

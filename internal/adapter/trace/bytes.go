@@ -1,13 +1,14 @@
 package trace
 
 import (
+	tracecontract "agent-harness/internal/contract/trace"
 	"encoding/json"
 	"strings"
 )
 
-func analyzeTraceBytes(body []byte) ([]TraceAnalysisFinding, []string, []string) {
+func analyzeTraceBytes(body []byte) ([]tracecontract.TraceAnalysisFinding, []string, []string) {
 	text := strings.TrimSpace(string(body))
-	findings := []TraceAnalysisFinding{}
+	findings := []tracecontract.TraceAnalysisFinding{}
 	traceTypes := []string{}
 	warnings := []string{}
 

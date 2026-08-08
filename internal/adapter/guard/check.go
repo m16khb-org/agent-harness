@@ -1,22 +1,23 @@
 package guard
 
 import (
+	guardcontract "agent-harness/internal/contract/guard"
 	"path/filepath"
 	"sort"
 	"strings"
 )
 
-func GuardCheck(req GuardCheckRequest) GuardCheckResult {
+func GuardCheck(req guardcontract.GuardCheckRequest) guardcontract.GuardCheckResult {
 	root := absOrOriginal(req.RepoRoot)
 	if root == "" {
 		root = absOrOriginal(".")
 	}
-	result := GuardCheckResult{
+	result := guardcontract.GuardCheckResult{
 		OK:           true,
 		RepoRoot:     root,
 		Mode:         guardMode(req),
 		CheckedFiles: []string{},
-		Findings:     []GuardFinding{},
+		Findings:     []guardcontract.GuardFinding{},
 		Warnings:     []string{},
 	}
 	files := guardTargetFiles(root, req)
@@ -28,7 +29,7 @@ func GuardCheck(req GuardCheckRequest) GuardCheckResult {
 	hasGoldenChange := false
 	for _, rel := range files {
 		if secretPathRe.MatchString(filepath.ToSlash(rel)) {
-			result.Findings = append(result.Findings, GuardFinding{
+			result.Findings = append(result.Findings, guardcontract.GuardFinding{
 				Severity: "block",
 				Rule:     "secret-like-path",
 				File:     rel,
@@ -54,14 +55,14 @@ func GuardCheck(req GuardCheckRequest) GuardCheckResult {
 		result.Findings = append(result.Findings, guardFileFindings(rel, content, existingSymbols)...)
 	}
 	if hasProdChange && !hasTestChange {
-		result.Findings = append(result.Findings, GuardFinding{
+		result.Findings = append(result.Findings, guardcontract.GuardFinding{
 			Severity: "warn",
 			Rule:     "prod-change-without-test",
 			Message:  "Production source changed without a changed test file; verify this is documentation/config-only or add focused coverage.",
 		})
 	}
 	if hasContractSurfaceChange && !hasGoldenChange {
-		result.Findings = append(result.Findings, GuardFinding{
+		result.Findings = append(result.Findings, guardcontract.GuardFinding{
 			Severity: "warn",
 			Rule:     "contract-surface-without-golden",
 			Message:  "CLI/MCP/adapter contract surface changed without a golden/testdata update.",

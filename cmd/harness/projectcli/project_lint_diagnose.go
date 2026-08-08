@@ -1,7 +1,7 @@
 package projectcli
 
 import (
-	lintdiagnose "agent-harness/internal/adapter/lintdiagnose"
+	lintdiagnosecontract "agent-harness/internal/contract/lintdiagnose"
 	"flag"
 	"fmt"
 	"os"
@@ -21,7 +21,7 @@ func runProjectLintDiagnose(args []string) error {
 		return fmt.Errorf("missing command to run. Usage: agent-harness project lint-diagnose [flags] -- <command_to_run...>")
 	}
 
-	result, err := lintdiagnose.DiagnoseCommand(lintdiagnose.LintDiagnoseRequest{
+	result, err := DiagnoseCommand(lintdiagnosecontract.LintDiagnoseRequest{
 		RepoRoot:    *repo,
 		CommandArgv: commandArgv,
 	})

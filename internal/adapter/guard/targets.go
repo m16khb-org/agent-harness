@@ -1,12 +1,13 @@
 package guard
 
 import (
+	guardcontract "agent-harness/internal/contract/guard"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-func guardMode(req GuardCheckRequest) string {
+func guardMode(req guardcontract.GuardCheckRequest) string {
 	if req.All {
 		return "all"
 	}
@@ -19,7 +20,7 @@ func guardMode(req GuardCheckRequest) string {
 	return "staged"
 }
 
-func guardTargetFiles(root string, req GuardCheckRequest) []string {
+func guardTargetFiles(root string, req guardcontract.GuardCheckRequest) []string {
 	if len(req.Files) > 0 {
 		return cleanGuardFiles(root, req.Files)
 	}

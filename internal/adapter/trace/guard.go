@@ -1,13 +1,14 @@
 package trace
 
 import (
+	tracecontract "agent-harness/internal/contract/trace"
 	"fmt"
 	"sort"
 
 	"agent-harness/internal/domain/policy"
 )
 
-func guardFindings(doc map[string]any) []TraceAnalysisFinding {
+func guardFindings(doc map[string]any) []tracecontract.TraceAnalysisFinding {
 	guard := nestedMap(doc, "guard")
 	if guard == nil {
 		guard = doc
@@ -33,9 +34,9 @@ func guardFindings(doc map[string]any) []TraceAnalysisFinding {
 		rules = append(rules, rule)
 	}
 	sort.Strings(rules)
-	out := []TraceAnalysisFinding{}
+	out := []tracecontract.TraceAnalysisFinding{}
 	for _, rule := range rules {
-		out = append(out, TraceAnalysisFinding{
+		out = append(out, tracecontract.TraceAnalysisFinding{
 			FailureClass:        "guard_" + policy.RedactFreeform(rule),
 			RecurringPattern:    fmt.Sprintf("%s reported %d time(s)", policy.RedactFreeform(rule), byRule[rule]),
 			ProposedKnob:        "adjust guard rule documentation or source pattern only if repeated false positives are confirmed",

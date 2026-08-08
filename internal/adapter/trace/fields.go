@@ -1,6 +1,7 @@
 package trace
 
 import (
+	tracecontract "agent-harness/internal/contract/trace"
 	"sort"
 	"strings"
 
@@ -162,9 +163,9 @@ func uniqSortedTraceStrings(values []string) []string {
 	return out
 }
 
-func dedupeTraceFindings(findings []TraceAnalysisFinding) []TraceAnalysisFinding {
+func dedupeTraceFindings(findings []tracecontract.TraceAnalysisFinding) []tracecontract.TraceAnalysisFinding {
 	seen := map[string]bool{}
-	out := []TraceAnalysisFinding{}
+	out := []tracecontract.TraceAnalysisFinding{}
 	for _, finding := range findings {
 		finding.FailureCause = normalizedFailureCause(finding.FailureCause)
 		finding.FailureCauseEvidence = redactedFailureCauseEvidence(finding.FailureCauseEvidence)

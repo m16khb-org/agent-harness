@@ -2,7 +2,8 @@ package basiccli
 
 import (
 	guard "agent-harness/internal/adapter/guard"
-	trace "agent-harness/internal/adapter/trace"
+	guardcontract "agent-harness/internal/contract/guard"
+	trace "agent-harness/internal/contract/trace"
 	"encoding/json"
 	"errors"
 	"path/filepath"
@@ -56,7 +57,7 @@ func TestRunGuardRoutesAndChecksExplicitFiles(t *testing.T) {
 	out := captureStatusVerifyStdout(t, func() error {
 		return RunGuard([]string{"check", "--repo", repo, "--json", "--", "ok_test.go"})
 	})
-	var result guard.GuardCheckResult
+	var result guardcontract.GuardCheckResult
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("decode guard JSON: %v\n%s", err, out)
 	}

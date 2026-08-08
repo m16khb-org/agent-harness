@@ -1,7 +1,7 @@
 package basiccli
 
 import (
-	trace "agent-harness/internal/adapter/trace"
+	tracecontract "agent-harness/internal/contract/trace"
 	"flag"
 	"fmt"
 	"os"
@@ -37,7 +37,7 @@ func runTraceAnalyze(args []string) error {
 	if *input == "" && fs.NArg() > 0 {
 		*input = fs.Arg(0)
 	}
-	result, err := trace.TraceAnalyze(trace.TraceAnalyzeRequest{Input: *input})
+	result, err := TraceAnalyze(tracecontract.TraceAnalyzeRequest{Input: *input})
 	if err != nil {
 		if *jsonOut {
 			_ = printJSON(result)

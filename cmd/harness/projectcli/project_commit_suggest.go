@@ -1,7 +1,7 @@
 package projectcli
 
 import (
-	commitsuggest "agent-harness/internal/adapter/commitsuggest"
+	commitsuggestcontract "agent-harness/internal/contract/commitsuggest"
 	"flag"
 	"fmt"
 	"os"
@@ -17,7 +17,7 @@ func runProjectCommitSuggest(args []string) error {
 		return err
 	}
 
-	result, err := commitsuggest.SuggestCommit(commitsuggest.CommitSuggestRequest{
+	result, err := SuggestCommit(commitsuggestcontract.CommitSuggestRequest{
 		RepoRoot: *repo,
 		Staged:   *staged,
 	})
