@@ -3,5 +3,4 @@ cmd/harness/issueopscli/executioncmd -> internal/adapter/issueops
 cmd/harness/mcpcli -> internal/adapter/issueops
 internal/adapter/inbound/issueopslease -> internal/adapter/issueops
 internal/adapter/issueops -> internal/adapter/outbound/sqlstore
-internal/adapter/lifecycle -> internal/adapter/issueops
 internal/adapter/outbound/state -> internal/adapter/outbound/sqlstore

@@ -8,7 +8,6 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 
-	issueopscore "agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/domain/issueopsremote"
 )
 
@@ -28,7 +27,7 @@ func sealedIssueEditBlockReason(req lifecyclecontract.HookToolUseLifecycleReques
 	if !ok {
 		return ""
 	}
-	ids, err := issueopscore.ListIssueOpsIDs(IssueOpsStateRoot())
+	ids, err := issueOpsDeps.ListIssueOpsIDs(IssueOpsStateRoot())
 	if err != nil {
 		// 레코드를 못 읽는 상태에서 편집을 막으면 복구 작업까지 봉쇄된다.
 		// 봉인 보호는 최선 노력 가드이며 claim 시점 검증이 최종 방어선이다.
@@ -66,7 +65,7 @@ func sealedIssueEditRecordProtects(record issueopscontract.IssueOpsRecord, targe
 	if !sameSealedIssueTarget(record.IssueURL, target) {
 		return false
 	}
-	packet := issueopscore.SealedOwnerContextPacketPath(record)
+	packet := issueOpsDeps.SealedOwnerContextPacketPath(record)
 	if strings.TrimSpace(packet) == "" {
 		return false
 	}

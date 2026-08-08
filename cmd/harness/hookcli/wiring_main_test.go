@@ -3,6 +3,7 @@ package hookcli
 import (
 	"agent-harness/internal/adapter/doctor"
 	"agent-harness/internal/adapter/hookprompt"
+	issueopscore "agent-harness/internal/adapter/issueops"
 	lifecycle "agent-harness/internal/adapter/lifecycle"
 	"agent-harness/internal/adapter/projectbootstrap"
 	issueopscontract "agent-harness/internal/contract/issueops"
@@ -38,5 +39,24 @@ func TestMain(m *testing.M) {
 		IssueOpsPhaseExpectsWorktree: lifecycle.IssueOpsPhaseExpectsWorktree,
 	})
 	doctor.ConfigureLifecycle(lifecycle.ValidateProjectLifecycleState)
+	lifecycle.ConfigureIssueOps(lifecycle.IssueOpsDeps{
+		ActiveIssueOpsCycleForBranch:              issueopscore.ActiveIssueOpsCycleForBranch,
+		ActiveIssueOpsLinkedWorktreeCyclesForRepo: issueopscore.ActiveIssueOpsLinkedWorktreeCyclesForRepo,
+		AdvanceIssueOpsPhase:                      issueopscore.AdvanceIssueOpsPhase,
+		IssueOpsPhaseExpectsWorktree:              issueopscore.IssueOpsPhaseExpectsWorktree,
+		IssueOpsStateRoot:                         issueopscore.IssueOpsStateRoot,
+		LinkIssueOpsIssue:                         issueopscore.LinkIssueOpsIssue,
+		LinkIssueOpsPlan:                          issueopscore.LinkIssueOpsPlan,
+		LinkIssueOpsWorktree:                      issueopscore.LinkIssueOpsWorktree,
+		ListIssueOpsIDs:                           issueopscore.ListIssueOpsIDs,
+		NewIssueOpsID:                             issueopscore.NewIssueOpsID,
+		PrepareIssueOpsBranch:                     issueopscore.PrepareIssueOpsBranch,
+		ReadIssueOps:                              issueopscore.ReadIssueOps,
+		RecordIssueOpsDesignReview:                issueopscore.RecordIssueOpsDesignReview,
+		RecordIssueOpsIntent:                      issueopscore.RecordIssueOpsIntent,
+		SealedOwnerContextPacketPath:              issueopscore.SealedOwnerContextPacketPath,
+		StartIssueOps:                             issueopscore.StartIssueOps,
+		WriteIssueOps:                             issueopscore.WriteIssueOps,
+	})
 	os.Exit(m.Run())
 }

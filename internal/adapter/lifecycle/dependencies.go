@@ -1,7 +1,6 @@
 package lifecycle
 
 import (
-	"agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/adapter/lifecycle/compact"
 	"agent-harness/internal/adapter/lifecycle/docupkeep"
 	"agent-harness/internal/adapter/lifecycle/liveapproval"
@@ -35,13 +34,13 @@ type NextActionCandidate = nextaction.NextActionCandidate
 type NextActionAutoProceedResult = nextaction.NextActionAutoProceedResult
 
 const (
-	IssueOpsPhaseProblem     = issueops.IssueOpsPhaseProblem
-	IssueOpsPhaseGrill       = issueops.IssueOpsPhaseGrill
-	IssueOpsPhasePlan        = issueops.IssueOpsPhasePlan
-	IssueOpsPhaseImplement   = issueops.IssueOpsPhaseImplement
-	IssueOpsPhaseAISlopClean = issueops.IssueOpsPhaseAISlopClean
-	IssueOpsPhasePR          = issueops.IssueOpsPhasePR
-	IssueOpsPhaseDone        = issueops.IssueOpsPhaseDone
+	IssueOpsPhaseProblem     = issueopscontract.IssueOpsPhaseProblem
+	IssueOpsPhaseGrill       = issueopscontract.IssueOpsPhaseGrill
+	IssueOpsPhasePlan        = issueopscontract.IssueOpsPhasePlan
+	IssueOpsPhaseImplement   = issueopscontract.IssueOpsPhaseImplement
+	IssueOpsPhaseAISlopClean = issueopscontract.IssueOpsPhaseAISlopClean
+	IssueOpsPhasePR          = issueopscontract.IssueOpsPhasePR
+	IssueOpsPhaseDone        = issueopscontract.IssueOpsPhaseDone
 )
 
 func BuildNumberedNextActionsDecision(message string, enforce bool, source string) NumberedNextActionsDecisionResult {
@@ -65,63 +64,63 @@ func EvaluateNextActionAutoProceed(message string, threshold float64) NextAction
 }
 
 func IssueOpsStateRoot() string {
-	return issueops.IssueOpsStateRoot()
+	return issueOpsDeps.IssueOpsStateRoot()
 }
 
 func StartIssueOps(stateRoot string, req issueopscontract.IssueOpsStartRequest) (issueopscontract.IssueOpsRecord, error) {
-	return issueops.StartIssueOps(stateRoot, req)
+	return issueOpsDeps.StartIssueOps(stateRoot, req)
 }
 
 func ReadIssueOps(stateRoot, id string) (issueopscontract.IssueOpsRecord, error) {
-	return issueops.ReadIssueOps(stateRoot, id)
+	return issueOpsDeps.ReadIssueOps(stateRoot, id)
 }
 
 func RecordIssueOpsIntent(stateRoot, id string, req issueopscontract.IssueOpsIntentRecordRequest) (issueopscontract.IssueOpsRecord, error) {
-	return issueops.RecordIssueOpsIntent(stateRoot, id, req)
+	return issueOpsDeps.RecordIssueOpsIntent(stateRoot, id, req)
 }
 
 func RecordIssueOpsDesignReview(stateRoot, id string, req issueopscontract.IssueOpsDesignReviewRequest) (issueopscontract.IssueOpsRecord, error) {
-	return issueops.RecordIssueOpsDesignReview(stateRoot, id, req)
+	return issueOpsDeps.RecordIssueOpsDesignReview(stateRoot, id, req)
 }
 
 func LinkIssueOpsIssue(stateRoot, id, issueURL string) (issueopscontract.IssueOpsRecord, error) {
-	return issueops.LinkIssueOpsIssue(stateRoot, id, issueURL)
+	return issueOpsDeps.LinkIssueOpsIssue(stateRoot, id, issueURL)
 }
 
 func PrepareIssueOpsBranch(stateRoot, id string, req issueopscontract.IssueOpsBranchPrepareRequest) (issueopscontract.IssueOpsRecord, error) {
-	return issueops.PrepareIssueOpsBranch(stateRoot, id, req)
+	return issueOpsDeps.PrepareIssueOpsBranch(stateRoot, id, req)
 }
 
 func LinkIssueOpsWorktree(stateRoot, id, worktreePath string) (issueopscontract.IssueOpsRecord, error) {
-	return issueops.LinkIssueOpsWorktree(stateRoot, id, worktreePath)
+	return issueOpsDeps.LinkIssueOpsWorktree(stateRoot, id, worktreePath)
 }
 
 func LinkIssueOpsPlan(stateRoot, id, planPath string) (issueopscontract.IssueOpsRecord, error) {
-	return issueops.LinkIssueOpsPlan(stateRoot, id, planPath)
+	return issueOpsDeps.LinkIssueOpsPlan(stateRoot, id, planPath)
 }
 
 func AdvanceIssueOpsPhase(stateRoot, id, to string) (issueopscontract.IssueOpsRecord, error) {
-	return issueops.AdvanceIssueOpsPhase(stateRoot, id, to)
+	return issueOpsDeps.AdvanceIssueOpsPhase(stateRoot, id, to)
 }
 
 func ActiveIssueOpsCycleForBranch(repo, branch string) (issueopscontract.IssueOpsRecord, bool) {
-	return issueops.ActiveIssueOpsCycleForBranch(repo, branch)
+	return issueOpsDeps.ActiveIssueOpsCycleForBranch(repo, branch)
 }
 
 func ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo string) []issueopscontract.IssueOpsRecord {
-	return issueops.ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo)
+	return issueOpsDeps.ActiveIssueOpsLinkedWorktreeCyclesForRepo(repo)
 }
 
 func IssueOpsPhaseExpectsWorktree(phase issueopscontract.IssueOpsPhase) bool {
-	return issueops.IssueOpsPhaseExpectsWorktree(phase)
+	return issueOpsDeps.IssueOpsPhaseExpectsWorktree(phase)
 }
 
 func newIssueOpsID(repo, branch string) string {
-	return issueops.NewIssueOpsID(repo, branch)
+	return issueOpsDeps.NewIssueOpsID(repo, branch)
 }
 
 func writeIssueOps(stateRoot string, record issueopscontract.IssueOpsRecord) (issueopscontract.IssueOpsRecord, error) {
-	return issueops.WriteIssueOps(stateRoot, record)
+	return issueOpsDeps.WriteIssueOps(stateRoot, record)
 }
 
 func AppendDocUpkeepEvent(repoRoot string, event lifecyclecontract.DocUpkeepEvent) (DocUpkeepAppendResult, error) {
