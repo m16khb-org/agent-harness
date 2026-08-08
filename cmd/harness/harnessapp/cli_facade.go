@@ -63,6 +63,7 @@ func wireBasicCLIDeps() {
 	configureLifecycleIssueOps()
 	configureIssueOpsLeaseNextCommands()
 	configureIssueOpsExecutionRunners()
+	configureIssueOpsCLIRuntime()
 	operationalCollector := operationalhealth.Collector{Git: operationalhealth.ExecGitRunner{}, Orca: orca.New()}
 	basiccli.Configure(basiccli.Deps{
 		GitPreflight:             preflight.GitPreflight,

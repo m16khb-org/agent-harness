@@ -11,16 +11,6 @@ import (
 	"agent-harness/internal/domain/policy"
 )
 
-// IssueOpsImplementationReviewRequest는 구현 diff에 대한 brooks 리뷰 기록이다.
-type IssueOpsImplementationReviewRequest struct {
-	Verdict        string
-	Findings       []string
-	Evidence       []string
-	ReviewerHost   string
-	ReviewerModel  string
-	ReviewerEffort string
-}
-
 // RecordIssueOpsImplementationReview는 verdict와 실질 내용(findings/evidence
 // 각 1개 이상)을 요구한다. reviewer_* 필드는 감사 기록으로만 저장한다.
 func RecordIssueOpsImplementationReview(stateRoot, id string, req IssueOpsImplementationReviewRequest) (issueops.IssueOpsRecord, error) {

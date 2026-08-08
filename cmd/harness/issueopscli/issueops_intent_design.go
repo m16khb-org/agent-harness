@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 
-	issueopscore "agent-harness/internal/adapter/issueops"
 	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
@@ -34,7 +33,7 @@ func runIssueOpsIntent(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := issueopscore.RecordIssueOpsIntentWithActor(issueopscore.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsIntentRecordRequest{
+	record, err := issueOpsCLIDeps.RecordIssueOpsIntentWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsIntentRecordRequest{
 		RawRequest:        *rawRequest,
 		InterpretedIntent: *interpretedIntent,
 		SuccessCriteria:   []string(successCriteria),
@@ -77,7 +76,7 @@ func runIssueOpsDesign(args []string) error {
 	if help, err := parseIssueOpsFlags(fs, args[1:]); help || err != nil {
 		return err
 	}
-	record, err := issueopscore.RecordIssueOpsDesignReviewWithActor(issueopscore.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsDesignReviewRequest{
+	record, err := issueOpsCLIDeps.RecordIssueOpsDesignReviewWithActor(issueOpsCLIDeps.IssueOpsStateRoot(), *id, issueopscontract.IssueOpsDesignReviewRequest{
 		ProblemSummary: *problemSummary,
 		ProposedDesign: *proposedDesign,
 		RefactorPlan:   *refactorPlan,
@@ -94,6 +93,6 @@ func printIssueOpsDesignReviewUsage() {
 	fmt.Println("Usage: agent-harness issueops design review --id ID --problem-summary TEXT --proposed-design TEXT --verification TEXT [--refactor-plan TEXT] [--alternative TEXT] [--risk TEXT] [--open-question TEXT] [--approved] [--json]")
 	fmt.Println()
 	fmt.Println("Approved reviews require --refactor-plan, at least one --alternative, at least one --risk, no --open-question, and one design-review evidence verification item.")
-	fmt.Printf("Use a verification item such as --verification %q alongside test commands.\n", issueopscore.IssueOpsDesignReviewEvidenceExample)
+	fmt.Printf("Use a verification item such as --verification %q alongside test commands.\n", issueopscontract.IssueOpsDesignReviewEvidenceExample)
 	fmt.Println("Approval is recorded with the full design review payload; there is no approve-only merge step.")
 }
