@@ -1,7 +1,6 @@
 package nativeintegration
 
 import (
-	install "agent-harness/internal/adapter/install"
 	"agent-harness/internal/adapter/installutil"
 	"os"
 )
@@ -20,7 +19,7 @@ func (deps nativeIntegrationValidationDeps) withDefaults() nativeIntegrationVali
 		deps.userHomeDir = os.UserHomeDir
 	}
 	if deps.listSkills == nil {
-		deps.listSkills = install.ListSkillNames
+		deps.listSkills = ListSkillNames
 	}
 	if deps.skillNamesForHost == nil {
 		deps.skillNamesForHost = installutil.SkillNamesForHost

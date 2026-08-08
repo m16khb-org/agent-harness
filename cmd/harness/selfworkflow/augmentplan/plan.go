@@ -8,7 +8,6 @@ import (
 
 	"agent-harness/cmd/harness/selfworkflow/augmentcatalog"
 	"agent-harness/cmd/harness/selfworkflow/model"
-	install "agent-harness/internal/adapter/install"
 )
 
 type Request = model.SelfAugmentPlanRequest
@@ -24,7 +23,7 @@ func Plan(req Request, root, version string) Result {
 		warnings = append(warnings, "GENIUS_THINK.md not found; augmentation can still run but loses the local genius-thinking heuristic")
 	}
 	docs := DocsIndex(root, version)
-	skills, err := install.ListSkillNames(root)
+	skills, err := ListSkillNames(root)
 	if err != nil {
 		warnings = append(warnings, "list skills: "+err.Error())
 	}

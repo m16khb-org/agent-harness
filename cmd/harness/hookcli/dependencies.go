@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-	coreinstall "agent-harness/internal/adapter/install"
+	installcontract "agent-harness/internal/contract/install"
 )
 
 var ResolveTarget = func(arg string) string {
@@ -31,12 +31,12 @@ var ResolveTarget = func(arg string) string {
 	return abs
 }
 
-var DiagnoseCurrentNativeRuntime = func() (coreinstall.NativeRuntimeDiagnostic, error) {
+var DiagnoseCurrentNativeRuntime = func() (installcontract.NativeRuntimeDiagnostic, error) {
 	executable, err := os.Executable()
 	if err != nil {
-		return coreinstall.NativeRuntimeDiagnostic{}, err
+		return installcontract.NativeRuntimeDiagnostic{}, err
 	}
-	return coreinstall.DiagnoseNativeRuntime(executable)
+	return DiagnoseNativeRuntime(executable)
 }
 
 func printJSON(v any) error {

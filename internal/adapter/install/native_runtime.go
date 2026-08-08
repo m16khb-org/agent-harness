@@ -1,25 +1,19 @@
 package install
 
 import (
+	installcontract "agent-harness/internal/contract/install"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-type NativeRuntimeDiagnostic struct {
-	Stale           bool   `json:"stale"`
-	Observed        string `json:"observed,omitempty"`
-	Expected        string `json:"expected,omitempty"`
-	RestartRequired bool   `json:"restart_required"`
-}
-
 // DiagnoseNativeRuntime compares the currently executing installer-owned binary
 // with the stable source checkout runtime. It also recognizes a removed managed
 // worktree from the source.worktrees/<name> layout after Git metadata is gone.
-func DiagnoseNativeRuntime(executable string) (NativeRuntimeDiagnostic, error) {
+func DiagnoseNativeRuntime(executable string) (installcontract.NativeRuntimeDiagnostic, error) {
 	observed := absClean(executable)
-	result := NativeRuntimeDiagnostic{Observed: observed}
+	result := installcontract.NativeRuntimeDiagnostic{Observed: observed}
 	if observed == "" {
 		return result, fmt.Errorf("native runtime executable is required")
 	}
@@ -30,7 +24,7 @@ func DiagnoseNativeRuntime(executable string) (NativeRuntimeDiagnostic, error) {
 		}
 	}
 	if filepath.Base(observed) != nativeBinaryName || filepath.Base(filepath.Dir(observed)) != "bin" {
-		return NativeRuntimeDiagnostic{}, nil
+		return installcontract.NativeRuntimeDiagnostic{}, nil
 	}
 
 	invokingRoot := filepath.Dir(filepath.Dir(observed))
@@ -49,7 +43,7 @@ func DiagnoseNativeRuntime(executable string) (NativeRuntimeDiagnostic, error) {
 	return result, nil
 }
 
-func NativeRuntimeDiagnosticMessage(diagnostic NativeRuntimeDiagnostic, err error) (string, bool) {
+func NativeRuntimeDiagnosticMessage(diagnostic installcontract.NativeRuntimeDiagnostic, err error) (string, bool) {
 	if err != nil {
 		return fmt.Sprintf(
 			"native hook runtime verification failed: observed=%s error=%v; reinstall hooks and restart the host session",
