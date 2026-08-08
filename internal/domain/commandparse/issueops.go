@@ -351,7 +351,7 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 	// 가드가 미분류 셸로 차단한다. 이 등록은 typed 통과 권한이 아니라 usage와
 	// spec의 관례 parity 목적이다(brooks B2 — spec-only 등록은 가드에 무효).
 	case "cleanup remote-branch":
-		return v("--id", "--fingerprint"), b("--preview", "--apply", "--confirm", "--json"), r, true
+		return v("--id", "--fingerprint", "--superseded-by"), b("--preview", "--apply", "--confirm", "--json"), r, true
 	case "cleanup abandon":
 		return v("--id", "--reason", "--fingerprint"), b("--preview", "--apply", "--confirm", "--json"), r, true
 	case "remote reflect-completion":

@@ -101,7 +101,7 @@ func localActor(host, sessionID, agentID, cwd string) issueopscontract.IssueOpsA
 
 func RunCleanup(args []string, deps Deps) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
-		fmt.Println("Usage: agent-harness issueops cleanup status --id ID [--merged] [--json]\n       agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]\n       agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]\n       agent-harness issueops cleanup remote-branch --id ID (--preview | --apply --confirm --fingerprint SHA256) [--json]\n       agent-harness issueops cleanup finish --id ID [--provider github|gitlab] (--preview | --apply --confirm --fingerprint SHA256) [--superseded-by URL] [--json]\n       agent-harness issueops cleanup abandon --id ID --reason TEXT (--preview | --apply --confirm --fingerprint SHA256) [--json]")
+		fmt.Println("Usage: agent-harness issueops cleanup status --id ID [--merged] [--json]\n       agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]\n       agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]\n       agent-harness issueops cleanup remote-branch --id ID (--preview | --apply --confirm --fingerprint SHA256) [--superseded-by URL] [--json]\n       agent-harness issueops cleanup finish --id ID [--provider github|gitlab] (--preview | --apply --confirm --fingerprint SHA256) [--superseded-by URL] [--json]\n       agent-harness issueops cleanup abandon --id ID --reason TEXT (--preview | --apply --confirm --fingerprint SHA256) [--json]")
 		return nil
 	}
 	switch args[0] {
@@ -442,6 +442,7 @@ func runCleanupRemoteBranch(args []string, deps Deps) error {
 	apply := fs.Bool("apply", false, "delete the merged remote branch")
 	confirm := fs.Bool("confirm", false, "confirm the destructive apply")
 	fingerprint := fs.String("fingerprint", "", "fingerprint issued by the latest --preview")
+	supersededBy := fs.String("superseded-by", "", "merged artifact URL that explicitly supersedes the recorded artifact")
 	jsonOut := fs.Bool("json", false, "print JSON")
 	if help, err := deps.ParseFlags(fs, args); help || err != nil {
 		return err
@@ -469,10 +470,11 @@ func runCleanupRemoteBranch(args []string, deps Deps) error {
 		return printCleanupFinishError(deps, *jsonOut, fmt.Errorf("merge verification is not configured"))
 	}
 	result, err := cleanupDeps.CleanupRemoteBranch(context.Background(), cleanupDeps.IssueOpsStateRoot(), issueopscontract.CleanupRemoteBranchRequest{
-		ID:          *id,
-		Apply:       *apply,
-		Confirm:     *confirm,
-		Fingerprint: *fingerprint,
+		ID:           *id,
+		SupersededBy: strings.TrimSpace(*supersededBy),
+		Apply:        *apply,
+		Confirm:      *confirm,
+		Fingerprint:  *fingerprint,
 	}, deps, prov)
 	var bindErr error
 	result.NextCommand, bindErr = bindCleanupNextCommand(result.NextCommand, cleanupExecutionGeneration(record), deps.Provenance)
