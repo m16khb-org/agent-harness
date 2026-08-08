@@ -21,6 +21,7 @@ type CleanupDeps struct {
 	CleanupAbandon                                    func(ctx context.Context, stateRoot string, req issueopscontract.CleanupAbandonRequest, deps Deps) (issueopscontract.CleanupAbandonResult, error)
 	CleanupFinish                                     func(ctx context.Context, stateRoot string, req issueopscontract.CleanupFinishRequest, deps Deps, prov port.IssueProvider) (issueopscontract.CleanupFinishResult, error)
 	CleanupRemoteBranch                               func(ctx context.Context, stateRoot string, req issueopscontract.CleanupRemoteBranchRequest, deps Deps, prov port.IssueProvider) (issueopscontract.CleanupRemoteBranchResult, error)
+	CleanupLinkedBranch                               func(ctx context.Context, stateRoot string, req issueopscontract.CleanupLinkedBranchRequest) (issueopscontract.CleanupLinkedBranchResult, error)
 	CloseIssueOpsChildren                             func(stateRoot, id string, req issueopscontract.IssueOpsCloseChildrenRequest, provider func(string) (port.IssueProvider, error)) (issueopscontract.IssueOpsCloseChildrenResult, error)
 	FinalizeIssueOpsCleanupStatus                     func(issueopscontract.IssueOpsCleanupStatus) issueopscontract.IssueOpsCleanupStatus
 	IssueOpsCleanupStatusForRecord                    func(issueopscontract.IssueOpsRecord, issueopscontract.IssueOpsCleanupStatusRequest) issueopscontract.IssueOpsCleanupStatus
@@ -53,6 +54,9 @@ func neutralCleanupDeps() CleanupDeps {
 		},
 		CleanupRemoteBranch: func(context.Context, string, issueopscontract.CleanupRemoteBranchRequest, Deps, port.IssueProvider) (issueopscontract.CleanupRemoteBranchResult, error) {
 			return issueopscontract.CleanupRemoteBranchResult{}, errCleanupNotConfigured
+		},
+		CleanupLinkedBranch: func(context.Context, string, issueopscontract.CleanupLinkedBranchRequest) (issueopscontract.CleanupLinkedBranchResult, error) {
+			return issueopscontract.CleanupLinkedBranchResult{}, errCleanupNotConfigured
 		},
 		CloseIssueOpsChildren: func(string, string, issueopscontract.IssueOpsCloseChildrenRequest, func(string) (port.IssueProvider, error)) (issueopscontract.IssueOpsCloseChildrenResult, error) {
 			return issueopscontract.IssueOpsCloseChildrenResult{}, errCleanupNotConfigured

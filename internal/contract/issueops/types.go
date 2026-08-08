@@ -363,6 +363,7 @@ type IssueOpsRecord struct {
 	RemoteCompletion        *IssueOpsRemoteCompletion           `json:"remote_completion,omitempty"`
 	SourceMisdirectWarnings int                                 `json:"source_misdirect_warnings,omitempty"`
 	CleanupFinishFailure    *IssueOpsCleanupFinishFailure       `json:"cleanup_finish_failure,omitempty"`
+	LinkedBranchCleanup     *IssueOpsLinkedBranchCleanup        `json:"linked_branch_cleanup,omitempty"`
 	CleanupAbandonFailure   *IssueOpsCleanupAbandonFailure      `json:"cleanup_abandon_failure,omitempty"`
 	ImplementationReview    *IssueOpsImplementationReview       `json:"implementation_review,omitempty"`
 	RoutingTrace            []SkillRoutingEntry                 `json:"routing_trace,omitempty"`
@@ -526,4 +527,20 @@ type CleanupRemoteBranchArtifactHead struct {
 	// remote-branch 게이트는 이 값을 읽지 않지만, cleanup finish의 base drift
 	// 게이트가 머지 관측과 같은 시점의 base를 요구하므로 여기에 함께 실린다.
 	BaseRefName string
+}
+
+// IssueOpsLinkedBranchCleanup은 ref-null 고아 linked-branch 처분의 durable
+// audit이다(#306 AC-06). 성공만이 아니라 거절도 남긴다 — 다음 사람이 "왜 아직
+// 안 지워졌나"를 처음부터 다시 조사하지 않게 하는 것이 이 기록의 목적이다.
+type IssueOpsLinkedBranchCleanup struct {
+	State          string `json:"state"`
+	StateReason    string `json:"state_reason,omitempty"`
+	LinkedBranchID string `json:"linked_branch_id,omitempty"`
+	LinkedCount    int    `json:"linked_count"`
+	RemoteRefOID   string `json:"remote_ref_oid,omitempty"`
+	Fingerprint    string `json:"fingerprint,omitempty"`
+	Deleted        bool   `json:"deleted,omitempty"`
+	AlreadyAbsent  bool   `json:"already_absent,omitempty"`
+	FailedStep     string `json:"failed_step,omitempty"`
+	ObservedAt     string `json:"observed_at"`
 }

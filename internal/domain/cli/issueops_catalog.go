@@ -66,6 +66,7 @@ const issueOpsUsageCatalog = `  agent-harness issueops start --repo PATH [--bran
   agent-harness issueops cleanup close-children --id ID --merged [--confirm] [--json]
   agent-harness issueops cleanup orphan --id ID --repo ROOT --worktree PATH --branch NAME --provider github|gitlab --kind pr|mr --artifact-url URL [--apply --confirm --fingerprint SHA256] [--json]
   agent-harness issueops cleanup remote-branch --id ID (--preview | --apply --confirm --fingerprint SHA256) [--superseded-by URL] [--json]
+  agent-harness issueops cleanup linked-branch --id ID (--preview | --apply --confirm --fingerprint SHA256) [--json]
   agent-harness issueops cleanup finish --id ID [--provider github|gitlab] (--preview | --apply --confirm --fingerprint SHA256) [--superseded-by URL] [--json]
   agent-harness issueops cleanup abandon --id ID --reason TEXT (--preview | --apply --confirm --fingerprint SHA256) [--json]
   agent-harness issueops remote score --input PATH [--judge none|prompt|file] [--judge-file PATH] [--json]
@@ -109,7 +110,7 @@ var abridgedIssueOpsMainKeys = []string{
 	"feedback add", "feedback mark-issue-updated",
 	"pr-readiness",
 	"cleanup status", "cleanup close-children", "cleanup orphan",
-	"cleanup remote-branch", "cleanup finish", "cleanup abandon",
+	"cleanup remote-branch", "cleanup linked-branch", "cleanup finish", "cleanup abandon",
 	"remote score", "remote render-template", "remote create-issue", "remote create-child",
 	"remote create-pr",
 	"benchmark run", "benchmark compare", "benchmark gate",

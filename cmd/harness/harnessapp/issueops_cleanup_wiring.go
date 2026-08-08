@@ -37,6 +37,12 @@ func configureIssueOpsCleanup() {
 				},
 			})
 		},
+		CleanupLinkedBranch: func(ctx context.Context, stateRoot string, req issueopscontract.CleanupLinkedBranchRequest) (issueopscontract.CleanupLinkedBranchResult, error) {
+			return issueopscore.CleanupLinkedBranch(ctx, stateRoot, req, issueopscore.CleanupLinkedBranchDeps{
+				ObserveLinkedBranches: issueopscore.ObserveGitHubLinkedBranches(issueopscore.LiveProviderCLI),
+				DeleteLinkedBranch:    issueopscore.DeleteGitHubLinkedBranch(issueopscore.LiveProviderCLI),
+			})
+		},
 		CloseIssueOpsChildren:                             issueopscore.CloseIssueOpsChildren,
 		FinalizeIssueOpsCleanupStatus:                     issueopscore.FinalizeIssueOpsCleanupStatus,
 		IssueOpsCleanupStatusForRecord:                    issueopscore.IssueOpsCleanupStatusForRecord,
