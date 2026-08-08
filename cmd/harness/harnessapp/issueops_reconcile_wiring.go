@@ -83,6 +83,18 @@ func (e *coreReconcileEffects) ApplyReceipt(ctx context.Context, state leaseoutb
 	return reconcileEffectStateFromCore(next)
 }
 
+func (e *coreReconcileEffects) ClearIntent(_ context.Context, state leaseoutbound.ReconcileEffectState, cause error) (leaseoutbound.ReconcileEffectState, error) {
+	coreState, err := reconcileCoreIntentState(state)
+	if err != nil {
+		return leaseoutbound.ReconcileEffectState{}, err
+	}
+	next, err := issueops.ClearExecutionReconcileIntent(e.stateRoot, coreState, cause, e.now)
+	if err != nil {
+		return leaseoutbound.ReconcileEffectState{}, err
+	}
+	return reconcileEffectStateFromCore(next)
+}
+
 func (e *coreReconcileEffects) Latest(_ context.Context, id string) (leasecontract.Record, error) {
 	record, err := issueops.ReadExecutionReconcileRecord(e.stateRoot, id)
 	if err != nil {

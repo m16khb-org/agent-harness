@@ -2,6 +2,7 @@ package issueopslease
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	leasecontract "agent-harness/internal/contract/issueopslease"
@@ -58,6 +59,19 @@ func (s *ReconcileService) Reconcile(ctx context.Context, request ReconcileReque
 		return s.failed(ctx, base, err)
 	}
 	receiptIntent, receipt, err := s.executePlan(ctx, intent, inventory, plan)
+	if errors.Is(err, errReconcileStageClear) {
+		// 자원이 없음이 확정된 intent는 receipt 없이 제거한다. 실패 기록도
+		// 남기지 않는다 — 실패가 아니라 종결이다(#280).
+		cleared, clearErr := s.repository.ClearIntent(ctx, receiptIntent, reconcileClearCause(plan.Reason))
+		if clearErr != nil {
+			_ = s.repository.RecordFailure(ctx, receiptIntent, receiptIntent.InvocationState, clearErr)
+			return s.failed(ctx, base, clearErr)
+		}
+		base.OK, base.Reconciled = true, true
+		base.Record = cleared.Record
+		base.Code = "orca_reconcile_cleared"
+		return base, nil
+	}
 	if err != nil {
 		return s.failed(ctx, base, err)
 	}
@@ -94,6 +108,10 @@ func (s *ReconcileService) executePlan(ctx context.Context, intent ReconcileInte
 		}
 		_ = s.repository.RecordFailure(ctx, invoking, failureState, err)
 		return invoking, leasecontract.ReconcileStageReceipt{}, fmt.Errorf("Orca mutation outcome requires execution reconcile; mutation was not repeated: %w", err)
+	case leasedomain.ReconcileStageClear:
+		// 재시도가 아니라 기록 정리다. 외부 인벤토리가 authoritative zero를
+		// 돌려줬으므로 이 intent가 가리키는 자원은 존재하지 않는다(#280).
+		return intent, leasecontract.ReconcileStageReceipt{}, errReconcileStageClear
 	case leasedomain.ReconcileStagePreserve:
 		cause := reconcilePreserveCause(plan.Reason)
 		_ = s.repository.RecordFailure(ctx, intent, intent.InvocationState, cause)
@@ -124,4 +142,14 @@ func reconcilePreserveCause(reason string) error {
 	default:
 		return fmt.Errorf("Orca intent inventory %s; intent retained", reason)
 	}
+}
+
+// errReconcileStageClear는 executePlan이 "이 intent는 지워야 한다"를 알리는
+// 내부 신호다. 오류로 흘려보내지 않고 호출부가 가로채 정리 경로로 보낸다.
+var errReconcileStageClear = errors.New("reconcile intent left no external resource")
+
+// reconcileClearCause는 제거 사유를 record에 남길 문구로 만든다. 사용자가
+// 나중에 그 종결이 실패였는지 정리였는지 구분할 수 있어야 한다.
+func reconcileClearCause(reason string) error {
+	return fmt.Errorf("Orca intent left no external resource (%s); intent cleared without retrying the mutation", reason)
 }
