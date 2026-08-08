@@ -2,7 +2,7 @@ package model
 
 import (
 	"agent-harness/cmd/harness/commandstep"
-	"agent-harness/internal/adapter/failurecause"
+	"agent-harness/internal/contract/failurecause"
 )
 
 type SelfAugmentResult struct {

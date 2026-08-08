@@ -1,7 +1,9 @@
 package harnessapp
 
 import (
+	"agent-harness/internal/adapter/docs"
 	statestore "agent-harness/internal/adapter/outbound/state"
+	"agent-harness/internal/adapter/preflight"
 	"agent-harness/internal/adapter/projectdocs"
 	"os"
 
@@ -31,14 +33,16 @@ type (
 func wireBasicCLIDeps() {
 	operationalCollector := operationalhealth.Collector{Git: operationalhealth.ExecGitRunner{}, Orca: orca.New()}
 	basiccli.Configure(basiccli.Deps{
+		GitPreflight:             preflight.GitPreflight,
 		HarnessRoot:              harnessRoot,
 		ResolveTarget:            resolveTarget,
 		Version:                  version,
 		InspectHarness:           inspectHarness,
 		CheckDaemonStatus:        checkDaemonStatus,
 		CollectOperationalHealth: operationalCollector.Collect,
+		DocsIndex:                docs.DocsIndex,
 	})
-	installcli.Configure(installcli.Deps{HarnessRoot: harnessRoot, ActivationBackend: nativeActivationBackend()})
+	installcli.Configure(installDependencies())
 	qualitycli.Configure(qualitycli.Deps{
 		HarnessRoot: harnessRoot,
 		Version:     version,
@@ -53,6 +57,7 @@ func wireBasicCLIDeps() {
 		Version:               version,
 		InspectHarness:        inspectHarness,
 		CheckDaemonStatus:     checkDaemonStatus,
+		GitPreflight:          preflight.GitPreflight,
 	})
 	workercli.Configure(workercli.Deps{ResolveTarget: resolveTarget})
 }

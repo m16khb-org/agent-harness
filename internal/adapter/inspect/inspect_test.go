@@ -1,6 +1,7 @@
 package inspect
 
 import (
+	inspectcontract "agent-harness/internal/contract/inspect"
 	"path/filepath"
 	"testing"
 )
@@ -40,7 +41,7 @@ func containsDoc(paths []string, suffix string) bool {
 	return false
 }
 
-func containsSkill(skills []SkillInfo, name string) bool {
+func containsSkill(skills []inspectcontract.SkillInfo, name string) bool {
 	for _, skill := range skills {
 		if skill.Name == name && skill.HasSkillMD {
 			return true

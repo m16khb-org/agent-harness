@@ -1,12 +1,13 @@
 package statuscli
 
 import (
+	preflightcontract "agent-harness/internal/contract/preflight"
 	projectdocdomain "agent-harness/internal/domain/projectdoc"
 	"encoding/json"
 	"os"
 
 	"agent-harness/cmd/harness/daemoncli"
-	inspect "agent-harness/internal/adapter/inspect"
+	inspect "agent-harness/internal/contract/inspect"
 )
 
 // Deps holds host-provided dependencies for the status CLI. The composition root
@@ -19,6 +20,8 @@ type Deps struct {
 	Version               string
 	InspectHarness        func(string) inspect.InspectInfo
 	CheckDaemonStatus     func() daemoncli.Status
+	// GitPreflight는 composition root가 주입한다.
+	GitPreflight func(target, harnessRoot string) preflightcontract.PreflightResult
 }
 
 var deps = defaultDeps()

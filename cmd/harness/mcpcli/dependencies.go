@@ -1,7 +1,9 @@
 package mcpcli
 
 import (
+	inspectcontract "agent-harness/internal/contract/inspect"
 	loopruncontract "agent-harness/internal/contract/looprun"
+	preflightcontract "agent-harness/internal/contract/preflight"
 	projectdocscontract "agent-harness/internal/contract/projectdocs"
 	"errors"
 	"fmt"
@@ -137,3 +139,9 @@ var (
 	UpdateProjectDoc        func(projectdocscontract.ProjectDocsUpdateRequest) (projectdocscontract.ProjectDocsUpdateResult, error)
 	AppendProjectDocsRecord func(projectdocscontract.ProjectDocsRecordRequest) (projectdocscontract.ProjectDocsRecordResult, error)
 )
+
+// GitPreflight와 ListSkills는 composition root가 설치한다. MCP tool router는
+// git 실행이나 skill 디렉터리 탐색을 스스로 하지 않는다.
+var GitPreflight func(target, harnessRoot string) preflightcontract.PreflightResult
+
+var ListSkills func(root, skillName string) []inspectcontract.SkillInfo

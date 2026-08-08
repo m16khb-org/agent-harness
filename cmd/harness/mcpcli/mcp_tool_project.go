@@ -4,8 +4,6 @@ import (
 	"agent-harness/cmd/harness/apidoc"
 	"agent-harness/cmd/harness/mcpcli/argmap"
 	docs "agent-harness/internal/adapter/docs"
-	inspect "agent-harness/internal/adapter/inspect"
-	preflight "agent-harness/internal/adapter/preflight"
 	projectbootstrap "agent-harness/internal/adapter/projectbootstrap"
 	projectdocscontract "agent-harness/internal/contract/projectdocs"
 )
@@ -15,7 +13,7 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 	case "harness_inspect":
 		return mcpToolPayload(InspectHarness(argmap.String(call.Arguments, "repo")))
 	case "atomic_commit_preflight":
-		return mcpToolPayload(preflight.GitPreflight(ResolveTarget(argmap.String(call.Arguments, "path")), HarnessRoot()))
+		return mcpToolPayload(GitPreflight(ResolveTarget(argmap.String(call.Arguments, "path")), HarnessRoot()))
 	case "commit_policy":
 		text, err := ReadHarnessFile(".agent-harness", "COMMIT_POLICY.md")
 		if err != nil {
@@ -23,7 +21,7 @@ func handleProjectMCPToolCall(call MCPToolCall) MCPToolOutcome {
 		}
 		return mcpToolDirect(TextResult(text))
 	case "skill_manifest":
-		return mcpToolPayload(inspect.ListSkills(HarnessRoot(), skillName))
+		return mcpToolPayload(ListSkills(HarnessRoot(), skillName))
 	case "docs_index":
 		return mcpToolPayload(docs.DocsIndex(HarnessRoot(), Version))
 	case "project_docs_route":

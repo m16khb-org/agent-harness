@@ -1,13 +1,14 @@
 package preflight
 
 import (
+	preflightcontract "agent-harness/internal/contract/preflight"
 	"strings"
 )
 
-func GitPreflight(target, harnessRoot string) PreflightResult {
+func GitPreflight(target, harnessRoot string) preflightcontract.PreflightResult {
 	code, root, stderr := GitCmd(target, "rev-parse", "--show-toplevel")
 	if code != 0 {
-		return PreflightResult{OK: false, Error: "not_git_repo", Path: target, Detail: stderr, Upstream: nil, Ahead: nil, Behind: nil}
+		return preflightcontract.PreflightResult{OK: false, Error: "not_git_repo", Path: target, Detail: stderr, Upstream: nil, Ahead: nil, Behind: nil}
 	}
 	root = strings.TrimSpace(root)
 	branch := GitOut(root, "branch", "--show-current")
@@ -39,7 +40,7 @@ func GitPreflight(target, harnessRoot string) PreflightResult {
 	if len(secretLike) > 0 {
 		warnings = append(warnings, "secret_like_paths_present")
 	}
-	return PreflightResult{
+	return preflightcontract.PreflightResult{
 		OK:               true,
 		RepoRoot:         root,
 		Branch:           branch,

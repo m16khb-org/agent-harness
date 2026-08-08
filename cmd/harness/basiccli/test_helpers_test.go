@@ -1,6 +1,8 @@
 package basiccli
 
 import (
+	"agent-harness/internal/adapter/docs"
+	"agent-harness/internal/adapter/preflight"
 	"context"
 	"os"
 	"os/exec"
@@ -9,6 +11,7 @@ import (
 
 	"agent-harness/cmd/harness/daemoncli"
 	inspect "agent-harness/internal/adapter/inspect"
+	inspectcontract "agent-harness/internal/contract/inspect"
 	"agent-harness/internal/domain/operationalhealth"
 	"agent-harness/internal/testsupport"
 )
@@ -16,6 +19,8 @@ import (
 func init() {
 	root := testHarnessRoot()
 	Configure(Deps{
+		GitPreflight:      preflight.GitPreflight,
+		DocsIndex:         docs.DocsIndex,
 		HarnessRoot:       func() string { return root },
 		ResolveTarget:     testResolveTarget,
 		Version:           "0.1.0",
@@ -23,7 +28,7 @@ func init() {
 		CollectOperationalHealth: func(_ context.Context, repo string) operationalhealth.Snapshot {
 			return healthyCLIOperationalSnapshot(repo)
 		},
-		InspectHarness: func(repo string) inspect.InspectInfo {
+		InspectHarness: func(repo string) inspectcontract.InspectInfo {
 			target := testResolveTarget(repo)
 			home, _ := os.UserHomeDir()
 			return inspect.InspectHarness(root, target, home, "0.1.0", "atomic-commit-push")

@@ -8,9 +8,9 @@ import (
 
 	"agent-harness/cmd/harness/daemoncli"
 	doctor "agent-harness/internal/adapter/doctor"
-	inspect "agent-harness/internal/adapter/inspect"
 	statestore "agent-harness/internal/adapter/outbound/state"
 	worker "agent-harness/internal/adapter/worker"
+	inspect "agent-harness/internal/contract/inspect"
 	statecontract "agent-harness/internal/contract/state"
 )
 
