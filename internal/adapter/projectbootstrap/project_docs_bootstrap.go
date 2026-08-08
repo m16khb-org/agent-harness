@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"agent-harness/internal/adapter/lifecycle"
-	"agent-harness/internal/adapter/projectdocs"
 	projectdoc "agent-harness/internal/domain/projectdoc"
 	projectdocdomain "agent-harness/internal/domain/projectdoc"
 )
@@ -16,15 +15,15 @@ func BootstrapProjectDocs(req ProjectDocsBootstrapRequest) (ProjectDocsBootstrap
 	if err != nil {
 		return ProjectDocsBootstrapResult{}, err
 	}
-	signals := projectdocs.AnalyzeProjectSignals(root)
+	signals := AnalyzeProjectSignals(root)
 	lifecycleState, err := lifecycle.InitProjectLifecycleState(root, req.Write, signals.Profile)
 	if err != nil {
 		return ProjectDocsBootstrapResult{}, err
 	}
 	files := []projectdoc.ProjectDocsPlannedFile{}
 	warnings := append([]string{}, lifecycleState.Warnings...)
-	contents := projectdocs.RenderProjectDocs(root, signals)
-	contents["AGENTS.md"] = projectdocs.RenderAgentsWithBlock(root, contents["AGENTS.md"])
+	contents := RenderProjectDocs(root, signals)
+	contents["AGENTS.md"] = RenderAgentsWithBlock(root, contents["AGENTS.md"])
 
 	for _, rel := range append([]string{"AGENTS.md"}, projectdocdomain.PrefixedProjectDocNames()...) {
 		content := contents[rel]
