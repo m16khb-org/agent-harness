@@ -9,7 +9,6 @@ import (
 
 	"agent-harness/internal/adapter/draftwiki/queue"
 	"agent-harness/internal/adapter/lifecycle"
-	"agent-harness/internal/adapter/outbound/state"
 	"agent-harness/internal/adapter/projectdoc"
 	workercontract "agent-harness/internal/contract/worker"
 	"agent-harness/internal/domain/judgement"
@@ -185,10 +184,6 @@ func BuildHostJudgementJSONSchemaSection(example string, fields []string) Prompt
 
 func DecodeHostJudgementStructuredJSONObject(label string, out []byte, target any) error {
 	return judgement.DecodeStructuredJSONObject(label, out, target)
-}
-
-func StateDir() string {
-	return state.StateDir()
 }
 
 func readDocHeadings(path string) (string, []string) {

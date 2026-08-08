@@ -7,7 +7,6 @@ import (
 	"agent-harness/internal/adapter/lifecycle/liveapproval"
 	"agent-harness/internal/adapter/lifecycle/model"
 	"agent-harness/internal/adapter/lifecycle/worktreepath"
-	"agent-harness/internal/adapter/outbound/state"
 	"agent-harness/internal/adapter/projectdoc"
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
@@ -44,10 +43,6 @@ const (
 	IssueOpsPhasePR          = issueops.IssueOpsPhasePR
 	IssueOpsPhaseDone        = issueops.IssueOpsPhaseDone
 )
-
-func StateDir() string {
-	return state.StateDir()
-}
 
 func BuildNumberedNextActionsDecision(message string, enforce bool, source string) NumberedNextActionsDecisionResult {
 	return nextaction.BuildNumberedNextActionsDecision(message, enforce, source)
@@ -180,7 +175,7 @@ func liveApprovalStore() liveapproval.Store {
 			plan, err := InitProjectLifecycleState(repoRoot, true)
 			return toNamespace(plan), err
 		},
-		WithLock:  state.WithKeyLock,
+		WithLock:  WithKeyLock,
 		WriteJSON: writeJSONAtomic,
 	}
 }

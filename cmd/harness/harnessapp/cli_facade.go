@@ -33,6 +33,7 @@ type (
 func wireBasicCLIDeps() {
 	configureDocsReaders()
 	configureStateStores()
+	configureAdapterStateAccess()
 	configureWorkerJobs()
 	configureRepoPathResolvers()
 	operationalCollector := operationalhealth.Collector{Git: operationalhealth.ExecGitRunner{}, Orca: orca.New()}

@@ -1,7 +1,6 @@
 package hookfailure
 
 import (
-	corestate "agent-harness/internal/adapter/outbound/state"
 	hookfailurecontract "agent-harness/internal/contract/hookfailure"
 	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/domain/policy"
@@ -47,7 +46,7 @@ func RecordHookFailureEvent(event hookfailurecontract.HookFailureEvent) (hookfai
 	// 초과할 수 있어(제한 없는 Argv/CWD와 500B snippet 필드 2개), O_APPEND만으로는
 	// 원자적이고 뒤섞이지 않는 쓰기를 보장하지 못한다. state span lock(WithKeyLock)이
 	// 이를 보장하며, O_APPEND는 OS 위치를 EOF에 유지한다.
-	writeErr := corestate.WithKeyLock(context.Background(), filepath.Dir(path), "hook-failures", func(context.Context) error {
+	writeErr := WithKeyLock(context.Background(), filepath.Dir(path), "hook-failures", func(context.Context) error {
 		f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 		if err != nil {
 			return err
@@ -93,7 +92,7 @@ func ListHookFailureEvents(limit int) (hookfailurecontract.HookFailureListResult
 }
 
 func HookFailureLogPath() string {
-	return filepath.Join(corestate.StateDir(), hookFailureLogFile)
+	return filepath.Join(StateDir(), hookFailureLogFile)
 }
 
 func trimHookFailureSnippet(value string) string {
@@ -111,7 +110,7 @@ func PruneHookFailureLog(maxAge time.Duration) (hookfailurecontract.HookFailureP
 	// read+rewrite+rename을 동시 append와 직렬화한다. append도 같은
 	// lock을 잡는다(RecordHookFailureEvent). 이게 없으면 read와 rename 사이에 예전
 	// inode로 들어온 append가 rename이 그 inode를 unlink할 때 유실된다.
-	lockErr := corestate.WithKeyLock(context.Background(), filepath.Dir(path), "hook-failures", func(context.Context) error {
+	lockErr := WithKeyLock(context.Background(), filepath.Dir(path), "hook-failures", func(context.Context) error {
 		f, err := os.Open(path)
 		if os.IsNotExist(err) {
 			result.OK = true
