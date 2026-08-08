@@ -21,36 +21,6 @@ import (
 // clean 100/100 run the merged verdict is bimodally pinned and its variance is
 // degenerate — see A7).
 
-// JudgeSample is one offline-recorded judge verdict of the same artifact. SampleID
-// is REQUIRED and must be DISTINCT across samples, and Provenance must be
-// non-empty: this is the machine-checkable guard (ported from the RecordedRun /
-// judge-provenance guards) against re-using one judge sample as N fake voters.
-type JudgeSample struct {
-	SampleID   string                 `json:"sample_id"`
-	Provenance string                 `json:"provenance"`
-	Score      IssueOpsBenchmarkScore `json:"score"`
-}
-
-// ConsensusVerdict is the self-consistency aggregation of N judge samples.
-type ConsensusVerdict struct {
-	Samples int `json:"samples"`
-	// MajorityPassed is the majority vote over each sample's BINARIZED pass/fail
-	// (the gate's own boolean) — the faithful "majority vote". Ties resolve to
-	// false (fail-closed) and surface as PassAgreement 0.5.
-	MajorityPassed bool    `json:"majority_passed"`
-	PassAgreement  float64 `json:"pass_agreement"`
-	// MedianAverageScore is the robust consensus point of the N average scores.
-	// Median, NOT mean: the deterministic scorer is bimodal (0/100), so a mean
-	// would land on a value no sample produced and the gate can never accept.
-	MedianAverageScore float64  `json:"median_average_score"`
-	ScoreMin           float64  `json:"score_min"`
-	ScoreMax           float64  `json:"score_max"`
-	ScoreSpread        float64  `json:"score_spread"`
-	SampleVariance     float64  `json:"sample_variance"`
-	Provenance         []string `json:"provenance"`
-	Caveat             string   `json:"caveat"`
-}
-
 const consensusCaveat = "descriptive over the supplied samples; reduces verdict VARIANCE not BIAS (a consensus of a biased judge is still biased); valid only if samples are independent (distinct sample ids + non-empty provenance enforced) and meaningful only where verdicts actually vary"
 
 // ConsensusJudgeVerdict aggregates N independent offline judge samples of the same

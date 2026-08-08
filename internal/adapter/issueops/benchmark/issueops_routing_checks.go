@@ -25,13 +25,6 @@ func issueOpsSkillRoutingFidelityComplete(fixture issueopscontract.IssueOpsBench
 	return RoutingFidelity(fixture.ExpectedRouting, artifact.RoutingTrace).OK
 }
 
-// RoutingFidelityResult reports whether an observed routing trace covered every
-// expected skill-at-phase pairing, listing the pairings that were not observed.
-type RoutingFidelityResult struct {
-	OK      bool                            `json:"ok"`
-	Missing []issueopscontract.SkillRouting `json:"missing,omitempty"`
-}
-
 // RoutingFidelity is the shared core of skill_routing_fidelity. It reports
 // whether observed covers every expected (phase, skill) pairing and which are
 // missing. Reused for both the benchmark dimension (observed = artifact trace)

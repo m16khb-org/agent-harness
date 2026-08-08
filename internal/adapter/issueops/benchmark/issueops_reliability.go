@@ -24,54 +24,6 @@ import (
 // 반환하지 않도록 호출자를 거부한다.
 const maxReliabilityTrials = 50
 
-// RecordedRun은 SUT를 offline으로 한 번 실행한 fixture별 pass/fail 결과다.
-// RunID와 Provenance는 필수이고 RunID는 run마다 달라야 한다. 이는 기계적으로
-// 확인하는 독립성 guard다.
-type RecordedRun struct {
-	RunID      string          `json:"run_id"`
-	Provenance string          `json:"provenance"`
-	Outcomes   map[string]bool `json:"outcomes"` // fixtureID -> passed
-}
-
-// RecordedOutcomes는 `issueops benchmark reliability`의 offline 입력 형식이다.
-// fixture 집합이 정렬된 benchmark 전체 재실행 k회를 담는다.
-type RecordedOutcomes struct {
-	Runs []RecordedRun `json:"runs"`
-}
-
-// FixtureReliability은 fixture별 분석이다. Clopper-Pearson interval을 의도적으로
-// fixture별로 계산한다. 이질적인 fixture를 하나의 (c,n)으로 합치면 단일 Bernoulli
-// p를 가정하게 되어 지나치게 좁은 interval을 보고하게 된다.
-type FixtureReliability struct {
-	FixtureID     string  `json:"fixture_id"`
-	Trials        int     `json:"trials"`
-	Successes     int     `json:"successes"`
-	PassAt1       float64 `json:"pass_at_1"`
-	IntervalLow   float64 `json:"interval_low"`
-	IntervalHigh  float64 `json:"interval_high"`
-	IntervalWidth float64 `json:"interval_width"`
-}
-
-// PassPowKPoint는 suite 수준 pass^k 신뢰도 곡선의 한 점이다.
-type PassPowKPoint struct {
-	K        int     `json:"k"`
-	PassPowK float64 `json:"pass_pow_k"`
-}
-
-// ReliabilityReport는 k개의 offline 기록 run에서 SUT 신뢰도를 요약한다.
-// pass^k는 tau-bench 정의를 따른다. suite 곡선은 fixture별 C(c_i,k)/C(n_i,k)의
-// 평균이며, MacroPassAt1은 시행 수가 많은 fixture가 지배하지 않도록 fixture별
-// 성공률을 평균한 값이다. deterministic scorer gate에는 쓰지 않는다.
-type ReliabilityReport struct {
-	Runs          int                  `json:"runs"`
-	Alpha         float64              `json:"alpha"`
-	MacroPassAt1  float64              `json:"macro_pass_at_1"`
-	MaxK          int                  `json:"max_k"` // = min_i trials_i
-	PassPowKCurve []PassPowKPoint      `json:"pass_pow_k_curve"`
-	Fixtures      []FixtureReliability `json:"fixtures"`
-	Provenance    []string             `json:"provenance"`
-}
-
 // ComputeReliability는 offline 기록 run을 ReliabilityReport로 집계한다.
 // provenance guard와 run 간 fixture 집합 정렬을 검증하며, Inf/NaN을 만들기보다
 // 잘못된 입력을 거부한다.

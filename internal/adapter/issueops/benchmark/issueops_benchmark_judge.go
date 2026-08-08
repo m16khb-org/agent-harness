@@ -1,16 +1,10 @@
 package benchmark
 
 import (
-	issueopscontract "agent-harness/internal/contract/issueops"
 	"fmt"
 
 	"agent-harness/internal/domain/judgement"
 )
-
-type IssueOpsLLMJudgeRequest struct {
-	Fixture  issueopscontract.IssueOpsBenchmarkFixture
-	Artifact issueopscontract.IssueOpsBenchmarkArtifact
-}
 
 func RunIssueOpsLLMJudge(req IssueOpsLLMJudgeRequest) (IssueOpsBenchmarkScore, error) {
 	if _, err := buildIssueOpsLLMJudgePrompt(req.Fixture, req.Artifact); err != nil {
