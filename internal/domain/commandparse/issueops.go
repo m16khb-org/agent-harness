@@ -404,11 +404,17 @@ func exactReadOnlySimpleShellCommand(command string) bool {
 	if len(tokens) == 0 {
 		return false
 	}
-	switch tokens[0] {
+	switch readerCommandName(tokens[0]) {
 	case "pwd":
 		return len(tokens) == 1
 	case "cat":
 		return exactReadOnlyCat(tokens[1:])
+	case "bash", "sh", "zsh":
+		return exactReadOnlyShellSyntaxCheck(tokens[1:])
+	case "ps":
+		return exactReadOnlyProcessStatus(tokens[1:])
+	case "pgrep":
+		return exactReadOnlyProcessGrep(tokens[1:])
 	case "head":
 		return exactReadOnlyHeadOrTail(tokens[1:])
 	case "tail":
