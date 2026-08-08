@@ -6,12 +6,10 @@ import (
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
-
-	"agent-harness/internal/adapter/remoteartifact"
 )
 
 func issueOpsPRTargetBranchBlockReason(req lifecyclecontract.HookToolUseLifecycleRequest) string {
-	branches, ok := remoteartifact.PullRequestBranchInfoFromCommand(req.Tool, req.Command, req.Repo)
+	branches, ok := PullRequestBranchInfoFromCommand(req.Tool, req.Command, req.Repo)
 	if !ok {
 		return ""
 	}

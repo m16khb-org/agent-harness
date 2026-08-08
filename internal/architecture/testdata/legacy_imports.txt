@@ -29,9 +29,7 @@ internal/adapter/inbound/issueopslease -> internal/adapter/issueops
 internal/adapter/inbound/issueopspreparation -> internal/adapter/issueops
 internal/adapter/inbound/issueopspublication -> internal/adapter/issueops
 internal/adapter/issueops -> internal/adapter/outbound/sqlstore
-internal/adapter/lifecycle -> internal/adapter/commandguard
 internal/adapter/lifecycle -> internal/adapter/issueops
-internal/adapter/lifecycle -> internal/adapter/remoteartifact
 internal/adapter/mcp -> internal/adapter/toolconformance
 internal/adapter/outbound/state -> internal/adapter/outbound/sqlstore
 internal/adapter/outbound/state -> internal/adapter/outbound/statepath
