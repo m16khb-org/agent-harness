@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	issueopscore "agent-harness/internal/adapter/issueops"
-	"agent-harness/internal/adapter/issueops/loopgate"
 	issueopscontract "agent-harness/internal/contract/issueops"
 )
 
@@ -323,7 +322,7 @@ func runIssueOpsPhase(args []string) error {
 		}
 		return err
 	}
-	record, err := loopgate.AdvancePhaseWithActor(issueopscore.IssueOpsStateRoot(), *id, *to, actor.actor())
+	record, err := advancePhaseWithActor(issueopscore.IssueOpsStateRoot(), *id, *to, actor.actor())
 	return printIssueOpsResult(record, *jsonOut, err)
 }
 
@@ -346,7 +345,7 @@ func runIssueOpsPRReadiness(args []string) error {
 	}
 	readiness := issueopscore.IssueOpsPRReadiness(record)
 	if *strict {
-		readiness = loopgate.StrictPRReadinessWithState(issueopscore.IssueOpsStateRoot(), record)
+		readiness = strictPRReadinessWithState(issueopscore.IssueOpsStateRoot(), record)
 	}
 	if *jsonOut {
 		return printJSON(readiness)

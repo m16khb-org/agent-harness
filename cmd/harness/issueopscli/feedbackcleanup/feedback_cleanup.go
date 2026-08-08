@@ -10,7 +10,7 @@ import (
 	issueopscontract "agent-harness/internal/contract/issueops"
 	port "agent-harness/internal/port"
 
-	"agent-harness/internal/adapter/issueops/orphancleanup"
+	orphancontract "agent-harness/internal/contract/issueopsorphancleanup"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"
 )
 
@@ -35,8 +35,8 @@ type Deps struct {
 	// defaults. Both remain nil in the live composition root.
 	CleanupFinishGit        func(dir string, args ...string) (int, string)
 	InspectCleanupProcesses func(root string) ([]string, error)
-	OrphanPreview           func(context.Context, orphancleanup.Request) (orphancleanup.Result, error)
-	OrphanApply             func(context.Context, orphancleanup.Request, orphancleanup.ApplyRequest) (orphancleanup.Result, error)
+	OrphanPreview           func(context.Context, orphancontract.Request) (orphancontract.Result, error)
+	OrphanApply             func(context.Context, orphancontract.Request, orphancontract.ApplyRequest) (orphancontract.Result, error)
 	// RemoveOrcaWorktree는 cleanup finish의 ② 단계(orca 회수, force=false)다.
 	// "이미 없음"은 wiring에서 성공으로 정규화한다(멱등 계약).
 	RemoveOrcaWorktree func(ctx context.Context, worktreeID string) error
@@ -278,7 +278,7 @@ func runOrphanCleanup(args []string, deps Deps) error {
 	if strings.TrimSpace(*fingerprint) != "" && !*apply {
 		return fmt.Errorf("orphan cleanup --fingerprint requires --apply")
 	}
-	request := orphancleanup.Request{
+	request := orphancontract.Request{
 		ID:           *id,
 		RepoRoot:     *repo,
 		WorktreePath: *worktree,
@@ -290,7 +290,7 @@ func runOrphanCleanup(args []string, deps Deps) error {
 		},
 	}
 	var (
-		result orphancleanup.Result
+		result orphancontract.Result
 		err    error
 	)
 	if *apply {
@@ -300,7 +300,7 @@ func runOrphanCleanup(args []string, deps Deps) error {
 		if deps.OrphanApply == nil {
 			return fmt.Errorf("orphan cleanup apply is unavailable")
 		}
-		result, err = deps.OrphanApply(context.Background(), request, orphancleanup.ApplyRequest{Confirm: *confirm, Fingerprint: *fingerprint})
+		result, err = deps.OrphanApply(context.Background(), request, orphancontract.ApplyRequest{Confirm: *confirm, Fingerprint: *fingerprint})
 	} else {
 		if deps.OrphanPreview == nil {
 			return fmt.Errorf("orphan cleanup preview is unavailable")
@@ -317,7 +317,7 @@ func runOrphanCleanup(args []string, deps Deps) error {
 	return err
 }
 
-func printOrphanCleanupResult(result orphancleanup.Result) {
+func printOrphanCleanupResult(result orphancontract.Result) {
 	fmt.Printf("ready: %v\n", result.Ready)
 	fmt.Printf("head: %s\n", result.HeadSHA)
 	fmt.Printf("recovery path: %s\n", result.RecoveryPath)

@@ -4,7 +4,7 @@ import (
 	"agent-harness/cmd/harness/issueopscli/benchmarkcmd"
 	"agent-harness/cmd/harness/issueopscli/feedbackcleanup"
 	"agent-harness/cmd/harness/issueopscli/remotecmd"
-	"agent-harness/internal/adapter/issueops/orphancleanup"
+	orphancontract "agent-harness/internal/contract/issueopsorphancleanup"
 	corehealth "agent-harness/internal/domain/operationalhealth"
 	"agent-harness/internal/port"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"
@@ -259,17 +259,17 @@ func issueOpsFeedbackCleanupDeps(provenance provenanceport.Observer) feedbackcle
 		// 미병합을 구분하는 별도 관측 표면을 쓴다(#342).
 		ObserveArtifactMerged: observeIssueOpsRemoteArtifactMergedLive,
 		Provider:              Resolve,
-		OrphanPreview: func(ctx context.Context, request orphancleanup.Request) (orphancleanup.Result, error) {
-			return orphancleanup.Preview(ctx, request, orphanDeps)
+		OrphanPreview: func(ctx context.Context, request orphancontract.Request) (orphancontract.Result, error) {
+			return orphanPreview(ctx, request, orphanDeps)
 		},
-		OrphanApply: func(ctx context.Context, request orphancleanup.Request, apply orphancleanup.ApplyRequest) (orphancleanup.Result, error) {
-			return orphancleanup.Apply(ctx, request, apply, orphanDeps)
+		OrphanApply: func(ctx context.Context, request orphancontract.Request, apply orphancontract.ApplyRequest) (orphancontract.Result, error) {
+			return orphanApply(ctx, request, apply, orphanDeps)
 		},
 	}
 }
 
-func issueOpsOrphanCleanupDeps() orphancleanup.Dependencies {
-	return orphancleanup.Dependencies{
+func issueOpsOrphanCleanupDeps() OrphanDependencies {
+	return OrphanDependencies{
 		Collect: func(ctx context.Context, repo string) (corehealth.Snapshot, error) {
 			return CollectOperationalHealth(ctx, repo), nil
 		},

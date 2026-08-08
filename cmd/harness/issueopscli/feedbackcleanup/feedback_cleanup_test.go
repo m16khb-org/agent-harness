@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	issueopscore "agent-harness/internal/adapter/issueops"
-	"agent-harness/internal/adapter/issueops/orphancleanup"
 	issueopscontract "agent-harness/internal/contract/issueops"
+	orphancontract "agent-harness/internal/contract/issueopsorphancleanup"
 	"agent-harness/internal/port"
 )
 
@@ -364,22 +364,22 @@ func TestRunCleanupStatusDoesNotNormalizeProviderOrIssueErrors(t *testing.T) {
 
 func TestRunCleanupOrphanDefaultsToPreviewAndGatesApply(t *testing.T) {
 	var printed []any
-	var previews []orphancleanup.Request
-	var applies []orphancleanup.ApplyRequest
+	var previews []orphancontract.Request
+	var applies []orphancontract.ApplyRequest
 	deps := Deps{
 		ParseFlags: parseFeedbackCleanupFlags,
 		PrintJSON: func(value any) error {
 			printed = append(printed, value)
 			return nil
 		},
-		OrphanPreview: func(_ context.Context, request orphancleanup.Request) (orphancleanup.Result, error) {
+		OrphanPreview: func(_ context.Context, request orphancontract.Request) (orphancontract.Result, error) {
 			previews = append(previews, request)
-			return orphancleanup.Result{OK: true, Preview: true, Ready: true, Fingerprint: "preview-fingerprint"}, nil
+			return orphancontract.Result{OK: true, Preview: true, Ready: true, Fingerprint: "preview-fingerprint"}, nil
 		},
-		OrphanApply: func(_ context.Context, request orphancleanup.Request, apply orphancleanup.ApplyRequest) (orphancleanup.Result, error) {
+		OrphanApply: func(_ context.Context, request orphancontract.Request, apply orphancontract.ApplyRequest) (orphancontract.Result, error) {
 			previews = append(previews, request)
 			applies = append(applies, apply)
-			return orphancleanup.Result{OK: true, Confirmed: true, Applied: true}, nil
+			return orphancontract.Result{OK: true, Confirmed: true, Applied: true}, nil
 		},
 	}
 	args := []string{
