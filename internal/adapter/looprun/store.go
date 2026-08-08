@@ -13,13 +13,12 @@ import (
 	"time"
 
 	"agent-harness/internal/adapter/outbound/sqlstore"
-	"agent-harness/internal/adapter/outbound/state"
 )
 
 const loopBucket = "loop"
 
 func StateRoot() string {
-	return filepath.Join(state.StateDir(), "loop")
+	return filepath.Join(StateDir(), "loop")
 }
 
 func openStore() (*sqlstore.DB, error) {

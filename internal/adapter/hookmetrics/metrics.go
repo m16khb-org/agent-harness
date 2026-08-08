@@ -14,8 +14,6 @@ import (
 	"path/filepath"
 	"slices"
 	"time"
-
-	corestate "agent-harness/internal/adapter/outbound/state"
 )
 
 const (
@@ -32,7 +30,7 @@ type hookMetricsPruneLimits struct {
 }
 
 func HookMetricsLogPath() string {
-	return filepath.Join(corestate.StateDir(), hookMetricsLogFile)
+	return filepath.Join(StateDir(), hookMetricsLogFile)
 }
 
 func RecordHookMetricEvent(event hookmetricscontract.HookMetricEvent) (hookmetricscontract.HookMetricRecordResult, error) {
@@ -48,7 +46,7 @@ func RecordHookMetricEvent(event hookmetricscontract.HookMetricEvent) (hookmetri
 	if err != nil {
 		return result, err
 	}
-	if err := corestate.WithKeyLock(context.Background(), filepath.Dir(path), "hook-metrics", func(context.Context) error {
+	if err := WithKeyLock(context.Background(), filepath.Dir(path), "hook-metrics", func(context.Context) error {
 		f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
 		if err != nil {
 			return err
@@ -126,7 +124,7 @@ func PruneHookMetricsLog(maxAge time.Duration) (hookmetricscontract.HookMetricsP
 func pruneHookMetricsLog(maxAge time.Duration, limits hookMetricsPruneLimits) (hookmetricscontract.HookMetricsPruneResult, error) {
 	path := HookMetricsLogPath()
 	result := hookmetricscontract.HookMetricsPruneResult{OK: false, Path: path}
-	err := corestate.WithKeyLock(context.Background(), filepath.Dir(path), "hook-metrics", func(context.Context) error {
+	err := WithKeyLock(context.Background(), filepath.Dir(path), "hook-metrics", func(context.Context) error {
 		if removed, err := sweepStaleHookMetricTemps(filepath.Dir(path), limits.StaleTempAge); err != nil {
 			return err
 		} else {

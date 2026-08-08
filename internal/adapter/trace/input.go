@@ -3,8 +3,6 @@ package trace
 import (
 	"fmt"
 	"os"
-
-	"agent-harness/internal/adapter/outbound/state"
 )
 
 type traceAnalysisInput struct {
@@ -20,7 +18,7 @@ func loadTraceAnalysisInput(input string) (traceAnalysisInput, error) {
 	if b, err := os.ReadFile(input); err == nil {
 		return traceAnalysisInput{Source: "file", Body: b}, nil
 	}
-	state, err := state.StateRead(input)
+	state, err := StateRead(input)
 	if err != nil {
 		return traceAnalysisInput{}, fmt.Errorf("read trace input as file or state key %q: %w", input, err)
 	}

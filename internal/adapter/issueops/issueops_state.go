@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"agent-harness/internal/adapter/outbound/sqlstore"
-	"agent-harness/internal/adapter/outbound/state"
 	"agent-harness/internal/contract/issueops"
 	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/port"
@@ -141,7 +140,7 @@ func deleteIssueOps(stateRoot, id string) error {
 }
 
 func IssueOpsStateRoot() string {
-	return filepath.Join(state.StateDir(), issueOpsBucket)
+	return filepath.Join(StateDir(), issueOpsBucket)
 }
 
 func newIssueOpsID(repo, branch string) string {

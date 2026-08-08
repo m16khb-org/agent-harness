@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"agent-harness/internal/adapter/lifecycle/model"
-	corestate "agent-harness/internal/adapter/outbound/state"
 	"agent-harness/internal/adapter/projectdoc"
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 )
@@ -62,7 +61,7 @@ func Append(store Store, repoRoot string, event lifecyclecontract.DocUpkeepEvent
 	if err != nil {
 		return model.DocUpkeepAppendResult{OK: false, RepoRoot: plan.RepoRoot, RepoID: plan.RepoID, ProjectStateDir: plan.ProjectStateDir, Path: plan.QueuePath}, err
 	}
-	if err := corestate.WithKeyLock(context.Background(), plan.ProjectStateDir, "doc-upkeep", func(context.Context) error {
+	if err := WithKeyLock(context.Background(), plan.ProjectStateDir, "doc-upkeep", func(context.Context) error {
 		f, err := os.OpenFile(plan.QueuePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 		if err != nil {
 			return err
@@ -82,7 +81,7 @@ func ReadPending(store Store, repoRoot string, limit int) ([]lifecyclecontract.D
 		return []lifecyclecontract.DocUpkeepEvent{}, plan, err
 	}
 	events := []lifecyclecontract.DocUpkeepEvent{}
-	if err := corestate.WithKeyLock(context.Background(), plan.ProjectStateDir, "doc-upkeep", func(context.Context) error {
+	if err := WithKeyLock(context.Background(), plan.ProjectStateDir, "doc-upkeep", func(context.Context) error {
 		f, err := os.Open(plan.QueuePath)
 		if os.IsNotExist(err) {
 			return nil

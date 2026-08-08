@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	corestate "agent-harness/internal/adapter/outbound/state"
 	"agent-harness/internal/domain/auditid"
 	"agent-harness/internal/domain/policy"
 )
@@ -88,7 +87,7 @@ func AuditProcessExecution(req ProcessExecutionRequest) (ProcessExecutionRecord,
 		DurationMS:  max(0, now.Sub(started).Milliseconds()),
 		Diagnostic:  boundedProcessDiagnostic(req.Diagnostic),
 	}
-	path := filepath.Join(corestate.StateDir(), "audit", "process-execution.jsonl")
+	path := filepath.Join(StateDir(), "audit", "process-execution.jsonl")
 	if err := appendProcessAudit(path, record); err != nil {
 		return record, err
 	}
@@ -105,7 +104,7 @@ func appendProcessAudit(path string, record ProcessExecutionRecord) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), processAuditTimeout)
 	defer cancel()
-	return corestate.WithKeyLock(ctx, corestate.StateDir(), "process-execution-audit", func(context.Context) error {
+	return WithKeyLock(ctx, StateDir(), "process-execution-audit", func(context.Context) error {
 		file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 		if err != nil {
 			return err
