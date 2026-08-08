@@ -20,6 +20,11 @@ func writeClaudeSettings(path string, req port.NativeInstallRequest) (port.Insta
 		return file, nil, err
 	}
 	messages := HookTargetDriftMessages(config, "claude", req.BinPath)
+	// 경로가 같아도 빌드 세대가 갈리면 이전 세대 hook이 새 typed command를
+	// 모른 채 차단해 복구가 교착된다(#328). 그 축을 여기서 함께 보고한다.
+	if HookTargetGenerationMessages != nil && RunningBuildGenerationString != nil && FileBuildGenerationString != nil {
+		messages = append(messages, HookTargetGenerationMessages(config, "claude", req.BinPath, RunningBuildGenerationString(), FileBuildGenerationString)...)
+	}
 	written, err := WriteJSONPlan(path, file.Kind, mergeClaudeHookConfig(config, req.BinPath), 0o644, req.DryRun)
 	return written, messages, err
 }

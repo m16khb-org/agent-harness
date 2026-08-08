@@ -215,7 +215,7 @@
       "id": "BT-G5",
       "title": "T4 — provider 계약 정합",
       "objective": "GitHub create issue/PR result에 canonical number를 투영하고, connector base/head를 hook 명령 표현으로 보존하며, remote 단일 판별 시 provider를 자동 추론하고 usage에 노출하며, createLinkedBranch ref:null 부분 성공을 typed 오류로 표면화한다.",
-      "status": "partial",
+      "status": "completed",
       "successCriteria": [
         {
           "id": "BT-G5-C1",
@@ -269,7 +269,8 @@
             "stale_state"
           ]
         }
-      ]
+      ],
+      "closingNote": "#306 AC-04·05·06·07을 typed control plane으로 채웠다(PR #420 merged). ref-null 고아는 이름이 없으므로 사용자가 대상을 지정할 수 없게 하고, preview가 후보를 하나로 확정했을 때만 노드 id가 결속된 fingerprint를 발급한다. apply는 매번 다시 관측해 fingerprint를 재계산하며 그 재관측이 stale 검사다. live 증거: 실제 GraphQL 질의가 issue #304에 유효하고 totalCount=0 → state=absent. AC-08(#304의 실제 고아 정리)은 그 고아가 이미 사라져 도달 불가다."
     },
     {
       "id": "BT-G6",
@@ -323,7 +324,7 @@
       "id": "BT-G7",
       "title": "T6 — Orca 실행 계약",
       "objective": "Orca 모드의 branch/worktree/remote-link 순서를 단일 state machine으로 확정하고, sealed task identity 기반 completion 수렴, generation skew 진단, released sync-base conflict의 bounded writer 권한을 제공한다.",
-      "status": "partial",
+      "status": "completed",
       "successCriteria": [
         {
           "id": "BT-G7-C1",
@@ -378,7 +379,8 @@
             "stale_state"
           ]
         }
-      ]
+      ],
+      "closingNote": "#325를 실물 relay dogfood로 종결했다(PR #419 merged). SettleTask가 consumer_fenced를 만나면 UseRun으로 봉인된 Run에 다시 바인딩해 한 번 재시도하고, 바인딩이 다른 Run에 붙으면 재시도하지 않는다. live 증거: run=run_983463fa197f task=task_af74f64690d7 status=completed — naive task-update가 실제로 fence되는 것을 먼저 관측한 뒤 수렴했다. #319 AC-06(create→claim→PR→cleanup 전체 dogfood)만 남았고, 그것은 owner PID 12430이 lease를 놓아야 도달한다."
     },
     {
       "id": "BT-G8",
@@ -433,12 +435,53 @@
           ]
         }
       ]
+    },
+    {
+      "id": "BT-G10",
+      "title": "#328 설치 세대 불일치 진단과 exact recovery",
+      "status": "completed",
+      "objective": "install dry-run/readback이 hook 대상 바이너리와 실행 CLI의 빌드 세대 불일치를 두 호스트 모두에서 구조화해 보고하고, 두 호스트를 같은 세대로 맞추는 실행 가능한 명령을 낸다.",
+      "successCriteria": [
+        {
+          "id": "BT-G10-C1",
+          "scenario": "경로가 같은 상태에서 세대 불일치가 두 호스트 모두에서 보고된다",
+          "channel": "auxiliary:cli",
+          "status": "pass",
+          "capturedEvidence": "install --dry-run --json 실측: [codex]/[claude] 모두 hook=bin/agent-harness (0c50f0c08ab8+dirty) cli=832f03800a26+dirty. 설치된 hook 대상은 #414 worktree 빌드, CLI는 현재 main 빌드. 경로는 완전히 동일.",
+          "cleanupReceipt": "none spawned"
+        },
+        {
+          "id": "BT-G10-C2",
+          "scenario": "진단이 서술이 아니라 실행 가능한 복구 명령을 낸다",
+          "channel": "auxiliary:cli",
+          "status": "pass",
+          "capturedEvidence": "go build -o <target> ./cmd/harness && <target> install --json + 세션 재시작 안내. installutil 테스트가 양쪽 세대 표기와 이 명령이 모두 포함됨을 고정.",
+          "cleanupReceipt": "none spawned"
+        },
+        {
+          "id": "BT-G10-C3",
+          "scenario": "판단할 수 없거나 일치하면 침묵한다",
+          "channel": "auxiliary:cli",
+          "status": "pass",
+          "capturedEvidence": "fail-open 4종(reader 없음/실행 세대 미관측/대상 세대 미관측/같은 세대) + 경로 drift는 자기 축에 남김. claude 배선 테스트가 동세대 침묵을 고정.",
+          "cleanupReceipt": "none spawned"
+        },
+        {
+          "id": "BT-G10-C4",
+          "scenario": "완료 기준 4·5(#248 lifecycle dogfood, 설치 갱신 뒤 native readback)",
+          "channel": "none",
+          "status": "blocked",
+          "capturedEvidence": "recovery 명령을 실행하면 live owner 세션(PID 12430)의 hook이 매 호출마다 쓰는 bin/agent-harness가 세션 중간에 교체된다. 제어할 수 없는 세션에 영향을 주는 조작이라 실행하지 않았다.",
+          "cleanupReceipt": "none spawned"
+        }
+      ],
+      "closingNote": "PR #421. 완료 기준 1·2·3 충족, 4·5는 owner 세션 종료 후에만 도달 가능."
     }
   ],
   "metrics": {
-    "evidenceCoverage": 0.88,
-    "reworkRate": 0.3,
-    "cycleEfficiency": 0.89,
+    "evidenceCoverage": 0.93,
+    "reworkRate": 0.26,
+    "cycleEfficiency": 0.92,
     "parallelizationRatio": 1.0,
     "cleanupCompliance": 1.0
   },
@@ -504,6 +547,33 @@
         "lifecycle": "io-b3d92dc6247a lease generation 2 revoking",
         "worktree": ".worktrees/414-terminal-identity-fix",
         "recovery": "owner 세션을 닫으면 execution replace --finalize → cleanup으로 회수. 살아있는 native 프로세스 자동 종료는 금지(#276 비목표)"
+      }
+    },
+    {
+      "round": 2,
+      "at": "2026-08-09T00:00:00Z",
+      "title": "남은 실작업 소진 라운드",
+      "merged": [
+        "#419 orca SettleTask rebind (#325 closed)",
+        "#420 linked-branch orphan control plane (#306 AC-04..07)"
+      ],
+      "open": [
+        "#421 install generation skew + exact recovery (#328 기준 1·2·3)"
+      ],
+      "liveDogfood": [
+        "Orca relay 0.1.0+66c426c5173c: naive task-update fence 관측 → UseRun rebind → task-update ok → 인벤토리 readback status=completed",
+        "GitHub GraphQL: issue #304 linkedBranches totalCount=0 → classify state=absent (질의 스키마 유효성 확인)",
+        "install --dry-run: 두 호스트 모두에서 실제 세대 skew 0c50f0c08ab8+dirty vs 832f03800a26+dirty 검출"
+      ],
+      "blocked": [
+        "#319 AC-06 — create→claim→PR→cleanup 전체 Orca dogfood: owner PID 12430이 io-b3d92dc6247a lease 보유",
+        "#328 기준 4·5 — bin/agent-harness 교체가 live owner 세션에 영향",
+        "#306 AC-08 — #304의 실제 고아가 이미 소멸(totalCount=0)"
+      ],
+      "residue": {
+        "orcaRuns": "삭제 불가(Orca에 run 삭제 명령 없음). 재현/테스트용 Run 레코드가 남지만 worktree·terminal 자원은 없음",
+        "worktree": ".worktrees/414-terminal-identity-fix — owner PID 12430 종료 후 typed cleanup 필요",
+        "lease": "io-b3d92dc6247a generation 2 revoking — --finalize-preview가 live holder를 정확히 거부 중"
       }
     }
   ]

@@ -80,3 +80,21 @@ func buildGenerationFromSettings(settings []debug.BuildSetting) NativeBuildGener
 	}
 	return generation
 }
+
+// RunningBuildGenerationString과 FileBuildGenerationString은 설치 경로가 쓰는
+// 짧은 표기 어댑터다. 관측하지 못하면 빈 문자열을 돌려준다 — 호출부가
+// "unknown"과 미관측을 구별할 필요 없이 조용히 판단을 미루게 하기 위해서다.
+func RunningBuildGenerationString() string {
+	return observedGenerationString(RunningBuildGeneration())
+}
+
+func FileBuildGenerationString(path string) string {
+	return observedGenerationString(FileBuildGeneration(path))
+}
+
+func observedGenerationString(generation NativeBuildGeneration) string {
+	if !generation.Observed() {
+		return ""
+	}
+	return generation.String()
+}

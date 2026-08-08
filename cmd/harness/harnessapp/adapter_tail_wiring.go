@@ -6,6 +6,7 @@ import (
 	nativeintegrationt4deps "agent-harness/cmd/harness/validationcli/nativeintegration"
 	claudet4deps "agent-harness/internal/adapter/claude"
 	codext4deps "agent-harness/internal/adapter/codex"
+	installadapter "agent-harness/internal/adapter/install"
 	installutiladapter "agent-harness/internal/adapter/installutil"
 	fingerprintt4deps "agent-harness/internal/adapter/lifecycle/fingerprint"
 	projectbootstrapt4deps "agent-harness/internal/adapter/projectbootstrap"
@@ -19,6 +20,11 @@ func configureAdapterTail() {
 	claudet4deps.EnsureSymlinkPlan = installutiladapter.EnsureSymlinkPlan
 	claudet4deps.HookGroupContainsAgentHarness = installutiladapter.HookGroupContainsAgentHarness
 	claudet4deps.HookTargetDriftMessages = installutiladapter.HookTargetDriftMessages
+	claudet4deps.HookTargetGenerationMessages = func(config map[string]any, h, expected, running string, read func(string) string) []string {
+		return installutiladapter.HookTargetGenerationMessages(config, h, expected, running, read)
+	}
+	claudet4deps.RunningBuildGenerationString = installadapter.RunningBuildGenerationString
+	claudet4deps.FileBuildGenerationString = installadapter.FileBuildGenerationString
 	claudet4deps.PlanHostSkillLinks = installutiladapter.PlanHostSkillLinks
 	claudet4deps.PreToolUseEnforcementFlags = installutiladapter.PreToolUseEnforcementFlags
 	claudet4deps.SemanticSHA256 = installutiladapter.SemanticSHA256
@@ -27,6 +33,11 @@ func configureAdapterTail() {
 	codext4deps.CaptureNativeActivationEvidence = installutiladapter.CaptureNativeActivationEvidence
 	codext4deps.HookGroupContainsAgentHarness = installutiladapter.HookGroupContainsAgentHarness
 	codext4deps.HookTargetDriftMessages = installutiladapter.HookTargetDriftMessages
+	codext4deps.HookTargetGenerationMessages = func(config map[string]any, h, expected, running string, read func(string) string) []string {
+		return installutiladapter.HookTargetGenerationMessages(config, h, expected, running, read)
+	}
+	codext4deps.RunningBuildGenerationString = installadapter.RunningBuildGenerationString
+	codext4deps.FileBuildGenerationString = installadapter.FileBuildGenerationString
 	codext4deps.PlanHostSkillLinks = installutiladapter.PlanHostSkillLinks
 	codext4deps.PreToolUseEnforcementFlags = installutiladapter.PreToolUseEnforcementFlags
 	codext4deps.SemanticSHA256 = installutiladapter.SemanticSHA256
