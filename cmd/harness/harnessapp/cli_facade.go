@@ -32,6 +32,7 @@ type (
 func wireBasicCLIDeps() {
 	configureDocsReaders()
 	configureStateStores()
+	configureDoctorLoopGate()
 	configureRemoteArtifactRules()
 	configureHookPrompts()
 	configureInstallPlans()

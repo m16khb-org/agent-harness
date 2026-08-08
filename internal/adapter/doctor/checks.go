@@ -14,8 +14,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	"agent-harness/internal/adapter/looprun"
 )
 
 const pipeCapacityWarningThreshold = 8192
@@ -66,15 +64,15 @@ func (r *HarnessDoctorResult) checkRepoLocalRuntimeState(root string) {
 }
 
 func (r *HarnessDoctorResult) checkLoopContracts(root string) {
-	summary, warnings := looprun.RepoGateSummaryFor(root)
+	summary, warnings := RepoGateSummaryFor(root)
 	incomplete := summary.Active + summary.Exhausted
 	r.addCheck("loop_contracts", incomplete == 0 && len(warnings) == 0, fmt.Sprintf("active=%d exhausted=%d", summary.Active, summary.Exhausted))
 	if len(warnings) > 0 {
-		r.addIssue("loop_contracts_unreadable", "warning", strings.Join(warnings, "; "), looprun.StateRoot(), &HarnessDoctorFix{Command: "agent-harness loop status --id <loop-id> --json", Description: "Inspect loop state records before PR readiness."})
+		r.addIssue("loop_contracts_unreadable", "warning", strings.Join(warnings, "; "), LoopStateRoot(), &HarnessDoctorFix{Command: "agent-harness loop status --id <loop-id> --json", Description: "Inspect loop state records before PR readiness."})
 		return
 	}
 	if incomplete > 0 {
-		r.addIssue("loop_contracts_incomplete", "warning", fmt.Sprintf("repo has incomplete loop contracts: active=%d exhausted=%d", summary.Active, summary.Exhausted), looprun.StateRoot(), &HarnessDoctorFix{Command: "agent-harness loop status --id <loop-id> --json", Description: "Stop or complete same-repo loop runs before PR readiness."})
+		r.addIssue("loop_contracts_incomplete", "warning", fmt.Sprintf("repo has incomplete loop contracts: active=%d exhausted=%d", summary.Active, summary.Exhausted), LoopStateRoot(), &HarnessDoctorFix{Command: "agent-harness loop status --id <loop-id> --json", Description: "Stop or complete same-repo loop runs before PR readiness."})
 	}
 }
 

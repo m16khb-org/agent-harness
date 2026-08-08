@@ -7,11 +7,6 @@ import (
 	"strings"
 )
 
-type RepoGateSummary struct {
-	Active    int
-	Exhausted int
-}
-
 func RepoGateMissing(repo string) ([]string, []string) {
 	repo = strings.TrimSpace(repo)
 	if repo == "" {
@@ -45,20 +40,20 @@ func RepoGateMissing(repo string) ([]string, []string) {
 	return missing, warnings
 }
 
-func RepoGateSummaryFor(repo string) (RepoGateSummary, []string) {
+func RepoGateSummaryFor(repo string) (loopruncontract.RepoGateSummary, []string) {
 	repo = strings.TrimSpace(repo)
 	if repo == "" {
-		return RepoGateSummary{}, nil
+		return loopruncontract.RepoGateSummary{}, nil
 	}
 	normalizedRepo, err := normalizeRepo(repo)
 	if err != nil {
-		return RepoGateSummary{}, []string{"failed to resolve loop repo: " + err.Error()}
+		return loopruncontract.RepoGateSummary{}, []string{"failed to resolve loop repo: " + err.Error()}
 	}
 	ids, err := ListLoopIDs()
 	if err != nil {
-		return RepoGateSummary{}, []string{"failed to scan loop runs: " + err.Error()}
+		return loopruncontract.RepoGateSummary{}, []string{"failed to scan loop runs: " + err.Error()}
 	}
-	summary := RepoGateSummary{}
+	summary := loopruncontract.RepoGateSummary{}
 	warnings := []string{}
 	for _, id := range ids {
 		loop, err := ReadLoopExisting(id)

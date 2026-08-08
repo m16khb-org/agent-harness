@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
-
-	"agent-harness/internal/adapter/issueops"
 )
 
 const orchestrationChildReadLimit = 16
@@ -49,7 +47,7 @@ func boundOrchestrationCycle(repo string) (issueopscontract.IssueOpsRecord, bool
 	var match issueopscontract.IssueOpsRecord
 	for _, id := range ids {
 		record, readErr := ReadIssueOps(IssueOpsStateRoot(), id)
-		if readErr != nil || !record.OK || record.Phase == issueops.IssueOpsPhaseDone || record.Execution == nil {
+		if readErr != nil || !record.OK || record.Phase == issueopscontract.IssueOpsPhaseDone || record.Execution == nil {
 			continue
 		}
 		workspace := record.Execution.Workspace
@@ -85,7 +83,7 @@ func orchestrationChildrenReminder(record issueopscontract.IssueOpsRecord) strin
 	unvalidated := 0
 	for _, ref := range bounded {
 		child, ok := readBoundChild(ref.CycleID)
-		if !ok || child.Phase != issueops.IssueOpsPhaseDone {
+		if !ok || child.Phase != issueopscontract.IssueOpsPhaseDone {
 			continue
 		}
 		done++
@@ -105,7 +103,7 @@ func orchestrationChildMissingKeys(record issueopscontract.IssueOpsRecord) []str
 			continue
 		}
 		child, ok := readBoundChild(id)
-		if !ok || child.Phase != issueops.IssueOpsPhaseDone {
+		if !ok || child.Phase != issueopscontract.IssueOpsPhaseDone {
 			missing = append(missing, "child_incomplete:"+id)
 			continue
 		}
