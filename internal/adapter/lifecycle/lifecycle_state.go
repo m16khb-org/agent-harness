@@ -25,6 +25,10 @@ func BuildLifecyclePreToolUseDecision(req lifecyclecontract.HookToolUseLifecycle
 		Command:  strings.TrimSpace(req.Command),
 		Source:   source,
 	}
+	// 분류 이전에 executable identity를 정규화한다. trusted checkout 안의
+	// `bin/agent-harness` 절대 호출은 PATH token과 같은 바이너리이므로 같은
+	// 판정을 받아야 한다(#267/#292). result.Command는 관측한 원본을 유지한다.
+	req = canonicalizeTrustedHarnessExecutable(req)
 	if reason, deny := generatedIssueOpsExecutableBlock(req); reason != "" {
 		result.Decision = "block"
 		result.Reason = reason

@@ -87,7 +87,8 @@ func ExactIssueOpsOwnerMutation(command ExactIssueOpsCommand) (map[string][]stri
 		"decision add", "ai-slop-clean record", "feedback mark-issue-updated", "feedback resolve",
 		"implementation-review record", "branch prepare", "intent record", "domain-review record", "design review", "regress",
 		"plan-prep record",
-		"link-child", "child start", "child status", "child accept", "child reject", "child drop",
+		"link-child", "link-related", "feedback add",
+		"child start", "child status", "child accept", "child reject", "child drop",
 		"remote create-child", "remote create-pr", "remote verify-artifact", "remote reflect-devils-advocate":
 	default:
 		return nil, false
@@ -278,6 +279,10 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 		return v("--id", "--worktree-path", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
 	case "link-child":
 		return v("--id", "--child-url", "--title", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
+	case "link-related":
+		return v("--id", "--type", "--related-url", "--title", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
+	case "feedback add":
+		return v("--id", "--source", "--body", "--classification", "--host", "--session-id", "--agent-id", "--cwd"), b("--json"), r, true
 	case "compatibility review":
 		values := v("--id", "--host", "--session-id", "--agent-id", "--cwd", "--backward-compatibility", "--side-effect", "--rollback-plan", "--verification", "--blocker")
 		for _, name := range []string{"--backward-compatibility", "--side-effect", "--verification", "--blocker"} {
