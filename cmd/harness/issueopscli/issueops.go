@@ -6,8 +6,6 @@ import (
 	"agent-harness/cmd/harness/issueopscli/remotecmd"
 	"agent-harness/internal/adapter/issueops"
 	"agent-harness/internal/adapter/issueops/orphancleanup"
-	"agent-harness/internal/adapter/operationalhealth"
-	"agent-harness/internal/adapter/orca"
 	corehealth "agent-harness/internal/domain/operationalhealth"
 	"agent-harness/internal/port"
 	provenanceport "agent-harness/internal/port/issueopsprovenance"
@@ -239,18 +237,17 @@ func normalizeOrcaRemoveWorktreeErr(err error) error {
 
 func issueOpsFeedbackCleanupDeps(provenance provenanceport.Observer) feedbackcleanup.Deps {
 	orphanDeps := issueOpsOrphanCleanupDeps()
-	orcaClient := orca.New()
 	return feedbackcleanup.Deps{
 		// cleanup finish ② 단계: orca 회수. "이미 없음"은 멱등 계약상 성공.
 		RemoveOrcaWorktree: func(ctx context.Context, worktreeID string) error {
-			return normalizeOrcaRemoveWorktreeErr(orcaClient.RemoveWorktree(ctx, worktreeID, false))
+			return normalizeOrcaRemoveWorktreeErr(RemoveOrcaWorktree(ctx, worktreeID, false))
 		},
 		// cleanup abandon pending_intent_safe 게이트: sealed marker로 orca
 		// 인벤토리를 실조회한다. 조회 전용이며 mutation은 부르지 않는다.
-		OrcaIntent: orca.NewExecution(),
+		OrcaIntent: NewOrcaExecutionIntent(),
 		// cleanup abandon orca_resources_absent 게이트: orca 자원 잔여를
 		// 실조회한다. 같은 provisioner가 owner 인벤토리도 제공한다(#136).
-		OrcaOwner:    orca.NewExecution(),
+		OrcaOwner:    NewOrcaExecutionOwner(),
 		Provenance:   provenance,
 		ParseFlags:   parseIssueOpsFlags,
 		PrintResult:  printIssueOpsResult,
@@ -273,10 +270,9 @@ func issueOpsFeedbackCleanupDeps(provenance provenanceport.Observer) feedbackcle
 }
 
 func issueOpsOrphanCleanupDeps() orphancleanup.Dependencies {
-	collector := operationalhealth.Collector{Git: operationalhealth.ExecGitRunner{}, Orca: orca.New()}
 	return orphancleanup.Dependencies{
 		Collect: func(ctx context.Context, repo string) (corehealth.Snapshot, error) {
-			return collector.Collect(ctx, repo), nil
+			return CollectOperationalHealth(ctx, repo), nil
 		},
 		VerifyMerged: verifyIssueOpsRemoteArtifactMergedLive,
 	}
