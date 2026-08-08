@@ -124,10 +124,17 @@ func TestLaunchOwnerDoesNotWaitOnAmbiguousPTYInventory(t *testing.T) {
 
 // 마커가 끝내 나타나지 않으면 여전히 거부한다. 대기는 봉인 검증을 늦추는 것이지
 // 없애는 것이 아니다.
-func TestLaunchOwnerStillRefusesWhenTheMarkerNeverAppears(t *testing.T) {
+// TestLaunchOwnerRefusesAForeignStableTitle는 봉인 계약을 고정한다.
+//
+// 예전에는 "마커가 없으면 거부"였다. 그 계약은 relay 0.1.0+66c426c5173c에서
+// 성립하지 않는다 — 그 runtime은 모든 terminal의 stableTabTitle을 null로 두고
+// live title은 에이전트가 덮어쓴다. 그래서 marker 부재 자체는 더 이상 거부
+// 근거가 아니고(created identity가 결속을 담당한다), **다른 값이 들어 있는
+// 경우**가 거부 근거다(#414).
+func TestLaunchOwnerRefusesAForeignStableTitle(t *testing.T) {
 	prepared, launch := executionLaunchSealed(t)
 	fake := executionLaunchFake(t)
-	fake.terminalInventoryTitles = []string{""}
+	fake.terminalInventoryTitles = []string{"agent-harness issueops-v1 lifecycle=io-other"}
 
 	// 상한을 밀리초로 줄인다 — 이 테스트가 검증하는 것은 "상한을 넘으면
 	// 거부한다"이고, 그 상한의 실제 길이는 상수 주석이 근거를 갖는다.
@@ -136,7 +143,7 @@ func TestLaunchOwnerStillRefusesWhenTheMarkerNeverAppears(t *testing.T) {
 	}
 	_, err := provisioner.LaunchOwner(context.Background(), prepared, executionLaunchProbe(), launch)
 	if err == nil {
-		t.Fatal("마커가 없는 터미널을 소유자로 받아들이면 봉인이 무의미하다")
+		t.Fatal("다른 lifecycle의 stable title을 가진 터미널을 받아들이면 봉인이 무의미하다")
 	}
 	var orcaErr *port.OrcaError
 	if !asOrcaError(err, &orcaErr) || orcaErr.Code != "terminal_identity_mismatch" {
@@ -169,5 +176,21 @@ func TestLaunchOwnerDoesNotWaitWhenTheMarkerIsAlreadyThere(t *testing.T) {
 	}
 	if fake.inventoryCalls != 0 {
 		t.Fatalf("생성 응답이 이미 봉인과 맞으면 재조회할 이유가 없다: inventoryCalls=%d", fake.inventoryCalls)
+	}
+}
+
+// TestLaunchOwnerAcceptsWhenTheRuntimeOmitsStableTitles는 #414의 실측을 고정한다.
+// stableTabTitle을 제공하지 않는 runtime에서도 created identity로 결속된
+// terminal은 owner로 인정돼야 한다 — 그렇지 않으면 Orca 모드가 영구히 막힌다.
+func TestLaunchOwnerAcceptsWhenTheRuntimeOmitsStableTitles(t *testing.T) {
+	prepared, launch := executionLaunchSealed(t)
+	fake := executionLaunchFake(t)
+	fake.terminalInventoryTitles = []string{""}
+
+	provisioner := &ExecutionProvisioner{
+		client: fake, terminalSettleBudget: 30 * time.Millisecond, terminalSettleInterval: 5 * time.Millisecond,
+	}
+	if _, err := provisioner.LaunchOwner(context.Background(), prepared, executionLaunchProbe(), launch); err != nil {
+		t.Fatalf("stable title을 제공하지 않는 runtime에서도 결속돼야 한다: %v", err)
 	}
 }
