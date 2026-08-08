@@ -1,7 +1,7 @@
 package projectcli
 
 import (
-	projectbootstrap "agent-harness/internal/adapter/projectbootstrap"
+	projectbootstrapcontract "agent-harness/internal/contract/projectbootstrap"
 	projectdocscontract "agent-harness/internal/contract/projectdocs"
 	"flag"
 	"fmt"
@@ -21,7 +21,7 @@ func runProjectBootstrap(args []string) error {
 	if fs.NArg() > 0 {
 		*repo = fs.Arg(0)
 	}
-	result, err := projectbootstrap.BootstrapProjectDocs(projectbootstrap.ProjectDocsBootstrapRequest{RepoRoot: *repo, Write: *write && !*dryRun, Sync: *sync})
+	result, err := bootstrapProjectDocs(projectbootstrapcontract.ProjectDocsBootstrapRequest{RepoRoot: *repo, Write: *write && !*dryRun, Sync: *sync})
 	if err != nil {
 		return err
 	}

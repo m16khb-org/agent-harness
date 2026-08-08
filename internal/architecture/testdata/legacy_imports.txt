@@ -8,8 +8,6 @@ cmd/harness/issueopscli/feedbackcleanup -> internal/adapter/issueops
 cmd/harness/issueopscli/feedbackcleanup -> internal/adapter/issueops/orphancleanup
 cmd/harness/issueopscli/remotecmd -> internal/adapter/issueops
 cmd/harness/mcpcli -> internal/adapter/issueops
-cmd/harness/mcpcli -> internal/adapter/projectbootstrap
-cmd/harness/projectcli -> internal/adapter/projectbootstrap
 cmd/harness/statuscli -> internal/adapter/doctor
 internal/adapter/inbound/issueopscompletion -> internal/adapter/issueops
 internal/adapter/inbound/issueopslease -> internal/adapter/issueops
