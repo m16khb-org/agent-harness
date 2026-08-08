@@ -7,10 +7,11 @@ import (
 	audit "agent-harness/internal/adapter/audit"
 	statestore "agent-harness/internal/adapter/outbound/state"
 	policy "agent-harness/internal/adapter/policy"
+	policydomain "agent-harness/internal/domain/policy"
 )
 
-func commandPolicyRequestFromArgs(args map[string]any) policy.CommandPolicyRequest {
-	return policy.CommandPolicyRequest{
+func commandPolicyRequestFromArgs(args map[string]any) policydomain.CommandPolicyRequest {
+	return policydomain.CommandPolicyRequest{
 		WorkspaceRoot:  argmap.String(args, "workspace_root"),
 		CWD:            argmap.String(args, "cwd"),
 		Argv:           argmap.StringSlice(args, "argv"),

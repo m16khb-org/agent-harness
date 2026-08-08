@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/policy"
+	"agent-harness/internal/domain/policy"
 )
 
 const (

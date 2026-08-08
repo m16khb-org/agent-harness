@@ -7,8 +7,8 @@ import (
 	"time"
 	"unicode"
 
-	"agent-harness/internal/adapter/policy"
 	model "agent-harness/internal/contract/issueops"
+	"agent-harness/internal/domain/policy"
 )
 
 type Store struct {

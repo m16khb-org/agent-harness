@@ -12,8 +12,8 @@ import (
 	"strings"
 	"sync"
 
-	"agent-harness/internal/adapter/policy"
 	"agent-harness/internal/adapter/toolconformance"
+	"agent-harness/internal/domain/policy"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

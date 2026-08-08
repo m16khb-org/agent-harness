@@ -5,14 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 )
-
-var secretPathRe = regexp.MustCompile(`(?i)(^|/)(\.env(\.|$)|id_rsa|id_dsa|id_ecdsa|id_ed25519|.*\.pem$|.*\.key$|.*\.p12$|.*\.pfx$|.*credentials.*|.*secret.*)`)
-
-var secretArgRe = regexp.MustCompile(`(?i)((token|password|passwd|secret|api[_-]?key|credential|authorization)=|authorization[[:space:]]*:[[:space:]]*bearer[[:space:]]+[^[:space:]]+)`)
 
 // Built-in policy sets. These are the default allow/deny lists.
 var builtinShellInterpreters = stringSet("sh", "bash", "zsh", "fish", "dash", "ksh")

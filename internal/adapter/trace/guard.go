@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"agent-harness/internal/adapter/policy"
+	"agent-harness/internal/domain/policy"
 )
 
 func guardFindings(doc map[string]any) []TraceAnalysisFinding {

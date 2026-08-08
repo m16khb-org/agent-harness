@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"agent-harness/internal/adapter/policy"
+	policydomain "agent-harness/internal/domain/policy"
 )
 
-func RunReadOnlyWorkerJob(kind, payload string, req policy.CommandPolicyRequest) (WorkerJob, error) {
+func RunReadOnlyWorkerJob(kind, payload string, req policydomain.CommandPolicyRequest) (WorkerJob, error) {
 	job, err := EnqueueWorkerJob(kind, payload)
 	if err != nil {
 		return job, err

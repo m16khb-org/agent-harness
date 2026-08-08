@@ -10,7 +10,7 @@ import (
 	"agent-harness/internal/domain/auditid"
 )
 
-func EvaluateCommandPolicy(req CommandPolicyRequest) CommandPolicyEvaluation {
+func EvaluateCommandPolicy(req policydomain.CommandPolicyRequest) policydomain.CommandPolicyEvaluation {
 	root := absOrOriginal(req.WorkspaceRoot)
 	cwd := absOrOriginal(req.CWD)
 	catalog := policyCatalogForWorkspace(root)
@@ -25,18 +25,18 @@ func EvaluateCommandPolicy(req CommandPolicyRequest) CommandPolicyEvaluation {
 	if auditID == "" {
 		auditID = auditid.Generate(req.WorkspaceRoot, req.CWD, req.Argv)
 	}
-	result := CommandPolicyEvaluation{
+	result := policydomain.CommandPolicyEvaluation{
 		OK:             true,
 		AuditLogID:     auditID,
 		WorkspaceRoot:  root,
 		CWD:            cwd,
-		Argv:           redactArgv(argv),
+		Argv:           policydomain.RedactArgv(argv),
 		Timeout:        timeout.String(),
-		EnvAllowlist:   cleanEnvAllowlist(req.EnvAllowlist),
+		EnvAllowlist:   policydomain.CleanEnvAllowlist(req.EnvAllowlist),
 		NetworkAllowed: req.NetworkAllowed,
 		WriteAllowed:   req.WriteAllowed,
 		ShellAllowed:   req.ShellAllowed,
-		ShellReason:    redactFreeform(req.ShellReason),
+		ShellReason:    policydomain.RedactFreeform(req.ShellReason),
 		Tier: policydomain.ResolveTier(policydomain.Request{
 			WriteAllowed: req.WriteAllowed, NetworkAllowed: req.NetworkAllowed, ShellAllowed: req.ShellAllowed,
 		}),
@@ -73,13 +73,13 @@ func EvaluateCommandPolicy(req CommandPolicyRequest) CommandPolicyEvaluation {
 		addDeny("timeout_exceeds_15m")
 	}
 	for _, envName := range req.EnvAllowlist {
-		if !validEnvName(envName) {
+		if !policydomain.ValidEnvName(envName) {
 			addDeny("invalid_env_allowlist_name")
 			break
 		}
 	}
 	for _, arg := range argv {
-		if secretLikeArg(arg) {
+		if policydomain.SecretLikeArg(arg) {
 			addDeny("secret_like_argument")
 			break
 		}

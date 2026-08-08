@@ -1,7 +1,7 @@
 package policycli
 
 import (
-	policy "agent-harness/internal/adapter/policy"
+	policy "agent-harness/internal/domain/policy"
 	"agent-harness/internal/testsupport"
 	"encoding/json"
 	"errors"

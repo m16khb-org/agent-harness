@@ -10,8 +10,8 @@ import (
 	"time"
 
 	corestate "agent-harness/internal/adapter/outbound/state"
-	"agent-harness/internal/adapter/policy"
 	"agent-harness/internal/domain/auditid"
+	"agent-harness/internal/domain/policy"
 )
 
 const (

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/policy"
 	model "agent-harness/internal/contract/issueops"
+	"agent-harness/internal/domain/policy"
 )
 
 // Store is the persistence seam, mirroring the compatibility-review recorder.

@@ -8,9 +8,9 @@ import (
 	commitsuggest "agent-harness/internal/adapter/commitsuggest"
 	lintdiagnose "agent-harness/internal/adapter/lintdiagnose"
 	webfetchoutbound "agent-harness/internal/adapter/outbound/webfetch"
-	policy "agent-harness/internal/adapter/policy"
 	worker "agent-harness/internal/adapter/worker"
 	webfetchcontract "agent-harness/internal/contract/webfetch"
+	policy "agent-harness/internal/domain/policy"
 )
 
 func handleAssistantWorkerMCPToolCall(call MCPToolCall) MCPToolOutcome {

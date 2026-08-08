@@ -7,9 +7,12 @@ import (
 	"strings"
 )
 
+var secretPathRe = regexp.MustCompile(`(?i)(^|/)(\.env(\.|$)|id_rsa|id_dsa|id_ecdsa|id_ed25519|.*\.pem$|.*\.key$|.*\.p12$|.*\.pfx$|.*credentials.*|.*secret.*)`)
+var secretArgRe = regexp.MustCompile(`(?i)((token|password|passwd|secret|api[_-]?key|credential|authorization)=|authorization[[:space:]]*:[[:space:]]*bearer[[:space:]]+[^[:space:]]+)`)
+
 var diagnosticURLPattern = regexp.MustCompile(`https?://[^\s]+`)
 
-func cleanEnvAllowlist(items []string) []string {
+func CleanEnvAllowlist(items []string) []string {
 	out := []string{}
 	for _, item := range items {
 		item = strings.TrimSpace(item)
@@ -21,11 +24,7 @@ func cleanEnvAllowlist(items []string) []string {
 	return out
 }
 
-func CleanEnvAllowlist(items []string) []string {
-	return cleanEnvAllowlist(items)
-}
-
-func validEnvName(name string) bool {
+func ValidEnvName(name string) bool {
 	if name == "" {
 		return false
 	}
@@ -43,36 +42,28 @@ func validEnvName(name string) bool {
 	return true
 }
 
-func redactArgv(argv []string) []string {
+func RedactArgv(argv []string) []string {
 	out := make([]string, len(argv))
 	for i, arg := range argv {
-		out[i] = redactFreeform(arg)
+		out[i] = RedactFreeform(arg)
 	}
 	return out
 }
 
-func RedactArgv(argv []string) []string {
-	return redactArgv(argv)
-}
-
-func redactFreeform(s string) string {
-	if secretLikeArg(s) {
+func RedactFreeform(s string) string {
+	if SecretLikeArg(s) {
 		return "<redacted>"
 	}
 	return s
 }
 
-func RedactFreeform(s string) string {
-	return redactFreeform(s)
-}
-
 func RedactDiagnostic(s string) string {
-	if redacted := redactFreeform(s); redacted != s {
+	if redacted := RedactFreeform(s); redacted != s {
 		return redacted
 	}
 	return diagnosticURLPattern.ReplaceAllString(s, "[REDACTED_URL]")
 }
 
-func secretLikeArg(arg string) bool {
+func SecretLikeArg(arg string) bool {
 	return secretArgRe.MatchString(arg) || secretPathRe.MatchString(filepath.ToSlash(arg))
 }

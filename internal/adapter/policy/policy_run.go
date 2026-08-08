@@ -1,6 +1,7 @@
 package policy
 
 import (
+	policydomain "agent-harness/internal/domain/policy"
 	"bytes"
 	"context"
 	"fmt"
@@ -10,11 +11,11 @@ import (
 	"time"
 )
 
-func FakeRunCommand(req CommandPolicyRequest) CommandFakeRunResult {
+func FakeRunCommand(req policydomain.CommandPolicyRequest) policydomain.CommandFakeRunResult {
 	started := time.Now()
 	policy := EvaluateCommandPolicy(req)
 	finished := time.Now()
-	result := CommandFakeRunResult{
+	result := policydomain.CommandFakeRunResult{
 		OK:         policy.Allowed,
 		Executed:   false,
 		ExitCode:   0,
@@ -32,13 +33,13 @@ func FakeRunCommand(req CommandPolicyRequest) CommandFakeRunResult {
 	return result
 }
 
-func RunReadOnlyCommand(req CommandPolicyRequest) CommandRunResult {
+func RunReadOnlyCommand(req policydomain.CommandPolicyRequest) policydomain.CommandRunResult {
 	req.WriteAllowed = false
 	req.NetworkAllowed = false
 	req.ShellAllowed = false
 	started := time.Now()
 	policy := EvaluateCommandPolicy(req)
-	result := CommandRunResult{
+	result := policydomain.CommandRunResult{
 		OK:        policy.Allowed,
 		Executed:  false,
 		ExitCode:  0,
@@ -72,8 +73,8 @@ func RunReadOnlyCommand(req CommandPolicyRequest) CommandRunResult {
 	result.FinishedAt = finished.UTC().Format(time.RFC3339Nano)
 	result.DurationMS = finished.Sub(started).Milliseconds()
 	result.TimedOut = ctx.Err() == context.DeadlineExceeded
-	result.Stdout = budgetOutput(redactFreeform(stdout.String()))
-	result.Stderr = budgetOutput(redactFreeform(stderr.String()))
+	result.Stdout = budgetOutput(policydomain.RedactFreeform(stdout.String()))
+	result.Stderr = budgetOutput(policydomain.RedactFreeform(stderr.String()))
 	if err != nil {
 		result.OK = false
 		result.ExitCode = 1
@@ -95,7 +96,7 @@ func RunReadOnlyCommand(req CommandPolicyRequest) CommandRunResult {
 
 func commandEnv(allowlist []string) []string {
 	allowed := map[string]bool{}
-	for _, name := range cleanEnvAllowlist(allowlist) {
+	for _, name := range policydomain.CleanEnvAllowlist(allowlist) {
 		allowed[name] = true
 	}
 	env := []string{}

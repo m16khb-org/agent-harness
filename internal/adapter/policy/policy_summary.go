@@ -25,9 +25,9 @@ func CommandPolicySummary() map[string]any {
 
 func commandPolicyTiers() []map[string]any {
 	return []map[string]any{
-		{"name": PolicyTierReadOnly, "requires": []string{}, "rationale": policydomain.Rationale(PolicyTierReadOnly)},
-		{"name": PolicyTierWorkspaceWrite, "requires": []string{"write_allowed"}, "rationale": policydomain.Rationale(PolicyTierWorkspaceWrite)},
-		{"name": PolicyTierNetworkAccess, "requires": []string{"network_allowed"}, "rationale": policydomain.Rationale(PolicyTierNetworkAccess)},
-		{"name": PolicyTierShellException, "requires": []string{"shell_allowed", "shell_reason"}, "rationale": policydomain.Rationale(PolicyTierShellException)},
+		{"name": policydomain.PolicyTierReadOnly, "requires": []string{}, "rationale": policydomain.Rationale(policydomain.PolicyTierReadOnly)},
+		{"name": policydomain.PolicyTierWorkspaceWrite, "requires": []string{"write_allowed"}, "rationale": policydomain.Rationale(policydomain.PolicyTierWorkspaceWrite)},
+		{"name": policydomain.PolicyTierNetworkAccess, "requires": []string{"network_allowed"}, "rationale": policydomain.Rationale(policydomain.PolicyTierNetworkAccess)},
+		{"name": policydomain.PolicyTierShellException, "requires": []string{"shell_allowed", "shell_reason"}, "rationale": policydomain.Rationale(policydomain.PolicyTierShellException)},
 	}
 }
