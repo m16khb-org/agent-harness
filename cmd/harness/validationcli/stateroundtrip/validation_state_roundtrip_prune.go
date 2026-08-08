@@ -1,7 +1,6 @@
 package stateroundtrip
 
 import (
-	statestore "agent-harness/internal/adapter/outbound/state"
 	statecontract "agent-harness/internal/contract/state"
 	"encoding/json"
 )
@@ -17,7 +16,7 @@ func (s *stateRoundtripStateSession) validatePrune() StepResult {
 		return s.fail(err.Error())
 	}
 	oldWriteResult.Record.UpdatedAt = "2000-01-01T00:00:00Z"
-	if _, err := statestore.WriteStateRecord(s.input.tempState, oldKey, oldWriteResult.Record); err != nil {
+	if _, err := WriteStateRecord(s.input.tempState, oldKey, oldWriteResult.Record); err != nil {
 		return s.fail(err.Error())
 	}
 

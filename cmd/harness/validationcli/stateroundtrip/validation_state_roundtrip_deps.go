@@ -7,7 +7,6 @@ import (
 
 	"agent-harness/cmd/harness/commandstep"
 	"agent-harness/cmd/harness/selfworkflow"
-	statestore "agent-harness/internal/adapter/outbound/state"
 	statecontract "agent-harness/internal/contract/state"
 )
 
@@ -47,7 +46,7 @@ func (deps stateRoundtripValidationDeps) withDefaults() stateRoundtripValidation
 		deps.writeFile = os.WriteFile
 	}
 	if deps.stateRead == nil {
-		deps.stateRead = statestore.StateRead
+		deps.stateRead = StateRead
 	}
 	if deps.writeSnapshot == nil {
 		deps.writeSnapshot = selfworkflow.WriteSelfAugmentSnapshotRecord

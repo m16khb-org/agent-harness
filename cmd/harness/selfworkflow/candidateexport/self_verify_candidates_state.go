@@ -1,7 +1,6 @@
 package candidateexport
 
 import (
-	statestore "agent-harness/internal/adapter/outbound/state"
 	"encoding/json"
 	"time"
 )
@@ -30,9 +29,9 @@ func SaveSelfVerificationCandidateExport(result *SelfVerificationCandidateExport
 		result.StateCheckpoint = &SelfAugmentStateCheckpoint{OK: false, Key: key, Error: err.Error()}
 		return err
 	}
-	state, err := statestore.StateWrite(key, string(b))
+	state, err := StateWrite(key, string(b))
 	if err != nil {
-		result.StateCheckpoint = &SelfAugmentStateCheckpoint{OK: false, Key: key, StateDir: statestore.StateDir(), Error: err.Error()}
+		result.StateCheckpoint = &SelfAugmentStateCheckpoint{OK: false, Key: key, StateDir: StateDir(), Error: err.Error()}
 		return err
 	}
 	result.StateCheckpoint = &SelfAugmentStateCheckpoint{

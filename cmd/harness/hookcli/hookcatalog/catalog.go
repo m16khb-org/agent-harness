@@ -15,7 +15,6 @@ import (
 	hookprompt "agent-harness/internal/adapter/hookprompt"
 	coreinstall "agent-harness/internal/adapter/install"
 	lifecycle "agent-harness/internal/adapter/lifecycle"
-	statestore "agent-harness/internal/adapter/outbound/state"
 )
 
 type Config struct {
@@ -111,7 +110,7 @@ func RunSessionStart(args []string, config Config) error {
 	// permission repair on known sqlite state roots. Amortized to at most
 	// once per 24h via a stat-only sentinel — maintenance is cheap (ms) but
 	// unnecessary on every session start.
-	_, _, _ = statestore.MaybeMaintainStateStores(24 * time.Hour)
+	_, _, _ = MaybeMaintainStateStores(24 * time.Hour)
 	if config.MaybeDetectStuckWorkerJobs != nil {
 		_, _, _ = config.MaybeDetectStuckWorkerJobs(6 * time.Hour)
 	}
