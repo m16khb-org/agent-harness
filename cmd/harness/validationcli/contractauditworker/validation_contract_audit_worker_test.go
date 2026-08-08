@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"agent-harness/cmd/harness/contractcli"
-	"agent-harness/internal/adapter/cli"
 	workercontract "agent-harness/internal/contract/worker"
+	"agent-harness/internal/domain/cli"
 )
 
 func TestValidateCommandAuditWithDepsCoversSuccessCommandReadAndContractFailures(t *testing.T) {

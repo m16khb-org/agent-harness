@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
-	hookadapter "agent-harness/internal/adapter/hook"
 	hookprompt "agent-harness/internal/adapter/hookprompt"
 	lifecycle "agent-harness/internal/adapter/lifecycle"
+	hookadapter "agent-harness/internal/domain/hook"
 	nextaction "agent-harness/internal/domain/nextaction"
 )
 

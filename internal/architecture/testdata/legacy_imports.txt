@@ -1,15 +1,11 @@
 cmd/harness/basiccli -> internal/adapter/doctor
 cmd/harness/basiccli -> internal/adapter/guard
-cmd/harness/contractcli -> internal/adapter/cli
 cmd/harness/contractcli -> internal/adapter/mcp
 cmd/harness/contractcli -> internal/adapter/toolconformance
-cmd/harness/hookcli -> internal/adapter/hook
 cmd/harness/hookcli -> internal/adapter/hookprompt
 cmd/harness/hookcli -> internal/adapter/lifecycle
-cmd/harness/hookcli/hookcatalog -> internal/adapter/hook
 cmd/harness/hookcli/hookcatalog -> internal/adapter/hookprompt
 cmd/harness/hookcli/hookcatalog -> internal/adapter/lifecycle
-cmd/harness/issueopscli -> internal/adapter/cli
 cmd/harness/issueopscli -> internal/adapter/issueops
 cmd/harness/issueopscli -> internal/adapter/issueops/loopgate
 cmd/harness/issueopscli -> internal/adapter/issueops/orphancleanup

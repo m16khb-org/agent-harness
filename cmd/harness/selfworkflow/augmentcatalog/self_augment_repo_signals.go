@@ -141,7 +141,7 @@ func repoSignalRules() []repoSignalRule {
 				docsContainTerm(root, "install --dry-run")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
-			signals.HasCLIAdapterSplit = fileContainsTerm(root, filepath.Join("internal", "adapter", "cli", "usage.go"), "func Usage") &&
+			signals.HasCLIAdapterSplit = fileContainsTerm(root, filepath.Join("internal", "domain", "cli", "usage.go"), "func Usage") &&
 				fileContainsTerm(root, filepath.Join("cmd", "harness", "harnessapp", "app.go"), "cliadapter.Usage")
 		}},
 		{func(root string, signals *SelfAugmentRepoSignals) {
