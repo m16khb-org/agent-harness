@@ -1,6 +1,8 @@
 package hookcatalog
 
 import (
+	hookfailurecontract "agent-harness/internal/contract/hookfailure"
+	hookmetricscontract "agent-harness/internal/contract/hookmetrics"
 	"flag"
 	"io"
 	"os"
@@ -9,8 +11,6 @@ import (
 
 	"agent-harness/cmd/harness/hookcli/hookinput"
 	hookadapter "agent-harness/internal/adapter/hook"
-	hookfailure "agent-harness/internal/adapter/hookfailure"
-	hookmetrics "agent-harness/internal/adapter/hookmetrics"
 	hookprompt "agent-harness/internal/adapter/hookprompt"
 	coreinstall "agent-harness/internal/adapter/install"
 	lifecycle "agent-harness/internal/adapter/lifecycle"
@@ -19,9 +19,12 @@ import (
 )
 
 type Config struct {
-	ResolveTarget     func(string) string
-	PrintJSON         func(any) error
-	RuntimeDiagnostic func() (coreinstall.NativeRuntimeDiagnostic, error)
+	// prune 연산은 composition root가 주입한다.
+	PruneHookFailureLog func(maxAge time.Duration) (hookfailurecontract.HookFailurePruneResult, error)
+	PruneHookMetricsLog func(maxAge time.Duration) (hookmetricscontract.HookMetricsPruneResult, error)
+	ResolveTarget       func(string) string
+	PrintJSON           func(any) error
+	RuntimeDiagnostic   func() (coreinstall.NativeRuntimeDiagnostic, error)
 }
 
 func RunPostCompact(args []string, config Config) error {
@@ -90,8 +93,14 @@ func RunSessionStart(args []string, config Config) error {
 	// Best-effort rotation of the hook-failure log (quality program Q2 /
 	// audit P1): the JSONL grew without bound because pruning required a
 	// manual command. Session start is the natural low-frequency hook for it.
-	_, _ = hookfailure.PruneHookFailureLog(720 * time.Hour)
-	_, _ = hookmetrics.PruneHookMetricsLog(720 * time.Hour)
+	// prune은 best-effort 유지보수다. 주입되지 않았으면 hook 자체를 실패시키지 않고
+	// 건너뛴다.
+	if config.PruneHookFailureLog != nil {
+		_, _ = config.PruneHookFailureLog(720 * time.Hour)
+	}
+	if config.PruneHookMetricsLog != nil {
+		_, _ = config.PruneHookMetricsLog(720 * time.Hour)
+	}
 	// Best-effort self-heal of crashed worker jobs (A2/W1): mark dead-PID running
 	// jobs failed. Amortized to at most once per 6h via a stat-only sentinel
 	// because the detector is an unbounded full-dir scan and the worker dir has

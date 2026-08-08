@@ -2,7 +2,10 @@ package harnessapp
 
 import (
 	"agent-harness/cmd/harness/hookcli"
+	hookfailurecli "agent-harness/cmd/harness/hookcli/hookfailure"
 	"agent-harness/cmd/harness/updatecli"
+	hookfailureadapter "agent-harness/internal/adapter/hookfailure"
+	"agent-harness/internal/adapter/hookmetrics"
 )
 
 type daemonProcess = updatecli.DaemonProcess
@@ -23,6 +26,15 @@ func wireHostCLIDeps() {
 
 func configureHookCLI() {
 	hookcli.ResolveTarget = resolveTarget
+	hookcli.RecordHookMetricEvent = hookmetrics.RecordHookMetricEvent
+	hookcli.PruneHookFailureLog = hookfailureadapter.PruneHookFailureLog
+	hookcli.PruneHookMetricsLog = hookmetrics.PruneHookMetricsLog
+	hookfailurecli.RecordHookFailureEvent = hookfailureadapter.RecordHookFailureEvent
+	hookfailurecli.ListHookFailureEvents = hookfailureadapter.ListHookFailureEvents
+	hookfailurecli.PruneHookFailureLog = hookfailureadapter.PruneHookFailureLog
+	hookfailurecli.SummarizeHookFailureLog = hookfailureadapter.SummarizeHookFailureLog
+	hookfailurecli.SummarizeHookMetricsLog = hookmetrics.SummarizeHookMetricsLog
+	hookfailurecli.MetricsRate = hookmetrics.Rate
 }
 
 func runHook(args []string) error {

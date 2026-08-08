@@ -2,6 +2,7 @@ package hookfailure
 
 import (
 	corestate "agent-harness/internal/adapter/outbound/state"
+	hookfailurecontract "agent-harness/internal/contract/hookfailure"
 	statecontract "agent-harness/internal/contract/state"
 	"agent-harness/internal/domain/policy"
 	"bufio"
@@ -16,31 +17,7 @@ import (
 const hookFailureLogFile = statecontract.HookFailureLogFile
 const hookFailureSnippetLimit = 500
 
-type HookFailureEvent struct {
-	Timestamp      string   `json:"timestamp,omitempty"`
-	Hook           string   `json:"hook"`
-	Host           string   `json:"host,omitempty"`
-	Repo           string   `json:"repo,omitempty"`
-	CWD            string   `json:"cwd,omitempty"`
-	Tool           string   `json:"tool,omitempty"`
-	Argv           []string `json:"argv,omitempty"`
-	CommandSnippet string   `json:"command_snippet,omitempty"`
-	Error          string   `json:"error"`
-}
-
-type HookFailureRecordResult struct {
-	OK    bool             `json:"ok"`
-	Path  string           `json:"path"`
-	Event HookFailureEvent `json:"event"`
-}
-
-type HookFailureListResult struct {
-	OK     bool               `json:"ok"`
-	Path   string             `json:"path"`
-	Events []HookFailureEvent `json:"events"`
-}
-
-func RecordHookFailureEvent(event HookFailureEvent) (HookFailureRecordResult, error) {
+func RecordHookFailureEvent(event hookfailurecontract.HookFailureEvent) (hookfailurecontract.HookFailureRecordResult, error) {
 	path := HookFailureLogPath()
 	if strings.TrimSpace(event.Timestamp) == "" {
 		event.Timestamp = time.Now().UTC().Format(time.RFC3339Nano)
@@ -60,11 +37,11 @@ func RecordHookFailureEvent(event HookFailureEvent) (HookFailureRecordResult, er
 		event.Error = "hook failed"
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return HookFailureRecordResult{OK: false, Path: path, Event: event}, err
+		return hookfailurecontract.HookFailureRecordResult{OK: false, Path: path, Event: event}, err
 	}
 	line, err := json.Marshal(event)
 	if err != nil {
-		return HookFailureRecordResult{OK: false, Path: path, Event: event}, err
+		return hookfailurecontract.HookFailureRecordResult{OK: false, Path: path, Event: event}, err
 	}
 	// H2: 프로세스 간 동시 append를 직렬화한다. marshal된 실패 라인은 PIPE_BUF를
 	// 초과할 수 있어(제한 없는 Argv/CWD와 500B snippet 필드 2개), O_APPEND만으로는
@@ -80,39 +57,39 @@ func RecordHookFailureEvent(event HookFailureEvent) (HookFailureRecordResult, er
 		return err
 	})
 	if writeErr != nil {
-		return HookFailureRecordResult{OK: false, Path: path, Event: event}, writeErr
+		return hookfailurecontract.HookFailureRecordResult{OK: false, Path: path, Event: event}, writeErr
 	}
-	return HookFailureRecordResult{OK: true, Path: path, Event: event}, nil
+	return hookfailurecontract.HookFailureRecordResult{OK: true, Path: path, Event: event}, nil
 }
 
-func ListHookFailureEvents(limit int) (HookFailureListResult, error) {
+func ListHookFailureEvents(limit int) (hookfailurecontract.HookFailureListResult, error) {
 	path := HookFailureLogPath()
 	if limit <= 0 {
 		limit = 20
 	}
 	f, err := os.Open(path)
 	if os.IsNotExist(err) {
-		return HookFailureListResult{OK: true, Path: path, Events: []HookFailureEvent{}}, nil
+		return hookfailurecontract.HookFailureListResult{OK: true, Path: path, Events: []hookfailurecontract.HookFailureEvent{}}, nil
 	}
 	if err != nil {
-		return HookFailureListResult{OK: false, Path: path}, err
+		return hookfailurecontract.HookFailureListResult{OK: false, Path: path}, err
 	}
 	defer f.Close()
-	events := []HookFailureEvent{}
+	events := []hookfailurecontract.HookFailureEvent{}
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		var event HookFailureEvent
+		var event hookfailurecontract.HookFailureEvent
 		if err := json.Unmarshal(scanner.Bytes(), &event); err == nil {
 			events = append(events, event)
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return HookFailureListResult{OK: false, Path: path, Events: events}, err
+		return hookfailurecontract.HookFailureListResult{OK: false, Path: path, Events: events}, err
 	}
 	if len(events) > limit {
 		events = events[len(events)-limit:]
 	}
-	return HookFailureListResult{OK: true, Path: path, Events: events}, nil
+	return hookfailurecontract.HookFailureListResult{OK: true, Path: path, Events: events}, nil
 }
 
 func HookFailureLogPath() string {
@@ -127,16 +104,9 @@ func trimHookFailureSnippet(value string) string {
 	return string(b[:hookFailureSnippetLimit]) + "...<truncated>"
 }
 
-type HookFailurePruneResult struct {
-	OK     bool   `json:"ok"`
-	Path   string `json:"path"`
-	Pruned int    `json:"pruned"`
-	Kept   int    `json:"kept"`
-}
-
-func PruneHookFailureLog(maxAge time.Duration) (HookFailurePruneResult, error) {
+func PruneHookFailureLog(maxAge time.Duration) (hookfailurecontract.HookFailurePruneResult, error) {
 	path := HookFailureLogPath()
-	result := HookFailurePruneResult{OK: false, Path: path}
+	result := hookfailurecontract.HookFailurePruneResult{OK: false, Path: path}
 
 	// read+rewrite+rename을 동시 append와 직렬화한다. append도 같은
 	// lock을 잡는다(RecordHookFailureEvent). 이게 없으면 read와 rename 사이에 예전
@@ -152,11 +122,11 @@ func PruneHookFailureLog(maxAge time.Duration) (HookFailurePruneResult, error) {
 		}
 
 		cutoff := time.Now().UTC().Add(-maxAge)
-		var kept []HookFailureEvent
+		var kept []hookfailurecontract.HookFailureEvent
 		pruned := 0
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
-			var event HookFailureEvent
+			var event hookfailurecontract.HookFailureEvent
 			if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
 				pruned++
 				continue
