@@ -13,6 +13,7 @@ import (
 
 	"agent-harness/internal/adapter/issueops/pathutil"
 	"agent-harness/internal/contract/issueops"
+	issueopsdomain "agent-harness/internal/domain/issueops"
 	"agent-harness/internal/port"
 )
 
@@ -28,6 +29,10 @@ type CleanupFinishDeps struct {
 	// 빈 값으로 덮어쓰는 사고를 구조적으로 차단한다(C2-F1 (c)).
 	ReflectAudit     func(record issueops.IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string) error
 	InspectProcesses func(root string) ([]string, error)
+	// ObserveArtifact는 원격 artifact의 현재 상태를 provider에서 읽는다.
+	// replacement 증거 검증의 유일한 근거이며, 주입되지 않으면 그 경로는 열리지
+	// 않는다 — 관측 없이 증거를 인정하지 않는다(#283).
+	ObserveArtifact func(url string) (issueopsdomain.ArtifactObservation, error)
 }
 
 // cleanupFinishRemedyCommand는 해소 경로가 하나로 정해지는 missing에만 그 명령을
@@ -52,6 +57,9 @@ type cleanupFinishInventory struct {
 	BranchOID       string `json:"branch_oid"`
 	OrcaWorktreeID  string `json:"orca_worktree_id"`
 	RemoteURL       string `json:"remote_url"`
+	// SupersededBy는 replacement 증거를 fingerprint 입력에 포함시킨다. 증거가
+	// 바뀌면 preview는 무효가 되어야 한다.
+	SupersededBy string `json:"superseded_by,omitempty"`
 }
 
 // CleanupFinish는 preview 게이트를 평가하고, apply에서 orca→git 순의 멱등
@@ -195,7 +203,15 @@ func cleanupFinishGates(record issueops.IssueOpsRecord, req CleanupFinishRequest
 		missing = append(missing, "lease_released")
 	}
 	if !req.Merged {
-		missing = append(missing, "remote_artifact_merged")
+		// 원래 artifact가 unmerged여도, 후속 artifact가 그 변경을 명시적으로
+		// 대체해 머지됐다면 정리할 수 있어야 한다. 그 경로가 없어서 finish도
+		// abandon도 받지 않는 record가 실제로 생겼다(#283).
+		if err := verifySupersedingArtifact(record, req, deps); err != nil {
+			result.SupersedeError = err.Error()
+			missing = append(missing, "remote_artifact_merged")
+		} else {
+			result.SupersededBy = strings.TrimSpace(req.SupersededBy)
+		}
 	}
 	if !req.CompletionReflected {
 		missing = append(missing, "completion_reflected")
@@ -223,7 +239,12 @@ func cleanupFinishGates(record issueops.IssueOpsRecord, req CleanupFinishRequest
 			break
 		}
 	}
-	inventory := cleanupFinishInventory{ID: record.ID, Repo: record.Repo, Branch: strings.TrimSpace(record.Branch)}
+	inventory := cleanupFinishInventory{
+		ID: record.ID, Repo: record.Repo, Branch: strings.TrimSpace(record.Branch),
+		// replacement 증거는 fingerprint 입력이다. 증거가 바뀌면 preview는
+		// 무효가 되어야 한다.
+		SupersededBy: result.SupersededBy,
+	}
 	if record.RemoteArtifact != nil {
 		inventory.RemoteURL = record.RemoteArtifact.URL
 	}
@@ -393,4 +414,31 @@ func branchRefPresent(git func(dir string, args ...string) (int, string), repo, 
 	}
 	code, _ := git(repo, "show-ref", "--verify", "--quiet", "refs/heads/"+branch)
 	return code == 0
+}
+
+// verifySupersedingArtifact는 replacement 증거를 provider readback으로 검증한다.
+//
+// 증거가 없으면 조용히 실패한다 — 기존 merged 게이트가 그대로 남는다는 뜻이다.
+// 증거가 있는데 관측을 못 하거나 검증에 실패하면 그 사유를 돌려주어 결과에
+// 표면화한다. 무흔적 실패는 사용자를 다시 dead-end로 보낸다.
+func verifySupersedingArtifact(record issueops.IssueOpsRecord, req CleanupFinishRequest, deps CleanupFinishDeps) error {
+	candidate := strings.TrimSpace(req.SupersededBy)
+	if candidate == "" {
+		return fmt.Errorf("no superseding artifact was provided")
+	}
+	if deps.ObserveArtifact == nil {
+		return fmt.Errorf("superseding artifact cannot be verified: provider observation is not configured")
+	}
+	if record.RemoteArtifact == nil || strings.TrimSpace(record.RemoteArtifact.URL) == "" {
+		return fmt.Errorf("original artifact URL is unknown; cannot verify a supersede relation")
+	}
+	replacement, err := deps.ObserveArtifact(candidate)
+	if err != nil {
+		return fmt.Errorf("superseding artifact %s could not be observed: %w", candidate, err)
+	}
+	original := issueopsdomain.ArtifactObservation{
+		URL:      record.RemoteArtifact.URL,
+		Provider: record.RemoteArtifact.Provider,
+	}
+	return issueopsdomain.ValidateSupersedingArtifact(original, replacement)
 }

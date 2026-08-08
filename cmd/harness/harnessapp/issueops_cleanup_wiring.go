@@ -21,6 +21,7 @@ func configureIssueOpsCleanup() {
 			return issueopscore.CleanupFinish(ctx, stateRoot, req, issueopscore.CleanupFinishDeps{
 				Git:                d.CleanupFinishGit,
 				InspectProcesses:   d.InspectCleanupProcesses,
+				ObserveArtifact:    issueopscore.ObserveRemoteArtifact,
 				RemoveOrcaWorktree: d.RemoveOrcaWorktree,
 				ReflectAudit: func(rec issueopscontract.IssueOpsRecord, completion port.IssueProviderCompletionSection, audit string) error {
 					return issueopscore.ReflectCleanupAudit(issueopscore.IssueOpsStateRoot(), rec, completion, audit, prov)

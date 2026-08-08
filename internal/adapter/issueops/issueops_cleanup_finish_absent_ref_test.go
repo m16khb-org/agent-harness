@@ -2,7 +2,11 @@ package issueops
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
+
+	issueopsdomain "agent-harness/internal/domain/issueops"
 )
 
 // absentRefFinishGit는 worktree 제거가 local branch ref를 함께 없애는 실제
@@ -158,5 +162,118 @@ func TestCleanupAbandonConvergesWhenWorktreeRemovalAlreadyDroppedTheBranchRef(t 
 	}
 	if branchRefPresent(present.run, "/repo", "  ") != true {
 		t.Fatal("branch 이름이 비면 fail-closed로 존재 취급해야 한다")
+	}
+}
+
+// TestCleanupFinishAcceptsAVerifiedSupersedingArtifact는 #283의 통과 경로를
+// 고정한다. 원 artifact가 unmerged여도 후속 artifact가 provider readback으로
+// merged·같은 프로젝트·명시적 supersede를 만족하면 정리할 수 있어야 한다.
+func TestCleanupFinishAcceptsAVerifiedSupersedingArtifact(t *testing.T) {
+	stateRoot, record, _ := finishTestRecord(t, true)
+	git := &realErrorFinishGit{branchOID: ""}
+	deps := CleanupFinishDeps{
+		Git:              git.run,
+		InspectProcesses: func(string) ([]string, error) { return nil, nil },
+		ObserveArtifact: func(url string) (issueopsdomain.ArtifactObservation, error) {
+			return issueopsdomain.ArtifactObservation{
+				URL: url, Provider: "github", Merged: true, State: "MERGED",
+				Body: "Supersedes " + record.RemoteArtifact.URL,
+			}, nil
+		},
+	}
+	req := finishRequest(record.ID, false, "")
+	req.Merged = false
+	req.SupersededBy = "https://github.com/acme/repo/pull/999"
+
+	result, err := CleanupFinish(context.Background(), stateRoot, req, deps)
+	if err != nil {
+		t.Fatalf("검증된 replacement 증거는 merged 게이트를 충족해야 한다: %v missing=%v supersedeError=%q",
+			err, result.Missing, result.SupersedeError)
+	}
+	if result.SupersededBy != req.SupersededBy {
+		t.Fatalf("무엇을 근거로 통과했는지 결과에 남아야 한다: %+v", result)
+	}
+}
+
+// TestCleanupFinishRejectsUnverifiableSupersedingArtifacts는 이 경로가 아무
+// 머지된 PR로 아무 record나 지우는 문을 열지 않음을 고정한다.
+func TestCleanupFinishRejectsUnverifiableSupersedingArtifacts(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		observe  func(string) (issueopsdomain.ArtifactObservation, error)
+		wantHint string
+	}{
+		{
+			"관측 실패",
+			func(string) (issueopsdomain.ArtifactObservation, error) {
+				return issueopsdomain.ArtifactObservation{}, errors.New("gh pr view failed")
+			},
+			"could not be observed",
+		},
+		{
+			"머지되지 않음",
+			func(url string) (issueopsdomain.ArtifactObservation, error) {
+				return issueopsdomain.ArtifactObservation{URL: url, Merged: false, State: "OPEN", Body: "Supersedes x"}, nil
+			},
+			"is not merged",
+		},
+		{
+			"supersede 선언 없음",
+			func(url string) (issueopsdomain.ArtifactObservation, error) {
+				return issueopsdomain.ArtifactObservation{URL: url, Merged: true, State: "MERGED", Body: "unrelated"}, nil
+			},
+			"does not declare",
+		},
+		{
+			"cross-repo",
+			func(string) (issueopsdomain.ArtifactObservation, error) {
+				return issueopsdomain.ArtifactObservation{
+					URL: "https://github.com/other/repo/pull/999", Merged: true, State: "MERGED",
+					Body: "Supersedes everything",
+				}, nil
+			},
+			"not the original project",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			stateRoot, record, _ := finishTestRecord(t, true)
+			deps := CleanupFinishDeps{
+				Git:              (&realErrorFinishGit{}).run,
+				InspectProcesses: func(string) ([]string, error) { return nil, nil },
+				ObserveArtifact:  tc.observe,
+			}
+			req := finishRequest(record.ID, false, "")
+			req.Merged = false
+			req.SupersededBy = "https://github.com/acme/repo/pull/999"
+
+			result, err := CleanupFinish(context.Background(), stateRoot, req, deps)
+			if err == nil {
+				t.Fatal("검증되지 않은 replacement는 거부돼야 한다")
+			}
+			if !containsString(result.Missing, "remote_artifact_merged") {
+				t.Fatalf("merged 게이트가 남아야 한다: %v", result.Missing)
+			}
+			if !strings.Contains(result.SupersedeError, tc.wantHint) {
+				t.Fatalf("거부 사유가 표면화돼야 한다: got %q want contains %q", result.SupersedeError, tc.wantHint)
+			}
+		})
+	}
+}
+
+// TestCleanupFinishRequiresObservationForSupersedeEvidence는 관측이 주입되지
+// 않으면 증거를 인정하지 않음을 고정한다.
+func TestCleanupFinishRequiresObservationForSupersedeEvidence(t *testing.T) {
+	stateRoot, record, _ := finishTestRecord(t, true)
+	deps := CleanupFinishDeps{
+		Git:              (&realErrorFinishGit{}).run,
+		InspectProcesses: func(string) ([]string, error) { return nil, nil },
+	}
+	req := finishRequest(record.ID, false, "")
+	req.Merged = false
+	req.SupersededBy = "https://github.com/acme/repo/pull/999"
+
+	result, _ := CleanupFinish(context.Background(), stateRoot, req, deps)
+	if !strings.Contains(result.SupersedeError, "provider observation is not configured") {
+		t.Fatalf("관측 없이 증거를 인정하면 안 된다: %q", result.SupersedeError)
 	}
 }
