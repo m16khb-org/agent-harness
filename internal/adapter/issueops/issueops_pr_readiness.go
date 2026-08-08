@@ -3,8 +3,8 @@ package issueops
 import (
 	"strings"
 
-	"agent-harness/internal/adapter/issueops/stringlist"
 	"agent-harness/internal/contract/issueops"
+	"agent-harness/internal/domain/stringlist"
 )
 
 func IssueOpsPRReadiness(record issueops.IssueOpsRecord) issueops.IssueOpsReadiness {

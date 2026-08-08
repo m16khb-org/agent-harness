@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"agent-harness/internal/adapter/provider/remoteparse"
+	"agent-harness/internal/domain/remoteparse"
 )
 
 func fetchGitHubPullRequestArtifact(artifactURL string) (liveRemoteArtifact, error) {

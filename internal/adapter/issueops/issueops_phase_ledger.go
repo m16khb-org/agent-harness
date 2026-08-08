@@ -3,8 +3,8 @@ package issueops
 import (
 	"strings"
 
-	"agent-harness/internal/adapter/issueops/stringlist"
 	"agent-harness/internal/contract/issueops"
+	"agent-harness/internal/domain/stringlist"
 )
 
 // issueOpsLedgerDerivedSentinel은 실시간으로 관찰하지 못해 기존 필드에서

@@ -9,8 +9,8 @@ import (
 	lifecyclecontract "agent-harness/internal/contract/lifecycle"
 
 	issueopscore "agent-harness/internal/adapter/issueops"
-	"agent-harness/internal/adapter/issueops/remote"
 	"agent-harness/internal/adapter/remoteartifact"
+	"agent-harness/internal/domain/issueopsremote"
 )
 
 // sealedIssueEditBlockReason은 봉인된 owner context에 묶인 이슈의 본문 편집을

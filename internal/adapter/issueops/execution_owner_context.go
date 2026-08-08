@@ -13,10 +13,10 @@ import (
 	"strconv"
 	"strings"
 
-	"agent-harness/internal/adapter/issueops/remote"
 	"agent-harness/internal/contract/issueops"
 	leasecontract "agent-harness/internal/contract/issueopslease"
 	"agent-harness/internal/domain/commandparse"
+	"agent-harness/internal/domain/issueopsremote"
 	"agent-harness/internal/port"
 )
 

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"agent-harness/internal/adapter/issueops/remote"
 	model "agent-harness/internal/contract/issueops"
+	"agent-harness/internal/domain/issueopsremote"
 )
 
 type Store struct {

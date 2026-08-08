@@ -7,7 +7,7 @@ import (
 
 	policydomain "agent-harness/internal/domain/policy"
 
-	"agent-harness/internal/adapter/policy/auditid"
+	"agent-harness/internal/domain/auditid"
 )
 
 func EvaluateCommandPolicy(req CommandPolicyRequest) CommandPolicyEvaluation {

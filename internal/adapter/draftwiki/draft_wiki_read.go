@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"agent-harness/internal/adapter/draftwiki/draftmeta"
+	"agent-harness/internal/domain/draftmeta"
 )
 
 func resolveDraftWikiDraft(root, draftPath string) (DraftWikiDraft, error) {
