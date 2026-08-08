@@ -76,9 +76,15 @@ Required skills:
    있을 때만 붙인다. token 원문은 출력하지 않는다:
    {CLAIM_COMMAND}
 6. claim/holder 확인 전 production mutation을 하지 않는다.
-7. branch_prepare.link_verified가 false면 아래 exact reader를 한 번 실행해 issue에 exact branch가
-   연결됐는지 검증한다. 대체 GraphQL이나 다른 reader를 만들지 않는다. reader가 `none`이면 임의
-   provider 명령을 만들지 말고 blocker를 보고한다:
+7. branch_prepare.link_verified가 false면 먼저 아래 exact command로 링크가 나타날 때까지
+   기다린다. GitHub Orca 경로에서는 이 시점에 링크가 **아직 없는 것이 정상**이다 — Orca가 항상
+   새 branch를 만들기 때문에 원격 branch가 먼저 있으면 prepare 자체가 실패하고, 그래서
+   coordinator의 createLinkedBranch는 당신의 기동 뒤에 온다. 그 부재를 실패로 보고하지 않는다.
+   이 command는 경계가 있어 스스로 종료하며, 시간 안에 나타나지 않으면 그때 blocker를 보고한다:
+   {AWAIT_BRANCH_LINK_COMMAND}
+   그다음 아래 exact reader로 issue에 exact branch가 연결됐는지 확인한다.
+   대체 GraphQL이나 다른 reader를 만들지 않는다. reader가 `none`이면 임의 provider 명령을
+   만들지 말고 blocker를 보고한다:
    {VERIFY_BRANCH_LINK_READ_COMMAND}
    연결이 확인된 경우에만 아래 exact command로 봉인된 branch/base/parent topology를 보존하며
    link_verified를 기록한다. 이미 true면 두 command가 `none`이므로 실행하지 않는다:

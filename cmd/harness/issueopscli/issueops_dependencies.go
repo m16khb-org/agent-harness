@@ -1,6 +1,7 @@
 package issueopscli
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -30,6 +31,7 @@ type IssueOpsCLIDeps struct {
 	ListIssueOpsCycles                          func(stateRoot, repo string) (issueopscontract.IssueOpsListResult, error)
 	ObserveNativeProcessAncestry                func(pid int) ([]issueopscontract.NativeProcessReceipt, error)
 	PrepareIssueOpsBranchWithActor              func(stateRoot, id string, req issueopscontract.IssueOpsBranchPrepareRequest, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
+	AwaitIssueOpsBranchLink                     func(ctx context.Context, stateRoot string, req issueopscontract.AwaitBranchLinkRequest) (issueopscontract.AwaitBranchLinkResult, error)
 	PruneIssueOps                               func(stateRoot string, maxAge time.Duration, confirm bool) (issueopscontract.IssueOpsPruneResult, error)
 	ReadIssueOps                                func(stateRoot, id string) (issueopscontract.IssueOpsRecord, error)
 	RecordIssueOpsAISlopCleanEvidenceWithActor  func(stateRoot, id string, categories, verification []string, actor issueopscontract.IssueOpsActor) (issueopscontract.IssueOpsRecord, error)
@@ -94,6 +96,9 @@ func ConfigureIssueOpsRuntime2(deps IssueOpsCLIDeps) {
 	}
 	if deps.ObserveNativeProcessAncestry != nil {
 		issueOpsCLIDeps.ObserveNativeProcessAncestry = deps.ObserveNativeProcessAncestry
+	}
+	if deps.AwaitIssueOpsBranchLink != nil {
+		issueOpsCLIDeps.AwaitIssueOpsBranchLink = deps.AwaitIssueOpsBranchLink
 	}
 	if deps.PrepareIssueOpsBranchWithActor != nil {
 		issueOpsCLIDeps.PrepareIssueOpsBranchWithActor = deps.PrepareIssueOpsBranchWithActor

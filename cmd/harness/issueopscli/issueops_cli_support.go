@@ -1,6 +1,7 @@
 package issueopscli
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -27,7 +28,7 @@ func issueOpsUsageText() string {
 		cliadapter.IssueOpsActorFlagLegend + "\n"
 }
 
-const issueOpsBranchPrepareUsage = "Usage: agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--parent-worktree PATH] [--remote-branch-url URL] [--link-verified] [--json]"
+const issueOpsBranchPrepareUsage = "Usage: agent-harness issueops branch prepare --id ID --provider github|gitlab --issue-url URL --branch NAME --base-branch REF [--base-sha SHA] [--parent-worktree PATH] [--remote-branch-url URL] [--link-verified] [--json]\n       agent-harness issueops branch await-link --id ID [--timeout DURATION] [--json]"
 
 // issueOpsChildUsageText는 canonical catalog에서 child 하위 명령만 골라 렌더한다.
 // usage 문장을 다시 적지 않아 parser/help 계약의 별도 drift를 막는다(#207).
@@ -49,6 +50,9 @@ func runIssueOpsBranch(args []string) error {
 	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" || args[0] == "help" {
 		fmt.Println(issueOpsBranchPrepareUsage)
 		return nil
+	}
+	if args[0] == "await-link" {
+		return runIssueOpsBranchAwaitLink(args[1:])
 	}
 	if args[0] != "prepare" {
 		return fmt.Errorf("unknown issueops branch subcommand")
@@ -113,4 +117,47 @@ func printIssueOpsErrorJSON(err error) error {
 		}
 	}
 	return printJSON(payload)
+}
+
+// runIssueOpsBranchAwaitLink는 coordinator가 만들 linked branch가 나타날
+// 때까지 경계 있게 기다린다(#319).
+//
+// 읽기 전용이다. GitHub Orca 경로에서 owner는 링크가 아직 없는 시점에
+// 시작하므로, 그 시작 창을 terminal 실패로 다루지 않으려면 owner가 기다릴
+// 수단이 필요하다. 대기를 프롬프트 지시가 아니라 명령으로 두어야 간격과
+// 상한이 값으로 고정된다.
+func runIssueOpsBranchAwaitLink(args []string) error {
+	fs := flag.NewFlagSet("issueops branch await-link", flag.ContinueOnError)
+	id := fs.String("id", "", "issueops id")
+	timeout := fs.String("timeout", "", "bounded wait, e.g. 10m (default 10m, max 30m)")
+	jsonOut := fs.Bool("json", false, "print JSON")
+	if help, err := parseIssueOpsFlags(fs, args); help || err != nil {
+		return err
+	}
+	if issueOpsCLIDeps.AwaitIssueOpsBranchLink == nil {
+		return fmt.Errorf("issueops branch await-link is unavailable")
+	}
+	result, err := issueOpsCLIDeps.AwaitIssueOpsBranchLink(context.Background(), issueOpsCLIDeps.IssueOpsStateRoot(),
+		issueopscontract.AwaitBranchLinkRequest{ID: *id, Timeout: *timeout})
+	if err != nil {
+		if *jsonOut {
+			if printErr := printJSON(result); printErr != nil {
+				return printErr
+			}
+		}
+		return err
+	}
+	if *jsonOut {
+		return printJSON(result)
+	}
+	switch {
+	case result.AlreadyVerified:
+		fmt.Printf("branch link already recorded: branch=%s\n", result.Branch)
+	default:
+		fmt.Printf("branch link observed: branch=%s oid=%s attempts=%d\n", result.Branch, result.ObservedOID, result.Attempts)
+		if result.NextCommand != "" {
+			fmt.Printf("next: %s\n", result.NextCommand)
+		}
+	}
+	return nil
 }
