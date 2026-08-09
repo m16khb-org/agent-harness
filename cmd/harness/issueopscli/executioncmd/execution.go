@@ -34,7 +34,7 @@ type Deps struct {
 	PrintError             func(error) error
 	syncBase               func(context.Context, string, model.ExecutionSyncBaseRequest, model.ExecutionSyncBaseDeps) (model.ExecutionSyncBaseResult, error)
 	Provenance             provenanceport.Observer
-	resumeActorObservation *resumeActorObservation
+	nativeActorObservation *nativeActorObservation
 }
 
 func (deps Deps) actionDeps() port.ExecutionActionDependencies {
@@ -65,7 +65,7 @@ const Usage = `Usage:
   agent-harness issueops execution whoami [--json]
   agent-harness issueops execution claim --id ID --generation N (--claim-current-token|--claim-token-file PATH) [--issue-body-sha256 HEX --context-packet-sha256 HEX] [--issue-snapshot-file PATH] ACTOR_FLAGS [--json]
   agent-harness issueops execution release --id ID --generation N ACTOR_FLAGS [--json]
-  agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [--completion-generation N] [fingerprint/reason flags] [--issue-snapshot-file PATH] ACTOR_FLAGS [--confirm] [--json]
+  agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [--completion-generation N] [fingerprint/reason flags] [--issue-snapshot-file PATH] [ACTOR_FLAGS] [--confirm] [--json]
   agent-harness issueops execution resume --id ID --expected-generation N [ACTOR_FLAGS] --confirm [--json]
   agent-harness issueops execution reconcile --id ID (--preview|--confirm) [--issue-snapshot-file PATH] ACTOR_FLAGS [--json]
   agent-harness issueops execution complete --id ID --generation N --final-head SHA --turing-report PATH --remote-artifact-url URL --verification TEXT... ACTOR_FLAGS --confirm [--json]
@@ -133,15 +133,15 @@ func (flags actorFlags) actor() model.NativeActor {
 	}
 }
 
-type resumeActorObservation struct {
+type nativeActorObservation struct {
 	Getenv          func(string) string
 	Getwd           func() (string, error)
 	PID             func() int
 	ObserveAncestry func(int) ([]model.NativeProcessReceipt, error)
 }
 
-func defaultResumeActorObservation() resumeActorObservation {
-	return resumeActorObservation{
+func defaultNativeActorObservation() nativeActorObservation {
+	return nativeActorObservation{
 		Getenv: os.Getenv, Getwd: os.Getwd, PID: os.Getpid,
 		ObserveAncestry: execDeps.ObserveNativeProcessAncestry,
 	}
@@ -153,7 +153,7 @@ func visitedFlagNames(fs *flag.FlagSet) map[string]bool {
 	return visited
 }
 
-func resolveResumeActor(flags actorFlags, visited map[string]bool, observation resumeActorObservation) (model.NativeActor, string, error) {
+func resolveNativeActor(operation string, flags actorFlags, visited map[string]bool, observation nativeActorObservation) (model.NativeActor, string, error) {
 	required := []string{"host", "session-id", "session-pid", "session-started-at", "session-executable", "cwd"}
 	anyExplicit := visited["agent-id"]
 	for _, name := range required {
@@ -162,13 +162,13 @@ func resolveResumeActor(flags actorFlags, visited map[string]bool, observation r
 	if anyExplicit {
 		for _, name := range required {
 			if !visited[name] {
-				return model.NativeActor{}, "", fmt.Errorf("execution resume requires all ACTOR_FLAGS or none")
+				return model.NativeActor{}, "", fmt.Errorf("execution %s requires all ACTOR_FLAGS or none", operation)
 			}
 		}
 		return flags.actor(), strings.TrimSpace(*flags.cwd), nil
 	}
 	if observation.Getenv == nil || observation.Getwd == nil || observation.PID == nil || observation.ObserveAncestry == nil {
-		return model.NativeActor{}, "", fmt.Errorf("execution resume native actor observation is unavailable")
+		return model.NativeActor{}, "", fmt.Errorf("execution %s native actor observation is unavailable", operation)
 	}
 	identity, err := nativeSessionIdentityFromEnv(observation.Getenv)
 	if err != nil {
@@ -185,11 +185,11 @@ func resolveResumeActor(flags actorFlags, visited map[string]bool, observation r
 	}
 	cwd, err := observation.Getwd()
 	if err != nil {
-		return model.NativeActor{}, "", fmt.Errorf("observe execution resume cwd: %w", err)
+		return model.NativeActor{}, "", fmt.Errorf("observe execution %s cwd: %w", operation, err)
 	}
 	cwd = filepath.Clean(strings.TrimSpace(cwd))
 	if !filepath.IsAbs(cwd) {
-		return model.NativeActor{}, "", fmt.Errorf("execution resume cwd must be absolute")
+		return model.NativeActor{}, "", fmt.Errorf("execution %s cwd must be absolute", operation)
 	}
 	process := ancestry[0]
 	return model.NativeActor{
@@ -425,11 +425,19 @@ func runReplace(args []string, deps Deps) error {
 	if action == "" {
 		return output(nil, *jsonOut, fmt.Errorf("execution replace requires exactly one action"), deps)
 	}
+	observation := defaultNativeActorObservation()
+	if deps.nativeActorObservation != nil {
+		observation = *deps.nativeActorObservation
+	}
+	resolvedActor, resolvedCWD, err := resolveNativeActor("replace", actor, visitedFlagNames(fs), observation)
+	if err != nil {
+		return output(nil, *jsonOut, err, deps)
+	}
 	result, err := execute(model.ExecutionActionRequest{
 		Action: model.ExecutionActionReplace, ID: *id, ReplaceAction: action, ExpectedGeneration: *generation,
 		CompletionGeneration: *completionGeneration,
 		InventoryFingerprint: *inventory, QuiescenceFingerprint: *quiescence, Reason: *reason,
-		Actor: actor.actor(), CWD: *actor.cwd, Confirm: *confirm,
+		Actor: resolvedActor, CWD: resolvedCWD, Confirm: *confirm,
 		IssueSnapshot: issueSnapshot,
 	}, deps)
 	return output(result, *jsonOut, err, deps)
@@ -445,11 +453,11 @@ func runResume(args []string, deps Deps) error {
 	if done, err := parse(fs, args); done || err != nil {
 		return err
 	}
-	observation := defaultResumeActorObservation()
-	if deps.resumeActorObservation != nil {
-		observation = *deps.resumeActorObservation
+	observation := defaultNativeActorObservation()
+	if deps.nativeActorObservation != nil {
+		observation = *deps.nativeActorObservation
 	}
-	resolvedActor, resolvedCWD, err := resolveResumeActor(actor, visitedFlagNames(fs), observation)
+	resolvedActor, resolvedCWD, err := resolveNativeActor("resume", actor, visitedFlagNames(fs), observation)
 	if err != nil {
 		return output(nil, *jsonOut, err, deps)
 	}

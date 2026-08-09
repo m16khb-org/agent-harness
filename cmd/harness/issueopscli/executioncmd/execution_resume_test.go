@@ -10,6 +10,7 @@ import (
 
 	"agent-harness/internal/adapter/issueops"
 	model "agent-harness/internal/contract/issueops"
+	"agent-harness/internal/port"
 )
 
 func TestExecutionResumeCLIParsesOnlyTheExactFlagSurface(t *testing.T) {
@@ -68,7 +69,7 @@ func TestExecutionResumeCLIInvokesInjectedHandler(t *testing.T) {
 func TestExecutionResumeCLIInvokesHandlerWithObservedActor(t *testing.T) {
 	stateRoot := t.TempDir()
 	args := []string{"resume", "--id", "io-aaaaaaaaaaaa", "--expected-generation", "3", "--confirm", "--json"}
-	observation := resumeActorObservation{
+	observation := nativeActorObservation{
 		Getenv: func(key string) string {
 			if key == "CLAUDE_CODE_SESSION_ID" {
 				return "claude-session"
@@ -97,10 +98,58 @@ func TestExecutionResumeCLIInvokesHandlerWithObservedActor(t *testing.T) {
 			return issueops.ExecutionResumeResult{OK: true, ID: request.ID}, nil
 		},
 		PrintJSON:              func(any) error { return nil },
-		resumeActorObservation: &observation,
+		nativeActorObservation: &observation,
 	})
 	if err != nil || calls != 1 {
 		t.Fatalf("actor-free resume err=%v calls=%d", err, calls)
+	}
+}
+
+func TestExecutionReplaceCLIInvokesExecutionWithObservedActor(t *testing.T) {
+	previousExecute := execDeps.ExecuteExecution
+	t.Cleanup(func() { execDeps.ExecuteExecution = previousExecute })
+
+	var got model.ExecutionActionRequest
+	execDeps.ExecuteExecution = func(_ context.Context, _ string, request model.ExecutionActionRequest, _ port.ExecutionActionDependencies) (any, error) {
+		got = request
+		return model.ExecutionReplaceResult{
+			OK: true, ID: request.ID, Action: request.ReplaceAction,
+			Execution: model.Execution{Lease: model.WriteLease{Generation: request.ExpectedGeneration}},
+		}, nil
+	}
+	observation := nativeActorObservation{
+		Getenv: func(key string) string {
+			if key == "CODEX_THREAD_ID" {
+				return "codex-session"
+			}
+			return ""
+		},
+		Getwd: func() (string, error) { return "/repo.worktrees/parent", nil },
+		PID:   func() int { return 101 },
+		ObserveAncestry: func(int) ([]model.NativeProcessReceipt, error) {
+			return []model.NativeProcessReceipt{
+				{PID: 101, StartedAt: "2026-08-01T00:00:01Z", Executable: "/tmp/agent-harness"},
+				{PID: 42, StartedAt: "2026-08-01T00:00:00Z", Executable: "/opt/codex/bin/codex"},
+			}, nil
+		},
+	}
+	err := Run([]string{
+		"replace", "--id", "io-aaaaaaaaaaaa", "--expected-generation", "13", "--preview", "--json",
+	}, Deps{
+		StateRoot:              func() string { return t.TempDir() },
+		PrintJSON:              func(any) error { return nil },
+		nativeActorObservation: &observation,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Action != model.ExecutionActionReplace || got.ReplaceAction != model.ExecutionReplacePreview || got.ExpectedGeneration != 13 {
+		t.Fatalf("replace request=%+v", got)
+	}
+	if got.Actor.Host != "codex" || got.Actor.SessionID != "codex-session" ||
+		got.Actor.SessionProcess == nil || got.Actor.SessionProcess.PID != 42 ||
+		got.CWD != "/repo.worktrees/parent" {
+		t.Fatalf("observed replace request=%+v", got)
 	}
 }
 
@@ -110,7 +159,7 @@ func TestResolveResumeActorObservesNativeIdentityWhenActorFlagsAreAbsent(t *test
 		{PID: 101, StartedAt: "2026-08-01T00:00:01Z", Executable: "/tmp/agent-harness"},
 		{PID: 42, StartedAt: "2026-08-01T00:00:00Z", Executable: "/opt/codex/bin/codex"},
 	}
-	actor, cwd, err := resolveResumeActor(flags, visited, resumeActorObservation{
+	actor, cwd, err := resolveNativeActor("resume", flags, visited, nativeActorObservation{
 		Getenv: func(key string) string {
 			if key == "CODEX_THREAD_ID" {
 				return "codex-session"
@@ -141,7 +190,7 @@ func TestResolveResumeActorPreservesCompleteExplicitFlags(t *testing.T) {
 		"--session-executable", "/opt/claude/bin/claude", "--cwd", "/repo.worktrees/resume",
 	}
 	flags, visited := resumeActorFlagsForTest(t, args)
-	actor, cwd, err := resolveResumeActor(flags, visited, resumeActorObservation{
+	actor, cwd, err := resolveNativeActor("resume", flags, visited, nativeActorObservation{
 		Getenv: func(string) string { t.Fatal("explicit flags must not read native env"); return "" },
 	})
 	if err != nil {
@@ -161,7 +210,7 @@ func TestResolveResumeActorRejectsPartialExplicitFlags(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			flags, visited := resumeActorFlagsForTest(t, args)
-			_, _, err := resolveResumeActor(flags, visited, resumeActorObservation{})
+			_, _, err := resolveNativeActor("resume", flags, visited, nativeActorObservation{})
 			if err == nil || !strings.Contains(err.Error(), "all ACTOR_FLAGS or none") {
 				t.Fatalf("partial actor flags error = %v", err)
 			}
@@ -185,5 +234,11 @@ func TestExecutionResumeUsageIsAdvertisedOnce(t *testing.T) {
 	}
 	if !strings.Contains(Usage, "execution resume --id ID --expected-generation N [ACTOR_FLAGS] --confirm") {
 		t.Fatalf("resume usage does not advertise actor-free recovery: %s", Usage)
+	}
+}
+
+func TestExecutionReplaceUsageAdvertisesOptionalActorFlags(t *testing.T) {
+	if !strings.Contains(Usage, "[--issue-snapshot-file PATH] [ACTOR_FLAGS] [--confirm]") {
+		t.Fatalf("replace usage does not advertise actor-free recovery: %s", Usage)
 	}
 }
