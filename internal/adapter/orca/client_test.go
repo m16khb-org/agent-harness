@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -1251,6 +1252,7 @@ func TestClientRejectsIncompleteExternalLists(t *testing.T) {
 }
 
 type fakeRunner struct {
+	mu        sync.Mutex
 	t         *testing.T
 	lookPaths map[string]string
 	responses map[string]CommandOutput
@@ -1277,7 +1279,9 @@ func (f *fakeRunner) LookPath(file string) (string, error) {
 
 func (f *fakeRunner) Run(_ context.Context, _ string, _ time.Duration, argv []string) (CommandOutput, error) {
 	copyArgv := append([]string(nil), argv...)
+	f.mu.Lock()
 	f.calls = append(f.calls, copyArgv)
+	f.mu.Unlock()
 	key := strings.Join(argv, " ")
 	if err := f.errors[key]; err != nil {
 		// 실제 ExecRunner처럼 비영 종료에서도 캡처된 stdout을 함께 돌려준다 —
