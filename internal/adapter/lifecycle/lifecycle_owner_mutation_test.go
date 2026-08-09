@@ -178,6 +178,59 @@ func TestUnverifiedClaimableOrcaMayResumeOwnerLaunch(t *testing.T) {
 	}
 }
 
+func TestGeneratedChildResumeTrustsSealedParentWorktreeBinary(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	record.BranchPrepare.LinkVerified = false
+	record.Execution.Mode = issueopscontract.ExecutionModeOrca
+	record.Execution.Workspace.Driver = "orca"
+	record.Execution.Workspace.ParentWorktree = t.TempDir()
+	record.Execution.Lease = issueopscontract.WriteLease{
+		Generation: 1, Status: issueopscontract.LeaseStatusClaimable,
+		ClaimTokenSHA256: strings.Repeat("a", 64),
+	}
+	record.Execution.Orca = &issueopscontract.OrcaBinding{
+		RuntimeID: "runtime", RepoID: "repo", WorktreeID: "worktree",
+		OwnerHost: "codex", OwnerModel: "gpt-5.6-terra",
+		TaskID: "task", DispatchID: "dispatch",
+	}
+	if _, err := writeIssueOps(IssueOpsStateRoot(), record); err != nil {
+		t.Fatal(err)
+	}
+
+	parentBinDir := filepath.Join(record.Execution.Workspace.ParentWorktree, "bin")
+	if err := os.MkdirAll(parentBinDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	parentBin := filepath.Join(parentBinDir, "agent-harness")
+	if err := os.WriteFile(parentBin, []byte("sealed parent worktree binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	parentBin, err := filepath.EvalSymlinks(parentBin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := parentBin + " issueops execution resume --id " + record.ID +
+		" --expected-generation 1 --confirm" +
+		" --generated-by-executable " + parentBin +
+		" --generated-by-sha256 " + strings.Repeat("b", 64) +
+		" --generated-for-generation 1"
+	req := executionRequest(record, record.Execution.Workspace.ParentWorktree, "codex", "coordinator-session", command)
+	if got := BuildLifecyclePreToolUseDecision(req); got.Decision != "allow" {
+		t.Fatalf("sealed parent worktree recovery binary was blocked: %+v worker=%s", got, worker)
+	}
+
+	foreignDir := t.TempDir()
+	foreignBin := filepath.Join(foreignDir, "agent-harness")
+	if err := os.WriteFile(foreignBin, []byte("foreign binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	foreign := executionRequest(record, foreignDir, "codex", "coordinator-session", strings.ReplaceAll(command, parentBin, foreignBin))
+	if got := BuildLifecyclePreToolUseDecision(foreign); got.Decision != "block" || got.Deny == nil || got.Deny.Code != "generated_command_executable_untrusted" {
+		t.Fatalf("foreign recovery binary must stay blocked: %+v", got)
+	}
+}
+
 func TestExactIssueOpsOwnerMutationAdmitsDelegationCommands(t *testing.T) {
 	actor := " --host codex --session-id sess-1 --cwd /tmp/parent-worktree --json"
 	commands := []string{

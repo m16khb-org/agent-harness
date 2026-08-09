@@ -177,6 +177,9 @@ func generatedIssueOpsExecutableBlock(req lifecyclecontract.HookToolUseLifecycle
 		filepath.Join(authority.Execution.Workspace.Root, "bin", "agent-harness"),
 		filepath.Join(authority.Execution.Workspace.SourceRoot, "bin", "agent-harness"),
 	}
+	if parent := strings.TrimSpace(authority.Execution.Workspace.ParentWorktree); parent != "" {
+		trusted = append(trusted, filepath.Join(parent, "bin", "agent-harness"))
+	}
 	for _, candidate := range trusted {
 		resolved, resolveErr := filepath.EvalSymlinks(candidate)
 		if resolveErr == nil && cleanAbsPath(resolved) == cleanAbsPath(executable) {
