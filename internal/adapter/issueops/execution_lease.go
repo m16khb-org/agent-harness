@@ -228,6 +228,21 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 			if err := cleanupReplacementGeneration(record); err != nil {
 				return err
 			}
+			// 넘겨줄 workspace가 없으면 claimable은 사실이 아니다 — claim
+			// token은 그 worktree에서 읽히도록 만들어지고 owner context
+			// 재봉인도 거기에 쓴다. 아무도 claim할 수 없는 세대를 만들면서
+			// 쓰기에 실패해 lease가 revoking에 갇히고, abandon은
+			// claimable/released만 받으므로 회수가 막힌다(#435).
+			//
+			// terminal 상태인 released가 정확하다. 이 lifecycle은 폐기하거나
+			// 처음부터 다시 prepare해야 하며, 두 경로 모두 released에서 열린다.
+			if workspaceRootAbsent(record.Execution.Workspace.Root) {
+				lease.Status = issueops.LeaseStatusReleased
+				lease.Holder = nil
+				lease.ClaimTokenSHA256 = ""
+				persisted, err = persistExecutionTransition(stateRoot, record, nil)
+				return err
+			}
 			token, path, err := createClaimToken(record)
 			if err != nil {
 				return cleanupReplacementFailure(record, err)
@@ -692,7 +707,21 @@ func validateExecutionReplacementCWD(record issueops.IssueOpsRecord, cwd string)
 
 func workspaceSnapshot(workspace issueops.Workspace) (string, error) {
 	info, err := os.Lstat(workspace.Root)
+	if errors.Is(err, os.ErrNotExist) {
+		// 부재는 quiescence의 약한 증거가 아니라 가장 강한 증거다. 존재하지
+		// 않는 디렉터리에는 프로세스가 cwd를 둘 수 없고 쓸 것도 없다.
+		//
+		// 예전에는 이것을 "관측 불가"로 거부했고, 그래서 worktree가 lease
+		// active 상태에서 제거된 lifecycle은 어떤 typed 경로로도 회수할 수
+		// 없었다 — replace는 worktree를, abandon은 terminal lease를 요구하고,
+		// terminal로 만들려면 replace가 필요하다(#435).
+		//
+		// 부재라는 사실 자체를 경로에 결속해 봉인한다. finalize 직전에
+		// worktree가 되살아나면 fingerprint가 달라져 stale로 멈춘다.
+		return workspaceAbsenceSnapshot(workspace), nil
+	}
 	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+		// symlink나 파일이 그 경로를 차지한 것은 부재가 아니라 정체 불명이다.
 		return "", fmt.Errorf("canonical worktree must be a real directory")
 	}
 	top, err := gitOutput(workspace.Root, "rev-parse", "--show-toplevel")
@@ -886,6 +915,13 @@ func cleanupReplacementFailure(record issueops.IssueOpsRecord, cause error) erro
 }
 
 func removeReplacementRuntimeFile(root, path string) error {
+	// worktree가 통째로 없으면 지울 잔여물도 없다. 부모 디렉터리를 만들려
+	// 시도하면 없는 worktree를 되살리려다 실패해 finalize가 멈춘다 — 그러면
+	// lease가 revoking에 갇히고 abandon은 claimable/released만 받으므로 다시
+	// 막다른 길이 된다(#435).
+	if _, err := os.Lstat(root); errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
 	if err := secureMkdirAll(root, filepath.Dir(path)); err != nil {
 		return err
 	}
@@ -936,4 +972,23 @@ func secureMkdirAll(root, target string) error {
 		}
 	}
 	return nil
+}
+
+// workspaceAbsenceSnapshot은 canonical worktree가 없다는 관측을 정확한 경로에
+// 결속해 봉인한다. 서로 다른 부재가 같은 값을 내면 다른 lifecycle의 증거를
+// 재사용할 수 있으므로 경로와 branch를 함께 넣는다.
+func workspaceAbsenceSnapshot(workspace issueops.Workspace) string {
+	hash := sha256.New()
+	writeFingerprintPart(hash, "workspace-absent")
+	writeFingerprintPart(hash, workspace.Root)
+	writeFingerprintPart(hash, workspace.Branch)
+	return hex.EncodeToString(hash.Sum(nil))
+}
+
+// workspaceRootAbsent는 canonical worktree가 사라졌는지 보고한다. symlink나
+// 파일이 그 경로를 차지한 경우는 부재가 아니라 정체 불명이므로 false다 —
+// 그 상태는 workspaceSnapshot이 별도로 거부한다.
+func workspaceRootAbsent(root string) bool {
+	_, err := os.Lstat(root)
+	return errors.Is(err, os.ErrNotExist)
 }
