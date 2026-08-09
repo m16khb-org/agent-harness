@@ -69,6 +69,6 @@ The native Codex owner transcript at `/Users/m16khb/.codex/sessions/2026/08/09/r
 - `go build -o /tmp/agent-harness-parent-439 ./cmd/harness`: pass.
 - Focused post-review tests and race checks for `operationalhealth`, `orca`, `commandparse`, and `lifecycle`: pass.
 - `git diff --check`: pass.
-- The first exact full self-verification attempt failed closed at redaction audit because this report used a `token:` label before a non-secret path. The label was removed; no secret value had been recorded.
+- The first two exact full self-verification attempts failed closed at redaction audit because this report used a claim-token label followed by a colon before a non-secret path, then described that literal label in the first retry note. Both secret-assignment-shaped phrases were removed; no secret value had been recorded.
 
 Final full self-verification, stability audit, post-cleanup doctor timings, cleanup receipts, and the parent draft PR URL are appended after publication and typed resource cleanup.
