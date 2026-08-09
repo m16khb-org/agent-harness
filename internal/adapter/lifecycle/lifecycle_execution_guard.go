@@ -999,6 +999,7 @@ func executionMutationDecision(req lifecyclecontract.HookToolUseLifecycleRequest
 	if !req.EnforceWorktree {
 		return false, "", nil
 	}
+	exactCommitCherryPick := worktreeguard.ExactCommitCherryPick(req.Command)
 	unsafeReason := executionUnsafeMutationReason(req)
 	if unsafeReason == "" && searchrouting.IsShellTool(req.Tool) && !executionTypedControlPlane(req) {
 		if command, ok := commandparse.ParseExactIssueOpsCommand(req.Command); ok && command.Path == "execution resume" {
@@ -1020,7 +1021,7 @@ func executionMutationDecision(req lifecyclecontract.HookToolUseLifecycleRequest
 	if searchrouting.IsShellTool(req.Tool) && !mayMutate {
 		mayMutate = true
 		if unsafeReason == "" && !exactIssueOpsOwnerMutation(req.Command) && !exactReleasedPlanRecovery && !exactResourceWait && !exactAtomicWorkflow &&
-			!commandparse.ExactSelfVerifyVerification(req.Command) {
+			!exactCommitCherryPick && !commandparse.ExactSelfVerifyVerification(req.Command) {
 			unsafeReason = "unclassified shell command is blocked while IssueOps mutation authority is active; use an exact listed reader or a statically classified foreground mutation command"
 		}
 	}
@@ -1637,7 +1638,7 @@ func executionUnsafeMutationReason(req lifecyclecontract.HookToolUseLifecycleReq
 		return "background or detached mutation is blocked; run the command in the foreground and observe it to completion in the holder session"
 	}
 	upstreamBranch, exactUpstream := worktreeguard.MatchingOriginUpstreamBranch(command)
-	if worktreeguard.SealedGitTopologyMutation(command) ||
+	if (worktreeguard.SealedGitTopologyMutation(command) && !worktreeguard.ExactCommitCherryPick(command)) ||
 		(exactUpstream && upstreamBranch != gitBranchFromHead(req.CWD)) {
 		return "the IssueOps branch and worktree identity are sealed; direct switch/reset/rebase/merge/force-push/worktree mutation is blocked"
 	}
