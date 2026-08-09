@@ -16,7 +16,7 @@ import (
 func TestClientRunInventoryReaderUsesExactPerRunQueries(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca status --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runtime":{"runtimeId":"runtime-1"}}}`)}
-	runner.responses["orca orchestration run-list --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runs":[{"id":"run_b","objective":"b"},{"id":"run_a","objective":"a"}]},"_meta":{"runtimeId":"runtime-1"}}`)}
+	runner.responses["orca orchestration run-list --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runs":[{"id":"run_b","objective":"b"},{"id":"run_a","objective":"a"}],"nextCursor":null},"_meta":{"runtimeId":"runtime-1"}}`)}
 	for _, runID := range []string{"run_a", "run_b"} {
 		runner.responses["orca orchestration task-list --brief --run "+runID+" --json"] = taskListOutput(runID, "ready")
 		runner.responses["orca orchestration task-list --status dispatched --run "+runID+" --json"] = taskListOutput(runID, "dispatched")
@@ -65,10 +65,160 @@ func TestClientRunInventoryReaderUsesExactPerRunQueries(t *testing.T) {
 	}
 }
 
+func TestClientRunInventoryPaginatesCursorPages(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca status --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runtime":{"runtimeId":"runtime-1"}}}`)}
+	runner.responses["orca orchestration run-list --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runs":[{"id":"run_b","objective":"b"}],"nextCursor":"cursor-1"},"_meta":{"runtimeId":"runtime-1"}}`)}
+	runner.responses["orca orchestration run-list --cursor cursor-1 --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runs":[{"id":"run_a","objective":"a"}],"nextCursor":null},"_meta":{"runtimeId":"runtime-1"}}`)}
+
+	inventory, err := NewClient(runner).ListRunInventory(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := make([]string, 0, len(inventory.Runs))
+	for _, run := range inventory.Runs {
+		got = append(got, run.ID)
+	}
+	if !slices.Equal(got, []string{"run_a", "run_b"}) {
+		t.Fatalf("Run inventory IDs = %#v", got)
+	}
+	gotCalls := make([]string, 0, len(runner.calls))
+	for _, call := range runner.calls {
+		gotCalls = append(gotCalls, strings.Join(call, " "))
+	}
+	if !slices.Contains(gotCalls, "orca orchestration run-list --cursor cursor-1 --json") {
+		t.Fatalf("cursor page was not queried: %#v", gotCalls)
+	}
+}
+
+func TestClientRunInventoryRejectsMissingRuntimeOnFirstCursorPage(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.responses["orca orchestration run-list --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runs":[],"nextCursor":"cursor-1"}}`)}
+	runner.responses["orca orchestration run-list --cursor cursor-1 --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runs":[{"id":"run_a","objective":"a"}],"nextCursor":null},"_meta":{"runtimeId":"runtime-1"}}`)}
+
+	_, err := NewClient(runner).ListRuns(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "runtime") {
+		t.Fatalf("first cursor page missing runtime error = %v", err)
+	}
+	if len(runner.calls) != 1 {
+		t.Fatalf("missing first-page runtime queried a later cursor page: %#v", runner.calls)
+	}
+}
+
+func TestClientRunInventoryRejectsIncompleteCursorPages(t *testing.T) {
+	tests := []struct {
+		name      string
+		first     string
+		next      string
+		wantError string
+	}{
+		{
+			name:      "repeated cursor",
+			first:     `{"ok":true,"result":{"runs":[{"id":"run_a","objective":"a"}],"nextCursor":"cursor-1"},"_meta":{"runtimeId":"runtime-1"}}`,
+			next:      `{"ok":true,"result":{"runs":[{"id":"run_b","objective":"b"}],"nextCursor":"cursor-1"},"_meta":{"runtimeId":"runtime-1"}}`,
+			wantError: "nextCursor",
+		},
+		{
+			name:      "duplicate Run across pages",
+			first:     `{"ok":true,"result":{"runs":[{"id":"run_a","objective":"a"}],"nextCursor":"cursor-1"},"_meta":{"runtimeId":"runtime-1"}}`,
+			next:      `{"ok":true,"result":{"runs":[{"id":"run_a","objective":"a"}],"nextCursor":null},"_meta":{"runtimeId":"runtime-1"}}`,
+			wantError: "duplicate",
+		},
+		{
+			name:      "missing runs metadata",
+			first:     `{"ok":true,"result":{"runs":[{"id":"run_a","objective":"a"}],"nextCursor":"cursor-1"},"_meta":{"runtimeId":"runtime-1"}}`,
+			next:      `{"ok":true,"result":{},"_meta":{"runtimeId":"runtime-1"}}`,
+			wantError: "completeness metadata is missing",
+		},
+		{
+			name:      "runtime changed on cursor page",
+			first:     `{"ok":true,"result":{"runs":[{"id":"run_a","objective":"a"}],"nextCursor":"cursor-1"},"_meta":{"runtimeId":"runtime-1"}}`,
+			next:      `{"ok":true,"result":{"runs":[{"id":"run_b","objective":"b"}],"nextCursor":null},"_meta":{"runtimeId":"runtime-2"}}`,
+			wantError: "runtime identity changed",
+		},
+		{
+			name:      "missing nextCursor metadata",
+			first:     `{"ok":true,"result":{"runs":[{"id":"run_a","objective":"a"}]},"_meta":{"runtimeId":"runtime-1"}}`,
+			wantError: "nextCursor",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			runner := newFakeRunner(t)
+			runner.responses["orca status --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runtime":{"runtimeId":"runtime-1"}}}`)}
+			runner.responses["orca orchestration run-list --json"] = CommandOutput{Stdout: []byte(test.first)}
+			runner.responses["orca orchestration run-list --cursor cursor-1 --json"] = CommandOutput{Stdout: []byte(test.next)}
+
+			_, err := NewClient(runner).ListRunInventory(context.Background())
+			if err == nil || !strings.Contains(err.Error(), test.wantError) {
+				t.Fatalf("cursor page error = %v, want %q", err, test.wantError)
+			}
+		})
+	}
+}
+
+func TestClientRunScopedInventoriesRequireAuthoritativeResultRunID(t *testing.T) {
+	tests := []struct {
+		name     string
+		response string
+		read     func(*Client) error
+	}{
+		{
+			name:     "task list missing runId",
+			response: `{"ok":true,"result":{"tasks":[],"count":0},"_meta":{"runtimeId":"runtime-1"}}`,
+			read: func(client *Client) error {
+				_, err := client.ListAllTasksFromRuns(context.Background(), oneRunInventory())
+				return err
+			},
+		},
+		{
+			name:     "task list wrong runId",
+			response: `{"ok":true,"result":{"runId":"run_other","tasks":[],"count":0},"_meta":{"runtimeId":"runtime-1"}}`,
+			read: func(client *Client) error {
+				_, err := client.ListAllTasksFromRuns(context.Background(), oneRunInventory())
+				return err
+			},
+		},
+		{
+			name:     "gate list missing runId",
+			response: `{"ok":true,"result":{"gates":[],"count":0},"_meta":{"runtimeId":"runtime-1"}}`,
+			read: func(client *Client) error {
+				_, err := client.ListGatesFromRuns(context.Background(), oneRunInventory())
+				return err
+			},
+		},
+		{
+			name:     "gate list wrong runId",
+			response: `{"ok":true,"result":{"runId":"run_other","gates":[],"count":0},"_meta":{"runtimeId":"runtime-1"}}`,
+			read: func(client *Client) error {
+				_, err := client.ListGatesFromRuns(context.Background(), oneRunInventory())
+				return err
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			runner := newFakeRunner(t)
+			if strings.HasPrefix(test.name, "task") {
+				runner.responses["orca orchestration task-list --brief --run run_a --json"] = CommandOutput{Stdout: []byte(test.response)}
+			} else {
+				runner.responses["orca orchestration gate-list --run run_a --json"] = CommandOutput{Stdout: []byte(test.response)}
+			}
+
+			err := test.read(NewClient(runner))
+			if err == nil || !strings.Contains(err.Error(), "Run") {
+				t.Fatalf("result.runId validation error = %v", err)
+			}
+		})
+	}
+}
+
 func TestClientRunInventoryRejectsZeroRunRuntimeMismatch(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca status --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runtime":{"runtimeId":"runtime-current"}}}`)}
-	runner.responses["orca orchestration run-list --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runs":[]},"_meta":{"runtimeId":"runtime-stale"}}`)}
+	runner.responses["orca orchestration run-list --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runs":[],"nextCursor":null},"_meta":{"runtimeId":"runtime-stale"}}`)}
 
 	_, err := NewClient(runner).ListRunInventory(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "runtime identity changed") {
@@ -87,7 +237,7 @@ func TestClientRunInventoryReaderFailsClosed(t *testing.T) {
 
 	t.Run("task runtime mismatch", func(t *testing.T) {
 		runner := newFakeRunner(t)
-		runner.responses["orca orchestration task-list --brief --run run_a --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"tasks":[],"count":0},"_meta":{"runtimeId":"runtime-other"}}`)}
+		runner.responses["orca orchestration task-list --brief --run run_a --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runId":"run_a","tasks":[],"count":0},"_meta":{"runtimeId":"runtime-other"}}`)}
 		_, err := NewClient(runner).ListAllTasksFromRuns(context.Background(), oneRunInventory())
 		if err == nil || !strings.Contains(err.Error(), "runtime identity changed") {
 			t.Fatalf("task runtime mismatch error = %v", err)
@@ -96,7 +246,7 @@ func TestClientRunInventoryReaderFailsClosed(t *testing.T) {
 
 	t.Run("task Run identity mismatch", func(t *testing.T) {
 		runner := newFakeRunner(t)
-		runner.responses["orca orchestration task-list --brief --run run_a --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"tasks":[{"id":"task-1","run_id":"run_b","status":"ready"}],"count":1},"_meta":{"runtimeId":"runtime-1"}}`)}
+		runner.responses["orca orchestration task-list --brief --run run_a --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runId":"run_a","tasks":[{"id":"task-1","run_id":"run_b","status":"ready"}],"count":1},"_meta":{"runtimeId":"runtime-1"}}`)}
 		_, err := NewClient(runner).ListAllTasksFromRuns(context.Background(), oneRunInventory())
 		if err == nil || !strings.Contains(err.Error(), "different Run") {
 			t.Fatalf("task Run identity mismatch error = %v", err)
@@ -105,7 +255,7 @@ func TestClientRunInventoryReaderFailsClosed(t *testing.T) {
 
 	t.Run("gate count mismatch", func(t *testing.T) {
 		runner := newFakeRunner(t)
-		runner.responses["orca orchestration gate-list --run run_a --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"gates":[],"count":1},"_meta":{"runtimeId":"runtime-1"}}`)}
+		runner.responses["orca orchestration gate-list --run run_a --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runId":"run_a","gates":[],"count":1},"_meta":{"runtimeId":"runtime-1"}}`)}
 		_, err := NewClient(runner).ListGatesFromRuns(context.Background(), oneRunInventory())
 		if err == nil || !strings.Contains(err.Error(), "incomplete") {
 			t.Fatalf("gate count mismatch error = %v", err)
@@ -115,7 +265,7 @@ func TestClientRunInventoryReaderFailsClosed(t *testing.T) {
 	t.Run("duplicate gate identity", func(t *testing.T) {
 		runner := newFakeRunner(t)
 		for _, runID := range []string{"run_a", "run_b"} {
-			runner.responses["orca orchestration gate-list --run "+runID+" --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"gates":[{"id":"gate-1","task_id":"task-1","status":"pending"}],"count":1},"_meta":{"runtimeId":"runtime-1"}}`)}
+			runner.responses["orca orchestration gate-list --run "+runID+" --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runId":"` + runID + `","gates":[{"id":"gate-1","task_id":"task-1","status":"pending"}],"count":1},"_meta":{"runtimeId":"runtime-1"}}`)}
 		}
 		_, err := NewClient(runner).ListGatesFromRuns(context.Background(), twoRunInventory())
 		if err == nil || !strings.Contains(err.Error(), "duplicate") {
@@ -150,6 +300,24 @@ func TestClientProbeRequiresRunScopedGateCapability(t *testing.T) {
 	}
 	if got.Ready || got.Code != "capability_missing" {
 		t.Fatalf("missing gate --run capability was accepted: %#v", got)
+	}
+}
+
+func TestClientProbeRequiresRunListCursorCapability(t *testing.T) {
+	runner := newFakeRunner(t)
+	runner.lookPaths["orca"] = "/usr/local/bin/orca"
+	runner.lookPaths["codex"] = "/usr/local/bin/codex"
+	runner.responses["orca status --json"] = fixtureOutput(t, "status_ready.json")
+	runner.responses["orca repo show --repo path:/repo --json"] = fixtureOutput(t, "repo_show.json")
+	addCompleteProbeLeafHelp(runner)
+	runner.responses["orca orchestration run-list --help"] = CommandOutput{Stdout: []byte("--json")}
+
+	got, err := NewClient(runner).Probe(context.Background(), port.OrcaProbeRequest{Repo: "/repo", Agent: "codex", Provider: "github"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Ready || got.Code != "capability_missing" {
+		t.Fatalf("missing run-list --cursor capability was accepted: %#v", got)
 	}
 }
 
@@ -201,11 +369,11 @@ func TestClientRunInventoryReadersLimitConcurrencyToEight(t *testing.T) {
 }
 
 func taskListOutput(runID, status string) CommandOutput {
-	return CommandOutput{Stdout: []byte(fmt.Sprintf(`{"ok":true,"result":{"tasks":[{"id":"task-%s","status":"%s"}],"count":1},"_meta":{"runtimeId":"runtime-1"}}`, runID, status))}
+	return CommandOutput{Stdout: []byte(fmt.Sprintf(`{"ok":true,"result":{"runId":%q,"tasks":[{"id":"task-%s","status":"%s"}],"count":1},"_meta":{"runtimeId":"runtime-1"}}`, runID, runID, status))}
 }
 
 func gateListOutput(runID string) CommandOutput {
-	return CommandOutput{Stdout: []byte(fmt.Sprintf(`{"ok":true,"result":{"gates":[{"id":"gate-%s","task_id":"task-%s","status":"pending"}],"count":1},"_meta":{"runtimeId":"runtime-1"}}`, runID, runID))}
+	return CommandOutput{Stdout: []byte(fmt.Sprintf(`{"ok":true,"result":{"runId":%q,"gates":[{"id":"gate-%s","task_id":"task-%s","status":"pending"}],"count":1},"_meta":{"runtimeId":"runtime-1"}}`, runID, runID, runID))}
 }
 
 func oneRunInventory() port.OrcaRunInventory {
@@ -243,7 +411,7 @@ func (r *blockingRunInventoryRunner) Run(_ context.Context, _ string, _ time.Dur
 		for _, run := range r.runs {
 			rows = append(rows, fmt.Sprintf(`{"id":%q,"objective":%q}`, run.ID, run.Objective))
 		}
-		return CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runs":[` + strings.Join(rows, ",") + `]},"_meta":{"runtimeId":"runtime-1"}}`)}, nil
+		return CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runs":[` + strings.Join(rows, ",") + `],"nextCursor":null},"_meta":{"runtimeId":"runtime-1"}}`)}, nil
 	}
 	r.mu.Lock()
 	r.active++

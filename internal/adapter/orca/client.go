@@ -153,7 +153,7 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 		{argv: []string{"orca", "terminal", "create", "--help"}, want: []string{"--worktree", "--command", "--title", "--json"}},
 		{argv: []string{"orca", "terminal", "list", "--help"}, want: []string{"--worktree", "--limit", "--json"}},
 		{argv: []string{"orca", "orchestration", "run-create", "--help"}, want: []string{"--objective", "--from", "--json"}},
-		{argv: []string{"orca", "orchestration", "run-list", "--help"}, want: []string{"--json"}},
+		{argv: []string{"orca", "orchestration", "run-list", "--help"}, want: []string{"--cursor", "--json"}},
 		{argv: []string{"orca", "orchestration", "run-current", "--help"}, want: []string{"--from", "--json"}},
 		{argv: []string{"orca", "orchestration", "run-use", "--help"}, want: []string{"--id", "--from", "--json"}},
 		{argv: []string{"orca", "orchestration", "task-create", "--help"}, want: []string{"--spec", "--task-title", "--display-name", "--run", "--from", "--json"}},
@@ -683,28 +683,58 @@ func readRunsBounded[T any](ctx context.Context, runs []port.OrcaRun, read func(
 }
 
 func (c *Client) listRunsInventory(ctx context.Context) (executionRunInventory, error) {
-	var payload struct {
-		Runs *[]runPayload `json:"runs"`
-	}
-	runtimeID, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "orchestration", "run-list", "--json"}, &payload)
-	if err != nil {
-		return executionRunInventory{}, err
-	}
-	if payload.Runs == nil {
-		return executionRunInventory{}, &port.OrcaError{Code: "incomplete_list", Detail: "Orca Run list completeness metadata is missing", Invoked: true}
-	}
-	result := make([]port.OrcaRun, 0, len(*payload.Runs))
-	seen := make(map[string]struct{}, len(*payload.Runs))
-	for _, row := range *payload.Runs {
-		value, err := row.portValue(runtimeID)
+	argv := []string{"orca", "orchestration", "run-list", "--json"}
+	result := make([]port.OrcaRun, 0)
+	seenRuns := make(map[string]struct{})
+	seenCursors := make(map[string]struct{})
+	runtimeID := ""
+	for {
+		var payload struct {
+			Runs       *[]runPayload   `json:"runs"`
+			NextCursor json.RawMessage `json:"nextCursor"`
+		}
+		pageRuntimeID, err := c.runJSON(ctx, "", readTimeout, argv, &payload)
 		if err != nil {
 			return executionRunInventory{}, err
 		}
-		if _, duplicate := seen[value.ID]; duplicate {
-			return executionRunInventory{}, &port.OrcaError{Code: "run_inventory_ambiguous", Detail: "Orca returned a duplicate Run identity", Invoked: true}
+		if strings.TrimSpace(pageRuntimeID) == "" || pageRuntimeID != strings.TrimSpace(pageRuntimeID) {
+			return executionRunInventory{}, &port.OrcaError{Code: "run_inventory_runtime_invalid", Detail: "Orca Run list page has no canonical runtime identity", Invoked: true}
 		}
-		seen[value.ID] = struct{}{}
-		result = append(result, value)
+		if runtimeID == "" {
+			runtimeID = pageRuntimeID
+		} else if err := validateExecutionInventoryRuntime(pageRuntimeID, runtimeID); err != nil {
+			return executionRunInventory{}, err
+		}
+		if payload.Runs == nil {
+			return executionRunInventory{}, &port.OrcaError{Code: "incomplete_list", Detail: "Orca Run list completeness metadata is missing", Invoked: true}
+		}
+		for _, row := range *payload.Runs {
+			value, err := row.portValue(runtimeID)
+			if err != nil {
+				return executionRunInventory{}, err
+			}
+			if _, duplicate := seenRuns[value.ID]; duplicate {
+				return executionRunInventory{}, &port.OrcaError{Code: "run_inventory_ambiguous", Detail: "Orca returned a duplicate Run identity", Invoked: true}
+			}
+			seenRuns[value.ID] = struct{}{}
+			result = append(result, value)
+		}
+		nextCursor := strings.TrimSpace(string(payload.NextCursor))
+		if nextCursor == "" {
+			return executionRunInventory{}, &port.OrcaError{Code: "incomplete_list", Detail: "Orca Run list nextCursor completeness metadata is missing", Invoked: true}
+		}
+		if nextCursor == "null" {
+			break
+		}
+		var cursor string
+		if json.Unmarshal(payload.NextCursor, &cursor) != nil || strings.TrimSpace(cursor) == "" || cursor != strings.TrimSpace(cursor) {
+			return executionRunInventory{}, &port.OrcaError{Code: "incomplete_list", Detail: "Orca Run list nextCursor is invalid", Invoked: true}
+		}
+		if _, duplicate := seenCursors[cursor]; duplicate {
+			return executionRunInventory{}, &port.OrcaError{Code: "incomplete_list", Detail: "Orca Run list nextCursor repeated", Invoked: true}
+		}
+		seenCursors[cursor] = struct{}{}
+		argv = []string{"orca", "orchestration", "run-list", "--cursor", cursor, "--json"}
 	}
 	slices.SortFunc(result, func(left, right port.OrcaRun) int {
 		return strings.Compare(left.ID, right.ID)
@@ -866,9 +896,13 @@ func (c *Client) listRunTasksInventory(ctx context.Context, runID string, flags 
 	var payload struct {
 		Tasks []taskPayload `json:"tasks"`
 		Count *int          `json:"count"`
+		RunID *string       `json:"runId"`
 	}
 	runtimeID, err := c.runJSON(ctx, "", readTimeout, argv, &payload)
 	if err != nil {
+		return executionTaskInventory{}, err
+	}
+	if err := requireReturnedRunID("task", runID, payload.RunID); err != nil {
 		return executionTaskInventory{}, err
 	}
 	if err := requireReturnedCount("task", len(payload.Tasks), payload.Count); err != nil {
@@ -927,10 +961,14 @@ func (c *Client) listRunGatesInventory(ctx context.Context, runID string) (execu
 			TaskID string `json:"task_id"`
 			Status string `json:"status"`
 		} `json:"gates"`
-		Count *int `json:"count"`
+		Count *int    `json:"count"`
+		RunID *string `json:"runId"`
 	}
 	runtimeID, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "orchestration", "gate-list", "--run", runID, "--json"}, &payload)
 	if err != nil {
+		return executionGateInventory{}, err
+	}
+	if err := requireReturnedRunID("gate", runID, payload.RunID); err != nil {
 		return executionGateInventory{}, err
 	}
 	if err := requireReturnedCount("gate", len(payload.Gates), payload.Count); err != nil {
@@ -1345,6 +1383,13 @@ func requireReturnedCount(kind string, length int, count *int) error {
 	}
 	if count == nil || value != length {
 		return fmt.Errorf("Orca %s list is incomplete: count=%d returned=%d", kind, value, length)
+	}
+	return nil
+}
+
+func requireReturnedRunID(kind, expected string, returned *string) error {
+	if returned == nil || *returned != expected {
+		return &port.OrcaError{Code: kind + "_run_mismatch", Detail: "Orca " + kind + " list does not identify the requested Run", Invoked: true}
 	}
 	return nil
 }

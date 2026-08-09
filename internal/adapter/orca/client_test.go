@@ -928,7 +928,7 @@ func TestClientListAllTasksProjectsCompletionSemanticsWithoutRawResult(t *testin
 func TestClientListAllTasksRejectsCountMismatch(t *testing.T) {
 	runner := newFakeRunner(t)
 	command := "orca orchestration task-list --brief --run run_issueops_1 --json"
-	runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"tasks":[{"id":"task-1","status":"ready"}],"count":2}}`)}
+	runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runId":"run_issueops_1","tasks":[{"id":"task-1","status":"ready"}],"count":2}}`)}
 
 	_, err := NewClient(runner).ListAllTasks(context.Background())
 
@@ -940,7 +940,7 @@ func TestClientListAllTasksRejectsCountMismatch(t *testing.T) {
 func TestClientListFailedTasksUsesStatusFilter(t *testing.T) {
 	runner := newFakeRunner(t)
 	command := "orca orchestration task-list --status failed --run run_issueops_1 --json"
-	runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"tasks":[{"id":"task-failed","status":"failed"}],"count":1},"_meta":{"runtimeId":"runtime-1"}}`)}
+	runner.responses[command] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runId":"run_issueops_1","tasks":[{"id":"task-failed","status":"failed"}],"count":1},"_meta":{"runtimeId":"runtime-1"}}`)}
 
 	got, err := NewClient(runner).ListFailedTasks(context.Background())
 	if err != nil {
@@ -994,7 +994,7 @@ func TestClientOperationalInventoryRejectsMalformedIdentity(t *testing.T) {
 		{
 			name:    "task id",
 			command: "orca orchestration task-list --brief --run run_issueops_1 --json",
-			result:  `{"tasks":[{"id":"","status":"ready"}],"count":1}`,
+			result:  `{"runId":"run_issueops_1","tasks":[{"id":"","status":"ready"}],"count":1}`,
 			call:    func(client *Client) error { _, err := client.ListAllTasks(context.Background()); return err },
 		},
 		{
@@ -1118,7 +1118,7 @@ func TestClientListDispatchedTasksUsesServerFilteredCompleteInventory(t *testing
 	runner := newFakeRunner(t)
 	runner.responses["orca orchestration task-list --status dispatched --run run_issueops_1 --json"] = CommandOutput{Stdout: []byte(`{
 		"ok": true,
-		"result": {"tasks": [{"id": "task-dispatched", "task_title": "writer", "status": "dispatched"}], "count": 1},
+		"result": {"runId": "run_issueops_1", "tasks": [{"id": "task-dispatched", "task_title": "writer", "status": "dispatched"}], "count": 1},
 		"_meta": {"runtimeId": "runtime-1"}
 	}`)}
 	got, err := NewClient(runner).ListDispatchedTasks(context.Background())
@@ -1161,7 +1161,7 @@ func TestClientShowDispatchNullReturnsNotFound(t *testing.T) {
 func TestClientExecutionInventoryPreservesRuntimeForEmptyRows(t *testing.T) {
 	runner := newFakeRunner(t)
 	runner.responses["orca terminal list --worktree id:wt-1 --limit 512 --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"terminals":[],"visualLayouts":[],"totalCount":0,"truncated":false},"_meta":{"runtimeId":"runtime-1"}}`)}
-	runner.responses["orca orchestration task-list --brief --run run_issueops_1 --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"tasks":[],"count":0},"_meta":{"runtimeId":"runtime-1"}}`)}
+	runner.responses["orca orchestration task-list --brief --run run_issueops_1 --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"runId":"run_issueops_1","tasks":[],"count":0},"_meta":{"runtimeId":"runtime-1"}}`)}
 	runner.responses["orca orchestration dispatch-show --task task-1 --json"] = CommandOutput{Stdout: []byte(`{"ok":true,"result":{"dispatch":null},"_meta":{"runtimeId":"runtime-1"}}`)}
 	client := NewClient(runner)
 
@@ -1233,7 +1233,7 @@ func TestClientRejectsIncompleteExternalLists(t *testing.T) {
 	}{
 		{name: "worktree truncated", command: "orca worktree list --repo path:/repo --limit 512 --json", field: "worktrees", call: func(c *Client) error { _, err := c.ListWorktrees(context.Background(), "/repo"); return err }},
 		{name: "terminal total mismatch", command: "orca terminal list --worktree id:wt-1 --limit 512 --json", field: "terminals", call: func(c *Client) error { _, err := c.ListTerminals(context.Background(), "wt-1"); return err }},
-		{name: "task missing metadata", command: "orca orchestration task-list --ready --run run_issueops_1 --json", field: "tasks", call: func(c *Client) error { _, err := c.ListTasks(context.Background()); return err }},
+		{name: "task missing metadata", command: "orca orchestration task-list --ready --run run_issueops_1 --json", field: `runId":"run_issueops_1","tasks`, call: func(c *Client) error { _, err := c.ListTasks(context.Background()); return err }},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			runner := newFakeRunner(t)
@@ -1311,7 +1311,7 @@ func addCompleteProbeLeafHelp(runner *fakeRunner) {
 		"orca terminal create --help":             "--worktree --command --title --json",
 		"orca terminal list --help":               "--worktree --limit --json",
 		"orca orchestration run-create --help":    "--objective --from --json",
-		"orca orchestration run-list --help":      "--json",
+		"orca orchestration run-list --help":      "--cursor --json",
 		"orca orchestration run-current --help":   "--from --json",
 		"orca orchestration run-use --help":       "--id --from --json",
 		"orca orchestration task-create --help":   "--spec --task-title --display-name --run --from --json",

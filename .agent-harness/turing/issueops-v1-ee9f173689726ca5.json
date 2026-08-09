@@ -1,121 +1,265 @@
 {
   "schema_version": 1,
   "lifecycle": "io-71ec03351dbb",
-  "generation": 13,
-  "wave": "G13",
+  "generation": 19,
+  "wave": "fresh-brooks-revise",
   "issue_body_sha256": "013dea208eda3f40c3ca7d696bfb8d3617a6b5b0dd94efdffd42a80cb22a7b01",
-  "context_packet_sha256": "e3f783707e0852157e2c00c3359f66ce366968885371437e26093c4f0706a0f6",
+  "context_packet_sha256": "df572c537db40857c4842ea2093b9b2a24478edd946848e4bef2739e2b6ff677",
+  "final_head_candidate": "31d1df78c0b0bb26289ee0cf4d8362942efd539c",
+  "success_criteria": {
+    "AC-01": "Legacy UTC completion timestamps and RFC3339Nano project identically; other formats fail closed.",
+    "AC-02": "Gate inventory uses exact per-Run queries and rejects runtime, count, and identity mismatches.",
+    "AC-03": "All, dispatched, and gate reads use bounded deterministic Run-scoped inventory; dispatched stays server-filtered.",
+    "AC-04": "Claim resolves the current sealed token internally without copying token material or its private path into generated owner prompts or claim commands; public claim_token_path metadata remains part of prepare/replace/resume responses.",
+    "AC-05": "MCP stress reads every response before stdin and process streams close.",
+    "AC-06": "Four isolated Wave 1 child cycles complete and are accepted by the parent.",
+    "AC-07": "Focused and repository-wide Go verification, vet, build, and contracts pass.",
+    "AC-08": "Doctor observes clean and populated states without the prior timestamp or gate-inventory failure.",
+    "AC-09": "Full self-verify terminates at 250/250 with score 100; final stability audit passes after cleanup.",
+    "AC-10": "A verified draft PR is created; merge and destructive cleanup remain a separate coordinator-authorized post-merge action."
+  },
   "acceptance": [
     {
       "id": "AC-01",
-      "status": "DEFERRED",
-      "test": "Wave 1 #446 task_timestamp_test.go",
-      "command": "go test -v ./internal/adapter/operationalhealth -run 'Timestamp|Completed' -count=1",
-      "observed": "Wave 1 child scope; W0 only extracted the timestamp boundary without behavior change."
+      "status": "PASS",
+      "evidence": "Accepted child io-138656f44f63 (#446), final head d722c7ad; child validation records exact UTC fallback and rejection of unsupported legacy forms."
     },
     {
       "id": "AC-02",
-      "status": "DEFERRED",
-      "test": "Wave 1 #447 Orca Run inventory contract tests",
-      "command": "go test -v ./internal/adapter/orca -count=1",
-      "observed": "Wave 1 child scope; W0 only established the typed port."
+      "status": "TARGETED_PASS_PENDING_FRESH_REVIEW",
+      "evidence": "Accepted child io-af912dd12588 (#447), final head ec851e81, covers per-Run reads. Generation 18 retains authoritative result.runId validation for empty task/gate pages and requires a canonical runtime identity on every Run page before cursor continuation."
     },
     {
       "id": "AC-03",
-      "status": "DEFERRED",
-      "test": "Wave 1 #447 bounded inventory tests",
-      "command": "go test -race ./internal/adapter/orca -count=1",
-      "observed": "Wave 1 child scope."
+      "status": "TARGETED_PASS_PENDING_FRESH_REVIEW",
+      "evidence": "Accepted child io-af912dd12588 (#447), final head ec851e81, covers bounded deterministic Run-scoped reads. Generation 18 requires --cursor at probe time and a runtime identity on every cursor page; TestClientRunInventoryRejectsMissingRuntimeOnFirstCursorPage and TestClientProbeRequiresRunListCursorCapability passed after RED."
     },
     {
       "id": "AC-04",
       "status": "PASS",
-      "test": "TestExecutionReseedNextCommandRendersModeSpecificRecovery; TestIssueOpsExecutionDocumentationHasOneCurrentContract; TestIssueOpsAdvertisesOnlyExecutionActionTool; TestExecutionActionRequestFromMCPMapsCurrentClaimToken",
-      "command": "go test ./internal/adapter/issueops -run 'TestExecutionReseedNextCommandRendersModeSpecificRecovery|TestIssueOpsExecutionDocumentationHasOneCurrentContract' -count=1; go test ./internal/domain/mcp ./cmd/harness/mcpcli -run 'TestIssueOpsAdvertisesOnlyExecutionActionTool|TestExecutionActionRequestFromMCPMapsCurrentClaimToken' -count=1",
-      "observed": "RED: stale private-path expectations and missing MCP schema boolean failed; GREEN: direct recovery and MCP advertise/propagate --claim-current-token without a token path, while Orca remains coordinator-only resume."
+      "evidence": "Current packet claim surface uses --claim-current-token; prior focused claim, resume, MCP-schema, and rendered-owner-packet tests are retained in this lifecycle evidence."
     },
     {
       "id": "AC-05",
-      "status": "PENDING_COORDINATOR",
-      "test": "MCPJSONRPCProcessTest.test_waits_for_responses_before_closing_stdin_and_rejects_bad_transcripts",
-      "command": "python3 -B skills/stability-audit/scripts/test_e2e_stability_audit.py",
-      "observed": "The regression now tracks each subprocess and requires closed stdout/stderr after reader join/drain. The active-lease guard denied the exact Python command as unclassified; the issue assigns the required 14-test, zero-ResourceWarning observation to the coordinator."
+      "status": "PASS",
+      "evidence": "Brooks latest verification reports python3 -m unittest skills/stability-audit/scripts/test_e2e_stability_audit.py passed all 15 tests for the current generation 18 implementation diff. Prior coordinator py_compile and diff-check evidence remains recorded separately."
     },
     {
       "id": "AC-06",
-      "status": "PARTIAL_G13",
-      "test": "TestAppendIssueOpsChildRefResetsTerminalReceiptOnlyForNewerIncarnation and final child status",
-      "command": "go test -race ./internal/adapter/issueops -run 'TestAppendIssueOpsChildRefResetsTerminalReceiptOnlyForNewerIncarnation|TestArchivedIssueOpsChildDoesNotOverwriteReappearedIncarnation|TestArchivedIssueOpsChildRecordsReceiptWhenChildRemainsAbsent|TestStartIssueOpsChildConcurrentSameBranch|TestStartIssueOpsChildConcurrentSiblingsAcrossProcesses' -count=1 -timeout=20s; ./bin/agent-harness issueops child status --parent io-71ec03351dbb --json",
-      "observed": "Newer child record incarnations clear only stale terminal parent receipts; exact equal, malformed, and older timestamps retain receipts fail-closed. Archived accept/drop reject a reappeared child and still record a receipt when the child remains absent. Child completion and parent acceptance remain coordinator-owned."
+      "status": "PASS",
+      "command": "agent-harness issueops child status --parent 'io-71ec03351dbb' --json",
+      "observed": "All four children are phase=done with validation_verdict=accepted: io-138656f44f63, io-af912dd12588, io-b47cf8570a9a, io-45327e6f2f35."
     },
     {
       "id": "AC-07",
-      "status": "PASS_G13_SCOPE",
-      "test": "G13 incarnation focused, concurrency, relevant race, full Go test, vet, build, and formatting checks",
-      "command": "go test -v ./internal/adapter/issueops -run '^(TestAppendIssueOpsChildRefResetsTerminalReceiptOnlyForNewerIncarnation|TestArchivedIssueOpsChildDoesNotOverwriteReappearedIncarnation|TestArchivedIssueOpsChildRecordsReceiptWhenChildRemainsAbsent|TestStartIssueOpsChildAppendsParentRef|TestStartIssueOpsChildConcurrentSameBranch|TestStartIssueOpsChildConcurrentSiblingsAcrossProcesses)$' -count=1 -timeout=20s; go test -race ./internal/adapter/issueops -count=1 -timeout=90s; go test ./... -count=1; go vet ./...; go build -o bin/agent-harness ./cmd/harness; gofmt -d internal/adapter/issueops/issueops_delegation.go internal/adapter/issueops/issueops_delegation_test.go internal/domain/mcp/issueops_catalog.go; git diff --check",
-      "observed": "Focused normal/race, relevant race, fresh 90-second package race, full Go test, vet, build, changed-file gofmt, and diff check passed. The -timeout=20s package-wide race exceeded a known roughly 42-second baseline and is nonblocking; the fresh -timeout=90s run completed successfully. The active-lease hook denied the tracked-tree file-listing command, so changed Go files were checked directly rather than claiming a full tracked-tree gofmt result."
+      "status": "PENDING_EXIT_RECEIPT",
+      "commands": [
+        "go test -race ./internal/adapter/issueops ./internal/adapter/orca ./internal/adapter/operationalhealth ./internal/domain/commandparse ./internal/adapter/lifecycle -count=1",
+        "go test ./... -count=1",
+        "go test -race ./... -count=1",
+        "go vet ./...",
+        "go build -o bin/agent-harness ./cmd/harness"
+      ],
+      "observed": "The older repository-wide go test and race PIDs exited, but their exit codes were not recovered after the interrupted foreground cells. They are not accepted as generation 18 PASS evidence; only focused validation is currently recorded."
     },
     {
       "id": "AC-08",
-      "status": "DEFERRED",
-      "test": "Clean and populated doctor observations",
+      "status": "DEFERRED_POST_MERGE",
       "command": "./bin/agent-harness doctor --repo \"$PWD\" --json",
-      "observed": "Post-child integration scope."
+      "reason": "The user directed this observation to the coordinator after merge and exact cleanup because the active lifecycle and accepted children are expected operational residue."
     },
     {
       "id": "AC-09",
-      "status": "DEFERRED",
-      "test": "Full self-verify and stability audit",
-      "command": "./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json; python3 skills/stability-audit/scripts/e2e_stability_audit.py --cleanup-stale --json",
-      "observed": "Post-child integration scope."
+      "status": "PARTIAL_POST_MERGE_AUDIT",
+      "evidence": "Coordinator reports full self-verify --full --iterations=10 passed 250/250 with minimum score 100 before the final two-file Python-only audit patch. A non-admitted bare-PATH self-verify attempt was blocked; the exact ./bin form was not run. The post-cleanup stability audit is coordinator-owned by user direction.",
+      "deferred_command": "python3 skills/stability-audit/scripts/e2e_stability_audit.py --cleanup-stale --json"
     },
     {
       "id": "AC-10",
-      "status": "DEFERRED",
-      "test": "Draft PR, merge, and scoped cleanup receipts",
-      "command": "Coordinator-owned parent publication and cleanup",
-      "observed": "The issue explicitly prohibits W0 owner PR/completion."
+      "status": "DRAFT_BLOCKED_FRESH_REVIEW",
+      "reason": "Fresh implementation review is required for the generation 18 post-Brooks revise diff. No commit, PR, merge, release, or cleanup is authorized before that review."
     }
   ],
   "verification": [
-    {"command": "go test ./cmd/harness/issueopscli/... ./internal/application/issueopslease/... ./internal/adapter/issueops/... ./internal/adapter/inbound/issueopslease/... ./internal/adapter/outbound/issueopslease/... ./internal/domain/commandparse/... ./internal/port/... -count=1", "result": "PASS"},
-    {"command": "go test -race ./internal/adapter/issueops ./internal/adapter/orca ./internal/adapter/operationalhealth ./internal/domain/commandparse ./internal/adapter/lifecycle -count=1", "result": "PASS"},
-    {"command": "go test ./... -count=1", "result": "PASS"},
-    {"command": "go test -race ./... -count=1", "result": "PASS"},
-    {"command": "go vet ./...", "result": "PASS"},
-    {"command": "go build -o bin/agent-harness ./cmd/harness", "result": "PASS"},
-    {"command": "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -count=1", "result": "PASS"},
-    {"command": "go test ./internal/adapter/toolconformance ./cmd/harness/contractcli ./cmd/harness/harnessapp -count=1", "result": "PASS after updating the pinned IssueOps MCP schema hash."},
-    {"command": "git diff --check", "result": "PASS"},
-    {"command": "python3 -B skills/stability-audit/scripts/test_e2e_stability_audit.py", "result": "BLOCKED: active-lease guard rejected the exact command as unclassified; coordinator owns the required 14-test, zero-ResourceWarning run."},
-    {"command": "go test -v ./internal/adapter/issueops -run '^(TestAppendIssueOpsChildRefResetsTerminalReceiptOnlyForNewerIncarnation|TestStartIssueOpsChildAppendsParentRef|TestStartIssueOpsChildConcurrentSameBranch|TestStartIssueOpsChildConcurrentSiblingsAcrossProcesses)$' -count=1", "result": "PASS: newer incarnation resets stale receipt; same, malformed, and older records retain it; existing same-branch and process-concurrency tests pass."},
-    {"command": "go test -race ./internal/adapter/issueops -run '^(TestAppendIssueOpsChildRefResetsTerminalReceiptOnlyForNewerIncarnation|TestStartIssueOpsChildConcurrentSameBranch|TestStartIssueOpsChildConcurrentSiblingsAcrossProcesses)$' -count=1", "result": "PASS"},
-    {"command": "go test -race ./internal/adapter/issueops ./internal/adapter/orca ./internal/adapter/operationalhealth ./internal/domain/commandparse ./internal/adapter/lifecycle -count=1", "result": "PASS"},
-    {"command": "go test ./... -count=1", "result": "PASS"},
-    {"command": "go vet ./...", "result": "PASS"},
-    {"command": "go build -o bin/agent-harness ./cmd/harness", "result": "PASS"},
-    {"command": "gofmt -d internal/adapter/issueops/issueops_delegation.go internal/adapter/issueops/issueops_delegation_test.go internal/domain/mcp/issueops_catalog.go", "result": "PASS: no output"},
-    {"command": "git diff --check", "result": "PASS"},
-    {"command": "go test -race ./internal/adapter/issueops -count=1 -timeout=20s", "result": "NONBLOCKING: timed out after 22.912s while the package's known baseline is roughly 42s; superseded by the required -timeout=90s run."},
-    {"command": "go test -race ./internal/adapter/issueops -count=1 -timeout=90s", "result": "PASS"},
-    {"command": "go test ./... -count=1", "result": "PASS: fresh foreground run completed without a failure test or stack."},
-    {"command": "go vet ./...", "result": "PASS: rerun after final locking correction"},
-    {"command": "go build -o bin/agent-harness ./cmd/harness", "result": "PASS: rerun after final locking correction"},
-    {"command": "gofmt -d internal/adapter/issueops/issueops_delegation.go internal/adapter/issueops/issueops_delegation_test.go internal/domain/mcp/issueops_catalog.go", "result": "PASS: no output after final locking correction"},
-    {"command": "git diff --check", "result": "PASS: rerun after final locking correction"}
+    {
+      "command": "go test -race ./internal/adapter/issueops ./internal/adapter/orca ./internal/adapter/operationalhealth ./internal/domain/commandparse ./internal/adapter/lifecycle -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test ./... -count=1",
+      "result": "UNVERIFIED_EXIT_CODE",
+      "observed": "The old foreground process exited after its cell was interrupted, so its exit status was not recovered as current evidence."
+    },
+    {
+      "command": "go test -race ./... -count=1",
+      "result": "UNVERIFIED_EXIT_CODE",
+      "observed": "The old foreground process exited after its cell was interrupted, so its exit status was not recovered as current evidence."
+    },
+    {
+      "command": "go vet ./...",
+      "result": "PASS"
+    },
+    {
+      "command": "go build -o bin/agent-harness ./cmd/harness",
+      "result": "PASS"
+    },
+    {
+      "command": "agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json",
+      "result": "BLOCKED_BY_ACTIVE_LEASE_GUARD",
+      "observed": "non-admitted bare PATH attempt rejected; exact ./bin command not run."
+    },
+    {
+      "command": "./bin/agent-harness doctor --repo \"$PWD\" --json",
+      "result": "NOT_RUN_BY_USER_DIRECTION",
+      "observed": "Expected active lifecycle and child residue would make this pre-cleanup observation structurally unhealthy."
+    },
+    {
+      "command": "python3 skills/stability-audit/scripts/e2e_stability_audit.py --cleanup-stale --json",
+      "result": "NOT_RUN_BY_USER_DIRECTION",
+      "observed": "Reserved for the coordinator's post-merge exact-cleanup gate."
+    },
+    {
+      "command": "go test ./internal/adapter/orca -run 'TestClientRunInventory(PaginatesCursorPages|RejectsIncompleteCursorPages|ScopedInventoriesRequireAuthoritativeResultRunID)$|TestClientRunScopedInventoriesRequireAuthoritativeResultRunID$' -count=1",
+      "result": "PASS",
+      "observed": "The focused generation 17 pagination and authoritative result.runId regression tests passed after their expected RED failures."
+    },
+    {
+      "command": "go test ./internal/adapter/orca -count=1",
+      "result": "PASS",
+      "observed": "The full Orca adapter package passed after all run-list, task-list, and gate-list fixtures were updated with authoritative completion and run metadata."
+    },
+    {
+      "command": "go test -race ./internal/adapter/orca -count=1",
+      "result": "PASS",
+      "observed": "The full Orca adapter package passed under the race detector."
+    },
+    {
+      "command": "python3 -m unittest skills/stability-audit/scripts/test_e2e_stability_audit.py -k malformed_jsonrpc_response_envelopes",
+      "result": "BLOCKED_BY_ACTIVE_LEASE_GUARD",
+      "observed": "The hook rejected the focused Python test as an unclassified foreground command; it was not retried."
+    },
+    {
+      "command": "python3 skills/stability-audit/scripts/test_e2e_stability_audit.py",
+      "result": "BLOCKED_BY_ACTIVE_LEASE_GUARD",
+      "observed": "The hook rejected the full Python test script as an unclassified foreground command; it was not retried."
+    },
+    {
+      "command": "python3 -m unittest skills/stability-audit/scripts/test_e2e_stability_audit.py",
+      "result": "PASS_BY_COORDINATOR",
+      "observed": "Coordinator ran the current generation 17 diff: 15 tests passed in 12.357s."
+    },
+    {
+      "command": "python3 -m py_compile skills/stability-audit/scripts/e2e_stability_audit.py skills/stability-audit/scripts/test_e2e_stability_audit.py",
+      "result": "PASS_BY_COORDINATOR",
+      "observed": "Coordinator verified both updated Python modules compile."
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS_BY_COORDINATOR",
+      "observed": "Coordinator verified the current diff has no whitespace errors."
+    },
+    {
+      "command": "go test ./... -count=1",
+      "result": "UNVERIFIED_EXIT_CODE",
+      "observed": "The repository-wide process was observed gone, but its exit code was not recovered after interruption; it is not generation 18 PASS evidence."
+    },
+    {
+      "command": "go test -race ./... -count=1",
+      "result": "UNVERIFIED_EXIT_CODE",
+      "observed": "The repository-wide race process was observed gone, but its exit code was not recovered after interruption; it is not generation 18 PASS evidence."
+    },
+    {
+      "command": "go vet ./...",
+      "result": "PASS",
+      "observed": "go vet completed without findings against the generation 17 current diff."
+    },
+    {
+      "command": "go build -o bin/agent-harness ./cmd/harness",
+      "result": "PASS",
+      "observed": "The harness binary built successfully against the generation 17 current diff."
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS",
+      "observed": "The owner reran the whitespace check after the final Turing evidence update."
+    },
+    {
+      "command": "go test ./internal/adapter/orca -count=1",
+      "result": "PASS",
+      "observed": "Generation 18 focused normal regression passed after first-page runtime sealing and run-list --cursor probe coverage were implemented."
+    },
+    {
+      "command": "go test -race ./internal/adapter/orca -count=1",
+      "result": "PASS",
+      "observed": "Generation 18 focused race regression passed after the same fixes."
+    },
+    {
+      "command": "python3 -m unittest skills/stability-audit/scripts/test_e2e_stability_audit.py",
+      "result": "PASS_BY_BROOKS",
+      "observed": "Brooks latest verification reports all 15 Python tests passed for the current implementation diff."
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS",
+      "observed": "Passed after the generation 18 REVISE closure record was added."
+    }
   ],
-  "tdd": {
-    "current_token_red": "The stale reseed and skill-contract expectations failed before test correction because the current implementation no longer emits a private token path.",
-    "current_token_green": "The corrected direct-mode expectation and token-path non-disclosure assertion pass.",
-    "audit_pipe_close": "The real-subprocess regression now asserts every helper-created stdout/stderr stream is closed after join/drain; implementation explicitly closes both streams.",
-    "archived_receipt_locking": "RED evidence: the nested archived-child reader self-contended for 600.391s under the parent root-wide span. GREEN uses a direct read under the already-held parent span; focused normal/race passes with -timeout=20s and the final package-wide -timeout=90s race passes.",
-    "exact_timestamp_equality": "The same-record boundary now writes the parent ref's literal RFC3339Nano CreatedAt into the child record, proving strict equality retains the terminal receipt rather than relying on an unrelated child timestamp."
+  "child_evidence": {
+    "#446": "d722c7ad accepted: legacy UTC timestamp parser and tests.",
+    "#447": "ec851e81 accepted: Run-scoped inventory client and capability tests.",
+    "#448": "42e9bc65 accepted: exact full self-verify foreground admission.",
+    "#449": "07e55437 accepted: operational collector consumes one Run snapshot."
   },
-  "ai_slop_clean": "Reviewed G13 scope: one strict timestamp helper and one table-driven test preserve existing idempotency/concurrency behavior; no shim, broad cleanup, or unrelated refactor added.",
+  "ai_slop_clean": {
+    "status": "PENDING_FRESH_REVIEW",
+    "scope": "The final branch retains only Issue #439 behavior, direct tests, contract artifacts, and this required Turing report; no child re-integration, compatibility shim, or speculative cleanup was added."
+  },
   "deviations": [
-    "The Issue #439 Wave 0 checkpoint prohibits parent PR and execution completion; generic publication steps are deferred to the coordinator.",
-    "The active-lease guard rejected the exact Python regression command, so its required coordinator observation is recorded without a false PASS.",
-    "The active-lease guard rejected the tracked-tree Go file-listing command; direct gofmt checks cover every changed Go file without asserting an unrun whole-tree result."
+    "Issue #439 requests merge and cleanup in AC-10, but the current owner contract permits only draft publication and execution completion; merge and destructive cleanup remain coordinator-authorized post-merge actions.",
+    "Doctor and stability audit are intentionally deferred by the latest user instruction because the active lifecycle and accepted children are expected pre-cleanup residue.",
+    "A non-admitted bare-PATH self-verify attempt was blocked; the exact ./bin form was not run, so coordinator evidence is not represented as a fresh local execution.",
+    "Generation 18 owner-local Python test invocation was blocked by the active-lease guard; Brooks subsequently verified the current-diff 15-test Python suite successfully."
   ],
-  "completion": "G13 implementation is ready for a fresh Brooks review, two atomic commits/pushes, rebuilt-binary child restarts, and parent lease release; no parent PR or execution completion by this owner."
+  "brooks_revision": {
+    "findings": [
+      "Run-list snapshots must paginate nextCursor pages and reject incomplete, duplicate, or cross-runtime pages.",
+      "Run-scoped task-list and gate-list responses must identify the requested Run even when they contain zero rows.",
+      "MCP JSON-RPC audit responses must be structurally valid before their IDs or result/error projections are trusted.",
+      "claim_token_path is public prepare/replace/resume metadata but must never be copied into generated owner prompts or claim commands."
+    ],
+    "red_evidence": [
+      {
+        "finding": "run-list pagination",
+        "command": "go test ./internal/adapter/orca -run 'TestClientRunInventory(PaginatesCursorPages|RejectsIncompleteCursorPages)$' -count=1",
+        "result": "RED_EXPECTED",
+        "observed": "The single first page yielded only run_b; repeated cursor, cross-page duplicate, missing runs metadata, and cursor-page runtime mismatch all returned nil before the pagination implementation."
+      },
+      {
+        "finding": "authoritative task/gate result.runId",
+        "command": "go test ./internal/adapter/orca -run 'TestClientRunScopedInventoriesRequireAuthoritativeResultRunID$' -count=1",
+        "result": "RED_EXPECTED",
+        "observed": "Missing and wrong result.runId on zero-row task-list and gate-list responses all returned nil before the scoped identity validation."
+      },
+      {
+        "finding": "JSON-RPC envelope validation",
+        "command": "python3 -m unittest skills/stability-audit/scripts/test_e2e_stability_audit.py -k malformed_jsonrpc_response_envelopes",
+        "result": "TEST_ADDED_BEFORE_IMPLEMENTATION_EXECUTION_BLOCKED",
+        "observed": "The test was added before the consume implementation; the owner-local guard rejected this foreground command. Coordinator later ran the full current-diff Python suite successfully."
+      }
+    ],
+    "green_evidence": "Generation 18 focused Orca normal/race tests and Brooks current-diff Python 15-test verification passed; repository-wide Go normal/race exit codes remain explicitly unverified.",
+    "generation_18_revise": {
+      "verdict": "REVISE",
+      "findings": [
+        "A first cursor page without _meta.runtimeId could be accepted when its empty result was followed by a page with a runtime ID.",
+        "The readiness probe accepted run-list help without --cursor even though pagination invokes it.",
+        "Turing claim-token wording must distinguish public claim_token_path metadata from generated owner prompt and claim-command disclosure."
+      ],
+      "red_evidence": "TestClientRunInventoryRejectsMissingRuntimeOnFirstCursorPage and TestClientProbeRequiresRunListCursorCapability failed as expected before implementation: the first returned nil and the latter accepted capability_missing input.",
+      "green_evidence": "The two focused tests, full Orca adapter normal/race suites, and Brooks-reported Python 15-test suite passed after the fixes. Brooks reports implementation findings closed; publication remains pending a fresh final verdict.",
+      "closure": "listRunsInventory now requires a canonical runtime ID on every page before cursor continuation, Probe requires --cursor, and AC-04 documents the public metadata boundary."
+    },
+    "implementation": "Implemented surgically in internal/adapter/orca/client.go, its focused tests and fixtures, skills/stability-audit/scripts/e2e_stability_audit.py with unit tests, and skills/issueops/references/execution.md."
+  },
+  "cleanup_receipt": "No runtime resources were started by this owner; no cleanup action was required."
 }

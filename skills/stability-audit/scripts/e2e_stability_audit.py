@@ -162,7 +162,31 @@ def run_mcp_jsonrpc_process(
         except json.JSONDecodeError:
             malformed_lines.append(line.rstrip("\n"))
             return
+        if not isinstance(response, dict) or response.get("jsonrpc") != "2.0":
+            malformed_lines.append(line.rstrip("\n"))
+            return
+        if "id" not in response:
+            malformed_lines.append(line.rstrip("\n"))
+            return
         response_id = response.get("id")
+        if isinstance(response_id, bool) or not isinstance(response_id, (str, int, float)):
+            malformed_lines.append(line.rstrip("\n"))
+            return
+        has_result = "result" in response
+        has_error = "error" in response
+        if has_result == has_error:
+            malformed_lines.append(line.rstrip("\n"))
+            return
+        if has_error:
+            error = response["error"]
+            if (
+                not isinstance(error, dict)
+                or isinstance(error.get("code"), bool)
+                or not isinstance(error.get("code"), int)
+                or not isinstance(error.get("message"), str)
+            ):
+                malformed_lines.append(line.rstrip("\n"))
+                return
         response_ids.append(response_id)
         if response_ids.count(response_id) > 1:
             duplicate_ids.append(response_id)

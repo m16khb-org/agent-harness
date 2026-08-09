@@ -168,9 +168,10 @@ agent-harness issueops execution claim \
   --json
 ```
 
-The CLI resolves the token from its private deterministic path. Its value and
-path are never printed or copied into a prompt, and the token is consumed
-exactly once. A digest mismatch leaves the owner read-only.
+The CLI resolves the token from its private deterministic path. Its value is
+never printed, and the path is never copied into generated owner prompts or
+claim commands. The token is consumed exactly once. A digest mismatch leaves
+the owner read-only.
 
 ## Release, Replacement, And Reconciliation
 

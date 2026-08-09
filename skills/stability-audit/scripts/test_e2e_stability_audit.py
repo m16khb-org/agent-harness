@@ -500,6 +500,22 @@ for line in sys.stdin:
         print(json.dumps({"jsonrpc": "2.0", "id": request["id"] + 100, "result": {}}), flush=True)
     elif mode == "error":
         print(json.dumps({"jsonrpc": "2.0", "id": request["id"], "error": {"code": -32603, "message": "boom"}}), flush=True)
+    elif mode == "bare_id":
+        print(json.dumps({"id": request["id"]}), flush=True)
+    elif mode == "wrong_version":
+        print(json.dumps({"jsonrpc": "1.0", "id": request["id"], "result": {}}), flush=True)
+    elif mode == "both_result_and_error":
+        print(json.dumps({"jsonrpc": "2.0", "id": request["id"], "result": {}, "error": {"code": -32603, "message": "boom"}}), flush=True)
+    elif mode == "neither_result_nor_error":
+        print(json.dumps({"jsonrpc": "2.0", "id": request["id"]}), flush=True)
+    elif mode == "non_object":
+        print(json.dumps([]), flush=True)
+    elif mode == "error_not_object":
+        print(json.dumps({"jsonrpc": "2.0", "id": request["id"], "error": []}), flush=True)
+    elif mode == "error_bool_code":
+        print(json.dumps({"jsonrpc": "2.0", "id": request["id"], "error": {"code": True, "message": "boom"}}), flush=True)
+    elif mode == "error_nonstring_message":
+        print(json.dumps({"jsonrpc": "2.0", "id": request["id"], "error": {"code": -32603, "message": 1}}), flush=True)
     else:
         print(json.dumps({"jsonrpc": "2.0", "id": request["id"], "result": {}}), flush=True)
 '''
@@ -547,6 +563,31 @@ class MCPJSONRPCProcessTest(unittest.TestCase):
 
         self.assertTrue(all(process.stdout is not None and process.stdout.closed for process in processes))
         self.assertTrue(all(process.stderr is not None and process.stderr.closed for process in processes))
+
+    def test_rejects_malformed_jsonrpc_response_envelopes_without_crashing(self) -> None:
+        audit = load_audit_module()
+        calls = [{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}]
+
+        for mode in [
+            "bare_id",
+            "wrong_version",
+            "both_result_and_error",
+            "neither_result_nor_error",
+            "non_object",
+            "error_not_object",
+            "error_bool_code",
+            "error_nonstring_message",
+        ]:
+            with self.subTest(mode=mode):
+                result = audit.run_mcp_jsonrpc_process(
+                    [sys.executable, "-u", "-c", _child_program(), mode],
+                    calls,
+                    timeout=1,
+                )
+
+                self.assertFalse(result["ok"], result)
+                self.assertTrue(result["malformed_lines"], result)
+                self.assertEqual(result["response_ids"], [], result)
 
 
 if __name__ == "__main__":
