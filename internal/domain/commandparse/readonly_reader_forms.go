@@ -2,6 +2,7 @@ package commandparse
 
 import (
 	"path"
+	"strconv"
 	"strings"
 )
 
@@ -157,14 +158,25 @@ func ExactSelfVerifyVerification(command string) bool {
 	default:
 		return false
 	}
-	valueOptions := map[string]bool{"--seed": true, "--target-score": true, "--llm-eval": true, "--goal": true}
-	boolOptions := map[string]bool{"--json": true}
+	valueOptions := map[string]bool{
+		"--seed": true, "--target-score": true, "--llm-eval": true, "--goal": true,
+		"--iterations": true, "--progress": true,
+	}
+	boolOptions := map[string]bool{"--json": true, "--full": true}
+	seen := make(map[string]bool)
+	full := false
+	fullOnlyOption := false
 	for index := 2; index < len(tokens); index++ {
 		token := tokens[index]
 		if !strings.HasPrefix(token, "--") {
 			return false
 		}
 		if boolOptions[token] {
+			if seen[token] {
+				return false
+			}
+			seen[token] = true
+			full = full || token == "--full"
 			continue
 		}
 		name, value, hasValue := strings.Cut(token, "=")
@@ -174,17 +186,35 @@ func ExactSelfVerifyVerification(command string) bool {
 		if !valueOptions[name] {
 			return false
 		}
+		if seen[name] {
+			return false
+		}
+		seen[name] = true
 		if hasValue {
 			if strings.TrimSpace(value) == "" {
 				return false
 			}
-			continue
+		} else {
+			if index+1 >= len(tokens) || strings.HasPrefix(tokens[index+1], "-") ||
+				strings.TrimSpace(tokens[index+1]) == "" {
+				return false
+			}
+			index++
+			value = tokens[index]
 		}
-		if index+1 >= len(tokens) || strings.HasPrefix(tokens[index+1], "-") ||
-			strings.TrimSpace(tokens[index+1]) == "" {
-			return false
+		switch name {
+		case "--iterations":
+			iterations, err := strconv.Atoi(value)
+			if err != nil || iterations <= 0 {
+				return false
+			}
+			fullOnlyOption = true
+		case "--progress":
+			if value != "jsonl" {
+				return false
+			}
+			fullOnlyOption = true
 		}
-		index++
 	}
-	return true
+	return !fullOnlyOption || full
 }

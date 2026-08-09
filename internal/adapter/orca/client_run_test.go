@@ -327,6 +327,33 @@ func TestClientRunInventoryReadersFailClosed(t *testing.T) {
 	}
 }
 
+func TestReadRunInventoryReturnsLowestRunIndexError(t *testing.T) {
+	errFirst := errors.New("run-00 failed")
+	errLater := errors.New("run-02 failed first")
+	laterFinished := make(chan struct{})
+	inventory := port.OrcaRunInventory{RuntimeID: "runtime-1", Runs: []port.OrcaRun{
+		{RuntimeID: "runtime-1", ID: "run-00"},
+		{RuntimeID: "runtime-1", ID: "run-01"},
+		{RuntimeID: "runtime-1", ID: "run-02"},
+	}}
+
+	_, err := readRunInventory(context.Background(), inventory, func(_ context.Context, run port.OrcaRun) (string, error) {
+		switch run.ID {
+		case "run-00":
+			<-laterFinished
+			return "", errFirst
+		case "run-02":
+			close(laterFinished)
+			return "", errLater
+		default:
+			return run.ID, nil
+		}
+	})
+	if !errors.Is(err, errFirst) {
+		t.Fatalf("readRunInventory error = %v, want lowest-index %v", err, errFirst)
+	}
+}
+
 type runInventoryRunner struct {
 	mu          sync.Mutex
 	calls       [][]string

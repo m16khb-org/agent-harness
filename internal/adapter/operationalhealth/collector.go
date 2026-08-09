@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
@@ -18,15 +19,13 @@ import (
 )
 
 type OrcaInventory interface {
+	port.OrcaRunInventoryReader
 	Available() bool
 	Status(context.Context) (port.OrcaStatus, error)
 	ResolveRepo(context.Context, string) (port.OrcaRepo, error)
 	ListWorktrees(context.Context, string) ([]port.OrcaWorktree, error)
 	ListTerminals(context.Context, string) ([]port.OrcaTerminal, error)
-	ListAllTasks(context.Context) ([]port.OrcaTask, error)
-	ListDispatchedTasks(context.Context) ([]port.OrcaTask, error)
 	ShowDispatch(context.Context, string) (port.OrcaDispatch, error)
-	ListGates(context.Context) ([]port.OrcaGate, error)
 	InboxPresence(context.Context) (port.OrcaInboxPresence, error)
 }
 
@@ -102,11 +101,47 @@ func (collector Collector) Collect(ctx context.Context, repo string) corehealth.
 		addProblem(&snapshot, "repo", "repo_invalid", "requested repository path is empty")
 		return snapshot
 	}
-	collector.collectGit(ctx, &snapshot)
-	_, orcaOwned := collector.collectIssueOps(&snapshot)
-	collector.collectOrca(ctx, &snapshot, orcaOwned)
+	gitSnapshot := snapshot
+	orcaSnapshot := snapshot
+	var inventories sync.WaitGroup
+	inventories.Add(2)
+	go func() {
+		defer inventories.Done()
+		collector.collectGit(ctx, &gitSnapshot)
+	}()
+	go func() {
+		defer inventories.Done()
+		_, orcaOwned := collector.collectIssueOps(&orcaSnapshot)
+		collector.collectOrca(ctx, &orcaSnapshot, orcaOwned)
+	}()
+	inventories.Wait()
+	snapshot = mergeInventorySnapshots(gitSnapshot, orcaSnapshot)
 	sortSnapshot(&snapshot)
 	return snapshot
+}
+
+func mergeInventorySnapshots(gitSnapshot, orcaSnapshot corehealth.Snapshot) corehealth.Snapshot {
+	merged := gitSnapshot
+	merged.OrcaObserved = orcaSnapshot.OrcaObserved
+	merged.OrcaRuntimeID = orcaSnapshot.OrcaRuntimeID
+	merged.OrcaRepoID = orcaSnapshot.OrcaRepoID
+	merged.Cycles = orcaSnapshot.Cycles
+	merged.LeaseHolderIndexes = orcaSnapshot.LeaseHolderIndexes
+	merged.OrcaWorktrees = orcaSnapshot.OrcaWorktrees
+	merged.Terminals = orcaSnapshot.Terminals
+	merged.Tasks = orcaSnapshot.Tasks
+	merged.Dispatches = orcaSnapshot.Dispatches
+	merged.Gates = orcaSnapshot.Gates
+	merged.Messages = orcaSnapshot.Messages
+	merged.StateArtifacts = append(merged.StateArtifacts, orcaSnapshot.StateArtifacts...)
+	merged.InventoryProblems = append(merged.InventoryProblems, orcaSnapshot.InventoryProblems...)
+	return merged
+}
+
+func cloneRunInventory(inventory port.OrcaRunInventory) port.OrcaRunInventory {
+	cloned := inventory
+	cloned.Runs = append([]port.OrcaRun(nil), inventory.Runs...)
+	return cloned
 }
 
 func (collector Collector) collectGit(ctx context.Context, snapshot *corehealth.Snapshot) {
@@ -270,7 +305,83 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 	snapshot.OrcaObserved = true
 	snapshot.OrcaRuntimeID = runtimeID
 
-	resolved, resolveErr := collector.Orca.ResolveRepo(ctx, snapshot.RepoRoot)
+	var resolved port.OrcaRepo
+	var worktrees []port.OrcaWorktree
+	var terminals []port.OrcaTerminal
+	var runInventory port.OrcaRunInventory
+	var tasks []port.OrcaTask
+	var dispatched []port.OrcaTask
+	var gates []port.OrcaGate
+	var inbox port.OrcaInboxPresence
+	var resolveErr, worktreesErr, terminalsErr, runInventoryErr error
+	var tasksErr, dispatchedErr, gatesErr, inboxErr error
+	runRuntimeMismatch := false
+	runsReady := make(chan struct{})
+	var inventoryReads sync.WaitGroup
+	inventoryReads.Add(8)
+	go func() {
+		defer inventoryReads.Done()
+		resolved, resolveErr = collector.Orca.ResolveRepo(ctx, snapshot.RepoRoot)
+	}()
+	go func() {
+		defer inventoryReads.Done()
+		worktrees, worktreesErr = collector.Orca.ListWorktrees(ctx, snapshot.RepoRoot)
+	}()
+	go func() {
+		defer inventoryReads.Done()
+		terminals, terminalsErr = collector.Orca.ListTerminals(ctx, "")
+	}()
+	go func() {
+		defer inventoryReads.Done()
+		runInventory, runInventoryErr = collector.Orca.ListRunInventory(ctx)
+		if runInventoryErr == nil && strings.TrimSpace(runInventory.RuntimeID) != snapshot.OrcaRuntimeID {
+			runRuntimeMismatch = true
+			runInventoryErr = fmt.Errorf("Orca Run inventory runtime identity does not match")
+		}
+		close(runsReady)
+	}()
+	go func() {
+		defer inventoryReads.Done()
+		<-runsReady
+		if runInventoryErr != nil {
+			tasksErr = runInventoryErr
+			return
+		}
+		tasks, tasksErr = collector.Orca.ListAllTasksFromRuns(ctx, cloneRunInventory(runInventory))
+	}()
+	go func() {
+		defer inventoryReads.Done()
+		<-runsReady
+		if runInventoryErr != nil {
+			dispatchedErr = runInventoryErr
+			return
+		}
+		dispatched, dispatchedErr = collector.Orca.ListDispatchedTasksFromRuns(ctx, cloneRunInventory(runInventory))
+	}()
+	go func() {
+		defer inventoryReads.Done()
+		<-runsReady
+		if runInventoryErr != nil {
+			gatesErr = runInventoryErr
+			return
+		}
+		gates, gatesErr = collector.Orca.ListGatesFromRuns(ctx, cloneRunInventory(runInventory))
+	}()
+	go func() {
+		defer inventoryReads.Done()
+		inbox, inboxErr = collector.Orca.InboxPresence(ctx)
+	}()
+	inventoryReads.Wait()
+	if runInventoryErr != nil {
+		code := "orca_run_inventory_failed"
+		detail := "Orca Run inventory failed"
+		if runRuntimeMismatch {
+			code = "orca_run_inventory_runtime_mismatch"
+			detail = "Orca Run inventory runtime identity does not match"
+		}
+		addProblem(snapshot, "orca_runs", code, detail)
+	}
+
 	if resolveErr != nil {
 		addProblem(snapshot, "orca_repo", "orca_repo_failed", "Orca repo resolution failed")
 	} else if strings.TrimSpace(resolved.RuntimeID) != snapshot.OrcaRuntimeID || strings.TrimSpace(resolved.ID) == "" || canonicalInventoryPath(resolved.Path) != snapshot.RepoRoot {
@@ -282,8 +393,7 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 		repoPath = canonicalInventoryPath(resolved.Path)
 	}
 
-	worktrees, err := collector.Orca.ListWorktrees(ctx, snapshot.RepoRoot)
-	if err != nil {
+	if worktreesErr != nil {
 		addProblem(snapshot, "orca_worktrees", "orca_worktrees_failed", "Orca worktree inventory failed")
 	} else {
 		for _, value := range worktrees {
@@ -297,8 +407,7 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 		}
 	}
 
-	terminals, err := collector.Orca.ListTerminals(ctx, "")
-	if err != nil {
+	if terminalsErr != nil {
 		addProblem(snapshot, "orca_terminals", "orca_terminals_failed", "Orca terminal inventory failed")
 	} else {
 		for _, value := range terminals {
@@ -312,8 +421,7 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 		}
 	}
 
-	tasks, err := collector.Orca.ListAllTasks(ctx)
-	if err != nil {
+	if tasksErr != nil {
 		addProblem(snapshot, "orca_tasks", "orca_tasks_failed", "Orca task inventory failed")
 	} else {
 		for _, value := range tasks {
@@ -333,8 +441,7 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 		}
 	}
 
-	dispatched, err := collector.Orca.ListDispatchedTasks(ctx)
-	if err != nil {
+	if dispatchedErr != nil {
 		addProblem(snapshot, "orca_dispatches", "orca_dispatched_tasks_failed", "Orca dispatched-task inventory failed")
 	} else {
 		dispatchedCounts := make(map[string]int, len(dispatched))
@@ -380,8 +487,7 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 		}
 	}
 
-	gates, err := collector.Orca.ListGates(ctx)
-	if err != nil {
+	if gatesErr != nil {
 		addProblem(snapshot, "orca_gates", "orca_gates_failed", "Orca gate inventory failed")
 	} else {
 		for _, value := range gates {
@@ -392,8 +498,7 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 			snapshot.Gates = append(snapshot.Gates, gate)
 		}
 	}
-	inbox, err := collector.Orca.InboxPresence(ctx)
-	if err != nil {
+	if inboxErr != nil {
 		addProblem(snapshot, "orca_inbox", "orca_inbox_failed", "Orca inbox presence inventory failed")
 	} else {
 		snapshot.Messages = corehealth.MessagePresence{RuntimeID: strings.TrimSpace(inbox.RuntimeID), Count: inbox.Count, Empty: inbox.RowCount == 0, CompleteAbsence: inbox.CompleteAbsence}
