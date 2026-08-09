@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -471,6 +472,10 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 		tasks, err = client.listRunTasksInventory(ctx, req.RunID, "--brief")
 	}
 	if err != nil {
+		var orcaErr *port.OrcaError
+		if req.RunID != "" && result.TerminalInventoryComplete && errors.As(err, &orcaErr) && orcaErr.Code == "run_not_found" {
+			return result, nil
+		}
 		return port.ExecutionOrcaOwnerInventory{}, err
 	}
 	if err := validateExecutionInventoryRuntime(tasks.RuntimeID, currentRuntime); err != nil {

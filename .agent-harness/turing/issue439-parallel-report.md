@@ -50,6 +50,7 @@ The native Codex owner transcript at `/Users/m16khb/.codex/sessions/2026/08/09/r
 - Server-filtered dispatched queries and their independent cross-check remain intact.
 - Git and IssueOps/Orca inventories overlap; the independent Orca reads reach the planned concurrency without changing timeouts or adding global caching.
 - Exact full self-verification reads accept `--full --iterations=10 --progress=jsonl`; duplicates, invalid iterations, write flags, redirection, and control operators remain rejected.
+- Owner inspection treats a missing bound Run as authoritative resource absence only after a complete terminal inventory; transport failures and incomplete terminal inventory remain fail-closed. This unblocked typed cleanup after an explicit orchestration reset.
 
 ## TDD and review evidence
 
@@ -57,6 +58,7 @@ The native Codex owner transcript at `/Users/m16khb/.codex/sessions/2026/08/09/r
 - Run reader tests cover one `run-list`, exact per-Run task/dispatched/gate calls, cap 8, stable Run order, runtime/count/identity/duplicate fail-closed behavior, and lowest Run-index error selection.
 - Collector tests cover shared inventory, zero-Run runtime fencing, server-filtered mismatch detection, cloned reader inputs, seven-way independent Orca overlap, two-way Git/IssueOps-Orca overlap, and ordered dispatch projection.
 - Full self-verify admission tests first failed on the new exact form, then passed after the bounded parser change.
+- Cleanup reproduction first returned `run_not_found` as ambiguous after `orca orchestration reset --all`; the new owner-inventory test failed before the fix and passes afterward, including negative transport and incomplete-inventory cases.
 - Independent code review reported no critical findings. Its mutable-slice alias finding and explicit lowest-index-error coverage request were fixed and rechecked with focused race tests.
 
 ## Verification receipts
@@ -71,4 +73,12 @@ The native Codex owner transcript at `/Users/m16khb/.codex/sessions/2026/08/09/r
 - `git diff --check`: pass.
 - The first two exact full self-verification attempts failed closed at redaction audit because this report used a claim-token label followed by a colon before a non-secret path, then described that literal label in the first retry note. Both secret-assignment-shaped phrases were removed; no secret value had been recorded.
 
-Final full self-verification, stability audit, post-cleanup doctor timings, cleanup receipts, and the parent draft PR URL are appended after publication and typed resource cleanup.
+## Cleanup receipts
+
+- Parent draft PR: https://github.com/m16khb/agent-harness/pull/445, targeting `main`; it remains unmerged pending separate user approval.
+- Orca stopped six child terminals, removed the three child worktrees, reset orchestration state, and read back only the baseline `run_legacy_local`, zero workers, and the current coordinator terminal.
+- Typed `cleanup abandon` deleted child lifecycle records `io-70ae2229985c`, `io-09f44130b26a`, and `io-5eaff2697547` after fingerprinted previews. The remaining IssueOps inventory contains only the active parent lifecycle.
+- Child PRs #443 and #444 are closed as superseded by #445. Child issues #440 and #441 are closed completed; #442 is closed not planned with the sealed-claim failure recorded.
+- Local and remote child branches `440-orca-legacy-utc-timestamp`, `441-orca-run-inventory`, and `442-full-self-verify-admission` are absent. Git and Orca inventories contain only `main` and the preserved parent worktree.
+
+Final full self-verification, stability audit, and post-cleanup doctor timings are appended after the final unchanged-tree run.

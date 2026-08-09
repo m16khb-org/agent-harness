@@ -772,6 +772,43 @@ func TestExecutionOwnerInventoryUsesCompleteTaskAndDispatchInventory(t *testing.
 	}
 }
 
+func TestExecutionOwnerInventoryTreatsMissingBoundRunAsAuthoritativeAbsence(t *testing.T) {
+	client := &executionFake{runTasksErr: &port.OrcaError{Code: "run_not_found", Detail: "Run run-69 was not found", Invoked: true}}
+	got, err := NewExecutionClient(client).InspectOwner(context.Background(), port.ExecutionOrcaOwnerInventoryRequest{
+		RuntimeID: "runtime-69", WorktreeID: "wt-69", RunID: "run-69", TaskID: "task-69",
+		DispatchID: "dispatch-69", TerminalPTYID: "pty-69",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.RuntimeID != "runtime-69" || !got.TerminalInventoryComplete || got.TerminalLive || got.TaskLive {
+		t.Fatalf("missing bound Run inventory = %#v", got)
+	}
+	if !reflect.DeepEqual(client.calls, []string{"list-terminals-inventory", "list-run-tasks-inventory"}) {
+		t.Fatalf("missing bound Run should end owner inspection: %v", client.calls)
+	}
+
+	client = &executionFake{runTasksErr: fmt.Errorf("transport unavailable")}
+	if _, err := NewExecutionClient(client).InspectOwner(context.Background(), port.ExecutionOrcaOwnerInventoryRequest{
+		RuntimeID: "runtime-69", WorktreeID: "wt-69", RunID: "run-69", TaskID: "task-69",
+		DispatchID: "dispatch-69", TerminalPTYID: "pty-69",
+	}); err == nil {
+		t.Fatal("non-authoritative Run inventory failure must stay fail-closed")
+	}
+
+	incomplete := false
+	client = &executionFake{
+		terminalInventoryComplete: &incomplete,
+		runTasksErr:               &port.OrcaError{Code: "run_not_found", Detail: "Run run-69 was not found", Invoked: true},
+	}
+	if _, err := NewExecutionClient(client).InspectOwner(context.Background(), port.ExecutionOrcaOwnerInventoryRequest{
+		RuntimeID: "runtime-69", WorktreeID: "wt-69", RunID: "run-69", TaskID: "task-69",
+		DispatchID: "dispatch-69", TerminalPTYID: "pty-69",
+	}); err == nil {
+		t.Fatal("missing Run with incomplete terminal inventory must stay fail-closed")
+	}
+}
+
 func TestExecutionOwnerInventoryRejectsMissingOrChangedRuntime(t *testing.T) {
 	request := port.ExecutionOrcaOwnerInventoryRequest{
 		RuntimeID: "runtime-69", WorktreeID: "wt-69", TaskID: "task-69", DispatchID: "dispatch-69", TerminalPTYID: "pty-69",
@@ -1204,6 +1241,7 @@ type executionFake struct {
 	terminalInventoryComplete *bool
 	taskInventoryRuntime      *string
 	dispatchInventoryRuntime  *string
+	runTasksErr               error
 }
 
 func (f *executionFake) Probe(context.Context, port.OrcaProbeRequest) (port.OrcaProbeResult, error) {
@@ -1342,6 +1380,9 @@ func (f *executionFake) listAllTasksInventory(context.Context) (executionTaskInv
 
 func (f *executionFake) listRunTasksInventory(_ context.Context, runID string, _ ...string) (executionTaskInventory, error) {
 	f.calls = append(f.calls, "list-run-tasks-inventory")
+	if f.runTasksErr != nil {
+		return executionTaskInventory{}, f.runTasksErr
+	}
 	rows := append([]port.OrcaTask(nil), f.tasks...)
 	for index := range rows {
 		if rows[index].RunID == "" {
