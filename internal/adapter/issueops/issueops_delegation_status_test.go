@@ -229,6 +229,94 @@ func TestDropIssueOpsChildRecordsAuditTrail(t *testing.T) {
 	}
 }
 
+func TestDropIssueOpsChildAfterCleanupUsesIndexedParentRef(t *testing.T) {
+	stateRoot := t.TempDir()
+	parent := createDelegationReadyParentForTest(t, stateRoot)
+	started, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
+		ParentID:           parent.ID,
+		Branch:             "123-cleaned-child-drop",
+		Title:              "cleaned child drop",
+		TaskScope:          "recover an intentionally abandoned child",
+		AcceptanceCriteria: []string{"parent can drop an indexed child after cleanup"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := deleteIssueOps(stateRoot, started.Child.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := dropIssueOpsChildForTest(stateRoot, parent, started.Child.ID, "execution was reconciled and intentionally abandoned")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.ParentRef.ValidationVerdict != "dropped" || result.ParentRef.ValidationReason == "" || result.ParentRef.ValidatedAt == "" {
+		t.Fatalf("cleaned child drop should persist an audited parent receipt: %#v", result.ParentRef)
+	}
+	status, err := IssueOpsChildStatus(stateRoot, parent.ID, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dropped, ok := childStatusEntryByID(status.Children, started.Child.ID)
+	if !ok || dropped.Orphaned || dropped.ValidationVerdict != "dropped" || len(status.Orphaned) != 0 {
+		t.Fatalf("dropped cleaned child should not remain orphaned: %#v / %#v", dropped, status.Orphaned)
+	}
+	parentAfter, err := ReadIssueOps(stateRoot, parent.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if missing, notes := issueOpsChildPRGateMissing(stateRoot, parentAfter); len(missing) != 0 || len(notes) != 0 {
+		t.Fatalf("dropped cleaned child must not block the parent PR gate: missing=%v notes=%v", missing, notes)
+	}
+
+	_, err = dropIssueOpsChildForTest(stateRoot, parent, "io-deadbeefcafe", "unindexed records must fail closed")
+	if err == nil || !strings.Contains(err.Error(), "child_not_indexed") {
+		t.Fatalf("missing child without a parent ref must fail closed: %v", err)
+	}
+}
+
+func TestDroppedCleanupReceiptWithShortReasonRemainsOrphaned(t *testing.T) {
+	stateRoot := t.TempDir()
+	parent := createDelegationReadyParentForTest(t, stateRoot)
+	started, err := startIssueOpsChildForTest(stateRoot, parent, issueops.IssueOpsChildStartRequest{
+		ParentID:           parent.ID,
+		Branch:             "123-malformed-drop-receipt",
+		Title:              "malformed drop receipt",
+		TaskScope:          "reject malformed archived drop receipts",
+		AcceptanceCriteria: []string{"short drop reasons remain fail closed"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := deleteIssueOps(stateRoot, started.Child.ID); err != nil {
+		t.Fatal(err)
+	}
+	parentAfter, err := ReadIssueOps(stateRoot, parent.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range parentAfter.ChildCycles {
+		if parentAfter.ChildCycles[i].CycleID == started.Child.ID {
+			parentAfter.ChildCycles[i].ValidationVerdict = "dropped"
+			parentAfter.ChildCycles[i].ValidationReason = "short"
+			parentAfter.ChildCycles[i].ValidatedAt = "2026-08-09T00:00:00Z"
+		}
+	}
+	writeIssueOpsRecordForDelegationTest(t, stateRoot, parentAfter)
+
+	status, err := IssueOpsChildStatus(stateRoot, parent.ID, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry, ok := childStatusEntryByID(status.Children, started.Child.ID)
+	if !ok || !entry.Orphaned || len(status.Orphaned) != 1 {
+		t.Fatalf("malformed dropped receipt must remain orphaned: %#v / %#v", entry, status.Orphaned)
+	}
+	if missing, notes := issueOpsChildPRGateMissing(stateRoot, parentAfter); len(missing) == 0 || len(notes) != 0 {
+		t.Fatalf("malformed dropped receipt must block the parent PR gate: missing=%v notes=%v", missing, notes)
+	}
+}
+
 func childStatusEntryByID(entries []issueops.IssueOpsChildStatusEntry, childID string) (issueops.IssueOpsChildStatusEntry, bool) {
 	for _, entry := range entries {
 		if entry.CycleID == childID {

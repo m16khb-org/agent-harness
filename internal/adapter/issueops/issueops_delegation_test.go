@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"agent-harness/internal/contract/issueops"
 )
@@ -413,6 +414,244 @@ func TestStartIssueOpsChildAppendsParentRef(t *testing.T) {
 	}
 	if !foundRemote {
 		t.Fatalf("child issue URL should be linked remotely on parent: %#v", parentAfter.IssueLinks)
+	}
+}
+
+func TestAppendIssueOpsChildRefResetsTerminalReceiptOnlyForNewerIncarnation(t *testing.T) {
+	cases := []struct {
+		name             string
+		childCreatedAt   func(time.Time, string) string
+		wantReceiptReset bool
+	}{
+		{
+			name: "newer child incarnation clears terminal receipt",
+			childCreatedAt: func(existing time.Time, _ string) string {
+				return existing.Add(time.Nanosecond).Format(time.RFC3339Nano)
+			},
+			wantReceiptReset: true,
+		},
+		{
+			name: "same live child replay retains terminal receipt",
+			childCreatedAt: func(existing time.Time, _ string) string {
+				return existing.Format(time.RFC3339Nano)
+			},
+		},
+		{
+			name: "malformed child timestamp retains terminal receipt",
+			childCreatedAt: func(_ time.Time, _ string) string {
+				return "not-a-timestamp"
+			},
+		},
+		{
+			name: "older child timestamp retains terminal receipt",
+			childCreatedAt: func(existing time.Time, _ string) string {
+				return existing.Add(-time.Nanosecond).Format(time.RFC3339Nano)
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stateRoot := t.TempDir()
+			parent := createDelegationReadyParentForTest(t, stateRoot)
+			req := issueops.IssueOpsChildStartRequest{
+				ParentID:           parent.ID,
+				Branch:             "124-child-incarnation",
+				Title:              "incarnation child",
+				TaskScope:          "preserve parent receipt unless a new child record exists",
+				AcceptanceCriteria: []string{"newer records reset terminal validation only"},
+			}
+			started, err := startIssueOpsChildForTest(stateRoot, parent, req)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			parent, err = ReadIssueOps(stateRoot, parent.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			existing, ok := childRefByID(parent.ChildCycles, started.Child.ID)
+			if !ok {
+				t.Fatalf("missing child ref: %#v", parent.ChildCycles)
+			}
+			existingTime, err := time.Parse(time.RFC3339Nano, existing.CreatedAt)
+			if err != nil {
+				t.Fatalf("parse parent ref CreatedAt: %v", err)
+			}
+			for i := range parent.ChildCycles {
+				if parent.ChildCycles[i].CycleID == started.Child.ID {
+					parent.ChildCycles[i].ValidationVerdict = "dropped"
+					parent.ChildCycles[i].ValidationReason = "reconciled external operation left no resource"
+					parent.ChildCycles[i].ValidationEvidence = []string{"cleanup receipt"}
+					parent.ChildCycles[i].ValidatedAt = existing.CreatedAt
+				}
+			}
+			parent = writeIssueOpsRecordForDelegationTest(t, stateRoot, parent)
+
+			child := started.Child
+			child.CreatedAt = tc.childCreatedAt(existingTime, child.CreatedAt)
+			child = writeIssueOpsRecordForDelegationTest(t, stateRoot, child)
+			now := existingTime.Add(time.Minute).Format(time.RFC3339Nano)
+			actor := issueOpsActorForTest(parent.WorktreePath)
+			ref, err := appendIssueOpsChildRef(stateRoot, parent.ID, child, req, now, &actor)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if tc.wantReceiptReset {
+				if ref.ValidationVerdict != "" || ref.ValidationReason != "" || len(ref.ValidationEvidence) != 0 || ref.ValidatedAt != "" {
+					t.Fatalf("new child incarnation should clear terminal receipt: %#v", ref)
+				}
+				status, err := IssueOpsChildStatus(stateRoot, parent.ID, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(status.Children) != 1 || status.Children[0].Phase != IssueOpsPhaseProblem || !status.Children[0].Indexed || !status.Children[0].Scanned || status.Children[0].ValidationVerdict != "" {
+					t.Fatalf("new incarnation should be active and incomplete in child status: %#v", status)
+				}
+				return
+			}
+			if ref.ValidationVerdict != "dropped" || ref.ValidationReason == "" || len(ref.ValidationEvidence) != 1 || ref.ValidatedAt == "" {
+				t.Fatalf("non-new child record must retain terminal receipt: %#v", ref)
+			}
+		})
+	}
+}
+
+func TestArchivedIssueOpsChildDoesNotOverwriteReappearedIncarnation(t *testing.T) {
+	cases := []struct {
+		name     string
+		archived func(string, string, string, *IssueOpsActor) error
+	}{
+		{
+			name: "accept",
+			archived: func(stateRoot, parentID, childID string, actor *IssueOpsActor) error {
+				_, err := acceptArchivedIssueOpsChild(stateRoot, parentID, childID, []string{"archived verification"}, actor)
+				return err
+			},
+		},
+		{
+			name: "drop",
+			archived: func(stateRoot, parentID, childID string, actor *IssueOpsActor) error {
+				_, err := dropArchivedIssueOpsChild(stateRoot, parentID, childID, "archived child is absent", actor)
+				return err
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stateRoot := t.TempDir()
+			parent := createDelegationReadyParentForTest(t, stateRoot)
+			req := issueops.IssueOpsChildStartRequest{
+				ParentID:           parent.ID,
+				Branch:             "124-archived-incarnation",
+				Title:              "archived incarnation child",
+				TaskScope:          "preserve a reappeared child's active parent ref",
+				AcceptanceCriteria: []string{"archived receipt writes reject a reappeared child"},
+			}
+			started, err := startIssueOpsChildForTest(stateRoot, parent, req)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			parent, err = ReadIssueOps(stateRoot, parent.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			existing, ok := childRefByID(parent.ChildCycles, started.Child.ID)
+			if !ok {
+				t.Fatalf("missing child ref: %#v", parent.ChildCycles)
+			}
+			existingTime, err := time.Parse(time.RFC3339Nano, existing.CreatedAt)
+			if err != nil {
+				t.Fatalf("parse parent ref CreatedAt: %v", err)
+			}
+			for i := range parent.ChildCycles {
+				if parent.ChildCycles[i].CycleID == started.Child.ID {
+					parent.ChildCycles[i].ValidationVerdict = "dropped"
+					parent.ChildCycles[i].ValidationReason = "archived cleanup receipt"
+					parent.ChildCycles[i].ValidatedAt = existing.CreatedAt
+				}
+			}
+			parent = writeIssueOpsRecordForDelegationTest(t, stateRoot, parent)
+
+			child := started.Child
+			child.CreatedAt = existingTime.Add(time.Nanosecond).Format(time.RFC3339Nano)
+			child = writeIssueOpsRecordForDelegationTest(t, stateRoot, child)
+			actor := issueOpsActorForTest(parent.WorktreePath)
+			if _, err := appendIssueOpsChildRef(stateRoot, parent.ID, child, req, existingTime.Add(time.Minute).Format(time.RFC3339Nano), &actor); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := tc.archived(stateRoot, parent.ID, child.ID, &actor); err == nil || !strings.Contains(err.Error(), "child_reappeared") {
+				t.Fatalf("archived writer should reject a reappeared child, got %v", err)
+			}
+			parent, err = ReadIssueOps(stateRoot, parent.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			ref, ok := childRefByID(parent.ChildCycles, child.ID)
+			if !ok {
+				t.Fatalf("missing child ref after archived writer: %#v", parent.ChildCycles)
+			}
+			if ref.ValidationVerdict != "" || ref.ValidationReason != "" || ref.ValidatedAt != "" {
+				t.Fatalf("reappeared child ref must remain active and incomplete: %#v", ref)
+			}
+		})
+	}
+}
+
+func TestArchivedIssueOpsChildRecordsReceiptWhenChildRemainsAbsent(t *testing.T) {
+	cases := []struct {
+		name     string
+		verdict  string
+		archived func(string, string, string, *IssueOpsActor) (issueops.IssueOpsChildValidationResult, error)
+	}{
+		{
+			name:    "accept",
+			verdict: "accepted",
+			archived: func(stateRoot, parentID, childID string, actor *IssueOpsActor) (issueops.IssueOpsChildValidationResult, error) {
+				return acceptArchivedIssueOpsChild(stateRoot, parentID, childID, []string{"archived verification"}, actor)
+			},
+		},
+		{
+			name:    "drop",
+			verdict: "dropped",
+			archived: func(stateRoot, parentID, childID string, actor *IssueOpsActor) (issueops.IssueOpsChildValidationResult, error) {
+				return dropArchivedIssueOpsChild(stateRoot, parentID, childID, "archived child is absent", actor)
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stateRoot := t.TempDir()
+			parent := createDelegationReadyParentForTest(t, stateRoot)
+			req := issueops.IssueOpsChildStartRequest{
+				ParentID:           parent.ID,
+				Branch:             "124-archived-absence",
+				Title:              "archived absence child",
+				TaskScope:          "record an archived child receipt when no child remains",
+				AcceptanceCriteria: []string{"archived child receipt remains supported"},
+			}
+			started, err := startIssueOpsChildForTest(stateRoot, parent, req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := deleteIssueOps(stateRoot, started.Child.ID); err != nil {
+				t.Fatal(err)
+			}
+
+			actor := issueOpsActorForTest(parent.WorktreePath)
+			result, err := tc.archived(stateRoot, parent.ID, started.Child.ID, &actor)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.ParentRef.ValidationVerdict != tc.verdict || result.ParentRef.ValidatedAt == "" {
+				t.Fatalf("archived child receipt mismatch: %#v", result.ParentRef)
+			}
+		})
 	}
 }
 

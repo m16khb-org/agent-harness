@@ -167,7 +167,9 @@ func TestExecutionOwnerPromptSeparatesSealedClaimFromRecoveryResume(t *testing.T
 	record, req := ownerPacketFixture()
 	prompt := executionOwnerPromptFixture(t, record, req)
 	for _, required := range []string{
-		"injected sealed claim command가 유일한 owner next action",
+		"아래 command가 `none`이 아니면 실행 가능한 명령이 아니라 sealed claim template이다",
+		"placeholder를 리터럴 receipt로 모두 채운 뒤 정확히 한 번 실행한다",
+		"JSON envelope나 tool display를 hash하지 않는다",
 		"`execution resume`은 coordinator 전용 recovery",
 		"dispatched owner는 실행하지 않는다",
 	} {
@@ -301,7 +303,7 @@ func TestExecutionDirectOwnerPromptUsesNoClaimCommand(t *testing.T) {
 	record.Execution.Lease = issueops.WriteLease{Generation: 1, Status: issueops.LeaseStatusActive, Holder: &issueops.NativeActor{Host: "codex", SessionID: "direct"}}
 	req.Mode = "direct"
 	prompt := executionOwnerPromptFixture(t, record, req)
-	if !strings.Contains(prompt, "claim command가 `none`") || !strings.Contains(prompt, "\n   none\n") || strings.Contains(prompt, "issueops execution claim --id") {
+	if !strings.Contains(prompt, "아래 command가 `none`이면") || !strings.Contains(prompt, "\n   none\n") || strings.Contains(prompt, "issueops execution claim --id") {
 		t.Fatalf("direct active holder prompt must not claim again:\n%s", prompt)
 	}
 }

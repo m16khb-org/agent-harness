@@ -126,8 +126,13 @@ func appendIssueOpsChildRef(stateRoot, parentID string, child issueops.IssueOpsR
 		if actorErr := validateWorkspacePreparationMutation(parent, actor); actorErr != nil {
 			return actorErr
 		}
-		for _, existing := range parent.ChildCycles {
+		for i, existing := range parent.ChildCycles {
 			if existing.CycleID == ref.CycleID {
+				if issueOpsChildRefHasNewerIncarnation(child.CreatedAt, existing.CreatedAt) {
+					parent.ChildCycles[i] = ref
+					_, writeErr := touchAndWriteIssueOps(stateRoot, parent)
+					return writeErr
+				}
 				ref = existing
 				return nil
 			}
@@ -137,6 +142,12 @@ func appendIssueOpsChildRef(stateRoot, parentID string, child issueops.IssueOpsR
 		return writeErr
 	})
 	return ref, err
+}
+
+func issueOpsChildRefHasNewerIncarnation(childCreatedAt, refCreatedAt string) bool {
+	childTime, childErr := time.Parse(time.RFC3339Nano, strings.TrimSpace(childCreatedAt))
+	refTime, refErr := time.Parse(time.RFC3339Nano, strings.TrimSpace(refCreatedAt))
+	return childErr == nil && refErr == nil && childTime.After(refTime)
 }
 
 func IssueOpsChildStatus(stateRoot, parentID string, repair bool) (issueops.IssueOpsChildStatusResult, error) {
@@ -217,6 +228,9 @@ func acceptArchivedIssueOpsChild(stateRoot, parentID, childID string, evidence [
 		if actorErr := validateWorkspacePreparationMutation(parent, actor); actorErr != nil {
 			return actorErr
 		}
+		if missingErr := ensureIssueOpsArchivedChildStillMissing(stateRoot, parentID, childID); missingErr != nil {
+			return missingErr
+		}
 		for i := range parent.ChildCycles {
 			if parent.ChildCycles[i].CycleID != childID {
 				continue
@@ -272,9 +286,63 @@ func dropIssueOpsChild(stateRoot, parentID, childID, reason string, actor *Issue
 	}
 	child, err := readIssueOpsChildForValidation(stateRoot, parentID, childID)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return dropArchivedIssueOpsChild(stateRoot, parentID, childID, reason, actor)
+		}
 		return issueops.IssueOpsChildValidationResult{OK: false, ParentID: strings.TrimSpace(parentID), ChildID: strings.TrimSpace(childID)}, err
 	}
 	return recordIssueOpsChildVerdict(stateRoot, parentID, child, "dropped", reason, nil, actor)
+}
+
+func dropArchivedIssueOpsChild(stateRoot, parentID, childID, reason string, actor *IssueOpsActor) (issueops.IssueOpsChildValidationResult, error) {
+	parentID = strings.TrimSpace(parentID)
+	childID = strings.TrimSpace(childID)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	var updated issueops.IssueOpsChildCycleRef
+	err := withIssueOpsLock(context.Background(), stateRoot, parentID, func(context.Context) error {
+		parent, readErr := ReadIssueOps(stateRoot, parentID)
+		if readErr != nil {
+			return readErr
+		}
+		if actorErr := validateWorkspacePreparationMutation(parent, actor); actorErr != nil {
+			return actorErr
+		}
+		if missingErr := ensureIssueOpsArchivedChildStillMissing(stateRoot, parentID, childID); missingErr != nil {
+			return missingErr
+		}
+		for i := range parent.ChildCycles {
+			if parent.ChildCycles[i].CycleID != childID {
+				continue
+			}
+			parent.ChildCycles[i].ValidationVerdict = "dropped"
+			parent.ChildCycles[i].ValidationReason = reason
+			parent.ChildCycles[i].ValidationEvidence = nil
+			parent.ChildCycles[i].ValidatedAt = now
+			updated = parent.ChildCycles[i]
+			_, writeErr := touchAndWriteIssueOps(stateRoot, parent)
+			return writeErr
+		}
+		return fmt.Errorf("child_not_indexed: %s", childID)
+	})
+	if err != nil {
+		return issueops.IssueOpsChildValidationResult{OK: false, ParentID: parentID, ChildID: childID}, err
+	}
+	return issueops.IssueOpsChildValidationResult{OK: true, ParentID: parentID, ChildID: childID, ParentRef: updated}, nil
+}
+
+// 이미-held parent span은 state root의 mutation을 직렬화하므로 여기서 child lock을 다시 얻지 않는다.
+func ensureIssueOpsArchivedChildStillMissing(stateRoot, parentID, childID string) error {
+	child, err := ReadIssueOps(stateRoot, childID)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if child.Delegation == nil || strings.TrimSpace(child.Delegation.ParentCycleID) != parentID {
+		return fmt.Errorf("child_parent_mismatch: %s", childID)
+	}
+	return fmt.Errorf("child_reappeared: %s", child.ID)
 }
 
 func scanIssueOpsChildrenForParent(stateRoot string, parent issueops.IssueOpsRecord) (map[string]issueops.IssueOpsRecord, error) {
@@ -308,7 +376,7 @@ func buildIssueOpsChildStatus(parent issueops.IssueOpsRecord, scanned map[string
 		if child, ok := scanned[ref.CycleID]; ok {
 			mergeChildStatusRecord(&entry, child)
 			entry.Scanned = true
-		} else if !issueOpsChildRefHasAcceptedCleanupReceipt(ref) {
+		} else if !issueOpsChildRefHasTerminalCleanupReceipt(ref) {
 			entry.Orphaned = true
 			result.Orphaned = append(result.Orphaned, ref.CycleID)
 		}
@@ -459,12 +527,20 @@ func childStatusEntryFromRef(ref issueops.IssueOpsChildCycleRef) issueops.IssueO
 	return entry
 }
 
-// issueOpsChildRefHasAcceptedCleanupReceipt는 done child에만 발급되는 accepted
-// parent receipt로 cleanup 이후의 정상 레코드 부재를 판정한다.
-func issueOpsChildRefHasAcceptedCleanupReceipt(ref issueops.IssueOpsChildCycleRef) bool {
-	return strings.TrimSpace(ref.ValidationVerdict) == "accepted" &&
-		strings.TrimSpace(ref.ValidatedAt) != "" &&
-		len(ref.ValidationEvidence) > 0
+// issueOpsChildRefHasTerminalCleanupReceipt는 parent가 명시적으로 승인하거나
+// 제외한 child만 cleanup 이후의 정상 레코드 부재로 판정한다.
+func issueOpsChildRefHasTerminalCleanupReceipt(ref issueops.IssueOpsChildCycleRef) bool {
+	if strings.TrimSpace(ref.ValidatedAt) == "" {
+		return false
+	}
+	switch strings.TrimSpace(ref.ValidationVerdict) {
+	case "accepted":
+		return len(ref.ValidationEvidence) > 0
+	case "dropped":
+		return len(strings.TrimSpace(ref.ValidationReason)) >= 10
+	default:
+		return false
+	}
 }
 
 func childStatusEntryFromChild(child issueops.IssueOpsRecord) issueops.IssueOpsChildStatusEntry {
