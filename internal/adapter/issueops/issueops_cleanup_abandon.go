@@ -237,8 +237,13 @@ func cleanupAbandonGates(ctx context.Context, stateRoot string, record issueops.
 		missing = append(missing, "remote_artifact_unmerged")
 	}
 	// ⑧ 자식 고아 방지(finish의 child_tasks_closed 대응물, brooks F6).
-	if cleanupAbandonHasChildren(record) {
+	//
+	// 해소되지 않은 자식만 센다. 모두 끝난 자식까지 차단 사유로 세면 epic을
+	// 완주할수록 그 기록이 영구히 남는다 — 일을 끝낼수록 정리가 어려워지면
+	// 계약이 뒤집힌 것이다(#437).
+	if unresolved := cleanupAbandonUnresolvedChildren(record, cleanupAbandonResolvedChildren(stateRoot, record)); len(unresolved) > 0 {
 		missing = append(missing, "no_children")
+		result.UnresolvedChildren = unresolved
 	}
 
 	inventory := cleanupAbandonInventory{
@@ -745,18 +750,59 @@ func deleteAbandonedIssueOps(ctx context.Context, stateRoot string, record issue
 	return deleted, nil
 }
 
-func cleanupAbandonHasChildren(record issueops.IssueOpsRecord) bool {
-	if len(record.ChildCycles) > 0 {
-		return true
+// cleanupAbandonUnresolvedChildren는 아직 해소되지 않은 자식을 지목한다.
+//
+// 두 경로가 같은 질문에 같은 답을 하게 한다. 예전에는 IssueLinks만
+// CloseVerifiedAt을 보고 ChildCycles는 기록 존재만으로 차단했다 — 같은 함수
+// 안에서 기준이 갈렸다(#437).
+//
+// 어느 자식이 남았는지 돌려주는 이유는, 개수만 알려주면 사용자가 무엇을 먼저
+// 끝내야 할지 알 수 없기 때문이다.
+func cleanupAbandonUnresolvedChildren(record issueops.IssueOpsRecord, resolved map[string]bool) []string {
+	var unresolved []string
+	for _, child := range record.ChildCycles {
+		id := strings.TrimSpace(child.CycleID)
+		if id == "" || resolved[id] {
+			continue
+		}
+		unresolved = append(unresolved, id)
 	}
 	issueURL := strings.TrimSpace(record.IssueURL)
 	for _, link := range record.IssueLinks {
 		if link.Type == "child" && strings.TrimSpace(link.CloseVerifiedAt) == "" &&
 			(issueURL == "" || strings.TrimSpace(link.URL) != issueURL) {
-			return true
+			unresolved = append(unresolved, strings.TrimSpace(link.URL))
 		}
 	}
-	return false
+	return unresolved
+}
+
+// cleanupAbandonResolvedChildren는 자식 cycle이 끝났음을 **관측**으로 확인한다.
+//
+// 해소의 근거는 record가 실재하고 phase가 done인 것 하나다. record 부재는
+// 근거가 아니다 — 정리돼서 사라진 것인지 유실된 것인지 구분할 수 없고, 모르는
+// 것을 끝난 것으로 넘기면 이 게이트가 막으려던 고아가 그대로 생긴다.
+//
+// 부재한 자식을 정리하려면 그 사실을 부모 record에 남겨야 한다. IssueLinks의
+// CloseVerifiedAt이 그 자리이고, `issueops cleanup close-children`이 원격
+// 관측으로 그것을 기록한다. abandon 자신은 원격에 닿지 않는 계약이므로
+// 여기서 이슈 종료를 직접 확인하지 않는다.
+func cleanupAbandonResolvedChildren(stateRoot string, record issueops.IssueOpsRecord) map[string]bool {
+	resolved := map[string]bool{}
+	for _, child := range record.ChildCycles {
+		id := strings.TrimSpace(child.CycleID)
+		if id == "" {
+			continue
+		}
+		childRecord, err := ReadIssueOpsExisting(stateRoot, id)
+		if err != nil {
+			continue
+		}
+		if childRecord.Phase == IssueOpsPhaseDone {
+			resolved[id] = true
+		}
+	}
+	return resolved
 }
 
 func validateCleanupAbandonReason(reason string) error {

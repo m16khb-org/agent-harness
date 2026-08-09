@@ -84,11 +84,14 @@ type CleanupRemoteBranchRequest struct {
 }
 
 type CleanupAbandonResult struct {
-	OK                   bool     `json:"ok"`
-	ID                   string   `json:"id"`
-	Preview              bool     `json:"preview"`
-	Reason               string   `json:"reason,omitempty"`
-	Missing              []string `json:"missing,omitempty"`
+	OK      bool     `json:"ok"`
+	ID      string   `json:"id"`
+	Preview bool     `json:"preview"`
+	Reason  string   `json:"reason,omitempty"`
+	Missing []string `json:"missing,omitempty"`
+	// UnresolvedChildren는 no_children을 유발한 자식들이다. 개수만 알려주면
+	// 사용자가 무엇을 먼저 끝내야 할지 알 수 없다(#437).
+	UnresolvedChildren   []string `json:"unresolved_children,omitempty"`
 	ReasonError          string   `json:"reason_error,omitempty"`
 	PendingIntentError   string   `json:"pending_intent_error,omitempty"`
 	OrcaResidueError     string   `json:"orca_residue_error,omitempty"`
