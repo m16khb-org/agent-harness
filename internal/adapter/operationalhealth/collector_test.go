@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	issueopscontract "agent-harness/internal/contract/issueops"
 	corehealth "agent-harness/internal/domain/operationalhealth"
@@ -90,9 +91,63 @@ func TestCollectOrcaRejectsUnreadyRuntimeForOrcaExecution(t *testing.T) {
 	}
 }
 
+func TestCollectOrcaProjectsTaskCompletionTimestamps(t *testing.T) {
+	tests := []struct {
+		name        string
+		completedAt string
+		want        time.Time
+		invalid     bool
+	}{
+		{
+			name:        "RFC3339Nano",
+			completedAt: "2026-08-03T22:35:17.123456789Z",
+			want:        time.Date(2026, time.August, 3, 22, 35, 17, 123456789, time.UTC),
+		},
+		{
+			name:        "legacy UTC",
+			completedAt: "2026-08-03 22:35:17",
+			want:        time.Date(2026, time.August, 3, 22, 35, 17, 0, time.UTC),
+		},
+		{
+			name:        "malformed slash-separated",
+			completedAt: "2026/08/03 22:35:17",
+			invalid:     true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			collector := Collector{Orca: statusOnlyOrca{
+				available: true,
+				status:    port.OrcaStatus{RuntimeID: "runtime", RuntimeReachable: true, RuntimeState: "ready", GraphState: "ready"},
+				tasks:     []port.OrcaTask{{RuntimeID: "runtime", ID: "task", CompletedAt: test.completedAt}},
+			}}
+			snapshot := corehealth.Snapshot{RepoRoot: "/repo"}
+			collector.collectOrca(context.Background(), &snapshot, false)
+
+			if len(snapshot.Tasks) != 1 {
+				t.Fatalf("tasks = %#v", snapshot.Tasks)
+			}
+			if test.invalid {
+				if !hasProblemCode(snapshot.InventoryProblems, "orca_task_timestamp_invalid") {
+					t.Fatalf("problems = %#v", snapshot.InventoryProblems)
+				}
+				return
+			}
+			if !snapshot.Tasks[0].CompletedAt.Equal(test.want) {
+				t.Fatalf("CompletedAt = %s, want %s", snapshot.Tasks[0].CompletedAt, test.want)
+			}
+			if hasProblemCode(snapshot.InventoryProblems, "orca_task_timestamp_invalid") {
+				t.Fatalf("problems = %#v", snapshot.InventoryProblems)
+			}
+		})
+	}
+}
+
 type statusOnlyOrca struct {
 	available bool
 	status    port.OrcaStatus
+	tasks     []port.OrcaTask
 }
 
 func (orca statusOnlyOrca) Available() bool { return orca.available }
@@ -108,8 +163,8 @@ func (statusOnlyOrca) ListWorktrees(context.Context, string) ([]port.OrcaWorktre
 func (statusOnlyOrca) ListTerminals(context.Context, string) ([]port.OrcaTerminal, error) {
 	return nil, errors.New("unexpected ListTerminals call")
 }
-func (statusOnlyOrca) ListAllTasks(context.Context) ([]port.OrcaTask, error) {
-	return nil, errors.New("unexpected ListAllTasks call")
+func (orca statusOnlyOrca) ListAllTasks(context.Context) ([]port.OrcaTask, error) {
+	return orca.tasks, nil
 }
 func (statusOnlyOrca) ListDispatchedTasks(context.Context) ([]port.OrcaTask, error) {
 	return nil, errors.New("unexpected ListDispatchedTasks call")
