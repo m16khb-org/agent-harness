@@ -106,9 +106,6 @@ func PlanResume(request ResumeRequest) (ResumePlan, error) {
 		return ResumePlan{Disposition: ResumeCreateTerminal, RuntimeID: runtimeID}, nil
 	}
 	terminalID := strings.TrimSpace(request.Inventory.TerminalID)
-	if terminalID != "" && !request.Inventory.TerminalLive {
-		return ResumePlan{}, Deny(DenyResumeTerminalIdentity, fmt.Errorf("Orca owner terminal is present but not live"))
-	}
 	if request.Inventory.TaskLive {
 		if !request.Inventory.TerminalLive {
 			return ResumePlan{}, Deny(DenyResumeOwnerContradiction, fmt.Errorf("Orca owner inventory has a live task without a live terminal"))
@@ -117,6 +114,15 @@ func PlanResume(request ResumeRequest) (ResumePlan, error) {
 			return ResumePlan{}, Deny(DenyResumeOwnerLive, fmt.Errorf("previous Orca owner task is still live"))
 		}
 		return ResumePlan{Disposition: ResumeExistingBinding, RuntimeID: runtimeID}, nil
+	}
+	if terminalID != "" && !request.Inventory.TerminalLive {
+		if terminalID != strings.TrimSpace(request.BindingTerminalID) ||
+			!request.Inventory.TerminalInventoryComplete ||
+			!terminalTaskStatus(request.Inventory.TaskStatus) ||
+			!settledDispatchStatus(request.Inventory.DispatchStatus) {
+			return ResumePlan{}, Deny(DenyResumeTerminalIdentity, fmt.Errorf("Orca owner terminal is present but not safely settled"))
+		}
+		return ResumePlan{Disposition: ResumeCreateTerminal, RuntimeID: runtimeID}, nil
 	}
 	if request.Inventory.TerminalLive {
 		if terminalID == "" || terminalID != strings.TrimSpace(request.BindingTerminalID) {
@@ -130,6 +136,15 @@ func PlanResume(request ResumeRequest) (ResumePlan, error) {
 func terminalTaskStatus(status string) bool {
 	switch strings.ToLower(strings.TrimSpace(status)) {
 	case "completed", "failed":
+		return true
+	default:
+		return false
+	}
+}
+
+func settledDispatchStatus(status string) bool {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "completed", "failed", "circuit_broken":
 		return true
 	default:
 		return false
