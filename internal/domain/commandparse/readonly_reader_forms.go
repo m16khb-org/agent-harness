@@ -202,3 +202,21 @@ func ExactSelfVerifyVerification(command string) bool {
 	}
 	return true
 }
+
+// ExactDoctorVerification admits only the repo-local doctor form used by the
+// sealed owner verification loop. It stays outside ExactReadOnlyShellCommand
+// so the lifecycle guard still requires the active holder and canonical root.
+func ExactDoctorVerification(command string) bool {
+	if HasActiveCommandSubstitution(command) || HasActiveInputRedirect(command) ||
+		HasActiveOutputRedirect(command) || HasActiveParameterOrTildeExpansion(command) ||
+		HasActivePathnameExpansion(command) || HasActiveShellSpecialQuoting(command) ||
+		HasActiveShellComment(command) || HasActiveZshEqualsExpansion(command) ||
+		HasUnquotedControlOperator(command) || HasUnquotedBackgroundOperator(command) {
+		return false
+	}
+	tokens := SplitCommandTokens(strings.TrimSpace(command))
+	return len(tokens) == 5 && tokens[0] == "./bin/agent-harness" &&
+		tokens[1] == "doctor" && tokens[2] == "--repo" &&
+		strings.TrimSpace(tokens[3]) != "" && !strings.HasPrefix(tokens[3], "-") &&
+		tokens[4] == "--json"
+}

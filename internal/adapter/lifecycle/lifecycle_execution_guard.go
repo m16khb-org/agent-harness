@@ -1020,11 +1020,14 @@ func executionMutationDecision(req lifecyclecontract.HookToolUseLifecycleRequest
 	if unsafeReason == "" && selfVerifyInvocation(req.Command) && !commandparse.ExactSelfVerifyVerification(req.Command) {
 		unsafeReason = "unclassified self-verify command is blocked while IssueOps mutation authority is active; use the exact verification form"
 	}
+	if unsafeReason == "" && doctorInvocation(req.Command) && !commandparse.ExactDoctorVerification(req.Command) {
+		unsafeReason = "unclassified doctor command is blocked while IssueOps mutation authority is active; use the exact repo-local verification form"
+	}
 	mayMutate := toolUseMayMutateLifecycleFiles(req.Tool, req.Command)
 	if searchrouting.IsShellTool(req.Tool) && !mayMutate {
 		mayMutate = true
 		if unsafeReason == "" && !exactIssueOpsOwnerMutation(req.Command) && !exactReleasedPlanRecovery && !exactResourceWait && !exactAtomicWorkflow &&
-			!exactCommitCherryPick && !commandparse.ExactSelfVerifyVerification(req.Command) {
+			!exactCommitCherryPick && !commandparse.ExactSelfVerifyVerification(req.Command) && !commandparse.ExactDoctorVerification(req.Command) {
 			unsafeReason = "unclassified shell command is blocked while IssueOps mutation authority is active; use an exact listed reader or a statically classified foreground mutation command"
 		}
 	}
@@ -1158,6 +1161,11 @@ func exactIssueOpsMutationHelpObservation(path string, tokens []string, start in
 func selfVerifyInvocation(command string) bool {
 	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(command))
 	return len(tokens) >= 2 && tokens[1] == "self-verify"
+}
+
+func doctorInvocation(command string) bool {
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(command))
+	return len(tokens) >= 2 && tokens[1] == "doctor"
 }
 
 func exactIssueOpsOwnerMutation(commandText string) bool {

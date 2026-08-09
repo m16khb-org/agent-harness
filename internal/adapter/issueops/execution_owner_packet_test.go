@@ -340,6 +340,20 @@ func TestExecutionOwnerClaimCommandUsesCurrentGenerationTokenWithoutPath(t *test
 	}
 }
 
+func TestExecutionOwnerReleaseCommandIncludesPIDReuseSafeActorReceipt(t *testing.T) {
+	record, req := ownerPacketFixture()
+	command := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64)).Release
+	for _, required := range []string{
+		"--session-pid <SESSION_PID>",
+		"--session-started-at <SESSION_STARTED_AT>",
+		"--session-executable <SESSION_EXECUTABLE>",
+	} {
+		if !strings.Contains(command, required) {
+			t.Fatalf("owner release command is missing %q: %q", required, command)
+		}
+	}
+}
+
 func TestExecutionOwnerResumePastImplementSkipsBackwardPhaseTransition(t *testing.T) {
 	record, req := ownerPacketFixture()
 	record.Phase = issueops.IssueOpsPhaseAISlopClean

@@ -53,6 +53,31 @@ func TestActiveLeaseReadOnlyReaderAdmission(t *testing.T) {
 	}
 }
 
+func TestActiveLeaseDoctorVerificationRequiresExactHolderAndCanonicalRoot(t *testing.T) {
+	t.Setenv("HARNESS_STATE_DIR", t.TempDir())
+	_, record, worker := executionActiveLifecycleRecord(t)
+	writeWorktreeFile(t, worker, filepath.Join("bin", "agent-harness"), "trusted binary\n")
+	exact := "./bin/agent-harness doctor --repo '" + worker + "' --json"
+
+	owner := executionRequest(record, worker, "claude", "owner-session", exact)
+	owner.AgentID = "owner-agent"
+	if got := BuildLifecyclePreToolUseDecision(owner); got.Decision != "allow" {
+		t.Fatalf("active holder의 exact doctor verification은 허용해야 한다: %+v", got)
+	}
+
+	foreign := owner
+	foreign.SessionID = "foreign-session"
+	if got := BuildLifecyclePreToolUseDecision(foreign); got.Decision != "block" {
+		t.Fatalf("다른 session의 doctor verification은 차단해야 한다: %+v", got)
+	}
+
+	outside := owner
+	outside.Command = "./bin/agent-harness doctor --repo /tmp/outside --json"
+	if got := BuildLifecyclePreToolUseDecision(outside); got.Decision != "block" {
+		t.Fatalf("canonical root 밖 doctor verification은 차단해야 한다: %+v", got)
+	}
+}
+
 // TestActiveLeaseReadOnlyReaderDenyMatrix는 위 허용이 shell 실행이나 workspace
 // 밖 접근을 함께 열지 않음을 고정한다.
 func TestActiveLeaseReadOnlyReaderDenyMatrix(t *testing.T) {

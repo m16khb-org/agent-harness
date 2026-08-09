@@ -323,7 +323,7 @@ func executionOwnerCommandsFor(record issueops.IssueOpsRecord, req ExecutionPrep
 	// 반납은 막힌 owner의 안전한 출구다. 들고 종료하면 프로세스가 살아 있는 한
 	// 아무도 그 lifecycle을 회수할 수 없다(#319).
 	release := "agent-harness issueops execution release --id " + quoteExecutionOwnerArg(record.ID) +
-		" --generation " + strconv.FormatUint(record.Execution.Lease.Generation, 10) + " " + shortActor + " --json"
+		" --generation " + strconv.FormatUint(record.Execution.Lease.Generation, 10) + " " + actorFlags + " --json"
 	verifyBranchLinkRead := "none"
 	verifyBranchLink := "none"
 	awaitBranchLink := "none"
