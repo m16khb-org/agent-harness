@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"agent-harness/internal/port"
@@ -157,6 +158,7 @@ func (c *Client) Probe(ctx context.Context, req port.OrcaProbeRequest) (port.Orc
 		{argv: []string{"orca", "orchestration", "run-use", "--help"}, want: []string{"--id", "--from", "--json"}},
 		{argv: []string{"orca", "orchestration", "task-create", "--help"}, want: []string{"--spec", "--task-title", "--display-name", "--run", "--from", "--json"}},
 		{argv: []string{"orca", "orchestration", "task-list", "--help"}, want: []string{"--ready", "--status", "--run", "--json"}},
+		{argv: []string{"orca", "orchestration", "gate-list", "--help"}, want: []string{"--run", "--json"}},
 		{argv: []string{"orca", "orchestration", "task-update", "--help"}, want: []string{"--id", "--status", "--result", "--run", "--from", "--json"}},
 		{argv: []string{"orca", "orchestration", "dispatch", "--help"}, want: []string{"--task", "--to", "--run", "--from", "--inject", "--return-preamble", "--json"}},
 		{argv: []string{"orca", "orchestration", "dispatch-show", "--help"}, want: []string{"--task", "--preamble", "--from", "--json"}},
@@ -556,6 +558,130 @@ func (c *Client) ListRuns(ctx context.Context) ([]port.OrcaRun, error) {
 	return inventory.Rows, err
 }
 
+func (c *Client) ListRunInventory(ctx context.Context) (port.OrcaRunInventory, error) {
+	status, err := c.Status(ctx)
+	if err != nil {
+		return port.OrcaRunInventory{}, err
+	}
+	runs, err := c.listRunsInventory(ctx)
+	if err != nil {
+		return port.OrcaRunInventory{}, err
+	}
+	if err := validateExecutionInventoryRuntime(runs.RuntimeID, status.RuntimeID); err != nil {
+		return port.OrcaRunInventory{}, err
+	}
+	return port.OrcaRunInventory{RuntimeID: runs.RuntimeID, Runs: runs.Rows}, nil
+}
+
+func (c *Client) ListAllTasksFromRuns(ctx context.Context, inventory port.OrcaRunInventory) ([]port.OrcaTask, error) {
+	return c.listTasksFromRuns(ctx, inventory, "--brief")
+}
+
+func (c *Client) ListDispatchedTasksFromRuns(ctx context.Context, inventory port.OrcaRunInventory) ([]port.OrcaTask, error) {
+	return c.listTasksFromRuns(ctx, inventory, "--status", "dispatched")
+}
+
+func (c *Client) ListGatesFromRuns(ctx context.Context, inventory port.OrcaRunInventory) ([]port.OrcaGate, error) {
+	runs, err := validateRunInventory(inventory)
+	if err != nil {
+		return nil, err
+	}
+	entries, errs := readRunsBounded(ctx, runs, func(ctx context.Context, run port.OrcaRun) (executionGateInventory, error) {
+		return c.listRunGatesInventory(ctx, run.ID)
+	})
+	result := make([]port.OrcaGate, 0)
+	seen := make(map[string]struct{})
+	for index, entry := range entries {
+		if errs[index] != nil {
+			return nil, errs[index]
+		}
+		if err := validateExecutionInventoryRuntime(entry.RuntimeID, inventory.RuntimeID); err != nil {
+			return nil, err
+		}
+		for _, gate := range entry.Rows {
+			if _, duplicate := seen[gate.ID]; duplicate {
+				return nil, &port.OrcaError{Code: "gate_inventory_ambiguous", Detail: "Orca returned a duplicate gate identity", Invoked: true}
+			}
+			seen[gate.ID] = struct{}{}
+			result = append(result, gate)
+		}
+	}
+	return result, nil
+}
+
+func (c *Client) listTasksFromRuns(ctx context.Context, inventory port.OrcaRunInventory, flags ...string) ([]port.OrcaTask, error) {
+	runs, err := validateRunInventory(inventory)
+	if err != nil {
+		return nil, err
+	}
+	entries, errs := readRunsBounded(ctx, runs, func(ctx context.Context, run port.OrcaRun) (executionTaskInventory, error) {
+		return c.listRunTasksInventory(ctx, run.ID, flags...)
+	})
+	result := make([]port.OrcaTask, 0)
+	seen := make(map[string]struct{})
+	for index, entry := range entries {
+		if errs[index] != nil {
+			return nil, errs[index]
+		}
+		if err := validateExecutionInventoryRuntime(entry.RuntimeID, inventory.RuntimeID); err != nil {
+			return nil, err
+		}
+		for _, task := range entry.Rows {
+			key := task.RunID + "\x00" + task.ID
+			if _, duplicate := seen[key]; duplicate {
+				return nil, &port.OrcaError{Code: "task_inventory_ambiguous", Detail: "Orca returned a duplicate task identity in one Run", Invoked: true}
+			}
+			seen[key] = struct{}{}
+			result = append(result, task)
+		}
+	}
+	return result, nil
+}
+
+func validateRunInventory(inventory port.OrcaRunInventory) ([]port.OrcaRun, error) {
+	if strings.TrimSpace(inventory.RuntimeID) == "" || inventory.RuntimeID != strings.TrimSpace(inventory.RuntimeID) {
+		return nil, &port.OrcaError{Code: "run_inventory_runtime_invalid", Detail: "Orca Run inventory requires a canonical runtime identity"}
+	}
+	runs := append([]port.OrcaRun(nil), inventory.Runs...)
+	seen := make(map[string]struct{}, len(runs))
+	for _, run := range runs {
+		if _, err := validateRunID(run.ID); err != nil || run.RuntimeID != inventory.RuntimeID || strings.TrimSpace(run.Objective) == "" || run.Objective != strings.TrimSpace(run.Objective) {
+			return nil, &port.OrcaError{Code: "run_inventory_identity_invalid", Detail: "Orca Run inventory contains an invalid Run identity"}
+		}
+		if _, duplicate := seen[run.ID]; duplicate {
+			return nil, &port.OrcaError{Code: "run_inventory_ambiguous", Detail: "Orca Run inventory contains a duplicate Run identity"}
+		}
+		seen[run.ID] = struct{}{}
+	}
+	return runs, nil
+}
+
+func readRunsBounded[T any](ctx context.Context, runs []port.OrcaRun, read func(context.Context, port.OrcaRun) (T, error)) ([]T, []error) {
+	values := make([]T, len(runs))
+	errs := make([]error, len(runs))
+	workers := min(8, len(runs))
+	if workers == 0 {
+		return values, errs
+	}
+	jobs := make(chan int)
+	var wait sync.WaitGroup
+	for range workers {
+		wait.Add(1)
+		go func() {
+			defer wait.Done()
+			for index := range jobs {
+				values[index], errs[index] = read(ctx, runs[index])
+			}
+		}()
+	}
+	for index := range runs {
+		jobs <- index
+	}
+	close(jobs)
+	wait.Wait()
+	return values, errs
+}
+
 func (c *Client) listRunsInventory(ctx context.Context) (executionRunInventory, error) {
 	var payload struct {
 		Runs *[]runPayload `json:"runs"`
@@ -788,6 +914,36 @@ func (c *Client) ListGates(ctx context.Context) ([]port.OrcaGate, error) {
 		result = append(result, port.OrcaGate{RuntimeID: runtimeID, ID: gate.ID, TaskID: gate.TaskID, Status: gate.Status})
 	}
 	return result, nil
+}
+
+func (c *Client) listRunGatesInventory(ctx context.Context, runID string) (executionGateInventory, error) {
+	runID, err := validateRunID(runID)
+	if err != nil {
+		return executionGateInventory{}, err
+	}
+	var payload struct {
+		Gates []struct {
+			ID     string `json:"id"`
+			TaskID string `json:"task_id"`
+			Status string `json:"status"`
+		} `json:"gates"`
+		Count *int `json:"count"`
+	}
+	runtimeID, err := c.runJSON(ctx, "", readTimeout, []string{"orca", "orchestration", "gate-list", "--run", runID, "--json"}, &payload)
+	if err != nil {
+		return executionGateInventory{}, err
+	}
+	if err := requireReturnedCount("gate", len(payload.Gates), payload.Count); err != nil {
+		return executionGateInventory{}, err
+	}
+	result := make([]port.OrcaGate, 0, len(payload.Gates))
+	for _, gate := range payload.Gates {
+		if strings.TrimSpace(gate.ID) == "" || strings.TrimSpace(gate.TaskID) == "" || strings.TrimSpace(gate.Status) == "" {
+			return executionGateInventory{}, fmt.Errorf("Orca gate row identity is incomplete")
+		}
+		result = append(result, port.OrcaGate{RuntimeID: runtimeID, ID: gate.ID, TaskID: gate.TaskID, Status: gate.Status})
+	}
+	return executionGateInventory{RuntimeID: runtimeID, Rows: result}, nil
 }
 
 func (c *Client) InboxPresence(ctx context.Context) (port.OrcaInboxPresence, error) {
@@ -1326,4 +1482,10 @@ func containsAllHelpFlags(value string, items []string) bool {
 	return true
 }
 
+type executionGateInventory struct {
+	RuntimeID string
+	Rows      []port.OrcaGate
+}
+
 var _ port.OrcaClient = (*Client)(nil)
+var _ port.OrcaRunInventoryReader = (*Client)(nil)

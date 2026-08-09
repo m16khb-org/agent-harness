@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -1255,6 +1256,7 @@ type fakeRunner struct {
 	lookPaths map[string]string
 	responses map[string]CommandOutput
 	errors    map[string]error
+	mu        sync.Mutex
 	calls     [][]string
 }
 
@@ -1277,7 +1279,9 @@ func (f *fakeRunner) LookPath(file string) (string, error) {
 
 func (f *fakeRunner) Run(_ context.Context, _ string, _ time.Duration, argv []string) (CommandOutput, error) {
 	copyArgv := append([]string(nil), argv...)
+	f.mu.Lock()
 	f.calls = append(f.calls, copyArgv)
+	f.mu.Unlock()
 	key := strings.Join(argv, " ")
 	if err := f.errors[key]; err != nil {
 		// 실제 ExecRunner처럼 비영 종료에서도 캡처된 stdout을 함께 돌려준다 —
@@ -1312,6 +1316,7 @@ func addCompleteProbeLeafHelp(runner *fakeRunner) {
 		"orca orchestration run-use --help":       "--id --from --json",
 		"orca orchestration task-create --help":   "--spec --task-title --display-name --run --from --json",
 		"orca orchestration task-list --help":     "--ready --status --run --json",
+		"orca orchestration gate-list --help":     "--run --json",
 		"orca orchestration task-update --help":   "--id --status --result --run --from --json",
 		"orca orchestration dispatch --help":      "--task --to --run --from --inject --return-preamble --json",
 		"orca orchestration dispatch-show --help": "--task --preamble --from --json",
