@@ -340,6 +340,27 @@ func TestExecutionOwnerClaimCommandUsesCurrentGenerationTokenWithoutPath(t *test
 	}
 }
 
+func TestExecutionOwnerResumePastImplementSkipsBackwardPhaseTransition(t *testing.T) {
+	record, req := ownerPacketFixture()
+	record.Phase = issueops.IssueOpsPhaseAISlopClean
+	commands := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64))
+	if commands.EnterImplement != "none" {
+		t.Fatalf("advanced implementation recovery must not generate a backward transition: %q", commands.EnterImplement)
+	}
+	if !strings.Contains(commands.EnterAISlopClean, "--to ai-slop-clean") {
+		t.Fatalf("advanced implementation recovery must retain the cleanup refresh command: %q", commands.EnterAISlopClean)
+	}
+	prompt := executionOwnerPromptFixture(t, record, req)
+	for _, required := range []string{
+		"`none`이면 현재 phase가 이미 implement 이후",
+		"cleanup fingerprint와 fresh implementation review를 다시 기록",
+	} {
+		if !strings.Contains(prompt, required) {
+			t.Fatalf("advanced-phase recovery prompt is missing %q:\n%s", required, prompt)
+		}
+	}
+}
+
 func TestExecutionOwnerPromptRenderingRejectsPlaceholderAndLineInjectionDeterministically(t *testing.T) {
 	record, req := ownerPacketFixture()
 	commands := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64))

@@ -152,8 +152,10 @@ Required skills:
    side effect, rollback, verification을 검토한다. blocker가 있으면 승인하지 말고 종료한다. blocker가
    없을 때만 아래 placeholder를 검토 결과의 리터럴 값으로 채워 compatibility-review를 승인·기록한다:
    {COMPATIBILITY_REVIEW_COMMAND}
-10. compatibility review와 execution readiness를 확인한 뒤 다음 exact command로 implement phase에 진입한다.
-   이 전이가 성공하기 전에는 구현 파일을 수정하지 않는다:
+10. compatibility review와 execution readiness를 확인한다. 다음 command가 `none`이 아니면 exact command로
+   implement phase에 진입하고, 이 전이가 성공하기 전에는 구현 파일을 수정하지 않는다. `none`이면 현재 phase가 이미 implement 이후이므로
+   backward 전이를 시도하지 않고 현재 phase에서 승인된 scoped recovery를 계속한다. 이때 구현 diff를 수정했다면
+   publication 전에 cleanup fingerprint와 fresh implementation review를 다시 기록한다:
    {ENTER_IMPLEMENT_COMMAND}
 
 구현 절차:

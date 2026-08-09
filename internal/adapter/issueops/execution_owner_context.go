@@ -370,6 +370,9 @@ func executionOwnerCommandsFor(record issueops.IssueOpsRecord, req ExecutionPrep
 		shortActor + " --json"
 	enterImplement := "agent-harness issueops phase --id " + quoteExecutionOwnerArg(record.ID) +
 		" --to implement " + shortActor + " --json"
+	if record.Phase == issueops.IssueOpsPhaseAISlopClean || record.Phase == issueops.IssueOpsPhaseFeedback {
+		enterImplement = "none"
+	}
 	aiSlopCleanRecord := "agent-harness issueops ai-slop-clean record --id " + quoteExecutionOwnerArg(record.ID) +
 		" --category <CLEANUP_CATEGORY> --verification <VERIFICATION_EVIDENCE> " + shortActor + " --json"
 	enterAISlopClean := "agent-harness issueops phase --id " + quoteExecutionOwnerArg(record.ID) +
