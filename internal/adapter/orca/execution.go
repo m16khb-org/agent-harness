@@ -472,9 +472,10 @@ func (p *ExecutionProvisioner) InspectOwner(ctx context.Context, req port.Execut
 		tasks, err = client.listRunTasksInventory(ctx, req.RunID, "--brief")
 	}
 	if err != nil {
-		var orcaErr *port.OrcaError
-		if req.RunID != "" && result.TerminalInventoryComplete && errors.As(err, &orcaErr) && orcaErr.Code == "run_not_found" {
-			return result, nil
+		if req.RunID != "" && result.TerminalInventoryComplete {
+			if orcaErr, ok := errors.AsType[*port.OrcaError](err); ok && orcaErr.Code == "run_not_found" {
+				return result, nil
+			}
 		}
 		return port.ExecutionOrcaOwnerInventory{}, err
 	}
