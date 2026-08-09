@@ -10,12 +10,14 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import queue
 import re
 import shutil
 import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -94,6 +96,149 @@ def is_noisy_user_prompt_context(ctx: str) -> bool:
 
 def mcp_smoke_env(env: dict[str, str]) -> dict[str, str]:
     return {**env, "HARNESS_MCP_DIRECT": "1"}
+
+
+def run_mcp_jsonrpc_process(
+    command: list[str],
+    calls: list[dict[str, Any]],
+    *,
+    env: dict[str, str] | None = None,
+    timeout: float,
+) -> dict[str, Any]:
+    expected_ids = [call["id"] for call in calls if "id" in call]
+    proc = subprocess.Popen(
+        command,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
+        env={**os.environ, **(env or {})},
+    )
+    assert proc.stdin is not None and proc.stdout is not None and proc.stderr is not None
+    events: queue.Queue[tuple[str, str | None]] = queue.Queue()
+
+    def drain(name: str, stream: Any) -> None:
+        for line in iter(stream.readline, ""):
+            events.put((name, line))
+        events.put((name, None))
+
+    readers = [
+        threading.Thread(target=drain, args=("stdout", proc.stdout), daemon=True),
+        threading.Thread(target=drain, args=("stderr", proc.stderr), daemon=True),
+    ]
+    for reader in readers:
+        reader.start()
+
+    write_error = ""
+    try:
+        for call in calls:
+            proc.stdin.write(json.dumps(call) + "\n")
+        proc.stdin.flush()
+    except (BrokenPipeError, OSError) as exc:
+        write_error = str(exc)
+
+    response_ids: list[Any] = []
+    duplicate_ids: list[Any] = []
+    unexpected_ids: list[Any] = []
+    malformed_lines: list[str] = []
+    rpc_errors: list[dict[str, Any]] = []
+    stdout_lines: list[str] = []
+    stderr_lines: list[str] = []
+
+    def consume(name: str, line: str | None) -> None:
+        if line is None:
+            return
+        if name == "stderr":
+            stderr_lines.append(line)
+            return
+        stdout_lines.append(line)
+        if not line.lstrip().startswith("{"):
+            if line.strip():
+                malformed_lines.append(line.rstrip("\n"))
+            return
+        try:
+            response = json.loads(line)
+        except json.JSONDecodeError:
+            malformed_lines.append(line.rstrip("\n"))
+            return
+        response_id = response.get("id")
+        response_ids.append(response_id)
+        if response_ids.count(response_id) > 1:
+            duplicate_ids.append(response_id)
+        if response_id not in expected_ids:
+            unexpected_ids.append(response_id)
+        if "error" in response:
+            rpc_errors.append(response)
+
+    deadline = time.monotonic() + timeout
+    stdout_closed = False
+    stderr_closed = False
+    while time.monotonic() < deadline and not all(response_ids.count(item) == 1 for item in expected_ids):
+        try:
+            name, line = events.get(timeout=max(0.01, deadline - time.monotonic()))
+        except queue.Empty:
+            break
+        consume(name, line)
+        if line is None:
+            if name == "stdout":
+                stdout_closed = True
+            else:
+                stderr_closed = True
+            if proc.poll() is not None and stdout_closed and stderr_closed:
+                break
+
+    received_all = all(response_ids.count(item) == 1 for item in expected_ids)
+    stdin_closed_before_responses = not received_all
+    proc.stdin.close()
+    proc.stdin = None
+    timed_out = False
+    try:
+        proc.wait(timeout=max(0.01, deadline - time.monotonic()))
+    except subprocess.TimeoutExpired:
+        timed_out = True
+        proc.terminate()
+        try:
+            proc.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=1)
+
+    for reader in readers:
+        reader.join(timeout=1)
+    while not events.empty():
+        name, line = events.get_nowait()
+        consume(name, line)
+    proc.stdout.close()
+    proc.stderr.close()
+
+    missing_ids = [item for item in expected_ids if response_ids.count(item) == 0]
+    ok = (
+        not write_error
+        and not timed_out
+        and proc.returncode == 0
+        and not malformed_lines
+        and not duplicate_ids
+        and not unexpected_ids
+        and not missing_ids
+        and not rpc_errors
+        and response_ids == expected_ids
+    )
+    return {
+        "ok": ok,
+        "response_ids": response_ids,
+        "duplicate_ids": duplicate_ids,
+        "unexpected_ids": unexpected_ids,
+        "missing_ids": missing_ids,
+        "malformed_lines": malformed_lines,
+        "rpc_errors": rpc_errors,
+        "timed_out": timed_out,
+        "returncode": proc.returncode,
+        "stdin_closed_before_responses": stdin_closed_before_responses,
+        "stdout": "".join(stdout_lines),
+        "stderr": "".join(stderr_lines),
+        "write_error": write_error,
+    }
 
 
 def ps_rows() -> list[dict[str, Any]]:
@@ -351,7 +496,6 @@ def daemon_and_mcp_stress(report: dict[str, Any], cycles: int) -> None:
                 ok = False
             cycle_details.append({"cycle": i, "pid": pid, "alive_after_stop": alive, "start_rc": start["returncode"], "status_rc": status["returncode"], "stop_rc": stop["returncode"]})
         # Standalone MCP JSON-RPC smoke.
-        proc = subprocess.Popen([str(BIN), "mcp"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env={**os.environ, **mcp_smoke_env(env)})
         calls = [
             {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "stability-audit", "version": "1"}}},
             {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
@@ -363,22 +507,8 @@ def daemon_and_mcp_stress(report: dict[str, Any], cycles: int) -> None:
             {"jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "project_docs_route", "arguments": {"task": "install hook mcp daemon operations"}}},
             {"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "daemon_status", "arguments": {}}},
         ]
-        assert proc.stdin is not None
-        for call in calls:
-            proc.stdin.write(json.dumps(call) + "\n")
-            proc.stdin.flush()
-        proc.stdin.close()
-        proc.stdin = None
-        out, err = proc.communicate(timeout=15)
-        ids = []
-        rpc_errors = []
-        for line in out.splitlines():
-            if line.startswith("{"):
-                obj = json.loads(line)
-                ids.append(obj.get("id"))
-                if "error" in obj:
-                    rpc_errors.append(obj)
-        if ids != [1, 2, 3, 4, 5, 6, 7, 8] or rpc_errors:
+        mcp = run_mcp_jsonrpc_process([str(BIN), "mcp"], calls, env=mcp_smoke_env(env), timeout=15)
+        if not mcp["ok"]:
             ok = False
         st = run([str(BIN), "daemon", "status", "--json"], env=env, timeout=10)
         try:
@@ -392,7 +522,7 @@ def daemon_and_mcp_stress(report: dict[str, Any], cycles: int) -> None:
             ok = False
         after = {r["pid"] for r in classify_processes(ps_rows())["current_daemons"] + classify_processes(ps_rows())["legacy_harness"]}
         new_pids = sorted(after - baseline)
-        add_step(report, "daemon_mcp_stress", ok and not new_pids, cycles=cycle_details, mcp_ids=ids, rpc_errors=rpc_errors, temp_mcp_pid=temp_pid, temp_mcp_leaked=temp_leaked, new_daemon_pids_after_stress=new_pids, mcp_stderr=err[-1000:])
+        add_step(report, "daemon_mcp_stress", ok and not new_pids, cycles=cycle_details, mcp_ids=mcp["response_ids"], rpc_errors=mcp["rpc_errors"], mcp_missing_ids=mcp["missing_ids"], mcp_duplicate_ids=mcp["duplicate_ids"], mcp_malformed_lines=mcp["malformed_lines"], mcp_timed_out=mcp["timed_out"], temp_mcp_pid=temp_pid, temp_mcp_leaked=temp_leaked, new_daemon_pids_after_stress=new_pids, mcp_stderr=mcp["stderr"][-1000:])
 
 
 def rss_sample(report: dict[str, Any], rounds: int, calls: int) -> None:

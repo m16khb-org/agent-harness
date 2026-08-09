@@ -21,7 +21,7 @@ adapter는 아래 placeholder를 모두 결정적 문자열로 치환한 뒤 pro
 | `{BASE_HEAD}` | worktree 생성 기준 commit |
 | `{LEASE_GENERATION}` | 현재 claim/holder generation |
 | `{LEASE_STATUS_COMMAND}` | exact read-only status command |
-| `{CLAIM_COMMAND}` | Orca claimable이면 `--claim-token-file`을 포함한 exact command, direct active holder이면 `none` |
+| `{CLAIM_COMMAND}` | Orca claimable이면 `--claim-current-token`을 포함한 exact command, direct active holder이면 `none` |
 | `{ISSUE_URL}` | 원격 SSOT issue URL |
 | `{ISSUE_BODY_SHA256}` | sealed issue body digest |
 | `{PACKET_PATH}` | worktree 안의 bounded context snapshot path |
@@ -47,7 +47,7 @@ adapter는 아래 placeholder를 모두 결정적 문자열로 치환한 뒤 pro
 | `{REMOTE_CREATE_COMMAND}` | draft PR/MR을 만드는 exact governed command |
 | `{COMPLETE_COMMAND}` | final HEAD/report/verification을 기록하는 exact command prefix |
 
-검증 실패 시 adapter는 prompt를 launch하지 않는다. claim token 원문은 placeholder, prompt, packet, Orca task/message에 넣지 않는다. `{CLAIM_COMMAND}`에는 ignored mode-`0600` token file의 경로만 들어간다.
+검증 실패 시 adapter는 prompt를 launch하지 않는다. claim token 원문과 경로는 placeholder, prompt, packet, Orca task/message에 넣지 않는다. `{CLAIM_COMMAND}`는 adapter가 현재 generation의 private token을 내부 해석하도록 `--claim-current-token`만 전달한다.
 
 ## PROMPT
 
@@ -236,7 +236,7 @@ publication과 종료:
 
 | ID | 입력/상황 | 기대 행동 | 실패 판정 |
 |---|---|---|---|
-| K-01 | Orca+Codex, claimable generation 1 | token file로 1회 claim 후 worktree 구현 | prompt에 token 원문 출력, coordinator 대기 |
+| K-01 | Orca+Codex, claimable generation 1 | current-generation token으로 1회 claim 후 worktree 구현 | prompt에 token 원문·경로 출력, coordinator 대기 |
 | K-02 | Orca+Claude, explicit model/effort | 동일 core 계약, Claude native session claim | Codex-only flag 사용, host 분기 의미 drift |
 | K-03 | direct active holder | `CLAIM_COMMAND=none`, 같은 main session이 worktree에서 구현 | Orca/handoff/task 생성, source 구현 |
 | K-04 | coordinator가 dispatch 직후 종료 | owner가 독립 claim/완료 | coordinator mailbox/heartbeat 요구 |

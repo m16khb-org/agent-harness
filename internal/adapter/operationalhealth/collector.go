@@ -322,7 +322,7 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 				addProblem(snapshot, "orca_tasks", "orca_task_runtime_mismatch", "task "+task.ID+" runtime identity does not match")
 			}
 			if strings.TrimSpace(value.CompletedAt) != "" {
-				parsed, parseErr := time.Parse(time.RFC3339Nano, strings.TrimSpace(value.CompletedAt))
+				parsed, parseErr := parseTaskCompletedAt(value.CompletedAt)
 				if parseErr != nil {
 					addProblem(snapshot, "orca_tasks", "orca_task_timestamp_invalid", "task "+task.ID+" has an invalid completion timestamp")
 				} else {

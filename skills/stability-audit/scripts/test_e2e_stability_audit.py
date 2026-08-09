@@ -2,6 +2,8 @@ import contextlib
 import importlib.util
 import io
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -463,6 +465,78 @@ class StabilityAuditScriptTest(unittest.TestCase):
         self.assertEqual(detail["summary"], {"failed_step": "go test"})
         self.assertEqual(detail["stderr_tail"], "self-verify diagnostic")
         self.assertIn('"ok": false', detail["stdout_tail"])
+
+
+def _child_program():
+    return r'''
+import json
+import sys
+import time
+
+mode = sys.argv[1]
+if mode == "premature_eof":
+    raise SystemExit(0)
+if mode == "timeout":
+    time.sleep(10)
+    raise SystemExit(0)
+
+for line in sys.stdin:
+    request = json.loads(line)
+    if "id" not in request:
+        continue
+    if mode == "malformed":
+        print("not-json", flush=True)
+    elif mode == "duplicate":
+        response = json.dumps({"jsonrpc": "2.0", "id": request["id"], "result": {}})
+        print(response, flush=True)
+        print(response, flush=True)
+    elif mode == "missing":
+        print(json.dumps({"jsonrpc": "2.0", "id": request["id"] + 100, "result": {}}), flush=True)
+    else:
+        print(json.dumps({"jsonrpc": "2.0", "id": request["id"], "result": {}}), flush=True)
+'''
+
+
+class MCPJSONRPCProcessTest(unittest.TestCase):
+    def test_waits_for_responses_before_closing_stdin_and_rejects_bad_transcripts(self) -> None:
+        audit = load_audit_module()
+        calls = [
+            {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+            {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+            {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
+        ]
+        processes = []
+        popen = subprocess.Popen
+
+        def track_process(*args, **kwargs):
+            process = popen(*args, **kwargs)
+            processes.append(process)
+            return process
+
+        with mock.patch.object(audit.subprocess, "Popen", side_effect=track_process):
+            for mode, want_ok, want_problem in [
+                ("success", True, ""),
+                ("premature_eof", False, "missing_ids"),
+                ("malformed", False, "malformed_lines"),
+                ("duplicate", False, "duplicate_ids"),
+                ("missing", False, "missing_ids"),
+                ("timeout", False, "timed_out"),
+            ]:
+                with self.subTest(mode=mode):
+                    result = audit.run_mcp_jsonrpc_process(
+                        [sys.executable, "-u", "-c", _child_program(), mode],
+                        calls,
+                        timeout=1,
+                    )
+                    self.assertEqual(want_ok, result["ok"], result)
+                    if want_problem:
+                        self.assertTrue(result[want_problem], result)
+                    else:
+                        self.assertEqual([1, 2], result["response_ids"], result)
+                        self.assertFalse(result["stdin_closed_before_responses"], result)
+
+        self.assertTrue(all(process.stdout is not None and process.stdout.closed for process in processes))
+        self.assertTrue(all(process.stderr is not None and process.stderr.closed for process in processes))
 
 
 if __name__ == "__main__":

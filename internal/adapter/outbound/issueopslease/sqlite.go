@@ -106,7 +106,14 @@ func claimWithinSpan(ctx context.Context, store port.TransactionalRecordStore, r
 	if err := request.ValidateRecord(before); err != nil {
 		return leaseapp.RepositoryResult{}, err
 	}
-	token, err := readCurrentClaimToken(record, request.TokenFile)
+	if (request.TokenFile == "") == !request.ClaimCurrentToken {
+		return leaseapp.RepositoryResult{}, leasecontract.Fail(leasecontract.FailurePersistence, fmt.Errorf("exactly one claim token selector is required"))
+	}
+	tokenPath := request.TokenFile
+	if request.ClaimCurrentToken {
+		tokenPath = claimTokenPath(record)
+	}
+	token, err := readCurrentClaimToken(record, tokenPath)
 	if err != nil {
 		return leaseapp.RepositoryResult{}, err
 	}
@@ -155,7 +162,7 @@ func claimWithinSpan(ctx context.Context, store port.TransactionalRecordStore, r
 	if err := store.Apply(ctx, mutations); err != nil {
 		return leaseapp.RepositoryResult{}, leasecontract.Fail(leasecontract.FailurePersistence, err)
 	}
-	_ = os.Remove(request.TokenFile)
+	_ = os.Remove(tokenPath)
 	after := toApplicationRecord(record)
 	return leaseapp.RepositoryResult{Record: after, Execution: *record.Execution}, nil
 }

@@ -48,10 +48,13 @@ func TestExecuteExecutionReseedUsesInjectedHandlerOnce(t *testing.T) {
 
 func TestExecutionReseedNextCommandRendersModeSpecificRecovery(t *testing.T) {
 	direct := ExecutionReseedNextCommand("io-direct", 2, "direct", "/tmp/lease-2.token")
-	for _, want := range []string{"execution claim", "--generation 2", "/tmp/lease-2.token"} {
+	for _, want := range []string{"execution claim", "--generation 2", "--claim-current-token"} {
 		if !strings.Contains(direct, want) {
 			t.Fatalf("direct reseed next command %q does not contain %q", direct, want)
 		}
+	}
+	if strings.Contains(direct, "/tmp/lease-2.token") {
+		t.Fatalf("direct reseed next command exposes token path: %q", direct)
 	}
 	orca := ExecutionReseedNextCommand("io-orca", 3, "orca", "/tmp/ignored.token")
 	if !strings.Contains(orca, "execution resume") || strings.Contains(orca, "/tmp/ignored.token") {

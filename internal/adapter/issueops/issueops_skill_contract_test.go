@@ -37,7 +37,7 @@ func TestIssueOpsExecutionDocumentationHasOneCurrentContract(t *testing.T) {
 		"one `Execution`", "canonical worktree", "exact lifecycle ID",
 		"source main worktree remains available", "direct", "orca",
 		"issueops execution prepare", "--mode auto", "issueops execution status",
-		"issueops execution claim", "--claim-token-file", "--issue-body-sha256",
+		"issueops execution claim", "--claim-current-token", "--issue-body-sha256",
 		"--context-packet-sha256", "issueops execution release",
 		"issueops execution replace", "issueops execution reconcile",
 		"issueops execution complete", "requested_mode", "resolved_mode",

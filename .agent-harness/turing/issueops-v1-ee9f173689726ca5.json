@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "lifecycle": "io-71ec03351dbb",
+  "generation": 5,
+  "wave": "W0",
+  "issue_body_sha256": "f21394a429acd80d995fd6c4ee485a5c652c1eae293b23377abd9a7a427eada7",
+  "context_packet_sha256": "3fd7e76f5cb2c239cd5aeecd619796226ddfd7aee539dfe61d6386f162b74a1a",
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "status": "DEFERRED",
+      "test": "Wave 1 #446 task_timestamp_test.go",
+      "command": "go test -v ./internal/adapter/operationalhealth -run 'Timestamp|Completed' -count=1",
+      "observed": "Wave 1 child scope; W0 only extracted the timestamp boundary without behavior change."
+    },
+    {
+      "id": "AC-02",
+      "status": "DEFERRED",
+      "test": "Wave 1 #447 Orca Run inventory contract tests",
+      "command": "go test -v ./internal/adapter/orca -count=1",
+      "observed": "Wave 1 child scope; W0 only established the typed port."
+    },
+    {
+      "id": "AC-03",
+      "status": "DEFERRED",
+      "test": "Wave 1 #447 bounded inventory tests",
+      "command": "go test -race ./internal/adapter/orca -count=1",
+      "observed": "Wave 1 child scope."
+    },
+    {
+      "id": "AC-04",
+      "status": "PASS",
+      "test": "TestExecutionReseedNextCommandRendersModeSpecificRecovery; TestIssueOpsExecutionDocumentationHasOneCurrentContract; TestIssueOpsAdvertisesOnlyExecutionActionTool; TestExecutionActionRequestFromMCPMapsCurrentClaimToken",
+      "command": "go test ./internal/adapter/issueops -run 'TestExecutionReseedNextCommandRendersModeSpecificRecovery|TestIssueOpsExecutionDocumentationHasOneCurrentContract' -count=1; go test ./internal/domain/mcp ./cmd/harness/mcpcli -run 'TestIssueOpsAdvertisesOnlyExecutionActionTool|TestExecutionActionRequestFromMCPMapsCurrentClaimToken' -count=1",
+      "observed": "RED: stale private-path expectations and missing MCP schema boolean failed; GREEN: direct recovery and MCP advertise/propagate --claim-current-token without a token path, while Orca remains coordinator-only resume."
+    },
+    {
+      "id": "AC-05",
+      "status": "PENDING_COORDINATOR",
+      "test": "MCPJSONRPCProcessTest.test_waits_for_responses_before_closing_stdin_and_rejects_bad_transcripts",
+      "command": "python3 -B skills/stability-audit/scripts/test_e2e_stability_audit.py",
+      "observed": "The regression now tracks each subprocess and requires closed stdout/stderr after reader join/drain. The active-lease guard denied the exact Python command as unclassified; the issue assigns the required 14-test, zero-ResourceWarning observation to the coordinator."
+    },
+    {
+      "id": "AC-06",
+      "status": "DEFERRED",
+      "test": "Four Wave 1 child completion receipts and parent accepts",
+      "command": "Coordinator-owned child lifecycle validation",
+      "observed": "Coordinator-only after W0 push."
+    },
+    {
+      "id": "AC-07",
+      "status": "PASS_W0",
+      "test": "W0 focused suites, full Go test/race, vet, build, and contract golden",
+      "command": "go test ./... -count=1; go test -race ./... -count=1; go vet ./...; go build -o bin/agent-harness ./cmd/harness; go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -count=1",
+      "observed": "All commands exited 0 in generation 5."
+    },
+    {
+      "id": "AC-08",
+      "status": "DEFERRED",
+      "test": "Clean and populated doctor observations",
+      "command": "./bin/agent-harness doctor --repo \"$PWD\" --json",
+      "observed": "Post-child integration scope."
+    },
+    {
+      "id": "AC-09",
+      "status": "DEFERRED",
+      "test": "Full self-verify and stability audit",
+      "command": "./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json; python3 skills/stability-audit/scripts/e2e_stability_audit.py --cleanup-stale --json",
+      "observed": "Post-child integration scope."
+    },
+    {
+      "id": "AC-10",
+      "status": "DEFERRED",
+      "test": "Draft PR, merge, and scoped cleanup receipts",
+      "command": "Coordinator-owned parent publication and cleanup",
+      "observed": "The issue explicitly prohibits W0 owner PR/completion."
+    }
+  ],
+  "verification": [
+    {"command": "go test ./cmd/harness/issueopscli/... ./internal/application/issueopslease/... ./internal/adapter/issueops/... ./internal/adapter/inbound/issueopslease/... ./internal/adapter/outbound/issueopslease/... ./internal/domain/commandparse/... ./internal/port/... -count=1", "result": "PASS"},
+    {"command": "go test -race ./internal/adapter/issueops ./internal/adapter/orca ./internal/adapter/operationalhealth ./internal/domain/commandparse ./internal/adapter/lifecycle -count=1", "result": "PASS"},
+    {"command": "go test ./... -count=1", "result": "PASS"},
+    {"command": "go test -race ./... -count=1", "result": "PASS"},
+    {"command": "go vet ./...", "result": "PASS"},
+    {"command": "go build -o bin/agent-harness ./cmd/harness", "result": "PASS"},
+    {"command": "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -count=1", "result": "PASS"},
+    {"command": "go test ./internal/adapter/toolconformance ./cmd/harness/contractcli ./cmd/harness/harnessapp -count=1", "result": "PASS after updating the pinned IssueOps MCP schema hash."},
+    {"command": "git diff --check", "result": "PASS"},
+    {"command": "python3 -B skills/stability-audit/scripts/test_e2e_stability_audit.py", "result": "BLOCKED: active-lease guard rejected the exact command as unclassified; coordinator owns the required 14-test, zero-ResourceWarning run."}
+  ],
+  "tdd": {
+    "current_token_red": "The stale reseed and skill-contract expectations failed before test correction because the current implementation no longer emits a private token path.",
+    "current_token_green": "The corrected direct-mode expectation and token-path non-disclosure assertion pass.",
+    "audit_pipe_close": "The real-subprocess regression now asserts every helper-created stdout/stderr stream is closed after join/drain; implementation explicitly closes both streams."
+  },
+  "ai_slop_clean": "Reviewed W0 scope after the targeted changes: no compatibility shim, token alias, broad cleanup, or unrelated refactor added.",
+  "deviations": [
+    "The Issue #439 Wave 0 checkpoint prohibits parent PR and execution completion; generic publication steps are deferred to the coordinator.",
+    "The active-lease guard rejected the exact Python regression command, so its required coordinator observation is recorded without a false PASS."
+  ],
+  "completion": "W0 implementation ready for binding Brooks review, atomic commit/push, and lease release; no parent PR or completion by this owner."
+}

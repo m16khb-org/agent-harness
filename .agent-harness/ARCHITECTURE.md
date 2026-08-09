@@ -325,9 +325,9 @@ cycle은 명시값이 없을 때 같은 경로를 계산해 하위 호환한다.
   actor/cwd. Stale generations fail before CAS.
 - Direct preparation grants generation 1 to the caller. Orca preparation stores
   a claimable generation and seals the remote issue digest, private context
-  packet, fully rendered prompt, token-file path, owner host/model/effort, and
-  stable Orca resource IDs.
-- Orca claim consumes the private token file exactly once and requires both
+  packet, fully rendered prompt, owner host/model/effort, and stable Orca
+  resource IDs.
+- Orca claim resolves and consumes the current-generation private token exactly once and requires both
   sealed SHA-256 values. Token contents never enter state, prompts, logs, or
   responses.
 

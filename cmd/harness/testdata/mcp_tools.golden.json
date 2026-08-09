@@ -489,6 +489,9 @@
         "agent_id": {
           "type": "string"
         },
+        "claim_current_token": {
+          "type": "boolean"
+        },
         "claim_token_file": {
           "type": "string"
         },

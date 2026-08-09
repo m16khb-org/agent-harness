@@ -17,13 +17,14 @@ type ClaimRepository interface {
 }
 
 type ClaimRepositoryRequest struct {
-	ID             string
-	Generation     uint64
-	Actor          issueopslease.Actor
-	CWD            string
-	TokenFile      string
-	ValidateRecord RecordValidator
-	Clock          Clock
+	ID                string
+	Generation        uint64
+	Actor             issueopslease.Actor
+	CWD               string
+	TokenFile         string
+	ClaimCurrentToken bool
+	ValidateRecord    RecordValidator
+	Clock             Clock
 }
 
 type ClaimContextPreflight interface {

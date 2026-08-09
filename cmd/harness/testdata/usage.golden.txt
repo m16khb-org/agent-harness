@@ -44,7 +44,7 @@ Usage:
   agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude [--owner-model MODEL] [--owner-effort EFFORT] ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops execution status --id ID [--json]
   agent-harness issueops execution whoami [--json]
-  agent-harness issueops execution claim --id ID --generation N --claim-token-file PATH [--issue-body-sha256 SHA256 --context-packet-sha256 SHA256] ACTOR_FLAGS [--json]
+  agent-harness issueops execution claim --id ID --generation N (--claim-current-token|--claim-token-file PATH) [--issue-body-sha256 SHA256 --context-packet-sha256 SHA256] ACTOR_FLAGS [--json]
   agent-harness issueops execution release --id ID --generation N ACTOR_FLAGS [--json]
   agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [--completion-generation N] [fingerprint/reason flags] ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops execution resume --id ID --expected-generation N [ACTOR_FLAGS] --confirm [--json]

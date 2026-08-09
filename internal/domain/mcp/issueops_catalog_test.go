@@ -30,6 +30,10 @@ func TestIssueOpsAdvertisesOnlyExecutionActionTool(t *testing.T) {
 	if got, want := mode["enum"], []string{"auto", "direct", "orca"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("mode enum = %#v, want %#v", got, want)
 	}
+	claimCurrentToken, ok := properties["claim_current_token"].(map[string]any)
+	if !ok || claimCurrentToken["type"] != "boolean" {
+		t.Fatalf("claim_current_token schema = %#v, want boolean", properties["claim_current_token"])
+	}
 }
 
 func TestIssueOpsExecutionSnapshotSchemaIsClosedAndPortable(t *testing.T) {

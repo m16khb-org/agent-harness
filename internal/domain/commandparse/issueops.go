@@ -214,7 +214,7 @@ func IssueOpsCommandSpec(path string) (map[string]bool, map[string]bool, map[str
 	case "execution prepare":
 		return v("--id", "--mode", "--owner-host", "--owner-model", "--owner-effort", "--issue-snapshot-file", "--direct-reason", "--expected-readiness-fingerprint", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--confirm", "--json"), r, true
 	case "execution claim":
-		return v("--id", "--generation", "--claim-token-file", "--issue-body-sha256", "--context-packet-sha256", "--issue-snapshot-file", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--json"), r, true
+		return v("--id", "--generation", "--claim-token-file", "--issue-body-sha256", "--context-packet-sha256", "--issue-snapshot-file", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--claim-current-token", "--json"), r, true
 	case "execution release":
 		return v("--id", "--generation", "--host", "--session-id", "--agent-id", "--session-pid", "--session-started-at", "--session-executable", "--cwd"), b("--json"), r, true
 	case "execution replace":

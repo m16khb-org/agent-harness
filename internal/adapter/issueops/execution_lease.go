@@ -298,10 +298,10 @@ func mutateExecutionReplacement(ctx context.Context, stateRoot string, req Execu
 // direct replacement는 새 owner를 띄우지 않으므로 반환된 token으로 현재
 // 세대를 바로 claim해야 한다. 이 명령이 없으면 holderless 복구가 중간에서
 // 멈추고 다음 durable mutation이 write-lease 가드에 막힌다.
-func executionDirectClaimCommand(id string, generation uint64, tokenPath string) string {
+func executionDirectClaimCommand(id string, generation uint64, _ string) string {
 	return "agent-harness issueops execution claim --id " + quoteExecutionOwnerArg(id) +
 		" --generation " + strconv.FormatUint(generation, 10) +
-		" --claim-token-file " + quoteExecutionOwnerArg(tokenPath)
+		" --claim-current-token"
 }
 
 func executionReseedCommand(id string, generation, completionGeneration uint64, fingerprint string, actor issueops.NativeActor, cwd string) string {

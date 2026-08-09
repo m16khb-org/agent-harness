@@ -220,22 +220,29 @@ func TestExecutionResumeExactFlags(t *testing.T) {
 	}
 }
 
-func TestExecutionClaimUsesCanonicalClaimTokenFileFlag(t *testing.T) {
-	command, ok := ParseExactIssueOpsCommand("agent-harness issueops execution claim --id io-1 --generation 1 --claim-token-file /tmp/token --host codex --session-id session-1 --session-pid 42 --session-started-at 2026-07-22T00:00:00Z --session-executable /bin/codex --cwd /repo --json")
+func TestExecutionClaimSupportsCurrentOrExplicitTokenSelector(t *testing.T) {
+	values, booleans, repeatable, ok := IssueOpsCommandSpec("execution claim")
 	if !ok {
-		t.Fatal("execution claim command did not parse")
+		t.Fatal("execution claim has no exact flag spec")
 	}
-	values, booleans, repeatable, ok := IssueOpsCommandSpec(command.Path)
-	if !ok {
-		t.Fatal("execution claim command has no exact flag spec")
-	}
-	flags, ok := ExactFlags(command, values, booleans, repeatable)
-	if !ok || flags["--claim-token-file"][0] != "/tmp/token" {
-		t.Fatalf("execution claim flags = %#v ok=%v", flags, ok)
+	for name, commandText := range map[string]string{
+		"current generation": "agent-harness issueops execution claim --id io-1 --generation 1 --claim-current-token --host codex --session-id session-1 --session-pid 42 --session-started-at 2026-07-22T00:00:00Z --session-executable /bin/codex --cwd /repo --json",
+		"explicit path":      "agent-harness issueops execution claim --id io-1 --generation 1 --claim-token-file /tmp/token --host codex --session-id session-1 --session-pid 42 --session-started-at 2026-07-22T00:00:00Z --session-executable /bin/codex --cwd /repo --json",
+	} {
+		t.Run(name, func(t *testing.T) {
+			command, parsed := ParseExactIssueOpsCommand(commandText)
+			if !parsed {
+				t.Fatal("execution claim command did not parse")
+			}
+			flags, accepted := ExactFlags(command, values, booleans, repeatable)
+			if !accepted {
+				t.Fatalf("execution claim flags = %#v", flags)
+			}
+		})
 	}
 	legacy, _ := ParseExactIssueOpsCommand("agent-harness issueops execution claim --id io-1 --generation 1 --token-file /tmp/token")
-	if flags, ok := ExactFlags(legacy, values, booleans, repeatable); ok || flags != nil {
-		t.Fatalf("legacy token-file flag was accepted: flags=%#v ok=%v", flags, ok)
+	if flags, accepted := ExactFlags(legacy, values, booleans, repeatable); accepted || flags != nil {
+		t.Fatalf("legacy token-file flag was accepted: flags=%#v ok=%v", flags, accepted)
 	}
 }
 

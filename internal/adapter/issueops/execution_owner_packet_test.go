@@ -93,6 +93,9 @@ func TestPrepareExecutionOwnerMaterializesPlanAndSealsManifest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if strings.Contains(string(packetRaw), "claim_token_file") || strings.Contains(string(packetRaw), claimTokenPath(record)) {
+		t.Fatalf("owner context packet must not expose a claim token path: %s", packetRaw)
+	}
 	var packet executionOwnerContextPacket
 	if err := json.Unmarshal(packetRaw, &packet); err != nil {
 		t.Fatal(err)
@@ -324,6 +327,17 @@ func TestExecutionOwnerPromptTemplateMatchesKarpathyArtifactByteForByte(t *testi
 	}
 }
 
+func TestExecutionOwnerClaimCommandUsesCurrentGenerationTokenWithoutPath(t *testing.T) {
+	record, req := ownerPacketFixture()
+	command := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64)).Claim
+	if !strings.Contains(command, "--claim-current-token") {
+		t.Fatalf("owner claim command must select the current token internally: %q", command)
+	}
+	if strings.Contains(command, "--claim-token-file") || strings.Contains(command, claimTokenPath(record)) {
+		t.Fatalf("owner claim command must not expose a token path: %q", command)
+	}
+}
+
 func TestExecutionOwnerPromptRenderingRejectsPlaceholderAndLineInjectionDeterministically(t *testing.T) {
 	record, req := ownerPacketFixture()
 	commands := executionOwnerCommandsFor(record, req, strings.Repeat("a", 64))
@@ -332,9 +346,9 @@ func TestExecutionOwnerPromptRenderingRejectsPlaceholderAndLineInjectionDetermin
 		SourceRoot: record.Execution.Workspace.SourceRoot, WorktreeRoot: record.Execution.Workspace.Root,
 		WorktreeBase: filepath.Dir(record.Execution.Workspace.Root), Branch: record.Execution.Workspace.Branch,
 		BaseHead: record.Execution.Workspace.BaseHead, CurrentHead: record.Execution.Workspace.BaseHead,
-		LeaseGeneration: record.Execution.Lease.Generation, ClaimTokenFile: claimTokenPath(record),
-		Issue:     executionOwnerIssue{URL: record.IssueURL, Body: "AC-01", BodySHA256: strings.Repeat("a", 64)},
-		OwnerHost: req.OwnerHost, OwnerModel: "{OWNER_EFFORT}", OwnerEffort: "injected",
+		LeaseGeneration: record.Execution.Lease.Generation,
+		Issue:           executionOwnerIssue{URL: record.IssueURL, Body: "AC-01", BodySHA256: strings.Repeat("a", 64)},
+		OwnerHost:       req.OwnerHost, OwnerModel: "{OWNER_EFFORT}", OwnerEffort: "injected",
 		RequiredDocs: []string{"AGENTS.md"}, RequiredSkills: []string{"issueops", "turing"},
 		AcceptanceIDs: []string{"AC-01"}, Verification: []string{"go test ./... -count=1"},
 		TuringReportPath: executionOwnerTuringReportPath(record), Commands: commands,
@@ -358,9 +372,9 @@ func executionOwnerPromptFixture(t *testing.T, record issueops.IssueOpsRecord, r
 		SourceRoot: record.Execution.Workspace.SourceRoot, WorktreeRoot: record.Execution.Workspace.Root,
 		WorktreeBase: filepath.Dir(record.Execution.Workspace.Root), Branch: record.Execution.Workspace.Branch,
 		BaseHead: record.Execution.Workspace.BaseHead, CurrentHead: record.Execution.Workspace.BaseHead,
-		LeaseGeneration: record.Execution.Lease.Generation, ClaimTokenFile: claimTokenPath(record),
-		Issue:     executionOwnerIssue{URL: record.IssueURL, Body: "AC-01", BodySHA256: strings.Repeat("a", 64)},
-		OwnerHost: req.OwnerHost, OwnerModel: req.OwnerModel, OwnerEffort: req.OwnerEffort,
+		LeaseGeneration: record.Execution.Lease.Generation,
+		Issue:           executionOwnerIssue{URL: record.IssueURL, Body: "AC-01", BodySHA256: strings.Repeat("a", 64)},
+		OwnerHost:       req.OwnerHost, OwnerModel: req.OwnerModel, OwnerEffort: req.OwnerEffort,
 		RequiredDocs: []string{"AGENTS.md"}, RequiredSkills: []string{"issueops", "turing"},
 		AcceptanceIDs: []string{"AC-01"}, Verification: []string{"go test ./... -count=1"},
 		TuringReportPath: executionOwnerTuringReportPath(record), Commands: commands,

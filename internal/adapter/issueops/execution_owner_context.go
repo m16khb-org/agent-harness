@@ -65,7 +65,6 @@ type executionOwnerContextPacket struct {
 	BaseHead         string                 `json:"base_head"`
 	CurrentHead      string                 `json:"current_head"`
 	LeaseGeneration  uint64                 `json:"lease_generation"`
-	ClaimTokenFile   string                 `json:"claim_token_file"`
 	Issue            executionOwnerIssue    `json:"issue"`
 	OwnerHost        string                 `json:"owner_host"`
 	OwnerModel       string                 `json:"owner_model"`
@@ -180,7 +179,7 @@ func buildExecutionOwnerArtifacts(record issueops.IssueOpsRecord, req ExecutionP
 		SourceRoot: record.Execution.Workspace.SourceRoot, WorktreeRoot: record.Execution.Workspace.Root,
 		WorktreeBase: filepath.Dir(record.Execution.Workspace.Root), Branch: record.Execution.Workspace.Branch,
 		BaseHead: record.Execution.Workspace.BaseHead, CurrentHead: record.Execution.Workspace.BaseHead,
-		LeaseGeneration: record.Execution.Lease.Generation, ClaimTokenFile: claimTokenPath(record), Issue: snapshot.issue,
+		LeaseGeneration: record.Execution.Lease.Generation, Issue: snapshot.issue,
 		OwnerHost: strings.ToLower(strings.TrimSpace(req.OwnerHost)), OwnerModel: strings.TrimSpace(req.OwnerModel), OwnerEffort: strings.TrimSpace(req.OwnerEffort),
 		ReviewerModel: reviewerModel, ReviewerEffort: reviewerEffort,
 		RequiredDocs: snapshot.requiredDocs, RequiredSkills: snapshot.requiredSkills, AcceptanceIDs: snapshot.acceptanceIDs,
@@ -314,7 +313,7 @@ func executionOwnerCommandsFor(record issueops.IssueOpsRecord, req ExecutionPrep
 	claim := "none"
 	if record.Execution.Mode == issueops.ExecutionModeOrca {
 		claim = "agent-harness issueops execution claim --id " + quoteExecutionOwnerArg(record.ID) +
-			" --generation " + strconv.FormatUint(generation, 10) + " --claim-token-file " + quoteExecutionOwnerArg(claimTokenPath(record)) +
+			" --generation " + strconv.FormatUint(generation, 10) + " --claim-current-token" +
 			" --issue-body-sha256 " + strings.TrimSpace(issueBodySHA256) + " --context-packet-sha256 <PACKET_SHA256> " + actorFlags + " --json"
 	}
 	shortActor := strings.Join([]string{

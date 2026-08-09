@@ -63,7 +63,7 @@ const Usage = `Usage:
   agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude [--owner-model MODEL] [--owner-effort EFFORT] [--direct-reason REASON] [--expected-readiness-fingerprint SHA256] [--issue-snapshot-file PATH] ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops execution status --id ID [--json]
   agent-harness issueops execution whoami [--json]
-  agent-harness issueops execution claim --id ID --generation N --claim-token-file PATH [--issue-body-sha256 HEX --context-packet-sha256 HEX] [--issue-snapshot-file PATH] ACTOR_FLAGS [--json]
+  agent-harness issueops execution claim --id ID --generation N (--claim-current-token|--claim-token-file PATH) [--issue-body-sha256 HEX --context-packet-sha256 HEX] [--issue-snapshot-file PATH] ACTOR_FLAGS [--json]
   agent-harness issueops execution release --id ID --generation N ACTOR_FLAGS [--json]
   agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [--completion-generation N] [fingerprint/reason flags] [--issue-snapshot-file PATH] ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops execution resume --id ID --expected-generation N [ACTOR_FLAGS] --confirm [--json]
@@ -350,7 +350,8 @@ func runWhoami(args []string, deps Deps) error {
 func runClaim(args []string, deps Deps) error {
 	fs := flag.NewFlagSet("issueops execution claim", flag.ContinueOnError)
 	id, generation := fs.String("id", "", "IssueOps id"), fs.Uint64("generation", 0, "lease generation")
-	claimTokenFile, actor := fs.String("claim-token-file", "", "one-time claim token file"), addActorFlags(fs)
+	claimTokenFile, claimCurrentToken := fs.String("claim-token-file", "", "one-time claim token file"), fs.Bool("claim-current-token", false, "resolve the current generation token internally")
+	actor := addActorFlags(fs)
 	issueDigest := fs.String("issue-body-sha256", "", "sealed remote issue body SHA-256")
 	packetDigest := fs.String("context-packet-sha256", "", "sealed owner context packet SHA-256")
 	issueSnapshotFile := fs.String("issue-snapshot-file", "", "private GitLab issue snapshot JSON file")
@@ -358,13 +359,16 @@ func runClaim(args []string, deps Deps) error {
 	if done, err := parse(fs, args); done || err != nil {
 		return err
 	}
+	if (*claimTokenFile == "") == !*claimCurrentToken {
+		return fmt.Errorf("exactly one of --claim-current-token or --claim-token-file is required")
+	}
 	issueSnapshot, err := readExecutionIssueSnapshotFile(*issueSnapshotFile)
 	if err != nil {
 		return output(nil, *jsonOut, err, deps)
 	}
 	result, err := execute(model.ExecutionActionRequest{
 		Action: model.ExecutionActionClaim, ID: *id, Generation: *generation,
-		Actor: actor.actor(), CWD: *actor.cwd, TokenFile: *claimTokenFile,
+		Actor: actor.actor(), CWD: *actor.cwd, TokenFile: *claimTokenFile, ClaimCurrentToken: *claimCurrentToken,
 		IssueBodySHA256: *issueDigest, ContextPacketSHA256: *packetDigest,
 		IssueSnapshot: issueSnapshot,
 	}, deps)
