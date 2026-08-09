@@ -1017,6 +1017,9 @@ func executionMutationDecision(req lifecyclecontract.HookToolUseLifecycleRequest
 	if unsafeReason == "" {
 		temporaryBuildOutput, exactTemporaryBuild = exactTemporaryAgentHarnessBuildOutput(req.Command)
 	}
+	if unsafeReason == "" && selfVerifyInvocation(req.Command) && !commandparse.ExactSelfVerifyVerification(req.Command) {
+		unsafeReason = "unclassified self-verify command is blocked while IssueOps mutation authority is active; use the exact verification form"
+	}
 	mayMutate := toolUseMayMutateLifecycleFiles(req.Tool, req.Command)
 	if searchrouting.IsShellTool(req.Tool) && !mayMutate {
 		mayMutate = true
@@ -1150,6 +1153,11 @@ func exactIssueOpsMutationHelpObservation(path string, tokens []string, start in
 	}
 	return len(tokens) == start+1 &&
 		(tokens[start] == "--help" || tokens[start] == "-h")
+}
+
+func selfVerifyInvocation(command string) bool {
+	tokens := commandparse.SplitCommandTokens(strings.TrimSpace(command))
+	return len(tokens) >= 2 && tokens[1] == "self-verify"
 }
 
 func exactIssueOpsOwnerMutation(commandText string) bool {
