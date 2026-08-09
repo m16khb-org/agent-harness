@@ -1,0 +1,46 @@
+{
+  "lifecycle": "io-09f44130b26a",
+  "schema_version": 1,
+  "mode": "orca",
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "test": "TestClientRunInventoryReadersFailClosed",
+      "command": "go test ./internal/adapter/orca -run 'TestClientRunInventoryReaders' -count=1",
+      "result": "PASS: zero-Run runtime preservation and count/runtime/identity/duplicate rejection"
+    },
+    {
+      "id": "AC-02",
+      "test": "TestClientRunInventoryReadersReuseRunsWithBoundedDeterministicQueries",
+      "command": "go test ./internal/adapter/orca -run 'TestClientRunInventoryReaders' -count=1",
+      "result": "PASS: Run index merge order, per-reader peak 8, and deterministic query coverage"
+    },
+    {
+      "id": "AC-03",
+      "test": "TestClientRunInventoryReadersReuseRunsWithBoundedDeterministicQueries",
+      "command": "go test ./internal/adapter/orca -run 'TestClientRunInventoryReaders' -count=1",
+      "result": "PASS: every Run receives exact server-filtered --status dispatched task query"
+    },
+    {
+      "id": "AC-04",
+      "test": "package race and diff hygiene",
+      "command": "go test -race ./internal/adapter/orca -count=1; git diff --check",
+      "result": "PASS"
+    },
+    {
+      "id": "AC-05",
+      "test": "publication pending",
+      "command": "atomic-commit-push and governed remote create-pr",
+      "result": "PENDING"
+    }
+  ],
+  "red": {
+    "command": "go test ./internal/adapter/orca -run TestClientRunInventoryReadersReuseRunsWithBoundedDeterministicQueries -count=1",
+    "result": "expected build failure: Client lacks ListRunInventory and the three FromRuns methods"
+  },
+  "verification": [
+    "go test -v ./internal/adapter/orca -count=1: PASS",
+    "go test -race ./internal/adapter/orca -count=1: PASS",
+    "git diff --check: PASS"
+  ]
+}
