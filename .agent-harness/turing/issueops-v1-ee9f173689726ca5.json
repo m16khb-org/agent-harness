@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "lifecycle": "io-71ec03351dbb",
-  "generation": 5,
-  "wave": "W0",
-  "issue_body_sha256": "f21394a429acd80d995fd6c4ee485a5c652c1eae293b23377abd9a7a427eada7",
-  "context_packet_sha256": "3fd7e76f5cb2c239cd5aeecd619796226ddfd7aee539dfe61d6386f162b74a1a",
+  "generation": 13,
+  "wave": "G13",
+  "issue_body_sha256": "013dea208eda3f40c3ca7d696bfb8d3617a6b5b0dd94efdffd42a80cb22a7b01",
+  "context_packet_sha256": "e3f783707e0852157e2c00c3359f66ce366968885371437e26093c4f0706a0f6",
   "acceptance": [
     {
       "id": "AC-01",
@@ -43,17 +43,17 @@
     },
     {
       "id": "AC-06",
-      "status": "DEFERRED",
-      "test": "Four Wave 1 child completion receipts and parent accepts",
-      "command": "Coordinator-owned child lifecycle validation",
-      "observed": "Coordinator-only after W0 push."
+      "status": "PARTIAL_G13",
+      "test": "TestAppendIssueOpsChildRefResetsTerminalReceiptOnlyForNewerIncarnation and final child status",
+      "command": "go test -race ./internal/adapter/issueops -run 'TestAppendIssueOpsChildRefResetsTerminalReceiptOnlyForNewerIncarnation|TestArchivedIssueOpsChildDoesNotOverwriteReappearedIncarnation|TestArchivedIssueOpsChildRecordsReceiptWhenChildRemainsAbsent|TestStartIssueOpsChildConcurrentSameBranch|TestStartIssueOpsChildConcurrentSiblingsAcrossProcesses' -count=1 -timeout=20s; ./bin/agent-harness issueops child status --parent io-71ec03351dbb --json",
+      "observed": "Newer child record incarnations clear only stale terminal parent receipts; exact equal, malformed, and older timestamps retain receipts fail-closed. Archived accept/drop reject a reappeared child and still record a receipt when the child remains absent. Child completion and parent acceptance remain coordinator-owned."
     },
     {
       "id": "AC-07",
-      "status": "PASS_W0",
-      "test": "W0 focused suites, full Go test/race, vet, build, and contract golden",
-      "command": "go test ./... -count=1; go test -race ./... -count=1; go vet ./...; go build -o bin/agent-harness ./cmd/harness; go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -count=1",
-      "observed": "All commands exited 0 in generation 5."
+      "status": "PASS_G13_SCOPE",
+      "test": "G13 incarnation focused, concurrency, relevant race, full Go test, vet, build, and formatting checks",
+      "command": "go test -v ./internal/adapter/issueops -run '^(TestAppendIssueOpsChildRefResetsTerminalReceiptOnlyForNewerIncarnation|TestArchivedIssueOpsChildDoesNotOverwriteReappearedIncarnation|TestArchivedIssueOpsChildRecordsReceiptWhenChildRemainsAbsent|TestStartIssueOpsChildAppendsParentRef|TestStartIssueOpsChildConcurrentSameBranch|TestStartIssueOpsChildConcurrentSiblingsAcrossProcesses)$' -count=1 -timeout=20s; go test -race ./internal/adapter/issueops -count=1 -timeout=90s; go test ./... -count=1; go vet ./...; go build -o bin/agent-harness ./cmd/harness; gofmt -d internal/adapter/issueops/issueops_delegation.go internal/adapter/issueops/issueops_delegation_test.go internal/domain/mcp/issueops_catalog.go; git diff --check",
+      "observed": "Focused normal/race, relevant race, fresh 90-second package race, full Go test, vet, build, changed-file gofmt, and diff check passed. The -timeout=20s package-wide race exceeded a known roughly 42-second baseline and is nonblocking; the fresh -timeout=90s run completed successfully. The active-lease hook denied the tracked-tree file-listing command, so changed Go files were checked directly rather than claiming a full tracked-tree gofmt result."
     },
     {
       "id": "AC-08",
@@ -87,17 +87,35 @@
     {"command": "go test ./cmd/harness/contractgolden ./cmd/harness/harnessapp -count=1", "result": "PASS"},
     {"command": "go test ./internal/adapter/toolconformance ./cmd/harness/contractcli ./cmd/harness/harnessapp -count=1", "result": "PASS after updating the pinned IssueOps MCP schema hash."},
     {"command": "git diff --check", "result": "PASS"},
-    {"command": "python3 -B skills/stability-audit/scripts/test_e2e_stability_audit.py", "result": "BLOCKED: active-lease guard rejected the exact command as unclassified; coordinator owns the required 14-test, zero-ResourceWarning run."}
+    {"command": "python3 -B skills/stability-audit/scripts/test_e2e_stability_audit.py", "result": "BLOCKED: active-lease guard rejected the exact command as unclassified; coordinator owns the required 14-test, zero-ResourceWarning run."},
+    {"command": "go test -v ./internal/adapter/issueops -run '^(TestAppendIssueOpsChildRefResetsTerminalReceiptOnlyForNewerIncarnation|TestStartIssueOpsChildAppendsParentRef|TestStartIssueOpsChildConcurrentSameBranch|TestStartIssueOpsChildConcurrentSiblingsAcrossProcesses)$' -count=1", "result": "PASS: newer incarnation resets stale receipt; same, malformed, and older records retain it; existing same-branch and process-concurrency tests pass."},
+    {"command": "go test -race ./internal/adapter/issueops -run '^(TestAppendIssueOpsChildRefResetsTerminalReceiptOnlyForNewerIncarnation|TestStartIssueOpsChildConcurrentSameBranch|TestStartIssueOpsChildConcurrentSiblingsAcrossProcesses)$' -count=1", "result": "PASS"},
+    {"command": "go test -race ./internal/adapter/issueops ./internal/adapter/orca ./internal/adapter/operationalhealth ./internal/domain/commandparse ./internal/adapter/lifecycle -count=1", "result": "PASS"},
+    {"command": "go test ./... -count=1", "result": "PASS"},
+    {"command": "go vet ./...", "result": "PASS"},
+    {"command": "go build -o bin/agent-harness ./cmd/harness", "result": "PASS"},
+    {"command": "gofmt -d internal/adapter/issueops/issueops_delegation.go internal/adapter/issueops/issueops_delegation_test.go internal/domain/mcp/issueops_catalog.go", "result": "PASS: no output"},
+    {"command": "git diff --check", "result": "PASS"},
+    {"command": "go test -race ./internal/adapter/issueops -count=1 -timeout=20s", "result": "NONBLOCKING: timed out after 22.912s while the package's known baseline is roughly 42s; superseded by the required -timeout=90s run."},
+    {"command": "go test -race ./internal/adapter/issueops -count=1 -timeout=90s", "result": "PASS"},
+    {"command": "go test ./... -count=1", "result": "PASS: fresh foreground run completed without a failure test or stack."},
+    {"command": "go vet ./...", "result": "PASS: rerun after final locking correction"},
+    {"command": "go build -o bin/agent-harness ./cmd/harness", "result": "PASS: rerun after final locking correction"},
+    {"command": "gofmt -d internal/adapter/issueops/issueops_delegation.go internal/adapter/issueops/issueops_delegation_test.go internal/domain/mcp/issueops_catalog.go", "result": "PASS: no output after final locking correction"},
+    {"command": "git diff --check", "result": "PASS: rerun after final locking correction"}
   ],
   "tdd": {
     "current_token_red": "The stale reseed and skill-contract expectations failed before test correction because the current implementation no longer emits a private token path.",
     "current_token_green": "The corrected direct-mode expectation and token-path non-disclosure assertion pass.",
-    "audit_pipe_close": "The real-subprocess regression now asserts every helper-created stdout/stderr stream is closed after join/drain; implementation explicitly closes both streams."
+    "audit_pipe_close": "The real-subprocess regression now asserts every helper-created stdout/stderr stream is closed after join/drain; implementation explicitly closes both streams.",
+    "archived_receipt_locking": "RED evidence: the nested archived-child reader self-contended for 600.391s under the parent root-wide span. GREEN uses a direct read under the already-held parent span; focused normal/race passes with -timeout=20s and the final package-wide -timeout=90s race passes.",
+    "exact_timestamp_equality": "The same-record boundary now writes the parent ref's literal RFC3339Nano CreatedAt into the child record, proving strict equality retains the terminal receipt rather than relying on an unrelated child timestamp."
   },
-  "ai_slop_clean": "Reviewed W0 scope after the targeted changes: no compatibility shim, token alias, broad cleanup, or unrelated refactor added.",
+  "ai_slop_clean": "Reviewed G13 scope: one strict timestamp helper and one table-driven test preserve existing idempotency/concurrency behavior; no shim, broad cleanup, or unrelated refactor added.",
   "deviations": [
     "The Issue #439 Wave 0 checkpoint prohibits parent PR and execution completion; generic publication steps are deferred to the coordinator.",
-    "The active-lease guard rejected the exact Python regression command, so its required coordinator observation is recorded without a false PASS."
+    "The active-lease guard rejected the exact Python regression command, so its required coordinator observation is recorded without a false PASS.",
+    "The active-lease guard rejected the tracked-tree Go file-listing command; direct gofmt checks cover every changed Go file without asserting an unrun whole-tree result."
   ],
-  "completion": "W0 implementation ready for binding Brooks review, atomic commit/push, and lease release; no parent PR or completion by this owner."
+  "completion": "G13 implementation is ready for a fresh Brooks review, two atomic commits/pushes, rebuilt-binary child restarts, and parent lease release; no parent PR or execution completion by this owner."
 }

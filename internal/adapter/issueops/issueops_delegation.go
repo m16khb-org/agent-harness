@@ -126,8 +126,13 @@ func appendIssueOpsChildRef(stateRoot, parentID string, child issueops.IssueOpsR
 		if actorErr := validateWorkspacePreparationMutation(parent, actor); actorErr != nil {
 			return actorErr
 		}
-		for _, existing := range parent.ChildCycles {
+		for i, existing := range parent.ChildCycles {
 			if existing.CycleID == ref.CycleID {
+				if issueOpsChildRefHasNewerIncarnation(child.CreatedAt, existing.CreatedAt) {
+					parent.ChildCycles[i] = ref
+					_, writeErr := touchAndWriteIssueOps(stateRoot, parent)
+					return writeErr
+				}
 				ref = existing
 				return nil
 			}
@@ -137,6 +142,12 @@ func appendIssueOpsChildRef(stateRoot, parentID string, child issueops.IssueOpsR
 		return writeErr
 	})
 	return ref, err
+}
+
+func issueOpsChildRefHasNewerIncarnation(childCreatedAt, refCreatedAt string) bool {
+	childTime, childErr := time.Parse(time.RFC3339Nano, strings.TrimSpace(childCreatedAt))
+	refTime, refErr := time.Parse(time.RFC3339Nano, strings.TrimSpace(refCreatedAt))
+	return childErr == nil && refErr == nil && childTime.After(refTime)
 }
 
 func IssueOpsChildStatus(stateRoot, parentID string, repair bool) (issueops.IssueOpsChildStatusResult, error) {
@@ -217,6 +228,9 @@ func acceptArchivedIssueOpsChild(stateRoot, parentID, childID string, evidence [
 		if actorErr := validateWorkspacePreparationMutation(parent, actor); actorErr != nil {
 			return actorErr
 		}
+		if missingErr := ensureIssueOpsArchivedChildStillMissing(stateRoot, parentID, childID); missingErr != nil {
+			return missingErr
+		}
 		for i := range parent.ChildCycles {
 			if parent.ChildCycles[i].CycleID != childID {
 				continue
@@ -293,6 +307,9 @@ func dropArchivedIssueOpsChild(stateRoot, parentID, childID, reason string, acto
 		if actorErr := validateWorkspacePreparationMutation(parent, actor); actorErr != nil {
 			return actorErr
 		}
+		if missingErr := ensureIssueOpsArchivedChildStillMissing(stateRoot, parentID, childID); missingErr != nil {
+			return missingErr
+		}
 		for i := range parent.ChildCycles {
 			if parent.ChildCycles[i].CycleID != childID {
 				continue
@@ -311,6 +328,21 @@ func dropArchivedIssueOpsChild(stateRoot, parentID, childID, reason string, acto
 		return issueops.IssueOpsChildValidationResult{OK: false, ParentID: parentID, ChildID: childID}, err
 	}
 	return issueops.IssueOpsChildValidationResult{OK: true, ParentID: parentID, ChildID: childID, ParentRef: updated}, nil
+}
+
+// 이미-held parent span은 state root의 mutation을 직렬화하므로 여기서 child lock을 다시 얻지 않는다.
+func ensureIssueOpsArchivedChildStillMissing(stateRoot, parentID, childID string) error {
+	child, err := ReadIssueOps(stateRoot, childID)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if child.Delegation == nil || strings.TrimSpace(child.Delegation.ParentCycleID) != parentID {
+		return fmt.Errorf("child_parent_mismatch: %s", childID)
+	}
+	return fmt.Errorf("child_reappeared: %s", child.ID)
 }
 
 func scanIssueOpsChildrenForParent(stateRoot string, parent issueops.IssueOpsRecord) (map[string]issueops.IssueOpsRecord, error) {
