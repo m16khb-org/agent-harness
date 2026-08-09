@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "lifecycle_id": "io-45327e6f2f35",
+  "mode": "orca",
+  "status": "implementation-verified",
+  "dependency_integration": {
+    "reviewed_commit": "26f6ab35a4d06bc49b452757bea2e7117bca6c8a",
+    "result": "PASS",
+    "observed": "The reviewed #447 Run-scoped Orca inventory commit was cherry-picked once into the canonical #449 worktree without conflict or manual dependency edits."
+  },
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "test": "TestCollectOrcaSharesOneRunSnapshotAndPreservesCrossChecks",
+      "command": "go test -v ./internal/adapter/operationalhealth -run 'TestCollect(OrcaSharesOneRunSnapshotAndPreservesCrossChecks|OverlapsGitAndOrcaInventory|OrcaFailsClosedForRunRuntimeMismatch|OrcaReportsReaderFailuresInFixedOrder)' -count=1",
+      "result": "PASS",
+      "observed": "ListRunInventory ran once and all three readers received the identical Run inventory."
+    },
+    {
+      "id": "AC-02",
+      "test": "TestCollectOverlapsGitAndOrcaInventory; TestCollectOrcaReportsReaderFailuresInFixedOrder",
+      "command": "go test -v ./internal/adapter/operationalhealth -run 'TestCollect(OrcaSharesOneRunSnapshotAndPreservesCrossChecks|OverlapsGitAndOrcaInventory|OrcaFailsClosedForRunRuntimeMismatch|OrcaReportsReaderFailuresInFixedOrder)' -count=1",
+      "result": "PASS",
+      "observed": "The interlocked fake completed only with concurrent Git/Orca reads, and all/dispatched/gates failures were projected in reader-index order."
+    },
+    {
+      "id": "AC-03",
+      "test": "TestCollectOrcaSharesOneRunSnapshotAndPreservesCrossChecks; TestCollectOrcaFailsClosedForRunRuntimeMismatch",
+      "command": "go test -v ./internal/adapter/operationalhealth -run 'TestCollect(OrcaSharesOneRunSnapshotAndPreservesCrossChecks|OverlapsGitAndOrcaInventory|OrcaFailsClosedForRunRuntimeMismatch|OrcaReportsReaderFailuresInFixedOrder)' -count=1",
+      "result": "PASS",
+      "observed": "Server-filtered dispatched/all mismatch remained fail-closed, and a mismatched zero-Run snapshot runtime stopped dependent readers."
+    },
+    {
+      "id": "AC-04",
+      "test": "operationalhealth package regression suite",
+      "command": "go test -v ./internal/adapter/operationalhealth -count=1; go test -race ./internal/adapter/operationalhealth -count=1; git diff --check",
+      "result": "PASS",
+      "observed": "Focused package and race suites passed after dependency integration; diff check reported no whitespace errors."
+    },
+    {
+      "id": "AC-05",
+      "test": "IssueOps completion receipt",
+      "command": "agent-harness issueops execution complete ... --confirm --json",
+      "result": "PENDING",
+      "observed": "Recorded after reviewed commit, push, draft PR read-back, and completion transition."
+    }
+  ],
+  "verification": [
+    {
+      "command": "go test -v ./internal/adapter/operationalhealth -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test -race ./internal/adapter/operationalhealth -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test ./internal/adapter/orca ./internal/adapter/operationalhealth ./internal/architecture -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "go test -race ./internal/adapter/orca ./internal/adapter/operationalhealth -count=1",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    }
+  ]
+}
