@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "lifecycle_id": "io-70ae2229985c",
+  "worktree": "/Users/m16khb/Workspace/agent-harness.worktrees/440-orca-legacy-utc-timestamp",
+  "acceptance": {
+    "AC-01": {
+      "test": "TestCollectOrcaProjectsTaskCompletionTimestamps/RFC3339Nano",
+      "command": "go test -v ./internal/adapter/operationalhealth -run 'TestCollectOrcaProjectsTaskCompletionTimestamps' -count=1",
+      "result": "pass"
+    },
+    "AC-02": {
+      "test": "TestCollectOrcaProjectsTaskCompletionTimestamps/legacy_UTC",
+      "command": "go test -v ./internal/adapter/operationalhealth -run 'TestCollectOrcaProjectsTaskCompletionTimestamps' -count=1",
+      "result": "pass",
+      "red": "legacy UTC initially projected the zero time"
+    },
+    "AC-03": {
+      "test": "TestCollectOrcaProjectsTaskCompletionTimestamps/malformed_slash-separated",
+      "command": "go test -v ./internal/adapter/operationalhealth -run 'TestCollectOrcaProjectsTaskCompletionTimestamps' -count=1",
+      "result": "pass"
+    },
+    "AC-04": {
+      "command": [
+        "go test -v ./internal/adapter/operationalhealth -count=1",
+        "go test -race ./internal/adapter/operationalhealth -count=1",
+        "git diff --check"
+      ],
+      "result": "pass"
+    },
+    "AC-05": {
+      "result": "pending"
+    }
+  },
+  "quality": {
+    "shannon": {
+      "scope": "collector timestamp diff and Turing report",
+      "before": {
+        "signal_lines": 95,
+        "noise_lines": 0,
+        "snr": 1,
+        "functions_above_6": 0,
+        "functions_above_12": 0,
+        "duplicate_blocks": 0,
+        "files_over_50pct_boilerplate": 0
+      },
+      "after": {
+        "signal_lines": 95,
+        "noise_lines": 0,
+        "snr": 1,
+        "functions_above_6": 0,
+        "functions_above_12": 0,
+        "duplicate_blocks": 0,
+        "files_over_50pct_boilerplate": 0
+      },
+      "result": "pass",
+      "method": "approximate diff inspection including untracked report; no comments, dead branches, duplicated blocks, or debug output added"
+    }
+  }
+}

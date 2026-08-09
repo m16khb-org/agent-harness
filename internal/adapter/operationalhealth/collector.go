@@ -322,7 +322,7 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 				addProblem(snapshot, "orca_tasks", "orca_task_runtime_mismatch", "task "+task.ID+" runtime identity does not match")
 			}
 			if strings.TrimSpace(value.CompletedAt) != "" {
-				parsed, parseErr := time.Parse(time.RFC3339Nano, strings.TrimSpace(value.CompletedAt))
+				parsed, parseErr := parseTaskCompletedAt(strings.TrimSpace(value.CompletedAt))
 				if parseErr != nil {
 					addProblem(snapshot, "orca_tasks", "orca_task_timestamp_invalid", "task "+task.ID+" has an invalid completion timestamp")
 				} else {
@@ -401,6 +401,14 @@ func (collector Collector) collectOrca(ctx context.Context, snapshot *corehealth
 			addProblem(snapshot, "orca_inbox", "orca_inbox_count_mismatch", "bounded Orca inbox count does not match returned rows")
 		}
 	}
+}
+
+func parseTaskCompletedAt(value string) (time.Time, error) {
+	parsed, err := time.Parse(time.RFC3339Nano, value)
+	if err == nil {
+		return parsed, nil
+	}
+	return time.ParseInLocation("2006-01-02 15:04:05", value, time.UTC)
 }
 
 func cycleFromRecord(record issueopscontract.IssueOpsRecord, inspect NativeProcessInspector) (corehealth.Cycle, []corehealth.InventoryProblem) {
