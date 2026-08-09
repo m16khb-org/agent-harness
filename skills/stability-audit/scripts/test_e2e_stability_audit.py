@@ -480,11 +480,17 @@ if mode == "timeout":
     time.sleep(10)
     raise SystemExit(0)
 
+pending_ids = []
 for line in sys.stdin:
     request = json.loads(line)
     if "id" not in request:
         continue
-    if mode == "malformed":
+    if mode == "reordered":
+        pending_ids.append(request["id"])
+        if len(pending_ids) == 2:
+            for response_id in reversed(pending_ids):
+                print(json.dumps({"jsonrpc": "2.0", "id": response_id, "result": {}}), flush=True)
+    elif mode == "malformed":
         print("not-json", flush=True)
     elif mode == "duplicate":
         response = json.dumps({"jsonrpc": "2.0", "id": request["id"], "result": {}})
@@ -492,6 +498,8 @@ for line in sys.stdin:
         print(response, flush=True)
     elif mode == "missing":
         print(json.dumps({"jsonrpc": "2.0", "id": request["id"] + 100, "result": {}}), flush=True)
+    elif mode == "error":
+        print(json.dumps({"jsonrpc": "2.0", "id": request["id"], "error": {"code": -32603, "message": "boom"}}), flush=True)
     else:
         print(json.dumps({"jsonrpc": "2.0", "id": request["id"], "result": {}}), flush=True)
 '''
@@ -514,13 +522,15 @@ class MCPJSONRPCProcessTest(unittest.TestCase):
             return process
 
         with mock.patch.object(audit.subprocess, "Popen", side_effect=track_process):
-            for mode, want_ok, want_problem in [
-                ("success", True, ""),
-                ("premature_eof", False, "missing_ids"),
-                ("malformed", False, "malformed_lines"),
-                ("duplicate", False, "duplicate_ids"),
-                ("missing", False, "missing_ids"),
-                ("timeout", False, "timed_out"),
+            for mode, want_ok, want_problem, want_ids in [
+                ("success", True, "", [1, 2]),
+                ("reordered", True, "", [2, 1]),
+                ("premature_eof", False, "missing_ids", None),
+                ("malformed", False, "malformed_lines", None),
+                ("duplicate", False, "duplicate_ids", None),
+                ("missing", False, "missing_ids", None),
+                ("error", False, "rpc_errors", None),
+                ("timeout", False, "timed_out", None),
             ]:
                 with self.subTest(mode=mode):
                     result = audit.run_mcp_jsonrpc_process(
@@ -532,7 +542,7 @@ class MCPJSONRPCProcessTest(unittest.TestCase):
                     if want_problem:
                         self.assertTrue(result[want_problem], result)
                     else:
-                        self.assertEqual([1, 2], result["response_ids"], result)
+                        self.assertEqual(want_ids, result["response_ids"], result)
                         self.assertFalse(result["stdin_closed_before_responses"], result)
 
         self.assertTrue(all(process.stdout is not None and process.stdout.closed for process in processes))

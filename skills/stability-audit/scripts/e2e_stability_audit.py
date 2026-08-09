@@ -222,7 +222,6 @@ def run_mcp_jsonrpc_process(
         and not unexpected_ids
         and not missing_ids
         and not rpc_errors
-        and response_ids == expected_ids
     )
     return {
         "ok": ok,
