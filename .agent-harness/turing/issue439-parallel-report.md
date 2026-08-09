@@ -81,4 +81,4 @@ The native Codex owner transcript at `/Users/m16khb/.codex/sessions/2026/08/09/r
 - Child PRs #443 and #444 are closed as superseded by #445. Child issues #440 and #441 are closed completed; #442 is closed not planned with the sealed-claim failure recorded.
 - Local and remote child branches `440-orca-legacy-utc-timestamp`, `441-orca-run-inventory`, and `442-full-self-verify-admission` are absent. Git and Orca inventories contain only `main` and the preserved parent worktree.
 
-Final full self-verification, stability audit, and post-cleanup doctor timings are appended after the final unchanged-tree run.
+Final full self-verification and the post-cleanup stability receipts are emitted from this committed, unchanged report tree and recorded in the parent handoff response.
