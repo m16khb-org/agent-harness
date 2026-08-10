@@ -73,8 +73,9 @@
     },
     {
       "id": "AC-05",
-      "result": "in_progress",
-      "scope": "Only this Turing JSON and the lane C draft PR body are eligible for commit; production source is unchanged.",
+      "result": "ready_for_execution_complete",
+      "scope": "Only this Turing JSON and the lane C draft PR body are committed; production source is unchanged.",
+      "evidence": "Artifact commit a8854b2d04cd5e650897464e5b92842a208eeb0b was pushed and draft PR #474 was read back with main target, bug label, m16khb assignee, and the Korean body.",
       "cleanup": "none"
     }
   ],
@@ -85,11 +86,15 @@
   "review": {
     "reviewer_model": "gpt-5.6-sol",
     "reviewer_effort": "xhigh",
-    "verdict": "pending"
+    "verdict": "pass",
+    "finding": "No blocking issue: only the lane C evidence files are added; AC-05 remains bounded to publication and durable completion.",
+    "evidence": "The initial pre-commit Brooks review inspected the exact worktree status, branch, HEAD, and both add-only artifact files."
   },
   "publication": {
-    "artifact_commit": "pending",
-    "draft_pr_url": "pending"
+    "artifact_commit": "a8854b2d04cd5e650897464e5b92842a208eeb0b",
+    "draft_pr_url": "https://github.com/m16khb/agent-harness/pull/474",
+    "draft_pr_verified": true,
+    "execution_completion": "pending; this report update must be committed and pushed before the generation-fenced complete command."
   },
   "coordinator_pending": {
     "VAL-01": "three-lane overlap and uniqueness snapshot",
