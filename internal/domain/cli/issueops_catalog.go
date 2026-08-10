@@ -44,7 +44,7 @@ const issueOpsUsageCatalog = `  agent-harness issueops start --repo PATH [--bran
   agent-harness issueops execution prepare --id ID --mode auto|direct|orca --owner-host codex|claude [--owner-model MODEL] [--owner-effort EFFORT] ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops execution status --id ID [--json]
   agent-harness issueops execution whoami [--json]
-  agent-harness issueops execution claim --id ID --generation N (--claim-current-token|--claim-token-file PATH) [--issue-body-sha256 SHA256 --context-packet-sha256 SHA256] ACTOR_FLAGS [--json]
+  agent-harness issueops execution claim --id ID --generation N (--claim-current-token|--claim-token-file PATH) [--issue-body-sha256 SHA256 --context-packet-sha256 SHA256] [ACTOR_FLAGS] [--json]
   agent-harness issueops execution release --id ID --generation N ACTOR_FLAGS [--json]
   agent-harness issueops execution replace --id ID --expected-generation N (--preview|--revoke|--finalize-preview|--finalize|--reseed) [--completion-generation N] [fingerprint/reason flags] ACTOR_FLAGS [--confirm] [--json]
   agent-harness issueops execution resume --id ID --expected-generation N [ACTOR_FLAGS] --confirm [--json]
@@ -90,8 +90,9 @@ const IssueOpsActorFlagLegend = `RECORD_ACTOR_FLAGS: --host codex|claude --sessi
 ACTOR_FLAGS: --host codex|claude --session-id ID [--agent-id ID] --session-pid PID --session-started-at RFC3339 --session-executable PATH --cwd PATH
 
 Durable-record mutations take RECORD_ACTOR_FLAGS; without them an active execution rejects the
-call as a non-holder. Execution lease transitions and generation-fenced publication additionally
-verify the live session process, so they take the wider ACTOR_FLAGS.`
+call as a non-holder. execution claim accepts either no actor flags and observes the current
+native session receipt, or one complete ACTOR_FLAGS set; partial actor flags fail closed. Other execution
+lease transitions and generation-fenced publication verify the live session process with ACTOR_FLAGS.`
 
 // abridgedIssueOpsMainKeys는 최상위 usage 본문에 노출할 명령 경로다. 렌더 순서는
 // 카탈로그 순서를 따르므로 이 목록의 순서는 의미가 없다.

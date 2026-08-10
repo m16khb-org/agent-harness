@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "lifecycle": "io-71ec03351dbb",
-  "generation": 19,
-  "wave": "fresh-brooks-revise",
-  "issue_body_sha256": "013dea208eda3f40c3ca7d696bfb8d3617a6b5b0dd94efdffd42a80cb22a7b01",
-  "context_packet_sha256": "df572c537db40857c4842ea2093b9b2a24478edd946848e4bef2739e2b6ff677",
-  "final_head_candidate": "31d1df78c0b0bb26289ee0cf4d8362942efd539c",
+  "generation": 24,
+  "wave": "direct-claim-native-receipt-final-verification",
+  "issue_body_sha256": "6f7e7e5894879152a8bfc0ec17f3329ccd01414426433fa5a5d904a8a74c3ef8",
+  "context_packet_sha256": "30c70531e458af6c4d24ed2546faa21fbd6fff44a56d981dca8486abbcecea8c",
+  "implementation_diff_base": "4560449f614c85caff7bbab5b4f91355d2e442b0",
   "success_criteria": {
     "AC-01": "Legacy UTC completion timestamps and RFC3339Nano project identically; other formats fail closed.",
     "AC-02": "Gate inventory uses exact per-Run queries and rejects runtime, count, and identity mismatches.",
@@ -21,17 +21,17 @@
   "acceptance": [
     {
       "id": "AC-01",
-      "status": "PASS",
+      "status": "PASS_ACCEPTED_CHILD_EVIDENCE",
       "evidence": "Accepted child io-138656f44f63 (#446), final head d722c7ad; child validation records exact UTC fallback and rejection of unsupported legacy forms."
     },
     {
       "id": "AC-02",
-      "status": "TARGETED_PASS_PENDING_FRESH_REVIEW",
+      "status": "PASS_ACCEPTED_CHILD_EVIDENCE",
       "evidence": "Accepted child io-af912dd12588 (#447), final head ec851e81, covers per-Run reads. Generation 18 retains authoritative result.runId validation for empty task/gate pages and requires a canonical runtime identity on every Run page before cursor continuation."
     },
     {
       "id": "AC-03",
-      "status": "TARGETED_PASS_PENDING_FRESH_REVIEW",
+      "status": "PASS_ACCEPTED_CHILD_EVIDENCE",
       "evidence": "Accepted child io-af912dd12588 (#447), final head ec851e81, covers bounded deterministic Run-scoped reads. Generation 18 requires --cursor at probe time and a runtime identity on every cursor page; TestClientRunInventoryRejectsMissingRuntimeOnFirstCursorPage and TestClientProbeRequiresRunListCursorCapability passed after RED."
     },
     {
@@ -52,7 +52,7 @@
     },
     {
       "id": "AC-07",
-      "status": "PENDING_EXIT_RECEIPT",
+      "status": "PASS",
       "commands": [
         "go test -race ./internal/adapter/issueops ./internal/adapter/orca ./internal/adapter/operationalhealth ./internal/domain/commandparse ./internal/adapter/lifecycle -count=1",
         "go test ./... -count=1",
@@ -60,24 +60,24 @@
         "go vet ./...",
         "go build -o bin/agent-harness ./cmd/harness"
       ],
-      "observed": "The older repository-wide go test and race PIDs exited, but their exit codes were not recovered after the interrupted foreground cells. They are not accepted as generation 18 PASS evidence; only focused validation is currently recorded."
+      "observed": "Generation 24 exited 0 for the focused race package set, repository-wide normal and race suites, vet, and build."
     },
     {
       "id": "AC-08",
-      "status": "DEFERRED_POST_MERGE",
+      "status": "DEFERRED_COORDINATOR_POST_MERGE",
       "command": "./bin/agent-harness doctor --repo \"$PWD\" --json",
-      "reason": "The user directed this observation to the coordinator after merge and exact cleanup because the active lifecycle and accepted children are expected operational residue."
+      "reason": "The current generation 23 owner contract omits doctor. In the feature worktree, the observed Orca cause was repo_not_found; final clean post-merge doctor is a coordinator-owned gate."
     },
     {
       "id": "AC-09",
-      "status": "PARTIAL_POST_MERGE_AUDIT",
-      "evidence": "Coordinator reports full self-verify --full --iterations=10 passed 250/250 with minimum score 100 before the final two-file Python-only audit patch. A non-admitted bare-PATH self-verify attempt was blocked; the exact ./bin form was not run. The post-cleanup stability audit is coordinator-owned by user direction.",
+      "status": "PASS_WITH_COORDINATOR_POST_MERGE_STABILITY_DEFERRED",
+      "evidence": "Generation 24 exact standalone full self-verify exited 0 with final JSON: iterations=10, total_steps=250, passed_steps=250, failed_steps=0, minimum_goal_score=100, termination_eligible=true. The final post-cleanup stability audit remains coordinator-owned by the current user direction.",
       "deferred_command": "python3 skills/stability-audit/scripts/e2e_stability_audit.py --cleanup-stale --json"
     },
     {
       "id": "AC-10",
-      "status": "DRAFT_BLOCKED_FRESH_REVIEW",
-      "reason": "Fresh implementation review is required for the generation 18 post-Brooks revise diff. No commit, PR, merge, release, or cleanup is authorized before that review."
+      "status": "PENDING_FRESH_REVIEW_AND_PUBLICATION",
+      "reason": "Generation 24 has completed its required verification; a new independent Brooks review is required before publication."
     }
   ],
   "verification": [
@@ -202,6 +202,56 @@
       "command": "git diff --check",
       "result": "PASS",
       "observed": "Passed after the generation 18 REVISE closure record was added."
+    },
+    {
+      "command": "go test ./cmd/harness/issueopscli/executioncmd -run TestClaimWithoutActorFlagsUsesNativeReceipt -count=1",
+      "result": "RED_EXPECTED_THEN_PASS",
+      "observed": "The new test first failed because runClaim forwarded an empty host/session/CWD. After runClaim reused resolveNativeActor, it passed with the observed Codex ancestry receipt and canonical CWD."
+    },
+    {
+      "command": "go test ./cmd/harness/issueopscli/executioncmd -count=1",
+      "result": "PASS",
+      "observed": "The complete execution CLI package passed after the actor-less direct claim regression fix."
+    },
+    {
+      "command": "go test -race ./internal/adapter/issueops ./internal/adapter/orca ./internal/adapter/operationalhealth ./internal/domain/commandparse ./internal/adapter/lifecycle -count=1",
+      "result": "PASS",
+      "observed": "Generation 24 exited 0: issueops 43.325s, orca 6.046s, operationalhealth 1.476s, commandparse 2.584s, lifecycle 4.815s."
+    },
+    {
+      "command": "go test ./... -count=1",
+      "result": "PASS",
+      "observed": "Generation 24 repository-wide normal suite exited 0."
+    },
+    {
+      "command": "go test -race ./... -count=1",
+      "result": "PASS",
+      "observed": "Generation 24 repository-wide race suite exited 0."
+    },
+    {
+      "command": "go vet ./...",
+      "result": "PASS",
+      "observed": "Generation 24 exited 0 without findings."
+    },
+    {
+      "command": "go build -o bin/agent-harness ./cmd/harness",
+      "result": "PASS",
+      "observed": "Generation 24 exited 0 and rebuilt the local harness binary."
+    },
+    {
+      "command": "./bin/agent-harness self-verify --full --iterations=10 --seed=100 --target-score=95 --llm-eval=false --progress=jsonl --json",
+      "result": "PASS",
+      "observed": "Generation 24 standalone execution exited 0 after 3,085,985ms; final JSON has iterations=10, total_steps=250, passed_steps=250, failed_steps=0, minimum_goal_score=100, coverage_gaps=[], failure_cause=none, and termination_eligible=true."
+    },
+    {
+      "command": "./bin/agent-harness doctor --repo . --json",
+      "result": "NOT_RUN_BY_CURRENT_USER_DIRECTION",
+      "observed": "The current owner verification contract omits doctor. The feature-worktree observation failed with Orca repo_not_found; final clean post-merge doctor remains coordinator-owned."
+    },
+    {
+      "command": "python3 skills/stability-audit/scripts/e2e_stability_audit.py --cleanup-stale --json",
+      "result": "NOT_RUN_BY_CURRENT_USER_DIRECTION",
+      "observed": "The current owner verification contract omits destructive-cleanup stability audit; coordinator owns the post-merge clean-state gate."
     }
   ],
   "child_evidence": {
@@ -211,14 +261,16 @@
     "#449": "07e55437 accepted: operational collector consumes one Run snapshot."
   },
   "ai_slop_clean": {
-    "status": "PENDING_FRESH_REVIEW",
-    "scope": "The final branch retains only Issue #439 behavior, direct tests, contract artifacts, and this required Turing report; no child re-integration, compatibility shim, or speculative cleanup was added."
+    "status": "PASS",
+    "scope": "The final branch retains only Issue #439 behavior, direct tests, contract artifacts, and this required Turing report; no child re-integration, compatibility shim, or speculative cleanup was added.",
+    "generation_24_receipt": "IssueOps ai-slop-clean record accepted the native actor receipt change after current diff check, all required Go checks, and standalone full self-verify evidence."
   },
   "deviations": [
     "Issue #439 requests merge and cleanup in AC-10, but the current owner contract permits only draft publication and execution completion; merge and destructive cleanup remain coordinator-authorized post-merge actions.",
     "Doctor and stability audit are intentionally deferred by the latest user instruction because the active lifecycle and accepted children are expected pre-cleanup residue.",
-    "A non-admitted bare-PATH self-verify attempt was blocked; the exact ./bin form was not run, so coordinator evidence is not represented as a fresh local execution.",
-    "Generation 18 owner-local Python test invocation was blocked by the active-lease guard; Brooks subsequently verified the current-diff 15-test Python suite successfully."
+    "Two earlier generation 23 self-verify attempts timed out at the binary-drift gate after 10 seconds; generation 24 replaced that non-passing evidence with a standalone exit-0 final JSON receipt at 250/250 and score 100.",
+    "Generation 18 owner-local Python test invocation was blocked by the active-lease guard; Brooks subsequently verified the current-diff 15-test Python suite successfully.",
+    "Generation 24 omits doctor and stability audit because the latest owner contract assigns their clean post-merge observations to the coordinator."
   ],
   "brooks_revision": {
     "findings": [
@@ -247,7 +299,7 @@
         "observed": "The test was added before the consume implementation; the owner-local guard rejected this foreground command. Coordinator later ran the full current-diff Python suite successfully."
       }
     ],
-    "green_evidence": "Generation 18 focused Orca normal/race tests and Brooks current-diff Python 15-test verification passed; repository-wide Go normal/race exit codes remain explicitly unverified.",
+    "green_evidence": "Generation 18 focused Orca normal/race tests and Brooks current-diff Python 15-test verification passed; generation 24 subsequently produced exit-0 repository-wide Go normal/race evidence.",
     "generation_18_revise": {
       "verdict": "REVISE",
       "findings": [
@@ -258,6 +310,18 @@
       "red_evidence": "TestClientRunInventoryRejectsMissingRuntimeOnFirstCursorPage and TestClientProbeRequiresRunListCursorCapability failed as expected before implementation: the first returned nil and the latter accepted capability_missing input.",
       "green_evidence": "The two focused tests, full Orca adapter normal/race suites, and Brooks-reported Python 15-test suite passed after the fixes. Brooks reports implementation findings closed; publication remains pending a fresh final verdict.",
       "closure": "listRunsInventory now requires a canonical runtime ID on every page before cursor continuation, Probe requires --cursor, and AC-04 documents the public metadata boundary."
+    },
+    "generation_23_revise": {
+      "verdict": "REVISE",
+      "finding": "A direct recovery next_command uses --claim-current-token without ACTOR_FLAGS, but runClaim bypassed the existing native receipt resolver and forwarded an empty actor/CWD.",
+      "red_evidence": "TestClaimWithoutActorFlagsUsesNativeReceipt failed as expected: the captured claim request had empty host/session/CWD before the fix.",
+      "green_evidence": "runClaim now reuses resolveNativeActor; TestClaimWithoutActorFlagsUsesNativeReceipt and TestClaimRejectsPartialActorFlags passed, and the full executioncmd package plus CLI golden contracts passed. Generation 24 then completed repository-wide normal/race, vet, build, and standalone full self-verify with exit 0.",
+      "scope": "cmd/harness/issueopscli/executioncmd/execution.go, execution_current_token_test.go, the IssueOps usage catalog/golden, and the direct recovery operating reference only."
+    },
+    "generation_24_final_verification": {
+      "result": "PASS",
+      "evidence": "Focused race packages, repository-wide normal/race suites, vet, and build all exited 0; standalone full self-verify exited 0 with 250/250 passing steps, minimum goal score 100, and termination eligibility true.",
+      "pending": "Fresh independent Brooks review, commit/push, governed draft PR readback, and coordinator-owned post-merge doctor/stability gates."
     },
     "implementation": "Implemented surgically in internal/adapter/orca/client.go, its focused tests and fixtures, skills/stability-audit/scripts/e2e_stability_audit.py with unit tests, and skills/issueops/references/execution.md."
   },

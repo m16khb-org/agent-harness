@@ -152,7 +152,10 @@ agent-harness issueops execution status --id "$ISSUEOPS_ID" --json
 
 A direct holder does not claim again after normal preparation. Holderless
 direct recovery is the exception: `replace --reseed|--finalize` returns an exact
-`claim` command for the new claimable generation. An Orca owner reads the
+`claim` command for the new claimable generation. That command intentionally
+omits `ACTOR_FLAGS`: the CLI observes the invoking native session and its
+PID-reuse-safe ancestry receipt. Supplying actor flags remains supported, but
+they must be supplied as one complete set; a partial set fails closed. An Orca owner reads the
 private rendered prompt and context packet, verifies the issue and packet
 SHA-256 values, then runs the exact current-generation claim command rendered by
 preparation/status:
