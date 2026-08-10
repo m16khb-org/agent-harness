@@ -287,8 +287,14 @@ func Classify(snapshot Snapshot, opts Options) Result {
 	}
 	for _, gate := range snapshot.Gates {
 		id := strings.TrimSpace(gate.ID)
-		if !knownGateStatus(strings.TrimSpace(gate.Status)) {
-			builder.add(FindingInventoryUnknown, "gate", id, "gate status is unsupported: "+strings.TrimSpace(gate.Status), "")
+		status := strings.TrimSpace(gate.Status)
+		if !knownGateStatus(status) {
+			builder.add(FindingInventoryUnknown, "gate", id, "gate status is unsupported: "+status, "")
+			continue
+		}
+		// Resolved and timed-out gates are durable orchestration history. Orca
+		// exposes no per-gate delete command, so only a pending gate is residue.
+		if settledGateStatus(status) {
 			continue
 		}
 		builder.add(FindingGateResidue, "gate", id, "orchestration gate remains present", "")
@@ -542,11 +548,15 @@ func settledDispatchStatus(value string) bool {
 // timeout이 빠져 있던 동안 시간 초과된 gate가 "unsupported"로 보고됐다(#171).
 func knownGateStatus(value string) bool {
 	switch value {
-	case "pending", "resolved", "timeout":
+	case "pending":
 		return true
 	default:
-		return false
+		return settledGateStatus(value)
 	}
+}
+
+func settledGateStatus(value string) bool {
+	return value == "resolved" || value == "timeout"
 }
 
 func preservableIdentityComplete(cycle Cycle) bool {

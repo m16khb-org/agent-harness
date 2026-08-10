@@ -85,6 +85,31 @@ func TestClassifyKnowsEveryOrcaGateStatus(t *testing.T) {
 	}
 }
 
+// 종결된 gate는 task/dispatch와 같은 orchestration 이력이다. Orca에는
+// per-gate 삭제 명령이 없으므로 resolved/timeout까지 residue로 분류하면
+// 정상 정리 후에도 doctor가 영원히 healthy로 수렴하지 않는다.
+func TestClassifySkipsResidueForSettledGate(t *testing.T) {
+	for _, status := range []string{"resolved", "timeout"} {
+		t.Run(status, func(t *testing.T) {
+			snapshot := orcaSnapshotWithUnownedDispatch(t, "dispatched")
+			snapshot.Gates = []OrcaGate{{RuntimeID: "runtime", ID: "gate-id", Status: status}}
+			result := Classify(snapshot, Options{Now: time.Now()})
+			if hasFindingID(result, FindingGateResidue, "gate", "gate-id") {
+				t.Fatalf("종결된 gate를 residue로 보면 정리가 수렴하지 않는다: %#v", result.Findings)
+			}
+		})
+	}
+}
+
+func TestClassifyStillFlagsPendingGateResidue(t *testing.T) {
+	snapshot := orcaSnapshotWithUnownedDispatch(t, "dispatched")
+	snapshot.Gates = []OrcaGate{{RuntimeID: "runtime", ID: "gate-id", Status: "pending"}}
+	result := Classify(snapshot, Options{Now: time.Now()})
+	if !hasFindingID(result, FindingGateResidue, "gate", "gate-id") {
+		t.Fatalf("미결 gate는 residue여야 한다: %#v", result.Findings)
+	}
+}
+
 func TestClassifyStillFlagsUnknownGateStatus(t *testing.T) {
 	snapshot := orcaSnapshotWithUnownedDispatch(t, "dispatched")
 	snapshot.Gates = []OrcaGate{{RuntimeID: "runtime", ID: "gate-id", Status: "escalated"}}
