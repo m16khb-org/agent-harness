@@ -3,7 +3,7 @@
   "lifecycle": "io-8f76e5e0a5f0",
   "issue_url": "https://github.com/m16khb/agent-harness/issues/462",
   "mode": "orca",
-  "generation": 3,
+  "generation": 4,
   "owner": {
     "host": "codex",
     "model": "gpt-5.6-terra",
@@ -18,14 +18,14 @@
     "branch": "462-parallel-issueops-lane-a",
     "base_branch": "parallel-issueops-probe-20260810-8166a2d",
     "base_head": "8166a2d6bcadf1e75e3f8272e4c9010ac349e6ac",
-    "run_id": "run_dd0537c2bcd2",
-    "task_id": "task_c104782fd6a2",
-    "dispatch_id": "ctx_a6224e7f5b86",
+    "run_id": "run_632c927f79bb",
+    "task_id": "task_f0ab96f94ce2",
+    "dispatch_id": "ctx_ac75ee178d08",
     "worktree_instance_id": "fe2819f2-9a27-464c-a802-3c0094316fa0"
   },
   "sealed_inputs": {
-    "issue_body_sha256": "7e9f7962a7ae4eb6e2953ef4cbbf1ab12c6d699178dd5d01faa7b1e029055a20",
-    "context_packet_sha256": "31f5086cdee6acab3c2c23af0571deca5b28bbf43705d880f5daa6eeb59fcb7b",
+    "issue_body_sha256": "04f0765b2d7f263b5b3726654076a993b32cd2c2c28dc3f3dd48d5f181810c7b",
+    "context_packet_sha256": "1de309e1b878c2d50d7ac6355d306c0e5adb0efab14136f7c55babf921b81bed",
     "artifact_manifest": {
       "plan": "f179e9d18f27dd1f3c4ec14b70420daeb774f185ca2de7197b9be15eaa583983",
       "spec": "9da9e9a132035c043559abebacf6519c20438bb471ec8a469df280b1d5df9e6d",
@@ -33,10 +33,12 @@
     }
   },
   "timing": {
-    "claimed_at": "2026-08-10T10:42:25.419921Z",
+    "generation_3_claimed_at": "2026-08-10T10:42:25.419921Z",
+    "generation_4_claimed_at": "2026-08-10T10:58:22.54304Z",
     "common_active_receipt_at": "2026-08-10T10:44:56.790336Z",
     "peer_c_released_at": "2026-08-10T10:47:02.042278Z"
   },
+  "historical_observations": "The generation-2/generation-3 timing, parallel snapshot, AC-03 interval, and AC-07 authority matrix below are retained historical observations. Generation 4 is the current execution authority and records its own packet, holder, Run, task, and dispatch above.",
   "parallel_snapshot": [
     {
       "lifecycle": "io-bf3eaf081cf6",
@@ -77,7 +79,7 @@
     "AC-01": {
       "result": "PASS",
       "command": "agent-harness issueops execution status --id 'io-8f76e5e0a5f0' --json",
-      "evidence": "schema_version=1, mode=orca, generation=3, branch, canonical worktree, sealed digests, and native Codex holder matched the generation-3 packet."
+      "evidence": "schema_version=1, mode=orca, generation=4, branch, canonical worktree, sealed digests, native Codex holder, Run run_632c927f79bb, task task_f0ab96f94ce2, and dispatch ctx_ac75ee178d08 matched the generation-4 packet."
     },
     "AC-02": {
       "result": "PASS",
@@ -101,12 +103,12 @@
     "AC-05": {
       "result": "READY_FOR_POST_COMMIT_DIFF_CHECK",
       "command": "git status --short; git diff --name-only 8166a2d6bcadf1e75e3f8272e4c9010ac349e6ac...HEAD",
-      "evidence": "Source checkout status was empty before this report edit. The post-commit base-to-HEAD name-only check is the remaining governed observation."
+      "evidence": "Source checkout status was empty before the generation-4 report edit; the canonical base-to-HEAD name-only check listed only this Turing JSON. The exact check runs again after the report commit."
     },
     "AC-06": {
-      "result": "READY_FOR_GENERATION_3_REMOTE_RECONCILIATION",
-      "command": "agent-harness issueops remote create-pr --id 'io-8f76e5e0a5f0' --expected-generation 3 --head '462-parallel-issueops-lane-a' --base 'parallel-issueops-probe-20260810-8166a2d' ... --confirm --json",
-      "evidence": "Existing draft PR #464 is recorded from generation 2; generation 3 must reconcile it through the governed command and then read back base, label, assignee, and Korean body."
+      "result": "READY_FOR_POST_PUSH_LIVE_READBACK",
+      "command": "gh pr view 464 --repo m16khb/agent-harness --json url,headRefOid,baseRefName,isDraft,labels,assignees,body",
+      "evidence": "Issue #462's generation-4 SSOT permits reuse of durable draft PR #464 without a duplicate create mutation. Its prior verified target is parallel-issueops-probe-20260810-8166a2d with enhancement label, m16khb assignee, and Korean body; live head, base, draft, label, assignee, and Korean body are read back after this report commit is pushed."
     },
     "AC-07": {
       "result": "PASS",
@@ -152,7 +154,7 @@
   "verification": [
     {
       "command": "go test ./cmd/harness/validationcli/parallelisolation -count=1",
-      "result": "PASS: 0.439s"
+      "result": "PASS: generation-4 focused test run."
     },
     {
       "command": "git -C /Users/m16khb/Workspace/agent-harness status --short",
@@ -160,17 +162,17 @@
     }
   ],
   "ai_slop_clean": {
-    "result": "pending",
+    "result": "pending_generation_4_record",
     "scope": "report-only; no production source, compatibility shim, abstraction, generated artifact, or unrelated cleanup is permitted"
   },
   "remote_artifact": {
-    "result": "pending_generation_3_governed_reconciliation",
+    "result": "pending_live_final_head_readback",
     "url": "https://github.com/m16khb/agent-harness/pull/464",
     "head": "462-parallel-issueops-lane-a",
     "base": "parallel-issueops-probe-20260810-8166a2d"
   },
   "deviation": {
-    "source": "generation-2 artifacts",
-    "evidence": "plan.md:3 and turing-loop.md:7 still describe a coordinator barrier; remote issue #462 execution-contract correction supersedes that text for generation 3."
+    "source": "generation-4 sealed packet artifacts (bytes originally staged in generation 2)",
+    "evidence": "plan.md:3 and turing-loop.md:7 still describe a coordinator barrier; remote issue #462 execution-contract correction supersedes that text for generation 4. The report retains the historical generation-2/generation-3 overlap and authority-matrix observations as evidence, not as the current execution contract."
   }
 }
