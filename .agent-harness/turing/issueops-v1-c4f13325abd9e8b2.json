@@ -2,7 +2,7 @@
   "schema_version": 1,
   "lifecycle_id": "io-2bfc1ae2a84a",
   "mode": "orca",
-  "status": "implementation-verified",
+  "status": "ac01-05-verified-ac06-pending-pr",
   "sealed_base": "3531e3e6e0f6642a6f77d4d8665766444d760348",
   "lane": {
     "root": "/private/tmp/agent-harness-lane-456",
@@ -25,21 +25,21 @@
       "test": "real native install with lane-only HOME/CODEX_HOME/HARNESS_STATE_DIR/HARNESS_DAEMON_DIR/source/binary",
       "command": "/usr/bin/env -u CLAUDE_CONFIG_DIR HOME=/private/tmp/agent-harness-lane-456/home CODEX_HOME=/private/tmp/agent-harness-lane-456/codex-home HARNESS_STATE_DIR=/private/tmp/agent-harness-lane-456/state HARNESS_DAEMON_DIR=/private/tmp/agent-harness-lane-456/daemon HARNESS_ROOT=/private/tmp/agent-harness-lane-456/source /private/tmp/agent-harness-lane-456/source/scripts/install-native.sh --path-mode=skip --json",
       "result": "PASS",
-      "observed": "Install JSON returned ok=true, committed=true, root=/private/tmp/agent-harness-lane-456/source, home=/private/tmp/agent-harness-lane-456/home, codex_home=/private/tmp/agent-harness-lane-456/codex-home, bin_path=/private/tmp/agent-harness-lane-456/source/bin/agent-harness; message confirmed 'native activation receipt sealed after strict Codex/Claude MCP and hook readback'."
+      "observed": "Ran twice. First run (fresh lane home): ok=true, committed=true, root=/private/tmp/agent-harness-lane-456/source, home=/private/tmp/agent-harness-lane-456/home, codex_home=/private/tmp/agent-harness-lane-456/codex-home, bin_path=/private/tmp/agent-harness-lane-456/source/bin/agent-harness. Second run (settings.json pre-seeded with a legacy agent-harness hook plus third-party hooks, see AC-04) captured the raw stdout JSON verbatim to /private/tmp/agent-harness-lane-456/install-output-2.txt for durability: ok=true, committed=true, messages include 'claude native hook target is stale: observed=/private/tmp/agent-harness-lane-456-legacy/bin/agent-harness expected=/private/tmp/agent-harness-lane-456/source/bin/agent-harness; reinstall hooks and restart the claude session' and 'native activation receipt sealed after strict Codex/Claude MCP and hook readback'; file parsed as valid JSON with python3 json.load after the run."
     },
     {
       "id": "AC-03",
       "test": "claude mcp get agent_harness points to lane binary and source root",
       "command": "/usr/bin/env -u CLAUDE_CONFIG_DIR HOME=/private/tmp/agent-harness-lane-456/home CODEX_HOME=/private/tmp/agent-harness-lane-456/codex-home HARNESS_STATE_DIR=/private/tmp/agent-harness-lane-456/state HARNESS_DAEMON_DIR=/private/tmp/agent-harness-lane-456/daemon HARNESS_ROOT=/private/tmp/agent-harness-lane-456/source claude mcp get agent_harness",
       "result": "PASS",
-      "observed": "Status: Connected. Command: /private/tmp/agent-harness-lane-456/source/bin/agent-harness. Args: mcp. Environment: HARNESS_ROOT=/private/tmp/agent-harness-lane-456/source."
+      "observed": "Reproduced twice, before and after the AC-04 migration re-run. Both times: Status: Connected. Command: /private/tmp/agent-harness-lane-456/source/bin/agent-harness. Args: mcp. Environment: HARNESS_ROOT=/private/tmp/agent-harness-lane-456/source."
     },
     {
       "id": "AC-04",
-      "test": "Claude managed hooks are exactly SessionStart and PostCompact, no third-party hook removed",
-      "command": "cat /private/tmp/agent-harness-lane-456/home/.claude/settings.json",
+      "test": "Claude managed hooks are exactly SessionStart and PostCompact; a legacy agent-harness managed hook on a pre-#455 event is removed and a co-resident third-party hook on that same event survives",
+      "command": "seed /private/tmp/agent-harness-lane-456/home/.claude/settings.json with (a) a third-party PreToolUse group, (b) a legacy agent-harness UserPromptSubmit group pointing at a fictitious old binary path, and (c) a Stop event holding both a legacy agent-harness group and a third-party group; rerun install-native.sh --path-mode=skip --json over that seeded home; then cat the resulting settings.json",
       "result": "PASS",
-      "observed": "hooks object contains exactly two managed groups, SessionStart and PostCompact, each one command entry invoking '/private/tmp/agent-harness-lane-456/source/bin/agent-harness' hook session-start|post-compact --host claude. No other event key present. The lane home was freshly created for this run, so there was no pre-existing third-party hook to preserve or disturb."
+      "observed": "Post-run hooks object has exactly four event keys: SessionStart and PostCompact each hold one command group invoking '/private/tmp/agent-harness-lane-456/source/bin/agent-harness' hook session-start|post-compact --host claude (unchanged managed contract); PreToolUse still holds only the seeded third-party group 'third-party-lint-tool --check' (untouched, correctly out of scope for the merge since no agent-harness command was present there); Stop now holds only the seeded third-party group 'third-party-notify-tool --stop' -- the co-resident legacy agent-harness Stop group was removed by the same merge pass that preserved the third-party one; UserPromptSubmit is absent entirely, because its only group was the legacy agent-harness hook and removing it left the event empty, which the installer deletes. This exercises the actual upgrade-over-existing-config path (mergeClaudeHookConfig/HookGroupContainsAgentHarness in internal/adapter/claude/install_hooks.go), not just a greenfield install, and directly proves both halves of AC-04: exactly SessionStart+PostCompact remain agent-harness-managed, and a genuine third-party hook (PreToolUse, and the surviving Stop entry) is preserved rather than swept."
     },
     {
       "id": "AC-05",
@@ -51,31 +51,21 @@
     {
       "id": "AC-06",
       "test": "draft PR base 455-thin-context-hooks with enhancement label and m16khb assignee",
-      "command": "agent-harness issueops remote create-pr --id 'io-2bfc1ae2a84a' --expected-generation 1 ... --confirm --json",
+      "command": "agent-harness issueops remote create-pr --id 'io-2bfc1ae2a84a' --expected-generation 1 --title <PR_TITLE> --body-file <PR_BODY_FILE> --head '456-claude-native-install-readback' --base '455-thin-context-hooks' --label enhancement --assignee m16khb --host claude --session-id <SESSION_ID> --session-pid <SESSION_PID> --session-started-at <SESSION_STARTED_AT> --session-executable <SESSION_EXECUTABLE> --cwd '/Users/m16khb/Workspace/agent-harness.worktrees/456-claude-native-install-readback' --confirm --json",
       "result": "PENDING",
-      "observed": "Recorded after governed create-pr and PR API readback."
+      "observed": "Not yet run at review time. Requires this reviewed diff to remain unmodified; will be recorded and re-verified via the PR API immediately after create-pr runs."
     }
   ],
   "verification": [
     {
       "command": "git rev-parse HEAD",
       "result": "PASS",
-      "observed": "3531e3e6e0f6642a6f77d4d8665766444d760348 (matches sealed base before commit)"
+      "observed": "3531e3e6e0f6642a6f77d4d8665766444d760348 at the sealed base before implementation; 6032d8da44c0b570c8155fb5dbeaf4f219bd76cf after the two evidence commits (see AC-05 for the diff-scope check at that HEAD)."
     },
     {
-      "command": "install-native.sh --path-mode=skip --json (lane env)",
+      "command": "lane process hygiene: pgrep -fl 'agent-harness-lane-456/source/bin/agent-harness daemon'; HARNESS_DAEMON_DIR=.../daemon agent-harness daemon stop --json",
       "result": "PASS",
-      "observed": "ok=true, committed=true"
-    },
-    {
-      "command": "claude mcp get agent_harness (lane env)",
-      "result": "PASS",
-      "observed": "Connected; command/env bound to lane binary and source root"
-    },
-    {
-      "command": "git diff --name-only 3531e3e6e0f6642a6f77d4d8665766444d760348...HEAD",
-      "result": "PASS",
-      "observed": "Exactly one path: .agent-harness/turing/issueops-v1-c4f13325abd9e8b2.json"
+      "observed": "The MCP/install readback runs started a lane-local daemon twice; both were stopped explicitly ('agent-harness daemon stopped', running=false) and no lane daemon process remained afterward. No process or file outside /private/tmp/agent-harness-lane-456 was touched."
     }
   ]
 }
