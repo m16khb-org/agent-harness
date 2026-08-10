@@ -2,7 +2,7 @@
   "schema_version": 1,
   "lifecycle_id": "io-2bfc1ae2a84a",
   "mode": "orca",
-  "status": "ac01-05-verified-ac06-pending-pr",
+  "status": "ac01-06-verified",
   "sealed_base": "3531e3e6e0f6642a6f77d4d8665766444d760348",
   "lane": {
     "root": "/private/tmp/agent-harness-lane-456",
@@ -51,9 +51,9 @@
     {
       "id": "AC-06",
       "test": "draft PR base 455-thin-context-hooks with enhancement label and m16khb assignee",
-      "command": "agent-harness issueops remote create-pr --id 'io-2bfc1ae2a84a' --expected-generation 1 --title <PR_TITLE> --body-file <PR_BODY_FILE> --head '456-claude-native-install-readback' --base '455-thin-context-hooks' --label enhancement --assignee m16khb --host claude --session-id <SESSION_ID> --session-pid <SESSION_PID> --session-started-at <SESSION_STARTED_AT> --session-executable <SESSION_EXECUTABLE> --cwd '/Users/m16khb/Workspace/agent-harness.worktrees/456-claude-native-install-readback' --confirm --json",
-      "result": "PENDING",
-      "observed": "Not yet run at review time. Requires this reviewed diff to remain unmodified; will be recorded and re-verified via the PR API immediately after create-pr runs."
+      "command": "gh pr view 459 --repo 'm16khb/agent-harness' --json url,baseRefName,headRefName,headRefOid,isDraft,labels,assignees,title,state",
+      "result": "PASS",
+      "observed": "PR #459 (https://github.com/m16khb/agent-harness/pull/459) was created via governed 'issueops remote create-pr --expected-generation 1' at the end of generation 1. Re-read live during generation 2 (immediately before this file was edited, while HEAD was still d1de0926): baseRefName=455-thin-context-hooks, headRefName=456-claude-native-install-readback, headRefOid=d1de0926d8c53a317df7d204455fcf77df94dded, isDraft=true, labels=[enhancement], assignees=[m16khb], state=OPEN. d1de0926 is the pre-generation-2-commit head -- the branch HEAD as of generation 1's own last commit, before this evidence-file update -- and is a provider-side fact independent of this file's own commit history. Generation 2 is a completed-execution reseed of the same lifecycle/branch (see the generation-2 reconfirmation verification entry below); it reuses this existing PR rather than recreating one, and its own evidence-only commit to this file will advance the branch HEAD further without changing base/label/assignee identity. The current, post-generation-2-commit head is not predicted or embedded in this JSON -- it is supplied out-of-band as the '--final-head' argument to 'issueops execution complete --generation 2', and the live PR headRefOid at that later point is authoritative over the d1de0926 snapshot recorded here."
     }
   ],
   "verification": [
@@ -66,6 +66,11 @@
       "command": "git status --short; git diff --name-only 3531e3e6e0f6642a6f77d4d8665766444d760348...HEAD",
       "result": "PASS",
       "observed": "See AC-05 for the authoritative diff-scope check; this entry only records that the working tree is clean (no untracked/modified files) immediately before each push in this cycle."
+    },
+    {
+      "command": "generation-2 reconfirmation: single continuous run of git rev-parse HEAD, isolated install-native.sh --path-mode=skip --json, claude mcp get agent_harness, and git diff --name-only 3531e3e6...HEAD",
+      "result": "PASS",
+      "observed": "This lifecycle's completed generation 1 (final_head d1de0926, PR #459) was reseeded to a fresh claimable generation 2 by the coordinator; execution status recorded the prior completion in completion_history with reason 'completed execution reseed'. Generation 2 was claimed under the same native session, compatibility review was re-approved, and all four mandated verification commands were re-run together in one pass rather than reusing generation-1 partial results, at the point immediately BEFORE this evidence-file edit was made: HEAD was d1de0926d8c53a317df7d204455fcf77df94dded at that moment (no implementation change was needed, only this report needed updating); install ok=true/committed=true; claude mcp get agent_harness still Connected to the lane binary/root; managed hooks still exactly SessionStart (co-resident with the surviving third-party group from the AC-04 seed) and PostCompact; git diff --name-only still showed only this one evidence file. Lane daemon stopped again after this run (pgrep confirms none running). This entry is a snapshot of that pre-edit state, not a claim about the current commit -- the actual generation-2 final HEAD is supplied separately to 'issueops execution complete --final-head' after this file is committed and pushed."
     }
   ]
 }
