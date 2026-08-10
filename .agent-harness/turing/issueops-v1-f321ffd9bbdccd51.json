@@ -1,0 +1,146 @@
+{
+  "lifecycle": "io-bf3eaf081cf6",
+  "mode": "orca",
+  "issue": 461,
+  "lane": "B",
+  "schema_version": 1,
+  "owner": {
+    "host": "claude",
+    "model": "claude-sonnet-5",
+    "effort": "high",
+    "session_id": "8ec4a98c-a102-4c2a-b912-88fe785dbbb7",
+    "session_pid": 49960,
+    "session_started_at": "2026-08-10T10:00:00Z",
+    "session_executable": "claude"
+  },
+  "workspace": {
+    "source_root": "/Users/m16khb/Workspace/agent-harness",
+    "worktree_root": "/Users/m16khb/Workspace/agent-harness.worktrees/461-parallel-issueops-lane-b",
+    "branch": "461-parallel-issueops-lane-b",
+    "base_branch": "parallel-issueops-probe-20260810-8166a2d",
+    "base_sha": "8166a2d6bcadf1e75e3f8272e4c9010ac349e6ac"
+  },
+  "orca_identity": {
+    "runtime_id": "1b7bc4b8-67db-4896-8516-f5d9bea69d1c",
+    "repo_id": "682d2268-d88a-4b01-8728-25e967d26a76",
+    "worktree_id": "682d2268-d88a-4b01-8728-25e967d26a76::/Users/m16khb/Workspace/agent-harness.worktrees/461-parallel-issueops-lane-b",
+    "worktree_instance_id": "3e24d984-637e-4c97-97b0-59bdc5ec0484",
+    "run_id": "run_7db958b38864",
+    "task_id": "task_3f419d4f0829",
+    "dispatch_id": "ctx_0880ccc3b4aa",
+    "terminal_pty_id": "ssh:ssh-1783678538888-sl28jq@@pty-100",
+    "lease_generation": 1,
+    "claimed_at": "2026-08-10T10:01:50.573844Z"
+  },
+  "timing": {
+    "start_time": "2026-08-10T10:04:48Z",
+    "end_time": "2026-08-10T10:25:38Z",
+    "note": "start_time is when this lane began its first live evidence probe. end_time is when this report's content was last finalized before commit, not an earlier draft timestamp; two review-and-revise rounds ran between the first evidence capture and this final end_time, so end_time was advanced accordingly rather than left stale."
+  },
+  "sibling_lanes_observed": [
+    {
+      "lane": "A",
+      "lifecycle": "io-8f76e5e0a5f0",
+      "branch": "462-parallel-issueops-lane-a",
+      "owner_host": "codex",
+      "lease_generation": 1,
+      "run_id": "run_6b7afd9e0d33",
+      "task_id": "task_72d33e62e160",
+      "dispatch_id": "ctx_f97398fe1f7f",
+      "claimed_at": "2026-08-10T10:00:57.698079Z",
+      "observed_at": "2026-08-10T10:04:48Z",
+      "status_at_before_probe": "active",
+      "status_at_after_probe_observed_at": "2026-08-10T10:05:43Z",
+      "status_at_after_probe": "released",
+      "released_at": "2026-08-10T10:05:43.853153Z",
+      "note": "Lane A (generation 1) transitioned active -> released between the 10:04:48Z and 10:05:43Z observations on its own. This lane's release attempt against io-8f76e5e0a5f0 (documented under AC-07 foreign_id_own_cwd) was blocked by the host tool's own permission layer before it reached the agent-harness CLI: no subprocess executed and no output was returned for that call, so this lane did not cause or contribute to Lane A's release. Generation 1 identities recorded here are a point-in-time snapshot; Lane A may reseed to a later generation with different Orca identities after this report is written, which does not affect the AC-02 distinctness claim (recorded IDs never collided with Lane B's IDs at any point Lane B observed)."
+    },
+    {
+      "lane": "C",
+      "lifecycle": "io-8724649f2a51",
+      "branch": "463-parallel-issueops-lane-c",
+      "owner_host": "codex",
+      "lease_generation": 1,
+      "run_id": "run_49bdaeccc6d1",
+      "task_id": "task_0172680716c0",
+      "dispatch_id": "ctx_faa83be621ca",
+      "claimed_at": "2026-08-10T10:02:48.988555Z",
+      "observed_at": "2026-08-10T10:05:43Z",
+      "status_observed": "active",
+      "note": "Generation 1 identity recorded at observation time; Lane C may reseed to a later generation after this report is written, which does not affect the AC-02 distinctness claim."
+    }
+  ],
+  "acceptance": {
+    "AC-01": {
+      "evidence": "issueops execution claim/status for io-bf3eaf081cf6 returned generation 1, branch 461-parallel-issueops-lane-b, canonical worktree /Users/m16khb/Workspace/agent-harness.worktrees/461-parallel-issueops-lane-b.",
+      "command": "agent-harness issueops execution status --id 'io-bf3eaf081cf6' --json",
+      "result": "PASS"
+    },
+    "AC-02": {
+      "evidence": "run_id/task_id/dispatch_id are distinct across all three lanes: Lane B run_7db958b38864/task_3f419d4f0829/ctx_0880ccc3b4aa; Lane A run_6b7afd9e0d33/task_72d33e62e160/ctx_f97398fe1f7f; Lane C run_49bdaeccc6d1/task_0172680716c0/ctx_faa83be621ca.",
+      "command": "agent-harness issueops list --json; agent-harness issueops execution status --id <each> --json",
+      "result": "PASS"
+    },
+    "AC-03": {
+      "evidence": "This lane's own declared evidence-gathering start (timing.start_time above) is 2026-08-10T10:04:48Z. Lane A was active (generation 1, claimed 2026-08-10T10:00:57Z) through 2026-08-10T10:05:43Z, the observed moment it released. Lane C was observed active (generation 1, claimed 2026-08-10T10:02:48Z) at the 2026-08-10T10:05:43Z observation point; no later observation of Lane C's state was captured by this lane, so no claim is made about Lane C beyond that timestamp. The genuine three-lane overlap this lane can certify from its own observations is [2026-08-10T10:04:48Z, 2026-08-10T10:05:43Z] (~55s): all three lanes were confirmed simultaneously active for that interval. A larger window [2026-08-10T10:02:48Z, 10:05:43Z] also holds if Lane B's lease-claim time (10:01:50Z) is used as the comparison point instead of its first evidence probe.",
+      "command": "agent-harness issueops execution status --id <each> --json",
+      "result": "PASS"
+    },
+    "AC-04": {
+      "tests": [
+        "TestValidateParallelTempIsolationWithDepsCoversSuccessErrorsAndCollision",
+        "TestRunParallelIsolationProbeWithDepsCoversCommandAndContractFailures"
+      ],
+      "command": "go test ./cmd/harness/validationcli/parallelisolation -count=1",
+      "result": "PASS: ok agent-harness/cmd/harness/validationcli/parallelisolation 0.439s"
+    },
+    "AC-05": {
+      "evidence": "At the time this line was written, this file is still untracked and HEAD equals base_sha (nothing committed yet on this branch), so `git status --short` shows exactly one line (this file, untracked) and `git diff --name-only base_sha...HEAD` is empty. This criterion is PENDING, not PASS, until this exact file is committed with no other changes and the same two commands are re-run against the committed HEAD; a follow-up amendment to this report will record that post-commit readback. Source checkout /Users/m16khb/Workspace/agent-harness is independently confirmed clean and unrelated to this worktree.",
+      "command": "git status --short; git diff --name-only 8166a2d6bcadf1e75e3f8272e4c9010ac349e6ac...HEAD",
+      "result": "PENDING"
+    },
+    "AC-06": {
+      "evidence": "PENDING: filled after draft PR creation via agent-harness issueops remote create-pr.",
+      "result": "PENDING"
+    },
+    "AC-07": {
+      "matrix": {
+        "own_id_own_cwd": {
+          "action": "agent-harness issueops execution claim --id 'io-bf3eaf081cf6' --generation 1 --cwd '<own worktree>' ...",
+          "result": "ALLOWED_VERIFIED: claim succeeded, lease.status became active with matching holder identity."
+        },
+        "own_id_foreign_cwd": {
+          "action": "agent-harness issueops execution release --id 'io-bf3eaf081cf6' --generation 1 --cwd '/Users/m16khb/Workspace/agent-harness' ...",
+          "result": "DENIED_VERIFIED: {\"error\":\"release cwd must be the canonical worktree\",\"ok\":false}; own record (io-bf3eaf081cf6) status hash unchanged before/after."
+        },
+        "foreign_id_own_cwd": {
+          "action": "agent-harness issueops execution release --id 'io-8f76e5e0a5f0' --generation 1 --cwd '<own worktree>' ...",
+          "result": "NOT_ATTEMPTED_UNVERIFIED: the host tool's own permission layer denied this Bash invocation before any agent-harness subprocess ran (no CLI output, no exit code). The command was never actually sent to the IssueOps CLI, so its generation/actor fence for this exact combination was not exercised from this lane and remains unverified here, not merely 'denied by a stricter layer'."
+        },
+        "foreign_id_foreign_cwd": {
+          "action": "not attempted",
+          "result": "NOT_ATTEMPTED_UNVERIFIED: after the identical action class (a mutating command with a foreign lifecycle ID as --id) was denied pre-execution for foreign_id_own_cwd, this lane did not retry the same action class with a different --cwd, to avoid repeating an already-blocked call shape without new information. This is an unverified combination from this lane, not a positive denial observation."
+        }
+      },
+      "result": "PARTIAL: own_id_own_cwd and own_id_foreign_cwd are independently verified at the IssueOps CLI layer with unchanged before/after status hashes for the affected record(s). foreign_id_own_cwd is UNVERIFIED from this lane specifically because the host tool's own safety-permission layer blocked that one Bash call before it reached the agent-harness CLI. foreign_id_foreign_cwd is UNVERIFIED for a different reason: this lane deliberately did not attempt it at all, to avoid retrying the same blocked action class without new information, so no external block occurred for that cell either way. Both remaining combinations require either a differently-scoped attempt or coordinator-level verification to close AC-07 in full; this is a genuine gap in this lane's evidence, not a claim that the IssueOps guard was exercised and passed for those two combinations."
+    }
+  },
+  "verification": [
+    {
+      "command": "go test ./cmd/harness/validationcli/parallelisolation -count=1",
+      "result": "PASS: ok agent-harness/cmd/harness/validationcli/parallelisolation 0.439s"
+    },
+    {
+      "command": "git status --short",
+      "result": "OBSERVED: exactly one line, this file as untracked (?? .agent-harness/turing/issueops-v1-f321ffd9bbdccd51.json). No other tracked or untracked changes. Re-run and record post-commit as part of AC-05 closure."
+    },
+    {
+      "command": "git diff --name-only 8166a2d6bcadf1e75e3f8272e4c9010ac349e6ac...HEAD",
+      "result": "OBSERVED: empty, because HEAD still equals base_sha (nothing committed on this branch yet). Re-run and record post-commit as part of AC-05 closure; it must equal exactly this file's path and nothing else."
+    }
+  ],
+  "diff_scope": [
+    ".agent-harness/turing/issueops-v1-f321ffd9bbdccd51.json"
+  ],
+  "status": "report_only_lane_b_pending_commit; AC-04 fully verified; AC-01/AC-02/AC-03 verified from this lane's read-only observations; AC-05 pending post-commit readback; AC-06 pending PR creation; AC-07 partial (own+own and own+foreign_cwd verified; foreign_id+own_cwd unverified because the host tool's permission layer blocked that one call before it reached the CLI; foreign_id+foreign_cwd unverified because this lane deliberately did not attempt it, not because of any external block)"
+}
