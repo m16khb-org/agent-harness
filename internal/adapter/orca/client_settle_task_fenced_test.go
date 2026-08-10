@@ -29,9 +29,8 @@ func fencedBindArgv() []string {
 // TestClientSettleTaskRebindsTheSealedRunWhenFenced는 #325를 고정한다.
 //
 // Orca는 task mutation을 Run 단위로 격리하고 호출 terminal이 그 Run의 current
-// consumer인지 인증한다. coordinator가 다른 Run에 바인딩돼 있으면 completion의
-// task settle이 consumer_fenced로 실패하고, durable lifecycle completion이
-// 성공한 뒤에도 Orca task가 열린 채 남았다.
+// consumer인지 인증한다. coordinator가 다른 Run에 바인딩돼 있으면 task
+// settle이 consumer_fenced로 실패한다.
 //
 // 실측(relay 0.1.0+66c426c5173c):
 //

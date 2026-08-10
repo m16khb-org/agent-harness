@@ -265,16 +265,14 @@ type OrcaWorkerDoneResult struct {
 // code 스윕이 삭제 후보로 다시 조사하지 않도록 판단 근거를 남긴다(#127에서 보존
 // 결정).
 //
-// 왜 배선이 없는가: IssueOps v1 owner 명령 카탈로그는 execution status/claim,
-// remote create-pr, execution complete, implementation-review record 5개만
-// 정의하며 Orca 메시지 전송을 요구하지 않는다. owner의 완료 보고는 durable
-// state(execution complete)와 원격 artifact(remote create-pr)가 담당한다. Orca는
-// workspace/owner adapter이지 두 번째 workflow authority가 아니다.
+// 왜 배선이 없는가: IssueOps execution complete는 durable lifecycle receipt만
+// 기록한다. Orca dispatch의 terminal transition은 sealed capability를 가진
+// dispatched owner가 native worker_done 명령으로 수행한다. application wiring이
+// 같은 capability를 다시 소유하면 두 authority가 completion 순서를 경쟁한다.
 //
-// #130이 그 공백을 UpdateTask로 메웠으므로 이 경로는 배선되지 않는다. 두 방식은
-// 목적이 다르다: UpdateTask는 task 상태를 종결시키고, SendWorkerDone은 Orca
-// dispatch 프로토콜의 완료 메시지를 보낸다. 후자는 owner 세션이 그 명령을
-// 실행해야 하는데 그것은 owner 명령 카탈로그 확장이며 위 계약과 충돌한다.
+// UpdateTask와 SendWorkerDone의 목적은 다르다. 전자는 Orca task 상태 mutation이고,
+// 후자는 dispatch protocol의 완료 메시지다. 이 adapter는 capability와 응답 검증을
+// 보존하지만 IssueOps completion path에는 배선하지 않는다.
 //
 // 어떤 조건에서 배선되는가: Orca dispatch 프로토콜의 메시지 채널이 agent-harness
 // 계약에 편입될 때다. 그런 요구가 생기기 전까지 이 인터페이스는 adapter가 이미

@@ -35,7 +35,7 @@ func (h Handler) Handle(ctx context.Context, _ string, request issueopscontract.
 	if err != nil {
 		return issueopscontract.ExecutionResult{ID: request.ID}, publicError(err)
 	}
-	return issueopscontract.ExecutionResult{OK: result.OK, ID: result.ID, Execution: coreExecution(result.Execution), OrcaTaskSettled: result.OrcaTaskSettled, OrcaTaskError: result.OrcaTaskError}, nil
+	return issueopscontract.ExecutionResult{OK: result.OK, ID: result.ID, Execution: coreExecution(result.Execution)}, nil
 }
 
 func completionActor(actor issueopscontract.NativeActor) completioncontract.Actor {

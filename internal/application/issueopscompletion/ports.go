@@ -28,7 +28,3 @@ type Environment interface {
 type Clock interface{ Now() time.Time }
 
 type ProcessInspector func(context.Context, completioncontract.ProcessReceipt) (string, completioncontract.ProcessReceipt, error)
-
-type TaskSettler interface {
-	Settle(context.Context, string, string) error
-}
