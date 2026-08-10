@@ -14,21 +14,17 @@ import (
 
 var fixedCompletionTime = time.Date(2026, 8, 2, 1, 2, 3, 4, time.UTC)
 
-func TestCompleteCommitsBeforeBestEffortOrcaSettle(t *testing.T) {
+func TestCompleteCommitsWithoutOrcaSettle(t *testing.T) {
 	trace := []string{}
 	repository := &repositoryFake{record: activeCompletionRecord("orca"), trace: &trace}
 	environment := &environmentFake{trace: &trace, canonical: true, head: strings.Repeat("a", 40), report: "/worktree/report.json"}
-	settler := &settlerFake{trace: &trace, err: errors.New("orca unavailable")}
-	service := NewService(repository, environment, fixedClock{fixedCompletionTime}, tracedLiveInspector(&trace), settler)
+	service := NewService(repository, environment, fixedClock{fixedCompletionTime}, tracedLiveInspector(&trace))
 
-	result, err := service.Complete(context.Background(), validRequest())
+	_, err := service.Complete(context.Background(), validRequest())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.OrcaTaskError != "orca unavailable" || result.OrcaTaskSettled {
-		t.Fatalf("settle projection = %+v", result)
-	}
-	wantTrace := []string{"process", "read", "artifact", "cwd", "head", "report", "commit", "settle:run-198:task-198"}
+	wantTrace := []string{"process", "read", "artifact", "cwd", "head", "report", "commit"}
 	if !reflect.DeepEqual(trace, wantTrace) {
 		t.Fatalf("trace = %#v, want %#v", trace, wantTrace)
 	}
@@ -37,7 +33,7 @@ func TestCompleteCommitsBeforeBestEffortOrcaSettle(t *testing.T) {
 	}
 }
 
-func TestCompleteIdenticalRetrySkipsEnvironmentAndStillSettles(t *testing.T) {
+func TestCompleteIdenticalRetrySkipsEnvironmentWithoutOrcaSettle(t *testing.T) {
 	record := activeCompletionRecord("orca")
 	record.Phase = "done"
 	record.Lease.Status = "released"
@@ -50,16 +46,13 @@ func TestCompleteIdenticalRetrySkipsEnvironmentAndStillSettles(t *testing.T) {
 	}
 	trace := []string{}
 	repository := &repositoryFake{record: record, trace: &trace}
-	service := NewService(repository, &environmentFake{trace: &trace, canonical: true}, fixedClock{fixedCompletionTime}, tracedLiveInspector(&trace), &settlerFake{trace: &trace})
+	service := NewService(repository, &environmentFake{trace: &trace, canonical: true}, fixedClock{fixedCompletionTime}, tracedLiveInspector(&trace))
 
-	result, err := service.Complete(context.Background(), validRequest())
+	_, err := service.Complete(context.Background(), validRequest())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.OrcaTaskSettled {
-		t.Fatalf("retry result = %+v", result)
-	}
-	if want := []string{"process", "read", "cwd", "artifact", "settle:run-198:task-198"}; !reflect.DeepEqual(trace, want) {
+	if want := []string{"process", "read", "cwd", "artifact"}; !reflect.DeepEqual(trace, want) {
 		t.Fatalf("trace = %#v, want %#v", trace, want)
 	}
 }
@@ -68,7 +61,7 @@ func TestCompleteRejectsNonCanonicalCWDWithoutCommit(t *testing.T) {
 	trace := []string{}
 	repository := &repositoryFake{record: activeCompletionRecord("direct"), trace: &trace}
 	environment := &environmentFake{trace: &trace, canonical: false}
-	service := NewService(repository, environment, fixedClock{fixedCompletionTime}, tracedLiveInspector(&trace), nil)
+	service := NewService(repository, environment, fixedClock{fixedCompletionTime}, tracedLiveInspector(&trace))
 
 	_, err := service.Complete(context.Background(), validRequest())
 	if err == nil || err.Error() != "completion cwd must be the canonical worktree" {
@@ -79,20 +72,18 @@ func TestCompleteRejectsNonCanonicalCWDWithoutCommit(t *testing.T) {
 	}
 }
 
-func TestCompleteRepositoryFailureDoesNotSettle(t *testing.T) {
+func TestCompleteRepositoryFailureLeavesRecordUnchanged(t *testing.T) {
 	trace := []string{}
 	repository := &repositoryFake{record: activeCompletionRecord("orca"), trace: &trace, commitErr: errors.New("commit failed")}
 	environment := &environmentFake{trace: &trace, canonical: true, head: strings.Repeat("a", 40), report: "/worktree/report.json"}
-	service := NewService(repository, environment, fixedClock{fixedCompletionTime}, tracedLiveInspector(&trace), &settlerFake{trace: &trace})
+	service := NewService(repository, environment, fixedClock{fixedCompletionTime}, tracedLiveInspector(&trace))
 
 	_, err := service.Complete(context.Background(), validRequest())
 	if err == nil || err.Error() != "commit failed" {
 		t.Fatalf("error = %v", err)
 	}
-	for _, step := range trace {
-		if strings.HasPrefix(step, "settle:") {
-			t.Fatalf("settler ran after failed commit: %#v", trace)
-		}
+	if repository.commits != 0 {
+		t.Fatalf("commits = %d", repository.commits)
 	}
 }
 
@@ -115,7 +106,7 @@ func TestCompleteReopenedGenerationKeepsExactlyOnceContract(t *testing.T) {
 			trace := []string{}
 			repository := &repositoryFake{record: record, trace: &trace}
 			environment := &environmentFake{trace: &trace, canonical: true, head: test.newHead, report: "/worktree/new-report.json"}
-			service := NewService(repository, environment, fixedClock{fixedCompletionTime}, tracedLiveInspector(&trace), nil)
+			service := NewService(repository, environment, fixedClock{fixedCompletionTime}, tracedLiveInspector(&trace))
 			request := validRequest()
 			request.Generation = test.generation
 			request.FinalHead = test.newHead
@@ -199,16 +190,6 @@ func (f *environmentFake) VerifyReport(_, _ string) (string, error) {
 type fixedClock struct{ at time.Time }
 
 func (c fixedClock) Now() time.Time { return c.at }
-
-type settlerFake struct {
-	trace *[]string
-	err   error
-}
-
-func (f *settlerFake) Settle(_ context.Context, runID, taskID string) error {
-	*f.trace = append(*f.trace, "settle:"+runID+":"+taskID)
-	return f.err
-}
 
 func tracedLiveInspector(trace *[]string) ProcessInspector {
 	return func(_ context.Context, receipt completioncontract.ProcessReceipt) (string, completioncontract.ProcessReceipt, error) {

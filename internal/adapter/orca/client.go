@@ -1027,7 +1027,9 @@ func (c *Client) CreateTask(ctx context.Context, req port.OrcaCreateTaskRequest)
 // 취급되는지는 Orca의 지식이므로 호출자가 리터럴을 반복하지 않도록 여기서 정한다.
 const taskStatusCompleted = "completed"
 
-// SettleTask는 완료된 사이클의 task를 terminal 상태로 옮긴다(#130).
+// SettleTask는 명시적으로 권한을 받은 Orca task mutation에서 task를 terminal 상태로
+// 옮긴다. IssueOps execution complete는 durable lifecycle만 완료하므로 이 메서드를
+// 호출하지 않는다.
 //
 // 이 메서드가 별도로 있는 이유는 어떤 status가 종결인지가 Orca 쪽 지식이기
 // 때문이다. 호출자는 "종결시켜라"만 말하고 값은 알 필요가 없다.
@@ -1038,8 +1040,7 @@ func (c *Client) SettleTask(ctx context.Context, runID, id string) error {
 	}
 	// Orca는 task mutation을 Run 단위로 격리하고 호출 terminal이 그 Run의
 	// current consumer인지 인증한다. coordinator가 그 사이 다른 Run에
-	// 바인딩됐으면 completion의 settle이 consumer_fenced로 실패하고, durable
-	// lifecycle completion이 성공한 뒤에도 Orca task가 열린 채 남는다(#325).
+	// 바인딩됐으면 task mutation이 consumer_fenced로 실패한다(#325).
 	//
 	// 봉인된 Run은 record가 이미 알고 있으므로 다시 바인딩하면 authority가
 	// 회복된다. 실측(relay 0.1.0+66c426c5173c):
@@ -1054,8 +1055,8 @@ func (c *Client) SettleTask(ctx context.Context, runID, id string) error {
 	// 바인딩은 UseRun으로 한다. UseRun은 Orca가 돌려준 Run이 요청한 Run과
 	// 같은지까지 확인하므로, 엉뚱한 Run에 바인딩된 채로 재시도해 잘못된
 	// authority로 mutation하는 경로가 없다. 바인딩을 되돌리지도 않는다 —
-	// completion은 그 lifecycle의 마지막 단계이고, 이전 바인딩을 복원하면
-	// 그 사이 일어난 다른 mutation의 authority를 되돌리는 셈이 된다.
+	// 이전 바인딩을 복원하면 그 사이 일어난 다른 mutation의 authority를
+	// 되돌리는 셈이 된다.
 	if _, bindErr := c.UseRun(ctx, runID); bindErr != nil {
 		return err
 	}
@@ -1068,8 +1069,9 @@ func isConsumerFenced(err error) bool {
 	return ok && typed.Code == "consumer_fenced"
 }
 
-// UpdateTask는 execution complete가 orca 모드 사이클의 task를 종결시키는 경로다
-// (#130 — SettleTask를 통해 호출된다).
+// UpdateTask는 Orca task 상태를 명시적으로 변경하는 저수준 명령이다. IssueOps
+// execution complete는 Orca dispatch의 terminal authority가 아니므로 이 경로를
+// 사용하지 않는다.
 //
 // #121이 이 명령을 residue 해법으로 기각했던 근거("상태를 바꿔도 소유자 조회가
 // 0건이라 분류기가 잔여물로 보고한다")는 #121 자신의 수정으로 사라졌다. 그

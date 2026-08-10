@@ -5,7 +5,6 @@ import (
 
 	completioninbound "agent-harness/internal/adapter/inbound/issueopscompletion"
 	"agent-harness/internal/adapter/issueops"
-	"agent-harness/internal/adapter/orca"
 	completionoutbound "agent-harness/internal/adapter/outbound/issueopscompletion"
 	"agent-harness/internal/adapter/outbound/sqlstore"
 	completionapp "agent-harness/internal/application/issueopscompletion"
@@ -20,7 +19,7 @@ func issueOpsCompleteHandler(ctx context.Context, stateRoot string, request issu
 	}
 	service := completionapp.NewService(
 		completionoutbound.NewRepository(database), completionoutbound.NewEnvironment(), completionoutbound.UTCClock{},
-		issueOpsCompletionProcessInspector, completionoutbound.NewTaskSettler(orca.New().SettleTask),
+		issueOpsCompletionProcessInspector,
 	)
 	return completioninbound.NewHandler(service)(ctx, stateRoot, request)
 }

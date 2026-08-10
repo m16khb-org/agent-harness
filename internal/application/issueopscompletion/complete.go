@@ -26,11 +26,9 @@ type Request struct {
 }
 
 type Result struct {
-	OK              bool
-	ID              string
-	Execution       completioncontract.Execution
-	OrcaTaskSettled bool
-	OrcaTaskError   string
+	OK        bool
+	ID        string
+	Execution completioncontract.Execution
 }
 
 type Service struct {
@@ -38,11 +36,10 @@ type Service struct {
 	environment Environment
 	clock       Clock
 	inspect     ProcessInspector
-	settler     TaskSettler
 }
 
-func NewService(repository Repository, environment Environment, clock Clock, inspect ProcessInspector, settler TaskSettler) *Service {
-	return &Service{repository: repository, environment: environment, clock: clock, inspect: inspect, settler: settler}
+func NewService(repository Repository, environment Environment, clock Clock, inspect ProcessInspector) *Service {
+	return &Service{repository: repository, environment: environment, clock: clock, inspect: inspect}
 }
 
 func (s *Service) Complete(ctx context.Context, request Request) (Result, error) {
@@ -107,9 +104,7 @@ func (s *Service) Complete(ctx context.Context, request Request) (Result, error)
 	if err != nil {
 		return Result{ID: request.ID}, err
 	}
-	result := Result{OK: true, ID: request.ID, Execution: persisted.Execution}
-	settle(persisted.Record, s.settler, &result)
-	return result, nil
+	return Result{OK: true, ID: request.ID, Execution: persisted.Execution}, nil
 }
 
 func resolveActor(ctx context.Context, actor completioncontract.Actor, ancestry []completioncontract.ProcessReceipt, inspect ProcessInspector) (completioncontract.Actor, error) {
@@ -220,15 +215,4 @@ func publicDomainError(err error, generation uint64) error {
 	default:
 		return err
 	}
-}
-
-func settle(record completioncontract.RecordSnapshot, settler TaskSettler, result *Result) {
-	if settler == nil || record.Mode != "orca" || record.Orca == nil || strings.TrimSpace(record.Orca.TaskID) == "" {
-		return
-	}
-	if err := settler.Settle(context.Background(), strings.TrimSpace(record.Orca.RunID), strings.TrimSpace(record.Orca.TaskID)); err != nil {
-		result.OrcaTaskError = err.Error()
-		return
-	}
-	result.OrcaTaskSettled = true
 }
