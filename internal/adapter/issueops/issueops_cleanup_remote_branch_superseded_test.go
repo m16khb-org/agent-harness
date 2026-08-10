@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"agent-harness/internal/contract/issueops"
 	issueopsdomain "agent-harness/internal/domain/issueops"
 )
 
@@ -38,6 +39,60 @@ func TestCleanupRemoteBranchAcceptsAVerifiedSupersedingArtifact(t *testing.T) {
 	}
 	if result.SupersededBy != req.SupersededBy {
 		t.Fatalf("무엇을 근거로 통과했는지 결과에 남아야 한다: %+v", result)
+	}
+}
+
+// TestCleanupRemoteBranchAcceptsSupersedingArtifactForUnmergedOriginal keeps
+// remote-branch cleanup aligned with cleanup finish: a closed-unmerged child PR
+// may be cleaned when a merged replacement explicitly supersedes it.
+func TestCleanupRemoteBranchAcceptsSupersedingArtifactForUnmergedOriginal(t *testing.T) {
+	stateRoot, record := remoteBranchTestRecord(t)
+	git := remoteBranchGit()
+	deps := remoteBranchDeps(git)
+	deps.VerifyMergedArtifact = func(issueops.IssueOpsRemoteArtifactVerification) (issueops.CleanupRemoteBranchArtifactHead, error) {
+		return issueops.CleanupRemoteBranchArtifactHead{}, errors.New("remote artifact is not verified merged")
+	}
+	deps.ObserveArtifact = func(url string) (issueopsdomain.ArtifactObservation, error) {
+		return issueopsdomain.ArtifactObservation{
+			URL: url, Provider: "github", Merged: true, State: "MERGED",
+			Body: "Supersedes " + record.RemoteArtifact.URL,
+		}, nil
+	}
+	replacement := "https://github.com/acme/repo/pull/307"
+
+	result, err := CleanupRemoteBranch(context.Background(), stateRoot, CleanupRemoteBranchRequest{
+		ID: record.ID, SupersededBy: replacement,
+	}, deps)
+	if err != nil {
+		t.Fatalf("verified replacement must satisfy an unmerged original artifact gate: %v missing=%v supersedeError=%q",
+			err, result.Missing, result.SupersedeError)
+	}
+	if result.SupersededBy != replacement || result.Fingerprint == "" {
+		t.Fatalf("replacement evidence must be fingerprinted: %+v", result)
+	}
+	wantNext := "agent-harness issueops cleanup remote-branch --id " + record.ID +
+		" --apply --confirm --fingerprint " + result.Fingerprint +
+		" --superseded-by '" + replacement + "' --json"
+	if result.NextCommand != wantNext {
+		t.Fatalf("generated apply command must preserve replacement evidence:\n got: %s\nwant: %s", result.NextCommand, wantNext)
+	}
+
+	other := "https://github.com/acme/repo/pull/308"
+	otherResult, err := CleanupRemoteBranch(context.Background(), stateRoot, CleanupRemoteBranchRequest{
+		ID: record.ID, SupersededBy: other,
+	}, deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if otherResult.Fingerprint == result.Fingerprint {
+		t.Fatal("different replacement URLs must produce different fingerprints")
+	}
+
+	applied, err := CleanupRemoteBranch(context.Background(), stateRoot, CleanupRemoteBranchRequest{
+		ID: record.ID, SupersededBy: replacement, Apply: true, Confirm: true, Fingerprint: result.Fingerprint,
+	}, deps)
+	if err != nil || !applied.Deleted || git.pushes != 1 {
+		t.Fatalf("generated replacement evidence and fingerprint must apply once: err=%v result=%+v pushes=%d", err, applied, git.pushes)
 	}
 }
 

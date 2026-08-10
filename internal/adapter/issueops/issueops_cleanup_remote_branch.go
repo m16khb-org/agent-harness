@@ -79,7 +79,8 @@ func CleanupRemoteBranch(ctx context.Context, stateRoot string, req CleanupRemot
 	result.Fingerprint = fingerprint
 	if !req.Apply {
 		result.NextCommand = fmt.Sprintf(
-			"agent-harness issueops cleanup remote-branch --id %s --apply --confirm --fingerprint %s --json", record.ID, fingerprint)
+			"agent-harness issueops cleanup remote-branch --id %s --apply --confirm --fingerprint %s%s --json",
+			record.ID, fingerprint, cleanupSupersededByFlag(result.SupersededBy))
 		return result, nil
 	}
 	if !req.Confirm {
@@ -115,6 +116,14 @@ func CleanupRemoteBranch(ctx context.Context, stateRoot string, req CleanupRemot
 		}
 	}
 	return result, nil
+}
+
+func cleanupSupersededByFlag(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	return " --superseded-by " + quoteExecutionOwnerArg(value)
 }
 
 // cleanupRemoteBranchGates는 게이트 12종을 전부 평가하고 missing을 나열한다
@@ -161,7 +170,8 @@ func cleanupRemoteBranchGates(ctx context.Context, record issueops.IssueOpsRecor
 		missing = append(missing, "remote_artifact_present")
 	} else {
 		inventory.ArtifactURL = strings.TrimSpace(record.RemoteArtifact.URL)
-		missing = append(missing, cleanupRemoteBranchArtifactGates(ctx, record, inventory, deps, result)...)
+		missing = append(missing, cleanupRemoteBranchArtifactGates(ctx, record, req, inventory, deps, result)...)
+		inventory.SupersededBy = result.SupersededBy
 	}
 	// ⑫ remote_branch_readable — 3분류: exit 0 + 비어있지 않음=present(OID 관측),
 	// exit 0 + 빈 출력=absent, 그 외=unreadable(fail-closed).
@@ -232,7 +242,7 @@ func cleanupRemoteTipReachedBase(ctx context.Context, record issueops.IssueOpsRe
 
 // cleanupRemoteBranchArtifactGates는 artifact 한 번의 readback에 의존하는
 // 게이트 ⑧·⑨와 origin 정체 게이트 ⑪을 평가한다.
-func cleanupRemoteBranchArtifactGates(ctx context.Context, record issueops.IssueOpsRecord, inventory cleanupRemoteBranchInventory,
+func cleanupRemoteBranchArtifactGates(ctx context.Context, record issueops.IssueOpsRecord, req CleanupRemoteBranchRequest, inventory cleanupRemoteBranchInventory,
 	deps CleanupRemoteBranchDeps, result *CleanupRemoteBranchResult) []string {
 	missing := []string{}
 	// ⑧ remote_artifact_merged — 미머지와 readback 실패 모두 거부다(finish 동형).
@@ -240,8 +250,13 @@ func cleanupRemoteBranchArtifactGates(ctx context.Context, record issueops.Issue
 		missing = append(missing, "remote_artifact_merged")
 		result.ArtifactError = "merge verification is not configured"
 	} else if head, err := deps.VerifyMergedArtifact(*record.RemoteArtifact); err != nil {
-		missing = append(missing, "remote_artifact_merged")
-		result.ArtifactError = err.Error()
+		if supersedeErr := verifyRemoteBranchSupersedingArtifact(record, req, deps); supersedeErr != nil {
+			missing = append(missing, "remote_artifact_merged")
+			result.ArtifactError = err.Error()
+			result.SupersedeError = supersedeErr.Error()
+		} else {
+			result.SupersededBy = strings.TrimSpace(req.SupersededBy)
+		}
 	} else {
 		result.ArtifactHeadBranch = strings.TrimSpace(head.HeadRefName)
 		result.ArtifactHeadOID = strings.TrimSpace(head.HeadRefOID)

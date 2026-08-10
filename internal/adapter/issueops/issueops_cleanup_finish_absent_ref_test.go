@@ -193,6 +193,18 @@ func TestCleanupFinishAcceptsAVerifiedSupersedingArtifact(t *testing.T) {
 	if result.SupersededBy != req.SupersededBy {
 		t.Fatalf("무엇을 근거로 통과했는지 결과에 남아야 한다: %+v", result)
 	}
+	wantNext := "agent-harness issueops cleanup finish --id " + record.ID +
+		" --apply --confirm --fingerprint " + result.Fingerprint +
+		" --superseded-by '" + req.SupersededBy + "' --json"
+	if result.NextCommand != wantNext {
+		t.Fatalf("generated apply command must preserve replacement evidence:\n got: %s\nwant: %s", result.NextCommand, wantNext)
+	}
+
+	req.Apply, req.Confirm, req.Fingerprint = true, true, result.Fingerprint
+	applied, err := CleanupFinish(context.Background(), stateRoot, req, deps)
+	if err != nil || !applied.RecordDeleted {
+		t.Fatalf("generated replacement evidence and fingerprint must finish cleanup: err=%v result=%+v", err, applied)
+	}
 }
 
 // TestCleanupFinishRejectsUnverifiableSupersedingArtifacts는 이 경로가 아무

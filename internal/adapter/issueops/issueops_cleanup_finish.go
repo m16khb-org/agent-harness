@@ -105,7 +105,8 @@ func CleanupFinish(ctx context.Context, stateRoot string, req CleanupFinishReque
 	}
 	result.Fingerprint = fingerprint
 	if !req.Apply {
-		result.NextCommand = fmt.Sprintf("agent-harness issueops cleanup finish --id %s --apply --confirm --fingerprint %s --json", record.ID, fingerprint)
+		result.NextCommand = fmt.Sprintf("agent-harness issueops cleanup finish --id %s --apply --confirm --fingerprint %s%s --json",
+			record.ID, fingerprint, cleanupSupersededByFlag(result.SupersededBy))
 		return result, nil
 	}
 	if !req.Confirm {
