@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "lifecycle": "io-034fe305d0f5",
+  "mode": "orca",
+  "owner": {
+    "host": "codex",
+    "model": "gpt-5.6-terra",
+    "effort": "xhigh",
+    "lease_generation": 1
+  },
+  "sealed_identity": {
+    "branch": "457-codex-native-install-readback",
+    "base_head": "3531e3e6e0f6642a6f77d4d8665766444d760348",
+    "issue_body_sha256": "ef9c3eb0ae2d20c825b59a777f735c09487460a5b6229580712dba91f39503a4",
+    "context_packet_sha256": "2060223a56a60684be34733f8050f737e60d57aabe4843556f8b7e423c8381ba"
+  },
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "test": "sealed_archive_matches_requested_commit",
+      "command": "git archive --format=tar 3531e3e6e0f6642a6f77d4d8665766444d760348; compare archive and extracted AGENTS.md SHA-256 values",
+      "result": "pass",
+      "evidence": {
+        "archive_sha256": "32d432a8dce0ab48b0c8453bc140c79d88690eea0da440abe3f409930b4a74e8",
+        "extracted_AGENTS_sha256": "cf7b578fbb4a8af1cea9ce58cec1bfcc6f189b0f710861e43ebccbae943ba621"
+      },
+      "note": "A git archive intentionally has no .git directory; provenance was verified by regenerated archive and extracted-file byte digests."
+    },
+    {
+      "id": "AC-02",
+      "test": "private_lane_native_install",
+      "command": "/usr/bin/env HOME=/private/tmp/agent-harness-lane-457/home CODEX_HOME=/private/tmp/agent-harness-lane-457/codex-home HARNESS_STATE_DIR=/private/tmp/agent-harness-lane-457/state HARNESS_DAEMON_DIR=/private/tmp/agent-harness-lane-457/daemon HARNESS_ROOT=/private/tmp/agent-harness-lane-457/source /private/tmp/agent-harness-lane-457/source/scripts/install-native.sh --path-mode=skip --json",
+      "result": "pass",
+      "evidence": {
+        "ok": true,
+        "committed": true,
+        "root": "/private/tmp/agent-harness-lane-457/source",
+        "binary": "/private/tmp/agent-harness-lane-457/source/bin/agent-harness"
+      }
+    },
+    {
+      "id": "AC-03",
+      "test": "codex_mcp_private_readback",
+      "command": "/usr/bin/env HOME=/private/tmp/agent-harness-lane-457/home CODEX_HOME=/private/tmp/agent-harness-lane-457/codex-home HARNESS_STATE_DIR=/private/tmp/agent-harness-lane-457/state HARNESS_DAEMON_DIR=/private/tmp/agent-harness-lane-457/daemon HARNESS_ROOT=/private/tmp/agent-harness-lane-457/source codex mcp get agent_harness --json",
+      "result": "pass",
+      "evidence": {
+        "enabled": true,
+        "command": "/private/tmp/agent-harness-lane-457/source/bin/agent-harness",
+        "args": ["mcp"],
+        "harness_root": "/private/tmp/agent-harness-lane-457/source"
+      }
+    },
+    {
+      "id": "AC-04",
+      "test": "managed_hooks_are_limited_and_third_party_hook_survives",
+      "command": "seed private PreToolUse third-party fixture; rerun the isolated installer; project codex-home/hooks.json with jq",
+      "result": "pass",
+      "evidence": {
+        "managed_events": ["PostCompact", "SessionStart"],
+        "managed_hook_count": 2,
+        "third_party_event": "PreToolUse",
+        "third_party_preserved": true
+      }
+    },
+    {
+      "id": "AC-05",
+      "test": "only_packet_turing_report_is_tracked",
+      "command": "jq validates the packet-issued report; git status --short, git diff --name-only, and git diff --check inspect the canonical worktree",
+      "result": "pass",
+      "evidence": {
+        "untracked_or_modified_path": ".agent-harness/turing/issueops-v1-981c5ebad3bd3573.json",
+        "worktree_diff_paths": [],
+        "diff_check": "pass"
+      },
+      "note": "The base-to-HEAD comparison is repeated after the evidence-only commit."
+    },
+    {
+      "id": "AC-06",
+      "test": "draft_pr_metadata_readback",
+      "command": "pending governed draft PR creation and GitHub API readback",
+      "result": "pending"
+    }
+  ],
+  "scope": {
+    "production_source_changed": false,
+    "external_claude_readback_run": false,
+    "child_lifecycle_created": false
+  }
+}
