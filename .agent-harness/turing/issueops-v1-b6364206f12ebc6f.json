@@ -3,7 +3,7 @@
   "lifecycle": "io-8f76e5e0a5f0",
   "issue_url": "https://github.com/m16khb/agent-harness/issues/462",
   "mode": "orca",
-  "generation": 2,
+  "generation": 3,
   "owner": {
     "host": "codex",
     "model": "gpt-5.6-terra",
@@ -18,14 +18,14 @@
     "branch": "462-parallel-issueops-lane-a",
     "base_branch": "parallel-issueops-probe-20260810-8166a2d",
     "base_head": "8166a2d6bcadf1e75e3f8272e4c9010ac349e6ac",
-    "run_id": "run_3602396ca8a4",
-    "task_id": "task_809a1e00b7f7",
-    "dispatch_id": "ctx_cc88b7848b9c",
+    "run_id": "run_dd0537c2bcd2",
+    "task_id": "task_c104782fd6a2",
+    "dispatch_id": "ctx_a6224e7f5b86",
     "worktree_instance_id": "fe2819f2-9a27-464c-a802-3c0094316fa0"
   },
   "sealed_inputs": {
-    "issue_body_sha256": "80cbc5dae21b6427c13a0788704c49db0913fae094d3fb92f5ba8445bf1474ff",
-    "context_packet_sha256": "1ffcbc2e18a6953be54842dbac3b5dbdee2f19d88b08848f55ebbd25bdb11f14",
+    "issue_body_sha256": "7e9f7962a7ae4eb6e2953ef4cbbf1ab12c6d699178dd5d01faa7b1e029055a20",
+    "context_packet_sha256": "31f5086cdee6acab3c2c23af0571deca5b28bbf43705d880f5daa6eeb59fcb7b",
     "artifact_manifest": {
       "plan": "f179e9d18f27dd1f3c4ec14b70420daeb774f185ca2de7197b9be15eaa583983",
       "spec": "9da9e9a132035c043559abebacf6519c20438bb471ec8a469df280b1d5df9e6d",
@@ -33,60 +33,61 @@
     }
   },
   "timing": {
-    "claimed_at": "2026-08-10T10:14:36.207518Z",
-    "evidence_finished_at": "2026-08-10T10:19:17Z",
-    "concurrent_active_snapshot_at": "2026-08-10T10:19:17Z"
+    "claimed_at": "2026-08-10T10:42:25.419921Z",
+    "common_active_receipt_at": "2026-08-10T10:44:56.790336Z",
+    "peer_c_released_at": "2026-08-10T10:47:02.042278Z"
   },
   "parallel_snapshot": [
     {
       "lifecycle": "io-bf3eaf081cf6",
       "branch": "461-parallel-issueops-lane-b",
       "worktree": "/Users/m16khb/Workspace/agent-harness.worktrees/461-parallel-issueops-lane-b",
-      "generation": 1,
+      "generation": 2,
       "lease_status": "active",
-      "claimed_at": "2026-08-10T10:01:50.573844Z",
-      "run_id": "run_7db958b38864",
-      "task_id": "task_3f419d4f0829",
-      "dispatch_id": "ctx_0880ccc3b4aa"
+      "claimed_at": "2026-08-10T10:41:55.247145Z",
+      "run_id": "run_d893f4279ad9",
+      "task_id": "task_798829b46467",
+      "dispatch_id": "ctx_f87e348c4d9a"
     },
     {
       "lifecycle": "io-8724649f2a51",
       "branch": "463-parallel-issueops-lane-c",
       "worktree": "/Users/m16khb/Workspace/agent-harness.worktrees/463-parallel-issueops-lane-c",
-      "generation": 2,
-      "lease_status": "active",
-      "claimed_at": "2026-08-10T10:12:05.676263Z",
-      "run_id": "run_9648e2853b22",
-      "task_id": "task_c9405f25b963",
-      "dispatch_id": "ctx_915d030b3e1b"
+      "generation": 3,
+      "lease_status": "released",
+      "claimed_at": "2026-08-10T10:42:51.811008Z",
+      "released_at": "2026-08-10T10:47:02.042278Z",
+      "run_id": "run_fb510e1326f0",
+      "task_id": "task_c0dcc5e0634c",
+      "dispatch_id": "ctx_100e0cd6133b"
     },
     {
       "lifecycle": "io-8f76e5e0a5f0",
       "branch": "462-parallel-issueops-lane-a",
       "worktree": "/Users/m16khb/Workspace/agent-harness.worktrees/462-parallel-issueops-lane-a",
-      "generation": 2,
+      "generation": 3,
       "lease_status": "active",
-      "claimed_at": "2026-08-10T10:14:36.207518Z",
-      "run_id": "run_3602396ca8a4",
-      "task_id": "task_809a1e00b7f7",
-      "dispatch_id": "ctx_cc88b7848b9c"
+      "claimed_at": "2026-08-10T10:42:25.419921Z",
+      "run_id": "run_dd0537c2bcd2",
+      "task_id": "task_c104782fd6a2",
+      "dispatch_id": "ctx_a6224e7f5b86"
     }
   ],
   "acceptance": {
     "AC-01": {
       "result": "PASS",
       "command": "agent-harness issueops execution status --id 'io-8f76e5e0a5f0' --json",
-      "evidence": "schema_version=1, generation=2, branch=462-parallel-issueops-lane-a, canonical worktree, and active native Codex holder matched the sealed packet."
+      "evidence": "schema_version=1, mode=orca, generation=3, branch, canonical worktree, sealed digests, and native Codex holder matched the generation-3 packet."
     },
     "AC-02": {
       "result": "PASS",
       "command": "agent-harness issueops status --id <each lifecycle> --json",
-      "evidence": "The 2026-08-10T10:19:17Z snapshot records three distinct lifecycle/worktree/run/task/dispatch tuples."
+      "evidence": "The A/B/C snapshot has distinct lifecycle, worktree, generation, run, task, and dispatch tuples."
     },
     "AC-03": {
       "result": "PASS",
       "command": "agent-harness issueops status --id <each lifecycle> --json",
-      "evidence": "At 2026-08-10T10:19:17Z all three lanes had active leases; max(claimed_at)=2026-08-10T10:14:36.207518Z is before the shared active snapshot."
+      "evidence": "max(claimed_at)=2026-08-10T10:42:51.811008Z < C holder-only routing receipt T=2026-08-10T10:44:56.790336Z < C released_at=2026-08-10T10:47:02.042278Z; A and B were active on generation 3 and 2 respectively around T."
     },
     "AC-04": {
       "result": "PASS",
@@ -95,51 +96,54 @@
         "TestRunParallelIsolationProbeWithDepsCoversCommandAndContractFailures"
       ],
       "command": "go test ./cmd/harness/validationcli/parallelisolation -count=1",
-      "evidence": "PASS after the report edit."
+      "evidence": "PASS: ok agent-harness/cmd/harness/validationcli/parallelisolation 0.439s."
     },
     "AC-05": {
       "result": "READY_FOR_POST_COMMIT_DIFF_CHECK",
       "command": "git status --short; git diff --name-only 8166a2d6bcadf1e75e3f8272e4c9010ac349e6ac...HEAD",
-      "evidence": "The source checkout was clean before the report edit. The exact one-file base-to-HEAD diff is verified after this report is committed."
+      "evidence": "Source checkout status was empty before this report edit. The post-commit base-to-HEAD name-only check is the remaining governed observation."
     },
     "AC-06": {
-      "result": "READY_FOR_GOVERNED_PUBLICATION",
-      "command": "agent-harness issueops remote create-pr --id 'io-8f76e5e0a5f0' --expected-generation 2 --head '462-parallel-issueops-lane-a' --base 'parallel-issueops-probe-20260810-8166a2d' ... --confirm --json",
-      "evidence": "Before publication, the governed command is sealed to the required head and temporary integration base. No PR has been created or read back yet; its durable remote receipt is verified before completion."
+      "result": "READY_FOR_GENERATION_3_REMOTE_RECONCILIATION",
+      "command": "agent-harness issueops remote create-pr --id 'io-8f76e5e0a5f0' --expected-generation 3 --head '462-parallel-issueops-lane-a' --base 'parallel-issueops-probe-20260810-8166a2d' ... --confirm --json",
+      "evidence": "Existing draft PR #464 is recorded from generation 2; generation 3 must reconcile it through the governed command and then read back base, label, assignee, and Korean body."
     },
     "AC-07": {
       "result": "PASS",
+      "projection": "schema_version,lifecycle_id,repo,branch,execution_generation,routing_trace",
       "matrix": [
         {
           "case": "own_id_own_cwd",
           "result": "ALLOWED",
-          "evidence": "The token-backed claim for io-8f76e5e0a5f0 generation 2 succeeded from this canonical worktree and activated only this lease."
+          "command": "issueops record-routing --id io-8f76e5e0a5f0 --phase implement --skill turing --host codex --session-id <current> --cwd <canonical>",
+          "evidence": "Succeeded and appended only A's implement/turing routing marker at 2026-08-10T10:44:06.539274Z."
         },
         {
           "case": "foreign_id_own_cwd",
           "result": "DENIED",
-          "error": "only the current holder may release generation 1",
+          "error": "IssueOps execution mutation requires the current write lease holder",
           "before_after_selected_status_sha256": {
-            "io-8f76e5e0a5f0": "c769e19e715d2bbc384b128452315ad780db8dedeb7c29b8ff5b917b15e50a77",
-            "io-bf3eaf081cf6": "ef49f4f20060e0125580237fb309085c3dd98115a8cf85b49480117721fd1bf6"
-          }
+            "io-8f76e5e0a5f0": "0e86ef8f527dfa5cfd92ecbaa3191ce88c20f0142a824d1a67b30a9676978690",
+            "io-bf3eaf081cf6": "9a3f037ce3baf9cd99be1fa70e6f6945f98d946e8e63704d2bc2cdd6287f077c"
+          },
+          "evidence": "Validation rejected before recordIssueOpsRoutingLocked writes; post-read projections equal the precondition projection."
         },
         {
           "case": "own_id_foreign_cwd",
           "result": "DENIED",
-          "error": "release cwd must be the canonical worktree",
+          "error": "IssueOps execution mutation requires the canonical worktree cwd",
           "before_after_selected_status_sha256": {
-            "io-8f76e5e0a5f0": "c769e19e715d2bbc384b128452315ad780db8dedeb7c29b8ff5b917b15e50a77",
-            "io-bf3eaf081cf6": "ef49f4f20060e0125580237fb309085c3dd98115a8cf85b49480117721fd1bf6"
+            "io-8f76e5e0a5f0": "0e86ef8f527dfa5cfd92ecbaa3191ce88c20f0142a824d1a67b30a9676978690",
+            "io-bf3eaf081cf6": "9a3f037ce3baf9cd99be1fa70e6f6945f98d946e8e63704d2bc2cdd6287f077c"
           }
         },
         {
           "case": "foreign_id_foreign_cwd",
           "result": "DENIED",
-          "error": "only the current holder may release generation 1",
+          "error": "IssueOps execution mutation requires the current write lease holder",
           "before_after_selected_status_sha256": {
-            "io-8f76e5e0a5f0": "c769e19e715d2bbc384b128452315ad780db8dedeb7c29b8ff5b917b15e50a77",
-            "io-bf3eaf081cf6": "ef49f4f20060e0125580237fb309085c3dd98115a8cf85b49480117721fd1bf6"
+            "io-8f76e5e0a5f0": "0e86ef8f527dfa5cfd92ecbaa3191ce88c20f0142a824d1a67b30a9676978690",
+            "io-bf3eaf081cf6": "9a3f037ce3baf9cd99be1fa70e6f6945f98d946e8e63704d2bc2cdd6287f077c"
           }
         }
       ]
@@ -148,11 +152,11 @@
   "verification": [
     {
       "command": "go test ./cmd/harness/validationcli/parallelisolation -count=1",
-      "result": "PASS"
+      "result": "PASS: 0.439s"
     },
     {
       "command": "git -C /Users/m16khb/Workspace/agent-harness status --short",
-      "result": "PASS: empty output before report edit"
+      "result": "PASS: empty output"
     }
   ],
   "ai_slop_clean": {
@@ -160,8 +164,13 @@
     "scope": "report-only; no production source, compatibility shim, abstraction, generated artifact, or unrelated cleanup is permitted"
   },
   "remote_artifact": {
-    "result": "pending_governed_create",
+    "result": "pending_generation_3_governed_reconciliation",
+    "url": "https://github.com/m16khb/agent-harness/pull/464",
     "head": "462-parallel-issueops-lane-a",
     "base": "parallel-issueops-probe-20260810-8166a2d"
+  },
+  "deviation": {
+    "source": "generation-2 artifacts",
+    "evidence": "plan.md:3 and turing-loop.md:7 still describe a coordinator barrier; remote issue #462 execution-contract correction supersedes that text for generation 3."
   }
 }
