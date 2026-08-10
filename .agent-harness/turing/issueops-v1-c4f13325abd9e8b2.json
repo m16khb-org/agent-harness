@@ -45,8 +45,8 @@
       "id": "AC-05",
       "test": "tracked diff against sealed base is exactly one file: the packet-issued Turing evidence JSON",
       "command": "git diff --name-only 3531e3e6e0f6642a6f77d4d8665766444d760348...HEAD",
-      "result": "PENDING",
-      "observed": "Recorded after AI-slop clean, implementation review, and atomic commit."
+      "result": "PASS",
+      "observed": "After commit 044a5787, git diff --name-only against the sealed base printed exactly one path: .agent-harness/turing/issueops-v1-c4f13325abd9e8b2.json."
     },
     {
       "id": "AC-06",
@@ -74,8 +74,8 @@
     },
     {
       "command": "git diff --name-only 3531e3e6e0f6642a6f77d4d8665766444d760348...HEAD",
-      "result": "PENDING",
-      "observed": "Recorded after commit"
+      "result": "PASS",
+      "observed": "Exactly one path: .agent-harness/turing/issueops-v1-c4f13325abd9e8b2.json"
     }
   ]
 }
